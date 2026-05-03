@@ -235,7 +235,35 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
 .theme-toggle{padding:6px 10px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--text2);font-size:14px;cursor:pointer;transition:all .2s;touch-action:manipulation;min-height:34px;flex-shrink:0}
 .theme-toggle:hover{border-color:var(--accent2)}
 
-/* ── POST-DRAFT GRADE ── */
+/* ── TRADE CALCULATOR ── */
+.trade-side{background:var(--s1);border:1.5px solid var(--border2);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.trade-side-hdr{display:flex;justify-content:space-between;align-items:center}
+.trade-side-label{font-size:10px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em}
+.trade-side-val{font-size:18px;font-weight:800;font-family:'Space Mono',monospace;color:var(--accent2)}
+.trade-search-wrap{position:relative}
+.trade-search{width:100%;padding:8px 12px;background:var(--s2);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:'Inter',sans-serif;transition:border-color .15s}
+.trade-search:focus{border-color:var(--accent)}
+.trade-search::placeholder{color:var(--muted)}
+.trade-results{position:absolute;top:100%;left:0;right:0;background:var(--s1);border:1.5px solid var(--border2);border-radius:8px;z-index:50;max-height:200px;overflow-y:auto;display:none;box-shadow:0 8px 24px #00000055}
+.trade-results.show{display:block}
+.trade-result-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;transition:background .1s}
+.trade-result-item:hover{background:var(--s3)}
+.trade-result-item:last-child{border-bottom:none}
+.tri-name{font-size:13px;font-weight:600;flex:1}
+.tri-pos{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;font-family:'Space Mono',monospace}
+.tri-val{font-size:11px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent2)}
+.trade-assets{display:flex;flex-direction:column;gap:6px;min-height:40px}
+.trade-asset{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:8px;border:1px solid var(--border2)}
+.ta-name{font-size:13px;font-weight:600;flex:1}
+.ta-val{font-size:12px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent2)}
+.ta-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 2px;line-height:1;flex-shrink:0}
+.ta-remove:hover{color:var(--qb)}
+.trade-verdict-bar{height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin:12px 0}
+.tvb-fill{height:8px;border-radius:4px;transition:width .5s ease}
+.verdict-win{color:var(--rb);font-weight:700}
+.verdict-lose{color:var(--qb);font-weight:700}
+.verdict-fair{color:var(--te);font-weight:700}
+@media(max-width:600px){#trade-container{grid-template-columns:1fr}}
 .grade-panel{margin-top:24px;padding:16px;background:var(--s1);border:1.5px solid var(--border2);border-radius:12px}
 .grade-hdr{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:'Space Mono',monospace;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
 .grade-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
@@ -292,69 +320,145 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
 @media(max-width:600px){.sinput{width:110px}.slbl{display:none}}
 @media(max-width:440px){.sinput{width:90px}}
 
-/* ── LIST HEADER ── */
-/* Grid: RK | PHOTO+POS+NAME | VALUE | OWNER | ACTIONS */
-.lhdr{display:grid;grid-template-columns:40px 1fr 80px 90px 160px;gap:0;padding:8px 14px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;border-bottom:1.5px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace}
-.lhdr span{cursor:pointer;transition:color .15s;padding:0 4px}
-.lhdr span:hover{color:var(--accent3)}
-@media(max-width:700px){.lhdr{display:none}}
+/* ─────────────────────────────────────
+   PLAYER LIST — compact, information-dense
+   UX principles applied:
+   • 44px condensed rows = 30% more players visible without scroll
+   • Rank is the primary anchor (leftmost, bold)
+   • Name + pos + team in one cell = reduced eye movement
+   • Value badge inline with name = no separate column needed
+   • Owner shown as colored dot = minimal space
+   • Actions hidden until hover = 160px saved per row permanently
+   • Zebra striping = easier row tracking
+   • Hover reveals full action set as overlay
+───────────────────────────────────── */
+
+/* List header: RK | NAME+PHOTO | TEAM | POS | STATUS */
+/* Table-based layout so ALL rows share identical column widths */
+.plist-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.plist-table colgroup col:nth-child(1){width:44px}  /* RK */
+.plist-table colgroup col:nth-child(2){width:32px}  /* PHOTO */
+.plist-table colgroup col:nth-child(3){width:185px} /* NAME — fits longest name */
+.plist-table colgroup col:nth-child(4){width:48px}  /* TEAM */
+.plist-table colgroup col:nth-child(5){width:36px}  /* POS */
+.plist-table colgroup col:nth-child(6){width:150px} /* STATUS/ACTIONS */
+.plist-table colgroup col:nth-child(7){width:auto}  /* SPACER */
+
+.lhdr{display:none} /* replaced by thead */
+.plist-thead th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:5px 4px;text-align:left;border-bottom:1.5px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap}
+.plist-thead th:first-child{text-align:right;padding-right:8px}
+@media(max-width:700px){.plist-thead{display:none}}
 
 /* ── PLAYER ROWS ── */
-.plist{padding:0 0 110px}
-/* Same 5-column grid as header */
-.prow{display:grid;grid-template-columns:40px 1fr 80px 90px 160px;gap:0;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);transition:background .1s;min-height:56px}
-.prow:hover{background:var(--s2)}
-.prow.gone{opacity:.13}
-.prow.gone:hover{background:transparent}
-.prow.ismine{background:#5b8dee0d;border-left:3px solid var(--accent)}
-/* Highlight rows with strong value */
-.prow.is-value{background:#3de8a00a;border-left:3px solid var(--rb)}
-.prow.is-value.ismine{background:#3de8a014;border-left:3px solid var(--rb)}
+.plist{padding:0 0 110px;display:block}
+/* ── TABLE-based player list for perfect column alignment ── */
+.plist-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.plist-table col.col-rk   {width:48px}
+.plist-table col.col-photo{width:34px}
+.plist-table col.col-name {width:185px}
+.plist-table col.col-team {width:48px}
+.plist-table col.col-pos  {width:36px}
+.plist-table col.col-act  {width:160px}
+.plist-table col.col-fill {width:auto}
+
+/* Header row */
+.plist-thead th{
+  font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;
+  padding:5px 4px;text-align:left;border-bottom:1.5px solid var(--border2);
+  background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap;
+  position:sticky;top:68px;z-index:5;
+}
+@media(max-width:700px){.plist-thead{display:none}}
+
+/* Data rows */
+.prow{height:44px;border-bottom:1px solid var(--border);transition:background .1s}
+.prow td{padding:0 4px;vertical-align:middle;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.prow:nth-child(even) td{background:#ffffff03}
+.prow:hover td{background:var(--s2)!important}
+.prow.gone{opacity:.12}
+.prow.gone:hover td{background:transparent!important;opacity:.18}
+.prow.ismine td{background:#5b8dee08!important}
+.prow.ismine td:first-child{border-left:2px solid var(--accent)}
+.prow.is-value td:first-child{border-left:2px solid var(--rb)}
 .prow.hidden{display:none}
 
-/* Rank number */
-.rnum{font-size:13px;font-weight:700;color:var(--accent2);font-family:'Space Mono',monospace;text-align:center}
+/* Col 1: Rank number — primary anchor, bold */
+.rnum{font-size:12px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;text-align:right;padding-right:6px;flex-shrink:0;line-height:1}
+.rnum.hl,.prow.ismine .rnum,.prow.is-value .rnum{color:var(--accent2)}
 
-/* Headshot circle */
-.pimg-wrap{width:36px;height:36px;border-radius:50%;background:var(--s3);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0;overflow:hidden}
+/* Col 2: Player cell — all info in one scannable unit */
+.pcell{display:flex;align-items:center;gap:7px;min-width:0;height:100%;padding:0 4px}
+.pimg-wrap{width:26px;height:26px;border-radius:50%;background:var(--s3);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--muted);flex-shrink:0;overflow:hidden}
 .pimg-wrap img{width:100%;height:100%;object-fit:cover}
+/* Name — fills remaining space in pcell */
+.pname{font-size:13px;font-weight:600;white-space:nowrap;line-height:1.2}
+.gone .pname{color:var(--dim)}
+/* Pos pill — now in its own column */
+.ppill{font-size:8px;font-weight:700;padding:2px 5px;border-radius:3px;font-family:'Space Mono',monospace;white-space:nowrap;line-height:1.4;display:inline-block}
+.ppill.QB{background:#ff709618;color:var(--qb)}
+.ppill.RB{background:#3de8a018;color:var(--rb)}
+.ppill.WR{background:#5bc5ff18;color:var(--wr)}
+.ppill.TE{background:#ffd16618;color:var(--te)}
+/* Mobile meta row */
+.prow-meta{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;overflow:hidden}
+.pteam{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;flex-shrink:0}
 
-/* Player info cell */
-.pcell{display:flex;align-items:center;gap:9px;min-width:0;padding:0 4px}
-.ppill{font-size:9px;font-weight:700;padding:3px 6px;border-radius:4px;text-align:center;font-family:'Space Mono',monospace;white-space:nowrap;flex-shrink:0}
-.ppill.QB{background:#ff709625;color:var(--qb)}
-.ppill.RB{background:#3de8a025;color:var(--rb)}
-.ppill.WR{background:#5bc5ff25;color:var(--wr)}
-.ppill.TE{background:#ffd16625;color:var(--te)}
-.pinfo{min-width:0;flex:1}
-.pname{font-size:14px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pteam{font-size:10px;color:var(--muted);margin-top:1px;font-family:'Space Mono',monospace}
-.gone .pname,.gone .pteam{color:#ffffff10}
+/* Value badge — inline, compact, no separate column */
+.vbadge{display:inline-flex;align-items:center;font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px;font-family:'Space Mono',monospace;white-space:nowrap;flex-shrink:0}
+.vbadge.val{background:#3de8a018;color:var(--rb)}
+.vbadge.reach{background:#ff709615;color:var(--qb)}
+.vbadge.need{background:#a78bfa15;color:var(--suggest)}
+.vbadge.hot{background:#3de8a025;color:var(--rb);font-weight:900}
+/* Owner dot — minimal, colored, in meta row */
+.owner-dot{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-family:'Space Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;flex-shrink:1}
+.owner-dot::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
 
-/* Value badge cell — centered, prominent */
-.vcell{display:flex;align-items:center;justify-content:center;padding:0 4px}
-.vbadge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:4px 8px;border-radius:6px;font-family:'Space Mono',monospace;letter-spacing:.05em;white-space:nowrap}
-.vbadge.val{background:#3de8a022;color:var(--rb);border:1.5px solid #3de8a044}
-.vbadge.reach{background:#ff709618;color:var(--qb);border:1.5px solid #ff709633}
-.vbadge.need{background:#a78bfa18;color:var(--suggest);border:1.5px solid #a78bfa33}
-.vbadge.hot{background:linear-gradient(135deg,#3de8a022,#a78bfa18);color:#7ee8a2;border:1.5px solid #3de8a055;animation:hotpulse 2s ease-in-out infinite}
-@keyframes hotpulse{0%,100%{opacity:1}50%{opacity:.7}}
-
-/* Owner cell */
-.ocell{padding:0 4px}
-.otag{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'Space Mono',monospace}
-
-/* Action buttons — always aligned in last column */
-.abts{display:flex;gap:4px;align-items:center;flex-wrap:nowrap;padding:0 2px}
-.ab{padding:6px 10px;border-radius:7px;border:1.5px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;white-space:nowrap;touch-action:manipulation;min-height:36px;-webkit-tap-highlight-color:transparent}
+/* Col 3: Status + Actions
+   Default: show only a small status indicator
+   On hover: slide in action buttons from the right */
+.prow-actions{display:flex;align-items:center;justify-content:flex-end;gap:3px;height:100%}
+/* Action buttons — compact, no min-height needed in dense rows */
+.ab{padding:4px 8px;border-radius:6px;border:1px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;transition:all .12s;white-space:nowrap;touch-action:manipulation;-webkit-tap-highlight-color:transparent;flex-shrink:0}
 .ab:hover,.ab:active{border-color:var(--text);color:var(--text)}
+.ab.take{border-color:var(--accent);color:var(--accent2);font-weight:700;background:#5b8dee0a}
+.ab.take:hover,.ab.take:active{background:var(--accent);color:#fff;border-color:transparent}
+.ab.gon{border-color:#ff709630;color:#ff709660}
+.ab.gon:hover,.ab.gon:active{border-color:var(--qb);color:var(--qb);background:#ff709610}
+.ab.undo{color:var(--muted);font-size:8px}
+.asel{background:var(--s2);border:1px solid var(--dim);color:var(--text2);font-family:'Space Mono',monospace;font-size:9px;padding:3px 5px;border-radius:6px;outline:none;width:110px;cursor:pointer;-webkit-appearance:none;flex-shrink:0}
+
+/* Status cell: fixed width, contains both status text and hover actions */
+.prow-status-cell{display:flex;align-items:center;height:100%;overflow:hidden;padding:0 6px;gap:4px;min-width:0}
+.prow-status-default{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+
+/* Actions — contained within the cell, never overflow the page */
+.prow-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;min-width:0}
+
+/* Actions removed — status always visible */
+.prow-actions{display:none}
+
+/* Action buttons — extra compact to fit in the column */
+.ab{padding:3px 7px;border-radius:5px;border:1px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;transition:all .12s;white-space:nowrap;touch-action:manipulation;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.ab:hover,.ab:active{border-color:var(--text);color:var(--text)}
+.ab.take{border-color:var(--accent);color:var(--accent2);font-weight:700;background:#5b8dee0a}
+.ab.take:hover,.ab.take:active{background:var(--accent);color:#fff;border-color:transparent}
+.ab.gon{border-color:#ff709630;color:#ff709666}
+.ab.gon:hover,.ab.gon:active{border-color:var(--qb);color:var(--qb);background:#ff709610}
+.ab.undo{color:var(--muted);font-size:8px}
+
+/* Team assign select — compact, no overflow */
+.asel{background:var(--s2);border:1px solid var(--dim);color:var(--text2);font-family:'Space Mono',monospace;font-size:9px;padding:3px 5px;border-radius:6px;outline:none;width:110px;cursor:pointer;-webkit-appearance:none;flex-shrink:0}
+
+/* Density toggle */
+.density-btn{padding:4px 7px;border-radius:5px;border:1px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;transition:all .15s;touch-action:manipulation}
+.density-btn.on{border-color:var(--accent2);color:var(--accent2)}
 .ab.take{border-color:var(--accent);color:var(--accent2);font-weight:700;background:#5b8dee10}
 .ab.take:hover,.ab.take:active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent}
 .ab.gon{border-color:#ff709633;color:#ff709666}
 .ab.gon:hover,.ab.gon:active{border-color:var(--qb);color:var(--qb);background:#ff709612}
 .ab.undo{border-color:var(--dim);color:var(--muted);font-size:9px}
 .ab.undo:hover,.ab.undo:active{border-color:var(--muted);color:var(--text)}
-.asel{background:var(--s3);border:1.5px solid var(--dim);color:var(--text2);font-family:'Space Mono',monospace;font-size:9px;padding:5px 6px;border-radius:7px;outline:none;max-width:75px;cursor:pointer;min-height:36px;-webkit-appearance:none}
+
 
 /* ── MOBILE PLAYER CARD (≤700px) ── */
 /* On mobile, each player is a proper card with a fixed action strip at the bottom.
@@ -402,21 +506,27 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
     min-height:44px;padding:0 8px;max-width:none;
   }
 
-  /* Hide desktop-only elements inside prow on mobile */
-  .prow > span.rnum,
-  .prow > div:not(.prow-top):not(.prow-actions),
-  .prow > .pimg-wrap,
-  .prow > .ppill,
-  .prow > .otag,
-  .prow > .abts
-  { display:none !important }
-  .prow-top{ display:flex !important }
-  .prow-actions{ display:flex !important }
+  /* Mobile: hide desktop grid cols, show card */
+  .prow > .rnum,.prow > .pcell,.prow > .prow-actions{display:none!important}
+  .prow{display:block!important;height:auto;padding:10px 12px 0}
+  .prow-top{display:flex!important;align-items:center;gap:8px;margin-bottom:10px}
+  .prow-actions-mobile{display:flex!important}
 }
-/* Hide mobile-only elements on desktop */
+/* Desktop: show grid, hide mobile card */
 @media(min-width:701px){
-  .prow-top{ display:none !important }
-  .prow-actions{ display:none !important }
+  .prow-top{display:none!important}
+  .prow-actions-mobile{display:none!important}
+}
+
+/* Mobile action strip */
+@media(max-width:700px){
+  .prow-actions-mobile{border-top:1px solid var(--border);margin:0 -12px}
+  .prow-actions-mobile .ab{flex:1;border:none;border-right:1px solid var(--border);border-radius:0;min-height:44px;display:flex;align-items:center;justify-content:center;font-size:12px;padding:0;background:transparent}
+  .prow-actions-mobile .ab:last-child{border-right:none}
+  .prow-actions-mobile .ab.take{color:var(--accent2);font-weight:700;background:#5b8dee06}
+  .prow-actions-mobile .ab.take:active{background:var(--accent);color:#fff}
+  .prow-actions-mobile .ab.gon{color:#ff709666}
+  .prow-actions-mobile .asel{flex:1;border:none;border-right:1px solid var(--border);border-radius:0;background:transparent;color:var(--muted);font-size:11px;min-height:44px;padding:0 8px;max-width:none;outline:none}
 }
 
 /* ── ROSTER BAR ── */
@@ -653,8 +763,8 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
         <div class="default-rankings-box" id="default-box" onclick="useDefaultRankings()">
           <div class="dr-left">
             <div class="dr-badge">✦ DEFAULT</div>
-            <div class="dr-title">SuperFlex Dynasty Rankings</div>
-            <div class="dr-sub">436 players · Expert Consensus · 2025</div>
+            <div class="dr-title">FantasyPros Dynasty Rankings</div>
+            <div class="dr-sub">474 players · FantasyPros Expert Consensus · 2026</div>
           </div>
           <button class="dr-use-btn" id="dr-btn" onclick="event.stopPropagation();useDefaultRankings()">USE THESE</button>
         </div>
@@ -705,6 +815,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
     <button class="on" id="nb-draft" onclick="showPage('draft')">RANKINGS</button>
     <button id="nb-visual" onclick="showPage('visual')">BOARD</button>
     <button id="nb-teams" onclick="showPage('teams')">TEAMS</button>
+    <button id="nb-trade" onclick="showPage('trade')">🔄 CALC</button>
   </div>
   <div class="sync-wrap">
     <div class="sync-dot" id="sdot"></div>
@@ -769,7 +880,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
       <button class="sbtn on" id="sb0" onclick="setSort(0)">—</button>
       <button class="sbtn" id="sb1" onclick="setSort(1)" style="display:none">—</button>
       <button class="sbtn" id="sb2" onclick="setSort(2)" style="display:none">—</button>
-      <button class="sbtn" id="sb3" onclick="setSort(3)" style="display:none">SF Dynasty</button>
+      <button class="sbtn" id="sb3" onclick="setSort(3)" style="display:none">FantasyPros</button>
       <button class="sbtn" id="sb-adp-dynasty" onclick="setSort('adp-dynasty')">Dynasty ADP</button>
       <button class="sbtn" id="sb-adp-redraft" onclick="setSort('adp-redraft')">Redraft ADP</button>
     </div>
@@ -777,14 +888,26 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
       <button class="hgbtn" id="hgbtn" onclick="toggleHide()">Show Drafted <span class="hg-count" id="hg-count">0</span></button>
     </div>
   </div>
-  <div class="lhdr" id="lhdr">
-    <span id="lh0" onclick="setSort(0)" style="color:var(--accent2);text-align:center">RK</span>
-    <span>PLAYER</span>
-    <span style="text-align:center">VALUE</span>
-    <span class="col-owner">OWNER</span>
-    <span>ACTIONS</span>
+  <div class="plist" id="plist">
+    <table class="plist-table">
+      <colgroup>
+        <col class="col-rk"><col class="col-photo"><col class="col-name">
+        <col class="col-team"><col class="col-pos"><col class="col-act"><col class="col-fill">
+      </colgroup>
+      <thead class="plist-thead" id="lhdr">
+        <tr>
+          <th id="lh0" onclick="setSort(0)" style="color:var(--accent2);text-align:right;cursor:pointer;padding-right:8px">RK</th>
+          <th></th>
+          <th>NAME</th>
+          <th>TEAM</th>
+          <th>POS</th>
+          <th>STATUS</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="plist-body"></tbody>
+    </table>
   </div>
-  <div class="plist" id="plist"></div>
   <div class="rbar">
     <span class="rlbl">Roster</span>
     <div class="rchips" id="rchips"></div>
@@ -855,12 +978,67 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
   </div>
 </div>
 
+<!-- TRADE CALCULATOR PAGE -->
+<div class="page z1" id="page-trade">
+  <div style="padding:14px 14px 120px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Arial Black',sans-serif;font-size:20px;letter-spacing:1px">TRADE <em style="color:var(--accent2);font-style:normal">CALCULATOR</em></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace">Powered by RosterAudit · Dynasty SF values</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div id="trade-status" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace"></div>
+        <button class="sbtn" onclick="clearTrade()">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- TRADE SIDES -->
+    <div id="trade-container" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+      <!-- SIDE A -->
+      <div class="trade-side" id="trade-side-a">
+        <div class="trade-side-hdr">
+          <span class="trade-side-label">YOU GIVE</span>
+          <span class="trade-side-val" id="trade-val-a">0</span>
+        </div>
+        <div class="trade-search-wrap">
+          <input class="trade-search" id="trade-search-a" placeholder="Search player or pick..." oninput="searchTrade('a')" autocomplete="off">
+          <div class="trade-results" id="trade-results-a"></div>
+        </div>
+        <div class="trade-assets" id="trade-assets-a"></div>
+      </div>
+      <!-- SIDE B -->
+      <div class="trade-side" id="trade-side-b">
+        <div class="trade-side-hdr">
+          <span class="trade-side-label">YOU RECEIVE</span>
+          <span class="trade-side-val" id="trade-val-b">0</span>
+        </div>
+        <div class="trade-search-wrap">
+          <input class="trade-search" id="trade-search-b" placeholder="Search player or pick..." oninput="searchTrade('b')" autocomplete="off">
+          <div class="trade-results" id="trade-results-b"></div>
+        </div>
+        <div class="trade-assets" id="trade-assets-b"></div>
+      </div>
+    </div>
+
+    <!-- VERDICT -->
+    <div id="trade-verdict" style="display:none;background:var(--s1);border:1.5px solid var(--border2);border-radius:14px;padding:18px;margin-bottom:14px">
+      <div id="trade-verdict-inner"></div>
+    </div>
+
+    <!-- QUICK PICKS — your roster as starting point -->
+    <div style="margin-top:18px">
+      <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Quick Add — Your Roster</div>
+      <div id="trade-roster-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════
 //  STATE
 // ════════════════════════════════════
 let PLAYERS = [];
-let RLABELS = ['SF Dynasty'];
+let RLABELS = ['FantasyPros'];
 let TEAMS = [];
 let COLORS = ['#7ba8f5','#5bc5ff','#3de8a0','#ff7096','#ffd166','#d19eff','#60d3e8','#8899ff','#4de8b0','#ff9f5b','#ff9ac1','#94aab8'];
 let PICK_SLOTS = [];   // [teamIdx] -> ['1.1','2.12',...]
@@ -1059,8 +1237,8 @@ function selectDraft(draftId, draftName, typeTags) {
   document.getElementById('launch-btn').textContent = `ENTER DRAFT ROOM · ${draftName.slice(0,22)}`;
   toast(`✦ Draft selected: ${draftName}`);
 }
-const DEFAULT_RANKINGS = [{"name": "Josh Allen", "team": "BUF", "pos": "QB", "r0": 2.13}, {"name": "Jaxon Smith-Njigba", "team": "SEA", "pos": "WR", "r0": 3.38}, {"name": "Ja'Marr Chase", "team": "CIN", "pos": "WR", "r0": 3.88}, {"name": "Drake Maye", "team": "NE", "pos": "QB", "r0": 4.38}, {"name": "Bijan Robinson", "team": "ATL", "pos": "RB", "r0": 5.13}, {"name": "Puka Nacua", "team": "LAR", "pos": "WR", "r0": 5.63}, {"name": "Jahmyr Gibbs", "team": "DET", "pos": "RB", "r0": 6.13}, {"name": "Jayden Daniels", "team": "WAS", "pos": "QB", "r0": 9.0}, {"name": "Amon-Ra St. Brown", "team": "DET", "pos": "WR", "r0": 11.25}, {"name": "Lamar Jackson", "team": "BAL", "pos": "QB", "r0": 12.13}, {"name": "Caleb Williams", "team": "CHI", "pos": "QB", "r0": 12.75}, {"name": "Malik Nabers", "team": "NYG", "pos": "WR", "r0": 13.0}, {"name": "Ashton Jeanty", "team": "LV", "pos": "RB", "r0": 14.38}, {"name": "CeeDee Lamb", "team": "DAL", "pos": "WR", "r0": 15.13}, {"name": "Justin Jefferson", "team": "MIN", "pos": "WR", "r0": 15.63}, {"name": "Jeremiyah Love", "team": "ARI", "pos": "RB", "r0": 16.29}, {"name": "Joe Burrow", "team": "CIN", "pos": "QB", "r0": 16.75}, {"name": "Brock Bowers", "team": "LV", "pos": "TE", "r0": 17.75}, {"name": "Drake London", "team": "ATL", "pos": "WR", "r0": 19.75}, {"name": "Patrick Mahomes", "team": "KC", "pos": "QB", "r0": 19.88}, {"name": "Trey McBride", "team": "ARI", "pos": "TE", "r0": 21.25}, {"name": "Omarion Hampton", "team": "LAC", "pos": "RB", "r0": 23.25}, {"name": "Jalen Hurts", "team": "PHI", "pos": "QB", "r0": 24.88}, {"name": "Tetairoa McMillan", "team": "CAR", "pos": "WR", "r0": 26.88}, {"name": "Jaxson Dart", "team": "NYG", "pos": "QB", "r0": 29.0}, {"name": "Devon Achane", "team": "MIA", "pos": "RB", "r0": 30.38}, {"name": "George Pickens", "team": "DAL", "pos": "WR", "r0": 30.38}, {"name": "Carnell Tate", "team": "TEN", "pos": "WR", "r0": 31.0}, {"name": "Justin Herbert", "team": "LAC", "pos": "QB", "r0": 31.63}, {"name": "Colston Loveland", "team": "CHI", "pos": "TE", "r0": 31.75}, {"name": "Trevor Lawrence", "team": "JAX", "pos": "QB", "r0": 33.0}, {"name": "Rashee Rice", "team": "KC", "pos": "WR", "r0": 33.88}, {"name": "Brock Purdy", "team": "SF", "pos": "QB", "r0": 34.38}, {"name": "Garrett Wilson", "team": "NYJ", "pos": "WR", "r0": 36.5}, {"name": "Bo Nix", "team": "DEN", "pos": "QB", "r0": 37.75}, {"name": "Chris Olave", "team": "NO", "pos": "WR", "r0": 39.38}, {"name": "Nico Collins", "team": "HOU", "pos": "WR", "r0": 40.75}, {"name": "Jonathan Taylor", "team": "IND", "pos": "RB", "r0": 41.75}, {"name": "James Cook", "team": "BUF", "pos": "RB", "r0": 42.5}, {"name": "Emeka Egbuka", "team": "TB", "pos": "WR", "r0": 44.63}, {"name": "Kenneth Walker", "team": "KC", "pos": "RB", "r0": 46.25}, {"name": "Jordyn Tyson", "team": "NO", "pos": "WR", "r0": 46.29}, {"name": "Makai Lemon", "team": "PHI", "pos": "WR", "r0": 48.29}, {"name": "Fernando Mendoza", "team": "LV", "pos": "QB", "r0": 51.43}, {"name": "Dak Prescott", "team": "DAL", "pos": "QB", "r0": 54.38}, {"name": "Jadarian Price", "team": "SEA", "pos": "RB", "r0": 55.43}, {"name": "Ladd McConkey", "team": "LAC", "pos": "WR", "r0": 55.75}, {"name": "Luther Burden", "team": "CHI", "pos": "WR", "r0": 55.88}, {"name": "Rome Odunze", "team": "CHI", "pos": "WR", "r0": 57.25}, {"name": "Chase Brown", "team": "CIN", "pos": "RB", "r0": 57.88}, {"name": "Tyler Warren", "team": "IND", "pos": "TE", "r0": 57.88}, {"name": "Breece Hall", "team": "NYJ", "pos": "RB", "r0": 58.5}, {"name": "Jordan Love", "team": "GB", "pos": "QB", "r0": 59.13}, {"name": "TreVeyon Henderson", "team": "NE", "pos": "RB", "r0": 63.63}, {"name": "Quinshon Judkins", "team": "CLE", "pos": "RB", "r0": 64.13}, {"name": "Harold Fannin", "team": "CLE", "pos": "TE", "r0": 65.63}, {"name": "Bucky Irving", "team": "TB", "pos": "RB", "r0": 65.75}, {"name": "Christian McCaffrey", "team": "SF", "pos": "RB", "r0": 68.38}, {"name": "Jared Goff", "team": "DET", "pos": "QB", "r0": 68.75}, {"name": "Tee Higgins", "team": "CIN", "pos": "WR", "r0": 68.88}, {"name": "Brian Thomas", "team": "JAX", "pos": "WR", "r0": 69.0}, {"name": "Baker Mayfield", "team": "TB", "pos": "QB", "r0": 71.0}, {"name": "Cam Skattebo", "team": "NYG", "pos": "RB", "r0": 71.75}, {"name": "Kyren Williams", "team": "LAR", "pos": "RB", "r0": 72.13}, {"name": "Marvin Harrison", "team": "ARI", "pos": "WR", "r0": 72.88}, {"name": "Zay Flowers", "team": "BAL", "pos": "WR", "r0": 74.5}, {"name": "Saquon Barkley", "team": "PHI", "pos": "RB", "r0": 75.13}, {"name": "DeVonta Smith", "team": "PHI", "pos": "WR", "r0": 75.13}, {"name": "Cam Ward", "team": "TEN", "pos": "QB", "r0": 77.88}, {"name": "Tyler Shough", "team": "NO", "pos": "QB", "r0": 78.0}, {"name": "Jaylen Waddle", "team": "DEN", "pos": "WR", "r0": 80.13}, {"name": "Tucker Kraft", "team": "GB", "pos": "TE", "r0": 80.13}, {"name": "Javonte Williams", "team": "DAL", "pos": "RB", "r0": 80.63}, {"name": "Jameson Williams", "team": "DET", "pos": "WR", "r0": 81.0}, {"name": "Travis Etienne", "team": "NO", "pos": "RB", "r0": 82.5}, {"name": "A.J. Brown", "team": "PHI", "pos": "WR", "r0": 84.63}, {"name": "KC Concepcion", "team": "CLE", "pos": "WR", "r0": 85.57}, {"name": "C.J. Stroud", "team": "HOU", "pos": "QB", "r0": 86.13}, {"name": "Kyler Murray", "team": "MIN", "pos": "QB", "r0": 88.0}, {"name": "Kenyon Sadiq", "team": "NYJ", "pos": "TE", "r0": 88.14}, {"name": "Josh Jacobs", "team": "GB", "pos": "RB", "r0": 91.25}, {"name": "Bhayshul Tuten", "team": "JAX", "pos": "RB", "r0": 95.0}, {"name": "Omar Cooper Jr.", "team": "NYJ", "pos": "WR", "r0": 99.0}, {"name": "Sam Darnold", "team": "SEA", "pos": "QB", "r0": 99.75}, {"name": "Ty Simpson", "team": "LAR", "pos": "QB", "r0": 100.14}, {"name": "Travis Hunter", "team": "JAX", "pos": "WR", "r0": 101.0}, {"name": "Sam LaPorta", "team": "DET", "pos": "TE", "r0": 102.25}, {"name": "Jordan Addison", "team": "MIN", "pos": "WR", "r0": 103.0}, {"name": "Kyle Pitts", "team": "ATL", "pos": "TE", "r0": 103.0}, {"name": "DJ Moore", "team": "BUF", "pos": "WR", "r0": 105.88}, {"name": "Derrick Henry", "team": "BAL", "pos": "RB", "r0": 108.63}, {"name": "Michael Wilson", "team": "ARI", "pos": "WR", "r0": 108.75}, {"name": "Daniel Jones", "team": "IND", "pos": "QB", "r0": 111.5}, {"name": "Davante Adams", "team": "LAR", "pos": "WR", "r0": 112.13}, {"name": "Bryce Young", "team": "CAR", "pos": "QB", "r0": 112.13}, {"name": "Alec Pierce", "team": "IND", "pos": "WR", "r0": 112.63}, {"name": "Oronde Gadsden", "team": "LAC", "pos": "TE", "r0": 112.63}, {"name": "Terry McLaurin", "team": "WAS", "pos": "WR", "r0": 114.63}, {"name": "Christian Watson", "team": "GB", "pos": "WR", "r0": 115.38}, {"name": "D'Andre Swift", "team": "CHI", "pos": "RB", "r0": 116.13}, {"name": "Jonah Coleman", "team": "DEN", "pos": "RB", "r0": 118.29}, {"name": "DK Metcalf", "team": "PIT", "pos": "WR", "r0": 120.38}, {"name": "Mike Evans", "team": "SF", "pos": "WR", "r0": 121.25}, {"name": "Wan'Dale Robinson", "team": "TEN", "pos": "WR", "r0": 123.63}, {"name": "Michael Pittman", "team": "PIT", "pos": "WR", "r0": 125.63}, {"name": "Malik Willis", "team": "MIA", "pos": "QB", "r0": 125.88}, {"name": "Xavier Worthy", "team": "KC", "pos": "WR", "r0": 128.0}, {"name": "RJ Harvey", "team": "DEN", "pos": "RB", "r0": 128.25}, {"name": "David Montgomery", "team": "HOU", "pos": "RB", "r0": 128.75}, {"name": "Ricky Pearsall", "team": "SF", "pos": "WR", "r0": 129.5}, {"name": "Quentin Johnston", "team": "LAC", "pos": "WR", "r0": 130.75}, {"name": "Denzel Boston", "team": "CLE", "pos": "WR", "r0": 131.14}, {"name": "Matthew Stafford", "team": "LAR", "pos": "QB", "r0": 133.0}, {"name": "Eli Stowers", "team": "PHI", "pos": "TE", "r0": 134.0}, {"name": "Jayden Higgins", "team": "HOU", "pos": "WR", "r0": 135.63}, {"name": "Chuba Hubbard", "team": "CAR", "pos": "RB", "r0": 137.63}, {"name": "Jaylen Warren", "team": "PIT", "pos": "RB", "r0": 138.13}, {"name": "Dalton Kincaid", "team": "BUF", "pos": "TE", "r0": 138.25}, {"name": "Matthew Golden", "team": "GB", "pos": "WR", "r0": 138.75}, {"name": "Jakobi Meyers", "team": "JAX", "pos": "WR", "r0": 140.63}, {"name": "George Kittle", "team": "SF", "pos": "TE", "r0": 141.88}, {"name": "Kyle Monangai", "team": "CHI", "pos": "RB", "r0": 142.63}, {"name": "Jake Ferguson", "team": "DAL", "pos": "TE", "r0": 144.63}, {"name": "Courtland Sutton", "team": "DEN", "pos": "WR", "r0": 145.25}, {"name": "Chris Godwin", "team": "TB", "pos": "WR", "r0": 145.5}, {"name": "Josh Downs", "team": "IND", "pos": "WR", "r0": 146.75}, {"name": "Isaiah Likely", "team": "NYG", "pos": "TE", "r0": 147.38}, {"name": "Parker Washington", "team": "JAX", "pos": "WR", "r0": 147.63}, {"name": "Romeo Doubs", "team": "NE", "pos": "WR", "r0": 147.75}, {"name": "Rico Dowdle", "team": "PIT", "pos": "RB", "r0": 150.5}, {"name": "Rachaad White", "team": "WAS", "pos": "RB", "r0": 154.25}, {"name": "Blake Corum", "team": "LAR", "pos": "RB", "r0": 154.5}, {"name": "Zach Charbonnet", "team": "SEA", "pos": "RB", "r0": 154.63}, {"name": "Jayden Reed", "team": "GB", "pos": "WR", "r0": 156.63}, {"name": "Brenton Strange", "team": "JAX", "pos": "TE", "r0": 157.0}, {"name": "Rhamondre Stevenson", "team": "NE", "pos": "RB", "r0": 157.25}, {"name": "Jonathon Brooks", "team": "CAR", "pos": "RB", "r0": 158.38}, {"name": "Germie Bernard", "team": "PIT", "pos": "WR", "r0": 158.86}, {"name": "Michael Penix", "team": "ATL", "pos": "QB", "r0": 162.88}, {"name": "Nicholas Singleton", "team": "TEN", "pos": "RB", "r0": 163.0}, {"name": "J.K. Dobbins", "team": "DEN", "pos": "RB", "r0": 163.13}, {"name": "Tony Pollard", "team": "TEN", "pos": "RB", "r0": 165.88}, {"name": "Kenneth Gainwell", "team": "TB", "pos": "RB", "r0": 167.86}, {"name": "Jauan Jennings", "team": "", "pos": "WR", "r0": 169.63}, {"name": "Chris Bell", "team": "MIA", "pos": "WR", "r0": 169.86}, {"name": "Drew Allar", "team": "PIT", "pos": "QB", "r0": 169.86}, {"name": "Tyrone Tracy", "team": "NYG", "pos": "RB", "r0": 170.5}, {"name": "Brandon Aiyuk", "team": "SF", "pos": "WR", "r0": 172.75}, {"name": "Jacory Croskey-Merritt", "team": "WAS", "pos": "RB", "r0": 173.75}, {"name": "Tyler Allgeier", "team": "ARI", "pos": "RB", "r0": 174.5}, {"name": "Max Klare", "team": "LAR", "pos": "TE", "r0": 176.71}, {"name": "Jalen Coker", "team": "CAR", "pos": "WR", "r0": 177.0}, {"name": "Chris Rodriguez", "team": "JAX", "pos": "RB", "r0": 177.2}, {"name": "Woody Marks", "team": "HOU", "pos": "RB", "r0": 177.75}, {"name": "Jalen McMillan", "team": "TB", "pos": "WR", "r0": 178.75}, {"name": "Elijah Sarratt", "team": "BAL", "pos": "WR", "r0": 180.33}, {"name": "Antonio Williams", "team": "WAS", "pos": "WR", "r0": 180.86}, {"name": "Carson Beck", "team": "ARI", "pos": "QB", "r0": 181.0}, {"name": "Jordan Mason", "team": "MIN", "pos": "RB", "r0": 181.75}, {"name": "Deebo Samuel", "team": "", "pos": "WR", "r0": 185.75}, {"name": "Tua Tagovailoa", "team": "ATL", "pos": "QB", "r0": 190.38}, {"name": "Isiah Pacheco", "team": "DET", "pos": "RB", "r0": 190.63}, {"name": "Khalil Shakir", "team": "BUF", "pos": "WR", "r0": 192.38}, {"name": "Aaron Jones", "team": "MIN", "pos": "RB", "r0": 193.75}, {"name": "Dallas Goedert", "team": "PHI", "pos": "TE", "r0": 195.63}, {"name": "Dylan Sampson", "team": "CLE", "pos": "RB", "r0": 196.88}, {"name": "Troy Franklin", "team": "DEN", "pos": "WR", "r0": 198.0}, {"name": "Mark Andrews", "team": "BAL", "pos": "TE", "r0": 198.38}, {"name": "Tyjae Spears", "team": "TEN", "pos": "RB", "r0": 198.63}, {"name": "Rashid Shaheed", "team": "SEA", "pos": "WR", "r0": 201.63}, {"name": "Kaytron Allen", "team": "WAS", "pos": "RB", "r0": 201.8}, {"name": "T.J. Hockenson", "team": "MIN", "pos": "TE", "r0": 202.75}, {"name": "Stefon Diggs", "team": "", "pos": "WR", "r0": 203.25}, {"name": "Zachariah Branch", "team": "ATL", "pos": "WR", "r0": 204.5}, {"name": "Jack Bech", "team": "LV", "pos": "WR", "r0": 206.75}, {"name": "De'Zhaun Stribling", "team": "SF", "pos": "WR", "r0": 208.0}, {"name": "Jaylin Noel", "team": "HOU", "pos": "WR", "r0": 208.13}, {"name": "David Njoku", "team": "", "pos": "TE", "r0": 211.75}, {"name": "Eli Raridon", "team": "NE", "pos": "TE", "r0": 212.0}, {"name": "Alvin Kamara", "team": "NO", "pos": "RB", "r0": 213.29}, {"name": "J.J. McCarthy", "team": "MIN", "pos": "QB", "r0": 213.5}, {"name": "Chig Okonkwo", "team": "WAS", "pos": "TE", "r0": 213.88}, {"name": "AJ Barner", "team": "SEA", "pos": "TE", "r0": 214.5}, {"name": "Tre Harris", "team": "LAC", "pos": "WR", "r0": 215.0}, {"name": "Kayshon Boutte", "team": "NE", "pos": "WR", "r0": 215.38}, {"name": "Chris Brazzell II", "team": "CAR", "pos": "WR", "r0": 215.67}, {"name": "Elic Ayomanor", "team": "TEN", "pos": "WR", "r0": 216.25}, {"name": "Ja'Kobi Lane", "team": "BAL", "pos": "WR", "r0": 216.33}, {"name": "Ted Hurst", "team": "TB", "pos": "WR", "r0": 216.71}, {"name": "Mac Jones", "team": "SF", "pos": "QB", "r0": 216.75}, {"name": "Kaelon Black", "team": "SF", "pos": "RB", "r0": 218.33}, {"name": "Shedeur Sanders", "team": "CLE", "pos": "QB", "r0": 218.75}, {"name": "Travis Kelce", "team": "KC", "pos": "TE", "r0": 218.88}, {"name": "Terrance Ferguson", "team": "LAR", "pos": "TE", "r0": 219.25}, {"name": "Jerry Jeudy", "team": "CLE", "pos": "WR", "r0": 219.5}, {"name": "Emmett Johnson", "team": "KC", "pos": "RB", "r0": 221.4}, {"name": "Kaleb Johnson", "team": "PIT", "pos": "RB", "r0": 222.25}, {"name": "Braelon Allen", "team": "NYJ", "pos": "RB", "r0": 222.88}, {"name": "Tyreek Hill", "team": "", "pos": "WR", "r0": 223.0}, {"name": "Tory Horton", "team": "SEA", "pos": "WR", "r0": 225.0}, {"name": "Tank Bigsby", "team": "PHI", "pos": "RB", "r0": 227.25}, {"name": "Keon Coleman", "team": "BUF", "pos": "WR", "r0": 227.88}, {"name": "Brian Robinson", "team": "ATL", "pos": "RB", "r0": 227.88}, {"name": "Geno Smith", "team": "NYJ", "pos": "QB", "r0": 228.38}, {"name": "Chimere Dike", "team": "TEN", "pos": "WR", "r0": 228.4}, {"name": "Mason Taylor", "team": "NYJ", "pos": "TE", "r0": 229.38}, {"name": "Demond Claiborne", "team": "MIN", "pos": "RB", "r0": 230.2}, {"name": "Hunter Henry", "team": "NE", "pos": "TE", "r0": 232.38}, {"name": "Jacoby Brissett", "team": "ARI", "pos": "QB", "r0": 232.63}, {"name": "Calvin Ridley", "team": "TEN", "pos": "WR", "r0": 233.63}, {"name": "Kyle Williams", "team": "NE", "pos": "WR", "r0": 235.38}, {"name": "Kimani Vidal", "team": "LAC", "pos": "RB", "r0": 238.71}, {"name": "Justin Fields", "team": "KC", "pos": "QB", "r0": 239.38}, {"name": "Adam Randall", "team": "BAL", "pos": "RB", "r0": 240.4}, {"name": "Pat Bryant", "team": "DEN", "pos": "WR", "r0": 240.63}, {"name": "Adonai Mitchell", "team": "NYJ", "pos": "WR", "r0": 241.88}, {"name": "Devin Neal", "team": "NO", "pos": "RB", "r0": 241.88}, {"name": "Cade Otton", "team": "TB", "pos": "TE", "r0": 242.63}, {"name": "Malachi Fields", "team": "NYG", "pos": "WR", "r0": 242.83}, {"name": "Gunnar Helm", "team": "TEN", "pos": "TE", "r0": 243.0}, {"name": "Juwan Johnson", "team": "NO", "pos": "TE", "r0": 243.25}, {"name": "Anthony Richardson", "team": "IND", "pos": "QB", "r0": 243.25}, {"name": "Mike Washington Jr.", "team": "LV", "pos": "RB", "r0": 244.2}, {"name": "Trey Benson", "team": "ARI", "pos": "RB", "r0": 244.43}, {"name": "Theo Johnson", "team": "NYG", "pos": "TE", "r0": 245.38}, {"name": "Tez Johnson", "team": "TB", "pos": "WR", "r0": 245.5}, {"name": "Aaron Rodgers", "team": "", "pos": "QB", "r0": 245.75}, {"name": "Darnell Mooney", "team": "NYG", "pos": "WR", "r0": 245.88}, {"name": "Desmond Reid", "team": "BUF", "pos": "RB", "r0": 246.0}, {"name": "Dalton Schultz", "team": "HOU", "pos": "TE", "r0": 246.5}, {"name": "Keaton Mitchell", "team": "LAC", "pos": "RB", "r0": 247.67}, {"name": "DJ Giddens", "team": "IND", "pos": "RB", "r0": 248.25}, {"name": "Justin Joly", "team": "DEN", "pos": "TE", "r0": 248.5}, {"name": "Caleb Douglas", "team": "MIA", "pos": "WR", "r0": 254.33}, {"name": "Elijah Arroyo", "team": "SEA", "pos": "TE", "r0": 255.13}, {"name": "Ray Davis", "team": "BUF", "pos": "RB", "r0": 255.13}, {"name": "Xavier Legette", "team": "CAR", "pos": "WR", "r0": 255.25}, {"name": "Isaac TeSlaa", "team": "DET", "pos": "WR", "r0": 256.57}, {"name": "Oscar Delp", "team": "NO", "pos": "TE", "r0": 257.14}, {"name": "Kirk Cousins", "team": "LV", "pos": "QB", "r0": 258.13}, {"name": "Pat Freiermuth", "team": "PIT", "pos": "TE", "r0": 258.75}, {"name": "Malik Washington", "team": "MIA", "pos": "WR", "r0": 259.0}, {"name": "Skyler Bell", "team": "BUF", "pos": "WR", "r0": 259.6}, {"name": "Joe Mixon", "team": "", "pos": "RB", "r0": 259.71}, {"name": "Keenan Allen", "team": "", "pos": "WR", "r0": 259.75}, {"name": "Jack Endries", "team": "CIN", "pos": "TE", "r0": 260.5}, {"name": "Sean Tucker", "team": "TB", "pos": "RB", "r0": 263.57}, {"name": "Jaydon Blue", "team": "DAL", "pos": "RB", "r0": 264.0}, {"name": "Jordan James", "team": "SF", "pos": "RB", "r0": 264.67}, {"name": "Emanuel Wilson", "team": "SEA", "pos": "RB", "r0": 264.75}, {"name": "Cedric Tillman", "team": "CLE", "pos": "WR", "r0": 264.75}, {"name": "Cade Klubnik", "team": "NYJ", "pos": "QB", "r0": 264.8}, {"name": "Ja'Tavion Sanders", "team": "CAR", "pos": "TE", "r0": 267.13}, {"name": "James Conner", "team": "ARI", "pos": "RB", "r0": 269.71}, {"name": "Cooper Kupp", "team": "SEA", "pos": "WR", "r0": 270.13}, {"name": "Taysom Hill", "team": "", "pos": "TE", "r0": 271.0}, {"name": "Michael Mayer", "team": "LV", "pos": "TE", "r0": 271.63}, {"name": "Brashard Smith", "team": "KC", "pos": "RB", "r0": 272.2}, {"name": "Evan Engram", "team": "DEN", "pos": "TE", "r0": 272.75}, {"name": "Jalen Milroe", "team": "SEA", "pos": "QB", "r0": 272.88}, {"name": "Tre Tucker", "team": "LV", "pos": "WR", "r0": 273.8}, {"name": "Bryce Lance", "team": "NO", "pos": "WR", "r0": 275.0}, {"name": "Tank Dell", "team": "HOU", "pos": "WR", "r0": 275.75}, {"name": "Ollie Gordon II", "team": "MIA", "pos": "RB", "r0": 276.75}, {"name": "Deshaun Watson", "team": "CLE", "pos": "QB", "r0": 278.86}, {"name": "Eli Heidenreich", "team": "PIT", "pos": "RB", "r0": 279.8}, {"name": "Colby Parkinson", "team": "LAR", "pos": "TE", "r0": 280.0}, {"name": "Rashod Bateman", "team": "BAL", "pos": "WR", "r0": 281.14}, {"name": "Zach Wilson", "team": "NO", "pos": "QB", "r0": 282.0}, {"name": "Ben Sinnott", "team": "WAS", "pos": "TE", "r0": 285.38}, {"name": "Dontayvion Wicks", "team": "PHI", "pos": "WR", "r0": 285.63}, {"name": "Marvin Mims", "team": "DEN", "pos": "WR", "r0": 285.88}, {"name": "Jarquez Hunter", "team": "LAR", "pos": "RB", "r0": 286.43}, {"name": "Hollywood Brown", "team": "PHI", "pos": "WR", "r0": 286.71}, {"name": "Zach Ertz", "team": "", "pos": "TE", "r0": 287.0}, {"name": "Isaiah Davis", "team": "NYJ", "pos": "RB", "r0": 287.0}, {"name": "Jam Miller", "team": "NE", "pos": "RB", "r0": 287.0}, {"name": "Gardner Minshew", "team": "ARI", "pos": "QB", "r0": 287.0}, {"name": "Seth McGowan", "team": "IND", "pos": "RB", "r0": 287.4}, {"name": "Le'Veon Moss", "team": "MIA", "pos": "RB", "r0": 288.0}, {"name": "Devaughn Vele", "team": "NO", "pos": "WR", "r0": 288.33}, {"name": "Jaylen Wright", "team": "MIA", "pos": "RB", "r0": 288.71}, {"name": "Najee Harris", "team": "", "pos": "RB", "r0": 289.29}, {"name": "J'Mari Taylor", "team": "JAX", "pos": "RB", "r0": 290.0}, {"name": "Taylen Green", "team": "CLE", "pos": "QB", "r0": 290.8}, {"name": "Jalen Nailor", "team": "LV", "pos": "WR", "r0": 292.25}, {"name": "Cole Beck", "team": "", "pos": "WR", "r0": 293.0}, {"name": "Jaydn Ott", "team": "KC", "pos": "RB", "r0": 293.0}, {"name": "Cole Payton", "team": "PHI", "pos": "QB", "r0": 294.5}, {"name": "Jonnu Smith", "team": "", "pos": "TE", "r0": 294.88}, {"name": "Isaac Guerendo", "team": "SF", "pos": "RB", "r0": 295.0}, {"name": "Mike Gesicki", "team": "CIN", "pos": "TE", "r0": 295.13}, {"name": "Joe Flacco", "team": "CIN", "pos": "QB", "r0": 295.8}, {"name": "Luke Musgrave", "team": "GB", "pos": "TE", "r0": 297.33}, {"name": "Kendre Miller", "team": "NO", "pos": "RB", "r0": 298.4}, {"name": "Eric McAlister", "team": "", "pos": "WR", "r0": 299.0}, {"name": "Jerome Ford", "team": "WAS", "pos": "RB", "r0": 299.0}, {"name": "George Holani", "team": "SEA", "pos": "RB", "r0": 300.0}, {"name": "Christian Kirk", "team": "SF", "pos": "WR", "r0": 300.0}, {"name": "Sam Roush", "team": "CHI", "pos": "TE", "r0": 300.5}, {"name": "Kareem Hunt", "team": "", "pos": "RB", "r0": 301.57}, {"name": "Tanner Koziol", "team": "JAX", "pos": "TE", "r0": 301.67}, {"name": "Trevor Etienne", "team": "CAR", "pos": "RB", "r0": 302.6}, {"name": "Dillon Gabriel", "team": "CLE", "pos": "QB", "r0": 304.5}, {"name": "Tahj Brooks", "team": "CIN", "pos": "RB", "r0": 304.75}, {"name": "Brenen Thompson", "team": "LAC", "pos": "WR", "r0": 304.75}, {"name": "Dont'e Thornton Jr.", "team": "LV", "pos": "WR", "r0": 306.8}, {"name": "Russell Wilson", "team": "", "pos": "QB", "r0": 307.25}, {"name": "Nick Chubb", "team": "", "pos": "RB", "r0": 307.29}, {"name": "Noah Gray", "team": "KC", "pos": "TE", "r0": 307.75}, {"name": "Kevin Coleman Jr.", "team": "MIA", "pos": "WR", "r0": 310.0}, {"name": "Ja'Lynn Polk", "team": "NO", "pos": "WR", "r0": 311.0}, {"name": "Cole Kmet", "team": "CHI", "pos": "TE", "r0": 312.88}, {"name": "Jake Browning", "team": "TB", "pos": "QB", "r0": 314.0}, {"name": "Spencer Rattler", "team": "NO", "pos": "QB", "r0": 314.88}, {"name": "Jordan Whittington", "team": "LAR", "pos": "WR", "r0": 315.0}, {"name": "Elijah Moore", "team": "PHI", "pos": "WR", "r0": 315.25}, {"name": "Savion Williams", "team": "GB", "pos": "WR", "r0": 315.8}, {"name": "DeMario Douglas", "team": "NE", "pos": "WR", "r0": 315.86}, {"name": "Raheim Sanders", "team": "CLE", "pos": "RB", "r0": 316.0}, {"name": "Erick All", "team": "CIN", "pos": "TE", "r0": 316.0}, {"name": "Marlin Klein", "team": "HOU", "pos": "TE", "r0": 317.5}, {"name": "Gabe Davis", "team": "", "pos": "WR", "r0": 318.0}, {"name": "Barion Brown", "team": "NO", "pos": "WR", "r0": 319.0}, {"name": "MarShawn Lloyd", "team": "GB", "pos": "RB", "r0": 320.33}, {"name": "C.J. Daniels", "team": "LAR", "pos": "WR", "r0": 320.5}, {"name": "Sam Howell", "team": "DAL", "pos": "QB", "r0": 321.0}, {"name": "Jalen Tolbert", "team": "MIA", "pos": "WR", "r0": 321.67}, {"name": "Dawson Knox", "team": "BUF", "pos": "TE", "r0": 321.8}, {"name": "Darnell Washington", "team": "PIT", "pos": "TE", "r0": 322.43}, {"name": "Zavion Thomas", "team": "CHI", "pos": "WR", "r0": 322.5}, {"name": "Audric Estime", "team": "NO", "pos": "RB", "r0": 323.5}, {"name": "Roschon Johnson", "team": "CHI", "pos": "RB", "r0": 324.33}, {"name": "Damien Martinez", "team": "GB", "pos": "RB", "r0": 324.67}, {"name": "Darren Waller", "team": "", "pos": "TE", "r0": 324.8}, {"name": "Garrett Nussmeier", "team": "KC", "pos": "QB", "r0": 325.0}, {"name": "Adam Thielen", "team": "", "pos": "WR", "r0": 326.5}, {"name": "Amari Cooper", "team": "", "pos": "WR", "r0": 326.5}, {"name": "Jimmy Horn Jr.", "team": "CAR", "pos": "WR", "r0": 327.0}, {"name": "Roman Wilson", "team": "PIT", "pos": "WR", "r0": 327.25}, {"name": "Jameis Winston", "team": "NYG", "pos": "QB", "r0": 327.29}, {"name": "Jake Tonges", "team": "SF", "pos": "TE", "r0": 328.0}, {"name": "Treylon Burks", "team": "WAS", "pos": "WR", "r0": 328.0}, {"name": "Will Levis", "team": "TEN", "pos": "QB", "r0": 328.67}, {"name": "Efton Chism", "team": "NE", "pos": "WR", "r0": 329.33}, {"name": "Lewis Bond", "team": "HOU", "pos": "WR", "r0": 330.0}, {"name": "LeQuint Allen", "team": "JAX", "pos": "RB", "r0": 331.25}, {"name": "Tyler Lockett", "team": "", "pos": "WR", "r0": 332.0}, {"name": "Tai Felton", "team": "MIN", "pos": "WR", "r0": 332.0}, {"name": "Cyrus Allen", "team": "KC", "pos": "WR", "r0": 332.0}, {"name": "Jalen Royals", "team": "KC", "pos": "WR", "r0": 332.33}, {"name": "Justice Hill", "team": "BAL", "pos": "RB", "r0": 332.67}, {"name": "Curtis Samuel", "team": "", "pos": "WR", "r0": 333.0}, {"name": "Ryan Flournoy", "team": "DAL", "pos": "WR", "r0": 334.0}, {"name": "Noah Brown", "team": "", "pos": "WR", "r0": 337.0}, {"name": "Devin Singletary", "team": "NYG", "pos": "RB", "r0": 338.0}, {"name": "Andrei Iosivas", "team": "CIN", "pos": "WR", "r0": 338.83}, {"name": "Jared Wiley", "team": "KC", "pos": "TE", "r0": 339.0}, {"name": "Isaiah Bond", "team": "CLE", "pos": "WR", "r0": 339.4}, {"name": "Austin Ekeler", "team": "", "pos": "RB", "r0": 341.2}, {"name": "Joshua Palmer", "team": "BUF", "pos": "WR", "r0": 341.33}, {"name": "Phil Mafah", "team": "DAL", "pos": "RB", "r0": 342.0}, {"name": "Noah Fant", "team": "NO", "pos": "TE", "r0": 343.0}, {"name": "Kalel Mullings", "team": "TEN", "pos": "RB", "r0": 343.0}, {"name": "Miles Sanders", "team": "", "pos": "RB", "r0": 343.0}, {"name": "Will Shipley", "team": "PHI", "pos": "RB", "r0": 343.2}, {"name": "Raheem Mostert", "team": "", "pos": "RB", "r0": 344.0}, {"name": "Will Howard", "team": "PIT", "pos": "QB", "r0": 345.5}, {"name": "Xavier Restrepo", "team": "TEN", "pos": "WR", "r0": 346.5}, {"name": "Jalin Hyatt", "team": "NYG", "pos": "WR", "r0": 348.0}, {"name": "Deion Burks", "team": "IND", "pos": "WR", "r0": 348.5}, {"name": "Antonio Gibson", "team": "", "pos": "RB", "r0": 348.67}, {"name": "Kendrick Law", "team": "DET", "pos": "WR", "r0": 349.0}, {"name": "Cole Payton", "team": "", "pos": "QB", "r0": 349.33}, {"name": "Kaden Wetjen", "team": "PIT", "pos": "WR", "r0": 350.0}, {"name": "Jaleel McLaughlin", "team": "DEN", "pos": "RB", "r0": 350.0}, {"name": "Marcus Mariota", "team": "WAS", "pos": "QB", "r0": 350.5}, {"name": "Diego Pavia", "team": "BAL", "pos": "QB", "r0": 351.0}, {"name": "Jahan Dotson", "team": "ATL", "pos": "WR", "r0": 351.0}, {"name": "Dameon Pierce", "team": "PHI", "pos": "RB", "r0": 351.67}, {"name": "Daniel Bellinger", "team": "TEN", "pos": "TE", "r0": 352.0}, {"name": "Joe Milton", "team": "DAL", "pos": "QB", "r0": 352.33}, {"name": "DeAndre Hopkins", "team": "", "pos": "WR", "r0": 352.33}, {"name": "John Metchie", "team": "CAR", "pos": "WR", "r0": 352.5}, {"name": "Jalon Daniels", "team": "TB", "pos": "QB", "r0": 353.0}, {"name": "Malachi Corley", "team": "CLE", "pos": "WR", "r0": 353.0}, {"name": "Dyami Brown", "team": "WAS", "pos": "WR", "r0": 353.33}, {"name": "Zonovan Knight", "team": "ARI", "pos": "RB", "r0": 355.0}, {"name": "Deuce Vaughn", "team": "DEN", "pos": "RB", "r0": 355.0}, {"name": "Tyler Higbee", "team": "LAR", "pos": "TE", "r0": 356.0}, {"name": "Aidan O'Connell", "team": "LV", "pos": "QB", "r0": 356.0}, {"name": "Quinn Ewers", "team": "MIA", "pos": "QB", "r0": 356.33}, {"name": "Reggie Virgil", "team": "ARI", "pos": "WR", "r0": 357.0}, {"name": "Rondale Moore", "team": "", "pos": "WR", "r0": 357.0}, {"name": "Samaje Perine", "team": "CIN", "pos": "RB", "r0": 358.25}, {"name": "Darius Slayton", "team": "NYG", "pos": "WR", "r0": 359.2}, {"name": "Emari Demercado", "team": "KC", "pos": "RB", "r0": 359.5}, {"name": "Javon Baker", "team": "", "pos": "WR", "r0": 362.0}, {"name": "Derek Carr", "team": "", "pos": "QB", "r0": 363.0}, {"name": "Malik Benson", "team": "LV", "pos": "WR", "r0": 363.0}, {"name": "Will Dissly", "team": "", "pos": "TE", "r0": 364.0}, {"name": "Jonathan Mingo", "team": "DAL", "pos": "WR", "r0": 365.0}, {"name": "Calvin Austin", "team": "NYG", "pos": "WR", "r0": 365.0}, {"name": "Josh Cuevas", "team": "BAL", "pos": "TE", "r0": 365.0}, {"name": "Jaylin Lane", "team": "WAS", "pos": "WR", "r0": 365.25}, {"name": "Davis Mills", "team": "HOU", "pos": "QB", "r0": 365.5}, {"name": "Tutu Atwell", "team": "MIA", "pos": "WR", "r0": 365.5}, {"name": "Tyquan Thornton", "team": "KC", "pos": "WR", "r0": 365.67}, {"name": "Jaheim Bell", "team": "", "pos": "TE", "r0": 366.0}, {"name": "Luke Schoonmaker", "team": "DAL", "pos": "TE", "r0": 368.0}, {"name": "Michael Carter", "team": "TEN", "pos": "RB", "r0": 368.0}, {"name": "Tyler Conklin", "team": "DET", "pos": "TE", "r0": 369.5}, {"name": "Seydou Traore", "team": "MIA", "pos": "TE", "r0": 370.0}, {"name": "Brandin Cooks", "team": "", "pos": "WR", "r0": 370.0}, {"name": "Luke McCaffrey", "team": "WAS", "pos": "WR", "r0": 371.0}, {"name": "Arian Smith", "team": "NYJ", "pos": "WR", "r0": 371.0}, {"name": "Tahj Washington", "team": "MIA", "pos": "WR", "r0": 372.0}, {"name": "Kendrick Bourne", "team": "ARI", "pos": "WR", "r0": 375.33}, {"name": "Khalil Herbert", "team": "", "pos": "RB", "r0": 378.0}, {"name": "KeAndre Lambert-Smith", "team": "LAC", "pos": "WR", "r0": 379.67}, {"name": "Alexander Mattison", "team": "", "pos": "RB", "r0": 381.0}, {"name": "Zack Moss", "team": "", "pos": "RB", "r0": 382.5}, {"name": "Jermaine Burton", "team": "", "pos": "WR", "r0": 385.5}, {"name": "Jeremy McNichols", "team": "WAS", "pos": "RB", "r0": 387.0}, {"name": "AJ Dillon", "team": "CAR", "pos": "RB", "r0": 389.0}, {"name": "Rasheen Ali", "team": "BAL", "pos": "RB", "r0": 390.0}, {"name": "Ty Johnson", "team": "BUF", "pos": "RB", "r0": 391.0}, {"name": "Demarcus Robinson", "team": "SF", "pos": "WR", "r0": 393.0}, {"name": "Kenny Pickett", "team": "CAR", "pos": "QB", "r0": 393.0}, {"name": "Zay Jones", "team": "", "pos": "WR", "r0": 394.0}, {"name": "Xavier Hutchinson", "team": "HOU", "pos": "WR", "r0": 395.5}, {"name": "Greg Dortch", "team": "DET", "pos": "WR", "r0": 396.0}, {"name": "Odell Beckham", "team": "", "pos": "WR", "r0": 398.0}, {"name": "Mike Williams", "team": "", "pos": "WR", "r0": 399.0}, {"name": "Brevin Jordan", "team": "HOU", "pos": "TE", "r0": 405.0}, {"name": "Chris Manhertz", "team": "NYG", "pos": "TE", "r0": 407.0}];
-const DEFAULT_LABELS = ['SF Dynasty'];
+const DEFAULT_RANKINGS = [{"name": "Ja'Marr Chase", "team": "CIN", "pos": "WR", "r0": 1.1}, {"name": "Puka Nacua", "team": "LAR", "pos": "WR", "r0": 2.8}, {"name": "Jaxon Smith-Njigba", "team": "SEA", "pos": "WR", "r0": 3.0}, {"name": "Bijan Robinson", "team": "ATL", "pos": "RB", "r0": 3.9}, {"name": "Jahmyr Gibbs", "team": "DET", "pos": "RB", "r0": 5.2}, {"name": "CeeDee Lamb", "team": "DAL", "pos": "WR", "r0": 6.9}, {"name": "Justin Jefferson", "team": "MIN", "pos": "WR", "r0": 7.2}, {"name": "Amon-Ra St. Brown", "team": "DET", "pos": "WR", "r0": 8.3}, {"name": "Ashton Jeanty", "team": "LV", "pos": "RB", "r0": 9.9}, {"name": "Malik Nabers", "team": "NYG", "pos": "WR", "r0": 10.2}, {"name": "Drake London", "team": "ATL", "pos": "WR", "r0": 12.8}, {"name": "De'Von Achane", "team": "MIA", "pos": "RB", "r0": 13.1}, {"name": "James Cook III", "team": "BUF", "pos": "RB", "r0": 15.3}, {"name": "Omarion Hampton", "team": "LAC", "pos": "RB", "r0": 15.3}, {"name": "Jeremiyah Love", "team": "ARI", "pos": "RB", "r0": 15.5}, {"name": "Nico Collins", "team": "HOU", "pos": "WR", "r0": 17.2}, {"name": "Tetairoa McMillan", "team": "CAR", "pos": "WR", "r0": 18.2}, {"name": "Brock Bowers", "team": "LV", "pos": "TE", "r0": 18.9}, {"name": "George Pickens", "team": "DAL", "pos": "WR", "r0": 20.5}, {"name": "Josh Allen", "team": "BUF", "pos": "QB", "r0": 21.5}, {"name": "Jonathan Taylor", "team": "IND", "pos": "RB", "r0": 21.7}, {"name": "Chris Olave", "team": "NO", "pos": "WR", "r0": 23.2}, {"name": "Trey McBride", "team": "ARI", "pos": "TE", "r0": 25.1}, {"name": "Emeka Egbuka", "team": "TB", "pos": "WR", "r0": 26.7}, {"name": "Garrett Wilson", "team": "NYJ", "pos": "WR", "r0": 27.5}, {"name": "Kenneth Walker III", "team": "KC", "pos": "RB", "r0": 29.0}, {"name": "Carnell Tate", "team": "TEN", "pos": "WR", "r0": 30.9}, {"name": "Ladd McConkey", "team": "LAC", "pos": "WR", "r0": 31.1}, {"name": "Drake Maye", "team": "NE", "pos": "QB", "r0": 31.4}, {"name": "Rashee Rice", "team": "KC", "pos": "WR", "r0": 31.7}, {"name": "Lamar Jackson", "team": "BAL", "pos": "QB", "r0": 33.5}, {"name": "DeVonta Smith", "team": "PHI", "pos": "WR", "r0": 35.4}, {"name": "Jayden Daniels", "team": "WAS", "pos": "QB", "r0": 35.5}, {"name": "Luther Burden III", "team": "CHI", "pos": "WR", "r0": 35.6}, {"name": "Chase Brown", "team": "CIN", "pos": "RB", "r0": 37.3}, {"name": "Zay Flowers", "team": "BAL", "pos": "WR", "r0": 37.7}, {"name": "Colston Loveland", "team": "CHI", "pos": "TE", "r0": 38.9}, {"name": "Tee Higgins", "team": "CIN", "pos": "WR", "r0": 39.1}, {"name": "Jordyn Tyson", "team": "NO", "pos": "WR", "r0": 42.5}, {"name": "A.J. Brown", "team": "PHI", "pos": "WR", "r0": 42.9}, {"name": "Jaylen Waddle", "team": "DEN", "pos": "WR", "r0": 43.0}, {"name": "Joe Burrow", "team": "CIN", "pos": "QB", "r0": 43.7}, {"name": "Christian McCaffrey", "team": "SF", "pos": "RB", "r0": 44.5}, {"name": "Rome Odunze", "team": "CHI", "pos": "WR", "r0": 44.9}, {"name": "Tyler Warren", "team": "IND", "pos": "TE", "r0": 45.1}, {"name": "Breece Hall", "team": "NYJ", "pos": "RB", "r0": 45.4}, {"name": "Makai Lemon", "team": "PHI", "pos": "WR", "r0": 50.3}, {"name": "Saquon Barkley", "team": "PHI", "pos": "RB", "r0": 51.6}, {"name": "Justin Herbert", "team": "LAC", "pos": "QB", "r0": 52.8}, {"name": "Tucker Kraft", "team": "GB", "pos": "TE", "r0": 52.8}, {"name": "Bucky Irving", "team": "TB", "pos": "RB", "r0": 53.0}, {"name": "TreVeyon Henderson", "team": "NE", "pos": "RB", "r0": 53.4}, {"name": "Patrick Mahomes II", "team": "KC", "pos": "QB", "r0": 53.6}, {"name": "Jalen Hurts", "team": "PHI", "pos": "QB", "r0": 53.9}, {"name": "Harold Fannin Jr.", "team": "CLE", "pos": "TE", "r0": 54.9}, {"name": "Marvin Harrison Jr.", "team": "ARI", "pos": "WR", "r0": 55.1}, {"name": "Caleb Williams", "team": "CHI", "pos": "QB", "r0": 56.7}, {"name": "Jameson Williams", "team": "DET", "pos": "WR", "r0": 56.8}, {"name": "Quinshon Judkins", "team": "CLE", "pos": "RB", "r0": 57.5}, {"name": "Sam LaPorta", "team": "DET", "pos": "TE", "r0": 58.5}, {"name": "Brian Thomas Jr.", "team": "JAC", "pos": "WR", "r0": 61.6}, {"name": "KC Concepcion", "team": "CLE", "pos": "WR", "r0": 61.8}, {"name": "Josh Jacobs", "team": "GB", "pos": "RB", "r0": 62.5}, {"name": "Trevor Lawrence", "team": "JAC", "pos": "QB", "r0": 62.6}, {"name": "Kyle Pitts Sr.", "team": "ATL", "pos": "TE", "r0": 63.7}, {"name": "Kyren Williams", "team": "LAR", "pos": "RB", "r0": 65.3}, {"name": "Travis Etienne Jr.", "team": "NO", "pos": "RB", "r0": 65.4}, {"name": "Jaxson Dart", "team": "NYG", "pos": "QB", "r0": 66.5}, {"name": "Javonte Williams", "team": "DAL", "pos": "RB", "r0": 66.6}, {"name": "Brock Purdy", "team": "SF", "pos": "QB", "r0": 67.7}, {"name": "Cam Skattebo", "team": "NYG", "pos": "RB", "r0": 69.7}, {"name": "Alec Pierce", "team": "IND", "pos": "WR", "r0": 74.1}, {"name": "Christian Watson", "team": "GB", "pos": "WR", "r0": 74.6}, {"name": "DJ Moore", "team": "BUF", "pos": "WR", "r0": 75.3}, {"name": "Jordan Addison", "team": "MIN", "pos": "WR", "r0": 76.8}, {"name": "Terry McLaurin", "team": "WAS", "pos": "WR", "r0": 77.1}, {"name": "Derrick Henry", "team": "BAL", "pos": "RB", "r0": 78.5}, {"name": "DK Metcalf", "team": "PIT", "pos": "WR", "r0": 80.1}, {"name": "Jadarian Price", "team": "SEA", "pos": "RB", "r0": 81.3}, {"name": "Kenyon Sadiq", "team": "NYJ", "pos": "TE", "r0": 81.5}, {"name": "Bo Nix", "team": "DEN", "pos": "QB", "r0": 81.6}, {"name": "Oronde Gadsden II", "team": "LAC", "pos": "TE", "r0": 82.5}, {"name": "Jordan Love", "team": "GB", "pos": "QB", "r0": 86.6}, {"name": "Michael Wilson", "team": "ARI", "pos": "WR", "r0": 89.3}, {"name": "RJ Harvey", "team": "DEN", "pos": "RB", "r0": 89.4}, {"name": "Ricky Pearsall", "team": "SF", "pos": "WR", "r0": 89.8}, {"name": "Dak Prescott", "team": "DAL", "pos": "QB", "r0": 89.9}, {"name": "Courtland Sutton", "team": "DEN", "pos": "WR", "r0": 90.5}, {"name": "Jakobi Meyers", "team": "JAC", "pos": "WR", "r0": 91.3}, {"name": "Bhayshul Tuten", "team": "JAC", "pos": "RB", "r0": 93.1}, {"name": "Mike Evans", "team": "SF", "pos": "WR", "r0": 93.7}, {"name": "Davante Adams", "team": "LAR", "pos": "WR", "r0": 94.5}, {"name": "Eli Stowers", "team": "PHI", "pos": "TE", "r0": 95.5}, {"name": "Dalton Kincaid", "team": "BUF", "pos": "TE", "r0": 97.3}, {"name": "Xavier Worthy", "team": "KC", "pos": "WR", "r0": 97.5}, {"name": "D'Andre Swift", "team": "CHI", "pos": "RB", "r0": 98.1}, {"name": "Jake Ferguson", "team": "DAL", "pos": "TE", "r0": 99.8}, {"name": "Michael Pittman Jr.", "team": "PIT", "pos": "WR", "r0": 101.2}, {"name": "Wan'Dale Robinson", "team": "TEN", "pos": "WR", "r0": 101.9}, {"name": "Josh Downs", "team": "IND", "pos": "WR", "r0": 103.5}, {"name": "Jayden Higgins", "team": "HOU", "pos": "WR", "r0": 104.0}, {"name": "George Kittle", "team": "SF", "pos": "TE", "r0": 105.9}, {"name": "Isaiah Likely", "team": "NYG", "pos": "TE", "r0": 106.3}, {"name": "Omar Cooper Jr.", "team": "NYJ", "pos": "WR", "r0": 106.4}, {"name": "Baker Mayfield", "team": "TB", "pos": "QB", "r0": 107.4}, {"name": "Zach Charbonnet", "team": "SEA", "pos": "RB", "r0": 109.1}, {"name": "Kyle Monangai", "team": "CHI", "pos": "RB", "r0": 110.2}, {"name": "Denzel Boston", "team": "CLE", "pos": "WR", "r0": 110.5}, {"name": "David Montgomery", "team": "HOU", "pos": "RB", "r0": 111.5}, {"name": "Brenton Strange", "team": "JAC", "pos": "TE", "r0": 112.1}, {"name": "Jayden Reed", "team": "GB", "pos": "WR", "r0": 112.5}, {"name": "Jaylen Warren", "team": "PIT", "pos": "RB", "r0": 112.8}, {"name": "Matthew Golden", "team": "GB", "pos": "WR", "r0": 113.0}, {"name": "C.J. Stroud", "team": "HOU", "pos": "QB", "r0": 113.8}, {"name": "Quentin Johnston", "team": "LAC", "pos": "WR", "r0": 114.6}, {"name": "Parker Washington", "team": "JAC", "pos": "WR", "r0": 116.2}, {"name": "Khalil Shakir", "team": "BUF", "pos": "WR", "r0": 116.4}, {"name": "Chris Godwin Jr.", "team": "TB", "pos": "WR", "r0": 116.6}, {"name": "Jared Goff", "team": "DET", "pos": "QB", "r0": 117.2}, {"name": "Fernando Mendoza", "team": "LV", "pos": "QB", "r0": 123.5}, {"name": "Kyler Murray", "team": "MIN", "pos": "QB", "r0": 125.3}, {"name": "Cam Ward", "team": "TEN", "pos": "QB", "r0": 125.8}, {"name": "Romeo Doubs", "team": "NE", "pos": "WR", "r0": 127.7}, {"name": "Travis Hunter", "team": "JAC", "pos": "WR", "r0": 127.8}, {"name": "Tyler Shough", "team": "NO", "pos": "QB", "r0": 130.9}, {"name": "Rhamondre Stevenson", "team": "NE", "pos": "RB", "r0": 132.3}, {"name": "Sam Darnold", "team": "SEA", "pos": "QB", "r0": 133.3}, {"name": "Blake Corum", "team": "LAR", "pos": "RB", "r0": 134.2}, {"name": "Malik Willis", "team": "MIA", "pos": "QB", "r0": 134.9}, {"name": "Rico Dowdle", "team": "PIT", "pos": "RB", "r0": 136.1}, {"name": "Tony Pollard", "team": "TEN", "pos": "RB", "r0": 139.5}, {"name": "Chuba Hubbard", "team": "CAR", "pos": "RB", "r0": 139.9}, {"name": "Mark Andrews", "team": "BAL", "pos": "TE", "r0": 142.5}, {"name": "Dallas Goedert", "team": "PHI", "pos": "TE", "r0": 143.5}, {"name": "Jalen Coker", "team": "CAR", "pos": "WR", "r0": 143.8}, {"name": "Jauan Jennings", "team": "FA", "pos": "WR", "r0": 144.5}, {"name": "Rashid Shaheed", "team": "SEA", "pos": "WR", "r0": 144.7}, {"name": "Brandon Aiyuk", "team": "SF", "pos": "WR", "r0": 145.5}, {"name": "Bryce Young", "team": "CAR", "pos": "QB", "r0": 146.5}, {"name": "Daniel Jones", "team": "IND", "pos": "QB", "r0": 148.4}, {"name": "Matthew Stafford", "team": "LAR", "pos": "QB", "r0": 148.6}, {"name": "Chris Bell", "team": "MIA", "pos": "WR", "r0": 150.3}, {"name": "Chig Okonkwo", "team": "WAS", "pos": "TE", "r0": 150.4}, {"name": "Jonah Coleman", "team": "DEN", "pos": "RB", "r0": 151.0}, {"name": "Jalen McMillan", "team": "TB", "pos": "WR", "r0": 151.5}, {"name": "Stefon Diggs", "team": "FA", "pos": "WR", "r0": 151.7}, {"name": "Kenneth Gainwell", "team": "TB", "pos": "RB", "r0": 151.8}, {"name": "Jacory Croskey-Merritt", "team": "WAS", "pos": "RB", "r0": 153.3}, {"name": "AJ Barner", "team": "SEA", "pos": "TE", "r0": 155.2}, {"name": "Antonio Williams", "team": "WAS", "pos": "WR", "r0": 158.3}, {"name": "Jaylin Noel", "team": "HOU", "pos": "WR", "r0": 158.5}, {"name": "Ted Hurst", "team": "TB", "pos": "WR", "r0": 158.7}, {"name": "Jerry Jeudy", "team": "CLE", "pos": "WR", "r0": 160.7}, {"name": "Germie Bernard", "team": "PIT", "pos": "WR", "r0": 162.4}, {"name": "Terrance Ferguson", "team": "LAR", "pos": "TE", "r0": 163.5}, {"name": "Juwan Johnson", "team": "NO", "pos": "TE", "r0": 163.6}, {"name": "Tyrone Tracy Jr.", "team": "NYG", "pos": "RB", "r0": 163.9}, {"name": "Tre Harris", "team": "LAC", "pos": "WR", "r0": 164.2}, {"name": "Tyler Allgeier", "team": "ARI", "pos": "RB", "r0": 165.7}, {"name": "J.K. Dobbins", "team": "DEN", "pos": "RB", "r0": 167.4}, {"name": "Jordan Mason", "team": "MIN", "pos": "RB", "r0": 167.8}, {"name": "Woody Marks", "team": "HOU", "pos": "RB", "r0": 167.8}, {"name": "Troy Franklin", "team": "DEN", "pos": "WR", "r0": 168.9}, {"name": "Travis Kelce", "team": "KC", "pos": "TE", "r0": 169.1}, {"name": "Hunter Henry", "team": "NE", "pos": "TE", "r0": 170.1}, {"name": "De'Zhaun Stribling", "team": "SF", "pos": "WR", "r0": 172.7}, {"name": "Kayshon Boutte", "team": "NE", "pos": "WR", "r0": 173.8}, {"name": "Ty Simpson", "team": "LAR", "pos": "QB", "r0": 176.3}, {"name": "Pat Bryant", "team": "DEN", "pos": "WR", "r0": 176.5}, {"name": "Deebo Samuel Sr.", "team": "FA", "pos": "WR", "r0": 176.9}, {"name": "T.J. Hockenson", "team": "MIN", "pos": "TE", "r0": 177.1}, {"name": "Tyreek Hill", "team": "FA", "pos": "WR", "r0": 179.5}, {"name": "Dalton Schultz", "team": "HOU", "pos": "TE", "r0": 180.1}, {"name": "Emmett Johnson", "team": "KC", "pos": "RB", "r0": 180.1}, {"name": "Chris Brazzell II", "team": "CAR", "pos": "WR", "r0": 183.9}, {"name": "Jonathon Brooks", "team": "CAR", "pos": "RB", "r0": 184.4}, {"name": "Isaac TeSlaa", "team": "DET", "pos": "WR", "r0": 185.0}, {"name": "Michael Penix Jr.", "team": "ATL", "pos": "QB", "r0": 185.3}, {"name": "Adonai Mitchell", "team": "NYJ", "pos": "WR", "r0": 185.5}, {"name": "Nicholas Singleton", "team": "TEN", "pos": "RB", "r0": 186.1}, {"name": "Gunnar Helm", "team": "TEN", "pos": "TE", "r0": 187.3}, {"name": "Rachaad White", "team": "WAS", "pos": "RB", "r0": 187.5}, {"name": "Dylan Sampson", "team": "CLE", "pos": "RB", "r0": 188.5}, {"name": "Tyjae Spears", "team": "TEN", "pos": "RB", "r0": 190.1}, {"name": "Mason Taylor", "team": "NYJ", "pos": "TE", "r0": 190.1}, {"name": "J.J. McCarthy", "team": "MIN", "pos": "QB", "r0": 190.3}, {"name": "Aaron Jones Sr.", "team": "MIN", "pos": "RB", "r0": 191.2}, {"name": "Elijah Sarratt", "team": "BAL", "pos": "WR", "r0": 191.6}, {"name": "Zachariah Branch", "team": "ATL", "pos": "WR", "r0": 192.8}, {"name": "Kyle Williams", "team": "NE", "pos": "WR", "r0": 192.8}, {"name": "Malachi Fields", "team": "NYG", "pos": "WR", "r0": 193.1}, {"name": "Oscar Delp", "team": "NO", "pos": "TE", "r0": 193.9}, {"name": "Eli Raridon", "team": "NE", "pos": "TE", "r0": 194.2}, {"name": "Elic Ayomanor", "team": "TEN", "pos": "WR", "r0": 194.6}, {"name": "Darnell Mooney", "team": "NYG", "pos": "WR", "r0": 194.8}, {"name": "Skyler Bell", "team": "BUF", "pos": "WR", "r0": 194.9}, {"name": "Chimere Dike", "team": "TEN", "pos": "WR", "r0": 195.9}, {"name": "Chris Rodriguez Jr.", "team": "JAC", "pos": "RB", "r0": 201.5}, {"name": "Mike Washington Jr.", "team": "LV", "pos": "RB", "r0": 201.9}, {"name": "Shedeur Sanders", "team": "CLE", "pos": "QB", "r0": 202.3}, {"name": "Alvin Kamara", "team": "NO", "pos": "RB", "r0": 203.7}, {"name": "Theo Johnson", "team": "NYG", "pos": "TE", "r0": 203.8}, {"name": "Max Klare", "team": "LAR", "pos": "TE", "r0": 204.4}, {"name": "Tank Dell", "team": "HOU", "pos": "WR", "r0": 205.7}, {"name": "Kaytron Allen", "team": "WAS", "pos": "RB", "r0": 207.6}, {"name": "Cade Otton", "team": "TB", "pos": "TE", "r0": 207.7}, {"name": "Tua Tagovailoa", "team": "ATL", "pos": "QB", "r0": 210.4}, {"name": "Calvin Ridley", "team": "TEN", "pos": "WR", "r0": 210.7}, {"name": "Tory Horton", "team": "SEA", "pos": "WR", "r0": 211.1}, {"name": "Jack Bech", "team": "LV", "pos": "WR", "r0": 212.8}, {"name": "Braelon Allen", "team": "NYJ", "pos": "RB", "r0": 213.9}, {"name": "Pat Freiermuth", "team": "PIT", "pos": "TE", "r0": 214.3}, {"name": "Isiah Pacheco", "team": "DET", "pos": "RB", "r0": 214.3}, {"name": "Tank Bigsby", "team": "PHI", "pos": "RB", "r0": 214.5}, {"name": "Dontayvion Wicks", "team": "PHI", "pos": "WR", "r0": 216.7}, {"name": "Rashod Bateman", "team": "BAL", "pos": "WR", "r0": 217.2}, {"name": "David Njoku", "team": "FA", "pos": "TE", "r0": 218.2}, {"name": "Keon Coleman", "team": "BUF", "pos": "WR", "r0": 220.2}, {"name": "Ja'Kobi Lane", "team": "BAL", "pos": "WR", "r0": 220.3}, {"name": "Kimani Vidal", "team": "LAC", "pos": "RB", "r0": 222.1}, {"name": "Marvin Mims Jr.", "team": "DEN", "pos": "WR", "r0": 222.2}, {"name": "Kaleb Johnson", "team": "PIT", "pos": "RB", "r0": 222.7}, {"name": "Kevin Coleman Jr.", "team": "MIA", "pos": "WR", "r0": 222.8}, {"name": "Elijah Arroyo", "team": "SEA", "pos": "TE", "r0": 224.1}, {"name": "Bryce Lance", "team": "NO", "pos": "WR", "r0": 225.3}, {"name": "Demond Claiborne", "team": "MIN", "pos": "RB", "r0": 225.7}, {"name": "Anthony Richardson Sr.", "team": "IND", "pos": "QB", "r0": 228.8}, {"name": "Tre Tucker", "team": "LV", "pos": "WR", "r0": 232.3}, {"name": "Malik Washington", "team": "MIA", "pos": "WR", "r0": 232.8}, {"name": "Brian Robinson Jr.", "team": "ATL", "pos": "RB", "r0": 233.4}, {"name": "Geno Smith", "team": "NYJ", "pos": "QB", "r0": 234.2}, {"name": "Brenen Thompson", "team": "LAC", "pos": "WR", "r0": 236.2}, {"name": "Greg Dulcich", "team": "MIA", "pos": "TE", "r0": 236.8}, {"name": "Ray Davis", "team": "BUF", "pos": "RB", "r0": 236.9}, {"name": "Keaton Mitchell", "team": "LAC", "pos": "RB", "r0": 238.2}, {"name": "Jacoby Brissett", "team": "ARI", "pos": "QB", "r0": 238.4}, {"name": "Emanuel Wilson", "team": "SEA", "pos": "RB", "r0": 238.6}, {"name": "Jalen Nailor", "team": "LV", "pos": "WR", "r0": 238.6}, {"name": "Trey Benson", "team": "ARI", "pos": "RB", "r0": 239.1}, {"name": "Mac Jones", "team": "SF", "pos": "QB", "r0": 239.5}, {"name": "Justin Fields", "team": "KC", "pos": "QB", "r0": 241.1}, {"name": "Devin Neal", "team": "NO", "pos": "RB", "r0": 241.6}, {"name": "Aaron Rodgers", "team": "FA", "pos": "QB", "r0": 242.3}, {"name": "Ollie Gordon II", "team": "MIA", "pos": "RB", "r0": 243.6}, {"name": "Xavier Legette", "team": "CAR", "pos": "WR", "r0": 243.8}, {"name": "Jaylen Wright", "team": "MIA", "pos": "RB", "r0": 245.6}, {"name": "Michael Mayer", "team": "LV", "pos": "TE", "r0": 246.9}, {"name": "Keenan Allen", "team": "LAC", "pos": "WR", "r0": 247.3}, {"name": "Cedric Tillman", "team": "CLE", "pos": "WR", "r0": 248.4}, {"name": "James Conner", "team": "ARI", "pos": "RB", "r0": 248.8}, {"name": "Christian Kirk", "team": "SF", "pos": "WR", "r0": 252.3}, {"name": "Cole Payton", "team": "PHI", "pos": "QB", "r0": 254.3}, {"name": "Colby Parkinson", "team": "LAR", "pos": "TE", "r0": 255.3}, {"name": "Ben Sinnott", "team": "WAS", "pos": "TE", "r0": 255.8}, {"name": "Kirk Cousins", "team": "LV", "pos": "QB", "r0": 255.9}, {"name": "Carson Beck", "team": "ARI", "pos": "QB", "r0": 256.4}, {"name": "Evan Engram", "team": "DEN", "pos": "TE", "r0": 257.7}, {"name": "Kaelon Black", "team": "SF", "pos": "RB", "r0": 257.8}, {"name": "Ryan Flournoy", "team": "DAL", "pos": "WR", "r0": 258.1}, {"name": "Tez Johnson", "team": "TB", "pos": "WR", "r0": 258.2}, {"name": "DeMario Douglas", "team": "NE", "pos": "WR", "r0": 258.5}, {"name": "Cooper Kupp", "team": "SEA", "pos": "WR", "r0": 260.8}, {"name": "Devaughn Vele", "team": "NO", "pos": "WR", "r0": 263.4}, {"name": "Adam Randall", "team": "BAL", "pos": "RB", "r0": 265.0}, {"name": "Konata Mumpfield", "team": "LAR", "pos": "WR", "r0": 265.7}, {"name": "Sean Tucker", "team": "TB", "pos": "RB", "r0": 266.0}, {"name": "Jalen Milroe", "team": "SEA", "pos": "QB", "r0": 267.4}, {"name": "Jalen Royals", "team": "KC", "pos": "WR", "r0": 272.0}, {"name": "Justin Joly", "team": "DEN", "pos": "TE", "r0": 274.0}, {"name": "Caleb Douglas", "team": "MIA", "pos": "WR", "r0": 274.2}, {"name": "Jaydon Blue", "team": "DAL", "pos": "RB", "r0": 274.7}, {"name": "Darius Slayton", "team": "NYG", "pos": "WR", "r0": 274.8}, {"name": "Ja'Tavion Sanders", "team": "CAR", "pos": "TE", "r0": 277.3}, {"name": "Mike Gesicki", "team": "CIN", "pos": "TE", "r0": 279.4}, {"name": "Hollywood Brown", "team": "PHI", "pos": "WR", "r0": 279.8}, {"name": "Spencer Rattler", "team": "NO", "pos": "QB", "r0": 280.5}, {"name": "Taylen Green", "team": "CLE", "pos": "QB", "r0": 281.0}, {"name": "Isaiah Davis", "team": "NYJ", "pos": "RB", "r0": 281.6}, {"name": "MarShawn Lloyd", "team": "GB", "pos": "RB", "r0": 281.6}, {"name": "Cade Klubnik", "team": "NYJ", "pos": "QB", "r0": 281.8}, {"name": "Jordan James", "team": "SF", "pos": "RB", "r0": 281.9}, {"name": "Roman Wilson", "team": "PIT", "pos": "WR", "r0": 282.2}, {"name": "Sam Roush", "team": "CHI", "pos": "TE", "r0": 282.5}, {"name": "Darnell Washington", "team": "PIT", "pos": "TE", "r0": 284.5}, {"name": "Andrei Iosivas", "team": "CIN", "pos": "WR", "r0": 284.9}, {"name": "Joe Milton III", "team": "DAL", "pos": "QB", "r0": 285.0}, {"name": "Isaac Guerendo", "team": "SF", "pos": "RB", "r0": 285.1}, {"name": "Cole Kmet", "team": "CHI", "pos": "TE", "r0": 285.7}, {"name": "Drew Allar", "team": "PIT", "pos": "QB", "r0": 285.8}, {"name": "Jalen Tolbert", "team": "MIA", "pos": "WR", "r0": 286.0}, {"name": "Joshua Palmer", "team": "BUF", "pos": "WR", "r0": 286.1}, {"name": "Eli Heidenreich", "team": "PIT", "pos": "RB", "r0": 286.3}, {"name": "Marcus Mariota", "team": "WAS", "pos": "QB", "r0": 287.6}, {"name": "Brashard Smith", "team": "KC", "pos": "RB", "r0": 288.1}, {"name": "Deshaun Watson", "team": "CLE", "pos": "QB", "r0": 288.2}, {"name": "Quinn Ewers", "team": "MIA", "pos": "QB", "r0": 288.2}, {"name": "Isaiah Bond", "team": "CLE", "pos": "WR", "r0": 288.4}, {"name": "Jarquez Hunter", "team": "LAR", "pos": "RB", "r0": 288.7}, {"name": "Nick Chubb", "team": "FA", "pos": "RB", "r0": 288.8}, {"name": "Trevor Etienne", "team": "CAR", "pos": "RB", "r0": 289.6}, {"name": "DJ Giddens", "team": "IND", "pos": "RB", "r0": 289.7}, {"name": "J'Mari Taylor", "team": "JAC", "pos": "RB", "r0": 291.2}, {"name": "Deion Burks", "team": "IND", "pos": "WR", "r0": 291.5}, {"name": "Jake Tonges", "team": "SF", "pos": "TE", "r0": 291.6}, {"name": "Savion Williams", "team": "GB", "pos": "WR", "r0": 292.4}, {"name": "Jameis Winston", "team": "NYG", "pos": "QB", "r0": 293.0}, {"name": "Tyson Bagent", "team": "CHI", "pos": "QB", "r0": 293.0}, {"name": "Tahj Brooks", "team": "CIN", "pos": "RB", "r0": 294.1}, {"name": "Najee Harris", "team": "LAC", "pos": "RB", "r0": 294.4}, {"name": "Russell Wilson", "team": "FA", "pos": "QB", "r0": 294.6}, {"name": "Malik Benson", "team": "LV", "pos": "WR", "r0": 295.0}, {"name": "Garrett Nussmeier", "team": "KC", "pos": "QB", "r0": 295.5}, {"name": "Will Shipley", "team": "PHI", "pos": "RB", "r0": 296.0}, {"name": "Devin Singletary", "team": "NYG", "pos": "RB", "r0": 296.4}, {"name": "Roman Hemby", "team": "LV", "pos": "RB", "r0": 296.6}, {"name": "Dont'e Thornton Jr.", "team": "LV", "pos": "WR", "r0": 297.8}, {"name": "Matthew Hibner", "team": "BAL", "pos": "TE", "r0": 298.0}, {"name": "Seth McGowan", "team": "IND", "pos": "RB", "r0": 298.4}, {"name": "Noah Gray", "team": "KC", "pos": "TE", "r0": 299.6}, {"name": "Joe Mixon", "team": "FA", "pos": "RB", "r0": 300.2}, {"name": "Elijah Moore", "team": "PHI", "pos": "WR", "r0": 300.6}, {"name": "Phil Mafah", "team": "DAL", "pos": "RB", "r0": 301.0}, {"name": "Ty Johnson", "team": "BUF", "pos": "RB", "r0": 301.8}, {"name": "Will Levis", "team": "TEN", "pos": "QB", "r0": 302.5}, {"name": "Jahan Dotson", "team": "ATL", "pos": "WR", "r0": 302.8}, {"name": "Chris Brooks", "team": "GB", "pos": "RB", "r0": 303.6}, {"name": "Marlin Klein", "team": "HOU", "pos": "TE", "r0": 304.2}, {"name": "Kendre Miller", "team": "NO", "pos": "RB", "r0": 304.3}, {"name": "Raheim Sanders", "team": "CLE", "pos": "RB", "r0": 304.4}, {"name": "Tai Felton", "team": "MIN", "pos": "WR", "r0": 305.3}, {"name": "Diontae Johnson", "team": "FA", "pos": "WR", "r0": 306.0}, {"name": "Noah Fant", "team": "NO", "pos": "TE", "r0": 306.6}, {"name": "Jaylin Lane", "team": "WAS", "pos": "WR", "r0": 306.7}, {"name": "DeAndre Hopkins", "team": "BAL", "pos": "WR", "r0": 307.2}, {"name": "Luke McCaffrey", "team": "WAS", "pos": "WR", "r0": 307.4}, {"name": "KaVontae Turpin", "team": "DAL", "pos": "WR", "r0": 308.3}, {"name": "Jerome Ford", "team": "WAS", "pos": "RB", "r0": 308.7}, {"name": "Cyrus Allen", "team": "KC", "pos": "WR", "r0": 308.7}, {"name": "Riley Leonard", "team": "IND", "pos": "QB", "r0": 308.8}, {"name": "Jonnu Smith", "team": "FA", "pos": "TE", "r0": 310.4}, {"name": "Gabe Davis", "team": "FA", "pos": "WR", "r0": 310.5}, {"name": "Tyler Lockett", "team": "LV", "pos": "WR", "r0": 311.8}, {"name": "Jermaine Burton", "team": "FA", "pos": "WR", "r0": 312.0}, {"name": "Calvin Austin III", "team": "NYG", "pos": "WR", "r0": 312.4}, {"name": "CJ Daniels", "team": "LAR", "pos": "WR", "r0": 313.3}, {"name": "Barion Brown", "team": "NO", "pos": "WR", "r0": 314.0}, {"name": "Jaleel McLaughlin", "team": "DEN", "pos": "RB", "r0": 314.2}, {"name": "Demarcus Robinson", "team": "SF", "pos": "WR", "r0": 314.7}, {"name": "Miles Sanders", "team": "FA", "pos": "RB", "r0": 314.8}, {"name": "Joe Flacco", "team": "CIN", "pos": "QB", "r0": 315.6}, {"name": "Justice Hill", "team": "BAL", "pos": "RB", "r0": 316.2}, {"name": "Xavier Restrepo", "team": "TEN", "pos": "WR", "r0": 316.5}, {"name": "Zach Ertz", "team": "FA", "pos": "TE", "r0": 316.6}, {"name": "Tanner Koziol", "team": "JAC", "pos": "TE", "r0": 316.6}, {"name": "Will Howard", "team": "PIT", "pos": "QB", "r0": 316.8}, {"name": "Mack Hollins", "team": "NE", "pos": "WR", "r0": 316.8}, {"name": "Kendrick Bourne", "team": "ARI", "pos": "WR", "r0": 317.0}, {"name": "Tyler Conklin", "team": "DET", "pos": "TE", "r0": 317.0}, {"name": "Eric Rivers", "team": "TB", "pos": "WR", "r0": 318.3}, {"name": "Damien Martinez", "team": "GB", "pos": "RB", "r0": 318.7}, {"name": "Tanner McKee", "team": "PHI", "pos": "QB", "r0": 319.5}, {"name": "John Metchie III", "team": "CAR", "pos": "WR", "r0": 321.0}, {"name": "Brandin Cooks", "team": "FA", "pos": "WR", "r0": 321.0}, {"name": "Javon Baker", "team": "FA", "pos": "WR", "r0": 322.0}, {"name": "Mitchell Evans", "team": "CAR", "pos": "TE", "r0": 322.6}, {"name": "Tyquan Thornton", "team": "KC", "pos": "WR", "r0": 322.8}, {"name": "Jalin Hyatt", "team": "NYG", "pos": "WR", "r0": 323.7}, {"name": "Tommy Tremble", "team": "CAR", "pos": "TE", "r0": 324.0}, {"name": "Robert Henry Jr.", "team": "WAS", "pos": "RB", "r0": 324.3}, {"name": "Audric Estime", "team": "NO", "pos": "RB", "r0": 324.4}, {"name": "Terion Stewart", "team": "KC", "pos": "RB", "r0": 325.3}, {"name": "LeQuint Allen Jr.", "team": "JAC", "pos": "RB", "r0": 325.6}, {"name": "Jack Endries", "team": "CIN", "pos": "TE", "r0": 325.6}, {"name": "Kareem Hunt", "team": "FA", "pos": "RB", "r0": 328.5}, {"name": "Taysom Hill", "team": "FA", "pos": "TE", "r0": 328.5}, {"name": "Curtis Samuel", "team": "FA", "pos": "WR", "r0": 329.5}, {"name": "RJ Maryland", "team": "GB", "pos": "TE", "r0": 330.5}, {"name": "Tyler Higbee", "team": "LAR", "pos": "TE", "r0": 331.0}, {"name": "Jordan Whittington", "team": "LAR", "pos": "WR", "r0": 331.6}, {"name": "Mason Rudolph", "team": "PIT", "pos": "QB", "r0": 332.0}, {"name": "Erick All Jr.", "team": "CIN", "pos": "TE", "r0": 332.4}, {"name": "Trey Lance", "team": "LAC", "pos": "QB", "r0": 333.0}, {"name": "Eric McAlister", "team": "FA", "pos": "WR", "r0": 335.0}, {"name": "Aaron Anderson", "team": "CLE", "pos": "WR", "r0": 336.0}, {"name": "George Holani", "team": "SEA", "pos": "RB", "r0": 337.5}, {"name": "Michael Trigg", "team": "DAL", "pos": "TE", "r0": 338.3}, {"name": "Roschon Johnson", "team": "CHI", "pos": "RB", "r0": 338.5}, {"name": "Josh Cameron", "team": "JAC", "pos": "WR", "r0": 339.3}, {"name": "KeAndre Lambert-Smith", "team": "LAC", "pos": "WR", "r0": 340.5}, {"name": "Dawson Knox", "team": "BUF", "pos": "TE", "r0": 341.6}, {"name": "Will Dissly", "team": "FA", "pos": "TE", "r0": 343.5}, {"name": "Daniel Bellinger", "team": "TEN", "pos": "TE", "r0": 344.0}, {"name": "Ja'Lynn Polk", "team": "NO", "pos": "WR", "r0": 344.3}, {"name": "Malachi Corley", "team": "CLE", "pos": "WR", "r0": 344.5}, {"name": "Luke Musgrave", "team": "GB", "pos": "TE", "r0": 344.6}, {"name": "Jordan Watkins", "team": "SF", "pos": "WR", "r0": 344.7}, {"name": "Dyami Brown", "team": "WAS", "pos": "WR", "r0": 345.6}, {"name": "Jeremy McNichols", "team": "WAS", "pos": "RB", "r0": 347.0}, {"name": "Will Kacmarek", "team": "MIA", "pos": "TE", "r0": 348.0}, {"name": "Devontez Walker", "team": "BAL", "pos": "WR", "r0": 348.5}, {"name": "Cade Stover", "team": "HOU", "pos": "TE", "r0": 349.5}, {"name": "Tutu Atwell", "team": "MIA", "pos": "WR", "r0": 351.3}, {"name": "Tyler Huntley", "team": "BAL", "pos": "QB", "r0": 354.0}, {"name": "Nick Westbrook-Ikhine", "team": "IND", "pos": "WR", "r0": 355.0}, {"name": "Austin Ekeler", "team": "FA", "pos": "RB", "r0": 356.0}, {"name": "Jacob Cowing", "team": "SF", "pos": "WR", "r0": 357.0}, {"name": "Samaje Perine", "team": "CIN", "pos": "RB", "r0": 358.3}, {"name": "Dillon Gabriel", "team": "CLE", "pos": "QB", "r0": 359.0}, {"name": "Jeff Caldwell", "team": "KC", "pos": "WR", "r0": 359.0}, {"name": "Nate Boerkircher", "team": "JAC", "pos": "TE", "r0": 359.0}, {"name": "Kendrick Law", "team": "DET", "pos": "WR", "r0": 360.0}, {"name": "Mitchell Trubisky", "team": "TEN", "pos": "QB", "r0": 361.5}, {"name": "Reggie Virgil", "team": "ARI", "pos": "WR", "r0": 362.5}, {"name": "Tyren Montgomery", "team": "TEN", "pos": "WR", "r0": 363.3}, {"name": "Antonio Gibson", "team": "FA", "pos": "RB", "r0": 363.5}, {"name": "Riley Nowakowski", "team": "PIT", "pos": "TE", "r0": 364.5}, {"name": "Joe Royer", "team": "CLE", "pos": "TE", "r0": 365.0}, {"name": "Khalil Herbert", "team": "FA", "pos": "RB", "r0": 365.5}, {"name": "Austin Hooper", "team": "ATL", "pos": "TE", "r0": 365.7}, {"name": "Van Jefferson", "team": "WAS", "pos": "WR", "r0": 366.0}, {"name": "Davis Mills", "team": "HOU", "pos": "QB", "r0": 366.3}, {"name": "Gardner Minshew II", "team": "ARI", "pos": "QB", "r0": 366.5}, {"name": "Zavion Thomas", "team": "CHI", "pos": "WR", "r0": 366.8}, {"name": "Dameon Pierce", "team": "PHI", "pos": "RB", "r0": 368.0}, {"name": "Aidan O'Connell", "team": "LV", "pos": "QB", "r0": 368.0}, {"name": "Seydou Traore", "team": "MIA", "pos": "TE", "r0": 368.5}, {"name": "Efton Chism III", "team": "NE", "pos": "WR", "r0": 369.0}, {"name": "Raheem Mostert", "team": "LV", "pos": "RB", "r0": 370.0}, {"name": "Emari Demercado", "team": "KC", "pos": "RB", "r0": 373.6}, {"name": "Olamide Zaccheaus", "team": "ATL", "pos": "WR", "r0": 374.7}, {"name": "Kalif Raymond", "team": "CHI", "pos": "WR", "r0": 376.5}, {"name": "Bam Knight", "team": "ARI", "pos": "RB", "r0": 377.5}, {"name": "Jam Miller", "team": "NE", "pos": "RB", "r0": 377.7}, {"name": "Treylon Burks", "team": "WAS", "pos": "WR", "r0": 379.5}, {"name": "Josh Oliver", "team": "MIN", "pos": "TE", "r0": 380.7}, {"name": "Luke Schoonmaker", "team": "DAL", "pos": "TE", "r0": 381.0}, {"name": "Isaiah Hodgins", "team": "NYG", "pos": "WR", "r0": 383.0}, {"name": "Colbie Young", "team": "CIN", "pos": "WR", "r0": 383.0}, {"name": "Dallen Bentley", "team": "DEN", "pos": "TE", "r0": 383.3}, {"name": "Isaiah Williams", "team": "NYJ", "pos": "WR", "r0": 386.5}, {"name": "Josh Cuevas", "team": "BAL", "pos": "TE", "r0": 387.0}, {"name": "Jaren Kanak", "team": "TEN", "pos": "TE", "r0": 388.0}, {"name": "Dae'Quan Wright", "team": "PHI", "pos": "TE", "r0": 389.0}, {"name": "Carsen Ryan", "team": "CLE", "pos": "TE", "r0": 389.0}, {"name": "Noah Brown", "team": "FA", "pos": "WR", "r0": 391.0}, {"name": "Josh Reynolds", "team": "FA", "pos": "WR", "r0": 392.0}, {"name": "Elijah Higgins", "team": "ARI", "pos": "TE", "r0": 392.0}, {"name": "Jarrett Stidham", "team": "DEN", "pos": "QB", "r0": 392.5}, {"name": "JuJu Smith-Schuster", "team": "FA", "pos": "WR", "r0": 393.0}, {"name": "Sterling Shepard", "team": "FA", "pos": "WR", "r0": 394.0}, {"name": "Tyrell Shavers", "team": "BUF", "pos": "WR", "r0": 396.0}, {"name": "Jared Wiley", "team": "KC", "pos": "TE", "r0": 396.5}, {"name": "Chase Roberts", "team": "LV", "pos": "WR", "r0": 397.5}, {"name": "Kaden Wetjen", "team": "PIT", "pos": "WR", "r0": 400.0}, {"name": "Dean Connors", "team": "LAR", "pos": "RB", "r0": 407.5}, {"name": "Jeremy Ruckert", "team": "NYJ", "pos": "TE", "r0": 408.5}, {"name": "Theo Wease Jr.", "team": "MIA", "pos": "WR", "r0": 409.5}, {"name": "Le'Veon Moss", "team": "MIA", "pos": "RB", "r0": 410.0}, {"name": "Xavier Hutchinson", "team": "HOU", "pos": "WR", "r0": 410.5}, {"name": "Dohnte Meyers", "team": "CIN", "pos": "WR", "r0": 412.0}, {"name": "Damien Alford", "team": "NO", "pos": "WR", "r0": 413.0}, {"name": "Charlie Kolar", "team": "LAC", "pos": "TE", "r0": 415.0}, {"name": "Darren Waller", "team": "FA", "pos": "TE", "r0": 417.0}, {"name": "Grant Calcaterra", "team": "PHI", "pos": "TE", "r0": 418.5}, {"name": "Jared Wayne", "team": "HOU", "pos": "WR", "r0": 419.0}, {"name": "Thomas Fidone II", "team": "NYG", "pos": "TE", "r0": 419.0}, {"name": "Kevin Austin Jr.", "team": "NO", "pos": "WR", "r0": 420.0}, {"name": "Jahdae Walker", "team": "CHI", "pos": "WR", "r0": 421.0}, {"name": "Lil'Jordan Humphrey", "team": "DEN", "pos": "WR", "r0": 422.0}, {"name": "Jimmy Horn Jr.", "team": "CAR", "pos": "WR", "r0": 423.0}, {"name": "Jaydn Ott", "team": "KC", "pos": "RB", "r0": 423.5}, {"name": "Malik Davis", "team": "DAL", "pos": "RB", "r0": 426.5}, {"name": "Jamari Thrash", "team": "CLE", "pos": "WR", "r0": 426.5}, {"name": "Greg Dortch", "team": "DET", "pos": "WR", "r0": 427.5}];
+const DEFAULT_LABELS = ['FantasyPros'];
 
 // FantasyPros 2025 ADP Data — two formats
 const ADP_DYNASTY = [{"name": "Ja'Marr Chase", "team": "CIN", "pos": "WR", "adp": 1.0, "rank": 1}, {"name": "Justin Jefferson", "team": "MIN", "pos": "WR", "adp": 2.0, "rank": 2}, {"name": "Bijan Robinson", "team": "ATL", "pos": "RB", "adp": 4.0, "rank": 3}, {"name": "CeeDee Lamb", "team": "DAL", "pos": "WR", "adp": 4.5, "rank": 4}, {"name": "Malik Nabers", "team": "NYG", "pos": "WR", "adp": 4.5, "rank": 5}, {"name": "Jahmyr Gibbs", "team": "DET", "pos": "RB", "adp": 5.5, "rank": 6}, {"name": "Ashton Jeanty", "team": "LV", "pos": "RB", "adp": 7.0, "rank": 7}, {"name": "Puka Nacua", "team": "LAR", "pos": "WR", "adp": 9.5, "rank": 8}, {"name": "Amon-Ra St. Brown", "team": "DET", "pos": "WR", "adp": 9.5, "rank": 9}, {"name": "Saquon Barkley", "team": "PHI", "pos": "RB", "adp": 10.5, "rank": 10}, {"name": "Brian Thomas Jr.", "team": "JAC", "pos": "WR", "adp": 10.5, "rank": 11}, {"name": "Brock Bowers", "team": "LV", "pos": "TE", "adp": 10.5, "rank": 12}, {"name": "Nico Collins", "team": "HOU", "pos": "WR", "adp": 13.0, "rank": 13}, {"name": "Drake London", "team": "ATL", "pos": "WR", "adp": 15.5, "rank": 14}, {"name": "Ladd McConkey", "team": "LAC", "pos": "WR", "adp": 17.0, "rank": 15}, {"name": "De'Von Achane", "team": "MIA", "pos": "RB", "adp": 17.0, "rank": 16}, {"name": "Jaxon Smith-Njigba", "team": "SEA", "pos": "WR", "adp": 20.5, "rank": 17}, {"name": "Marvin Harrison Jr.", "team": "ARI", "pos": "WR", "adp": 20.5, "rank": 18}, {"name": "Trey McBride", "team": "ARI", "pos": "TE", "adp": 21.0, "rank": 19}, {"name": "A.J. Brown", "team": "PHI", "pos": "WR", "adp": 21.0, "rank": 20}, {"name": "Josh Allen", "team": "BUF", "pos": "QB", "adp": 22.0, "rank": 21}, {"name": "Bucky Irving", "team": "TB", "pos": "RB", "adp": 22.5, "rank": 22}, {"name": "Omarion Hampton", "team": "LAC", "pos": "RB", "adp": 22.5, "rank": 23}, {"name": "Jayden Daniels", "team": "WAS", "pos": "QB", "adp": 24.0, "rank": 24}, {"name": "Lamar Jackson", "team": "BAL", "pos": "QB", "adp": 24.0, "rank": 25}, {"name": "Garrett Wilson", "team": "NYJ", "pos": "WR", "adp": 25.5, "rank": 26}, {"name": "Jonathan Taylor", "team": "IND", "pos": "RB", "adp": 28.0, "rank": 27}, {"name": "Tee Higgins", "team": "CIN", "pos": "WR", "adp": 30.0, "rank": 28}, {"name": "Breece Hall", "team": "NYJ", "pos": "RB", "adp": 30.0, "rank": 29}, {"name": "Rashee Rice", "team": "KC", "pos": "WR", "adp": 32.0, "rank": 30}, {"name": "Tetairoa McMillan", "team": "CAR", "pos": "WR", "adp": 32.0, "rank": 31}, {"name": "Travis Hunter", "team": "JAC", "pos": "WR", "adp": 33.0, "rank": 32}, {"name": "Kyren Williams", "team": "LAR", "pos": "RB", "adp": 33.0, "rank": 33}, {"name": "Derrick Henry", "team": "BAL", "pos": "RB", "adp": 34.0, "rank": 34}, {"name": "Christian McCaffrey", "team": "SF", "pos": "RB", "adp": 35.0, "rank": 35}, {"name": "TreVeyon Henderson", "team": "NE", "pos": "RB", "adp": 36.0, "rank": 36}, {"name": "DeVonta Smith", "team": "PHI", "pos": "WR", "adp": 37.5, "rank": 37}, {"name": "Joe Burrow", "team": "CIN", "pos": "QB", "adp": 38.5, "rank": 38}, {"name": "Jalen Hurts", "team": "PHI", "pos": "QB", "adp": 40.5, "rank": 39}, {"name": "Josh Jacobs", "team": "GB", "pos": "RB", "adp": 40.5, "rank": 40}, {"name": "Terry McLaurin", "team": "WAS", "pos": "WR", "adp": 40.5, "rank": 41}, {"name": "Xavier Worthy", "team": "KC", "pos": "WR", "adp": 42.0, "rank": 42}, {"name": "Kenneth Walker III", "team": "KC", "pos": "RB", "adp": 42.0, "rank": 43}, {"name": "Sam LaPorta", "team": "DET", "pos": "TE", "adp": 42.5, "rank": 44}, {"name": "Chase Brown", "team": "CIN", "pos": "RB", "adp": 43.5, "rank": 45}, {"name": "Quinshon Judkins", "team": "CLE", "pos": "RB", "adp": 44.5, "rank": 46}, {"name": "Rome Odunze", "team": "CHI", "pos": "WR", "adp": 45.0, "rank": 47}, {"name": "Zay Flowers", "team": "BAL", "pos": "WR", "adp": 46.0, "rank": 48}, {"name": "James Cook III", "team": "BUF", "pos": "RB", "adp": 47.5, "rank": 49}, {"name": "RJ Harvey", "team": "DEN", "pos": "RB", "adp": 51.0, "rank": 50}, {"name": "Emeka Egbuka", "team": "TB", "pos": "WR", "adp": 51.5, "rank": 51}, {"name": "DJ Moore", "team": "BUF", "pos": "WR", "adp": 53.0, "rank": 52}, {"name": "George Kittle", "team": "SF", "pos": "TE", "adp": 54.0, "rank": 53}, {"name": "Kaleb Johnson", "team": "PIT", "pos": "RB", "adp": 55.5, "rank": 54}, {"name": "DK Metcalf", "team": "PIT", "pos": "WR", "adp": 55.5, "rank": 55}, {"name": "Tyreek Hill", "team": "", "pos": "WR", "adp": 57.0, "rank": 56}, {"name": "Tyler Warren", "team": "IND", "pos": "TE", "adp": 58.0, "rank": 57}, {"name": "Chuba Hubbard", "team": "CAR", "pos": "RB", "adp": 60.0, "rank": 58}, {"name": "Jameson Williams", "team": "DET", "pos": "WR", "adp": 60.0, "rank": 59}, {"name": "George Pickens", "team": "DAL", "pos": "WR", "adp": 60.5, "rank": 60}, {"name": "Patrick Mahomes II", "team": "KC", "pos": "QB", "adp": 61.0, "rank": 61}, {"name": "Jaylen Waddle", "team": "DEN", "pos": "WR", "adp": 61.0, "rank": 62}, {"name": "Chris Olave", "team": "NO", "pos": "WR", "adp": 62.5, "rank": 63}, {"name": "Jordan Addison", "team": "MIN", "pos": "WR", "adp": 63.5, "rank": 64}, {"name": "Mike Evans", "team": "SF", "pos": "WR", "adp": 63.5, "rank": 65}, {"name": "Colston Loveland", "team": "CHI", "pos": "TE", "adp": 65.0, "rank": 66}, {"name": "Alvin Kamara", "team": "NO", "pos": "RB", "adp": 67.0, "rank": 67}, {"name": "Davante Adams", "team": "LAR", "pos": "WR", "adp": 68.0, "rank": 68}, {"name": "Matthew Golden", "team": "GB", "pos": "WR", "adp": 68.0, "rank": 69}, {"name": "T.J. Hockenson", "team": "MIN", "pos": "TE", "adp": 69.0, "rank": 70}, {"name": "Courtland Sutton", "team": "DEN", "pos": "WR", "adp": 73.0, "rank": 71}, {"name": "Bo Nix", "team": "DEN", "pos": "QB", "adp": 73.5, "rank": 72}, {"name": "Joe Mixon", "team": "", "pos": "RB", "adp": 75.5, "rank": 73}, {"name": "Jerry Jeudy", "team": "CLE", "pos": "WR", "adp": 75.5, "rank": 74}, {"name": "Luther Burden III", "team": "CHI", "pos": "WR", "adp": 79.5, "rank": 75}, {"name": "David Montgomery", "team": "HOU", "pos": "RB", "adp": 81.0, "rank": 76}, {"name": "Isiah Pacheco", "team": "DET", "pos": "RB", "adp": 81.0, "rank": 77}, {"name": "James Conner", "team": "ARI", "pos": "RB", "adp": 82.5, "rank": 78}, {"name": "Cam Skattebo", "team": "NYG", "pos": "RB", "adp": 82.5, "rank": 79}, {"name": "Ricky Pearsall", "team": "SF", "pos": "WR", "adp": 83.0, "rank": 80}, {"name": "Jayden Higgins", "team": "HOU", "pos": "WR", "adp": 85.5, "rank": 81}, {"name": "Drake Maye", "team": "NE", "pos": "QB", "adp": 85.5, "rank": 82}, {"name": "Brandon Aiyuk", "team": "SF", "pos": "WR", "adp": 86.5, "rank": 83}, {"name": "Caleb Williams", "team": "CHI", "pos": "QB", "adp": 86.5, "rank": 84}, {"name": "Travis Etienne Jr.", "team": "NO", "pos": "RB", "adp": 86.5, "rank": 85}, {"name": "Khalil Shakir", "team": "BUF", "pos": "WR", "adp": 89.5, "rank": 86}, {"name": "Jayden Reed", "team": "GB", "pos": "WR", "adp": 89.5, "rank": 87}, {"name": "Mark Andrews", "team": "BAL", "pos": "TE", "adp": 89.5, "rank": 88}, {"name": "D'Andre Swift", "team": "CHI", "pos": "RB", "adp": 90.0, "rank": 89}, {"name": "Tyrone Tracy Jr.", "team": "NYG", "pos": "RB", "adp": 90.5, "rank": 90}, {"name": "Justin Herbert", "team": "LAC", "pos": "QB", "adp": 92.5, "rank": 91}, {"name": "Chris Godwin Jr.", "team": "TB", "pos": "WR", "adp": 93.0, "rank": 92}, {"name": "Josh Downs", "team": "IND", "pos": "WR", "adp": 93.0, "rank": 93}, {"name": "Dalton Kincaid", "team": "BUF", "pos": "TE", "adp": 95.0, "rank": 94}, {"name": "Tucker Kraft", "team": "GB", "pos": "TE", "adp": 95.0, "rank": 95}, {"name": "Calvin Ridley", "team": "TEN", "pos": "WR", "adp": 96.0, "rank": 96}, {"name": "Kyler Murray", "team": "MIN", "pos": "QB", "adp": 97.0, "rank": 97}, {"name": "Brian Robinson Jr.", "team": "ATL", "pos": "RB", "adp": 97.0, "rank": 98}, {"name": "Aaron Jones Sr.", "team": "MIN", "pos": "RB", "adp": 97.0, "rank": 99}, {"name": "Tony Pollard", "team": "TEN", "pos": "RB", "adp": 97.5, "rank": 100}, {"name": "C.J. Stroud", "team": "HOU", "pos": "QB", "adp": 101.0, "rank": 101}, {"name": "Jauan Jennings", "team": "", "pos": "WR", "adp": 101.5, "rank": 102}, {"name": "Tre Harris", "team": "LAC", "pos": "WR", "adp": 101.5, "rank": 103}, {"name": "Jakobi Meyers", "team": "JAC", "pos": "WR", "adp": 102.0, "rank": 104}, {"name": "Michael Pittman Jr.", "team": "PIT", "pos": "WR", "adp": 102.5, "rank": 105}, {"name": "Zach Charbonnet", "team": "SEA", "pos": "RB", "adp": 105.0, "rank": 106}, {"name": "David Njoku", "team": "", "pos": "TE", "adp": 105.5, "rank": 107}, {"name": "Kyle Pitts Sr.", "team": "ATL", "pos": "TE", "adp": 106.0, "rank": 108}, {"name": "Deebo Samuel Sr.", "team": "", "pos": "WR", "adp": 107.0, "rank": 109}, {"name": "Bhayshul Tuten", "team": "JAC", "pos": "RB", "adp": 108.0, "rank": 110}, {"name": "Keon Coleman", "team": "BUF", "pos": "WR", "adp": 108.5, "rank": 111}, {"name": "Travis Kelce", "team": "KC", "pos": "TE", "adp": 110.0, "rank": 112}, {"name": "Trey Benson", "team": "ARI", "pos": "RB", "adp": 111.0, "rank": 113}, {"name": "Baker Mayfield", "team": "TB", "pos": "QB", "adp": 111.5, "rank": 114}, {"name": "Stefon Diggs", "team": "", "pos": "WR", "adp": 113.0, "rank": 115}, {"name": "Jaydon Blue", "team": "DAL", "pos": "RB", "adp": 113.0, "rank": 116}, {"name": "Cooper Kupp", "team": "SEA", "pos": "WR", "adp": 113.5, "rank": 117}, {"name": "Jaylen Warren", "team": "PIT", "pos": "RB", "adp": 115.0, "rank": 118}, {"name": "Kyle Williams", "team": "NE", "pos": "WR", "adp": 117.0, "rank": 119}, {"name": "Isaiah Likely", "team": "NYG", "pos": "TE", "adp": 120.0, "rank": 120}, {"name": "Evan Engram", "team": "DEN", "pos": "TE", "adp": 120.5, "rank": 121}, {"name": "Jordan Love", "team": "GB", "pos": "QB", "adp": 121.5, "rank": 122}, {"name": "Najee Harris", "team": "LAC", "pos": "RB", "adp": 121.5, "rank": 123}, {"name": "Tyjae Spears", "team": "TEN", "pos": "RB", "adp": 124.5, "rank": 124}, {"name": "Jordan Mason", "team": "MIN", "pos": "RB", "adp": 124.5, "rank": 125}, {"name": "Brock Purdy", "team": "SF", "pos": "QB", "adp": 124.5, "rank": 126}, {"name": "Jack Bech", "team": "LV", "pos": "WR", "adp": 125.5, "rank": 127}, {"name": "Javonte Williams", "team": "DAL", "pos": "RB", "adp": 130.0, "rank": 128}, {"name": "J.J. McCarthy", "team": "MIN", "pos": "QB", "adp": 132.0, "rank": 129}, {"name": "Rhamondre Stevenson", "team": "NE", "pos": "RB", "adp": 132.0, "rank": 130}, {"name": "Rashid Shaheed", "team": "SEA", "pos": "WR", "adp": 132.5, "rank": 131}, {"name": "Cam Ward", "team": "TEN", "pos": "QB", "adp": 133.0, "rank": 132}, {"name": "Darnell Mooney", "team": "NYG", "pos": "WR", "adp": 133.5, "rank": 133}, {"name": "Tank Bigsby", "team": "PHI", "pos": "RB", "adp": 134.0, "rank": 134}, {"name": "Jake Ferguson", "team": "DAL", "pos": "TE", "adp": 134.5, "rank": 135}, {"name": "Mason Taylor", "team": "NYJ", "pos": "TE", "adp": 134.5, "rank": 136}, {"name": "J.K. Dobbins", "team": "DEN", "pos": "RB", "adp": 135.5, "rank": 137}, {"name": "Rashod Bateman", "team": "BAL", "pos": "WR", "adp": 136.0, "rank": 138}, {"name": "Rachaad White", "team": "WAS", "pos": "RB", "adp": 139.0, "rank": 139}, {"name": "Jared Goff", "team": "DET", "pos": "QB", "adp": 139.5, "rank": 140}, {"name": "Dak Prescott", "team": "DAL", "pos": "QB", "adp": 142.0, "rank": 141}, {"name": "Jaylin Noel", "team": "HOU", "pos": "WR", "adp": 143.5, "rank": 142}, {"name": "Dylan Sampson", "team": "CLE", "pos": "RB", "adp": 144.0, "rank": 143}, {"name": "Ray Davis", "team": "BUF", "pos": "RB", "adp": 144.5, "rank": 144}, {"name": "Isaac Guerendo", "team": "SF", "pos": "RB", "adp": 145.5, "rank": 145}, {"name": "Xavier Legette", "team": "CAR", "pos": "WR", "adp": 146.0, "rank": 146}, {"name": "Marvin Mims Jr.", "team": "DEN", "pos": "WR", "adp": 146.5, "rank": 147}, {"name": "Braelon Allen", "team": "NYJ", "pos": "RB", "adp": 146.5, "rank": 148}, {"name": "Michael Penix Jr.", "team": "ATL", "pos": "QB", "adp": 148.5, "rank": 149}, {"name": "Trevor Lawrence", "team": "JAC", "pos": "QB", "adp": 149.5, "rank": 150}, {"name": "Jalen McMillan", "team": "TB", "pos": "WR", "adp": 151.5, "rank": 151}, {"name": "Jonnu Smith", "team": "", "pos": "TE", "adp": 152.0, "rank": 152}, {"name": "Dallas Goedert", "team": "PHI", "pos": "TE", "adp": 158.0, "rank": 153}, {"name": "Cedric Tillman", "team": "CLE", "pos": "WR", "adp": 158.5, "rank": 154}, {"name": "Tyler Allgeier", "team": "ARI", "pos": "RB", "adp": 158.5, "rank": 155}, {"name": "Jaylen Wright", "team": "MIA", "pos": "RB", "adp": 159.0, "rank": 156}, {"name": "Justin Fields", "team": "KC", "pos": "QB", "adp": 159.5, "rank": 157}, {"name": "Wan'Dale Robinson", "team": "TEN", "pos": "WR", "adp": 160.0, "rank": 158}, {"name": "Devin Neal", "team": "N", "pos": "RB", "adp": 162.5, "rank": 159}, {"name": "Terrance Ferguson", "team": "LAR", "pos": "TE", "adp": 162.5, "rank": 160}, {"name": "Pat Bryant", "team": "DEN", "pos": "WR", "adp": 163.0, "rank": 161}, {"name": "Quentin Johnston", "team": "LAC", "pos": "WR", "adp": 164.0, "rank": 162}, {"name": "Jalen Royals", "team": "KC", "pos": "WR", "adp": 165.0, "rank": 163}, {"name": "Elijah Arroyo", "team": "SEA", "pos": "TE", "adp": 166.5, "rank": 164}, {"name": "Bryce Young", "team": "CAR", "pos": "QB", "adp": 168.0, "rank": 165}, {"name": "Christian Kirk", "team": "SF", "pos": "WR", "adp": 169.5, "rank": 166}, {"name": "Blake Corum", "team": "LAR", "pos": "RB", "adp": 170.5, "rank": 167}, {"name": "Jaxson Dart", "team": "NYG", "pos": "QB", "adp": 173.0, "rank": 168}, {"name": "Hollywood Brown", "team": "PHI", "pos": "WR", "adp": 174.5, "rank": 169}, {"name": "Romeo Doubs", "team": "NE", "pos": "WR", "adp": 175.0, "rank": 170}, {"name": "Rico Dowdle", "team": "PIT", "pos": "RB", "adp": 175.0, "rank": 171}, {"name": "Austin Ekeler", "team": "", "pos": "RB", "adp": 175.5, "rank": 172}, {"name": "Cade Otton", "team": "TB", "pos": "TE", "adp": 177.0, "rank": 173}, {"name": "DeMario Douglas", "team": "NE", "pos": "WR", "adp": 178.0, "rank": 174}, {"name": "Harold Fannin Jr.", "team": "CLE", "pos": "TE", "adp": 178.5, "rank": 175}, {"name": "Elic Ayomanor", "team": "TEN", "pos": "WR", "adp": 180.0, "rank": 176}, {"name": "Brenton Strange", "team": "JAC", "pos": "TE", "adp": 180.0, "rank": 177}, {"name": "DJ Giddens", "team": "IND", "pos": "RB", "adp": 180.5, "rank": 178}, {"name": "Pat Freiermuth", "team": "PIT", "pos": "TE", "adp": 182.0, "rank": 179}, {"name": "Jarquez Hunter", "team": "LAR", "pos": "RB", "adp": 183.5, "rank": 180}, {"name": "Trevor Etienne", "team": "CAR", "pos": "RB", "adp": 187.0, "rank": 181}, {"name": "Nick Chubb", "team": "", "pos": "RB", "adp": 188.0, "rank": 182}, {"name": "Tank Dell", "team": "HOU", "pos": "WR", "adp": 189.0, "rank": 183}, {"name": "Jerome Ford", "team": "WAS", "pos": "RB", "adp": 190.5, "rank": 184}, {"name": "Alec Pierce", "team": "IND", "pos": "WR", "adp": 191.0, "rank": 185}, {"name": "Ollie Gordon II", "team": "MIA", "pos": "RB", "adp": 191.5, "rank": 186}, {"name": "Roschon Johnson", "team": "CHI", "pos": "RB", "adp": 193.0, "rank": 187}, {"name": "Isaac TeSlaa", "team": "DET", "pos": "WR", "adp": 196.0, "rank": 188}, {"name": "Jalen Coker", "team": "CAR", "pos": "WR", "adp": 196.5, "rank": 189}, {"name": "Dont'e Thornton Jr.", "team": "LV", "pos": "WR", "adp": 197.0, "rank": 190}, {"name": "Jordan James", "team": "SF", "pos": "RB", "adp": 198.5, "rank": 191}, {"name": "Woody Marks", "team": "HOU", "pos": "RB", "adp": 198.5, "rank": 192}, {"name": "Joshua Palmer", "team": "BUF", "pos": "WR", "adp": 198.5, "rank": 193}, {"name": "Adonai Mitchell", "team": "NYJ", "pos": "WR", "adp": 200.0, "rank": 194}, {"name": "Brashard Smith", "team": "KC", "pos": "RB", "adp": 203.0, "rank": 195}, {"name": "Hunter Henry", "team": "NE", "pos": "TE", "adp": 203.5, "rank": 196}, {"name": "Keenan Allen", "team": "LAC", "pos": "WR", "adp": 204.0, "rank": 244}, {"name": "MarShawn Lloyd", "team": "GB", "pos": "RB", "adp": 206.0, "rank": 197}, {"name": "Tua Tagovailoa", "team": "ATL", "pos": "QB", "adp": 206.0, "rank": 198}, {"name": "Chig Okonkwo", "team": "WAS", "pos": "TE", "adp": 209.5, "rank": 199}, {"name": "Will Shipley", "team": "PHI", "pos": "RB", "adp": 210.0, "rank": 200}, {"name": "Tre Tucker", "team": "LV", "pos": "WR", "adp": 210.0, "rank": 248}, {"name": "Jalen Milroe", "team": "SEA", "pos": "QB", "adp": 210.5, "rank": 201}, {"name": "Zach Ertz", "team": "", "pos": "TE", "adp": 210.5, "rank": 202}, {"name": "Jacory Croskey-Merritt", "team": "WAS", "pos": "RB", "adp": 212.0, "rank": 203}, {"name": "Jermaine Burton", "team": "", "pos": "WR", "adp": 212.0, "rank": 251}, {"name": "Jonathon Brooks", "team": "CAR", "pos": "RB", "adp": 213.5, "rank": 204}, {"name": "Kyle Monangai", "team": "CHI", "pos": "RB", "adp": 214.0, "rank": 205}, {"name": "Tahj Brooks", "team": "CIN", "pos": "RB", "adp": 214.5, "rank": 206}, {"name": "Devaughn Vele", "team": "N", "pos": "WR", "adp": 215.0, "rank": 252}, {"name": "Anthony Richardson Sr.", "team": "IND", "pos": "QB", "adp": 218.0, "rank": 207}, {"name": "Adam Thielen", "team": "", "pos": "WR", "adp": 219.5, "rank": 208}, {"name": "Elijah Moore", "team": "PHI", "pos": "WR", "adp": 221.0, "rank": 253}, {"name": "Michael Wilson", "team": "ARI", "pos": "WR", "adp": 222.0, "rank": 209}, {"name": "Tory Horton", "team": "SEA", "pos": "WR", "adp": 222.0, "rank": 210}, {"name": "Oronde Gadsden II", "team": "LAC", "pos": "TE", "adp": 223.5, "rank": 211}, {"name": "Mike Gesicki", "team": "CIN", "pos": "TE", "adp": 225.0, "rank": 212}, {"name": "Kendre Miller", "team": "N", "pos": "RB", "adp": 225.5, "rank": 213}, {"name": "Justice Hill", "team": "BAL", "pos": "RB", "adp": 226.5, "rank": 214}, {"name": "Roman Wilson", "team": "PIT", "pos": "WR", "adp": 226.5, "rank": 215}, {"name": "Kayshon Boutte", "team": "NE", "pos": "WR", "adp": 227.0, "rank": 261}, {"name": "Isaiah Bond", "team": "CLE", "pos": "WR", "adp": 228.0, "rank": 262}, {"name": "Ja'Tavion Sanders", "team": "CAR", "pos": "TE", "adp": 230.5, "rank": 217}, {"name": "Christian Watson", "team": "GB", "pos": "WR", "adp": 231.5, "rank": 216}, {"name": "Matthew Stafford", "team": "LAR", "pos": "QB", "adp": 232.0, "rank": 218}, {"name": "Troy Franklin", "team": "DEN", "pos": "WR", "adp": 232.5, "rank": 219}, {"name": "Malik Washington", "team": "MIA", "pos": "WR", "adp": 233.0, "rank": 266}, {"name": "Shedeur Sanders", "team": "CLE", "pos": "QB", "adp": 233.5, "rank": 222}, {"name": "DeAndre Hopkins", "team": "BAL", "pos": "WR", "adp": 234.5, "rank": 225}, {"name": "Andrei Iosivas", "team": "CIN", "pos": "WR", "adp": 237.0, "rank": 230}, {"name": "Keaton Mitchell", "team": "LAC", "pos": "RB", "adp": 237.0, "rank": 231}, {"name": "Diontae Johnson", "team": "", "pos": "WR", "adp": 237.0, "rank": 270}, {"name": "Jimmy Horn Jr.", "team": "CAR", "pos": "WR", "adp": 237.0, "rank": 271}, {"name": "Ben Sinnott", "team": "WAS", "pos": "TE", "adp": 237.5, "rank": 233}, {"name": "Tyler Conklin", "team": "DET", "pos": "TE", "adp": 238.0, "rank": 273}, {"name": "Cole Kmet", "team": "CHI", "pos": "TE", "adp": 239.0, "rank": 237}, {"name": "Kareem Hunt", "team": "", "pos": "RB", "adp": 240.0, "rank": 241}, {"name": "Dontayvion Wicks", "team": "PHI", "pos": "WR", "adp": 243.5, "rank": 238}, {"name": "Xavier Restrepo", "team": "TEN", "pos": "WR", "adp": 243.5, "rank": 245}, {"name": "Sean Tucker", "team": "TB", "pos": "RB", "adp": 244.0, "rank": 246}, {"name": "Theo Johnson", "team": "NYG", "pos": "TE", "adp": 244.0, "rank": 247}, {"name": "Darren Waller", "team": "", "pos": "TE", "adp": 245.0, "rank": 249}, {"name": "Tyler Lockett", "team": "LV", "pos": "WR", "adp": 245.5, "rank": 250}, {"name": "Zamir White", "team": "LV", "pos": "RB", "adp": 246.0, "rank": 280}, {"name": "Jaleel McLaughlin", "team": "DEN", "pos": "RB", "adp": 249.0, "rank": 282}, {"name": "Brandin Cooks", "team": "", "pos": "WR", "adp": 252.0, "rank": 284}, {"name": "Geno Smith", "team": "NYJ", "pos": "QB", "adp": 253.0, "rank": 259}, {"name": "Parker Washington", "team": "JAC", "pos": "WR", "adp": 253.0, "rank": 285}, {"name": "Dyami Brown", "team": "WAS", "pos": "WR", "adp": 254.5, "rank": 264}, {"name": "Khalil Herbert", "team": "", "pos": "RB", "adp": 255.0, "rank": 286}, {"name": "Ray-Ray McCloud", "team": "III", "pos": "WR", "adp": 256.0, "rank": 287}, {"name": "Efton Chism III", "team": "NE", "pos": "WR", "adp": 256.0, "rank": 288}, {"name": "Calvin Austin III", "team": "NYG", "pos": "WR", "adp": 256.5, "rank": 267}, {"name": "Miles Sanders", "team": "", "pos": "RB", "adp": 257.5, "rank": 268}, {"name": "Sam Darnold", "team": "SEA", "pos": "QB", "adp": 258.0, "rank": 269}, {"name": "Zack Moss", "team": "", "pos": "RB", "adp": 258.0, "rank": 291}, {"name": "Darius Slayton", "team": "NYG", "pos": "WR", "adp": 258.5, "rank": 272}, {"name": "Jordan Watkins", "team": "SF", "pos": "WR", "adp": 259.0, "rank": 293}, {"name": "Amari Cooper", "team": "", "pos": "WR", "adp": 259.5, "rank": 274}, {"name": "KeAndre Lambert-Smith", "team": "LAC", "pos": "WR", "adp": 260.0, "rank": 294}, {"name": "Tai Felton", "team": "MIN", "pos": "WR", "adp": 261.5, "rank": 275}, {"name": "Jaylin Lane", "team": "WAS", "pos": "WR", "adp": 261.5, "rank": 276}, {"name": "LeQuint Allen Jr.", "team": "JAC", "pos": "RB", "adp": 262.0, "rank": 298}, {"name": "Juwan Johnson", "team": "NO", "pos": "TE", "adp": 264.0, "rank": 302}, {"name": "Luke Schoonmaker", "team": "DAL", "pos": "TE", "adp": 265.0, "rank": 304}, {"name": "Jalen Tolbert", "team": "MIA", "pos": "WR", "adp": 266.0, "rank": 305}, {"name": "Damien Martinez", "team": "GB", "pos": "RB", "adp": 266.5, "rank": 279}, {"name": "Chimere Dike", "team": "TEN", "pos": "WR", "adp": 267.0, "rank": 278}, {"name": "Savion Williams", "team": "GB", "pos": "WR", "adp": 268.0, "rank": 277}, {"name": "Isaiah Davis", "team": "NYJ", "pos": "RB", "adp": 268.0, "rank": 307}, {"name": "Tez Johnson", "team": "TB", "pos": "WR", "adp": 270.0, "rank": 309}, {"name": "Jordan Whittington", "team": "LAR", "pos": "WR", "adp": 270.5, "rank": 281}, {"name": "Noah Gray", "team": "KC", "pos": "TE", "adp": 271.0, "rank": 283}, {"name": "Luke McCaffrey", "team": "WAS", "pos": "WR", "adp": 271.0, "rank": 290}, {"name": "Gunnar Helm", "team": "TEN", "pos": "TE", "adp": 271.5, "rank": 300}, {"name": "Erick All Jr.", "team": "CIN", "pos": "TE", "adp": 272.0, "rank": 311}, {"name": "Aaron Rodgers", "team": "", "pos": "QB", "adp": 275.0, "rank": 310}, {"name": "Taysom Hill", "team": "", "pos": "TE", "adp": 275.0, "rank": 312}, {"name": "Raheem Mostert", "team": "LV", "pos": "RB", "adp": 276.0, "rank": 313}, {"name": "Audric Estime", "team": "NO", "pos": "RB", "adp": 276.5, "rank": 296}, {"name": "Tyler Higbee", "team": "LAR", "pos": "TE", "adp": 277.0, "rank": 315}, {"name": "Tyler Shough", "team": "NO", "pos": "QB", "adp": 278.0, "rank": 308}, {"name": "AJ Barner", "team": "SEA", "pos": "TE", "adp": 279.0, "rank": 316}, {"name": "Phil Mafah", "team": "DAL", "pos": "RB", "adp": 280.0, "rank": 314}, {"name": "Tutu Atwell", "team": "MIA", "pos": "WR", "adp": 281.0, "rank": 317}, {"name": "Will Howard", "team": "PIT", "pos": "QB", "adp": 282.0, "rank": 318}, {"name": "Dalton Schultz", "team": "HOU", "pos": "TE", "adp": 283.0, "rank": 319}, {"name": "Tom Brady", "team": "", "pos": "QB", "adp": 297.0, "rank": 322}]; // Dynasty ADP (288 players)
@@ -1194,7 +1372,7 @@ async function launch(skip=false) {
     } else {
       // Nothing chosen — silently use default rankings
       PLAYERS = DEFAULT_RANKINGS.map(p=>({...p}));
-      RLABELS = ['SF Dynasty'];
+      RLABELS = ['FantasyPros'];
       localStorage.setItem(SK+'-players', JSON.stringify(PLAYERS));
       localStorage.setItem(SK+'-labels', JSON.stringify(RLABELS));
     }
@@ -1210,7 +1388,7 @@ async function launch(skip=false) {
   fetchSleeperPlayers();
 
   if (sleeperDraftId) {
-    document.getElementById('plist').innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</div>';
+    document.getElementById('plist-body').innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</td></tr>';
     await syncSleeper();
     if (Object.keys(draftState).length === 0) initState();
     syncTimer = setInterval(syncSleeper, 15000);
@@ -1228,11 +1406,11 @@ function loadSaved() {
   const sl = localStorage.getItem(SK+'-labels');
   if (sp) {
     PLAYERS = JSON.parse(sp);
-    RLABELS = sl ? JSON.parse(sl) : ['Expert','Avery','Mason'];
+    RLABELS = sl ? JSON.parse(sl) : ['FantasyPros'];
   } else {
     // Fresh start — use default rankings
     PLAYERS = DEFAULT_RANKINGS.map(p => ({...p}));
-    RLABELS = ['SF Dynasty'];
+    RLABELS = ['FantasyPros'];
   }
 }
 
@@ -1241,13 +1419,13 @@ function updateSortBtns() {
     const b=document.getElementById(`sb${i}`);
     const lh=document.getElementById(`lh${i}`);
     const lbl=RLABELS[i];
-    if(lbl&&b){b.textContent=lbl;b.style.display='';if(lh){lh.textContent=lbl.slice(0,5).toUpperCase();lh.style.display='';}}
+    if(lbl&&b){b.textContent=lbl;b.style.display='';if(lh){lh.textContent=lbl.slice(0,8).toUpperCase();lh.style.display='';}}
     else{if(b)b.style.display='none';if(lh&&lh.style)lh.style.display='none';}
   }
-  // SF Dynasty button — show only when custom rankings loaded
+  // FantasyPros button — show only when custom rankings loaded
   const sb3=document.getElementById('sb3');
   if(sb3){
-    const alreadyDefault = RLABELS.length===1 && RLABELS[0]==='SF Dynasty';
+    const alreadyDefault = RLABELS.length===1 && RLABELS[0]==='FantasyPros';
     sb3.style.display = alreadyDefault ? 'none' : '';
   }
   // Both ADP buttons always visible
@@ -1638,7 +1816,7 @@ function buildADPRankings() {
     const sp = sleeperPlayerMap[norm];
     return { ...p, r0: sp?.adp_dynasty || sp?.adp || p.r0 };
   }).sort((a,b) => a.r0 - b.r0);
-  RLABELS = ['Sleeper ADP', 'Avery', 'Mason'];
+  RLABELS = ['FantasyPros'];
   updateSortBtns();
   renderList();
 }
@@ -1838,9 +2016,10 @@ function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));
   document.getElementById(`page-${p}`).classList.add('on');
-  document.getElementById(`nb-${p}`).classList.add('on');
+  document.getElementById(`nb-${p}`)?.classList.add('on');
   if(p==='teams') renderTeams();
   if(p==='visual') renderBoard();
+  if(p==='trade'){ initTrade(); }
 }
 
 // ════════════════════════════════════
@@ -1864,8 +2043,8 @@ function sortedPlayers(){
 
 function renderList(){
   const search=document.getElementById('search')?.value.toLowerCase()||'';
-  const list=document.getElementById('plist');
-  if(!list) return;
+  const tbody=document.getElementById('plist-body');
+  if(!tbody) return;
   let avail=0,tot=0;
 
   // Pick number for value calc
@@ -1876,7 +2055,7 @@ function renderList(){
   if(nextSlot){const[r,pos]=nextSlot.split('.').map(Number);overallPick=(r-1)*NUM_TEAMS+pos;}
 
   // Use pre-built normalized caches (rebuilt on every save())
-  list.innerHTML=sortedPlayers().map(p=>{
+  tbody.innerHTML=sortedPlayers().map(p=>{
     const nn=normName(p.name);
     const ds=draftState[p.name]||_normDraftCache[nn];
     const mo=manualOverrides[p.name]||_normOverrideCache[nn];
@@ -1886,7 +2065,7 @@ function renderList(){
     if(isDrafted) tot++;else avail++;
     const posMatch=posF==='ALL'||p.pos===posF;
     const sm=!search||p.name.toLowerCase().includes(search)||p.team.toLowerCase().includes(search);
-    if(!posMatch||!sm||(hideGone&&isDrafted)) return '<div class="prow hidden"></div>';
+    if(!posMatch||!sm||(hideGone&&isDrafted)) return '';
 
     // ── Value + Need analysis ──
     const isAdpSort=sortKey==='adp-dynasty'||sortKey==='adp-redraft';
@@ -1917,25 +2096,7 @@ function renderList(){
     } else if(isDrafted) ownerHtml=`<span class="otag" style="color:var(--muted)">drafted</span>`;
 
     const sn=p.name.replace(/'/g,"\'");
-    let acts='';
-    if(isDrafted){
-      if(mo==='gone'){
-        acts=`<button class="ab undo" onclick="event.stopPropagation();undo('${sn}')">↩ Restore</button>`;
-      } else {
-        acts=`<select class="asel" onchange="assignTo('${sn}',this.value)" onclick="event.stopPropagation()">
-          <option value="-1">↩ Unmark</option>
-          ${TEAMS.map((n,i)=>`<option value="${i}" ${ti===i?'selected':''}>${i===myTeam?'✦Mine':n.slice(0,9)}</option>`).join('')}
-        </select>
-        <button class="ab undo" onclick="event.stopPropagation();undo('${sn}')">undo</button>`;
-      }
-    } else {
-      acts=`${myTeam!==null?`<button class="ab take" onclick="event.stopPropagation();markMine('${sn}')">✦ MINE</button>`:''}
-      <button class="ab gon" onclick="event.stopPropagation();markGone('${sn}')">gone</button>
-      <select class="asel" onchange="assignTo('${sn}',this.value)" onclick="event.stopPropagation()">
-        <option value="-1">→ Team</option>
-        ${TEAMS.map((n,i)=>`<option value="${i}">${i===myTeam?'✦Mine':n.slice(0,9)}</option>`).join('')}
-      </select>`;
-    }
+    const acts=''; // Actions removed — Sleeper auto-syncs picks
 
     const hsUrl = getPlayerHeadshotUrl(p.name);
     const hs = hsUrl
@@ -1945,29 +2106,51 @@ function renderList(){
     const adpVal = getADP(p.name);
     const rank = isAdpSort?(adpVal!=null?adpVal.toFixed(1):'—'):sortKey===1?(p.r1!=null?p.r1.toFixed(1):'—'):sortKey===2?(p.r2??'—'):(p.r0||'—');
 
-    return `<div class="prow ${isDrafted?'gone':''} ${isMe?'ismine':''} ${isHot?'is-value':''}">
-      <span class="rnum">${rank}</span>
-      <div class="pcell">${hs}<span class="ppill ${p.pos}">${p.pos}</span><div class="pinfo"><div class="pname">${p.name}</div><div class="pteam">${p.team}</div></div></div>
-      <div class="vcell">${vbadgeHtml}</div>
-      <div class="ocell">${ownerHtml}</div>
-      <div class="abts">${acts}</div>
-      <div class="prow-top">
-        <div style="min-width:36px;text-align:right"><span class="rnum">${rank}</span></div>
-        ${hs}
-        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
-          <span class="ppill ${p.pos}" style="flex-shrink:0">${p.pos}</span>
-          <div style="min-width:0;flex:1">
-            <div class="pname" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-            <div class="pteam">${p.team}${ownerHtml?' · '+ownerHtml:''}</div>
-          </div>
-          ${vbadgeHtml?`<div style="flex-shrink:0">${vbadgeHtml}</div>`:''}
-        </div>
-      </div>
-      <div class="prow-actions">${acts}</div>
-    </div>`;
+    // Owner as inline colored dot in meta row
+    let ownerDot = '';
+    if(mo==='gone') ownerDot=`<span class="owner-dot" style="color:var(--qb)">manual</span>`;
+    else if(isDrafted&&ti>=0&&ti<TEAMS.length){
+      const c=COLORS[ti%COLORS.length];
+      ownerDot=`<span class="owner-dot" style="color:${c}">${ti===myTeam?'MINE':TEAMS[ti].slice(0,10)}</span>`;
+    } else if(isDrafted) ownerDot=`<span class="owner-dot" style="color:var(--muted)">drafted</span>`;
+
+    // Meta line: team · pos · value badge · owner dot
+    const metaLine = [
+      `<span class="pteam">${p.pos} · ${p.team}</span>`,
+      vbadgeHtml,
+      ownerDot,
+    ].filter(Boolean).join('');
+
+    // Status: value badge + owner — always visible
+    let statusHtml = '';
+    if(isDrafted){
+      if(mo==='gone') statusHtml=`<span style="font-size:9px;color:var(--qb);font-family:Space Mono,monospace;font-weight:700">✕ gone</span>`;
+      else if(ti>=0&&ti<TEAMS.length){
+        const c=COLORS[ti%COLORS.length];
+        statusHtml=`<span style="font-size:9px;color:${c};font-family:Space Mono,monospace;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ti===myTeam?'✦ MINE':TEAMS[ti].slice(0,8)}</span>`;
+      }
+    } else {
+      statusHtml = vbadgeHtml;
+    }
+
+    // Desktop: table row
+    const desktopRow = `<tr class="prow ${isDrafted?'gone':''} ${isMe?'ismine':''} ${isHot?'is-value':''}">
+      <td class="rnum" style="text-align:right;padding-right:8px">${rank}</td>
+      <td style="padding:0 3px">${hs}</td>
+      <td><span class="pname">${p.name}</span></td>
+      <td style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
+      <td><span class="ppill ${p.pos}">${p.pos}</span></td>
+      <td><div class="prow-status-cell">
+        <div class="prow-status-default">${statusHtml}</div>
+        <div class="prow-actions">${acts}</div>
+      </div></td>
+      <td></td>
+    </tr>`;
+
+    return desktopRow;
   }).join('');
 
-  document.getElementById('hav').textContent=avail;
+  document.getElementById('hav')&&(document.getElementById('hav').textContent=avail);
   document.getElementById('hgn').textContent=tot;
   document.getElementById('hmi').textContent=getMyRoster().length;
 
@@ -2683,6 +2866,203 @@ function renderAll(){
   const pg=document.querySelector('.page.on')?.id;
   if(pg==='page-teams'){ const loaded = valueSource==='fc'?fcLoaded:raLoaded; if(!loaded) { if(valueSource==='fc') fetchFantasyCalc(); else fetchRosterAudit(); } else renderTeams(); }
   if(pg==='page-visual') renderBoard();
+}
+
+// ════════════════════════════════════
+//  TRADE CALCULATOR
+// ════════════════════════════════════
+const tradeAssets = { a: [], b: [] };
+
+// Draft pick values (approximate SF dynasty values from RosterAudit scale)
+const PICK_VALUES = {
+  '2025 1st Early': 4200, '2025 1st Mid': 3600, '2025 1st Late': 3000,
+  '2026 1st Early': 3800, '2026 1st Mid': 3200, '2026 1st Late': 2700,
+  '2027 1st Early': 3200, '2027 1st Mid': 2800, '2027 1st Late': 2400,
+  '2025 2nd': 1800, '2026 2nd': 1600, '2027 2nd': 1400,
+  '2025 3rd': 900,  '2026 3rd': 800,  '2027 3rd': 700,
+};
+
+function getTradePlayerValue(name) {
+  // Use RosterAudit if loaded, otherwise FantasyCalc
+  if (raLoaded) return getPlayerValue(name);
+  if (fcLoaded) return getPlayerValue(name);
+  // Fallback: use rankings position as proxy
+  const p = PLAYERS.find(x => x.name === name);
+  return p ? Math.max(0, Math.round((500 - (p.r0 || 500)) * 8)) : 0;
+}
+
+function searchTrade(side) {
+  const input = document.getElementById(`trade-search-${side}`);
+  const results = document.getElementById(`trade-results-${side}`);
+  const q = input.value.toLowerCase().trim();
+  if (!q) { results.classList.remove('show'); return; }
+
+  // Search players + picks
+  const playerMatches = PLAYERS
+    .filter(p => p.name.toLowerCase().includes(q))
+    .slice(0, 8)
+    .map(p => {
+      const val = getTradePlayerValue(p.name);
+      const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[p.pos];
+      return `<div class="trade-result-item" onclick="addTradeAsset('${side}','${p.name.replace(/'/g,"\\'")}','player',${val})">
+        <span class="tri-pos ppill ${p.pos}">${p.pos}</span>
+        <span class="tri-name">${p.name}</span>
+        <span style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</span>
+        <span class="tri-val">${val.toLocaleString()}</span>
+      </div>`;
+    });
+
+  const pickMatches = Object.entries(PICK_VALUES)
+    .filter(([name]) => name.toLowerCase().includes(q))
+    .slice(0, 4)
+    .map(([name, val]) => `<div class="trade-result-item" onclick="addTradeAsset('${side}','${name}','pick',${val})">
+        <span class="tri-pos" style="font-size:8px;padding:1px 5px;border-radius:3px;background:#ffd16620;color:var(--te);font-family:'Space Mono',monospace">PICK</span>
+        <span class="tri-name">${name}</span>
+        <span class="tri-val">${val.toLocaleString()}</span>
+      </div>`);
+
+  const all = [...playerMatches, ...pickMatches];
+  if (!all.length) {
+    results.innerHTML = '<div style="padding:10px 12px;color:var(--muted);font-size:12px;font-family:Space Mono,monospace">No results</div>';
+  } else {
+    results.innerHTML = all.join('');
+  }
+  results.classList.add('show');
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', function close(e) {
+      if (!results.contains(e.target) && e.target !== input) {
+        results.classList.remove('show');
+        document.removeEventListener('click', close);
+      }
+    });
+  }, 0);
+}
+
+function addTradeAsset(side, name, type, val) {
+  // Prevent duplicates
+  if (tradeAssets[side].find(a => a.name === name)) return;
+  tradeAssets[side].push({ name, type, val });
+  document.getElementById(`trade-search-${side}`).value = '';
+  document.getElementById(`trade-results-${side}`).classList.remove('show');
+  renderTradeAssets();
+  evaluateTrade();
+}
+
+function removeTradeAsset(side, name) {
+  tradeAssets[side] = tradeAssets[side].filter(a => a.name !== name);
+  renderTradeAssets();
+  evaluateTrade();
+}
+
+function renderTradeAssets() {
+  ['a','b'].forEach(side => {
+    const el = document.getElementById(`trade-assets-${side}`);
+    const total = tradeAssets[side].reduce((s,a) => s+a.val, 0);
+    document.getElementById(`trade-val-${side}`).textContent = total.toLocaleString();
+
+    if (!tradeAssets[side].length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:11px;font-family:Space Mono,monospace;padding:6px 2px">Search above to add players or picks</div>';
+      return;
+    }
+
+    el.innerHTML = tradeAssets[side].map(a => {
+      const posColor = a.type==='pick' ? 'var(--te)' :
+        {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[PLAYERS.find(p=>p.name===a.name)?.pos] || 'var(--accent2)';
+      return `<div class="trade-asset">
+        <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${posColor}18;color:${posColor};font-family:'Space Mono',monospace">${a.type==='pick'?'PICK':(PLAYERS.find(p=>p.name===a.name)?.pos||'?')}</span>
+        <span class="ta-name">${a.name}</span>
+        <span class="ta-val">${a.val.toLocaleString()}</span>
+        <button class="ta-remove" onclick="removeTradeAsset('${side}','${a.name.replace(/'/g,"\\'")}')">✕</button>
+      </div>`;
+    }).join('');
+  });
+}
+
+function evaluateTrade() {
+  const verdict = document.getElementById('trade-verdict');
+  if (!tradeAssets.a.length && !tradeAssets.b.length) { verdict.style.display='none'; return; }
+
+  const valA = tradeAssets.a.reduce((s,a)=>s+a.val,0);
+  const valB = tradeAssets.b.reduce((s,a)=>s+a.val,0);
+  const diff = valB - valA; // positive = you win
+  const total = Math.max(valA+valB, 1);
+  const pctA = Math.round(valA/total*100);
+  const pctB = 100-pctA;
+
+  let verdictClass, verdictText, emoji;
+  const absDiff = Math.abs(diff);
+  const pctDiff = Math.round(absDiff/Math.max(valA,valB,1)*100);
+
+  if (pctDiff <= 8) {
+    verdictClass='verdict-fair'; verdictText='Fair Trade'; emoji='🤝';
+  } else if (diff > 0) {
+    verdictClass='verdict-win';
+    if (pctDiff > 30) { verdictText='You Win Big'; emoji='🔥'; }
+    else if (pctDiff > 15) { verdictText='You Win'; emoji='✦'; }
+    else { verdictText='Slight Edge to You'; emoji='▲'; }
+  } else {
+    verdictClass='verdict-lose';
+    if (pctDiff > 30) { verdictText='You Lose Big'; emoji='⚠'; }
+    else if (pctDiff > 15) { verdictText='You Lose'; emoji='▼'; }
+    else { verdictText='Slight Edge to Them'; emoji='▼'; }
+  }
+
+  verdict.style.display='block';
+  document.getElementById('trade-verdict-inner').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <div style="font-size:20px;font-weight:800;font-family:'Space Mono',monospace" class="${verdictClass}">${emoji} ${verdictText}</div>
+        <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:3px">
+          ${diff!==0?`Difference: <strong>${absDiff.toLocaleString()}</strong> (${pctDiff}%)`:``}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${raLoaded?'RosterAudit':fcLoaded?'FantasyCalc':'Rankings estimate'}</div>
+      </div>
+    </div>
+    <div class="trade-verdict-bar">
+      <div class="tvb-fill" style="width:${pctA}%;background:var(--accent2)"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'Space Mono',monospace">
+      <span style="color:var(--accent2)">YOU GIVE · ${valA.toLocaleString()}</span>
+      <span style="color:var(--rb)">YOU RECEIVE · ${valB.toLocaleString()}</span>
+    </div>`;
+}
+
+function clearTrade() {
+  tradeAssets.a = [];
+  tradeAssets.b = [];
+  renderTradeAssets();
+  document.getElementById('trade-verdict').style.display='none';
+  document.getElementById('trade-val-a').textContent='0';
+  document.getElementById('trade-val-b').textContent='0';
+}
+
+function renderTradeRosterChips() {
+  const el = document.getElementById('trade-roster-chips');
+  if (!el) return;
+  const roster = getMyRoster();
+  if (!roster.length) { el.innerHTML='<span style="color:var(--muted);font-size:11px;font-family:Space Mono,monospace">Select your team to see roster</span>'; return; }
+  const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+  el.innerHTML = roster.map(p => {
+    const c = posColor[p.pos]||'var(--muted)';
+    const val = getTradePlayerValue(p.name);
+    return `<div onclick="addTradeAsset('a','${p.name.replace(/'/g,"\\'")}','player',${val})"
+      style="padding:5px 10px;border-radius:7px;border:1.5px solid ${c}33;background:${c}10;color:${c};font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .15s"
+      onmouseover="this.style.background='${c}22'" onmouseout="this.style.background='${c}10'">
+      <span style="font-size:9px;opacity:.8;font-family:'Space Mono',monospace">${p.pos}</span>
+      <span style="font-weight:600">${p.name.split(' ').pop()}</span>
+      <span style="font-size:9px;opacity:.7;font-family:'Space Mono',monospace">${val.toLocaleString()}</span>
+    </div>`;
+  }).join('');
+}
+
+// Init trade assets display on page load
+function initTrade() {
+  renderTradeAssets();
+  renderTradeRosterChips();
 }
 
 // ════════════════════════════════════
