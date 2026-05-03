@@ -88,7 +88,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{height:100%;-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;min-height:100vh;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;min-height:100vh;overflow-x:hidden;width:100%;max-width:100vw}
 
 /* Stars */
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -182,8 +182,8 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
 }
 
 /* ── PAGES ── */
-.page{display:none}
-.page.on{display:block}
+.page{display:none;width:100%;overflow-x:hidden}
+.page.on{display:block;width:100%;overflow-x:hidden}
 
 /* ── PICKS STRIP ── */
 .pstrip{padding:6px 12px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;position:sticky;top:0;z-index:98}
@@ -337,14 +337,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
 
 /* List header: RK | NAME+PHOTO | TEAM | POS | STATUS */
 /* Table-based layout so ALL rows share identical column widths */
-.plist-table{width:100%;border-collapse:collapse;table-layout:fixed}
-.plist-table colgroup col:nth-child(1){width:44px}  /* RK */
-.plist-table colgroup col:nth-child(2){width:32px}  /* PHOTO */
-.plist-table colgroup col:nth-child(3){width:185px} /* NAME — fits longest name */
-.plist-table colgroup col:nth-child(4){width:48px}  /* TEAM */
-.plist-table colgroup col:nth-child(5){width:36px}  /* POS */
-.plist-table colgroup col:nth-child(6){width:150px} /* STATUS/ACTIONS */
-.plist-table colgroup col:nth-child(7){width:auto}  /* SPACER */
+/* table cols defined below via col classes */
 
 .lhdr{display:none} /* replaced by thead */
 .plist-thead th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:5px 4px;text-align:left;border-bottom:1.5px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap}
@@ -352,7 +345,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
 @media(max-width:700px){.plist-thead{display:none}}
 
 /* ── PLAYER ROWS ── */
-.plist{padding:0 0 110px;display:block}
+.plist{padding:0 0 110px;display:block;width:100%;overflow-x:hidden}
 /* ── TABLE-based player list for perfect column alignment ── */
 .plist-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .plist-table col.col-rk   {width:48px}
@@ -372,13 +365,17 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
 }
 @media(max-width:700px){
   .plist-thead{display:none}
-  /* On mobile: hide TEAM, POS, FILL columns — show only RK, PHOTO, NAME, STATUS */
-  .plist-table col.col-team,.plist-table col.col-pos,.plist-table col.col-fill{width:0}
-  .prow td.td-team,.prow td.td-pos,.prow td.td-fill{display:none}
-  /* NAME gets all the space */
-  .plist-table col.col-name{width:auto}
-  /* STATUS stays fixed */
-  .plist-table col.col-act{width:120px}
+  /* On mobile: switch from table to block layout so it fits 390px viewport */
+  .plist-table, .plist-table tbody, .plist-table thead{display:block;width:100%}
+  .prow{display:flex;align-items:center;gap:8px;padding:0 12px;width:100%;box-sizing:border-box}
+  /* Show only: RK | PHOTO | NAME (flex) | STATUS */
+  .prow .td-team, .prow .td-pos, .prow .td-fill{display:none}
+  .prow td:nth-child(1){width:38px;flex-shrink:0;text-align:right;font-size:11px}
+  .prow td:nth-child(2){width:28px;flex-shrink:0;padding:0 2px}
+  .prow td:nth-child(3){flex:1;min-width:0;overflow:hidden}
+  .prow td:nth-child(6){width:100px;flex-shrink:0}
+  .prow td{display:block;padding:0 2px;vertical-align:middle;border:none}
+  .pname{font-size:13px}
 }
 
 /* Data rows */
