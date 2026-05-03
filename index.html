@@ -187,7 +187,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
 
 /* ── PICKS STRIP ── */
 .pstrip{padding:6px 12px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;position:sticky;top:0;z-index:98}
-.pstrip
+.pstrip-fix
 /* ── SEARCH BAR (prominent, full-width on mobile) ── */
 .search-bar-wrap{padding:8px 12px;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:99}
 .search-bar-inner{display:flex;align-items:center;gap:8px;background:var(--s2);border:1.5px solid var(--border2);border-radius:10px;padding:0 12px;transition:border-color .2s}
@@ -356,27 +356,54 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
 .plist-table col.col-act  {width:160px}
 .plist-table col.col-fill {width:auto}
 
-/* Header row */
+/* Header row — not sticky, scrolls with content */
 .plist-thead th{
   font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;
   padding:5px 4px;text-align:left;border-bottom:1.5px solid var(--border2);
   background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap;
-  position:sticky;top:68px;z-index:5;
 }
+/* ══ iOS-inspired mobile layout ══
+   On mobile we hide the table entirely and render
+   .prow-mobile divs instead (injected by renderList) */
 @media(max-width:700px){
-  .plist-thead{display:none}
-  /* On mobile: switch from table to block layout so it fits 390px viewport */
-  .plist-table, .plist-table tbody, .plist-table thead{display:block;width:100%}
-  .prow{display:flex;align-items:center;gap:8px;padding:0 12px;width:100%;box-sizing:border-box}
-  /* Show only: RK | PHOTO | NAME (flex) | STATUS */
-  .prow .td-team, .prow .td-pos, .prow .td-fill{display:none}
-  .prow td:nth-child(1){width:38px;flex-shrink:0;text-align:right;font-size:11px}
-  .prow td:nth-child(2){width:28px;flex-shrink:0;padding:0 2px}
-  .prow td:nth-child(3){flex:1;min-width:0;overflow:hidden}
-  .prow td:nth-child(6){width:100px;flex-shrink:0}
-  .prow td{display:block;padding:0 2px;vertical-align:middle;border:none}
-  .pname{font-size:13px}
+  /* Hide table structure */
+  .plist-table, .plist-thead{display:none!important}
+  /* Show mobile rows */
+  .prow-mobile{display:flex}
 }
+@media(min-width:701px){
+  .prow-mobile{display:none!important}
+}
+
+/* iOS-style player row — clean, single line */
+.prow-mobile{
+  align-items:center;
+  padding:0 16px;
+  height:52px;
+  border-bottom:1px solid var(--border);
+  gap:10px;
+  width:100%;
+  box-sizing:border-box;
+  background:transparent;
+  transition:background .1s;
+  -webkit-tap-highlight-color:transparent;
+}
+.prow-mobile:active{background:var(--s2)}
+.prow-mobile.gone{opacity:.15}
+.prow-mobile.ismine{background:#5b8dee08;border-left:2px solid var(--accent)}
+.prow-mobile.is-value{border-left:2px solid var(--rb)}
+
+/* Rank - right-aligned, muted */
+.pm-rank{width:36px;flex-shrink:0;text-align:right;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;color:var(--muted)}
+/* Photo */
+.pm-photo{width:26px;height:26px;flex-shrink:0}
+/* Main info - takes remaining space */
+.pm-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px}
+.pm-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.pm-meta{display:flex;align-items:center;gap:5px}
+.pm-team{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
+/* Status/badge on right */
+.pm-status{flex-shrink:0;display:flex;align-items:center}
 
 /* Data rows */
 .prow{height:44px;border-bottom:1px solid var(--border);transition:background .1s}
@@ -559,16 +586,18 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
 .switcher{flex-shrink:0;padding:6px 12px;border-radius:8px;border:1.5px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s;touch-action:manipulation;min-height:36px}
 .switcher:hover{border-color:var(--accent);color:var(--accent2)}
 
-.suggest-bar{background:var(--s1);border-bottom:1.5px solid var(--border2);padding:10px 14px}
-.suggest-title{font-size:11px;color:var(--accent3);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.suggest-chips{display:flex;gap:8px;flex-wrap:wrap}
+.suggest-bar{background:var(--s1);border-bottom:1.5px solid var(--border2);padding:6px 12px}
+.suggest-title{font-size:10px;color:var(--accent3);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.suggest-chips{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+@media(min-width:701px){.suggest-chips{display:flex;flex-wrap:wrap;gap:8px}}
 .sug-btn{padding:5px 10px;border-radius:7px;border:1.5px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;touch-action:manipulation;min-height:34px}
 .sug-btn:hover,.sug-btn:active{border-color:var(--accent2);color:var(--accent2)}
 .sug-btn.on{background:var(--s3);border-color:var(--accent);color:var(--accent3);font-weight:700}
-.schip{padding:8px 12px;border-radius:10px;border:1.5px solid var(--suggest);background:#a78bfa12;color:var(--suggest);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px;touch-action:manipulation;min-height:52px}
+.schip{padding:5px 9px;border-radius:8px;border:1.5px solid var(--suggest);background:#a78bfa12;color:var(--suggest);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px;touch-action:manipulation}
 .schip:active{background:#a78bfa22}
-.schip .spos{font-size:9px;font-family:'Space Mono',monospace;opacity:.8}
-.schip .sreason{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px}
+.schip .spos{font-size:8px;font-family:'Space Mono',monospace;opacity:.8;flex-shrink:0}
+.schip .sname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schip .sreason{font-size:8px;color:var(--muted);font-family:'Space Mono',monospace}
 
 /* ── DRAFT BOARD — desktop: table, mobile: vertical card list ── */
 .board-page{padding:12px 12px 40px}
@@ -909,6 +938,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
     </div>
   </div>
   <div class="plist" id="plist">
+    <!-- Desktop: table layout -->
     <table class="plist-table">
       <colgroup>
         <col class="col-rk"><col class="col-photo"><col class="col-name">
@@ -927,6 +957,8 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
       </thead>
       <tbody id="plist-body"></tbody>
     </table>
+    <!-- Mobile: div rows injected here by renderList -->
+    <div id="plist-mobile"></div>
   </div>
   <div class="rbar">
     <span class="rlbl">Roster</span>
@@ -956,6 +988,9 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div id="fc-status" style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace"></div>
+        <select id="teams-team-select" onchange="setViewTeam(this.value)"
+          style="background:var(--s2);border:1.5px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:5px 8px;border-radius:8px;outline:none;cursor:pointer;display:none">
+        </select>
         <div style="display:flex;gap:3px">
           <button class="sbtn on" id="val-fc" onclick="setValueSource('fc')">FantasyCalc</button>
           <button class="sbtn" id="val-ra" onclick="setValueSource('ra')">RosterAudit</button>
@@ -1091,12 +1126,11 @@ const SK = 'dcmd-v5';
 // ════════════════════════════════════
 function normName(s) {
   if (!s) return '';
+  // Keep Jr/Sr/II so Harrison and Harrison Jr. stay distinct
   return s.toLowerCase()
-    .replace(/[''`]/g,"'")    // normalize apostrophes
-    .replace(/\s+jr\.?$/,'')  // strip Jr
-    .replace(/\s+sr\.?$/,'')
-    .replace(/\s+ii+$/,'')
-    .replace(/\./g,'')
+    .replace(/['''\`]/g,'')   // remove apostrophes
+    .replace(/\./g,'')       // remove periods (Jr. → Jr)
+    .replace(/[^a-z0-9 ]/g,'')
     .replace(/\s+/g,' ')
     .trim();
 }
@@ -1526,19 +1560,27 @@ async function syncSleeper() {
       const teamIdx=rosterToIdx[pk.roster_id]??pk.draft_slot-1;
       const pickData={teamIdx,round:pk.round,pickNo:pk.pick_no,slot:pk.draft_slot};
 
-      // Try to find the canonical name from PLAYERS list via fuzzy match
-      const player=findPlayer(fullName);
-      if(player){
-        // Store under the exact name from our rankings list
-        newState[player.name]=pickData;
-      } else {
-        // No match found — store under the raw Sleeper name
-        // Also store under normName so renderList can find it
-        newState[fullName]=pickData;
+      // Try to find the canonical name from PLAYERS list
+      // Sleeper sometimes omits Jr./Sr./II — try multiple variants
+      let player = findPlayer(fullName);
+      if (!player) {
+        const suffixes = [' Jr.', ' Sr.', ' II', ' III', ' Jr', ' Sr'];
+        for (const sfx of suffixes) {
+          player = findPlayer(fullName + sfx);
+          if (player) break;
+          // Also try stripping suffix from Sleeper name
+          if (fullName.endsWith(sfx.trim()) || fullName.endsWith(sfx)) {
+            player = findPlayer(fullName.replace(new RegExp(sfx.trim().replace('.','\\.')+'$','i'), '').trim());
+            if (player) break;
+          }
+        }
       }
-      // Always also store under the raw Sleeper name as a fallback key
-      // so both "Devon Achane" variants map to drafted
-      if(player && player.name !== fullName){
+
+      if(player){
+        newState[player.name]=pickData;
+        // Also index raw Sleeper name as fallback
+        if(player.name !== fullName) newState[fullName]=pickData;
+      } else {
         newState[fullName]=pickData;
       }
     });
@@ -2064,6 +2106,7 @@ function sortedPlayers(){
 function renderList(){
   const search=document.getElementById('search')?.value.toLowerCase()||'';
   const tbody=document.getElementById('plist-body');
+  const mobileContainer=document.getElementById('plist-mobile');
   if(!tbody) return;
   let avail=0,tot=0;
 
@@ -2075,7 +2118,7 @@ function renderList(){
   if(nextSlot){const[r,pos]=nextSlot.split('.').map(Number);overallPick=(r-1)*NUM_TEAMS+pos;}
 
   // Use pre-built normalized caches (rebuilt on every save())
-  tbody.innerHTML=sortedPlayers().map(p=>{
+  const rows = sortedPlayers().map(p => {
     const nn=normName(p.name);
     const ds=draftState[p.name]||_normDraftCache[nn];
     const mo=manualOverrides[p.name]||_normOverrideCache[nn];
@@ -2085,7 +2128,7 @@ function renderList(){
     if(isDrafted) tot++;else avail++;
     const posMatch=posF==='ALL'||p.pos===posF;
     const sm=!search||p.name.toLowerCase().includes(search)||p.team.toLowerCase().includes(search);
-    if(!posMatch||!sm||(hideGone&&isDrafted)) return '';
+    if(!posMatch||!sm||(hideGone&&isDrafted)) return {desktop:'',mobile:''};
 
     // ── Value + Need analysis ──
     const isAdpSort=sortKey==='adp-dynasty'||sortKey==='adp-redraft';
@@ -2168,8 +2211,26 @@ function renderList(){
       <td class="td-fill"></td>
     </tr>`;
 
-    return desktopRow;
-  }).join('');
+    // iOS-style mobile row — rendered as a div, shown/hidden via CSS
+    const posC = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[p.pos]||'var(--muted)';
+    const mobileRow = `<div class="prow-mobile ${isDrafted?'gone':''} ${isMe?'ismine':''} ${isHot?'is-value':''}">
+      <div class="pm-rank">${rank}</div>
+      ${hs.replace('pimg-wrap','pm-photo pimg-wrap')}
+      <div class="pm-info">
+        <div class="pm-name">${p.name}</div>
+        <div class="pm-meta">
+          <span class="pm-team">${p.team}</span>
+          <span class="ppill ${p.pos}" style="font-size:8px;padding:1px 4px">${p.pos}</span>
+          ${vbadgeHtml}
+        </div>
+      </div>
+      <div class="pm-status">${isDrafted&&ti>=0&&ti<TEAMS.length ? `<span style="font-size:9px;font-family:'Space Mono',monospace;color:${COLORS[ti%COLORS.length]};font-weight:700">${ti===myTeam?'✦':TEAMS[ti].slice(0,6)}</span>` : ''}</div>
+    </div>`;
+
+    return { desktop: desktopRow, mobile: mobileRow };
+  });
+  tbody.innerHTML = rows.map(r=>r.desktop).join('');
+  if(mobileContainer) mobileContainer.innerHTML = rows.map(r=>r.mobile).join('');
 
   document.getElementById('hav')&&(document.getElementById('hav').textContent=avail);
   document.getElementById('hgn').textContent=tot;
@@ -2665,8 +2726,23 @@ function getTeamFCTotal(roster) {
   return getTeamValue(roster);
 }
 
+let viewTeamIdx = null; // null = show all teams; number = focus on that team
+
+function setViewTeam(val) {
+  viewTeamIdx = val === '' ? null : parseInt(val);
+  renderTeams();
+}
+
 function renderTeams() {
   if (teamsTab === 'mv') { renderMovers(); return; }
+
+  // Populate team selector dropdown
+  const sel = document.getElementById('teams-team-select');
+  if (sel && TEAMS.length) {
+    sel.style.display = '';
+    sel.innerHTML = `<option value="">All Teams</option>` +
+      TEAMS.map((n,i) => `<option value="${i}" ${i===viewTeamIdx?'selected':''}>${i===myTeam?'✦ '+n:n}</option>`).join('');
+  }
 
   const loaded = valueSource === 'fc' ? fcLoaded : raLoaded;
   if (!loaded) {
@@ -2707,6 +2783,18 @@ function renderTeams() {
 
   // Sort by FC total descending = power ranking
   const ranked = [...teamData].sort((a,b) => b.fcTotal - a.fcTotal);
+
+  // If a specific team is selected, show detail view for that team
+  if (viewTeamIdx !== null) {
+    prEl.innerHTML = '';
+    const detail = document.getElementById('team-detail');
+    const csec = document.getElementById('csec');
+    if (detail) { detail.style.display='block'; renderTeamDetail(viewTeamIdx); }
+    if (csec && viewTeamIdx !== myTeam && myTeam !== null) { csec.style.display='block'; renderComp(viewTeamIdx); }
+    else if (csec) csec.style.display='none';
+    return;
+  }
+
   const maxFC = ranked[0]?.fcTotal || 1;
 
   prEl.innerHTML = `
