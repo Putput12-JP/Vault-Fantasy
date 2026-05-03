@@ -147,14 +147,16 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .tsel-btn .tbm{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace}
 
 /* ── HEADER ── */
-header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14px;display:flex;align-items:center;gap:8px;position:relative;z-index:100;height:48px;flex-shrink:0}
+header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10px;display:flex;align-items:center;gap:6px;position:relative;z-index:100;height:44px;flex-shrink:0;overflow:hidden}
 /* Header must never wrap — hide things that don't fit */
 .logo{font-family:'Arial Black','Impact',sans-serif;font-size:18px;letter-spacing:1px;white-space:nowrap;flex-shrink:0}
 .logo em{color:var(--accent2);font-style:normal}
-.nav{display:flex;gap:4px;flex-shrink:0}
-.nav button{padding:6px 10px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;letter-spacing:.04em;touch-action:manipulation;min-height:34px;white-space:nowrap}
+.nav{display:flex;gap:3px;flex-shrink:1;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.nav::-webkit-scrollbar{display:none}
+.nav button{padding:5px 9px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;touch-action:manipulation;min-height:32px;white-space:nowrap;flex-shrink:0}
 .nav button:hover{color:var(--text);border-color:var(--accent)}
 .nav button.on{background:var(--accent);color:#fff;border-color:transparent;box-shadow:0 0 14px #5b8dee44}
+@media(max-width:420px){.nav button{font-size:9px;padding:5px 7px}}
 .sync-wrap{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0}
 .sync-dot.live{background:var(--rb);box-shadow:0 0 8px var(--rb);animation:blink 2s ease-in-out infinite}
@@ -263,7 +265,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
 .verdict-win{color:var(--rb);font-weight:700}
 .verdict-lose{color:var(--qb);font-weight:700}
 .verdict-fair{color:var(--te);font-weight:700}
-@media(max-width:600px){#trade-container{grid-template-columns:1fr}}
+@media(max-width:700px){#trade-container{grid-template-columns:1fr}}
 .grade-panel{margin-top:24px;padding:16px;background:var(--s1);border:1.5px solid var(--border2);border-radius:12px}
 .grade-hdr{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:'Space Mono',monospace;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
 .grade-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
@@ -295,7 +297,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
 
 /* ── CONTROLS ── */
 /* Single row — scrolls horizontally on mobile instead of wrapping */
-.controls{padding:8px 12px;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:34px;z-index:97;backdrop-filter:blur(8px);-webkit-overflow-scrolling:touch}
+.controls{padding:8px 12px;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:30px;z-index:97;backdrop-filter:blur(8px);-webkit-overflow-scrolling:touch}
 .controls::-webkit-scrollbar{display:none}
 .fbtn{padding:7px 12px;border-radius:8px;border:1.5px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s;touch-action:manipulation;min-height:38px}
 .fbtn:hover{border-color:var(--text);color:var(--text)}
@@ -368,7 +370,16 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
   background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap;
   position:sticky;top:68px;z-index:5;
 }
-@media(max-width:700px){.plist-thead{display:none}}
+@media(max-width:700px){
+  .plist-thead{display:none}
+  /* On mobile: hide TEAM, POS, FILL columns — show only RK, PHOTO, NAME, STATUS */
+  .plist-table col.col-team,.plist-table col.col-pos,.plist-table col.col-fill{width:0}
+  .prow td.td-team,.prow td.td-pos,.prow td.td-fill{display:none}
+  /* NAME gets all the space */
+  .plist-table col.col-name{width:auto}
+  /* STATUS stays fixed */
+  .plist-table col.col-act{width:120px}
+}
 
 /* Data rows */
 .prow{height:44px;border-bottom:1px solid var(--border);transition:background .1s}
@@ -434,8 +445,14 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
 /* Actions — contained within the cell, never overflow the page */
 .prow-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;min-width:0}
 
-/* Actions removed — status always visible */
-.prow-actions{display:none}
+/* On desktop, hide the pos pill inside status cell (it has its own column) */
+@media(min-width:701px){
+  .prow-status-cell .ppill{display:none}
+}
+/* On mobile, show it since td-pos column is hidden */
+@media(max-width:700px){
+  .prow-status-cell .ppill{display:inline-block}
+}
 
 /* Action buttons — extra compact to fit in the column */
 .ab{padding:3px 7px;border-radius:5px;border:1px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;transition:all .12s;white-space:nowrap;touch-action:manipulation;-webkit-tap-highlight-color:transparent;flex-shrink:0}
@@ -789,8 +806,14 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 14
     </div>
 
     <button class="launch-btn" id="launch-btn" onclick="launch()">ENTER DRAFT ROOM</button>
-    <div class="or-div">— or —</div>
-    <button class="skip-btn" onclick="launch(true)">Resume previous session</button>
+      <!-- RESUME SESSION (shown only for returning users) -->
+      <div id="resume-btn" style="display:none;margin-top:8px">
+        <button onclick="resumeSession()" style="width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--rb);background:#3de8a015;color:var(--rb);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.05em;touch-action:manipulation">
+          ⚡ RESUME LAST SESSION
+        </button>
+        <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace">Picks up where you left off · re-syncs with Sleeper</div>
+      </div>
+      <div class="or-div">— or start fresh below —</div>
     <div class="session-btns">
       <button class="sess-btn" onclick="exportSession()">📤 Export Session</button>
       <button class="sess-btn" onclick="document.getElementById('import-file').click()">📥 Import Session</button>
@@ -2121,16 +2144,17 @@ function renderList(){
       ownerDot,
     ].filter(Boolean).join('');
 
-    // Status: value badge + owner — always visible
+    // Status cell — on mobile also shows POS pill since those columns are hidden
     let statusHtml = '';
+    const posPill = `<span class="ppill ${p.pos}" style="margin-right:4px">${p.pos}</span>`;
     if(isDrafted){
-      if(mo==='gone') statusHtml=`<span style="font-size:9px;color:var(--qb);font-family:Space Mono,monospace;font-weight:700">✕ gone</span>`;
+      if(mo==='gone') statusHtml=`${posPill}<span style="font-size:9px;color:var(--qb);font-family:Space Mono,monospace;font-weight:700">✕ gone</span>`;
       else if(ti>=0&&ti<TEAMS.length){
         const c=COLORS[ti%COLORS.length];
-        statusHtml=`<span style="font-size:9px;color:${c};font-family:Space Mono,monospace;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ti===myTeam?'✦ MINE':TEAMS[ti].slice(0,8)}</span>`;
-      }
+        statusHtml=`${posPill}<span style="font-size:9px;color:${c};font-family:Space Mono,monospace;font-weight:700;white-space:nowrap">${ti===myTeam?'✦ MINE':TEAMS[ti].slice(0,8)}</span>`;
+      } else statusHtml=posPill;
     } else {
-      statusHtml = vbadgeHtml;
+      statusHtml = vbadgeHtml || posPill;
     }
 
     // Desktop: table row
@@ -2138,13 +2162,13 @@ function renderList(){
       <td class="rnum" style="text-align:right;padding-right:8px">${rank}</td>
       <td style="padding:0 3px">${hs}</td>
       <td><span class="pname">${p.name}</span></td>
-      <td style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
-      <td><span class="ppill ${p.pos}">${p.pos}</span></td>
+      <td class="td-team" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
+      <td class="td-pos"><span class="ppill ${p.pos}">${p.pos}</span></td>
       <td><div class="prow-status-cell">
         <div class="prow-status-default">${statusHtml}</div>
         <div class="prow-actions">${acts}</div>
       </div></td>
-      <td></td>
+      <td class="td-fill"></td>
     </tr>`;
 
     return desktopRow;
@@ -3447,50 +3471,38 @@ function renderDraftGrades() {
 //  BOOT
 // ════════════════════════════════════
 window.addEventListener('load', () => {
-  // Only check the CURRENT storage key — don't migrate old keys
-  // Old keys caused returning-user path to fire incorrectly
   const did = localStorage.getItem(SK+'-did');
   const hasSavedState = localStorage.getItem(SK+'-state');
+  const savedUsername = localStorage.getItem(SK+'-username');
 
-  if (did || hasSavedState) {
-    // Returning user — skip setup, load app
-    document.getElementById('setup').classList.add('gone');
-    loadSaved();
-    loadMyTeam();
-    updateSortBtns();
-    initState();
-    _rebuildCaches();
-
-    // Defer all heavy rendering so page is interactive immediately
-    setTimeout(() => {
-      renderAll();
-      if (myTeam === null) openTModal();
-      // Start Sleeper sync after render
-      if (did) {
-        sleeperDraftId = did;
-        syncSleeper().then(() => {
-          renderAll();
-          syncTimer = setInterval(syncSleeper, 15000);
-        });
-      }
-    }, 0);
-
-  } else {
-    // New user — show setup screen, do nothing else
-    const savedUsername = localStorage.getItem(SK+'-username');
-    if (savedUsername) {
-      const el = document.getElementById('sleeper-username');
-      if (el) el.value = savedUsername;
-    }
-    usingDefaultRankings = true;
-    PLAYERS = DEFAULT_RANKINGS.map(p => ({...p}));
-    RLABELS = [...DEFAULT_LABELS];
-    document.getElementById('default-box')?.classList.add('selected');
-    const drBtn = document.getElementById('dr-btn');
-    if (drBtn) { drBtn.classList.add('selected'); drBtn.textContent = '✓ SELECTED'; }
+  // Always show setup on every fresh page load.
+  // If there's a saved session, show a Resume button so returning users
+  // can get back in with one tap.
+  if (savedUsername) {
+    const el = document.getElementById('sleeper-username');
+    if (el) el.value = savedUsername;
   }
 
-  // Apply saved theme on every load
+  // Pre-select default rankings
+  usingDefaultRankings = true;
+  PLAYERS = DEFAULT_RANKINGS.map(p => ({...p}));
+  RLABELS = [...DEFAULT_LABELS];
+  document.getElementById('default-box')?.classList.add('selected');
+  const drBtn = document.getElementById('dr-btn');
+  if (drBtn) { drBtn.classList.add('selected'); drBtn.textContent = '✓ SELECTED'; }
+
+  // If returning user has a saved session, show a prominent Resume button
+  if (did || hasSavedState) {
+    const resumeBtn = document.getElementById('resume-btn');
+    if (resumeBtn) {
+      resumeBtn.style.display = 'block';
+      // Pre-fill draft ID into the input too
+      const didInput = document.getElementById('did');
+      if (didInput && did) didInput.value = did;
+    }
+  }
+
+  // Apply saved theme
   applyTheme(localStorage.getItem('snapdraft-theme') || 'dark');
 
   // Wire up search clear button
@@ -3502,6 +3514,28 @@ window.addEventListener('load', () => {
     });
   }
 });
+
+function resumeSession() {
+  // Load saved session and jump straight to draft room
+  const did = localStorage.getItem(SK+'-did');
+  loadSaved();
+  loadMyTeam();
+  updateSortBtns();
+  initState();
+  _rebuildCaches();
+  document.getElementById('setup').classList.add('gone');
+  setTimeout(() => {
+    renderAll();
+    if (myTeam === null) openTModal();
+    if (did) {
+      sleeperDraftId = did;
+      syncSleeper().then(() => {
+        renderAll();
+        syncTimer = setInterval(syncSleeper, 15000);
+      });
+    }
+  }, 0);
+}
 </script>
 </body>
 </html>
