@@ -163,6 +163,10 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
 .sync-dot.err{background:var(--qb)}
 .sync-lbl{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;white-space:nowrap}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+/* Resync button — bigger tap target on mobile */
+#resync-btn{min-width:32px;min-height:28px;display:inline-flex;align-items:center;justify-content:center}
+@media(max-width:600px){#resync-btn{min-width:44px;min-height:36px;font-size:16px;border-radius:8px}}
 .hright{display:flex;gap:8px;align-items:center;margin-left:auto;flex-shrink:0}
 .hstat{text-align:center}
 .hstat b{display:block;font-size:14px;font-weight:700;font-family:'Space Mono',monospace}
@@ -869,6 +873,10 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 10
   <div class="sync-wrap">
     <div class="sync-dot" id="sdot"></div>
     <span class="sync-lbl" id="slbl">OFFLINE</span>
+    <button id="resync-btn" onclick="manualResync()" title="Resync with Sleeper"
+      style="display:none;padding:3px 8px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;touch-action:manipulation;margin-left:4px;transition:all .15s;-webkit-tap-highlight-color:transparent">
+      ⟳
+    </button>
   </div>
   <div class="next-badge" id="nbadge">NEXT: —</div>
   <div class="hright">
@@ -1634,9 +1642,42 @@ function startSync(){
 function setSyncStatus(s){
   const d=document.getElementById('sdot');
   const l=document.getElementById('slbl');
-  d.className='sync-dot'+(s==='live'?' live':s==='err'?' err':'');
-  l.textContent=s==='live'?'LIVE':s==='err'?'ERROR':'OFFLINE';
+  const btn=document.getElementById('resync-btn');
+  if(d) d.className='sync-dot'+(s==='live'?' live':s==='err'?' err':'');
+  if(l) l.textContent=s==='live'?'LIVE':s==='err'?'ERR':'OFFLINE';
+  // Show resync button when a draft is connected
+  if(btn) btn.style.display=sleeperDraftId?'inline-block':'none';
+  if(btn) { btn.style.color=s==='live'?'var(--rb)':'var(--muted)'; btn.style.borderColor=s==='live'?'var(--rb)':'var(--border2)'; }
 }
+
+async function manualResync(){
+  if(!sleeperDraftId){ toast('No draft connected'); return; }
+  const btn=document.getElementById('resync-btn');
+  if(btn) btn.textContent='⟳...';
+  try{
+    await syncSleeper();
+    renderAll();
+    toast('✓ Synced with Sleeper');
+  } catch(e){
+    toast('⚠ Sync failed');
+  } finally{
+    if(btn) btn.textContent='⟳';
+    if(syncTimer) clearInterval(syncTimer);
+    syncTimer=setInterval(syncSleeper,15000);
+  }
+}
+
+// Page Visibility API — mobile browsers pause setInterval when app is backgrounded
+// This restarts sync immediately when user returns to the app
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&sleeperDraftId){
+    syncSleeper().then(()=>renderAll());
+    if(syncTimer) clearInterval(syncTimer);
+    syncTimer=setInterval(syncSleeper,15000);
+  } else if(document.visibilityState==='hidden'){
+    if(syncTimer) clearInterval(syncTimer);
+  }
+});
 
 // ════════════════════════════════════
 //  PICK SLOTS
