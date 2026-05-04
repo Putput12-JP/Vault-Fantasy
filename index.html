@@ -377,6 +377,22 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 /* ── PLAYER ROWS ── */
 .plist{padding:0 0 110px;display:block;width:100%;overflow-x:hidden}
 /* ── TABLE-based player list for perfect column alignment ── */
+/* ── TIER BREAKS ── */
+.tier-break-row td{padding:0!important;border:none!important;height:auto!important}
+.tier-break{text-align:center;font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.2em;padding:4px 0;opacity:.7;border-top:1px solid var(--border)}
+.tier-break-mobile{text-align:center;font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.15em;padding:4px 0;opacity:.6;border-top:1px solid var(--border);display:block;width:100%}
+
+/* ── DRAFT INTELLIGENCE PANEL ── */
+.intel-panel{background:var(--s1);border-bottom:1px solid var(--border2);padding:8px 12px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;align-items:stretch}
+.intel-panel::-webkit-scrollbar{display:none}
+.intel-card{background:var(--s2);border-radius:10px;padding:8px 12px;min-width:130px;max-width:160px;flex-shrink:0;border:1px solid var(--border2)}
+.intel-card.alert{border-color:var(--qb)!important;background:#ff709608}
+.intel-card.good{border-color:var(--rb)!important;background:#3de8a008}
+.intel-card.warn{border-color:var(--te)!important;background:#ffd16608}
+.intel-label{font-size:8px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;display:flex;justify-content:space-between}
+.intel-value{font-size:16px;font-weight:800;font-family:'Space Mono',monospace;line-height:1.1}
+.intel-sub{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 .plist-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .plist-table col.col-rk   {width:48px}
 .plist-table col.col-photo{width:34px}
@@ -936,6 +952,10 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
     <span class="tab-icon">🔄</span>
     <span class="tab-label">Trade</span>
   </button>
+  <button class="tab-btn" id="tb-myteams" onclick="showPage('myteams')">
+    <span class="tab-icon">👥</span>
+    <span class="tab-label">My Teams</span>
+  </button>
   <button class="tab-btn" id="tb-settings" onclick="document.getElementById('setup').classList.remove('gone')">
     <span class="tab-icon">⚙️</span>
     <span class="tab-label">Settings</span>
@@ -955,6 +975,12 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
     </div>
     <div class="ypb-suggestion" id="ypb-top-pick" onclick=""></div>
   </div>
+  <!-- INTELLIGENCE BAR — positional scarcity + run alerts + tier pressure -->
+  <div id="intel-bar" style="display:none;background:#1a2340;border-bottom:1.5px solid var(--border2);padding:5px 14px;flex-wrap:nowrap;gap:8px;align-items:center;overflow-x:auto;scrollbar-width:none">
+    <span style="font-size:8px;color:var(--accent3);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.12em;flex-shrink:0;font-weight:700">⚡ INTEL</span>
+    <div id="intel-chips" style="display:flex;gap:5px;align-items:center;flex-shrink:0"></div>
+  </div>
+
   <!-- PICKS STRIP -->
   <div class="pstrip" id="pstrip"></div>
   <!-- SEARCH BAR (always visible, full width) -->
@@ -966,6 +992,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
     </div>
     <span class="picks-away" id="picks-away-label"></span>
   </div>
+  <div class="intel-panel" id="intel-panel" style="display:none"></div>
   <div class="suggest-bar" id="sbar" style="display:none">
     <div class="suggest-title">
       <span>✦ SUGGESTED PICKS</span>
@@ -1044,6 +1071,11 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div id="fc-status" style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace"></div>
+        <!-- League switcher — loads any Sleeper league to view -->
+        <select id="teams-league-select" onchange="switchTeamsLeague(this.value)"
+          style="background:var(--s2);border:1.5px solid var(--accent);color:var(--accent2);font-family:'Space Mono',monospace;font-size:11px;padding:5px 8px;border-radius:8px;outline:none;cursor:pointer;display:none;font-weight:700">
+        </select>
+        <!-- Team within current draft -->
         <select id="teams-team-select" onchange="setViewTeam(this.value)"
           style="background:var(--s2);border:1.5px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:5px 8px;border-radius:8px;outline:none;cursor:pointer;display:none">
         </select>
@@ -1052,7 +1084,6 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
           <button class="sbtn" id="val-ra" onclick="setValueSource('ra')">RosterAudit</button>
         </div>
         <button class="sbtn" onclick="refreshValues()" id="fc-refresh-btn">⟳</button>
-        <button class="sbtn" onclick="renderDraftGrades()" title="Show post-draft grades">🏆 Grades</button>
         <button class="ab" onclick="showPage('draft')" style="font-size:11px;padding:8px 14px;border-color:var(--accent);color:var(--accent2)">← RANKINGS</button>
       </div>
     </div>
@@ -1140,6 +1171,41 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
     <div style="margin-top:18px">
       <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Quick Add — Your Roster</div>
       <div id="trade-roster-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MY TEAMS PAGE -->
+<div class="page z1" id="page-myteams">
+  <div style="padding:14px 14px 100px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Arial Black',sans-serif;font-size:20px;letter-spacing:1px">MY <em style="color:var(--accent2);font-style:normal">TEAMS</em></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace">All your Sleeper leagues · click to view roster</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="myteams-username" class="setup-input" placeholder="Sleeper username" style="width:160px;padding:7px 12px;font-size:12px"
+          value="" onkeydown="if(event.key==='Enter')loadMyTeams()">
+        <button class="find-btn" onclick="loadMyTeams()" id="myteams-btn">LOAD TEAMS</button>
+      </div>
+    </div>
+
+    <!-- Season filter -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="sbtn on" id="mts-2026" onclick="setTeamsSeason('2026')">2026</button>
+      <button class="sbtn" id="mts-2025" onclick="setTeamsSeason('2025')">2025</button>
+      <button class="sbtn" id="mts-2024" onclick="setTeamsSeason('2024')">2024</button>
+    </div>
+
+    <div id="myteams-results"></div>
+
+    <!-- Selected league roster view -->
+    <div id="myteams-detail" style="display:none;margin-top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div id="myteams-detail-title" style="font-family:'Arial Black',sans-serif;font-size:16px"></div>
+        <button class="sbtn" onclick="document.getElementById('myteams-detail').style.display='none'">✕ Close</button>
+      </div>
+      <div id="myteams-detail-roster"></div>
     </div>
   </div>
 </div>
@@ -1728,6 +1794,134 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 // ════════════════════════════════════
+//  DRAFT INTELLIGENCE ENGINE
+//  Inspired by StatChasers Draft Lab:
+//  - Position run detection
+//  - At-risk player alerts
+//  - Roster construction score
+//  - Picks-until-yours countdown
+// ════════════════════════════════════
+function renderIntelPanel() {
+  const panel = document.getElementById('intel-panel');
+  if (!panel || !sleeperDraftId || !TEAMS.length) { if(panel) panel.style.display='none'; return; }
+  panel.style.display = 'flex';
+
+  const allPicks = Object.values(draftState).sort((a,b)=>a.pickNo-b.pickNo);
+  const totalPicked = allPicks.length;
+  const myRoster = getMyRoster();
+  const nextPickIdx = myRoster.length;
+  const nextSlot = PICK_SLOTS[myTeam]?.[nextPickIdx];
+  const available = PLAYERS.filter(p => {
+    const nn = normName(p.name);
+    return !draftState[p.name] && !_normDraftCache[nn] && manualOverrides[p.name]!=='gone';
+  });
+
+  // ── 1. POSITION RUNS (last 8 picks) ──
+  const recent = allPicks.filter(v => v.pickNo > Math.max(0, totalPicked-8));
+  const recentByPos = {};
+  recent.forEach(v => {
+    // find pos from player name
+    const entry = Object.entries(draftState).find(([,d])=>d.pickNo===v.pickNo);
+    if (!entry) return;
+    const player = PLAYERS.find(p=>p.name===entry[0]) || PLAYERS.find(p=>normName(p.name)===normName(entry[0]));
+    if (player?.pos) recentByPos[player.pos] = (recentByPos[player.pos]||0)+1;
+  });
+  const biggestRun = Object.entries(recentByPos).sort((a,b)=>b[1]-a[1])[0];
+  const runAlert = biggestRun && biggestRun[1] >= 3;
+
+  // ── 2. AT-RISK PLAYERS (top 5 available likely gone before next pick) ──
+  let picksUntilMine = 999;
+  if (nextSlot) {
+    const [rnd,pos] = nextSlot.split('.').map(Number);
+    const overallNext = (rnd-1)*NUM_TEAMS + pos;
+    picksUntilMine = Math.max(0, overallNext - totalPicked - 1);
+  }
+  const topAvailable = available.slice(0, 20);
+  const atRisk = topAvailable.filter((p,i) => i < picksUntilMine);
+
+  // ── 3. ROSTER SCORE — balance across positions ──
+  const qbs = myRoster.filter(p=>p.pos==='QB').length;
+  const rbs = myRoster.filter(p=>p.pos==='RB').length;
+  const wrs = myRoster.filter(p=>p.pos==='WR').length;
+  const tes = myRoster.filter(p=>p.pos==='TE').length;
+  // Simple balance score: penalize if any position is missing
+  let score = 100;
+  if(qbs===0) score-=25; else if(qbs>3) score-=10;
+  if(rbs<2) score-=20; else if(rbs>6) score-=5;
+  if(wrs<3) score-=20; else if(wrs>8) score-=5;
+  if(tes===0) score-=15;
+  const scoreGrade = score>=90?'A':score>=75?'B':score>=60?'C':score>=45?'D':'F';
+  const scoreColor = score>=75?'var(--rb)':score>=55?'var(--te)':'var(--qb)';
+
+  // ── 4. POSITIONAL SCARCITY — how many top players left per pos ──
+  const topN = 15;
+  const topAvailByPos = {QB:0,RB:0,WR:0,TE:0};
+  available.slice(0,topN).forEach(p => { if(topAvailByPos[p.pos]!==undefined) topAvailByPos[p.pos]++; });
+
+  // ── RENDER ──
+  const cards = [];
+
+  // Card 1: Picks until yours
+  if (nextSlot && picksUntilMine !== 999) {
+    const urgency = picksUntilMine <= 0 ? 'alert' : picksUntilMine <= 2 ? 'warn' : '';
+    cards.push(`<div class="intel-card ${urgency}">
+      <div class="intel-label">NEXT PICK</div>
+      <div class="intel-value" style="color:${picksUntilMine<=0?'var(--rb)':'var(--accent2)'}">${picksUntilMine<=0?'NOW':picksUntilMine}</div>
+      <div class="intel-sub">${picksUntilMine<=0?'YOUR TURN':picksUntilMine===1?'1 pick away':picksUntilMine+' picks away'}</div>
+    </div>`);
+  }
+
+  // Card 2: Position run alert
+  if (biggestRun) {
+    const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[biggestRun[0]]||'var(--muted)';
+    cards.push(`<div class="intel-card ${runAlert?'alert':''}">
+      <div class="intel-label">${runAlert?'⚠ POSITION RUN':'RECENT PICKS'}</div>
+      <div class="intel-value" style="color:${posColor}">${biggestRun[1]}× ${biggestRun[0]}</div>
+      <div class="intel-sub">Last 8 picks</div>
+    </div>`);
+  }
+
+  // Card 3: Roster score
+  if (myRoster.length > 0) {
+    cards.push(`<div class="intel-card ${score<60?'alert':score>=80?'good':''}">
+      <div class="intel-label">ROSTER GRADE</div>
+      <div class="intel-value" style="color:${scoreColor}">${scoreGrade}</div>
+      <div class="intel-sub">${qbs}QB ${rbs}RB ${wrs}WR ${tes}TE</div>
+    </div>`);
+  }
+
+  // Card 4: Scarcity — which position is draining fastest
+  const scarce = Object.entries(topAvailByPos).sort((a,b)=>a[1]-b[1])[0];
+  if (scarce) {
+    const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[scarce[0]];
+    cards.push(`<div class="intel-card ${scarce[1]<=2?'alert':scarce[1]<=4?'warn':''}">
+      <div class="intel-label">MOST SCARCE</div>
+      <div class="intel-value" style="color:${posColor}">${scarce[0]}</div>
+      <div class="intel-sub">${scarce[1]} of top 15 left</div>
+    </div>`);
+  }
+
+  // Card 5: At-risk — best player likely gone before your pick
+  if (atRisk.length && picksUntilMine > 0) {
+    const topAtRisk = atRisk[0];
+    cards.push(`<div class="intel-card warn">
+      <div class="intel-label">AT RISK</div>
+      <div class="intel-value" style="font-size:12px;font-weight:700">${topAtRisk.name.split(' ').pop()}</div>
+      <div class="intel-sub">${topAtRisk.pos} · #${topAtRisk.r0}</div>
+    </div>`);
+  }
+
+  // Card 6: Available count
+  cards.push(`<div class="intel-card">
+    <div class="intel-label">AVAILABLE</div>
+    <div class="intel-value" style="color:var(--accent2)">${available.length}</div>
+    <div class="intel-sub">${totalPicked} drafted</div>
+  </div>`);
+
+  panel.innerHTML = cards.join('');
+}
+
+// ════════════════════════════════════
 //  PICK SLOTS
 // ════════════════════════════════════
 function buildSlots(teams,rounds,type,revRound){
@@ -2173,9 +2367,10 @@ function showPage(p){
   document.getElementById(`tb-${p}`)?.classList.add('on');
 
   document.getElementById(`page-${p}`).classList.add('on');
-  if(p==='teams'){ const loaded=valueSource==='fc'?fcLoaded:raLoaded; if(!loaded){if(valueSource==='fc')fetchFantasyCalc();else fetchRosterAudit();}else renderTeams(); }
+  if(p==='teams'){ populateLeagueDropdown(); const loaded=valueSource==='fc'?fcLoaded:raLoaded; if(!loaded){if(valueSource==='fc')fetchFantasyCalc();else fetchRosterAudit();}else renderTeams(); }
   if(p==='visual') renderBoard();
   if(p==='trade'){ initTrade(); }
+  if(p==='myteams'){ initMyTeams(); }
   if(p!=='teams'){ viewTeamIdx=null; }
 }
 
@@ -2324,8 +2519,30 @@ function renderList(){
 
     return { desktop: desktopRow, mobile: mobileRow };
   });
-  tbody.innerHTML = rows.map(r=>r.desktop).join('');
-  if(mobileContainer) mobileContainer.innerHTML = rows.map(r=>r.mobile).join('');
+  // Insert tier break dividers — only between visible (non-empty) rows
+  const sorted = sortedPlayers();
+  let lastRank = 0;
+  const rowsWithTiers = [];
+  let tierNum = 1;
+  rows.forEach((r, i) => {
+    // Skip hidden rows (empty desktop string means filtered out)
+    if (!r.desktop) return;
+    const p = sorted[i];
+    const rank = p?.r0 || 0;
+    // Only show tier break when there's a meaningful gap AND both rows are visible
+    if (rank && lastRank && (rank - lastRank) >= 8 && tierNum <= 9) {
+      tierNum++;
+      rowsWithTiers.push({
+        desktop: `<tr class="tier-break-row"><td colspan="7"><div class="tier-break">— TIER ${tierNum} —</div></td></tr>`,
+        mobile: `<div class="tier-break-mobile">— TIER ${tierNum} —</div>`
+      });
+    }
+    if (rank) lastRank = rank;
+    rowsWithTiers.push(r);
+  });
+
+  tbody.innerHTML = rowsWithTiers.map(r=>r.desktop).join('');
+  if(mobileContainer) mobileContainer.innerHTML = rowsWithTiers.map(r=>r.mobile).join('');
 
   document.getElementById('hav')&&(document.getElementById('hav').textContent=avail);
   document.getElementById('hgn').textContent=tot;
@@ -2393,7 +2610,9 @@ function renderStrip(){
   const isMyTurn = cnt < slots.length && (() => {
     const[rnd,pos]=slots[cnt].split('.').map(Number);
     const overall=(rnd-1)*NUM_TEAMS+pos;
-    return totalPicked >= overall-1;
+    // Show "your turn" only when exactly 0 picks remain before yours
+    // overall-1 picks must have been made (the pick right before yours)
+    return totalPicked >= overall - 1 && totalPicked < overall;
   })();
 
   const banner=document.getElementById('your-pick-banner');
@@ -2822,10 +3041,85 @@ function getTeamFCTotal(roster) {
 }
 
 let viewTeamIdx = null; // null = show all teams; number = focus on that team
+let teamsLeagueId = null; // null = current draft, string = a different league
 
 function setViewTeam(val) {
   viewTeamIdx = val === '' ? null : parseInt(val);
   renderTeams();
+}
+
+async function switchTeamsLeague(leagueId) {
+  teamsLeagueId = leagueId || null;
+  viewTeamIdx = null;
+  const prEl = document.getElementById('power-rankings');
+  if (!leagueId) {
+    // Back to current draft
+    renderTeams();
+    return;
+  }
+
+  // Load this league's rosters and show power rankings
+  if (prEl) prEl.innerHTML = '<div class="fc-loading">⟳ Loading league...</div>';
+  try {
+    const [rosters, users] = await Promise.all([
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
+    ]);
+
+    // Build team data with FC values
+    const userMap = {};
+    (users||[]).forEach(u => { userMap[u.user_id] = u.display_name || u.username || `Team ${u.user_id.slice(-4)}`; });
+
+    const teamData = (rosters||[]).map((r, i) => {
+      const name = userMap[r.owner_id] || `Team ${i+1}`;
+      const isMe = r.owner_id === myTeamsUserId;
+      const playerNames = (r.players||[]).map(pid => {
+        const found = PLAYERS.find(p => {
+          const sp = sleeperPlayerMap[normName(p.name)];
+          return sp?.player_id === pid;
+        }) || Object.entries(PLAYER_IDS).find(([,id])=>id===pid)?.[0];
+        return found ? (typeof found === 'string' ? found : found.name) : null;
+      }).filter(Boolean);
+
+      const fcTotal = playerNames.reduce((s,n) => s + getPlayerValue(n), 0);
+      return { idx:i, name, isMe, players: playerNames, fcTotal, ownerId: r.owner_id };
+    });
+
+    const ranked = [...teamData].sort((a,b) => b.fcTotal - a.fcTotal);
+    const maxFC = ranked[0]?.fcTotal || 1;
+
+    prEl.innerHTML = `<table class="pr-table">
+      <thead><tr>
+        <th style="width:40px;text-align:center">#</th>
+        <th>TEAM</th>
+        <th style="text-align:right">FC VALUE</th>
+        <th style="min-width:80px">STRENGTH</th>
+      </tr></thead>
+      <tbody>${ranked.map((t,rank) => {
+        const c = COLORS[rank % COLORS.length];
+        const pct = Math.round(t.fcTotal / maxFC * 100);
+        return `<tr style="${t.isMe?'background:#5b8dee0a;':''}" onclick="">
+          <td style="text-align:center;font-size:18px;font-weight:800;font-family:Space Mono,monospace;color:${c}">${rank+1}</td>
+          <td><div style="font-size:14px;font-weight:700">${t.name}${t.isMe?' <span style="font-size:9px;background:#5b8dee22;color:var(--accent2);padding:1px 6px;border-radius:3px;font-family:Space Mono,monospace">YOU</span>':''}</div>
+              <div style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace">${t.players.length} players</div></td>
+          <td style="text-align:right;font-size:14px;font-weight:700;font-family:Space Mono,monospace;color:${c}">${t.fcTotal.toLocaleString()}</td>
+          <td><div style="height:6px;background:var(--s3);border-radius:3px"><div style="width:${pct}%;height:6px;background:${c};border-radius:3px"></div></div></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  } catch(e) {
+    if (prEl) prEl.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`;
+  }
+}
+
+function populateLeagueDropdown() {
+  const sel = document.getElementById('teams-league-select');
+  if (!sel) return;
+  const leagues = myTeamsData.filter(l => l.season === '2026' || l.season === '2025');
+  if (!leagues.length) { sel.style.display = 'none'; return; }
+  sel.style.display = '';
+  sel.innerHTML = `<option value="">📋 Current Draft</option>` +
+    leagues.map(l => `<option value="${l.league_id}">${l.name||'League'} (${l.season})</option>`).join('');
 }
 
 function renderTeams() {
@@ -3065,11 +3359,228 @@ function renderComp(idx) {
   }).join('');
 }
 function renderAll(){
-  renderStrip();renderList();renderRoster();renderSuggestions();
+  _tiersCache = null; // invalidate tier cache on every render
+  renderStrip();renderList();renderRoster();renderSuggestions();renderIntelPanel();
   initSwipe();
   const pg=document.querySelector('.page.on')?.id;
   if(pg==='page-teams'){ const loaded = valueSource==='fc'?fcLoaded:raLoaded; if(!loaded) { if(valueSource==='fc') fetchFantasyCalc(); else fetchRosterAudit(); } else renderTeams(); }
   if(pg==='page-visual') renderBoard();
+}
+
+// ════════════════════════════════════
+//  MY TEAMS — All Sleeper Leagues
+// ════════════════════════════════════
+let myTeamsSeason = '2026';
+let myTeamsUserId = null;
+let myTeamsData = []; // all leagues
+
+function setTeamsSeason(yr) {
+  myTeamsSeason = yr;
+  ['2024','2025','2026'].forEach(y => document.getElementById(`mts-${y}`)?.classList.toggle('on', y===yr));
+  renderMyTeamsResults();
+}
+
+async function loadMyTeams() {
+  const input = document.getElementById('myteams-username');
+  const username = (input?.value || localStorage.getItem(SK+'-username') || '').trim();
+  if (!username) { toast('Enter your Sleeper username'); return; }
+  if (input) input.value = username;
+  localStorage.setItem(SK+'-username', username);
+
+  const btn = document.getElementById('myteams-btn');
+  const res = document.getElementById('myteams-results');
+  if (btn) btn.textContent = '...';
+  if (res) res.innerHTML = '<div class="fc-loading">⟳ Loading your leagues...</div>';
+
+  try {
+    // Get user ID
+    const uRes = await fetch(`https://api.sleeper.app/v1/user/${encodeURIComponent(username)}`);
+    if (!uRes.ok) throw new Error('User not found');
+    const user = await uRes.json();
+    myTeamsUserId = user.user_id;
+
+    // Fetch leagues for multiple seasons
+    const [l2026, l2025, l2024] = await Promise.all([
+      fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/2026`).then(r=>r.json()).catch(()=>[]),
+      fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/2025`).then(r=>r.json()).catch(()=>[]),
+      fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/2024`).then(r=>r.json()).catch(()=>[]),
+    ]);
+
+    myTeamsData = [
+      ...(l2026||[]).map(l=>({...l,season:'2026'})),
+      ...(l2025||[]).map(l=>({...l,season:'2025'})),
+      ...(l2024||[]).map(l=>({...l,season:'2024'})),
+    ];
+
+    renderMyTeamsResults();
+    populateLeagueDropdown(); // also update Teams page dropdown
+  } catch(e) {
+    if (res) res.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`;
+  } finally {
+    if (btn) btn.textContent = 'LOAD TEAMS';
+  }
+}
+
+function renderMyTeamsResults() {
+  const res = document.getElementById('myteams-results');
+  if (!res) return;
+
+  const filtered = myTeamsData.filter(l => l.season === myTeamsSeason);
+  if (!filtered.length) {
+    res.innerHTML = `<div class="fc-loading">No leagues found for ${myTeamsSeason}</div>`;
+    return;
+  }
+
+  // Sort: dynasty first, then by name
+  filtered.sort((a,b) => {
+    const aDy = (a.settings?.rounds||0)>=15 || a.name?.toLowerCase().includes('dynasty');
+    const bDy = (b.settings?.rounds||0)>=15 || b.name?.toLowerCase().includes('dynasty');
+    if (aDy !== bDy) return aDy ? -1 : 1;
+    return (a.name||'').localeCompare(b.name||'');
+  });
+
+  res.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+      ${filtered.map(league => {
+        const teams = league.total_rosters || league.settings?.teams || '?';
+        const scoring = league.scoring_settings?.rec === 1 ? 'PPR' : league.scoring_settings?.rec === 0.5 ? 'Half' : 'Std';
+        const positions = league.roster_positions || [];
+        const isSF = positions.includes('SUPER_FLEX');
+        const isDynasty = (league.settings?.max_keepers || 0) > 5 || league.name?.toLowerCase().includes('dynasty');
+        const statusColor = league.status === 'in_season' ? 'var(--rb)' : league.status === 'pre_draft' ? 'var(--te)' : 'var(--muted)';
+        const statusLabel = {in_season:'IN SEASON', pre_draft:'PRE-DRAFT', drafting:'DRAFTING', complete:'COMPLETE'}[league.status] || league.status?.toUpperCase() || '?';
+
+        return `<div onclick="viewLeagueRoster('${league.league_id}','${(league.name||'League').replace(/'/g,"\\'")}','${myTeamsSeason}')"
+          style="background:var(--s1);border:1.5px solid var(--border2);border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent"
+          onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='var(--border2)'">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div style="font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${league.name || 'Unnamed League'}</div>
+            <span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;background:${statusColor}20;color:${statusColor};font-family:'Space Mono',monospace;flex-shrink:0;margin-left:8px">${statusLabel}</span>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <span style="font-size:9px;padding:2px 6px;border-radius:3px;background:var(--s3);color:var(--muted);font-family:'Space Mono',monospace">${teams} teams</span>
+            <span style="font-size:9px;padding:2px 6px;border-radius:3px;background:var(--s3);color:var(--muted);font-family:'Space Mono',monospace">${scoring}</span>
+            ${isSF?'<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:var(--accent)20;color:var(--accent2);font-family:Space Mono,monospace">SF</span>':''}
+            ${isDynasty?'<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:#3de8a020;color:var(--rb);font-family:Space Mono,monospace">DYN</span>':''}
+          </div>
+          <div style="margin-top:8px;font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">Tap to view your roster →</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+async function viewLeagueRoster(leagueId, leagueName, season) {
+  const detail = document.getElementById('myteams-detail');
+  const title = document.getElementById('myteams-detail-title');
+  const rosterEl = document.getElementById('myteams-detail-roster');
+  if (!detail || !rosterEl) return;
+
+  detail.style.display = 'block';
+  title.innerHTML = `<em style="color:var(--accent2);font-style:normal">${leagueName}</em> · Your Roster`;
+  rosterEl.innerHTML = '<div class="fc-loading">⟳ Loading roster...</div>';
+  detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    // Get rosters and users for this league
+    const [rosters, users, leagueData] = await Promise.all([
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}`).then(r=>r.json()),
+    ]);
+
+    // Find our roster
+    const myUser = users?.find(u => u.user_id === myTeamsUserId);
+    const myRoster = rosters?.find(r => r.owner_id === myTeamsUserId);
+
+    if (!myRoster) {
+      rosterEl.innerHTML = '<div class="fc-error">Could not find your roster in this league.</div>';
+      return;
+    }
+
+    // Get player IDs on roster
+    const playerIds = [...(myRoster.players || []), ...(myRoster.reserve || [])];
+    // Map to names using sleeperPlayerMap (already loaded) or PLAYER_IDS reverse
+    // Build reverse lookup: player_id -> name
+    const pidToName = {};
+    Object.entries(PLAYER_IDS).forEach(([name, pid]) => { pidToName[pid] = name; });
+    Object.entries(sleeperPlayerMap).forEach(([norm, data]) => {
+      if (data.player_id) {
+        // find canonical name
+        const canon = PLAYERS.find(p => normName(p.name) === norm);
+        if (canon) pidToName[data.player_id] = canon.name;
+      }
+    });
+
+    const myPlayers = playerIds.map(pid => {
+      const name = pidToName[pid] || `Player ${pid}`;
+      const player = PLAYERS.find(p => p.name === name) || { name, pos: '?', team: '' };
+      const fcVal = getPlayerValue(name);
+      return { ...player, pid, fcVal };
+    }).sort((a,b) => {
+      const posOrder = {QB:0,RB:1,WR:2,TE:3};
+      const po = (posOrder[a.pos]??4) - (posOrder[b.pos]??4);
+      return po !== 0 ? po : b.fcVal - a.fcVal;
+    });
+
+    // Total value
+    const totalVal = myPlayers.reduce((s,p)=>s+p.fcVal,0);
+    const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+
+    // Group by position
+    const byPos = {QB:[],RB:[],WR:[],TE:[],other:[]};
+    myPlayers.forEach(p => {
+      if (byPos[p.pos]) byPos[p.pos].push(p);
+      else byPos.other.push(p);
+    });
+
+    const valueSource_label = raLoaded ? 'RosterAudit' : fcLoaded ? 'FantasyCalc' : 'No values loaded';
+
+    rosterEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:10px 14px;background:var(--s2);border-radius:10px;border:1px solid var(--border)">
+        <div>
+          <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">TOTAL VALUE · ${valueSource_label}</div>
+          <div style="font-size:22px;font-weight:800;font-family:'Space Mono',monospace;color:var(--accent2)">${totalVal.toLocaleString()}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${myPlayers.length} PLAYERS</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px">${season} Season</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+        ${['QB','RB','WR','TE'].map(pos => {
+          const players = byPos[pos];
+          if (!players.length) return '';
+          const posTotal = players.reduce((s,p)=>s+p.fcVal,0);
+          return `<div style="background:var(--s2);border-radius:10px;padding:12px;border:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:700;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;justify-content:space-between;color:${posColors[pos]}">
+              <span>${pos} · ${players.length}</span>
+              ${posTotal ? `<span>${posTotal.toLocaleString()}</span>` : ''}
+            </div>
+            ${players.map(p => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+                <div>
+                  <div style="font-size:12px;font-weight:600">${p.name}</div>
+                  <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team||'FA'}</div>
+                </div>
+                <div style="font-size:12px;font-weight:700;font-family:'Space Mono',monospace;color:${posColors[p.pos]}">${p.fcVal ? p.fcVal.toLocaleString() : '—'}</div>
+              </div>`).join('')}
+          </div>`;
+        }).join('')}
+      </div>`;
+  } catch(e) {
+    rosterEl.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`;
+  }
+}
+
+// Pre-fill username when navigating to My Teams
+function initMyTeams() {
+  const savedUsername = localStorage.getItem(SK+'-username');
+  const input = document.getElementById('myteams-username');
+  if (input && savedUsername && !input.value) {
+    input.value = savedUsername;
+    // Auto-load if we have a user ID already
+    if (!myTeamsData.length && savedUsername) loadMyTeams();
+  }
 }
 
 // ════════════════════════════════════
@@ -3268,6 +3779,187 @@ function initTrade() {
   renderTradeAssets();
   renderTradeRosterChips();
 }
+
+// ════════════════════════════════════
+//  DRAFT INTELLIGENCE ENGINE
+//  Inspired by StatChasers Draft Lab:
+//  - Positional scarcity tracking
+//  - Run detection (position runs in progress)
+//  - Tier breaks (last player in a tier)
+//  - Board pressure (players likely gone before your pick)
+//  - Opponent needs analysis
+// ════════════════════════════════════
+
+// Tier breaks — group players by rank into tiers
+// A new tier starts when there's a gap of >5 rank points between consecutive players
+function buildTiers(players) {
+  const sorted = [...players].sort((a,b)=>(a.r0||999)-(b.r0||999));
+  const tiers = [];
+  let current = [];
+  for (let i=0; i<sorted.length; i++) {
+    current.push(sorted[i]);
+    const nextRank = sorted[i+1]?.r0 || 999;
+    const thisRank = sorted[i].r0 || 0;
+    if (nextRank - thisRank > 5 || i === sorted.length-1) {
+      tiers.push([...current]);
+      current = [];
+    }
+  }
+  return tiers;
+}
+
+function getPlayerTier(name, tiers) {
+  for (let t=0; t<tiers.length; t++) {
+    if (tiers[t].find(p=>p.name===name)) return t+1;
+  }
+  return null;
+}
+
+function getTierSize(tierNum, tiers) {
+  return tiers[tierNum-1]?.length || 0;
+}
+
+function getAvailableInTier(tierNum, tiers) {
+  const tier = tiers[tierNum-1] || [];
+  return tier.filter(p => !draftState[p.name] && !_normDraftCache[normName(p.name)] && manualOverrides[p.name]!=='gone').length;
+}
+
+// Run detection — how many of a position went in the last N picks?
+function detectRuns(windowSize=8) {
+  const recentPicks = Object.values(draftState)
+    .filter(v=>v.pickNo)
+    .sort((a,b)=>b.pickNo-a.pickNo)
+    .slice(0,windowSize);
+
+  const posCounts = {QB:0,RB:0,WR:0,TE:0};
+  recentPicks.forEach(pick => {
+    // Find the player's position
+    const player = Object.keys(draftState).find(k=>draftState[k]===pick);
+    const p = PLAYERS.find(x=>x.name===player) || PLAYERS.find(x=>normName(x.name)===normName(player||''));
+    if (p?.pos && posCounts[p.pos]!==undefined) posCounts[p.pos]++;
+  });
+
+  const runs = [];
+  Object.entries(posCounts).forEach(([pos, count]) => {
+    if (count >= 3) runs.push({pos, count, level: count>=5?'hot':'warm'});
+  });
+  return runs;
+}
+
+// Positional scarcity — how many top-N available by position?
+function getScarcity() {
+  const topN = 60; // look at top 60 overall
+  const topPlayers = [...PLAYERS].sort((a,b)=>(a.r0||999)-(b.r0||999)).slice(0,topN);
+  const counts = {QB:{total:0,gone:0},RB:{total:0,gone:0},WR:{total:0,gone:0},TE:{total:0,gone:0}};
+
+  topPlayers.forEach(p => {
+    if (!counts[p.pos]) return;
+    counts[p.pos].total++;
+    const gone = draftState[p.name] || _normDraftCache[normName(p.name)] || manualOverrides[p.name]==='gone';
+    if (gone) counts[p.pos].gone++;
+  });
+
+  return Object.entries(counts).map(([pos, {total, gone}]) => ({
+    pos,
+    available: total - gone,
+    total,
+    pct: total ? Math.round(gone/total*100) : 0
+  }));
+}
+
+// Opponent needs — what positions are other teams thin on?
+function getOpponentNeeds() {
+  const needs = {};
+  TEAMS.forEach((name, idx) => {
+    if (idx === myTeam) return;
+    const roster = getRoster(idx);
+    const qbs = roster.filter(p=>p.pos==='QB').length;
+    const rbs = roster.filter(p=>p.pos==='RB').length;
+    const wrs = roster.filter(p=>p.pos==='WR').length;
+    const tes = roster.filter(p=>p.pos==='TE').length;
+    if (qbs === 0) needs['QB'] = (needs['QB']||0)+1;
+    if (rbs < 2) needs['RB'] = (needs['RB']||0)+1;
+    if (wrs < 3) needs['WR'] = (needs['WR']||0)+1;
+    if (tes === 0) needs['TE'] = (needs['TE']||0)+1;
+  });
+  return needs;
+}
+
+// Board pressure — players likely gone before your next pick
+function getBoardPressure() {
+  if (myTeam===null) return [];
+  const myR = getMyRoster();
+  const nextSlot = PICK_SLOTS[myTeam]?.[myR.length];
+  if (!nextSlot) return [];
+  const [rnd, pos] = nextSlot.split('.').map(Number);
+  const overallPick = (rnd-1)*NUM_TEAMS+pos;
+  const totalPicked = Object.keys(draftState).length;
+  const picksUntilMine = overallPick - totalPicked - 1;
+  if (picksUntilMine <= 0) return [];
+
+  // Players in top 20 available who might go in the next N picks (based on ADP)
+  const available = [...PLAYERS]
+    .filter(p => !draftState[p.name] && !_normDraftCache[normName(p.name)] && manualOverrides[p.name]!=='gone')
+    .sort((a,b)=>(a.r0||999)-(b.r0||999))
+    .slice(0,20);
+
+  // Players with rank within "danger zone" of picksUntilMine
+  return available.filter(p => {
+    const rank = p.r0 || 999;
+    return rank <= overallPick + 5 && rank >= totalPicked;
+  }).slice(0,4);
+}
+
+// Render the intelligence bar
+function renderIntelBar() {
+  const bar = document.getElementById('intel-bar');
+  const chips = document.getElementById('intel-chips');
+  if (!bar || !chips || !sleeperDraftId) { if(bar) bar.style.display='none'; return; }
+
+  const allChips = [];
+  const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+
+  // 1. Positional scarcity chips
+  getScarcity().forEach(({pos,available,total,pct}) => {
+    const c = posColors[pos];
+    const urgency = pct > 70 ? '🔴' : pct > 50 ? '🟡' : '🟢';
+    allChips.push(`<span style="font-size:9px;font-family:'Space Mono',monospace;padding:2px 6px;border-radius:4px;background:${c}15;color:${c};border:1px solid ${c}33;white-space:nowrap">
+      ${pos} ${urgency} ${available} left
+    </span>`);
+  });
+
+  // 2. Run alerts
+  detectRuns().forEach(({pos,count,level}) => {
+    const c = posColors[pos];
+    allChips.push(`<span style="font-size:9px;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:4px;background:${c}25;color:${c};border:1.5px solid ${c};font-weight:700;white-space:nowrap;animation:hotpulse 1.5s infinite">
+      🏃 ${pos} RUN (${count})
+    </span>`);
+  });
+
+  // 3. Board pressure
+  const danger = getBoardPressure();
+  if (danger.length) {
+    const names = danger.map(p=>p.name.split(' ').pop()).join(', ');
+    allChips.push(`<span style="font-size:9px;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:4px;background:#ff709615;color:var(--qb);border:1px solid #ff709633;white-space:nowrap">
+      ⚠ At risk: ${names}
+    </span>`);
+  }
+
+  if (!allChips.length) { bar.style.display='none'; return; }
+
+  chips.innerHTML = allChips.join('');
+  bar.style.display = 'flex';
+}
+
+// Add tier break indicators to the player list — highlight when last player in a tier
+let _tiersCache = null;
+function getTiersCache() {
+  if (!_tiersCache) _tiersCache = buildTiers(PLAYERS);
+  return _tiersCache;
+}
+
+// Call renderIntelBar in renderAll
+const _origRenderAll = typeof renderAll === 'function' ? renderAll : null;
 
 // ════════════════════════════════════
 //  POST-DRAFT GRADES
