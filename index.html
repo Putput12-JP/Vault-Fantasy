@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>SnapDraft v2.1 — Draft Intelligence</title>
+<title>SnapDraft — Draft Intelligence</title>
 
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
@@ -195,7 +195,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
   gap:2px;padding:8px 4px 6px;
   background:transparent;border:none;color:var(--muted);
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-  transition:color .15s;min-height:50px;
+  transition:color .15s;min-height:54px;
 }
 .tab-btn.on{color:var(--accent2)}
 .tab-btn:active{opacity:.6}
@@ -415,7 +415,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 .prow-mobile{
   align-items:center;
   padding:0 16px;
-  height:52px;
+  height:54px;
   border-bottom:1px solid var(--border);
   gap:10px;
   width:100%;
@@ -428,6 +428,9 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 .prow-mobile.gone{opacity:.15}
 .prow-mobile.ismine{background:#5b8dee08;border-left:2px solid var(--accent)}
 .prow-mobile.is-value{border-left:2px solid var(--rb)}
+.prow-mobile.is-hot,.prow.is-hot td:first-child{border-left:3px solid var(--rb)!important}
+.vbadge.hot{animation:hotpulse 1.5s ease-in-out infinite;font-size:10px!important;font-weight:900!important}
+@keyframes hotpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.8;transform:scale(1.05)}}
 
 /* Rank - right-aligned, muted */
 .pm-rank{width:36px;flex-shrink:0;text-align:right;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;color:var(--muted)}
@@ -797,6 +800,23 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 </style>
 </head>
 <body>
+<!-- NOTE MODAL — bottom sheet, tap backdrop to close, keyboard-safe -->
+<div id="note-modal" onclick="if(event.target===this)closeNote()"
+  style="display:none;position:fixed;inset:0;background:#00000099;z-index:500;align-items:flex-end;justify-content:center">
+  <div style="background:var(--s1);border:1.5px solid var(--border2);border-radius:14px 14px 0 0;padding:20px;width:100%;max-width:500px;padding-bottom:max(20px,env(safe-area-inset-bottom))">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div id="note-player-name" style="font-size:15px;font-weight:700;color:var(--accent3)"></div>
+      <button onclick="closeNote()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;touch-action:manipulation">✕</button>
+    </div>
+    <textarea id="note-input" placeholder="Injury concern, trade target, league mate loves this guy..."
+      style="width:100%;background:var(--s2);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-size:14px;padding:10px;resize:none;height:80px;outline:none;font-family:Inter,sans-serif;display:block"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button onclick="saveNoteFromModal()" style="flex:1;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:Space Mono,monospace;font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation">SAVE</button>
+      <button onclick="closeNote()" style="flex:1;padding:12px;background:transparent;color:var(--muted);border:1.5px solid var(--dim);border-radius:8px;font-family:Space Mono,monospace;font-size:12px;cursor:pointer;touch-action:manipulation">CANCEL</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="swipe-hint" id="swipe-hint"></div>
 <div class="onboard-dim" id="onboard-dim" style="display:none" onclick="skipOnboarding()"></div>
@@ -843,7 +863,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
           <div class="dr-left">
             <div class="dr-badge">✦ DEFAULT</div>
             <div class="dr-title">FantasyPros Dynasty Rankings</div>
-            <div class="dr-sub">474 players · FantasyPros Expert Consensus · 2026</div>
+            <div class="dr-sub">474 players · FantasyPros Expert Consensus · Updated Jan 2026</div>
           </div>
           <button class="dr-use-btn" id="dr-btn" onclick="event.stopPropagation();useDefaultRankings()">USE THESE</button>
         </div>
@@ -918,6 +938,11 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
       style="display:none;padding:6px 10px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation;transition:all .15s;-webkit-tap-highlight-color:transparent;min-width:36px;min-height:36px;align-items:center;justify-content:center">
       ⟳
     </button>
+    <!-- Watchlist toggle — always visible in header -->
+    <button id="watch-header-btn" onclick="toggleWatchFilter()" title="Show only starred players"
+      style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;touch-action:manipulation;transition:all .15s;-webkit-tap-highlight-color:transparent;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center">
+      ☆
+    </button>
     <button class="hbtn" id="tpill" onclick="openTModal()">Select Team</button>
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
     <button class="hbtn desktop-only" onclick="document.getElementById('setup').classList.remove('gone')">⚙</button>
@@ -972,7 +997,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
   </div>
 
   <!-- PICKS STRIP -->
-  <div class="pstrip" id="pstrip"></div>
+  <div class="pstrip" id="pstrip"><span id="draft-timer" style="font-size:9px;color:var(--muted);font-family:Space Mono,monospace;flex-shrink:0;white-space:nowrap;padding-right:6px;border-right:1px solid var(--border);margin-right:4px"></span></div>
   <!-- SEARCH BAR (always visible, full width) -->
   <div class="search-bar-wrap">
     <div class="search-bar-inner">
@@ -1003,6 +1028,9 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
       <button class="sbtn" id="sb3" onclick="setSort(3)" style="display:none">FantasyPros</button>
       <button class="sbtn" id="sb-adp-dynasty" onclick="setSort('adp-dynasty')">Dynasty ADP</button>
       <button class="sbtn" id="sb-adp-redraft" onclick="setSort('adp-redraft')">Redraft ADP</button>
+    </div>
+    <div class="sgrp">
+      <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only starred players">⭐ Watchlist</button>
     </div>
     <div class="cright">
       <button class="hgbtn" id="hgbtn" onclick="toggleHide()">Show Drafted <span class="hg-count" id="hg-count">0</span></button>
@@ -1065,8 +1093,8 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
           style="background:var(--s2);border:1.5px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:5px 8px;border-radius:8px;outline:none;cursor:pointer;display:none">
         </select>
         <div style="display:flex;gap:3px">
-          <button class="sbtn on" id="val-fc" onclick="setValueSource('fc')">FantasyCalc</button>
-          <button class="sbtn" id="val-ra" onclick="setValueSource('ra')">RosterAudit</button>
+          <button class="sbtn on" id="val-fc" onclick="setValueSource('fc')" title="FantasyCalc: values derived from ~1M user-submitted dynasty trades. Updated daily.">FantasyCalc ⓘ</button>
+          <button class="sbtn" id="val-ra" onclick="setValueSource('ra')" title="RosterAudit: Elo-based values from 500k+ real Sleeper dynasty leagues. Keyed by Sleeper player ID for precise matching.">RosterAudit ⓘ</button>
         </div>
         <button class="sbtn" onclick="refreshValues()" id="fc-refresh-btn">⟳</button>
         <button class="ab" onclick="showPage('draft')" style="font-size:11px;padding:8px 14px;border-color:var(--accent);color:var(--accent2)">← RANKINGS</button>
@@ -1078,6 +1106,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
       <button class="sbtn on" id="teams-tab-pr" onclick="setTeamsTab('pr')">📊 Power Rankings</button>
       <button class="sbtn" id="teams-tab-mv" onclick="setTeamsTab('mv')">🔥 Movers</button>
       <button class="sbtn" id="teams-tab-gr" onclick="setTeamsTab('gr')">🏆 Grades</button>
+      <button class="sbtn" id="teams-tab-share" onclick="shareDraftCard()" style="margin-left:auto">↗ Share</button>
     </div>
 
     <div id="teams-tab-content">
@@ -1119,6 +1148,12 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
       </div>
     </div>
 
+    <!-- TRADE MODE TOGGLE -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
+      <button class="sbtn on" id="trade-2team" onclick="setTradeMode(2)">2-Team Trade</button>
+      <button class="sbtn" id="trade-3team" onclick="setTradeMode(3)">3-Team Trade</button>
+    </div>
+
     <!-- TRADE SIDES -->
     <div id="trade-container" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
       <!-- SIDE A -->
@@ -1144,6 +1179,18 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
           <div class="trade-results" id="trade-results-b"></div>
         </div>
         <div class="trade-assets" id="trade-assets-b"></div>
+      </div>
+      <!-- SIDE C — 3-team only, hidden by default -->
+      <div class="trade-side" id="trade-side-c" style="display:none">
+        <div class="trade-side-hdr">
+          <span class="trade-side-label">3RD TEAM GIVES</span>
+          <span class="trade-side-val" id="trade-val-c">0</span>
+        </div>
+        <div class="trade-search-wrap">
+          <input class="trade-search" id="trade-search-c" placeholder="Search player or pick..." oninput="searchTrade('c')" autocomplete="off">
+          <div class="trade-results" id="trade-results-c"></div>
+        </div>
+        <div class="trade-assets" id="trade-assets-c"></div>
       </div>
     </div>
 
@@ -1213,6 +1260,9 @@ let slotOwner = {};    // `${round}-${slot}` -> teamIdx
 
 let draftState = {};   // normalizedName -> { teamIdx, round, pickNo } — from Sleeper
 let manualOverrides = {}; // name -> 'gone' | 'mine' — survives Sleeper sync
+let watchlist = new Set(JSON.parse(localStorage.getItem('snapdraft-watchlist')||'[]'));
+let playerNotes = JSON.parse(localStorage.getItem('snapdraft-notes')||'{}');
+let lastPickTime = null; // timestamp of last Sleeper sync pick
 let _normDraftCache = {}; // normalized name -> draftState value (rebuilt on save())
 let _normOverrideCache = {}; // normalized name -> manualOverrides value
 let sleeperPlayerMap = {}; // normalized name -> {player_id, adp_dynasty, adp} from Sleeper players API
@@ -1224,6 +1274,15 @@ let hideGone = true; // Default ON — most users want available players only
 let cmpTeam = null;
 let sleeperDraftId = '';
 let syncTimer = null;
+
+// ── SINGLE SOURCE OF TRUTH for pick counting ──
+// draftState stores duplicate keys (canonical + Sleeper raw name)
+// This function deduplicates by pickNo to get the true count
+function getTotalPicksMade(){
+  const seen = new Set();
+  Object.values(draftState).forEach(v=>{ if(v.pickNo>0&&v.round>0) seen.add(v.pickNo); });
+  return seen.size;
+}
 let rawFile = null;
 let csvHdrs = [];
 const SK = 'dcmd-v5';
@@ -1553,6 +1612,8 @@ async function launch(skip=false) {
     await syncSleeper();
     if (Object.keys(draftState).length === 0) initState();
     syncTimer = setInterval(syncSleeper, 15000);
+  // Also update draft timer display every 30s
+  setInterval(()=>{ if(lastPickTime){ renderStrip(); } }, 30000);
   } else {
     initState();
     _rebuildCaches();
@@ -1580,8 +1641,15 @@ function updateSortBtns() {
     const b=document.getElementById(`sb${i}`);
     const lh=document.getElementById(`lh${i}`);
     const lbl=RLABELS[i];
-    if(lbl&&b){b.textContent=lbl;b.style.display='';if(lh){lh.textContent=lbl.slice(0,8).toUpperCase();lh.style.display='';}}
-    else{if(b)b.style.display='none';if(lh&&lh.style)lh.style.display='none';}
+    if(lbl&&b){
+      b.textContent=lbl;
+      b.style.display='';
+      b.title=`Sort by ${lbl} rankings (custom imported column)`;
+      if(lh){lh.textContent=lbl.slice(0,8).toUpperCase();lh.style.display='';}
+    } else {
+      if(b)b.style.display='none';
+      if(lh&&lh.style)lh.style.display='none';
+    }
   }
   // FantasyPros button — show only when custom rankings loaded
   const sb3=document.getElementById('sb3');
@@ -1725,6 +1793,7 @@ async function syncSleeper() {
     _rebuildCaches();
     buildADPFromDraft();
     setSyncStatus('live');
+  lastPickTime = Date.now();
     renderAll();
   } catch(e){
     setSyncStatus('err');
@@ -1830,6 +1899,20 @@ function save(){
   if(myTeam!==null) localStorage.setItem(SK+'-myteam',myTeam);
   _rebuildCaches();
 }
+function toggleWatch(name){
+  if(watchlist.has(name)) watchlist.delete(name);
+  else watchlist.add(name);
+  localStorage.setItem('snapdraft-watchlist',JSON.stringify([...watchlist]));
+  renderList();
+}
+
+function saveNote(name, text){
+  if(text.trim()) playerNotes[name]=text.trim();
+  else delete playerNotes[name];
+  localStorage.setItem('snapdraft-notes',JSON.stringify(playerNotes));
+  renderList();
+}
+
 function _rebuildCaches(){
   _normDraftCache={};
   Object.entries(draftState).forEach(([k,v])=>{ _normDraftCache[normName(k)]=v; });
@@ -2161,6 +2244,23 @@ function renderSuggestions() {
 // ════════════════════════════════════
 //  UI HELPERS
 // ════════════════════════════════════
+let _noteTarget = null;
+function openNote(name){
+  _noteTarget = name;
+  document.getElementById('note-player-name').textContent = name;
+  document.getElementById('note-input').value = playerNotes[name]||'';
+  document.getElementById('note-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('note-input').focus(),100);
+}
+function saveNoteFromModal(){
+  if(_noteTarget) saveNote(_noteTarget, document.getElementById('note-input').value);
+  closeNote();
+}
+function closeNote(){
+  document.getElementById('note-modal').style.display='none';
+  _noteTarget=null;
+}
+
 let _toastTimer=null;
 function toast(msg, undoFn=null){
   const t=document.getElementById('toast');
@@ -2184,6 +2284,16 @@ function _rebuildADPLookup(){
     ADP_LOOKUP[normName(p.name)]=p;
   });
 }
+let watchFilter = false;
+function toggleWatchFilter(){
+  watchFilter = !watchFilter;
+  document.getElementById('sb-watch')?.classList.toggle('on', watchFilter);
+  // Sync header button
+  const hb = document.getElementById('watch-header-btn');
+  if(hb){ hb.textContent=watchFilter?'⭐':'☆'; hb.style.color=watchFilter?'var(--te)':'var(--muted)'; hb.style.borderColor=watchFilter?'var(--te)':'var(--border2)'; }
+  renderList();
+}
+
 function setSort(k){
   sortKey=k;
   // Switch ADP dataset
@@ -2275,6 +2385,8 @@ function renderList(){
     if(isDrafted) tot++;else avail++;
     const posMatch=posF==='ALL'||p.pos===posF;
     const sm=!search||p.name.toLowerCase().includes(search)||p.team.toLowerCase().includes(search);
+    const inWatchlist = watchlist.has(p.name);
+    if(watchFilter && !inWatchlist) return {desktop:'',mobile:''};
     if(!posMatch||!sm||(hideGone&&isDrafted)) return {desktop:'',mobile:''};
 
     // ── Value + Need analysis ──
@@ -2348,11 +2460,14 @@ function renderList(){
     const desktopRow = `<tr class="prow ${isDrafted?'gone':''} ${isMe?'ismine':''} ${isHot?'is-value':''}">
       <td class="rnum" style="text-align:right;padding-right:8px">${rank}</td>
       <td style="padding:0 3px">${hs}</td>
-      <td><span class="pname">${p.name}</span></td>
+      <td onclick="openNote('${sn}')" style="cursor:pointer" title="Click to add note"><span class="pname">${p.name}${playerNotes[p.name]?'<span style=\"margin-left:5px;font-size:9px;opacity:.7\">🗒</span>':''}</span></td>
       <td class="td-team" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
       <td class="td-pos"><span class="ppill ${p.pos}">${p.pos}</span></td>
+      <td style="padding:0 4px;text-align:center;width:28px;cursor:pointer;font-size:14px;user-select:none" 
+          onclick="event.stopPropagation();toggleWatch('${sn}')" 
+          title="${inWatchlist?'Remove from watchlist':'Add to watchlist'}">${inWatchlist?'⭐':'☆'}</td>
       <td><div class="prow-status-cell">
-        <div class="prow-status-default">${statusHtml}</div>
+        <div class="prow-status-default">${statusHtml}${playerNotes[p.name]?'<span style="margin-left:4px;font-size:9px;color:var(--te)" title="'+playerNotes[p.name].slice(0,30)+'">🗒</span>':''}</div>
         <div class="prow-actions">${acts}</div>
       </div></td>
       <td class="td-fill"></td>
@@ -2371,7 +2486,10 @@ function renderList(){
           ${vbadgeHtml}
         </div>
       </div>
-      <div class="pm-status">${isDrafted&&ti>=0&&ti<TEAMS.length ? `<span style="font-size:9px;font-family:'Space Mono',monospace;color:${COLORS[ti%COLORS.length]};font-weight:700">${ti===myTeam?'✦':TEAMS[ti].slice(0,6)}</span>` : ''}</div>
+      <div class="pm-status" style="display:flex;align-items:center;gap:4px">
+        ${isDrafted&&ti>=0&&ti<TEAMS.length ? `<span style="font-size:9px;font-family:'Space Mono',monospace;color:${COLORS[ti%COLORS.length]};font-weight:700">${ti===myTeam?'✦':TEAMS[ti].slice(0,6)}</span>` : ''}
+        <span onclick="event.stopPropagation();toggleWatch('${sn}')" style="font-size:16px;cursor:pointer;user-select:none">${inWatchlist?'⭐':'☆'}</span>
+      </div>
     </div>`;
 
     return { desktop: desktopRow, mobile: mobileRow };
@@ -2427,6 +2545,14 @@ function renderStrip(){
     strip.innerHTML='<span style="color:var(--muted);font-size:11px;font-family:Space Mono,monospace">← select your team</span>';
     document.getElementById('nbadge').textContent='NEXT: —';
     return;
+  }
+
+  // Draft timer
+  const timerEl = document.getElementById('draft-timer');
+  if(timerEl && lastPickTime){
+    const mins = Math.floor((Date.now()-lastPickTime)/60000);
+    timerEl.textContent = mins<=0?'just now':mins===1?'1m ago':`${mins}m ago`;
+    timerEl.style.color = mins>=3?'var(--qb)':mins>=2?'var(--te)':'var(--muted)';
   }
 
   strip.innerHTML=slots.map((s,i)=>{
@@ -2980,6 +3106,16 @@ function populateLeagueDropdown() {
 function renderTeams() {
   if (teamsTab === 'mv') { renderMovers(); return; }
 
+  // Auto-fetch FC values on first visit — don't make user find the button
+  if(!fcLoaded && !fcLoading && valueSource==='fc') {
+    fetchFantasyCalc();
+    return;
+  }
+  if(!raLoaded && !raLoading && valueSource==='ra') {
+    fetchRosterAudit();
+    return;
+  }
+
   // Populate team selector dropdown
   const sel = document.getElementById('teams-team-select');
   if (sel && TEAMS.length) {
@@ -3223,6 +3359,37 @@ function renderAll(){
 }
 
 // ════════════════════════════════════
+//  SHARE DRAFT CARD
+// ════════════════════════════════════
+async function shareDraftCard(){
+  const myR = getMyRoster();
+  if(!myR.length){ toast('No picks yet to share'); return; }
+  const myName = TEAMS[myTeam]||'My Team';
+  const totalVal = getTeamValue(myR);
+  const qbs=myR.filter(p=>p.pos==='QB').length;
+  const rbs=myR.filter(p=>p.pos==='RB').length;
+  const wrs=myR.filter(p=>p.pos==='WR').length;
+  const tes=myR.filter(p=>p.pos==='TE').length;
+  const bestPlayer = [...myR].sort((a,b)=>getPlayerValue(b.name)-getPlayerValue(a.name))[0];
+  const shareLines = ['\u{1F3C8} '+myName+' \u2014 SnapDraft'];
+  if(totalVal) shareLines.push('FC Value: '+totalVal.toLocaleString());
+  shareLines.push('Roster: '+qbs+'QB '+rbs+'RB '+wrs+'WR '+tes+'TE');
+  shareLines.push('Best Pick: '+(bestPlayer?.name||'\u2014'));
+  shareLines.push('putput12-jp.github.io/SnapDraft');
+  const shareText = shareLines.join('\n');
+  if(navigator.share){
+    try{ await navigator.share({title:'My SnapDraft Draft Card',text:shareText}); }
+    catch(e){ if(e.name!=='AbortError') copyToClipboard(shareText); }
+  } else {
+    copyToClipboard(shareText);
+  }
+}
+function copyToClipboard(text){
+  navigator.clipboard?.writeText(text).then(()=>toast('✓ Draft card copied to clipboard!'))
+    .catch(()=>toast('Share not available in this browser'));
+}
+
+// ════════════════════════════════════
 //  MY TEAMS — All Sleeper Leagues
 // ════════════════════════════════════
 let myTeamsSeason = '2026';
@@ -3245,7 +3412,7 @@ async function loadMyTeams() {
   const btn = document.getElementById('myteams-btn');
   const res = document.getElementById('myteams-results');
   if (btn) btn.textContent = '...';
-  if (res) res.innerHTML = '<div class="fc-loading">⟳ Loading your leagues...</div>';
+  if (res) res.innerHTML = '<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div> Loading your leagues from Sleeper...</div>';
 
   try {
     // Get user ID
@@ -3332,7 +3499,7 @@ async function viewLeagueRoster(leagueId, leagueName, season) {
 
   detail.style.display = 'block';
   title.innerHTML = `<em style="color:var(--accent2);font-style:normal">${leagueName}</em> · Your Roster`;
-  rosterEl.innerHTML = '<div class="fc-loading">⟳ Loading roster...</div>';
+  rosterEl.innerHTML = '<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div> Loading roster and values...</div>';
   detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
@@ -3436,7 +3603,8 @@ function initMyTeams() {
 // ════════════════════════════════════
 //  TRADE CALCULATOR
 // ════════════════════════════════════
-const tradeAssets = { a: [], b: [] };
+const tradeAssets = { a: [], b: [], c: [] };
+let tradeMode = 2;
 
 // Draft pick values (approximate SF dynasty values from RosterAudit scale)
 const PICK_VALUES = {
@@ -3454,6 +3622,21 @@ function getTradePlayerValue(name) {
   // Fallback: use rankings position as proxy
   const p = PLAYERS.find(x => x.name === name);
   return p ? Math.max(0, Math.round((500 - (p.r0 || 500)) * 8)) : 0;
+}
+
+function setTradeMode(n){
+  tradeMode = n;
+  document.getElementById('trade-2team')?.classList.toggle('on', n===2);
+  document.getElementById('trade-3team')?.classList.toggle('on', n===3);
+  // Show/hide 3rd side
+  const sideC = document.getElementById('trade-side-c');
+  if(sideC) sideC.style.display = n===3 ? '' : 'none';
+  // Switch to 3-col grid on desktop for 3-team
+  const container = document.getElementById('trade-container');
+  if(container) container.style.gridTemplateColumns = n===3 ? 'repeat(3,1fr)' : '1fr 1fr';
+  // Reset C side
+  if(n===2){ tradeAssets.c=[]; renderTradeAssets(); }
+  evaluateTrade();
 }
 
 function searchTrade(side) {
@@ -3522,7 +3705,8 @@ function removeTradeAsset(side, name) {
 }
 
 function renderTradeAssets() {
-  ['a','b'].forEach(side => {
+  const sides = (typeof tradeMode!=='undefined'&&tradeMode===3) ? ['a','b','c'] : ['a','b'];
+  sides.forEach(side => {
     const el = document.getElementById(`trade-assets-${side}`);
     const total = tradeAssets[side].reduce((s,a) => s+a.val, 0);
     document.getElementById(`trade-val-${side}`).textContent = total.toLocaleString();
@@ -3547,12 +3731,16 @@ function renderTradeAssets() {
 
 function evaluateTrade() {
   const verdict = document.getElementById('trade-verdict');
-  if (!tradeAssets.a.length && !tradeAssets.b.length) { verdict.style.display='none'; return; }
+  const _tm = (typeof tradeMode!=='undefined') ? tradeMode : 2;
+  const _hasTrade = tradeAssets.a.length || tradeAssets.b.length || tradeAssets.c.length;
+  if (!_hasTrade) { verdict.style.display='none'; return; }
 
   const valA = tradeAssets.a.reduce((s,a)=>s+a.val,0);
   const valB = tradeAssets.b.reduce((s,a)=>s+a.val,0);
-  const diff = valB - valA; // positive = you win
-  const total = Math.max(valA+valB, 1);
+  const valC = _tm===3 ? tradeAssets.c.reduce((s,a)=>s+a.val,0) : 0;
+  // In 3-team: you give A, receive B+C combined
+  const diff = _tm===3 ? (valB+valC) - valA : valB - valA; // positive = you win
+  const total = Math.max(_tm===3 ? valA+valB+valC : valA+valB, 1);
   const pctA = Math.round(valA/total*100);
   const pctB = 100-pctA;
 
@@ -3590,19 +3778,22 @@ function evaluateTrade() {
     <div class="trade-verdict-bar">
       <div class="tvb-fill" style="width:${pctA}%;background:var(--accent2)"></div>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'Space Mono',monospace">
+    <div style="display:flex;justify-content:space-between;font-size:11px;font-family:'Space Mono',monospace;flex-wrap:wrap;gap:4px">
       <span style="color:var(--accent2)">YOU GIVE · ${valA.toLocaleString()}</span>
       <span style="color:var(--rb)">YOU RECEIVE · ${valB.toLocaleString()}</span>
+      ${_tm===3?`<span style="color:var(--te)">3RD TEAM · ${valC.toLocaleString()}</span>`:''}
     </div>`;
 }
 
 function clearTrade() {
   tradeAssets.a = [];
   tradeAssets.b = [];
+  tradeAssets.c = [];
   renderTradeAssets();
   document.getElementById('trade-verdict').style.display='none';
   document.getElementById('trade-val-a').textContent='0';
   document.getElementById('trade-val-b').textContent='0';
+  document.getElementById('trade-val-c')&&(document.getElementById('trade-val-c').textContent='0');
 }
 
 function renderTradeRosterChips() {
