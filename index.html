@@ -105,32 +105,78 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .z1{position:relative;z-index:1}
 
 /* ── SETUP ── */
-.setup{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+/* ════════════════════════════════
+   SETUP — Two-step connect flow
+   ════════════════════════════════ */
+.setup{position:fixed;inset:0;z-index:999;background:var(--bg);overflow-y:auto}
 .setup.gone{display:none;pointer-events:none}
-.setup-card{width:min(580px,100%);background:var(--s1);border:1px solid var(--border2);border-radius:20px;padding:32px 28px;box-shadow:0 0 60px #1a3a6e44;margin:auto}
-.setup-logo{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:3px;margin-bottom:2px}
-.setup-logo em{color:var(--accent2);font-style:normal}
-.setup-sub{font-size:12px;color:var(--muted);margin-bottom:28px;font-family:'Space Mono',monospace}
-.setup-row{margin-bottom:20px}
-.setup-label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:7px;font-family:'Space Mono',monospace}
+.setup-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.setup-screen-inner{width:100%;max-width:480px;display:flex;flex-direction:column;gap:16px}
+
+/* Brand */
+.setup-logo-icon{font-size:44px;text-align:center;display:block;margin-bottom:4px}
+.setup-wordmark{font-family:'Arial Black','Impact',sans-serif;font-size:28px;letter-spacing:2px;text-align:center}
+.setup-wordmark em{color:var(--accent2);font-style:normal}
+.setup-tagline{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;text-align:center;letter-spacing:.06em}
+.setup-brand{display:flex;flex-direction:column;gap:4px;margin-bottom:4px}
+
+/* Resume button */
+.resume-big-btn{width:100%;padding:15px;border-radius:12px;border:1.5px solid var(--rb);background:#3de8a015;color:var(--rb);font-family:'Space Mono',monospace;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.05em;touch-action:manipulation}
+.resume-big-btn:hover{background:#3de8a025}
+.setup-or{text-align:center;font-size:11px;color:var(--muted);margin-top:10px;font-family:'Space Mono',monospace}
+
+/* Connect card */
+.connect-card{background:var(--s1);border:1px solid var(--border2);border-radius:18px;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.connect-icon{width:60px;height:60px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.connect-title{font-size:20px;font-weight:700;color:var(--text);text-align:center}
+.connect-sub{font-size:13px;color:var(--muted);text-align:center;line-height:1.6;max-width:340px}
+.connect-input-row{display:flex;gap:8px;width:100%}
+.connect-input{flex:1;padding:12px 16px;background:var(--s2);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-size:14px;outline:none;font-family:'Inter',sans-serif;transition:border-color .15s;min-width:0}
+.connect-input:focus{border-color:var(--accent)}
+.connect-input::placeholder{color:var(--muted)}
+.connect-btn{padding:12px 22px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;touch-action:manipulation;font-family:'Inter',sans-serif;transition:opacity .15s}
+.connect-btn:hover{opacity:.9}
+.connect-perks{display:flex;flex-direction:column;gap:6px;width:100%}
+.connect-perk{font-size:13px;color:var(--rb);font-family:'Space Mono',monospace}
+.connect-manual{font-size:11px;color:var(--muted);cursor:pointer;text-align:center;font-family:'Space Mono',monospace;width:100%}
+.connect-manual .connect-manual-body{display:none;text-align:left;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.connect-manual.open .connect-manual-body{display:block}
+.connect-manual>span{text-decoration:underline;text-underline-offset:3px}
+.setup-session-row{display:flex;gap:8px;justify-content:center}
+
+/* Step 2 — Rankings config */
+.step2-back{font-size:12px;color:var(--muted);cursor:pointer;font-family:'Space Mono',monospace;display:flex;align-items:center;gap:4px}
+.step2-back:hover{color:var(--text)}
+.step2-title{font-size:22px;font-weight:700}
+.step2-sub{font-size:13px;color:var(--muted);line-height:1.5}
+.rk-option{background:var(--s1);border:1.5px solid var(--border2);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s}
+.rk-option:hover{border-color:var(--accent2)}
+.rk-option.selected{border-color:var(--rb);background:#3de8a00d;box-shadow:0 0 0 2px var(--rb)}
+.rk-option-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.rk-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;background:#3de8a020;color:var(--rb);font-family:'Space Mono',monospace;letter-spacing:.08em;width:fit-content}
+.rk-name{font-size:15px;font-weight:700}
+.rk-meta{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
+.rk-use-btn{padding:9px 16px;border-radius:8px;border:1.5px solid var(--rb);background:transparent;color:var(--rb);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.rk-use-btn:hover,.rk-use-btn.selected{background:var(--rb);color:#fff}
+
+/* Shared */
 .setup-input{width:100%;background:var(--s2);border:1.5px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:14px;padding:12px 14px;border-radius:10px;outline:none;transition:border-color .2s}
 .setup-input:focus{border-color:var(--accent)}
 .setup-input::placeholder{color:var(--muted)}
-.upload-zone{border:1.5px dashed var(--border2);border-radius:10px;padding:22px;text-align:center;cursor:pointer;transition:all .2s;background:var(--s2)}
+.launch-btn{width:100%;padding:16px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Arial Black',sans-serif;font-size:18px;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.launch-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px #5b8dee44}
+.launch-btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.or-div{text-align:center;font-size:11px;color:var(--muted);margin:12px 0;font-family:'Space Mono',monospace}
+.upload-zone{border:1.5px dashed var(--border2);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:var(--s2)}
 .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--s3)}
-.upload-zone .uico{font-size:28px;margin-bottom:6px}
-.upload-zone .utxt{font-size:13px;color:var(--text2)}
-.upload-zone .usub{font-size:11px;color:var(--muted);margin-top:4px}
-.upload-zone.done{border-color:var(--rb);background:#1a3a2a}
+.upload-zone .uico{font-size:22px;margin-bottom:4px}
+.upload-zone .utxt{font-size:12px;color:var(--text2);font-weight:600}
+.upload-zone .usub{font-size:10px;color:var(--muted);margin-top:2px}
+.upload-zone.done{border-color:var(--rb);border-style:solid;background:#3de8a00d}
 .col-map{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .col-group{display:flex;flex-direction:column;gap:4px}
 .col-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:'Space Mono',monospace}
 .col-select{background:var(--s3);border:1.5px solid var(--border2);color:var(--text);font-size:13px;padding:8px 10px;border-radius:8px;outline:none;width:100%}
-.launch-btn{width:100%;padding:16px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;cursor:pointer;transition:all .2s;margin-top:6px}
-.launch-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px #5b8dee44}
-.or-div{text-align:center;font-size:11px;color:var(--muted);margin:12px 0;font-family:'Space Mono',monospace}
-.skip-btn{width:100%;padding:11px;border-radius:10px;border:1.5px solid var(--border3);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;transition:all .2s}
-.skip-btn:hover{border-color:var(--accent2);color:var(--accent3)}
 
 /* ── TEAM MODAL ── */
 .modal-bg{position:fixed;inset:0;background:#000000bb;z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:16px}
@@ -147,7 +193,29 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .tsel-btn .tbm{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace}
 
 /* ── HEADER ── */
-header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12px;display:flex;align-items:center;gap:8px;position:relative;z-index:100;height:44px;flex-shrink:0;overflow:hidden}
+header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12px;display:flex;align-items:center;gap:8px;position:relative;z-index:100;height:48px;flex-shrink:0}
+
+/* League selector in header — always visible */
+.header-league-wrap{display:flex;align-items:center;gap:6px;flex:1;justify-content:center;min-width:0}
+.header-league-label{font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.1em;flex-shrink:0}
+.header-league-select-wrap{position:relative;flex-shrink:0}
+.header-league-select{
+  background:var(--s2);border:1.5px solid var(--border2);color:var(--text);
+  font-family:'Space Mono',monospace;font-size:11px;font-weight:700;
+  padding:6px 28px 6px 10px;border-radius:8px;outline:none;cursor:pointer;
+  -webkit-appearance:none;max-width:200px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+}
+.header-league-select:hover{border-color:var(--accent2)}
+@media(max-width:700px){.header-league-wrap{flex:0;min-width:0}.header-league-select{max-width:130px;font-size:10px}}
+
+/* User profile chip */
+.user-chip{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:20px;border:1.5px solid var(--border2);background:var(--s2);cursor:pointer;transition:all .15s;flex-shrink:0;touch-action:manipulation}
+.user-chip:hover{border-color:var(--accent2);background:var(--s3)}
+.user-avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid var(--border2)}
+.user-initials{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;align-items:center;justify-content:center;flex-shrink:0}
+.user-dname{font-size:11px;font-weight:700;font-family:'Space Mono',monospace;color:var(--text2);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .logo{font-family:'Arial Black','Impact',sans-serif;font-size:16px;letter-spacing:1px;white-space:nowrap;flex-shrink:0}
 .logo em{color:var(--accent2);font-style:normal}
 .hright{display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0}
@@ -287,6 +355,48 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 .verdict-lose{color:var(--qb);font-weight:700}
 .verdict-fair{color:var(--te);font-weight:700}
 @media(max-width:700px){#trade-container{grid-template-columns:1fr}}
+/* ── TRANSACTIONS ── */
+.tx-summary{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.tx-stat{background:var(--s2);border-radius:10px;padding:10px 16px;text-align:center;border:1px solid var(--border)}
+.tx-stat b{display:block;font-size:22px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent2)}
+.tx-stat span{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase}
+.tx-card{background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:10px}
+.tx-card.tx-small{padding:10px 12px;background:var(--s1)}
+.tx-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.tx-type{font-size:9px;font-weight:700;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.08em}
+.tx-type.trade{background:#5b8dee22;color:var(--accent2)}
+.tx-type.waiver{background:#3de8a022;color:var(--rb)}
+.tx-type.free_agent{background:#ffd16622;color:var(--te)}
+.tx-date{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-left:auto}
+.tx-net{font-size:11px;font-weight:700;font-family:'Space Mono',monospace}
+.tx-team-sm{font-size:12px;font-weight:600}
+.tx-sides{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.tx-side{flex:1;min-width:120px;background:var(--s1);border-radius:8px;padding:10px;border:1px solid var(--border)}
+.tx-team{font-size:12px;font-weight:700;margin-bottom:4px}
+.tx-grade{font-size:10px;font-weight:700;font-family:'Space Mono',monospace;margin-bottom:6px}
+.tx-gets,.tx-gives{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px}
+.tx-player{font-size:11px;font-weight:500;padding:2px 6px;border-radius:4px;white-space:nowrap}
+.tx-player.gets{background:#3de8a015;color:var(--rb)}
+.tx-player.gives{background:#ff709615;color:var(--qb)}
+.tx-val{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:4px}
+.tx-arrow{font-size:20px;color:var(--muted);align-self:center;flex-shrink:0;padding:0 4px}
+.tx-wf-row{display:flex;flex-wrap:wrap;gap:4px}
+
+/* ── STANDINGS ── */
+.st-table{display:flex;flex-direction:column}
+.st-hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;border-bottom:1.5px solid var(--border2);background:var(--s1)}
+.st-row{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--border);transition:background .1s}
+.st-row:hover{background:var(--s2)}
+.st-row.st-me{background:#5b8dee08;border-left:3px solid var(--accent)}
+.st-rank{width:28px;font-size:18px;font-weight:800;font-family:'Space Mono',monospace;flex-shrink:0}
+.st-name{flex:1;font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-you{font-size:8px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:3px;margin-left:6px;font-family:'Space Mono',monospace;vertical-align:2px}
+.st-wl{width:60px;text-align:center;font-size:12px;font-weight:700;font-family:'Space Mono',monospace;flex-shrink:0}
+.st-pf,.st-pa{width:70px;text-align:right;font-size:12px;font-family:'Space Mono',monospace;flex-shrink:0}
+.st-bar-wrap{flex:1;min-width:80px;display:flex;align-items:center;gap:8px}
+.st-bar{height:6px;border-radius:3px;flex-shrink:0}
+.st-bar-label{font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);white-space:nowrap}
+
 .grade-panel{margin-top:24px;padding:16px;background:var(--s1);border:1.5px solid var(--border2);border-radius:12px}
 .grade-hdr{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:'Space Mono',monospace;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
 .grade-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
@@ -691,6 +801,56 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 .bm-rank{font-size:11px;font-weight:600;font-family:'Space Mono',monospace;flex-shrink:0}
 .bm-img{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--s3);border:1.5px solid var(--border2);flex-shrink:0}
 
+/* ── MY TEAM OVERVIEW DASHBOARD ── */
+.ov-page{padding:16px 16px 100px;max-width:1100px;margin:0 auto}
+.ov-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.ov-title{font-family:'Arial Black','Impact',sans-serif;font-size:24px;letter-spacing:1px}
+.ov-title em{color:var(--accent2);font-style:normal}
+.ov-sub{font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:4px}
+/* Stat cards */
+.ov-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
+.ov-stat{background:var(--s1);border:1px solid var(--border2);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.ov-stat-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:4px}
+.ov-stat-label{font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em}
+.ov-stat-val{font-size:26px;font-weight:800;font-family:'Space Mono',monospace;color:var(--text);line-height:1.1}
+.ov-stat-sub{font-size:10px;color:var(--rb);font-family:'Space Mono',monospace}
+/* Main grid */
+.ov-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:900px){.ov-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.ov-grid{grid-template-columns:1fr}}
+.ov-card{background:var(--s1);border:1px solid var(--border2);border-radius:14px;padding:18px}
+.ov-card-title{font-size:15px;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.ov-card-label{font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
+/* Identity bars */
+.ov-identity-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.ov-id-label{font-size:13px;font-weight:600}
+.ov-id-score{font-size:20px;font-weight:800;font-family:'Space Mono',monospace}
+.ov-id-bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:4px}
+.ov-id-fill{height:6px;border-radius:3px;transition:width .6s ease}
+/* Pos bars */
+.ov-pos-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ov-pos-label{width:28px;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;flex-shrink:0}
+.ov-pos-bar-wrap{flex:1;height:8px;background:var(--s3);border-radius:4px;overflow:hidden}
+.ov-pos-bar{height:8px;border-radius:4px;transition:width .6s ease}
+.ov-pos-grade{width:28px;text-align:center;font-size:10px;font-weight:700;font-family:'Space Mono',monospace;padding:2px 4px;border-radius:4px;flex-shrink:0}
+.ov-pos-val{width:52px;text-align:right;font-size:10px;font-family:'Space Mono',monospace;color:var(--muted);flex-shrink:0}
+/* Dynasty window */
+.ov-window-name{font-size:20px;font-weight:800;color:var(--accent2);margin-bottom:4px}
+.la-tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.la-tabs::-webkit-scrollbar{display:none}
+.la-tab{padding:10px 16px;background:transparent;border:none;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:.05em;white-space:nowrap;position:relative;transition:color .15s;flex-shrink:0}
+.la-tab:hover{color:var(--text)}
+.la-tab.on{color:var(--accent2)}
+.la-tab.on::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:var(--accent2);border-radius:1px 1px 0 0}
+@media(max-width:700px){.la-tab{padding:8px 12px;font-size:10px}}
+
+/* ── TIER LABELS ── */
+.tier-juggernaut{color:#ffd166;font-weight:700}
+.tier-balanced{color:var(--muted)}
+.tier-pretender{color:var(--rb)}
+.tier-rebuilder{color:var(--wr)}
+.tier-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:'Space Mono',monospace;font-weight:600}
+
 /* ── TEAMS / POWER RANKINGS ── */
 .tpage{padding:14px;padding-bottom:40px}
 .tpage-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:10px;flex-wrap:wrap}
@@ -824,58 +984,105 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 
 <!-- SETUP -->
 <div class="setup z1" id="setup">
-  <div class="setup-card">
-    <div class="setup-logo">SNAP<em>DRAFT</em></div>
-    <div class="setup-sub">// draft intelligence for every format · dynasty · redraft · bestball</div>
 
-    <!-- STEP 1: FIND YOUR DRAFT -->
-    <div class="setup-row">
-      <div class="setup-label">Step 1 — Connect your Sleeper draft</div>
-      <div class="setup-tabs">
-        <button class="setup-tab on" onclick="switchTab('username')">🔍 Find by Username</button>
-        <button class="setup-tab" onclick="switchTab('id')">🔑 Enter Draft ID</button>
+  <!-- ── STEP 1: CONNECT SCREEN ── -->
+  <div id="setup-step1" class="setup-screen">
+    <div class="setup-screen-inner">
+      <!-- Logo + wordmark -->
+      <div class="setup-brand">
+        <div class="setup-logo-icon">🏈</div>
+        <div class="setup-wordmark">SNAP<em>DRAFT</em></div>
+        <div class="setup-tagline">Dynasty · Redraft · Best Ball · Draft Intelligence</div>
       </div>
 
-      <!-- USERNAME TAB -->
-      <div class="tab-panel on" id="tab-username">
-        <div class="username-row">
-          <input class="setup-input" id="sleeper-username" placeholder="Your Sleeper username" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" onkeydown="if(event.key==='Enter')findDrafts()">
-          <button class="find-btn" id="find-btn" onclick="findDrafts()">FIND DRAFTS</button>
+      <!-- Resume returning user -->
+      <div id="resume-btn" style="display:none;margin-bottom:16px">
+        <button onclick="resumeSession()" class="resume-big-btn">
+          ⚡ Resume Last Session
+        </button>
+        <div class="setup-or">— or connect a different draft —</div>
+      </div>
+
+      <!-- Connect card -->
+      <div class="connect-card">
+        <div class="connect-icon">🔗</div>
+        <div class="connect-title">Connect Your Sleeper Account</div>
+        <div class="connect-sub">Enter your Sleeper username to unlock your drafts and leagues</div>
+
+        <div class="connect-input-row">
+          <input class="connect-input" id="sleeper-username" placeholder="Enter Sleeper username..."
+            autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+            onkeydown="if(event.key==='Enter')setupConnect()">
+          <button class="connect-btn" id="find-btn" onclick="setupConnect()">Connect</button>
         </div>
-        <div id="draft-results"></div>
-      </div>
 
-      <!-- DRAFT ID TAB -->
-      <div class="tab-panel" id="tab-id">
-        <input class="setup-input" id="did" placeholder="e.g. 1350181003489980416" style="width:100%">
-        <div style="font-size:11px;color:var(--muted);margin-top:7px;font-family:'Space Mono',monospace">Found in your Sleeper draft URL on desktop: sleeper.com/draft/nfl/<em style="color:var(--accent2)">ID</em></div>
-      </div>
+        <div class="connect-perks">
+          <div class="connect-perk">✓ Read-only access to your leagues</div>
+          <div class="connect-perk">✓ No password required</div>
+          <div class="connect-perk">✓ Disconnect anytime</div>
+        </div>
 
+        <div id="draft-results" style="margin-top:12px"></div>
 
-    </div>
-
-    <!-- STEP 2: RANKINGS -->
-    <div class="setup-row">
-      <div class="setup-label">Step 2 — Rankings</div>
-      <div class="rankings-options">
-        <!-- Option A: Default -->
-        <div class="default-rankings-box" id="default-box" onclick="useDefaultRankings()">
-          <div class="dr-left">
-            <div class="dr-badge">✦ DEFAULT</div>
-            <div class="dr-title">FantasyPros Dynasty Rankings</div>
-            <div class="dr-sub">474 players · FantasyPros Expert Consensus · Updated Jan 2026</div>
+        <!-- Manual draft ID fallback -->
+        <div class="connect-manual" onclick="this.classList.toggle('open')">
+          <span>Enter draft ID manually ›</span>
+          <div class="connect-manual-body">
+            <input class="connect-input" id="did" placeholder="e.g. 1350181003489980416" style="margin-top:8px">
+            <div style="font-size:10px;color:var(--muted);margin-top:5px;font-family:'Space Mono',monospace">Found in your Sleeper draft URL: sleeper.com/draft/nfl/<em style="color:var(--accent2)">ID</em></div>
+            <button class="connect-btn" onclick="event.stopPropagation();launch()" style="margin-top:10px;width:100%">Load Draft →</button>
           </div>
-          <button class="dr-use-btn" id="dr-btn" onclick="event.stopPropagation();useDefaultRankings()">USE THESE</button>
         </div>
-        <!-- Option B: Custom upload -->
-        <div class="upload-zone" id="uzone" onclick="document.getElementById('ufile').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
-          <div class="uico" id="uico">📋</div>
-          <div class="utxt" id="utxt">Upload your own CSV / Excel</div>
-          <div class="usub">Name, Position, Team + ranking columns</div>
+      </div>
+
+      <div class="setup-session-row">
+        <button class="sess-btn" onclick="exportSession()">📤 Export</button>
+        <button class="sess-btn" onclick="document.getElementById('import-file').click()">📥 Import</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSession(event)">
+    </div>
+  </div>
+
+  <!-- ── STEP 2: CONFIGURE RANKINGS (shown after draft selected) ── -->
+  <div id="setup-step2" class="setup-screen" style="display:none">
+    <div class="setup-screen-inner">
+      <div class="step2-back" onclick="showSetupStep(1)">← Back</div>
+      <div class="setup-wordmark" style="margin-bottom:6px">SNAP<em>DRAFT</em></div>
+      <div class="step2-title">Choose Your Rankings</div>
+      <div class="step2-sub">Select a ranking source for your draft room. You can change this at any time from Settings.</div>
+
+      <!-- Default rankings option -->
+      <div class="rk-option" id="default-box" onclick="useDefaultRankings();this.classList.add('selected');document.getElementById('custom-rk-option').classList.remove('selected')">
+        <div class="rk-option-left">
+          <div class="rk-badge">✦ RECOMMENDED</div>
+          <div class="rk-name">FantasyPros Dynasty Rankings</div>
+          <div class="rk-meta">474 players · Expert Consensus · Updated Jan 2026 · SF/Dynasty</div>
+        </div>
+        <button class="rk-use-btn" id="dr-btn" onclick="event.stopPropagation();useDefaultRankings();document.getElementById('default-box').classList.add('selected');document.getElementById('custom-rk-option').classList.remove('selected')">USE THESE</button>
+      </div>
+
+      <!-- Custom CSV upload -->
+      <div class="rk-option" id="custom-rk-option">
+        <div class="rk-option-left" style="flex:1">
+          <div class="rk-badge" style="background:#5bc5ff20;color:var(--wr)">📋 CUSTOM</div>
+          <div class="rk-name">Upload Your Own CSV</div>
+          <div class="rk-meta">Import rankings from FantasyPros, KTC, your own sheet, or any source</div>
+        </div>
+        <div class="upload-zone" id="uzone" onclick="document.getElementById('ufile').click()"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="handleDrop(event)"
+          style="min-height:60px;padding:12px;width:140px;flex-shrink:0">
+          <div class="uico" id="uico">⬆</div>
+          <div class="utxt" id="utxt">Upload CSV</div>
+          <div class="usub">or drag & drop</div>
         </div>
       </div>
       <input type="file" id="ufile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
-      <div id="colmap" style="display:none;margin-top:12px">
+
+      <!-- Column mapper (shown after upload) -->
+      <div id="colmap" style="display:none;margin-top:12px;background:var(--s2);border-radius:12px;padding:14px;border:1px solid var(--border2)">
+        <div class="col-label" style="margin-bottom:10px">Map your columns</div>
         <div class="col-map">
           <div class="col-group"><div class="col-label">Rank 1 Name</div><input class="setup-input" id="l0" placeholder="Expert" style="font-size:13px;padding:8px 10px"></div>
           <div class="col-group"><div class="col-label">Rank 1 Column</div><select class="col-select" id="c0"></select></div>
@@ -885,23 +1092,13 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
           <div class="col-group"><div class="col-label">Rank 3 Column</div><select class="col-select" id="c2"><option value="">None</option></select></div>
         </div>
       </div>
-    </div>
 
-    <button class="launch-btn" id="launch-btn" onclick="launch()">ENTER DRAFT ROOM</button>
-      <!-- RESUME SESSION (shown only for returning users) -->
-      <div id="resume-btn" style="display:none;margin-top:8px">
-        <button onclick="resumeSession()" style="width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--rb);background:#3de8a015;color:var(--rb);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.05em;touch-action:manipulation">
-          ⚡ RESUME LAST SESSION
-        </button>
-        <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace">Picks up where you left off · re-syncs with Sleeper</div>
-      </div>
-      <div class="or-div">— or start fresh below —</div>
-    <div class="session-btns">
-      <button class="sess-btn" onclick="exportSession()">📤 Export Session</button>
-      <button class="sess-btn" onclick="document.getElementById('import-file').click()">📥 Import Session</button>
+      <button class="launch-btn" id="launch-btn" onclick="launch()" style="margin-top:20px">
+        ENTER DRAFT ROOM →
+      </button>
     </div>
-    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSession(event)">
   </div>
+
 </div>
 
 <!-- TEAM MODAL -->
@@ -913,55 +1110,75 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
   </div>
 </div>
 
-<!-- HEADER — slim top bar -->
+<!-- HEADER — profile + league selector always visible -->
 <header class="z1">
-  <div class="logo">SNAP<em>DRAFT</em></div>
-  <!-- Desktop nav (hidden on mobile — use bottom tab bar instead) -->
-  <div class="nav desktop-nav">
-    <button class="on" id="nb-draft" onclick="showPage('draft')">RANKINGS</button>
-    <button id="nb-visual" onclick="showPage('visual')">BOARD</button>
-    <button id="nb-teams" onclick="showPage('teams')">TEAMS</button>
-    <button id="nb-trade" onclick="showPage('trade')">CALC</button>
+
+  <!-- LEFT: Logo + desktop nav -->
+  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+    <div class="logo">SNAP<em>DRAFT</em></div>
+    <div class="nav desktop-nav">
+      <button class="on" id="nb-overview" onclick="showPage('overview')">MY TEAM</button>
+      <button id="nb-draft" onclick="showPage('draft')">RANKINGS</button>
+      <button id="nb-visual" onclick="showPage('visual')">BOARD</button>
+      <button id="nb-teams" onclick="showPage('teams')">LEAGUE</button>
+      <button id="nb-trade" onclick="showPage('trade')">CALC</button>
+    </div>
   </div>
-  <!-- Right side: stats + sync + controls -->
+
+  <!-- CENTER: League selector — always visible, matches StatChasers -->
+  <div class="header-league-wrap">
+    <span class="header-league-label desktop-only">LEAGUE:</span>
+    <div class="header-league-select-wrap" id="header-league-wrap" style="display:none">
+      <select id="header-league-select" onchange="switchGlobalLeague(this.value)"
+        class="header-league-select">
+        <option value="">📋 Current Draft</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- RIGHT: sync + watchlist + pick info + profile -->
   <div class="hright">
     <div class="hstat desktop-only"><b id="hav">—</b><small>Left</small></div>
     <div class="hstat desktop-only"><b id="hgn">—</b><small>Gone</small></div>
     <div class="hstat desktop-only"><b id="hmi">0</b><small>Mine</small></div>
     <div class="next-badge desktop-only" id="nbadge">NEXT: —</div>
-    <!-- Sync status + resync button — always visible -->
     <div class="sync-wrap">
       <div class="sync-dot" id="sdot"></div>
       <span class="sync-lbl desktop-only" id="slbl">OFFLINE</span>
     </div>
     <button id="resync-btn" onclick="manualResync()" title="Resync picks from Sleeper"
-      style="display:none;padding:6px 10px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation;transition:all .15s;-webkit-tap-highlight-color:transparent;min-width:36px;min-height:36px;align-items:center;justify-content:center">
+      style="display:none;padding:6px 10px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;touch-action:manipulation;min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center">
       ⟳
     </button>
-    <!-- Watchlist toggle — always visible in header -->
     <button id="watch-header-btn" onclick="toggleWatchFilter()" title="Show only starred players"
-      style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;touch-action:manipulation;transition:all .15s;-webkit-tap-highlight-color:transparent;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center">
+      style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:13px;cursor:pointer;touch-action:manipulation;min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center">
       ☆
     </button>
-    <button class="hbtn" id="tpill" onclick="openTModal()">Select Team</button>
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
-    <button class="hbtn desktop-only" onclick="document.getElementById('setup').classList.remove('gone')">⚙</button>
+    <!-- User profile chip — shown after Sleeper connect -->
+    <div id="user-profile-chip" class="user-chip" style="display:none" onclick="document.getElementById('setup').classList.remove('gone')">
+      <img id="user-avatar" class="user-avatar" src="" alt="" onerror="this.style.display='none';document.getElementById('user-initials').style.display='flex'">
+      <div id="user-initials" class="user-initials" style="display:none"></div>
+      <span id="user-display-name" class="user-dname desktop-only"></span>
+    </div>
+    <!-- Fallback settings button when not connected -->
+    <button id="settings-btn" class="hbtn" onclick="document.getElementById('setup').classList.remove('gone')" style="display:flex">⚙</button>
   </div>
 </header>
 
 <!-- BOTTOM TAB BAR — mobile only -->
 <nav class="bottom-tab-bar" id="bottom-tab-bar">
-  <button class="tab-btn on" id="tb-draft" onclick="showPage('draft')">
+  <button class="tab-btn on" id="tb-overview" onclick="showPage('overview')">
+    <span class="tab-icon">🏠</span>
+    <span class="tab-label">My Team</span>
+  </button>
+  <button class="tab-btn" id="tb-draft" onclick="showPage('draft')">
     <span class="tab-icon">📋</span>
     <span class="tab-label">Rankings</span>
   </button>
-  <button class="tab-btn" id="tb-visual" onclick="showPage('visual')">
-    <span class="tab-icon">📊</span>
-    <span class="tab-label">Board</span>
-  </button>
   <button class="tab-btn" id="tb-teams" onclick="showPage('teams')">
-    <span class="tab-icon">🏆</span>
-    <span class="tab-label">Teams</span>
+    <span class="tab-icon">📊</span>
+    <span class="tab-label">League</span>
   </button>
   <button class="tab-btn" id="tb-trade" onclick="showPage('trade')">
     <span class="tab-icon">🔄</span>
@@ -978,7 +1195,37 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 </nav>
 
 <!-- RANKINGS PAGE -->
-<div class="page on z1" id="page-draft">
+<!-- MY TEAM OVERVIEW PAGE — default landing -->
+<div class="page on z1" id="page-overview">
+  <div class="ov-page">
+    <!-- Header row -->
+    <div class="ov-hdr">
+      <div>
+        <div class="ov-title">MY <em>TEAM</em></div>
+        <div id="ov-subtitle" class="ov-sub">Connect a league to see your team dashboard</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <!-- League selector -->
+        <select id="ov-league-select" onchange="switchOverviewLeague(this.value)"
+          style="background:var(--s2);border:1.5px solid var(--accent2);color:var(--accent2);font-family:'Space Mono',monospace;font-size:11px;padding:6px 10px;border-radius:8px;outline:none;cursor:pointer;display:none;font-weight:700;max-width:200px">
+        </select>
+        <button class="sbtn" onclick="showPage('teams')" style="border-color:var(--accent);color:var(--accent2)">📊 League Analyzer</button>
+        <button class="sbtn" onclick="showPage('draft')">📋 Rankings</button>
+      </div>
+    </div>
+
+    <!-- Sub-tabs -->
+    <div class="la-tabs" style="margin-bottom:20px">
+      <button class="la-tab on" id="ov-tab-overview" onclick="setOvTab('overview')">Overview</button>
+      <button class="la-tab" id="ov-tab-roster" onclick="setOvTab('roster')">Roster Breakdown</button>
+      <button class="la-tab" id="ov-tab-share" onclick="shareDraftCard()">↗ Share My Team</button>
+    </div>
+
+    <div id="ov-content"></div>
+  </div>
+</div>
+
+<div class="page z1" id="page-draft">
   <!-- YOUR PICK BANNER -->
   <div class="your-pick-banner" id="your-pick-banner">
     <div class="ypb-left">
@@ -1077,36 +1324,44 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
   </div>
 </div>
 
-<!-- TEAMS PAGE -->
+<!-- LEAGUE ANALYZER PAGE -->
 <div class="page z1" id="page-teams">
   <div class="tpage">
     <div class="tpage-hdr">
       <div>
-        <div class="tpage-title">POWER <em>RANKINGS</em></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:Space Mono,monospace">Live dynasty trade values · click any team to drill down</div>
+        <div class="tpage-title">LEAGUE <em>ANALYZER</em></div>
+        <div id="la-league-name" style="font-size:11px;color:var(--accent2);margin-top:3px;font-family:Space Mono,monospace;font-weight:700"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div id="fc-status" style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace"></div>
 
-        <!-- Team within current draft -->
+        <!-- League switcher — all your Sleeper leagues -->
+        <select id="la-league-select" onchange="switchAnalyzerLeague(this.value)"
+          style="background:var(--s2);border:1.5px solid var(--accent2);color:var(--accent2);font-family:'Space Mono',monospace;font-size:11px;padding:6px 10px;border-radius:8px;outline:none;cursor:pointer;display:none;font-weight:700;max-width:180px">
+          <option value="">📋 Current Draft League</option>
+        </select>
+
+        <!-- Team focus filter within league -->
         <select id="teams-team-select" onchange="setViewTeam(this.value)"
           style="background:var(--s2);border:1.5px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:5px 8px;border-radius:8px;outline:none;cursor:pointer;display:none">
         </select>
+
         <div style="display:flex;gap:3px">
-          <button class="sbtn on" id="val-fc" onclick="setValueSource('fc')" title="FantasyCalc: values derived from ~1M user-submitted dynasty trades. Updated daily.">FantasyCalc ⓘ</button>
-          <button class="sbtn" id="val-ra" onclick="setValueSource('ra')" title="RosterAudit: Elo-based values from 500k+ real Sleeper dynasty leagues. Keyed by Sleeper player ID for precise matching.">RosterAudit ⓘ</button>
+          <button class="sbtn on" id="val-fc" onclick="setValueSource('fc')" title="FantasyCalc: values from ~1M user-submitted dynasty trades">FC</button>
+          <button class="sbtn" id="val-ra" onclick="setValueSource('ra')" title="RosterAudit: Elo-based values from 500k+ Sleeper leagues">RA</button>
         </div>
-        <button class="sbtn" onclick="refreshValues()" id="fc-refresh-btn">⟳</button>
-        <button class="ab" onclick="showPage('draft')" style="font-size:11px;padding:8px 14px;border-color:var(--accent);color:var(--accent2)">← RANKINGS</button>
+        <button class="sbtn" onclick="refreshValues()" id="fc-refresh-btn" title="Refresh values">⟳</button>
       </div>
     </div>
 
-    <!-- SUB-TABS: Power Rankings | Movers -->
-    <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px">
-      <button class="sbtn on" id="teams-tab-pr" onclick="setTeamsTab('pr')">📊 Power Rankings</button>
-      <button class="sbtn" id="teams-tab-mv" onclick="setTeamsTab('mv')">🔥 Movers</button>
-      <button class="sbtn" id="teams-tab-gr" onclick="setTeamsTab('gr')">🏆 Grades</button>
-      <button class="sbtn" id="teams-tab-share" onclick="shareDraftCard()" style="margin-left:auto">↗ Share</button>
+    <!-- SUB-TABS: StatChasers-style -->
+    <div class="la-tabs">
+      <button class="la-tab on" id="teams-tab-pr" onclick="setTeamsTab('pr')">Rankings</button>
+      <button class="la-tab" id="teams-tab-st" onclick="setTeamsTab('st')">Standings</button>
+      <button class="la-tab" id="teams-tab-tx" onclick="setTeamsTab('tx')">Transactions</button>
+      <button class="la-tab" id="teams-tab-mv" onclick="setTeamsTab('mv')">Movers</button>
+      <button class="la-tab" id="teams-tab-gr" onclick="setTeamsTab('gr')">Grades</button>
+      <button class="la-tab" id="teams-tab-share" onclick="shareDraftCard()" style="margin-left:auto">↗ Share</button>
     </div>
 
     <div id="teams-tab-content">
@@ -1308,12 +1563,44 @@ function findPlayer(name) {
 }
 
 // ════════════════════════════════════
+//  SETUP FLOW — Two-step connect
+// ════════════════════════════════════
+function showSetupStep(n) {
+  document.getElementById('setup-step1').style.display = n===1 ? '' : 'none';
+  document.getElementById('setup-step2').style.display = n===2 ? '' : 'none';
+}
+
+async function setupConnect() {
+  const username = document.getElementById('sleeper-username')?.value.trim();
+  if (!username) return;
+  // Run findDrafts — it populates draft-results
+  await findDrafts();
+  // After results load, advance to step 2 for rankings config
+  // (user will click a draft first, which calls selectDraft which advances)
+}
+
+// Hook selectDraft to advance to step 2 after a draft is chosen
+const _origSelectDraft = typeof selectDraft !== 'undefined' ? selectDraft : null;
+
+function selectDraftAndAdvance(draftId, draftName, typeTags) {
+  selectDraft(draftId, draftName, typeTags);
+  // Auto-select default rankings and advance
+  useDefaultRankings();
+  showSetupStep(2);
+}
+
+// ════════════════════════════════════
 //  SETUP TABS & USERNAME FINDER
 // ════════════════════════════════════
 function switchTab(tab) {
+  // Legacy function — tab-username and tab-id may not exist in new setup layout
   document.querySelectorAll('.setup-tab').forEach((b,i) => b.classList.toggle('on', (i===0&&tab==='username')||(i===1&&tab==='id')));
-  document.getElementById('tab-username').classList.toggle('on', tab==='username');
-  document.getElementById('tab-id').classList.toggle('on', tab==='id');
+  document.getElementById('tab-username')?.classList.toggle('on', tab==='username');
+  document.getElementById('tab-id')?.classList.toggle('on', tab==='id');
+  // New setup: toggle connect-manual section visibility
+  const manual = document.querySelector('.connect-manual');
+  if (manual && tab === 'id') manual.classList.add('open');
+  else if (manual && tab === 'username') manual.classList.remove('open');
 }
 
 function renderDraftItems(drafts) {
@@ -1335,7 +1622,7 @@ function renderDraftItems(drafts) {
 
     const safeName = name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
     return `<div class="draft-item${isLive?' live-draft':''}" id="di-${d.draft_id}"
-      onclick="selectDraft('${d.draft_id}','${safeName}','${typeTags.join('+')}')">
+      onclick="selectDraftAndAdvance('${d.draft_id}','${safeName}','${typeTags.join('+')}')">
       <div class="di-icon">${isLive?'🟢':isComplete?'✅':'🏈'}</div>
       <div class="di-info">
         <div class="di-name">${name}</div>
@@ -1359,6 +1646,9 @@ async function findDrafts() {
     if (!uRes.ok) throw new Error('User not found');
     const user = await uRes.json();
     if (!user?.user_id) throw new Error('User not found');
+    mySleeperUser = user;
+    myTeamsUserId = user.user_id;
+    updateUserHeader(user);
 
     const year = new Date().getFullYear();
     const [drafts1, drafts2, drafts3] = await Promise.all([
@@ -1604,8 +1894,18 @@ async function launch(skip=false) {
   document.getElementById('setup').classList.add('gone');
   updateSortBtns();
 
-  // Fetch Sleeper players in background (for ADP + headshots)
+  // Fetch Sleeper players in background
   fetchSleeperPlayers();
+
+  // Load leagues first, THEN show overview so picker has data
+  const _savedUn = localStorage.getItem(SK+'-username');
+  if (_savedUn && !myTeamsData.length) {
+    loadMyTeams().then(() => {
+      showPage('overview');
+    });
+  } else {
+    showPage('overview');
+  }
 
   if (sleeperDraftId) {
     document.getElementById('plist-body').innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</td></tr>';
@@ -1694,6 +1994,7 @@ async function syncSleeper() {
 
     // Fetch team names from league users
     if (draft.league_id) {
+      window._currentLeagueId = draft.league_id; // store globally for Transactions/Standings
       try {
         const uRes=await fetch(`https://api.sleeper.app/v1/league/${draft.league_id}/users`);
         const users=await uRes.json();
@@ -2053,6 +2354,10 @@ async function fetchSleeperPlayers() {
 }
 
 
+// Global reverse map: Sleeper player_id (string) -> canonical name from PLAYERS[]
+// Built once after fetchSleeperPlayers completes — used everywhere for roster lookups
+const globalPidToName = {};
+
 function applySlimPlayerData(slim) {
   // slim: { "Patrick Mahomes": { pid: "4358", adp: 25.3 }, ... }
   const newADP = {};
@@ -2072,6 +2377,22 @@ function applySlimPlayerData(slim) {
     if (!sleeperPlayerMap[k]) sleeperPlayerMap[k] = {};
     sleeperPlayerMap[k].player_id = pid;
   });
+
+  // Build globalPidToName: pid -> canonical PLAYERS[] name
+  // Start with hardcoded PLAYER_IDS (most reliable)
+  Object.entries(PLAYER_IDS).forEach(([name, pid]) => {
+    globalPidToName[String(pid)] = name;
+  });
+  // Then fill in from Sleeper data, preferring canonical PLAYERS[] names
+  Object.entries(newPidMap).forEach(([k, pid]) => {
+    const pidStr = String(pid);
+    if (!globalPidToName[pidStr]) {
+      // Try to find canonical name from PLAYERS[]
+      const canon = PLAYERS.find(p => normName(p.name) === normName(k));
+      globalPidToName[pidStr] = canon ? canon.name : k;
+    }
+  });
+
   sleeperPlayersLoaded = true;
 
   // Show a debug toast with ADP values for a couple known players
@@ -2326,19 +2647,410 @@ function toggleHide(){
 }
 function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
-  // Desktop nav buttons
   document.querySelectorAll('.desktop-nav button').forEach(x=>x.classList.remove('on'));
   document.getElementById(`nb-${p}`)?.classList.add('on');
-  // Mobile bottom tab bar buttons
   document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('on'));
   document.getElementById(`tb-${p}`)?.classList.add('on');
-
   document.getElementById(`page-${p}`).classList.add('on');
-  if(p==='teams'){ populateLeagueDropdown(); const loaded=valueSource==='fc'?fcLoaded:raLoaded; if(!loaded){if(valueSource==='fc')fetchFantasyCalc();else fetchRosterAudit();}else renderTeams(); }
+  if(p==='overview') renderOverview();
+  if(p==='teams'){ populateAnalyzerDropdown(); const loaded=valueSource==='fc'?fcLoaded:raLoaded; if(!loaded){if(valueSource==='fc')fetchFantasyCalc();else fetchRosterAudit();}else renderTeams(); }
   if(p==='visual') renderBoard();
   if(p==='trade'){ initTrade(); }
   if(p==='myteams'){ initMyTeams(); }
   if(p!=='teams'){ viewTeamIdx=null; }
+}
+
+// ════════════════════════════════════
+//  MY TEAM OVERVIEW DASHBOARD
+// ════════════════════════════════════
+let ovLeagueId = null;
+let ovTab = 'overview';
+
+function setOvTab(tab) {
+  ovTab = tab;
+  ['overview','roster'].forEach(t => document.getElementById(`ov-tab-${t}`)?.classList.toggle('on', t===tab));
+  renderOverview();
+}
+
+function switchOverviewLeague(leagueId) {
+  ovLeagueId = leagueId || null;
+  _txCache = null; _rosterCache = null; _usersCache = null;
+  renderOverview();
+}
+
+function populateOverviewDropdown() {
+  const sel = document.getElementById('ov-league-select');
+  if (!sel) return;
+  const leagues = myTeamsData.filter(l => l.season==='2026'||l.season==='2025');
+  if (!leagues.length) {
+    const saved = localStorage.getItem(SK+'-username');
+    if (saved && !myTeamsUserId) { loadMyTeams(); }
+    sel.style.display = 'none'; return;
+  }
+  sel.style.display = '';
+  sel.innerHTML = `<option value="">📋 Current Draft</option>` +
+    leagues.map(l => `<option value="${l.league_id}" ${l.league_id===ovLeagueId?'selected':''}>${l.status==='in_season'?'🟢 ':''}${l.name||'League'} (${l.season})</option>`).join('');
+}
+
+async function renderOverview() {
+  const el = document.getElementById('ov-content');
+  if (!el) return;
+
+  if (ovTab === 'roster') { renderOverviewRoster(el); return; }
+
+  // ── STEP 1: If no league selected and no draft picks, show the league picker NOW ──
+  // This is synchronous — shows immediately without waiting for any async calls
+  const draftRoster = getMyRoster();
+  const hasContext = ovLeagueId || draftRoster.length > 0;
+
+  if (!hasContext) {
+    // Load leagues if we have a saved username and haven't loaded yet
+    if (!myTeamsData.length) {
+      const savedUser = localStorage.getItem(SK+'-username');
+      if (savedUser) {
+        el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;padding:60px 20px;gap:16px">
+          <div style="font-size:24px">⟳</div>
+          <div style="font-size:14px;color:var(--muted);font-family:'Space Mono',monospace">Loading your leagues...</div>
+        </div>`;
+        const inp = document.getElementById('sleeper-username');
+        if (inp && !inp.value) inp.value = savedUser;
+        await loadMyTeams();
+        renderOverview(); // re-render now that leagues are loaded
+        return;
+      }
+    }
+    const leagues = myTeamsData.filter(l => l.season==='2026'||l.season==='2025');
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;gap:20px">
+        <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:30px">🏈</div>
+        <div>
+          <div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px">Choose Your Team</div>
+          <div style="font-size:14px;color:var(--muted);font-family:'Space Mono',monospace;max-width:360px;line-height:1.6">Select one of your Sleeper leagues to load your roster and team dashboard</div>
+        </div>
+        ${leagues.length ? `
+        <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:400px">
+          ${leagues.map(l => {
+            const active = l.status === 'in_season';
+            const teams = l.total_rosters || '?';
+            const scoring = l.scoring_settings?.rec === 1 ? 'PPR' : l.scoring_settings?.rec === 0.5 ? 'Half PPR' : 'Std';
+            const positions = l.roster_positions || [];
+            const isSF = positions.includes('SUPER_FLEX');
+            return `<div onclick="switchGlobalLeague('${l.league_id}')"
+              style="background:var(--s1);border:1.5px solid var(--border2);border-radius:12px;padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;transition:all .2s;text-align:left;-webkit-tap-highlight-color:transparent"
+              onmouseover="this.style.borderColor='var(--accent2)';this.style.background='var(--s2)'"
+              onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--s1)'">
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--text)">${active?'🟢 ':''}${l.name||'League'}</div>
+                <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:3px">${teams} teams · ${scoring}${isSF?' · SF':''} · ${l.season}</div>
+              </div>
+              <span style="font-size:18px;color:var(--muted)">›</span>
+            </div>`;
+          }).join('')}
+        </div>` : `
+        <div style="background:var(--s2);border-radius:12px;padding:16px 20px;max-width:380px;width:100%">
+          <div style="font-size:13px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:10px">No leagues loaded yet. Enter your Sleeper username to get started.</div>
+          <div style="display:flex;gap:8px">
+            <input class="connect-input" id="ov-username-input" placeholder="Sleeper username..." style="flex:1;padding:10px 14px;font-size:13px" onkeydown="if(event.key==='Enter')ovLoadUser()">
+            <button class="connect-btn" onclick="ovLoadUser()">Load</button>
+          </div>
+        </div>`}
+
+        ${sleeperDraftId ? `
+        <div style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace">
+          — or —<br><br>
+          <button onclick="ovUseDraft()" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer">Use current draft roster</button>
+        </div>` : ''}
+      </div>`;
+    return;
+  }
+
+  // Get team data — either from current draft or a connected league
+  let roster = [], teamName = '', leagueName = '';
+  let powerRank = null, totalTeams = 0;
+
+  if (ovLeagueId) {
+    // Load from a specific Sleeper league
+    el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div><br>Loading your team...</div>`;
+    try {
+      const ctx = await getLeagueContext_ov();
+      if (!ctx) { el.innerHTML = '<div class="fc-error">Could not load league data.</div>'; return; }
+      const { rosters, users } = ctx;
+      if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+      const userMap = buildUserMap(users);
+      const league = myTeamsData.find(l => l.league_id === ovLeagueId);
+      leagueName = league?.name || '';
+      const myRoster_raw = rosters.find(r => r.owner_id === myTeamsUserId);
+      if (!myRoster_raw) { el.innerHTML = '<div class="fc-error">Could not find your roster in this league.</div>'; return; }
+      teamName = userMap[myTeamsUserId] || 'My Team';
+      const pids = [...(myRoster_raw.players||[]), ...(myRoster_raw.reserve||[])];
+      roster = pids.map(pid => {
+        const name = globalPidToName[String(pid)];
+        if (!name) return null;
+        const p = PLAYERS.find(x => x.name === name) || {name, pos:'?', team:''};
+        return {...p, fcVal: getPlayerValue(name)};
+      }).filter(Boolean);
+      // Power rank
+      const allVals = rosters.map(r => {
+        const ps = (r.players||[]).map(pid => getPlayerValue(globalPidToName[String(pid)]||'')).reduce((a,b)=>a+b,0);
+        return {owner: r.owner_id, val: ps};
+      }).sort((a,b)=>b.val-a.val);
+      powerRank = allVals.findIndex(r=>r.owner===myTeamsUserId) + 1;
+      totalTeams = allVals.length;
+      leagueTeams = allVals;
+      document.getElementById('ov-subtitle').textContent = `${teamName} · ${leagueName}`;
+    } catch(e) {
+      el.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`; return;
+    }
+  } else {
+    // Use current draft roster
+    roster = getMyRoster();
+    teamName = TEAMS[myTeam] || 'My Team';
+    totalTeams = TEAMS.length;
+    powerRank = myTeam !== null ? (() => {
+      const vals = TEAMS.map((_,i) => {
+        const r = Object.entries(draftState).filter(([,d])=>d.teamIdx===i).map(([n])=>getPlayerValue(n)).reduce((a,b)=>a+b,0);
+        return {i, val:r};
+      }).sort((a,b)=>b.val-a.val);
+      return vals.findIndex(v=>v.i===myTeam)+1;
+    })() : null;
+    document.getElementById('ov-subtitle').textContent = teamName + (sleeperDraftId ? ' · Current Draft' : '');
+  }
+
+  if (!roster.length) {
+    el.innerHTML = `<div style="padding:60px;text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">🏈</div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">No roster yet</div>
+      <div style="font-size:13px;color:var(--muted);font-family:Space Mono,monospace">Select a league from the dropdown above, or picks will appear here during your draft</div>
+    </div>`;
+    return;
+  }
+
+  // Calculate stats
+  const byPos = {QB:[],RB:[],WR:[],TE:[]};
+  roster.forEach(p => { if(byPos[p.pos]) byPos[p.pos].push(p); });
+  const totalVal = roster.reduce((s,p)=>s+(p.fcVal||getPlayerValue(p.name)),0);
+  const avgAge = roster.filter(p=>p.pos).length > 0 ? 22.5 : 0; // approx
+  const winNow = Math.min(10, Math.round((byPos.QB.filter(p=>(p.fcVal||0)>5000).length*2 + byPos.RB.filter(p=>(p.fcVal||0)>4000).length + byPos.WR.filter(p=>(p.fcVal||0)>4000).length*0.8)*1.2));
+  const longTerm = Math.min(10, Math.round(roster.filter(p=>(p.fcVal||0)<3000 && p.pos).length * 0.8));
+  const draftCap = Math.min(10, Math.round(roster.filter(p=>p.pos==='?'||p.name?.includes('Pick')).length * 2));
+  const tierObj = powerRank && totalTeams ? getTeamTier(powerRank, totalTeams) : {label:'—', cls:'tier-balanced'};
+
+  // Positional grades
+  function gradePos(players) {
+    const avg = players.reduce((s,p)=>s+(p.fcVal||0),0) / Math.max(players.length,1);
+    if (avg > 7000) return {g:'A+',c:'var(--rb)'};
+    if (avg > 5000) return {g:'A', c:'var(--rb)'};
+    if (avg > 3500) return {g:'B', c:'#7bc8a4'};
+    if (avg > 2500) return {g:'C', c:'var(--te)'};
+    if (avg > 1500) return {g:'D', c:'#ff9f5b'};
+    return {g:'F',c:'var(--qb)'};
+  }
+  const grades = {QB:gradePos(byPos.QB),RB:gradePos(byPos.RB),WR:gradePos(byPos.WR),TE:gradePos(byPos.TE)};
+  const maxPosVal = Math.max(...['QB','RB','WR','TE'].map(p=>byPos[p].reduce((s,x)=>s+(x.fcVal||0),0)),1);
+
+  // Dynasty window
+  const highNow = winNow >= 7;
+  const highFuture = longTerm >= 5;
+  const window = highNow && highFuture ? 'Dynasty Death Star' : highNow ? 'Win-Now Window' : highFuture ? 'Rebuilding for Future' : 'Retooling';
+  const windowSub = highNow && highFuture ? 'High Now + High Future' : highNow ? 'Strong current roster, limited future assets' : highFuture ? 'Future-focused rebuild in progress' : 'Balanced rebuild';
+
+  // Suggested direction
+  const directions = [
+    winNow >= 8 && longTerm < 4 ? '"Trade depth for elite starters to maximize your title window"' : null,
+    longTerm >= 7 && winNow < 5 ? '"Target aging stars for cheap picks to accelerate your rebuild"' : null,
+    grades.QB.g <= 'C' ? '"Address QB — it\'s holding your roster back"' : null,
+    grades.RB.g <= 'D' ? '"RB is your weakest unit — target a bellcow"' : null,
+    powerRank && powerRank <= 2 ? '"Stay the course — you\'re the class of the league"' : null,
+    '"Balance current performance with future capital to build a dynasty contender"',
+  ].find(Boolean);
+
+  el.innerHTML = `
+    <!-- STAT CARDS ROW -->
+    <div class="ov-stats">
+      <div class="ov-stat">
+        <div class="ov-stat-icon" style="background:#ffd16622">🏆</div>
+        <div class="ov-stat-label">ARCHETYPE</div>
+        <div class="ov-stat-val">
+          <span class="tier-badge ${tierObj.cls}" style="font-size:16px">${tierObj.label}</span>
+        </div>
+        <div class="ov-stat-sub" style="font-size:10px;color:var(--muted);margin-top:4px">
+          ${tierObj.label.includes('Juggernaut')?'Elite current strength with a strong long-term foundation':
+            tierObj.label.includes('Pretender')?'Strong now, needs assets to contend long-term':
+            tierObj.label.includes('Rebuilder')?'Building toward future contention':
+            'Competitive across all dimensions'}
+        </div>
+      </div>
+      ${powerRank ? `<div class="ov-stat">
+        <div class="ov-stat-icon" style="background:#5b8dee22">🏅</div>
+        <div class="ov-stat-label">POWER RANK</div>
+        <div class="ov-stat-val">#${powerRank} <span style="font-size:14px;color:var(--muted)">/ ${totalTeams}</span></div>
+        <div class="ov-stat-sub">Top ${Math.round(powerRank/totalTeams*100)}%</div>
+      </div>` : ''}
+      <div class="ov-stat">
+        <div class="ov-stat-icon" style="background:#3de8a022">💰</div>
+        <div class="ov-stat-label">ROSTER VALUE</div>
+        <div class="ov-stat-val">${(totalVal/1000).toFixed(1)}<span style="font-size:14px;color:var(--muted)">k</span></div>
+        <div class="ov-stat-sub">FantasyCalc</div>
+      </div>
+      <div class="ov-stat">
+        <div class="ov-stat-icon" style="background:#ff709622">🎯</div>
+        <div class="ov-stat-label">ROSTER SIZE</div>
+        <div class="ov-stat-val">${roster.length}</div>
+        <div class="ov-stat-sub">${byPos.QB.length}QB ${byPos.RB.length}RB ${byPos.WR.length}WR ${byPos.TE.length}TE</div>
+      </div>
+    </div>
+
+    <!-- MAIN DASHBOARD GRID -->
+    <div class="ov-grid">
+
+      <!-- Team Identity -->
+      <div class="ov-card">
+        <div class="ov-card-title">Team Identity</div>
+        <div class="ov-identity-row">
+          <div class="ov-id-label">🔥 Win-Now</div>
+          <div class="ov-id-score">${winNow}<span style="font-size:11px;color:var(--muted)">/10</span></div>
+        </div>
+        <div class="ov-id-bar"><div class="ov-id-fill" style="width:${winNow*10}%;background:#ff7096"></div></div>
+        <div class="ov-identity-row" style="margin-top:12px">
+          <div class="ov-id-label">🌱 Long-Term</div>
+          <div class="ov-id-score">${longTerm}<span style="font-size:11px;color:var(--muted)">/10</span></div>
+        </div>
+        <div class="ov-id-bar"><div class="ov-id-fill" style="width:${longTerm*10}%;background:#3de8a0"></div></div>
+        <div class="ov-identity-row" style="margin-top:12px">
+          <div class="ov-id-label">📋 Draft Capital</div>
+          <div class="ov-id-score">${draftCap}<span style="font-size:11px;color:var(--muted)">/10</span></div>
+        </div>
+        <div class="ov-id-bar"><div class="ov-id-fill" style="width:${draftCap*10}%;background:#5b8dee"></div></div>
+      </div>
+
+      <!-- Strengths & Needs -->
+      <div class="ov-card">
+        <div class="ov-card-title">Strengths & Needs</div>
+        ${['QB','RB','WR','TE'].map(pos => {
+          const players = byPos[pos];
+          const val = players.reduce((s,p)=>s+(p.fcVal||0),0);
+          const pct = Math.round(val/maxPosVal*100);
+          const g = grades[pos];
+          const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos];
+          return `<div class="ov-pos-row">
+            <span class="ov-pos-label" style="color:${posColor}">${pos}</span>
+            <div class="ov-pos-bar-wrap">
+              <div class="ov-pos-bar" style="width:${pct}%;background:${posColor}"></div>
+            </div>
+            <span class="ov-pos-grade" style="background:${g.c}22;color:${g.c}">${g.g}</span>
+            <span class="ov-pos-val">${val.toLocaleString()}</span>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Dynasty Window -->
+      <div class="ov-card">
+        <div class="ov-card-label">DYNASTY WINDOW</div>
+        <div class="ov-window-name">${window}</div>
+        <div style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:16px">${windowSub}</div>
+
+        <div class="ov-card-label" style="margin-top:8px">SUGGESTED DIRECTION</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5;font-style:italic">${directions}</div>
+
+        <div class="ov-card-label" style="margin-top:16px">TOP PLAYERS</div>
+        ${roster.sort((a,b)=>(b.fcVal||0)-(a.fcVal||0)).slice(0,4).map(p => {
+          const pc = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[p.pos]||'var(--muted)';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+            <div>
+              <span class="ppill ${p.pos}" style="margin-right:6px">${p.pos}</span>
+              <span style="font-size:13px;font-weight:600">${p.name}</span>
+            </div>
+            <span style="font-size:12px;font-weight:700;font-family:Space Mono,monospace;color:${pc}">${(p.fcVal||0).toLocaleString()}</span>
+          </div>`;
+        }).join('')}
+      </div>
+
+    </div>`;
+}
+
+async function ovLoadUser() {
+  const input = document.getElementById('ov-username-input');
+  const username = input?.value.trim();
+  if (!username) return;
+  // Store username and load leagues, then re-render
+  const savedInp = document.getElementById('sleeper-username');
+  if (savedInp) savedInp.value = username;
+  localStorage.setItem(SK+'-username', username);
+  await loadMyTeams();
+  renderOverview();
+}
+
+function ovUseDraft() {
+  // Force use current draft context (no league)
+  ovLeagueId = null;
+  renderOverview();
+}
+
+async function getLeagueContext_ov() {
+  const lid = ovLeagueId;
+  if (!lid) return null;
+  if (_txLeagueId === lid && _rosterCache && _usersCache) return { lid, rosters: _rosterCache, users: _usersCache };
+  const [rosters, users] = await Promise.all([
+    fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
+    fetch(`https://api.sleeper.app/v1/league/${lid}/users`).then(r=>r.json()),
+  ]);
+  _rosterCache = rosters; _usersCache = users; _txLeagueId = lid;
+  return { lid, rosters, users };
+}
+
+async function renderOverviewRoster(el) {
+  const roster = ovLeagueId ? await loadOvRoster() : getMyRoster();
+  if (!roster?.length) { el.innerHTML = '<div class="fc-loading">No roster data available.</div>'; return; }
+  const byPos = {QB:[],RB:[],WR:[],TE:[],other:[]};
+  roster.forEach(p => { (byPos[p.pos]?byPos[p.pos]:byPos.other).push(p); });
+  const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+    ${['QB','RB','WR','TE'].map(pos => {
+      const players = byPos[pos].sort((a,b)=>(b.fcVal||b.r0||0)-(a.fcVal||a.r0||0));
+      if (!players.length) return '';
+      const grp = (() => { const a=gradePos(players); return a; })();
+      const total = players.reduce((s,p)=>s+(p.fcVal||0),0);
+      const pc = posColors[pos];
+      return `<div style="background:var(--s2);border-radius:12px;padding:14px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:11px;font-weight:700;color:${pc};font-family:Space Mono,monospace">${pos} · ${players.length}</span>
+          <span style="font-size:11px;font-family:Space Mono,monospace;color:var(--muted)">${total.toLocaleString()}</span>
+        </div>
+        ${players.map(p=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;font-weight:600">${p.name}</div>
+            <div style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace">${p.team||'FA'}</div>
+          </div>
+          <div style="font-size:12px;font-weight:700;font-family:Space Mono,monospace;color:${pc}">${(p.fcVal||0)?p.fcVal.toLocaleString():'—'}</div>
+        </div>`).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+async function loadOvRoster() {
+  if (!ovLeagueId || !myTeamsUserId) return [];
+  if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+  const ctx = await getLeagueContext_ov();
+  if (!ctx) return [];
+  const myR = ctx.rosters.find(r=>r.owner_id===myTeamsUserId);
+  if (!myR) return [];
+  return [...(myR.players||[]),...(myR.reserve||[])].map(pid=>{
+    const name=globalPidToName[String(pid)];
+    if(!name) return null;
+    const p=PLAYERS.find(x=>x.name===name)||{name,pos:'?',team:''};
+    return {...p,fcVal:getPlayerValue(name)};
+  }).filter(Boolean);
+}
+
+function gradePos(players) {
+  const avg = players.reduce((s,p)=>s+(p.fcVal||0),0)/Math.max(players.length,1);
+  if(avg>7000)return{g:'A+',c:'var(--rb)'};
+  if(avg>5000)return{g:'A',c:'var(--rb)'};
+  if(avg>3500)return{g:'B',c:'#7bc8a4'};
+  if(avg>2500)return{g:'C',c:'var(--te)'};
+  if(avg>1500)return{g:'D',c:'#ff9f5b'};
+  return{g:'F',c:'var(--qb)'};
 }
 
 // ════════════════════════════════════
@@ -2794,18 +3506,342 @@ function setValueSource(src) {
   renderTeams();
 }
 
+// ════════════════════════════════════
+//  LEAGUE ANALYZER — Transactions
+// ════════════════════════════════════
+let _txCache = null;
+let _txLeagueId = null;
+let _rosterCache = null;
+let _usersCache = null;
+
+async function getLeagueContext() {
+  const lid = teamsLeagueId || window._currentLeagueId;
+  if (!lid) return null;
+  if (_txLeagueId === lid && _rosterCache && _usersCache) {
+    return { lid, rosters: _rosterCache, users: _usersCache };
+  }
+  const [rosters, users] = await Promise.all([
+    fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
+    fetch(`https://api.sleeper.app/v1/league/${lid}/users`).then(r=>r.json()),
+  ]);
+  _rosterCache = rosters;
+  _usersCache = users;
+  _txLeagueId = lid;
+  return { lid, rosters, users };
+}
+
+function buildUserMap(users) {
+  const m = {};
+  (users||[]).forEach(u => {
+    m[u.user_id] = u.metadata?.team_name || u.display_name || u.username || `Team ${u.user_id.slice(-4)}`;
+  });
+  return m;
+}
+
+function buildRosterOwnerMap(rosters) {
+  const m = {};
+  (rosters||[]).forEach(r => { m[r.roster_id] = r.owner_id; });
+  return m;
+}
+
+async function renderTransactions() {
+  const el = document.getElementById('teams-tab-content');
+  if (!el) return;
+  el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:24px">⟳</div><br>Loading transactions...</div>`;
+
+  try {
+    const ctx = await getLeagueContext();
+    if (!ctx) { el.innerHTML = `<div class="fc-error">No league connected. Load a Sleeper draft first.</div>`; return; }
+    const { lid, rosters, users } = ctx;
+
+    const userMap = buildUserMap(users);
+    const rosterOwnerMap = buildRosterOwnerMap(rosters);
+
+    // Fetch all weeks 1-18
+    if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+    const weeks = Array.from({length:18},(_,i)=>i+1);
+    const allTxArrays = await Promise.all(
+      weeks.map(w => fetch(`https://api.sleeper.app/v1/league/${lid}/transactions/${w}`).then(r=>r.json()).catch(()=>[]))
+    );
+    const allTx = allTxArrays.flat().filter(Boolean);
+    _txCache = allTx;
+
+    if (!allTx.length) {
+      el.innerHTML = `<div class="fc-loading">No transactions found yet. Check back after the season starts.</div>`;
+      return;
+    }
+
+    // Separate into trades, waivers, FA
+    const trades = allTx.filter(t => t.type === 'trade');
+    const waivers = allTx.filter(t => t.type === 'waiver');
+    const fas = allTx.filter(t => t.type === 'free_agent');
+
+    // Build filter bar
+    let filter = 'all';
+    const filterBtns = ['all','trades','waivers','fa'].map(f =>
+      `<button class="sbtn${f==='all'?' on':''}" onclick="filterTx('${f}')" id="tx-f-${f}">${{all:'All',trades:'Trades',waivers:'Waivers',fa:'Free Agency'}[f]}</button>`
+    ).join('');
+
+    // Render each trade with winner/loser analysis
+    function renderTrade(tx) {
+      const rosters2 = tx.roster_ids || [];
+      const adds = tx.adds || {};
+      const drops = tx.drops || {};
+
+      // Group adds/drops by roster
+      const byRoster = {};
+      rosters2.forEach(rid => { byRoster[rid] = { gets:[], gives:[], pickGets:[], pickGives:[] }; });
+
+      Object.entries(adds).forEach(([pid, rid]) => {
+        const name = globalPidToName[String(pid)] || `Player ${pid}`;
+        if (byRoster[rid]) byRoster[rid].gets.push(name);
+      });
+      Object.entries(drops).forEach(([pid, rid]) => {
+        const name = globalPidToName[String(pid)] || `Player ${pid}`;
+        if (byRoster[rid]) byRoster[rid].gives.push(name);
+      });
+
+      // Draft picks
+      (tx.draft_picks||[]).forEach(pick => {
+        const label = `${pick.season} ${pick.round}${pick.round===1?'st':pick.round===2?'nd':pick.round===3?'rd':'th'}`;
+        if (byRoster[pick.owner_id]) byRoster[pick.owner_id].pickGets.push(label);
+        if (byRoster[pick.previous_owner_id]) byRoster[pick.previous_owner_id].pickGives.push(label);
+      });
+
+      // Value each side
+      const sideValues = {};
+      Object.entries(byRoster).forEach(([rid, side]) => {
+        const ownerId = rosterOwnerMap[rid];
+        const teamName = userMap[ownerId] || `Roster ${rid}`;
+        const getsVal = side.gets.reduce((s,n) => s+getPlayerValue(n), 0);
+        const givesVal = side.gives.reduce((s,n) => s+getPlayerValue(n), 0);
+        // picks approx value
+        const pickVal = side.pickGets.length * 2500;
+        const pickGiveVal = side.pickGives.length * 2500;
+        sideValues[rid] = { teamName, gets:side.gets, gives:side.gives, pickGets:side.pickGets, pickGives:side.pickGives, getsVal: getsVal+pickVal, givesVal: givesVal+pickGiveVal };
+      });
+
+      const sides = Object.values(sideValues);
+      if (!sides.length) return '';
+
+      // Grade each side
+      function gradeReturn(side) {
+        const net = side.getsVal - side.givesVal;
+        const pct = side.givesVal > 0 ? net/side.givesVal : 0;
+        if (pct > 0.25) return {label:'WIN', color:'var(--rb)'};
+        if (pct > 0.08) return {label:'EDGE', color:'#7bc8a4'};
+        if (pct > -0.08) return {label:'FAIR', color:'var(--te)'};
+        if (pct > -0.25) return {label:'LOSS', color:'#ff9f5b'};
+        return {label:'L BIG', color:'var(--qb)'};
+      }
+
+      const date = tx.status_updated ? new Date(tx.status_updated).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+
+      return `<div class="tx-card" id="tx-${tx.transaction_id}">
+        <div class="tx-header">
+          <span class="tx-type trade">🔄 TRADE</span>
+          <span class="tx-date">${date}</span>
+        </div>
+        <div class="tx-sides">
+          ${sides.map(side => {
+            const grade = gradeReturn(side);
+            const allGets = [...side.gets, ...side.pickGets];
+            const allGives = [...side.gives, ...side.pickGives];
+            return `<div class="tx-side">
+              <div class="tx-team">${side.teamName}</div>
+              <div class="tx-grade" style="color:${grade.color}">${grade.label}</div>
+              ${allGets.length ? `<div class="tx-gets">▲ ${allGets.map(n=>`<span class="tx-player gets">${n}</span>`).join('')}</div>` : ''}
+              ${allGives.length ? `<div class="tx-gives">▼ ${allGives.map(n=>`<span class="tx-player gives">${n}</span>`).join('')}</div>` : ''}
+              <div class="tx-val">Net: <b style="color:${(side.getsVal-side.givesVal)>=0?'var(--rb)':'var(--qb)'}">${side.getsVal-side.givesVal>=0?'+':''}${(side.getsVal-side.givesVal).toLocaleString()}</b></div>
+            </div>`;
+          }).join('<div class="tx-arrow">⇌</div>')}
+        </div>
+      </div>`;
+    }
+
+    function renderWaiverFA(tx, type) {
+      const adds = tx.adds || {};
+      const drops = tx.drops || {};
+      const rid = (tx.roster_ids||[])[0];
+      const ownerId = rosterOwnerMap[rid];
+      const teamName = userMap[ownerId] || `Roster ${rid}`;
+      const addNames = Object.keys(adds).map(pid => globalPidToName[String(pid)] || `Player ${pid}`);
+      const dropNames = Object.keys(drops).map(pid => globalPidToName[String(pid)] || `Player ${pid}`);
+      const addVal = addNames.reduce((s,n)=>s+getPlayerValue(n),0);
+      const dropVal = dropNames.reduce((s,n)=>s+getPlayerValue(n),0);
+      const net = addVal - dropVal;
+      const date = tx.status_updated ? new Date(tx.status_updated).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+      const icon = type==='waiver' ? '📋' : '✍️';
+      const label = type==='waiver' ? 'WAIVER' : 'FA';
+
+      return `<div class="tx-card tx-small">
+        <div class="tx-header">
+          <span class="tx-type ${type}">${icon} ${label}</span>
+          <span class="tx-team-sm">${teamName}</span>
+          <span class="tx-date">${date}</span>
+          ${addVal||dropVal ? `<span class="tx-net" style="color:${net>=0?'var(--rb)':'var(--qb)'}">${net>=0?'+':''}${net.toLocaleString()}</span>` : ''}
+        </div>
+        <div class="tx-wf-row">
+          ${addNames.map(n=>`<span class="tx-player gets">▲ ${n}</span>`).join('')}
+          ${dropNames.map(n=>`<span class="tx-player gives">▼ ${n}</span>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    window._txRenderData = { trades, waivers, fas, renderTrade, renderWaiverFA };
+    filterTx('all');
+
+    // Prepend filter bar + summary stats
+    const summary = `<div class="tx-summary">
+      <div class="tx-stat"><b>${trades.length}</b><span>Trades</span></div>
+      <div class="tx-stat"><b>${waivers.length}</b><span>Waivers</span></div>
+      <div class="tx-stat"><b>${fas.length}</b><span>FA Moves</span></div>
+    </div>`;
+
+    el.innerHTML = summary + `<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${filterBtns}</div>` + el.innerHTML;
+  } catch(e) {
+    el.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`;
+  }
+}
+
+function filterTx(f) {
+  const d = window._txRenderData;
+  if (!d) return;
+  ['all','trades','waivers','fa'].forEach(x => document.getElementById(`tx-f-${x}`)?.classList.toggle('on', x===f));
+  const el = document.getElementById('teams-tab-content');
+  if (!el) return;
+
+  let html = '';
+  if (f === 'all' || f === 'trades') html += d.trades.slice().reverse().map(t => d.renderTrade(t)).join('');
+  if (f === 'all' || f === 'waivers') html += d.waivers.slice().reverse().map(t => d.renderWaiverFA(t,'waiver')).join('');
+  if (f === 'fa') html += d.fas.slice().reverse().map(t => d.renderWaiverFA(t,'free_agent')).join('');
+
+  // Preserve the summary + filter bar, replace just the list
+  const summaryEl = el.querySelector('.tx-summary');
+  const filterEl = el.querySelector('[style*="display:flex"]');
+  el.innerHTML = (summaryEl ? summaryEl.outerHTML : '') + (filterEl ? filterEl.outerHTML : '') + (html || '<div class="fc-loading">No transactions of this type found.</div>');
+  // Re-attach filter button handlers
+  ['all','trades','waivers','fa'].forEach(x => {
+    const btn = document.getElementById(`tx-f-${x}`);
+    if (btn) btn.onclick = () => filterTx(x);
+    btn?.classList.toggle('on', x===f);
+  });
+}
+
+// ════════════════════════════════════
+//  LEAGUE ANALYZER — Standings
+// ════════════════════════════════════
+async function renderStandings() {
+  const el = document.getElementById('teams-tab-content');
+  if (!el) return;
+  el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:24px">⟳</div><br>Loading standings...</div>`;
+
+  try {
+    const ctx = await getLeagueContext();
+    if (!ctx) { el.innerHTML = `<div class="fc-error">No league connected. Load a Sleeper draft first.</div>`; return; }
+    const { lid, rosters, users } = ctx;
+
+    if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+    const userMap = buildUserMap(users);
+    const rosterOwnerMap = buildRosterOwnerMap(rosters);
+
+    // Build standings data
+    const standings = (rosters||[]).map(r => {
+      const ownerId = r.owner_id;
+      const teamName = userMap[ownerId] || `Roster ${r.roster_id}`;
+      const isMe = ownerId === myTeamsUserId;
+      const w = r.settings?.wins || 0;
+      const l = r.settings?.losses || 0;
+      const t = r.settings?.ties || 0;
+      const pf = Math.round(r.settings?.fpts || 0) + (r.settings?.fpts_decimal||0)/100;
+      const pa = Math.round(r.settings?.fpts_against || 0) + (r.settings?.fpts_against_decimal||0)/100;
+      const playerIds = [...(r.players||[]), ...(r.reserve||[])];
+      const rosterValue = playerIds.reduce((s,pid) => {
+        const name = globalPidToName[String(pid)];
+        return s + (name ? getPlayerValue(name) : 0);
+      }, 0);
+      return { teamName, isMe, w, l, t, pf, pa, rosterValue, ownerId };
+    }).sort((a,b) => {
+      if (b.w !== a.w) return b.w - a.w;
+      return b.pf - a.pf;
+    });
+
+    const maxVal = Math.max(...standings.map(s=>s.rosterValue), 1);
+    const maxPF = Math.max(...standings.map(s=>s.pf), 1);
+
+    el.innerHTML = `
+      <div class="st-table">
+        <div class="st-hdr">
+          <span style="width:28px">#</span>
+          <span style="flex:1">TEAM</span>
+          <span style="width:60px;text-align:center">W-L</span>
+          <span style="width:70px;text-align:right">PF</span>
+          <span style="width:70px;text-align:right">PA</span>
+          <span style="flex:1;min-width:80px">ROSTER VALUE</span>
+        </div>
+        ${standings.map((s,i) => {
+          const valPct = Math.round(s.rosterValue/maxVal*100);
+          const c = COLORS[i%COLORS.length];
+          return `<div class="st-row${s.isMe?' st-me':''}">
+            <span class="st-rank" style="color:${c}">${i+1}</span>
+            <span class="st-name">${s.teamName}${s.isMe?' <span class="st-you">YOU</span>':''}</span>
+            <span class="st-wl">${s.w}-${s.l}${s.t?'-'+s.t:''}</span>
+            <span class="st-pf">${s.pf.toFixed(1)}</span>
+            <span class="st-pa">${s.pa.toFixed(1)}</span>
+            <div class="st-bar-wrap">
+              <div class="st-bar" style="width:${valPct}%;background:${c}"></div>
+              <span class="st-bar-label">${s.rosterValue.toLocaleString()}</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`;
+  }
+}
+
+// Tier classification
+function getTeamTier(rank, total) {
+  const pct = rank / total;
+  if (pct <= 0.20) return { label: '🏆 Juggernaut', cls: 'tier-juggernaut' };
+  if (pct <= 0.45) return { label: '⚖ Balanced',   cls: 'tier-balanced' };
+  if (pct <= 0.70) return { label: '🔥 Pretender',  cls: 'tier-pretender' };
+  return                  { label: '↑ Rebuilder',   cls: 'tier-rebuilder' };
+}
+
+// Switch league in analyzer
+async function switchAnalyzerLeague(leagueId) {
+  teamsLeagueId = leagueId || null;
+  _txCache = null; _rosterCache = null; _usersCache = null;
+  const nameEl = document.getElementById('la-league-name');
+  if (!leagueId) { if(nameEl) nameEl.textContent=''; renderTeams(); return; }
+  const league = myTeamsData.find(l => l.league_id === leagueId);
+  if (nameEl) nameEl.textContent = league?.name || '';
+  renderTeams();
+}
+
+function populateAnalyzerDropdown() {
+  const sel = document.getElementById('la-league-select');
+  if (!sel) return;
+  const leagues = myTeamsData.filter(l => l.season==='2026'||l.season==='2025');
+  if (!leagues.length) {
+    const savedUser = localStorage.getItem(SK+'-username');
+    if (savedUser && !myTeamsUserId) { const inp=document.getElementById('myteams-username'); if(inp)inp.value=savedUser; loadMyTeams(); }
+    sel.style.display='none'; return;
+  }
+  sel.style.display='';
+  sel.innerHTML = `<option value="">📋 Current Draft League</option>` +
+    leagues.map(l=>`<option value="${l.league_id}" ${l.league_id===teamsLeagueId?'selected':''}>${l.status==='in_season'?'🟢 ':''}${l.name||'League'} (${l.season})</option>`).join('');
+}
+
 function setTeamsTab(tab) {
   teamsTab = tab;
-  document.getElementById('teams-tab-pr')?.classList.toggle('on', tab==='pr');
-  document.getElementById('teams-tab-mv')?.classList.toggle('on', tab==='mv');
-  document.getElementById('teams-tab-gr')?.classList.toggle('on', tab==='gr');
+  ['pr','mv','tx','st','gr'].forEach(t => document.getElementById(`teams-tab-${t}`)?.classList.toggle('on', t===tab));
+  ['team-detail','csec','draft-grades-panel'].forEach(id => { const el=document.getElementById(id); if(el)el.style.display='none'; });
   if (tab==='mv') renderMovers();
-  else if (tab==='gr') {
-    document.getElementById('power-rankings').innerHTML='';
-    document.getElementById('team-detail').style.display='none';
-    document.getElementById('csec').style.display='none';
-    renderDraftGrades();
-  }
+  else if (tab==='tx') renderTransactions();
+  else if (tab==='st') renderStandings();
+  else if (tab==='gr') renderDraftGrades();
   else renderTeams();
 }
 
@@ -3012,111 +4048,84 @@ function setViewTeam(val) {
   renderTeams();
 }
 
-async function switchTeamsLeague(leagueId) {
-  teamsLeagueId = leagueId || null;
-  viewTeamIdx = null;
-  const prEl = document.getElementById('power-rankings');
-  if (!leagueId) {
-    // Back to current draft
-    renderTeams();
-    return;
-  }
 
-  // Load this league's rosters and show power rankings
-  if (prEl) prEl.innerHTML = '<div class="fc-loading">⟳ Loading league...</div>';
-  try {
-    const [rosters, users] = await Promise.all([
-      fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
-      fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
-    ]);
 
-    // Build team data with FC values
-    const userMap = {};
-    (users||[]).forEach(u => { userMap[u.user_id] = u.display_name || u.username || `Team ${u.user_id.slice(-4)}`; });
 
-    // Ensure sleeperPlayerMap is loaded for player lookups
-    if (Object.keys(sleeperPlayerMap).length === 0) await fetchSleeperPlayers();
-
-    // Build pid -> name lookup
-    const pidToName = {};
-    Object.entries(PLAYER_IDS).forEach(([name, pid]) => { pidToName[String(pid)] = name; });
-    Object.entries(sleeperPlayerMap).forEach(([normN, data]) => {
-      if (data.player_id) {
-        const canon = PLAYERS.find(p => normName(p.name) === normN);
-        if (canon) pidToName[String(data.player_id)] = canon.name;
-        else if (data.name) pidToName[String(data.player_id)] = data.name;
-      }
-    });
-
-    const teamData = (rosters||[]).map((r, i) => {
-      const name = userMap[r.owner_id] || `Team ${i+1}`;
-      const isMe = r.owner_id === myTeamsUserId;
-      const playerNames = (r.players||[]).map(pid => pidToName[String(pid)]).filter(Boolean);
-      const fcTotal = playerNames.reduce((s,n) => s + getPlayerValue(n), 0);
-      return { idx:i, name, isMe, players: playerNames, fcTotal, ownerId: r.owner_id };
-    });
-
-    const ranked = [...teamData].sort((a,b) => b.fcTotal - a.fcTotal);
-    const maxFC = ranked[0]?.fcTotal || 1;
-
-    prEl.innerHTML = `<table class="pr-table">
-      <thead><tr>
-        <th style="width:40px;text-align:center">#</th>
-        <th>TEAM</th>
-        <th style="text-align:right">FC VALUE</th>
-        <th style="min-width:80px">STRENGTH</th>
-      </tr></thead>
-      <tbody>${ranked.map((t,rank) => {
-        const c = COLORS[rank % COLORS.length];
-        const pct = Math.round(t.fcTotal / maxFC * 100);
-        return `<tr style="${t.isMe?'background:#5b8dee0a;':''}" onclick="">
-          <td style="text-align:center;font-size:18px;font-weight:800;font-family:Space Mono,monospace;color:${c}">${rank+1}</td>
-          <td><div style="font-size:14px;font-weight:700">${t.name}${t.isMe?' <span style="font-size:9px;background:#5b8dee22;color:var(--accent2);padding:1px 6px;border-radius:3px;font-family:Space Mono,monospace">YOU</span>':''}</div>
-              <div style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace">${t.players.length} players</div></td>
-          <td style="text-align:right;font-size:14px;font-weight:700;font-family:Space Mono,monospace;color:${c}">${t.fcTotal.toLocaleString()}</td>
-          <td><div style="height:6px;background:var(--s3);border-radius:3px"><div style="width:${pct}%;height:6px;background:${c};border-radius:3px"></div></div></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
-  } catch(e) {
-    if (prEl) prEl.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`;
-  }
-}
-
-function populateLeagueDropdown() {
-  const sel = document.getElementById('teams-league-select');
-  if (!sel) return;
-  const leagues = myTeamsData.filter(l => l.season === '2026' || l.season === '2025');
-  if (!leagues.length) {
-    // Try auto-loading if username is saved but leagues not yet fetched
-    const savedUser = localStorage.getItem(SK+'-username');
-    if (savedUser && myTeamsUserId === null) {
-      const input = document.getElementById('myteams-username');
-      if (input) input.value = savedUser;
-      loadMyTeams(); // auto-fetch in background
-    }
-    sel.style.display = 'none';
-    return;
-  }
-  sel.style.display = '';
-  sel.innerHTML = `<option value="">📋 Current Draft</option>` +
-    leagues.map(l => `<option value="${l.league_id}">${l.name||'League'} (${l.season})</option>`).join('');
-}
 
 function renderTeams() {
   if (teamsTab === 'mv') { renderMovers(); return; }
 
-  // Auto-fetch FC values on first visit — don't make user find the button
-  if(!fcLoaded && !fcLoading && valueSource==='fc') {
-    fetchFantasyCalc();
-    return;
-  }
-  if(!raLoaded && !raLoading && valueSource==='ra') {
-    fetchRosterAudit();
+  // Auto-fetch FC values on first visit
+  if(!fcLoaded && !fcLoading && valueSource==='fc') { fetchFantasyCalc(); return; }
+  if(!raLoaded && !raLoading && valueSource==='ra') { fetchRosterAudit(); return; }
+
+  const loaded = valueSource === 'fc' ? fcLoaded : raLoaded;
+  if (!loaded) { if(valueSource==='fc')fetchFantasyCalc();else fetchRosterAudit(); return; }
+
+  const prEl = document.getElementById('power-rankings');
+  if (!prEl) return;
+
+  // If a specific Sleeper league is selected, fetch its rosters
+  if (teamsLeagueId) {
+    prEl.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div><br>Loading league data...</div>`;
+    renderTeamsFromLeague(teamsLeagueId);
     return;
   }
 
-  // Populate team selector dropdown
+  // Otherwise use current draft data
+  renderTeamsFromDraft();
+}
+
+async function renderTeamsFromLeague(leagueId) {
+  const prEl = document.getElementById('power-rankings');
+  if (!prEl) return;
+  try {
+    if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+    const [rosters, users] = await Promise.all([
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
+      fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
+    ]);
+    _rosterCache = rosters; _usersCache = users; _txLeagueId = leagueId;
+
+    const userMap = buildUserMap(users);
+    const rosterOwnerMap = buildRosterOwnerMap(rosters);
+
+    const teamData = (rosters||[]).map((r, i) => {
+      const ownerId = r.owner_id;
+      const name = userMap[ownerId] || `Team ${i+1}`;
+      const isMe = ownerId === myTeamsUserId;
+      const playerIds = [...(r.players||[]), ...(r.reserve||[])];
+      const roster = playerIds.map(pid => {
+        const pname = globalPidToName[String(pid)];
+        if (!pname) return null;
+        return PLAYERS.find(p=>p.name===pname) || {name:pname,pos:'?',team:''};
+      }).filter(Boolean);
+
+      const fcTotal = roster.reduce((s,p) => s + getPlayerValue(p.name), 0);
+      const qbs = roster.filter(p=>p.pos==='QB');
+      const rbs = roster.filter(p=>p.pos==='RB');
+      const wrs = roster.filter(p=>p.pos==='WR');
+      const tes = roster.filter(p=>p.pos==='TE');
+      const sorted = [...roster].sort((a,b)=>getPlayerValue(b.name)-getPlayerValue(a.name));
+      const best = sorted[0];
+      const bestVal = best ? getPlayerValue(best.name) : 0;
+      const trendSum = roster.reduce((s,p) => s + (getFCValue(p.name)?.trend||0), 0);
+      const ages = roster.filter(p=>getFCValue(p.name)?.age).map(p=>({age:getFCValue(p.name).age,val:getFCValue(p.name).value}));
+      const totalVal = ages.reduce((s,x)=>s+x.val,0);
+      const avgAge = totalVal>0 ? ages.reduce((s,x)=>s+(x.age*x.val),0)/totalVal : null;
+
+      return { idx:i, name, roster, fcTotal, qbs, rbs, wrs, tes, best, bestFC:{value:bestVal}, trendSum, avgAge, isMe, ownerId };
+    });
+
+    renderPowerRankingsTable(teamData);
+  } catch(e) {
+    const prEl = document.getElementById('power-rankings');
+    if (prEl) prEl.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`;
+  }
+}
+
+function renderTeamsFromDraft() {
+  // Update team-within-draft selector
   const sel = document.getElementById('teams-team-select');
   if (sel && TEAMS.length) {
     sel.style.display = '';
@@ -3124,19 +4133,6 @@ function renderTeams() {
       TEAMS.map((n,i) => `<option value="${i}" ${i===viewTeamIdx?'selected':''}>${i===myTeam?'✦ '+n:n}</option>`).join('');
   }
 
-  const loaded = valueSource === 'fc' ? fcLoaded : raLoaded;
-  if (!loaded) {
-    if (valueSource === 'fc') fetchFantasyCalc();
-    else fetchRosterAudit();
-    return;
-  }
-
-  const sourceLabel = valueSource === 'fc' ? 'FantasyCalc' : 'RosterAudit';
-
-  const prEl = document.getElementById('power-rankings');
-  if (!prEl) return;
-
-  // Build team data with FC values
   const teamData = TEAMS.map((name, i) => {
     const roster = getRoster(i);
     const fcTotal = getTeamFCTotal(roster);
@@ -3144,28 +4140,28 @@ function renderTeams() {
     const rbs = roster.filter(p => p.pos === 'RB');
     const wrs = roster.filter(p => p.pos === 'WR');
     const tes = roster.filter(p => p.pos === 'TE');
-
-    // Best player by FC value
     const sorted = [...roster].sort((a,b) => getPlayerValue(b.name) - getPlayerValue(a.name));
     const best = sorted[0];
     const bestFC = best ? getFCValue(best.name) : null;
-
-    // FC value trend for roster (sum of 30-day trends)
     const trendSum = roster.reduce((s, p) => s + (getFCValue(p.name)?.trend || 0), 0);
-
-    // Age of roster (weighted avg by value)
     const ages = roster.filter(p => getFCValue(p.name)?.age).map(p => ({age: getFCValue(p.name).age, val: getFCValue(p.name).value}));
     const totalVal = ages.reduce((s,x)=>s+x.val,0);
     const avgAge = totalVal > 0 ? ages.reduce((s,x)=>s+(x.age*x.val),0)/totalVal : null;
-
-    return { idx: i, name, roster, fcTotal, qbs, rbs, wrs, tes, best, bestFC, trendSum, avgAge };
+    return { idx: i, name, roster, fcTotal, qbs, rbs, wrs, tes, best, bestFC, trendSum, avgAge, isMe: i===myTeam };
   });
+
+  renderPowerRankingsTable(teamData);
+}
+
+function renderPowerRankingsTable(teamData) {
+  const prEl = document.getElementById('power-rankings');
+  if (!prEl) return;
 
   // Sort by FC total descending = power ranking
   const ranked = [...teamData].sort((a,b) => b.fcTotal - a.fcTotal);
 
-  // If a specific team is selected, show detail view for that team
-  if (viewTeamIdx !== null) {
+  // If a specific team is selected (draft mode only), show detail view
+  if (viewTeamIdx !== null && !teamsLeagueId) {
     prEl.innerHTML = '';
     const detail = document.getElementById('team-detail');
     const csec = document.getElementById('csec');
@@ -3180,8 +4176,9 @@ function renderTeams() {
   prEl.innerHTML = `
     <table class="pr-table">
       <thead><tr>
-        <th style="width:40px;text-align:center">#</th>
+        <th style="width:40px;text-align:center">RANK</th>
         <th>TEAM</th>
+        <th style="min-width:110px">TIER</th>
         <th style="text-align:center">ROSTER</th>
         <th style="text-align:right">FC VALUE</th>
         <th style="text-align:right">30D TREND</th>
@@ -3191,11 +4188,12 @@ function renderTeams() {
       <tbody>
         ${ranked.map((t, rank) => {
           const c = COLORS[t.idx % COLORS.length];
-          const isMe = t.idx === myTeam;
+          const isMe = t.isMe !== undefined ? t.isMe : t.idx === myTeam;
           const isSel = cmpTeam === t.idx;
           const trendColor = t.trendSum > 0 ? 'var(--rb)' : t.trendSum < 0 ? 'var(--qb)' : 'var(--muted)';
           const trendStr = t.trendSum > 0 ? `▲ +${t.trendSum}` : t.trendSum < 0 ? `▼ ${t.trendSum}` : '—';
           const pct = Math.round(t.fcTotal / maxFC * 100);
+          const tier = getTeamTier(rank + 1, ranked.length);
           const posBadges = [
             t.qbs.length ? `<span class="pr-pos-chip QB">QB×${t.qbs.length}</span>` : '',
             t.rbs.length ? `<span class="pr-pos-chip RB">RB×${t.rbs.length}</span>` : '',
@@ -3204,8 +4202,7 @@ function renderTeams() {
           ].filter(Boolean).join('');
 
           let badge = '';
-          if (rank === 0) badge = '<span class="pr-badge" style="background:#ffd16622;color:var(--te)">👑 #1</span>';
-          else if (isMe) badge = '<span class="pr-badge" style="background:#5b8dee22;color:var(--accent2)">YOU</span>';
+          if (isMe) badge = '<span class="pr-badge" style="background:#5b8dee22;color:var(--accent2)">YOU</span>';
 
           return `<tr class="${isMe?'my-row':''} ${isSel?'selected-row':''}" onclick="selectTeamRow(${t.idx})">
             <td><span class="pr-rank" style="color:${c}">${rank+1}</span></td>
@@ -3213,6 +4210,7 @@ function renderTeams() {
               <div style="font-size:14px;font-weight:700">${t.name}${badge}</div>
               <div style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace;margin-top:2px">${t.roster.length} players${t.avgAge ? ` · avg age ${t.avgAge.toFixed(1)}` : ''}</div>
             </td>
+            <td><span class="tier-badge ${tier.cls}">${tier.label}</span></td>
             <td><div class="pr-pos-chips">${posBadges}</div></td>
             <td><span class="pr-val" style="color:${c}">${t.fcTotal.toLocaleString()}</span></td>
             <td><span class="pr-trend" style="color:${trendColor}">${trendStr}</span></td>
@@ -3390,11 +4388,85 @@ function copyToClipboard(text){
 }
 
 // ════════════════════════════════════
+//  USER PROFILE HEADER
+// ════════════════════════════════════
+function updateUserHeader(user) {
+  if (!user) return;
+  const chip = document.getElementById('user-profile-chip');
+  const avatar = document.getElementById('user-avatar');
+  const initials = document.getElementById('user-initials');
+  const dname = document.getElementById('user-display-name');
+  const settingsBtn = document.getElementById('settings-btn');
+
+  // Show chip, hide plain settings button
+  if (chip) chip.style.display = 'flex';
+  if (settingsBtn) settingsBtn.style.display = 'none';
+
+  // Avatar — Sleeper uses https://sleepercdn.com/avatars/thumbs/{avatar_id}
+  if (avatar && user.avatar) {
+    avatar.src = `https://sleepercdn.com/avatars/thumbs/${user.avatar}`;
+    avatar.style.display = 'block';
+    if (initials) initials.style.display = 'none';
+  } else if (initials) {
+    // Fallback initials
+    const name = user.display_name || user.username || '?';
+    initials.textContent = name.slice(0,2).toUpperCase();
+    initials.style.display = 'flex';
+    if (avatar) avatar.style.display = 'none';
+  }
+
+  // Display name
+  if (dname) dname.textContent = user.display_name || user.username || '';
+}
+
+// Global league switcher — syncs League Analyzer, My Team overview, and Standings
+function switchGlobalLeague(leagueId) {
+  // Update all page-specific states
+  teamsLeagueId = leagueId || null;
+  ovLeagueId = leagueId || null;
+  // Clear caches so fresh data loads
+  _txCache = null; _rosterCache = null; _usersCache = null;
+
+  // Update league name shown in overview subtitle
+  const league = myTeamsData.find(l => l.league_id === leagueId);
+  const nameEl = document.getElementById('la-league-name');
+  if (nameEl) nameEl.textContent = league?.name || '';
+  const ovSub = document.getElementById('ov-subtitle');
+  if (ovSub) ovSub.textContent = league?.name || (leagueId ? 'League' : 'Current Draft');
+
+  // Sync all other dropdowns to same selection
+  ['la-league-select','ov-league-select'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (sel) sel.value = leagueId || '';
+  });
+
+  // Re-render whichever page is active
+  const active = document.querySelector('.page.on')?.id;
+  if (active === 'page-teams') renderTeams();
+  else renderOverview(); // always refresh overview too
+}
+
+function populateHeaderLeague() {
+  const sel = document.getElementById('header-league-select');
+  const wrap = document.getElementById('header-league-wrap');
+  if (!sel || !wrap) return;
+  const leagues = myTeamsData.filter(l => l.season==='2026'||l.season==='2025');
+  if (!leagues.length) { wrap.style.display='none'; return; }
+  wrap.style.display = '';
+  sel.innerHTML = `<option value="">📋 Current Draft</option>` +
+    leagues.map(l => {
+      const active = l.status === 'in_season';
+      return `<option value="${l.league_id}" ${l.league_id===teamsLeagueId?'selected':''}>${active?'🟢 ':''}${l.name||'League'}</option>`;
+    }).join('');
+}
+
+// ════════════════════════════════════
 //  MY TEAMS — All Sleeper Leagues
 // ════════════════════════════════════
 let myTeamsSeason = '2026';
 let myTeamsUserId = null;
 let myTeamsData = []; // all leagues
+let mySleeperUser = null; // { username, display_name, avatar, user_id }
 
 function setTeamsSeason(yr) {
   myTeamsSeason = yr;
@@ -3420,6 +4492,8 @@ async function loadMyTeams() {
     if (!uRes.ok) throw new Error('User not found');
     const user = await uRes.json();
     myTeamsUserId = user.user_id;
+    mySleeperUser = user; // store full profile for avatar/display_name
+    updateUserHeader(user);
 
     // Fetch leagues for multiple seasons
     const [l2026, l2025, l2024] = await Promise.all([
@@ -3435,7 +4509,13 @@ async function loadMyTeams() {
     ];
 
     renderMyTeamsResults();
-    populateLeagueDropdown(); // also update Teams page dropdown
+    populateAnalyzerDropdown();
+    populateOverviewDropdown();
+    populateHeaderLeague();
+    // If user is on My Team page, re-render now that leagues are available
+    if (document.getElementById('page-overview')?.classList.contains('on')) {
+      renderOverview();
+    }
   } catch(e) {
     if (res) res.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`;
   } finally {
@@ -3508,34 +4588,13 @@ async function viewLeagueRoster(leagueId, leagueName, season) {
       fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
     ]);
 
-    // Ensure sleeperPlayerMap is populated — needed for pid->name lookups
-    if (Object.keys(sleeperPlayerMap).length === 0) {
-      await fetchSleeperPlayers();
-    }
-
-    // Build pidToName from both hardcoded IDs and live sleeperPlayerMap
-    const pidToName = {};
-    Object.entries(PLAYER_IDS).forEach(([name, pid]) => { pidToName[String(pid)] = name; });
-    // From sleeperPlayerMap: normName -> {player_id, ...}
-    Object.entries(sleeperPlayerMap).forEach(([normN, data]) => {
-      if (data.player_id) {
-        const canon = PLAYERS.find(p => normName(p.name) === normN);
-        if (canon) pidToName[String(data.player_id)] = canon.name;
-        else pidToName[String(data.player_id)] = data.name || normN; // fallback to raw name
-      }
-    });
-
-    // Find my roster
-    const myRoster = rosters?.find(r => r.owner_id === myTeamsUserId);
-    if (!myRoster) {
-      rosterEl.innerHTML = '<div class="fc-error">Could not find your roster in this league.</div>';
-      return;
-    }
+    // Ensure Sleeper players loaded (builds globalPidToName)
+    if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
 
     const playerIds = [...(myRoster.players || []), ...(myRoster.reserve || [])];
 
     const myPlayers = playerIds.map(pid => {
-      const name = pidToName[String(pid)] || null;
+      const name = globalPidToName[String(pid)] || null;
       if (!name) return null;
       const player = PLAYERS.find(p => p.name === name) || { name, pos: '?', team: '' };
       const fcVal = getPlayerValue(name);
@@ -4415,7 +5474,9 @@ window.addEventListener('load', () => {
     }
   }
 
-  // Apply saved theme
+  // Always start on setup step 1
+  showSetupStep(1);
+  // Overview is default page
   applyTheme(localStorage.getItem('snapdraft-theme') || 'dark');
 
   // Wire up search clear button
@@ -4429,7 +5490,6 @@ window.addEventListener('load', () => {
 });
 
 function resumeSession() {
-  // Load saved session and jump straight to draft room
   const did = localStorage.getItem(SK+'-did');
   loadSaved();
   loadMyTeam();
@@ -4437,8 +5497,20 @@ function resumeSession() {
   initState();
   _rebuildCaches();
   document.getElementById('setup').classList.add('gone');
+
+  // Load leagues then show overview with picker
+  const savedUn = localStorage.getItem(SK+'-username');
+  if (savedUn && !myTeamsData.length) {
+    loadMyTeams().then(() => {
+      populateHeaderLeague();
+      populateAnalyzerDropdown();
+      populateOverviewDropdown();
+    });
+  }
+
   setTimeout(() => {
     renderAll();
+    showPage('overview'); // always land on My Team overview
     if (myTeam === null) openTModal();
     if (did) {
       sleeperDraftId = did;
