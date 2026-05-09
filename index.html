@@ -17,28 +17,35 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #141b2d;
-  --s1: #1a2340;
-  --s2: #1f2a4a;
-  --s3: #253052;
-  --s4: #2b3660;
-  --border: #2d3f6a;
-  --border2: #364a7a;
-  --border3: #4a5f90;
-  --text: #e4eaff;
-  --text2: #b8c4e8;
-  --muted: #6b7ca8;
-  --dim: #2d3f6a;
-  --accent: #5b8dee;
-  --accent2: #7ba8f5;
-  --accent3: #9ec3ff;
-  --qb: #ff7096;
-  --rb: #3de8a0;
-  --wr: #5bc5ff;
-  --te: #ffd166;
-  --suggest: #a78bfa;
-  --value: #3de8a0;
-  --reach: #ff7096;
+  --bg: #0f1624;
+  --s1: #161e30;
+  --s2: #1c2640;
+  --s3: #222e4e;
+  --s4: #28365c;
+  --border: #263249;
+  --border2: #2f3e5e;
+  --border3: #3d5080;
+  --text: #e8eeff;
+  --text2: #b0bedd;
+  --muted: #5e7399;
+  --dim: #263249;
+  --accent: #4f7de8;
+  --accent2: #6b97f0;
+  --accent3: #88b3ff;
+  --qb: #f05674;
+  --rb: #30d98a;
+  --wr: #4ab8f5;
+  --te: #f5c842;
+  --suggest: #9d7ef5;
+  --value: #30d98a;
+  --reach: #f05674;
+  --gold: #f5c842;
+  --font-mono: 'Space Mono', monospace;
+  --font-sans: 'Inter', sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
 }
 /* ── LIGHT THEME ── */
 [data-theme="light"] {
@@ -88,7 +95,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{height:100%;-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;min-height:100vh;overflow-x:hidden;width:100%;max-width:100vw}
+body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;min-height:100vh;overflow-x:hidden;width:100%;max-width:100vw;-webkit-font-smoothing:antialiased}
 
 /* Stars */
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -126,15 +133,15 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .setup-or{text-align:center;font-size:11px;color:var(--muted);margin-top:10px;font-family:'Space Mono',monospace}
 
 /* Connect card */
-.connect-card{background:var(--s1);border:1px solid var(--border2);border-radius:18px;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.connect-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-xl);padding:32px 28px;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 8px 40px #0008}
 .connect-icon{width:60px;height:60px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:28px}
-.connect-title{font-size:20px;font-weight:700;color:var(--text);text-align:center}
-.connect-sub{font-size:13px;color:var(--muted);text-align:center;line-height:1.6;max-width:340px}
+.connect-title{font-size:21px;font-weight:700;color:var(--text);text-align:center;font-family:var(--font-sans);letter-spacing:-.2px}
+.connect-sub{font-size:13px;color:var(--muted);text-align:center;line-height:1.6;max-width:340px;font-family:var(--font-sans)}
 .connect-input-row{display:flex;gap:8px;width:100%}
 .connect-input{flex:1;padding:12px 16px;background:var(--s2);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-size:14px;outline:none;font-family:'Inter',sans-serif;transition:border-color .15s;min-width:0}
 .connect-input:focus{border-color:var(--accent)}
 .connect-input::placeholder{color:var(--muted)}
-.connect-btn{padding:12px 22px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;touch-action:manipulation;font-family:'Inter',sans-serif;transition:opacity .15s}
+.connect-btn{padding:12px 22px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;touch-action:manipulation;font-family:var(--font-sans);transition:opacity .15s}
 .connect-btn:hover{opacity:.9}
 .connect-perks{display:flex;flex-direction:column;gap:6px;width:100%}
 .connect-perk{font-size:13px;color:var(--rb);font-family:'Space Mono',monospace}
@@ -163,7 +170,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .setup-input{width:100%;background:var(--s2);border:1.5px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:14px;padding:12px 14px;border-radius:10px;outline:none;transition:border-color .2s}
 .setup-input:focus{border-color:var(--accent)}
 .setup-input::placeholder{color:var(--muted)}
-.launch-btn{width:100%;padding:16px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:'Arial Black',sans-serif;font-size:18px;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.launch-btn{width:100%;padding:15px;border-radius:var(--radius-md);border:none;background:var(--accent);color:#fff;font-family:var(--font-sans);font-size:15px;font-weight:700;letter-spacing:.02em;cursor:pointer;transition:all .2s}
 .launch-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px #5b8dee44}
 .launch-btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
 .or-div{text-align:center;font-size:11px;color:var(--muted);margin:12px 0;font-family:'Space Mono',monospace}
@@ -192,47 +199,47 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .tsel-btn .tbn{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
 .tsel-btn .tbm{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace}
 
-/* ── HEADER ── */
-header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12px;display:flex;align-items:center;gap:8px;position:relative;z-index:100;height:48px;flex-shrink:0}
+/* ── HEADER — StatChasers style ── */
+header{background:#0f1624;border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:12px;position:relative;z-index:100;height:52px;flex-shrink:0;backdrop-filter:blur(12px)}
 
-/* League selector in header — always visible */
+/* League selector in header — StatChasers pill style */
 .header-league-wrap{display:flex;align-items:center;gap:6px;flex:1;justify-content:center;min-width:0}
-.header-league-label{font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.1em;flex-shrink:0}
+.header-league-label{font-size:11px;font-weight:500;color:var(--muted);font-family:var(--font-sans);flex-shrink:0}
 .header-league-select-wrap{position:relative;flex-shrink:0}
 .header-league-select{
-  background:var(--s2);border:1.5px solid var(--border2);color:var(--text);
-  font-family:'Space Mono',monospace;font-size:11px;font-weight:700;
-  padding:6px 28px 6px 10px;border-radius:8px;outline:none;cursor:pointer;
-  -webkit-appearance:none;max-width:200px;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 8px center;
+  background:var(--s2);border:1px solid var(--border2);color:var(--text);
+  font-family:var(--font-sans);font-size:13px;font-weight:500;
+  padding:7px 32px 7px 12px;border-radius:20px;outline:none;cursor:pointer;
+  -webkit-appearance:none;max-width:220px;transition:border-color .15s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7399'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;
 }
 .header-league-select:hover{border-color:var(--accent2)}
-@media(max-width:700px){.header-league-wrap{flex:0;min-width:0}.header-league-select{max-width:130px;font-size:10px}}
+@media(max-width:700px){.header-league-wrap{flex:0;min-width:0}.header-league-select{max-width:130px;font-size:11px;padding:6px 24px 6px 10px}}
 
 /* User profile chip */
-.user-chip{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:20px;border:1.5px solid var(--border2);background:var(--s2);cursor:pointer;transition:all .15s;flex-shrink:0;touch-action:manipulation}
+.user-chip{display:flex;align-items:center;gap:7px;padding:5px 10px 5px 5px;border-radius:20px;border:1px solid var(--border2);background:var(--s2);cursor:pointer;transition:all .15s;flex-shrink:0;touch-action:manipulation}
 .user-chip:hover{border-color:var(--accent2);background:var(--s3)}
-.user-avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid var(--border2)}
-.user-initials{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;align-items:center;justify-content:center;flex-shrink:0}
-.user-dname{font-size:11px;font-weight:700;font-family:'Space Mono',monospace;color:var(--text2);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.logo{font-family:'Arial Black','Impact',sans-serif;font-size:16px;letter-spacing:1px;white-space:nowrap;flex-shrink:0}
-.logo em{color:var(--accent2);font-style:normal}
+.user-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid var(--border3)}
+.user-initials{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;align-items:center;justify-content:center;flex-shrink:0}
+.user-dname{font-size:12px;font-weight:600;font-family:var(--font-sans);color:var(--text2);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logo{font-family:'Arial Black','Impact',sans-serif;font-size:17px;letter-spacing:1.5px;white-space:nowrap;flex-shrink:0;font-weight:900}
+.logo em{color:var(--accent2);font-style:normal;font-weight:900}
 .hright{display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0}
 .hstat{text-align:center;flex-shrink:0}
 .hstat b{display:block;font-size:13px;font-weight:700;font-family:'Space Mono',monospace}
 .hstat small{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .next-badge{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:10px;padding:4px 9px;border-radius:16px;font-family:'Space Mono',monospace;white-space:nowrap;font-weight:700;flex-shrink:0}
-.hbtn{padding:5px 9px;border-radius:7px;border:1.5px solid var(--border2);background:transparent;color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;white-space:nowrap;touch-action:manipulation;min-height:32px;flex-shrink:0}
+.hbtn{padding:6px 12px;border-radius:var(--radius-md);border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:var(--font-sans);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap;touch-action:manipulation;min-height:32px;flex-shrink:0}
 .hbtn:hover{border-color:var(--accent2);color:var(--accent3)}
 .theme-toggle{padding:5px 8px;border-radius:7px;border:1.5px solid var(--border2);background:transparent;font-size:14px;cursor:pointer;transition:all .2s;touch-action:manipulation;min-height:32px;min-width:32px;flex-shrink:0}
 
-/* Desktop nav */
-.desktop-nav{display:flex;gap:3px;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+/* Desktop nav — StatChasers underline style */
+.desktop-nav{display:flex;gap:0;flex-shrink:0;overflow-x:auto;scrollbar-width:none;height:52px;align-items:center}
 .desktop-nav::-webkit-scrollbar{display:none}
-.desktop-nav button{padding:5px 9px;border-radius:7px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0;min-height:30px}
-.desktop-nav button:hover{color:var(--text);border-color:var(--accent)}
-.desktop-nav button.on{background:var(--accent);color:#fff;border-color:transparent}
+.desktop-nav button{padding:0 14px;height:52px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--muted);font-family:var(--font-sans);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0;letter-spacing:.01em}
+.desktop-nav button:hover{color:var(--text)}
+.desktop-nav button.on{color:var(--accent3);border-bottom-color:var(--accent2)}
 
 /* Hide desktop-only elements on mobile */
 @media(max-width:700px){
@@ -242,12 +249,12 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 
 /* ── BOTTOM TAB BAR — iOS-style, mobile only ── */
 .bottom-tab-bar{
-  display:none; /* hidden by default, shown on mobile */
+  display:none;
   position:fixed;bottom:0;left:0;right:0;
-  background:#1a2340f5;border-top:1px solid var(--border2);
+  background:#0f1624f0;border-top:1px solid var(--border);
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   z-index:200;
-  padding:0;padding-bottom:env(safe-area-inset-bottom); /* iPhone notch */
+  padding:0;padding-bottom:env(safe-area-inset-bottom);
 }
 @media(max-width:700px){
   .bottom-tab-bar{display:flex}
@@ -360,7 +367,8 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 .tx-stat{background:var(--s2);border-radius:10px;padding:10px 16px;text-align:center;border:1px solid var(--border)}
 .tx-stat b{display:block;font-size:22px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent2)}
 .tx-stat span{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase}
-.tx-card{background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:10px}
+.tx-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-bottom:8px;transition:border-color .15s}
+.tx-card:hover{border-color:var(--border2)}
 .tx-card.tx-small{padding:10px 12px;background:var(--s1)}
 .tx-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
 .tx-type{font-size:9px;font-weight:700;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.08em}
@@ -575,7 +583,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 .pimg-wrap{width:26px;height:26px;border-radius:50%;background:var(--s3);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--muted);flex-shrink:0;overflow:hidden}
 .pimg-wrap img{width:100%;height:100%;object-fit:cover}
 /* Name — fills remaining space in pcell */
-.pname{font-size:13px;font-weight:600;white-space:nowrap;line-height:1.2}
+.pname{font-size:13px;font-weight:600;white-space:nowrap;line-height:1.2;font-family:var(--font-sans)}
 .gone .pname{color:var(--dim)}
 /* Pos pill — now in its own column */
 .ppill{font-size:8px;font-weight:700;padding:2px 5px;border-radius:3px;font-family:'Space Mono',monospace;white-space:nowrap;line-height:1.4;display:inline-block}
@@ -748,6 +756,36 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 .schip .sname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .schip .sreason{font-size:8px;color:var(--muted);font-family:'Space Mono',monospace}
 
+/* ── LIVE DRAFT PAGE — StatChasers style ── */
+.ld-page{padding:28px 28px 100px;max-width:1100px;margin:0 auto}
+.ld-title{font-size:26px;font-weight:700;color:var(--text);font-family:var(--font-sans);margin:0}
+.ld-sub{font-size:14px;color:var(--muted);font-family:var(--font-sans)}
+.ld-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 22px}
+.ld-card-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.ld-card-title{font-size:15px;font-weight:600;color:var(--text);font-family:var(--font-sans)}
+.ld-rescan-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans);transition:all .15s}
+.ld-rescan-btn:hover{border-color:var(--accent2);color:var(--accent3)}
+.ld-detector-msg{font-size:13px;color:var(--muted);font-family:var(--font-sans);line-height:1.5}
+.ld-draft-item{background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-md);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;transition:all .15s}
+.ld-draft-item:hover{border-color:var(--accent2);background:var(--s3)}
+.ld-draft-item-name{font-size:14px;font-weight:600;color:var(--text);font-family:var(--font-sans)}
+.ld-draft-item-meta{font-size:12px;color:var(--muted);font-family:var(--font-sans);margin-top:3px}
+.ld-draft-item-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;font-family:var(--font-sans)}
+.ld-status-live{background:#30d98a22;color:var(--rb)}
+.ld-status-upcoming{background:#f5c84222;color:var(--te)}
+.ld-status-done{background:#ffffff11;color:var(--muted)}
+.ld-input-label{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:10px;font-family:var(--font-sans)}
+.ld-input-row{display:flex;gap:10px}
+.ld-input{flex:1;padding:10px 14px;background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-md);color:var(--text);font-size:14px;font-family:var(--font-sans);outline:none;transition:border-color .15s}
+.ld-input:focus{border-color:var(--accent2)}
+.ld-input::placeholder{color:var(--muted)}
+.ld-load-btn{padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--font-sans);transition:opacity .15s}
+.ld-load-btn:hover{opacity:.85}
+.ld-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;gap:14px;margin-top:20px}
+.ld-empty-icon{width:70px;height:70px;border-radius:20px;background:linear-gradient(135deg,var(--s2),var(--s3));display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid var(--border)}
+.ld-empty-title{font-size:20px;font-weight:700;color:var(--text);font-family:var(--font-sans)}
+.ld-empty-sub{font-size:13px;color:var(--muted);font-family:var(--font-sans);max-width:360px;line-height:1.6}
+
 /* ── DRAFT BOARD — desktop: table, mobile: vertical card list ── */
 .board-page{padding:12px 12px 40px}
 .board-title{font-family:'Arial Black','Impact',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:14px}
@@ -801,40 +839,105 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 .bm-rank{font-size:11px;font-weight:600;font-family:'Space Mono',monospace;flex-shrink:0}
 .bm-img{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--s3);border:1.5px solid var(--border2);flex-shrink:0}
 
-/* ── MY TEAM OVERVIEW DASHBOARD ── */
-.ov-page{padding:16px 16px 100px;max-width:1100px;margin:0 auto}
-.ov-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px;flex-wrap:wrap}
-.ov-title{font-family:'Arial Black','Impact',sans-serif;font-size:24px;letter-spacing:1px}
+/* ── PLAYER STATS MODAL ── */
+.ps-hero{display:flex;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.ps-avatar{width:60px;height:60px;border-radius:12px;object-fit:cover;background:var(--s2);flex-shrink:0;border:1px solid var(--border2)}
+.ps-name{font-size:22px;font-weight:700;color:var(--text);font-family:var(--font-sans)}
+.ps-meta{font-size:13px;color:var(--muted);font-family:var(--font-sans);margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ps-close{margin-left:auto;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;align-self:flex-start;flex-shrink:0}
+.ps-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin:14px 0}
+.ps-kpi{background:var(--s2);border-radius:var(--radius-md);padding:10px 12px;text-align:center}
+.ps-kpi-val{font-size:20px;font-weight:700;color:var(--text);font-family:var(--font-sans)}
+.ps-kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:3px;font-family:var(--font-sans)}
+.ps-section-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:16px 0 8px;font-family:var(--font-sans)}
+.ps-stat-table{width:100%;border-collapse:collapse;font-family:var(--font-sans)}
+.ps-stat-table th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;text-align:center;border-bottom:1px solid var(--border);font-weight:600}
+.ps-stat-table td{font-size:13px;padding:8px 8px;text-align:center;border-bottom:1px solid var(--border);color:var(--text)}
+.ps-stat-table td:first-child{text-align:left;color:var(--muted);font-weight:600}
+.ps-stat-table tr:last-child td{border-bottom:none}
+.ps-stat-table tr:hover td{background:var(--s2)}
+.ps-value-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.ps-value-row:last-child{border-bottom:none}
+.ps-value-label{font-size:13px;color:var(--muted);font-family:var(--font-sans)}
+.ps-value-num{font-size:16px;font-weight:700;font-family:var(--font-sans)}
+.ps-trend-up{color:var(--rb)}.ps-trend-dn{color:var(--qb)}.ps-trend-flat{color:var(--muted)}
+.ps-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:12px;color:var(--muted);font-family:var(--font-sans);font-size:13px}
+.ps-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.ps-bar-label{width:90px;font-size:12px;color:var(--muted);font-family:var(--font-sans);flex-shrink:0}
+.ps-bar-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+.ps-bar-fill{height:6px;border-radius:3px}
+.ps-bar-val{width:40px;text-align:right;font-size:12px;font-weight:600;font-family:var(--font-sans);flex-shrink:0}
+.lp-wrap{display:flex;flex-direction:column;align-items:center;padding:40px 20px 60px;gap:18px;max-width:460px;margin:0 auto;width:100%}
+.lp-icon{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:28px}
+.lp-title{font-size:22px;font-weight:700;color:var(--text);text-align:center}
+.lp-sub{font-size:13px;color:var(--muted);font-family:'Space Mono',monospace;text-align:center;line-height:1.6;max-width:360px}
+.lp-input-row{display:flex;gap:8px;width:100%}
+.lp-profile{display:flex;align-items:center;gap:14px;width:100%;background:var(--s2);border-radius:12px;padding:14px 16px;border:1px solid var(--border)}
+.lp-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);flex-shrink:0}
+.lp-leagues{display:flex;flex-direction:column;gap:8px;width:100%}
+.lp-league-row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s1);border:1.5px solid var(--border2);border-radius:12px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.lp-league-row:has(input:checked){border-color:var(--accent2);background:#5b8dee0d}
+.lp-league-row:hover{border-color:var(--accent2)}
+.lp-radio{display:none}
+.lp-league-info{flex:1;min-width:0}
+.lp-league-name{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-league-meta{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:3px}
+.lp-league-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;color:transparent;transition:all .15s}
+.lp-league-row:has(input:checked) .lp-league-check{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.lp-actions{display:flex;flex-direction:column;align-items:center;width:100%;gap:4px}
+.ov-page{padding:24px 24px 100px;max-width:1280px;margin:0 auto}
+.ov-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.ov-title{font-family:var(--font-sans);font-size:22px;font-weight:700;letter-spacing:-.2px}
 .ov-title em{color:var(--accent2);font-style:normal}
-.ov-sub{font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:4px}
-/* Stat cards */
-.ov-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px}
-.ov-stat{background:var(--s1);border:1px solid var(--border2);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:4px}
-.ov-stat-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:4px}
-.ov-stat-label{font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em}
-.ov-stat-val{font-size:26px;font-weight:800;font-family:'Space Mono',monospace;color:var(--text);line-height:1.1}
-.ov-stat-sub{font-size:10px;color:var(--rb);font-family:'Space Mono',monospace}
-/* Main grid */
-.ov-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.ov-sub{font-size:13px;color:var(--muted);font-family:var(--font-sans);margin-top:4px}
+/* Jump to buttons */
+.ov-jump-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans);transition:all .15s}
+.ov-jump-btn:hover{border-color:var(--accent2);color:var(--accent3);background:var(--s3)}
+/* Top stat cards row — archetype wide + 4 KPI cards */
+.ov-top-cards{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:1100px){.ov-top-cards{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:700px){.ov-top-cards{grid-template-columns:1fr 1fr}}
+/* Archetype card */
+.ov-arch-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 22px;display:flex;flex-direction:column;gap:8px}
+.ov-arch-badge{display:inline-block;padding:6px 14px;border-radius:6px;border:1.5px solid var(--gold);color:var(--gold);font-size:18px;font-weight:700;font-family:var(--font-sans);width:fit-content}
+/* KPI stat cards */
+.ov-kpi-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 16px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px}
+.ov-kpi-icon{width:34px;height:34px;border-radius:10px;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:8px}
+.ov-kpi-val{font-size:30px;font-weight:700;color:var(--text);line-height:1;font-family:var(--font-sans)}
+.ov-kpi-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:var(--font-sans);margin-top:4px}
+.ov-kpi-sub{font-size:12px;font-weight:500;font-family:var(--font-sans);margin-top:2px}
+/* Three-panel bottom row */
+.ov-main-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:900px){.ov-main-row{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.ov-main-row{grid-template-columns:1fr}}
+.ov-panel{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px}
+/* Team Identity bars */
+.ov-identity-item{margin-bottom:18px}
+.ov-id-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:14px;font-weight:500;font-family:var(--font-sans)}
+.ov-id-score{font-size:22px;font-weight:700;font-family:var(--font-sans)}
+.ov-id-track{height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+.ov-id-fill{height:6px;border-radius:3px;transition:width .6s ease}
+/* Strengths & Needs bars */
+.ov-pos-item{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.ov-pos-label{width:24px;font-size:12px;font-weight:700;font-family:var(--font-sans);color:var(--muted);flex-shrink:0}
+.ov-pos-track{flex:1;height:8px;background:var(--s3);border-radius:4px;overflow:hidden}
+.ov-pos-fill{height:8px;border-radius:4px;transition:width .6s ease}
+.ov-grade-chip{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.ov-pos-val{width:28px;text-align:right;font-size:12px;font-weight:600;font-family:var(--font-sans);color:var(--muted);flex-shrink:0}
+/* Legacy stat cards fallback */
+.ov-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:24px}
+.ov-stat{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:6px}
+.ov-stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.ov-stat-label{font-size:10px;font-weight:600;color:var(--muted);font-family:var(--font-sans);text-transform:uppercase;letter-spacing:.08em}
+.ov-stat-val{font-size:28px;font-weight:700;font-family:var(--font-sans);color:var(--text);line-height:1.1}
+.ov-stat-sub{font-size:11px;color:var(--rb);font-family:var(--font-sans)}
+.ov-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 @media(max-width:900px){.ov-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.ov-grid{grid-template-columns:1fr}}
-.ov-card{background:var(--s1);border:1px solid var(--border2);border-radius:14px;padding:18px}
-.ov-card-title{font-size:15px;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
-.ov-card-label{font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
-/* Identity bars */
+.ov-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
+.ov-card-title{font-size:15px;font-weight:600;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);font-family:var(--font-sans)}
+.ov-card-label{font-size:10px;font-weight:600;color:var(--muted);font-family:var(--font-sans);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
 .ov-identity-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
-.ov-id-label{font-size:13px;font-weight:600}
-.ov-id-score{font-size:20px;font-weight:800;font-family:'Space Mono',monospace}
-.ov-id-bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:4px}
-.ov-id-fill{height:6px;border-radius:3px;transition:width .6s ease}
-/* Pos bars */
-.ov-pos-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.ov-pos-label{width:28px;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;flex-shrink:0}
-.ov-pos-bar-wrap{flex:1;height:8px;background:var(--s3);border-radius:4px;overflow:hidden}
-.ov-pos-bar{height:8px;border-radius:4px;transition:width .6s ease}
-.ov-pos-grade{width:28px;text-align:center;font-size:10px;font-weight:700;font-family:'Space Mono',monospace;padding:2px 4px;border-radius:4px;flex-shrink:0}
-.ov-pos-val{width:52px;text-align:right;font-size:10px;font-family:'Space Mono',monospace;color:var(--muted);flex-shrink:0}
-/* Dynasty window */
 .ov-window-name{font-size:20px;font-weight:800;color:var(--accent2);margin-bottom:4px}
 .la-tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);overflow-x:auto;scrollbar-width:none}
 .la-tabs::-webkit-scrollbar{display:none}
@@ -855,7 +958,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 .tpage{padding:14px;padding-bottom:40px}
 .tpage-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:10px;flex-wrap:wrap}
 .tpage-title{font-family:'Arial Black','Impact',sans-serif;font-size:20px;letter-spacing:1px}
-.tpage-title em{color:var(--accent2);font-style:normal}
+.tpage-title em{color:var(--accent2);font-style:normal;font-weight:700}
 .pr-table{width:100%;border-collapse:collapse;margin-bottom:8px}
 .pr-table th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:8px 12px;text-align:left;border-bottom:1.5px solid var(--border2);font-family:'Space Mono',monospace;white-space:nowrap;background:var(--s1)}
 .pr-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -977,6 +1080,24 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
   </div>
 </div>
 
+<!-- PLAYER STATS MODAL -->
+<div id="ps-modal" onclick="if(event.target===this)closePlayerStats()"
+  style="display:none;position:fixed;inset:0;background:#000000bb;z-index:600;align-items:center;justify-content:center;padding:20px">
+  <div id="ps-sheet" style="background:var(--s1);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:700px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px #00000099;display:flex;flex-direction:column">
+    <!-- Header with close -->
+    <div id="ps-header" style="padding:20px 24px 0;flex-shrink:0"></div>
+    <!-- Tab bar -->
+    <div class="la-tabs" id="ps-tabs" style="padding:0 24px;margin-bottom:0;flex-shrink:0">
+      <button class="la-tab on" onclick="setPsTab('overview')">Overview</button>
+      <button class="la-tab" onclick="setPsTab('stats')">Stats</button>
+      <button class="la-tab" onclick="setPsTab('weekly')">Weekly</button>
+      <button class="la-tab" onclick="setPsTab('value')">Value</button>
+    </div>
+    <!-- Content -->
+    <div id="ps-body" style="padding:20px 24px 28px;overflow-y:auto"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="swipe-hint" id="swipe-hint"></div>
 <div class="onboard-dim" id="onboard-dim" style="display:none" onclick="skipOnboarding()"></div>
@@ -1033,6 +1154,11 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
             <button class="connect-btn" onclick="event.stopPropagation();launch()" style="margin-top:10px;width:100%">Load Draft →</button>
           </div>
         </div>
+        <!-- Skip — no active draft — prominent secondary button -->
+        <button onclick="enterWithoutDraft()"
+          style="width:100%;margin-top:4px;padding:13px;border-radius:10px;border:1.5px solid var(--accent2);background:transparent;color:var(--accent2);font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;touch-action:manipulation">
+          Browse My Leagues (No Draft) →
+        </button>
       </div>
 
       <div class="setup-session-row">
@@ -1096,6 +1222,10 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
       <button class="launch-btn" id="launch-btn" onclick="launch()" style="margin-top:20px">
         ENTER DRAFT ROOM →
       </button>
+      <button onclick="enterWithoutDraft()"
+        style="width:100%;margin-top:8px;padding:13px;border-radius:10px;border:1.5px solid var(--accent2);background:transparent;color:var(--accent2);font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;touch-action:manipulation">
+        Browse My Leagues (No Draft) →
+      </button>
     </div>
   </div>
 
@@ -1119,7 +1249,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
     <div class="nav desktop-nav">
       <button class="on" id="nb-overview" onclick="showPage('overview')">MY TEAM</button>
       <button id="nb-draft" onclick="showPage('draft')">RANKINGS</button>
-      <button id="nb-visual" onclick="showPage('visual')">BOARD</button>
+      <button id="nb-visual" onclick="showPage('visual')">LIVE DRAFT</button>
       <button id="nb-teams" onclick="showPage('teams')">LEAGUE</button>
       <button id="nb-trade" onclick="showPage('trade')">CALC</button>
     </div>
@@ -1127,7 +1257,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
 
   <!-- CENTER: League selector — always visible, matches StatChasers -->
   <div class="header-league-wrap">
-    <span class="header-league-label desktop-only">LEAGUE:</span>
+    <span class="header-league-label desktop-only" style="font-size:11px;color:var(--muted);font-weight:500">LEAGUE:</span>
     <div class="header-league-select-wrap" id="header-league-wrap" style="display:none">
       <select id="header-league-select" onchange="switchGlobalLeague(this.value)"
         class="header-league-select">
@@ -1201,7 +1331,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
     <!-- Header row -->
     <div class="ov-hdr">
       <div>
-        <div class="ov-title">MY <em>TEAM</em></div>
+        <div class="ov-title">My <em>Team</em></div>
         <div id="ov-subtitle" class="ov-sub">Connect a league to see your team dashboard</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1313,14 +1443,66 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
   </div>
 </div>
 
-<!-- BOARD PAGE -->
+<!-- LIVE DRAFT PAGE — StatChasers style -->
 <div class="page z1" id="page-visual">
-  <div class="board-page">
-    <div class="board-title">DRAFT <em>BOARD</em></div>
-    <!-- Desktop: horizontal table -->
-    <div class="board-scroll"><div id="bgrid"></div></div>
-    <!-- Mobile: vertical card list -->
-    <div class="board-mobile" id="board-mobile"></div>
+  <div class="ld-page">
+
+    <!-- Page header -->
+    <div style="margin-bottom:28px">
+      <h1 class="ld-title">Live Draft Board</h1>
+      <div style="width:40px;height:3px;background:var(--gold);border-radius:2px;margin:8px 0 10px"></div>
+      <p class="ld-sub">Track your dynasty drafts in real-time with a visual board layout.</p>
+    </div>
+
+    <!-- Sub-tab -->
+    <div class="la-tabs" style="margin-bottom:24px">
+      <button class="la-tab on">Draft Board</button>
+    </div>
+
+    <!-- Live Draft Detector card -->
+    <div class="ld-card" id="ld-detector-card">
+      <div class="ld-card-hdr">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:16px">📡</span>
+          <span class="ld-card-title">Live Draft Detector</span>
+        </div>
+        <button class="ld-rescan-btn" onclick="ldRescan()" id="ld-rescan-btn">
+          <span>↻</span> Re-scan
+        </button>
+      </div>
+      <div id="ld-detector-msg" class="ld-detector-msg">
+        Scanning your leagues for active drafts...
+      </div>
+      <div id="ld-draft-list" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- Manual Draft ID input -->
+    <div class="ld-card" style="margin-top:12px">
+      <div class="ld-input-label">Sleeper League ID (optional — to track drafted players)</div>
+      <div class="ld-input-row">
+        <input class="ld-input" id="ld-manual-id" placeholder="e.g. 1170877498498940928"
+          onkeydown="if(event.key==='Enter')ldLoadManual()">
+        <button class="ld-load-btn" onclick="ldLoadManual()">
+          🔍 Load Draft
+        </button>
+      </div>
+    </div>
+
+    <!-- Active draft board (hidden until draft loaded) -->
+    <div id="ld-board-wrap" style="display:none;margin-top:20px">
+      <!-- Desktop board -->
+      <div class="board-scroll"><div id="bgrid"></div></div>
+      <!-- Mobile board -->
+      <div class="board-mobile" id="board-mobile"></div>
+    </div>
+
+    <!-- Empty state — shown when no draft active -->
+    <div id="ld-empty-state" class="ld-empty">
+      <div class="ld-empty-icon">🏆</div>
+      <div class="ld-empty-title">Select a Draft to Begin</div>
+      <div class="ld-empty-sub">Pick a live draft above or enter a league ID to load the draft board.</div>
+    </div>
+
   </div>
 </div>
 
@@ -1333,7 +1515,7 @@ header{background:#1a2340ee;border-bottom:1.5px solid var(--border);padding:0 12
         <div id="la-league-name" style="font-size:11px;color:var(--accent2);margin-top:3px;font-family:Space Mono,monospace;font-weight:700"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <div id="fc-status" style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace"></div>
+        <div id="fc-status" style="font-size:11px;color:var(--muted);font-family:var(--font-sans)"></div>
 
         <!-- League switcher — all your Sleeper leagues -->
         <select id="la-league-select" onchange="switchAnalyzerLeague(this.value)"
@@ -1565,6 +1747,391 @@ function findPlayer(name) {
 // ════════════════════════════════════
 //  SETUP FLOW — Two-step connect
 // ════════════════════════════════════
+// ════════════════════════════════════
+//  PLAYER STATS MODAL — RosterAudit API
+// ════════════════════════════════════
+let _psPlayer = null;
+let _psData   = null;
+let _psTab    = 'overview';
+
+async function openPlayerStats(normN, name, pos, team) {
+  const modal = document.getElementById('ps-modal');
+  const body  = document.getElementById('ps-body');
+  if (!modal) return;
+
+  const sleeperId = PLAYER_IDS[name] || sleeperPlayerMap[normN]?.player_id || null;
+  _psPlayer = { name, pos, team, sleeperId };
+  _psData   = null;
+  _psTab    = 'overview';
+
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  _psRenderHeader();
+  _psSetTabActive('overview');
+  body.innerHTML = `<div class="ps-loading"><div style="font-size:24px;animation:spin 1s linear infinite">⟳</div><span>Loading stats...</span></div>`;
+
+  if (!sleeperId) {
+    body.innerHTML = `<div class="ps-loading" style="color:var(--muted)">No Sleeper ID found for ${name}.<br>Stats unavailable.</div>`;
+    return;
+  }
+
+  try {
+    // Fetch RA player value + stats in parallel; player-page has richer data
+    const [valRes, statsRes, pageRes] = await Promise.all([
+      fetch(`https://rosteraudit.com/wp-json/ra/v1/players/${sleeperId}`).then(r=>r.json()).catch(()=>null),
+      fetch(`https://rosteraudit.com/wp-json/ra/v1/player-stats/${sleeperId}`).then(r=>r.json()).catch(()=>null),
+      fetch(`https://rosteraudit.com/wp-json/ra/v1/player-page/${sleeperId}`).then(r=>r.json()).catch(()=>null),
+    ]);
+    // Merge: player-page often has more complete stats
+    const mergedStats = pageRes?.stats || pageRes?.career ? pageRes : statsRes;
+    _psData = { stats: mergedStats, val: valRes, page: pageRes };
+    _psRenderHeader(); // re-render with RA data
+    _psRenderTab('overview');
+  } catch(e) {
+    body.innerHTML = `<div class="ps-loading" style="color:var(--qb)">⚠ ${e.message}</div>`;
+  }
+}
+
+function closePlayerStats() {
+  const modal = document.getElementById('ps-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+  _psPlayer = null; _psData = null;
+}
+
+function setPsTab(tab) {
+  _psTab = tab;
+  _psSetTabActive(tab);
+  _psRenderTab(tab);
+}
+
+function _psSetTabActive(tab) {
+  ['overview','stats','weekly','value'].forEach((t,i) => {
+    document.querySelectorAll('#ps-tabs .la-tab')[i]?.classList.toggle('on', t===tab);
+  });
+}
+
+function _psRenderHeader() {
+  const hdr = document.getElementById('ps-header');
+  if (!hdr || !_psPlayer) return;
+  const { name, pos, team, sleeperId } = _psPlayer;
+  const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos]||'var(--muted)';
+  const avatarUrl = sleeperId ? `https://sleepercdn.com/content/nfl/players/thumb/${sleeperId}.jpg` : '';
+  const val = _psData?.val;
+  const raValSF = val?.val_sf || getPlayerValue(name) || 0;
+  const fcData  = getFCValue(name);
+  hdr.innerHTML = `
+    <div class="ps-hero">
+      <img class="ps-avatar" src="${avatarUrl}" onerror="this.style.display='none'" alt="${name}">
+      <div style="flex:1;min-width:0">
+        <div class="ps-name">${name}</div>
+        <div class="ps-meta">
+          <span class="ppill ${pos}" style="font-size:11px">${pos}</span>
+          <span>${team||val?.team||'—'}</span>
+          ${val?.age ? `<span style="color:var(--muted)">Age ${val.age.toFixed(1)}</span>` : ''}
+          ${raValSF ? `<span style="color:var(--rb);font-weight:600">RA ${raValSF.toLocaleString()}</span>` : ''}
+          ${fcData?.value ? `<span style="color:var(--accent2);font-weight:600">FC ${fcData.value.toLocaleString()}</span>` : ''}
+        </div>
+      </div>
+      <button class="ps-close" onclick="closePlayerStats()">✕</button>
+    </div>`;
+}
+
+function _psRenderTab(tab) {
+  const body = document.getElementById('ps-body');
+  if (!body) return;
+  if (!_psData) {
+    body.innerHTML = `<div class="ps-loading"><div style="font-size:24px;animation:spin 1s linear infinite">⟳</div><span>Loading...</span></div>`;
+    return;
+  }
+  const { stats, val } = _psData;
+  const { name, pos, sleeperId } = _psPlayer;
+  const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos]||'var(--muted)';
+  const trend7  = val?.trend_7d  || 0;
+  const trend30 = val?.trend_30d || 0;
+
+  // Normalise RA stat field names — handles multiple naming conventions
+  function norm(obj) {
+    if (!obj) return {};
+    const o = {};
+    const map = {
+      pass_yards:    ['pass_yards','passing_yards','pass_yds','passing_yds'],
+      pass_td:       ['pass_td','pass_touchdowns','passing_td','passing_touchdowns','pass_tds'],
+      interceptions: ['interceptions','ints','int'],
+      comp_pct:      ['comp_pct','completion_pct','completion_percentage','cmp_pct'],
+      rush_yards:    ['rush_yards','rushing_yards','rush_yds','rushing_yds'],
+      rush_td:       ['rush_td','rush_touchdowns','rushing_td','rushing_touchdowns','rush_tds'],
+      receptions:    ['receptions','rec','catches'],
+      targets:       ['targets','tgts'],
+      rec_yards:     ['rec_yards','receiving_yards','rec_yds','receiving_yds'],
+      rec_td:        ['rec_td','rec_touchdowns','receiving_td','receiving_touchdowns','rec_tds'],
+      games:         ['games','gp','games_played','g'],
+      season:        ['season','year'],
+      team:          ['team'],
+    };
+    Object.entries(map).forEach(([canon, keys]) => {
+      for (const k of keys) { if (obj[k] !== undefined && obj[k] !== null) { o[canon] = obj[k]; break; } }
+    });
+    return o;
+  }
+
+  // Parse seasons from any RA response shape
+  let rawSeasons = stats?.seasons || stats?.season_stats || stats?.stats || stats?.data || [];
+  if (!Array.isArray(rawSeasons)) rawSeasons = Object.values(rawSeasons);
+  const seasons = rawSeasons.map(norm).sort((a,b)=>(a.season||0)-(b.season||0));
+
+  // Career — use explicit field or sum from seasons
+  let career = norm(stats?.career || stats?.career_stats || stats?.totals || {});
+  if (!Object.keys(career).length && seasons.length) {
+    ['pass_yards','pass_td','interceptions','rush_yards','rush_td','receptions','targets','rec_yards','rec_td'].forEach(k => {
+      const t = seasons.reduce((s,ss)=>s+(parseFloat(ss[k])||0),0);
+      if (t>0) career[k] = Math.round(t);
+    });
+  }
+  const latest = seasons[seasons.length-1] || {};
+
+  // Debug in console
+  if (tab==='overview') console.log('[SnapDraft] RA raw stats:', JSON.stringify(stats||{}).slice(0,300));
+
+  if (tab === 'overview') {
+    const kpiDefs = {
+      QB:[['Pass Yds',career.pass_yards?.toLocaleString()],['Pass TDs',career.pass_td],['INTs',career.interceptions],['Rush Yds',career.rush_yards?.toLocaleString()],['Age',val?.age?.toFixed(1)]],
+      RB:[['Rush Yds',career.rush_yards?.toLocaleString()],['Rush TDs',career.rush_td],['Receptions',career.receptions?.toLocaleString()],['Rec Yds',career.rec_yards?.toLocaleString()],['Age',val?.age?.toFixed(1)]],
+      WR:[['Receptions',career.receptions?.toLocaleString()],['Targets',career.targets?.toLocaleString()],['Rec Yds',career.rec_yards?.toLocaleString()],['Rec TDs',career.rec_td],['Age',val?.age?.toFixed(1)]],
+      TE:[['Receptions',career.receptions?.toLocaleString()],['Targets',career.targets?.toLocaleString()],['Rec Yds',career.rec_yards?.toLocaleString()],['Rec TDs',career.rec_td],['Age',val?.age?.toFixed(1)]],
+    };
+    const kpis = kpiDefs[pos] || kpiDefs.WR;
+    const hasCareer = kpis.some(([,v])=>v && String(v)!=='0');
+
+    body.innerHTML = `
+      ${hasCareer ? `<div class="ps-section-title">Career totals</div>
+      <div class="ps-kpis" style="margin-bottom:16px">${kpis.map(([l,v])=>`<div class="ps-kpi"><div class="ps-kpi-val" style="color:${posColor}">${(v&&String(v)!=='0')?v:'—'}</div><div class="ps-kpi-label">${l}</div></div>`).join('')}</div>` :
+      `<div style="padding:8px 0 12px">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Career stat totals not available for this player.</div>
+        <div class="ps-kpis" style="margin-bottom:0">
+          ${val?.age?`<div class="ps-kpi"><div class="ps-kpi-val" style="color:${posColor}">${Number(val.age).toFixed(1)}</div><div class="ps-kpi-label">Age</div></div>`:''}
+          ${val?.val_sf?`<div class="ps-kpi"><div class="ps-kpi-val" style="color:var(--rb)">${val.val_sf.toLocaleString()}</div><div class="ps-kpi-label">RA SF</div></div>`:''}
+          ${getFCValue(name)?.value?`<div class="ps-kpi"><div class="ps-kpi-val" style="color:var(--accent2)">${getFCValue(name).value.toLocaleString()}</div><div class="ps-kpi-label">FC Value</div></div>`:''}
+        </div>
+      </div>`}
+
+      ${latest.season ? `<div class="ps-section-title">Latest season (${latest.season})</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">${_psSeasonKPIs(latest,pos,posColor)}</div>` : ''}
+
+      <div class="ps-section-title">Dynasty values</div>
+      <div style="margin-bottom:16px">
+        ${[['Superflex (RA)',val?.val_sf||0,'var(--rb)'],['1QB (RA)',val?.val_1qb||0,'var(--wr)'],['FantasyCalc',getFCValue(name)?.value||0,'var(--accent2)']].filter(([,v])=>v>0).map(([l,v,c])=>`
+        <div class="ps-value-row">
+          <span class="ps-value-label">${l}</span>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden"><div style="width:${Math.min(Math.round(v/100),100)}%;height:5px;background:${c};border-radius:3px"></div></div>
+            <span class="ps-value-num" style="color:${c};min-width:52px;text-align:right">${v.toLocaleString()}</span>
+          </div>
+        </div>`).join('')}
+        <div class="ps-value-row"><span class="ps-value-label">7-day trend</span><span class="ps-value-num ${trend7>0?'ps-trend-up':trend7<0?'ps-trend-dn':'ps-trend-flat'}">${trend7>0?'+':''}${trend7||0}</span></div>
+        <div class="ps-value-row"><span class="ps-value-label">30-day trend</span><span class="ps-value-num ${trend30>0?'ps-trend-up':trend30<0?'ps-trend-dn':'ps-trend-flat'}">${trend30>0?'+':''}${trend30||0}</span></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">Values by <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a></div>`;
+
+  } else if (tab === 'stats') {
+    if (!seasons.length) { body.innerHTML=`<div class="ps-loading">No season stats available.</div>`; return; }
+    const cfg = {
+      QB:{cols:['Season','Team','G','Cmp%','Pass Yds','Pass TD','INT','Rush Yds'],row:s=>[s.season,s.team||'—',s.games||'—',s.comp_pct?Number(s.comp_pct).toFixed(1)+'%':'—',s.pass_yards?.toLocaleString()||'—',s.pass_td??'—',s.interceptions??'—',s.rush_yards?.toLocaleString()||'—']},
+      RB:{cols:['Season','Team','G','Rush Yds','Rush TD','Rec','Rec Yds','Rec TD'],row:s=>[s.season,s.team||'—',s.games||'—',s.rush_yards?.toLocaleString()||'—',s.rush_td??'—',s.receptions??'—',s.rec_yards?.toLocaleString()||'—',s.rec_td??'—']},
+      WR:{cols:['Season','Team','G','Rec','Targets','Rec Yds','Rec TD','Yds/Rec'],row:s=>[s.season,s.team||'—',s.games||'—',s.receptions??'—',s.targets??'—',s.rec_yards?.toLocaleString()||'—',s.rec_td??'—',s.receptions&&s.rec_yards?(s.rec_yards/s.receptions).toFixed(1):'—']},
+      TE:{cols:['Season','Team','G','Rec','Targets','Rec Yds','Rec TD','Yds/Rec'],row:s=>[s.season,s.team||'—',s.games||'—',s.receptions??'—',s.targets??'—',s.rec_yards?.toLocaleString()||'—',s.rec_td??'—',s.receptions&&s.rec_yards?(s.rec_yards/s.receptions).toFixed(1):'—']},
+    };
+    const {cols,row} = cfg[pos]||cfg.WR;
+    body.innerHTML = `<div style="overflow-x:auto">
+      <table class="ps-stat-table">
+        <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+        <tbody>${[...seasons].reverse().map(s=>`<tr>${row(s).map((v,i)=>`<td${i>2?` style="color:${posColor}"`:''}>${v??'—'}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+    <div style="margin-top:12px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a> via NFLverse</div>`;
+
+  } else if (tab === 'weekly') {
+    body.innerHTML = `<div class="ps-loading"><div style="font-size:24px;animation:spin 1s linear infinite">⟳</div><span>Loading weekly stats...</span></div>`;
+    if (!sleeperId) { body.innerHTML=`<div class="ps-loading">No Sleeper ID available.</div>`; return; }
+    fetch(`https://rosteraudit.com/wp-json/ra/v1/player-page/${sleeperId}/weekly/2026`)
+      .then(r=>r.json()).then(raw=>{
+        let weeks = Array.isArray(raw)?raw:(raw?.weeks||raw?.data||[]);
+        weeks = weeks.map(norm);
+        if (!weeks.length){body.innerHTML=`<div class="ps-loading" style="color:var(--muted)">No 2026 weekly data yet.</div>`;return;}
+        const isQB=pos==='QB', isRB=pos==='RB';
+        const cols=isQB?['Wk','Opp','Pass Yds','Pass TD','INT','FPTS']:isRB?['Wk','Opp','Rush Yds','Rush TD','Rec','Rec Yds','FPTS']:['Wk','Opp','Rec','Targets','Rec Yds','TD','FPTS'];
+        body.innerHTML=`<div style="overflow-x:auto"><table class="ps-stat-table"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${weeks.map(w=>{
+          const fpts=w.fantasy_points_ppr??w.fpts??w.fantasy_points??'—';
+          const fn=parseFloat(fpts);
+          const fc=fn>=20?'var(--rb)':fn>=12?'var(--te)':fn<5&&fn>=0?'var(--muted)':posColor;
+          const cells=isQB?[w.week,w.opponent||'—',w.pass_yards||'—',w.pass_td??'—',w.interceptions??'—',fpts]:isRB?[w.week,w.opponent||'—',w.rush_yards||'—',w.rush_td??'—',w.receptions??'—',w.rec_yards||'—',fpts]:[w.week,w.opponent||'—',w.receptions??'—',w.targets??'—',w.rec_yards||'—',w.rec_td??'—',fpts];
+          return`<tr>${cells.map((v,i)=>`<td${i===cells.length-1&&!isNaN(fn)?` style="font-weight:700;color:${fc}"`:i>2?` style="color:${posColor}"`:''}">${v??'—'}</td>`).join('')}</tr>`;
+        }).join('')}</tbody></table></div>
+        <div style="margin-top:12px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a></div>`;
+      }).catch(()=>{body.innerHTML=`<div class="ps-loading" style="color:var(--muted)">No weekly data available.</div>`;});
+
+  } else if (tab === 'value') {
+    const bars=[['Superflex (RA)',val?.val_sf||0,'var(--rb)'],['1QB (RA)',val?.val_1qb||0,'var(--wr)'],['FantasyCalc SF',getFCValue(name)?.value||0,'var(--accent2)']].filter(([,v])=>v>0);
+    const maxBar=Math.max(...bars.map(([,v])=>v),1);
+    body.innerHTML=`
+      <div class="ps-section-title">Value comparison</div>
+      <div style="margin-bottom:20px">${bars.map(([l,v,c])=>`<div class="ps-bar-row"><div class="ps-bar-label">${l}</div><div class="ps-bar-track"><div class="ps-bar-fill" style="width:${Math.round(v/maxBar*100)}%;background:${c}"></div></div><div class="ps-bar-val" style="color:${c}">${v.toLocaleString()}</div></div>`).join('')}</div>
+      <div class="ps-section-title">Trends</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
+        <div class="ps-kpi"><div class="ps-kpi-val ${trend7>0?'ps-trend-up':trend7<0?'ps-trend-dn':'ps-trend-flat'}">${trend7>0?'+':''}${trend7||0}</div><div class="ps-kpi-label">7-day</div></div>
+        <div class="ps-kpi"><div class="ps-kpi-val ${trend30>0?'ps-trend-up':trend30<0?'ps-trend-dn':'ps-trend-flat'}">${trend30>0?'+':''}${trend30||0}</div><div class="ps-kpi-label">30-day</div></div>
+      </div>
+      ${val?`<div class="ps-section-title">Profile</div><div>${[['Position',val.position||pos],['Team',val.team||'—'],['Age',val.age?Number(val.age).toFixed(1):'—']].map(([l,v])=>`<div class="ps-value-row"><span class="ps-value-label">${l}</span><span class="ps-value-num">${v}</span></div>`).join('')}</div>`:''}
+      <div style="margin-top:20px;font-size:11px;color:var(--muted)">Values by <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a></div>`;
+  }
+}
+function _psSeasonKPIs(s, pos, posColor) {
+  const pairs = pos==='QB'
+    ? [['Pass Yds',s.pass_yards?.toLocaleString()],['Pass TD',s.pass_td],['INT',s.interceptions],['Rush Yds',s.rush_yards?.toLocaleString()]]
+    : pos==='RB'
+    ? [['Rush Yds',s.rush_yards?.toLocaleString()],['Rush TD',s.rush_td],['Rec',s.receptions],['Rec Yds',s.rec_yards?.toLocaleString()]]
+    : [['Rec',s.receptions],['Targets',s.targets],['Rec Yds',s.rec_yards?.toLocaleString()],['TDs',s.rec_td]];
+  return pairs.map(([l,v])=>`<div class="ps-kpi" style="flex:1;min-width:80px"><div class="ps-kpi-val" style="color:${posColor}">${v||'—'}</div><div class="ps-kpi-label">${l}</div></div>`).join('');
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') closePlayerStats(); });
+
+// Aliases for overview page inline buttons
+function ovLoadUser() { return lpLoadUser(); }
+function ovUseDraft() { ovLeagueId=null; renderOverview(); }
+
+// ════════════════════════════════════
+//  LEAGUE PICKER — two-step flow
+// ════════════════════════════════════
+function showLeaguePicker(el) {
+  if (!el) return;
+  if (!myTeamsData.length) {
+    showLeaguePickerStep1(el, localStorage.getItem(SK+'-username') || '');
+  } else {
+    showLeaguePickerStep2(el);
+  }
+}
+
+function showLeaguePickerStep1(el, prefill='') {
+  el.innerHTML = `
+    <div class="lp-wrap">
+      <div class="lp-icon">🔗</div>
+      <div class="lp-title">Connect Your Sleeper Account</div>
+      <div class="lp-sub">Enter your Sleeper username to load your leagues</div>
+      <div class="lp-input-row">
+        <input class="connect-input" id="lp-username" placeholder="Sleeper username..." value="${prefill}"
+          style="flex:1;padding:12px 16px;font-size:14px"
+          onkeydown="if(event.key==='Enter')lpLoadUser()">
+        <button class="connect-btn" onclick="lpLoadUser()" id="lp-load-btn">Find Leagues</button>
+      </div>
+      <div id="lp-error" style="color:var(--qb);font-size:12px;display:none"></div>
+      ${prefill ? `<div style="font-size:11px;color:var(--muted)">Last connected: <b style="color:var(--accent2)">${prefill}</b></div>` : ''}
+    </div>`;
+}
+
+async function lpLoadUser() {
+  const input = document.getElementById('lp-username');
+  const btn   = document.getElementById('lp-load-btn');
+  const errEl = document.getElementById('lp-error');
+  const username = input?.value.trim();
+  if (!username) return;
+  if (btn) { btn.textContent = '⟳ Loading...'; btn.disabled = true; }
+  if (errEl) errEl.style.display = 'none';
+  try {
+    localStorage.setItem(SK+'-username', username);
+    const inp = document.getElementById('sleeper-username');
+    if (inp) inp.value = username;
+    await loadMyTeams();
+    const el = document.getElementById('ov-content');
+    if (el) showLeaguePickerStep2(el);
+  } catch(e) {
+    if (errEl) { errEl.textContent = '⚠ ' + e.message; errEl.style.display = 'block'; }
+    if (btn) { btn.textContent = 'Find Leagues'; btn.disabled = false; }
+  }
+}
+
+function showLeaguePickerStep2(el) {
+  const leagues = myTeamsData.filter(l => l.season==='2026'||l.season==='2025');
+  if (!leagues.length) { showLeaguePickerStep1(el, localStorage.getItem(SK+'-username')||''); return; }
+  const username = mySleeperUser?.display_name || mySleeperUser?.username || localStorage.getItem(SK+'-username') || '';
+  const avatarUrl = mySleeperUser?.avatar ? `https://sleepercdn.com/avatars/thumbs/${mySleeperUser.avatar}` : '';
+  el.innerHTML = `
+    <div class="lp-wrap">
+      <div class="lp-profile">
+        ${avatarUrl ? `<img src="${avatarUrl}" class="lp-avatar" onerror="this.style.display='none'" alt="">` : ''}
+        <div>
+          <div class="lp-title" style="margin:0;text-align:left;font-size:18px">Pick Your Leagues</div>
+          <div class="lp-sub" style="text-align:left;margin:4px 0 0">Logged in as <b style="color:var(--accent2)">${username}</b> · Select leagues to track</div>
+        </div>
+      </div>
+      <div class="lp-leagues">
+        ${leagues.map(l => {
+          const active=['in_season','drafting'].includes(l.status);
+          const teams=l.total_rosters||'?';
+          const scoring=l.scoring_settings?.rec===1?'PPR':l.scoring_settings?.rec===0.5?'Half':'Std';
+          const isSF=(l.roster_positions||[]).includes('SUPER_FLEX');
+          const isDyn=(l.settings?.max_keepers||0)>5||l.name?.toLowerCase().includes('dynasty');
+          return `<label class="lp-league-row">
+            <input type="checkbox" name="lp-league" value="${l.league_id}" class="lp-radio" ${active?'checked':''}>
+            <div class="lp-league-info">
+              <div class="lp-league-name">${active?'🟢 ':''}${l.name||'Unnamed League'}</div>
+              <div class="lp-league-meta">${teams} teams · ${scoring}${isSF?' · SF':''}${isDyn?' · Dynasty':''} · ${l.season}</div>
+            </div>
+            <div class="lp-league-check">✓</div>
+          </label>`;
+        }).join('')}
+      </div>
+      <div class="lp-actions">
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button onclick="lpSelectAll(true)" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:11px;font-family:var(--font-sans);padding:5px 12px;border-radius:6px;cursor:pointer">Select All</button>
+          <button onclick="lpSelectAll(false)" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:11px;font-family:var(--font-sans);padding:5px 12px;border-radius:6px;cursor:pointer">Deselect All</button>
+        </div>
+        <button class="launch-btn" onclick="lpConfirm()" style="max-width:360px;font-size:15px;padding:14px">View My Team →</button>
+        <button onclick="showLeaguePickerStep1(document.getElementById('ov-content'),'')"
+          style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-sans);margin-top:8px">← Use a different account</button>
+      </div>
+    </div>`;
+}
+
+function lpSelectAll(checked) {
+  document.querySelectorAll('input[name="lp-league"]').forEach(cb => cb.checked = checked);
+}
+
+function lpConfirm() {
+  const checked = [...document.querySelectorAll('input[name="lp-league"]:checked')];
+  if (!checked.length) { toast('Select at least one league'); return; }
+  const ids = checked.map(c => c.value);
+  localStorage.setItem(SK+'-selected-leagues', JSON.stringify(ids));
+  switchGlobalLeague(ids[0]);
+}
+
+async function enterWithoutDraft() {
+  if (!usingDefaultRankings) {
+    PLAYERS = DEFAULT_RANKINGS.map(p => ({...p}));
+    RLABELS = [...DEFAULT_LABELS];
+    usingDefaultRankings = true;
+  }
+  // Clear draft state so all players show as available
+  sleeperDraftId = null;
+  draftState = {};
+  manualOverrides = {};
+  document.getElementById('setup').classList.add('gone');
+  updateSortBtns();
+  fetchSleeperPlayers();
+  // Load leagues, then always show the picker
+  const savedUn = localStorage.getItem(SK+'-username');
+  if (savedUn && !myTeamsData.length) {
+    await loadMyTeams();
+    populateHeaderLeague();
+    populateAnalyzerDropdown();
+    populateOverviewDropdown();
+  }
+  showPage('overview');
+  // Immediately show league picker — don't wait for renderOverview hasContext check
+  const el = document.getElementById('ov-content');
+  if (el) showLeaguePicker(el);
+}
+
 function showSetupStep(n) {
   document.getElementById('setup-step1').style.display = n===1 ? '' : 'none';
   document.getElementById('setup-step2').style.display = n===2 ? '' : 'none';
@@ -2249,7 +2816,7 @@ function selectTeam(ti){
 
 function updateTeamPill(){
   if(myTeam===null||!TEAMS[myTeam]) return;
-  const p=document.getElementById('tpill');
+  const p=document.getElementById('tpill') || document.getElementById('teams-team-select');
   const c=COLORS[myTeam%COLORS.length];
   p.textContent=TEAMS[myTeam];
   p.style.borderColor=c;
@@ -2316,13 +2883,15 @@ let sleeperADP = {}; // name -> pick_no from actual draft
 async function fetchSleeperPlayers() {
   if (sleeperPlayersLoaded) return;
 
-  const CACHE_KEY = 'snapdraft-players-v2';
-  const CACHE_TIME = 'snapdraft-players-time-v2';
+  const CACHE_KEY = 'snapdraft-pidmap-v4'; // v4: cleared bad PLAYER_IDS overrides // new key — v3 forces fresh fetch
+  const CACHE_TIME = 'snapdraft-pidmap-time-v4';
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     const lastFetch = parseInt(localStorage.getItem(CACHE_TIME)||'0');
-    if (cached && Date.now() - lastFetch < 86400000) {
-      applySlimPlayerData(JSON.parse(cached));
+    // Cache for 7 days — player IDs never change
+    if (cached && Date.now() - lastFetch < 7*86400000) {
+      const pidMap = JSON.parse(cached);
+      _applyPidMap(pidMap);
       return;
     }
   } catch(e) {}
@@ -2332,25 +2901,76 @@ async function fetchSleeperPlayers() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    const POSITIONS = new Set(['QB','RB','WR','TE']);
-    const slim = {};
+    const POSITIONS = new Set(['QB','RB','WR','TE','K','DEF']);
+    // Build pid -> full name map directly from Sleeper source of truth
+    const pidMap = {}; // pid (string) -> "First Last"
+    const nameADP = {}; // "First Last" -> search_rank (for ADP)
+
     Object.entries(data).forEach(([pid, p]) => {
       if (!p.first_name || !p.last_name) return;
       if (!POSITIONS.has(p.position)) return;
-      const name = (p.first_name + ' ' + p.last_name).trim();
-      // search_rank is the ONLY public ranking field Sleeper exposes
-      slim[name] = { pid, adp: p.search_rank || null };
+      const fullName = (p.first_name + ' ' + p.last_name).trim();
+      pidMap[pid] = fullName;
+      if (p.search_rank) nameADP[fullName] = p.search_rank;
     });
 
+    // Cache for 7 days
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(slim));
+      localStorage.setItem(CACHE_KEY, JSON.stringify(pidMap));
       localStorage.setItem(CACHE_TIME, Date.now().toString());
     } catch(e) {}
 
-    applySlimPlayerData(slim);
+    _applyPidMap(pidMap);
+
+    // Also update community ADP from Sleeper search ranks
+    const newADP = {};
+    Object.entries(nameADP).forEach(([name, rank]) => {
+      newADP[name] = rank;
+      newADP[normName(name)] = rank;
+    });
+    Object.assign(communityADP, newADP);
+
   } catch(e) {
     console.warn('[SnapDraft] Sleeper players fetch failed:', e);
+    // Still mark as loaded so we don't keep retrying
+    sleeperPlayersLoaded = true;
   }
+}
+
+function _applyPidMap(pidMap) {
+  // pidMap: { "4984": "Josh Allen", "9509": "Bijan Robinson", ... }
+  // Build globalPidToName: prefer matching to canonical PLAYERS[] name
+  // This is the single source of truth — Sleeper's own player IDs
+
+  Object.entries(pidMap).forEach(([pid, sleeperName]) => {
+    const pidStr = String(pid);
+    // Skip if already set by PLAYER_IDS (hand-verified, highest priority)
+    if (globalPidToName[pidStr]) return;
+
+    // Try to find exact match in PLAYERS[]
+    const canon = PLAYERS.find(p => p.name === sleeperName);
+    if (canon) {
+      globalPidToName[pidStr] = canon.name;
+      return;
+    }
+    // Try normalized match
+    const normS = normName(sleeperName);
+    const normMatch = PLAYERS.find(p => normName(p.name) === normS);
+    if (normMatch) {
+      globalPidToName[pidStr] = normMatch.name;
+      return;
+    }
+    // Fall back to Sleeper's name directly
+    globalPidToName[pidStr] = sleeperName;
+  });
+
+  // PLAYER_IDS always wins — apply last to overwrite any fuzzy matches
+  Object.entries(PLAYER_IDS).forEach(([name, pid]) => {
+    globalPidToName[String(pid)] = name;
+  });
+
+  sleeperPlayersLoaded = true;
+  console.log(`[SnapDraft] Sleeper pid map ready: ${Object.keys(globalPidToName).length} players`);
 }
 
 
@@ -2359,55 +2979,20 @@ async function fetchSleeperPlayers() {
 const globalPidToName = {};
 
 function applySlimPlayerData(slim) {
-  // slim: { "Patrick Mahomes": { pid: "4358", adp: 25.3 }, ... }
+  // Legacy entry point — slim is { "Player Name": { pid, adp } }
+  // Convert to pid->name format and delegate to _applyPidMap
+  const pidMap = {};
   const newADP = {};
-  const newPidMap = {};
   Object.entries(slim).forEach(([name, d]) => {
-    if (d.adp) {
-      newADP[name] = d.adp;
-      newADP[normName(name)] = d.adp;
-    }
-    if (d.pid) {
-      newPidMap[normName(name)] = d.pid;
-      newPidMap[name] = d.pid;
-    }
-  });
-  communityADP = newADP;
-  Object.entries(newPidMap).forEach(([k, pid]) => {
+    if (d.pid) pidMap[String(d.pid)] = name;
+    if (d.adp) { newADP[name] = d.adp; newADP[normName(name)] = d.adp; }
+    // Also keep sleeperPlayerMap for backward compat
+    const k = normName(name);
     if (!sleeperPlayerMap[k]) sleeperPlayerMap[k] = {};
-    sleeperPlayerMap[k].player_id = pid;
+    if (d.pid) sleeperPlayerMap[k].player_id = d.pid;
   });
-
-  // Build globalPidToName: pid -> canonical PLAYERS[] name
-  // Start with hardcoded PLAYER_IDS (most reliable)
-  Object.entries(PLAYER_IDS).forEach(([name, pid]) => {
-    globalPidToName[String(pid)] = name;
-  });
-  // Then fill in from Sleeper data, preferring canonical PLAYERS[] names
-  Object.entries(newPidMap).forEach(([k, pid]) => {
-    const pidStr = String(pid);
-    if (!globalPidToName[pidStr]) {
-      // Try to find canonical name from PLAYERS[]
-      const canon = PLAYERS.find(p => normName(p.name) === normName(k));
-      globalPidToName[pidStr] = canon ? canon.name : k;
-    }
-  });
-
-  sleeperPlayersLoaded = true;
-
-  // Show a debug toast with ADP values for a couple known players
-  // so you can verify they match what Sleeper shows
-  const checkNames = ['Devon Achane', 'Chris Godwin', 'Josh Allen'];
-  const found = checkNames.map(n => {
-    const v = newADP[n];
-    return v ? `${n.split(' ').pop()}=${v}` : null;
-  }).filter(Boolean);
-  if (found.length) {
-    console.log('[SnapDraft] ADP loaded. Spot check:', found.join(', '));
-    // Uncomment next line to see in UI during debugging:
-    toast(`ADP ✓ ${found.slice(0,2).join(' | ')} — check console for all values`);
-  }
-
+  Object.assign(communityADP, newADP);
+  _applyPidMap(pidMap);
   if (sortKey === 'adp') renderList();
   renderSuggestions();
 }
@@ -2428,7 +3013,24 @@ function buildADPRankings() {
 }
 
 // Hardcoded Sleeper player IDs for top players — instant headshots without waiting for 5MB API
-const PLAYER_IDS = {"Josh Allen":"4984","Bijan Robinson":"9509","Ja'Marr Chase":"7564","Jaxon Smith-Njigba":"9998","Puka Nacua":"10643","Jahmyr Gibbs":"10229","Drake Maye":"11565","Amon-Ra St. Brown":"7547","Justin Jefferson":"6794","Malik Nabers":"11565","Jeremiyah Love":"11566","CeeDee Lamb":"6786","Drake London":"9500","Lamar Jackson":"4881","Jayden Daniels":"11566","Tetairoa McMillan":"11578","Ashton Jeanty":"11579","Brock Bowers":"11567","Omarion Hampton":"11568","Caleb Williams":"11569","Trey McBride":"8155","Joe Burrow":"6770","Carnell Tate":"11570","Chris Olave":"8146","Patrick Mahomes":"4358","George Pickens":"9493","Garrett Wilson":"8148","Jalen Hurts":"5850","Jaxson Dart":"11571","Devon Achane":"9492","Jonathan Taylor":"6797","Rashee Rice":"10174","Colston Loveland":"11572","Ladd McConkey":"11573","Justin Herbert":"5124","Bo Nix":"11574","Brock Purdy":"8356","Trevor Lawrence":"7528","James Cook":"9506","Kenneth Walker":"9468","Emeka Egbuka":"11575","Nico Collins":"7847","Chase Brown":"10207","Tyler Warren":"11576","Quinshon Judkins":"11577","Christian McCaffrey":"4034","Dak Prescott":"4012","Fernando Mendoza":"11580","Rome Odunze":"11581","Luther Burden":"11582","Breece Hall":"8150","Jordan Love":"6790","Marvin Harrison":"11583","TreVeyon Henderson":"11584","Cam Skattebo":"11585","Jadarian Price":"11586","Tee Higgins":"7578","Harold Fannin":"11587","Zay Flowers":"10169","Bucky Irving":"11588","Tyler Shough":"8826","DeVonta Smith":"6843","Saquon Barkley":"4035","Kyren Williams":"8151","Cam Ward":"11589","A.J. Brown":"7569","Tucker Kraft":"10228","Baker Mayfield":"4098","Jared Goff":"3972","Brian Thomas":"11590","Jaylen Waddle":"7571","Jameson Williams":"8143","Travis Etienne":"7523","Josh Jacobs":"5846","Sam Darnold":"4039","Derrick Henry":"2133","Oronde Gadsden":"11591","Kyle Pitts":"7590","Omar Cooper Jr.":"9492","Travis Hunter":"11592","Davante Adams":"3294","DJ Moore":"5012","Kyler Murray":"4663","C.J. Stroud":"9957","D'Andre Swift":"6813","Alec Pierce":"8835","Sam LaPorta":"10229","Malik Willis":"8820","James Cook":"9506","Tyjae Spears":"11593"};
+const PLAYER_IDS = {
+  // Minimal verified set — only entries confirmed from multiple public sources
+  // The live /v1/players/nfl fetch is the authoritative source for everything else
+  // DO NOT add entries here unless you've verified the Sleeper ID from the live API
+  "Ja'Marr Chase":"7564",
+  "Justin Jefferson":"6794",
+  "Josh Allen":"4984",
+  "Joe Burrow":"6770",
+  "Jalen Hurts":"5850",
+  "Lamar Jackson":"4881",
+  "Patrick Mahomes II":"4358",
+  "Christian McCaffrey":"4034",
+  "Saquon Barkley":"4035",
+  "Derrick Henry":"2133",
+  "Davante Adams":"3294",
+  "Travis Kelce":"1234",
+  "George Kittle":"4866",
+};
 
 function getPlayerHeadshotUrl(name) {
   // First check hardcoded map
@@ -2654,7 +3256,7 @@ function showPage(p){
   document.getElementById(`page-${p}`).classList.add('on');
   if(p==='overview') renderOverview();
   if(p==='teams'){ populateAnalyzerDropdown(); const loaded=valueSource==='fc'?fcLoaded:raLoaded; if(!loaded){if(valueSource==='fc')fetchFantasyCalc();else fetchRosterAudit();}else renderTeams(); }
-  if(p==='visual') renderBoard();
+  if(p==='visual'){ renderBoard(); ldInitPage(); }
   if(p==='trade'){ initTrade(); }
   if(p==='myteams'){ initMyTeams(); }
   if(p!=='teams'){ viewTeamIdx=null; }
@@ -2695,296 +3297,273 @@ function populateOverviewDropdown() {
 async function renderOverview() {
   const el = document.getElementById('ov-content');
   if (!el) return;
-
   if (ovTab === 'roster') { renderOverviewRoster(el); return; }
 
-  // ── STEP 1: If no league selected and no draft picks, show the league picker NOW ──
-  // This is synchronous — shows immediately without waiting for any async calls
+  if (!fcLoaded && !fcLoading) fetchFantasyCalc();
+
   const draftRoster = getMyRoster();
   const hasContext = ovLeagueId || draftRoster.length > 0;
+  if (!hasContext) { showLeaguePicker(el); return; }
 
-  if (!hasContext) {
-    // Load leagues if we have a saved username and haven't loaded yet
-    if (!myTeamsData.length) {
-      const savedUser = localStorage.getItem(SK+'-username');
-      if (savedUser) {
-        el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;padding:60px 20px;gap:16px">
-          <div style="font-size:24px">⟳</div>
-          <div style="font-size:14px;color:var(--muted);font-family:'Space Mono',monospace">Loading your leagues...</div>
-        </div>`;
-        const inp = document.getElementById('sleeper-username');
-        if (inp && !inp.value) inp.value = savedUser;
-        await loadMyTeams();
-        renderOverview(); // re-render now that leagues are loaded
-        return;
-      }
-    }
-    const leagues = myTeamsData.filter(l => l.season==='2026'||l.season==='2025');
-    el.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;gap:20px">
-        <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:30px">🏈</div>
-        <div>
-          <div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px">Choose Your Team</div>
-          <div style="font-size:14px;color:var(--muted);font-family:'Space Mono',monospace;max-width:360px;line-height:1.6">Select one of your Sleeper leagues to load your roster and team dashboard</div>
-        </div>
-        ${leagues.length ? `
-        <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:400px">
-          ${leagues.map(l => {
-            const active = l.status === 'in_season';
-            const teams = l.total_rosters || '?';
-            const scoring = l.scoring_settings?.rec === 1 ? 'PPR' : l.scoring_settings?.rec === 0.5 ? 'Half PPR' : 'Std';
-            const positions = l.roster_positions || [];
-            const isSF = positions.includes('SUPER_FLEX');
-            return `<div onclick="switchGlobalLeague('${l.league_id}')"
-              style="background:var(--s1);border:1.5px solid var(--border2);border-radius:12px;padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;transition:all .2s;text-align:left;-webkit-tap-highlight-color:transparent"
-              onmouseover="this.style.borderColor='var(--accent2)';this.style.background='var(--s2)'"
-              onmouseout="this.style.borderColor='var(--border2)';this.style.background='var(--s1)'">
-              <div>
-                <div style="font-size:14px;font-weight:700;color:var(--text)">${active?'🟢 ':''}${l.name||'League'}</div>
-                <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:3px">${teams} teams · ${scoring}${isSF?' · SF':''} · ${l.season}</div>
-              </div>
-              <span style="font-size:18px;color:var(--muted)">›</span>
-            </div>`;
-          }).join('')}
-        </div>` : `
-        <div style="background:var(--s2);border-radius:12px;padding:16px 20px;max-width:380px;width:100%">
-          <div style="font-size:13px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:10px">No leagues loaded yet. Enter your Sleeper username to get started.</div>
-          <div style="display:flex;gap:8px">
-            <input class="connect-input" id="ov-username-input" placeholder="Sleeper username..." style="flex:1;padding:10px 14px;font-size:13px" onkeydown="if(event.key==='Enter')ovLoadUser()">
-            <button class="connect-btn" onclick="ovLoadUser()">Load</button>
-          </div>
-        </div>`}
+  el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div>&nbsp; Loading your team...</div>`;
 
-        ${sleeperDraftId ? `
-        <div style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace">
-          — or —<br><br>
-          <button onclick="ovUseDraft()" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer">Use current draft roster</button>
-        </div>` : ''}
-      </div>`;
-    return;
-  }
-
-  // Get team data — either from current draft or a connected league
-  let roster = [], teamName = '', leagueName = '';
-  let powerRank = null, totalTeams = 0;
+  let roster = [], teamName = '', leagueName = '', powerRank = null, totalTeams = 0;
+  let allTeamVals = [];
 
   if (ovLeagueId) {
-    // Load from a specific Sleeper league
-    el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div><br>Loading your team...</div>`;
     try {
       const ctx = await getLeagueContext_ov();
-      if (!ctx) { el.innerHTML = '<div class="fc-error">Could not load league data.</div>'; return; }
+      if (!ctx) { el.innerHTML = '<div class="fc-error">Could not load league.</div>'; return; }
       const { rosters, users } = ctx;
       if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
       const userMap = buildUserMap(users);
       const league = myTeamsData.find(l => l.league_id === ovLeagueId);
       leagueName = league?.name || '';
       const myRoster_raw = rosters.find(r => r.owner_id === myTeamsUserId);
-      if (!myRoster_raw) { el.innerHTML = '<div class="fc-error">Could not find your roster in this league.</div>'; return; }
+      if (!myRoster_raw) { el.innerHTML = '<div class="fc-error">Could not find your roster.</div>'; return; }
       teamName = userMap[myTeamsUserId] || 'My Team';
       const pids = [...(myRoster_raw.players||[]), ...(myRoster_raw.reserve||[])];
       roster = pids.map(pid => {
         const name = globalPidToName[String(pid)];
-        if (!name) return null;
-        const p = PLAYERS.find(x => x.name === name) || {name, pos:'?', team:''};
-        return {...p, fcVal: getPlayerValue(name)};
-      }).filter(Boolean);
-      // Power rank
-      const allVals = rosters.map(r => {
-        const ps = (r.players||[]).map(pid => getPlayerValue(globalPidToName[String(pid)]||'')).reduce((a,b)=>a+b,0);
-        return {owner: r.owner_id, val: ps};
-      }).sort((a,b)=>b.val-a.val);
-      powerRank = allVals.findIndex(r=>r.owner===myTeamsUserId) + 1;
-      totalTeams = allVals.length;
-      leagueTeams = allVals;
-      document.getElementById('ov-subtitle').textContent = `${teamName} · ${leagueName}`;
-    } catch(e) {
-      el.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`; return;
-    }
+        if (!name) { console.warn('[SnapDraft] Unmapped pid:', pid); return null; }
+        // Look in PLAYERS[] first; if not found, create a minimal entry from RA/FC
+        const p = PLAYERS.find(x => x.name === name);
+        if (p) return {...p, fcVal: getPlayerValue(name)};
+        // Player not in rankings list — still show them from FC/RA values
+        const fcv = getFCValue(name);
+        return { name, pos: fcv?.position || '?', team: fcv?.team || '', fcVal: getPlayerValue(name) };
+      }).filter(x => x !== null);
+      console.log(`[SnapDraft] My roster: ${roster.length}/${pids.length} pids resolved. Unmapped: ${pids.filter(p=>!globalPidToName[String(p)]).join(', ')||'none'}`);
+      allTeamVals = rosters.map(r => ({
+        owner: r.owner_id,
+        val: (r.players||[]).reduce((s,pid) => s + getPlayerValue(globalPidToName[String(pid)]||''), 0)
+      })).sort((a,b)=>b.val-a.val);
+      powerRank = allTeamVals.findIndex(r=>r.owner===myTeamsUserId)+1;
+      totalTeams = allTeamVals.length;
+      const nameEl = document.getElementById('ov-subtitle');
+      if (nameEl) nameEl.textContent = `${teamName} - managed by ${mySleeperUser?.display_name||mySleeperUser?.username||''}`;
+    } catch(e) { el.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`; return; }
   } else {
-    // Use current draft roster
     roster = getMyRoster();
     teamName = TEAMS[myTeam] || 'My Team';
     totalTeams = TEAMS.length;
-    powerRank = myTeam !== null ? (() => {
-      const vals = TEAMS.map((_,i) => {
-        const r = Object.entries(draftState).filter(([,d])=>d.teamIdx===i).map(([n])=>getPlayerValue(n)).reduce((a,b)=>a+b,0);
-        return {i, val:r};
-      }).sort((a,b)=>b.val-a.val);
-      return vals.findIndex(v=>v.i===myTeam)+1;
-    })() : null;
-    document.getElementById('ov-subtitle').textContent = teamName + (sleeperDraftId ? ' · Current Draft' : '');
+    if (myTeam !== null) {
+      const vals = TEAMS.map((_,i)=>({i,val:Object.entries(draftState).filter(([,d])=>d.teamIdx===i).reduce((s,[n])=>s+getPlayerValue(n),0)})).sort((a,b)=>b.val-a.val);
+      powerRank = vals.findIndex(v=>v.i===myTeam)+1;
+    }
   }
 
-  if (!roster.length) {
-    el.innerHTML = `<div style="padding:60px;text-align:center">
-      <div style="font-size:48px;margin-bottom:16px">🏈</div>
-      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">No roster yet</div>
-      <div style="font-size:13px;color:var(--muted);font-family:Space Mono,monospace">Select a league from the dropdown above, or picks will appear here during your draft</div>
-    </div>`;
-    return;
-  }
+  if (!roster.length) { showLeaguePicker(el); return; }
 
-  // Calculate stats
+  // ── COMPUTE ALL METRICS ──
   const byPos = {QB:[],RB:[],WR:[],TE:[]};
   roster.forEach(p => { if(byPos[p.pos]) byPos[p.pos].push(p); });
-  const totalVal = roster.reduce((s,p)=>s+(p.fcVal||getPlayerValue(p.name)),0);
-  const avgAge = roster.filter(p=>p.pos).length > 0 ? 22.5 : 0; // approx
-  const winNow = Math.min(10, Math.round((byPos.QB.filter(p=>(p.fcVal||0)>5000).length*2 + byPos.RB.filter(p=>(p.fcVal||0)>4000).length + byPos.WR.filter(p=>(p.fcVal||0)>4000).length*0.8)*1.2));
-  const longTerm = Math.min(10, Math.round(roster.filter(p=>(p.fcVal||0)<3000 && p.pos).length * 0.8));
-  const draftCap = Math.min(10, Math.round(roster.filter(p=>p.pos==='?'||p.name?.includes('Pick')).length * 2));
-  const tierObj = powerRank && totalTeams ? getTeamTier(powerRank, totalTeams) : {label:'—', cls:'tier-balanced'};
+  const totalVal = roster.reduce((s,p)=>s+(p.fcVal||0),0);
+  const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
 
-  // Positional grades
-  function gradePos(players) {
-    const avg = players.reduce((s,p)=>s+(p.fcVal||0),0) / Math.max(players.length,1);
-    if (avg > 7000) return {g:'A+',c:'var(--rb)'};
-    if (avg > 5000) return {g:'A', c:'var(--rb)'};
-    if (avg > 3500) return {g:'B', c:'#7bc8a4'};
-    if (avg > 2500) return {g:'C', c:'var(--te)'};
-    if (avg > 1500) return {g:'D', c:'#ff9f5b'};
-    return {g:'F',c:'var(--qb)'};
+  // Positional values
+  const posVals = {
+    QB: byPos.QB.reduce((s,p)=>s+(p.fcVal||0),0),
+    RB: byPos.RB.reduce((s,p)=>s+(p.fcVal||0),0),
+    WR: byPos.WR.reduce((s,p)=>s+(p.fcVal||0),0),
+    TE: byPos.TE.reduce((s,p)=>s+(p.fcVal||0),0),
+  };
+  const maxPosVal = Math.max(...Object.values(posVals), 1);
+
+  // Letter grades per position (based on avg FC value per player)
+  function posGrade(players) {
+    if (!players.length) return {g:'—',c:'var(--muted)',bg:'#ffffff10'};
+    const avg = players.reduce((s,p)=>s+(p.fcVal||0),0)/players.length;
+    if (avg>8000) return {g:'A+',c:'#fff',bg:'#30d98a'};
+    if (avg>5500) return {g:'A', c:'#fff',bg:'#30d98a'};
+    if (avg>3800) return {g:'B', c:'#fff',bg:'#4ab8f5'};
+    if (avg>2500) return {g:'C', c:'#fff',bg:'#f5c842'};
+    if (avg>1500) return {g:'D', c:'#fff',bg:'#f05674'};
+    return              {g:'F', c:'#fff',bg:'#c0392b'};
   }
-  const grades = {QB:gradePos(byPos.QB),RB:gradePos(byPos.RB),WR:gradePos(byPos.WR),TE:gradePos(byPos.TE)};
-  const maxPosVal = Math.max(...['QB','RB','WR','TE'].map(p=>byPos[p].reduce((s,x)=>s+(x.fcVal||0),0)),1);
+  const grades = {QB:posGrade(byPos.QB),RB:posGrade(byPos.RB),WR:posGrade(byPos.WR),TE:posGrade(byPos.TE)};
 
-  // Dynasty window
-  const highNow = winNow >= 7;
-  const highFuture = longTerm >= 5;
-  const window = highNow && highFuture ? 'Dynasty Death Star' : highNow ? 'Win-Now Window' : highFuture ? 'Rebuilding for Future' : 'Retooling';
-  const windowSub = highNow && highFuture ? 'High Now + High Future' : highNow ? 'Strong current roster, limited future assets' : highFuture ? 'Future-focused rebuild in progress' : 'Balanced rebuild';
+  // Team identity scores (0-10)
+  const topRBs = [...byPos.RB].sort((a,b)=>(b.fcVal||0)-(a.fcVal||0)).slice(0,3);
+  const topWRs = [...byPos.WR].sort((a,b)=>(b.fcVal||0)-(a.fcVal||0)).slice(0,3);
+  const topQBs = [...byPos.QB].sort((a,b)=>(b.fcVal||0)-(a.fcVal||0)).slice(0,2);
+  const winNowScore = Math.min(10, +(
+    (topQBs.reduce((s,p)=>s+(p.fcVal||0),0)/Math.max(topQBs.length,1)/1000 * 0.3) +
+    (topRBs.reduce((s,p)=>s+(p.fcVal||0),0)/Math.max(topRBs.length,1)/1000 * 0.35) +
+    (topWRs.reduce((s,p)=>s+(p.fcVal||0),0)/Math.max(topWRs.length,1)/1000 * 0.35)
+  ).toFixed(1));
+  const youngPlayers = roster.filter(p=>getFCValue(p.name)?.age && getFCValue(p.name).age < 24);
+  const longTermScore = Math.min(10, +(youngPlayers.length * 0.7).toFixed(1));
+  const draftCapScore = Math.min(10, +(roster.filter(p=>p.pos==='?'||!p.pos).length * 1.2 + byPos.QB.length * 0.3).toFixed(1));
 
-  // Suggested direction
-  const directions = [
-    winNow >= 8 && longTerm < 4 ? '"Trade depth for elite starters to maximize your title window"' : null,
-    longTerm >= 7 && winNow < 5 ? '"Target aging stars for cheap picks to accelerate your rebuild"' : null,
-    grades.QB.g <= 'C' ? '"Address QB — it\'s holding your roster back"' : null,
-    grades.RB.g <= 'D' ? '"RB is your weakest unit — target a bellcow"' : null,
-    powerRank && powerRank <= 2 ? '"Stay the course — you\'re the class of the league"' : null,
-    '"Balance current performance with future capital to build a dynasty contender"',
-  ].find(Boolean);
+  // Playoff odds (rough estimate based on power rank)
+  const playoffOdds = powerRank && totalTeams ? Math.round((1 - (powerRank-1)/totalTeams) * 85 + 10) : null;
+  const playoffLabel = playoffOdds > 70 ? 'Strong outlook' : playoffOdds > 50 ? 'Competitive' : playoffOdds > 30 ? 'Uncertain' : 'Rebuild mode';
+  const playoffColor = playoffOdds > 70 ? 'var(--rb)' : playoffOdds > 50 ? 'var(--te)' : 'var(--qb)';
+
+  // Avg starter age (weighted by value)
+  const withAge = roster.filter(p=>getFCValue(p.name)?.age);
+  const totalV = withAge.reduce((s,p)=>s+(getFCValue(p.name)?.value||0),0);
+  const avgAge = totalV>0 ? withAge.reduce((s,p)=>s+(getFCValue(p.name).age*(getFCValue(p.name)?.value||0)),0)/totalV : null;
+
+  // Future 1sts (draft picks on roster)
+  const futurePicks = roster.filter(p => p.name?.toLowerCase().includes('pick') || p.pos==='?').length;
+
+  // Archetype + dynasty window
+  const tier = getTeamTier(powerRank||5, totalTeams||12);
+  const isHighNow = winNowScore >= 6.5;
+  const isHighFuture = longTermScore >= 5;
+  const windowName = isHighNow && isHighFuture ? 'Dynasty Death Star' :
+                     isHighNow ? 'Win-Now Window' :
+                     isHighFuture ? 'Future Powerhouse' : 'In Transition';
+  const windowSub = isHighNow && isHighFuture ? 'High Now + High Future' :
+                    isHighNow ? 'High current strength, limited future assets' :
+                    isHighFuture ? 'Low current strength, high future potential' : 'Moderate in both dimensions';
+  const contenderYears = isHighNow && isHighFuture ? 4 : isHighNow ? 2 : isHighFuture ? 3 : 1;
+  const currentYear = 2026;
+  const suggestedDir = isHighNow && isHighFuture ? '"Consolidate depth into elite starters to maximize your title window"' :
+                       isHighNow ? '"Trade depth and picks for proven starters to go all-in now"' :
+                       isHighFuture ? '"Target aging stars for cheap picks to accelerate your rebuild"' :
+                       '"Identify your 2-3 core pieces and rebuild around them"';
+
+  // Top starters by pos value
+  const sorted = [...roster].sort((a,b)=>(b.fcVal||0)-(a.fcVal||0));
 
   el.innerHTML = `
-    <!-- STAT CARDS ROW -->
-    <div class="ov-stats">
-      <div class="ov-stat">
-        <div class="ov-stat-icon" style="background:#ffd16622">🏆</div>
-        <div class="ov-stat-label">ARCHETYPE</div>
-        <div class="ov-stat-val">
-          <span class="tier-badge ${tierObj.cls}" style="font-size:16px">${tierObj.label}</span>
-        </div>
-        <div class="ov-stat-sub" style="font-size:10px;color:var(--muted);margin-top:4px">
-          ${tierObj.label.includes('Juggernaut')?'Elite current strength with a strong long-term foundation':
-            tierObj.label.includes('Pretender')?'Strong now, needs assets to contend long-term':
-            tierObj.label.includes('Rebuilder')?'Building toward future contention':
-            'Competitive across all dimensions'}
-        </div>
+    <!-- Jump to row -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:26px;font-weight:700;color:var(--text);margin-bottom:6px">Overview</div>
+        <div style="width:48px;height:3px;background:var(--gold);border-radius:2px;margin-bottom:10px"></div>
+        <div style="font-size:14px;color:var(--muted)">${teamName} - managed by ${mySleeperUser?.display_name||mySleeperUser?.username||'Putput'}</div>
       </div>
-      ${powerRank ? `<div class="ov-stat">
-        <div class="ov-stat-icon" style="background:#5b8dee22">🏅</div>
-        <div class="ov-stat-label">POWER RANK</div>
-        <div class="ov-stat-val">#${powerRank} <span style="font-size:14px;color:var(--muted)">/ ${totalTeams}</span></div>
-        <div class="ov-stat-sub">Top ${Math.round(powerRank/totalTeams*100)}%</div>
-      </div>` : ''}
-      <div class="ov-stat">
-        <div class="ov-stat-icon" style="background:#3de8a022">💰</div>
-        <div class="ov-stat-label">ROSTER VALUE</div>
-        <div class="ov-stat-val">${(totalVal/1000).toFixed(1)}<span style="font-size:14px;color:var(--muted)">k</span></div>
-        <div class="ov-stat-sub">FantasyCalc</div>
-      </div>
-      <div class="ov-stat">
-        <div class="ov-stat-icon" style="background:#ff709622">🎯</div>
-        <div class="ov-stat-label">ROSTER SIZE</div>
-        <div class="ov-stat-val">${roster.length}</div>
-        <div class="ov-stat-sub">${byPos.QB.length}QB ${byPos.RB.length}RB ${byPos.WR.length}WR ${byPos.TE.length}TE</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:12px;color:var(--muted);font-family:var(--font-sans)">Jump to:</span>
+        <button onclick="showPage('teams')" class="ov-jump-btn">📊 Rankings</button>
+        <button onclick="showPage('trade')" class="ov-jump-btn">⇌ Trade Calculator</button>
       </div>
     </div>
 
-    <!-- MAIN DASHBOARD GRID -->
-    <div class="ov-grid">
+    <!-- TOP STAT CARDS ROW — matches StatChasers exactly -->
+    <div class="ov-top-cards">
+
+      <!-- Archetype card -->
+      <div class="ov-arch-card">
+        <div class="ov-card-label">ARCHETYPE</div>
+        <div class="ov-arch-badge" style="border-color:var(--gold);color:var(--gold)">${tier.label.replace(/[🏆⚖🔥↑]/g,'').trim()}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5">
+          ${tier.label.includes('Juggernaut')?'Elite current strength with a strong long-term foundation.':
+            tier.label.includes('Pretender')?'Strong now but needs more assets to compete long-term.':
+            tier.label.includes('Rebuilder')?'Building toward future contention with young assets.':
+            'Competitive across current and future dimensions.'}
+        </div>
+      </div>
+
+      <!-- Power Rank -->
+      ${powerRank ? `<div class="ov-kpi-card">
+        <div class="ov-kpi-icon">🏅</div>
+        <div class="ov-kpi-val">#${powerRank} <span style="font-size:16px;color:var(--muted);font-weight:400">/ ${totalTeams}</span></div>
+        <div class="ov-kpi-label">POWER RANK</div>
+        <div class="ov-kpi-sub" style="color:var(--rb)">Top ${Math.round(powerRank/totalTeams*100)}%</div>
+      </div>` : ''}
+
+      <!-- Playoff Odds -->
+      ${playoffOdds ? `<div class="ov-kpi-card">
+        <div class="ov-kpi-icon">🎯</div>
+        <div class="ov-kpi-val">${playoffOdds}%</div>
+        <div class="ov-kpi-label">PLAYOFF ODDS</div>
+        <div class="ov-kpi-sub" style="color:${playoffColor}">${playoffLabel}</div>
+      </div>` : ''}
+
+      <!-- Avg Starter Age -->
+      ${avgAge ? `<div class="ov-kpi-card">
+        <div class="ov-kpi-icon">📅</div>
+        <div class="ov-kpi-val">${avgAge.toFixed(1)}</div>
+        <div class="ov-kpi-label">AVG STARTER AGE</div>
+        <div class="ov-kpi-sub" style="color:var(--muted)">Lg avg: 25.1</div>
+      </div>` : ''}
+
+      <!-- Future 1sts -->
+      <div class="ov-kpi-card">
+        <div class="ov-kpi-icon">👥</div>
+        <div class="ov-kpi-val">${futurePicks}</div>
+        <div class="ov-kpi-label">FUTURE 1STS</div>
+        <div class="ov-kpi-sub" style="color:var(--muted)">Lg avg: 3</div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM THREE-PANEL ROW -->
+    <div class="ov-main-row">
 
       <!-- Team Identity -->
-      <div class="ov-card">
-        <div class="ov-card-title">Team Identity</div>
-        <div class="ov-identity-row">
-          <div class="ov-id-label">🔥 Win-Now</div>
-          <div class="ov-id-score">${winNow}<span style="font-size:11px;color:var(--muted)">/10</span></div>
+      <div class="ov-panel">
+        <div style="font-size:16px;font-weight:700;margin-bottom:6px">Team Identity</div>
+        <div style="width:40px;height:3px;background:var(--gold);border-radius:2px;margin-bottom:20px"></div>
+
+        <div class="ov-identity-item">
+          <div class="ov-id-row"><span style="color:var(--qb)">🔥 Win-Now</span><span class="ov-id-score">${winNowScore.toFixed(1)} <span style="font-size:12px;color:var(--muted);font-weight:400">/ 10</span></span></div>
+          <div class="ov-id-track"><div class="ov-id-fill" style="width:${winNowScore*10}%;background:#f05674"></div></div>
         </div>
-        <div class="ov-id-bar"><div class="ov-id-fill" style="width:${winNow*10}%;background:#ff7096"></div></div>
-        <div class="ov-identity-row" style="margin-top:12px">
-          <div class="ov-id-label">🌱 Long-Term</div>
-          <div class="ov-id-score">${longTerm}<span style="font-size:11px;color:var(--muted)">/10</span></div>
+
+        <div class="ov-identity-item">
+          <div class="ov-id-row"><span style="color:var(--rb)">🌱 Long-Term</span><span class="ov-id-score">${longTermScore.toFixed(1)} <span style="font-size:12px;color:var(--muted);font-weight:400">/ 10</span></span></div>
+          <div class="ov-id-track"><div class="ov-id-fill" style="width:${longTermScore*10}%;background:#30d98a"></div></div>
         </div>
-        <div class="ov-id-bar"><div class="ov-id-fill" style="width:${longTerm*10}%;background:#3de8a0"></div></div>
-        <div class="ov-identity-row" style="margin-top:12px">
-          <div class="ov-id-label">📋 Draft Capital</div>
-          <div class="ov-id-score">${draftCap}<span style="font-size:11px;color:var(--muted)">/10</span></div>
+
+        <div class="ov-identity-item">
+          <div class="ov-id-row"><span style="color:var(--accent2)">📋 Draft Capital</span><span class="ov-id-score">${draftCapScore.toFixed(1)} <span style="font-size:12px;color:var(--muted);font-weight:400">/ 10</span></span></div>
+          <div class="ov-id-track"><div class="ov-id-fill" style="width:${draftCapScore*10}%;background:#4f7de8"></div></div>
         </div>
-        <div class="ov-id-bar"><div class="ov-id-fill" style="width:${draftCap*10}%;background:#5b8dee"></div></div>
       </div>
 
       <!-- Strengths & Needs -->
-      <div class="ov-card">
-        <div class="ov-card-title">Strengths & Needs</div>
+      <div class="ov-panel">
+        <div style="font-size:16px;font-weight:700;margin-bottom:6px">Strengths & Needs</div>
+        <div style="width:40px;height:3px;background:var(--gold);border-radius:2px;margin-bottom:20px"></div>
+
         ${['QB','RB','WR','TE'].map(pos => {
-          const players = byPos[pos];
-          const val = players.reduce((s,p)=>s+(p.fcVal||0),0);
-          const pct = Math.round(val/maxPosVal*100);
+          const val = Math.round(posVals[pos]/1000);
+          const pct = Math.round(posVals[pos]/maxPosVal*100);
           const g = grades[pos];
-          const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos];
-          return `<div class="ov-pos-row">
-            <span class="ov-pos-label" style="color:${posColor}">${pos}</span>
-            <div class="ov-pos-bar-wrap">
-              <div class="ov-pos-bar" style="width:${pct}%;background:${posColor}"></div>
-            </div>
-            <span class="ov-pos-grade" style="background:${g.c}22;color:${g.c}">${g.g}</span>
-            <span class="ov-pos-val">${val.toLocaleString()}</span>
+          return `<div class="ov-pos-item">
+            <span class="ov-pos-label">${pos}</span>
+            <div class="ov-pos-track"><div class="ov-pos-fill" style="width:${pct}%;background:${posColors[pos]}"></div></div>
+            <div class="ov-grade-chip" style="background:${g.bg}">${g.g}</div>
+            <span class="ov-pos-val">${val}</span>
           </div>`;
         }).join('')}
       </div>
 
       <!-- Dynasty Window -->
-      <div class="ov-card">
-        <div class="ov-card-label">DYNASTY WINDOW</div>
-        <div class="ov-window-name">${window}</div>
-        <div style="font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:16px">${windowSub}</div>
+      <div class="ov-panel">
+        <div class="ov-card-label" style="color:var(--gold);display:flex;align-items:center;gap:6px;margin-bottom:12px">
+          📍 DYNASTY WINDOW
+        </div>
+        <div style="font-size:20px;font-weight:700;color:var(--gold);margin-bottom:4px">${windowName}</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px">${windowSub}</div>
 
-        <div class="ov-card-label" style="margin-top:8px">SUGGESTED DIRECTION</div>
-        <div style="font-size:13px;color:var(--text);line-height:1.5;font-style:italic">${directions}</div>
+        <div class="ov-card-label" style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+          ⚡ SUGGESTED DIRECTION
+        </div>
+        <div style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:24px;font-style:italic">${suggestedDir}</div>
 
-        <div class="ov-card-label" style="margin-top:16px">TOP PLAYERS</div>
-        ${roster.sort((a,b)=>(b.fcVal||0)-(a.fcVal||0)).slice(0,4).map(p => {
-          const pc = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[p.pos]||'var(--muted)';
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
-            <div>
-              <span class="ppill ${p.pos}" style="margin-right:6px">${p.pos}</span>
-              <span style="font-size:13px;font-weight:600">${p.name}</span>
-            </div>
-            <span style="font-size:12px;font-weight:700;font-family:Space Mono,monospace;color:${pc}">${(p.fcVal||0).toLocaleString()}</span>
-          </div>`;
-        }).join('')}
+        <div class="ov-card-label" style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+          📅 CONTENDER WINDOW
+        </div>
+        <div style="font-size:36px;font-weight:700;color:var(--text)">${contenderYears}</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">years projected</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${Array.from({length:5},(_,i)=>currentYear+i-1).map(yr => {
+            const active = yr >= currentYear && yr < currentYear + contenderYears;
+            return `<span style="padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;font-family:var(--font-sans);${active?'background:var(--accent);color:#fff':'background:var(--s3);color:var(--muted)'}">${yr}</span>`;
+          }).join('')}
+        </div>
       </div>
 
     </div>`;
 }
 
-async function ovLoadUser() {
-  const input = document.getElementById('ov-username-input');
-  const username = input?.value.trim();
-  if (!username) return;
-  // Store username and load leagues, then re-render
-  const savedInp = document.getElementById('sleeper-username');
-  if (savedInp) savedInp.value = username;
-  localStorage.setItem(SK+'-username', username);
-  await loadMyTeams();
-  renderOverview();
-}
-
-function ovUseDraft() {
-  // Force use current draft context (no league)
-  ovLeagueId = null;
-  renderOverview();
-}
 
 async function getLeagueContext_ov() {
   const lid = ovLeagueId;
@@ -3172,7 +3751,12 @@ function renderList(){
     const desktopRow = `<tr class="prow ${isDrafted?'gone':''} ${isMe?'ismine':''} ${isHot?'is-value':''}">
       <td class="rnum" style="text-align:right;padding-right:8px">${rank}</td>
       <td style="padding:0 3px">${hs}</td>
-      <td onclick="openNote('${sn}')" style="cursor:pointer" title="Click to add note"><span class="pname">${p.name}${playerNotes[p.name]?'<span style=\"margin-left:5px;font-size:9px;opacity:.7\">🗒</span>':''}</span></td>
+      <td onclick="openPlayerStats('${sn}','${p.name.replace(/'/g,"\\'")}','${p.pos}','${p.team}')" style="cursor:pointer;padding-right:2px" title="View player stats">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="pname">${p.name}</span>
+          ${playerNotes[p.name] ? `<span style="font-size:9px;opacity:.7" onclick="event.stopPropagation();openNote('${sn}')">🗒</span>` : ''}
+        </div>
+      </td>
       <td class="td-team" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
       <td class="td-pos"><span class="ppill ${p.pos}">${p.pos}</span></td>
       <td style="padding:0 4px;text-align:center;width:28px;cursor:pointer;font-size:14px;user-select:none" 
@@ -3190,7 +3774,7 @@ function renderList(){
     const mobileRow = `<div class="prow-mobile ${isDrafted?'gone':''} ${isMe?'ismine':''} ${isHot?'is-value':''}">
       <div class="pm-rank">${rank}</div>
       ${hs.replace('pimg-wrap','pm-photo pimg-wrap')}
-      <div class="pm-info">
+      <div class="pm-info" onclick="openPlayerStats('${sn}',this.dataset.n,'${p.pos}','${p.team}')" data-n="${p.name.replace(/"/g,'&quot;')}" style="cursor:pointer;flex:1">
         <div class="pm-name">${p.name}</div>
         <div class="pm-meta">
           <span class="pm-team">${p.team}</span>
@@ -3246,6 +3830,18 @@ function renderList(){
 //  RENDER STRIP
 // ════════════════════════════════════
 function renderStrip(){
+  // If no active draft, clear the strip and stats
+  if (!sleeperDraftId && !TEAMS.length) {
+    const nbadge = document.getElementById('nbadge');
+    if (nbadge) nbadge.style.display = 'none';
+    const hav = document.getElementById('hav');
+    const hgn = document.getElementById('hgn');
+    const hmi = document.getElementById('hmi');
+    if (hav) hav.textContent = '—';
+    if (hgn) hgn.textContent = '—';
+    if (hmi) hmi.textContent = '0';
+    return;
+  }
   const strip=document.getElementById('pstrip');
   if(!strip) return;
   const slots=myTeam!==null?(PICK_SLOTS[myTeam]||[]):[];
@@ -3323,6 +3919,109 @@ function renderRoster(){
 }
 
 // ════════════════════════════════════
+//  LIVE DRAFT PAGE
+// ════════════════════════════════════
+async function ldRescan() {
+  const msg = document.getElementById('ld-detector-msg');
+  const list = document.getElementById('ld-draft-list');
+  const btn = document.getElementById('ld-rescan-btn');
+  if (!msg || !list) return;
+
+  if (btn) btn.textContent = '↻ Scanning...';
+  msg.textContent = 'Scanning your leagues for active drafts...';
+  list.innerHTML = '';
+
+  try {
+    // If no user loaded yet, can't scan
+    if (!myTeamsUserId) {
+      const saved = localStorage.getItem(SK+'-username');
+      if (saved) await loadMyTeams();
+      if (!myTeamsUserId) {
+        msg.textContent = 'Connect your Sleeper account to detect active drafts.';
+        if (btn) btn.textContent = '↻ Re-scan';
+        return;
+      }
+    }
+
+    // Fetch drafts for current year
+    const year = new Date().getFullYear();
+    const res = await fetch(`https://api.sleeper.app/v1/user/${myTeamsUserId}/drafts/nfl/${year}`);
+    const drafts = await res.json();
+
+    const active = (drafts||[]).filter(d => ['drafting','in_progress','paused'].includes(d.status));
+    const upcoming = (drafts||[]).filter(d => d.status === 'pre_draft').slice(0,3);
+    const completed = (drafts||[]).filter(d => d.status === 'complete').slice(0,3);
+    const shown = [...active, ...upcoming, ...completed];
+
+    if (!shown.length) {
+      msg.textContent = 'No active drafts detected across your leagues. You can still enter a league ID manually below.';
+    } else {
+      msg.textContent = active.length
+        ? `🟢 ${active.length} active draft${active.length>1?'s':''} found across your leagues.`
+        : 'No active drafts — showing upcoming and recent below.';
+    }
+
+    list.innerHTML = shown.map(d => {
+      const isLive = ['drafting','in_progress'].includes(d.status);
+      const isPaused = d.status === 'paused';
+      const isUpcoming = d.status === 'pre_draft';
+      const isDone = d.status === 'complete';
+      const statusLabel = isLive ? '🟢 LIVE' : isPaused ? '⏸ PAUSED' : isUpcoming ? '⏳ UPCOMING' : '✓ DONE';
+      const statusCls = isLive||isPaused ? 'ld-status-live' : isUpcoming ? 'ld-status-upcoming' : 'ld-status-done';
+      const rounds = d.settings?.rounds || '?';
+      const teams = d.settings?.teams || '?';
+      const type = d.type === 'snake' ? 'Snake' : d.type === 'linear' ? 'Linear' : d.type || '';
+      return `<div class="ld-draft-item" onclick="ldSelectDraft('${d.draft_id}','${(d.metadata?.name||'Draft '+d.draft_id).replace(/'/g,"\\'")}')">
+        <div>
+          <div class="ld-draft-item-name">${d.metadata?.name || 'Draft ' + d.draft_id.slice(-6)}</div>
+          <div class="ld-draft-item-meta">${teams} teams · ${rounds} rounds · ${type}</div>
+        </div>
+        <span class="ld-draft-item-status ${statusCls}">${statusLabel}</span>
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    msg.textContent = '⚠ Could not scan drafts: ' + e.message;
+  }
+  if (btn) btn.textContent = '↻ Re-scan';
+}
+
+function ldSelectDraft(draftId, draftName) {
+  // Load this draft into the board
+  sleeperDraftId = draftId;
+  localStorage.setItem(SK+'-did', draftId);
+  ldShowBoard();
+  syncSleeper().then(() => {
+    renderAll();
+    renderBoard();
+    if (!syncTimer) syncTimer = setInterval(syncSleeper, 15000);
+  });
+}
+
+function ldLoadManual() {
+  const input = document.getElementById('ld-manual-id');
+  const id = input?.value.trim();
+  if (!id) return;
+  ldSelectDraft(id, 'Draft ' + id.slice(-6));
+}
+
+function ldShowBoard() {
+  const empty = document.getElementById('ld-empty-state');
+  const board = document.getElementById('ld-board-wrap');
+  if (empty) empty.style.display = 'none';
+  if (board) board.style.display = 'block';
+}
+
+function ldInitPage() {
+  // Show empty state if no draft loaded, otherwise show board
+  if (sleeperDraftId) {
+    ldShowBoard();
+    renderBoard();
+  }
+  ldRescan();
+}
+
+// ════════════════════════════════════
 //  RENDER DRAFT BOARD
 // ════════════════════════════════════
 function renderBoard(){
@@ -3371,7 +4070,7 @@ function renderBoard(){
   // If no Sleeper data, col = teamIdx directly
   const colCount=NUM_TEAMS;
 
-  const thStyle=`background:var(--s1);position:sticky;top:0;z-index:2;padding:9px 6px;font-size:11px;font-weight:700;border-bottom:2px solid var(--border2);font-family:Space Mono,monospace;white-space:nowrap;min-width:95px;text-align:center`;
+  const thStyle=`background:var(--s1);position:sticky;top:0;z-index:2;padding:10px 8px;font-size:11px;font-weight:600;border-bottom:1px solid var(--border2);font-family:var(--font-sans);white-space:nowrap;min-width:95px;text-align:center;color:var(--muted);text-transform:uppercase;letter-spacing:.06em`;
   const hdr='<thead><tr>'+
     `<th style="${thStyle};position:sticky;left:0;z-index:3;min-width:38px;color:var(--muted)">RND</th>`+
     TEAMS.map((n,i)=>`<th style="${thStyle};color:${i===myTeam?COLORS[i%COLORS.length]:'var(--text2)'}${i===myTeam?';border-bottom:2px solid '+COLORS[i%COLORS.length]:''}">${n}</th>`).join('')+
@@ -3900,6 +4599,51 @@ async function fetchFantasyCalc() {
   }
 }
 
+// ── ROSTER DIAGNOSTIC — call diagRoster() from browser console to see mappings ──
+async function diagRoster() {
+  if (!ovLeagueId && !teamsLeagueId) { console.log('No league selected'); return; }
+  const lid = ovLeagueId || teamsLeagueId;
+  if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+  const [rosters, users] = await Promise.all([
+    fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
+    fetch(`https://api.sleeper.app/v1/league/${lid}/users`).then(r=>r.json()),
+  ]);
+  const userMap = buildUserMap(users);
+  const myRoster = rosters.find(r=>r.owner_id===myTeamsUserId);
+  if (!myRoster) { console.log('Roster not found'); return; }
+  console.log('=== MY ROSTER MAPPING ===');
+  (myRoster.players||[]).forEach(pid => {
+    const mapped = globalPidToName[String(pid)];
+    console.log(`PID ${pid} → "${mapped||'UNMAPPED'}" (in PLAYERS: ${PLAYERS.some(p=>p.name===mapped)?'✓':'✗ NOT FOUND'})`);
+  });
+}
+window.diagRoster = diagRoster;
+// Updates globalPidToName with authoritative Sleeper IDs from RA
+async function fetchLiveRankings() {
+  try {
+    const res = await fetch('https://rosteraudit.com/wp-json/ra/v1/rankings?format=sf&per_page=100&sort=value');
+    if (!res.ok) return;
+    const data = await res.json();
+    const players = Array.isArray(data) ? data : (data?.players || data?.data || []);
+    if (!players.length) return;
+    players.forEach((rp, i) => {
+      if (!rp.name || !rp.sleeper_id) return;
+      const pid = String(rp.sleeper_id);
+      const normN = normName(rp.name);
+      const canon = PLAYERS.find(p => normName(p.name) === normN);
+      if (canon) {
+        if (!globalPidToName[pid]) globalPidToName[pid] = canon.name;
+        if (!sleeperPlayerMap[normN]) sleeperPlayerMap[normN] = {};
+        sleeperPlayerMap[normN].player_id = pid;
+      } else if (!globalPidToName[pid]) {
+        globalPidToName[pid] = rp.name;
+      }
+    });
+    console.log('[SnapDraft] RA live rankings applied:', players.length, 'players');
+  } catch(e) { /* optional */ }
+}
+
+
 async function fetchRosterAudit() {
   if (raLoading) return;
   raLoading = true;
@@ -3921,8 +4665,19 @@ async function fetchRosterAudit() {
       raValues[sid] = {
         sf: vals.sf || 0,
         oneqb: vals['1qb'] || 0,
-        trend: 0, // trends not in this endpoint, fetched separately below
+        trend: 0,
       };
+      // Augment globalPidToName using RA's Sleeper-ID-keyed data
+      // RA keys are definitive Sleeper IDs — use to fix wrong name mappings
+      if (vals.name && sid && !PLAYER_IDS[vals.name]) {
+        const pidStr = String(sid);
+        if (!globalPidToName[pidStr]) {
+          // Try to find canonical name in PLAYERS[]
+          const normN = normName(vals.name);
+          const canon = PLAYERS.find(p => normName(p.name) === normN);
+          globalPidToName[pidStr] = canon ? canon.name : vals.name;
+        }
+      }
     });
 
     // Fetch top movers separately using rankings endpoint with sort=trend
@@ -3947,6 +4702,7 @@ async function fetchRosterAudit() {
 
     raLoaded = true;
     raLoading = false;
+    fetchLiveRankings(); // update pid->name map with RA's authoritative IDs
     const count = Object.keys(raValues).length;
     if (statusEl) statusEl.textContent = `✓ RosterAudit · ${count} players`;
     renderTeams();
@@ -4080,7 +4836,11 @@ async function renderTeamsFromLeague(leagueId) {
   const prEl = document.getElementById('power-rankings');
   if (!prEl) return;
   try {
-    if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+    // Always ensure player map is fully loaded before building rosters
+    if (!sleeperPlayersLoaded) {
+      prEl.innerHTML = '<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div> Loading player data...</div>';
+      await fetchSleeperPlayers();
+    }
     const [rosters, users] = await Promise.all([
       fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
       fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
@@ -4098,7 +4858,11 @@ async function renderTeamsFromLeague(leagueId) {
       const roster = playerIds.map(pid => {
         const pname = globalPidToName[String(pid)];
         if (!pname) return null;
-        return PLAYERS.find(p=>p.name===pname) || {name:pname,pos:'?',team:''};
+        const found = PLAYERS.find(p=>p.name===pname);
+        if (found) return found;
+        // Player not in rankings — still include with FC data
+        const fcv = getFCValue(pname);
+        return { name: pname, pos: fcv?.position || '?', team: fcv?.team || '' };
       }).filter(Boolean);
 
       const fcTotal = roster.reduce((s,p) => s + getPlayerValue(p.name), 0);
@@ -4153,7 +4917,10 @@ function renderTeamsFromDraft() {
   renderPowerRankingsTable(teamData);
 }
 
+let _lastTeamData = []; // store for selectTeamRow access in league mode
+
 function renderPowerRankingsTable(teamData) {
+  _lastTeamData = teamData; // cache for row clicks
   const prEl = document.getElementById('power-rankings');
   if (!prEl) return;
 
@@ -4237,27 +5004,75 @@ function renderTeamsFallback() {
 
 function selectTeamRow(idx) {
   const detail = document.getElementById('team-detail');
-  const csec = document.getElementById('csec');
-
+  const csec   = document.getElementById('csec');
   cmpTeam = idx;
-  // Update row highlighting
   document.querySelectorAll('.pr-table tr').forEach(r => r.classList.remove('selected-row'));
 
-  renderTeamDetail(idx);
-  detail.style.display = 'block';
-  setTimeout(() => detail.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-
-  if (myTeam !== null && idx !== myTeam) {
-    csec.style.display = 'block';
-    renderComp(idx);
+  if (teamsLeagueId) {
+    // League mode — use cached team data
+    renderTeamDetailFromCache(idx);
   } else {
-    csec.style.display = 'none';
+    renderTeamDetail(idx);
+    if (myTeam !== null && idx !== myTeam && csec) { csec.style.display='block'; renderComp(idx); }
+    else if (csec) csec.style.display='none';
   }
-  renderTeams(); // re-render to update row highlight
+  if (detail) { detail.style.display='block'; setTimeout(()=>detail.scrollIntoView({behavior:'smooth',block:'start'}),50); }
+  renderTeams();
+}
+
+function renderTeamDetailFromCache(idx) {
+  // Find team in cached data by idx
+  const team = _lastTeamData.find(t => t.idx === idx);
+  const titleEl = document.getElementById('detail-title');
+  const contentEl = document.getElementById('detail-content');
+  if (!titleEl || !contentEl) return;
+
+  if (!team) { titleEl.textContent = 'Team not found'; contentEl.innerHTML = ''; return; }
+
+  const c = COLORS[idx % COLORS.length];
+  titleEl.innerHTML = `<span style="color:${c}">${team.name}</span> <em>ROSTER</em>`;
+
+  const byPos = {QB:[],RB:[],WR:[],TE:[]};
+  (team.roster||[]).forEach(p => { if(byPos[p.pos]) byPos[p.pos].push(p); });
+  Object.values(byPos).forEach(arr => arr.sort((a,b)=>getPlayerValue(b.name)-getPlayerValue(a.name)));
+
+  const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+
+  contentEl.innerHTML = `
+    <div class="roster-grid">
+      ${['QB','RB','WR','TE'].map(pos => {
+        const players = byPos[pos];
+        const posTotal = players.reduce((s,p)=>s+getPlayerValue(p.name),0);
+        return `<div class="roster-pos-group">
+          <div class="roster-pos-title">
+            <span style="color:${posColors[pos]}">${pos} · ${players.length}</span>
+            ${posTotal ? `<span style="color:${posColors[pos]};font-size:10px">${posTotal.toLocaleString()}</span>` : ''}
+          </div>
+          ${players.length ? players.map(p => {
+            const fc = getFCValue(p.name);
+            const pVal = getPlayerValue(p.name);
+            const trendC = fc?.trend>0?'var(--rb)':fc?.trend<0?'var(--qb)':'var(--muted)';
+            const trendStr = fc?.trend?(fc.trend>0?'▲'+fc.trend:'▼'+Math.abs(fc.trend)):'';
+            return `<div class="roster-player">
+              <div>
+                <div class="rp-name">${p.name}</div>
+                <div class="rp-meta">${p.team||''}${fc?.age?` · Age ${fc.age}`:''}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="rp-val" style="color:${posColors[pos]}">${pVal?pVal.toLocaleString():'—'}</div>
+                ${trendStr?`<div class="rp-trend" style="color:${trendC}">${trendStr}</div>`:''}
+              </div>
+            </div>`;
+          }).join('') : `<div style="font-size:12px;color:var(--muted);padding:8px">No ${pos}s</div>`}
+        </div>`;
+      }).join('')}
+    </div>
+    ${team.isMe ? '<div style="text-align:center;margin-top:12px"><button class="sbtn on" onclick="showPage(\'overview\')">View Full Dashboard →</button></div>' : ''}` ;
 }
 
 function renderTeamDetail(idx) {
-  const n = TEAMS[idx];
+  if (teamsLeagueId) { renderTeamDetailFromCache(idx); return; }
+  const n = TEAMS[idx] || `Team ${idx+1}`;
   const c = COLORS[idx % COLORS.length];
   const r = getRoster(idx);
   document.getElementById('detail-title').innerHTML = `<span style="color:${c}">${n}</span> <em>ROSTER</em>`;
@@ -4420,40 +5235,47 @@ function updateUserHeader(user) {
 }
 
 // Global league switcher — syncs League Analyzer, My Team overview, and Standings
-function switchGlobalLeague(leagueId) {
-  // Update all page-specific states
+async function switchGlobalLeague(leagueId) {
   teamsLeagueId = leagueId || null;
   ovLeagueId = leagueId || null;
-  // Clear caches so fresh data loads
   _txCache = null; _rosterCache = null; _usersCache = null;
 
-  // Update league name shown in overview subtitle
   const league = myTeamsData.find(l => l.league_id === leagueId);
   const nameEl = document.getElementById('la-league-name');
   if (nameEl) nameEl.textContent = league?.name || '';
   const ovSub = document.getElementById('ov-subtitle');
   if (ovSub) ovSub.textContent = league?.name || (leagueId ? 'League' : 'Current Draft');
 
-  // Sync all other dropdowns to same selection
-  ['la-league-select','ov-league-select'].forEach(id => {
+  // Sync all dropdowns
+  ['la-league-select','ov-league-select','header-league-select'].forEach(id => {
     const sel = document.getElementById(id);
-    if (sel) sel.value = leagueId || '';
+    if (sel && leagueId) sel.value = leagueId;
   });
 
-  // Re-render whichever page is active
+  // Navigate to My Team and render
   const active = document.querySelector('.page.on')?.id;
-  if (active === 'page-teams') renderTeams();
-  else renderOverview(); // always refresh overview too
+  if (active === 'page-teams') {
+    renderTeams();
+  } else {
+    if (active !== 'page-overview') showPage('overview');
+    await renderOverview(); // await so data actually loads
+  }
 }
 
 function populateHeaderLeague() {
   const sel = document.getElementById('header-league-select');
   const wrap = document.getElementById('header-league-wrap');
   if (!sel || !wrap) return;
-  const leagues = myTeamsData.filter(l => l.season==='2026'||l.season==='2025');
+  let leagues = myTeamsData.filter(l => l.season==='2026'||l.season==='2025');
   if (!leagues.length) { wrap.style.display='none'; return; }
+  // Filter to user-selected leagues if they've made a selection
+  const saved = localStorage.getItem(SK+'-selected-leagues');
+  const selectedIds = saved ? JSON.parse(saved) : null;
+  if (selectedIds?.length) {
+    leagues = leagues.filter(l => selectedIds.includes(l.league_id));
+  }
   wrap.style.display = '';
-  sel.innerHTML = `<option value="">📋 Current Draft</option>` +
+  sel.innerHTML = `<option value="" disabled ${!teamsLeagueId?'selected':''}>Select League</option>` +
     leagues.map(l => {
       const active = l.status === 'in_season';
       return `<option value="${l.league_id}" ${l.league_id===teamsLeagueId?'selected':''}>${active?'🟢 ':''}${l.name||'League'}</option>`;
@@ -5474,6 +6296,10 @@ window.addEventListener('load', () => {
     }
   }
 
+  // Clear old broken player cache versions on startup
+  ['snapdraft-players-v2','snapdraft-players-time-v2','snapdraft-players-v1','snapdraft-pidmap-v3','snapdraft-pidmap-time-v3'].forEach(k => {
+    try { localStorage.removeItem(k); } catch(e) {}
+  });
   // Always start on setup step 1
   showSetupStep(1);
   // Overview is default page
