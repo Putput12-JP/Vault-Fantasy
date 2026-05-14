@@ -1986,7 +1986,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <div class="hstat desktop-only" style="text-align:center"><b id="hgn" style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text)">—</b><br><small style="font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-family:var(--font-mono)">GONE</small></div>
     <div class="hstat desktop-only" style="text-align:center"><b id="hmi" style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text)">0</b><br><small style="font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-family:var(--font-mono)">MINE</small></div>
     <div class="next-badge desktop-only" id="nbadge" style="font-family:var(--font-mono);font-size:11px;font-weight:700;padding:6px 14px;border-radius:6px;background:linear-gradient(135deg,#cc003c,#ff4d6d);color:#fff;white-space:nowrap">NEXT: —</div>
-    <div class="sync-wrap" style="display:flex;align-items:center;gap:6px">
+    <div class="sync-wrap" id="sync-wrap" style="display:none;align-items:center;gap:6px">
       <div class="sync-dot" id="sdot" style="width:8px;height:8px;border-radius:50%;background:#909097"></div>
       <span class="sync-lbl desktop-only" id="slbl" style="font-size:11px;color:#909097;font-family:var(--font-mono)">OFFLINE</span>
     </div>
@@ -2129,7 +2129,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <div class="proto-page-hdr">
       <div>
         <h1 class="proto-h1">Team Review</h1>
-        <p class="proto-sub">A comprehensive performance audit and roster breakdown. AI-driven projections are based on your 2024 league settings.</p>
+        <p class="proto-sub">A comprehensive performance audit and roster breakdown. AI-driven projections are based on your <span id="ov-season-year">current</span> league settings.</p>
       </div>
       <button class="proto-btn-ghost" onclick="forceRefreshRosterData()">
         <span style="font-size:16px">↻</span> SYNC WITH SLEEPER
@@ -4483,10 +4483,12 @@ function startSync(){
 function setSyncStatus(s){
   const d=document.getElementById('sdot');
   const l=document.getElementById('slbl');
+  const wrap=document.getElementById('sync-wrap');
   const btn=document.getElementById('resync-btn');
   if(d) d.className='sync-dot'+(s==='live'?' live':s==='err'?' err':'');
   if(l) l.textContent=s==='live'?'LIVE':s==='err'?'ERR':'OFFLINE';
-  
+  // Only show the sync indicator when a draft is connected (live or error); hide when offline/no draft
+  if(wrap) wrap.style.display = (sleeperDraftId && s!=='offline') || s==='live' || s==='err' ? 'flex' : 'none';
   if(btn) btn.style.display=sleeperDraftId?'inline-block':'none';
   if(btn) { btn.style.color=s==='live'?'var(--rb)':'var(--muted)'; btn.style.borderColor=s==='live'?'var(--rb)':'var(--border2)'; }
 }
@@ -5145,6 +5147,9 @@ async function renderOverview() {
       const userMap = buildUserMap(users);
       const league = myTeamsData.find(l => l.league_id === ovLeagueId);
       leagueName = league?.name || '';
+      // Update season year in subtitle dynamically
+      const seasonYearEl = document.getElementById('ov-season-year');
+      if (seasonYearEl && league?.season) seasonYearEl.textContent = league.season;
       const myRoster_raw = rosters.find(r => r.owner_id === myTeamsUserId);
       if (!myRoster_raw) { el.innerHTML = '<div class="fc-error">Could not find your roster.</div>'; _ovRendering = false; return; }
       teamName = userMap[myTeamsUserId] || 'My Team';
@@ -5172,7 +5177,7 @@ async function renderOverview() {
         
         const fcv = getFCValue(name);
         console.warn('[Vault] Player not in rankings:', name, '(pid', pid, ')');
-        return { name, pos: fcv?.position || '?', team: fcv?.team || '', fcVal: getPlayerValue(name) };
+        return { name, pos: fcv?.pos || fcv?.position || '?', team: fcv?.team || '', fcVal: getPlayerValue(name) };
       }).filter(x => x !== null);
       const unmapped = pids.filter(p=>!globalPidToName[String(p)]);
       if (unmapped.length) console.warn('[Vault] Unmapped pids:', unmapped);
@@ -6545,6 +6550,14 @@ async function fetchFantasyCalc() {
     fcLoading = false;
     if (statusEl) statusEl.textContent = `✓ FC loaded · ${Object.keys(fcValues).length/2|0} players`;
     renderTeams();
+    // Re-render overview if it's showing so positions/values update from ? to real data
+    const activePage = document.querySelector('.page.on')?.id;
+    if (activePage === 'page-overview') {
+      _ovRendering = false; // reset guard so re-render is allowed
+      renderOverview();
+    }
+    // Re-render trade roster chips with correct positions
+    if (activePage === 'page-trade') renderTradeRosterChips();
   } catch(e) {
     fcLoading = false;
     if (statusEl) statusEl.textContent = '⚠ FC load failed';
@@ -6925,7 +6938,7 @@ async function renderTeamsFromLeague(leagueId) {
         }
         if (found) return found;
         const fcv = getFCValue(pname);
-        return { name: pname, pos: fcv?.position || '?', team: fcv?.team || '' };
+        return { name: pname, pos: fcv?.pos || fcv?.position || '?', team: fcv?.team || '' };
       }).filter(Boolean);
 
       const fcTotal = roster.reduce((s,p) => s + getPlayerValue(p.name), 0);
@@ -7702,11 +7715,20 @@ function searchTrade(side) {
 
 function addTradeAsset(side, name, type, val) {
   if (tradeAssets[side].find(a => a.name === name)) return;
-  tradeAssets[side].push({ name, type, val, age: getFCValue(name)?.age || null });
+  // Resolve pos now while we have it (from search result context)
+  const inPlayers = PLAYERS.find(p => p.name === name);
+  const fcv = getFCValue(name);
+  const sp = sleeperPlayerMap[normName(name)];
+  const pos = type === 'pick' ? 'PICK'
+    : (inPlayers?.pos && inPlayers.pos !== '?' ? inPlayers.pos
+      : fcv?.pos || fcv?.position
+      || sp?.position || '?');
+  const team = type === 'pick' ? ''
+    : (inPlayers?.team || fcv?.team || sp?.team || '');
+  tradeAssets[side].push({ name, type, val, pos, team, age: fcv?.age || null });
   document.getElementById(`trade-search-${side}`).value = '';
   document.getElementById(`trade-results-${side}`).classList.remove('show');
   renderTradeAssets();
-  // Don't auto-evaluate — user must click Analyze Trade
 }
 
 function removeTradeAsset(side, name) {
@@ -7730,8 +7752,9 @@ function renderTradeAssets() {
 
     el.innerHTML = tradeAssets[side].map(a => {
       const player = PLAYERS.find(p => p.name === a.name);
-      const pos = a.type === 'pick' ? 'PICK' : (player?.pos || '?');
-      const team = a.type === 'pick' ? '' : (player?.team || getFCValue(a.name)?.team || '');
+      // Use stored pos/team first (set at add-time), fall back to live lookup
+      const pos = a.type === 'pick' ? 'PICK' : (a.pos && a.pos !== '?' ? a.pos : (player?.pos || getFCValue(a.name)?.pos || '?'));
+      const team = a.type === 'pick' ? '' : (a.team || player?.team || getFCValue(a.name)?.team || '');
       const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
       const posColor = a.type === 'pick' ? 'var(--te)' : (posColors[pos] || 'var(--accent2)');
       const sideColor = side === 'a' ? 'var(--sky)' : 'var(--accent2)';
