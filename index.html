@@ -5172,28 +5172,29 @@ async function renderOverview() {
 
   // ── Computed variables for the rebuilt template ──
   // Grade using league-relative percentile (same as League Grades tab)
-  // so My Team grade matches what user sees in League Analyzer
   const leagueGradeScale = (() => {
     if (!_lastTeamData || _lastTeamData.length < 2) return null;
     const vals = _lastTeamData.map(t => t.fcTotal || 0).sort((a,b) => b-a);
     const max = vals[0] || 1, min = vals[vals.length-1] || 0, range = max-min || 1;
     return { max, min, range };
   })();
-  // Composite grade from all position grades
-  const gradeOrder = ['A+','A','A-','B+','B','B-','C+','C','C-','D','F'];
-  let compositeGrade, gradeWidth;
-  if (leagueGradeScale && totalVal > 0) {
-    // League-relative grade — matches League Grades tab exactly
-    const pct = (totalVal - leagueGradeScale.min) / leagueGradeScale.range;
-    compositeGrade = pct>0.85?'A+':pct>0.70?'A':pct>0.55?'B+':pct>0.40?'B':pct>0.25?'C+':pct>0.10?'C':'D';
-    gradeWidth = Math.max(20, Math.round(pct * 100));
-  } else {
-    // Fallback to position-based grades when league data not loaded
-    const posGradeNums = ['QB','RB','WR','TE'].map(pos => gradeOrder.indexOf(grades[pos]?.g||'B-')).filter(n=>n>=0);
-    const avgGradeIdx = posGradeNums.length ? Math.round(posGradeNums.reduce((a,b)=>a+b,0)/posGradeNums.length) : 4;
-    compositeGrade = gradeOrder[Math.min(avgGradeIdx, gradeOrder.length-1)];
-    gradeWidth = Math.max(20, Math.round(100 - avgGradeIdx * 9));
-  }h = Math.max(20, Math.round(100 - avgGradeIdx * 9));
+  const _gradeOrder = ['A+','A','A-','B+','B','B-','C+','C','C-','D','F'];
+  const posGradeNums = ['QB','RB','WR','TE'].map(pos => _gradeOrder.indexOf(grades[pos]?.g||'B-')).filter(n=>n>=0);
+  const compositeGrade = (() => {
+    if (leagueGradeScale && totalVal > 0) {
+      const pct = (totalVal - leagueGradeScale.min) / leagueGradeScale.range;
+      return pct>0.85?'A+':pct>0.70?'A':pct>0.55?'B+':pct>0.40?'B':pct>0.25?'C+':pct>0.10?'C':'D';
+    }
+    const ai = posGradeNums.length ? Math.round(posGradeNums.reduce((a,b)=>a+b,0)/posGradeNums.length) : 4;
+    return _gradeOrder[Math.min(ai, _gradeOrder.length-1)];
+  })();
+  const gradeWidth = (() => {
+    if (leagueGradeScale && totalVal > 0) {
+      const pct = (totalVal - leagueGradeScale.min) / leagueGradeScale.range;
+      return Math.max(20, Math.round(pct * 100));
+    }
+    return Math.max(20, Math.round(100 - _gradeOrder.indexOf(compositeGrade) * 9));
+  })();
 
   // Best position for "Top X% in Y depth" blurb
   const bestPosIdx = posGradeNums.indexOf(Math.min(...posGradeNums));
@@ -5438,13 +5439,22 @@ async function loadOvRoster() {
   // Dedup combined players+reserve (Sleeper sometimes duplicates across arrays)
   const allPids = [...new Set([...(myR.players||[]), ...(myR.reserve||[])].map(String))];
 
-  return allPids.map(pid => {
+  const resolved = allPids.map(pid => {
     const name = globalPidToName[pid];
     if (!name) return null;
     const p = PLAYERS.find(x=>x.name===name) || {name, pos:'?', team:''};
     const isStarter = starterPids.has(pid);
     return {...p, fcVal:getPlayerValue(name), sleeperId: pid, isStarter};
   }).filter(Boolean);
+  // Dedup by name — Sleeper has multiple pids mapping to same player name (e.g. retired+active)
+  // Keep the one with higher FC value (current player)
+  const seen = new Map();
+  for (const p of resolved) {
+    if (!seen.has(p.name) || (p.fcVal||0) > (seen.get(p.name).fcVal||0)) {
+      seen.set(p.name, p);
+    }
+  }
+  return [...seen.values()];
 }
 
 function gradePos(players) {
@@ -7233,11 +7243,13 @@ function populateHeaderLeague() {
     leagues = leagues.filter(l => selectedIds.includes(l.league_id));
   }
   wrap.style.display = '';
-  sel.innerHTML = `<option value="" disabled ${!teamsLeagueId?'selected':''}>Select League</option>` +
+  sel.innerHTML = `<option value="" disabled>Select League</option>` +
     leagues.map(l => {
       const active = l.status === 'in_season';
-      return `<option value="${l.league_id}" ${l.league_id===teamsLeagueId?'selected':''}>${active?'🟢 ':''}${l.name||'League'}</option>`;
+      return `<option value="${l.league_id}">${active?'🟢 ':''}${l.name||'League'}</option>`;
     }).join('');
+  // Force-select after building — avoids race condition with disabled placeholder
+  if (teamsLeagueId) sel.value = teamsLeagueId;
 }
 
 // ════════════════════════════════════
