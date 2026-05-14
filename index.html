@@ -3151,12 +3151,17 @@ function lpSelectAll(checked) {
   document.querySelectorAll('input[name="lp-league"]').forEach(cb => cb.checked = checked);
 }
 
-function lpConfirm() {
+async function lpConfirm() {
   const checked = [...document.querySelectorAll('input[name="lp-league"]:checked')];
   if (!checked.length) { toast('Select at least one league'); return; }
   const ids = checked.map(c => c.value);
   localStorage.setItem(SK+'-selected-leagues', JSON.stringify(ids));
-  switchGlobalLeague(ids[0]);
+  // Show loading immediately so the picker doesn't flicker back
+  const el = document.getElementById('ov-content');
+  if (el) el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div>&nbsp; Loading your team...</div>`;
+  // Populate header dropdown with selected leagues before navigating
+  populateHeaderLeague();
+  await switchGlobalLeague(ids[0]);
 }
 
 async function forceRefreshRosterData() {
@@ -5017,16 +5022,19 @@ function populateOverviewDropdown() {
     leagues.map(l => `<option value="${l.league_id}" ${l.league_id===ovLeagueId?'selected':''}>${l.status==='in_season'?'🟢 ':''}${l.name||'League'} (${l.season})</option>`).join('');
 }
 
+let _ovRendering = false;
 async function renderOverview() {
+  if (_ovRendering) return;
+  _ovRendering = true;
   const el = document.getElementById('ov-content');
-  if (!el) return;
-  if (ovTab === 'roster') { renderOverviewRoster(el); return; }
+  if (!el) { _ovRendering = false; return; }
+  if (ovTab === 'roster') { renderOverviewRoster(el); _ovRendering = false; return; }
 
   if (!fcLoaded && !fcLoading) fetchFantasyCalc();
 
   const draftRoster = getMyRoster();
   const hasContext = ovLeagueId || draftRoster.length > 0;
-  if (!hasContext) { showLeaguePicker(el); return; }
+  if (!hasContext) { _ovRendering = false; showLeaguePicker(el); return; }
 
   el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div>&nbsp; Loading your team...</div>`;
 
@@ -5036,14 +5044,14 @@ async function renderOverview() {
   if (ovLeagueId) {
     try {
       const ctx = await getLeagueContext_ov();
-      if (!ctx) { el.innerHTML = '<div class="fc-error">Could not load league.</div>'; return; }
+      if (!ctx) { el.innerHTML = '<div class="fc-error">Could not load league.</div>'; _ovRendering = false; return; }
       const { rosters, users } = ctx;
       if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
       const userMap = buildUserMap(users);
       const league = myTeamsData.find(l => l.league_id === ovLeagueId);
       leagueName = league?.name || '';
       const myRoster_raw = rosters.find(r => r.owner_id === myTeamsUserId);
-      if (!myRoster_raw) { el.innerHTML = '<div class="fc-error">Could not find your roster.</div>'; return; }
+      if (!myRoster_raw) { el.innerHTML = '<div class="fc-error">Could not find your roster.</div>'; _ovRendering = false; return; }
       teamName = userMap[myTeamsUserId] || 'My Team';
       const pids = [...(myRoster_raw.players||[]), ...(myRoster_raw.reserve||[])];
       roster = pids.map(pid => {
@@ -5083,7 +5091,7 @@ async function renderOverview() {
       totalTeams = allTeamVals.length;
       const nameEl = document.getElementById('ov-subtitle');
       if (nameEl) nameEl.textContent = `${teamName} - managed by ${mySleeperUser?.display_name||mySleeperUser?.username||''}`;
-    } catch(e) { el.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`; return; }
+    } catch(e) { el.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`; _ovRendering = false; return; }
   } else {
     roster = getMyRoster();
     teamName = TEAMS[myTeam] || 'My Team';
@@ -5094,7 +5102,7 @@ async function renderOverview() {
     }
   }
 
-  if (!roster.length) { showLeaguePicker(el); return; }
+  if (!roster.length) { _ovRendering = false; showLeaguePicker(el); return; }
 
   
   const byPos = {QB:[],RB:[],WR:[],TE:[]};
@@ -5377,6 +5385,7 @@ async function renderOverview() {
     </div>
   </div>
 `
+  _ovRendering = false;
 }
 
 async function getLeagueContext_ov() {
@@ -7209,24 +7218,24 @@ async function switchGlobalLeague(leagueId) {
   ovLeagueId = leagueId || null;
   _txCache = null; _rosterCache = null; _usersCache = null;
   window._cachedTradeRoster = null; // reset when league changes
+  const leagueObj = myTeamsData.find(l => l.league_id === leagueId);
   const nameEl = document.getElementById('la-league-name');
-  if (nameEl) nameEl.textContent = league?.name || '';
+  if (nameEl) nameEl.textContent = leagueObj?.name || '';
   const ovSub = document.getElementById('ov-subtitle');
-  if (ovSub) ovSub.textContent = league?.name || (leagueId ? 'League' : 'Current Draft');
+  if (ovSub) ovSub.textContent = leagueObj?.name || (leagueId ? 'League' : 'Current Draft');
 
-  
+  populateHeaderLeague();
   ['la-league-select','ov-league-select','header-league-select'].forEach(id => {
     const sel = document.getElementById(id);
     if (sel && leagueId) sel.value = leagueId;
   });
 
-  
   const active = document.querySelector('.page.on')?.id;
   if (active === 'page-teams') {
     renderTeams();
   } else {
     if (active !== 'page-overview') showPage('overview');
-    await renderOverview(); 
+    else await renderOverview(); // already on overview, render directly
   }
 }
 
