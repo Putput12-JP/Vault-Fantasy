@@ -6347,40 +6347,23 @@ function populateAnalyzerDropdown() {
 
 function setTeamsTab(tab) {
   teamsTab = tab;
-  // Update tab button active states
   ['pr','mv','tx','st','gr'].forEach(t => document.getElementById(`teams-tab-${t}`)?.classList.toggle('on', t===tab));
 
-  // Hide all sub-sections
-  ['team-detail','csec'].forEach(id => { const el=document.getElementById(id); if(el)el.style.display='none'; });
-
-  // Explicitly control power-rankings and draft-grades-panel visibility per tab
+  // power-rankings div is the CONTENT CONTAINER for ALL tabs
+  // Always show it — each render function writes its content into it
   const pr = document.getElementById('power-rankings');
   const dg = document.getElementById('draft-grades-panel');
+  if (pr) pr.style.display = '';
+  if (dg) dg.style.display = 'none';
 
-  if (tab === 'pr') {
-    // Rankings — show power-rankings, hide grades panel
-    if (pr) pr.style.display = '';
-    if (dg) dg.style.display = 'none';
-    renderTeams();
-  } else if (tab === 'gr') {
-    // Grades — show power-rankings div (used as container), hide separate grades panel
-    if (pr) pr.style.display = '';
-    if (dg) dg.style.display = 'none';
-    renderDraftGrades();
-  } else if (tab === 'mv') {
-    // Movers — hide rankings table
-    if (pr) pr.style.display = 'none';
-    if (dg) dg.style.display = 'none';
-    renderMovers();
-  } else if (tab === 'tx') {
-    if (pr) pr.style.display = 'none';
-    if (dg) dg.style.display = 'none';
-    renderTransactions();
-  } else if (tab === 'st') {
-    if (pr) pr.style.display = 'none';
-    if (dg) dg.style.display = 'none';
-    renderStandings();
-  }
+  // Hide sub-panels used only by Rankings tab
+  ['team-detail','csec'].forEach(id => { const el=document.getElementById(id); if(el)el.style.display='none'; });
+
+  if (tab === 'pr')       renderTeams();
+  else if (tab === 'mv')  renderMovers();
+  else if (tab === 'tx')  renderTransactions();
+  else if (tab === 'st')  renderStandings();
+  else if (tab === 'gr')  renderDraftGrades();
 }
 
 function refreshValues() {
@@ -6654,7 +6637,7 @@ function renderMovers() {
   const el = document.getElementById('power-rankings');
   if (!el) return;
 
-  // If data not loaded yet but league is selected, trigger load first then re-render
+  // If data not loaded yet but league is selected, trigger load first
   const leagueTeams = _lastTeamData || [];
   if (!leagueTeams.length) {
     if (teamsLeagueId) {
@@ -6667,52 +6650,61 @@ function renderMovers() {
     el.innerHTML = '<div style="text-align:center;padding:40px;color:#909097;font-size:14px"><div style="font-size:28px;margin-bottom:12px">⚡</div><div style="font-weight:600;color:#d4e4fa;margin-bottom:8px">Select a league</div><p style="font-size:13px;line-height:1.6">Choose a league from the dropdown above to see value movers.</p></div>';
     return;
   }
+
+  // Build player list with trend data — use raTrend from roster object OR FC trend
   const allRostered = leagueTeams.flatMap(t =>
     (t.roster||[]).map(p => ({
       name: typeof p === 'string' ? p : p.name,
-      pos: typeof p === 'object' ? p.pos : '?',
-      teamName: t.name || 'Team',
-      teamIdx: t.idx || 0
+      pos: typeof p === 'object' ? (p.pos||'?') : '?',
+      teamName: t.name || 'Team',   // FIX: use t.name not TEAMS[idx]
+      teamIdx: t.idx || 0,
+      raTrend: typeof p === 'object' ? (parseFloat(p.raTrend)||0) : 0,
     }))
   );
+
   const withTrend = allRostered
-    .map(p => ({ ...p, val: getPlayerValue(p.name), trend: getPlayerTrend(p.name)||getFCValue(p.name)?.trend||0 }))
+    .map(p => ({
+      ...p,
+      val: getPlayerValue(p.name)||0,
+      // Use raTrend from roster object first, then FC trend, then getPlayerTrend
+      trend: p.raTrend || getFCValue(p.name)?.trend || getPlayerTrend(p.name) || 0
+    }))
     .filter(p => p.trend !== 0)
     .sort((a,b) => Math.abs(b.trend) - Math.abs(a.trend))
     .slice(0, 30);
 
   if (!withTrend.length) {
-    el.innerHTML = '<div style="text-align:center;padding:40px;color:#909097;font-size:14px"><div style="font-size:28px;margin-bottom:12px">📈</div><div style="font-weight:600;color:#d4e4fa;margin-bottom:8px">No trend data yet</div><p style="font-size:13px;line-height:1.6">Trend data loads from RosterAudit. Make sure RA values are selected (RA button in header).</p></div>';
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:#909097;font-size:14px"><div style="font-size:28px;margin-bottom:12px">📈</div><div style="font-weight:600;color:#d4e4fa;margin-bottom:8px">No trend data yet</div><p style="font-size:13px;line-height:1.6">Trend data loads from RosterAudit. Make sure RA values are selected.</p></div>';
     return;
   }
 
   const risers = withTrend.filter(p => p.trend > 0);
   const fallers = withTrend.filter(p => p.trend < 0);
 
-  const renderList = (players, color, icon) => players.map(p => {
-    const c = COLORS[p.teamIdx % COLORS.length];
+  const renderMoverList = (players, color, icon) => players.map(p => {
+    const teamColor = COLORS[p.teamIdx % COLORS.length];
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border)">
       <div style="min-width:28px;font-size:18px;text-align:center">${icon}</div>
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:600">${p.name}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace">${p.pos} · <span style="color:${c}">${TEAMS[p.teamIdx]}</span></div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${p.pos} · <span style="color:${teamColor}">${p.teamName}</span></div>
       </div>
       <div style="text-align:right">
-        <div style="font-size:13px;font-weight:700;font-family:Space Mono,monospace;color:${color}">${p.trend>0?'+':''}${p.trend}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace">${p.val.toLocaleString()}</div>
+        <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);color:${color}">${p.trend>0?'+':''}${p.trend}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${p.val.toLocaleString()}</div>
       </div>
     </div>`;
   }).join('');
 
   el.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px">
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--rb);font-family:Space Mono,monospace;text-transform:uppercase;letter-spacing:.1em;padding:8px 12px;background:var(--s1);border-radius:8px 8px 0 0;border:1px solid var(--border)">▲ Rising</div>
-        <div style="background:var(--s1);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px">${renderList(risers,'var(--rb)','📈')}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--rb);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.1em;padding:8px 12px;background:var(--s1);border-radius:8px 8px 0 0;border:1px solid var(--border)">▲ RISING</div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px">${renderMoverList(risers,'var(--rb)','📈')}</div>
       </div>
       <div>
-        <div style="font-size:11px;font-weight:700;color:var(--qb);font-family:Space Mono,monospace;text-transform:uppercase;letter-spacing:.1em;padding:8px 12px;background:var(--s1);border-radius:8px 8px 0 0;border:1px solid var(--border)">▼ Falling</div>
-        <div style="background:var(--s1);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px">${renderList(fallers,'var(--qb)','📉')}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--qb);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.1em;padding:8px 12px;background:var(--s1);border-radius:8px 8px 0 0;border:1px solid var(--border)">▼ FALLING</div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px">${renderMoverList(fallers,'var(--qb)','📉')}</div>
       </div>
     </div>`;
 }
