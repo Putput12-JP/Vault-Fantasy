@@ -3277,7 +3277,10 @@ function _resRenderLeaderboard(players) {
           <div style="width:36px;height:36px;border-radius:8px;background:${posBg};border:1px solid rgba(255,255,255,0.08);display:${photoUrl?'none':'flex'};align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${posCol};font-family:var(--font-sans)">${initials}</div>
         </div>
         <div>
-          <div style="font-size:14px;font-weight:700;color:#d4e4fa;font-family:var(--font-sans)">${p.name}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:14px;font-weight:700;color:#d4e4fa;font-family:var(--font-sans)">${p.name}</span>
+            ${(()=>{const r=window._cachedTradeRoster||[];return r.some(rp=>rp.name===p.name)?'<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:0.06em;color:#3DCC7A;background:rgba(61,204,122,0.12);border:1px solid rgba(61,204,122,0.25);padding:2px 7px;border-radius:4px">ROSTERED</span>':''})()}
+          </div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
             <span style="padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;font-family:var(--font-mono);background:${posBg};color:${posCol};border:1px solid ${posCol}33">${pos}</span>
             <span style="font-size:10px;color:#909097;font-family:var(--font-mono)">${p.team||'—'}</span>
@@ -3414,7 +3417,7 @@ async function researchSelectPlayer(name, sleeperId, pos, team) {
 
   
   document.getElementById('research-profile').style.display = 'block';
-  document.getElementById('research-leaderboard').style.display = 'none';
+  document.getElementById('research-leaderboard').style.display = ''; // Keep leaderboard visible below
 
   
   document.querySelectorAll('.res-lb-row').forEach(r => r.classList.remove('active'));
@@ -3768,6 +3771,7 @@ async function enterWithoutDraft() {
   manualOverrides = {};
   document.getElementById('setup').classList.add('gone');
   updateSortBtns();
+  populateHeaderLeague();
   fetchSleeperPlayers();
   
   const savedUn = localStorage.getItem(SK+'-username');
@@ -3936,6 +3940,7 @@ async function findDrafts() {
           ovLeagueId='${lg.league_id}';
           teamsLeagueId='${lg.league_id}';
           document.getElementById('setup').classList.add('gone');
+          populateHeaderLeague();
           showPage('overview');
         ">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
@@ -4994,6 +4999,7 @@ function setOvTab(tab) {
 function switchOverviewLeague(leagueId) {
   ovLeagueId = leagueId || null;
   _txCache = null; _rosterCache = null; _usersCache = null;
+  window._cachedTradeRoster = null; // invalidate trade roster cache
   renderOverview();
 }
 
@@ -5165,20 +5171,29 @@ async function renderOverview() {
   const sorted = [...roster].sort((a,b)=>(b.fcVal||0)-(a.fcVal||0));
 
   // ── Computed variables for the rebuilt template ──
-  // Get starters from Sleeper league roster data
-  const leagueStarters = (() => {
-    try {
-      const cacheKey = SK + '-starters-' + (ovLeagueId||'');
-      const cached = localStorage.getItem(cacheKey);
-      return cached ? JSON.parse(cached) : [];
-    } catch(e) { return []; }
+  // Grade using league-relative percentile (same as League Grades tab)
+  // so My Team grade matches what user sees in League Analyzer
+  const leagueGradeScale = (() => {
+    if (!_lastTeamData || _lastTeamData.length < 2) return null;
+    const vals = _lastTeamData.map(t => t.fcTotal || 0).sort((a,b) => b-a);
+    const max = vals[0] || 1, min = vals[vals.length-1] || 0, range = max-min || 1;
+    return { max, min, range };
   })();
   // Composite grade from all position grades
   const gradeOrder = ['A+','A','A-','B+','B','B-','C+','C','C-','D','F'];
-  const posGradeNums = ['QB','RB','WR','TE'].map(pos => gradeOrder.indexOf(grades[pos]?.g||'B-')).filter(n=>n>=0);
-  const avgGradeIdx = posGradeNums.length ? Math.round(posGradeNums.reduce((a,b)=>a+b,0)/posGradeNums.length) : 4;
-  const compositeGrade = gradeOrder[Math.min(avgGradeIdx, gradeOrder.length-1)];
-  const gradeWidth = Math.max(20, Math.round(100 - avgGradeIdx * 9));
+  let compositeGrade, gradeWidth;
+  if (leagueGradeScale && totalVal > 0) {
+    // League-relative grade — matches League Grades tab exactly
+    const pct = (totalVal - leagueGradeScale.min) / leagueGradeScale.range;
+    compositeGrade = pct>0.85?'A+':pct>0.70?'A':pct>0.55?'B+':pct>0.40?'B':pct>0.25?'C+':pct>0.10?'C':'D';
+    gradeWidth = Math.max(20, Math.round(pct * 100));
+  } else {
+    // Fallback to position-based grades when league data not loaded
+    const posGradeNums = ['QB','RB','WR','TE'].map(pos => gradeOrder.indexOf(grades[pos]?.g||'B-')).filter(n=>n>=0);
+    const avgGradeIdx = posGradeNums.length ? Math.round(posGradeNums.reduce((a,b)=>a+b,0)/posGradeNums.length) : 4;
+    compositeGrade = gradeOrder[Math.min(avgGradeIdx, gradeOrder.length-1)];
+    gradeWidth = Math.max(20, Math.round(100 - avgGradeIdx * 9));
+  }h = Math.max(20, Math.round(100 - avgGradeIdx * 9));
 
   // Best position for "Top X% in Y depth" blurb
   const bestPosIdx = posGradeNums.indexOf(Math.min(...posGradeNums));
@@ -5413,18 +5428,22 @@ async function loadOvRoster() {
   const myR = ctx.rosters.find(r=>r.owner_id===myTeamsUserId);
   if (!myR) return [];
 
-  // Cache starters (Sleeper player IDs) for use in renderOverview
-  const starterPids = new Set(myR.starters || []);
+  // Cache starters — filter out '0' placeholder slots Sleeper uses in off-season
+  const rawStarters = (myR.starters || []).map(String).filter(s => s !== '0' && s.length > 2);
+  const starterPids = new Set(rawStarters);
   try {
     localStorage.setItem(SK+'-starters-'+(ovLeagueId||''), JSON.stringify([...starterPids]));
   } catch(e) {}
 
-  return [...(myR.players||[]),...(myR.reserve||[])].map(pid=>{
-    const name=globalPidToName[String(pid)];
-    if(!name) return null;
-    const p=PLAYERS.find(x=>x.name===name)||{name,pos:'?',team:''};
-    const isStarter = starterPids.has(String(pid));
-    return {...p, fcVal:getPlayerValue(name), sleeperId: String(pid), isStarter};
+  // Dedup combined players+reserve (Sleeper sometimes duplicates across arrays)
+  const allPids = [...new Set([...(myR.players||[]), ...(myR.reserve||[])].map(String))];
+
+  return allPids.map(pid => {
+    const name = globalPidToName[pid];
+    if (!name) return null;
+    const p = PLAYERS.find(x=>x.name===name) || {name, pos:'?', team:''};
+    const isStarter = starterPids.has(pid);
+    return {...p, fcVal:getPlayerValue(name), sleeperId: pid, isStarter};
   }).filter(Boolean);
 }
 
@@ -6683,13 +6702,20 @@ function renderMovers() {
 
   const renderMoverList = (players, color, icon) => players.map(p => {
     const teamColor = COLORS[p.teamIdx % COLORS.length];
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border)">
-      <div style="min-width:28px;font-size:18px;text-align:center">${icon}</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+    const sid = p.sleeperId || sleeperPlayerMap[normName(p.name)]?.player_id || '';
+    const photoUrl = sid ? `https://sleepercdn.com/content/nfl/players/thumb/${sid}.jpg` : '';
+    const posCol = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[p.pos]||'var(--muted)';
+    const posBg = {QB:'rgba(255,102,128,0.15)',RB:'rgba(61,204,122,0.15)',WR:'rgba(123,208,255,0.15)',TE:'rgba(245,200,66,0.15)'}[p.pos]||'rgba(255,255,255,0.08)';
+    return `<div onclick="showPage('research');setTimeout(()=>researchSelectPlayer('${p.name.replace(/'/g,"\'").replace(/"/g,'\"')}','${sid}','${p.pos}','${p.teamName}'),300)" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 100ms" onmouseover="this.style.background='rgba(190,198,224,0.04)'" onmouseout="this.style.background=''">
+      <div style="position:relative;width:34px;height:34px;flex-shrink:0">
+        ${photoUrl ? `<img src="${photoUrl}" style="width:34px;height:34px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);background:${posBg}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+        <div style="width:34px;height:34px;border-radius:8px;background:${posBg};display:${photoUrl?'none':'flex'};align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${posCol}">${p.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
         <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${p.pos} · <span style="color:${teamColor}">${p.teamName}</span></div>
       </div>
-      <div style="text-align:right">
+      <div style="text-align:right;flex-shrink:0">
         <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);color:${color}">${p.trend>0?'+':''}${p.trend}</div>
         <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${p.val.toLocaleString()}</div>
       </div>
@@ -7172,8 +7198,7 @@ async function switchGlobalLeague(leagueId) {
   teamsLeagueId = leagueId || null;
   ovLeagueId = leagueId || null;
   _txCache = null; _rosterCache = null; _usersCache = null;
-
-  const league = myTeamsData.find(l => l.league_id === leagueId);
+  window._cachedTradeRoster = null; // reset when league changes
   const nameEl = document.getElementById('la-league-name');
   if (nameEl) nameEl.textContent = league?.name || '';
   const ovSub = document.getElementById('ov-subtitle');
@@ -7745,8 +7770,20 @@ function clearTrade() {
 function renderTradeRosterChips() {
   const el = document.getElementById('trade-roster-chips');
   if (!el) return;
-  const roster = getMyRoster();
-  if (!roster.length) { el.innerHTML='<span style="color:var(--muted);font-size:11px;font-family:Space Mono,monospace">Select your team to see roster</span>'; return; }
+  // Use Sleeper league roster if available, fall back to live draft roster
+  const sleeperRoster = window._cachedTradeRoster || [];
+  const draftRoster = getMyRoster();
+  const roster = sleeperRoster.length ? sleeperRoster : draftRoster;
+  if (!roster.length) {
+    el.innerHTML = '<span style="color:var(--muted);font-size:11px;font-family:var(--font-mono)">Loading your roster...</span>';
+    if (ovLeagueId && myTeamsUserId) {
+      loadOvRoster().then(r => {
+        window._cachedTradeRoster = r;
+        renderTradeRosterChips();
+      });
+    }
+    return;
+  }
   const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
   el.innerHTML = roster.map(p => {
     const c = posColor[p.pos]||'var(--muted)';
@@ -7763,7 +7800,15 @@ function renderTradeRosterChips() {
 
 function initTrade() {
   renderTradeAssets();
-  renderTradeRosterChips();
+  // Pre-load Sleeper roster if not cached
+  if (!window._cachedTradeRoster && ovLeagueId && myTeamsUserId) {
+    loadOvRoster().then(r => {
+      window._cachedTradeRoster = r;
+      renderTradeRosterChips();
+    });
+  } else {
+    renderTradeRosterChips();
+  }
 }
 
 // ════════════════════════════════════
@@ -8251,7 +8296,7 @@ function renderDraftGrades() {
     const grade = pct>0.85?'A+':pct>0.70?'A':pct>0.55?'B+':pct>0.40?'B':pct>0.25?'C+':pct>0.10?'C':'D';
     const gradeColor = grade.startsWith('A')?'var(--rb)':grade.startsWith('B')?'var(--wr)':grade.startsWith('C')?'var(--te)':'var(--qb)';
     const teamColor = COLORS[t.i % COLORS.length];
-    return `<div style="background:rgba(18,33,49,0.6);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;${t.isMe?'border-color:'+gradeColor+';box-shadow:0 0 12px '+gradeColor+'33':''}">
+    return `<div onclick="setTeamsTab('pr');setTimeout(()=>{ const rows=document.querySelectorAll('[data-team-idx]'); if(rows[${rank}]) rows[${rank}].click(); },200)" style="background:rgba(18,33,49,0.6);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color 150ms,box-shadow 150ms;${t.isMe?'border-color:'+gradeColor+';box-shadow:0 0 12px '+gradeColor+'33':''}" onmouseover="this.style.borderColor='${gradeColor}'" onmouseout="this.style.borderColor='${t.isMe?gradeColor:'rgba(255,255,255,0.08)'}'">
       <div style="font-size:32px;font-weight:800;color:${gradeColor};font-family:var(--font-mono);min-width:44px;text-align:center">${grade}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:700;color:${t.isMe?gradeColor:'#d4e4fa'};font-family:var(--font-sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}${t.isMe?' ★':''}</div>
