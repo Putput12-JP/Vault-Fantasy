@@ -285,34 +285,46 @@ header{
 .sess-btn:hover{border-color:var(--accent2);color:var(--accent2)}
 .theme-toggle{padding:6px 10px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--text2);font-size:14px;cursor:pointer;transition:all .2s;touch-action:manipulation;min-height:34px;flex-shrink:0}
 .theme-toggle:hover{border-color:var(--accent2)}
-.trade-side{background:var(--s1);border:1.5px solid var(--border2);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
-.trade-side-hdr{display:flex;justify-content:space-between;align-items:center}
-.trade-side-label{font-size:10px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em}
-.trade-side-val{font-size:18px;font-weight:800;font-family:'Space Mono',monospace;color:var(--accent2)}
+/* ── TRADE CALCULATOR v2 ── */
+.trade-glass{background:rgba(28,43,60,0.55);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.09);border-radius:20px}
+.trade-side-label{font-size:10px;font-weight:700;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.12em}
+.trade-side-val-badge{font-size:11px;font-weight:700;font-family:var(--font-mono);padding:3px 10px;border-radius:6px}
 .trade-search-wrap{position:relative}
-.trade-search{width:100%;padding:8px 12px;background:var(--s2);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:'Inter',sans-serif;transition:border-color .15s}
-.trade-search:focus{border-color:var(--accent)}
+.trade-search{width:100%;padding:10px 14px;background:rgba(5,20,36,0.6);border:1.5px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--text);font-size:13px;outline:none;font-family:var(--font-sans);transition:border-color .15s}
+.trade-search:focus{border-color:var(--accent2)}
 .trade-search::placeholder{color:var(--muted)}
-.trade-results{position:absolute;top:100%;left:0;right:0;background:var(--s1);border:1.5px solid var(--border2);border-radius:8px;z-index:50;max-height:200px;overflow-y:auto;display:none;box-shadow:0 8px 24px #00000055}
+.trade-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--s1);border:1.5px solid var(--border2);border-radius:12px;z-index:100;max-height:220px;overflow-y:auto;display:none;box-shadow:0 12px 32px #00000077}
 .trade-results.show{display:block}
 .trade-result-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;transition:background .1s}
 .trade-result-item:hover{background:var(--s3)}
 .trade-result-item:last-child{border-bottom:none}
 .tri-name{font-size:13px;font-weight:600;flex:1}
-.tri-pos{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;font-family:'Space Mono',monospace}
-.tri-val{font-size:11px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent2)}
-.trade-assets{display:flex;flex-direction:column;gap:6px;min-height:40px}
-.trade-asset{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:8px;border:1px solid var(--border2)}
-.ta-name{font-size:13px;font-weight:600;flex:1}
-.ta-val{font-size:12px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent2)}
-.ta-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 2px;line-height:1;flex-shrink:0}
+.tri-pos{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;font-family:var(--font-mono)}
+.tri-val{font-size:11px;font-weight:700;font-family:var(--font-mono);color:var(--muted)}
+.trade-asset-card{display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(5,20,36,0.5);border-radius:12px;border:1px solid rgba(255,255,255,0.07);transition:border-color .15s}
+.trade-asset-card:hover{border-color:rgba(255,255,255,0.18)}
+.trade-asset-avatar{width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;font-family:var(--font-mono)}
+.trade-asset-avatar img{width:100%;height:100%;object-fit:cover;object-position:top}
+.ta-name{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ta-pos-team{font-size:10px;font-family:var(--font-mono);color:var(--muted)}
+.ta-val{font-size:12px;font-weight:700;font-family:var(--font-mono)}
+.ta-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1;flex-shrink:0;opacity:0;transition:opacity .15s}
+.trade-asset-card:hover .ta-remove{opacity:1}
 .ta-remove:hover{color:var(--qb)}
-.trade-verdict-bar{height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin:12px 0}
-.tvb-fill{height:8px;border-radius:4px;transition:width .5s ease}
-.verdict-win{color:var(--rb);font-weight:700}
-.verdict-lose{color:var(--qb);font-weight:700}
-.verdict-fair{color:var(--te);font-weight:700}
-@media(max-width:700px){#trade-container{grid-template-columns:1fr}}
+.trade-empty-slot{width:100%;height:72px;border:2px dashed rgba(255,255,255,0.1);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);cursor:default;transition:border-color .15s}
+.verdict-win{color:var(--rb)}
+.verdict-lose{color:var(--qb)}
+.verdict-fair{color:var(--te)}
+.trade-chip{padding:5px 10px;border-radius:8px;border:1.5px solid;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .15s}
+.trade-ticker-inner{display:flex;gap:48px;animation:ticker-scroll 30s linear infinite;white-space:nowrap}
+@keyframes ticker-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 8px rgba(204,0,60,0.3)}50%{box-shadow:0 0 24px rgba(204,0,60,0.7)}}
+#trade-bento{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#trade-center{display:none}
+@media(min-width:960px){#trade-bento{grid-template-columns:1fr 260px 1fr;gap:20px}#trade-center{display:flex}}
+@media(max-width:600px){#trade-bento{grid-template-columns:1fr}}
+.verdict-circle-wrap{position:relative;width:160px;height:160px;margin:0 auto 12px}
+.verdict-circle-wrap svg{transform:rotate(-90deg)}
 .tx-summary{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap}
 .tx-stat{background:var(--s2);border-radius:10px;padding:10px 16px;text-align:center;border:1px solid var(--border)}
 .tx-stat b{display:block;font-size:22px;font-weight:700;font-family:'Space Mono',monospace;color:var(--accent2)}
@@ -2348,74 +2360,157 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
 <!-- TRADE CALCULATOR PAGE -->
 <div class="page z1" id="page-trade" style="overflow-y:auto">
-  <div class="proto-page" style="max-width:1280px;padding-bottom:80px">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+  <div class="proto-page" style="max-width:1320px;padding-bottom:80px">
+
+    <!-- PAGE HEADER -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap;gap:12px">
       <div>
-        <div style="font-family:'Arial Black',sans-serif;font-size:20px;letter-spacing:1px">TRADE <em style="color:var(--accent2);font-style:normal">CALCULATOR</em></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:'Space Mono',monospace">Powered by RosterAudit · Dynasty SF values</div>
+        <h1 class="proto-h1" style="font-size:40px">Trade Calculator</h1>
+        <p class="proto-sub">Analyze player and pick swaps with dynasty value projections and live trade comps.</p>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div id="trade-status" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace"></div>
-        <button class="sbtn" onclick="clearTrade()">✕ Clear</button>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="proto-btn-ghost" onclick="clearTrade()">↺ Reset</button>
+        <button id="trade-analyze-btn" onclick="evaluateTrade()" style="
+          display:flex;align-items:center;gap:8px;padding:12px 24px;
+          background:linear-gradient(135deg,var(--accent),#8b0000);
+          border:none;border-radius:12px;color:#fff;
+          font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+          cursor:pointer;transition:opacity .15s,box-shadow .15s;
+          box-shadow:0 0 0 0 rgba(204,0,60,0)">
+          ⚡ Analyze Trade
+        </button>
       </div>
     </div>
 
-    <!-- TRADE MODE TOGGLE -->
-    <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
-      <button class="sbtn on" id="trade-2team" onclick="setTradeMode(2)">2-Team Trade</button>
-      <button class="sbtn" id="trade-3team" onclick="setTradeMode(3)">3-Team Trade</button>
-    </div>
+    <!-- BENTO GRID -->
+    <div id="trade-bento">
 
-    <!-- TRADE SIDES -->
-    <div id="trade-container" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
-      <!-- SIDE A -->
-      <div class="trade-side" id="trade-side-a">
-        <div class="trade-side-hdr">
-          <span class="trade-side-label">YOU GIVE</span>
-          <span class="trade-side-val" id="trade-val-a">0</span>
+      <!-- ── TEAM A ── -->
+      <div class="trade-glass" style="padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="trade-side-label" style="color:var(--sky)">TEAM A SENDS</span>
+          <span class="trade-side-val-badge" id="trade-val-a" style="background:rgba(123,208,255,0.12);color:var(--sky)">0</span>
         </div>
         <div class="trade-search-wrap">
-          <input class="trade-search" id="trade-search-a" placeholder="Search player or pick..." oninput="searchTrade('a')" autocomplete="off">
+          <input class="trade-search" id="trade-search-a" placeholder="Search player or pick..." oninput="searchTrade('a')" autocomplete="off" style="border-color:rgba(123,208,255,0.2)">
           <div class="trade-results" id="trade-results-a"></div>
         </div>
-        <div class="trade-assets" id="trade-assets-a"></div>
+        <div id="trade-assets-a" style="display:flex;flex-direction:column;gap:8px;min-height:72px"></div>
+        <!-- Roster impact -->
+        <div id="trade-impact-a" style="display:none;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07)">
+          <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Roster Impact</div>
+          <div id="trade-impact-a-inner" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
       </div>
-      <!-- SIDE B -->
-      <div class="trade-side" id="trade-side-b">
-        <div class="trade-side-hdr">
-          <span class="trade-side-label">YOU RECEIVE</span>
-          <span class="trade-side-val" id="trade-val-b">0</span>
+
+      <!-- ── CENTER COLUMN (desktop only) ── -->
+      <div id="trade-center" style="flex-direction:column;align-items:center;gap:16px;width:240px">
+
+        <!-- Verdict circle -->
+        <div class="trade-glass" style="width:100%;padding:24px;text-align:center">
+          <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:16px">Trade Verdict</div>
+          <div class="verdict-circle-wrap">
+            <svg width="160" height="160" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="8"/>
+              <circle id="trade-circle-a" cx="80" cy="80" r="68" fill="none" stroke="var(--sky)" stroke-width="8"
+                stroke-dasharray="427.3" stroke-dashoffset="213.6" stroke-linecap="round"/>
+              <circle id="trade-circle-b" cx="80" cy="80" r="68" fill="none" stroke="var(--accent2)" stroke-width="8"
+                stroke-dasharray="427.3" stroke-dashoffset="213.6" stroke-linecap="round" opacity="0.4"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <span id="trade-verdict-label" style="font-size:18px;font-weight:800;font-family:var(--font-sans);letter-spacing:-.02em;color:var(--text)">—</span>
+              <span id="trade-verdict-pct" style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px"></span>
+            </div>
+          </div>
+          <p id="trade-verdict-sub" style="font-size:12px;color:var(--muted);line-height:1.6;margin:12px 0 0"></p>
+        </div>
+
+        <!-- ROI projection -->
+        <div class="trade-glass" style="width:100%;padding:20px">
+          <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:14px">Value Projection</div>
+          <div id="roi-chart" style="display:flex;gap:6px;align-items:flex-end;height:64px;margin-bottom:8px">
+            <!-- bars rendered by JS -->
+            <div style="color:var(--muted);font-size:11px;width:100%;text-align:center;line-height:64px">Add players to project</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;font-family:var(--font-mono);color:var(--muted)">
+            <span>NOW</span><span>WK 4</span><span>WK 8</span><span>PLYFS</span><span>DYN</span>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:10px">
+            <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);color:var(--sky)">
+              <div style="width:8px;height:8px;border-radius:2px;background:var(--sky)"></div>A
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);color:var(--accent2)">
+              <div style="width:8px;height:8px;border-radius:2px;background:var(--accent2)"></div>B
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── TEAM B ── -->
+      <div class="trade-glass" style="padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="trade-side-label" style="color:var(--accent2)">TEAM B SENDS</span>
+          <span class="trade-side-val-badge" id="trade-val-b" style="background:rgba(204,0,60,0.12);color:var(--accent2)">0</span>
         </div>
         <div class="trade-search-wrap">
-          <input class="trade-search" id="trade-search-b" placeholder="Search player or pick..." oninput="searchTrade('b')" autocomplete="off">
+          <input class="trade-search" id="trade-search-b" placeholder="Search player or pick..." oninput="searchTrade('b')" autocomplete="off" style="border-color:rgba(204,0,60,0.2)">
           <div class="trade-results" id="trade-results-b"></div>
         </div>
-        <div class="trade-assets" id="trade-assets-b"></div>
+        <div id="trade-assets-b" style="display:flex;flex-direction:column;gap:8px;min-height:72px"></div>
+        <!-- Roster impact -->
+        <div id="trade-impact-b" style="display:none;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07)">
+          <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Roster Impact</div>
+          <div id="trade-impact-b-inner" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
       </div>
-      <!-- SIDE C — 3-team only, hidden by default -->
-      <div class="trade-side" id="trade-side-c" style="display:none">
-        <div class="trade-side-hdr">
-          <span class="trade-side-label">3RD TEAM GIVES</span>
-          <span class="trade-side-val" id="trade-val-c">0</span>
+
+    </div>
+
+    <!-- MOBILE VERDICT (shown below grid on small screens) -->
+    <div id="trade-verdict-mobile" style="display:none;margin-top:16px">
+      <div class="trade-glass" style="padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span id="trade-verdict-label-m" style="font-size:18px;font-weight:800;font-family:var(--font-sans)">—</span>
+          <span id="trade-verdict-pct-m" style="font-size:11px;font-family:var(--font-mono);color:var(--muted)"></span>
         </div>
-        <div class="trade-search-wrap">
-          <input class="trade-search" id="trade-search-c" placeholder="Search player or pick..." oninput="searchTrade('c')" autocomplete="off">
-          <div class="trade-results" id="trade-results-c"></div>
+        <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:8px">
+          <div id="trade-bar-m" style="height:6px;background:var(--sky);border-radius:3px;transition:width .5s ease;width:50%"></div>
         </div>
-        <div class="trade-assets" id="trade-assets-c"></div>
+        <p id="trade-verdict-sub-m" style="font-size:12px;color:var(--muted);line-height:1.6;margin:0"></p>
       </div>
     </div>
 
-    <!-- VERDICT -->
-    <div id="trade-verdict" style="display:none;background:var(--s1);border:1.5px solid var(--border2);border-radius:14px;padding:18px;margin-bottom:14px">
-      <div id="trade-verdict-inner"></div>
+    <!-- AGE WARNING + COMPS -->
+    <div id="trade-verdict-extra" style="display:none;margin-top:16px;display:flex;flex-direction:column;gap:12px">
+      <div id="trade-age-warn" style="display:none"></div>
+      <div class="trade-glass" style="padding:20px">
+        <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:12px">Similar Trades · Community</div>
+        <div id="trade-comps-inner" style="font-size:12px;color:var(--muted);font-family:var(--font-sans)">
+          <span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Run analysis to load trade comps
+        </div>
+      </div>
     </div>
 
-    <!-- QUICK PICKS — your roster as starting point -->
-    <div style="margin-top:18px">
-      <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Quick Add — Your Roster</div>
+    <!-- COMMUNITY TICKER -->
+    <div id="trade-ticker-wrap" style="display:none;margin-top:16px">
+      <div class="trade-glass" style="padding:14px 20px;display:flex;align-items:center;gap:16px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;padding-right:16px;border-right:1px solid rgba(255,255,255,0.08)">
+          <span style="color:var(--accent);font-size:14px">⚡</span>
+          <span style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase">Community</span>
+        </div>
+        <div style="overflow:hidden;flex:1">
+          <div class="trade-ticker-inner" id="trade-ticker-inner"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUICK ADD ROSTER CHIPS -->
+    <div style="margin-top:24px">
+      <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Quick Add · Your Roster</div>
       <div id="trade-roster-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
+
   </div>
 </div>
 
@@ -7549,18 +7644,32 @@ function searchTrade(side) {
   const q = input.value.toLowerCase().trim();
   if (!q) { results.classList.remove('show'); return; }
 
-  
-  const playerMatches = PLAYERS
-    .filter(p => p.name.toLowerCase().includes(q))
-    .slice(0, 8)
+  // Search PLAYERS first, then fill from fcValues for any player not in PLAYERS
+  const seen = new Set();
+  const posColorMap = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+
+  // Build combined player list: PLAYERS + fcValues entries not already in PLAYERS
+  const allPlayers = [...PLAYERS];
+  if (typeof fcValues !== 'undefined') {
+    Object.values(fcValues).forEach(fc => {
+      if (!fc?.name) return;
+      if (!allPlayers.some(p => p.name === fc.name)) {
+        allPlayers.push({ name: fc.name, pos: fc.pos || '?', team: fc.team || '' });
+      }
+    });
+  }
+
+  const playerMatches = allPlayers
+    .filter(p => p.name.toLowerCase().includes(q) && !seen.has(p.name) && seen.add(p.name))
+    .slice(0, 10)
     .map(p => {
       const val = getTradePlayerValue(p.name);
-      const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[p.pos];
+      const posColor = posColorMap[p.pos] || 'var(--muted)';
       return `<div class="trade-result-item" onclick="addTradeAsset('${side}','${p.name.replace(/'/g,"\\'")}','player',${val})">
         <span class="tri-pos ppill ${p.pos}">${p.pos}</span>
         <span class="tri-name">${p.name}</span>
-        <span style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</span>
-        <span class="tri-val">${val.toLocaleString()}</span>
+        <span style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team||''}</span>
+        <span class="tri-val">${val ? val.toLocaleString() : '—'}</span>
       </div>`;
     });
 
@@ -7581,7 +7690,6 @@ function searchTrade(side) {
   }
   results.classList.add('show');
 
-  
   setTimeout(() => {
     document.addEventListener('click', function close(e) {
       if (!results.contains(e.target) && e.target !== input) {
@@ -7593,117 +7701,295 @@ function searchTrade(side) {
 }
 
 function addTradeAsset(side, name, type, val) {
-  
   if (tradeAssets[side].find(a => a.name === name)) return;
   tradeAssets[side].push({ name, type, val, age: getFCValue(name)?.age || null });
   document.getElementById(`trade-search-${side}`).value = '';
   document.getElementById(`trade-results-${side}`).classList.remove('show');
   renderTradeAssets();
-  evaluateTrade();
+  // Don't auto-evaluate — user must click Analyze Trade
 }
 
 function removeTradeAsset(side, name) {
   tradeAssets[side] = tradeAssets[side].filter(a => a.name !== name);
   renderTradeAssets();
-  evaluateTrade();
+  // Don't auto-evaluate — user must click Analyze Trade again
 }
 
 function renderTradeAssets() {
-  const sides = (typeof tradeMode!=='undefined'&&tradeMode===3) ? ['a','b','c'] : ['a','b'];
-  sides.forEach(side => {
+  ['a','b'].forEach(side => {
     const el = document.getElementById(`trade-assets-${side}`);
+    if (!el) return;
     const total = tradeAssets[side].reduce((s,a) => s+a.val, 0);
-    document.getElementById(`trade-val-${side}`).textContent = total.toLocaleString();
+    const badge = document.getElementById(`trade-val-${side}`);
+    if (badge) badge.textContent = total ? total.toLocaleString() : '0';
 
     if (!tradeAssets[side].length) {
-      el.innerHTML = '<div style="color:var(--muted);font-size:11px;font-family:Space Mono,monospace;padding:6px 2px">Search above to add players or picks</div>';
+      el.innerHTML = `<div class="trade-empty-slot"><span style="font-size:18px;margin-bottom:4px;opacity:0.4">+</span><span style="font-size:10px;font-family:var(--font-mono);letter-spacing:.08em">ADD ASSET</span></div>`;
       return;
     }
 
     el.innerHTML = tradeAssets[side].map(a => {
-      const posColor = a.type==='pick' ? 'var(--te)' :
-        {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[PLAYERS.find(p=>p.name===a.name)?.pos] || 'var(--accent2)';
-      return `<div class="trade-asset">
-        <span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:${posColor}18;color:${posColor};font-family:'Space Mono',monospace">${a.type==='pick'?'PICK':(PLAYERS.find(p=>p.name===a.name)?.pos||'?')}</span>
-        <span class="ta-name">${a.name}</span>
-        <span class="ta-val">${a.val.toLocaleString()}</span>
+      const player = PLAYERS.find(p => p.name === a.name);
+      const pos = a.type === 'pick' ? 'PICK' : (player?.pos || '?');
+      const team = a.type === 'pick' ? '' : (player?.team || getFCValue(a.name)?.team || '');
+      const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+      const posColor = a.type === 'pick' ? 'var(--te)' : (posColors[pos] || 'var(--accent2)');
+      const sideColor = side === 'a' ? 'var(--sky)' : 'var(--accent2)';
+
+      // Sleeper headshot
+      const photoUrl = a.type !== 'pick' ? getPlayerHeadshotUrl(a.name) : null;
+      const initials = a.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+      const avatarHtml = photoUrl
+        ? `<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;object-position:top center"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+             alt="${a.name}">
+           <div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:14px;font-weight:800;font-family:var(--font-mono);color:${posColor}">${initials}</div>`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:${a.type==='pick'?'18px':'14px'};font-weight:800;font-family:var(--font-mono);color:${posColor}">${a.type==='pick'?'🎯':initials}</div>`;
+
+      // Trend indicator
+      const fcv = getFCValue(a.name);
+      const trend = fcv?.trend || 0;
+      const trendHtml = trend !== 0
+        ? `<span style="font-size:9px;font-family:var(--font-mono);color:${trend>0?'var(--rb)':'var(--qb)'}">${trend>0?'▲':'▼'}${Math.abs(trend)}</span>`
+        : '';
+
+      return `<div class="trade-asset-card">
+        <div class="trade-asset-avatar" style="border-color:${posColor};background:${posColor}18">
+          ${avatarHtml}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="ta-name">${a.name}</div>
+          <div class="ta-pos-team">${pos}${team?' · '+team:''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          <span class="ta-val" style="color:${sideColor}">${a.val.toLocaleString()}</span>
+          ${trendHtml}
+        </div>
         <button class="ta-remove" onclick="removeTradeAsset('${side}','${a.name.replace(/'/g,"\\'")}')">✕</button>
       </div>`;
     }).join('');
   });
+  // Pulse analyze button to hint user should re-analyze
+  _pulseAnalyzeBtn();
+}
+
+// ── Pulse the analyze button when assets change ──
+function _pulseAnalyzeBtn() {
+  const btn = document.getElementById('trade-analyze-btn');
+  if (!btn) return;
+  const hasAssets = tradeAssets.a.length > 0 || tradeAssets.b.length > 0;
+  if (hasAssets) {
+    btn.style.boxShadow = '0 0 16px rgba(204,0,60,0.55)';
+    btn.style.animation = 'pulse-glow 1.5s ease-in-out infinite';
+  } else {
+    btn.style.boxShadow = '';
+    btn.style.animation = '';
+  }
+}
+
+// ── Gated entry: user must click Analyze ──
+function analyzeTrade() {
+  const btn = document.getElementById('trade-analyze-btn');
+  if (btn) { btn.style.boxShadow = ''; btn.style.animation = ''; }
+  evaluateTrade();
 }
 
 function evaluateTrade() {
-  const verdict = document.getElementById('trade-verdict');
-  const _tm = (typeof tradeMode!=='undefined') ? tradeMode : 2;
-  const _hasTrade = tradeAssets.a.length || tradeAssets.b.length || tradeAssets.c.length;
-  if (!_hasTrade) { verdict.style.display='none'; return; }
+  const hasAssets = tradeAssets.a.length > 0 || tradeAssets.b.length > 0;
+  if (!hasAssets) return;
 
   const valA = tradeAssets.a.reduce((s,a)=>s+a.val,0);
   const valB = tradeAssets.b.reduce((s,a)=>s+a.val,0);
-  const valC = _tm===3 ? tradeAssets.c.reduce((s,a)=>s+a.val,0) : 0;
-  const diff = _tm===3 ? (valB+valC) - valA : valB - valA;
-  const total = Math.max(_tm===3 ? valA+valB+valC : valA+valB, 1);
-  const pctA = Math.round(valA/total*100);
-
-  let verdictClass, verdictText, emoji;
+  const diff = valB - valA;
+  const total = Math.max(valA + valB, 1);
+  const pctA = Math.round(valA / total * 100);
   const absDiff = Math.abs(diff);
-  const pctDiff = Math.round(absDiff/Math.max(valA,valB,1)*100);
+  const pctDiff = Math.round(absDiff / Math.max(valA, valB, 1) * 100);
 
+  // ── Verdict label + color ──
+  let verdictText, verdictColor, verdictDesc;
   if (pctDiff <= 8) {
-    verdictClass='verdict-fair'; verdictText='Fair Trade'; emoji='🤝';
+    verdictText = 'FAIR'; verdictColor = 'var(--te)';
+    verdictDesc = 'Balanced within standard variance. No clear winner.';
   } else if (diff > 0) {
-    verdictClass='verdict-win';
-    if (pctDiff > 30) { verdictText='You Win Big'; emoji='🔥'; }
-    else if (pctDiff > 15) { verdictText='You Win'; emoji='✦'; }
-    else { verdictText='Slight Edge to You'; emoji='▲'; }
+    if (pctDiff > 30) { verdictText = 'WIN BIG'; verdictColor = 'var(--rb)'; verdictDesc = `Team A gets ${absDiff.toLocaleString()} more in value — a significant edge.`; }
+    else if (pctDiff > 15) { verdictText = 'YOU WIN'; verdictColor = 'var(--rb)'; verdictDesc = `Team A gains ${absDiff.toLocaleString()} (${pctDiff}%) — clear advantage.`; }
+    else { verdictText = 'SLIGHT EDGE'; verdictColor = '#4ade80'; verdictDesc = `Team A has a minor value edge (${pctDiff}%). Reasonable trade.`; }
   } else {
-    verdictClass='verdict-lose';
-    if (pctDiff > 30) { verdictText='You Lose Big'; emoji='⚠'; }
-    else if (pctDiff > 15) { verdictText='You Lose'; emoji='▼'; }
-    else { verdictText='Slight Edge to Them'; emoji='▼'; }
+    if (pctDiff > 30) { verdictText = 'LOSE BIG'; verdictColor = 'var(--qb)'; verdictDesc = `Team B gets ${absDiff.toLocaleString()} more in value — renegotiate.`; }
+    else if (pctDiff > 15) { verdictText = 'YOU LOSE'; verdictColor = 'var(--qb)'; verdictDesc = `Team B gains ${absDiff.toLocaleString()} (${pctDiff}%) — disadvantageous.`; }
+    else { verdictText = 'SLIGHT LOSS'; verdictColor = '#f87171'; verdictDesc = `Team B has a minor edge (${pctDiff}%). Borderline acceptable.`; }
   }
 
-  
+  // ── Update circle meter ──
+  const arc = document.getElementById('trade-circle-a');
+  const circumference = 427.3;
+  if (arc) {
+    // Fill based on pctA: 50% = neutral, >50% = A wins, <50% = A loses
+    const fill = Math.round(circumference * (pctA / 100));
+    arc.style.strokeDashoffset = circumference - fill;
+    arc.style.stroke = verdictColor;
+    arc.style.transition = 'stroke-dashoffset 0.8s ease, stroke 0.4s ease';
+  }
+  const arcB = document.getElementById('trade-circle-b');
+  if (arcB) {
+    const fillB = Math.round(circumference * ((100 - pctA) / 100));
+    arcB.style.strokeDashoffset = circumference - fillB;
+    arcB.style.transition = 'stroke-dashoffset 0.8s ease';
+  }
+
+  // ── Update verdict text ──
+  const labelEl = document.getElementById('trade-verdict-label');
+  const pctEl = document.getElementById('trade-verdict-pct');
+  const subEl = document.getElementById('trade-verdict-sub');
+  if (labelEl) { labelEl.textContent = verdictText; labelEl.style.color = verdictColor; }
+  if (pctEl) pctEl.textContent = `${pctDiff}% diff`;
+  if (subEl) subEl.textContent = verdictDesc;
+
+  // ── Update split bar (desktop) ──
+  const barM = document.getElementById('trade-bar-m');
+  if (barM) { barM.style.width = pctA + '%'; barM.style.background = verdictColor; }
+  // Mobile verdict sync
+  const labelM = document.getElementById('trade-verdict-label-m');
+  const pctM = document.getElementById('trade-verdict-pct-m');
+  const subM = document.getElementById('trade-verdict-sub-m');
+  if (labelM) { labelM.textContent = verdictText; labelM.style.color = verdictColor; }
+  if (pctM) pctM.textContent = `${pctDiff}% diff`;
+  if (subM) subM.textContent = verdictDesc;
+
+  // Show mobile verdict section
+  const mobileVerdict = document.getElementById('trade-verdict-mobile');
+  if (mobileVerdict) mobileVerdict.style.display = 'block';
+  const extraVerdict = document.getElementById('trade-verdict-extra');
+  if (extraVerdict) extraVerdict.style.display = 'flex';
+
+  // ── Age warning ──
   const avgAgeA = _avgTradeAge(tradeAssets.a);
   const avgAgeB = _avgTradeAge(tradeAssets.b);
-  const cliffWarn = avgAgeA < 25 && avgAgeB > 28
-    ? `⚠ Age risk: you're giving youth (avg ${avgAgeA.toFixed(1)}) for age (avg ${avgAgeB.toFixed(1)})`
-    : avgAgeA > 28 && avgAgeB < 25
-    ? `✓ Age upside: receiving younger assets (avg ${avgAgeB.toFixed(1)})`
-    : '';
+  const ageWarnEl = document.getElementById('trade-age-warn');
+  if (ageWarnEl) {
+    if (avgAgeA < 25 && avgAgeB > 28) {
+      ageWarnEl.style.display = 'block';
+      ageWarnEl.style.background = 'rgba(245,200,66,0.1)';
+      ageWarnEl.style.border = '1px solid rgba(245,200,66,0.2)';
+      ageWarnEl.style.borderRadius = '8px';
+      ageWarnEl.style.padding = '8px 12px';
+      ageWarnEl.style.color = 'var(--te)';
+      ageWarnEl.textContent = `⚠ Age risk: giving youth (avg ${avgAgeA.toFixed(1)}) for aging assets (avg ${avgAgeB.toFixed(1)})`;
+    } else if (avgAgeA > 28 && avgAgeB < 25) {
+      ageWarnEl.style.display = 'block';
+      ageWarnEl.style.background = 'rgba(61,204,122,0.08)';
+      ageWarnEl.style.border = '1px solid rgba(61,204,122,0.2)';
+      ageWarnEl.style.borderRadius = '8px';
+      ageWarnEl.style.padding = '8px 12px';
+      ageWarnEl.style.color = 'var(--rb)';
+      ageWarnEl.textContent = `✓ Age upside: receiving younger assets (avg ${avgAgeB.toFixed(1)} vs ${avgAgeA.toFixed(1)})`;
+    } else {
+      ageWarnEl.style.display = 'none';
+    }
+  }
 
-  verdict.style.display='block';
-  document.getElementById('trade-verdict-inner').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:12px">
-      <div>
-        <div style="font-size:20px;font-weight:700;font-family:var(--font-sans)" class="${verdictClass}">${emoji} ${verdictText}</div>
-        <div style="font-size:12px;color:var(--muted);font-family:var(--font-sans);margin-top:3px">
-          ${diff!==0?`Value difference: <strong style="color:var(--text)">${absDiff.toLocaleString()}</strong> (${pctDiff}%)`:``}
-        </div>
-        ${cliffWarn ? `<div style="font-size:11px;margin-top:6px;padding:5px 8px;border-radius:6px;background:${avgAgeA<25&&avgAgeB>28?'var(--s3)':'var(--s3)'};color:${avgAgeA<25&&avgAgeB>28?'var(--te)':'var(--rb)'}">${cliffWarn}</div>` : ''}
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:10px;color:var(--muted);font-family:var(--font-sans)">${raLoaded?'Powered by RosterAudit':fcLoaded?'Powered by FantasyCalc':'Based on rankings'}</div>
-      </div>
-    </div>
-    <div class="trade-verdict-bar">
-      <div class="tvb-fill" style="width:${pctA}%;background:var(--accent2)"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--font-sans);flex-wrap:wrap;gap:4px;margin-bottom:12px">
-      <span style="color:var(--accent2)">You give · ${valA.toLocaleString()}</span>
-      <span style="color:var(--rb)">You receive · ${valB.toLocaleString()}</span>
-      ${_tm===3?`<span style="color:var(--te)">3rd team · ${valC.toLocaleString()}</span>`:''}
-    </div>
-    <div id="trade-comps-area">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">Similar recent trades from RosterAudit</div>
-      <div id="trade-comps-inner" style="font-size:12px;color:var(--muted);font-family:var(--font-sans)">
-        <span style="display:inline-block;animation:spin 1s linear infinite;font-size:14px">⟳</span> Loading trade comps...
+  // ── ROI projection chart ──
+  _renderRoiChart(tradeAssets.a, tradeAssets.b);
+
+  // ── Roster impact ──
+  _renderRosterImpact('a', tradeAssets.a, tradeAssets.b);
+  _renderRosterImpact('b', tradeAssets.b, tradeAssets.a);
+
+  // ── Trade comps → ticker ──
+  _fetchTradeComps(tradeAssets.a, tradeAssets.b);
+
+  // Keep legacy hidden verdict in sync for any callers
+  document.getElementById('trade-verdict').style.display = 'none';
+}
+
+function _renderRoiChart(assetsA, assetsB) {
+  const chartEl = document.getElementById('roi-chart');
+  if (!chartEl) return;
+
+  // Build ROI projection from FC values:
+  // NOW = current dynasty value
+  // WK4 = dynasty value + 10% of trend
+  // WK8 = dynasty value + 30% of trend
+  // PLYFS = redraft value (peak performance)
+  // DYN = long-term dynasty (combinedValue or value)
+  const getProjection = assets => {
+    if (!assets.length) return [0,0,0,0,0];
+    const totalVal = assets.reduce((s,a) => s + a.val, 0);
+    const avgTrend = assets.reduce((s,a) => s + (getFCValue(a.name)?.trend || 0), 0) / Math.max(assets.length, 1);
+    const totalRedraft = assets.reduce((s,a) => s + (getFCValue(a.name)?.redraftValue || a.val * 0.9), 0);
+    const totalCombined = assets.reduce((s,a) => s + (getFCValue(a.name)?.combinedValue || a.val), 0);
+    const avgAge = _avgTradeAge(assets);
+    // Decay factor: older players lose dynasty value faster
+    const ageFactor = avgAge > 0 ? Math.max(0.5, 1 - (avgAge - 24) * 0.04) : 1;
+    return [
+      totalVal,                                        // NOW
+      totalVal + totalVal * (avgTrend / 10000),        // 1 month (trend-adjusted)
+      totalVal + totalVal * (avgTrend / 10000) * 3,    // 3 months
+      totalRedraft,                                    // peak (redraft proxy)
+      totalCombined * ageFactor,                       // 1yr dynasty (age-adjusted)
+    ].map(v => Math.max(0, Math.round(v)));
+  };
+
+  const projA = getProjection(assetsA);
+  const projB = getProjection(assetsB);
+  const maxVal = Math.max(...projA, ...projB, 1);
+
+  const labels = ['NOW','1 MO','3 MO','PEAK','1 YR'];
+  chartEl.innerHTML = labels.map((lbl, i) => {
+    const hA = Math.round((projA[i] / maxVal) * 100);
+    const hB = Math.round((projB[i] / maxVal) * 100);
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%">
+      <div style="flex:1;width:100%;display:flex;align-items:flex-end;gap:2px">
+        <div style="flex:1;height:${hA}%;background:var(--sky);border-radius:3px 3px 0 0;min-height:2px;transition:height 0.5s ease;opacity:0.85" title="Team A: ${projA[i].toLocaleString()}"></div>
+        <div style="flex:1;height:${hB}%;background:var(--accent2);border-radius:3px 3px 0 0;min-height:2px;transition:height 0.5s ease;opacity:0.85" title="Team B: ${projB[i].toLocaleString()}"></div>
       </div>
     </div>`;
+  }).join('');
+}
 
-  
-  _fetchTradeComps(tradeAssets.a, tradeAssets.b);
+function _renderRosterImpact(side, giving, receiving) {
+  const wrapEl = document.getElementById(`trade-impact-${side}`);
+  const innerEl = document.getElementById(`trade-impact-${side}-inner`);
+  if (!wrapEl || !innerEl) return;
+  wrapEl.style.display = 'block';
+
+  const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+  const impacts = [];
+
+  // Analyze what positions are being given away
+  giving.filter(a=>a.type==='player').forEach(a => {
+    const pos = PLAYERS.find(p=>p.name===a.name)?.pos || getFCValue(a.name)?.pos;
+    if (!pos || !posColors[pos]) return;
+    impacts.push({ icon:'▼', color:'var(--qb)', text:`Losing ${pos} depth (${a.name.split(' ').pop()})` });
+  });
+  giving.filter(a=>a.type==='pick').forEach(a => {
+    impacts.push({ icon:'▼', color:'var(--muted)', text:`Giving up ${a.name}` });
+  });
+
+  // Analyze what's coming back
+  receiving.filter(a=>a.type==='player').forEach(a => {
+    const pos = PLAYERS.find(p=>p.name===a.name)?.pos || getFCValue(a.name)?.pos;
+    if (!pos || !posColors[pos]) return;
+    const trend = getFCValue(a.name)?.trend || 0;
+    impacts.push({ icon:'▲', color: trend >= 0 ? 'var(--rb)' : 'var(--te)', text:`Gaining ${pos}: ${a.name.split(' ').pop()}${trend>0?' (↑ trending)':trend<0?' (↓ trending)':''}` });
+  });
+  receiving.filter(a=>a.type==='pick').forEach(a => {
+    impacts.push({ icon:'▲', color:'var(--rb)', text:`Gaining ${a.name}` });
+  });
+
+  if (!impacts.length) {
+    wrapEl.style.display = 'none';
+    return;
+  }
+
+  innerEl.innerHTML = impacts.slice(0,4).map(imp =>
+    `<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:${imp.color}">
+       <span style="font-size:11px;flex-shrink:0">${imp.icon}</span>
+       <span style="font-family:var(--font-sans)">${imp.text}</span>
+     </div>`
+  ).join('');
 }
 
 function _avgTradeAge(assets) {
@@ -7713,10 +7999,11 @@ function _avgTradeAge(assets) {
 }
 
 async function _fetchTradeComps(sideA, sideB) {
+  const tickerEl = document.getElementById('trade-ticker-inner');
+  const tickerWrap = document.getElementById('trade-ticker-wrap');
+  // Also update the legacy comps-inner if it exists
   const compsEl = document.getElementById('trade-comps-inner');
-  if (!compsEl) return;
 
-  
   const getSid = name => {
     const normN = normName(name);
     return sleeperPlayerMap[normN]?.player_id || null;
@@ -7725,55 +8012,63 @@ async function _fetchTradeComps(sideA, sideB) {
   const idsA = sideA.map(a=>getSid(a.name)).filter(Boolean);
   const idsB = sideB.map(a=>getSid(a.name)).filter(Boolean);
 
-  
   if (!idsA.length && !idsB.length) {
-    compsEl.innerHTML = '<span style="color:var(--muted)">Add players (not just picks) to see trade comps.</span>';
+    if (tickerEl) tickerEl.innerHTML = '<span style="color:var(--muted)">Add players (not just picks) to see community comps.</span>';
     return;
   }
 
+  // Show loading state in ticker
+  if (tickerEl) tickerEl.innerHTML = '<span style="color:var(--muted);animation:pulse 1.5s ease infinite">⟳ Loading trade comps...</span>';
+  if (tickerWrap) tickerWrap.style.display = 'block';
+
   try {
-    
     const topPlayer = [...sideA, ...sideB].sort((a,b)=>b.val-a.val)[0];
     const sid = getSid(topPlayer?.name || '');
     if (!sid) {
-      compsEl.innerHTML = '<span style="color:var(--muted)">No comps found for these players.</span>';
+      if (tickerEl) tickerEl.innerHTML = '<span style="color:var(--muted)">No comps found for these players.</span>';
       return;
     }
 
-    const res = await fetch(`https://rosteraudit.com/wp-json/ra/v1/tradabase?player_id=${sid}&limit=4`);
+    const res = await fetch(`https://rosteraudit.com/wp-json/ra/v1/tradabase?player_id=${sid}&limit=6`);
     if (!res.ok) throw new Error('no data');
     const data = await res.json();
 
     const trades = Array.isArray(data) ? data : (data?.trades || data?.results || []);
     if (!trades.length) throw new Error('empty');
 
-    compsEl.innerHTML = trades.slice(0,4).map(t => {
+    // Build ticker items — duplicated for seamless loop
+    const items = trades.slice(0,6).map(t => {
       const side1 = (t.side_a || t.gives || []).map(p=>p.name||p).join(', ') || '—';
       const side2 = (t.side_b || t.gets  || []).map(p=>p.name||p).join(', ') || '—';
       const when  = t.date ? new Date(t.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-      const format = t.format || t.league_type || '';
-      return `<div style="padding:8px;background:var(--s2);border-radius:6px;margin-bottom:6px;border:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-          <div style="flex:1;min-width:0">
-            <span style="color:var(--accent2)">${side1}</span>
-            <span style="color:var(--muted);margin:0 4px">⇌</span>
-            <span style="color:var(--rb)">${side2}</span>
-          </div>
-          <div style="flex-shrink:0;text-align:right">
-            ${when?`<span style="font-size:10px;color:var(--muted)">${when}</span>`:''}
-            ${format?`<span style="font-size:10px;color:var(--muted);margin-left:4px">${format}</span>`:''}
-          </div>
-        </div>
-      </div>`;
-    }).join('') + `<div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:right">
-      Via <a href="https://rosteraudit.com/tradabase/" target="_blank" style="color:var(--accent2)">RosterAudit Tradabase</a>
-    </div>`;
+      return `<span style="display:inline-flex;align-items:center;gap:8px;flex-shrink:0">
+        <span style="font-weight:700;color:var(--sky)">${side1}</span>
+        <span style="color:var(--muted);font-size:11px">⇌</span>
+        <span style="font-weight:700;color:var(--accent2)">${side2}</span>
+        ${when?`<span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${when}</span>`:''}
+      </span>`;
+    });
 
+    // Duplicate for seamless marquee
+    const html = [...items, ...items].join('<span style="color:rgba(255,255,255,0.12);margin:0 24px">·</span>');
+    if (tickerEl) tickerEl.innerHTML = html;
+
+    // Also update legacy comps area if visible
+    if (compsEl) {
+      compsEl.innerHTML = trades.slice(0,4).map(t => {
+        const side1 = (t.side_a || t.gives || []).map(p=>p.name||p).join(', ') || '—';
+        const side2 = (t.side_b || t.gets  || []).map(p=>p.name||p).join(', ') || '—';
+        const when = t.date ? new Date(t.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+        return `<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:12px">
+          <span style="color:var(--sky)">${side1}</span>
+          <span style="color:var(--muted)">⇌</span>
+          <span style="color:var(--accent2)">${side2}</span>
+          ${when?`<span style="color:var(--muted);font-family:var(--font-mono);font-size:10px;margin-left:auto">${when}</span>`:''}
+        </div>`;
+      }).join('') + `<div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:right">Via <a href="https://rosteraudit.com/tradabase/" target="_blank" style="color:var(--accent2)">RosterAudit Tradabase</a></div>`;
+    }
   } catch(e) {
-    
-    compsEl.innerHTML = `<span style="color:var(--muted)">
-      Trade comps unavailable — check <a href="https://rosteraudit.com/tradabase/" target="_blank" style="color:var(--accent2)">RosterAudit Tradabase</a> for similar deals.
-    </span>`;
+    if (tickerEl) tickerEl.innerHTML = '<span style="color:var(--muted)">Community comps unavailable · Try <a href="https://rosteraudit.com/tradabase/" target="_blank" style="color:var(--accent2)">RosterAudit Tradabase</a></span>';
   }
 }
 
@@ -7782,16 +8077,43 @@ function clearTrade() {
   tradeAssets.b = [];
   tradeAssets.c = [];
   renderTradeAssets();
-  document.getElementById('trade-verdict').style.display='none';
-  document.getElementById('trade-val-a').textContent='0';
-  document.getElementById('trade-val-b').textContent='0';
-  document.getElementById('trade-val-c')&&(document.getElementById('trade-val-c').textContent='0');
+  // Reset verdict circle
+  const arcA = document.getElementById('trade-circle-a');
+  const arcB = document.getElementById('trade-circle-b');
+  if (arcA) { arcA.style.strokeDashoffset = '213.6'; arcA.style.stroke = 'var(--sky)'; }
+  if (arcB) { arcB.style.strokeDashoffset = '213.6'; }
+  const labelEl = document.getElementById('trade-verdict-label');
+  const pctEl = document.getElementById('trade-verdict-pct');
+  const subEl = document.getElementById('trade-verdict-sub');
+  if (labelEl) { labelEl.textContent = '—'; labelEl.style.color = 'var(--text)'; }
+  if (pctEl) pctEl.textContent = '';
+  if (subEl) subEl.textContent = '';
+  // Reset ROI chart
+  const roi = document.getElementById('roi-chart');
+  if (roi) roi.innerHTML = '<div style="color:var(--muted);font-size:11px;width:100%;text-align:center;line-height:64px;font-family:var(--font-mono)">Add players to project</div>';
+  // Hide impact sections
+  ['a','b'].forEach(s => {
+    const el = document.getElementById(`trade-impact-${s}`);
+    if (el) el.style.display = 'none';
+  });
+  // Reset mobile verdict
+  const mv = document.getElementById('trade-verdict-mobile');
+  if (mv) mv.style.display = 'none';
+  const ev = document.getElementById('trade-verdict-extra');
+  if (ev) ev.style.display = 'none';
+  const tw = document.getElementById('trade-ticker-wrap');
+  if (tw) tw.style.display = 'none';
+  // Reset val badges
+  document.getElementById('trade-val-a').textContent = '0';
+  document.getElementById('trade-val-b').textContent = '0';
+  // Reset analyze button
+  const btn = document.getElementById('trade-analyze-btn');
+  if (btn) { btn.style.boxShadow = ''; btn.style.animation = ''; }
 }
 
 function renderTradeRosterChips() {
   const el = document.getElementById('trade-roster-chips');
   if (!el) return;
-  // Use Sleeper league roster if available, fall back to live draft roster
   const sleeperRoster = window._cachedTradeRoster || [];
   const draftRoster = getMyRoster();
   const roster = sleeperRoster.length ? sleeperRoster : draftRoster;
@@ -7806,13 +8128,27 @@ function renderTradeRosterChips() {
     return;
   }
   const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+
+  // Resolve position from multiple sources
+  const resolvePos = (name) => {
+    const inPlayers = PLAYERS.find(p => p.name === name);
+    if (inPlayers?.pos && inPlayers.pos !== '?') return inPlayers.pos;
+    const fcv = getFCValue(name);
+    if (fcv?.pos && fcv.pos !== '?') return fcv.pos;
+    const normN = normName(name);
+    const sp = sleeperPlayerMap[normN];
+    if (sp?.position) return sp.position;
+    return '?';
+  };
+
   el.innerHTML = roster.map(p => {
-    const c = posColor[p.pos]||'var(--muted)';
+    const pos = resolvePos(p.name);
+    const c = posColor[pos] || 'var(--muted)';
     const val = getTradePlayerValue(p.name);
     return `<div onclick="addTradeAsset('a','${p.name.replace(/'/g,"\\'")}','player',${val})"
       style="padding:5px 10px;border-radius:7px;border:1.5px solid ${c}33;background:${c}10;color:${c};font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .15s"
       onmouseover="this.style.background='${c}22'" onmouseout="this.style.background='${c}10'">
-      <span style="font-size:9px;opacity:.8;font-family:'Space Mono',monospace">${p.pos}</span>
+      <span style="font-size:9px;opacity:.8;font-family:'Space Mono',monospace">${pos}</span>
       <span style="font-weight:600">${p.name.split(' ').pop()}</span>
       <span style="font-size:9px;opacity:.7;font-family:'Space Mono',monospace">${val.toLocaleString()}</span>
     </div>`;
@@ -7821,6 +8157,19 @@ function renderTradeRosterChips() {
 
 function initTrade() {
   renderTradeAssets();
+
+  // Ensure FC data is loaded so search + values work
+  if (typeof fcLoaded !== 'undefined' && !fcLoaded && !fcLoading) {
+    fetchFantasyCalc().then(() => {
+      renderTradeRosterChips(); // re-render chips with resolved positions after FC loads
+    });
+  }
+
+  // Ensure Sleeper player map is loaded (for position resolution)
+  if (typeof sleeperPlayersLoaded !== 'undefined' && !sleeperPlayersLoaded) {
+    fetchSleeperPlayers().then(() => renderTradeRosterChips());
+  }
+
   // Pre-load Sleeper roster if not cached
   if (!window._cachedTradeRoster && ovLeagueId && myTeamsUserId) {
     loadOvRoster().then(r => {
