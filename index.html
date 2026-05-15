@@ -2820,10 +2820,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
       <!-- Sub-tabs -->
       <div class="la-tabs" style="margin-bottom:18px" id="res-tabs">
-        <button class="la-tab on" onclick="setResTab('stats')">Season stats</button>
-        <button class="la-tab" onclick="setResTab('weekly')">Weekly</button>
+        <button class="la-tab on" onclick="setResTab('weekly')">Game Logs</button>
+        <button class="la-tab" onclick="setResTab('stats')">Season Stats</button>
         <button class="la-tab" onclick="setResTab('nflverse')">📊 NFL Stats</button>
-        <button class="la-tab" onclick="setResTab('value')">Dynasty value</button>
+        <button class="la-tab" onclick="setResTab('value')">Dynasty Value</button>
       </div>
 
       <!-- Tab content -->
@@ -2968,7 +2968,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
       ['2025·NFL','2024','2023'].map(y => {
         const key = y === '2025·NFL' ? '2025' : y;
         const on = key === active;
-        return `<button onclick="window._psRenderGameLogs('${key}')"
+        return `<button onclick="window._resGlYear='${key}';window._psRenderGameLogs('${key}')"
           style="padding:3px 13px;border-radius:2px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:1px solid ${on?posC:'#1E293B'};background:${on?posC+'18':'transparent'};color:${on?posC:'#909097'};transition:all 120ms ease">${y}</button>`;
       }).join('')
     }</div>`;
@@ -3072,7 +3072,21 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
   // ── 2024 / 2025: nflverse ──────────────────────────────────────────────────
   if (yr === '2024' || yr === '2025') {
     body.innerHTML = mkYrSw(yr) + `<div class="ps-loading"><div style="font-size:22px;animation:spin 1s linear infinite">⟳</div><span>Loading ${yr}...</span></div>`;
-    const yrData = await (window.initNflverseYear ? initNflverseYear(yr) : initNflverse().then(()=>({stats:window._nflverseCache?.[yr]||{stats:{}},snaps:{},inj:{}}))).catch(()=>({stats:{},snaps:{},inj:{}}));
+    // For 2025: only use year-tagged file — never fall back to 2024 cache
+    let yrData = {stats:{},snaps:{},inj:{}};
+    if (yr === '2025') {
+      // Try to fetch 2025-specific file only — no fallback to 2024
+      try {
+        const base = (()=>{const h=window.location.hostname;return h.includes('github.io')||h.includes('putput12-jp')?'https://putput12-jp.github.io/Vault-Fantasy/data':'/data';})();
+        const [sR,snR] = await Promise.all([
+          fetch(base+'/nflverse_stats_2025.json').then(r=>r.ok?r.json():null).catch(()=>null),
+          fetch(base+'/nflverse_snaps_2025.json').then(r=>r.ok?r.json():null).catch(()=>null),
+        ]);
+        yrData = {stats: sR||{}, snaps: snR||{}, inj:{}};
+      } catch(e) { yrData = {stats:{},snaps:{},inj:{}}; }
+    } else {
+      yrData = await (window.initNflverseYear ? initNflverseYear(yr) : initNflverse().then(()=>({stats:window._nflverseCache?.[yr]||{},snaps:{},inj:{}}))).catch(()=>({stats:{},snaps:{},inj:{}}));
+    }
     function fuzz(map,n){if(!map||!n)return null;if(map[n])return map[n];const norm=s=>s.toLowerCase().replace(/[^a-z]/g,'');const t=norm(n);for(const k of Object.keys(map)){if(norm(k)===t)return map[k];}return null;}
     const nfl = fuzz(yrData.stats||yrData,name);
     const snaps = fuzz(yrData.snaps||{},name);
@@ -3086,7 +3100,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
     }
     const ssn = nfl.season||{};
     const snpWks = snaps?.weeks||[];
-    const getSnap = wk => { const s=snpWks.find(s=>s.wk===wk); return s?.off!=null ? Math.round(s.off)+'%' : null; };
+    const getSnap = wk => { const s=snpWks.find(s=>s.wk===wk); return s?.off!=null ? Math.round(s.off) : null; };
     // merge snap into weeks
     const weeks = nfl.weeks.map(w=>({...w, snap: getSnap(w.wk)}));
     const sorted = [...weeks].sort((a,b)=>a.wk-b.wk);
@@ -3849,8 +3863,8 @@ async function researchSelectPlayer(name, sleeperId, pos, team) {
   document.querySelectorAll('.res-lb-row').forEach(r => r.classList.remove('active'));
 
   _resPlayer = {name, sleeperId, pos, team};
-  _resTab = 'stats';
-  _resSetTabActive('stats');
+  _resTab = 'weekly';
+  _resSetTabActive('weekly');
 
   
   _resRenderHero(name, sleeperId, pos, team, null, null);
@@ -4093,61 +4107,26 @@ function _resRenderTab(tab, name, pos, sid, stats, val) {
       <div style="margin-top:10px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a> via NFLverse</div>`;
 
   } else if (tab === 'weekly') {
-    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px"><span style="font-size:20px;animation:spin 1s linear infinite;display:inline-block">⟳</span><br><br>Loading 2025 weekly stats...</div>`;
-    if (!sid) { el.innerHTML=`<div style="text-align:center;padding:24px;color:var(--muted)">No player ID available.</div>`; return; }
-
-    
-    const tryYears = [2025, 2024];
-    (async () => {
-      for (const yr of tryYears) {
-        try {
-          const r = await fetch(`https://rosteraudit.com/wp-json/ra/v1/player-page/${sid}/weekly/${yr}`);
-          if (!r.ok) continue;
-          const raw = await r.json();
-          let weeks = (Array.isArray(raw)?raw:(raw?.weeks||raw?.data||[])).map(_resNorm);
-          if (!weeks.length) continue;
-
-          const isQB=pos==='QB', isRB=pos==='RB';
-          const cols = isQB?['Wk','Opp','Pass Yds','Pass TD','INT','FPTS']:isRB?['Wk','Opp','Rush Yds','Rush TD','Rec','Rec Yds','FPTS']:['Wk','Opp','Rec','Tgts','Rec Yds','TD','FPTS'];
-          const maxFpts = Math.max(...weeks.map(w=>parseFloat(w.fantasy_points_ppr)||0), 1);
-
-          el.innerHTML = `
-            <div style="margin-bottom:14px">
-              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${yr} — week by week · PPR</div>
-              <div style="display:flex;align-items:flex-end;gap:4px;height:80px;margin-bottom:4px">
-                ${weeks.map(w=>{
-                  const f=parseFloat(w.fantasy_points_ppr)||0;
-                  const h=Math.round(f/maxFpts*100);
-                  const c=f>=20?'var(--rb)':f>=10?'var(--violet,#a78bfa)':f>0?'var(--muted)':'var(--border)';
-                  return `<div title="Wk${w.week||w.wk||'?'}: ${f.toFixed(1)} pts" style="flex:1;border-radius:3px 3px 0 0;height:${h}%;background:${c};min-height:3px;cursor:default"></div>`;
-                }).join('')}
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
-                <span>Wk 1</span>
-                <span style="color:var(--rb)">Avg: ${(weeks.reduce((s,w)=>s+(parseFloat(w.fantasy_points_ppr)||0),0)/weeks.length).toFixed(1)} pts/wk</span>
-                <span>Wk ${weeks.length}</span>
-              </div>
-            </div>
-            <div style="overflow-x:auto">
-              <table class="res-stat-table">
-                <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
-                <tbody>${weeks.map(w=>{
-                  const f=parseFloat(w.fantasy_points_ppr)||0;
-                  const fc=f>=20?'var(--rb)':f>=10?pc:f<5&&f>0?'var(--muted)':pc;
-                  let cells;
-                  if(isQB) cells=[w.week||w.wk,w.opponent||'—',w.pass_yards||'—',w.pass_td??'—',w.interceptions??'—',f.toFixed(1)];
-                  else if(isRB) cells=[w.week||w.wk,w.opponent||'—',w.rush_yards||'—',w.rush_td??'—',w.receptions??'—',w.rec_yards||'—',f.toFixed(1)];
-                  else cells=[w.week||w.wk,w.opponent||'—',w.receptions??'—',w.targets??'—',w.rec_yards||'—',w.rec_td??'—',f.toFixed(1)];
-                  return `<tr>${cells.map((v,i)=>`<td${i===cells.length-1?` style="font-weight:700;color:${fc}"`:i>2?` style="color:${pc}"`:''}>${v??'—'}</td>`).join('')}</tr>`;
-                }).join('')}</tbody>
-              </table>
-            </div>
-            <div style="margin-top:10px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a></div>`;
-          return;
-        } catch(e) { continue; }
-      }
-      el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No weekly data available yet for this player.</div>`;
-    })();
+    // Delegate to the shared Sleeper-style game log renderer
+    // Temporarily set _psPlayer to the research hub player so _psRenderGameLogs works
+    const _prevPsPlayer = window._psPlayer;
+    window._psPlayer = { name, pos, team: '', sleeperId: sid };
+    // Render into res-tab-content by temporarily swapping ps-body id
+    const psBody = document.getElementById('ps-body');
+    const resContent = document.getElementById('res-tab-content');
+    if (resContent && window._psRenderGameLogs) {
+      // Give res-tab-content a temporary id of ps-body so GL fn targets it
+      if (psBody) psBody.id = '_ps-body-hidden';
+      resContent.id = 'ps-body';
+      const glYear = window._resGlYear || '2024';
+      window._psRenderGameLogs(glYear).finally(() => {
+        resContent.id = 'res-tab-content';
+        if (psBody) psBody.id = 'ps-body';
+        window._psPlayer = _prevPsPlayer;
+      });
+    } else {
+      window._psPlayer = _prevPsPlayer;
+    }
 
   } else if (tab === 'nflverse') {
     el.innerHTML = '<div id="res-nflverse-card"><div style="text-align:center;padding:24px;color:var(--muted);font-size:13px"><span style="font-size:20px;animation:spin 1s linear infinite;display:inline-block">⟳</span><br><br>Loading nflverse data...</div></div>';
