@@ -1698,9 +1698,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <div id="ps-header" style="padding:20px 24px 0;flex-shrink:0"></div>
     <!-- Tab bar -->
     <div class="la-tabs" id="ps-tabs" style="padding:0 24px;margin-bottom:0;flex-shrink:0">
-      <button class="la-tab on" onclick="setPsTab('overview')">Overview</button>
+      <button class="la-tab" onclick="setPsTab('overview')">Overview</button>
       <button class="la-tab" onclick="setPsTab('stats')">Stats</button>
-      <button class="la-tab" onclick="setPsTab('weekly')">Game Logs</button>
+      <button class="la-tab on" onclick="setPsTab('weekly')">Game Logs</button>
       <button class="la-tab" onclick="setPsTab('value')">Value</button>
     </div>
     <!-- Content -->
@@ -2886,7 +2886,28 @@ window.initNflverseYear=async function(year){
     return window._nflverseCache[y];
   }catch(e){console.warn('[Vault] nflverse year',y,'failed:',e.message);return{stats:{},snaps:{},inj:{}};}
 };
-function _fuzzy(map,name){if(!map||!name)return null;if(map[name])return map[name];const n=s=>s.toLowerCase().replace(/[^a-z]/g,'');const t=n(name);for(const k of Object.keys(map)){if(n(k)===t)return map[k];}return null;}
+function _fuzzy(map,name){
+  if(!map||!name)return null;
+  if(map[name])return map[name];
+  const n=s=>s.toLowerCase().replace(/[^a-z]/g,'');
+  const t=n(name);
+  // exact normalized match
+  for(const k of Object.keys(map)){if(n(k)===t)return map[k];}
+  // strip suffixes Jr Sr II III IV and retry
+  const strip=s=>s.replace(/s+(jr.?|sr.?|ii|iii|iv)$/i,'').trim();
+  const t2=n(strip(name));
+  for(const k of Object.keys(map)){if(n(strip(k))===t2)return map[k];}
+  // try first+last only (drop middle names)
+  const parts=name.trim().split(/s+/);
+  if(parts.length>2){
+    const t3=n(parts[0]+parts[parts.length-1]);
+    for(const k of Object.keys(map)){
+      const kp=k.trim().split(/s+/);
+      if(n(kp[0]+(kp[kp.length-1]))===t3)return map[k];
+    }
+  }
+  return null;
+}
 window.getNflversePlayer=n=>_fuzzy(_nflStats,n);
 window.getNflverseSnaps=n=>_fuzzy(_nflSnaps,n);
 window.getNflverseInjury=n=>_fuzzy(_nflInjuries,n);
@@ -2922,19 +2943,7 @@ window.renderNflverseCard=function(name,el){
   el.innerHTML='<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono)">NFLVERSE · '+(meta?.season||2024)+' SEASON</div><div style="display:flex;align-items:center;gap:8px">'+trendBadge+' '+fresh+'</div></div>'+'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin-bottom:14px">'+statBoxes+'</div>'+(wks.length?'<div style="margin-bottom:12px"><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">PPR POINTS BY WEEK</div><div style="display:flex;align-items:flex-end;gap:2px;height:48px">'+ptsBars+'</div><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:3px"><span>Wk '+(wks[0]?.wk||1)+'</span><span>Wk '+(wks[wks.length-1]?.wk||17)+'</span></div></div>':'')+(snpWks.length?'<div style="margin-bottom:12px"><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">SNAP % BY WEEK · <span style="color:rgba(123,208,255,.9)">■</span> ≥50% <span style="color:rgba(226,75,74,.9)">■</span> &lt;50%</div><div style="display:flex;align-items:flex-end;gap:2px;height:48px">'+snapBars+'</div></div>':'')+advHtml+(weeklyLog?'<div style="margin-top:12px"><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">WEEKLY LOG (LAST 10)</div>'+weeklyLog+'</div>':'')+(injBadge?'<div>'+injBadge+'</div>':'')+'</div>';
 };
 window._psInjectNflverse=function(name,pos){
-  // GL: generate AI advisor insight
-  function _glAiAdvisor(nfl,pos){
-    if(!nfl)return'';
-    const ssn=nfl.season||{};const l4w=nfl.l4w_avg||0;const avg=ssn.avg_pts||0;
-    const col={QB:'#ff6680',RB:'#3DCC7A',WR:'#7bd0ff',TE:'#f5c842'}[pos]||'#909097';
-    const trending=l4w>=avg;
-    let insight='';
-    if(pos==='QB')insight=`${nfl.name} averaged <span style="color:${col};font-weight:700">${avg} PPR pts/g</span> last season. L4W avg of <strong>${l4w}</strong> — ${trending?'momentum trending up':'recent dip to monitor'}. Pass EPA ${ssn.avg_pepa??'—'}/g signals ${(ssn.avg_pepa??0)>5?'elite-level efficiency':'solid but not elite production'}.`;
-    else if(pos==='RB')insight=`${nfl.name} logged <span style="color:${col};font-weight:700">${ssn.avg_car??'—'} carries/g</span> with ${ssn.avg_ryds??'—'} rush yards and ${ssn.avg_tgt??'—'} targets. ${trending?'Usage trending up — strong start consideration.':'Monitor workload share and snap rate.'}`;
-    else{const ts=ssn.avg_ts??'—';insight=`${nfl.name} commanded <span style="color:${col};font-weight:700">${ts}% target share</span> with ${ssn.avg_recyds??'—'} rec yards/g. ${(ssn.avg_wopr??0)>0.5?'Elite WOPR — true target hog.':'Solid involvement, not dominant.'}`;}
-    const rec=l4w>=20?'Priority Start':l4w>=12?'Favorable Start':'Monitor Matchup';
-    return`<div class="gl-ai-advisor"><div class="gl-ai-advisor-title">⚡ AI Advisor</div><div class="gl-ai-advisor-body">${insight}</div><div class="gl-ai-rec">✦ Recommendation: ${rec}</div></div>`;
-  }
+  // AI advisor removed
   const inject=()=>{const el=document.getElementById('ps-nflverse-inject');if(!el)return;const nfl=getNflversePlayer(name);const snp=getNflverseSnaps(name);if(!nfl){el.innerHTML='';return;}const ssn=nfl.season||{};const wks=nfl.weeks||[];const snpWks=snp?.weeks||[];const posColor=posC[pos]||'var(--muted)';const maxPts=Math.max(...wks.map(w=>w.pts||0),1);const maxSnap=Math.max(...snpWks.map(w=>w.off||0),1);const trendUp=nfl.l4w_avg>=ssn.avg_pts;const ptsBars=wks.map(w=>{const h=Math.max(2,Math.round((w.pts/maxPts)*40));return'<div title="Wk '+w.wk+': '+w.pts+' pts" style="flex:1;height:'+h+'px;background:'+(w.pts>=ssn.avg_pts?posColor:'rgba(255,255,255,.15)')+';border-radius:1px 1px 0 0;min-width:3px"></div>';}).join('');const snapBars=snpWks.map(w=>{const v=w.off||0,h=Math.max(2,Math.round((v/maxSnap)*40));return'<div title="Wk '+w.wk+': '+v+'%" style="flex:1;height:'+h+'px;background:'+(v<50?'rgba(226,75,74,.5)':'rgba(123,208,255,.65)')+';border-radius:1px 1px 0 0;min-width:3px"></div>';}).join('');const meta=window.getNflverseMeta&&getNflverseMeta();const fresh=meta?.updated_at?meta.updated_at.slice(0,10):'';el.innerHTML='<div style="background:rgba(123,208,255,.05);border:1px solid rgba(123,208,255,.12);border-radius:10px;padding:12px 14px;margin-bottom:4px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--sky);font-family:var(--font-mono)">NFLVERSE STATS</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:10px;padding:2px 8px;border-radius:20px;background:'+(trendUp?'rgba(61,204,122,.15)':'rgba(226,75,74,.15)')+';color:'+(trendUp?'var(--rb)':'var(--qb)')+'">'+(trendUp?'↑':'↓')+' L4W '+nfl.l4w_avg+'</span><span style="font-size:9px;color:var(--muted);font-family:var(--font-mono)">'+fresh+'</span></div></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;margin-bottom:10px">'+(ssn.avg_pts!=null?'<div style="background:rgba(0,0,0,.2);border-radius:7px;padding:7px 9px"><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-bottom:2px">PPR/game</div><div style="font-size:16px;font-weight:700;color:var(--text)">'+ssn.avg_pts+'</div></div>':'')+(snp?.avg_off!=null?'<div style="background:rgba(0,0,0,.2);border-radius:7px;padding:7px 9px"><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-bottom:2px">Snap %</div><div style="font-size:16px;font-weight:700;color:var(--sky)">'+snp.avg_off+'%</div></div>':'')+(ssn.avg_ts!=null?'<div style="background:rgba(0,0,0,.2);border-radius:7px;padding:7px 9px"><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-bottom:2px">Tgt Share</div><div style="font-size:16px;font-weight:700;color:'+posColor+'">'+ssn.avg_ts+'%</div></div>':'')+(ssn.avg_wopr!=null?'<div style="background:rgba(0,0,0,.2);border-radius:7px;padding:7px 9px"><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-bottom:2px">WOPR</div><div style="font-size:16px;font-weight:700;color:var(--rb)">'+ssn.avg_wopr+'</div></div>':'')+'</div>'+(wks.length?'<div style="margin-bottom:8px"><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-bottom:4px">PPR PTS BY WEEK</div><div style="display:flex;align-items:flex-end;gap:2px;height:40px">'+ptsBars+'</div></div>':'')+(snpWks.length?'<div><div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-bottom:4px">SNAP % BY WEEK</div><div style="display:flex;align-items:flex-end;gap:2px;height:40px">'+snapBars+'</div></div>':'')+'</div>';};
   if(window.nflverseLoaded)inject();else if(window.initNflverse)initNflverse().then(inject).catch(()=>{});
 };
@@ -3098,7 +3107,7 @@ function findPlayer(name) {
 // ════════════════════════════════════
 let _psPlayer = null;
 let _psData   = null;
-let _psTab    = 'overview';
+let _psTab    = 'weekly';
 
 async function openPlayerStats(normN, name, pos, team) {
   const modal = document.getElementById('ps-modal');
@@ -3116,7 +3125,7 @@ async function openPlayerStats(normN, name, pos, team) {
   requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('ps-entering')));
 
   _psRenderHeader();
-  _psSetTabActive('overview');
+  _psSetTabActive('weekly');
   body.innerHTML = `<div class="ps-loading"><div style="font-size:24px;animation:spin 1s linear infinite">⟳</div><span>Loading stats...</span></div>`;
 
   if (!sleeperId) {
@@ -3790,6 +3799,8 @@ function _resRenderHero(name, sid, pos, team, val, stats) {
   const posBg = {QB:'rgba(244,114,182,.12)',RB:'rgba(74,222,128,.12)',WR:'rgba(96,165,250,.12)',TE:'rgba(240,192,64,.12)'}[pos]||'rgba(255,255,255,.06)';
 
   nameEl.textContent = name;
+  const _mob=document.getElementById('res-open-modal-btn');
+  if(_mob){_mob.style.display='inline-flex';}
   if (avatarEl && sid) {
     avatarEl.src = `https://sleepercdn.com/content/nfl/players/thumb/${sid}.jpg`;
     avatarEl.style.display = '';
