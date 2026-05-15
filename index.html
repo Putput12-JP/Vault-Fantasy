@@ -1668,7 +1668,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <div class="la-tabs" id="ps-tabs" style="padding:0 24px;margin-bottom:0;flex-shrink:0">
       <button class="la-tab on" onclick="setPsTab('overview')">Overview</button>
       <button class="la-tab" onclick="setPsTab('stats')">Stats</button>
-      <button class="la-tab" onclick="setPsTab('weekly')">Weekly</button>
+      <button class="la-tab" onclick="setPsTab('weekly')">Game Logs</button>
       <button class="la-tab" onclick="setPsTab('value')">Value</button>
     </div>
     <!-- Content -->
@@ -2873,6 +2873,90 @@ window._psInjectNflverse=function(name,pos){
   if(window.nflverseLoaded)inject();else if(window.initNflverse)initNflverse().then(inject).catch(()=>{});
 };
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.initNflverse().catch(()=>{}));}else{setTimeout(()=>window.initNflverse().catch(()=>{}),100);}
+
+
+window._psRenderGameLogs = async function(year) {
+  const body = document.getElementById('ps-body');
+  if (!body || !_psPlayer) return;
+  const { name, pos, sleeperId } = _psPlayer;
+  const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos] || 'var(--muted)';
+  const yr = year || '2025';
+  function mkSw(active) {
+    return ['2025','2024','2023'].map(y => {
+      const on = y === active;
+      return `<button onclick="window._psRenderGameLogs('${y}')" style="padding:4px 14px;border-radius:20px;border:1px solid ${on?posColor:'rgba(255,255,255,.15)'};background:${on?posColor+'22':'transparent'};color:${on?posColor:'var(--muted)'};font-family:var(--font-mono);font-size:11px;font-weight:${on?700:400};cursor:pointer;transition:all 120ms ease">${y}</button>`;
+    }).join('');
+  }
+  const sw = `<div style="display:flex;gap:6px;margin-bottom:16px">${mkSw(yr)}</div>`;
+
+  if (yr === '2024') {
+    body.innerHTML = sw + `<div class="ps-loading"><div style="font-size:22px;animation:spin 1s linear infinite">⟳</div><span>Loading 2024 data...</span></div>`;
+    await initNflverse().catch(()=>{});
+    const nfl = getNflversePlayer(name);
+    const snaps = getNflverseSnaps(name);
+    if (!nfl || !nfl.weeks?.length) {
+      body.innerHTML = sw + `<div style="text-align:center;padding:32px;color:var(--muted)"><div style="font-size:22px;margin-bottom:10px">📊</div><div style="color:var(--text2);font-weight:600;margin-bottom:6px">No 2024 nflverse data</div><div style="font-size:12px">This player may not appear in the 2024 dataset.</div></div>`;
+      return;
+    }
+    const weeks=nfl.weeks, ssn=nfl.season||{}, snpWks=snaps?.weeks||[];
+    const getSnap=wk=>{const s=snpWks.find(s=>s.wk===wk);return s?.off!=null?s.off+'%':'—';};
+    const isQB=pos==='QB',isRB=pos==='RB';
+    let cols,rowFn;
+    if(isQB){cols=['WK','OPP','FPTS','CMP/ATT','PASS YDS','TD','INT','RUSH YDS','SNAP%'];rowFn=w=>[w.wk,'—',w.pts,`${w.cmp||0}/${w.att||0}`,w.pyds||0,w.ptds||0,w.ints||0,w.ryds||0,getSnap(w.wk)];}
+    else if(isRB){cols=['WK','OPP','FPTS','CAR','RUSH YDS','RUSH TD','REC','TGT','REC YDS','SNAP%'];rowFn=w=>[w.wk,'—',w.pts,w.car||0,w.ryds||0,w.rtds||0,w.rec||0,w.tgt||0,w.recyds||0,getSnap(w.wk)];}
+    else{cols=['WK','OPP','FPTS','REC','TGT','REC YDS','TD','TGT SHR','SNAP%'];rowFn=w=>[w.wk,'—',w.pts,w.rec||0,w.tgt||0,w.recyds||0,w.rectds||0,w.ts!=null?w.ts+'%':'—',getSnap(w.wk)];}
+    const avgPts=ssn.avg_pts||0;
+    const rows=[...weeks].sort((a,b)=>a.wk-b.wk).map(w=>{
+      const cells=rowFn(w);const fpts=parseFloat(cells[2]);
+      const fc=fpts>=25?'var(--rb)':fpts>=15?'var(--te)':fpts>=8?posColor:'var(--muted)';
+      return `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">${cells.map((v,i)=>{
+        if(i===0)return`<td style="color:var(--muted);font-family:var(--font-mono);font-size:12px">Wk ${v}</td>`;
+        if(i===1)return`<td style="color:var(--muted);font-size:12px">${v}</td>`;
+        if(i===2)return`<td style="font-weight:700;color:${fc};font-family:var(--font-mono)">${v}</td>`;
+        return`<td style="color:${posColor};font-family:var(--font-mono)">${v}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+    const kpis=[
+      `<div class="ps-kpi" style="flex:1;min-width:70px"><div class="ps-kpi-val" style="color:${posColor}">${avgPts}</div><div class="ps-kpi-label">Avg FPTS</div></div>`,
+      `<div class="ps-kpi" style="flex:1;min-width:70px"><div class="ps-kpi-val" style="color:${posColor}">${ssn.games||weeks.length}</div><div class="ps-kpi-label">Games</div></div>`,
+      `<div class="ps-kpi" style="flex:1;min-width:70px"><div class="ps-kpi-val" style="color:${posColor}">${nfl.l4w_avg||'—'}</div><div class="ps-kpi-label">L4W Avg</div></div>`,
+      ssn.avg_pyds!=null?`<div class="ps-kpi" style="flex:1;min-width:70px"><div class="ps-kpi-val" style="color:${posColor}">${ssn.avg_pyds}</div><div class="ps-kpi-label">Pass Yds/G</div></div>`:'',
+      ssn.avg_ryds!=null?`<div class="ps-kpi" style="flex:1;min-width:70px"><div class="ps-kpi-val" style="color:${posColor}">${ssn.avg_ryds}</div><div class="ps-kpi-label">Rush Yds/G</div></div>`:'',
+      ssn.avg_tgt!=null?`<div class="ps-kpi" style="flex:1;min-width:70px"><div class="ps-kpi-val" style="color:${posColor}">${ssn.avg_tgt}</div><div class="ps-kpi-label">Tgt/G</div></div>`:'',
+    ].join('');
+    body.innerHTML=sw+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${kpis}</div><div style="overflow-x:auto;border-radius:8px;border:1px solid rgba(255,255,255,.07)"><table class="ps-stat-table" style="min-width:100%"><thead><tr>${cols.map(c=>`<th style="font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.06em;padding:8px 10px;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div><div style="margin-top:10px;font-size:11px;color:var(--muted)">Source: <span style="color:var(--sky)">nflverse</span> · 2024 season · PPR</div>`;
+    return;
+  }
+
+  body.innerHTML=sw+`<div class="ps-loading"><div style="font-size:22px;animation:spin 1s linear infinite">⟳</div><span>Loading ${yr} game logs...</span></div>`;
+  if(!sleeperId){body.innerHTML=sw+`<div class="ps-loading" style="color:var(--muted)">No Sleeper ID — logs unavailable.</div>`;return;}
+  try{
+    const raw=await fetch(`https://rosteraudit.com/wp-json/ra/v1/player-page/${sleeperId}/weekly/${yr}`).then(r=>r.json());
+    let weeks=Array.isArray(raw)?raw:(raw?.weeks||raw?.data||[]);
+    if(!weeks.length){body.innerHTML=sw+`<div style="text-align:center;padding:32px;color:var(--muted)"><div style="font-size:22px;margin-bottom:10px">📅</div><div style="color:var(--text2);font-weight:600;margin-bottom:6px">No ${yr} data</div><div style="font-size:12px">${yr==='2025'?'The 2025 season has not started yet.':'No data available.'}</div></div>`;return;}
+    const norm=o=>{if(!o)return{};const map={pass_yards:['pass_yards','passing_yards'],pass_td:['pass_td','passing_td'],interceptions:['interceptions','ints'],rush_yards:['rush_yards','rushing_yards'],rush_td:['rush_td','rushing_td'],receptions:['receptions','rec'],targets:['targets','tgts'],rec_yards:['rec_yards','receiving_yards'],rec_td:['rec_td','receiving_td'],fantasy_points:['fantasy_points_ppr','fpts','fantasy_points','pts'],week:['week','wk'],opponent:['opponent','opp','team']};const out={};Object.entries(map).forEach(([c,keys])=>{for(const k of keys){if(o[k]!==undefined&&o[k]!==null){out[c]=o[k];break;}}});return out;};
+    const nw=weeks.map(norm).filter(w=>w.week);
+    const isQB=pos==='QB',isRB=pos==='RB';
+    let cols,rowFn;
+    if(isQB){cols=['WK','OPP','FPTS','CMP/ATT','PASS YDS','TD','INT','RUSH YDS'];rowFn=w=>[w.week,w.opponent||'—',w.fantasy_points,`${w.completions||'—'}/${w.attempts||'—'}`,w.pass_yards||'—',w.pass_td??'—',w.interceptions??'—',w.rush_yards||'—'];}
+    else if(isRB){cols=['WK','OPP','FPTS','CAR','RUSH YDS','RUSH TD','REC','TGT','REC YDS'];rowFn=w=>[w.week,w.opponent||'—',w.fantasy_points,w.carries||'—',w.rush_yards||'—',w.rush_td??'—',w.receptions??'—',w.targets??'—',w.rec_yards||'—'];}
+    else{cols=['WK','OPP','FPTS','REC','TGT','REC YDS','TD'];rowFn=w=>[w.week,w.opponent||'—',w.fantasy_points,w.receptions??'—',w.targets??'—',w.rec_yards||'—',w.rec_td??'—'];}
+    const allPts=nw.map(w=>parseFloat(w.fantasy_points)).filter(v=>!isNaN(v));
+    const avgPts=allPts.length?(allPts.reduce((a,b)=>a+b,0)/allPts.length).toFixed(1):0;
+    const rows=nw.sort((a,b)=>a.week-b.week).map(w=>{
+      const cells=rowFn(w);const fpts=parseFloat(cells[2]);
+      const fc=fpts>=25?'var(--rb)':fpts>=15?'var(--te)':fpts>=8?posColor:'var(--muted)';
+      return`<tr style="border-bottom:1px solid rgba(255,255,255,.04)">${cells.map((v,i)=>{
+        if(i===0)return`<td style="color:var(--muted);font-family:var(--font-mono);font-size:12px">Wk ${v}</td>`;
+        if(i===1)return`<td style="color:var(--text2);font-size:12px">${v}</td>`;
+        if(i===2)return`<td style="font-weight:700;color:${fc};font-family:var(--font-mono)">${isNaN(fpts)?v:fpts.toFixed(1)}</td>`;
+        return`<td style="color:${posColor};font-family:var(--font-mono)">${v??'—'}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+    body.innerHTML=sw+`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><div class="ps-kpi" style="flex:1;min-width:70px"><div class="ps-kpi-val" style="color:${posColor}">${avgPts}</div><div class="ps-kpi-label">Avg FPTS</div></div><div class="ps-kpi" style="flex:1;min-width:70px"><div class="ps-kpi-val" style="color:${posColor}">${nw.length}</div><div class="ps-kpi-label">Games</div></div>${allPts.length?`<div class="ps-kpi" style="flex:1;min-width:70px"><div class="ps-kpi-val" style="color:${posColor}">${Math.max(...allPts).toFixed(1)}</div><div class="ps-kpi-label">Best Wk</div></div>`:''}</div><div style="overflow-x:auto;border-radius:8px;border:1px solid rgba(255,255,255,.07)"><table class="ps-stat-table" style="min-width:100%"><thead><tr>${cols.map(c=>`<th style="font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.06em;padding:8px 10px;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div><div style="margin-top:10px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit</a> · PPR</div>`;
+  }catch(e){body.innerHTML=sw+`<div class="ps-loading" style="color:var(--qb)">⚠ ${e.message}</div>`;}
+};
+
 })();
 </script>
 
@@ -3163,25 +3247,8 @@ function _psRenderTab(tab) {
     <div style="margin-top:12px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a> via NFLverse</div>`;
 
   } else if (tab === 'weekly') {
-    body.innerHTML = `<div class="ps-loading"><div style="font-size:24px;animation:spin 1s linear infinite">⟳</div><span>Loading weekly stats...</span></div>`;
-    if (!sleeperId) { body.innerHTML=`<div class="ps-loading">No Sleeper ID available.</div>`; return; }
-    fetch(`https://rosteraudit.com/wp-json/ra/v1/player-page/${sleeperId}/weekly/2026`)
-      .then(r=>r.json()).then(raw=>{
-        let weeks = Array.isArray(raw)?raw:(raw?.weeks||raw?.data||[]);
-        weeks = weeks.map(norm);
-        if (!weeks.length){body.innerHTML=`<div class="ps-loading" style="color:var(--muted)">No 2026 weekly data yet.</div>`;return;}
-        const isQB=pos==='QB', isRB=pos==='RB';
-        const cols=isQB?['Wk','Opp','Pass Yds','Pass TD','INT','FPTS']:isRB?['Wk','Opp','Rush Yds','Rush TD','Rec','Rec Yds','FPTS']:['Wk','Opp','Rec','Targets','Rec Yds','TD','FPTS'];
-        body.innerHTML=`<div style="overflow-x:auto"><table class="ps-stat-table"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${weeks.map(w=>{
-          const fpts=w.fantasy_points_ppr??w.fpts??w.fantasy_points??'—';
-          const fn=parseFloat(fpts);
-          const fc=fn>=20?'var(--rb)':fn>=12?'var(--te)':fn<5&&fn>=0?'var(--muted)':posColor;
-          const cells=isQB?[w.week,w.opponent||'—',w.pass_yards||'—',w.pass_td??'—',w.interceptions??'—',fpts]:isRB?[w.week,w.opponent||'—',w.rush_yards||'—',w.rush_td??'—',w.receptions??'—',w.rec_yards||'—',fpts]:[w.week,w.opponent||'—',w.receptions??'—',w.targets??'—',w.rec_yards||'—',w.rec_td??'—',fpts];
-          return`<tr>${cells.map((v,i)=>`<td${i===cells.length-1&&!isNaN(fn)?` style="font-weight:700;color:${fc}"`:i>2?` style="color:${posColor}"`:''}">${v??'—'}</td>`).join('')}</tr>`;
-        }).join('')}</tbody></table></div>
-        <div style="margin-top:12px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a></div>`;
-      }).catch(()=>{body.innerHTML=`<div class="ps-loading" style="color:var(--muted)">No weekly data available.</div>`;});
-
+    window._psRenderGameLogs('2025');
+    return;
   } else if (tab === 'value') {
     const bars=[['Superflex (RA)',val?.val_sf||0,'var(--rb)'],['1QB (RA)',val?.val_1qb||0,'var(--wr)'],['FantasyCalc SF',getFCValue(name)?.value||0,'var(--accent2)']].filter(([,v])=>v>0);
     const maxBar=Math.max(...bars.map(([,v])=>v),1);
