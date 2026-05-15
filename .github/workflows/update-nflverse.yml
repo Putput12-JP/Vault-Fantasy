@@ -26,16 +26,10 @@ jobs:
       - name: Run data processor
         run: python scripts/process_nflverse.py
 
-      - name: Check if data changed
-        id: diff
-        run: |
-          git diff --quiet data/ || echo "changed=true" >> $GITHUB_OUTPUT
-
       - name: Commit and push updated data
-        if: steps.diff.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git commit -m "chore: update nflverse data $(date -u +%Y-%m-%d)"
+          git diff --staged --quiet || git commit -m "chore: update nflverse data $(date -u +%Y-%m-%d)"
           git push
