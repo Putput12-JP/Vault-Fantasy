@@ -2952,9 +2952,10 @@ window._psInjectNflverse=function(name,pos){
   if(window.nflverseLoaded)inject();else if(window.initNflverse)initNflverse().then(inject).catch(()=>{});
 };
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.initNflverse().catch(()=>{}));}else{setTimeout(()=>window.initNflverse().catch(()=>{}),100);}
+})();
+</script>
 
-
-window._psRenderGameLogs = async function(year) {
+<script>window._psRenderGameLogs = async function(year) {
   const body = document.getElementById('ps-body');
   if (!body || !_psPlayer) return;
   const { name, pos, sleeperId } = _psPlayer;
@@ -3135,9 +3136,9 @@ window._psRenderGameLogs = async function(year) {
   } catch(e) { body.innerHTML = mkYrSw(yr)+`<div class="ps-loading" style="color:#ff6680">⚠ ${e.message}</div>`; }
 };
 
-</script>
 
-<script>
+
+
 // ════════════════════════════════════
 
 // ════════════════════════════════════
@@ -8910,7 +8911,7 @@ function initSwipe() {
         if (hint) { hint.textContent = '✦ Added to your roster'; hint.classList.add('show'); setTimeout(()=>hint.classList.remove('show'),1400); }
       } else {
         markGone(swipeState.name);
-        if (hint) { hint.textContent = '✕ Marked as drafted'; hint.classList.add('show'); setTimeout(()=>hint.classList.remove('sh'show'),1400); }
+        if (hint) { hint.textContent = '✕ Marked as drafted'; hint.classList.add('show'); setTimeout(()=>hint.classList.remove('show'),1400); }
       }
     }
     swipeState.el = null;
