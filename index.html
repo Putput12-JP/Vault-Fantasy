@@ -3764,6 +3764,25 @@ function _resRenderKPIs(name, pos, stats, val) {
     `<div class="res-kpi"><div class="res-kpi-val" style="color:${pc}">${v||'—'}</div><div class="res-kpi-lbl">${l}${yr}</div></div>`
   ).join('') +
   (val?.age ? `<div class="res-kpi"><div class="res-kpi-val" style="color:var(--muted)">${Number(val.age).toFixed(1)}</div><div class="res-kpi-lbl">Age</div></div>` : '');
+
+  // Augment with nflverse data when loaded
+  const _resNflEl = document.getElementById('res-kpis');
+  const _addNflKPIs = () => {
+    const nfl = window.getNflversePlayer && getNflversePlayer(name);
+    const snp = window.getNflverseSnaps && getNflverseSnaps(name);
+    if (!nfl || !_resNflEl) return;
+    const ssn = nfl.season || {};
+    const trendUp = nfl.l4w_avg >= ssn.avg_pts;
+    const nflBadges = [
+      ssn.avg_pts != null ? `<div class="res-kpi" title="2024 PPR pts per game"><div class="res-kpi-val" style="color:${pc}">${ssn.avg_pts}</div><div class="res-kpi-lbl">PPR/g '24</div></div>` : '',
+      snp?.avg_off != null ? `<div class="res-kpi" title="Avg offensive snap %"><div class="res-kpi-val" style="color:var(--sky)">${snp.avg_off}%</div><div class="res-kpi-lbl">Snap %</div></div>` : '',
+      ssn.avg_ts != null ? `<div class="res-kpi" title="Avg target share"><div class="res-kpi-val" style="color:var(--wr)">${ssn.avg_ts}%</div><div class="res-kpi-lbl">Tgt Share</div></div>` : '',
+      ssn.avg_wopr != null ? `<div class="res-kpi" title="Weighted opportunity rating"><div class="res-kpi-val" style="color:var(--rb)">${ssn.avg_wopr}</div><div class="res-kpi-lbl">WOPR</div></div>` : '',
+      nfl.l4w_avg != null && (ssn.games || 0) >= 4 ? `<div class="res-kpi"><div class="res-kpi-val" style="color:${trendUp?'var(--rb)':'var(--qb)'}">${trendUp?'↑':'↓'} ${nfl.l4w_avg}</div><div class="res-kpi-lbl">L4W Avg</div></div>` : '',
+    ].filter(Boolean).join('');
+    if (nflBadges) _resNflEl.insertAdjacentHTML('beforeend', '<div class="res-kpi" style="background:transparent;border:none;opacity:.5"><div class="res-kpi-val" style="font-size:8px">NFL</div><div class="res-kpi-lbl">VERSE</div></div>' + nflBadges);
+  };
+  if (window.nflverseLoaded) { _addNflKPIs(); } else if (window.initNflverse) { initNflverse().then(_addNflKPIs).catch(()=>{}); }
 }
 
 let _resDataCache = null; 
@@ -3863,6 +3882,12 @@ function _resRenderTab(tab, name, pos, sid, stats, val) {
       }
       el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">No weekly data available yet for this player.</div>`;
     })();
+
+  } else if (tab === 'nflverse') {
+    el.innerHTML = '<div id="res-nflverse-card"><div style="text-align:center;padding:24px;color:var(--muted);font-size:13px"><span style="font-size:20px;animation:spin 1s linear infinite;display:inline-block">⟳</span><br><br>Loading nflverse data...</div></div>';
+    const cardEl = document.getElementById('res-nflverse-card');
+    if (window.nflverseLoaded) { renderNflverseCard(name, cardEl); }
+    else { initNflverse().then(() => renderNflverseCard(name, cardEl)).catch(() => { cardEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">nflverse data not available yet.</div>'; }); }
 
   } else if (tab === 'value') {
     const raValSF = val?.val_sf||getPlayerValue(name)||0;
