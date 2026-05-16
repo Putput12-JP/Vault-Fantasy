@@ -3034,21 +3034,21 @@ window._psRenderGameLogs = async function(year, targetEl) {
 
   // Table header by position
   function mkTHead(p) {
-    if (p==='QB') return `<tr><th>WK</th><th>OPP</th><th>PROJ</th>
+    if (p==='QB') return `<tr><th>WK</th><th>PROJ</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px">FPTS</th><th>SNP%</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#ff6680">ATT</th>
       <th style="color:#ff6680">CMP</th><th style="color:#ff6680">YDS</th>
       <th style="color:#ff6680">TD</th><th style="color:#ff6680">INT</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#3DCC7A">CAR</th>
       <th style="color:#3DCC7A">YDS</th><th style="color:#3DCC7A">TD</th></tr>`;
-    if (p==='RB') return `<tr><th>WK</th><th>OPP</th><th>PROJ</th>
+    if (p==='RB') return `<tr><th>WK</th><th>PROJ</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px">FPTS</th><th>SNP%</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#3DCC7A">CAR</th>
       <th style="color:#3DCC7A">YDS</th><th style="color:#3DCC7A">TD</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#7bd0ff">REC</th>
       <th style="color:#7bd0ff">TGT</th><th style="color:#7bd0ff">YDS</th>
       <th style="color:#7bd0ff">TD</th></tr>`;
-    return `<tr><th>WK</th><th>OPP</th><th>PROJ</th>
+    return `<tr><th>WK</th><th>PROJ</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px">FPTS</th><th>SNP%</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#7bd0ff">REC</th>
       <th style="color:#7bd0ff">TGT</th><th style="color:#7bd0ff">YDS</th>
@@ -3073,7 +3073,6 @@ window._psRenderGameLogs = async function(year, targetEl) {
     if (p==='QB') {
       return `<tr style="${dim}border-bottom:1px solid rgba(30,41,59,0.4)">
         <td style="color:#5c6b8a;font-size:10px;font-family:var(--font-mono)">Wk ${w.wk}</td>
-        <td style="color:#dce1fb;font-weight:600">${opp}</td>
         <td>${projStr}</td>${fptsCell}
         <td style="color:#7bd0ff;font-size:10px">${snp}</td>
         <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.att||'—'}</td>
@@ -3089,7 +3088,6 @@ window._psRenderGameLogs = async function(year, targetEl) {
     if (p==='RB') {
       return `<tr style="${dim}border-bottom:1px solid rgba(30,41,59,0.4)">
         <td style="color:#5c6b8a;font-size:10px;font-family:var(--font-mono)">Wk ${w.wk}</td>
-        <td style="color:#dce1fb;font-weight:600">${opp}</td>
         <td>${projStr}</td>${fptsCell}
         <td style="color:#7bd0ff;font-size:10px">${snp}</td>
         <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.car||'—'}</td>
@@ -3104,7 +3102,6 @@ window._psRenderGameLogs = async function(year, targetEl) {
     // WR/TE
     return `<tr style="${dim}border-bottom:1px solid rgba(30,41,59,0.4)">
       <td style="color:#5c6b8a;font-size:10px;font-family:var(--font-mono)">Wk ${w.wk}</td>
-      <td style="color:#dce1fb;font-weight:600">${opp}</td>
       <td>${projStr}</td>${fptsCell}
       <td style="color:#7bd0ff;font-size:10px">${snp}</td>
       <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.rec||'—'}</td>
@@ -3302,16 +3299,18 @@ async function openPlayerStats(normN, name, pos, team) {
   window._resGlYear = window._resGlYear || '2025';
   window._psRenderGameLogs('2025');
 
-  // async: fetch RA data to enrich header with rankings/injury
+  // async: fetch RA data — only use /players (200 OK), skip /player-page (401)
   if (sleeperId) {
-    Promise.all([
-      fetch(`https://rosteraudit.com/wp-json/ra/v1/players/${sleeperId}`).then(r=>r.json()).catch(()=>null),
-      fetch(`https://rosteraudit.com/wp-json/ra/v1/player-page/${sleeperId}`).then(r=>r.json()).catch(()=>null),
-    ]).then(([valRes, pageRes]) => {
-      const mergedStats = pageRes?.stats || pageRes?.career ? pageRes : null;
-      _psData = { stats: mergedStats, val: valRes, page: pageRes };
-      _psRenderHeader(); // re-render with rankings/injury data
-    }).catch(()=>{});
+    fetch(`https://rosteraudit.com/wp-json/ra/v1/players/${sleeperId}`)
+      .then(r => r.ok ? r.json() : null).catch(() => null)
+      .then(valRes => {
+        _psData = { stats: null, val: valRes, page: null };
+        _psRenderHeader();
+      }).catch(() => {
+        _psData = { stats: null, val: null, page: null };
+      });
+  } else {
+    _psData = { stats: null, val: null, page: null };
   }
 }
 
@@ -3395,10 +3394,14 @@ function _psRenderHeader() {
 function _psRenderTab(tab) {
   const body = document.getElementById('ps-body');
   if (!body) return;
-  if (!_psData) {
+  // weekly tab never needs _psData
+  if (tab === 'weekly') { window._psRenderGameLogs('2025'); return; }
+  // value tab can render from FantasyCalc data even without RA data
+  if (!_psData && tab !== 'value') {
     body.innerHTML = `<div class="ps-loading"><div style="font-size:24px;animation:spin 1s linear infinite">⟳</div><span>Loading...</span></div>`;
     return;
   }
+  if (!_psData) _psData = { stats: null, val: null, page: null };
   const { stats, val } = _psData;
   const { name, pos, sleeperId } = _psPlayer;
   const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos]||'var(--muted)';
@@ -3515,15 +3518,13 @@ function _psRenderTab(tab) {
       </table></div>
     <div style="margin-top:12px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a> via NFLverse</div>`;
 
-  } else if (tab === 'weekly') {
-    window._psRenderGameLogs('2025');
-    return;
   } else if (tab === 'value') {
     const bars=[['Superflex (RA)',val?.val_sf||0,'var(--rb)'],['1QB (RA)',val?.val_1qb||0,'var(--wr)'],['FantasyCalc SF',getFCValue(name)?.value||0,'var(--accent2)']].filter(([,v])=>v>0);
     const maxBar=Math.max(...bars.map(([,v])=>v),1);
+    const hasRaData = val?.val_sf || val?.val_1qb;
     body.innerHTML=`
       <div class="ps-section-title">Value comparison</div>
-      <div style="margin-bottom:20px">${bars.map(([l,v,c])=>`<div class="ps-bar-row"><div class="ps-bar-label">${l}</div><div class="ps-bar-track"><div class="ps-bar-fill" style="width:${Math.round(v/maxBar*100)}%;background:${c}"></div></div><div class="ps-bar-val" style="color:${c}">${v.toLocaleString()}</div></div>`).join('')}</div>
+      ${bars.length ? `<div style="margin-bottom:20px">${bars.map(([l,v,c])=>`<div class="ps-bar-row"><div class="ps-bar-label">${l}</div><div class="ps-bar-track"><div class="ps-bar-fill" style="width:${Math.round(v/maxBar*100)}%;background:${c}"></div></div><div class="ps-bar-val" style="color:${c}">${v.toLocaleString()}</div></div>`).join('')}</div>` : `<div style="padding:12px 0;color:var(--muted);font-size:13px">No value data available from RosterAudit for this player.</div>`}
       <div class="ps-section-title">Trends</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
         <div class="ps-kpi"><div class="ps-kpi-val ${trend7>0?'ps-trend-up':trend7<0?'ps-trend-dn':'ps-trend-flat'}">${trend7>0?'+':''}${trend7||0}</div><div class="ps-kpi-label">7-day</div></div>
@@ -5908,7 +5909,7 @@ async function renderOverviewRoster(el) {
     ${['QB','RB','WR','TE'].map(pos => {
       const players = byPos[pos].sort((a,b)=>(b.fcVal||b.r0||0)-(a.fcVal||a.r0||0));
       if (!players.length) return '';
-      const grp = (() => { const a=gradePos(players); return a; })();
+      const grp = (() => { const a=gradePos(players, pos); return a; })();
       const total = players.reduce((s,p)=>s+(p.fcVal||0),0);
       const pc = posColors[pos];
       return `<div style="background:var(--s2);border-radius:12px;padding:14px;border:1px solid var(--border)">
@@ -5964,13 +5965,33 @@ async function loadOvRoster() {
   return [...seen.values()];
 }
 
-function gradePos(players) {
-  const avg = players.reduce((s,p)=>s+(p.fcVal||0),0)/Math.max(players.length,1);
+function gradePos(players, pos) {
+  const total = players.reduce((s,p)=>s+(p.fcVal||0),0);
+  // Use league-relative percentile if we have team data
+  if (_lastTeamData && _lastTeamData.length >= 2 && pos) {
+    const posKey = {QB:'qbs',RB:'rbs',WR:'wrs',TE:'tes'}[pos];
+    if (posKey) {
+      const leagueTotals = _lastTeamData
+        .map(t => (t[posKey]||[]).reduce((s,p)=>s+(getPlayerValue(p.name)||0),0))
+        .sort((a,b)=>b-a);
+      const max=leagueTotals[0]||1, min=leagueTotals[leagueTotals.length-1]||0, range=max-min||1;
+      const pct = (total - min) / range;
+      if(pct>0.85)return{g:'A+',c:'var(--rb)'};
+      if(pct>0.70)return{g:'A', c:'var(--rb)'};
+      if(pct>0.55)return{g:'B+',c:'#7bc8a4'};
+      if(pct>0.40)return{g:'B', c:'#7bc8a4'};
+      if(pct>0.25)return{g:'C+',c:'var(--te)'};
+      if(pct>0.10)return{g:'C', c:'var(--te)'};
+      return{g:'D',c:'#ff9f5b'};
+    }
+  }
+  // Fallback: absolute thresholds
+  const avg = total / Math.max(players.length, 1);
   if(avg>7000)return{g:'A+',c:'var(--rb)'};
-  if(avg>5000)return{g:'A',c:'var(--rb)'};
-  if(avg>3500)return{g:'B',c:'#7bc8a4'};
-  if(avg>2500)return{g:'C',c:'var(--te)'};
-  if(avg>1500)return{g:'D',c:'#ff9f5b'};
+  if(avg>5000)return{g:'A', c:'var(--rb)'};
+  if(avg>3500)return{g:'B', c:'#7bc8a4'};
+  if(avg>2500)return{g:'C', c:'var(--te)'};
+  if(avg>1500)return{g:'D', c:'#ff9f5b'};
   return{g:'F',c:'var(--qb)'};
 }
 
@@ -6881,6 +6902,68 @@ function populateAnalyzerDropdown() {
     leagues.map(l=>`<option value="${l.league_id}" ${l.league_id===teamsLeagueId?'selected':''}>${l.status==='in_season'?'🟢 ':''}${l.name||'League'} (${l.season})</option>`).join('');
 }
 
+function renderDraftGrades() {
+  const pr = document.getElementById('power-rankings');
+  if (!pr) return;
+  const teams = _lastTeamData || [];
+  if (!teams.length) {
+    pr.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">No league data loaded. Select a league above.</div>`;
+    return;
+  }
+  const _go = ['A+','A','A-','B+','B','B-','C+','C','C-','D','F'];
+  const pctToGrade = pct =>
+    pct>0.90?'A+':pct>0.78?'A':pct>0.65?'A-':pct>0.54?'B+':pct>0.43?'B':pct>0.33?'B-':pct>0.23?'C+':pct>0.15?'C':pct>0.08?'C-':pct>0.03?'D':'F';
+  const gradeColor = g => g.startsWith('A')?'var(--rb)':g.startsWith('B')?'#7bc8a4':g.startsWith('C')?'var(--te)':'var(--qb)';
+
+  // Build per-position league totals for percentile scaling
+  const posKeys = [{k:'qbs',label:'QB'},{k:'rbs',label:'RB'},{k:'wrs',label:'WR'},{k:'tes',label:'TE'}];
+  const posScale = {};
+  posKeys.forEach(({k,label}) => {
+    const vals = teams.map(t=>(t[k]||[]).reduce((s,p)=>s+(getPlayerValue(p.name)||0),0)).sort((a,b)=>b-a);
+    const max=vals[0]||1, min=vals[vals.length-1]||0, range=max-min||1;
+    posScale[label] = {max,min,range};
+  });
+  // Overall scale
+  const overallVals = teams.map(t=>t.fcTotal||0).sort((a,b)=>b-a);
+  const ovMax=overallVals[0]||1, ovMin=overallVals[overallVals.length-1]||0, ovRange=ovMax-ovMin||1;
+
+  const rows = [...teams].sort((a,b)=>(b.fcTotal||0)-(a.fcTotal||0)).map((t,i) => {
+    const ovPct = ((t.fcTotal||0) - ovMin) / ovRange;
+    const ovGrade = pctToGrade(ovPct);
+    const ovColor = gradeColor(ovGrade);
+    const posGrades = posKeys.map(({k,label}) => {
+      const tot = (t[k]||[]).reduce((s,p)=>s+(getPlayerValue(p.name)||0),0);
+      const {min,range} = posScale[label];
+      const pct = (tot - min) / range;
+      const g = pctToGrade(pct);
+      return `<td style="text-align:center;padding:10px 8px;font-weight:700;font-family:var(--font-mono);font-size:13px;color:${gradeColor(g)}">${g}</td>`;
+    }).join('');
+    const youBadge = t.isMe ? `<span style="font-size:9px;background:var(--accent);color:#fff;border-radius:3px;padding:1px 5px;margin-left:6px;font-family:var(--font-mono)">YOU</span>` : '';
+    return `<tr style="border-bottom:1px solid var(--border);${t.isMe?'background:rgba(255,255,255,0.03)':''}">
+      <td style="padding:10px 12px;font-size:13px;font-weight:600">${i+1}. ${t.name||'Team'}${youBadge}</td>
+      <td style="text-align:center;padding:10px 8px;font-weight:800;font-size:16px;font-family:var(--font-mono);color:${ovColor}">${ovGrade}</td>
+      <td style="text-align:right;padding:10px 12px;font-family:var(--font-mono);font-size:12px;color:var(--muted)">${(t.fcTotal||0).toLocaleString()}</td>
+      ${posGrades}
+    </tr>`;
+  }).join('');
+
+  pr.innerHTML = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border)">
+            <th style="padding:10px 12px;text-align:left;color:var(--muted);font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em">Team</th>
+            <th style="padding:10px 8px;text-align:center;color:var(--muted);font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em">Overall</th>
+            <th style="padding:10px 12px;text-align:right;color:var(--muted);font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em">FC Value</th>
+            ${posKeys.map(({label})=>`<th style="padding:10px 8px;text-align:center;color:var(--muted);font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em">${label}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted);padding:0 4px">Grades are league-relative percentiles based on FantasyCalc dynasty values. A+ = top 10%, F = bottom 3%.</div>
+    </div>`;
+}
+
 function setTeamsTab(tab) {
   teamsTab = tab;
   ['pr','mv','tx','st','gr'].forEach(t => document.getElementById(`teams-tab-${t}`)?.classList.toggle('on', t===tab));
@@ -7391,10 +7474,12 @@ function renderTeamsFromDraft() {
   renderPowerRankingsTable(teamData);
 }
 
-let _lastTeamData = []; 
+window._lastTeamData = []; 
 
 function renderPowerRankingsTable(teamData) {
-  _lastTeamData = teamData; 
+  _lastTeamData = teamData;
+  // If grades tab is active, render grades instead of the rankings table
+  if (teamsTab === 'gr') { renderDraftGrades(); return; }
   const prEl = document.getElementById('power-rankings');
   if (!prEl) return;
 
