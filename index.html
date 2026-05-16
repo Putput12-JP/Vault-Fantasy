@@ -2857,6 +2857,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
 <!-- ── nflverse data layer ── -->
 <script>
+
 (function(){
 const NFLVERSE_BASE=(function(){const h=window.location.hostname;if(h.includes('github.io')||h.includes('putput12-jp'))return 'https://putput12-jp.github.io/Vault-Fantasy/data';return '/data';})();
 let _nflStats=null,_nflSnaps=null,_nflInjuries=null,_nflMeta=null,_nflLoading=false,_nflLoadProm=null;
@@ -2954,9 +2955,11 @@ window._psInjectNflverse=function(name,pos){
 };
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>window.initNflverse().catch(()=>{}));}else{setTimeout(()=>window.initNflverse().catch(()=>{}),100);}
 })();
+
 </script>
 
-<script>window._psRenderGameLogs = async function(year) {
+<script>
+window._psRenderGameLogs = async function(year) {
   const body = document.getElementById('ps-body');
   if (!body || !_psPlayer) return;
   const { name, pos, sleeperId } = _psPlayer;
@@ -3086,17 +3089,23 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
         yrData = {stats: sR||{}, snaps: snR||{}, inj:{}};
       } catch(e) { yrData = {stats:{},snaps:{},inj:{}}; }
     } else {
-      yrData = await (window.initNflverseYear ? initNflverseYear(yr) : initNflverse().then(()=>({stats:window._nflverseCache?.[yr]||{},snaps:{},inj:{}}))).catch(()=>({stats:{},snaps:{},inj:{}}));
-      if (yr==='2024' && (!yrData.stats||!Object.keys(yrData.stats).length)) {
-        await initNflverse().catch(()=>{});
-        yrData={stats:_nflStats||{},snaps:_nflSnaps||{},inj:_nflInjuries||{}};
+      // For 2024: try year-tagged file first, then fall back to untagged (which is whatever season the script last ran)
+      if (yr === '2024') {
+        yrData = await (window.initNflverseYear ? initNflverseYear('2024') : Promise.resolve({stats:{},snaps:{},inj:{}})).catch(()=>({stats:{},snaps:{},inj:{}}));
+        // If year-tagged file returned empty, fall back to the default nflverse_stats.json
+        if (!yrData.stats || Object.keys(yrData.stats).length === 0) {
+          await initNflverse().catch(()=>{});
+          yrData = window._nflverseCache?.['2024'] || {stats: window._nflStats||{}, snaps: window._nflSnaps||{}, inj:{}};
+        }
+      } else {
+        yrData = await (window.initNflverseYear ? initNflverseYear(yr) : initNflverse().then(()=>({stats:window._nflverseCache?.[yr]||{},snaps:{},inj:{}}))).catch(()=>({stats:{},snaps:{},inj:{}}));
       }
     }
     function fuzz(map,n){if(!map||!n)return null;if(map[n])return map[n];const norm=s=>s.toLowerCase().replace(/[^a-z]/g,'');const t=norm(n);for(const k of Object.keys(map)){if(norm(k)===t)return map[k];}return null;}
     const nfl = fuzz(yrData.stats||yrData,name);
     const snaps = fuzz(yrData.snaps||{},name);
     if (!nfl?.weeks?.length) {
-      const msg = yr==='2025'?'2025 season data is not yet available. The nflverse pipeline needs to be re-run with CURRENT_SEASON=2025.':'No data found for this player in the '+yr+' nflverse dataset.';
+      const msg = yr==='2025'?'2025 season data is not yet available. Run the nflverse pipeline with CURRENT_SEASON=2025 to populate.':'No data found for this player in the '+yr+' nflverse dataset.';
       body.innerHTML = mkYrSw(yr)+`<div style="text-align:center;padding:40px 20px;color:#909097;font-family:var(--font-mono);font-size:12px">
         <div style="font-size:28px;margin-bottom:12px">📅</div>
         <div style="color:#dce1fb;font-weight:600;margin-bottom:6px">No ${yr} data</div>
@@ -3463,7 +3472,7 @@ function _psRenderTab(tab) {
     <div style="margin-top:12px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a> via NFLverse</div>`;
 
   } else if (tab === 'weekly') {
-    window._psRenderGameLogs('2024');
+    window._psRenderGameLogs('2025');
     return;
   } else if (tab === 'value') {
     const bars=[['Superflex (RA)',val?.val_sf||0,'var(--rb)'],['1QB (RA)',val?.val_1qb||0,'var(--wr)'],['FantasyCalc SF',getFCValue(name)?.value||0,'var(--accent2)']].filter(([,v])=>v>0);
@@ -3921,7 +3930,8 @@ async function researchSelectPlayer(name, sleeperId, pos, team) {
   })();
 
   _resDataCache = { val: valRes, stats: mergedStats, page: pageRes };
-  if (_resTab === 'weekly') setResTab('weekly');
+    // Auto-render game logs if that tab is active
+    if (_resTab === 'weekly') setResTab('weekly');
   _resRenderHero(name, sid, pos, team, valRes, mergedStats);
   _resRenderKPIs(name, pos, mergedStats, valRes);
   _resRenderTab('stats', name, pos, sid, mergedStats, valRes);
@@ -4077,9 +4087,10 @@ function setResTab(tab) {
   _resTab = tab;
   _resSetTabActive(tab);
   if (!_resPlayer) return;
+  // Weekly/Game Logs tab can render without _resDataCache (uses nflverse directly)
   if (!_resDataCache && tab !== 'weekly') return;
   _resRenderTab(tab, _resPlayer.name, _resPlayer.pos, _resPlayer.sleeperId,
-    _resDataCache?.stats||null, _resDataCache?.val||null);
+    _resDataCache?.stats || null, _resDataCache?.val || null);
 }
 
 function _resSetTabActive(tab) {
@@ -4108,28 +4119,40 @@ function _resRenderTab(tab, name, pos, sid, stats, val) {
     const latest = seasons[seasons.length-1];
     el.innerHTML = `<div style="overflow-x:auto">
       <table class="res-stat-table">
-        <thead><tr>${cols.map(c=>`} else if (tab === 'weekly') {
-    const _prev=window._psPlayer,psB=document.getElementById('ps-body');
-    const resEl=document.getElementById('res-tab-content');
-    if(!resEl||!window._psRenderGameLogs)return;
-    window._psPlayer={name,pos,team:'',sleeperId:sid};
-    if(psB)psB.id='__ps_body_tmp';
-    resEl.id='ps-body';
-    const restore=()=>{resEl.id='res-tab-content';if(psB)psB.id='ps-body';window._psPlayer=_prev;};
-    try{const p=window._psRenderGameLogs(window._resGlYear||'2024');if(p&&typeof p.finally==='function')p.finally(restore);else restore();}
-    catch(e){restore();resEl.innerHTML='<div style="padding:20px;color:var(--qb);font-size:12px">⚠ '+e.message+'</div>';}
+        <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+        <tbody>${[...seasons].reverse().map(s=>`<tr class="${s===latest?'res-latest':''}">${row(s).map((v,i)=>`<td${i>2?` style="color:${pc}"`:''}>${v??'—'}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:var(--accent2)">RosterAudit.com</a> via NFLverse</div>`;
 
-    // Give res-tab-content a temporary id of ps-body so GL fn targets it
-      if (psBody) psBody.id = '_ps-body-hidden';
-      resContent.id = 'ps-body';
-      const glYear = window._resGlYear || '2024';
-      window._psRenderGameLogs(glYear).finally(() => {
-        resContent.id = 'res-tab-content';
-        if (psBody) psBody.id = 'ps-body';
-        window._psPlayer = _prevPsPlayer;
-      });
-    } else {
+  } else if (tab === 'weekly') {
+    // Use the same Sleeper-style GL renderer as the Rankings modal
+    // by pointing _psPlayer at this player and rendering into res-tab-content
+    const _prevPsPlayer = window._psPlayer;
+    const _prevPsBody = document.getElementById('ps-body');
+    const resEl = document.getElementById('res-tab-content');
+    if (!resEl || !window._psRenderGameLogs) return;
+
+    // Set context
+    window._psPlayer = { name, pos, team: '', sleeperId: sid };
+
+    // Swap IDs so GL renderer targets res-tab-content
+    if (_prevPsBody) _prevPsBody.id = '__ps_body_tmp';
+    resEl.id = 'ps-body';
+
+    const glYear = window._resGlYear || '2024';
+    const restoreIds = () => {
+      resEl.id = 'res-tab-content';
+      if (_prevPsBody) _prevPsBody.id = 'ps-body';
       window._psPlayer = _prevPsPlayer;
+    };
+
+    try {
+      const p = window._psRenderGameLogs(glYear);
+      if (p && typeof p.finally === 'function') p.finally(restoreIds);
+      else restoreIds();
+    } catch(e) {
+      restoreIds();
+      resEl.innerHTML = '<div style="padding:20px;color:var(--qb);font-size:12px">⚠ ' + e.message + '</div>';
     }
 
   } else if (tab === 'nflverse') {
@@ -9042,6 +9065,7 @@ function resumeSession() {
     }
   }, 0);
 }
+
 </script>
 </body>
 </html>
