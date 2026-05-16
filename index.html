@@ -3276,7 +3276,8 @@ function findPlayer(name) {
 // ════════════════════════════════════
 
 // ════════════════════════════════════
-let _psPlayer = null;
+// Exposed on window so Research Hub can set the same reference _psRenderGameLogs reads
+window._psPlayer = null;
 let _psData   = null;
 let _psTab    = 'weekly';
 
