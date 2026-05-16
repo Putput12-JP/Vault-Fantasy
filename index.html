@@ -2998,6 +2998,36 @@ window._psInjectNflverse=function(name,pos){
 </script>
 
 <script>
+// ── ESPN Schedule Cache ───────────────────────────────────────────────
+// Lazy-loads opponent data from ESPN scoreboard API per week, cached for session
+const _espnOppCache = {}; // key: 'YYYY_WW' → {TEAM: '@OPP' or 'OPP'}
+async function getOpponentMap(year, week) {
+  const key = `${year}_${week}`;
+  if (_espnOppCache[key]) return _espnOppCache[key];
+  try {
+    const data = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&season=${year}&week=${week}`
+    ).then(r => r.json());
+    const map = {};
+    (data?.events || []).forEach(e => {
+      const comps = e.competitions?.[0]?.competitors || [];
+      if (comps.length !== 2) return;
+      const home = comps.find(c => c.homeAway === 'home');
+      const away = comps.find(c => c.homeAway === 'away');
+      if (home && away) {
+        map[away.team.abbreviation] = '@' + home.team.abbreviation;
+        map[home.team.abbreviation] = away.team.abbreviation;
+      } else {
+        // fallback when homeAway not available
+        map[comps[0].team.abbreviation] = comps[1].team.abbreviation;
+        map[comps[1].team.abbreviation] = comps[0].team.abbreviation;
+      }
+    });
+    _espnOppCache[key] = map;
+    return map;
+  } catch(e) { return {}; }
+}
+
 window._psRenderGameLogs = async function(year, targetEl) {
   const body = targetEl || document.getElementById('ps-body');
   if (!body || !_psPlayer) return;
@@ -3034,21 +3064,21 @@ window._psRenderGameLogs = async function(year, targetEl) {
 
   // Table header by position
   function mkTHead(p) {
-    if (p==='QB') return `<tr><th>WK</th><th>PROJ</th>
+    if (p==='QB') return `<tr><th>WK</th><th>OPP</th><th>PROJ</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px">FPTS</th><th>SNP%</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#ff6680">ATT</th>
       <th style="color:#ff6680">CMP</th><th style="color:#ff6680">YDS</th>
       <th style="color:#ff6680">TD</th><th style="color:#ff6680">INT</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#3DCC7A">CAR</th>
       <th style="color:#3DCC7A">YDS</th><th style="color:#3DCC7A">TD</th></tr>`;
-    if (p==='RB') return `<tr><th>WK</th><th>PROJ</th>
+    if (p==='RB') return `<tr><th>WK</th><th>OPP</th><th>PROJ</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px">FPTS</th><th>SNP%</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#3DCC7A">CAR</th>
       <th style="color:#3DCC7A">YDS</th><th style="color:#3DCC7A">TD</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#7bd0ff">REC</th>
       <th style="color:#7bd0ff">TGT</th><th style="color:#7bd0ff">YDS</th>
       <th style="color:#7bd0ff">TD</th></tr>`;
-    return `<tr><th>WK</th><th>PROJ</th>
+    return `<tr><th>WK</th><th>OPP</th><th>PROJ</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px">FPTS</th><th>SNP%</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#7bd0ff">REC</th>
       <th style="color:#7bd0ff">TGT</th><th style="color:#7bd0ff">YDS</th>
@@ -3073,6 +3103,7 @@ window._psRenderGameLogs = async function(year, targetEl) {
     if (p==='QB') {
       return `<tr style="${dim}border-bottom:1px solid rgba(30,41,59,0.4)">
         <td style="color:#5c6b8a;font-size:10px;font-family:var(--font-mono)">Wk ${w.wk}</td>
+        <td style="color:#dce1fb;font-weight:600;font-size:10px">${opp}</td>
         <td>${projStr}</td>${fptsCell}
         <td style="color:#7bd0ff;font-size:10px">${snp}</td>
         <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.att||'—'}</td>
@@ -3088,6 +3119,7 @@ window._psRenderGameLogs = async function(year, targetEl) {
     if (p==='RB') {
       return `<tr style="${dim}border-bottom:1px solid rgba(30,41,59,0.4)">
         <td style="color:#5c6b8a;font-size:10px;font-family:var(--font-mono)">Wk ${w.wk}</td>
+        <td style="color:#dce1fb;font-weight:600;font-size:10px">${opp}</td>
         <td>${projStr}</td>${fptsCell}
         <td style="color:#7bd0ff;font-size:10px">${snp}</td>
         <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.car||'—'}</td>
@@ -3102,6 +3134,7 @@ window._psRenderGameLogs = async function(year, targetEl) {
     // WR/TE
     return `<tr style="${dim}border-bottom:1px solid rgba(30,41,59,0.4)">
       <td style="color:#5c6b8a;font-size:10px;font-family:var(--font-mono)">Wk ${w.wk}</td>
+      <td style="color:#dce1fb;font-weight:600;font-size:10px">${opp}</td>
       <td>${projStr}</td>${fptsCell}
       <td style="color:#7bd0ff;font-size:10px">${snp}</td>
       <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.rec||'—'}</td>
@@ -3165,6 +3198,21 @@ window._psRenderGameLogs = async function(year, targetEl) {
       : pos==='RB'
       ? [['Avg FPTS',ssn.avg_pts],['Games',ssn.games],['L4W Avg',nfl.l4w_avg,'#ffb3b6'],['Rush Yds/G',ssn.avg_ryds,'#3DCC7A'],['Car/G',ssn.avg_car],['Tgt/G',ssn.avg_tgt,'#7bd0ff']]
       : [['Avg FPTS',ssn.avg_pts],['Games',ssn.games],['L4W Avg',nfl.l4w_avg,'#ffb3b6'],['Rec Yds/G',ssn.avg_recyds,'#7bd0ff'],['Tgt/G',ssn.avg_tgt],['Tgt Share',ssn.avg_ts!=null?ssn.avg_ts+'%':null,'#f5c842']];
+
+    // Batch-fetch ESPN opponent data for all weeks (parallel, cached)
+    const playerTeam = (window._psPlayer?.team || '').toUpperCase();
+    const weekNums = [...new Set(sorted.map(w => w.wk))];
+    const oppMaps = {};
+    if (playerTeam) {
+      try {
+        await Promise.all(weekNums.map(async wk => {
+          oppMaps[wk] = await getOpponentMap(yr, wk);
+        }));
+        // Inject opp into each week
+        sorted.forEach(w => { w.opp = oppMaps[w.wk]?.[playerTeam] || '—'; });
+      } catch(e) { /* opponent fetch failed silently */ }
+    }
+
     const rows = sorted.map(w=>mkRow(w,pos,maxPts,avgPts,null)).join('');
     body.innerHTML = mkYrSw(yr)+mkKPI(kpiItems)+`
       <div style="overflow-x:auto;border-radius:4px;border:1px solid #1E293B">
@@ -5552,6 +5600,30 @@ async function renderOverview() {
       const myRoster_raw = rosters.find(r => r.owner_id === myTeamsUserId);
       if (!myRoster_raw) { el.innerHTML = '<div class="fc-error">Could not find your roster.</div>'; _ovRendering = false; return; }
       teamName = userMap[myTeamsUserId] || 'My Team';
+
+      // Fetch league roster_positions for slot labels (cached on ctx)
+      if (!ctx.rosterPositions) {
+        try {
+          const lgData = await fetch(`https://api.sleeper.app/v1/league/${ovLeagueId}`).then(r=>r.json());
+          ctx.rosterPositions = lgData.roster_positions || [];
+        } catch(e) { ctx.rosterPositions = []; }
+      }
+      const rosterPositions = ctx.rosterPositions;
+      // Build slot label lookup: starterIdx → clean label
+      const _pc = {};
+      const _rawSlots = rosterPositions.map(pos => {
+        if (pos === 'BN' || pos === 'IR' || pos === 'TAXI') return pos;
+        const d = pos === 'SUPER_FLEX' ? 'SF' : pos === 'FLEX' ? 'FLX' : pos;
+        _pc[d] = (_pc[d]||0)+1; return d + _pc[d];
+      });
+      const _dc = {};
+      _rawSlots.forEach(l => { if (l!=='BN'&&l!=='IR'&&l!=='TAXI') { const b=l.replace(/\d+$/,''); _dc[b]=(_dc[b]||0)+1; } });
+      const _cs = l => { if(l==='BN'||l==='IR'||l==='TAXI') return l; const b=l.replace(/\d+$/,''); return _dc[b]===1?b:l; };
+
+      // Build ordered starters array for slot assignment
+      const rawStarters = (myRoster_raw.starters||[]).map(String).filter(s=>s!=='0'&&s.length>2);
+      const starterPids = new Set(rawStarters);
+
       const pids = [...(myRoster_raw.players||[]), ...(myRoster_raw.reserve||[])];
       roster = pids.map(pid => {
         const pidStr = String(pid);
@@ -5571,12 +5643,18 @@ async function renderOverview() {
           if (raName) p = PLAYERS.find(x => x.name === raName) || PLAYERS.find(x => normName(x.name) === normName(raName));
         }
 
-        if (p) return {...p, fcVal: getPlayerValue(p.name)};
+        if (p) {
+          const starterIdx = rawStarters.indexOf(String(pid));
+          const isStarter = starterIdx >= 0;
+          const slotLabel = isStarter ? _cs(_rawSlots[starterIdx]||'STR') : 'BN';
+          return {...p, fcVal: getPlayerValue(p.name), sleeperId: String(pid), isStarter, slotLabel, starterIdx};
+        }
 
         
         const fcv = getFCValue(name);
         console.warn('[Vault] Player not in rankings:', name, '(pid', pid, ')');
-        return { name, pos: fcv?.pos || fcv?.position || '?', team: fcv?.team || '', fcVal: getPlayerValue(name) };
+        const _si2 = rawStarters.indexOf(String(pid));
+        return { name, pos: fcv?.pos || fcv?.position || '?', team: fcv?.team || '', fcVal: getPlayerValue(name), sleeperId: String(pid), isStarter: _si2>=0, slotLabel: _si2>=0?_cs(_rawSlots[_si2]||'STR'):'BN', starterIdx: _si2 };
       }).filter(x => x !== null);
       const unmapped = pids.filter(p=>!globalPidToName[String(p)]);
       if (unmapped.length) console.warn('[Vault] Unmapped pids:', unmapped);
@@ -5793,67 +5871,73 @@ async function renderOverview() {
     </div>
     <!-- Column headers -->
     <div style="display:grid;grid-template-columns:90px 1fr 100px 170px 120px;padding:10px 32px;border-bottom:1px solid rgba(255,255,255,0.05)">
-      ${['POS','PLAYER','BYE','STATUS','PROJ PTS'].map((h,i)=>`<div style="font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);color:#909097;${i>=2?'text-align:center':''};${i===4?'text-align:right':''}">${h}</div>`).join('')}
+      ${['SLOT','PLAYER','BYE','STATUS','PROJ PTS'].map((h,i)=>`<div style="font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);color:#909097;${i>=2?'text-align:center':''};${i===4?'text-align:right':''}">${h}</div>`).join('')}
     </div>
-    <!-- Player rows with real photos + real status -->
+    <!-- STARTERS section -->
     ${(() => {
-      // Sort: starters first (from Sleeper), then by position
-      const posOrder = {QB:0,RB:1,WR:2,TE:3,K:4,DEF:5};
-      const sorted = [...roster].sort((a, b) => {
-        if (a.isStarter !== b.isStarter) return a.isStarter ? -1 : 1;
-        return (posOrder[a.pos]??9) - (posOrder[b.pos]??9);
-      });
-      return sorted.slice(0,15);
-    })().map(p => {
-      const pos = p.pos || '?';
-      const posCol = {QB:'#ff6680',RB:'#3DCC7A',WR:'#7bd0ff',TE:'#f5c842'}[pos]||'#909097';
-      const posBg = {QB:'rgba(255,102,128,0.12)',RB:'rgba(61,204,122,0.12)',WR:'rgba(123,208,255,0.12)',TE:'rgba(245,200,66,0.12)'}[pos]||'rgba(255,255,255,0.06)';
-      const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      const sid = p.sleeperId || sleeperPlayerMap[normName(p.name)]?.player_id || '';
-      const photoUrl = sid ? `https://sleepercdn.com/content/nfl/players/thumb/${sid}.jpg` : '';
-      const byeWk = p.byeWeek || '—';
-      // Real injury status from Sleeper data
-      const status = p.injury_status || p.status || 'Active';
-      const isHealthy = !status || status === 'Active' || status === 'active';
-      const isQue = status === 'Questionable' || status === 'questionable';
-      const isOut = status === 'Out' || status === 'out' || status === 'IR' || status === 'Injured Reserve';
-      const statusLabel = isHealthy ? 'HEALTHY' : isQue ? 'QUESTIONABLE' : isOut ? 'OUT' : status.toUpperCase();
-      const statusStyle = isHealthy
-        ? 'background:rgba(123,208,255,0.12);color:#7bd0ff;border:1px solid rgba(123,208,255,0.22)'
-        : isQue
-        ? 'background:rgba(255,179,182,0.12);color:#ffb3b6;border:1px solid rgba(255,179,182,0.22)'
-        : 'background:rgba(255,102,128,0.12);color:#ff6680;border:1px solid rgba(255,102,128,0.22)';
-      // Proj pts — use FantasyCalc value as proxy (scaled to look like fantasy pts)
-      const fcVal = getPlayerValue(p.name)||0;
-      const projPts = fcVal > 0 ? (fcVal / 18).toFixed(1) : '—';
-      // Starter/bench badge
-      const starterBadge = p.isStarter
-        ? `<span style="font-size:8px;font-weight:600;font-family:var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;color:#3DCC7A;background:rgba(61,204,122,0.10);border:1px solid rgba(61,204,122,0.2);padding:2px 6px;border-radius:4px;margin-left:6px">STARTER</span>`
-        : `<span style="font-size:8px;font-weight:600;font-family:var(--font-mono);letter-spacing:0.08em;text-transform:uppercase;color:#909097;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;margin-left:6px">BENCH</span>`;
-      return `<div style="display:grid;grid-template-columns:90px 1fr 100px 170px 120px;padding:20px 32px;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 100ms ease" onmouseover="this.style.background='rgba(190,198,224,0.04)'" onmouseout="this.style.background=''">
-        <div style="display:flex;align-items:center">
-          <span style="padding:4px 9px;border-radius:6px;font-size:10px;font-weight:700;font-family:var(--font-mono);background:${posBg};color:${posCol};border:1px solid ${posCol}33;letter-spacing:0.04em">${pos}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:14px">
-          ${photoUrl
-            ? `<img src="${photoUrl}" alt="${p.name}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid rgba(255,255,255,0.10);flex-shrink:0;background:${posBg}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-            : ''}
-          <div style="width:44px;height:44px;border-radius:10px;background:${posBg};border:1px solid rgba(255,255,255,0.10);display:${photoUrl?'none':'flex'};align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${posCol};flex-shrink:0;font-family:var(--font-sans)">${initials}</div>
-          <div>
-            <div style="display:flex;align-items:center">
-              <span style="font-size:15px;font-weight:700;color:#d4e4fa;font-family:var(--font-sans)">${p.name}</span>
-              ${starterBadge}
+      const starters = [...roster]
+        .filter(p => p.isStarter)
+        .sort((a,b) => (a.starterIdx??99) - (b.starterIdx??99));
+      const bench = [...roster]
+        .filter(p => !p.isStarter)
+        .sort((a,b) => {
+          const posOrder = {QB:0,RB:1,WR:2,TE:3,K:4,DEF:5};
+          return (posOrder[a.pos]??9) - (posOrder[b.pos]??9);
+        });
+
+      const mkRow = (p, isStarterRow) => {
+        const pos = p.pos || '?';
+        const posCol = {QB:'#ff6680',RB:'#3DCC7A',WR:'#7bd0ff',TE:'#f5c842',K:'#d19eff',DEF:'#ffd166'}[pos]||'#909097';
+        const posBg = {QB:'rgba(255,102,128,0.12)',RB:'rgba(61,204,122,0.12)',WR:'rgba(123,208,255,0.12)',TE:'rgba(245,200,66,0.12)',K:'rgba(209,158,255,0.12)',DEF:'rgba(255,209,102,0.12)'}[pos]||'rgba(255,255,255,0.06)';
+        const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        const sid = p.sleeperId || sleeperPlayerMap[normName(p.name)]?.player_id || '';
+        const photoUrl = sid ? `https://sleepercdn.com/content/nfl/players/thumb/${sid}.jpg` : '';
+        const byeWk = p.byeWeek || '—';
+        const status = p.injury_status || p.status || 'Active';
+        const isHealthy = !status || status === 'Active' || status === 'active';
+        const isQue = status === 'Questionable' || status === 'questionable';
+        const isOut = status === 'Out' || status === 'out' || status === 'IR' || status === 'Injured Reserve';
+        const statusLabel = isHealthy ? 'HEALTHY' : isQue ? 'QUESTIONABLE' : isOut ? 'OUT' : status.toUpperCase();
+        const statusStyle = isHealthy
+          ? 'background:rgba(123,208,255,0.12);color:#7bd0ff;border:1px solid rgba(123,208,255,0.22)'
+          : isQue
+          ? 'background:rgba(255,179,182,0.12);color:#ffb3b6;border:1px solid rgba(255,179,182,0.22)'
+          : 'background:rgba(255,102,128,0.12);color:#ff6680;border:1px solid rgba(255,102,128,0.22)';
+        const fcVal = getPlayerValue(p.name)||0;
+        const projPts = fcVal > 0 ? (fcVal / 18).toFixed(1) : '—';
+        const slotLabel = p.slotLabel || (isStarterRow ? pos : 'BN');
+        const sn = normName(p.name);
+        // Slot pill: starters get position-colored slot, bench gets muted
+        const slotPill = isStarterRow
+          ? `<span style="padding:4px 8px;border-radius:6px;font-size:10px;font-weight:700;font-family:var(--font-mono);background:${posBg};color:${posCol};border:1px solid ${posCol}33;letter-spacing:0.04em;min-width:38px;text-align:center;display:inline-block">${slotLabel}</span>`
+          : `<span style="padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;font-family:var(--font-mono);background:rgba(255,255,255,0.04);color:#5c6b8a;border:1px solid rgba(255,255,255,0.08);letter-spacing:0.04em;min-width:38px;text-align:center;display:inline-block">BN</span>`;
+        return `<div style="display:grid;grid-template-columns:90px 1fr 100px 170px 120px;padding:18px 32px;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 100ms ease;cursor:pointer" onclick="openPlayerStats('${sn}','${p.name.replace(/'/g,"\\'")}','${p.pos}','${p.team||''}')" onmouseover="this.style.background='rgba(190,198,224,0.07)'" onmouseout="this.style.background=''" title="View ${p.name.replace(/'/g,"\\'")} game log">
+          <div style="display:flex;align-items:center">${slotPill}</div>
+          <div style="display:flex;align-items:center;gap:14px">
+            ${photoUrl ? `<img src="${photoUrl}" alt="${p.name}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid rgba(255,255,255,0.10);flex-shrink:0;background:${posBg}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+            <div style="width:44px;height:44px;border-radius:10px;background:${posBg};border:1px solid rgba(255,255,255,0.10);display:${photoUrl?'none':'flex'};align-items:center;justify-content:center;font-size:13px;font-weight:700;color:${posCol};flex-shrink:0;font-family:var(--font-sans)">${initials}</div>
+            <div>
+              <div style="font-size:15px;font-weight:700;color:#d4e4fa;font-family:var(--font-sans)">${p.name}</div>
+              <div style="font-size:10px;color:#909097;font-family:var(--font-mono);letter-spacing:0.05em;margin-top:3px;text-transform:uppercase">${p.team||'FA'} · ${p.pos||'?'}</div>
             </div>
-            <div style="font-size:10px;color:#909097;font-family:var(--font-mono);letter-spacing:0.05em;margin-top:3px;text-transform:uppercase">${p.team||'—'} · ${p.pos||'?'}</div>
           </div>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;font-family:var(--font-mono);color:#909097">${byeWk}</div>
-        <div style="display:flex;align-items:center;justify-content:center">
-          <span style="padding:5px 14px;border-radius:9999px;font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:0.10em;text-transform:uppercase;${statusStyle}">${statusLabel}</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:flex-end;font-size:15px;font-weight:800;font-family:var(--font-mono);color:#d4e4fa">${projPts}</div>
-      </div>`;
-    }).join('')}
+          <div style="display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;font-family:var(--font-mono);color:#909097">${byeWk}</div>
+          <div style="display:flex;align-items:center;justify-content:center">
+            <span style="padding:5px 14px;border-radius:9999px;font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:0.10em;text-transform:uppercase;${statusStyle}">${statusLabel}</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;font-size:15px;font-weight:800;font-family:var(--font-mono);color:#d4e4fa">${projPts}</div>
+        </div>`;
+      };
+
+      const starterRows = starters.map(p => mkRow(p, true)).join('');
+      const benchDivider = bench.length ? `<div style="display:flex;align-items:center;gap:12px;padding:10px 32px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.05)">
+        <span style="font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;font-family:var(--font-mono);color:#5c6b8a">BENCH (${bench.length})</span>
+        <div style="flex:1;height:1px;background:rgba(255,255,255,0.06)"></div>
+      </div>` : '';
+      const benchRows = bench.map(p => mkRow(p, false)).join('');
+
+      return starterRows + benchDivider + benchRows;
+    })()}
     <!-- View full roster -->
     <div style="text-align:center;padding:16px;border-top:1px solid rgba(255,255,255,0.05)">
       <button onclick="setOvTab('roster')" style="font-size:10px;font-weight:600;letter-spacing:0.14em;font-family:var(--font-mono);text-transform:uppercase;color:#bec6e0;background:none;border:none;cursor:pointer;padding:8px 16px;transition:color 150ms" onmouseover="this.style.color='#d4e4fa'" onmouseout="this.style.color='#bec6e0'">
@@ -5937,6 +6021,32 @@ async function loadOvRoster() {
   const myR = ctx.rosters.find(r=>r.owner_id===myTeamsUserId);
   if (!myR) return [];
 
+  // Fetch league roster_positions for slot labels (cache on ctx)
+  if (!ctx.rosterPositions) {
+    try {
+      const lgData = await fetch(`https://api.sleeper.app/v1/league/${ovLeagueId}`).then(r=>r.json());
+      ctx.rosterPositions = lgData.roster_positions || [];
+    } catch(e) { ctx.rosterPositions = []; }
+  }
+  const rosterPositions = ctx.rosterPositions;
+
+  // Build slot label array (number duplicates: RB→RB1/RB2, FLEX→FLX1/FLX2, etc.)
+  const posCounts = {};
+  const slotLabels = rosterPositions.map(pos => {
+    if (pos === 'BN' || pos === 'IR' || pos === 'TAXI') return pos;
+    const display = pos === 'SUPER_FLEX' ? 'SF' : pos === 'FLEX' ? 'FLX' : pos;
+    posCounts[display] = (posCounts[display] || 0) + 1;
+    return display + (posCounts[display] > 1 ? posCounts[display] : '1');
+  });
+  // Clean up single-count labels (QB1 → QB when only 1 QB slot)
+  const displayCounts = {};
+  slotLabels.forEach(l => { if (l !== 'BN' && l !== 'IR' && l !== 'TAXI') { const base = l.replace(/\d+$/, ''); displayCounts[base] = (displayCounts[base]||0)+1; } });
+  const cleanSlot = label => {
+    if (label === 'BN' || label === 'IR' || label === 'TAXI') return label;
+    const base = label.replace(/\d+$/, '');
+    return displayCounts[base] === 1 ? base : label;
+  };
+
   // Cache starters — filter out '0' placeholder slots Sleeper uses in off-season
   const rawStarters = (myR.starters || []).map(String).filter(s => s !== '0' && s.length > 2);
   const starterPids = new Set(rawStarters);
@@ -5951,8 +6061,11 @@ async function loadOvRoster() {
     const name = globalPidToName[pid];
     if (!name) return null;
     const p = PLAYERS.find(x=>x.name===name) || {name, pos:'?', team:''};
-    const isStarter = starterPids.has(pid);
-    return {...p, fcVal:getPlayerValue(name), sleeperId: pid, isStarter};
+    // Find which starter slot this player occupies (by index in rawStarters)
+    const starterIdx = rawStarters.indexOf(pid);
+    const isStarter = starterIdx >= 0;
+    const slotLabel = isStarter ? cleanSlot(slotLabels[starterIdx] || 'STR') : 'BN';
+    return {...p, fcVal:getPlayerValue(name), sleeperId: pid, isStarter, slotLabel, starterIdx};
   }).filter(Boolean);
   // Dedup by name — Sleeper has multiple pids mapping to same player name (e.g. retired+active)
   // Keep the one with higher FC value (current player)
