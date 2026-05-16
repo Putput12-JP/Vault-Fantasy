@@ -3173,7 +3173,18 @@ window._psRenderGameLogs = async function(year, targetEl) {
         yrData = await (window.initNflverseYear ? initNflverseYear(yr) : initNflverse().then(()=>({stats:window._nflverseCache?.[yr]||{},snaps:{},inj:{}}))).catch(()=>({stats:{},snaps:{},inj:{}}));
       }
     }
-    function fuzz(map,n){if(!map||!n)return null;if(map[n])return map[n];const norm=s=>s.toLowerCase().replace(/[^a-z]/g,'');const t=norm(n);for(const k of Object.keys(map)){if(norm(k)===t)return map[k];}return null;}
+    function fuzz(map,n){
+      if(!map||!n)return null;
+      if(map[n])return map[n];
+      const norm=s=>s.toLowerCase().replace(/[^a-z]/g,'');
+      const t=norm(n);
+      // Pass 1: exact normalized match
+      for(const k of Object.keys(map)){if(norm(k)===t)return map[k];}
+      // Pass 2: prefix match — handles Jr./Sr./III/II/IV suffixes where one name
+      // is a prefix of the other (e.g. "haroldfannin" vs "haroldfanninjr")
+      for(const k of Object.keys(map)){const nk=norm(k);if(nk.startsWith(t)||t.startsWith(nk))return map[k];}
+      return null;
+    }
     const nfl = fuzz(yrData.stats||yrData,name);
     const snaps = fuzz(yrData.snaps||{},name);
     if (!nfl?.weeks?.length) {
@@ -4227,7 +4238,7 @@ function _resRenderTab(tab, name, pos, sid, stats, val) {
     if (!resEl || !window._psRenderGameLogs) return;
 
     const _savedPsPlayer = window._psPlayer;
-    window._psPlayer = { name, pos, team: '', sleeperId: sid };
+    window._psPlayer = { name, pos, team: _resPlayer?.team || '', sleeperId: sid };
 
     const glYear = window._resGlYear || '2025';
 
@@ -5624,7 +5635,8 @@ async function renderOverview() {
       const rawStarters = (myRoster_raw.starters||[]).map(String).filter(s=>s!=='0'&&s.length>2);
       const starterPids = new Set(rawStarters);
 
-      const pids = [...(myRoster_raw.players||[]), ...(myRoster_raw.reserve||[])];
+      // Dedup by PID — Sleeper can list same player in both players[] and reserve[]
+      const pids = [...new Set([...(myRoster_raw.players||[]), ...(myRoster_raw.reserve||[])].map(String))];
       roster = pids.map(pid => {
         const pidStr = String(pid);
         const name = globalPidToName[pidStr];
@@ -5656,6 +5668,13 @@ async function renderOverview() {
         const _si2 = rawStarters.indexOf(String(pid));
         return { name, pos: fcv?.pos || fcv?.position || '?', team: fcv?.team || '', fcVal: getPlayerValue(name), sleeperId: String(pid), isStarter: _si2>=0, slotLabel: _si2>=0?_cs(_rawSlots[_si2]||'STR'):'BN', starterIdx: _si2 };
       }).filter(x => x !== null);
+      // Name-level dedup — two different PIDs can map to the same player name
+      // Keep the entry with higher fcVal (the active/current player)
+      const _ovSeen = new Map();
+      for (const p of roster) {
+        if (!_ovSeen.has(p.name) || (p.fcVal||0) > (_ovSeen.get(p.name).fcVal||0)) _ovSeen.set(p.name, p);
+      }
+      roster = [..._ovSeen.values()];
       const unmapped = pids.filter(p=>!globalPidToName[String(p)]);
       if (unmapped.length) console.warn('[Vault] Unmapped pids:', unmapped);
       console.log(`[Vault] Roster: ${roster.length}/${pids.length} resolved`);
@@ -7518,7 +7537,8 @@ async function renderTeamsFromLeague(leagueId) {
       const ownerId = r.owner_id;
       const name = userMap[ownerId] || `Team ${i+1}`;
       const isMe = ownerId === myTeamsUserId;
-      const playerIds = [...(r.players||[]), ...(r.reserve||[])];
+      // Dedup by PID — Sleeper can list same player in both players[] and reserve[]
+      const playerIds = [...new Set([...(r.players||[]), ...(r.reserve||[])].map(String))];
       const roster = playerIds.map(pid => {
         const pidStr = String(pid);
         const pname = globalPidToName[pidStr];
@@ -7535,20 +7555,30 @@ async function renderTeamsFromLeague(leagueId) {
         return { name: pname, pos: fcv?.pos || fcv?.position || '?', team: fcv?.team || '' };
       }).filter(Boolean);
 
-      const fcTotal = roster.reduce((s,p) => s + getPlayerValue(p.name), 0);
-      const qbs = roster.filter(p=>p.pos==='QB');
-      const rbs = roster.filter(p=>p.pos==='RB');
-      const wrs = roster.filter(p=>p.pos==='WR');
-      const tes = roster.filter(p=>p.pos==='TE');
-      const sorted = [...roster].sort((a,b)=>getPlayerValue(b.name)-getPlayerValue(a.name));
+      // Name-level dedup — two different PIDs can map to same player (e.g. retired+active)
+      // Keep the one with higher FC value
+      const _rSeen = new Map();
+      for (const p of roster) {
+        if (!_rSeen.has(p.name) || getPlayerValue(p.name) > getPlayerValue(_rSeen.get(p.name).name)) {
+          _rSeen.set(p.name, p);
+        }
+      }
+      const dedupedRoster = [..._rSeen.values()];
+
+      const fcTotal = dedupedRoster.reduce((s,p) => s + getPlayerValue(p.name), 0);
+      const qbs = dedupedRoster.filter(p=>p.pos==='QB');
+      const rbs = dedupedRoster.filter(p=>p.pos==='RB');
+      const wrs = dedupedRoster.filter(p=>p.pos==='WR');
+      const tes = dedupedRoster.filter(p=>p.pos==='TE');
+      const sorted = [...dedupedRoster].sort((a,b)=>getPlayerValue(b.name)-getPlayerValue(a.name));
       const best = sorted[0];
       const bestVal = best ? getPlayerValue(best.name) : 0;
-      const trendSum = roster.reduce((s,p) => s + (getFCValue(p.name)?.trend||0), 0);
-      const ages = roster.filter(p=>getFCValue(p.name)?.age).map(p=>({age:getFCValue(p.name).age,val:getFCValue(p.name).value}));
+      const trendSum = dedupedRoster.reduce((s,p) => s + (getFCValue(p.name)?.trend||0), 0);
+      const ages = dedupedRoster.filter(p=>getFCValue(p.name)?.age).map(p=>({age:getFCValue(p.name).age,val:getFCValue(p.name).value}));
       const totalVal = ages.reduce((s,x)=>s+x.val,0);
       const avgAge = totalVal>0 ? ages.reduce((s,x)=>s+(x.age*x.val),0)/totalVal : null;
 
-      return { idx:i, name, roster, fcTotal, qbs, rbs, wrs, tes, best, bestFC:{value:bestVal}, trendSum, avgAge, isMe, ownerId };
+      return { idx:i, name, roster: dedupedRoster, fcTotal, qbs, rbs, wrs, tes, best, bestFC:{value:bestVal}, trendSum, avgAge, isMe, ownerId };
     });
 
     renderPowerRankingsTable(teamData);
