@@ -2998,24 +2998,27 @@ window._psInjectNflverse=function(name,pos){
 </script>
 
 <script>
-window._psRenderGameLogs = async function(year) {
-  const body = document.getElementById('ps-body');
+window._psRenderGameLogs = async function(year, targetEl) {
+  const body = targetEl || document.getElementById('ps-body');
   if (!body || !_psPlayer) return;
   const { name, pos, sleeperId } = _psPlayer;
   const posC = {QB:'#ff6680',RB:'#3DCC7A',WR:'#7bd0ff',TE:'#f5c842'}[pos]||'#909097';
   const yr = year || '2025';
 
-  // Year switcher
+  // Year switcher — captures the target element for re-renders
+  const _glTarget = body;
   function mkYrSw(active) {
     return `<div style="display:flex;gap:6px;margin-bottom:14px">${
       ['2025·NFL','2024','2023'].map(y => {
         const key = y === '2025·NFL' ? '2025' : y;
         const on = key === active;
-        return `<button onclick="window._resGlYear='${key}';window._psRenderGameLogs('${key}')"
+        return `<button onclick="window._resGlYear='${key}';window._psRenderGameLogs('${key}', window._glTargetEl || document.getElementById('ps-body'))"
           style="padding:3px 13px;border-radius:2px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:1px solid ${on?posC:'#1E293B'};background:${on?posC+'18':'transparent'};color:${on?posC:'#909097'};transition:all 120ms ease">${y}</button>`;
       }).join('')
     }</div>`;
   }
+  // Store target for year-switch buttons to reference
+  window._glTargetEl = body;
 
   // KPI strip
   function mkKPI(items) {
@@ -4139,7 +4142,7 @@ function setResTab(tab) {
 }
 
 function _resSetTabActive(tab) {
-  ['stats','weekly','nflverse','value'].forEach((t,i)=>{
+  ['weekly','stats','nflverse','value'].forEach((t,i)=>{
     document.querySelectorAll('#res-tabs .la-tab')[i]?.classList.toggle('on',t===tab);
   });
 }
@@ -4176,28 +4179,17 @@ function _resRenderTab(tab, name, pos, sid, stats, val) {
     const _savedPsPlayer = window._psPlayer;
     window._psPlayer = { name, pos, team: '', sleeperId: sid };
 
-    // Use a detached temp element — no ID swapping needed
-    const tmpDiv = document.createElement('div');
-    tmpDiv.id = 'ps-body';
-    tmpDiv.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none';
-    document.body.appendChild(tmpDiv);
-
     const glYear = window._resGlYear || '2025';
-    const cleanup = () => {
-      resEl.innerHTML = tmpDiv.innerHTML;
-      tmpDiv.remove();
-      window._psPlayer = _savedPsPlayer;
-    };
 
     try {
-      const p = window._psRenderGameLogs(glYear);
+      const p = window._psRenderGameLogs(glYear, resEl);
       if (p && typeof p.finally === 'function') {
-        p.finally(cleanup);
+        p.finally(() => { window._psPlayer = _savedPsPlayer; });
       } else {
-        cleanup();
+        window._psPlayer = _savedPsPlayer;
       }
     } catch(e) {
-      cleanup();
+      window._psPlayer = _savedPsPlayer;
       resEl.innerHTML = '<div style="padding:20px;color:var(--qb);font-size:12px">⚠ ' + e.message + '</div>';
     }
 
