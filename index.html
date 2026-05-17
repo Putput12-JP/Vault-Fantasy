@@ -2812,7 +2812,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <div id="res-meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"></div>
           <div id="res-values" style="display:flex;gap:6px;flex-wrap:wrap"></div>
         </div>
-        <button onclick="document.getElementById('research-profile').style.display='none';document.getElementById('research-leaderboard').style.display='block';document.getElementById('research-search').value=''" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;line-height:1;flex-shrink:0" title="Back to leaderboard">✕</button>
+        <button onclick="document.getElementById('research-profile').style.display='none';document.getElementById('research-leaderboard').style.display='block';document.getElementById('research-search').value='';window._glTargetEl=null;" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;line-height:1;flex-shrink:0" title="Back to leaderboard">✕</button>
       </div>
 
       <!-- KPI strip -->
@@ -3250,7 +3250,19 @@ window._psRenderGameLogs = async function(year, targetEl) {
     const avgPts = allPts.length?allPts.reduce((a,b)=>a+b,0)/allPts.length:0;
     const ssn = {avg_pts:avgPts.toFixed(2),games:nw.length};
     const kpiItems = [['Avg FPTS',avgPts.toFixed(1)],['Games',nw.length],['Best Wk',Math.max(...allPts).toFixed(1),'#3DCC7A']];
-    const rows = nw.sort((a,b)=>a.wk-b.wk).map(w=>mkRow(w,pos,maxPts,avgPts,w.proj)).join('');
+    // Fetch 2023 opponents from ESPN (same cache as nflverse path)
+    const playerTeam23 = (window._psPlayer?.team || '').toUpperCase();
+    const sorted23 = nw.sort((a,b)=>a.wk-b.wk);
+    if (playerTeam23) {
+      try {
+        const weekNums23 = [...new Set(sorted23.map(w=>w.wk))];
+        await Promise.all(weekNums23.map(async wk => {
+          const m = await getOpponentMap('2023', wk);
+          sorted23.forEach(w => { if (w.wk === wk && !w.opp) w.opp = m[playerTeam23] || '—'; });
+        }));
+      } catch(e) { /* silent */ }
+    }
+    const rows = sorted23.map(w=>mkRow(w,pos,maxPts,avgPts,w.proj)).join('');
     body.innerHTML = mkYrSw(yr)+mkKPI(kpiItems)+`
       <div style="overflow-x:auto;border-radius:4px;border:1px solid #1E293B">
         <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:11px;min-width:560px">
@@ -3972,6 +3984,8 @@ function getStaticStats(name) {
 }
 
 async function researchSelectPlayer(name, sleeperId, pos, team) {
+  // Clear stale game log target so year-switcher buttons don't render into wrong element
+  window._glTargetEl = null;
   
   const ac = document.getElementById('research-autocomplete');
   const si = document.getElementById('research-search');
@@ -5227,13 +5241,76 @@ function _applyPidMap(pidMap) {
     globalPidToName[pidStr] = sleeperName;
   });
 
-  
+  // PLAYER_IDS: only fill gaps — never overwrite what Sleeper API already resolved
+  // These are fallback PIDs for headshots/display only, not authoritative name mappings
   Object.entries(PLAYER_IDS).forEach(([name, pid]) => {
-    globalPidToName[String(pid)] = name;
+    const pidStr = String(pid);
+    // Only write if not already set by Sleeper API (which is authoritative)
+    if (!globalPidToName[pidStr]) {
+      globalPidToName[pidStr] = name;
+    }
   });
 
   sleeperPlayersLoaded = true;
   console.log(`[Vault] Sleeper pid map ready: ${Object.keys(globalPidToName).length} players`);
+}
+
+// ── Roster Integrity Validator ────────────────────────────────────────────
+// Runs before every My Team / League render to catch mapping corruption early.
+// Fixes duplicate-name entries by preferring the starter PID or higher FC value.
+function validateRoster(roster, starterPids) {
+  if (!roster?.length) return roster;
+  const nameMap = new Map();
+  const issues = [];
+
+  for (const p of roster) {
+    const existing = nameMap.get(p.name);
+    if (!existing) {
+      nameMap.set(p.name, p);
+      continue;
+    }
+    // Duplicate name detected — cross-check _raNameBySid for authoritative mapping
+    const raName1 = window._raNameBySid?.[p.sleeperId] || p.name;
+    const raName2 = window._raNameBySid?.[existing.sleeperId] || existing.name;
+    const isMismatch1 = raName1 !== p.name;
+    const isMismatch2 = raName2 !== existing.name;
+    issues.push(`[Vault] Roster integrity: duplicate name "${p.name}" — pids ${existing.sleeperId}/${p.sleeperId} raNames: "${raName2}"/"${raName1}"`);
+
+    // Pick the correct entry: prefer one whose _raNameBySid matches globalPidToName
+    // and among ties, prefer the starter or higher FC value
+    const p1IsStarter = starterPids?.has(p.sleeperId);
+    const p2IsStarter = starterPids?.has(existing.sleeperId);
+
+    // If RA says they're different players, fix globalPidToName and use RA name
+    if (raName1 !== raName2) {
+      // Remap the wrong one using RA data
+      if (isMismatch1 && window._raNameBySid?.[p.sleeperId]) {
+        const correctedName = window._raNameBySid[p.sleeperId];
+        window.globalPidToName && (globalPidToName[p.sleeperId] = correctedName);
+        nameMap.set(correctedName, {...p, name: correctedName});
+        console.warn(issues[issues.length-1] + ` → fixed: ${p.sleeperId} → "${correctedName}"`);
+        continue;
+      }
+      if (isMismatch2 && window._raNameBySid?.[existing.sleeperId]) {
+        const correctedName = window._raNameBySid[existing.sleeperId];
+        window.globalPidToName && (globalPidToName[existing.sleeperId] = correctedName);
+        nameMap.set(p.name, p);
+        nameMap.set(correctedName, {...existing, name: correctedName});
+        console.warn(issues[issues.length-1] + ` → fixed: ${existing.sleeperId} → "${correctedName}"`);
+        continue;
+      }
+    }
+
+    // Same RA name or no RA data — keep starter or higher FC value
+    const keepNew = (p1IsStarter && !p2IsStarter) || (p.fcVal||0) > (existing.fcVal||0);
+    if (keepNew) nameMap.set(p.name, p);
+    console.warn(issues[issues.length-1] + ` → kept pid ${keepNew ? p.sleeperId : existing.sleeperId}`);
+  }
+
+  if (issues.length) {
+    console.warn(`[Vault] Roster validation found ${issues.length} issue(s) — roster cleaned`);
+  }
+  return [...nameMap.values()];
 }
 
 const globalPidToName = {};
@@ -5285,9 +5362,9 @@ const PLAYER_IDS = {
   "Patrick Mahomes II":"4358",
   "Christian McCaffrey":"4034",
   "Saquon Barkley":"4035",
-  "Derrick Henry":"2133",
-  "Davante Adams":"3294",
-  "Travis Kelce":"1234",
+  "Derrick Henry":"3198",
+  "Davante Adams":"2133",
+  "Travis Kelce":"1466",
   "George Kittle":"4866",
 };
 
@@ -5675,6 +5752,8 @@ async function renderOverview() {
         if (!_ovSeen.has(p.name) || (p.fcVal||0) > (_ovSeen.get(p.name).fcVal||0)) _ovSeen.set(p.name, p);
       }
       roster = [..._ovSeen.values()];
+      // Run integrity check — catches stale PID mappings and fixes them before render
+      roster = validateRoster(roster, new Set(rawStarters));
       const unmapped = pids.filter(p=>!globalPidToName[String(p)]);
       if (unmapped.length) console.warn('[Vault] Unmapped pids:', unmapped);
       console.log(`[Vault] Roster: ${roster.length}/${pids.length} resolved`);
@@ -7563,7 +7642,8 @@ async function renderTeamsFromLeague(leagueId) {
           _rSeen.set(p.name, p);
         }
       }
-      const dedupedRoster = [..._rSeen.values()];
+      // Run integrity check to catch stale PID mappings
+      const dedupedRoster = validateRoster([..._rSeen.values()], null);
 
       const fcTotal = dedupedRoster.reduce((s,p) => s + getPlayerValue(p.name), 0);
       const qbs = dedupedRoster.filter(p=>p.pos==='QB');
