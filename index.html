@@ -2232,12 +2232,52 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <div class="sgrp">
       <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only starred players">⭐ Watchlist</button>
     </div>
+    <div class="sgrp">
+      <button class="sbtn" onclick="toggleImportPanel()" id="sb-import" title="Import custom rankings from CSV">↑ Import</button>
+    </div>
     <div class="cright">
       <button class="hgbtn" id="hgbtn" onclick="toggleHide()">Show Drafted <span class="hg-count" id="hg-count">0</span></button>
     </div>
   </div>
   <div class="plist" id="plist">
-    <!-- Desktop: table layout -->
+    <!-- Inline CSV import panel -->
+    <div id="import-panel" style="display:none;background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text);font-family:var(--font-mono)">Import Custom Rankings</span>
+        <button onclick="toggleImportPanel()" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px;line-height:1">✕</button>
+      </div>
+      <div id="import-dropzone" onclick="document.getElementById('import-file-input').click()"
+        style="border:1.5px dashed var(--border2);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px"
+        ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" 
+        ondragleave="this.style.borderColor='var(--border2)'"
+        ondrop="event.preventDefault();this.style.borderColor='var(--border2)';handleImportDrop(event)">
+        <div style="font-size:22px;margin-bottom:6px">📋</div>
+        <div style="font-size:13px;color:var(--text2);font-weight:600">Drop CSV here or click to browse</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Needs columns: Player Name, Position, and at least one Rank column</div>
+        <input type="file" id="import-file-input" accept=".csv" style="display:none" onchange="handleImportFile(this.files[0])">
+      </div>
+      <div id="import-col-map" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+          <div>
+            <label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">Rank 1 Label</label>
+            <input id="ip-l0" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none" value="My Rankings">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">Rank 2 (optional)</label>
+            <input id="ip-l1" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none" placeholder="Label">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">Rank 3 (optional)</label>
+            <input id="ip-l2" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none" placeholder="Label">
+          </div>
+        </div>
+        <div id="import-col-selects" style="margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="applyImportRankings()" style="flex:1;padding:8px;border-radius:7px;background:var(--accent);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono)">Apply Rankings</button>
+          <button onclick="clearImportRankings()" style="padding:8px 14px;border-radius:7px;background:transparent;color:var(--muted);border:1px solid var(--border2);font-size:12px;cursor:pointer">Reset to Default</button>
+        </div>
+      </div>
+    </div>
     <table class="plist-table">
       <colgroup>
         <col class="col-rk"><col class="col-photo"><col class="col-name">
@@ -2782,6 +2822,18 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
             oninput="researchSearch(this.value);document.getElementById('research-search-hint').style.display=this.value.length>1?'block':'none'"
             onkeydown="if(event.key==='Enter')researchSearch(this.value)">
         </div>
+        <!-- Vs Opponent filter -->
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+          <div style="display:flex;align-items:center;gap:6px;background:rgba(1,15,31,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:6px 10px;flex:1">
+            <span style="color:#909097;font-size:11px;font-family:var(--font-mono);white-space:nowrap">VS OPP</span>
+            <input id="filter-opp" placeholder="e.g. KC, @DAL, DET..." maxlength="8"
+              style="flex:1;background:none;border:none;outline:none;color:#d4e4fa;font-size:12px;font-family:var(--font-mono);text-transform:uppercase"
+              oninput="this.value=this.value.toUpperCase();_resApplyOppFilter(this.value)"
+              onkeydown="if(event.key==='Escape'){this.value='';_resApplyOppFilter('')}">
+          </div>
+          <button id="filter-opp-clear" onclick="document.getElementById('filter-opp').value='';_resApplyOppFilter('')" 
+            style="display:none;background:rgba(204,0,60,0.2);border:1px solid rgba(204,0,60,0.3);color:#ff4d6d;border-radius:6px;padding:6px 10px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:var(--font-mono)">✕ Clear</button>
+        </div>
       </div>
 
       <!-- Active filters counter — crimson gradient -->
@@ -3042,7 +3094,7 @@ window._psRenderGameLogs = async function(year, targetEl) {
       ['2025·NFL','2024','2023'].map(y => {
         const key = y === '2025·NFL' ? '2025' : y;
         const on = key === active;
-        return `<button onclick="window._resGlYear='${key}';window._psRenderGameLogs('${key}', window._glTargetEl || document.getElementById('ps-body'))"
+        return `<button onclick="window._resGlYear='${key}';window._psRenderGameLogs('${key}', window._glTargetEl || document.getElementById('ps-body'));if(window._resUpdateKPIsForYear&&window._glTargetEl)window._resUpdateKPIsForYear('${key}')"
           style="padding:3px 13px;border-radius:2px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:1px solid ${on?posC:'#1E293B'};background:${on?posC+'18':'transparent'};color:${on?posC:'#909097'};transition:all 120ms ease">${y}</button>`;
       }).join('')
     }</div>`;
@@ -3906,6 +3958,127 @@ function _resApplyFilters() {
   _resRenderLeaderboard(filtered);
 }
 
+// ── Vs Opponent Filter ────────────────────────────────────────────────────
+let _resOppFilter = '';
+let _resOppData = null; // cached nflverse opponent stats
+
+async function _resApplyOppFilter(opp) {
+  _resOppFilter = opp.trim().replace('@','').toUpperCase();
+  const clearBtn = document.getElementById('filter-opp-clear');
+  if (clearBtn) clearBtn.style.display = _resOppFilter ? 'block' : 'none';
+
+  const lb = document.getElementById('research-leaderboard');
+  const pr = document.getElementById('research-profile');
+  if (!lb || (pr && pr.style.display !== 'none')) return;
+
+  if (!_resOppFilter) {
+    _resLoadLeaderboard();
+    return;
+  }
+
+  // Need at least 2 chars to be a valid team abbr
+  if (_resOppFilter.length < 2) return;
+
+  lb.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:20px">⟳</span><br><br>Finding players vs ${_resOppFilter}...</div>`;
+
+  // Load nflverse data if needed
+  try {
+    const base = 'https://putput12-jp.github.io/Vault-Fantasy/data';
+    if (!_resOppData) {
+      _resOppData = await fetch(base+'/nflverse_stats_2025.json').then(r=>r.ok?r.json():null).catch(()=>null);
+    }
+    if (!_resOppData) { lb.innerHTML=`<div style="text-align:center;padding:30px;color:var(--muted)">Could not load stats data</div>`; return; }
+
+    // For each player in nflverse, find their game(s) vs this opponent
+    // We need the ESPN schedule to know who played who
+    const norm = s => s?.toLowerCase().replace(/[^a-z]/g,'');
+    const oppClean = _resOppFilter;
+
+    // Collect all player-vs-opp performances
+    const results = [];
+    for (const [pname, pdata] of Object.entries(_resOppData)) {
+      if (!pdata?.weeks?.length) continue;
+      // Get opponent map for each week this player has data
+      const pos = pdata.season?.pos || pdata.pos || '';
+      if (!['QB','RB','WR','TE'].includes(pos)) continue;
+
+      // Get player's team from PLAYERS or FC data
+      const team = (window.PLAYERS||[]).find(p=>norm(p.name)===norm(pname))?.team
+        || window.getFCValue?.(pname)?.team || '';
+      if (!team) continue;
+
+      let oppGames = [];
+      for (const w of pdata.weeks) {
+        // Get opponent map for this week (cached by getOpponentMap)
+        const wkMap = window._espnOppCache?.[`2025_${w.wk}`];
+        const wkOpp = wkMap ? (wkMap[team]||'').replace('@','') : '';
+        if (wkOpp === oppClean) oppGames.push(w);
+      }
+      if (!oppGames.length) continue;
+
+      const totalPts = oppGames.reduce((s,w)=>s+(w.pts||0),0);
+      const avgPts = (totalPts/oppGames.length).toFixed(1);
+      const fcVal = window.getPlayerValue?.(pname)||0;
+
+      results.push({ name: pname, pos, team, games: oppGames.length, avgPts: parseFloat(avgPts), totalPts, fcVal, weeks: oppGames });
+    }
+
+    // Sort by avg pts vs this opponent
+    results.sort((a,b) => b.avgPts - a.avgPts);
+
+    const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+    const posBg = {QB:'rgba(255,102,128,0.12)',RB:'rgba(61,204,122,0.12)',WR:'rgba(123,208,255,0.12)',TE:'rgba(245,200,66,0.12)'};
+
+    const countEl = document.getElementById('res-player-count');
+    if (countEl) countEl.textContent = results.length;
+
+    if (!results.length) {
+      // Opponent schedule data not yet cached — need to preload ESPN weeks
+      lb.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">
+        <div style="font-size:24px;margin-bottom:10px">📅</div>
+        <div style="font-weight:600;color:var(--text2);margin-bottom:6px">Loading ${oppClean} schedule...</div>
+        <div>Fetching matchup data from ESPN</div></div>`;
+      // Preload all 18 weeks of ESPN schedule
+      if (window.getOpponentMap) {
+        await Promise.all(Array.from({length:18},(_,i)=>window.getOpponentMap('2025',i+1)));
+        _resApplyOppFilter(opp); // retry
+      }
+      return;
+    }
+
+    const rows = results.slice(0,50).map(p => {
+      const pc = posColors[p.pos]||'#909097';
+      const bg = posBg[p.pos]||'rgba(255,255,255,0.04)';
+      const sid = (window.PLAYERS||[]).find(x=>norm(x.name)===norm(p.name))?.sleeperId || '';
+      const thumb = sid ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${sid}.jpg" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid ${pc};flex-shrink:0" onerror="this.style.display='none'">` : '';
+      const wkDetail = p.weeks.map(w=>`Wk${w.wk}: ${(w.pts||0).toFixed(1)}pts`).join(' · ');
+      return `<div onclick="researchSelectPlayer('${p.name.replace(/'/g,"\\'")}','','${p.pos}','${p.team}')" 
+        style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 100ms" 
+        onmouseover="this.style.background='rgba(190,198,224,0.05)'" onmouseout="this.style.background=''">
+        ${thumb}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${p.name}</div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:2px">${p.team} · ${p.pos} · ${wkDetail}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:800;color:${pc};font-family:var(--font-mono)">${p.avgPts}</div>
+          <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono)">${p.games} game${p.games>1?'s':''} avg PPR</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    lb.innerHTML = `
+      <div style="padding:12px 16px;background:rgba(204,0,60,0.08);border:1px solid rgba(204,0,60,0.2);border-radius:8px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:13px;font-weight:700;color:#ff4d6d;font-family:var(--font-mono)">VS ${oppClean}</span>
+        <span style="font-size:12px;color:var(--muted)">${results.length} players with data · sorted by avg PPR pts · 2025 season</span>
+      </div>
+      <div style="background:var(--s1);border-radius:10px;overflow:hidden;border:1px solid var(--border)">${rows}</div>`;
+
+  } catch(e) {
+    lb.innerHTML = `<div style="text-align:center;padding:30px;color:var(--qb)">Error: ${e.message}</div>`;
+  }
+}
+
 function researchSetPos(pos) {
   _resPos = pos;
   _resLbCache = null;
@@ -4162,6 +4335,60 @@ function _resGetCareer(stats, seasons) {
   return c;
 }
 
+// Update Research Hub header KPIs when game log year changes
+function _resUpdateKPIsForYear(yr) {
+  const el = document.getElementById('res-kpis');
+  if (!el || !_resPlayer) return;
+  const { name, pos } = _resPlayer;
+  const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+  const pc = posColors[pos]||'var(--muted)';
+
+  if (yr === '2025' || yr === '2024') {
+    // Use nflverse data for 2025/2024
+    const base = 'https://putput12-jp.github.io/Vault-Fantasy/data';
+    const suffix = yr;
+    fetch(`${base}/nflverse_stats_${suffix}.json`).then(r=>r.ok?r.json():null).catch(()=>null).then(data => {
+      if (!data) return;
+      const norm = s => s?.toLowerCase().replace(/[^a-z]/g,'');
+      const t = norm(name);
+      const found = Object.entries(data).find(([k]) => {
+        const nk = norm(k);
+        return nk === t || nk.startsWith(t) || t.startsWith(nk);
+      })?.[1];
+      if (!found?.season) return;
+      const ssn = found.season;
+      const totals = found.weeks?.reduce((acc, w) => {
+        acc.rec  = (acc.rec||0)  + (w.rec||0);
+        acc.tgt  = (acc.tgt||0)  + (w.tgt||0);
+        acc.recyds = (acc.recyds||0) + (w.recyds||0);
+        acc.rectds = (acc.rectds||0) + (w.rectds||0);
+        acc.ryds = (acc.ryds||0) + (w.ryds||0);
+        acc.rtds = (acc.rtds||0) + (w.rtds||0);
+        acc.car  = (acc.car||0)  + (w.car||0);
+        acc.pyds = (acc.pyds||0) + (w.pyds||0);
+        acc.ptds = (acc.ptds||0) + (w.ptds||0);
+        acc.ints = (acc.ints||0) + (w.ints||0);
+        return acc;
+      }, {});
+      const yrlbl = `'${yr.slice(-2)}`;
+      const kpis = pos==='QB'
+        ? [['Pass Yds',totals?.pyds?.toLocaleString(),yrlbl],['Pass TDs',totals?.ptds,yrlbl],['INTs',totals?.ints,yrlbl],['Rush Yds',totals?.ryds?.toLocaleString(),yrlbl]]
+        : pos==='RB'
+        ? [['Rush Yds',totals?.ryds?.toLocaleString(),yrlbl],['Rush TDs',totals?.rtds,yrlbl],['Receptions',totals?.rec,yrlbl],['Rec Yds',totals?.recyds?.toLocaleString(),yrlbl]]
+        : [['Receptions',totals?.rec,yrlbl],['Targets',totals?.tgt,yrlbl],['Rec Yds',totals?.recyds?.toLocaleString(),yrlbl],['Rec TDs',totals?.rectds,yrlbl]];
+      // Replace only the per-season stat KPIs, preserve value/snap/other badges
+      const existingBadges = Array.from(el.querySelectorAll('.res-kpi')).filter(k => {
+        const lbl = k.querySelector('.res-kpi-lbl')?.textContent||'';
+        return lbl.includes('PPR') || lbl.includes('Snap') || lbl.includes('Tgt Share') || lbl.includes('WOPR') || lbl.includes('L4W') || lbl === 'Age';
+      }).map(k => k.outerHTML).join('');
+      el.innerHTML = kpis.map(([l,v,y])=>
+        `<div class="res-kpi"><div class="res-kpi-val" style="color:${pc}">${v||'—'}</div><div class="res-kpi-lbl">${l} ${y||''}</div></div>`
+      ).join('') + existingBadges;
+    });
+  }
+  // For 2023, keep existing RA data (it's already the right year from initial load)
+}
+
 function _resRenderKPIs(name, pos, stats, val) {
   const el = document.getElementById('res-kpis');
   if (!el) return;
@@ -4255,6 +4482,8 @@ function _resRenderTab(tab, name, pos, sid, stats, val) {
     window._psPlayer = { name, pos, team: _resPlayer?.team || '', sleeperId: sid };
 
     const glYear = window._resGlYear || '2025';
+    // Update header KPIs to match the selected year
+    _resUpdateKPIsForYear(glYear);
 
     try {
       const p = window._psRenderGameLogs(glYear, resEl);
@@ -5549,6 +5778,121 @@ function toggleWatchFilter(){
   renderList();
 }
 
+// ── Inline CSV Import Panel ───────────────────────────────────────────────
+let _importCsvData = null;
+let _importCsvHeaders = [];
+
+function toggleImportPanel() {
+  const panel = document.getElementById('import-panel');
+  if (!panel) return;
+  const isVisible = panel.style.display !== 'none';
+  panel.style.display = isVisible ? 'none' : 'block';
+  document.getElementById('sb-import')?.classList.toggle('on', !isVisible);
+}
+
+function handleImportDrop(e) {
+  const file = e.dataTransfer?.files?.[0];
+  if (file) handleImportFile(file);
+}
+
+function handleImportFile(file) {
+  if (!file || !file.name.endsWith('.csv')) { toast('Please upload a CSV file'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const lines = text.split('\n').filter(l => l.trim());
+    if (lines.length < 2) { toast('CSV must have a header row and at least one data row'); return; }
+    _importCsvHeaders = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+    _importCsvData = lines.slice(1).map(l => l.split(',').map(c => c.trim().replace(/^"|"$/g,'')));
+    _renderImportColMap();
+  };
+  reader.readAsText(file);
+}
+
+function _renderImportColMap() {
+  const el = document.getElementById('import-col-map');
+  const dropzone = document.getElementById('import-dropzone');
+  if (!el || !_importCsvHeaders.length) return;
+  el.style.display = 'block';
+  dropzone.style.borderColor = 'var(--accent)';
+  dropzone.innerHTML = `<div style="font-size:13px;color:var(--rb);font-weight:700">✓ CSV loaded — ${_importCsvData.length} players, ${_importCsvHeaders.length} columns</div>`;
+
+  // Auto-detect columns
+  const lwr = _importCsvHeaders.map(h => h.toLowerCase());
+  const fi = terms => { for(const t of terms){ const i=lwr.findIndex(h=>h.includes(t)); if(i>=0)return i; } return 0; };
+  const nameIdx = fi(['player','name']);
+  const posIdx  = fi(['pos','position']);
+  const r0Idx   = fi(['rank','value','sf','dynasty','1','col1','overall']);
+  const r1Idx   = fi(['ecr','consensus','expert','rank2','2']);
+  const r2Idx   = fi(['3','rank3','alt']);
+
+  const mkSel = (id, defaultIdx, label) => {
+    const opts = _importCsvHeaders.map((h,i) => `<option value="${i}" ${i===defaultIdx?'selected':''}>${h}</option>`).join('');
+    return `<div><label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">${label}</label>
+      <select id="${id}" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none">
+        ${id.startsWith('ip-r1')||id.startsWith('ip-r2') ? '<option value="">None</option>' : ''}${opts}
+      </select></div>`;
+  };
+
+  document.getElementById('import-col-selects').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
+      ${mkSel('ip-name', nameIdx, 'Player Name Column')}
+      ${mkSel('ip-pos', posIdx, 'Position Column')}
+      ${mkSel('ip-r0', r0Idx, 'Rank 1 Column *')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+      ${mkSel('ip-r1', r1Idx, 'Rank 2 Column (optional)')}
+      ${mkSel('ip-r2', r2Idx, 'Rank 3 Column (optional)')}
+    </div>`;
+}
+
+function applyImportRankings() {
+  if (!_importCsvData) { toast('No CSV loaded'); return; }
+  const ni = parseInt(document.getElementById('ip-name')?.value)||0;
+  const pi = parseInt(document.getElementById('ip-pos')?.value)||0;
+  const ci0 = parseInt(document.getElementById('ip-r0')?.value)||0;
+  const r1Val = document.getElementById('ip-r1')?.value;
+  const r2Val = document.getElementById('ip-r2')?.value;
+  const ci1 = r1Val !== '' && r1Val != null ? parseInt(r1Val) : -1;
+  const ci2 = r2Val !== '' && r2Val != null ? parseInt(r2Val) : -1;
+  const l0 = document.getElementById('ip-l0')?.value || 'My Rankings';
+  const l1 = document.getElementById('ip-l1')?.value || '';
+  const l2 = document.getElementById('ip-l2')?.value || '';
+  RLABELS = [l0, l1, l2].filter((v,i) => i===0 || v);
+  PLAYERS = _importCsvData.map(c => ({
+    name: c[ni]||'',
+    pos: (c[pi]||'').toUpperCase(),
+    team: '',
+    r0: parseFloat(c[ci0])||999,
+    r1: ci1>=0 ? (parseFloat(c[ci1])||999) : null,
+    r2: ci2>=0 ? (parseFloat(c[ci2])||999) : null,
+  })).filter(p => p.name && ['QB','RB','WR','TE','K','DEF'].includes(p.pos));
+  PLAYERS.sort((a,b) => a.r0-b.r0);
+  localStorage.setItem(SK+'-players', JSON.stringify(PLAYERS));
+  localStorage.setItem(SK+'-labels', JSON.stringify(RLABELS));
+  usingDefaultRankings = false;
+  updateSortBtns();
+  sortKey = 0;
+  toggleImportPanel();
+  renderAll();
+  toast(`✓ Loaded ${PLAYERS.length} players from "${l0}"`);
+}
+
+function clearImportRankings() {
+  _importCsvData = null;
+  _importCsvHeaders = [];
+  PLAYERS = DEFAULT_RANKINGS.map(p=>({...p}));
+  RLABELS = ['RosterAudit Dynasty'];
+  usingDefaultRankings = true;
+  sortKey = 0;
+  localStorage.removeItem(SK+'-players');
+  localStorage.removeItem(SK+'-labels');
+  updateSortBtns();
+  toggleImportPanel();
+  renderAll();
+  toast('Rankings reset to RosterAudit default');
+}
+
 function setSort(k){
   sortKey=k;
   
@@ -5562,7 +5906,13 @@ function setSort(k){
   
   document.getElementById('sb-adp-dynasty')?.classList.toggle('on',k==='adp-dynasty');
   document.getElementById('sb-adp-redraft')?.classList.toggle('on',k==='adp-redraft');
-  renderList();
+
+  // If PLAYERS not loaded yet, fetch first then render
+  if (!PLAYERS.length) {
+    fetchLiveRankings().then(() => { window._rankingsFetched = true; renderAll(); });
+  } else {
+    renderList();
+  }
 }
 function setF(f){
   posF=f;
@@ -5601,9 +5951,9 @@ function showPage(p){
   if(p==='overview') renderOverview();
   if(p==='draft'){
     if (!PLAYERS.length || (usingDefaultRankings && !window._rankingsFetched)) {
-      fetchLiveRankings().then(() => { window._rankingsFetched = true; renderList(); });
+      fetchLiveRankings().then(() => { window._rankingsFetched = true; renderAll(); });
     } else {
-      renderList();
+      renderAll();
     }
   }
   if(p==='research'){ initResearch(); }
@@ -5854,10 +6204,14 @@ async function renderOverview() {
   const sorted = [...roster].sort((a,b)=>(b.fcVal||0)-(a.fcVal||0));
 
   // ── Computed variables for the rebuilt template ──
-  // Grade using league-relative percentile (same as League Grades tab)
+  // Grade using league-relative percentile — use allTeamVals built right here (always available)
+  // Falls back to _lastTeamData if allTeamVals isn't populated (e.g. draft-only mode)
   const leagueGradeScale = (() => {
-    if (!_lastTeamData || _lastTeamData.length < 2) return null;
-    const vals = _lastTeamData.map(t => t.fcTotal || 0).sort((a,b) => b-a);
+    const source = allTeamVals.length >= 2
+      ? allTeamVals.map(t => t.val || 0)
+      : (_lastTeamData || []).map(t => t.fcTotal || 0);
+    if (source.length < 2) return null;
+    const vals = [...source].sort((a,b) => b-a);
     const max = vals[0] || 1, min = vals[vals.length-1] || 0, range = max-min || 1;
     return { max, min, range };
   })();
@@ -6826,7 +7180,7 @@ function buildRosterOwnerMap(rosters) {
 }
 
 async function renderTransactions() {
-  const el = document.getElementById('teams-tab-content');
+  const el = document.getElementById('power-rankings');
   if (!el) return;
   el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:24px">⟳</div><br>Loading transactions...</div>`;
 
@@ -6989,7 +7343,7 @@ function filterTx(f) {
   const d = window._txRenderData;
   if (!d) return;
   ['all','trades','waivers','fa'].forEach(x => document.getElementById(`tx-f-${x}`)?.classList.toggle('on', x===f));
-  const el = document.getElementById('teams-tab-content');
+  const el = document.getElementById('power-rankings');
   if (!el) return;
 
   let html = '';
@@ -7013,7 +7367,7 @@ function filterTx(f) {
 
 // ════════════════════════════════════
 async function renderStandings() {
-  const el = document.getElementById('teams-tab-content');
+  const el = document.getElementById('power-rankings');
   if (!el) return;
   el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:24px">⟳</div><br>Loading standings...</div>`;
 
