@@ -2240,41 +2240,43 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     </div>
   </div>
   <div class="plist" id="plist">
-    <!-- Inline CSV import panel -->
+    <!-- Inline CSV import panel (simplified) -->
     <div id="import-panel" style="display:none;background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:16px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text);font-family:var(--font-mono)">Import Custom Rankings</span>
         <button onclick="toggleImportPanel()" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px;line-height:1">✕</button>
       </div>
+      <!-- Step 1: drop zone -->
       <div id="import-dropzone" onclick="document.getElementById('import-file-input').click()"
-        style="border:1.5px dashed var(--border2);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px"
+        style="border:1.5px dashed var(--border2);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px"
         ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" 
         ondragleave="this.style.borderColor='var(--border2)'"
         ondrop="event.preventDefault();this.style.borderColor='var(--border2)';handleImportDrop(event)">
-        <div style="font-size:22px;margin-bottom:6px">📋</div>
-        <div style="font-size:13px;color:var(--text2);font-weight:600">Drop CSV here or click to browse</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">Needs columns: Player Name, Position, and at least one Rank column</div>
+        <div style="font-size:20px;margin-bottom:4px">📋</div>
+        <div style="font-size:12px;color:var(--text2);font-weight:600">Drop CSV or click to browse</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">CSV needs: Player Name, and a Rank column</div>
         <input type="file" id="import-file-input" accept=".csv" style="display:none" onchange="handleImportFile(this.files[0])">
       </div>
+      <!-- Step 2: shown after file loads -->
       <div id="import-col-map" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div id="import-preview" style="font-size:11px;color:var(--rb);font-weight:700;margin-bottom:10px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
           <div>
-            <label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">Rank 1 Label</label>
-            <input id="ip-l0" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none" value="My Rankings">
+            <label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">Player Name Column</label>
+            <select id="ip-name" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none"></select>
           </div>
           <div>
-            <label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">Rank 2 (optional)</label>
-            <input id="ip-l1" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none" placeholder="Label">
-          </div>
-          <div>
-            <label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">Rank 3 (optional)</label>
-            <input id="ip-l2" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none" placeholder="Label">
+            <label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">Rank Column</label>
+            <select id="ip-r0" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none"></select>
           </div>
         </div>
-        <div id="import-col-selects" style="margin-bottom:12px"></div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">Label (shown in sort button)</label>
+          <input id="ip-l0" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none" value="My Rankings">
+        </div>
         <div style="display:flex;gap:8px">
-          <button onclick="applyImportRankings()" style="flex:1;padding:8px;border-radius:7px;background:var(--accent);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono)">Apply Rankings</button>
-          <button onclick="clearImportRankings()" style="padding:8px 14px;border-radius:7px;background:transparent;color:var(--muted);border:1px solid var(--border2);font-size:12px;cursor:pointer">Reset to Default</button>
+          <button onclick="applyImportRankings()" style="flex:1;padding:9px;border-radius:7px;background:var(--accent);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-mono)">✓ Apply Rankings</button>
+          <button onclick="clearImportRankings()" style="padding:9px 14px;border-radius:7px;background:transparent;color:var(--muted);border:1px solid var(--border2);font-size:12px;cursor:pointer">Reset to Default</button>
         </div>
       </div>
     </div>
@@ -2828,7 +2830,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
             <span style="color:#909097;font-size:11px;font-family:var(--font-mono);white-space:nowrap">VS OPP</span>
             <input id="filter-opp" placeholder="e.g. KC, @DAL, DET..." maxlength="8"
               style="flex:1;background:none;border:none;outline:none;color:#d4e4fa;font-size:12px;font-family:var(--font-mono);text-transform:uppercase"
-              oninput="this.value=this.value.toUpperCase();_resApplyOppFilter(this.value)"
+              oninput="this.value=this.value.toUpperCase();clearTimeout(window._oppTimer);window._oppTimer=setTimeout(()=>_resApplyOppFilter(this.value),450)"
               onkeydown="if(event.key==='Escape'){this.value='';_resApplyOppFilter('')}">
           </div>
           <button id="filter-opp-clear" onclick="document.getElementById('filter-opp').value='';_resApplyOppFilter('')" 
@@ -3094,7 +3096,7 @@ window._psRenderGameLogs = async function(year, targetEl) {
       ['2025·NFL','2024','2023'].map(y => {
         const key = y === '2025·NFL' ? '2025' : y;
         const on = key === active;
-        return `<button onclick="window._resGlYear='${key}';window._psRenderGameLogs('${key}', window._glTargetEl || document.getElementById('ps-body'));if(window._resUpdateKPIsForYear&&window._glTargetEl)window._resUpdateKPIsForYear('${key}')"
+        return `<button onclick="window._resGlYear='${key}';if(window._resCurrentPlayer)window._psPlayer=window._resCurrentPlayer;window._psRenderGameLogs('${key}', window._glTargetEl || document.getElementById('ps-body'));if(window._resUpdateKPIsForYear)window._resUpdateKPIsForYear('${key}')"
           style="padding:3px 13px;border-radius:2px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:1px solid ${on?posC:'#1E293B'};background:${on?posC+'18':'transparent'};color:${on?posC:'#909097'};transition:all 120ms ease">${y}</button>`;
       }).join('')
     }</div>`;
@@ -3960,98 +3962,109 @@ function _resApplyFilters() {
 
 // ── Vs Opponent Filter ────────────────────────────────────────────────────
 let _resOppFilter = '';
-let _resOppData = null; // cached nflverse opponent stats
+let _resOppData = null;
 
 async function _resApplyOppFilter(opp) {
-  _resOppFilter = opp.trim().replace('@','').toUpperCase();
+  _resOppFilter = (opp||'').trim().replace('@','').toUpperCase();
   const clearBtn = document.getElementById('filter-opp-clear');
   if (clearBtn) clearBtn.style.display = _resOppFilter ? 'block' : 'none';
 
   const lb = document.getElementById('research-leaderboard');
-  const pr = document.getElementById('research-profile');
-  if (!lb || (pr && pr.style.display !== 'none')) return;
 
   if (!_resOppFilter) {
+    // Clear filter — restore normal leaderboard
+    if (lb) lb.style.display = 'block';
     _resLoadLeaderboard();
     return;
   }
 
-  // Need at least 2 chars to be a valid team abbr
   if (_resOppFilter.length < 2) return;
 
-  lb.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px"><span style="animation:spin 1s linear infinite;display:inline-block;font-size:20px">⟳</span><br><br>Finding players vs ${_resOppFilter}...</div>`;
+  // Hide the profile card temporarily and show results in leaderboard
+  const pr = document.getElementById('research-profile');
+  if (pr && pr.style.display !== 'none') {
+    pr.style.display = 'none';
+    document.getElementById('research-leaderboard')?.style && (document.getElementById('research-leaderboard').style.display = 'block');
+  }
 
-  // Load nflverse data if needed
+  if (!lb) return;
+  lb.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px"><span style="font-size:20px;animation:spin 1s linear infinite;display:inline-block">⟳</span><br><br>Loading VS ${_resOppFilter} data...</div>`;
+
   try {
     const base = 'https://putput12-jp.github.io/Vault-Fantasy/data';
+    // Load nflverse data if needed (cached after first load)
     if (!_resOppData) {
       _resOppData = await fetch(base+'/nflverse_stats_2025.json').then(r=>r.ok?r.json():null).catch(()=>null);
     }
-    if (!_resOppData) { lb.innerHTML=`<div style="text-align:center;padding:30px;color:var(--muted)">Could not load stats data</div>`; return; }
+    if (!_resOppData) { lb.innerHTML=`<div style="text-align:center;padding:30px;color:var(--muted)">Could not load 2025 stats</div>`; return; }
 
-    // For each player in nflverse, find their game(s) vs this opponent
-    // We need the ESPN schedule to know who played who
+    // Pre-fetch all 18 ESPN schedule weeks in parallel (cached after first call)
+    if (window.getOpponentMap) {
+      await Promise.all(Array.from({length:18},(_,i)=>window.getOpponentMap('2025',i+1)));
+    }
+
+    // Check if opp filter changed while we were loading
+    if (_resOppFilter !== (opp||'').trim().replace('@','').toUpperCase()) return;
+
     const norm = s => s?.toLowerCase().replace(/[^a-z]/g,'');
     const oppClean = _resOppFilter;
 
-    // Collect all player-vs-opp performances
+    // Pre-build team lookup from PLAYERS+FC to avoid O(n²) per-player find()
+    const teamMap = new Map();
+    (window.PLAYERS||[]).forEach(p => { if (p.team) teamMap.set(norm(p.name), p.team); });
+    // Fill gaps from FC values
+    if (window.getFCValue) {
+      for (const [pname] of Object.entries(_resOppData)) {
+        if (!teamMap.has(norm(pname))) {
+          const fc = window.getFCValue(pname);
+          if (fc?.team) teamMap.set(norm(pname), fc.team);
+        }
+      }
+    }
+
+    // Yield main thread then process (prevents page-unresponsive dialog)
+    await new Promise(r => setTimeout(r, 0));
+
     const results = [];
     for (const [pname, pdata] of Object.entries(_resOppData)) {
       if (!pdata?.weeks?.length) continue;
-      // Get opponent map for each week this player has data
       const pos = pdata.season?.pos || pdata.pos || '';
       if (!['QB','RB','WR','TE'].includes(pos)) continue;
-
-      // Get player's team from PLAYERS or FC data
-      const team = (window.PLAYERS||[]).find(p=>norm(p.name)===norm(pname))?.team
-        || window.getFCValue?.(pname)?.team || '';
+      const team = teamMap.get(norm(pname)) || '';
       if (!team) continue;
 
-      let oppGames = [];
-      for (const w of pdata.weeks) {
-        // Get opponent map for this week (cached by getOpponentMap)
+      const oppGames = pdata.weeks.filter(w => {
         const wkMap = window._espnOppCache?.[`2025_${w.wk}`];
         const wkOpp = wkMap ? (wkMap[team]||'').replace('@','') : '';
-        if (wkOpp === oppClean) oppGames.push(w);
-      }
+        return wkOpp === oppClean;
+      });
       if (!oppGames.length) continue;
 
-      const totalPts = oppGames.reduce((s,w)=>s+(w.pts||0),0);
-      const avgPts = (totalPts/oppGames.length).toFixed(1);
-      const fcVal = window.getPlayerValue?.(pname)||0;
-
-      results.push({ name: pname, pos, team, games: oppGames.length, avgPts: parseFloat(avgPts), totalPts, fcVal, weeks: oppGames });
+      const avgPts = (oppGames.reduce((s,w)=>s+(w.pts||0),0)/oppGames.length).toFixed(1);
+      results.push({ name: pname, pos, team, games: oppGames.length, avgPts: parseFloat(avgPts), weeks: oppGames });
     }
 
-    // Sort by avg pts vs this opponent
-    results.sort((a,b) => b.avgPts - a.avgPts);
-
-    const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
-    const posBg = {QB:'rgba(255,102,128,0.12)',RB:'rgba(61,204,122,0.12)',WR:'rgba(123,208,255,0.12)',TE:'rgba(245,200,66,0.12)'};
-
-    const countEl = document.getElementById('res-player-count');
-    if (countEl) countEl.textContent = results.length;
-
     if (!results.length) {
-      // Opponent schedule data not yet cached — need to preload ESPN weeks
       lb.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">
-        <div style="font-size:24px;margin-bottom:10px">📅</div>
-        <div style="font-weight:600;color:var(--text2);margin-bottom:6px">Loading ${oppClean} schedule...</div>
-        <div>Fetching matchup data from ESPN</div></div>`;
-      // Preload all 18 weeks of ESPN schedule
-      if (window.getOpponentMap) {
-        await Promise.all(Array.from({length:18},(_,i)=>window.getOpponentMap('2025',i+1)));
-        _resApplyOppFilter(opp); // retry
-      }
+        <div style="font-size:24px;margin-bottom:8px">🏈</div>
+        <div style="font-weight:600;color:var(--text2)">No data for VS ${oppClean}</div>
+        <div style="margin-top:6px;font-size:11px">Check the team abbreviation (e.g. KC, DET, @BAL)</div></div>`;
+      const countEl = document.getElementById('res-player-count');
+      if (countEl) countEl.textContent = '0';
       return;
     }
 
+    results.sort((a,b) => b.avgPts - a.avgPts);
+
+    const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+    const countEl = document.getElementById('res-player-count');
+    if (countEl) countEl.textContent = results.length;
+
     const rows = results.slice(0,50).map(p => {
       const pc = posColors[p.pos]||'#909097';
-      const bg = posBg[p.pos]||'rgba(255,255,255,0.04)';
       const sid = (window.PLAYERS||[]).find(x=>norm(x.name)===norm(p.name))?.sleeperId || '';
       const thumb = sid ? `<img src="https://sleepercdn.com/content/nfl/players/thumb/${sid}.jpg" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid ${pc};flex-shrink:0" onerror="this.style.display='none'">` : '';
-      const wkDetail = p.weeks.map(w=>`Wk${w.wk}: ${(w.pts||0).toFixed(1)}pts`).join(' · ');
+      const wkDetail = p.weeks.map(w=>`Wk${w.wk}: ${(w.pts||0).toFixed(1)}`).join(' · ');
       return `<div onclick="researchSelectPlayer('${p.name.replace(/'/g,"\\'")}','','${p.pos}','${p.team}')" 
         style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 100ms" 
         onmouseover="this.style.background='rgba(190,198,224,0.05)'" onmouseout="this.style.background=''">
@@ -4062,20 +4075,20 @@ async function _resApplyOppFilter(opp) {
         </div>
         <div style="text-align:right">
           <div style="font-size:18px;font-weight:800;color:${pc};font-family:var(--font-mono)">${p.avgPts}</div>
-          <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono)">${p.games} game${p.games>1?'s':''} avg PPR</div>
+          <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono)">${p.games}g avg PPR</div>
         </div>
       </div>`;
     }).join('');
 
     lb.innerHTML = `
-      <div style="padding:12px 16px;background:rgba(204,0,60,0.08);border:1px solid rgba(204,0,60,0.2);border-radius:8px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+      <div style="padding:10px 14px;background:rgba(204,0,60,0.08);border:1px solid rgba(204,0,60,0.2);border-radius:8px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
         <span style="font-size:13px;font-weight:700;color:#ff4d6d;font-family:var(--font-mono)">VS ${oppClean}</span>
-        <span style="font-size:12px;color:var(--muted)">${results.length} players with data · sorted by avg PPR pts · 2025 season</span>
+        <span style="font-size:12px;color:var(--muted)">${results.length} players · avg PPR pts · 2025 season</span>
       </div>
       <div style="background:var(--s1);border-radius:10px;overflow:hidden;border:1px solid var(--border)">${rows}</div>`;
 
   } catch(e) {
-    lb.innerHTML = `<div style="text-align:center;padding:30px;color:var(--qb)">Error: ${e.message}</div>`;
+    if (lb) lb.innerHTML = `<div style="text-align:center;padding:30px;color:var(--qb)">Error: ${e.message}</div>`;
   }
 }
 
@@ -4478,22 +4491,18 @@ function _resRenderTab(tab, name, pos, sid, stats, val) {
     const resEl = document.getElementById('res-tab-content');
     if (!resEl || !window._psRenderGameLogs) return;
 
-    const _savedPsPlayer = window._psPlayer;
-    window._psPlayer = { name, pos, team: _resPlayer?.team || '', sleeperId: sid };
+    // Store current research player so year-switcher buttons can restore it
+    window._resCurrentPlayer = { name, pos, team: _resPlayer?.team || '', sleeperId: sid };
+    window._psPlayer = window._resCurrentPlayer;
+    // Store target so year-switch buttons know where to render
+    window._glTargetEl = resEl;
 
     const glYear = window._resGlYear || '2025';
-    // Update header KPIs to match the selected year
     _resUpdateKPIsForYear(glYear);
 
     try {
-      const p = window._psRenderGameLogs(glYear, resEl);
-      if (p && typeof p.finally === 'function') {
-        p.finally(() => { window._psPlayer = _savedPsPlayer; });
-      } else {
-        window._psPlayer = _savedPsPlayer;
-      }
+      await window._psRenderGameLogs(glYear, resEl);
     } catch(e) {
-      window._psPlayer = _savedPsPlayer;
       resEl.innerHTML = '<div style="padding:20px;color:var(--qb);font-size:12px">⚠ ' + e.message + '</div>';
     }
 
@@ -5542,7 +5551,7 @@ function validateRoster(roster, starterPids) {
   return [...nameMap.values()];
 }
 
-const globalPidToName = {};
+let globalPidToName = {};
 
 function applySlimPlayerData(slim) {
   
@@ -5796,14 +5805,27 @@ function handleImportDrop(e) {
 }
 
 function handleImportFile(file) {
-  if (!file || !file.name.endsWith('.csv')) { toast('Please upload a CSV file'); return; }
+  if (!file || (!file.name.endsWith('.csv') && file.type !== 'text/csv')) {
+    toast('Please upload a CSV file'); return;
+  }
   const reader = new FileReader();
   reader.onload = e => {
     const text = e.target.result;
     const lines = text.split('\n').filter(l => l.trim());
-    if (lines.length < 2) { toast('CSV must have a header row and at least one data row'); return; }
-    _importCsvHeaders = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
-    _importCsvData = lines.slice(1).map(l => l.split(',').map(c => c.trim().replace(/^"|"$/g,'')));
+    if (lines.length < 2) { toast('CSV must have a header row and data rows'); return; }
+    // Handle quoted commas properly
+    const parseRow = row => {
+      const result = []; let cur = ''; let inQ = false;
+      for (const ch of row) {
+        if (ch === '"') inQ = !inQ;
+        else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+        else cur += ch;
+      }
+      result.push(cur.trim());
+      return result;
+    };
+    _importCsvHeaders = parseRow(lines[0]);
+    _importCsvData = lines.slice(1).map(parseRow);
     _renderImportColMap();
   };
   reader.readAsText(file);
@@ -5811,82 +5833,90 @@ function handleImportFile(file) {
 
 function _renderImportColMap() {
   const el = document.getElementById('import-col-map');
+  const preview = document.getElementById('import-preview');
   const dropzone = document.getElementById('import-dropzone');
   if (!el || !_importCsvHeaders.length) return;
   el.style.display = 'block';
-  dropzone.style.borderColor = 'var(--accent)';
-  dropzone.innerHTML = `<div style="font-size:13px;color:var(--rb);font-weight:700">✓ CSV loaded — ${_importCsvData.length} players, ${_importCsvHeaders.length} columns</div>`;
+  dropzone.style.borderColor = 'var(--rb)';
+  dropzone.innerHTML = `<div style="color:var(--rb);font-size:12px;font-weight:700">✓ ${_importCsvData.length} players · ${_importCsvHeaders.length} columns detected</div><div style="font-size:10px;color:var(--muted);margin-top:3px">Click to change file</div>`;
+  if (preview) preview.textContent = '';
 
-  // Auto-detect columns
   const lwr = _importCsvHeaders.map(h => h.toLowerCase());
-  const fi = terms => { for(const t of terms){ const i=lwr.findIndex(h=>h.includes(t)); if(i>=0)return i; } return 0; };
-  const nameIdx = fi(['player','name']);
-  const posIdx  = fi(['pos','position']);
-  const r0Idx   = fi(['rank','value','sf','dynasty','1','col1','overall']);
-  const r1Idx   = fi(['ecr','consensus','expert','rank2','2']);
-  const r2Idx   = fi(['3','rank3','alt']);
+  const fi = terms => { for(const t of terms){ const i=lwr.findIndex(h=>h.includes(t)); if(i>=0)return i; } return -1; };
+  const nameIdx = Math.max(0, fi(['player','name','full_name']));
+  const rankIdx = Math.max(0, fi(['rank','sf_rank','dynasty_rank','value','overall','ecr']));
 
-  const mkSel = (id, defaultIdx, label) => {
-    const opts = _importCsvHeaders.map((h,i) => `<option value="${i}" ${i===defaultIdx?'selected':''}>${h}</option>`).join('');
-    return `<div><label style="font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;display:block;margin-bottom:4px">${label}</label>
-      <select id="${id}" style="width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-size:12px;outline:none">
-        ${id.startsWith('ip-r1')||id.startsWith('ip-r2') ? '<option value="">None</option>' : ''}${opts}
-      </select></div>`;
-  };
+  const mkOpts = (defaultIdx) =>
+    _importCsvHeaders.map((h,i) => `<option value="${i}" ${i===defaultIdx?'selected':''}>${h}</option>`).join('');
 
-  document.getElementById('import-col-selects').innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
-      ${mkSel('ip-name', nameIdx, 'Player Name Column')}
-      ${mkSel('ip-pos', posIdx, 'Position Column')}
-      ${mkSel('ip-r0', r0Idx, 'Rank 1 Column *')}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
-      ${mkSel('ip-r1', r1Idx, 'Rank 2 Column (optional)')}
-      ${mkSel('ip-r2', r2Idx, 'Rank 3 Column (optional)')}
-    </div>`;
+  document.getElementById('ip-name').innerHTML = mkOpts(nameIdx);
+  document.getElementById('ip-r0').innerHTML = mkOpts(rankIdx >= 0 ? rankIdx : 0);
 }
 
 function applyImportRankings() {
-  if (!_importCsvData) { toast('No CSV loaded'); return; }
-  const ni = parseInt(document.getElementById('ip-name')?.value)||0;
-  const pi = parseInt(document.getElementById('ip-pos')?.value)||0;
-  const ci0 = parseInt(document.getElementById('ip-r0')?.value)||0;
-  const r1Val = document.getElementById('ip-r1')?.value;
-  const r2Val = document.getElementById('ip-r2')?.value;
-  const ci1 = r1Val !== '' && r1Val != null ? parseInt(r1Val) : -1;
-  const ci2 = r2Val !== '' && r2Val != null ? parseInt(r2Val) : -1;
-  const l0 = document.getElementById('ip-l0')?.value || 'My Rankings';
-  const l1 = document.getElementById('ip-l1')?.value || '';
-  const l2 = document.getElementById('ip-l2')?.value || '';
-  RLABELS = [l0, l1, l2].filter((v,i) => i===0 || v);
-  PLAYERS = _importCsvData.map(c => ({
-    name: c[ni]||'',
-    pos: (c[pi]||'').toUpperCase(),
-    team: '',
-    r0: parseFloat(c[ci0])||999,
-    r1: ci1>=0 ? (parseFloat(c[ci1])||999) : null,
-    r2: ci2>=0 ? (parseFloat(c[ci2])||999) : null,
-  })).filter(p => p.name && ['QB','RB','WR','TE','K','DEF'].includes(p.pos));
-  PLAYERS.sort((a,b) => a.r0-b.r0);
-  localStorage.setItem(SK+'-players', JSON.stringify(PLAYERS));
-  localStorage.setItem(SK+'-labels', JSON.stringify(RLABELS));
+  if (!_importCsvData || !_importCsvData.length) { toast('No CSV loaded — drop a file first'); return; }
+  const ni = parseInt(document.getElementById('ip-name')?.value) || 0;
+  const ci = parseInt(document.getElementById('ip-r0')?.value) || 0;
+  const label = document.getElementById('ip-l0')?.value || 'My Rankings';
+
+  const norm = s => s?.toLowerCase().replace(/[^a-z0-9]/g,'');
+
+  // Build a lookup from normalized name → rank from the CSV
+  const csvRankMap = new Map();
+  _importCsvData.forEach(row => {
+    const n = row[ni]?.trim();
+    const r = parseFloat(row[ci]);
+    if (n && !isNaN(r)) csvRankMap.set(norm(n), r);
+  });
+
+  if (!csvRankMap.size) { toast('Could not parse ranks — check column selections'); return; }
+
+  // Merge: stamp r0 onto existing PLAYERS (preserves photos, team, FC data)
+  let matched = 0;
+  PLAYERS.forEach(p => {
+    const r = csvRankMap.get(norm(p.name));
+    if (r != null) { p.r0 = r; matched++; }
+    else p.r0 = 9999; // push unranked to bottom
+  });
+
+  if (matched < 5) {
+    toast(`Only ${matched} players matched — check the Name column selection`);
+    return;
+  }
+
+  // Add the import label as a sort option
+  RLABELS = [label, ...DEFAULT_LABELS.slice(1)];
+  if (!RLABELS.includes('RosterAudit Dynasty')) RLABELS.unshift('RosterAudit Dynasty');
+  // Put import label first
+  RLABELS = [label, 'RosterAudit Dynasty'].filter((v,i,a) => a.indexOf(v)===i);
+
+  PLAYERS.sort((a,b) => a.r0 - b.r0);
   usingDefaultRankings = false;
-  updateSortBtns();
   sortKey = 0;
+  updateSortBtns();
   toggleImportPanel();
   renderAll();
-  toast(`✓ Loaded ${PLAYERS.length} players from "${l0}"`);
+  toast(`✓ ${matched} players ranked from "${label}"`);
 }
 
 function clearImportRankings() {
   _importCsvData = null;
   _importCsvHeaders = [];
-  PLAYERS = DEFAULT_RANKINGS.map(p=>({...p}));
-  RLABELS = ['RosterAudit Dynasty'];
+  // Restore original r0 values from DEFAULT_RANKINGS
+  const norm = s => s?.toLowerCase().replace(/[^a-z0-9]/g,'');
+  const defaultMap = new Map((DEFAULT_RANKINGS||[]).map(p => [norm(p.name), p.r0]));
+  PLAYERS.forEach(p => { const r = defaultMap.get(norm(p.name)); if (r != null) p.r0 = r; });
+  PLAYERS.sort((a,b) => (a.r0||999) - (b.r0||999));
+  RLABELS = [...DEFAULT_LABELS];
   usingDefaultRankings = true;
   sortKey = 0;
   localStorage.removeItem(SK+'-players');
   localStorage.removeItem(SK+'-labels');
+  // Reset dropzone
+  const dz = document.getElementById('import-dropzone');
+  if (dz) { dz.style.borderColor = 'var(--border2)'; dz.innerHTML = `<div style="font-size:20px;margin-bottom:4px">📋</div><div style="font-size:12px;color:var(--text2);font-weight:600">Drop CSV or click to browse</div><div style="font-size:10px;color:var(--muted);margin-top:3px">CSV needs: Player Name, and a Rank column</div><input type="file" id="import-file-input" accept=".csv" style="display:none" onchange="handleImportFile(this.files[0])"></`+'div>'; }
+  const cm = document.getElementById('import-col-map');
+  if (cm) cm.style.display = 'none';
   updateSortBtns();
   toggleImportPanel();
   renderAll();
@@ -8899,16 +8929,18 @@ function evaluateTrade() {
   // ── Verdict label + color ──
   let verdictText, verdictColor, verdictDesc;
   if (pctDiff <= 8) {
-    verdictText = 'FAIR'; verdictColor = 'var(--te)';
+    verdictText = 'FAIR TRADE'; verdictColor = 'var(--te)';
     verdictDesc = 'Balanced within standard variance. No clear winner.';
   } else if (diff > 0) {
-    if (pctDiff > 30) { verdictText = 'WIN BIG'; verdictColor = 'var(--rb)'; verdictDesc = `Team A gets ${absDiff.toLocaleString()} more in value — a significant edge.`; }
-    else if (pctDiff > 15) { verdictText = 'YOU WIN'; verdictColor = 'var(--rb)'; verdictDesc = `Team A gains ${absDiff.toLocaleString()} (${pctDiff}%) — clear advantage.`; }
-    else { verdictText = 'SLIGHT EDGE'; verdictColor = '#4ade80'; verdictDesc = `Team A has a minor value edge (${pctDiff}%). Reasonable trade.`; }
+    // diff > 0 means valB > valA, so Team A gets more value (Team A is SENDING less, receiving more)
+    // Wait — diff = valB - valA. If positive, B is worth more than A → Team A wins (gets B's higher value)
+    if (pctDiff > 30) { verdictText = 'TEAM A WINS BIG'; verdictColor = 'var(--rb)'; verdictDesc = `Team A receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — significant advantage.`; }
+    else if (pctDiff > 15) { verdictText = 'TEAM A WINS'; verdictColor = 'var(--rb)'; verdictDesc = `Team A receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — clear advantage.`; }
+    else { verdictText = 'TEAM A EDGE'; verdictColor = '#4ade80'; verdictDesc = `Team A has a slight edge (${pctDiff}%). Reasonable trade for both sides.`; }
   } else {
-    if (pctDiff > 30) { verdictText = 'LOSE BIG'; verdictColor = 'var(--qb)'; verdictDesc = `Team B gets ${absDiff.toLocaleString()} more in value — renegotiate.`; }
-    else if (pctDiff > 15) { verdictText = 'YOU LOSE'; verdictColor = 'var(--qb)'; verdictDesc = `Team B gains ${absDiff.toLocaleString()} (${pctDiff}%) — disadvantageous.`; }
-    else { verdictText = 'SLIGHT LOSS'; verdictColor = '#f87171'; verdictDesc = `Team B has a minor edge (${pctDiff}%). Borderline acceptable.`; }
+    if (pctDiff > 30) { verdictText = 'TEAM B WINS BIG'; verdictColor = 'var(--qb)'; verdictDesc = `Team B receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — renegotiate.`; }
+    else if (pctDiff > 15) { verdictText = 'TEAM B WINS'; verdictColor = 'var(--qb)'; verdictDesc = `Team B receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — disadvantageous for A.`; }
+    else { verdictText = 'TEAM B EDGE'; verdictColor = '#f87171'; verdictDesc = `Team B has a slight edge (${pctDiff}%). Borderline acceptable.`; }
   }
 
   // ── Update circle meter ──
