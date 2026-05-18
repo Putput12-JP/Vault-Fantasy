@@ -1757,43 +1757,44 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       </div>
 
       <!-- HERO SECTION -->
-      <section style="text-align:center;margin-bottom:56px">
-        <!-- Draft Season badge -->
+      <section style="text-align:center;margin-bottom:40px">
+        <!-- Step indicator -->
         <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(28,43,60,0.5);border:1px solid rgba(144,144,151,0.2);padding:6px 14px;border-radius:9999px;margin-bottom:20px">
           <span style="width:8px;height:8px;border-radius:50%;background:#cc003c;display:inline-block"></span>
-          <span style="font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:#cc003c">Draft Season Active</span>
+          <span style="font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:#cc003c">Step 1 of 2 — Connect Sleeper</span>
         </div>
 
-        <h1 style="font-size:clamp(32px,5vw,52px);font-weight:800;color:#d4e4fa;letter-spacing:-0.04em;line-height:1.1;margin:0 auto 20px;max-width:700px;font-family:var(--font-sans)">
-          Command Your Empire with <em style="font-style:italic;color:#cc003c">Vault Intelligence.</em>
+        <h1 style="font-size:clamp(28px,4vw,42px);font-weight:800;color:#d4e4fa;letter-spacing:-0.04em;line-height:1.15;margin:0 auto 12px;max-width:600px;font-family:var(--font-sans)">
+          Your dynasty command center
         </h1>
-        <p style="font-size:16px;color:#909097;max-width:560px;margin:0 auto 36px;line-height:1.7;font-family:var(--font-sans)">
-          Sync your Sleeper account instantly to access pro-level projections, real-time trade analyzers, and the elite Vault Draft Board experience.
+        <p style="font-size:15px;color:#909097;max-width:460px;margin:0 auto 28px;line-height:1.6;font-family:var(--font-sans)">
+          Connect your Sleeper account to see your roster, rankings, trade tools, and league analysis — all in one place.
         </p>
 
         <!-- CONNECT CARD -->
-        <div style="background:rgba(15,23,42,0.65);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.10);border-top:2px solid rgba(204,0,60,0.3);border-radius:16px;padding:32px;max-width:480px;margin:0 auto">
+        <div style="background:rgba(15,23,42,0.65);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.10);border-top:2px solid rgba(204,0,60,0.3);border-radius:16px;padding:28px;max-width:440px;margin:0 auto">
           <!-- Sleeper + Vault icon row -->
-          <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:24px">
-            <div style="width:56px;height:56px;border-radius:12px;background:#00CEB8;display:flex;align-items:center;justify-content:center;font-size:28px">⚡</div>
-            <div style="font-size:20px;color:rgba(144,144,151,0.4)">⇌</div>
-            <div style="width:56px;height:56px;border-radius:12px;background:rgba(39,54,71,0.8);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center">
-              <svg width="28" height="32" viewBox="0 0 100 112" fill="none"><path d="M50 3 L95 20 L95 63 Q95 92 50 110 Q5 92 5 63 L5 20 Z" fill="#bec6e0" opacity="0.9"/></svg>
+          <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px">
+            <div style="width:48px;height:48px;border-radius:12px;background:#00CEB8;display:flex;align-items:center;justify-content:center;font-size:24px">⚡</div>
+            <div style="font-size:18px;color:rgba(144,144,151,0.4)">⇌</div>
+            <div style="width:48px;height:48px;border-radius:12px;background:rgba(39,54,71,0.8);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center">
+              <svg width="24" height="28" viewBox="0 0 100 112" fill="none"><path d="M50 3 L95 20 L95 63 Q95 92 50 110 Q5 92 5 63 L5 20 Z" fill="#bec6e0" opacity="0.9"/></svg>
             </div>
           </div>
 
-          <!-- Username input -->
-          <div id="resume-btn" style="display:none;margin-bottom:16px">
+          <!-- Resume session (shown for returning users) -->
+          <div id="resume-btn" style="display:none;margin-bottom:14px">
             <button onclick="resumeSession()" class="resume-big-btn">⚡ Resume Last Session</button>
             <div class="setup-or">— or connect a different account —</div>
           </div>
 
-          <div style="display:flex;gap:8px;margin-bottom:16px">
+          <!-- Username input row -->
+          <div style="display:flex;gap:8px;margin-bottom:10px">
             <input class="connect-input" id="sleeper-username" placeholder="Enter Sleeper username..."
               autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-              style="flex:1;padding:14px 16px;font-size:15px;border-radius:10px"
+              style="flex:1;padding:13px 16px;font-size:15px;border-radius:10px"
               onkeydown="if(event.key==='Enter')setupConnect()">
-            <button class="connect-btn" id="find-btn" onclick="setupConnect()" style="padding:14px 20px;border-radius:10px;font-size:14px;white-space:nowrap">Connect</button>
+            <button class="connect-btn" id="find-btn" onclick="setupConnect()" style="padding:13px 20px;border-radius:10px;font-size:14px;white-space:nowrap">Connect</button>
           </div>
 
           <!-- Draft results injected here -->
@@ -1805,21 +1806,27 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
             if(inp) { inp.scrollIntoView({behavior:'smooth',block:'center'}); inp.focus(); }
             if(inp && inp.value.trim()) setupConnect();
           " style="
-            width:100%;padding:16px;border-radius:10px;border:none;
+            width:100%;padding:14px;border-radius:10px;border:none;
             background:linear-gradient(135deg,#cc003c,#68001a);
             color:#fff;font-family:var(--font-sans);font-size:15px;font-weight:600;
             cursor:pointer;letter-spacing:-0.01em;
             box-shadow:0 0 20px rgba(204,0,60,0.2);
             transition:box-shadow 150ms ease;
             display:flex;align-items:center;justify-content:center;gap:8px;
-            margin-top:12px;
+            margin-top:10px;
           " onmouseover="this.style.boxShadow='0 0 30px rgba(204,0,60,0.4)'" onmouseout="this.style.boxShadow='0 0 20px rgba(204,0,60,0.2)'">
             Connect Your Sleeper Account →
           </button>
 
-          <p style="font-family:var(--font-mono);font-size:10px;color:rgba(144,144,151,0.6);letter-spacing:0.05em;text-align:center;margin-top:12px">
-            Vault uses secure read-only access. We never store your login credentials.
-          </p>
+          <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px">
+            <p style="font-family:var(--font-mono);font-size:10px;color:rgba(144,144,151,0.6);letter-spacing:0.05em;margin:0">
+              Read-only · No password stored
+            </p>
+            <span style="color:rgba(144,144,151,0.3)">·</span>
+            <button onclick="enterWithoutDraft()" style="background:none;border:none;font-family:var(--font-mono);font-size:10px;color:rgba(144,144,151,0.5);cursor:pointer;letter-spacing:0.05em;padding:0">
+              Skip →
+            </button>
+          </div>
         </div>
       </section>
 
@@ -1834,19 +1841,18 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
       <!-- LEAGUE SELECTION SECTION -->
       <section id="setup-league-section">
-        <div style="display:flex;flex-direction:row;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:32px">
+        <div style="display:flex;flex-direction:row;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:24px">
           <div>
-            <h2 style="font-size:24px;font-weight:700;color:#d4e4fa;letter-spacing:-0.02em;margin:0 0 6px;font-family:var(--font-sans)">Select Your Roster</h2>
-            <p style="font-size:13px;color:#909097;font-family:var(--font-sans)">We've found your active leagues associated with your Sleeper ID.</p>
+            <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(61,204,122,0.1);border:1px solid rgba(61,204,122,0.25);padding:4px 12px;border-radius:9999px;margin-bottom:10px">
+              <span style="width:6px;height:6px;border-radius:50%;background:var(--rb);display:inline-block"></span>
+              <span style="font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:var(--rb)">Step 2 of 2 — Pick Your League</span>
+            </div>
+            <h2 style="font-size:22px;font-weight:700;color:#d4e4fa;letter-spacing:-0.02em;margin:0 0 4px;font-family:var(--font-sans)">Select Your League</h2>
+            <p style="font-size:13px;color:#909097;font-family:var(--font-sans);margin:0">Tap a league to jump straight to your team dashboard.</p>
           </div>
-          <div style="display:flex;gap:8px">
-            <button onclick="enterWithoutDraft()" style="display:flex;align-items:center;gap:6px;padding:8px 18px;border-radius:9999px;background:rgba(28,43,60,0.7);border:1px solid rgba(144,144,151,0.25);color:#d4e4fa;font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:background 150ms" onmouseover="this.style.background='rgba(39,54,71,0.9)'" onmouseout="this.style.background='rgba(28,43,60,0.7)'">
-              ↻ Sync Leagues
-            </button>
-            <button onclick="enterWithoutDraft()" style="padding:8px 18px;border-radius:9999px;background:rgba(204,0,60,0.12);border:1px solid rgba(204,0,60,0.3);color:#cc003c;font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:background 150ms" onmouseover="this.style.background='rgba(204,0,60,0.2)'" onmouseout="this.style.background='rgba(204,0,60,0.12)'">
-              Browse All
-            </button>
-          </div>
+          <button onclick="enterWithoutDraft()" style="padding:8px 18px;border-radius:9999px;background:rgba(204,0,60,0.12);border:1px solid rgba(204,0,60,0.3);color:#cc003c;font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:background 150ms;white-space:nowrap" onmouseover="this.style.background='rgba(204,0,60,0.2)'" onmouseout="this.style.background='rgba(204,0,60,0.12)'">
+            Browse All →
+          </button>
         </div>
 
         <!-- League picker grid — dynamically populated via lpLoadUser -->
@@ -1997,6 +2003,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   <!-- Desktop nav tabs — always visible after connect -->
   <div class="nav desktop-nav" id="header-nav" style="display:flex">
     <button class="on" id="nb-overview" onclick="showPage('overview')">My Team</button>
+    <button id="nb-portfolio" onclick="showPage('portfolio')">Portfolio</button>
     <button id="nb-visual" onclick="showPage('visual')">Draft Room</button>
     <button id="nb-research" onclick="showPage('research')">Research Hub</button>
     <button id="nb-draft" onclick="showPage('draft')">Rankings</button>
@@ -2046,6 +2053,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <span class="tab-icon">🏠</span>
     <span class="tab-label">My Team</span>
   </button>
+  <button class="tab-btn" id="tb-portfolio" onclick="showPage('portfolio')">
+    <span class="tab-icon">📁</span>
+    <span class="tab-label">Portfolio</span>
+  </button>
   <button class="tab-btn" id="tb-draft" onclick="showPage('draft')">
     <span class="tab-icon">📋</span>
     <span class="tab-label">Rankings</span>
@@ -2061,10 +2072,6 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   <button class="tab-btn" id="tb-research" onclick="showPage('research')">
     <span class="tab-icon">🔬</span>
     <span class="tab-label">Research</span>
-  </button>
-  <button class="tab-btn" id="tb-settings" onclick="document.getElementById('setup').classList.remove('gone')">
-    <span class="tab-icon">⚙️</span>
-    <span class="tab-label">Settings</span>
   </button>
 </nav>
 
@@ -2175,6 +2182,44 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <!-- DYNAMIC CONTENT — injected by renderOverview() -->
     <div id="ov-content" style="min-height:200px"></div>
 
+    <!-- BEST AVAILABLE + SIGNALS — shown after roster loads -->
+    <div id="ov-extra" style="display:none;margin-top:24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">🎯 Best Available</div>
+          <div id="ov-waiver-list"><div style="color:var(--muted);font-size:12px">Loading...</div></div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">💡 Trade Signals</div>
+          <div id="ov-signals-list"><div style="color:var(--muted);font-size:12px">Loading...</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="page z1" id="page-portfolio" style="overflow-y:auto;padding:24px 20px 40px">
+  <div style="max-width:1100px;margin:0 auto">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="font-size:28px;font-weight:800;color:var(--text);letter-spacing:-0.03em;margin:0 0 4px;font-family:var(--font-sans)">My Portfolio</h1>
+        <p style="font-size:13px;color:var(--muted);margin:0">All your leagues · dynasty values · signals</p>
+      </div>
+      <button onclick="renderPortfolio()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;background:var(--s2);border:1px solid var(--border2);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-mono)">
+        ↻ Refresh
+      </button>
+    </div>
+    <!-- Summary KPI strip -->
+    <div id="portfolio-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:24px"></div>
+    <!-- League cards grid -->
+    <div id="portfolio-leagues" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:28px"></div>
+    <!-- Cross-league insights row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div id="portfolio-owned" style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px"></div>
+      <div id="portfolio-signals" style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px"></div>
+    </div>
   </div>
 </div>
 
@@ -4446,7 +4491,7 @@ function _resRenderKPIs(name, pos, stats, val) {
 
 let _resDataCache = null; 
 
-async function setResTab(tab) {
+async async function setResTab(tab) {
   _resTab = tab;
   _resSetTabActive(tab);
   if (!_resPlayer) return;
@@ -5982,9 +6027,10 @@ function showPage(p){
   document.querySelectorAll('.sidebar-link').forEach(x=>x.classList.remove('active'));
   document.getElementById(`sl-${p}`)?.classList.add('active');
   // Map visual → sl-visual, draft → sl-draft etc
-  const sidebarMap = {overview:'sl-overview',draft:'sl-draft',visual:'sl-visual',teams:'sl-teams',trade:'sl-trade',research:'sl-research',myteams:'sl-myteams'};
+  const sidebarMap = {overview:'sl-overview',draft:'sl-draft',visual:'sl-visual',teams:'sl-teams',trade:'sl-trade',research:'sl-research',myteams:'sl-myteams',portfolio:'sl-portfolio'};
   if(sidebarMap[p]) document.getElementById(sidebarMap[p])?.classList.add('active');
   if(p==='overview') renderOverview();
+  if(p==='portfolio') renderPortfolio();
   if(p==='draft'){
     if (!PLAYERS.length || (usingDefaultRankings && !window._rankingsFetched)) {
       fetchLiveRankings().then(() => { window._rankingsFetched = true; renderAll(); });
@@ -6140,6 +6186,8 @@ async function renderOverview() {
       roster = [..._ovSeen.values()];
       // Run integrity check — catches stale PID mappings and fixes them before render
       roster = validateRoster(roster, new Set(rawStarters));
+      // Accumulate into cross-league ownership set for accurate buy/sell signals
+      roster.forEach(p => { if (p.name) _allOwnedNames.add(p.name.toLowerCase()); });
       const unmapped = pids.filter(p=>!globalPidToName[String(p)]);
       if (unmapped.length) console.warn('[Vault] Unmapped pids:', unmapped);
       console.log(`[Vault] Roster: ${roster.length}/${pids.length} resolved`);
@@ -6457,6 +6505,19 @@ async function renderOverview() {
   </div>
 `
   _ovRendering = false;
+
+  // ── Render waiver scanner + signals after roster loads ──
+  const extraEl = document.getElementById('ov-extra');
+  if (extraEl && ovLeagueId) {
+    extraEl.style.display = 'block';
+    // Waiver scanner
+    renderWaiverScanner(ovLeagueId, document.getElementById('ov-waiver-list'));
+    // Buy/sell signals — use all leagues if loaded, current roster as fallback
+    const allLeagueDataForSignals = myTeamsData.length
+      ? myTeamsData.map(lg => ({ myNames: roster.map(p=>p.name).filter(Boolean), isDynasty:true }))
+      : roster.length ? [{ myNames: roster.map(p=>p.name).filter(Boolean), isDynasty:true }] : [];
+    renderBuyLowSellHigh(allLeagueDataForSignals, document.getElementById('ov-signals-list'));
+  }
 }
 
 async function getLeagueContext_ov() {
@@ -7181,6 +7242,9 @@ function setValueSource(src) {
 
 // ════════════════════════════════════
 let _txCache = null;
+// Cross-league ownership set — accumulated as rosters are loaded across all leagues
+// Used by renderBuyLowSellHigh for accurate sell-high detection across multi-league users
+let _allOwnedNames = new Set();
 let _txLeagueId = null;
 let _rosterCache = null;
 let _usersCache = null;
@@ -9024,6 +9088,10 @@ function evaluateTrade() {
   _renderRosterImpact('a', tradeAssets.a, tradeAssets.b);
   _renderRosterImpact('b', tradeAssets.b, tradeAssets.a);
 
+  // ── Real league trade comps (Item 7) ──
+  const compsEl = document.getElementById('trade-comps-inner');
+  if (compsEl) getTradeComps(valA, valB, compsEl);
+
   // ── Trade comps → ticker ──
   _fetchTradeComps(tradeAssets.a, tradeAssets.b);
 
@@ -9758,12 +9826,41 @@ window.addEventListener('load', () => {
   document.getElementById('default-box')?.classList.add('selected');
   const drBtn = document.getElementById('dr-btn');
   if (drBtn) { drBtn.classList.add('selected'); drBtn.textContent = '✓ SELECTED'; }
-  if (did || hasSavedState) {
+  // Always show resume button if any previous session exists
+  if (did || hasSavedState || savedUsername) {
     const resumeBtn = document.getElementById('resume-btn');
     if (resumeBtn) {
       resumeBtn.style.display = 'block';
       const didInput = document.getElementById('did');
       if (didInput && did) didInput.value = did;
+    }
+    // If user previously connected Sleeper, skip the connect screen entirely
+    // Show a lightweight loader and resume immediately — no 350ms flash of Step 1
+    if (savedUsername && !did) {
+      // Show full-screen loader instead of connect screen
+      const setup = document.getElementById('setup');
+      if (setup) {
+        setup.classList.remove('gone');
+        const step1 = document.getElementById('setup-step1');
+        const step2 = document.getElementById('setup-step2');
+        if (step1) step1.style.display = 'none';
+        if (step2) step2.style.display = 'none';
+        // Inject minimal loading state
+        setup.insertAdjacentHTML('afterbegin', `
+          <div id="auto-resume-loader" style="
+            position:fixed;inset:0;background:var(--bg);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            gap:16px;z-index:999;font-family:var(--font-mono)
+          ">
+            <div style="font-size:32px;animation:spin 1s linear infinite">⟳</div>
+            <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Loading your leagues...</div>
+          </div>`);
+      }
+      setTimeout(() => {
+        document.getElementById('auto-resume-loader')?.remove();
+        resumeSession();
+      }, 0);
+      return; // Skip showSetupStep(1) entirely
     }
   }
   ['snapdraft-players-v2','snapdraft-players-time-v2','snapdraft-players-v1','snapdraft-pidmap-v3','snapdraft-pidmap-time-v3'].forEach(k => {
@@ -9810,7 +9907,409 @@ function resumeSession() {
     }
   }, 0);
 }
+// ════════════════════════════════════════════════════════════
+// ITEM 4: MULTI-LEAGUE PORTFOLIO VIEW
+// ════════════════════════════════════════════════════════════
+async function renderPortfolio() {
+  if (!myTeamsData.length) {
+    ['portfolio-kpis','portfolio-leagues','portfolio-owned','portfolio-signals'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Connect your Sleeper account to see your portfolio.</div>`;
+    });
+    return;
+  }
 
-</script>
-</body>
-</html>
+  const kpisEl = document.getElementById('portfolio-kpis');
+  const leaguesEl = document.getElementById('portfolio-leagues');
+  const ownedEl = document.getElementById('portfolio-owned');
+  const signalsEl = document.getElementById('portfolio-signals');
+
+  // Show loading
+  if (leaguesEl) leaguesEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)"><div style="font-size:24px;animation:spin 1s linear infinite;display:inline-block">⟳</div><br><br>Loading all leagues...</div>`;
+
+  // Ensure RA data loaded for values
+  if (!raLoaded && !fcLoaded) { await fetchRosterAudit().catch(()=>{}); }
+
+  const norm = s => s?.toLowerCase().replace(/[^a-z]/g,'');
+  const activeLeagues = myTeamsData.filter(l => l.season === '2025' || l.season === '2026');
+
+  // ── Per-league data ──────────────────────────────────────
+  const leagueData = await Promise.all(activeLeagues.map(async lg => {
+    try {
+      const [rosters, users, tradedPicks] = await Promise.all([
+        fetch(`https://api.sleeper.app/v1/league/${lg.league_id}/rosters`).then(r=>r.json()).catch(()=>[]),
+        fetch(`https://api.sleeper.app/v1/league/${lg.league_id}/users`).then(r=>r.json()).catch(()=>[]),
+        fetch(`https://api.sleeper.app/v1/league/${lg.league_id}/traded_picks`).then(r=>r.json()).catch(()=>[]),
+      ]);
+      const myRoster = rosters.find(r => r.owner_id === myTeamsUserId);
+      const myRosterIdx = myRoster?.roster_id;
+      const myPlayers = [...new Set([...(myRoster?.players||[]), ...(myRoster?.reserve||[])].map(String))];
+      const myNames = myPlayers.map(pid => globalPidToName?.[pid] || window._raNameBySid?.[pid]).filter(Boolean);
+      const playerVal = myNames.reduce((s,n) => s + getPlayerValue(n), 0);
+
+      // Add value of traded future picks the user owns
+      // Round values: 1st=3500, 2nd=1800, 3rd=800, 4th+=300
+      const pickRoundVal = {1:3500, 2:1800, 3:800};
+      const myPickVal = Array.isArray(tradedPicks)
+        ? tradedPicks.filter(pk => pk.owner_roster_id === myRosterIdx && (pk.season > new Date().getFullYear() || pk.season == new Date().getFullYear()))
+            .reduce((s, pk) => s + (pickRoundVal[pk.round] || 300), 0)
+        : 0;
+      const myValue = playerVal + myPickVal;
+
+      // Rank my roster among all (include pick values for consistency)
+      const allVals = rosters.map(r => {
+        const pids = [...new Set([...(r.players||[]), ...(r.reserve||[])].map(String))];
+        const names = pids.map(pid => globalPidToName?.[pid] || window._raNameBySid?.[pid]).filter(Boolean);
+        const playerSum = names.reduce((s,n) => s + getPlayerValue(n), 0);
+        const pickSum = Array.isArray(tradedPicks)
+          ? tradedPicks.filter(pk => pk.owner_roster_id === r.roster_id && (pk.season > new Date().getFullYear() || pk.season == new Date().getFullYear()))
+              .reduce((s, pk) => s + (pickRoundVal[pk.round] || 300), 0)
+          : 0;
+        return { owner: r.owner_id, val: playerSum + pickSum };
+      }).sort((a,b) => b.val - a.val);
+      const myRank = allVals.findIndex(r => r.owner === myTeamsUserId) + 1;
+      const totalTeams = rosters.length;
+
+      // Position grades
+      const posNames = { QB:[], RB:[], WR:[], TE:[] };
+      myNames.forEach(n => {
+        const pos = (window.PLAYERS||[]).find(p=>norm(p.name)===norm(n))?.pos || getFCValue(n)?.pos || '';
+        if (posNames[pos]) posNames[pos].push(n);
+      });
+      const posVals = {};
+      Object.entries(posNames).forEach(([pos, names]) => {
+        posVals[pos] = names.reduce((s,n) => s + getPlayerValue(n), 0);
+      });
+
+      // Grade
+      const pct = myValue / Math.max(allVals[0]?.val || 1, 1);
+      const grade = pct > 0.9 ? 'A+' : pct > 0.8 ? 'A' : pct > 0.7 ? 'B+' : pct > 0.6 ? 'B' : pct > 0.5 ? 'C+' : pct > 0.4 ? 'C' : 'D';
+      const gradeColor = pct > 0.75 ? 'var(--rb)' : pct > 0.5 ? 'var(--te)' : 'var(--qb)';
+
+      const isDynasty = (lg.settings?.max_keepers||0) > 5 || (lg.name||'').toLowerCase().includes('dynasty');
+      const isSF = (lg.roster_positions||[]).includes('SUPER_FLEX');
+
+      return { lg, myValue, myRank, totalTeams, grade, gradeColor, myNames, posVals, isDynasty, isSF };
+    } catch(e) {
+      return { lg, myValue:0, myRank:'?', totalTeams:'?', grade:'?', gradeColor:'var(--muted)', myNames:[], posVals:{}, isDynasty:false, isSF:false };
+    }
+  }));
+
+  // Accumulate all owned names across every league for accurate cross-league signals
+  leagueData.forEach(d => d.myNames?.forEach(n => { if (n) _allOwnedNames.add(n.toLowerCase()); }));
+
+  // ── Summary KPIs ─────────────────────────────────────────
+  const totalVal = leagueData.reduce((s,d) => s + d.myValue, 0);
+  const avgRank = leagueData.length ? (leagueData.reduce((s,d) => s + (typeof d.myRank==='number'?d.myRank:0), 0) / leagueData.filter(d=>typeof d.myRank==='number').length).toFixed(1) : '—';
+  const bestLeague = leagueData.reduce((best,d) => (!best || d.myRank < best.myRank) ? d : best, null);
+
+  if (kpisEl) kpisEl.innerHTML = [
+    ['Total Roster Value', totalVal.toLocaleString(), 'var(--accent2)'],
+    ['Leagues', leagueData.length, 'var(--wr)'],
+    ['Avg League Rank', `#${avgRank}`, 'var(--rb)'],
+    ['Best Standing', bestLeague ? `#${bestLeague.myRank} — ${(bestLeague.lg.name||'').substring(0,18)}` : '—', 'var(--te)'],
+  ].map(([lbl, val, color]) => `
+    <div style="background:var(--s1);border:1px solid var(--border2);border-radius:10px;padding:14px 16px">
+      <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">${lbl}</div>
+      <div style="font-size:22px;font-weight:800;color:${color};font-family:var(--font-mono)">${val}</div>
+    </div>`).join('');
+
+  // ── League cards ─────────────────────────────────────────
+  if (leaguesEl) leaguesEl.innerHTML = leagueData.map(d => {
+    const { lg, myValue, myRank, totalTeams, grade, gradeColor, isDynasty, isSF, posVals } = d;
+    const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+    const posBars = Object.entries(posVals).filter(([,v])=>v>0).map(([pos,v]) =>
+      `<div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:9px;font-family:var(--font-mono);color:${posColor[pos]||'var(--muted)'};width:20px">${pos}</span>
+        <div style="flex:1;height:4px;background:var(--s3);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${Math.min(100,(v/Math.max(myValue,1))*100)}%;background:${posColor[pos]||'var(--muted)'};border-radius:2px"></div>
+        </div>
+        <span style="font-size:9px;color:var(--muted);font-family:var(--font-mono);width:36px;text-align:right">${(v/1000).toFixed(1)}k</span>
+      </div>`).join('');
+
+    return `<div style="background:var(--s1);border:1.5px solid var(--border2);border-radius:14px;padding:18px;cursor:pointer;transition:all .15s"
+      onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='var(--border2)'"
+      onclick="ovLeagueId='${lg.league_id}';teamsLeagueId='${lg.league_id}';showPage('overview')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lg.name||'Unnamed League'}</div>
+          <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+            ${isDynasty?'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(61,204,122,.12);color:var(--rb);font-family:var(--font-mono)">DYN</span>':''}
+            ${isSF?'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(204,0,60,.12);color:var(--qb);font-family:var(--font-mono)">SF</span>':''}
+            <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--s3);color:var(--muted);font-family:var(--font-mono)">${totalTeams} teams</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px">
+          <div style="font-size:24px;font-weight:800;color:${gradeColor};font-family:var(--font-mono)">${grade}</div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">#${myRank} / ${totalTeams}</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono);margin-bottom:10px">Value: <span style="color:var(--accent2)">${myValue.toLocaleString()}</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px">${posBars}</div>
+      <div style="margin-top:12px;font-size:10px;color:var(--accent2);font-family:var(--font-mono)">Tap to view team →</div>
+    </div>`;
+  }).join('');
+
+  // ── Most rostered players (cross-league) ─────────────────
+  const playerCount = {};
+  leagueData.forEach(d => d.myNames.forEach(n => { playerCount[n] = (playerCount[n]||0) + 1; }));
+  const topOwned = Object.entries(playerCount).filter(([,c])=>c>1).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+  if (ownedEl) ownedEl.innerHTML = `
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">Most Rostered Across Leagues</div>
+    ${topOwned.length ? topOwned.map(([name, count]) => {
+      const pos = getFCValue(name)?.pos || '';
+      const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos] || 'var(--muted)';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:9px;font-family:var(--font-mono);color:${posColor};width:22px">${pos}</span>
+        <span style="flex:1;font-size:13px;color:var(--text);font-weight:500">${name}</span>
+        <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">${count} / ${leagueData.length} leagues</span>
+      </div>`;
+    }).join('') : '<div style="color:var(--muted);font-size:13px;padding:16px 0">No duplicate players across leagues.</div>'}`;
+
+  // ── Buy Low / Sell High signals (Items 5 & 6) ────────────
+  renderBuyLowSellHigh(leagueData, signalsEl);
+}
+
+// ════════════════════════════════════════════════════════════
+// ITEM 5: WAIVER WIRE / FREE AGENT SCANNER
+// ════════════════════════════════════════════════════════════
+async function renderWaiverScanner(leagueId, containerEl) {
+  if (!containerEl) return;
+  if (!leagueId) { containerEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:16px">Select a league to see best available players.</div>`; return; }
+
+  // Guard: rankings must be loaded to show meaningful free agents
+  if (!PLAYERS.length) {
+    containerEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0">Rankings loading — check back in a moment.</div>`;
+    // Retry once rankings load
+    const retryWatcher = setInterval(() => {
+      if (PLAYERS.length > 0) { clearInterval(retryWatcher); renderWaiverScanner(leagueId, containerEl); }
+    }, 1500);
+    setTimeout(() => clearInterval(retryWatcher), 15000); // give up after 15s
+    return;
+  }
+
+  containerEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px 0;text-align:center"><span style="animation:spin 1s linear infinite;display:inline-block">⟳</span> Loading free agents...</div>`;
+
+  try {
+    const fetchWithTimeout = (url, ms=8000) => Promise.race([
+      fetch(url).then(r=>r.json()),
+      new Promise((_,rej) => setTimeout(() => rej(new Error('Timeout')), ms))
+    ]);
+    const rosters = await fetchWithTimeout(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+    // Build set of all rostered PIDs
+    const allRosteredPids = new Set();
+    rosters.forEach(r => {
+      [...(r.players||[]), ...(r.reserve||[])].forEach(pid => allRosteredPids.add(String(pid)));
+    });
+    // Map PIDs to names
+    const allRosteredNames = new Set();
+    allRosteredPids.forEach(pid => {
+      const name = globalPidToName?.[pid] || window._raNameBySid?.[pid];
+      if (name) allRosteredNames.add(name.toLowerCase());
+    });
+    // Filter PLAYERS to those not rostered
+    const norm = s => s?.toLowerCase();
+    const available = (window.PLAYERS||[]).filter(p =>
+      p.name && p.pos && ['QB','RB','WR','TE'].includes(p.pos) &&
+      !allRosteredNames.has(norm(p.name))
+    ).slice(0, 30);
+
+    if (!available.length) { containerEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:16px">No available players found — make sure rankings are loaded.</div>`; return; }
+
+    const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+
+    // Store available players on window for filter function access
+    window._waAvailable = available;
+    window._waContainer = containerEl;
+    window._waFilter = function(pos) {
+      const filtered = pos === 'ALL' ? window._waAvailable : window._waAvailable.filter(p => p.pos === pos);
+      const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+      document.querySelectorAll('[id^="wa-f-"]').forEach(b => b.classList.remove('on'));
+      document.getElementById('wa-f-'+pos)?.classList.add('on');
+      const listEl = document.getElementById('wa-list');
+      if (!listEl) return;
+      listEl.innerHTML = filtered.slice(0, 20).map((p, i) => {
+        const trend = p.trend_7d || 0;
+        const pc = posColor[p.pos] || 'var(--muted)';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer"
+          onclick="researchSelectPlayer('${p.name.replace(/'/g,"\\'")}','${p.sleeperId||''}','${p.pos}','${p.team||''}')">
+          <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono);width:18px">${i+1}</span>
+          <span style="font-size:9px;padding:2px 5px;border-radius:3px;background:${pc}20;color:${pc};font-family:var(--font-mono)">${p.pos}</span>
+          <span style="flex:1;font-size:13px;color:var(--text);font-weight:500">${p.name}</span>
+          <span style="font-size:10px;font-family:var(--font-mono);color:${trend>0?'var(--rb)':trend<0?'var(--qb)':'var(--muted)'}">${trend>0?'+':''}${trend}</span>
+          <span style="font-size:12px;font-family:var(--font-mono);color:var(--accent2)">${(getPlayerValue(p.name)||0).toLocaleString()}</span>
+        </div>`;
+      }).join('') || '<div style="color:var(--muted);font-size:12px;padding:8px 0">None available</div>';
+    };
+
+    const filterBtns = ['ALL','QB','RB','WR','TE'].map(pos =>
+      `<button class="${pos==='ALL'?'sbtn on':'sbtn'}" id="wa-f-${pos}" style="font-size:10px;padding:4px 10px"
+        onclick="window._waFilter('${pos}')">${pos}</button>`
+    ).join('');
+
+    containerEl.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono)">Best Available</div>
+        <div style="display:flex;gap:4px">${filterBtns}</div>
+      </div>
+      <div id="wa-list"></div>`;
+
+    // Render initial ALL view
+    window._waFilter('ALL');
+
+  } catch(e) {
+    containerEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0">${e.message === 'Timeout' ? 'Could not load — check your connection.' : '⚠ ' + e.message}</div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ITEM 6: BUY LOW / SELL HIGH SIGNALS
+// ════════════════════════════════════════════════════════════
+function renderBuyLowSellHigh(leagueData, containerEl) {
+  if (!containerEl) return;
+
+  // Use the cross-league accumulator if populated (most accurate across all leagues)
+  // Fall back to the leagueData passed in (single-league context, Portfolio page)
+  const ownedNames = _allOwnedNames.size > 0
+    ? _allOwnedNames
+    : new Set((leagueData||[]).flatMap(d => (d.myNames||[]).map(n => n.toLowerCase())));
+
+  const norm = s => s?.toLowerCase();
+  const all = window.PLAYERS || [];
+
+  // Sell High: own the player AND trending up strongly
+  const sellHigh = all.filter(p =>
+    p.name && ownedNames.has(norm(p.name)) &&
+    (p.trend_30d || 0) >= 150 && (p.val_sf || getPlayerValue(p.name) || 0) >= 2000
+  ).sort((a,b) => (b.trend_30d||0) - (a.trend_30d||0)).slice(0, 8);
+
+  // Buy Low: DON'T own but trending down, value still solid
+  const buyLow = all.filter(p =>
+    p.name && !ownedNames.has(norm(p.name)) &&
+    (p.trend_30d || 0) <= -100 && (p.val_sf || getPlayerValue(p.name) || 0) >= 1500
+  ).sort((a,b) => (a.trend_30d||0) - (b.trend_30d||0)).slice(0, 8);
+
+  const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+
+  const mkRow = (p, isSell) => {
+    const trend = p.trend_30d || 0;
+    const val = p.val_sf || getPlayerValue(p.name) || 0;
+    const pc = posColor[p.pos] || 'var(--muted)';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer"
+      onclick="researchSelectPlayer('${p.name.replace(/'/g,"\\'")}','${p.sleeperId||''}','${p.pos}','${p.team||''}')">
+      <span style="font-size:9px;padding:2px 5px;border-radius:3px;background:${pc}20;color:${pc};font-family:var(--font-mono)">${p.pos}</span>
+      <span style="flex:1;font-size:12px;color:var(--text);font-weight:500">${p.name}</span>
+      <span style="font-size:11px;font-family:var(--font-mono);color:${isSell?'var(--rb)':'var(--qb)'}">${isSell?'+':''}${trend}</span>
+    </div>`;
+  };
+
+  containerEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--rb);font-family:var(--font-mono);margin-bottom:10px">↑ Sell High (you own)</div>
+        ${sellHigh.length ? sellHigh.map(p => mkRow(p, true)).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">No strong sell signals on your roster.</div>'}
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--qb);font-family:var(--font-mono);margin-bottom:10px">↓ Buy Low (target)</div>
+        ${buyLow.length ? buyLow.map(p => mkRow(p, false)).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">No strong buy signals available.</div>'}
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// ITEM 7: REAL TRADE COMPS FROM LEAGUE TRANSACTIONS
+// ════════════════════════════════════════════════════════════
+let _tradeCompsCache = null;
+let _tradeCompsCacheTime = 0;
+
+async function getTradeComps(valA, valB, containerEl) {
+  if (!containerEl) return;
+  const leagueId = teamsLeagueId || ovLeagueId;
+  if (!leagueId) { containerEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0 4px">Connect a league to see real trade comps.</div>`; return; }
+
+  containerEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0 4px"><span style="animation:spin 1s linear infinite;display:inline-block">⟳</span> Loading real trades...</div>`;
+
+  try {
+    // Cache comps for 10 min per league
+    const cacheKey = leagueId;
+    if (!_tradeCompsCache || _tradeCompsCache.lid !== cacheKey || Date.now() - _tradeCompsCacheTime > 600000) {
+      if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+      const weeks = Array.from({length:18},(_,i)=>i+1);
+      const allTxArrays = await Promise.all(
+        weeks.map(w => fetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/${w}`).then(r=>r.ok?r.json():[]).catch(()=>[]))
+      );
+      const trades = allTxArrays.flat().filter(t => t?.type === 'trade' && t.adds && Object.keys(t.adds).length >= 1);
+      _tradeCompsCache = { lid: cacheKey, trades };
+      _tradeCompsCacheTime = Date.now();
+    }
+
+    const { trades } = _tradeCompsCache;
+    const totalTarget = valA + valB;
+
+    // Score each real trade by how close its total value is to ours
+    // Use progressive threshold: loosen if sparse trade history
+    const scoreTradesAt = (maxPctDiff) => trades.map(tx => {
+      const sides = {};
+      (tx.roster_ids||[]).forEach(rid => { sides[rid] = { names:[], picks:0 }; });
+      Object.entries(tx.adds||{}).forEach(([pid,rid]) => {
+        const name = globalPidToName?.[String(pid)];
+        if (name && sides[rid]) sides[rid].names.push(name);
+      });
+      (tx.draft_picks||[]).forEach(pick => {
+        if (sides[pick.owner_id]) sides[pick.owner_id].picks++;
+      });
+      const sideList = Object.values(sides);
+      if (sideList.length < 2) return null;
+      const vals = sideList.map(s => s.names.reduce((sum,n)=>sum+getPlayerValue(n),0) + s.picks*2500);
+      const txTotal = vals.reduce((a,b)=>a+b,0);
+      const diff = Math.abs(txTotal - totalTarget);
+      const pctDiff = diff / Math.max(totalTarget, 1);
+      if (pctDiff > maxPctDiff) return null;
+      return { tx, sideList, vals, txTotal, diff, pctDiff };
+    }).filter(Boolean).sort((a,b) => a.diff - b.diff);
+
+    // Try progressively looser thresholds: 50% → 70% → 90%
+    let scored = scoreTradesAt(0.5);
+    if (scored.length < 3) scored = scoreTradesAt(0.7);
+    if (scored.length < 1) scored = scoreTradesAt(0.9);
+    scored = scored.slice(0, 3);
+
+    if (!scored.length) {
+      // No comps found at all — show value-based context instead of blank message
+      const pctDiff = Math.round(Math.abs(valA - valB) / Math.max(valA, valB, 1) * 100);
+      const winner = valA > valB ? 'Team A' : 'Team B';
+      containerEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0 4px;line-height:1.6">
+        No trades found in this league yet.<br>
+        <span style="color:var(--text2)">Based on market values, ${winner} receives ${pctDiff}% more value — 
+        ${pctDiff <= 8 ? 'a fair trade.' : pctDiff <= 20 ? 'a slight edge.' : 'a significant imbalance.'}</span>
+      </div>`;
+      return;
+    }
+
+    const daysAgo = ts => Math.round((Date.now() - ts) / 86400000);
+
+    containerEl.innerHTML = `
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);margin-bottom:8px">Similar Trades in Your League</div>
+      ${scored.map(({ tx, sideList, vals }) => {
+        const sides = sideList.map((s, i) =>
+          `<div style="flex:1;min-width:0">
+            <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-bottom:3px">Side ${String.fromCharCode(65+i)} receives</div>
+            ${s.names.slice(0,3).map(n => `<div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n}</div>`).join('')}
+            ${s.picks > 0 ? `<div style="font-size:10px;color:var(--te)">+${s.picks} pick${s.picks>1?'s':''}</div>` : ''}
+            <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-top:2px">${vals[i]?.toLocaleString()}</div>
+          </div>`
+        ).join('<div style="font-size:14px;color:var(--muted);padding:0 6px;flex-shrink:0">⇌</div>');
+        const age = tx.status_updated ? daysAgo(tx.status_updated) : '?';
+        return `<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
+          <div style="display:flex;gap:6px;align-items:flex-start">${sides}</div>
+          <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);margin-top:6px">${age} days ago</div>
+        </div>`;
+      }).join('')}`;
+
+  } catch(e) {
+    containerEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0 4px">Could not load trade history.</div>`;
+  }
+}
+
+
