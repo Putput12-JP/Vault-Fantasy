@@ -5914,7 +5914,13 @@ function clearImportRankings() {
   localStorage.removeItem(SK+'-labels');
   // Reset dropzone
   const dz = document.getElementById('import-dropzone');
-  if (dz) { dz.style.borderColor = 'var(--border2)'; dz.innerHTML = `<div style="font-size:20px;margin-bottom:4px">📋</div><div style="font-size:12px;color:var(--text2);font-weight:600">Drop CSV or click to browse</div><div style="font-size:10px;color:var(--muted);margin-top:3px">CSV needs: Player Name, and a Rank column</div><input type="file" id="import-file-input" accept=".csv" style="display:none" onchange="handleImportFile(this.files[0])"></`+'div>'; }
+  if (dz) {
+    dz.style.borderColor = 'var(--border2)';
+    dz.innerHTML = '<div style="font-size:20px;margin-bottom:4px">📋</div>'
+      + '<div style="font-size:12px;color:var(--text2);font-weight:600">Drop CSV or click to browse</div>'
+      + '<div style="font-size:10px;color:var(--muted);margin-top:3px">CSV needs: Player Name, and a Rank column</div>'
+      + '<input type="file" id="import-file-input" accept=".csv" style="display:none" onchange="handleImportFile(this.files[0])">';
+  }
   const cm = document.getElementById('import-col-map');
   if (cm) cm.style.display = 'none';
   updateSortBtns();
