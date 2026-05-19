@@ -4507,7 +4507,7 @@ function _resSetTabActive(tab) {
   });
 }
 
-function _resRenderTab(tab, name, pos, sid, stats, val) {
+async function _resRenderTab(tab, name, pos, sid, stats, val) {
   const el = document.getElementById('res-tab-content');
   if (!el) return;
   const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
@@ -10312,4 +10312,6 @@ async function getTradeComps(valA, valB, containerEl) {
   }
 }
 
-
+</script>
+</body>
+</html>
