@@ -2207,9 +2207,14 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <h1 style="font-size:28px;font-weight:800;color:var(--text);letter-spacing:-0.03em;margin:0 0 4px;font-family:var(--font-sans)">My Portfolio</h1>
         <p style="font-size:13px;color:var(--muted);margin:0">All your leagues · dynasty values · signals</p>
       </div>
-      <button onclick="renderPortfolio()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;background:var(--s2);border:1px solid var(--border2);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-mono)">
-        ↻ Refresh
-      </button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="openPortfolioLeaguePicker()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;background:var(--accent);border:1px solid var(--accent);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font-mono);letter-spacing:.05em">
+          📁 Manage Leagues
+        </button>
+        <button onclick="renderPortfolio()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;background:var(--s2);border:1px solid var(--border2);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-mono)">
+          ↻ Refresh
+        </button>
+      </div>
     </div>
     <!-- Summary KPI strip -->
     <div id="portfolio-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:24px"></div>
@@ -9931,7 +9936,31 @@ async function renderPortfolio() {
   if (!raLoaded && !fcLoaded) { await fetchRosterAudit().catch(()=>{}); }
 
   const norm = s => s?.toLowerCase().replace(/[^a-z]/g,'');
-  const activeLeagues = myTeamsData.filter(l => l.season === '2025' || l.season === '2026');
+  // Filter by user's saved league selection (managed via "Manage Leagues" button)
+  // Falls back to all 2025/2026 leagues if no selection saved yet
+  const savedSelected = localStorage.getItem(SK+'-selected-leagues');
+  const selectedIds = savedSelected ? JSON.parse(savedSelected) : null;
+  const activeLeagues = myTeamsData.filter(l => {
+    const isActiveSeason = l.season === '2025' || l.season === '2026';
+    if (!isActiveSeason) return false;
+    if (selectedIds && selectedIds.length > 0) return selectedIds.includes(l.league_id);
+    return true;
+  });
+
+  // If user has selected ZERO leagues, show empty state with action
+  if (activeLeagues.length === 0) {
+    if (kpisEl) kpisEl.innerHTML = '';
+    if (leaguesEl) leaguesEl.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:48px 24px;color:var(--muted)">
+        <div style="font-size:32px;margin-bottom:12px">📁</div>
+        <div style="font-size:14px;color:var(--text);margin-bottom:6px">No leagues selected</div>
+        <div style="font-size:12px;margin-bottom:18px">Choose which leagues to track in your portfolio.</div>
+        <button onclick="openPortfolioLeaguePicker()" style="padding:10px 20px;border-radius:8px;background:var(--accent);border:none;color:#fff;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer">Manage Leagues →</button>
+      </div>`;
+    if (ownedEl) ownedEl.innerHTML = '';
+    if (signalsEl) signalsEl.innerHTML = '';
+    return;
+  }
 
   // ── Per-league data ──────────────────────────────────────
   const leagueData = await Promise.all(activeLeagues.map(async lg => {
@@ -10312,6 +10341,118 @@ async function getTradeComps(valA, valB, containerEl) {
   }
 }
 
+// ════════════════════════════════════════════════════════════
+// Portfolio League Picker — let user choose which leagues to track
+// ════════════════════════════════════════════════════════════
+function openPortfolioLeaguePicker() {
+  const modal = document.getElementById('portfolio-league-picker');
+  if (!modal) return;
+  if (!myTeamsData || !myTeamsData.length) {
+    alert('Connect your Sleeper account first to manage leagues.');
+    return;
+  }
+  modal.style.display = 'flex';
+
+  // Build the list
+  const saved = localStorage.getItem(SK+'-selected-leagues');
+  const selectedIds = saved ? new Set(JSON.parse(saved)) : null;
+
+  // Show 2025/2026 leagues, then older as a divider
+  const sorted = [...myTeamsData].sort((a,b) => {
+    // Active seasons first, then by season desc
+    const aActive = (a.season === '2025' || a.season === '2026') ? 0 : 1;
+    const bActive = (b.season === '2025' || b.season === '2026') ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
+    return (b.season || '').localeCompare(a.season || '');
+  });
+
+  const listEl = document.getElementById('portfolio-picker-list');
+  if (!listEl) return;
+  listEl.innerHTML = sorted.map(lg => {
+    const isSelected = selectedIds ? selectedIds.has(lg.league_id) : (lg.season === '2025' || lg.season === '2026');
+    const isDynasty = (lg.settings?.max_keepers||0) > 5 || (lg.name||'').toLowerCase().includes('dynasty');
+    const isSF = (lg.roster_positions||[]).includes('SUPER_FLEX');
+    const isActiveSeason = lg.season === '2025' || lg.season === '2026';
+    return `
+      <label style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all .15s;background:${isSelected?'rgba(255,77,109,0.06)':'transparent'};border-color:${isSelected?'var(--accent)':'var(--border)'}" onclick="event.stopPropagation()">
+        <input type="checkbox" class="portfolio-picker-cb" data-league-id="${lg.league_id}" ${isSelected?'checked':''} onchange="portfolioPickerUpdateCount()" style="width:18px;height:18px;cursor:pointer;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(lg.name || 'Unnamed League').replace(/</g,'&lt;')}</div>
+          <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+            <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--s3);color:var(--muted);font-family:var(--font-mono)">${lg.season || '?'}</span>
+            <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--s3);color:var(--muted);font-family:var(--font-mono)">${lg.total_rosters || '?'} teams</span>
+            ${isDynasty?'<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(61,204,122,.12);color:var(--rb);font-family:var(--font-mono)">DYN</span>':''}
+            ${isSF?'<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(204,0,60,.12);color:var(--qb);font-family:var(--font-mono)">SF</span>':''}
+            ${!isActiveSeason?'<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--s3);color:var(--muted);font-family:var(--font-mono);opacity:.6">past</span>':''}
+          </div>
+        </div>
+      </label>`;
+  }).join('');
+
+  portfolioPickerUpdateCount();
+}
+
+function closePortfolioLeaguePicker() {
+  const modal = document.getElementById('portfolio-league-picker');
+  if (modal) modal.style.display = 'none';
+}
+
+function portfolioPickerSelectAll(check) {
+  document.querySelectorAll('.portfolio-picker-cb').forEach(cb => { cb.checked = !!check; });
+  portfolioPickerUpdateCount();
+}
+
+function portfolioPickerUpdateCount() {
+  const total = document.querySelectorAll('.portfolio-picker-cb').length;
+  const checked = document.querySelectorAll('.portfolio-picker-cb:checked').length;
+  const el = document.getElementById('portfolio-picker-count');
+  if (el) el.textContent = `${checked} / ${total} selected`;
+  // Update each row's visual state
+  document.querySelectorAll('.portfolio-picker-cb').forEach(cb => {
+    const label = cb.closest('label');
+    if (label) {
+      label.style.background = cb.checked ? 'rgba(255,77,109,0.06)' : 'transparent';
+      label.style.borderColor = cb.checked ? 'var(--accent)' : 'var(--border)';
+    }
+  });
+}
+
+function savePortfolioLeagueSelection() {
+  const selected = Array.from(document.querySelectorAll('.portfolio-picker-cb:checked'))
+    .map(cb => cb.dataset.leagueId);
+  localStorage.setItem(SK+'-selected-leagues', JSON.stringify(selected));
+  closePortfolioLeaguePicker();
+  // Re-render portfolio with new selection
+  renderPortfolio();
+}
+
 </script>
+<!-- Portfolio League Picker Modal -->
+<div id="portfolio-league-picker" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg);border:1px solid var(--border2);border-radius:16px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+    <!-- Header -->
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border2);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--text);font-family:var(--font-sans)">Pick Leagues for Portfolio</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Choose which leagues to track. Selection saves automatically.</div>
+      </div>
+      <button onclick="closePortfolioLeaguePicker()" style="background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+    <!-- Quick actions -->
+    <div style="padding:12px 24px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="portfolioPickerSelectAll(true)" style="padding:6px 12px;border-radius:6px;background:var(--s2);border:1px solid var(--border2);color:var(--text2);font-size:11px;font-family:var(--font-mono);cursor:pointer">Select All</button>
+      <button onclick="portfolioPickerSelectAll(false)" style="padding:6px 12px;border-radius:6px;background:var(--s2);border:1px solid var(--border2);color:var(--text2);font-size:11px;font-family:var(--font-mono);cursor:pointer">Clear All</button>
+      <span id="portfolio-picker-count" style="margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--font-mono);align-self:center"></span>
+    </div>
+    <!-- League list (scrollable) -->
+    <div id="portfolio-picker-list" style="flex:1;overflow-y:auto;padding:12px 24px"></div>
+    <!-- Footer -->
+    <div style="padding:16px 24px;border-top:1px solid var(--border2);display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="closePortfolioLeaguePicker()" style="padding:10px 18px;border-radius:8px;background:var(--s2);border:1px solid var(--border2);color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font-mono)">Cancel</button>
+      <button onclick="savePortfolioLeagueSelection()" style="padding:10px 18px;border-radius:8px;background:var(--accent);border:none;color:#fff;font-size:12px;cursor:pointer;font-family:var(--font-mono);letter-spacing:.05em">✓ Apply</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
