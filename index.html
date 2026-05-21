@@ -1674,6 +1674,317 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 .gl-ai-advisor-title{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#ffb3b6;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
 .gl-ai-advisor-body{font-size:13px;color:#dce1fb;line-height:1.6;}
 .gl-ai-rec{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:rgba(204,0,60,0.12);padding:6px 12px;border:1px solid rgba(204,0,60,0.3);font-family:'JetBrains Mono',monospace;font-size:10px;color:#ffb3b6;letter-spacing:0.06em;}
+
+/* Bottom sheet slide-up animation (for year picker, etc.) */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Year picker: hover state */
+#year-picker-list button:hover {
+  filter: brightness(1.15);
+}
+#year-picker-list button:active {
+  transform: scale(0.97);
+}
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE OPTIMIZATION (≤700px)
+   Designed using 2025-26 mobile UI best practices:
+   • Bottom navigation in thumb zone
+   • 44px minimum touch targets (Apple HIG)
+   • Reduced typography scale for small screens
+   • Opaque backgrounds on data-dense surfaces (no glass on tables)
+   • Progressive disclosure: collapsible filters
+   • Horizontal scroll with snap for year tabs
+   • Single-column layouts on tight screens
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 700px) {
+  /* ── Global: reduce hero typography ── */
+  .proto-page h1, .ov-page h1 {
+    font-size: 28px !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.1 !important;
+    margin-bottom: 6px !important;
+  }
+  .proto-page p, .ov-page > div > p {
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+  }
+
+  /* ── Page padding compaction ── */
+  #page-portfolio, #page-research, #page-overview {
+    padding: 16px 14px 90px !important;
+  }
+  #page-research .proto-page {
+    padding: 16px 14px !important;
+  }
+
+  /* ── Research Hub specific ── */
+  #page-research h1 {
+    font-size: 26px !important;
+    text-transform: uppercase;
+  }
+  /* Filter bento → stack to single column on mobile */
+  #page-research > .proto-page > div:nth-of-type(2) {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  /* Compact filter cards on mobile */
+  #page-research > .proto-page > div:nth-of-type(2) > div {
+    padding: 12px 14px !important;
+  }
+  /* Make Export CSV + Watchlist buttons full-width row on mobile */
+  #page-research > .proto-page > div:first-of-type > div:last-child {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  #page-research > .proto-page > div:first-of-type > div:last-child > button {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px !important;
+    font-size: 11px !important;
+  }
+  /* Active filters tile — reduce to half-height card */
+  #res-player-count {
+    font-size: 28px !important;
+  }
+  
+  /* ── Portfolio header ── */
+  #page-portfolio h1 {
+    font-size: 24px !important;
+  }
+  #page-portfolio > div > div:first-of-type > div:last-child {
+    width: 100%;
+  }
+  #page-portfolio > div > div:first-of-type > div:last-child > button {
+    flex: 1;
+    min-height: 44px;
+    justify-content: center;
+    padding: 12px 16px !important;
+    font-size: 12px !important;
+  }
+  /* Portfolio cards — single column for full-width readability */
+  #portfolio-leagues {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    margin-bottom: 20px !important;
+  }
+  #portfolio-kpis {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+  }
+  /* Owned/Signals cards stack */
+  #page-portfolio > div > div:last-of-type {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* ── Portfolio League Picker Modal — full-screen on mobile ── */
+  #portfolio-league-picker {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+  #portfolio-league-picker > div {
+    max-width: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  /* Pad bottom for safe area */
+  #portfolio-league-picker > div > div:last-child {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+  }
+  /* Make picker buttons larger for touch */
+  #portfolio-league-picker button {
+    min-height: 44px;
+  }
+  /* Picker checkboxes bigger */
+  .portfolio-picker-cb {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  /* ── Game log year picker bar (Career/Current/Other/Picker) ── */
+  /* Sticky at top of game log area so user can change years while scrolling */
+  #res-tab-content > div:first-of-type {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding: 8px 0;
+    z-index: 10;
+    flex-wrap: wrap !important;
+  }
+  /* Year buttons — 44px touch targets, no scrolling */
+  #res-tab-content > div:first-of-type button {
+    min-height: 44px !important;
+  }
+
+  /* ── Game log tables — improve readability ── */
+  /* Existing tables already have overflow-x:auto; emphasize touch scrollability */
+  #res-tab-content table {
+    font-size: 10px !important;
+    min-width: 100% !important;
+  }
+  #res-tab-content table th,
+  #res-tab-content table td {
+    padding: 8px 6px !important;
+    white-space: nowrap;
+  }
+  /* Pin the WK and OPP columns for context while scrolling stats */
+  #res-tab-content table th:nth-child(1),
+  #res-tab-content table td:nth-child(1) {
+    position: sticky;
+    left: 0;
+    background: #151b2d;
+    z-index: 2;
+  }
+  /* No horizontal-scroll hint needed — mobile uses card view, not table */
+
+  /* ── Research Hub: Hero player card ── */
+  #res-hero {
+    gap: 12px !important;
+    margin-bottom: 14px !important;
+    padding-bottom: 14px !important;
+  }
+  #res-avatar {
+    width: 56px !important;
+    height: 56px !important;
+  }
+  #res-name {
+    font-size: 18px !important;
+  }
+
+  /* ── KPI strip in player profile ── */
+  #res-kpis {
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 6px !important;
+  }
+  #res-kpis > div {
+    padding: 8px 10px !important;
+  }
+  #res-kpis > div > div:first-child {
+    font-size: 14px !important;
+  }
+
+  /* ── Sub-tabs styling now handled below (wrap to 2 rows instead of scroll) ── */
+
+  /* ── Touch target hardening across the app ── */
+  button.sbtn, button.la-tab, button.tab-btn {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  /* Make checkboxes more thumb-friendly */
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+
+  /* ── Bottom nav: tighten so 6 tabs fit comfortably ── */
+  .bottom-tab-bar { 
+    padding-top: 2px;
+  }
+  .tab-btn {
+    padding: 6px 2px 4px !important;
+    min-height: 50px !important;
+  }
+  .tab-icon {
+    font-size: 18px !important;
+  }
+  .tab-label {
+    font-size: 9px !important;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Hide horizontal scrollbar visual clutter on tables/tabs ── */
+  #res-tab-content::-webkit-scrollbar,
+  #res-tabs::-webkit-scrollbar,
+  #res-tab-content > div:first-of-type::-webkit-scrollbar {
+    height: 3px;
+  }
+  #res-tab-content::-webkit-scrollbar-thumb,
+  #res-tabs::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+  }
+
+  /* ── Disable backdrop-filter blur on data-heavy surfaces (perf + clarity) ── */
+  /* Research finding: glassmorphism causes dropped frames on mid-range Android.
+     Switch to opaque backgrounds on data tables/grids while keeping visual hierarchy. */
+  #portfolio-leagues > div,
+  #portfolio-kpis > div,
+  #portfolio-owned, #portfolio-signals,
+  #res-tab-content > div,
+  #page-research > .proto-page > div:nth-of-type(2) > div {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* ── Career view: swap table for cards on mobile ── */
+  .career-table-view { display: none !important; }
+  .career-cards-view { display: flex !important; }
+
+  /* ── Game log: swap table for per-week cards on mobile ── */
+  .gamelog-table-view { display: none !important; }
+  .gamelog-cards-view { display: flex !important; }
+
+  /* ── Sub-tabs: WRAP to 2 rows instead of horizontal scrolling ── */
+  #res-tabs {
+    overflow-x: visible !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  #res-tabs .la-tab {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 8px !important;
+    font-size: 11px !important;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* ── Improve setup screen on mobile ── */
+  .setup-screen-inner {
+    padding: 0 14px;
+  }
+}
+
+/* ── Extra-small phones (≤360px) — even tighter ── */
+@media (max-width: 360px) {
+  #page-portfolio h1, #page-research h1 {
+    font-size: 22px !important;
+  }
+  #portfolio-kpis {
+    grid-template-columns: 1fr !important;
+  }
+  #res-kpis {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .tab-label {
+    font-size: 8px !important;
+  }
+}
+
+/* ── Tablet landscape (701-1024px) — slight optimization ── */
+@media (min-width: 701px) and (max-width: 1024px) {
+  #portfolio-leagues {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  #page-research h1 {
+    font-size: 42px !important;
+  }
+}
+
+/* ── Reduce motion if user prefers ── */
+@media (prefers-reduced-motion: reduce) {
+  .tab-btn:active { transform: none !important; }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
 </style>
 </head>
 <body>
@@ -3139,20 +3450,52 @@ window._psRenderGameLogs = async function(year, targetEl) {
   const posC = {QB:'#ff6680',RB:'#3DCC7A',WR:'#7bd0ff',TE:'#f5c842'}[pos]||'#909097';
   const yr = year || '2025';
 
+  // ── Year availability cache (which years has this player been seen in?) ──
+  // Populated lazily as years are fetched. Key: player name → Set of year strings.
+  window._yearAvailability = window._yearAvailability || {};
+  // In-memory cache of fetched year data: key: year string → {stats, snaps}
+  window._yearDataCache = window._yearDataCache || {};
+
   // Year switcher — captures the target element for re-renders
   const _glTarget = body;
+
+  // All possible years (most recent first), plus Career
+  const ALL_YEARS = [];
+  for (let y = 2025; y >= 1999; y--) ALL_YEARS.push(String(y));
+
+  function mkYrBtn(label, key, on, title) {
+    return `<button title="${title||''}" onclick="window._resGlYear='${key}';if(window._resCurrentPlayer)window._psPlayer=window._resCurrentPlayer;window._psRenderGameLogs('${key}', window._glTargetEl || document.getElementById('ps-body'));if(window._resUpdateKPIsForYear&&'${key}'!=='Career')window._resUpdateKPIsForYear('${key}')"
+      style="padding:8px 14px;border-radius:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:1px solid ${on?posC:'#1E293B'};background:${on?posC+'18':'transparent'};color:${on?posC:'#909097'};transition:all 120ms ease;flex-shrink:0;min-height:36px">${label}</button>`;
+  }
+
   function mkYrSw(active) {
-    return `<div style="display:flex;gap:6px;margin-bottom:14px">${
-      ['2025·NFL','2024','2023'].map(y => {
-        const key = y === '2025·NFL' ? '2025' : y;
-        const on = key === active;
-        return `<button onclick="window._resGlYear='${key}';if(window._resCurrentPlayer)window._psPlayer=window._resCurrentPlayer;window._psRenderGameLogs('${key}', window._glTargetEl || document.getElementById('ps-body'));if(window._resUpdateKPIsForYear)window._resUpdateKPIsForYear('${key}')"
-          style="padding:3px 13px;border-radius:2px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:1px solid ${on?posC:'#1E293B'};background:${on?posC+'18':'transparent'};color:${on?posC:'#909097'};transition:all 120ms ease">${y}</button>`;
-      }).join('')
-    }</div>`;
+    // Compact picker: [Career] [Current Year 2025] [Year ▾]
+    // The "Year ▾" button opens a bottom sheet with all seasons grouped by decade.
+    // The active year shows in the button if it's not 2025 or Career.
+    const seenYears = window._yearAvailability[name] || new Set(['2025']);
+    seenYears.add('2025');
+
+    const careerBtn = mkYrBtn('Career', 'Career', active === 'Career', 'Career totals across all seasons');
+    const currentBtn = mkYrBtn('2025·NFL', '2025', active === '2025', '2025 season');
+
+    // If active year is something other than Career or 2025, show that as the pill
+    const showActiveOther = active !== 'Career' && active !== '2025';
+    const otherBtn = showActiveOther
+      ? mkYrBtn(active, active, true, `${active} season`)
+      : '';
+
+    // Open-picker button — calls the global bottom-sheet opener
+    const pickerLabel = showActiveOther ? 'Change Year ▾' : 'Pick Year ▾';
+    const pickerBtn = `<button onclick="openYearPicker('${name.replace(/'/g, "\\'")}', '${pos}')"
+      style="padding:8px 14px;border-radius:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:1px solid #1E293B;background:transparent;color:#909097;transition:all 120ms ease;flex-shrink:0;min-height:36px;display:inline-flex;align-items:center;gap:4px">${pickerLabel}</button>`;
+
+    return `<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">${careerBtn}${currentBtn}${otherBtn}${pickerBtn}</div>`;
   }
   // Store target for year-switch buttons to reference
   window._glTargetEl = body;
+  // Expose the years list and posC color for the bottom sheet
+  window._gameLogPos = pos;
+  window._gameLogPosColor = posC;
 
   // KPI strip
   function mkKPI(items) {
@@ -3249,133 +3592,292 @@ window._psRenderGameLogs = async function(year, targetEl) {
     </tr>`;
   }
 
-  // ── 2024 / 2025: nflverse ──────────────────────────────────────────────────
-  if (yr === '2024' || yr === '2025') {
-    body.innerHTML = mkYrSw(yr) + `<div class="ps-loading"><div style="font-size:22px;animation:spin 1s linear infinite">⟳</div><span>Loading ${yr}...</span></div>`;
-    // For 2025: only use year-tagged file — never fall back to 2024 cache
-    let yrData = {stats:{},snaps:{},inj:{}};
-    if (yr === '2025') {
-      // Try to fetch 2025-specific file only — no fallback to 2024
-      try {
-        const base = (()=>{const h=window.location.hostname;return h.includes('github.io')||h.includes('putput12-jp')?'https://putput12-jp.github.io/Vault-Fantasy/data':'/data';})();
-        const [sR,snR] = await Promise.all([
-          fetch(base+'/nflverse_stats_2025.json').then(r=>r.ok?r.json():null).catch(()=>null),
-          fetch(base+'/nflverse_snaps_2025.json').then(r=>r.ok?r.json():null).catch(()=>null),
-        ]);
-        yrData = {stats: sR||{}, snaps: snR||{}, inj:{}};
-      } catch(e) { yrData = {stats:{},snaps:{},inj:{}}; }
-    } else {
-      // For 2024: try year-tagged file first, then fall back to untagged (which is whatever season the script last ran)
-      if (yr === '2024') {
-        yrData = await (window.initNflverseYear ? initNflverseYear('2024') : Promise.resolve({stats:{},snaps:{},inj:{}})).catch(()=>({stats:{},snaps:{},inj:{}}));
-        // If year-tagged file returned empty, fall back to the default nflverse_stats.json
-        if (!yrData.stats || Object.keys(yrData.stats).length === 0) {
-          await initNflverse().catch(()=>{});
-          yrData = window._nflverseCache?.['2024'] || {stats: window._nflStats||{}, snaps: window._nflSnaps||{}, inj:{}};
-        }
+  // ── Helper: get the data base URL for current host ──
+  const dataBase = (()=>{
+    const h = window.location.hostname;
+    return h.includes('github.io') || h.includes('putput12-jp')
+      ? 'https://putput12-jp.github.io/Vault-Fantasy/data'
+      : '/data';
+  })();
+
+  // ── Helper: fetch a single year's nflverse data (cached) ──
+  async function fetchYearData(yearKey) {
+    if (window._yearDataCache[yearKey]) return window._yearDataCache[yearKey];
+    try {
+      // 2025 also gets snap counts file; older years are stats only
+      const fetches = [fetch(`${dataBase}/nflverse_stats_${yearKey}.json`).then(r=>r.ok?r.json():null).catch(()=>null)];
+      if (yearKey === '2025') {
+        fetches.push(fetch(`${dataBase}/nflverse_snaps_2025.json`).then(r=>r.ok?r.json():null).catch(()=>null));
       } else {
-        yrData = await (window.initNflverseYear ? initNflverseYear(yr) : initNflverse().then(()=>({stats:window._nflverseCache?.[yr]||{},snaps:{},inj:{}}))).catch(()=>({stats:{},snaps:{},inj:{}}));
+        fetches.push(Promise.resolve(null));
       }
+      const [stats, snaps] = await Promise.all(fetches);
+      const result = { stats: stats || {}, snaps: snaps || {} };
+      window._yearDataCache[yearKey] = result;
+      // Update year-availability index for every player in this year
+      Object.keys(result.stats).forEach(playerName => {
+        if (!window._yearAvailability[playerName]) window._yearAvailability[playerName] = new Set();
+        window._yearAvailability[playerName].add(yearKey);
+      });
+      return result;
+    } catch(e) {
+      window._yearDataCache[yearKey] = { stats:{}, snaps:{} };
+      return window._yearDataCache[yearKey];
     }
-    function fuzz(map,n){
-      if(!map||!n)return null;
-      if(map[n])return map[n];
-      const norm=s=>s.toLowerCase().replace(/[^a-z]/g,'');
-      const t=norm(n);
-      // Pass 1: exact normalized match
-      for(const k of Object.keys(map)){if(norm(k)===t)return map[k];}
-      // Pass 2: prefix match — handles Jr./Sr./III/II/IV suffixes where one name
-      // is a prefix of the other (e.g. "haroldfannin" vs "haroldfanninjr")
-      for(const k of Object.keys(map)){const nk=norm(k);if(nk.startsWith(t)||t.startsWith(nk))return map[k];}
-      return null;
+  }
+
+  // ── Helper: fuzz-match a player name in a stats map ──
+  function fuzz(map, n) {
+    if (!map || !n) return null;
+    if (map[n]) return map[n];
+    const norm = s => s.toLowerCase().replace(/[^a-z]/g,'');
+    const t = norm(n);
+    for (const k of Object.keys(map)) { if (norm(k) === t) return map[k]; }
+    for (const k of Object.keys(map)) { const nk = norm(k); if (nk.startsWith(t) || t.startsWith(nk)) return map[k]; }
+    return null;
+  }
+
+  // ── Career view: aggregate every available year for this player ──
+  if (yr === 'Career') {
+    body.innerHTML = mkYrSw('Career') + `<div class="ps-loading"><div style="font-size:22px;animation:spin 1s linear infinite">⟳</div><span>Loading career data...</span></div>`;
+    // Probe all years (2025 → 1999). Use already-cached years immediately.
+    // For uncached years, we fetch in parallel with a concurrency limit.
+    const yearsToProbe = ALL_YEARS;
+    const seasonRows = [];
+    // Run in batches of 5 to avoid hammering the server
+    for (let i = 0; i < yearsToProbe.length; i += 5) {
+      const batch = yearsToProbe.slice(i, i + 5);
+      const results = await Promise.all(batch.map(async y => {
+        const d = await fetchYearData(y);
+        const player = fuzz(d.stats, name);
+        if (player && player.season) {
+          return { year: y, team: player.team, season: player.season, weeks: player.weeks||[] };
+        }
+        return null;
+      }));
+      results.filter(Boolean).forEach(r => seasonRows.push(r));
     }
-    const nfl = fuzz(yrData.stats||yrData,name);
-    const snaps = fuzz(yrData.snaps||{},name);
-    if (!nfl?.weeks?.length) {
-      const msg = yr==='2025'?'2025 season data is not yet available. Run the nflverse pipeline with CURRENT_SEASON=2025 to populate.':'No data found for this player in the '+yr+' nflverse dataset.';
-      body.innerHTML = mkYrSw(yr)+`<div style="text-align:center;padding:40px 20px;color:#909097;font-family:var(--font-mono);font-size:12px">
-        <div style="font-size:28px;margin-bottom:12px">📅</div>
-        <div style="color:#dce1fb;font-weight:600;margin-bottom:6px">No ${yr} data</div>
-        <div>${msg}</div></div>`;
+    // Sort newest first
+    seasonRows.sort((a,b) => parseInt(b.year) - parseInt(a.year));
+
+    if (!seasonRows.length) {
+      body.innerHTML = mkYrSw('Career') + `<div style="text-align:center;padding:40px 20px;color:#909097;font-family:var(--font-mono);font-size:12px">
+        <div style="font-size:28px;margin-bottom:12px">📋</div>
+        <div style="color:#dce1fb;font-weight:600;margin-bottom:6px">No career data found</div>
+        <div>This player has not been seen in any nflverse season from 1999 onward.</div></div>`;
       return;
     }
-    const ssn = nfl.season||{};
-    const snpWks = snaps?.weeks||[];
-    const getSnap = wk => { const s=snpWks.find(s=>s.wk===wk); return s?.off!=null ? Math.round(s.off) : null; };
-    // merge snap into weeks
-    const weeks = nfl.weeks.map(w=>({...w, snap: getSnap(w.wk)}));
-    const sorted = [...weeks].sort((a,b)=>a.wk-b.wk);
-    const allPts = sorted.map(w=>parseFloat(w.pts||0)).filter(v=>!isNaN(v));
-    const maxPts = Math.max(...allPts,1);
-    const avgPts = ssn.avg_pts || (allPts.length ? allPts.reduce((a,b)=>a+b,0)/allPts.length : 0);
-    const kpiItems = pos==='QB'
-      ? [['Avg FPTS',ssn.avg_pts],[' Games',ssn.games],['L4W Avg',nfl.l4w_avg,'#ffb3b6'],['Pass Yds/G',ssn.avg_pyds,'#7bd0ff'],['Rush Yds/G',ssn.avg_ryds,'#3DCC7A'],['Snap %',ssn.avg_snap!=null?ssn.avg_snap+'%':snaps?.avg_off!=null?Math.round(snaps.avg_off)+'%':null,'#7bd0ff']]
-      : pos==='RB'
-      ? [['Avg FPTS',ssn.avg_pts],['Games',ssn.games],['L4W Avg',nfl.l4w_avg,'#ffb3b6'],['Rush Yds/G',ssn.avg_ryds,'#3DCC7A'],['Car/G',ssn.avg_car],['Tgt/G',ssn.avg_tgt,'#7bd0ff']]
-      : [['Avg FPTS',ssn.avg_pts],['Games',ssn.games],['L4W Avg',nfl.l4w_avg,'#ffb3b6'],['Rec Yds/G',ssn.avg_recyds,'#7bd0ff'],['Tgt/G',ssn.avg_tgt],['Tgt Share',ssn.avg_ts!=null?ssn.avg_ts+'%':null,'#f5c842']];
 
-    // Batch-fetch ESPN opponent data for all weeks (parallel, cached)
-    const playerTeam = (window._psPlayer?.team || '').toUpperCase();
-    const weekNums = [...new Set(sorted.map(w => w.wk))];
-    const oppMaps = {};
-    if (playerTeam) {
-      try {
-        await Promise.all(weekNums.map(async wk => {
-          oppMaps[wk] = await getOpponentMap(yr, wk);
-        }));
-        // Inject opp into each week
-        sorted.forEach(w => { w.opp = oppMaps[w.wk]?.[playerTeam] || '—'; });
-      } catch(e) { /* opponent fetch failed silently */ }
-    }
+    // Career totals
+    let totalGames=0, totalPts=0, totalPyds=0, totalPtds=0, totalRyds=0, totalRtds=0, totalRecyds=0, totalRectds=0, totalRec=0;
+    seasonRows.forEach(r => {
+      const s = r.season || {};
+      totalGames += s.games||0;
+      totalPts += s.total_pts||0;
+      totalPyds += (s.avg_pyds||0) * (s.games||0);
+      totalPtds += (s.avg_ptds||0) * (s.games||0);
+      totalRyds += (s.avg_ryds||0) * (s.games||0);
+      totalRtds += s.total_rtds||0;
+      totalRecyds += s.total_reyds||0;
+      totalRectds += s.total_retds||0;
+      totalRec += (s.avg_rec||0) * (s.games||0);
+    });
 
-    const rows = sorted.map(w=>mkRow(w,pos,maxPts,avgPts,null)).join('');
-    body.innerHTML = mkYrSw(yr)+mkKPI(kpiItems)+`
-      <div style="overflow-x:auto;border-radius:4px;border:1px solid #1E293B">
+    const careerKPIs = pos === 'QB'
+      ? [['Seasons', seasonRows.length], ['Games', totalGames], ['Total FPTS', totalPts.toFixed(0)], ['Pass Yds', totalPyds.toFixed(0), '#7bd0ff'], ['Pass TDs', totalPtds.toFixed(0), '#7bd0ff'], ['Rush Yds', totalRyds.toFixed(0), '#3DCC7A']]
+      : pos === 'RB'
+      ? [['Seasons', seasonRows.length], ['Games', totalGames], ['Total FPTS', totalPts.toFixed(0)], ['Rush Yds', totalRyds.toFixed(0), '#3DCC7A'], ['Rush TDs', totalRtds, '#3DCC7A'], ['Rec', totalRec.toFixed(0), '#7bd0ff']]
+      : [['Seasons', seasonRows.length], ['Games', totalGames], ['Total FPTS', totalPts.toFixed(0)], ['Rec', totalRec.toFixed(0), '#7bd0ff'], ['Rec Yds', totalRecyds.toFixed(0), '#7bd0ff'], ['Rec TDs', totalRectds, '#7bd0ff']];
+
+    // Per-season table
+    const careerHead = pos === 'QB'
+      ? `<tr><th>SEASON</th><th>TEAM</th><th>G</th><th>FPTS</th><th>AVG</th><th style="color:#ff6680">PYDS</th><th style="color:#ff6680">PTD</th><th style="color:#ff6680">INT</th><th style="color:#3DCC7A">RYDS</th><th style="color:#3DCC7A">RTD</th></tr>`
+      : pos === 'RB'
+      ? `<tr><th>SEASON</th><th>TEAM</th><th>G</th><th>FPTS</th><th>AVG</th><th style="color:#3DCC7A">CAR</th><th style="color:#3DCC7A">RYDS</th><th style="color:#3DCC7A">RTD</th><th style="color:#7bd0ff">REC</th><th style="color:#7bd0ff">RECYDS</th></tr>`
+      : `<tr><th>SEASON</th><th>TEAM</th><th>G</th><th>FPTS</th><th>AVG</th><th style="color:#7bd0ff">TGT</th><th style="color:#7bd0ff">REC</th><th style="color:#7bd0ff">YDS</th><th style="color:#7bd0ff">TD</th></tr>`;
+
+    const careerRows = seasonRows.map(r => {
+      const s = r.season || {};
+      const clickYear = `<a href="#" onclick="event.preventDefault();window._resGlYear='${r.year}';if(window._resCurrentPlayer)window._psPlayer=window._resCurrentPlayer;window._psRenderGameLogs('${r.year}', window._glTargetEl || document.getElementById('ps-body'));return false" style="color:#7bd0ff;text-decoration:none">${r.year}</a>`;
+      if (pos === 'QB') {
+        return `<tr><td>${clickYear}</td><td style="color:#909097">${r.team||'—'}</td><td>${s.games||'—'}</td><td style="color:${posC}">${s.total_pts||'—'}</td><td>${s.avg_pts||'—'}</td><td style="color:#ffb3b6">${s.avg_pyds?Math.round(s.avg_pyds*s.games):'—'}</td><td style="color:#ff6680">${s.avg_ptds?(s.avg_ptds*s.games).toFixed(0):'—'}</td><td style="color:#909097">${s.total_ints??'—'}</td><td style="color:#3DCC7A">${s.avg_ryds?Math.round(s.avg_ryds*s.games):'—'}</td><td style="color:#3DCC7A">${s.total_rtds??'—'}</td></tr>`;
+      } else if (pos === 'RB') {
+        return `<tr><td>${clickYear}</td><td style="color:#909097">${r.team||'—'}</td><td>${s.games||'—'}</td><td style="color:${posC}">${s.total_pts||'—'}</td><td>${s.avg_pts||'—'}</td><td>${s.total_car??'—'}</td><td style="color:#3DCC7A">${s.avg_ryds?Math.round(s.avg_ryds*s.games):'—'}</td><td style="color:#3DCC7A">${s.total_rtds??'—'}</td><td style="color:#7bd0ff">${s.avg_rec?Math.round(s.avg_rec*s.games):'—'}</td><td style="color:#7bd0ff">${s.total_reyds??'—'}</td></tr>`;
+      } else {
+        return `<tr><td>${clickYear}</td><td style="color:#909097">${r.team||'—'}</td><td>${s.games||'—'}</td><td style="color:${posC}">${s.total_pts||'—'}</td><td>${s.avg_pts||'—'}</td><td>${s.total_tgt??'—'}</td><td style="color:#7bd0ff">${s.avg_rec?Math.round(s.avg_rec*s.games):'—'}</td><td style="color:#7bd0ff">${s.total_reyds??'—'}</td><td style="color:#7bd0ff">${s.total_retds??'—'}</td></tr>`;
+      }
+    }).join('');
+
+    // Per-season mobile cards: hidden on desktop, shown on mobile
+    const careerCards = seasonRows.map(r => {
+      const s = r.season || {};
+      const clickYear = `onclick="window._resGlYear='${r.year}';if(window._resCurrentPlayer)window._psPlayer=window._resCurrentPlayer;window._psRenderGameLogs('${r.year}', window._glTargetEl || document.getElementById('ps-body'));return false"`;
+      const statLine = pos === 'QB'
+        ? `${s.avg_pyds ? Math.round(s.avg_pyds*s.games) : '0'} pYds · ${s.avg_ptds ? Math.round(s.avg_ptds*s.games) : '0'} pTDs · ${s.total_ints ?? 0} INT`
+        : pos === 'RB'
+        ? `${s.total_car ?? 0} car · ${s.avg_ryds ? Math.round(s.avg_ryds*s.games) : '0'} ryds · ${s.total_rtds ?? 0} rTDs`
+        : `${s.total_tgt ?? 0} tgt · ${s.avg_rec ? Math.round(s.avg_rec*s.games) : '0'} rec · ${s.total_reyds ?? 0} yds`;
+      return `<a href="#" ${clickYear} style="display:flex;align-items:center;justify-content:space-between;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px;text-decoration:none;color:inherit;gap:12px;-webkit-tap-highlight-color:transparent;touch-action:manipulation">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:18px;font-weight:800;color:${posC};font-family:var(--font-mono)">${r.year}</span>
+            <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono);padding:2px 6px;background:var(--s3);border-radius:3px">${r.team||'—'}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);line-height:1.5">
+            ${s.games||0} games · ${s.avg_pts||0} avg<br>
+            ${statLine}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:800;color:var(--text);font-family:var(--font-mono);line-height:1">${s.total_pts||0}</div>
+          <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);letter-spacing:0.06em;text-transform:uppercase;margin-top:2px">Total FPts</div>
+        </div>
+      </a>`;
+    }).join('');
+
+    body.innerHTML = mkYrSw('Career') + mkKPI(careerKPIs) + `
+      <!-- Desktop table view -->
+      <div class="career-table-view" style="overflow-x:auto;border-radius:4px;border:1px solid #1E293B">
         <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:11px;min-width:560px">
-          <thead style="background:#151b2d">${mkTHead(pos)}</thead>
-          <tbody>${rows}</tbody>
+          <thead style="background:#151b2d">${careerHead}</thead>
+          <tbody>${careerRows}</tbody>
         </table>
       </div>
-      <div style="margin-top:10px;font-size:10px;color:#5c6b8a;font-family:var(--font-mono)">Source: <span style="color:#7bd0ff">nflverse</span> · ${yr} season · PPR scoring</div>`;
+      <!-- Mobile card view -->
+      <div class="career-cards-view" style="display:none;flex-direction:column;gap:8px">
+        ${careerCards}
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:#5c6b8a;font-family:var(--font-mono)">Source: <span style="color:#7bd0ff">nflverse</span> · Career totals · PPR scoring · Tap year to see game logs</div>`;
     return;
   }
 
-  // ── 2023: RosterAudit ──────────────────────────────────────────────────────
-  body.innerHTML = mkYrSw(yr)+`<div class="ps-loading"><div style="font-size:22px;animation:spin 1s linear infinite">⟳</div><span>Loading 2023...</span></div>`;
-  if (!sleeperId) { body.innerHTML = mkYrSw(yr)+`<div class="ps-loading" style="color:#909097">No Sleeper ID — logs unavailable.</div>`; return; }
-  try {
-    const raw = await fetch(`https://rosteraudit.com/wp-json/ra/v1/player-page/${sleeperId}/weekly/2023`).then(r=>r.json());
-    let weeks = Array.isArray(raw)?raw:(raw?.weeks||raw?.data||[]);
-    if (!weeks.length) { body.innerHTML = mkYrSw(yr)+`<div style="text-align:center;padding:40px;color:#909097;font-family:var(--font-mono);font-size:12px">No 2023 data available.</div>`; return; }
-    const norm=o=>{if(!o)return{};const map={wk:['week','wk','week_seq'],opp:['opponent','opp','opponent_team','defteam','away_team','home_team_abbr','opp_team'],pts:['fantasy_points_ppr','fpts','fantasy_points','pts'],pyds:['pass_yards','passing_yards'],ptds:['pass_td','passing_td'],ints:['interceptions'],ryds:['rush_yards','rushing_yards'],rtds:['rush_td','rushing_td'],rec:['receptions'],tgt:['targets'],recyds:['rec_yards','receiving_yards'],rectds:['rec_td','receiving_td'],car:['carries'],cmp:['completions'],att:['attempts'],snap:['snap_pct','snap','off_pct']};const out={};Object.entries(map).forEach(([c,keys])=>{for(const k of keys){if(o[k]!==undefined&&o[k]!==null){out[c]=o[k];break;}}});return out;};
-    const nw = weeks.map(norm).filter(w=>w.wk);
-    const allPts = nw.map(w=>parseFloat(w.pts||0));
-    const maxPts = Math.max(...allPts,1);
-    const avgPts = allPts.length?allPts.reduce((a,b)=>a+b,0)/allPts.length:0;
-    const ssn = {avg_pts:avgPts.toFixed(2),games:nw.length};
-    const kpiItems = [['Avg FPTS',avgPts.toFixed(1)],['Games',nw.length],['Best Wk',Math.max(...allPts).toFixed(1),'#3DCC7A']];
-    // Fetch 2023 opponents from ESPN (same cache as nflverse path)
-    const playerTeam23 = (window._psPlayer?.team || '').toUpperCase();
-    const sorted23 = nw.sort((a,b)=>a.wk-b.wk);
-    if (playerTeam23) {
+  // ── Single-year view: any year from 1999 to 2025 ──
+  // Validate the year
+  const yrInt = parseInt(yr);
+  if (isNaN(yrInt) || yrInt < 1999 || yrInt > 2025) {
+    body.innerHTML = mkYrSw(yr) + `<div style="text-align:center;padding:40px 20px;color:#909097;font-family:var(--font-mono);font-size:12px">Invalid year: ${yr}</div>`;
+    return;
+  }
+
+  body.innerHTML = mkYrSw(yr) + `<div class="ps-loading"><div style="font-size:22px;animation:spin 1s linear infinite">⟳</div><span>Loading ${yr}...</span></div>`;
+
+  const yrData = await fetchYearData(yr);
+  const nfl = fuzz(yrData.stats, name);
+  const snaps = fuzz(yrData.snaps || {}, name);
+  if (!nfl?.weeks?.length) {
+    const msg = yr === '2025'
+      ? '2025 season data is not yet available. The nflverse pipeline will populate this once the season starts.'
+      : `No data found for ${name} in the ${yr} nflverse dataset. This player may not have played that season.`;
+    body.innerHTML = mkYrSw(yr) + `<div style="text-align:center;padding:40px 20px;color:#909097;font-family:var(--font-mono);font-size:12px">
+      <div style="font-size:28px;margin-bottom:12px">📅</div>
+      <div style="color:#dce1fb;font-weight:600;margin-bottom:6px">No ${yr} data</div>
+      <div>${msg}</div></div>`;
+    return;
+  }
+
+  // Update year availability (player IS in this year)
+  if (!window._yearAvailability[name]) window._yearAvailability[name] = new Set();
+  window._yearAvailability[name].add(yr);
+
+  const ssn = nfl.season || {};
+  const snpWks = snaps?.weeks || [];
+  const getSnap = wk => { const s = snpWks.find(s => s.wk === wk); return s?.off != null ? Math.round(s.off) : null; };
+  // merge snap into weeks
+  const weeks = nfl.weeks.map(w => ({ ...w, snap: getSnap(w.wk) }));
+  const sorted = [...weeks].sort((a, b) => a.wk - b.wk);
+  const allPts = sorted.map(w => parseFloat(w.pts || 0)).filter(v => !isNaN(v));
+  const maxPts = Math.max(...allPts, 1);
+  const avgPts = ssn.avg_pts || (allPts.length ? allPts.reduce((a, b) => a + b, 0) / allPts.length : 0);
+  const kpiItems = pos === 'QB'
+    ? [['Avg FPTS', ssn.avg_pts], ['Games', ssn.games], ['L4W Avg', nfl.l4w_avg, '#ffb3b6'], ['Pass Yds/G', ssn.avg_pyds, '#7bd0ff'], ['Rush Yds/G', ssn.avg_ryds, '#3DCC7A'], ['Snap %', ssn.avg_snap != null ? ssn.avg_snap + '%' : snaps?.avg_off != null ? Math.round(snaps.avg_off) + '%' : null, '#7bd0ff']]
+    : pos === 'RB'
+    ? [['Avg FPTS', ssn.avg_pts], ['Games', ssn.games], ['L4W Avg', nfl.l4w_avg, '#ffb3b6'], ['Rush Yds/G', ssn.avg_ryds, '#3DCC7A'], ['Car/G', ssn.avg_car], ['Tgt/G', ssn.avg_tgt, '#7bd0ff']]
+    : [['Avg FPTS', ssn.avg_pts], ['Games', ssn.games], ['L4W Avg', nfl.l4w_avg, '#ffb3b6'], ['Rec Yds/G', ssn.avg_recyds, '#7bd0ff'], ['Tgt/G', ssn.avg_tgt], ['Tgt Share', ssn.avg_ts != null ? ssn.avg_ts + '%' : null, '#f5c842']];
+
+  // Opponent column: prefer the opp baked into the per-week row (nflverse opponent_team for 1999-2024).
+  // For 2025, supplement with ESPN data for any in-progress weeks where nflverse hasn't updated yet.
+  if (yr === '2025') {
+    const playerTeam = (window._psPlayer?.team || '').toUpperCase();
+    const weekNums = [...new Set(sorted.map(w => w.wk))];
+    if (playerTeam) {
       try {
-        const weekNums23 = [...new Set(sorted23.map(w=>w.wk))];
-        await Promise.all(weekNums23.map(async wk => {
-          const m = await getOpponentMap('2023', wk);
-          sorted23.forEach(w => { if (w.wk === wk && !w.opp) w.opp = m[playerTeam23] || '—'; });
+        await Promise.all(weekNums.map(async wk => {
+          const m = await getOpponentMap(yr, wk);
+          sorted.forEach(w => {
+            if (w.wk === wk && (!w.opp || w.opp === '—')) {
+              w.opp = m[playerTeam] || w.opp || '—';
+            }
+          });
         }));
       } catch(e) { /* silent */ }
     }
-    const rows = sorted23.map(w=>mkRow(w,pos,maxPts,avgPts,w.proj)).join('');
-    body.innerHTML = mkYrSw(yr)+mkKPI(kpiItems)+`
-      <div style="overflow-x:auto;border-radius:4px;border:1px solid #1E293B">
-        <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:11px;min-width:560px">
-          <thead style="background:#151b2d">${mkTHead(pos)}</thead>
-          <tbody>${rows}</tbody>
-        </table>
+  }
+  // For historical years (1999-2024), the opp field is already populated from nflverse opponent_team
+
+  const rows = sorted.map(w => mkRow(w, pos, maxPts, avgPts, null)).join('');
+
+  // Mobile per-week cards: show key stats by position, tap to expand for full
+  const weekCards = sorted.map(w => {
+    const wkLabel = `Wk ${w.wk}`;
+    const oppLabel = w.opp || '—';
+    const fpts = parseFloat(w.pts || 0);
+    const fptsColor = fpts >= avgPts * 1.5 ? '#3DCC7A' : fpts >= avgPts ? posC : fpts < avgPts * 0.5 ? '#909097' : '#dce1fb';
+    // Position-specific essential stats
+    let statBlocks = '';
+    if (pos === 'QB') {
+      statBlocks = `
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px">
+          <span>${w.cmp ?? '—'}/${w.att ?? '—'} cmp</span>
+          <span>${w.pyds ?? '—'} pyds</span>
+          <span style="color:${(w.ptds||0)>0?'#ff6680':'var(--muted)'}">${w.ptds ?? 0} TD</span>
+          <span style="color:${(w.ints||0)>0?'#ff4d6d':'var(--muted)'}">${w.ints ?? 0} INT</span>
+        </div>`;
+    } else if (pos === 'RB') {
+      statBlocks = `
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px">
+          <span>${w.car ?? '—'} car</span>
+          <span>${w.ryds ?? '—'} ryds</span>
+          <span style="color:${(w.rtds||0)>0?'#3DCC7A':'var(--muted)'}">${w.rtds ?? 0} TD</span>
+          <span>${w.rec ?? '—'} rec</span>
+        </div>`;
+    } else if (pos === 'WR' || pos === 'TE') {
+      statBlocks = `
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:6px">
+          <span>${w.tgt ?? '—'} tgt</span>
+          <span>${w.rec ?? '—'} rec</span>
+          <span>${w.reyds ?? '—'} yds</span>
+          <span style="color:${(w.retds||0)>0?'#3DCC7A':'var(--muted)'}">${w.retds ?? 0} TD</span>
+        </div>`;
+    }
+    return `<div style="background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);font-family:var(--font-mono);min-width:42px">${wkLabel}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);padding:3px 7px;background:var(--s3);border-radius:4px">${oppLabel}</div>
+          ${w.snap != null ? `<div style="font-size:10px;color:#7bd0ff;font-family:var(--font-mono)">${w.snap}% snp</div>` : ''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:800;color:${fptsColor};font-family:var(--font-mono);line-height:1">${fpts.toFixed(1)}</div>
+          <div style="font-size:8px;color:var(--muted);font-family:var(--font-mono);letter-spacing:0.06em;text-transform:uppercase;margin-top:2px">FPts</div>
+        </div>
       </div>
-      <div style="margin-top:10px;font-size:10px;color:#5c6b8a;font-family:var(--font-mono)">Source: <a href="https://rosteraudit.com" target="_blank" style="color:#ffb3b6">RosterAudit</a> · PPR</div>`;
-  } catch(e) { body.innerHTML = mkYrSw(yr)+`<div class="ps-loading" style="color:#ff6680">⚠ ${e.message}</div>`; }
+      ${statBlocks}
+    </div>`;
+  }).join('');
+
+  body.innerHTML = mkYrSw(yr) + mkKPI(kpiItems) + `
+    <!-- Desktop table view -->
+    <div class="gamelog-table-view" style="overflow-x:auto;border-radius:4px;border:1px solid #1E293B">
+      <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:11px;min-width:560px">
+        <thead style="background:#151b2d">${mkTHead(pos)}</thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <!-- Mobile per-week cards -->
+    <div class="gamelog-cards-view" style="display:none;flex-direction:column;gap:8px">
+      ${weekCards}
+    </div>
+    <div style="margin-top:10px;font-size:10px;color:#5c6b8a;font-family:var(--font-mono)">Source: <span style="color:#7bd0ff">nflverse</span> · ${yr} season · PPR scoring</div>`;
 };
 
 
@@ -10426,7 +10928,127 @@ function savePortfolioLeagueSelection() {
   renderPortfolio();
 }
 
+// ════════════════════════════════════════════════════════════
+// Year Picker — bottom sheet for selecting any season 1999-2025
+// Grouped by decade for fast scanning; no horizontal scroll
+// ════════════════════════════════════════════════════════════
+function openYearPicker(playerName, pos) {
+  const sheet = document.getElementById('year-picker-sheet');
+  if (!sheet) return;
+  sheet.style.display = 'flex';
+
+  const posColor = window._gameLogPosColor || '#909097';
+  const seenYears = (window._yearAvailability && window._yearAvailability[playerName]) || new Set();
+  const currentActive = window._resGlYear || '2025';
+
+  // Group years by decade — 2020s, 2010s, 2000s, 1990s
+  const allYears = [];
+  for (let y = 2025; y >= 1999; y--) allYears.push(String(y));
+
+  const decades = [
+    { label: '2020s', years: allYears.filter(y => y >= '2020' && y <= '2029') },
+    { label: '2010s', years: allYears.filter(y => y >= '2010' && y <= '2019') },
+    { label: '2000s', years: allYears.filter(y => y >= '2000' && y <= '2009') },
+    { label: '1990s', years: allYears.filter(y => y >= '1990' && y <= '1999') },
+  ];
+
+  const listEl = document.getElementById('year-picker-list');
+  if (!listEl) return;
+
+  // Build the grouped UI
+  const decadeHTML = decades.filter(d => d.years.length).map(d => {
+    // Check if any year in this decade has data for the player
+    const decadeHasData = d.years.some(y => seenYears.has(y));
+    const yearChips = d.years.map(y => {
+      const hasData = seenYears.has(y);
+      const isActive = y === currentActive;
+      const isCurrent = y === '2025';
+      // Visual states:
+      // - active: filled accent background
+      // - has data: solid border, normal text
+      // - no data confirmed: muted (player didn't play / not loaded yet)
+      const bg = isActive ? posColor + '22' : (hasData ? 'var(--s2)' : 'transparent');
+      const border = isActive ? posColor : (hasData ? 'var(--border2)' : 'var(--border)');
+      const color = isActive ? posColor : (hasData ? 'var(--text)' : 'var(--muted)');
+      const label = isCurrent ? '2025·NFL' : y;
+      const dataDot = hasData ? `<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${posColor};margin-left:6px;opacity:0.7"></span>` : '';
+      return `<button onclick="pickYear('${y}')"
+        style="padding:12px 10px;border-radius:8px;font-family:var(--font-mono);font-size:13px;font-weight:600;cursor:pointer;border:1px solid ${border};background:${bg};color:${color};transition:all 120ms ease;min-height:44px;display:flex;align-items:center;justify-content:center">${label}${dataDot}</button>`;
+    }).join('');
+
+    return `<div style="margin-bottom:18px">
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        <span>${d.label}</span>
+        ${decadeHasData ? `<span style="font-size:9px;color:${posColor};opacity:0.7">● has data</span>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:6px">${yearChips}</div>
+    </div>`;
+  }).join('');
+
+  // Career option at the top
+  const careerHTML = `<button onclick="pickYear('Career')" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:14px 16px;border-radius:10px;border:1px solid ${currentActive === 'Career' ? posColor : 'var(--border2)'};background:${currentActive === 'Career' ? posColor + '22' : 'var(--s1)'};color:var(--text);font-family:var(--font-sans);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:18px;min-height:52px">
+    <span style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">📋</span>
+      <span>
+        <div style="font-weight:700">Career Totals</div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:2px">All seasons aggregated</div>
+      </span>
+    </span>
+    ${currentActive === 'Career' ? `<span style="color:${posColor};font-size:18px">✓</span>` : '<span style="color:var(--muted);font-size:18px">→</span>'}
+  </button>`;
+
+  listEl.innerHTML = careerHTML + decadeHTML;
+
+  // Update sub-text
+  const subEl = document.getElementById('year-picker-sub');
+  if (subEl) {
+    const seenCount = seenYears.size;
+    subEl.textContent = seenCount > 0
+      ? `${playerName} · ${seenCount} season${seenCount === 1 ? '' : 's'} with confirmed data`
+      : `${playerName} · Pick a season to load data`;
+  }
+}
+
+function closeYearPicker() {
+  const sheet = document.getElementById('year-picker-sheet');
+  if (sheet) sheet.style.display = 'none';
+}
+
+function pickYear(year) {
+  closeYearPicker();
+  window._resGlYear = year;
+  if (window._resCurrentPlayer) window._psPlayer = window._resCurrentPlayer;
+  if (window._psRenderGameLogs) {
+    window._psRenderGameLogs(year, window._glTargetEl || document.getElementById('ps-body'));
+  }
+  if (window._resUpdateKPIsForYear && year !== 'Career') {
+    window._resUpdateKPIsForYear(year);
+  }
+}
+
 </script>
+<!-- Year Picker Bottom Sheet — for game logs -->
+<div id="year-picker-sheet" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeYearPicker()">
+  <div style="background:var(--bg);border:1px solid var(--border2);border-top-left-radius:20px;border-top-right-radius:20px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 -20px 60px rgba(0,0,0,0.5);animation:slideUp 200ms ease">
+    <!-- Drag handle -->
+    <div style="display:flex;justify-content:center;padding:10px 0 0">
+      <div style="width:40px;height:4px;background:var(--border2);border-radius:2px"></div>
+    </div>
+    <!-- Header -->
+    <div style="padding:14px 20px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);font-family:var(--font-sans)">Pick a Season</div>
+        <div id="year-picker-sub" style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--font-mono)">Tap a year to see game logs</div>
+      </div>
+      <button onclick="closeYearPicker()" style="background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;padding:4px 8px;line-height:1;min-width:44px;min-height:44px">×</button>
+    </div>
+    <!-- Year list grouped by decade -->
+    <div id="year-picker-list" style="flex:1;overflow-y:auto;padding:12px 16px 24px"></div>
+    <!-- Safe area pad -->
+    <div style="padding-bottom:env(safe-area-inset-bottom)"></div>
+  </div>
+</div>
+
 <!-- Portfolio League Picker Modal -->
 <div id="portfolio-league-picker" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;padding:20px">
   <div style="background:var(--bg);border:1px solid var(--border2);border-radius:16px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
