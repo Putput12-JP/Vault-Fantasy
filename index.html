@@ -1616,8 +1616,15 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   border-color:#cc003c;
   box-shadow:0 0 0 1px rgba(204,0,60,0.5), 0 20px 40px rgba(0,0,0,0.4);
 }
-/* Header nav always visible */
-#header-nav { display:flex !important; }
+/* Header nav: desktop only — mobile uses the bottom tab bar exclusively (no duplicate navigation) */
+@media (min-width: 701px) {
+  #header-nav { display:flex !important; }
+}
+@media (max-width: 700px) {
+  #header-nav { display:none !important; }
+  /* Compact the entire top header on mobile — logo only, no desktop nav buttons */
+  #app-header { padding: 0 12px !important; gap: 8px !important; }
+}
 /* League selector in header */
 .header-league-select {
   background:rgba(18,33,49,0.70) !important;
@@ -1977,6 +1984,117 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   }
   #page-research h1 {
     font-size: 42px !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   BULLETPROOF MOBILE FIXES (VOC-based, May 2026)
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 700px) {
+  /* 1. Kill horizontal scroll at every level ─────────────────── */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+    position: relative;
+  }
+  /* Every direct page child gets the same treatment */
+  .page, .page.on, #page-overview, #page-portfolio, #page-research,
+  #page-draft, #page-teams, #page-trade, #page-visual, #page-rankings {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    padding-bottom: 90px !important; /* room for bottom tab bar (54px) + safe area */
+    box-sizing: border-box !important;
+  }
+  /* App shell shouldn't have its own overflow rules conflicting */
+  #app-shell {
+    overflow: visible !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    min-height: auto !important;
+  }
+  /* Sidebar — hard hide on mobile */
+  #app-sidebar {
+    display: none !important;
+  }
+  /* Tables: never wider than viewport */
+  table {
+    max-width: 100% !important;
+    table-layout: auto;
+  }
+  /* Wide elements: clip to viewport */
+  .header-league-select-wrap, .header-league-wrap, .header-leagues-row {
+    max-width: calc(100vw - 80px) !important;
+    overflow: hidden !important;
+  }
+
+  /* 2. Single-nav-only — no duplicate top + bottom ────────────── */
+  /* Top header collapses to logo + league dropdown only */
+  #app-header {
+    height: 48px !important;
+    padding: 0 12px !important;
+    gap: 8px !important;
+  }
+  #app-header .logo {
+    margin-right: 0 !important;
+  }
+  #app-header .logo > div:last-child {
+    display: none; /* hide "VAULT FANTASY FOOTBALL" text — logo SVG is enough */
+  }
+  #app-header .logo svg {
+    width: 22px !important;
+    height: 26px !important;
+  }
+  /* Hide all desktop nav elements on mobile (already done by media query, this is belt-and-suspenders) */
+  .desktop-nav, #header-nav, .nav.desktop-nav {
+    display: none !important;
+  }
+  /* Sub-nav (research hub tabs etc.) must NOT show alongside bottom tab bar */
+  /* The page-internal section tabs (Game Logs / Season Stats / etc.) are fine — those are content tabs, not navigation */
+
+  /* 3. Bottom tab bar — Apple HIG / Material Design compliant ── */
+  .bottom-tab-bar {
+    height: auto !important;
+    min-height: 56px !important;
+    padding-top: 4px !important;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom)) !important;
+    /* Subtle opaque background — disable heavy blur for perf on mid-range Android */
+    background: rgba(15, 22, 36, 0.97) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+  }
+  .tab-btn {
+    min-height: 50px !important;
+    padding: 6px 4px !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+  .tab-icon { font-size: 19px !important; line-height: 1 !important; }
+  .tab-label { font-size: 10px !important; letter-spacing: 0.03em !important; line-height: 1.1 !important; margin-top: 2px; }
+
+  /* 4. Page top spacing — leave room for compact header ──────── */
+  .page.on {
+    padding-top: 16px !important;
+  }
+
+  /* 5. Hero typography ──────────────────────────────────────── */
+  .proto-page h1, .ov-page h1, #page-portfolio h1, #page-research h1, #page-draft h1 {
+    font-size: 26px !important;
+    line-height: 1.15 !important;
+    margin-bottom: 6px !important;
+  }
+}
+
+/* Extra-small phones (≤360px) — tighten further */
+@media (max-width: 360px) {
+  .tab-label { font-size: 9px !important; }
+  .page, #page-overview, #page-portfolio, #page-research, #page-draft, #page-teams, #page-trade, #page-visual {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
   }
 }
 
@@ -2358,33 +2476,54 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </div>
 </header>
 
-<!-- BOTTOM TAB BAR — mobile only -->
+<!-- BOTTOM TAB BAR — mobile only (5 tabs per UXPin/Apple HIG/Material Design best practice) -->
 <nav class="bottom-tab-bar" id="bottom-tab-bar">
-  <button class="tab-btn on" id="tb-overview" onclick="showPage('overview')">
+  <button class="tab-btn on" id="tb-overview" onclick="showPage('overview')" aria-label="My Team">
     <span class="tab-icon">🏠</span>
-    <span class="tab-label">My Team</span>
+    <span class="tab-label">Team</span>
   </button>
-  <button class="tab-btn" id="tb-portfolio" onclick="showPage('portfolio')">
+  <button class="tab-btn" id="tb-portfolio" onclick="showPage('portfolio')" aria-label="Portfolio">
     <span class="tab-icon">📁</span>
     <span class="tab-label">Portfolio</span>
   </button>
-  <button class="tab-btn" id="tb-draft" onclick="showPage('draft')">
-    <span class="tab-icon">📋</span>
-    <span class="tab-label">Rankings</span>
-  </button>
-  <button class="tab-btn" id="tb-teams" onclick="showPage('teams')">
-    <span class="tab-icon">📊</span>
-    <span class="tab-label">League</span>
-  </button>
-  <button class="tab-btn" id="tb-trade" onclick="showPage('trade')">
-    <span class="tab-icon">🔄</span>
-    <span class="tab-label">Trade</span>
-  </button>
-  <button class="tab-btn" id="tb-research" onclick="showPage('research')">
+  <button class="tab-btn" id="tb-research" onclick="showPage('research')" aria-label="Research Hub">
     <span class="tab-icon">🔬</span>
     <span class="tab-label">Research</span>
   </button>
+  <button class="tab-btn" id="tb-draft" onclick="showPage('draft')" aria-label="Rankings">
+    <span class="tab-icon">📋</span>
+    <span class="tab-label">Rankings</span>
+  </button>
+  <button class="tab-btn" id="tb-more" onclick="openMoreSheet()" aria-label="More">
+    <span class="tab-icon">⋯</span>
+    <span class="tab-label">More</span>
+  </button>
 </nav>
+
+<!-- MORE bottom sheet — secondary nav (League / Trade / Draft Room) -->
+<div id="more-sheet" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeMoreSheet()">
+  <div style="background:var(--bg);border:1px solid var(--border2);border-top-left-radius:20px;border-top-right-radius:20px;width:100%;max-width:560px;display:flex;flex-direction:column;box-shadow:0 -20px 60px rgba(0,0,0,0.5);animation:slideUp 200ms ease;padding-bottom:env(safe-area-inset-bottom)">
+    <div style="display:flex;justify-content:center;padding:10px 0 0">
+      <div style="width:40px;height:4px;background:var(--border2);border-radius:2px"></div>
+    </div>
+    <div style="padding:14px 20px 8px">
+      <div style="font-size:16px;font-weight:700;color:var(--text);font-family:var(--font-sans)">More</div>
+    </div>
+    <div style="padding:8px 12px 16px;display:flex;flex-direction:column;gap:4px">
+      <button onclick="closeMoreSheet();showPage('teams')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left;min-height:52px">
+        <span style="font-size:20px">📊</span><span style="font-weight:600">League</span>
+      </button>
+      <button onclick="closeMoreSheet();showPage('trade')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left;min-height:52px">
+        <span style="font-size:20px">🔄</span><span style="font-weight:600">Trade Calculator</span>
+      </button>
+      <button onclick="closeMoreSheet();showPage('visual')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left;min-height:52px">
+        <span style="font-size:20px">🎯</span><span style="font-weight:600">Draft Room</span>
+      </button>
+      <div style="height:1px;background:var(--border);margin:8px 12px"></div>
+      <button onclick="closeMoreSheet()" style="display:flex;align-items:center;justify-content:center;padding:14px 16px;background:transparent;border:none;color:var(--muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;min-height:52px">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- APP SHELL — sidebar + main content -->
 <div id="app-shell" style="display:flex;min-height:calc(100vh - 52px);overflow:hidden">
@@ -2583,7 +2722,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <button class="fbtn TE" onclick="setF('TE')">TE</button>
     <div class="sgrp" id="sgrp">
       <span class="slbl">SORT</span>
-      <button class="sbtn on" id="sb0" onclick="setSort(0)">—</button>
+      <button class="sbtn on" id="sb0" onclick="setSort(0)" style="display:none">—</button>
       <button class="sbtn" id="sb1" onclick="setSort(1)" style="display:none">—</button>
       <button class="sbtn" id="sb2" onclick="setSort(2)" style="display:none">—</button>
       <button class="sbtn" id="sb3" onclick="setSort(3)" style="display:none">RosterAudit Dynasty</button>
@@ -3513,27 +3652,32 @@ window._psRenderGameLogs = async function(year, targetEl) {
   function mkTHead(p) {
     if (p==='QB') return `<tr><th>WK</th><th>OPP</th><th>PROJ</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px">FPTS</th><th>SNP%</th>
-      <th style="border-left:1px solid #1E293B;padding-left:10px;color:#ff6680">ATT</th>
-      <th style="color:#ff6680">CMP</th><th style="color:#ff6680">YDS</th>
-      <th style="color:#ff6680">TD</th><th style="color:#ff6680">INT</th>
+      <th style="border-left:1px solid #1E293B;padding-left:10px;color:#ff6680">CMP</th>
+      <th style="color:#ff6680">ATT</th><th style="color:#ff6680">PYDS</th>
+      <th style="color:#ff6680">PTD</th><th style="color:#ff6680">INT</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#3DCC7A">CAR</th>
-      <th style="color:#3DCC7A">YDS</th><th style="color:#3DCC7A">TD</th></tr>`;
+      <th style="color:#3DCC7A">RYDS</th><th style="color:#3DCC7A">RTD</th></tr>`;
     if (p==='RB') return `<tr><th>WK</th><th>OPP</th><th>PROJ</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px">FPTS</th><th>SNP%</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px;color:#3DCC7A">CAR</th>
-      <th style="color:#3DCC7A">YDS</th><th style="color:#3DCC7A">TD</th>
-      <th style="border-left:1px solid #1E293B;padding-left:10px;color:#7bd0ff">REC</th>
-      <th style="color:#7bd0ff">TGT</th><th style="color:#7bd0ff">YDS</th>
-      <th style="color:#7bd0ff">TD</th></tr>`;
+      <th style="color:#3DCC7A">RYDS</th><th style="color:#3DCC7A">RTD</th>
+      <th style="border-left:1px solid #1E293B;padding-left:10px;color:#7bd0ff">TGT</th>
+      <th style="color:#7bd0ff">REC</th><th style="color:#7bd0ff">RECYDS</th>
+      <th style="color:#7bd0ff">RECTD</th></tr>`;
     return `<tr><th>WK</th><th>OPP</th><th>PROJ</th>
       <th style="border-left:1px solid #1E293B;padding-left:10px">FPTS</th><th>SNP%</th>
-      <th style="border-left:1px solid #1E293B;padding-left:10px;color:#7bd0ff">REC</th>
-      <th style="color:#7bd0ff">TGT</th><th style="color:#7bd0ff">YDS</th>
-      <th style="color:#7bd0ff">TD</th><th style="color:#7bd0ff">TGT%</th></tr>`;
+      <th style="border-left:1px solid #1E293B;padding-left:10px;color:#7bd0ff">TGT</th>
+      <th style="color:#7bd0ff">REC</th><th style="color:#7bd0ff">RECYDS</th>
+      <th style="color:#7bd0ff">RECTD</th><th style="color:#f5c842">TGT%</th></tr>`;
   }
 
   // Row builder by position — nflverse format
   function mkRow(w, p, maxPts, avgPts, proj) {
+    // Schema normalization: 2025 file uses recyds/rectds, my historical generator uses reyds/retds.
+    // Read whichever exists so both schemas render correctly.
+    const reyds = w.recyds ?? w.reyds ?? null;
+    const retds = w.rectds ?? w.retds ?? null;
+    const tsPct = w.ts ?? w.tgt_share ?? null;
     const fpts = parseFloat(w.pts ?? w.fpts ?? 0);
     const fc = fpts>=25?'#3DCC7A':fpts>=15?'#f5c842':fpts>=8?posC:'#5c6b8a';
     const bw = Math.round((fpts/Math.max(maxPts,1))*72);
@@ -3553,8 +3697,8 @@ window._psRenderGameLogs = async function(year, targetEl) {
         <td style="color:#dce1fb;font-weight:600;font-size:10px">${opp}</td>
         <td>${projStr}</td>${fptsCell}
         <td style="color:#7bd0ff;font-size:10px">${snp}</td>
-        <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.att||'—'}</td>
-        <td style="color:#dce1fb">${w.cmp||'—'}</td>
+        <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.cmp||'—'}</td>
+        <td style="color:#dce1fb">${w.att||'—'}</td>
         <td style="color:#dce1fb">${w.pyds||'—'}</td>
         <td style="color:${(w.ptds||0)>0?'#ff6680':'#5c6b8a'}">${w.ptds??'—'}</td>
         <td style="color:${(w.ints||0)>0?'#ff6680':'#5c6b8a'}">${w.ints??'—'}</td>
@@ -3572,10 +3716,10 @@ window._psRenderGameLogs = async function(year, targetEl) {
         <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.car||'—'}</td>
         <td style="color:#dce1fb">${w.ryds||'—'}</td>
         <td style="color:${(w.rtds||0)>0?'#3DCC7A':'#5c6b8a'}">${w.rtds??'—'}</td>
-        <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.rec||'—'}</td>
-        <td style="color:#dce1fb">${w.tgt||'—'}</td>
-        <td style="color:#dce1fb">${w.recyds||'—'}</td>
-        <td style="color:${(w.rectds||0)>0?'#3DCC7A':'#5c6b8a'}">${w.rectds??'—'}</td>
+        <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.tgt||'—'}</td>
+        <td style="color:#dce1fb">${w.rec||'—'}</td>
+        <td style="color:#dce1fb">${reyds??'—'}</td>
+        <td style="color:${(retds||0)>0?'#3DCC7A':'#5c6b8a'}">${retds??'—'}</td>
       </tr>`;
     }
     // WR/TE
@@ -3584,11 +3728,11 @@ window._psRenderGameLogs = async function(year, targetEl) {
       <td style="color:#dce1fb;font-weight:600;font-size:10px">${opp}</td>
       <td>${projStr}</td>${fptsCell}
       <td style="color:#7bd0ff;font-size:10px">${snp}</td>
-      <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.rec||'—'}</td>
-      <td style="color:#dce1fb">${w.tgt||'—'}</td>
-      <td style="color:#dce1fb">${w.recyds||'—'}</td>
-      <td style="color:${(w.rectds||0)>0?'#3DCC7A':'#5c6b8a'}">${w.rectds??'—'}</td>
-      <td style="color:#7bd0ff">${w.ts!=null?w.ts+'%':'—'}</td>
+      <td style="border-left:1px solid #1E293B;padding-left:10px;color:#dce1fb">${w.tgt||'—'}</td>
+      <td style="color:#dce1fb">${w.rec||'—'}</td>
+      <td style="color:#dce1fb">${reyds??'—'}</td>
+      <td style="color:${(retds||0)>0?'#3DCC7A':'#5c6b8a'}">${retds??'—'}</td>
+      <td style="color:#f5c842">${tsPct!=null?tsPct+'%':'—'}</td>
     </tr>`;
   }
 
@@ -5560,9 +5704,31 @@ async function launch(skip=false) {
 function loadSaved() {
   const sp = localStorage.getItem(SK+'-players');
   const sl = localStorage.getItem(SK+'-labels');
+  // Restore the user's "My Rankings" label if they previously imported one
+  const savedMyLabel = localStorage.getItem(SK+'-myrank-label');
+  if (savedMyLabel) window._myRankingsLabel = savedMyLabel;
+
   if (sp) {
-    PLAYERS = JSON.parse(sp);
-    RLABELS = sl ? JSON.parse(sl) : ['RosterAudit Dynasty'];
+    try {
+      const parsed = JSON.parse(sp);
+      // Sanity check: detect corrupt cached PLAYERS data
+      // (legitimate names are "Bijan Robinson", "Josh Allen" etc — never pure numbers like "1", "2", "3")
+      const corrupt = !Array.isArray(parsed) || parsed.length === 0 ||
+        parsed.slice(0, 5).every(p => p && (/^\d+$/.test(String(p.name || '').trim()) || !p.team));
+      if (corrupt) {
+        console.warn('[Vault] Discarding corrupt PLAYERS cache (stub names detected); will rebuild from RosterAudit');
+        localStorage.removeItem(SK+'-players');
+        PLAYERS = DEFAULT_RANKINGS.map(p => ({...p}));
+        RLABELS = ['RosterAudit Dynasty'];
+      } else {
+        PLAYERS = parsed;
+        RLABELS = sl ? JSON.parse(sl) : ['RosterAudit Dynasty'];
+      }
+    } catch(e) {
+      console.warn('[Vault] Failed to parse PLAYERS cache:', e.message);
+      PLAYERS = DEFAULT_RANKINGS.map(p => ({...p}));
+      RLABELS = ['RosterAudit Dynasty'];
+    }
   } else {
     
     PLAYERS = DEFAULT_RANKINGS.map(p => ({...p}));
@@ -5571,29 +5737,49 @@ function loadSaved() {
 }
 
 function updateSortBtns() {
-  for(let i=0;i<3;i++){
-    const b=document.getElementById(`sb${i}`);
-    const lh=document.getElementById(`lh${i}`);
-    const lbl=RLABELS[i];
-    if(lbl&&b){
-      b.textContent=lbl;
-      b.style.display='';
-      b.title=`Sort by ${lbl} rankings (custom imported column)`;
-      if(lh){lh.textContent=lbl.slice(0,8).toUpperCase();lh.style.display='';}
+  // Simplified sort buttons: My Rankings (if imported) + RosterAudit Dynasty + ADPs.
+  // Hide the legacy sb1/sb2 buttons since multi-column CSV import is deprecated.
+  const myLabel = window._myRankingsLabel || localStorage.getItem(SK+'-myrank-label');
+  const hasMyRankings = !!myLabel && PLAYERS.some(p => p.rMy != null && p.rMy < 9999);
+
+  // sb0 = "My Rankings" (only visible if import exists)
+  const sb0 = document.getElementById('sb0');
+  const lh0 = document.getElementById('lh0');
+  if (sb0) {
+    if (hasMyRankings) {
+      sb0.textContent = myLabel || 'My Rankings';
+      sb0.style.display = '';
+      sb0.title = `Sort by your imported "${myLabel}" rankings`;
+      sb0.onclick = () => setSort('my');
+      sb0.classList.toggle('on', sortKey === 'my');
+      if (lh0) { lh0.textContent = (myLabel || 'MY').slice(0, 8).toUpperCase(); lh0.style.display=''; }
     } else {
-      if(b)b.style.display='none';
-      if(lh&&lh.style)lh.style.display='none';
+      sb0.style.display = 'none';
+      if (lh0) lh0.style.display = 'none';
     }
   }
-  
-  const sb3=document.getElementById('sb3');
-  if(sb3){
-    const alreadyDefault = RLABELS.length===1 && RLABELS[0]==='RosterAudit Dynasty';
-    sb3.style.display = alreadyDefault ? 'none' : '';
+
+  // Hide legacy sb1, sb2 (no longer used - multi-column CSV import deprecated)
+  ['sb1', 'sb2', 'lh1', 'lh2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  // sb3 = "RosterAudit Dynasty" — always visible (this is the canonical default)
+  const sb3 = document.getElementById('sb3');
+  if (sb3) {
+    sb3.textContent = 'RosterAudit Dynasty';
+    sb3.style.display = '';
+    sb3.title = 'Sort by RosterAudit dynasty SF value (canonical)';
+    sb3.onclick = () => setSort('ra');
+    sb3.classList.toggle('on', sortKey === 'ra' || sortKey === 0 || sortKey === 3);
   }
-  
-  document.getElementById('sb-adp-dynasty') && (document.getElementById('sb-adp-dynasty').style.display='');
-  document.getElementById('sb-adp-redraft') && (document.getElementById('sb-adp-redraft').style.display='');
+
+  // ADP buttons
+  const sba = document.getElementById('sb-adp-dynasty');
+  if (sba) { sba.style.display = ''; sba.classList.toggle('on', sortKey === 'adp-dynasty'); }
+  const sbr = document.getElementById('sb-adp-redraft');
+  if (sbr) { sbr.style.display = ''; sbr.classList.toggle('on', sortKey === 'adp-redraft'); }
 }
 
 // ════════════════════════════════════
@@ -6423,12 +6609,13 @@ function applyImportRankings() {
 
   if (!csvRankMap.size) { toast('Could not parse ranks — check column selections'); return; }
 
-  // Merge: stamp r0 onto existing PLAYERS (preserves photos, team, FC data)
+  // NON-DESTRUCTIVE: stamp the imported rank into p.rMy (NEVER touch p.r0 — that's RosterAudit's rank)
+  // This way switching back to "RosterAudit Dynasty" still works because r0 is intact.
   let matched = 0;
   PLAYERS.forEach(p => {
     const r = csvRankMap.get(norm(p.name));
-    if (r != null) { p.r0 = r; matched++; }
-    else p.r0 = 9999; // push unranked to bottom
+    if (r != null) { p.rMy = r; matched++; }
+    else p.rMy = 9999; // unranked players go to bottom of MY view but preserve their r0 position elsewhere
   });
 
   if (matched < 5) {
@@ -6436,15 +6623,15 @@ function applyImportRankings() {
     return;
   }
 
-  // Add the import label as a sort option
-  RLABELS = [label, ...DEFAULT_LABELS.slice(1)];
-  if (!RLABELS.includes('RosterAudit Dynasty')) RLABELS.unshift('RosterAudit Dynasty');
-  // Put import label first
-  RLABELS = [label, 'RosterAudit Dynasty'].filter((v,i,a) => a.indexOf(v)===i);
+  // Save the import label and switch sort to it
+  window._myRankingsLabel = label;
+  localStorage.setItem(SK+'-myrank-label', label);
+  // Persist the imported rMy values so a refresh keeps them
+  localStorage.setItem(SK+'-players', JSON.stringify(PLAYERS));
 
-  PLAYERS.sort((a,b) => a.r0 - b.r0);
+  // Switch the sort to "my" rankings
+  sortKey = 'my';
   usingDefaultRankings = false;
-  sortKey = 0;
   updateSortBtns();
   toggleImportPanel();
   renderAll();
@@ -6454,16 +6641,15 @@ function applyImportRankings() {
 function clearImportRankings() {
   _importCsvData = null;
   _importCsvHeaders = [];
-  // Restore original r0 values from DEFAULT_RANKINGS
-  const norm = s => s?.toLowerCase().replace(/[^a-z0-9]/g,'');
-  const defaultMap = new Map((DEFAULT_RANKINGS||[]).map(p => [norm(p.name), p.r0]));
-  PLAYERS.forEach(p => { const r = defaultMap.get(norm(p.name)); if (r != null) p.r0 = r; });
+  // Clear the imported rMy values entirely (player order falls back to r0 = RosterAudit)
+  PLAYERS.forEach(p => { delete p.rMy; });
   PLAYERS.sort((a,b) => (a.r0||999) - (b.r0||999));
   RLABELS = [...DEFAULT_LABELS];
   usingDefaultRankings = true;
   sortKey = 0;
-  localStorage.removeItem(SK+'-players');
-  localStorage.removeItem(SK+'-labels');
+  localStorage.removeItem(SK+'-myrank-label');
+  localStorage.setItem(SK+'-players', JSON.stringify(PLAYERS));
+  window._myRankingsLabel = null;
   // Reset dropzone
   const dz = document.getElementById('import-dropzone');
   if (dz) {
@@ -6486,14 +6672,9 @@ function setSort(k){
   
   if(k==='adp-dynasty'){ ADP_DATA=ADP_DYNASTY; _rebuildADPLookup(); }
   else if(k==='adp-redraft'){ ADP_DATA=ADP_REDRAFT; _rebuildADPLookup(); }
-  
-  for(let i=0;i<4;i++){
-    document.getElementById(`sb${i}`)?.classList.toggle('on',i===k);
-    const l=document.getElementById(`lh${i}`);if(l)l.style.color=i===k?'var(--accent2)':'';
-  }
-  
-  document.getElementById('sb-adp-dynasty')?.classList.toggle('on',k==='adp-dynasty');
-  document.getElementById('sb-adp-redraft')?.classList.toggle('on',k==='adp-redraft');
+
+  // Update all sort button visual state via updateSortBtns
+  updateSortBtns();
 
   // If PLAYERS not loaded yet, fetch first then render
   if (!PLAYERS.length) {
@@ -6522,7 +6703,14 @@ function showPage(p){
   document.querySelectorAll('.desktop-nav button').forEach(x=>x.classList.remove('on'));
   document.getElementById(`nb-${p}`)?.classList.add('on');
   document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('on'));
-  document.getElementById(`tb-${p}`)?.classList.add('on');
+  // Direct tab match
+  const directTab = document.getElementById(`tb-${p}`);
+  if (directTab) {
+    directTab.classList.add('on');
+  } else {
+    // p is one of the "More" destinations (teams, trade, visual) — highlight the More tab
+    document.getElementById('tb-more')?.classList.add('on');
+  }
   const pageDiv = document.getElementById(`page-${p}`);
   if (pageDiv) {
     pageDiv.classList.add('on');
@@ -7173,6 +7361,14 @@ function getADP(name){
 function sortedPlayers(){
   if(sortKey==='adp-dynasty'||sortKey==='adp-redraft'){
     return [...PLAYERS].sort((a,b)=>(getADP(a.name)||9999)-(getADP(b.name)||9999));
+  }
+  // "my" sort = user's uploaded CSV ranks (stored in p.rMy)
+  if(sortKey==='my'){
+    return [...PLAYERS].sort((a,b)=>(a.rMy||9999)-(b.rMy||9999));
+  }
+  // "ra" sort = explicit RosterAudit (always available)
+  if(sortKey==='ra'){
+    return [...PLAYERS].sort((a,b)=>(a.r0||999)-(b.r0||999));
   }
   if(sortKey===3){
     const defMap={};
@@ -8323,9 +8519,25 @@ function _applyRARankings(raPlayers) {
   });
 
   
+  // Preserve user's imported "My Rankings" (rMy) values across the RA refresh.
+  // Build a name → rMy lookup BEFORE we replace PLAYERS, then re-stamp it after.
+  const normName2 = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const rMyMap = new Map();
+  PLAYERS.forEach(p => { if (p.rMy != null) rMyMap.set(normName2(p.name), p.rMy); });
+
   PLAYERS = newPlayers;
+
+  // Restore rMy
+  PLAYERS.forEach(p => {
+    const r = rMyMap.get(normName2(p.name));
+    if (r != null) p.rMy = r;
+  });
+
   RLABELS = ['RosterAudit Dynasty'];
   usingDefaultRankings = false;
+
+  // Persist the merged PLAYERS so the rMy values survive reloads
+  try { localStorage.setItem(SK+'-players', JSON.stringify(PLAYERS)); } catch(e) {}
 
   
   const statusEl = document.getElementById('fc-status');
@@ -10932,54 +11144,63 @@ function savePortfolioLeagueSelection() {
 // Year Picker — bottom sheet for selecting any season 1999-2025
 // Grouped by decade for fast scanning; no horizontal scroll
 // ════════════════════════════════════════════════════════════
-function openYearPicker(playerName, pos) {
+async function openYearPicker(playerName, pos) {
   const sheet = document.getElementById('year-picker-sheet');
   if (!sheet) return;
   sheet.style.display = 'flex';
 
   const posColor = window._gameLogPosColor || '#909097';
-  const seenYears = (window._yearAvailability && window._yearAvailability[playerName]) || new Set();
-  const currentActive = window._resGlYear || '2025';
-
-  // Group years by decade — 2020s, 2010s, 2000s, 1990s
-  const allYears = [];
-  for (let y = 2025; y >= 1999; y--) allYears.push(String(y));
-
-  const decades = [
-    { label: '2020s', years: allYears.filter(y => y >= '2020' && y <= '2029') },
-    { label: '2010s', years: allYears.filter(y => y >= '2010' && y <= '2019') },
-    { label: '2000s', years: allYears.filter(y => y >= '2000' && y <= '2009') },
-    { label: '1990s', years: allYears.filter(y => y >= '1990' && y <= '1999') },
-  ];
-
   const listEl = document.getElementById('year-picker-list');
+  const subEl = document.getElementById('year-picker-sub');
   if (!listEl) return;
 
-  // Build the grouped UI
-  const decadeHTML = decades.filter(d => d.years.length).map(d => {
-    // Check if any year in this decade has data for the player
-    const decadeHasData = d.years.some(y => seenYears.has(y));
+  // Show loading state while we scan availability
+  if (!window._yearScanComplete) {
+    listEl.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted);font-family:var(--font-mono);font-size:12px">
+      <div style="display:inline-block;font-size:24px;animation:spin 1s linear infinite;margin-bottom:10px">⟳</div>
+      <div>Scanning ${playerName}'s career...</div>
+    </div>`;
+    if (subEl) subEl.textContent = 'Finding seasons with data';
+    await prescanYearAvailability();
+  }
+
+  // Now we know exactly which years the player has data for
+  const seenYears = (window._yearAvailability && window._yearAvailability[playerName]) || new Set();
+  // Always include 2025 if not yet known (current season may not be played)
+  if (window._yearDataCache['2025']?.stats?.[playerName]) seenYears.add('2025');
+  const currentActive = window._resGlYear || '2025';
+
+  // Build set of decades that contain at least one year of data for this player
+  const yearsByDecade = {
+    '2020s': [], '2010s': [], '2000s': [], '1990s': []
+  };
+  Array.from(seenYears).sort((a, b) => parseInt(b) - parseInt(a)).forEach(y => {
+    if (y >= '2020' && y <= '2029') yearsByDecade['2020s'].push(y);
+    else if (y >= '2010' && y <= '2019') yearsByDecade['2010s'].push(y);
+    else if (y >= '2000' && y <= '2009') yearsByDecade['2000s'].push(y);
+    else if (y >= '1990' && y <= '1999') yearsByDecade['1990s'].push(y);
+  });
+
+  // Only render decades the player has data in
+  const decadesToRender = ['2020s', '2010s', '2000s', '1990s']
+    .filter(d => yearsByDecade[d].length > 0)
+    .map(d => ({ label: d, years: yearsByDecade[d] }));
+
+  const decadeHTML = decadesToRender.map(d => {
     const yearChips = d.years.map(y => {
-      const hasData = seenYears.has(y);
       const isActive = y === currentActive;
       const isCurrent = y === '2025';
-      // Visual states:
-      // - active: filled accent background
-      // - has data: solid border, normal text
-      // - no data confirmed: muted (player didn't play / not loaded yet)
-      const bg = isActive ? posColor + '22' : (hasData ? 'var(--s2)' : 'transparent');
-      const border = isActive ? posColor : (hasData ? 'var(--border2)' : 'var(--border)');
-      const color = isActive ? posColor : (hasData ? 'var(--text)' : 'var(--muted)');
+      const bg = isActive ? posColor + '22' : 'var(--s2)';
+      const border = isActive ? posColor : 'var(--border2)';
+      const color = isActive ? posColor : 'var(--text)';
       const label = isCurrent ? '2025·NFL' : y;
-      const dataDot = hasData ? `<span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${posColor};margin-left:6px;opacity:0.7"></span>` : '';
       return `<button onclick="pickYear('${y}')"
-        style="padding:12px 10px;border-radius:8px;font-family:var(--font-mono);font-size:13px;font-weight:600;cursor:pointer;border:1px solid ${border};background:${bg};color:${color};transition:all 120ms ease;min-height:44px;display:flex;align-items:center;justify-content:center">${label}${dataDot}</button>`;
+        style="padding:12px 10px;border-radius:8px;font-family:var(--font-mono);font-size:13px;font-weight:600;cursor:pointer;border:1px solid ${border};background:${bg};color:${color};transition:all 120ms ease;min-height:44px;display:flex;align-items:center;justify-content:center">${label}</button>`;
     }).join('');
 
     return `<div style="margin-bottom:18px">
-      <div style="font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-        <span>${d.label}</span>
-        ${decadeHasData ? `<span style="font-size:9px;color:${posColor};opacity:0.7">● has data</span>` : ''}
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted);margin-bottom:8px">
+        ${d.label} <span style="opacity:0.6">· ${d.years.length} season${d.years.length === 1 ? '' : 's'}</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:6px">${yearChips}</div>
     </div>`;
@@ -10991,26 +11212,81 @@ function openYearPicker(playerName, pos) {
       <span style="font-size:18px">📋</span>
       <span>
         <div style="font-weight:700">Career Totals</div>
-        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:2px">All seasons aggregated</div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:2px">All ${seenYears.size} season${seenYears.size === 1 ? '' : 's'} aggregated</div>
       </span>
     </span>
     ${currentActive === 'Career' ? `<span style="color:${posColor};font-size:18px">✓</span>` : '<span style="color:var(--muted);font-size:18px">→</span>'}
   </button>`;
 
-  listEl.innerHTML = careerHTML + decadeHTML;
+  if (decadesToRender.length === 0) {
+    listEl.innerHTML = careerHTML + `<div style="text-align:center;padding:24px;color:var(--muted);font-family:var(--font-mono);font-size:12px">
+      <div style="font-size:24px;margin-bottom:8px">📭</div>
+      <div style="color:var(--text);margin-bottom:4px">No seasons found</div>
+      <div>${playerName} doesn't appear in nflverse historical data (1999-2025).</div>
+    </div>`;
+  } else {
+    listEl.innerHTML = careerHTML + decadeHTML;
+  }
 
   // Update sub-text
-  const subEl = document.getElementById('year-picker-sub');
   if (subEl) {
     const seenCount = seenYears.size;
     subEl.textContent = seenCount > 0
       ? `${playerName} · ${seenCount} season${seenCount === 1 ? '' : 's'} with confirmed data`
-      : `${playerName} · Pick a season to load data`;
+      : `${playerName} · No seasons found in historical data`;
   }
+}
+
+// Prescan all 26 historical year files to build the year availability index
+// Runs ONCE per session. After this, every player's career years are known instantly.
+async function prescanYearAvailability() {
+  if (window._yearScanComplete) return;
+  if (window._yearScanInFlight) return window._yearScanInFlight;
+  window._yearScanInFlight = (async () => {
+    window._yearAvailability = window._yearAvailability || {};
+    window._yearDataCache = window._yearDataCache || {};
+    const dataBase = (() => {
+      const h = window.location.hostname;
+      return h.includes('github.io') || h.includes('putput12-jp')
+        ? 'https://putput12-jp.github.io/Vault-Fantasy/data'
+        : '/data';
+    })();
+    const years = [];
+    for (let y = 1999; y <= 2025; y++) years.push(String(y));
+    // Fetch in batches of 6 to be polite to the server
+    for (let i = 0; i < years.length; i += 6) {
+      const batch = years.slice(i, i + 6);
+      await Promise.all(batch.map(async y => {
+        if (window._yearDataCache[y]) return;
+        try {
+          const r = await fetch(`${dataBase}/nflverse_stats_${y}.json`);
+          if (!r.ok) return;
+          const stats = await r.json();
+          window._yearDataCache[y] = { stats, snaps: {} };
+          Object.keys(stats).forEach(name => {
+            if (!window._yearAvailability[name]) window._yearAvailability[name] = new Set();
+            window._yearAvailability[name].add(y);
+          });
+        } catch(e) { /* silent — year may not exist (e.g. 2025 mid-season) */ }
+      }));
+    }
+    window._yearScanComplete = true;
+  })();
+  return window._yearScanInFlight;
 }
 
 function closeYearPicker() {
   const sheet = document.getElementById('year-picker-sheet');
+  if (sheet) sheet.style.display = 'none';
+}
+
+// More bottom sheet — secondary nav for less-frequent destinations
+function openMoreSheet() {
+  const sheet = document.getElementById('more-sheet');
+  if (sheet) sheet.style.display = 'flex';
+}
+function closeMoreSheet() {
+  const sheet = document.getElementById('more-sheet');
   if (sheet) sheet.style.display = 'none';
 }
 
