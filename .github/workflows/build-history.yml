@@ -1,0 +1,50 @@
+name: Build Historical Stats
+
+# Manual-trigger ONLY — no schedule, so this won't conflict with the existing
+# nightly "Update nflverse data" workflow. Run this ONCE to backfill 1999-2024
+# historical data. After that, the existing daily workflow keeps 2024-2025 current.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write  # Needed to commit the generated JSON files
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build historical stats (1999-2024)
+        run: |
+          python3 scripts/build_historical_stats.py --all --out-dir data
+
+      - name: List generated files
+        run: |
+          echo "Generated files in data/:"
+          ls -la data/nflverse_stats_*.json | tail -30
+          echo ""
+          echo "Total size of historical data:"
+          du -sh data/nflverse_stats_*.json | tail -30
+
+      - name: Commit historical stats
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/nflverse_stats_*.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit — historical files already exist with this content"
+          else
+            FILES_ADDED=$(git diff --staged --name-only | wc -l)
+            git commit -m "data: bulk add nflverse historical stats 1999-2024 ($FILES_ADDED files)"
+            git push
+            echo "✓ Committed $FILES_ADDED files"
+          fi
