@@ -1,0 +1,47 @@
+name: Update ADP Data
+
+# Daily during draft season (June-Sept), weekly off-season, plus manual trigger.
+# Fetches 24 ADP files from FantasyFootballCalculator: 6 formats × 4 team sizes.
+
+on:
+  schedule:
+    - cron: '0 8 * 6,7,8,9 *'   # 8 UTC daily June-Sept (peak draft season)
+    - cron: '0 8 * 10,11,12,1,2,3,4,5 1'  # 8 UTC Mondays Oct-May (off-season weekly)
+  workflow_dispatch:  # Manual trigger anytime
+
+permissions:
+  contents: write
+
+jobs:
+  build-adp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build all ADP files
+        run: |
+          python3 scripts/build_adp_data.py --all --out-dir data
+
+      - name: Show generated files
+        run: |
+          echo "ADP data files:"
+          ls -lh data/adp_*.json 2>/dev/null || echo "(no ADP files generated)"
+
+      - name: Commit ADP updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/adp_*.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "data: refresh ADP from FantasyFootballCalculator"
+            git push
+          fi
