@@ -2726,8 +2726,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="sbtn" id="sb1" onclick="setSort(1)" style="display:none">—</button>
       <button class="sbtn" id="sb2" onclick="setSort(2)" style="display:none">—</button>
       <button class="sbtn" id="sb3" onclick="setSort(3)" style="display:none">RosterAudit Dynasty</button>
-      <button class="sbtn" id="sb-adp-dynasty" onclick="setSort('adp-dynasty')">Dynasty ADP</button>
-      <button class="sbtn" id="sb-adp-redraft" onclick="setSort('adp-redraft')">Redraft ADP</button>
+      <button class="sbtn" id="sb-adp-dynasty" onclick="openAdpPicker('dynasty')" title="Sleeper-style Dynasty ADP (configurable format + size)">Dynasty ADP ▾</button>
+      <button class="sbtn" id="sb-adp-redraft" onclick="openAdpPicker('redraft')" title="Sleeper-style Redraft ADP (configurable format + size)">Redraft ADP ▾</button>
     </div>
     <div class="sgrp">
       <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only starred players">⭐ Watchlist</button>
@@ -6670,8 +6670,17 @@ function clearImportRankings() {
 function setSort(k){
   sortKey=k;
   
-  if(k==='adp-dynasty'){ ADP_DATA=ADP_DYNASTY; _rebuildADPLookup(); }
-  else if(k==='adp-redraft'){ ADP_DATA=ADP_REDRAFT; _rebuildADPLookup(); }
+  // ADP sorts use the new loader (FFC-sourced, per format + team size)
+  if(k==='adp-dynasty'){
+    const sel = window._adpSelection?.dynasty || { format: 'dynasty', teams: 12 };
+    setAdpFormat('dynasty', sel.format, sel.teams);
+    return;
+  }
+  if(k==='adp-redraft'){
+    const sel = window._adpSelection?.redraft || { format: 'ppr', teams: 12 };
+    setAdpFormat('redraft', sel.format, sel.teams);
+    return;
+  }
 
   // Update all sort button visual state via updateSortBtns
   updateSortBtns();
@@ -7467,9 +7476,28 @@ function renderList(){
     } else if(isDrafted) ownerDot=`<span class="owner-dot" style="color:var(--muted)">drafted</span>`;
 
     
+    // ADP info: show "ADP #3 (▲2)" style indicator next to RA/team
+    // ▲ = ranked higher than ADP (potential value); ▼ = ranked lower than ADP (overrating)
+    let adpInfoHtml = '';
+    const adpData = ADP_LOOKUP[p.name] || ADP_LOOKUP[normName(p.name)];
+    if (adpData && adpData.adp != null && !isAdpSort) {
+      const adpRank = adpData.adp;
+      const raRank = p.r0;
+      const delta = raRank && adpRank ? Math.round(adpRank - raRank) : null;
+      let deltaSpan = '';
+      if (delta != null && delta !== 0) {
+        const isValue = delta > 0; // delta>0 means ADP rank is later than RA rank → RA values higher → potential value
+        const arrow = isValue ? '▲' : '▼';
+        const color = isValue ? '#3DCC7A' : '#ff6680';
+        deltaSpan = `<span style="color:${color};font-family:'Space Mono',monospace;font-size:9px;margin-left:3px">${arrow}${Math.abs(delta)}</span>`;
+      }
+      adpInfoHtml = `<span class="adp-indicator" title="ADP from FantasyFootballCalculator" style="font-size:9px;color:#7bd0ff;font-family:'Space Mono',monospace;font-weight:600">ADP ${adpRank.toFixed(1)}${deltaSpan}</span>`;
+    }
+
     const metaLine = [
       `<span class="pteam">${p.pos} · ${p.team}</span>`,
       vbadgeHtml,
+      adpInfoHtml,
       ownerDot,
     ].filter(Boolean).join('');
 
@@ -11275,6 +11303,215 @@ async function prescanYearAvailability() {
   return window._yearScanInFlight;
 }
 
+// ════════════════════════════════════════════════════════════
+// ADP system — loads FantasyFootballCalculator data per format + team size
+// 24 combos available: 6 formats (standard/ppr/halfppr/superflex/dynasty/rookie) × 4 sizes (8/10/12/14)
+// ════════════════════════════════════════════════════════════
+window._adpCache = window._adpCache || {};  // key: "ppr_12" → {meta, players, by_name}
+
+// User's current selection (persisted to localStorage)
+window._adpSelection = window._adpSelection || {
+  dynasty: { format: 'dynasty', teams: 12 },  // dynasty bucket default: 12-team Startup
+  redraft: { format: 'ppr', teams: 12 },      // redraft bucket default: 12-team PPR
+};
+
+// Try to load persisted selection
+try {
+  const saved = localStorage.getItem(SK+'-adp-selection');
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    if (parsed?.dynasty?.format && parsed?.dynasty?.teams) window._adpSelection.dynasty = parsed.dynasty;
+    if (parsed?.redraft?.format && parsed?.redraft?.teams) window._adpSelection.redraft = parsed.redraft;
+  }
+} catch(e) { /* fall back to defaults */ }
+
+// FORMAT → display label + filename suffix
+const ADP_FORMAT_META = {
+  'ppr':       { label: 'PPR',           short: 'PPR',         bucket: 'redraft', filename: 'ppr' },
+  'halfppr':   { label: 'Half-PPR',      short: 'Half',        bucket: 'redraft', filename: 'halfppr' },
+  'standard':  { label: 'Standard',      short: 'Std',         bucket: 'redraft', filename: 'standard' },
+  'superflex': { label: 'Superflex',     short: 'SF',          bucket: 'redraft', filename: 'superflex' },
+  'dynasty':   { label: 'Dynasty Startup', short: 'Startup',   bucket: 'dynasty', filename: 'dynasty' },
+  'rookie':    { label: 'Dynasty Rookie', short: 'Rookie',     bucket: 'dynasty', filename: 'rookie' },
+};
+
+function _adpDataBase() {
+  const h = window.location.hostname;
+  return (h.includes('github.io') || h.includes('putput12-jp'))
+    ? 'https://putput12-jp.github.io/Vault-Fantasy/data'
+    : '/data';
+}
+
+async function loadAdpFile(format, teams) {
+  const meta = ADP_FORMAT_META[format];
+  if (!meta) return null;
+  const key = `${format}_${teams}`;
+  if (window._adpCache[key]) return window._adpCache[key];
+  const url = `${_adpDataBase()}/adp_${meta.filename}_${teams}team.json`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const data = await r.json();
+    window._adpCache[key] = data;
+    return data;
+  } catch(e) {
+    return null;
+  }
+}
+
+// Switch the active ADP data and re-render. Persists user choice.
+async function setAdpFormat(bucket, format, teams) {
+  window._adpSelection[bucket] = { format, teams };
+  try { localStorage.setItem(SK+'-adp-selection', JSON.stringify(window._adpSelection)); } catch(e) {}
+
+  // Show loading state
+  const data = await loadAdpFile(format, teams);
+  if (!data || !data.players?.length) {
+    toast?.(`No ADP data available for ${ADP_FORMAT_META[format]?.label} ${teams}-team`);
+    return;
+  }
+
+  // Apply to ADP_DATA + rebuild lookup
+  ADP_DATA = data.players;
+  Object.keys(ADP_LOOKUP).forEach(k => delete ADP_LOOKUP[k]);
+  data.players.forEach(p => {
+    ADP_LOOKUP[p.name] = p;
+    ADP_LOOKUP[normName(p.name)] = p;
+  });
+
+  // Set sort + update buttons
+  sortKey = bucket === 'dynasty' ? 'adp-dynasty' : 'adp-redraft';
+  _adpUpdateButtonLabels();
+  renderList();
+}
+
+function _adpUpdateButtonLabels() {
+  const dynSel = window._adpSelection.dynasty;
+  const redSel = window._adpSelection.redraft;
+  const dynBtn = document.getElementById('sb-adp-dynasty');
+  const redBtn = document.getElementById('sb-adp-redraft');
+  if (dynBtn) {
+    dynBtn.textContent = `Dynasty ADP (${dynSel.teams}-team ${ADP_FORMAT_META[dynSel.format]?.short || dynSel.format}) ▾`;
+    dynBtn.classList.toggle('on', sortKey === 'adp-dynasty');
+  }
+  if (redBtn) {
+    redBtn.textContent = `Redraft ADP (${redSel.teams}-team ${ADP_FORMAT_META[redSel.format]?.short || redSel.format}) ▾`;
+    redBtn.classList.toggle('on', sortKey === 'adp-redraft');
+  }
+}
+
+function openAdpPicker(bucket) {
+  const sheet = document.getElementById('adp-picker-sheet');
+  if (!sheet) return;
+  const titleEl = document.getElementById('adp-picker-title');
+  const subEl = document.getElementById('adp-picker-sub');
+  const listEl = document.getElementById('adp-picker-list');
+  if (!titleEl || !subEl || !listEl) return;
+
+  const current = window._adpSelection[bucket];
+  const isDynasty = bucket === 'dynasty';
+  titleEl.textContent = isDynasty ? 'Pick Dynasty ADP' : 'Pick Redraft ADP';
+  subEl.textContent = `Choose format + team size · sourced from FantasyFootballCalculator`;
+
+  // Format options for this bucket
+  const formatsForBucket = Object.entries(ADP_FORMAT_META)
+    .filter(([k, m]) => m.bucket === bucket)
+    .map(([k, m]) => ({ key: k, label: m.label, short: m.short }));
+  const teamSizes = [8, 10, 12, 14];
+
+  // Render format picker + team size picker
+  listEl.innerHTML = `
+    <div style="margin-bottom:20px">
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted);margin-bottom:10px">Format</div>
+      <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:8px">
+        ${formatsForBucket.map(f => {
+          const isActive = current.format === f.key;
+          return `<button onclick="document.getElementById('adp-pick-format').value='${f.key}';this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));this.classList.add('on');this.style.background='var(--accent)';this.style.color='#fff';this.parentElement.querySelectorAll('button:not(.on)').forEach(b=>{b.style.background='var(--s2)';b.style.color='var(--text)';});"
+            class="${isActive?'on':''}"
+            style="padding:14px 12px;border-radius:10px;border:1px solid ${isActive?'var(--accent)':'var(--border2)'};background:${isActive?'var(--accent)':'var(--s2)'};color:${isActive?'#fff':'var(--text)'};font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;min-height:48px;text-align:center;transition:all 120ms ease">
+              ${f.label}
+            </button>`;
+        }).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted);margin-bottom:10px">League Size</div>
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px">
+        ${teamSizes.map(t => {
+          const isActive = current.teams === t;
+          return `<button onclick="document.getElementById('adp-pick-teams').value='${t}';this.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));this.classList.add('on');this.style.background='var(--accent)';this.style.color='#fff';this.parentElement.querySelectorAll('button:not(.on)').forEach(b=>{b.style.background='var(--s2)';b.style.color='var(--text)';});"
+            class="${isActive?'on':''}"
+            style="padding:14px 8px;border-radius:10px;border:1px solid ${isActive?'var(--accent)':'var(--border2)'};background:${isActive?'var(--accent)':'var(--s2)'};color:${isActive?'#fff':'var(--text)'};font-family:var(--font-mono);font-size:14px;font-weight:700;cursor:pointer;min-height:48px;text-align:center;transition:all 120ms ease">
+              ${t}
+            </button>`;
+        }).join('')}
+      </div>
+    </div>
+    <input type="hidden" id="adp-pick-format" value="${current.format}">
+    <input type="hidden" id="adp-pick-teams" value="${current.teams}">
+    <input type="hidden" id="adp-pick-bucket" value="${bucket}">
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="closeAdpPicker()" style="flex:1;padding:14px;border-radius:10px;background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;min-height:48px">Cancel</button>
+      <button onclick="applyAdpPicker()" style="flex:2;padding:14px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-family:var(--font-sans);font-size:14px;font-weight:600;cursor:pointer;min-height:48px">✓ Apply</button>
+    </div>
+  `;
+
+  sheet.style.display = 'flex';
+}
+
+function closeAdpPicker() {
+  const sheet = document.getElementById('adp-picker-sheet');
+  if (sheet) sheet.style.display = 'none';
+}
+
+function applyAdpPicker() {
+  const format = document.getElementById('adp-pick-format')?.value;
+  const teams = parseInt(document.getElementById('adp-pick-teams')?.value);
+  const bucket = document.getElementById('adp-pick-bucket')?.value;
+  if (!format || !teams || !bucket) return;
+  closeAdpPicker();
+  setAdpFormat(bucket, format, teams);
+}
+
+// Auto-detect league format/size from user's active Sleeper league
+function autoDetectAdpFromLeague() {
+  try {
+    const lg = myTeamsData?.find(l => l.league_id === (window.ovLeagueId || window.teamsLeagueId)) || myTeamsData?.[0];
+    if (!lg) return;
+    const teamCount = lg.total_rosters || 12;
+    const closestSize = [8, 10, 12, 14].reduce((best, t) => Math.abs(t - teamCount) < Math.abs(best - teamCount) ? t : best, 12);
+    const rosterPos = lg.roster_positions || [];
+    const isSuperflex = rosterPos.includes('SUPER_FLEX');
+    const recPts = lg.scoring_settings?.rec || 0;
+    const isDynasty = (lg.settings?.max_keepers || 0) > 5 || (lg.name || '').toLowerCase().includes('dynasty');
+
+    // Only override if user hasn't manually set a preference
+    const hasUserPref = !!localStorage.getItem(SK+'-adp-selection');
+    if (hasUserPref) return;
+
+    // Dynasty bucket: always startup format (rookie is separate UI choice)
+    window._adpSelection.dynasty = { format: 'dynasty', teams: closestSize };
+
+    // Redraft bucket: pick format based on scoring + roster
+    let redraftFormat = 'ppr';
+    if (isSuperflex) redraftFormat = 'superflex';
+    else if (recPts === 0) redraftFormat = 'standard';
+    else if (recPts === 0.5) redraftFormat = 'halfppr';
+    else redraftFormat = 'ppr';
+    window._adpSelection.redraft = { format: redraftFormat, teams: closestSize };
+
+    _adpUpdateButtonLabels();
+  } catch(e) { /* keep defaults */ }
+}
+
+// Update the initial button labels and try to autodetect on load
+setTimeout(() => {
+  try {
+    _adpUpdateButtonLabels();
+    autoDetectAdpFromLeague();
+  } catch(e) {}
+}, 1500);
+
 function closeYearPicker() {
   const sheet = document.getElementById('year-picker-sheet');
   if (sheet) sheet.style.display = 'none';
@@ -11321,6 +11558,24 @@ function pickYear(year) {
     <!-- Year list grouped by decade -->
     <div id="year-picker-list" style="flex:1;overflow-y:auto;padding:12px 16px 24px"></div>
     <!-- Safe area pad -->
+    <div style="padding-bottom:env(safe-area-inset-bottom)"></div>
+  </div>
+</div>
+
+<!-- ADP Picker Bottom Sheet — for choosing format + team size -->
+<div id="adp-picker-sheet" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeAdpPicker()">
+  <div style="background:var(--bg);border:1px solid var(--border2);border-top-left-radius:20px;border-top-right-radius:20px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 -20px 60px rgba(0,0,0,0.5);animation:slideUp 200ms ease">
+    <div style="display:flex;justify-content:center;padding:10px 0 0">
+      <div style="width:40px;height:4px;background:var(--border2);border-radius:2px"></div>
+    </div>
+    <div style="padding:14px 20px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div id="adp-picker-title" style="font-size:16px;font-weight:700;color:var(--text);font-family:var(--font-sans)">Pick ADP Format</div>
+        <div id="adp-picker-sub" style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--font-mono)">From FantasyFootballCalculator mock drafts</div>
+      </div>
+      <button onclick="closeAdpPicker()" style="background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;padding:4px 8px;line-height:1;min-width:44px;min-height:44px">×</button>
+    </div>
+    <div id="adp-picker-list" style="flex:1;overflow-y:auto;padding:16px 20px 20px"></div>
     <div style="padding-bottom:env(safe-area-inset-bottom)"></div>
   </div>
 </div>
