@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 """
-Build ADP JSON files from FantasyFootballCalculator's free REST API.
+Build ADP/Value JSON files from FantasyCalc's free public API.
 
-Generates 24 files: 6 formats × 4 team sizes.
-- Formats: standard, ppr, half-ppr, 2qb (superflex), dynasty (startup), rookie
-- Team sizes: 8, 10, 12, 14
-- Output: data/adp_{format}_{teams}team.json
+FantasyCalc sources values from REAL Sleeper, MFL, and Fleaflicker trades
+— hundreds of thousands of trades, updated continuously. This is as close
+to "live Sleeper ADP" as exists in a free, browser-accessible API.
+
+Endpoint:
+  GET https://api.fantasycalc.com/values/current?isDynasty={bool}&numQbs={1|2}&numTeams={N}&ppr={0|0.5|1}
+
+Generates files for combinations of:
+- isDynasty: true (dynasty) | false (redraft)
+- numQbs: 1 (1QB) | 2 (Superflex)
+- numTeams: 8 | 10 | 12 | 14
+- ppr: 0 (Standard) | 0.5 (Half-PPR) | 1 (Full PPR)
+
+Output: data/adp_{format}_{teams}team.json with same schema as before so
+the frontend keeps working unchanged.
 
 USAGE:
   python3 scripts/build_adp_data.py --all
@@ -19,27 +30,29 @@ import time
 import urllib.request
 import urllib.error
 
-API_BASE = "https://fantasyfootballcalculator.com/api/v1/adp"
-CURRENT_YEAR = 2026
+API_BASE = "https://api.fantasycalc.com/values/current"
 
-# (frontend_label, ffc_endpoint, output_basename)
+# Frontend format key -> (display label, isDynasty, numQbs, ppr, output basename)
+# These map to the existing 6 buttons in the Vault frontend, so no changes needed there.
 FORMATS = {
-    'standard':  ('Standard',         'standard',  'standard'),
-    'ppr':       ('PPR',              'ppr',       'ppr'),
-    'halfppr':   ('Half-PPR',         'half-ppr',  'halfppr'),
-    'superflex': ('Superflex / 2QB',  '2qb',       'superflex'),
-    'dynasty':   ('Dynasty Startup',  'dynasty',   'dynasty'),
-    'rookie':    ('Dynasty Rookie',   'rookie',    'rookie'),
+    'standard':  ('Standard',        False, 1, 0,   'standard'),
+    'ppr':       ('PPR',             False, 1, 1,   'ppr'),
+    'halfppr':   ('Half-PPR',        False, 1, 0.5, 'halfppr'),
+    'superflex': ('Superflex / 2QB', False, 2, 1,   'superflex'),
+    'dynasty':   ('Dynasty Startup', True,  1, 1,   'dynasty'),
+    # FantasyCalc's "dynasty" already factors rookies into the same set.
+    # For dynasty rookie-only view, we filter from the dynasty SF list to keep only rookies (years_of_experience == 0).
+    'rookie':    ('Dynasty Rookie',  True,  2, 1,   'rookie'),
 }
 
 TEAM_SIZES = [8, 10, 12, 14]
-
 USER_AGENT = "Vault-Fantasy/1.0 (+https://putput12-jp.github.io/Vault-Fantasy)"
 
 
-def fetch_adp(ffc_format, teams, year=CURRENT_YEAR, timeout=60):
-    """Fetch ADP data from FFC for a specific format + team size."""
-    url = f"{API_BASE}/{ffc_format}?teams={teams}&year={year}"
+def fetch_values(is_dynasty, num_qbs, num_teams, ppr, timeout=60):
+    """Fetch values from FantasyCalc for a specific combo."""
+    ppr_str = str(ppr) if isinstance(ppr, int) else f"{ppr:g}"
+    url = f"{API_BASE}?isDynasty={'true' if is_dynasty else 'false'}&numQbs={num_qbs}&numTeams={num_teams}&ppr={ppr_str}"
     print(f"  GET {url}", flush=True)
     req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -47,70 +60,85 @@ def fetch_adp(ffc_format, teams, year=CURRENT_YEAR, timeout=60):
 
 
 def normalize_name(name):
-    """Normalize player name for matching (lowercase, alphanumeric only)."""
-    return ''.join(c.lower() for c in name if c.isalnum())
+    return ''.join(c.lower() for c in (name or '') if c.isalnum())
 
 
-def transform(raw, frontend_label, ffc_format, teams):
-    """Convert FFC payload into Vault-friendly schema."""
-    players = raw.get('players', [])
+def transform(raw, label, ffc_format_key, teams, format_key):
+    """Convert FantasyCalc payload into Vault-friendly schema.
+
+    Maps overallRank → adp so existing frontend code works unchanged.
+    """
     transformed = []
-    name_index = {}  # normalized name → ADP value, for fast lookup
-    for p in players:
-        name = p.get('name', '').strip()
+    name_index = {}
+    for entry in raw:
+        player = entry.get('player', {})
+        name = (player.get('name') or '').strip()
         if not name:
             continue
-        adp_val = p.get('adp')
-        if adp_val is None:
+        overall_rank = entry.get('overallRank')
+        if overall_rank is None:
             continue
-        entry = {
+
+        # For rookie view, filter to first-year players only
+        if format_key == 'rookie':
+            yoe = player.get('maybeYoe')
+            if yoe is None or yoe > 0:
+                continue
+
+        out = {
             'name': name,
-            'pos': p.get('position', ''),
-            'team': p.get('team', ''),
-            'adp': float(adp_val),
-            'adp_hi': p.get('high'),
-            'adp_lo': p.get('low'),
-            'stdev': p.get('stdev'),
-            'times_drafted': p.get('times_drafted'),
-            'bye': p.get('bye'),
+            'pos': player.get('position', ''),
+            'team': player.get('maybeTeam') or '',
+            'age': player.get('maybeAge'),
+            # Map overall rank -> adp so existing UI displays sensibly
+            'adp': float(overall_rank),
+            'value': entry.get('value'),
+            'positionRank': entry.get('positionRank'),
+            'trend30Day': entry.get('trend30Day'),
+            'redraftValue': entry.get('redraftValue'),
+            'sleeperId': player.get('sleeperId'),
+            'years_of_experience': player.get('maybeYoe'),
         }
-        transformed.append(entry)
-        name_index[normalize_name(name)] = float(adp_val)
-    # Sort by ADP ascending (lower ADP = earlier pick = "better")
-    transformed.sort(key=lambda x: x['adp'])
+        transformed.append(out)
+        name_index[normalize_name(name)] = float(overall_rank)
+
+    # Re-rank within filtered subset (especially for rookies) so adp is dense 1..N
+    if format_key == 'rookie':
+        transformed.sort(key=lambda x: x['adp'])
+        for i, p in enumerate(transformed, start=1):
+            p['adp'] = float(i)
+            name_index[normalize_name(p['name'])] = float(i)
+    else:
+        transformed.sort(key=lambda x: x['adp'])
+
     return {
-        'format': ffc_format,
-        'format_label': frontend_label,
+        'format': ffc_format_key,
+        'format_label': label,
         'teams': teams,
-        'year': raw.get('meta', {}).get('year', CURRENT_YEAR),
-        'total_drafts': raw.get('meta', {}).get('total_drafts'),
-        'fetched_at': raw.get('meta', {}).get('updated'),
-        'source': 'fantasyfootballcalculator.com',
+        'source': 'fantasycalc.com (real Sleeper/MFL/Fleaflicker trades)',
         'count': len(transformed),
         'players': transformed,
         'name_to_adp': name_index,
     }
 
 
-def build_one(format_key, teams, out_dir, year=CURRENT_YEAR):
-    """Build a single ADP file for one format + team size."""
+def build_one(format_key, teams, out_dir):
     if format_key not in FORMATS:
         raise ValueError(f"Unknown format: {format_key}")
-    label, ffc_endpoint, basename = FORMATS[format_key]
+    label, is_dynasty, num_qbs, ppr, basename = FORMATS[format_key]
     out_path = os.path.join(out_dir, f'adp_{basename}_{teams}team.json')
     print(f"\n[{format_key} · {teams}-team]", flush=True)
     try:
-        raw = fetch_adp(ffc_endpoint, teams, year=year)
+        raw = fetch_values(is_dynasty, num_qbs, teams, ppr)
     except urllib.error.HTTPError as e:
-        # 404 means this combo isn't published (e.g. some formats only have 12-team)
-        if e.code == 404:
-            print(f"  → SKIP (404 - combo not published)", flush=True)
-            return ('skip', 0)
-        raise
-    transformed = transform(raw, label, ffc_endpoint, teams)
+        print(f"  → ERROR {e.code}: {e.reason}", file=sys.stderr, flush=True)
+        return ('err', 0)
+
+    transformed = transform(raw, label, format_key, teams, format_key)
     if not transformed['players']:
         print(f"  → SKIP (empty player list)", flush=True)
         return ('skip', 0)
+
     os.makedirs(out_dir, exist_ok=True)
     with open(out_path, 'w') as f:
         json.dump(transformed, f, separators=(',', ':'))
@@ -122,17 +150,15 @@ def build_one(format_key, teams, out_dir, year=CURRENT_YEAR):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--all', action='store_true',
-                   help='Build all 24 combos (6 formats × 4 team sizes)')
+                   help='Build all combos (6 formats × 4 team sizes = 24 files)')
     p.add_argument('--format', choices=list(FORMATS.keys()),
                    help='Specific format to build')
     p.add_argument('--teams', type=int, choices=TEAM_SIZES,
                    help='Specific team size')
-    p.add_argument('--year', type=int, default=CURRENT_YEAR,
-                   help=f'Year to fetch (default: {CURRENT_YEAR})')
     p.add_argument('--out-dir', default='data',
                    help='Output directory (default: data)')
-    p.add_argument('--sleep', type=float, default=1.5,
-                   help='Seconds to wait between requests (default: 1.5)')
+    p.add_argument('--sleep', type=float, default=1.0,
+                   help='Seconds to wait between requests (default: 1.0)')
     args = p.parse_args()
 
     if not args.all and not args.format:
@@ -153,15 +179,15 @@ def main():
     results = []
     for fk, teams in combos:
         try:
-            status, size = build_one(fk, teams, args.out_dir, year=args.year)
+            status, size = build_one(fk, teams, args.out_dir)
             results.append((fk, teams, status, size))
         except Exception as e:
             print(f"  → ERROR: {e}", file=sys.stderr, flush=True)
             results.append((fk, teams, 'err', 0))
-        time.sleep(args.sleep)  # Be polite to FFC
+        time.sleep(args.sleep)
 
     print("\n" + "=" * 60)
-    print("SUMMARY")
+    print("SUMMARY (source: FantasyCalc — real Sleeper/MFL/Fleaflicker trades)")
     print("=" * 60)
     print(f"{'Format':<12}{'Teams':<8}{'Status':<10}{'KB':<8}")
     total_kb = 0
