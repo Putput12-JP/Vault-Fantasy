@@ -11347,7 +11347,10 @@ async function loadAdpFile(format, teams) {
   if (!meta) return null;
   const key = `${format}_${teams}`;
   if (window._adpCache[key]) return window._adpCache[key];
-  const url = `${_adpDataBase()}/adp_${meta.filename}_${teams}team.json`;
+  // Cache-bust at the day granularity: if files refreshed today, we get fresh data
+  // without flooding GitHub Pages on every page load
+  const dayBust = Math.floor(Date.now() / 86400000);
+  const url = `${_adpDataBase()}/adp_${meta.filename}_${teams}team.json?v=${dayBust}`;
   try {
     const r = await fetch(url);
     if (!r.ok) return null;
