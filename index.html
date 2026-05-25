@@ -229,9 +229,13 @@ header{
 }
 @media(max-width:700px){
   .bottom-tab-bar{display:flex}
-  .page.on{padding-bottom:70px}
+  .page.on{padding-bottom:120px}
   .plist{padding-bottom:80px!important}
   .rbar{bottom:56px}
+}
+/* Desktop: ensure pages clear the global persistent rbar */
+@media(min-width:701px){
+  .page.on{padding-bottom:80px}
 }
 .tab-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -397,7 +401,7 @@ header{
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 #resync-btn{display:inline-flex;align-items:center;justify-content:center}
-.controls{padding:8px 12px;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:30px;z-index:97;backdrop-filter:blur(8px);-webkit-overflow-scrolling:touch}
+.controls{padding:8px 12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;overflow-x:visible;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:30px;z-index:97;backdrop-filter:blur(8px)}
 .controls::-webkit-scrollbar{display:none}
 .fbtn{padding:7px 12px;border-radius:8px;border:1.5px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s;touch-action:manipulation;min-height:38px}
 .fbtn:hover{border-color:var(--text);color:var(--text)}
@@ -693,22 +697,22 @@ header{
 .board-title{font-family:'Arial Black','Impact',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:14px}
 .board-title em{color:var(--accent2);font-style:normal}
 .board-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:1100px;margin:0 auto}
-.board-table{border-collapse:collapse;width:100%;min-width:auto}
-.board-table th{padding:7px 4px;text-align:center;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;white-space:nowrap;min-width:78px;position:sticky;top:0;z-index:2}
-.board-table td{padding:3px 2px;border:1px solid var(--border);vertical-align:top;min-width:78px}
+.board-table{border-collapse:collapse;width:100%;min-width:auto;table-layout:fixed}
+.board-table th{padding:6px 3px;text-align:center;font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;white-space:nowrap;min-width:64px;width:64px;position:sticky;top:0;z-index:2;overflow:hidden;text-overflow:ellipsis}
+.board-table td{padding:2px 1px;border:1px solid var(--border);vertical-align:top;min-width:64px;width:64px;overflow:hidden}
 .board-table tr:nth-child(odd) td{background:#1f2a4a44}
-.board-cell{padding:5px 5px;min-height:64px;display:flex;flex-direction:column;justify-content:center;gap:2px;border-radius:5px;transition:background .15s;cursor:default}
+.board-cell{padding:4px 3px;min-height:58px;display:flex;flex-direction:column;justify-content:center;gap:1px;border-radius:4px;transition:background .15s;cursor:default;overflow:hidden}
 .board-cell:hover{background:var(--s3)}
 .board-cell.me{background:#5b8dee10;border-left:2px solid var(--accent)}
 .board-cell.empty{opacity:.3}
-.bc-round{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:2px}
-.bc-pill{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;font-family:'Space Mono',monospace;display:inline-block;margin-bottom:3px}
+.bc-round{font-size:8px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:1px}
+.bc-pill{font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;font-family:'Space Mono',monospace;display:inline-block;margin-bottom:2px}
 .bc-pill.QB{background:#ff709620;color:var(--qb)}
 .bc-pill.RB{background:#3de8a020;color:var(--rb)}
 .bc-pill.WR{background:#5bc5ff20;color:var(--wr)}
 .bc-pill.TE{background:#ffd16620;color:var(--te)}
-.bc-name{font-size:12px;font-weight:600;line-height:1.3}
-.bc-rank{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace}
+.bc-name{font-size:10.5px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-rank{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace}
 .board-cell.traded{border-left:2px dashed var(--te);background:#ffd1660a}
 .bc-traded{font-size:10px;color:var(--te);font-family:'Space Mono',monospace}
 @media(max-width:700px){
@@ -2513,6 +2517,13 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </div>
 </header>
 
+<!-- GLOBAL PERSISTENT ROSTER BAR — sticks to bottom on all pages -->
+<div class="rbar" id="global-rbar">
+  <span class="rlbl">Roster</span>
+  <div class="rchips" id="rchips"></div>
+  <button class="switcher" onclick="openTModal()">Switch</button>
+</div>
+
 <!-- BOTTOM TAB BAR — mobile only (5 tabs per UXPin/Apple HIG/Material Design best practice) -->
 <nav class="bottom-tab-bar" id="bottom-tab-bar">
   <button class="tab-btn on" id="tb-overview" onclick="showPage('overview')" aria-label="My Team">
@@ -2765,13 +2776,13 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <div class="ypb-suggestion" id="ypb-top-pick" onclick=""></div>
   </div>
   <!-- INTELLIGENCE BAR — positional scarcity + run alerts + tier pressure -->
-  <div id="intel-bar" style="display:none;background:#1a2340;border-bottom:1.5px solid var(--border2);padding:5px 14px;flex-wrap:nowrap;gap:8px;align-items:center;overflow-x:auto;scrollbar-width:none">
+  <div id="intel-bar" style="display:none;background:#1a2340;border-bottom:1.5px solid var(--border2);padding:5px 14px;flex-wrap:wrap;gap:8px;align-items:center;overflow-x:visible">
     <span style="font-size:8px;color:var(--accent3);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.12em;flex-shrink:0;font-weight:700">⚡ INTEL</span>
-    <div id="intel-chips" style="display:flex;gap:5px;align-items:center;flex-shrink:0"></div>
+    <div id="intel-chips" style="display:flex;gap:5px;align-items:center;flex-wrap:wrap"></div>
   </div>
 
-  <!-- PICKS STRIP -->
-  <div class="pstrip" id="pstrip"><span id="draft-timer" style="font-size:9px;color:var(--muted);font-family:Space Mono,monospace;flex-shrink:0;white-space:nowrap;padding-right:6px;border-right:1px solid var(--border);margin-right:4px"></span></div>
+  <!-- PICKS STRIP (hidden per request — kept for renderStrip JS reference) -->
+  <div class="pstrip" id="pstrip" style="display:none !important"><span id="draft-timer" style="font-size:9px;color:var(--muted);font-family:Space Mono,monospace;flex-shrink:0;white-space:nowrap;padding-right:6px;border-right:1px solid var(--border);margin-right:4px"></span></div>
   <!-- SEARCH BAR (always visible, full width) -->
   <div class="search-bar-wrap">
     <div class="search-bar-inner">
@@ -2878,11 +2889,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <!-- Mobile: div rows injected here by renderList -->
     <div id="plist-mobile"></div>
   </div>
-  <div class="rbar">
-    <span class="rlbl">Roster</span>
-    <div class="rchips" id="rchips"></div>
-    <button class="switcher" onclick="openTModal()">Switch</button>
-  </div>
+  <!-- Roster bar moved to global (just before #bottom-tab-bar) so it persists across all pages -->
 
   <!-- ===== DRAFT BOARD SECTION (merged from page-visual) ===== -->
   <div class="ld-page" style="margin-top:24px">
@@ -6890,6 +6897,8 @@ function showPage(p){
   if(p==='trade'){ initTrade(); }
   if(p==='myteams'){ initMyTeams(); }
   if(p!=='teams'){ viewTeamIdx=null; }
+  // Refresh persistent roster bar
+  try { renderRoster(); } catch(e) {}
 }
 
 // ════════════════════════════════════
@@ -7728,10 +7737,14 @@ function renderList(){
       }
       cappedRows.push(row);
     }
-    // Strip trailing tier-break if it ended on one
-    while (cappedRows.length && cappedRows[cappedRows.length-1].desktop && cappedRows[cappedRows.length-1].desktop.includes('tier-break-row')) {
-      cappedRows.pop();
-    }
+  }
+  // Always strip trailing tier-break(s) — applies to both capped and Show-All views
+  while (cappedRows.length && cappedRows[cappedRows.length-1].desktop && cappedRows[cappedRows.length-1].desktop.includes('tier-break-row')) {
+    cappedRows.pop();
+  }
+  // Also strip a *leading* tier-break (rare but possible if rank gap appears at top)
+  while (cappedRows.length && cappedRows[0].desktop && cappedRows[0].desktop.includes('tier-break-row')) {
+    cappedRows.shift();
   }
 
   tbody.innerHTML = cappedRows.map(r=>r.desktop).join('');
@@ -7989,17 +8002,17 @@ function renderBoard(){
   
   const colCount=NUM_TEAMS;
 
-  const thStyle=`background:var(--s1);position:sticky;top:0;z-index:2;padding:10px 8px;font-size:11px;font-weight:600;border-bottom:1px solid var(--border2);font-family:var(--font-sans);white-space:nowrap;min-width:95px;text-align:center;color:var(--muted);text-transform:uppercase;letter-spacing:.06em`;
+  const thStyle=`background:var(--s1);position:sticky;top:0;z-index:2;padding:6px 3px;font-size:9px;font-weight:600;border-bottom:1px solid var(--border2);font-family:var(--font-sans);white-space:nowrap;min-width:64px;width:64px;text-align:center;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis`;
   const hdr='<thead><tr>'+
-    `<th style="${thStyle};position:sticky;left:0;z-index:3;min-width:38px;color:var(--muted)">RND</th>`+
+    `<th style="${thStyle};position:sticky;left:0;z-index:3;min-width:26px;width:26px;color:var(--muted)">RND</th>`+
     TEAMS.map((n,i)=>`<th style="${thStyle};color:${i===myTeam?COLORS[i%COLORS.length]:'var(--text2)'}${i===myTeam?';border-bottom:2px solid '+COLORS[i%COLORS.length]:''}">${n}</th>`).join('')+
     '</tr></thead>';
 
-  const tdBase=`padding:3px;vertical-align:top;border:1px solid var(--border)`;
+  const tdBase=`padding:2px;vertical-align:top;border:1px solid var(--border)`;
   let rows='';
   for(let r=1;r<=NUM_ROUNDS;r++){
     rows+=`<tr>`;
-    rows+=`<td style="${tdBase};background:var(--s1);text-align:center;font-size:11px;font-weight:700;color:var(--muted);font-family:Space Mono,monospace;position:sticky;left:0;z-index:1;min-width:38px">${r}</td>`;
+    rows+=`<td style="${tdBase};background:var(--s1);text-align:center;font-size:10px;font-weight:700;color:var(--muted);font-family:Space Mono,monospace;position:sticky;left:0;z-index:1;min-width:26px;width:26px">${r}</td>`;
     for(let col=0;col<colCount;col++){
       const key=`${col}-${r}`;
       const pk=pickLookup[key];
