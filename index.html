@@ -229,13 +229,16 @@ header{
 }
 @media(max-width:700px){
   .bottom-tab-bar{display:flex}
-  .page.on{padding-bottom:120px}
+  .page.on{padding-bottom:70px}
   .plist{padding-bottom:80px!important}
   .rbar{bottom:56px}
 }
-/* Desktop: ensure pages clear the global persistent rbar */
+/* Roster bar visibility is toggled by JS in showPage() — hide by default */
+#global-rbar{display:none}
+/* When on Draft Vault, ensure the page has enough bottom padding to clear the rbar */
+#page-draft.on{padding-bottom:120px}
 @media(min-width:701px){
-  .page.on{padding-bottom:80px}
+  #page-draft.on{padding-bottom:90px}
 }
 .tab-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -430,11 +433,13 @@ header{
 .plist-thead th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:5px 4px;text-align:left;border-bottom:1.5px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap}
 .plist-thead th:first-child{text-align:right;padding-right:8px}
 @media(max-width:700px){.plist-thead{display:none}}
-.plist{padding:0 0 110px;display:block;width:100%;overflow-x:hidden;max-width:1100px;margin:0 auto}
-/* Draft Vault page: lock every section to the same 1100px container so summary, list, and board are visually aligned */
+.plist{padding:0 14px 110px;display:block;width:100%;overflow-x:hidden;max-width:1100px;margin:0 auto}
+/* Draft Vault page: lock every section to the same 1100px container with the same 14px side padding so summary, list, and board are visually aligned */
 #page-draft #intel-bar, #page-draft .pstrip, #page-draft .search-bar-wrap, #page-draft .suggest-bar, #page-draft .controls, #page-draft .draft-summary, #page-draft .ld-page{
-  max-width:1100px;margin-left:auto;margin-right:auto;
+  max-width:1100px;margin-left:auto;margin-right:auto;padding-left:14px;padding-right:14px;box-sizing:border-box;
 }
+/* .ld-page already has its own padding; keep its larger bottom padding */
+#page-draft .ld-page{padding-top:28px;padding-bottom:100px}
 .tier-break-row td{padding:0!important;border:none!important;height:auto!important}
 .tier-break{text-align:center;font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.2em;padding:4px 0;opacity:.7;border-top:1px solid var(--border)}
 .tier-break-mobile{text-align:center;font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.15em;padding:4px 0;opacity:.6;border-top:1px solid var(--border);display:block;width:100%}
@@ -634,7 +639,7 @@ header{
 .ld-page{padding:28px 28px 100px;max-width:1100px;margin:0 auto}
 
 /* ===== Draft Summary Header (StatChasers-style) ===== */
-.draft-summary{max-width:1100px;margin:18px auto 0;padding:0 14px;display:flex;flex-direction:column;gap:10px}
+.draft-summary{max-width:1100px;margin:18px auto 0;display:flex;flex-direction:column;gap:10px}
 .draft-summary .ds-card{background:linear-gradient(180deg,#1a2340,#141b2d);border:1px solid var(--border2);border-radius:14px;padding:18px 22px;position:relative;overflow:hidden}
 .draft-summary .ds-title-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .draft-summary .ds-pin{font-size:18px}
@@ -652,12 +657,17 @@ header{
 .draft-summary .ds-right-row{display:flex;justify-content:flex-end;gap:8px;font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
 .draft-summary .ds-pct{color:var(--accent3);font-weight:700}
 .draft-summary .ds-clock-card{padding:14px 18px;display:flex;flex-direction:column;gap:0}
-.draft-summary .ds-clock-row{display:flex;align-items:center;gap:10px}
+.draft-summary .ds-clock-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .draft-summary .ds-clock-icon{font-size:14px;color:var(--gold,#facc15)}
 .draft-summary .ds-clock-title{font-size:13px;font-weight:600;color:var(--text);font-family:var(--font-sans)}
 .draft-summary .ds-clock-val{font-size:12px;color:var(--accent3);font-family:'Space Mono',monospace;font-weight:700;padding:2px 8px;background:rgba(123,208,255,.1);border-radius:6px}
 .draft-summary .ds-clock-sub{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
-.draft-summary .ds-clock-chev{font-size:12px;color:var(--muted)}
+.draft-summary .ds-clock-chev{font-size:12px;color:var(--muted);margin-left:auto}
+.draft-summary .ds-resync-btn{padding:5px 11px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--font-sans);font-size:11px;font-weight:600;cursor:pointer;transition:all 150ms ease;display:inline-flex;align-items:center;gap:4px;margin-left:auto}
+.draft-summary .ds-resync-btn:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(123,208,255,0.04)}
+.draft-summary .ds-resync-btn:active{transform:scale(0.97)}
+.draft-summary .ds-resync-btn.syncing #ds-resync-icon{animation:dsResyncSpin 800ms linear infinite}
+@keyframes dsResyncSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* L/G/M/Next stat strip inside the summary card */
 .draft-summary .ds-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
 .draft-summary .ds-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;border-radius:8px;background:rgba(255,255,255,0.02)}
@@ -2769,16 +2779,19 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       </div>
     </div>
     <!-- Time On The Clock collapsible row -->
-    <div class="ds-card ds-clock-card" id="ds-clock-card" onclick="toggleDsClock(event)" style="cursor:pointer;user-select:none">
-      <div class="ds-clock-row">
+    <div class="ds-card ds-clock-card" id="ds-clock-card">
+      <div class="ds-clock-row" id="ds-clock-header" onclick="toggleDsClock(event)" style="cursor:pointer;user-select:none">
         <span class="ds-clock-icon">⏱</span>
-        <span class="ds-clock-title">Time On The Clock</span>
+        <span class="ds-clock-title">Time Since Last Pick</span>
         <span class="ds-clock-val" id="ds-clock-val">—</span>
-        <span class="ds-clock-sub" id="ds-clock-sub">(— total)</span>
-        <span class="ds-clock-chev" id="ds-clock-chev" style="margin-left:auto;transition:transform .2s">▾</span>
+        <span class="ds-clock-sub" id="ds-clock-sub"></span>
+        <button class="ds-resync-btn" id="ds-resync-btn" onclick="event.stopPropagation();manualResync()" title="Manually re-sync with Sleeper">
+          <span id="ds-resync-icon">⟳</span> Resync
+        </button>
+        <span class="ds-clock-chev" id="ds-clock-chev" style="transition:transform .2s">▾</span>
       </div>
       <div id="ds-clock-body" style="display:none;padding:10px 0 0;font-size:12px;color:var(--muted);font-family:var(--font-sans);line-height:1.5">
-        Sleeper pick-clock window per round. Time elapsed since last pick is approximate.
+        Time since last pick was made (per Sleeper API). Sleeper does not expose a live server clock — values refresh on sync. Click <strong>Resync</strong> to fetch the latest state immediately.
       </div>
     </div>
   </div>
@@ -6075,15 +6088,19 @@ function setSyncStatus(s){
 async function manualResync(){
   if(!sleeperDraftId){ toast('No draft connected'); return; }
   const btn=document.getElementById('resync-btn');
+  const dsBtn=document.getElementById('ds-resync-btn');
   if(btn) btn.textContent='⟳...';
+  if(dsBtn) dsBtn.classList.add('syncing');
   try{
     await syncSleeper();
     renderAll();
+    try { renderDraftSummary(); } catch(e){}
     toast('✓ Synced with Sleeper');
   } catch(e){
     toast('⚠ Sync failed');
   } finally{
     if(btn) btn.textContent='⟳';
+    if(dsBtn) dsBtn.classList.remove('syncing');
     if(syncTimer) clearInterval(syncTimer);
     syncTimer=setInterval(syncSleeper,15000);
   }
@@ -6931,8 +6948,10 @@ function showPage(p){
   if(p==='trade'){ initTrade(); }
   if(p==='myteams'){ initMyTeams(); }
   if(p!=='teams'){ viewTeamIdx=null; }
-  // Refresh persistent roster bar
+  // Refresh persistent roster bar (only visible on Draft Vault)
   try { renderRoster(); } catch(e) {}
+  const rbar = document.getElementById('global-rbar');
+  if (rbar) rbar.style.display = (p === 'draft') ? 'flex' : 'none';
 }
 
 // ════════════════════════════════════
@@ -9412,22 +9431,25 @@ function renderDraftSummary(){
   const pct = totalPicks > 0 ? Math.round((made / totalPicks) * 100) : 0;
   const left = Math.max(0, totalPicks - made);
 
-  // Time on Clock
-  const timer = d.pickTimer || 0;
+  // Time since last pick — derived from Sleeper's picked_at timestamp.
+  // Sleeper does not expose a live server clock, so we compute elapsed time
+  // from the most recent pick's picked_at field (ms since epoch). pickTimer
+  // is shown as secondary context ("Window: 4h") when present and reasonable.
   const fmt = (s) => {
-    if(!s) return '—';
-    if (s >= 3600) return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
-    if (s >= 60)   return `${Math.floor(s/60)}m`;
-    return `${s}s`;
+    if(s == null || s < 0) return '—';
+    if (s < 60) return `${s}s`;
+    if (s < 3600) return `${Math.floor(s/60)}m ${s%60}s`;
+    const h = Math.floor(s/3600);
+    const m = Math.floor((s%3600)/60);
+    return `${h}h ${m}m`;
   };
-  const totalSec = timer * left;
-  const totalFmt = (sec) => {
-    if(!sec) return '—';
-    const h = Math.floor(sec/3600);
-    const m = Math.floor((sec%3600)/60);
-    if (h) return `${h}h ${m}m`;
-    return `${m}m`;
-  };
+  let elapsedSec = null;
+  if (d.lastPickedAt) {
+    elapsedSec = Math.max(0, Math.floor((Date.now() - d.lastPickedAt)/1000));
+  }
+  const timer = d.pickTimer || 0;
+  // Sleeper sometimes returns 0 or a stale 14400 for paused/slow drafts — only show window if reasonable (< 24h)
+  const windowStr = (timer > 0 && timer < 86400) ? `(window: ${fmt(timer)})` : '';
 
   // Populate
   const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
@@ -9447,8 +9469,8 @@ function renderDraftSummary(){
   set('ds-stat-gone', String(made));
   set('ds-stat-mine', String(myCount));
   set('ds-stat-next', pickStr);
-  set('ds-clock-val', fmt(timer));
-  set('ds-clock-sub', `(${totalFmt(totalSec)} total)`);
+  set('ds-clock-val', elapsedSec != null ? fmt(elapsedSec) : '—');
+  set('ds-clock-sub', windowStr);
   const bar = document.getElementById('ds-progress-fill');
   if(bar) bar.style.width = `${pct}%`;
 }
@@ -9460,6 +9482,23 @@ function toggleDsClock(event){
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'block';
   if(chev) chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+// Tick the "time since last pick" value every second so it feels live between 15s syncs
+if (!window._dsClockTicker) {
+  window._dsClockTicker = setInterval(() => {
+    const d = window._activeDraft;
+    if (!d || !d.lastPickedAt) return;
+    const el = document.getElementById('ds-clock-val');
+    if (!el || !document.getElementById('page-draft')?.classList.contains('on')) return;
+    const elapsedSec = Math.max(0, Math.floor((Date.now() - d.lastPickedAt)/1000));
+    const fmt = (s) => {
+      if(s < 60) return `${s}s`;
+      if(s < 3600) return `${Math.floor(s/60)}m ${s%60}s`;
+      const h=Math.floor(s/3600); return `${h}h ${Math.floor((s%3600)/60)}m`;
+    };
+    el.textContent = fmt(elapsedSec);
+  }, 1000);
 }
 
 // ════════════════════════════════════
