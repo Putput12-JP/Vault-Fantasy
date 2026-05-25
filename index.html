@@ -446,11 +446,13 @@ header{
 .plist-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .plist-table col.col-rk   {width:48px}
 .plist-table col.col-photo{width:34px}
-.plist-table col.col-name {width:185px}
-.plist-table col.col-team {width:48px}
+.plist-table col.col-name {width:170px}
+.plist-table col.col-team {width:44px}
 .plist-table col.col-pos  {width:36px}
-.plist-table col.col-raval{width:64px}
-.plist-table col.col-act  {width:160px}
+.plist-table col.col-dynasty{width:72px}
+.plist-table col.col-redraft{width:64px}
+.plist-table col.col-adp  {width:58px}
+.plist-table col.col-act  {width:130px}
 .plist-table col.col-fill {width:auto}
 .plist-thead th{
   font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;
@@ -2909,7 +2911,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <table class="plist-table">
       <colgroup>
         <col class="col-rk"><col class="col-photo"><col class="col-name">
-        <col class="col-team"><col class="col-pos"><col class="col-raval"><col class="col-act"><col class="col-fill">
+        <col class="col-team"><col class="col-pos"><col class="col-dynasty"><col class="col-redraft"><col class="col-adp"><col class="col-act"><col class="col-fill">
       </colgroup>
       <thead class="plist-thead" id="lhdr">
         <tr>
@@ -2918,7 +2920,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th>NAME</th>
           <th>TEAM</th>
           <th>POS</th>
-          <th style="text-align:right;padding-right:8px" title="RosterAudit dynasty SF value">RA VAL</th>
+          <th style="text-align:right;padding-right:8px" title="Dynasty value (FantasyCalc or RosterAudit depending on source)">DYNASTY</th>
+          <th style="text-align:right;padding-right:8px" title="Redraft value (FantasyCalc 1-year value)">REDRAFT</th>
+          <th style="text-align:right;padding-right:8px" title="ADP based on draft format and team size">ADP</th>
           <th>STATUS</th>
           <th></th>
         </tr>
@@ -4295,8 +4299,23 @@ function _psSetTabActive(tab) {
   });
 }
 
-function _psRenderHeader() {
-  const hdr = document.getElementById('ps-header');
+// Toggle value source from the player-stats modal (DYNASTY chip source label)
+function _psToggleValueSource() {
+  const newSrc = valueSource === 'ra' ? 'fc' : 'ra';
+  setValueSource(newSrc);
+  // setValueSource will fetch RA on first switch; re-render header once data is in flight
+  try { _psRenderHeader(); } catch(e) {}
+  // If RA was just requested and not yet loaded, poll briefly to re-render once it lands
+  if (newSrc === 'ra' && !raLoaded) {
+    let tries = 0;
+    const t = setInterval(() => {
+      tries++;
+      if (raLoaded || tries > 30) { clearInterval(t); try { _psRenderHeader(); renderList(); } catch(e){} }
+    }, 250);
+  }
+}
+
+function _psRenderHeader() {  const hdr = document.getElementById('ps-header');
   if (!hdr || !_psPlayer) return;
   const { name, pos, team, sleeperId } = _psPlayer;
   const posC = {QB:'#ff6680',RB:'#3DCC7A',WR:'#7bd0ff',TE:'#f5c842'}[pos]||'#909097';
@@ -4304,8 +4323,11 @@ function _psRenderHeader() {
   const avatarUrl = sleeperId ? `https://sleepercdn.com/content/nfl/players/thumb/${sleeperId}.jpg` : '';
   const val = _psData?.val;
   const page = _psData?.page;
-  const raValSF = val?.val_sf || getPlayerValue(name) || 0;
+  const dynastyVal = getPlayerValue(name) || val?.val_sf || 0;
   const fcData = getFCValue(name);
+  const redraftVal = fcData?.redraftValue || 0;
+  const sourceLabel = valueSource === 'ra' ? 'RA' : 'FC';
+  const sourceTooltip = valueSource === 'ra' ? 'RosterAudit' : 'FantasyCalc';
   // injury from nflverse
   const inj = window.getNflverseInjury ? getNflverseInjury(name) : null;
   const injStatus = inj?.status || '';
@@ -4322,9 +4344,11 @@ function _psRenderHeader() {
     rostered ? `<div class="ps-rank-chip"><b style="color:${posC}">${rostered}</b> ROSTERED</div>` : '',
     started ? `<div class="ps-rank-chip"><b style="color:${posC}">${started}</b> STARTED</div>` : '',
   ].filter(Boolean).join('');
+  // Build value chips: DYNASTY + REDRAFT + source toggle (only if FC/RA differ or RA available)
   const valChips = [
-    raValSF ? `<div class="ps-val-chip" style="color:#3DCC7A;border-color:rgba(61,204,122,0.3)">RA ${raValSF.toLocaleString()}</div>` : '',
-    fcData?.value ? `<div class="ps-val-chip" style="color:#7bd0ff;border-color:rgba(123,208,255,0.3)">FC ${fcData.value.toLocaleString()}</div>` : '',
+    dynastyVal ? `<div class="ps-val-chip" title="${sourceTooltip} dynasty value" style="color:#facc15;border-color:rgba(250,204,21,0.35)">DYNASTY ${dynastyVal.toLocaleString()} <span style="opacity:.55;font-size:9px;margin-left:4px">${sourceLabel}</span></div>` : '',
+    redraftVal ? `<div class="ps-val-chip" title="FantasyCalc redraft value" style="color:#7bd0ff;border-color:rgba(123,208,255,0.35)">REDRAFT ${redraftVal.toLocaleString()}</div>` : '',
+    `<div class="ps-val-chip ps-source-toggle" onclick="event.stopPropagation();_psToggleValueSource()" title="Click to switch value source (FantasyCalc ↔ RosterAudit)" style="cursor:pointer;color:var(--muted);border-color:var(--border2);background:rgba(255,255,255,0.02)">↔ ${valueSource === 'ra' ? 'Using RA' : 'Using FC'}</div>`,
   ].filter(Boolean).join('');
   hdr.innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:14px;padding-bottom:16px">
@@ -5823,7 +5847,7 @@ async function launch(skip=false) {
   }
 
   if (sleeperDraftId) {
-    document.getElementById('plist-body').innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</td></tr>';
+    document.getElementById('plist-body').innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</td></tr>';
     await syncSleeper();
     if (Object.keys(draftState).length === 0) initState();
     syncTimer = setInterval(syncSleeper, 15000);
@@ -7798,12 +7822,41 @@ function renderList(){
       statusHtml = vbadgeHtml || posPill;
     }
 
-    // Precompute RA Val cell HTML (was an inline IIFE in the template — moving out for reliability)
-    const _displayVal = getDisplayValue(p);
-    const _ravalColor = p.pos === 'PICK' ? 'var(--suggest)' : 'var(--accent3)';
-    const _ravalText = _displayVal > 0 ? _displayVal.toLocaleString() : '—';
-    const _ravalCellColor = _displayVal > 0 ? _ravalColor : 'var(--dim)';
-    const raValHtml = `<span style="color:${_ravalCellColor}">${_ravalText}</span>`;
+    // ===== Precompute DYNASTY / REDRAFT / ADP cell HTML =====
+    let dynastyVal, redraftVal, dynastyColor, redraftColor;
+    if (p.pos === 'PICK') {
+      // Picks: use the existing pick-value chart for DYNASTY; REDRAFT n/a for future picks
+      dynastyVal = getDisplayValue(p);
+      redraftVal = 0;
+      dynastyColor = 'var(--suggest)';     // purple
+      redraftColor = 'var(--dim)';
+    } else {
+      // Real players: live values from current value source (FC or RA when loaded)
+      dynastyVal = getPlayerValue(p.name) || 0;
+      const fc = getFCValue(p.name);
+      redraftVal = (fc && fc.redraftValue) || 0;
+      dynastyColor = '#facc15';            // gold (matches StatChasers screenshot)
+      redraftColor = '#7bd0ff';            // cyan
+    }
+    const _fmt = (v) => v > 0 ? v.toLocaleString() : '—';
+    const dynastyHtml = `<span style="color:${dynastyVal > 0 ? dynastyColor : 'var(--dim)'}">${_fmt(dynastyVal)}</span>`;
+    const redraftHtml = `<span style="color:${redraftVal > 0 ? redraftColor : 'var(--dim)'}">${_fmt(redraftVal)}</span>`;
+
+    // ADP cell: pull from current selection (auto-detected from active league or user-picked)
+    let adpHtml = '<span style="color:var(--dim)">—</span>';
+    if (p.pos !== 'PICK') {
+      const adpRank = typeof getADP === 'function' ? getADP(p.name) : null;
+      if (adpRank && adpRank > 0 && _activeDraft?.teams) {
+        const teams = _activeDraft.teams;
+        const round = Math.floor((adpRank - 1) / teams) + 1;
+        const slot = ((adpRank - 1) % teams) + 1;
+        const slotStr = `${round}.${String(slot).padStart(2,'0')}`;
+        adpHtml = `<span style="color:#a78bfa" title="ADP rank ${adpRank} → round ${round}, pick ${slot}">${slotStr}</span>`;
+      } else if (adpRank && adpRank > 0) {
+        // No active draft known — show overall ADP rank only
+        adpHtml = `<span style="color:#a78bfa" title="ADP rank ${adpRank}">${Math.round(adpRank)}</span>`;
+      }
+    }
 
     const desktopRow = `<tr class="prow ${isDrafted?'gone':''} ${isMe?'ismine':''} ${isHot?'is-value':''}">
       <td class="rnum" style="text-align:right;padding-right:8px">${rank}</td>
@@ -7816,7 +7869,9 @@ function renderList(){
       </td>
       <td class="td-team" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
       <td class="td-pos"><span class="ppill ${p.pos}">${p.pos}</span></td>
-      <td class="td-raval" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-align:right;padding-right:8px" title="${p.pos === 'PICK' ? 'Estimated dynasty pick value' : 'RosterAudit Dynasty SF value'}">${raValHtml}</td>
+      <td class="td-dynasty" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-align:right;padding-right:8px">${dynastyHtml}</td>
+      <td class="td-redraft" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:600;text-align:right;padding-right:8px">${redraftHtml}</td>
+      <td class="td-adp" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:600;text-align:right;padding-right:8px">${adpHtml}</td>
       <td style="padding:0 4px;text-align:center;width:28px;cursor:pointer;font-size:14px;user-select:none" 
           onclick="event.stopPropagation();toggleWatch('${sn}')" 
           title="${inWatchlist?'Remove from watchlist':'Add to watchlist'}">${inWatchlist?'⭐':'☆'}</td>
@@ -7837,7 +7892,8 @@ function renderList(){
         <div class="pm-meta">
           <span class="pm-team">${p.team}</span>
           <span class="ppill ${p.pos}" style="font-size:8px;padding:1px 4px">${p.pos}</span>
-          ${_displayVal > 0 ? `<span class="pm-raval" style="font-size:10px;color:${_ravalColor};font-family:'Space Mono',monospace;font-weight:700">${_displayVal.toLocaleString()}</span>` : ''}
+          ${dynastyVal > 0 ? `<span class="pm-dynasty" style="font-size:10px;color:${dynastyColor};font-family:'Space Mono',monospace;font-weight:700">${dynastyVal.toLocaleString()}</span>` : ''}
+          ${redraftVal > 0 ? `<span class="pm-redraft" style="font-size:9px;color:${redraftColor};font-family:'Space Mono',monospace;font-weight:600;opacity:.85">· ${redraftVal.toLocaleString()}r</span>` : ''}
           ${vbadgeHtml}
         </div>
       </div>
@@ -7874,7 +7930,7 @@ function renderList(){
     if (tierTriggered) {
       tierNum++;
       rowsWithTiers.push({
-        desktop: `<tr class="tier-break-row"><td colspan="8"><div class="tier-break">— TIER ${tierNum} —</div></td></tr>`,
+        desktop: `<tr class="tier-break-row"><td colspan="10"><div class="tier-break">— TIER ${tierNum} —</div></td></tr>`,
         mobile: `<div class="tier-break-mobile">— TIER ${tierNum} —</div>`
       });
     }
@@ -8323,6 +8379,8 @@ function setValueSource(src) {
   document.getElementById('val-ra')?.classList.toggle('on', src==='ra');
   if (src==='ra' && !raLoaded) { fetchRosterAudit(); return; }
   renderTeams();
+  // Refresh Draft Vault rows so DYNASTY column reflects the new source
+  try { renderList(); } catch(e) {}
 }
 
 // ════════════════════════════════════
