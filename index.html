@@ -7596,6 +7596,59 @@ function gradePos(players, pos) {
 function getADP(name){
   return ADP_LOOKUP[name]?.adp || ADP_LOOKUP[normName(name)]?.adp || null;
 }
+// Compute a display value for the RA Val column.
+// Real players: use raValue (val_sf), fall back to ra1qb if 0, then to a rank-based proxy.
+// Picks (pos === 'PICK'): use a dynasty pick-value chart (parsed from name like "2026 Pick 1.01" or "2027 Early 1st").
+// Future-year picks are discounted: 2027 → 80%, 2028 → 60%, 2029+ → 40%.
+function getDisplayValue(p){
+  if (!p) return 0;
+  if (p.pos === 'PICK') {
+    const name = (p.name || '').toLowerCase();
+    // Try to extract year and pick info
+    const yearMatch = name.match(/(\d{4})/);
+    const curYear = new Date().getFullYear();
+    const year = yearMatch ? parseInt(yearMatch[1]) : curYear;
+    const yearsOut = Math.max(0, year - curYear);
+    const discount = yearsOut === 0 ? 1.0 : yearsOut === 1 ? 0.8 : yearsOut === 2 ? 0.6 : 0.4;
+    let baseVal = 0;
+    // Specific pick slot: "1.01" through "3.12"
+    const slotMatch = name.match(/(\d)\.(\d{1,2})/);
+    if (slotMatch) {
+      const round = parseInt(slotMatch[1]);
+      const slot = parseInt(slotMatch[2]);
+      // Pick-value chart (consensus dynasty values, current-year basis)
+      const r1 = [7000,6500,6200,5800,5500,5200,4900,4600,4300,4100,3900,3700];
+      const r2 = [3300,3000,2700,2500,2300,2100,1900,1750,1600,1450,1300,1150];
+      const r3 = [950,850,750,650,580,520,470,420,380,340,300,260];
+      const r4 = [220,200,180,160,145,130,115,100,90,80,70,60];
+      const charts = {1: r1, 2: r2, 3: r3, 4: r4};
+      if (charts[round] && slot >= 1 && slot <= 12) {
+        baseVal = charts[round][slot-1] || 0;
+      }
+    } else {
+      // Generic: "Early 1st" / "Mid 1st" / "Late 1st" / "Early 2nd" etc
+      const rangeMap = {
+        '1st': { early: 6500, mid: 5300, late: 4100, generic: 5300 },
+        '2nd': { early: 2800, mid: 2000, late: 1300, generic: 2000 },
+        '3rd': { early: 800,  mid: 500,  late: 320,  generic: 540 },
+        '4th': { early: 200,  mid: 130,  late: 75,   generic: 135 },
+      };
+      const roundKey = name.match(/(1st|2nd|3rd|4th)/)?.[1];
+      if (roundKey && rangeMap[roundKey]) {
+        const tier = name.includes('early') ? 'early' : name.includes('mid') ? 'mid' : name.includes('late') ? 'late' : 'generic';
+        baseVal = rangeMap[roundKey][tier];
+      }
+    }
+    return Math.round(baseVal * discount);
+  }
+  // Regular player: prefer raValue (SF), fall back to ra1qb, then to rank-derived proxy
+  if (p.raValue && p.raValue > 0) return p.raValue;
+  if (p.ra1qb && p.ra1qb > 0)   return p.ra1qb;
+  // Final fallback: derive from rank. Rank 1 ≈ 10000, rank 400 ≈ 10.
+  if (p.r0 && p.r0 > 0) return Math.max(10, Math.round(10000 / Math.pow(p.r0, 0.78)));
+  return 0;
+}
+
 function sortedPlayers(){
   // Source array: filter out picks if hide-picks toggle is on
   const src = window._hidePicks ? PLAYERS.filter(p => p.pos !== 'PICK') : PLAYERS;
@@ -7745,7 +7798,13 @@ function renderList(){
       statusHtml = vbadgeHtml || posPill;
     }
 
-    
+    // Precompute RA Val cell HTML (was an inline IIFE in the template — moving out for reliability)
+    const _displayVal = getDisplayValue(p);
+    const _ravalColor = p.pos === 'PICK' ? 'var(--suggest)' : 'var(--accent3)';
+    const _ravalText = _displayVal > 0 ? _displayVal.toLocaleString() : '—';
+    const _ravalCellColor = _displayVal > 0 ? _ravalColor : 'var(--dim)';
+    const raValHtml = `<span style="color:${_ravalCellColor}">${_ravalText}</span>`;
+
     const desktopRow = `<tr class="prow ${isDrafted?'gone':''} ${isMe?'ismine':''} ${isHot?'is-value':''}">
       <td class="rnum" style="text-align:right;padding-right:8px">${rank}</td>
       <td style="padding:0 3px">${hs}</td>
@@ -7757,7 +7816,7 @@ function renderList(){
       </td>
       <td class="td-team" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
       <td class="td-pos"><span class="ppill ${p.pos}">${p.pos}</span></td>
-      <td class="td-raval" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:${p.raValue ? 'var(--accent3)' : 'var(--dim)'};text-align:right;padding-right:8px" title="RosterAudit Dynasty SF value">${p.raValue ? p.raValue.toLocaleString() : '—'}</td>
+      <td class="td-raval" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-align:right;padding-right:8px" title="${p.pos === 'PICK' ? 'Estimated dynasty pick value' : 'RosterAudit Dynasty SF value'}">${raValHtml}</td>
       <td style="padding:0 4px;text-align:center;width:28px;cursor:pointer;font-size:14px;user-select:none" 
           onclick="event.stopPropagation();toggleWatch('${sn}')" 
           title="${inWatchlist?'Remove from watchlist':'Add to watchlist'}">${inWatchlist?'⭐':'☆'}</td>
@@ -7778,7 +7837,7 @@ function renderList(){
         <div class="pm-meta">
           <span class="pm-team">${p.team}</span>
           <span class="ppill ${p.pos}" style="font-size:8px;padding:1px 4px">${p.pos}</span>
-          ${p.raValue ? `<span class="pm-raval" style="font-size:10px;color:var(--accent3);font-family:'Space Mono',monospace;font-weight:700">${p.raValue.toLocaleString()}</span>` : ''}
+          ${_displayVal > 0 ? `<span class="pm-raval" style="font-size:10px;color:${_ravalColor};font-family:'Space Mono',monospace;font-weight:700">${_displayVal.toLocaleString()}</span>` : ''}
           ${vbadgeHtml}
         </div>
       </div>
@@ -7800,8 +7859,19 @@ function renderList(){
     if (!r.desktop) return;
     const p = sorted[i];
     const rank = p?.r0 || 0;
-    
-    if (rank && lastRank && (rank - lastRank) >= 8 && tierNum <= 9) {
+
+    // Tier-break trigger: a real rank gap, but only in the top ~200 where ranks are dense and meaningful.
+    // Skip when:
+    //  - either rank is 0 or missing
+    //  - either rank is past 200 (sparse, noisy)
+    //  - gap is huge (>40 = missing data, not a real tier)
+    //  - we already have 9 tiers
+    const gap = rank - lastRank;
+    const tierTriggered = rank && lastRank
+      && rank <= 200 && lastRank <= 200
+      && gap >= 8 && gap <= 40
+      && tierNum <= 9;
+    if (tierTriggered) {
       tierNum++;
       rowsWithTiers.push({
         desktop: `<tr class="tier-break-row"><td colspan="8"><div class="tier-break">— TIER ${tierNum} —</div></td></tr>`,
@@ -7827,14 +7897,33 @@ function renderList(){
       cappedRows.push(row);
     }
   }
-  // Always strip trailing tier-break(s) — applies to both capped and Show-All views
-  while (cappedRows.length && cappedRows[cappedRows.length-1].desktop && cappedRows[cappedRows.length-1].desktop.includes('tier-break-row')) {
-    cappedRows.pop();
+  // Strip orphan tier-breaks anywhere in the list:
+  // - Trailing tier-breaks (no player rows after)
+  // - Leading tier-breaks (no player rows before)
+  // - Adjacent tier-breaks (two tier dividers with nothing in between)
+  const isTB = (row) => row && row.desktop && row.desktop.includes('tier-break-row');
+  // Pass 1: trailing
+  while (cappedRows.length && isTB(cappedRows[cappedRows.length-1])) cappedRows.pop();
+  // Pass 2: leading
+  while (cappedRows.length && isTB(cappedRows[0])) cappedRows.shift();
+  // Pass 3: collapse adjacent tier-breaks (keep just one if multiple in a row, then it'll get pruned by pass 4)
+  // Pass 4: any tier-break followed immediately by another tier-break is empty → remove
+  const cleaned = [];
+  for (let i = 0; i < cappedRows.length; i++) {
+    const cur = cappedRows[i];
+    if (isTB(cur)) {
+      // Look ahead: is there a non-TB row before the next TB or end of list?
+      let hasPlayerAfter = false;
+      for (let j = i+1; j < cappedRows.length; j++) {
+        if (isTB(cappedRows[j])) break;
+        hasPlayerAfter = true;
+        break;
+      }
+      if (!hasPlayerAfter) continue; // skip this orphan tier-break
+    }
+    cleaned.push(cur);
   }
-  // Also strip a *leading* tier-break (rare but possible if rank gap appears at top)
-  while (cappedRows.length && cappedRows[0].desktop && cappedRows[0].desktop.includes('tier-break-row')) {
-    cappedRows.shift();
-  }
+  cappedRows = cleaned;
 
   tbody.innerHTML = cappedRows.map(r=>r.desktop).join('');
   if(mobileContainer) mobileContainer.innerHTML = cappedRows.map(r=>r.mobile).join('');
