@@ -426,7 +426,11 @@ header{
 .plist-thead th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:5px 4px;text-align:left;border-bottom:1.5px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap}
 .plist-thead th:first-child{text-align:right;padding-right:8px}
 @media(max-width:700px){.plist-thead{display:none}}
-.plist{padding:0 0 110px;display:block;width:100%;overflow-x:hidden}
+.plist{padding:0 0 110px;display:block;width:100%;overflow-x:hidden;max-width:1100px;margin:0 auto}
+/* Draft Vault page: constrain controls/intel/search bars to match board width */
+#page-draft #intel-bar, #page-draft .pstrip, #page-draft .search-bar-wrap, #page-draft .suggest-bar, #page-draft .controls{
+  max-width:1100px;margin-left:auto;margin-right:auto;
+}
 .tier-break-row td{padding:0!important;border:none!important;height:auto!important}
 .tier-break{text-align:center;font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.2em;padding:4px 0;opacity:.7;border-top:1px solid var(--border)}
 .tier-break-mobile{text-align:center;font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.15em;padding:4px 0;opacity:.6;border-top:1px solid var(--border);display:block;width:100%}
@@ -624,6 +628,39 @@ header{
 .schip .sname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .schip .sreason{font-size:8px;color:var(--muted);font-family:'Space Mono',monospace}
 .ld-page{padding:28px 28px 100px;max-width:1100px;margin:0 auto}
+
+/* ===== Draft Summary Header (StatChasers-style) ===== */
+.draft-summary{max-width:1100px;margin:18px auto 0;padding:0 14px;display:flex;flex-direction:column;gap:10px}
+.draft-summary .ds-card{background:linear-gradient(180deg,#1a2340,#141b2d);border:1px solid var(--border2);border-radius:14px;padding:18px 22px;position:relative;overflow:hidden}
+.draft-summary .ds-title-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.draft-summary .ds-pin{font-size:18px}
+.draft-summary .ds-title{font-size:16px;font-weight:700;color:var(--text);font-family:var(--font-sans)}
+.draft-summary .ds-meta{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.draft-summary .ds-pick-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.draft-summary .ds-pick-label{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.draft-summary .ds-pick-no{font-size:36px;font-weight:800;color:var(--text);line-height:1;letter-spacing:-0.02em;font-family:var(--font-sans)}
+.draft-summary .ds-pick-mini{font-size:13px;color:var(--muted);font-family:'Space Mono',monospace}
+.draft-summary .ds-pick-dot{color:var(--muted);font-size:13px}
+.draft-summary .ds-pick-away{font-size:13px;color:var(--accent3);font-family:'Space Mono',monospace;font-weight:600}
+.draft-summary .ds-sub{font-size:13px;color:var(--text2);margin-bottom:12px;font-family:var(--font-sans)}
+.draft-summary .ds-progress{height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.draft-summary .ds-progress-fill{height:100%;background:linear-gradient(90deg,#5b8dee,#facc15);border-radius:3px;transition:width .4s ease}
+.draft-summary .ds-right-row{display:flex;justify-content:flex-end;gap:8px;font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
+.draft-summary .ds-pct{color:var(--accent3);font-weight:700}
+.draft-summary .ds-clock-card{padding:14px 18px;display:flex;flex-direction:column;gap:0}
+.draft-summary .ds-clock-row{display:flex;align-items:center;gap:10px}
+.draft-summary .ds-clock-icon{font-size:14px;color:var(--gold,#facc15)}
+.draft-summary .ds-clock-title{font-size:13px;font-weight:600;color:var(--text);font-family:var(--font-sans)}
+.draft-summary .ds-clock-val{font-size:12px;color:var(--accent3);font-family:'Space Mono',monospace;font-weight:700;padding:2px 8px;background:rgba(123,208,255,.1);border-radius:6px}
+.draft-summary .ds-clock-sub{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
+.draft-summary .ds-clock-chev{font-size:12px;color:var(--muted)}
+@media(max-width:700px){
+  .draft-summary{padding:0 12px;margin-top:10px}
+  .draft-summary .ds-card{padding:14px 16px}
+  .draft-summary .ds-pick-no{font-size:30px}
+  .draft-summary .ds-meta{margin-bottom:10px}
+  .draft-summary .ds-pick-row{gap:8px}
+}
 .ld-title{font-size:26px;font-weight:700;color:var(--text);font-family:var(--font-sans);margin:0}
 .ld-sub{font-size:14px;color:var(--muted);font-family:var(--font-sans)}
 .ld-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 22px}
@@ -655,12 +692,12 @@ header{
 .board-page{padding:12px 12px 40px}
 .board-title{font-family:'Arial Black','Impact',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:14px}
 .board-title em{color:var(--accent2);font-style:normal}
-.board-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.board-table{border-collapse:collapse;min-width:700px}
-.board-table th{padding:9px 6px;text-align:center;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;white-space:nowrap;min-width:95px;position:sticky;top:0;z-index:2}
-.board-table td{padding:4px 3px;border:1px solid var(--border);vertical-align:top;min-width:95px}
+.board-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:1100px;margin:0 auto}
+.board-table{border-collapse:collapse;width:100%;min-width:auto}
+.board-table th{padding:7px 4px;text-align:center;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;white-space:nowrap;min-width:78px;position:sticky;top:0;z-index:2}
+.board-table td{padding:3px 2px;border:1px solid var(--border);vertical-align:top;min-width:78px}
 .board-table tr:nth-child(odd) td{background:#1f2a4a44}
-.board-cell{padding:6px 7px;min-height:68px;display:flex;flex-direction:column;justify-content:center;gap:3px;border-radius:5px;transition:background .15s;cursor:default}
+.board-cell{padding:5px 5px;min-height:64px;display:flex;flex-direction:column;justify-content:center;gap:2px;border-radius:5px;transition:background .15s;cursor:default}
 .board-cell:hover{background:var(--s3)}
 .board-cell.me{background:#5b8dee10;border-left:2px solid var(--accent)}
 .board-cell.empty{opacity:.3}
@@ -2435,7 +2472,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <button id="nb-portfolio" onclick="showPage('portfolio')">Portfolio</button>
     <button id="nb-visual" onclick="showPage('visual')" style="display:none">Draft Room</button>
     <button id="nb-research" onclick="showPage('research')">Research Hub</button>
-    <button id="nb-draft" onclick="showPage('draft')">Rankings</button>
+    <button id="nb-draft" onclick="showPage('draft')">Draft Vault</button>
     <button id="nb-teams" onclick="showPage('teams')">League</button>
     <button id="nb-trade" onclick="showPage('trade')">Calc</button>
   </div>
@@ -2490,9 +2527,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <span class="tab-icon">🔬</span>
     <span class="tab-label">Research</span>
   </button>
-  <button class="tab-btn" id="tb-draft" onclick="showPage('draft')" aria-label="Rankings">
+  <button class="tab-btn" id="tb-draft" onclick="showPage('draft')" aria-label="Draft Vault">
     <span class="tab-icon">📋</span>
-    <span class="tab-label">Rankings</span>
+    <span class="tab-label">Draft Vault</span>
   </button>
   <button class="tab-btn" id="tb-more" onclick="openMoreSheet()" aria-label="More">
     <span class="tab-icon">⋯</span>
@@ -2516,8 +2553,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button onclick="closeMoreSheet();showPage('trade')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left;min-height:52px">
         <span style="font-size:20px">🔄</span><span style="font-weight:600">Trade Calculator</span>
       </button>
-      <button onclick="closeMoreSheet();showPage('visual')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left;min-height:52px">
-        <span style="font-size:20px">🎯</span><span style="font-weight:600">Draft Room</span>
+      <button onclick="closeMoreSheet();showPage('draft')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left;min-height:52px">
+        <span style="font-size:20px">🎯</span><span style="font-weight:600">Draft Vault</span>
       </button>
       <div style="height:1px;background:var(--border);margin:8px 12px"></div>
       <button onclick="closeMoreSheet()" style="display:flex;align-items:center;justify-content:center;padding:14px 16px;background:transparent;border:none;color:var(--muted);font-family:var(--font-mono);font-size:12px;cursor:pointer;min-height:52px">Cancel</button>
@@ -2568,11 +2605,11 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <button onclick="showPage('overview')" id="sl-overview" class="sidebar-link active">
       <span style="font-size:17px">🏠</span><span>My Team</span>
     </button>
-    <button onclick="showPage('visual')" id="sl-visual" class="sidebar-link">
+    <button onclick="showPage('draft')" id="sl-visual" class="sidebar-link" style="display:none">
       <span style="font-size:17px">📋</span><span>Draft Room</span>
     </button>
     <button onclick="showPage('draft')" id="sl-draft" class="sidebar-link">
-      <span style="font-size:17px">📊</span><span>Rankings</span>
+      <span style="font-size:17px">📊</span><span>Draft Vault</span>
     </button>
     <button onclick="showPage('teams')" id="sl-teams" class="sidebar-link">
       <span style="font-size:17px">🏆</span><span>League</span>
@@ -2679,8 +2716,45 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 </div>
 
 <div class="page z1" id="page-draft" style="overflow-y:auto">
-  <!-- YOUR PICK BANNER -->
-  <div class="your-pick-banner" id="your-pick-banner">
+  <!-- DRAFT SUMMARY HEADER (StatChasers-style) — shown only when an active draft is loaded -->
+  <div id="draft-summary" class="draft-summary" style="display:none">
+    <div class="ds-card">
+      <div class="ds-title-row">
+        <span class="ds-pin">🦴</span>
+        <span class="ds-title" id="ds-title">Active Draft</span>
+      </div>
+      <div class="ds-meta" id="ds-meta">— · — · —</div>
+      <div class="ds-pick-row">
+        <span class="ds-pick-label">PICK</span>
+        <span class="ds-pick-no" id="ds-pick-no">—</span>
+        <span class="ds-pick-mini" id="ds-pick-mini">— / —</span>
+        <span class="ds-pick-dot">·</span>
+        <span class="ds-pick-away" id="ds-pick-away">—</span>
+      </div>
+      <div class="ds-sub" id="ds-sub">Your next pick is — picks away</div>
+      <div class="ds-progress"><div class="ds-progress-fill" id="ds-progress-fill" style="width:0%"></div></div>
+      <div class="ds-right-row">
+        <span class="ds-pct" id="ds-pct">—</span>
+        <span class="ds-left" id="ds-left">— left</span>
+      </div>
+    </div>
+    <!-- Time On The Clock collapsible row -->
+    <div class="ds-card ds-clock-card" id="ds-clock-card" onclick="toggleDsClock(event)" style="cursor:pointer;user-select:none">
+      <div class="ds-clock-row">
+        <span class="ds-clock-icon">⏱</span>
+        <span class="ds-clock-title">Time On The Clock</span>
+        <span class="ds-clock-val" id="ds-clock-val">—</span>
+        <span class="ds-clock-sub" id="ds-clock-sub">(— total)</span>
+        <span class="ds-clock-chev" id="ds-clock-chev" style="margin-left:auto;transition:transform .2s">▾</span>
+      </div>
+      <div id="ds-clock-body" style="display:none;padding:10px 0 0;font-size:12px;color:var(--muted);font-family:var(--font-sans);line-height:1.5">
+        Sleeper pick-clock window per round. Time elapsed since last pick is approximate.
+      </div>
+    </div>
+  </div>
+
+  <!-- YOUR PICK BANNER (hidden per request — kept for JS reference) -->
+  <div class="your-pick-banner" id="your-pick-banner" style="display:none !important">
     <div class="ypb-left">
       <div class="ypb-icon">⚡</div>
       <div>
@@ -2734,6 +2808,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     </div>
     <div class="sgrp">
       <button class="sbtn" onclick="toggleImportPanel()" id="sb-import" title="Import custom rankings from CSV">↑ Import</button>
+    </div>
+    <div class="sgrp">
+      <button class="sbtn" id="sb-listcap" onclick="toggleDraftListCap()" title="Show only the top 15 players or all">Top 15 ▾</button>
     </div>
     <div class="cright">
       <button class="hgbtn" id="hgbtn" onclick="toggleHide()">Show Drafted <span class="hg-count" id="hg-count">0</span></button>
@@ -2824,19 +2901,22 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
     <!-- Live Draft Detector card -->
     <div class="ld-card" id="ld-detector-card">
-      <div class="ld-card-hdr">
+      <div class="ld-card-hdr" onclick="toggleLdDetector(event)" style="cursor:pointer;user-select:none">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:16px">📡</span>
           <span class="ld-card-title">Live Draft Detector</span>
+          <span id="ld-detector-chevron" style="margin-left:6px;font-size:12px;color:var(--muted);transition:transform .2s">▾</span>
         </div>
-        <button class="ld-rescan-btn" onclick="ldRescan()" id="ld-rescan-btn">
+        <button class="ld-rescan-btn" onclick="event.stopPropagation();ldRescan()" id="ld-rescan-btn">
           <span>↻</span> Re-scan
         </button>
       </div>
-      <div id="ld-detector-msg" class="ld-detector-msg">
-        Scanning your leagues for active drafts...
+      <div id="ld-detector-body">
+        <div id="ld-detector-msg" class="ld-detector-msg">
+          Scanning your leagues for active drafts...
+        </div>
+        <div id="ld-draft-list" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
       </div>
-      <div id="ld-draft-list" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
     </div>
 
     <!-- Manual Draft ID input -->
@@ -2876,8 +2956,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <!-- Content moved to #page-draft. Auto-redirect if user lands here. -->
     <div style="padding:40px 20px;text-align:center;color:var(--muted);font-family:var(--font-sans)">
       <div style="font-size:24px;margin-bottom:12px">🎯</div>
-      <div style="font-size:14px;margin-bottom:16px">The Draft Board now lives inside the Draft Room.</div>
-      <button onclick="showPage('draft')" style="padding:10px 18px;border-radius:8px;background:var(--accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Open Draft Room</button>
+      <div style="font-size:14px;margin-bottom:16px">The Draft Board now lives inside the Draft Vault.</div>
+      <button onclick="showPage('draft')" style="padding:10px 18px;border-radius:8px;background:var(--accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Open Draft Vault</button>
     </div>
   </div>
 </div>
@@ -5811,6 +5891,20 @@ async function syncSleeper() {
 
     NUM_TEAMS = draft.settings?.teams||12;
     NUM_ROUNDS = draft.settings?.rounds||25;
+    // Stash for the Draft Summary header
+    window._activeDraft = {
+      id: sleeperDraftId,
+      name: draft.metadata?.name || draft.metadata?.scoring_type || ('Draft ' + String(sleeperDraftId).slice(-6)),
+      type: draft.type || 'snake',
+      season: draft.season || '',
+      status: draft.status || '',
+      pickTimer: draft.settings?.pick_timer || 0,
+      pickTimerType: draft.settings?.pick_timer_type || '',
+      teams: NUM_TEAMS,
+      rounds: NUM_ROUNDS,
+      picksCount: picks.length,
+      lastPickedAt: picks.length ? Math.max(...picks.map(p => p.picked_at || 0)) : 0,
+    };
     const s2r = draft.slot_to_roster_id||{};
     rosterToIdx = {};
     Object.entries(s2r).forEach(([slot,rid])=>{rosterToIdx[rid]=parseInt(slot)-1;});
@@ -6718,6 +6812,32 @@ function toggleHide(){
   }
   renderList();
 }
+
+// ===== Draft Vault: list cap (Top 15 default, toggle to All) =====
+window._draftListCap = (function(){
+  try { const s = localStorage.getItem('dcmd-v5-listcap'); return s==='all' ? 0 : 15; } catch(e){ return 15; }
+})();
+function toggleDraftListCap(){
+  window._draftListCap = window._draftListCap === 15 ? 0 : 15;
+  try { localStorage.setItem('dcmd-v5-listcap', window._draftListCap === 0 ? 'all' : '15'); } catch(e){}
+  const btn = document.getElementById('sb-listcap');
+  if(btn) btn.textContent = window._draftListCap === 15 ? 'Top 15 ▾' : 'Show All ▾';
+  renderList();
+}
+// Initialize button label on load
+setTimeout(()=>{ const b = document.getElementById('sb-listcap'); if(b) b.textContent = window._draftListCap === 15 ? 'Top 15 ▾' : 'Show All ▾'; }, 0);
+
+// ===== Live Draft Detector collapsible (Tweak #4) =====
+function toggleLdDetector(event){
+  if (event && event.target && (event.target.closest('.ld-rescan-btn'))) return; // ignore rescan clicks
+  const body = document.getElementById('ld-detector-body');
+  const chev = document.getElementById('ld-detector-chevron');
+  if(!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if(chev) chev.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
 function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.desktop-nav button').forEach(x=>x.classList.remove('on'));
@@ -6755,6 +6875,7 @@ function showPage(p){
     // Draft Board is now merged into #page-draft — initialize it too
     try { renderBoard(); } catch(e) {}
     try { ldInitPage(); } catch(e) {}
+    try { renderDraftSummary(); } catch(e) {}
   }
   if(p==='research'){ initResearch(); }
   if(p==='teams'){
@@ -7593,8 +7714,28 @@ function renderList(){
     rowsWithTiers.push(r);
   });
 
-  tbody.innerHTML = rowsWithTiers.map(r=>r.desktop).join('');
-  if(mobileContainer) mobileContainer.innerHTML = rowsWithTiers.map(r=>r.mobile).join('');
+  // Apply Top-N cap (Top 15 default; Show All = 0 = no cap)
+  let cappedRows = rowsWithTiers;
+  if (window._draftListCap && window._draftListCap > 0) {
+    let kept = 0;
+    cappedRows = [];
+    for (const row of rowsWithTiers) {
+      // tier-break-row has no .desktop player content like a real row — keep if next has room
+      const isTierBreak = row.desktop && row.desktop.includes('tier-break-row');
+      if (!isTierBreak) {
+        if (kept >= window._draftListCap) break;
+        kept++;
+      }
+      cappedRows.push(row);
+    }
+    // Strip trailing tier-break if it ended on one
+    while (cappedRows.length && cappedRows[cappedRows.length-1].desktop && cappedRows[cappedRows.length-1].desktop.includes('tier-break-row')) {
+      cappedRows.pop();
+    }
+  }
+
+  tbody.innerHTML = cappedRows.map(r=>r.desktop).join('');
+  if(mobileContainer) mobileContainer.innerHTML = cappedRows.map(r=>r.mobile).join('');
 
   document.getElementById('hav')&&(document.getElementById('hav').textContent=avail);
   document.getElementById('hgn').textContent=tot;
@@ -9171,7 +9312,91 @@ function renderAll(){
     const pg = document.querySelector('.page.on')?.id;
     if (pg==='page-teams') { const loaded=valueSource==='fc'?fcLoaded:raLoaded; if(!loaded){if(valueSource==='fc')fetchFantasyCalc();else fetchRosterAudit();}else renderTeams(); }
     if (pg==='page-visual') renderBoard();
+    if (pg==='page-draft') { renderBoard(); renderDraftSummary(); }
   });
+}
+
+// ===== Draft Summary header (StatChasers-style) =====
+function renderDraftSummary(){
+  const wrap = document.getElementById('draft-summary');
+  if(!wrap) return;
+  const d = window._activeDraft;
+  if(!d || !sleeperDraftId){
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'flex';
+
+  const totalPicks = (d.teams||NUM_TEAMS||12) * (d.rounds||NUM_ROUNDS||25);
+  const made = d.picksCount || 0;
+  const nextOverall = made + 1;
+  const teams = d.teams || NUM_TEAMS || 12;
+  const curRound = Math.floor((nextOverall - 1) / teams) + 1;
+  const curSlot  = ((nextOverall - 1) % teams) + 1;
+  const pickStr  = `${curRound}.${String(curSlot).padStart(2,'0')}`;
+
+  // My next pick
+  let awayStr = '—';
+  let subStr = 'No active draft slot detected';
+  if (myTeam !== null && PICK_SLOTS[myTeam]) {
+    const myR = getMyRoster();
+    const mySlot = PICK_SLOTS[myTeam][myR.length];
+    if (mySlot) {
+      const [mr, mp] = mySlot.split('.').map(Number);
+      const myOverall = (mr-1)*teams + mp;
+      const away = Math.max(0, myOverall - nextOverall);
+      awayStr = away === 0 ? "You're on the clock" : `${away} picks away`;
+      subStr  = away === 0 ? "You're on the clock" : `Your next pick is ${away} picks away`;
+    } else {
+      subStr = 'Your draft is complete';
+    }
+  }
+
+  const pct = totalPicks > 0 ? Math.round((made / totalPicks) * 100) : 0;
+  const left = Math.max(0, totalPicks - made);
+
+  // Time on Clock
+  const timer = d.pickTimer || 0;
+  const fmt = (s) => {
+    if(!s) return '—';
+    if (s >= 3600) return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+    if (s >= 60)   return `${Math.floor(s/60)}m`;
+    return `${s}s`;
+  };
+  const totalSec = timer * left;
+  const totalFmt = (sec) => {
+    if(!sec) return '—';
+    const h = Math.floor(sec/3600);
+    const m = Math.floor((sec%3600)/60);
+    if (h) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+
+  // Populate
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  set('ds-title', d.name || 'Active Draft');
+  const seasonStr = d.season ? `${d.season}` : '';
+  const typeStr = (d.type || 'snake').toUpperCase();
+  set('ds-meta', `${seasonStr ? seasonStr+' · ' : ''}${typeStr} · ${teams}T · ${d.rounds||NUM_ROUNDS}R`);
+  set('ds-pick-no', pickStr);
+  set('ds-pick-mini', `${nextOverall}/${totalPicks}`);
+  set('ds-pick-away', awayStr);
+  set('ds-sub', subStr);
+  set('ds-pct', `${pct}%`);
+  set('ds-left', `${left} left`);
+  set('ds-clock-val', fmt(timer));
+  set('ds-clock-sub', `(${totalFmt(totalSec)} total)`);
+  const bar = document.getElementById('ds-progress-fill');
+  if(bar) bar.style.width = `${pct}%`;
+}
+
+function toggleDsClock(event){
+  const body = document.getElementById('ds-clock-body');
+  const chev = document.getElementById('ds-clock-chev');
+  if(!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if(chev) chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 
 // ════════════════════════════════════
