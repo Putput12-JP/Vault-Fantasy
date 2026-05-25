@@ -431,8 +431,8 @@ header{
 .plist-thead th:first-child{text-align:right;padding-right:8px}
 @media(max-width:700px){.plist-thead{display:none}}
 .plist{padding:0 0 110px;display:block;width:100%;overflow-x:hidden;max-width:1100px;margin:0 auto}
-/* Draft Vault page: constrain controls/intel/search bars to match board width */
-#page-draft #intel-bar, #page-draft .pstrip, #page-draft .search-bar-wrap, #page-draft .suggest-bar, #page-draft .controls{
+/* Draft Vault page: lock every section to the same 1100px container so summary, list, and board are visually aligned */
+#page-draft #intel-bar, #page-draft .pstrip, #page-draft .search-bar-wrap, #page-draft .suggest-bar, #page-draft .controls, #page-draft .draft-summary, #page-draft .ld-page{
   max-width:1100px;margin-left:auto;margin-right:auto;
 }
 .tier-break-row td{padding:0!important;border:none!important;height:auto!important}
@@ -621,8 +621,8 @@ header{
 .switcher:hover{border-color:var(--accent);color:var(--accent2)}
 .suggest-bar{background:var(--s1);border-bottom:1.5px solid var(--border2);padding:6px 12px}
 .suggest-title{font-size:10px;color:var(--accent3);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.suggest-chips{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-@media(min-width:701px){.suggest-chips{display:flex;flex-wrap:wrap;gap:8px}}
+.suggest-chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px}
+@media(min-width:701px){.suggest-chips{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}}
 .sug-btn{padding:5px 10px;border-radius:7px;border:1.5px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;touch-action:manipulation;min-height:34px}
 .sug-btn:hover,.sug-btn:active{border-color:var(--accent2);color:var(--accent2)}
 .sug-btn.on{background:var(--s3);border-color:var(--accent);color:var(--accent3);font-weight:700}
@@ -658,6 +658,13 @@ header{
 .draft-summary .ds-clock-val{font-size:12px;color:var(--accent3);font-family:'Space Mono',monospace;font-weight:700;padding:2px 8px;background:rgba(123,208,255,.1);border-radius:6px}
 .draft-summary .ds-clock-sub{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
 .draft-summary .ds-clock-chev{font-size:12px;color:var(--muted)}
+/* L/G/M/Next stat strip inside the summary card */
+.draft-summary .ds-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.draft-summary .ds-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;border-radius:8px;background:rgba(255,255,255,0.02)}
+.draft-summary .ds-stat-val{font-size:18px;font-weight:800;color:var(--text);font-family:var(--font-sans);line-height:1;letter-spacing:-0.02em}
+.draft-summary .ds-stat-lbl{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.draft-summary .ds-stat-next{background:linear-gradient(135deg,rgba(204,0,60,0.12),rgba(255,77,109,0.08));border:1px solid rgba(204,0,60,0.25)}
+.draft-summary .ds-stat-next-val{color:#ff4d6d}
 @media(max-width:700px){
   .draft-summary{padding:0 12px;margin-top:10px}
   .draft-summary .ds-card{padding:14px 16px}
@@ -678,6 +685,9 @@ header{
 .ld-draft-item-name{font-size:14px;font-weight:600;color:var(--text);font-family:var(--font-sans)}
 .ld-draft-item-meta{font-size:12px;color:var(--muted);font-family:var(--font-sans);margin-top:3px}
 .ld-draft-item-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;font-family:var(--font-sans)}
+.ld-completed-toggle{display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;margin-top:8px;background:transparent;border:1px dashed var(--border2);border-radius:10px;color:var(--muted);font-family:var(--font-sans);font-size:12px;cursor:pointer;transition:all 150ms ease}
+.ld-completed-toggle:hover{border-color:var(--accent2);color:var(--accent2)}
+.ld-completed-toggle > span:first-child{color:var(--muted);font-size:10px}
 .ld-status-live{background:#30d98a22;color:var(--rb)}
 .ld-status-upcoming{background:#f5c84222;color:var(--te)}
 .ld-status-done{background:#ffffff11;color:var(--muted)}
@@ -1547,7 +1557,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
 /* ── Header: hide nav on desktop (sidebar handles it) ── */
 @media(min-width:1024px){
-  #header-logo { display:none !important; }
+  /* #header-logo was previously hidden because a sidebar was meant to take over,
+     but the sidebar is no longer shown — keep the logo as the anchor */
   .hstat-row .hstat { display:flex !important; }
   #app-header { padding:0 24px; }
 }
@@ -2495,10 +2506,11 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
   <!-- RIGHT: draft pick info + controls -->
   <div class="hright" style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-    <div class="hstat desktop-only" style="text-align:center"><b id="hav" style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text)">—</b><br><small style="font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-family:var(--font-mono)">LEFT</small></div>
-    <div class="hstat desktop-only" style="text-align:center"><b id="hgn" style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text)">—</b><br><small style="font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-family:var(--font-mono)">GONE</small></div>
-    <div class="hstat desktop-only" style="text-align:center"><b id="hmi" style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text)">0</b><br><small style="font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-family:var(--font-mono)">MINE</small></div>
-    <div class="next-badge desktop-only" id="nbadge" style="font-family:var(--font-mono);font-size:11px;font-weight:700;padding:6px 14px;border-radius:6px;background:linear-gradient(135deg,#cc003c,#ff4d6d);color:#fff;white-space:nowrap">NEXT: —</div>
+    <!-- L/G/M counters moved into Draft Summary card on #page-draft. Kept hidden here for JS reference (renderStrip writes to #hav/#hgn/#hmi). -->
+    <div class="hstat desktop-only" style="display:none"><b id="hav">—</b><br><small>LEFT</small></div>
+    <div class="hstat desktop-only" style="display:none"><b id="hgn">—</b><br><small>GONE</small></div>
+    <div class="hstat desktop-only" style="display:none"><b id="hmi">0</b><br><small>MINE</small></div>
+    <div class="next-badge desktop-only" id="nbadge" style="display:none;font-family:var(--font-mono);font-size:11px;font-weight:700;padding:6px 14px;border-radius:6px;background:linear-gradient(135deg,#cc003c,#ff4d6d);color:#fff;white-space:nowrap">NEXT: —</div>
     <div class="sync-wrap" id="sync-wrap" style="display:none;align-items:center;gap:6px">
       <div class="sync-dot" id="sdot" style="width:8px;height:8px;border-radius:50%;background:#909097"></div>
       <span class="sync-lbl desktop-only" id="slbl" style="font-size:11px;color:#909097;font-family:var(--font-mono)">OFFLINE</span>
@@ -2747,6 +2759,13 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <div class="ds-right-row">
         <span class="ds-pct" id="ds-pct">—</span>
         <span class="ds-left" id="ds-left">— left</span>
+      </div>
+      <!-- L/G/M/Next stat strip (moved from top-right header) -->
+      <div class="ds-stats">
+        <div class="ds-stat"><div class="ds-stat-val" id="ds-stat-left">—</div><div class="ds-stat-lbl">Left</div></div>
+        <div class="ds-stat"><div class="ds-stat-val" id="ds-stat-gone">—</div><div class="ds-stat-lbl">Gone</div></div>
+        <div class="ds-stat"><div class="ds-stat-val" id="ds-stat-mine">—</div><div class="ds-stat-lbl">Mine</div></div>
+        <div class="ds-stat ds-stat-next"><div class="ds-stat-val ds-stat-next-val" id="ds-stat-next">—</div><div class="ds-stat-lbl">Next pick</div></div>
       </div>
     </div>
     <!-- Time On The Clock collapsible row -->
@@ -6542,7 +6561,7 @@ function getSuggestions() {
     return { p, rank, valueScore, isNeed };
   })
   .sort((a, b) => ((a.isNeed?-25:0)+a.valueScore) - ((b.isNeed?-25:0)+b.valueScore))
-  .slice(0, 6);
+  .slice(0, 4);
 }
 
 function setSuggestMode(mode) {
@@ -6843,6 +6862,21 @@ function toggleLdDetector(event){
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'block';
   if(chev) chev.style.transform = isOpen ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
+function toggleLdCompleted(event){
+  event && event.stopPropagation && event.stopPropagation();
+  const list = document.getElementById('ld-completed-list');
+  const chev = document.getElementById('ld-completed-chev');
+  const btn = event && event.currentTarget;
+  if(!list) return;
+  const isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'flex';
+  if(chev) chev.textContent = isOpen ? '▾' : '▴';
+  if(btn) {
+    const count = list.children.length;
+    btn.innerHTML = `<span id="ld-completed-chev">${isOpen ? '▾' : '▴'}</span> ${isOpen ? 'Show' : 'Hide'} ${count} finished draft${count>1?'s':''}`;
+  }
 }
 
 function showPage(p){
@@ -7882,22 +7916,22 @@ async function ldRescan() {
 
     const active = (drafts||[]).filter(d => ['drafting','in_progress','paused'].includes(d.status));
     const upcoming = (drafts||[]).filter(d => d.status === 'pre_draft').slice(0,3);
-    const completed = (drafts||[]).filter(d => d.status === 'complete').slice(0,3);
-    const shown = [...active, ...upcoming, ...completed];
+    const completed = (drafts||[]).filter(d => d.status === 'complete').slice(0,5);
 
-    if (!shown.length) {
-      msg.textContent = 'No active drafts detected across your leagues. You can still enter a league ID manually below.';
-    } else {
-      msg.textContent = active.length
-        ? `🟢 ${active.length} active draft${active.length>1?'s':''} found across your leagues.`
-        : 'No active drafts — showing upcoming and recent below.';
+    if (!active.length && !upcoming.length && !completed.length) {
+      msg.textContent = 'No drafts detected across your leagues. You can still enter a league ID manually below.';
+      if (btn) btn.textContent = '↻ Re-scan';
+      return;
     }
 
-    list.innerHTML = shown.map(d => {
+    msg.textContent = active.length
+      ? `🟢 ${active.length} active draft${active.length>1?'s':''} found across your leagues.`
+      : (upcoming.length ? `${upcoming.length} upcoming draft${upcoming.length>1?'s':''} found.` : 'No active drafts — finished drafts below.');
+
+    const renderItem = (d) => {
       const isLive = ['drafting','in_progress'].includes(d.status);
       const isPaused = d.status === 'paused';
       const isUpcoming = d.status === 'pre_draft';
-      const isDone = d.status === 'complete';
       const statusLabel = isLive ? '🟢 LIVE' : isPaused ? '⏸ PAUSED' : isUpcoming ? '⏳ UPCOMING' : '✓ DONE';
       const statusCls = isLive||isPaused ? 'ld-status-live' : isUpcoming ? 'ld-status-upcoming' : 'ld-status-done';
       const rounds = d.settings?.rounds || '?';
@@ -7910,7 +7944,17 @@ async function ldRescan() {
         </div>
         <span class="ld-draft-item-status ${statusCls}">${statusLabel}</span>
       </div>`;
-    }).join('');
+    };
+
+    const activeHtml = [...active, ...upcoming].map(renderItem).join('');
+    const completedHtml = completed.map(renderItem).join('');
+    const toggleHtml = completed.length
+      ? `<button class="ld-completed-toggle" onclick="toggleLdCompleted(event)">
+           <span id="ld-completed-chev">▾</span> Show ${completed.length} finished draft${completed.length>1?'s':''}
+         </button>
+         <div id="ld-completed-list" style="display:none;flex-direction:column;gap:8px;margin-top:8px">${completedHtml}</div>`
+      : '';
+    list.innerHTML = activeHtml + toggleHtml;
 
   } catch(e) {
     msg.textContent = '⚠ Could not scan drafts: ' + e.message;
@@ -9397,6 +9441,12 @@ function renderDraftSummary(){
   set('ds-sub', subStr);
   set('ds-pct', `${pct}%`);
   set('ds-left', `${left} left`);
+  // L/G/M/Next stat strip — gone = picks made, left = picks remaining, mine = my picks
+  const myCount = myTeam !== null ? getMyRoster().length : 0;
+  set('ds-stat-left', String(left));
+  set('ds-stat-gone', String(made));
+  set('ds-stat-mine', String(myCount));
+  set('ds-stat-next', pickStr);
   set('ds-clock-val', fmt(timer));
   set('ds-clock-sub', `(${totalFmt(totalSec)} total)`);
   const bar = document.getElementById('ds-progress-fill');
