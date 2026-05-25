@@ -449,6 +449,7 @@ header{
 .plist-table col.col-name {width:185px}
 .plist-table col.col-team {width:48px}
 .plist-table col.col-pos  {width:36px}
+.plist-table col.col-raval{width:64px}
 .plist-table col.col-act  {width:160px}
 .plist-table col.col-fill {width:auto}
 .plist-thead th{
@@ -480,8 +481,10 @@ header{
 .prow-mobile.ismine{background:#5b8dee08;border-left:2px solid var(--accent)}
 .prow-mobile.is-value{border-left:2px solid var(--rb)}
 .prow-mobile.is-hot,.prow.is-hot td:first-child{border-left:3px solid var(--rb)!important}
-.vbadge.hot{animation:hotpulse 1.5s ease-in-out infinite;font-size:10px!important;font-weight:900!important}
-@keyframes hotpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.8;transform:scale(1.05)}}
+/* TAKE NOW badge — was 8px with a constant scale pulse → looked blurry. Now larger, crisper, no perma-animation. */
+.vbadge.hot{font-size:10.5px!important;font-weight:800!important;letter-spacing:0.02em}
+/* keep keyframes definition for any reduced-motion fallback elsewhere but no longer attached to .vbadge.hot */
+@keyframes hotpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.85;transform:scale(1.03)}}
 .pm-rank{width:36px;flex-shrink:0;text-align:right;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;color:var(--muted)}
 .pm-photo{width:26px;height:26px;flex-shrink:0}
 .pm-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px}
@@ -513,11 +516,11 @@ header{
 .ppill.TE{background:#ffd16618;color:var(--te)}
 .prow-meta{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;overflow:hidden}
 .pteam{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;flex-shrink:0}
-.vbadge{display:inline-flex;align-items:center;font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px;font-family:'Space Mono',monospace;white-space:nowrap;flex-shrink:0}
-.vbadge.val{background:#3de8a018;color:var(--rb)}
-.vbadge.reach{background:#ff709615;color:var(--qb)}
-.vbadge.need{background:#a78bfa15;color:var(--suggest)}
-.vbadge.hot{background:#3de8a025;color:var(--rb);font-weight:900}
+.vbadge{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;font-family:'Space Mono',monospace;white-space:nowrap;flex-shrink:0;letter-spacing:0.02em}
+.vbadge.val{background:#3de8a020;color:var(--rb)}
+.vbadge.reach{background:#ff709618;color:var(--qb)}
+.vbadge.need{background:#a78bfa18;color:var(--suggest)}
+.vbadge.hot{background:#3de8a028;color:var(--rb);font-weight:800}
 .owner-dot{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-family:'Space Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;flex-shrink:1}
 .owner-dot::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
 .prow-actions{display:flex;align-items:center;justify-content:flex-end;gap:3px;height:100%}
@@ -2855,6 +2858,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <div class="sgrp">
       <button class="sbtn" id="sb-listcap" onclick="toggleDraftListCap()" title="Show only the top 15 players or all">Top 15 ▾</button>
     </div>
+    <div class="sgrp">
+      <button class="sbtn" id="sb-hidepicks" onclick="toggleHidePicks()" title="Hide future draft picks from the list">Hide Picks</button>
+    </div>
     <div class="cright">
       <button class="hgbtn" id="hgbtn" onclick="toggleHide()">Show Drafted <span class="hg-count" id="hg-count">0</span></button>
     </div>
@@ -2903,7 +2909,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <table class="plist-table">
       <colgroup>
         <col class="col-rk"><col class="col-photo"><col class="col-name">
-        <col class="col-team"><col class="col-pos"><col class="col-act"><col class="col-fill">
+        <col class="col-team"><col class="col-pos"><col class="col-raval"><col class="col-act"><col class="col-fill">
       </colgroup>
       <thead class="plist-thead" id="lhdr">
         <tr>
@@ -2912,6 +2918,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th>NAME</th>
           <th>TEAM</th>
           <th>POS</th>
+          <th style="text-align:right;padding-right:8px" title="RosterAudit dynasty SF value">RA VAL</th>
           <th>STATUS</th>
           <th></th>
         </tr>
@@ -5816,7 +5823,7 @@ async function launch(skip=false) {
   }
 
   if (sleeperDraftId) {
-    document.getElementById('plist-body').innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</td></tr>';
+    document.getElementById('plist-body').innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</td></tr>';
     await syncSleeper();
     if (Object.keys(draftState).length === 0) initState();
     syncTimer = setInterval(syncSleeper, 15000);
@@ -5942,7 +5949,10 @@ async function syncSleeper() {
       teams: NUM_TEAMS,
       rounds: NUM_ROUNDS,
       picksCount: picks.length,
-      lastPickedAt: picks.length ? Math.max(...picks.map(p => p.picked_at || 0)) : 0,
+      // Sleeper exposes the most-recent pick timestamp on the draft object as `last_picked` (ms since epoch).
+      // The picks[] objects do NOT include picked_at — that field is reserved for slow drafts only and not in the public API.
+      // Fall back to last_message_time (also ms) if last_picked is missing, then to 0.
+      lastPickedAt: draft.last_picked || draft.last_message_time || 0,
     };
     const s2r = draft.slot_to_roster_id||{};
     rosterToIdx = {};
@@ -6867,8 +6877,30 @@ function toggleDraftListCap(){
   if(btn) btn.textContent = window._draftListCap === 15 ? 'Top 15 ▾' : 'Show All ▾';
   renderList();
 }
-// Initialize button label on load
-setTimeout(()=>{ const b = document.getElementById('sb-listcap'); if(b) b.textContent = window._draftListCap === 15 ? 'Top 15 ▾' : 'Show All ▾'; }, 0);
+// ===== Draft Vault: hide future draft picks toggle =====
+window._hidePicks = (function(){
+  try { return localStorage.getItem('dcmd-v5-hidepicks') === '1'; } catch(e){ return false; }
+})();
+function toggleHidePicks(){
+  window._hidePicks = !window._hidePicks;
+  try { localStorage.setItem('dcmd-v5-hidepicks', window._hidePicks ? '1' : '0'); } catch(e){}
+  const btn = document.getElementById('sb-hidepicks');
+  if(btn) {
+    btn.textContent = window._hidePicks ? 'Show Picks' : 'Hide Picks';
+    btn.classList.toggle('on', window._hidePicks);
+  }
+  renderList();
+}
+// Initialize button labels on load
+setTimeout(()=>{
+  const b = document.getElementById('sb-listcap');
+  if(b) b.textContent = window._draftListCap === 15 ? 'Top 15 ▾' : 'Show All ▾';
+  const hp = document.getElementById('sb-hidepicks');
+  if(hp){
+    hp.textContent = window._hidePicks ? 'Show Picks' : 'Hide Picks';
+    hp.classList.toggle('on', window._hidePicks);
+  }
+}, 0);
 
 // ===== Live Draft Detector collapsible (Tweak #4) =====
 function toggleLdDetector(event){
@@ -7565,24 +7597,26 @@ function getADP(name){
   return ADP_LOOKUP[name]?.adp || ADP_LOOKUP[normName(name)]?.adp || null;
 }
 function sortedPlayers(){
+  // Source array: filter out picks if hide-picks toggle is on
+  const src = window._hidePicks ? PLAYERS.filter(p => p.pos !== 'PICK') : PLAYERS;
   if(sortKey==='adp-dynasty'||sortKey==='adp-redraft'){
-    return [...PLAYERS].sort((a,b)=>(getADP(a.name)||9999)-(getADP(b.name)||9999));
+    return [...src].sort((a,b)=>(getADP(a.name)||9999)-(getADP(b.name)||9999));
   }
   // "my" sort = user's uploaded CSV ranks (stored in p.rMy)
   if(sortKey==='my'){
-    return [...PLAYERS].sort((a,b)=>(a.rMy||9999)-(b.rMy||9999));
+    return [...src].sort((a,b)=>(a.rMy||9999)-(b.rMy||9999));
   }
   // "ra" sort = explicit RosterAudit (always available)
   if(sortKey==='ra'){
-    return [...PLAYERS].sort((a,b)=>(a.r0||999)-(b.r0||999));
+    return [...src].sort((a,b)=>(a.r0||999)-(b.r0||999));
   }
   if(sortKey===3){
     const defMap={};
     DEFAULT_RANKINGS.forEach(p=>{ defMap[p.name]=p.r0; });
-    return [...PLAYERS].sort((a,b)=>(defMap[a.name]||999)-(defMap[b.name]||999));
+    return [...src].sort((a,b)=>(defMap[a.name]||999)-(defMap[b.name]||999));
   }
   const k=['r0','r1','r2'][sortKey]||'r0';
-  return [...PLAYERS].sort((a,b)=>(a[k]||999)-(b[k]||999));
+  return [...src].sort((a,b)=>(a[k]||999)-(b[k]||999));
 }
 
 function renderList(){
@@ -7723,6 +7757,7 @@ function renderList(){
       </td>
       <td class="td-team" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
       <td class="td-pos"><span class="ppill ${p.pos}">${p.pos}</span></td>
+      <td class="td-raval" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:${p.raValue ? 'var(--accent3)' : 'var(--dim)'};text-align:right;padding-right:8px" title="RosterAudit Dynasty SF value">${p.raValue ? p.raValue.toLocaleString() : '—'}</td>
       <td style="padding:0 4px;text-align:center;width:28px;cursor:pointer;font-size:14px;user-select:none" 
           onclick="event.stopPropagation();toggleWatch('${sn}')" 
           title="${inWatchlist?'Remove from watchlist':'Add to watchlist'}">${inWatchlist?'⭐':'☆'}</td>
@@ -7743,6 +7778,7 @@ function renderList(){
         <div class="pm-meta">
           <span class="pm-team">${p.team}</span>
           <span class="ppill ${p.pos}" style="font-size:8px;padding:1px 4px">${p.pos}</span>
+          ${p.raValue ? `<span class="pm-raval" style="font-size:10px;color:var(--accent3);font-family:'Space Mono',monospace;font-weight:700">${p.raValue.toLocaleString()}</span>` : ''}
           ${vbadgeHtml}
         </div>
       </div>
@@ -7768,7 +7804,7 @@ function renderList(){
     if (rank && lastRank && (rank - lastRank) >= 8 && tierNum <= 9) {
       tierNum++;
       rowsWithTiers.push({
-        desktop: `<tr class="tier-break-row"><td colspan="7"><div class="tier-break">— TIER ${tierNum} —</div></td></tr>`,
+        desktop: `<tr class="tier-break-row"><td colspan="8"><div class="tier-break">— TIER ${tierNum} —</div></td></tr>`,
         mobile: `<div class="tier-break-mobile">— TIER ${tierNum} —</div>`
       });
     }
