@@ -2433,7 +2433,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   <div class="nav desktop-nav" id="header-nav" style="display:flex">
     <button class="on" id="nb-overview" onclick="showPage('overview')">My Team</button>
     <button id="nb-portfolio" onclick="showPage('portfolio')">Portfolio</button>
-    <button id="nb-visual" onclick="showPage('visual')">Draft Room</button>
+    <button id="nb-visual" onclick="showPage('visual')" style="display:none">Draft Room</button>
     <button id="nb-research" onclick="showPage('research')">Research Hub</button>
     <button id="nb-draft" onclick="showPage('draft')">Rankings</button>
     <button id="nb-teams" onclick="showPage('teams')">League</button>
@@ -2806,11 +2806,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <div class="rchips" id="rchips"></div>
     <button class="switcher" onclick="openTModal()">Switch</button>
   </div>
-</div>
 
-<!-- LIVE DRAFT PAGE — StatChasers style -->
-<div class="page z1" id="page-visual" style="overflow-y:auto;flex-direction:column">
-  <div class="ld-page">
+  <!-- ===== DRAFT BOARD SECTION (merged from page-visual) ===== -->
+  <div class="ld-page" style="margin-top:24px">
 
     <!-- Page header -->
     <div style="margin-bottom:28px">
@@ -2868,6 +2866,19 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <div class="ld-empty-sub">Pick a live draft above or enter a league ID to load the draft board.</div>
     </div>
 
+  </div>
+  <!-- ===== /DRAFT BOARD SECTION ===== -->
+</div>
+
+<!-- LIVE DRAFT PAGE — StatChasers style (emptied; content moved to #page-draft) -->
+<div class="page z1" id="page-visual" style="overflow-y:auto;flex-direction:column">
+  <div class="ld-page">
+    <!-- Content moved to #page-draft. Auto-redirect if user lands here. -->
+    <div style="padding:40px 20px;text-align:center;color:var(--muted);font-family:var(--font-sans)">
+      <div style="font-size:24px;margin-bottom:12px">🎯</div>
+      <div style="font-size:14px;margin-bottom:16px">The Draft Board now lives inside the Draft Room.</div>
+      <button onclick="showPage('draft')" style="padding:10px 18px;border-radius:8px;background:var(--accent);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">Open Draft Room</button>
+    </div>
   </div>
 </div>
 
@@ -6741,6 +6752,9 @@ function showPage(p){
     } else {
       renderAll();
     }
+    // Draft Board is now merged into #page-draft — initialize it too
+    try { renderBoard(); } catch(e) {}
+    try { ldInitPage(); } catch(e) {}
   }
   if(p==='research'){ initResearch(); }
   if(p==='teams'){
