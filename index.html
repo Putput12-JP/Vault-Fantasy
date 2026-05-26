@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260526-192905 -->
+<!-- BUILD: VAULT-BUILD-20260526-204200 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -417,14 +417,13 @@ header{
 .fbtn.TE.on{background:var(--te);border-color:var(--te)}
 .sgrp{display:flex;gap:4px;border-left:1.5px solid var(--dim);padding-left:8px;align-items:center;flex-shrink:0}
 .slbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:'Space Mono',monospace;white-space:nowrap}
-/* VALUE source pill group — segmented control style */
-.value-source-grp{gap:0}
-.value-source-grp .sbtn{padding:5px 11px;border-radius:0;border-right:none;min-height:30px;font-size:10px;font-weight:700}
-.value-source-grp .sbtn:first-of-type{border-radius:6px 0 0 6px}
-.value-source-grp .sbtn:last-of-type{border-radius:0 6px 6px 0;border-right:1.5px solid var(--dim)}
-.value-source-grp .sbtn.pill-on{background:linear-gradient(135deg,#facc15,#eab308);color:#1a1a1a;border-color:#eab308;text-shadow:none}
-.value-source-grp .sbtn:not(.pill-on){color:var(--muted);background:transparent}
-.value-source-grp .sbtn:not(.pill-on):hover{color:var(--accent2);border-color:var(--accent2)}
+/* Primary sort+source mode buttons (RosterAudit / Fantasy Calc / My Rankings) */
+.sort-mode{font-weight:600}
+.sort-mode.on{background:linear-gradient(135deg,#facc15,#eab308);color:#1a1a1a;border-color:#eab308;text-shadow:none}
+.sort-mode#sm-fc.on{background:linear-gradient(135deg,#7bd0ff,#3aa8e0);border-color:#3aa8e0;color:#0a1530}
+.sort-mode#sm-my.on{background:linear-gradient(135deg,#a78bfa,#7c5cf5);border-color:#7c5cf5;color:#fff}
+.sort-mode:not(.on){color:var(--muted);background:transparent}
+.sort-mode:not(.on):hover{color:var(--accent2);border-color:var(--accent2)}
 .sbtn{padding:6px 10px;border-radius:7px;border:1.5px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:border-color 150ms ease,color 150ms ease,background 150ms ease,transform 120ms ease;touch-action:manipulation;min-height:36px;flex-shrink:0;white-space:nowrap}
 .sbtn:active{transform:scale(.97);transition:transform 80ms ease}
 .sbtn:hover{border-color:var(--accent2);color:var(--accent2)}
@@ -471,6 +470,10 @@ header{
 /* Numeric column headers (DYNASTY / REDRAFT / ADP) need tighter spacing so they don't merge visually */
 .plist-thead th.num-hdr{letter-spacing:.04em;font-size:9.5px}
 .plist-thead th .hdr-sub{display:block;font-size:7.5px;color:var(--dim);letter-spacing:.02em;margin-top:1px;font-weight:400;text-transform:none}
+.plist-thead th.col-hdr-sortable{transition:color 120ms ease,background 120ms ease;user-select:none}
+.plist-thead th.col-hdr-sortable:hover{background:rgba(255,255,255,0.03)}
+.plist-thead .sort-ind{font-size:8px;opacity:.6;margin-left:2px;display:inline-block;min-width:8px;font-weight:400;font-family:inherit;letter-spacing:0}
+.plist-thead .sort-ind.active{opacity:1}
 @media(max-width:700px){
   .plist-table, .plist-thead{display:none!important}
   .prow-mobile{display:flex}
@@ -2859,15 +2862,11 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="sbtn on" id="sb0" onclick="setSort(0)" style="display:none">—</button>
       <button class="sbtn" id="sb1" onclick="setSort(1)" style="display:none">—</button>
       <button class="sbtn" id="sb2" onclick="setSort(2)" style="display:none">—</button>
-      <button class="sbtn" id="sb3" onclick="setSort(3)" style="display:none">RosterAudit Dynasty</button>
-      <button class="sbtn" id="sb-adp-dynasty" onclick="openAdpPicker('dynasty')" title="Sleeper-style Dynasty ADP (configurable format + size)">Dynasty ADP ▾</button>
-      <button class="sbtn" id="sb-adp-redraft" onclick="openAdpPicker('redraft')" title="Sleeper-style Redraft ADP (configurable format + size)">Redraft ADP ▾</button>
-    </div>
-    <!-- VALUE SOURCE pill toggle (FantasyCalc vs RosterAudit) — controls DYNASTY column source -->
-    <div class="sgrp value-source-grp" id="value-source-grp">
-      <span class="slbl">VALUE</span>
-      <button class="sbtn pill-on" id="val-src-fc" onclick="switchValueSource('fc')" title="FantasyCalc — values from ~1M user-submitted dynasty trades">FC</button>
-      <button class="sbtn" id="val-src-ra" onclick="switchValueSource('ra')" title="RosterAudit — Elo-based values from 500k+ Sleeper leagues">RA</button>
+      <!-- Three primary sort modes — each sets BOTH the sort key AND the value source for the DYNASTY column -->
+      <button class="sbtn sort-mode on" id="sm-ra"  onclick="setSortMode('ra')"  title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit Dynasty</button>
+      <button class="sbtn sort-mode"    id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades)">Fantasy Calc</button>
+      <button class="sbtn sort-mode"    id="sm-my"  onclick="setSortMode('my')"  title="Your imported CSV rankings">My Rankings</button>
+      <button class="sbtn" id="sb-adp-settings" onclick="openAdpSettings()" title="Configure ADP format (Dynasty / Redraft / team size / scoring)">⚙ ADP</button>
     </div>
     <div class="sgrp">
       <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only starred players">⭐ Watchlist</button>
@@ -2937,10 +2936,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th></th>
           <th>NAME</th>
           <th>TEAM</th>
-          <th>POS</th>
-          <th class="num-hdr" style="text-align:right;padding-right:8px;color:#facc15" title="Dynasty value — FantasyCalc by default, switch to RA via the VALUE toggle">DYNASTY</th>
-          <th class="num-hdr" style="text-align:right;padding-right:8px;color:#7bd0ff" title="Redraft value (FantasyCalc 1-year)">REDRAFT</th>
-          <th class="num-hdr" style="text-align:right;padding-right:8px;color:#a78bfa" title="ADP shown as round.pick (e.g. 10.05 = round 10, pick 5)">ADP<span class="hdr-sub">RND.PICK</span></th>
+          <th style="text-align:center">POS</th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;color:#facc15;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">DYNASTY <span class="sort-ind" id="ind-dynasty">↓</span></th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;color:#7bd0ff;cursor:pointer" title="Click to sort by FantasyCalc redraft value (descending)">REDRAFT <span class="sort-ind" id="ind-redraft">↕</span></th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;color:#a78bfa;cursor:pointer" title="Click to sort by ADP (lowest pick number first)">ADP <span class="sort-ind" id="ind-adp">↕</span></th>
           <th>STATUS</th>
           <th></th>
         </tr>
@@ -6869,7 +6868,28 @@ function clearImportRankings() {
 
 function setSort(k){
   sortKey=k;
-  
+
+  // Column-header sorts (StatChasers-style)
+  if (k === 'dynasty-col') {
+    // DYNASTY column sort respects current mode (RA/FC/My). Default to current sortKey if a mode is already active, else 'ra'.
+    sortKey = (typeof window._lastSortMode === 'string') ? window._lastSortMode : 'ra';
+    updateColumnHdrIndicators('dynasty');
+    renderList();
+    return;
+  }
+  if (k === 'redraft-col') {
+    sortKey = 'redraft-col';   // sortedPlayers() handles this directly
+    updateColumnHdrIndicators('redraft');
+    renderList();
+    return;
+  }
+  if (k === 'adp-col') {
+    sortKey = 'adp-col';
+    updateColumnHdrIndicators('adp');
+    renderList();
+    return;
+  }
+
   // ADP sorts use the new loader (FFC-sourced, per format + team size)
   if(k==='adp-dynasty'){
     const sel = window._adpSelection?.dynasty || { format: 'dynasty', teams: 12 };
@@ -6882,6 +6902,9 @@ function setSort(k){
     return;
   }
 
+  // Default: clear column header indicators (since a non-column sort is active)
+  updateColumnHdrIndicators(null);
+
   // Update all sort button visual state via updateSortBtns
   updateSortBtns();
 
@@ -6892,6 +6915,45 @@ function setSort(k){
     renderList();
   }
 }
+
+function updateColumnHdrIndicators(activeCol){
+  ['dynasty','redraft','adp'].forEach(c => {
+    const el = document.getElementById('ind-'+c);
+    if (!el) return;
+    if (c === activeCol) { el.textContent = '↓'; el.classList.add('active'); }
+    else { el.textContent = '↕'; el.classList.remove('active'); }
+  });
+}
+
+// ===== Merged sort+value mode (StatChasers-style: one click sets BOTH sort and DYNASTY column source) =====
+function setSortMode(mode){
+  // Toggle visual state for the 3 sort-mode buttons
+  ['ra','fc','my'].forEach(m => {
+    const b = document.getElementById('sm-'+m);
+    if (b) b.classList.toggle('on', m === mode);
+  });
+  if (mode === 'ra') {
+    // RosterAudit: set value source AND sort key
+    setValueSource('ra');           // triggers RA fetch if needed; renders list
+    sortKey = 'ra';
+    renderList();
+  } else if (mode === 'fc') {
+    setValueSource('fc');           // FC is preloaded by default
+    sortKey = 'ra';                 // sort by r0 (live FC value when source=fc)
+    renderList();
+  } else if (mode === 'my') {
+    sortKey = 'my';
+    renderList();
+  }
+}
+
+// Single entry for ADP settings (replaces two separate format pickers)
+function openAdpSettings(){
+  // Reuse the existing picker — open with the most-recent bucket, defaulting to dynasty
+  const bucket = window._adpLastBucket || 'dynasty';
+  if (typeof openAdpPicker === 'function') openAdpPicker(bucket);
+}
+
 function setF(f){
   posF=f;
   document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
@@ -7697,6 +7759,22 @@ function sortedPlayers(){
   if(sortKey==='adp-dynasty'||sortKey==='adp-redraft'){
     return [...src].sort((a,b)=>(getADP(a.name)||9999)-(getADP(b.name)||9999));
   }
+  // Column-header sort: REDRAFT (FC redraftValue, desc)
+  if(sortKey==='redraft-col'){
+    return [...src].sort((a,b)=>{
+      const av = (typeof getFCValue==='function' && getFCValue(a.name)?.redraftValue) || 0;
+      const bv = (typeof getFCValue==='function' && getFCValue(b.name)?.redraftValue) || 0;
+      return bv - av;  // desc
+    });
+  }
+  // Column-header sort: ADP (asc — lowest pick number first)
+  if(sortKey==='adp-col'){
+    return [...src].sort((a,b)=>{
+      const av = (typeof getADP==='function' && getADP(a.name)) || 9999;
+      const bv = (typeof getADP==='function' && getADP(b.name)) || 9999;
+      return av - bv;  // asc
+    });
+  }
   // "my" sort = user's uploaded CSV ranks (stored in p.rMy)
   if(sortKey==='my'){
     return [...src].sort((a,b)=>(a.rMy||9999)-(b.rMy||9999));
@@ -7886,7 +7964,7 @@ function renderList(){
         </div>
       </td>
       <td class="td-team" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
-      <td class="td-pos"><span class="ppill ${p.pos}">${p.pos}</span></td>
+      <td class="td-pos" style="text-align:center"><span class="ppill ${p.pos}">${p.pos}</span></td>
       <td class="td-dynasty" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-align:right;padding-right:8px">${dynastyHtml}</td>
       <td class="td-redraft" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:600;text-align:right;padding-right:8px">${redraftHtml}</td>
       <td class="td-adp" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:600;text-align:right;padding-right:8px">${adpHtml}</td>
