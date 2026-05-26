@@ -416,6 +416,14 @@ header{
 .fbtn.TE.on{background:var(--te);border-color:var(--te)}
 .sgrp{display:flex;gap:4px;border-left:1.5px solid var(--dim);padding-left:8px;align-items:center;flex-shrink:0}
 .slbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:'Space Mono',monospace;white-space:nowrap}
+/* VALUE source pill group — segmented control style */
+.value-source-grp{gap:0}
+.value-source-grp .sbtn{padding:5px 11px;border-radius:0;border-right:none;min-height:30px;font-size:10px;font-weight:700}
+.value-source-grp .sbtn:first-of-type{border-radius:6px 0 0 6px}
+.value-source-grp .sbtn:last-of-type{border-radius:0 6px 6px 0;border-right:1.5px solid var(--dim)}
+.value-source-grp .sbtn.pill-on{background:linear-gradient(135deg,#facc15,#eab308);color:#1a1a1a;border-color:#eab308;text-shadow:none}
+.value-source-grp .sbtn:not(.pill-on){color:var(--muted);background:transparent}
+.value-source-grp .sbtn:not(.pill-on):hover{color:var(--accent2);border-color:var(--accent2)}
 .sbtn{padding:6px 10px;border-radius:7px;border:1.5px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:border-color 150ms ease,color 150ms ease,background 150ms ease,transform 120ms ease;touch-action:manipulation;min-height:36px;flex-shrink:0;white-space:nowrap}
 .sbtn:active{transform:scale(.97);transition:transform 80ms ease}
 .sbtn:hover{border-color:var(--accent2);color:var(--accent2)}
@@ -446,19 +454,22 @@ header{
 .plist-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .plist-table col.col-rk   {width:48px}
 .plist-table col.col-photo{width:34px}
-.plist-table col.col-name {width:170px}
-.plist-table col.col-team {width:44px}
+.plist-table col.col-name {width:160px}
+.plist-table col.col-team {width:42px}
 .plist-table col.col-pos  {width:36px}
-.plist-table col.col-dynasty{width:72px}
-.plist-table col.col-redraft{width:64px}
-.plist-table col.col-adp  {width:58px}
-.plist-table col.col-act  {width:130px}
+.plist-table col.col-dynasty{width:78px}
+.plist-table col.col-redraft{width:72px}
+.plist-table col.col-adp  {width:72px}
+.plist-table col.col-act  {width:120px}
 .plist-table col.col-fill {width:auto}
 .plist-thead th{
   font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;
   padding:5px 4px;text-align:left;border-bottom:1.5px solid var(--border2);
   background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap;
 }
+/* Numeric column headers (DYNASTY / REDRAFT / ADP) need tighter spacing so they don't merge visually */
+.plist-thead th.num-hdr{letter-spacing:.04em;font-size:9.5px}
+.plist-thead th .hdr-sub{display:block;font-size:7.5px;color:var(--dim);letter-spacing:.02em;margin-top:1px;font-weight:400;text-transform:none}
 @media(max-width:700px){
   .plist-table, .plist-thead{display:none!important}
   .prow-mobile{display:flex}
@@ -2851,6 +2862,12 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="sbtn" id="sb-adp-dynasty" onclick="openAdpPicker('dynasty')" title="Sleeper-style Dynasty ADP (configurable format + size)">Dynasty ADP ▾</button>
       <button class="sbtn" id="sb-adp-redraft" onclick="openAdpPicker('redraft')" title="Sleeper-style Redraft ADP (configurable format + size)">Redraft ADP ▾</button>
     </div>
+    <!-- VALUE SOURCE pill toggle (FantasyCalc vs RosterAudit) — controls DYNASTY column source -->
+    <div class="sgrp value-source-grp" id="value-source-grp">
+      <span class="slbl">VALUE</span>
+      <button class="sbtn pill-on" id="val-src-fc" onclick="switchValueSource('fc')" title="FantasyCalc — values from ~1M user-submitted dynasty trades">FC</button>
+      <button class="sbtn" id="val-src-ra" onclick="switchValueSource('ra')" title="RosterAudit — Elo-based values from 500k+ Sleeper leagues">RA</button>
+    </div>
     <div class="sgrp">
       <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only starred players">⭐ Watchlist</button>
     </div>
@@ -2920,9 +2937,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th>NAME</th>
           <th>TEAM</th>
           <th>POS</th>
-          <th style="text-align:right;padding-right:8px" title="Dynasty value (FantasyCalc or RosterAudit depending on source)">DYNASTY</th>
-          <th style="text-align:right;padding-right:8px" title="Redraft value (FantasyCalc 1-year value)">REDRAFT</th>
-          <th style="text-align:right;padding-right:8px" title="ADP based on draft format and team size">ADP</th>
+          <th class="num-hdr" style="text-align:right;padding-right:8px;color:#facc15" title="Dynasty value — FantasyCalc by default, switch to RA via the VALUE toggle">DYNASTY</th>
+          <th class="num-hdr" style="text-align:right;padding-right:8px;color:#7bd0ff" title="Redraft value (FantasyCalc 1-year)">REDRAFT</th>
+          <th class="num-hdr" style="text-align:right;padding-right:8px;color:#a78bfa" title="ADP shown as round.pick (e.g. 10.05 = round 10, pick 5)">ADP<span class="hdr-sub">RND.PICK</span></th>
           <th>STATUS</th>
           <th></th>
         </tr>
@@ -8382,6 +8399,34 @@ function setValueSource(src) {
   // Refresh Draft Vault rows so DYNASTY column reflects the new source
   try { renderList(); } catch(e) {}
 }
+
+// Page-level toggle wrapper used by the in-controls VALUE pill group.
+// Updates pill UI immediately, kicks off RA fetch on first switch, then re-renders the rankings list.
+function switchValueSource(src){
+  const fcBtn = document.getElementById('val-src-fc');
+  const raBtn = document.getElementById('val-src-ra');
+  if (fcBtn) fcBtn.classList.toggle('pill-on', src === 'fc');
+  if (raBtn) raBtn.classList.toggle('pill-on', src === 'ra');
+  setValueSource(src);
+  // setValueSource short-circuits when RA isn't loaded yet — re-render once RA arrives
+  if (src === 'ra' && !raLoaded) {
+    let tries = 0;
+    const t = setInterval(() => {
+      tries++;
+      if (raLoaded || tries > 40) {
+        clearInterval(t);
+        try { renderList(); } catch(e){}
+      }
+    }, 250);
+  }
+}
+// Initialize pill state on load
+setTimeout(() => {
+  const fcBtn = document.getElementById('val-src-fc');
+  const raBtn = document.getElementById('val-src-ra');
+  if (fcBtn) fcBtn.classList.toggle('pill-on', valueSource === 'fc');
+  if (raBtn) raBtn.classList.toggle('pill-on', valueSource === 'ra');
+}, 0);
 
 // ════════════════════════════════════
 
