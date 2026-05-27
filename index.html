@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260527-002235 -->
+<!-- BUILD: VAULT-BUILD-20260527-114213 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -782,6 +782,27 @@ header{
 .bm-rank{font-size:11px;font-weight:600;font-family:'Space Mono',monospace;flex-shrink:0}
 .bm-img{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--s3);border:1.5px solid var(--border2);flex-shrink:0}
 #ps-modal{transition:opacity 150ms ease}
+/* Player-stats modal tables: center-align everything except FPTS (column 4 has progress bars) */
+#ps-modal table th,
+#ps-modal table td{text-align:center!important}
+#ps-modal table th:nth-child(4),
+#ps-modal table td:nth-child(4){text-align:left!important;padding-left:10px}
+
+/* ===== Portfolio Polish (StatChasers-inspired) ===== */
+/* Bigger primary stat numbers in KPI cards */
+#page-portfolio #portfolio-kpis > div{padding:22px 24px!important;border-radius:14px!important;border:1px solid var(--border2)!important;background:linear-gradient(180deg,#161e36,#10172a)!important;transition:border-color 150ms ease}
+#page-portfolio #portfolio-kpis > div:hover{border-color:var(--accent2)!important}
+#page-portfolio #portfolio-kpis > div > div:first-child{font-size:10px!important;letter-spacing:.12em!important;margin-bottom:10px!important;opacity:.85}
+#page-portfolio #portfolio-kpis > div > div:last-child{font-size:34px!important;font-weight:800!important;line-height:1.05!important;letter-spacing:-0.02em!important}
+/* Larger league cards with stronger hover */
+#page-portfolio #portfolio-leagues > div{padding:22px 24px!important;border-radius:14px!important;transition:all 180ms ease}
+#page-portfolio #portfolio-leagues > div:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.25)}
+/* Larger league grade in upper-right of each card */
+#page-portfolio #portfolio-leagues > div > div:first-child > div:last-child > div:first-child{font-size:30px!important}
+/* Dim N/A text site-wide on the portfolio page */
+#page-portfolio .pf-na, #page-portfolio td:has(> :only-child:only-of-type){}
+/* Section card padding bumps */
+#page-portfolio #portfolio-owned, #page-portfolio #portfolio-signals{padding:24px!important;border-radius:14px!important}
 #ps-modal.ps-entering{opacity:1}
 #ps-sheet{
   transform:translateY(20px) scale(0.98);
