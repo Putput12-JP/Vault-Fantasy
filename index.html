@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260527-120334 -->
+<!-- BUILD: VAULT-BUILD-20260527-165914 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -805,11 +805,6 @@ header{
 #page-portfolio #portfolio-owned, #page-portfolio #portfolio-signals{padding:24px!important;border-radius:14px!important}
 
 /* ===== StatChasers v2 view ===== */
-/* View toggle pill */
-.pf-view-toggle{display:inline-flex;border:1px solid var(--border2);border-radius:10px;overflow:hidden;background:var(--s1)}
-.pf-view-btn{padding:7px 14px;background:transparent;border:none;color:var(--muted);font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;cursor:pointer;transition:all 150ms ease}
-.pf-view-btn:hover{color:var(--text2)}
-.pf-view-btn.pf-view-on{background:linear-gradient(135deg,#facc15,#eab308);color:#1a1a1a;font-weight:700}
 /* Horizontal stat strip */
 .pf-v2-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border2);border-radius:14px;background:linear-gradient(180deg,#161e36,#10172a);margin-bottom:32px;overflow:hidden}
 .pf-v2-stat{padding:24px 28px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border2)}
@@ -853,10 +848,11 @@ header{
 /* Bottom 2-up grid for Rostered Players + Signals */
 .pf-v2-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 @media(max-width:900px){.pf-v2-bottom-grid{grid-template-columns:1fr}}
-/* Chevron column for expandable rows */
-.pf-v2-th-chev,.pf-v2-td-chev{width:32px;padding-left:16px;padding-right:0;text-align:center}
-.pf-v2-chev{display:inline-block;font-size:11px;color:var(--muted);transition:transform 200ms ease}
-.pf-v2-chev.open{transform:rotate(90deg);color:var(--accent2)}
+/* Chevron column for expandable rows — proper button-sized hit target */
+.pf-v2-th-chev,.pf-v2-td-chev{width:56px;padding-left:14px;padding-right:6px;text-align:center;cursor:pointer}
+.pf-v2-chev{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;font-size:18px;line-height:1;color:var(--muted);background:transparent;border:1px solid transparent;transition:transform 200ms ease,background 150ms ease,border-color 150ms ease,color 150ms ease;font-family:var(--font-mono);font-weight:600}
+.pf-v2-td-chev:hover .pf-v2-chev{background:rgba(123,208,255,0.08);border-color:var(--accent2);color:var(--accent2)}
+.pf-v2-chev.open{transform:rotate(90deg);color:var(--accent2);background:rgba(123,208,255,0.1);border-color:rgba(123,208,255,0.25)}
 .pf-v2-row-expanded{background:rgba(255,255,255,0.02)}
 /* Expanded detail row (per-position bars) */
 .pf-v2-detail-row{background:rgba(255,255,255,0.015)}
@@ -870,9 +866,6 @@ header{
 .pf-v2-posbar-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
 .pf-v2-posbar-fill{height:100%;border-radius:3px;transition:width 300ms ease}
 .pf-v2-posbar-val{font-size:11px;font-family:var(--font-mono);color:var(--text2);width:48px;text-align:right;font-weight:600}
-/* Name cell needs hover indication separate from row (since name = open league, row = expand) */
-.pf-v2-td-name{cursor:pointer;transition:color 120ms ease}
-.pf-v2-td-name:hover .pf-v2-name{color:var(--accent2)}
 #ps-modal.ps-entering{opacity:1}
 #ps-sheet{
   transform:translateY(20px) scale(0.98);
@@ -2840,11 +2833,6 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <p style="font-size:13px;color:var(--muted);margin:0">All your leagues · dynasty values · signals</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <!-- View toggle: Classic ↔ StatChasers v2 -->
-        <div class="pf-view-toggle" id="pf-view-toggle">
-          <button class="pf-view-btn pf-view-on" id="pf-view-classic" onclick="setPortfolioView('classic')">Classic</button>
-          <button class="pf-view-btn" id="pf-view-v2" onclick="setPortfolioView('v2')">StatChasers</button>
-        </div>
         <button onclick="openPortfolioLeaguePicker()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;background:var(--accent);border:1px solid var(--accent);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font-mono);letter-spacing:.05em">
           📁 Manage Leagues
         </button>
@@ -2853,8 +2841,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         </button>
       </div>
     </div>
-    <!-- Classic view (default) -->
-    <div id="portfolio-classic">
+    <!-- Classic view (now hidden — kept in DOM only so renderPortfolio() can write to its elements without errors) -->
+    <div id="portfolio-classic" style="display:none">
       <!-- Summary KPI strip -->
       <div id="portfolio-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:24px"></div>
       <!-- League cards grid -->
@@ -2865,17 +2853,17 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <div id="portfolio-signals" style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px"></div>
       </div>
     </div>
-    <!-- StatChasers v2 view -->
-    <div id="portfolio-v2" style="display:none">
+    <!-- StatChasers v2 view (now the only view) -->
+    <div id="portfolio-v2">
       <div id="pf-v2-strip" class="pf-v2-strip"></div>
       <div id="pf-v2-section-table" class="pf-v2-section" style="margin-bottom:32px">
         <div class="pf-v2-section-head">
           <span class="pf-v2-section-title">League Breakdown</span>
-          <span class="pf-v2-section-hint">Click a row to expand position breakdown</span>
+          <span class="pf-v2-section-hint">Click row → league overview · Click chevron → position breakdown</span>
         </div>
         <div id="pf-v2-table-wrap"></div>
       </div>
-      <!-- Rostered Players + Signals row (preserved from Classic, restyled for v2) -->
+      <!-- Rostered Players + Signals row -->
       <div class="pf-v2-bottom-grid">
         <div class="pf-v2-section">
           <div class="pf-v2-section-head"><span class="pf-v2-section-title">Rostered Players</span></div>
@@ -11462,23 +11450,11 @@ function resumeSession() {
 // ════════════════════════════════════════════════════════════
 // ITEM 4: MULTI-LEAGUE PORTFOLIO VIEW
 // ════════════════════════════════════════════════════════════
-// ===== Portfolio View Toggle (Classic ↔ StatChasers v2) =====
-function setPortfolioView(view){
-  if (view !== 'classic' && view !== 'v2') view = 'classic';
-  try { localStorage.setItem(SK+'-pf-view', view); } catch(e){}
-  document.getElementById('pf-view-classic')?.classList.toggle('pf-view-on', view==='classic');
-  document.getElementById('pf-view-v2')?.classList.toggle('pf-view-on', view==='v2');
-  const classic = document.getElementById('portfolio-classic');
-  const v2 = document.getElementById('portfolio-v2');
-  if (classic) classic.style.display = view==='classic' ? '' : 'none';
-  if (v2)      v2.style.display      = view==='v2'      ? '' : 'none';
-  if (view === 'v2') {
-    try { renderPortfolioV2(); } catch(e){ console.error('v2 render failed:', e); }
-  }
-}
-// Apply persisted view choice on first load (after DOM ready)
+// ===== Portfolio View (StatChasers v2 only — Classic removed) =====
+// renderPortfolio() still writes to the hidden #portfolio-* elements; v2 reads the same data.
+// Render v2 once on initial load (in case renderPortfolio fires before user navigates to the page).
 setTimeout(() => {
-  try { setPortfolioView(localStorage.getItem(SK+'-pf-view') || 'classic'); } catch(e){}
+  try { if (typeof renderPortfolioV2 === 'function') renderPortfolioV2(); } catch(e){}
 }, 50);
 
 // State for v2 table sorting
@@ -11602,9 +11578,11 @@ function renderPortfolioV2(){
       </td></tr>`;
     }
 
-    return `<tr class="pf-v2-row ${isExpanded ? 'pf-v2-row-expanded' : ''}" onclick="pfV2ToggleRow('${lgId}',event)">
-      <td class="pf-v2-td-chev"><span class="pf-v2-chev ${isExpanded ? 'open' : ''}">▸</span></td>
-      <td class="pf-v2-td-name" onclick="pfV2OpenLeague('${lgId}',event)" title="Open this league's overview">
+    return `<tr class="pf-v2-row ${isExpanded ? 'pf-v2-row-expanded' : ''}" onclick="pfV2OpenLeague('${lgId}',event)" title="Click for league overview">
+      <td class="pf-v2-td-chev" onclick="pfV2ToggleRow('${lgId}',event)" title="Toggle position breakdown">
+        <span class="pf-v2-chev ${isExpanded ? 'open' : ''}">▸</span>
+      </td>
+      <td class="pf-v2-td-name">
         <div class="pf-v2-name">${lg.name || 'Unnamed League'}</div>
         <div class="pf-v2-tags">${tags}</div>
       </td>
@@ -11759,12 +11737,8 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
 
   // Stash for StatChasers v2 view (read by renderPortfolioV2)
   window._pfLeagueData = leagueData;
-  // If v2 view is active, render it now that data is ready
-  try {
-    if ((localStorage.getItem(SK+'-pf-view') || 'classic') === 'v2' && typeof renderPortfolioV2 === 'function') {
-      renderPortfolioV2();
-    }
-  } catch(e) {}
+  // v2 is the only view now — always re-render after data computes
+  try { if (typeof renderPortfolioV2 === 'function') renderPortfolioV2(); } catch(e) {}
 
   // ── Summary KPIs ─────────────────────────────────────────
   const totalVal = leagueData.reduce((s,d) => s + d.myValue, 0);
