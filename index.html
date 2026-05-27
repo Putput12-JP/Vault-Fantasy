@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260527-165914 -->
+<!-- BUILD: VAULT-BUILD-20260527-220752 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -424,6 +424,26 @@ header{
 .sort-mode#sm-my.on{background:linear-gradient(135deg,#a78bfa,#7c5cf5);border-color:#7c5cf5;color:#fff}
 .sort-mode:not(.on){color:var(--muted);background:transparent}
 .sort-mode:not(.on):hover{color:var(--accent2);border-color:var(--accent2)}
+/* Info ⓘ button — small, neutral */
+.sbtn-info{padding:6px 9px!important;font-size:13px!important;min-width:28px;color:var(--muted)!important}
+.sbtn-info:hover{color:var(--accent2)!important;border-color:var(--accent2)!important}
+/* Data source popover */
+.data-info-popover{position:absolute;top:auto;right:14px;margin-top:8px;width:380px;max-width:calc(100vw - 28px);background:#0e1730;border:1px solid var(--border2);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,0.45);padding:0;z-index:200;font-family:var(--font-sans)}
+.data-info-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.data-info-title{font-size:13px;font-weight:700;color:var(--text);letter-spacing:-0.01em}
+.data-info-close{font-size:14px;color:var(--muted);cursor:pointer;padding:2px 6px;border-radius:4px;transition:all 120ms ease}
+.data-info-close:hover{color:var(--text);background:rgba(255,255,255,0.05)}
+.data-info-body{padding:14px 18px 16px}
+.data-info-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.data-info-row:last-of-type{border-bottom:none}
+.data-info-badge{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;font-family:var(--font-mono);font-weight:800;font-size:11px;letter-spacing:.04em}
+.data-info-badge.src-fc{background:rgba(250,204,21,0.18);color:#facc15}
+.data-info-badge.src-ra{background:rgba(167,139,250,0.18);color:#a78bfa}
+.data-info-label{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.data-info-sub{font-size:11px;color:var(--text2);margin-bottom:4px;line-height:1.4}
+.data-info-meta{font-size:10px;color:var(--muted);font-family:var(--font-mono);letter-spacing:.02em}
+.data-info-meta code{background:rgba(255,255,255,0.04);padding:1px 5px;border-radius:3px;font-size:10px;color:var(--accent2)}
+.data-info-note{margin-top:12px;padding:10px 12px;background:rgba(123,208,255,0.06);border-left:2px solid var(--accent2);border-radius:4px;font-size:11px;color:var(--text2);line-height:1.5}
 .sbtn{padding:6px 10px;border-radius:7px;border:1.5px solid var(--dim);background:transparent;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:border-color 150ms ease,color 150ms ease,background 150ms ease,transform 120ms ease;touch-action:manipulation;min-height:36px;flex-shrink:0;white-space:nowrap}
 .sbtn:active{transform:scale(.97);transition:transform 80ms ease}
 .sbtn:hover{border-color:var(--accent2);color:var(--accent2)}
@@ -475,6 +495,9 @@ header{
 .plist-thead th.col-hdr-sortable:hover{background:rgba(255,255,255,0.03)}
 .plist-thead .sort-ind{font-size:8px;opacity:.6;margin-left:2px;display:inline-block;min-width:8px;font-weight:400;font-family:inherit;letter-spacing:0}
 .plist-thead .sort-ind.active{opacity:1}
+.plist-thead .hdr-source-label{display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(250,204,21,0.18);color:#facc15;letter-spacing:.06em;margin-left:4px;vertical-align:middle;font-family:var(--font-mono)}
+.plist-thead .hdr-source-label.src-ra{background:rgba(167,139,250,0.18);color:#a78bfa}
+.plist-thead .hdr-source-label.src-my{background:rgba(123,208,255,0.18);color:#7bd0ff}
 @media(max-width:700px){
   .plist-table, .plist-thead{display:none!important}
   .prow-mobile{display:flex}
@@ -2977,6 +3000,33 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="sbtn sort-mode on" id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live from api.fantasycalc.com)">Fantasy Calc <span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:3px;font-weight:400"></span></button>
       <button class="sbtn sort-mode"    id="sm-my"  onclick="setSortMode('my')"  title="Your imported CSV rankings">My Rankings</button>
       <button class="sbtn" id="sb-adp-settings" onclick="openAdpSettings()" title="Configure ADP format (Dynasty / Redraft / team size / scoring)">⚙ ADP</button>
+      <button class="sbtn sbtn-info" id="sb-data-info" onclick="toggleDataSourceInfo(event)" title="About the data sources">ⓘ</button>
+    </div>
+    <!-- Data Source Info Popover (toggled by ⓘ button) -->
+    <div id="data-source-popover" class="data-info-popover" style="display:none">
+      <div class="data-info-head">
+        <span class="data-info-title">About the data</span>
+        <span class="data-info-close" onclick="toggleDataSourceInfo(event)">✕</span>
+      </div>
+      <div class="data-info-body">
+        <div class="data-info-row">
+          <span class="data-info-badge src-fc">FC</span>
+          <div>
+            <div class="data-info-label">FantasyCalc</div>
+            <div class="data-info-sub">12-team Superflex PPR Dynasty · ~1M trades · refreshes ~hourly</div>
+            <div class="data-info-meta">Source: <code>api.fantasycalc.com</code> · Last fetched: <span id="data-info-fc-age">—</span></div>
+          </div>
+        </div>
+        <div class="data-info-row">
+          <span class="data-info-badge src-ra">RA</span>
+          <div>
+            <div class="data-info-label">RosterAudit</div>
+            <div class="data-info-sub">Superflex Elo from 500k+ Sleeper leagues · refreshes daily</div>
+            <div class="data-info-meta">Source: <code>rosteraudit.com</code> · Last fetched: <span id="data-info-ra-age">—</span></div>
+          </div>
+        </div>
+        <div class="data-info-note">FC and RA use different methodologies — values will differ for the same player. Both are correct, just different opinions.</div>
+      </div>
     </div>
     <div class="sgrp">
       <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only starred players">⭐ Watchlist</button>
@@ -3047,7 +3097,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th>NAME</th>
           <th>TEAM</th>
           <th style="text-align:center">POS</th>
-          <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;color:#facc15;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">DYNASTY <span class="sort-ind" id="ind-dynasty">↓</span></th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;color:#facc15;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">DYNASTY <span class="hdr-source-label" id="hdr-dynasty-src">FC</span> <span class="sort-ind" id="ind-dynasty">↓</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;color:#7bd0ff;cursor:pointer" title="Click to sort by FantasyCalc redraft value (descending)">REDRAFT <span class="sort-ind" id="ind-redraft">↕</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;color:#a78bfa;cursor:pointer" title="Click to sort by ADP (lowest pick number first)">ADP <span class="sort-ind" id="ind-adp">↕</span></th>
           <th></th>
@@ -7041,6 +7091,40 @@ function updateColumnHdrIndicators(activeCol){
   });
 }
 
+// Toggle the Data Source Info popover (ⓘ button next to sort modes)
+function toggleDataSourceInfo(event){
+  event && event.stopPropagation && event.stopPropagation();
+  const pop = document.getElementById('data-source-popover');
+  if (!pop) return;
+  const willOpen = pop.style.display === 'none';
+  pop.style.display = willOpen ? 'block' : 'none';
+  if (willOpen) {
+    // Refresh age strings
+    const fmt = ts => {
+      if (!ts) return 'not yet';
+      const sec = Math.floor((Date.now()-ts)/1000);
+      if (sec < 60) return `${sec}s ago`;
+      if (sec < 3600) return `${Math.floor(sec/60)}m ago`;
+      if (sec < 86400) return `${Math.floor(sec/3600)}h ago`;
+      return `${Math.floor(sec/86400)}d ago`;
+    };
+    const fcEl = document.getElementById('data-info-fc-age');
+    const raEl = document.getElementById('data-info-ra-age');
+    if (fcEl) fcEl.textContent = fmt(window._fcFetchedAt);
+    if (raEl) raEl.textContent = fmt(window._raFetchedAt);
+    // Close on outside click (one-time listener)
+    setTimeout(() => {
+      const close = (e) => {
+        if (!pop.contains(e.target) && !e.target.closest('#sb-data-info')) {
+          pop.style.display = 'none';
+          document.removeEventListener('click', close);
+        }
+      };
+      document.addEventListener('click', close);
+    }, 0);
+  }
+}
+
 // ===== Merged sort+value mode (StatChasers-style: one click sets BOTH sort and DYNASTY column source) =====
 function setSortMode(mode){
   // Toggle visual state for the 3 sort-mode buttons
@@ -7048,6 +7132,14 @@ function setSortMode(mode){
     const b = document.getElementById('sm-'+m);
     if (b) b.classList.toggle('on', m === mode);
   });
+  // Update the DYNASTY column header source label (FC / RA / MY)
+  const srcEl = document.getElementById('hdr-dynasty-src');
+  if (srcEl) {
+    srcEl.textContent = mode.toUpperCase();
+    srcEl.classList.remove('src-ra', 'src-my');
+    if (mode === 'ra') srcEl.classList.add('src-ra');
+    else if (mode === 'my') srcEl.classList.add('src-my');
+  }
   if (mode === 'ra') {
     // RosterAudit: set value source AND sort by RA *value* desc (matches DYNASTY column)
     setValueSource('ra');
@@ -9300,6 +9392,7 @@ async function fetchRosterAudit() {
 
     raLoaded = true;
     raLoading = false;
+    window._raFetchedAt = Date.now();
     fetchLiveRankings(); 
     const count = Object.keys(raValues).length;
     if (statusEl) statusEl.textContent = `✓ RosterAudit · ${count} players`;
@@ -11407,6 +11500,15 @@ window.addEventListener('load', () => {
     try { localStorage.removeItem(k); } catch(e) {}
   });
   fetchLiveRankings();
+  // Preload RosterAudit values in parallel (non-blocking) — so the RA sort mode shows real data immediately
+  // when the user clicks "RosterAudit Dynasty" instead of falling back to FC silently.
+  setTimeout(() => {
+    try {
+      if (typeof fetchRosterAudit === 'function' && !raLoaded && !raLoading) {
+        fetchRosterAudit().catch(e => console.warn('RA preload failed (non-fatal):', e));
+      }
+    } catch(e) {}
+  }, 2000);
   showSetupStep(1);
   applyTheme(localStorage.getItem('snapdraft-theme') || 'dark');
   const searchEl = document.getElementById('search');
