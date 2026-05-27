@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260527-114213 -->
+<!-- BUILD: VAULT-BUILD-20260527-115302 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -803,6 +803,50 @@ header{
 #page-portfolio .pf-na, #page-portfolio td:has(> :only-child:only-of-type){}
 /* Section card padding bumps */
 #page-portfolio #portfolio-owned, #page-portfolio #portfolio-signals{padding:24px!important;border-radius:14px!important}
+
+/* ===== StatChasers v2 view ===== */
+/* View toggle pill */
+.pf-view-toggle{display:inline-flex;border:1px solid var(--border2);border-radius:10px;overflow:hidden;background:var(--s1)}
+.pf-view-btn{padding:7px 14px;background:transparent;border:none;color:var(--muted);font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;cursor:pointer;transition:all 150ms ease}
+.pf-view-btn:hover{color:var(--text2)}
+.pf-view-btn.pf-view-on{background:linear-gradient(135deg,#facc15,#eab308);color:#1a1a1a;font-weight:700}
+/* Horizontal stat strip */
+.pf-v2-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border2);border-radius:14px;background:linear-gradient(180deg,#161e36,#10172a);margin-bottom:32px;overflow:hidden}
+.pf-v2-stat{padding:24px 28px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border2)}
+.pf-v2-stat:last-child{border-right:none}
+.pf-v2-stat-num{font-size:36px;font-weight:800;line-height:1;letter-spacing:-0.025em;color:var(--text);font-family:var(--font-sans);margin-bottom:8px}
+.pf-v2-stat-lbl{font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.14em}
+@media(max-width:700px){
+  .pf-v2-strip{grid-template-columns:repeat(2,1fr)}
+  .pf-v2-stat:nth-child(2){border-right:none}
+  .pf-v2-stat:nth-child(1),.pf-v2-stat:nth-child(2){border-bottom:1px solid var(--border2)}
+  .pf-v2-stat-num{font-size:28px}
+  .pf-v2-stat{padding:18px 20px}
+}
+/* Section wrapper */
+.pf-v2-section{border:1px solid var(--border2);border-radius:14px;background:var(--s1);overflow:hidden}
+.pf-v2-section-head{padding:18px 24px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between}
+.pf-v2-section-title{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-0.01em}
+/* Sortable table */
+.pf-v2-table{width:100%;border-collapse:collapse;font-family:var(--font-sans)}
+.pf-v2-table thead{background:rgba(255,255,255,0.02)}
+.pf-v2-th{padding:12px 16px;text-align:left;font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.12em;font-weight:500;cursor:pointer;user-select:none;border-bottom:1px solid var(--border2);transition:color 120ms ease,background 120ms ease}
+.pf-v2-th:hover{color:var(--accent2);background:rgba(255,255,255,0.03)}
+.pf-v2-th-num{text-align:right;padding-right:24px}
+.pf-v2-th-name{padding-left:24px}
+.pf-v2-sort-ind{font-size:9px;opacity:.6;margin-left:4px}
+.pf-v2-row{border-bottom:1px solid var(--border);cursor:pointer;transition:background 120ms ease}
+.pf-v2-row:hover{background:rgba(255,255,255,0.035)}
+.pf-v2-row:last-child{border-bottom:none}
+.pf-v2-td-name{padding:16px 16px 16px 24px}
+.pf-v2-td-num{padding:16px 24px 16px 16px;text-align:right;font-size:13px;vertical-align:middle}
+.pf-v2-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px}
+.pf-v2-tags{display:flex;gap:5px;flex-wrap:wrap}
+.pf-v2-tag{font-size:8px;padding:2px 6px;border-radius:3px;font-family:var(--font-mono);letter-spacing:.04em;font-weight:600}
+.pf-v2-tag-dyn{background:rgba(61,204,122,.12);color:var(--rb)}
+.pf-v2-tag-sf{background:rgba(204,0,60,.12);color:var(--qb)}
+.pf-v2-tag-teams{background:var(--s3);color:var(--muted)}
+.pf-v2-na{color:var(--dim);font-style:italic}
 #ps-modal.ps-entering{opacity:1}
 #ps-sheet{
   transform:translateY(20px) scale(0.98);
@@ -2769,7 +2813,12 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <h1 style="font-size:28px;font-weight:800;color:var(--text);letter-spacing:-0.03em;margin:0 0 4px;font-family:var(--font-sans)">My Portfolio</h1>
         <p style="font-size:13px;color:var(--muted);margin:0">All your leagues · dynasty values · signals</p>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <!-- View toggle: Classic ↔ StatChasers v2 -->
+        <div class="pf-view-toggle" id="pf-view-toggle">
+          <button class="pf-view-btn pf-view-on" id="pf-view-classic" onclick="setPortfolioView('classic')">Classic</button>
+          <button class="pf-view-btn" id="pf-view-v2" onclick="setPortfolioView('v2')">StatChasers</button>
+        </div>
         <button onclick="openPortfolioLeaguePicker()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;background:var(--accent);border:1px solid var(--accent);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font-mono);letter-spacing:.05em">
           📁 Manage Leagues
         </button>
@@ -2778,14 +2827,27 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         </button>
       </div>
     </div>
-    <!-- Summary KPI strip -->
-    <div id="portfolio-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:24px"></div>
-    <!-- League cards grid -->
-    <div id="portfolio-leagues" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:28px"></div>
-    <!-- Cross-league insights row -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div id="portfolio-owned" style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px"></div>
-      <div id="portfolio-signals" style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px"></div>
+    <!-- Classic view (default) -->
+    <div id="portfolio-classic">
+      <!-- Summary KPI strip -->
+      <div id="portfolio-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:24px"></div>
+      <!-- League cards grid -->
+      <div id="portfolio-leagues" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:28px"></div>
+      <!-- Cross-league insights row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div id="portfolio-owned" style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px"></div>
+        <div id="portfolio-signals" style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px"></div>
+      </div>
+    </div>
+    <!-- StatChasers v2 view -->
+    <div id="portfolio-v2" style="display:none">
+      <div id="pf-v2-strip" class="pf-v2-strip"></div>
+      <div id="pf-v2-section-table" class="pf-v2-section">
+        <div class="pf-v2-section-head">
+          <span class="pf-v2-section-title">League Breakdown</span>
+        </div>
+        <div id="pf-v2-table-wrap"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -11362,8 +11424,123 @@ function resumeSession() {
 // ════════════════════════════════════════════════════════════
 // ITEM 4: MULTI-LEAGUE PORTFOLIO VIEW
 // ════════════════════════════════════════════════════════════
-async function renderPortfolio() {
-  if (!myTeamsData.length) {
+// ===== Portfolio View Toggle (Classic ↔ StatChasers v2) =====
+function setPortfolioView(view){
+  if (view !== 'classic' && view !== 'v2') view = 'classic';
+  try { localStorage.setItem(SK+'-pf-view', view); } catch(e){}
+  document.getElementById('pf-view-classic')?.classList.toggle('pf-view-on', view==='classic');
+  document.getElementById('pf-view-v2')?.classList.toggle('pf-view-on', view==='v2');
+  const classic = document.getElementById('portfolio-classic');
+  const v2 = document.getElementById('portfolio-v2');
+  if (classic) classic.style.display = view==='classic' ? '' : 'none';
+  if (v2)      v2.style.display      = view==='v2'      ? '' : 'none';
+  if (view === 'v2') {
+    try { renderPortfolioV2(); } catch(e){ console.error('v2 render failed:', e); }
+  }
+}
+// Apply persisted view choice on first load (after DOM ready)
+setTimeout(() => {
+  try { setPortfolioView(localStorage.getItem(SK+'-pf-view') || 'classic'); } catch(e){}
+}, 50);
+
+// State for v2 table sorting
+window._pfV2Sort = { col: 'dyn', dir: 'asc' };  // sort by dynasty rank ascending by default
+
+function pfV2SetSort(col){
+  const s = window._pfV2Sort;
+  if (s.col === col) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
+  else { s.col = col; s.dir = (col === 'name') ? 'asc' : 'asc'; }
+  renderPortfolioV2();
+}
+
+function renderPortfolioV2(){
+  const stripEl = document.getElementById('pf-v2-strip');
+  const tableWrap = document.getElementById('pf-v2-table-wrap');
+  if (!stripEl || !tableWrap) return;
+  const data = window._pfLeagueData;
+  if (!Array.isArray(data) || !data.length){
+    stripEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-size:13px">Loading leagues...</div>';
+    tableWrap.innerHTML = '';
+    return;
+  }
+
+  // ── Top stat strip — 4 horizontal stats with vertical dividers ──
+  const totalLeagues = data.length;
+  const totalValue = data.reduce((s,d)=>s+(d.myValue||0),0);
+  const ranks = data.map(d=>parseInt(d.myRank)).filter(n=>!isNaN(n));
+  const avgRank = ranks.length ? (ranks.reduce((a,b)=>a+b,0)/ranks.length).toFixed(1) : '—';
+  const bestRank = ranks.length ? Math.min(...ranks) : '—';
+  stripEl.innerHTML = `
+    <div class="pf-v2-stat">
+      <div class="pf-v2-stat-num">${totalLeagues}</div>
+      <div class="pf-v2-stat-lbl">Leagues</div>
+    </div>
+    <div class="pf-v2-stat">
+      <div class="pf-v2-stat-num" style="color:#facc15">${(totalValue/1000).toFixed(1)}<span style="font-size:18px;opacity:.65;font-weight:600">k</span></div>
+      <div class="pf-v2-stat-lbl">Total Value</div>
+    </div>
+    <div class="pf-v2-stat">
+      <div class="pf-v2-stat-num" style="color:#7bd0ff">#${avgRank}</div>
+      <div class="pf-v2-stat-lbl">Avg Rank</div>
+    </div>
+    <div class="pf-v2-stat">
+      <div class="pf-v2-stat-num" style="color:#3DCC7A">#${bestRank}</div>
+      <div class="pf-v2-stat-lbl">Best Standing</div>
+    </div>`;
+
+  // ── Sortable table ──
+  const sort = window._pfV2Sort || {col:'dyn',dir:'asc'};
+  const sorted = [...data].sort((a,b)=>{
+    let av, bv;
+    if (sort.col === 'name')      { av = (a.lg?.name||'').toLowerCase(); bv = (b.lg?.name||'').toLowerCase(); }
+    else if (sort.col === 'dyn')  { av = parseInt(a.myRank)||9999;       bv = parseInt(b.myRank)||9999; }
+    else if (sort.col === 'value'){ av = a.myValue||0;                   bv = b.myValue||0; }
+    else if (sort.col === 'grade'){ av = a.grade||'Z';                   bv = b.grade||'Z'; }
+    else if (sort.col === 'teams'){ av = a.totalTeams||0;                bv = b.totalTeams||0; }
+    else                          { av = parseInt(a.myRank)||9999;       bv = parseInt(b.myRank)||9999; }
+    if (av < bv) return sort.dir==='asc' ? -1 : 1;
+    if (av > bv) return sort.dir==='asc' ? 1 : -1;
+    return 0;
+  });
+  const sortInd = (col) => sort.col === col ? (sort.dir==='asc' ? '↑' : '↓') : '↕';
+  const rows = sorted.map(d => {
+    const lg = d.lg || {};
+    const tags = [
+      d.isDynasty ? '<span class="pf-v2-tag pf-v2-tag-dyn">DYN</span>' : '',
+      d.isSF      ? '<span class="pf-v2-tag pf-v2-tag-sf">SF</span>' : '',
+      `<span class="pf-v2-tag pf-v2-tag-teams">${d.totalTeams||'?'}T</span>`,
+    ].filter(Boolean).join('');
+    const valStr = d.myValue ? (d.myValue/1000).toFixed(1)+'k' : '<span class="pf-v2-na">—</span>';
+    const rankStr = d.myRank ? `#${d.myRank}` : '<span class="pf-v2-na">—</span>';
+    const rankColor = (typeof d.myRank==='number' && d.totalTeams) ? (d.myRank<=3?'#3DCC7A':d.myRank<=Math.floor(d.totalTeams/2)?'#facc15':'#ff6680') : 'var(--muted)';
+    const gradeColor = d.gradeColor || 'var(--muted)';
+    return `<tr class="pf-v2-row" onclick="ovLeagueId='${lg.league_id}';teamsLeagueId='${lg.league_id}';showPage('overview')">
+      <td class="pf-v2-td-name">
+        <div class="pf-v2-name">${lg.name || 'Unnamed League'}</div>
+        <div class="pf-v2-tags">${tags}</div>
+      </td>
+      <td class="pf-v2-td-num" style="color:${gradeColor};font-weight:800;font-size:18px">${d.grade||'—'}</td>
+      <td class="pf-v2-td-num" style="color:${rankColor};font-weight:700">${rankStr}</td>
+      <td class="pf-v2-td-num" style="color:#facc15;font-family:var(--font-mono)">${valStr}</td>
+      <td class="pf-v2-td-num" style="color:var(--muted);font-family:var(--font-mono)">${d.totalTeams||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  tableWrap.innerHTML = `<table class="pf-v2-table">
+    <thead>
+      <tr>
+        <th onclick="pfV2SetSort('name')"  class="pf-v2-th pf-v2-th-name">League <span class="pf-v2-sort-ind">${sortInd('name')}</span></th>
+        <th onclick="pfV2SetSort('grade')" class="pf-v2-th pf-v2-th-num">Grade <span class="pf-v2-sort-ind">${sortInd('grade')}</span></th>
+        <th onclick="pfV2SetSort('dyn')"   class="pf-v2-th pf-v2-th-num">My Rank <span class="pf-v2-sort-ind">${sortInd('dyn')}</span></th>
+        <th onclick="pfV2SetSort('value')" class="pf-v2-th pf-v2-th-num">Value <span class="pf-v2-sort-ind">${sortInd('value')}</span></th>
+        <th onclick="pfV2SetSort('teams')" class="pf-v2-th pf-v2-th-num">Teams <span class="pf-v2-sort-ind">${sortInd('teams')}</span></th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function renderPortfolio() {  if (!myTeamsData.length) {
     ['portfolio-kpis','portfolio-leagues','portfolio-owned','portfolio-signals'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Connect your Sleeper account to see your portfolio.</div>`;
@@ -11473,6 +11650,15 @@ async function renderPortfolio() {
 
   // Accumulate all owned names across every league for accurate cross-league signals
   leagueData.forEach(d => d.myNames?.forEach(n => { if (n) _allOwnedNames.add(n.toLowerCase()); }));
+
+  // Stash for StatChasers v2 view (read by renderPortfolioV2)
+  window._pfLeagueData = leagueData;
+  // If v2 view is active, render it now that data is ready
+  try {
+    if ((localStorage.getItem(SK+'-pf-view') || 'classic') === 'v2' && typeof renderPortfolioV2 === 'function') {
+      renderPortfolioV2();
+    }
+  } catch(e) {}
 
   // ── Summary KPIs ─────────────────────────────────────────
   const totalVal = leagueData.reduce((s,d) => s + d.myValue, 0);
