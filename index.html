@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260526-210058 -->
+<!-- BUILD: VAULT-BUILD-20260527-002235 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -259,7 +259,7 @@ header{
 .page.on{display:block;width:100%;overflow-x:hidden}
 .pstrip{padding:6px 12px;background:var(--s1);border-bottom:1px solid var(--border);display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;position:sticky;top:0;z-index:98}
 .pstrip-fix
-.search-bar-wrap{padding:8px 12px;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:99;margin-top:24px}
+.search-bar-wrap{padding:8px 12px;background:var(--s1);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:99;margin-top:32px}
 .search-bar-inner{display:flex;align-items:center;gap:8px;background:var(--s2);border:1.5px solid var(--border2);border-radius:10px;padding:0 12px;transition:border-color .2s}
 .search-bar-inner:focus-within{border-color:var(--accent)}
 .search-bar-inner .sico{color:var(--muted);font-size:15px;flex-shrink:0}
@@ -452,16 +452,16 @@ header{
 .tier-break{text-align:center;font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.2em;padding:4px 0;opacity:.7;border-top:1px solid var(--border)}
 .tier-break-mobile{text-align:center;font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.15em;padding:4px 0;opacity:.6;border-top:1px solid var(--border);display:block;width:100%}
 .plist-table{width:100%;border-collapse:collapse;table-layout:fixed}
-.plist-table col.col-rk   {width:48px}
-.plist-table col.col-photo{width:34px}
-.plist-table col.col-name {width:160px}
-.plist-table col.col-team {width:42px}
-.plist-table col.col-pos  {width:36px}
-.plist-table col.col-dynasty{width:78px}
-.plist-table col.col-redraft{width:72px}
-.plist-table col.col-adp  {width:72px}
-.plist-table col.col-watch{width:32px}
-.plist-table col.col-act  {width:120px}
+.plist-table col.col-rk   {width:52px}
+.plist-table col.col-photo{width:40px}
+.plist-table col.col-name {width:210px}
+.plist-table col.col-team {width:56px}
+.plist-table col.col-pos  {width:54px}
+.plist-table col.col-dynasty{width:100px}
+.plist-table col.col-redraft{width:96px}
+.plist-table col.col-adp  {width:88px}
+.plist-table col.col-watch{width:40px}
+.plist-table col.col-act  {width:180px}
 .plist-table col.col-fill {width:auto}
 .plist-thead th{
   font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;
@@ -660,7 +660,7 @@ header{
 .ld-page{padding:28px 28px 100px;max-width:1100px;margin:0 auto}
 
 /* ===== Draft Summary Header (StatChasers-style) ===== */
-.draft-summary{max-width:1100px;margin:18px auto 12px;display:flex;flex-direction:column;gap:20px}
+.draft-summary{max-width:1100px;margin:18px auto 12px;display:flex;flex-direction:column;gap:24px}
 .draft-summary .ds-card{background:linear-gradient(180deg,#1a2340,#141b2d);border:1px solid var(--border2);border-radius:14px;padding:22px 26px;position:relative;overflow:hidden}
 .draft-summary .ds-title-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .draft-summary .ds-pin{font-size:18px}
@@ -690,7 +690,7 @@ header{
 .draft-summary .ds-resync-btn.syncing #ds-resync-icon{animation:dsResyncSpin 800ms linear infinite}
 @keyframes dsResyncSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* L/G/M/Next stat strip inside the summary card */
-.draft-summary .ds-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.draft-summary .ds-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px;padding-top:18px;border-top:1px solid var(--border)}
 .draft-summary .ds-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;border-radius:8px;background:rgba(255,255,255,0.02)}
 .draft-summary .ds-stat-val{font-size:18px;font-weight:800;color:var(--text);font-family:var(--font-sans);line-height:1;letter-spacing:-0.02em}
 .draft-summary .ds-stat-lbl{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
@@ -2864,8 +2864,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="sbtn" id="sb1" onclick="setSort(1)" style="display:none">—</button>
       <button class="sbtn" id="sb2" onclick="setSort(2)" style="display:none">—</button>
       <!-- Three primary sort modes — each sets BOTH the sort key AND the value source for the DYNASTY column -->
-      <button class="sbtn sort-mode on" id="sm-ra"  onclick="setSortMode('ra')"  title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit Dynasty</button>
-      <button class="sbtn sort-mode"    id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live from api.fantasycalc.com)">Fantasy Calc <span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:3px;font-weight:400"></span></button>
+      <button class="sbtn sort-mode"    id="sm-ra"  onclick="setSortMode('ra')"  title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit Dynasty</button>
+      <button class="sbtn sort-mode on" id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live from api.fantasycalc.com)">Fantasy Calc <span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:3px;font-weight:400"></span></button>
       <button class="sbtn sort-mode"    id="sm-my"  onclick="setSortMode('my')"  title="Your imported CSV rankings">My Rankings</button>
       <button class="sbtn" id="sb-adp-settings" onclick="openAdpSettings()" title="Configure ADP format (Dynasty / Redraft / team size / scoring)">⚙ ADP</button>
     </div>
@@ -4212,7 +4212,7 @@ let _normOverrideCache = {};
 let sleeperPlayerMap = {}; 
 let sleeperPlayersLoaded = false;
 let myTeam = null;
-let sortKey = 'ra-value';
+let sortKey = 'fc-value';
 let posF = 'ALL';
 let hideGone = true; 
 let cmpTeam = null;
