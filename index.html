@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260527-115302 -->
+<!-- BUILD: VAULT-BUILD-20260527-120334 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -847,6 +847,32 @@ header{
 .pf-v2-tag-sf{background:rgba(204,0,60,.12);color:var(--qb)}
 .pf-v2-tag-teams{background:var(--s3);color:var(--muted)}
 .pf-v2-na{color:var(--dim);font-style:italic}
+/* Section subtitle hint (right side of section heads) */
+.pf-v2-section-hint{font-size:10px;color:var(--muted);font-family:var(--font-mono);letter-spacing:.04em}
+.pf-v2-section-body{padding:18px 24px}
+/* Bottom 2-up grid for Rostered Players + Signals */
+.pf-v2-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.pf-v2-bottom-grid{grid-template-columns:1fr}}
+/* Chevron column for expandable rows */
+.pf-v2-th-chev,.pf-v2-td-chev{width:32px;padding-left:16px;padding-right:0;text-align:center}
+.pf-v2-chev{display:inline-block;font-size:11px;color:var(--muted);transition:transform 200ms ease}
+.pf-v2-chev.open{transform:rotate(90deg);color:var(--accent2)}
+.pf-v2-row-expanded{background:rgba(255,255,255,0.02)}
+/* Expanded detail row (per-position bars) */
+.pf-v2-detail-row{background:rgba(255,255,255,0.015)}
+.pf-v2-detail-row td{padding:0;border-bottom:1px solid var(--border)}
+.pf-v2-detail{padding:18px 24px 22px 56px;animation:pfV2DetailFade 220ms ease-out}
+@keyframes pfV2DetailFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.pf-v2-detail-title{font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px}
+.pf-v2-posbars{display:flex;flex-direction:column;gap:8px;max-width:520px}
+.pf-v2-posbar-row{display:flex;align-items:center;gap:12px}
+.pf-v2-posbar-lbl{font-size:10px;font-family:var(--font-mono);font-weight:700;width:24px;letter-spacing:.04em}
+.pf-v2-posbar-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+.pf-v2-posbar-fill{height:100%;border-radius:3px;transition:width 300ms ease}
+.pf-v2-posbar-val{font-size:11px;font-family:var(--font-mono);color:var(--text2);width:48px;text-align:right;font-weight:600}
+/* Name cell needs hover indication separate from row (since name = open league, row = expand) */
+.pf-v2-td-name{cursor:pointer;transition:color 120ms ease}
+.pf-v2-td-name:hover .pf-v2-name{color:var(--accent2)}
 #ps-modal.ps-entering{opacity:1}
 #ps-sheet{
   transform:translateY(20px) scale(0.98);
@@ -2842,11 +2868,23 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <!-- StatChasers v2 view -->
     <div id="portfolio-v2" style="display:none">
       <div id="pf-v2-strip" class="pf-v2-strip"></div>
-      <div id="pf-v2-section-table" class="pf-v2-section">
+      <div id="pf-v2-section-table" class="pf-v2-section" style="margin-bottom:32px">
         <div class="pf-v2-section-head">
           <span class="pf-v2-section-title">League Breakdown</span>
+          <span class="pf-v2-section-hint">Click a row to expand position breakdown</span>
         </div>
         <div id="pf-v2-table-wrap"></div>
+      </div>
+      <!-- Rostered Players + Signals row (preserved from Classic, restyled for v2) -->
+      <div class="pf-v2-bottom-grid">
+        <div class="pf-v2-section">
+          <div class="pf-v2-section-head"><span class="pf-v2-section-title">Rostered Players</span></div>
+          <div id="pf-v2-owned" class="pf-v2-section-body"></div>
+        </div>
+        <div class="pf-v2-section">
+          <div class="pf-v2-section-head"><span class="pf-v2-section-title">Signals</span></div>
+          <div id="pf-v2-signals" class="pf-v2-section-body"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -11445,12 +11483,34 @@ setTimeout(() => {
 
 // State for v2 table sorting
 window._pfV2Sort = { col: 'dyn', dir: 'asc' };  // sort by dynasty rank ascending by default
+// Track which league rows are expanded (key = league_id)
+window._pfV2Expanded = window._pfV2Expanded || new Set();
 
 function pfV2SetSort(col){
   const s = window._pfV2Sort;
   if (s.col === col) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
   else { s.col = col; s.dir = (col === 'name') ? 'asc' : 'asc'; }
   renderPortfolioV2();
+}
+
+// Toggle expanded state for a league row + re-render
+function pfV2ToggleRow(leagueId, event){
+  if (event) event.stopPropagation();
+  if (!leagueId) return;
+  const set = window._pfV2Expanded;
+  if (set.has(leagueId)) set.delete(leagueId);
+  else set.add(leagueId);
+  renderPortfolioV2();
+}
+
+// Navigate to a league's overview (called from the league-name cell only,
+// since clicking the row body should toggle expand instead)
+function pfV2OpenLeague(leagueId, event){
+  if (event) event.stopPropagation();
+  if (!leagueId) return;
+  window.ovLeagueId = leagueId;
+  window.teamsLeagueId = leagueId;
+  showPage('overview');
 }
 
 function renderPortfolioV2(){
@@ -11503,8 +11563,13 @@ function renderPortfolioV2(){
     return 0;
   });
   const sortInd = (col) => sort.col === col ? (sort.dir==='asc' ? '↑' : '↓') : '↕';
+  const expandedSet = window._pfV2Expanded || new Set();
+  const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+
   const rows = sorted.map(d => {
     const lg = d.lg || {};
+    const lgId = lg.league_id || '';
+    const isExpanded = expandedSet.has(lgId);
     const tags = [
       d.isDynasty ? '<span class="pf-v2-tag pf-v2-tag-dyn">DYN</span>' : '',
       d.isSF      ? '<span class="pf-v2-tag pf-v2-tag-sf">SF</span>' : '',
@@ -11514,8 +11579,32 @@ function renderPortfolioV2(){
     const rankStr = d.myRank ? `#${d.myRank}` : '<span class="pf-v2-na">—</span>';
     const rankColor = (typeof d.myRank==='number' && d.totalTeams) ? (d.myRank<=3?'#3DCC7A':d.myRank<=Math.floor(d.totalTeams/2)?'#facc15':'#ff6680') : 'var(--muted)';
     const gradeColor = d.gradeColor || 'var(--muted)';
-    return `<tr class="pf-v2-row" onclick="ovLeagueId='${lg.league_id}';teamsLeagueId='${lg.league_id}';showPage('overview')">
-      <td class="pf-v2-td-name">
+
+    // Build expanded detail row showing per-position value bars (same data as Classic league cards)
+    let detailRow = '';
+    if (isExpanded) {
+      const posVals = d.posVals || {};
+      const totalPosVal = Math.max(Object.values(posVals).reduce((s,v)=>s+(v||0),0), 1);
+      const posBars = ['QB','RB','WR','TE'].map(pos => {
+        const v = posVals[pos] || 0;
+        const pct = (v / totalPosVal) * 100;
+        return `<div class="pf-v2-posbar-row">
+          <span class="pf-v2-posbar-lbl" style="color:${posColor[pos]}">${pos}</span>
+          <div class="pf-v2-posbar-track"><div class="pf-v2-posbar-fill" style="width:${pct.toFixed(1)}%;background:${posColor[pos]}"></div></div>
+          <span class="pf-v2-posbar-val">${v > 0 ? (v/1000).toFixed(1)+'k' : '—'}</span>
+        </div>`;
+      }).join('');
+      detailRow = `<tr class="pf-v2-detail-row"><td colspan="6">
+        <div class="pf-v2-detail">
+          <div class="pf-v2-detail-title">Position Value Breakdown</div>
+          <div class="pf-v2-posbars">${posBars}</div>
+        </div>
+      </td></tr>`;
+    }
+
+    return `<tr class="pf-v2-row ${isExpanded ? 'pf-v2-row-expanded' : ''}" onclick="pfV2ToggleRow('${lgId}',event)">
+      <td class="pf-v2-td-chev"><span class="pf-v2-chev ${isExpanded ? 'open' : ''}">▸</span></td>
+      <td class="pf-v2-td-name" onclick="pfV2OpenLeague('${lgId}',event)" title="Open this league's overview">
         <div class="pf-v2-name">${lg.name || 'Unnamed League'}</div>
         <div class="pf-v2-tags">${tags}</div>
       </td>
@@ -11523,12 +11612,13 @@ function renderPortfolioV2(){
       <td class="pf-v2-td-num" style="color:${rankColor};font-weight:700">${rankStr}</td>
       <td class="pf-v2-td-num" style="color:#facc15;font-family:var(--font-mono)">${valStr}</td>
       <td class="pf-v2-td-num" style="color:var(--muted);font-family:var(--font-mono)">${d.totalTeams||'—'}</td>
-    </tr>`;
+    </tr>${detailRow}`;
   }).join('');
 
   tableWrap.innerHTML = `<table class="pf-v2-table">
     <thead>
       <tr>
+        <th class="pf-v2-th pf-v2-th-chev"></th>
         <th onclick="pfV2SetSort('name')"  class="pf-v2-th pf-v2-th-name">League <span class="pf-v2-sort-ind">${sortInd('name')}</span></th>
         <th onclick="pfV2SetSort('grade')" class="pf-v2-th pf-v2-th-num">Grade <span class="pf-v2-sort-ind">${sortInd('grade')}</span></th>
         <th onclick="pfV2SetSort('dyn')"   class="pf-v2-th pf-v2-th-num">My Rank <span class="pf-v2-sort-ind">${sortInd('dyn')}</span></th>
@@ -11538,6 +11628,22 @@ function renderPortfolioV2(){
     </thead>
     <tbody>${rows}</tbody>
   </table>`;
+
+  // Populate Rostered Players + Signals cards at the bottom (matches Classic behavior)
+  // Reuses the same data + helpers used by renderPortfolio() so values stay consistent.
+  try {
+    const playerCount = {};
+    data.forEach(d => (d.myNames||[]).forEach(n => { playerCount[n] = (playerCount[n]||0) + 1; }));
+    const topOwned = Object.entries(playerCount).filter(([,c])=>c>1).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const ownedEl = document.getElementById('pf-v2-owned');
+    if (ownedEl && typeof _buildPortfolioOwnedHtml === 'function') {
+      ownedEl.innerHTML = _buildPortfolioOwnedHtml(topOwned, data.length);
+    }
+    const signalsEl = document.getElementById('pf-v2-signals');
+    if (signalsEl && typeof renderBuyLowSellHigh === 'function') {
+      renderBuyLowSellHigh(data, signalsEl);
+    }
+  } catch(e) { console.warn('v2 bottom cards render skipped:', e); }
 }
 
 async function renderPortfolio() {  if (!myTeamsData.length) {
@@ -11717,20 +11823,32 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
   leagueData.forEach(d => d.myNames.forEach(n => { playerCount[n] = (playerCount[n]||0) + 1; }));
   const topOwned = Object.entries(playerCount).filter(([,c])=>c>1).sort((a,b)=>b[1]-a[1]).slice(0,10);
 
-  if (ownedEl) ownedEl.innerHTML = `
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">Most Rostered Across Leagues</div>
+  const ownedHtml = _buildPortfolioOwnedHtml(topOwned, leagueData.length);
+  if (ownedEl) ownedEl.innerHTML = ownedHtml;
+  // Also populate v2 owned card if v2 view is active or in DOM
+  const ownedElV2 = document.getElementById('pf-v2-owned');
+  if (ownedElV2) ownedElV2.innerHTML = ownedHtml;
+
+  // ── Buy Low / Sell High signals (Items 5 & 6) ────────────
+  renderBuyLowSellHigh(leagueData, signalsEl);
+  // Mirror to v2 signals card if present
+  const signalsElV2 = document.getElementById('pf-v2-signals');
+  if (signalsElV2) renderBuyLowSellHigh(leagueData, signalsElV2);
+}
+
+// Reusable helper: build the "Most Rostered Across Leagues" innerHTML.
+// Used by both classic renderPortfolio() and renderPortfolioV2().
+function _buildPortfolioOwnedHtml(topOwned, leagueCount){
+  return `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">Most Rostered Across Leagues</div>
     ${topOwned.length ? topOwned.map(([name, count]) => {
-      const pos = getFCValue(name)?.pos || '';
+      const pos = (typeof getFCValue === 'function' && getFCValue(name)?.pos) || '';
       const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos] || 'var(--muted)';
       return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
         <span style="font-size:9px;font-family:var(--font-mono);color:${posColor};width:22px">${pos}</span>
         <span style="flex:1;font-size:13px;color:var(--text);font-weight:500">${name}</span>
-        <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">${count} / ${leagueData.length} leagues</span>
+        <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">${count} / ${leagueCount} leagues</span>
       </div>`;
     }).join('') : '<div style="color:var(--muted);font-size:13px;padding:16px 0">No duplicate players across leagues.</div>'}`;
-
-  // ── Buy Low / Sell High signals (Items 5 & 6) ────────────
-  renderBuyLowSellHigh(leagueData, signalsEl);
 }
 
 // ════════════════════════════════════════════════════════════
