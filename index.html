@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260528-155704 -->
+<!-- BUILD: VAULT-BUILD-20260528-232229 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -3709,9 +3709,15 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <!-- Default state: leaderboard (shown when no player selected) -->
     <div id="research-leaderboard">
       <div style="background:rgba(13,28,45,0.65);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;backdrop-filter:blur(20px)">
-        <div style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02)">
+        <div style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02);flex-wrap:wrap;gap:10px">
           <span id="res-lb-title" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.10em;font-family:var(--font-mono);color:#909097">Top dynasty players — Superflex</span>
-          <span style="font-size:11px;color:#909097">via <a href="https://rosteraudit.com" target="_blank" style="color:#7bd0ff;text-decoration:none">RosterAudit</a></span>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="res-mode-toggle" style="display:inline-flex;border:1px solid rgba(255,255,255,0.12);border-radius:8px;overflow:hidden">
+              <button id="res-mode-dynasty" onclick="_resSetMode('dynasty')" style="padding:6px 14px;background:linear-gradient(135deg,#cc003c,#ff4d6d);color:#fff;border:none;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:0.06em;cursor:pointer">DYNASTY</button>
+              <button id="res-mode-redraft" onclick="_resSetMode('redraft')" style="padding:6px 14px;background:transparent;color:#909097;border:none;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:0.06em;cursor:pointer">REDRAFT</button>
+            </div>
+            <span id="res-lb-source" style="font-size:11px;color:#909097">via <a href="https://rosteraudit.com" target="_blank" style="color:#7bd0ff;text-decoration:none">RosterAudit</a></span>
+          </div>
         </div>
         <div id="res-lb-body">
           <div style="text-align:center;padding:48px;color:#909097;font-size:14px">
@@ -4849,6 +4855,8 @@ let _resPlayer = null;
 let _resTab = 'stats';
 let _resLbCache = null;
 let _resSearchTimer = null;
+let _resMode = 'dynasty';      // 'dynasty' | 'redraft'
+let _resRedraftCache = null;   // cached redraft leaderboard (FantasyCalc 1QB redraft)
 
 async function initResearch() {
   document.getElementById('research-profile')?.style && (document.getElementById('research-profile').style.display = 'none');
@@ -4903,21 +4911,87 @@ async function _resLoadLeaderboard() {
   }
 }
 
-function _resRenderLeaderboard(players) {
+// Toggle between Dynasty (RosterAudit SF) and Redraft (FantasyCalc 1QB redraft) views
+function _resSetMode(mode){
+  if (mode !== 'dynasty' && mode !== 'redraft') mode = 'dynasty';
+  _resMode = mode;
+  const dynBtn = document.getElementById('res-mode-dynasty');
+  const rdBtn = document.getElementById('res-mode-redraft');
+  if (dynBtn) { dynBtn.style.background = mode==='dynasty' ? 'linear-gradient(135deg,#cc003c,#ff4d6d)' : 'transparent'; dynBtn.style.color = mode==='dynasty' ? '#fff' : '#909097'; }
+  if (rdBtn)  { rdBtn.style.background  = mode==='redraft' ? 'linear-gradient(135deg,#cc003c,#ff4d6d)' : 'transparent'; rdBtn.style.color  = mode==='redraft' ? '#fff' : '#909097'; }
+  if (mode === 'redraft') _resLoadRedraftLeaderboard();
+  else { if (_resLbCache) _resRenderLeaderboard(_resLbCache); else _resLoadLeaderboard(); }
+}
+
+// Load redraft leaderboard from FantasyCalc's redraft endpoint (1QB, matches Research tab convention)
+async function _resLoadRedraftLeaderboard() {
   const body = document.getElementById('res-lb-body');
+  if (!body) return;
+  if (_resRedraftCache) { _resRenderLeaderboard(_resRedraftCache); return; }
+  body.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px"><div style="font-size:22px;animation:spin 1s linear infinite;display:inline-block;margin-bottom:8px">⟳</div><br>Loading redraft values from FantasyCalc...</div>`;
+  try {
+    const res = await fetch('https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=1&numTeams=12&ppr=1');
+    if (!res.ok) throw new Error('FC redraft unavailable');
+    const data = await res.json();
+    const players = data.map(item => {
+      const p = item.player || {};
+      const sid = p.sleeperId || sleeperPlayerMap[normName(p.name||'')]?.player_id || '';
+      return {
+        name: p.name || '',
+        pos: (p.position || '?').toUpperCase(),
+        team: p.maybeTeam || '',
+        val_sf: item.value || 0,            // reuse val_sf field so the renderer's value logic works
+        value: item.value || 0,
+        age: p.maybeAge ? Math.round(p.maybeAge*10)/10 : null,
+        trend_7d: item.trend30Day || 0,
+        rank: item.overallRank,
+        posRank: item.positionRank,         // for the QB1/RB2/etc. badge in redraft mode
+        sleeper_id: sid,
+        _redraft: true,
+      };
+    }).filter(p => p.name && (_resPos==='ALL' || p.pos===_resPos));
+    _resRedraftCache = players;
+    _resRenderLeaderboard(players);
+  } catch(e) {
+    body.innerHTML = `<div style="text-align:center;padding:40px;color:#909097;font-size:14px">
+      <div style="font-size:32px;margin-bottom:12px">⚠</div>
+      <div style="font-weight:600;color:#d4e4fa;margin-bottom:8px">Redraft data unavailable</div>
+      <p style="font-size:13px;line-height:1.6">${e.message}</p>
+      <button onclick="_resLoadRedraftLeaderboard()" style="margin-top:16px;padding:8px 20px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(18,33,49,0.6);color:#d4e4fa;font-family:var(--font-sans);font-size:13px;cursor:pointer">Retry →</button>
+    </div>`;
+  }
+}
+
+function _resRenderLeaderboard(players) {  const body = document.getElementById('res-lb-body');
   const title = document.getElementById('res-lb-title');
   const countEl = document.getElementById('res-player-count');
   if (!body) return;
   const posLabel = _resPos==='ALL'?'All positions':_resPos+'s';
-  if (title) title.textContent = `Top ${posLabel} — dynasty Superflex`;
+  const isRedraft = _resMode === 'redraft';
+  if (title) title.textContent = isRedraft ? `Top ${posLabel} — redraft 1QB` : `Top ${posLabel} — dynasty Superflex`;
   if (countEl) countEl.textContent = players.length;
+  // Mode-aware source label
+  const srcEl = document.getElementById('res-lb-source');
+  if (srcEl) srcEl.innerHTML = isRedraft
+    ? `via <a href="https://fantasycalc.com/redraft-rankings" target="_blank" style="color:#7bd0ff;text-decoration:none">FantasyCalc</a>`
+    : `via <a href="https://rosteraudit.com" target="_blank" style="color:#7bd0ff;text-decoration:none">RosterAudit</a>`;
+  const valHdr = isRedraft ? 'RD VALUE' : 'SF VALUE';
+  const rankHdr = isRedraft ? 'RD RANK' : 'SF RANK';
 
   const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
   const posBgs = {QB:'rgba(255,102,128,0.12)',RB:'rgba(61,204,122,0.12)',WR:'rgba(123,208,255,0.12)',TE:'rgba(245,200,66,0.12)'};
 
-  // Columns: PLAYER | TEAM | SF VALUE | AGE | TREND | SF RANK | WATCH
-  const hdr = `<div style="display:grid;grid-template-columns:3fr 0.8fr 1fr 0.7fr 1fr 0.8fr 0.5fr;gap:0;padding:10px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">
-    ${['PLAYER','TEAM','SF VALUE','AGE','7D TREND','SF RANK','WATCH'].map((h,i)=>`
+  // Columns differ by mode:
+  //   Dynasty: PLAYER | TEAM | SF VALUE | AGE | 7D TREND | SF RANK | WATCH (7 cols)
+  //   Redraft: PLAYER | TEAM | RD VALUE | AGE | RD RANK | WATCH (6 cols — TREND hidden)
+  const gridTpl = isRedraft
+    ? '3fr 0.8fr 1fr 0.7fr 0.8fr 0.5fr'
+    : '3fr 0.8fr 1fr 0.7fr 1fr 0.8fr 0.5fr';
+  const colLabels = isRedraft
+    ? ['PLAYER','TEAM',valHdr,'AGE',rankHdr,'WATCH']
+    : ['PLAYER','TEAM',valHdr,'AGE','7D TREND',rankHdr,'WATCH'];
+  const hdr = `<div style="display:grid;grid-template-columns:${gridTpl};gap:0;padding:10px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">
+    ${colLabels.map((h,i)=>`
     <div style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:#909097;${i>=2?'text-align:right':''}">${h}</div>`).join('')}
   </div>`;
 
@@ -4939,7 +5013,7 @@ function _resRenderLeaderboard(players) {
     // Value bar width relative to #1
     const barWidth = Math.round((val / maxVal) * 100);
 
-    return `<div style="display:grid;grid-template-columns:3fr 0.8fr 1fr 0.7fr 1fr 0.8fr 0.5fr;gap:0;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 100ms;cursor:pointer"
+    return `<div style="display:grid;grid-template-columns:${gridTpl};gap:0;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 100ms;cursor:pointer"
       onclick="researchSelectPlayer('${p.name.replace(/'/g,"\\'")}','${sid}','${pos}','${p.team||''}')"
       onmouseover="this.style.background='rgba(190,198,224,0.04)'" onmouseout="this.style.background=''">
       <div style="display:flex;align-items:center;gap:12px">
@@ -4948,8 +5022,9 @@ function _resRenderLeaderboard(players) {
           <div style="width:36px;height:36px;border-radius:8px;background:${posBg};border:1px solid rgba(255,255,255,0.08);display:${photoUrl?'none':'flex'};align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${posCol};font-family:var(--font-sans)">${initials}</div>
         </div>
         <div>
-          <div style="display:flex;align-items:center;gap:6px">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span style="font-size:14px;font-weight:700;color:#d4e4fa;font-family:var(--font-sans)">${p.name}</span>
+            ${isRedraft && p.posRank ? `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:0.04em;color:${posCol};background:${posBg};border:1px solid ${posCol}55;padding:2px 6px;border-radius:4px" title="Position rank — redraft 1QB">${pos}${p.posRank}</span>` : ''}
             ${(()=>{const r=window._cachedTradeRoster||[];return r.some(rp=>rp.name===p.name)?'<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:0.06em;color:#3DCC7A;background:rgba(61,204,122,0.12);border:1px solid rgba(61,204,122,0.25);padding:2px 7px;border-radius:4px">ROSTERED</span>':''})()}
           </div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
@@ -4966,7 +5041,7 @@ function _resRenderLeaderboard(players) {
         </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:flex-end;font-size:13px;font-family:var(--font-mono);color:#909097">${age}</div>
-      <div style="display:flex;align-items:center;justify-content:flex-end;font-size:12px;font-weight:700;font-family:var(--font-mono);color:${trendColor}">${trendStr}</div>
+      ${isRedraft ? '' : `<div style="display:flex;align-items:center;justify-content:flex-end;font-size:12px;font-weight:700;font-family:var(--font-mono);color:${trendColor}">${trendStr}</div>`}
       <div style="display:flex;align-items:center;justify-content:flex-end;font-size:12px;font-weight:700;font-family:var(--font-mono);color:#909097">#${rank}</div>
       <div style="display:flex;align-items:center;justify-content:flex-end">
         <button onclick="event.stopPropagation();toggleWatch('${p.name.replace(/'/g,"\\'")}',this)"
@@ -4976,7 +5051,9 @@ function _resRenderLeaderboard(players) {
     </div>`;
   }).join('');
 
-  const source = players[0]?._fromFC ? 'FantasyCalc (connect Sleeper for live RosterAudit data)' : 'RosterAudit.com · Updated daily';
+  const source = isRedraft
+    ? 'FantasyCalc.com · Redraft 1QB · Updated continuously'
+    : (players[0]?._fromFC ? 'FantasyCalc (connect Sleeper for live RosterAudit data)' : 'RosterAudit.com · Updated daily');
 
   body.innerHTML = hdr + `<div>${rows}</div>
   <div style="padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -4989,11 +5066,12 @@ function _resRenderLeaderboard(players) {
 
 
 function _resApplyFilters() {
-  if (!_resLbCache) return;
+  const activeCache = _resMode === 'redraft' ? _resRedraftCache : _resLbCache;
+  if (!activeCache) return;
   const youngOnly = document.getElementById('filter-young')?.checked;
   const trendingOnly = document.getElementById('filter-trending')?.checked;
   const eliteOnly = document.getElementById('filter-elite')?.checked;
-  let filtered = [..._resLbCache];
+  let filtered = [...activeCache];
   if (youngOnly) filtered = filtered.filter(p => p.age && Number(p.age) < 24);
   if (trendingOnly) filtered = filtered.filter(p => (p.trend_7d||0) > 0);
   if (eliteOnly) filtered = filtered.filter(p => (p.val_sf||p.value||0) >= 5000);
@@ -5137,9 +5215,11 @@ async function _resApplyOppFilter(opp) {
 function researchSetPos(pos) {
   _resPos = pos;
   _resLbCache = null;
+  _resRedraftCache = null;
   document.querySelectorAll('[id^="res-pos-"]').forEach(b => b.classList.remove('on'));
   document.getElementById(`res-pos-${pos}`)?.classList.add('on');
-  _resLoadLeaderboard();
+  if (_resMode === 'redraft') _resLoadRedraftLeaderboard();
+  else _resLoadLeaderboard();
 }
 
 function researchSearch(q) {
