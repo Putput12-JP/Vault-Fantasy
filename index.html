@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260528-155117 -->
+<!-- BUILD: VAULT-BUILD-20260528-155704 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -4506,6 +4506,10 @@ function _psRenderHeader() {  const hdr = document.getElementById('ps-header');
   const dynastyVal = getPlayerValue(name) || val?.val_sf || 0;
   const fcData = getFCValue(name);
   const redraftVal = fcData?.redraftValue || 0;
+  // Dedicated 1QB redraft value + rank (from the stable store, always numQbs=1) for the Research tab
+  const rd1qb = (window._redraft1QB && (window._redraft1QB[name] || window._redraft1QB[normName(name)])) || null;
+  const rd1qbVal = rd1qb?.value || 0;
+  const rd1qbRank = rd1qb?.rank || null;
   const sourceLabel = valueSource === 'ra' ? 'RA' : 'FC';
   const sourceTooltip = valueSource === 'ra' ? 'RosterAudit' : 'FantasyCalc';
   // injury from nflverse
@@ -4521,13 +4525,14 @@ function _psRenderHeader() {  const hdr = document.getElementById('ps-header');
   const rankChips = [
     posRank ? `<div class="ps-rank-chip"><b style="color:${posC}">#${posRank}</b> ${pos}</div>` : '',
     overallRank ? `<div class="ps-rank-chip"><b style="color:${posC}">#${overallRank}</b> OVERALL</div>` : '',
+    rd1qbRank ? `<div class="ps-rank-chip" title="FantasyCalc 1QB redraft overall rank"><b style="color:#7bd0ff">#${rd1qbRank}</b> RD 1QB</div>` : '',
     rostered ? `<div class="ps-rank-chip"><b style="color:${posC}">${rostered}</b> ROSTERED</div>` : '',
     started ? `<div class="ps-rank-chip"><b style="color:${posC}">${started}</b> STARTED</div>` : '',
   ].filter(Boolean).join('');
-  // Build value chips: DYNASTY + REDRAFT + source toggle (only if FC/RA differ or RA available)
+  // Build value chips: DYNASTY + REDRAFT (1QB) + source toggle
   const valChips = [
     dynastyVal ? `<div class="ps-val-chip" title="${sourceTooltip} dynasty value" style="color:#facc15;border-color:rgba(250,204,21,0.35)">DYNASTY ${dynastyVal.toLocaleString()} <span style="opacity:.55;font-size:9px;margin-left:4px">${sourceLabel}</span></div>` : '',
-    redraftVal ? `<div class="ps-val-chip" title="FantasyCalc redraft value" style="color:#7bd0ff;border-color:rgba(123,208,255,0.35)">REDRAFT ${redraftVal.toLocaleString()}</div>` : '',
+    rd1qbVal ? `<div class="ps-val-chip" title="FantasyCalc 1QB redraft value" style="color:#7bd0ff;border-color:rgba(123,208,255,0.35)">REDRAFT 1QB ${rd1qbVal.toLocaleString()}</div>` : (redraftVal ? `<div class="ps-val-chip" title="FantasyCalc redraft value" style="color:#7bd0ff;border-color:rgba(123,208,255,0.35)">REDRAFT ${redraftVal.toLocaleString()}</div>` : ''),
     `<div class="ps-val-chip ps-source-toggle" onclick="event.stopPropagation();_psToggleValueSource()" title="Click to switch value source (FantasyCalc ↔ RosterAudit)" style="cursor:pointer;color:var(--muted);border-color:var(--border2);background:rgba(255,255,255,0.02)">↔ ${valueSource === 'ra' ? 'Using RA' : 'Using FC'}</div>`,
   ].filter(Boolean).join('');
   hdr.innerHTML = `
@@ -9295,6 +9300,26 @@ async function fetchFantasyCalc() {
         if (statusEl) statusEl.textContent = `✓ FC loaded · ${Object.keys(fcValues).length/2|0} players · redraft (${updated})`;
         try { renderList(); } catch(e) {}
       } catch(e) { console.warn('FC redraft fetch failed (non-fatal):', e); }
+    })();
+    // Dedicated 1QB redraft store for the Research tab (value + rank), always numQbs=1,
+    // independent of the REDRAFT column's SF/1QB toggle so the Research chip is stable.
+    (async () => {
+      try {
+        const r = await fetch('https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=1&numTeams=12&ppr=1');
+        if (!r.ok) return;
+        const data = await r.json();
+        const store = {};
+        data.forEach(item => {
+          const p = item.player;
+          if (!p?.name) return;
+          const rec = { value: item.value || 0, rank: item.overallRank, posRank: item.positionRank };
+          store[p.name] = rec;
+          store[normName(p.name)] = rec;
+        });
+        window._redraft1QB = store;
+        // Refresh the player modal header if it's open so the 1QB chip populates
+        try { if (document.getElementById('ps-header') && _psPlayer) _psRenderHeader(); } catch(e) {}
+      } catch(e) { console.warn('FC 1QB redraft store fetch failed (non-fatal):', e); }
     })();
     // Re-render overview if it's showing so positions/values update from ? to real data
     const activePage = document.querySelector('.page.on')?.id;
