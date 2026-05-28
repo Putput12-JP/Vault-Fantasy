@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260528-110332 -->
+<!-- BUILD: VAULT-BUILD-20260528-111220 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -498,6 +498,8 @@ header{
 .plist-thead .hdr-source-label{display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(250,204,21,0.18);color:#facc15;letter-spacing:.06em;margin-left:4px;vertical-align:middle;font-family:var(--font-mono)}
 .plist-thead .hdr-source-label.src-ra{background:rgba(167,139,250,0.18);color:#a78bfa}
 .plist-thead .hdr-source-label.src-my{background:rgba(123,208,255,0.18);color:#7bd0ff}
+.plist-thead .redraft-qb-toggle{display:inline-block;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(123,208,255,0.18);color:#7bd0ff;letter-spacing:.04em;margin-left:3px;vertical-align:middle;font-family:var(--font-mono);cursor:pointer;transition:all 120ms ease}
+.plist-thead .redraft-qb-toggle:hover{background:rgba(123,208,255,0.32);color:#fff}
 @media(max-width:700px){
   .plist-table, .plist-thead{display:none!important}
   .prow-mobile{display:flex}
@@ -3098,7 +3100,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th>TEAM</th>
           <th style="text-align:center">POS</th>
           <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;color:#facc15;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">DYNASTY <span class="hdr-source-label" id="hdr-dynasty-src">FC</span> <span class="sort-ind" id="ind-dynasty">↓</span></th>
-          <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;color:#7bd0ff;cursor:pointer" title="Click to sort by FantasyCalc redraft value (descending)">REDRAFT <span class="sort-ind" id="ind-redraft">↕</span></th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;color:#7bd0ff;cursor:pointer" title="Click to sort by FantasyCalc redraft value (descending)">REDRAFT <span class="redraft-qb-toggle" id="redraft-qb-toggle" onclick="event.stopPropagation();toggleRedraftQbs()" title="Toggle redraft values between 1QB and Superflex">1QB</span> <span class="sort-ind" id="ind-redraft">↕</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;color:#a78bfa;cursor:pointer" title="Click to sort by ADP (lowest pick number first)">ADP <span class="sort-ind" id="ind-adp">↕</span></th>
           <th></th>
           <th>STATUS</th>
@@ -7205,8 +7207,56 @@ function toggleDraftListCap(){
 window._hidePicks = (function(){
   try { return localStorage.getItem('dcmd-v5-hidepicks') === '1'; } catch(e){ return false; }
 })();
-function toggleHidePicks(){
-  window._hidePicks = !window._hidePicks;
+// Redraft SF/1QB toggle — flips numQbs for the REDRAFT column and re-fetches FC redraft values.
+// Caches both formats so toggling back is instant.
+window._redraftQbs = window._redraftQbs || 1;  // default 1QB
+window._redraftCache = window._redraftCache || {};  // { '1': {name:value}, '2': {name:value} }
+async function toggleRedraftQbs(){
+  window._redraftQbs = window._redraftQbs === 1 ? 2 : 1;
+  const qbs = window._redraftQbs;
+  const pill = document.getElementById('redraft-qb-toggle');
+  if (pill) pill.textContent = qbs === 2 ? 'SF' : '1QB';
+
+  // Apply from cache if we have it
+  const applyCache = (map) => {
+    let n = 0;
+    Object.keys(map).forEach(name => {
+      const e = fcValues[name];
+      if (e) { e.redraftValue = map[name].v; e.redraftRank = map[name].r; n++; }
+      const ne = fcValues[normName(name)];
+      if (ne && ne !== e) { ne.redraftValue = map[name].v; ne.redraftRank = map[name].r; }
+    });
+    return n;
+  };
+
+  if (window._redraftCache[qbs]) {
+    applyCache(window._redraftCache[qbs]);
+    try { renderList(); } catch(e){}
+    return;
+  }
+
+  // Otherwise fetch the new format
+  if (pill) pill.textContent = '…';
+  try {
+    const url = `https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=${qbs}&numTeams=12&ppr=1`;
+    const r = await fetch(url);
+    if (r.ok) {
+      const data = await r.json();
+      const map = {};
+      data.forEach(item => {
+        const p = item.player;
+        if (!p?.name) return;
+        map[p.name] = { v: item.value || 0, r: item.overallRank };
+      });
+      window._redraftCache[qbs] = map;
+      applyCache(map);
+    }
+  } catch(e) { console.warn('Redraft toggle fetch failed:', e); }
+  if (pill) pill.textContent = qbs === 2 ? 'SF' : '1QB';
+  try { renderList(); } catch(e){}
+}
+
+function toggleHidePicks(){  window._hidePicks = !window._hidePicks;
   try { localStorage.setItem('dcmd-v5-hidepicks', window._hidePicks ? '1' : '0'); } catch(e){}
   const btn = document.getElementById('sb-hidepicks');
   if(btn) {
@@ -8064,17 +8114,31 @@ function renderList(){
     if(watchFilter && !inWatchlist) return {desktop:'',mobile:''};
     if(!posMatch||!sm||(hideGone&&isDrafted)) return {desktop:'',mobile:''};
 
-    
-    const isAdpSort=sortKey==='adp-dynasty'||sortKey==='adp-redraft';
-    const effectiveRank = isAdpSort ? (getADP(p.name)||p.r0) : p.r0;
-    const diff = !isDrafted && overallPick<999 ? effectiveRank - overallPick : null;
+    // ===== Status (REACH / NEED / VALUE / TAKE NOW) =====
+    // Compare the player's rank in the CURRENT sort/value mode against their ADP
+    // in the active draft format. Positive delta = falling past their ADP = VALUE.
+    // Negative delta = you'd be reaching ahead of ADP = REACH.
     const myR2 = getMyRoster();
     const posCount = myR2.filter(x=>x.pos===p.pos).length;
     const posNeeded = {QB:1,RB:3,WR:4,TE:1}[p.pos]||2;
-    const isNeed  = !isDrafted && posCount < posNeeded;
-    const isHot   = !isDrafted && diff!==null && diff<-15 && isNeed;
-    const isVal   = !isDrafted && diff!==null && diff<-12;
-    const isReach = !isDrafted && diff!==null && diff>12;
+    const isNeed = !isDrafted && posCount < posNeeded;
+
+    // Current rank = the player's position in the active sort (rank-by-value-desc → use displayed rank).
+    // We approximate "current rank" with the player's value-based rank via getRankByMode when available,
+    // falling back to r0. ADP rank comes from getADP (overall pick number for the active format).
+    let valDelta = null;  // adpRank - currentRank ; >0 = value (falls to you), <0 = reach
+    if (!isDrafted && p.pos !== 'PICK') {
+      const adpRank = (typeof getADP === 'function') ? getADP(p.name) : null;
+      const curRank = (typeof getRankByMode === 'function') ? getRankByMode(p, suggestMode) : (p.r0 || null);
+      if (adpRank && adpRank > 0 && curRank && curRank > 0) {
+        valDelta = adpRank - curRank;
+      }
+    }
+    // Threshold scales with league size (~half a round). Min 6, so small leagues still flag.
+    const valThresh = Math.max(6, Math.round((NUM_TEAMS || 12) * 0.6));
+    const isVal   = !isDrafted && valDelta !== null && valDelta >= valThresh;
+    const isReach = !isDrafted && valDelta !== null && valDelta <= -valThresh;
+    const isHot   = isVal && isNeed;   // TAKE NOW = value AND positional need
 
     let vbadgeHtml='';
     if(!isDrafted){
@@ -9200,11 +9264,12 @@ async function fetchFantasyCalc() {
     renderTeams();
     // Fetch FC's DEDICATED redraft endpoint and overwrite each player's redraftValue with
     // the canonical redraft ranking value (matches fantasycalc.com/redraft-rankings).
-    // Previous redraftValue was FC's "dynasty model's implied redraft" which differs from
-    // their actual standalone redraft rankings.
+    // numQbs is controlled by window._redraftQbs (1 = single-QB default, 2 = Superflex) via the
+    // SF/1QB toggle on the REDRAFT column header.
     (async () => {
       try {
-        const redraftUrl = 'https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=2&numTeams=12&ppr=1';
+        const qbs = window._redraftQbs || 1;   // default 1QB
+        const redraftUrl = `https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=${qbs}&numTeams=12&ppr=1`;
         const r = await fetch(redraftUrl);
         if (!r.ok) return;
         const rdData = await r.json();
