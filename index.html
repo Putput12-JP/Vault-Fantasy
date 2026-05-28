@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260527-220752 -->
+<!-- BUILD: VAULT-BUILD-20260528-110332 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -2998,7 +2998,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <!-- Three primary sort modes — each sets BOTH the sort key AND the value source for the DYNASTY column -->
       <button class="sbtn sort-mode"    id="sm-ra"  onclick="setSortMode('ra')"  title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit Dynasty</button>
       <button class="sbtn sort-mode on" id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live from api.fantasycalc.com)">Fantasy Calc <span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:3px;font-weight:400"></span></button>
-      <button class="sbtn sort-mode"    id="sm-my"  onclick="setSortMode('my')"  title="Your imported CSV rankings">My Rankings</button>
+      <button class="sbtn sort-mode" id="sm-my" onclick="setSortMode('my')" title="Your imported CSV rankings" style="display:none">My Rankings</button>
       <button class="sbtn" id="sb-adp-settings" onclick="openAdpSettings()" title="Configure ADP format (Dynasty / Redraft / team size / scoring)">⚙ ADP</button>
       <button class="sbtn sbtn-info" id="sb-data-info" onclick="toggleDataSourceInfo(event)" title="About the data sources">ⓘ</button>
     </div>
@@ -3029,7 +3029,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       </div>
     </div>
     <div class="sgrp">
-      <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only starred players">⭐ Watchlist</button>
+      <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only players you've starred in Vault (local to this app — not synced with your Sleeper draft queue)">⭐ Vault Watchlist</button>
     </div>
     <div class="sgrp">
       <button class="sbtn" onclick="toggleImportPanel()" id="sb-import" title="Import custom rankings from CSV">↑ Import</button>
@@ -6102,6 +6102,15 @@ function updateSortBtns() {
       sb0.style.display = 'none';
     }
   }
+  // Also gate the StatChasers-style "My Rankings" sort-mode button on CSV import
+  const smMy = document.getElementById('sm-my');
+  if (smMy) {
+    smMy.style.display = hasMyRankings ? '' : 'none';
+    if (hasMyRankings && myLabel) {
+      smMy.textContent = myLabel;
+      smMy.title = `Sort by your imported "${myLabel}" rankings`;
+    }
+  }
 
   // Hide legacy sb1, sb2 (no longer used - multi-column CSV import deprecated)
   ['sb1', 'sb2', 'lh1', 'lh2'].forEach(id => {
@@ -6773,7 +6782,10 @@ function getSuggestions() {
     const nn = normName(p.name);
     const mo = manualOverrides[p.name] || _normOverrideCache[nn];
     const ds = draftState[p.name] || _normDraftCache[nn];
-    return ds === undefined && mo !== 'gone';
+    if (ds !== undefined || mo === 'gone') return false;
+    // Respect the Draft Vault "Hide Picks" toggle — picks are noise when user disabled them
+    if (window._hidePicks && p.pos === 'PICK') return false;
+    return true;
   });
 
   const sorted = [...available].sort((a, b) => getRankByMode(a, suggestMode) - getRankByMode(b, suggestMode));
@@ -7202,6 +7214,8 @@ function toggleHidePicks(){
     btn.classList.toggle('on', window._hidePicks);
   }
   renderList();
+  // Refresh Suggested Picks chips too — they're a separate render call
+  try { renderSuggestions(); } catch(e) {}
 }
 // Initialize button labels on load
 setTimeout(()=>{
@@ -9184,6 +9198,38 @@ async function fetchFantasyCalc() {
     fcLoading = false;
     if (statusEl) statusEl.textContent = `✓ FC loaded · ${Object.keys(fcValues).length/2|0} players`;
     renderTeams();
+    // Fetch FC's DEDICATED redraft endpoint and overwrite each player's redraftValue with
+    // the canonical redraft ranking value (matches fantasycalc.com/redraft-rankings).
+    // Previous redraftValue was FC's "dynasty model's implied redraft" which differs from
+    // their actual standalone redraft rankings.
+    (async () => {
+      try {
+        const redraftUrl = 'https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=2&numTeams=12&ppr=1';
+        const r = await fetch(redraftUrl);
+        if (!r.ok) return;
+        const rdData = await r.json();
+        let updated = 0;
+        rdData.forEach(item => {
+          const p = item.player;
+          if (!p?.name) return;
+          const entry = fcValues[p.name];
+          if (entry) {
+            entry.redraftValue = item.value || 0;     // canonical redraft value
+            entry.redraftRank = item.overallRank;      // canonical redraft rank
+            updated++;
+          }
+          // also update normalized-name lookup
+          const nEntry = fcValues[normName(p.name)];
+          if (nEntry && nEntry !== entry) {
+            nEntry.redraftValue = item.value || 0;
+            nEntry.redraftRank = item.overallRank;
+          }
+        });
+        window._fcRedraftFetchedAt = Date.now();
+        if (statusEl) statusEl.textContent = `✓ FC loaded · ${Object.keys(fcValues).length/2|0} players · redraft (${updated})`;
+        try { renderList(); } catch(e) {}
+      } catch(e) { console.warn('FC redraft fetch failed (non-fatal):', e); }
+    })();
     // Re-render overview if it's showing so positions/values update from ? to real data
     const activePage = document.querySelector('.page.on')?.id;
     if (activePage === 'page-overview') {
