@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260528-111220 -->
+<!-- BUILD: VAULT-BUILD-20260528-155117 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -8165,6 +8165,7 @@ function renderList(){
       : `<div class="pimg-wrap"><span>${p.pos[0]}</span></div>`;
 
     const adpVal = getADP(p.name);
+    const isAdpSort = sortKey==='adp-dynasty'||sortKey==='adp-redraft'||sortKey==='adp-col';
     const rank = isAdpSort?(adpVal!=null?adpVal.toFixed(1):'—'):sortKey===1?(p.r1!=null?p.r1.toFixed(1):'—'):sortKey===2?(p.r2??'—'):(p.r0||'—');
 
     
