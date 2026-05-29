@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260529-164222 -->
+<!-- BUILD: VAULT-BUILD-20260529-165455 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -243,15 +243,16 @@ header{
 }
 .tab-btn{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:2px;padding:8px 4px 6px;
+  gap:2px;padding:8px 2px 6px;min-width:0;
   background:transparent;border:none;color:var(--muted);
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   transition:color .15s;min-height:54px;
 }
 .tab-btn.on{color:var(--accent2)}
 .tab-btn:active{transform:scale(.95);opacity:.7;transition:transform 80ms ease,opacity 80ms ease}
-.tab-icon{font-size:20px;line-height:1;display:block}
-.tab-label{font-size:9px;font-weight:600;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.05em;line-height:1}
+.tab-icon{font-size:19px;line-height:1;display:block}
+.tab-label{font-size:8.5px;font-weight:600;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.02em;line-height:1;white-space:nowrap}
+@media(max-width:360px){.tab-icon{font-size:17px}.tab-label{font-size:7.5px}}
 .tab-btn.on .tab-label{color:var(--accent2)}
 .page{display:none;width:100%;overflow-x:hidden;overflow-y:auto}
 .page.on{display:block;opacity:1;animation:vault-page-in 150ms ease-out forwards;transform:translateY(0)}
@@ -896,8 +897,22 @@ header{
 @media(max-width:700px){.ds-summary{margin:0 12px 6px;font-size:9.5px}}
 .ds-summary[data-state="dim"]{opacity:.6}
 
-/* ===== My Team Hub (StatChasers-style) ===== */
-.mth-wrap{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start}
+/* Fix 4: Research leaderboard — mobile reflow. Hide TEAM (col2), AGE (col4), TREND (col5 dynasty);
+   keep PLAYER | VALUE | RANK | WATCH so values aren't squished. */
+@media(max-width:640px){
+  .res-lb-hdr, .res-lb-row{
+    grid-template-columns: 1fr auto auto 36px !important;
+    padding-left:14px !important; padding-right:14px !important; gap:8px !important;
+  }
+  /* dynasty (7 cells): 1 player,2 team,3 value,4 age,5 trend,6 rank,7 watch */
+  .res-lb-hdr > *:nth-child(2), .res-lb-row > *:nth-child(2){display:none !important}  /* team */
+  .res-lb-hdr.has7 > *:nth-child(4), .res-lb-row.has7 > *:nth-child(4){display:none !important} /* age */
+  .res-lb-hdr.has7 > *:nth-child(5), .res-lb-row.has7 > *:nth-child(5){display:none !important} /* trend */
+  /* redraft (6 cells): 1 player,2 team,3 value,4 age,5 rank,6 watch */
+  .res-lb-hdr.has6 > *:nth-child(4), .res-lb-row.has6 > *:nth-child(4){display:none !important} /* age */
+}
+
+/* ===== My Team Hub (StatChasers-style) ===== */.mth-wrap{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start}
 @media(max-width:980px){.mth-wrap{grid-template-columns:1fr}}
 .mth-profile{background:rgba(20,30,54,0.6);border:1px solid var(--border2);border-radius:18px;padding:24px;position:sticky;top:16px}
 @media(max-width:980px){.mth-profile{position:static}}
@@ -967,6 +982,27 @@ header{
 .mth-picks-yr-label{font-size:13px;font-weight:800;color:#facc15;font-family:var(--font-mono);width:48px;flex-shrink:0}
 .mth-picks-rounds{display:flex;gap:6px;flex-wrap:wrap}
 .mth-pick-chip{font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:var(--s3);color:var(--text2);font-family:var(--font-mono);border:1px solid var(--border2)}
+/* Fix 7: My Team Hub mobile layout */
+@media(max-width:700px){
+  .mth-wrap{gap:16px}
+  .mth-profile{padding:18px;border-radius:14px}
+  .mth-mgr-name{font-size:20px}
+  .mth-avatar{width:50px;height:50px;font-size:15px}
+  .mth-hero-val{font-size:16px}
+  .mth-hero-stat{padding:12px 6px}
+  .mth-hero-label{font-size:7.5px}
+  .mth-roster-head{flex-direction:column;align-items:flex-start;gap:4px}
+  .mth-roster-title{font-size:16px}
+  .mth-roster-summary{font-size:11px}
+  .mth-strip-card{padding:14px}
+  .mth-strip{gap:6px}
+  .mth-strip-item{min-width:58px}
+  .mth-strip-photo{width:42px;height:42px;font-size:14px}
+  .mth-strip-name{font-size:10px;max-width:58px}
+  .mth-pg-grid{grid-template-columns:1fr;gap:12px}
+  .mth-ps-rank{width:42px}
+  .mth-ps-label{width:56px;font-size:10px}
+}
 
 /* A4: Standard empty-state pattern — used by Portfolio, Draft Vault, My Team when no data */.pf-empty-state{text-align:center;padding:64px 24px;max-width:480px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px;grid-column:1/-1}.pf-empty-icon{font-size:42px;opacity:0.85;line-height:1}
 .pf-empty-title{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-0.02em;font-family:var(--font-sans)}
@@ -2273,9 +2309,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   .career-table-view { display: none !important; }
   .career-cards-view { display: flex !important; }
 
-  /* ── Game log: swap table for per-week cards on mobile ── */
-  .gamelog-table-view { display: none !important; }
-  .gamelog-cards-view { display: flex !important; }
+  /* ── Game log: keep the scrollable TABLE on mobile (user prefers it over cards) ── */
+  .gamelog-table-view { display: block !important; }
+  .gamelog-cards-view { display: none !important; }
 
   /* ── Sub-tabs: WRAP to 2 rows instead of horizontal scrolling ── */
   #res-tabs {
@@ -2928,11 +2964,15 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </button>
   <button class="tab-btn" id="tb-draft" onclick="showPage('draft')" aria-label="Draft Vault">
     <span class="tab-icon">📋</span>
-    <span class="tab-label">Draft Vault</span>
+    <span class="tab-label">Draft</span>
   </button>
-  <button class="tab-btn" id="tb-more" onclick="openMoreSheet()" aria-label="More">
-    <span class="tab-icon">⋯</span>
-    <span class="tab-label">More</span>
+  <button class="tab-btn" id="tb-teams" onclick="showPage('teams')" aria-label="League">
+    <span class="tab-icon">📊</span>
+    <span class="tab-label">League</span>
+  </button>
+  <button class="tab-btn" id="tb-calc" onclick="showPage('trade')" aria-label="Calc">
+    <span class="tab-icon">🔄</span>
+    <span class="tab-label">Calc</span>
   </button>
 </nav>
 
@@ -5243,7 +5283,7 @@ function _resRenderLeaderboard(players) {  const body = document.getElementById(
   const colLabels = isRedraft
     ? ['PLAYER','TEAM',valHdr,'AGE',rankHdr,'WATCH']
     : ['PLAYER','TEAM',valHdr,'AGE','7D TREND',rankHdr,'WATCH'];
-  const hdr = `<div style="display:grid;grid-template-columns:${gridTpl};gap:0;padding:10px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">
+  const hdr = `<div class="res-lb-hdr ${isRedraft?'has6':'has7'}" style="display:grid;grid-template-columns:${gridTpl};gap:0;padding:10px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">
     ${colLabels.map((h,i)=>`
     <div style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:#909097;${i>=2?'text-align:right':''}">${h}</div>`).join('')}
   </div>`;
@@ -5274,7 +5314,7 @@ function _resRenderLeaderboard(players) {  const body = document.getElementById(
     // Value bar width relative to #1
     const barWidth = Math.round((val / maxVal) * 100);
 
-    return `<div style="display:grid;grid-template-columns:${gridTpl};gap:0;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 100ms;cursor:pointer"
+    return `<div class="res-lb-row ${isRedraft?'has6':'has7'}" style="display:grid;grid-template-columns:${gridTpl};gap:0;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 100ms;cursor:pointer"
       onclick="researchSelectPlayer('${p.name.replace(/'/g,"\\'")}','${sid}','${pos}','${p.team||''}')"
       onmouseover="this.style.background='rgba(190,198,224,0.04)'" onmouseout="this.style.background=''">
       <div style="display:flex;align-items:center;gap:12px">
@@ -7747,14 +7787,10 @@ function showPage(p){
   document.querySelectorAll('.desktop-nav button').forEach(x=>x.classList.remove('on'));
   document.getElementById(`nb-${p}`)?.classList.add('on');
   document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('on'));
-  // Direct tab match
-  const directTab = document.getElementById(`tb-${p}`);
-  if (directTab) {
-    directTab.classList.add('on');
-  } else {
-    // p is one of the "More" destinations (teams, trade, visual) — highlight the More tab
-    document.getElementById('tb-more')?.classList.add('on');
-  }
+  // Direct tab match, with aliases (trade page → Calc tab)
+  const tabAlias = { trade: 'tb-calc', visual: 'tb-draft' };
+  const directTab = document.getElementById(tabAlias[p] || `tb-${p}`);
+  if (directTab) directTab.classList.add('on');
   const pageDiv = document.getElementById(`page-${p}`);
   if (pageDiv) {
     pageDiv.classList.add('on');
