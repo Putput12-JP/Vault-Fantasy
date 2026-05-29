@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260528-232229 -->
+<!-- BUILD: VAULT-BUILD-20260529-000253 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -807,11 +807,15 @@ header{
 .bm-rank{font-size:11px;font-weight:600;font-family:'Space Mono',monospace;flex-shrink:0}
 .bm-img{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--s3);border:1.5px solid var(--border2);flex-shrink:0}
 #ps-modal{transition:opacity 150ms ease}
-/* Player-stats modal tables: center-align everything except FPTS (column 4 has progress bars) */
+/* Player-stats modal tables AND Research game-log tables: center-align everything except FPTS (column 4 has progress bars) */
 #ps-modal table th,
-#ps-modal table td{text-align:center!important}
+#ps-modal table td,
+#research-profile table th,
+#research-profile table td{text-align:center!important}
 #ps-modal table th:nth-child(4),
-#ps-modal table td:nth-child(4){text-align:left!important;padding-left:10px}
+#ps-modal table td:nth-child(4),
+#research-profile table th:nth-child(4),
+#research-profile table td:nth-child(4){text-align:left!important;padding-left:10px}
 
 /* ===== Portfolio Polish (StatChasers-inspired) ===== */
 /* Bigger primary stat numbers in KPI cards */
@@ -4911,9 +4915,18 @@ async function _resLoadLeaderboard() {
   }
 }
 
+// Toggle watchlist from the Research leaderboard and re-render the row's star to reflect the new state
+function _resToggleWatch(name){
+  if (typeof toggleWatch === 'function') toggleWatch(name);
+  // Re-render the active mode's leaderboard so the ⭐/☆ updates inline
+  try {
+    const cache = (_resMode === 'redraft') ? _resRedraftCache : _resLbCache;
+    if (cache) _resRenderLeaderboard(cache);
+  } catch(e) {}
+}
+
 // Toggle between Dynasty (RosterAudit SF) and Redraft (FantasyCalc 1QB redraft) views
-function _resSetMode(mode){
-  if (mode !== 'dynasty' && mode !== 'redraft') mode = 'dynasty';
+function _resSetMode(mode){  if (mode !== 'dynasty' && mode !== 'redraft') mode = 'dynasty';
   _resMode = mode;
   const dynBtn = document.getElementById('res-mode-dynasty');
   const rdBtn = document.getElementById('res-mode-redraft');
@@ -5044,9 +5057,9 @@ function _resRenderLeaderboard(players) {  const body = document.getElementById(
       ${isRedraft ? '' : `<div style="display:flex;align-items:center;justify-content:flex-end;font-size:12px;font-weight:700;font-family:var(--font-mono);color:${trendColor}">${trendStr}</div>`}
       <div style="display:flex;align-items:center;justify-content:flex-end;font-size:12px;font-weight:700;font-family:var(--font-mono);color:#909097">#${rank}</div>
       <div style="display:flex;align-items:center;justify-content:flex-end">
-        <button onclick="event.stopPropagation();toggleWatch('${p.name.replace(/'/g,"\\'")}',this)"
-          style="background:none;border:none;cursor:pointer;font-size:16px;color:#909097;padding:4px;opacity:0.4;transition:opacity 150ms,color 150ms"
-          onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.4'">☆</button>
+        ${(()=>{ const isW = (typeof watchlist!=='undefined' && watchlist.has(p.name)); return `<button onclick="event.stopPropagation();_resToggleWatch('${p.name.replace(/'/g,"\\'")}')"
+          style="background:none;border:none;cursor:pointer;font-size:16px;color:${isW?'#facc15':'#909097'};padding:4px;opacity:${isW?'1':'0.45'};transition:opacity 150ms,color 150ms"
+          onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='${isW?'1':'0.45'}'">${isW?'⭐':'☆'}</button>`; })()}
       </div>
     </div>`;
   }).join('');
