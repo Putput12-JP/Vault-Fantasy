@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260529-000253 -->
+<!-- BUILD: VAULT-BUILD-20260529-001731 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -507,6 +507,15 @@ header{
 @media(min-width:701px){
   .prow-mobile{display:none!important}
 }
+/* A3 (defensive): if the table ever gets shown on a narrow viewport (e.g. tablet landscape, embedded contexts),
+   pin the NAME column so the player stays visible while horizontally scrolling. Doesn't apply at <=700px
+   because the table is hidden there in favor of the card layout above. */
+@media(max-width:900px){
+  .plist-table{table-layout:auto}
+  .plist-table .prow td:nth-child(3), .plist-thead th:nth-child(3){
+    position:sticky;left:0;background:var(--bg);z-index:2;box-shadow:1px 0 0 var(--border)
+  }
+}
 .prow-mobile{
   align-items:center;
   padding:0 16px;
@@ -832,6 +841,26 @@ header{
 #page-portfolio .pf-na, #page-portfolio td:has(> :only-child:only-of-type){}
 /* Section card padding bumps */
 #page-portfolio #portfolio-owned, #page-portfolio #portfolio-signals{padding:24px!important;border-radius:14px!important}
+
+/* A10: Data source freshness summary line shown above the player table */
+.ds-summary{display:flex;align-items:center;gap:10px;padding:8px 14px;margin:0 14px 8px;border-radius:8px;background:var(--s1);border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.04em;flex-wrap:wrap;max-width:1072px}
+.ds-summary-item{display:inline-flex;align-items:center;gap:5px}
+.ds-summary-item span:not(.ds-summary-dot){color:var(--text2)}
+.ds-summary-dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+.ds-summary-dot.fc{background:#facc15}
+.ds-summary-dot.ra{background:#a78bfa}
+.ds-summary-dot.adp{background:#7bd0ff}
+.ds-summary-sep{color:var(--dim);opacity:.6}
+@media(max-width:700px){.ds-summary{margin:0 12px 6px;font-size:9.5px}}
+.ds-summary[data-state="dim"]{opacity:.6}
+
+/* A4: Standard empty-state pattern — used by Portfolio, Draft Vault, My Team when no data */.pf-empty-state{text-align:center;padding:64px 24px;max-width:480px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px;grid-column:1/-1}
+.pf-empty-icon{font-size:42px;opacity:0.85;line-height:1}
+.pf-empty-title{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-0.02em;font-family:var(--font-sans)}
+.pf-empty-sub{font-size:13px;color:var(--muted);line-height:1.55;max-width:380px}
+.pf-empty-cta{margin-top:4px;padding:10px 22px;border-radius:9px;background:var(--accent);border:1px solid var(--accent);color:#fff;font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:transform 120ms ease, filter 120ms ease}
+.pf-empty-cta:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.pf-empty-cta.secondary{background:transparent;color:var(--accent2);border-color:var(--accent2)}
 
 /* ===== StatChasers v2 view ===== */
 /* Horizontal stat strip */
@@ -3091,6 +3120,14 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         </div>
       </div>
     </div>
+    <!-- A10: Data source freshness summary — updates every 30s via _fcAgeTicker -->
+    <div id="ds-summary" class="ds-summary" style="display:none">
+      <span class="ds-summary-item"><span class="ds-summary-dot fc"></span>FC <span id="ds-fc-age">—</span></span>
+      <span class="ds-summary-sep">·</span>
+      <span class="ds-summary-item"><span class="ds-summary-dot ra"></span>RA <span id="ds-ra-age">—</span></span>
+      <span class="ds-summary-sep">·</span>
+      <span class="ds-summary-item"><span class="ds-summary-dot adp"></span>ADP <span id="ds-adp-label">—</span></span>
+    </div>
     <table class="plist-table">
       <colgroup>
         <col class="col-rk"><col class="col-photo"><col class="col-name">
@@ -5009,8 +5046,16 @@ function _resRenderLeaderboard(players) {  const body = document.getElementById(
   </div>`;
 
   const maxVal = players[0] ? (players[0].val_sf || players[0].sf || players[0].value || 1) : 1;
+  // A5: Infinite scroll — track how many players are currently visible (grows in batches of 25).
+  // Reset when the source dataset reference changes (new mode, new filters, new pos).
+  if (window._resLbLastDataset !== players) {
+    window._resLbVisibleCount = 25;
+    window._resLbLastDataset = players;
+  }
+  const visibleCount = Math.min(window._resLbVisibleCount || 25, players.length);
+  const hasMore = visibleCount < players.length;
 
-  const rows = players.slice(0,25).map((p,i) => {
+  const rows = players.slice(0, visibleCount).map((p,i) => {
     const pos = (p.position||p.pos||'?').toUpperCase();
     const val = p.val_sf || p.sf || p.value || 0;
     const age = p.age ? Number(p.age).toFixed(1) : '—';
@@ -5069,12 +5114,26 @@ function _resRenderLeaderboard(players) {  const body = document.getElementById(
     : (players[0]?._fromFC ? 'FantasyCalc (connect Sleeper for live RosterAudit data)' : 'RosterAudit.com · Updated daily');
 
   body.innerHTML = hdr + `<div>${rows}</div>
+  ${hasMore ? `<div id="res-lb-sentinel" style="padding:18px 20px;text-align:center;font-size:11px;color:var(--muted);font-family:var(--font-mono);letter-spacing:0.08em;border-top:1px solid rgba(255,255,255,0.04)">
+    <span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Loading more players…
+  </div>` : ''}
   <div style="padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-    <span style="font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.10em;color:#909097">SHOWING 1-25 OF ${players.length} PLAYERS · ${source}</span>
-    <div style="display:flex;gap:6px">
-      ${[1,2,3,'...',Math.max(4,Math.ceil(players.length/25))].map((n,i)=>`<button style="width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:var(--font-mono);cursor:pointer;border:1px solid rgba(255,255,255,0.10);${i===0?'background:#bec6e0;color:#0f172a;border-color:transparent':'background:rgba(18,33,49,0.6);color:#d4e4fa'}">${n}</button>`).join('')}
-    </div>
+    <span style="font-size:9px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.10em;color:#909097">SHOWING ${visibleCount} OF ${players.length} PLAYERS · ${source}</span>
   </div>`;
+  // A5: Wire IntersectionObserver to auto-load next batch when the sentinel enters viewport
+  if (hasMore) {
+    const sentinel = document.getElementById('res-lb-sentinel');
+    if (sentinel) {
+      const obs = new IntersectionObserver((entries) => {
+        if (entries.some(e => e.isIntersecting)) {
+          obs.disconnect();
+          window._resLbVisibleCount = (window._resLbVisibleCount || 25) + 25;
+          _resRenderLeaderboard(players);  // re-render with bigger slice
+        }
+      }, { rootMargin: '120px' });
+      obs.observe(sentinel);
+    }
+  }
 }
 
 
@@ -7306,12 +7365,13 @@ window._hidePicks = (function(){
   try { return localStorage.getItem('dcmd-v5-hidepicks') === '1'; } catch(e){ return false; }
 })();
 // Redraft SF/1QB toggle — flips numQbs for the REDRAFT column and re-fetches FC redraft values.
-// Caches both formats so toggling back is instant.
-window._redraftQbs = window._redraftQbs || 1;  // default 1QB
+// Caches both formats so toggling back is instant. Choice persists across reloads.
+window._redraftQbs = window._redraftQbs || (parseInt(localStorage.getItem(SK+'-redraft-qbs')) || 1);  // default 1QB
 window._redraftCache = window._redraftCache || {};  // { '1': {name:value}, '2': {name:value} }
 async function toggleRedraftQbs(){
   window._redraftQbs = window._redraftQbs === 1 ? 2 : 1;
   const qbs = window._redraftQbs;
+  try { localStorage.setItem(SK+'-redraft-qbs', String(qbs)); } catch(e) {}
   const pill = document.getElementById('redraft-qb-toggle');
   if (pill) pill.textContent = qbs === 2 ? 'SF' : '1QB';
 
@@ -9762,6 +9822,22 @@ function setViewTeam(val) {
 function renderTeams() {
   if (teamsTab === 'mv') { renderMovers(); return; }
 
+  // A4: Empty state — no league chosen AND no draft loaded means there's nothing to compute team metrics for
+  if (!teamsLeagueId && (!TEAMS || TEAMS.length === 0)) {
+    const prEl = document.getElementById('power-rankings');
+    if (prEl) {
+      const hasLeagues = myTeamsData && myTeamsData.length > 0;
+      prEl.innerHTML = `<div class="pf-empty-state">
+        <div class="pf-empty-icon">🏈</div>
+        <div class="pf-empty-title">${hasLeagues ? 'Pick a league' : 'No league connected'}</div>
+        <div class="pf-empty-sub">${hasLeagues
+          ? 'Choose a league from the dropdown above to see your roster, power rankings, and team comparisons.'
+          : 'Connect your Sleeper account to load your leagues and view team analytics.'}</div>
+        <button onclick="${hasLeagues ? 'document.getElementById(\'teams-league-select\')?.focus()' : 'openPortfolioLeaguePicker()'}" class="pf-empty-cta">${hasLeagues ? 'Choose a league →' : 'Connect Sleeper →'}</button>
+      </div>`;
+    }
+    return;
+  }
   
   if(!fcLoaded && !fcLoading && valueSource==='fc') { fetchFantasyCalc(); return; }
   if(!raLoaded && !raLoading && valueSource==='ra') { fetchRosterAudit(); return; }
@@ -10243,16 +10319,43 @@ function toggleDsClock(event){
 
 // Tick the FC freshness label every 30s so user knows the FC data IS live
 if (!window._fcAgeTicker) {
+  const fmtAge = (ts) => {
+    if (!ts) return null;
+    const ageSec = Math.floor((Date.now() - ts)/1000);
+    return ageSec < 60 ? `${ageSec}s ago` :
+           ageSec < 3600 ? `${Math.floor(ageSec/60)}m ago` :
+           ageSec < 86400 ? `${Math.floor(ageSec/3600)}h ago` :
+           `${Math.floor(ageSec/86400)}d ago`;
+  };
   const updateFcAge = () => {
+    // Legacy in-button label (kept for the sort-mode "Fantasy Calc" button)
     const el = document.getElementById('sm-fc-age');
-    if (!el) return;
-    if (!window._fcFetchedAt) { el.textContent = ''; return; }
-    const ageSec = Math.floor((Date.now() - window._fcFetchedAt)/1000);
-    const fmt = ageSec < 60 ? `${ageSec}s ago` :
-                ageSec < 3600 ? `${Math.floor(ageSec/60)}m ago` :
-                ageSec < 86400 ? `${Math.floor(ageSec/3600)}h ago` :
-                `${Math.floor(ageSec/86400)}d ago`;
-    el.textContent = `(${fmt})`;
+    if (el) {
+      const f = fmtAge(window._fcFetchedAt);
+      el.textContent = f ? `(${f})` : '';
+    }
+    // A10: Update the data-source summary line above the table
+    const sum = document.getElementById('ds-summary');
+    if (sum) {
+      const fcAge = fmtAge(window._fcFetchedAt);
+      const raAge = fmtAge(window._raFetchedAt);
+      const fcEl = document.getElementById('ds-fc-age');
+      const raEl = document.getElementById('ds-ra-age');
+      const adpEl = document.getElementById('ds-adp-label');
+      if (fcEl) fcEl.textContent = fcAge || '—';
+      if (raEl) raEl.textContent = raAge || 'preloading';
+      if (adpEl) {
+        // ADP files are bundled (no live timestamp). Show the active selection label instead.
+        const sel = window._adpSelection || {};
+        const fmt = sel.format ? sel.format.replace(/_/g,' ').toUpperCase() : '';
+        const teams = sel.teams ? `${sel.teams}T` : '';
+        adpEl.textContent = [fmt, teams].filter(Boolean).join(' · ') || 'loaded';
+      }
+      // Show the summary once any source has data
+      if (window._fcFetchedAt || window._raFetchedAt) {
+        sum.style.display = 'flex';
+      }
+    }
   };
   window._fcAgeTicker = setInterval(updateFcAge, 30000);
   setTimeout(updateFcAge, 100);
@@ -11730,6 +11833,11 @@ window.addEventListener('load', () => {
     try { localStorage.removeItem(k); } catch(e) {}
   });
   fetchLiveRankings();
+  // A1: Reflect persisted _redraftQbs preference in the REDRAFT toggle pill on page load
+  try {
+    const pill = document.getElementById('redraft-qb-toggle');
+    if (pill) pill.textContent = window._redraftQbs === 2 ? 'SF' : '1QB';
+  } catch(e) {}
   // Preload RosterAudit values in parallel (non-blocking) — so the RA sort mode shows real data immediately
   // when the user clicks "RosterAudit Dynasty" instead of falling back to FC silently.
   setTimeout(() => {
@@ -11957,10 +12065,25 @@ function renderPortfolioV2(){
 }
 
 async function renderPortfolio() {  if (!myTeamsData.length) {
+    const emptyHtml = `<div class="pf-empty-state">
+      <div class="pf-empty-icon">📁</div>
+      <div class="pf-empty-title">No leagues yet</div>
+      <div class="pf-empty-sub">Connect your Sleeper account to load your dynasty leagues, see values, and track your portfolio.</div>
+      <button onclick="openPortfolioLeaguePicker()" class="pf-empty-cta">Connect Sleeper →</button>
+    </div>`;
     ['portfolio-kpis','portfolio-leagues','portfolio-owned','portfolio-signals'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Connect your Sleeper account to see your portfolio.</div>`;
+      if (el) el.innerHTML = '';   // clear classic-view containers (hidden anyway)
     });
+    // Also write to v2 containers (the only visible portfolio surface)
+    const stripEl = document.getElementById('pf-v2-strip');
+    const tableEl = document.getElementById('pf-v2-table-wrap');
+    const ownedV2 = document.getElementById('pf-v2-owned');
+    const signalsV2 = document.getElementById('pf-v2-signals');
+    if (stripEl) stripEl.innerHTML = emptyHtml;
+    if (tableEl) tableEl.innerHTML = '';
+    if (ownedV2) ownedV2.innerHTML = '';
+    if (signalsV2) signalsV2.innerHTML = '';
     return;
   }
 
