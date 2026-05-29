@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260529-165455 -->
+<!-- BUILD: VAULT-BUILD-20260529-215400 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -910,11 +910,18 @@ header{
   .res-lb-hdr.has7 > *:nth-child(5), .res-lb-row.has7 > *:nth-child(5){display:none !important} /* trend */
   /* redraft (6 cells): 1 player,2 team,3 value,4 age,5 rank,6 watch */
   .res-lb-hdr.has6 > *:nth-child(4), .res-lb-row.has6 > *:nth-child(4){display:none !important} /* age */
+  /* Header/value alignment: the 3 remaining numeric/action columns right-align together,
+     player column left-aligns. Both header cells and body cells inherit these. */
+  .res-lb-hdr > *, .res-lb-row > *{align-self:center}
+  .res-lb-hdr > *:nth-child(3), .res-lb-row > *:nth-child(3),
+  .res-lb-hdr.has7 > *:nth-child(6), .res-lb-row.has7 > *:nth-child(6),
+  .res-lb-hdr.has6 > *:nth-child(5), .res-lb-row.has6 > *:nth-child(5){text-align:right !important;justify-self:end !important}
 }
 
-/* ===== My Team Hub (StatChasers-style) ===== */.mth-wrap{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start}
+/* ===== My Team Hub (StatChasers-style) ===== */.mth-wrap{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start;min-width:0;max-width:100%}
 @media(max-width:980px){.mth-wrap{grid-template-columns:1fr}}
-.mth-profile{background:rgba(20,30,54,0.6);border:1px solid var(--border2);border-radius:18px;padding:24px;position:sticky;top:16px}
+.mth-wrap > *{min-width:0;max-width:100%;box-sizing:border-box}
+.mth-profile{background:rgba(20,30,54,0.6);border:1px solid var(--border2);border-radius:18px;padding:24px;position:sticky;top:16px;min-width:0;box-sizing:border-box}
 @media(max-width:980px){.mth-profile{position:static}}
 .mth-profile-head{display:flex;gap:14px;align-items:center;margin-bottom:16px}
 .mth-avatar{width:60px;height:60px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--text);font-size:18px;flex-shrink:0;overflow:hidden;border:2px solid #ffffff}
@@ -938,12 +945,12 @@ header{
 .mth-snap-v{font-size:13px;font-weight:700;color:var(--text);font-family:var(--font-mono)}
 .mth-snap-rank{font-size:10px;color:#facc15;font-weight:400}
 .mth-lineup-str{font-size:11px;color:var(--text2);line-height:1.6;font-family:var(--font-mono)}
-.mth-ps-row{display:flex;align-items:center;gap:10px;padding:5px 0}
+.mth-ps-row{display:flex;align-items:center;gap:10px;padding:5px 0;min-width:0}
 .mth-ps-pos{font-size:11px;font-weight:700;font-family:var(--font-mono);width:34px;flex-shrink:0}
-.mth-ps-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+.mth-ps-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;min-width:0}
 .mth-ps-fill{height:100%;border-radius:3px;transition:width 500ms ease}
-.mth-ps-rank{font-size:10px;color:var(--muted);font-family:var(--font-mono);width:48px;text-align:right}
-.mth-ps-label{font-size:11px;font-weight:700;width:64px;text-align:right}
+.mth-ps-rank{font-size:10px;color:var(--muted);font-family:var(--font-mono);width:48px;text-align:right;flex-shrink:0}
+.mth-ps-label{font-size:11px;font-weight:700;width:64px;text-align:right;flex-shrink:0}
 .mth-brand{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);font-family:var(--font-mono)}
 /* Right side */
 .mth-roster-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px}
@@ -982,26 +989,63 @@ header{
 .mth-picks-yr-label{font-size:13px;font-weight:800;color:#facc15;font-family:var(--font-mono);width:48px;flex-shrink:0}
 .mth-picks-rounds{display:flex;gap:6px;flex-wrap:wrap}
 .mth-pick-chip{font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:var(--s3);color:var(--text2);font-family:var(--font-mono);border:1px solid var(--border2)}
-/* Fix 7: My Team Hub mobile layout */
+/* ===== Mobile density pass (single-screen): tighter spacing, no horizontal overflow ===== */
 @media(max-width:700px){
-  .mth-wrap{gap:16px}
-  .mth-profile{padding:18px;border-radius:14px}
-  .mth-mgr-name{font-size:20px}
-  .mth-avatar{width:50px;height:50px;font-size:15px}
-  .mth-hero-val{font-size:16px}
-  .mth-hero-stat{padding:12px 6px}
-  .mth-hero-label{font-size:7.5px}
-  .mth-roster-head{flex-direction:column;align-items:flex-start;gap:4px}
+  /* hard guard against any horizontal overflow on the key pages */
+  #page-overview, #page-portfolio, #page-draft, #page-research{overflow-x:hidden}
+  #page-overview > *, #page-portfolio > *{max-width:100%;box-sizing:border-box}
+
+  /* --- My Team Hub --- */
+  .mth-wrap{gap:12px}
+  .mth-profile{padding:14px;border-radius:12px}
+  .mth-profile-head{gap:10px;margin-bottom:12px}
+  .mth-mgr-name{font-size:19px}
+  .mth-avatar{width:46px;height:46px;font-size:14px}
+  .mth-badges{margin-bottom:12px;gap:6px}
+  .mth-hero-stats{margin-bottom:12px}
+  .mth-hero-val{font-size:15px}
+  .mth-hero-stat{padding:10px 4px}
+  .mth-hero-label{font-size:7px}
+  .mth-hero-sub{font-size:8px;margin-top:2px}
+  .mth-snapshot,.mth-settings,.mth-posstrength{padding:12px 0}
+  .mth-snap-grid{gap:8px}
+  .mth-roster-head{flex-direction:column;align-items:flex-start;gap:2px;margin-bottom:12px}
   .mth-roster-title{font-size:16px}
-  .mth-roster-summary{font-size:11px}
-  .mth-strip-card{padding:14px}
-  .mth-strip{gap:6px}
-  .mth-strip-item{min-width:58px}
-  .mth-strip-photo{width:42px;height:42px;font-size:14px}
-  .mth-strip-name{font-size:10px;max-width:58px}
-  .mth-pg-grid{grid-template-columns:1fr;gap:12px}
-  .mth-ps-rank{width:42px}
-  .mth-ps-label{width:56px;font-size:10px}
+  .mth-roster-summary{font-size:10.5px}
+  .mth-strip-card{padding:12px;margin-bottom:14px}
+  .mth-strip{gap:5px}
+  .mth-strip-item{min-width:54px;padding:4px 1px}
+  .mth-strip-photo{width:40px;height:40px;font-size:13px}
+  .mth-strip-name{font-size:10px;max-width:54px}
+  .mth-strip-slot{font-size:7.5px}
+  .mth-strip-team{font-size:8px}
+  .mth-pg-grid{grid-template-columns:1fr;gap:10px}
+  .mth-pg-row{padding:7px 12px}
+  .mth-ps-row{gap:8px;padding:4px 0}
+  .mth-ps-pos{width:30px;font-size:10px}
+  .mth-ps-rank{width:38px;font-size:9px}
+  .mth-ps-label{width:46px;font-size:9px}
+  .mth-brand{margin-top:12px;padding-top:10px}
+
+  /* --- Portfolio v2 strip: much denser --- */
+  .pf-v2-strip{margin-bottom:14px;border-radius:12px}
+  .pf-v2-stat{padding:12px 12px}
+  .pf-v2-stat-num{font-size:22px;margin-bottom:3px}
+  .pf-v2-stat-lbl{font-size:8px;letter-spacing:.08em}
+  .pf-v2-section-head{padding:10px 14px}
+  .pf-v2-section-title{font-size:13px}
+  .pf-v2-section-hint{display:none}  /* hide instructional text on mobile to save space */
+  .pf-v2-th, .pf-v2-td-name, .pf-v2-td-num{padding-top:10px;padding-bottom:10px}
+
+  /* --- Draft controls: denser, hide redundant freshness line --- */
+  #ds-summary{display:none!important}  /* per-button "(58s ago)" already shows freshness */
+  .sort-mode{font-size:11px;padding:7px 10px}
+  .controls{padding:6px 10px;gap:5px}
+  .controls .sbtn{padding:7px 10px;font-size:11px}
+}
+@media(max-width:360px){
+  .mth-hero-val{font-size:13px}
+  .pf-v2-stat-num{font-size:19px}
 }
 
 /* A4: Standard empty-state pattern — used by Portfolio, Draft Vault, My Team when no data */.pf-empty-state{text-align:center;padding:64px 24px;max-width:480px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px;grid-column:1/-1}.pf-empty-icon{font-size:42px;opacity:0.85;line-height:1}
