@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260529-115055 -->
+<!-- BUILD: VAULT-BUILD-20260529-164222 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -902,7 +902,7 @@ header{
 .mth-profile{background:rgba(20,30,54,0.6);border:1px solid var(--border2);border-radius:18px;padding:24px;position:sticky;top:16px}
 @media(max-width:980px){.mth-profile{position:static}}
 .mth-profile-head{display:flex;gap:14px;align-items:center;margin-bottom:16px}
-.mth-avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#facc15,#eab308);display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1a1a;font-size:18px;flex-shrink:0;overflow:hidden;border:2px solid rgba(250,204,21,0.4)}
+.mth-avatar{width:60px;height:60px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--text);font-size:18px;flex-shrink:0;overflow:hidden;border:2px solid #ffffff}
 .mth-avatar img{width:100%;height:100%;object-fit:cover}
 .mth-mgr-label{font-size:9px;letter-spacing:.14em;color:#facc15;font-family:var(--font-mono);font-weight:700;text-transform:uppercase}
 .mth-mgr-name{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-0.02em;line-height:1.1;margin:2px 0}
@@ -960,6 +960,13 @@ header{
 .mth-pg-name{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mth-pg-meta{font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:1px}
 .mth-pg-val{font-size:13px;font-weight:700;color:#7bd0ff;font-family:var(--font-mono)}
+/* Picks card */
+.mth-picks-card{background:rgba(20,30,54,0.5);border:1px solid var(--border2);border-radius:14px;overflow:hidden;margin-top:16px}
+.mth-picks-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.mth-picks-year{display:flex;align-items:center;gap:14px}
+.mth-picks-yr-label{font-size:13px;font-weight:800;color:#facc15;font-family:var(--font-mono);width:48px;flex-shrink:0}
+.mth-picks-rounds{display:flex;gap:6px;flex-wrap:wrap}
+.mth-pick-chip{font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:var(--s3);color:var(--text2);font-family:var(--font-mono);border:1px solid var(--border2)}
 
 /* A4: Standard empty-state pattern — used by Portfolio, Draft Vault, My Team when no data */.pf-empty-state{text-align:center;padding:64px 24px;max-width:480px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px;grid-column:1/-1}.pf-empty-icon{font-size:42px;opacity:0.85;line-height:1}
 .pf-empty-title{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-0.02em;font-family:var(--font-sans)}
@@ -7866,9 +7873,20 @@ async function renderOverview() {
         try {
           const lgData = await fetch(`https://api.sleeper.app/v1/league/${ovLeagueId}`).then(r=>r.json());
           ctx.rosterPositions = lgData.roster_positions || [];
+          ctx.lgFull = lgData;
         } catch(e) { ctx.rosterPositions = []; }
       }
       const rosterPositions = ctx.rosterPositions;
+      // Compute dynasty future picks (null for redraft/keeper leagues)
+      try {
+        if (!ctx.picksComputed) {
+          const lgFull = ctx.lgFull || await fetch(`https://api.sleeper.app/v1/league/${ovLeagueId}`).then(r=>r.json());
+          const drafts = await fetch(`https://api.sleeper.app/v1/league/${ovLeagueId}/drafts`).then(r=>r.json()).catch(()=>[]);
+          ctx.mtPicks = await _computeDynastyPicks(ovLeagueId, myRoster_raw.roster_id, lgFull, drafts);
+          ctx.picksComputed = true;
+        }
+        window._mtPicks = ctx.mtPicks;
+      } catch(e) { window._mtPicks = null; }
       // Build slot label lookup: starterIdx → clean label
       const _pc = {};
       const _rawSlots = rosterPositions.map(pos => {
@@ -8118,7 +8136,9 @@ async function renderOverview() {
     if (wi>=0){ _winNowRank = wi+1; _winNowVal = rdVals[wi].val; }
   }
   // Picks rank placeholder (Vault can't fully value picks yet) — use future pick count proxy
-  const _picksCount = futurePicks;
+  // Real dynasty future picks (computed from Sleeper traded_picks); null for redraft
+  const _mtPicks = window._mtPicks || null;
+  const _picksCount = _mtPicks ? _mtPicks.total : 0;
 
   // Starters in slot order (always use Sleeper starters exactly, even if empty)
   const _starters = [...roster].filter(p => p.isStarter).sort((a,b)=>(a.starterIdx??99)-(b.starterIdx??99));
@@ -8145,6 +8165,7 @@ async function renderOverview() {
   };
   const _ageFor = (p) => { const a = getFCValue(p.name)?.age; return a ? Math.round(a*10)/10 : null; };
   const _surname = (nm) => { const parts=(nm||'').split(' '); return parts.length>1?parts.slice(1).join(' '):nm; };
+  const _ordinal = (n) => { const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
 
   // Starting lineup strip — shrinks avatar size to fit slot count
   const _slotCount = _starters.length || ( _curLeague ? (_curLeague.roster_positions||[]).filter(s=>s!=='BN'&&s!=='IR'&&s!=='TAXI').length : 10);
@@ -8273,6 +8294,15 @@ async function renderOverview() {
         ${_posGroupCard('WR')}
         ${_posGroupCard('TE')}
       </div>
+      ${_mtPicks && _mtPicks.total ? `<div class="mth-picks-card">
+        <div class="mth-pg-head"><span class="mth-pg-badge" style="background:rgba(250,204,21,0.14);color:#facc15">PICKS</span><span class="mth-pg-count">(${_mtPicks.total} total)</span></div>
+        <div class="mth-picks-body">
+          ${Object.keys(_mtPicks.byYear).sort().map(yr => `<div class="mth-picks-year">
+            <span class="mth-picks-yr-label">${yr}</span>
+            <div class="mth-picks-rounds">${_mtPicks.byYear[yr].map(rd => `<span class="mth-pick-chip">${_ordinal(rd)}</span>`).join('')}</div>
+          </div>`).join('')}
+        </div>
+      </div>` : ''}
     </div>
   </div>
   `;
@@ -8461,9 +8491,94 @@ async function renderOverview() {
   }
 }
 
-async function getLeagueContext_ov() {
-  const lid = ovLeagueId;
-  if (!lid) return null;
+// Compute a roster's real future draft picks from Sleeper's traded_picks endpoint.
+// Returns { isDynasty, picks: [{season, round}], bySeasonRounds: {season:[rounds]} } or null.
+// For redraft leagues (type 0) returns { isDynasty:false, picks:[] } so the UI shows none.
+async function fetchMyDraftPicks(leagueId, myRosterId) {
+  try {
+    const league = await fetch(`https://api.sleeper.app/v1/league/${leagueId}`).then(r=>r.json());
+    const leagueType = league.settings?.type;           // 2=dynasty, 1=keeper, 0=redraft
+    const isDynasty = leagueType === 2 || leagueType === 1;
+    if (!isDynasty) return { isDynasty:false, picks:[], bySeasonRounds:{} };
+
+    const rounds = league.settings?.draft_rounds || 4;
+    const curSeason = parseInt(league.season) || new Date().getFullYear();
+    // Dynasty rookie picks: current + next 2 seasons
+    const futureSeasons = [curSeason, curSeason+1, curSeason+2];
+
+    const traded = await fetch(`https://api.sleeper.app/v1/league/${leagueId}/traded_picks`).then(r=>r.json());
+
+    // Start with my default allotment: one pick per round per future season
+    const mySet = new Set();
+    futureSeasons.forEach(s => { for (let r=1;r<=rounds;r++) mySet.add(`${s}-${r}-${myRosterId}`); });
+    // Apply trades
+    traded.forEach(t => {
+      const season = parseInt(t.season);
+      if (!futureSeasons.includes(season)) return;
+      const key = `${t.season}-${t.round}-${t.roster_id}`;  // pick identified by its ORIGINAL owner
+      if (t.owner_id === myRosterId) {
+        mySet.add(key);                                  // I currently own this pick
+      } else if (t.roster_id === myRosterId || t.previous_owner_id === myRosterId) {
+        mySet.delete(`${t.season}-${t.round}-${myRosterId}`);  // a pick of mine moved away
+      }
+      if (t.roster_id === myRosterId && t.owner_id !== myRosterId) {
+        mySet.delete(key);                               // my original pick now owned by someone else
+      }
+    });
+
+    const picks = [...mySet].map(k => { const [s,r] = k.split('-'); return { season:parseInt(s), round:parseInt(r) }; })
+      .sort((a,b)=> a.season-b.season || a.round-b.round);
+    const bySeasonRounds = {};
+    picks.forEach(p => { (bySeasonRounds[p.season] = bySeasonRounds[p.season] || []).push(p.round); });
+    return { isDynasty:true, picks, bySeasonRounds };
+  } catch(e) {
+    console.warn('fetchMyDraftPicks failed:', e);
+    return null;
+  }
+}
+
+// Compute a roster's future rookie picks for a DYNASTY league (type 2). Returns { byYear:{2027:[1,2,...]}, total }
+// Redraft/keeper leagues (type 0/1) return null so the picks section stays empty.
+// Algorithm: base allotment (1 per round per future season) minus picks traded away plus picks acquired,
+// using Sleeper's traded_picks (roster_id = original owner, owner_id = current owner).
+async function _computeDynastyPicks(lid, myRosterId, league, drafts) {
+  try {
+    if (!league || league.settings?.type !== 2) return null;  // not dynasty
+    const rounds = league.settings?.draft_rounds || 4;
+    const curSeason = parseInt(league.season) || new Date().getFullYear();
+    // Future window starts after the most recent COMPLETED draft season
+    let latestComplete = 0;
+    (drafts||[]).forEach(d => { if (d.status === 'complete') latestComplete = Math.max(latestComplete, parseInt(d.season)||0); });
+    const startSeason = Math.max(curSeason, latestComplete + 1);
+    const futureSeasons = [];
+    for (let s = startSeason; s <= startSeason + 2; s++) futureSeasons.push(String(s));
+
+    const traded = await fetch(`https://api.sleeper.app/v1/league/${lid}/traded_picks`).then(r=>r.json()).catch(()=>[]);
+
+    // Base allotment
+    let picks = [];
+    futureSeasons.forEach(season => { for (let r=1; r<=rounds; r++) picks.push({season, round:r, orig:myRosterId}); });
+    // Remove traded-away (my original pick now owned by someone else)
+    (traded||[]).forEach(tp => {
+      if (tp.roster_id===myRosterId && tp.owner_id!==myRosterId && futureSeasons.includes(tp.season)) {
+        const idx = picks.findIndex(p=>p.season===tp.season && p.round===tp.round && p.orig===myRosterId);
+        if (idx>=0) picks.splice(idx,1);
+      }
+    });
+    // Add acquired (someone else's pick now owned by me)
+    (traded||[]).forEach(tp => {
+      if (tp.owner_id===myRosterId && tp.roster_id!==myRosterId && futureSeasons.includes(tp.season)) {
+        picks.push({season:tp.season, round:tp.round, orig:tp.roster_id, acquired:true});
+      }
+    });
+    const byYear = {};
+    picks.forEach(p => { (byYear[p.season] ||= []).push(p.round); });
+    Object.keys(byYear).forEach(s => byYear[s].sort((a,b)=>a-b));
+    return { byYear, total: picks.length, startSeason };
+  } catch(e) { console.warn('picks compute failed:', e); return null; }
+}
+
+async function getLeagueContext_ov() {  const lid = ovLeagueId;  if (!lid) return null;
   if (_txLeagueId === lid && _rosterCache && _usersCache) return { lid, rosters: _rosterCache, users: _usersCache };
   const [rosters, users] = await Promise.all([
     fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
