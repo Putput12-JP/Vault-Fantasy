@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260529-001731 -->
+<!-- BUILD: VAULT-BUILD-20260529-113459 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -842,8 +842,45 @@ header{
 /* Section card padding bumps */
 #page-portfolio #portfolio-owned, #page-portfolio #portfolio-signals{padding:24px!important;border-radius:14px!important}
 
-/* A10: Data source freshness summary line shown above the player table */
-.ds-summary{display:flex;align-items:center;gap:10px;padding:8px 14px;margin:0 14px 8px;border-radius:8px;background:var(--s1);border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.04em;flex-wrap:wrap;max-width:1072px}
+/* ===== Bundle B: Settings Drawer ===== */
+.settings-drawer{position:absolute;top:0;right:0;height:100%;width:420px;max-width:90vw;background:#0e1730;border-left:1px solid var(--border2);box-shadow:-8px 0 40px rgba(0,0,0,0.5);display:flex;flex-direction:column;animation:sdSlideIn 240ms cubic-bezier(0.16,1,0.3,1)}
+@keyframes sdSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.sd-head{display:flex;align-items:flex-start;justify-content:space-between;padding:22px 24px 18px;border-bottom:1px solid var(--border)}
+.sd-title{font-size:20px;font-weight:800;color:var(--text);letter-spacing:-0.02em;font-family:var(--font-sans)}
+.sd-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.sd-close{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:6px 9px;border-radius:7px;transition:all 120ms ease}
+.sd-close:hover{color:var(--text);background:rgba(255,255,255,0.06)}
+.sd-body{flex:1;overflow-y:auto;padding:8px 24px 32px}
+.sd-section{padding:18px 0;border-bottom:1px solid var(--border)}
+.sd-section:last-child{border-bottom:none}
+.sd-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--accent2);font-family:var(--font-mono);margin-bottom:14px}
+.sd-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 0}
+.sd-row-name{font-size:14px;font-weight:600;color:var(--text);font-family:var(--font-sans)}
+.sd-row-hint{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.sd-control{padding:8px 16px;border-radius:8px;background:var(--s2);border:1px solid var(--border2);color:var(--text2);font-family:var(--font-mono);font-size:12px;cursor:pointer;white-space:nowrap;transition:all 120ms ease}
+.sd-control:hover{border-color:var(--accent2);color:var(--text)}
+.sd-toggle{padding:7px 16px;border-radius:8px;background:var(--s2);border:1px solid var(--border2);color:var(--muted);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.05em;cursor:pointer;min-width:62px;transition:all 120ms ease}
+.sd-toggle.on{background:linear-gradient(135deg,#cc003c,#ff4d6d);color:#fff;border-color:transparent}
+.sd-info-row{display:flex;gap:12px;padding:9px 0}
+.sd-info-badge{flex-shrink:0;width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:800;font-size:11px}
+.sd-badge-fc{background:rgba(250,204,21,0.18);color:#facc15}
+.sd-badge-ra{background:rgba(167,139,250,0.18);color:#a78bfa}
+.sd-info-name{font-size:13px;font-weight:700;color:var(--text)}
+.sd-info-age{font-size:10px;color:var(--muted);font-family:var(--font-mono);font-weight:400;margin-left:4px}
+.sd-info-meta{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.sd-note{margin-top:10px;padding:10px 12px;background:rgba(123,208,255,0.06);border-left:2px solid var(--accent2);border-radius:4px;font-size:11px;color:var(--text2);line-height:1.5}
+.sd-adp-inline{display:flex;flex-direction:column;gap:8px}
+.sd-adp-inline select{width:100%;background:var(--s3);border:1px solid var(--border2);color:var(--text);border-radius:7px;padding:8px 10px;font-size:12px;font-family:var(--font-sans);outline:none;cursor:pointer}
+.sd-adp-inline label{font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;display:block}
+@media(max-width:700px){
+  .settings-drawer{width:100%;max-width:100vw;border-left:none}
+}
+/* Mobile: hide secondary controls in the top bar — they live in the Settings drawer instead */
+@media(max-width:700px){
+  .ctl-mobile-hide{display:none!important}
+}
+
+/* A10: Data source freshness summary line shown above the player table */.ds-summary{display:flex;align-items:center;gap:10px;padding:8px 14px;margin:0 14px 8px;border-radius:8px;background:var(--s1);border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.04em;flex-wrap:wrap;max-width:1072px}
 .ds-summary-item{display:inline-flex;align-items:center;gap:5px}
 .ds-summary-item span:not(.ds-summary-dot){color:var(--text2)}
 .ds-summary-dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
@@ -2348,6 +2385,96 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </div>
 </div>
 
+<!-- B: SETTINGS DRAWER (consolidated controls — theme, ADP format, data source info, behavior) -->
+<div id="settings-drawer-overlay" onclick="if(event.target===this)closeSettingsDrawer()" style="display:none;position:fixed;inset:0;background:#000000bb;z-index:650">
+  <div id="settings-drawer" class="settings-drawer">
+    <div class="sd-head">
+      <div>
+        <div class="sd-title">Settings</div>
+        <div class="sd-sub">Customize your Vault experience</div>
+      </div>
+      <button class="sd-close" onclick="closeSettingsDrawer()" title="Close">✕</button>
+    </div>
+    <div class="sd-body">
+      <!-- Display section -->
+      <div class="sd-section">
+        <div class="sd-section-title">Display</div>
+        <div class="sd-row">
+          <div class="sd-row-label">
+            <div class="sd-row-name">Theme</div>
+            <div class="sd-row-hint">Cycle through dark / dusk / light</div>
+          </div>
+          <button class="sd-control" id="sd-theme-btn" onclick="toggleTheme();_sdRefreshTheme()">🌙 Dark</button>
+        </div>
+      </div>
+
+      <!-- Data Sources section -->
+      <div class="sd-section">
+        <div class="sd-section-title">Data Sources</div>
+        <div class="sd-info-row">
+          <span class="sd-info-badge sd-badge-fc">FC</span>
+          <div class="sd-info-text">
+            <div class="sd-info-name">FantasyCalc <span class="sd-info-age" id="sd-fc-age">—</span></div>
+            <div class="sd-info-meta">12-team Superflex PPR · ~1M trades · refreshes ~hourly</div>
+          </div>
+        </div>
+        <div class="sd-info-row">
+          <span class="sd-info-badge sd-badge-ra">RA</span>
+          <div class="sd-info-text">
+            <div class="sd-info-name">RosterAudit <span class="sd-info-age" id="sd-ra-age">—</span></div>
+            <div class="sd-info-meta">SF Elo from 500k+ Sleeper leagues · refreshes daily</div>
+          </div>
+        </div>
+        <div class="sd-note">FC and RA use different methodologies — values will differ for the same player. Both are valid, just different opinions.</div>
+
+        <!-- ADP format picker (folded in from old ⚙ ADP popover) -->
+        <div class="sd-row" style="margin-top:14px;flex-direction:column;align-items:stretch;gap:8px">
+          <div class="sd-row-label" style="margin-bottom:2px">
+            <div class="sd-row-name">ADP Format</div>
+            <div class="sd-row-hint">Which ADP dataset feeds the ADP column</div>
+          </div>
+          <div id="sd-adp-inline" class="sd-adp-inline">
+            <!-- populated by _sdRenderAdpPicker() -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Behavior section -->
+      <div class="sd-section">
+        <div class="sd-section-title">Behavior</div>
+        <div class="sd-row">
+          <div class="sd-row-label">
+            <div class="sd-row-name">Vault Watchlist</div>
+            <div class="sd-row-hint">Show only players you've starred</div>
+          </div>
+          <button class="sd-toggle" id="sd-watch-toggle" onclick="toggleWatchFilter();_sdRefreshBehaviorToggles()">Off</button>
+        </div>
+        <div class="sd-row">
+          <div class="sd-row-label">
+            <div class="sd-row-name">Hide Picks</div>
+            <div class="sd-row-hint">Remove draft picks from the player list</div>
+          </div>
+          <button class="sd-toggle" id="sd-hidepicks-toggle" onclick="toggleHidePicks();_sdRefreshBehaviorToggles()">Off</button>
+        </div>
+        <div class="sd-row">
+          <div class="sd-row-label">
+            <div class="sd-row-name">List Cap</div>
+            <div class="sd-row-hint">Top 15 players, or show all</div>
+          </div>
+          <button class="sd-toggle" id="sd-listcap-toggle" onclick="toggleDraftListCap();_sdRefreshBehaviorToggles()">Top 15</button>
+        </div>
+        <div class="sd-row">
+          <div class="sd-row-label">
+            <div class="sd-row-name">Import Custom Rankings</div>
+            <div class="sd-row-hint">Upload a CSV of your own rankings</div>
+          </div>
+          <button class="sd-control" onclick="closeSettingsDrawer();toggleImportPanel()">↑ Import CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- PLAYER STATS MODAL -->
 <div id="ps-modal" onclick="if(event.target===this)closePlayerStats()"
   style="display:none;position:fixed;inset:0;background:#000000bb;z-index:600;align-items:center;justify-content:center;padding:20px">
@@ -3034,8 +3161,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="sbtn sort-mode"    id="sm-ra"  onclick="setSortMode('ra')"  title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit Dynasty</button>
       <button class="sbtn sort-mode on" id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live from api.fantasycalc.com)">Fantasy Calc <span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:3px;font-weight:400"></span></button>
       <button class="sbtn sort-mode" id="sm-my" onclick="setSortMode('my')" title="Your imported CSV rankings" style="display:none">My Rankings</button>
-      <button class="sbtn" id="sb-adp-settings" onclick="openAdpSettings()" title="Configure ADP format (Dynasty / Redraft / team size / scoring)">⚙ ADP</button>
-      <button class="sbtn sbtn-info" id="sb-data-info" onclick="toggleDataSourceInfo(event)" title="About the data sources">ⓘ</button>
+      <button class="sbtn" id="sb-settings" onclick="openSettingsDrawer()" title="Settings — ADP format, data sources, behavior">⚙ Settings</button>
     </div>
     <!-- Data Source Info Popover (toggled by ⓘ button) -->
     <div id="data-source-popover" class="data-info-popover" style="display:none">
@@ -3063,16 +3189,16 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <div class="data-info-note">FC and RA use different methodologies — values will differ for the same player. Both are correct, just different opinions.</div>
       </div>
     </div>
-    <div class="sgrp">
+    <div class="sgrp ctl-mobile-hide">
       <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only players you've starred in Vault (local to this app — not synced with your Sleeper draft queue)">⭐ Vault Watchlist</button>
     </div>
-    <div class="sgrp">
+    <div class="sgrp ctl-mobile-hide">
       <button class="sbtn" onclick="toggleImportPanel()" id="sb-import" title="Import custom rankings from CSV">↑ Import</button>
     </div>
-    <div class="sgrp">
+    <div class="sgrp ctl-mobile-hide">
       <button class="sbtn" id="sb-listcap" onclick="toggleDraftListCap()" title="Show only the top 15 players or all">Top 15 ▾</button>
     </div>
-    <div class="sgrp">
+    <div class="sgrp ctl-mobile-hide">
       <button class="sbtn" id="sb-hidepicks" onclick="toggleHidePicks()" title="Hide future draft picks from the list">Hide Picks</button>
     </div>
     <div class="cright">
@@ -7260,6 +7386,80 @@ function updateColumnHdrIndicators(activeCol){
     if (c === activeCol) { el.textContent = '↓'; el.classList.add('active'); }
     else { el.textContent = '↕'; el.classList.remove('active'); }
   });
+}
+
+// ===== Bundle B: Settings Drawer =====
+function openSettingsDrawer(){
+  const ov = document.getElementById('settings-drawer-overlay');
+  if (!ov) return;
+  ov.style.display = 'block';
+  _sdRefreshTheme();
+  _sdRefreshBehaviorToggles();
+  _sdRefreshAges();
+  _sdRenderAdpPicker();
+}
+function closeSettingsDrawer(){
+  const ov = document.getElementById('settings-drawer-overlay');
+  if (ov) ov.style.display = 'none';
+}
+function _sdRefreshTheme(){
+  const btn = document.getElementById('sd-theme-btn');
+  if (!btn) return;
+  const t = localStorage.getItem('snapdraft-theme') || 'dark';
+  const map = { dark:'🌙 Dark', dusk:'🌆 Dusk', light:'☀️ Light' };
+  btn.textContent = map[t] || '🌙 Dark';
+}
+function _sdRefreshBehaviorToggles(){
+  const w = document.getElementById('sd-watch-toggle');
+  if (w) { const on = (typeof watchFilter!=='undefined' && watchFilter); w.textContent = on?'On':'Off'; w.classList.toggle('on', on); }
+  const h = document.getElementById('sd-hidepicks-toggle');
+  if (h) { const on = !!window._hidePicks; h.textContent = on?'On':'Off'; h.classList.toggle('on', on); }
+  const c = document.getElementById('sd-listcap-toggle');
+  if (c) { const all = window._draftListCap === 0; c.textContent = all?'Show All':'Top 15'; c.classList.toggle('on', all); }
+}
+function _sdRefreshAges(){
+  const fmt = ts => {
+    if (!ts) return '';
+    const s = Math.floor((Date.now()-ts)/1000);
+    return s<60?`${s}s ago`:s<3600?`${Math.floor(s/60)}m ago`:s<86400?`${Math.floor(s/3600)}h ago`:`${Math.floor(s/86400)}d ago`;
+  };
+  const fcEl = document.getElementById('sd-fc-age');
+  const raEl = document.getElementById('sd-ra-age');
+  if (fcEl) fcEl.textContent = fmt(window._fcFetchedAt) || '—';
+  if (raEl) raEl.textContent = fmt(window._raFetchedAt) || 'preloading';
+}
+function _sdRenderAdpPicker(){
+  const wrap = document.getElementById('sd-adp-inline');
+  if (!wrap) return;
+  const sel = window._adpSelection || {};
+  const dynSel = sel.dynasty || { format:'dynasty', teams:12 };
+  const redSel = sel.redraft || { format:'ppr', teams:12 };
+  const teamSizes = [8,10,12,14];
+  const fmtOpts = (bucket, current) => Object.entries(ADP_FORMAT_META)
+    .filter(([k,m]) => m.bucket === bucket)
+    .map(([k,m]) => `<option value="${k}" ${k===current.format?'selected':''}>${m.label}</option>`).join('');
+  const teamOpts = (current) => teamSizes.map(t => `<option value="${t}" ${t===current.teams?'selected':''}>${t}-team</option>`).join('');
+  wrap.innerHTML = `
+    <div>
+      <label>Dynasty</label>
+      <div style="display:flex;gap:6px">
+        <select onchange="_sdSetAdp('dynasty','format',this.value)" style="flex:2">${fmtOpts('dynasty',dynSel)}</select>
+        <select onchange="_sdSetAdp('dynasty','teams',this.value)" style="flex:1">${teamOpts(dynSel)}</select>
+      </div>
+    </div>
+    <div>
+      <label>Redraft</label>
+      <div style="display:flex;gap:6px">
+        <select onchange="_sdSetAdp('redraft','format',this.value)" style="flex:2">${fmtOpts('redraft',redSel)}</select>
+        <select onchange="_sdSetAdp('redraft','teams',this.value)" style="flex:1">${teamOpts(redSel)}</select>
+      </div>
+    </div>`;
+}
+function _sdSetAdp(bucket, field, value){
+  const cur = (window._adpSelection && window._adpSelection[bucket]) || (bucket==='dynasty'?{format:'dynasty',teams:12}:{format:'ppr',teams:12});
+  const format = field==='format' ? value : cur.format;
+  const teams = field==='teams' ? parseInt(value) : cur.teams;
+  if (typeof setAdpFormat === 'function') setAdpFormat(bucket, format, teams);
 }
 
 // Toggle the Data Source Info popover (ⓘ button next to sort modes)
