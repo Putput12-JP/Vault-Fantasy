@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260529-113459 -->
+<!-- BUILD: VAULT-BUILD-20260529-115055 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -480,6 +480,11 @@ header{
 .plist-table col.col-dynasty{width:100px}
 .plist-table col.col-redraft{width:96px}
 .plist-table col.col-adp  {width:88px}
+.plist-table col.col-my   {width:62px}
+/* MY column hidden until a CSV is imported (table gets .has-my class) */
+.plist-table .col-my-cell{display:none}
+.plist-table.has-my col.col-my{width:62px}
+.plist-table.has-my .col-my-cell{display:table-cell}
 .plist-table col.col-watch{width:40px}
 .plist-table col.col-act  {width:180px}
 .plist-table col.col-fill {width:auto}
@@ -891,8 +896,72 @@ header{
 @media(max-width:700px){.ds-summary{margin:0 12px 6px;font-size:9.5px}}
 .ds-summary[data-state="dim"]{opacity:.6}
 
-/* A4: Standard empty-state pattern — used by Portfolio, Draft Vault, My Team when no data */.pf-empty-state{text-align:center;padding:64px 24px;max-width:480px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px;grid-column:1/-1}
-.pf-empty-icon{font-size:42px;opacity:0.85;line-height:1}
+/* ===== My Team Hub (StatChasers-style) ===== */
+.mth-wrap{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start}
+@media(max-width:980px){.mth-wrap{grid-template-columns:1fr}}
+.mth-profile{background:rgba(20,30,54,0.6);border:1px solid var(--border2);border-radius:18px;padding:24px;position:sticky;top:16px}
+@media(max-width:980px){.mth-profile{position:static}}
+.mth-profile-head{display:flex;gap:14px;align-items:center;margin-bottom:16px}
+.mth-avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#facc15,#eab308);display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1a1a;font-size:18px;flex-shrink:0;overflow:hidden;border:2px solid rgba(250,204,21,0.4)}
+.mth-avatar img{width:100%;height:100%;object-fit:cover}
+.mth-mgr-label{font-size:9px;letter-spacing:.14em;color:#facc15;font-family:var(--font-mono);font-weight:700;text-transform:uppercase}
+.mth-mgr-name{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-0.02em;line-height:1.1;margin:2px 0}
+.mth-league-name{font-size:12px;color:var(--muted)}
+.mth-badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.mth-tier-pill{font-size:11px;font-weight:700;padding:5px 12px;border-radius:8px;background:rgba(250,204,21,0.12);color:#facc15;border:1px solid rgba(250,204,21,0.3);font-family:var(--font-mono)}
+.mth-fmt-badge{font-size:11px;font-weight:600;padding:5px 10px;border-radius:8px;background:var(--s2);color:var(--text2);border:1px solid var(--border2);font-family:var(--font-mono)}
+.mth-hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;border:1px solid var(--border)}
+.mth-hero-stat{background:rgba(16,23,42,0.8);padding:14px 10px;text-align:center}
+.mth-hero-label{font-size:8px;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-bottom:6px}
+.mth-hero-val{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-0.02em;line-height:1}
+.mth-hero-sub{font-size:9px;color:var(--muted);margin-top:4px;font-family:var(--font-mono)}
+.mth-snapshot,.mth-settings,.mth-posstrength{padding:16px 0;border-top:1px solid var(--border)}
+.mth-snap-title{font-size:9px;letter-spacing:.14em;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;font-weight:700;margin-bottom:12px}
+.mth-snap-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mth-snap-item{display:flex;flex-direction:column;gap:2px}
+.mth-snap-k{font-size:11px;color:var(--muted)}
+.mth-snap-v{font-size:13px;font-weight:700;color:var(--text);font-family:var(--font-mono)}
+.mth-snap-rank{font-size:10px;color:#facc15;font-weight:400}
+.mth-lineup-str{font-size:11px;color:var(--text2);line-height:1.6;font-family:var(--font-mono)}
+.mth-ps-row{display:flex;align-items:center;gap:10px;padding:5px 0}
+.mth-ps-pos{font-size:11px;font-weight:700;font-family:var(--font-mono);width:34px;flex-shrink:0}
+.mth-ps-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+.mth-ps-fill{height:100%;border-radius:3px;transition:width 500ms ease}
+.mth-ps-rank{font-size:10px;color:var(--muted);font-family:var(--font-mono);width:48px;text-align:right}
+.mth-ps-label{font-size:11px;font-weight:700;width:64px;text-align:right}
+.mth-brand{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);font-family:var(--font-mono)}
+/* Right side */
+.mth-roster-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px}
+.mth-roster-title{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-0.02em}
+.mth-roster-summary{font-size:12px;color:var(--muted);font-family:var(--font-mono)}
+.mth-roster-summary b{color:var(--text2)}
+.mth-strip-card{background:rgba(20,30,54,0.5);border:1px solid var(--border2);border-radius:16px;padding:18px;margin-bottom:20px}
+.mth-strip-label{font-size:9px;letter-spacing:.14em;color:#facc15;font-family:var(--font-mono);text-transform:uppercase;font-weight:700;margin-bottom:14px}
+.mth-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
+.mth-strip-item{flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 2px;border-radius:10px;transition:background 120ms ease}
+.mth-strip-item:hover{background:rgba(255,255,255,0.04)}
+.mth-strip-slot{font-size:8px;font-weight:700;font-family:var(--font-mono);letter-spacing:.04em}
+.mth-strip-photo{width:48px;height:48px;border-radius:50%;background:var(--s3);border:2px solid;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text2);font-size:16px;overflow:hidden}
+.mth-strip-photo img{width:100%;height:100%;object-fit:cover}
+.mth-strip-name{font-size:11px;font-weight:700;color:var(--text);text-align:center;line-height:1.1;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mth-strip-team{font-size:9px;color:var(--muted);font-family:var(--font-mono)}
+.mth-pg-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:680px){.mth-pg-grid{grid-template-columns:1fr}}
+.mth-pg-card{background:rgba(20,30,54,0.5);border:1px solid var(--border2);border-radius:14px;overflow:hidden}
+.mth-pg-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.mth-pg-badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;font-family:var(--font-mono)}
+.mth-pg-count{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.mth-pg-row{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 120ms ease}
+.mth-pg-row:last-child{border-bottom:none}
+.mth-pg-row:hover{background:rgba(255,255,255,0.03)}
+.mth-pg-photo{width:30px;height:30px;border-radius:7px;background:var(--s3);overflow:hidden;flex-shrink:0}
+.mth-pg-photo img{width:100%;height:100%;object-fit:cover}
+.mth-pg-info{flex:1;min-width:0}
+.mth-pg-name{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mth-pg-meta{font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:1px}
+.mth-pg-val{font-size:13px;font-weight:700;color:#7bd0ff;font-family:var(--font-mono)}
+
+/* A4: Standard empty-state pattern — used by Portfolio, Draft Vault, My Team when no data */.pf-empty-state{text-align:center;padding:64px 24px;max-width:480px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px;grid-column:1/-1}.pf-empty-icon{font-size:42px;opacity:0.85;line-height:1}
 .pf-empty-title{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-0.02em;font-family:var(--font-sans)}
 .pf-empty-sub{font-size:13px;color:var(--muted);line-height:1.55;max-width:380px}
 .pf-empty-cta{margin-top:4px;padding:10px 22px;border-radius:9px;background:var(--accent);border:1px solid var(--accent);color:#fff;font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:transform 120ms ease, filter 120ms ease}
@@ -3257,7 +3326,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <table class="plist-table">
       <colgroup>
         <col class="col-rk"><col class="col-photo"><col class="col-name">
-        <col class="col-team"><col class="col-pos"><col class="col-dynasty"><col class="col-redraft"><col class="col-adp"><col class="col-watch"><col class="col-act"><col class="col-fill">
+        <col class="col-team"><col class="col-pos"><col class="col-dynasty"><col class="col-redraft"><col class="col-adp"><col class="col-my"><col class="col-watch"><col class="col-act"><col class="col-fill">
       </colgroup>
       <thead class="plist-thead" id="lhdr">
         <tr>
@@ -3269,6 +3338,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;color:#facc15;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">DYNASTY <span class="hdr-source-label" id="hdr-dynasty-src">FC</span> <span class="sort-ind" id="ind-dynasty">↓</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;color:#7bd0ff;cursor:pointer" title="Click to sort by FantasyCalc redraft value (descending)">REDRAFT <span class="redraft-qb-toggle" id="redraft-qb-toggle" onclick="event.stopPropagation();toggleRedraftQbs()" title="Toggle redraft values between 1QB and Superflex">1QB</span> <span class="sort-ind" id="ind-redraft">↕</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;color:#a78bfa;cursor:pointer" title="Click to sort by ADP (lowest pick number first)">ADP <span class="sort-ind" id="ind-adp">↕</span></th>
+          <th class="num-hdr col-hdr-sortable col-my-cell" id="hdr-my" onclick="setSort('my')" style="text-align:right;padding-right:8px;color:#3DCC7A;cursor:pointer" title="Your imported CSV rank">MY <span class="sort-ind" id="ind-my">↕</span></th>
           <th></th>
           <th>STATUS</th>
           <th></th>
@@ -6366,6 +6436,9 @@ function updateSortBtns() {
   const myLabel = window._myRankingsLabel || localStorage.getItem(SK+'-myrank-label');
   const hasMyRankings = !!myLabel && PLAYERS.some(p => p.rMy != null && p.rMy < 9999);
 
+  // C9: Show/hide the MY column in the player table based on whether a CSV import exists
+  document.querySelectorAll('.plist-table').forEach(t => t.classList.toggle('has-my', hasMyRankings));
+
   // sb0 = "My Rankings" (only visible if import exists)
   const sb0 = document.getElementById('sb0');
   const lh0 = document.getElementById('lh0');
@@ -8003,8 +8076,208 @@ async function renderOverview() {
     ? `<strong>${injuredPlayers[0].name} (${injuredPlayers[0].pos})</strong> is currently flagged as ${injuredPlayers[0].injury_status||injuredPlayers[0].status}. His absence would impact your projected weekly total. Ensure your handcuff strategy is in place before kickoff.`
     : `Your roster is currently <strong>healthy</strong> with no flagged injury concerns. Stay active on the waiver wire during the week to monitor any late scratches.`;
 
+  // ===== My Team Hub (StatChasers-style) — extra computations =====
+  // League-relative per-position ranks (#X / N) using all teams' rosters
+  const _posRankInfo = {};  // { QB:{rank, total, pct, label}, ... }
+  ['QB','RB','WR','TE'].forEach(pos => {
+    let teamPosVals = [];
+    if (ovLeagueId && allTeamVals.length && _rosterCache) {
+      teamPosVals = _rosterCache.map(r => {
+        const v = (r.players||[]).reduce((s,pid) => {
+          const nm = globalPidToName[String(pid)] || '';
+          const fcv = getFCValue(nm);
+          const pp = fcv?.pos || fcv?.position || (PLAYERS.find(x=>x.name===nm)?.pos);
+          return pp === pos ? s + getPlayerValue(nm) : s;
+        }, 0);
+        return { owner: r.owner_id, val: v };
+      }).sort((a,b)=>b.val-a.val);
+    }
+    if (teamPosVals.length >= 2) {
+      const myIdx = teamPosVals.findIndex(t => t.owner === myTeamsUserId);
+      const rank = myIdx >= 0 ? myIdx+1 : null;
+      const total = teamPosVals.length;
+      const pct = rank ? (rank-1)/total : 0.5;  // 0 = best
+      const label = pct <= 0.17 ? 'Elite' : pct <= 0.40 ? 'Strong' : pct <= 0.60 ? 'Average' : 'Weak';
+      const color = pct <= 0.17 ? '#3DCC7A' : pct <= 0.40 ? '#7bd0ff' : pct <= 0.60 ? '#f5c842' : '#ff6680';
+      _posRankInfo[pos] = { rank, total, pct, label, color };
+    } else {
+      _posRankInfo[pos] = { rank:null, total:totalTeams, pct:0.5, label:'—', color:'var(--muted)' };
+    }
+  });
+  // Overall value rank label
+  const _overallPct = (powerRank && totalTeams) ? (powerRank-1)/totalTeams : 0.5;
+  const _overallLabel = _overallPct <= 0.17 ? 'Elite' : _overallPct <= 0.40 ? 'Strong' : _overallPct <= 0.60 ? 'Average' : 'Rebuilding';
+  // Win-now rank (by redraft value) — recompute team redraft totals
+  let _winNowRank = powerRank, _winNowVal = 0;
+  if (ovLeagueId && _rosterCache) {
+    const rdVals = _rosterCache.map(r => ({
+      owner: r.owner_id,
+      val: (r.players||[]).reduce((s,pid)=>{ const nm=globalPidToName[String(pid)]||''; return s+(getFCValue(nm)?.redraftValue||0); },0)
+    })).sort((a,b)=>b.val-a.val);
+    const wi = rdVals.findIndex(t=>t.owner===myTeamsUserId);
+    if (wi>=0){ _winNowRank = wi+1; _winNowVal = rdVals[wi].val; }
+  }
+  // Picks rank placeholder (Vault can't fully value picks yet) — use future pick count proxy
+  const _picksCount = futurePicks;
+
+  // Starters in slot order (always use Sleeper starters exactly, even if empty)
+  const _starters = [...roster].filter(p => p.isStarter).sort((a,b)=>(a.starterIdx??99)-(b.starterIdx??99));
+
+  // Manager avatar + format badges
+  const _avatarUrl = mySleeperUser?.avatar ? `https://sleepercdn.com/avatars/thumbs/${mySleeperUser.avatar}` : '';
+  const _managerName = mySleeperUser?.display_name || mySleeperUser?.username || teamName || 'My Team';
+  const _curLeague = ovLeagueId ? myTeamsData.find(l=>l.league_id===ovLeagueId) : null;
+  const _isSF = _curLeague ? (_curLeague.roster_positions||[]).includes('SUPER_FLEX') : true;
+  const _teamsN = totalTeams || (_curLeague?.total_rosters) || 12;
+  const _scoringPpr = _curLeague?.scoring_settings?.rec;
+  const _fmtScoring = _scoringPpr === 1 ? 'PPR' : _scoringPpr === 0.5 ? 'Half-PPR' : _scoringPpr === 0 ? 'Standard' : 'PPR';
+  const _fmtBadges = [`${_teamsN}T${_isSF?' SF':''}`, _fmtScoring];
+  const _lineupStr = _curLeague ? (_curLeague.roster_positions||[]).filter(s=>s!=='BN'&&s!=='IR'&&s!=='TAXI').map(s=>s==='SUPER_FLEX'?'SUPER_FLEX':s).join(' · ') : '';
+
+  // Tier pill
+  const _tierLabel = _overallPct <= 0.17 ? 'Elite Contender' : _overallPct <= 0.40 ? 'Contender' : _overallPct <= 0.65 ? 'Fringe' : 'Rebuilding';
+
+  // Helpers for rendering
+  const _posC = {QB:'#ff6680',RB:'#3DCC7A',WR:'#7bd0ff',TE:'#f5c842'};
+  const _photoFor = (p) => {
+    const sid = p.sleeperId || sleeperPlayerMap[normName(p.name||'')]?.player_id || '';
+    return sid ? `https://sleepercdn.com/content/nfl/players/thumb/${sid}.jpg` : '';
+  };
+  const _ageFor = (p) => { const a = getFCValue(p.name)?.age; return a ? Math.round(a*10)/10 : null; };
+  const _surname = (nm) => { const parts=(nm||'').split(' '); return parts.length>1?parts.slice(1).join(' '):nm; };
+
+  // Starting lineup strip — shrinks avatar size to fit slot count
+  const _slotCount = _starters.length || ( _curLeague ? (_curLeague.roster_positions||[]).filter(s=>s!=='BN'&&s!=='IR'&&s!=='TAXI').length : 10);
+  const _stripHtml = _starters.length ? _starters.map(p => {
+    const ph = _photoFor(p);
+    const c = _posC[p.pos]||'var(--muted)';
+    return `<div class="mth-strip-item" onclick="openPlayerStats('${p.sleeperId||''}','${(p.name||'').replace(/'/g,"\\'")}','${p.pos}','${p.team||''}')">
+      <div class="mth-strip-slot" style="color:${c}">${p.slotLabel||p.pos}</div>
+      <div class="mth-strip-photo" style="border-color:${c}33">${ph?`<img src="${ph}" onerror="this.style.display='none';this.parentNode.textContent='${(p.name||'?').slice(0,1)}'">`:`${(p.name||'?').slice(0,1)}`}</div>
+      <div class="mth-strip-name">${_surname(p.name)}</div>
+      <div class="mth-strip-team">${p.team||''}</div>
+    </div>`;
+  }).join('') : `<div style="padding:24px;color:var(--muted);font-size:13px;text-align:center;width:100%">No starting lineup set for this league yet.</div>`;
+
+  // Position group cards
+  const _posGroupCard = (pos) => {
+    const players = [...byPos[pos]].sort((a,b)=>(b.fcVal||0)-(a.fcVal||0));
+    if (!players.length) return '';
+    const c = _posC[pos];
+    const rows = players.map(p => {
+      const ph = _photoFor(p); const age = _ageFor(p);
+      return `<div class="mth-pg-row" onclick="openPlayerStats('${p.sleeperId||''}','${(p.name||'').replace(/'/g,"\\'")}','${p.pos}','${p.team||''}')">
+        <div class="mth-pg-photo">${ph?`<img src="${ph}" onerror="this.style.display='none'">`:''}</div>
+        <div class="mth-pg-info">
+          <div class="mth-pg-name">${p.name}</div>
+          <div class="mth-pg-meta">${p.team||'FA'}${age?` · ${age}y`:''}</div>
+        </div>
+        <div class="mth-pg-val">${p.fcVal?p.fcVal.toLocaleString():'—'}</div>
+      </div>`;
+    }).join('');
+    return `<div class="mth-pg-card">
+      <div class="mth-pg-head"><span class="mth-pg-badge" style="background:${c}22;color:${c}">${pos}</span><span class="mth-pg-count">(${players.length})</span></div>
+      ${rows}
+    </div>`;
+  };
+
+  // Positional strength bars (left card)
+  const _posBar = (pos) => {
+    const info = _posRankInfo[pos];
+    const pctFill = info.rank ? Math.max(8, Math.round((1-info.pct)*100)) : 50;
+    return `<div class="mth-ps-row">
+      <span class="mth-ps-pos" style="color:${_posC[pos]}">${pos}</span>
+      <div class="mth-ps-track"><div class="mth-ps-fill" style="width:${pctFill}%;background:${info.color}"></div></div>
+      <span class="mth-ps-rank">${info.rank?`#${info.rank}/${info.total}`:'—'}</span>
+      <span class="mth-ps-label" style="color:${info.color}">${info.label}</span>
+    </div>`;
+  };
+
+  // Picks proxy bar
+  const _picksInfo = { label: _picksCount>=8?'Strong':_picksCount>=4?'Average':'Weak', color: _picksCount>=8?'#3DCC7A':_picksCount>=4?'#f5c842':'#ff6680' };
+
   el.innerHTML = `
-  <!-- 3-column metric cards — DESIGN.md glass treatment -->
+  <div class="mth-wrap">
+    <!-- LEFT: Team profile card -->
+    <div class="mth-profile">
+      <div class="mth-profile-head">
+        <div class="mth-avatar">${_avatarUrl?`<img src="${_avatarUrl}" onerror="this.style.display='none';this.parentNode.textContent='${_managerName.slice(0,2).toUpperCase()}'">`:_managerName.slice(0,2).toUpperCase()}</div>
+        <div>
+          <div class="mth-mgr-label">DYNASTY MANAGER</div>
+          <div class="mth-mgr-name">${_managerName}</div>
+          <div class="mth-league-name">🏈 ${leagueName||'My League'}</div>
+        </div>
+      </div>
+      <div class="mth-badges">
+        <span class="mth-tier-pill">⭐ ${_tierLabel}</span>
+        ${_fmtBadges.map(b=>`<span class="mth-fmt-badge">${b}</span>`).join('')}
+      </div>
+      <div class="mth-hero-stats">
+        <div class="mth-hero-stat">
+          <div class="mth-hero-label">STRENGTH</div>
+          <div class="mth-hero-val" style="color:${_posRankInfo.WR?.color||'#3DCC7A'}">${_overallLabel}</div>
+          <div class="mth-hero-sub">#${powerRank||'—'} of ${totalTeams}</div>
+        </div>
+        <div class="mth-hero-stat">
+          <div class="mth-hero-label">VALUE RANK</div>
+          <div class="mth-hero-val">#${powerRank||'—'}</div>
+          <div class="mth-hero-sub">of ${totalTeams} teams</div>
+        </div>
+        <div class="mth-hero-stat">
+          <div class="mth-hero-label">WIN OUTLOOK</div>
+          <div class="mth-hero-val">#${_winNowRank||'—'}</div>
+          <div class="mth-hero-sub">of ${totalTeams} teams</div>
+        </div>
+      </div>
+      <div class="mth-snapshot">
+        <div class="mth-snap-title">TEAM SNAPSHOT</div>
+        <div class="mth-snap-grid">
+          <div class="mth-snap-item"><span class="mth-snap-k">👤 Avg Age</span><span class="mth-snap-v">${avgAge?avgAge.toFixed(1)+' yrs':'—'}</span></div>
+          <div class="mth-snap-item"><span class="mth-snap-k">↗ Dynasty Value</span><span class="mth-snap-v">${totalVal.toLocaleString()} <span class="mth-snap-rank">(#${powerRank||'—'}/${totalTeams})</span></span></div>
+          <div class="mth-snap-item"><span class="mth-snap-k">🏆 Win-Now Value</span><span class="mth-snap-v">${_winNowVal?_winNowVal.toLocaleString():'—'} <span class="mth-snap-rank">(#${_winNowRank||'—'}/${totalTeams})</span></span></div>
+          <div class="mth-snap-item"><span class="mth-snap-k">⭐ Future Picks</span><span class="mth-snap-v">${_picksCount} picks</span></div>
+        </div>
+      </div>
+      ${_lineupStr?`<div class="mth-settings">
+        <div class="mth-snap-title">LEAGUE SETTINGS</div>
+        <div class="mth-lineup-str">Lineup: ${_lineupStr}</div>
+      </div>`:''}
+      <div class="mth-posstrength">
+        <div class="mth-snap-title">POSITIONAL STRENGTH</div>
+        ${['QB','RB','WR','TE'].map(_posBar).join('')}
+        <div class="mth-ps-row">
+          <span class="mth-ps-pos" style="color:#bec6e0">Picks</span>
+          <div class="mth-ps-track"><div class="mth-ps-fill" style="width:${_picksCount>=8?80:_picksCount>=4?50:25}%;background:${_picksInfo.color}"></div></div>
+          <span class="mth-ps-rank">${_picksCount}</span>
+          <span class="mth-ps-label" style="color:${_picksInfo.color}">${_picksInfo.label}</span>
+        </div>
+      </div>
+      <div class="mth-brand">🏈 Vault Dynasty Command <span style="float:right;opacity:.5">vault-fantasy</span></div>
+    </div>
+
+    <!-- RIGHT: Roster preview -->
+    <div class="mth-roster">
+      <div class="mth-roster-head">
+        <span class="mth-roster-title">Roster Preview</span>
+        <span class="mth-roster-summary">${roster.length} players · ${_picksCount} picks · Avg Age <b>${avgAge?avgAge.toFixed(1):'—'}</b> · Value <b>${totalVal.toLocaleString()}</b></span>
+      </div>
+      <!-- Starting Lineup strip -->
+      <div class="mth-strip-card">
+        <div class="mth-strip-label">STARTING LINEUP</div>
+        <div class="mth-strip" data-count="${_slotCount}">${_stripHtml}</div>
+      </div>
+      <!-- Position groups -->
+      <div class="mth-pg-grid">
+        ${_posGroupCard('QB')}
+        ${_posGroupCard('RB')}
+        ${_posGroupCard('WR')}
+        ${_posGroupCard('TE')}
+      </div>
+    </div>
+  </div>
+  `;
+  if (false) { el.innerHTML = `
+  <!-- legacy layout disabled -->
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:32px">
 
     <!-- Team Grade card — composite of all positions -->
@@ -8171,6 +8444,7 @@ async function renderOverview() {
     </div>
   </div>
 `
+  } // end legacy layout (disabled)
   _ovRendering = false;
 
   // ── Render waiver scanner + signals after roster loads ──
@@ -8485,11 +8759,14 @@ function renderList(){
     // We approximate "current rank" with the player's value-based rank via getRankByMode when available,
     // falling back to r0. ADP rank comes from getADP (overall pick number for the active format).
     let valDelta = null;  // adpRank - currentRank ; >0 = value (falls to you), <0 = reach
+    let _adpRankForTip = null, _curRankForTip = null;
     if (!isDrafted && p.pos !== 'PICK') {
       const adpRank = (typeof getADP === 'function') ? getADP(p.name) : null;
       const curRank = (typeof getRankByMode === 'function') ? getRankByMode(p, suggestMode) : (p.r0 || null);
       if (adpRank && adpRank > 0 && curRank && curRank > 0) {
         valDelta = adpRank - curRank;
+        _adpRankForTip = adpRank;
+        _curRankForTip = curRank;
       }
     }
     // Threshold scales with league size (~half a round). Min 6, so small leagues still flag.
@@ -8498,13 +8775,26 @@ function renderList(){
     const isReach = !isDrafted && valDelta !== null && valDelta <= -valThresh;
     const isHot   = isVal && isNeed;   // TAKE NOW = value AND positional need
 
+    // C7: Build an explanatory tooltip showing the actual rank-vs-ADP math behind the badge
+    let _badgeTip = '';
+    if (valDelta !== null && _adpRankForTip != null && _curRankForTip != null) {
+      const adpR = Math.round(_adpRankForTip), curR = Math.round(_curRankForTip), d = Math.round(valDelta);
+      if (d > 0)      _badgeTip = `Falls ${d} spot${d!==1?'s':''} past ADP — value here (your rank #${curR}, ADP #${adpR})`;
+      else if (d < 0) _badgeTip = `${Math.abs(d)} spot${Math.abs(d)!==1?'s':''} ahead of ADP — a reach here (your rank #${curR}, ADP #${adpR})`;
+      else            _badgeTip = `On par with ADP (your rank #${curR}, ADP #${adpR})`;
+      if (isNeed) _badgeTip += ` · fills a ${p.pos} need`;
+    } else if (isNeed) {
+      _badgeTip = `Fills a ${p.pos} roster need (no ADP data for value comparison)`;
+    }
+    const _tipAttr = _badgeTip ? ` title="${_badgeTip.replace(/"/g,'&quot;')}"` : '';
+
     let vbadgeHtml='';
     if(!isDrafted){
-      if(isHot)              vbadgeHtml=`<span class="vbadge hot">🔥 TAKE NOW</span>`;
-      else if(isVal&&isNeed) vbadgeHtml=`<span class="vbadge val">★ VALUE+NEED</span>`;
-      else if(isVal)         vbadgeHtml=`<span class="vbadge val">▲ VALUE</span>`;
-      else if(isNeed)        vbadgeHtml=`<span class="vbadge need">◆ NEED</span>`;
-      else if(isReach)       vbadgeHtml=`<span class="vbadge reach">▼ REACH</span>`;
+      if(isHot)              vbadgeHtml=`<span class="vbadge hot"${_tipAttr}>🔥 TAKE NOW</span>`;
+      else if(isVal&&isNeed) vbadgeHtml=`<span class="vbadge val"${_tipAttr}>★ VALUE+NEED</span>`;
+      else if(isVal)         vbadgeHtml=`<span class="vbadge val"${_tipAttr}>▲ VALUE</span>`;
+      else if(isNeed)        vbadgeHtml=`<span class="vbadge need"${_tipAttr}>◆ NEED</span>`;
+      else if(isReach)       vbadgeHtml=`<span class="vbadge reach"${_tipAttr}>▼ REACH</span>`;
     }
 
     let ownerHtml='';
@@ -8623,6 +8913,7 @@ function renderList(){
       <td class="td-dynasty" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-align:right;padding-right:8px">${dynastyHtml}</td>
       <td class="td-redraft" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:600;text-align:right;padding-right:8px">${redraftHtml}</td>
       <td class="td-adp" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:600;text-align:right;padding-right:8px">${adpHtml}</td>
+      <td class="td-my col-my-cell" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-align:right;padding-right:8px;color:#3DCC7A">${(p.rMy != null && p.rMy < 9999) ? '#'+p.rMy : '<span style="color:var(--dim)">—</span>'}</td>
       <td style="padding:0 4px;text-align:center;width:28px;cursor:pointer;font-size:14px;user-select:none" 
           onclick="event.stopPropagation();toggleWatch('${sn}')" 
           title="${inWatchlist?'Remove from watchlist':'Add to watchlist'}">${inWatchlist?'⭐':'☆'}</td>
