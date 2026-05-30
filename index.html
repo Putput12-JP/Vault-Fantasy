@@ -7380,17 +7380,20 @@ function renderSuggestions() {
   const sugs = getSuggestions();
   const pc = pos => ({QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos]||'var(--text)');
   chips.innerHTML = sugs.length ? sugs.map(({p, rank, valueScore, isNeed}) => {
-    const valTxt = valueScore < -12 ? 'VALUE' : valueScore > 12 ? 'REACH' : 'FAIR';
-    const valC = valueScore < -12 ? 'var(--rb)' : valueScore > 12 ? 'var(--qb)' : 'var(--muted)';
+    const isValue = valueScore < -12, isReach = valueScore > 12;
+    const tagTxt = isNeed ? 'Need' : isValue ? 'Value' : isReach ? 'Reach' : 'Fair';
+    const tagC = isNeed ? 'var(--sky)' : isValue ? 'var(--rb)' : isReach ? 'var(--qb)' : 'var(--muted)';
     const sn = p.name.replace(/'/g,"\\'");
+    const pcol = pc(p.pos);
     return `<div class="schip" onclick="markMine('${sn}')">
-      <span class="spos" style="color:${pc(p.pos)}">${p.pos}</span>
-      <div>
-        <div style="font-weight:600">${p.name.split(' ').pop()}</div>
-        <div class="sreason">#${rank}${isNeed?` · <span style="color:var(--accent2)">NEED</span>`:''} <span style="color:${valC}">${valTxt}</span></div>
+      <span class="spos" style="background:${pcol}26;color:${pcol}">${p.pos}</span>
+      <div class="schip-main">
+        <div class="sname">${p.name}</div>
+        <div class="sreason">#${rank}</div>
       </div>
+      <span class="stag" style="background:${tagC}22;color:${tagC}">${tagTxt}</span>
     </div>`;
-  }).join('') : '<span style="color:var(--muted);font-size:12px;font-family:Space Mono,monospace">No suggestions</span>';
+  }).join('') : '<span style="color:var(--muted);font-size:12px;font-family:var(--font-mono)">No suggestions</span>';
 }
 
 // ════════════════════════════════════
@@ -14007,6 +14010,35 @@ function pickYear(year) {
   .sbtn-ic{ width:13px; height:13px; display:inline-block; vertical-align:-2px; margin-right:5px; }
   .sm-short .sbtn-ic{ margin-right:0; }
   #page-draft .controls .sbtn{ display:inline-flex; align-items:center; }
+
+  /* ───── Draft Vault: Command Strip — suggestions + toolbar ───── */
+  /* Suggestion cards: clean, chip + name + value tag (no colored border / mono micro-text) */
+  #page-draft .suggest-bar{ background:transparent!important; border-bottom:none!important; padding:2px 0 0!important; margin-top:4px; }
+  #page-draft .suggest-title{ color:var(--muted)!important; font-family:var(--font-mono)!important; letter-spacing:.12em!important; }
+  #page-draft .suggest-chips{ gap:8px!important; }
+  #page-draft .schip{ border:1px solid var(--border)!important; background:var(--surface)!important; border-radius:9px!important; padding:9px 11px!important; gap:9px!important; color:var(--text)!important; align-items:center; }
+  #page-draft .schip:hover{ border-color:var(--border2)!important; background:var(--s2)!important; }
+  #page-draft .schip:active{ background:var(--s2)!important; }
+  #page-draft .schip .spos{ font-family:var(--font-mono)!important; font-size:9px!important; font-weight:700!important; padding:2px 6px!important; border-radius:4px!important; opacity:1!important; line-height:1.4; }
+  #page-draft .schip-main{ flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+  #page-draft .schip .sname{ font-weight:600; font-size:12.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #page-draft .schip .sreason{ font-family:var(--font-mono); font-size:10px; color:var(--muted); }
+  #page-draft .schip .stag{ font-family:var(--font-mono); font-size:8.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:999px; flex-shrink:0; }
+
+  /* Toolbar: flat surface, compact sans controls */
+  #page-draft .controls{ background:var(--surface)!important; border-bottom:1px solid var(--border)!important; border-top:1px solid var(--border)!important; padding:10px 14px!important; gap:7px!important; backdrop-filter:none!important; }
+  #page-draft .controls .fbtn{ font-family:var(--font-sans)!important; font-weight:600!important; font-size:12px!important; letter-spacing:0!important; text-transform:none!important; border:1px solid var(--border)!important; border-radius:7px!important; color:var(--muted)!important; padding:7px 13px!important; }
+  #page-draft .controls .fbtn:hover{ color:var(--text)!important; border-color:var(--border2)!important; }
+  /* position-filter active keeps its color fill (informative) */
+  #page-draft .sgrp{ border-left:1px solid var(--border)!important; padding-left:8px!important; gap:5px!important; }
+  #page-draft .slbl{ font-family:var(--font-mono)!important; color:var(--muted)!important; }
+  #page-draft .controls .sbtn, #page-draft .controls .hgbtn{ font-family:var(--font-sans)!important; font-weight:600!important; font-size:12px!important; letter-spacing:0!important; text-transform:none!important; border:1px solid var(--border2)!important; border-radius:7px!important; background:var(--s2)!important; color:var(--text2)!important; padding:7px 11px!important; }
+  #page-draft .controls .sbtn:hover, #page-draft .controls .hgbtn:hover{ color:var(--text)!important; border-color:var(--border3)!important; }
+  /* value-source selected = solid accent (clear either/or). boolean toggles = subtle tint */
+  #page-draft .sort-mode.on{ background:var(--accent)!important; border-color:var(--accent)!important; color:#fff!important; }
+  #page-draft #sb-hidepicks.on, #page-draft #sb-watch.on, #page-draft .hgbtn.on{ background:color-mix(in srgb, var(--accent) 14%, transparent)!important; border-color:var(--accent)!important; color:var(--text)!important; }
+  #page-draft .hg-count{ background:var(--accent)!important; font-family:var(--font-mono)!important; }
+  #page-draft .cright{ border-left:1px solid var(--border)!important; padding-left:8px!important; }
 </style>
 <script>
 (function(){
