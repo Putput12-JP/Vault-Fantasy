@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260530-113740 -->
+<!-- BUILD: VAULT-BUILD-20260530-115710 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -3640,8 +3640,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         </select>
 
         <div style="display:flex;gap:3px">
-          <button class="sbtn on" id="val-fc" onclick="setValueSource('fc')" title="FantasyCalc: values from ~1M user-submitted dynasty trades">FC</button>
-          <button class="sbtn" id="val-ra" onclick="setValueSource('ra')" title="RosterAudit: Elo-based values from 500k+ Sleeper leagues">RA</button>
+          <button class="sbtn" id="val-fc" onclick="setLeagueSource('fc')" title="FantasyCalc: values from ~1M user-submitted dynasty trades">FC</button>
+          <button class="sbtn on" id="val-ra" onclick="setLeagueSource('ra')" title="RosterAudit: Elo-based values from 500k+ Sleeper leagues">RA</button>
         </div>
         <button class="sbtn" onclick="refreshValues()" id="fc-refresh-btn" title="Refresh values">⟳</button>
       </div>
@@ -3712,7 +3712,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <!-- ── TEAM A ── -->
       <div class="trade-glass" style="padding:24px;display:flex;flex-direction:column;gap:16px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="trade-side-label" style="color:var(--sky)">TEAM A SENDS</span>
+          <span class="trade-side-label" style="color:var(--sky)">MY TEAM SENDS</span>
           <span class="trade-side-val-badge" id="trade-val-a" style="background:rgba(123,208,255,0.12);color:var(--sky)">0</span>
         </div>
         <div class="trade-search-wrap">
@@ -3761,10 +3761,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           </div>
           <div style="display:flex;gap:12px;margin-top:10px">
             <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);color:var(--sky)">
-              <div style="width:8px;height:8px;border-radius:2px;background:var(--sky)"></div>A
+              <div style="width:8px;height:8px;border-radius:2px;background:var(--sky)"></div>My Team
             </div>
             <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);color:var(--accent2)">
-              <div style="width:8px;height:8px;border-radius:2px;background:var(--accent2)"></div>B
+              <div style="width:8px;height:8px;border-radius:2px;background:var(--accent2)"></div>Your Team
             </div>
           </div>
         </div>
@@ -3774,7 +3774,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <!-- ── TEAM B ── -->
       <div class="trade-glass" style="padding:24px;display:flex;flex-direction:column;gap:16px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="trade-side-label" style="color:var(--accent2)">TEAM B SENDS</span>
+          <span class="trade-side-label" style="color:var(--accent2)">YOUR TEAM SENDS</span>
           <span class="trade-side-val-badge" id="trade-val-b" style="background:rgba(204,0,60,0.12);color:var(--accent2)">0</span>
         </div>
         <div class="trade-search-wrap">
@@ -7787,10 +7787,12 @@ function setSortMode(mode){
   if (mode === 'ra') {
     // RosterAudit: set value source AND sort by RA *value* desc (matches DYNASTY column)
     setValueSource('ra');
+    _draftSrcPref = 'ra';
     sortKey = 'ra-value';
     renderList();
   } else if (mode === 'fc') {
     setValueSource('fc');
+    _draftSrcPref = 'fc';
     sortKey = 'fc-value';
     renderList();
   } else if (mode === 'my') {
@@ -7949,6 +7951,9 @@ function showPage(p){
     pageDiv.classList.add('on');
     pageDiv.scrollTop = 0; // Reset scroll — prevents "stuck" appearance
   }
+  // Assert the per-tab value source: League tab → RA (default), everywhere else → FC.
+  // Done before the page's own render below so it reads the correct source.
+  try { _applySrc(p === 'teams' ? _leagueSrcPref : _draftSrcPref); } catch(e){}
   // Refresh Sleeper Sync page when navigated to
   if (p === 'myteams' && myTeamsData.length > 0) renderSyncLeagues();
   // Sync sidebar active state
@@ -7973,9 +7978,21 @@ function showPage(p){
   if(p==='research'){ initResearch(); }
   if(p==='teams'){
     populateAnalyzerDropdown();
-    const loaded=valueSource==='fc'?fcLoaded:raLoaded;
-    if(!loaded){if(valueSource==='fc')fetchFantasyCalc();else fetchRosterAudit();}
-    else renderTeams();
+    // League tab defaults to RosterAudit rankings (user preference).
+    _applySrc(_leagueSrcPref);  // _leagueSrcPref defaults to 'ra'
+    const src = valueSource;
+    const loaded = src==='fc' ? fcLoaded : raLoaded;
+    if(!loaded){
+      // Kick off the fetch, then render once it lands so the table isn't empty/stale.
+      (src==='fc' ? fetchFantasyCalc() : fetchRosterAudit());
+      let _tries=0;
+      const _t=setInterval(()=>{ _tries++;
+        const ok = (valueSource==='fc'?fcLoaded:raLoaded);
+        if(ok || _tries>40){ clearInterval(_t); try{ renderTeams(); }catch(e){} }
+      },250);
+    } else {
+      renderTeams();
+    }
     // Reset teams tab to Rankings on every page navigation
     setTeamsTab('pr');
   }
@@ -9718,6 +9735,26 @@ let raLoaded = false;
 let raLoading = false;
 let valueSource = 'fc'; 
 let teamsTab = 'pr';    
+// Per-tab value-source preferences so the League tab can default to RosterAudit
+// while the Draft Vault / other pages stay on FantasyCalc (no global bleed).
+let _draftSrcPref = 'fc';
+let _leagueSrcPref = 'ra';   // League tab defaults to RosterAudit rankings
+// Lightweight source apply — sets the source + button state without forcing a double re-render
+// (the page's own render runs right after in showPage and will read the new valueSource).
+function _applySrc(src){
+  if (valueSource === src) { 
+    document.getElementById('val-fc')?.classList.toggle('on', src==='fc');
+    document.getElementById('val-ra')?.classList.toggle('on', src==='ra');
+    if (src==='ra' && !raLoaded) fetchRosterAudit();
+    return;
+  }
+  valueSource = src;
+  document.getElementById('val-fc')?.classList.toggle('on', src==='fc');
+  document.getElementById('val-ra')?.classList.toggle('on', src==='ra');
+  if (src==='ra' && !raLoaded) fetchRosterAudit();
+}
+// League-tab source buttons call this so their choice sticks for the session
+function setLeagueSource(src){ _leagueSrcPref = src; setValueSource(src); }
 
 function setValueSource(src) {
   valueSource = src;
@@ -11546,13 +11583,28 @@ function initMyTeams() {
 const tradeAssets = { a: [], b: [], c: [] };
 let tradeMode = 2;
 
-const PICK_VALUES = {
-  '2025 1st Early': 4200, '2025 1st Mid': 3600, '2025 1st Late': 3000,
-  '2026 1st Early': 3800, '2026 1st Mid': 3200, '2026 1st Late': 2700,
-  '2027 1st Early': 3200, '2027 1st Mid': 2800, '2027 1st Late': 2400,
-  '2025 2nd': 1800, '2026 2nd': 1600, '2027 2nd': 1400,
-  '2025 3rd': 900,  '2026 3rd': 800,  '2027 3rd': 700,
-};
+// Dynasty rookie pick values (Superflex scale, ~matches the app's FC value range).
+// Covers the live trading window (2026–2029) so every future pick a manager owns has a value.
+// Keys include Early/Mid/Late 1sts, flat 2nd–4th, plus a generic "YYYY 1st/2nd/3rd/4th" alias.
+const PICK_VALUES = (() => {
+  // Per-year base (closest year highest; ~12% annual discount further out)
+  const byYear = {
+    2026: { e1:5500, m1:4200, l1:3300, r2:1900, r3:1000, r4:450 },
+    2027: { e1:5000, m1:3800, l1:3000, r2:1700, r3:900,  r4:400 },
+    2028: { e1:4500, m1:3400, l1:2700, r2:1500, r3:800,  r4:350 },
+    2029: { e1:4000, m1:3000, l1:2400, r2:1300, r3:700,  r4:300 },
+  };
+  const out = {};
+  Object.entries(byYear).forEach(([yr, v]) => {
+    out[`${yr} 1st Early`] = v.e1;
+    out[`${yr} 1st Mid`]   = v.m1;
+    out[`${yr} 1st Late`]  = v.l1;
+    out[`${yr} 2nd`]       = v.r2;
+    out[`${yr} 3rd`]       = v.r3;
+    out[`${yr} 4th`]       = v.r4;
+  });
+  return out;
+})();
 
 function getTradePlayerValue(name) {
   
@@ -11615,7 +11667,7 @@ function searchTrade(side) {
 
   const pickMatches = Object.entries(PICK_VALUES)
     .filter(([name]) => name.toLowerCase().includes(q))
-    .slice(0, 4)
+    .slice(0, 8)
     .map(([name, val]) => `<div class="trade-result-item" onclick="addTradeAsset('${side}','${name}','pick',${val})">
         <span class="tri-pos" style="font-size:8px;padding:1px 5px;border-radius:3px;background:#ffd16620;color:var(--te);font-family:'Space Mono',monospace">PICK</span>
         <span class="tri-name">${name}</span>
@@ -11758,20 +11810,20 @@ function evaluateTrade() {
   const pctDiff = Math.round(absDiff / Math.max(valA, valB, 1) * 100);
 
   // ── Verdict label + color ──
+  // tradeAssets.a = what MY TEAM sends; tradeAssets.b = what YOUR TEAM sends (= what My Team receives).
+  // diff = valB - valA. diff > 0 → My Team receives more than it gives → My Team wins.
   let verdictText, verdictColor, verdictDesc;
   if (pctDiff <= 8) {
     verdictText = 'FAIR TRADE'; verdictColor = 'var(--te)';
     verdictDesc = 'Balanced within standard variance. No clear winner.';
   } else if (diff > 0) {
-    // diff > 0 means valB > valA, so Team A gets more value (Team A is SENDING less, receiving more)
-    // Wait — diff = valB - valA. If positive, B is worth more than A → Team A wins (gets B's higher value)
-    if (pctDiff > 30) { verdictText = 'TEAM A WINS BIG'; verdictColor = 'var(--rb)'; verdictDesc = `Team A receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — significant advantage.`; }
-    else if (pctDiff > 15) { verdictText = 'TEAM A WINS'; verdictColor = 'var(--rb)'; verdictDesc = `Team A receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — clear advantage.`; }
-    else { verdictText = 'TEAM A EDGE'; verdictColor = '#4ade80'; verdictDesc = `Team A has a slight edge (${pctDiff}%). Reasonable trade for both sides.`; }
+    if (pctDiff > 30) { verdictText = 'MY TEAM WINS BIG'; verdictColor = 'var(--rb)'; verdictDesc = `You receive ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — significant advantage for your team.`; }
+    else if (pctDiff > 15) { verdictText = 'MY TEAM WINS'; verdictColor = 'var(--rb)'; verdictDesc = `You receive ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — clear advantage for your team.`; }
+    else { verdictText = 'MY TEAM EDGE'; verdictColor = '#4ade80'; verdictDesc = `Your team has a slight edge (${pctDiff}%). Reasonable trade for both sides.`; }
   } else {
-    if (pctDiff > 30) { verdictText = 'TEAM B WINS BIG'; verdictColor = 'var(--qb)'; verdictDesc = `Team B receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — renegotiate.`; }
-    else if (pctDiff > 15) { verdictText = 'TEAM B WINS'; verdictColor = 'var(--qb)'; verdictDesc = `Team B receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — disadvantageous for A.`; }
-    else { verdictText = 'TEAM B EDGE'; verdictColor = '#f87171'; verdictDesc = `Team B has a slight edge (${pctDiff}%). Borderline acceptable.`; }
+    if (pctDiff > 30) { verdictText = 'YOUR TEAM WINS BIG'; verdictColor = 'var(--qb)'; verdictDesc = `The other team receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — consider renegotiating.`; }
+    else if (pctDiff > 15) { verdictText = 'YOUR TEAM WINS'; verdictColor = 'var(--qb)'; verdictDesc = `The other team receives ${absDiff.toLocaleString()} more in value (${pctDiff}% edge) — disadvantageous for you.`; }
+    else { verdictText = 'YOUR TEAM EDGE'; verdictColor = '#f87171'; verdictDesc = `The other team has a slight edge (${pctDiff}%). Borderline acceptable.`; }
   }
 
   // ── Update circle meter ──
@@ -11898,8 +11950,8 @@ function _renderRoiChart(assetsA, assetsB) {
     const hB = Math.round((projB[i] / maxVal) * 100);
     return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%">
       <div style="flex:1;width:100%;display:flex;align-items:flex-end;gap:2px">
-        <div style="flex:1;height:${hA}%;background:var(--sky);border-radius:3px 3px 0 0;min-height:2px;transition:height 0.5s ease;opacity:0.85" title="Team A: ${projA[i].toLocaleString()}"></div>
-        <div style="flex:1;height:${hB}%;background:var(--accent2);border-radius:3px 3px 0 0;min-height:2px;transition:height 0.5s ease;opacity:0.85" title="Team B: ${projB[i].toLocaleString()}"></div>
+        <div style="flex:1;height:${hA}%;background:var(--sky);border-radius:3px 3px 0 0;min-height:2px;transition:height 0.5s ease;opacity:0.85" title="My Team: ${projA[i].toLocaleString()}"></div>
+        <div style="flex:1;height:${hB}%;background:var(--accent2);border-radius:3px 3px 0 0;min-height:2px;transition:height 0.5s ease;opacity:0.85" title="Your Team: ${projB[i].toLocaleString()}"></div>
       </div>
     </div>`;
   }).join('');
@@ -13282,7 +13334,7 @@ async function getTradeComps(valA, valB, containerEl) {
     if (!scored.length) {
       // No comps found at all — show value-based context instead of blank message
       const pctDiff = Math.round(Math.abs(valA - valB) / Math.max(valA, valB, 1) * 100);
-      const winner = valA > valB ? 'Team A' : 'Team B';
+      const winner = valB > valA ? 'My Team' : 'Your Team';
       containerEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0 4px;line-height:1.6">
         No trades found in this league yet.<br>
         <span style="color:var(--text2)">Based on market values, ${winner} receives ${pctDiff}% more value — 
