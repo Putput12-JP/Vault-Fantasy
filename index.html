@@ -3311,48 +3311,41 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 <div class="page z1" id="page-draft" style="overflow-y:auto">
   <!-- DRAFT SUMMARY HEADER (StatChasers-style) — shown only when an active draft is loaded -->
   <div id="draft-summary" class="draft-summary" style="display:none">
-    <div class="ds-card">
-      <div class="ds-title-row">
-        <span class="ds-pin">🦴</span>
-        <span class="ds-title" id="ds-title">Active Draft</span>
+    <div class="ds-card dsc">
+      <div class="dsc-main">
+        <div class="dsc-pickblock">
+          <div class="dsc-eyebrow">Your next pick · <span id="ds-title">Active Draft</span></div>
+          <div class="dsc-pickrow">
+            <span class="ds-pick-no" id="ds-pick-no">—</span>
+            <span class="ds-pick-away" id="ds-pick-away">—</span>
+          </div>
+          <div class="dsc-pickmeta"><span id="ds-pick-mini">— / —</span> · <span id="ds-meta">— · — · —</span></div>
+        </div>
+        <div class="dsc-sep"></div>
+        <div class="dsc-stats">
+          <div class="dsc-stat"><span class="ds-stat-val" id="ds-stat-left">—</span><span class="dsc-lbl">Left</span></div>
+          <div class="dsc-stat"><span class="ds-stat-val" id="ds-stat-gone">—</span><span class="dsc-lbl">Drafted</span></div>
+          <div class="dsc-stat"><span class="ds-stat-val" id="ds-stat-mine">—</span><span class="dsc-lbl">Roster</span></div>
+        </div>
+        <div class="dsc-clockwrap">
+          <div class="dsc-clock">
+            <span class="dsc-clock-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18"/><path d="M12 7.4v5l3 1.8"/></svg></span>
+            <span class="dsc-clock-title">On the clock</span>
+            <span class="ds-clock-val" id="ds-clock-val">—</span>
+            <span class="ds-clock-sub" id="ds-clock-sub"></span>
+          </div>
+          <button class="dsc-resync ds-resync-btn" id="ds-resync-btn" onclick="manualResync()" title="Manually re-sync with Sleeper"><span id="ds-resync-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M21 6H8a4 4 0 0 0-4 4v1"/><path d="m7 22-4-4 4-4"/><path d="M3 18h13a4 4 0 0 0 4-4v-1"/></svg></span></button>
+        </div>
       </div>
-      <div class="ds-meta" id="ds-meta">— · — · —</div>
-      <div class="ds-pick-row">
-        <span class="ds-pick-label">PICK</span>
-        <span class="ds-pick-no" id="ds-pick-no">—</span>
-        <span class="ds-pick-mini" id="ds-pick-mini">— / —</span>
-        <span class="ds-pick-dot">·</span>
-        <span class="ds-pick-away" id="ds-pick-away">—</span>
+      <div class="dsc-progwrap">
+        <div class="ds-progress"><div class="ds-progress-fill" id="ds-progress-fill" style="width:0%"></div></div>
+        <span class="dsc-progmeta"><span id="ds-pct">—</span> complete · <span id="ds-left">— left</span></span>
       </div>
-      <div class="ds-sub" id="ds-sub">Your next pick is — picks away</div>
-      <div class="ds-progress"><div class="ds-progress-fill" id="ds-progress-fill" style="width:0%"></div></div>
-      <div class="ds-right-row">
-        <span class="ds-pct" id="ds-pct">—</span>
-        <span class="ds-left" id="ds-left">— left</span>
-      </div>
-      <!-- L/G/M/Next stat strip (moved from top-right header) -->
-      <div class="ds-stats">
-        <div class="ds-stat"><div class="ds-stat-val" id="ds-stat-left">—</div><div class="ds-stat-lbl">Left</div></div>
-        <div class="ds-stat"><div class="ds-stat-val" id="ds-stat-gone">—</div><div class="ds-stat-lbl">Gone</div></div>
-        <div class="ds-stat"><div class="ds-stat-val" id="ds-stat-mine">—</div><div class="ds-stat-lbl">Mine</div></div>
-        <div class="ds-stat ds-stat-next"><div class="ds-stat-val ds-stat-next-val" id="ds-stat-next">—</div><div class="ds-stat-lbl">Next pick</div></div>
-      </div>
-    </div>
-    <!-- Time On The Clock collapsible row -->
-    <div class="ds-card ds-clock-card" id="ds-clock-card">
-      <div class="ds-clock-row" id="ds-clock-header" onclick="toggleDsClock(event)" style="cursor:pointer;user-select:none">
-        <span class="ds-clock-icon">⏱</span>
-        <span class="ds-clock-title">Time Since Last Pick</span>
-        <span class="ds-clock-val" id="ds-clock-val">—</span>
-        <span class="ds-clock-sub" id="ds-clock-sub"></span>
-        <button class="ds-resync-btn" id="ds-resync-btn" onclick="event.stopPropagation();manualResync()" title="Manually re-sync with Sleeper">
-          <span id="ds-resync-icon">⟳</span> Resync
-        </button>
-        <span class="ds-clock-chev" id="ds-clock-chev" style="transition:transform .2s">▾</span>
-      </div>
-      <div id="ds-clock-body" style="display:none;padding:10px 0 0;font-size:12px;color:var(--muted);font-family:var(--font-sans);line-height:1.5">
-        Time since last pick was made (per Sleeper API). Sleeper does not expose a live server clock — values refresh on sync. Click <strong>Resync</strong> to fetch the latest state immediately.
-      </div>
+      <!-- kept hidden for JS bindings (redundant with hero / collapsed clock) -->
+      <span id="ds-stat-next" style="display:none">—</span>
+      <span id="ds-sub" style="display:none"></span>
+      <div id="ds-clock-body" style="display:none"></div>
+      <span id="ds-clock-chev" style="display:none"></span>
     </div>
   </div>
 
@@ -3385,7 +3378,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </div>
   <div class="suggest-bar" id="sbar" style="display:none">
     <div class="suggest-title">
-      <span>✦ SUGGESTED PICKS</span>
+      <span>Suggested</span>
       <div id="sug-modes" style="display:flex;gap:4px;margin-left:8px"></div>
       <span style="color:var(--muted);font-size:9px;margin-left:6px">click to draft</span>
     </div>
@@ -3406,7 +3399,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="sbtn sort-mode"    id="sm-ra"  onclick="setSortMode('ra')"  title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)"><span class="sm-full">RosterAudit Dynasty</span><span class="sm-short">RA Dyn</span></button>
       <button class="sbtn sort-mode on" id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live from api.fantasycalc.com)"><span class="sm-full">Fantasy Calc</span><span class="sm-short">FC Dyn</span> <span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:3px;font-weight:400"></span></button>
       <button class="sbtn sort-mode" id="sm-my" onclick="setSortMode('my')" title="Your imported CSV rankings" style="display:none"><span class="sm-full">My Rankings</span><span class="sm-short">Mine</span></button>
-      <button class="sbtn" id="sb-settings" onclick="openSettingsDrawer()" title="Settings — ADP format, data sources, behavior"><span class="sm-full">⚙ Settings</span><span class="sm-short">⚙</span></button>
+      <button class="sbtn sort-mode" id="sb-settings" onclick="openSettingsDrawer()" title="Settings — ADP format, data sources, behavior"><span class="sm-full"><svg class="sbtn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-4M20 13V3"/><path d="M2 14h4M10 8h4M18 17h4"/></svg>Settings</span><span class="sm-short"><svg class="sbtn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-4M20 13V3"/><path d="M2 14h4M10 8h4M18 17h4"/></svg></span></button>
     </div>
     <!-- Data Source Info Popover (toggled by ⓘ button) -->
     <div id="data-source-popover" class="data-info-popover" style="display:none">
@@ -3435,10 +3428,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       </div>
     </div>
     <div class="sgrp ctl-mobile-hide">
-      <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only players you've starred in Vault (local to this app — not synced with your Sleeper draft queue)">⭐ Vault Watchlist</button>
+      <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only players you've starred in Vault (local to this app — not synced with your Sleeper draft queue)"><svg class="sbtn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.6 6 .7-4.4 4.2 1.2 6L12 17.1 6.6 20l1.2-6L3.4 9.8l6-.7Z"/></svg>Watchlist</button>
     </div>
     <div class="sgrp ctl-mobile-hide">
-      <button class="sbtn" onclick="toggleImportPanel()" id="sb-import" title="Import custom rankings from CSV">↑ Import</button>
+      <button class="sbtn" onclick="toggleImportPanel()" id="sb-import" title="Import custom rankings from CSV"><svg class="sbtn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 19h14"/></svg>Import</button>
     </div>
     <div class="sgrp ctl-mobile-hide">
       <button class="sbtn" id="sb-listcap" onclick="toggleDraftListCap()" title="Show only the top 15 players or all">Top 15 ▾</button>
@@ -7387,7 +7380,7 @@ function renderSuggestions() {
   const sugs = getSuggestions();
   const pc = pos => ({QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos]||'var(--text)');
   chips.innerHTML = sugs.length ? sugs.map(({p, rank, valueScore, isNeed}) => {
-    const valTxt = valueScore < -12 ? '🔥 VALUE' : valueScore > 12 ? '⚠ REACH' : '≈ FAIR';
+    const valTxt = valueScore < -12 ? 'VALUE' : valueScore > 12 ? 'REACH' : 'FAIR';
     const valC = valueScore < -12 ? 'var(--rb)' : valueScore > 12 ? 'var(--qb)' : 'var(--muted)';
     const sn = p.name.replace(/'/g,"\\'");
     return `<div class="schip" onclick="markMine('${sn}')">
@@ -13972,6 +13965,48 @@ function pickYear(year) {
     /* Keep the dark/light switch reachable from the mobile header too */
     #theme-toggle{ display:flex!important; width:32px!important; height:32px!important; }
   }
+
+  /* ───── Draft Vault: Command Strip hero ───── */
+  #page-draft .draft-summary{ gap:14px; }
+  #page-draft .ds-card.dsc{ background:var(--surface)!important; border:1px solid var(--border)!important; border-radius:12px!important; padding:16px 20px!important; display:flex; flex-direction:column; gap:14px; overflow:visible; }
+  .dsc-main{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; }
+  .dsc-eyebrow{ font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:340px; }
+  .dsc-pickblock{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .dsc-pickrow{ display:flex; align-items:baseline; gap:10px; }
+  .dsc .ds-pick-no{ font-family:var(--font-mono); font-size:36px; font-weight:800; letter-spacing:-.02em; line-height:1; color:var(--text); }
+  .dsc .ds-pick-away{ color:var(--accent); font-weight:700; font-size:13px; font-family:var(--font-sans); white-space:nowrap; }
+  .dsc-pickmeta{ font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+  .dsc-sep{ width:1px; align-self:stretch; min-height:46px; background:var(--border); }
+  .dsc-stats{ display:flex; gap:26px; }
+  .dsc-stat{ display:flex; flex-direction:column; gap:3px; }
+  .dsc-stat .ds-stat-val{ font-family:var(--font-mono); font-size:20px; font-weight:800; letter-spacing:-.02em; line-height:1; color:var(--text); }
+  .dsc-lbl{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .dsc-clockwrap{ margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .dsc-clock{ display:flex; align-items:center; gap:8px; padding:7px 12px; border-radius:8px; background:var(--s2); border:1px solid var(--border); white-space:nowrap; }
+  .dsc-clock-ic{ color:var(--gold); display:inline-flex; } .dsc-clock-ic svg{ width:15px; height:15px; }
+  .dsc-clock-title{ font-size:12px; color:var(--text2); font-weight:600; }
+  .dsc .ds-clock-val{ font-family:var(--font-mono)!important; font-size:12px!important; color:var(--text)!important; font-weight:700!important; padding:0!important; background:none!important; }
+  .dsc .ds-clock-sub{ font-family:var(--font-mono); font-size:11px; color:var(--muted); }
+  .dsc-resync{ width:34px!important; height:34px!important; padding:0!important; display:flex; align-items:center; justify-content:center; border-radius:8px; border:1px solid var(--border2)!important; background:var(--s2)!important; color:var(--muted)!important; cursor:pointer; }
+  .dsc-resync svg{ width:16px; height:16px; }
+  .dsc-resync:hover{ color:var(--text)!important; border-color:var(--border3)!important; }
+  .dsc-resync.syncing svg{ animation:dsResyncSpin 800ms linear infinite; }
+  .dsc-progwrap{ display:flex; align-items:center; gap:12px; }
+  .dsc .ds-progress{ flex:1; height:5px; background:rgba(255,255,255,.07); border-radius:3px; margin:0; overflow:hidden; }
+  .dsc .ds-progress-fill{ background:var(--accent)!important; }
+  .dsc-progmeta{ font-family:var(--font-mono); font-size:11px; color:var(--muted); white-space:nowrap; }
+  @media(max-width:700px){
+    .dsc-main{ gap:14px; }
+    .dsc-sep{ display:none; }
+    .dsc-stats{ gap:20px; }
+    .dsc-clockwrap{ margin-left:0; width:100%; }
+    .dsc-clock{ flex:1; }
+    .dsc .ds-pick-no{ font-size:32px; }
+  }
+  /* Toolbar inline icons */
+  .sbtn-ic{ width:13px; height:13px; display:inline-block; vertical-align:-2px; margin-right:5px; }
+  .sm-short .sbtn-ic{ margin-right:0; }
+  #page-draft .controls .sbtn{ display:inline-flex; align-items:center; }
 </style>
 <script>
 (function(){
