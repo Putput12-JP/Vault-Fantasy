@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD: VAULT-BUILD-20260529-215400 -->
+<!-- BUILD: VAULT-BUILD-20260530-113740 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Vault — Dynasty Intelligence</title>
@@ -194,7 +194,16 @@ header{
   background-repeat:no-repeat;background-position:right 12px center;
 }
 .header-league-select:hover{border-color:var(--accent2)}
-@media(max-width:700px){.header-league-wrap{flex:0;min-width:0}.header-league-select{backdrop-filter:var(--blur-sm);-webkit-backdrop-filter:var(--blur-sm);max-width:130px;font-size:11px;padding:6px 24px 6px 10px}}
+@media(max-width:700px){
+  .header-league-wrap{flex:1 1 auto;min-width:0;justify-content:flex-start}
+  .header-league-select-wrap{flex:1 1 auto;min-width:0}
+  .header-league-select-wrap > span{display:none}  /* hide "LEAGUE:" label on mobile */
+  .header-league-select{max-width:100%!important;width:100%;font-size:12px;padding:6px 26px 6px 10px;
+    text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+  /* Free up header space so the league name fits — these are all reachable elsewhere:
+     theme + watchlist live in the Settings drawer; resync lives on the Draft/Team pages. */
+  #watch-header-btn, #theme-toggle, #resync-btn{display:none!important}
+}
 .user-chip{display:flex;align-items:center;gap:7px;padding:5px 10px 5px 5px;border-radius:20px;border:1px solid var(--border2);background:var(--s2);cursor:pointer;transition:all .15s;flex-shrink:0;touch-action:manipulation}
 .user-chip:hover{border-color:var(--accent2);background:var(--s3)}
 .user-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.5px solid var(--border3)}
@@ -420,6 +429,8 @@ header{
 .slbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:'Space Mono',monospace;white-space:nowrap}
 /* Primary sort+source mode buttons (RosterAudit / Fantasy Calc / My Rankings) */
 .sort-mode{font-weight:600}
+.sm-short{display:none}
+@media(max-width:700px){.sm-full{display:none}.sm-short{display:inline}}
 .sort-mode.on{background:linear-gradient(135deg,#facc15,#eab308);color:#1a1a1a;border-color:#eab308;text-shadow:none}
 .sort-mode#sm-fc.on{background:linear-gradient(135deg,#7bd0ff,#3aa8e0);border-color:#3aa8e0;color:#0a1530}
 .sort-mode#sm-my.on{background:linear-gradient(135deg,#a78bfa,#7c5cf5);border-color:#7c5cf5;color:#fff}
@@ -547,7 +558,40 @@ header{
 .pm-photo{width:26px;height:26px;flex-shrink:0}
 .pm-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px}
 .pm-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
-.pm-meta{display:flex;align-items:center;gap:5px}
+.pm-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.pm-val-wrap{display:inline-flex;align-items:baseline;gap:3px}
+.pm-val-lbl{font-size:8px;font-weight:700;font-family:'Space Mono',monospace;letter-spacing:.04em;color:var(--text2);text-transform:uppercase}
+.pm-dynasty{font-size:11px;font-family:'Space Mono',monospace;font-weight:700}
+.pm-redraft{font-size:11px;font-family:'Space Mono',monospace;font-weight:600;opacity:.9}
+/* Fix 2: mobile sort bar — hidden on desktop, sticky chip row on mobile */
+.pm-sortbar{display:none}
+@media(max-width:700px){
+  .pm-sortbar{display:flex;align-items:center;gap:5px;overflow-x:auto;scrollbar-width:none;
+    padding:7px 10px;position:sticky;top:0;z-index:96;background:var(--bg);
+    border-bottom:1px solid var(--border);margin:0 -2px 6px}
+  .pm-sortbar::-webkit-scrollbar{display:none}
+  .pm-sortbar-lbl{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.1em;flex-shrink:0}
+  .pm-sortchip{flex-shrink:0;display:inline-flex;align-items:center;gap:4px;padding:6px 11px;border-radius:8px;
+    background:var(--s2);border:1px solid var(--border2);color:var(--text2);font-family:'Space Mono',monospace;
+    font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 120ms ease}
+  .pm-sortchip.on{background:rgba(204,0,60,0.16);border-color:var(--accent);color:#fff}
+  .pm-chip-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  #pmsort-my{display:none}            /* shown only after a CSV import (toggled in updateSortBtns) */
+  #pmsort-my.has-my{display:inline-flex}
+}
+/* Issue 2: mobile-only sort bar for Dynasty/Redraft/ADP */
+.plist-msort{display:none}
+@media(max-width:700px){
+  .plist-msort{display:flex;align-items:center;gap:6px;padding:8px 12px;overflow-x:auto;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid var(--border);
+    position:sticky;top:30px;background:var(--bg);z-index:96;backdrop-filter:blur(8px)}
+  .plist-msort::-webkit-scrollbar{display:none}
+  .plist-msort-lbl{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:.1em;flex-shrink:0}
+  .plist-msort-btn{flex-shrink:0;white-space:nowrap;font-size:11px;font-weight:600;padding:6px 12px;
+    border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);
+    font-family:var(--font-sans);cursor:pointer;transition:all 120ms ease}
+  .plist-msort-btn.on{background:linear-gradient(135deg,#cc003c,#ff4d6d);color:#fff;border-color:transparent}
+}
 .pm-team{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace}
 .pm-status{flex-shrink:0;display:flex;align-items:center}
 .prow{height:44px;border-bottom:1px solid var(--border);transition:background .1s}
@@ -1039,9 +1083,18 @@ header{
 
   /* --- Draft controls: denser, hide redundant freshness line --- */
   #ds-summary{display:none!important}  /* per-button "(58s ago)" already shows freshness */
-  .sort-mode{font-size:11px;padding:7px 10px}
-  .controls{padding:6px 10px;gap:5px}
-  .controls .sbtn{padding:7px 10px;font-size:11px}
+  .controls{padding:6px 10px;gap:5px;flex-wrap:wrap}
+  /* Fix 1: sort-mode group becomes a full-width segmented control that FITS (no scroll).
+     The mode buttons share width equally; Settings is a compact fixed icon at the end. */
+  .sgrp{order:10;flex:0 0 100%;width:100%;border-left:none;padding-left:0;margin-top:4px;
+        display:flex;gap:5px;align-items:stretch;flex-wrap:nowrap}
+  .sgrp .slbl{display:none}
+  #sm-fc-age{display:none}                       /* drop the "(58s ago)" inside the button on mobile */
+  .sgrp .sort-mode{flex:1 1 0;min-width:0;text-align:center;padding:9px 4px;font-size:11px;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #sb-settings{flex:0 0 auto;padding:9px 12px;font-size:13px}
+  /* position filter chips fill the first row evenly */
+  .controls .fbtn{flex:1 1 0;min-width:0;padding:7px 4px;font-size:11px}
 }
 @media(max-width:360px){
   .mth-hero-val{font-size:13px}
@@ -1068,6 +1121,18 @@ header{
   .pf-v2-stat:nth-child(1),.pf-v2-stat:nth-child(2){border-bottom:1px solid var(--border2)}
   .pf-v2-stat-num{font-size:28px}
   .pf-v2-stat{padding:18px 20px}
+  /* Fix 3: Portfolio league table — on mobile keep only Chevron · League · Grade.
+     My Rank / Value / Teams (cols 4-6) live in the expandable detail row, so hide them
+     here to stop the table overflowing and clipping the Grade off the right edge. */
+  .pf-v2-table .pf-v2-th:nth-child(4), .pf-v2-table .pf-v2-row > td:nth-child(4),
+  .pf-v2-table .pf-v2-th:nth-child(5), .pf-v2-table .pf-v2-row > td:nth-child(5),
+  .pf-v2-table .pf-v2-th:nth-child(6), .pf-v2-table .pf-v2-row > td:nth-child(6){display:none}
+  .pf-v2-th-name{padding-left:12px}
+  .pf-v2-td-name{padding-left:12px;padding-right:8px}
+  .pf-v2-name{max-width:62vw;font-size:13px}
+  .pf-v2-th-num{padding-right:14px}
+  .pf-v2-td-num{padding-right:14px;padding-left:8px;font-size:16px}
+  .pf-v2-grade-cell, .pf-v2-td-num:last-child{white-space:nowrap}
 }
 /* Section wrapper */
 .pf-v2-section{border:1px solid var(--border2);border-radius:14px;background:var(--s1);overflow:hidden}
@@ -1264,12 +1329,28 @@ header{
 .tpage-title{font-family:'Arial Black','Impact',sans-serif;font-size:20px;letter-spacing:1px}
 .tpage-title em{color:var(--accent2);font-style:normal;font-weight:700}
 .pr-table{width:100%;border-collapse:collapse;margin-bottom:8px}
-.pr-table th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:8px 12px;text-align:left;border-bottom:1.5px solid var(--border2);font-family:'Space Mono',monospace;white-space:nowrap;background:var(--s1)}
+/* Fix 5: keep the rankings table inside the page */
+#power-rankings{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+@media(max-width:700px){
+  /* Fit the table to the screen instead of a 640px horizontal scroll: show only
+     RANK · TEAM · TIER. The detail columns (roster, value, trend, strength, best)
+     appear when you tap a row. This keeps the table centered and inside the page. */
+  #power-rankings .pr-table{min-width:0;width:100%}
+  #power-rankings .pr-table th:nth-child(n+4),
+  #power-rankings .pr-table td:nth-child(n+4){display:none}
+  #power-rankings .pr-table th, #power-rankings .pr-table td{padding-left:8px;padding-right:8px}
+  #power-rankings .pr-table th:nth-child(3){min-width:0}
+  #page-teams .proto-page{padding-left:10px;padding-right:10px}
+  #page-teams{overflow-x:hidden}
+  .tier-badge{font-size:10px}
+}.pr-table th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:8px 12px;text-align:left;border-bottom:1.5px solid var(--border2);font-family:'Space Mono',monospace;white-space:nowrap;background:var(--s1)}
 .pr-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
 .pr-table tr{cursor:pointer;transition:background .15s}
 .pr-table tr:hover td{background:var(--s3)}
-.pr-table tr.my-row td{background:#5b8dee0a;border-left:3px solid var(--accent)}
-.pr-table tr.selected-row td{background:#ffd1660a;border-left:3px solid var(--te)}
+.pr-table tr.my-row td{background:#5b8dee0a}
+.pr-table tr.my-row td:first-child{border-left:3px solid var(--accent)}
+.pr-table tr.selected-row td{background:#ffd1660a}
+.pr-table tr.selected-row td:first-child{border-left:3px solid var(--te)}
 .pr-rank{font-size:18px;font-weight:800;font-family:'Space Mono',monospace;text-align:center;min-width:28px}
 .pr-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;font-family:'Space Mono',monospace;margin-left:5px;vertical-align:middle}
 .pr-val{font-size:14px;font-weight:700;font-family:'Space Mono',monospace;text-align:right}
@@ -2954,7 +3035,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <span style="font-size:10px;color:#909097;font-family:var(--font-mono);letter-spacing:0.08em;text-transform:uppercase">LEAGUE:</span>
       <select id="header-league-select" onchange="switchGlobalLeague(this.value)"
         class="header-league-select"
-        style="max-width:220px;padding:5px 10px;font-size:13px">
+        style="padding:5px 10px;font-size:13px">
         <option value="">📋 Select League</option>
       </select>
     </div>
@@ -3318,10 +3399,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="sbtn" id="sb1" onclick="setSort(1)" style="display:none">—</button>
       <button class="sbtn" id="sb2" onclick="setSort(2)" style="display:none">—</button>
       <!-- Three primary sort modes — each sets BOTH the sort key AND the value source for the DYNASTY column -->
-      <button class="sbtn sort-mode"    id="sm-ra"  onclick="setSortMode('ra')"  title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit Dynasty</button>
-      <button class="sbtn sort-mode on" id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live from api.fantasycalc.com)">Fantasy Calc <span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:3px;font-weight:400"></span></button>
-      <button class="sbtn sort-mode" id="sm-my" onclick="setSortMode('my')" title="Your imported CSV rankings" style="display:none">My Rankings</button>
-      <button class="sbtn" id="sb-settings" onclick="openSettingsDrawer()" title="Settings — ADP format, data sources, behavior">⚙ Settings</button>
+      <button class="sbtn sort-mode"    id="sm-ra"  onclick="setSortMode('ra')"  title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)"><span class="sm-full">RosterAudit Dynasty</span><span class="sm-short">RA Dyn</span></button>
+      <button class="sbtn sort-mode on" id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live from api.fantasycalc.com)"><span class="sm-full">Fantasy Calc</span><span class="sm-short">FC Dyn</span> <span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:3px;font-weight:400"></span></button>
+      <button class="sbtn sort-mode" id="sm-my" onclick="setSortMode('my')" title="Your imported CSV rankings" style="display:none"><span class="sm-full">My Rankings</span><span class="sm-short">Mine</span></button>
+      <button class="sbtn" id="sb-settings" onclick="openSettingsDrawer()" title="Settings — ADP format, data sources, behavior"><span class="sm-full">⚙ Settings</span><span class="sm-short">⚙</span></button>
     </div>
     <!-- Data Source Info Popover (toggled by ⓘ button) -->
     <div id="data-source-popover" class="data-info-popover" style="display:none">
@@ -3414,6 +3495,15 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <span class="ds-summary-sep">·</span>
       <span class="ds-summary-item"><span class="ds-summary-dot adp"></span>ADP <span id="ds-adp-label">—</span></span>
     </div>
+    <!-- Fix 2: Mobile-only sort bar — doubles as a header (shows what the values are) and sort control -->
+    <div class="pm-sortbar" id="pm-sortbar">
+      <span class="pm-sortbar-lbl">SORT</span>
+      <button class="pm-sortchip on" id="pmsort-rk"  onclick="setSort(0)">Rank</button>
+      <button class="pm-sortchip"    id="pmsort-dyn" onclick="setSort('dynasty-col')"><span class="pm-chip-dot" style="background:#facc15"></span>Dynasty</button>
+      <button class="pm-sortchip"    id="pmsort-rdr" onclick="setSort('redraft-col')"><span class="pm-chip-dot" style="background:#7bd0ff"></span>Redraft</button>
+      <button class="pm-sortchip"    id="pmsort-adp" onclick="setSort('adp-col')"><span class="pm-chip-dot" style="background:#a78bfa"></span>ADP</button>
+      <button class="pm-sortchip col-my-cell" id="pmsort-my" onclick="setSort('my')"><span class="pm-chip-dot" style="background:#3DCC7A"></span>Mine</button>
+    </div>
     <table class="plist-table">
       <colgroup>
         <col class="col-rk"><col class="col-photo"><col class="col-name">
@@ -3437,6 +3527,13 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       </thead>
       <tbody id="plist-body"></tbody>
     </table>
+    <!-- Mobile-only sort bar: the sortable column headers are desktop-only, so expose sorting here -->
+    <div id="plist-mobile-sort" class="plist-msort">
+      <span class="plist-msort-lbl">SORT</span>
+      <button class="plist-msort-btn" id="msort-dynasty" onclick="setSort('dynasty-col')">Dynasty ▾</button>
+      <button class="plist-msort-btn" id="msort-redraft" onclick="setSort('redraft-col')">Redraft</button>
+      <button class="plist-msort-btn" id="msort-adp" onclick="setSort('adp-col')">ADP</button>
+    </div>
     <!-- Mobile: div rows injected here by renderList -->
     <div id="plist-mobile"></div>
   </div>
@@ -6529,6 +6626,7 @@ function updateSortBtns() {
 
   // C9: Show/hide the MY column in the player table based on whether a CSV import exists
   document.querySelectorAll('.plist-table').forEach(t => t.classList.toggle('has-my', hasMyRankings));
+  document.getElementById('pmsort-my')?.classList.toggle('has-my', hasMyRankings);
 
   // sb0 = "My Rankings" (only visible if import exists)
   const sb0 = document.getElementById('sb0');
@@ -7496,6 +7594,13 @@ function clearImportRankings() {
 function setSort(k){
   sortKey=k;
 
+  // Fix 2: sync the mobile sort-bar chip highlight
+  try {
+    const chipMap = {0:'pmsort-rk','dynasty-col':'pmsort-dyn','redraft-col':'pmsort-rdr','adp-col':'pmsort-adp','my':'pmsort-my'};
+    const activeId = chipMap[k];
+    if (activeId) document.querySelectorAll('.pm-sortchip').forEach(c => c.classList.toggle('on', c.id === activeId));
+  } catch(e){}
+
   // Column-header sorts (StatChasers-style)
   if (k === 'dynasty-col') {
     // DYNASTY column sort by value desc (uses whatever value source is active)
@@ -7546,9 +7651,13 @@ function setSort(k){
 function updateColumnHdrIndicators(activeCol){
   ['dynasty','redraft','adp'].forEach(c => {
     const el = document.getElementById('ind-'+c);
-    if (!el) return;
-    if (c === activeCol) { el.textContent = '↓'; el.classList.add('active'); }
-    else { el.textContent = '↕'; el.classList.remove('active'); }
+    if (el) {
+      if (c === activeCol) { el.textContent = '↓'; el.classList.add('active'); }
+      else { el.textContent = '↕'; el.classList.remove('active'); }
+    }
+    // Sync the mobile sort bar buttons
+    const mb = document.getElementById('msort-'+c);
+    if (mb) mb.classList.toggle('on', c === activeCol);
   });
 }
 
@@ -9129,8 +9238,8 @@ function renderList(){
         <div class="pm-meta">
           <span class="pm-team">${p.team}</span>
           <span class="ppill ${p.pos}" style="font-size:8px;padding:1px 4px">${p.pos}</span>
-          ${dynastyVal > 0 ? `<span class="pm-dynasty" style="font-size:10px;color:${dynastyColor};font-family:'Space Mono',monospace;font-weight:700">${dynastyVal.toLocaleString()}</span>` : ''}
-          ${redraftVal > 0 ? `<span class="pm-redraft" style="font-size:9px;color:${redraftColor};font-family:'Space Mono',monospace;font-weight:600;opacity:.85">· ${redraftVal.toLocaleString()}r</span>` : ''}
+          ${dynastyVal > 0 ? `<span class="pm-val-wrap"><span class="pm-val-lbl">DYN</span><span class="pm-dynasty" style="color:${dynastyColor}">${dynastyVal.toLocaleString()}</span></span>` : ''}
+          ${redraftVal > 0 ? `<span class="pm-val-wrap"><span class="pm-val-lbl">RDR</span><span class="pm-redraft" style="color:${redraftColor}">${redraftVal.toLocaleString()}</span></span>` : ''}
           ${vbadgeHtml}
         </div>
       </div>
