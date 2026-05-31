@@ -3557,7 +3557,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       </div>
       <div class="dsc-progwrap">
         <div class="ds-progress"><div class="ds-progress-fill" id="ds-progress-fill" style="width:0%"></div></div>
-        <span class="dsc-progmeta"><span id="ds-pct">—</span> complete · <span id="ds-left">— left</span></span>
+        <span class="dsc-progmeta"><span id="ds-pct">—</span> complete</span>
       </div>
       <!-- kept hidden for JS bindings (redundant with hero / collapsed clock) -->
       <span id="ds-stat-next" style="display:none">—</span>
@@ -3586,39 +3586,37 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
   <!-- PICKS STRIP (hidden per request — kept for renderStrip JS reference) -->
   <div class="pstrip" id="pstrip" style="display:none !important"><span id="draft-timer" style="font-size:9px;color:var(--muted);font-family:Space Mono,monospace;flex-shrink:0;white-space:nowrap;padding-right:6px;border-right:1px solid var(--border);margin-right:4px"></span></div>
-  <!-- SEARCH BAR (always visible, full width) -->
-  <div class="search-bar-wrap">
-    <div class="search-bar-inner">
-      <span class="sico">⌕</span>
-      <input class="search-bar-full" id="search" placeholder="Search players..." oninput="renderList()" autocomplete="off" autocorrect="off" spellcheck="false">
+  <!-- TOOLBAR — single row (matches Command Strip mock): search · filters · value source · watchlist · import · drafted -->
+  <div class="controls dvc">
+    <div class="dvc-search">
+      <span class="dvc-search-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/><path d="m20.5 20.5-4-4"/></svg></span>
+      <input id="search" placeholder="Search players..." oninput="renderList()" autocomplete="off" autocorrect="off" spellcheck="false">
       <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
     </div>
-  </div>
-  <div class="suggest-bar" id="sbar" style="display:none">
-    <div class="suggest-title">
-      <span>Suggested</span>
-      <div id="sug-modes" style="display:flex;gap:4px;margin-left:8px"></div>
-      <span style="color:var(--muted);font-size:9px;margin-left:6px">click to draft</span>
+    <div class="dvc-seg pos-seg">
+      <button class="fbtn all on" onclick="setF('ALL')">ALL</button>
+      <button class="fbtn QB" onclick="setF('QB')">QB</button>
+      <button class="fbtn RB" onclick="setF('RB')">RB</button>
+      <button class="fbtn WR" onclick="setF('WR')">WR</button>
+      <button class="fbtn TE" onclick="setF('TE')">TE</button>
     </div>
-    <div class="suggest-chips" id="schips"></div>
-  </div>
-  <div class="controls">
-    <button class="fbtn all on" onclick="setF('ALL')">ALL</button>
-    <button class="fbtn QB" onclick="setF('QB')">QB</button>
-    <button class="fbtn RB" onclick="setF('RB')">RB</button>
-    <button class="fbtn WR" onclick="setF('WR')">WR</button>
-    <button class="fbtn TE" onclick="setF('TE')">TE</button>
-    <div class="sgrp" id="sgrp">
-      <span class="slbl">SORT</span>
-      <button class="sbtn on" id="sb0" onclick="setSort(0)" style="display:none">—</button>
-      <button class="sbtn" id="sb1" onclick="setSort(1)" style="display:none">—</button>
-      <button class="sbtn" id="sb2" onclick="setSort(2)" style="display:none">—</button>
-      <!-- Three primary sort modes — each sets BOTH the sort key AND the value source for the DYNASTY column -->
-      <button class="sbtn sort-mode"    id="sm-ra"  onclick="setSortMode('ra')"  title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)"><span class="sm-full">RosterAudit Dynasty</span><span class="sm-short">RA Dyn</span></button>
-      <button class="sbtn sort-mode on" id="sm-fc"  onclick="setSortMode('fc')"  title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live from api.fantasycalc.com)"><span class="sm-full">Fantasy Calc</span><span class="sm-short">FC Dyn</span> <span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:3px;font-weight:400"></span></button>
-      <button class="sbtn sort-mode" id="sm-my" onclick="setSortMode('my')" title="Your imported CSV rankings" style="display:none"><span class="sm-full">My Rankings</span><span class="sm-short">Mine</span></button>
-      <button class="sbtn sort-mode" id="sb-settings" onclick="openSettingsDrawer()" title="Settings — ADP format, data sources, behavior"><span class="sm-full"><svg class="sbtn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-4M20 13V3"/><path d="M2 14h4M10 8h4M18 17h4"/></svg>Settings</span><span class="sm-short"><svg class="sbtn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-4M20 13V3"/><path d="M2 14h4M10 8h4M18 17h4"/></svg></span></button>
+    <div class="dvc-seg src-seg" title="Value source for the Dynasty column">
+      <button class="sbtn sort-mode" id="sm-ra" onclick="setSortMode('ra')" title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit</button>
+      <button class="sbtn sort-mode on" id="sm-fc" onclick="setSortMode('fc')" title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live)">FantasyCalc<span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:4px;font-weight:400"></span></button>
+      <button class="sbtn sort-mode" id="sm-my" onclick="setSortMode('my')" title="Your imported CSV rankings" style="display:none">Mine</button>
     </div>
+    <button class="dvc-icon" id="sb-watch" onclick="toggleWatchFilter()" title="Watchlist — show only players you've starred"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.6 6 .7-4.4 4.2 1.2 6L12 17.1 6.6 20l1.2-6L3.4 9.8l6-.7Z"/></svg></button>
+    <button class="dvc-icon" id="sb-import" onclick="toggleImportPanel()" title="Import custom rankings (CSV)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 19h14"/></svg></button>
+    <button class="dvc-drafted hgbtn" id="hgbtn" onclick="toggleHide()" title="Show or hide drafted players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/></svg><span class="dvc-drafted-lbl">Drafted</span><span class="hg-count" id="hg-count">0</span></button>
+    <!-- Legacy controls kept hidden for JS references — these live in the Settings drawer now -->
+    <span style="display:none">
+      <button id="sb0" onclick="setSort(0)">—</button>
+      <button id="sb1">—</button>
+      <button id="sb2">—</button>
+      <button id="sb-settings" onclick="openSettingsDrawer()">Settings</button>
+      <button id="sb-listcap" onclick="toggleDraftListCap()">Top 15 ▾</button>
+      <button id="sb-hidepicks" onclick="toggleHidePicks()">Hide Picks</button>
+    </span>
     <!-- Data Source Info Popover (toggled by ⓘ button) -->
     <div id="data-source-popover" class="data-info-popover" style="display:none">
       <div class="data-info-head">
@@ -3645,21 +3643,15 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <div class="data-info-note">FC and RA use different methodologies — values will differ for the same player. Both are correct, just different opinions.</div>
       </div>
     </div>
-    <div class="sgrp ctl-mobile-hide">
-      <button class="sbtn" id="sb-watch" onclick="toggleWatchFilter()" title="Show only players you've starred in Vault (local to this app — not synced with your Sleeper draft queue)"><svg class="sbtn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.6 6 .7-4.4 4.2 1.2 6L12 17.1 6.6 20l1.2-6L3.4 9.8l6-.7Z"/></svg>Watchlist</button>
+  </div>
+
+  <!-- SUGGESTED — clean label + cards (matches mock) -->
+  <div class="suggest-bar" id="sbar" style="display:none">
+    <div class="suggest-title">
+      <span>Suggested</span>
+      <div id="sug-modes" style="display:none"></div>
     </div>
-    <div class="sgrp ctl-mobile-hide">
-      <button class="sbtn" onclick="toggleImportPanel()" id="sb-import" title="Import custom rankings from CSV"><svg class="sbtn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 19h14"/></svg>Import</button>
-    </div>
-    <div class="sgrp ctl-mobile-hide">
-      <button class="sbtn" id="sb-listcap" onclick="toggleDraftListCap()" title="Show only the top 15 players or all">Top 15 ▾</button>
-    </div>
-    <div class="sgrp ctl-mobile-hide">
-      <button class="sbtn" id="sb-hidepicks" onclick="toggleHidePicks()" title="Hide future draft picks from the list">Hide Picks</button>
-    </div>
-    <div class="cright">
-      <button class="hgbtn" id="hgbtn" onclick="toggleHide()">Show Drafted <span class="hg-count" id="hg-count">0</span></button>
-    </div>
+    <div class="suggest-chips" id="schips"></div>
   </div>
   <div class="plist" id="plist">
     <!-- Inline CSV import panel (simplified) -->
@@ -3721,23 +3713,16 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     </div>
     <table class="plist-table">
       <colgroup>
-        <col class="col-rk"><col class="col-photo"><col class="col-name">
-        <col class="col-team"><col class="col-pos"><col class="col-dynasty"><col class="col-redraft"><col class="col-adp"><col class="col-my"><col class="col-watch"><col class="col-act"><col class="col-fill">
+        <col class="col-rk"><col class="col-name"><col class="col-dynasty"><col class="col-redraft"><col class="col-adp"><col class="col-status">
       </colgroup>
       <thead class="plist-thead" id="lhdr">
         <tr>
-          <th id="lh0" onclick="setSort(0)" style="color:var(--accent2);text-align:right;cursor:pointer;padding-right:8px">RK</th>
-          <th></th>
-          <th>NAME</th>
-          <th>TEAM</th>
-          <th style="text-align:center">POS</th>
-          <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;color:#facc15;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">DYNASTY <span class="hdr-source-label" id="hdr-dynasty-src">FC</span> <span class="sort-ind" id="ind-dynasty">↓</span></th>
-          <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;color:#7bd0ff;cursor:pointer" title="Click to sort by FantasyCalc redraft value (descending)">REDRAFT <span class="redraft-qb-toggle" id="redraft-qb-toggle" onclick="event.stopPropagation();toggleRedraftQbs()" title="Toggle redraft values between 1QB and Superflex">1QB</span> <span class="sort-ind" id="ind-redraft">↕</span></th>
-          <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;color:#a78bfa;cursor:pointer" title="Click to sort by ADP (lowest pick number first)">ADP <span class="sort-ind" id="ind-adp">↕</span></th>
-          <th class="num-hdr col-hdr-sortable col-my-cell" id="hdr-my" onclick="setSort('my')" style="text-align:right;padding-right:8px;color:#3DCC7A;cursor:pointer" title="Your imported CSV rank">MY <span class="sort-ind" id="ind-my">↕</span></th>
-          <th></th>
-          <th>STATUS</th>
-          <th></th>
+          <th id="lh0" onclick="setSort(0)" style="text-align:right;cursor:pointer;padding-right:10px">#</th>
+          <th style="text-align:left">Player</th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">Dynasty <span class="hdr-source-label" id="hdr-dynasty-src">FC</span> <span class="sort-ind" id="ind-dynasty">↓</span></th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Click to sort by FantasyCalc redraft value (descending)">Redraft <span class="redraft-qb-toggle" id="redraft-qb-toggle" onclick="event.stopPropagation();toggleRedraftQbs()" title="Toggle redraft values between 1QB and Superflex">1QB</span> <span class="sort-ind" id="ind-redraft">↕</span></th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Click to sort by ADP (lowest pick number first)">ADP <span class="sort-ind" id="ind-adp">↕</span></th>
+          <th style="text-align:center">Status</th>
         </tr>
       </thead>
       <tbody id="plist-body"></tbody>
@@ -6880,7 +6865,7 @@ async function launch(skip=false) {
   }
 
   if (sleeperDraftId) {
-    document.getElementById('plist-body').innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</td></tr>';
+    document.getElementById('plist-body').innerHTML = '<tr><td colspan="6" style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</td></tr>';
     await syncSleeper();
     if (Object.keys(draftState).length === 0) initState();
     scheduleSync();
@@ -8162,10 +8147,7 @@ function setF(f){
 function toggleHide(){
   hideGone=!hideGone;
   const btn=document.getElementById('hgbtn');
-  if(btn){
-    btn.classList.toggle('on',hideGone);
-    btn.childNodes[0].textContent = hideGone ? 'Show Drafted ' : 'Hide Drafted ';
-  }
+  if(btn) btn.classList.toggle('on',hideGone);
   renderList();
 }
 
@@ -9605,7 +9587,7 @@ function renderList(){
 
   
   if (!PLAYERS.length) {
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted);font-family:var(--font-sans);font-size:14px">
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);font-family:var(--font-sans);font-size:14px">
       <div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px;margin-bottom:8px">⟳</div><br>
       Loading RosterAudit dynasty rankings...
     </td></tr>`;
@@ -9681,12 +9663,12 @@ function renderList(){
     const _tipAttr = _badgeTip ? ` title="${_badgeTip.replace(/"/g,'&quot;')}"` : '';
 
     let vbadgeHtml='';
-    if(!isDrafted){
-      if(isHot)              vbadgeHtml=`<span class="vbadge hot"${_tipAttr}>🔥 TAKE NOW</span>`;
-      else if(isVal&&isNeed) vbadgeHtml=`<span class="vbadge val"${_tipAttr}>★ VALUE+NEED</span>`;
-      else if(isVal)         vbadgeHtml=`<span class="vbadge val"${_tipAttr}>▲ VALUE</span>`;
-      else if(isNeed)        vbadgeHtml=`<span class="vbadge need"${_tipAttr}>◆ NEED</span>`;
-      else if(isReach)       vbadgeHtml=`<span class="vbadge reach"${_tipAttr}>▼ REACH</span>`;
+    if(!isDrafted && myTeam !== null){
+      if(isHot)              vbadgeHtml=`<span class="vbadge hot"${_tipAttr}>Take</span>`;
+      else if(isVal&&isNeed) vbadgeHtml=`<span class="vbadge val"${_tipAttr}>Value</span>`;
+      else if(isVal)         vbadgeHtml=`<span class="vbadge val"${_tipAttr}>Value</span>`;
+      else if(isNeed)        vbadgeHtml=`<span class="vbadge need"${_tipAttr}>Need</span>`;
+      else if(isReach)       vbadgeHtml=`<span class="vbadge reach"${_tipAttr}>Reach</span>`;
     }
 
     let ownerHtml='';
@@ -9791,29 +9773,24 @@ function renderList(){
       }
     }
 
+    const _statusCell = isDrafted ? statusHtml : (vbadgeHtml || '<span style="color:var(--dim)">—</span>');
     const desktopRow = `<tr class="prow ${isDrafted?'gone':''} ${isMe?'ismine':''} ${isHot?'is-value':''}">
-      <td class="rnum" style="text-align:right;padding-right:8px">${rank}</td>
-      <td style="padding:0 3px">${hs}</td>
-      <td onclick="openPlayerStats('${sn}','${p.name.replace(/'/g,"\\'")}','${p.pos}','${p.team}')" style="cursor:pointer;padding-right:2px" title="View player stats">
-        <div style="display:flex;align-items:center;gap:6px">
+      <td class="rnum" style="text-align:right;padding-right:10px">${rank}</td>
+      <td class="td-player" onclick="openPlayerStats('${sn}','${p.name.replace(/'/g,"\\'")}','${p.pos}','${p.team}')" style="cursor:pointer" title="View player stats">
+        <div class="dvrow-player">
+          <span class="ppill ${p.pos}">${p.pos}</span>
           <span class="pname">${p.name}</span>
-          ${playerNotes[p.name] ? `<span style="font-size:9px;opacity:.7" onclick="event.stopPropagation();openNote('${sn}')">🗒</span>` : ''}
+          <span class="dvrow-team">${p.team}</span>
+          ${playerNotes[p.name] ? `<span class="dvrow-note" onclick="event.stopPropagation();openNote('${sn}')" title="Edit note">🗒</span>` : ''}
         </div>
       </td>
-      <td class="td-team" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">${p.team}</td>
-      <td class="td-pos" style="text-align:center"><span class="ppill ${p.pos}">${p.pos}</span></td>
-      <td class="td-dynasty" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-align:right;padding-right:8px">${dynastyHtml}</td>
-      <td class="td-redraft" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:600;text-align:right;padding-right:8px">${redraftHtml}</td>
-      <td class="td-adp" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:600;text-align:right;padding-right:8px">${adpHtml}</td>
-      <td class="td-my col-my-cell" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;text-align:right;padding-right:8px;color:#3DCC7A">${(p.rMy != null && p.rMy < 9999) ? '#'+p.rMy : '<span style="color:var(--dim)">—</span>'}</td>
-      <td style="padding:0 4px;text-align:center;width:28px;cursor:pointer;font-size:14px;user-select:none" 
-          onclick="event.stopPropagation();toggleWatch('${sn}')" 
-          title="${inWatchlist?'Remove from watchlist':'Add to watchlist'}">${inWatchlist?'⭐':'☆'}</td>
-      <td><div class="prow-status-cell">
-        <div class="prow-status-default">${statusHtml}${playerNotes[p.name]?'<span style="margin-left:4px;font-size:9px;color:var(--te)" title="'+playerNotes[p.name].slice(0,30)+'">🗒</span>':''}</div>
-        <div class="prow-actions">${acts}</div>
+      <td class="td-dynasty" style="font-family:var(--font-mono);font-size:12.5px;font-weight:700;text-align:right;padding-right:8px">${dynastyHtml}</td>
+      <td class="td-redraft" style="font-family:var(--font-mono);font-size:12px;font-weight:500;text-align:right;padding-right:8px">${redraftHtml}</td>
+      <td class="td-adp" style="font-family:var(--font-mono);font-size:12px;font-weight:500;text-align:right;padding-right:8px">${adpHtml}</td>
+      <td class="td-status"><div class="prow-status-cell">
+        <div class="prow-status-default">${_statusCell}</div>
+        <div class="prow-actions"><span class="dvrow-star${inWatchlist?' on':''}" onclick="event.stopPropagation();toggleWatch('${sn}')" title="${inWatchlist?'Remove from watchlist':'Add to watchlist'}">${inWatchlist?'★':'☆'}</span></div>
       </div></td>
-      <td class="td-fill"></td>
     </tr>`;
 
     
@@ -9864,7 +9841,7 @@ function renderList(){
     if (tierTriggered) {
       tierNum++;
       rowsWithTiers.push({
-        desktop: `<tr class="tier-break-row"><td colspan="10"><div class="tier-break">— TIER ${tierNum} —</div></td></tr>`,
+        desktop: `<tr class="tier-break-row"><td colspan="6"><div class="tier-break">— TIER ${tierNum} —</div></td></tr>`,
         mobile: `<div class="tier-break-mobile">— TIER ${tierNum} —</div>`
       });
     }
@@ -11718,12 +11695,23 @@ function renderDraftSummary(){
 
   // Populate
   const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
-  set('ds-title', d.name || 'Active Draft');
+  // Clean the Sleeper draft name for the eyebrow: drop emoji and bracketed/$ tags, cap length (mock: "TRADING DOWN D8")
+  const cleanName = (n) => {
+    let s = (n || 'Active Draft')
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\uFE0F]/gu, '')
+      .replace(/\[[^\]]*\]/g, '')
+      .replace(/\$\S+/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    if (s.length > 26) s = s.slice(0, 26).trim() + '…';
+    return s || 'Active Draft';
+  };
+  set('ds-title', cleanName(d.name));
   const seasonStr = d.season ? `${d.season}` : '';
-  const typeStr = (d.type || 'snake').toUpperCase();
-  set('ds-meta', `${seasonStr ? seasonStr+' · ' : ''}${typeStr} · ${teams}T · ${d.rounds||NUM_ROUNDS}R`);
+  const typeStr = (d.type || 'snake').replace(/^./, c => c.toUpperCase());  // "Snake"
+  set('ds-meta', `${seasonStr ? seasonStr+' ' : ''}${typeStr} · ${teams}-team`);
   set('ds-pick-no', pickStr);
-  set('ds-pick-mini', `${nextOverall}/${totalPicks}`);
+  set('ds-pick-mini', `Pick ${nextOverall} of ${totalPicks}`);
   set('ds-pick-away', awayStr);
   set('ds-sub', subStr);
   set('ds-pct', `${pct}%`);
@@ -14677,6 +14665,68 @@ function pickYear(year) {
   #page-draft #sb-hidepicks.on, #page-draft #sb-watch.on, #page-draft .hgbtn.on{ background:color-mix(in srgb, var(--accent) 14%, transparent)!important; border-color:var(--accent)!important; color:var(--text)!important; }
   #page-draft .hg-count{ background:var(--accent)!important; font-family:var(--font-mono)!important; }
   #page-draft .cright{ border-left:1px solid var(--border)!important; padding-left:8px!important; }
+
+  /* ───── Draft Vault: single-row toolbar (Command Strip mock) ───── */
+  #page-draft .controls.dvc{ display:flex!important; align-items:center; gap:8px!important; flex-wrap:wrap; background:transparent!important; border-top:none!important; border-bottom:1px solid var(--border)!important; padding:12px 14px!important; }
+  .dvc-search{ flex:1 1 240px; min-width:200px; display:flex; align-items:center; gap:9px; height:38px; padding:0 13px; border-radius:9px; border:1px solid var(--border); background:var(--s2); transition:border-color .15s; }
+  .dvc-search:focus-within{ border-color:var(--accent); }
+  .dvc-search-ic{ color:var(--muted); display:inline-flex; flex-shrink:0; } .dvc-search-ic svg{ width:16px; height:16px; }
+  #page-draft .controls.dvc .dvc-search input{ flex:1; min-width:0; background:transparent!important; border:none!important; outline:none!important; box-shadow:none!important; color:var(--text)!important; font-family:var(--font-sans)!important; font-size:13.5px!important; padding:0!important; }
+  .dvc-search input::placeholder{ color:var(--muted); }
+  .dvc-search .search-clear{ flex-shrink:0; padding:2px 4px; }
+  .dvc-seg{ display:flex; align-items:center; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:3px; gap:2px; flex-shrink:0; }
+  #page-draft .controls.dvc .dvc-seg .fbtn,
+  #page-draft .controls.dvc .dvc-seg .sbtn{ border:0!important; background:transparent!important; color:var(--muted)!important; font-family:var(--font-mono)!important; font-size:11px!important; font-weight:700!important; letter-spacing:.03em!important; text-transform:none!important; padding:6px 11px!important; border-radius:6px!important; cursor:pointer; }
+  #page-draft .controls.dvc .dvc-seg .fbtn:hover,
+  #page-draft .controls.dvc .dvc-seg .sbtn:hover{ color:var(--text)!important; }
+  #page-draft .controls.dvc .pos-seg .fbtn.on{ color:#fff!important; }
+  #page-draft .controls.dvc .pos-seg .fbtn.all.on{ background:var(--accent)!important; color:#fff!important; }
+  #page-draft .controls.dvc .pos-seg .fbtn.QB.on{ background:var(--qb)!important; color:#1a0b10!important; }
+  #page-draft .controls.dvc .pos-seg .fbtn.RB.on{ background:var(--rb)!important; color:#06140d!important; }
+  #page-draft .controls.dvc .pos-seg .fbtn.WR.on{ background:var(--wr)!important; color:#06141a!important; }
+  #page-draft .controls.dvc .pos-seg .fbtn.TE.on{ background:var(--te)!important; color:#1a1405!important; }
+  #page-draft .controls.dvc .src-seg .sbtn.on{ background:var(--accent)!important; color:#fff!important; }
+  .dvc-icon{ width:36px; height:36px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; border:1px solid var(--border2); background:var(--s2); color:var(--text2); cursor:pointer; transition:all .15s; }
+  .dvc-icon svg{ width:16px; height:16px; }
+  .dvc-icon:hover{ color:var(--text); border-color:var(--border3); }
+  #page-draft .controls.dvc #sb-watch.on{ background:color-mix(in srgb, var(--gold) 18%, transparent)!important; border-color:var(--gold)!important; color:var(--gold)!important; }
+  .dvc-drafted{ display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 13px; flex-shrink:0; border-radius:8px; border:1px solid var(--border2); background:var(--s2); color:var(--text2); font-family:var(--font-sans); font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; }
+  .dvc-drafted svg{ width:16px; height:16px; }
+  .dvc-drafted:hover{ color:var(--text); border-color:var(--border3); }
+  #page-draft .controls.dvc .hgbtn.on{ background:color-mix(in srgb, var(--accent) 16%, transparent)!important; border-color:var(--accent)!important; color:var(--text)!important; }
+  .dvc-drafted .hg-count{ display:none!important; }
+  /* Suggested: label + 4-up card grid (matches mock) */
+  #page-draft .suggest-bar{ display:flex!important; align-items:center; gap:14px; background:transparent!important; border-bottom:none!important; padding:10px 0 2px!important; margin-top:2px; }
+  #page-draft .suggest-title{ flex-shrink:0; }
+  #page-draft .suggest-chips{ display:grid!important; grid-template-columns:repeat(4,1fr)!important; gap:8px!important; flex:1; }
+  @media(max-width:860px){ #page-draft .suggest-chips{ grid-template-columns:repeat(2,1fr)!important; } }
+  @media(max-width:560px){ #page-draft .suggest-bar{ flex-direction:column; align-items:stretch; gap:8px; } }
+
+  /* ───── Draft Vault: player rows — clean table (Command Strip mock) ───── */
+  #page-draft .plist-table col.col-rk{ width:5%; min-width:42px; }
+  #page-draft .plist-table col.col-name{ width:42%; }
+  #page-draft .plist-table col.col-dynasty{ width:14%; }
+  #page-draft .plist-table col.col-redraft{ width:14%; }
+  #page-draft .plist-table col.col-adp{ width:9%; }
+  #page-draft .plist-table col.col-status{ width:16%; }
+  #page-draft .plist-thead{ background:var(--s2); }
+  #page-draft .plist-thead th{ font-family:var(--font-mono)!important; font-size:9px!important; color:var(--muted)!important; text-transform:uppercase!important; letter-spacing:.12em!important; font-weight:600!important; padding:9px 4px!important; }
+  #page-draft .plist-thead th#lh0{ padding-right:10px!important; }
+  #page-draft .prow{ height:48px; }
+  #page-draft .prow .rnum{ font-size:12px; color:var(--muted); }
+  #page-draft .dvrow-player{ display:flex; width:100%; align-items:center; gap:9px; overflow:hidden; }
+  #page-draft .dvrow-player .ppill{ flex-shrink:0; }
+  #page-draft .dvrow-player .pname{ flex:0 0 auto; font-size:13.5px; font-weight:600; white-space:nowrap; }
+  #page-draft .dvrow-team{ font-family:var(--font-mono); font-size:10px; color:var(--muted); flex-shrink:0; }
+  #page-draft .dvrow-note{ font-size:10px; opacity:.7; cursor:pointer; flex-shrink:0; }
+  #page-draft .td-status .prow-status-cell{ justify-content:center; gap:6px; }
+  #page-draft .td-status .prow-status-default{ font-size:10px!important; text-align:center; flex:0 1 auto; }
+  #page-draft .dvrow-star{ cursor:pointer; font-size:13px; line-height:1; color:var(--dim); opacity:0; transition:opacity .12s,color .12s; }
+  #page-draft .prow:hover .dvrow-star{ opacity:1; }
+  #page-draft .dvrow-star.on{ opacity:1; color:var(--gold); }
+  #page-draft .dvrow-star:hover{ color:var(--gold); }
+  /* Clean pill value badges — no emoji, matches mock Status tags */
+  #page-draft .vbadge{ font-family:var(--font-mono)!important; font-size:9px!important; font-weight:700!important; letter-spacing:.05em!important; text-transform:uppercase!important; padding:3px 9px!important; border-radius:999px!important; }
 
   /* ───── Draft Vault: "browsing rankings" connect bar (no draft) ───── */
   .dconn-bar{ display:flex; align-items:center; gap:16px; max-width:1100px; margin:14px auto 0; padding:13px 16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-sizing:border-box; }
