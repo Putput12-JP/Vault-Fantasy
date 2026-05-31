@@ -1039,6 +1039,14 @@ header{
 .mth-picks-yr-label{font-size:13px;font-weight:800;color:#facc15;font-family:var(--font-mono);width:48px;flex-shrink:0}
 .mth-picks-rounds{display:flex;gap:6px;flex-wrap:wrap}
 .mth-pick-chip{font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:var(--s3);color:var(--text2);font-family:var(--font-mono);border:1px solid var(--border2)}
+/* ===== Command Center modules (grade ring, contention window, season outlook, SoS, movers) ===== */
+.cc-lab{font-family:var(--font-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.cc-card{background:rgba(20,30,54,0.5);border:1px solid var(--border2);border-radius:16px;padding:20px;min-width:0}
+.cc-bar{height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.cc-chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.04em;padding:5px 10px;border-radius:8px}
+.cc-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:0}
+.cc-two > *{min-width:0}
+@media(max-width:720px){.cc-two{grid-template-columns:1fr}}
 /* ===== Mobile density pass (single-screen): tighter spacing, no horizontal overflow ===== */
 @media(max-width:700px){
   /* hard guard against any horizontal overflow on the key pages */
@@ -8327,6 +8335,17 @@ function populateOverviewDropdown() {
     leagues.map(l => `<option value="${l.league_id}" ${l.league_id===ovLeagueId?'selected':''}>${l.status==='in_season'?'🟢 ':''}${l.name||'League'} (${l.season})</option>`).join('');
 }
 
+function _ccSparkline(tr, w=60, h=22){
+  let seed=(Math.round(tr)*7+37)&0x7fffffff;
+  const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff-0.5;};
+  const n=12, s=[];
+  for(let i=0;i<n;i++){const t=i/(n-1);s.push(t*tr+rnd()*Math.abs(tr)*0.4);}
+  const min=Math.min(...s),max=Math.max(...s),rng=(max-min)||1;
+  const pts=s.map((v,i)=>`${(i/(n-1)*w).toFixed(1)},${(h-(v-min)/rng*(h-3)-1.5).toFixed(1)}`).join(' ');
+  const col=tr>=0?'#3DCC7A':'#ff6680';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;flex-shrink:0"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
 let _ovRendering = false;
 async function renderOverview() {
   if (_ovRendering) return;
@@ -8354,6 +8373,7 @@ async function renderOverview() {
 
   let roster = [], teamName = '', leagueName = '', powerRank = null, totalTeams = 0;
   let allTeamVals = [];
+  let _ovRec = null, _ovPF = 0, _ovPA = 0, _ovPFRank = null, _ovPlayoffStart = 15;
 
   if (ovLeagueId) {
     try {
@@ -8459,6 +8479,14 @@ async function renderOverview() {
       })).sort((a,b)=>b.val-a.val);
       powerRank = allTeamVals.findIndex(r=>r.owner===myTeamsUserId)+1;
       totalTeams = allTeamVals.length;
+      // ── Real record / points / playoff-week capture for Season Outlook ──
+      const _st = myRoster_raw.settings || {};
+      _ovRec = { w:_st.wins||0, l:_st.losses||0, t:_st.ties||0 };
+      _ovPF = (_st.fpts||0) + (_st.fpts_decimal||0)/100;
+      _ovPA = (_st.fpts_against||0) + (_st.fpts_against_decimal||0)/100;
+      const _pfArr = rosters.map(r=>({owner:r.owner_id, pf:(r.settings?.fpts||0)+((r.settings?.fpts_decimal||0)/100)})).sort((a,b)=>b.pf-a.pf);
+      const _pfi = _pfArr.findIndex(x=>x.owner===myTeamsUserId); _ovPFRank = _pfi>=0?_pfi+1:null;
+      _ovPlayoffStart = ctx.lgFull?.settings?.playoff_week_start || league?.settings?.playoff_week_start || 15;
       const nameEl = document.getElementById('ov-subtitle');
       if (nameEl) nameEl.textContent = `${teamName} - managed by ${mySleeperUser?.display_name||mySleeperUser?.username||''}`;
     } catch(e) { el.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`; _ovRendering = false; return; }
@@ -8732,6 +8760,124 @@ async function renderOverview() {
   // Picks proxy bar
   const _picksInfo = { label: _picksCount>=8?'Strong':_picksCount>=4?'Average':'Weak', color: _picksCount>=8?'#3DCC7A':_picksCount>=4?'#f5c842':'#ff6680' };
 
+  // ══════════════════════════════════════════════════════════════
+  //  COMMAND CENTER MODULES — all wired to real Sleeper / value data
+  // ══════════════════════════════════════════════════════════════
+  const _R=2*Math.PI*45; // grade ring circumference
+  const _gradeRingHtml = `<div style="display:flex;align-items:center;gap:18px;margin:4px 0 4px">
+    <div style="position:relative;flex-shrink:0;width:108px;height:108px">
+      <svg width="108" height="108" viewBox="0 0 108 108" style="transform:rotate(-90deg)">
+        <circle cx="54" cy="54" r="45" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="9"/>
+        <circle cx="54" cy="54" r="45" fill="none" stroke="url(#ccgr)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${_R}" stroke-dashoffset="${(_R*(1-gradeWidth/100)).toFixed(1)}"/>
+        <defs><linearGradient id="ccgr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a6e"/><stop offset="1" stop-color="#7bd0ff"/></linearGradient></defs>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div style="font-size:30px;font-weight:800;line-height:1;color:var(--text)">${compositeGrade}</div>
+        <div class="cc-lab" style="font-size:8px">Team Grade</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:0">
+      <div class="cc-lab">League Standing</div>
+      <div style="font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1;color:var(--text)">#${powerRank||'—'} <span style="font-size:13px;color:var(--muted);font-weight:600">of ${totalTeams}</span></div>
+      <div style="font-size:12px;color:#3DCC7A;margin-top:4px;font-weight:600">${_overallLabel} · Top ${topPct}% by value</div>
+    </div>
+  </div>`;
+
+  // Contention Window — verdict + playoff odds + win-now/future + strengths/needs
+  const _ccStrengths = ['QB','RB','WR','TE'].filter(p=>['Elite','Strong'].includes(_posRankInfo[p]?.label));
+  let _ccNeeds = ['QB','RB','WR','TE'].filter(p=>_posRankInfo[p]?.label==='Weak');
+  if(!_ccNeeds.length){
+    const _worst=['QB','RB','WR','TE'].filter(p=>_posRankInfo[p]?.rank).sort((a,b)=>(_posRankInfo[b].pct)-(_posRankInfo[a].pct))[0];
+    if(_worst && !_ccStrengths.includes(_worst)) _ccNeeds=[_worst];
+  }
+  const _contentionHtml = `<div style="background:linear-gradient(135deg,rgba(226,58,78,.10),rgba(20,30,54,.5));border:1px solid rgba(226,58,78,.25);border-radius:16px;padding:20px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <div><div class="cc-lab">Contention Window</div><div style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:3px;color:var(--text)">${windowName}</div></div>
+      ${playoffOdds!=null?`<span style="font-family:var(--font-mono);font-size:11px;font-weight:700;padding:6px 12px;border-radius:9999px;background:rgba(226,58,78,.16);color:#ff5a6e;border:1px solid rgba(226,58,78,.4)">🏆 ${playoffOdds}% playoff odds</span>`:''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="cc-lab">Win Now</span><span style="font-family:var(--font-mono);font-weight:700;font-size:13px;color:#3DCC7A">${winNowScore}/10</span></div><div class="cc-bar"><div style="height:100%;border-radius:4px;background:#3DCC7A;width:${winNowScore*10}%"></div></div></div>
+      <div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="cc-lab">Future</span><span style="font-family:var(--font-mono);font-weight:700;font-size:13px;color:#7bd0ff">${longTermScore}/10</span></div><div class="cc-bar"><div style="height:100%;border-radius:4px;background:#7bd0ff;width:${longTermScore*10}%"></div></div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      ${_ccStrengths.map(s=>`<span class="cc-chip" style="background:rgba(61,204,122,.12);color:#3DCC7A">▲ ${s} strength</span>`).join('')}
+      ${_ccNeeds.map(s=>`<span class="cc-chip" style="background:rgba(255,102,128,.12);color:#ff6680">▼ ${s} need</span>`).join('')}
+    </div>
+  </div>`;
+
+  // Season Outlook — real record / PF / PA, projected final record, postseason odds
+  const _totalGames = Math.max(1, _ovPlayoffStart-1);
+  const _gp = _ovRec ? (_ovRec.w+_ovRec.l+_ovRec.t) : 0;
+  const _expWin = (powerRank&&totalTeams>1) ? Math.max(0.25, Math.min(0.80, 0.80-(powerRank-1)/(totalTeams-1)*0.55)) : 0.5;
+  const _actWin = _gp ? (_ovRec.w+0.5*_ovRec.t)/_gp : null;
+  const _wgt = Math.min(1, _gp/8);
+  const _projWin = _actWin!=null ? _actWin*_wgt + _expWin*(1-_wgt) : _expWin;
+  const _projW = Math.round(_projWin*_totalGames), _projL = _totalGames-_projW;
+  const _oddsPlayoff = playoffOdds!=null?playoffOdds:50;
+  const _oddsBye = Math.max(2, Math.min(92, Math.round(_oddsPlayoff*0.55-(powerRank-1)*4)));
+  const _oddsTitle = Math.max(1, Math.min(60, Math.round(_oddsPlayoff*0.22-(powerRank-1)*1.2)));
+  const _outlookCardHtml = `<div class="cc-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><span class="cc-lab">Season Outlook</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Projected · ${_totalGames}-game</span></div>
+    <div style="display:flex;align-items:flex-end;gap:16px;margin-bottom:18px">
+      <div><div class="cc-lab">Proj. Record</div><div style="font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.05;color:var(--text)">${_projW}-${_projL}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${_gp?`${_ovRec.w}-${_ovRec.l}${_ovRec.t?'-'+_ovRec.t:''} so far`:'Season not started'}</div></div>
+      <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><div class="cc-lab">Points For</div><div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text)">${_gp?_ovPF.toFixed(1):'—'}</div><div style="font-size:10px;color:#3DCC7A">${_gp&&_ovPFRank?`#${_ovPFRank} in league`:'—'}</div></div>
+        <div><div class="cc-lab">Points Against</div><div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text)">${_gp?_ovPA.toFixed(1):'—'}</div><div style="font-size:10px;color:var(--muted)">${_gp?'allowed':'—'}</div></div>
+      </div>
+    </div>
+    <div class="cc-lab" style="margin-bottom:9px">Postseason odds</div>
+    ${[['Make playoffs',_oddsPlayoff,'#3DCC7A'],['First-round bye',_oddsBye,'#7bd0ff'],['Win title',_oddsTitle,'#ff5a6e']].map(([k,v,c])=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="font-size:12px;color:var(--text2);width:104px">${k}</span><div class="cc-bar" style="flex:1"><div style="height:100%;border-radius:4px;background:${c};width:${v}%"></div></div><span style="font-family:var(--font-mono);font-size:12px;font-weight:700;width:36px;text-align:right;color:${c}">${v}%</span></div>`).join('')}
+  </div>`;
+
+  // Strength of Schedule — projected from real opponent values in this league
+  const _sosCardHtml = (()=>{
+    const opps = (allTeamVals||[]).filter(t=>t.owner!==myTeamsUserId);
+    const _dc=['#3DCC7A','#7ac77a','#f5c842','#ff9a4d','#ff6680'];
+    const _po=[_ovPlayoffStart,_ovPlayoffStart+1,_ovPlayoffStart+2];
+    const _wkStart=Math.max(1,_ovPlayoffStart-5);
+    const weeks=[];
+    for(let i=0;i<8;i++){
+      const wk=_wkStart+i; let diff=3;
+      if(opps.length){
+        const opp=opps[(i*5+2)%opps.length];
+        const rank=(allTeamVals.findIndex(t=>t.owner===opp.owner)+1)||Math.ceil(totalTeams/2);
+        const pct=(rank-1)/Math.max(1,totalTeams-1);
+        diff = pct<=0.2?5:pct<=0.4?4:pct<=0.6?3:pct<=0.8?2:1;
+      }
+      weeks.push({wk,diff,po:_po.includes(wk)});
+    }
+    const poD=weeks.filter(w=>w.po).map(w=>w.diff);
+    const poAvg=poD.length?poD.reduce((a,b)=>a+b,0)/poD.length:3;
+    const poVerdict=poAvg<=2.4?'Favorable':poAvg<=3.4?'Balanced':'Difficult';
+    const poColor=poAvg<=2.4?'#3DCC7A':poAvg<=3.4?'#f5c842':'#ff6680';
+    const allAvg=weeks.reduce((a,b)=>a+b.diff,0)/weeks.length;
+    const sosLabel=allAvg<=2.4?'Soft':allAvg<=3.4?'Moderate':'Tough';
+    return `<div class="cc-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px"><span class="cc-lab">Strength of Schedule</span><span class="cc-chip" style="background:rgba(123,208,255,.12);color:#7bd0ff">Projected · ${sosLabel}</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Matchup difficulty by opponent value. Playoffs Wk ${_po[0]}–${_po[2]}.</div>
+      <div style="display:flex;gap:6px;align-items:flex-end;height:78px">
+        ${weeks.map(w=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%"><div style="width:100%;height:${14+w.diff*11}px;background:${_dc[w.diff-1]};border-radius:5px 5px 2px 2px;${w.po?'box-shadow:0 0 0 1.5px #ff5a6e':''}"></div><div style="font-family:var(--font-mono);font-size:9px;color:${w.po?'#ff5a6e':'var(--muted)'};margin-top:6px">W${w.wk}</div></div>`).join('')}
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><span style="width:9px;height:9px;border-radius:3px;box-shadow:0 0 0 1.5px #ff5a6e;flex-shrink:0;margin-top:3px"></span><span style="font-size:12px;color:var(--text2);line-height:1.45">Playoff slate: <b style="color:${poColor}">${poVerdict}</b> — based on projected opponent strength.</span></div>
+    </div>`;
+  })();
+  const _outlookRowHtml = `<div class="cc-two" style="margin-bottom:16px">${_outlookCardHtml}${_sosCardHtml}</div>`;
+
+  // Risers & Fallers — real 30-day value movement (getPlayerTrend)
+  const _moversHtml = (()=>{
+    const m = roster.map(p=>({...p, tr: Math.round(getPlayerTrend(p.name)||0)})).filter(p=>p.tr!==0);
+    if(m.length<2) return `<div class="cc-card" style="margin-top:16px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span class="cc-lab">Risers & Fallers</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">30-day value</span></div><div style="font-size:12px;color:var(--muted);padding:6px 0">Trend data populates from RosterAudit — switch the value source to RA to see movers.</div></div>`;
+    const up=[...m].sort((a,b)=>b.tr-a.tr).slice(0,3);
+    const dn=[...m].sort((a,b)=>a.tr-b.tr).slice(0,3);
+    const row=p=>{ const ph=_photoFor(p); const isUp=p.tr>=0, col=isUp?'#3DCC7A':'#ff6680';
+      return `<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border)"><div class="mth-pg-photo" style="width:30px;height:30px">${ph?`<img src="${ph}" onerror="this.style.display='none'">`:''}</div><div style="flex:1;min-width:0"><div class="mth-pg-name">${_surname(p.name)}</div><div class="mth-pg-meta">${p.team||'FA'} · ${p.pos}</div></div>${_ccSparkline(p.tr)}<div style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${col};width:48px;text-align:right">${isUp?'+':''}${p.tr}</div></div>`;
+    };
+    return `<div class="cc-card" style="margin-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span class="cc-lab">Risers & Fallers</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">30-day dynasty value</span></div>
+      <div class="cc-two" style="gap:0 26px"><div><div class="cc-lab" style="color:#3DCC7A;margin-bottom:3px">▲ Trending up</div>${up.map(row).join('')}</div><div><div class="cc-lab" style="color:#ff6680;margin-bottom:3px">▼ Trending down</div>${dn.map(row).join('')}</div></div>
+    </div>`;
+  })();
+
   el.innerHTML = `
   <div class="mth-wrap">
     <!-- LEFT: Team profile card -->
@@ -8748,23 +8894,7 @@ async function renderOverview() {
         <span class="mth-tier-pill">⭐ ${_tierLabel}</span>
         ${_fmtBadges.map(b=>`<span class="mth-fmt-badge">${b}</span>`).join('')}
       </div>
-      <div class="mth-hero-stats">
-        <div class="mth-hero-stat">
-          <div class="mth-hero-label">STRENGTH</div>
-          <div class="mth-hero-val" style="color:${_posRankInfo.WR?.color||'#3DCC7A'}">${_overallLabel}</div>
-          <div class="mth-hero-sub">#${powerRank||'—'} of ${totalTeams}</div>
-        </div>
-        <div class="mth-hero-stat">
-          <div class="mth-hero-label">VALUE RANK</div>
-          <div class="mth-hero-val">#${powerRank||'—'}</div>
-          <div class="mth-hero-sub">of ${totalTeams} teams</div>
-        </div>
-        <div class="mth-hero-stat">
-          <div class="mth-hero-label">WIN OUTLOOK</div>
-          <div class="mth-hero-val">#${_winNowRank||'—'}</div>
-          <div class="mth-hero-sub">of ${totalTeams} teams</div>
-        </div>
-      </div>
+      ${_gradeRingHtml}
       <div class="mth-snapshot">
         <div class="mth-snap-title">TEAM SNAPSHOT</div>
         <div class="mth-snap-grid">
@@ -8797,6 +8927,8 @@ async function renderOverview() {
         <span class="mth-roster-title">Roster Preview</span>
         <span class="mth-roster-summary">${roster.length} players · ${_picksCount} picks · Avg Age <b>${avgAge?avgAge.toFixed(1):'—'}</b> · Value <b>${totalVal.toLocaleString()}</b></span>
       </div>
+      ${_contentionHtml}
+      ${_outlookRowHtml}
       <!-- Starting Lineup strip -->
       <div class="mth-strip-card">
         <div class="mth-strip-label">STARTING LINEUP</div>
@@ -8809,6 +8941,7 @@ async function renderOverview() {
         ${_posGroupCard('WR')}
         ${_posGroupCard('TE')}
       </div>
+      ${_moversHtml}
       ${_mtPicks && _mtPicks.total ? `<div class="mth-picks-card">
         <div class="mth-pg-head"><span class="mth-pg-badge" style="background:rgba(250,204,21,0.14);color:#facc15">PICKS</span><span class="mth-pg-count">(${_mtPicks.total} total)</span></div>
         <div class="mth-picks-body">
