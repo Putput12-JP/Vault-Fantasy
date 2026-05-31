@@ -8337,6 +8337,15 @@ async function renderOverview() {
 
   if (!fcLoaded && !fcLoading) fetchFantasyCalc();
 
+  // Recover the selected league from the saved profile (chosen during sign-in)
+  // so we never re-prompt with the league picker once a profile exists.
+  if (!ovLeagueId) {
+    const sp = localStorage.getItem(SK+'-primary-league');
+    let ss = null; try { ss = JSON.parse(localStorage.getItem(SK+'-selected-leagues') || 'null'); } catch(e){}
+    const cand = sp || (Array.isArray(ss) && ss.length ? ss[0] : null);
+    if (cand) { ovLeagueId = cand; if (!teamsLeagueId) teamsLeagueId = cand; }
+  }
+
   const draftRoster = getMyRoster();
   const hasContext = ovLeagueId || draftRoster.length > 0;
   if (!hasContext) { _ovRendering = false; showLeaguePicker(el); return; }
@@ -8463,7 +8472,19 @@ async function renderOverview() {
     }
   }
 
-  if (!roster.length) { _ovRendering = false; showLeaguePicker(el); return; }
+  if (!roster.length) {
+    _ovRendering = false;
+    if (ovLeagueId) {
+      el.innerHTML = `<div style="text-align:center;padding:60px 24px;color:var(--muted)">
+        <div style="font-size:15px;color:var(--text2);font-weight:600;margin-bottom:6px">No roster loaded yet for ${leagueName||'this league'}</div>
+        <div style="font-size:13px;margin-bottom:18px">Switch leagues from the menu above, or re-sync your Sleeper data.</div>
+        <button onclick="renderOverview()" style="padding:10px 20px;border-radius:10px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer">↻ Retry sync</button>
+      </div>`;
+    } else {
+      showLeaguePicker(el);
+    }
+    return;
+  }
 
   
   const byPos = {QB:[],RB:[],WR:[],TE:[]};
