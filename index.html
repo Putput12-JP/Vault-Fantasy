@@ -2872,6 +2872,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         </div>
       </div>
 
+      <!-- ══════════ VIEW 1: CONNECT ══════════ -->
+      <div id="vp-view-connect">
+
       <!-- HERO SECTION -->
       <section style="text-align:center;margin-bottom:40px">
         <!-- Step indicator -->
@@ -2968,6 +2971,30 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         </div>
       </section>
 
+      <!-- MANUAL DRAFT ID (alternate connect method) -->
+      <div class="connect-manual" onclick="this.classList.toggle('open')" style="margin-top:32px;max-width:480px;margin-left:auto;margin-right:auto">
+        <span>⚙ Enter draft ID manually</span>
+        <div class="connect-manual-body">
+          <input class="connect-input" id="did" placeholder="e.g. 1350181003489980416" style="margin-top:8px">
+          <div style="font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--font-sans)">Found in your Sleeper draft URL: sleeper.com/draft/nfl/<em style="color:var(--accent2)">ID</em></div>
+          <button class="connect-btn" onclick="event.stopPropagation();launch()" style="margin-top:10px;width:100%">Load Draft →</button>
+        </div>
+      </div>
+
+      <!-- Export/Import -->
+      <div class="setup-session-row" style="max-width:480px;margin:16px auto 0">
+        <button class="sess-btn" onclick="exportSession()">📤 Export</button>
+        <button class="sess-btn" onclick="document.getElementById('import-file').click()">📥 Import</button>
+      </div>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSession(event)">
+
+      </div><!-- /vp-view-connect -->
+
+      <!-- ══════════ VIEW 2: LEAGUES ══════════ -->
+      <div id="vp-view-leagues" style="display:none">
+
+      <button onclick="vpShowView('connect')" style="background:none;border:none;color:var(--muted);font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;padding:0" onmouseover="this.style.color='var(--text2)'" onmouseout="this.style.color='var(--muted)'">← Connect a different account</button>
+
       <!-- DIVIDER -->
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:48px">
         <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(144,144,151,0.2))"></div>
@@ -3030,22 +3057,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         </div>
       </section>
 
-      <!-- MANUAL DRAFT ID -->
-      <div class="connect-manual" onclick="this.classList.toggle('open')" style="margin-top:32px;max-width:480px;margin-left:auto;margin-right:auto">
-        <span>⚙ Enter draft ID manually</span>
-        <div class="connect-manual-body">
-          <input class="connect-input" id="did" placeholder="e.g. 1350181003489980416" style="margin-top:8px">
-          <div style="font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--font-sans)">Found in your Sleeper draft URL: sleeper.com/draft/nfl/<em style="color:var(--accent2)">ID</em></div>
-          <button class="connect-btn" onclick="event.stopPropagation();launch()" style="margin-top:10px;width:100%">Load Draft →</button>
-        </div>
-      </div>
-
-      <!-- Export/Import -->
-      <div class="setup-session-row" style="max-width:480px;margin:16px auto 0">
-        <button class="sess-btn" onclick="exportSession()">📤 Export</button>
-        <button class="sess-btn" onclick="document.getElementById('import-file').click()">📥 Import</button>
-      </div>
-      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSession(event)">
+      </div><!-- /vp-view-leagues -->
 
     </div>
   </div>
@@ -6444,7 +6456,7 @@ async function findDrafts() {
           No active drafts found. Browse your leagues to view rankings, trade tools, and your team dashboard.
         </div>`}
 
-      <button onclick="enterWithoutDraft()"
+      <button onclick="vpShowView('leagues')"
         style="width:100%;padding:14px;border-radius:var(--radius-md);border:none;background:var(--accent);color:#fff;font-family:var(--font-sans);font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px">
         📊 Browse My ${myTeamsData.length} League${myTeamsData.length!==1?'s':''} →
       </button>`;
@@ -6453,11 +6465,7 @@ async function findDrafts() {
     if (myTeamsData.length > 0) {
       vpInitSelection();
       vpRenderLeagueGrid();
-      const setupEl = document.getElementById('setup');
-      const lgSection = document.getElementById('setup-league-section');
-      if (setupEl && lgSection) setTimeout(() => {
-        setupEl.scrollTo({ top: setupEl.scrollTop + lgSection.getBoundingClientRect().top - 24, behavior: 'smooth' });
-      }, 400);
+      vpShowView('leagues');
     }
 
   } catch(e) {
@@ -6491,6 +6499,17 @@ let vpSelected = new Set();
 let vpPrimary = null;
 let vpFilter = 'all';
 const VP_COLORS = ['#ff6680','#3DCC7A','#7bd0ff','#f5c842','#bec6e0'];
+
+function vpShowView(v){
+  const c = document.getElementById('vp-view-connect');
+  const l = document.getElementById('vp-view-leagues');
+  if (c) c.style.display = (v==='leagues') ? 'none' : '';
+  if (l) l.style.display = (v==='leagues') ? '' : 'none';
+  const bar = document.getElementById('vp-selbar');
+  if (bar && v!=='leagues') bar.classList.remove('show');
+  else vpUpdateBar();
+  const s = document.getElementById('setup'); if (s) s.scrollTop = 0;
+}
 
 function vpStatus(s){
   return ({drafting:{label:'LIVE',live:true}, in_progress:{label:'LIVE',live:true}, paused:{label:'LIVE',live:true}, in_season:{label:'IN-SEASON'}, pre_draft:{label:'PRE-DRAFT'}, complete:{label:'COMPLETE'}})[s] || {label:(s||'ACTIVE').toUpperCase()};
@@ -6602,7 +6621,8 @@ function vpUpdateBar(){
   const bar = document.getElementById('vp-selbar');
   const cnt = document.getElementById('vp-sel-count');
   if (cnt) cnt.textContent = n;
-  if (bar) bar.classList.toggle('show', n > 0);
+  const onLeagues = document.getElementById('vp-view-leagues')?.style.display !== 'none';
+  if (bar) bar.classList.toggle('show', n > 0 && onLeagues);
   if (n > 0){
     const sel = myTeamsData.filter(l => vpSelected.has(l.league_id));
     const primL = myTeamsData.find(l => l.league_id === vpPrimary);
