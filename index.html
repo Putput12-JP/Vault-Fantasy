@@ -98,7 +98,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   background:transparent;
 }
 .z1{position:relative;z-index:1}
-.setup{position:fixed;inset:0;z-index:999;background:var(--bg);overflow-y:auto}
+.setup{position:fixed;inset:0;z-index:999;background:var(--bg);overflow-y:auto;overflow-x:hidden;max-width:100vw}
 .setup.gone{display:none;pointer-events:none}
 .setup-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
 .setup-screen-inner{width:100%;max-width:480px;display:flex;flex-direction:column;gap:16px}
@@ -1009,8 +1009,8 @@ header{
 .mth-roster-summary b{color:var(--text2)}
 .mth-strip-card{background:rgba(20,30,54,0.5);border:1px solid var(--border2);border-radius:16px;padding:18px;margin-bottom:20px}
 .mth-strip-label{font-size:9px;letter-spacing:.14em;color:#facc15;font-family:var(--font-mono);text-transform:uppercase;font-weight:700;margin-bottom:14px}
-.mth-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
-.mth-strip-item{flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 2px;border-radius:10px;transition:background 120ms ease}
+.mth-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:8px 6px;padding-bottom:0}
+.mth-strip-item{min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 2px;border-radius:10px;transition:background 120ms ease}
 .mth-strip-item:hover{background:rgba(255,255,255,0.04)}
 .mth-strip-slot{font-size:8px;font-weight:700;font-family:var(--font-mono);letter-spacing:.04em}
 .mth-strip-photo{width:48px;height:48px;border-radius:50%;background:var(--s3);border:2px solid;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text2);font-size:16px;overflow:hidden}
@@ -1071,7 +1071,7 @@ header{
   .mth-roster-title{font-size:16px}
   .mth-roster-summary{font-size:10.5px}
   .mth-strip-card{padding:12px;margin-bottom:14px}
-  .mth-strip{gap:5px}
+  .mth-strip{gap:6px 4px;grid-template-columns:repeat(auto-fit,minmax(50px,1fr))}
   .mth-strip-item{min-width:54px;padding:4px 1px}
   .mth-strip-photo{width:40px;height:40px;font-size:13px}
   .mth-strip-name{font-size:10px;max-width:54px}
@@ -2616,6 +2616,24 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   .tab-btn:active { transform: none !important; }
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ── Mobile hardening: connect/onboarding never overflows + header league (team) switch stays tappable ── */
+@media (max-width:700px){
+  /* Connect / onboarding overlay: clamp every level to the viewport */
+  #setup, #setup-step1 { max-width:100vw !important; overflow-x:hidden !important; }
+  #setup-step1 > div { max-width:100% !important; }
+  #vp-view-connect, #vp-view-leagues { max-width:100% !important; overflow-x:hidden; }
+  #vp-view-connect *, #vp-view-leagues * { max-width:100% !important; }
+  #vp-platforms { flex-wrap:wrap; }
+  /* League pick grids → single column so 260px cards never push past the edge */
+  .vp-grid,
+  #vp-leagues-wrap > div[style*="grid-template-columns"],
+  #setup div[style*="minmax(260px"] { grid-template-columns:1fr !important; }
+  /* Header league switcher: visible, full-tap height, above the sticky roster bar */
+  #header-league-wrap { flex:1 1 auto; min-width:0; }
+  .header-league-select { min-height:36px !important; position:relative; z-index:3; }
+  #user-display-name { display:none !important; }
+}
 </style>
 </head>
 <body>
@@ -3394,12 +3412,12 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
     <!-- BEST AVAILABLE + SIGNALS — shown after roster loads -->
     <div id="ov-extra" style="display:none;margin-top:24px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px">
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:280px;background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">🎯 Best Available</div>
           <div id="ov-waiver-list"><div style="color:var(--muted);font-size:12px">Loading...</div></div>
         </div>
-        <div style="background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px">
+        <div style="flex:1;min-width:280px;background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:18px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">💡 Trade Signals</div>
           <div id="ov-signals-list"><div style="color:var(--muted);font-size:12px">Loading...</div></div>
         </div>
@@ -5405,7 +5423,7 @@ async function lpConfirm() {
   if (el) el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div>&nbsp; Loading your team...</div>`;
   // Populate header dropdown with selected leagues before navigating
   populateHeaderLeague();
-  await switchGlobalLeague(ids[0]);
+  await switchGlobalLeague(_bestLeagueId(ids) || ids[0]);
 }
 
 async function forceRefreshRosterData() {
@@ -6549,8 +6567,9 @@ function vpInitSelection(){
     vpSelected = new Set(pool.filter(l => l.season==='2026' || l.status==='drafting' || l.status==='in_season').map(l => l.league_id));
   }
   vpPrimary = localStorage.getItem(SK+'-primary-league');
-  if (!vpPrimary || !vpSelected.has(vpPrimary)){
-    vpPrimary = pool.find(l => l.status==='drafting')?.league_id || [...vpSelected][0] || pool[0]?.league_id || null;
+  const _primL = pool.find(l => l.league_id===vpPrimary);
+  if (!vpPrimary || !vpSelected.has(vpPrimary) || _leagueStartRank(_primL) >= 3){
+    vpPrimary = _bestLeagueId([...vpSelected]) || _bestLeagueId(pool.map(l=>l.league_id)) || [...vpSelected][0] || pool[0]?.league_id || null;
   }
 }
 function vpCardHTML(l, i){
@@ -8335,6 +8354,67 @@ function populateOverviewDropdown() {
     leagues.map(l => `<option value="${l.league_id}" ${l.league_id===ovLeagueId?'selected':''}>${l.status==='in_season'?'🟢 ':''}${l.name||'League'} (${l.season})</option>`).join('');
 }
 
+// ── Strength of Schedule helpers (shared by projected + live-schedule render) ──
+const _SOS_DC=['#3DCC7A','#7ac77a','#f5c842','#ff9a4d','#ff6680'];
+const _SOS_DLAB=['Easy','Light','Even','Tough','Brutal'];
+function _sosDiff(rank, total){ const pct=(rank-1)/Math.max(1,total-1); return pct<=0.2?5:pct<=0.4?4:pct<=0.6?3:pct<=0.8?2:1; }
+function _sosProjectedWeeks(ctx){
+  const {oppSorted, totalTeams, playoffStart}=ctx;
+  const po=[playoffStart,playoffStart+1,playoffStart+2], last=playoffStart+2, weeks=[];
+  for(let wk=1;wk<=last;wk++){
+    let diff=3, tip=`Wk ${wk} · Projected`;
+    if(oppSorted&&oppSorted.length){
+      const opp=oppSorted[((wk-1)*5+2)%oppSorted.length];
+      diff=_sosDiff(opp.rank, totalTeams);
+      tip=`Wk ${wk} · Projected ${_SOS_DLAB[diff-1]}\nLikely a ${diff>=4?'tough':diff<=2?'soft':'even'} matchup by opponent strength`;
+    }
+    weeks.push({wk,diff,po:po.includes(wk),tip});
+  }
+  return weeks;
+}
+function _sosInner(weeks, playoffStart){
+  const po=[playoffStart,playoffStart+1,playoffStart+2];
+  const poD=weeks.filter(w=>w.po&&w.diff).map(w=>w.diff);
+  const poAvg=poD.length?poD.reduce((a,b)=>a+b,0)/poD.length:3;
+  const poVerdict=poAvg<=2.4?'Favorable':poAvg<=3.4?'Balanced':'Difficult';
+  const poColor=poAvg<=2.4?'#3DCC7A':poAvg<=3.4?'#f5c842':'#ff6680';
+  const real=weeks.some(w=>w.opp);
+  const bars=weeks.map(w=>{
+    const tip=(w.tip||`Wk ${w.wk}`).replace(/"/g,'&quot;');
+    if(!w.diff) return `<div title="${tip}" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:default"><div style="width:100%;height:8px;background:rgba(255,255,255,.06);border-radius:3px"></div><div style="font-family:var(--font-mono);font-size:8px;color:var(--muted);margin-top:5px">${w.wk}</div></div>`;
+    return `<div title="${tip}" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:default;transition:opacity .12s" onmouseover="this.style.opacity=.78" onmouseout="this.style.opacity=1"><div style="width:100%;height:${10+w.diff*9}px;background:${_SOS_DC[w.diff-1]};border-radius:4px 4px 1px 1px;${w.po?'box-shadow:0 0 0 1.5px #ff5a6e':''}"></div><div style="font-family:var(--font-mono);font-size:8px;color:${w.po?'#ff5a6e':'var(--muted)'};margin-top:5px">${w.wk}</div></div>`;
+  }).join('');
+  return `<div style="display:flex;gap:3px;align-items:flex-end;height:74px">${bars}</div>
+    <div style="display:flex;align-items:flex-start;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><span style="width:9px;height:9px;border-radius:3px;box-shadow:0 0 0 1.5px #ff5a6e;flex-shrink:0;margin-top:3px"></span><span style="font-size:12px;color:var(--text2);line-height:1.45">Playoff slate (Wk ${po[0]}–${po[2]}): <b style="color:${poColor}">${poVerdict}</b> — ${real?'based on your scheduled opponents':'projected opponent strength'}.</span></div>`;
+}
+async function _ovRenderSOS(){
+  const ctx=window._ovSosCtx; if(!ctx||!ctx.leagueId) return;
+  const mount=document.getElementById('cc-sos-mount'); if(!mount) return;
+  const {leagueId,myRosterId,rosterMeta,totalTeams,playoffStart}=ctx;
+  const po=[playoffStart,playoffStart+1,playoffStart+2], last=playoffStart+2;
+  try{
+    const fetchW=w=>fetch(`https://api.sleeper.app/v1/league/${leagueId}/matchups/${w}`).then(r=>r.ok?r.json():[]).catch(()=>[]);
+    const all=await Promise.all(Array.from({length:last},(_,i)=>fetchW(i+1)));
+    const weeks=[]; let hasData=false;
+    all.forEach((mw,i)=>{
+      const wk=i+1, mine=(mw||[]).find(m=>m.roster_id===myRosterId);
+      if(mine&&mine.matchup_id!=null){
+        const opp=(mw||[]).find(m=>m.roster_id!==myRosterId&&m.matchup_id===mine.matchup_id);
+        if(opp&&rosterMeta[opp.roster_id]){
+          hasData=true; const meta=rosterMeta[opp.roster_id], diff=_sosDiff(meta.rank,totalTeams), dlab=_SOS_DLAB[diff-1];
+          const why=diff>=4?'one of the league\'s strongest rosters':diff<=2?'a soft matchup on paper':'an evenly-matched opponent';
+          weeks.push({wk,diff,po:po.includes(wk),opp:meta,tip:`Wk ${wk} · vs ${meta.name}\n${dlab} — #${meta.rank}/${totalTeams} in roster value (${why})`}); return;
+        }
+      }
+      weeks.push({wk,diff:0,po:po.includes(wk),tip:`Wk ${wk} · No matchup scheduled yet`});
+    });
+    if(!hasData) return; // keep the projected view
+    mount.innerHTML=_sosInner(weeks,playoffStart);
+    const tag=document.getElementById('cc-sos-tag');
+    if(tag){ const ds=weeks.filter(w=>w.diff).map(w=>w.diff), avg=ds.length?ds.reduce((a,b)=>a+b,0)/ds.length:3; tag.textContent=(avg<=2.4?'Soft':avg<=3.4?'Moderate':'Tough')+' schedule'; tag.style.background='rgba(61,204,122,.12)'; tag.style.color='#3DCC7A'; }
+  }catch(e){ /* keep projected */ }
+}
+
 function _ccSparkline(tr, w=60, h=22){
   let seed=(Math.round(tr)*7+37)&0x7fffffff;
   const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff-0.5;};
@@ -8361,7 +8441,12 @@ async function renderOverview() {
   if (!ovLeagueId) {
     const sp = localStorage.getItem(SK+'-primary-league');
     let ss = null; try { ss = JSON.parse(localStorage.getItem(SK+'-selected-leagues') || 'null'); } catch(e){}
-    const cand = sp || (Array.isArray(ss) && ss.length ? ss[0] : null);
+    // Prefer a league that already has a starting roster over a saved drafting/pre-draft one
+    let cand = sp;
+    const spL = myTeamsData.find(l => l.league_id === sp);
+    if (!cand || _leagueStartRank(spL) >= 3) {
+      cand = _bestLeagueId(Array.isArray(ss) ? ss : []) || _bestLeagueId(myTeamsData.map(l=>l.league_id)) || cand || (Array.isArray(ss) && ss.length ? ss[0] : null);
+    }
     if (cand) { ovLeagueId = cand; if (!teamsLeagueId) teamsLeagueId = cand; }
   }
 
@@ -8374,6 +8459,7 @@ async function renderOverview() {
   let roster = [], teamName = '', leagueName = '', powerRank = null, totalTeams = 0;
   let allTeamVals = [];
   let _ovRec = null, _ovPF = 0, _ovPA = 0, _ovPFRank = null, _ovPlayoffStart = 15;
+  window._ovSosCtx = null;
 
   if (ovLeagueId) {
     try {
@@ -8487,6 +8573,12 @@ async function renderOverview() {
       const _pfArr = rosters.map(r=>({owner:r.owner_id, pf:(r.settings?.fpts||0)+((r.settings?.fpts_decimal||0)/100)})).sort((a,b)=>b.pf-a.pf);
       const _pfi = _pfArr.findIndex(x=>x.owner===myTeamsUserId); _ovPFRank = _pfi>=0?_pfi+1:null;
       _ovPlayoffStart = ctx.lgFull?.settings?.playoff_week_start || league?.settings?.playoff_week_start || 15;
+      // ── Strength-of-Schedule context (roster_id → name/value/rank) for live + projected ──
+      const _valByOwner = {}; allTeamVals.forEach(t => _valByOwner[t.owner] = t.val);
+      const _metaList = rosters.map(r => ({ roster_id:r.roster_id, owner:r.owner_id, name:(userMap[r.owner_id]||'Team'), val:_valByOwner[r.owner_id]||0 }));
+      const _rosterMeta = {};
+      _metaList.slice().sort((a,b)=>b.val-a.val).forEach((m,i)=>{ m.rank=i+1; _rosterMeta[m.roster_id]=m; });
+      window._ovSosCtx = { leagueId:ovLeagueId, myRosterId:myRoster_raw.roster_id, rosterMeta:_rosterMeta, totalTeams:allTeamVals.length, playoffStart:_ovPlayoffStart, oppSorted:_metaList.filter(m=>m.owner!==myTeamsUserId).sort((a,b)=>b.val-a.val) };
       const nameEl = document.getElementById('ov-subtitle');
       if (nameEl) nameEl.textContent = `${teamName} - managed by ${mySleeperUser?.display_name||mySleeperUser?.username||''}`;
     } catch(e) { el.innerHTML = `<div class="fc-error">⚠ ${e.message}</div>`; _ovRendering = false; return; }
@@ -8790,18 +8882,31 @@ async function renderOverview() {
     const _worst=['QB','RB','WR','TE'].filter(p=>_posRankInfo[p]?.rank).sort((a,b)=>(_posRankInfo[b].pct)-(_posRankInfo[a].pct))[0];
     if(_worst && !_ccStrengths.includes(_worst)) _ccNeeds=[_worst];
   }
+  const _youngCore = (youngPlayers||[]).length;
+  const _winWhy = winNowScore>=6.5 ? 'Elite starting core — built to win now' : winNowScore>=4 ? 'Solid starters, a few holes to fill' : 'Thin up top — needs proven starters';
+  const _futWhy = `${_youngCore} asset${_youngCore!==1?'s':''} under 24${_picksCount?` + ${_picksCount} pick${_picksCount!==1?'s':''}`:''}`;
+  const _oddsWhy = (powerRank&&totalTeams)?`Odds projected from your #${powerRank} of ${totalTeams} roster-value rank`:'';
   const _contentionHtml = `<div style="background:linear-gradient(135deg,rgba(226,58,78,.10),rgba(20,30,54,.5));border:1px solid rgba(226,58,78,.25);border-radius:16px;padding:20px;margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
       <div><div class="cc-lab">Contention Window</div><div style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:3px;color:var(--text)">${windowName}</div></div>
-      ${playoffOdds!=null?`<span style="font-family:var(--font-mono);font-size:11px;font-weight:700;padding:6px 12px;border-radius:9999px;background:rgba(226,58,78,.16);color:#ff5a6e;border:1px solid rgba(226,58,78,.4)">🏆 ${playoffOdds}% playoff odds</span>`:''}
+      ${playoffOdds!=null?`<span title="${_oddsWhy}" style="font-family:var(--font-mono);font-size:11px;font-weight:700;padding:6px 12px;border-radius:9999px;background:rgba(226,58,78,.16);color:#ff5a6e;border:1px solid rgba(226,58,78,.4)">🏆 ${playoffOdds}% playoff odds</span>`:''}
     </div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.45;margin-bottom:16px;max-width:560px">${windowSub}.${_oddsWhy?` ${_oddsWhy}.`:''}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-      <div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="cc-lab">Win Now</span><span style="font-family:var(--font-mono);font-weight:700;font-size:13px;color:#3DCC7A">${winNowScore}/10</span></div><div class="cc-bar"><div style="height:100%;border-radius:4px;background:#3DCC7A;width:${winNowScore*10}%"></div></div></div>
-      <div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="cc-lab">Future</span><span style="font-family:var(--font-mono);font-weight:700;font-size:13px;color:#7bd0ff">${longTermScore}/10</span></div><div class="cc-bar"><div style="height:100%;border-radius:4px;background:#7bd0ff;width:${longTermScore*10}%"></div></div></div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="cc-lab">Win Now</span><span style="font-family:var(--font-mono);font-weight:700;font-size:13px;color:#3DCC7A">${winNowScore}/10</span></div>
+        <div class="cc-bar"><div style="height:100%;border-radius:4px;background:#3DCC7A;width:${winNowScore*10}%"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">${_winWhy}</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="cc-lab">Future</span><span style="font-family:var(--font-mono);font-weight:700;font-size:13px;color:#7bd0ff">${longTermScore}/10</span></div>
+        <div class="cc-bar"><div style="height:100%;border-radius:4px;background:#7bd0ff;width:${longTermScore*10}%"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">${_futWhy}</div>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-      ${_ccStrengths.map(s=>`<span class="cc-chip" style="background:rgba(61,204,122,.12);color:#3DCC7A">▲ ${s} strength</span>`).join('')}
-      ${_ccNeeds.map(s=>`<span class="cc-chip" style="background:rgba(255,102,128,.12);color:#ff6680">▼ ${s} need</span>`).join('')}
+      ${_ccStrengths.map(s=>`<span class="cc-chip" style="background:rgba(61,204,122,.12);color:#3DCC7A" title="Top-third in ${s} value in your league">▲ ${s} strength</span>`).join('')}
+      ${_ccNeeds.map(s=>`<span class="cc-chip" style="background:rgba(255,102,128,.12);color:#ff6680" title="Bottom-third in ${s} value in your league">▼ ${s} need</span>`).join('')}
     </div>
   </div>`;
 
@@ -8829,38 +8934,16 @@ async function renderOverview() {
     ${[['Make playoffs',_oddsPlayoff,'#3DCC7A'],['First-round bye',_oddsBye,'#7bd0ff'],['Win title',_oddsTitle,'#ff5a6e']].map(([k,v,c])=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="font-size:12px;color:var(--text2);width:104px">${k}</span><div class="cc-bar" style="flex:1"><div style="height:100%;border-radius:4px;background:${c};width:${v}%"></div></div><span style="font-family:var(--font-mono);font-size:12px;font-weight:700;width:36px;text-align:right;color:${c}">${v}%</span></div>`).join('')}
   </div>`;
 
-  // Strength of Schedule — projected from real opponent values in this league
-  const _sosCardHtml = (()=>{
-    const opps = (allTeamVals||[]).filter(t=>t.owner!==myTeamsUserId);
-    const _dc=['#3DCC7A','#7ac77a','#f5c842','#ff9a4d','#ff6680'];
-    const _po=[_ovPlayoffStart,_ovPlayoffStart+1,_ovPlayoffStart+2];
-    const _wkStart=Math.max(1,_ovPlayoffStart-5);
-    const weeks=[];
-    for(let i=0;i<8;i++){
-      const wk=_wkStart+i; let diff=3;
-      if(opps.length){
-        const opp=opps[(i*5+2)%opps.length];
-        const rank=(allTeamVals.findIndex(t=>t.owner===opp.owner)+1)||Math.ceil(totalTeams/2);
-        const pct=(rank-1)/Math.max(1,totalTeams-1);
-        diff = pct<=0.2?5:pct<=0.4?4:pct<=0.6?3:pct<=0.8?2:1;
-      }
-      weeks.push({wk,diff,po:_po.includes(wk)});
-    }
-    const poD=weeks.filter(w=>w.po).map(w=>w.diff);
-    const poAvg=poD.length?poD.reduce((a,b)=>a+b,0)/poD.length:3;
-    const poVerdict=poAvg<=2.4?'Favorable':poAvg<=3.4?'Balanced':'Difficult';
-    const poColor=poAvg<=2.4?'#3DCC7A':poAvg<=3.4?'#f5c842':'#ff6680';
-    const allAvg=weeks.reduce((a,b)=>a+b.diff,0)/weeks.length;
-    const sosLabel=allAvg<=2.4?'Soft':allAvg<=3.4?'Moderate':'Tough';
-    return `<div class="cc-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px"><span class="cc-lab">Strength of Schedule</span><span class="cc-chip" style="background:rgba(123,208,255,.12);color:#7bd0ff">Projected · ${sosLabel}</span></div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Matchup difficulty by opponent value. Playoffs Wk ${_po[0]}–${_po[2]}.</div>
-      <div style="display:flex;gap:6px;align-items:flex-end;height:78px">
-        ${weeks.map(w=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%"><div style="width:100%;height:${14+w.diff*11}px;background:${_dc[w.diff-1]};border-radius:5px 5px 2px 2px;${w.po?'box-shadow:0 0 0 1.5px #ff5a6e':''}"></div><div style="font-family:var(--font-mono);font-size:9px;color:${w.po?'#ff5a6e':'var(--muted)'};margin-top:6px">W${w.wk}</div></div>`).join('')}
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)"><span style="width:9px;height:9px;border-radius:3px;box-shadow:0 0 0 1.5px #ff5a6e;flex-shrink:0;margin-top:3px"></span><span style="font-size:12px;color:var(--text2);line-height:1.45">Playoff slate: <b style="color:${poColor}">${poVerdict}</b> — based on projected opponent strength.</span></div>
-    </div>`;
-  })();
+  // Strength of Schedule — live Sleeper matchup schedule (projected fallback), Wk 1 → playoffs
+  const _sosCtxLocal = (window._ovSosCtx) || { oppSorted:[], totalTeams:totalTeams||12, playoffStart:_ovPlayoffStart };
+  const _projWeeks = _sosProjectedWeeks(_sosCtxLocal);
+  const _projAvg = _projWeeks.reduce((a,b)=>a+(b.diff||3),0)/_projWeeks.length;
+  const _sosTag = 'Projected · ' + (_projAvg<=2.4?'Soft':_projAvg<=3.4?'Moderate':'Tough');
+  const _sosCardHtml = `<div class="cc-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px"><span class="cc-lab">Strength of Schedule</span><span id="cc-sos-tag" class="cc-chip" style="background:rgba(123,208,255,.12);color:#7bd0ff">${_sosTag}</span></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Hover a week to see your opponent & why it's favorable. Playoffs Wk ${_ovPlayoffStart}–${_ovPlayoffStart+2}.</div>
+    <div id="cc-sos-mount">${_sosInner(_projWeeks, _ovPlayoffStart)}</div>
+  </div>`;
   const _outlookRowHtml = `<div class="cc-two" style="margin-bottom:16px">${_outlookCardHtml}${_sosCardHtml}</div>`;
 
   // Risers & Fallers — real 30-day value movement (getPlayerTrend)
@@ -8918,7 +9001,6 @@ async function renderOverview() {
           <span class="mth-ps-label" style="color:${_picksInfo.color}">${_picksInfo.label}</span>
         </div>
       </div>
-      <div class="mth-brand">🏈 Vault Dynasty Command <span style="float:right;opacity:.5">vault-fantasy</span></div>
     </div>
 
     <!-- RIGHT: Roster preview -->
@@ -8941,7 +9023,6 @@ async function renderOverview() {
         ${_posGroupCard('WR')}
         ${_posGroupCard('TE')}
       </div>
-      ${_moversHtml}
       ${_mtPicks && _mtPicks.total ? `<div class="mth-picks-card">
         <div class="mth-pg-head"><span class="mth-pg-badge" style="background:rgba(250,204,21,0.14);color:#facc15">PICKS</span><span class="mth-pg-count">(${_mtPicks.total} total)</span></div>
         <div class="mth-picks-body">
@@ -8951,6 +9032,7 @@ async function renderOverview() {
           </div>`).join('')}
         </div>
       </div>` : ''}
+      ${_moversHtml}
     </div>
   </div>
   `;
@@ -9125,7 +9207,10 @@ async function renderOverview() {
   } // end legacy layout (disabled)
   _ovRendering = false;
 
-  // ── Render waiver scanner + signals after roster loads ──
+  // ── Live Strength-of-Schedule (upgrades the projected bars when a real schedule exists) ──
+  if (ovLeagueId) _ovRenderSOS();
+
+  // ── Render waiver scanner + signals after roster loads (cards self-hide when empty) ──
   const extraEl = document.getElementById('ov-extra');
   if (extraEl && ovLeagueId) {
     extraEl.style.display = 'block';
@@ -9136,7 +9221,16 @@ async function renderOverview() {
       ? myTeamsData.map(lg => ({ myNames: roster.map(p=>p.name).filter(Boolean), isDynasty:true }))
       : roster.length ? [{ myNames: roster.map(p=>p.name).filter(Boolean), isDynasty:true }] : [];
     renderBuyLowSellHigh(allLeagueDataForSignals, document.getElementById('ov-signals-list'));
-  }
+  } else if (extraEl) { extraEl.style.display = 'none'; }
+}
+
+// Hide the Best Available / Trade Signals row entirely when neither card has content
+function _ovSyncExtraVisibility(){
+  const extra = document.getElementById('ov-extra'); if(!extra) return;
+  const wCard = document.getElementById('ov-waiver-list')?.parentElement;
+  const sCard = document.getElementById('ov-signals-list')?.parentElement;
+  const anyVisible = [wCard,sCard].some(c => c && c.style.display !== 'none');
+  extra.style.display = anyVisible ? 'block' : 'none';
 }
 
 // Compute a roster's real future draft picks from Sleeper's traded_picks endpoint.
@@ -11781,6 +11875,23 @@ function populateHeaderLeague() {
 let myTeamsSeason = '2026';
 let myTeamsUserId = null;
 let myTeamsData = []; 
+// Rank a league by how likely it is to already have a set STARTING roster.
+// Lower = better. Drafting / pre-draft leagues (no lineup yet) sort last so the
+// My Team page always lands on a team that actually has players.
+function _leagueStartRank(l){
+  const s = l?.status;
+  if (s==='in_season') return 0;
+  if (s==='complete') return 1;
+  if (s==='drafting' || s==='in_progress' || s==='paused') return 3;
+  if (s==='pre_draft') return 4;
+  return 2;
+}
+function _bestLeagueId(ids){
+  const ls = (ids||[]).map(id => myTeamsData.find(l => l.league_id===id)).filter(Boolean);
+  if (!ls.length) return null;
+  ls.sort((a,b) => _leagueStartRank(a)-_leagueStartRank(b) || String(b.season||'').localeCompare(String(a.season||'')));
+  return ls[0].league_id;
+}
 let mySleeperUser = null; 
 
 function setTeamsSeason(yr) {
@@ -13591,7 +13702,9 @@ function _buildPortfolioOwnedHtml(topOwned, leagueCount){
 // ════════════════════════════════════════════════════════════
 async function renderWaiverScanner(leagueId, containerEl) {
   if (!containerEl) return;
-  if (!leagueId) { containerEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:16px">Select a league to see best available players.</div>`; return; }
+  const _ovCard = (containerEl.id==='ov-waiver-list') ? containerEl.parentElement : null;
+  const _setVis = (show) => { if(_ovCard){ _ovCard.style.display = show?'':'none'; _ovSyncExtraVisibility(); } };
+  if (!leagueId) { containerEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:16px">Select a league to see best available players.</div>`; _setVis(false); return; }
 
   // Guard: rankings must be loaded to show meaningful free agents
   if (!PLAYERS.length) {
@@ -13630,7 +13743,7 @@ async function renderWaiverScanner(leagueId, containerEl) {
       !allRosteredNames.has(norm(p.name))
     ).slice(0, 30);
 
-    if (!available.length) { containerEl.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:16px">No available players found — make sure rankings are loaded.</div>`; return; }
+    if (!available.length) { _setVis(false); return; }
 
     const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
 
@@ -13672,9 +13785,11 @@ async function renderWaiverScanner(leagueId, containerEl) {
 
     // Render initial ALL view
     window._waFilter('ALL');
+    _setVis(true);
 
   } catch(e) {
     containerEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:8px 0">${e.message === 'Timeout' ? 'Could not load — check your connection.' : '⚠ ' + e.message}</div>`;
+    _setVis(false);
   }
 }
 
@@ -13730,6 +13845,11 @@ function renderBuyLowSellHigh(leagueData, containerEl) {
         ${buyLow.length ? buyLow.map(p => mkRow(p, false)).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">No strong buy signals available.</div>'}
       </div>
     </div>`;
+  if (containerEl.id === 'ov-signals-list') {
+    const card = containerEl.parentElement;
+    if (card) card.style.display = (sellHigh.length || buyLow.length) ? '' : 'none';
+    if (typeof _ovSyncExtraVisibility === 'function') _ovSyncExtraVisibility();
+  }
 }
 
 // ════════════════════════════════════════════════════════════
