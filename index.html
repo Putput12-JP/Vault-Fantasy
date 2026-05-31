@@ -3170,6 +3170,40 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </div>
 </div>
 
+<!-- DRAFT CONNECT MODAL — connect to a live draft, or skip into the prep room -->
+<div class="modal-bg gone" id="draft-connect-modal" onclick="if(event.target===this)closeDraftConnect()">
+  <div class="modal dc-modal">
+    <div class="dc-modal-head">
+      <div class="dc-modal-headtxt">
+        <div class="dc-modal-eyebrow">Draft Vault</div>
+        <div class="dc-modal-title">Connect to your draft</div>
+        <div class="dc-modal-sub">We'll scan your Sleeper leagues for a live or upcoming draft. Connect to sync every pick in real time — or jump in to browse the rankings and prep.</div>
+      </div>
+      <button class="dc-modal-x" onclick="closeDraftConnect()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="dc-detect">
+      <div class="dc-detect-head">
+        <span class="dc-detect-title">Your drafts</span>
+        <button class="ld-rescan-btn" id="ld-rescan-btn" onclick="ldRescan()"><span>↻</span> Re-scan</button>
+      </div>
+      <div id="ld-detector-msg" class="ld-detector-msg">Scanning your leagues for active drafts…</div>
+      <div id="ld-draft-list" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <div class="dc-or"><span>or enter a league ID</span></div>
+    <div class="ld-input-row">
+      <input class="ld-input" id="ld-manual-id" placeholder="e.g. 1170877498498940928"
+        onkeydown="if(event.key==='Enter')ldLoadManual()">
+      <button class="ld-load-btn" onclick="ldLoadManual()">Load draft</button>
+    </div>
+
+    <div class="dc-modal-foot">
+      <button class="dc-skip-btn" onclick="skipDraftConnect()">Browse rankings <span aria-hidden="true">→</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER — profile + league selector always visible -->
 <header class="z1" id="app-header" style="display:flex;align-items:center;padding:0 20px;gap:0;height:52px">
 
@@ -3482,6 +3516,17 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 </div>
 
 <div class="page z1" id="page-draft" style="overflow-y:auto">
+  <!-- CONNECT BAR — shown when browsing rankings with no live draft connected -->
+  <div id="draft-connect-bar" class="dconn-bar" style="display:none">
+    <div class="dconn-bar-main">
+      <span class="dconn-dot"></span>
+      <div class="dconn-bar-txt">
+        <div class="dconn-title">Browsing rankings — no live draft connected</div>
+        <div class="dconn-sub">Connect a Sleeper draft to sync picks in real time and light up the board.</div>
+      </div>
+    </div>
+    <button class="dconn-btn" onclick="openDraftConnect()">Connect a draft</button>
+  </div>
   <!-- DRAFT SUMMARY HEADER (StatChasers-style) — shown only when an active draft is loaded -->
   <div id="draft-summary" class="draft-summary" style="display:none">
     <div class="ds-card dsc">
@@ -3709,68 +3754,23 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </div>
   <!-- Roster bar moved to global (just before #bottom-tab-bar) so it persists across all pages -->
 
-  <!-- ===== DRAFT BOARD SECTION (merged from page-visual) ===== -->
-  <div class="ld-page" style="margin-top:24px">
-
-    <!-- Page header -->
-    <div style="margin-bottom:28px">
-      <h1 style="font-size:36px;font-weight:800;color:var(--text);letter-spacing:-0.04em;line-height:1;margin:0 0 8px;font-family:var(--font-sans)">Live Draft Board</h1>
-      <div style="width:40px;height:3px;background:var(--gold);border-radius:2px;margin:8px 0 10px"></div>
-      <p class="ld-sub">Track your dynasty drafts in real-time with a visual board layout.</p>
-    </div>
-
-    <!-- Sub-tab -->
-    <div class="la-tabs" style="margin-bottom:24px">
-      <button class="la-tab on">Draft Board</button>
-    </div>
-
-    <!-- Live Draft Detector card -->
-    <div class="ld-card" id="ld-detector-card">
-      <div class="ld-card-hdr" onclick="toggleLdDetector(event)" style="cursor:pointer;user-select:none">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:16px">📡</span>
-          <span class="ld-card-title">Live Draft Detector</span>
-          <span id="ld-detector-chevron" style="margin-left:6px;font-size:12px;color:var(--muted);transition:transform .2s">▾</span>
-        </div>
-        <button class="ld-rescan-btn" onclick="event.stopPropagation();ldRescan()" id="ld-rescan-btn">
-          <span>↻</span> Re-scan
-        </button>
+  <!-- ===== DRAFT BOARD SECTION — visual snake board, shown only when connected ===== -->
+  <div class="ld-page" id="ld-board-section" style="margin-top:28px;display:none">
+    <div class="ld-board-head">
+      <div>
+        <h2 class="ld-board-title">Draft Board</h2>
+        <p class="ld-sub" id="ld-board-sub">Live snake board for your connected draft.</p>
       </div>
-      <div id="ld-detector-body">
-        <div id="ld-detector-msg" class="ld-detector-msg">
-          Scanning your leagues for active drafts...
-        </div>
-        <div id="ld-draft-list" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
-      </div>
+      <button class="ld-change-btn" onclick="openDraftConnect()" title="Connect a different draft"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M21 6H8a4 4 0 0 0-4 4v1"/><path d="m7 22-4-4 4-4"/><path d="M3 18h13a4 4 0 0 0 4-4v-1"/></svg> Change draft</button>
     </div>
 
-    <!-- Manual Draft ID input -->
-    <div class="ld-card" style="margin-top:12px">
-      <div class="ld-input-label">Sleeper League ID (optional — to track drafted players)</div>
-      <div class="ld-input-row">
-        <input class="ld-input" id="ld-manual-id" placeholder="e.g. 1170877498498940928"
-          onkeydown="if(event.key==='Enter')ldLoadManual()">
-        <button class="ld-load-btn" onclick="ldLoadManual()">
-          🔍 Load Draft
-        </button>
-      </div>
-    </div>
-
-    <!-- Active draft board (hidden until draft loaded) -->
-    <div id="ld-board-wrap" style="display:none;margin-top:20px">
+    <!-- Active draft board -->
+    <div id="ld-board-wrap" style="margin-top:18px">
       <!-- Desktop board -->
       <div class="board-scroll"><div id="bgrid"></div></div>
       <!-- Mobile board -->
       <div class="board-mobile" id="board-mobile"></div>
     </div>
-
-    <!-- Empty state — shown when no draft active -->
-    <div id="ld-empty-state" class="ld-empty">
-      <div class="ld-empty-icon">🏆</div>
-      <div class="ld-empty-title">Select a Draft to Begin</div>
-      <div class="ld-empty-sub">Pick a live draft above or enter a league ID to load the draft board.</div>
-    </div>
-
   </div>
   <!-- ===== /DRAFT BOARD SECTION ===== -->
 </div>
@@ -6883,7 +6883,7 @@ async function launch(skip=false) {
     document.getElementById('plist-body').innerHTML = '<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--muted);font-family:Courier New,monospace;font-size:13px">⟳ Syncing from Sleeper...</td></tr>';
     await syncSleeper();
     if (Object.keys(draftState).length === 0) initState();
-    syncTimer = setInterval(syncSleeper, 15000);
+    scheduleSync();
   
   setInterval(()=>{ if(lastPickTime){ renderStrip(); } }, 30000);
   } else {
@@ -7144,6 +7144,8 @@ async function syncSleeper() {
     buildADPFromDraft();
     setSyncStatus('live');
   lastPickTime = Date.now();
+    // Re-evaluate poll cadence now that we know this draft's pick clock
+    scheduleSync();
     renderAll();
   } catch(e){
     setSyncStatus('err');
@@ -7151,10 +7153,27 @@ async function syncSleeper() {
   }
 }
 
+// Adaptive sync cadence — poll fast when the draft has a short pick clock so
+// the board never lags behind a quick room, slow when there's no time pressure.
+function getSyncInterval(){
+  const t = (window._activeDraft && Number(window._activeDraft.pickTimer)) || 0;
+  if (t > 0 && t <= 20)  return 2000;   // lightning rooms (≤20s)
+  if (t > 0 && t <= 45)  return 3000;
+  if (t > 0 && t <= 90)  return 5000;
+  if (t > 0 && t <= 180) return 8000;   // 1–3 min clocks
+  return 15000;                          // slow / untimed drafts
+}
+function scheduleSync(){
+  const ms = getSyncInterval();
+  if (window._curSyncMs === ms && syncTimer) return; // already at the right cadence
+  if (syncTimer) clearInterval(syncTimer);
+  window._curSyncMs = ms;
+  syncTimer = setInterval(syncSleeper, ms);
+}
+
 function startSync(){
   syncSleeper();
-  if(syncTimer) clearInterval(syncTimer);
-  syncTimer=setInterval(syncSleeper,15000);
+  scheduleSync();
 }
 
 function setSyncStatus(s){
@@ -7186,16 +7205,14 @@ async function manualResync(){
   } finally{
     if(btn) btn.textContent='⟳';
     if(dsBtn) dsBtn.classList.remove('syncing');
-    if(syncTimer) clearInterval(syncTimer);
-    syncTimer=setInterval(syncSleeper,15000);
+    scheduleSync();
   }
 }
 
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'&&sleeperDraftId){
     syncSleeper().then(()=>renderAll());
-    if(syncTimer) clearInterval(syncTimer);
-    syncTimer=setInterval(syncSleeper,15000);
+    scheduleSync();
   } else if(document.visibilityState==='hidden'){
     if(syncTimer) clearInterval(syncTimer);
   }
@@ -7234,10 +7251,23 @@ function initState(){
     Object.entries(raw).forEach(([k,v])=>{
       migrated[k]=typeof v==='number'?{teamIdx:v,round:0,pickNo:0}:v;
     });
-    draftState=migrated;
+    // One-time cleanup: older builds seeded a hardcoded demo board into local
+    // storage. If we're not connected to a real draft and the saved state is
+    // that demo seed, drop it so the board shows fresh rankings instead.
+    const looksLikeDemo = !sleeperDraftId
+      && migrated['Bijan Robinson'] && migrated['Bijan Robinson'].teamIdx === 0
+      && migrated['Jahmyr Gibbs'] && migrated['Jahmyr Gibbs'].teamIdx === 1
+      && Object.values(migrated).every(v => !v || !v.pickNo);
+    if (looksLikeDemo) {
+      draftState = {};
+      try { localStorage.removeItem(SK+'-state'); } catch(e){}
+    } else {
+      draftState = migrated;
+    }
   } else if(!sleeperDraftId) {
-    HPICKS.forEach(([n,t])=>{draftState[n]={teamIdx:t,round:0,pickNo:0};});
-    save();
+    // No connected draft and no saved local draft → leave the board fresh
+    // (empty) so the Draft Vault just shows clean rankings, nobody drafted.
+    draftState = {};
   }
   if(!PICK_SLOTS.length) buildSlots(12,25,'snake',0);
 }
@@ -8289,6 +8319,11 @@ function showPage(p){
     try { renderBoard(); } catch(e) {}
     try { ldInitPage(); } catch(e) {}
     try { renderDraftSummary(); } catch(e) {}
+    // Connect-first: if no live draft is connected, surface the connect modal
+    // once per session so the user can either link a draft or browse rankings.
+    if (!sleeperDraftId && !window._draftPromptDismissed) {
+      setTimeout(() => { try { openDraftConnect(); } catch(e){} }, 120);
+    }
   }
   if(p==='research'){ initResearch(); }
   if(p==='teams'){
@@ -10062,14 +10097,16 @@ async function ldRescan() {
 }
 
 function ldSelectDraft(draftId, draftName) {
-  
   sleeperDraftId = draftId;
   localStorage.setItem(SK+'-did', draftId);
+  closeDraftConnect();
+  window._draftPromptDismissed = true;
   ldShowBoard();
   syncSleeper().then(() => {
     renderAll();
     renderBoard();
-    if (!syncTimer) syncTimer = setInterval(syncSleeper, 15000);
+    scheduleSync();
+    try { toast('✓ Connected — syncing live'); } catch(e){}
   });
 }
 
@@ -10080,20 +10117,40 @@ function ldLoadManual() {
   ldSelectDraft(id, 'Draft ' + id.slice(-6));
 }
 
+// ===== Draft connect modal (pop-up): connect to a live draft, or skip to rankings =====
+function openDraftConnect(){
+  const m = document.getElementById('draft-connect-modal');
+  if (!m) return;
+  m.classList.remove('gone');
+  try { ldRescan(); } catch(e){}
+  setTimeout(() => { try { document.getElementById('ld-manual-id')?.focus(); } catch(e){} }, 50);
+}
+function closeDraftConnect(){
+  window._draftPromptDismissed = true;
+  document.getElementById('draft-connect-modal')?.classList.add('gone');
+}
+function skipDraftConnect(){
+  window._draftPromptDismissed = true;
+  closeDraftConnect();
+  try { renderAll(); renderDraftSummary(); } catch(e){}
+}
+
 function ldShowBoard() {
-  const empty = document.getElementById('ld-empty-state');
+  const section = document.getElementById('ld-board-section');
   const board = document.getElementById('ld-board-wrap');
-  if (empty) empty.style.display = 'none';
+  if (section) section.style.display = sleeperDraftId ? 'block' : 'none';
   if (board) board.style.display = 'block';
 }
 
 function ldInitPage() {
-  
   if (sleeperDraftId) {
     ldShowBoard();
     renderBoard();
+  } else {
+    // Not connected → keep the board hidden; the connect modal handles onboarding.
+    const section = document.getElementById('ld-board-section');
+    if (section) section.style.display = 'none';
   }
-  ldRescan();
 }
 
 // ════════════════════════════════════
@@ -11597,12 +11654,19 @@ function renderAll(){
 function renderDraftSummary(){
   const wrap = document.getElementById('draft-summary');
   if(!wrap) return;
+  const connectBar = document.getElementById('draft-connect-bar');
+  const boardSection = document.getElementById('ld-board-section');
   const d = window._activeDraft;
   if(!d || !sleeperDraftId){
+    // Not connected → fresh rankings view: hide hero + board, show connect bar.
     wrap.style.display = 'none';
+    if (connectBar) connectBar.style.display = 'flex';
+    if (boardSection) boardSection.style.display = 'none';
     return;
   }
   wrap.style.display = 'flex';
+  if (connectBar) connectBar.style.display = 'none';
+  if (boardSection) boardSection.style.display = 'block';
 
   const totalPicks = (d.teams||NUM_TEAMS||12) * (d.rounds||NUM_ROUNDS||25);
   const made = d.picksCount || 0;
@@ -13299,7 +13363,7 @@ function resumeSession() {
       sleeperDraftId = did;
       syncSleeper().then(() => {
         renderAll();
-        syncTimer = setInterval(syncSleeper, 15000);
+        scheduleSync();
       });
     }
   }, 0);
@@ -14613,6 +14677,50 @@ function pickYear(year) {
   #page-draft #sb-hidepicks.on, #page-draft #sb-watch.on, #page-draft .hgbtn.on{ background:color-mix(in srgb, var(--accent) 14%, transparent)!important; border-color:var(--accent)!important; color:var(--text)!important; }
   #page-draft .hg-count{ background:var(--accent)!important; font-family:var(--font-mono)!important; }
   #page-draft .cright{ border-left:1px solid var(--border)!important; padding-left:8px!important; }
+
+  /* ───── Draft Vault: "browsing rankings" connect bar (no draft) ───── */
+  .dconn-bar{ display:flex; align-items:center; gap:16px; max-width:1100px; margin:14px auto 0; padding:13px 16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-sizing:border-box; }
+  .dconn-bar-main{ display:flex; align-items:center; gap:12px; min-width:0; flex:1; }
+  .dconn-dot{ width:9px; height:9px; border-radius:50%; background:var(--muted); flex-shrink:0; box-shadow:0 0 0 4px color-mix(in srgb, var(--muted) 16%, transparent); }
+  .dconn-bar-txt{ min-width:0; }
+  .dconn-title{ font-family:var(--font-sans); font-size:13.5px; font-weight:700; color:var(--text); letter-spacing:-.01em; }
+  .dconn-sub{ font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:2px; }
+  .dconn-btn{ flex-shrink:0; font-family:var(--font-sans); font-size:12.5px; font-weight:700; color:#fff; background:var(--accent); border:0; border-radius:8px; padding:9px 15px; cursor:pointer; transition:filter .15s; }
+  .dconn-btn:hover{ filter:brightness(1.08); }
+  @media(max-width:700px){ .dconn-bar{ flex-direction:column; align-items:stretch; gap:12px; } .dconn-btn{ width:100%; } }
+
+  /* ───── Draft Vault: board section header ───── */
+  .ld-board-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .ld-board-title{ font-family:var(--font-sans); font-size:24px; font-weight:800; letter-spacing:-.03em; color:var(--text); margin:0; }
+  #ld-board-section .ld-sub{ margin-top:4px; }
+  .ld-change-btn{ display:inline-flex; align-items:center; gap:7px; font-family:var(--font-sans); font-size:12.5px; font-weight:600; color:var(--text2); background:var(--s2); border:1px solid var(--border2); border-radius:8px; padding:8px 13px; cursor:pointer; transition:all .15s; }
+  .ld-change-btn svg{ width:14px; height:14px; }
+  .ld-change-btn:hover{ color:var(--text); border-color:var(--border3); }
+
+  /* ───── Draft Connect modal ───── */
+  #draft-connect-modal .modal.dc-modal{ background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:22px; width:min(540px,100%); box-shadow:0 24px 70px rgba(0,0,0,.55); }
+  .dc-modal-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:18px; }
+  .dc-modal-eyebrow{ font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+  .dc-modal-title{ font-family:var(--font-sans); font-size:23px; font-weight:800; letter-spacing:-.03em; color:var(--text); line-height:1.05; }
+  .dc-modal-sub{ font-family:var(--font-sans); font-size:13px; line-height:1.5; color:var(--text2); margin-top:8px; }
+  .dc-modal-x{ flex-shrink:0; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:var(--s2); border:1px solid var(--border); color:var(--muted); font-size:14px; cursor:pointer; transition:all .15s; }
+  .dc-modal-x:hover{ color:var(--text); border-color:var(--border2); }
+  .dc-detect{ background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:14px; }
+  .dc-detect-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .dc-detect-title{ font-family:var(--font-mono); font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+  #draft-connect-modal .ld-rescan-btn{ white-space:nowrap; flex-shrink:0; }
+  .dc-or{ position:relative; text-align:center; margin:16px 0 12px; }
+  .dc-or::before{ content:''; position:absolute; left:0; right:0; top:50%; height:1px; background:var(--border); }
+  .dc-or span{ position:relative; background:var(--surface); padding:0 12px; font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .dc-modal-foot{ display:flex; justify-content:center; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
+  .dc-skip-btn{ font-family:var(--font-sans); font-size:13.5px; font-weight:700; color:var(--text2); background:transparent; border:0; padding:8px 14px; border-radius:8px; cursor:pointer; transition:color .15s; }
+  .dc-skip-btn:hover{ color:var(--text); }
+  .dc-skip-btn span{ transition:transform .15s; display:inline-block; }
+  .dc-skip-btn:hover span{ transform:translateX(3px); }
+  /* Tidy the relocated detector controls inside the modal */
+  #draft-connect-modal .ld-input-row{ display:flex; gap:8px; }
+  #draft-connect-modal .ld-input{ flex:1; }
+  #draft-connect-modal .ld-detector-msg{ font-size:12px; color:var(--text2); font-family:var(--font-sans); }
 </style>
 <script>
 (function(){
