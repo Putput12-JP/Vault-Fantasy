@@ -2742,6 +2742,99 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 <div class="onboard-overlay" id="onboard-overlay" style="display:none"></div>
 
 <!-- SETUP -->
+<style id="vlogin-css">
+/* platform selector */
+#vp-platforms{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.vp-plat{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;color:var(--text2);font-family:var(--font-sans);font-size:14px;font-weight:600;padding:11px 12px;min-height:46px;cursor:pointer;transition:all .15s;position:relative}
+.vp-plat:hover{border-color:var(--border3)}
+.vp-plat.on{border-color:rgba(226,58,78,0.55);background:rgba(226,58,78,0.08);color:var(--text)}
+.vp-plat .pl-ic{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0}
+.vp-plat .pl-ic.s{background:linear-gradient(135deg,#19d0c0,#00b3a4);color:#06201d}
+.vp-plat .pl-ic.e{background:#c8102e;color:#fff}
+.vp-plat .soon{font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--te);background:rgba(245,200,66,0.14);padding:2px 5px;border-radius:4px}
+/* league multi-select toolbar */
+.vp-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.vp-search{flex:1;min-width:200px;position:relative}
+.vp-search input{width:100%;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:14px;padding:11px 14px 11px 38px;outline:none;transition:border-color .15s}
+.vp-search input:focus{border-color:var(--border3)}
+.vp-search:before{content:"⌕";position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px}
+.vp-chips{display:flex;gap:7px;flex-wrap:wrap}
+.vp-chip{background:var(--s2);border:1px solid var(--border);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;padding:8px 13px;border-radius:9999px;cursor:pointer;transition:all .14s;white-space:nowrap}
+.vp-chip:hover{border-color:var(--border3);color:var(--text2)}
+.vp-chip.on{background:rgba(226,58,78,0.14);border-color:rgba(226,58,78,0.45);color:var(--accent2)}
+.vp-bulk{display:flex;gap:7px}
+.vp-bulk button{background:none;border:1px solid var(--border);color:var(--text2);font-family:var(--font-mono);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;padding:8px 13px;border-radius:10px;cursor:pointer;transition:all .14s}
+.vp-bulk button:hover{border-color:var(--border3);background:var(--s2)}
+.vp-seclabel{display:flex;align-items:center;gap:10px;margin:18px 0 12px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted)}
+.vp-seclabel .ln{flex:1;height:1px;background:var(--border)}
+.vp-seclabel .n{color:var(--text2)}
+/* league card */
+.vp-lg{position:relative;background:rgba(18,26,37,0.66);border:1.5px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:transform .16s,border-color .16s,box-shadow .16s;overflow:hidden}
+.vp-lg:hover{transform:translateY(-3px);border-color:var(--border3)}
+.vp-lg.sel{border-color:rgba(226,58,78,0.7);box-shadow:0 0 0 1px rgba(226,58,78,0.4),0 18px 40px -22px rgba(226,58,78,0.6);background:rgba(30,21,27,0.7)}
+.vp-lg .glowtop{position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0;transition:opacity .2s}
+.vp-lg.sel .glowtop{opacity:1}
+.vp-lg-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.vp-badge{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;font-family:var(--font-sans);flex-shrink:0;border:1.5px solid var(--border2)}
+.vp-lg-name{font-size:15px;font-weight:700;letter-spacing:-0.01em;line-height:1.25;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vp-lg-season{font-family:var(--font-mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.vp-check{width:24px;height:24px;border-radius:7px;border:1.5px solid var(--border3);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-left:auto}
+.vp-check svg{width:13px;height:13px;opacity:0;transform:scale(.5);transition:all .15s}
+.vp-lg.sel .vp-check{background:var(--accent);border-color:var(--accent)}
+.vp-lg.sel .vp-check svg{opacity:1;transform:scale(1)}
+.vp-tag{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:0.07em;padding:2px 6px;border-radius:5px}
+.vp-tag.dyn{background:rgba(226,58,78,0.16);color:var(--accent2)}
+.vp-tag.red{background:rgba(123,208,255,0.15);color:var(--wr)}
+.vp-tag.sf{background:rgba(245,200,66,0.15);color:var(--te)}
+.vp-pip{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:0.08em;color:var(--rb)}
+.vp-pip .p{width:6px;height:6px;border-radius:50%;background:var(--rb);box-shadow:0 0 8px var(--rb);animation:pulse 1.4s infinite}
+.vp-lg-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:13px;border-top:1px solid var(--border)}
+.vp-lg-stats .k{font-family:var(--font-mono);font-size:8.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.vp-lg-stats .v{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text);margin-top:3px}
+.vp-lg-foot{display:flex;align-items:center;justify-content:flex-end;margin-top:13px;padding-top:12px;border-top:1px solid var(--border)}
+.vp-prim{display:inline-flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;font-family:var(--font-mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);transition:color .14s}
+.vp-prim:hover{color:var(--te)}
+.vp-prim.is-prim{color:var(--te)}
+.vp-prim .star{font-size:13px}
+/* welcome-back resume card + digest (matches Login Reimagined) */
+.vp-resume{max-width:440px;margin:0 auto 14px;background:rgba(18,26,37,0.72);backdrop-filter:blur(20px);border:1px solid var(--border2);border-left:2px solid var(--rb);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .15s,transform .15s;text-align:left}
+.vp-resume:hover{transform:translateY(-2px);border-color:var(--border3)}
+.vp-resume .av{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#2a3850,#1a2536);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:var(--accent2);flex-shrink:0}
+.vp-resume .lbl{font-family:var(--font-mono);font-size:9px;color:var(--rb);letter-spacing:0.12em;text-transform:uppercase}
+.vp-resume .nm{font-size:16px;font-weight:700;color:var(--text);margin-top:2px}
+.vp-resume .dg{font-size:12px;color:var(--muted);margin-top:3px}
+.vp-resume .dg b{color:var(--accent2);font-weight:600}
+.vp-resume .go{margin-left:auto;font-size:20px;color:var(--muted)}
+.vp-digest{max-width:440px;margin:0 auto 24px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.vp-dchip{display:inline-flex;align-items:center;gap:7px;background:rgba(25,34,47,0.7);border:1px solid var(--border);border-radius:9999px;padding:7px 13px;font-size:11.5px;color:var(--text2)}
+.vp-dchip .ic{font-size:13px}
+.vp-dchip b{color:var(--text);font-weight:700}
+/* sticky selection bar */
+.vp-selbar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(160px);z-index:1001;width:min(720px,calc(100% - 36px));background:rgba(18,26,37,0.92);backdrop-filter:blur(22px);border:1px solid var(--border2);border-top:2px solid var(--accent);border-radius:18px;padding:14px 16px 14px 20px;display:flex;align-items:center;gap:16px;box-shadow:0 30px 70px -20px rgba(0,0,0,0.85);transition:transform .35s cubic-bezier(.2,.8,.2,1);opacity:0;pointer-events:none}
+.vp-selbar.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
+.vp-selbar .meta{flex:1;min-width:0}
+.vp-selbar .big{font-size:16px;font-weight:800;letter-spacing:-0.02em;color:var(--text)}
+.vp-selbar .big em{font-style:normal;color:var(--accent2)}
+.vp-selbar .small{font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:0.05em;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vp-selbar .enter{background:linear-gradient(135deg,var(--accent),#7d0420);color:#fff;border:none;border-radius:10px;padding:13px 22px;font-size:14px;font-weight:700;font-family:var(--font-sans);white-space:nowrap;cursor:pointer;box-shadow:0 0 24px rgba(226,58,78,0.35);transition:all .16s}
+.vp-selbar .enter:hover{box-shadow:0 0 38px rgba(226,58,78,0.55);transform:translateY(-1px)}
+.vp-selbar .clearmini{background:none;border:none;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;cursor:pointer;text-transform:uppercase}
+.vp-selbar .clearmini:hover{color:var(--text2)}
+@media(max-width:560px){
+  .vp-grid{grid-template-columns:1fr!important}
+  .vp-toolbar{flex-direction:column;align-items:stretch}
+  .vp-chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .vp-chips::-webkit-scrollbar{display:none}
+  .vp-bulk button{flex:1}
+  .vp-selbar{left:0;right:0;bottom:0;width:100%;transform:translateY(160px);border-radius:16px 16px 0 0;padding:12px 14px env(safe-area-inset-bottom,12px);gap:10px}
+  .vp-selbar.show{transform:translateY(0)}
+  .vp-selbar .clearmini{display:none}
+  .vp-selbar .big{font-size:14px}
+  .vp-selbar .small{font-size:9px}
+  .vp-selbar .enter{padding:13px 16px;font-size:13px}
+  .vp-selbar .enter .full{display:none}
+}
+</style>
 <div class="setup z1" id="setup">
 
   <!-- ── STEP 1: CONNECT SCREEN — Vault Landing Page ── -->
@@ -2784,15 +2877,31 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <!-- Step indicator -->
         <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(28,43,60,0.5);border:1px solid rgba(144,144,151,0.2);padding:6px 14px;border-radius:9999px;margin-bottom:20px">
           <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block"></span>
-          <span style="font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:var(--accent)">Step 1 of 2 — Connect Sleeper</span>
+          <span style="font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:var(--accent)">Step 1 of 2 — Connect your account</span>
         </div>
 
-        <h1 style="font-size:clamp(28px,4vw,42px);font-weight:800;color:var(--text);letter-spacing:-0.04em;line-height:1.15;margin:0 auto 12px;max-width:600px;font-family:var(--font-sans)">
-          Your dynasty command center
+        <h1 style="font-size:clamp(28px,4vw,42px);font-weight:800;color:var(--text);letter-spacing:-0.04em;line-height:1.15;margin:0 auto 12px;max-width:640px;font-family:var(--font-sans)">
+          Your Fantasy Football Command Center
         </h1>
         <p style="font-size:15px;color:var(--muted);max-width:460px;margin:0 auto 28px;line-height:1.6;font-family:var(--font-sans)">
-          Connect your Sleeper account to see your roster, rankings, trade tools, and league analysis — all in one place.
+          Connect your fantasy football account once and pull every league into one war room — rosters, rankings, trade tools and league analysis.
         </p>
+
+        <!-- WELCOME-BACK RESUME (returning users) -->
+        <div class="vp-resume" id="vp-resume" style="display:none" onclick="resumeSession()">
+          <div class="av" id="vp-resume-av">P</div>
+          <div style="flex:1;min-width:0">
+            <div class="lbl">● Welcome back</div>
+            <div class="nm" id="vp-resume-name">Your account</div>
+            <div class="dg">Resume your last session · <b>tap to jump back in</b></div>
+          </div>
+          <div class="go">→</div>
+        </div>
+        <div class="vp-digest" id="vp-digest" style="display:none">
+          <div class="vp-dchip"><span class="ic">🟢</span> <b>1</b> draft live now</div>
+          <div class="vp-dchip"><span class="ic">🤝</span> <b>3</b> trade offers</div>
+          <div class="vp-dchip"><span class="ic">📈</span> Your stock <b>+412</b> this week</div>
+        </div>
 
         <!-- CONNECT CARD -->
         <div style="background:rgba(15,23,42,0.65);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.10);border-top:2px solid rgba(204,0,60,0.3);border-radius:16px;padding:28px;max-width:440px;margin:0 auto">
@@ -2803,6 +2912,12 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
             <div style="width:48px;height:48px;border-radius:12px;background:rgba(39,54,71,0.8);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center">
               <svg width="24" height="28" viewBox="0 0 100 112" fill="none"><path d="M50 3 L95 20 L95 63 Q95 92 50 110 Q5 92 5 63 L5 20 Z" fill="#bec6e0" opacity="0.9"/></svg>
             </div>
+          </div>
+
+          <!-- platform selector (ESPN ready) -->
+          <div id="vp-platforms">
+            <button class="vp-plat on" data-p="sleeper" onclick="vpSetPlatform('sleeper')"><span class="pl-ic s">⚡</span> Sleeper</button>
+            <button class="vp-plat" data-p="espn" onclick="vpSetPlatform('espn')"><span class="pl-ic e">E</span> ESPN <span class="soon">Soon</span></button>
           </div>
 
           <!-- Resume session (shown for returning users) -->
@@ -2824,7 +2939,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <div id="draft-results" style="margin-top:4px"></div>
 
           <!-- CTA button -->
-          <button onclick="
+          <button id="vp-cta" onclick="
             const inp = document.getElementById('sleeper-username');
             if(inp) { inp.scrollIntoView({behavior:'smooth',block:'center'}); inp.focus(); }
             if(inp && inp.value.trim()) setupConnect();
@@ -2838,7 +2953,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
             display:flex;align-items:center;justify-content:center;gap:8px;
             margin-top:10px;
           " onmouseover="this.style.boxShadow='0 0 30px rgba(204,0,60,0.4)'" onmouseout="this.style.boxShadow='0 0 20px rgba(204,0,60,0.2)'">
-            Connect Your Sleeper Account →
+            <span class="vp-cta-label">Connect Your Sleeper Account →</span>
           </button>
 
           <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px">
@@ -2864,31 +2979,41 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
       <!-- LEAGUE SELECTION SECTION -->
       <section id="setup-league-section">
-        <div style="display:flex;flex-direction:row;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:24px">
-          <div>
-            <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(61,204,122,0.1);border:1px solid rgba(61,204,122,0.25);padding:4px 12px;border-radius:9999px;margin-bottom:10px">
-              <span style="width:6px;height:6px;border-radius:50%;background:var(--rb);display:inline-block"></span>
-              <span style="font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:var(--rb)">Step 2 of 2 — Pick Your League</span>
-            </div>
-            <h2 style="font-size:22px;font-weight:700;color:var(--text);letter-spacing:-0.02em;margin:0 0 4px;font-family:var(--font-sans)">Select Your League</h2>
-            <p style="font-size:13px;color:var(--muted);font-family:var(--font-sans);margin:0">Tap a league to jump straight to your team dashboard.</p>
+        <div style="margin-bottom:18px">
+          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(61,204,122,0.1);border:1px solid rgba(61,204,122,0.25);padding:4px 12px;border-radius:9999px;margin-bottom:10px">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--rb);display:inline-block"></span>
+            <span style="font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:var(--rb)">Step 2 of 2 — Build your profile</span>
           </div>
-          <button onclick="enterWithoutDraft()" style="padding:8px 18px;border-radius:9999px;background:rgba(204,0,60,0.12);border:1px solid rgba(204,0,60,0.3);color:var(--accent);font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:background 150ms;white-space:nowrap" onmouseover="this.style.background='rgba(204,0,60,0.2)'" onmouseout="this.style.background='rgba(204,0,60,0.12)'">
-            Browse All →
-          </button>
+          <h2 style="font-size:clamp(22px,3vw,30px);font-weight:800;color:var(--text);letter-spacing:-0.03em;margin:0 0 6px;font-family:var(--font-sans)">Pick the leagues you live in</h2>
+          <p style="font-size:14px;color:var(--muted);font-family:var(--font-sans);margin:0;max-width:520px;line-height:1.5">Select every league you want in Vault. We'll track them all — switch in one tap, compare across them, never miss a draft.</p>
         </div>
 
-        <!-- League picker grid — dynamically populated via lpLoadUser -->
-        <div id="lp-leagues-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:48px">
-          <!-- League cards injected by showLeaguePicker / lpLoadUser -->
-          <div style="text-align:center;padding:48px;color:var(--muted);font-size:14px;grid-column:1/-1">
-            Connect your Sleeper account above to see your leagues here.
+        <div class="vp-toolbar">
+          <div class="vp-search"><input id="vp-search" placeholder="Search leagues…" oninput="vpRenderLeagueGrid()"></div>
+          <div class="vp-chips" id="vp-chips">
+            <button class="vp-chip on" data-f="all" onclick="vpSetFilter('all')">All <span id="vp-c-all"></span></button>
+            <button class="vp-chip" data-f="live" onclick="vpSetFilter('live')">● Live</button>
+            <button class="vp-chip" data-f="dynasty" onclick="vpSetFilter('dynasty')">Dynasty</button>
+            <button class="vp-chip" data-f="redraft" onclick="vpSetFilter('redraft')">Redraft</button>
+            <button class="vp-chip" data-f="2026" onclick="vpSetFilter('2026')">2026</button>
+            <button class="vp-chip" data-f="2025" onclick="vpSetFilter('2025')">2025</button>
+          </div>
+          <div class="vp-bulk">
+            <button onclick="vpSelectAll(true)">Select all</button>
+            <button onclick="vpSelectAll(false)">Clear</button>
+          </div>
+        </div>
+
+        <!-- League profile grid — populated by vpRenderLeagueGrid -->
+        <div id="vp-leagues-wrap" style="margin-bottom:48px">
+          <div style="text-align:center;padding:48px;color:var(--muted);font-size:14px">
+            Connect your fantasy football account above to see your leagues here.
           </div>
         </div>
 
         <!-- Finalize -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:16px">
-          <button onclick="enterWithoutDraft()" style="
+          <button onclick="vpEnterProfile()" style="
             padding:16px 48px;border-radius:10px;border:none;
             background:#bec6e0;color:var(--s1);
             font-family:var(--font-sans);font-size:15px;font-weight:700;
@@ -2923,6 +3048,16 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSession(event)">
 
     </div>
+  </div>
+
+  <!-- sticky league-profile selection bar -->
+  <div class="vp-selbar" id="vp-selbar">
+    <div class="meta">
+      <div class="big"><em id="vp-sel-count">0</em> leagues in your profile</div>
+      <div class="small" id="vp-sel-detail">Tap leagues to add them</div>
+    </div>
+    <button class="clearmini" onclick="vpSelectAll(false)">Clear</button>
+    <button class="enter" onclick="vpEnterProfile()">Add <span class="full">to profile </span>&amp; enter →</button>
   </div>
 
 
@@ -6314,37 +6449,15 @@ async function findDrafts() {
         📊 Browse My ${myTeamsData.length} League${myTeamsData.length!==1?'s':''} →
       </button>`;
 
-    // ── Auto-scroll to league section and populate the landing page league grid ──
-    const lgGrid = document.getElementById('lp-leagues-grid');
-    if (lgGrid && myTeamsData.length > 0) {
-      const posColors = ['#ff6680','#3DCC7A','#7bd0ff','#f5c842','#bec6e0'];
-      lgGrid.innerHTML = myTeamsData.slice(0,6).map((lg, i) => {
-        const initials = (lg.name||'?').slice(0,2).toUpperCase();
-        const color = posColors[i % posColors.length];
-        return `<div class="lp-league-card" onclick="
-          ovLeagueId='${lg.league_id}';
-          teamsLeagueId='${lg.league_id}';
-          document.getElementById('setup').classList.add('gone');
-          populateHeaderLeague();
-          showPage('overview');
-        ">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
-            <div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:${color};font-family:var(--font-sans)">${initials}</div>
-            <span style="font-size:18px;opacity:0.3">○</span>
-          </div>
-          <div style="font-size:16px;font-weight:700;color:var(--text);font-family:var(--font-sans);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lg.name||'My League'}</div>
-          <div style="font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted);margin-bottom:16px">SEASON: ${lg.season||'2025'}</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)">
-            <div><div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);color:rgba(144,144,151,0.6)">TEAMS</div><div style="font-size:13px;font-weight:700;color:var(--text);font-family:var(--font-mono)">${lg.total_rosters||'—'}</div></div>
-            <div><div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);color:rgba(144,144,151,0.6)">FORMAT</div><div style="font-size:11px;font-weight:700;color:${color};font-family:var(--font-mono)">${lg.settings?.type==='dynasty'?'DYN':'STD'}</div></div>
-            <div><div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;font-family:var(--font-mono);color:rgba(144,144,151,0.6)">STATUS</div><div style="font-size:11px;font-weight:700;color:#3DCC7A;font-family:var(--font-mono)">${(lg.status||'active').toUpperCase()}</div></div>
-          </div>
-        </div>`;
-      }).join('');
-
-      // Scroll to league section
+    // ── Initialize the multi-select league profile grid ──
+    if (myTeamsData.length > 0) {
+      vpInitSelection();
+      vpRenderLeagueGrid();
+      const setupEl = document.getElementById('setup');
       const lgSection = document.getElementById('setup-league-section');
-      if (lgSection) setTimeout(() => lgSection.scrollIntoView({behavior:'smooth', block:'start'}), 400);
+      if (setupEl && lgSection) setTimeout(() => {
+        setupEl.scrollTo({ top: setupEl.scrollTop + lgSection.getBoundingClientRect().top - 24, behavior: 'smooth' });
+      }, 400);
     }
 
   } catch(e) {
@@ -6356,6 +6469,161 @@ async function findDrafts() {
 }
 
 // ════════════════════════════════════
+
+// ════════════════════════════════════
+// ── Reimagined login: platform selector + multi-select league profile ──
+let vpPlatform = 'sleeper';
+function vpSetPlatform(p){
+  vpPlatform = p;
+  document.querySelectorAll('#vp-platforms .vp-plat').forEach(b => b.classList.toggle('on', b.dataset.p===p));
+  const inp = document.getElementById('sleeper-username');
+  const go  = document.getElementById('find-btn');
+  const cta = document.getElementById('vp-cta');
+  const lbl = document.querySelector('.vp-cta-label');
+  const espn = (p === 'espn');
+  if (inp){ inp.disabled = espn; inp.placeholder = espn ? 'ESPN connect coming soon…' : 'Enter Sleeper username…'; if (espn) inp.value=''; }
+  if (go){ go.disabled = espn; go.style.opacity = espn ? '.5' : ''; }
+  if (cta){ cta.style.opacity = espn ? '.55' : ''; cta.style.pointerEvents = espn ? 'none' : ''; }
+  if (lbl){ lbl.textContent = espn ? 'ESPN — Coming Soon' : 'Connect Your Sleeper Account →'; }
+}
+
+let vpSelected = new Set();
+let vpPrimary = null;
+let vpFilter = 'all';
+const VP_COLORS = ['#ff6680','#3DCC7A','#7bd0ff','#f5c842','#bec6e0'];
+
+function vpStatus(s){
+  return ({drafting:{label:'LIVE',live:true}, in_progress:{label:'LIVE',live:true}, paused:{label:'LIVE',live:true}, in_season:{label:'IN-SEASON'}, pre_draft:{label:'PRE-DRAFT'}, complete:{label:'COMPLETE'}})[s] || {label:(s||'ACTIVE').toUpperCase()};
+}
+function vpLeagueMeta(l){
+  const name = l.name || '';
+  const dynasty = l.settings?.type === 2 || /dynasty/i.test(name);
+  const sf = (l.roster_positions || []).includes('SUPER_FLEX');
+  const teams = l.total_rosters || l.settings?.num_teams || '—';
+  const st = vpStatus(l.status);
+  return { dynasty, sf, teams, st, live: !!st.live, name };
+}
+function vpMatchFilter(l){
+  const m = vpLeagueMeta(l);
+  if (vpFilter === 'all') return true;
+  if (vpFilter === 'live') return m.live;
+  if (vpFilter === 'dynasty') return m.dynasty;
+  if (vpFilter === 'redraft') return !m.dynasty;
+  if (vpFilter === '2026' || vpFilter === '2025') return l.season === vpFilter;
+  return true;
+}
+function vpInitSelection(){
+  const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025');
+  const saved = JSON.parse(localStorage.getItem(SK+'-selected-leagues') || 'null');
+  if (saved && saved.length){
+    vpSelected = new Set(saved.filter(id => pool.some(l => l.league_id===id)));
+  } else {
+    // smart default: pre-select all current-season + active/live leagues
+    vpSelected = new Set(pool.filter(l => l.season==='2026' || l.status==='drafting' || l.status==='in_season').map(l => l.league_id));
+  }
+  vpPrimary = localStorage.getItem(SK+'-primary-league');
+  if (!vpPrimary || !vpSelected.has(vpPrimary)){
+    vpPrimary = pool.find(l => l.status==='drafting')?.league_id || [...vpSelected][0] || pool[0]?.league_id || null;
+  }
+}
+function vpCardHTML(l, i){
+  const m = vpLeagueMeta(l);
+  const color = VP_COLORS[i % VP_COLORS.length];
+  const initials = (l.name || '?').slice(0,2).toUpperCase();
+  const sel = vpSelected.has(l.league_id);
+  const prim = vpPrimary === l.league_id;
+  const tags = [
+    m.dynasty ? '<span class="vp-tag dyn">DYNASTY</span>' : '<span class="vp-tag red">REDRAFT</span>',
+    m.sf ? '<span class="vp-tag sf">SF</span>' : ''
+  ].join('');
+  return `<div class="vp-lg ${sel?'sel':''}" onclick="vpToggle('${l.league_id}')">
+    <div class="glowtop"></div>
+    <div class="vp-lg-top">
+      <div class="vp-badge" style="background:${color}22;color:${color}">${initials}</div>
+      <div style="flex:1;min-width:0">
+        <div class="vp-lg-name">${l.name || 'My League'} ${m.live?'<span class="vp-pip"><span class="p"></span>LIVE</span>':''}</div>
+        <div class="vp-lg-season">${l.season || '—'} · ${tags}</div>
+      </div>
+      <div class="vp-check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
+    </div>
+    <div class="vp-lg-stats">
+      <div><div class="k">Teams</div><div class="v">${m.teams}</div></div>
+      <div><div class="k">Format</div><div class="v" style="color:${color}">${m.dynasty?(m.sf?'DYN SF':'DYN'):'STD'}</div></div>
+      <div><div class="k">Status</div><div class="v" style="color:${m.live?'var(--rb)':'var(--text2)'};font-size:11px">${m.st.label}</div></div>
+    </div>
+    <div class="vp-lg-foot">
+      <button class="vp-prim ${prim?'is-prim':''}" onclick="event.stopPropagation();vpSetPrimary('${l.league_id}')"><span class="star">${prim?'★':'☆'}</span> ${prim?'Primary':'Set primary'}</button>
+    </div>
+  </div>`;
+}
+function vpRenderLeagueGrid(){
+  const wrap = document.getElementById('vp-leagues-wrap');
+  if (!wrap) return;
+  const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025');
+  const cAll = document.getElementById('vp-c-all'); if (cAll) cAll.textContent = '(' + pool.length + ')';
+  const q = (document.getElementById('vp-search')?.value || '').toLowerCase();
+  const list = pool.filter(l => vpMatchFilter(l) && (l.name||'').toLowerCase().includes(q));
+  const active = list.filter(l => l.status !== 'complete');
+  const archived = list.filter(l => l.status === 'complete');
+  const gridOpen = '<div class="vp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;min-width:0">';
+  let html = '';
+  if (active.length){
+    html += `<div class="vp-seclabel"><span class="n">Active · ${active.length}</span><div class="ln"></div></div>`;
+    html += gridOpen + active.map((l,i) => vpCardHTML(l,i)).join('') + '</div>';
+  }
+  if (archived.length){
+    html += `<div class="vp-seclabel"><span>Past seasons · ${archived.length}</span><div class="ln"></div></div>`;
+    html += gridOpen + archived.map((l,i) => vpCardHTML(l,i)).join('') + '</div>';
+  }
+  if (!list.length) html = '<div style="text-align:center;padding:48px;color:var(--muted)">No leagues match that.</div>';
+  wrap.innerHTML = html;
+  vpUpdateBar();
+}
+function vpToggle(id){
+  if (vpSelected.has(id)){ vpSelected.delete(id); if (vpPrimary===id) vpPrimary = [...vpSelected][0] || null; }
+  else vpSelected.add(id);
+  if (vpSelected.size && !vpPrimary) vpPrimary = id;
+  vpRenderLeagueGrid();
+}
+function vpSetPrimary(id){ vpSelected.add(id); vpPrimary = id; vpRenderLeagueGrid(); }
+function vpSelectAll(on){
+  const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025');
+  if (on){ pool.forEach(l => vpSelected.add(l.league_id)); if (!vpPrimary) vpPrimary = pool[0]?.league_id || null; }
+  else { vpSelected.clear(); vpPrimary = null; }
+  vpRenderLeagueGrid();
+}
+function vpSetFilter(f){
+  vpFilter = f;
+  document.querySelectorAll('#vp-chips .vp-chip').forEach(c => c.classList.toggle('on', c.dataset.f===f));
+  vpRenderLeagueGrid();
+}
+function vpUpdateBar(){
+  const n = vpSelected.size;
+  const bar = document.getElementById('vp-selbar');
+  const cnt = document.getElementById('vp-sel-count');
+  if (cnt) cnt.textContent = n;
+  if (bar) bar.classList.toggle('show', n > 0);
+  if (n > 0){
+    const sel = myTeamsData.filter(l => vpSelected.has(l.league_id));
+    const primL = myTeamsData.find(l => l.league_id === vpPrimary);
+    const primName = (primL?.name || '—').replace(/\s*[\[\(].*$/, '').trim();
+    const det = document.getElementById('vp-sel-detail');
+    if (det) det.textContent = `★ ${primName} primary · ${sel.length} league${sel.length!==1?'s':''} tracked`;
+  }
+}
+function vpEnterProfile(){
+  const ids = [...vpSelected];
+  if (ids.length) localStorage.setItem(SK+'-selected-leagues', JSON.stringify(ids));
+  else localStorage.removeItem(SK+'-selected-leagues');
+  if (vpPrimary){
+    localStorage.setItem(SK+'-primary-league', vpPrimary);
+    ovLeagueId = vpPrimary;
+    teamsLeagueId = vpPrimary;
+  }
+  document.getElementById('setup').classList.add('gone');
+  populateHeaderLeague();
+  showPage('overview');
+}
 
 // ════════════════════════════════════
 
@@ -12648,10 +12916,22 @@ window.addEventListener('load', () => {
   if (did || hasSavedState || savedUsername) {
     const resumeBtn = document.getElementById('resume-btn');
     if (resumeBtn) {
-      resumeBtn.style.display = 'block';
+      resumeBtn.style.display = 'none';
       const didInput = document.getElementById('did');
       if (didInput && did) didInput.value = did;
     }
+    // Welcome-back resume card + digest (matches Login Reimagined)
+    const vpr = document.getElementById('vp-resume');
+    const vpd = document.getElementById('vp-digest');
+    if (vpr) {
+      vpr.style.display = 'flex';
+      const nm = savedUsername || 'Your account';
+      const nameEl = document.getElementById('vp-resume-name');
+      const avEl = document.getElementById('vp-resume-av');
+      if (nameEl) nameEl.textContent = nm;
+      if (avEl) avEl.textContent = (nm[0] || 'V').toUpperCase();
+    }
+    if (vpd) vpd.style.display = 'flex';
     // If user previously connected Sleeper, skip the connect screen entirely
     // Show a lightweight loader and resume immediately — no 350ms flash of Step 1
     if (savedUsername && !did) {
