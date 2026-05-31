@@ -1124,10 +1124,10 @@ header{
 
 /* ===== StatChasers v2 view ===== */
 /* Horizontal stat strip */
-.pf-v2-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border2);border-radius:14px;background:linear-gradient(180deg,#161e36,#10172a);margin-bottom:32px;overflow:hidden}
-.pf-v2-stat{padding:24px 28px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border2)}
+.pf-v2-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--border2);border-radius:14px;background:linear-gradient(180deg,#161e36,#10172a);margin-bottom:32px;overflow:hidden}
+.pf-v2-stat{padding:22px 22px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border2)}
 .pf-v2-stat:last-child{border-right:none}
-.pf-v2-stat-num{font-size:36px;font-weight:800;line-height:1;letter-spacing:-0.025em;color:var(--text);font-family:var(--font-sans);margin-bottom:8px}
+.pf-v2-stat-num{font-size:30px;font-weight:800;line-height:1;letter-spacing:-0.025em;color:var(--text);font-family:var(--font-sans);margin-bottom:8px;white-space:nowrap}
 .pf-v2-stat-lbl{font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.14em}
 @media(max-width:700px){
   .pf-v2-strip{grid-template-columns:repeat(2,1fr)}
@@ -1136,11 +1136,12 @@ header{
   .pf-v2-stat-num{font-size:28px}
   .pf-v2-stat{padding:18px 20px}
   /* Fix 3: Portfolio league table — on mobile keep only Chevron · League · Grade.
-     My Rank / Value / Teams (cols 4-6) live in the expandable detail row, so hide them
+     My Rank / Buy-in / Payout / Value (cols 4-7) live in the expandable detail row, so hide them
      here to stop the table overflowing and clipping the Grade off the right edge. */
   .pf-v2-table .pf-v2-th:nth-child(4), .pf-v2-table .pf-v2-row > td:nth-child(4),
   .pf-v2-table .pf-v2-th:nth-child(5), .pf-v2-table .pf-v2-row > td:nth-child(5),
-  .pf-v2-table .pf-v2-th:nth-child(6), .pf-v2-table .pf-v2-row > td:nth-child(6){display:none}
+  .pf-v2-table .pf-v2-th:nth-child(6), .pf-v2-table .pf-v2-row > td:nth-child(6),
+  .pf-v2-table .pf-v2-th:nth-child(7), .pf-v2-table .pf-v2-row > td:nth-child(7){display:none}
   .pf-v2-th-name{padding-left:12px}
   .pf-v2-td-name{padding-left:12px;padding-right:8px}
   .pf-v2-name{max-width:62vw;font-size:13px}
@@ -1187,8 +1188,8 @@ header{
 /* Expanded detail row (per-position bars) */
 .pf-v2-detail-row{background:rgba(255,255,255,0.015)}
 .pf-v2-detail-row td{padding:0;border-bottom:1px solid var(--border)}
-.pf-v2-detail{padding:18px 24px 22px 56px;animation:pfV2DetailFade 220ms ease-out}
-@keyframes pfV2DetailFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.pf-v2-detail{padding:18px 24px 22px 56px;opacity:1;animation:pfV2DetailFade 220ms ease-out}
+@keyframes pfV2DetailFade{from{transform:translateY(-4px)}to{transform:translateY(0)}}
 .pf-v2-detail-title{font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.12em;margin-bottom:12px}
 .pf-v2-posbars{display:flex;flex-direction:column;gap:8px;max-width:520px}
 .pf-v2-posbar-row{display:flex;align-items:center;gap:12px}
@@ -1196,6 +1197,67 @@ header{
 .pf-v2-posbar-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
 .pf-v2-posbar-fill{height:100%;border-radius:3px;transition:width 300ms ease}
 .pf-v2-posbar-val{font-size:11px;font-family:var(--font-mono);color:var(--text2);width:48px;text-align:right;font-weight:600}
+
+/* ── Portfolio finances: buy-in / payout column + ladder + editor ── */
+.pf-v2-stat-foot{font-size:9.5px;color:var(--muted);font-family:var(--font-mono);margin-top:5px}
+.pf-v2-setbtn{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--accent2);background:transparent;border:1px dashed var(--border3);border-radius:7px;padding:5px 10px;cursor:pointer;transition:all .15s}
+.pf-v2-setbtn:hover{color:#fff;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.pf-v2-pay{display:flex;flex-direction:column;gap:1px;align-items:flex-end}
+.pf-v2-pay .pf-v2-pay-amt{font-family:var(--font-mono);font-weight:800;font-size:14px}
+.pf-v2-pay.in .pf-v2-pay-amt{color:var(--rb)}
+.pf-v2-pay.out .pf-v2-pay-amt{color:var(--muted)}
+.pf-v2-pay-sub{font-size:8.5px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap}
+.pf-fin-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.pf-fin-eyebrow{font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.12em}
+.pf-fin-meta{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.pf-fin-meta b{color:var(--text2);font-weight:700}
+.pf-fin-btn{font-family:var(--font-sans);font-size:11.5px;font-weight:600;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:7px;padding:6px 12px;cursor:pointer;transition:all .15s}
+.pf-fin-btn:hover{color:var(--text);border-color:var(--border3)}
+.pf-fin-btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
+.pf-fin-btn.acc:hover{filter:brightness(1.08)}
+.pf-fin-btn.danger{color:var(--accent2);border-color:transparent}
+.pf-fin-btn.danger:hover{border-color:var(--accent2)}
+.pf-fin-head .pf-fin-btn{margin-left:auto}
+.pf-fin-empty{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px;background:var(--bg);border:1px dashed var(--border2);border-radius:10px}
+.pf-fin-empty .pf-fin-btn{margin-left:auto}
+.pf-pay-ladder{display:flex;gap:8px;flex-wrap:wrap}
+.pf-pay-chip{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--border)}
+.pf-pay-chip.you{background:color-mix(in srgb,var(--rb) 12%,transparent);border-color:var(--rb)}
+.pf-pay-place{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--muted)}
+.pf-pay-chip.you .pf-pay-place{color:var(--rb)}
+.pf-pay-val{font-family:var(--font-mono);font-size:14px;font-weight:800;color:var(--text)}
+.pf-pay-chip.you .pf-pay-val{color:var(--rb)}
+.pf-pay-you{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--rb);color:#06140d}
+.pf-pay-chip.none{border-style:dashed;color:var(--muted);font-family:var(--font-mono);font-size:11px}
+/* editor */
+.pf-edit{display:flex;flex-direction:column;gap:14px;max-width:640px}
+.pf-edit-row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end}
+.pf-edit-field{display:flex;flex-direction:column;gap:6px}
+.pf-edit-lbl{font-size:9.5px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.1em}
+.pf-edit-money{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:0 10px;height:36px;transition:border-color .15s}
+.pf-edit-money:focus-within{border-color:var(--accent)}
+.pf-edit-money>span{color:var(--muted);font-family:var(--font-mono);font-size:13px}
+.pf-edit-input{background:transparent;border:none;outline:none;color:var(--text);font-family:var(--font-mono);font-size:14px;font-weight:700;width:84px;padding:0;-moz-appearance:textfield}
+.pf-edit-input::-webkit-outer-spin-button,.pf-edit-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.pf-edit-presets{display:flex;flex-direction:column;gap:6px}
+.pf-edit-preset-btns{display:flex;gap:6px;flex-wrap:wrap}
+.pf-edit-preset-btns button{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:7px;padding:6px 11px;cursor:pointer;transition:all .15s}
+.pf-edit-preset-btns button:hover{color:#fff;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.pf-edit-places-head{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:12px}
+.pf-edit-pm{display:flex;gap:6px}
+.pf-edit-pm button{width:28px;height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pf-edit-pm button:hover{color:#fff;border-color:var(--border3)}
+.pf-edit-places{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.pf-edit-place{display:flex;align-items:center;gap:8px}
+.pf-edit-place-lbl{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--muted);width:30px;flex-shrink:0}
+.pf-edit-place .pf-edit-money{flex:1;height:32px;padding:0 8px}
+.pf-edit-place .pf-edit-input{width:100%;font-size:13px}
+.pf-edit-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:14px}
+.pf-edit-actions{display:flex;gap:8px;margin-left:auto}
+@media(max-width:700px){
+  .pf-v2-detail{padding-left:20px;padding-right:16px}
+  .pf-edit-row{gap:14px}
+}
 #ps-modal.ps-entering{opacity:1}
 #ps-sheet{
   transform:translateY(20px) scale(0.98);
@@ -3467,7 +3529,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
       <div>
         <h1 style="font-size:28px;font-weight:800;color:var(--text);letter-spacing:-0.03em;margin:0 0 4px;font-family:var(--font-sans)">My Portfolio</h1>
-        <p style="font-size:13px;color:var(--muted);margin:0">All your leagues · dynasty values · signals</p>
+        <p style="font-size:13px;color:var(--muted);margin:0">All your leagues · dynasty values · buy-ins &amp; payouts</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button onclick="openPortfolioLeaguePicker()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;background:var(--accent);border:1px solid var(--accent);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font-mono);letter-spacing:.05em">
@@ -13398,6 +13460,142 @@ function pfV2OpenLeague(leagueId, event){
   showPage('overview');
 }
 
+// ===== Portfolio finances: per-league buy-in + payout structure (user-entered) =====
+window._pfFinance = window._pfFinance || (function(){
+  try { return JSON.parse(localStorage.getItem(SK+'-pf-finance')) || {}; } catch(e){ return {}; }
+})();
+window._pfFinanceEditing = window._pfFinanceEditing || new Set();
+window._pfFinanceDraft = window._pfFinanceDraft || {};
+
+function _pfSaveFinance(){ try { localStorage.setItem(SK+'-pf-finance', JSON.stringify(window._pfFinance)); } catch(e){} }
+function getPfFinance(lgId){ return window._pfFinance[lgId] || null; }
+function _pfMoney(v){ return '$'+(Math.round(v)||0).toLocaleString(); }
+function _pfOrd(n){ const s=['th','st','nd','rd'],v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+function _pfLg(lgId){ return (window._pfLeagueData||[]).find(x=>x.lg && x.lg.league_id===lgId); }
+// projected payout for a league at the current standing (0 = out of the money)
+function _pfProj(d){
+  const f = getPfFinance(d.lg && d.lg.league_id); if(!f) return null;
+  const r = parseInt(d.myRank);
+  if(!r || !f.payouts || r > f.payouts.length) return 0;
+  return f.payouts[r-1] || 0;
+}
+
+function pfFinanceStartEdit(lgId, event){
+  if(event) event.stopPropagation();
+  const f = getPfFinance(lgId);
+  window._pfFinanceDraft[lgId] = f
+    ? { buyIn: f.buyIn||0, payouts: [...(f.payouts||[])] }
+    : { buyIn: 0, payouts: [0,0,0] };
+  window._pfFinanceEditing.add(lgId);
+  window._pfV2Expanded.add(lgId);
+  renderPortfolioV2();
+}
+function pfFinanceCancel(lgId, event){
+  if(event) event.stopPropagation();
+  window._pfFinanceEditing.delete(lgId);
+  delete window._pfFinanceDraft[lgId];
+  renderPortfolioV2();
+}
+function pfFinanceField(lgId, field, idx, val){
+  const dr = window._pfFinanceDraft[lgId]; if(!dr) return;
+  const num = Math.max(0, parseFloat(val)||0);
+  if(field==='buyIn') dr.buyIn = num; else if(field==='payout') dr.payouts[idx] = num;
+  _pfUpdateAllocReadout(lgId);   // live update without losing input focus
+}
+function _pfUpdateAllocReadout(lgId){
+  const dr = window._pfFinanceDraft[lgId]; if(!dr) return;
+  const d = _pfLg(lgId); const teams = (d && d.totalTeams) || 12;
+  const pool = dr.buyIn * teams, alloc = dr.payouts.reduce((s,v)=>s+(v||0),0), rem = pool - alloc;
+  const el = document.getElementById('pf-alloc-'+lgId);
+  if(el) el.innerHTML = `Pool <b>${_pfMoney(pool)}</b> · Allocated <b>${_pfMoney(alloc)}</b> · <span style="color:${Math.abs(rem)<1?'var(--rb)':rem<0?'#ff6680':'var(--muted)'}">${rem>=0?'Unallocated':'Over by'} ${_pfMoney(Math.abs(rem))}</span>`;
+}
+function pfFinancePreset(lgId, preset, event){
+  if(event) event.stopPropagation();
+  const dr = window._pfFinanceDraft[lgId]; if(!dr) return;
+  const d = _pfLg(lgId); const teams = (d && d.totalTeams) || 12;
+  const pool = dr.buyIn * teams;
+  if(preset==='wta')        dr.payouts = [pool];
+  else if(preset==='top3')  dr.payouts = [pool*0.6, pool*0.3, pool*0.1].map(Math.round);
+  else if(preset==='top4')  dr.payouts = [pool*0.5, pool*0.25, pool*0.15, pool*0.1].map(Math.round);
+  else if(preset==='half'){ const n=Math.max(1,Math.floor(teams/2)); let tot=0; const w=[]; for(let i=0;i<n;i++){ w.push(n-i); tot+=n-i; } dr.payouts = w.map(x=>Math.round(pool*x/tot)); }
+  renderPortfolioV2();
+}
+function pfFinanceAddPlace(lgId, event){ if(event) event.stopPropagation(); const dr=window._pfFinanceDraft[lgId]; if(dr && dr.payouts.length<32){ dr.payouts.push(0); renderPortfolioV2(); } }
+function pfFinanceRemovePlace(lgId, event){ if(event) event.stopPropagation(); const dr=window._pfFinanceDraft[lgId]; if(dr && dr.payouts.length>1){ dr.payouts.pop(); renderPortfolioV2(); } }
+function pfFinanceSave(lgId, event){
+  if(event) event.stopPropagation();
+  const dr = window._pfFinanceDraft[lgId]; if(!dr) return;
+  const payouts = [...dr.payouts];
+  while(payouts.length>1 && !payouts[payouts.length-1]) payouts.pop();   // trim trailing empty places
+  window._pfFinance[lgId] = { buyIn: dr.buyIn||0, payouts };
+  _pfSaveFinance();
+  window._pfFinanceEditing.delete(lgId);
+  delete window._pfFinanceDraft[lgId];
+  renderPortfolioV2();
+}
+function pfFinanceClear(lgId, event){
+  if(event) event.stopPropagation();
+  delete window._pfFinance[lgId];
+  _pfSaveFinance();
+  window._pfFinanceEditing.delete(lgId);
+  delete window._pfFinanceDraft[lgId];
+  renderPortfolioV2();
+}
+
+function _pfRenderLadder(lgId, d, f){
+  const teams=d.totalTeams||12, pool=(f.buyIn||0)*teams, rank=parseInt(d.myRank);
+  const chips = (f.payouts||[]).map((amt,i)=>{
+    const place=i+1, you=place===rank;
+    return `<div class="pf-pay-chip${you?' you':''}"><span class="pf-pay-place">${_pfOrd(place)}</span><span class="pf-pay-val">${_pfMoney(amt)}</span>${you?'<span class="pf-pay-you">You</span>':''}</div>`;
+  }).join('');
+  const rest = (f.payouts||[]).length<teams ? `<div class="pf-pay-chip none">${_pfOrd(f.payouts.length+1)}–${_pfOrd(teams)} · no payout</div>` : '';
+  return `<div class="pf-fin-head">
+      <span class="pf-fin-eyebrow">Payout structure</span>
+      <span class="pf-fin-meta">Prize pool <b>${_pfMoney(pool)}</b> · Buy-in <b>${_pfMoney(f.buyIn)}</b> · ${teams} entries</span>
+      <button class="pf-fin-btn" onclick="pfFinanceStartEdit('${lgId}',event)">Edit</button>
+    </div>
+    <div class="pf-pay-ladder">${chips}${rest}</div>`;
+}
+function _pfRenderEditor(lgId, d){
+  const dr = window._pfFinanceDraft[lgId] || {buyIn:0,payouts:[0,0,0]};
+  const teams=d.totalTeams||12, pool=dr.buyIn*teams, alloc=dr.payouts.reduce((s,v)=>s+(v||0),0), rem=pool-alloc;
+  const placeInputs = dr.payouts.map((amt,i)=>`
+    <div class="pf-edit-place">
+      <span class="pf-edit-place-lbl">${_pfOrd(i+1)}</span>
+      <div class="pf-edit-money"><span>$</span><input type="number" min="0" inputmode="numeric" class="pf-edit-input" value="${amt||''}" placeholder="0" oninput="pfFinanceField('${lgId}','payout',${i},this.value)" onclick="event.stopPropagation()"></div>
+    </div>`).join('');
+  return `<div class="pf-edit" onclick="event.stopPropagation()">
+    <div class="pf-fin-head"><span class="pf-fin-eyebrow">Set buy-in &amp; payouts</span></div>
+    <div class="pf-edit-row">
+      <label class="pf-edit-field"><span class="pf-edit-lbl">Buy-in (per team)</span>
+        <div class="pf-edit-money"><span>$</span><input type="number" min="0" inputmode="numeric" class="pf-edit-input" value="${dr.buyIn||''}" placeholder="0" oninput="pfFinanceField('${lgId}','buyIn',0,this.value)" onclick="event.stopPropagation()"></div>
+      </label>
+      <div class="pf-edit-presets">
+        <span class="pf-edit-lbl">Quick fill</span>
+        <div class="pf-edit-preset-btns">
+          <button onclick="pfFinancePreset('${lgId}','top3',event)">Top 3</button>
+          <button onclick="pfFinancePreset('${lgId}','top4',event)">Top 4</button>
+          <button onclick="pfFinancePreset('${lgId}','half',event)">Top half</button>
+          <button onclick="pfFinancePreset('${lgId}','wta',event)">Winner-take-all</button>
+        </div>
+      </div>
+    </div>
+    <div class="pf-edit-places-head">
+      <span class="pf-edit-lbl">Payout by place</span>
+      <div class="pf-edit-pm"><button onclick="pfFinanceRemovePlace('${lgId}',event)" title="Remove last place">−</button><button onclick="pfFinanceAddPlace('${lgId}',event)" title="Add place">+</button></div>
+    </div>
+    <div class="pf-edit-places">${placeInputs}</div>
+    <div class="pf-edit-foot">
+      <span id="pf-alloc-${lgId}" class="pf-fin-meta">Pool <b>${_pfMoney(pool)}</b> · Allocated <b>${_pfMoney(alloc)}</b> · <span style="color:${Math.abs(rem)<1?'var(--rb)':rem<0?'#ff6680':'var(--muted)'}">${rem>=0?'Unallocated':'Over by'} ${_pfMoney(Math.abs(rem))}</span></span>
+      <div class="pf-edit-actions">
+        ${getPfFinance(lgId)?`<button class="pf-fin-btn danger" onclick="pfFinanceClear('${lgId}',event)">Clear</button>`:''}
+        <button class="pf-fin-btn" onclick="pfFinanceCancel('${lgId}',event)">Cancel</button>
+        <button class="pf-fin-btn acc" onclick="pfFinanceSave('${lgId}',event)">Save</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderPortfolioV2(){
   const stripEl = document.getElementById('pf-v2-strip');
   const tableWrap = document.getElementById('pf-v2-table-wrap');
@@ -13409,12 +13607,17 @@ function renderPortfolioV2(){
     return;
   }
 
-  // ── Top stat strip — 4 horizontal stats with vertical dividers ──
+  // ── Top stat strip — money-aware ──
   const totalLeagues = data.length;
   const totalValue = data.reduce((s,d)=>s+(d.myValue||0),0);
-  const ranks = data.map(d=>parseInt(d.myRank)).filter(n=>!isNaN(n));
-  const avgRank = ranks.length ? (ranks.reduce((a,b)=>a+b,0)/ranks.length).toFixed(1) : '—';
-  const bestRank = ranks.length ? Math.min(...ranks) : '—';
+  let totalBuyIn=0, projCash=0, inMoney=0, financeCount=0;
+  data.forEach(d=>{
+    const f = getPfFinance(d.lg && d.lg.league_id);
+    if(f){ financeCount++; totalBuyIn += f.buyIn||0; const p=_pfProj(d); if(p>0){ projCash+=p; inMoney++; } }
+  });
+  const net = projCash - totalBuyIn;
+  const roi = totalBuyIn>0 ? Math.round(net/totalBuyIn*100) : 0;
+  const has = financeCount>0;
   stripEl.innerHTML = `
     <div class="pf-v2-stat">
       <div class="pf-v2-stat-num">${totalLeagues}</div>
@@ -13425,12 +13628,19 @@ function renderPortfolioV2(){
       <div class="pf-v2-stat-lbl">Total Value</div>
     </div>
     <div class="pf-v2-stat">
-      <div class="pf-v2-stat-num" style="color:#7bd0ff">#${avgRank}</div>
-      <div class="pf-v2-stat-lbl">Avg Rank</div>
+      <div class="pf-v2-stat-num">${has?_pfMoney(totalBuyIn):'<span style="color:var(--muted)">—</span>'}</div>
+      <div class="pf-v2-stat-lbl">Total Buy-in</div>
+      ${has?'':'<div class="pf-v2-stat-foot">expand a league to set</div>'}
     </div>
     <div class="pf-v2-stat">
-      <div class="pf-v2-stat-num" style="color:#3DCC7A">#${bestRank}</div>
-      <div class="pf-v2-stat-lbl">Best Standing</div>
+      <div class="pf-v2-stat-num" style="color:${has?'#7bd0ff':'var(--muted)'}">${has?_pfMoney(projCash):'—'}</div>
+      <div class="pf-v2-stat-lbl">Projected Cash</div>
+      ${has?`<div class="pf-v2-stat-foot">${inMoney} of ${financeCount} in the money</div>`:''}
+    </div>
+    <div class="pf-v2-stat">
+      <div class="pf-v2-stat-num" style="color:${!has?'var(--muted)':net>=0?'#3DCC7A':'#ff6680'}">${has?((net>=0?'+':'−')+_pfMoney(Math.abs(net))):'—'}</div>
+      <div class="pf-v2-stat-lbl">Net P / L</div>
+      ${has?`<div class="pf-v2-stat-foot">${roi>=0?'+':''}${roi}% ROI</div>`:''}
     </div>`;
 
   // ── Sortable table ──
@@ -13465,7 +13675,18 @@ function renderPortfolioV2(){
     const rankColor = (typeof d.myRank==='number' && d.totalTeams) ? (d.myRank<=3?'#3DCC7A':d.myRank<=Math.floor(d.totalTeams/2)?'#facc15':'#ff6680') : 'var(--muted)';
     const gradeColor = d.gradeColor || 'var(--muted)';
 
-    // Build expanded detail row showing per-position value bars (same data as Classic league cards)
+    // Finance: buy-in + projected payout cells
+    const fin = getPfFinance(lgId);
+    const proj = fin ? _pfProj(d) : null;
+    const buyInCell = fin
+      ? `<span style="font-family:var(--font-mono)">${_pfMoney(fin.buyIn)}</span>`
+      : `<button class="pf-v2-setbtn" onclick="pfFinanceStartEdit('${lgId}',event)" title="Set buy-in &amp; payouts">+ Set</button>`;
+    let payoutCell;
+    if(!fin) payoutCell = `<span class="pf-v2-na">—</span>`;
+    else if(proj>0) payoutCell = `<div class="pf-v2-pay in"><span class="pf-v2-pay-amt">${_pfMoney(proj)}</span><span class="pf-v2-pay-sub">${_pfOrd(parseInt(d.myRank))} pays</span></div>`;
+    else payoutCell = `<div class="pf-v2-pay out"><span class="pf-v2-pay-amt">—</span><span class="pf-v2-pay-sub">out of money</span></div>`;
+
+    // Build expanded detail row: finance (ladder OR editor OR prompt) + position bars
     let detailRow = '';
     if (isExpanded) {
       const posVals = d.posVals || {};
@@ -13479,16 +13700,25 @@ function renderPortfolioV2(){
           <span class="pf-v2-posbar-val">${v > 0 ? (v/1000).toFixed(1)+'k' : '—'}</span>
         </div>`;
       }).join('');
-      detailRow = `<tr class="pf-v2-detail-row"><td colspan="6">
+      let financeBlock;
+      if (window._pfFinanceEditing.has(lgId)) financeBlock = _pfRenderEditor(lgId, d);
+      else if (fin) financeBlock = _pfRenderLadder(lgId, d, fin);
+      else financeBlock = `<div class="pf-fin-empty">
+          <span class="pf-fin-eyebrow">Buy-in &amp; payouts</span>
+          <span class="pf-fin-meta">Track what you paid in and what each place pays out.</span>
+          <button class="pf-fin-btn acc" onclick="pfFinanceStartEdit('${lgId}',event)">+ Add buy-in &amp; payouts</button>
+        </div>`;
+      detailRow = `<tr class="pf-v2-detail-row"><td colspan="7">
         <div class="pf-v2-detail">
-          <div class="pf-v2-detail-title">Position Value Breakdown</div>
+          ${financeBlock}
+          <div class="pf-v2-detail-title" style="margin-top:16px">Position Value Breakdown</div>
           <div class="pf-v2-posbars">${posBars}</div>
         </div>
       </td></tr>`;
     }
 
     return `<tr class="pf-v2-row ${isExpanded ? 'pf-v2-row-expanded' : ''}" onclick="pfV2OpenLeague('${lgId}',event)" title="Click for league overview">
-      <td class="pf-v2-td-chev" onclick="pfV2ToggleRow('${lgId}',event)" title="Toggle position breakdown">
+      <td class="pf-v2-td-chev" onclick="pfV2ToggleRow('${lgId}',event)" title="Toggle buy-in, payouts &amp; position breakdown">
         <span class="pf-v2-chev ${isExpanded ? 'open' : ''}">▸</span>
       </td>
       <td class="pf-v2-td-name">
@@ -13497,8 +13727,9 @@ function renderPortfolioV2(){
       </td>
       <td class="pf-v2-td-num" style="color:${gradeColor};font-weight:800;font-size:18px">${d.grade||'—'}</td>
       <td class="pf-v2-td-num" style="color:${rankColor};font-weight:700">${rankStr}</td>
+      <td class="pf-v2-td-num pf-v2-td-buyin">${buyInCell}</td>
+      <td class="pf-v2-td-num pf-v2-td-payout">${payoutCell}</td>
       <td class="pf-v2-td-num" style="color:#facc15;font-family:var(--font-mono)">${valStr}</td>
-      <td class="pf-v2-td-num" style="color:var(--muted);font-family:var(--font-mono)">${d.totalTeams||'—'}</td>
     </tr>${detailRow}`;
   }).join('');
 
@@ -13509,8 +13740,9 @@ function renderPortfolioV2(){
         <th onclick="pfV2SetSort('name')"  class="pf-v2-th pf-v2-th-name">League <span class="pf-v2-sort-ind">${sortInd('name')}</span></th>
         <th onclick="pfV2SetSort('grade')" class="pf-v2-th pf-v2-th-num">Grade <span class="pf-v2-sort-ind">${sortInd('grade')}</span></th>
         <th onclick="pfV2SetSort('dyn')"   class="pf-v2-th pf-v2-th-num">My Rank <span class="pf-v2-sort-ind">${sortInd('dyn')}</span></th>
+        <th class="pf-v2-th pf-v2-th-num">Buy-in</th>
+        <th class="pf-v2-th pf-v2-th-num">Payout</th>
         <th onclick="pfV2SetSort('value')" class="pf-v2-th pf-v2-th-num">Value <span class="pf-v2-sort-ind">${sortInd('value')}</span></th>
-        <th onclick="pfV2SetSort('teams')" class="pf-v2-th pf-v2-th-num">Teams <span class="pf-v2-sort-ind">${sortInd('teams')}</span></th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
