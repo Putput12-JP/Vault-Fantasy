@@ -1197,6 +1197,12 @@ header{
 .pf-v2-posbar-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
 .pf-v2-posbar-fill{height:100%;border-radius:3px;transition:width 300ms ease}
 .pf-v2-posbar-val{font-size:11px;font-family:var(--font-mono);color:var(--text2);width:48px;text-align:right;font-weight:600}
+.pf-mix-row{display:flex;align-items:center;gap:16px;margin-top:16px;flex-wrap:wrap}
+.pf-mix-bar{flex:1;min-width:200px;max-width:380px;display:flex;height:8px;gap:1.5px;border-radius:4px;overflow:hidden;background:var(--bg)}
+.pf-mix-legend{display:flex;gap:14px;flex-wrap:wrap}
+.pf-mix-leg{font-family:var(--font-mono);font-size:9.5px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.pf-mix-leg b{color:var(--text2);font-weight:700}
+.pf-mix-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
 
 /* ── Portfolio finances: buy-in / payout column + ladder + editor ── */
 .pf-v2-stat-foot{font-size:9.5px;color:var(--muted);font-family:var(--font-mono);margin-top:5px}
@@ -13691,14 +13697,11 @@ function renderPortfolioV2(){
     if (isExpanded) {
       const posVals = d.posVals || {};
       const totalPosVal = Math.max(Object.values(posVals).reduce((s,v)=>s+(v||0),0), 1);
-      const posBars = ['QB','RB','WR','TE'].map(pos => {
+      const mixSeg = ['QB','RB','WR','TE'].map(pos =>
+        `<div style="width:${(((posVals[pos]||0)/totalPosVal)*100).toFixed(1)}%;background:${posColor[pos]}"></div>`).join('');
+      const mixLeg = ['QB','RB','WR','TE'].map(pos => {
         const v = posVals[pos] || 0;
-        const pct = (v / totalPosVal) * 100;
-        return `<div class="pf-v2-posbar-row">
-          <span class="pf-v2-posbar-lbl" style="color:${posColor[pos]}">${pos}</span>
-          <div class="pf-v2-posbar-track"><div class="pf-v2-posbar-fill" style="width:${pct.toFixed(1)}%;background:${posColor[pos]}"></div></div>
-          <span class="pf-v2-posbar-val">${v > 0 ? (v/1000).toFixed(1)+'k' : '—'}</span>
-        </div>`;
+        return `<span class="pf-mix-leg"><span class="pf-mix-dot" style="background:${posColor[pos]}"></span>${pos} <b>${v>0?(v/1000).toFixed(1)+'k':'—'}</b></span>`;
       }).join('');
       let financeBlock;
       if (window._pfFinanceEditing.has(lgId)) financeBlock = _pfRenderEditor(lgId, d);
@@ -13711,8 +13714,11 @@ function renderPortfolioV2(){
       detailRow = `<tr class="pf-v2-detail-row"><td colspan="7">
         <div class="pf-v2-detail">
           ${financeBlock}
-          <div class="pf-v2-detail-title" style="margin-top:16px">Position Value Breakdown</div>
-          <div class="pf-v2-posbars">${posBars}</div>
+          <div class="pf-mix-row">
+            <span class="pf-fin-eyebrow" style="flex-shrink:0">Roster mix</span>
+            <div class="pf-mix-bar">${mixSeg}</div>
+            <div class="pf-mix-legend">${mixLeg}</div>
+          </div>
         </div>
       </td></tr>`;
     }
