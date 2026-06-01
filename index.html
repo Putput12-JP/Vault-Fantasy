@@ -5059,15 +5059,21 @@ const SK = 'dcmd-v5';
 // ════════════════════════════════════
 
 // ════════════════════════════════════
+const _normNameCache = new Map();
 function normName(s) {
   if (!s) return '';
-  
-  return s.toLowerCase()
+  const cached = _normNameCache.get(s);
+  if (cached !== undefined) return cached;
+  // normName is pure and called thousands of times per render (once per row, plus
+  // inside getADP / getFCValue / getPlayerValue) — memoize on the raw string.
+  const out = s.toLowerCase()
     .replace(/['''\`]/g,'')   
     .replace(/\./g,'')       
     .replace(/[^a-z0-9 ]/g,'')
     .replace(/\s+/g,' ')
     .trim();
+  _normNameCache.set(s, out);
+  return out;
 }
 
 function findPlayer(name) {
@@ -9804,34 +9810,36 @@ function getDisplayValue(p){
 function sortedPlayers(){
   // Source array: filter out picks if hide-picks toggle is on
   const src = window._hidePicks ? PLAYERS.filter(p => p.pos !== 'PICK') : PLAYERS;
+  // Decorate-sort-undecorate: compute each player's sort key ONCE rather than
+  // recomputing value/ADP lookups inside every comparison (O(n) instead of O(n log n) lookups).
+  const bySortedKey = (keyFn, dir) => {
+    const decorated = src.map((p, i) => ({ p, k: keyFn(p), i }));
+    decorated.sort((a, b) => (a.k - b.k) * dir || (a.i - b.i));
+    return decorated.map(d => d.p);
+  };
   if(sortKey==='adp-dynasty'||sortKey==='adp-redraft'){
-    return [...src].sort((a,b)=>(getADP(a.name)||9999)-(getADP(b.name)||9999));
+    return bySortedKey(p => getADP(p.name) || 9999, 1);
   }
   // RA/FC value sort (StatChasers-style): sort by actual dynasty VALUE desc, not rank asc
   if(sortKey==='ra-value' || sortKey==='fc-value'){
-    return [...src].sort((a,b)=>{
-      const av = (typeof getPlayerValue==='function') ? (getPlayerValue(a.name) || 0) : 0;
-      const bv = (typeof getPlayerValue==='function') ? (getPlayerValue(b.name) || 0) : 0;
-      // If both 0 (picks or unknown), fall back to r0 ascending to preserve rough ordering
-      if (av === 0 && bv === 0) return (a.r0||999) - (b.r0||999);
-      return bv - av;  // value desc
-    });
+    const hasGPV = typeof getPlayerValue==='function';
+    return src.map((p,i) => {
+      const v = hasGPV ? (getPlayerValue(p.name) || 0) : 0;
+      return { p, v, r0:(p.r0||999), i };
+    }).sort((a,b) => {
+      if (a.v === 0 && b.v === 0) return (a.r0 - b.r0) || (a.i - b.i);
+      return (b.v - a.v) || (a.i - b.i);
+    }).map(d => d.p);
   }
   // Column-header sort: REDRAFT (FC redraftValue, desc)
   if(sortKey==='redraft-col'){
-    return [...src].sort((a,b)=>{
-      const av = (typeof getFCValue==='function' && getFCValue(a.name)?.redraftValue) || 0;
-      const bv = (typeof getFCValue==='function' && getFCValue(b.name)?.redraftValue) || 0;
-      return bv - av;  // desc
-    });
+    const hasFC = typeof getFCValue==='function';
+    return bySortedKey(p => (hasFC && getFCValue(p.name)?.redraftValue) || 0, -1);
   }
   // Column-header sort: ADP (asc — lowest pick number first)
   if(sortKey==='adp-col'){
-    return [...src].sort((a,b)=>{
-      const av = (typeof getADP==='function' && getADP(a.name)) || 9999;
-      const bv = (typeof getADP==='function' && getADP(b.name)) || 9999;
-      return av - bv;  // asc
-    });
+    const hasADP = typeof getADP==='function';
+    return bySortedKey(p => (hasADP && getADP(p.name)) || 9999, 1);
   }
   // "my" sort = user's uploaded CSV ranks (stored in p.rMy)
   if(sortKey==='my'){
@@ -9857,6 +9865,17 @@ function renderListDebounced(){
   clearTimeout(_renderListT);
   _renderListT = setTimeout(renderList, 120);
 }
+// renderList only fills the list variant visible at the current width, so re-run
+// it (debounced) when the viewport crosses the 700px desktop/mobile breakpoint.
+let _wasMobileWidth = window.innerWidth <= 700;
+window.addEventListener('resize', () => {
+  const nowMobile = window.innerWidth <= 700;
+  if (nowMobile !== _wasMobileWidth) {
+    _wasMobileWidth = nowMobile;
+    clearTimeout(_renderListT);
+    _renderListT = setTimeout(renderList, 80);
+  }
+});
 function renderList(){
   const tbody=document.getElementById('plist-body');
   const mobileContainer=document.getElementById('plist-mobile');
@@ -9883,7 +9902,9 @@ function renderList(){
   if(nextSlot){const[r,pos]=nextSlot.split('.').map(Number);overallPick=(r-1)*NUM_TEAMS+pos;}
 
   
-  const rows = sortedPlayers().map(p => {
+  // Sort once and reuse for both the row build and the tier-break pass below.
+  const _sortedList = sortedPlayers();
+  const rows = _sortedList.map(p => {
     const nn=normName(p.name);
     // Browse-rankings mode (completed draft → "Browse rankings"): show a clean
     // board, ignoring the finished draft's picks. Data is kept intact so the user
@@ -10098,7 +10119,7 @@ function renderList(){
     return { desktop: desktopRow, mobile: mobileRow };
   });
   
-  const sorted = sortedPlayers();
+  const sorted = _sortedList;
   let lastRank = 0;
   const rowsWithTiers = [];
   let tierNum = 1;
@@ -10173,8 +10194,11 @@ function renderList(){
   }
   cappedRows = cleaned;
 
-  tbody.innerHTML = cappedRows.map(r=>r.desktop).join('');
-  if(mobileContainer) mobileContainer.innerHTML = cappedRows.map(r=>r.mobile).join('');
+  // Only insert the variant that's actually visible at this width — building DOM
+  // nodes for ~400 hidden rows of the other layout on every render is pure cost.
+  const _mobileMode = window.innerWidth <= 700;
+  tbody.innerHTML = _mobileMode ? '' : cappedRows.map(r=>r.desktop).join('');
+  if(mobileContainer) mobileContainer.innerHTML = _mobileMode ? cappedRows.map(r=>r.mobile).join('') : '';
 
   document.getElementById('hav')&&(document.getElementById('hav').textContent=avail);
   document.getElementById('hgn').textContent=tot;
