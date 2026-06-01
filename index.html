@@ -2329,35 +2329,23 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   }
 
   /* ── Research Hub specific ── */
-  #page-research h1 {
-    font-size: 26px !important;
-    text-transform: uppercase;
+  #page-research h1.res-title {
+    font-size: 24px !important;
+    text-transform: none;
   }
-  /* Filter bento → stack to single column on mobile */
-  #page-research > .proto-page > div:nth-of-type(2) {
-    grid-template-columns: 1fr !important;
-    gap: 8px !important;
-  }
-  /* Compact filter cards on mobile */
-  #page-research > .proto-page > div:nth-of-type(2) > div {
-    padding: 12px 14px !important;
-  }
-  /* Make Export CSV + Watchlist buttons full-width row on mobile */
-  #page-research > .proto-page > div:first-of-type > div:last-child {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-  #page-research > .proto-page > div:first-of-type > div:last-child > button {
+  /* Toolbar + quick row reflow on mobile */
+  #page-research .res-toolbar { gap: 7px !important; }
+  #page-research .res-search { flex: 1 1 100% !important; order: -1; }
+  #page-research .res-select { flex: 1 1 auto; max-width: none !important; }
+  #page-research .res-head-actions { width: 100%; }
+  #page-research .res-act {
     flex: 1;
     min-width: 0;
     min-height: 44px;
-    padding: 10px 12px !important;
-    font-size: 11px !important;
+    justify-content: center;
   }
-  /* Active filters tile — reduce to half-height card */
-  #res-player-count {
-    font-size: 28px !important;
-  }
+  /* Dossier stacks on mobile */
+  #page-research .res-dossier { flex-direction: column; gap: 14px; }
   
   /* ── Portfolio header ── */
   #page-portfolio h1 {
@@ -4289,82 +4277,62 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 <div class="page z1" id="page-research" style="overflow-y:auto">
   <div class="proto-page" style="max-width:1280px">
 
-    <!-- Page header — Research Hub prototype style -->
-    <div style="margin-bottom:28px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px">
-        <div>
-          <h1 style="font-size:56px;font-weight:900;color:var(--text);font-family:var(--font-sans);margin:0 0 8px;letter-spacing:-0.04em;line-height:1;text-transform:uppercase">RESEARCH HUB</h1>
-          <p style="font-size:14px;color:var(--muted);font-family:var(--font-sans);line-height:1.6">Advanced player metrics and comparative data tables.</p>
-        </div>
-        <div style="display:flex;gap:10px">
-          <button style="display:flex;align-items:center;gap:8px;padding:10px 18px;background:rgba(28,43,60,0.8);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:background 150ms" onmouseover="this.style.background='rgba(40,55,75,0.9)'" onmouseout="this.style.background='rgba(28,43,60,0.8)'">
-            ↓ EXPORT CSV
-          </button>
-          <button style="display:flex;align-items:center;gap:8px;padding:10px 18px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:8px;color:#fff;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;box-shadow:0 0 16px rgba(204,0,60,0.3)">
-            ★ WATCHLIST
-          </button>
-        </div>
+    <!-- Page header -->
+    <div class="res-head">
+      <div>
+        <h1 class="res-title">Research Hub</h1>
+        <p class="res-sub">Player values, game logs &amp; advanced metrics — search anyone or browse the board.</p>
+      </div>
+      <div class="res-head-actions">
+        <button class="res-act" id="res-export-btn" onclick="_resExportCSV()" title="Download the current list as CSV">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Export CSV
+        </button>
+        <button class="res-act res-act-watch" id="res-watch-btn" onclick="_resToggleWatchOnly()" title="Show only your watchlist">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 2.6 5.5 6 .8-4.4 4.2 1.1 6L12 17.8 6.7 19.5l1.1-6L3.4 9.3l6-.8Z"/></svg>
+          Watchlist
+        </button>
       </div>
     </div>
 
-    <!-- Filter bento grid — prototype layout -->
-    <div style="display:grid;grid-template-columns:1fr 1.6fr 0.7fr;gap:12px;margin-bottom:20px;align-items:stretch">
-
-      <!-- Position filter card -->
-      <div style="background:rgba(18,33,49,0.55);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 18px;backdrop-filter:blur(12px)">
-        <div style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted);margin-bottom:12px">POSITION</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <button class="sbtn on" id="res-pos-ALL" onclick="researchSetPos('ALL')" style="font-size:11px;padding:5px 12px">ALL</button>
-          <button class="sbtn" id="res-pos-QB" onclick="researchSetPos('QB')" style="font-size:11px;padding:5px 12px">QB</button>
-          <button class="sbtn" id="res-pos-RB" onclick="researchSetPos('RB')" style="font-size:11px;padding:5px 12px">RB</button>
-          <button class="sbtn" id="res-pos-WR" onclick="researchSetPos('WR')" style="font-size:11px;padding:5px 12px">WR</button>
-          <button class="sbtn" id="res-pos-TE" onclick="researchSetPos('TE')" style="font-size:11px;padding:5px 12px">TE</button>
-        </div>
+    <!-- Toolbar -->
+    <div class="res-toolbar">
+      <div class="res-search">
+        <span class="res-search-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4-4"/></svg></span>
+        <input id="research-search" placeholder="Search any player…"
+          oninput="researchSearch(this.value);document.getElementById('research-search-hint').style.display=this.value.length>1?'block':'none'"
+          onkeydown="if(event.key==='Enter')researchSearch(this.value)">
       </div>
-
-      <!-- Quick filters card -->
-      <div style="background:rgba(18,33,49,0.55);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px 18px;backdrop-filter:blur(12px)">
-        <div style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted);margin-bottom:12px">QUICK FILTERS</div>
-        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)" title="Players under 24 with high dynasty ceiling">
-            <input type="checkbox" id="filter-young" onchange="_resApplyFilters()" style="accent-color:var(--accent);width:14px;height:14px"> Rising Stars (U24)
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)" title="Players trending up in dynasty value this week">
-            <input type="checkbox" id="filter-trending" onchange="_resApplyFilters()" style="accent-color:var(--accent);width:14px;height:14px"> Trending Up ▲
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)" title="Value above 5000 — elite dynasty assets">
-            <input type="checkbox" id="filter-elite" onchange="_resApplyFilters()" style="accent-color:var(--accent);width:14px;height:14px"> Elite Tier (5000+)
-          </label>
-        </div>
-        <!-- Search field below filters -->
-        <div style="margin-top:12px;display:flex;align-items:center;gap:8px;background:rgba(1,15,31,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px">
-          <span style="color:var(--muted);font-size:14px">🔍</span>
-          <input id="research-search" placeholder="Search any player..."
-            style="flex:1;background:none;border:none;outline:none;color:var(--text);font-size:13px;font-family:var(--font-sans)"
-            oninput="researchSearch(this.value);document.getElementById('research-search-hint').style.display=this.value.length>1?'block':'none'"
-            onkeydown="if(event.key==='Enter')researchSearch(this.value)">
-        </div>
-        <!-- Vs Opponent filter -->
-        <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
-          <div style="display:flex;align-items:center;gap:6px;background:rgba(1,15,31,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:6px 10px;flex:1">
-            <span style="color:var(--muted);font-size:11px;font-family:var(--font-mono);white-space:nowrap">VS OPP</span>
-            <input id="filter-opp" placeholder="e.g. KC, @DAL, DET..." maxlength="8"
-              style="flex:1;background:none;border:none;outline:none;color:var(--text);font-size:12px;font-family:var(--font-mono);text-transform:uppercase"
-              oninput="this.value=this.value.toUpperCase();clearTimeout(window._oppTimer);window._oppTimer=setTimeout(()=>_resApplyOppFilter(this.value),450)"
-              onkeydown="if(event.key==='Escape'){this.value='';_resApplyOppFilter('')}">
-          </div>
-          <button id="filter-opp-clear" onclick="document.getElementById('filter-opp').value='';_resApplyOppFilter('')" 
-            style="display:none;background:rgba(204,0,60,0.2);border:1px solid rgba(204,0,60,0.3);color:var(--accent2);border-radius:6px;padding:6px 10px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:var(--font-mono)">✕ Clear</button>
-        </div>
+      <div class="res-seg res-pos-seg" id="res-pos-seg">
+        <button class="res-segbtn all on" id="res-pos-ALL" onclick="researchSetPos('ALL')">ALL</button>
+        <button class="res-segbtn QB" id="res-pos-QB" onclick="researchSetPos('QB')">QB</button>
+        <button class="res-segbtn RB" id="res-pos-RB" onclick="researchSetPos('RB')">RB</button>
+        <button class="res-segbtn WR" id="res-pos-WR" onclick="researchSetPos('WR')">WR</button>
+        <button class="res-segbtn TE" id="res-pos-TE" onclick="researchSetPos('TE')">TE</button>
       </div>
-
-      <!-- Active filters counter — crimson gradient -->
-      <div style="background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-shadow:0 0 24px rgba(204,0,60,0.25)">
-        <div style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:rgba(255,220,220,0.75)">ACTIVE FILTERS</div>
-        <div style="font-size:42px;font-weight:900;color:#fff;font-family:var(--font-mono);line-height:1;margin:4px 0" id="res-player-count">—</div>
-        <div style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:rgba(255,220,220,0.75)">PLAYERS FOUND</div>
+      <select id="res-team-filter" class="res-select" onchange="_resComputeView()" title="Filter by team" aria-label="Filter by team">
+        <option value="">All teams</option>
+      </select>
+      <select id="res-age-filter" class="res-select" onchange="_resComputeView()" title="Filter by age" aria-label="Filter by age">
+        <option value="">Any age</option>
+        <option value="u23">Under 23</option>
+        <option value="u25">Under 25</option>
+        <option value="25-29">25–29</option>
+        <option value="30+">30 &amp; older</option>
+      </select>
+      <div class="res-seg res-mode-seg">
+        <button class="res-segbtn on" id="res-mode-dynasty" onclick="_resSetMode('dynasty')">DYNASTY</button>
+        <button class="res-segbtn" id="res-mode-redraft" onclick="_resSetMode('redraft')">REDRAFT</button>
       </div>
+    </div>
 
+    <!-- Quick filters + live count -->
+    <div class="res-quick">
+      <span class="res-quick-lbl">Quick</span>
+      <button class="res-chip" id="qf-young" onclick="_resToggleQuick('young')" title="Players under 24 with high dynasty ceiling">Rising Stars · U24</button>
+      <button class="res-chip" id="qf-trending" onclick="_resToggleQuick('trending')" title="Trending up this week">Trending ▲</button>
+      <button class="res-chip" id="qf-elite" onclick="_resToggleQuick('elite')" title="Value 5000+ — elite dynasty assets">Elite · 5000+</button>
+      <span class="res-count"><b id="res-player-count">—</b> players</span>
     </div>
 
     <!-- Search hint -->
@@ -4375,28 +4343,34 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <!-- Autocomplete dropdown -->
     <div id="research-autocomplete" style="display:none;background:var(--s1);border:1px solid var(--border2);border-radius:10px;margin-bottom:14px;overflow:hidden;max-height:220px;overflow-y:auto;position:relative;z-index:10"></div>
 
-    <!-- Player profile (hidden until player selected) -->
+    <!-- Player dossier (hidden until player selected) -->
     <div id="research-profile" style="display:none">
+      <button class="res-back" onclick="_resCloseProfile()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="m15 18-6-6 6-6"/></svg>
+        Back to rankings
+      </button>
 
-      <!-- Hero row -->
-      <div id="res-hero" style="display:flex;align-items:flex-start;gap:16px;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border)">
-        <img id="res-avatar" alt="" style="width:68px;height:68px;border-radius:12px;object-fit:cover;background:var(--s2);border:1px solid var(--border2);flex-shrink:0" onerror="this.style.display='none'">
-        <div style="flex:1;min-width:0">
-          <div id="res-name" style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--font-sans);margin-bottom:5px"></div>
-          <div id="res-meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"></div>
-          <div id="res-values" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      <!-- Dossier hero -->
+      <div class="res-dossier" id="res-hero">
+        <div class="res-dossier-id">
+          <img id="res-avatar" alt="" onerror="this.style.display='none'">
+          <div style="min-width:0">
+            <div id="res-name" class="res-dossier-name"></div>
+            <div id="res-meta" class="res-dossier-meta"></div>
+            <div id="res-verdict" class="res-dossier-verdict"></div>
+          </div>
         </div>
-        <button onclick="document.getElementById('research-profile').style.display='none';document.getElementById('research-leaderboard').style.display='block';document.getElementById('research-search').value='';window._glTargetEl=null;" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;line-height:1;flex-shrink:0" title="Back to leaderboard">✕</button>
+        <div class="res-dossier-val" id="res-values"></div>
       </div>
 
       <!-- KPI strip -->
-      <div id="res-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:18px"></div>
+      <div id="res-kpis"></div>
 
       <!-- Sub-tabs -->
       <div class="la-tabs" style="margin-bottom:18px" id="res-tabs">
         <button class="la-tab on" onclick="setResTab('weekly')">Game Logs</button>
         <button class="la-tab" onclick="setResTab('stats')">Season Stats</button>
-        <button class="la-tab" onclick="setResTab('nflverse')">📊 NFL Stats</button>
+        <button class="la-tab" onclick="setResTab('nflverse')">Advanced</button>
         <button class="la-tab" onclick="setResTab('value')">Dynasty Value</button>
       </div>
 
@@ -4407,16 +4381,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
     <!-- Default state: leaderboard (shown when no player selected) -->
     <div id="research-leaderboard">
-      <div style="background:rgba(13,28,45,0.65);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;backdrop-filter:blur(20px)">
-        <div style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.02);flex-wrap:wrap;gap:10px">
-          <span id="res-lb-title" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.10em;font-family:var(--font-mono);color:var(--muted)">Top dynasty players — Superflex</span>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div class="res-mode-toggle" style="display:inline-flex;border:1px solid rgba(255,255,255,0.12);border-radius:8px;overflow:hidden">
-              <button id="res-mode-dynasty" onclick="_resSetMode('dynasty')" style="padding:6px 14px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:0.06em;cursor:pointer">DYNASTY</button>
-              <button id="res-mode-redraft" onclick="_resSetMode('redraft')" style="padding:6px 14px;background:transparent;color:var(--muted);border:none;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:0.06em;cursor:pointer">REDRAFT</button>
-            </div>
-            <span id="res-lb-source" style="font-size:11px;color:var(--muted)">via <a href="https://rosteraudit.com" target="_blank" style="color:#7bd0ff;text-decoration:none">RosterAudit</a></span>
-          </div>
+      <div>
+        <div class="res-lb-cap" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <span id="res-lb-title">Top dynasty players — Superflex</span>
+          <span id="res-lb-source" style="font-size:11px;color:var(--muted)">via <a href="https://rosteraudit.com" target="_blank" style="color:var(--sky);text-decoration:none">RosterAudit</a></span>
         </div>
         <div id="res-lb-body">
           <div style="text-align:center;padding:48px;color:var(--muted);font-size:14px">
@@ -5556,12 +5524,168 @@ let _resLbCache = null;
 let _resSearchTimer = null;
 let _resMode = 'dynasty';      // 'dynasty' | 'redraft'
 let _resRedraftCache = null;   // cached redraft leaderboard (FantasyCalc 1QB redraft)
+// Redesign state: filters + sort applied on top of the active cache
+let _resTeamFilter = '';
+let _resAgeFilter = '';
+let _resQuick = { young:false, trending:false, elite:false };
+let _resWatchOnly = false;
+let _resSort = { col:'value', dir:'desc' };   // value|age|trend|rank ; asc|desc
+let _resTeamsPopulated = false;
+
+// Build the team dropdown once from whatever cache is loaded
+function _resPopulateTeams(){
+  const sel = document.getElementById('res-team-filter');
+  if(!sel) return;
+  const src = _resMode === 'redraft' ? _resRedraftCache : _resLbCache;
+  if(!src || !src.length) return;
+  const teams = [...new Set(src.map(p => (p.team||'').trim().toUpperCase()).filter(Boolean))].sort();
+  if(!teams.length) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All teams</option>' + teams.map(t=>`<option value="${t}">${t}</option>`).join('');
+  if(teams.includes(cur)) sel.value = cur;
+  _resTeamsPopulated = true;
+}
+
+function _resAgeMatch(age){
+  if(!_resAgeFilter) return true;
+  const a = Number(age);
+  if(!a) return false;
+  switch(_resAgeFilter){
+    case 'u23': return a < 23;
+    case 'u25': return a < 25;
+    case '25-29': return a >= 25 && a <= 29;
+    case '30+': return a >= 30;
+  }
+  return true;
+}
+
+// Single source of truth for the visible list: cache → filters → sort → render
+function _resComputeView(){
+  const cache = _resMode === 'redraft' ? _resRedraftCache : _resLbCache;
+  if(!cache){ return; }
+  if(!_resTeamsPopulated) _resPopulateTeams();
+
+  const team = (document.getElementById('res-team-filter')?.value || '').toUpperCase();
+  _resTeamFilter = team;
+  _resAgeFilter = document.getElementById('res-age-filter')?.value || '';
+
+  let list = cache.filter(p => {
+    const val = p.val_sf || p.sf || p.value || 0;
+    const age = p.age;
+    const trend = p.trend_7d || p.trend || 0;
+    if(team && (p.team||'').toUpperCase() !== team) return false;
+    if(!_resAgeMatch(age)) return false;
+    if(_resQuick.young && !(age && Number(age) < 24)) return false;
+    if(_resQuick.trending && !(trend > 0)) return false;
+    if(_resQuick.elite && !(val >= 5000)) return false;
+    if(_resWatchOnly && !(typeof watchlist !== 'undefined' && watchlist.has(p.name))) return false;
+    return true;
+  });
+
+  // Sort
+  const dir = _resSort.dir === 'asc' ? 1 : -1;
+  const keyFns = {
+    value: p => p.val_sf || p.sf || p.value || 0,
+    age:   p => Number(p.age) || 0,
+    trend: p => p.trend_7d || p.trend || 0,
+    rank:  p => p.rank || p.sf_rank || 999999,
+  };
+  const kf = keyFns[_resSort.col] || keyFns.value;
+  // rank sorts opposite (lower rank = better); keep intuitive: rank asc = best first
+  list = [...list].sort((a,b) => {
+    const av = kf(a), bv = kf(b);
+    if(av === bv) return 0;
+    return (av < bv ? -1 : 1) * dir;
+  });
+
+  const countEl = document.getElementById('res-player-count');
+  if(countEl) countEl.textContent = list.length;
+  _resRenderLeaderboard(list);
+}
+
+function _resToggleQuick(key){
+  _resQuick[key] = !_resQuick[key];
+  document.getElementById('qf-'+key)?.classList.toggle('on', _resQuick[key]);
+  _resComputeView();
+}
+
+function _resToggleWatchOnly(){
+  _resWatchOnly = !_resWatchOnly;
+  document.getElementById('res-watch-btn')?.classList.toggle('on', _resWatchOnly);
+  // If a profile is open, return to the list so the filter is visible
+  if(document.getElementById('research-profile')?.style.display !== 'none') _resCloseProfile();
+  _resComputeView();
+}
+
+function _resSetSort(col){
+  if(_resSort.col === col){
+    _resSort.dir = _resSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _resSort.col = col;
+    // sensible default direction per column
+    _resSort.dir = (col === 'rank' || col === 'age') ? 'asc' : 'desc';
+  }
+  window._resLbVisibleCount = 25;
+  _resComputeView();
+}
+
+function _resCloseProfile(){
+  const pr = document.getElementById('research-profile');
+  const lb = document.getElementById('research-leaderboard');
+  if(pr) pr.style.display = 'none';
+  if(lb) lb.style.display = 'block';
+  const si = document.getElementById('research-search');
+  if(si) si.value = '';
+  window._glTargetEl = null;
+  _resPlayer = null;
+  document.querySelectorAll('.res-lb-row').forEach(r => r.classList.remove('active'));
+}
+
+function _resExportCSV(){
+  const cache = _resMode === 'redraft' ? _resRedraftCache : _resLbCache;
+  if(!cache || !cache.length){ if(typeof toast==='function') toast('Nothing to export yet'); return; }
+  // Re-apply the active filters so the export matches what's on screen
+  const team = (document.getElementById('res-team-filter')?.value || '').toUpperCase();
+  const rows = cache.filter(p => {
+    const val = p.val_sf || p.sf || p.value || 0, age = p.age, trend = p.trend_7d || p.trend || 0;
+    if(team && (p.team||'').toUpperCase() !== team) return false;
+    if(!_resAgeMatch(age)) return false;
+    if(_resQuick.young && !(age && Number(age) < 24)) return false;
+    if(_resQuick.trending && !(trend > 0)) return false;
+    if(_resQuick.elite && !(val >= 5000)) return false;
+    if(_resWatchOnly && !(typeof watchlist !== 'undefined' && watchlist.has(p.name))) return false;
+    return true;
+  });
+  const isRedraft = _resMode === 'redraft';
+  const head = ['Rank','Player','Pos','Team','Value','Age','Trend7d'];
+  const esc = s => `"${String(s==null?'':s).replace(/"/g,'""')}"`;
+  const lines = [head.join(',')];
+  rows.forEach((p,i) => {
+    lines.push([
+      p.rank || p.sf_rank || (i+1),
+      esc(p.name),
+      (p.position||p.pos||'').toUpperCase(),
+      (p.team||'').toUpperCase(),
+      p.val_sf || p.sf || p.value || 0,
+      p.age ? Number(p.age).toFixed(1) : '',
+      isRedraft ? '' : (p.trend_7d || p.trend || 0),
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `vault-research-${isRedraft?'redraft':'dynasty'}-${_resPos.toLowerCase()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  if(typeof toast==='function') toast(`Exported ${rows.length} players`);
+}
 
 async function initResearch() {
   document.getElementById('research-profile')?.style && (document.getElementById('research-profile').style.display = 'none');
   document.getElementById('research-leaderboard')?.style && (document.getElementById('research-leaderboard').style.display = 'block');
   if (!_resLbCache) await _resLoadLeaderboard();
-  else _resRenderLeaderboard(_resLbCache);
+  else _resComputeView();
   document.getElementById('research-search')?.focus();
   // Kick off nflverse in the background on first Research visit (not on page load)
   if (!window.nflverseLoaded && !window._nflverseInitStarted && window.initNflverse) {
@@ -5583,7 +5707,8 @@ async function _resLoadLeaderboard() {
     const players = Array.isArray(data) ? data : (data.players || data.data || []);
     if (!players.length) throw new Error('No data returned');
     _resLbCache = players;
-    _resRenderLeaderboard(players);
+    _resTeamsPopulated = false;
+    _resComputeView();
   } catch(e) {
     // Fallback: build from FantasyCalc values (loaded on boot) + Sleeper player map
     const fcArr = Object.entries(fcValues||{})
@@ -5598,7 +5723,8 @@ async function _resLoadLeaderboard() {
 
     if (fcArr.length) {
       _resLbCache = fcArr;
-      _resRenderLeaderboard(fcArr);
+      _resTeamsPopulated = false;
+      _resComputeView();
     } else {
       body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">
         <div style="font-size:32px;margin-bottom:12px">⚠</div>
@@ -5614,28 +5740,25 @@ async function _resLoadLeaderboard() {
 function _resToggleWatch(name){
   if (typeof toggleWatch === 'function') toggleWatch(name);
   // Re-render the active mode's leaderboard so the ⭐/☆ updates inline
-  try {
-    const cache = (_resMode === 'redraft') ? _resRedraftCache : _resLbCache;
-    if (cache) _resRenderLeaderboard(cache);
-  } catch(e) {}
+  try { _resComputeView(); } catch(e) {}
 }
 
 // Toggle between Dynasty (RosterAudit SF) and Redraft (FantasyCalc 1QB redraft) views
 function _resSetMode(mode){  if (mode !== 'dynasty' && mode !== 'redraft') mode = 'dynasty';
   _resMode = mode;
-  const dynBtn = document.getElementById('res-mode-dynasty');
-  const rdBtn = document.getElementById('res-mode-redraft');
-  if (dynBtn) { dynBtn.style.background = mode==='dynasty' ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : 'transparent'; dynBtn.style.color = mode==='dynasty' ? '#fff' : 'var(--muted)'; }
-  if (rdBtn)  { rdBtn.style.background  = mode==='redraft' ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : 'transparent'; rdBtn.style.color  = mode==='redraft' ? '#fff' : 'var(--muted)'; }
-  if (mode === 'redraft') _resLoadRedraftLeaderboard();
-  else { if (_resLbCache) _resRenderLeaderboard(_resLbCache); else _resLoadLeaderboard(); }
+  document.getElementById('res-mode-dynasty')?.classList.toggle('on', mode==='dynasty');
+  document.getElementById('res-mode-redraft')?.classList.toggle('on', mode==='redraft');
+  _resTeamsPopulated = false;
+  window._resLbVisibleCount = 25;
+  if (mode === 'redraft') { if (_resRedraftCache) _resComputeView(); else _resLoadRedraftLeaderboard(); }
+  else { if (_resLbCache) _resComputeView(); else _resLoadLeaderboard(); }
 }
 
 // Load redraft leaderboard from FantasyCalc's redraft endpoint (1QB, matches Research tab convention)
 async function _resLoadRedraftLeaderboard() {
   const body = document.getElementById('res-lb-body');
   if (!body) return;
-  if (_resRedraftCache) { _resRenderLeaderboard(_resRedraftCache); return; }
+  if (_resRedraftCache) { _resTeamsPopulated = false; _resComputeView(); return; }
   body.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px"><div style="font-size:22px;animation:spin 1s linear infinite;display:inline-block;margin-bottom:8px">⟳</div><br>Loading redraft values from FantasyCalc...</div>`;
   try {
     const res = await fetch('https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=1&numTeams=12&ppr=1');
@@ -5659,7 +5782,8 @@ async function _resLoadRedraftLeaderboard() {
       };
     }).filter(p => p.name && (_resPos==='ALL' || p.pos===_resPos));
     _resRedraftCache = players;
-    _resRenderLeaderboard(players);
+    _resTeamsPopulated = false;
+    _resComputeView();
   } catch(e) {
     body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">
       <div style="font-size:32px;margin-bottom:12px">⚠</div>
@@ -5698,9 +5822,21 @@ function _resRenderLeaderboard(players) {  const body = document.getElementById(
   const colLabels = isRedraft
     ? ['PLAYER','TEAM',valHdr,'AGE',rankHdr,'WATCH']
     : ['PLAYER','TEAM',valHdr,'AGE','7D TREND',rankHdr,'WATCH'];
+  // sort key per column (null = not sortable)
+  const colSort = isRedraft
+    ? [null,null,'value','age','rank',null]
+    : [null,null,'value','age','trend','rank',null];
+  const arrow = (_resSort.dir === 'asc') ? '▲' : '▼';
   const hdr = `<div class="res-lb-hdr ${isRedraft?'has6':'has7'}" style="display:grid;grid-template-columns:${gridTpl};gap:0;padding:10px 20px;border-bottom:1px solid rgba(255,255,255,0.06)">
-    ${colLabels.map((h,i)=>`
-    <div style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted);${i>=2?'text-align:right':''}">${h}</div>`).join('')}
+    ${colLabels.map((h,i)=>{
+      const sk = colSort[i];
+      const align = i>=2 ? 'justify-content:flex-end;text-align:right' : '';
+      const active = sk && _resSort.col === sk;
+      const inner = sk
+        ? `<span data-sort="${sk}" onclick="_resSetSort('${sk}')" style="${align?'':''}">${h}${active?` <span class="res-sort-ar">${arrow}</span>`:''}</span>`
+        : h;
+      return `<div style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--font-mono);color:${active?'var(--text2)':'var(--muted)'};display:flex;align-items:center;${align}">${inner}</div>`;
+    }).join('')}
   </div>`;
 
   const maxVal = players[0] ? (players[0].val_sf || players[0].sf || players[0].value || 1) : 1;
@@ -5796,18 +5932,8 @@ function _resRenderLeaderboard(players) {  const body = document.getElementById(
 
 
 function _resApplyFilters() {
-  const activeCache = _resMode === 'redraft' ? _resRedraftCache : _resLbCache;
-  if (!activeCache) return;
-  const youngOnly = document.getElementById('filter-young')?.checked;
-  const trendingOnly = document.getElementById('filter-trending')?.checked;
-  const eliteOnly = document.getElementById('filter-elite')?.checked;
-  let filtered = [...activeCache];
-  if (youngOnly) filtered = filtered.filter(p => p.age && Number(p.age) < 24);
-  if (trendingOnly) filtered = filtered.filter(p => (p.trend_7d||0) > 0);
-  if (eliteOnly) filtered = filtered.filter(p => (p.val_sf||p.value||0) >= 5000);
-  const countEl = document.getElementById('res-player-count');
-  if (countEl) countEl.textContent = filtered.length;
-  _resRenderLeaderboard(filtered);
+  // Legacy entrypoint — now delegates to the unified view computation
+  _resComputeView();
 }
 
 // ── Vs Opponent Filter ────────────────────────────────────────────────────
@@ -6032,7 +6158,7 @@ async function researchSelectPlayer(name, sleeperId, pos, team) {
 
   
   document.getElementById('research-profile').style.display = 'block';
-  document.getElementById('research-leaderboard').style.display = ''; // Keep leaderboard visible below
+  document.getElementById('research-leaderboard').style.display = 'none'; // focused dossier — hide the board behind it
 
   
   document.querySelectorAll('.res-lb-row').forEach(r => r.classList.remove('active'));
@@ -6102,12 +6228,13 @@ function _resRenderHero(name, sid, pos, team, val, stats) {
   const nameEl = document.getElementById('res-name');
   const metaEl = document.getElementById('res-meta');
   const valEl  = document.getElementById('res-values');
+  const verdictEl = document.getElementById('res-verdict');
   const avatarEl = document.getElementById('res-avatar');
   if (!nameEl) return;
 
   const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
   const pc = posColors[pos]||'var(--muted)';
-  const posBg = {QB:'rgba(244,114,182,.12)',RB:'rgba(74,222,128,.12)',WR:'rgba(96,165,250,.12)',TE:'rgba(240,192,64,.12)'}[pos]||'rgba(255,255,255,.06)';
+  const posBg = {QB:'rgba(255,102,128,.13)',RB:'rgba(61,204,122,.13)',WR:'rgba(123,208,255,.13)',TE:'rgba(245,200,66,.13)'}[pos]||'rgba(255,255,255,.06)';
 
   nameEl.textContent = name;
   const _mob=document.getElementById('res-open-modal-btn');
@@ -6117,25 +6244,55 @@ function _resRenderHero(name, sid, pos, team, val, stats) {
     avatarEl.style.display = '';
   }
 
-  const age = val?.age ? `· Age ${Number(val.age).toFixed(1)}` : '';
+  const ageN = (val?.age || null) ? Number(val.age) : (()=>{ return null; })();
+  const cacheHit = (_resMode==='redraft'?_resRedraftCache:_resLbCache)?.find(p=>p.name===name) || null;
+  const ageVal = val?.age || cacheHit?.age || null;
+  const ageNum = ageVal ? Number(ageVal) : null;
   const injury = val?.injury_status ? `<span class="res-injury">${val.injury_status}</span>` : '';
   metaEl.innerHTML = `
-    <span style="font-size:12px;padding:3px 9px;border-radius:5px;font-weight:600;background:${posBg};color:${pc}">${pos}</span>
-    <span style="font-size:13px;color:var(--muted)">${team||val?.team||''} ${age}</span>
+    <span class="res-pospill" style="background:${posBg};color:${pc}">${pos}</span>
+    <span class="res-teampill">${team||val?.team||cacheHit?.team||'FA'}</span>
+    ${ageNum ? `<span class="res-teampill">Age ${ageNum.toFixed(1)}</span>` : ''}
     ${injury}`;
 
-  const raValSF = val?.val_sf || getPlayerValue(name) || 0;
+  const raValSF = val?.val_sf || cacheHit?.val_sf || cacheHit?.value || getPlayerValue(name) || 0;
   const raVal1QB = val?.val_1qb || 0;
   const fcVal = getFCValue(name)?.value || 0;
-  const trend7 = val?.trend_7d || 0;
-  const trend30 = val?.trend_30d || 0;
-  valEl.innerHTML = [
-    raValSF ? `<span class="res-val-pill" style="background:rgba(167,139,250,.15);color:#a78bfa">RA SF: ${raValSF.toLocaleString()}</span>` : '',
-    raVal1QB ? `<span class="res-val-pill" style="background:rgba(96,165,250,.12);color:#60a5fa">RA 1QB: ${raVal1QB.toLocaleString()}</span>` : '',
-    fcVal ? `<span class="res-val-pill" style="background:rgba(74,222,128,.1);color:#4ade80">FC: ${fcVal.toLocaleString()}</span>` : '',
-    trend7 ? `<span class="res-val-pill" style="background:${trend7>0?'rgba(74,222,128,.1)':'rgba(244,114,182,.1)'};color:${trend7>0?'#4ade80':'#f472b6'}">${trend7>0?'+':''}${trend7} 7d</span>` : '',
-    trend30 ? `<span class="res-val-pill" style="background:${trend30>0?'rgba(74,222,128,.1)':'rgba(244,114,182,.1)'};color:${trend30>0?'#4ade80':'#f472b6'}">${trend30>0?'+':''}${trend30} 30d</span>` : '',
+  const trend7 = Number(val?.trend_7d ?? cacheHit?.trend_7d ?? 0) || 0;
+  const trend30 = Number(val?.trend_30d ?? 0) || 0;
+  const sfRank = val?.sf_rank || val?.rank || cacheHit?.rank || cacheHit?.sf_rank || null;
+
+  // ── Verdict line ──────────────────────────────────────────────
+  if (verdictEl) {
+    const tier = raValSF>=6000?'Elite dynasty asset'
+      : raValSF>=3500?'High-end starter'
+      : raValSF>=1500?'Rotational value'
+      : raValSF>0?'Depth / speculative':'Unranked';
+    let trendTxt, dot;
+    if (trend7>0 || trend30>0) { trendTxt='trending up'; dot='var(--rb)'; }
+    else if (trend7<0 || trend30<0) { trendTxt='cooling off'; dot='var(--qb)'; }
+    else { trendTxt='holding steady'; dot='var(--muted)'; }
+    let ctx = '';
+    if (ageNum && pos==='RB' && ageNum>=27) ctx='RB age-cliff risk';
+    else if (ageNum && pos==='QB' && ageNum>=37) ctx='late-career QB';
+    else if (ageNum && pos!=='QB' && ageNum>=30) ctx='aging asset';
+    else if (ageNum && ageNum<24 && raValSF>=3000) ctx='young ascending core';
+    verdictEl.innerHTML = `<span class="res-verdict-dot" style="background:${dot}"></span>${tier} · ${trendTxt}${ctx?` · <span style="color:${dot==='var(--muted)'?'var(--te)':dot}">${ctx}</span>`:''}`;
+  }
+
+  // ── Value column: headline number + supporting pills ─────────
+  const tcol = t => t>0 ? 'rgba(61,204,122,.14)' : 'rgba(255,102,128,.14)';
+  const ttxt = t => t>0 ? 'var(--rb)' : 'var(--qb)';
+  const pills = [
+    raVal1QB ? `<span class="res-val-pill" style="background:rgba(77,134,240,.14);color:var(--sky)">1QB ${raVal1QB.toLocaleString()}</span>` : '',
+    fcVal ? `<span class="res-val-pill" style="background:rgba(61,204,122,.12);color:var(--rb)">FC ${fcVal.toLocaleString()}</span>` : '',
+    trend7 ? `<span class="res-val-pill" style="background:${tcol(trend7)};color:${ttxt(trend7)}">${trend7>0?'▲ +':'▼ '}${trend7} 7d</span>` : '',
+    trend30 ? `<span class="res-val-pill" style="background:${tcol(trend30)};color:${ttxt(trend30)}">${trend30>0?'▲ +':'▼ '}${trend30} 30d</span>` : '',
   ].filter(Boolean).join('');
+  valEl.innerHTML = `
+    <div class="res-val-big">${raValSF?raValSF.toLocaleString():'—'}</div>
+    <div class="res-val-big-lbl">Dynasty SF${sfRank?` · #${sfRank}`:''}</div>
+    ${pills?`<div class="res-val-pills">${pills}</div>`:''}`;
 }
 
 function _resNorm(obj) {
@@ -15216,6 +15373,90 @@ function pickYear(year) {
   #draft-connect-modal .ld-input-row{ display:flex; gap:8px; }
   #draft-connect-modal .ld-input{ flex:1; }
   #draft-connect-modal .ld-detector-msg{ font-size:12px; color:var(--text2); font-family:var(--font-sans); }
+
+  /* ════════════════ RESEARCH HUB — clean redesign ════════════════ */
+  #page-research .proto-page{ max-width:1180px; }
+  /* Kill legacy glass styling on this page */
+  #page-research .res-panel, #page-research .res-kpi{ background:var(--surface)!important; backdrop-filter:none!important; -webkit-backdrop-filter:none!important; border:1px solid var(--border)!important; }
+  #page-research .res-lb-row{ background:transparent!important; backdrop-filter:none!important; }
+
+  /* Header */
+  .res-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  #page-research h1.res-title{ font-family:var(--font-sans); font-size:30px; font-weight:800; letter-spacing:-.03em; color:var(--text); margin:0; line-height:1; text-transform:none; }
+  .res-sub{ font-family:var(--font-sans); font-size:13.5px; color:var(--muted); margin:8px 0 0; line-height:1.5; }
+  .res-head-actions{ display:flex; gap:8px; }
+  .res-act{ display:inline-flex; align-items:center; gap:7px; height:38px; padding:0 15px; border-radius:9px; border:1px solid var(--border2); background:var(--s2); color:var(--text2); font-family:var(--font-sans); font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; }
+  .res-act svg{ width:15px; height:15px; }
+  .res-act:hover{ color:var(--text); border-color:var(--border3); }
+  .res-act-watch.on{ background:color-mix(in srgb, var(--gold) 18%, transparent); border-color:var(--gold); color:var(--gold); }
+
+  /* Toolbar */
+  .res-toolbar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-bottom:12px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+  .res-search{ flex:1 1 240px; min-width:190px; display:flex; align-items:center; gap:9px; height:38px; padding:0 13px; border-radius:9px; border:1px solid var(--border); background:var(--s2); position:relative; transition:border-color .15s; }
+  .res-search:focus-within{ border-color:var(--accent); }
+  .res-search-ic{ color:var(--muted); display:inline-flex; flex-shrink:0; } .res-search-ic svg{ width:16px; height:16px; }
+  #page-research .res-search input{ flex:1; min-width:0; background:transparent!important; border:none!important; outline:none!important; box-shadow:none!important; color:var(--text)!important; font-family:var(--font-sans)!important; font-size:13.5px!important; padding:0!important; }
+  #page-research .res-search input::placeholder{ color:var(--muted); }
+  .res-seg{ display:flex; align-items:center; background:var(--s2); border:1px solid var(--border); border-radius:9px; padding:3px; gap:2px; flex-shrink:0; }
+  .res-segbtn{ border:0; background:transparent; color:var(--muted); font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:.03em; padding:7px 12px; border-radius:7px; cursor:pointer; transition:color .12s, background .12s; }
+  .res-segbtn:hover{ color:var(--text); }
+  .res-pos-seg .res-segbtn.on{ color:#fff; }
+  .res-pos-seg .res-segbtn.all.on{ background:var(--accent); color:#fff; }
+  .res-pos-seg .res-segbtn.QB.on{ background:var(--qb); color:#1a0b10; }
+  .res-pos-seg .res-segbtn.RB.on{ background:var(--rb); color:#06140d; }
+  .res-pos-seg .res-segbtn.WR.on{ background:var(--wr); color:#06141a; }
+  .res-pos-seg .res-segbtn.TE.on{ background:var(--te); color:#1a1405; }
+  .res-mode-seg .res-segbtn.on{ background:var(--accent); color:#fff; }
+  .res-select{ height:38px; padding:0 32px 0 13px; border-radius:9px; border:1px solid var(--border); background-color:var(--s2); background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238794a6' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 11px center; background-size:13px; color:var(--text2); font-family:var(--font-sans); font-size:12.5px; font-weight:600; cursor:pointer; -webkit-appearance:none; appearance:none; transition:border-color .15s; max-width:170px; }
+  .res-select:hover{ border-color:var(--border3); color:var(--text); }
+  .res-select:focus{ outline:none; border-color:var(--accent); }
+
+  /* Quick filter row */
+  .res-quick{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .res-quick-lbl{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-right:2px; }
+  .res-chip{ font-family:var(--font-sans); font-size:12px; font-weight:600; color:var(--text2); background:var(--s2); border:1px solid var(--border); border-radius:999px; padding:6px 13px; cursor:pointer; transition:all .15s; }
+  .res-chip:hover{ border-color:var(--border3); color:var(--text); }
+  .res-chip.on{ background:color-mix(in srgb, var(--accent) 16%, transparent); border-color:var(--accent); color:var(--text); }
+  .res-count{ margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--muted); letter-spacing:.04em; white-space:nowrap; }
+  .res-count b{ color:var(--text); font-weight:700; }
+
+  /* Leaderboard container — flat clean card */
+  #page-research #research-leaderboard > div{ background:var(--surface)!important; border:1px solid var(--border)!important; border-radius:14px!important; overflow:hidden; backdrop-filter:none!important; }
+  #page-research .res-lb-cap{ padding:13px 20px!important; border-bottom:1px solid var(--border)!important; background:transparent!important; }
+  #page-research #res-lb-title{ font-family:var(--font-mono)!important; font-size:10px!important; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  /* sortable headers */
+  .res-lb-hdr [data-sort]{ cursor:pointer; user-select:none; transition:color .12s; display:inline-flex; align-items:center; gap:4px; }
+  .res-lb-hdr [data-sort]:hover{ color:var(--text)!important; }
+  .res-sort-ar{ color:var(--accent); font-size:9px; }
+
+  /* Player dossier */
+  .res-back{ display:inline-flex; align-items:center; gap:7px; font-family:var(--font-sans); font-size:12.5px; font-weight:600; color:var(--text2); background:var(--s2); border:1px solid var(--border2); border-radius:8px; padding:8px 13px; cursor:pointer; margin-bottom:14px; transition:all .15s; }
+  .res-back:hover{ color:var(--text); border-color:var(--border3); }
+  .res-dossier{ display:flex; align-items:stretch; gap:18px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px 22px; margin-bottom:14px; flex-wrap:wrap; }
+  .res-dossier-id{ display:flex; gap:16px; flex:1; min-width:240px; align-items:center; }
+  #page-research #res-avatar{ width:72px; height:72px; border-radius:14px; object-fit:cover; background:var(--s2); border:1px solid var(--border2); flex-shrink:0; }
+  .res-dossier-name{ font-family:var(--font-sans); font-size:24px; font-weight:800; letter-spacing:-.02em; color:var(--text); line-height:1.05; }
+  .res-dossier-meta{ display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-top:7px; }
+  .res-pospill{ font-family:var(--font-mono); font-size:11px; font-weight:700; padding:3px 9px; border-radius:6px; }
+  .res-teampill{ font-family:var(--font-mono); font-size:12px; color:var(--muted); }
+  .res-dossier-verdict{ margin-top:11px; font-family:var(--font-sans); font-size:12.5px; color:var(--text2); display:flex; align-items:center; gap:8px; line-height:1.4; }
+  .res-verdict-dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .res-dossier-val{ display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:9px; padding-left:18px; border-left:1px solid var(--border); min-width:150px; }
+  .res-val-big{ font-family:var(--font-mono); font-size:34px; font-weight:800; letter-spacing:-.02em; color:var(--text); line-height:1; }
+  .res-val-big-lbl{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  #page-research .res-val-pills{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  #page-research .res-val-pill{ font-family:var(--font-mono); font-size:11px; font-weight:700; padding:3px 9px; border-radius:6px; }
+  @media(max-width:640px){
+    .res-dossier-val{ padding-left:0; border-left:0; align-items:flex-start; width:100%; }
+    #page-research #res-values{ justify-content:flex-start; }
+  }
+
+  /* KPI strip */
+  #page-research #res-kpis{ display:grid; grid-template-columns:repeat(auto-fill,minmax(106px,1fr)); gap:8px; margin-bottom:18px; }
+  #page-research .res-kpi{ background:var(--s2)!important; border:1px solid var(--border)!important; border-radius:10px!important; padding:11px 13px; }
+  #page-research .res-kpi-val{ font-family:var(--font-mono)!important; font-size:19px!important; font-weight:800!important; }
+  #page-research .res-kpi-lbl{ font-family:var(--font-mono)!important; font-size:9px!important; letter-spacing:.1em; color:var(--muted)!important; }
+  #page-research #res-tabs{ border-bottom:1px solid var(--border)!important; }
 </style>
 <script>
 (function(){
