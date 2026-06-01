@@ -6557,7 +6557,7 @@ async function _resRenderTab(tab, name, pos, sid, stats, val) {
             ['Age',cliffAge?cliffAge.toFixed(1):'—','var(--text)'],
             ['Cliff risk',cliffRisk,cliffColor],
             ['Position',pos,'var(--text)'],
-            ['Team',val?.team||team||'—','var(--text)'],
+            ['Team',val?.team||_resPlayer?.team||'—','var(--text)'],
           ].map(([l,v,c])=>`
           <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
             <span style="font-size:13px;color:var(--muted)">${l}</span>
