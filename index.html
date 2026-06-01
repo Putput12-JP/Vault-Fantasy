@@ -1170,6 +1170,7 @@ header{
 .pf-v2-tags{display:flex;gap:5px;flex-wrap:wrap}
 .pf-v2-tag{font-size:8px;padding:2px 6px;border-radius:3px;font-family:var(--font-mono);letter-spacing:.04em;font-weight:600}
 .pf-v2-tag-dyn{background:rgba(61,204,122,.12);color:var(--rb)}
+.pf-v2-tag-rd{background:rgba(123,208,255,.14);color:#7bd0ff}
 .pf-v2-tag-sf{background:rgba(204,0,60,.12);color:var(--qb)}
 .pf-v2-tag-teams{background:var(--s3);color:var(--muted)}
 .pf-v2-na{color:var(--dim);font-style:italic}
@@ -1203,6 +1204,24 @@ header{
 .pf-mix-leg{font-family:var(--font-mono);font-size:9.5px;color:var(--muted);display:flex;align-items:center;gap:5px}
 .pf-mix-leg b{color:var(--text2);font-weight:700}
 .pf-mix-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+/* Most Rostered card rows */
+.pf-own-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border)}
+.pf-own-row:last-child{border-bottom:none}
+.pf-own-pos{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0;min-width:26px;text-align:center}
+.pf-own-name{flex:1;font-size:13px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-own-dots{display:flex;gap:3px;flex-shrink:0}
+.pf-own-dot{width:7px;height:7px;border-radius:2px;background:var(--s3)}
+.pf-own-dot.on{background:var(--accent)}
+.pf-own-count{font-family:var(--font-mono);font-size:11px;color:var(--muted);font-weight:700;width:26px;text-align:right;flex-shrink:0}
+/* Signals card rows */
+.pf-sig-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;background:var(--s2);cursor:pointer;transition:background .12s;margin-bottom:8px}
+.pf-sig-row:last-child{margin-bottom:0}
+.pf-sig-row:hover{background:var(--s3)}
+.pf-sig-tag{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:999px;flex-shrink:0}
+.pf-sig-pos{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0;min-width:26px;text-align:center}
+.pf-sig-main{display:flex;flex-direction:column;min-width:0;flex:1;gap:1px}
+.pf-sig-name{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-sig-note{font-family:var(--font-mono);font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── Portfolio finances: buy-in / payout column + ladder + editor ── */
 .pf-v2-stat-foot{font-size:9.5px;color:var(--muted);font-family:var(--font-mono);margin-top:5px}
@@ -3571,7 +3590,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <!-- Rostered Players + Signals row -->
       <div class="pf-v2-bottom-grid">
         <div class="pf-v2-section">
-          <div class="pf-v2-section-head"><span class="pf-v2-section-title">Rostered Players</span></div>
+          <div class="pf-v2-section-head"><span class="pf-v2-section-title">Most Rostered</span><span class="pf-v2-section-hint" id="pf-owned-hint"></span></div>
           <div id="pf-v2-owned" class="pf-v2-section-body"></div>
         </div>
         <div class="pf-v2-section">
@@ -13672,7 +13691,9 @@ function renderPortfolioV2(){
     const lgId = lg.league_id || '';
     const isExpanded = expandedSet.has(lgId);
     const tags = [
-      d.isDynasty ? '<span class="pf-v2-tag pf-v2-tag-dyn">DYN</span>' : '',
+      d.isDynasty
+        ? '<span class="pf-v2-tag pf-v2-tag-dyn">DYNASTY</span>'
+        : '<span class="pf-v2-tag pf-v2-tag-rd">REDRAFT</span>',
       d.isSF      ? '<span class="pf-v2-tag pf-v2-tag-sf">SF</span>' : '',
       `<span class="pf-v2-tag pf-v2-tag-teams">${d.totalTeams||'?'}T</span>`,
     ].filter(Boolean).join('');
@@ -13764,9 +13785,11 @@ function renderPortfolioV2(){
     if (ownedEl && typeof _buildPortfolioOwnedHtml === 'function') {
       ownedEl.innerHTML = _buildPortfolioOwnedHtml(topOwned, data.length);
     }
+    const ownedHint = document.getElementById('pf-owned-hint');
+    if (ownedHint) ownedHint.textContent = `across ${data.length} league${data.length!==1?'s':''}`;
     const signalsEl = document.getElementById('pf-v2-signals');
-    if (signalsEl && typeof renderBuyLowSellHigh === 'function') {
-      renderBuyLowSellHigh(data, signalsEl);
+    if (signalsEl && typeof _renderPortfolioSignals === 'function') {
+      _renderPortfolioSignals(data, signalsEl);
     }
   } catch(e) { console.warn('v2 bottom cards render skipped:', e); }
 }
@@ -13967,24 +13990,84 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
 
   // ── Buy Low / Sell High signals (Items 5 & 6) ────────────
   renderBuyLowSellHigh(leagueData, signalsEl);
-  // Mirror to v2 signals card if present
+  // Mirror to v2 signals card (portfolio-specific renderer — mock design + fallback)
   const signalsElV2 = document.getElementById('pf-v2-signals');
-  if (signalsElV2) renderBuyLowSellHigh(leagueData, signalsElV2);
+  if (signalsElV2) _renderPortfolioSignals(leagueData, signalsElV2);
+  const ownedHintEl = document.getElementById('pf-owned-hint');
+  if (ownedHintEl) ownedHintEl.textContent = `across ${leagueData.length} league${leagueData.length!==1?'s':''}`;
 }
 
 // Reusable helper: build the "Most Rostered Across Leagues" innerHTML.
 // Used by both classic renderPortfolio() and renderPortfolioV2().
 function _buildPortfolioOwnedHtml(topOwned, leagueCount){
-  return `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--font-mono);margin-bottom:12px">Most Rostered Across Leagues</div>
-    ${topOwned.length ? topOwned.map(([name, count]) => {
-      const pos = (typeof getFCValue === 'function' && getFCValue(name)?.pos) || '';
-      const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos] || 'var(--muted)';
-      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:9px;font-family:var(--font-mono);color:${posColor};width:22px">${pos}</span>
-        <span style="flex:1;font-size:13px;color:var(--text);font-weight:500">${name}</span>
-        <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">${count} / ${leagueCount} leagues</span>
-      </div>`;
-    }).join('') : '<div style="color:var(--muted);font-size:13px;padding:16px 0">No duplicate players across leagues.</div>'}`;
+  if(!topOwned || !topOwned.length) return '<div style="color:var(--muted);font-size:13px;padding:14px 0;font-family:var(--font-sans)">No players rostered in 2+ leagues yet.</div>';
+  const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+  return topOwned.map(([name, count]) => {
+    const pos = (typeof getFCValue === 'function' && getFCValue(name)?.pos) || '';
+    const pc = posColor[pos] || 'var(--muted)';
+    const dots = Array.from({length:leagueCount},(_,i)=>`<span class="pf-own-dot${i<count?' on':''}"></span>`).join('');
+    return `<div class="pf-own-row">
+      <span class="pf-own-pos" style="background:${pc}22;color:${pc}">${pos||'—'}</span>
+      <span class="pf-own-name">${name}</span>
+      <span class="pf-own-dots">${dots}</span>
+      <span class="pf-own-count">${count}×</span>
+    </div>`;
+  }).join('');
+}
+
+// Portfolio Signals card — mock design (unified Buy/Sell list), robust population.
+// Reads the fields that actually exist on PLAYERS (raTrend + getPlayerValue), and
+// falls back to value-based acquisition targets so the card is never blank.
+function _renderPortfolioSignals(leagueData, containerEl){
+  if(!containerEl) return;
+  const ownedNames = _allOwnedNames.size > 0
+    ? _allOwnedNames
+    : new Set((leagueData||[]).flatMap(d => (d.myNames||[]).map(n => n.toLowerCase())));
+  const norm = s => s?.toLowerCase();
+  const all = (typeof PLAYERS !== 'undefined' && PLAYERS.length) ? PLAYERS : (window.PLAYERS || []);
+  const isPos = p => ['QB','RB','WR','TE'].includes(p.pos);
+  const trendOf = p => (p.raTrend ?? p.trend_30d ?? p.trend_7d ?? p.trend ?? 0);
+  const valOf = p => (getPlayerValue(p.name) || (typeof getDisplayValue==='function' ? getDisplayValue(p) : 0) || p.raValue || p.val_sf || p.value || 0);
+
+  // Build a value-ranked relevance set so we don't depend on absolute value scale
+  // (works whether values are real RA numbers or rank-derived proxies).
+  const ranked = all.filter(p => p.name && isPos(p))
+                    .map(p => ({p, v: valOf(p), t: trendOf(p)}))
+                    .sort((a,b) => b.v - a.v);
+  const relevant = ranked.slice(0, 200);
+  const ownedR = relevant.filter(x => ownedNames.has(norm(x.p.name)));
+  const unownedR = relevant.filter(x => !ownedNames.has(norm(x.p.name)));
+
+  // Primary: sell owned risers, buy un-owned fallers
+  let sell = ownedR.filter(x => x.t > 0).sort((a,b) => b.t - a.t).slice(0, 5).map(x => x.p);
+  let buy  = unownedR.filter(x => x.t < 0).sort((a,b) => a.t - b.t).slice(0, 5).map(x => x.p);
+
+  let fallback = false;
+  if(!sell.length && !buy.length){
+    fallback = true;
+    // No trend signal available → surface highest-value acquisition targets you don't own
+    buy = unownedR.slice(0, 6).map(x => x.p);
+  }
+
+  const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+  const mkRow = (p, kind) => {
+    const c = kind==='buy' ? 'var(--rb)' : 'var(--accent2)';
+    const pc = posColor[p.pos] || 'var(--muted)';
+    const t = Math.round(trendOf(p));
+    const note = fallback
+      ? `Top target · ${(valOf(p)/1000).toFixed(1)}k value`
+      : (kind==='buy' ? `Down ${Math.abs(t)} in value · buy the dip` : `Up ${t} in value · sell window`);
+    return `<div class="pf-sig-row" onclick="researchSelectPlayer('${p.name.replace(/'/g,"\\'")}','${p.sleeperId||''}','${p.pos}','${p.team||''}')">
+      <span class="pf-sig-tag" style="background:${c}22;color:${c}">${kind==='buy'?'Buy':'Sell'}</span>
+      <span class="pf-sig-pos" style="background:${pc}22;color:${pc}">${p.pos||'—'}</span>
+      <div class="pf-sig-main"><span class="pf-sig-name">${p.name}</span><span class="pf-sig-note">${note}</span></div>
+    </div>`;
+  };
+
+  const rows = [...sell.map(p => mkRow(p,'sell')), ...buy.map(p => mkRow(p,'buy'))];
+  containerEl.innerHTML = rows.length
+    ? rows.join('')
+    : '<div style="color:var(--muted);font-size:13px;padding:14px 0;font-family:var(--font-sans)">Connect a league to surface buy-low / sell-high signals.</div>';
 }
 
 // ════════════════════════════════════════════════════════════
