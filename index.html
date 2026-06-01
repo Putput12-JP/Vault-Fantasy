@@ -3291,6 +3291,38 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </div>
 </div>
 
+<!-- DRAFT COMPLETE PROMPT — when reconnecting to a finished draft, ask: review final board, or browse rankings -->
+<div class="modal-bg gone" id="draft-complete-modal" onclick="if(event.target===this)chooseBrowseRankings()">
+  <div class="modal dc-modal">
+    <div class="dc-modal-head">
+      <div class="dc-modal-headtxt">
+        <div class="dc-modal-eyebrow">Draft Vault</div>
+        <div class="dc-modal-title" id="dcp-title">This draft is complete</div>
+        <div class="dc-modal-sub">Your last connected draft has finished. Jump back into the final board to review every pick — or browse the live rankings to prep your next one.</div>
+      </div>
+      <button class="dc-modal-x" onclick="chooseBrowseRankings()" aria-label="Close">✕</button>
+    </div>
+    <div class="dcp-choices">
+      <button class="dcp-choice" onclick="chooseViewCompleted()">
+        <span class="dcp-choice-icon">✅</span>
+        <span class="dcp-choice-txt">
+          <span class="dcp-choice-title">Reconnect to the draft</span>
+          <span class="dcp-choice-sub" id="dcp-view-sub">Review the final board &amp; your roster</span>
+        </span>
+        <span class="dcp-choice-go">→</span>
+      </button>
+      <button class="dcp-choice" onclick="chooseBrowseRankings()">
+        <span class="dcp-choice-icon">📊</span>
+        <span class="dcp-choice-txt">
+          <span class="dcp-choice-title">Browse rankings</span>
+          <span class="dcp-choice-sub">Explore live player values &amp; prep your next draft</span>
+        </span>
+        <span class="dcp-choice-go">→</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER — profile + league selector always visible -->
 <header class="z1" id="app-header" style="display:flex;align-items:center;padding:0 20px;gap:0;height:52px">
 
@@ -10199,6 +10231,41 @@ function skipDraftConnect(){
   try { renderAll(); renderDraftSummary(); } catch(e){}
 }
 
+// ===== Completed-draft prompt =====
+// When you reconnect and your connected draft is 100% finished, don't silently
+// drop back into the dead board — ask whether to review the final board or
+// browse live rankings. The choice is remembered for the rest of the session.
+function isActiveDraftComplete(){
+  const d = window._activeDraft;
+  if(!d) return false;
+  if(d.status === 'complete' || d.status === 'cancelled') return true;
+  const totalPicks = (d.teams||0) * (d.rounds||0);
+  return totalPicks > 0 && (d.picksCount||0) >= totalPicks;
+}
+function showDraftCompletePrompt(){
+  const m = document.getElementById('draft-complete-modal');
+  if(!m) return;
+  const d = window._activeDraft;
+  const sub = document.getElementById('dcp-view-sub');
+  if(sub){
+    const total = (d?.teams||0) * (d?.rounds||0);
+    sub.textContent = total ? `Review all ${total} picks & your roster` : 'Review the final board & your roster';
+  }
+  m.classList.remove('gone');
+}
+function chooseViewCompleted(){
+  window._completedDraftChoice = 'view';
+  window._draftPromptDismissed = true;
+  document.getElementById('draft-complete-modal')?.classList.add('gone');
+  try { ldShowBoard(); renderBoard(); renderDraftSummary(); } catch(e){}
+}
+function chooseBrowseRankings(){
+  window._completedDraftChoice = 'browse';
+  window._draftPromptDismissed = true;
+  document.getElementById('draft-complete-modal')?.classList.add('gone');
+  try { renderDraftSummary(); renderAll(); } catch(e){}
+}
+
 function ldShowBoard() {
   const section = document.getElementById('ld-board-section');
   const board = document.getElementById('ld-board-wrap');
@@ -11721,10 +11788,45 @@ function renderDraftSummary(){
   const connectBar = document.getElementById('draft-connect-bar');
   const boardSection = document.getElementById('ld-board-section');
   const d = window._activeDraft;
+  // Completed draft: ask whether to reconnect to the finished board or browse
+  // rankings, rather than silently reopening a draft that's already over.
+  if (d && sleeperDraftId && isActiveDraftComplete()){
+    if (!window._completedDraftChoice){
+      wrap.style.display = 'none';
+      if (connectBar) connectBar.style.display = 'none';
+      if (boardSection) boardSection.style.display = 'none';
+      showDraftCompletePrompt();
+      return;
+    }
+    if (window._completedDraftChoice === 'browse'){
+      wrap.style.display = 'none';
+      if (boardSection) boardSection.style.display = 'none';
+      if (connectBar){
+        connectBar.style.display = 'flex';
+        const t = connectBar.querySelector('.dconn-title');
+        const s = connectBar.querySelector('.dconn-sub');
+        const b = connectBar.querySelector('.dconn-btn');
+        if (t) t.textContent = 'Browsing rankings — your last draft is complete';
+        if (s) s.textContent = 'Review every pick on the final board, or connect a new draft.';
+        if (b){ b.textContent = 'View final board'; b.setAttribute('onclick','chooseViewCompleted()'); }
+      }
+      return;
+    }
+    // choice === 'view' → fall through and render the finished board normally
+  }
   if(!d || !sleeperDraftId){
     // Not connected → fresh rankings view: hide hero + board, show connect bar.
     wrap.style.display = 'none';
-    if (connectBar) connectBar.style.display = 'flex';
+    if (connectBar){
+      connectBar.style.display = 'flex';
+      // Restore default connect-bar copy (it may have been retuned for a completed draft).
+      const t = connectBar.querySelector('.dconn-title');
+      const s = connectBar.querySelector('.dconn-sub');
+      const b = connectBar.querySelector('.dconn-btn');
+      if (t) t.textContent = 'Browsing rankings — no live draft connected';
+      if (s) s.textContent = 'Connect a Sleeper draft to sync picks in real time and light up the board.';
+      if (b){ b.textContent = 'Connect a draft'; b.setAttribute('onclick','openDraftConnect()'); }
+    }
     if (boardSection) boardSection.style.display = 'none';
     return;
   }
@@ -15098,6 +15200,18 @@ function pickYear(year) {
   .dc-skip-btn:hover{ color:var(--text); }
   .dc-skip-btn span{ transition:transform .15s; display:inline-block; }
   .dc-skip-btn:hover span{ transform:translateX(3px); }
+
+  /* ───── Draft complete prompt: choice cards ───── */
+  .dcp-choices{ display:flex; flex-direction:column; gap:10px; }
+  .dcp-choice{ display:flex; align-items:center; gap:14px; text-align:left; width:100%; padding:15px 16px; border-radius:12px; border:1px solid var(--border2); background:var(--bg); cursor:pointer; transition:border-color .15s, transform .08s, background .15s; }
+  .dcp-choice:hover{ border-color:var(--accent); background:var(--s2); }
+  .dcp-choice:active{ transform:scale(.99); }
+  .dcp-choice-icon{ font-size:19px; flex-shrink:0; width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:var(--s2); border:1px solid var(--border); }
+  .dcp-choice-txt{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+  .dcp-choice-title{ font-family:var(--font-sans); font-size:15px; font-weight:700; color:var(--text); letter-spacing:-.01em; }
+  .dcp-choice-sub{ font-family:var(--font-sans); font-size:12px; color:var(--muted); }
+  .dcp-choice-go{ font-size:18px; color:var(--muted); flex-shrink:0; transition:transform .15s, color .15s; }
+  .dcp-choice:hover .dcp-choice-go{ transform:translateX(3px); color:var(--accent); }
   /* Tidy the relocated detector controls inside the modal */
   #draft-connect-modal .ld-input-row{ display:flex; gap:8px; }
   #draft-connect-modal .ld-input{ flex:1; }
