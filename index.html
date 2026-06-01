@@ -3697,7 +3697,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   <div class="controls dvc">
     <div class="dvc-search">
       <span class="dvc-search-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/><path d="m20.5 20.5-4-4"/></svg></span>
-      <input id="search" placeholder="Search players..." oninput="renderList()" autocomplete="off" autocorrect="off" spellcheck="false">
+      <input id="search" placeholder="Search players..." oninput="renderListDebounced()" autocomplete="off" autocorrect="off" spellcheck="false">
       <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
     </div>
     <div class="dvc-seg pos-seg">
@@ -3892,10 +3892,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <span class="lr-srcdot"></span>FantasyCalc
         </span>
         <span id="fc-status" style="display:none"></span>
-        <!-- League switcher — all your Sleeper leagues -->
-        <select id="la-league-select" class="lr-select" onchange="switchAnalyzerLeague(this.value)" style="display:none;max-width:200px">
-          <option value="">Current Draft League</option>
-        </select>
+        <!-- League is controlled by the single header picker (source of truth) -->
         <!-- Team focus filter within league -->
         <select id="teams-team-select" class="lr-select" onchange="setViewTeam(this.value)" style="display:none"></select>
         <!-- val-fc kept for source-toggle JS compatibility (FantasyCalc only now) -->
@@ -9853,6 +9850,13 @@ function sortedPlayers(){
   return [...src].sort((a,b)=>(a[k]||999)-(b[k]||999));
 }
 
+let _renderListT = 0;
+// Debounced wrapper for the search box — typing rebuilds 400+ rows, so coalesce
+// rapid keystrokes into one render (~120ms after you stop typing).
+function renderListDebounced(){
+  clearTimeout(_renderListT);
+  _renderListT = setTimeout(renderList, 120);
+}
 function renderList(){
   const tbody=document.getElementById('plist-body');
   const mobileContainer=document.getElementById('plist-mobile');
@@ -15563,6 +15567,31 @@ function pickYear(year) {
     #page-teams .lrt-row td:nth-child(7),
     #page-teams .lrt-row td:nth-child(8){ display:none; }
     #page-teams .lrt thead th, #page-teams .lrt-row td{ padding-left:10px; padding-right:10px; }
+  }
+
+  /* ════════════════ PERFORMANCE ════════════════
+     backdrop-filter on sticky/fixed chrome forces a full re-rasterize of the
+     blurred region every scroll frame — the main source of scroll jank here.
+     These surfaces all sit over opaque dark content, so the blur is invisible;
+     drop it and use solid backgrounds instead. */
+  header,
+  .controls, .controls.dvc,
+  .plist-msort,
+  .bottom-tab-bar,
+  .header-league-select{
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+  }
+  header{ background:var(--surface)!important; }
+  .bottom-tab-bar{ background:#0f1624!important; }
+  [data-theme="light"] header{ background:var(--surface)!important; }
+  [data-theme="light"] .bottom-tab-bar{ background:var(--surface)!important; }
+  /* Smooth momentum scrolling on the long scroll containers. */
+  #app-main, .sd-body, .modal{ -webkit-overflow-scrolling:touch; }
+  /* Action buttons render many-per-row in the draft table; scope their hover
+     transition to just the cheap properties instead of `all`. */
+  .ab, .fbtn, .hgbtn, .sug-btn, .rchip, .sbtn{
+    transition:color .12s, border-color .12s, background-color .12s!important;
   }
 </style>
 <script>
