@@ -3882,41 +3882,38 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 <!-- LEAGUE ANALYZER PAGE -->
 <div class="page z1" id="page-teams" style="overflow-y:auto">
   <div class="proto-page" style="max-width:1280px">
-    <div class="tpage-hdr">
-      <div>
-        <div class="tpage-title">LEAGUE <em>ANALYZER</em></div>
-        <div id="la-league-name" style="font-size:11px;color:var(--accent2);margin-top:3px;font-family:Space Mono,monospace;font-weight:700"></div>
+    <div class="lr-head">
+      <div class="lr-head-l">
+        <div class="lr-eyebrow">League</div>
+        <h1 class="lr-title" id="la-league-name">League Analyzer</h1>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <div id="fc-status" style="font-size:11px;color:var(--muted);font-family:var(--font-sans)">Loading RosterAudit rankings...></div>
-
+      <div class="lr-head-r">
+        <span class="lr-srcpill" title="Values from FantasyCalc — ~1M user-submitted dynasty trades. Matches your My Team calculations.">
+          <span class="lr-srcdot"></span>FantasyCalc
+        </span>
+        <span id="fc-status" style="display:none"></span>
         <!-- League switcher — all your Sleeper leagues -->
-        <select id="la-league-select" onchange="switchAnalyzerLeague(this.value)"
-          style="background:var(--s2);border:1.5px solid var(--accent2);color:var(--accent2);font-family:'Space Mono',monospace;font-size:11px;padding:6px 10px;border-radius:8px;outline:none;cursor:pointer;display:none;font-weight:700;max-width:180px">
-          <option value="">📋 Current Draft League</option>
+        <select id="la-league-select" class="lr-select" onchange="switchAnalyzerLeague(this.value)" style="display:none;max-width:200px">
+          <option value="">Current Draft League</option>
         </select>
-
         <!-- Team focus filter within league -->
-        <select id="teams-team-select" onchange="setViewTeam(this.value)"
-          style="background:var(--s2);border:1.5px solid var(--border2);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;padding:5px 8px;border-radius:8px;outline:none;cursor:pointer;display:none">
-        </select>
-
-        <div style="display:flex;gap:3px">
-          <button class="sbtn" id="val-fc" onclick="setLeagueSource('fc')" title="FantasyCalc: values from ~1M user-submitted dynasty trades">FC</button>
-          <button class="sbtn on" id="val-ra" onclick="setLeagueSource('ra')" title="RosterAudit: Elo-based values from 500k+ Sleeper leagues">RA</button>
-        </div>
-        <button class="sbtn" onclick="refreshValues()" id="fc-refresh-btn" title="Refresh values">⟳</button>
+        <select id="teams-team-select" class="lr-select" onchange="setViewTeam(this.value)" style="display:none"></select>
+        <!-- val-fc kept for source-toggle JS compatibility (FantasyCalc only now) -->
+        <button id="val-fc" onclick="setLeagueSource('fc')" style="display:none"></button>
+        <button class="lr-refresh" onclick="refreshValues()" id="fc-refresh-btn" title="Refresh values" aria-label="Refresh values">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
       </div>
     </div>
 
-    <!-- SUB-TABS: StatChasers-style -->
-    <div class="la-tabs">
-      <button class="la-tab on" id="teams-tab-pr" onclick="setTeamsTab('pr')">Rankings</button>
-      <button class="la-tab" id="teams-tab-st" onclick="setTeamsTab('st')">Standings</button>
-      <button class="la-tab" id="teams-tab-tx" onclick="setTeamsTab('tx')">Transactions</button>
-      <button class="la-tab" id="teams-tab-mv" onclick="setTeamsTab('mv')">Movers</button>
-      <button class="la-tab" id="teams-tab-gr" onclick="setTeamsTab('gr')">Grades</button>
-      <button class="la-tab" id="teams-tab-share" onclick="shareDraftCard()" style="margin-left:auto">↗ Share</button>
+    <!-- SUB-TABS -->
+    <div class="lr-tabs">
+      <button class="lr-tab on" id="teams-tab-pr" onclick="setTeamsTab('pr')">Rankings</button>
+      <button class="lr-tab" id="teams-tab-st" onclick="setTeamsTab('st')">Standings</button>
+      <button class="lr-tab" id="teams-tab-tx" onclick="setTeamsTab('tx')">Transactions</button>
+      <button class="lr-tab" id="teams-tab-mv" onclick="setTeamsTab('mv')">Movers</button>
+      <button class="lr-tab" id="teams-tab-gr" onclick="setTeamsTab('gr')">Grades</button>
+      <button class="lr-tab lr-share" id="teams-tab-share" onclick="shareDraftCard()">↗ Share card</button>
     </div>
 
     <div id="teams-tab-content">
@@ -9884,8 +9881,12 @@ function renderList(){
   
   const rows = sortedPlayers().map(p => {
     const nn=normName(p.name);
-    const ds=draftState[p.name]||_normDraftCache[nn];
-    const mo=manualOverrides[p.name]||_normOverrideCache[nn];
+    // Browse-rankings mode (completed draft → "Browse rankings"): show a clean
+    // board, ignoring the finished draft's picks. Data is kept intact so the user
+    // can still flip back to "View final board".
+    const _browse = window._completedDraftChoice === 'browse';
+    const ds=_browse ? undefined : (draftState[p.name]||_normDraftCache[nn]);
+    const mo=_browse ? undefined : (manualOverrides[p.name]||_normOverrideCache[nn]);
     const isDrafted=ds!==undefined||mo==='gone';
     const ti=ds?.teamIdx??-1;
     const isMe=ti===myTeam&&myTeam!==null&&ti>=0;
@@ -10414,7 +10415,7 @@ function chooseViewCompleted(){
   window._completedDraftChoice = 'view';
   window._draftPromptDismissed = true;
   document.getElementById('draft-complete-modal')?.classList.add('gone');
-  try { ldShowBoard(); renderBoard(); renderDraftSummary(); } catch(e){}
+  try { ldShowBoard(); renderBoard(); renderDraftSummary(); renderAll(); } catch(e){}
 }
 function chooseBrowseRankings(){
   window._completedDraftChoice = 'browse';
@@ -10619,7 +10620,7 @@ let teamsTab = 'pr';
 // Per-tab value-source preferences so the League tab can default to RosterAudit
 // while the Draft Vault / other pages stay on FantasyCalc (no global bleed).
 let _draftSrcPref = 'fc';
-let _leagueSrcPref = 'ra';   // League tab defaults to RosterAudit rankings
+let _leagueSrcPref = 'fc';   // League tab uses FantasyCalc (matches My Team calculations)
 // Lightweight source apply — sets the source + button state without forcing a double re-render
 // (the page's own render runs right after in showPage and will read the new valueSource).
 function _applySrc(src){
@@ -11700,17 +11701,34 @@ function renderPowerRankingsTable(teamData) {
 
   const maxFC = ranked[0]?.fcTotal || 1;
 
+  const fmtTrend = (n) => {
+    if (!n) return '—';
+    const a = Math.abs(n);
+    const s = a >= 1000 ? (a/1000).toFixed(1).replace(/\.0$/,'') + 'k' : a.toLocaleString();
+    return (n > 0 ? '▲ ' : '▼ ') + s;
+  };
+  const leagueTier = (rank, total) => {
+    if (rank <= 2) return { label:'CONTENDER', cls:'t-elite' };
+    const p = rank / total;
+    if (p <= 0.42) return { label:'PLAYOFF', cls:'t-good' };
+    if (p <= 0.70) return { label:'BUBBLE', cls:'t-mid' };
+    if (p <= 0.88) return { label:'REBUILD', cls:'t-low' };
+    return { label:'TANKING', cls:'t-tank' };
+  };
+  const posChip = (lbl, n, col) => n ? `<span class="lr-pchip" style="--pc:${col}">${lbl}<b>${n}</b></span>` : '';
+
   prEl.innerHTML = `
-    <table class="pr-table">
+    <div class="lr-card">
+    <table class="lrt">
       <thead><tr>
-        <th style="width:40px;text-align:center">RANK</th>
-        <th>TEAM</th>
-        <th style="min-width:110px">TIER</th>
-        <th style="text-align:center">ROSTER</th>
-        <th style="text-align:right">FC VALUE</th>
-        <th style="text-align:right">30D TREND</th>
-        <th style="min-width:80px">STRENGTH</th>
-        <th style="text-align:right">BEST PLAYER</th>
+        <th style="width:44px;text-align:center">#</th>
+        <th>Team</th>
+        <th>Tier</th>
+        <th>Roster</th>
+        <th class="num">Value</th>
+        <th class="num">30d</th>
+        <th>Strength</th>
+        <th class="num">Top asset</th>
       </tr></thead>
       <tbody>
         ${ranked.map((t, rank) => {
@@ -11718,41 +11736,45 @@ function renderPowerRankingsTable(teamData) {
           const isMe = t.isMe !== undefined ? t.isMe : t.idx === myTeam;
           const isSel = cmpTeam === t.idx;
           const trendColor = t.trendSum > 0 ? 'var(--rb)' : t.trendSum < 0 ? 'var(--qb)' : 'var(--muted)';
-          const trendStr = t.trendSum > 0 ? `▲ +${t.trendSum}` : t.trendSum < 0 ? `▼ ${t.trendSum}` : '—';
           const pct = Math.round(t.fcTotal / maxFC * 100);
-          const tier = getTeamTier(rank + 1, ranked.length);
+          const tier = leagueTier(rank + 1, ranked.length);
           const posBadges = [
-            t.qbs.length ? `<span class="pr-pos-chip QB">QB×${t.qbs.length}</span>` : '',
-            t.rbs.length ? `<span class="pr-pos-chip RB">RB×${t.rbs.length}</span>` : '',
-            t.wrs.length ? `<span class="pr-pos-chip WR">WR×${t.wrs.length}</span>` : '',
-            t.tes.length ? `<span class="pr-pos-chip TE">TE×${t.tes.length}</span>` : '',
+            posChip('QB', t.qbs.length, 'var(--qb)'),
+            posChip('RB', t.rbs.length, 'var(--rb)'),
+            posChip('WR', t.wrs.length, 'var(--wr)'),
+            posChip('TE', t.tes.length, 'var(--te)'),
           ].filter(Boolean).join('');
+          const bestName = t.best ? t.best.name.split(' ').slice(-1)[0] : '—';
+          const bestVal = t.bestFC ? t.bestFC.value.toLocaleString() : '—';
 
-          let badge = '';
-          if (isMe) badge = '<span class="pr-badge" style="background:#5b8dee22;color:var(--accent2)">YOU</span>';
-
-          return `<tr class="${isMe?'my-row':''} ${isSel?'selected-row':''}" onclick="selectTeamRow(${t.idx})">
-            <td><span class="pr-rank" style="color:${c}">${rank+1}</span></td>
+          return `<tr class="lrt-row ${isMe?'me':''} ${isSel?'sel':''}" onclick="selectTeamRow(${t.idx})">
+            <td class="lrt-rank"><span style="color:${c}">${rank+1}</span></td>
             <td>
-              <div style="font-size:14px;font-weight:700">${t.name}${badge}</div>
-              <div style="font-size:10px;color:var(--muted);font-family:Space Mono,monospace;margin-top:2px">${t.roster.length} players${t.avgAge ? ` · avg age ${t.avgAge.toFixed(1)}` : ''}</div>
+              <div class="lrt-team">
+                <span class="lrt-bar" style="background:${c}"></span>
+                <div class="lrt-id">
+                  <div class="lrt-nrow"><span class="lrt-name">${t.name}</span>${isMe?'<span class="lr-you">YOU</span>':''}</div>
+                  <div class="lrt-owner">${t.roster.length} players${t.avgAge ? ` · age ${t.avgAge.toFixed(1)}` : ''}</div>
+                </div>
+              </div>
             </td>
-            <td><span class="tier-badge ${tier.cls}">${tier.label}</span></td>
-            <td><div class="pr-pos-chips">${posBadges}</div></td>
-            <td><span class="pr-val" style="color:${c}">${t.fcTotal.toLocaleString()}</span></td>
-            <td><span class="pr-trend" style="color:${trendColor}">${trendStr}</span></td>
-            <td>
-              <div class="pr-bar-wrap"><div class="pr-bar-fill" style="width:${pct}%;background:${c}"></div></div>
-              <div style="font-size:9px;color:var(--muted);margin-top:2px;font-family:Space Mono,monospace">${pct}%</div>
+            <td><span class="lr-tier ${tier.cls}">${tier.label}</span></td>
+            <td class="lrt-pos">${posBadges || '<span style="color:var(--muted)">—</span>'}</td>
+            <td class="lrt-val" style="color:${c}">${t.fcTotal.toLocaleString()}</td>
+            <td class="lrt-trend" style="color:${trendColor}">${fmtTrend(t.trendSum)}</td>
+            <td class="lrt-str">
+              <div class="lr-strbar"><i style="width:${pct}%;background:${c}"></i></div>
+              <span>${pct}%</span>
             </td>
-            <td style="text-align:right">
-              <div style="font-size:12px;font-weight:600">${t.best ? t.best.name.split(' ').pop() : '—'}</div>
-              <div style="font-size:10px;color:${c};font-family:Space Mono,monospace">${t.bestFC ? t.bestFC.value.toLocaleString() : '—'}</div>
+            <td class="lrt-best">
+              <div class="lrt-bn">${bestName}</div>
+              <div class="lrt-bv" style="color:${c}">${bestVal}</div>
             </td>
           </tr>`;
         }).join('')}
       </tbody>
-    </table>`;
+    </table>
+    </div>`;
 }
 
 function renderTeamsFallback() {
@@ -15457,6 +15479,91 @@ function pickYear(year) {
   #page-research .res-kpi-val{ font-family:var(--font-mono)!important; font-size:19px!important; font-weight:800!important; }
   #page-research .res-kpi-lbl{ font-family:var(--font-mono)!important; font-size:9px!important; letter-spacing:.1em; color:var(--muted)!important; }
   #page-research #res-tabs{ border-bottom:1px solid var(--border)!important; }
+
+  /* ════════════════ LEAGUE TAB — Pro Table redesign ════════════════ */
+  #page-teams .proto-page{ max-width:1180px; }
+  #page-teams .lr-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  #page-teams .lr-eyebrow{ font-family:var(--font-mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+  #page-teams h1.lr-title{ font-family:var(--font-sans); font-size:26px; font-weight:800; letter-spacing:-.03em; color:var(--text); margin:0; line-height:1; text-transform:none; }
+  #page-teams h1.lr-title:empty::before{ content:'League Analyzer'; color:var(--text); }
+  #page-teams .lr-head-r{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  #page-teams .lr-srcpill{ display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 13px; border-radius:9px; border:1px solid var(--border2); background:var(--s2); color:var(--text2); font-family:var(--font-sans); font-size:12.5px; font-weight:600; white-space:nowrap; }
+  #page-teams .lr-srcdot{ width:7px; height:7px; border-radius:50%; background:var(--rb); box-shadow:0 0 0 3px color-mix(in srgb, var(--rb) 22%, transparent); }
+  #page-teams .lr-select{ height:36px; padding:0 30px 0 13px; border-radius:9px; border:1px solid var(--border); background-color:var(--s2); color:var(--text2); font-family:var(--font-sans); font-size:12.5px; font-weight:600; cursor:pointer; -webkit-appearance:none; appearance:none; transition:border-color .15s;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238794a6' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 11px center; background-size:13px; }
+  #page-teams .lr-select:hover{ border-color:var(--border3); color:var(--text); }
+  #page-teams .lr-select:focus{ outline:none; border-color:var(--sky); }
+  #page-teams .lr-refresh{ width:36px; height:36px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; border:1px solid var(--border2); background:var(--s2); color:var(--text2); cursor:pointer; transition:all .15s; }
+  #page-teams .lr-refresh svg{ width:16px; height:16px; }
+  #page-teams .lr-refresh:hover{ color:var(--text); border-color:var(--border3); }
+  #page-teams .lr-refresh:active svg{ transform:rotate(-90deg); transition:transform .3s; }
+
+  #page-teams .lr-tabs{ display:flex; align-items:center; gap:2px; border-bottom:1px solid var(--border); margin-bottom:20px; }
+  #page-teams .lr-tab{ border:0; background:transparent; color:var(--muted); font-family:var(--font-sans); font-size:13.5px; font-weight:600; padding:11px 14px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .12s; }
+  #page-teams .lr-tab.on{ color:var(--text); border-bottom-color:var(--accent); }
+  #page-teams .lr-tab:hover{ color:var(--text); }
+  #page-teams .lr-share{ margin-left:auto; color:var(--sky)!important; }
+
+  #page-teams .lr-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  #page-teams .lr-you{ font-family:var(--font-mono); font-size:9px; font-weight:700; letter-spacing:.06em; color:var(--accent2); background:rgba(226,58,78,.14); border:1px solid rgba(226,58,78,.3); padding:1px 6px; border-radius:5px; margin-left:7px; vertical-align:middle; }
+  #page-teams .lr-tier{ font-family:var(--font-mono); font-size:9.5px; font-weight:700; letter-spacing:.05em; padding:3px 8px; border-radius:5px; white-space:nowrap; }
+  #page-teams .t-elite{ background:rgba(245,200,66,.14); color:var(--gold); }
+  #page-teams .t-good{ background:rgba(61,204,122,.14); color:var(--rb); }
+  #page-teams .t-mid{ background:rgba(123,208,255,.13); color:var(--wr); }
+  #page-teams .t-low{ background:rgba(135,148,166,.14); color:var(--muted); }
+  #page-teams .t-tank{ background:rgba(226,58,78,.13); color:var(--accent2); }
+  #page-teams .lr-pchip{ font-family:var(--font-mono); font-size:10px; font-weight:600; color:var(--muted); display:inline-flex; align-items:center; gap:3px; }
+  #page-teams .lr-pchip b{ color:var(--pc); font-weight:700; }
+  #page-teams .lr-strbar{ height:5px; border-radius:3px; background:var(--s3); overflow:hidden; }
+  #page-teams .lr-strbar i{ display:block; height:100%; border-radius:3px; }
+
+  /* Pro table */
+  #page-teams .lrt{ width:100%; border-collapse:collapse; }
+  #page-teams .lrt thead th{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:600; text-align:left; padding:13px 14px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  #page-teams .lrt thead th.num{ text-align:right; }
+  #page-teams .lrt-row{ cursor:pointer; transition:background .12s; }
+  #page-teams .lrt-row td{ padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  #page-teams .lrt-row:last-child td{ border-bottom:0; }
+  #page-teams .lrt-row:hover td{ background:var(--s2); }
+  #page-teams .lrt-row.me{ background:rgba(77,134,240,.05); }
+  #page-teams .lrt-row.sel td{ background:rgba(245,200,66,.06); }
+  #page-teams .lrt-row.sel td:first-child{ box-shadow:inset 3px 0 0 var(--te); }
+  #page-teams .lrt-rank{ text-align:center; font-family:var(--font-mono); font-size:17px; font-weight:800; }
+  #page-teams .lrt-team{ display:flex; align-items:center; gap:11px; min-width:0; }
+  #page-teams .lrt-bar{ width:3px; height:30px; border-radius:2px; flex-shrink:0; }
+  #page-teams .lrt-id{ min-width:0; flex:1; }
+  #page-teams .lrt-nrow{ display:flex; align-items:center; gap:0; min-width:0; }
+  #page-teams .lrt-name{ font-size:14px; font-weight:700; letter-spacing:-.01em; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #page-teams .lrt-nrow .lr-you{ flex-shrink:0; }
+  #page-teams .lrt-owner{ font-family:var(--font-mono); font-size:10px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #page-teams .lrt-pos{ white-space:nowrap; }
+  #page-teams .lrt-pos .lr-pchip{ margin-right:9px; }
+  #page-teams .lrt-val{ text-align:right; font-family:var(--font-mono); font-size:14px; font-weight:700; }
+  #page-teams .lrt-trend{ text-align:right; font-family:var(--font-mono); font-size:12px; font-weight:600; }
+  #page-teams .lrt-str{ width:96px; }
+  #page-teams .lrt-str span{ font-family:var(--font-mono); font-size:9px; color:var(--muted); margin-top:3px; display:block; }
+  #page-teams .lrt-best{ text-align:right; }
+  #page-teams .lrt-bn{ font-size:12.5px; font-weight:600; color:var(--text); }
+  #page-teams .lrt-bv{ font-family:var(--font-mono); font-size:10px; margin-top:2px; }
+  /* Tablet: drop Roster + Strength so Team/Value/Top-asset breathe */
+  @media(max-width:980px) and (min-width:681px){
+    #page-teams .lrt thead th:nth-child(4),
+    #page-teams .lrt thead th:nth-child(7),
+    #page-teams .lrt-row td:nth-child(4),
+    #page-teams .lrt-row td:nth-child(7){ display:none; }
+  }
+  /* Mobile: collapse to RANK · TEAM · VALUE · TREND */
+  @media(max-width:680px){
+    #page-teams .lrt thead th:nth-child(3),
+    #page-teams .lrt thead th:nth-child(4),
+    #page-teams .lrt thead th:nth-child(7),
+    #page-teams .lrt thead th:nth-child(8),
+    #page-teams .lrt-row td:nth-child(3),
+    #page-teams .lrt-row td:nth-child(4),
+    #page-teams .lrt-row td:nth-child(7),
+    #page-teams .lrt-row td:nth-child(8){ display:none; }
+    #page-teams .lrt thead th, #page-teams .lrt-row td{ padding-left:10px; padding-right:10px; }
+  }
 </style>
 <script>
 (function(){
