@@ -5458,7 +5458,7 @@ function showLeaguePickerStep2(el) {
           const teams=l.total_rosters||'?';
           const scoring=l.scoring_settings?.rec===1?'PPR':l.scoring_settings?.rec===0.5?'Half':'Std';
           const isSF=(l.roster_positions||[]).includes('SUPER_FLEX');
-          const isDyn=(l.settings?.max_keepers||0)>5||l.name?.toLowerCase().includes('dynasty');
+          const isDyn=_isDynastyLeague(l);
           return `<label class="lp-league-row">
             <input type="checkbox" name="lp-league" value="${l.league_id}" class="lp-radio" ${active?'checked':''}>
             <div class="lp-league-info">
@@ -12096,7 +12096,7 @@ function renderSyncLeagues() {
 
   body.innerHTML = recent.map((lg, i) => {
     const initials = (lg.name || '?').slice(0, 2).toUpperCase();
-    const isDynasty = lg.settings?.type === 'dynasty' || (lg.name || '').toLowerCase().includes('dynasty');
+    const isDynasty = _isDynastyLeague(lg);
     const isSuperflex = lg.roster_positions?.filter(p => p === 'SUPER_FLEX').length > 0;
     const formatLabel = isDynasty ? (isSuperflex ? 'SF / TEP' : 'DYNASTY') : 'RE: DRAFT';
     const isActive = lg.status === 'in_season' || lg.status === 'pre_draft' || lg.status === 'drafting';
@@ -12159,7 +12159,7 @@ function renderMyTeamsResults() {
         const scoring = league.scoring_settings?.rec === 1 ? 'PPR' : league.scoring_settings?.rec === 0.5 ? 'Half' : 'Std';
         const positions = league.roster_positions || [];
         const isSF = positions.includes('SUPER_FLEX');
-        const isDynasty = (league.settings?.max_keepers || 0) > 5 || league.name?.toLowerCase().includes('dynasty');
+        const isDynasty = _isDynastyLeague(league);
         const statusColor = league.status === 'in_season' ? 'var(--rb)' : league.status === 'pre_draft' ? 'var(--te)' : 'var(--muted)';
         const statusLabel = {in_season:'IN SEASON', pre_draft:'PRE-DRAFT', drafting:'DRAFTING', complete:'COMPLETE'}[league.status] || league.status?.toUpperCase() || '?';
 
@@ -13908,7 +13908,7 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
       const grade = pct > 0.9 ? 'A+' : pct > 0.8 ? 'A' : pct > 0.7 ? 'B+' : pct > 0.6 ? 'B' : pct > 0.5 ? 'C+' : pct > 0.4 ? 'C' : 'D';
       const gradeColor = pct > 0.75 ? 'var(--rb)' : pct > 0.5 ? 'var(--te)' : 'var(--qb)';
 
-      const isDynasty = (lg.settings?.max_keepers||0) > 5 || (lg.name||'').toLowerCase().includes('dynasty');
+      const isDynasty = _isDynastyLeague(lg);
       const isSF = (lg.roster_positions||[]).includes('SUPER_FLEX');
 
       return { lg, myValue, myRank, totalTeams, grade, gradeColor, myNames, posVals, isDynasty, isSF };
@@ -13999,6 +13999,16 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
 
 // Reusable helper: build the "Most Rostered Across Leagues" innerHTML.
 // Used by both classic renderPortfolio() and renderPortfolioV2().
+// Authoritative dynasty/keeper detection. Sleeper exposes settings.type:
+//   2 = dynasty, 1 = keeper, 0 = redraft. Prefer it; fall back to heuristics
+// only when type is absent (e.g. partial cached league objects).
+function _isDynastyLeague(lg){
+  const t = lg?.settings?.type;
+  if (t === 2 || t === 1) return true;
+  if (t === 0) return false;
+  return (lg?.settings?.max_keepers||0) > 5 || (lg?.name||'').toLowerCase().includes('dynasty');
+}
+
 function _buildPortfolioOwnedHtml(topOwned, leagueCount){
   if(!topOwned || !topOwned.length) return '<div style="color:var(--muted);font-size:13px;padding:14px 0;font-family:var(--font-sans)">No players rostered in 2+ leagues yet.</div>';
   const posColor = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
@@ -14349,7 +14359,7 @@ function openPortfolioLeaguePicker() {
   if (!listEl) return;
   listEl.innerHTML = sorted.map(lg => {
     const isSelected = selectedIds ? selectedIds.has(lg.league_id) : (lg.season === '2025' || lg.season === '2026');
-    const isDynasty = (lg.settings?.max_keepers||0) > 5 || (lg.name||'').toLowerCase().includes('dynasty');
+    const isDynasty = _isDynastyLeague(lg);
     const isSF = (lg.roster_positions||[]).includes('SUPER_FLEX');
     const isActiveSeason = lg.season === '2025' || lg.season === '2026';
     return `
@@ -14723,7 +14733,7 @@ function autoDetectAdpFromLeague() {
     const rosterPos = lg.roster_positions || [];
     const isSuperflex = rosterPos.includes('SUPER_FLEX');
     const recPts = lg.scoring_settings?.rec || 0;
-    const isDynasty = (lg.settings?.max_keepers || 0) > 5 || (lg.name || '').toLowerCase().includes('dynasty');
+    const isDynasty = _isDynastyLeague(lg);
 
     // Only override if user hasn't manually set a preference
     const hasUserPref = !!localStorage.getItem(SK+'-adp-selection');
