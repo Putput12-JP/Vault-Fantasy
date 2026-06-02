@@ -3940,157 +3940,145 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
 <!-- TRADE CALCULATOR PAGE -->
 <div class="page z1" id="page-trade" style="overflow-y:auto">
-  <div class="proto-page" style="max-width:1320px;padding-bottom:80px">
+<style>
+/* ════════ TRADE CALCULATOR v3 ════════ */
+.tc-wrap{max-width:1320px;margin:0 auto;padding:0 4px 90px}
+.tc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.tc-accent-line{width:46px;height:3px;background:var(--te);border-radius:2px;margin:8px 0 10px}
+.tc-headsub{color:var(--muted);font-size:13.5px;margin:0;max-width:560px;line-height:1.5}
+.tc-head-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 
-    <!-- PAGE HEADER -->
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap;gap:12px">
+/* segmented control */
+.tc-seg{display:inline-flex;background:var(--bg);border:1px solid var(--border2);border-radius:11px;padding:3px;gap:2px}
+.tc-seg button{display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:8px;border:none;cursor:pointer;background:transparent;color:var(--muted);font-family:var(--font-sans);font-size:12.5px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;transition:all .15s;position:relative}
+.tc-seg button.on{background:var(--s3);color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--te) 40%,transparent)}
+.tc-seg button.on::after{content:'';position:absolute;left:20%;right:20%;bottom:2px;height:2px;border-radius:2px;background:var(--te)}
+.tc-seg.sm button{padding:6px 13px;font-size:11.5px}
+.tc-seg.blue button.on{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent2) 45%,transparent)}
+.tc-seg.blue button.on::after{background:var(--accent2)}
+.tc-seg span{font-size:13px;opacity:.6}
+.tc-seg button.on span{opacity:1}
+
+.tc-vmode{display:flex;align-items:center;gap:9px}
+.tc-vmode .lab{font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+.tc-eyebrow{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* control strip */
+.tc-controls{margin-bottom:16px}
+.tc-strip{display:flex;align-items:center;justify-content:space-between;gap:16px;background:rgba(25,34,47,0.5);border:1px solid var(--border);border-radius:14px;padding:12px 16px;flex-wrap:wrap}
+.tc-pickers{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tc-swap{width:30px;height:30px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;color:var(--te);font-size:14px;flex-shrink:0}
+
+/* team picker */
+.tc-tpick{position:relative}
+.tc-tpick-btn{display:flex;align-items:center;gap:9px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:7px 11px;cursor:pointer;transition:border-color .15s}
+.tc-tpick-btn:hover{border-color:var(--accent2)}
+.tc-logo{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-weight:800;font-size:10px;flex-shrink:0}
+.tc-tpick-name{font-family:var(--font-sans);font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;line-height:1.15}
+.tc-tpick-owner{font-family:var(--font-mono);font-size:9px;color:var(--muted)}
+.tc-tpick-caret{color:var(--muted);font-size:11px}
+.tc-tpick-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:60;background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:6px;min-width:230px;box-shadow:0 18px 44px rgba(0,0,0,.5);display:none;max-height:320px;overflow-y:auto}
+.tc-tpick-menu.show{display:block}
+.tc-tpick-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;transition:background .12s}
+.tc-tpick-item:hover{background:var(--s3)}
+.tc-tpick-item.sel{background:color-mix(in srgb,var(--accent2) 12%,transparent)}
+
+/* glass card */
+.tc-card{background:rgba(25,34,47,0.55);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:18px}
+
+/* balance bar */
+.tc-bal-verdict{font-family:var(--font-sans);font-weight:900;letter-spacing:-.02em;line-height:1}
+.tc-bal-track{position:relative;height:10px;border-radius:6px;background:var(--bg);border:1px solid var(--border);overflow:hidden}
+.tc-bal-fillA{position:absolute;inset:0;transition:width .5s ease}
+.tc-bal-fillB{position:absolute;right:0;top:0;bottom:0;opacity:.32}
+.tc-bal-tick{position:absolute;left:50%;top:-14px;width:2px;height:18px;background:var(--text);opacity:.5;transform:translateX(-50%)}
+
+/* send row */
+.tc-send-row{display:flex;align-items:center;gap:11px;padding:9px 12px;background:rgba(12,17,25,0.5);border-radius:12px}
+.tc-avatar{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-sans);font-weight:800;overflow:hidden}
+.tc-send-name{font-family:var(--font-sans);font-weight:700;font-size:13.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-send-meta{font-family:var(--font-mono);font-size:9.5px;color:var(--muted);margin-top:1px}
+.tc-send-val{font-family:var(--font-mono);font-weight:700;font-size:13px}
+.tc-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 4px;line-height:1}
+.tc-x:hover{color:var(--accent2)}
+
+/* primary button */
+.tc-btn-primary{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:12px;border:none;color:#fff;font-family:var(--font-sans);font-weight:700;font-size:13.5px;cursor:pointer;transition:filter .15s,box-shadow .15s;width:100%}
+.tc-btn-primary:hover{filter:brightness(1.08)}
+.tc-chip-mini{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;background:var(--s2);border:1px solid var(--border2);font-family:var(--font-mono);font-size:10.5px;color:var(--text2)}
+
+/* roster columns */
+.tc-rosters{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tc-roster-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.tc-rcol-head{border-radius:6px 6px 0 0;padding:5px 8px;text-align:center;font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.06em}
+.tc-rcell{display:flex;justify-content:space-between;align-items:center;gap:4px;padding:5px 7px;border-radius:6px;cursor:pointer;transition:background .12s}
+.tc-rcell:hover{background:rgba(255,255,255,0.05)}
+.tc-rcell-name{font-family:var(--font-sans);font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-rcell-val{font-family:var(--font-mono);font-size:9px;color:var(--muted);flex-shrink:0}
+
+/* quick mode bento */
+.tc-bento{display:grid;grid-template-columns:1fr 300px 1fr;gap:18px}
+.tc-side{display:flex;flex-direction:column;gap:14px}
+.tc-search{width:100%;padding:11px 14px;background:var(--bg);border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:13px;outline:none}
+.tc-search::placeholder{color:var(--muted)}
+.tc-results{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:55;background:var(--s2);border:1px solid var(--border2);border-radius:11px;padding:5px;max-height:280px;overflow-y:auto;box-shadow:0 18px 44px rgba(0,0,0,.5);display:none}
+.tc-results.show{display:block}
+.tc-result{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer}
+.tc-result:hover{background:var(--s3)}
+.tc-ring-wrap{position:relative;width:168px;height:168px;margin:0 auto 10px}
+.tc-ring-wrap svg{transform:rotate(-90deg)}
+.tc-pickbuild{display:flex;gap:6px}
+.tc-pickbuild .sel{flex:1;padding:8px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:9px;font-family:var(--font-mono);font-size:11px;color:var(--text2);cursor:pointer}
+
+.tc-trend-chip{display:flex;align-items:center;gap:7px;padding:6px 11px 6px 7px;background:var(--s2);border:1px solid var(--border2);border-radius:20px;cursor:pointer;transition:border-color .15s}
+.tc-trend-chip:hover{border-color:var(--accent2)}
+
+/* toast */
+#tc-toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(20px);background:var(--s3);border:1px solid var(--border2);color:var(--text);padding:12px 20px;border-radius:12px;font-family:var(--font-sans);font-size:13px;font-weight:600;box-shadow:0 16px 40px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:9999;max-width:340px;text-align:center}
+#tc-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:900px){
+  .tc-bento{grid-template-columns:1fr}
+  .tc-rosters{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .tc-head h1{font-size:28px!important}
+  .tc-mode-tabs{width:100%}
+  .tc-mode-tabs.tc-seg{display:flex}
+  .tc-mode-tabs.tc-seg button{flex:1;justify-content:center}
+  .tc-strip{padding:11px 13px}
+  .tc-pickers{width:100%;justify-content:space-between}
+  .tc-tpick,.tc-tpick-btn{flex:1}
+  .tc-roster-grid{grid-template-columns:repeat(2,1fr)}
+  .tc-league-grid{grid-template-columns:1fr!important}
+  .tc-vmode{width:100%;justify-content:space-between}
+}
+</style>
+
+  <div class="tc-wrap">
+    <!-- HEADER -->
+    <div class="tc-head">
       <div>
-        <h1 class="proto-h1" style="font-size:40px">Trade Calculator</h1>
-        <p class="proto-sub">Analyze player and pick swaps with dynasty value projections and live trade comps.</p>
+        <h1 class="proto-h1" style="font-size:40px;margin:0">Trade Calculator</h1>
+        <div class="tc-accent-line"></div>
+        <p class="tc-headsub" id="tc-subtitle">Pick two teams from your league, or run the numbers free-range — dynasty &amp; redraft values.</p>
       </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <button class="proto-btn-ghost" onclick="clearTrade()">↺ Reset</button>
-        <button id="trade-analyze-btn" onclick="evaluateTrade()" style="
-          display:flex;align-items:center;gap:8px;padding:12px 24px;
-          background:linear-gradient(135deg,var(--accent),#8b0000);
-          border:none;border-radius:12px;color:#fff;
-          font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-          cursor:pointer;transition:opacity .15s,box-shadow .15s;
-          box-shadow:0 0 0 0 rgba(204,0,60,0)">
-          ⚡ Analyze Trade
-        </button>
+      <div class="tc-head-right">
+        <div class="tc-seg tc-mode-tabs" id="tc-mode-tabs">
+          <button data-mode="quick" onclick="TC.setMode('quick')"><span>⚖</span>Quick Calc</button>
+          <button data-mode="league" class="on" onclick="TC.setMode('league')"><span>🏆</span>My League</button>
+        </div>
+        <div class="tc-vmode" id="tc-vmode-top"></div>
       </div>
     </div>
 
-    <!-- BENTO GRID -->
-    <div id="trade-bento">
+    <!-- CONTROL STRIP (league mode) -->
+    <div class="tc-controls" id="tc-controls"></div>
 
-      <!-- ── TEAM A ── -->
-      <div class="trade-glass" style="padding:24px;display:flex;flex-direction:column;gap:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="trade-side-label" style="color:var(--sky)">MY TEAM SENDS</span>
-          <span class="trade-side-val-badge" id="trade-val-a" style="background:rgba(123,208,255,0.12);color:var(--sky)">0</span>
-        </div>
-        <div class="trade-search-wrap">
-          <input class="trade-search" id="trade-search-a" placeholder="Search player or pick..." oninput="searchTrade('a')" autocomplete="off" style="border-color:rgba(123,208,255,0.2)">
-          <div class="trade-results" id="trade-results-a"></div>
-        </div>
-        <div id="trade-assets-a" style="display:flex;flex-direction:column;gap:8px;min-height:72px"></div>
-        <!-- Roster impact -->
-        <div id="trade-impact-a" style="display:none;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07)">
-          <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Roster Impact</div>
-          <div id="trade-impact-a-inner" style="display:flex;flex-direction:column;gap:6px"></div>
-        </div>
-      </div>
-
-      <!-- ── CENTER COLUMN (desktop only) ── -->
-      <div id="trade-center" style="flex-direction:column;align-items:center;gap:16px;width:240px">
-
-        <!-- Verdict circle -->
-        <div class="trade-glass" style="width:100%;padding:24px;text-align:center">
-          <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:16px">Trade Verdict</div>
-          <div class="verdict-circle-wrap">
-            <svg width="160" height="160" viewBox="0 0 160 160">
-              <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="8"/>
-              <circle id="trade-circle-a" cx="80" cy="80" r="68" fill="none" stroke="var(--sky)" stroke-width="8"
-                stroke-dasharray="427.3" stroke-dashoffset="213.6" stroke-linecap="round"/>
-              <circle id="trade-circle-b" cx="80" cy="80" r="68" fill="none" stroke="var(--accent2)" stroke-width="8"
-                stroke-dasharray="427.3" stroke-dashoffset="213.6" stroke-linecap="round" opacity="0.4"/>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
-              <span id="trade-verdict-label" style="font-size:18px;font-weight:800;font-family:var(--font-sans);letter-spacing:-.02em;color:var(--text)">—</span>
-              <span id="trade-verdict-pct" style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px"></span>
-            </div>
-          </div>
-          <p id="trade-verdict-sub" style="font-size:12px;color:var(--muted);line-height:1.6;margin:12px 0 0"></p>
-        </div>
-
-        <!-- ROI projection -->
-        <div class="trade-glass" style="width:100%;padding:20px">
-          <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:14px">Value Projection</div>
-          <div id="roi-chart" style="display:flex;gap:6px;align-items:flex-end;height:64px;margin-bottom:8px">
-            <!-- bars rendered by JS -->
-            <div style="color:var(--muted);font-size:11px;width:100%;text-align:center;line-height:64px">Add players to project</div>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:9px;font-family:var(--font-mono);color:var(--muted)">
-            <span>NOW</span><span>WK 4</span><span>WK 8</span><span>PLYFS</span><span>DYN</span>
-          </div>
-          <div style="display:flex;gap:12px;margin-top:10px">
-            <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);color:var(--sky)">
-              <div style="width:8px;height:8px;border-radius:2px;background:var(--sky)"></div>My Team
-            </div>
-            <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);color:var(--accent2)">
-              <div style="width:8px;height:8px;border-radius:2px;background:var(--accent2)"></div>Your Team
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ── TEAM B ── -->
-      <div class="trade-glass" style="padding:24px;display:flex;flex-direction:column;gap:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="trade-side-label" style="color:var(--accent2)">YOUR TEAM SENDS</span>
-          <span class="trade-side-val-badge" id="trade-val-b" style="background:rgba(204,0,60,0.12);color:var(--accent2)">0</span>
-        </div>
-        <div class="trade-search-wrap">
-          <input class="trade-search" id="trade-search-b" placeholder="Search player or pick..." oninput="searchTrade('b')" autocomplete="off" style="border-color:rgba(204,0,60,0.2)">
-          <div class="trade-results" id="trade-results-b"></div>
-        </div>
-        <div id="trade-assets-b" style="display:flex;flex-direction:column;gap:8px;min-height:72px"></div>
-        <!-- Roster impact -->
-        <div id="trade-impact-b" style="display:none;padding-top:14px;border-top:1px solid rgba(255,255,255,0.07)">
-          <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Roster Impact</div>
-          <div id="trade-impact-b-inner" style="display:flex;flex-direction:column;gap:6px"></div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- MOBILE VERDICT (shown below grid on small screens) -->
-    <div id="trade-verdict-mobile" style="display:none;margin-top:16px">
-      <div class="trade-glass" style="padding:20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span id="trade-verdict-label-m" style="font-size:18px;font-weight:800;font-family:var(--font-sans)">—</span>
-          <span id="trade-verdict-pct-m" style="font-size:11px;font-family:var(--font-mono);color:var(--muted)"></span>
-        </div>
-        <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:8px">
-          <div id="trade-bar-m" style="height:6px;background:var(--sky);border-radius:3px;transition:width .5s ease;width:50%"></div>
-        </div>
-        <p id="trade-verdict-sub-m" style="font-size:12px;color:var(--muted);line-height:1.6;margin:0"></p>
-      </div>
-    </div>
-
-    <!-- AGE WARNING + COMPS -->
-    <div id="trade-verdict-extra" style="display:none;margin-top:16px;display:flex;flex-direction:column;gap:12px">
-      <div id="trade-age-warn" style="display:none"></div>
-      <div class="trade-glass" style="padding:20px">
-        <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:12px">Similar Trades · Community</div>
-        <div id="trade-comps-inner" style="font-size:12px;color:var(--muted);font-family:var(--font-sans)">
-          <span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Run analysis to load trade comps
-        </div>
-      </div>
-    </div>
-
-    <!-- COMMUNITY TICKER -->
-    <div id="trade-ticker-wrap" style="display:none;margin-top:16px">
-      <div class="trade-glass" style="padding:14px 20px;display:flex;align-items:center;gap:16px;overflow:hidden">
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;padding-right:16px;border-right:1px solid rgba(255,255,255,0.08)">
-          <span style="color:var(--accent);font-size:14px">⚡</span>
-          <span style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase">Community</span>
-        </div>
-        <div style="overflow:hidden;flex:1">
-          <div class="trade-ticker-inner" id="trade-ticker-inner"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- QUICK ADD ROSTER CHIPS -->
-    <div style="margin-top:24px">
-      <div style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Quick Add · Your Roster</div>
-      <div id="trade-roster-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-    </div>
-
+    <!-- MODE BODIES -->
+    <div id="tc-league-body"></div>
+    <div id="tc-quick-body" style="display:none"></div>
   </div>
 </div>
 
@@ -15734,6 +15722,467 @@ function pickYear(year) {
     setTimeout(function(){ injectIcons(); refreshDD(); }, 1200);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   TRADE CALCULATOR v3 — controller
+   Modes: Quick Calc (free-range) · My League (team pickers + rosters)
+   Value sets: Dynasty / Redraft  (FantasyCalc-backed)
+   Reuses: tradeAssets, PICK_VALUES, getTradePlayerValue, getFCValue,
+           PLAYERS, fcValues, normName, _rosterCache, _usersCache, etc.
+   ════════════════════════════════════════════════════════════ */
+(function(){
+  const fmt = n => Math.round(n||0).toLocaleString('en-US');
+  const POS_HEX = { QB:'#ff6680', RB:'#3DCC7A', WR:'#7bd0ff', TE:'#f5c842', PICK:'#b48cff' };
+  const POS_ORDER = ['QB','RB','WR','TE','PICK'];
+  const esc = s => String(s).replace(/'/g,"\\'");
+
+  // ── Demo league (used when no live Sleeper league is synced) ──
+  const TEAM_META = [
+    { id:'you', name:'The Vault',         owner:'You',            color:'#4d86f0', logo:'TV' },
+    { id:'bb',  name:'brittlebones85',    owner:'brittlebones85', color:'#ff5a6e', logo:'BB' },
+    { id:'put', name:'Putput',            owner:'Putput',         color:'#f5c842', logo:'PP' },
+    { id:'dyn', name:'Dynasty Warlords',  owner:'mike_t',         color:'#3DCC7A', logo:'DW' },
+    { id:'gru', name:'Gridiron Gurus',    owner:'sarah_k',        color:'#b48cff', logo:'GG' },
+  ];
+  const P = (name,pos,team)=>({name,pos,team});
+  const PK = name => ({name,pos:'PICK',type:'pick'});
+  const DEMO_ROSTERS = {
+    you:[P('Jayden Daniels','QB','WAS'),P('Brock Purdy','QB','SF'),P('Bijan Robinson','RB','ATL'),P('Kyren Williams','RB','LAR'),P('Tony Pollard','RB','TEN'),P('Malik Nabers','WR','NYG'),P('Nico Collins','WR','HOU'),P('DeVonta Smith','WR','PHI'),P('Jordan Addison','WR','MIN'),P('Brock Bowers','TE','LV'),P('Dalton Kincaid','TE','BUF'),PK('2026 1st Early'),PK('2026 2nd'),PK('2027 1st Mid')],
+    bb:[P('Caleb Williams','QB','CHI'),P('Drake Maye','QB','NE'),P('Jahmyr Gibbs','RB','DET'),P('Breece Hall','RB','NYJ'),P('James Cook','RB','BUF'),P('Marvin Harrison Jr.','WR','ARI'),P('Drake London','WR','ATL'),P('Garrett Wilson','WR','NYJ'),P('Rome Odunze','WR','CHI'),P('Trey McBride','TE','ARI'),P('Colston Loveland','TE','CHI'),PK('2026 1st Mid'),PK('2026 3rd'),PK('2027 1st Late')],
+    put:[P('Josh Allen','QB','BUF'),P('Bo Nix','QB','DEN'),P('Saquon Barkley','RB','PHI'),P('De\u2019Von Achane','RB','MIA'),P('Chase Brown','RB','CIN'),P('Ja\u2019Marr Chase','WR','CIN'),P('Puka Nacua','WR','LAR'),P('Ladd McConkey','WR','LAC'),P('Jaxon Smith-Njigba','WR','SEA'),P('George Kittle','TE','SF'),PK('2026 1st Late'),PK('2026 2nd'),PK('2028 1st Early')],
+    dyn:[P('Patrick Mahomes','QB','KC'),P('Jalen Hurts','QB','PHI'),P('Ashton Jeanty','RB','LV'),P('Jonathan Taylor','RB','IND'),P('Omarion Hampton','RB','LAC'),P('Justin Jefferson','WR','MIN'),P('CeeDee Lamb','WR','DAL'),P('Brian Thomas Jr.','WR','JAX'),P('Tee Higgins','WR','CIN'),P('Sam LaPorta','TE','DET'),PK('2026 1st Early'),PK('2027 2nd'),PK('2027 1st Early')],
+    gru:[P('Lamar Jackson','QB','BAL'),P('C.J. Stroud','QB','HOU'),P('Christian McCaffrey','RB','SF'),P('Bucky Irving','RB','TB'),P('Kenneth Walker III','RB','SEA'),P('Amon-Ra St. Brown','WR','DET'),P('A.J. Brown','WR','PHI'),P('Tetairoa McMillan','WR','CAR'),P('Jaylen Waddle','WR','MIA'),P('Mark Andrews','TE','BAL'),PK('2026 2nd'),PK('2026 3rd'),PK('2028 1st Mid')],
+  };
+  const TRENDING = ['Jayden Daniels','Marvin Harrison Jr.','Brock Bowers','Drake Maye','Kyren Williams','Breece Hall','Ladd McConkey','Bucky Irving'];
+
+  // ════ controller ════
+  const TC = {
+    mode:'league', vmode:'dyn', teamA:'you', teamB:'bb', _inited:false,
+
+    // value of an asset under current value-set
+    val(a){
+      if(a.type==='pick'){
+        const d = (typeof PICK_VALUES!=='undefined' && PICK_VALUES[a.name]) || 0;
+        return this.vmode==='re' ? Math.round(d*0.12) : d;
+      }
+      const dyn = (typeof getTradePlayerValue==='function' ? getTradePlayerValue(a.name) : 0) || 0;
+      if(this.vmode==='re'){
+        const fc = (typeof getFCValue==='function') && getFCValue(a.name);
+        return (fc && fc.redraftValue) || Math.round(dyn*0.85);
+      }
+      return dyn;
+    },
+    sideTotal(side){ return (tradeAssets[side]||[]).reduce((s,a)=>s+this.val(a),0); },
+
+    // live league if synced, else demo
+    isLive(){ return !!(window.myTeamsUserId && Array.isArray(window._rosterCache) && window._rosterCache.length && Array.isArray(window._usersCache) && window._usersCache.length); },
+    teams(){
+      if(this.isLive()){
+        const umap = (typeof buildUserMap==='function') ? buildUserMap(window._usersCache) : {};
+        const palette = ['#4d86f0','#ff5a6e','#f5c842','#3DCC7A','#b48cff','#7bd0ff','#ff9e64','#5be0c8'];
+        return window._rosterCache.map((r,i)=>{
+          const nm = umap[r.owner_id] || ('Team '+(r.roster_id||i+1));
+          const mine = r.owner_id===window.myTeamsUserId;
+          return { id:String(r.roster_id), name:mine?(nm+' (You)'):nm, owner:mine?'You':nm,
+            color:mine?'#4d86f0':palette[i%palette.length], logo:nm.replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase()||'T'+(i+1),
+            _players:(r.players||[]) };
+        });
+      }
+      return TEAM_META.slice();
+    },
+    team(id){ return this.teams().find(t=>String(t.id)===String(id)) || this.teams()[0]; },
+    roster(id){
+      const t = this.team(id);
+      if(this.isLive() && t._players){
+        const out = (t._players||[]).map(pid=>{
+          const name = (window.globalPidToName||{})[String(pid)];
+          if(!name) return null;
+          const inP = (typeof PLAYERS!=='undefined') && PLAYERS.find(x=>x.name===name);
+          const fc = (typeof getFCValue==='function') && getFCValue(name);
+          return { name, pos:(inP&&inP.pos)||(fc&&fc.pos)||'?', team:(inP&&inP.team)||(fc&&fc.team)||'' };
+        }).filter(Boolean);
+        // give each live team a couple of generic picks so dynasty picks are tradable
+        out.push({name:'2026 1st Mid',pos:'PICK',type:'pick'},{name:'2027 1st Mid',pos:'PICK',type:'pick'});
+        return out;
+      }
+      return DEMO_ROSTERS[id] || [];
+    },
+
+    setMode(m){ this.mode=m; this.render(); },
+    setVmode(v){ this.vmode=v; this.render(); },
+    setTeam(slot,id){ this[slot]=id; this._closeMenus(); this.render(); },
+
+    // ── asset mutation ──
+    _resolve(name,type){
+      const inP = (typeof PLAYERS!=='undefined') && PLAYERS.find(p=>p.name===name);
+      const fc = (typeof getFCValue==='function') && getFCValue(name);
+      const sp = (typeof sleeperPlayerMap!=='undefined') && sleeperPlayerMap[ (typeof normName==='function'?normName(name):name) ];
+      const pos = type==='pick' ? 'PICK' : ((inP&&inP.pos&&inP.pos!=='?'&&inP.pos)||(fc&&(fc.pos||fc.position))||(sp&&sp.position)||'?');
+      const team = type==='pick' ? '' : ((inP&&inP.team)||(fc&&fc.team)||(sp&&sp.team)||'');
+      const age = (fc&&fc.age)||null;
+      return {name,type,pos,team,age};
+    },
+    add(side,name,type){
+      if(!tradeAssets[side]) tradeAssets[side]=[];
+      if(tradeAssets[side].find(a=>a.name===name)) return;
+      tradeAssets[side].push(this._resolve(name,type));
+      this._closeResults(); this.render();
+    },
+    remove(side,name){ tradeAssets[side]=(tradeAssets[side]||[]).filter(a=>a.name!==name); this.render(); },
+    toggle(side,name,type){
+      if(!tradeAssets[side]) tradeAssets[side]=[];
+      if(tradeAssets[side].find(a=>a.name===name)) this.remove(side,name);
+      else this.add(side,name,type);
+    },
+    has(side,name){ return !!(tradeAssets[side]||[]).find(a=>a.name===name); },
+
+    // ── small builders ──
+    avatar(a,size){
+      size=size||38;
+      const c = POS_HEX[a.pos]||'#8794a6';
+      const init = a.type==='pick' ? '◆' : (a.name.split(' ').map(w=>w[0]).slice(0,2).join(''));
+      return `<div class="tc-avatar" style="width:${size}px;height:${size}px;border:2px solid ${c};background:${c}14;color:${c};font-size:${Math.round(size*0.34)}px">${init}</div>`;
+    },
+    sendRow(side,a,color){
+      const v=this.val(a);
+      return `<div class="tc-send-row" style="border:1px solid ${color}33">
+        ${this.avatar(a,38)}
+        <div style="flex:1;min-width:0"><div class="tc-send-name">${a.name}</div><div class="tc-send-meta">${a.pos}${a.team?' · '+a.team:''}</div></div>
+        <div class="tc-send-val" style="color:${color}">${fmt(v)}</div>
+        <button class="tc-x" onclick="TC.remove('${side}','${esc(a.name)}')">✕</button>
+      </div>`;
+    },
+    vmodeSeg(){
+      return `<span class="lab">Value&nbsp;Set</span>
+        <div class="tc-seg sm">
+          <button class="${this.vmode==='dyn'?'on':''}" onclick="TC.setVmode('dyn')">Dynasty</button>
+          <button class="${this.vmode==='re'?'on':''}" onclick="TC.setVmode('re')">Redraft</button>
+        </div>`;
+    },
+
+    // ── verdict math ──
+    verdict(recvA,recvB,labelA,labelB){
+      const total=Math.max(recvA+recvB,1);
+      const pctA=Math.round(recvA/total*100);
+      const diff=recvA-recvB, abs=Math.abs(diff);
+      const pctDiff=Math.round(abs/Math.max(recvA,recvB,1)*100);
+      let text,color,sub;
+      if(pctDiff<=8){ text='EVEN TRADE'; color='var(--te)'; sub='Balanced within standard variance — fair both ways.'; }
+      else if(diff>0){
+        if(pctDiff>30){ text=labelA+' WINS BIG'; color='var(--rb)'; }
+        else if(pctDiff>15){ text=labelA+' WINS'; color='var(--rb)'; }
+        else { text=labelA+' EDGE'; color='#4ade80'; }
+        sub=`${labelA} nets ${fmt(abs)} more value (${pctDiff}% edge).`;
+      } else {
+        if(pctDiff>30){ text=labelB+' WINS BIG'; color='var(--qb)'; }
+        else if(pctDiff>15){ text=labelB+' WINS'; color='var(--qb)'; }
+        else { text=labelB+' EDGE'; color='#f87171'; }
+        sub=`${labelB} nets ${fmt(abs)} more value (${pctDiff}% edge).`;
+      }
+      return {text,color,sub,pctA,pctDiff};
+    },
+    balanceBar(recvA,recvB,labelA,labelB,colorA,colorB){
+      const v=this.verdict(recvA,recvB,labelA,labelB);
+      return `<div>
+        <div style="text-align:center;margin-bottom:12px">
+          <div class="tc-bal-verdict" style="font-size:22px;color:${v.color}">${v.text}</div>
+          <div style="font-family:var(--font-sans);font-size:12.5px;color:var(--muted);margin-top:6px">${v.sub}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px">
+          <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;color:${colorA};letter-spacing:.04em">${labelA.toUpperCase()}</span>
+          <span style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.12em">FAIR</span>
+          <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;color:${colorB};letter-spacing:.04em">${labelB.toUpperCase()}</span>
+        </div>
+        <div class="tc-bal-track">
+          <div class="tc-bal-fillA" style="width:${v.pctA}%;background:linear-gradient(90deg,${colorA}cc,${colorA})"></div>
+          <div class="tc-bal-fillB" style="width:${100-v.pctA}%;background:linear-gradient(90deg,${colorB},${colorB}cc)"></div>
+        </div>
+        <div style="position:relative;height:0"><div class="tc-bal-tick"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:9px">
+          <span style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--text)">${fmt(recvA)}</span>
+          <span style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--text)">${fmt(recvB)}</span>
+        </div>
+      </div>`;
+    },
+
+    // ════ RENDER ════
+    render(){
+      // mode tabs
+      document.querySelectorAll('#tc-mode-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.mode===this.mode));
+      // value toggle (header)
+      const vt=document.getElementById('tc-vmode-top'); if(vt) vt.innerHTML=this.vmodeSeg();
+      // subtitle
+      const sub=document.getElementById('tc-subtitle');
+      if(sub) sub.textContent = this.mode==='league'
+        ? 'Pick any two teams in your league, then build the offer from their rosters — dynasty & redraft.'
+        : 'Compare any two packages — no league needed. Players & picks, dynasty or redraft.';
+      const ctl=document.getElementById('tc-controls');
+      const lb=document.getElementById('tc-league-body');
+      const qb=document.getElementById('tc-quick-body');
+      if(this.mode==='league'){
+        if(ctl){ ctl.style.display=''; ctl.innerHTML=this.renderStrip(); }
+        if(lb){ lb.style.display=''; lb.innerHTML=this.renderLeague(); }
+        if(qb){ qb.style.display='none'; }
+      } else {
+        if(ctl){ ctl.style.display='none'; }
+        if(lb){ lb.style.display='none'; }
+        if(qb){ qb.style.display=''; qb.innerHTML=this.renderQuick(); }
+      }
+    },
+
+    teamPicker(slot){
+      const t=this.team(this[slot]);
+      const teams=this.teams();
+      return `<div class="tc-tpick">
+        <button class="tc-tpick-btn" onclick="TC._toggleMenu('${slot}',event)">
+          <div class="tc-logo" style="background:${t.color}22;border:1px solid ${t.color}66;color:${t.color}">${t.logo}</div>
+          <div style="text-align:left"><div class="tc-tpick-name">${t.name}</div><div class="tc-tpick-owner">${t.owner}</div></div>
+          <span class="tc-tpick-caret">▾</span>
+        </button>
+        <div class="tc-tpick-menu" id="tc-menu-${slot}">
+          ${teams.map(o=>`<div class="tc-tpick-item ${String(o.id)===String(this[slot])?'sel':''}" onclick="TC.setTeam('${slot}','${esc(o.id)}')">
+            <div class="tc-logo" style="background:${o.color}22;border:1px solid ${o.color}66;color:${o.color}">${o.logo}</div>
+            <div><div class="tc-tpick-name">${o.name}</div><div class="tc-tpick-owner">${o.owner}</div></div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    },
+    renderStrip(){
+      return `<div class="tc-strip">
+        <div class="tc-pickers">
+          ${this.teamPicker('teamA')}
+          <div class="tc-swap">⇄</div>
+          ${this.teamPicker('teamB')}
+        </div>
+      </div>`;
+    },
+
+    rosterCols(side, teamId, color){
+      const roster=this.roster(teamId);
+      const byPos={QB:[],RB:[],WR:[],TE:[],PICK:[]};
+      roster.forEach(p=>{ const k=p.type==='pick'?'PICK':(p.pos||'?'); (byPos[k]=byPos[k]||[]).push(p); });
+      Object.keys(byPos).forEach(k=>byPos[k].sort((a,b)=>this.val(b)-this.val(a)));
+      return `<div class="tc-roster-grid">${POS_ORDER.map(pos=>{
+        const c=POS_HEX[pos]; const list=byPos[pos]||[];
+        return `<div style="min-width:0">
+          <div class="tc-rcol-head" style="background:${c}22;border-top:2px solid ${c};color:${c}">${pos==='PICK'?'PICKS':pos}</div>
+          <div style="display:flex;flex-direction:column;gap:2px;padding-top:3px">
+            ${list.map(p=>{ const on=this.has(side,p.name); const v=this.val(p);
+              return `<div class="tc-rcell" style="${on?`background:${c}1c;box-shadow:inset 0 0 0 1px ${c}77`:''}" onclick="TC.toggle('${side}','${esc(p.name)}','${p.type==='pick'?'pick':'player'}')">
+                <span class="tc-rcell-name" style="${on?`color:var(--text);font-weight:700`:''}">${on?`<span style="color:${c};margin-right:3px">✓</span>`:''}${p.name.split(' ').slice(-1)[0]}${p.type==='pick'?' '+p.name.split(' ')[0]:''}</span>
+                <span class="tc-rcell-val">${v?(v/1000).toFixed(1)+'k':'—'}</span>
+              </div>`; }).join('')}
+          </div>
+        </div>`;
+      }).join('')}</div>`;
+    },
+
+    renderLeague(){
+      const tA=this.team(this.teamA), tB=this.team(this.teamB);
+      const recvA=this.sideTotal('b'); // team A receives what B sends
+      const recvB=this.sideTotal('a');
+      const sendBtn=this.sendButtonHTML();
+      return `
+      <div class="tc-card" style="padding:22px;margin-bottom:16px">
+        <div class="tc-league-grid" style="display:grid;grid-template-columns:1.1fr 1fr 1fr 0.9fr;gap:24px;align-items:start">
+          <div>
+            <div class="tc-eyebrow" style="margin-bottom:12px">⇄&nbsp;&nbsp;Trade Verdict · ${this.vmode==='re'?'Redraft':'Dynasty'}</div>
+            ${this.balanceBar(recvA,recvB,tA.name,tB.name,tA.color,tB.color)}
+          </div>
+          <div>
+            <div class="tc-eyebrow" style="color:${tA.color};margin-bottom:9px">${tA.name} sends</div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              ${(tradeAssets.a||[]).length?(tradeAssets.a||[]).map(a=>this.sendRow('a',a,tA.color)).join(''):this.emptySlot(tA.color)}
+            </div>
+          </div>
+          <div>
+            <div class="tc-eyebrow" style="color:${tB.color};margin-bottom:9px">${tB.name} sends</div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              ${(tradeAssets.b||[]).length?(tradeAssets.b||[]).map(a=>this.sendRow('b',a,tB.color)).join(''):this.emptySlot(tB.color)}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${sendBtn}
+          </div>
+        </div>
+      </div>
+      <div class="tc-rosters">
+        ${this.rosterCard(tA,'a')}
+        ${this.rosterCard(tB,'b')}
+      </div>`;
+    },
+    rosterCard(t,side){
+      return `<div class="tc-card" style="padding:18px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div class="tc-logo" style="width:30px;height:30px;border-radius:8px;background:${t.color}22;border:1px solid ${t.color}66;color:${t.color};font-size:11px">${t.logo}</div>
+          <div style="flex:1;min-width:0"><div style="font-family:var(--font-sans);font-weight:800;font-size:15px;color:var(--text)">${t.name}</div><div class="tc-eyebrow" style="margin-top:1px">${t.owner==='You'?'Your roster':t.owner+"'s roster"} · tap to add</div></div>
+        </div>
+        ${this.rosterCols(side,t.id,t.color)}
+      </div>`;
+    },
+    emptySlot(color){
+      return `<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:18px;border:1.5px dashed ${color}44;border-radius:12px;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em">+ ADD FROM ROSTER BELOW</div>`;
+    },
+
+    // ── Send via Sleeper ──
+    platform(){ return String(window.connectedPlatform||window.vpPlatform||'sleeper').toLowerCase(); },
+    sendButtonHTML(){
+      if(this.platform()!=='sleeper') return `<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted);line-height:1.6">Trade sending is available on Sleeper-connected leagues only.</div>`;
+      return `<button class="tc-btn-primary" style="background:linear-gradient(135deg,#4d86f0,#3a68c4);box-shadow:0 8px 24px rgba(77,134,240,.28)" onclick="TC.sendOffer()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Send via Sleeper</button>
+        <div style="display:flex;gap:8px">
+          <div class="tc-chip-mini" style="flex:1">⌛ 24 Hours ▾</div>
+          <div class="tc-chip-mini">$ FAAB</div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center;line-height:1.5">Opens Sleeper to confirm &amp; send the offer.</div>`;
+    },
+    sendOffer(){
+      if(this.platform()!=='sleeper') return;
+      const tA=this.team(this.teamA), tB=this.team(this.teamB);
+      if(!((tradeAssets.a||[]).length||(tradeAssets.b||[]).length)){ this.toast('Add players to both sides first'); return; }
+      const connected=!!window.myTeamsUserId;
+      if(!connected){ this.toast('Connect your Sleeper account on the League tab to send offers'); return; }
+      const lid=window.ovLeagueId||window.teamsLeagueId;
+      this.toast('Opening Sleeper to confirm your offer to '+tB.name+'…');
+      const url=lid?('https://sleeper.com/leagues/'+lid+'/team'):'https://sleeper.com/';
+      setTimeout(()=>{ try{ window.open(url,'_blank','noopener'); }catch(e){} },450);
+    },
+    toast(msg){
+      let t=document.getElementById('tc-toast');
+      if(!t){ t=document.createElement('div'); t.id='tc-toast'; document.body.appendChild(t); }
+      t.textContent=msg; t.classList.add('show');
+      clearTimeout(this._tt); this._tt=setTimeout(()=>t.classList.remove('show'),3200);
+    },
+
+    // ════ QUICK CALC ════
+    renderQuick(){
+      const totA=this.sideTotal('a'), totB=this.sideTotal('b');
+      const recvA=totB, recvB=totA;
+      const v=this.verdict(recvA,recvB,'Side A','Side B');
+      const R=68, C=2*Math.PI*R;
+      const lean=recvA/(Math.max(recvA+recvB,1));
+      const ringColor = v.pctDiff<=8?'var(--te)':(recvA>recvB?'var(--sky)':'var(--accent2)');
+      const vlabel = v.pctDiff<=8?'EVEN':(recvA>recvB?'SIDE A':'SIDE B');
+      return `
+      <div class="tc-bento">
+        ${this.sideBuilder('a','Side A sends','var(--sky)','#7bd0ff',totA)}
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="tc-card" style="padding:22px;text-align:center">
+            <div class="tc-eyebrow" style="margin-bottom:14px">Trade Verdict · ${this.vmode==='re'?'Redraft':'Dynasty'}</div>
+            <div class="tc-ring-wrap">
+              <svg width="168" height="168" viewBox="0 0 168 168">
+                <circle cx="84" cy="84" r="${R}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="9"/>
+                <circle cx="84" cy="84" r="${R}" fill="none" stroke="${ringColor}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-lean)).toFixed(1)}" style="transition:stroke-dashoffset .6s ease"/>
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <span style="font-family:var(--font-sans);font-weight:900;font-size:16px;letter-spacing:-.02em;color:${ringColor}">${vlabel}${v.pctDiff<=8?'':' WINS'}</span>
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:3px">${Math.round(lean*100)}% lean</span>
+              </div>
+            </div>
+            <p style="font-size:12px;color:var(--muted);line-height:1.55;margin:0">${v.pctDiff<=8?'Dead even — a fair swap.':v.sub}</p>
+          </div>
+          <div class="tc-card" style="padding:18px">
+            <div class="tc-eyebrow" style="margin-bottom:12px">Value Projection</div>
+            ${this.projectionBars()}
+            <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:8.5px;color:var(--muted)"><span>NOW</span><span>WK4</span><span>WK8</span><span>PLYF</span><span>DYN</span></div>
+          </div>
+        </div>
+        ${this.sideBuilder('b','Side B sends','var(--accent2)','#ff5a6e',totB)}
+      </div>
+      <div style="margin-top:16px">
+        <div class="tc-eyebrow" style="margin-bottom:9px">Quick add · trending players</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          ${TRENDING.map(name=>{ const a=this._resolve(name,'player'); const v=this.val(a); const c=POS_HEX[a.pos]||'#8794a6';
+            return `<div class="tc-trend-chip" onclick="TC.add('a','${esc(name)}','player')">
+              ${this.avatar(a,22)}<span style="font-family:var(--font-sans);font-size:12px;font-weight:600;color:var(--text2)">${name}</span><span style="font-family:var(--font-mono);font-size:9.5px;color:var(--muted)">${v?(v/1000).toFixed(1)+'k':'—'}</span>
+            </div>`; }).join('')}
+        </div>
+      </div>`;
+    },
+    sideBuilder(side,label,colorVar,colorHex,total){
+      return `<div class="tc-side">
+        <div class="tc-card" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="tc-eyebrow" style="color:${colorVar}">${label}</div>
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:12px;color:${colorVar};background:${colorHex}1f;padding:3px 10px;border-radius:6px">${fmt(total)}</span>
+          </div>
+          <div style="position:relative">
+            <input class="tc-search" id="tc-search-${side}" placeholder="🔍  Add a player or pick…" autocomplete="off" style="border:1.5px solid ${colorHex}33" oninput="TC.search('${side}')">
+            <div class="tc-results" id="tc-results-${side}"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${(tradeAssets[side]||[]).length?(tradeAssets[side]||[]).map(a=>this.sendRow(side,a,colorVar)).join(''):`<div style="display:flex;align-items:center;justify-content:center;padding:16px;border:1.5px dashed ${colorHex}33;border-radius:11px;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em">EMPTY — SEARCH TO ADD</div>`}
+          </div>
+        </div>
+      </div>`;
+    },
+    projectionBars(){
+      const proj=(side)=>{ const t=this.sideTotal(side); return [t*0.55,t*0.62,t*0.7,t*0.8,t].map(x=>x); };
+      const a=proj('a'), b=proj('b'); const mx=Math.max(...a,...b,1);
+      return `<div style="display:flex;gap:6px;align-items:flex-end;height:58px;margin-bottom:7px">
+        ${a.map((_,i)=>`<div style="flex:1;display:flex;gap:3px;align-items:flex-end;height:100%">
+          <div style="flex:1;height:${Math.round(a[i]/mx*100)}%;min-height:2px;background:var(--sky);border-radius:3px 3px 0 0;opacity:.9"></div>
+          <div style="flex:1;height:${Math.round(b[i]/mx*100)}%;min-height:2px;background:var(--accent2);border-radius:3px 3px 0 0;opacity:.55"></div>
+        </div>`).join('')}
+      </div>`;
+    },
+    search(side){
+      const input=document.getElementById('tc-search-'+side);
+      const box=document.getElementById('tc-results-'+side);
+      if(!input||!box) return;
+      const q=input.value.toLowerCase().trim();
+      if(!q){ box.classList.remove('show'); return; }
+      const seen=new Set(); const all=[];
+      if(typeof PLAYERS!=='undefined') PLAYERS.forEach(p=>all.push(p));
+      if(typeof fcValues!=='undefined') Object.values(fcValues).forEach(fc=>{ if(fc&&fc.name&&!all.some(p=>p.name===fc.name)) all.push({name:fc.name,pos:fc.pos||'?',team:fc.team||''}); });
+      const players=all.filter(p=>p.name.toLowerCase().includes(q)&&!seen.has(p.name)&&seen.add(p.name)).slice(0,9)
+        .map(p=>{ const a=this._resolve(p.name,'player'); const v=this.val(a); const c=POS_HEX[a.pos]||'#8794a6';
+          return `<div class="tc-result" onclick="TC.add('${side}','${esc(p.name)}','player')">
+            ${this.avatar(a,28)}<div style="flex:1;min-width:0"><div class="tc-send-name" style="font-size:12.5px">${p.name}</div><div class="tc-send-meta">${a.pos}${a.team?' · '+a.team:''}</div></div>
+            <span class="tc-send-val" style="color:${c}">${v?fmt(v):'—'}</span></div>`; });
+      const picks=(typeof PICK_VALUES!=='undefined'?Object.keys(PICK_VALUES):[]).filter(n=>n.toLowerCase().includes(q)).slice(0,6)
+        .map(n=>{ const a={name:n,type:'pick',pos:'PICK'}; const v=this.val(a);
+          return `<div class="tc-result" onclick="TC.add('${side}','${esc(n)}','pick')">
+            ${this.avatar(a,28)}<div style="flex:1;min-width:0"><div class="tc-send-name" style="font-size:12.5px">${n}</div><div class="tc-send-meta">DRAFT PICK</div></div>
+            <span class="tc-send-val" style="color:#b48cff">${fmt(v)}</span></div>`; });
+      const html=[...players,...picks].join('');
+      box.innerHTML=html||'<div style="padding:10px 12px;color:var(--muted);font-size:12px;font-family:var(--font-mono)">No results</div>';
+      box.classList.add('show');
+    },
+    _closeResults(){ document.querySelectorAll('.tc-results').forEach(b=>b.classList.remove('show')); },
+
+    // ── team-picker menu open/close ──
+    _toggleMenu(slot,e){ if(e) e.stopPropagation(); const m=document.getElementById('tc-menu-'+slot); if(!m) return; const open=m.classList.contains('show'); this._closeMenus(); if(!open) m.classList.add('show'); },
+    _closeMenus(){ document.querySelectorAll('.tc-tpick-menu').forEach(m=>m.classList.remove('show')); },
+
+    init(){
+      this._inited=true;
+      // seed a sample offer the first time so the page looks alive
+      if(!this._seeded && !((tradeAssets.a||[]).length||(tradeAssets.b||[]).length)){
+        tradeAssets.a=[this._resolve('Bijan Robinson','player')];
+        tradeAssets.b=[this._resolve('Caleb Williams','player'),this._resolve('2026 1st Mid','pick')];
+        this._seeded=true;
+      }
+      this.render();
+      // load FC + sleeper data so values resolve, then re-render
+      if(typeof fcLoaded!=='undefined' && !fcLoaded && typeof fetchFantasyCalc==='function' && !window._tcFcKick){ window._tcFcKick=1; fetchFantasyCalc().then(()=>this.render()).catch(()=>{}); }
+      if(typeof sleeperPlayersLoaded!=='undefined' && !sleeperPlayersLoaded && typeof fetchSleeperPlayers==='function' && !window._tcSpKick){ window._tcSpKick=1; fetchSleeperPlayers().then(()=>this.render()).catch(()=>{}); }
+    },
+  };
+
+  // close menus / results on outside click
+  document.addEventListener('click', e=>{
+    if(!e.target.closest || !e.target.closest('.tc-tpick')) TC._closeMenus();
+    if(!e.target.closest || !e.target.closest('.tc-side')) TC._closeResults();
+  });
+
+  window.TC = TC;
+  window.initTrade = function(){ TC.init(); };
+  // FC-load hook in the app calls renderTradeRosterChips — repoint it to our re-render
+  window.renderTradeRosterChips = function(){ if(TC._inited) TC.render(); };
 })();
 </script>
 </body>
