@@ -15758,18 +15758,23 @@ function pickYear(year) {
   const TRENDING = ['Jayden Daniels','Marvin Harrison Jr.','Brock Bowers','Drake Maye','Kyren Williams','Breece Hall','Ladd McConkey','Bucky Irving'];
 
   const TC = {
-    mode:'league', vmode:'dyn', teamA:'you', teamB:'bb', _inited:false,
+    mode:'league', vmode:'dyn', _vmodeUserSet:false, teamA:'you', teamB:'bb', _inited:false,
     _live:null, _loading:false, _mobSide:'b', _mobPos:'RB',
 
     isMobile(){ try{ return window.matchMedia('(max-width:700px)').matches; }catch(e){ return false; } },
     leagueSelected(){ return !!(_lex('ovLeagueId') || _lex('teamsLeagueId')); },
     isLive(){ return !!(this._live && this._live.rosters && this._live.rosters.length); },
+    // ── league-type detection → smart default value-set ──
+    leagueType(){ try{ const lid=_lex('ovLeagueId')||_lex('teamsLeagueId'); const md=(typeof myTeamsData!=='undefined')?myTeamsData:null; const lg=md?md.find(l=>l.league_id===lid):null; if(lg && typeof _isDynastyLeague==='function') return _isDynastyLeague(lg)?'dyn':'re'; }catch(e){} return null; },
+    _smartVmode(){ try{ const s=localStorage.getItem('vault-tc-vmode'); if(s==='dyn'||s==='re') return s; }catch(e){} return this.leagueType()||'dyn'; },
+    _showPicks(){ return this.vmode!=='re'; },           // redrafters don't trade picks
+    _stripPicks(){ ['a','b'].forEach(s=>{ if(tradeAssets[s]) tradeAssets[s]=tradeAssets[s].filter(x=>x.type!=='pick'); }); },
 
     // value of an asset under current value-set
     val(a){
       if(a.type==='pick'){
         const d = (typeof PICK_VALUES!=='undefined' && PICK_VALUES[a.name]) || 0;
-        return this.vmode==='re' ? Math.round(d*0.12) : d;
+        return this.vmode==='re' ? 0 : d;
       }
       const dyn = (typeof getTradePlayerValue==='function' ? getTradePlayerValue(a.name) : 0) || 0;
       if(this.vmode==='re'){
@@ -15808,8 +15813,7 @@ function pickYear(year) {
           const sp=(typeof sleeperPlayerMap!=='undefined')&&sleeperPlayerMap[(typeof normName==='function'?normName(name):name)];
           return { name, pos:(inP&&inP.pos&&inP.pos!=='?'&&inP.pos)||(fc&&(fc.pos||fc.position))||(sp&&sp.position)||'?', team:(inP&&inP.team)||(fc&&fc.team)||(sp&&sp.team)||'' };
         }).filter(Boolean);
-        // every team carries tradable rookie picks
-        out.push({name:'2026 1st Mid',pos:'PICK',type:'pick'},{name:'2026 2nd',pos:'PICK',type:'pick'},{name:'2027 1st Mid',pos:'PICK',type:'pick'});
+        if(this._showPicks()) out.push({name:'2026 1st Mid',pos:'PICK',type:'pick'},{name:'2026 2nd',pos:'PICK',type:'pick'},{name:'2027 1st Mid',pos:'PICK',type:'pick'});
         return out;
       }
       return DEMO_ROSTERS[id] || [];
@@ -15841,7 +15845,7 @@ function pickYear(year) {
     },
 
     setMode(m){ this.mode=m; this.render(); },
-    setVmode(v){ this.vmode=v; this.render(); },
+    setVmode(v){ this.vmode=v; this._vmodeUserSet=true; try{localStorage.setItem('vault-tc-vmode',v);}catch(e){} if(v==='re') this._stripPicks(); if(!this._showPicks() && this._mobPos==='PICK') this._mobPos='RB'; this.render(); },
     setTeam(slot,id){ this[slot]=id; this._closeMenus(); this.render(); },
     setMobSide(s){ this._mobSide=s; this.render(); },
     setMobPos(p){ this._mobPos=p; this.render(); },
@@ -15864,6 +15868,26 @@ function pickYear(year) {
     avatar(a,size){ size=size||38; const c=POS_HEX[a.pos]||'#8794a6'; const init=a.type==='pick'?'◆':(a.name.split(' ').map(w=>w[0]).slice(0,2).join('')); return `<div class="tc-avatar" style="width:${size}px;height:${size}px;border:2px solid ${c};background:${c}14;color:${c};font-size:${Math.round(size*0.34)}px">${init}</div>`; },
     sendRow(side,a,color){ const v=this.val(a); return `<div class="tc-send-row" style="border:1px solid ${color}33">${this.avatar(a,38)}<div style="flex:1;min-width:0"><div class="tc-send-name">${a.name}</div><div class="tc-send-meta">${a.pos}${a.team?' · '+a.team:''}</div></div><div class="tc-send-val" style="color:${color}">${fmt(v)}</div><button class="tc-x" onclick="TC.remove('${side}','${esc(a.name)}')">✕</button></div>`; },
     vmodeSeg(){ return `<span class="lab">Value&nbsp;Set</span><div class="tc-seg sm"><button class="${this.vmode==='dyn'?'on':''}" onclick="TC.setVmode('dyn')">Dynasty</button><button class="${this.vmode==='re'?'on':''}" onclick="TC.setVmode('re')">Redraft</button></div>`; },
+    sourceBar(){ const fmtName=this.vmode==='re'?'Redraft':'Dynasty';
+      return `<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:9px 13px;background:rgba(12,17,25,0.5);border:1px solid var(--border);border-radius:11px;margin-bottom:14px">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--rb);box-shadow:0 0 0 3px rgba(61,204,122,.15);flex-shrink:0"></span>
+        <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--text2);letter-spacing:.02em">Values powered by <b style="color:var(--text)">FantasyCalc</b> · ${fmtName} · updated daily</span>
+        <button onclick="TC.explainValues(event)" style="margin-left:auto;display:flex;align-items:center;gap:5px;background:transparent;border:1px solid var(--border2);border-radius:7px;padding:4px 9px;color:var(--muted);font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap">ⓘ How values work</button>
+      </div>`; },
+    explainValues(e){ if(e)e.stopPropagation();
+      let m=document.getElementById('tc-explain'); if(m) m.remove();
+      m=document.createElement('div'); m.id='tc-explain';
+      m.style.cssText='position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(6,10,16,0.66);backdrop-filter:blur(4px)';
+      m.onclick=(ev)=>{ if(ev.target===m) m.remove(); };
+      m.innerHTML=`<div style="max-width:440px;width:100%;background:var(--s1);border:1px solid var(--border2);border-radius:18px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.6)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div style="font-family:var(--font-sans);font-weight:800;font-size:18px;color:var(--text)">How values work</div><button onclick="document.getElementById('tc-explain').remove()" style="background:var(--s3);border:none;border-radius:8px;width:30px;height:30px;color:var(--muted);font-size:16px;cursor:pointer">✕</button></div>
+        <div style="display:flex;flex-direction:column;gap:14px;font-family:var(--font-sans);font-size:13.5px;line-height:1.6;color:var(--text2)">
+          <div><b style="color:var(--text)">Source.</b> Player values come from <b style="color:var(--rb)">FantasyCalc</b>'s live market consensus — derived from real trades across thousands of leagues and refreshed daily.</div>
+          <div><b style="color:var(--text)">Dynasty vs Redraft.</b> Dynasty values weigh long-term, age-adjusted worth. Redraft values reflect win-now, single-season value — so veterans rise and rookies/picks fall.</div>
+          <div><b style="color:var(--text)">Draft picks.</b> Rookie &amp; future picks use FantasyCalc dynasty pick values. In <b style="color:var(--text)">Redraft</b> mode picks are hidden, since they hold no single-season value.</div>
+        </div></div>`;
+      document.body.appendChild(m);
+    },
 
     verdict(recvA,recvB,labelA,labelB){
       const total=Math.max(recvA+recvB,1), pctA=Math.round(recvA/total*100);
@@ -15912,7 +15936,8 @@ function pickYear(year) {
       const roster=this.roster(teamId), byPos={QB:[],RB:[],WR:[],TE:[],PICK:[]};
       roster.forEach(p=>{ const k=p.type==='pick'?'PICK':(p.pos||'?'); (byPos[k]=byPos[k]||[]).push(p); });
       Object.keys(byPos).forEach(k=>byPos[k].sort((a,b)=>this.val(b)-this.val(a)));
-      return `<div class="tc-roster-grid">${POS_ORDER.map(pos=>{ const c=POS_HEX[pos], list=byPos[pos]||[];
+      const order = this._showPicks()?POS_ORDER:POS_ORDER.filter(p=>p!=='PICK');
+      return `<div class="tc-roster-grid" style="grid-template-columns:repeat(${order.length},1fr)">${order.map(pos=>{ const c=POS_HEX[pos], list=byPos[pos]||[];
         return `<div style="min-width:0"><div class="tc-rcol-head" style="background:${c}22;border-top:2px solid ${c};color:${c}">${pos==='PICK'?'PICKS':pos}</div><div style="display:flex;flex-direction:column;gap:2px;padding-top:3px">${list.map(p=>{ const on=this.has(side,p.name), v=this.val(p);
           return `<div class="tc-rcell" style="${on?`background:${c}1c;box-shadow:inset 0 0 0 1px ${c}77`:''}" onclick="TC.toggle('${side}','${esc(p.name)}','${p.type==='pick'?'pick':'player'}')"><span class="tc-rcell-name" style="${on?'color:var(--text);font-weight:700':''}">${on?`<span style="color:${c};margin-right:3px">✓</span>`:''}${p.type==='pick'?p.name:p.name.split(' ').slice(-1)[0]}</span><span class="tc-rcell-val">${v?(v/1000).toFixed(1)+'k':'—'}</span></div>`; }).join('')||'<div style="padding:6px 7px;color:var(--muted);font-size:10px;font-family:var(--font-mono)">—</div>'}</div></div>`; }).join('')}</div>`;
     },
@@ -15924,7 +15949,7 @@ function pickYear(year) {
       if(this.isMobile()) return this.renderLeagueMobile();
       const tA=this.team(this.teamA), tB=this.team(this.teamB);
       const recvA=this.sideTotal('b'), recvB=this.sideTotal('a');
-      return `<div class="tc-card" style="padding:22px;margin-bottom:16px"><div class="tc-league-grid" style="display:grid;grid-template-columns:1.1fr 1fr 1fr 0.9fr;gap:24px;align-items:start">
+      return `${this.sourceBar()}<div class="tc-card" style="padding:22px;margin-bottom:16px"><div class="tc-league-grid" style="display:grid;grid-template-columns:1.1fr 1fr 1fr 0.9fr;gap:24px;align-items:start">
         <div><div class="tc-eyebrow" style="margin-bottom:12px">⇄&nbsp;&nbsp;Trade Verdict · ${this.vmode==='re'?'Redraft':'Dynasty'}</div>${this.balanceBar(recvA,recvB,tA.name,tB.name,tA.color,tB.color)}</div>
         <div><div class="tc-eyebrow" style="color:${tA.color};margin-bottom:9px">${tA.name} sends</div><div style="display:flex;flex-direction:column;gap:7px">${(tradeAssets.a||[]).length?(tradeAssets.a||[]).map(a=>this.sendRow('a',a,tA.color)).join(''):this.emptySlot(tA.color)}</div></div>
         <div><div class="tc-eyebrow" style="color:${tB.color};margin-bottom:9px">${tB.name} sends</div><div style="display:flex;flex-direction:column;gap:7px">${(tradeAssets.b||[]).length?(tradeAssets.b||[]).map(a=>this.sendRow('b',a,tB.color)).join(''):this.emptySlot(tB.color)}</div></div>
@@ -15945,14 +15970,14 @@ function pickYear(year) {
       const sideToggle=`<div class="tc-seg sm" style="width:100%">
         <button class="${side==='a'?'on':''}" style="flex:1;justify-content:center" onclick="TC.setMobSide('a')">${tA.name.length>12?tA.name.slice(0,11)+'…':tA.name}</button>
         <button class="${side==='b'?'on':''}" style="flex:1;justify-content:center" onclick="TC.setMobSide('b')">${tB.name.length>12?tB.name.slice(0,11)+'…':tB.name}</button></div>`;
-      const posTabs=`<div style="display:flex;gap:6px;margin:12px 0 11px">${POS_ORDER.map(pp=>{ const on=pp===pos, c=POS_HEX[pp]; return `<button onclick="TC.setMobPos('${pp}')" style="flex:1;padding:8px 0;border-radius:8px;border:1px solid ${on?c:'var(--border2)'};background:${on?c+'1f':'transparent'};color:${on?c:'var(--muted)'};font-family:var(--font-mono);font-weight:700;font-size:10.5px;cursor:pointer">${pp==='PICK'?'PICKS':pp}</button>`; }).join('')}</div>`;
+      const posTabs=`<div style="display:flex;gap:6px;margin:12px 0 11px">${(this._showPicks()?POS_ORDER:POS_ORDER.filter(p=>p!=='PICK')).map(pp=>{ const on=pp===pos, c=POS_HEX[pp]; return `<button onclick="TC.setMobPos('${pp}')" style="flex:1;padding:8px 0;border-radius:8px;border:1px solid ${on?c:'var(--border2)'};background:${on?c+'1f':'transparent'};color:${on?c:'var(--muted)'};font-family:var(--font-mono);font-weight:700;font-size:10.5px;cursor:pointer">${pp==='PICK'?'PICKS':pp}</button>`; }).join('')}</div>`;
       const list=roster.map(p=>{ const on=this.has(side,p.name), c=POS_HEX[p.pos]||'#8794a6', v=this.val(p);
         return `<div onclick="TC.toggle('${side}','${esc(p.name)}','${p.type==='pick'?'pick':'player'}')" style="display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-radius:10px;background:${on?c+'18':'var(--bg)'};box-shadow:inset 0 0 0 1px ${on?c+'77':'var(--border)'};cursor:pointer">
           <div style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:19px;height:19px;border-radius:50%;border:1.5px solid ${on?c:'var(--border2)'};background:${on?c:'transparent'};color:var(--bg);font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">${on?'✓':''}</span><span style="font-family:var(--font-sans);font-weight:${on?700:500};font-size:14px;color:${on?'var(--text)':'var(--text2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</span></div>
           <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--muted);flex-shrink:0">${v?fmt(v):'—'}</span></div>`;
       }).join('')||'<div style="padding:18px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px">No '+pos+' on this roster</div>';
 
-      return `<div class="tc-card" style="padding:18px;margin-bottom:13px">${this.balanceBar(recvA,recvB,tA.name,tB.name,tA.color,tB.color)}</div>
+      return `${this.sourceBar()}<div class="tc-card" style="padding:18px;margin-bottom:13px">${this.balanceBar(recvA,recvB,tA.name,tB.name,tA.color,tB.color)}</div>
         <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:13px">
           <div class="tc-eyebrow" style="color:${tA.color}">${tA.name} sends</div>
           ${(tradeAssets.a||[]).length?(tradeAssets.a||[]).map(a=>this.sendRow('a',a,tA.color)).join(''):this.emptySlot(tA.color)}
@@ -15970,10 +15995,13 @@ function pickYear(year) {
     // ── Send via Sleeper ──
     platform(){ return String(window.connectedPlatform||window.vpPlatform||'sleeper').toLowerCase(); },
     sendButtonHTML(full){
-      if(this.platform()!=='sleeper') return `<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted);line-height:1.6">Trade sending is available on Sleeper-connected leagues only.</div>`;
-      const btn=`<button class="tc-btn-primary" style="background:linear-gradient(135deg,#4d86f0,#3a68c4);box-shadow:0 8px 24px rgba(77,134,240,.28)${full?';padding:15px;font-size:15px':''}" onclick="TC.sendOffer()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Send via Sleeper</button>`;
-      if(full) return btn+`<div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center;line-height:1.5;margin-top:8px">Opens Sleeper to confirm &amp; send.</div>`;
-      return btn+`<div style="display:flex;gap:8px"><div class="tc-chip-mini" style="flex:1">⌛ 24 Hours ▾</div><div class="tc-chip-mini">$ FAAB</div></div><div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center;line-height:1.5">Opens Sleeper to confirm &amp; send the offer.</div>`;
+      if(this.platform()!=='sleeper') return `<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted);line-height:1.6">Trade offers can only be drafted on Sleeper-connected leagues.</div>`;
+      const connected = !!_lex('myTeamsUserId');
+      const icon=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      const handoff=`<div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center;line-height:1.5;margin-top:8px">Opens this matchup in Sleeper to review &amp; send. Sleeper doesn't let apps send trades directly.</div>`;
+      if(!connected) return `<button class="tc-btn-primary" disabled style="background:var(--s3);color:var(--muted);cursor:not-allowed;box-shadow:none${full?';padding:15px;font-size:15px':''}">${icon}Draft offer in Sleeper</button><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--muted);text-align:center;line-height:1.5;margin-top:8px">Connect your Sleeper account on the League tab to draft offers.</div>`;
+      const btn=`<button class="tc-btn-primary" style="background:linear-gradient(135deg,#4d86f0,#3a68c4);box-shadow:0 8px 24px rgba(77,134,240,.28)${full?';padding:15px;font-size:15px':''}" onclick="TC.sendOffer()">${icon}Draft offer in Sleeper</button>`;
+      return btn+handoff;
     },
     sendOffer(){
       if(this.platform()!=='sleeper') return;
@@ -15981,7 +16009,7 @@ function pickYear(year) {
       if(!((tradeAssets.a||[]).length||(tradeAssets.b||[]).length)){ this.toast('Add players to both sides first'); return; }
       if(!_lex('myTeamsUserId')){ this.toast('Connect your Sleeper account on the League tab to send offers'); return; }
       const lid=_lex('ovLeagueId')||_lex('teamsLeagueId');
-      this.toast('Opening Sleeper to confirm your offer to '+tB.name+'…');
+      this.toast('Opening Sleeper to review your offer to '+tB.name+'…');
       const url=lid?('https://sleeper.com/leagues/'+lid+'/team'):'https://sleeper.com/';
       setTimeout(()=>{ try{ window.open(url,'_blank','noopener'); }catch(e){} },450);
     },
@@ -15993,7 +16021,7 @@ function pickYear(year) {
       const v=this.verdict(recvA,recvB,'Side A','Side B'); const R=68, C=2*Math.PI*R; const lean=recvA/Math.max(recvA+recvB,1);
       const ringColor=v.pctDiff<=8?'var(--te)':(recvA>recvB?'var(--sky)':'var(--accent2)');
       const vlabel=v.pctDiff<=8?'EVEN':(recvA>recvB?'SIDE A':'SIDE B');
-      return `<div class="tc-bento">${this.sideBuilder('a','Side A sends','var(--sky)','#7bd0ff',totA)}
+      return `${this.sourceBar()}<div class="tc-bento">${this.sideBuilder('a','Side A sends','var(--sky)','#7bd0ff',totA)}
         <div style="display:flex;flex-direction:column;gap:16px">
           <div class="tc-card" style="padding:22px;text-align:center"><div class="tc-eyebrow" style="margin-bottom:14px">Trade Verdict · ${this.vmode==='re'?'Redraft':'Dynasty'}</div>
             <div class="tc-ring-wrap"><svg width="168" height="168" viewBox="0 0 168 168"><circle cx="84" cy="84" r="${R}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="9"/><circle cx="84" cy="84" r="${R}" fill="none" stroke="${ringColor}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-lean)).toFixed(1)}" style="transition:stroke-dashoffset .6s ease"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-family:var(--font-sans);font-weight:900;font-size:16px;letter-spacing:-.02em;color:${ringColor}">${vlabel}${v.pctDiff<=8?'':' WINS'}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:3px">${Math.round(lean*100)}% lean</span></div></div>
@@ -16005,7 +16033,7 @@ function pickYear(year) {
     },
     sideBuilder(side,label,colorVar,colorHex,total){
       return `<div class="tc-side"><div class="tc-card" style="padding:20px;display:flex;flex-direction:column;gap:14px"><div style="display:flex;justify-content:space-between;align-items:center"><div class="tc-eyebrow" style="color:${colorVar}">${label}</div><span style="font-family:var(--font-mono);font-weight:700;font-size:12px;color:${colorVar};background:${colorHex}1f;padding:3px 10px;border-radius:6px">${fmt(total)}</span></div>
-        <div style="position:relative"><input class="tc-search" id="tc-search-${side}" placeholder="🔍  Add a player or pick…" autocomplete="off" style="border:1.5px solid ${colorHex}33" oninput="TC.search('${side}')"><div class="tc-results" id="tc-results-${side}"></div></div>
+        <div style="position:relative"><input class="tc-search" id="tc-search-${side}" placeholder="🔍  Add a player${this._showPicks()?' or pick':''}…" autocomplete="off" style="border:1.5px solid ${colorHex}33" oninput="TC.search('${side}')"><div class="tc-results" id="tc-results-${side}"></div></div>
         <div style="display:flex;flex-direction:column;gap:8px">${(tradeAssets[side]||[]).length?(tradeAssets[side]||[]).map(a=>this.sendRow(side,a,colorVar)).join(''):`<div style="display:flex;align-items:center;justify-content:center;padding:16px;border:1.5px dashed ${colorHex}33;border-radius:11px;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em">EMPTY — SEARCH TO ADD</div>`}</div></div></div>`;
     },
     projectionBars(){ const proj=s=>{ const t=this.sideTotal(s); return [t*0.55,t*0.62,t*0.7,t*0.8,t]; }; const a=proj('a'),b=proj('b'),mx=Math.max(...a,...b,1);
@@ -16017,7 +16045,7 @@ function pickYear(year) {
       if(typeof PLAYERS!=='undefined') PLAYERS.forEach(p=>all.push(p));
       if(typeof fcValues!=='undefined') Object.values(fcValues).forEach(fc=>{ if(fc&&fc.name&&!all.some(p=>p.name===fc.name)) all.push({name:fc.name,pos:fc.pos||'?',team:fc.team||''}); });
       const players=all.filter(p=>p.name.toLowerCase().includes(q)&&!seen.has(p.name)&&seen.add(p.name)).slice(0,9).map(p=>{ const a=this._resolve(p.name,'player'), v=this.val(a), c=POS_HEX[a.pos]||'#8794a6'; return `<div class="tc-result" onclick="TC.add('${side}','${esc(p.name)}','player')">${this.avatar(a,28)}<div style="flex:1;min-width:0"><div class="tc-send-name" style="font-size:12.5px">${p.name}</div><div class="tc-send-meta">${a.pos}${a.team?' · '+a.team:''}</div></div><span class="tc-send-val" style="color:${c}">${v?fmt(v):'—'}</span></div>`; });
-      const picks=(typeof PICK_VALUES!=='undefined'?Object.keys(PICK_VALUES):[]).filter(n=>n.toLowerCase().includes(q)).slice(0,6).map(n=>{ const a={name:n,type:'pick',pos:'PICK'}, v=this.val(a); return `<div class="tc-result" onclick="TC.add('${side}','${esc(n)}','pick')">${this.avatar(a,28)}<div style="flex:1;min-width:0"><div class="tc-send-name" style="font-size:12.5px">${n}</div><div class="tc-send-meta">DRAFT PICK</div></div><span class="tc-send-val" style="color:#b48cff">${fmt(v)}</span></div>`; });
+      const picks=this._showPicks()?((typeof PICK_VALUES!=='undefined'?Object.keys(PICK_VALUES):[]).filter(n=>n.toLowerCase().includes(q)).slice(0,6).map(n=>{ const a={name:n,type:'pick',pos:'PICK'}, v=this.val(a); return `<div class="tc-result" onclick="TC.add('${side}','${esc(n)}','pick')">${this.avatar(a,28)}<div style="flex:1;min-width:0"><div class="tc-send-name" style="font-size:12.5px">${n}</div><div class="tc-send-meta">DRAFT PICK</div></div><span class="tc-send-val" style="color:#b48cff">${fmt(v)}</span></div>`; })):[];
       box.innerHTML=[...players,...picks].join('')||'<div style="padding:10px 12px;color:var(--muted);font-size:12px;font-family:var(--font-mono)">No results</div>'; box.classList.add('show');
     },
     _closeResults(){ document.querySelectorAll('.tc-results').forEach(b=>b.classList.remove('show')); },
@@ -16028,11 +16056,13 @@ function pickYear(year) {
       this._inited=true;
       if(!this._everRendered){ this.render(); this._everRendered=true; }
       const live=await this.loadLeague();
+      if(!this._vmodeUserSet){ this.vmode=this._smartVmode(); }
       if(!live && !this.leagueSelected() && !this._seeded && !((tradeAssets.a||[]).length||(tradeAssets.b||[]).length)){
         tradeAssets.a=[this._resolve('Bijan Robinson','player')];
         tradeAssets.b=[this._resolve('Caleb Williams','player'),this._resolve('2026 1st Mid','pick')];
         this._seeded=true;
       }
+      if(!this._showPicks()) this._stripPicks();
       this.render();
       if(typeof fcLoaded!=='undefined' && !fcLoaded && typeof fetchFantasyCalc==='function' && !window._tcFcKick){ window._tcFcKick=1; fetchFantasyCalc().then(()=>this.render()).catch(()=>{}); }
       if(typeof sleeperPlayersLoaded!=='undefined' && !sleeperPlayersLoaded && typeof fetchSleeperPlayers==='function' && !window._tcSpKick){ window._tcSpKick=1; fetchSleeperPlayers().then(()=>this.render()).catch(()=>{}); }
@@ -16053,7 +16083,7 @@ function pickYear(year) {
   const _origSwitch = window.switchGlobalLeague;
   window.switchGlobalLeague = function(id){
     const r = _origSwitch ? _origSwitch.apply(this, arguments) : undefined;
-    if(window.TC){ TC._live=null; if(document.getElementById('page-trade') && document.getElementById('page-trade').classList.contains('on')) setTimeout(()=>TC.loadLeague(),60); }
+    if(window.TC){ TC._live=null; if(document.getElementById('page-trade') && document.getElementById('page-trade').classList.contains('on')) setTimeout(()=>{ TC.loadLeague().then(()=>{ if(!TC._vmodeUserSet){ TC.vmode=TC._smartVmode(); if(!TC._showPicks()) TC._stripPicks(); TC.render(); } }); },60); }
     return r;
   };
 })();
