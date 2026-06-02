@@ -15727,18 +15727,18 @@ function pickYear(year) {
 <script>
 /* ════════════════════════════════════════════════════════════
    TRADE CALCULATOR v3 — controller
-   Modes: Quick Calc (free-range) · My League (team pickers + rosters)
+   Modes: Quick Calc (free-range) · My League (live Sleeper teams)
    Value sets: Dynasty / Redraft  (FantasyCalc-backed)
-   Reuses: tradeAssets, PICK_VALUES, getTradePlayerValue, getFCValue,
-           PLAYERS, fcValues, normName, _rosterCache, _usersCache, etc.
    ════════════════════════════════════════════════════════════ */
 (function(){
   const fmt = n => Math.round(n||0).toLocaleString('en-US');
   const POS_HEX = { QB:'#ff6680', RB:'#3DCC7A', WR:'#7bd0ff', TE:'#f5c842', PICK:'#b48cff' };
   const POS_ORDER = ['QB','RB','WR','TE','PICK'];
   const esc = s => String(s).replace(/'/g,"\\'");
+  function _lex(n){ try{ return eval(n); }catch(e){ return undefined; } }
+  const PALETTE = ['#4d86f0','#ff5a6e','#f5c842','#3DCC7A','#b48cff','#7bd0ff','#ff9e64','#5be0c8','#e07bd0','#9ee07b'];
 
-  // ── Demo league (used when no live Sleeper league is synced) ──
+  // ── Demo league (only used when NO Sleeper league is connected) ──
   const TEAM_META = [
     { id:'you', name:'The Vault',         owner:'You',            color:'#4d86f0', logo:'TV' },
     { id:'bb',  name:'brittlebones85',    owner:'brittlebones85', color:'#ff5a6e', logo:'BB' },
@@ -15757,9 +15757,13 @@ function pickYear(year) {
   };
   const TRENDING = ['Jayden Daniels','Marvin Harrison Jr.','Brock Bowers','Drake Maye','Kyren Williams','Breece Hall','Ladd McConkey','Bucky Irving'];
 
-  // ════ controller ════
   const TC = {
     mode:'league', vmode:'dyn', teamA:'you', teamB:'bb', _inited:false,
+    _live:null, _loading:false, _mobSide:'b', _mobPos:'RB',
+
+    isMobile(){ try{ return window.matchMedia('(max-width:700px)').matches; }catch(e){ return false; } },
+    leagueSelected(){ return !!(_lex('ovLeagueId') || _lex('teamsLeagueId')); },
+    isLive(){ return !!(this._live && this._live.rosters && this._live.rosters.length); },
 
     // value of an asset under current value-set
     val(a){
@@ -15776,413 +15780,282 @@ function pickYear(year) {
     },
     sideTotal(side){ return (tradeAssets[side]||[]).reduce((s,a)=>s+this.val(a),0); },
 
-    // live league if synced, else demo
-    isLive(){ return !!(window.myTeamsUserId && Array.isArray(window._rosterCache) && window._rosterCache.length && Array.isArray(window._usersCache) && window._usersCache.length); },
+    // ── teams / rosters (live when connected, else demo) ──
     teams(){
       if(this.isLive()){
-        const umap = (typeof buildUserMap==='function') ? buildUserMap(window._usersCache) : {};
-        const palette = ['#4d86f0','#ff5a6e','#f5c842','#3DCC7A','#b48cff','#7bd0ff','#ff9e64','#5be0c8'];
-        return window._rosterCache.map((r,i)=>{
+        const umap = (typeof buildUserMap==='function') ? buildUserMap(this._live.users) : {};
+        return this._live.rosters.map((r,i)=>{
           const nm = umap[r.owner_id] || ('Team '+(r.roster_id||i+1));
-          const mine = r.owner_id===window.myTeamsUserId;
+          const mine = r.owner_id===_lex('myTeamsUserId');
           return { id:String(r.roster_id), name:mine?(nm+' (You)'):nm, owner:mine?'You':nm,
-            color:mine?'#4d86f0':palette[i%palette.length], logo:nm.replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase()||'T'+(i+1),
+            color:mine?'#4d86f0':PALETTE[(i+1)%PALETTE.length],
+            logo:(nm.replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase())||('T'+(i+1)),
             _players:(r.players||[]) };
         });
       }
       return TEAM_META.slice();
     },
-    team(id){ return this.teams().find(t=>String(t.id)===String(id)) || this.teams()[0]; },
+    team(id){ const ts=this.teams(); return ts.find(t=>String(t.id)===String(id)) || ts[0]; },
     roster(id){
-      const t = this.team(id);
+      const t=this.team(id); if(!t) return [];
       if(this.isLive() && t._players){
-        const out = (t._players||[]).map(pid=>{
-          const name = (window.globalPidToName||{})[String(pid)];
-          if(!name) return null;
-          const inP = (typeof PLAYERS!=='undefined') && PLAYERS.find(x=>x.name===name);
-          const fc = (typeof getFCValue==='function') && getFCValue(name);
-          return { name, pos:(inP&&inP.pos)||(fc&&fc.pos)||'?', team:(inP&&inP.team)||(fc&&fc.team)||'' };
+        const seen=new Set();
+        const out=(t._players||[]).map(pid=>{
+          const name=(_lex('globalPidToName')||{})[String(pid)];
+          if(!name||seen.has(name))return null; seen.add(name);
+          const inP=(typeof PLAYERS!=='undefined')&&PLAYERS.find(x=>x.name===name);
+          const fc=(typeof getFCValue==='function')&&getFCValue(name);
+          const sp=(typeof sleeperPlayerMap!=='undefined')&&sleeperPlayerMap[(typeof normName==='function'?normName(name):name)];
+          return { name, pos:(inP&&inP.pos&&inP.pos!=='?'&&inP.pos)||(fc&&(fc.pos||fc.position))||(sp&&sp.position)||'?', team:(inP&&inP.team)||(fc&&fc.team)||(sp&&sp.team)||'' };
         }).filter(Boolean);
-        // give each live team a couple of generic picks so dynasty picks are tradable
-        out.push({name:'2026 1st Mid',pos:'PICK',type:'pick'},{name:'2027 1st Mid',pos:'PICK',type:'pick'});
+        // every team carries tradable rookie picks
+        out.push({name:'2026 1st Mid',pos:'PICK',type:'pick'},{name:'2026 2nd',pos:'PICK',type:'pick'},{name:'2027 1st Mid',pos:'PICK',type:'pick'});
         return out;
       }
       return DEMO_ROSTERS[id] || [];
     },
 
+    async loadLeague(){
+      const lid = _lex('ovLeagueId') || _lex('teamsLeagueId');
+      if(!lid){ this._live=null; return false; }
+      if(this._live && this._live.lid===lid) return true;
+      this._loading=true; this.render();
+      try{
+        if(typeof sleeperPlayersLoaded!=='undefined' && !sleeperPlayersLoaded && typeof fetchSleeperPlayers==='function'){ await fetchSleeperPlayers(); }
+        let ctx=null;
+        if(typeof getLeagueContext_ov==='function'){ try{ ctx=await getLeagueContext_ov(); }catch(e){} }
+        if((!ctx||!ctx.rosters) && typeof getLeagueContext==='function'){ try{ ctx=await getLeagueContext(); }catch(e){} }
+        if(ctx && ctx.rosters && ctx.rosters.length && ctx.users){
+          this._live={ lid, rosters:ctx.rosters, users:ctx.users };
+          const ids=ctx.rosters.map(r=>String(r.roster_id));
+          const mine=ctx.rosters.find(r=>r.owner_id===_lex('myTeamsUserId'));
+          this.teamA = mine?String(mine.roster_id):ids[0];
+          this.teamB = ids.find(id=>id!==this.teamA) || ids[0];
+          tradeAssets.a=[]; tradeAssets.b=[]; this._seeded=true; // never carry demo into a real league
+          this._loading=false; this.render();
+          return true;
+        }
+      }catch(e){}
+      this._loading=false; this._live=null; this.render();
+      return false;
+    },
+
     setMode(m){ this.mode=m; this.render(); },
     setVmode(v){ this.vmode=v; this.render(); },
     setTeam(slot,id){ this[slot]=id; this._closeMenus(); this.render(); },
+    setMobSide(s){ this._mobSide=s; this.render(); },
+    setMobPos(p){ this._mobPos=p; this.render(); },
 
     // ── asset mutation ──
     _resolve(name,type){
-      const inP = (typeof PLAYERS!=='undefined') && PLAYERS.find(p=>p.name===name);
-      const fc = (typeof getFCValue==='function') && getFCValue(name);
-      const sp = (typeof sleeperPlayerMap!=='undefined') && sleeperPlayerMap[ (typeof normName==='function'?normName(name):name) ];
-      const pos = type==='pick' ? 'PICK' : ((inP&&inP.pos&&inP.pos!=='?'&&inP.pos)||(fc&&(fc.pos||fc.position))||(sp&&sp.position)||'?');
-      const team = type==='pick' ? '' : ((inP&&inP.team)||(fc&&fc.team)||(sp&&sp.team)||'');
-      const age = (fc&&fc.age)||null;
-      return {name,type,pos,team,age};
+      const inP=(typeof PLAYERS!=='undefined')&&PLAYERS.find(p=>p.name===name);
+      const fc=(typeof getFCValue==='function')&&getFCValue(name);
+      const sp=(typeof sleeperPlayerMap!=='undefined')&&sleeperPlayerMap[(typeof normName==='function'?normName(name):name)];
+      const pos=type==='pick'?'PICK':((inP&&inP.pos&&inP.pos!=='?'&&inP.pos)||(fc&&(fc.pos||fc.position))||(sp&&sp.position)||'?');
+      const team=type==='pick'?'':((inP&&inP.team)||(fc&&fc.team)||(sp&&sp.team)||'');
+      return {name,type,pos,team,age:(fc&&fc.age)||null};
     },
-    add(side,name,type){
-      if(!tradeAssets[side]) tradeAssets[side]=[];
-      if(tradeAssets[side].find(a=>a.name===name)) return;
-      tradeAssets[side].push(this._resolve(name,type));
-      this._closeResults(); this.render();
-    },
+    add(side,name,type){ if(!tradeAssets[side])tradeAssets[side]=[]; if(tradeAssets[side].find(a=>a.name===name))return; tradeAssets[side].push(this._resolve(name,type)); this._closeResults(); this.render(); },
     remove(side,name){ tradeAssets[side]=(tradeAssets[side]||[]).filter(a=>a.name!==name); this.render(); },
-    toggle(side,name,type){
-      if(!tradeAssets[side]) tradeAssets[side]=[];
-      if(tradeAssets[side].find(a=>a.name===name)) this.remove(side,name);
-      else this.add(side,name,type);
-    },
+    toggle(side,name,type){ if(!tradeAssets[side])tradeAssets[side]=[]; if(tradeAssets[side].find(a=>a.name===name))this.remove(side,name); else this.add(side,name,type); },
     has(side,name){ return !!(tradeAssets[side]||[]).find(a=>a.name===name); },
 
-    // ── small builders ──
-    avatar(a,size){
-      size=size||38;
-      const c = POS_HEX[a.pos]||'#8794a6';
-      const init = a.type==='pick' ? '◆' : (a.name.split(' ').map(w=>w[0]).slice(0,2).join(''));
-      return `<div class="tc-avatar" style="width:${size}px;height:${size}px;border:2px solid ${c};background:${c}14;color:${c};font-size:${Math.round(size*0.34)}px">${init}</div>`;
-    },
-    sendRow(side,a,color){
-      const v=this.val(a);
-      return `<div class="tc-send-row" style="border:1px solid ${color}33">
-        ${this.avatar(a,38)}
-        <div style="flex:1;min-width:0"><div class="tc-send-name">${a.name}</div><div class="tc-send-meta">${a.pos}${a.team?' · '+a.team:''}</div></div>
-        <div class="tc-send-val" style="color:${color}">${fmt(v)}</div>
-        <button class="tc-x" onclick="TC.remove('${side}','${esc(a.name)}')">✕</button>
-      </div>`;
-    },
-    vmodeSeg(){
-      return `<span class="lab">Value&nbsp;Set</span>
-        <div class="tc-seg sm">
-          <button class="${this.vmode==='dyn'?'on':''}" onclick="TC.setVmode('dyn')">Dynasty</button>
-          <button class="${this.vmode==='re'?'on':''}" onclick="TC.setVmode('re')">Redraft</button>
-        </div>`;
-    },
+    // ── builders ──
+    avatar(a,size){ size=size||38; const c=POS_HEX[a.pos]||'#8794a6'; const init=a.type==='pick'?'◆':(a.name.split(' ').map(w=>w[0]).slice(0,2).join('')); return `<div class="tc-avatar" style="width:${size}px;height:${size}px;border:2px solid ${c};background:${c}14;color:${c};font-size:${Math.round(size*0.34)}px">${init}</div>`; },
+    sendRow(side,a,color){ const v=this.val(a); return `<div class="tc-send-row" style="border:1px solid ${color}33">${this.avatar(a,38)}<div style="flex:1;min-width:0"><div class="tc-send-name">${a.name}</div><div class="tc-send-meta">${a.pos}${a.team?' · '+a.team:''}</div></div><div class="tc-send-val" style="color:${color}">${fmt(v)}</div><button class="tc-x" onclick="TC.remove('${side}','${esc(a.name)}')">✕</button></div>`; },
+    vmodeSeg(){ return `<span class="lab">Value&nbsp;Set</span><div class="tc-seg sm"><button class="${this.vmode==='dyn'?'on':''}" onclick="TC.setVmode('dyn')">Dynasty</button><button class="${this.vmode==='re'?'on':''}" onclick="TC.setVmode('re')">Redraft</button></div>`; },
 
-    // ── verdict math ──
     verdict(recvA,recvB,labelA,labelB){
-      const total=Math.max(recvA+recvB,1);
-      const pctA=Math.round(recvA/total*100);
-      const diff=recvA-recvB, abs=Math.abs(diff);
-      const pctDiff=Math.round(abs/Math.max(recvA,recvB,1)*100);
+      const total=Math.max(recvA+recvB,1), pctA=Math.round(recvA/total*100);
+      const diff=recvA-recvB, abs=Math.abs(diff), pctDiff=Math.round(abs/Math.max(recvA,recvB,1)*100);
       let text,color,sub;
       if(pctDiff<=8){ text='EVEN TRADE'; color='var(--te)'; sub='Balanced within standard variance — fair both ways.'; }
-      else if(diff>0){
-        if(pctDiff>30){ text=labelA+' WINS BIG'; color='var(--rb)'; }
-        else if(pctDiff>15){ text=labelA+' WINS'; color='var(--rb)'; }
-        else { text=labelA+' EDGE'; color='#4ade80'; }
-        sub=`${labelA} nets ${fmt(abs)} more value (${pctDiff}% edge).`;
-      } else {
-        if(pctDiff>30){ text=labelB+' WINS BIG'; color='var(--qb)'; }
-        else if(pctDiff>15){ text=labelB+' WINS'; color='var(--qb)'; }
-        else { text=labelB+' EDGE'; color='#f87171'; }
-        sub=`${labelB} nets ${fmt(abs)} more value (${pctDiff}% edge).`;
-      }
+      else if(diff>0){ text=labelA+(pctDiff>30?' WINS BIG':pctDiff>15?' WINS':' EDGE'); color=pctDiff>15?'var(--rb)':'#4ade80'; sub=`${labelA} nets ${fmt(abs)} more value (${pctDiff}% edge).`; }
+      else { text=labelB+(pctDiff>30?' WINS BIG':pctDiff>15?' WINS':' EDGE'); color=pctDiff>15?'var(--qb)':'#f87171'; sub=`${labelB} nets ${fmt(abs)} more value (${pctDiff}% edge).`; }
       return {text,color,sub,pctA,pctDiff};
     },
     balanceBar(recvA,recvB,labelA,labelB,colorA,colorB){
       const v=this.verdict(recvA,recvB,labelA,labelB);
-      return `<div>
-        <div style="text-align:center;margin-bottom:12px">
-          <div class="tc-bal-verdict" style="font-size:22px;color:${v.color}">${v.text}</div>
-          <div style="font-family:var(--font-sans);font-size:12.5px;color:var(--muted);margin-top:6px">${v.sub}</div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px">
-          <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;color:${colorA};letter-spacing:.04em">${labelA.toUpperCase()}</span>
-          <span style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.12em">FAIR</span>
-          <span style="font-family:var(--font-mono);font-size:10px;font-weight:700;color:${colorB};letter-spacing:.04em">${labelB.toUpperCase()}</span>
-        </div>
-        <div class="tc-bal-track">
-          <div class="tc-bal-fillA" style="width:${v.pctA}%;background:linear-gradient(90deg,${colorA}cc,${colorA})"></div>
-          <div class="tc-bal-fillB" style="width:${100-v.pctA}%;background:linear-gradient(90deg,${colorB},${colorB}cc)"></div>
-        </div>
+      return `<div><div style="text-align:center;margin-bottom:12px"><div class="tc-bal-verdict" style="font-size:22px;color:${v.color}">${v.text}</div><div style="font-family:var(--font-sans);font-size:12.5px;color:var(--muted);margin-top:6px">${v.sub}</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px"><span style="font-family:var(--font-mono);font-size:10px;font-weight:700;color:${colorA};letter-spacing:.04em">${labelA.toUpperCase()}</span><span style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:.12em">FAIR</span><span style="font-family:var(--font-mono);font-size:10px;font-weight:700;color:${colorB};letter-spacing:.04em">${labelB.toUpperCase()}</span></div>
+        <div class="tc-bal-track"><div class="tc-bal-fillA" style="width:${v.pctA}%;background:linear-gradient(90deg,${colorA}cc,${colorA})"></div><div class="tc-bal-fillB" style="width:${100-v.pctA}%;background:linear-gradient(90deg,${colorB},${colorB}cc)"></div></div>
         <div style="position:relative;height:0"><div class="tc-bal-tick"></div></div>
-        <div style="display:flex;justify-content:space-between;margin-top:9px">
-          <span style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--text)">${fmt(recvA)}</span>
-          <span style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--text)">${fmt(recvB)}</span>
-        </div>
-      </div>`;
+        <div style="display:flex;justify-content:space-between;margin-top:9px"><span style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--text)">${fmt(recvA)}</span><span style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--text)">${fmt(recvB)}</span></div></div>`;
     },
 
     // ════ RENDER ════
     render(){
-      // mode tabs
       document.querySelectorAll('#tc-mode-tabs button').forEach(b=>b.classList.toggle('on', b.dataset.mode===this.mode));
-      // value toggle (header)
       const vt=document.getElementById('tc-vmode-top'); if(vt) vt.innerHTML=this.vmodeSeg();
-      // subtitle
       const sub=document.getElementById('tc-subtitle');
-      if(sub) sub.textContent = this.mode==='league'
-        ? 'Pick any two teams in your league, then build the offer from their rosters — dynasty & redraft.'
-        : 'Compare any two packages — no league needed. Players & picks, dynasty or redraft.';
-      const ctl=document.getElementById('tc-controls');
-      const lb=document.getElementById('tc-league-body');
-      const qb=document.getElementById('tc-quick-body');
+      if(sub) sub.textContent=this.mode==='league'?'Pick any two teams in your league, then build the offer from their rosters — dynasty & redraft.':'Compare any two packages — no league needed. Players & picks, dynasty or redraft.';
+      const ctl=document.getElementById('tc-controls'), lb=document.getElementById('tc-league-body'), qb=document.getElementById('tc-quick-body');
       if(this.mode==='league'){
         if(ctl){ ctl.style.display=''; ctl.innerHTML=this.renderStrip(); }
         if(lb){ lb.style.display=''; lb.innerHTML=this.renderLeague(); }
-        if(qb){ qb.style.display='none'; }
+        if(qb) qb.style.display='none';
       } else {
-        if(ctl){ ctl.style.display='none'; }
-        if(lb){ lb.style.display='none'; }
+        if(ctl) ctl.style.display='none';
+        if(lb) lb.style.display='none';
         if(qb){ qb.style.display=''; qb.innerHTML=this.renderQuick(); }
       }
     },
 
     teamPicker(slot){
-      const t=this.team(this[slot]);
-      const teams=this.teams();
-      return `<div class="tc-tpick">
-        <button class="tc-tpick-btn" onclick="TC._toggleMenu('${slot}',event)">
-          <div class="tc-logo" style="background:${t.color}22;border:1px solid ${t.color}66;color:${t.color}">${t.logo}</div>
-          <div style="text-align:left"><div class="tc-tpick-name">${t.name}</div><div class="tc-tpick-owner">${t.owner}</div></div>
-          <span class="tc-tpick-caret">▾</span>
-        </button>
-        <div class="tc-tpick-menu" id="tc-menu-${slot}">
-          ${teams.map(o=>`<div class="tc-tpick-item ${String(o.id)===String(this[slot])?'sel':''}" onclick="TC.setTeam('${slot}','${esc(o.id)}')">
-            <div class="tc-logo" style="background:${o.color}22;border:1px solid ${o.color}66;color:${o.color}">${o.logo}</div>
-            <div><div class="tc-tpick-name">${o.name}</div><div class="tc-tpick-owner">${o.owner}</div></div>
-          </div>`).join('')}
-        </div>
-      </div>`;
+      const t=this.team(this[slot]); const teams=this.teams();
+      return `<div class="tc-tpick"><button class="tc-tpick-btn" onclick="TC._toggleMenu('${slot}',event)"><div class="tc-logo" style="background:${t.color}22;border:1px solid ${t.color}66;color:${t.color}">${t.logo}</div><div style="text-align:left;min-width:0"><div class="tc-tpick-name">${t.name}</div><div class="tc-tpick-owner">${t.owner}</div></div><span class="tc-tpick-caret">▾</span></button>
+        <div class="tc-tpick-menu" id="tc-menu-${slot}">${teams.map(o=>`<div class="tc-tpick-item ${String(o.id)===String(this[slot])?'sel':''}" onclick="TC.setTeam('${slot}','${esc(o.id)}')"><div class="tc-logo" style="background:${o.color}22;border:1px solid ${o.color}66;color:${o.color}">${o.logo}</div><div style="min-width:0"><div class="tc-tpick-name">${o.name}</div><div class="tc-tpick-owner">${o.owner}</div></div></div>`).join('')}</div></div>`;
     },
-    renderStrip(){
-      return `<div class="tc-strip">
-        <div class="tc-pickers">
-          ${this.teamPicker('teamA')}
-          <div class="tc-swap">⇄</div>
-          ${this.teamPicker('teamB')}
-        </div>
-      </div>`;
-    },
+    renderStrip(){ return `<div class="tc-strip"><div class="tc-pickers">${this.teamPicker('teamA')}<div class="tc-swap">⇄</div>${this.teamPicker('teamB')}</div></div>`; },
 
-    rosterCols(side, teamId, color){
-      const roster=this.roster(teamId);
-      const byPos={QB:[],RB:[],WR:[],TE:[],PICK:[]};
+    rosterCols(side,teamId){
+      const roster=this.roster(teamId), byPos={QB:[],RB:[],WR:[],TE:[],PICK:[]};
       roster.forEach(p=>{ const k=p.type==='pick'?'PICK':(p.pos||'?'); (byPos[k]=byPos[k]||[]).push(p); });
       Object.keys(byPos).forEach(k=>byPos[k].sort((a,b)=>this.val(b)-this.val(a)));
-      return `<div class="tc-roster-grid">${POS_ORDER.map(pos=>{
-        const c=POS_HEX[pos]; const list=byPos[pos]||[];
-        return `<div style="min-width:0">
-          <div class="tc-rcol-head" style="background:${c}22;border-top:2px solid ${c};color:${c}">${pos==='PICK'?'PICKS':pos}</div>
-          <div style="display:flex;flex-direction:column;gap:2px;padding-top:3px">
-            ${list.map(p=>{ const on=this.has(side,p.name); const v=this.val(p);
-              return `<div class="tc-rcell" style="${on?`background:${c}1c;box-shadow:inset 0 0 0 1px ${c}77`:''}" onclick="TC.toggle('${side}','${esc(p.name)}','${p.type==='pick'?'pick':'player'}')">
-                <span class="tc-rcell-name" style="${on?`color:var(--text);font-weight:700`:''}">${on?`<span style="color:${c};margin-right:3px">✓</span>`:''}${p.name.split(' ').slice(-1)[0]}${p.type==='pick'?' '+p.name.split(' ')[0]:''}</span>
-                <span class="tc-rcell-val">${v?(v/1000).toFixed(1)+'k':'—'}</span>
-              </div>`; }).join('')}
-          </div>
-        </div>`;
-      }).join('')}</div>`;
+      return `<div class="tc-roster-grid">${POS_ORDER.map(pos=>{ const c=POS_HEX[pos], list=byPos[pos]||[];
+        return `<div style="min-width:0"><div class="tc-rcol-head" style="background:${c}22;border-top:2px solid ${c};color:${c}">${pos==='PICK'?'PICKS':pos}</div><div style="display:flex;flex-direction:column;gap:2px;padding-top:3px">${list.map(p=>{ const on=this.has(side,p.name), v=this.val(p);
+          return `<div class="tc-rcell" style="${on?`background:${c}1c;box-shadow:inset 0 0 0 1px ${c}77`:''}" onclick="TC.toggle('${side}','${esc(p.name)}','${p.type==='pick'?'pick':'player'}')"><span class="tc-rcell-name" style="${on?'color:var(--text);font-weight:700':''}">${on?`<span style="color:${c};margin-right:3px">✓</span>`:''}${p.type==='pick'?p.name:p.name.split(' ').slice(-1)[0]}</span><span class="tc-rcell-val">${v?(v/1000).toFixed(1)+'k':'—'}</span></div>`; }).join('')||'<div style="padding:6px 7px;color:var(--muted);font-size:10px;font-family:var(--font-mono)">—</div>'}</div></div>`; }).join('')}</div>`;
     },
 
     renderLeague(){
+      if(this.leagueSelected() && !this.isLive()){
+        return `<div class="tc-card" style="padding:48px;text-align:center;color:var(--muted)"><div style="font-size:24px;margin-bottom:10px;animation:spin 1s linear infinite;display:inline-block">⟳</div><div style="font-family:var(--font-sans);font-size:14px">${this._loading?'Loading your league rosters…':'Select a league in the header to load teams.'}</div></div>`;
+      }
+      if(this.isMobile()) return this.renderLeagueMobile();
       const tA=this.team(this.teamA), tB=this.team(this.teamB);
-      const recvA=this.sideTotal('b'); // team A receives what B sends
-      const recvB=this.sideTotal('a');
-      const sendBtn=this.sendButtonHTML();
-      return `
-      <div class="tc-card" style="padding:22px;margin-bottom:16px">
-        <div class="tc-league-grid" style="display:grid;grid-template-columns:1.1fr 1fr 1fr 0.9fr;gap:24px;align-items:start">
-          <div>
-            <div class="tc-eyebrow" style="margin-bottom:12px">⇄&nbsp;&nbsp;Trade Verdict · ${this.vmode==='re'?'Redraft':'Dynasty'}</div>
-            ${this.balanceBar(recvA,recvB,tA.name,tB.name,tA.color,tB.color)}
-          </div>
-          <div>
-            <div class="tc-eyebrow" style="color:${tA.color};margin-bottom:9px">${tA.name} sends</div>
-            <div style="display:flex;flex-direction:column;gap:7px">
-              ${(tradeAssets.a||[]).length?(tradeAssets.a||[]).map(a=>this.sendRow('a',a,tA.color)).join(''):this.emptySlot(tA.color)}
-            </div>
-          </div>
-          <div>
-            <div class="tc-eyebrow" style="color:${tB.color};margin-bottom:9px">${tB.name} sends</div>
-            <div style="display:flex;flex-direction:column;gap:7px">
-              ${(tradeAssets.b||[]).length?(tradeAssets.b||[]).map(a=>this.sendRow('b',a,tB.color)).join(''):this.emptySlot(tB.color)}
-            </div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            ${sendBtn}
-          </div>
-        </div>
-      </div>
-      <div class="tc-rosters">
-        ${this.rosterCard(tA,'a')}
-        ${this.rosterCard(tB,'b')}
-      </div>`;
+      const recvA=this.sideTotal('b'), recvB=this.sideTotal('a');
+      return `<div class="tc-card" style="padding:22px;margin-bottom:16px"><div class="tc-league-grid" style="display:grid;grid-template-columns:1.1fr 1fr 1fr 0.9fr;gap:24px;align-items:start">
+        <div><div class="tc-eyebrow" style="margin-bottom:12px">⇄&nbsp;&nbsp;Trade Verdict · ${this.vmode==='re'?'Redraft':'Dynasty'}</div>${this.balanceBar(recvA,recvB,tA.name,tB.name,tA.color,tB.color)}</div>
+        <div><div class="tc-eyebrow" style="color:${tA.color};margin-bottom:9px">${tA.name} sends</div><div style="display:flex;flex-direction:column;gap:7px">${(tradeAssets.a||[]).length?(tradeAssets.a||[]).map(a=>this.sendRow('a',a,tA.color)).join(''):this.emptySlot(tA.color)}</div></div>
+        <div><div class="tc-eyebrow" style="color:${tB.color};margin-bottom:9px">${tB.name} sends</div><div style="display:flex;flex-direction:column;gap:7px">${(tradeAssets.b||[]).length?(tradeAssets.b||[]).map(a=>this.sendRow('b',a,tB.color)).join(''):this.emptySlot(tB.color)}</div></div>
+        <div style="display:flex;flex-direction:column;gap:10px">${this.sendButtonHTML()}</div>
+      </div></div>
+      <div class="tc-rosters">${this.rosterCard(tA,'a')}${this.rosterCard(tB,'b')}</div>`;
     },
-    rosterCard(t,side){
-      return `<div class="tc-card" style="padding:18px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <div class="tc-logo" style="width:30px;height:30px;border-radius:8px;background:${t.color}22;border:1px solid ${t.color}66;color:${t.color};font-size:11px">${t.logo}</div>
-          <div style="flex:1;min-width:0"><div style="font-family:var(--font-sans);font-weight:800;font-size:15px;color:var(--text)">${t.name}</div><div class="tc-eyebrow" style="margin-top:1px">${t.owner==='You'?'Your roster':t.owner+"'s roster"} · tap to add</div></div>
+    rosterCard(t,side){ return `<div class="tc-card" style="padding:18px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><div class="tc-logo" style="width:30px;height:30px;border-radius:8px;background:${t.color}22;border:1px solid ${t.color}66;color:${t.color};font-size:11px">${t.logo}</div><div style="flex:1;min-width:0"><div style="font-family:var(--font-sans);font-weight:800;font-size:15px;color:var(--text)">${t.name}</div><div class="tc-eyebrow" style="margin-top:1px">${t.owner==='You'?'Your roster':t.owner+"'s roster"} · tap to add</div></div></div>${this.rosterCols(side,t.id)}</div>`; },
+    emptySlot(color){ return `<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:18px;border:1.5px dashed ${color}44;border-radius:12px;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-align:center">+ ADD FROM ROSTER BELOW</div>`; },
+
+    // ════ MY LEAGUE — MOBILE (filter-tab roster, mockup D) ════
+    renderLeagueMobile(){
+      const tA=this.team(this.teamA), tB=this.team(this.teamB);
+      const recvA=this.sideTotal('b'), recvB=this.sideTotal('a');
+      const side=this._mobSide||'b'; const browse=(side==='a')?tA:tB;
+      const pos=this._mobPos||'RB';
+      const roster=this.roster(browse.id).filter(p=>(p.type==='pick'?'PICK':(p.pos||'?'))===pos).sort((a,b)=>this.val(b)-this.val(a));
+      const sideToggle=`<div class="tc-seg sm" style="width:100%">
+        <button class="${side==='a'?'on':''}" style="flex:1;justify-content:center" onclick="TC.setMobSide('a')">${tA.name.length>12?tA.name.slice(0,11)+'…':tA.name}</button>
+        <button class="${side==='b'?'on':''}" style="flex:1;justify-content:center" onclick="TC.setMobSide('b')">${tB.name.length>12?tB.name.slice(0,11)+'…':tB.name}</button></div>`;
+      const posTabs=`<div style="display:flex;gap:6px;margin:12px 0 11px">${POS_ORDER.map(pp=>{ const on=pp===pos, c=POS_HEX[pp]; return `<button onclick="TC.setMobPos('${pp}')" style="flex:1;padding:8px 0;border-radius:8px;border:1px solid ${on?c:'var(--border2)'};background:${on?c+'1f':'transparent'};color:${on?c:'var(--muted)'};font-family:var(--font-mono);font-weight:700;font-size:10.5px;cursor:pointer">${pp==='PICK'?'PICKS':pp}</button>`; }).join('')}</div>`;
+      const list=roster.map(p=>{ const on=this.has(side,p.name), c=POS_HEX[p.pos]||'#8794a6', v=this.val(p);
+        return `<div onclick="TC.toggle('${side}','${esc(p.name)}','${p.type==='pick'?'pick':'player'}')" style="display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-radius:10px;background:${on?c+'18':'var(--bg)'};box-shadow:inset 0 0 0 1px ${on?c+'77':'var(--border)'};cursor:pointer">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0"><span style="width:19px;height:19px;border-radius:50%;border:1.5px solid ${on?c:'var(--border2)'};background:${on?c:'transparent'};color:var(--bg);font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">${on?'✓':''}</span><span style="font-family:var(--font-sans);font-weight:${on?700:500};font-size:14px;color:${on?'var(--text)':'var(--text2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</span></div>
+          <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--muted);flex-shrink:0">${v?fmt(v):'—'}</span></div>`;
+      }).join('')||'<div style="padding:18px;text-align:center;color:var(--muted);font-family:var(--font-mono);font-size:11px">No '+pos+' on this roster</div>';
+
+      return `<div class="tc-card" style="padding:18px;margin-bottom:13px">${this.balanceBar(recvA,recvB,tA.name,tB.name,tA.color,tB.color)}</div>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:13px">
+          <div class="tc-eyebrow" style="color:${tA.color}">${tA.name} sends</div>
+          ${(tradeAssets.a||[]).length?(tradeAssets.a||[]).map(a=>this.sendRow('a',a,tA.color)).join(''):this.emptySlot(tA.color)}
+          <div class="tc-eyebrow" style="color:${tB.color};margin-top:4px">${tB.name} sends</div>
+          ${(tradeAssets.b||[]).length?(tradeAssets.b||[]).map(a=>this.sendRow('b',a,tB.color)).join(''):this.emptySlot(tB.color)}
         </div>
-        ${this.rosterCols(side,t.id,t.color)}
-      </div>`;
-    },
-    emptySlot(color){
-      return `<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:18px;border:1.5px dashed ${color}44;border-radius:12px;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em">+ ADD FROM ROSTER BELOW</div>`;
+        <div class="tc-card" style="padding:16px;margin-bottom:14px">
+          <div class="tc-eyebrow" style="margin-bottom:10px">Tap to add players</div>
+          ${sideToggle}${posTabs}
+          <div style="display:flex;flex-direction:column;gap:5px">${list}</div>
+        </div>
+        ${this.sendButtonHTML(true)}`;
     },
 
     // ── Send via Sleeper ──
     platform(){ return String(window.connectedPlatform||window.vpPlatform||'sleeper').toLowerCase(); },
-    sendButtonHTML(){
+    sendButtonHTML(full){
       if(this.platform()!=='sleeper') return `<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted);line-height:1.6">Trade sending is available on Sleeper-connected leagues only.</div>`;
-      return `<button class="tc-btn-primary" style="background:linear-gradient(135deg,#4d86f0,#3a68c4);box-shadow:0 8px 24px rgba(77,134,240,.28)" onclick="TC.sendOffer()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Send via Sleeper</button>
-        <div style="display:flex;gap:8px">
-          <div class="tc-chip-mini" style="flex:1">⌛ 24 Hours ▾</div>
-          <div class="tc-chip-mini">$ FAAB</div>
-        </div>
-        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center;line-height:1.5">Opens Sleeper to confirm &amp; send the offer.</div>`;
+      const btn=`<button class="tc-btn-primary" style="background:linear-gradient(135deg,#4d86f0,#3a68c4);box-shadow:0 8px 24px rgba(77,134,240,.28)${full?';padding:15px;font-size:15px':''}" onclick="TC.sendOffer()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Send via Sleeper</button>`;
+      if(full) return btn+`<div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center;line-height:1.5;margin-top:8px">Opens Sleeper to confirm &amp; send.</div>`;
+      return btn+`<div style="display:flex;gap:8px"><div class="tc-chip-mini" style="flex:1">⌛ 24 Hours ▾</div><div class="tc-chip-mini">$ FAAB</div></div><div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center;line-height:1.5">Opens Sleeper to confirm &amp; send the offer.</div>`;
     },
     sendOffer(){
       if(this.platform()!=='sleeper') return;
-      const tA=this.team(this.teamA), tB=this.team(this.teamB);
+      const tB=this.team(this.teamB);
       if(!((tradeAssets.a||[]).length||(tradeAssets.b||[]).length)){ this.toast('Add players to both sides first'); return; }
-      const connected=!!window.myTeamsUserId;
-      if(!connected){ this.toast('Connect your Sleeper account on the League tab to send offers'); return; }
-      const lid=window.ovLeagueId||window.teamsLeagueId;
+      if(!_lex('myTeamsUserId')){ this.toast('Connect your Sleeper account on the League tab to send offers'); return; }
+      const lid=_lex('ovLeagueId')||_lex('teamsLeagueId');
       this.toast('Opening Sleeper to confirm your offer to '+tB.name+'…');
       const url=lid?('https://sleeper.com/leagues/'+lid+'/team'):'https://sleeper.com/';
       setTimeout(()=>{ try{ window.open(url,'_blank','noopener'); }catch(e){} },450);
     },
-    toast(msg){
-      let t=document.getElementById('tc-toast');
-      if(!t){ t=document.createElement('div'); t.id='tc-toast'; document.body.appendChild(t); }
-      t.textContent=msg; t.classList.add('show');
-      clearTimeout(this._tt); this._tt=setTimeout(()=>t.classList.remove('show'),3200);
-    },
+    toast(msg){ let t=document.getElementById('tc-toast'); if(!t){ t=document.createElement('div'); t.id='tc-toast'; document.body.appendChild(t); } t.textContent=msg; t.classList.add('show'); clearTimeout(this._tt); this._tt=setTimeout(()=>t.classList.remove('show'),3200); },
 
     // ════ QUICK CALC ════
     renderQuick(){
-      const totA=this.sideTotal('a'), totB=this.sideTotal('b');
-      const recvA=totB, recvB=totA;
-      const v=this.verdict(recvA,recvB,'Side A','Side B');
-      const R=68, C=2*Math.PI*R;
-      const lean=recvA/(Math.max(recvA+recvB,1));
-      const ringColor = v.pctDiff<=8?'var(--te)':(recvA>recvB?'var(--sky)':'var(--accent2)');
-      const vlabel = v.pctDiff<=8?'EVEN':(recvA>recvB?'SIDE A':'SIDE B');
-      return `
-      <div class="tc-bento">
-        ${this.sideBuilder('a','Side A sends','var(--sky)','#7bd0ff',totA)}
+      const totA=this.sideTotal('a'), totB=this.sideTotal('b'), recvA=totB, recvB=totA;
+      const v=this.verdict(recvA,recvB,'Side A','Side B'); const R=68, C=2*Math.PI*R; const lean=recvA/Math.max(recvA+recvB,1);
+      const ringColor=v.pctDiff<=8?'var(--te)':(recvA>recvB?'var(--sky)':'var(--accent2)');
+      const vlabel=v.pctDiff<=8?'EVEN':(recvA>recvB?'SIDE A':'SIDE B');
+      return `<div class="tc-bento">${this.sideBuilder('a','Side A sends','var(--sky)','#7bd0ff',totA)}
         <div style="display:flex;flex-direction:column;gap:16px">
-          <div class="tc-card" style="padding:22px;text-align:center">
-            <div class="tc-eyebrow" style="margin-bottom:14px">Trade Verdict · ${this.vmode==='re'?'Redraft':'Dynasty'}</div>
-            <div class="tc-ring-wrap">
-              <svg width="168" height="168" viewBox="0 0 168 168">
-                <circle cx="84" cy="84" r="${R}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="9"/>
-                <circle cx="84" cy="84" r="${R}" fill="none" stroke="${ringColor}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-lean)).toFixed(1)}" style="transition:stroke-dashoffset .6s ease"/>
-              </svg>
-              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
-                <span style="font-family:var(--font-sans);font-weight:900;font-size:16px;letter-spacing:-.02em;color:${ringColor}">${vlabel}${v.pctDiff<=8?'':' WINS'}</span>
-                <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:3px">${Math.round(lean*100)}% lean</span>
-              </div>
-            </div>
-            <p style="font-size:12px;color:var(--muted);line-height:1.55;margin:0">${v.pctDiff<=8?'Dead even — a fair swap.':v.sub}</p>
-          </div>
-          <div class="tc-card" style="padding:18px">
-            <div class="tc-eyebrow" style="margin-bottom:12px">Value Projection</div>
-            ${this.projectionBars()}
-            <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:8.5px;color:var(--muted)"><span>NOW</span><span>WK4</span><span>WK8</span><span>PLYF</span><span>DYN</span></div>
-          </div>
+          <div class="tc-card" style="padding:22px;text-align:center"><div class="tc-eyebrow" style="margin-bottom:14px">Trade Verdict · ${this.vmode==='re'?'Redraft':'Dynasty'}</div>
+            <div class="tc-ring-wrap"><svg width="168" height="168" viewBox="0 0 168 168"><circle cx="84" cy="84" r="${R}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="9"/><circle cx="84" cy="84" r="${R}" fill="none" stroke="${ringColor}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-lean)).toFixed(1)}" style="transition:stroke-dashoffset .6s ease"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-family:var(--font-sans);font-weight:900;font-size:16px;letter-spacing:-.02em;color:${ringColor}">${vlabel}${v.pctDiff<=8?'':' WINS'}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:3px">${Math.round(lean*100)}% lean</span></div></div>
+            <p style="font-size:12px;color:var(--muted);line-height:1.55;margin:0">${v.pctDiff<=8?'Dead even — a fair swap.':v.sub}</p></div>
+          <div class="tc-card" style="padding:18px"><div class="tc-eyebrow" style="margin-bottom:12px">Value Projection</div>${this.projectionBars()}<div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:8.5px;color:var(--muted)"><span>NOW</span><span>WK4</span><span>WK8</span><span>PLYF</span><span>DYN</span></div></div>
         </div>
-        ${this.sideBuilder('b','Side B sends','var(--accent2)','#ff5a6e',totB)}
-      </div>
-      <div style="margin-top:16px">
-        <div class="tc-eyebrow" style="margin-bottom:9px">Quick add · trending players</div>
-        <div style="display:flex;gap:7px;flex-wrap:wrap">
-          ${TRENDING.map(name=>{ const a=this._resolve(name,'player'); const v=this.val(a); const c=POS_HEX[a.pos]||'#8794a6';
-            return `<div class="tc-trend-chip" onclick="TC.add('a','${esc(name)}','player')">
-              ${this.avatar(a,22)}<span style="font-family:var(--font-sans);font-size:12px;font-weight:600;color:var(--text2)">${name}</span><span style="font-family:var(--font-mono);font-size:9.5px;color:var(--muted)">${v?(v/1000).toFixed(1)+'k':'—'}</span>
-            </div>`; }).join('')}
-        </div>
-      </div>`;
+        ${this.sideBuilder('b','Side B sends','var(--accent2)','#ff5a6e',totB)}</div>
+        <div style="margin-top:16px"><div class="tc-eyebrow" style="margin-bottom:9px">Quick add · trending players</div><div style="display:flex;gap:7px;flex-wrap:wrap">${TRENDING.map(name=>{ const a=this._resolve(name,'player'), v=this.val(a); return `<div class="tc-trend-chip" onclick="TC.add('a','${esc(name)}','player')">${this.avatar(a,22)}<span style="font-family:var(--font-sans);font-size:12px;font-weight:600;color:var(--text2)">${name}</span><span style="font-family:var(--font-mono);font-size:9.5px;color:var(--muted)">${v?(v/1000).toFixed(1)+'k':'—'}</span></div>`; }).join('')}</div></div>`;
     },
     sideBuilder(side,label,colorVar,colorHex,total){
-      return `<div class="tc-side">
-        <div class="tc-card" style="padding:20px;display:flex;flex-direction:column;gap:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div class="tc-eyebrow" style="color:${colorVar}">${label}</div>
-            <span style="font-family:var(--font-mono);font-weight:700;font-size:12px;color:${colorVar};background:${colorHex}1f;padding:3px 10px;border-radius:6px">${fmt(total)}</span>
-          </div>
-          <div style="position:relative">
-            <input class="tc-search" id="tc-search-${side}" placeholder="🔍  Add a player or pick…" autocomplete="off" style="border:1.5px solid ${colorHex}33" oninput="TC.search('${side}')">
-            <div class="tc-results" id="tc-results-${side}"></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            ${(tradeAssets[side]||[]).length?(tradeAssets[side]||[]).map(a=>this.sendRow(side,a,colorVar)).join(''):`<div style="display:flex;align-items:center;justify-content:center;padding:16px;border:1.5px dashed ${colorHex}33;border-radius:11px;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em">EMPTY — SEARCH TO ADD</div>`}
-          </div>
-        </div>
-      </div>`;
+      return `<div class="tc-side"><div class="tc-card" style="padding:20px;display:flex;flex-direction:column;gap:14px"><div style="display:flex;justify-content:space-between;align-items:center"><div class="tc-eyebrow" style="color:${colorVar}">${label}</div><span style="font-family:var(--font-mono);font-weight:700;font-size:12px;color:${colorVar};background:${colorHex}1f;padding:3px 10px;border-radius:6px">${fmt(total)}</span></div>
+        <div style="position:relative"><input class="tc-search" id="tc-search-${side}" placeholder="🔍  Add a player or pick…" autocomplete="off" style="border:1.5px solid ${colorHex}33" oninput="TC.search('${side}')"><div class="tc-results" id="tc-results-${side}"></div></div>
+        <div style="display:flex;flex-direction:column;gap:8px">${(tradeAssets[side]||[]).length?(tradeAssets[side]||[]).map(a=>this.sendRow(side,a,colorVar)).join(''):`<div style="display:flex;align-items:center;justify-content:center;padding:16px;border:1.5px dashed ${colorHex}33;border-radius:11px;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.08em">EMPTY — SEARCH TO ADD</div>`}</div></div></div>`;
     },
-    projectionBars(){
-      const proj=(side)=>{ const t=this.sideTotal(side); return [t*0.55,t*0.62,t*0.7,t*0.8,t].map(x=>x); };
-      const a=proj('a'), b=proj('b'); const mx=Math.max(...a,...b,1);
-      return `<div style="display:flex;gap:6px;align-items:flex-end;height:58px;margin-bottom:7px">
-        ${a.map((_,i)=>`<div style="flex:1;display:flex;gap:3px;align-items:flex-end;height:100%">
-          <div style="flex:1;height:${Math.round(a[i]/mx*100)}%;min-height:2px;background:var(--sky);border-radius:3px 3px 0 0;opacity:.9"></div>
-          <div style="flex:1;height:${Math.round(b[i]/mx*100)}%;min-height:2px;background:var(--accent2);border-radius:3px 3px 0 0;opacity:.55"></div>
-        </div>`).join('')}
-      </div>`;
-    },
+    projectionBars(){ const proj=s=>{ const t=this.sideTotal(s); return [t*0.55,t*0.62,t*0.7,t*0.8,t]; }; const a=proj('a'),b=proj('b'),mx=Math.max(...a,...b,1);
+      return `<div style="display:flex;gap:6px;align-items:flex-end;height:58px;margin-bottom:7px">${a.map((_,i)=>`<div style="flex:1;display:flex;gap:3px;align-items:flex-end;height:100%"><div style="flex:1;height:${Math.round(a[i]/mx*100)}%;min-height:2px;background:var(--sky);border-radius:3px 3px 0 0;opacity:.9"></div><div style="flex:1;height:${Math.round(b[i]/mx*100)}%;min-height:2px;background:var(--accent2);border-radius:3px 3px 0 0;opacity:.55"></div></div>`).join('')}</div>`; },
     search(side){
-      const input=document.getElementById('tc-search-'+side);
-      const box=document.getElementById('tc-results-'+side);
-      if(!input||!box) return;
-      const q=input.value.toLowerCase().trim();
-      if(!q){ box.classList.remove('show'); return; }
-      const seen=new Set(); const all=[];
+      const input=document.getElementById('tc-search-'+side), box=document.getElementById('tc-results-'+side); if(!input||!box)return;
+      const q=input.value.toLowerCase().trim(); if(!q){ box.classList.remove('show'); return; }
+      const seen=new Set(), all=[];
       if(typeof PLAYERS!=='undefined') PLAYERS.forEach(p=>all.push(p));
       if(typeof fcValues!=='undefined') Object.values(fcValues).forEach(fc=>{ if(fc&&fc.name&&!all.some(p=>p.name===fc.name)) all.push({name:fc.name,pos:fc.pos||'?',team:fc.team||''}); });
-      const players=all.filter(p=>p.name.toLowerCase().includes(q)&&!seen.has(p.name)&&seen.add(p.name)).slice(0,9)
-        .map(p=>{ const a=this._resolve(p.name,'player'); const v=this.val(a); const c=POS_HEX[a.pos]||'#8794a6';
-          return `<div class="tc-result" onclick="TC.add('${side}','${esc(p.name)}','player')">
-            ${this.avatar(a,28)}<div style="flex:1;min-width:0"><div class="tc-send-name" style="font-size:12.5px">${p.name}</div><div class="tc-send-meta">${a.pos}${a.team?' · '+a.team:''}</div></div>
-            <span class="tc-send-val" style="color:${c}">${v?fmt(v):'—'}</span></div>`; });
-      const picks=(typeof PICK_VALUES!=='undefined'?Object.keys(PICK_VALUES):[]).filter(n=>n.toLowerCase().includes(q)).slice(0,6)
-        .map(n=>{ const a={name:n,type:'pick',pos:'PICK'}; const v=this.val(a);
-          return `<div class="tc-result" onclick="TC.add('${side}','${esc(n)}','pick')">
-            ${this.avatar(a,28)}<div style="flex:1;min-width:0"><div class="tc-send-name" style="font-size:12.5px">${n}</div><div class="tc-send-meta">DRAFT PICK</div></div>
-            <span class="tc-send-val" style="color:#b48cff">${fmt(v)}</span></div>`; });
-      const html=[...players,...picks].join('');
-      box.innerHTML=html||'<div style="padding:10px 12px;color:var(--muted);font-size:12px;font-family:var(--font-mono)">No results</div>';
-      box.classList.add('show');
+      const players=all.filter(p=>p.name.toLowerCase().includes(q)&&!seen.has(p.name)&&seen.add(p.name)).slice(0,9).map(p=>{ const a=this._resolve(p.name,'player'), v=this.val(a), c=POS_HEX[a.pos]||'#8794a6'; return `<div class="tc-result" onclick="TC.add('${side}','${esc(p.name)}','player')">${this.avatar(a,28)}<div style="flex:1;min-width:0"><div class="tc-send-name" style="font-size:12.5px">${p.name}</div><div class="tc-send-meta">${a.pos}${a.team?' · '+a.team:''}</div></div><span class="tc-send-val" style="color:${c}">${v?fmt(v):'—'}</span></div>`; });
+      const picks=(typeof PICK_VALUES!=='undefined'?Object.keys(PICK_VALUES):[]).filter(n=>n.toLowerCase().includes(q)).slice(0,6).map(n=>{ const a={name:n,type:'pick',pos:'PICK'}, v=this.val(a); return `<div class="tc-result" onclick="TC.add('${side}','${esc(n)}','pick')">${this.avatar(a,28)}<div style="flex:1;min-width:0"><div class="tc-send-name" style="font-size:12.5px">${n}</div><div class="tc-send-meta">DRAFT PICK</div></div><span class="tc-send-val" style="color:#b48cff">${fmt(v)}</span></div>`; });
+      box.innerHTML=[...players,...picks].join('')||'<div style="padding:10px 12px;color:var(--muted);font-size:12px;font-family:var(--font-mono)">No results</div>'; box.classList.add('show');
     },
     _closeResults(){ document.querySelectorAll('.tc-results').forEach(b=>b.classList.remove('show')); },
-
-    // ── team-picker menu open/close ──
-    _toggleMenu(slot,e){ if(e) e.stopPropagation(); const m=document.getElementById('tc-menu-'+slot); if(!m) return; const open=m.classList.contains('show'); this._closeMenus(); if(!open) m.classList.add('show'); },
+    _toggleMenu(slot,e){ if(e)e.stopPropagation(); const m=document.getElementById('tc-menu-'+slot); if(!m)return; const open=m.classList.contains('show'); this._closeMenus(); if(!open)m.classList.add('show'); },
     _closeMenus(){ document.querySelectorAll('.tc-tpick-menu').forEach(m=>m.classList.remove('show')); },
 
-    init(){
+    async init(){
       this._inited=true;
-      // seed a sample offer the first time so the page looks alive
-      if(!this._seeded && !((tradeAssets.a||[]).length||(tradeAssets.b||[]).length)){
+      if(!this._everRendered){ this.render(); this._everRendered=true; }
+      const live=await this.loadLeague();
+      if(!live && !this.leagueSelected() && !this._seeded && !((tradeAssets.a||[]).length||(tradeAssets.b||[]).length)){
         tradeAssets.a=[this._resolve('Bijan Robinson','player')];
         tradeAssets.b=[this._resolve('Caleb Williams','player'),this._resolve('2026 1st Mid','pick')];
         this._seeded=true;
       }
       this.render();
-      // load FC + sleeper data so values resolve, then re-render
       if(typeof fcLoaded!=='undefined' && !fcLoaded && typeof fetchFantasyCalc==='function' && !window._tcFcKick){ window._tcFcKick=1; fetchFantasyCalc().then(()=>this.render()).catch(()=>{}); }
       if(typeof sleeperPlayersLoaded!=='undefined' && !sleeperPlayersLoaded && typeof fetchSleeperPlayers==='function' && !window._tcSpKick){ window._tcSpKick=1; fetchSleeperPlayers().then(()=>this.render()).catch(()=>{}); }
     },
   };
 
-  // close menus / results on outside click
   document.addEventListener('click', e=>{
     if(!e.target.closest || !e.target.closest('.tc-tpick')) TC._closeMenus();
     if(!e.target.closest || !e.target.closest('.tc-side')) TC._closeResults();
   });
+  // re-render when crossing the mobile breakpoint
+  try{ window.matchMedia('(max-width:700px)').addEventListener('change',()=>{ if(TC._inited) TC.render(); }); }catch(e){}
 
   window.TC = TC;
   window.initTrade = function(){ TC.init(); };
-  // FC-load hook in the app calls renderTradeRosterChips — repoint it to our re-render
   window.renderTradeRosterChips = function(){ if(TC._inited) TC.render(); };
+  // when the header league changes, reload the trade calc's league if it's open
+  const _origSwitch = window.switchGlobalLeague;
+  window.switchGlobalLeague = function(id){
+    const r = _origSwitch ? _origSwitch.apply(this, arguments) : undefined;
+    if(window.TC){ TC._live=null; if(document.getElementById('page-trade') && document.getElementById('page-trade').classList.contains('on')) setTimeout(()=>TC.loadLeague(),60); }
+    return r;
+  };
 })();
 </script>
 </body>
