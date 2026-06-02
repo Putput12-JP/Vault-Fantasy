@@ -3394,27 +3394,27 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 <!-- BOTTOM TAB BAR — mobile only (5 tabs per UXPin/Apple HIG/Material Design best practice) -->
 <nav class="bottom-tab-bar" id="bottom-tab-bar">
   <button class="tab-btn on" id="tb-overview" onclick="showPage('overview')" aria-label="My Team">
-    <span class="tab-icon">🏠</span>
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z"/></svg></span>
     <span class="tab-label">Team</span>
   </button>
   <button class="tab-btn" id="tb-portfolio" onclick="showPage('portfolio')" aria-label="Portfolio">
-    <span class="tab-icon">📁</span>
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.2"/><path d="M8 7V5.5A2 2 0 0 1 10 3.5h4a2 2 0 0 1 2 2V7"/><path d="M3 12.5h18"/></svg></span>
     <span class="tab-label">Portfolio</span>
   </button>
   <button class="tab-btn" id="tb-research" onclick="showPage('research')" aria-label="Research Hub">
-    <span class="tab-icon">🔬</span>
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.6-4.6"/></svg></span>
     <span class="tab-label">Research</span>
   </button>
   <button class="tab-btn" id="tb-draft" onclick="showPage('draft')" aria-label="Draft Vault">
-    <span class="tab-icon">📋</span>
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 12h12M4 18h8"/><path d="M20 6h.01M20 12h.01M20 18h.01"/></svg></span>
     <span class="tab-label">Draft</span>
   </button>
   <button class="tab-btn" id="tb-teams" onclick="showPage('teams')" aria-label="League">
-    <span class="tab-icon">📊</span>
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M7 5.5H4.5V8a3 3 0 0 0 3 3M17 5.5h2.5V8a3 3 0 0 1-3 3"/><path d="M12 13.5V17M9 20h6M10 20l.4-3M14 20l-.4-3"/></svg></span>
     <span class="tab-label">League</span>
   </button>
   <button class="tab-btn" id="tb-calc" onclick="showPage('trade')" aria-label="Calc">
-    <span class="tab-icon">🔄</span>
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 4 7l3 3"/><path d="M4 7h13"/><path d="m17 20 3-3-3-3"/><path d="M20 17H7"/></svg></span>
     <span class="tab-label">Calc</span>
   </button>
 </nav>
@@ -15665,7 +15665,14 @@ function pickYear(year) {
     return dd;
   }
   function toggleMenu(){ ddOpen ? closeMenu() : openMenu(); }
-  function openMenu(){ var dd=document.getElementById('vault-league-dd'); var m=document.getElementById('vlg-menu'); if(!dd||!m) return; renderMenu(); m.hidden=false; dd.classList.add('open'); ddOpen=true; }
+  function openMenu(){ var dd=document.getElementById('vault-league-dd'); var m=document.getElementById('vlg-menu'); var t=document.getElementById('vlg-trigger'); if(!dd||!m||!t) return; renderMenu(); m.hidden=false; dd.classList.add('open'); ddOpen=true;
+    /* Float as a body-level fixed layer so the menu is never clipped by the header's overflow:hidden or covered by page overlays (the mobile select-team bug). */
+    if(m.parentElement!==document.body) document.body.appendChild(m);
+    var r=t.getBoundingClientRect(); var vw=window.innerWidth; var ww=Math.min(330, vw-16);
+    var left=Math.min(Math.max(8, r.right-ww), vw-ww-8);
+    var top=(r.bottom>0?r.bottom:52)+7;
+    m.style.position='fixed'; m.style.top=top+'px'; m.style.left=left+'px'; m.style.right='auto'; m.style.width=ww+'px'; m.style.maxWidth='none'; m.style.zIndex='2000';
+  }
   function closeMenu(){ var dd=document.getElementById('vault-league-dd'); var m=document.getElementById('vlg-menu'); if(!dd||!m) return; m.hidden=true; dd.classList.remove('open'); ddOpen=false; }
   function cleanName(t){ return (t||'').replace(/^🟢\s*/,'').replace(/^📋\s*/,'').trim(); }
   function renderTrigger(){
@@ -15708,7 +15715,7 @@ function pickYear(year) {
     mo.observe(sel, { childList:true, attributes:true, attributeFilter:['value'] });
     sel.addEventListener('change', renderTrigger);
   }
-  document.addEventListener('click', function(e){ if(ddOpen && !e.target.closest('#vault-league-dd')) closeMenu(); });
+  document.addEventListener('click', function(e){ if(ddOpen && !e.target.closest('#vault-league-dd') && !e.target.closest('#vlg-menu')) closeMenu(); });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape' && ddOpen) closeMenu(); });
 
   function boot(){
@@ -16088,5 +16095,73 @@ function pickYear(year) {
   };
 })();
 </script>
+<style id="vault-mobile-v2">
+/* ============================================================
+   VAULT MOBILE — authoritative layout layer (rebuild, Jun 2026)
+   Mobile-first refinements that supersede legacy patch CSS.
+   iPhone-first (~390px). Loaded last so it wins the cascade.
+   ============================================================ */
+@media (max-width:700px){
+  /* 1 ─ Header league switcher: never clip the dropdown (mobile select-team fix; menu also floats to body via JS) */
+  .header-league-wrap, .header-league-select-wrap, #header-league-wrap{ overflow:visible !important; }
+  #vlg-menu{ border:1px solid var(--border) !important; box-shadow:0 18px 50px rgba(0,0,0,.55) !important; }
+  #vlg-menu .vlg-item{ min-height:46px; }
+
+  /* 2 ─ Value legibility — Draft / Rankings player cards (the #1 complaint) */
+  .prow-mobile{ min-height:62px !important; padding:9px 14px !important; gap:11px !important; }
+  .pm-name{ font-size:15.5px !important; font-weight:700 !important; }
+  .pm-rank{ font-size:13px !important; width:26px !important; }
+  .pm-dynasty{ font-size:15px !important; font-weight:800 !important; font-variant-numeric:tabular-nums; }
+  .pm-redraft{ font-size:13px !important; font-weight:700 !important; opacity:1 !important; font-variant-numeric:tabular-nums; }
+  .pm-val-lbl{ font-size:9px !important; }
+  .pm-meta{ gap:7px !important; }
+
+  /* 3 ─ League Analyzer: kill the horizontal overflow */
+  #page-teams .proto-page{ max-width:100% !important; overflow-x:hidden !important; padding-left:16px !important; padding-right:16px !important; }
+  #page-teams .lr-tabs{ flex-wrap:nowrap !important; overflow-x:auto !important; -webkit-overflow-scrolling:touch; scrollbar-width:none; min-width:0; }
+  #page-teams .lr-tabs::-webkit-scrollbar{ display:none; }
+  #page-teams .lr-tab{ flex:0 0 auto !important; white-space:nowrap; }
+  #page-teams .lr-head{ gap:12px !important; }
+  #page-teams .lr-head-r{ width:100%; flex-wrap:wrap; }
+
+  /* 4 ─ Bottom tab bar — native redesign (crisp SVG line icons + active pill) */
+  .bottom-tab-bar{
+    height:auto !important; min-height:60px !important;
+    background:rgba(10,15,23,0.82) !important;
+    backdrop-filter:saturate(150%) blur(20px) !important; -webkit-backdrop-filter:saturate(150%) blur(20px) !important;
+    border-top:1px solid rgba(255,255,255,0.06) !important;
+    box-shadow:0 -10px 30px rgba(0,0,0,0.4) !important;
+    padding:7px 6px calc(7px + env(safe-area-inset-bottom)) !important;
+    gap:2px;
+  }
+  .bottom-tab-bar .tab-btn{
+    border-radius:13px !important; gap:4px !important; min-height:50px !important;
+    color:#7c8696 !important; transition:color .18s, transform .1s !important; position:relative; z-index:1;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .bottom-tab-bar .tab-icon{ font-size:0 !important; display:flex !important; align-items:center; justify-content:center; height:23px; }
+  .bottom-tab-bar .tab-icon svg{ width:23px !important; height:23px !important; display:block; }
+  .bottom-tab-bar .tab-label{
+    font-size:9.5px !important; font-weight:600 !important; letter-spacing:.005em !important;
+    font-family:var(--font-sans) !important; text-transform:none !important; color:#7c8696 !important; line-height:1 !important;
+  }
+  .bottom-tab-bar .tab-btn.on, .bottom-tab-bar .tab-btn.on .tab-label{ color:var(--accent2) !important; }
+  .bottom-tab-bar .tab-btn.on::before{
+    content:''; position:absolute; top:3px; left:50%; transform:translateX(-50%);
+    width:42px; height:30px; border-radius:11px;
+    background:color-mix(in srgb, var(--accent2) 15%, transparent); z-index:-1;
+  }
+  .bottom-tab-bar .tab-btn:active{ transform:scale(.9); }
+
+  /* 5 ─ Clear the taller bar (skip Draft, which has its own roster-bar clearance) */
+  .page.on:not(#page-draft){ padding-bottom:calc(78px + env(safe-area-inset-bottom)) !important; }
+
+  /* 6 ─ Native polish: page entrance transition */
+  .page.on{ animation:vm-page-in .24s cubic-bezier(.22,.61,.36,1) both; }
+  @keyframes vm-page-in{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+}
+@media (max-width:700px) and (prefers-reduced-motion:reduce){ .page.on{ animation:none !important; } }
+@media (max-width:360px){ .bottom-tab-bar .tab-label{ font-size:9px !important; } }
+</style>
 </body>
 </html>
