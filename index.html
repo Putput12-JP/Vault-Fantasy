@@ -3166,18 +3166,34 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <!-- ═══ ESPN PANEL ═══ -->
           <div id="vp-panel-espn" style="display:none">
             <div class="vp-espn-note">
-              <span class="ic">🔒</span>
-              <p><b>ESPN has no public username lookup.</b> Log in through ESPN once — we never see your password, only a read-only session token to pull your redraft leagues.</p>
+              <span class="ic">🔗</span>
+              <p><b>Connect with your ESPN League ID.</b> Find it in your league's web URL — <code>…/league?leagueId=<b>XXXXXX</b></code>. Paste it below and we'll pull that league in.</p>
             </div>
-            <button class="vp-espn-cta" onclick="vpOpenEspnLogin()"><span class="elogo">E</span> Log in with ESPN →</button>
-            <div class="vp-or"><span>or connect manually</span></div>
-            <button class="vp-adv" id="vp-adv-toggle" onclick="vpToggleCookies()">I already have my connection codes <span class="car">▾</span></button>
+            <!-- League ID input row -->
+            <div style="display:flex;gap:8px">
+              <input class="connect-input" id="vp-espn-id" placeholder="ESPN League ID…" inputmode="numeric" autocomplete="off" spellcheck="false"
+                style="flex:1;padding:13px 16px;font-size:15px;border-radius:10px" onkeydown="if(event.key==='Enter')vpEspnIdConnect()">
+              <button class="connect-btn" id="vp-espn-go" onclick="vpEspnIdConnect()" style="padding:13px 20px;border-radius:10px;font-size:14px;white-space:nowrap;background:#d50a0a;border-color:#d50a0a">Connect</button>
+            </div>
+            <button class="vp-espn-cta" style="margin-top:10px" onclick="vpEspnIdConnect()"><span class="elogo">E</span> Link ESPN League →</button>
+            <div id="vp-espn-err" style="display:none;margin-top:10px;font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--accent2);background:rgba(213,10,10,0.08);border:1px solid rgba(213,10,10,0.25);border-radius:8px;padding:9px 11px;text-align:left"></div>
+            <details class="vp-ckhelp" style="text-align:center;margin-top:12px">
+              <summary style="color:var(--wr);text-align:center">Where do I find my League ID?</summary>
+              <ul class="vp-cksteps" style="margin-top:10px">
+                <li><span class="n">1</span><span>Open your league on <code>fantasy.espn.com</code> in a desktop browser.</span></li>
+                <li><span class="n">2</span><span>The address bar URL contains <code>leagueId=XXXXXX</code>.</span></li>
+                <li><span class="n">3</span><span>Copy that number and paste it above.</span></li>
+              </ul>
+            </details>
+            <div class="vp-or"><span>private league?</span></div>
+            <button class="vp-adv" id="vp-adv-toggle" onclick="vpToggleCookies()">Add connection codes (SWID + espn_s2) <span class="car">▾</span></button>
             <div class="vp-cookie" id="vp-cookie-panel">
+              <p style="font-size:11.5px;color:var(--muted);line-height:1.5;margin:10px 0 2px">Private leagues can't be read from the browser — ESPN requires these cookies sent <b>server-side</b>. This needs the backend sync; entering them here won't pull a private league yet.</p>
               <div class="vp-cklabel">SWID <span class="req">*</span></div>
               <input class="vp-ckinput" id="vp-swid" placeholder="{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}">
               <div class="vp-cklabel">espn_s2 <span class="req">*</span></div>
               <input class="vp-ckinput" id="vp-s2" placeholder="AEB...long encoded token...%3D%3D">
-              <button class="vp-espn-cta" style="margin-top:14px" onclick="vpEspnCookieConnect()">Verify &amp; connect ESPN</button>
+              <button class="vp-espn-cta" style="margin-top:14px" onclick="vpEspnIdConnect(true)">Verify &amp; connect private league</button>
               <details class="vp-ckhelp">
                 <summary>Where do I find these?</summary>
                 <ul class="vp-cksteps">
@@ -3293,38 +3309,6 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       </section>
 
       </div><!-- /vp-view-leagues -->
-
-      <!-- ═══ ESPN LOGIN WEBVIEW MODAL ═══ -->
-      <div class="vp-modal" id="vp-espn-modal">
-        <div class="vp-webview">
-          <div class="vp-wv-chrome">
-            <div class="vp-wv-dots"><i></i><i></i><i></i></div>
-            <div class="vp-wv-url">🔒 secure.web.plus.espn.com/identity/login</div>
-            <button class="vp-wv-close" onclick="vpCloseEspnLogin()">✕</button>
-          </div>
-          <div class="vp-wv-body" id="vp-wv-form">
-            <div class="vp-wv-logo"><div class="badge">E</div><div class="ftxt">ESPN</div></div>
-            <div class="vp-wv-h">Log In</div>
-            <div class="vp-wv-sub">Use your ESPN account to authorize Vault Fantasy.</div>
-            <div class="vp-wv-field"><label>Username or Email</label><input class="vp-wv-input" type="text" value="putput@email.com"></div>
-            <div class="vp-wv-field"><label>Password</label><input class="vp-wv-input" type="password" value="••••••••••"></div>
-            <button class="vp-wv-login" onclick="vpSubmitEspnLogin()">Log In</button>
-            <div class="vp-wv-secure">🔒 Secured by ESPN / Disney identity</div>
-            <div class="vp-wv-foot">Vault Fantasy will receive <span class="ro">read-only</span> access to your leagues, rosters and scores. It cannot make changes to your ESPN teams.</div>
-          </div>
-          <div class="vp-wv-body" id="vp-wv-loading" style="display:none">
-            <div class="vp-wv-state"><div class="vp-wv-spin"></div><h4>Authorizing…</h4><p>Securely handing a read-only session to Vault Fantasy.</p></div>
-          </div>
-          <div class="vp-wv-body" id="vp-wv-success" style="display:none">
-            <div class="vp-wv-state">
-              <div class="vp-wv-ring"><svg viewBox="0 0 24 24" fill="none" stroke="#27a35a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
-              <h4>Connected securely</h4>
-              <p>Session token captured. Discovering your ESPN leagues…</p>
-              <div class="vp-wv-handoff"><span class="pill">E ESPN</span><span>→</span><span class="pill">🛡 Vault</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
 
     </div>
   </div>
@@ -6923,17 +6907,6 @@ async function findDrafts() {
 // ── Reimagined login: platform selector + multi-select league profile ──
 let vpPlatform = 'sleeper';
 let vpEspnConnected = false;
-let vpEspnUser = '';
-// Demo ESPN leagues (always redraft) — shaped like Sleeper league objects so the
-// existing grid / selection / dashboard code treats them identically.
-// NOTE: real ESPN data requires a server-side proxy (SWID/espn_s2 cookies + CORS);
-// these are realistic placeholders so the connect flow is fully walkable.
-const VP_ESPN_LEAGUES = [
-  {league_id:'espn_e1', platform:'espn', name:'The Office Survivor League', season:'2026', status:'pre_draft', total_rosters:12, settings:{type:0,num_teams:12}, roster_positions:['QB','RB','RB','WR','WR','TE','FLEX','K','DEF']},
-  {league_id:'espn_e2', platform:'espn', name:'Monday Night Massacre',      season:'2026', status:'in_season', total_rosters:10, settings:{type:0,num_teams:10}, roster_positions:['QB','RB','RB','WR','WR','TE','FLEX','K','DEF']},
-  {league_id:'espn_e3', platform:'espn', name:'Beer League PPR',            season:'2026', status:'pre_draft', total_rosters:12, settings:{type:0,num_teams:12}, roster_positions:['QB','RB','RB','WR','WR','TE','FLEX','K','DEF']},
-  {league_id:'espn_e4', platform:'espn', name:'College Buddies 12-Man',     season:'2025', status:'complete',  total_rosters:12, settings:{type:0,num_teams:12}, roster_positions:['QB','RB','RB','WR','WR','TE','FLEX','K','DEF']},
-];
 function vpPlat(l){ return l.platform || (String(l.league_id||'').startsWith('espn_') ? 'espn' : 'sleeper'); }
 
 function vpSetPlatform(p){
@@ -6951,48 +6924,106 @@ function vpSetPlatform(p){
   }
 }
 
-// ── ESPN: login-in-webview (hero path) ──
-function vpOpenEspnLogin(){
-  document.getElementById('vp-wv-form').style.display='';
-  document.getElementById('vp-wv-loading').style.display='none';
-  document.getElementById('vp-wv-success').style.display='none';
-  document.getElementById('vp-espn-modal').classList.add('on');
+// ── ESPN: connect by League ID — REAL fetch from ESPN's public read API ──
+// Public leagues return data with no auth. Private leagues 401 (need server-side
+// SWID/espn_s2 — not possible from the browser), and we surface that clearly.
+const VP_ESPN_SLOT = {0:'QB',2:'RB',4:'WR',6:'TE',7:'SUPER_FLEX',16:'DEF',17:'K',23:'FLEX'};
+async function vpEspnIdConnect(isPrivate){
+  const inp = document.getElementById('vp-espn-id');
+  const id = (inp?.value || '').trim().replace(/[^0-9]/g,'');
+  if (!id){
+    if (inp){ inp.style.borderColor='#d50a0a'; inp.style.boxShadow='0 0 0 3px rgba(213,10,10,0.25)'; inp.focus();
+      setTimeout(()=>{ inp.style.borderColor=''; inp.style.boxShadow=''; }, 1600); }
+    return;
+  }
+  vpEspnError('');
+  const go = document.getElementById('vp-espn-go');
+  if (go){ go.textContent='…'; go.disabled=true; }
+  try {
+    const lg = await vpFetchEspnLeague(id);
+    if (inp) inp.value='';
+    vpFinishEspn(lg);
+  } catch(e){
+    vpEspnError(e.message || 'Could not load that league.');
+  } finally {
+    if (go){ go.textContent='Connect'; go.disabled=false; }
+  }
 }
-function vpCloseEspnLogin(){ document.getElementById('vp-espn-modal').classList.remove('on'); }
-function vpSubmitEspnLogin(){
-  const em = document.querySelector('#vp-wv-form .vp-wv-input');
-  vpEspnUser = (em?.value || 'putput@email.com').split('@')[0];
-  document.getElementById('vp-wv-form').style.display='none';
-  document.getElementById('vp-wv-loading').style.display='';
-  setTimeout(()=>{ document.getElementById('vp-wv-loading').style.display='none'; document.getElementById('vp-wv-success').style.display=''; }, 1500);
-  setTimeout(()=>{ vpCloseEspnLogin(); vpFinishEspn(); }, 3100);
+async function vpFetchEspnLeague(id){
+  const years = ['2026','2025','2024'];
+  let lastErr = null;
+  for (const y of years){
+    const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${y}/segments/0/leagues/${id}`
+      + `?view=mSettings&view=mDraftDetail&view=mStatus&view=mTeam`;
+    let res;
+    try { res = await fetch(url, { headers:{ 'accept':'application/json' } }); }
+    catch(netErr){ lastErr = new Error("Couldn't reach ESPN (network/CORS). Try again, or this may need the server proxy."); continue; }
+    if (res.status === 401){ throw new Error('League '+id+' is private. Private leagues need SWID + espn_s2 read server-side — make the league public, or use the backend sync.'); }
+    if (res.status === 404){ lastErr = new Error('No ESPN league found with ID '+id+' for '+years.join('/')+'. Double-check the ID.'); continue; }
+    if (!res.ok){ lastErr = new Error('ESPN returned '+res.status+' for league '+id+'.'); continue; }
+    let data; try { data = await res.json(); } catch(_){ lastErr = new Error('ESPN sent an unexpected response.'); continue; }
+    return vpMapEspnLeague(data, y, id);
+  }
+  throw lastErr || new Error('Could not load that league.');
 }
-// ── ESPN: cookie-paste (advanced fallback) ──
+function vpMapEspnLeague(data, year, id){
+  const s = data.settings || {};
+  const name = s.name || ('ESPN League ' + id);
+  const teams = Array.isArray(data.teams) ? data.teams.length : (s.size || '—');
+  // roster positions from ESPN lineup slot counts
+  const slotCounts = (s.rosterSettings && s.rosterSettings.lineupSlotCounts) || {};
+  const positions = [];
+  Object.keys(slotCounts).forEach(k => { const n = slotCounts[k]|0; const lbl = VP_ESPN_SLOT[k]; if (lbl) for (let i=0;i<n;i++) positions.push(lbl); });
+  // status: pre-draft / drafting / in-season / complete
+  const dd = data.draftDetail || {};
+  const drafted = ('drafted' in dd) ? !!dd.drafted : true;
+  const inProgress = !!dd.inProgress;
+  const st = data.status || {};
+  const finalSP = st.finalScoringPeriod || 18;
+  const curSP = st.latestScoringPeriod || st.currentMatchupPeriod || 0;
+  const nowYear = new Date().getFullYear();
+  let status;
+  if (inProgress) status = 'drafting';
+  else if (!drafted) status = 'pre_draft';
+  else if (+year < nowYear || st.isActive === false || curSP >= finalSP) status = 'complete';
+  else status = 'in_season';
+  const scoring = (s.scoringSettings && s.scoringSettings.scoringType) || '';
+  return {
+    league_id:'espn_'+id, platform:'espn', _espn:true, _espnId:id,
+    name, season:String(year), status,
+    total_rosters:teams,
+    settings:{ type:0, num_teams:teams, scoring },
+    roster_positions:positions,
+  };
+}
+function vpEspnError(msg){
+  const el = document.getElementById('vp-espn-err');
+  if (!el) return;
+  if (!msg){ el.style.display='none'; el.textContent=''; return; }
+  el.textContent = '⚠ ' + msg;
+  el.style.display = '';
+}
+// ── ESPN: cookie-paste reveal (private leagues) ──
 function vpToggleCookies(){
   document.getElementById('vp-adv-toggle').classList.toggle('open');
   document.getElementById('vp-cookie-panel').classList.toggle('on');
 }
-function vpEspnCookieConnect(){
-  vpEspnUser = vpEspnUser || 'ESPN';
-  vpFinishEspn();
-}
-// ── shared: ESPN linked → merge demo leagues, mark account, open league picker ──
-function vpFinishEspn(){
+// ── ESPN league linked → add to shared league array, open league picker ──
+function vpFinishEspn(lg){
   vpEspnConnected = true;
   document.querySelector('#vp-platforms .vp-plat[data-p="espn"]')?.classList.add('linked');
-  // merge demo ESPN leagues into the shared league array (dedupe by id)
-  VP_ESPN_LEAGUES.forEach(el => { if (!myTeamsData.some(l => l.league_id===el.league_id)) myTeamsData.push({...el}); });
+  const i = myTeamsData.findIndex(l => l.league_id===lg.league_id);
+  if (i>=0) myTeamsData[i] = lg; else myTeamsData.push(lg);
   const banner = document.getElementById('vp-conn-banner');
   if (banner){
-    const n = VP_ESPN_LEAGUES.length;
-    document.getElementById('vp-conn-banner-tx').innerHTML = `<b>ESPN connected${vpEspnUser?' · '+vpEspnUser:''}.</b> ${n} redraft leagues imported and ready to track.`;
+    document.getElementById('vp-conn-banner-tx').innerHTML = `<b>ESPN league linked — ${lg.name}.</b> Pulled live from ESPN (${lg.season}).`;
     banner.style.display='';
   }
-  vpInitSelection();
-  // make sure freshly-imported ESPN leagues start selected
-  VP_ESPN_LEAGUES.filter(l=>l.status!=='complete').forEach(l=>vpSelected.add(l.league_id));
   const intLabel = document.getElementById('vp-int-label');
   if (intLabel) intLabel.textContent = myTeamsData.some(l=>vpPlat(l)==='sleeper') ? 'Sleeper + ESPN' : 'ESPN';
+  if (vpSelected.size===0 && !vpPrimary) vpInitSelection();
+  vpSelected.add(lg.league_id);
+  if (!vpPrimary) vpPrimary = lg.league_id;
   vpRenderLeagueGrid();
   vpShowView('leagues');
 }
@@ -7051,7 +7082,7 @@ function vpDraftRow(l){
   return `<div class="vp-draft-row done"><span class="dp"></span>IN SEASON<span class="hint">${espn?'synced hourly':'synced live'}</span></div>`;
 }
 function vpInitSelection(){
-  const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025');
+  const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025' || l.platform==='espn');
   const saved = JSON.parse(localStorage.getItem(SK+'-selected-leagues') || 'null');
   if (saved && saved.length){
     vpSelected = new Set(saved.filter(id => pool.some(l => l.league_id===id)));
@@ -7101,7 +7132,7 @@ function vpCardHTML(l, i){
 function vpRenderLeagueGrid(){
   const wrap = document.getElementById('vp-leagues-wrap');
   if (!wrap) return;
-  const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025');
+  const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025' || l.platform==='espn');
   const cAll = document.getElementById('vp-c-all'); if (cAll) cAll.textContent = '(' + pool.length + ')';
   const q = (document.getElementById('vp-search')?.value || '').toLowerCase();
   const list = pool.filter(l => vpMatchFilter(l) && (l.name||'').toLowerCase().includes(q));
@@ -7129,7 +7160,7 @@ function vpToggle(id){
 }
 function vpSetPrimary(id){ vpSelected.add(id); vpPrimary = id; vpRenderLeagueGrid(); }
 function vpSelectAll(on){
-  const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025');
+  const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025' || l.platform==='espn');
   if (on){ pool.forEach(l => vpSelected.add(l.league_id)); if (!vpPrimary) vpPrimary = pool[0]?.league_id || null; }
   else { vpSelected.clear(); vpPrimary = null; }
   vpRenderLeagueGrid();
