@@ -2863,6 +2863,94 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 .vp-plat .pl-ic.s{background:linear-gradient(135deg,#19d0c0,#00b3a4);color:#06201d}
 .vp-plat .pl-ic.e{background:#c8102e;color:#fff}
 .vp-plat .soon{font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--te);background:rgba(245,200,66,0.14);padding:2px 5px;border-radius:4px}
+.vp-plat[data-p="espn"].on{border-color:rgba(213,10,10,0.6);background:rgba(213,10,10,0.1)}
+.vp-plat .pl-ic.e{background:#d50a0a;color:#fff;font-style:italic;letter-spacing:-0.04em}
+.vp-plat .ok{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--rb);border:2px solid var(--bg);display:none;align-items:center;justify-content:center}
+.vp-plat .ok svg{width:9px;height:9px}
+.vp-plat.linked .ok{display:flex}
+/* ESPN connect panel */
+.vp-espn-note{display:flex;gap:10px;align-items:flex-start;background:rgba(213,10,10,0.06);border:1px solid rgba(213,10,10,0.2);border-radius:10px;padding:11px 13px;margin-bottom:14px;text-align:left}
+.vp-espn-note .ic{font-size:15px;line-height:1.3}
+.vp-espn-note p{font-size:12px;color:var(--text2);line-height:1.5;margin:0}
+.vp-espn-note p b{color:var(--text);font-weight:700}
+.vp-espn-cta{width:100%;padding:14px;border-radius:10px;border:none;background:linear-gradient(135deg,#d50a0a,#7d0404);color:#fff;font-family:var(--font-sans);font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 0 22px rgba(213,10,10,0.28);transition:box-shadow .15s,transform .15s}
+.vp-espn-cta:hover{box-shadow:0 0 36px rgba(213,10,10,0.5);transform:translateY(-1px)}
+.vp-espn-cta .elogo{font-weight:900;font-style:italic;letter-spacing:-0.05em}
+.vp-or{display:flex;align-items:center;gap:10px;margin:14px 0}
+.vp-or:before,.vp-or:after{content:"";flex:1;height:1px;background:var(--border)}
+.vp-or span{font-family:var(--font-mono);font-size:9.5px;color:var(--faint);letter-spacing:0.1em;text-transform:uppercase}
+.vp-adv{width:100%;background:none;border:none;color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;padding:6px;display:flex;align-items:center;justify-content:center;gap:6px;transition:color .15s}
+.vp-adv:hover{color:var(--text2)}
+.vp-adv .car{transition:transform .2s}
+.vp-adv.open .car{transform:rotate(180deg)}
+.vp-cookie{display:none;margin-top:6px;text-align:left}
+.vp-cookie.on{display:block}
+.vp-cklabel{font-family:var(--font-mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:12px 0 5px}
+.vp-cklabel .req{color:var(--accent2)}
+.vp-ckinput{width:100%;background:var(--s2);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:var(--font-mono);font-size:12px;padding:11px 13px;outline:none;transition:border-color .15s}
+.vp-ckinput:focus{border-color:#ff3b3b}
+.vp-ckinput::placeholder{color:var(--faint)}
+.vp-ckhelp{margin-top:10px}
+.vp-ckhelp summary{font-family:var(--font-mono);font-size:10px;letter-spacing:0.05em;color:var(--wr);cursor:pointer;list-style:none}
+.vp-ckhelp summary::-webkit-details-marker{display:none}
+.vp-cksteps{font-size:12px;color:var(--text2);line-height:1.7;margin-top:10px;padding:0}
+.vp-cksteps li{margin-bottom:5px;list-style:none;display:flex;gap:9px}
+.vp-cksteps .n{font-family:var(--font-mono);font-size:10px;color:#ff3b3b;font-weight:700;flex-shrink:0;width:16px}
+.vp-cksteps code{font-family:var(--font-mono);font-size:11px;background:var(--s3);padding:1px 5px;border-radius:4px;color:var(--te)}
+/* ESPN login webview modal */
+.vp-modal{position:fixed;inset:0;z-index:3000;background:rgba(6,9,13,0.8);backdrop-filter:blur(7px);display:none;align-items:center;justify-content:center;padding:20px}
+.vp-modal.on{display:flex}
+.vp-webview{width:100%;max-width:420px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 40px 100px -20px rgba(0,0,0,0.9)}
+.vp-wv-chrome{background:#e9eaec;display:flex;align-items:center;gap:9px;padding:10px 13px;border-bottom:1px solid #d2d4d8}
+.vp-wv-dots{display:flex;gap:6px}
+.vp-wv-dots i{width:11px;height:11px;border-radius:50%;display:block}
+.vp-wv-dots i:nth-child(1){background:#ff5f57}.vp-wv-dots i:nth-child(2){background:#febc2e}.vp-wv-dots i:nth-child(3){background:#28c840}
+.vp-wv-url{flex:1;background:#fff;border-radius:7px;padding:6px 12px;display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;color:#5a5e66;border:1px solid #d8dade}
+.vp-wv-close{background:none;border:none;font-size:15px;color:#888;cursor:pointer;line-height:1;padding:2px}
+.vp-wv-body{padding:32px 28px 26px;color:#1a1d21;min-height:360px;display:flex;flex-direction:column}
+.vp-wv-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px}
+.vp-wv-logo .badge{width:40px;height:40px;border-radius:9px;background:#d50a0a;color:#fff;font-style:italic;font-weight:900;font-size:20px;letter-spacing:-0.06em;display:flex;align-items:center;justify-content:center}
+.vp-wv-logo .ftxt{font-weight:800;font-size:15px;color:#1a1d21}
+.vp-wv-h{text-align:center;font-size:19px;font-weight:800;margin:14px 0 4px;letter-spacing:-0.02em}
+.vp-wv-sub{text-align:center;font-size:12.5px;color:#6b7077;margin-bottom:20px}
+.vp-wv-field{margin-bottom:12px}
+.vp-wv-field label{display:block;font-size:10.5px;font-weight:700;color:#5a5e66;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em}
+.vp-wv-input{width:100%;border:1.5px solid #cdd0d6;border-radius:8px;padding:11px 13px;font-size:14px;font-family:var(--font-sans);color:#1a1d21;outline:none;transition:border-color .15s}
+.vp-wv-input:focus{border-color:#d50a0a}
+.vp-wv-login{width:100%;background:#d50a0a;color:#fff;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:800;font-family:var(--font-sans);cursor:pointer;margin-top:8px;transition:background .15s}
+.vp-wv-login:hover{background:#b50808}
+.vp-wv-foot{margin-top:auto;padding-top:18px;text-align:center;font-size:10.5px;color:#9aa0a8;line-height:1.6}
+.vp-wv-foot .ro{font-weight:700;color:#6b7077}
+.vp-wv-secure{display:flex;align-items:center;justify-content:center;gap:6px;font-size:10px;color:#9aa0a8;margin-top:12px}
+.vp-wv-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:320px}
+.vp-wv-spin{width:46px;height:46px;border:4px solid #e4e6ea;border-top-color:#d50a0a;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:18px}
+.vp-wv-state h4{font-size:18px;font-weight:800;color:#1a1d21;margin:0}
+.vp-wv-state p{font-size:13px;color:#6b7077;margin-top:7px;max-width:250px;line-height:1.5}
+.vp-wv-ring{width:62px;height:62px;border-radius:50%;background:#e8f7ee;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.vp-wv-ring svg{width:28px;height:28px}
+.vp-wv-handoff{margin-top:16px;display:flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:11px;color:#6b7077}
+.vp-wv-handoff .pill{background:#f0f1f3;border-radius:6px;padding:4px 9px;display:flex;align-items:center;gap:6px;font-weight:700;color:#1a1d21}
+/* platform badge on league cards */
+.vp-plat-badge{position:absolute;bottom:-5px;right:-5px;width:20px;height:20px;border-radius:6px;border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;font-style:italic}
+.vp-plat-badge.s{background:linear-gradient(135deg,#19d0c0,#00b3a4);color:#06201d}
+.vp-plat-badge.e{background:#d50a0a;color:#fff;letter-spacing:-0.05em}
+.vp-chip .pdot{width:8px;height:8px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle}
+.vp-chip .pdot.s{background:#19d0c0}
+.vp-chip .pdot.e{background:#ff3b3b}
+/* draft-sync capability row */
+.vp-draft-row{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:11px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:0.05em}
+.vp-draft-row .dp{width:7px;height:7px;border-radius:50%}
+.vp-draft-row.live{color:var(--rb)}.vp-draft-row.live .dp{background:var(--rb);box-shadow:0 0 7px var(--rb);animation:pulse 1.5s infinite}
+.vp-draft-row.poll{color:var(--te)}.vp-draft-row.poll .dp{background:var(--te)}
+.vp-draft-row.done{color:var(--muted)}.vp-draft-row.done .dp{background:var(--muted)}
+.vp-draft-row .hint{margin-left:auto;color:var(--faint);text-transform:none;letter-spacing:0.02em}
+/* ESPN connected banner on leagues view */
+.vp-conn-banner{display:flex;align-items:center;gap:12px;background:rgba(61,204,122,0.08);border:1px solid rgba(61,204,122,0.3);border-radius:10px;padding:13px 16px;margin-bottom:20px}
+.vp-conn-banner .ic{width:30px;height:30px;border-radius:8px;background:rgba(61,204,122,0.18);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.vp-conn-banner .ic svg{width:15px;height:15px}
+.vp-conn-banner .tx{font-size:13.5px;color:var(--text)}
+.vp-conn-banner .tx b{font-weight:700}
+.vp-conn-banner .x{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px}
 /* league multi-select toolbar */
 .vp-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
 .vp-search{flex:1;min-width:200px;position:relative}
@@ -3021,19 +3109,23 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <div style="background:rgba(15,23,42,0.65);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.10);border-top:2px solid rgba(204,0,60,0.3);border-radius:16px;padding:28px;max-width:440px;margin:0 auto">
           <!-- Sleeper + Vault icon row -->
           <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px">
-            <div style="width:48px;height:48px;border-radius:12px;background:#00CEB8;display:flex;align-items:center;justify-content:center;font-size:24px">⚡</div>
+            <div id="vp-bridge-ic" style="width:48px;height:48px;border-radius:12px;background:#00CEB8;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;font-style:italic">⚡</div>
             <div style="font-size:18px;color:rgba(144,144,151,0.4)">⇌</div>
             <div style="width:48px;height:48px;border-radius:12px;background:rgba(39,54,71,0.8);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center">
               <svg width="24" height="28" viewBox="0 0 100 112" fill="none"><path d="M50 3 L95 20 L95 63 Q95 92 50 110 Q5 92 5 63 L5 20 Z" fill="#bec6e0" opacity="0.9"/></svg>
             </div>
           </div>
 
-          <!-- platform selector (ESPN ready) -->
+          <!-- platform selector -->
           <div id="vp-platforms">
             <button class="vp-plat on" data-p="sleeper" onclick="vpSetPlatform('sleeper')"><span class="pl-ic s">⚡</span> Sleeper</button>
-            <button class="vp-plat" data-p="espn" onclick="vpSetPlatform('espn')"><span class="pl-ic e">E</span> ESPN <span class="soon">Soon</span></button>
+            <button class="vp-plat" data-p="espn" onclick="vpSetPlatform('espn')"><span class="pl-ic e">E</span> ESPN
+              <span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="#06201d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+            </button>
           </div>
 
+          <!-- ═══ SLEEPER PANEL ═══ -->
+          <div id="vp-panel-sleeper">
           <!-- Resume session (shown for returning users) -->
           <div id="resume-btn" style="display:none;margin-bottom:14px">
             <button onclick="resumeSession()" class="resume-big-btn">⚡ Resume Last Session</button>
@@ -3069,6 +3161,33 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           " onmouseover="this.style.boxShadow='0 0 30px rgba(204,0,60,0.4)'" onmouseout="this.style.boxShadow='0 0 20px rgba(204,0,60,0.2)'">
             <span class="vp-cta-label">Connect Your Sleeper Account →</span>
           </button>
+          </div><!-- /vp-panel-sleeper -->
+
+          <!-- ═══ ESPN PANEL ═══ -->
+          <div id="vp-panel-espn" style="display:none">
+            <div class="vp-espn-note">
+              <span class="ic">🔒</span>
+              <p><b>ESPN has no public username lookup.</b> Log in through ESPN once — we never see your password, only a read-only session token to pull your redraft leagues.</p>
+            </div>
+            <button class="vp-espn-cta" onclick="vpOpenEspnLogin()"><span class="elogo">E</span> Log in with ESPN →</button>
+            <div class="vp-or"><span>or connect manually</span></div>
+            <button class="vp-adv" id="vp-adv-toggle" onclick="vpToggleCookies()">I already have my connection codes <span class="car">▾</span></button>
+            <div class="vp-cookie" id="vp-cookie-panel">
+              <div class="vp-cklabel">SWID <span class="req">*</span></div>
+              <input class="vp-ckinput" id="vp-swid" placeholder="{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}">
+              <div class="vp-cklabel">espn_s2 <span class="req">*</span></div>
+              <input class="vp-ckinput" id="vp-s2" placeholder="AEB...long encoded token...%3D%3D">
+              <button class="vp-espn-cta" style="margin-top:14px" onclick="vpEspnCookieConnect()">Verify &amp; connect ESPN</button>
+              <details class="vp-ckhelp">
+                <summary>Where do I find these?</summary>
+                <ul class="vp-cksteps">
+                  <li><span class="n">1</span><span>Open <code>fantasy.espn.com</code> and make sure you're logged in.</span></li>
+                  <li><span class="n">2</span><span>Open developer tools → <b>Application</b> → <b>Cookies</b>.</span></li>
+                  <li><span class="n">3</span><span>Copy the values of <code>SWID</code> and <code>espn_s2</code> and paste them above.</span></li>
+                </ul>
+              </details>
+            </div>
+          </div><!-- /vp-panel-espn -->
 
           <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px">
             <p style="font-family:var(--font-mono);font-size:10px;color:rgba(144,144,151,0.6);letter-spacing:0.05em;margin:0">
@@ -3110,13 +3229,18 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:48px">
         <div style="flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(144,144,151,0.2))"></div>
         <div style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;color:#7bd0ff">
-          <span style="font-size:14px">✓</span> Sleeper Integration Active
+          <span style="font-size:14px">✓</span> <span id="vp-int-label">Sleeper</span> Integration Active
         </div>
         <div style="flex:1;height:1px;background:linear-gradient(to left,transparent,rgba(144,144,151,0.2))"></div>
       </div>
 
       <!-- LEAGUE SELECTION SECTION -->
       <section id="setup-league-section">
+        <div class="vp-conn-banner" id="vp-conn-banner" style="display:none">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#3DCC7A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
+          <div class="tx" id="vp-conn-banner-tx"><b>ESPN connected.</b> Redraft leagues imported and ready to track.</div>
+          <button class="x" onclick="document.getElementById('vp-conn-banner').style.display='none'">×</button>
+        </div>
         <div style="margin-bottom:18px">
           <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(61,204,122,0.1);border:1px solid rgba(61,204,122,0.25);padding:4px 12px;border-radius:9999px;margin-bottom:10px">
             <span style="width:6px;height:6px;border-radius:50%;background:var(--rb);display:inline-block"></span>
@@ -3130,11 +3254,11 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <div class="vp-search"><input id="vp-search" placeholder="Search leagues…" oninput="vpRenderLeagueGrid()"></div>
           <div class="vp-chips" id="vp-chips">
             <button class="vp-chip on" data-f="all" onclick="vpSetFilter('all')">All <span id="vp-c-all"></span></button>
+            <button class="vp-chip" data-f="sleeper" onclick="vpSetFilter('sleeper')"><span class="pdot s"></span>Sleeper</button>
+            <button class="vp-chip" data-f="espn" onclick="vpSetFilter('espn')"><span class="pdot e"></span>ESPN</button>
             <button class="vp-chip" data-f="live" onclick="vpSetFilter('live')">● Live</button>
-            <button class="vp-chip" data-f="dynasty" onclick="vpSetFilter('dynasty')">Dynasty</button>
             <button class="vp-chip" data-f="redraft" onclick="vpSetFilter('redraft')">Redraft</button>
-            <button class="vp-chip" data-f="2026" onclick="vpSetFilter('2026')">2026</button>
-            <button class="vp-chip" data-f="2025" onclick="vpSetFilter('2025')">2025</button>
+            <button class="vp-chip" data-f="dynasty" onclick="vpSetFilter('dynasty')">Dynasty</button>
           </div>
           <div class="vp-bulk">
             <button onclick="vpSelectAll(true)">Select all</button>
@@ -3169,6 +3293,38 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       </section>
 
       </div><!-- /vp-view-leagues -->
+
+      <!-- ═══ ESPN LOGIN WEBVIEW MODAL ═══ -->
+      <div class="vp-modal" id="vp-espn-modal">
+        <div class="vp-webview">
+          <div class="vp-wv-chrome">
+            <div class="vp-wv-dots"><i></i><i></i><i></i></div>
+            <div class="vp-wv-url">🔒 secure.web.plus.espn.com/identity/login</div>
+            <button class="vp-wv-close" onclick="vpCloseEspnLogin()">✕</button>
+          </div>
+          <div class="vp-wv-body" id="vp-wv-form">
+            <div class="vp-wv-logo"><div class="badge">E</div><div class="ftxt">ESPN</div></div>
+            <div class="vp-wv-h">Log In</div>
+            <div class="vp-wv-sub">Use your ESPN account to authorize Vault Fantasy.</div>
+            <div class="vp-wv-field"><label>Username or Email</label><input class="vp-wv-input" type="text" value="putput@email.com"></div>
+            <div class="vp-wv-field"><label>Password</label><input class="vp-wv-input" type="password" value="••••••••••"></div>
+            <button class="vp-wv-login" onclick="vpSubmitEspnLogin()">Log In</button>
+            <div class="vp-wv-secure">🔒 Secured by ESPN / Disney identity</div>
+            <div class="vp-wv-foot">Vault Fantasy will receive <span class="ro">read-only</span> access to your leagues, rosters and scores. It cannot make changes to your ESPN teams.</div>
+          </div>
+          <div class="vp-wv-body" id="vp-wv-loading" style="display:none">
+            <div class="vp-wv-state"><div class="vp-wv-spin"></div><h4>Authorizing…</h4><p>Securely handing a read-only session to Vault Fantasy.</p></div>
+          </div>
+          <div class="vp-wv-body" id="vp-wv-success" style="display:none">
+            <div class="vp-wv-state">
+              <div class="vp-wv-ring"><svg viewBox="0 0 24 24" fill="none" stroke="#27a35a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
+              <h4>Connected securely</h4>
+              <p>Session token captured. Discovering your ESPN leagues…</p>
+              <div class="vp-wv-handoff"><span class="pill">E ESPN</span><span>→</span><span class="pill">🛡 Vault</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -6766,18 +6922,79 @@ async function findDrafts() {
 // ════════════════════════════════════
 // ── Reimagined login: platform selector + multi-select league profile ──
 let vpPlatform = 'sleeper';
+let vpEspnConnected = false;
+let vpEspnUser = '';
+// Demo ESPN leagues (always redraft) — shaped like Sleeper league objects so the
+// existing grid / selection / dashboard code treats them identically.
+// NOTE: real ESPN data requires a server-side proxy (SWID/espn_s2 cookies + CORS);
+// these are realistic placeholders so the connect flow is fully walkable.
+const VP_ESPN_LEAGUES = [
+  {league_id:'espn_e1', platform:'espn', name:'The Office Survivor League', season:'2026', status:'pre_draft', total_rosters:12, settings:{type:0,num_teams:12}, roster_positions:['QB','RB','RB','WR','WR','TE','FLEX','K','DEF']},
+  {league_id:'espn_e2', platform:'espn', name:'Monday Night Massacre',      season:'2026', status:'in_season', total_rosters:10, settings:{type:0,num_teams:10}, roster_positions:['QB','RB','RB','WR','WR','TE','FLEX','K','DEF']},
+  {league_id:'espn_e3', platform:'espn', name:'Beer League PPR',            season:'2026', status:'pre_draft', total_rosters:12, settings:{type:0,num_teams:12}, roster_positions:['QB','RB','RB','WR','WR','TE','FLEX','K','DEF']},
+  {league_id:'espn_e4', platform:'espn', name:'College Buddies 12-Man',     season:'2025', status:'complete',  total_rosters:12, settings:{type:0,num_teams:12}, roster_positions:['QB','RB','RB','WR','WR','TE','FLEX','K','DEF']},
+];
+function vpPlat(l){ return l.platform || (String(l.league_id||'').startsWith('espn_') ? 'espn' : 'sleeper'); }
+
 function vpSetPlatform(p){
   vpPlatform = p;
   document.querySelectorAll('#vp-platforms .vp-plat').forEach(b => b.classList.toggle('on', b.dataset.p===p));
-  const inp = document.getElementById('sleeper-username');
-  const go  = document.getElementById('find-btn');
-  const cta = document.getElementById('vp-cta');
-  const lbl = document.querySelector('.vp-cta-label');
   const espn = (p === 'espn');
-  if (inp){ inp.disabled = espn; inp.placeholder = espn ? 'ESPN connect coming soon…' : 'Enter Sleeper username…'; if (espn) inp.value=''; }
-  if (go){ go.disabled = espn; go.style.opacity = espn ? '.5' : ''; }
-  if (cta){ cta.style.opacity = espn ? '.55' : ''; cta.style.pointerEvents = espn ? 'none' : ''; }
-  if (lbl){ lbl.textContent = espn ? 'ESPN — Coming Soon' : 'Connect Your Sleeper Account →'; }
+  const ps = document.getElementById('vp-panel-sleeper');
+  const pe = document.getElementById('vp-panel-espn');
+  if (ps) ps.style.display = espn ? 'none' : '';
+  if (pe) pe.style.display = espn ? '' : 'none';
+  const ic = document.getElementById('vp-bridge-ic');
+  if (ic){
+    if (espn){ ic.style.background='#d50a0a'; ic.style.color='#fff'; ic.textContent='E'; }
+    else { ic.style.background='#00CEB8'; ic.style.color=''; ic.textContent='⚡'; }
+  }
+}
+
+// ── ESPN: login-in-webview (hero path) ──
+function vpOpenEspnLogin(){
+  document.getElementById('vp-wv-form').style.display='';
+  document.getElementById('vp-wv-loading').style.display='none';
+  document.getElementById('vp-wv-success').style.display='none';
+  document.getElementById('vp-espn-modal').classList.add('on');
+}
+function vpCloseEspnLogin(){ document.getElementById('vp-espn-modal').classList.remove('on'); }
+function vpSubmitEspnLogin(){
+  const em = document.querySelector('#vp-wv-form .vp-wv-input');
+  vpEspnUser = (em?.value || 'putput@email.com').split('@')[0];
+  document.getElementById('vp-wv-form').style.display='none';
+  document.getElementById('vp-wv-loading').style.display='';
+  setTimeout(()=>{ document.getElementById('vp-wv-loading').style.display='none'; document.getElementById('vp-wv-success').style.display=''; }, 1500);
+  setTimeout(()=>{ vpCloseEspnLogin(); vpFinishEspn(); }, 3100);
+}
+// ── ESPN: cookie-paste (advanced fallback) ──
+function vpToggleCookies(){
+  document.getElementById('vp-adv-toggle').classList.toggle('open');
+  document.getElementById('vp-cookie-panel').classList.toggle('on');
+}
+function vpEspnCookieConnect(){
+  vpEspnUser = vpEspnUser || 'ESPN';
+  vpFinishEspn();
+}
+// ── shared: ESPN linked → merge demo leagues, mark account, open league picker ──
+function vpFinishEspn(){
+  vpEspnConnected = true;
+  document.querySelector('#vp-platforms .vp-plat[data-p="espn"]')?.classList.add('linked');
+  // merge demo ESPN leagues into the shared league array (dedupe by id)
+  VP_ESPN_LEAGUES.forEach(el => { if (!myTeamsData.some(l => l.league_id===el.league_id)) myTeamsData.push({...el}); });
+  const banner = document.getElementById('vp-conn-banner');
+  if (banner){
+    const n = VP_ESPN_LEAGUES.length;
+    document.getElementById('vp-conn-banner-tx').innerHTML = `<b>ESPN connected${vpEspnUser?' · '+vpEspnUser:''}.</b> ${n} redraft leagues imported and ready to track.`;
+    banner.style.display='';
+  }
+  vpInitSelection();
+  // make sure freshly-imported ESPN leagues start selected
+  VP_ESPN_LEAGUES.filter(l=>l.status!=='complete').forEach(l=>vpSelected.add(l.league_id));
+  const intLabel = document.getElementById('vp-int-label');
+  if (intLabel) intLabel.textContent = myTeamsData.some(l=>vpPlat(l)==='sleeper') ? 'Sleeper + ESPN' : 'ESPN';
+  vpRenderLeagueGrid();
+  vpShowView('leagues');
 }
 
 let vpSelected = new Set();
@@ -6810,11 +7027,28 @@ function vpLeagueMeta(l){
 function vpMatchFilter(l){
   const m = vpLeagueMeta(l);
   if (vpFilter === 'all') return true;
+  if (vpFilter === 'sleeper') return vpPlat(l)==='sleeper';
+  if (vpFilter === 'espn') return vpPlat(l)==='espn';
   if (vpFilter === 'live') return m.live;
   if (vpFilter === 'dynasty') return m.dynasty;
   if (vpFilter === 'redraft') return !m.dynasty;
   if (vpFilter === '2026' || vpFilter === '2025') return l.season === vpFilter;
   return true;
+}
+// draft-sync capability row — surfaces the real Sleeper-vs-ESPN difference
+function vpDraftRow(l){
+  const espn = vpPlat(l)==='espn';
+  const s = l.status;
+  if (s==='pre_draft'){
+    return espn
+      ? `<div class="vp-draft-row poll"><span class="dp"></span>DRAFT RESULTS SYNC<span class="hint">auto-imports as you pick</span></div>`
+      : `<div class="vp-draft-row live"><span class="dp"></span>LIVE DRAFT SYNC<span class="hint">picks stream in real time</span></div>`;
+  }
+  if (s==='drafting'||s==='in_progress'||s==='paused'){
+    return `<div class="vp-draft-row live"><span class="dp"></span>DRAFT LIVE NOW<span class="hint">${espn?'polled every 30s':'real-time'}</span></div>`;
+  }
+  if (s==='complete') return `<div class="vp-draft-row done"><span class="dp"></span>SEASON COMPLETE<span class="hint">archived</span></div>`;
+  return `<div class="vp-draft-row done"><span class="dp"></span>IN SEASON<span class="hint">${espn?'synced hourly':'synced live'}</span></div>`;
 }
 function vpInitSelection(){
   const pool = myTeamsData.filter(l => l.season==='2026' || l.season==='2025');
@@ -6837,6 +7071,8 @@ function vpCardHTML(l, i){
   const initials = (l.name || '?').slice(0,2).toUpperCase();
   const sel = vpSelected.has(l.league_id);
   const prim = vpPrimary === l.league_id;
+  const plat = vpPlat(l);
+  const platBadge = `<div class="vp-plat-badge ${plat==='espn'?'e':'s'}">${plat==='espn'?'E':'⚡'}</div>`;
   const tags = [
     m.dynasty ? '<span class="vp-tag dyn">DYNASTY</span>' : '<span class="vp-tag red">REDRAFT</span>',
     m.sf ? '<span class="vp-tag sf">SF</span>' : ''
@@ -6844,7 +7080,7 @@ function vpCardHTML(l, i){
   return `<div class="vp-lg ${sel?'sel':''}" onclick="vpToggle('${l.league_id}')">
     <div class="glowtop"></div>
     <div class="vp-lg-top">
-      <div class="vp-badge" style="background:${color}22;color:${color}">${initials}</div>
+      <div class="vp-badge" style="background:${color}22;color:${color};position:relative">${initials}${platBadge}</div>
       <div style="flex:1;min-width:0">
         <div class="vp-lg-name">${l.name || 'My League'} ${m.live?'<span class="vp-pip"><span class="p"></span>LIVE</span>':''}</div>
         <div class="vp-lg-season">${l.season || '—'} · ${tags}</div>
@@ -6856,6 +7092,7 @@ function vpCardHTML(l, i){
       <div><div class="k">Format</div><div class="v" style="color:${color}">${m.dynasty?(m.sf?'DYN SF':'DYN'):'STD'}</div></div>
       <div><div class="k">Status</div><div class="v" style="color:${m.live?'var(--rb)':'var(--text2)'};font-size:11px">${m.st.label}</div></div>
     </div>
+    ${vpDraftRow(l)}
     <div class="vp-lg-foot">
       <button class="vp-prim ${prim?'is-prim':''}" onclick="event.stopPropagation();vpSetPrimary('${l.league_id}')"><span class="star">${prim?'★':'☆'}</span> ${prim?'Primary':'Set primary'}</button>
     </div>
