@@ -1123,14 +1123,28 @@ header{
 .pf-empty-cta.secondary{background:transparent;color:var(--accent2);border-color:var(--accent2)}
 
 /* ===== StatChasers v2 view ===== */
-/* Horizontal stat strip */
-.pf-v2-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--border2);border-radius:14px;background:linear-gradient(180deg,#161e36,#10172a);margin-bottom:32px;overflow:hidden}
+/* Horizontal stat strip — now: personalized hero band + tile grid */
+.pf-v2-strip{display:block;border:1px solid var(--border2);border-radius:14px;background:linear-gradient(180deg,#161e36,#10172a);margin-bottom:32px;overflow:hidden}
+.pf-v2-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:0}
+/* Hero */
+.pf-hero{display:flex;align-items:center;gap:16px;padding:20px 22px;border-bottom:1px solid var(--border2);background:radial-gradient(130% 150% at 0% 0%, rgba(245,200,66,0.12), transparent 58%)}
+.pf-hero-av{width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);flex-shrink:0;background:var(--s3)}
+.pf-hero-av-init{display:flex;align-items:center;justify-content:center;font-weight:800;font-size:19px;color:var(--text);font-family:var(--font-sans)}
+.pf-hero-copy{min-width:0;flex:1}
+.pf-hero-eyebrow{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-hero-headline{font-family:var(--font-sans);font-size:15px;font-weight:600;color:var(--text2);line-height:1}
+.pf-hero-headline b{font-size:30px;font-weight:800;color:#f5c842;letter-spacing:-.025em;margin-right:7px;font-variant-numeric:tabular-nums}
+.pf-hero-sub{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);margin-top:8px;letter-spacing:.02em}
+/* Auto-detected buy-in chip in the league table */
+.pf-v2-autobuy{display:inline-flex;align-items:center;gap:5px;background:rgba(123,208,255,0.10);border:1px solid rgba(123,208,255,0.28);color:#7bd0ff;font-family:var(--font-mono);font-size:13px;font-weight:700;padding:3px 8px;border-radius:7px;cursor:pointer;transition:background 120ms}
+.pf-v2-autobuy:hover{background:rgba(123,208,255,0.18)}
+.pf-v2-autobuy i{font-style:normal;font-size:8px;letter-spacing:.1em;text-transform:uppercase;opacity:.7;font-weight:600}
 .pf-v2-stat{padding:22px 22px;display:flex;flex-direction:column;justify-content:center;border-right:1px solid var(--border2)}
-.pf-v2-stat:last-child{border-right:none}
+.pf-v2-tiles .pf-v2-stat:last-child{border-right:none}
 .pf-v2-stat-num{font-size:30px;font-weight:800;line-height:1;letter-spacing:-0.025em;color:var(--text);font-family:var(--font-sans);margin-bottom:8px;white-space:nowrap}
 .pf-v2-stat-lbl{font-size:10px;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.14em}
 @media(max-width:700px){
-  .pf-v2-strip{grid-template-columns:repeat(2,1fr)}
+  .pf-v2-tiles{grid-template-columns:repeat(2,1fr)}
   .pf-v2-stat:nth-child(2){border-right:none}
   .pf-v2-stat:nth-child(1),.pf-v2-stat:nth-child(2){border-bottom:1px solid var(--border2)}
   .pf-v2-stat-num{font-size:28px}
@@ -13793,6 +13807,10 @@ function _pfSaveFinance(){ try { localStorage.setItem(SK+'-pf-finance', JSON.str
 function getPfFinance(lgId){ return window._pfFinance[lgId] || null; }
 function _pfMoney(v){ return '$'+(Math.round(v)||0).toLocaleString(); }
 function _pfOrd(n){ const s=['th','st','nd','rd'],v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+// Buy-ins are often written right into the league name ("$45 Dynasty SF", "Money League ($50)").
+// Auto-detect so the manager never has to type it in.
+function _pfAutoBuyIn(name){ if(!name) return 0; const m=String(name).match(/\$\s?(\d{1,4})(?:\.\d{1,2})?/); return m?Math.round(parseFloat(m[1])):0; }
+function _pfEffBuyIn(d){ const f=getPfFinance(d&&d.lg&&d.lg.league_id); if(f&&f.buyIn) return f.buyIn; return _pfAutoBuyIn(d&&d.lg&&d.lg.name); }
 function _pfLg(lgId){ return (window._pfLeagueData||[]).find(x=>x.lg && x.lg.league_id===lgId); }
 // projected payout for a league at the current standing (0 = out of the money)
 function _pfProj(d){
@@ -13805,9 +13823,10 @@ function _pfProj(d){
 function pfFinanceStartEdit(lgId, event){
   if(event) event.stopPropagation();
   const f = getPfFinance(lgId);
+  const autoBuy = _pfAutoBuyIn((_pfLg(lgId)||{}).lg ? _pfLg(lgId).lg.name : '');
   window._pfFinanceDraft[lgId] = f
     ? { buyIn: f.buyIn||0, payouts: [...(f.payouts||[])] }
-    : { buyIn: 0, payouts: [0,0,0] };
+    : { buyIn: autoBuy||0, payouts: [0,0,0] };
   window._pfFinanceEditing.add(lgId);
   window._pfV2Expanded.add(lgId);
   renderPortfolioV2();
@@ -13932,15 +13951,36 @@ function renderPortfolioV2(){
   // ── Top stat strip — money-aware ──
   const totalLeagues = data.length;
   const totalValue = data.reduce((s,d)=>s+(d.myValue||0),0);
-  let totalBuyIn=0, projCash=0, inMoney=0, financeCount=0;
+  let totalBuyIn=0, projCash=0, inMoney=0, financeCount=0, stakeCount=0;
   data.forEach(d=>{
+    const eff = _pfEffBuyIn(d); if(eff>0){ totalBuyIn += eff; stakeCount++; }
     const f = getPfFinance(d.lg && d.lg.league_id);
-    if(f){ financeCount++; totalBuyIn += f.buyIn||0; const p=_pfProj(d); if(p>0){ projCash+=p; inMoney++; } }
+    if(f){ financeCount++; const p=_pfProj(d); if(p>0){ projCash+=p; inMoney++; } }
   });
+  const hasStake = totalBuyIn>0;
   const net = projCash - totalBuyIn;
   const roi = totalBuyIn>0 ? Math.round(net/totalBuyIn*100) : 0;
   const has = financeCount>0;
-  stripEl.innerHTML = `
+
+  // ── Personalized hero — the memorable, Sleeper-identity data point ──
+  const _pfName = (typeof mySleeperUser!=='undefined' && mySleeperUser)
+    ? (mySleeperUser.display_name || mySleeperUser.username || 'Your Vault')
+    : (localStorage.getItem(SK+'-username') || 'Your Vault');
+  const _pfAv = (typeof mySleeperUser!=='undefined' && mySleeperUser && mySleeperUser.avatar)
+    ? `https://sleepercdn.com/avatars/thumbs/${mySleeperUser.avatar}` : '';
+  const _pfInit = String(_pfName).replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase() || 'YV';
+  const _pfHeroHtml = `
+    <div class="pf-hero">
+      ${_pfAv
+        ? `<img class="pf-hero-av" src="${_pfAv}" alt="" onerror="this.outerHTML='<div class=\\'pf-hero-av pf-hero-av-init\\'>${_pfInit}</div>'">`
+        : `<div class="pf-hero-av pf-hero-av-init">${_pfInit}</div>`}
+      <div class="pf-hero-copy">
+        <div class="pf-hero-eyebrow">${_pfName}'s Vault</div>
+        <div class="pf-hero-headline">${hasStake?`<b>${_pfMoney(totalBuyIn)}</b> on the line`:`<b>${(totalValue/1000).toFixed(1)}k</b> in assets`}</div>
+        <div class="pf-hero-sub">${totalLeagues} ${totalLeagues===1?'league':'leagues'}${hasStake?` · ${(totalValue/1000).toFixed(1)}k in assets`:''}${has&&projCash>0?` · ${_pfMoney(projCash)} projected back`:''}</div>
+      </div>
+    </div>`;
+  stripEl.innerHTML = `${_pfHeroHtml}<div class="pf-v2-tiles">
     <div class="pf-v2-stat">
       <div class="pf-v2-stat-num">${totalLeagues}</div>
       <div class="pf-v2-stat-lbl">Leagues</div>
@@ -13950,9 +13990,9 @@ function renderPortfolioV2(){
       <div class="pf-v2-stat-lbl">Total Value</div>
     </div>
     <div class="pf-v2-stat">
-      <div class="pf-v2-stat-num">${has?_pfMoney(totalBuyIn):'<span style="color:var(--muted)">—</span>'}</div>
+      <div class="pf-v2-stat-num">${hasStake?_pfMoney(totalBuyIn):'<span style="color:var(--muted)">—</span>'}</div>
       <div class="pf-v2-stat-lbl">Total Buy-in</div>
-      ${has?'':'<div class="pf-v2-stat-foot">expand a league to set</div>'}
+      ${hasStake?`<div class="pf-v2-stat-foot">${stakeCount} of ${totalLeagues} ${stakeCount===financeCount?'leagues':'auto-detected'}</div>`:'<div class="pf-v2-stat-foot">expand a league to set</div>'}
     </div>
     <div class="pf-v2-stat">
       <div class="pf-v2-stat-num" style="color:${has?'#7bd0ff':'var(--muted)'}">${has?_pfMoney(projCash):'—'}</div>
@@ -13963,7 +14003,7 @@ function renderPortfolioV2(){
       <div class="pf-v2-stat-num" style="color:${!has?'var(--muted)':net>=0?'#3DCC7A':'#ff6680'}">${has?((net>=0?'+':'−')+_pfMoney(Math.abs(net))):'—'}</div>
       <div class="pf-v2-stat-lbl">Net P / L</div>
       ${has?`<div class="pf-v2-stat-foot">${roi>=0?'+':''}${roi}% ROI</div>`:''}
-    </div>`;
+    </div></div>`;
 
   // ── Sortable table ──
   const sort = window._pfV2Sort || {col:'dyn',dir:'asc'};
@@ -14002,9 +14042,12 @@ function renderPortfolioV2(){
     // Finance: buy-in + projected payout cells
     const fin = getPfFinance(lgId);
     const proj = fin ? _pfProj(d) : null;
+    const autoBuy = _pfAutoBuyIn(lg.name);
     const buyInCell = fin
       ? `<span style="font-family:var(--font-mono)">${_pfMoney(fin.buyIn)}</span>`
-      : `<button class="pf-v2-setbtn" onclick="pfFinanceStartEdit('${lgId}',event)" title="Set buy-in &amp; payouts">+ Set</button>`;
+      : (autoBuy>0
+        ? `<button class="pf-v2-autobuy" onclick="pfFinanceStartEdit('${lgId}',event)" title="Auto-detected from league name — tap to set payouts">${_pfMoney(autoBuy)}<i>auto</i></button>`
+        : `<button class="pf-v2-setbtn" onclick="pfFinanceStartEdit('${lgId}',event)" title="Set buy-in &amp; payouts">+ Set</button>`);
     let payoutCell;
     if(!fin) payoutCell = `<span class="pf-v2-na">—</span>`;
     else if(proj>0) payoutCell = `<div class="pf-v2-pay in"><span class="pf-v2-pay-amt">${_pfMoney(proj)}</span><span class="pf-v2-pay-sub">${_pfOrd(parseInt(d.myRank))} pays</span></div>`;
@@ -16174,6 +16217,33 @@ function pickYear(year) {
   .res-lb-row:active, .pr-team-card:active{ transform:scale(.985); transition:transform 90ms ease; }
   /* Smooth momentum scrolling on every page */
   .page.on{ -webkit-overflow-scrolling:touch; }
+
+  /* 8 ─ Portfolio "profile" — clean, modern, card-based ─────────── */
+  #page-portfolio .proto-page, #portfolio-v2{ padding-left:0 !important; padding-right:0 !important; }
+  .pf-v2-strip{ border-radius:18px !important; margin-bottom:18px !important; background:linear-gradient(180deg,#18203a,#0f1628) !important; }
+  /* Hero becomes the centerpiece */
+  .pf-hero{ padding:20px 18px !important; gap:14px !important; }
+  .pf-hero-av{ width:50px !important; height:50px !important; }
+  .pf-hero-eyebrow{ font-size:10px !important; margin-bottom:7px !important; }
+  .pf-hero-headline{ font-size:14px !important; }
+  .pf-hero-headline b{ font-size:34px !important; display:inline-block; }
+  .pf-hero-sub{ font-size:11px !important; margin-top:9px !important; line-height:1.5; white-space:normal; }
+  /* Tiles: real cards with gaps instead of bordered grid cells */
+  .pf-v2-tiles{ grid-template-columns:repeat(2,1fr) !important; gap:10px !important; padding:12px !important; background:transparent !important; }
+  .pf-v2-tiles .pf-v2-stat{
+    border:1px solid var(--border) !important; border-radius:14px !important;
+    background:rgba(255,255,255,0.025) !important; padding:15px 15px !important; gap:0 !important;
+  }
+  .pf-v2-tiles .pf-v2-stat-num{ font-size:25px !important; margin-bottom:6px !important; }
+  .pf-v2-tiles .pf-v2-stat-lbl{ font-size:9px !important; letter-spacing:.1em !important; }
+  .pf-v2-tiles .pf-v2-stat-foot{ font-size:9px !important; margin-top:5px !important; color:var(--muted); font-family:var(--font-mono); }
+  /* Span the 5th tile (Net P/L) full width so the grid never leaves a lonely half-card gap */
+  .pf-v2-tiles .pf-v2-stat:nth-child(5){ grid-column:1 / -1 !important; flex-direction:row !important; align-items:center !important; justify-content:space-between !important; }
+  .pf-v2-tiles .pf-v2-stat:nth-child(5) .pf-v2-stat-num{ margin-bottom:0 !important; }
+  /* League table cards: bigger value + tappable rows */
+  #page-portfolio .pf-v2-name{ font-size:14.5px !important; max-width:58vw !important; }
+  #page-portfolio .pf-v2-td-num{ font-size:17px !important; }
+  .pf-v2-autobuy{ font-size:14px !important; }
 }
 @media (max-width:700px) and (prefers-reduced-motion:reduce){ .page.on{ animation:none !important; } }
 @media (max-width:360px){ .bottom-tab-bar .tab-label{ font-size:9px !important; } }
