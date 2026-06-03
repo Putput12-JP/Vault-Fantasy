@@ -9880,6 +9880,8 @@ async function _computeDynastyPicks(lid, myRosterId, league, drafts) {
 }
 
 async function getLeagueContext_ov() {  const lid = ovLeagueId;  if (!lid) return null;
+  const _lg = myTeamsData.find(l=>l.league_id===lid);
+  if (_lg && vpPlat(_lg)==='espn') return await buildEspnContext(lid);
   if (_txLeagueId === lid && _rosterCache && _usersCache) return { lid, rosters: _rosterCache, users: _usersCache };
   const [rosters, users] = await Promise.all([
     fetch(`https://api.sleeper.app/v1/league/${lid}/rosters`).then(r=>r.json()),
@@ -9940,6 +9942,43 @@ async function loadEspnRoster(leagueId){
   for (const p of players){ if (!seen.has(p.name)||(p.fcVal||0)>(seen.get(p.name).fcVal||0)) seen.set(p.name,p); }
   return [...seen.values()];
 }
+// Build a Sleeper-shaped league context {lid, rosters, users} from ESPN data,
+// so every League view (standings, power rankings, transactions, team rosters)
+// works unchanged. Players are mapped to Sleeper PIDs by name; unmatched players
+// get a synthetic id registered in globalPidToName so value lookups still resolve.
+async function buildEspnContext(leagueId){
+  if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+  if (typeof fcLoaded!=='undefined' && !fcLoaded && typeof fcLoading!=='undefined' && !fcLoading && typeof fetchFantasyCalc==='function'){ try { await fetchFantasyCalc(); } catch(e){} }
+  const data = await loadEspnLeagueRaw(leagueId, ['mTeam','mRoster','mSettings']);
+  if (!data || !Array.isArray(data.teams)) return null;
+  const rosters = [], users = [];
+  data.teams.forEach(t => {
+    const tname = espnTeamName(t);
+    const ownerId = 'espn_owner_'+t.id;
+    const entries = (t.roster && t.roster.entries) || [];
+    const players = [], starters = [];
+    entries.forEach(e => {
+      const pl = (e.playerPoolEntry && e.playerPoolEntry.player) || {};
+      const nm = pl.fullName; if (!nm) return;
+      const sid = sleeperPlayerMap[normName(nm)]?.player_id;
+      const pid = sid || ('espn:'+normName(nm));
+      if (!sid) globalPidToName[pid] = nm;     // so globalPidToName[pid] resolves
+      players.push(pid);
+      if (!ESPN_BENCH.has(e.lineupSlotId)) starters.push(pid);
+    });
+    const rec = (t.record && t.record.overall) || {};
+    const pf = rec.pointsFor || 0;
+    rosters.push({
+      roster_id: t.id, owner_id: ownerId, players, starters, reserve: [],
+      settings: { wins: rec.wins||0, losses: rec.losses||0, ties: rec.ties||0,
+        fpts: Math.floor(pf), fpts_decimal: Math.round((pf%1)*100),
+        fpts_against: Math.floor(rec.pointsAgainst||0) }
+    });
+    users.push({ user_id: ownerId, display_name: tname, username: tname, avatar: null, metadata: { team_name: tname } });
+  });
+  return { lid: leagueId, rosters, users };
+}
+
 async function renderEspnTeamPicker(el, leagueId){
   const lg = myTeamsData.find(l=>l.league_id===leagueId);
   el.innerHTML = '<div class="fc-loading">Loading ESPN teams…</div>';
@@ -11060,6 +11099,8 @@ let _usersCache = null;
 async function getLeagueContext() {
   const lid = teamsLeagueId || window._currentLeagueId;
   if (!lid) return null;
+  const _lg = myTeamsData.find(l=>l.league_id===lid);
+  if (_lg && vpPlat(_lg)==='espn') return await buildEspnContext(lid);
   if (_txLeagueId === lid && _rosterCache && _usersCache) {
     return { lid, rosters: _rosterCache, users: _usersCache };
   }
