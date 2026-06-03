@@ -9889,7 +9889,81 @@ async function getLeagueContext_ov() {  const lid = ovLeagueId;  if (!lid) retur
   return { lid, rosters, users };
 }
 
+// ════════════════════════════════════
+// ── ESPN data adapter: real rosters → Vault's name-keyed roster shape ──
+const ESPN_POS = {1:'QB',2:'RB',3:'WR',4:'TE',5:'K',16:'DEF'};
+const ESPN_SLOT_LABEL = {0:'QB',2:'RB',3:'RB/WR',4:'WR',5:'WR/TE',6:'TE',7:'SF',16:'DEF',17:'K',23:'FLX'};
+const ESPN_BENCH = new Set([20,21,24]); // bench, IR, taxi
+const ESPN_PRO = {1:'ATL',2:'BUF',3:'CHI',4:'CIN',5:'CLE',6:'DAL',7:'DEN',8:'DET',9:'GB',10:'TEN',11:'IND',12:'KC',13:'LV',14:'LAR',15:'MIA',16:'MIN',17:'NE',18:'NO',19:'NYG',20:'NYJ',21:'PHI',22:'ARI',23:'PIT',24:'LAC',25:'SF',26:'SEA',27:'TB',28:'WSH',29:'CAR',30:'JAX',33:'BAL',34:'HOU'};
+let _espnRawCache = {};
+async function loadEspnLeagueRaw(leagueId, views){
+  const lg = myTeamsData.find(l=>l.league_id===leagueId);
+  if (!lg || !lg._espnId) return null;
+  const key = leagueId+'|'+views.join(',');
+  const c = _espnRawCache[key];
+  if (c && Date.now()-c.t < 60000) return c.data;
+  const q = views.map(v=>'view='+v).join('&');
+  const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${lg.season}/segments/0/leagues/${lg._espnId}?${q}`;
+  const data = await fetch(url,{headers:{accept:'application/json'}}).then(r=>r.ok?r.json():null).catch(()=>null);
+  if (data) _espnRawCache[key] = {data, t:Date.now()};
+  return data;
+}
+function espnTeamName(t){ return (t.name && t.name.trim()) || [t.location,t.nickname].filter(Boolean).join(' ').trim() || ('Team '+t.id); }
+function espnSelectedTeam(leagueId){ return localStorage.getItem(SK+'-espn-team-'+leagueId) || null; }
+function espnPickTeam(leagueId, teamId){
+  localStorage.setItem(SK+'-espn-team-'+leagueId, String(teamId));
+  const el = document.getElementById('ov-content');
+  if (el) renderOverviewRoster(el);
+}
+function espnEntryToPlayer(e){
+  const pl = (e.playerPoolEntry && e.playerPoolEntry.player) || e.player || {};
+  const name = pl.fullName || pl.name;
+  if (!name) return null;
+  const pos = ESPN_POS[pl.defaultPositionId] || '?';
+  const slot = e.lineupSlotId;
+  const isStarter = !ESPN_BENCH.has(slot);
+  const team = ESPN_PRO[pl.proTeamId] || '';
+  const sid = sleeperPlayerMap[normName(name)]?.player_id || '';
+  const base = (window.PLAYERS||[]).find(x=>x.name===name) || {name,pos,team};
+  return {...base, name, pos, team:team||base.team||'', fcVal:getPlayerValue(name), sleeperId:sid, isStarter, slotLabel: isStarter ? (ESPN_SLOT_LABEL[slot]||'STR') : 'BN'};
+}
+async function loadEspnRoster(leagueId){
+  if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
+  if (typeof fcLoaded!=='undefined' && !fcLoaded && typeof fcLoading!=='undefined' && !fcLoading && typeof fetchFantasyCalc==='function'){ try { await fetchFantasyCalc(); } catch(e){} }
+  const data = await loadEspnLeagueRaw(leagueId, ['mRoster','mTeam']);
+  if (!data || !Array.isArray(data.teams)) return [];
+  const sel = espnSelectedTeam(leagueId);
+  const team = data.teams.find(t=>String(t.id)===String(sel));
+  if (!team || !team.roster) return [];
+  const players = (team.roster.entries||[]).map(espnEntryToPlayer).filter(Boolean);
+  const seen = new Map();
+  for (const p of players){ if (!seen.has(p.name)||(p.fcVal||0)>(seen.get(p.name).fcVal||0)) seen.set(p.name,p); }
+  return [...seen.values()];
+}
+async function renderEspnTeamPicker(el, leagueId){
+  const lg = myTeamsData.find(l=>l.league_id===leagueId);
+  el.innerHTML = '<div class="fc-loading">Loading ESPN teams…</div>';
+  const data = await loadEspnLeagueRaw(leagueId, ['mTeam']);
+  const teams = (data && data.teams) || [];
+  if (!teams.length){ el.innerHTML = '<div class="fc-loading">No teams found for this ESPN league.</div>'; return; }
+  el.innerHTML = `<div style="max-width:520px;margin:0 auto;text-align:center">
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px">Which team is yours?</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px;font-family:var(--font-mono)">${lg?.name||'ESPN league'} · pick once, we'll remember it</div>
+    <div style="display:grid;gap:8px">
+      ${teams.map(t=>{
+        const rec = t.record && t.record.overall ? `${t.record.overall.wins}-${t.record.overall.losses}${t.record.overall.ties?'-'+t.record.overall.ties:''}` : 'ESPN team';
+        return `<button onclick="espnPickTeam('${leagueId}','${t.id}')" style="display:flex;align-items:center;gap:12px;text-align:left;background:var(--s2);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--text);transition:border-color .14s" onmouseover="this.style.borderColor='var(--border3)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="width:34px;height:34px;border-radius:9px;background:#d50a0a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-style:italic;flex-shrink:0">${String(espnTeamName(t)).slice(0,1).toUpperCase()}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">${espnTeamName(t)}</div><div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">${rec}</div></div>
+        <span style="color:var(--muted)">→</span>
+      </button>`;}).join('')}
+    </div>
+  </div>`;
+}
+
 async function renderOverviewRoster(el) {
+  const _ovLg = myTeamsData.find(l=>l.league_id===ovLeagueId);
+  if (_ovLg && vpPlat(_ovLg)==='espn' && !espnSelectedTeam(ovLeagueId)) { return renderEspnTeamPicker(el, ovLeagueId); }
   const roster = ovLeagueId ? await loadOvRoster() : getMyRoster();
   if (!roster?.length) { el.innerHTML = '<div class="fc-loading">No roster data available.</div>'; return; }
   const byPos = {QB:[],RB:[],WR:[],TE:[],other:[]};
@@ -9920,6 +9994,8 @@ async function renderOverviewRoster(el) {
 }
 
 async function loadOvRoster() {
+  const _ovLg = myTeamsData.find(l=>l.league_id===ovLeagueId);
+  if (_ovLg && vpPlat(_ovLg)==='espn') return await loadEspnRoster(ovLeagueId);
   if (!ovLeagueId || !myTeamsUserId) return [];
   if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
   const ctx = await getLeagueContext_ov();
