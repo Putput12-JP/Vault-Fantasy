@@ -9979,6 +9979,16 @@ async function buildEspnContext(leagueId){
   return { lid: leagueId, rosters, users };
 }
 
+// Shared resolver: returns [rosters, users] for a league, ESPN or Sleeper.
+async function vaultRostersUsers(leagueId){
+  const lg = myTeamsData.find(l=>l.league_id===leagueId);
+  if (lg && vpPlat(lg)==='espn'){ const ctx = await buildEspnContext(leagueId); return ctx ? [ctx.rosters, ctx.users] : [[],[]]; }
+  return await Promise.all([
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
+    fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
+  ]);
+}
+
 async function renderEspnTeamPicker(el, leagueId){
   const lg = myTeamsData.find(l=>l.league_id===leagueId);
   el.innerHTML = '<div class="fc-loading">Loading ESPN teams…</div>';
@@ -11131,6 +11141,15 @@ function buildRosterOwnerMap(rosters) {
 async function renderTransactions() {
   const el = document.getElementById('power-rankings');
   if (!el) return;
+  const _txLg = myTeamsData.find(l => l.league_id === (teamsLeagueId || window._currentLeagueId));
+  if (_txLg && vpPlat(_txLg)==='espn'){
+    el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted);max-width:440px;margin:0 auto">
+      <div style="font-size:30px;margin-bottom:12px">📋</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">ESPN transaction history isn't available yet</div>
+      <div style="font-size:13px;line-height:1.6">Rosters, standings, power rankings and trades all run on live ESPN data. The transaction feed needs ESPN's activity endpoint with a player-ID map — that's the next piece to wire.</div>
+    </div>`;
+    return;
+  }
   el.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:24px">⟳</div><br>Loading transactions...</div>`;
 
   try {
@@ -11993,10 +12012,7 @@ async function renderTeamsFromLeague(leagueId) {
       prEl.innerHTML = '<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div> Loading player data...</div>';
       await fetchSleeperPlayers();
     }
-    const [rosters, users] = await Promise.all([
-      fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
-      fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
-    ]);
+    const [rosters, users] = await vaultRostersUsers(leagueId);
     _rosterCache = rosters; _usersCache = users; _txLeagueId = leagueId;
 
     const userMap = buildUserMap(users);
@@ -12886,10 +12902,7 @@ async function viewLeagueRoster(leagueId, leagueName, season) {
   detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
-    const [rosters, users] = await Promise.all([
-      fetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`).then(r=>r.json()),
-      fetch(`https://api.sleeper.app/v1/league/${leagueId}/users`).then(r=>r.json()),
-    ]);
+    const [rosters, users] = await vaultRostersUsers(leagueId);
 
     
     if (!sleeperPlayersLoaded) await fetchSleeperPlayers();
@@ -14599,12 +14612,17 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
   // ── Per-league data ──────────────────────────────────────
   const leagueData = await Promise.all(activeLeagues.map(async lg => {
     try {
-      const [rosters, users, tradedPicks] = await Promise.all([
+      const _pfEspn = vpPlat(lg)==='espn';
+      let rosters, users, tradedPicks;
+      if (_pfEspn){ const ctx = await buildEspnContext(lg.league_id); rosters = ctx?ctx.rosters:[]; users = ctx?ctx.users:[]; tradedPicks = []; }
+      else [rosters, users, tradedPicks] = await Promise.all([
         fetch(`https://api.sleeper.app/v1/league/${lg.league_id}/rosters`).then(r=>r.json()).catch(()=>[]),
         fetch(`https://api.sleeper.app/v1/league/${lg.league_id}/users`).then(r=>r.json()).catch(()=>[]),
         fetch(`https://api.sleeper.app/v1/league/${lg.league_id}/traded_picks`).then(r=>r.json()).catch(()=>[]),
       ]);
-      const myRoster = rosters.find(r => r.owner_id === myTeamsUserId);
+      const myRoster = _pfEspn
+        ? rosters.find(r => String(r.roster_id) === espnSelectedTeam(lg.league_id))
+        : rosters.find(r => r.owner_id === myTeamsUserId);
       const myRosterIdx = myRoster?.roster_id;
       const myPlayers = [...new Set([...(myRoster?.players||[]), ...(myRoster?.reserve||[])].map(String))];
       const myNames = myPlayers.map(pid => globalPidToName?.[pid] || window._raNameBySid?.[pid]).filter(Boolean);
@@ -14848,7 +14866,10 @@ async function renderWaiverScanner(leagueId, containerEl) {
       fetch(url).then(r=>r.json()),
       new Promise((_,rej) => setTimeout(() => rej(new Error('Timeout')), ms))
     ]);
-    const rosters = await fetchWithTimeout(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+    const _waLg = myTeamsData.find(l=>l.league_id===leagueId);
+    let rosters;
+    if (_waLg && vpPlat(_waLg)==='espn'){ const ctx = await buildEspnContext(leagueId); rosters = ctx ? ctx.rosters : []; }
+    else rosters = await fetchWithTimeout(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
     // Build set of all rostered PIDs
     const allRosteredPids = new Set();
     rosters.forEach(r => {
