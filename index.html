@@ -3712,9 +3712,16 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <h1 class="proto-h1">Team Review</h1>
         <p class="proto-sub">A comprehensive performance audit and roster breakdown. AI-driven projections are based on your <span id="ov-season-year">current</span> league settings.</p>
       </div>
-      <button class="proto-btn-ghost" onclick="forceRefreshRosterData()">
-        <span style="font-size:16px">↻</span> SYNC WITH SLEEPER
-      </button>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div class="lr-srctoggle" id="ov-srctoggle" title="Value your team by FantasyCalc market consensus or your own My Rankings board">
+          <span class="lr-srcdot"></span>
+          <button data-src="fc" class="on" onclick="setLeagueSrc('fc')">Market</button>
+          <button data-src="my" onclick="setLeagueSrc('my')">Mine</button>
+        </div>
+        <button class="proto-btn-ghost" onclick="forceRefreshRosterData()">
+          <span style="font-size:16px">↻</span> SYNC WITH SLEEPER
+        </button>
+      </div>
     </div>
 
     <!-- DYNAMIC CONTENT — injected by renderOverview() -->
@@ -8993,6 +9000,7 @@ function showPage(p){
     try { renderBoard(); } catch(e) {}
     try { ldInitPage(); } catch(e) {}
     try { renderDraftSummary(); } catch(e) {}
+    try { _adpAutoInit(); } catch(e) {}
     // Connect-first: if no live draft is connected, surface the connect modal
     // once per session so the user can either link a draft or browse rankings.
     if (!sleeperDraftId && !window._draftPromptDismissed) {
@@ -10622,16 +10630,17 @@ function renderList(){
       }
     }
 
-    // ===== MINE column: your custom rank + delta vs market (from My Rankings) =====
+    // ===== MINE column: your value + rank + delta vs market (from My Rankings) =====
     let myHtml = '<span style="color:var(--dim)">—</span>';
     if (p.pos !== 'PICK' && window.MyRankings) {
       const mi = MyRankings.getRankInfo(p.name, 'dynasty');
       if (mi) {
         const dd = mi.delta;
-        const dchip = dd>0 ? `<span style="color:var(--rb);font-size:9.5px;margin-left:4px">▲${dd}</span>`
-                    : dd<0 ? `<span style="color:var(--qb);font-size:9.5px;margin-left:4px">▼${-dd}</span>`
-                    : `<span style="color:var(--dim);font-size:9.5px;margin-left:4px">·</span>`;
-        myHtml = `<span style="color:#3DCC7A;font-weight:700">#${mi.myRank}</span>${dchip}`;
+        const dchip = dd>0 ? `<span style="color:var(--rb)">▲${dd}</span>`
+                    : dd<0 ? `<span style="color:var(--qb)">▼${-dd}</span>`
+                    : `<span style="color:var(--dim)">·</span>`;
+        myHtml = `<span style="color:#3DCC7A;font-weight:700">${(mi.value||0).toLocaleString()}</span>`
+               + `<span style="display:block;font-size:9px;color:var(--muted);margin-top:1px">#${mi.myRank} ${dchip}</span>`;
       }
     }
     const _statusCell = isDrafted ? statusHtml : (vbadgeHtml || '<span style="color:var(--dim)">—</span>');
@@ -11227,12 +11236,11 @@ function _applySrc(src){
 // League-tab source buttons call this so their choice sticks for the session
 function setLeagueSource(src){ _leagueSrcPref = src; setValueSource(src); }
 
-// League page Market/Mine toggle — powers power rankings, team values & the My Team hub
+// League + My Team page Market/Mine toggle — powers power rankings, team values & the hub
 function setLeagueSrc(src){
   _leagueSrcPref = src;
-  document.querySelectorAll('#lr-srctoggle button').forEach(b=>b.classList.toggle('on', b.dataset.src===src));
-  const dot=document.querySelector('#lr-srctoggle .lr-srcdot');
-  if(dot) dot.style.background = src==='my' ? 'var(--sky,#7bd0ff)' : 'var(--rb)';
+  document.querySelectorAll('#lr-srctoggle button, #ov-srctoggle button').forEach(b=>b.classList.toggle('on', b.dataset.src===src));
+  document.querySelectorAll('#lr-srctoggle .lr-srcdot, #ov-srctoggle .lr-srcdot').forEach(dot=>{ dot.style.background = src==='my' ? 'var(--sky,#7bd0ff)' : 'var(--rb)'; });
   setValueSource(src);                 // sets valueSource + re-renders teams/list
   try{ renderTeams(); }catch(e){}
   try{ if(document.getElementById('page-overview')?.classList.contains('on')) renderOverview(); }catch(e){}
@@ -15560,6 +15568,31 @@ async function loadAdpFile(format, teams) {
   }
 }
 
+// Auto-populate the ADP column on first Draft Vault open (no sort change) so
+// ADP isn't blank by default. Loads the dynasty bucket default; if the league
+// is redraft, loads that bucket instead. Silent + retryable on failure.
+let _adpAutoLoaded = false;
+async function _adpAutoInit() {
+  if (_adpAutoLoaded) return;
+  if (ADP_DATA && ADP_DATA.length) { _adpAutoLoaded = true; return; }
+  _adpAutoLoaded = true;
+  // bucket from connected league type when known, else dynasty
+  let bucket = 'dynasty';
+  try {
+    if (window._activeDraft && /redraft|standard|ppr/i.test(_activeDraft.type||'') && !/dynasty|keeper/i.test(_activeDraft.type||'')) bucket = 'redraft';
+  } catch(e) {}
+  const sel = window._adpSelection[bucket] || window._adpSelection.dynasty;
+  try {
+    const data = await loadAdpFile(sel.format, sel.teams);
+    if (data && data.players && data.players.length) {
+      ADP_DATA = data.players;
+      Object.keys(ADP_LOOKUP).forEach(k => delete ADP_LOOKUP[k]);
+      data.players.forEach(p => { ADP_LOOKUP[p.name] = p; ADP_LOOKUP[normName(p.name)] = p; });
+      try { renderList(); } catch(e) {}
+    } else { _adpAutoLoaded = false; } // allow retry later
+  } catch(e) { _adpAutoLoaded = false; }
+}
+
 // Switch the active ADP data and re-render. Persists user choice.
 async function setAdpFormat(bucket, format, teams) {
   window._adpSelection[bucket] = { format, teams };
@@ -16162,11 +16195,12 @@ function pickYear(year) {
   #page-teams .lr-head-r{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   #page-teams .lr-srcpill{ display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 13px; border-radius:9px; border:1px solid var(--border2); background:var(--s2); color:var(--text2);  font-family:var(--font-sans); font-size:12.5px; font-weight:600; white-space:nowrap; }
   #page-teams .lr-srcdot{ width:7px; height:7px; border-radius:50%; background:var(--rb); box-shadow:0 0 0 3px color-mix(in srgb, var(--rb) 22%, transparent); }
-  #page-teams .lr-srctoggle{ display:inline-flex; align-items:center; gap:5px; height:36px; padding:0 6px 0 12px; border-radius:9px; border:1px solid var(--border2); background:var(--s2); }
-  #page-teams .lr-srctoggle button{ height:26px; padding:0 12px; border:none; background:transparent; color:var(--muted); font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; border-radius:6px; cursor:pointer; transition:all .15s; }
-  #page-teams .lr-srctoggle button:hover{ color:var(--text2); }
-  #page-teams .lr-srctoggle button.on{ background:var(--s4); color:var(--text); }
-  #page-teams .lr-srctoggle button[data-src="my"].on{ background:linear-gradient(135deg,#179f5c,var(--rb)); color:#04120b; }
+  .lr-srctoggle{ display:inline-flex; align-items:center; gap:5px; height:36px; padding:0 6px 0 12px; border-radius:9px; border:1px solid var(--border2); background:var(--s2); }
+  .lr-srctoggle .lr-srcdot{ width:7px; height:7px; border-radius:50%; background:var(--rb); box-shadow:0 0 0 3px color-mix(in srgb, var(--rb) 22%, transparent); }
+  .lr-srctoggle button{ height:26px; padding:0 12px; border:none; background:transparent; color:var(--muted); font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; border-radius:6px; cursor:pointer; transition:all .15s; }
+  .lr-srctoggle button:hover{ color:var(--text2); }
+  .lr-srctoggle button.on{ background:var(--s4); color:var(--text); }
+  .lr-srctoggle button[data-src="my"].on{ background:linear-gradient(135deg,#179f5c,var(--rb)); color:#04120b; }
   #page-teams .lr-select{ height:36px; padding:0 30px 0 13px; border-radius:9px; border:1px solid var(--border); background-color:var(--s2); color:var(--text2); font-family:var(--font-sans); font-size:12.5px; font-weight:600; cursor:pointer; -webkit-appearance:none; appearance:none; transition:border-color .15s;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238794a6' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 11px center; background-size:13px; }
   #page-teams .lr-select:hover{ border-color:var(--border3); color:var(--text); }
@@ -17253,22 +17287,37 @@ function pickYear(year) {
     .mr-note-row{grid-column:1/-1;font-size:11.5px;color:var(--text2);background:rgba(245,200,66,0.06);border-left:2px solid var(--te);padding:6px 10px;border-radius:4px;margin:2px 0 4px 44px;font-style:italic}
     /* empty/loading */
     .mr-loading{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px}
+    .mr-info{display:none;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:12px;cursor:pointer;flex-shrink:0;padding:0;line-height:1}
+    .mr-info:hover{color:var(--accent3);border-color:var(--accent2)}
     @media(max-width:760px){
-      #page-myrankings .mr-wrap{padding:18px 12px 120px}
+      #page-myrankings .mr-wrap{padding:16px 10px 116px}
+      #page-myrankings .mr-head{margin-bottom:14px;gap:12px}
+      #page-myrankings .mr-title{font-size:28px}
+      #page-myrankings .mr-sub{display:none}
+      #page-myrankings .mr-sub.show{display:block!important;font-size:12.5px}
+      .mr-info{display:inline-flex}
+      #page-myrankings .mr-head-actions{gap:6px}
+      .mr-abtn{padding:8px 11px;font-size:11.5px}
+      #page-myrankings .mr-summary{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+      #page-myrankings .mr-stat{padding:11px 12px}
+      #page-myrankings .mr-stat-val{font-size:19px}
+      #page-myrankings .mr-stat-lbl{font-size:8.5px;margin-top:5px}
+      #page-myrankings .mr-stat-sub{display:none}
+      #page-myrankings .mr-controls{gap:9px}
       .mr-bhead{display:none}
-      .mr-row{display:flex!important;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 12px}
-      .mr-grip,.mr-rankin{display:none!important}
-      .mr-mkt,.mr-mkt-h{display:none!important}
-      .mr-rank{width:26px;flex-shrink:0;text-align:left;font-size:14px}
+      .mr-row{display:flex!important;flex-wrap:wrap;align-items:center;gap:9px;padding:9px 10px}
+      .mr-grip,.mr-rankin,.mr-note,.mr-delta,.mr-mkt,.mr-mkt-h{display:none!important}
+      .mr-val small{display:none!important}
+      .mr-rank{width:24px;flex-shrink:0;text-align:left;font-size:14px;line-height:1.15}
+      .mr-rank .pin,.mr-rank .live{font-size:6.5px}
+      .mr-av{width:30px;height:30px;font-size:10px}
       .mr-player{flex:1 1 0;min-width:0}
-      .mr-val{flex-shrink:0;min-width:54px;text-align:right;font-size:12.5px}
-      .mr-delta{flex-shrink:0;width:30px}
-      .mr-act{flex-shrink:0;flex-direction:row;gap:4px}
-      .mr-nudge{width:26px;height:26px}
-      .mr-note{width:26px;height:26px}
+      .mr-pname{font-size:14px}
+      .mr-pmeta{flex-wrap:nowrap;white-space:nowrap;overflow:hidden;font-size:10px}
+      .mr-val{flex-shrink:0;min-width:52px;text-align:right;font-size:13px}
+      .mr-act{flex-shrink:0;flex-direction:row;gap:5px}
+      .mr-nudge{width:30px;height:30px;font-size:11px}
       .mr-note-row{flex-basis:100%;margin:2px 0 0 0}
-      #page-myrankings .mr-controls{gap:10px}
-      #page-myrankings .mr-summary{grid-template-columns:repeat(2,1fr)}
     }`;
     const s = document.createElement('style'); s.id='mr-styles'; s.textContent = css;
     document.head.appendChild(s);
@@ -17322,7 +17371,10 @@ function pickYear(year) {
     <div class="mr-wrap">
       <div class="mr-head">
         <div>
-          <div class="mr-title">My Rankings</div>
+          <div style="display:flex;align-items:center;gap:9px">
+            <div class="mr-title">My Rankings</div>
+            <button class="mr-info" title="Your board, seeded from FantasyCalc's live values. You set the order — pinning locks where a player sits, but every value keeps re-pulling from FantasyCalc daily, so the numbers stay current. Untouched players track the market. Two independent boards for Dynasty and Redraft." onclick="this.closest('.mr-head').querySelector('.mr-sub').classList.toggle('show')">&#9432;</button>
+          </div>
           <div class="mr-sub">Your board, seeded from FantasyCalc's live values. You set the <em>order</em> — pinning locks where a player sits on your board, but every value keeps re-pulling from FantasyCalc daily, so the numbers are always current. Untouched players track the market completely. Two independent boards for Dynasty and Redraft.</div>
         </div>
         <div class="mr-head-actions">
