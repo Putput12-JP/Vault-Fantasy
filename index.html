@@ -3423,6 +3423,14 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="ld-load-btn" onclick="ldLoadManual()">Load draft</button>
     </div>
 
+    <div class="dc-or"><span>or mirror an ESPN draft</span></div>
+    <div class="ld-input-row">
+      <input class="ld-input" id="ld-espn-id" placeholder="ESPN League ID (public)" inputmode="numeric"
+        onkeydown="if(event.key==='Enter')ldConnectEspn()">
+      <button class="ld-load-btn" id="ld-espn-btn" onclick="ldConnectEspn()" style="background:#d50a0a">Load ESPN</button>
+    </div>
+    <div id="ld-espn-err" style="display:none;font-family:var(--font-mono);font-size:11px;color:var(--accent2);margin-top:6px"></div>
+
     <div class="dc-modal-foot">
       <button class="dc-skip-btn" onclick="skipDraftConnect()">Browse rankings <span aria-hidden="true">→</span></button>
     </div>
@@ -7695,12 +7703,122 @@ function scheduleSync(){
   if (window._curSyncMs === ms && syncTimer) return; // already at the right cadence
   if (syncTimer) clearInterval(syncTimer);
   window._curSyncMs = ms;
-  syncTimer = setInterval(syncSleeper, ms);
+  syncTimer = setInterval(()=>syncActiveDraft(), ms);
 }
 
 function startSync(){
   syncSleeper();
   scheduleSync();
+}
+
+// ════════════════════════════════════
+// ── ESPN live draft sync — polled mirror into the SAME board as Sleeper ──
+let espnDraftLid = '';
+let _espnPlayerUniverse = {};
+async function espnPlayerMap(year){
+  if (_espnPlayerUniverse[year]) return _espnPlayerUniverse[year];
+  let arr = [];
+  try {
+    const r = await fetch(`https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${year}/players?view=players_wl`,
+      { headers:{ accept:'application/json', 'x-fantasy-filter': JSON.stringify({filterActive:{value:true}}) } });
+    if (r.ok) arr = await r.json();
+  } catch(e){}
+  const m = {}; (arr||[]).forEach(p => { if (p.id && p.fullName) m[p.id] = p.fullName; });
+  _espnPlayerUniverse[year] = m; return m;
+}
+function _findPlayerLoose(nm){
+  let p = findPlayer(nm); if (p) return p;
+  const sfx=[' Jr.',' Sr.',' II',' III',' Jr',' Sr'];
+  for (const s of sfx){ p=findPlayer(nm+s); if (p) return p;
+    if (nm.endsWith(s.trim())||nm.endsWith(s)){ p=findPlayer(nm.replace(new RegExp(s.trim().replace('.','\\.')+'$','i'),'').trim()); if (p) return p; } }
+  return null;
+}
+async function connectEspnDraft(leagueId){
+  const lg = myTeamsData.find(l=>l.league_id===leagueId);
+  if (!lg || vpPlat(lg)!=='espn'){ if(typeof toast==='function') toast('Not an ESPN league'); return; }
+  espnDraftLid = leagueId; sleeperDraftId='';
+  try { localStorage.setItem(SK+'-espn-draft', leagueId); localStorage.removeItem(SK+'-did'); } catch(e){}
+  try { closeDraftConnect(); } catch(e){}
+  window._draftPromptDismissed = true;
+  document.getElementById('setup')?.classList.add('gone');
+  if (typeof showPage==='function') showPage('draft');
+  try { ldShowBoard(); } catch(e){}
+  if (typeof toast==='function') toast('⚡ Connecting ESPN draft…');
+  await syncEspnDraft();
+  try { renderAll(); renderBoard(); } catch(e){}
+  scheduleSync();
+}
+async function syncEspnDraft(){
+  if (!espnDraftLid) return;
+  const lg = myTeamsData.find(l=>l.league_id===espnDraftLid);
+  if (!lg || !lg._espnId){ setSyncStatus('err'); return; }
+  try {
+    const year = lg.season;
+    const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${year}/segments/0/leagues/${lg._espnId}?view=mDraftDetail&view=mSettings&view=mTeam`;
+    const data = await fetch(url,{headers:{accept:'application/json'}}).then(r=>r.ok?r.json():null);
+    if (!data){ setSyncStatus('err'); return; }
+    const dd = data.draftDetail||{};
+    const picks = (dd.picks||[]).slice().sort((a,b)=>(a.overallPickNumber||0)-(b.overallPickNumber||0));
+    const teams = data.teams||[];
+    NUM_TEAMS = teams.length || data.settings?.size || 12;
+    const slotCounts = (data.settings?.rosterSettings?.lineupSlotCounts)||{};
+    const rosterSize = Object.values(slotCounts).reduce((a,b)=>a+(b|0),0);
+    NUM_ROUNDS = rosterSize || Math.max(1, ...(picks.map(p=>p.roundId||1)), Math.ceil(picks.length/Math.max(NUM_TEAMS,1)));
+    window._draftIsSuperflex = (slotCounts[7]|0)>0 || (slotCounts[0]|0)>1;
+    window._draftIsDynasty = false;
+    const dtype = String(data.settings?.draftSettings?.type||'SNAKE').toUpperCase().includes('AUCTION') ? 'linear' : 'snake';
+    // team names + draft-slot order (round-1 picks are authoritative; else pickOrder; else team order)
+    const nameByTeam = {}; teams.forEach(t => nameByTeam[t.id] = espnTeamName(t));
+    let order = (data.settings?.draftSettings?.pickOrder)||[];
+    if (!order.length) order = teams.map(t=>t.id);
+    rosterToIdx = {}; slotOwner = {};
+    order.forEach((tid,i)=>{ rosterToIdx[tid]=i; });
+    picks.forEach(pk=>{ if (pk.roundId===1 && pk.roundPickNumber) rosterToIdx[pk.teamId]=pk.roundPickNumber-1; });
+    const TEAMS_new = new Array(NUM_TEAMS).fill(null);
+    Object.entries(rosterToIdx).forEach(([tid,idx])=>{ if (idx>=0 && idx<NUM_TEAMS) TEAMS_new[idx]=nameByTeam[tid]||('Team '+tid); });
+    for (let i=0;i<NUM_TEAMS;i++) if (!TEAMS_new[i]) TEAMS_new[i]='Slot '+(i+1);
+    TEAMS = TEAMS_new;
+    try { localStorage.setItem(SK+'-teams',JSON.stringify(TEAMS)); } catch(e){}
+    window._currentLeagueId = espnDraftLid;
+    buildSlots(NUM_TEAMS, NUM_ROUNDS, dtype, 0);
+    const pmap = await espnPlayerMap(year);
+    const newState = {};
+    picks.forEach(pk=>{
+      const nm = pmap[pk.playerId]; if (!nm) return;
+      const teamIdx = (rosterToIdx[pk.teamId] ?? 0);
+      const pickData = { teamIdx, round: pk.roundId||1, pickNo: pk.overallPickNumber||0, slot: teamIdx+1 };
+      const player = _findPlayerLoose(nm);
+      if (player){ newState[player.name]=pickData; if (player.name!==nm) newState[nm]=pickData; }
+      else newState[nm]=pickData;
+    });
+    draftState = newState;
+    Object.entries(manualOverrides).forEach(([name,o])=>{ if (o==='gone') draftState[name]={teamIdx:-1,round:0,pickNo:0}; });
+    window._activeDraft = { id:espnDraftLid, name:(lg.name||'ESPN')+' · Draft', type:dtype, season:String(year),
+      status: dd.inProgress ? 'drafting' : (dd.drafted ? 'complete' : 'pre_draft'), pickTimer:0, pickTimerType:'',
+      teams:NUM_TEAMS, rounds:NUM_ROUNDS, picksCount:picks.length, lastPickedAt:0, platform:'espn' };
+    save(); _rebuildCaches(); try { buildADPFromDraft(); } catch(e){}
+    setSyncStatus('live'); lastPickTime = Date.now();
+    scheduleSync();
+  } catch(e){ setSyncStatus('err'); console.warn('ESPN draft sync error:', e); }
+}
+function syncActiveDraft(){ return espnDraftLid ? syncEspnDraft() : syncSleeper(); }
+async function ldConnectEspn(){
+  const inp = document.getElementById('ld-espn-id');
+  const err = document.getElementById('ld-espn-err');
+  const btn = document.getElementById('ld-espn-btn');
+  const id = (inp?.value||'').replace(/[^0-9]/g,'');
+  if (err){ err.style.display='none'; err.textContent=''; }
+  if (!id){ if (inp) inp.focus(); return; }
+  if (btn){ btn.textContent='…'; btn.disabled=true; }
+  try {
+    let lg = myTeamsData.find(l=>l._espnId===id);
+    if (!lg){ lg = await vpFetchEspnLeague(id); myTeamsData.push(lg); }
+    connectEspnDraft(lg.league_id);
+  } catch(e){
+    if (err){ err.textContent = '⚠ ' + (e.message||'Could not load that ESPN league.'); err.style.display=''; }
+  } finally {
+    if (btn){ btn.textContent='Load ESPN'; btn.disabled=false; }
+  }
 }
 
 function setSyncStatus(s){
@@ -7723,10 +7841,10 @@ async function manualResync(){
   if(btn) btn.textContent='⟳...';
   if(dsBtn) dsBtn.classList.add('syncing');
   try{
-    await syncSleeper();
+    await syncActiveDraft();
     renderAll();
     try { renderDraftSummary(); } catch(e){}
-    toast('✓ Synced with Sleeper');
+    toast(espnDraftLid ? '✓ Synced with ESPN' : '✓ Synced with Sleeper');
   } catch(e){
     toast('⚠ Sync failed');
   } finally{
@@ -7737,8 +7855,8 @@ async function manualResync(){
 }
 
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible'&&sleeperDraftId){
-    syncSleeper().then(()=>renderAll());
+  if(document.visibilityState==='visible'&&(sleeperDraftId||espnDraftLid)){
+    syncActiveDraft().then(()=>renderAll());
     scheduleSync();
   } else if(document.visibilityState==='hidden'){
     if(syncTimer) clearInterval(syncTimer);
@@ -14145,6 +14263,11 @@ function resumeSession() {
         renderAll();
         scheduleSync();
       });
+    } else {
+      const espnDraft = localStorage.getItem(SK+'-espn-draft');
+      if (espnDraft && myTeamsData.some(l=>l.league_id===espnDraft)) {
+        connectEspnDraft(espnDraft);
+      }
     }
   }, 0);
 }
