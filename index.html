@@ -3564,6 +3564,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.6-4.6"/></svg></span>
     <span class="tab-label">Research</span>
   </button>
+  <button class="tab-btn" id="tb-myrankings" onclick="showPage('myrankings')" aria-label="My Rankings">
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="4" height="10" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><rect x="17" y="13" width="4" height="7" rx="1"/></svg></span>
+    <span class="tab-label">Mine</span>
+  </button>
   <button class="tab-btn" id="tb-draft" onclick="showPage('draft')" aria-label="Draft Vault">
     <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 12h12M4 18h8"/><path d="M20 6h.01M20 12h.01M20 18h.01"/></svg></span>
     <span class="tab-label">Draft</span>
@@ -3593,6 +3597,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       </button>
       <button onclick="closeMoreSheet();showPage('trade')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left;min-height:52px">
         <span style="font-size:20px">🔄</span><span style="font-weight:600">Trade Calculator</span>
+      </button>
+      <button onclick="closeMoreSheet();showPage('myrankings')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left">
+        <span style="font-size:20px">🏆</span><span style="font-weight:600">My Rankings</span>
       </button>
       <button onclick="closeMoreSheet();showPage('draft')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left;min-height:52px">
         <span style="font-size:20px">🎯</span><span style="font-weight:600">Draft Vault</span>
@@ -4051,9 +4058,11 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <h1 class="lr-title" id="la-league-name">League Analyzer</h1>
       </div>
       <div class="lr-head-r">
-        <span class="lr-srcpill" title="Values from FantasyCalc — ~1M user-submitted dynasty trades. Matches your My Team calculations.">
-          <span class="lr-srcdot"></span>FantasyCalc
-        </span>
+        <div class="lr-srctoggle" id="lr-srctoggle" title="Switch between FantasyCalc market values and your own My Rankings board">
+          <span class="lr-srcdot"></span>
+          <button data-src="fc" class="on" onclick="setLeagueSrc('fc')">Market</button>
+          <button data-src="my" onclick="setLeagueSrc('my')">Mine</button>
+        </div>
         <span id="fc-status" style="display:none"></span>
         <!-- League is controlled by the single header picker (source of truth) -->
         <!-- Team focus filter within league -->
@@ -4429,6 +4438,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         <p class="res-sub">Player values, game logs &amp; advanced metrics — search anyone or browse the board.</p>
       </div>
       <div class="res-head-actions">
+        <button class="res-act res-act-mine" id="res-mine-btn" onclick="showPage('myrankings')" title="Open your custom board — seeded from these values, then made yours">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>
+          Rank your way
+        </button>
         <button class="res-act" id="res-export-btn" onclick="_resExportCSV()" title="Download the current list as CSV">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
           Export CSV
@@ -8959,7 +8972,7 @@ function showPage(p){
   }
   // Assert the per-tab value source: League tab → RA (default), everywhere else → FC.
   // Done before the page's own render below so it reads the correct source.
-  try { _applySrc(p === 'teams' ? _leagueSrcPref : _draftSrcPref); } catch(e){}
+  try { _applySrc((p === 'teams' || p === 'overview') ? _leagueSrcPref : (p === 'trade' ? 'fc' : _draftSrcPref)); } catch(e){}
   // Refresh Sleeper Sync page when navigated to
   if (p === 'myteams' && myTeamsData.length > 0) renderSyncLeagues();
   // Sync sidebar active state
@@ -11213,6 +11226,17 @@ function _applySrc(src){
 }
 // League-tab source buttons call this so their choice sticks for the session
 function setLeagueSource(src){ _leagueSrcPref = src; setValueSource(src); }
+
+// League page Market/Mine toggle — powers power rankings, team values & the My Team hub
+function setLeagueSrc(src){
+  _leagueSrcPref = src;
+  document.querySelectorAll('#lr-srctoggle button').forEach(b=>b.classList.toggle('on', b.dataset.src===src));
+  const dot=document.querySelector('#lr-srctoggle .lr-srcdot');
+  if(dot) dot.style.background = src==='my' ? 'var(--sky,#7bd0ff)' : 'var(--rb)';
+  setValueSource(src);                 // sets valueSource + re-renders teams/list
+  try{ renderTeams(); }catch(e){}
+  try{ if(document.getElementById('page-overview')?.classList.contains('on')) renderOverview(); }catch(e){}
+}
 
 function setValueSource(src) {
   valueSource = src;
@@ -16058,6 +16082,8 @@ function pickYear(year) {
   .res-act svg{ width:15px; height:15px; }
   .res-act:hover{ color:var(--text); border-color:var(--border3); }
   .res-act-watch.on{ background:color-mix(in srgb, var(--gold) 18%, transparent); border-color:var(--gold); color:var(--gold); }
+  .res-act-mine{ background:color-mix(in srgb, var(--rb) 14%, transparent); border-color:color-mix(in srgb, var(--rb) 55%, transparent); color:var(--rb); font-weight:700; }
+  .res-act-mine:hover{ background:color-mix(in srgb, var(--rb) 22%, transparent); border-color:var(--rb); color:var(--rb); }
 
   /* Toolbar */
   .res-toolbar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-bottom:12px; border-bottom:1px solid var(--border); margin-bottom:12px; }
@@ -16134,8 +16160,13 @@ function pickYear(year) {
   #page-teams h1.lr-title{ font-family:var(--font-sans); font-size:26px; font-weight:800; letter-spacing:-.03em; color:var(--text); margin:0; line-height:1; text-transform:none; }
   #page-teams h1.lr-title:empty::before{ content:'League Analyzer'; color:var(--text); }
   #page-teams .lr-head-r{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  #page-teams .lr-srcpill{ display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 13px; border-radius:9px; border:1px solid var(--border2); background:var(--s2); color:var(--text2); font-family:var(--font-sans); font-size:12.5px; font-weight:600; white-space:nowrap; }
+  #page-teams .lr-srcpill{ display:inline-flex; align-items:center; gap:7px; height:36px; padding:0 13px; border-radius:9px; border:1px solid var(--border2); background:var(--s2); color:var(--text2);  font-family:var(--font-sans); font-size:12.5px; font-weight:600; white-space:nowrap; }
   #page-teams .lr-srcdot{ width:7px; height:7px; border-radius:50%; background:var(--rb); box-shadow:0 0 0 3px color-mix(in srgb, var(--rb) 22%, transparent); }
+  #page-teams .lr-srctoggle{ display:inline-flex; align-items:center; gap:5px; height:36px; padding:0 6px 0 12px; border-radius:9px; border:1px solid var(--border2); background:var(--s2); }
+  #page-teams .lr-srctoggle button{ height:26px; padding:0 12px; border:none; background:transparent; color:var(--muted); font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; border-radius:6px; cursor:pointer; transition:all .15s; }
+  #page-teams .lr-srctoggle button:hover{ color:var(--text2); }
+  #page-teams .lr-srctoggle button.on{ background:var(--s4); color:var(--text); }
+  #page-teams .lr-srctoggle button[data-src="my"].on{ background:linear-gradient(135deg,#179f5c,var(--rb)); color:#04120b; }
   #page-teams .lr-select{ height:36px; padding:0 30px 0 13px; border-radius:9px; border:1px solid var(--border); background-color:var(--s2); color:var(--text2); font-family:var(--font-sans); font-size:12.5px; font-weight:600; cursor:pointer; -webkit-appearance:none; appearance:none; transition:border-color .15s;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238794a6' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 11px center; background-size:13px; }
   #page-teams .lr-select:hover{ border-color:var(--border3); color:var(--text); }
@@ -16396,7 +16427,7 @@ function pickYear(year) {
   const TRENDING = ['Jayden Daniels','Marvin Harrison Jr.','Brock Bowers','Drake Maye','Kyren Williams','Breece Hall','Ladd McConkey','Bucky Irving'];
 
   const TC = {
-    mode:'league', vmode:'dyn', _vmodeUserSet:false, teamA:'you', teamB:'bb', _inited:false,
+    mode:'league', vmode:'dyn', vsrc:'market', _vmodeUserSet:false, teamA:'you', teamB:'bb', _inited:false,
     _live:null, _loading:false, _mobSide:'b', _mobPos:'RB',
 
     isMobile(){ try{ return window.matchMedia('(max-width:700px)').matches; }catch(e){ return false; } },
@@ -16414,8 +16445,16 @@ function pickYear(year) {
         const d = (typeof PICK_VALUES!=='undefined' && PICK_VALUES[a.name]) || 0;
         return this.vmode==='re' ? 0 : d;
       }
+      const isRe = this.vmode==='re';
+      // "Mine" source: value the player at the slot they occupy on YOUR board
+      // (dynasty or redraft to match the value-set). Falls back to market if a
+      // player isn't on your board for some reason.
+      if(this.vsrc==='mine' && window.MyRankings){
+        const mv = MyRankings.getValue(a.name, isRe?'redraft':'dynasty');
+        if(mv) return mv;
+      }
       const dyn = (typeof getTradePlayerValue==='function' ? getTradePlayerValue(a.name) : 0) || 0;
-      if(this.vmode==='re'){
+      if(isRe){
         const fc = (typeof getFCValue==='function') && getFCValue(a.name);
         return (fc && fc.redraftValue) || Math.round(dyn*0.85);
       }
@@ -16484,6 +16523,7 @@ function pickYear(year) {
 
     setMode(m){ this.mode=m; this.render(); },
     setVmode(v){ this.vmode=v; this._vmodeUserSet=true; try{localStorage.setItem('vault-tc-vmode',v);}catch(e){} if(v==='re') this._stripPicks(); if(!this._showPicks() && this._mobPos==='PICK') this._mobPos='RB'; this.render(); },
+    setVsrc(v){ this.vsrc=v; try{localStorage.setItem('vault-tc-vsrc',v);}catch(e){} this.render(); },
     setTeam(slot,id){ this[slot]=id; this._closeMenus(); this.render(); },
     setMobSide(s){ this._mobSide=s; this.render(); },
     setMobPos(p){ this._mobPos=p; this.render(); },
@@ -16507,10 +16547,17 @@ function pickYear(year) {
     sendRow(side,a,color){ const v=this.val(a); return `<div class="tc-send-row" style="border:1px solid ${color}33">${this.avatar(a,38)}<div style="flex:1;min-width:0"><div class="tc-send-name">${a.name}</div><div class="tc-send-meta">${a.pos}${a.team?' · '+a.team:''}</div></div><div class="tc-send-val" style="color:${color}">${fmt(v)}</div><button class="tc-x" onclick="TC.remove('${side}','${esc(a.name)}')">✕</button></div>`; },
     vmodeSeg(){ return `<span class="lab">Value&nbsp;Set</span><div class="tc-seg sm"><button class="${this.vmode==='dyn'?'on':''}" onclick="TC.setVmode('dyn')">Dynasty</button><button class="${this.vmode==='re'?'on':''}" onclick="TC.setVmode('re')">Redraft</button></div>`; },
     sourceBar(){ const fmtName=this.vmode==='re'?'Redraft':'Dynasty';
+      const mine = this.vsrc==='mine';
+      const dot = mine ? 'var(--sky,#7bd0ff)' : 'var(--rb)';
+      const dotGlow = mine ? 'rgba(123,208,255,.15)' : 'rgba(61,204,122,.15)';
+      const srcTxt = mine
+        ? `Values from <b style="color:var(--text)">your My&nbsp;Rankings board</b> · ${fmtName}`
+        : `Values powered by <b style="color:var(--text)">FantasyCalc</b> · ${fmtName} · updated daily`;
       return `<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:9px 13px;background:rgba(12,17,25,0.5);border:1px solid var(--border);border-radius:11px;margin-bottom:14px">
-        <span style="width:7px;height:7px;border-radius:50%;background:var(--rb);box-shadow:0 0 0 3px rgba(61,204,122,.15);flex-shrink:0"></span>
-        <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--text2);letter-spacing:.02em">Values powered by <b style="color:var(--text)">FantasyCalc</b> · ${fmtName} · updated daily</span>
-        <button onclick="TC.explainValues(event)" style="margin-left:auto;display:flex;align-items:center;gap:5px;background:transparent;border:1px solid var(--border2);border-radius:7px;padding:4px 9px;color:var(--muted);font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap">ⓘ How values work</button>
+        <span style="width:7px;height:7px;border-radius:50%;background:${dot};box-shadow:0 0 0 3px ${dotGlow};flex-shrink:0"></span>
+        <span style="font-family:var(--font-mono);font-size:10.5px;color:var(--text2);letter-spacing:.02em">${srcTxt}</span>
+        <div class="tc-seg sm" style="margin-left:auto"><button class="${!mine?'on':''}" onclick="TC.setVsrc('market')">Market</button><button class="${mine?'on':''}" onclick="TC.setVsrc('mine')">Mine</button></div>
+        <button onclick="TC.explainValues(event)" style="display:flex;align-items:center;gap:5px;background:transparent;border:1px solid var(--border2);border-radius:7px;padding:4px 9px;color:var(--muted);font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap">ⓘ How values work</button>
       </div>`; },
     explainValues(e){ if(e)e.stopPropagation();
       let m=document.getElementById('tc-explain'); if(m) m.remove();
@@ -16520,7 +16567,7 @@ function pickYear(year) {
       m.innerHTML=`<div style="max-width:440px;width:100%;background:var(--s1);border:1px solid var(--border2);border-radius:18px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.6)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div style="font-family:var(--font-sans);font-weight:800;font-size:18px;color:var(--text)">How values work</div><button onclick="document.getElementById('tc-explain').remove()" style="background:var(--s3);border:none;border-radius:8px;width:30px;height:30px;color:var(--muted);font-size:16px;cursor:pointer">✕</button></div>
         <div style="display:flex;flex-direction:column;gap:14px;font-family:var(--font-sans);font-size:13.5px;line-height:1.6;color:var(--text2)">
-          <div><b style="color:var(--text)">Source.</b> Player values come from <b style="color:var(--rb)">FantasyCalc</b>'s live market consensus — derived from real trades across thousands of leagues and refreshed daily.</div>
+          <div><b style="color:var(--text)">Source.</b> Player values come from <b style="color:var(--rb)">FantasyCalc</b>'s live market consensus — derived from real trades across thousands of leagues and refreshed daily. Switch the <b style="color:var(--text)">Market / Mine</b> toggle to evaluate the trade on <b style="color:var(--sky,#7bd0ff)">your own My&nbsp;Rankings board</b> instead.</div>
           <div><b style="color:var(--text)">Dynasty vs Redraft.</b> Dynasty values weigh long-term, age-adjusted worth. Redraft values reflect win-now, single-season value — so veterans rise and rookies/picks fall.</div>
           <div><b style="color:var(--text)">Draft picks.</b> Rookie &amp; future picks use FantasyCalc dynasty pick values. In <b style="color:var(--text)">Redraft</b> mode picks are hidden, since they hold no single-season value.</div>
         </div></div>`;
@@ -16692,6 +16739,7 @@ function pickYear(year) {
 
     async init(){
       this._inited=true;
+      try{ const sv=localStorage.getItem('vault-tc-vsrc'); if(sv==='market'||sv==='mine') this.vsrc=sv; }catch(e){}
       if(!this._everRendered){ this.render(); this._everRendered=true; }
       const live=await this.loadLeague();
       if(!this._vmodeUserSet){ this.vmode=this._smartVmode(); }
@@ -17208,11 +17256,19 @@ function pickYear(year) {
     @media(max-width:760px){
       #page-myrankings .mr-wrap{padding:18px 12px 120px}
       .mr-bhead{display:none}
-      .mr-row{grid-template-columns:18px 30px 1fr auto!important;gap:8px;padding:9px 10px}
-      .mr-grip{display:none}
+      .mr-row{display:flex!important;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 12px}
+      .mr-grip,.mr-rankin{display:none!important}
       .mr-mkt,.mr-mkt-h{display:none!important}
-      .mr-rankin{display:none}
-      .mr-act{flex-direction:column;gap:2px}
+      .mr-rank{width:26px;flex-shrink:0;text-align:left;font-size:14px}
+      .mr-player{flex:1 1 0;min-width:0}
+      .mr-val{flex-shrink:0;min-width:54px;text-align:right;font-size:12.5px}
+      .mr-delta{flex-shrink:0;width:30px}
+      .mr-act{flex-shrink:0;flex-direction:row;gap:4px}
+      .mr-nudge{width:26px;height:26px}
+      .mr-note{width:26px;height:26px}
+      .mr-note-row{flex-basis:100%;margin:2px 0 0 0}
+      #page-myrankings .mr-controls{gap:10px}
+      #page-myrankings .mr-summary{grid-template-columns:repeat(2,1fr)}
     }`;
     const s = document.createElement('style'); s.id='mr-styles'; s.textContent = css;
     document.head.appendChild(s);
