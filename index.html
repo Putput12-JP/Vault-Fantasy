@@ -11801,6 +11801,8 @@ async function fetchFantasyCalc() {
         window._redraft1QB = store;
         // Refresh the player modal header if it's open so the 1QB chip populates
         try { if (document.getElementById('ps-header') && _psPlayer) _psRenderHeader(); } catch(e) {}
+        // My Rankings redraft board derives from this canonical 1QB store — rebuild now.
+        try { if (window.MyRankings) { MyRankings.refresh(); if (document.getElementById('page-myrankings')?.classList.contains('on')) MyRankings.render(); } } catch(e) {}
       } catch(e) { console.warn('FC 1QB redraft store fetch failed (non-fatal):', e); }
     })();
     // Re-render overview if it's showing so positions/values update from ? to real data
@@ -17039,7 +17041,8 @@ function pickYear(year) {
     const n = Object.keys(fcValues).length;
     const a = fcValues['Bijan Robinson'] || fcValues['bijanrobinson'] ||
               fcValues["Ja'Marr Chase"] || null;
-    return n + ':' + (a ? (a.value||0)+'/'+(a.redraftValue||0) : '0');
+    const r1 = (window._redraft1QB && Object.keys(window._redraft1QB).length) || 0;
+    return n + ':' + (a ? (a.value||0)+'/'+(a.redraftValue||0) : '0') + ':r1' + r1;
   }
   function maybeRebuild(){
     const s = fcSig();
@@ -17050,6 +17053,10 @@ function pickYear(year) {
   function buildBaseline() {
     const live = (typeof fcValues !== 'undefined') && fcValues && Object.keys(fcValues).length > 40;
     if (live) {
+      // Canonical 1QB redraft store (isDynasty=false&numQbs=1) — the ONLY source
+      // we trust for redraft. If it isn't loaded yet we derive redraft from
+      // dynasty with QBs deflated so a QB can never sit at #1-2 in redraft.
+      const r1store = (window._redraft1QB && Object.keys(window._redraft1QB).length > 40) ? window._redraft1QB : null;
       const seen = new Set(); const arr = [];
       for (const k in fcValues) {
         const e = fcValues[k];
@@ -17057,10 +17064,12 @@ function pickYear(year) {
         if (e.pos === 'PICK' || /^\d{4}\s+pick/i.test(e.name)) continue;  // exclude rookie draft picks — player board only
         const id = norm(e.name);
         if (seen.has(id)) continue; seen.add(id);
+        let rdr = 0;
+        if (r1store) { const r1 = r1store[e.name] || r1store[id]; rdr = (r1 && r1.value) || 0; }
         arr.push({ name:e.name, pos:e.pos||'?', team:e.team||'', age:e.age||null,
-                   dyn:e.value||0, rdr:e.redraftValue||0 });
+                   dyn:e.value||0, rdr:rdr });
       }
-      makeBoards(arr, true);
+      makeBoards(arr, !!r1store);     // 2nd arg = we have REAL 1QB redraft values
     } else {
       const arr = SEED.map(r => ({ name:r[0], pos:r[1], team:r[2], age:r[3], dyn:r[4], rdr:0 }));
       makeBoards(arr, false);
