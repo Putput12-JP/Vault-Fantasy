@@ -3997,10 +3997,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th id="lh0" onclick="setSort(0)" style="text-align:right;cursor:pointer;padding-right:10px">#</th>
           <th style="text-align:left">Player</th>
           <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">Dynasty <span class="hdr-source-label" id="hdr-dynasty-src">FC</span> <span class="sort-ind" id="ind-dynasty">↓</span></th>
-          <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Click to sort by FantasyCalc redraft value (descending)">Redraft <span class="redraft-qb-toggle" id="redraft-qb-toggle" onclick="event.stopPropagation();toggleRedraftQbs()" title="Toggle redraft values between 1QB and Superflex">1QB</span> <span class="sort-ind" id="ind-redraft">↕</span></th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="FantasyCalc redraft value (1QB)">Redraft <span class="sort-ind" id="ind-redraft">↕</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="ADP follows your Dynasty/Redraft sort — sourced from FantasyFootballCalculator">ADP <span class="hdr-source-label" id="hdr-adp-src" style="color:#facc15">DYN</span> <span class="sort-ind" id="ind-adp">↕</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-my" onclick="setSort('my-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Your custom rank from My Rankings (▲/▼ = vs market)">Mine <span class="hdr-source-label src-my" id="hdr-my-src">YOU</span> <span class="sort-ind" id="ind-my">↕</span></th>
-          <th style="text-align:center">Status</th>
+          <th id="hdr-status" style="text-align:center">Status</th>
         </tr>
       </thead>
       <tbody id="plist-body"></tbody>
@@ -8846,6 +8846,8 @@ function setDvMode(m, fromAuto){
   const srcSeg = document.querySelector('.controls .src-seg');
   if (srcSeg) srcSeg.style.display = (m==='dynasty') ? '' : 'none';
   try{ localStorage.setItem('dcmd-v5-dvmode', m); }catch(e){}
+  // Keep My Rankings' Dynasty/Redraft board in lockstep with the Draft Vault mode.
+  try{ if(window.MyRankings && MyRankings.setFormat){ MyRankings.setFormat(m); if(document.getElementById('page-myrankings')?.classList.contains('on')) MyRankings.render(); } }catch(e){}
   if (m==='dynasty'){
     const src = (valueSource==='ra'?'ra':valueSource==='my'?'my':'fc');
     setSortMode(src);                 // sorts by dynasty value + syncs ADP→dynasty
@@ -8912,56 +8914,11 @@ function toggleDraftListCap(){
 window._hidePicks = (function(){
   try { return localStorage.getItem('dcmd-v5-hidepicks') === '1'; } catch(e){ return false; }
 })();
-// Redraft SF/1QB toggle — flips numQbs for the REDRAFT column and re-fetches FC redraft values.
-// Caches both formats so toggling back is instant. Choice persists across reloads.
-window._redraftQbs = window._redraftQbs || (parseInt(localStorage.getItem(SK+'-redraft-qbs')) || 1);  // default 1QB
-window._redraftCache = window._redraftCache || {};  // { '1': {name:value}, '2': {name:value} }
-async function toggleRedraftQbs(){
-  window._redraftQbs = window._redraftQbs === 1 ? 2 : 1;
-  const qbs = window._redraftQbs;
-  try { localStorage.setItem(SK+'-redraft-qbs', String(qbs)); } catch(e) {}
-  const pill = document.getElementById('redraft-qb-toggle');
-  if (pill) pill.textContent = qbs === 2 ? 'SF' : '1QB';
-
-  // Apply from cache if we have it
-  const applyCache = (map) => {
-    let n = 0;
-    Object.keys(map).forEach(name => {
-      const e = fcValues[name];
-      if (e) { e.redraftValue = map[name].v; e.redraftRank = map[name].r; n++; }
-      const ne = fcValues[normName(name)];
-      if (ne && ne !== e) { ne.redraftValue = map[name].v; ne.redraftRank = map[name].r; }
-    });
-    return n;
-  };
-
-  if (window._redraftCache[qbs]) {
-    applyCache(window._redraftCache[qbs]);
-    try { renderList(); } catch(e){}
-    return;
-  }
-
-  // Otherwise fetch the new format
-  if (pill) pill.textContent = '…';
-  try {
-    const url = `https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=${qbs}&numTeams=12&ppr=1`;
-    const r = await fetch(url);
-    if (r.ok) {
-      const data = await r.json();
-      const map = {};
-      data.forEach(item => {
-        const p = item.player;
-        if (!p?.name) return;
-        map[p.name] = { v: item.value || 0, r: item.overallRank };
-      });
-      window._redraftCache[qbs] = map;
-      applyCache(map);
-    }
-  } catch(e) { console.warn('Redraft toggle fetch failed:', e); }
-  if (pill) pill.textContent = qbs === 2 ? 'SF' : '1QB';
-  try { renderList(); } catch(e){}
-}
-
+// Redraft is LOCKED to 1QB (Superflex dynasty account, but redraft isn't used —
+// 1QB keeps QBs correctly deflated). The SF toggle is retired.
+window._redraftQbs = 1;
+window._redraftCache = window._redraftCache || {};
+async function toggleRedraftQbs(){ /* retired — redraft is locked to 1QB */ return; }
 function toggleHidePicks(){  window._hidePicks = !window._hidePicks;
   try { localStorage.setItem('dcmd-v5-hidepicks', window._hidePicks ? '1' : '0'); } catch(e){}
   const btn = document.getElementById('sb-hidepicks');
@@ -11773,6 +11730,15 @@ function refreshValues() {
   else { raLoaded=false; raLoading=false; fetchRosterAudit(); }
 }
 
+async function _fcFetchJson(url, tries){
+  tries = tries || 3;
+  for (let i=0;i<tries;i++){
+    try { const r = await fetch(url); if (r.ok) return await r.json(); } catch(e){}
+    await new Promise(res=>setTimeout(res, 700*(i+1)));   // backoff before retry
+  }
+  return null;
+}
+
 async function fetchFantasyCalc() {
   if (fcLoading) return;
   fcLoading = true;
@@ -11798,7 +11764,11 @@ async function fetchFantasyCalc() {
         overallRank: item.overallRank,
         posRank: item.positionRank,
         trend: item.trend30Day || 0,
-        redraftValue: item.redraftValue || 0,
+        // Do NOT seed redraft from the dynasty (Superflex) response — its redraftValue
+        // is the SF redraft value (QBs inflated, Allen ~#1). That's the exact bug that
+        // made redraft look wrong before the 1QB feed loaded. Leave 0; the dedicated
+        // numQbs=1 fetch below is the only thing allowed to set redraftValue.
+        redraftValue: 0,
         combinedValue: item.combinedValue || 0,
         age: p.maybeAge ? Math.round(p.maybeAge * 10) / 10 : null,
         yoe: p.maybeYoe,
@@ -11815,61 +11785,49 @@ async function fetchFantasyCalc() {
     fcLoading = false;
     if (statusEl) statusEl.textContent = `✓ FC loaded · ${Object.keys(fcValues).length/2|0} players`;
     renderTeams();
-    // Fetch FC's DEDICATED redraft endpoint and overwrite each player's redraftValue with
-    // the canonical redraft ranking value (matches fantasycalc.com/redraft-rankings).
-    // numQbs is controlled by window._redraftQbs (1 = single-QB default, 2 = Superflex) via the
-    // SF/1QB toggle on the REDRAFT column header.
+    // Fetch FC's DEDICATED 1QB redraft endpoint and set each player's redraftValue.
+    // Redraft is LOCKED to 1QB (numQbs=1) — the connected account is Superflex for
+    // dynasty, but redraft isn't used, so 1QB is the stable default and QBs stay
+    // correctly deflated (no Josh-Allen-at-#1). Retries so it can't fall back to wrong data.
     (async () => {
-      try {
-        const qbs = window._redraftQbs || 1;   // default 1QB
-        const redraftUrl = `https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=${qbs}&numTeams=12&ppr=1`;
-        const r = await fetch(redraftUrl);
-        if (!r.ok) return;
-        const rdData = await r.json();
-        let updated = 0;
-        rdData.forEach(item => {
-          const p = item.player;
-          if (!p?.name) return;
-          const entry = fcValues[p.name];
-          if (entry) {
-            entry.redraftValue = item.value || 0;     // canonical redraft value
-            entry.redraftRank = item.overallRank;      // canonical redraft rank
-            updated++;
-          }
-          // also update normalized-name lookup
-          const nEntry = fcValues[normName(p.name)];
-          if (nEntry && nEntry !== entry) {
-            nEntry.redraftValue = item.value || 0;
-            nEntry.redraftRank = item.overallRank;
-          }
-        });
-        window._fcRedraftFetchedAt = Date.now();
-        if (statusEl) statusEl.textContent = `✓ FC loaded · ${Object.keys(fcValues).length/2|0} players · redraft (${updated})`;
-        try { renderList(); } catch(e) {}
-        try { if (window.MyRankings) { MyRankings.refresh(); if (document.getElementById('page-myrankings')?.classList.contains('on')) MyRankings.render(); } } catch(e) {}
-      } catch(e) { console.warn('FC redraft fetch failed (non-fatal):', e); }
+      const rdData = await _fcFetchJson('https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=1&numTeams=12&ppr=1');
+      if (!rdData) { console.warn('FC redraft fetch failed after retries'); return; }
+      let updated = 0;
+      rdData.forEach(item => {
+        const p = item.player;
+        if (!p?.name) return;
+        const entry = fcValues[p.name];
+        if (entry) {
+          entry.redraftValue = item.value || 0;     // canonical 1QB redraft value
+          entry.redraftRank = item.overallRank;
+          updated++;
+        }
+        const nEntry = fcValues[normName(p.name)];
+        if (nEntry && nEntry !== entry) {
+          nEntry.redraftValue = item.value || 0;
+          nEntry.redraftRank = item.overallRank;
+        }
+      });
+      window._fcRedraftFetchedAt = Date.now();
+      if (statusEl) statusEl.textContent = `✓ FC loaded · ${Object.keys(fcValues).length/2|0} players · redraft (${updated})`;
+      try { renderList(); } catch(e) {}
+      try { if (window.MyRankings) { MyRankings.refresh(); if (document.getElementById('page-myrankings')?.classList.contains('on')) MyRankings.render(); } } catch(e) {}
     })();
-    // Dedicated 1QB redraft store for the Research tab (value + rank), always numQbs=1,
-    // independent of the REDRAFT column's SF/1QB toggle so the Research chip is stable.
+    // Dedicated 1QB redraft store (value + rank) — same source, used by Research + My Rankings.
     (async () => {
-      try {
-        const r = await fetch('https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=1&numTeams=12&ppr=1');
-        if (!r.ok) return;
-        const data = await r.json();
-        const store = {};
-        data.forEach(item => {
-          const p = item.player;
-          if (!p?.name) return;
-          const rec = { value: item.value || 0, rank: item.overallRank, posRank: item.positionRank };
-          store[p.name] = rec;
-          store[normName(p.name)] = rec;
-        });
-        window._redraft1QB = store;
-        // Refresh the player modal header if it's open so the 1QB chip populates
-        try { if (document.getElementById('ps-header') && _psPlayer) _psRenderHeader(); } catch(e) {}
-        // My Rankings redraft board derives from this canonical 1QB store — rebuild now.
-        try { if (window.MyRankings) { MyRankings.refresh(); if (document.getElementById('page-myrankings')?.classList.contains('on')) MyRankings.render(); } } catch(e) {}
-      } catch(e) { console.warn('FC 1QB redraft store fetch failed (non-fatal):', e); }
+      const data = await _fcFetchJson('https://api.fantasycalc.com/values/current?isDynasty=false&numQbs=1&numTeams=12&ppr=1');
+      if (!data) { console.warn('FC 1QB store fetch failed after retries'); return; }
+      const store = {};
+      data.forEach(item => {
+        const p = item.player;
+        if (!p?.name) return;
+        const rec = { value: item.value || 0, rank: item.overallRank, posRank: item.positionRank };
+        store[p.name] = rec;
+        store[normName(p.name)] = rec;
+      });
+      window._redraft1QB = store;
+      try { if (document.getElementById('ps-header') && _psPlayer) _psRenderHeader(); } catch(e) {}
+      try { if (window.MyRankings) { MyRankings.refresh(); if (document.getElementById('page-myrankings')?.classList.contains('on')) MyRankings.render(); } } catch(e) {}
     })();
     // Re-render overview if it's showing so positions/values update from ? to real data
     const activePage = document.querySelector('.page.on')?.id;
@@ -14350,11 +14308,7 @@ window.addEventListener('load', () => {
     try { localStorage.removeItem(k); } catch(e) {}
   });
   fetchLiveRankings();
-  // A1: Reflect persisted _redraftQbs preference in the REDRAFT toggle pill on page load
-  try {
-    const pill = document.getElementById('redraft-qb-toggle');
-    if (pill) pill.textContent = window._redraftQbs === 2 ? 'SF' : '1QB';
-  } catch(e) {}
+  // A1: Redraft is locked to 1QB — legacy toggle pill removed, nothing to reflect here.
   // Preload RosterAudit values in parallel (non-blocking) — so the RA sort mode shows real data immediately
   // when the user clicks "RosterAudit Dynasty" instead of falling back to FC silently.
   setTimeout(() => {
@@ -16095,8 +16049,8 @@ function pickYear(year) {
      NOTE: don't use display:none on a middle cell — it desyncs the <colgroup> mapping
      and squishes ADP. Instead collapse the column to 0 width and clip its content. */
   #page-draft .mode-seg{ border-color:var(--accent2)!important; }
-  #page-draft .mode-seg .dv-mode{ font-weight:700; }
-  #page-draft .mode-seg .dv-mode.on{ background:linear-gradient(135deg,var(--accent),var(--accent2))!important; color:#fff!important; border-color:transparent!important; }
+  #page-draft .controls.dvc .mode-seg .dv-mode{ font-weight:700!important; color:var(--muted)!important; }
+  #page-draft .controls.dvc .mode-seg .dv-mode.on{ background:var(--accent)!important; color:#fff!important; border-radius:6px!important; }
   #page-draft .plist-table.dv-mode-dyn #hdr-redraft,
   #page-draft .plist-table.dv-mode-dyn .td-redraft,
   #page-draft .plist-table.dv-mode-rdr #hdr-dynasty,
@@ -16114,6 +16068,11 @@ function pickYear(year) {
   #page-draft .plist-table .td-dynasty,
   #page-draft .plist-table .td-redraft{ font-size:14px!important; font-weight:700!important; }
   #page-draft .plist-table col.col-rk{ width:5%; min-width:42px; }
+  /* Status column removed for now (cleaner board). It's the LAST column, so display:none
+     is safe (no colgroup desync). Width reclaimed by the value + My columns. */
+  #page-draft .plist-table #hdr-status,
+  #page-draft .plist-table .td-status{ display:none!important; }
+  #page-draft .plist-table col.col-status{ width:0!important; }
   #page-draft .plist-table col.col-name{ width:36%; }
   #page-draft .plist-table col.col-dynasty{ width:13%; }
   #page-draft .plist-table col.col-redraft{ width:13%; }
@@ -17104,7 +17063,7 @@ function pickYear(year) {
 
   // ── State ──────────────────────────────────────────────────────────
   const SK = 'vault-myrank-v1';
-  let format = 'dynasty';                 // 'dynasty' | 'redraft'
+  let format = (typeof window!=='undefined' && window._dvMode==='redraft') ? 'redraft' : 'dynasty';  // shared with Draft Vault mode
   let posFilter = 'ALL';
   let compareSrc = null;                  // null | 'fc' | 'ra'  (side-by-side market column)
   let baseline = { dynasty: [], redraft: [] };  // [{name,pos,team,age,value,fcRank}] sorted by market value
@@ -17353,6 +17312,7 @@ function pickYear(year) {
     .mr-seg button.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
     .mr-seg.posseg button.on{background:var(--s4);color:var(--text)}
     .mr-ctl-label{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:var(--font-mono)}
+    .mr-sync-ind{font-size:9.5px;font-weight:700;color:var(--rb);font-family:var(--font-mono);letter-spacing:.04em;opacity:.8;white-space:nowrap}
     .mr-grp{display:flex;align-items:center;gap:7px}
     .mr-spacer{flex:1}
     .mr-cmp{display:inline-flex;align-items:center;gap:7px}
@@ -17513,6 +17473,7 @@ function pickYear(year) {
             <button class="${format==='dynasty'?'on':''}" onclick="MyRankings._setFormat('dynasty')">Dynasty</button>
             <button class="${format==='redraft'?'on':''}" onclick="MyRankings._setFormat('redraft')">Redraft</button>
           </div>
+          <span class="mr-sync-ind" title="Dynasty/Redraft stays in sync with the Draft Vault">⇄ synced with Draft Vault</span>
         </div>
         <div class="mr-grp"><span class="mr-ctl-label">Position</span>
           <div class="mr-seg posseg">
@@ -17636,7 +17597,8 @@ function pickYear(year) {
 
   // ── Interaction handlers (exposed) ─────────────────────────────────
   Object.assign(window.MyRankings, {
-    _setFormat(f){ if(format===f)return; format=f; posFilter='ALL'; render(); },
+    _setFormat(f){ if(format===f)return; format=f; posFilter='ALL'; try{ if(typeof setDvMode==='function' && window._dvMode!==f) setDvMode(f); }catch(e){} render(); },
+    setFormat(f){ if(format===f)return; format=f; posFilter='ALL'; render(); },   // external sync (from Draft Vault) — no callback
     _setPos(p){ posFilter=p; render(); },
     _compareToggle(){ compareSrc = compareSrc ? null : 'fc'; render(); },
     _setCmp(v){ compareSrc=v; render(); },
