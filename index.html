@@ -476,7 +476,7 @@ header{
 @media(max-width:600px){.sinput{width:110px}.slbl{display:none}}
 @media(max-width:440px){.sinput{width:90px}}
 .lhdr{display:none} 
-.plist-thead th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:5px 4px;text-align:left;border-bottom:1.5px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap}
+.plist-thead th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:5px 4px;text-align:left;border-bottom:1.5px solid var(--border2);background:var(--s1);font-family:'Space Mono',monospace;font-weight:400;white-space:nowrap;position:sticky;top:0;z-index:6}
 .plist-thead th:first-child{text-align:right;padding-right:8px}
 @media(max-width:700px){.plist-thead{display:none}}
 .plist{padding:0 14px 110px;display:block;width:100%;overflow-x:hidden;max-width:1100px;margin:0 auto}
@@ -2996,7 +2996,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 .vp-prim.is-prim{color:var(--te)}
 .vp-prim .star{font-size:13px}
 /* welcome-back resume card + digest (matches Login Reimagined) */
-.vp-resume{max-width:440px;margin:0 auto 14px;background:rgba(18,26,37,0.72);backdrop-filter:blur(20px);border:1px solid var(--border2);border-left:2px solid var(--rb);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:border-color .15s,transform .15s;text-align:left}
+.vp-resume{max-width:560px;margin:0 auto 16px;background:rgba(18,26,37,0.72);backdrop-filter:blur(20px);border:1px solid var(--border2);border-left:2px solid var(--rb);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .15s,transform .15s;text-align:left}
 .vp-resume:hover{transform:translateY(-2px);border-color:var(--border3)}
 .vp-resume .av{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#2a3850,#1a2536);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:var(--accent2);flex-shrink:0}
 .vp-resume .lbl{font-family:var(--font-mono);font-size:9px;color:var(--rb);letter-spacing:0.12em;text-transform:uppercase}
@@ -3040,10 +3040,22 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   <div id="setup-step1" class="setup-screen" style="display:flex;flex-direction:column;align-items:stretch;overflow-y:auto;background:var(--bg)">
 
     <!-- Grid background -->
-    <div style="position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(121,128,152,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(121,128,152,0.07) 1px,transparent 1px);background-size:40px 40px;z-index:0"></div>
-    <!-- Ambient glows -->
-    <div style="position:fixed;top:25%;right:-6rem;width:24rem;height:24rem;background:rgba(204,0,60,0.07);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
-    <div style="position:fixed;bottom:25%;left:-6rem;width:24rem;height:24rem;background:rgba(123,208,255,0.07);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
+    <div class="vp-bg-grid" style="position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(121,128,152,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(121,128,152,0.07) 1px,transparent 1px);background-size:40px 40px;z-index:0"></div>
+    <!-- Ambient glows (slowly drifting) -->
+    <div class="vp-glow vp-glow-a" style="position:fixed;top:25%;right:-6rem;width:24rem;height:24rem;background:rgba(204,0,60,0.07);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
+    <div class="vp-glow vp-glow-b" style="position:fixed;bottom:25%;left:-6rem;width:24rem;height:24rem;background:rgba(123,208,255,0.07);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
+    <div class="vp-glow vp-glow-c" style="position:fixed;top:55%;left:40%;width:20rem;height:20rem;background:rgba(61,204,122,0.05);filter:blur(110px);border-radius:50%;pointer-events:none;z-index:0"></div>
+    <style>
+      @keyframes vpDriftA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-6rem,4rem) scale(1.15)}100%{transform:translate(0,0) scale(1)}}
+      @keyframes vpDriftB{0%{transform:translate(0,0) scale(1)}50%{transform:translate(5rem,-3rem) scale(1.1)}100%{transform:translate(0,0) scale(1)}}
+      @keyframes vpDriftC{0%{transform:translate(0,0) scale(1);opacity:.6}50%{transform:translate(-4rem,-5rem) scale(1.25);opacity:1}100%{transform:translate(0,0) scale(1);opacity:.6}}
+      @keyframes vpGridPan{0%{background-position:0 0}100%{background-position:40px 40px}}
+      .vp-glow-a{animation:vpDriftA 34s ease-in-out infinite}
+      .vp-glow-b{animation:vpDriftB 42s ease-in-out infinite}
+      .vp-glow-c{animation:vpDriftC 38s ease-in-out infinite}
+      .vp-bg-grid{animation:vpGridPan 18s linear infinite}
+      @media(prefers-reduced-motion:reduce){.vp-glow,.vp-bg-grid{animation:none!important}}
+    </style>
 
     <div style="position:relative;z-index:1;max-width:1100px;margin:0 auto;width:100%;padding:48px 24px 80px">
 
@@ -3082,10 +3094,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <span style="font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:var(--accent)">Step 1 of 2 — Connect your account</span>
         </div>
 
-        <h1 style="font-size:clamp(28px,4vw,42px);font-weight:800;color:var(--text);letter-spacing:-0.04em;line-height:1.15;margin:0 auto 12px;max-width:640px;font-family:var(--font-sans)">
+        <h1 style="font-size:clamp(32px,4.6vw,52px);font-weight:800;color:var(--text);letter-spacing:-0.04em;line-height:1.12;margin:0 auto 14px;max-width:720px;font-family:var(--font-sans)">
           Your Fantasy Football Command Center
         </h1>
-        <p style="font-size:15px;color:var(--muted);max-width:460px;margin:0 auto 28px;line-height:1.6;font-family:var(--font-sans)">
+        <p style="font-size:16.5px;color:var(--muted);max-width:540px;margin:0 auto 28px;line-height:1.6;font-family:var(--font-sans)">
           Connect your fantasy football account once and pull every league into one war room — rosters, rankings, trade tools and league analysis.
         </p>
 
@@ -3099,14 +3111,9 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           </div>
           <div class="go">→</div>
         </div>
-        <div class="vp-digest" id="vp-digest" style="display:none">
-          <div class="vp-dchip"><span class="ic">🟢</span> <b>1</b> draft live now</div>
-          <div class="vp-dchip"><span class="ic">🤝</span> <b>3</b> trade offers</div>
-          <div class="vp-dchip"><span class="ic">📈</span> Your stock <b>+412</b> this week</div>
-        </div>
 
         <!-- CONNECT CARD -->
-        <div style="background:rgba(15,23,42,0.65);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.10);border-top:2px solid rgba(204,0,60,0.3);border-radius:16px;padding:28px;max-width:440px;margin:0 auto">
+        <div style="background:rgba(15,23,42,0.65);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.10);border-top:2px solid rgba(204,0,60,0.3);border-radius:18px;padding:36px;max-width:560px;margin:0 auto">
           <!-- Sleeper + Vault icon row -->
           <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px">
             <div id="vp-bridge-ic" style="width:48px;height:48px;border-radius:12px;background:#00CEB8;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;font-style:italic">⚡</div>
@@ -3133,12 +3140,12 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           </div>
 
           <!-- Username input row -->
-          <div style="display:flex;gap:8px;margin-bottom:10px">
+          <div style="display:flex;gap:10px;margin-bottom:10px">
             <input class="connect-input" id="sleeper-username" placeholder="Enter Sleeper username..."
               autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-              style="flex:1;padding:13px 16px;font-size:15px;border-radius:10px"
+              style="flex:1;padding:15px 18px;font-size:16px;border-radius:11px"
               onkeydown="if(event.key==='Enter')setupConnect()">
-            <button class="connect-btn" id="find-btn" onclick="setupConnect()" style="padding:13px 20px;border-radius:10px;font-size:14px;white-space:nowrap">Connect</button>
+            <button class="connect-btn" id="find-btn" onclick="setupConnect()" style="padding:15px 24px;border-radius:11px;font-size:15px;white-space:nowrap">Connect</button>
           </div>
 
           <!-- Draft results injected here -->
@@ -3216,23 +3223,6 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           </div>
         </div>
       </section>
-
-      <!-- MANUAL DRAFT ID (alternate connect method) -->
-      <div class="connect-manual" onclick="this.classList.toggle('open')" style="margin-top:32px;max-width:480px;margin-left:auto;margin-right:auto">
-        <span>⚙ Enter draft ID manually</span>
-        <div class="connect-manual-body">
-          <input class="connect-input" id="did" placeholder="e.g. 1350181003489980416" style="margin-top:8px">
-          <div style="font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--font-sans)">Found in your Sleeper draft URL: sleeper.com/draft/nfl/<em style="color:var(--accent2)">ID</em></div>
-          <button class="connect-btn" onclick="event.stopPropagation();launch()" style="margin-top:10px;width:100%">Load Draft →</button>
-        </div>
-      </div>
-
-      <!-- Export/Import -->
-      <div class="setup-session-row" style="max-width:480px;margin:16px auto 0">
-        <button class="sess-btn" onclick="exportSession()">📤 Export</button>
-        <button class="sess-btn" onclick="document.getElementById('import-file').click()">📥 Import</button>
-      </div>
-      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSession(event)">
 
       </div><!-- /vp-view-connect -->
 
@@ -4004,7 +3994,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th style="text-align:left">Player</th>
           <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">Dynasty <span class="hdr-source-label" id="hdr-dynasty-src">FC</span> <span class="sort-ind" id="ind-dynasty">↓</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Click to sort by FantasyCalc redraft value (descending)">Redraft <span class="redraft-qb-toggle" id="redraft-qb-toggle" onclick="event.stopPropagation();toggleRedraftQbs()" title="Toggle redraft values between 1QB and Superflex">1QB</span> <span class="sort-ind" id="ind-redraft">↕</span></th>
-          <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Click to sort by ADP (lowest pick number first)">ADP <span class="sort-ind" id="ind-adp">↕</span></th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="ADP follows your Dynasty/Redraft sort — sourced from FantasyFootballCalculator">ADP <span class="hdr-source-label" id="hdr-adp-src" style="color:#facc15">DYN</span> <span class="sort-ind" id="ind-adp">↕</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-my" onclick="setSort('my-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Your custom rank from My Rankings (▲/▼ = vs market)">Mine <span class="hdr-source-label src-my" id="hdr-my-src">YOU</span> <span class="sort-ind" id="ind-my">↕</span></th>
           <th style="text-align:center">Status</th>
         </tr>
@@ -8626,12 +8616,14 @@ function setSort(k){
     // DYNASTY column sort by value desc (uses whatever value source is active)
     sortKey = (valueSource === 'ra') ? 'ra-value' : 'fc-value';
     updateColumnHdrIndicators('dynasty');
+    try{ _adpSyncToValueMode('dynasty'); }catch(e){}
     renderList();
     return;
   }
   if (k === 'redraft-col') {
     sortKey = 'redraft-col';   // sortedPlayers() handles this directly
     updateColumnHdrIndicators('redraft');
+    try{ _adpSyncToValueMode('redraft'); }catch(e){}
     renderList();
     return;
   }
@@ -8815,17 +8807,20 @@ function setSortMode(mode){
     setValueSource('ra');
     _draftSrcPref = 'ra';
     sortKey = 'ra-value';
+    try{ _adpSyncToValueMode('dynasty'); }catch(e){}
     renderList();
   } else if (mode === 'fc') {
     setValueSource('fc');
     _draftSrcPref = 'fc';
     sortKey = 'fc-value';
+    try{ _adpSyncToValueMode('dynasty'); }catch(e){}
     renderList();
   } else if (mode === 'my') {
     // Mine: DYNASTY column shows YOUR slot values, sorted by your board order
     setValueSource('my');
     _draftSrcPref = 'my';
     sortKey = 'my-value';
+    try{ _adpSyncToValueMode('dynasty'); }catch(e){}
     renderList();
   }
 }
@@ -8852,7 +8847,7 @@ function toggleHide(){
 
 // ===== Draft Vault: list cap (Top 15 default, toggle to All) =====
 window._draftListCap = (function(){
-  try { const s = localStorage.getItem('dcmd-v5-listcap'); return s==='all' ? 0 : 15; } catch(e){ return 15; }
+  try { const s = localStorage.getItem('dcmd-v5-listcap'); return s==='15' ? 15 : 0; } catch(e){ return 0; }
 })();
 function toggleDraftListCap(){
   window._draftListCap = window._draftListCap === 15 ? 0 : 15;
@@ -11785,6 +11780,7 @@ async function fetchFantasyCalc() {
         window._fcRedraftFetchedAt = Date.now();
         if (statusEl) statusEl.textContent = `✓ FC loaded · ${Object.keys(fcValues).length/2|0} players · redraft (${updated})`;
         try { renderList(); } catch(e) {}
+        try { if (window.MyRankings) { MyRankings.refresh(); if (document.getElementById('page-myrankings')?.classList.contains('on')) MyRankings.render(); } } catch(e) {}
       } catch(e) { console.warn('FC redraft fetch failed (non-fatal):', e); }
     })();
     // Dedicated 1QB redraft store for the Research tab (value + rank), always numQbs=1,
@@ -15568,29 +15564,39 @@ async function loadAdpFile(format, teams) {
   }
 }
 
-// Auto-populate the ADP column on first Draft Vault open (no sort change) so
-// ADP isn't blank by default. Loads the dynasty bucket default; if the league
-// is redraft, loads that bucket instead. Silent + retryable on failure.
+// ADP follows the Dynasty/Redraft value mode of the Draft Vault. When you sort
+// by Dynasty (or RA/Mine) the column shows Dynasty ADP; sort by Redraft and it
+// swaps to Redraft ADP. Both buckets are cached so switching is instant.
 let _adpAutoLoaded = false;
-async function _adpAutoInit() {
-  if (_adpAutoLoaded) return;
-  if (ADP_DATA && ADP_DATA.length) { _adpAutoLoaded = true; return; }
-  _adpAutoLoaded = true;
-  // bucket from connected league type when known, else dynasty
-  let bucket = 'dynasty';
-  try {
-    if (window._activeDraft && /redraft|standard|ppr/i.test(_activeDraft.type||'') && !/dynasty|keeper/i.test(_activeDraft.type||'')) bucket = 'redraft';
-  } catch(e) {}
-  const sel = window._adpSelection[bucket] || window._adpSelection.dynasty;
+window._adpActiveBucket = window._adpActiveBucket || null;
+async function _adpSyncToValueMode(mode){            // 'dynasty' | 'redraft'
+  if (mode !== 'redraft') mode = 'dynasty';
+  _adpUpdateAdpHdr(mode);                            // reflect intent immediately
+  if (window._adpActiveBucket === mode && ADP_DATA && ADP_DATA.length) { return; }
+  const sel = window._adpSelection[mode] ||
+    (mode==='dynasty' ? {format:'dynasty',teams:12} : {format:'ppr',teams:12});
   try {
     const data = await loadAdpFile(sel.format, sel.teams);
-    if (data && data.players && data.players.length) {
+    if (data && data.players && data.players.length){
+      window._adpActiveBucket = mode;
+      _adpAutoLoaded = true;
       ADP_DATA = data.players;
       Object.keys(ADP_LOOKUP).forEach(k => delete ADP_LOOKUP[k]);
       data.players.forEach(p => { ADP_LOOKUP[p.name] = p; ADP_LOOKUP[normName(p.name)] = p; });
+      _adpUpdateAdpHdr(mode);
       try { renderList(); } catch(e) {}
-    } else { _adpAutoLoaded = false; } // allow retry later
-  } catch(e) { _adpAutoLoaded = false; }
+    }
+  } catch(e) { /* offline / preview — column shows — until live */ }
+}
+function _adpUpdateAdpHdr(mode){
+  const el = document.getElementById('hdr-adp-src');
+  if (el){ el.textContent = mode==='redraft' ? 'RDR' : 'DYN';
+    el.style.color = mode==='redraft' ? 'var(--sky,#7bd0ff)' : '#facc15'; }
+}
+// Back-compat: initial load picks the bucket matching the current sort.
+async function _adpAutoInit() {
+  const mode = (sortKey === 'redraft-col') ? 'redraft' : 'dynasty';
+  return _adpSyncToValueMode(mode);
 }
 
 // Switch the active ADP data and re-render. Persists user choice.
@@ -17022,6 +17028,24 @@ function pickYear(year) {
 
   function norm(s){ return (window.normName ? window.normName(s) : String(s||'').toLowerCase().replace(/[^a-z]/g,'')); }
 
+  // ── Live-data staleness guard ──────────────────────────────────────
+  // FantasyCalc loads in stages: dynasty first, then the dedicated redraft
+  // endpoint overwrites each player's redraftValue a moment later. We key a
+  // signature off the data so the board rebuilds itself the instant anything
+  // material changes — no fragile polling, and redraft values always match FC.
+  let _lastSig = null;
+  function fcSig(){
+    if (typeof fcValues === 'undefined' || !fcValues) return 'seed';
+    const n = Object.keys(fcValues).length;
+    const a = fcValues['Bijan Robinson'] || fcValues['bijanrobinson'] ||
+              fcValues["Ja'Marr Chase"] || null;
+    return n + ':' + (a ? (a.value||0)+'/'+(a.redraftValue||0) : '0');
+  }
+  function maybeRebuild(){
+    const s = fcSig();
+    if (s !== _lastSig){ _lastSig = s; buildBaseline(); invalidate(); }
+  }
+
   // ── Build baseline from live FantasyCalc, else fallback seed ───────
   function buildBaseline() {
     const live = (typeof fcValues !== 'undefined') && fcValues && Object.keys(fcValues).length > 40;
@@ -17097,6 +17121,7 @@ function pickYear(year) {
   // any *unpinned* players by current market value into the gaps, so the
   // untouched part of the board keeps tracking FantasyCalc.
   function computeBoard() {
+    maybeRebuild();
     const base = baseline[format];
     const st = state[format];
     if (!base.length) return [];
@@ -17187,6 +17212,7 @@ function pickYear(year) {
     // for Draft Vault MINE column (dynasty context)
     getRankInfo(name, f){
       f = f || 'dynasty';
+      maybeRebuild();
       if (!_cache[f]) _cache[f] = boardFor(f);
       const e = _cache[f].map.get(norm(name));
       if (!e) return null;
@@ -17200,7 +17226,7 @@ function pickYear(year) {
     },
     // full computed board for a format (used by the Draft Vault MINE column demo)
     getBoard(f){ if(!_booted) init(); return boardFor(f||'dynasty').rows; },
-    refresh(){ invalidate(); }
+    refresh(){ _lastSig = null; invalidate(); }
   };
 
   // wrap save to also bust the public cache + refresh dependent views
