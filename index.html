@@ -8861,19 +8861,27 @@ function setDvMode(m, fromAuto){
 // Auto-pick the mode from the connected league/draft type (only until the user overrides).
 function _dvAutoMode(){
   if (window._dvModeUserSet) return;
+  // No live draft = "Browse rankings". Don't infer league type here — the user
+  // explicitly came to browse, so keep a stable default (last-used, else Dynasty).
+  const hasActiveDraft = !!(sleeperDraftId || (typeof espnDraftLid!=='undefined' && espnDraftLid) || window._activeDraft);
+  if (!hasActiveDraft){
+    setDvMode(window._dvMode === 'redraft' ? 'redraft' : 'dynasty', true);
+    return;
+  }
+  // Active draft → auto-populate Dynasty/Redraft from the draft + league settings.
   let isDyn = null;
   try {
-    if (typeof _isDynastyLeague==='function'){
+    if (window._activeDraft){
+      const t = (_activeDraft.type||'') + ' ' + (_activeDraft.name||'');
+      if (/dynasty|keeper|devy/i.test(t)) isDyn = true;
+      else if (/redraft|seasonal/i.test(t)) isDyn = false;
+    }
+    if (isDyn===null && typeof _isDynastyLeague==='function'){
       const lid = window._currentLeagueId || teamsLeagueId;
       const lg = lid && myTeamsData && myTeamsData.find(l=>l.league_id===lid);
       if (lg) isDyn = !!_isDynastyLeague(lg);
     }
-    if (isDyn===null && window._activeDraft){
-      const t = (_activeDraft.type||'') + ' ' + (_activeDraft.name||'');
-      if (/dynasty|keeper|devy/i.test(t)) isDyn = true;
-      else if (/redraft|seasonal/i.test(t)) isDyn = false;
-      if (isDyn===null && _activeDraft.rounds) isDyn = parseInt(_activeDraft.rounds) >= 15;
-    }
+    if (isDyn===null && window._activeDraft && _activeDraft.rounds) isDyn = parseInt(_activeDraft.rounds) >= 15;
   } catch(e){}
   if (isDyn===null) isDyn = true;     // default to dynasty
   setDvMode(isDyn ? 'dynasty' : 'redraft', true);
@@ -10396,9 +10404,10 @@ function sortedPlayers(){
     const hasADP = typeof getADP==='function';
     return bySortedKey(p => (hasADP && getADP(p.name)) || 9999, 1);
   }
-  // "my-col" sort = your My Rankings board order (rank asc)
+  // "my-col" sort = your My Rankings board order (rank asc), in the ACTIVE mode
   if(sortKey==='my-col'){
-    const gi = (n)=>{ const mi = window.MyRankings && MyRankings.getRankInfo(n,'dynasty'); return mi?mi.myRank:99999; };
+    const f = (window._dvMode==='redraft') ? 'redraft' : 'dynasty';
+    const gi = (n)=>{ const mi = window.MyRankings && MyRankings.getRankInfo(n,f); return mi?mi.myRank:99999; };
     return [...src].sort((a,b)=>gi(a.name)-gi(b.name));
   }
   // "my" sort = user's uploaded CSV ranks (stored in p.rMy)
@@ -15594,21 +15603,25 @@ window._adpActiveBucket = window._adpActiveBucket || null;
 async function _adpSyncToValueMode(mode){            // 'dynasty' | 'redraft'
   if (mode !== 'redraft') mode = 'dynasty';
   _adpUpdateAdpHdr(mode);                            // reflect intent immediately
-  if (window._adpActiveBucket === mode && ADP_DATA && ADP_DATA.length) { return; }
   const sel = window._adpSelection[mode] ||
     (mode==='dynasty' ? {format:'dynasty',teams:12} : {format:'ppr',teams:12});
-  try {
-    const data = await loadAdpFile(sel.format, sel.teams);
-    if (data && data.players && data.players.length){
-      window._adpActiveBucket = mode;
-      _adpAutoLoaded = true;
-      ADP_DATA = data.players;
-      Object.keys(ADP_LOOKUP).forEach(k => delete ADP_LOOKUP[k]);
-      data.players.forEach(p => { ADP_LOOKUP[p.name] = p; ADP_LOOKUP[normName(p.name)] = p; });
-      _adpUpdateAdpHdr(mode);
-      try { renderList(); } catch(e) {}
-    }
-  } catch(e) { /* offline / preview — column shows — until live */ }
+  const data = await loadAdpFile(sel.format, sel.teams);
+  // Race guard: if the user switched modes while we awaited, don't clobber.
+  if (window._dvMode && window._dvMode !== mode) return;
+  if (data && data.players && data.players.length){
+    window._adpActiveBucket = mode;
+    _adpAutoLoaded = true;
+    ADP_DATA = data.players;
+    Object.keys(ADP_LOOKUP).forEach(k => delete ADP_LOOKUP[k]);
+    data.players.forEach(p => { ADP_LOOKUP[p.name] = p; ADP_LOOKUP[normName(p.name)] = p; });
+  } else {
+    // Load failed — CLEAR so we never show the other bucket's ADP under this label.
+    window._adpActiveBucket = mode;
+    ADP_DATA = [];
+    Object.keys(ADP_LOOKUP).forEach(k => delete ADP_LOOKUP[k]);
+  }
+  _adpUpdateAdpHdr(mode);
+  try { renderList(); } catch(e) {}
 }
 function _adpUpdateAdpHdr(mode){
   const el = document.getElementById('hdr-adp-src');
