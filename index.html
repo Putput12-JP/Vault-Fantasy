@@ -3998,7 +3998,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
           <th style="text-align:left">Player</th>
           <th class="num-hdr col-hdr-sortable" id="hdr-dynasty" onclick="setSort('dynasty-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Click to sort by Dynasty value (uses current mode: RA / FC / My)">Dynasty <span class="hdr-source-label" id="hdr-dynasty-src">FC</span> <span class="sort-ind" id="ind-dynasty">↓</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-redraft" onclick="setSort('redraft-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="FantasyCalc redraft value (1QB)">Redraft <span class="sort-ind" id="ind-redraft">↕</span></th>
-          <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="ADP follows your Dynasty/Redraft sort — sourced from FantasyFootballCalculator">ADP <span class="hdr-source-label" id="hdr-adp-src" style="color:#facc15">DYN</span> <span class="sort-ind" id="ind-adp">↕</span></th>
+          <th class="num-hdr col-hdr-sortable" id="hdr-adp" onclick="setSort('adp-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="ADP follows your Dynasty/Redraft mode (FantasyFootballCalculator). DYN = 1QB dynasty · SF = Superflex (used when your league starts 2 QBs, so QBs rank early to match your values) · RDR = redraft.">ADP <span class="hdr-source-label" id="hdr-adp-src" style="color:#facc15">DYN</span> <span class="sort-ind" id="ind-adp">↕</span></th>
           <th class="num-hdr col-hdr-sortable" id="hdr-my" onclick="setSort('my-col')" style="text-align:right;padding-right:8px;cursor:pointer" title="Your custom rank from My Rankings (▲/▼ = vs market)">Mine <span class="hdr-source-label src-my" id="hdr-my-src">YOU</span> <span class="sort-ind" id="ind-my">↕</span></th>
           <th id="hdr-status" style="text-align:center">Status</th>
         </tr>
@@ -15600,11 +15600,42 @@ async function loadAdpFile(format, teams) {
 // swaps to Redraft ADP. Both buckets are cached so switching is instant.
 let _adpAutoLoaded = false;
 window._adpActiveBucket = window._adpActiveBucket || null;
+// Detect whether the user's context is Superflex (2-QB). Used so the DYNASTY ADP
+// matches the QB weighting of the DYNASTY VALUES — FantasyCalc only publishes a
+// 1QB dynasty ADP, so for Superflex we fall back to the Superflex ADP (QBs early).
+function _dvIsSuperflex(){
+  // 1) Explicit league setting (Sleeper roster_positions)
+  try{
+    const lgs = (window.myTeamsData||[]);
+    for(const lg of lgs){
+      const rp = (lg.roster_positions||lg.rosterPositions||[]);
+      if(Array.isArray(rp)){
+        if(rp.includes('SUPER_FLEX')) return true;
+        if(rp.filter(p=>p==='QB').length>=2) return true;
+      }
+    }
+  }catch(e){}
+  // 2) Fallback signature: in Superflex, the #1 dynasty-valued player is a QB.
+  try{
+    let top=null;
+    for(const k in fcValues){ const e=fcValues[k]; if(!e||e.pos==='PICK')continue; if(!top||(e.value||0)>(top.value||0))top=e; }
+    if(top && top.pos==='QB') return true;
+  }catch(e){}
+  return false;
+}
+
 async function _adpSyncToValueMode(mode){            // 'dynasty' | 'redraft'
   if (mode !== 'redraft') mode = 'dynasty';
-  _adpUpdateAdpHdr(mode);                            // reflect intent immediately
-  const sel = window._adpSelection[mode] ||
-    (mode==='dynasty' ? {format:'dynasty',teams:12} : {format:'ppr',teams:12});
+  const sf = (mode==='dynasty') && _dvIsSuperflex();
+  _adpUpdateAdpHdr(mode, sf);                        // reflect intent immediately
+  // Dynasty ADP must match the QB context of the dynasty values. No SF-dynasty ADP
+  // exists, so Superflex dynasty uses the Superflex ADP (QBs ranked early).
+  let sel;
+  if (mode==='dynasty'){
+    sel = sf ? {format:'superflex',teams:12} : (window._adpSelection.dynasty || {format:'dynasty',teams:12});
+  } else {
+    sel = window._adpSelection.redraft || {format:'ppr',teams:12};
+  }
   const data = await loadAdpFile(sel.format, sel.teams);
   // Race guard: if the user switched modes while we awaited, don't clobber.
   if (window._dvMode && window._dvMode !== mode) return;
@@ -15620,12 +15651,12 @@ async function _adpSyncToValueMode(mode){            // 'dynasty' | 'redraft'
     ADP_DATA = [];
     Object.keys(ADP_LOOKUP).forEach(k => delete ADP_LOOKUP[k]);
   }
-  _adpUpdateAdpHdr(mode);
+  _adpUpdateAdpHdr(mode, sf);
   try { renderList(); } catch(e) {}
 }
-function _adpUpdateAdpHdr(mode){
+function _adpUpdateAdpHdr(mode, sf){
   const el = document.getElementById('hdr-adp-src');
-  if (el){ el.textContent = mode==='redraft' ? 'RDR' : 'DYN';
+  if (el){ el.textContent = mode==='redraft' ? 'RDR' : (sf ? 'SF' : 'DYN');
     el.style.color = mode==='redraft' ? 'var(--sky,#7bd0ff)' : '#facc15'; }
 }
 // Back-compat: initial load picks the bucket matching the current sort.
