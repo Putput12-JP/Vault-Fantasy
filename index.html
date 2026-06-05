@@ -3873,6 +3873,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       <button class="fbtn WR" onclick="setF('WR')">WR</button>
       <button class="fbtn TE" onclick="setF('TE')">TE</button>
     </div>
+    <div class="dvc-seg mode-seg" id="dv-mode-seg" title="Switch the board between Dynasty and Redraft — values, ADP and sort all follow">
+      <button class="sbtn dv-mode on" id="dvm-dynasty" onclick="setDvMode('dynasty')">Dynasty</button>
+      <button class="sbtn dv-mode" id="dvm-redraft" onclick="setDvMode('redraft')">Redraft</button>
+    </div>
     <div class="dvc-seg src-seg" title="Value source for the Dynasty column">
       <button class="sbtn sort-mode" id="sm-ra" onclick="setSortMode('ra')" title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit</button>
       <button class="sbtn sort-mode on" id="sm-fc" onclick="setSortMode('fc')" title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live)">FantasyCalc<span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:4px;font-weight:400"></span></button>
@@ -8825,6 +8829,54 @@ function setSortMode(mode){
   }
 }
 
+// ===== Option A: Dynasty/Redraft board mode — collapses the two value columns to ONE =====
+window._dvMode = window._dvMode || (function(){ try{ return localStorage.getItem('dcmd-v5-dvmode')||'dynasty'; }catch(e){ return 'dynasty'; } })();
+window._dvModeUserSet = false;
+function setDvMode(m, fromAuto){
+  if (m!=='redraft') m='dynasty';
+  window._dvMode = m;
+  if (!fromAuto) window._dvModeUserSet = true;
+  document.getElementById('dvm-dynasty')?.classList.toggle('on', m==='dynasty');
+  document.getElementById('dvm-redraft')?.classList.toggle('on', m==='redraft');
+  document.querySelectorAll('.plist-table').forEach(t=>{
+    t.classList.toggle('dv-mode-dyn', m==='dynasty');
+    t.classList.toggle('dv-mode-rdr', m==='redraft');
+  });
+  // The RA/FC/Mine source toggle only applies to the Dynasty value — hide it in Redraft.
+  const srcSeg = document.querySelector('.controls .src-seg');
+  if (srcSeg) srcSeg.style.display = (m==='dynasty') ? '' : 'none';
+  try{ localStorage.setItem('dcmd-v5-dvmode', m); }catch(e){}
+  if (m==='dynasty'){
+    const src = (valueSource==='ra'?'ra':valueSource==='my'?'my':'fc');
+    setSortMode(src);                 // sorts by dynasty value + syncs ADP→dynasty
+  } else {
+    sortKey = 'redraft-col';
+    updateColumnHdrIndicators('redraft');
+    try{ _adpSyncToValueMode('redraft'); }catch(e){}
+    renderList();
+  }
+}
+// Auto-pick the mode from the connected league/draft type (only until the user overrides).
+function _dvAutoMode(){
+  if (window._dvModeUserSet) return;
+  let isDyn = null;
+  try {
+    if (typeof _isDynastyLeague==='function'){
+      const lid = window._currentLeagueId || teamsLeagueId;
+      const lg = lid && myTeamsData && myTeamsData.find(l=>l.league_id===lid);
+      if (lg) isDyn = !!_isDynastyLeague(lg);
+    }
+    if (isDyn===null && window._activeDraft){
+      const t = (_activeDraft.type||'') + ' ' + (_activeDraft.name||'');
+      if (/dynasty|keeper|devy/i.test(t)) isDyn = true;
+      else if (/redraft|seasonal/i.test(t)) isDyn = false;
+      if (isDyn===null && _activeDraft.rounds) isDyn = parseInt(_activeDraft.rounds) >= 15;
+    }
+  } catch(e){}
+  if (isDyn===null) isDyn = true;     // default to dynasty
+  setDvMode(isDyn ? 'dynasty' : 'redraft', true);
+}
+
 // Single entry for ADP settings (replaces two separate format pickers)
 function openAdpSettings(){
   // Reuse the existing picker — open with the most-recent bucket, defaulting to dynasty
@@ -8996,6 +9048,7 @@ function showPage(p){
     try { ldInitPage(); } catch(e) {}
     try { renderDraftSummary(); } catch(e) {}
     try { _adpAutoInit(); } catch(e) {}
+    try { _dvAutoMode(); } catch(e) {}     // apply Dynasty/Redraft mode + collapse to one value column
     // Connect-first: if no live draft is connected, surface the connect modal
     // once per session so the user can either link a draft or browse rankings.
     if (!sleeperDraftId && !window._draftPromptDismissed) {
@@ -10454,6 +10507,19 @@ function renderList(){
   
   // Sort once and reuse for both the row build and the tier-break pass below.
   const _sortedList = sortedPlayers();
+  // Positional rank by the ACTIVE value mode (Dynasty source-aware, or Redraft 1QB),
+  // independent of the current display sort — so the pill always reads RB1, WR2, etc.
+  const _dvm = window._dvMode || 'dynasty';
+  const _valForPos = (p) => {
+    if (_dvm === 'redraft') {
+      const r1 = (window._redraft1QB && (window._redraft1QB[p.name] || window._redraft1QB[normName(p.name)]));
+      return (r1 && r1.value) || (getFCValue(p.name)?.redraftValue) || 0;
+    }
+    return (getPlayerValue(p.name) || 0);
+  };
+  const _posRankMap = {}; const _posCtr = {};
+  PLAYERS.filter(p => p.pos !== 'PICK').slice().sort((a,b)=>_valForPos(b)-_valForPos(a))
+    .forEach(p => { _posCtr[p.pos] = (_posCtr[p.pos]||0)+1; _posRankMap[normName(p.name)] = _posCtr[p.pos]; });
   const rows = _sortedList.map(p => {
     const nn=normName(p.name);
     // Browse-rankings mode (completed draft → "Browse rankings"): show a clean
@@ -10628,7 +10694,7 @@ function renderList(){
     // ===== MINE column: your value + rank + delta vs market (from My Rankings) =====
     let myHtml = '<span style="color:var(--dim)">—</span>';
     if (p.pos !== 'PICK' && window.MyRankings) {
-      const mi = MyRankings.getRankInfo(p.name, 'dynasty');
+      const mi = MyRankings.getRankInfo(p.name, _dvm === 'redraft' ? 'redraft' : 'dynasty');
       if (mi) {
         const dd = mi.delta;
         const dchip = dd>0 ? `<span style="color:var(--rb)">▲${dd}</span>`
@@ -10643,7 +10709,7 @@ function renderList(){
       <td class="rnum" style="text-align:right;padding-right:10px">${rank}</td>
       <td class="td-player" onclick="openPlayerStats('${sn}','${p.name.replace(/'/g,"\\'")}','${p.pos}','${p.team}')" style="cursor:pointer" title="View player stats">
         <div class="dvrow-player">
-          <span class="ppill ${p.pos}">${p.pos}</span>
+          <span class="ppill ${p.pos}">${p.pos}${_posRankMap[nn]||''}</span>
           <span class="pname">${p.name}</span>
           <span class="dvrow-team">${p.team}</span>
           ${playerNotes[p.name] ? `<span class="dvrow-note" onclick="event.stopPropagation();openNote('${sn}')" title="Edit note">🗒</span>` : ''}
@@ -10668,10 +10734,10 @@ function renderList(){
         <div class="pm-name">${p.name}</div>
         <div class="pm-meta">
           <span class="pm-team">${p.team}</span>
-          <span class="ppill ${p.pos}" style="font-size:8px;padding:1px 4px">${p.pos}</span>
-          ${dynastyVal > 0 ? `<span class="pm-val-wrap"><span class="pm-val-lbl">DYN</span><span class="pm-dynasty" style="color:${dynastyColor}">${dynastyVal.toLocaleString()}</span></span>` : ''}
-          ${redraftVal > 0 ? `<span class="pm-val-wrap"><span class="pm-val-lbl">RDR</span><span class="pm-redraft" style="color:${redraftColor}">${redraftVal.toLocaleString()}</span></span>` : ''}
-          ${(window.MyRankings && p.pos!=='PICK' && MyRankings.getRankInfo(p.name,'dynasty')) ? `<span class="pm-val-wrap"><span class="pm-val-lbl">MINE</span><span style="color:#3DCC7A;font-weight:700">#${MyRankings.getRankInfo(p.name,'dynasty').myRank}</span></span>` : ''}
+          <span class="ppill ${p.pos}" style="font-size:8px;padding:1px 4px">${p.pos}${_posRankMap[nn]||''}</span>
+          ${_dvm!=='redraft' && dynastyVal > 0 ? `<span class="pm-val-wrap"><span class="pm-val-lbl">DYN</span><span class="pm-dynasty" style="color:${dynastyColor}">${dynastyVal.toLocaleString()}</span></span>` : ''}
+          ${_dvm==='redraft' && redraftVal > 0 ? `<span class="pm-val-wrap"><span class="pm-val-lbl">RDR</span><span class="pm-redraft" style="color:${redraftColor}">${redraftVal.toLocaleString()}</span></span>` : ''}
+          ${(()=>{ if(!(window.MyRankings && p.pos!=='PICK')) return ''; const _mi=MyRankings.getRankInfo(p.name, _dvm==='redraft'?'redraft':'dynasty'); return _mi?`<span class="pm-val-wrap"><span class="pm-val-lbl">MINE</span><span style="color:#3DCC7A;font-weight:700">#${_mi.myRank}</span></span>`:''; })()}
           ${vbadgeHtml}
         </div>
       </div>
@@ -16025,7 +16091,28 @@ function pickYear(year) {
   @media(max-width:860px){ #page-draft .suggest-chips{ grid-template-columns:repeat(2,1fr)!important; } }
   @media(max-width:560px){ #page-draft .suggest-bar{ flex-direction:column; align-items:stretch; gap:8px; } }
 
-  /* ───── Draft Vault: player rows — clean table (Command Strip mock) ───── */
+  /* Option A: Dynasty/Redraft mode toggle — collapses the two value columns to ONE.
+     NOTE: don't use display:none on a middle cell — it desyncs the <colgroup> mapping
+     and squishes ADP. Instead collapse the column to 0 width and clip its content. */
+  #page-draft .mode-seg{ border-color:var(--accent2)!important; }
+  #page-draft .mode-seg .dv-mode{ font-weight:700; }
+  #page-draft .mode-seg .dv-mode.on{ background:linear-gradient(135deg,var(--accent),var(--accent2))!important; color:#fff!important; border-color:transparent!important; }
+  #page-draft .plist-table.dv-mode-dyn #hdr-redraft,
+  #page-draft .plist-table.dv-mode-dyn .td-redraft,
+  #page-draft .plist-table.dv-mode-rdr #hdr-dynasty,
+  #page-draft .plist-table.dv-mode-rdr .td-dynasty{
+    width:0!important; max-width:0!important; padding:0!important; border-left:none!important; border-right:none!important;
+    overflow:hidden!important; white-space:nowrap!important; font-size:0!important; line-height:0!important;
+  }
+  #page-draft .plist-table.dv-mode-dyn #hdr-redraft *,
+  #page-draft .plist-table.dv-mode-dyn .td-redraft *,
+  #page-draft .plist-table.dv-mode-rdr #hdr-dynasty *,
+  #page-draft .plist-table.dv-mode-rdr .td-dynasty *{ display:none!important; }
+  #page-draft .plist-table.dv-mode-dyn col.col-redraft{ width:0!important; }
+  #page-draft .plist-table.dv-mode-rdr col.col-dynasty{ width:0!important; }
+  /* the single visible value column gets emphasis */
+  #page-draft .plist-table .td-dynasty,
+  #page-draft .plist-table .td-redraft{ font-size:14px!important; font-weight:700!important; }
   #page-draft .plist-table col.col-rk{ width:5%; min-width:42px; }
   #page-draft .plist-table col.col-name{ width:36%; }
   #page-draft .plist-table col.col-dynasty{ width:13%; }
