@@ -17734,5 +17734,423 @@ function pickYear(year) {
 })();
 
 </script>
+<!-- Lineup Command (Direction A) — injects #page-lineup + My Team dropdown -->
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   VAULT · LINEUP COMMAND  (Direction A — Compare Cards)
+   Self-contained: injects the page, the My Team dropdown, and the renderer.
+   index.html only needs one script tag pointing at this file (loaded last).
+   ──────────────────────────────────────────────────────────────────────
+   DATA SOURCING (what's real / where it swaps in)
+     • Projections + PPR/Half/Std  ← Sleeper projections API (free, no auth):
+         https://api.sleeper.com/projections/nfl/<season>/<week>?season_type=regular
+         returns pts_ppr / pts_half_ppr / pts_std per player.  → LC_PLAYERS
+     • Per-source spread            ← weekly scrape of the 5 books below.
+     • vs TEAM DEF (matchup)        ← Fantasy Points Allowed to position (DvP).
+         Real metric, published on NFL.com & CBS. Seeded here from 2025
+         season actuals; refresh from the live feed.  → LC_FPA
+   Swap these three objects for live data and the UI is unchanged.
+   ══════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.__lcVaultLoaded) return; window.__lcVaultLoaded = true;
+
+  /* ── the five sources Putput picked, tagged by how we'd get them ── */
+  const SOURCES = [
+    { key: 'sleeper',    name: 'Sleeper',    how: 'api' },
+    { key: 'espn',       name: 'ESPN',       how: 'scrape' },
+    { key: 'cbs',        name: 'CBS',        how: 'scrape' },
+    { key: 'draftkings', name: 'DraftKings', how: 'dfs' },
+    { key: 'nfl',        name: 'NFL.com',    how: 'scrape' },
+  ];
+  const SRC_BIAS = { sleeper: -0.005, espn: -0.018, cbs: -0.008, draftkings: 0.028, nfl: 0.0 };
+
+  /* ── REAL DvP: Fantasy Points Allowed (PPR) to each position, 2025 actuals ──
+       [QB, RB, WR, TE] points-per-game allowed by each defense.
+       This is the number "someone can consider" — rank is computed live. */
+  const LC_FPA = {
+    ARI:[18.2,24.5,33.0,9.2], ATL:[19.0,26.0,32.0,9.5], BAL:[15.5,18.5,29.0,8.0], BUF:[16.8,21.0,30.1,8.6],
+    CAR:[21.5,28.5,37.0,11.5], CHI:[17.5,23.0,31.0,10.5], CIN:[19.5,24.0,34.0,9.8], CLE:[16.0,22.0,28.5,7.8],
+    DAL:[20.5,27.5,35.5,10.0], DEN:[14.5,20.0,26.5,8.2], DET:[18.8,23.5,33.5,9.0], GB:[16.2,21.5,28.0,8.8],
+    HOU:[15.8,22.5,27.5,9.3], IND:[19.2,25.0,32.5,10.2], JAX:[20.0,26.5,34.5,9.6], KC:[17.0,22.0,30.0,8.5],
+    LV:[19.8,27.0,33.0,12.0], LAC:[16.5,20.5,29.5,8.9], LAR:[18.0,23.0,31.5,9.1], MIA:[18.6,25.5,32.0,9.4],
+    MIN:[15.2,19.5,27.0,8.3], NE:[20.2,26.0,35.0,10.8], NO:[19.6,24.5,33.5,9.0], NYG:[21.0,27.0,36.0,10.3],
+    NYJ:[16.4,21.5,28.8,7.5], PHI:[14.8,18.0,27.2,8.4], PIT:[16.6,20.5,29.8,9.7], SF:[15.6,19.0,28.2,7.9],
+    SEA:[17.2,22.5,30.5,9.5], TB:[18.4,24.0,31.8,10.1], TEN:[20.8,25.5,34.8,11.0], WAS:[19.4,26.5,33.2,11.8],
+  };
+  const POS_IDX = { QB: 0, RB: 1, WR: 2, TE: 3 };
+  // precompute rank of each team vs each position (1 = fewest allowed = toughest)
+  const FPA_RANK = {};
+  ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+    const i = POS_IDX[pos];
+    const order = Object.keys(LC_FPA).sort((a, b) => LC_FPA[a][i] - LC_FPA[b][i]);
+    order.forEach((tm, idx) => { (FPA_RANK[tm] = FPA_RANK[tm] || {})[pos] = idx + 1; });
+  });
+  const TEAM_CT = Object.keys(LC_FPA).length; // 32
+
+  /* ── modeled weekly projections (Sleeper feed shape) ── */
+  const RAW = [
+    { id: 'allen',   name: 'Josh Allen',      team: 'BUF', pos: 'QB', opp: 'BAL', ha: 'vs', day: 'Sun', time: '8:20 PM ET', ppr: 22.8, rec: 0,  spread: .05 },
+    { id: 'daniels', name: 'Jayden Daniels',  team: 'WAS', pos: 'QB', opp: 'NYG', ha: '@',  day: 'Sun', time: '1:00 PM ET', ppr: 21.4, rec: 0,  spread: .06 },
+    { id: 'bijan',   name: 'Bijan Robinson',  team: 'ATL', pos: 'RB', opp: 'CAR', ha: 'vs', day: 'Sun', time: '1:00 PM ET', ppr: 19.6, rec: 4,  spread: .06 },
+    { id: 'gibbs',   name: 'Jahmyr Gibbs',    team: 'DET', pos: 'RB', opp: 'GB',  ha: '@',  day: 'Sun', time: '4:25 PM ET', ppr: 18.2, rec: 4,  spread: .07 },
+    { id: 'chase',   name: "Ja'Marr Chase",   team: 'CIN', pos: 'WR', opp: 'CLE', ha: 'vs', day: 'Sun', time: '1:00 PM ET', ppr: 18.9, rec: 7,  spread: .07 },
+    { id: 'nabers',  name: 'Malik Nabers',    team: 'NYG', pos: 'WR', opp: 'WAS', ha: 'vs', day: 'Sun', time: '1:00 PM ET', ppr: 16.1, rec: 7,  spread: .09 },
+    { id: 'nacua',   name: 'Puka Nacua',      team: 'LAR', pos: 'WR', opp: 'SEA', ha: '@',  day: 'Sun', time: '4:05 PM ET', ppr: 16.8, rec: 7,  spread: .08 },
+    { id: 'bowers',  name: 'Brock Bowers',    team: 'LV',  pos: 'TE', opp: 'NE',  ha: 'vs', day: 'Sun', time: '4:05 PM ET', ppr: 13.7, rec: 6,  spread: .10 },
+    { id: 'hall',    name: 'Breece Hall',     team: 'NYJ', pos: 'RB', opp: 'BUF', ha: '@',  day: 'Sun', time: '1:00 PM ET', ppr: 14.2, rec: 4,  spread: .11 },
+    { id: 'gwilson', name: 'Garrett Wilson',  team: 'NYJ', pos: 'WR', opp: 'BUF', ha: '@',  day: 'Sun', time: '1:00 PM ET', ppr: 15.3, rec: 6,  spread: .10 },
+    { id: 'addison', name: 'Jordan Addison',  team: 'MIN', pos: 'WR', opp: 'CHI', ha: 'vs', day: 'Sun', time: '1:00 PM ET', ppr: 12.4, rec: 5,  spread: .12 },
+    { id: 'kraft',   name: 'Tucker Kraft',    team: 'GB',  pos: 'TE', opp: 'DET', ha: 'vs', day: 'Sun', time: '4:25 PM ET', ppr: 9.1,  rec: 4,  spread: .14 },
+    { id: 'jwright', name: 'Jaylen Wright',   team: 'TEN', pos: 'RB', opp: 'IND', ha: '@',  day: 'Sun', time: '1:00 PM ET', ppr: 7.8,  rec: 2,  spread: .18 },
+    { id: 'doubs',   name: 'Romeo Doubs',     team: 'GB',  pos: 'WR', opp: 'DET', ha: 'vs', day: 'Sun', time: '4:25 PM ET', ppr: 8.6,  rec: 4,  spread: .16, status: 'Questionable' },
+    { id: 'rice',    name: 'Rashee Rice',     team: 'KC',  pos: 'WR', opp: 'BAL', ha: 'vs', day: 'Thu', time: '8:20 PM ET', ppr: 14.4, rec: 6,  spread: .10 },
+    { id: 'odunze',  name: 'Rome Odunze',     team: 'CHI', pos: 'WR', opp: 'MIN', ha: '@',  day: 'Sun', time: '1:00 PM ET', ppr: 11.2, rec: 5,  spread: .13 },
+    { id: 'higgins', name: 'Tee Higgins',     team: 'CIN', pos: 'WR', opp: 'CLE', ha: 'vs', day: 'Sun', time: '1:00 PM ET', ppr: 14.6, rec: 6,  spread: .11 },
+    { id: 'laporta', name: 'Sam LaPorta',     team: 'DET', pos: 'TE', opp: 'GB',  ha: '@',  day: 'Sun', time: '4:25 PM ET', ppr: 11.8, rec: 5,  spread: .12 },
+    { id: 'jtaylor', name: 'Jonathan Taylor', team: 'IND', pos: 'RB', opp: 'TEN', ha: 'vs', day: 'Sun', time: '1:00 PM ET', ppr: 17.1, rec: 3,  spread: .08 },
+    { id: 'saquon',  name: 'Saquon Barkley',  team: 'PHI', pos: 'RB', opp: 'DAL', ha: '@',  day: 'Sun', time: '4:25 PM ET', ppr: 20.3, rec: 3,  spread: .07 },
+    { id: 'jjeff',   name: 'Justin Jefferson', team: 'MIN', pos: 'WR', opp: 'CHI', ha: 'vs', day: 'Sun', time: '1:00 PM ET', ppr: 19.4, rec: 7, spread: .07 },
+    { id: 'ceedee',  name: 'CeeDee Lamb',     team: 'DAL', pos: 'WR', opp: 'PHI', ha: 'vs', day: 'Sun', time: '4:25 PM ET', ppr: 18.5, rec: 7,  spread: .09 },
+    { id: 'mcbride', name: 'Trey McBride',    team: 'ARI', pos: 'TE', opp: 'SF',  ha: '@',  day: 'Sun', time: '4:05 PM ET', ppr: 12.9, rec: 6,  spread: .11 },
+    { id: 'achane',  name: "De'Von Achane",   team: 'MIA', pos: 'RB', opp: 'JAX', ha: 'vs', day: 'Sun', time: '1:00 PM ET', ppr: 17.6, rec: 5,  spread: .09 },
+  ];
+
+  function rng(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % 100000) / 100000; }
+  function ordinal(n) { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+
+  function matchup(rank) {
+    if (rank <= 6)  return { tier: 5, label: 'Brutal',    short: 'TOUGH', color: 'var(--qb)' };
+    if (rank <= 13) return { tier: 4, label: 'Tough',     short: 'HARD',  color: '#ff9a4d' };
+    if (rank <= 19) return { tier: 3, label: 'Neutral',   short: 'EVEN',  color: 'var(--te)' };
+    if (rank <= 26) return { tier: 2, label: 'Favorable', short: 'GOOD',  color: '#7ac77a' };
+    return                 { tier: 1, label: 'Smash',     short: 'SMASH', color: 'var(--rb)' };
+  }
+
+  function build(p) {
+    const rank = (FPA_RANK[p.opp] && FPA_RANK[p.opp][p.pos]) || 16;
+    const fpa = (LC_FPA[p.opp] && LC_FPA[p.opp][POS_IDX[p.pos]]) || null;
+    const mu = matchup(rank);
+    const matchAdj = 1 + (rank - (TEAM_CT + 1) / 2) / TEAM_CT * 0.10; // soft D ⇒ small bump
+    const sources = SOURCES.map(s => {
+      if (rng(p.id + s.key) < 0.06) return { key: s.key, name: s.name, how: s.how, val: null };
+      const jitter = (rng(p.id + s.key + 'j') - 0.5) * 2 * p.spread;
+      return { key: s.key, name: s.name, how: s.how, val: Math.round(p.ppr * matchAdj * (1 + jitter + (SRC_BIAS[s.key] || 0)) * 10) / 10 };
+    });
+    const vals = sources.filter(s => s.val != null).map(s => s.val);
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const low = Math.min(...vals), high = Math.max(...vals);
+    const sd = Math.sqrt(vals.reduce((a, b) => a + (b - avg) ** 2, 0) / vals.length);
+    return {
+      ...p, rank, fpa, mu, sources,
+      fmt: { ppr: r1(avg), half: r1(avg - p.rec / 2), std: r1(avg - p.rec) },
+      fmtLow: { ppr: low, half: r1(low - p.rec / 2), std: r1(low - p.rec) },
+      fmtHigh: { ppr: high, half: r1(high - p.rec / 2), std: r1(high - p.rec) },
+      agreement: Math.max(0, Math.min(1, 1 - sd / (avg * 0.16))),
+    };
+  }
+  const r1 = n => Math.round(n * 10) / 10;
+  const PLAYERS = RAW.map(build);
+  const byId = Object.fromEntries(PLAYERS.map(p => [p.id, p]));
+  const fmtName = { ppr: 'PPR', half: 'Half-PPR', std: 'Standard' };
+  const initials = n => n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+  function confidence(set, fmtKey) {
+    if (set.length < 2) return set.map(() => 100);
+    const mus = set.map(p => p.fmt[fmtKey]);
+    const sds = set.map(p => Math.max(0.8, (p.fmtHigh[fmtKey] - p.fmtLow[fmtKey]) / 3.3));
+    const N = 4000, wins = set.map(() => 0); let seed = 1234567;
+    const nrand = () => { seed = (1103515245 * seed + 12345) & 0x7fffffff; const u1 = seed / 0x7fffffff; seed = (1103515245 * seed + 12345) & 0x7fffffff; const u2 = seed / 0x7fffffff; return Math.sqrt(-2 * Math.log(u1 + 1e-9)) * Math.cos(2 * Math.PI * u2); };
+    for (let i = 0; i < N; i++) { let best = -1e9, bi = 0; for (let j = 0; j < set.length; j++) { const d = mus[j] + sds[j] * nrand(); if (d > best) { best = d; bi = j; } } wins[bi]++; }
+    return wins.map(w => Math.round(w / N * 100));
+  }
+
+  /* ── state ── */
+  const state = { fmt: 'ppr', week: 1, sel: ['gwilson', 'rice', 'higgins'] };
+  try { Object.assign(state, JSON.parse(localStorage.getItem('lc-vault-state') || '{}')); } catch (e) {}
+  const save = () => { try { localStorage.setItem('lc-vault-state', JSON.stringify(state)); } catch (e) {} };
+
+  /* ── atoms ── */
+  const POSC = { QB: 'var(--qb)', RB: 'var(--rb)', WR: 'var(--wr)', TE: 'var(--te)' };
+  const POSB = { QB: 'rgba(255,102,128,.14)', RB: 'rgba(61,204,122,.14)', WR: 'rgba(123,208,255,.14)', TE: 'rgba(245,200,66,.14)' };
+  const fmtPts = (p, k = state.fmt) => (p.fmt[k] ?? 0).toFixed(1);
+  const lowOf = (p, k = state.fmt) => p.fmtLow[k], highOf = (p, k = state.fmt) => p.fmtHigh[k];
+  const srcFmt = (p, val, k = state.fmt) => val == null ? null : r1(k === 'ppr' ? val : k === 'half' ? val - p.rec / 2 : val - p.rec);
+  const confColor = c => c >= 60 ? 'var(--rb)' : c >= 42 ? 'var(--te)' : c >= 28 ? '#ff9a4d' : 'var(--accent2)';
+  const av = (p, s = 40) => `<div class="lc-av" style="width:${s}px;height:${s}px;background:${POSB[p.pos]};border:1.5px solid color-mix(in srgb,${POSC[p.pos]} 40%,transparent);color:${POSC[p.pos]};font-size:${s * 0.34}px">${initials(p.name)}</div>`;
+  const posTag = p => `<span class="lc-mono" style="color:${POSC[p.pos]}">${p.pos}</span> · ${p.team}`;
+  const statusPill = p => !p.status ? '' : `<span class="lc-pill" style="background:rgba(255,179,71,.18);color:#ffb347">${p.status.toUpperCase()}</span>`;
+  const matchupPill = p => `<span class="lc-pill" style="background:color-mix(in srgb,${p.mu.color} 14%,transparent);color:${p.mu.color}">◈ ${p.mu.short}</span>`;
+  const diffBars = (t, c) => `<div style="display:flex;gap:3px;align-items:flex-end;height:14px">${[1, 2, 3, 4, 5].map(i => `<div style="width:7px;height:${4 + i * 2}px;border-radius:2px;background:${i <= t ? c : 'rgba(255,255,255,.12)'}"></div>`).join('')}</div>`;
+  const srcTag = how => { const m = { api: ['API', 'var(--rb)'], scrape: ['scrape', 'var(--muted)'], dfs: ['DFS', 'var(--wr)'] }; const [t, c] = m[how] || ['', 'var(--muted)']; return `<span class="lc-mono" style="font-size:8px;color:${c};opacity:.7;letter-spacing:.05em">${t}</span>`; };
+
+  const selPlayers = () => state.sel.map(id => byId[id]).filter(Boolean);
+  function compareConf() { const set = selPlayers(); const c = confidence(set, state.fmt); const m = {}; set.forEach((p, i) => m[p.id] = c[i]); return m; }
+
+  /* ── control bar ── */
+  function controlBar() {
+    return `
+    <div class="lc-bar">
+      <div class="lc-bar-head">
+        <div class="lc-bar-title">Compare Players <small>Search anyone — your roster, an opponent's bench, or the wire. Up to 4.</small></div>
+        <div class="lc-tools">
+          <button class="lc-wk" id="lcWk"><span class="lc-cap">Week</span> <b>${state.week}</b> <span style="color:var(--muted);font-size:10px">▼</span></button>
+          <div class="lc-fmt" id="lcFmt">${['ppr', 'half', 'std'].map(k => `<button data-fmt="${k}" class="${state.fmt === k ? 'on' : ''}">${fmtName[k]}</button>`).join('')}</div>
+        </div>
+      </div>
+      <div class="lc-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+        <input id="lcInput" placeholder="Search by name, position (WR), or team (KC)…" autocomplete="off">
+        <div class="lc-ac" id="lcAc"></div>
+      </div>
+      <div class="lc-chips" id="lcChips"></div>
+    </div>`;
+  }
+  function renderChips() {
+    const w = document.getElementById('lcChips'); if (!w) return;
+    const set = selPlayers();
+    w.innerHTML = set.map(p => `<div class="lc-chip">${av(p, 26)}<div style="line-height:1.2;min-width:0"><div style="font-size:12.5px;font-weight:700;white-space:nowrap">${p.name}</div><div class="lc-mono" style="font-size:9px;color:var(--muted);white-space:nowrap">${p.pos} · ${p.team} · ${p.ha} ${p.opp}</div></div><button class="lc-x" data-rm="${p.id}">×</button></div>`).join('') + (set.length < 4 ? `<button class="lc-chip-add" id="lcChipAdd">+ Add player</button>` : '');
+  }
+  function runSearch(q) {
+    const list = document.getElementById('lcAc'); if (!list) return;
+    q = (q || '').trim().toLowerCase();
+    let pool = PLAYERS.filter(p => !state.sel.includes(p.id));
+    if (q) pool = pool.filter(p => p.name.toLowerCase().includes(q) || p.pos.toLowerCase() === q || p.team.toLowerCase() === q);
+    pool = pool.slice(0, 8);
+    list.innerHTML = pool.length ? pool.map(p => `<div class="lc-ac-item" data-add="${p.id}">${av(p, 32)}<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">${p.name}</div><div class="lc-mono" style="font-size:10px;color:var(--muted)">${p.pos} · ${p.team} · ${p.ha} ${p.opp} · proj ${fmtPts(p)}</div></div><span class="lc-pill" style="background:color-mix(in srgb,${p.mu.color} 14%,transparent);color:${p.mu.color}">${p.mu.short}</span></div>`).join('') : `<div class="lc-ac-empty">No players match "${q}"</div>`;
+    list.classList.add('show');
+  }
+
+  /* ── Direction A cards ── */
+  function cardsView() {
+    const set = selPlayers(); const conf = compareConf();
+    const best = set.length > 1 ? set.reduce((a, b) => conf[a.id] >= conf[b.id] ? a : b) : null;
+    if (!set.length) return controlBar() + emptyState();
+    const cards = set.map(p => {
+      const c = conf[p.id], isBest = best && p.id === best.id;
+      const fvals = p.sources.map(s => srcFmt(p, s.val)).filter(v => v != null);
+      const srcMax = Math.max(...fvals), srcMin = Math.min(...fvals);
+      return `
+      <div class="lc-card${isBest ? ' best' : ''}">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          ${av(p, 46)}
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:7px"><span style="font-size:16px;font-weight:800;letter-spacing:-.02em">${p.name}</span>${statusPill(p)}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">${posTag(p)} · ${p.day} ${p.time} · ${p.ha} ${p.opp}</div>
+          </div>
+          <button class="lc-cardx" data-rm="${p.id}">×</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:15px 0 14px">
+          <div style="display:flex;gap:7px;flex-wrap:wrap">${isBest ? `<span class="lc-pill" style="background:rgba(61,204,122,.16);color:var(--rb)">★ BEST START</span>` : ''}${matchupPill(p)}</div>
+          <div style="text-align:right"><div class="lc-lab" style="font-size:8.5px">Confidence</div><div class="lc-mono" style="font-size:20px;font-weight:700;color:${confColor(c)};line-height:1">${c}%</div></div>
+        </div>
+        <div class="lc-proj">
+          <div><div class="lc-lab" style="font-size:8.5px">Consensus · ${fmtName[state.fmt]}</div><div class="lc-mono" style="font-size:38px;font-weight:700;letter-spacing:-.02em;line-height:1;margin-top:3px">${fmtPts(p)}</div></div>
+          <div style="text-align:right;font-size:11px;color:var(--muted);line-height:1.7"><div>Floor <b class="lc-mono" style="color:var(--text2)">${lowOf(p).toFixed(1)}</b></div><div>Ceiling <b class="lc-mono" style="color:var(--text2)">${highOf(p).toFixed(1)}</b></div></div>
+        </div>
+        <div class="lc-match" title="Fantasy points allowed to ${p.pos} — real DvP, via NFL.com / CBS">
+          <div class="lc-lab" style="font-size:8.5px">vs ${p.opp} DEF</div>
+          ${diffBars(p.mu.tier, p.mu.color)}
+          <span style="font-size:11.5px;color:${p.mu.color};font-weight:600">${p.mu.label}</span>
+          <span class="lc-mono" style="font-size:10px;color:var(--muted);margin-left:auto">${p.fpa != null ? p.fpa.toFixed(1) + ' to ' + p.pos + ' · ' : ''}${ordinal(p.rank)} toughest</span>
+        </div>
+        <div class="lc-lab" style="font-size:8.5px;margin-bottom:2px">Sources</div>
+        <div>${p.sources.map(s => { const miss = s.val == null; const fv = srcFmt(p, s.val); const hi = !miss && fv === srcMax, lo = !miss && fv === srcMin; const col = miss ? 'var(--muted)' : hi ? 'var(--rb)' : lo ? 'var(--muted)' : 'var(--text2)'; return `<div class="lc-srow"><span style="font-size:12px;color:var(--text2)">${s.name} ${srcTag(s.how)}</span><span class="lc-mono" style="font-size:12.5px;font-weight:700;color:${col}">${miss ? '—' : fv.toFixed(1)}</span></div>`; }).join('')}</div>
+      </div>`;
+    });
+    const cols = Math.min(set.length, 3);
+    return controlBar() + `<div class="lc-cards" style="grid-template-columns:repeat(${cols},1fr)">${cards.join('')}</div>`;
+  }
+  function emptyState() {
+    return `<div class="lc-card" style="padding:56px 24px;text-align:center"><div style="font-size:30px;margin-bottom:10px;opacity:.5">⚖️</div><div style="font-size:16px;font-weight:700;margin-bottom:6px">Add players to compare</div><div style="font-size:13px;color:var(--muted);max-width:340px;margin:0 auto">Search any player above — your starters, your bench, or a waiver-wire flier — to weigh the week's call.</div></div>`;
+  }
+
+  /* ── page render ── */
+  function lcRender() {
+    const mount = document.getElementById('lc-mount'); if (!mount) return;
+    mount.innerHTML = cardsView();
+    renderChips();
+    save();
+  }
+  window.lcRender = lcRender;
+
+  /* ════════════════════════════════════════════════════════════════
+     INJECTION: styles, page, nav dropdown, showPage hook
+     ════════════════════════════════════════════════════════════════ */
+  function injectStyles() {
+    const css = `
+    #page-lineup{ --lc-card:rgba(18,26,37,0.66); }
+    [data-theme="light"] #page-lineup{ --lc-card:#ffffff; }
+    #page-lineup .lc-page{max-width:1280px;margin:0 auto;padding:26px 24px 90px}
+    #page-lineup .lc-mono{font-family:var(--font-mono)}
+    #page-lineup .lc-lab{font-family:var(--font-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+    #page-lineup .lc-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:4px 9px;border-radius:7px}
+    #page-lineup .lc-av{border-radius:26%;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;font-family:var(--font-sans)}
+    #page-lineup .lc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+    #page-lineup .lc-title{font-size:clamp(28px,3.4vw,40px);font-weight:800;letter-spacing:-.035em;line-height:1}
+    #page-lineup .lc-rule{width:42px;height:3px;background:var(--accent);border-radius:2px;margin:11px 0 9px}
+    #page-lineup .lc-sub{font-size:13.5px;color:var(--muted);line-height:1.5;max-width:540px}
+    #page-lineup .lc-srcline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+    #page-lineup .lc-srcchip{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.04em;color:var(--text2);background:var(--s2);border:1px solid var(--border);padding:5px 9px;border-radius:7px}
+    #page-lineup .lc-bar{background:var(--lc-card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:18px}
+    #page-lineup .lc-bar-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:13px}
+    #page-lineup .lc-bar-title{font-size:15px;font-weight:700}#page-lineup .lc-bar-title small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:2px}
+    #page-lineup .lc-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    #page-lineup .lc-fmt{display:flex;gap:2px;background:var(--s1);border:1px solid var(--border);border-radius:9px;padding:3px}
+    #page-lineup .lc-fmt button{border:none;background:transparent;color:var(--muted);font-family:var(--font-mono);font-size:11px;font-weight:600;padding:6px 11px;border-radius:7px;cursor:pointer;transition:all .14s}
+    #page-lineup .lc-fmt button.on{background:var(--s3);color:var(--text)}
+    #page-lineup .lc-wk{display:flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:12.5px;color:var(--text);cursor:pointer}
+    #page-lineup .lc-wk .lc-cap{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+    #page-lineup .lc-search{position:relative;display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:11px 14px}
+    #page-lineup .lc-search:focus-within{border-color:var(--border3)}
+    #page-lineup .lc-search svg{width:16px;height:16px;color:var(--muted);flex-shrink:0}
+    #page-lineup .lc-search input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13.5px;font-family:var(--font-sans)}
+    #page-lineup .lc-ac{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:6px;z-index:30;box-shadow:0 24px 60px rgba(0,0,0,.5);max-height:320px;overflow-y:auto;display:none}
+    #page-lineup .lc-ac.show{display:block}
+    #page-lineup .lc-ac-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:9px;cursor:pointer}
+    #page-lineup .lc-ac-item:hover{background:var(--s3)}
+    #page-lineup .lc-ac-empty{padding:16px;text-align:center;color:var(--muted);font-size:12.5px}
+    #page-lineup .lc-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+    #page-lineup .lc-chip{display:flex;align-items:center;gap:9px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:6px 7px 6px 8px}
+    #page-lineup .lc-x{width:20px;height:20px;border-radius:6px;border:none;background:var(--s3);color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    #page-lineup .lc-x:hover{background:rgba(255,102,128,.16);color:var(--accent2)}
+    #page-lineup .lc-chip-add{background:transparent;border:1px dashed var(--border3);color:var(--muted);border-radius:10px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer}
+    #page-lineup .lc-chip-add:hover{color:var(--text);border-color:var(--text2)}
+    #page-lineup .lc-cards{display:grid;gap:16px}
+    #page-lineup .lc-card{background:var(--lc-card);border:1px solid var(--border);border-radius:16px;padding:18px}
+    #page-lineup .lc-card.best{border-color:rgba(61,204,122,.45);box-shadow:0 0 0 1px rgba(61,204,122,.25),0 18px 40px rgba(0,0,0,.3)}
+    #page-lineup .lc-cardx{width:24px;height:24px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;flex-shrink:0;font-size:14px}
+    #page-lineup .lc-proj{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px 15px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+    #page-lineup .lc-match{display:flex;align-items:center;gap:10px;margin:13px 1px 14px}
+    #page-lineup .lc-srow{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+    /* My Team dropdown */
+    .lc-mt-wrap{position:relative;display:inline-flex;align-items:stretch}
+    .lc-mt-menu{position:fixed;min-width:230px;background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:6px;box-shadow:0 24px 60px rgba(0,0,0,.5);z-index:9999;display:none}
+    .lc-mt-menu.show{display:block}
+    .lc-mt-item{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;cursor:pointer;width:100%;border:none;background:transparent;color:var(--text);text-align:left}
+    .lc-mt-item:hover{background:var(--s3)}
+    .lc-mt-item .ic{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--s3);color:var(--muted);font-size:13px}
+    .lc-mt-item b{display:block;font-size:13px;font-weight:600}.lc-mt-item small{font-family:var(--font-mono);font-size:9.5px;color:var(--muted)}
+    .lc-mt-item.active{background:rgba(226,58,78,.12)}.lc-mt-item.active .ic{background:rgba(226,58,78,.18);color:var(--accent2)}
+    .lc-newtag{margin-left:auto;font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.1em;padding:2px 6px;border-radius:5px;background:rgba(226,58,78,.18);color:var(--accent2)}
+    .lc-caret{font-size:8px;opacity:.7;margin-left:5px}
+    @media(max-width:760px){#page-lineup .lc-cards{grid-template-columns:1fr!important}}
+    `;
+    const el = document.createElement('style'); el.id = 'lc-vault-styles'; el.textContent = css; document.head.appendChild(el);
+  }
+
+  function injectPage() {
+    if (document.getElementById('page-lineup')) return;
+    const anchor = document.getElementById('page-myteams') || document.getElementById('page-overview') || document.querySelector('.page');
+    if (!anchor) return;
+    const page = document.createElement('div');
+    page.className = 'page'; page.id = 'page-lineup';
+    page.style.overflowY = 'auto';
+    page.innerHTML = `
+      <div class="lc-page">
+        <div class="lc-head">
+          <div>
+            <h1 class="lc-title">Lineup Command</h1>
+            <div class="lc-rule"></div>
+            <p class="lc-sub">Weigh every start/sit call with projections from every source — then see who to play.</p>
+            <div class="lc-srcline">
+              <span class="lc-lab" style="font-size:8.5px">Sources</span>
+              ${SOURCES.map(s => `<span class="lc-srcchip">${s.name}</span>`).join('')}
+              <span class="lc-srcchip" style="color:var(--muted)" title="Matchup uses real Fantasy Points Allowed to position (DvP) from NFL.com / CBS">◈ vs DEF = real DvP</span>
+            </div>
+          </div>
+        </div>
+        <div id="lc-mount"></div>
+      </div>`;
+    anchor.parentNode.appendChild(page);
+  }
+
+  function injectNavDropdown() {
+    const navBtn = document.getElementById('nb-overview');
+    if (navBtn && !navBtn.closest('.lc-mt-wrap')) {
+      const wrap = document.createElement('div'); wrap.className = 'lc-mt-wrap';
+      navBtn.parentNode.insertBefore(wrap, navBtn); wrap.appendChild(navBtn);
+      navBtn.insertAdjacentHTML('beforeend', '<span class="lc-caret">▼</span>');
+      // menu lives on <body> (the nav clips overflow), positioned on hover
+      const menu = document.createElement('div'); menu.className = 'lc-mt-menu'; menu.id = 'lc-mt-menu';
+      menu.innerHTML = `
+        <button class="lc-mt-item" data-go="overview"><span class="ic">▦</span><span><b>Team Review</b><small>Roster · grade · outlook</small></span></button>
+        <button class="lc-mt-item" data-go="lineup"><span class="ic">⚡</span><span><b>Lineup Command</b><small>Start/sit · projections</small></span><span class="lc-newtag">NEW</span></button>`;
+      document.body.appendChild(menu);
+      let hideT;
+      const place = () => { const r = wrap.getBoundingClientRect(); menu.style.top = (r.bottom + 4) + 'px'; menu.style.left = r.left + 'px'; };
+      const show = () => { clearTimeout(hideT); place(); menu.classList.add('show'); };
+      const hide = () => { hideT = setTimeout(() => menu.classList.remove('show'), 120); };
+      wrap.addEventListener('mouseenter', show); wrap.addEventListener('mouseleave', hide);
+      menu.addEventListener('mouseenter', () => clearTimeout(hideT)); menu.addEventListener('mouseleave', hide);
+      window.addEventListener('resize', () => menu.classList.remove('show'));
+    }
+    // sidebar
+    const sl = document.getElementById('sl-overview');
+    if (sl && !document.getElementById('sl-lineup')) {
+      const b = document.createElement('button');
+      b.id = 'sl-lineup'; b.className = 'sidebar-link'; b.setAttribute('onclick', "showPage('lineup')");
+      b.innerHTML = `<span style="font-size:17px">⚡</span><span>Lineup Command</span>`;
+      sl.parentNode.insertBefore(b, sl.nextSibling);
+    }
+    // mobile more-sheet
+    const sheet = document.querySelector('#more-sheet .lc-injected');
+    if (!sheet) {
+      const firstBtn = document.querySelector('#more-sheet button');
+      if (firstBtn) {
+        const b = document.createElement('button');
+        b.className = 'lc-injected';
+        b.setAttribute('onclick', "closeMoreSheet();showPage('lineup')");
+        b.setAttribute('style', 'display:flex;align-items:center;gap:14px;padding:14px 16px;background:transparent;border:none;border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;cursor:pointer;text-align:left;min-height:52px');
+        b.innerHTML = `<span style="font-size:20px">⚡</span><span style="font-weight:600">Lineup Command</span>`;
+        firstBtn.parentNode.insertBefore(b, firstBtn);
+      }
+    }
+  }
+
+  function hookShowPage() {
+    const orig = window.showPage;
+    if (typeof orig !== 'function') return false;
+    window.showPage = function (p) {
+      orig.apply(this, arguments);
+      // keep My Team lit + menu state correct for both sub-pages
+      const onMT = (p === 'overview' || p === 'lineup');
+      document.getElementById('nb-overview')?.classList.toggle('on', onMT);
+      document.getElementById('sl-overview')?.classList.toggle('active', p === 'overview');
+      document.getElementById('sl-lineup')?.classList.toggle('active', p === 'lineup');
+      document.querySelectorAll('#lc-mt-menu .lc-mt-item').forEach(it => it.classList.toggle('active', it.dataset.go === p));      if (p === 'lineup') { try { lcRender(); } catch (e) { console.error(e); } }
+    };
+    // menu item clicks
+    document.addEventListener('click', e => {
+      const it = e.target.closest('#lc-mt-menu .lc-mt-item');
+      if (it) { document.getElementById('lc-mt-menu')?.classList.remove('show'); window.showPage(it.dataset.go); }
+    });
+    return true;
+  }
+
+  /* ── page-scoped interactions ── */
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#page-lineup')) { document.getElementById('lcAc')?.classList.remove('show'); return; }
+    const t = e.target;
+    const rm = t.closest('[data-rm]'); if (rm) { state.sel = state.sel.filter(id => id !== rm.dataset.rm); lcRender(); return; }
+    const add = t.closest('[data-add]'); if (add) { if (state.sel.length < 4 && !state.sel.includes(add.dataset.add)) state.sel.push(add.dataset.add); const inp = document.getElementById('lcInput'); if (inp) inp.value = ''; document.getElementById('lcAc')?.classList.remove('show'); lcRender(); return; }
+    if (t.closest('#lcChipAdd')) { const inp = document.getElementById('lcInput'); if (inp) inp.focus(); runSearch(''); return; }
+    const fb = t.closest('#lcFmt button'); if (fb) { state.fmt = fb.dataset.fmt; lcRender(); return; }
+    if (t.closest('#lcWk')) { state.week = state.week % 18 + 1; lcRender(); return; }
+    if (!t.closest('.lc-search')) document.getElementById('lcAc')?.classList.remove('show');
+  });
+  document.addEventListener('input', e => { if (e.target.id === 'lcInput') runSearch(e.target.value); });
+  document.addEventListener('focusin', e => { if (e.target.id === 'lcInput') runSearch(e.target.value); });
+
+  function boot() {
+    injectStyles(); injectPage(); injectNavDropdown();
+    let tries = 0;
+    const t = setInterval(() => { if (hookShowPage() || ++tries > 40) clearInterval(t); }, 100);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+
+</script>
 </body>
 </html>
