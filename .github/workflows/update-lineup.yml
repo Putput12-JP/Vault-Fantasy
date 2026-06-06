@@ -1,0 +1,35 @@
+# Refresh the Lineup Command projection feed daily.
+# Matches the repo's existing scripts/ + data/ + workflows pattern (like update-adp).
+# Place at: .github/workflows/update-lineup.yml
+
+name: Update Lineup projections
+
+on:
+  schedule:
+    - cron: '0 9 * * *'      # 09:00 UTC daily (~5am ET). Edit to retime.
+  workflow_dispatch: {}        # manual "Run workflow" button
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build projection feed
+        run: node scripts/build-lineup-feed.mjs
+      - name: Commit refreshed feed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/lineup-feed.json
+          if git diff --staged --quiet; then
+            echo "No change in feed."
+          else
+            git commit -m "data: refresh Lineup projections feed"
+            git push
+          fi
