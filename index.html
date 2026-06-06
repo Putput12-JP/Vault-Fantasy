@@ -17907,7 +17907,8 @@ function pickYear(year) {
     const BASE = 'https://api.sleeper.com', DAY = 864e5;
     const status = { mode: 'loading', week: null, season: null, when: null, note: '', feed: false };
     const metas = {}, metaMap = {};
-    let feed = null;
+    const feeds = {};   // week -> cron feed object (one file = current week)
+    const curWeek = () => state.week;
     function cget(k) { try { const o = JSON.parse(localStorage.getItem(k)); if (o && Date.now() - o.t < DAY) return o.d; } catch (e) {} return null; }
     function cset(k, d) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {} }
     async function jget(url) { const r = await fetch(url, { mode: 'cors', credentials: 'omit' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
@@ -17935,13 +17936,19 @@ function pickYear(year) {
       return arr.length;
     }
     async function loadFeed(week) {
-      try { const f = await jget('lineup_command/feed/latest.json?d=' + Math.floor(Date.now() / DAY)); if (f && (f.week == null || f.week === week)) { feed = f; status.feed = true; return true; } } catch (e) {}
-      return false;
+      if (feeds[week] !== undefined) return !!feeds[week];
+      try {
+        const f = await jget('data/lineup-feed.json?d=' + Math.floor(Date.now() / DAY));
+        if (f && (f.week == null || f.week === week)) { feeds[week] = f; return true; }
+      } catch (e) {}
+      feeds[week] = null; return false;
     }
-    function feedFor(id) { return feed && feed.players ? feed.players[id] : null; }
-    function dvpFeed() { return feed && feed.dvp ? feed.dvp : null; }
-    return { BASE, status, metas, metaMap, getState, load, loadFeed, feedFor, dvpFeed };
+    function feedFor(id) { const f = feeds[curWeek()]; return f && f.players ? f.players[id] : null; }
+    function dvpFeed() { const f = feeds[curWeek()]; return f && f.dvp ? f.dvp : null; }
+    function hasFeed() { return !!feeds[curWeek()]; }
+    return { BASE, status, metas, metaMap, getState, load, loadFeed, feedFor, dvpFeed, hasFeed, feeds };
   })();
+  try { window.__LC = LIVE; } catch (e) {}
 
   let liveInited = false;
   async function initLive() {
@@ -17963,8 +17970,9 @@ function pickYear(year) {
     try { lcRender(); } catch (e) {}
   }
   function ensureWeek(week) {
-    if (LIVE.metas[week] || !LIVE.status.season || LIVE.status.mode === 'sample') { lcRender(); return; }
-    Promise.all([LIVE.loadFeed(week), LIVE.load(LIVE.status.season, week)]).then(() => { LIVE.status.when = Date.now(); }).catch(() => {}).finally(() => lcRender());
+    if (!LIVE.status.season || LIVE.status.mode === 'sample') { lcRender(); return; }
+    const need = !LIVE.metas[week];
+    Promise.all([LIVE.loadFeed(week), need ? LIVE.load(LIVE.status.season, week) : Promise.resolve()]).then(() => { LIVE.status.when = Date.now(); }).catch(() => {}).finally(() => lcRender());
   }
   function liveStamp(when) {
     if (!when) return '';
@@ -17972,10 +17980,14 @@ function pickYear(year) {
     return sameDay ? ('today ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   }
   function updateBadge() {
-    const el = document.getElementById('lc-live-badge'); if (!el) return;
+    const el = document.getElementById('lc-live-badge');
+    const hf = LIVE.hasFeed && LIVE.hasFeed();
+    const chip = document.getElementById('lc-dvp-chip');
+    if (chip) chip.textContent = (LIVE.dvpFeed && LIVE.dvpFeed()) ? '◈ vs DEF · live DvP' : '◈ vs DEF · DvP baseline';
+    if (!el) return;
     const s = LIVE.status; let col, dot, txt;
     if (s.mode === 'loading') { col = 'var(--muted)'; dot = '◌'; txt = 'Checking live feed…'; }
-    else if (s.mode === 'live') { col = 'var(--rb)'; dot = '●'; txt = 'Live · Sleeper' + (s.feed ? ' + cron feed' : '') + ' · updated ' + liveStamp(s.when); }
+    else if (s.mode === 'live') { col = 'var(--rb)'; dot = '●'; txt = 'Live · Sleeper' + (hf ? ' + cron feed' : '') + ' · updated ' + liveStamp(s.when); }
     else { col = 'var(--te)'; dot = '○'; txt = 'Sample data · ' + (s.note || 'live feed offline'); }
     el.style.color = col; el.title = s.note || '';
     el.innerHTML = '<span style="font-size:8px">' + dot + '</span> ' + txt;
@@ -18020,7 +18032,7 @@ function pickYear(year) {
       <div class="lc-bar-head">
         <div class="lc-bar-title">Compare Players <small>Search anyone — your roster, an opponent's bench, or the wire. Up to 4.</small></div>
         <div class="lc-tools">
-          <button class="lc-wk" id="lcWk"><span class="lc-cap">Week</span> <b>${state.week}</b> <span style="color:var(--muted);font-size:10px">▼</span></button>
+          <label class="lc-wk" for="lcWk"><span class="lc-cap">Week</span><select id="lcWk" class="lc-wk-sel">${Array.from({ length: 18 }, (_, i) => i + 1).map(w => `<option value="${w}"${w === state.week ? ' selected' : ''}>Week ${w}${LIVE.status.week === w ? ' · now' : ''}</option>`).join('')}</select></label>
           <div class="lc-fmt" id="lcFmt">${['ppr', 'half', 'std'].map(k => `<button data-fmt="${k}" class="${state.fmt === k ? 'on' : ''}">${fmtName[k]}</button>`).join('')}</div>
         </div>
       </div>
@@ -18084,8 +18096,7 @@ function pickYear(year) {
         <div>${p.sources.map(s => { const miss = s.val == null; const fv = srcFmt(p, s.val); const hi = !miss && fv === srcMax, lo = !miss && fv === srcMin; const col = miss ? 'var(--muted)' : hi ? 'var(--rb)' : lo ? 'var(--muted)' : 'var(--text2)'; return `<div class="lc-srow"><span style="font-size:12px;color:var(--text2)">${s.name} ${srcTag(s.how)}${s.live ? ' <span style="color:var(--rb);font-size:8px">●</span>' : ''}</span><span class="lc-mono" style="font-size:12.5px;font-weight:700;color:${col}">${miss ? '—' : fv.toFixed(1)}</span></div>`; }).join('')}</div>
       </div>`;
     });
-    const cols = Math.min(set.length, 3);
-    return controlBar() + `<div class="lc-cards" style="grid-template-columns:repeat(${cols},1fr)">${cards.join('')}</div>`;
+    return controlBar() + `<div class="lc-cards" style="--n:${Math.min(set.length, 4)}">${cards.join('')}</div>`;
   }
   function emptyState() {
     return `<div class="lc-card" style="padding:56px 24px;text-align:center"><div style="font-size:30px;margin-bottom:10px;opacity:.5">⚖️</div><div style="font-size:16px;font-weight:700;margin-bottom:6px">Add players to compare</div><div style="font-size:13px;color:var(--muted);max-width:340px;margin:0 auto">Search any player above — your starters, your bench, or a waiver-wire flier — to weigh the week's call.</div></div>`;
@@ -18127,7 +18138,9 @@ function pickYear(year) {
     #page-lineup .lc-fmt{display:flex;gap:2px;background:var(--s1);border:1px solid var(--border);border-radius:9px;padding:3px}
     #page-lineup .lc-fmt button{border:none;background:transparent;color:var(--muted);font-family:var(--font-mono);font-size:11px;font-weight:600;padding:6px 11px;border-radius:7px;cursor:pointer;transition:all .14s}
     #page-lineup .lc-fmt button.on{background:var(--s3);color:var(--text)}
-    #page-lineup .lc-wk{display:flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:12.5px;color:var(--text);cursor:pointer}
+    #page-lineup .lc-wk{display:flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--border);border-radius:9px;padding:6px 10px;font-size:12.5px;color:var(--text)}
+    #page-lineup .lc-wk-sel{appearance:none;-webkit-appearance:none;background:transparent;border:none;color:var(--text);font-family:var(--font-sans);font-size:12.5px;font-weight:600;cursor:pointer;padding:2px 16px 2px 2px;outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6' viewBox='0 0 8 6'%3E%3Cpath fill='%238794a6' d='M0 0h8L4 6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 2px center}
+    #page-lineup .lc-wk-sel option{background:var(--s1);color:var(--text)}
     #page-lineup .lc-wk .lc-cap{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
     #page-lineup .lc-search{position:relative;display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:11px 14px}
     #page-lineup .lc-search:focus-within{border-color:var(--border3)}
@@ -18144,7 +18157,7 @@ function pickYear(year) {
     #page-lineup .lc-x:hover{background:rgba(255,102,128,.16);color:var(--accent2)}
     #page-lineup .lc-chip-add{background:transparent;border:1px dashed var(--border3);color:var(--muted);border-radius:10px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer}
     #page-lineup .lc-chip-add:hover{color:var(--text);border-color:var(--text2)}
-    #page-lineup .lc-cards{display:grid;gap:16px}
+    #page-lineup .lc-cards{display:grid;gap:16px;grid-template-columns:repeat(var(--n,3),minmax(0,1fr))}
     #page-lineup .lc-card{background:var(--lc-card);border:1px solid var(--border);border-radius:16px;padding:18px}
     #page-lineup .lc-card.best{border-color:rgba(61,204,122,.45);box-shadow:0 0 0 1px rgba(61,204,122,.25),0 18px 40px rgba(0,0,0,.3)}
     #page-lineup .lc-cardx{width:24px;height:24px;border-radius:7px;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;flex-shrink:0;font-size:14px}
@@ -18162,7 +18175,39 @@ function pickYear(year) {
     .lc-mt-item.active{background:rgba(226,58,78,.12)}.lc-mt-item.active .ic{background:rgba(226,58,78,.18);color:var(--accent2)}
     .lc-newtag{margin-left:auto;font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.1em;padding:2px 6px;border-radius:5px;background:rgba(226,58,78,.18);color:var(--accent2)}
     .lc-caret{font-size:8px;opacity:.7;margin-left:5px}
-    @media(max-width:760px){#page-lineup .lc-cards{grid-template-columns:1fr!important}}
+    /* mobile sub-nav: switch Team Review ↔ Lineup Command (desktop uses the dropdown) */
+    .lc-subnav{display:none}
+    @media(max-width:768px){
+      .lc-subnav{display:flex;gap:4px;background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:4px;margin-bottom:16px}
+      .lc-subnav button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;border:none;background:transparent;color:var(--muted);font-family:var(--font-sans);font-size:13.5px;font-weight:600;padding:11px 8px;border-radius:10px;cursor:pointer;min-height:44px}
+      .lc-subnav button span{font-size:15px}
+      .lc-subnav button.on{background:rgba(226,58,78,.16);color:var(--text);box-shadow:inset 0 0 0 1px rgba(226,58,78,.4)}
+    }
+    /* ── responsive ── */
+    @media(max-width:920px){
+      #page-lineup .lc-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @media(max-width:620px){
+      #page-lineup .lc-page{padding:18px 14px 84px}
+      #page-lineup .lc-title{font-size:30px}
+      #page-lineup .lc-cards{grid-template-columns:1fr;gap:13px}
+      #page-lineup .lc-bar{padding:14px}
+      #page-lineup .lc-bar-head{flex-direction:column;align-items:stretch;gap:11px}
+      #page-lineup .lc-tools{justify-content:space-between}
+      #page-lineup .lc-wk{flex:1}
+      #page-lineup .lc-wk-sel{flex:1;min-width:0}
+      #page-lineup .lc-fmt{flex:1;justify-content:center}
+      #page-lineup .lc-fmt button{flex:1}
+      #page-lineup .lc-card{padding:15px}
+      #page-lineup .lc-proj .lc-mono{font-size:32px!important}
+      #page-lineup .lc-srcline{gap:6px}
+      #page-lineup .lc-srcchip{font-size:9px;padding:4px 7px}
+      #page-lineup .lc-sub{font-size:12.5px}
+    }
+    @media(max-width:380px){
+      #page-lineup .lc-srcchip{display:none}
+      #page-lineup .lc-srcline:first-of-type .lc-lab{display:none}
+    }
     `;
     const el = document.createElement('style'); el.id = 'lc-vault-styles'; el.textContent = css; document.head.appendChild(el);
   }
@@ -18176,6 +18221,10 @@ function pickYear(year) {
     page.style.overflowY = 'auto';
     page.innerHTML = `
       <div class="lc-page">
+        <div class="lc-subnav" role="tablist" aria-label="My Team sections">
+          <button data-go="overview"><span aria-hidden="true">▦</span> Team Review</button>
+          <button class="on" data-go="lineup" aria-current="page"><span aria-hidden="true">⚡</span> Lineup Command</button>
+        </div>
         <div class="lc-head">
           <div>
             <h1 class="lc-title">Lineup Command</h1>
@@ -18184,7 +18233,7 @@ function pickYear(year) {
             <div class="lc-srcline">
               <span class="lc-lab" style="font-size:8.5px">Sources</span>
               ${SOURCES.map(s => `<span class="lc-srcchip">${s.name}${s.key === 'sleeper' ? ' <span style="color:var(--rb)">● live</span>' : ''}</span>`).join('')}
-              <span class="lc-srcchip" style="color:var(--muted)" title="Matchup uses Fantasy Points Allowed to position (DvP). Seeded from 2025 actuals — refresh via a weekly feed.">◈ vs DEF · DvP baseline</span>
+              <span class="lc-srcchip" id="lc-dvp-chip" style="color:var(--muted)" title="Matchup uses Fantasy Points Allowed to position (DvP). Live when the cron feed is present; otherwise a 2025 baseline.">◈ vs DEF · DvP baseline</span>
             </div>
             <div class="lc-srcline" style="margin-top:9px">
               <span id="lc-live-badge" class="lc-badge"><span style="font-size:8px">◌</span> Checking live feed…</span>
@@ -18251,10 +18300,12 @@ function pickYear(year) {
       document.getElementById('sl-lineup')?.classList.toggle('active', p === 'lineup');
       document.querySelectorAll('#lc-mt-menu .lc-mt-item').forEach(it => it.classList.toggle('active', it.dataset.go === p));      if (p === 'lineup') { try { lcRender(); initLive(); } catch (e) { console.error(e); } }
     };
-    // menu item clicks
+    // menu item clicks + mobile sub-nav clicks
     document.addEventListener('click', e => {
       const it = e.target.closest('#lc-mt-menu .lc-mt-item');
-      if (it) { document.getElementById('lc-mt-menu')?.classList.remove('show'); window.showPage(it.dataset.go); }
+      if (it) { document.getElementById('lc-mt-menu')?.classList.remove('show'); window.showPage(it.dataset.go); return; }
+      const sn = e.target.closest('.lc-subnav button[data-go]');
+      if (sn) { window.showPage(sn.dataset.go); }
     });
     return true;
   }
@@ -18267,14 +18318,25 @@ function pickYear(year) {
     const add = t.closest('[data-add]'); if (add) { if (state.sel.length < 4 && !state.sel.includes(add.dataset.add)) state.sel.push(add.dataset.add); const inp = document.getElementById('lcInput'); if (inp) inp.value = ''; document.getElementById('lcAc')?.classList.remove('show'); lcRender(); return; }
     if (t.closest('#lcChipAdd')) { const inp = document.getElementById('lcInput'); if (inp) inp.focus(); runSearch(''); return; }
     const fb = t.closest('#lcFmt button'); if (fb) { state.fmt = fb.dataset.fmt; lcRender(); return; }
-    if (t.closest('#lcWk')) { state.week = state.week % 18 + 1; state._weekTouched = true; ensureWeek(state.week); return; }
     if (!t.closest('.lc-search')) document.getElementById('lcAc')?.classList.remove('show');
   });
+  document.addEventListener('change', e => { if (e.target.id === 'lcWk') { state.week = +e.target.value; state._weekTouched = true; ensureWeek(state.week); } });
   document.addEventListener('input', e => { if (e.target.id === 'lcInput') runSearch(e.target.value); });
   document.addEventListener('focusin', e => { if (e.target.id === 'lcInput') runSearch(e.target.value); });
 
+  function injectOverviewSubnav() {
+    const host = document.querySelector('#page-overview .proto-page');
+    if (!host || host.querySelector('.lc-subnav')) return;
+    const nav = document.createElement('div');
+    nav.className = 'lc-subnav';
+    nav.setAttribute('role', 'tablist');
+    nav.innerHTML = '<button class="on" data-go="overview" aria-current="page"><span aria-hidden="true">▦</span> Team Review</button>' +
+      '<button data-go="lineup"><span aria-hidden="true">⚡</span> Lineup Command</button>';
+    host.insertBefore(nav, host.firstChild);
+  }
+
   function boot() {
-    injectStyles(); injectPage(); injectNavDropdown();
+    injectStyles(); injectPage(); injectNavDropdown(); injectOverviewSubnav();
     let tries = 0;
     const t = setInterval(() => { if (hookShowPage() || ++tries > 40) clearInterval(t); }, 100);
   }
