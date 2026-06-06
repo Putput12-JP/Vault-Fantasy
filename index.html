@@ -17827,33 +17827,159 @@ function pickYear(year) {
     return                 { tier: 1, label: 'Smash',     short: 'SMASH', color: 'var(--rb)' };
   }
 
-  function build(p) {
-    const rank = (FPA_RANK[p.opp] && FPA_RANK[p.opp][p.pos]) || 16;
-    const fpa = (LC_FPA[p.opp] && LC_FPA[p.opp][POS_IDX[p.pos]]) || null;
+  const DEF_REC = { QB: 0, RB: 3.2, WR: 4.8, TE: 4.0 };
+  const r1 = n => Math.round(n * 10) / 10;
+  const fmtName = { ppr: 'PPR', half: 'Half-PPR', std: 'Standard' };
+  const initials = n => (n || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const SKILL = { QB: 1, RB: 1, WR: 1, TE: 1 };
+  const matchAdjOf = rank => 1 + (rank - (TEAM_CT + 1) / 2) / TEAM_CT * 0.10;
+
+  // RAW → offline fallback metas (used only when the live feed is unreachable)
+  const RAW_METAS = RAW.map(p => ({
+    id: p.id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, ha: p.ha,
+    day: p.day, time: p.time, ppr: p.ppr, rec: p.rec, spread: p.spread, status: p.status || null, live: false,
+  }));
+
+  /* assemble a full player object from a lightweight meta (live or fallback).
+     Sleeper gives one real consensus + the real opponent; the other source rows
+     come from the cron feed when present, else are modeled around the consensus. */
+  function assemble(m) {
+    if (!m) return null;
+    const opp = m.opp || '';
+    const df = LIVE.dvpFeed();
+    let rank, fpa;
+    if (df && df[opp] && df[opp][m.pos]) { rank = df[opp][m.pos].rank; fpa = df[opp][m.pos].fpa; }
+    else { rank = (opp && FPA_RANK[opp] && FPA_RANK[opp][m.pos]) || 16; const fa = opp && LC_FPA[opp]; fpa = fa ? fa[POS_IDX[m.pos]] : null; }
     const mu = matchup(rank);
-    const matchAdj = 1 + (rank - (TEAM_CT + 1) / 2) / TEAM_CT * 0.10; // soft D ⇒ small bump
-    const sources = SOURCES.map(s => {
-      if (rng(p.id + s.key) < 0.06) return { key: s.key, name: s.name, how: s.how, val: null };
-      const jitter = (rng(p.id + s.key + 'j') - 0.5) * 2 * p.spread;
-      return { key: s.key, name: s.name, how: s.how, val: Math.round(p.ppr * matchAdj * (1 + jitter + (SRC_BIAS[s.key] || 0)) * 10) / 10 };
-    });
+    const rec = m.rec != null ? m.rec : DEF_REC[m.pos];
+    const adj = m.live ? 1 : matchAdjOf(rank);
+    const consensus = (m.ppr || 0) * adj;
+    const feed = LIVE.feedFor(m.id);
+    let sources;
+    if (feed && feed.sources) {
+      sources = SOURCES.map(s => {
+        const fv = feed.sources[s.key];
+        if (fv != null) return { key: s.key, name: s.name, how: s.how, val: r1(fv), live: true };
+        if (s.key === 'sleeper') return { key: s.key, name: s.name, how: s.how, val: r1(consensus), live: !!m.live };
+        return { key: s.key, name: s.name, how: s.how, val: null };
+      });
+    } else {
+      sources = SOURCES.map(s => {
+        if (s.key === 'sleeper') return { key: s.key, name: s.name, how: s.how, val: r1(consensus), live: !!m.live };
+        if (rng(m.id + s.key) < 0.05) return { key: s.key, name: s.name, how: s.how, val: null };
+        const jitter = (rng(m.id + s.key + 'j') - 0.5) * 2 * (m.spread || 0.11);
+        return { key: s.key, name: s.name, how: s.how, val: r1(consensus * (1 + jitter + (SRC_BIAS[s.key] || 0))) };
+      });
+    }
     const vals = sources.filter(s => s.val != null).map(s => s.val);
-    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-    const low = Math.min(...vals), high = Math.max(...vals);
-    const sd = Math.sqrt(vals.reduce((a, b) => a + (b - avg) ** 2, 0) / vals.length);
+    const low = vals.length ? Math.min.apply(null, vals) : 0;
+    const high = vals.length ? Math.max.apply(null, vals) : 0;
+    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    const sd = vals.length ? Math.sqrt(vals.reduce((a, b) => a + (b - avg) ** 2, 0) / vals.length) : 0;
+    const head = (m.live ? consensus : avg) || 0;
+    const half = m.half != null ? m.half * adj : head - rec / 2;
+    const std = m.std != null ? m.std * adj : head - rec;
     return {
-      ...p, rank, fpa, mu, sources,
-      fmt: { ppr: r1(avg), half: r1(avg - p.rec / 2), std: r1(avg - p.rec) },
-      fmtLow: { ppr: low, half: r1(low - p.rec / 2), std: r1(low - p.rec) },
-      fmtHigh: { ppr: high, half: r1(high - p.rec / 2), std: r1(high - p.rec) },
-      agreement: Math.max(0, Math.min(1, 1 - sd / (avg * 0.16))),
+      id: m.id, name: m.name, team: m.team, pos: m.pos, opp: opp || '—', ha: m.ha || 'vs',
+      day: m.day || '', time: m.time || '', status: m.status || null, rec, rank, fpa, mu, sources, live: !!m.live,
+      fmt: { ppr: r1(head), half: r1(half), std: r1(std) },
+      fmtLow: { ppr: r1(low), half: r1(low - rec / 2), std: r1(low - rec) },
+      fmtHigh: { ppr: r1(high), half: r1(high - rec / 2), std: r1(high - rec) },
+      agreement: avg ? Math.max(0, Math.min(1, 1 - sd / (avg * 0.16))) : 0.5,
     };
   }
-  const r1 = n => Math.round(n * 10) / 10;
-  const PLAYERS = RAW.map(build);
-  const byId = Object.fromEntries(PLAYERS.map(p => [p.id, p]));
-  const fmtName = { ppr: 'PPR', half: 'Half-PPR', std: 'Standard' };
-  const initials = n => n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+  // current-week universe (live if loaded, else the RAW fallback)
+  function activeMetas() { const u = LIVE.metas[state.week]; return (u && u.length) ? u : RAW_METAS; }
+  function metaById(id) { const mp = LIVE.metaMap[state.week]; if (mp && mp[id]) return mp[id]; return RAW_METAS.find(m => m.id === id) || null; }
+  function getPlayer(id) { return assemble(metaById(id)); }
+
+  /* ════════════════════════════════════════════════════════════════
+     LIVE DATA
+     • Sleeper /state/nfl + /projections  → EVERY projected player, real
+       consensus (PPR/Half/Std), real opponent + injury status. Fetched in
+       each browser, cached 24h (the "daily" mechanism, no backend needed).
+     • Optional cron feed (lineup_command/feed/latest.json) → the other 4
+       source rows (ESPN/CBS/DraftKings/NFL.com) + live DvP. When present it
+       overrides the modeled spread; when absent we degrade gracefully.
+     ════════════════════════════════════════════════════════════════ */
+  const LIVE = (function () {
+    const BASE = 'https://api.sleeper.com', DAY = 864e5;
+    const status = { mode: 'loading', week: null, season: null, when: null, note: '', feed: false };
+    const metas = {}, metaMap = {};
+    let feed = null;
+    function cget(k) { try { const o = JSON.parse(localStorage.getItem(k)); if (o && Date.now() - o.t < DAY) return o.d; } catch (e) {} return null; }
+    function cset(k, d) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {} }
+    async function jget(url) { const r = await fetch(url, { mode: 'cors', credentials: 'omit' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
+    async function getState() { const c = cget('lc-sl-state'); if (c) return c; const d = await jget(BASE + '/state/nfl'); cset('lc-sl-state', d); return d; }
+    function rowToMeta(row) {
+      const pl = row.player || {}, st = row.stats || {};
+      const pos = pl.position; if (!SKILL[pos]) return null;
+      const ppr = st.pts_ppr; if (ppr == null) return null;
+      const team = (pl.team || row.team || '').toUpperCase(); if (!team) return null;
+      const name = ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim(); if (!name) return null;
+      return {
+        id: String(row.player_id), name: name, team: team, pos: pos,
+        opp: (row.opponent || '').toUpperCase(), ha: 'vs',
+        ppr: ppr, half: st.pts_half_ppr, std: st.pts_std, rec: st.rec,
+        status: pl.injury_status || null, spread: 0.11, live: true,
+      };
+    }
+    async function load(season, week) {
+      const key = 'lc-sl-proj-' + season + '-' + week;
+      let rows = cget(key);
+      if (!rows) { rows = await jget(BASE + '/projections/nfl/' + season + '/' + week + '?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&order_by=pts_ppr'); cset(key, rows); }
+      const seen = {}, arr = [];
+      (Array.isArray(rows) ? rows : []).forEach(row => { const m = rowToMeta(row); if (!m || seen[m.id]) return; seen[m.id] = 1; arr.push(m); });
+      metas[week] = arr; metaMap[week] = Object.fromEntries(arr.map(m => [m.id, m]));
+      return arr.length;
+    }
+    async function loadFeed(week) {
+      try { const f = await jget('lineup_command/feed/latest.json?d=' + Math.floor(Date.now() / DAY)); if (f && (f.week == null || f.week === week)) { feed = f; status.feed = true; return true; } } catch (e) {}
+      return false;
+    }
+    function feedFor(id) { return feed && feed.players ? feed.players[id] : null; }
+    function dvpFeed() { return feed && feed.dvp ? feed.dvp : null; }
+    return { BASE, status, metas, metaMap, getState, load, loadFeed, feedFor, dvpFeed };
+  })();
+
+  let liveInited = false;
+  async function initLive() {
+    if (liveInited) return; liveInited = true;
+    try {
+      const stt = await LIVE.getState();
+      LIVE.status.season = stt.season || String(new Date().getFullYear());
+      LIVE.status.week = stt.display_week || stt.week || stt.leg || 1;
+      if (!state._weekTouched) state.week = LIVE.status.week;
+      const feedOk = await LIVE.loadFeed(state.week);
+      const n = await LIVE.load(LIVE.status.season, state.week);
+      LIVE.status.mode = n > 0 ? 'live' : 'sample';
+      LIVE.status.when = Date.now();
+      LIVE.status.note = n > 0 ? (n + ' players · Sleeper' + (feedOk ? ' + cron feed' : '')) : 'No projections posted yet (offseason)';
+    } catch (e) {
+      LIVE.status.mode = 'sample';
+      LIVE.status.note = 'Live feed unreachable from this host (CORS / offline)';
+    }
+    try { lcRender(); } catch (e) {}
+  }
+  function ensureWeek(week) {
+    if (LIVE.metas[week] || !LIVE.status.season || LIVE.status.mode === 'sample') { lcRender(); return; }
+    Promise.all([LIVE.loadFeed(week), LIVE.load(LIVE.status.season, week)]).then(() => { LIVE.status.when = Date.now(); }).catch(() => {}).finally(() => lcRender());
+  }
+  function liveStamp(when) {
+    if (!when) return '';
+    const d = new Date(when), now = new Date(), sameDay = d.toDateString() === now.toDateString();
+    return sameDay ? ('today ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+  function updateBadge() {
+    const el = document.getElementById('lc-live-badge'); if (!el) return;
+    const s = LIVE.status; let col, dot, txt;
+    if (s.mode === 'loading') { col = 'var(--muted)'; dot = '◌'; txt = 'Checking live feed…'; }
+    else if (s.mode === 'live') { col = 'var(--rb)'; dot = '●'; txt = 'Live · Sleeper' + (s.feed ? ' + cron feed' : '') + ' · updated ' + liveStamp(s.when); }
+    else { col = 'var(--te)'; dot = '○'; txt = 'Sample data · ' + (s.note || 'live feed offline'); }
+    el.style.color = col; el.title = s.note || '';
+    el.innerHTML = '<span style="font-size:8px">' + dot + '</span> ' + txt;
+  }
 
   function confidence(set, fmtKey) {
     if (set.length < 2) return set.map(() => 100);
@@ -17866,8 +17992,8 @@ function pickYear(year) {
   }
 
   /* ── state ── */
-  const state = { fmt: 'ppr', week: 1, sel: ['gwilson', 'rice', 'higgins'] };
-  try { Object.assign(state, JSON.parse(localStorage.getItem('lc-vault-state') || '{}')); } catch (e) {}
+  const state = { v: 2, fmt: 'ppr', week: 1, sel: [] };
+  try { const saved = JSON.parse(localStorage.getItem('lc-vault-state') || '{}'); if (saved.v === 2) { Object.assign(state, saved); } else { if (saved.fmt) state.fmt = saved.fmt; } } catch (e) {}
   const save = () => { try { localStorage.setItem('lc-vault-state', JSON.stringify(state)); } catch (e) {} };
 
   /* ── atoms ── */
@@ -17884,7 +18010,7 @@ function pickYear(year) {
   const diffBars = (t, c) => `<div style="display:flex;gap:3px;align-items:flex-end;height:14px">${[1, 2, 3, 4, 5].map(i => `<div style="width:7px;height:${4 + i * 2}px;border-radius:2px;background:${i <= t ? c : 'rgba(255,255,255,.12)'}"></div>`).join('')}</div>`;
   const srcTag = how => { const m = { api: ['API', 'var(--rb)'], scrape: ['scrape', 'var(--muted)'], dfs: ['DFS', 'var(--wr)'] }; const [t, c] = m[how] || ['', 'var(--muted)']; return `<span class="lc-mono" style="font-size:8px;color:${c};opacity:.7;letter-spacing:.05em">${t}</span>`; };
 
-  const selPlayers = () => state.sel.map(id => byId[id]).filter(Boolean);
+  const selPlayers = () => state.sel.map(id => getPlayer(id)).filter(Boolean);
   function compareConf() { const set = selPlayers(); const c = confidence(set, state.fmt); const m = {}; set.forEach((p, i) => m[p.id] = c[i]); return m; }
 
   /* ── control bar ── */
@@ -17914,9 +18040,9 @@ function pickYear(year) {
   function runSearch(q) {
     const list = document.getElementById('lcAc'); if (!list) return;
     q = (q || '').trim().toLowerCase();
-    let pool = PLAYERS.filter(p => !state.sel.includes(p.id));
-    if (q) pool = pool.filter(p => p.name.toLowerCase().includes(q) || p.pos.toLowerCase() === q || p.team.toLowerCase() === q);
-    pool = pool.slice(0, 8);
+    let pool = activeMetas().filter(m => !state.sel.includes(m.id));
+    if (q) pool = pool.filter(m => m.name.toLowerCase().includes(q) || m.pos.toLowerCase() === q || m.team.toLowerCase() === q);
+    pool = pool.sort((a, b) => (b.ppr || 0) - (a.ppr || 0)).slice(0, 8).map(m => getPlayer(m.id)).filter(Boolean);
     list.innerHTML = pool.length ? pool.map(p => `<div class="lc-ac-item" data-add="${p.id}">${av(p, 32)}<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600">${p.name}</div><div class="lc-mono" style="font-size:10px;color:var(--muted)">${p.pos} · ${p.team} · ${p.ha} ${p.opp} · proj ${fmtPts(p)}</div></div><span class="lc-pill" style="background:color-mix(in srgb,${p.mu.color} 14%,transparent);color:${p.mu.color}">${p.mu.short}</span></div>`).join('') : `<div class="lc-ac-empty">No players match "${q}"</div>`;
     list.classList.add('show');
   }
@@ -17936,7 +18062,7 @@ function pickYear(year) {
           ${av(p, 46)}
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:7px"><span style="font-size:16px;font-weight:800;letter-spacing:-.02em">${p.name}</span>${statusPill(p)}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px">${posTag(p)} · ${p.day} ${p.time} · ${p.ha} ${p.opp}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">${posTag(p)} · ${p.ha} ${p.opp}${p.day ? ' · ' + p.day : ''}${p.time ? ' ' + p.time : ''}</div>
           </div>
           <button class="lc-cardx" data-rm="${p.id}">×</button>
         </div>
@@ -17948,14 +18074,14 @@ function pickYear(year) {
           <div><div class="lc-lab" style="font-size:8.5px">Consensus · ${fmtName[state.fmt]}</div><div class="lc-mono" style="font-size:38px;font-weight:700;letter-spacing:-.02em;line-height:1;margin-top:3px">${fmtPts(p)}</div></div>
           <div style="text-align:right;font-size:11px;color:var(--muted);line-height:1.7"><div>Floor <b class="lc-mono" style="color:var(--text2)">${lowOf(p).toFixed(1)}</b></div><div>Ceiling <b class="lc-mono" style="color:var(--text2)">${highOf(p).toFixed(1)}</b></div></div>
         </div>
-        <div class="lc-match" title="Fantasy points allowed to ${p.pos} — real DvP, via NFL.com / CBS">
+        <div class="lc-match" title="Fantasy points allowed to ${p.pos} (DvP) · seeded from 2025 actuals">
           <div class="lc-lab" style="font-size:8.5px">vs ${p.opp} DEF</div>
           ${diffBars(p.mu.tier, p.mu.color)}
           <span style="font-size:11.5px;color:${p.mu.color};font-weight:600">${p.mu.label}</span>
           <span class="lc-mono" style="font-size:10px;color:var(--muted);margin-left:auto">${p.fpa != null ? p.fpa.toFixed(1) + ' to ' + p.pos + ' · ' : ''}${ordinal(p.rank)} toughest</span>
         </div>
         <div class="lc-lab" style="font-size:8.5px;margin-bottom:2px">Sources</div>
-        <div>${p.sources.map(s => { const miss = s.val == null; const fv = srcFmt(p, s.val); const hi = !miss && fv === srcMax, lo = !miss && fv === srcMin; const col = miss ? 'var(--muted)' : hi ? 'var(--rb)' : lo ? 'var(--muted)' : 'var(--text2)'; return `<div class="lc-srow"><span style="font-size:12px;color:var(--text2)">${s.name} ${srcTag(s.how)}</span><span class="lc-mono" style="font-size:12.5px;font-weight:700;color:${col}">${miss ? '—' : fv.toFixed(1)}</span></div>`; }).join('')}</div>
+        <div>${p.sources.map(s => { const miss = s.val == null; const fv = srcFmt(p, s.val); const hi = !miss && fv === srcMax, lo = !miss && fv === srcMin; const col = miss ? 'var(--muted)' : hi ? 'var(--rb)' : lo ? 'var(--muted)' : 'var(--text2)'; return `<div class="lc-srow"><span style="font-size:12px;color:var(--text2)">${s.name} ${srcTag(s.how)}${s.live ? ' <span style="color:var(--rb);font-size:8px">●</span>' : ''}</span><span class="lc-mono" style="font-size:12.5px;font-weight:700;color:${col}">${miss ? '—' : fv.toFixed(1)}</span></div>`; }).join('')}</div>
       </div>`;
     });
     const cols = Math.min(set.length, 3);
@@ -17970,6 +18096,7 @@ function pickYear(year) {
     const mount = document.getElementById('lc-mount'); if (!mount) return;
     mount.innerHTML = cardsView();
     renderChips();
+    updateBadge();
     save();
   }
   window.lcRender = lcRender;
@@ -17992,6 +18119,7 @@ function pickYear(year) {
     #page-lineup .lc-sub{font-size:13.5px;color:var(--muted);line-height:1.5;max-width:540px}
     #page-lineup .lc-srcline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
     #page-lineup .lc-srcchip{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.04em;color:var(--text2);background:var(--s2);border:1px solid var(--border);padding:5px 9px;border-radius:7px}
+    #page-lineup .lc-badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;letter-spacing:.03em;color:var(--muted);background:var(--s1);border:1px solid var(--border);padding:5px 11px;border-radius:7px}
     #page-lineup .lc-bar{background:var(--lc-card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:18px}
     #page-lineup .lc-bar-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:13px}
     #page-lineup .lc-bar-title{font-size:15px;font-weight:700}#page-lineup .lc-bar-title small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:2px}
@@ -18055,8 +18183,11 @@ function pickYear(year) {
             <p class="lc-sub">Weigh every start/sit call with projections from every source — then see who to play.</p>
             <div class="lc-srcline">
               <span class="lc-lab" style="font-size:8.5px">Sources</span>
-              ${SOURCES.map(s => `<span class="lc-srcchip">${s.name}</span>`).join('')}
-              <span class="lc-srcchip" style="color:var(--muted)" title="Matchup uses real Fantasy Points Allowed to position (DvP) from NFL.com / CBS">◈ vs DEF = real DvP</span>
+              ${SOURCES.map(s => `<span class="lc-srcchip">${s.name}${s.key === 'sleeper' ? ' <span style="color:var(--rb)">● live</span>' : ''}</span>`).join('')}
+              <span class="lc-srcchip" style="color:var(--muted)" title="Matchup uses Fantasy Points Allowed to position (DvP). Seeded from 2025 actuals — refresh via a weekly feed.">◈ vs DEF · DvP baseline</span>
+            </div>
+            <div class="lc-srcline" style="margin-top:9px">
+              <span id="lc-live-badge" class="lc-badge"><span style="font-size:8px">◌</span> Checking live feed…</span>
             </div>
           </div>
         </div>
@@ -18118,7 +18249,7 @@ function pickYear(year) {
       document.getElementById('nb-overview')?.classList.toggle('on', onMT);
       document.getElementById('sl-overview')?.classList.toggle('active', p === 'overview');
       document.getElementById('sl-lineup')?.classList.toggle('active', p === 'lineup');
-      document.querySelectorAll('#lc-mt-menu .lc-mt-item').forEach(it => it.classList.toggle('active', it.dataset.go === p));      if (p === 'lineup') { try { lcRender(); } catch (e) { console.error(e); } }
+      document.querySelectorAll('#lc-mt-menu .lc-mt-item').forEach(it => it.classList.toggle('active', it.dataset.go === p));      if (p === 'lineup') { try { lcRender(); initLive(); } catch (e) { console.error(e); } }
     };
     // menu item clicks
     document.addEventListener('click', e => {
@@ -18136,7 +18267,7 @@ function pickYear(year) {
     const add = t.closest('[data-add]'); if (add) { if (state.sel.length < 4 && !state.sel.includes(add.dataset.add)) state.sel.push(add.dataset.add); const inp = document.getElementById('lcInput'); if (inp) inp.value = ''; document.getElementById('lcAc')?.classList.remove('show'); lcRender(); return; }
     if (t.closest('#lcChipAdd')) { const inp = document.getElementById('lcInput'); if (inp) inp.focus(); runSearch(''); return; }
     const fb = t.closest('#lcFmt button'); if (fb) { state.fmt = fb.dataset.fmt; lcRender(); return; }
-    if (t.closest('#lcWk')) { state.week = state.week % 18 + 1; lcRender(); return; }
+    if (t.closest('#lcWk')) { state.week = state.week % 18 + 1; state._weekTouched = true; ensureWeek(state.week); return; }
     if (!t.closest('.lc-search')) document.getElementById('lcAc')?.classList.remove('show');
   });
   document.addEventListener('input', e => { if (e.target.id === 'lcInput') runSearch(e.target.value); });
