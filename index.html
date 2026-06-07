@@ -19078,10 +19078,6 @@ function pickYear(year) {
   function glRender() {
     const mount = document.getElementById('rh-gl-mount');
     if (!mount) return;
-    let body;
-    if (GL.loading) body = `<div class="rh-loading"><span class="rh-spin">⟳</span> Loading ${GL.season} schedule &amp; logs…</div>`;
-    else body = glCardHtml();
-    const curLabel = GL.name && !GL.acQuery ? esc(GL.name) : '';
     mount.innerHTML = `
       <div class="rh-head">
         <div>
@@ -19093,18 +19089,26 @@ function pickYear(year) {
       </div>
       <div class="rh-search rh-glsearch">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="rh-gl-search" placeholder="Search any player…" value="${esc(GL.acQuery)}" autocomplete="off">
-        ${curLabel ? `<span class="rh-glsearch-cur">${curLabel}</span>` : ''}
-        ${glAcHtml()}
+        <input id="rh-gl-search" placeholder="Search any player…" autocomplete="off" spellcheck="false">
+        <div id="rh-gl-ac" class="rh-ac-host"></div>
       </div>
-      ${body}
+      <div id="rh-gl-body"></div>
       <div class="rh-foot">Logs via <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> · opponents &amp; home/away via ESPN schedule · DvP = Vault fantasy-points-allowed model</div>`;
-    // keep focus + caret in the search box while typing
-    if (GL._focusSearch) {
-      const inp = document.getElementById('rh-gl-search');
-      if (inp) { inp.focus(); const v = inp.value; inp.setSelectionRange(v.length, v.length); }
-      GL._focusSearch = false;
-    }
+    const inp = document.getElementById('rh-gl-search');
+    if (inp) inp.value = GL.acQuery || '';
+    glRenderBody();
+    glRenderAc();
+  }
+  function glRenderBody() {
+    const b = document.getElementById('rh-gl-body');
+    if (!b) return;
+    b.innerHTML = GL.loading
+      ? `<div class="rh-loading"><span class="rh-spin">⟳</span> Loading ${GL.season} schedule &amp; logs…</div>`
+      : glCardHtml();
+  }
+  function glRenderAc() {
+    const host = document.getElementById('rh-gl-ac');
+    if (host) host.innerHTML = glAcHtml();
   }
 
   /* ════════════════════════ EVENT DELEGATION ════════════════════════ */
@@ -19127,24 +19131,24 @@ function pickYear(year) {
     if (gl) {
       const ssn = e.target.closest('[data-rh-glseason]'); if (ssn) { GL.season = ssn.dataset.rhGlseason; GL.acOpen = false; GL.acQuery = ''; glLoadSeason(); return; }
       const pick = e.target.closest('[data-rh-glpick]'); if (pick) { GL.name = pick.dataset.rhGlpick; GL.acOpen = false; GL.acQuery = ''; glBuild(); glRender(); return; }
-      const dvp = e.target.closest('[data-rh-gldvp]'); if (dvp) { GL.dvpFilter = dvp.dataset.rhGldvp; glRender(); return; }
-      const ha = e.target.closest('[data-rh-glha]'); if (ha) { GL.ha = ha.dataset.rhGlha; glRender(); return; }
-      if (!e.target.closest('.rh-glsearch') && GL.acOpen) { GL.acOpen = false; glRender(); }
+      const dvp = e.target.closest('[data-rh-gldvp]'); if (dvp) { GL.dvpFilter = dvp.dataset.rhGldvp; glRenderBody(); return; }
+      const ha = e.target.closest('[data-rh-glha]'); if (ha) { GL.ha = ha.dataset.rhGlha; glRenderBody(); return; }
+      if (!e.target.closest('.rh-glsearch') && GL.acOpen) { GL.acOpen = false; glRenderAc(); }
       return;
     }
     // click outside both pages closes the GL autocomplete
-    if (GL.acOpen) { GL.acOpen = false; glRender(); }
+    if (GL.acOpen) { GL.acOpen = false; glRenderAc(); }
   });
 
   document.addEventListener('input', e => {
     if (e.target.id === 'rh-adv-search') { AS.search = e.target.value; AS._focus = true; asRenderSearchOnly(); }
-    if (e.target.id === 'rh-gl-search') { GL.acQuery = e.target.value; GL.acOpen = true; GL._focusSearch = true; glRender(); }
+    if (e.target.id === 'rh-gl-search') { GL.acQuery = e.target.value; GL.acOpen = true; glRenderAc(); }
   });
   document.addEventListener('change', e => {
-    if (e.target.id === 'rh-gl-opp') { GL.opp = e.target.value; glRender(); }
+    if (e.target.id === 'rh-gl-opp') { GL.opp = e.target.value; glRenderBody(); }
     if (e.target.dataset && e.target.dataset.rhColkey) { const k = e.target.dataset.rhColkey; AS.hidden[k] = !e.target.checked ? true : false; if (e.target.checked) delete AS.hidden[k]; asRender(); }
   });
-  document.addEventListener('focusin', e => { if (e.target.id === 'rh-gl-search') { GL.acOpen = true; glRender(); } });
+  document.addEventListener('focusin', e => { if (e.target.id === 'rh-gl-search') { GL.acOpen = true; glRenderAc(); } });
 
   // Advanced search: re-render but preserve the input focus/caret
   function asRenderSearchOnly() {
