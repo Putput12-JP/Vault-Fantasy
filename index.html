@@ -18470,9 +18470,8 @@ function pickYear(year) {
   // Returns Promise<row[]>
   function buildRows(sel) {
     const years = (sel === 'all') ? ARCHIVE_YEARS.slice() : [Number(sel)];
-    return Promise.all([loadAges()].concat(years.map(fetchYear))).then(res => {
-      const ages = res[0]; const maps = res.slice(1);
-      // gather every player name across the selected years
+    // Build straight from nflverse — NEVER block the table on the age feed.
+    return Promise.all(years.map(fetchYear)).then(maps => {
       const byName = {};
       maps.forEach(m => {
         if (!m) return;
@@ -18483,9 +18482,14 @@ function pickYear(year) {
         const row = buildRow(n, byName[n]);
         if (row) rows.push(row);
       });
-      if (ages) rows.forEach(r => { const a = ages[normName(r.name)]; if (a != null) r.age = a; });
+      applyAges(rows); // applies only if ages already loaded; else fills in later
       return rows;
     });
+  }
+  function applyAges(rows) {
+    if (!_ageMap) return false;
+    rows.forEach(r => { const a = _ageMap[normName(r.name)]; if (a != null) r.age = a; });
+    return true;
   }
 
   /* ── current player age, from RosterAudit rankings (real) ──────────── */
@@ -18494,10 +18498,16 @@ function pickYear(year) {
       .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '').replace(/[^a-z]/g, '');
   }
   let _ageMap = null, _agePromise = null;
+  // fetch with a hard timeout so a stalled external host can never hang the UI
+  function fetchT(url, ms) {
+    const c = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const t = setTimeout(() => { try { c && c.abort(); } catch (e) {} }, ms || 7000);
+    return fetch(url, c ? { signal: c.signal } : undefined).finally(() => clearTimeout(t));
+  }
   function loadAges() {
     if (_agePromise) return _agePromise;
     _agePromise = Promise.all(['QB', 'RB', 'WR', 'TE'].map(pos =>
-      fetch('https://rosteraudit.com/wp-json/ra/v1/rankings?format=sf&per_page=400&sort=value&position=' + pos)
+      fetchT('https://rosteraudit.com/wp-json/ra/v1/rankings?format=sf&per_page=400&sort=value&position=' + pos, 7000)
         .then(r => r.ok ? r.json() : []).catch(() => [])
     )).then(lists => {
       const map = {};
@@ -18687,7 +18697,7 @@ function pickYear(year) {
     return Promise.all(Array.from({ length: wn }, (_, i) => i + 1).map(wk => {
       const key = year + '_' + wk;
       if (_sched[key]) return Promise.resolve();
-      return fetch('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&season=' + year + '&week=' + wk)
+      return fetchT('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&season=' + year + '&week=' + wk, 7000)
         .then(r => r.ok ? r.json() : null).then(d => {
           const map = {};
           (d && d.events || []).forEach(e => {
@@ -18776,7 +18786,7 @@ function pickYear(year) {
 
   window.RHData = {
     BASE, CURRENT, ARCHIVE_YEARS, POSSET,
-    fetchMeta, buildRows, COLS, QUALIFY, LEADERS,
+    fetchMeta, buildRows, applyAges, COLS, QUALIFY, LEADERS,
     computeLeaders, percentiles, loadAges, meta: _meta,
     // game logs
     FPA, FPA_RANK, dvp, matchupTier, loadSchedule, oppFor,
@@ -18833,6 +18843,7 @@ function pickYear(year) {
       AS.rowsCache[s] = rows; AS.rows = rows; AS.loading = false;
       if (!rows.length) AS.err = 'No data returned for ' + s + '.';
       asRender();
+      D.loadAges().then(() => { if (D.applyAges(rows) && AS.season === s) asRender(); }).catch(() => {});
     }).catch(e => { AS.err = e.message; AS.loading = false; asRender(); });
   }
 
@@ -18960,10 +18971,11 @@ function pickYear(year) {
 
   function glLoadSeason() {
     GL.loading = true; glRender();
-    Promise.all([D.loadSchedule(GL.season), D.playerIndex(GL.season), D.loadAges()]).then(([, idx]) => {
+    Promise.all([D.loadSchedule(GL.season), D.playerIndex(GL.season)]).then(([, idx]) => {
       GL.ready[GL.season] = true; GL.index = idx; GL.loading = false;
       if (!GL.name || !idx.find(p => p.name === GL.name)) GL.name = idx.length ? idx[0].name : null;
       glBuild(); glRender();
+      D.loadAges().then(() => glRender()).catch(() => {});
     }).catch(() => { GL.loading = false; glRender(); });
   }
   function glBuild() {
@@ -19146,7 +19158,7 @@ function pickYear(year) {
   /* ════════════════════════ INJECTION ════════════════════════ */
   function injectStyles() {
     if (document.getElementById('rh-vault-styles')) return;
-    const S = '#page-advstats,#page-gamelogs';
+    const S = '.rh-scope';
     const css = `
     ${S}{--faint:color-mix(in srgb,var(--muted) 72%,transparent);--rh-border3:var(--border3,rgba(255,255,255,.22))}
     ${S} .rh-wrap{max-width:1280px;margin:0 auto;padding:26px 24px 90px}
@@ -19227,7 +19239,7 @@ function pickYear(year) {
     ${S} .rh-tr:hover .rh-td{background:rgba(255,255,255,.025)}
     ${S} .rh-tr:nth-child(even) .rh-td{background:rgba(255,255,255,.012)}
     ${S} .rh-tr:nth-child(even) .rh-td-player{background:#101824}
-    ${S} [data-theme=light] ${S} .rh-tr:nth-child(even) .rh-td-player{background:rgba(0,0,0,.03)}
+    [data-theme=light] ${S} .rh-tr:nth-child(even) .rh-td-player{background:rgba(0,0,0,.03)}
     ${S} .rh-empty{padding:48px;text-align:center;color:var(--muted);font-size:14px;font-family:var(--font-sans)}
     ${S} .rh-pl{display:flex;align-items:center;gap:11px;padding:7px 0;text-align:left}
     ${S} .rh-rank{font-family:var(--font-mono);font-size:11px;color:var(--faint);width:22px;text-align:right;flex-shrink:0}
@@ -19319,12 +19331,12 @@ function pickYear(year) {
     const anchor = document.getElementById('page-research') || document.querySelector('.page');
     if (!anchor) return;
     if (!document.getElementById('page-advstats')) {
-      const p = document.createElement('div'); p.className = 'page'; p.id = 'page-advstats'; p.style.overflowY = 'auto';
+      const p = document.createElement('div'); p.className = 'page rh-scope'; p.id = 'page-advstats'; p.style.overflowY = 'auto';
       p.innerHTML = '<div class="rh-wrap"><div id="rh-adv-mount"></div></div>';
       anchor.parentNode.appendChild(p);
     }
     if (!document.getElementById('page-gamelogs')) {
-      const p = document.createElement('div'); p.className = 'page'; p.id = 'page-gamelogs'; p.style.overflowY = 'auto';
+      const p = document.createElement('div'); p.className = 'page rh-scope'; p.id = 'page-gamelogs'; p.style.overflowY = 'auto';
       p.innerHTML = '<div class="rh-wrap"><div id="rh-gl-mount"></div></div>';
       anchor.parentNode.appendChild(p);
     }
