@@ -18345,5 +18345,1110 @@ function pickYear(year) {
 })();
 
 </script>
+<!-- ════ Research Hub · Advanced Stats + Game Logs (rh-data.js inline) ════ -->
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   VAULT · RESEARCH HUB — Advanced Stats + Game Logs · DATA LAYER
+   Reuses the app's in-memory nflverse cache (window._nflverseCache /
+   window.initNflverseYear) when present, else fetches the same public feed.
+   Normalizes per-week logs into sortable leaderboard rows + game logs with
+   computed volume/efficiency metrics. Age via RosterAudit; opponents via
+   the ESPN schedule; DvP via the Vault fantasy-points-allowed model.
+   Exposes window.RHData.
+   ════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.RHData) return;
+
+  const BASE = (function () {
+    const h = location.hostname;
+    if (h.includes('github.io') || h.includes('putput12-jp'))
+      return 'https://putput12-jp.github.io/Vault-Fantasy/data';
+    if (h.includes('claudeusercontent') || h === 'localhost' || h === '127.0.0.1')
+      return 'https://putput12-jp.github.io/Vault-Fantasy/data';
+    return '/data';
+  })();
+
+  const CURRENT = 2025;
+  const ARCHIVE_YEARS = [2025, 2024, 2023];
+  const POSSET = new Set(['QB', 'RB', 'WR', 'TE']);
+
+  const _cache = {};          // year -> { name: player }
+  const _meta = { updated: null, current: CURRENT };
+
+  // Reuse the app's nflverse cache ONLY when populated; else fetch the same files.
+  // (The app pre-seeds an empty {stats:{}} before nflverse loads — never trust that.)
+  function _hasKeys(o) { return o && typeof o === 'object' && Object.keys(o).length > 0; }
+  function fetchYear(year) {
+    if (_hasKeys(_cache[year])) return Promise.resolve(_cache[year]);
+    try {
+      const c = window._nflverseCache && window._nflverseCache[String(year)];
+      if (c && _hasKeys(c.stats)) { _cache[year] = c.stats; return Promise.resolve(_cache[year]); }
+    } catch (e) {}
+    return _fetchYearDirect(year);
+  }
+  function _fetchYearDirect(year) {
+    if (_hasKeys(_cache[year])) return Promise.resolve(_cache[year]);
+    const url = (year === CURRENT)
+      ? BASE + '/nflverse_stats.json'
+      : BASE + '/nflverse_stats_' + year + '.json';
+    return fetch(url)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (_hasKeys(j)) { _cache[year] = j; return j; } return {}; })
+      .catch(() => ({}));
+  }
+
+  function fetchMeta() {
+    return fetch(BASE + '/nflverse_meta.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(m => { if (m) { _meta.updated = m.updated_at; _meta.current = m.current_season || CURRENT; } return _meta; })
+      .catch(() => _meta);
+  }
+
+  const sum = (arr, k) => arr.reduce((a, w) => a + (Number(w[k]) || 0), 0);
+  const r1 = n => Math.round(n * 10) / 10;
+  const r2 = n => Math.round(n * 100) / 100;
+  const safe = (n, d) => (isFinite(n) && !isNaN(n)) ? n : (d == null ? 0 : d);
+
+  // Merge a player's record across multiple season-objects into one row.
+  // recs: [{season, weeks, team, headshot, ...}] — already filtered to one player.
+  function buildRow(name, recs) {
+    const pos = recs.find(r => r.pos)?.pos;
+    if (!POSSET.has(pos)) return null;
+    // concat all weeks; latest team/headshot wins
+    let weeks = [];
+    let team = null, headshot = null, l4w = null, totalInts = 0;
+    recs.forEach(r => {
+      if (r.weeks && r.weeks.length) weeks = weeks.concat(r.weeks);
+      if (r.team) team = r.team;
+      if (r.headshot) headshot = r.headshot;
+      if (r.l4w_avg != null) l4w = r.l4w_avg;
+      if (r.season && r.season.total_ints != null) totalInts += r.season.total_ints;
+    });
+    const g = weeks.length;
+    if (!g) return null;
+    const fpts = sum(weeks, 'pts');
+    const base = {
+      name, pos, team: team || 'FA', headshot, l4w, age: null,
+      g, fpts: r1(fpts), fppg: r1(fpts / g),
+    };
+
+    if (pos === 'QB') {
+      const att = sum(weeks, 'att'), cmp = sum(weeks, 'cmp');
+      const pyds = sum(weeks, 'pyds'), ptd = sum(weeks, 'ptds');
+      const ruatt = sum(weeks, 'car'), ruyds = sum(weeks, 'ryds');
+      const epa = sum(weeks, 'pepa');
+      Object.assign(base, {
+        att, cmp, pyds, ptd, ruatt, ruyds,
+        cmpPct: r1(safe(cmp / att) * 100), ya: r2(safe(pyds / att)),
+        epaG: r2(safe(epa / g)), pydsG: r1(pyds / g),
+      });
+    } else if (pos === 'RB') {
+      const car = sum(weeks, 'car'), ruyds = sum(weeks, 'ryds'), rutd = sum(weeks, 'rtds');
+      const tgt = sum(weeks, 'tgt'), rec = sum(weeks, 'rec'), recyds = sum(weeks, 'recyds'), rectd = sum(weeks, 'rectds');
+      const scrim = ruyds + recyds, touch = car + rec;
+      Object.assign(base, {
+        car, ruyds, rutd, tgt, rec, recyds, rectd,
+        ypc: r2(safe(ruyds / car)), scrim, touch,
+        yptch: r2(safe(scrim / touch)), ruydsG: r1(ruyds / g), tgtG: r1(tgt / g),
+      });
+    } else { // WR / TE
+      const tgt = sum(weeks, 'tgt'), rec = sum(weeks, 'rec'), recyds = sum(weeks, 'recyds'), rectd = sum(weeks, 'rectds');
+      const air = sum(weeks, 'ays');
+      const ts = sum(weeks, 'ts'), wopr = sum(weeks, 'wopr'), racr = sum(weeks, 'racr');
+      Object.assign(base, {
+        tgt, rec, recyds, rectd, air,
+        catchPct: r1(safe(rec / tgt) * 100), ypr: r2(safe(recyds / rec)),
+        adot: r1(safe(air / tgt)), ts: r1(ts / g), wopr: r2(wopr / g), racr: r2(racr / g),
+      });
+    }
+    return base;
+  }
+
+  // Build all rows for a season selection.
+  //   sel = 2025 | 2024 | 2023 | 'all'
+  // Returns Promise<row[]>
+  function buildRows(sel) {
+    const years = (sel === 'all') ? ARCHIVE_YEARS.slice() : [Number(sel)];
+    return Promise.all([loadAges()].concat(years.map(fetchYear))).then(res => {
+      const ages = res[0]; const maps = res.slice(1);
+      // gather every player name across the selected years
+      const byName = {};
+      maps.forEach(m => {
+        if (!m) return;
+        Object.keys(m).forEach(n => { (byName[n] = byName[n] || []).push(m[n]); });
+      });
+      const rows = [];
+      Object.keys(byName).forEach(n => {
+        const row = buildRow(n, byName[n]);
+        if (row) rows.push(row);
+      });
+      if (ages) rows.forEach(r => { const a = ages[normName(r.name)]; if (a != null) r.age = a; });
+      return rows;
+    });
+  }
+
+  /* ── current player age, from RosterAudit rankings (real) ──────────── */
+  function normName(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '').replace(/[^a-z]/g, '');
+  }
+  let _ageMap = null, _agePromise = null;
+  function loadAges() {
+    if (_agePromise) return _agePromise;
+    _agePromise = Promise.all(['QB', 'RB', 'WR', 'TE'].map(pos =>
+      fetch('https://rosteraudit.com/wp-json/ra/v1/rankings?format=sf&per_page=400&sort=value&position=' + pos)
+        .then(r => r.ok ? r.json() : []).catch(() => [])
+    )).then(lists => {
+      const map = {};
+      lists.forEach(j => {
+        const arr = Array.isArray(j) ? j : (j && (j.players || j.data || j.rankings)) || [];
+        arr.forEach(p => {
+          const a = parseFloat(p.age);
+          if (p.name && isFinite(a)) map[normName(p.name)] = a;
+        });
+      });
+      _ageMap = map;
+      return map;
+    }).catch(() => { _ageMap = {}; return {}; });
+    return _agePromise;
+  }
+
+  /* ── column model, per position ──────────────────────────────────────
+     group: 'info' | 'vol' | 'eff'   ·  dec: decimal places
+     hi: true = higher is better (heatmap hot)  ·  lo: lower is better      */
+  const fmtInt = v => (v == null ? '—' : Math.round(v).toLocaleString());
+  const fmtDec1 = v => (v == null ? '—' : Number(v).toFixed(1));
+  const fmtDec2 = v => (v == null ? '—' : Number(v).toFixed(2));
+  const fmtPct = v => (v == null ? '—' : Number(v).toFixed(1));
+
+  const fmtAge = v => (v == null ? '—' : Number(v).toFixed(1));
+  const COMMON_INFO = [
+    { key: 'age', label: 'AGE', group: 'info', w: 48, fmt: fmtAge, lo: true, hint: 'Current age (RosterAudit)' },
+    { key: 'g', label: 'G', group: 'info', w: 44, fmt: fmtInt, hint: 'Games played' },
+    { key: 'fpts', label: 'FPTS', group: 'info', w: 64, fmt: fmtDec1, hi: true, hint: 'Total fantasy points (PPR)' },
+  ];
+
+  const COLS = {
+    QB: COMMON_INFO.concat([
+      { key: 'att', label: 'ATT', group: 'vol', w: 56, fmt: fmtInt, hi: true, hint: 'Pass attempts' },
+      { key: 'cmp', label: 'CMP', group: 'vol', w: 56, fmt: fmtInt, hi: true, hint: 'Completions' },
+      { key: 'pyds', label: 'P YDS', group: 'vol', w: 64, fmt: fmtInt, hi: true, hint: 'Passing yards' },
+      { key: 'ptd', label: 'P TD', group: 'vol', w: 52, fmt: fmtInt, hi: true, hint: 'Passing touchdowns' },
+      { key: 'ruatt', label: 'RU ATT', group: 'vol', w: 60, fmt: fmtInt, hi: true, hint: 'Rush attempts' },
+      { key: 'ruyds', label: 'RU YDS', group: 'vol', w: 62, fmt: fmtInt, hi: true, hint: 'Rushing yards' },
+      { key: 'cmpPct', label: 'CMP%', group: 'eff', w: 58, fmt: fmtPct, hi: true, hint: 'Completion percentage' },
+      { key: 'ya', label: 'Y/A', group: 'eff', w: 52, fmt: fmtDec2, hi: true, hint: 'Yards per attempt' },
+      { key: 'epaG', label: 'EPA/G', group: 'eff', w: 60, fmt: fmtDec2, hi: true, hint: 'Expected points added per game (passing)' },
+      { key: 'pydsG', label: 'P YDS/G', group: 'eff', w: 68, fmt: fmtDec1, hi: true, hint: 'Passing yards per game' },
+      { key: 'fppg', label: 'FP/G', group: 'eff', w: 56, fmt: fmtDec1, hi: true, hint: 'Fantasy points per game' },
+    ]),
+    RB: COMMON_INFO.concat([
+      { key: 'car', label: 'CAR', group: 'vol', w: 54, fmt: fmtInt, hi: true, hint: 'Carries' },
+      { key: 'ruyds', label: 'RU YDS', group: 'vol', w: 64, fmt: fmtInt, hi: true, hint: 'Rushing yards' },
+      { key: 'rutd', label: 'RU TD', group: 'vol', w: 56, fmt: fmtInt, hi: true, hint: 'Rushing touchdowns' },
+      { key: 'tgt', label: 'TGT', group: 'vol', w: 52, fmt: fmtInt, hi: true, hint: 'Targets' },
+      { key: 'rec', label: 'REC', group: 'vol', w: 52, fmt: fmtInt, hi: true, hint: 'Receptions' },
+      { key: 'recyds', label: 'RE YDS', group: 'vol', w: 62, fmt: fmtInt, hi: true, hint: 'Receiving yards' },
+      { key: 'rectd', label: 'RE TD', group: 'vol', w: 56, fmt: fmtInt, hi: true, hint: 'Receiving touchdowns' },
+      { key: 'ypc', label: 'Y/CAR', group: 'eff', w: 60, fmt: fmtDec2, hi: true, hint: 'Yards per carry' },
+      { key: 'scrim', label: 'SCRIM', group: 'eff', w: 62, fmt: fmtInt, hi: true, hint: 'Total scrimmage yards' },
+      { key: 'touch', label: 'TCH', group: 'eff', w: 54, fmt: fmtInt, hi: true, hint: 'Total touches (car + rec)' },
+      { key: 'yptch', label: 'Y/TCH', group: 'eff', w: 60, fmt: fmtDec2, hi: true, hint: 'Yards per touch' },
+      { key: 'fppg', label: 'FP/G', group: 'eff', w: 56, fmt: fmtDec1, hi: true, hint: 'Fantasy points per game' },
+    ]),
+    WR: null, TE: null,
+  };
+  const RECV = COMMON_INFO.concat([
+    { key: 'tgt', label: 'TGT', group: 'vol', w: 54, fmt: fmtInt, hi: true, hint: 'Targets' },
+    { key: 'rec', label: 'REC', group: 'vol', w: 54, fmt: fmtInt, hi: true, hint: 'Receptions' },
+    { key: 'recyds', label: 'RE YDS', group: 'vol', w: 64, fmt: fmtInt, hi: true, hint: 'Receiving yards' },
+    { key: 'rectd', label: 'RE TD', group: 'vol', w: 56, fmt: fmtInt, hi: true, hint: 'Receiving touchdowns' },
+    { key: 'air', label: 'AIR YDS', group: 'vol', w: 68, fmt: fmtInt, hi: true, hint: 'Total air yards' },
+    { key: 'catchPct', label: 'CATCH%', group: 'eff', w: 64, fmt: fmtPct, hi: true, hint: 'Catch rate (rec / tgt)' },
+    { key: 'ypr', label: 'Y/R', group: 'eff', w: 52, fmt: fmtDec2, hi: true, hint: 'Yards per reception' },
+    { key: 'adot', label: 'aDOT', group: 'eff', w: 56, fmt: fmtDec1, hi: true, hint: 'Average depth of target' },
+    { key: 'ts', label: 'TGT%', group: 'eff', w: 56, fmt: fmtPct, hi: true, hint: 'Team target share' },
+    { key: 'wopr', label: 'WOPR', group: 'eff', w: 58, fmt: fmtDec2, hi: true, hint: 'Weighted opportunity rating' },
+    { key: 'racr', label: 'RACR', group: 'eff', w: 56, fmt: fmtDec2, hi: true, hint: 'Receiver air conversion ratio' },
+    { key: 'fppg', label: 'FP/G', group: 'eff', w: 56, fmt: fmtDec1, hi: true, hint: 'Fantasy points per game' },
+  ]);
+  COLS.WR = RECV; COLS.TE = RECV;
+
+  // Qualification thresholds (games + primary volume) per position.
+  const QUALIFY = {
+    QB: r => r.g >= 6 && r.att >= 100,
+    RB: r => r.g >= 6 && (r.car + r.rec) >= 50,
+    WR: r => r.g >= 6 && r.tgt >= 30,
+    TE: r => r.g >= 6 && r.tgt >= 24,
+  };
+
+  /* ── category leaders, per position ──────────────────────────────── */
+  const LEADERS = {
+    QB: [
+      { tag: 'Highest Volume', key: 'att', sub: 'Biggest workload & opportunity', fmt: v => Math.round(v) + ' att' },
+      { tag: 'Most Accurate', key: 'cmpPct', sub: 'Best completion rate', fmt: v => v.toFixed(1) + '%' },
+      { tag: 'Most Explosive', key: 'ya', sub: 'Top yards per attempt', fmt: v => v.toFixed(2) + ' Y/A' },
+      { tag: 'Most Mobile', key: 'ruyds', sub: 'Top rushing & scramble threat', fmt: v => Math.round(v) + ' yds' },
+      { tag: 'Most Efficient', key: 'epaG', sub: 'Best EPA per game', fmt: v => v.toFixed(2) + ' EPA' },
+    ],
+    RB: [
+      { tag: 'Highest Volume', key: 'car', sub: 'Bell-cow carry share', fmt: v => Math.round(v) + ' car' },
+      { tag: 'Most Efficient', key: 'ypc', sub: 'Top yards per carry', fmt: v => v.toFixed(2) + ' Y/C' },
+      { tag: 'Receiving Threat', key: 'recyds', sub: 'Most receiving yards', fmt: v => Math.round(v) + ' yds' },
+      { tag: 'Goal Line', key: 'rutd', sub: 'Most rushing TDs', fmt: v => Math.round(v) + ' TD' },
+      { tag: 'Workhorse', key: 'touch', sub: 'Most total touches', fmt: v => Math.round(v) + ' tch' },
+    ],
+    WR: [
+      { tag: 'Highest Volume', key: 'tgt', sub: 'Most targets earned', fmt: v => Math.round(v) + ' tgt' },
+      { tag: 'Most Efficient', key: 'wopr', sub: 'Top opportunity rating', fmt: v => v.toFixed(2) + ' WOPR' },
+      { tag: 'Most Explosive', key: 'air', sub: 'Most air yards', fmt: v => Math.round(v) + ' AY' },
+      { tag: 'Best Hands', key: 'catchPct', sub: 'Top catch rate', fmt: v => v.toFixed(1) + '%' },
+      { tag: 'Red Zone', key: 'rectd', sub: 'Most receiving TDs', fmt: v => Math.round(v) + ' TD' },
+    ],
+    TE: [
+      { tag: 'Highest Volume', key: 'tgt', sub: 'Most targets earned', fmt: v => Math.round(v) + ' tgt' },
+      { tag: 'Most Efficient', key: 'wopr', sub: 'Top opportunity rating', fmt: v => v.toFixed(2) + ' WOPR' },
+      { tag: 'Yards Leader', key: 'recyds', sub: 'Most receiving yards', fmt: v => Math.round(v) + ' yds' },
+      { tag: 'Best Hands', key: 'catchPct', sub: 'Top catch rate', fmt: v => v.toFixed(1) + '%' },
+      { tag: 'Red Zone', key: 'rectd', sub: 'Most receiving TDs', fmt: v => Math.round(v) + ' TD' },
+    ],
+  };
+
+  function computeLeaders(rows, pos) {
+    const specs = LEADERS[pos] || [];
+    const pool = rows.filter(r => r.g >= 6); // light qualify for leaders
+    return specs.map(spec => {
+      let best = null;
+      pool.forEach(r => {
+        const v = r[spec.key];
+        if (v == null) return;
+        // require some volume so rate stats aren't gamed by tiny samples
+        if (QUALIFY[pos] && !QUALIFY[pos](r)) return;
+        if (!best || v > best._v) { best = Object.assign({ _v: v }, r); }
+      });
+      return best ? { spec, player: best, valStr: spec.fmt(best._v) } : null;
+    }).filter(Boolean);
+  }
+
+  // percentile [0,1] of value within a column's value set (for heatmaps/bars)
+  function percentiles(rows, key, lower) {
+    const vals = rows.map(r => r[key]).filter(v => v != null && isFinite(v));
+    if (!vals.length) return () => 0.5;
+    let min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+    if (max === min) return () => 0.5;
+    return (v) => {
+      if (v == null || !isFinite(v)) return null;
+      let t = (v - min) / (max - min);
+      return lower ? 1 - t : t;
+    };
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     GAME LOGS data — real opponents (ESPN schedule) + DvP (Vault FPA)
+     ════════════════════════════════════════════════════════════════ */
+  // Fantasy Points Allowed (PPR) per game to [QB,RB,WR,TE], 2025 actuals.
+  const FPA = {
+    ARI:[18.2,24.5,33.0,9.2], ATL:[19.0,26.0,32.0,9.5], BAL:[15.5,18.5,29.0,8.0], BUF:[16.8,21.0,30.1,8.6],
+    CAR:[21.5,28.5,37.0,11.5], CHI:[17.5,23.0,31.0,10.5], CIN:[19.5,24.0,34.0,9.8], CLE:[16.0,22.0,28.5,7.8],
+    DAL:[20.5,27.5,35.5,10.0], DEN:[14.5,20.0,26.5,8.2], DET:[18.8,23.5,33.5,9.0], GB:[16.2,21.5,28.0,8.8],
+    HOU:[15.8,22.5,27.5,9.3], IND:[19.2,25.0,32.5,10.2], JAX:[20.0,26.5,34.5,9.6], KC:[17.0,22.0,30.0,8.5],
+    LV:[19.8,27.0,33.0,12.0], LAC:[16.5,20.5,29.5,8.9], LAR:[18.0,23.0,31.5,9.1], MIA:[18.6,25.5,32.0,9.4],
+    MIN:[15.2,19.5,27.0,8.3], NE:[20.2,26.0,35.0,10.8], NO:[19.6,24.5,33.5,9.0], NYG:[21.0,27.0,36.0,10.3],
+    NYJ:[16.4,21.5,28.8,7.5], PHI:[14.8,18.0,27.2,8.4], PIT:[16.6,20.5,29.8,9.7], SF:[15.6,19.0,28.2,7.9],
+    SEA:[17.2,22.5,30.5,9.5], TB:[18.4,24.0,31.8,10.1], TEN:[20.8,25.5,34.8,11.0], WAS:[19.4,26.5,33.2,11.8],
+  };
+  const POS_IDX = { QB: 0, RB: 1, WR: 2, TE: 3 };
+  const FPA_RANK = {}; // team -> pos -> rank (1 = toughest = fewest allowed)
+  ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+    const i = POS_IDX[pos];
+    Object.keys(FPA).sort((a, b) => FPA[a][i] - FPA[b][i])
+      .forEach((tm, idx) => { (FPA_RANK[tm] = FPA_RANK[tm] || {})[pos] = idx + 1; });
+  });
+  const TEAM_CT = Object.keys(FPA).length;
+  function matchupTier(rank) {
+    if (rank == null) return { label: 'N/A', short: '—', t: 0, color: 'var(--muted)' };
+    if (rank <= 6)  return { label: 'Brutal',    short: 'TOUGH', t: 5, color: 'var(--qb)' };
+    if (rank <= 13) return { label: 'Tough',     short: 'HARD',  t: 4, color: '#ff9a4d' };
+    if (rank <= 19) return { label: 'Neutral',   short: 'EVEN',  t: 3, color: 'var(--te)' };
+    if (rank <= 26) return { label: 'Favorable', short: 'GOOD',  t: 2, color: '#7ac77a' };
+    return            { label: 'Smash',     short: 'SMASH', t: 1, color: 'var(--rb)' };
+  }
+  function dvp(team, pos) {
+    const rank = team && FPA_RANK[team] ? FPA_RANK[team][pos] : null;
+    const fpa = team && FPA[team] ? FPA[team][POS_IDX[pos]] : null;
+    return { rank, fpa, tier: matchupTier(rank), of: TEAM_CT };
+  }
+
+  // ESPN schedule → per-week { team: { opp, ha:'@'|'vs' } }, cached.
+  const _sched = {};
+  function loadSchedule(year, weeks) {
+    const wn = weeks || 18;
+    return Promise.all(Array.from({ length: wn }, (_, i) => i + 1).map(wk => {
+      const key = year + '_' + wk;
+      if (_sched[key]) return Promise.resolve();
+      return fetch('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&season=' + year + '&week=' + wk)
+        .then(r => r.ok ? r.json() : null).then(d => {
+          const map = {};
+          (d && d.events || []).forEach(e => {
+            const c = (e.competitions && e.competitions[0] && e.competitions[0].competitors) || [];
+            const h = c.find(x => x.homeAway === 'home'), a = c.find(x => x.homeAway === 'away');
+            if (h && a) {
+              map[a.team.abbreviation] = { opp: h.team.abbreviation, ha: '@' };
+              map[h.team.abbreviation] = { opp: a.team.abbreviation, ha: 'vs' };
+            }
+          });
+          _sched[key] = map;
+        }).catch(() => { _sched[key] = {}; });
+    })).then(() => _sched);
+  }
+  function oppFor(year, wk, team) {
+    const m = _sched[year + '_' + wk];
+    return (m && m[team]) || null;
+  }
+
+  // raw player record for a given year (from the season cache)
+  function rawPlayer(name, year) {
+    const m = _cache[year];
+    return m ? m[name] : null;
+  }
+
+  // searchable player index for the current season cache (loads it if needed)
+  function playerIndex(year) {
+    return fetchYear(year).then(m => {
+      const out = [];
+      Object.keys(m || {}).forEach(n => {
+        const p = m[n];
+        if (POSSET.has(p.pos)) out.push({ name: p.name, pos: p.pos, team: p.team, headshot: p.headshot, fpts: p.season && p.season.total_pts });
+      });
+      return out.sort((a, b) => (b.fpts || 0) - (a.fpts || 0));
+    });
+  }
+
+  // per-game stat fields shown in the log, per position
+  const LOG_COLS = {
+    QB: [
+      { key: 'cmpatt', label: 'CMP/ATT', fmt: w => (w.cmp != null ? w.cmp + '/' + w.att : '—') },
+      { key: 'pyds', label: 'P YDS', fmt: w => w.pyds != null ? w.pyds : '—', hi: true },
+      { key: 'ptds', label: 'P TD', fmt: w => w.ptds != null ? w.ptds : '—', hi: true },
+      { key: 'ryds', label: 'RU YDS', fmt: w => w.ryds != null ? w.ryds : '—' },
+      { key: 'pepa', label: 'EPA', fmt: w => w.pepa != null ? Number(w.pepa).toFixed(1) : '—', hi: true },
+    ],
+    RB: [
+      { key: 'car', label: 'CAR', fmt: w => w.car != null ? w.car : '—' },
+      { key: 'ryds', label: 'RU YDS', fmt: w => w.ryds != null ? w.ryds : '—', hi: true },
+      { key: 'rtds', label: 'RU TD', fmt: w => w.rtds != null ? w.rtds : '—', hi: true },
+      { key: 'rec', label: 'REC', fmt: w => w.rec != null ? w.rec : '—' },
+      { key: 'recyds', label: 'RE YDS', fmt: w => w.recyds != null ? w.recyds : '—' },
+    ],
+    WR: [
+      { key: 'tgt', label: 'TGT', fmt: w => w.tgt != null ? w.tgt : '—' },
+      { key: 'rec', label: 'REC', fmt: w => w.rec != null ? w.rec : '—', hi: true },
+      { key: 'recyds', label: 'RE YDS', fmt: w => w.recyds != null ? w.recyds : '—', hi: true },
+      { key: 'rectds', label: 'RE TD', fmt: w => w.rectds != null ? w.rectds : '—', hi: true },
+      { key: 'ts', label: 'TGT%', fmt: w => w.ts != null ? Number(w.ts).toFixed(0) + '%' : '—' },
+    ],
+  };
+  LOG_COLS.TE = LOG_COLS.WR;
+
+  // nflverse/ESPN/FPA abbreviation reconciliation
+  const TO_ESPN = { LA: 'LAR', WAS: 'WSH', OAK: 'LV', SD: 'LAC', STL: 'LAR' };
+  const TO_STD = { WSH: 'WAS', OAK: 'LV', SD: 'LAC', STL: 'LAR' };
+  const toEspn = t => TO_ESPN[t] || t;
+  const toStd = t => TO_STD[t] || t;
+
+  // Build a player's weekly game log for a year (opponent + DvP attached).
+  // Requires loadSchedule(year) + fetchYear(year) to have resolved.
+  function getPlayerLog(name, year) {
+    const p = rawPlayer(name, year);
+    if (!p) return null;
+    const teamStd = toStd((p.team || '').toUpperCase());
+    const teamEspn = toEspn((p.team || '').toUpperCase());
+    const weeks = (p.weeks || []).map(w => {
+      const o = oppFor(year, w.wk, teamEspn);
+      const opp = o ? toStd(o.opp) : null;
+      const ha = o ? o.ha : '';
+      const d = opp ? dvp(opp, p.pos) : { rank: null, fpa: null, tier: matchupTier(null), of: TEAM_CT };
+      return Object.assign({}, w, { opp, ha, dvpRank: d.rank, dvpFpa: d.fpa, tier: d.tier });
+    });
+    return { name: p.name, pos: p.pos, team: teamStd, headshot: p.headshot, weeks, cols: LOG_COLS[p.pos] || LOG_COLS.WR };
+  }
+
+  window.RHData = {
+    BASE, CURRENT, ARCHIVE_YEARS, POSSET,
+    fetchMeta, buildRows, COLS, QUALIFY, LEADERS,
+    computeLeaders, percentiles, loadAges, meta: _meta,
+    // game logs
+    FPA, FPA_RANK, dvp, matchupTier, loadSchedule, oppFor,
+    playerIndex, getPlayerLog, LOG_COLS, normName,
+    ageFor: (name) => (_ageMap ? _ageMap[normName(name)] : null),
+  };
+})();
+
+</script>
+<!-- rh-app.js inline -->
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   VAULT · RESEARCH HUB — Advanced Stats + Game Logs (vanilla, injected)
+   Mirrors the Lineup Command pattern: injects scoped styles, two .page
+   divs (#page-advstats, #page-gamelogs), a dropdown on the Research Hub
+   nav button, sidebar + mobile entries, and a showPage() hook.
+   Depends on window.RHData (rh-data.js). No framework.
+   ════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.__rhVaultLoaded) return; window.__rhVaultLoaded = true;
+
+  const D = window.RHData;
+  const POS_LIST = ['QB', 'RB', 'WR', 'TE'];
+  const POS_COLOR = { QB: 'var(--qb)', RB: 'var(--rb)', WR: 'var(--wr)', TE: 'var(--te)' };
+  const SEASONS = [['2025', '2025'], ['2024', '2024'], ['2023', '2023'], ['all', 'All']];
+  const GL_SEASONS = ['2025', '2024', '2023'];
+  const GROUP_LABEL = { info: 'Player Info', vol: 'Volume / Usage', eff: 'Efficiency / Advanced' };
+
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const initials = n => (n || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const r1 = n => Math.round(n * 10) / 10;
+
+  // avatar with headshot + initials fallback (img onerror reveals initials)
+  function avatar(p, cls) {
+    const col = POS_COLOR[p.pos] || 'var(--muted)';
+    const ini = `<span class="rh-ini" style="color:${col}">${esc(initials(p.name))}</span>`;
+    const img = p.headshot ? `<img src="${esc(p.headshot)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+    return `<span class="${cls}" style="border-color:${col}55">${ini}${img}</span>`;
+  }
+
+  /* ════════════════════════ ADVANCED STATS ════════════════════════ */
+  const AS = {
+    pos: 'QB', season: '2025', search: '', qualified: true,
+    sortKey: 'fpts', sortDir: 'desc', hidden: {}, mode: 'data',
+    colMenu: false, loading: true, err: null, rows: [], rowsCache: {}, booted: false,
+  };
+
+  function asLoadSeason() {
+    const s = AS.season;
+    if (AS.rowsCache[s]) { AS.rows = AS.rowsCache[s]; AS.loading = false; asRender(); return; }
+    AS.loading = true; AS.err = null; asRender();
+    D.buildRows(s).then(rows => {
+      AS.rowsCache[s] = rows; AS.rows = rows; AS.loading = false;
+      if (!rows.length) AS.err = 'No data returned for ' + s + '.';
+      asRender();
+    }).catch(e => { AS.err = e.message; AS.loading = false; asRender(); });
+  }
+
+  function asVisCols() { return D.COLS[AS.pos].filter(c => !AS.hidden[c.key]); }
+  function asPosRows() { return AS.rows.filter(r => r.pos === AS.pos); }
+
+  function asComputed() {
+    const posRows = asPosRows();
+    const qualFn = D.QUALIFY[AS.pos];
+    let rows = AS.qualified ? posRows.filter(qualFn) : posRows;
+    const q = AS.search.trim().toLowerCase();
+    if (q) rows = rows.filter(r => r.name.toLowerCase().includes(q) || (r.team || '').toLowerCase().includes(q));
+    rows = rows.slice().sort((a, b) => {
+      const av = a[AS.sortKey], bv = b[AS.sortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1; if (bv == null) return -1;
+      return AS.sortDir === 'desc' ? bv - av : av - bv;
+    });
+    return { posRows, rows };
+  }
+
+  function asLeadersHtml(posRows) {
+    const leaders = D.computeLeaders(posRows, AS.pos);
+    if (!leaders.length) return '';
+    const cards = leaders.map((L, i) => `
+      <div class="rh-lcard${i === 0 ? ' is-first' : ''}">
+        ${avatar(L.player, 'rh-lcard-av')}
+        <span class="rh-lcard-body">
+          <span class="rh-lcard-tag">${esc(L.spec.tag)}</span>
+          <span class="rh-lcard-name">${esc(L.player.name)}</span>
+          <span class="rh-lcard-sub">${esc(L.spec.sub)}</span>
+          <span class="rh-lcard-val">${esc(L.valStr)}</span>
+        </span>
+      </div>`).join('');
+    return `<div class="rh-leaders"><div class="rh-leaders-cap">Category Leaders</div><div class="rh-leaders-row">${cards}</div></div>`;
+  }
+
+  function asTableHtml(rows, cols) {
+    const groups = [];
+    cols.forEach(c => { const last = groups[groups.length - 1]; if (last && last.key === c.group) last.cols.push(c); else groups.push({ key: c.group, cols: [c] }); });
+    const groupRow = `<tr class="rh-grouprow"><th class="rh-gh rh-sticky" data-g="player">Player</th>${groups.map(g => `<th class="rh-gh" data-g="${g.key}" colspan="${g.cols.length}">${GROUP_LABEL[g.key] || ''}</th>`).join('')}</tr>`;
+    const colRow = `<tr class="rh-colrow"><th class="rh-th rh-sticky rh-th-player" data-rh-sort="fpts">Player</th>${cols.map(c => {
+      const active = AS.sortKey === c.key;
+      return `<th class="rh-th${active ? ' on' : ''}${c.group === 'eff' ? ' grp-eff' : ''}" data-rh-sort="${c.key}" title="${esc(c.hint)}"><span class="rh-th-in">${esc(c.label)}<span class="rh-sort">${active ? (AS.sortDir === 'desc' ? '▾' : '▴') : '⇅'}</span></span></th>`;
+    }).join('')}</tr>`;
+    const body = rows.length ? rows.map((row, ri) => {
+      const cells = cols.map(c => {
+        const v = row[c.key];
+        const on = AS.sortKey === c.key;
+        return `<td class="rh-td num${c.group === 'eff' ? ' grp-eff' : ''}${on ? ' on' : ''}"><span class="rh-val">${esc(c.fmt(v))}</span></td>`;
+      }).join('');
+      return `<tr class="rh-tr"><td class="rh-td rh-sticky rh-td-player"><div class="rh-pl"><span class="rh-rank">${ri + 1}</span>${avatar(row, 'rh-av')}<span class="rh-pl-id"><span class="rh-pl-name">${esc(row.name)}</span><span class="rh-pl-meta"><span class="rh-pos" style="color:${POS_COLOR[row.pos]};border-color:${POS_COLOR[row.pos]}40;background:${POS_COLOR[row.pos]}14">${esc(row.pos)}</span><span class="rh-team">${esc(row.team)}</span></span></span></div></td>${cells}</tr>`;
+    }).join('') : `<tr><td class="rh-empty" colspan="${cols.length + 1}">No players match these filters.</td></tr>`;
+    const colgroup = `<colgroup><col style="width:268px">${cols.map(c => `<col style="width:${c.w}px">`).join('')}</colgroup>`;
+    return `<div class="rh-tablewrap"><table class="rh-table">${colgroup}<thead>${groupRow}${colRow}</thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  function asColMenuHtml(cols) {
+    if (!AS.colMenu) return '';
+    const byGroup = { info: [], vol: [], eff: [] };
+    cols.forEach(c => { if (byGroup[c.group]) byGroup[c.group].push(c); });
+    const grp = g => `<div class="rh-colmenu-grp"><div class="rh-colmenu-gl">${GROUP_LABEL[g]}</div>${byGroup[g].map(c => `<label class="rh-colmenu-item"><input type="checkbox" data-rh-colkey="${c.key}" ${AS.hidden[c.key] ? '' : 'checked'} ${c.key === 'fpts' ? 'disabled' : ''}><span>${esc(c.label)}</span><span class="rh-colmenu-hint">${esc(c.hint)}</span></label>`).join('')}</div>`;
+    return `<div class="rh-colmenu">${['info', 'vol', 'eff'].map(grp).join('')}</div>`;
+  }
+
+  function asRender() {
+    const mount = document.getElementById('rh-adv-mount');
+    if (!mount) return;
+    const cols = D.COLS[AS.pos];
+    const visCols = asVisCols();
+    const { posRows, rows } = AS.loading ? { posRows: [], rows: [] } : asComputed();
+    const meta = D.meta;
+    const updated = meta && meta.updated ? new Date(meta.updated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const seasonLabel = AS.season === 'all' ? 'All seasons' : AS.season + ' Season';
+    const statCols = visCols.length - cols.filter(c => c.group === 'info').length;
+    const hiddenCount = Object.keys(AS.hidden).filter(k => AS.hidden[k]).length;
+
+    let main;
+    if (AS.mode === 'compare') {
+      main = `<div class="rh-compare"><div class="rh-compare-icon">⇄</div><div class="rh-compare-title">Compare players</div><div class="rh-compare-sub">Pick 2–3 players to line up their advanced stats side by side. Coming soon.</div><div class="rh-compare-slots"><div class="rh-compare-slot">+ Add player</div><div class="rh-compare-slot">+ Add player</div><div class="rh-compare-slot ghost">+ Add player</div></div></div>`;
+    } else if (AS.loading) {
+      main = `<div class="rh-loading"><span class="rh-spin">⟳</span> Loading ${esc(seasonLabel)} from nflverse…</div>`;
+    } else if (AS.err) {
+      main = `<div class="rh-loading err">Couldn’t load data — ${esc(AS.err)}</div>`;
+    } else {
+      main = asLeadersHtml(posRows) + asTableHtml(rows, visCols);
+    }
+
+    mount.innerHTML = `
+      <div class="rh-head">
+        <div>
+          <h1 class="rh-title">Advanced Stats</h1>
+          <div class="rh-rule"></div>
+          <p class="rh-sub">Advanced stats leaderboard — sortable, searchable, with customizable columns. Live from nflverse + RosterAudit.</p>
+        </div>
+        <div class="rh-modeseg">
+          <button class="${AS.mode === 'data' ? 'on' : ''}" data-rh-mode="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>Data</button>
+          <button class="${AS.mode === 'compare' ? 'on' : ''}" data-rh-mode="compare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 8 3 12l4 4M17 8l4 4-4 4M14 4l-4 16"/></svg>Compare</button>
+        </div>
+      </div>
+      <div class="rh-filters">
+        <div class="rh-fgroup"><span class="rh-flabel">Position</span><div class="rh-seg pos">${POS_LIST.map(p => `<button class="rh-segbtn${AS.pos === p ? ' on' : ''}" data-rh-pos="${p}" style="${AS.pos === p ? '--pc:' + POS_COLOR[p] : ''}">${p}</button>`).join('')}</div></div>
+        <div class="rh-fgroup"><span class="rh-flabel">Season</span><div class="rh-seg">${SEASONS.map(([v, l]) => `<button class="rh-segbtn${AS.season === v ? ' on' : ''}" data-rh-season="${v}">${l}</button>`).join('')}</div></div>
+      </div>
+      <div class="rh-tools">
+        <div class="rh-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="rh-adv-search" placeholder="Search player or team…" value="${esc(AS.search)}">
+          ${AS.search ? '<button class="rh-search-x" data-rh-clear>×</button>' : ''}
+        </div>
+        <button class="rh-tool${AS.qualified ? ' on' : ''}" data-rh-qual title="Players meeting a minimum games + volume threshold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v6l-4 2v-8z"/></svg>Qualified</button>
+        <div class="rh-colwrap"><button class="rh-tool${hiddenCount ? ' on' : ''}" data-rh-colmenu title="Show / hide columns"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Columns${hiddenCount ? ' · ' + statCols : ''}</button>${asColMenuHtml(cols)}</div>
+      </div>
+      <div class="rh-status">${AS.pos} · ${esc(seasonLabel)} · <b>${rows.length}</b> of ${posRows.length} players${AS.qualified ? ' · qualified only' : ''}<span class="rh-status-dot">·</span> Updated ${esc(updated)}</div>
+      ${main}
+      <div class="rh-foot">Stats via <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> · age via <a href="https://rosteraudit.com" target="_blank" rel="noopener">RosterAudit</a> · weekly logs aggregated to season totals &amp; efficiency</div>`;
+  }
+
+  /* ════════════════════════ GAME LOGS ════════════════════════ */
+  const GL = {
+    season: '2025', name: null, log: null, index: [],
+    opp: 'ALL', dvpFilter: 'ALL', ha: 'ALL',
+    loading: true, ready: {}, acOpen: false, acQuery: '', booted: false,
+  };
+
+  function glLoadSeason() {
+    GL.loading = true; glRender();
+    Promise.all([D.loadSchedule(GL.season), D.playerIndex(GL.season), D.loadAges()]).then(([, idx]) => {
+      GL.ready[GL.season] = true; GL.index = idx; GL.loading = false;
+      if (!GL.name || !idx.find(p => p.name === GL.name)) GL.name = idx.length ? idx[0].name : null;
+      glBuild(); glRender();
+    }).catch(() => { GL.loading = false; glRender(); });
+  }
+  function glBuild() {
+    if (!GL.name || !GL.ready[GL.season]) { GL.log = null; return; }
+    GL.log = D.getPlayerLog(GL.name, GL.season);
+    GL.opp = 'ALL'; GL.dvpFilter = 'ALL'; GL.ha = 'ALL';
+  }
+
+  function glAcHtml() {
+    if (!GL.acOpen) return '';
+    const s = GL.acQuery.trim().toLowerCase();
+    let res = s ? GL.index.filter(p => p.name.toLowerCase().includes(s) || (p.team || '').toLowerCase().includes(s)).slice(0, 9) : GL.index.slice(0, 8);
+    const items = res.length ? res.map(p => `<button class="rh-ac-item" data-rh-glpick="${esc(p.name)}">${avatar(p, 'rh-ac-av')}<span class="rh-ac-name">${esc(p.name)}</span><span class="rh-ac-meta"><span style="color:${POS_COLOR[p.pos]}">${esc(p.pos)}</span> · ${esc(p.team)}</span></button>`).join('') : '<div class="rh-ac-empty">No players found</div>';
+    return `<div class="rh-ac">${items}</div>`;
+  }
+
+  function glCardHtml() {
+    const log = GL.log;
+    if (!log) return `<div class="rh-loading">Search for a player to see their game log.</div>`;
+    const col = POS_COLOR[log.pos] || 'var(--muted)';
+    const age = D.ageFor(log.name);
+    const allPts = log.weeks.map(w => w.pts || 0);
+    const seasonAvg = allPts.length ? allPts.reduce((a, b) => a + b, 0) / allPts.length : 0;
+    const fptsColor = v => v >= seasonAvg * 1.4 ? 'var(--rb)' : v >= seasonAvg ? col : v < seasonAvg * 0.55 ? 'var(--muted)' : 'var(--text2)';
+    const maxPts = Math.max.apply(null, allPts.concat([1]));
+
+    const weeks = log.weeks.filter(w => {
+      if (GL.opp !== 'ALL' && w.opp !== GL.opp) return false;
+      if (GL.ha === 'home' && w.ha !== 'vs') return false;
+      if (GL.ha === 'away' && w.ha !== '@') return false;
+      if (GL.dvpFilter === 'good' && !(w.tier && w.tier.t <= 2 && w.dvpRank)) return false;
+      if (GL.dvpFilter === 'tough' && !(w.tier && w.tier.t >= 4 && w.dvpRank)) return false;
+      return true;
+    });
+    const pts = weeks.map(w => w.pts || 0);
+    const avg = pts.length ? r1(pts.reduce((a, b) => a + b, 0) / pts.length) : 0;
+    const best = pts.length ? r1(Math.max.apply(null, pts)) : 0;
+    const worst = pts.length ? r1(Math.min.apply(null, pts)) : 0;
+    const goodPts = log.weeks.filter(w => w.tier && w.tier.t <= 2 && w.dvpRank).map(w => w.pts || 0);
+    const toughPts = log.weeks.filter(w => w.tier && w.tier.t >= 4 && w.dvpRank).map(w => w.pts || 0);
+    const avgOf = a => a.length ? r1(a.reduce((x, y) => x + y, 0) / a.length) : null;
+    const oppList = Array.from(new Set(log.weeks.map(w => w.opp).filter(Boolean))).sort();
+
+    const dvpBadge = w => {
+      if (!w.dvpRank) return '<span class="rh-dvp na">—</span>';
+      const t = w.tier;
+      return `<span class="rh-dvp" style="color:${t.color};border-color:${t.color}44;background:${t.color}14" title="Defense ranks ${w.dvpRank} of 32 vs the position (1 = toughest). ${t.label} matchup.">${t.short}<span class="rh-dvp-rank">${w.dvpRank}</span></span>`;
+    };
+    const fptsCell = v => {
+      const c = fptsColor(v), pct = Math.max(4, (v / maxPts) * 100);
+      return `<div class="rh-fx"><span class="rh-fx-viz"><span class="rh-fx-bar" style="width:${pct}%;--c:${c}"></span></span><span class="rh-fx-num" style="color:${c}">${r1(v).toFixed(1)}</span></div>`;
+    };
+
+    const rowsHtml = weeks.length ? weeks.map(w => `<tr><td class="l rh-wk">${w.wk}</td><td class="l rh-opp"><span class="rh-ha">${esc(w.ha)}</span><span class="rh-opp-team">${esc(w.opp || '—')}</span></td><td class="l">${dvpBadge(w)}</td>${log.cols.map(c => `<td>${esc(c.fmt(w))}</td>`).join('')}<td class="fpts">${fptsCell(w.pts || 0)}</td></tr>`).join('') : `<tr><td class="rh-empty" colspan="${log.cols.length + 4}">No games match these filters.</td></tr>`;
+
+    return `
+      <div class="rh-card">
+        <div class="rh-card-head">
+          ${avatar(log, 'rh-head-av')}
+          <div class="rh-head-id">
+            <div class="rh-head-name">${esc(log.name)}</div>
+            <div class="rh-head-meta"><span class="rh-head-pos" style="color:${col};border-color:${col}40;background:${col}14">${esc(log.pos)}</span><span>${esc(log.team)}</span>${age != null ? '<span>· Age ' + age.toFixed(1) + '</span>' : ''}<span>· ${log.weeks.length} games ${GL.season}</span></div>
+          </div>
+          <div class="rh-head-kpis">
+            <div class="rh-kpi"><div class="rh-kpi-val" style="color:${col}">${avg}</div><div class="rh-kpi-lab">FPTS/G</div></div>
+            <div class="rh-kpi"><div class="rh-kpi-val">${best}</div><div class="rh-kpi-lab">Ceiling</div></div>
+            <div class="rh-kpi"><div class="rh-kpi-val">${worst}</div><div class="rh-kpi-lab">Floor</div></div>
+          </div>
+        </div>
+        <div class="rh-split">
+          <span class="rh-split-lab">DvP split</span>
+          <div class="rh-split-bars">
+            <div class="rh-split-item"><span class="rh-split-dot good"></span>Smash/Good spots<b>${avgOf(goodPts) != null ? avgOf(goodPts) + ' avg' : '—'}</b><small>${goodPts.length} g</small></div>
+            <div class="rh-split-item"><span class="rh-split-dot tough"></span>Tough/Brutal spots<b>${avgOf(toughPts) != null ? avgOf(toughPts) + ' avg' : '—'}</b><small>${toughPts.length} g</small></div>
+          </div>
+        </div>
+        <div class="rh-glfilters">
+          <div class="rh-filt"><span class="rh-filt-lab">vs Opponent</span><select id="rh-gl-opp"><option value="ALL">All opponents</option>${oppList.map(o => `<option value="${o}"${GL.opp === o ? ' selected' : ''}>${o}</option>`).join('')}</select></div>
+          <div class="rh-filt"><span class="rh-filt-lab">Matchup (DvP)</span><div class="rh-seg sm">${[['ALL', 'All'], ['good', 'Smash / Good'], ['tough', 'Tough / Brutal']].map(([v, l]) => `<button class="${GL.dvpFilter === v ? 'on' : ''}" data-rh-gldvp="${v}">${l}</button>`).join('')}</div></div>
+          <div class="rh-filt"><span class="rh-filt-lab">Site</span><div class="rh-seg sm">${[['ALL', 'All'], ['home', 'Home'], ['away', 'Away']].map(([v, l]) => `<button class="${GL.ha === v ? 'on' : ''}" data-rh-glha="${v}">${l}</button>`).join('')}</div></div>
+          <span class="rh-filt-count"><b>${weeks.length}</b> of ${log.weeks.length} games</span>
+        </div>
+        <div class="rh-fxbar">
+          <span class="rh-fxbar-lab">FPTS</span>
+          <span class="rh-fxbar-key">
+            <span class="rh-fxk"><i style="background:var(--rb)"></i>Boom <em>(1.4× avg+)</em></span>
+            <span class="rh-fxk"><i style="background:${col}"></i>Solid <em>(above avg)</em></span>
+            <span class="rh-fxk"><i style="background:var(--muted)"></i>Dud <em>(under .55× avg)</em></span>
+          </span>
+        </div>
+        <div class="rh-gltablewrap">
+          <table class="rh-gltable">
+            <thead><tr><th class="l">WK</th><th class="l">Opponent</th><th class="l">Matchup</th>${log.cols.map(c => `<th>${esc(c.label)}</th>`).join('')}<th class="fpts">FPTS</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  function glRender() {
+    const mount = document.getElementById('rh-gl-mount');
+    if (!mount) return;
+    let body;
+    if (GL.loading) body = `<div class="rh-loading"><span class="rh-spin">⟳</span> Loading ${GL.season} schedule &amp; logs…</div>`;
+    else body = glCardHtml();
+    const curLabel = GL.name && !GL.acQuery ? esc(GL.name) : '';
+    mount.innerHTML = `
+      <div class="rh-head">
+        <div>
+          <h1 class="rh-title">Game Logs</h1>
+          <div class="rh-rule"></div>
+          <p class="rh-sub">Search any player and break down every game — real opponents &amp; Vault DvP. Filter by matchup, opponent, or home/away.</p>
+        </div>
+        <div class="rh-seg gl-season">${GL_SEASONS.map(y => `<button class="rh-segbtn${GL.season === y ? ' on' : ''}" data-rh-glseason="${y}">${y}</button>`).join('')}</div>
+      </div>
+      <div class="rh-search rh-glsearch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="rh-gl-search" placeholder="Search any player…" value="${esc(GL.acQuery)}" autocomplete="off">
+        ${curLabel ? `<span class="rh-glsearch-cur">${curLabel}</span>` : ''}
+        ${glAcHtml()}
+      </div>
+      ${body}
+      <div class="rh-foot">Logs via <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> · opponents &amp; home/away via ESPN schedule · DvP = Vault fantasy-points-allowed model</div>`;
+    // keep focus + caret in the search box while typing
+    if (GL._focusSearch) {
+      const inp = document.getElementById('rh-gl-search');
+      if (inp) { inp.focus(); const v = inp.value; inp.setSelectionRange(v.length, v.length); }
+      GL._focusSearch = false;
+    }
+  }
+
+  /* ════════════════════════ EVENT DELEGATION ════════════════════════ */
+  document.addEventListener('click', e => {
+    // ── Advanced Stats ──
+    const adv = e.target.closest('#page-advstats');
+    if (adv) {
+      const pos = e.target.closest('[data-rh-pos]'); if (pos) { AS.pos = pos.dataset.rhPos; AS.sortKey = 'fpts'; AS.sortDir = 'desc'; AS.hidden = {}; AS.colMenu = false; asRender(); return; }
+      const ssn = e.target.closest('[data-rh-season]'); if (ssn) { AS.season = ssn.dataset.rhSeason; asLoadSeason(); return; }
+      const mode = e.target.closest('[data-rh-mode]'); if (mode) { AS.mode = mode.dataset.rhMode; asRender(); return; }
+      const qual = e.target.closest('[data-rh-qual]'); if (qual) { AS.qualified = !AS.qualified; asRender(); return; }
+      const clr = e.target.closest('[data-rh-clear]'); if (clr) { AS.search = ''; asRender(); return; }
+      const sort = e.target.closest('[data-rh-sort]'); if (sort) { const k = sort.dataset.rhSort; if (AS.sortKey === k) AS.sortDir = AS.sortDir === 'desc' ? 'asc' : 'desc'; else { AS.sortKey = k; AS.sortDir = 'desc'; } asRender(); return; }
+      const cm = e.target.closest('[data-rh-colmenu]'); if (cm) { AS.colMenu = !AS.colMenu; asRender(); return; }
+      if (AS.colMenu && !e.target.closest('.rh-colmenu') && !e.target.closest('[data-rh-colmenu]')) { AS.colMenu = false; asRender(); }
+      return;
+    }
+    // ── Game Logs ──
+    const gl = e.target.closest('#page-gamelogs');
+    if (gl) {
+      const ssn = e.target.closest('[data-rh-glseason]'); if (ssn) { GL.season = ssn.dataset.rhGlseason; GL.acOpen = false; GL.acQuery = ''; glLoadSeason(); return; }
+      const pick = e.target.closest('[data-rh-glpick]'); if (pick) { GL.name = pick.dataset.rhGlpick; GL.acOpen = false; GL.acQuery = ''; glBuild(); glRender(); return; }
+      const dvp = e.target.closest('[data-rh-gldvp]'); if (dvp) { GL.dvpFilter = dvp.dataset.rhGldvp; glRender(); return; }
+      const ha = e.target.closest('[data-rh-glha]'); if (ha) { GL.ha = ha.dataset.rhGlha; glRender(); return; }
+      if (!e.target.closest('.rh-glsearch') && GL.acOpen) { GL.acOpen = false; glRender(); }
+      return;
+    }
+    // click outside both pages closes the GL autocomplete
+    if (GL.acOpen) { GL.acOpen = false; glRender(); }
+  });
+
+  document.addEventListener('input', e => {
+    if (e.target.id === 'rh-adv-search') { AS.search = e.target.value; AS._focus = true; asRenderSearchOnly(); }
+    if (e.target.id === 'rh-gl-search') { GL.acQuery = e.target.value; GL.acOpen = true; GL._focusSearch = true; glRender(); }
+  });
+  document.addEventListener('change', e => {
+    if (e.target.id === 'rh-gl-opp') { GL.opp = e.target.value; glRender(); }
+    if (e.target.dataset && e.target.dataset.rhColkey) { const k = e.target.dataset.rhColkey; AS.hidden[k] = !e.target.checked ? true : false; if (e.target.checked) delete AS.hidden[k]; asRender(); }
+  });
+  document.addEventListener('focusin', e => { if (e.target.id === 'rh-gl-search') { GL.acOpen = true; glRender(); } });
+
+  // Advanced search: re-render but preserve the input focus/caret
+  function asRenderSearchOnly() {
+    const inp = document.getElementById('rh-adv-search');
+    const caret = inp ? inp.selectionStart : null;
+    asRender();
+    const ninp = document.getElementById('rh-adv-search');
+    if (ninp) { ninp.focus(); if (caret != null) ninp.setSelectionRange(caret, caret); }
+  }
+
+  /* ════════════════════════ INJECTION ════════════════════════ */
+  function injectStyles() {
+    if (document.getElementById('rh-vault-styles')) return;
+    const S = '#page-advstats,#page-gamelogs';
+    const css = `
+    ${S}{--faint:color-mix(in srgb,var(--muted) 72%,transparent);--rh-border3:var(--border3,rgba(255,255,255,.22))}
+    ${S} .rh-wrap{max-width:1280px;margin:0 auto;padding:26px 24px 90px}
+    ${S} .rh-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:22px}
+    ${S} .rh-title{font-size:clamp(26px,3vw,32px);font-weight:800;letter-spacing:-.035em;line-height:1;font-family:var(--font-sans)}
+    ${S} .rh-rule{width:38px;height:3px;background:var(--accent);border-radius:2px;margin:11px 0 9px}
+    ${S} .rh-sub{font-size:13px;color:var(--muted);line-height:1.5;max-width:540px;font-family:var(--font-sans)}
+    ${S} .rh-modeseg{display:flex;gap:3px;background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:4px}
+    ${S} .rh-modeseg button{display:flex;align-items:center;gap:7px;border:none;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600;padding:8px 15px;border-radius:8px;cursor:pointer;font-family:var(--font-sans)}
+    ${S} .rh-modeseg button svg{width:15px;height:15px;stroke-linecap:round;stroke-linejoin:round}
+    ${S} .rh-modeseg button:hover{color:var(--text)}
+    ${S} .rh-modeseg button.on{background:rgba(77,134,240,.16);color:#fff;box-shadow:inset 0 0 0 1px rgba(77,134,240,.45)}
+    ${S} .rh-filters{display:flex;align-items:center;gap:28px;flex-wrap:wrap;background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:15px 18px;margin-bottom:14px}
+    ${S} .rh-fgroup{display:flex;flex-direction:column;gap:8px}
+    ${S} .rh-flabel{font-family:var(--font-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+    ${S} .rh-seg{display:flex;gap:4px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:4px}
+    ${S} .rh-segbtn{border:none;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600;padding:7px 18px;border-radius:7px;cursor:pointer;transition:all .14s;font-family:var(--font-sans)}
+    ${S} .rh-segbtn:hover{color:var(--text)}
+    ${S} .rh-segbtn.on{background:var(--sky);color:#fff}
+    ${S} .rh-seg.pos .rh-segbtn.on{background:var(--pc);color:#0c1119;box-shadow:none}
+    ${S} .rh-tools{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+    ${S} .rh-search{flex:1;min-width:240px;display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:10px 14px;position:relative}
+    ${S} .rh-search:focus-within{border-color:var(--rh-border3)}
+    ${S} .rh-search svg{width:16px;height:16px;color:var(--muted);flex-shrink:0;stroke-linecap:round}
+    ${S} .rh-search input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13.5px;font-family:var(--font-sans)}
+    ${S} .rh-search input::placeholder{color:var(--faint)}
+    ${S} .rh-search-x{border:none;background:var(--s3);color:var(--muted);width:20px;height:20px;border-radius:6px;cursor:pointer;font-size:14px;line-height:1}
+    ${S} .rh-tool{display:flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--border);color:var(--text2);font-size:12.5px;font-weight:600;padding:10px 14px;border-radius:11px;cursor:pointer;white-space:nowrap;transition:all .14s;font-family:var(--font-sans)}
+    ${S} .rh-tool svg{width:15px;height:15px;stroke-linecap:round;stroke-linejoin:round}
+    ${S} .rh-tool:hover{border-color:var(--rh-border3);color:var(--text)}
+    ${S} .rh-tool.on{background:rgba(77,134,240,.14);border-color:rgba(77,134,240,.5);color:#fff}
+    ${S} .rh-colwrap{position:relative}
+    ${S} .rh-colmenu{position:absolute;top:calc(100% + 8px);right:0;width:340px;max-height:440px;overflow-y:auto;background:var(--s1);border:1px solid var(--border2);border-radius:13px;padding:8px;z-index:50;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+    ${S} .rh-colmenu-gl{font-family:var(--font-mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);padding:6px 10px}
+    ${S} .rh-colmenu-item{display:grid;grid-template-columns:18px 54px 1fr;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:12.5px;font-family:var(--font-sans)}
+    ${S} .rh-colmenu-item:hover{background:var(--s3)}
+    ${S} .rh-colmenu-item input{accent-color:var(--sky);width:15px;height:15px;cursor:pointer}
+    ${S} .rh-colmenu-item>span:nth-child(2){font-family:var(--font-mono);font-weight:600;color:var(--text)}
+    ${S} .rh-colmenu-hint{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    ${S} .rh-status{font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.02em;margin-bottom:16px}
+    ${S} .rh-status b{color:var(--text2)}${S} .rh-status-dot{margin:0 4px}
+    ${S} .rh-leaders{margin-bottom:18px}
+    ${S} .rh-leaders-cap{font-family:var(--font-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+    ${S} .rh-leaders-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+    ${S} .rh-lcard{display:flex;align-items:center;gap:12px;background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:12px 14px;min-width:0}
+    ${S} .rh-lcard.is-first{border-color:rgba(77,134,240,.4);background:linear-gradient(180deg,rgba(77,134,240,.08),var(--s1))}
+    ${S} .rh-lcard-av{width:46px;height:46px;border-radius:11px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--s3);border:1px solid var(--border2);position:relative}
+    ${S} .rh-lcard-body{display:flex;flex-direction:column;gap:1px;min-width:0}
+    ${S} .rh-lcard-tag{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--sky);font-weight:700}
+    ${S} .rh-lcard-name{font-size:14px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-sans)}
+    ${S} .rh-lcard-sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    ${S} .rh-lcard-val{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text2);margin-top:3px}
+    ${S} .rh-av,.rh-ac-av,.rh-head-av{position:relative}
+    ${S} .rh-ini{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:700;z-index:1}
+    ${S} .rh-av img,.rh-lcard-av img,.rh-ac-av img,.rh-head-av img{position:relative;z-index:2;width:100%;height:100%;object-fit:cover;object-position:top center}
+    ${S} .rh-tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:14px;background:var(--s1)}
+    ${S} .rh-table{border-collapse:separate;border-spacing:0;width:100%;min-width:max-content;font-family:var(--font-sans)}
+    ${S} .rh-grouprow .rh-gh{position:sticky;top:0;z-index:5;background:var(--s2);font-family:var(--font-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:600;text-align:center;padding:10px 8px;border-bottom:1px solid var(--border)}
+    ${S} .rh-grouprow .rh-gh[data-g=vol]{color:var(--text2);border-left:1px solid var(--border2)}
+    ${S} .rh-grouprow .rh-gh[data-g=eff]{color:var(--sky);border-left:1px solid var(--border2)}
+    ${S} .rh-grouprow .rh-gh[data-g=player]{text-align:left;padding-left:18px}
+    ${S} .rh-colrow .rh-th{position:sticky;z-index:5;background:var(--s2);top:35px;font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;color:var(--muted);font-weight:600;text-align:right;padding:9px 10px;cursor:pointer;user-select:none;border-bottom:1px solid var(--border);white-space:nowrap}
+    ${S} .rh-colrow .rh-th.grp-eff{background:rgba(77,134,240,.05)}
+    ${S} .rh-th-in{display:inline-flex;align-items:center;gap:5px;justify-content:flex-end}
+    ${S} .rh-sort{color:var(--faint);font-size:9px}
+    ${S} .rh-colrow .rh-th:hover{color:var(--text)}${S} .rh-colrow .rh-th.on{color:#fff}${S} .rh-colrow .rh-th.on .rh-sort{color:var(--sky)}
+    ${S} .rh-th-player{text-align:left!important;padding-left:18px!important}
+    ${S} .rh-sticky{position:sticky;left:0}
+    ${S} .rh-td.rh-sticky{z-index:4}
+    ${S} .rh-grouprow .rh-gh.rh-sticky,${S} .rh-colrow .rh-th.rh-sticky{z-index:7;background:var(--s2)}
+    ${S} .rh-td-player{background:var(--s1);box-shadow:1px 0 0 var(--border)}
+    ${S} .rh-tr:hover .rh-td-player{background:var(--s2)}
+    ${S} .rh-td{padding:0 10px;text-align:right;font-family:var(--font-mono);font-size:13px;color:var(--text2);border-bottom:1px solid rgba(255,255,255,.045);position:relative;height:52px;vertical-align:middle}
+    ${S} .rh-td.grp-eff{color:var(--text)}
+    ${S} .rh-td.num.on{color:#fff;font-weight:600}
+    ${S} .rh-td.num.on::after{content:'';position:absolute;inset:0;background:rgba(77,134,240,.06);pointer-events:none}
+    ${S} .rh-val{position:relative;z-index:2}
+    ${S} .rh-tr:hover .rh-td{background:rgba(255,255,255,.025)}
+    ${S} .rh-tr:nth-child(even) .rh-td{background:rgba(255,255,255,.012)}
+    ${S} .rh-tr:nth-child(even) .rh-td-player{background:#101824}
+    ${S} [data-theme=light] ${S} .rh-tr:nth-child(even) .rh-td-player{background:rgba(0,0,0,.03)}
+    ${S} .rh-empty{padding:48px;text-align:center;color:var(--muted);font-size:14px;font-family:var(--font-sans)}
+    ${S} .rh-pl{display:flex;align-items:center;gap:11px;padding:7px 0;text-align:left}
+    ${S} .rh-rank{font-family:var(--font-mono);font-size:11px;color:var(--faint);width:22px;text-align:right;flex-shrink:0}
+    ${S} .rh-av{width:34px;height:34px;border-radius:9px;overflow:hidden;flex-shrink:0;background:var(--s3);border:1px solid var(--border2);font-size:11px}
+    ${S} .rh-pl-id{display:flex;flex-direction:column;gap:2px;min-width:0}
+    ${S} .rh-pl-name{font-family:var(--font-sans);font-size:13.5px;font-weight:600;letter-spacing:-.01em;color:var(--text);white-space:nowrap}
+    ${S} .rh-pl-meta{display:flex;align-items:center;gap:6px}
+    ${S} .rh-pos{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.04em;padding:1px 5px;border-radius:4px;border:1px solid}
+    ${S} .rh-team{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);letter-spacing:.05em}
+    ${S} .rh-loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;font-family:var(--font-sans);background:var(--s1);border:1px solid var(--border);border-radius:14px}
+    ${S} .rh-loading.err{color:var(--accent2)}
+    ${S} .rh-spin{display:inline-block;animation:spin 1s linear infinite;font-size:22px}
+    ${S} .rh-compare{display:flex;flex-direction:column;align-items:center;gap:8px;padding:60px;background:var(--s1);border:1px dashed var(--border2);border-radius:16px;text-align:center}
+    ${S} .rh-compare-icon{font-size:32px;color:var(--sky);margin-bottom:6px}${S} .rh-compare-title{font-size:18px;font-weight:700;font-family:var(--font-sans)}
+    ${S} .rh-compare-sub{font-size:13px;color:var(--muted);line-height:1.6;max-width:420px;font-family:var(--font-sans)}
+    ${S} .rh-compare-slots{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;justify-content:center}
+    ${S} .rh-compare-slot{width:150px;height:90px;border:1px dashed var(--border2);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:13px;font-weight:600;font-family:var(--font-sans)}
+    ${S} .rh-compare-slot.ghost{opacity:.5}
+    ${S} .rh-foot{text-align:center;font-size:11px;color:var(--faint);margin-top:24px;font-family:var(--font-sans)}
+    /* Game Logs */
+    ${S} .gl-season{align-self:flex-start}
+    ${S} .rh-glsearch{flex:none;margin-bottom:18px;padding:14px 16px;gap:11px}
+    ${S} .rh-glsearch>svg{width:18px;height:18px}
+    ${S} .rh-glsearch input{font-size:15px}
+    ${S} .rh-glsearch-cur{font-family:var(--font-mono);font-size:11px;color:var(--faint);white-space:nowrap}
+    ${S} .rh-ac{position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--s1);border:1px solid var(--border2);border-radius:13px;padding:7px;z-index:40;box-shadow:0 24px 60px rgba(0,0,0,.55);max-height:380px;overflow-y:auto}
+    ${S} .rh-ac-item{display:flex;align-items:center;gap:11px;width:100%;border:none;background:transparent;color:var(--text);padding:9px 11px;border-radius:9px;cursor:pointer;text-align:left}
+    ${S} .rh-ac-item:hover{background:var(--s3)}
+    ${S} .rh-ac-av{width:32px;height:32px;border-radius:8px;overflow:hidden;flex-shrink:0;background:var(--s3);border:1px solid var(--border2);font-size:10px}
+    ${S} .rh-ac-name{font-size:14px;font-weight:600;flex:1;font-family:var(--font-sans)}
+    ${S} .rh-ac-meta{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+    ${S} .rh-ac-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px}
+    ${S} .rh-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+    ${S} .rh-card-head{display:flex;align-items:center;gap:16px;padding:20px 22px;background:linear-gradient(180deg,rgba(77,134,240,.07),transparent);border-bottom:1px solid var(--border)}
+    ${S} .rh-head-av{width:64px;height:64px;border-radius:14px;overflow:hidden;flex-shrink:0;background:var(--s3);border:1.5px solid var(--border2);font-size:18px}
+    ${S} .rh-head-id{flex:1;min-width:0}
+    ${S} .rh-head-name{font-size:24px;font-weight:800;letter-spacing:-.03em;line-height:1.05;font-family:var(--font-sans)}
+    ${S} .rh-head-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:6px;font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+    ${S} .rh-head-pos{font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:5px;border:1px solid}
+    ${S} .rh-head-kpis{display:flex;gap:10px;flex-shrink:0}
+    ${S} .rh-kpi{text-align:center;background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:9px 16px;min-width:74px}
+    ${S} .rh-kpi-val{font-family:var(--font-mono);font-size:21px;font-weight:700;line-height:1;color:var(--text)}
+    ${S} .rh-kpi-lab{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:5px}
+    ${S} .rh-split{display:flex;align-items:center;gap:18px;padding:13px 22px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    ${S} .rh-split-lab{font-family:var(--font-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+    ${S} .rh-split-bars{display:flex;gap:24px;flex-wrap:wrap}
+    ${S} .rh-split-item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);font-family:var(--font-sans)}
+    ${S} .rh-split-item b{font-family:var(--font-mono);font-weight:700;color:var(--text)}
+    ${S} .rh-split-item small{font-family:var(--font-mono);font-size:10px;color:var(--faint)}
+    ${S} .rh-split-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    ${S} .rh-split-dot.good{background:var(--rb)}${S} .rh-split-dot.tough{background:var(--qb)}
+    ${S} .rh-glfilters{display:flex;align-items:flex-end;gap:20px;padding:15px 22px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    ${S} .rh-filt{display:flex;flex-direction:column;gap:7px}
+    ${S} .rh-filt-lab{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+    ${S} .rh-filt select{background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:var(--font-sans);font-size:13px;font-weight:600;padding:8px 12px;border-radius:9px;cursor:pointer;outline:none;min-width:140px}
+    ${S} .rh-seg.sm{padding:3px;gap:3px}
+    ${S} .rh-seg.sm button{border:none;background:transparent;color:var(--muted);font-size:12px;font-weight:600;padding:7px 12px;border-radius:7px;cursor:pointer;transition:all .14s;white-space:nowrap;font-family:var(--font-sans)}
+    ${S} .rh-seg.sm button:hover{color:var(--text)}${S} .rh-seg.sm button.on{background:var(--sky);color:#fff}
+    ${S} .rh-filt-count{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--muted)}${S} .rh-filt-count b{color:var(--text2)}
+    ${S} .rh-fxbar{display:flex;align-items:center;gap:14px;padding:11px 22px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.012);flex-wrap:wrap}
+    ${S} .rh-fxbar-lab{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+    ${S} .rh-fxbar-key{display:flex;gap:16px}
+    ${S} .rh-fxk{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10.5px;color:var(--text2)}
+    ${S} .rh-fxk i{width:8px;height:8px;border-radius:2px;display:inline-block}${S} .rh-fxk em{font-style:normal;color:var(--faint)}
+    ${S} .rh-gltablewrap{overflow-x:auto}
+    ${S} .rh-gltable{width:100%;border-collapse:separate;border-spacing:0;min-width:max-content;font-family:var(--font-sans)}
+    ${S} .rh-gltable th{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.08em;color:var(--muted);font-weight:600;text-align:right;padding:11px 12px;border-bottom:1px solid var(--border);white-space:nowrap;text-transform:uppercase}
+    ${S} .rh-gltable th.l{text-align:left}${S} .rh-gltable th.fpts{padding-right:22px}
+    ${S} .rh-gltable td{font-family:var(--font-mono);font-size:13px;color:var(--text2);text-align:right;padding:0 12px;height:42px;border-bottom:1px solid rgba(255,255,255,.045);white-space:nowrap}
+    ${S} .rh-gltable td.l{text-align:left}${S} .rh-gltable tr:hover td{background:rgba(255,255,255,.025)}
+    ${S} .rh-wk{color:var(--faint);font-size:12px}
+    ${S} .rh-opp{display:flex;align-items:center;gap:6px}
+    ${S} .rh-ha{color:var(--faint);font-size:11px;width:16px;display:inline-block}
+    ${S} .rh-opp-team{color:var(--text);font-weight:600;letter-spacing:.03em}
+    ${S} .rh-dvp{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:3px 7px;border-radius:6px;border:1px solid}
+    ${S} .rh-dvp-rank{font-size:9px;opacity:.7}
+    ${S} .rh-dvp.na{color:var(--faint);border:1px solid var(--border);padding:3px 8px}
+    ${S} .rh-gltable td.fpts{padding-right:22px;min-width:150px}
+    ${S} .rh-fx{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+    ${S} .rh-fx-viz{position:relative;flex:1;height:22px;display:flex;align-items:center;min-width:60px;background:rgba(255,255,255,.04);border-radius:5px;overflow:hidden}
+    ${S} .rh-fx-bar{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:linear-gradient(90deg,color-mix(in srgb,var(--c) 35%,transparent),var(--c));box-shadow:0 0 12px -2px var(--c);transition:width .4s cubic-bezier(.4,0,.2,1)}
+    ${S} .rh-fx-num{width:42px;text-align:right;font-weight:700;font-size:14px;flex-shrink:0}
+    @media(max-width:1100px){${S} .rh-leaders-row{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:760px){${S} .rh-wrap{padding:18px 14px 84px}${S} .rh-card-head{flex-wrap:wrap}${S} .rh-head-kpis{width:100%}}`;
+    const el = document.createElement('style'); el.id = 'rh-vault-styles'; el.textContent = css; document.head.appendChild(el);
+  }
+
+  function injectPages() {
+    const anchor = document.getElementById('page-research') || document.querySelector('.page');
+    if (!anchor) return;
+    if (!document.getElementById('page-advstats')) {
+      const p = document.createElement('div'); p.className = 'page'; p.id = 'page-advstats'; p.style.overflowY = 'auto';
+      p.innerHTML = '<div class="rh-wrap"><div id="rh-adv-mount"></div></div>';
+      anchor.parentNode.appendChild(p);
+    }
+    if (!document.getElementById('page-gamelogs')) {
+      const p = document.createElement('div'); p.className = 'page'; p.id = 'page-gamelogs'; p.style.overflowY = 'auto';
+      p.innerHTML = '<div class="rh-wrap"><div id="rh-gl-mount"></div></div>';
+      anchor.parentNode.appendChild(p);
+    }
+  }
+
+  function injectNavDropdown() {
+    const navBtn = document.getElementById('nb-research');
+    if (navBtn && !navBtn.closest('.rh-mt-wrap')) {
+      const wrap = document.createElement('div'); wrap.className = 'rh-mt-wrap';
+      navBtn.parentNode.insertBefore(wrap, navBtn); wrap.appendChild(navBtn);
+      navBtn.insertAdjacentHTML('beforeend', '<span class="rh-caret">▼</span>');
+      const menu = document.createElement('div'); menu.className = 'rh-mt-menu'; menu.id = 'rh-mt-menu';
+      menu.innerHTML = `
+        <button class="rh-mt-item" data-go="research"><span class="ic">⌕</span><span><b>Research Hub</b><small>Search · values · dossier</small></span></button>
+        <button class="rh-mt-item" data-go="advstats"><span class="ic">▦</span><span><b>Advanced Stats</b><small>Leaderboard · metrics</small></span><span class="rh-newtag">NEW</span></button>
+        <button class="rh-mt-item" data-go="gamelogs"><span class="ic">▤</span><span><b>Game Logs</b><small>Per-game · DvP · splits</small></span><span class="rh-newtag">NEW</span></button>`;
+      document.body.appendChild(menu);
+      let hideT;
+      const place = () => { const r = wrap.getBoundingClientRect(); menu.style.top = (r.bottom + 4) + 'px'; menu.style.left = r.left + 'px'; };
+      const show = () => { clearTimeout(hideT); place(); menu.classList.add('show'); };
+      const hide = () => { hideT = setTimeout(() => menu.classList.remove('show'), 120); };
+      wrap.addEventListener('mouseenter', show); wrap.addEventListener('mouseleave', hide);
+      menu.addEventListener('mouseenter', () => clearTimeout(hideT)); menu.addEventListener('mouseleave', hide);
+      window.addEventListener('resize', () => menu.classList.remove('show'));
+    }
+    // sidebar
+    const sl = document.getElementById('sl-research') || document.querySelector('[onclick*="showPage(\'research\')"].sidebar-link');
+    if (sl && !document.getElementById('sl-advstats')) {
+      const mk = (id, go, icon, label) => { const b = document.createElement('button'); b.id = id; b.className = 'sidebar-link'; b.setAttribute('onclick', `showPage('${go}')`); b.innerHTML = `<span style="font-size:17px">${icon}</span><span>${label}</span>`; return b; };
+      const a = mk('sl-advstats', 'advstats', '▦', 'Advanced Stats');
+      const g = mk('sl-gamelogs', 'gamelogs', '▤', 'Game Logs');
+      sl.parentNode.insertBefore(g, sl.nextSibling);
+      sl.parentNode.insertBefore(a, sl.nextSibling);
+    }
+  }
+
+  function injectStylesForNav() {
+    if (document.getElementById('rh-nav-styles')) return;
+    const css = `
+    .rh-mt-wrap{position:relative;display:inline-flex;align-items:stretch}
+    .rh-mt-menu{position:fixed;min-width:240px;background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:6px;box-shadow:0 24px 60px rgba(0,0,0,.5);z-index:9999;display:none}
+    .rh-mt-menu.show{display:block}
+    .rh-mt-item{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;cursor:pointer;width:100%;border:none;background:transparent;color:var(--text);text-align:left}
+    .rh-mt-item:hover{background:var(--s3)}
+    .rh-mt-item .ic{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--s3);color:var(--muted);font-size:13px}
+    .rh-mt-item b{display:block;font-size:13px;font-weight:600;font-family:var(--font-sans)}.rh-mt-item small{font-family:var(--font-mono);font-size:9.5px;color:var(--muted)}
+    .rh-mt-item.active{background:rgba(226,58,78,.12)}.rh-mt-item.active .ic{background:rgba(226,58,78,.18);color:var(--accent2)}
+    .rh-newtag{margin-left:auto;font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.1em;padding:2px 6px;border-radius:5px;background:rgba(226,58,78,.18);color:var(--accent2)}
+    .rh-caret{font-size:8px;opacity:.7;margin-left:5px}`;
+    const el = document.createElement('style'); el.id = 'rh-nav-styles'; el.textContent = css; document.head.appendChild(el);
+  }
+
+  function hookShowPage() {
+    const orig = window.showPage;
+    if (typeof orig !== 'function') return false;
+    if (window.__rhShowPageHooked) return true; window.__rhShowPageHooked = true;
+    window.showPage = function (p) {
+      orig.apply(this, arguments);
+      const onRH = (p === 'research' || p === 'advstats' || p === 'gamelogs');
+      document.getElementById('nb-research')?.classList.toggle('on', onRH);
+      document.getElementById('sl-research')?.classList.toggle('active', p === 'research');
+      document.getElementById('sl-advstats')?.classList.toggle('active', p === 'advstats');
+      document.getElementById('sl-gamelogs')?.classList.toggle('active', p === 'gamelogs');
+      document.querySelectorAll('#rh-mt-menu .rh-mt-item').forEach(it => it.classList.toggle('active', it.dataset.go === p));
+      // our injected pages need explicit show (showPage toggles .on by id match)
+      if (p === 'advstats') { document.getElementById('page-advstats')?.classList.add('on'); if (!AS.booted) { AS.booted = true; asLoadSeason(); } else asRender(); }
+      if (p === 'gamelogs') { document.getElementById('page-gamelogs')?.classList.add('on'); if (!GL.booted) { GL.booted = true; glLoadSeason(); } else glRender(); }
+    };
+    // menu + sub-nav click routing
+    document.addEventListener('click', e => {
+      const it = e.target.closest('#rh-mt-menu .rh-mt-item');
+      if (it) { document.getElementById('rh-mt-menu')?.classList.remove('show'); window.showPage(it.dataset.go); return; }
+      const sn = e.target.closest('.rh-subnav button[data-go]');
+      if (sn) { window.showPage(sn.dataset.go); }
+    });
+    return true;
+  }
+
+  function injectResearchSubnav() {
+    // a sub-nav inside the existing Research page so users can hop to the new pages
+    const host = document.querySelector('#page-research .proto-page');
+    if (!host || host.querySelector('.rh-subnav')) return;
+    injectSubnavStyles();
+    const nav = document.createElement('div');
+    nav.className = 'rh-subnav'; nav.setAttribute('role', 'tablist');
+    nav.innerHTML = `
+      <button class="on" data-go="research" aria-current="page">Research Hub</button>
+      <button data-go="advstats">Advanced Stats <span class="rh-subnav-new">NEW</span></button>
+      <button data-go="gamelogs">Game Logs <span class="rh-subnav-new">NEW</span></button>`;
+    host.insertBefore(nav, host.firstChild);
+  }
+  function injectSubnavStyles() {
+    if (document.getElementById('rh-subnav-styles')) return;
+    const css = `
+    .rh-subnav{display:flex;align-items:center;gap:2px;margin:-6px 0 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .rh-subnav button{display:flex;align-items:center;gap:7px;height:42px;padding:0 14px;border:none;background:transparent;color:var(--muted);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+    .rh-subnav button:hover{color:var(--text)}
+    .rh-subnav button.on{color:var(--text);border-bottom-color:var(--accent)}
+    .rh-subnav-new{font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.1em;padding:2px 5px;border-radius:4px;background:rgba(226,58,78,.16);color:var(--accent2)}`;
+    const el = document.createElement('style'); el.id = 'rh-subnav-styles'; el.textContent = css; document.head.appendChild(el);
+  }
+
+  // keep our injected sub-nav lit on whichever RH page is active
+  function syncSubnav(p) {
+    document.querySelectorAll('.rh-subnav').forEach(nav => {
+      nav.querySelectorAll('button[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === p));
+    });
+  }
+
+  function boot() {
+    if (!window.RHData) { return; }
+    injectStyles(); injectStylesForNav(); injectPages(); injectNavDropdown(); injectResearchSubnav();
+    // prime ages + meta early (cheap, cached)
+    try { D.fetchMeta(); D.loadAges(); } catch (e) {}
+    let tries = 0;
+    const t = setInterval(() => { if (hookShowPage() || ++tries > 50) clearInterval(t); }, 100);
+    // also sync subnav state on every showPage
+    const wrap = () => { const orig = window.showPage; if (typeof orig !== 'function' || window.__rhSubnavHooked) return; window.__rhSubnavHooked = true; const o2 = window.showPage; window.showPage = function (p) { o2.apply(this, arguments); syncSubnav(p); }; };
+    let t2 = 0; const ti = setInterval(() => { wrap(); if (window.__rhSubnavHooked || ++t2 > 50) clearInterval(ti); }, 120);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+
+</script>
 </body>
 </html>
