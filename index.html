@@ -18921,15 +18921,26 @@ function pickYear(year) {
     const statCols = visCols.length - cols.filter(c => c.group === 'info').length;
     const hiddenCount = Object.keys(AS.hidden).filter(k => AS.hidden[k]).length;
 
-    let main;
+    let middle;
     if (AS.mode === 'compare') {
-      main = `<div class="rh-compare"><div class="rh-compare-icon">⇄</div><div class="rh-compare-title">Compare players</div><div class="rh-compare-sub">Pick 2–3 players to line up their advanced stats side by side. Coming soon.</div><div class="rh-compare-slots"><div class="rh-compare-slot">+ Add player</div><div class="rh-compare-slot">+ Add player</div><div class="rh-compare-slot ghost">+ Add player</div></div></div>`;
-    } else if (AS.loading) {
-      main = `<div class="rh-loading"><span class="rh-spin">⟳</span> Loading ${esc(seasonLabel)} from nflverse…</div>`;
-    } else if (AS.err) {
-      main = `<div class="rh-loading err">Couldn’t load data — ${esc(AS.err)}</div>`;
+      middle = cmpSectionHtml();
     } else {
-      main = asLeadersHtml(posRows) + asTableHtml(rows, visCols);
+      let main;
+      if (AS.loading) main = `<div class="rh-loading"><span class="rh-spin">⟳</span> Loading ${esc(seasonLabel)} from nflverse…</div>`;
+      else if (AS.err) main = `<div class="rh-loading err">Couldn’t load data — ${esc(AS.err)}</div>`;
+      else main = asLeadersHtml(posRows) + asTableHtml(rows, visCols);
+      middle = `
+      <div class="rh-tools">
+        <div class="rh-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="rh-adv-search" placeholder="Search player or team…" value="${esc(AS.search)}">
+          ${AS.search ? '<button class="rh-search-x" data-rh-clear>×</button>' : ''}
+        </div>
+        <button class="rh-tool${AS.qualified ? ' on' : ''}" data-rh-qual title="Players meeting a minimum games + volume threshold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v6l-4 2v-8z"/></svg>Qualified</button>
+        <div class="rh-colwrap"><button class="rh-tool${hiddenCount ? ' on' : ''}" data-rh-colmenu title="Show / hide columns"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Columns${hiddenCount ? ' · ' + statCols : ''}</button>${asColMenuHtml(cols)}</div>
+      </div>
+      <div class="rh-status">${AS.pos} · ${esc(seasonLabel)} · <b>${rows.length}</b> of ${posRows.length} players${AS.qualified ? ' · qualified only' : ''}<span class="rh-status-dot">·</span> Updated ${esc(updated)}</div>
+      ${main}`;
     }
 
     mount.innerHTML = `
@@ -18948,18 +18959,106 @@ function pickYear(year) {
         <div class="rh-fgroup"><span class="rh-flabel">Position</span><div class="rh-seg pos">${POS_LIST.map(p => `<button class="rh-segbtn${AS.pos === p ? ' on' : ''}" data-rh-pos="${p}" style="${AS.pos === p ? '--pc:' + POS_COLOR[p] : ''}">${p}</button>`).join('')}</div></div>
         <div class="rh-fgroup"><span class="rh-flabel">Season</span><div class="rh-seg">${SEASONS.map(([v, l]) => `<button class="rh-segbtn${AS.season === v ? ' on' : ''}" data-rh-season="${v}">${l}</button>`).join('')}</div></div>
       </div>
-      <div class="rh-tools">
-        <div class="rh-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input id="rh-adv-search" placeholder="Search player or team…" value="${esc(AS.search)}">
-          ${AS.search ? '<button class="rh-search-x" data-rh-clear>×</button>' : ''}
-        </div>
-        <button class="rh-tool${AS.qualified ? ' on' : ''}" data-rh-qual title="Players meeting a minimum games + volume threshold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 8v6l-4 2v-8z"/></svg>Qualified</button>
-        <div class="rh-colwrap"><button class="rh-tool${hiddenCount ? ' on' : ''}" data-rh-colmenu title="Show / hide columns"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Columns${hiddenCount ? ' · ' + statCols : ''}</button>${asColMenuHtml(cols)}</div>
-      </div>
-      <div class="rh-status">${AS.pos} · ${esc(seasonLabel)} · <b>${rows.length}</b> of ${posRows.length} players${AS.qualified ? ' · qualified only' : ''}<span class="rh-status-dot">·</span> Updated ${esc(updated)}</div>
-      ${main}
+      ${middle}
       <div class="rh-foot">Stats via <a href="https://github.com/nflverse" target="_blank" rel="noopener">nflverse</a> · age via <a href="https://rosteraudit.com" target="_blank" rel="noopener">RosterAudit</a> · weekly logs aggregated to season totals &amp; efficiency</div>`;
+  }
+
+  /* ════════════════════════ COMPARE ════════════════════════ */
+  const CMP = { players: [], search: '', acOpen: false };
+
+  function cmpData() {
+    const posRows = asPosRows();
+    const byName = {};
+    posRows.forEach(r => { byName[r.name] = r; });
+    const players = CMP.players.map(n => byName[n]).filter(Boolean);
+    return { posRows, players };
+  }
+
+  function cmpAcHtml() {
+    if (!CMP.acOpen) return '';
+    const { posRows } = cmpData();
+    const chosen = {}; CMP.players.forEach(n => { chosen[n] = 1; });
+    const s = CMP.search.trim().toLowerCase();
+    let pool = posRows.filter(p => !chosen[p.name]);
+    pool = s ? pool.filter(p => p.name.toLowerCase().includes(s) || (p.team || '').toLowerCase().includes(s)) : pool;
+    pool = pool.sort((a, b) => (b.fpts || 0) - (a.fpts || 0)).slice(0, 8);
+    const items = pool.length ? pool.map(p => `<button class="rh-ac-item" data-rh-cmpadd="${esc(p.name)}">${avatar(p, 'rh-ac-av')}<span class="rh-ac-name">${esc(p.name)}</span><span class="rh-ac-meta">${esc(p.team)} · ${r1(p.fppg)} FP/G</span></button>`).join('') : '<div class="rh-ac-empty">No players found</div>';
+    return `<div class="rh-ac">${items}</div>`;
+  }
+
+  function cmpSectionHtml() {
+    if (AS.loading) return `<div class="rh-loading"><span class="rh-spin">⟳</span> Loading players…</div>`;
+    const { players } = cmpData();
+    const cols = D.COLS[AS.pos];
+
+    const slotCards = players.map(p => `
+      <div class="rh-cmp-slot filled" style="--pc:${POS_COLOR[p.pos]}">
+        <button class="rh-cmp-x" data-rh-cmpremove="${esc(p.name)}" title="Remove">×</button>
+        ${avatar(p, 'rh-cmp-av')}
+        <div class="rh-cmp-sname">${esc(p.name)}</div>
+        <div class="rh-cmp-smeta"><span class="rh-pos" style="color:${POS_COLOR[p.pos]};border-color:${POS_COLOR[p.pos]}40;background:${POS_COLOR[p.pos]}14">${esc(p.pos)}</span>${esc(p.team)}${p.age != null ? ' · ' + p.age.toFixed(1) + 'y' : ''}</div>
+        <div class="rh-cmp-spts">${r1(p.fppg)}<small>FP/G · ${p.g} G</small></div>
+      </div>`).join('');
+    const addSlot = players.length < 3 ? `
+      <div class="rh-cmp-slot add">
+        <div class="rh-cmp-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="rh-cmp-search" placeholder="Add ${AS.pos}…" autocomplete="off" spellcheck="false">
+          <div id="rh-cmp-ac" class="rh-ac-host"></div>
+        </div>
+        <span class="rh-cmp-addhint">${players.length === 0 ? 'Pick a player' : players.length === 1 ? 'Add one more' : 'Add a third (optional)'}</span>
+      </div>` : '';
+    const clearBtn = players.length ? `<button class="rh-cmp-clear" data-rh-cmpclear>Clear all</button>` : '';
+
+    const slots = `<div class="rh-cmp-slots">${slotCards}${addSlot}</div>`;
+
+    let body;
+    if (players.length < 2) {
+      body = `<div class="rh-cmp-empty"><div class="rh-cmp-empty-ic">⇄</div><div class="rh-cmp-empty-t">Compare ${AS.pos}s head-to-head</div><div class="rh-cmp-empty-s">Add at least two players above to line up every advanced metric side by side. The leader in each stat is highlighted.</div></div>`;
+    } else {
+      body = cmpTableHtml(players, cols);
+    }
+    return `<div class="rh-cmp">
+      <div class="rh-cmp-top"><span class="rh-cmp-cap">Head-to-head · ${AS.pos} · ${AS.season === 'all' ? 'All seasons' : AS.season}</span>${clearBtn}</div>
+      ${slots}
+      ${body}
+    </div>`;
+  }
+
+  function cmpTableHtml(players, cols) {
+    const groups = [];
+    cols.forEach(c => { const last = groups[groups.length - 1]; if (last && last.key === c.group) last.cols.push(c); else groups.push({ key: c.group, cols: [c] }); });
+    const headCols = players.map(p => `<th class="rh-cmp-ph"><span class="rh-cmp-ph-in">${avatar(p, 'rh-cmp-ph-av')}<span class="rh-cmp-ph-name">${esc(p.name.split(' ').slice(-1)[0])}</span><span class="rh-cmp-ph-team">${esc(p.team)}</span></span></th>`).join('');
+    let rowsHtml = '';
+    groups.forEach(g => {
+      rowsHtml += `<tr class="rh-cmp-grouprow"><td colspan="${players.length + 1}">${GROUP_LABEL[g.key] || ''}</td></tr>`;
+      g.cols.forEach(c => {
+        const vals = players.map(p => p[c.key]);
+        const valid = vals.filter(v => v != null && isFinite(v));
+        const lo = !!c.lo;
+        let best = null;
+        if (valid.length) best = lo ? Math.min.apply(null, valid) : Math.max.apply(null, valid);
+        const maxAbs = Math.max.apply(null, valid.map(v => Math.abs(v)).concat([1]));
+        const cells = players.map((p, idx) => {
+          const v = vals[idx];
+          const isWin = v != null && isFinite(v) && best != null && v === best && valid.length > 1 && valid.some(x => x !== best);
+          const pct = (v != null && isFinite(v)) ? Math.max(2, Math.abs(v) / maxAbs * 100) : 0;
+          return `<td class="rh-cmp-cell${isWin ? ' win' : ''}"><span class="rh-cmp-bar" style="width:${pct}%"></span><span class="rh-cmp-v">${esc(c.fmt(v))}</span>${isWin ? '<span class="rh-cmp-crown">▲</span>' : ''}</td>`;
+        }).join('');
+        rowsHtml += `<tr class="rh-cmp-row"><td class="rh-cmp-metric" title="${esc(c.hint)}">${esc(c.label)}<small>${esc(c.hint)}</small></td>${cells}</tr>`;
+      });
+    });
+    return `<div class="rh-cmp-tablewrap"><table class="rh-cmp-table"><thead><tr><th class="rh-cmp-mh">Metric</th>${headCols}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+  }
+
+  function cmpRenderAc() {
+    const host = document.getElementById('rh-cmp-ac');
+    if (host) host.innerHTML = cmpAcHtml();
+  }
+  function cmpPrefill() {
+    if (CMP.players.length || AS.loading) return;
+    const top = asPosRows().filter(D.QUALIFY[AS.pos]).sort((a, b) => (b.fpts || 0) - (a.fpts || 0));
+    CMP.players = top.slice(0, 2).map(p => p.name);
   }
 
   /* ════════════════════════ GAME LOGS ════════════════════════ */
@@ -19116,14 +19215,18 @@ function pickYear(year) {
     // ── Advanced Stats ──
     const adv = e.target.closest('#page-advstats');
     if (adv) {
-      const pos = e.target.closest('[data-rh-pos]'); if (pos) { AS.pos = pos.dataset.rhPos; AS.sortKey = 'fpts'; AS.sortDir = 'desc'; AS.hidden = {}; AS.colMenu = false; asRender(); return; }
+      const pos = e.target.closest('[data-rh-pos]'); if (pos) { AS.pos = pos.dataset.rhPos; AS.sortKey = 'fpts'; AS.sortDir = 'desc'; AS.hidden = {}; AS.colMenu = false; CMP.players = []; CMP.search = ''; CMP.acOpen = false; if (AS.mode === 'compare') cmpPrefill(); asRender(); return; }
       const ssn = e.target.closest('[data-rh-season]'); if (ssn) { AS.season = ssn.dataset.rhSeason; asLoadSeason(); return; }
-      const mode = e.target.closest('[data-rh-mode]'); if (mode) { AS.mode = mode.dataset.rhMode; asRender(); return; }
+      const mode = e.target.closest('[data-rh-mode]'); if (mode) { AS.mode = mode.dataset.rhMode; if (AS.mode === 'compare') cmpPrefill(); asRender(); return; }
+      const cmpAdd = e.target.closest('[data-rh-cmpadd]'); if (cmpAdd) { const n = cmpAdd.dataset.rhCmpadd; if (CMP.players.indexOf(n) < 0 && CMP.players.length < 3) CMP.players.push(n); CMP.search = ''; CMP.acOpen = false; asRender(); return; }
+      const cmpRm = e.target.closest('[data-rh-cmpremove]'); if (cmpRm) { CMP.players = CMP.players.filter(x => x !== cmpRm.dataset.rhCmpremove); asRender(); return; }
+      const cmpClr = e.target.closest('[data-rh-cmpclear]'); if (cmpClr) { CMP.players = []; CMP.search = ''; CMP.acOpen = false; asRender(); return; }
       const qual = e.target.closest('[data-rh-qual]'); if (qual) { AS.qualified = !AS.qualified; asRender(); return; }
       const clr = e.target.closest('[data-rh-clear]'); if (clr) { AS.search = ''; asRender(); return; }
       const sort = e.target.closest('[data-rh-sort]'); if (sort) { const k = sort.dataset.rhSort; if (AS.sortKey === k) AS.sortDir = AS.sortDir === 'desc' ? 'asc' : 'desc'; else { AS.sortKey = k; AS.sortDir = 'desc'; } asRender(); return; }
       const cm = e.target.closest('[data-rh-colmenu]'); if (cm) { AS.colMenu = !AS.colMenu; asRender(); return; }
       if (AS.colMenu && !e.target.closest('.rh-colmenu') && !e.target.closest('[data-rh-colmenu]')) { AS.colMenu = false; asRender(); }
+      if (CMP.acOpen && !e.target.closest('.rh-cmp-search')) { CMP.acOpen = false; cmpRenderAc(); }
       return;
     }
     // ── Game Logs ──
@@ -19142,13 +19245,17 @@ function pickYear(year) {
 
   document.addEventListener('input', e => {
     if (e.target.id === 'rh-adv-search') { AS.search = e.target.value; AS._focus = true; asRenderSearchOnly(); }
+    if (e.target.id === 'rh-cmp-search') { CMP.search = e.target.value; CMP.acOpen = true; cmpRenderAc(); }
     if (e.target.id === 'rh-gl-search') { GL.acQuery = e.target.value; GL.acOpen = true; glRenderAc(); }
   });
   document.addEventListener('change', e => {
     if (e.target.id === 'rh-gl-opp') { GL.opp = e.target.value; glRenderBody(); }
     if (e.target.dataset && e.target.dataset.rhColkey) { const k = e.target.dataset.rhColkey; AS.hidden[k] = !e.target.checked ? true : false; if (e.target.checked) delete AS.hidden[k]; asRender(); }
   });
-  document.addEventListener('focusin', e => { if (e.target.id === 'rh-gl-search') { GL.acOpen = true; glRenderAc(); } });
+  document.addEventListener('focusin', e => {
+    if (e.target.id === 'rh-gl-search') { GL.acOpen = true; glRenderAc(); }
+    if (e.target.id === 'rh-cmp-search') { CMP.acOpen = true; cmpRenderAc(); }
+  });
 
   // Advanced search: re-render but preserve the input focus/caret
   function asRenderSearchOnly() {
@@ -19263,6 +19370,53 @@ function pickYear(year) {
     ${S} .rh-compare-slot{width:150px;height:90px;border:1px dashed var(--border2);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:13px;font-weight:600;font-family:var(--font-sans)}
     ${S} .rh-compare-slot.ghost{opacity:.5}
     ${S} .rh-foot{text-align:center;font-size:11px;color:var(--faint);margin-top:24px;font-family:var(--font-sans)}
+    /* Compare */
+    ${S} .rh-cmp-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    ${S} .rh-cmp-cap{font-family:var(--font-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+    ${S} .rh-cmp-clear{border:1px solid var(--border);background:var(--s1);color:var(--text2);font-family:var(--font-sans);font-size:12px;font-weight:600;padding:7px 13px;border-radius:9px;cursor:pointer}
+    ${S} .rh-cmp-clear:hover{border-color:var(--rh-border3);color:var(--text)}
+    ${S} .rh-cmp-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+    ${S} .rh-cmp-slot{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:16px;min-height:132px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;text-align:center}
+    ${S} .rh-cmp-slot.filled{border-top:3px solid var(--pc)}
+    ${S} .rh-cmp-slot.add{border-style:dashed;gap:10px}
+    ${S} .rh-cmp-x{position:absolute;top:9px;right:9px;width:22px;height:22px;border-radius:7px;border:none;background:var(--s3);color:var(--muted);cursor:pointer;font-size:15px;line-height:1;z-index:5}
+    ${S} .rh-cmp-x:hover{background:var(--accent);color:#fff}
+    ${S} .rh-cmp-av{width:54px;height:54px;border-radius:13px;overflow:hidden;background:var(--s3);border:1px solid var(--border2);font-size:15px}
+    ${S} .rh-cmp-sname{font-family:var(--font-sans);font-size:15px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+    ${S} .rh-cmp-smeta{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+    ${S} .rh-cmp-spts{font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--text);margin-top:2px}
+    ${S} .rh-cmp-spts small{display:block;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-top:2px}
+    ${S} .rh-cmp-search{position:relative;width:100%;display:flex;align-items:center;gap:9px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+    ${S} .rh-cmp-search:focus-within{border-color:var(--rh-border3)}
+    ${S} .rh-cmp-search svg{width:15px;height:15px;color:var(--muted);flex-shrink:0}
+    ${S} .rh-cmp-search input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-family:var(--font-sans)}
+    ${S} .rh-cmp-search .rh-ac{top:calc(100% + 7px)}
+    ${S} .rh-cmp-addhint{font-family:var(--font-mono);font-size:10px;color:var(--faint)}
+    ${S} .rh-cmp-empty{padding:54px 24px;text-align:center;background:var(--s1);border:1px dashed var(--border2);border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:8px}
+    ${S} .rh-cmp-empty-ic{font-size:30px;color:var(--sky)}
+    ${S} .rh-cmp-empty-t{font-size:17px;font-weight:700;font-family:var(--font-sans)}
+    ${S} .rh-cmp-empty-s{font-size:13px;color:var(--muted);line-height:1.6;max-width:440px;font-family:var(--font-sans)}
+    ${S} .rh-cmp-tablewrap{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--s1)}
+    ${S} .rh-cmp-table{width:100%;border-collapse:separate;border-spacing:0;font-family:var(--font-sans)}
+    ${S} .rh-cmp-table th{background:var(--s2);border-bottom:1px solid var(--border)}
+    ${S} .rh-cmp-mh{text-align:left;padding:12px 16px;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:600;width:30%}
+    ${S} .rh-cmp-ph{padding:12px 14px;vertical-align:bottom}
+    ${S} .rh-cmp-ph-in{display:flex;flex-direction:column;align-items:center;gap:5px}
+    ${S} .rh-cmp-ph-av{width:40px;height:40px;border-radius:10px;overflow:hidden;background:var(--s3);border:1px solid var(--border2);font-size:12px}
+    ${S} .rh-cmp-ph-name{font-size:13px;font-weight:700;letter-spacing:-.01em}
+    ${S} .rh-cmp-ph-team{font-family:var(--font-mono);font-size:10px;color:var(--muted)}
+    ${S} .rh-cmp-grouprow td{padding:9px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--sky);font-weight:700;background:rgba(77,134,240,.05);border-bottom:1px solid var(--border)}
+    ${S} .rh-cmp-row td{border-bottom:1px solid rgba(255,255,255,.045)}
+    ${S} .rh-cmp-row:last-child td{border-bottom:none}
+    ${S} .rh-cmp-metric{padding:0 16px;height:46px;font-size:12.5px;font-weight:600;color:var(--text2)}
+    ${S} .rh-cmp-metric small{display:block;font-family:var(--font-mono);font-weight:400;font-size:10px;color:var(--faint);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+    ${S} .rh-cmp-cell{position:relative;text-align:center;height:46px;font-family:var(--font-mono);font-size:14px;color:var(--text2);overflow:hidden}
+    ${S} .rh-cmp-bar{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);height:3px;background:var(--border3);border-radius:2px;max-width:80%;transition:width .35s ease}
+    ${S} .rh-cmp-v{position:relative;z-index:2}
+    ${S} .rh-cmp-cell.win{color:var(--rb);font-weight:700;background:rgba(61,204,122,.08)}
+    ${S} .rh-cmp-cell.win .rh-cmp-bar{background:var(--rb);box-shadow:0 0 8px -1px var(--rb)}
+    ${S} .rh-cmp-crown{position:absolute;top:7px;right:10px;font-size:7px;color:var(--rb);z-index:2}
+    @media(max-width:760px){${S} .rh-cmp-slots{grid-template-columns:1fr}${S} .rh-cmp-mh{width:34%}${S} .rh-cmp-metric small{display:none}}
     /* Game Logs */
     ${S} .gl-season{align-self:flex-start}
     ${S} .rh-glsearch{flex:none;margin-bottom:18px;padding:14px 16px;gap:11px}
@@ -19351,12 +19505,12 @@ function pickYear(year) {
     if (navBtn && !navBtn.closest('.rh-mt-wrap')) {
       const wrap = document.createElement('div'); wrap.className = 'rh-mt-wrap';
       navBtn.parentNode.insertBefore(wrap, navBtn); wrap.appendChild(navBtn);
+      navBtn.setAttribute('onclick', "showPage('advstats')"); // Research Hub now lands on Advanced Stats
       navBtn.insertAdjacentHTML('beforeend', '<span class="rh-caret">▼</span>');
       const menu = document.createElement('div'); menu.className = 'rh-mt-menu'; menu.id = 'rh-mt-menu';
       menu.innerHTML = `
-        <button class="rh-mt-item" data-go="research"><span class="ic">⌕</span><span><b>Research Hub</b><small>Search · values · dossier</small></span></button>
-        <button class="rh-mt-item" data-go="advstats"><span class="ic">▦</span><span><b>Advanced Stats</b><small>Leaderboard · metrics</small></span><span class="rh-newtag">NEW</span></button>
-        <button class="rh-mt-item" data-go="gamelogs"><span class="ic">▤</span><span><b>Game Logs</b><small>Per-game · DvP · splits</small></span><span class="rh-newtag">NEW</span></button>`;
+        <button class="rh-mt-item" data-go="advstats"><span class="ic">▦</span><span><b>Advanced Stats</b><small>Leaderboard · metrics · compare</small></span></button>
+        <button class="rh-mt-item" data-go="gamelogs"><span class="ic">▤</span><span><b>Game Logs</b><small>Per-game · DvP · splits</small></span></button>`;
       document.body.appendChild(menu);
       let hideT;
       const place = () => { const r = wrap.getBoundingClientRect(); menu.style.top = (r.bottom + 4) + 'px'; menu.style.left = r.left + 'px'; };
@@ -19366,14 +19520,12 @@ function pickYear(year) {
       menu.addEventListener('mouseenter', () => clearTimeout(hideT)); menu.addEventListener('mouseleave', hide);
       window.addEventListener('resize', () => menu.classList.remove('show'));
     }
-    // sidebar
+    // sidebar — repoint the existing Research link to Advanced Stats, add Game Logs
     const sl = document.getElementById('sl-research') || document.querySelector('[onclick*="showPage(\'research\')"].sidebar-link');
-    if (sl && !document.getElementById('sl-advstats')) {
-      const mk = (id, go, icon, label) => { const b = document.createElement('button'); b.id = id; b.className = 'sidebar-link'; b.setAttribute('onclick', `showPage('${go}')`); b.innerHTML = `<span style="font-size:17px">${icon}</span><span>${label}</span>`; return b; };
-      const a = mk('sl-advstats', 'advstats', '▦', 'Advanced Stats');
-      const g = mk('sl-gamelogs', 'gamelogs', '▤', 'Game Logs');
+    if (sl && !document.getElementById('sl-gamelogs')) {
+      sl.setAttribute('onclick', "showPage('advstats')");
+      const g = document.createElement('button'); g.id = 'sl-gamelogs'; g.className = 'sidebar-link'; g.setAttribute('onclick', "showPage('gamelogs')"); g.innerHTML = '<span style="font-size:17px">▤</span><span>Game Logs</span>';
       sl.parentNode.insertBefore(g, sl.nextSibling);
-      sl.parentNode.insertBefore(a, sl.nextSibling);
     }
   }
 
@@ -19399,67 +19551,32 @@ function pickYear(year) {
     if (window.__rhShowPageHooked) return true; window.__rhShowPageHooked = true;
     window.showPage = function (p) {
       orig.apply(this, arguments);
-      const onRH = (p === 'research' || p === 'advstats' || p === 'gamelogs');
+      const onRH = (p === 'advstats' || p === 'gamelogs');
       document.getElementById('nb-research')?.classList.toggle('on', onRH);
-      document.getElementById('sl-research')?.classList.toggle('active', p === 'research');
-      document.getElementById('sl-advstats')?.classList.toggle('active', p === 'advstats');
+      document.getElementById('sl-research')?.classList.toggle('active', p === 'advstats');
       document.getElementById('sl-gamelogs')?.classList.toggle('active', p === 'gamelogs');
       document.querySelectorAll('#rh-mt-menu .rh-mt-item').forEach(it => it.classList.toggle('active', it.dataset.go === p));
       // our injected pages need explicit show (showPage toggles .on by id match)
       if (p === 'advstats') { document.getElementById('page-advstats')?.classList.add('on'); if (!AS.booted) { AS.booted = true; asLoadSeason(); } else asRender(); }
       if (p === 'gamelogs') { document.getElementById('page-gamelogs')?.classList.add('on'); if (!GL.booted) { GL.booted = true; glLoadSeason(); } else glRender(); }
     };
-    // menu + sub-nav click routing
+    // menu click routing
     document.addEventListener('click', e => {
       const it = e.target.closest('#rh-mt-menu .rh-mt-item');
       if (it) { document.getElementById('rh-mt-menu')?.classList.remove('show'); window.showPage(it.dataset.go); return; }
-      const sn = e.target.closest('.rh-subnav button[data-go]');
-      if (sn) { window.showPage(sn.dataset.go); }
     });
     return true;
   }
 
-  function injectResearchSubnav() {
-    // a sub-nav inside the existing Research page so users can hop to the new pages
-    const host = document.querySelector('#page-research .proto-page');
-    if (!host || host.querySelector('.rh-subnav')) return;
-    injectSubnavStyles();
-    const nav = document.createElement('div');
-    nav.className = 'rh-subnav'; nav.setAttribute('role', 'tablist');
-    nav.innerHTML = `
-      <button class="on" data-go="research" aria-current="page">Research Hub</button>
-      <button data-go="advstats">Advanced Stats <span class="rh-subnav-new">NEW</span></button>
-      <button data-go="gamelogs">Game Logs <span class="rh-subnav-new">NEW</span></button>`;
-    host.insertBefore(nav, host.firstChild);
-  }
-  function injectSubnavStyles() {
-    if (document.getElementById('rh-subnav-styles')) return;
-    const css = `
-    .rh-subnav{display:flex;align-items:center;gap:2px;margin:-6px 0 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-    .rh-subnav button{display:flex;align-items:center;gap:7px;height:42px;padding:0 14px;border:none;background:transparent;color:var(--muted);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
-    .rh-subnav button:hover{color:var(--text)}
-    .rh-subnav button.on{color:var(--text);border-bottom-color:var(--accent)}
-    .rh-subnav-new{font-family:var(--font-mono);font-size:8px;font-weight:700;letter-spacing:.1em;padding:2px 5px;border-radius:4px;background:rgba(226,58,78,.16);color:var(--accent2)}`;
-    const el = document.createElement('style'); el.id = 'rh-subnav-styles'; el.textContent = css; document.head.appendChild(el);
-  }
-
-  // keep our injected sub-nav lit on whichever RH page is active
-  function syncSubnav(p) {
-    document.querySelectorAll('.rh-subnav').forEach(nav => {
-      nav.querySelectorAll('button[data-go]').forEach(b => b.classList.toggle('on', b.dataset.go === p));
-    });
-  }
+  function injectResearchSubnav() { /* removed — Research Hub now lands directly on Advanced Stats */ }
 
   function boot() {
     if (!window.RHData) { return; }
-    injectStyles(); injectStylesForNav(); injectPages(); injectNavDropdown(); injectResearchSubnav();
+    injectStyles(); injectStylesForNav(); injectPages(); injectNavDropdown();
     // prime ages + meta early (cheap, cached)
     try { D.fetchMeta(); D.loadAges(); } catch (e) {}
     let tries = 0;
     const t = setInterval(() => { if (hookShowPage() || ++tries > 50) clearInterval(t); }, 100);
-    // also sync subnav state on every showPage
-    const wrap = () => { const orig = window.showPage; if (typeof orig !== 'function' || window.__rhSubnavHooked) return; window.__rhSubnavHooked = true; const o2 = window.showPage; window.showPage = function (p) { o2.apply(this, arguments); syncSubnav(p); }; };
-    let t2 = 0; const ti = setInterval(() => { wrap(); if (window.__rhSubnavHooked || ++t2 > 50) clearInterval(ti); }, 120);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
