@@ -1636,6 +1636,96 @@ header {
 .vault-card img{position:relative;z-index:1;display:block}
 @media(prefers-reduced-motion:reduce){.vault-card-grid{animation:none}}
 
+/* ════════════════════════════════════════════════════════════════
+   VAULT GLASS — liquid-glass connect experience (Step 1 + Step 2)
+   ════════════════════════════════════════════════════════════════ */
+.vg-card{
+  width:580px;max-width:100%;margin:0 auto;padding:34px 36px 26px;border-radius:32px;text-align:center;color:#15203a;
+  background:linear-gradient(165deg, rgba(255,255,255,.80), rgba(255,255,255,.58));
+  backdrop-filter:blur(40px) saturate(185%);-webkit-backdrop-filter:blur(40px) saturate(185%);
+  border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 44px 100px rgba(8,16,38,.55), inset 0 1px 0 rgba(255,255,255,.96), inset 0 -28px 60px rgba(150,170,210,.14);
+}
+/* logo sits directly on the bright frosted card — no tile */
+.vg-logo{display:block;margin:4px auto 0;width:360px;max-width:86%;height:auto}
+.vg-eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10.5px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:#c52d3a;
+  background:rgba(226,58,78,.10);border:1px solid rgba(226,58,78,.24);padding:6px 13px;border-radius:999px;margin-top:18px;white-space:nowrap}
+.vg-eyebrow .d{width:6px;height:6px;border-radius:50%;background:#c52d3a}
+.vg-head{font-size:27px;font-weight:800;letter-spacing:-.025em;color:#15203a;margin-top:14px}
+.vg-sub{font-size:14.5px;color:#5d6b86;line-height:1.5;margin-top:9px;max-width:360px;margin-left:auto;margin-right:auto}
+
+/* platform rows — light glass on the bright card */
+#vp-platforms{display:flex!important;flex-direction:column!important;gap:12px!important;margin:24px 0 0!important;grid-template-columns:none!important}
+.vp-plat{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:15px!important;
+  width:100%;text-align:left;cursor:pointer;border-radius:18px!important;padding:16px 18px!important;
+  background:rgba(255,255,255,.55)!important;border:1px solid rgba(20,30,55,.10)!important;
+  box-shadow:0 6px 18px rgba(28,46,86,.10), inset 0 1px 0 rgba(255,255,255,.9)!important;color:#15203a!important;min-height:0!important;
+  transition:transform .16s cubic-bezier(.2,.7,.2,1), background .16s, border-color .16s!important}
+.vp-plat:hover{transform:translateY(-2px);background:rgba(255,255,255,.82)!important;border-color:rgba(20,30,55,.18)!important}
+.vp-plat.on{background:rgba(255,255,255,.88)!important;border-color:rgba(226,58,78,.42)!important}
+.vp-plat .vg-ic{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 8px 20px rgba(20,40,80,.22)}
+.vp-plat .vg-ic.sl{background:linear-gradient(135deg,#28e0d0,#0fb5a6)}
+.vp-plat .vg-ic.es{background:linear-gradient(135deg,#ff5a5a,#d50a0a);font-style:italic}
+.vp-plat .vg-txt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.vp-plat .vg-nm{font-size:16px;font-weight:700;letter-spacing:-.01em;color:#15203a;line-height:1.1}
+.vp-plat .vg-ds{font-size:12.5px;color:#5d6b86;font-weight:500}
+.vp-plat .vg-arr{margin-left:auto;font-size:18px;color:#8a93a6;transition:transform .16s, color .16s}
+.vp-plat:hover .vg-arr{transform:translateX(3px);color:#15203a}
+.vp-plat .ok{margin-left:6px}
+
+/* ── light-mode overrides for the functional panels inside the bright card ── */
+.vg-card .connect-input{background:rgba(255,255,255,.85)!important;border:1px solid rgba(20,30,55,.16)!important;color:#15203a!important}
+.vg-card .connect-input::placeholder{color:#9aa3b3!important}
+.vg-card .vp-resume{background:rgba(255,255,255,.55)!important;border:1px solid rgba(20,30,55,.12)!important;border-left:2px solid var(--rb)!important}
+.vg-card .vp-resume .nm{color:#15203a!important}
+.vg-card .vp-resume .dg{color:#5d6b86!important}
+.vg-card .vp-espn-note{background:rgba(20,30,55,.05)!important;border-color:rgba(20,30,55,.10)!important}
+.vg-card .vp-espn-note p,.vg-card .vp-espn-note b{color:#33414f!important}
+.vg-card code{background:rgba(20,30,55,.08)!important;color:#15203a!important}
+.vg-card .vp-or span{color:#5d6b86!important}
+.vg-card .vp-or:before,.vg-card .vp-or:after{background:rgba(20,30,55,.14)!important}
+.vg-card .vp-adv{color:#33414f!important;background:rgba(255,255,255,.5)!important;border-color:rgba(20,30,55,.14)!important}
+.vg-card .vp-cookie p{color:#5d6b86!important}
+.vg-card .vp-ckinput{background:rgba(255,255,255,.85)!important;color:#15203a!important;border:1px solid rgba(20,30,55,.16)!important}
+.vg-card .vp-cklabel{color:#33414f!important}
+.vg-card .vp-ckhelp summary{color:#c52d3a!important}
+.vg-card .vp-cksteps li,.vg-card .vp-cksteps span{color:#33414f!important}
+.vg-card .setup-or{color:#8a93a6!important}
+
+/* panels live inside the glass card */
+#vp-panel-sleeper, #vp-panel-espn{margin-top:14px;text-align:left}
+.vg-ghost{width:100%;margin-top:16px;padding:12px;border:none;background:transparent;color:var(--muted);
+  font-family:var(--font-sans);font-size:13.5px;font-weight:600;cursor:pointer;border-radius:12px;transition:color .15s}
+.vg-ghost:hover{color:var(--text)}
+.vg-trust{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:var(--muted)}
+.vg-trust .d{width:6px;height:6px;border-radius:50%;background:#3DCC7A;box-shadow:0 0 0 4px rgba(61,204,122,.16)}
+
+/* Step-2 leagues view: glass cards + toolbar */
+.vg-step2-head .vg-eyebrow{margin-top:0}
+#vp-leagues-wrap .vp-lg, #vp-leagues-wrap .lp-league-card{
+  background:linear-gradient(165deg, rgba(54,72,108,.30), rgba(18,28,48,.24))!important;
+  backdrop-filter:blur(18px) saturate(150%)!important;-webkit-backdrop-filter:blur(18px) saturate(150%)!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  box-shadow:0 10px 30px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.14)!important;}
+#vp-leagues-wrap .vp-lg.sel{border-color:rgba(226,58,78,.7)!important;
+  box-shadow:0 0 0 1px rgba(226,58,78,.4),0 18px 40px -22px rgba(226,58,78,.6), inset 0 1px 0 rgba(255,255,255,.16)!important}
+/* glass toolbar in step 2 */
+#vp-view-leagues .vp-search input,
+#vp-view-leagues .vp-chip,
+#vp-view-leagues .vp-bulk button{
+  background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.14)!important;
+  backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important}
+#vp-view-leagues .vp-chip.on{background:rgba(226,58,78,.16)!important;border-color:rgba(226,58,78,.45)!important;color:var(--accent2)!important}
+/* step-2 content sits in a soft glass sheet */
+.vg-sheet{border-radius:26px;padding:30px 30px 24px;
+  background:linear-gradient(170deg, rgba(40,54,84,.28), rgba(14,22,40,.20));
+  backdrop-filter:blur(26px) saturate(160%);-webkit-backdrop-filter:blur(26px) saturate(160%);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.16)}
+
 /* ── Nav tabs ── */
 .desktop-nav button {
   font-family:var(--font-sans)!important;
@@ -3055,9 +3145,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <!-- Grid background -->
     <div class="vp-bg-grid" style="position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(121,128,152,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(121,128,152,0.07) 1px,transparent 1px);background-size:40px 40px;z-index:0"></div>
     <!-- Ambient glows (slowly drifting) -->
-    <div class="vp-glow vp-glow-a" style="position:fixed;top:25%;right:-6rem;width:24rem;height:24rem;background:rgba(204,0,60,0.07);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
-    <div class="vp-glow vp-glow-b" style="position:fixed;bottom:25%;left:-6rem;width:24rem;height:24rem;background:rgba(123,208,255,0.07);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
-    <div class="vp-glow vp-glow-c" style="position:fixed;top:55%;left:40%;width:20rem;height:20rem;background:rgba(61,204,122,0.05);filter:blur(110px);border-radius:50%;pointer-events:none;z-index:0"></div>
+    <div class="vp-glow vp-glow-a" style="position:fixed;top:-8rem;right:-8rem;width:34rem;height:34rem;background:rgba(226,58,78,0.20);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
+    <div class="vp-glow vp-glow-b" style="position:fixed;bottom:-10rem;left:-9rem;width:32rem;height:32rem;background:rgba(70,130,255,0.18);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
+    <div class="vp-glow vp-glow-c" style="position:fixed;top:42%;left:46%;width:26rem;height:26rem;background:rgba(34,200,180,0.13);filter:blur(110px);border-radius:50%;pointer-events:none;z-index:0"></div>
+    <div class="vp-glow vp-glow-d" style="position:fixed;top:4%;left:14%;width:22rem;height:22rem;background:rgba(150,110,255,0.14);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
     <style>
       @keyframes vpDriftA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-6rem,4rem) scale(1.15)}100%{transform:translate(0,0) scale(1)}}
       @keyframes vpDriftB{0%{transform:translate(0,0) scale(1)}50%{transform:translate(5rem,-3rem) scale(1.1)}100%{transform:translate(0,0) scale(1)}}
@@ -3066,67 +3157,46 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       .vp-glow-a{animation:vpDriftA 34s ease-in-out infinite}
       .vp-glow-b{animation:vpDriftB 42s ease-in-out infinite}
       .vp-glow-c{animation:vpDriftC 38s ease-in-out infinite}
+      .vp-glow-d{animation:vpDriftA 48s ease-in-out infinite reverse}
       .vp-bg-grid{animation:vpGridPan 18s linear infinite}
       @media(prefers-reduced-motion:reduce){.vp-glow,.vp-bg-grid{animation:none!important}}
     </style>
 
     <div style="position:relative;z-index:1;max-width:1100px;margin:0 auto;width:100%;padding:48px 24px 80px">
 
-      <!-- VAULT wordmark -->
-      <div style="text-align:center;margin-bottom:48px">
-        <div style="display:flex;justify-content:center;margin-bottom:20px">
-          <div class="vault-card">
-            <div class="vault-card-grid" aria-hidden="true"></div>
-            <img src="assets/vault-lockup.png" alt="Vault Fantasy Football" style="width:auto;height:184px;max-width:78vw;object-fit:contain">
-          </div>
-        </div>
-      </div>
-
       <!-- ══════════ VIEW 1: CONNECT ══════════ -->
       <div id="vp-view-connect">
 
-      <!-- HERO SECTION -->
-      <section style="text-align:center;margin-bottom:40px">
-        <!-- Step indicator -->
-        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(28,43,60,0.5);border:1px solid rgba(144,144,151,0.2);padding:6px 14px;border-radius:9999px;margin-bottom:20px">
-          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block"></span>
-          <span style="font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.10em;text-transform:uppercase;color:var(--accent)">Step 1 of 2 — Connect your account</span>
-        </div>
+      <section style="margin-bottom:40px;display:flex;justify-content:center">
+        <div class="vg-card">
+          <!-- logo sits directly on the bright frosted card -->
+          <img class="vg-logo" src="assets/vault-lockup.png" alt="Vault Fantasy Football">
+          <div class="vg-eyebrow"><span class="d"></span>Step 1 of 2 · Connect</div>
+          <div class="vg-head">Welcome to Vault</div>
+          <div class="vg-sub">Connect your account once and pull every league into one war room — rosters, rankings &amp; trades.</div>
 
-        <h1 style="font-size:clamp(32px,4.6vw,52px);font-weight:800;color:var(--text);letter-spacing:-0.04em;line-height:1.12;margin:0 auto 14px;max-width:720px;font-family:var(--font-sans)">
-          Your Fantasy Football Command Center
-        </h1>
-        <p style="font-size:16.5px;color:var(--muted);max-width:540px;margin:0 auto 28px;line-height:1.6;font-family:var(--font-sans)">
-          Connect your fantasy football account once and pull every league into one war room — rosters, rankings, trade tools and league analysis.
-        </p>
-
-        <!-- WELCOME-BACK RESUME (returning users) -->
-        <div class="vp-resume" id="vp-resume" style="display:none" onclick="resumeSession()">
-          <div class="av" id="vp-resume-av">P</div>
-          <div style="flex:1;min-width:0">
-            <div class="lbl">● Welcome back</div>
-            <div class="nm" id="vp-resume-name">Your account</div>
-            <div class="dg">Resume your last session · <b>tap to jump back in</b></div>
-          </div>
-          <div class="go">→</div>
-        </div>
-
-        <!-- CONNECT CARD -->
-        <div style="background:rgba(15,23,42,0.65);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.10);border-top:2px solid rgba(204,0,60,0.3);border-radius:18px;padding:36px;max-width:560px;margin:0 auto">
-          <!-- Sleeper + Vault icon row -->
-          <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px">
-            <div id="vp-bridge-ic" style="width:48px;height:48px;border-radius:12px;background:#00CEB8;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;font-style:italic">⚡</div>
-            <div style="font-size:18px;color:rgba(144,144,151,0.4)">⇌</div>
-            <div style="width:48px;height:48px;border-radius:12px;background:rgba(39,54,71,0.8);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center">
-              <img src="assets/vault-shield.png" alt="Vault" style="height:34px;width:auto;display:block">
+          <!-- WELCOME-BACK RESUME (returning users) -->
+          <div class="vp-resume" id="vp-resume" style="display:none;margin-top:22px" onclick="resumeSession()">
+            <div class="av" id="vp-resume-av">P</div>
+            <div style="flex:1;min-width:0">
+              <div class="lbl">● Welcome back</div>
+              <div class="nm" id="vp-resume-name">Your account</div>
+              <div class="dg">Resume your last session · <b>tap to jump back in</b></div>
             </div>
+            <div class="go">→</div>
           </div>
 
-          <!-- platform selector -->
+          <!-- platform rows -->
           <div id="vp-platforms">
-            <button class="vp-plat on" data-p="sleeper" onclick="vpSetPlatform('sleeper')"><span class="pl-ic s">⚡</span> Sleeper</button>
-            <button class="vp-plat" data-p="espn" onclick="vpSetPlatform('espn')"><span class="pl-ic e">E</span> ESPN
-              <span class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="#06201d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+            <button class="vp-plat on" data-p="sleeper" onclick="vpSetPlatform('sleeper')">
+              <span class="vg-ic sl">⚡</span>
+              <span class="vg-txt"><span class="vg-nm">Continue with Sleeper</span><span class="vg-ds">Most popular · connect with your username</span></span>
+              <span class="vg-arr">→</span>
+            </button>
+            <button class="vp-plat" data-p="espn" onclick="vpSetPlatform('espn')">
+              <span class="vg-ic es">E</span>
+              <span class="vg-txt"><span class="vg-nm">Continue with ESPN</span><span class="vg-ds">Link your redraft &amp; dynasty leagues</span></span>
+              <span class="vg-arr">→</span>
             </button>
           </div>
 
