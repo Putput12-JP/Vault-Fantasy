@@ -3158,6 +3158,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
     <!-- Grid background -->
     <div class="vp-bg-grid" style="position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(121,128,152,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(121,128,152,0.07) 1px,transparent 1px);background-size:40px 40px;z-index:0"></div>
+    <!-- Live node-mesh (real-time infrastructure motif) -->
+    <canvas id="vp-mesh" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.6"></canvas>
     <!-- Ambient glows (slowly drifting) -->
     <div class="vp-glow vp-glow-a" style="position:fixed;top:-8rem;right:-8rem;width:34rem;height:34rem;background:rgba(226,58,78,0.20);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
     <div class="vp-glow vp-glow-b" style="position:fixed;bottom:-10rem;left:-9rem;width:32rem;height:32rem;background:rgba(70,130,255,0.18);filter:blur(100px);border-radius:50%;pointer-events:none;z-index:0"></div>
@@ -3174,12 +3176,45 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       .vp-glow-d{animation:vpDriftA 48s ease-in-out infinite reverse}
       .vp-bg-grid{animation:vpGridPan 18s linear infinite}
       @media(prefers-reduced-motion:reduce){.vp-glow,.vp-bg-grid{animation:none!important}}
+
+      /* ── Live telemetry strip (Infrastructure-Node motif, Vault palette) ── */
+      .vp-telemetry{display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;gap:0;
+        position:relative;z-index:2;transform:translateZ(0);
+        margin:0 auto 30px;width:fit-content;max-width:100%;border:1px solid var(--border3);border-radius:11px;
+        background:linear-gradient(180deg,#1d2939,#161f2c);
+        box-shadow:0 12px 34px rgba(6,10,20,.55), inset 0 1px 0 rgba(255,255,255,.06);
+        font-family:var(--font-mono);font-size:11px;letter-spacing:.07em;color:#aeb9cb;overflow:hidden}
+      .vp-telemetry .vt-cell{display:flex;align-items:center;gap:7px;padding:9px 15px;
+        border-right:1px solid var(--border);white-space:nowrap;text-transform:uppercase}
+      .vp-telemetry .vt-cell:last-child{border-right:none}
+      .vp-telemetry b{color:var(--text);font-weight:700}
+      .vp-telemetry .vt-cell:first-child{color:var(--rb);background:rgba(61,204,122,.08)}
+      .vp-telemetry .vt-cell:first-child b{color:var(--rb)}
+      .vp-telemetry .vt-dot{width:6px;height:6px;border-radius:50%;background:var(--rb);
+        box-shadow:0 0 0 3px rgba(61,204,122,.20)}
+      .vp-telemetry .vt-dot.live{animation:vtPulse 2.4s ease-in-out infinite}
+      .vp-telemetry .vt-mono-clock{color:var(--accent3)}
+      @keyframes vtPulse{0%,100%{box-shadow:0 0 0 3px rgba(61,204,122,.20)}50%{box-shadow:0 0 0 6px rgba(61,204,122,.04)}}
+      @media(max-width:680px){.vp-telemetry .vt-cell.hideSm{display:none}.vp-telemetry .vt-mono-clock{display:none}}
+      @media(prefers-reduced-motion:reduce){.vp-telemetry .vt-dot.live{animation:none}}
+      /* dashboard-context variant — left aligned, tighter */
+      .vp-telemetry.vt-inline{margin:0 0 20px;width:fit-content;max-width:100%;justify-content:flex-start}
+      @media(max-width:560px){.vp-telemetry.vt-inline{width:fit-content}}
     </style>
 
     <div style="position:relative;z-index:1;max-width:1100px;margin:0 auto;width:100%;padding:48px 24px 80px">
 
       <!-- ══════════ VIEW 1: CONNECT ══════════ -->
       <div id="vp-view-connect">
+
+      <!-- LIVE TELEMETRY STRIP — signals Vault is a real-time data engine -->
+      <div class="vp-telemetry" aria-hidden="true">
+        <span class="vt-cell"><span class="vt-dot live"></span><b>SYSTEM&nbsp;NOMINAL</b></span>
+        <span class="vt-cell">LIVE&nbsp;MARKET&nbsp;DATA</span>
+        <span class="vt-cell">LATENCY&nbsp;<b>0.2s</b></span>
+        <span class="vt-cell hideSm">SYNC&nbsp;<b>99.98%</b></span>
+        <span class="vt-cell vt-mono-clock" id="vp-clock">—</span>
+      </div>
 
       <section style="margin-bottom:40px;display:flex;justify-content:center">
         <div class="vg-card">
@@ -3764,6 +3799,14 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   <button id="ov-tab-share" onclick="shareDraftCard()" style="display:none"></button>
 
   <div class="proto-page">
+
+    <!-- LIVE TELEMETRY STRIP — carries the command-console chrome inside -->
+    <div class="vp-telemetry vt-inline" aria-hidden="true">
+      <span class="vt-cell"><span class="vt-dot live"></span><b>SYNCED</b></span>
+      <span class="vt-cell">LIVE&nbsp;MARKET&nbsp;VALUES</span>
+      <span class="vt-cell hideSm">SOURCE&nbsp;<b>FantasyCalc</b></span>
+      <span class="vt-cell vt-mono-clock" id="ov-sync-clock">UPDATED&nbsp;JUST&nbsp;NOW</span>
+    </div>
 
     <!-- PAGE HEADER — Team Review -->
     <div class="proto-page-hdr">
@@ -19649,6 +19692,83 @@ function pickYear(year) {
   else boot();
 })();
 
+</script>
+<!-- ════ Landing: live node-mesh + telemetry clock (Vault palette) ════ -->
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var canvas = document.getElementById('vp-mesh');
+  if(canvas){
+    var ctx = canvas.getContext('2d'), w, h, dpr, nodes = [], raf;
+    function visible(){ var s = document.getElementById('setup'); return s && !s.classList.contains('gone'); }
+    function resize(){
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth; h = window.innerHeight;
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var n = Math.round(40 * Math.min(1.4, w / 900));
+      nodes = Array.from({length:n}, function(_,i){ return {
+        x: Math.random()*w, y: Math.random()*h,
+        vx:(Math.random()-.5)*.16, vy:(Math.random()-.5)*.16,
+        accent: i % 6 === 0, ph: Math.random()*Math.PI*2
+      };});
+    }
+    function frame(t){
+      raf = requestAnimationFrame(frame);
+      if(!visible()){ return; }
+      ctx.clearRect(0,0,w,h);
+      for(var k=0;k<nodes.length;k++){ var p=nodes[k];
+        p.x+=p.vx; p.y+=p.vy;
+        if(p.x<0||p.x>w) p.vx*=-1;
+        if(p.y<0||p.y>h) p.vy*=-1;
+      }
+      for(var i=0;i<nodes.length;i++){ for(var j=i+1;j<nodes.length;j++){
+        var a=nodes[i], b=nodes[j], dx=a.x-b.x, dy=a.y-b.y, d=Math.hypot(dx,dy);
+        if(d<150){ var o=(1-d/150)*.42;
+          ctx.strokeStyle='rgba(130,150,210,'+o+')'; ctx.lineWidth=.7;
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        }
+      }}
+      for(var m=0;m<nodes.length;m++){ var q=nodes[m];
+        var pulse=.6+.4*Math.sin((t||0)/900+q.ph);
+        if(q.accent){ ctx.fillStyle='rgba(255,90,110,'+(.5+.4*pulse)+')';
+          ctx.beginPath(); ctx.arc(q.x,q.y,3,0,Math.PI*2); ctx.fill();
+        } else { ctx.fillStyle='rgba(180,196,230,'+(.35+.35*pulse)+')';
+          ctx.beginPath(); ctx.arc(q.x,q.y,1.7,0,Math.PI*2); ctx.fill();
+        }
+      }
+    }
+    resize();
+    if(reduce){ frame(0); cancelAnimationFrame(raf); }
+    else { raf = requestAnimationFrame(frame); }
+    var to; window.addEventListener('resize', function(){ clearTimeout(to); to=setTimeout(resize,160); });
+  }
+  // live telemetry clock
+  var clock = document.getElementById('vp-clock');
+  if(clock){
+    function tick(){
+      var d=new Date();
+      function p(n){ return (n<10?'0':'')+n; }
+      clock.textContent = p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' ET';
+    }
+    tick(); setInterval(tick, 1000);
+  }
+  // dashboard "updated Xs ago" counter
+  var sync = document.getElementById('ov-sync-clock');
+  if(sync){
+    var t0 = Date.now();
+    window.vaultMarkSynced = function(){ t0 = Date.now(); };
+    function syncTick(){
+      var s = Math.floor((Date.now()-t0)/1000);
+      var label;
+      if(s < 5) label='UPDATED JUST NOW';
+      else if(s < 60) label='UPDATED '+s+'s AGO';
+      else label='UPDATED '+Math.floor(s/60)+'m AGO';
+      sync.textContent = label;
+    }
+    syncTick(); setInterval(syncTick, 1000);
+  }
+})();
 </script>
 </body>
 </html>
