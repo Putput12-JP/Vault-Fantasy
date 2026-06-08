@@ -13,8 +13,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Vault">
-<link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700;800;900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=JetBrains+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1622,6 +1623,19 @@ header {
 /* ── Logo text ── */
 .logo em { font-style:normal; }
 
+/* ── Vault logo card — white tile with the page's grid continuing through it.
+   background-attachment:fixed + the same 40px size & pan keeps the card's
+   (darker) lines pixel-aligned with the page grid behind it. ── */
+.vault-card{position:relative;display:inline-flex;background:#fff;border-radius:20px;
+  padding:26px 42px;box-shadow:0 22px 60px rgba(0,0,0,0.48);overflow:hidden}
+.vault-card-grid{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(33,49,75,0.12) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(33,49,75,0.12) 1px,transparent 1px);
+  background-size:40px 40px;background-attachment:fixed;
+  animation:vpGridPan 18s linear infinite}
+.vault-card img{position:relative;z-index:1;display:block}
+@media(prefers-reduced-motion:reduce){.vault-card-grid{animation:none}}
+
 /* ── Nav tabs ── */
 .desktop-nav button {
   font-family:var(--font-sans)!important;
@@ -2640,11 +2654,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     margin-right: 0 !important;
   }
   #app-header .logo > div:last-child {
-    display: none; /* hide "VAULT FANTASY FOOTBALL" text — logo SVG is enough */
+    display: none; /* hide "VAULT FANTASY FOOTBALL" text — logo mark is enough */
   }
-  #app-header .logo svg {
-    width: 22px !important;
-    height: 26px !important;
+  #app-header .logo .vault-mark {
+    height: 32px !important;
   }
   /* Hide all desktop nav elements on mobile (already done by media query, this is belt-and-suspenders) */
   .desktop-nav, #header-nav, .nav.desktop-nav {
@@ -3061,24 +3074,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
       <!-- VAULT wordmark -->
       <div style="text-align:center;margin-bottom:48px">
-        <div style="display:inline-flex;align-items:center;gap:14px;margin-bottom:20px">
-          <svg width="40" height="46" viewBox="0 0 100 112" fill="none">
-            <path d="M50 4 L93 21 V62 Q93 90 50 108 Q7 90 7 62 V21 Z" fill="#16233a" stroke="rgba(255,255,255,0.22)" stroke-width="2.5"/>
-            <ellipse cx="50" cy="44" rx="26" ry="17" fill="#eef2f8"/>
-            <line x1="36" y1="44" x2="64" y2="44" stroke="#16233a" stroke-width="2.6" stroke-linecap="round"/>
-            <line x1="43" y1="39" x2="43" y2="49" stroke="#16233a" stroke-width="2.2" stroke-linecap="round"/>
-            <line x1="50" y1="38" x2="50" y2="50" stroke="#16233a" stroke-width="2.2" stroke-linecap="round"/>
-            <line x1="57" y1="39" x2="57" y2="49" stroke="#16233a" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M20 66 H80 L73 86 Q50 96 27 86 Z" fill="#e23a4e"/>
-            <line x1="29" y1="67" x2="27.5" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-            <line x1="39.5" y1="67" x2="38" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-            <line x1="50" y1="67" x2="50" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-            <line x1="60.5" y1="67" x2="62" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-            <line x1="71" y1="67" x2="72.5" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-          </svg>
-          <div style="line-height:1.1">
-            <div style="font-size:28px;font-weight:800;color:var(--text);letter-spacing:-0.03em;font-family:var(--font-sans);text-transform:uppercase">VAULT <span style="color:var(--accent)">FANTASY</span></div>
-            <div style="font-size:10px;font-weight:500;letter-spacing:0.16em;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-top:3px">FOOTBALL</div>
+        <div style="display:flex;justify-content:center;margin-bottom:20px">
+          <div class="vault-card">
+            <div class="vault-card-grid" aria-hidden="true"></div>
+            <img src="assets/vault-lockup.png" alt="Vault Fantasy Football" style="width:auto;height:184px;max-width:78vw;object-fit:contain">
           </div>
         </div>
       </div>
@@ -3119,7 +3118,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
             <div id="vp-bridge-ic" style="width:48px;height:48px;border-radius:12px;background:#00CEB8;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;font-style:italic">⚡</div>
             <div style="font-size:18px;color:rgba(144,144,151,0.4)">⇌</div>
             <div style="width:48px;height:48px;border-radius:12px;background:rgba(39,54,71,0.8);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center">
-              <svg width="24" height="28" viewBox="0 0 100 112" fill="none"><path d="M50 3 L95 20 L95 63 Q95 92 50 110 Q5 92 5 63 L5 20 Z" fill="#bec6e0" opacity="0.9"/></svg>
+              <img src="assets/vault-shield.png" alt="Vault" style="height:34px;width:auto;display:block">
             </div>
           </div>
 
@@ -3318,7 +3317,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   <div id="setup-step2" class="setup-screen" style="display:none">
     <div class="setup-screen-inner">
       <div class="step2-back" onclick="showSetupStep(1)">← Back</div>
-      <div class="setup-wordmark" style="margin-bottom:6px">V<em>ault</em></div>
+      <div style="display:flex;justify-content:center;margin-bottom:6px"><div class="vault-card" style="padding:16px 26px"><div class="vault-card-grid" aria-hidden="true"></div><img src="assets/vault-lockup.png" alt="Vault Fantasy Football" style="height:80px;width:auto"></div></div>
       <div class="step2-title">Choose Your Rankings</div>
       <div class="step2-sub">Select a ranking source for your draft room. You can change this at any time from Settings.</div>
 
@@ -3464,20 +3463,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
   <!-- Logo -->
   <div class="logo" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0;margin-right:16px" onclick="showPage('overview')" id="header-logo">
-    <svg width="26" height="29" viewBox="0 0 100 112" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M50 4 L93 21 V62 Q93 90 50 108 Q7 90 7 62 V21 Z" fill="#16233a" stroke="rgba(255,255,255,0.22)" stroke-width="2.5"/>
-      <ellipse cx="50" cy="44" rx="26" ry="17" fill="#eef2f8"/>
-      <line x1="36" y1="44" x2="64" y2="44" stroke="#16233a" stroke-width="2.6" stroke-linecap="round"/>
-      <line x1="43" y1="39" x2="43" y2="49" stroke="#16233a" stroke-width="2.2" stroke-linecap="round"/>
-      <line x1="50" y1="38" x2="50" y2="50" stroke="#16233a" stroke-width="2.2" stroke-linecap="round"/>
-      <line x1="57" y1="39" x2="57" y2="49" stroke="#16233a" stroke-width="2.2" stroke-linecap="round"/>
-      <path d="M20 66 H80 L73 86 Q50 96 27 86 Z" fill="#e23a4e"/>
-      <line x1="29" y1="67" x2="27.5" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-      <line x1="39.5" y1="67" x2="38" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-      <line x1="50" y1="67" x2="50" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-      <line x1="60.5" y1="67" x2="62" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-      <line x1="71" y1="67" x2="72.5" y2="88" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" stroke-linecap="round"/>
-    </svg>
+    <img class="vault-mark" src="assets/vault-shield.png" alt="Vault Fantasy Football" style="height:38px;width:auto;display:block;flex-shrink:0">
     <div style="line-height:1.1">
       <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.01em;font-family:var(--font-sans);text-transform:uppercase">VAULT <span style="color:var(--accent)">FANTASY</span></div>
       <div style="font-size:8px;font-weight:500;letter-spacing:0.12em;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase">FOOTBALL</div>
@@ -3629,7 +3615,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
       gap:12px;
     ">
       <div style="width:36px;height:36px;border-radius:8px;background:rgba(190,198,224,0.1);border:1px solid rgba(190,198,224,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg width="16" height="18" viewBox="0 0 100 112" fill="none"><path d="M50 3 L95 20 L95 63 Q95 92 50 110 Q5 92 5 63 L5 20 Z" fill="#bec6e0" opacity="0.8"/></svg>
+        <img src="assets/vault-shield.png" alt="Vault" style="height:27px;width:auto;display:block">
       </div>
       <div>
         <div id="sidebar-team-name" style="font-size:13px;font-weight:700;color:var(--text);font-family:var(--font-sans)">IRON VAULT FC</div>
@@ -4291,10 +4277,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
         </button>
       </div>
       <!-- Decorative shield watermark -->
-      <div style="position:absolute;bottom:-40px;right:-40px;opacity:0.04;pointer-events:none">
-        <svg width="280" height="320" viewBox="0 0 100 112" fill="none">
-          <path d="M50 3 L95 20 L95 63 Q95 92 50 110 Q5 92 5 63 L5 20 Z" fill="white"/>
-        </svg>
+      <div style="position:absolute;bottom:-40px;right:-40px;opacity:0.06;pointer-events:none">
+        <img src="assets/vault-shield-light.png" alt="" style="width:260px;height:auto;display:block">
       </div>
     </div>
 
