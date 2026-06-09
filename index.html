@@ -12302,11 +12302,11 @@ function renderTeams() {
     return;
   }
   
-  if(!fcLoaded && !fcLoading && valueSource==='fc') { fetchFantasyCalc(); return; }
+  if(!fcLoaded && !fcLoading && (valueSource==='fc'||valueSource==='my')) { fetchFantasyCalc(); return; }
   if(!raLoaded && !raLoading && valueSource==='ra') { fetchRosterAudit(); return; }
 
-  const loaded = valueSource === 'fc' ? fcLoaded : raLoaded;
-  if (!loaded) { if(valueSource==='fc')fetchFantasyCalc();else fetchRosterAudit(); return; }
+  const loaded = (valueSource === 'ra') ? raLoaded : fcLoaded;   // 'my' is FantasyCalc-seeded → gate on fcLoaded
+  if (!loaded) { if(valueSource==='ra')fetchRosterAudit(); else fetchFantasyCalc(); return; }
 
   const prEl = document.getElementById('power-rankings');
   if (!prEl) return;
@@ -12566,6 +12566,22 @@ function selectTeamRow(idx) {
   renderTeams();
 }
 
+function _lgValOf(name){
+  // Shared League-tab value: follows the viewed league's format (window._lgValFmt,
+  // set by renderTeamsFromLeague) and the Market/Mine toggle (valueSource).
+  var redraft = window._lgValFmt === 'redraft';
+  if (typeof valueSource!=='undefined' && valueSource === 'my' && window.MyRankings) {
+    var mv = MyRankings.getValue(name, redraft ? 'redraft' : 'dynasty');
+    if (mv) return mv;
+    return redraft ? (getFCValue(name)?.redraftValue||0) : (getFCValue(name)?.value||0);
+  }
+  if (redraft) {
+    var r1 = (window._redraft1QB && (window._redraft1QB[name] || window._redraft1QB[normName(name)]));
+    return (r1 && r1.value) || (getFCValue(name)?.redraftValue || 0);
+  }
+  return getPlayerValue(name);
+}
+
 function renderTeamDetailFromCache(idx) {
   
   const team = _lastTeamData.find(t => t.idx === idx);
@@ -12580,7 +12596,7 @@ function renderTeamDetailFromCache(idx) {
 
   const byPos = {QB:[],RB:[],WR:[],TE:[]};
   (team.roster||[]).forEach(p => { if(byPos[p.pos]) byPos[p.pos].push(p); });
-  Object.values(byPos).forEach(arr => arr.sort((a,b)=>getPlayerValue(b.name)-getPlayerValue(a.name)));
+  Object.values(byPos).forEach(arr => arr.sort((a,b)=>_lgValOf(b.name)-_lgValOf(a.name)));
 
   const posColors = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
 
@@ -12588,7 +12604,7 @@ function renderTeamDetailFromCache(idx) {
     <div class="roster-grid">
       ${['QB','RB','WR','TE'].map(pos => {
         const players = byPos[pos];
-        const posTotal = players.reduce((s,p)=>s+getPlayerValue(p.name),0);
+        const posTotal = players.reduce((s,p)=>s+_lgValOf(p.name),0);
         return `<div class="roster-pos-group">
           <div class="roster-pos-title">
             <span style="color:${posColors[pos]}">${pos} · ${players.length}</span>
@@ -12596,7 +12612,7 @@ function renderTeamDetailFromCache(idx) {
           </div>
           ${players.length ? players.map(p => {
             const fc = getFCValue(p.name);
-            const pVal = getPlayerValue(p.name);
+            const pVal = _lgValOf(p.name);
             const trendC = fc?.trend>0?'var(--rb)':fc?.trend<0?'var(--qb)':'var(--muted)';
             const trendStr = fc?.trend?(fc.trend>0?'▲'+fc.trend:'▼'+Math.abs(fc.trend)):'';
             return `<div class="roster-player">
