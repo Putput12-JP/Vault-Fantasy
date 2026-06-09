@@ -17258,6 +17258,7 @@ function pickYear(year) {
   const SK = 'vault-myrank-v1';
   let format = (typeof window!=='undefined' && window._dvMode==='redraft') ? 'redraft' : 'dynasty';  // shared with Draft Vault mode
   let posFilter = 'ALL';
+  let searchQ = '';
   let compareSrc = null;                  // null | 'fc' | 'ra'  (side-by-side market column)
   let baseline = { dynasty: [], redraft: [] };  // [{name,pos,team,age,value,fcRank}] sorted by market value
   // per-format user state
@@ -17596,6 +17597,149 @@ function pickYear(year) {
     }`;
     const s = document.createElement('style'); s.id='mr-styles'; s.textContent = css;
     document.head.appendChild(s);
+    const s2 = document.createElement('style'); s2.id='mr-styles2'; s2.textContent = `
+#P .mr-wrap{max-width:1180px;margin:0 auto;padding:26px 24px 120px}
+#P .mr-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+#P .mr-head-l{min-width:0}
+#P .mr-title-row{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+#P .mr-title{font-size:clamp(26px,3.4vw,38px);font-weight:800;letter-spacing:-0.03em;line-height:1;color:var(--text)}
+#P .mr-fmtbadge{font-family:var(--font-mono);font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--accent3);background:rgba(226,58,78,0.12);border:1px solid rgba(226,58,78,0.3);padding:3px 7px;border-radius:5px}
+#P .mr-meta{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap}
+#P .mr-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10.5px;font-weight:600;color:var(--text2);background:var(--s2);border:1px solid var(--border);padding:4px 9px;border-radius:7px}
+#P .mr-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--rb);box-shadow:0 0 7px var(--rb)}
+#P .mr-chip .k{color:var(--muted)}
+#P .mr-tipwrap{position:relative;display:inline-flex}
+#P .mr-info{width:23px;height:23px;border-radius:50%;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;padding:0}
+#P .mr-info:hover{color:var(--accent3);border-color:var(--accent2)}
+#P .mr-tip{display:none;position:absolute;top:30px;left:0;z-index:50;width:420px;max-width:78vw;background:#0e1730;border:1px solid var(--border2);border-radius:12px;box-shadow:0 18px 50px -16px rgba(0,0,0,.7);padding:15px 16px}
+#P .mr-tipwrap:hover .mr-tip,#P .mr-tipwrap.open .mr-tip{display:block}
+#P .mr-tip .tt{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent3);margin-bottom:8px}
+#P .mr-tip p{font-size:12.5px;line-height:1.6;color:var(--text2);margin:0}
+#P .mr-tip p+p{margin-top:8px}
+#P .mr-tip b{color:var(--text)}
+#P .mr-head-actions{display:flex;gap:7px;flex-wrap:wrap}
+#P .mr-abtn{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:9px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-family:var(--font-sans);font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap}
+#P .mr-abtn:hover{border-color:var(--accent2);color:var(--accent3)}
+#P .mr-abtn.on{border-color:var(--accent2);color:var(--accent3);background:rgba(226,58,78,0.08)}
+#P .mr-abtn.danger:hover{border-color:var(--accent);color:var(--accent2)}
+#P .mr-controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:16px}
+#P .mr-grp{display:flex;align-items:center;gap:8px}
+#P .mr-ctl-label{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:var(--font-mono)}
+#P .mr-sync-ind{font-size:9.5px;font-weight:700;color:var(--rb);font-family:var(--font-mono);letter-spacing:.04em;opacity:.8;white-space:nowrap}
+#P .mr-seg{display:inline-flex;background:var(--s2);border:1.5px solid var(--border2);border-radius:10px;padding:3px;gap:2px}
+#P .mr-seg button{padding:7px 15px;border:none;background:transparent;color:var(--muted);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:7px;cursor:pointer;transition:.15s}
+#P .mr-seg button.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+#P .mr-seg.posseg button.on{background:var(--s4);color:var(--text)}
+#P .mr-seg.cmpsrc button.on{background:var(--s4);color:var(--text)}
+#P .mr-spacer{flex:1}
+#P .mr-search{display:flex;align-items:center;gap:7px;background:var(--s2);border:1.5px solid var(--border2);border-radius:9px;padding:0 11px;min-width:180px}
+#P .mr-search span{color:var(--muted);font-size:14px}
+#P .mr-search input{background:none;border:none;outline:none;color:var(--text);font-family:var(--font-sans);font-size:12.5px;padding:8px 0;width:100%}
+#P .mr-search input::placeholder{color:var(--muted)}
+#P .mr-board{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+#P .mr-bhead{display:grid;grid-template-columns:var(--mr-cols);align-items:center;gap:14px;padding:9px 18px;background:rgba(12,17,25,0.5);border-bottom:1px solid var(--border2);font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-family:var(--font-mono)}
+#P .mr-bhead .r{text-align:right}
+#P .mr-bhead .c{text-align:center}
+#P .mr-axis{display:flex;justify-content:space-between;gap:6px}
+#P .mr-tier{display:flex;align-items:center;gap:11px;padding:10px 18px;background:linear-gradient(90deg,rgba(255,90,110,0.05),transparent 70%);border-bottom:1px solid var(--border);cursor:grab}
+#P .mr-tier-lbl{font-family:var(--font-mono);font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--accent3);text-transform:uppercase}
+#P .mr-tier-name{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+#P .mr-tier-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent)}
+#P .mr-tier-meta{font-family:var(--font-mono);font-size:10px;color:var(--muted)}
+#P .mr-tier-x{color:var(--dim);cursor:pointer;font-size:11px;padding:0 2px}
+#P .mr-tier-x:hover{color:var(--accent2)}
+#P .mr-addtier{height:7px;cursor:pointer;position:relative}
+#P .mr-addtier:hover{background:rgba(255,90,110,0.06)}
+#P .mr-addtier:hover::after{content:'+ tier break';position:absolute;left:18px;top:-7px;font-size:9px;color:var(--accent3);font-family:var(--font-mono);background:var(--s1);padding:1px 6px;border-radius:4px;border:1px solid var(--border2);z-index:2}
+#P .mr-row{display:grid;grid-template-columns:var(--mr-cols);align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid var(--border);transition:background .12s;position:relative}
+#P .mr-row:hover{background:rgba(255,255,255,0.03)}
+#P .mr-row.dragging{opacity:.4}
+#P .mr-row.drop-above::before,#P .mr-row.drop-below::after{content:'';position:absolute;left:8px;right:8px;height:2px;background:var(--accent2);box-shadow:0 0 6px var(--accent2);z-index:3}
+#P .mr-row.drop-above::before{top:-1px}
+#P .mr-row.drop-below::after{bottom:-1px}
+#P .mr-hidden{display:none!important}
+#P .mr-grip{position:absolute;left:3px;top:50%;transform:translateY(-50%);cursor:grab;color:var(--dim);font-size:13px;line-height:1;opacity:0;transition:.12s;user-select:none}
+#P .mr-row:hover .mr-grip{opacity:.6}
+#P .mr-grip:active{cursor:grabbing}
+#P .mr-rank{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
+#P .mr-rank .n{font-family:var(--font-mono);font-weight:800;font-size:17px;color:var(--text)}
+#P .mr-rank .st{font-size:7px;font-weight:700;letter-spacing:.07em;margin-top:3px;font-family:var(--font-mono)}
+#P .mr-rank .st.pin{color:var(--accent2)}
+#P .mr-rank .st.live{color:var(--rb);opacity:.6}
+#P .mr-player{display:flex;align-items:center;gap:11px;min-width:0}
+#P .mr-av{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-family:var(--font-mono);flex-shrink:0}
+#P .mr-pname{font-size:14.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#P .mr-pmeta{font-size:10.5px;color:var(--muted);font-family:var(--font-mono);display:flex;gap:6px;align-items:center;margin-top:2px}
+#P .mr-pospill{font-size:8.5px;font-weight:800;padding:1.5px 5px;border-radius:4px;font-family:var(--font-mono);letter-spacing:.02em}
+#P .mr-conv{display:inline-flex;align-items:center;gap:6px;justify-self:start;padding:4px 9px;border-radius:7px;font-family:var(--font-mono);font-size:11.5px;font-weight:700}
+#P .mr-conv .lab{font-size:8px;letter-spacing:.05em;text-transform:uppercase;opacity:.7}
+#P .mr-conv.up{background:rgba(61,204,122,0.12);color:var(--rb)}
+#P .mr-conv.dn{background:rgba(255,102,128,0.12);color:var(--qb)}
+#P .mr-conv.eq{background:var(--s2);color:var(--dim)}
+#P .mr-val{text-align:right;font-family:var(--font-mono);font-weight:800;font-size:15px;color:#facc15;letter-spacing:-0.01em}
+#P .mr-val.rdr{color:#7bd0ff}
+#P .mr-val small{display:block;font-size:9px;color:var(--muted);font-weight:500;margin-top:2px;white-space:nowrap}
+#P .mr-act{display:flex;align-items:center;gap:4px;justify-content:flex-end;opacity:.5;transition:opacity .12s}
+#P .mr-row:hover .mr-act{opacity:1}
+#P .mr-nudge{width:24px;height:24px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);color:var(--muted);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:.12s}
+#P .mr-nudge:hover{border-color:var(--accent2);color:var(--accent3)}
+#P .mr-rankin{width:40px;height:24px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-family:var(--font-mono);font-size:11px;text-align:center;outline:none;padding:0 2px}
+#P .mr-rankin:focus{border-color:var(--accent2)}
+#P .mr-note{width:24px;height:24px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--dim);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+#P .mr-note.has,#P .mr-note:hover{color:var(--te)}
+#P .mr-note-row{grid-column:1/-1;font-size:11.5px;color:var(--text2);background:rgba(245,200,66,0.06);border-left:2px solid var(--te);padding:6px 10px;border-radius:4px;margin:2px 0 2px 46px;font-style:italic}
+#P .mr-loading{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px}
+#P .mr-srcbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+#P .mr-csum{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+#P .mr-ccard{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+#P .mr-ccard .cv{font-family:var(--font-mono);font-size:23px;font-weight:800;letter-spacing:-0.02em;line-height:1}
+#P .mr-ccard .cl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:var(--font-mono);margin-top:7px}
+#P .mr-ccard .cs{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4}
+#P .mr-crow{cursor:default}
+#P .mr-myval{text-align:right;font-family:var(--font-mono);font-weight:800;font-size:14px;color:#facc15}
+#P .mr-mkt{text-align:right;font-family:var(--font-mono);font-weight:700;font-size:14px;color:var(--text2)}
+#P .mr-mkt small{display:block;font-size:9px;color:var(--muted);font-weight:500;margin-top:2px}
+#P .mr-strip{position:relative;height:28px}
+#P .mr-strip .base{position:absolute;left:0;right:0;top:50%;height:2px;background:var(--s3);transform:translateY(-50%);border-radius:2px}
+#P .mr-strip .mid{position:absolute;left:50%;top:50%;width:2px;height:14px;background:var(--border3);transform:translate(-50%,-50%);border-radius:2px}
+#P .mr-strip .bar{position:absolute;top:50%;height:6px;transform:translateY(-50%);border-radius:4px}
+#P .mr-strip .bar.up{background:var(--rb)}
+#P .mr-strip .bar.dn{background:var(--qb)}
+#P .mr-strip .yo{position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;border:2px solid var(--s1)}
+#P .mr-strip .yo.up{background:var(--rb)}
+#P .mr-strip .yo.dn{background:var(--qb)}
+#P .mr-strip .yo.eq{background:var(--s4)}
+#P .mr-cdelta{text-align:right;font-family:var(--font-mono);font-weight:800;font-size:13px}
+#P .mr-cdelta.up{color:var(--rb)}
+#P .mr-cdelta.dn{color:var(--qb)}
+#P .mr-cdelta.eq{color:var(--dim)}
+#P .mr-cdelta small{display:block;font-size:8px;color:var(--muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-top:2px}
+@media(max-width:760px){
+#P .mr-wrap{padding:16px 10px 116px}
+#P .mr-title{font-size:25px}
+#P .mr-head{gap:12px;margin-bottom:12px}
+#P .mr-head-actions{gap:6px}
+#P .mr-abtn{padding:8px 11px;font-size:11.5px}
+#P .mr-controls{gap:9px}
+#P .mr-search{display:none}
+#P .mr-bhead{display:none}
+#P .mr-row{display:flex!important;flex-wrap:wrap;align-items:center;gap:9px;padding:10px 12px}
+#P .mr-grip,#P .mr-rankin,#P .mr-note,#P .mr-conv{display:none!important}
+#P .mr-val small{display:none!important}
+#P .mr-rank{flex-direction:row;align-items:baseline;gap:5px;width:auto;flex-shrink:0}
+#P .mr-rank .n{font-size:15px}
+#P .mr-rank .st{margin-top:0}
+#P .mr-player{flex:1 1 0;min-width:0}
+#P .mr-val{flex-shrink:0;min-width:54px;font-size:13px}
+#P .mr-act{flex-shrink:0}
+#P .mr-nudge{width:30px;height:30px}
+#P .mr-note-row{flex-basis:100%;margin-left:0}
+#P .mr-crow .mr-strip,#P .mr-crow .mr-mkt{display:none!important}
+#P .mr-myval{min-width:54px;flex-shrink:0}
+#P .mr-cdelta{flex-shrink:0}
+#P .mr-csum{grid-template-columns:1fr 1fr}
+}`.replace(/#P /g,'#page-myrankings ');
+    document.head.appendChild(s2);
   }
 
   let _booted = false;
@@ -17625,106 +17769,149 @@ function pickYear(year) {
     invalidate();
 
     const isRdr = format==='redraft';
-    const cmpName = compareSrc==='ra' ? 'RosterAudit' : 'FantasyCalc';
-    // grid columns: grip | rank | player | myval | [market | delta] | actions
-    const cols = compareSrc
-      ? '22px 56px minmax(0,1fr) 112px 92px 60px 132px'
-      : '22px 56px minmax(0,1fr) 124px 72px 132px';
-    page.style.setProperty('--mr-cols', cols);
-
+    const live = (typeof fcLoaded!=='undefined' && fcLoaded);
+    const moved = customCount();
     const filtered = rows.filter(r=> posFilter==='ALL' || r.pos===posFilter);
 
-    // summary
-    const moved = customCount();
-    const disagreements = rows.filter(r=>Math.abs(r.fcRank-r.myRank)>=3)
-      .sort((a,b)=>Math.abs(b.fcRank-b.myRank)-Math.abs(a.fcRank-a.myRank));
-    const topHigh = disagreements.find(r=>r.myRank<r.fcRank);
-    const topLow  = disagreements.find(r=>r.myRank>r.fcRank);
-    const tiers = state[format].breaks ? state[format].breaks.length+1 : 1;
+    page.style.setProperty('--mr-cols', compareSrc
+      ? '48px minmax(0,1fr) 88px minmax(150px,1fr) 96px 78px'
+      : '58px minmax(0,1fr) 118px 104px 142px');
 
-    page.innerHTML = `
-    <div class="mr-wrap">
+    const header = `
       <div class="mr-head">
-        <div>
-          <div style="display:flex;align-items:center;gap:9px">
+        <div class="mr-head-l">
+          <div class="mr-title-row">
             <div class="mr-title">My Rankings</div>
-            <button class="mr-info" title="Your board, seeded from FantasyCalc's live values. You set the order — pinning locks where a player sits, but every value keeps re-pulling from FantasyCalc daily, so the numbers stay current. Untouched players track the market. Two independent boards for Dynasty and Redraft." onclick="this.closest('.mr-head').querySelector('.mr-sub').classList.toggle('show')">&#9432;</button>
+            <span class="mr-fmtbadge">${isRdr?'REDRAFT · 1QB':'DYNASTY · SF'}</span>
+            <span class="mr-tipwrap" tabindex="0">
+              <button class="mr-info" aria-label="How this board works" onclick="this.closest('.mr-tipwrap').classList.toggle('open')">&#9432;</button>
+              <span class="mr-tip">
+                <div class="tt">How this board works</div>
+                <p>Seeded from <b>FantasyCalc's live values</b> — you set the order, but every value keeps re-pulling daily so your numbers never go stale.</p>
+                <p><b>Pinning</b> locks a player's slot; everyone you haven't touched keeps tracking the market. Dynasty &amp; Redraft are two independent boards.</p>
+              </span>
+            </span>
           </div>
-          <div class="mr-sub">Your board, seeded from FantasyCalc's live values. You set the <em>order</em> — pinning locks where a player sits on your board, but every value keeps re-pulling from FantasyCalc daily, so the numbers are always current. Untouched players track the market completely. Two independent boards for Dynasty and Redraft.</div>
+          <div class="mr-meta">
+            <span class="mr-chip"><span class="dot"></span>${live?'LIVE FantasyCalc':'FantasyCalc baseline'}</span>
+            <span class="mr-chip"><span class="k">Synced</span> Draft Vault</span>
+            <span class="mr-chip"><span class="k">Players</span> ${rows.length}</span>
+            <span class="mr-chip"><span class="k">Pinned</span> ${moved}</span>
+          </div>
         </div>
         <div class="mr-head-actions">
-          <button class="mr-abtn" onclick="MyRankings._compareToggle()">${compareSrc?'✓ Comparing':'⇆ Compare vs market'}</button>
+          <button class="mr-abtn ${compareSrc?'on':''}" onclick="MyRankings._compareToggle()">${compareSrc?'✓ Comparing':'⇆ Compare'}</button>
           <button class="mr-abtn" onclick="MyRankings._import()">↑ Import CSV</button>
           <button class="mr-abtn" onclick="MyRankings._export()">↓ Export</button>
-          <button class="mr-abtn danger" onclick="MyRankings._reset()">⟲ Reset board</button>
+          <button class="mr-abtn danger" onclick="MyRankings._reset()">⟲ Reset</button>
         </div>
-      </div>
+      </div>`;
 
+    const controls = `
       <div class="mr-controls">
         <div class="mr-grp"><span class="mr-ctl-label">Format</span>
           <div class="mr-seg">
             <button class="${format==='dynasty'?'on':''}" onclick="MyRankings._setFormat('dynasty')">Dynasty</button>
             <button class="${format==='redraft'?'on':''}" onclick="MyRankings._setFormat('redraft')">Redraft</button>
           </div>
-          <span class="mr-sync-ind" title="Dynasty/Redraft stays in sync with the Draft Vault">⇄ synced with Draft Vault</span>
+          <span class="mr-sync-ind" title="Dynasty/Redraft stays in sync with the Draft Vault">⇄ synced</span>
         </div>
-        <div class="mr-grp"><span class="mr-ctl-label">Position</span>
+        <div class="mr-grp"><span class="mr-ctl-label">Pos</span>
           <div class="mr-seg posseg">
             ${['ALL','QB','RB','WR','TE'].map(pp=>`<button class="${posFilter===pp?'on':''}" onclick="MyRankings._setPos('${pp}')">${pp}</button>`).join('')}
           </div>
         </div>
         <div class="mr-spacer"></div>
-        ${compareSrc?`<div class="mr-cmp"><span class="mr-ctl-label">vs</span>
-          <select onchange="MyRankings._setCmp(this.value)">
-            <option value="fc" ${compareSrc==='fc'?'selected':''}>FantasyCalc</option>
-            <option value="ra" ${compareSrc==='ra'?'selected':''}>RosterAudit</option>
-          </select></div>`:''}
-      </div>
+        <div class="mr-search"><span>⌕</span><input id="mr-search-input" placeholder="Search players…" value="${(searchQ||'').replace(/"/g,'&quot;')}" oninput="MyRankings._search(this.value)"></div>
+      </div>`;
 
-      <div class="mr-summary">
-        <div class="mr-stat"><div class="mr-stat-val" style="color:var(--text)">${rows.length}</div><div class="mr-stat-lbl">${isRdr?'Redraft':'Dynasty'} players</div><div class="mr-stat-sub">Seeded from ${ (typeof fcLoaded!=='undefined'&&fcLoaded)?'live FantasyCalc':'FantasyCalc baseline'}</div></div>
-        <div class="mr-stat"><div class="mr-stat-val" style="color:var(--accent2)">${moved}</div><div class="mr-stat-lbl">Pinned by you</div><div class="mr-stat-sub">${moved? 'The rest still track the market':'Move anyone to start your board'}</div></div>
-        <div class="mr-stat"><div class="mr-stat-val" style="color:var(--rb)">${topHigh?'▲ '+topHigh.name.split(' ').slice(-1)[0]:'—'}</div><div class="mr-stat-lbl">Highest vs market</div><div class="mr-stat-sub">${topHigh?`You: #${topHigh.myRank} · Market: #${topHigh.fcRank}`:'Where you\u2019re most bullish'}</div></div>
-        <div class="mr-stat"><div class="mr-stat-val" style="color:var(--accent3)">${tiers}</div><div class="mr-stat-lbl">Tiers</div><div class="mr-stat-sub">Auto from value gaps · drag to adjust</div></div>
-      </div>
-
-      <div class="mr-board">
-        <div class="mr-bhead">
-          <span></span><span class="r">#</span><span>Player</span>
-          <span class="r">My ${isRdr?'Redraft':'Dynasty'}</span>
-          ${compareSrc?`<span class="r mr-mkt-h">${compareSrc==='ra'?'RA':'FC'} value</span><span class="c">Δ Rank</span>`:`<span class="c">vs Mkt</span>`}
-          <span class="r">Adjust</span>
+    let body;
+    if (compareSrc){
+      const above = rows.filter(r=>r.fcRank-r.myRank>0).length;
+      const below = rows.filter(r=>r.fcRank-r.myRank<0).length;
+      const avg = (rows.reduce((s,r)=>s+Math.abs(r.fcRank-r.myRank),0)/Math.max(1,rows.length)).toFixed(1);
+      const big = [...rows].sort((a,b)=>Math.abs(b.fcRank-b.myRank)-Math.abs(a.fcRank-a.myRank))[0];
+      const bigD = big ? big.fcRank-big.myRank : 0;
+      body = `
+        <div class="mr-srcbar"><span class="mr-ctl-label">Benchmark</span>
+          <div class="mr-seg cmpsrc">
+            <button class="${compareSrc==='fc'?'on':''}" onclick="MyRankings._setCmp('fc')">FantasyCalc</button>
+            <button class="${compareSrc==='ra'?'on':''}" onclick="MyRankings._setCmp('ra')">RosterAudit</button>
+          </div>
+          <span class="mr-sync-ind" style="color:var(--muted);opacity:1">the consensus you're measured against</span>
         </div>
-        <div id="mr-rows">${renderRows(filtered, rows)}</div>
-      </div>
-    </div>`;
-    bindDrag();
+        <div class="mr-csum">
+          <div class="mr-ccard"><div class="cv" style="color:var(--rb)">▲ ${above}</div><div class="cl">Above market</div><div class="cs">You rank these higher than consensus</div></div>
+          <div class="mr-ccard"><div class="cv" style="color:var(--qb)">▼ ${below}</div><div class="cl">Below market</div><div class="cs">You're lower than the field on these</div></div>
+          <div class="mr-ccard"><div class="cv" style="color:var(--text)">${avg}</div><div class="cl">Avg move</div><div class="cs">Spots off market, per player</div></div>
+          <div class="mr-ccard"><div class="cv" style="color:var(--accent3)">${big?big.name.split(' ').slice(-1)[0]:'—'}</div><div class="cl">Biggest gap</div><div class="cs">${big?`You #${big.myRank} · Mkt #${big.fcRank} · ${(bigD>0?'+':'')+bigD}`:'—'}</div></div>
+        </div>
+        <div class="mr-board">
+          <div class="mr-bhead">
+            <span class="r">#</span><span>Player</span><span class="r">My value</span>
+            <span class="mr-axis"><span>← you higher</span><span>mkt</span><span>you lower →</span></span>
+            <span class="r">Market</span><span class="r">Δ</span>
+          </div>
+          <div id="mr-rows">${compareRows(rows)}</div>
+        </div>`;
+    } else {
+      body = `
+        <div class="mr-board">
+          <div class="mr-bhead">
+            <span class="r">#</span><span>Player</span><span>Conviction</span>
+            <span class="r">My ${isRdr?'redraft':'dynasty'}</span><span class="r">Adjust</span>
+          </div>
+          <div id="mr-rows">${renderRows(filtered, rows)}</div>
+        </div>`;
+    }
+
+    page.innerHTML = `<div class="mr-wrap">${header}${controls}${body}</div>`;
+    if (!compareSrc) bindDrag();
+    applySearch();
   }
+
+  function applySearch(){
+    const q = (searchQ||'').trim().toLowerCase();
+    document.querySelectorAll('#mr-rows .mr-row').forEach(row=>{
+      const nm=(row.dataset.name||'').toLowerCase();
+      row.classList.toggle('mr-hidden', !(!q || nm.includes(q)));
+    });
+    document.querySelectorAll('#mr-rows .mr-tier, #mr-rows .mr-addtier').forEach(el=>{
+      el.classList.toggle('mr-hidden', !!q);
+    });
+  }
+
+  function tierSegEnd(bset, start, len){ let e=len; bset.forEach(b=>{ if(b>start && b<e) e=b; }); return e; }
 
   function renderRows(filtered, allRows){
     const st = state[format];
-    const breaks = new Set(st.breaks||[]);
+    const bset = new Set((st.breaks||[]).filter(b=>b>0 && b<allRows.length));
     const isRdr = format==='redraft';
     const filteringPos = posFilter!=='ALL';
     let html = '';
-    let tierN = 1;
+    let tierN = 0;
     allRows.forEach((r,idx)=>{
-      // tier divider before this index
-      if (breaks.has(idx) && idx>0){
+      // tier band header at each tier start (incl. Tier 1 at idx 0)
+      if (idx===0 || bset.has(idx)){
         tierN++;
         if (!filteringPos){
-          html += `<div class="mr-tier" data-tieridx="${idx}" draggable="true">
+          const end = tierSegEnd(bset, idx, allRows.length);
+          const seg = allRows.slice(idx, end);
+          const vals = seg.map(x=>x.myValue||0).filter(Boolean);
+          const hi = vals.length?Math.max(...vals):0, lo = vals.length?Math.min(...vals):0;
+          html += `<div class="mr-tier" data-tieridx="${idx}" ${idx>0?'draggable="true"':''}>
             <span class="mr-tier-lbl">Tier ${tierN}</span>
+            <span class="mr-tier-name">${seg.length} player${seg.length!==1?'s':''}</span>
             <span class="mr-tier-line"></span>
-            <span class="mr-tier-meta">↕ drag · </span>
-            <span class="mr-tier-x" onclick="MyRankings._delTier(${idx})" title="Remove tier break">✕</span>
+            <span class="mr-tier-meta">${lo?lo.toLocaleString():''}${lo&&hi&&lo!==hi?'–'+hi.toLocaleString():''}</span>
+            ${idx>0?`<span class="mr-tier-x" onclick="MyRankings._delTier(${idx})" title="Remove tier break">✕</span>`:''}
           </div>`;
         }
       }
       if (filteringPos && r.pos!==posFilter) return;
       html += rowHtml(r, idx, isRdr);
       // add-tier hover zone (only unfiltered)
-      if (!filteringPos && !breaks.has(idx+1) && idx<allRows.length-1){
+      if (!filteringPos && !bset.has(idx+1) && idx<allRows.length-1){
         html += `<div class="mr-addtier" onclick="MyRankings._addTier(${idx+1})" title="Add tier break"></div>`;
       }
     });
@@ -17736,18 +17923,14 @@ function pickYear(year) {
     const bg = POS_BG[r.pos]||'rgba(255,255,255,0.08)';
     const note = state[format].notes[r.name];
     const d = r.fcRank - r.myRank;             // + = you have them higher than market
-    let deltaHtml;
-    if (d>0) deltaHtml = `<span class="mr-delta up" title="You rank ${r.name} ${d} spots above the market">▲${d}</span>`;
-    else if (d<0) deltaHtml = `<span class="mr-delta dn" title="You rank ${r.name} ${-d} spots below the market">▼${-d}</span>`;
-    else deltaHtml = `<span class="mr-delta eq">·</span>`;
-
-    const mid = compareSrc
-      ? `<div class="mr-mkt">${r.marketValue?r.marketValue.toLocaleString():'—'}<small>#${r.fcRank}</small></div>${deltaHtml}`
-      : deltaHtml;
+    let conv;
+    if (d>0) conv = `<span class="mr-conv up" title="You rank ${r.name} ${d} spots above the market"><span class="lab">vs mkt</span>▲${d}</span>`;
+    else if (d<0) conv = `<span class="mr-conv dn" title="You rank ${r.name} ${-d} spots below the market"><span class="lab">vs mkt</span>▼${-d}</span>`;
+    else conv = `<span class="mr-conv eq"><span class="lab">vs mkt</span>·</span>`;
 
     return `<div class="mr-row" data-idx="${idx}" data-name="${r.name.replace(/"/g,'&quot;')}" draggable="true">
       <span class="mr-grip" title="Drag to reorder">⠿</span>
-      <span class="mr-rank">${r.myRank}${r.pinned?'<span class="pin">PINNED</span>':'<span class="live">● LIVE</span>'}</span>
+      <div class="mr-rank"><span class="n">${r.myRank}</span><span class="st ${r.pinned?'pin':'live'}">${r.pinned?'PINNED':'● LIVE'}</span></div>
       <div class="mr-player">
         <div class="mr-av" style="background:${bg};color:${col}">${initials(r.name)}</div>
         <div style="min-width:0;flex:1">
@@ -17755,8 +17938,8 @@ function pickYear(year) {
           <div class="mr-pmeta"><span class="mr-pospill" style="background:${bg};color:${col}">${r.pos}${r.myPosRank}</span>${r.team||''}${r.age?' · '+r.age:''}</div>
         </div>
       </div>
-      <div class="mr-val ${isRdr?'rdr':''}" title="FantasyCalc value for your #${r.myRank} slot — re-pulls daily">${r.myValue?r.myValue.toLocaleString():'—'}${r.pinned?`<small>mkt ${r.marketValue.toLocaleString()} · FC #${r.fcRank}</small>`:''}</div>
-      ${mid}
+      ${conv}
+      <div class="mr-val ${isRdr?'rdr':''}" title="FantasyCalc value for your #${r.myRank} slot — re-pulls daily">${r.myValue?r.myValue.toLocaleString():'—'}<small>mkt ${r.marketValue?r.marketValue.toLocaleString():'—'}</small></div>
       <div class="mr-act">
         <button class="mr-nudge" onclick="MyRankings._nudge(${idx},-1)" title="Move up">▲</button>
         <button class="mr-nudge" onclick="MyRankings._nudge(${idx},1)" title="Move down">▼</button>
@@ -17766,6 +17949,62 @@ function pickYear(year) {
       </div>
       ${note?`<div class="mr-note-row">"${note}"</div>`:''}
     </div>`;
+  }
+
+  // ── Compare view (you vs market) ───────────────────────────────────
+  function cmpStrip(d){
+    const cls = d>0?'up':d<0?'dn':'eq';
+    const cap = 15, mag = Math.min(Math.abs(d),cap)/cap, len = (mag*45).toFixed(1);
+    let bar='', yo='left:50%';
+    if (d>0){ bar=`left:calc(50% - ${len}%);width:${len}%`; yo=`left:calc(50% - ${len}%)`; }
+    else if (d<0){ bar=`left:50%;width:${len}%`; yo=`left:calc(50% + ${len}%)`; }
+    return `<div class="mr-strip"><div class="base"></div><div class="mid"></div>`+
+      (d!==0?`<div class="bar ${cls}" style="${bar};opacity:.55"></div>`:'')+
+      `<div class="yo ${cls}" style="${yo}"></div></div>`;
+  }
+
+  function crowHtml(r, idx, isRdr){
+    const col = POS_COLORS[r.pos]||'var(--muted)';
+    const bg = POS_BG[r.pos]||'rgba(255,255,255,0.08)';
+    const d = r.fcRank - r.myRank;
+    const cls = d>0?'up':d<0?'dn':'eq';
+    const dtx = d>0?`▲${d}`:d<0?`▼${-d}`:'·';
+    const lab = d>0?'bullish':d<0?'bearish':'even';
+    return `<div class="mr-row mr-crow" data-idx="${idx}" data-name="${r.name.replace(/"/g,'&quot;')}">
+      <div class="mr-rank"><span class="n">${r.myRank}</span></div>
+      <div class="mr-player">
+        <div class="mr-av" style="background:${bg};color:${col}">${initials(r.name)}</div>
+        <div style="min-width:0;flex:1">
+          <div class="mr-pname">${r.name}</div>
+          <div class="mr-pmeta"><span class="mr-pospill" style="background:${bg};color:${col}">${r.pos}${r.myPosRank}</span>${r.team||''}${r.age?' · '+r.age:''}</div>
+        </div>
+      </div>
+      <div class="mr-myval">${r.myValue?r.myValue.toLocaleString():'—'}</div>
+      ${cmpStrip(d)}
+      <div class="mr-mkt">${r.marketValue?r.marketValue.toLocaleString():'—'}<small>#${r.fcRank}</small></div>
+      <div class="mr-cdelta ${cls}">${dtx}<small>${lab}</small></div>
+    </div>`;
+  }
+
+  function compareRows(allRows){
+    const st = state[format];
+    const bset = new Set((st.breaks||[]).filter(b=>b>0 && b<allRows.length));
+    const filteringPos = posFilter!=='ALL';
+    const isRdr = format==='redraft';
+    let html=''; let tierN=0;
+    allRows.forEach((r,idx)=>{
+      if (idx===0 || bset.has(idx)){
+        tierN++;
+        if (!filteringPos){
+          const end = tierSegEnd(bset, idx, allRows.length);
+          const seg = allRows.slice(idx, end);
+          html += `<div class="mr-tier"><span class="mr-tier-lbl">Tier ${tierN}</span><span class="mr-tier-name">${seg.length} player${seg.length!==1?'s':''}</span><span class="mr-tier-line"></span></div>`;
+        }
+      }
+      if (filteringPos && r.pos!==posFilter) return;
+      html += crowHtml(r, idx, isRdr);
+    });
+    return html || `<div class="mr-loading">No players for this filter.</div>`;
   }
 
   // ── current order ids (for mutation) ───────────────────────────────
@@ -17793,6 +18032,7 @@ function pickYear(year) {
     _setFormat(f){ if(format===f)return; format=f; posFilter='ALL'; try{ if(typeof setDvMode==='function' && window._dvMode!==f) setDvMode(f); }catch(e){} render(); },
     setFormat(f){ if(format===f)return; format=f; posFilter='ALL'; render(); },   // external sync (from Draft Vault) — no callback
     _setPos(p){ posFilter=p; render(); },
+    _search(v){ searchQ=v; applySearch(); },
     _compareToggle(){ compareSrc = compareSrc ? null : 'fc'; render(); },
     _setCmp(v){ compareSrc=v; render(); },
     _nudge(idx, dir){ moveIndex(idx, idx+dir); },
@@ -17825,16 +18065,9 @@ function pickYear(year) {
       a.download=`my-${format}-rankings.csv`; a.click();
       if(typeof toast==='function') toast('✓ Exported your '+format+' board');
     },
-    _import(){
-      // reuse Draft Vault's CSV import plumbing if present, else simple prompt
-      if (typeof toggleImportPanel==='function'){
-        if(typeof showPage==='function') showPage('draft');
-        setTimeout(()=>{ try{toggleImportPanel();}catch(e){} },200);
-        if(typeof toast==='function') toast('Import lives in Draft Vault — drop your CSV there and it flows back here');
-        return;
-      }
-      alert('CSV import: drop a file with Player + Rank columns.');
-    },
+    _import(){ openImport(); },
+    _applyImport(){ doApplyImport(); },
+    _impPickFile(inp){ const f=inp&&inp.files&&inp.files[0]; if(f) readImportFile(f); },
   });
 
   // ── Drag & drop (desktop) ──────────────────────────────────────────
@@ -17879,6 +18112,236 @@ function pickYear(year) {
     document.querySelectorAll('.mr-row.drop-above,.mr-row.drop-below')
       .forEach(r=>r.classList.remove('drop-above','drop-below'));
   }
+
+  // ════════════════════════════════════════════════════════════════
+  //  CSV IMPORT — updates THIS board directly (a baseline to tweak)
+  //  Matched players are placed in your CSV order and pinned so they
+  //  hold their slots; everyone else flows in by live market value.
+  // ════════════════════════════════════════════════════════════════
+  let _imp = { rows:[], headers:[], nameCol:-1, rankCol:-1, hasHeader:true, file:'' };
+
+  function parseCSV(text){
+    const lines = String(text||'').replace(/\r/g,'').split('\n').filter(l=>l.trim().length);
+    return lines.map(line=>{
+      const out=[]; let cur=''; let q=false;
+      for(let i=0;i<line.length;i++){ const c=line[i];
+        if(q){ if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+        else { if(c==='"') q=true; else if(c===','){ out.push(cur); cur=''; } else cur+=c; }
+      }
+      out.push(cur); return out.map(s=>s.trim());
+    });
+  }
+  function looksHeader(r){
+    if(!r) return false;
+    // a header row has no purely-numeric-looking name cell and contains a word like player/name/rank
+    const joined = r.join(' ').toLowerCase();
+    return /player|name|rank|overall|ovr|pos|team|tier|value/.test(joined) && !r.some(c=>/^[A-Z][a-z]+ [A-Z]/.test(c));
+  }
+  function guessCols(headers){
+    const low = headers.map(h=>String(h||'').toLowerCase());
+    const find = res => { for(const re of res){ const i=low.findIndex(h=>re.test(h)); if(i>=0) return i; } return -1; };
+    let nameCol = find([/^player$/, /player\s*name/, /\bplayer\b/, /^name$/, /\bname\b/]);
+    let rankCol = find([/^rank$/, /overall\s*rank/, /^ovr$/, /\brk\b/, /^#$/, /\brank\b/, /overall/]);
+    if(nameCol<0){ // fall back: first column that holds full-name-looking values
+      nameCol = 0;
+    }
+    if(rankCol===nameCol) rankCol=-1;
+    return { nameCol, rankCol };
+  }
+
+  function readImportFile(file){
+    if(!file || (!/\.csv$/i.test(file.name) && file.type!=='text/csv' && file.type!=='application/vnd.ms-excel')){
+      if(typeof toast==='function') toast('Please drop a .csv file'); return;
+    }
+    const fr = new FileReader();
+    fr.onload = e=>{
+      const rows = parseCSV(e.target.result);
+      if(!rows.length){ if(typeof toast==='function') toast('That CSV looks empty'); return; }
+      _imp.hasHeader = looksHeader(rows[0]);
+      _imp.headers = _imp.hasHeader ? rows[0] : rows[0].map((_,i)=>'Column '+(i+1));
+      _imp.rows = rows;
+      const g = guessCols(_imp.headers);
+      _imp.nameCol = g.nameCol; _imp.rankCol = g.rankCol;
+      _imp.file = file.name;
+      renderImportBody();
+    };
+    fr.readAsText(file);
+  }
+
+  function matchPreview(){
+    const dataRows = _imp.hasHeader ? _imp.rows.slice(1) : _imp.rows;
+    const base = baseline[format];
+    const byName = new Map(base.map(p=>[norm(p.name), p]));
+    let list = dataRows.map((r,i)=>({ name:(r[_imp.nameCol]||'').trim(),
+        rank: _imp.rankCol>=0 ? parseFloat(String(r[_imp.rankCol]).replace(/[^0-9.]/g,'')) : i+1 }))
+      .filter(x=>x.name);
+    if(_imp.rankCol>=0) list.sort((a,b)=> (isNaN(a.rank)?1e9:a.rank) - (isNaN(b.rank)?1e9:b.rank) );
+    const seen=new Set(); const matched=[]; let unmatched=0;
+    list.forEach(x=>{ const id=norm(x.name); if(byName.has(id)&&!seen.has(id)){ seen.add(id); matched.push({ id, name:byName.get(id).name, pos:byName.get(id).pos }); } else if(x.name) unmatched++; });
+    return { matched, unmatched, total:list.length };
+  }
+
+  function doApplyImport(){
+    if(!_imp.rows.length){ if(typeof toast==='function') toast('Drop a CSV first'); return; }
+    if(_imp.nameCol<0){ if(typeof toast==='function') toast('Pick the player-name column'); return; }
+    const { matched, unmatched } = matchPreview();
+    if(!matched.length){ if(typeof toast==='function') toast('No players matched — try a different name column'); return; }
+    const base = baseline[format];
+    const matchedIds = matched.map(m=>m.id);
+    const mset = new Set(matchedIds);
+    const rest = base.filter(p=>!mset.has(norm(p.name))).sort((a,b)=>a.fcRank-b.fcRank).map(p=>norm(p.name));
+    state[format].order = matchedIds.concat(rest);
+    const pinned = {}; matchedIds.forEach(id=>{ pinned[id]=true; });
+    state[format].pinned = pinned;     // imported players hold their slots
+    state[format].breaks = null;       // recompute tiers from the new order
+    save();
+    closeImport();
+    render();
+    if(typeof toast==='function') toast(`✓ Imported ${matched.length} into your ${format} board${unmatched?' · '+unmatched+' unmatched':''} — tweak away`);
+  }
+
+  // ── modal UI ───────────────────────────────────────────────────────
+  function ensureImportEl(){
+    let el = document.getElementById('mr-import-modal');
+    if(el) return el;
+    el = document.createElement('div');
+    el.id='mr-import-modal';
+    el.style.cssText='position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(6,10,16,0.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:20px';
+    el.addEventListener('click', e=>{ if(e.target===el) closeImport(); });
+    el.innerHTML = `<div class="mri-card"><div id="mri-inner"></div></div>`;
+    document.body.appendChild(el);
+    if(!document.getElementById('mr-import-styles')){
+      const s=document.createElement('style'); s.id='mr-import-styles';
+      s.textContent=`
+      #mr-import-modal .mri-card{width:560px;max-width:100%;max-height:88vh;overflow:auto;background:var(--s1);border:1px solid var(--border2);border-radius:16px;box-shadow:0 32px 80px -28px rgba(0,0,0,0.8)}
+      .mri-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px 22px 0}
+      .mri-eyebrow{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent3)}
+      .mri-title{font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-top:5px}
+      .mri-sub{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:7px;max-width:430px}
+      .mri-x{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;padding:2px 4px}
+      .mri-x:hover{color:var(--text)}
+      .mri-body{padding:18px 22px 22px}
+      .mri-drop{border:1.5px dashed var(--border2);border-radius:13px;padding:30px 18px;text-align:center;cursor:pointer;transition:.18s;background:var(--s2)}
+      .mri-drop:hover,.mri-drop.drag{border-color:var(--accent2);background:var(--s3)}
+      .mri-drop .ic{font-size:26px}
+      .mri-drop .t{font-size:14px;font-weight:600;margin-top:8px}
+      .mri-drop .h{font-size:11.5px;color:var(--muted);margin-top:5px;font-family:var(--font-mono)}
+      .mri-file{display:flex;align-items:center;gap:9px;background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:10px 13px;font-size:13px;font-weight:600}
+      .mri-file .fi{color:var(--rb)}
+      .mri-file .fmeta{color:var(--muted);font-family:var(--font-mono);font-size:11px;font-weight:500;margin-left:auto}
+      .mri-maprow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+      .mri-mapgrp{display:flex;flex-direction:column;gap:5px}
+      .mri-mapgrp label{font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+      .mri-mapgrp select{background:var(--s2);border:1.5px solid var(--border2);color:var(--text);font-family:var(--font-sans);font-size:13px;font-weight:600;padding:8px 11px;border-radius:9px;outline:none;cursor:pointer;min-width:150px}
+      .mri-mapgrp select:focus{border-color:var(--accent2)}
+      .mri-chkrow{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:12.5px;color:var(--text2);cursor:pointer;user-select:none}
+      .mri-chkrow input{width:15px;height:15px;accent-color:var(--accent2)}
+      .mri-match{margin-top:16px;background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:13px 15px;display:flex;align-items:center;gap:16px}
+      .mri-match .big{font-family:var(--font-mono);font-size:26px;font-weight:800;line-height:1}
+      .mri-match .big.ok{color:var(--rb)}
+      .mri-match .mlbl{font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:3px}
+      .mri-match .unm{font-size:11.5px;color:var(--te);font-family:var(--font-mono)}
+      .mri-preview{margin-top:13px;display:flex;flex-direction:column;gap:5px;max-height:148px;overflow:auto}
+      .mri-prow{display:flex;align-items:center;gap:9px;font-size:12.5px;padding:5px 9px;background:var(--s2);border-radius:7px}
+      .mri-prow .pr{font-family:var(--font-mono);font-weight:800;color:var(--muted);width:26px;text-align:right}
+      .mri-prow .pp{font-size:8px;font-weight:800;font-family:var(--font-mono);padding:1px 5px;border-radius:3px}
+      .mri-foot{display:flex;gap:9px;justify-content:flex-end;margin-top:20px}
+      .mri-btn{padding:10px 16px;border-radius:10px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+      .mri-btn:hover{border-color:var(--border3);color:var(--text)}
+      .mri-btn.go{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
+      .mri-btn.go:hover{filter:brightness(1.07);color:#fff}
+      .mri-btn:disabled{opacity:.4;cursor:not-allowed}
+      .mri-note{margin-top:14px;font-size:11.5px;color:var(--muted);line-height:1.55;background:rgba(123,208,255,0.05);border-left:2px solid var(--wr);padding:9px 12px;border-radius:5px}`;
+      document.head.appendChild(s);
+    }
+    return el;
+  }
+
+  function openImport(){
+    const el = ensureImportEl();
+    _imp = { rows:[], headers:[], nameCol:-1, rankCol:-1, hasHeader:true, file:'' };
+    renderImportBody();
+    el.style.display='flex';
+  }
+  function closeImport(){ const el=document.getElementById('mr-import-modal'); if(el) el.style.display='none'; }
+  window.MyRankings._closeImport = closeImport;
+
+  function posPill(pos){
+    const c={QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'}[pos]||'var(--muted)';
+    const bg={QB:'rgba(255,102,128,.16)',RB:'rgba(61,204,122,.16)',WR:'rgba(123,208,255,.16)',TE:'rgba(245,200,66,.16)'}[pos]||'var(--s3)';
+    return `<span class="pp" style="background:${bg};color:${c}">${pos||'?'}</span>`;
+  }
+
+  function renderImportBody(){
+    const inner = document.getElementById('mri-inner'); if(!inner) return;
+    const fmtName = format==='redraft'?'Redraft':'Dynasty';
+    const head = `<div class="mri-head">
+        <div><div class="mri-eyebrow">My Rankings · Import</div>
+          <div class="mri-title">Build your ${fmtName} board from a CSV</div>
+          <div class="mri-sub">Drop a rankings export (FantasyPros, KTC, your own sheet — anything with a player column). It becomes your starting board so you can tweak from there instead of dragging 300 players by hand.</div>
+        </div>
+        <button class="mri-x" onclick="MyRankings._closeImport()">✕</button>
+      </div>`;
+
+    if(!_imp.rows.length){
+      inner.innerHTML = head + `<div class="mri-body">
+        <div class="mri-drop" id="mri-drop" onclick="document.getElementById('mri-file-input').click()">
+          <div class="ic">⬆</div>
+          <div class="t">Drop your CSV here, or click to browse</div>
+          <div class="h">player name + rank columns · .csv</div>
+        </div>
+        <input type="file" id="mri-file-input" accept=".csv,text/csv" style="display:none" onchange="MyRankings._impPickFile(this)">
+        <div class="mri-note"><b style="color:var(--text2)">Tip:</b> rows are read top-to-bottom, or by a Rank/Overall column if one exists. Imported players are pinned so they hold their spot; everyone you didn't list fills in underneath by live market value.</div>
+      </div>`;
+      const dz=document.getElementById('mri-drop');
+      if(dz){
+        dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+        dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+        dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag'); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) readImportFile(f); });
+      }
+      return;
+    }
+
+    // mapping + preview
+    const { matched, unmatched } = matchPreview();
+    const opts = _imp.headers.map((h,i)=>`<option value="${i}">${(h||('Column '+(i+1))).replace(/</g,'&lt;')}</option>`).join('');
+    const rankOpts = `<option value="-1">Use row order</option>` + opts;
+    const prev = matched.slice(0,40).map((m,i)=>`<div class="mri-prow"><span class="pr">${i+1}</span>${posPill(m.pos)}<span>${m.name}</span></div>`).join('') || `<div class="mri-sub" style="padding:6px 2px">No matches yet — try another name column.</div>`;
+    inner.innerHTML = head + `<div class="mri-body">
+      <div class="mri-file"><span class="fi">▤</span>${_imp.file}<span class="fmeta">${_imp.rows.length - (_imp.hasHeader?1:0)} rows</span></div>
+      <div class="mri-maprow">
+        <div class="mri-mapgrp"><label>Player column</label>
+          <select onchange="window.__mriSet('name',this.value)">${opts}</select></div>
+        <div class="mri-mapgrp"><label>Rank column</label>
+          <select onchange="window.__mriSet('rank',this.value)">${rankOpts}</select></div>
+      </div>
+      <label class="mri-chkrow"><input type="checkbox" ${_imp.hasHeader?'checked':''} onchange="window.__mriSet('header',this.checked)">First row is a header</label>
+      <div class="mri-match">
+        <div><div class="big ok">${matched.length}</div><div class="mlbl">matched</div></div>
+        ${unmatched?`<div><div class="big" style="color:var(--te)">${unmatched}</div><div class="mlbl">unmatched</div></div>`:''}
+        <div style="flex:1"></div>
+        <div class="mlbl" style="max-width:170px;text-align:right">→ becomes your ${fmtName} board, top-down</div>
+      </div>
+      <div class="mri-preview">${prev}</div>
+      <div class="mri-foot">
+        <button class="mri-btn" onclick="window.__mriReset()">Choose another file</button>
+        <button class="mri-btn go" ${matched.length?'':'disabled'} onclick="MyRankings._applyImport()">Apply to ${fmtName} board</button>
+      </div>
+    </div>`;
+    // set selects to current guesses
+    const selName=inner.querySelector('.mri-maprow .mri-mapgrp:nth-child(1) select');
+    const selRank=inner.querySelector('.mri-maprow .mri-mapgrp:nth-child(2) select');
+    if(selName) selName.value=String(_imp.nameCol);
+    if(selRank) selRank.value=String(_imp.rankCol);
+  }
+
+  window.__mriSet = function(k,v){
+    if(k==='name') _imp.nameCol=parseInt(v,10);
+    else if(k==='rank') _imp.rankCol=parseInt(v,10);
+    else if(k==='header') _imp.hasHeader=!!v;
+    renderImportBody();
+  };
+  window.__mriReset = function(){ _imp.rows=[]; _imp.headers=[]; renderImportBody(); };
 
 })();
 
