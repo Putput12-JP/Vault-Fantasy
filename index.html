@@ -12313,7 +12313,8 @@ function renderTeams() {
 
   
   if (teamsLeagueId) {
-    prEl.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div><br>Loading league data...</div>`;
+    const _cachedLg = (_txLeagueId === teamsLeagueId && _rosterCache && _usersCache);
+    if (!_cachedLg) prEl.innerHTML = `<div class="fc-loading"><div style="display:inline-block;animation:spin 1s linear infinite;font-size:20px">⟳</div><br>Loading league data...</div>`;
     renderTeamsFromLeague(teamsLeagueId);
     return;
   }
@@ -12471,11 +12472,14 @@ function renderPowerRankingsTable(teamData) {
     const s = a >= 1000 ? (a/1000).toFixed(1).replace(/\.0$/,'') + 'k' : a.toLocaleString();
     return (n > 0 ? '▲ ' : '▼ ') + s;
   };
+  const _tierRedraft = window._lgValFmt === 'redraft';
   const leagueTier = (rank, total) => {
     if (rank <= 2) return { label:'CONTENDER', cls:'t-elite' };
     const p = rank / total;
     if (p <= 0.42) return { label:'PLAYOFF', cls:'t-good' };
     if (p <= 0.70) return { label:'BUBBLE', cls:'t-mid' };
+    // Redraft has no long-term rebuild/tank — the bottom plays for the Toilet Bowl.
+    if (_tierRedraft) return { label:'TOILET BOWL', cls:'t-tank' };
     if (p <= 0.88) return { label:'REBUILD', cls:'t-low' };
     return { label:'TANKING', cls:'t-tank' };
   };
@@ -12539,6 +12543,19 @@ function renderPowerRankingsTable(teamData) {
       </tbody>
     </table>
     </div>`;
+
+  // Keep the league roster breakdown in sync with the active source/format on EVERY
+  // render so the Market↔Mine toggle (and redraft↔dynasty) updates it too, not just the table.
+  if (teamsLeagueId) {
+    const _meT = teamData.find(t => t.isMe);
+    const _showIdx = (cmpTeam != null) ? cmpTeam : (_meT ? _meT.idx : null);
+    if (_showIdx != null) {
+      cmpTeam = _showIdx;
+      const _dEl = document.getElementById('team-detail');
+      if (_dEl) _dEl.style.display = 'block';
+      renderTeamDetailFromCache(_showIdx);
+    }
+  }
 }
 
 function renderTeamsFallback() {
@@ -12555,15 +12572,17 @@ function selectTeamRow(idx) {
   document.querySelectorAll('.pr-table tr').forEach(r => r.classList.remove('selected-row'));
 
   if (teamsLeagueId) {
-    
-    renderTeamDetailFromCache(idx);
+    // Re-render from cached team data (updates selection highlight + roster breakdown) —
+    // do NOT call renderTeams(), which re-fetches the whole league and flashes a spinner.
+    if (_lastTeamData && _lastTeamData.length) renderPowerRankingsTable(_lastTeamData);
+    else renderTeamDetailFromCache(idx);
   } else {
     renderTeamDetail(idx);
     if (myTeam !== null && idx !== myTeam && csec) { csec.style.display='block'; renderComp(idx); }
     else if (csec) csec.style.display='none';
+    renderTeams();
   }
   if (detail) { detail.style.display='block'; setTimeout(()=>detail.scrollIntoView({behavior:'smooth',block:'start'}),50); }
-  renderTeams();
 }
 
 function _lgValOf(name){
