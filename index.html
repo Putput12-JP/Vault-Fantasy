@@ -3544,65 +3544,181 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </div>
 </div>
 
-<!-- HEADER — profile + league selector always visible -->
-<header class="z1" id="app-header" style="display:flex;align-items:center;padding:0 20px;gap:0;height:52px">
+<style id="glassnav-css">
+#app-header.glassnav-host{background:transparent!important;border:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;display:block!important;height:auto!important;padding:10px 14px 6px!important;gap:0!important;z-index:200}
+.glassnav{max-width:1320px;margin:0 auto;min-height:58px;display:flex;align-items:center;gap:8px;border-radius:9999px;padding:0 10px 0 13px;background:rgba(16,23,34,0.72);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);box-shadow:0 1px 0 rgba(255,255,255,0.05) inset,0 16px 44px -22px rgba(0,0,0,0.7)}
+[data-theme="light"] .glassnav{background:rgba(255,255,255,0.80);border-color:rgba(20,30,45,0.10);box-shadow:0 1px 0 rgba(255,255,255,0.6) inset,0 16px 44px -24px rgba(0,0,0,0.25)}
+.glassnav .logo{display:flex;align-items:center;gap:9px;cursor:pointer;flex-shrink:0;margin-right:4px}
+.glassnav .gn-shield{height:34px;width:auto;display:block;flex-shrink:0}
+.glassnav .gn-word{line-height:1.02}
+.glassnav .gn-word .t1{font-size:14px;font-weight:800;letter-spacing:-0.01em;text-transform:uppercase;color:var(--text)}
+.glassnav .gn-word .t1 span{color:var(--accent)}
+.glassnav .gn-word .t2{font-size:8px;font-weight:600;letter-spacing:0.16em;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-top:1px}
+.glassnav .desktop-nav{display:flex;gap:3px;height:auto;align-items:center;flex:1 1 auto;justify-content:center;min-width:0;overflow-x:auto;scrollbar-width:none}
+.glassnav .desktop-nav::-webkit-scrollbar{display:none}
+.glassnav .desktop-nav button{height:auto;padding:8px 12px;border:none;border-radius:9999px;background:transparent;color:var(--text2);font-family:var(--font-sans);font-size:13px;font-weight:600;letter-spacing:0;white-space:nowrap;flex-shrink:0;transition:all .15s}
+.glassnav .desktop-nav button:hover{color:var(--text);background:rgba(255,255,255,0.06)}
+.glassnav .desktop-nav button.on{color:#fff!important;background:rgba(255,255,255,0.10)!important;border:none!important;border-radius:9999px!important}
+[data-theme="light"] .glassnav .desktop-nav button.on{color:var(--text)!important;background:rgba(20,30,45,0.08)!important}
+.glassnav #header-nav button{border-radius:9999px!important;color:var(--text2)!important;border-bottom:none!important}
+.glassnav #header-nav button:hover{background:rgba(255,255,255,0.06)!important;color:var(--text)!important}
+.glassnav #header-nav button.on{background:rgba(255,255,255,0.10)!important;color:#fff!important}
+.glassnav #header-nav button.on::after{display:none!important}
+[data-theme="light"] .glassnav #header-nav button.on{background:rgba(20,30,45,0.08)!important;color:var(--text)!important}
+.glassnav .gn-right{display:flex;align-items:center;gap:7px;margin-left:auto;flex-shrink:0}
+.glassnav .gn-hidden{display:none!important}
+.glassnav .gn-leaguewrap{display:flex;align-items:center;gap:7px}
+.glassnav .gn-leaguelbl{font-size:9px;font-weight:700;color:var(--muted);font-family:var(--font-mono);letter-spacing:.12em}
+.glassnav .header-league-select{background-color:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);border-radius:9999px;color:var(--text2);font-size:12.5px;font-weight:600;padding:8px 28px 8px 13px;max-width:200px}
+.glassnav .header-league-select:hover{border-color:rgba(255,255,255,0.22)}
+.glassnav .gn-ic{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);color:var(--text2);cursor:pointer;flex-shrink:0;padding:0;font-size:15px;min-height:0;transition:all .15s}
+.glassnav .gn-ic svg{width:17px;height:17px}
+.glassnav .gn-ic:hover{color:#fff;background:rgba(255,255,255,0.10);border-color:rgba(255,255,255,0.18)}
+.glassnav .gn-sync{display:flex;align-items:center;gap:6px}
+.glassnav .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.glassnav .sync-lbl{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.glassnav .gn-cta{position:relative;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;border-radius:9999px;cursor:pointer;white-space:nowrap;font-size:13px;font-weight:700;color:var(--text);font-family:var(--font-sans);overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,rgba(255,255,255,0.13),rgba(255,255,255,0.05));border:1px solid rgba(255,255,255,0.16);box-shadow:0 2px 6px rgba(0,0,0,0.18),inset 1px 1px 1px -0.5px rgba(255,255,255,0.4),inset -1px -1px 1px -0.5px rgba(255,255,255,0.18),inset 0 0 10px 6px rgba(255,255,255,0.06);transition:filter .2s,transform .08s}
+.glassnav .gn-cta:hover{filter:brightness(1.12)}
+.glassnav .gn-cta:active{transform:scale(.97)}
+.glassnav .gn-cta .gsheen{position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(160deg,rgba(255,255,255,0.22),transparent 42%)}
+.glassnav .gn-cta .gn-cta-txt{position:relative;z-index:1}
+[data-theme="light"] .glassnav .gn-cta{color:var(--text);background:linear-gradient(135deg,rgba(20,30,45,0.06),rgba(20,30,45,0.02));border-color:rgba(20,30,45,0.12);box-shadow:0 2px 6px rgba(0,0,0,0.08),inset 1px 1px 1px -0.5px rgba(255,255,255,0.7)}
+.glassnav .user-chip.gn-avatarwrap{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.05);overflow:hidden;padding:0;gap:0}
+.glassnav .gn-avatarwrap:hover{border-color:var(--accent2)}
+.glassnav .gn-avatarwrap .user-avatar{width:100%;height:100%;border-radius:50%;border:none}
+.glassnav .gn-avatarwrap .user-initials{width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));font-size:12px}
+.page.on{min-height:calc(100vh - 78px)!important}
+@media(max-width:1120px){
+.glassnav .desktop-nav button{padding:8px 9px;font-size:12.5px}
+.glassnav .gn-leaguelbl{display:none}
+.glassnav .header-league-select{max-width:150px}
+}
+@media(max-width:960px){
+.glassnav .gn-search,.glassnav #watch-header-btn,.glassnav #theme-toggle{display:none}
+}
+@media(max-width:700px){
+.glassnav .desktop-nav{display:none}
+.glassnav .gn-cta{display:none}
+.glassnav .gn-leaguewrap{flex:1 1 auto;min-width:0}
+.glassnav .header-league-select{max-width:100%;width:100%}
+.glassnav .gn-right{flex:1 1 auto;gap:6px;justify-content:flex-end}
+#app-header.glassnav-host{padding:8px 10px 4px!important}
+.glassnav{min-height:54px;padding:0 8px 0 11px;gap:6px}
+.glassnav .gn-shield{height:30px}
+.glassnav .gn-word .t1{font-size:13px}
+.page.on{min-height:calc(100vh - 72px)!important}
+}
+/* ── Variant-2 exact: keep the pill minimal — league · search · Connect · avatar.
+   ☆ watchlist + 🌙 theme live in the Settings drawer (and ☆ on Draft Vault); ⚙ kept in DOM for app JS. ── */
+.glassnav #watch-header-btn,.glassnav #theme-toggle,.glassnav #settings-btn{display:none!important}
+/* ── Connect hides once an account is connected (JS toggles .gn-connected on the header) ── */
+#app-header.gn-connected .gn-cta{display:none!important}
+/* ── frosted glass dropdown menus (My Team ▾ / Research ▾) ── */
+.lc-mt-menu,.rh-mt-menu{background:rgba(16,23,34,0.78)!important;border:1px solid rgba(255,255,255,0.12)!important;border-radius:18px!important;backdrop-filter:blur(18px) saturate(140%)!important;-webkit-backdrop-filter:blur(18px) saturate(140%)!important;box-shadow:0 1px 0 rgba(255,255,255,0.05) inset,0 24px 60px -18px rgba(0,0,0,0.75)!important;padding:7px!important}
+.lc-mt-item,.rh-mt-item{border-radius:12px!important}
+.lc-mt-item:hover,.rh-mt-item:hover{background:rgba(255,255,255,0.07)!important}
+[data-theme="light"] .lc-mt-menu,[data-theme="light"] .rh-mt-menu{background:rgba(255,255,255,0.86)!important;border-color:rgba(20,30,45,0.10)!important}
+/* ── mobile: bottom tab bar → floating glass dock ── */
+@media(max-width:700px){
+.bottom-tab-bar{left:10px!important;right:10px!important;bottom:calc(10px + env(safe-area-inset-bottom))!important;border-radius:9999px!important;background:rgba(16,23,34,0.80)!important;border:1px solid rgba(255,255,255,0.12)!important;backdrop-filter:blur(18px) saturate(140%)!important;-webkit-backdrop-filter:blur(18px) saturate(140%)!important;box-shadow:0 1px 0 rgba(255,255,255,0.06) inset,0 18px 44px -16px rgba(0,0,0,0.8)!important;padding:4px 6px!important;overflow:hidden}
+[data-theme="light"] .bottom-tab-bar{background:rgba(255,255,255,0.85)!important;border-color:rgba(20,30,45,0.12)!important}
+.bottom-tab-bar .tab-btn{border-radius:9999px;min-height:50px}
+.bottom-tab-bar .tab-btn.on{background:rgba(255,255,255,0.08)}
+[data-theme="light"] .bottom-tab-bar .tab-btn.on{background:rgba(20,30,45,0.08)}
+.page.on{padding-bottom:88px}
+.rbar{bottom:calc(80px + env(safe-area-inset-bottom))}
+}
+</style>
+
+<!-- HEADER — floating glass pill nav -->
+<header class="z1 glassnav-host" id="app-header">
+ <div class="glassnav">
 
   <!-- Logo -->
-  <div class="logo" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0;margin-right:16px" onclick="showPage('overview')" id="header-logo">
-    <div style="line-height:1.05">
-      <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-0.01em;font-family:var(--font-sans);text-transform:uppercase">VAULT <span style="color:var(--accent)">FANTASY</span></div>
-      <div style="font-size:8px;font-weight:500;letter-spacing:0.12em;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase">FOOTBALL</div>
+  <div class="logo" onclick="showPage('overview')" id="header-logo">
+    <img src="assets/vault-shield.png" alt="Vault Fantasy Football" class="gn-shield" onerror="vfLogoFix(this,'shield')">
+    <div class="gn-word">
+      <div class="t1">VAULT <span>FANTASY</span></div>
+      <div class="t2">Football</div>
     </div>
   </div>
 
   <!-- Desktop nav tabs — always visible after connect -->
-  <div class="nav desktop-nav" id="header-nav" style="display:flex">
+  <div class="nav desktop-nav" id="header-nav">
     <button class="on" id="nb-overview" onclick="showPage('overview')">My Team</button>
     <button id="nb-portfolio" onclick="showPage('portfolio')">Portfolio</button>
     <button id="nb-visual" onclick="showPage('visual')" style="display:none">Draft Room</button>
-    <button id="nb-research" onclick="showPage('research')">Research Hub</button>
+    <button id="nb-research" onclick="showPage('research')">Research</button>
     <button id="nb-myrankings" onclick="showPage('myrankings')">My Rankings</button>
     <button id="nb-draft" onclick="showPage('draft')">Draft Vault</button>
     <button id="nb-teams" onclick="showPage('teams')">League</button>
     <button id="nb-trade" onclick="showPage('trade')">Calc</button>
   </div>
 
-  <!-- CENTER: League switcher — always visible when connected -->
-  <div class="header-league-wrap" style="flex:1;display:flex;justify-content:center">
-    <div class="header-league-select-wrap" id="header-league-wrap" style="display:none;align-items:center;gap:6px">
-      <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono);letter-spacing:0.08em;text-transform:uppercase">LEAGUE:</span>
-      <select id="header-league-select" onchange="switchGlobalLeague(this.value)"
-        class="header-league-select"
-        style="padding:5px 10px;font-size:13px">
+  <!-- RIGHT cluster -->
+  <div class="hright gn-right">
+    <!-- L/G/M counters kept hidden for JS reference (renderStrip writes to #hav/#hgn/#hmi) -->
+    <div class="gn-hidden"><b id="hav">—</b><b id="hgn">—</b><b id="hmi">0</b></div>
+
+    <!-- League switcher — shown when connected -->
+    <div class="header-league-select-wrap gn-leaguewrap" id="header-league-wrap" style="display:none">
+      <span class="gn-leaguelbl">League</span>
+      <select id="header-league-select" onchange="switchGlobalLeague(this.value)" class="header-league-select">
         <option value="">📋 Select League</option>
       </select>
     </div>
-  </div>
 
-  <!-- RIGHT: draft pick info + controls -->
-  <div class="hright" style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-    <!-- L/G/M counters moved into Draft Summary card on #page-draft. Kept hidden here for JS reference (renderStrip writes to #hav/#hgn/#hmi). -->
-    <div class="hstat desktop-only" style="display:none"><b id="hav">—</b><br><small>LEFT</small></div>
-    <div class="hstat desktop-only" style="display:none"><b id="hgn">—</b><br><small>GONE</small></div>
-    <div class="hstat desktop-only" style="display:none"><b id="hmi">0</b><br><small>MINE</small></div>
-    <div class="next-badge desktop-only" id="nbadge" style="display:none;font-family:var(--font-mono);font-size:11px;font-weight:700;padding:6px 14px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;white-space:nowrap">NEXT: —</div>
-    <div class="sync-wrap" id="sync-wrap" style="display:none;align-items:center;gap:6px">
-      <div class="sync-dot" id="sdot" style="width:8px;height:8px;border-radius:50%;background:var(--muted)"></div>
-      <span class="sync-lbl desktop-only" id="slbl" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">OFFLINE</span>
+    <!-- draft next-pick badge + sync status (shown during a live draft) -->
+    <div class="next-badge desktop-only" id="nbadge" style="display:none;font-family:var(--font-mono);font-size:11px;font-weight:700;padding:6px 13px;border-radius:9999px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;white-space:nowrap">NEXT: —</div>
+    <div class="sync-wrap gn-sync" id="sync-wrap" style="display:none">
+      <div class="sync-dot" id="sdot"></div>
+      <span class="sync-lbl desktop-only" id="slbl">OFFLINE</span>
     </div>
-    <button id="resync-btn" onclick="manualResync()" title="Resync"
-      style="display:none;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--muted);font-family:var(--font-mono);font-size:12px;cursor:pointer">⟳</button>
-    <button id="watch-header-btn" onclick="toggleWatchFilter()" title="Starred players"
-      style="padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.10);background:transparent;color:var(--muted);font-size:14px;cursor:pointer;transition:color 150ms">☆</button>
-    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.10);background:transparent;cursor:pointer">🌙</button>
-    <div id="user-profile-chip" class="user-chip" style="display:none;cursor:pointer" onclick="document.getElementById('setup').classList.remove('gone')">
+    <button id="resync-btn" onclick="manualResync()" title="Resync" class="gn-ic" style="display:none">⟳</button>
+
+    <!-- search → Research Hub -->
+    <button class="gn-ic gn-search" onclick="showPage('research')" title="Search players · Research" aria-label="Search players">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+    </button>
+
+    <!-- watchlist + theme -->
+    <button id="watch-header-btn" onclick="toggleWatchFilter()" title="Starred players" class="gn-ic">☆</button>
+    <button class="theme-toggle gn-ic" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+
+    <!-- settings (the app injects its gear icon into #settings-btn) -->
+    <button class="gn-ic" id="settings-btn" onclick="document.getElementById('setup').classList.remove('gone')" title="Settings">⚙</button>
+
+    <!-- glass Connect CTA — Variant 2 (opens the Sleeper connect / setup overlay) -->
+    <button class="gn-cta" id="gn-connect-cta" onclick="document.getElementById('setup').classList.remove('gone')" title="Connect a league">
+      <span class="gsheen"></span><span class="gn-cta-txt">＋ Connect</span>
+    </button>
+
+    <!-- avatar -->
+    <div id="user-profile-chip" class="user-chip gn-avatarwrap" style="display:none" onclick="document.getElementById('setup').classList.remove('gone')">
       <img id="user-avatar" class="user-avatar" alt="" onerror="this.style.display='none';document.getElementById('user-initials').style.display='flex'">
       <div id="user-initials" class="user-initials" style="display:none"></div>
-      <span id="user-display-name" class="user-dname desktop-only"></span>
+      <span id="user-display-name" class="user-dname" style="display:none"></span>
     </div>
-    <button id="settings-btn" class="hbtn" onclick="document.getElementById('setup').classList.remove('gone')" style="display:flex;align-items:center;gap:4px;font-size:12px">⚙</button>
   </div>
+
+ </div>
 </header>
+<script>
+/* Hide the ＋ Connect CTA once an account is connected — the avatar takes over as the entry to setup */
+(function(){
+  function gnSync(){
+    try{
+      var chip=document.getElementById('user-profile-chip');
+      var host=document.getElementById('app-header');
+      if(!chip||!host) return;
+      host.classList.toggle('gn-connected', getComputedStyle(chip).display!=='none');
+    }catch(e){}
+  }
+  gnSync();
+  try{ new MutationObserver(gnSync).observe(document.getElementById('user-profile-chip'),{attributes:true,attributeFilter:['style','class']}); }catch(e){}
+  document.addEventListener('DOMContentLoaded', gnSync);
+})();
+</script>
 
 <!-- GLOBAL PERSISTENT ROSTER BAR — sticks to bottom on all pages -->
 <div class="rbar" id="global-rbar">
