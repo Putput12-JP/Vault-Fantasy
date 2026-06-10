@@ -1008,8 +1008,8 @@ header{
 .mth-lineup-str{font-size:11px;color:var(--text2);line-height:1.6;font-family:var(--font-mono)}
 .mth-ps-row{display:flex;align-items:center;gap:10px;padding:5px 0;min-width:0}
 .mth-ps-pos{font-size:11px;font-weight:700;font-family:var(--font-mono);width:34px;flex-shrink:0}
-.mth-ps-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;min-width:0}
-.mth-ps-fill{height:100%;border-radius:3px;transition:width 500ms ease}
+.mth-ps-track{flex:1;height:6px;background:var(--s3);border-radius:9999px;overflow:hidden;min-width:0}
+.mth-ps-fill{height:100%;border-radius:9999px;transition:width 900ms cubic-bezier(.22,.8,.24,1)}
 .mth-ps-rank{font-size:10px;color:var(--muted);font-family:var(--font-mono);width:48px;text-align:right;flex-shrink:0}
 .mth-ps-label{font-size:11px;font-weight:700;width:64px;text-align:right;flex-shrink:0}
 .mth-brand{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);font-family:var(--font-mono)}
@@ -1053,7 +1053,19 @@ header{
 /* ===== Command Center modules (grade ring, contention window, season outlook, SoS, movers) ===== */
 .cc-lab{font-family:var(--font-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700}
 .cc-card{background:rgba(20,30,54,0.5);border:1px solid var(--border2);border-radius:16px;padding:20px;min-width:0}
-.cc-bar{height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.cc-bar{height:8px;background:rgba(255,255,255,.06);border-radius:9999px;overflow:hidden}
+.cc-bar>div{transition:width 900ms cubic-bezier(.22,.8,.24,1)}
+/* ── UI Enhancers: corner-glow cards · animated bars · live chip (tasteful, low alpha) ── */
+.glowc{position:relative;overflow:hidden}
+.glowc::before{content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit}
+.glow-gold::before{background:radial-gradient(190px 130px at 8% 0%,rgba(250,204,21,0.09),transparent 62%)}
+.glow-green::before{background:radial-gradient(190px 130px at 100% 0%,rgba(61,204,122,0.09),transparent 62%)}
+.glow-sky::before{background:radial-gradient(190px 130px at 100% 0%,rgba(123,208,255,0.09),transparent 62%)}
+.glowc>*{position:relative}
+.vf-livechip{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.08em;color:#3DCC7A;background:rgba(61,204,122,0.07);border:1px solid rgba(61,204,122,0.22);padding:2px 8px;border-radius:9999px;text-transform:uppercase}
+.vf-livechip .d{width:5px;height:5px;border-radius:50%;background:#3DCC7A;box-shadow:0 0 6px #3DCC7A;animation:vfpulse 2s infinite}
+@keyframes vfpulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.vf-livechip .d{animation:none}.mth-ps-fill,.cc-bar>div,.pr-bar-fill{transition:none!important}}
 .cc-chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.04em;padding:5px 10px;border-radius:8px}
 .cc-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:0}
 .cc-two > *{min-width:0}
@@ -1478,7 +1490,7 @@ header{
 .pr-val{font-size:14px;font-weight:700;font-family:'Space Mono',monospace;text-align:right}
 .pr-trend{font-size:11px;font-weight:700;font-family:'Space Mono',monospace;text-align:right;white-space:nowrap}
 .pr-bar-wrap{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;min-width:50px}
-.pr-bar-fill{height:6px;border-radius:3px}
+.pr-bar-fill{height:6px;border-radius:3px;transition:width 900ms cubic-bezier(.22,.8,.24,1)}
 .pr-pos-chips{display:flex;gap:3px;flex-wrap:wrap}
 .pr-pos-chip{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;font-family:'Space Mono',monospace}
 .pr-pos-chip.QB{background:#ff709620;color:var(--qb)}
@@ -9837,7 +9849,7 @@ async function renderOverview() {
   const _oddsPlayoff = playoffOdds!=null?playoffOdds:50;
   const _oddsBye = Math.max(2, Math.min(92, Math.round(_oddsPlayoff*0.55-(powerRank-1)*4)));
   const _oddsTitle = Math.max(1, Math.min(60, Math.round(_oddsPlayoff*0.22-(powerRank-1)*1.2)));
-  const _outlookCardHtml = `<div class="cc-card">
+  const _outlookCardHtml = `<div class="cc-card glowc glow-sky">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><span class="cc-lab">Season Outlook</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Projected · ${_totalGames}-game</span></div>
     <div style="display:flex;align-items:flex-end;gap:16px;margin-bottom:18px">
       <div><div class="cc-lab">Proj. Record</div><div style="font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.05;color:var(--text)">${_projW}-${_projL}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${_gp?`${_ovRec.w}-${_ovRec.l}${_ovRec.t?'-'+_ovRec.t:''} so far`:'Season not started'}</div></div>
@@ -9925,9 +9937,9 @@ async function renderOverview() {
         <div class="mth-snap-title">TEAM SNAPSHOT</div>
         <div class="mth-snap-grid">
           <div class="mth-snap-item"><span class="mth-snap-k">👤 Avg Age</span><span class="mth-snap-v">${avgAge?avgAge.toFixed(1)+' yrs':'—'}</span></div>
-          <div class="mth-snap-item"><span class="mth-snap-k">↗ Dynasty Value</span><span class="mth-snap-v">${totalVal.toLocaleString()} <span class="mth-snap-rank">(#${powerRank||'—'}/${totalTeams})</span></span></div>
-          <div class="mth-snap-item"><span class="mth-snap-k">🏆 Win-Now Value</span><span class="mth-snap-v">${_winNowVal?_winNowVal.toLocaleString():'—'} <span class="mth-snap-rank">(#${_winNowRank||'—'}/${totalTeams})</span></span></div>
-          <div class="mth-snap-item"><span class="mth-snap-k">⭐ Future Picks</span><span class="mth-snap-v">${_picksCount} picks</span></div>
+          <div class="mth-snap-item glowc glow-gold"><span class="mth-snap-k">↗ Dynasty Value</span><span class="mth-snap-v"><span class="vf-count" data-count="${totalVal}">${totalVal.toLocaleString()}</span> <span class="mth-snap-rank">(#${powerRank||'—'}/${totalTeams})</span></span></div>
+          <div class="mth-snap-item glowc glow-green"><span class="mth-snap-k">🏆 Win-Now Value</span><span class="mth-snap-v">${_winNowVal?`<span class="vf-count" data-count="${_winNowVal}">${_winNowVal.toLocaleString()}</span>`:'—'} <span class="mth-snap-rank">(#${_winNowRank||'—'}/${totalTeams})</span></span></div>
+          <div class="mth-snap-item glowc glow-sky"><span class="mth-snap-k">⭐ Future Picks</span><span class="mth-snap-v">${_picksCount} picks</span></div>
         </div>
       </div>
       ${_lineupStr?`<div class="mth-settings">
@@ -9935,7 +9947,7 @@ async function renderOverview() {
         <div class="mth-lineup-str">Lineup: ${_lineupStr}</div>
       </div>`:''}
       <div class="mth-posstrength">
-        <div class="mth-snap-title">POSITIONAL STRENGTH</div>
+        <div class="mth-snap-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">POSITIONAL STRENGTH <span class="vf-livechip"><span class="d"></span>LIVE FC</span></div>
         ${['QB','RB','WR','TE'].map(_posBar).join('')}
         <div class="mth-ps-row">
           <span class="mth-ps-pos" style="color:#bec6e0">Picks</span>
@@ -20914,6 +20926,44 @@ async function _ovRenderRedraftWaiver(){
   }
 }
 window._ovRenderRedraftWaiver=_ovRenderRedraftWaiver;
+</script>
+<script>
+/* ── UI Enhancers: count-up values + bar fills animate on each My Team / League render ── */
+(function(){
+  var ease = function(x){ return 1 - Math.pow(1-x,3); };
+  function countUp(el){
+    if(el.dataset.vfAnim) return; el.dataset.vfAnim='1';
+    var target = parseInt(el.dataset.count,10); if(isNaN(target)) return;
+    var t0 = performance.now(), dur = 900;
+    function tick(now){ var t=Math.min(1,(now-t0)/dur); el.textContent=Math.round(target*ease(t)).toLocaleString(); if(t<1) requestAnimationFrame(tick); }
+    requestAnimationFrame(tick);
+  }
+  function fillBar(b){
+    if(b.dataset.vfAnim) return; b.dataset.vfAnim='1';
+    var w=b.style.width; if(!w) return;
+    b.style.width='0%';
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ b.style.width=w; }); });
+  }
+  function sweep(root){
+    if(!root) return;
+    if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches){
+      root.querySelectorAll('.vf-count,.mth-ps-fill,.cc-bar>div,.pr-bar-fill').forEach(function(e){ e.dataset.vfAnim='1'; });
+      return;
+    }
+    root.querySelectorAll('.vf-count').forEach(countUp);
+    root.querySelectorAll('.mth-ps-fill,.cc-bar>div,.pr-bar-fill').forEach(fillBar);
+  }
+  var pend=null;
+  function arm(id){
+    var el=document.getElementById(id); if(!el) return;
+    try{
+      new MutationObserver(function(){ if(pend) return; pend=requestAnimationFrame(function(){ pend=null; sweep(el); }); }).observe(el,{childList:true,subtree:true});
+    }catch(e){}
+    sweep(el);
+  }
+  function init(){ arm('ov-content'); arm('power-rankings'); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
 </script>
 </body>
 </html>
