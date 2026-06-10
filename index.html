@@ -3560,8 +3560,10 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 #app-header.glassnav-host{background:transparent!important;border:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;display:block!important;height:auto!important;padding:10px 14px 6px!important;gap:0!important;z-index:200}
 .glassnav{max-width:1320px;margin:0 auto;min-height:58px;display:flex;align-items:center;gap:8px;border-radius:9999px;padding:0 10px 0 13px;background:rgba(16,23,34,0.72);border:1px solid rgba(255,255,255,0.10);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);box-shadow:0 1px 0 rgba(255,255,255,0.05) inset,0 16px 44px -22px rgba(0,0,0,0.7)}
 [data-theme="light"] .glassnav{background:rgba(255,255,255,0.80);border-color:rgba(20,30,45,0.10);box-shadow:0 1px 0 rgba(255,255,255,0.6) inset,0 16px 44px -24px rgba(0,0,0,0.25)}
-.glassnav .logo{display:flex;align-items:center;gap:9px;cursor:pointer;flex-shrink:0;margin-right:4px}
-.glassnav .gn-shield{height:34px;width:auto;display:block;flex-shrink:0}
+.glassnav .logo{display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0;margin-right:4px}
+.glassnav .gn-shieldtile{width:38px;height:38px;border-radius:11px;background:#f2f4f9;border:1px solid rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px -2px rgba(0,0,0,0.4)}
+[data-theme="light"] .glassnav .gn-shieldtile{border-color:rgba(20,30,45,0.12);box-shadow:0 2px 6px -2px rgba(0,0,0,0.15)}
+.glassnav .gn-shield{height:27px;width:auto;display:block;flex-shrink:0}
 .glassnav .gn-word{line-height:1.02}
 .glassnav .gn-word .t1{font-size:14px;font-weight:800;letter-spacing:-0.01em;text-transform:uppercase;color:var(--text)}
 .glassnav .gn-word .t1 span{color:var(--accent)}
@@ -3616,7 +3618,8 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 .glassnav .gn-right{flex:1 1 auto;gap:6px;justify-content:flex-end}
 #app-header.glassnav-host{padding:8px 10px 4px!important}
 .glassnav{min-height:54px;padding:0 8px 0 11px;gap:6px}
-.glassnav .gn-shield{height:30px}
+.glassnav .gn-shieldtile{width:34px;height:34px;border-radius:10px}
+.glassnav .gn-shield{height:24px}
 .glassnav .gn-word .t1{font-size:13px}
 .page.on{min-height:calc(100vh - 72px)!important}
 }
@@ -3648,7 +3651,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
   <!-- Logo -->
   <div class="logo" onclick="showPage('overview')" id="header-logo">
-    <img src="assets/vault-shield.png" alt="Vault Fantasy Football" class="gn-shield" onerror="vfLogoFix(this,'shield')">
+    <span class="gn-shieldtile"><img src="assets/vault-shield.png" alt="Vault Fantasy Football" class="gn-shield" onerror="vfLogoFix(this,'shield')"></span>
     <div class="gn-word">
       <div class="t1">VAULT <span>FANTASY</span></div>
       <div class="t2">Football</div>
@@ -3987,7 +3990,26 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   </div>
 </div>
 
-<div class="page z1" id="page-draft" style="overflow-y:auto">
+<div class="page z1" id="page-draft" style="overflow-y:auto" data-screen-label="Draft Vault">
+  <!-- PAGE HEADER — My Rankings look -->
+  <div class="dvh" id="dv-pagehead">
+    <div class="dvh-l">
+      <div class="dvh-titlerow">
+        <h1 class="dvh-title">Draft Vault</h1>
+        <span class="dvh-fmtbadge" id="dvh-fmtbadge">DYNASTY · SF</span>
+      </div>
+      <div class="dvh-meta">
+        <span class="dvh-chip"><span class="dot"></span>LIVE values</span>
+        <span class="dvh-chip"><span class="k">Synced</span> My Rankings</span>
+        <span class="dvh-chip"><span class="k">Players</span> <span id="dvh-count">—</span></span>
+      </div>
+    </div>
+    <div class="dvh-actions">
+      <button class="dv-abtn" id="sb-watch" onclick="toggleWatchFilter()" title="Watchlist — show only players you've starred"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.6 6 .7-4.4 4.2 1.2 6L12 17.1 6.6 20l1.2-6L3.4 9.8l6-.7Z"/></svg><span>Watchlist</span></button>
+      <button class="dv-abtn" id="sb-import" onclick="toggleImportPanel()" title="Import custom rankings (CSV)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 19h14"/></svg><span>Import CSV</span></button>
+      <button class="dv-abtn hgbtn" id="hgbtn" onclick="toggleHide()" title="Show or hide drafted players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/></svg><span>Drafted</span><span class="hg-count" id="hg-count">0</span></button>
+    </div>
+  </div>
   <!-- CONNECT BAR — shown when browsing rankings with no live draft connected -->
   <div id="draft-connect-bar" class="dconn-bar" style="display:none">
     <div class="dconn-bar-main">
@@ -4060,30 +4082,38 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   <div class="pstrip" id="pstrip" style="display:none !important"><span id="draft-timer" style="font-size:9px;color:var(--muted);font-family:Space Mono,monospace;flex-shrink:0;white-space:nowrap;padding-right:6px;border-right:1px solid var(--border);margin-right:4px"></span></div>
   <!-- TOOLBAR — single row (matches Command Strip mock): search · filters · value source · watchlist · import · drafted -->
   <div class="controls dvc">
+    <div class="dv-grp">
+      <span class="dv-ctl-label">Format</span>
+      <div class="dvc-seg mode-seg" id="dv-mode-seg" title="Switch the board between Dynasty and Redraft — values, ADP and sort all follow">
+        <button class="sbtn dv-mode on" id="dvm-dynasty" onclick="setDvMode('dynasty')">Dynasty</button>
+        <button class="sbtn dv-mode" id="dvm-redraft" onclick="setDvMode('redraft')">Redraft</button>
+      </div>
+      <span class="dv-sync-ind" title="Dynasty/Redraft stays in sync with My Rankings">⇄ synced</span>
+    </div>
+    <div class="dv-grp dvg-src">
+      <span class="dv-ctl-label">Source</span>
+      <div class="dvc-seg src-seg" title="Value source for the Dynasty column">
+        <button class="sbtn sort-mode" id="sm-ra" onclick="setSortMode('ra')" title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit</button>
+        <button class="sbtn sort-mode on" id="sm-fc" onclick="setSortMode('fc')" title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live)">FantasyCalc<span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:4px;font-weight:400"></span></button>
+        <button class="sbtn sort-mode" id="sm-my" onclick="setSortMode('my')" title="Your custom board from My Rankings">Mine</button>
+      </div>
+    </div>
+    <div class="dv-grp">
+      <span class="dv-ctl-label">Pos</span>
+      <div class="dvc-seg pos-seg">
+        <button class="fbtn all on" onclick="setF('ALL')">ALL</button>
+        <button class="fbtn QB" onclick="setF('QB')">QB</button>
+        <button class="fbtn RB" onclick="setF('RB')">RB</button>
+        <button class="fbtn WR" onclick="setF('WR')">WR</button>
+        <button class="fbtn TE" onclick="setF('TE')">TE</button>
+      </div>
+    </div>
+    <div class="dv-spacer"></div>
     <div class="dvc-search">
       <span class="dvc-search-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/><path d="m20.5 20.5-4-4"/></svg></span>
       <input id="search" placeholder="Search players..." oninput="renderListDebounced()" autocomplete="off" autocorrect="off" spellcheck="false">
       <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
     </div>
-    <div class="dvc-seg pos-seg">
-      <button class="fbtn all on" onclick="setF('ALL')">ALL</button>
-      <button class="fbtn QB" onclick="setF('QB')">QB</button>
-      <button class="fbtn RB" onclick="setF('RB')">RB</button>
-      <button class="fbtn WR" onclick="setF('WR')">WR</button>
-      <button class="fbtn TE" onclick="setF('TE')">TE</button>
-    </div>
-    <div class="dvc-seg mode-seg" id="dv-mode-seg" title="Switch the board between Dynasty and Redraft — values, ADP and sort all follow">
-      <button class="sbtn dv-mode on" id="dvm-dynasty" onclick="setDvMode('dynasty')">Dynasty</button>
-      <button class="sbtn dv-mode" id="dvm-redraft" onclick="setDvMode('redraft')">Redraft</button>
-    </div>
-    <div class="dvc-seg src-seg" title="Value source for the Dynasty column">
-      <button class="sbtn sort-mode" id="sm-ra" onclick="setSortMode('ra')" title="RosterAudit dynasty value (Elo from 500k+ Sleeper leagues)">RosterAudit</button>
-      <button class="sbtn sort-mode on" id="sm-fc" onclick="setSortMode('fc')" title="FantasyCalc dynasty value (~1M user-submitted dynasty trades, refreshed live)">FantasyCalc<span id="sm-fc-age" style="font-size:8px;opacity:.55;margin-left:4px;font-weight:400"></span></button>
-      <button class="sbtn sort-mode" id="sm-my" onclick="setSortMode('my')" title="Your custom board from My Rankings">Mine</button>
-    </div>
-    <button class="dvc-icon" id="sb-watch" onclick="toggleWatchFilter()" title="Watchlist — show only players you've starred"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.6 6 .7-4.4 4.2 1.2 6L12 17.1 6.6 20l1.2-6L3.4 9.8l6-.7Z"/></svg></button>
-    <button class="dvc-icon" id="sb-import" onclick="toggleImportPanel()" title="Import custom rankings (CSV)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 19h14"/></svg></button>
-    <button class="dvc-drafted hgbtn" id="hgbtn" onclick="toggleHide()" title="Show or hide drafted players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/></svg><span class="dvc-drafted-lbl">Drafted</span><span class="hg-count" id="hg-count">0</span></button>
     <!-- Legacy controls kept hidden for JS references — these live in the Settings drawer now -->
     <span style="display:none">
       <button id="sb0" onclick="setSort(0)">—</button>
@@ -9041,7 +9071,11 @@ function setDvMode(m, fromAuto){
   });
   // The RA/FC/Mine source toggle only applies to the Dynasty value — hide it in Redraft.
   const srcSeg = document.querySelector('.controls .src-seg');
-  if (srcSeg) srcSeg.style.display = (m==='dynasty') ? '' : 'none';
+  const srcGrp = srcSeg ? (srcSeg.closest('.dvg-src') || srcSeg) : null;
+  if (srcGrp) srcGrp.style.display = (m==='dynasty') ? '' : 'none';
+  // Keep the page-header format badge in sync
+  const dvhFb = document.getElementById('dvh-fmtbadge');
+  if (dvhFb) dvhFb.textContent = (m==='redraft') ? 'REDRAFT · 1QB' : 'DYNASTY · SF';
   try{ localStorage.setItem('dcmd-v5-dvmode', m); }catch(e){}
   // Keep My Rankings' Dynasty/Redraft board in lockstep with the Draft Vault mode.
   try{ if(window.MyRankings && MyRankings.setFormat){ MyRankings.setFormat(m); if(document.getElementById('page-myrankings')?.classList.contains('on')) MyRankings.render(); } }catch(e){}
@@ -10899,10 +10933,11 @@ function renderList(){
       <td class="rnum" style="text-align:right;padding-right:10px">${rank}</td>
       <td class="td-player" onclick="openPlayerStats('${sn}','${p.name.replace(/'/g,"\\'")}','${p.pos}','${p.team}')" style="cursor:pointer" title="View player stats">
         <div class="dvrow-player">
-          <span class="ppill ${p.pos}">${p.pos}${_posRankMap[nn]||''}</span>
-          <span class="pname">${p.name}</span>
-          <span class="dvrow-team">${p.team}</span>
-          ${playerNotes[p.name] ? `<span class="dvrow-note" onclick="event.stopPropagation();openNote('${sn}')" title="Edit note">🗒</span>` : ''}
+          ${hs.replace('pimg-wrap','dv-rowav pimg-wrap')}
+          <span class="dvrow-txt">
+            <span class="pname">${p.name}${playerNotes[p.name] ? ` <span class="dvrow-note" onclick="event.stopPropagation();openNote('${sn}')" title="Edit note">🗒</span>` : ''}</span>
+            <span class="dvrow-meta"><span class="ppill ${p.pos}">${p.pos}${_posRankMap[nn]||''}</span><span class="dvrow-team">${p.team}</span></span>
+          </span>
         </div>
       </td>
       <td class="td-dynasty" style="font-family:var(--font-mono);font-size:12.5px;font-weight:700;text-align:right;padding-right:8px">${dynastyHtml}</td>
@@ -10964,7 +10999,7 @@ function renderList(){
     if (tierTriggered) {
       tierNum++;
       rowsWithTiers.push({
-        desktop: `<tr class="tier-break-row"><td colspan="7"><div class="tier-break">— TIER ${tierNum} —</div></td></tr>`,
+        desktop: `<tr class="tier-break-row"><td colspan="7"><div class="tier-break"><span class="tb-lbl">Tier ${tierNum}</span></div></td></tr>`,
         mobile: `<div class="tier-break-mobile">— TIER ${tierNum} —</div>`
       });
     }
@@ -11028,6 +11063,11 @@ function renderList(){
   
   const hgCount=document.getElementById('hg-count');
   if(hgCount) hgCount.textContent=tot;
+  // Page-header "Players" chip — ranked player pool size (excl. picks)
+  try{
+    const dvhC=document.getElementById('dvh-count');
+    if(dvhC && typeof PLAYERS!=='undefined' && PLAYERS.length) dvhC.textContent = PLAYERS.filter(x=>x.pos!=='PICK').length;
+  }catch(e){}
 
 }
 
@@ -20965,5 +21005,129 @@ window._ovRenderRedraftWaiver=_ovRenderRedraftWaiver;
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
 </script>
+<style id="dv-mr-restyle">
+/* ════════════════════════════════════════════════════════════════
+   DRAFT VAULT — restyled to the My Rankings visual vocabulary
+   (approved in "Draft Vault Restyle Preview.html")
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── container: match My Rankings 1180px ── */
+#page-draft #intel-bar, #page-draft .pstrip, #page-draft .search-bar-wrap,
+#page-draft .suggest-bar, #page-draft .controls, #page-draft .draft-summary,
+#page-draft .ld-page, #page-draft .plist{ max-width:1180px; }
+#page-draft .board-scroll{ max-width:1180px; }
+#page-draft .dconn-bar{ max-width:1180px; border-radius:14px; margin-top:16px; }
+.dconn-btn{ background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:9px; }
+
+/* ── page header ── */
+#page-draft .dvh{ max-width:1180px; margin:0 auto; padding:26px 14px 4px; display:flex; justify-content:space-between; align-items:flex-start; gap:18px; flex-wrap:wrap; box-sizing:border-box; }
+.dvh-l{ min-width:0; }
+.dvh-titlerow{ display:flex; align-items:center; gap:11px; flex-wrap:wrap; }
+.dvh-title{ font-size:clamp(26px,3.4vw,38px); font-weight:800; letter-spacing:-0.03em; line-height:1; color:var(--text); margin:0; font-family:var(--font-sans); }
+.dvh-fmtbadge{ font-family:var(--font-mono); font-size:9px; font-weight:800; letter-spacing:.08em; color:var(--accent3); background:rgba(226,58,78,0.12); border:1px solid rgba(226,58,78,0.3); padding:3px 7px; border-radius:5px; }
+.dvh-meta{ display:flex; align-items:center; gap:8px; margin-top:11px; flex-wrap:wrap; }
+.dvh-chip{ display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px; font-weight:600; color:var(--text2); background:var(--s2); border:1px solid var(--border); padding:4px 9px; border-radius:7px; }
+.dvh-chip .dot{ width:6px; height:6px; border-radius:50%; background:var(--rb); box-shadow:0 0 7px var(--rb); }
+.dvh-chip .k{ color:var(--muted); }
+.dvh-actions{ display:flex; gap:7px; flex-wrap:wrap; }
+.dv-abtn{ display:inline-flex; align-items:center; gap:7px; padding:8px 13px; border-radius:9px; border:1px solid var(--border2); background:var(--s2); color:var(--text2); font-family:var(--font-sans); font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.dv-abtn svg{ width:15px; height:15px; }
+.dv-abtn:hover{ border-color:var(--accent2); color:var(--accent3); }
+#page-draft .dvh-actions #sb-watch.on{ background:color-mix(in srgb,var(--gold) 14%,transparent)!important; border-color:var(--gold)!important; color:var(--gold)!important; }
+#page-draft .dvh-actions .hgbtn.on{ background:color-mix(in srgb,var(--accent) 14%,transparent)!important; border-color:var(--accent)!important; color:var(--text)!important; }
+.dv-abtn .hg-count{ background:var(--accent); color:#fff; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; font-family:var(--font-mono); margin-left:0; }
+
+/* ── controls bar: bordered strip, labelled segments ── */
+#page-draft .controls.dvc{ background:var(--bg)!important; border-top:1px solid var(--border)!important; border-bottom:1px solid var(--border)!important; padding:13px 14px!important; gap:14px!important; margin-top:14px; position:sticky; top:0; z-index:97; }
+.dv-grp{ display:flex; align-items:center; gap:8px; }
+.dv-spacer{ flex:1; }
+.dv-ctl-label{ font-size:9.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.12em; font-family:var(--font-mono); }
+.dv-sync-ind{ font-size:9.5px; font-weight:700; color:var(--rb); font-family:var(--font-mono); letter-spacing:.04em; opacity:.8; white-space:nowrap; }
+#page-draft .controls.dvc .dvc-seg{ background:var(--s2); border:1.5px solid var(--border2)!important; border-radius:10px; padding:3px; gap:2px; }
+#page-draft .mode-seg{ border-color:var(--border2)!important; }
+#page-draft .controls.dvc .dvc-seg .fbtn,
+#page-draft .controls.dvc .dvc-seg .sbtn{ text-transform:uppercase!important; letter-spacing:.04em!important; padding:7px 14px!important; border-radius:7px!important; }
+#page-draft .controls.dvc .mode-seg .dv-mode.on{ background:linear-gradient(135deg,var(--accent),var(--accent2))!important; color:#fff!important; }
+#page-draft .controls.dvc .src-seg .sbtn.on,
+#page-draft .controls.dvc .src-seg .sort-mode.on{ background:var(--s4)!important; border-color:transparent!important; color:var(--text)!important; }
+#page-draft .controls.dvc .pos-seg .fbtn.on,
+#page-draft .controls.dvc .pos-seg .fbtn.all.on{ background:var(--s4)!important; color:var(--text)!important; }
+#page-draft .controls.dvc .pos-seg .fbtn.QB.on{ background:var(--s4)!important; color:var(--qb)!important; }
+#page-draft .controls.dvc .pos-seg .fbtn.RB.on{ background:var(--s4)!important; color:var(--rb)!important; }
+#page-draft .controls.dvc .pos-seg .fbtn.WR.on{ background:var(--s4)!important; color:var(--wr)!important; }
+#page-draft .controls.dvc .pos-seg .fbtn.TE.on{ background:var(--s4)!important; color:var(--te)!important; }
+#page-draft .controls.dvc .dvc-search{ flex:0 1 280px; min-width:180px; height:36px; border:1.5px solid var(--border2); border-radius:9px; background:var(--s2); }
+#page-draft .controls.dvc .dvc-search:focus-within{ border-color:var(--accent2); }
+
+/* ── live draft summary: one hero card → grid of stat cards ── */
+#page-draft .draft-summary{ display:block!important; margin-top:14px; }
+#page-draft .ds-card.dsc{ background:transparent!important; border:none!important; border-radius:0!important; padding:0!important; display:grid!important; grid-template-columns:repeat(auto-fit,minmax(172px,1fr)); gap:12px; overflow:visible; }
+#page-draft .dsc-main{ display:contents; }
+#page-draft .dsc-sep{ display:none; }
+#page-draft .dsc-pickblock{ background:var(--s1); border:1px solid rgba(226,58,78,0.35); border-radius:12px; padding:14px 16px; position:relative; overflow:hidden; gap:5px; }
+#page-draft .dsc-pickblock::before{ content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(226,58,78,0.08),transparent 60%); pointer-events:none; }
+#page-draft .dsc .ds-pick-no{ font-size:28px; }
+#page-draft .dsc-stats{ display:contents; }
+#page-draft .dsc-stat{ background:var(--s1); border:1px solid var(--border); border-radius:12px; padding:14px 16px; gap:7px; justify-content:center; }
+#page-draft .dsc-clockwrap{ background:var(--s1); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-left:0; display:flex; align-items:center; gap:10px; }
+#page-draft .dsc-clock{ background:transparent; border:none; padding:0; flex:1; min-width:0; flex-wrap:wrap; }
+#page-draft .dsc-progwrap{ background:var(--s1); border:1px solid var(--border); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:12px; }
+
+/* ── player list: rounded board card ── */
+#page-draft .plist{ padding-top:16px; }
+#page-draft .plist-table{ border-collapse:separate!important; border-spacing:0; background:var(--s1); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+#page-draft .plist-thead th{ background:rgba(12,17,25,0.5)!important; border-bottom:1px solid var(--border2)!important; padding:10px 6px!important; font-weight:700!important; }
+[data-theme="light"] #page-draft .plist-thead th{ background:var(--s2)!important; }
+#page-draft .plist-thead th:first-child{ padding-right:10px!important; }
+#page-draft .plist-thead th:nth-child(2){ padding-left:0!important; }
+#page-draft .prow{ height:auto!important; }
+#page-draft .prow td{ border-bottom:1px solid var(--border); padding-top:9px; padding-bottom:9px; }
+#page-draft .prow:last-child td{ border-bottom:none; }
+#page-draft .prow:hover td{ background:rgba(255,255,255,0.03); }
+[data-theme="light"] #page-draft .prow:hover td{ background:rgba(20,30,45,0.03); }
+#page-draft .prow .rnum{ font-family:var(--font-mono); font-size:16px!important; font-weight:800; color:var(--text)!important; letter-spacing:-0.01em; }
+#page-draft .prow.gone .rnum{ color:var(--dim)!important; }
+/* row: avatar tile + two-line player cell */
+#page-draft .dvrow-player{ display:flex; align-items:center; gap:11px; overflow:hidden; }
+#page-draft .dv-rowav{ width:34px!important; height:34px!important; border-radius:9px!important; border:1px solid var(--border)!important; background:var(--s3); flex-shrink:0; font-size:11px!important; font-weight:800; }
+#page-draft .dv-rowav img{ border-radius:8px; }
+#page-draft .dvrow-txt{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+#page-draft .dvrow-player .pname{ font-size:14px!important; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#page-draft .dvrow-meta{ display:flex; align-items:center; gap:6px; }
+#page-draft .dvrow-meta .ppill{ flex-shrink:0; font-size:8.5px!important; padding:1.5px 5px!important; border-radius:4px!important; }
+#page-draft .dvrow-team{ font-family:var(--font-mono); font-size:10.5px; color:var(--muted); }
+/* value columns */
+#page-draft .plist-table .td-dynasty, #page-draft .plist-table .td-redraft{ font-size:14.5px!important; font-weight:800!important; letter-spacing:-0.01em; }
+/* status column: back on, star + status pill right-aligned */
+#page-draft .plist-table #hdr-status,
+#page-draft .plist-table .td-status{ display:table-cell!important; }
+#page-draft .plist-table col.col-status{ width:13%!important; }
+#page-draft .plist-table col.col-name{ width:30%; }
+#page-draft .plist-table #hdr-status{ text-align:right!important; padding-right:18px!important; }
+#page-draft .td-status .prow-status-cell{ display:flex; align-items:center; justify-content:flex-end!important; gap:8px; padding-right:10px; }
+#page-draft .dvrow-star{ opacity:.4; font-size:15px; }
+/* edge padding inside the card */
+#page-draft .prow td:first-child, #page-draft .tier-break-row td:first-child{ padding-left:10px; }
+#page-draft .prow td:last-child{ padding-right:8px; }
+/* tier band — My Rankings style */
+#page-draft .tier-break{ display:flex; align-items:center; gap:11px; text-align:left; padding:9px 16px; opacity:1; border-top:none; background:linear-gradient(90deg,rgba(255,90,110,0.05),transparent 70%); border-bottom:1px solid var(--border); }
+#page-draft .tier-break .tb-lbl{ font-family:var(--font-mono); font-size:10px; font-weight:800; letter-spacing:.14em; color:var(--accent3); text-transform:uppercase; white-space:nowrap; }
+#page-draft .tier-break::after{ content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--border2),transparent); }
+
+/* ── suggested label matches control labels ── */
+#page-draft .suggest-title span{ font-size:9.5px; letter-spacing:.12em; }
+
+/* ── mobile ── */
+@media(max-width:700px){
+  #page-draft .dvh{ padding:16px 12px 0; gap:12px; }
+  .dvh-title{ font-size:25px; }
+  .dvh-meta{ gap:6px; }
+  .dv-abtn{ padding:8px 11px; font-size:11.5px; }
+  .dv-ctl-label, .dv-sync-ind{ display:none; }
+  #page-draft .controls.dvc{ gap:8px!important; padding:10px 12px!important; }
+  #page-draft .controls.dvc .dvc-search{ flex:1 1 100%; }
+  #page-draft .ds-card.dsc{ grid-template-columns:1fr 1fr; }
+}
+</style>
 </body>
 </html>
