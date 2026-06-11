@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault — Sign in</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="auth/firebase-config.js"></script>
+<script src="auth/vault-auth.js"></script>
+<style>
+:root{
+  --bg:#070a10;
+  --navy:#16233a;--slate:#5d6b7d;--slate2:#8a96a6;
+  --card-border:rgba(20,30,45,0.12);--card-border2:rgba(20,30,45,0.2);
+  --accent:#e23a4e;--accent-deep:#c12338;
+  --rb:#1f9655;--te:#a76a16;
+  --font-sans:'Archivo',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--navy);font-family:var(--font-sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:rgba(226,58,78,0.3)}
+
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+  background:linear-gradient(100deg,#0a0e17 0%,#070a10 48%,#160b10 86%,#1d0d12 100%)}
+.bg-grid{position:absolute;inset:-2px;
+  background-image:linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px);
+  background-size:54px 54px;mask-image:radial-gradient(ellipse 90% 90% at 50% 40%,#000 30%,transparent 80%);}
+.glow{position:absolute;border-radius:50%;filter:blur(110px);opacity:0.55}
+.glow.red{width:780px;height:900px;top:-180px;right:-320px;background:radial-gradient(circle,rgba(190,40,60,0.4),transparent 68%)}
+.glow.blue{width:700px;height:700px;bottom:-320px;left:-220px;background:radial-gradient(circle,rgba(47,99,196,0.28),transparent 70%)}
+#stars{position:absolute;inset:0;width:100%;height:100%}
+
+.stage{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 18px 50px}
+
+.card{width:100%;max-width:480px;
+  background:linear-gradient(180deg,rgba(238,240,244,0.97) 0%,rgba(222,226,233,0.94) 100%);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,0.45);border-radius:28px;
+  padding:38px 34px 30px;color:var(--navy);
+  box-shadow:0 40px 110px -35px rgba(0,0,0,0.85),0 0 0 1px rgba(0,0,0,0.3);
+  display:flex;flex-direction:column;align-items:center}
+.card-logo{display:block;width:100%;height:auto;margin:-52px auto -44px;object-fit:contain}
+
+.step-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(226,58,78,0.06);border:1px solid rgba(226,58,78,0.35);padding:7px 16px;border-radius:9999px;margin:10px 0 22px}
+.step-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.step-pill.green{background:rgba(31,150,85,0.07);border-color:rgba(31,150,85,0.4)}
+.step-pill.green .dot{background:var(--rb)}
+.step-pill span{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent)}
+.step-pill.green span{color:var(--rb)}
+
+h1.hero{font-size:clamp(24px,4vw,30px);font-weight:800;letter-spacing:-0.035em;line-height:1.1;text-align:center;margin:0 auto 8px;color:var(--navy);text-wrap:balance}
+.hero-sub{font-size:14.5px;color:var(--slate);max-width:380px;text-align:center;line-height:1.55;margin:0 auto 20px;text-wrap:pretty}
+
+.setup-note{display:none;width:100%;font-size:12.5px;color:var(--te);background:rgba(167,106,22,0.08);border:1px solid rgba(167,106,22,0.3);border-radius:11px;padding:11px 14px;margin-bottom:16px;line-height:1.5}
+.setup-note code{font-family:var(--font-mono);font-size:11px}
+.err-note{display:none;width:100%;font-size:12.5px;color:var(--accent-deep);background:rgba(226,58,78,0.07);border:1px solid rgba(226,58,78,0.3);border-radius:11px;padding:11px 14px;margin-bottom:16px;line-height:1.5}
+
+.prov-row{display:flex;align-items:center;gap:15px;width:100%;padding:14px 18px 14px 14px;border-radius:16px;text-align:left;
+  border:1px solid var(--card-border);background:#fff;cursor:pointer;font-family:var(--font-sans);
+  box-shadow:0 6px 18px -8px rgba(20,30,45,0.18);transition:transform .12s,box-shadow .12s,border-color .12s}
+.prov-row:hover{transform:translateY(-1px);box-shadow:0 12px 26px -10px rgba(20,30,45,0.28);border-color:var(--card-border2)}
+.prov-row:disabled{opacity:.6;cursor:wait;transform:none}
+.prov-row .tile{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff;border:1px solid var(--card-border)}
+.prov-row .nm{font-size:16px;font-weight:700;letter-spacing:-0.01em;color:var(--navy)}
+.prov-row .dt{font-size:13px;color:var(--slate);margin-top:2px}
+.prov-row .arr{margin-left:auto;color:var(--slate2);font-size:18px}
+
+.divider{display:flex;align-items:center;gap:12px;margin:20px 0 14px;color:var(--slate2);width:100%}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--card-border)}
+.divider span{font-family:var(--font-mono);font-size:9px;letter-spacing:0.18em;text-transform:uppercase}
+
+.mode-tabs{display:flex;gap:0;width:100%;background:rgba(20,30,45,0.06);border:1px solid var(--card-border);border-radius:11px;padding:3px;margin-bottom:14px}
+.mode-tab{flex:1;padding:9px 0;border:none;border-radius:8px;background:transparent;font-family:var(--font-mono);font-size:10px;
+  letter-spacing:0.12em;text-transform:uppercase;color:var(--slate);cursor:pointer;transition:all .15s}
+.mode-tab.on{background:#fff;color:var(--navy);box-shadow:0 2px 8px -2px rgba(20,30,45,0.2);font-weight:700}
+
+.fld{display:flex;flex-direction:column;gap:7px;margin-bottom:12px;width:100%}
+.fld label{font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--slate2)}
+.fld input{width:100%;padding:14px 16px;font-size:16px;border-radius:13px;border:1px solid var(--card-border);
+  background:#fff;color:var(--navy);font-family:var(--font-sans);outline:none;transition:border-color .15s,box-shadow .15s}
+.fld input:focus{border-color:rgba(226,58,78,0.55);box-shadow:0 0 0 3px rgba(226,58,78,0.12)}
+.fld input::placeholder{color:#a8b1bd}
+
+.cta{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:15px 18px;border-radius:13px;border:none;
+  background:linear-gradient(135deg,var(--accent),var(--accent-deep));color:#fff;font-family:var(--font-sans);font-size:15px;font-weight:800;
+  letter-spacing:-0.01em;cursor:pointer;transition:transform .12s;box-shadow:0 12px 28px -10px rgba(226,58,78,0.5)}
+.cta:hover{transform:translateY(-1px)}
+.cta:disabled{opacity:.6;cursor:wait;transform:none}
+.cta.green{background:linear-gradient(135deg,#2eb56a,var(--rb));box-shadow:0 12px 28px -10px rgba(31,150,85,0.4)}
+
+.ghost-link{display:block;text-align:center;margin-top:14px;font-size:13px;color:var(--slate);cursor:pointer;text-decoration:none}
+.ghost-link b{color:var(--navy);border-bottom:1px dotted var(--card-border2)}
+.ghost-link:hover b{color:var(--accent)}
+
+.trust-row{display:flex;justify-content:center;gap:18px;margin-top:20px;flex-wrap:wrap}
+.trust{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--slate2)}
+.trust i{width:5px;height:5px;border-radius:50%;background:var(--rb);opacity:.75}
+
+/* restore view */
+.sync-list{display:flex;flex-direction:column;width:100%;margin-top:4px}
+.sync-item{display:flex;align-items:center;gap:13px;padding:13px 4px;border-bottom:1px solid var(--card-border);opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s}
+.sync-item:last-child{border-bottom:none}
+.sync-item.in{opacity:1;transform:none}
+.sync-item .ic{width:36px;height:36px;border-radius:11px;background:#fff;border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sync-item .nm{font-size:14px;font-weight:700;letter-spacing:-0.01em;color:var(--navy)}
+.sync-item .dt{font-family:var(--font-mono);font-size:10px;color:var(--slate2);margin-top:3px}
+.sync-item .ok{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--rb);opacity:0;transition:opacity .3s}
+.sync-item.done .ok{opacity:1}
+
+.view{width:100%;display:none;flex-direction:column;align-items:center}
+.view.on{display:flex;animation:fade .45s ease forwards}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+@media (max-width:560px){ .card{padding:30px 22px 26px;border-radius:24px} }
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <canvas id="stars"></canvas>
+  <div class="bg-grid"></div>
+  <div class="glow red"></div><div class="glow blue"></div>
+</div>
+
+<div class="stage">
+  <div class="card">
+    <img class="card-logo" src="assets/vault-lockup-full.png" alt="Vault Fantasy Football"
+         onerror="this.onerror=null;if(window.VF_LOGO_LOCKUP)this.src=window.VF_LOGO_LOCKUP;">
+
+    <!-- ── VIEW: sign in ── -->
+    <div class="view on" id="view-auth">
+      <div class="step-pill"><div class="dot"></div><span>Step 0 of 2 · Sign in</span></div>
+
+      <div class="setup-note" id="setup-note">
+        <b>Cloud sync isn't configured yet.</b> Paste your Firebase config into
+        <code>auth/firebase-config.js</code> (see <code>auth/SETUP-AUTH.md</code> — ~10 min, free).
+        Until then, continue below and Vault works on this device only.
+      </div>
+      <div class="err-note" id="err-note"></div>
+
+      <button class="prov-row" id="google-btn">
+        <span class="tile">
+          <svg width="24" height="24" viewBox="0 0 48 48" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+          </svg>
+        </span>
+        <span><span class="nm">Continue with Google</span><br><span class="dt">Fastest · one tap, no password</span></span>
+        <span class="arr">→</span>
+      </button>
+
+      <div class="divider"><span>or with email</span></div>
+
+      <div class="mode-tabs">
+        <button class="mode-tab on" id="tab-signin" onclick="setMode('signin')">Sign in</button>
+        <button class="mode-tab" id="tab-create" onclick="setMode('create')">Create account</button>
+      </div>
+
+      <form id="email-form" style="width:100%" onsubmit="return false;">
+        <div class="fld" id="fld-name" style="display:none">
+          <label for="f-name">Display name</label>
+          <input id="f-name" type="text" placeholder="What should we call you?" autocomplete="name">
+        </div>
+        <div class="fld">
+          <label for="f-email">Email</label>
+          <input id="f-email" type="email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="fld">
+          <label for="f-pass">Password</label>
+          <input id="f-pass" type="password" placeholder="8+ characters" autocomplete="current-password">
+        </div>
+        <button class="cta" id="email-cta" onclick="submitEmail()">Sign in →</button>
+      </form>
+
+      <a class="ghost-link" id="forgot-link" onclick="forgotPassword()"><b>Forgot password?</b></a>
+      <a class="ghost-link" onclick="goGuest()">Skip for now — <b>use this device only</b></a>
+
+      <div class="trust-row">
+        <div class="trust"><i></i>Free account</div>
+        <div class="trust"><i></i>Syncs automatically</div>
+        <div class="trust"><i></i>No passwords stored with Google</div>
+      </div>
+    </div>
+
+    <!-- ── VIEW: restoring ── -->
+    <div class="view" id="view-restore">
+      <div class="step-pill green"><div class="dot"></div><span id="restore-pill">Signed in · Syncing</span></div>
+      <h1 class="hero" id="restore-hd">Restoring your Vault…</h1>
+      <p class="hero-sub" id="restore-sub">Pulling your saved work down to this device.</p>
+      <div class="sync-list" id="sync-list">
+        <div class="sync-item"><div class="ic">📋</div><div><div class="nm">My Rankings</div><div class="dt">boards &amp; imported values</div></div><div class="ok">✓</div></div>
+        <div class="sync-item"><div class="ic">★</div><div><div class="nm">Watchlist &amp; player notes</div><div class="dt">snapdraft data</div></div><div class="ok">✓</div></div>
+        <div class="sync-item"><div class="ic">⇄</div><div><div class="nm">Trade calculator settings</div><div class="dt">mode &amp; value source</div></div><div class="ok">✓</div></div>
+        <div class="sync-item"><div class="ic">🛡</div><div><div class="nm">Sleeper connection</div><div class="dt">username &amp; selected leagues</div></div><div class="ok">✓</div></div>
+        <div class="sync-item"><div class="ic">◐</div><div><div class="nm">Theme &amp; saved views</div><div class="dt">preferences</div></div><div class="ok">✓</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var mode = 'signin';
+
+function $(id){ return document.getElementById(id); }
+
+function setMode(m){
+  mode = m;
+  $('tab-signin').classList.toggle('on', m==='signin');
+  $('tab-create').classList.toggle('on', m==='create');
+  $('fld-name').style.display = m==='create' ? 'flex' : 'none';
+  $('email-cta').textContent = m==='create' ? 'Create account →' : 'Sign in →';
+  $('forgot-link').style.display = m==='create' ? 'none' : 'block';
+  $('f-pass').setAttribute('autocomplete', m==='create' ? 'new-password' : 'current-password');
+  showErr('');
+}
+
+function showErr(msg){
+  var el = $('err-note');
+  el.textContent = msg || '';
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function friendly(err){
+  var c = (err && err.code) || '';
+  if (c.indexOf('invalid-credential') >= 0 || c.indexOf('wrong-password') >= 0 || c.indexOf('user-not-found') >= 0)
+    return 'Email or password didn\u2019t match. New here? Switch to \u201cCreate account\u201d.';
+  if (c.indexOf('email-already-in-use') >= 0) return 'That email already has a Vault \u2014 switch to \u201cSign in\u201d.';
+  if (c.indexOf('weak-password') >= 0) return 'Password needs at least 6 characters.';
+  if (c.indexOf('invalid-email') >= 0) return 'That doesn\u2019t look like a valid email.';
+  if (c.indexOf('popup-closed') >= 0 || c.indexOf('cancelled-popup') >= 0) return 'Google sign-in was closed before finishing.';
+  if (c.indexOf('popup-blocked') >= 0) return 'Your browser blocked the Google popup \u2014 allow popups and try again.';
+  if (c.indexOf('network') >= 0) return 'Network hiccup \u2014 check your connection and try again.';
+  if (c.indexOf('too-many-requests') >= 0) return 'Too many attempts \u2014 wait a minute and try again.';
+  return (err && err.message) || 'Something went wrong \u2014 try again.';
+}
+
+function needsSetup(){
+  if (VaultAuth.configured()) return false;
+  showErr('');
+  $('setup-note').style.display = 'block';
+  $('setup-note').scrollIntoView; /* no-op; keep view stable */
+  return true;
+}
+
+/* ── actions ── */
+function goGuest(){
+  try { localStorage.setItem('vf-guest','1'); } catch(e){}
+  location.href = 'index.html';
+}
+
+function forgotPassword(){
+  if (needsSetup()) return;
+  var email = $('f-email').value.trim();
+  if (!email) { showErr('Enter your email above first, then tap \u201cForgot password\u201d.'); return; }
+  VaultAuth.resetPassword(email).then(function(){
+    showErr(''); 
+    $('err-note').style.display='block';
+    $('err-note').style.color='var(--rb)';
+    $('err-note').style.borderColor='rgba(31,150,85,0.4)';
+    $('err-note').style.background='rgba(31,150,85,0.07)';
+    $('err-note').textContent = 'Reset email sent to ' + email + ' \u2014 check your inbox.';
+  }).catch(function(err){ showErr(friendly(err)); });
+}
+
+$('google-btn').addEventListener('click', function(){
+  if (needsSetup()) return;
+  var btn = $('google-btn');
+  btn.disabled = true;
+  VaultAuth.signInWithGoogle()
+    .then(onSignedIn)
+    .catch(function(err){ btn.disabled = false; showErr(friendly(err)); });
+});
+
+function submitEmail(){
+  if (needsSetup()) return;
+  var email = $('f-email').value.trim();
+  var pass = $('f-pass').value;
+  if (!email || !pass) { showErr('Enter your email and password.'); return; }
+  var btn = $('email-cta');
+  btn.disabled = true;
+  var p = (mode === 'create')
+    ? VaultAuth.signUpEmail(email, pass, $('f-name').value.trim())
+    : VaultAuth.signInEmail(email, pass);
+  p.then(onSignedIn).catch(function(err){ btn.disabled = false; showErr(friendly(err)); });
+}
+
+/* ── post-sign-in: restore + enter ── */
+function onSignedIn(user){
+  $('view-auth').classList.remove('on');
+  $('view-restore').classList.add('on');
+  var name = (user.displayName || user.email || '').split(' ')[0].split('@')[0];
+  $('restore-hd').textContent = 'Welcome, ' + name + '.';
+
+  // animate checklist while the real sync runs
+  var items = document.querySelectorAll('#sync-list .sync-item');
+  items.forEach(function(it, i){
+    setTimeout(function(){ it.classList.add('in'); }, 200 + i*260);
+    setTimeout(function(){ it.classList.add('done'); }, 200 + i*260 + 380);
+  });
+  var animDone = new Promise(function(res){ setTimeout(res, 200 + items.length*260 + 700); });
+
+  var sync = VaultAuth.initialSync(user.uid).catch(function(err){
+    console.warn('initial sync failed:', err);
+    return 0;
+  });
+
+  Promise.all([sync, animDone]).then(function(vals){
+    var pulled = vals[0] || 0;
+    $('restore-pill').textContent = 'All set';
+    $('restore-hd').textContent = pulled > 0 ? 'Vault restored.' : 'You\u2019re in.';
+    $('restore-sub').textContent = pulled > 0
+      ? pulled + ' item' + (pulled===1?'':'s') + ' synced down \u2014 taking you in\u2026'
+      : 'This device will now sync automatically \u2014 taking you in\u2026';
+    setTimeout(function(){ location.href = 'index.html'; }, 900);
+  });
+}
+
+/* ── boot: already signed in? skip the form ── */
+(function(){
+  if (!VaultAuth.configured()) { $('setup-note').style.display = 'block'; return; }
+  VaultAuth.ready().then(function(auth){
+    var unsub = auth.onAuthStateChanged(function(u){
+      unsub();
+      if (u) onSignedIn(u);
+    });
+  }).catch(function(err){ showErr(friendly(err)); });
+})();
+
+/* ── constellation background ── */
+(function(){
+  var cv = $('stars');
+  function draw(){
+    var w = cv.width = window.innerWidth * devicePixelRatio;
+    var h = cv.height = window.innerHeight * devicePixelRatio;
+    var ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,w,h);
+    var N = Math.round((window.innerWidth*window.innerHeight)/26000);
+    var pts = [];
+    var seed = 1337;
+    function rnd(){ seed = (seed*16807)%2147483647; return seed/2147483647; }
+    for(var i=0;i<N;i++){
+      pts.push({x:rnd()*w, y:rnd()*h, r:(0.8+rnd()*1.8)*devicePixelRatio, red:rnd()<0.3, a:0.25+rnd()*0.55});
+    }
+    ctx.lineWidth = 0.6*devicePixelRatio;
+    var maxD = 150*devicePixelRatio;
+    for(var i=0;i<pts.length;i++){
+      for(var j=i+1;j<pts.length;j++){
+        var dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y;
+        var d=Math.sqrt(dx*dx+dy*dy);
+        if(d<maxD){
+          ctx.strokeStyle='rgba(150,170,200,'+(0.09*(1-d/maxD)).toFixed(3)+')';
+          ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.stroke();
+        }
+      }
+    }
+    pts.forEach(function(p){
+      ctx.fillStyle = p.red ? 'rgba(226,58,78,'+p.a.toFixed(2)+')' : 'rgba(185,200,225,'+(p.a*0.8).toFixed(2)+')';
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    });
+  }
+  draw();
+  window.addEventListener('resize', draw);
+})();
+</script>
+</body>
+</html>
