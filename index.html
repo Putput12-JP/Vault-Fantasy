@@ -15,6 +15,11 @@ function vfLogoFix(el, kind){
 }
 </script>
 
+<!-- AUTH: cross-device login + sync. Inert until auth/firebase-config.js has a config. -->
+<script src="auth/firebase-config.js"></script>
+<script src="auth/vault-auth.js"></script>
+<script>try{ if(window.VaultAuth) VaultAuth.guard(); }catch(e){}</script>
+
 
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
