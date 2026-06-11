@@ -16337,8 +16337,10 @@ function pickYear(year) {
 
   /* Mobile: dropdown menu drops to a comfortable full-width sheet feel */
   @media(max-width:700px){
-    .vlg-trigger{ min-width:0; max-width:none; width:100%; }
-    .header-league-select-wrap{ flex:1 1 auto; min-width:0; }
+    .vlg-trigger{ min-width:0; max-width:100%; width:100%; overflow:hidden; }
+    .gn-leaguewrap .vlg{ flex:1 1 auto; min-width:0; max-width:100%; }
+    .vlg-name{ min-width:0; font-size:12px; }
+    .header-league-select-wrap{ flex:1 1 auto; min-width:0; overflow:hidden; }
     .vlg-menu{ width:min(330px,92vw); }
     /* Keep the dark/light switch reachable from the mobile header too */
     #theme-toggle{ display:flex!important; width:32px!important; height:32px!important; }
@@ -20570,8 +20572,7 @@ function pickYear(year) {
 .rdv-row:last-child{border-bottom:none}
 .rdv-side{display:grid;align-items:center;gap:11px;padding:11px 16px}
 .rdv-side.me{grid-template-columns:32px minmax(0,1fr) auto}
-.rdv-side.opp{grid-template-columns:auto minmax(0,1fr) 32px;text-align:right;direction:rtl}
-.rdv-side.opp>*{direction:ltr}
+.rdv-side.opp{grid-template-columns:auto minmax(0,1fr) 32px;text-align:right}
 .rdv-pav{width:32px;height:32px;border-radius:50%;background:var(--s3);border:2px solid var(--muted);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;font-weight:700;color:var(--text);flex-shrink:0;overflow:hidden}
 .rdv-pav img{width:100%;height:100%;object-fit:cover}
 .rdv-pinfo{min-width:0}
@@ -21230,6 +21231,11 @@ window._ovRenderRedraftWaiver=_ovRenderRedraftWaiver;
 
 /* compare avatar: anchor the initials fallback inside its own box (was overlapping names) */
 .rh-scope .rh-cmp-av{position:relative}
+
+/* connect/setup overlay open → no dock, no FAB, no command sheet */
+body:has(.setup:not(.gone)) .bottom-tab-bar,
+body:has(.setup:not(.gone)) .vc-sheet,
+body:has(.setup:not(.gone)) .vc-dim{display:none!important}
 
 /* ════ MOBILE OVERHAUL · floating dock + Vault Command (≤700px) ════ */
 .vc-dim,.vc-sheet,.tab-fab{display:none}
