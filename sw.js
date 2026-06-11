@@ -1,7 +1,7 @@
 // SnapDraft Service Worker v1
 // Caches the app shell for offline use
 
-const CACHE_NAME = 'snapdraft-v3';
+const CACHE_NAME = 'snapdraft-v4';
 const CACHE_URLS = [
   '/',
   '/index.html',
