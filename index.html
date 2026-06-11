@@ -3651,7 +3651,7 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
 
   <!-- Logo -->
   <div class="logo" onclick="showPage('overview')" id="header-logo">
-    <span class="gn-shieldtile"><img src="assets/vault-shield.png" alt="Vault Fantasy Football" class="gn-shield" onerror="vfLogoFix(this,'shield')"></span>
+    <span class="gn-shieldtile"><img src="assets/vault-shield-mark.png" alt="Vault Fantasy Football" class="gn-shield" onerror="vfLogoFix(this,'shield')"></span>
     <div class="gn-word">
       <div class="t1">VAULT <span>FANTASY</span></div>
       <div class="t2">Football</div>
@@ -3748,12 +3748,12 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
     <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z"></path></svg></span>
     <span class="tab-label">Home</span>
   </button>
-  <button class="tab-btn" id="tb-research" onclick="showPage('research')" aria-label="Research Hub">
+  <button class="tab-btn" id="tb-research" onclick="showPage('advstats')" aria-label="Research Hub">
     <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m20 20-4.6-4.6"></path></svg></span>
     <span class="tab-label">Research</span>
   </button>
   <button class="tab-fab" id="tb-fab" onclick="vcToggle()" aria-label="Vault Command">
-    <img src="assets/vault-shield.png" alt="" onerror="vfLogoFix(this,'shield')">
+    <img src="assets/vault-shield-mark.png" alt="" onerror="vfLogoFix(this,'shield')">
     <span class="tab-fab-live" id="tb-fab-live" hidden>LIVE</span>
   </button>
   <button class="tab-btn" id="tb-teams" onclick="showPage('teams')" aria-label="League">
@@ -9257,7 +9257,7 @@ function showPage(p){
   document.getElementById(`nb-${p}`)?.classList.add('on');
   document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('on'));
   // Direct tab match, with aliases (trade page → Calc tab)
-  const tabAlias = { trade: 'tb-calc', visual: 'tb-draft' };
+  const tabAlias = { trade: 'tb-calc', visual: 'tb-draft', advstats: 'tb-research', gamelogs: 'tb-research', research: 'tb-research' };
   const directTab = document.getElementById(tabAlias[p] || `tb-${p}`);
   if (directTab) directTab.classList.add('on');
   const pageDiv = document.getElementById(`page-${p}`);
@@ -21210,6 +21210,12 @@ window._ovRenderRedraftWaiver=_ovRenderRedraftWaiver;
 }
 </style>
 <style id="vault-mobile-dock">
+/* ════ BRAND · real shield mark in header (desktop + mobile) ════ */
+.glassnav .gn-shieldtile{background:transparent!important;border:none!important;box-shadow:none!important;width:auto!important;height:auto!important;border-radius:0!important}
+.glassnav .gn-shield{height:36px!important;width:auto!important}
+@media(max-width:700px){ .glassnav .gn-shield{height:32px!important} }
+[data-theme="light"] .glassnav .gn-shieldtile{background:transparent!important}
+
 /* ════ MOBILE OVERHAUL · floating dock + Vault Command (≤700px) ════ */
 .vc-dim,.vc-sheet,.tab-fab{display:none}
 @media(max-width:700px){
@@ -21233,8 +21239,8 @@ window._ovRenderRedraftWaiver=_ovRenderRedraftWaiver;
   .bottom-tab-bar{z-index:9001!important;overflow:visible!important;display:flex!important;align-items:center!important;justify-content:space-around!important;height:62px!important;min-height:62px!important;padding:0 6px!important}
   .bottom-tab-bar .tab-btn{flex:0 1 64px!important;min-height:46px!important}
   .bottom-tab-bar .tab-label{font-family:var(--font-mono)!important;font-size:8px!important;letter-spacing:.08em;text-transform:uppercase}
-  .tab-fab{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 56px;width:56px;height:56px;margin-top:-26px;border-radius:50%;border:3px solid var(--bg);background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 26px color-mix(in srgb,var(--accent) 55%,transparent);cursor:pointer;padding:0}
-  .tab-fab img{width:30px;height:30px;object-fit:contain;display:block}
+  .tab-fab{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 56px;width:56px;height:56px;margin-top:-26px;border-radius:50%;border:3px solid var(--accent);background:#f2f4f9;box-shadow:0 10px 26px color-mix(in srgb,var(--accent) 55%,transparent),0 0 0 3px var(--bg);cursor:pointer;padding:0}
+  .tab-fab img{width:32px;height:32px;object-fit:contain;display:block}
   .tab-fab:active{transform:scale(.94)}
   .tab-fab-live{position:absolute;top:-4px;right:-10px;font-family:var(--font-mono);font-size:7px;font-weight:700;letter-spacing:.08em;background:var(--value);color:#06281a;padding:2px 6px;border-radius:8px;border:2px solid var(--bg)}
   .tab-fab-live[hidden]{display:none}
@@ -21332,6 +21338,64 @@ window._ovRenderRedraftWaiver=_ovRenderRedraftWaiver;
   .rh-mcell b{display:block;font-family:var(--font-mono);font-size:10.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rh-mcell small{display:block;font-family:var(--font-mono);font-size:6.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* ── LEAGUE ANALYZER · power table → compact rows ──── */
+  /* standings: drop PF/PA on phones — # · team · W-L · value bar */
+  .st-hdr span:nth-child(4),.st-hdr span:nth-child(5),
+  .st-pf,.st-pa{display:none}
+  .st-row{padding:11px 10px;gap:7px}
+  .st-rank{width:22px;font-size:14px}
+  .st-name{font-size:12.5px}
+  .st-wl{width:44px;font-size:11px}
+  .st-bar-wrap{min-width:96px}
+  .st-bar-label{font-size:10px}
+  /* movers: rising / falling stack instead of side-by-side */
+  #power-rankings > div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important;padding:10px!important;gap:12px!important}
+  /* transactions */
+  .tx-sides{gap:8px}
+  .tx-side{min-width:calc(50% - 8px)}
+  .tx-stat{padding:8px 12px}
+  .tx-stat b{font-size:17px}
+
+  /* ── SLEEPER SYNC page ──────────────────────────────── */
+  #page-myteams .proto-page-hdr{margin-bottom:16px!important}
+  #page-myteams .proto-h1{font-size:26px!important}
+  /* hero card */
+  #page-myteams div[style*="padding:40px 48px"]{padding:22px 18px!important;border-radius:16px!important}
+  #page-myteams h2[style*="font-size:44px"]{font-size:25px!important;margin-bottom:10px!important}
+  #page-myteams h2[style*="font-size:44px"] + p{font-size:13px!important;margin-bottom:20px!important;line-height:1.6!important}
+  /* 1fr 2fr grid + feature bento → stack */
+  #page-myteams div[style*="grid-template-columns:1fr 2fr"]{grid-template-columns:1fr!important}
+  #page-myteams div[style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:1fr!important}
+  /* settings card */
+  #page-myteams div[style*="padding:28px"]{padding:18px!important}
+  /* leagues: hide column-header row, rows become 2-line cards */
+  #page-myteams div:has(+ #sync-leagues-body){display:none!important}
+  #page-myteams #sync-leagues-body > div[style*="grid-template-columns"]{
+    display:flex!important;flex-wrap:wrap;gap:6px 10px;padding:13px 16px!important;align-items:center}
+  #page-myteams #sync-leagues-body > div[style*="grid-template-columns"] > div:first-child{width:100%}
+  #page-myteams #sync-leagues-body > div[style*="grid-template-columns"] > div:last-child{margin-left:auto;opacity:1!important}
+  #page-myteams div[style*="padding:20px 28px"]{padding:14px 16px!important}
+
+  /* ── GAMEDAY · duel rows — full surnames ────────────── */
+  #page-overview .proto-page,#page-overview > div{padding-left:10px!important;padding-right:10px!important}
+  .rdv-row{grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr)}
+  .rdv-side{gap:6px;padding:9px 6px}
+  .rdv-side.me{grid-template-columns:24px minmax(0,1fr) auto}
+  .rdv-side.opp{grid-template-columns:auto minmax(0,1fr) 24px}
+  .rdv-pav{width:24px;height:24px;font-size:8px}
+  .rdv-pn{font-size:11px;letter-spacing:-0.01em}
+  .rdv-pmeta{font-size:8px}
+  .rdv-pproj{font-size:12px}
+  .rdv-badge{width:24px;height:24px;font-size:8px;border-radius:6px}
+
+  /* ── DRAFT VAULT · player rows — one clean meta line ── */
+  .prow-mobile{min-height:56px!important;padding:8px 12px!important;gap:9px!important}
+  .pm-meta{flex-wrap:nowrap!important;overflow:hidden;gap:6px!important;min-width:0}
+  .pm-meta .vbadge{flex-shrink:0;font-size:8.5px!important;padding:2px 5px!important}
+  .pm-val-wrap{flex-shrink:0}
+  .pm-name{font-size:14px!important}
+  .pm-rank{width:22px!important;font-size:12px!important}
+  .pm-team{flex-shrink:0}
+
   /* keep: # · Team · Value · 30d  — drop: Tier, Roster, Strength, Top asset */
   #page-teams .lrt thead th:nth-child(3),#page-teams .lrt tbody td:nth-child(3),
   #page-teams .lrt thead th:nth-child(4),#page-teams .lrt tbody td:nth-child(4),
