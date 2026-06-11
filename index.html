@@ -3742,37 +3742,82 @@ h1,h2,h3 { font-family:var(--font-sans)!important; letter-spacing:-0.02em!import
   <button class="switcher" onclick="openTModal()">Switch</button>
 </div>
 
-<!-- BOTTOM TAB BAR — mobile only (5 tabs per UXPin/Apple HIG/Material Design best practice) -->
+<!-- BOTTOM DOCK — mobile only: 4 destinations + the Vault Command shield -->
 <nav class="bottom-tab-bar" id="bottom-tab-bar">
-  <button class="tab-btn on" id="tb-overview" onclick="showPage('overview')" aria-label="My Team">
-    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z"/></svg></span>
-    <span class="tab-label">Team</span>
-  </button>
-  <button class="tab-btn" id="tb-portfolio" onclick="showPage('portfolio')" aria-label="Portfolio">
-    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.2"/><path d="M8 7V5.5A2 2 0 0 1 10 3.5h4a2 2 0 0 1 2 2V7"/><path d="M3 12.5h18"/></svg></span>
-    <span class="tab-label">Portfolio</span>
+  <button class="tab-btn on" id="tb-overview" onclick="showPage('overview')" aria-label="Home">
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z"></path></svg></span>
+    <span class="tab-label">Home</span>
   </button>
   <button class="tab-btn" id="tb-research" onclick="showPage('research')" aria-label="Research Hub">
-    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.6-4.6"/></svg></span>
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m20 20-4.6-4.6"></path></svg></span>
     <span class="tab-label">Research</span>
   </button>
-  <button class="tab-btn" id="tb-myrankings" onclick="showPage('myrankings')" aria-label="My Rankings">
-    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="4" height="10" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><rect x="17" y="13" width="4" height="7" rx="1"/></svg></span>
-    <span class="tab-label">Mine</span>
-  </button>
-  <button class="tab-btn" id="tb-draft" onclick="showPage('draft')" aria-label="Draft Vault">
-    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 12h12M4 18h8"/><path d="M20 6h.01M20 12h.01M20 18h.01"/></svg></span>
-    <span class="tab-label">Draft</span>
+  <button class="tab-fab" id="tb-fab" onclick="vcToggle()" aria-label="Vault Command">
+    <img src="assets/vault-shield.png" alt="" onerror="vfLogoFix(this,'shield')">
+    <span class="tab-fab-live" id="tb-fab-live" hidden>LIVE</span>
   </button>
   <button class="tab-btn" id="tb-teams" onclick="showPage('teams')" aria-label="League">
-    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"/><path d="M7 5.5H4.5V8a3 3 0 0 0 3 3M17 5.5h2.5V8a3 3 0 0 1-3 3"/><path d="M12 13.5V17M9 20h6M10 20l.4-3M14 20l-.4-3"/></svg></span>
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4.5a5 5 0 0 1-10 0V4z"></path><path d="M7 5.5H4.5V8a3 3 0 0 0 3 3M17 5.5h2.5V8a3 3 0 0 1-3 3"></path><path d="M12 13.5V17M9 20h6M10 20l.4-3M14 20l-.4-3"></path></svg></span>
     <span class="tab-label">League</span>
   </button>
-  <button class="tab-btn" id="tb-calc" onclick="showPage('trade')" aria-label="Calc">
-    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 4 7l3 3"/><path d="M4 7h13"/><path d="m17 20 3-3-3-3"/><path d="M20 17H7"/></svg></span>
-    <span class="tab-label">Calc</span>
+  <button class="tab-btn" id="tb-portfolio" onclick="showPage('portfolio')" aria-label="Leagues / Portfolio">
+    <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path></svg></span>
+    <span class="tab-label">Leagues</span>
   </button>
 </nav>
+
+<!-- VAULT COMMAND — shield sheet (mobile only). Pops above the dock; routes to
+     the tools that no longer live on the tab bar. -->
+<div class="vc-dim" id="vc-dim" hidden onclick="vcClose()"></div>
+<div class="vc-sheet" id="vc-sheet" hidden role="dialog" aria-label="Vault Command">
+  <div class="vc-grab"></div>
+  <div class="vc-head">
+    <span class="vc-title">Vault Command</span>
+    <span class="vc-note">TAP SHIELD ANYTIME</span>
+  </div>
+  <div class="vc-grid">
+    <button class="vc-tile" id="vc-tile-draft" onclick="vcGo('draft')">
+      <span class="vc-live" id="vc-live-badge" hidden>● LIVE</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 12h12M4 18h8"></path><path d="M20 6v8"></path><path d="M17 11l3 3 3-3"></path></svg>
+      <b>Draft Vault</b><small id="vc-sub-draft">RANKINGS &amp; ROOMS</small>
+    </button>
+    <button class="vc-tile" onclick="vcGo('trade')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 4 7l3 3"></path><path d="M4 7h13"></path><path d="m17 20 3-3-3-3"></path><path d="M20 17H7"></path></svg>
+      <b>Trade Calc</b><small>VALUE ANY DEAL</small>
+    </button>
+    <button class="vc-tile" onclick="vcGo('myrankings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="4" height="10" rx="1"></rect><rect x="10" y="4" width="4" height="16" rx="1"></rect><rect x="17" y="13" width="4" height="7" rx="1"></rect></svg>
+      <b>My Rankings</b><small>REDRAFT · DYNASTY</small>
+    </button>
+    <button class="vc-tile" onclick="vcGo('myteams')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a9 9 0 0 0-15-3L3 8"></path><path d="M3 5v3h3"></path><path d="M3 16a9 9 0 0 0 15 3l3-3"></path><path d="M21 19v-3h-3"></path></svg>
+      <b>Sync Leagues</b><small>SLEEPER · ESPN</small>
+    </button>
+    <button class="vc-tile" onclick="vcClose();toggleTheme()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+      <b>Theme</b><small>DARK · LIGHT</small>
+    </button>
+    <button class="vc-tile" onclick="vcClose();try{openSettingsDrawer()}catch(e){document.getElementById('setup').classList.remove('gone')}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.06-.4.1-.8.1-1.2z"></path></svg>
+      <b>Settings</b><small>ACCOUNT · DATA</small>
+    </button>
+  </div>
+</div>
+<script>
+/* Vault Command sheet — mobile dock shield */
+function vcToggle(){ var s=document.getElementById('vc-sheet'); if(!s) return; if(s.hidden){ vcOpen(); } else { vcClose(); } }
+function vcOpen(){ var s=document.getElementById('vc-sheet'), d=document.getElementById('vc-dim'); if(s) s.hidden=false; if(d) d.hidden=false; vcRefreshLive(); }
+function vcClose(){ var s=document.getElementById('vc-sheet'), d=document.getElementById('vc-dim'); if(s) s.hidden=true; if(d) d.hidden=true; }
+function vcGo(p){ vcClose(); showPage(p); }
+function vcRefreshLive(){
+  var live = !!(window.sleeperDraftId);
+  var b=document.getElementById('vc-live-badge'); if(b) b.hidden=!live;
+  var fb=document.getElementById('tb-fab-live'); if(fb) fb.hidden=!live;
+  var t=document.getElementById('vc-tile-draft'); if(t) t.classList.toggle('live', live);
+  var sub=document.getElementById('vc-sub-draft'); if(sub) sub.textContent = live ? 'DRAFT IN PROGRESS' : 'RANKINGS & ROOMS';
+}
+setInterval(function(){ try{ var fb=document.getElementById('tb-fab-live'); if(fb) fb.hidden=!window.sleeperDraftId; }catch(e){} }, 5000);
+</script>
 
 <!-- MORE bottom sheet — secondary nav (League / Trade / Draft Room) -->
 <div id="more-sheet" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeMoreSheet()">
@@ -19689,6 +19734,40 @@ function pickYear(year) {
     return `<div class="rh-colmenu">${['info', 'vol', 'eff'].map(grp).join('')}</div>`;
   }
 
+  /* Mobile (≤700px): one metric ranks the board at a time — chips re-rank,
+     every row gets a percentile bar, the leader expands into a stat strip. */
+  function asIsMobile() { return window.matchMedia && window.matchMedia('(max-width:700px)').matches; }
+  try { window.matchMedia('(max-width:700px)').addEventListener('change', function(){ try { asRender(); } catch(e){} }); } catch(e) {}
+  function asMobileHtml(rows, cols) {
+    const statCols = cols.filter(c => c.group !== 'info');
+    if (!statCols.length) return asTableHtml(rows, cols);
+    const cur = statCols.find(c => c.key === AS.sortKey) || statCols[0];
+    const chips = `<div class="rh-mchips">${statCols.map(c =>
+      `<button class="rh-mchip${c.key === cur.key ? ' on' : ''}" data-rh-sort="${c.key}" title="${esc(c.hint)}">${esc(c.label)}</button>`).join('')}</div>`;
+    if (!rows.length) return chips + '<div class="rh-loading">No players match these filters.</div>';
+    const vals = rows.map(r => r[cur.key]).filter(v => v != null);
+    const max = Math.max.apply(null, vals), min = Math.min.apply(null, vals);
+    const span = (max - min) || 1;
+    const body = rows.slice(0, 50).map((row, ri) => {
+      const v = row[cur.key];
+      const pct = v == null ? 0 : 22 + ((v - min) / span) * 78;
+      const strip = ri === 0 ? `<div class="rh-mstrip">${statCols.slice(0, 6).map(c =>
+        `<div class="rh-mcell${c.key === cur.key ? ' on' : ''}"><b>${esc(c.fmt(row[c.key]))}</b><small>${esc(c.label)}</small></div>`).join('')}</div>` : '';
+      return `<div class="rh-mrow">
+        <div class="rh-mline">
+          <span class="rh-mrank${ri < 3 ? ' top' : ''}">${ri + 1}</span>
+          ${avatar(row, 'rh-av')}
+          <span class="rh-mid"><span class="rh-mname">${esc(row.name)}</span><span class="rh-mmeta">${esc(row.pos)} · ${esc(row.team)}</span></span>
+          <span class="rh-mval">${esc(cur.fmt(v))}</span>
+        </div>
+        <div class="rh-mbar"><i style="width:${pct}%${ri === 0 ? '' : ';opacity:.55'}"></i></div>
+        ${strip}
+      </div>`;
+    }).join('');
+    return chips + `<div class="rh-mboard"><div class="rh-mcap"><span>${esc(cur.hint || cur.label)}</span><span>${esc(String(AS.season).toUpperCase())} · ${AS.sortDir === 'desc' ? 'BEST FIRST' : 'LOW FIRST'}</span></div>${body}</div>`
+      + '<div class="rh-mfoot">TAP A METRIC TO RE-RANK · TAP AGAIN TO FLIP ORDER</div>';
+  }
+
   function asRender() {
     const mount = document.getElementById('rh-adv-mount');
     if (!mount) return;
@@ -19708,7 +19787,8 @@ function pickYear(year) {
       let main;
       if (AS.loading) main = `<div class="rh-loading"><span class="rh-spin">⟳</span> Loading ${esc(seasonLabel)} from nflverse…</div>`;
       else if (AS.err) main = `<div class="rh-loading err">Couldn’t load data — ${esc(AS.err)}</div>`;
-      else main = asLeadersHtml(posRows) + asTableHtml(rows, visCols);
+      else main = asIsMobile() ? asMobileHtml(rows, visCols)
+        : asLeadersHtml(posRows) + asTableHtml(rows, visCols);
       middle = `
       <div class="rh-tools">
         <div class="rh-search">
@@ -21127,6 +21207,145 @@ window._ovRenderRedraftWaiver=_ovRenderRedraftWaiver;
   #page-draft .controls.dvc{ gap:8px!important; padding:10px 12px!important; }
   #page-draft .controls.dvc .dvc-search{ flex:1 1 100%; }
   #page-draft .ds-card.dsc{ grid-template-columns:1fr 1fr; }
+}
+</style>
+<style id="vault-mobile-dock">
+/* ════ MOBILE OVERHAUL · floating dock + Vault Command (≤700px) ════ */
+.vc-dim,.vc-sheet,.tab-fab{display:none}
+@media(max-width:700px){
+  .vc-dim{display:block;position:fixed;inset:0;background:rgba(4,7,12,0.55);z-index:9000;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  .vc-sheet{display:block;position:fixed;left:12px;right:12px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:9002;background:var(--glass-1);backdrop-filter:var(--blur-md);-webkit-backdrop-filter:var(--blur-md);border:1px solid var(--border2);border-radius:24px;padding:10px 16px 16px;box-shadow:0 24px 70px rgba(0,0,0,0.55)}
+  .vc-dim[hidden],.vc-sheet[hidden]{display:none}
+  .vc-grab{width:38px;height:4px;border-radius:2px;background:var(--border3);margin:2px auto 12px}
+  .vc-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+  .vc-title{font-size:17px;font-weight:800;letter-spacing:-0.02em;color:var(--text)}
+  .vc-note{font-family:var(--font-mono);font-size:8px;letter-spacing:.12em;color:var(--muted)}
+  .vc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .vc-tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:7px;background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:13px 12px;cursor:pointer;color:var(--text);text-align:left;font-family:var(--font-sans)}
+  .vc-tile:active{transform:scale(.97)}
+  .vc-tile svg{width:19px;height:19px;color:var(--accent2)}
+  .vc-tile b{font-size:12.5px;font-weight:700}
+  .vc-tile small{font-family:var(--font-mono);font-size:8px;letter-spacing:.06em;color:var(--muted)}
+  .vc-live{position:absolute;top:10px;right:10px;font-family:var(--font-mono);font-size:7.5px;font-weight:700;letter-spacing:.1em;color:var(--value);background:color-mix(in srgb,var(--value) 16%,transparent);padding:3px 7px;border-radius:10px}
+  .vc-tile.live{border-color:color-mix(in srgb,var(--value) 50%,transparent)}
+
+  /* dock — 4 destinations + raised shield */
+  .bottom-tab-bar{z-index:9001!important;overflow:visible!important;display:flex!important;align-items:center!important;justify-content:space-around!important;height:62px!important;min-height:62px!important;padding:0 6px!important}
+  .bottom-tab-bar .tab-btn{flex:0 1 64px!important;min-height:46px!important}
+  .bottom-tab-bar .tab-label{font-family:var(--font-mono)!important;font-size:8px!important;letter-spacing:.08em;text-transform:uppercase}
+  .tab-fab{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 56px;width:56px;height:56px;margin-top:-26px;border-radius:50%;border:3px solid var(--bg);background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 26px color-mix(in srgb,var(--accent) 55%,transparent);cursor:pointer;padding:0}
+  .tab-fab img{width:30px;height:30px;object-fit:contain;display:block}
+  .tab-fab:active{transform:scale(.94)}
+  .tab-fab-live{position:absolute;top:-4px;right:-10px;font-family:var(--font-mono);font-size:7px;font-weight:700;letter-spacing:.08em;background:var(--value);color:#06281a;padding:2px 6px;border-radius:8px;border:2px solid var(--bg)}
+  .tab-fab-live[hidden]{display:none}
+  .page.on{padding-bottom:108px!important}
+
+  /* connect landing — frosted card fits phones */
+  .vg-card{padding:24px 18px;border-radius:22px}
+  .vg-logo{max-width:170px}
+  .vg-head{font-size:26px}
+
+  /* matchup hero compaction (redraft My Team view) — Gameday layout */
+  .rdv-mu-top{grid-template-columns:1fr 34px 1fr;padding:16px 14px 12px;gap:4px}
+  .rdv-team{flex-direction:column;align-items:flex-start;gap:7px}
+  .rdv-team.opp{flex-direction:column;align-items:flex-end;text-align:right}
+  .rdv-tav{width:28px;height:28px;border-radius:8px;font-size:10px}
+  .rdv-tinfo .u{display:none}
+  .rdv-tinfo .tn{font-size:13px}
+  .rdv-tinfo .rec{font-size:9px;margin-top:2px}
+  .rdv-score{font-size:26px}
+  .rdv-team.me .rdv-score{margin-left:0}
+  .rdv-team.opp .rdv-score{margin-right:0}
+  .rdv-vs{width:30px;height:30px;font-size:9px}
+  .rdv-wp{padding:0 14px 12px;gap:9px}
+  .rdv-wp .pct{font-size:10.5px;width:32px}
+  .rdv-mu-meta{padding:0 14px 12px;font-size:8.5px}
+  .rdv-sthd{padding:10px 14px}
+  .rdv-row{grid-template-columns:minmax(0,1fr) 36px minmax(0,1fr)}
+  .rdv-side{gap:8px;padding:9px 10px}
+  .rdv-side.me{grid-template-columns:26px minmax(0,1fr) auto}
+  .rdv-side.opp{grid-template-columns:auto minmax(0,1fr) 26px}
+  .rdv-pav{width:26px;height:26px;font-size:8.5px;border-width:1.5px}
+  .rdv-pn{font-size:11.5px}
+  .rdv-pmeta{font-size:8.5px}
+  .rdv-pproj{font-size:13px}
+  .rdv-badge{width:26px;height:26px;font-size:9px;border-radius:7px}
+  /* waiver + tables inside My Team scroll instead of clipping */
+  .rdv-wt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .rdv-wt thead th{padding:10px 10px}
+  .rdv-wt tbody td{padding:10px 10px;font-size:12px}
+  .rdv-pg{grid-template-columns:repeat(2,1fr)}
+  .rdv-card{padding:14px}
+  .rdv-opt{padding:12px;gap:10px}
+  .rdv-st .v{font-size:16px}
+
+  /* ident strip → compact, stats on their own row */
+  .rdv-ident{gap:10px 12px;margin-bottom:16px}
+  .rdv-crest{width:40px;height:40px;border-radius:11px;font-size:13px}
+  .rdv-who h1{font-size:20px}
+  .rdv-who .meta{font-size:9px;margin-top:4px;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rdv-stats{margin-left:0;width:100%;justify-content:space-between;order:3}
+  .rdv-st{padding:0 8px 0 0;border-left:none}
+  .rdv-st .k{font-size:8px}
+  .rdv-seg{margin-left:auto;order:2}
+  .rdv-seg button{padding:7px 11px;font-size:10.5px}
+  /* stack two-up sections; tighten rhythm */
+  .rdv-two{grid-template-columns:1fr;gap:12px}
+  .rdv-section{margin-bottom:16px}
+  .rdv-sechd{margin-bottom:9px}
+  .rdv-secnote{display:none}
+  /* waiver table: hide ROS% + DROP cols on phones (proj + bid stay) */
+  .rdv-wt thead th:nth-child(4),.rdv-wt tbody td:nth-child(4),
+  .rdv-wt thead th:nth-child(6),.rdv-wt tbody td:nth-child(6){display:none}
+  .rdv-wt .pn2{font-size:12px}
+  .rdv-wt .pav{width:26px;height:26px}
+  /* optimizer */
+  .rdv-opt{flex-wrap:wrap}
+  .rdv-opt .body{flex-basis:calc(100% - 110px)}
+  .rdv-opt .body .d{font-size:11px}
+  .rdv-opt .gain{margin-left:auto}
+
+  /* ── RESEARCH · mobile metric leaderboard ──────────── */
+  .rh-mchips{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 12px;margin:0 -2px}
+  .rh-mchips::-webkit-scrollbar{display:none}
+  .rh-mchip{flex-shrink:0;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.04em;padding:8px 13px;border-radius:18px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);cursor:pointer}
+  .rh-mchip.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+  .rh-mboard{background:var(--s1);border:1px solid var(--border2);border-radius:16px;padding:4px 14px}
+  .rh-mcap{display:flex;justify-content:space-between;gap:10px;padding:10px 0 4px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .rh-mcap span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rh-mcap span:last-child{white-space:nowrap;flex-shrink:0}
+  .rh-mrow{padding:8px 0;border-bottom:1px solid var(--border)}
+  .rh-mrow:last-child{border-bottom:none}
+  .rh-mline{display:flex;align-items:center;gap:10px;min-width:0}
+  .rh-mrank{font-family:var(--font-mono);font-size:10px;font-weight:700;color:var(--muted);width:16px;text-align:right;flex-shrink:0}
+  .rh-mrank.top{color:var(--gold,#f5c842)}
+  .rh-mline .rh-av{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border3);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;background:var(--s3)}
+  .rh-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .rh-mname{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rh-mmeta{font-family:var(--font-mono);font-size:8.5px;color:var(--muted)}
+  .rh-mval{font-family:var(--font-mono);font-size:15px;font-weight:700;flex-shrink:0}
+  .rh-mbar{height:4px;border-radius:2px;background:var(--s3);margin:7px 0 0 56px;overflow:hidden}
+  .rh-mbar i{display:block;height:100%;border-radius:2px;background:var(--value,#3DCC7A)}
+  .rh-mstrip{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:9px 0 2px 56px}
+  .rh-mcell{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 3px;text-align:center;min-width:0}
+  .rh-mcell.on{border-color:color-mix(in srgb,var(--value,#3DCC7A) 50%,transparent)}
+  .rh-mcell b{display:block;font-family:var(--font-mono);font-size:10.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rh-mcell small{display:block;font-family:var(--font-mono);font-size:6.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* ── LEAGUE ANALYZER · power table → compact rows ──── */
+  /* keep: # · Team · Value · 30d  — drop: Tier, Roster, Strength, Top asset */
+  #page-teams .lrt thead th:nth-child(3),#page-teams .lrt tbody td:nth-child(3),
+  #page-teams .lrt thead th:nth-child(4),#page-teams .lrt tbody td:nth-child(4),
+  #page-teams .lrt thead th:nth-child(7),#page-teams .lrt tbody td:nth-child(7),
+  #page-teams .lrt thead th:nth-child(8),#page-teams .lrt tbody td:nth-child(8){display:none}
+  #page-teams .lrt thead th,#page-teams .lrt-row td{padding:10px 8px}
+  #page-teams .lrt thead th:first-child{width:30px!important}
+  #page-teams .lrt-rank{font-size:11px}
+  #page-teams .lrt-name{font-size:12.5px;max-width:44vw}
+  #page-teams .lrt-owner{font-size:8.5px}
+  #page-teams .lrt-val{font-size:13px}
+  #page-teams .lrt-trend{font-size:10px;white-space:nowrap}
+  #page-teams .lr-head{margin-bottom:12px}
+  #page-teams h1.lr-title{font-size:21px}
 }
 </style>
 </body>
