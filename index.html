@@ -18661,9 +18661,40 @@ function pickYear(year) {
 
   const DEF_REC = { QB: 0, RB: 3.2, WR: 4.8, TE: 4.0 };
   const r1 = n => Math.round(n * 10) / 10;
-  const fmtName = { ppr: 'PPR', half: 'Half-PPR', std: 'Standard' };
+  const fmtName = { lg: 'League', ppr: 'PPR', half: 'Half-PPR', std: 'Standard' };
   const initials = n => (n || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const SKILL = { QB: 1, RB: 1, WR: 1, TE: 1 };
+
+  /* ── LEAGUE SCORING ──────────────────────────────────────────────────────────────────
+     Sleeper's app scores projections with each league's scoring_settings —
+     a 6-pt-pass-TD league shows Allen 25.2 while default pts_ppr says 23.8.
+     We do the same: raw projected stat line × the synced league's per-stat
+     weights (projection stat keys and scoring keys match by design).
+     League objects come from the existing Sleeper sync (myTeamsData). */
+  const LG = (function () {
+    function league() {
+      try {
+        const pool = (typeof myTeamsData !== 'undefined' && Array.isArray(myTeamsData)) ? myTeamsData : null;
+        if (!pool || !pool.length) return null;
+        let lid = null;
+        try { lid = (typeof teamsLeagueId !== 'undefined' && teamsLeagueId) || (typeof ovLeagueId !== 'undefined' && ovLeagueId) || null; } catch (e) { }
+        if (!lid) { try { lid = localStorage.getItem((typeof SK !== 'undefined' ? SK : 'vault') + '-primary-league'); } catch (e) { } }
+        const l = (lid && pool.find(x => x.league_id === lid)) || pool.find(x => x.scoring_settings);
+        return (l && l.scoring_settings) ? l : null;
+      } catch (e) { return null; }
+    }
+    function score(stats) {
+      if (!stats) return null;
+      const l = league(); if (!l) return null;
+      const ss = l.scoring_settings; let pts = 0, hit = 0;
+      for (const k in ss) {
+        const w = ss[k]; if (typeof w !== 'number' || !w) continue;
+        const v = stats[k]; if (typeof v === 'number') { pts += v * w; hit++; }
+      }
+      return hit ? pts : null;
+    }
+    return { league: league, score: score, on: function () { return !!league(); } };
+  })();
   const matchAdjOf = rank => 1 + (rank - (TEAM_CT + 1) / 2) / TEAM_CT * 0.10;
 
   // RAW → offline fallback metas (used only when the live feed is unreachable)
@@ -18711,12 +18742,17 @@ function pickYear(year) {
     const head = (m.live ? consensus : avg) || 0;
     const half = m.half != null ? m.half * adj : head - rec / 2;
     const std = m.std != null ? m.std * adj : head - rec;
+    // league-scored head number (real when we have a raw stat line + a synced league)
+    const lgRaw = (m.live && m.stats) ? LG.score(m.stats) : null;
+    const lgHead = lgRaw != null ? lgRaw : head;
+    const lgK = head > 0 ? lgHead / head : 1; // maps floor/ceiling + other sources onto league scoring
     return {
       id: m.id, name: m.name, team: m.team, pos: m.pos, opp: opp || '—', ha: m.ha || 'vs',
       day: m.day || '', time: m.time || '', status: m.status || null, rec, rank, fpa, mu, sources, live: !!m.live,
-      fmt: { ppr: r1(head), half: r1(half), std: r1(std) },
-      fmtLow: { ppr: r1(low), half: r1(low - rec / 2), std: r1(low - rec) },
-      fmtHigh: { ppr: r1(high), half: r1(high - rec / 2), std: r1(high - rec) },
+      fmt: { lg: r1(lgHead), ppr: r1(head), half: r1(half), std: r1(std) },
+      fmtLow: { lg: r1(low * lgK), ppr: r1(low), half: r1(low - rec / 2), std: r1(low - rec) },
+      fmtHigh: { lg: r1(high * lgK), ppr: r1(high), half: r1(high - rec / 2), std: r1(high - rec) },
+      lgK: lgK, lgLive: lgRaw != null,
       agreement: avg ? Math.max(0, Math.min(1, 1 - sd / (avg * 0.16))) : 0.5,
     };
   }
@@ -18736,15 +18772,15 @@ function pickYear(year) {
        overrides the modeled spread; when absent we degrade gracefully.
      ════════════════════════════════════════════════════════════════ */
   const LIVE = (function () {
-    const BASE = 'https://api.sleeper.com', DAY = 864e5;
+    const BASE = 'https://api.sleeper.com', DAY = 864e5, PROJ_TTL = 9e5; // projections re-fetched every 15 min
     const status = { mode: 'loading', week: null, season: null, when: null, note: '', feed: false };
     const metas = {}, metaMap = {};
     const feeds = {};   // week -> cron feed object (one file = current week)
     const curWeek = () => state.week;
-    function cget(k) { try { const o = JSON.parse(localStorage.getItem(k)); if (o && Date.now() - o.t < DAY) return o.d; } catch (e) {} return null; }
+    function cget(k, ttl) { try { const o = JSON.parse(localStorage.getItem(k)); if (o && Date.now() - o.t < (ttl || DAY)) return o.d; } catch (e) {} return null; }
     function cset(k, d) { try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), d: d })); } catch (e) {} }
     async function jget(url) { const r = await fetch(url, { mode: 'cors', credentials: 'omit' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
-    async function getState() { const c = cget('lc-sl-state'); if (c) return c; const d = await jget(BASE + '/state/nfl'); cset('lc-sl-state', d); return d; }
+    async function getState() { const c = cget('lc-sl-state', 36e5); if (c) return c; const d = await jget(BASE + '/state/nfl'); cset('lc-sl-state', d); return d; }
     function rowToMeta(row) {
       const pl = row.player || {}, st = row.stats || {};
       const pos = pl.position; if (!SKILL[pos]) return null;
@@ -18754,13 +18790,13 @@ function pickYear(year) {
       return {
         id: String(row.player_id), name: name, team: team, pos: pos,
         opp: (row.opponent || '').toUpperCase(), ha: 'vs',
-        ppr: ppr, half: st.pts_half_ppr, std: st.pts_std, rec: st.rec,
+        ppr: ppr, half: st.pts_half_ppr, std: st.pts_std, rec: st.rec, stats: st,
         status: pl.injury_status || null, spread: 0.11, live: true,
       };
     }
     async function load(season, week) {
       const key = 'lc-sl-proj-' + season + '-' + week;
-      let rows = cget(key);
+      let rows = cget(key, PROJ_TTL);
       if (!rows) { rows = await jget(BASE + '/projections/nfl/' + season + '/' + week + '?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&order_by=pts_ppr'); cset(key, rows); }
       const seen = {}, arr = [];
       (Array.isArray(rows) ? rows : []).forEach(row => { const m = rowToMeta(row); if (!m || seen[m.id]) return; seen[m.id] = 1; arr.push(m); });
@@ -18770,7 +18806,7 @@ function pickYear(year) {
     async function loadFeed(week) {
       if (feeds[week] !== undefined) return !!feeds[week];
       try {
-        const f = await jget('data/lineup-feed.json?d=' + Math.floor(Date.now() / DAY));
+        const f = await jget('data/lineup-feed.json?d=' + Math.floor(Date.now() / 36e5));
         if (f && (f.week == null || f.week === week)) { feeds[week] = f; return true; }
       } catch (e) {}
       feeds[week] = null; return false;
@@ -18794,6 +18830,7 @@ function pickYear(year) {
       const n = await LIVE.load(LIVE.status.season, state.week);
       LIVE.status.mode = n > 0 ? 'live' : 'sample';
       LIVE.status.when = Date.now();
+      if (!state._fmtTouched && LG.on()) state.fmt = 'lg';
       LIVE.status.note = n > 0 ? (n + ' players · Sleeper' + (feedOk ? ' + cron feed' : '')) : 'No projections posted yet (offseason)';
     } catch (e) {
       LIVE.status.mode = 'sample';
@@ -18819,7 +18856,7 @@ function pickYear(year) {
     if (!el) return;
     const s = LIVE.status; let col, dot, txt;
     if (s.mode === 'loading') { col = 'var(--muted)'; dot = '◌'; txt = 'Checking live feed…'; }
-    else if (s.mode === 'live') { col = 'var(--rb)'; dot = '●'; txt = 'Live · Sleeper' + (hf ? ' + cron feed' : '') + ' · updated ' + liveStamp(s.when); }
+    else if (s.mode === 'live') { col = 'var(--rb)'; dot = '●'; const lgn = (state.fmt === 'lg' && LG.on()) ? 'league scoring · ' : ''; txt = 'Live · Sleeper' + (hf ? ' + cron feed' : '') + ' · ' + lgn + 'updated ' + liveStamp(s.when); }
     else { col = 'var(--te)'; dot = '○'; txt = 'Sample data · ' + (s.note || 'live feed offline'); }
     el.style.color = col; el.title = s.note || '';
     el.innerHTML = '<span style="font-size:8px">' + dot + '</span> ' + txt;
@@ -18845,7 +18882,7 @@ function pickYear(year) {
   const POSB = { QB: 'rgba(255,102,128,.14)', RB: 'rgba(61,204,122,.14)', WR: 'rgba(123,208,255,.14)', TE: 'rgba(245,200,66,.14)' };
   const fmtPts = (p, k = state.fmt) => (p.fmt[k] ?? 0).toFixed(1);
   const lowOf = (p, k = state.fmt) => p.fmtLow[k], highOf = (p, k = state.fmt) => p.fmtHigh[k];
-  const srcFmt = (p, val, k = state.fmt) => val == null ? null : r1(k === 'ppr' ? val : k === 'half' ? val - p.rec / 2 : val - p.rec);
+  const srcFmt = (p, val, k = state.fmt) => val == null ? null : r1(k === 'lg' ? val * (p.lgK || 1) : k === 'ppr' ? val : k === 'half' ? val - p.rec / 2 : val - p.rec);
   const confColor = c => c >= 60 ? 'var(--rb)' : c >= 42 ? 'var(--te)' : c >= 28 ? '#ff9a4d' : 'var(--accent2)';
   const av = (p, s = 40) => `<div class="lc-av" style="width:${s}px;height:${s}px;background:${POSB[p.pos]};border:1.5px solid color-mix(in srgb,${POSC[p.pos]} 40%,transparent);color:${POSC[p.pos]};font-size:${s * 0.34}px">${initials(p.name)}</div>`;
   const posTag = p => `<span class="lc-mono" style="color:${POSC[p.pos]}">${p.pos}</span> · ${p.team}`;
@@ -18865,7 +18902,7 @@ function pickYear(year) {
         <div class="lc-bar-title">Compare Players <small>Search anyone — your roster, an opponent's bench, or the wire. Up to 4.</small></div>
         <div class="lc-tools">
           <label class="lc-wk" for="lcWk"><span class="lc-cap">Week</span><select id="lcWk" class="lc-wk-sel">${Array.from({ length: 18 }, (_, i) => i + 1).map(w => `<option value="${w}"${w === state.week ? ' selected' : ''}>Week ${w}${LIVE.status.week === w ? ' · now' : ''}</option>`).join('')}</select></label>
-          <div class="lc-fmt" id="lcFmt">${['ppr', 'half', 'std'].map(k => `<button data-fmt="${k}" class="${state.fmt === k ? 'on' : ''}">${fmtName[k]}</button>`).join('')}</div>
+          <div class="lc-fmt" id="lcFmt">${(LG.on() ? ['lg', 'ppr', 'half', 'std'] : ['ppr', 'half', 'std']).map(k => `<button data-fmt="${k}" class="${state.fmt === k ? 'on' : ''}" title="${k === 'lg' ? 'Scored with ' + ((LG.league() || {}).name || 'your league') + '\'s scoring settings' : ''}">${fmtName[k]}</button>`).join('')}</div>
         </div>
       </div>
       <div class="lc-search">
@@ -19149,7 +19186,7 @@ function pickYear(year) {
     const rm = t.closest('[data-rm]'); if (rm) { state.sel = state.sel.filter(id => id !== rm.dataset.rm); lcRender(); return; }
     const add = t.closest('[data-add]'); if (add) { if (state.sel.length < 4 && !state.sel.includes(add.dataset.add)) state.sel.push(add.dataset.add); const inp = document.getElementById('lcInput'); if (inp) inp.value = ''; document.getElementById('lcAc')?.classList.remove('show'); lcRender(); return; }
     if (t.closest('#lcChipAdd')) { const inp = document.getElementById('lcInput'); if (inp) inp.focus(); runSearch(''); return; }
-    const fb = t.closest('#lcFmt button'); if (fb) { state.fmt = fb.dataset.fmt; lcRender(); return; }
+    const fb = t.closest('#lcFmt button'); if (fb) { state.fmt = fb.dataset.fmt; state._fmtTouched = true; save(); lcRender(); return; }
     if (!t.closest('.lc-search')) document.getElementById('lcAc')?.classList.remove('show');
   });
   document.addEventListener('change', e => { if (e.target.id === 'lcWk') { state.week = +e.target.value; state._weekTouched = true; ensureWeek(state.week); } });
