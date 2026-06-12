@@ -18971,15 +18971,206 @@ function pickYear(year) {
     return `<div class="lc-card" style="padding:56px 24px;text-align:center"><div style="font-size:30px;margin-bottom:10px;opacity:.5">⚖️</div><div style="font-size:16px;font-weight:700;margin-bottom:6px">Add players to compare</div><div style="font-size:13px;color:var(--muted);max-width:340px;margin:0 auto">Search any player above — your starters, your bench, or a waiver-wire flier — to weigh the week's call.</div></div>`;
   }
 
+  /* ════════════════════════════════════════════════════════════
+     MY LINEUP (auto-load) — mirrors what's actually set on the platform.
+     Sleeper leagues: rosters + matchups read live; verdicts computed here;
+     edits happen on Sleeper via deep link, then we re-sync. ESPN leagues
+     get a deep link only (no lineup read wired yet — say so honestly).
+     ════════════════════════════════════════════════════════════ */
+  const SLOT_LAB = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', FLEX: 'FLX', SUPER_FLEX: 'SF', WRRB_FLEX: 'FLX', REC_FLEX: 'FLX', K: 'K', DEF: 'DEF', DL: 'DL', LB: 'LB', DB: 'DB', IDP_FLEX: 'IDP' };
+  const SLOT_ELIG = { QB: ['QB'], RB: ['RB'], WR: ['WR'], TE: ['TE'], FLX: ['RB', 'WR', 'TE'], SF: ['QB', 'RB', 'WR', 'TE'] };
+  const ML = (function () {
+    const TTL = 6e4; // re-read rosters every 60s
+    const mem = {};  // "lid|week" -> { t, d } | { t, err }
+    let pending = null;
+    async function jget(url) { const r = await fetch(url, { mode: 'cors', credentials: 'omit' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
+    function pool() {
+      try { return (Array.isArray(myTeamsData) ? myTeamsData : []).filter(l => l.season === '2026' || l.season === '2025' || l.platform === 'espn'); }
+      catch (e) { return []; }
+    }
+    function lid() {
+      const p = pool(); if (!p.length) return null;
+      if (state.mlLeague && p.find(l => l.league_id === state.mlLeague)) return state.mlLeague;
+      let cand = null;
+      try { cand = (typeof ovLeagueId !== 'undefined' && ovLeagueId) || (typeof teamsLeagueId !== 'undefined' && teamsLeagueId) || null; } catch (e) { }
+      if (cand && p.find(l => l.league_id === cand)) return cand;
+      return p[0].league_id;
+    }
+    function leagueObj() { const id = lid(); try { return id ? myTeamsData.find(l => l.league_id === id) : null; } catch (e) { return null; } }
+    function isEspn(l) { try { return typeof vpPlat === 'function' ? vpPlat(l) === 'espn' : l.platform === 'espn'; } catch (e) { return !!(l && l._espnId); } }
+    function deepLink(l) {
+      if (!l) return '#';
+      if (isEspn(l)) { let u = 'https://fantasy.espn.com/football/team?leagueId=' + (l._espnId || ''); try { const t = typeof espnSelectedTeam === 'function' && espnSelectedTeam(l.league_id); if (t) u += '&teamId=' + t; } catch (e) { } return u; }
+      return 'https://sleeper.com/leagues/' + l.league_id + '/team';
+    }
+    function key() { return lid() + '|' + state.week; }
+    function data() { const c = mem[key()]; return (c && Date.now() - c.t < TTL && c.d) ? c.d : null; }
+    function error() { const c = mem[key()]; return (c && Date.now() - c.t < TTL && c.err) ? c.err : null; }
+    function invalidate() { delete mem[key()]; }
+    async function fetchData(l, week) {
+      const base = 'https://api.sleeper.app/v1/league/' + l.league_id;
+      const [rosters, users, matchups] = await Promise.all([
+        jget(base + '/rosters'), jget(base + '/users').catch(() => []), jget(base + '/matchups/' + week).catch(() => null),
+      ]);
+      const uid = (typeof myTeamsUserId !== 'undefined' && myTeamsUserId) || null;
+      const mine = uid ? (rosters || []).find(r => r.owner_id === uid || (r.co_owners || []).includes(uid)) : null;
+      if (!mine) throw new Error('Your roster was not found in this league');
+      const myMatch = Array.isArray(matchups) ? matchups.find(m => m.roster_id === mine.roster_id) : null;
+      const starters = ((myMatch && myMatch.starters) || mine.starters || []).map(String);
+      const players = (mine.players || []).map(String);
+      const slots = (l.roster_positions || []).filter(s => s !== 'BN' && s !== 'IR' && s !== 'TAXI');
+      let oppStarters = null, oppName = '';
+      if (myMatch && myMatch.matchup_id != null) {
+        const o = matchups.find(m => m.matchup_id === myMatch.matchup_id && m.roster_id !== mine.roster_id);
+        if (o) {
+          oppStarters = (o.starters || []).map(String);
+          const orr = (rosters || []).find(r => r.roster_id === o.roster_id);
+          const ou = orr && (users || []).find(u => u.user_id === orr.owner_id);
+          oppName = (ou && ((ou.metadata && ou.metadata.team_name) || ou.display_name)) || 'Opponent';
+        }
+      }
+      return { slots, starters, bench: players.filter(id => !starters.includes(id)), oppStarters, oppName };
+    }
+    function ensure() {
+      const l = leagueObj();
+      if (!l || isEspn(l) || data() || error() || pending === key()) return;
+      const k = key(); pending = k;
+      fetchData(l, state.week)
+        .then(d => { mem[k] = { t: Date.now(), d: d }; })
+        .catch(e => { mem[k] = { t: Date.now(), err: e.message || 'sync failed' }; })
+        .finally(() => { pending = null; try { lcRender(); } catch (e) { } });
+    }
+    return { pool, lid, leagueObj, isEspn, deepLink, data, error, ensure, invalidate };
+  })();
+
+  function pidName(id) { try { if (typeof globalPidToName !== 'undefined' && globalPidToName[id]) return globalPidToName[id]; } catch (e) { } return /^[A-Z]{2,3}$/.test(id) ? id + ' D/ST' : 'Player #' + id; }
+  const mlPts = p => p.fmt[state.fmt] ?? 0;
+
+  /* bench edge: best projected upgrade over a current starter, slot-aware */
+  function mlEdge(d) {
+    let best = null;
+    const sl = d.slots.map(s => SLOT_LAB[s] || s);
+    d.bench.forEach(bid => {
+      const b = getPlayer(bid); if (!b || b.status) return;
+      sl.forEach((lab, i) => {
+        const elig = SLOT_ELIG[lab]; if (!elig || !elig.includes(b.pos)) return;
+        const st = getPlayer(d.starters[i]); if (!st) return;
+        const delta = r1(mlPts(b) - mlPts(st));
+        if (delta > 0.5 && (!best || delta > best.delta)) best = { bench: b, starter: st, slot: lab, delta };
+      });
+    });
+    return best;
+  }
+
+  function mlRow(id, slotLab, edge) {
+    const p = getPlayer(id);
+    if (id === '0' || !id) return `<div class="lc-mlrow" style="cursor:default"><span class="lc-mlslot" style="color:var(--accent2)">${slotLab}</span><div class="lc-av" style="width:38px;height:38px;background:var(--s2);border:1.5px dashed var(--border3);color:var(--muted);font-size:13px">—</div><div style="min-width:0"><div style="font-size:13.5px;font-weight:700;color:var(--accent2)">Empty slot</div><div class="lc-mono" style="font-size:9.5px;color:var(--muted)">set a starter on Sleeper</div></div><div></div><div></div><span class="lc-mlverdict" style="background:rgba(226,58,78,.14);color:var(--accent2)">⚠ FIX</span></div>`;
+    if (!p) return `<div class="lc-mlrow" style="cursor:default;opacity:.6"><span class="lc-mlslot">${slotLab}</span><div class="lc-av" style="width:38px;height:38px;background:var(--s2);border:1.5px solid var(--border);color:var(--muted);font-size:12px">${initials(pidName(id))}</div><div style="min-width:0"><div style="font-size:13.5px;font-weight:700">${pidName(id)}</div><div class="lc-mono" style="font-size:9.5px;color:var(--muted)">${slotLab === 'K' || slotLab === 'DEF' ? 'not covered by skill-position projections' : 'no projection this week'}</div></div><div></div><div class="lc-mono" style="text-align:right;color:var(--muted)">—</div><div></div></div>`;
+    const flagged = edge && edge.starter.id === p.id;
+    const inCmp = state.sel.includes(p.id);
+    return `
+    <div class="lc-mlrow${flagged ? ' flag' : ''}" data-mladd="${p.id}" title="${inCmp ? 'In compare tray' : 'Click to add to compare'}">
+      <span class="lc-mlslot" style="color:${POSC[p.pos] || 'var(--muted)'}">${slotLab}</span>
+      ${av(p, 38)}
+      <div style="min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="font-size:13.5px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</span>${statusPill(p)}</div>
+        <div class="lc-mono" style="font-size:9.5px;color:var(--muted)">${p.pos} · ${p.team} · ${p.ha} ${p.opp}</div>
+      </div>
+      <div class="lc-mlmu">${diffBars(p.mu.tier, p.mu.color)}${matchupPill(p)}</div>
+      <div class="lc-mono" style="font-size:16px;font-weight:700;text-align:right;letter-spacing:-.02em">${mlPts(p).toFixed(1)}</div>
+      <span class="lc-mlverdict" style="${flagged ? 'background:rgba(255,179,71,.15);color:#ffb347' : 'background:rgba(61,204,122,.13);color:var(--rb)'}">${flagged ? '⚠ CHECK' : '✓ SET'}</span>
+    </div>`;
+  }
+
+  let _mlWaitN = 0;
+  function mlSection() {
+    const l = ML.leagueObj();
+    /* league sync may still be loading on first paint — recheck briefly */
+    if (!l && _mlWaitN < 8) { _mlWaitN++; setTimeout(() => { try { if (!ML.leagueObj()) return; lcRender(); } catch (e) { } }, 1200); }
+    const link = ML.deepLink(l);
+    const lgSel = ML.pool().length > 1 ? `<label class="lc-wk"><span class="lc-cap">League</span><select id="lcMlLg" class="lc-wk-sel">${ML.pool().map(x => `<option value="${x.league_id}"${x.league_id === ML.lid() ? ' selected' : ''}>${(x.name || x.league_id).slice(0, 28)}</option>`).join('')}</select></label>` : '';
+    if (!l) return `
+      <div class="lc-ml" style="padding:18px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px"><div style="font-size:15px;font-weight:700">Sync a league to load your lineup</div><div style="font-size:12.5px;color:var(--muted);margin-top:3px">Connect Sleeper or ESPN and this page opens on your week's starters — checked across every source — instead of an empty search box.</div></div>
+          <button class="lc-mlbtn primary" onclick="showPage('myteams')">Sync league →</button>
+        </div>
+      </div>`;
+    if (ML.isEspn(l)) return `
+      <div class="lc-ml" style="padding:18px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px"><div style="font-size:15px;font-weight:700">${l.name || 'ESPN league'} <span class="lc-pill" style="background:var(--s3);color:var(--muted)">ESPN</span></div><div style="font-size:12.5px;color:var(--muted);margin-top:3px">Lineup auto-load reads Sleeper rosters today — ESPN lineups aren't wired yet. Compare below still works for any player.</div></div>
+          ${lgSel}
+          <a class="lc-mlbtn" href="${link}" target="_blank" rel="noopener">Open lineup on ESPN ↗</a>
+        </div>
+      </div>`;
+    if (LIVE.status.mode === 'sample') return `
+      <div class="lc-ml" style="padding:18px"><div style="font-size:13px;color:var(--muted)">Lineup auto-load needs the live Sleeper feed — ${LIVE.status.note || 'currently unreachable'}.</div></div>`;
+    const err = ML.error();
+    if (err) return `
+      <div class="lc-ml" style="padding:18px"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><div style="font-size:14px;font-weight:700">Couldn't load your lineup</div><div style="font-size:12px;color:var(--muted);margin-top:3px">${err}</div></div>${lgSel}<button class="lc-mlbtn" data-mlretry="1">Retry</button></div></div>`;
+    const d = ML.data();
+    if (!d) {
+      ML.ensure();
+      return `<div class="lc-ml" style="padding:22px 18px"><div style="display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px"><span class="lc-mono" style="font-size:10px">◌</span> Loading your lineup from Sleeper…</div></div>`;
+    }
+    const slotLabs = d.slots.map(s => SLOT_LAB[s] || s);
+    const edge = mlEdge(d);
+    const projected = d.starters.map(id => getPlayer(id)).filter(Boolean);
+    const total = r1(projected.reduce((a, p) => a + mlPts(p), 0));
+    const unproj = d.starters.filter((id, i) => id && id !== '0' && !getPlayer(id)).length;
+    let oppTotal = null;
+    if (d.oppStarters) { const ops = d.oppStarters.map(id => getPlayer(id)).filter(Boolean); if (ops.length) oppTotal = r1(ops.reduce((a, p) => a + mlPts(p), 0)); }
+    const wp = oppTotal != null ? Math.max(8, Math.min(92, Math.round(50 + (total - oppTotal) * 1.2))) : null;
+    const qs = projected.filter(p => p.status);
+    /* alerts */
+    let alerts = '';
+    if (edge) alerts += `
+      <div class="lc-alert warn">
+        <span style="font-size:14px;flex-shrink:0">⚠</span>
+        <div style="flex:1;min-width:0;font-size:12.5px;color:var(--text2);line-height:1.45"><b style="color:var(--text);display:block;font-size:13px">Bench edge at ${edge.slot}</b>${edge.bench.name} (${mlPts(edge.bench).toFixed(1)}) projects <b class="lc-mono" style="color:#ffb347">+${edge.delta.toFixed(1)}</b> over ${edge.starter.name} (${mlPts(edge.starter).toFixed(1)})</div>
+        <div style="display:flex;gap:7px;flex-shrink:0"><a class="lc-mlbtn primary" href="${link}" target="_blank" rel="noopener">Swap in Sleeper ↗</a><button class="lc-mlbtn" data-mlcmp="${edge.starter.id},${edge.bench.id}">Compare</button></div>
+      </div>`;
+    if (qs.length) alerts += `
+      <div class="lc-alert">
+        <span style="font-size:14px;flex-shrink:0">🩹</span>
+        <div style="flex:1;min-width:0;font-size:12.5px;color:var(--text2);line-height:1.45"><b style="color:var(--text);display:block;font-size:13px">${qs.map(p => p.name).join(', ')} · ${qs.length > 1 ? 'injury designations' : qs[0].status}</b>In your starting lineup — check actives before kickoff and have a pivot ready.</div>
+      </div>`;
+    /* vs strip */
+    const vs = oppTotal != null ? `
+      <div class="lc-vs">
+        <div><div style="font-size:13px;font-weight:700">You <span class="lc-mono" style="font-size:17px;letter-spacing:-.02em">${total.toFixed(1)}</span></div></div>
+        <div style="flex:1;min-width:140px"><div class="lc-wpbar"><i style="width:${wp}%"></i></div><div class="lc-mono" style="font-size:8.5px;color:var(--muted);text-align:center;margin-top:4px">${wp}% WIN ODDS · WEEK ${state.week}</div></div>
+        <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--muted)"><span class="lc-mono" style="font-size:17px;letter-spacing:-.02em">${oppTotal.toFixed(1)}</span> ${d.oppName}</div></div>
+      </div>` : '';
+    /* bench (projected skill players only) */
+    const benchP = d.bench.map(id => getPlayer(id)).filter(Boolean).sort((a, b) => mlPts(b) - mlPts(a));
+    const benchRows = benchP.map(p => mlRow(p.id, 'BN', null)).join('');
+    const benchSkipped = d.bench.length - benchP.length;
+    return `
+    ${alerts}${vs}
+    <div class="lc-ml">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:2px 6px 10px">
+        <div><div style="font-size:15px;font-weight:700">${l.name || 'My lineup'} <span class="lc-pill" style="background:rgba(61,204,122,.13);color:var(--rb)">● SYNCED</span></div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">Mirrors what's set on Sleeper · click a row to add it to compare · edits happen on Sleeper, Vault re-syncs every minute</div></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${lgSel}<a class="lc-mlbtn" href="${link}" target="_blank" rel="noopener">Edit on Sleeper ↗</a></div>
+      </div>
+      ${d.starters.map((id, i) => mlRow(id, slotLabs[i] || 'FLX', edge)).join('')}
+      <div class="lc-mltotal"><span>Projected total${unproj ? ` <span class="lc-mono" style="font-size:9px;color:var(--muted)">· ${unproj} starter${unproj > 1 ? 's' : ''} not projected</span>` : ''}</span><span class="lc-mono" style="font-size:19px;font-weight:700;letter-spacing:-.02em">${total.toFixed(1)}</span></div>
+    </div>
+    ${benchRows ? `<div class="lc-ml"><div style="display:flex;align-items:baseline;justify-content:space-between;padding:2px 6px 8px"><div style="font-size:14px;font-weight:700">Bench</div>${benchSkipped ? `<span class="lc-mono" style="font-size:9px;color:var(--muted)">+${benchSkipped} not projected (K/DST/IR)</span>` : ''}</div>${benchRows}</div>` : ''}`;
+  }
+
   /* ── page render ── */
   function lcRender() {
     const mount = document.getElementById('lc-mount'); if (!mount) return;
-    mount.innerHTML = cardsView();
+    mount.innerHTML = mlSection() + cardsView();
     renderChips();
     updateBadge();
     save();
+    try { window.__lcAfterRender && window.__lcAfterRender(); } catch (e) {}
   }
   window.lcRender = lcRender;
+  window.__LCAPI = { getPlayer: getPlayer, metaById: metaById, state: state, fmtName: fmtName, save: save, LG: LG, ensureWeek: ensureWeek, LIVE: LIVE };
 
   /* ════════════════════════════════════════════════════════════════
      INJECTION: styles, page, nav dropdown, showPage hook
@@ -19033,6 +19224,25 @@ function pickYear(year) {
     #page-lineup .lc-proj{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px 15px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
     #page-lineup .lc-match{display:flex;align-items:center;gap:10px;margin:13px 1px 14px}
     #page-lineup .lc-srow{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+    /* My Lineup (auto-load) */
+    #page-lineup .lc-ml{background:var(--lc-card);border:1px solid var(--border);border-radius:16px;padding:14px 12px 6px;margin-bottom:14px}
+    #page-lineup .lc-mlrow{display:grid;grid-template-columns:36px 38px minmax(0,1.55fr) minmax(0,1fr) 60px 86px;gap:12px;align-items:center;padding:8px 10px;border-top:1px solid var(--border);border-radius:10px;cursor:pointer;transition:background .12s}
+    #page-lineup .lc-mlrow:hover{background:rgba(255,255,255,.025)}
+    #page-lineup .lc-mlrow.flag{box-shadow:inset 3px 0 0 #ffb347}
+    #page-lineup .lc-mlslot{font-family:var(--font-mono);font-size:10.5px;font-weight:700;letter-spacing:.04em}
+    #page-lineup .lc-mlmu{display:flex;align-items:center;gap:9px}
+    #page-lineup .lc-mlverdict{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.05em;padding:4px 7px;border-radius:7px;text-align:center;white-space:nowrap;justify-self:end}
+    #page-lineup .lc-mltotal{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border2);padding:12px 10px;font-size:12px;color:var(--muted);font-weight:600}
+    #page-lineup .lc-mlbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-family:var(--font-sans);font-size:11.5px;font-weight:600;padding:8px 13px;border-radius:9px;cursor:pointer;text-decoration:none;white-space:nowrap}
+    #page-lineup .lc-mlbtn:hover{border-color:var(--border3);color:var(--text)}
+    #page-lineup .lc-mlbtn.primary{background:rgba(226,58,78,.16);border-color:rgba(226,58,78,.5);color:#ffaab4}
+    #page-lineup .lc-mlbtn.primary:hover{background:rgba(226,58,78,.26);color:#fff}
+    [data-theme="light"] #page-lineup .lc-mlbtn.primary{color:var(--accent)}
+    #page-lineup .lc-alert{display:flex;align-items:center;gap:12px;background:var(--lc-card);border:1px solid var(--border);border-radius:13px;padding:11px 14px;margin-bottom:10px}
+    #page-lineup .lc-alert.warn{background:rgba(255,179,71,.07);border-color:rgba(255,179,71,.28)}
+    #page-lineup .lc-vs{display:flex;align-items:center;gap:16px;background:var(--lc-card);border:1px solid var(--border);border-radius:13px;padding:12px 16px;margin-bottom:14px;flex-wrap:wrap}
+    #page-lineup .lc-wpbar{height:6px;border-radius:3px;background:var(--s3);overflow:hidden}
+    #page-lineup .lc-wpbar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),#ff7a5e)}
     /* My Team dropdown */
     .lc-mt-wrap{position:relative;display:inline-flex;align-items:stretch}
     .lc-mt-menu{position:fixed;min-width:230px;background:var(--s1);border:1px solid var(--border2);border-radius:12px;padding:6px;box-shadow:0 24px 60px rgba(0,0,0,.5);z-index:9999;display:none}
@@ -19059,6 +19269,11 @@ function pickYear(year) {
     @media(max-width:620px){
       #page-lineup .lc-page{padding:18px 14px 84px}
       #page-lineup .lc-title{font-size:30px}
+      #page-lineup .lc-mlrow{grid-template-columns:30px 34px minmax(0,1fr) 50px 72px;gap:8px;padding:8px 6px}
+      #page-lineup .lc-mlmu{display:none}
+      #page-lineup .lc-alert{flex-wrap:wrap}
+      #page-lineup .lc-alert > div:last-child{width:100%;justify-content:flex-end}
+      #page-lineup .lc-vs{gap:10px}
       #page-lineup .lc-cards{grid-template-columns:1fr;gap:13px}
       #page-lineup .lc-bar{padding:14px}
       #page-lineup .lc-bar-head{flex-direction:column;align-items:stretch;gap:11px}
@@ -19098,7 +19313,7 @@ function pickYear(year) {
           <div>
             <h1 class="lc-title">Lineup Command</h1>
             <div class="lc-rule"></div>
-            <p class="lc-sub">Weigh every start/sit call with projections from every source — then see who to play.</p>
+            <p class="lc-sub">Your week's lineup, loaded on arrival — every call checked across sources. Edits happen on your platform; Vault re-syncs.</p>
             <div class="lc-srcline">
               <span class="lc-lab" style="font-size:8.5px">Sources</span>
               ${SOURCES.map(s => `<span class="lc-srcchip">${s.name}${s.key === 'sleeper' ? ' <span style="color:var(--rb)">● live</span>' : ''}</span>`).join('')}
@@ -19184,12 +19399,15 @@ function pickYear(year) {
     if (!e.target.closest('#page-lineup')) { document.getElementById('lcAc')?.classList.remove('show'); return; }
     const t = e.target;
     const rm = t.closest('[data-rm]'); if (rm) { state.sel = state.sel.filter(id => id !== rm.dataset.rm); lcRender(); return; }
+    const mlc = t.closest('[data-mlcmp]'); if (mlc) { mlc.dataset.mlcmp.split(',').forEach(id => { if (state.sel.length < 4 && !state.sel.includes(id)) state.sel.push(id); }); lcRender(); return; }
+    if (t.closest('[data-mlretry]')) { ML.invalidate(); lcRender(); return; }
+    const mla = t.closest('[data-mladd]'); if (mla && !t.closest('a,button')) { const id = mla.dataset.mladd; if (state.sel.includes(id)) state.sel = state.sel.filter(x => x !== id); else if (state.sel.length < 4) state.sel.push(id); lcRender(); return; }
     const add = t.closest('[data-add]'); if (add) { if (state.sel.length < 4 && !state.sel.includes(add.dataset.add)) state.sel.push(add.dataset.add); const inp = document.getElementById('lcInput'); if (inp) inp.value = ''; document.getElementById('lcAc')?.classList.remove('show'); lcRender(); return; }
     if (t.closest('#lcChipAdd')) { const inp = document.getElementById('lcInput'); if (inp) inp.focus(); runSearch(''); return; }
     const fb = t.closest('#lcFmt button'); if (fb) { state.fmt = fb.dataset.fmt; state._fmtTouched = true; save(); lcRender(); return; }
     if (!t.closest('.lc-search')) document.getElementById('lcAc')?.classList.remove('show');
   });
-  document.addEventListener('change', e => { if (e.target.id === 'lcWk') { state.week = +e.target.value; state._weekTouched = true; ensureWeek(state.week); } });
+  document.addEventListener('change', e => { if (e.target.id === 'lcWk') { state.week = +e.target.value; state._weekTouched = true; ensureWeek(state.week); } if (e.target.id === 'lcMlLg') { state.mlLeague = e.target.value; save(); lcRender(); } });
   document.addEventListener('input', e => { if (e.target.id === 'lcInput') runSearch(e.target.value); });
   document.addEventListener('focusin', e => { if (e.target.id === 'lcInput') runSearch(e.target.value); });
 
@@ -21539,5 +21757,296 @@ body:has(.setup:not(.gone)) .vc-dim{display:none!important}
   #page-teams h1.lr-title{font-size:21px}
 }
 </style>
+<!-- Lineup Command — auto-loaded lineup (reads Sleeper/ESPN, deep-links out) -->
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   VAULT · LINEUP COMMAND — AUTO-LOAD
+   When a league is synced, the Lineup Command page opens on the week's
+   actual lineup (read from Sleeper/ESPN) instead of a blank search box.
+   Vault never edits a lineup: the CTA deep-links to the platform and we
+   re-sync to confirm. Renders into #lc-auto, above the compare tool.
+   Requires lc-vault.js (window.__LCAPI + __lcAfterRender hook).
+   ══════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  if (window.__lcAutoLoaded) return; window.__lcAutoLoaded = true;
+
+  const SLOT_LABEL = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', FLEX: 'FLX', SUPER_FLEX: 'SF', WRRB_FLEX: 'W/R', REC_FLEX: 'W/T', K: 'K', DEF: 'DEF', DST: 'DEF', IDP_FLEX: 'IDP', LB: 'LB', DB: 'DB', DL: 'DL' };
+  const SLOT_ELIG = { QB: ['QB'], RB: ['RB'], WR: ['WR'], TE: ['TE'], FLEX: ['RB', 'WR', 'TE'], SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'], WRRB_FLEX: ['RB', 'WR'], REC_FLEX: ['WR', 'TE'] };
+  const POSC = { QB: 'var(--qb)', RB: 'var(--rb)', WR: 'var(--wr)', TE: 'var(--te)' };
+  const POSB = { QB: 'rgba(255,102,128,.14)', RB: 'rgba(61,204,122,.14)', WR: 'rgba(123,208,255,.14)', TE: 'rgba(245,200,66,.14)' };
+  const r1 = n => Math.round(n * 10) / 10;
+  const initials = n => (n || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+  /* module state */
+  const M = { lid: null, week: null, rosters: null, users: null, league: null, at: 0, loading: false, err: null, pending: false, benchOpen: true, pickTeam: null };
+
+  const api = () => window.__LCAPI || null;
+  const fmtKey = () => { const a = api(); return a ? a.state.fmt : 'ppr'; };
+  const curWeek = () => { const a = api(); return a ? a.state.week : 1; };
+
+  function leaguePool() { try { return (typeof myTeamsData !== 'undefined' && Array.isArray(myTeamsData)) ? myTeamsData : []; } catch (e) { return []; } }
+  function activeLeague() {
+    const pool = leaguePool(); if (!pool.length) return null;
+    let lid = null;
+    try { lid = (typeof ovLeagueId !== 'undefined' && ovLeagueId) || null; } catch (e) { }
+    if (!lid) { try { lid = localStorage.getItem((typeof SK !== 'undefined' ? SK : 'vault') + '-primary-league'); } catch (e) { } }
+    return (lid && pool.find(l => l.league_id === lid)) || pool[0] || null;
+  }
+  const isESPN = l => l && (l._espn || String(l.league_id).indexOf('espn_') === 0);
+  function platformName(l) { return isESPN(l) ? 'ESPN' : 'Sleeper'; }
+  function deepLink(l, rosterId) {
+    if (!l) return '#';
+    if (isESPN(l)) { const id = String(l.league_id).replace('espn_', ''); return 'https://fantasy.espn.com/football/team?leagueId=' + id + (l.season ? '&seasonId=' + l.season : '') + (rosterId != null ? '&teamId=' + rosterId : ''); }
+    return 'https://sleeper.com/leagues/' + l.league_id + '/team';
+  }
+
+  /* ── data ── */
+  async function ensureRoster(force) {
+    const l = activeLeague(); if (!l) { M.lid = null; return; }
+    const wk = curWeek();
+    const fresh = M.lid === l.league_id && M.week === wk && M.rosters && (Date.now() - M.at < 6e4);
+    if (fresh && !force) return;
+    if (M.loading) return;
+    M.loading = true; M.err = null; paint();
+    try {
+      let rosters, users;
+      if (typeof vaultRostersUsers === 'function') { [rosters, users] = await vaultRostersUsers(l.league_id); }
+      else {
+        [rosters, users] = await Promise.all([
+          fetch('https://api.sleeper.app/v1/league/' + l.league_id + '/rosters').then(r => r.json()),
+          fetch('https://api.sleeper.app/v1/league/' + l.league_id + '/users').then(r => r.json()),
+        ]);
+      }
+      if (!Array.isArray(rosters) || !rosters.length) throw new Error('no rosters');
+      M.lid = l.league_id; M.week = wk; M.rosters = rosters; M.users = users || []; M.league = l; M.at = Date.now(); M.pending = false;
+    } catch (e) { M.err = 'Could not load rosters — retry in a moment.'; }
+    M.loading = false; paint();
+  }
+  function myRoster() {
+    if (!M.rosters) return null;
+    let uid = null; try { uid = (typeof myTeamsUserId !== 'undefined' && myTeamsUserId) || null; } catch (e) { }
+    let r = uid ? M.rosters.find(x => x.owner_id === uid) : null;
+    if (!r) { // ESPN or ambiguous — fall back to a remembered manual pick
+      let pick = M.pickTeam; try { pick = pick || localStorage.getItem('lc-auto-team-' + M.lid); } catch (e) { }
+      if (pick != null) r = M.rosters.find(x => String(x.roster_id) === String(pick)) || null;
+    }
+    return r || null;
+  }
+  function teamName(ownerId, rosterId) {
+    const u = (M.users || []).find(x => x.user_id === ownerId);
+    return (u && ((u.metadata && u.metadata.team_name) || u.display_name || u.username)) || ('Team ' + rosterId);
+  }
+  function slotList() {
+    const rp = (M.league && M.league.roster_positions) || [];
+    return rp.filter(s => s !== 'BN' && s !== 'IR' && s !== 'TAXI');
+  }
+  function fallbackName(pid) {
+    try { if (typeof globalPidToName !== 'undefined' && globalPidToName[String(pid)]) return globalPidToName[String(pid)]; } catch (e) { }
+    if (/^[A-Z]{2,3}$/.test(String(pid))) return String(pid) + ' Defense';
+    return null;
+  }
+  function P(pid) { const a = api(); return (a && pid && pid !== '0') ? a.getPlayer(String(pid)) : null; }
+  const pts = p => p ? (p.fmt[fmtKey()] ?? 0) : null;
+
+  /* ── lineup math ── */
+  function build() {
+    const r = myRoster(); if (!r) return null;
+    const slots = slotList();
+    const starters = (r.starters || []).map((pid, i) => ({ slot: slots[i] || 'FLX', pid: String(pid || '0'), p: P(pid) }));
+    const startSet = new Set(starters.map(s => s.pid));
+    const bench = (r.players || []).filter(pid => !startSet.has(String(pid))).map(pid => ({ pid: String(pid), p: P(pid) }))
+      .filter(b => b.p).sort((a, b) => pts(b.p) - pts(a.p)).slice(0, 8);
+    /* best bench upgrade over a current starter (healthy bench only) */
+    let edge = null;
+    bench.forEach(b => {
+      if (b.p.status) return;
+      starters.forEach(s => {
+        const elig = SLOT_ELIG[s.slot]; if (!elig || !elig.includes(b.p.pos)) return;
+        const sp = s.p ? pts(s.p) : 0;
+        const d = r1(pts(b.p) - sp);
+        if (d > 0.8 && (!edge || d > edge.d)) edge = { b: b.p, s: s.p, slot: s.slot, d: d, empty: !s.p };
+      });
+    });
+    const total = r1(starters.reduce((a, s) => a + (pts(s.p) || 0), 0));
+    return { r, starters, bench, edge, total };
+  }
+
+  /* ── render atoms ── */
+  const av = (p, s = 34) => p
+    ? '<div class="lca-av" style="width:' + s + 'px;height:' + s + 'px;background:' + POSB[p.pos] + ';border:1.5px solid color-mix(in srgb,' + POSC[p.pos] + ' 40%,transparent);color:' + POSC[p.pos] + ';font-size:' + (s * 0.34) + 'px">' + initials(p.name) + '</div>'
+    : '<div class="lca-av" style="width:' + s + 'px;height:' + s + 'px;background:var(--s3);color:var(--muted);font-size:' + (s * 0.34) + 'px">—</div>';
+  const muPill = p => !p ? '' : '<span class="lca-pill" style="background:color-mix(in srgb,' + p.mu.color + ' 14%,transparent);color:' + p.mu.color + '">◈ ' + p.mu.short + '</span>';
+  const qPill = p => (p && p.status) ? '<span class="lca-pill" style="background:rgba(255,179,71,.18);color:#ffb347">' + (String(p.status).charAt(0).toUpperCase()) + '</span>' : '';
+
+  function row(s, edge) {
+    const p = s.p;
+    const flagged = edge && !edge.empty && p && edge.s && edge.s.id === p.id;
+    const name = p ? p.name : (fallbackName(s.pid) || (s.pid === '0' ? 'Empty slot' : 'Player ' + s.pid));
+    const meta = p ? (p.pos + ' · ' + p.team + ' · ' + p.ha + ' ' + p.opp + (p.day ? ' · ' + p.day + ' ' + p.time : '')) : (s.pid === '0' ? 'fill this slot on ' + platformName(M.league) : 'no projection this week');
+    const verdict = s.pid === '0'
+      ? '<span class="lca-verd warn">⚠ EMPTY</span>'
+      : !p ? '<span class="lca-verd dim">—</span>'
+        : flagged ? '<span class="lca-verd warn" title="' + edge.b.name + ' projects +' + edge.d.toFixed(1) + ' higher">⚠ CHECK</span>'
+          : '<span class="lca-verd ok">✓ SET</span>';
+    return '<div class="lca-row' + (flagged || s.pid === '0' ? ' flag' : '') + (p ? '" data-cmp="' + p.id + '"' : '"') + ' title="' + (p ? 'Add to compare' : '') + '">'
+      + '<span class="lca-slot" style="color:' + (p ? POSC[p.pos] : 'var(--muted)') + '">' + (SLOT_LABEL[s.slot] || s.slot) + '</span>'
+      + av(p)
+      + '<div class="lca-who"><div class="lca-nm">' + name + ' ' + qPill(p) + '</div><div class="lca-meta lca-mono">' + meta + '</div></div>'
+      + '<div class="lca-mu">' + muPill(p) + '</div>'
+      + '<span class="lca-pts lca-mono">' + (p ? pts(p).toFixed(1) : '—') + '</span>'
+      + '<div class="lca-vc">' + verdict + '</div></div>';
+  }
+  function benchRow(b, starters) {
+    const p = b.p;
+    let best = null;
+    starters.forEach(s => { const elig = SLOT_ELIG[s.slot]; if (!elig || !elig.includes(p.pos)) return; const d = r1(pts(p) - (s.p ? pts(s.p) : 0)); if (best == null || d > best) best = d; });
+    const edgy = best != null && best > 0.8 && !p.status;
+    return '<div class="lca-row bn" data-cmp="' + p.id + '" title="Add to compare">'
+      + '<span class="lca-slot" style="color:var(--muted)">BN</span>' + av(p)
+      + '<div class="lca-who"><div class="lca-nm">' + p.name + ' ' + qPill(p) + '</div><div class="lca-meta lca-mono">' + p.pos + ' · ' + p.team + ' · ' + p.ha + ' ' + p.opp + '</div></div>'
+      + '<div class="lca-mu">' + muPill(p) + '</div>'
+      + '<span class="lca-pts lca-mono">' + pts(p).toFixed(1) + '</span>'
+      + '<div class="lca-vc">' + (edgy ? '<span class="lca-verd warn">▲ +' + best.toFixed(1) + '</span>' : '<span class="lca-verd dim">' + (best == null ? '—' : best.toFixed(1)) + '</span>') + '</div></div>';
+  }
+
+  function teamPicker() {
+    const opts = M.rosters.map(r => '<button class="lca-team" data-team="' + r.roster_id + '">' + teamName(r.owner_id, r.roster_id) + '</button>').join('');
+    return '<div class="lca-card" style="padding:16px"><div class="lca-h">Which team is yours?</div><div class="lca-meta" style="margin:4px 0 12px">We couldn\'t match your account to a roster in this league — pick once and Vault remembers.</div><div class="lca-teams">' + opts + '</div></div>';
+  }
+
+  /* ── main render ── */
+  function html() {
+    const a = api(); if (!a) return '';
+    const l = activeLeague();
+    if (!l) return ''; // no synced league → compare-first page stays as-is
+    if (M.err) return '<div class="lca-card lca-note">' + M.err + ' <button class="lca-btn" data-resync="1">Retry</button></div>';
+    if (!M.rosters || M.lid !== l.league_id) return '<div class="lca-card lca-note">⟳ Syncing your lineup from ' + platformName(l) + '…</div>';
+    const r = myRoster();
+    if (!r) return teamPicker();
+    const L = build(); if (!L) return '';
+    const plat = platformName(M.league);
+    const link = deepLink(M.league, r.roster_id);
+    const ago = Math.max(0, Math.round((Date.now() - M.at) / 1000));
+    const agoTxt = ago < 5 ? 'just now' : ago < 90 ? ago + 's ago' : Math.round(ago / 60) + 'm ago';
+    let alert = '';
+    if (M.pending) {
+      alert = '<div class="lca-alert info"><span>⏳</span><div><b>Opened your lineup on ' + plat + '</b>Vault only shows what\'s actually set — make the swap there, then re-sync.</div><div class="lca-acts"><button class="lca-btn pri" data-resync="1">Re-sync now</button><button class="lca-btn" data-cancel="1">Dismiss</button></div></div>';
+    } else if (L.edge) {
+      const what = L.edge.empty ? 'fills an empty ' + (SLOT_LABEL[L.edge.slot] || L.edge.slot) + ' slot' : 'projects <b class="lca-mono" style="color:#ffb347">+' + L.edge.d.toFixed(1) + '</b> over ' + L.edge.s.name + ' (' + pts(L.edge.s).toFixed(1) + ')';
+      alert = '<div class="lca-alert warn"><span>⚠</span><div><b>Bench edge at ' + (SLOT_LABEL[L.edge.slot] || L.edge.slot) + '</b>' + L.edge.b.name + ' (' + pts(L.edge.b).toFixed(1) + ') ' + what + '</div><div class="lca-acts"><a class="lca-btn pri" href="' + link + '" target="_blank" rel="noopener" data-open="1">Swap in ' + plat + ' ↗</a>' + (L.edge.s ? '<button class="lca-btn" data-cmp2="' + L.edge.s.id + ',' + L.edge.b.id + '">Compare</button>' : '') + '</div></div>';
+    }
+    return alert
+      + '<div class="lca-card">'
+      + '<div class="lca-head"><div><div class="lca-h">Your lineup <span class="lca-pill" style="background:rgba(61,204,122,.13);color:var(--rb)">● ' + plat.toUpperCase() + '</span></div>'
+      + '<div class="lca-meta lca-mono">' + (M.league.name || 'league') + ' · week ' + curWeek() + ' · mirrors what\'s set on ' + plat + ' · synced ' + agoTxt + '</div></div>'
+      + '<div class="lca-tools"><a class="lca-btn" href="' + link + '" target="_blank" rel="noopener" data-open="1">Open in ' + plat + ' ↗</a><button class="lca-btn" data-resync="1" title="Re-sync from ' + plat + '">⟳</button></div></div>'
+      + L.starters.map(s => row(s, L.edge)).join('')
+      + '<div class="lca-tot"><span>Projected total · ' + (a.fmtName[fmtKey()] || '') + '</span><span class="lca-mono lca-ttl">' + L.total.toFixed(1) + '</span></div>'
+      + '</div>'
+      + (L.bench.length ? '<div class="lca-card"><div class="lca-head lca-bn-head" data-bn="1"><div class="lca-h" style="font-size:13px">Bench <span class="lca-meta">edge vs your weakest eligible starter · tap a row to compare</span></div><span class="lca-meta lca-mono">' + (M.benchOpen ? '▾' : '▸') + '</span></div>'
+      + (M.benchOpen ? L.bench.map(b => benchRow(b, L.starters)).join('') : '') + '</div>' : '');
+  }
+
+  function mountEl() {
+    let el = document.getElementById('lc-auto');
+    if (!el) {
+      const lcMount = document.getElementById('lc-mount'); if (!lcMount) return null;
+      el = document.createElement('div'); el.id = 'lc-auto';
+      lcMount.parentNode.insertBefore(el, lcMount);
+    }
+    return el;
+  }
+  function paint() {
+    const el = mountEl(); if (!el) return;
+    el.innerHTML = html();
+    const sub = document.querySelector('#page-lineup .lc-sub');
+    if (sub && activeLeague() && M.rosters) sub.textContent = 'Your lineup for the week, loaded the moment you land — every call checked against the sources. Edits happen on ' + platformName(M.league) + '; Vault re-syncs to confirm.';
+  }
+
+  /* re-render whenever Lineup Command re-renders (fmt/week/live changes) */
+  window.__lcAfterRender = function () { paint(); ensureRoster(false); };
+
+  /* ── interactions ── */
+  document.addEventListener('click', function (e) {
+    const root = e.target.closest('#lc-auto'); if (!root) return;
+    const a = api();
+    if (e.target.closest('[data-open]')) { M.pending = true; setTimeout(paint, 50); return; } // let the link open, then show pending
+    if (e.target.closest('[data-resync]')) { ensureRoster(true); return; }
+    if (e.target.closest('[data-cancel]')) { M.pending = false; paint(); return; }
+    const tp = e.target.closest('[data-team]');
+    if (tp) { M.pickTeam = tp.dataset.team; try { localStorage.setItem('lc-auto-team-' + M.lid, M.pickTeam); } catch (err) { } paint(); return; }
+    if (e.target.closest('[data-bn]')) { M.benchOpen = !M.benchOpen; paint(); return; }
+    const c2 = e.target.closest('[data-cmp2]');
+    if (c2 && a) { c2.dataset.cmp2.split(',').forEach(id => { if (a.state.sel.length < 4 && !a.state.sel.includes(id)) a.state.sel.push(id); }); window.lcRender(); return; }
+    const c1 = e.target.closest('[data-cmp]');
+    if (c1 && a) { const id = c1.dataset.cmp; if (a.state.sel.length < 4 && !a.state.sel.includes(id)) { a.state.sel.push(id); window.lcRender(); } return; }
+  });
+
+  /* ── styles ── */
+  function injectStyles() {
+    if (document.getElementById('lc-auto-styles')) return;
+    const css = '' +
+      '#lc-auto{display:flex;flex-direction:column;gap:14px;margin-bottom:18px}' +
+      '#lc-auto .lca-mono{font-family:var(--font-mono)}' +
+      '#lc-auto .lca-card{background:var(--lc-card,rgba(18,26,37,.66));border:1px solid var(--border);border-radius:16px;padding:14px 14px 6px}' +
+      '#lc-auto .lca-note{padding:14px 16px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:10px}' +
+      '#lc-auto .lca-h{font-size:15px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}' +
+      '#lc-auto .lca-meta{font-size:10px;color:var(--muted);letter-spacing:.02em}' +
+      '#lc-auto .lca-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:2px 4px 10px}' +
+      '#lc-auto .lca-bn-head{cursor:pointer;padding-bottom:8px}' +
+      '#lc-auto .lca-tools{display:flex;gap:7px;align-items:center}' +
+      '#lc-auto .lca-pill{display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:8.5px;font-weight:700;letter-spacing:.05em;padding:3px 7px;border-radius:6px;vertical-align:1px}' +
+      '#lc-auto .lca-av{border-radius:26%;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;font-family:var(--font-sans)}' +
+      '#lc-auto .lca-btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);font-size:11.5px;font-weight:600;padding:7px 12px;border-radius:8px;cursor:pointer;text-decoration:none;font-family:var(--font-sans)}' +
+      '#lc-auto .lca-btn:hover{border-color:var(--border3);color:var(--text)}' +
+      '#lc-auto .lca-btn.pri{background:rgba(226,58,78,.16);border-color:rgba(226,58,78,.5);color:#ffaab4}' +
+      '#lc-auto .lca-btn.pri:hover{background:rgba(226,58,78,.26);color:#fff}' +
+      '#lc-auto .lca-alert{display:flex;align-items:center;gap:12px;border-radius:13px;padding:11px 14px;border:1px solid var(--border);font-size:12.5px;color:var(--text2);line-height:1.45}' +
+      '#lc-auto .lca-alert>div:first-of-type{flex:1;min-width:0}' +
+      '#lc-auto .lca-alert b{color:var(--text);display:block;font-size:13px}' +
+      '#lc-auto .lca-alert.warn{background:rgba(255,179,71,.07);border-color:rgba(255,179,71,.28)}' +
+      '#lc-auto .lca-alert.info{background:var(--lc-card,rgba(18,26,37,.66))}' +
+      '#lc-auto .lca-acts{display:flex;gap:7px;flex-shrink:0}' +
+      '#lc-auto .lca-row{display:grid;grid-template-columns:32px 34px minmax(0,1fr) auto 56px 86px;gap:11px;align-items:center;padding:8px 6px;border-top:1px solid var(--border);cursor:pointer;border-radius:9px}' +
+      '#lc-auto .lca-row:hover{background:rgba(255,255,255,.025)}' +
+      '#lc-auto .lca-row.flag{box-shadow:inset 3px 0 0 #ffb347}' +
+      '#lc-auto .lca-slot{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.04em}' +
+      '#lc-auto .lca-who{min-width:0}' +
+      '#lc-auto .lca-nm{font-size:13px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}' +
+      '#lc-auto .lca-pts{font-size:15.5px;font-weight:700;letter-spacing:-.02em;text-align:right;color:var(--text)}' +
+      '#lc-auto .lca-vc{text-align:right}' +
+      '#lc-auto .lca-verd{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.05em;padding:4px 7px;border-radius:7px;white-space:nowrap}' +
+      '#lc-auto .lca-verd.ok{background:rgba(61,204,122,.13);color:var(--rb)}' +
+      '#lc-auto .lca-verd.warn{background:rgba(255,179,71,.15);color:#ffb347}' +
+      '#lc-auto .lca-verd.dim{color:var(--muted)}' +
+      '#lc-auto .lca-tot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border2);padding:11px 6px;font-size:11.5px;color:var(--muted);font-weight:600}' +
+      '#lc-auto .lca-ttl{font-size:19px;font-weight:700;color:var(--text);letter-spacing:-.02em}' +
+      '#lc-auto .lca-teams{display:flex;gap:8px;flex-wrap:wrap}' +
+      '#lc-auto .lca-team{border:1px solid var(--border2);background:var(--s2);color:var(--text);font-size:12.5px;font-weight:600;padding:9px 13px;border-radius:9px;cursor:pointer;min-height:44px}' +
+      '#lc-auto .lca-team:hover{border-color:var(--border3)}' +
+      '@media(max-width:620px){' +
+      '#lc-auto .lca-row{grid-template-columns:28px 32px minmax(0,1fr) 50px 74px;gap:8px;min-height:44px}' +
+      '#lc-auto .lca-mu{display:none}' +
+      '#lc-auto .lca-alert{flex-wrap:wrap}' +
+      '#lc-auto .lca-acts{width:100%;justify-content:flex-end}' +
+      '#lc-auto .lca-head{align-items:flex-start}' +
+      '}';
+    const el = document.createElement('style'); el.id = 'lc-auto-styles'; el.textContent = css; document.head.appendChild(el);
+  }
+
+  function boot() {
+    injectStyles();
+    let tries = 0;
+    const t = setInterval(function () {
+      if (document.getElementById('lc-mount') && window.__LCAPI) { clearInterval(t); paint(); ensureRoster(false); }
+      else if (++tries > 60) clearInterval(t);
+    }, 150);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+
+</script>
 </body>
 </html>
