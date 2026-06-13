@@ -21930,15 +21930,15 @@ body .page,body .page.on{background:transparent!important}
   .connect-btn:hover::after,.launch-btn:hover::after{transform:translateX(130%);transition:transform .7s ease}
 }
 
-/* ---- HEADER FIT: tabs anchor left & clip on the right — never overlap the logo ---- */
-.glassnav{gap:7px!important}
+/* ---- HEADER FIT: wider pill on big screens + compact tabs so ALL 7 fit; never overlap ---- */
+.glassnav{max-width:1460px!important;gap:6px!important}
 .glassnav .logo{flex:0 0 auto!important;z-index:3;position:relative}
 .glassnav #header-nav{flex:1 1 auto!important;min-width:0!important;justify-content:flex-start!important;overflow:hidden!important}
+.glassnav #header-nav button{padding:7px 10px!important;font-size:12.5px!important}
 .glassnav .gn-right{flex:0 0 auto!important;z-index:3;position:relative}
-.glassnav .vlg-trigger{max-width:180px!important;min-width:0!important}
-.glassnav .header-league-select{max-width:170px!important}
-@media(max-width:1460px){ .glassnav .gn-word{display:none!important} }
-@media(max-width:1240px){ .glassnav .vlg-trigger{max-width:150px!important} }
+.glassnav .vlg-trigger{max-width:160px!important;min-width:0!important}
+.glassnav .header-league-select{max-width:160px!important}
+@media(max-width:1320px){ .glassnav .gn-word{display:none!important} }
 @media(max-width:1160px){ .glassnav #theme-toggle{display:none!important} }
 @media(max-width:1080px){ .glassnav .gn-search{display:none!important} .glassnav .vlg-trigger{max-width:120px!important} }
 
