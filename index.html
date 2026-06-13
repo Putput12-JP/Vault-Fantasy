@@ -21930,15 +21930,28 @@ body .page,body .page.on{background:transparent!important}
   .connect-btn:hover::after,.launch-btn:hover::after{transform:translateX(130%);transition:transform .7s ease}
 }
 
-/* ---- HEADER FIT: never overlap the logo / right cluster ---- */
-.glassnav{gap:6px!important}
-.glassnav .logo{flex-shrink:0;z-index:2;position:relative}
-.glassnav #header-nav{flex:1 1 auto!important;min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none}
-.glassnav #header-nav::-webkit-scrollbar{display:none}
-.glassnav .gn-right{position:relative;z-index:2}
-.glassnav .header-league-select{max-width:160px!important}
-@media(max-width:1340px){ .glassnav .gn-word{display:none!important} }
-@media(max-width:1120px){ .glassnav #theme-toggle{display:none!important} .glassnav .header-league-select{max-width:130px!important} }
+/* ---- HEADER FIT: tabs anchor left & clip on the right — never overlap the logo ---- */
+.glassnav{gap:7px!important}
+.glassnav .logo{flex:0 0 auto!important;z-index:3;position:relative}
+.glassnav #header-nav{flex:1 1 auto!important;min-width:0!important;justify-content:flex-start!important;overflow:hidden!important}
+.glassnav .gn-right{flex:0 0 auto!important;z-index:3;position:relative}
+.glassnav .vlg-trigger{max-width:180px!important;min-width:0!important}
+.glassnav .header-league-select{max-width:170px!important}
+@media(max-width:1460px){ .glassnav .gn-word{display:none!important} }
+@media(max-width:1240px){ .glassnav .vlg-trigger{max-width:150px!important} }
+@media(max-width:1160px){ .glassnav #theme-toggle{display:none!important} }
+@media(max-width:1080px){ .glassnav .gn-search{display:none!important} .glassnav .vlg-trigger{max-width:120px!important} }
+
+/* ---- Portfolio hero strip → frosted glass (was hardcoded dark, broke light mode) ---- */
+.pf-v2-strip{
+  background:linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0) 46%),rgba(17,29,54,0.30)!important;
+  backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);
+  border:1px solid rgba(123,170,240,0.18)!important;
+}
+[data-theme="light"] .pf-v2-strip{
+  background:linear-gradient(180deg,rgba(255,255,255,0.62),rgba(255,255,255,0.42))!important;
+  border:1px solid rgba(29,40,66,0.14)!important;
+}
 
 /* ---- LIGHT MODE: redraft matchup card + rows were hardcoded dark ---- */
 [data-theme="light"] .rdv-mu{
