@@ -21792,36 +21792,34 @@ body:has(.setup:not(.gone)) .vc-dim{display:none!important}
 <style id="liquid-glass-overhaul">
 /* ---- smooth theme cross-fade ---- */
 html{transition:background-color .5s ease}
-body,.page,.ov-card,.ov-panel,.ov-kpi-card,.ov-arch-card,.res-panel,
+/* ---- smooth theme cross-fade (cards only — NOT pages/body: a bg transition
+        on .page fades the backdrop in/out and causes a dark flash) ---- */
+.ov-card,.ov-panel,.ov-kpi-card,.ov-arch-card,.res-panel,
 .res-kpi,.mth-pg-card,.pr-team-card,.modal,#app-sidebar,#sidebar-team-card{
   transition:background-color .45s ease,border-color .45s ease,color .3s ease,
              box-shadow .45s ease,transform .12s ease;
 }
 
-/* ---- ambient vapor: a single left-to-right glow easing into dark (tasteful) ---- */
+/* ---- SILK backdrop: diagonal navy weave + faint sheen band + grain ---- */
 body::before{
   content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-  filter:blur(30px);
   background:
-    radial-gradient(60vw 64vw at 8% 0%, rgba(58,116,224,0.32), transparent 58%),
-    linear-gradient(108deg, rgba(40,82,170,0.12) 0%, transparent 48%);
+    linear-gradient(125deg, transparent 30%, rgba(80,130,230,0.13) 49%, transparent 64%),
+    linear-gradient(125deg, #0a1730 0%, #0c1c3c 22%, #0a1526 44%, #0d1a30 66%, #081120 100%);
 }
-/* one faint cool orb, upper-right — keeps it from feeling flat */
+/* fine grain layer — kills gradient banding, keeps it suave */
 body::after{
-  content:"";position:fixed;width:42vw;height:42vw;top:-8vh;right:-6vw;border-radius:50%;
-  z-index:0;pointer-events:none;filter:blur(120px);
-  background:radial-gradient(circle, rgba(120,150,255,0.16), transparent 66%);
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 [data-theme="light"] body::before{
   background:
-    radial-gradient(60vw 64vw at 8% 0%, rgba(31,78,135,0.15), transparent 58%),
-    linear-gradient(108deg, rgba(197,45,58,0.06) 0%, transparent 48%);
+    linear-gradient(125deg, transparent 30%, rgba(197,45,58,0.05) 49%, transparent 64%),
+    linear-gradient(125deg, #f6f1e6 0%, #faf6ed 24%, #f1ebdf 46%, #f7f2e8 68%, #efe8d9 100%);
 }
-[data-theme="light"] body::after{background:radial-gradient(circle, rgba(245,200,66,0.13), transparent 66%);}
+[data-theme="light"] body::after{opacity:.04}
 
-@media (prefers-reduced-motion: no-preference){
-  body::after{animation:lgOrb 30s ease-in-out infinite alternate}
-}
 @keyframes lgOrb{from{transform:translate(0,0)}to{transform:translate(-4vw,4vh)}}
 
 /* keep main content above the vapor layer (orbs sit at z-index:0).
@@ -21833,6 +21831,10 @@ body::after{
 /* pages painted an opaque var(--bg) over the vapor — beat the id-specificity rule at line ~1792 */
 .page,#page-overview,#page-portfolio,#page-draft,#page-visual,#page-teams,
 #page-trade,#page-myteams,#page-research,#page-myrankings,#page-rankings{background:transparent!important}
+/* belt-and-suspenders: body-prefixed so it outranks the (1,0,0) opaque rule no matter the order */
+body #page-overview,body #page-portfolio,body #page-draft,body #page-visual,body #page-teams,
+body #page-trade,body #page-myteams,body #page-research,body #page-myrankings,body #page-rankings,
+body .page,body .page.on{background:transparent!important}
 #app-main,#app-shell{background:transparent!important}
 
 /* ════ UNIFIED LIQUID GLASS — every card family, cool & translucent so the
@@ -21926,6 +21928,28 @@ body::after{
     transform:translateX(-130%);
   }
   .connect-btn:hover::after,.launch-btn:hover::after{transform:translateX(130%);transition:transform .7s ease}
+}
+
+/* ---- HEADER FIT: never overlap the logo / right cluster ---- */
+.glassnav{gap:6px!important}
+.glassnav .logo{flex-shrink:0;z-index:2;position:relative}
+.glassnav #header-nav{flex:1 1 auto!important;min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none}
+.glassnav #header-nav::-webkit-scrollbar{display:none}
+.glassnav .gn-right{position:relative;z-index:2}
+.glassnav .header-league-select{max-width:160px!important}
+@media(max-width:1340px){ .glassnav .gn-word{display:none!important} }
+@media(max-width:1120px){ .glassnav #theme-toggle{display:none!important} .glassnav .header-league-select{max-width:130px!important} }
+
+/* ---- LIGHT MODE: redraft matchup card + rows were hardcoded dark ---- */
+[data-theme="light"] .rdv-mu{
+  background:linear-gradient(180deg,rgba(255,255,255,0.62),rgba(255,255,255,0.42))!important;
+  border:1px solid rgba(29,40,66,0.14)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,0.85) inset, 0 24px 50px -34px rgba(31,58,108,0.30)!important;
+}
+[data-theme="light"] .rdv-sthd{background:rgba(29,40,66,0.03)!important}
+[data-theme="light"] .rdv-card{
+  background:linear-gradient(180deg,rgba(255,255,255,0.55),rgba(255,255,255,0.42))!important;
+  border:1px solid rgba(29,40,66,0.13)!important;
 }
 
 /* ---- accessibility: respect reduced motion ---- */
