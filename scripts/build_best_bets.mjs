@@ -9,10 +9,14 @@
    the list is honest — not "top 3 by raw EV", which would surface exactly the
    junk the board already guards against:
 
-     • the LOG-BASED projection (mirrors prop-model.js fairProbOver): recency-
-       weighted volume × efficiency → per-market distribution → P(over) →
-       isotonic calibration → market shrink. Reads the same
-       data/nflverse_stats_<season>.json game logs prop-history.js uses.
+     • the SAME projection prop-model.js fairProbOver computes: recency-weighted
+       volume × efficiency, with VOLUME anchored toward the player's current,
+       book-corroborated depth role (data/role_volume.json) → per-market
+       distribution → P(over) → isotonic calibration → market shrink. Reads the
+       same data/nflverse_stats_<season>.json game logs prop-history.js uses. The
+       role anchor is what keeps the hero and the board from disagreeing on a
+       role-changed player (a rookie RB1 no longer carrying his committee-back
+       reception history); it replaced an older workbook blend the board never used.
      • only the 9 MODELED markets (prop_model.json) — the ones with measured
        signal; nothing else is scored.
      • CORROBORATION gate: a line needs ≥2 books agreeing within tolerance.
@@ -53,7 +57,6 @@ let   SEASONS = [2024, 2025];                 // log window [prev, cur] — rese
 const BE_REF = 0.524;                         // standard -110 book break-even (entry-agnostic bar)
 const MIN_GAMES = 8;                          // enough log to trust the projection
 const PRICE_MIN = -250, PRICE_MAX = 200;      // bettable band: no -300 chalk, no lottery longshots
-const GAMES = 17;                             // season → per-game (workbook projection)
 // Gate 2 — a "consensus" of DFS pick'em apps is not a beatable market. Their
 // yardage lines run low and price flat, so ranking by EV against them surfaces
 // the biggest model-vs-line disagreements (the least trustworthy bets). A best
@@ -85,7 +88,6 @@ const MAX_PROJ_GAP = 0.40;
 const COUNT_MK = new Set(['pass_att', 'pass_cmp', 'rush_att', 'rec']);
 const LOW_COUNT_LINE = 3.5;   // where the Under is still a plus-money longshot
 const ABS_COUNT_GAP = 0.5;    // half a count below the line flips the side w/o moving the ratio much
-const WB_WEIGHT = 0.5;                         // how much the role-aware workbook proj pulls the log proj
 const log = (...a) => console.log('[best-bets]', ...a);
 
 /* ── data-key helpers (mirror the app) ─────────────────────────────────── */
@@ -192,17 +194,59 @@ function sumSeries(weeks, fields) {
   return o;
 }
 function marketKeyOf(m) { const k = Object.keys(m.prior)[0] || ''; return k.includes('|') ? k.split('|')[0] : k; }
-function projectFrom(weeks, m, minPrior) {
-  if (m.kind === 'count' || m.kind === 'poisson') {
+// ── role anchor (mirror prop-model.js roleShift + projectFrom's role arg) ────
+// A player's history reflects the role he HELD; his current depth rank may be a
+// different role. Read which role his own volume resembles (nearest prior), then
+// scale by prior[currentRank]/prior[impliedRank], dampened by the fitted w and
+// capped. null when history already matches the role, the rank is unknown, or the
+// prior/weight for this stat×pos isn't published. This is the SAME anchor the
+// Edge Board applies — adopting it here (in place of the old workbook blend) is
+// what stops the hero and the board disagreeing on a role-changed player, e.g. a
+// rookie RB1 still carrying his committee-back reception history.
+let _roleParams;
+function loadRoleParams() {
+  if (_roleParams === undefined) {
+    try { _roleParams = JSON.parse(readFileSync(resolve(ROOT, 'data/role_volume.json'), 'utf8')); }
+    catch { _roleParams = null; }
+  }
+  return _roleParams;
+}
+function roleShift(rp, stat, pos, rank, level) {
+  if (!rp || !rp.priors || rank == null || level == null || pos == null) return null;
+  const ranks = rp.priors[stat] && rp.priors[stat][pos];
+  const wobj = rp.weights && rp.weights[stat + '|' + pos];
+  if (!ranks || !wobj) return null;
+  const cur = num(ranks[String(rank)]); if (cur == null) return null;
+  let impVal = null, best = Infinity;
+  for (const r in ranks) { const d = Math.abs(ranks[r] - level); if (d < best) { best = d; impVal = ranks[r]; } }
+  if (impVal == null || impVal <= 0) return null;
+  const w = num(wobj.w); if (w == null) return null;
+  const clampV = (rp.meta && num(rp.meta.clamp)) || 3;
+  return Math.max(1 / clampV, Math.min(clampV, 1 + w * (cur / impVal - 1)));
+}
+// role = { params, pos, rank } (optional). When present, VOLUME is anchored toward
+// the player's current role; the applied multiplier is written to role.mult for
+// provenance. TD/poisson markets are left alone (goal-line scoring doesn't track
+// volume rank), matching prop-model.js.
+function projectFrom(weeks, m, minPrior, role) {
+  const anchor = (stat, level) => {
+    if (!role || m.kind === 'poisson') return level;
+    const mult = roleShift(role.params, stat, role.pos, role.rank, level);
+    if (mult != null) { role.mult = mult; return level * mult; }
+    return level;
+  };
+  if (!(m.vol && m.eff_num) && (m.kind === 'count' || m.kind === 'poisson')) {
     const s = m.stat_sum ? sumSeries(weeks, m.stat_sum) : series(weeks, m.stat);
     if (s.length < minPrior) return null;
-    return shrink(s, m.prior[Object.keys(m.prior)[0]], m.half_life, m.k_vol);
+    return anchor(m.stat, shrink(s, m.prior[Object.keys(m.prior)[0]], m.half_life, m.k_vol));
   }
   const vs = [], es = [];
   for (const w of weeks) { const vol = num(w[m.vol]), en = num(w[m.eff_num]); if (vol != null) vs.push(vol); if (vol && vol > 0 && en != null) es.push(en / vol); }
   if (vs.length < minPrior || es.length < minPrior) return null;
   const mkt = marketKeyOf(m);
-  return shrink(vs, m.prior[mkt + '|vol'], m.half_life, m.k_vol) * shrink(es, m.prior[mkt + '|eff'], m.half_life, m.k_eff);
+  const pv = anchor(m.vol, shrink(vs, m.prior[mkt + '|vol'], m.half_life, m.k_vol));
+  const pe = shrink(es, m.prior[mkt + '|eff'], m.half_life, m.k_eff);
+  return pv * pe;
 }
 function erf(x) { const s = x < 0 ? -1 : 1; x = Math.abs(x); const t = 1 / (1 + 0.3275911 * x); const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return s * y; }
 const normCdf = z => 0.5 * (1 + erf(z / Math.SQRT2));
@@ -219,23 +263,21 @@ function calibrate(calib, p) {
   for (let i = 0; i < calib.length - 1; i++) { const [x0, y0] = calib[i], [x1, y1] = calib[i + 1]; if (p >= x0 && p <= x1) { const t = x1 === x0 ? 0 : (p - x0) / (x1 - x0); return y0 + t * (y1 - y0); } }
   return p;
 }
-function fairProbOver(PM, name, marketKey, line, wbProj, adj) {
+function fairProbOver(PM, name, marketKey, line, role, adj) {
   const m = PM.markets[marketKey]; if (!m) return null;
   const minPrior = (PM.meta && PM.meta.min_prior) || 3;
   const weeks = weeksFor(name); if (!weeks.length) return null;
-  const logProj = projectFrom(weeks, m, minPrior); if (logProj == null) return null;
-  // The log projection is backward-looking on game logs — it can't see a team
-  // change or a new role (a traded RB1 still carries his old committee usage).
-  // Blend toward the role-aware workbook projection when we have one, so a
-  // stale-usage number gets pulled toward the player's actual expected level.
-  // BUT the workbook (a spreadsheet) carries placeholder/garbage values for some
-  // player-markets (a rushing QB with 5.5 season rush yds), and blending toward
-  // those invents fake edges. Only blend when the workbook value is plausible
-  // for this line — within [0.3x, 3x] of it — else trust the log model alone.
-  const Lp = num(line);
-  const wbOk = wbProj != null && Number.isFinite(wbProj) && Lp != null && Math.abs(Lp) > 0
-    && wbProj >= 0.3 * Math.abs(Lp) && wbProj <= 3 * Math.abs(Lp);
-  let proj = wbOk ? (1 - WB_WEIGHT) * logProj + WB_WEIGHT * wbProj : logProj;
+  // Role-anchored projection — the SAME projection the Edge Board computes. The
+  // log projection is backward-looking (a rookie RB1 still carries his committee
+  // reception history); the role anchor scales VOLUME toward his current, book-
+  // corroborated depth role. This REPLACES the old workbook blend, which the board
+  // never used and which was the source of the hero-vs-board disagreement. The
+  // anchor is null-gated (fires only for a corroborated rank on a stat with a
+  // published prior), so absent a role this is the pure autoregressive log proj.
+  const r = role ? { params: role.params, pos: role.pos, rank: role.rank } : null;
+  let proj = projectFrom(weeks, m, minPrior, r); if (proj == null) return null;
+  const roleMult = r && r.mult != null ? r.mult : null;
+  const logProj = roleMult ? proj / roleMult : proj;   // pre-anchor level, for provenance
   // Fold in the matchup context the board already applies — opponent × environment
   // × game-script. scriptMult scales the VOLUME term only (proj = vol×eff), never
   // efficiency. All three are null-safe (×1) so a cold model changes nothing.
@@ -251,7 +293,7 @@ function fairProbOver(PM, name, marketKey, line, wbProj, adj) {
             : dist === 'lognormal' ? lognormOver(proj, sd, L)
             : rawOver(proj, sd, L, count);
   const cal = clamp(shrinkProb(clamp(calibrate(m.calib, raw), 0.01, 0.99), m.shrink), 0.01, 0.99);
-  return { proj: round(proj, 2), logProj: round(logProj, 2), wbProj: wbOk ? round(wbProj, 2) : null, over: round(cal, 4), under: round(1 - cal, 4), games: weeks.length };
+  return { proj: round(proj, 2), logProj: round(logProj, 2), roleMult: roleMult ? round(roleMult, 2) : null, over: round(cal, 4), under: round(1 - cal, 4), games: weeks.length };
 }
 
 /* ── grade / trust / pricing (mirror index.html) ───────────────────────── */
@@ -345,6 +387,7 @@ function scoreProps(feed, PM) {
   // off his own, possibly stale, history — a confident under/over there is a
   // likely role phantom (the Golden case), so it must never become a best bet.
   const roleOk = roleCorrobSet(feed);
+  const roleParams = loadRoleParams();   // role_volume.json — the board's volume anchor
   const ctx = buildMatchupCtx(feed);   // opponent + environment + game-script, per prop
   let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0;
   for (const id in props) {
@@ -365,10 +408,14 @@ function scoreProps(feed, PM) {
       // plus-price from another book invented the phantom "Under 1" edges.
       const priced = (cell.quotes || []).filter(q => q && q.line != null && (q.over != null || q.under != null));
       if (priced.length < 2) continue;                     // need ≥2 priced books to even consider
-      // role-aware workbook projection (season total → per-game), if we have one
-      const wbId = feed.vegas_players && feed.vegas_players[id];
-      const wbSeason = wbId && wbId.season && num(wbId.season[mk]);
-      const wbProj = wbSeason != null ? wbSeason / GAMES : null;
+      // Role anchor input (mirror the board's verifiedRoleRank): the feed depth
+      // rank, but ONLY when the books corroborate it. Trusting listing order alone
+      // would anchor a full-snap slot receiver toward a backup prior — the exact
+      // phantom the anchor exists to kill. Absent a corroborated rank the anchor
+      // no-ops and the projection is the pure log model (then the roleUnconfirmed
+      // and count-under guards below catch a confident off-role bet).
+      const roleRank = (dep && dep[0] != null && roleOk.has(String(id))) ? dep[0] : null;
+      const role = (roleParams && roleRank != null && p.pos) ? { params: roleParams, pos: p.pos, rank: roleRank } : null;
       // Score EACH distinct priced line on its own so the probability and the
       // price we pair always share the same line. The per-player dedup below
       // keeps only the best line if a market quotes several.
@@ -376,7 +423,7 @@ function scoreProps(feed, PM) {
       for (const q of priced) { const L = num(q.line); if (L == null) continue; if (!byLine.has(L)) byLine.set(L, []); byLine.get(L).push(q); }
       for (const [line, lq] of byLine) {
         if (lq.length < 2) continue;                       // need ≥2 books AT this exact line
-        const v = fairProbOver(PM, p.name, mk, line, wbProj, matchupAdjFor(ctx, p, mk));
+        const v = fairProbOver(PM, p.name, mk, line, role, matchupAdjFor(ctx, p, mk));
         if (!v || v.games < MIN_GAMES) continue;
         scored++;
         const g = vaultGrade(v.over, v.under, v.games);
@@ -427,7 +474,7 @@ function scoreProps(feed, PM) {
           market: mk, marketLabel: MKT_LABEL[mk] || mk, line, side,
           book: bs.book, price: bs.price,
           ev: round(ev * 100, 1),                          // % EV per $1 at best price
-          proj: v.proj, logProj: v.logProj, wbProj: v.wbProj, // blended / raw-log / role-aware
+          proj: v.proj, logProj: v.logProj, roleMult: v.roleMult, // anchored / pre-anchor / role multiplier
           prob: round(g.padj, 3), rawProb: round(sideProb, 3),
           grade: eff, books: trust.books, games: v.games,
         });
