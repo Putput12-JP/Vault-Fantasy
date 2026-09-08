@@ -44177,8 +44177,13 @@ window.VaultPropModel = (function () {
     // the same guard here so a stale feed built before the fix — served until the
     // next cron rebuild — can't surface the phantom either.
     const BB_COUNT_MK = { pass_att: 1, pass_cmp: 1, rush_att: 1, rec: 1 };
+    // Under on a low count line that contradicts the market's own direction:
+    // (a) a plus-money Under means the book favors the Over, or (b) the projection
+    // sits half-a-count-plus below the line. Either tell is enough — a raw proj
+    // threshold alone slipped on a 1.01-vs-1.5 case.
     const bbCountUnderPhantom = b => !!BB_COUNT_MK[b.market] && b.line > 0 && b.line <= 3.5
-      && b.proj != null && b.proj <= b.line - 0.5;
+      && b.side === 'under'
+      && ((b.price != null && b.price > 0) || (b.proj != null && b.proj <= b.line - 0.5));
     const props = ((bb && bb.props) || []).filter(b => !bbCountUnderPhantom(b));
     const leans = (bb && bb.game_leans) || [];
     if (!props.length && !leans.length) { host.innerHTML = ''; return; }

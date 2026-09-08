@@ -397,10 +397,18 @@ function scoreProps(feed, PM) {
         // Gate 1: projection strays too far from this corroborated line → stale/context, not edge.
         const projGap = v.proj != null && Math.abs(line) > 0 ? Math.abs(v.proj - line) / Math.abs(line) : 0;
         const projBlowout = VOL_MK.has(mk) && projGap >= MAX_PROJ_GAP;
-        // Absolute-count guard (see COUNT_MK above): kill a plus-money Under longshot
-        // whose projection sits half-a-count-plus below a low count line.
+        // Absolute-count guard (see COUNT_MK above): kill an Under on a low count
+        // line when the pick contradicts the market's own direction — the phantom
+        // regime where our backward-looking log model fades a small counting stat
+        // the market (and the player's current role) expects him to clear. Two
+        // robust tells, either one is enough: (a) a plus-money Under means the book
+        // itself favors the Over; (b) the projection sits half-a-count-plus below
+        // the line. Both are checked because a raw price sign can be near-even
+        // (Under -105 vs Over -115). Only the Under side needs this — an Over
+        // phantom sits far ABOVE a small line and already trips the ratio gate.
         const countUnderPhantom = COUNT_MK.has(mk) && line > 0 && line <= LOW_COUNT_LINE
-          && v.proj != null && v.proj <= line - ABS_COUNT_GAP;
+          && side === 'under'
+          && ((bs.price != null && bs.price > 0) || (v.proj != null && v.proj <= line - ABS_COUNT_GAP));
         // Gate 2: at least one true sportsbook must price this exact line (not DFS-only).
         const realBookAtLine = lq.some(q => isRealBook(q.book));
         const wouldPass = trust.corrob && (letter === 'A' || letter === 'B') && ev != null && ev > 0 && bettable;
