@@ -73,6 +73,18 @@ const isRealBook = b => !!b && !DFS_BOOKS.has(String(b).toLowerCase());
 // and they carry their own tail guards.
 const VOL_MK = new Set(['pass_yd', 'pass_att', 'pass_cmp', 'rush_yd', 'rush_att', 'rec', 'rec_yd']);
 const MAX_PROJ_GAP = 0.40;
+// Absolute-count guard. On a LOW integer-count line the relative MAX_PROJ_GAP is
+// too loose: a projection half a catch below a 1.5 line (e.g. a part-time rookie's
+// ~0.9 backward-looking log projection) is only a 40% gap, so it clears the ratio
+// gate — yet it flips the pick into a plus-money Under longshot and manufactures a
+// huge phantom EV. Guard the low-side longshot directly: block when the projection
+// sits ≥ABS_COUNT_GAP BELOW a low count line. Only the under side needs it — an
+// over phantom on a small line means proj sits far ABOVE the line, which already
+// trips the ratio gate. (This is the Bhayshul Tuten "Under 1.5 Rec, +59.9% EV"
+// case: log proj ~0.9 while his actual role projects ~2.5, so the board leaned Over.)
+const COUNT_MK = new Set(['pass_att', 'pass_cmp', 'rush_att', 'rec']);
+const LOW_COUNT_LINE = 3.5;   // where the Under is still a plus-money longshot
+const ABS_COUNT_GAP = 0.5;    // half a count below the line flips the side w/o moving the ratio much
 const WB_WEIGHT = 0.5;                         // how much the role-aware workbook proj pulls the log proj
 const log = (...a) => console.log('[best-bets]', ...a);
 
@@ -334,7 +346,7 @@ function scoreProps(feed, PM) {
   // likely role phantom (the Golden case), so it must never become a best bet.
   const roleOk = roleCorrobSet(feed);
   const ctx = buildMatchupCtx(feed);   // opponent + environment + game-script, per prop
-  let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0;
+  let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0;
   for (const id in props) {
     const p = props[id];
     if (isPre && p.commence) { const t = new Date(p.commence).getTime(); if (Number.isFinite(t) && t < regCutoff) { preskip++; continue; } }
@@ -385,14 +397,19 @@ function scoreProps(feed, PM) {
         // Gate 1: projection strays too far from this corroborated line → stale/context, not edge.
         const projGap = v.proj != null && Math.abs(line) > 0 ? Math.abs(v.proj - line) / Math.abs(line) : 0;
         const projBlowout = VOL_MK.has(mk) && projGap >= MAX_PROJ_GAP;
+        // Absolute-count guard (see COUNT_MK above): kill a plus-money Under longshot
+        // whose projection sits half-a-count-plus below a low count line.
+        const countUnderPhantom = COUNT_MK.has(mk) && line > 0 && line <= LOW_COUNT_LINE
+          && v.proj != null && v.proj <= line - ABS_COUNT_GAP;
         // Gate 2: at least one true sportsbook must price this exact line (not DFS-only).
         const realBookAtLine = lq.some(q => isRealBook(q.book));
         const wouldPass = trust.corrob && (letter === 'A' || letter === 'B') && ev != null && ev > 0 && bettable;
         const preGate = trust.corrob && (eff === 'A' || eff === 'B') && ev != null && ev > 0 && bettable;
-        const pass = preGate && !projBlowout && realBookAtLine;
+        const pass = preGate && !projBlowout && !countUnderPhantom && realBookAtLine;
         if (!pass) {
           if (roleUnconfirmed && wouldPass) roleskip++;
           else if (preGate && projBlowout) projskip++;
+          else if (preGate && countUnderPhantom) countskip++;
           else if (preGate && !realBookAtLine) dfsskip++;
           else gated++;
           continue;
@@ -418,7 +435,7 @@ function scoreProps(feed, PM) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, scored, gated, preskip, benchskip, roleskip, projskip, dfsskip, total: cands.length };
+  return { list, scored, gated, preskip, benchskip, roleskip, projskip, dfsskip, countskip, total: cands.length };
 }
 
 /* ── game leans (CONTEXT only; empty while the model is gated) ──────────── */
@@ -465,7 +482,7 @@ function gameLeans(feed) {
 
     const props = scoreProps(feed, PM);
     const leans = gameLeans(feed);
-    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.projskip} proj-blowout, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
+    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
     log(`game leans: ${leans.gated ? leans.gated : props.total >= 0 ? leans.list.length : 0}${leans.gated ? ' (empty)' : ''}`);
     for (const b of props.list) log(`  • ${b.name} ${b.marketLabel} ${b.side.toUpperCase()} ${b.line} @ ${b.book} ${b.price > 0 ? '+' : ''}${b.price} — ${b.grade}, ${b.ev}% EV, ${b.books} books, ${b.games}g`);
 
