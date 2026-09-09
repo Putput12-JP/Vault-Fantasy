@@ -1569,8 +1569,11 @@ header{
 .pf-mix-leg b{color:var(--text2);font-weight:700}
 .pf-mix-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
 /* Most Rostered card rows */
-.pf-own-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border)}
+.pf-own-row{display:flex;align-items:center;gap:11px;padding:8px;border-bottom:1px solid var(--border);border-radius:8px;cursor:pointer;transition:background .12s}
 .pf-own-row:last-child{border-bottom:none}
+.pf-own-row:hover{background:var(--s2)}
+.pf-own-shot{width:30px;height:30px;border-radius:7px;flex-shrink:0;object-fit:cover;border:1px solid var(--border2);background:var(--s2)}
+.pf-own-shot-fb{width:30px;height:30px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:var(--t-nano);font-weight:700}
 .pf-own-pos{font-family:var(--font-mono);font-size:var(--t-nano);font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0;min-width:26px;text-align:center}
 .pf-own-name{flex:1;font-size:var(--t-secondary);color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pf-own-dots{display:flex;gap:3px;flex-shrink:0}
@@ -13423,9 +13426,10 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
-    ts:'2026-09-09T18:00', tag:'Improved', title:'A cleaner My Players view in your Portfolio',
+    ts:'2026-09-09T20:00', tag:'Improved', title:'A cleaner My Players view in your Portfolio',
     items:[
       'My Players now spans the full width of the page, with your Dynasty and Redraft rosters side by side in their own columns.',
+      'Every player now shows their headshot, and you can tap any row to jump straight to their full profile.',
       'Removed the Signals card to keep the focus on who you actually own across your leagues.',
     ],
   },
@@ -25008,7 +25012,17 @@ function _buildPortfolioOwnedHtml(topOwned, leagueCount){
     const pos = (typeof getFCValue === 'function' && getFCValue(name)?.pos) || '';
     const pc = posColor[pos] || 'var(--muted)';
     const dots = Array.from({length:leagueCount},(_,i)=>`<span class="pf-own-dot${i<count?' on':''}"></span>`).join('');
-    return `<div class="pf-own-row">
+    // Headshot + click-through to the player profile. sid resolves the NFL.com
+    // face crop (suffix-tolerant), falling back to the Sleeper thumb, then to
+    // initials if neither is ready. data-vh-* lets _vhUpgradeImgs() swap in the
+    // NFL.com crop once the nflverse map warms after first paint.
+    const sid = (typeof vaultPidFor === 'function' && vaultPidFor(name)) || sleeperPlayerMap?.[normName(name)]?.player_id || '';
+    const photo = (typeof vaultHeadshot === 'function') ? vaultHeadshot(name, sid, 30) : '';
+    const initials = name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+    const nmAttr = name.replace(/"/g,'&quot;');
+    return `<div class="pf-own-row" onclick="openPlayerProfile('${ppArg(name)}','${sid}','${pos}','')">
+      ${photo ? `<img class="pf-own-shot" src="${photo}" data-vh-n="${nmAttr}" data-vh-sid="${sid}" data-vh-px="30" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+      <span class="pf-own-shot-fb" style="display:${photo?'none':'flex'};background:${pc}22;color:${pc}">${initials}</span>
       <span class="pf-own-pos" style="background:${pc}22;color:${pc}">${pos||'—'}</span>
       <span class="pf-own-name">${name}</span>
       <span class="pf-own-dots">${dots}</span>
