@@ -41410,6 +41410,9 @@ window.VaultPropModel = (function () {
 #page-betting .bx-mv-pick .bt-logo{width:40px;height:40px;flex:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
 #page-betting .bx-mv-pick .bt-logo+.bt-logo{margin-left:3px}
 #page-betting .bx-mv-pick b{font-weight:700;font-size:var(--t-body);margin-left:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page-betting .bx-mv-line{display:flex;align-items:center;gap:6px;margin:4px 0 0 48px;font-family:var(--bt-mono);font-size:var(--t-nano);color:var(--bt-muted);flex-wrap:wrap}
+#page-betting .bx-mv-line b{color:var(--bt-text);font-weight:700}
+#page-betting .bx-mv-tag{font-weight:800;letter-spacing:.05em;color:var(--bt-accent2);border:1px solid color-mix(in srgb,var(--bt-accent2) 40%,transparent);border-radius:6px;padding:2px 6px}
 #page-betting .bx-mv-trk{flex:none;display:inline-flex;align-items:center;gap:3px;font-family:var(--bt-mono);font-size:var(--t-nano);font-weight:700;color:var(--bt-green);border:1px solid color-mix(in srgb,var(--bt-green) 34%,transparent);background:color-mix(in srgb,var(--bt-green) 10%,transparent);border-radius:7px;padding:4px 8px;white-space:nowrap;cursor:default}
 @media(max-width:760px){#page-betting .bx-mv-cols{grid-template-columns:1fr}}
 /* game card */
@@ -42140,7 +42143,8 @@ window.VaultPropModel = (function () {
           const gap = l.diff + unitLbl(l.unit);
           return '<div class="bx-mv-row">'
             + '<span class="bx-mv-rk">' + (i + 1) + '</span>'
-            + '<div class="bx-mv-main"><div class="bx-mv-pick"><span class="bt-logo" data-logo="' + g.away + '"></span><span class="bt-logo" data-logo="' + g.home + '"></span><b title="Vault ' + l.vault + ' · ' + gap + ' gap vs the market">' + l.label + '</b></div></div>'
+            + '<div class="bx-mv-main"><div class="bx-mv-pick"><span class="bt-logo" data-logo="' + g.away + '"></span><span class="bt-logo" data-logo="' + g.home + '"></span><b title="The side to bet, at the market number">' + l.label + '</b></div>'
+            + '<div class="bx-mv-line"><span class="bx-mv-tag">MODEL LINE</span><b>' + l.vault + '</b><span>' + gap + ' vs market</span></div></div>'
             + '<span class="bx-mv-trk" title="Automatically tracked in your Track Record — settles against the final score">✓ Tracked</span>'
             + '</div>';
         };
