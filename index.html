@@ -13426,6 +13426,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-09T21:30', tag:'Improved', title:'The Vault line on Game Markets now moves with the market',
+    items:[
+      'Vault’s model line used to sit still between refreshes because it only learns from finished games. It now anchors halfway to the live market, so it shifts as the number moves on injuries, news and sharp money.',
+      'You still see Vault’s own tilt next to the number — it just no longer looks frozen when the world is moving.',
+    ],
+  },
+  {
     ts:'2026-09-09T20:00', tag:'Improved', title:'A cleaner My Players view in your Portfolio',
     items:[
       'My Players now spans the full width of the page, with your Dynasty and Redraft rosters side by side in their own columns.',
@@ -41746,6 +41753,42 @@ window.VaultPropModel = (function () {
     return { margin: +pm.toFixed(1), homeSpread: +(-pm).toFixed(1), total: +(ph + pa).toFixed(1),
              homePts: +ph.toFixed(1), awayPts: +pa.toFixed(1), homeWinPct: Math.round(_gmPhi(pm / M.sd_margin) * 100) };
   }
+
+  // Served "Vault line" = the raw model line anchored to the LIVE market
+  // consensus, keeping only GM_BLEND of the model's deviation. The team-rating
+  // model is refit off completed games only, so between refits (and all
+  // preseason) its ratings are frozen — it can't move on an injury, a snap-count
+  // change or sharp money. The market can, and does, intraweek. Anchoring the
+  // displayed line to the market therefore makes it MOVE with new information
+  // while still carrying a modest, honest model tilt. The backtest is explicit
+  // that the raw model matches the market and does not beat the close, so a
+  // market-heavy weight loses no measured edge. game_model.json stays pure (the
+  // backtest + in-season loop-closer must see the unblended fit); this blend is a
+  // display concern, computed here from whatever market number is on the card.
+  //
+  // Weight: the served line is the MIDPOINT of the model and the live market.
+  // Half of any market move passes straight through — so the line moves on news
+  // the frozen model can't see — while half the model's tilt survives, enough to
+  // keep the line's own identity and the "Vault vs the market" leans meaningful
+  // rather than extinct. A market-heavier weight would move more but flatten the
+  // leans to nothing; the midpoint is the honest split given the model shows no
+  // measured edge over the close.
+  const GM_BLEND = 0.5;    // 0 = pure market, 1 = pure model; 0.5 = midpoint
+  function gmLine(g) {
+    const gp = gmPredict(g.away, g.home);
+    if (!gp) return null;
+    const mkSp = (g.spread && g.spread.cons && g.spread.cons.home != null) ? g.spread.cons.home : null;
+    const mkT  = (g.total && g.total.cons != null) ? g.total.cons : null;
+    const mlHP = _mlHomeProb(g);                               // vig-free market P(home win), 0..1
+    const blend = (model, mkt) => mkt == null ? model : +(mkt + GM_BLEND * (model - mkt)).toFixed(1);
+    const out = Object.assign({}, gp);
+    out.homeSpread = blend(gp.homeSpread, mkSp);
+    out.total      = blend(gp.total,      mkT);
+    if (mlHP != null) out.homeWinPct = Math.round(mlHP * 100 + GM_BLEND * (gp.homeWinPct - mlHP * 100));
+    out.margin  = +(-out.homeSpread).toFixed(1);
+    out.blended = (mkSp != null || mkT != null);              // provenance: did we have a market to anchor to
+    return out;
+  }
   // Open→current classification for a game market (null when no move / no data).
   function moveTag(key, market) {
     const BM = window.VaultBettingMath, h = _lineHist && _lineHist[key];
@@ -42008,12 +42051,12 @@ window.VaultPropModel = (function () {
       // Vault's spread / total / win% each sit directly beneath the market they
       // opine on, market value muted below, any line move folded into the column.
       // Gated to the regular season (gp is null otherwise → the simple footer).
-      const gp = (_gmModel && seasonReg) ? gmPredict(g.away, g.home) : null;
+      const gp = (_gmModel && seasonReg) ? gmLine(g) : null;
       const open = gExpanded.has(key);
       const cmpBtn = '<button class="bx-foot-btn" data-tgl="' + key + '">' + (open ? 'Hide books' : 'Compare books') + ' <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="' + (open ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6') + '"/></svg></button>';
       let foot;
       if (gp) {
-        const vTitle = 'Vault’s team-rating model — context, not a bet edge. Matches the market, doesn’t beat the close.';
+        const vTitle = 'Vault’s team-rating model, anchored halfway to the live market so it moves with news the model can’t see. Context, not a bet edge — it matches the market, doesn’t beat the close.';
         const mkSp = (g.spread && g.spread.cons && g.spread.cons.home != null) ? round05(g.spread.cons.home) : null;
         const mkT = (g.total && g.total.cons != null) ? g.total.cons : null;
         // Market number lives in the columns above, so the footer shows only
@@ -42070,7 +42113,7 @@ window.VaultPropModel = (function () {
       const MKT = [['spread', 'Spread'], ['total', 'Total'], ['ml', 'Moneyline']];
       const byMkt = { spread: [], total: [], ml: [] };
       withBets.forEach(x => {
-        const gp = gmPredict(x.g.away, x.g.home); if (!gp) return;
+        const gp = gmLine(x.g); if (!gp) return;
         allLeans(x.g, gp).forEach(l => { if (byMkt[l.market]) byMkt[l.market].push({ g: x.g, lean: l }); });
       });
       const top = {}; MKT.forEach(([m]) => { byMkt[m].sort((a, b) => b.lean.score - a.lean.score); top[m] = byMkt[m].slice(0, 3); });
