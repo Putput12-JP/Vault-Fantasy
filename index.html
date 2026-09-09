@@ -50780,6 +50780,34 @@ table.rs-std tr.champ{background:color-mix(in srgb,var(--te) 8%,transparent)}
 }
 </style>
 
+<style id="vault-hig-mobile-8">
+/* ══════════════════════════════════════════════════════════════════════
+   VAULT HIG MOBILE KIT · slice 8 (Betting — Over/Under detail cards)
+   Condenses the expanded prop detail cards (.eb-2col) onto the kit: sans
+   labels, a tight auto-fit stat grid instead of loose wrapping rows, a
+   smaller price and lean tag. #page-betting-scoped so it out-specifies the
+   runtime bt-styles at every width (these cards render the same on mobile
+   and desktop).
+   ══════════════════════════════════════════════════════════════════════ */
+#page-betting .eb-2col{padding:13px 14px}
+#page-betting .eb-2col.lean::after{font-family:var(--font-sans);letter-spacing:.04em;top:13px;right:14px}
+#page-betting .eb-2h>span{font-family:var(--font-sans);font-size:13px;letter-spacing:.04em}
+#page-betting .eb-2h>b{font-family:var(--font-sans);font-size:13px}
+#page-betting .eb-2big{font-family:var(--font-sans);font-size:22px;margin-top:5px;font-variant-numeric:tabular-nums}
+#page-betting .eb-2bk{font-family:var(--font-sans);letter-spacing:.04em}
+#page-betting .eb-2rows{margin-top:10px;padding-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:9px 12px}
+#page-betting .eb-2rows>div{gap:2px}
+#page-betting .eb-2rows>div>span{font-family:var(--font-sans);letter-spacing:.03em}
+#page-betting .eb-2rows>div>b{font-family:var(--font-sans);font-size:13.5px;font-variant-numeric:tabular-nums}
+#page-betting .eb-2track{margin-top:11px;padding:7px 12px}
+@media(max-width:700px){
+  /* stack Over/Under full-width on mobile (the runtime bt-styles' 2-col rule is
+     injected later and was overriding the static mobile stack) so each card is
+     short and the stat grid flows across instead of stacking in a narrow column */
+  #page-betting .eb-2cols{grid-template-columns:1fr!important}
+}
+</style>
+
 <div class="vbud-root" id="vbud-root">
   <div class="vbud-panel" id="vbud-panel"></div>
   <div class="vbud-pill" id="vbud-pill">
