@@ -13426,10 +13426,10 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
-    ts:'2026-09-09T21:30', tag:'Improved', title:'The Vault line on Game Markets now moves with the market',
+    ts:'2026-09-09T21:45', tag:'Improved', title:'The Vault line on Game Markets now moves with the market',
     items:[
-      'Vault’s model line used to sit still between refreshes because it only learns from finished games. It now anchors halfway to the live market, so it shifts as the number moves on injuries, news and sharp money.',
-      'You still see Vault’s own tilt next to the number — it just no longer looks frozen when the world is moving.',
+      'Vault’s line on each game used to sit still between refreshes because it only learns from finished games. It now anchors halfway to the live market, so the number shifts as the market moves on injuries, news and sharp money.',
+      '“Vault vs. the market” still shows the model’s full disagreement, so your biggest divergences and tracked picks keep their full strength even though the headline line rides closer to the number.',
     ],
   },
   {
@@ -42051,7 +42051,16 @@ window.VaultPropModel = (function () {
       // Vault's spread / total / win% each sit directly beneath the market they
       // opine on, market value muted below, any line move folded into the column.
       // Gated to the regular season (gp is null otherwise → the simple footer).
+      // Two lines per card, deliberately split: `gp` is the SERVED line (blended
+      // halfway to the live market) — it's what the card's spread/total/win%
+      // cells show, so the headline number moves with the market. `conv` is the
+      // RAW model line (full conviction) — it drives the Track button and the
+      // "Vault vs the market" board, so a lean reflects the model's actual
+      // disagreement, not the muted served number. The Track button MUST key off
+      // the same basis as the movers board (below), which auto-tracks the same
+      // picks — otherwise a board-tracked pick wouldn't show as tracked here.
       const gp = (_gmModel && seasonReg) ? gmLine(g) : null;
+      const conv = (_gmModel && seasonReg) ? gmPredict(g.away, g.home) : null;
       const open = gExpanded.has(key);
       const cmpBtn = '<button class="bx-foot-btn" data-tgl="' + key + '">' + (open ? 'Hide books' : 'Compare books') + ' <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="' + (open ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6') + '"/></svg></button>';
       let foot;
@@ -42071,7 +42080,7 @@ window.VaultPropModel = (function () {
         const mlCell = cell(g.home + ' ' + gp.homeWinPct + '%', impH != null && Math.abs(gp.homeWinPct - impH) >= 6);
         // Track control: only the game's hardest lean (Vault's pushed best bet)
         // is trackable; it logs to Track Record. No lean past the bar → no button.
-        const lean = bestLean(g, gp); _trackMap[key] = { g, lean };
+        const lean = bestLean(g, conv); _trackMap[key] = { g, lean };
         let trackBtn = '';
         if (lean) { const tracked = gamePickLogged(g, lean);
           trackBtn = '<button class="bx-track' + (tracked ? ' on' : '') + '" data-track="' + key + '" title="' + (tracked ? 'Tracking this pick in Track Record' : 'Track Vault’s best bet — ' + lean.label) + '">' + (tracked ? '★ Tracking' : '☆ ' + lean.label) + '</button>'; }
@@ -42113,7 +42122,12 @@ window.VaultPropModel = (function () {
       const MKT = [['spread', 'Spread'], ['total', 'Total'], ['ml', 'Moneyline']];
       const byMkt = { spread: [], total: [], ml: [] };
       withBets.forEach(x => {
-        const gp = gmLine(x.g); if (!gp) return;
+        // Full conviction: the movers board ranks the RAW model line against the
+        // number (gmPredict, not the market-anchored gmLine the card shows), so a
+        // divergence is the model's actual disagreement — not the muted half it
+        // serves on the card. Card headline moves with the market; this board and
+        // the Track button it seeds keep the model's full conviction.
+        const gp = gmPredict(x.g.away, x.g.home); if (!gp) return;
         allLeans(x.g, gp).forEach(l => { if (byMkt[l.market]) byMkt[l.market].push({ g: x.g, lean: l }); });
       });
       const top = {}; MKT.forEach(([m]) => { byMkt[m].sort((a, b) => b.lean.score - a.lean.score); top[m] = byMkt[m].slice(0, 3); });
