@@ -79,9 +79,47 @@
     return _ready;
   }
 
+  // Resolve the signed-in user, tolerating the cold-load gap where Firebase
+  // Auth hasn't yet restored the persisted session. currentUser is null for a
+  // beat after load even when the user IS signed in, so a naive check made every
+  // EARLY private-ESPN read fail with "Sign in to Vault" — while a later view
+  // that ran after auth settled worked fine. That is exactly why a connected
+  // ESPN league showed up in the Portfolio with no players (Portfolio renders on
+  // cold load, My Team is navigated to afterwards): the roster fetch threw, the
+  // proxy returned null, and renderPortfolio folded in a phantom empty roster.
+  // We wait for Auth to appear and for the first onAuthStateChanged (bounded) so
+  // the restored session is honoured before we conclude nobody is signed in.
+  function authUser(timeoutMs) {
+    var ms = timeoutMs || 6000;
+    return new Promise(function (resolve) {
+      var t0 = Date.now();
+      (function poll() {
+        var fb = window.firebase;
+        if (fb && fb.auth) {
+          var auth = fb.auth();
+          if (auth.currentUser) { resolve(auth.currentUser); return; }
+          var done = false;
+          var unsub = auth.onAuthStateChanged(function (u) {
+            if (done) return; done = true;
+            try { unsub && unsub(); } catch (e) {}
+            resolve(u || null);
+          });
+          setTimeout(function () {
+            if (done) return; done = true;
+            try { unsub && unsub(); } catch (e) {}
+            resolve(auth.currentUser || null);
+          }, Math.max(0, ms - (Date.now() - t0)));
+          return;
+        }
+        if (Date.now() - t0 > ms) { resolve(null); return; }
+        setTimeout(poll, 50);
+      })();
+    });
+  }
+
   async function call(name, data) {
     var fns = await ready();
-    var user = window.firebase.auth && window.firebase.auth().currentUser;
+    var user = await authUser(6000);
     if (!user) throw new Error('Sign in to Vault before connecting ESPN.');
     var res = await fns.httpsCallable(name)(data || {});
     return res.data;

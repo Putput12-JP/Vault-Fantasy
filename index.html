@@ -13421,6 +13421,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-09T16:00', tag:'Fixed', title:'ESPN players now show up in your Portfolio',
+    items:[
+      'Connected ESPN leagues sometimes landed in the Portfolio with an empty roster, so your players, value and rank read as zero even though My Team showed them fine.',
+      'Your ESPN roster now loads reliably, and if it is slow to come back the Portfolio fills it in on its own instead of leaving the league blank.',
+    ],
+  },
+  {
     ts:'2026-09-09T10:00', tag:'New', title:'Betting now works on your phone',
     items:[
       'Game Markets and Player Props are now available on mobile, with the same +EV flags, Vault Best Bets and edge boards you get on desktop.',
@@ -24769,8 +24776,8 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
   const leagueData = await Promise.all(activeLeagues.map(async lg => {
     try {
       const _pfEspn = vpPlat(lg)==='espn';
-      let rosters, users, tradedPicks, matchups;
-      if (_pfEspn){ const ctx = await buildEspnContext(lg.league_id); rosters = ctx?ctx.rosters:[]; users = ctx?ctx.users:[]; tradedPicks = []; matchups = null; }
+      let rosters, users, tradedPicks, matchups, _espnFailed = false;
+      if (_pfEspn){ const ctx = await buildEspnContext(lg.league_id); rosters = ctx?ctx.rosters:[]; users = ctx?ctx.users:[]; tradedPicks = []; matchups = null; if(!ctx || !rosters.length) _espnFailed = true; }
       else [rosters, users, tradedPicks, matchups] = await Promise.all([
         pfFetchRosters(lg.league_id),
         fetch(`https://api.sleeper.app/v1/league/${lg.league_id}/users`).then(r=>r.json()).catch(()=>[]),
@@ -24865,13 +24872,27 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
         myPlayersCount: (myRoster?.players||[]).length,
         rosterPositions: lg.roster_positions || lg.settings?.roster_positions || [],
         caps: pfPlatformCaps(lg),
+        _loadFailed: _espnFailed,
         canPush: pfPlatformCaps(lg).write };
     } catch(e) {
       return { lg, myValue:0, myRank:'?', totalTeams:'?', grade:'?', gradeColor:'var(--muted)', myNames:[], posVals:{}, isDynasty:false, isSF:false,
         myRosterId:null, myStarters:[], myStartable:[], myReserve:[], myTaxi:[], myPlayersCount:0, rosterPositions:[],
-        caps: pfPlatformCaps(lg), canPush:false };
+        caps: pfPlatformCaps(lg), _loadFailed: vpPlat(lg)==='espn', canPush:false };
     }
   }));
+
+  // A private-ESPN read can come back empty if the proxy/auth wasn't ready the
+  // instant the Portfolio rendered (cold load / deep-link). That would fold in a
+  // phantom empty roster — the league showing with no players, dragging down the
+  // totals and rank. buildEspnContext caches nothing on failure, so re-running
+  // renderPortfolio re-fetches and self-heals; schedule ONE retry rather than
+  // leaving the user staring at an empty ESPN league until they navigate away.
+  if (leagueData.some(d => d && d._loadFailed) && !window._pfEspnRetried) {
+    window._pfEspnRetried = true;
+    setTimeout(() => { try { renderPortfolio(); } catch(e){} }, 1500);
+  } else if (!leagueData.some(d => d && d._loadFailed)) {
+    window._pfEspnRetried = false; // reset once everything loaded, for the next cold entry
+  }
 
   // Accumulate all owned names across every league for accurate cross-league signals
   leagueData.forEach(d => d.myNames?.forEach(n => { if (n) _allOwnedNames.add(n.toLowerCase()); }));
