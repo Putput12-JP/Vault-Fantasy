@@ -41609,6 +41609,7 @@ window.VaultPropModel = (function () {
   /* ── shell ────────────────────────────────────────────────────────────── */
   function shell() {
     return `
+    <div class="bt-navx"><div class="bt-navx-t">Betting</div><div class="bt-navx-s">Real sportsbook lines &middot; Vault model</div></div>
     <div class="bt-bar">
       <span class="bt-seg" id="bt-viewseg"></span>
       <span class="bt-tag" id="bt-tftag">GAME MARKETS</span>
@@ -43995,7 +43996,7 @@ window.VaultPropModel = (function () {
     // Desktop switches views from the nav dropdown (Betting → Game Markets /
     // Player Props), so the in-page toggle only exists on mobile, where the
     // bottom dock has no Betting dropdown.
-    if (isMobile()) { w.style.display = ''; w.className = 'bt-selwrap'; w.innerHTML = selHTML('bt-viewsel', [['games', 'Game Markets'], ['props', 'Player Props']], view); w.querySelector('select').onchange = e => setView(e.target.value); }
+    if (isMobile()) { w.style.display = ''; w.className = 'bt-seg bt-viewseg-kit'; w.innerHTML = [['games', 'Game Markets'], ['props', 'Player Props']].map(o => '<button' + (o[0] === view ? ' class="on"' : '') + ' data-bv="' + o[0] + '">' + o[1] + '</button>').join(''); w.querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.bv)); }
     else { w.style.display = 'none'; w.className = ''; w.innerHTML = ''; }
   }
   function infoText() {
@@ -50738,6 +50739,44 @@ table.rs-std tr.champ{background:color-mix(in srgb,var(--te) 8%,transparent)}
   #page-research .res-head-actions{display:none!important}
   #page-research .res-title{font-size:32px;letter-spacing:-.03em}
   #page-research .res-sub{margin-top:4px}
+}
+</style>
+
+<style id="vault-hig-mobile-7">
+/* ══════════════════════════════════════════════════════════════════════
+   VAULT HIG MOBILE KIT · slice 7 (Betting — Game Markets)
+   Brings the mobile Betting header onto the kit: a large-title "Betting"
+   header (mobile only), the Game Markets / Player Props switch rebuilt as a
+   segmented control (renderViewSel now emits .bt-seg buttons instead of a
+   <select>), and the terminal-style mono section labels softened to the kit's
+   sans labels. ≤700px, #page-betting scoped. Desktop uses its own nav header.
+   ══════════════════════════════════════════════════════════════════════ */
+.bt-navx{display:none}
+@media(max-width:700px){
+  #page-betting .bt-navx{display:block;margin:0 0 14px}
+  #page-betting .bt-navx-t{font-family:var(--font-sans);font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:1.04;color:var(--text)}
+  #page-betting .bt-navx-s{font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text2);margin-top:3px}
+
+  /* view switch: full-width segmented control */
+  #page-betting #bt-viewseg.bt-seg{flex:1 1 100%;width:100%}
+  #page-betting #bt-viewseg.bt-seg > button{flex:1}
+
+  /* soften mono section labels to the kit's sans labels (bt-styles is injected
+     at runtime after this block, so these need !important to win the cascade) */
+  #page-betting .bx-banner .eyebrow,
+  #page-betting .bx-mv-eyebrow,
+  #page-betting .bx-mv-gh{font-family:var(--font-sans)!important;letter-spacing:.05em!important}
+  #page-betting .bx-bstat .k,
+  #page-betting .bx-mv-sub{font-family:var(--font-sans)!important}
+  #page-betting .bx-bstat .v{font-variant-numeric:tabular-nums}
+
+  /* Player Props: soften section labels to sans, keep tabular figures */
+  #page-betting .eb-t,
+  #page-betting .eb-cn,
+  #page-betting .bb-sub,
+  #page-betting .bb-ll,
+  #page-betting .eb-be{font-family:var(--font-sans)!important}
+  #page-betting .bb-title{font-family:var(--font-sans)!important}
 }
 </style>
 
