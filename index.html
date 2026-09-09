@@ -1494,6 +1494,13 @@ header{
 .pf-v2-grouphdr:hover .pf-v2-grpchev,.pf-card-grouphdr:hover .pf-v2-grpchev{color:var(--accent2)}
 .pf-v2-grouphdr.collapsed .pf-v2-grpchev,.pf-card-grouphdr.collapsed .pf-v2-grpchev{transform:rotate(-90deg)}
 .pf-own-group + .pf-own-group{margin-top:20px}
+/* Full-width My Players: Dynasty and Redraft sit side by side as two columns.
+   The grid gap owns the spacing, so the stacked margin is dropped inside cols;
+   on a narrow screen it collapses back to one column and the gap keeps them apart. */
+.pf-own-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.pf-own-cols > .pf-own-group + .pf-own-group{margin-top:0}
+.pf-own-cols > .pf-own-group{min-width:0}
+@media(max-width:760px){.pf-own-cols{grid-template-columns:1fr;gap:20px}}
 .pf-own-grouphdr{display:flex;align-items:baseline;gap:10px;padding:0 0 8px;margin-bottom:4px;border-bottom:1px solid var(--border2)}
 .pf-own-grouphdr .pf-v2-grouphdr-lbl{font-family:var(--font-mono);font-size:var(--t-micro);font-weight:700;text-transform:uppercase;letter-spacing:.14em}
 .pf-own-grouphdr .pf-v2-grouphdr-count{font-family:var(--font-mono);font-size:var(--t-nano);color:var(--muted);letter-spacing:.06em;margin-left:0}
@@ -1535,9 +1542,8 @@ header{
 /* Section subtitle hint (right side of section heads) */
 .pf-v2-section-hint{font-size:var(--t-micro);color:var(--muted);font-family:var(--font-mono);letter-spacing:.04em}
 .pf-v2-section-body{padding:18px 24px}
-/* Bottom 2-up grid for Rostered Players + Signals */
-.pf-v2-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-@media(max-width:900px){.pf-v2-bottom-grid{grid-template-columns:1fr}}
+/* Full-width My Players row (Signals removed) */
+.pf-v2-bottom-grid{display:grid;grid-template-columns:1fr;gap:20px}
 /* Chevron column for expandable rows, proper button-sized hit target */
 .pf-v2-th-chev,.pf-v2-td-chev{width:56px;padding-left:14px;padding-right:6px;text-align:center;cursor:pointer}
 .pf-v2-chev{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;font-size:var(--t-h1);line-height:1;color:var(--muted);background:transparent;border:1px solid transparent;transition:transform 200ms var(--ease-out),background 150ms ease,border-color 150ms ease,color 150ms ease;font-family:var(--font-mono);font-weight:600}
@@ -5667,15 +5673,11 @@ function pgsOpen(name, pos, team){
         </div>
         <div id="pf-v2-table-wrap"></div>
       </div>
-      <!-- Rostered Players + Signals row -->
+      <!-- My Players — full width, split into Dynasty / Redraft columns -->
       <div class="pf-v2-bottom-grid">
         <div class="pf-v2-section">
           <div class="pf-v2-section-head pf-own-head"><span class="pf-v2-section-title">My Players</span><div class="pf-own-controls" id="pf-owned-controls"></div></div>
           <div id="pf-v2-owned" class="pf-v2-section-body"></div>
-        </div>
-        <div class="pf-v2-section">
-          <div class="pf-v2-section-head"><span class="pf-v2-section-title">Signals</span></div>
-          <div id="pf-v2-signals" class="pf-v2-section-body"></div>
         </div>
       </div>
     </div>
@@ -13420,6 +13422,13 @@ function _sdSetAdp(bucket, field, value){
    The "New" badge in Settings is driven by the newest entry's ts vs. the last
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
+  {
+    ts:'2026-09-09T18:00', tag:'Improved', title:'A cleaner My Players view in your Portfolio',
+    items:[
+      'My Players now spans the full width of the page, with your Dynasty and Redraft rosters side by side in their own columns.',
+      'Removed the Signals card to keep the focus on who you actually own across your leagues.',
+    ],
+  },
   {
     ts:'2026-09-09T16:00', tag:'Fixed', title:'ESPN players now show up in your Portfolio',
     items:[
@@ -24675,13 +24684,15 @@ function renderPortfolioV2(){
     if (ownedEl && typeof _buildPortfolioOwnedHtml === 'function') {
       if (bothFmt) {
         ownedEl.innerHTML =
-          `<div class="pf-own-group">
-             <div class="pf-own-grouphdr dyn"><span class="pf-v2-grouphdr-lbl">Dynasty</span><span class="pf-v2-grouphdr-count">${dynData.length} leagues</span></div>
-             <div class="pf-own-list">${_buildPortfolioOwnedHtml(countIn(dynData,'dynasty'), dynData.length)}</div>
-           </div>
-           <div class="pf-own-group">
-             <div class="pf-own-grouphdr rd"><span class="pf-v2-grouphdr-lbl">Redraft</span><span class="pf-v2-grouphdr-count">${rdData.length} leagues</span></div>
-             <div class="pf-own-list">${_buildPortfolioOwnedHtml(countIn(rdData,'redraft'), rdData.length)}</div>
+          `<div class="pf-own-cols">
+             <div class="pf-own-group">
+               <div class="pf-own-grouphdr dyn"><span class="pf-v2-grouphdr-lbl">Dynasty</span><span class="pf-v2-grouphdr-count">${dynData.length} leagues</span></div>
+               <div class="pf-own-list">${_buildPortfolioOwnedHtml(countIn(dynData,'dynasty'), dynData.length)}</div>
+             </div>
+             <div class="pf-own-group">
+               <div class="pf-own-grouphdr rd"><span class="pf-v2-grouphdr-lbl">Redraft</span><span class="pf-v2-grouphdr-count">${rdData.length} leagues</span></div>
+               <div class="pf-own-list">${_buildPortfolioOwnedHtml(countIn(rdData,'redraft'), rdData.length)}</div>
+             </div>
            </div>`;
       } else {
         const only = dynData.length ? dynData : rdData;
