@@ -4958,7 +4958,7 @@ function openConnect(){
       <div class="vcx-hd">ACCOUNT</div>
       <div class="vcx-list">
 <button class="vcx-row" data-vc-go="myteams"><span class="vcx-ic vcx-m"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a9 9 0 0 0-15-3L3 8M3 5v3h3M3 16a9 9 0 0 0 15 3l3-3M21 19v-3h-3"/></svg></span><span class="vcx-lb">Sleeper Sync</span><svg class="vcx-ch" viewBox="0 0 8 14" fill="none"><path d="M1 1l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<button class="vcx-row" data-vc-go="betting"><span class="vcx-ic vcx-m"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M21 7l-4 4-3-3-5 5"/></svg></span><span class="vcx-lb">Betting</span><span class="vcx-nt">DESKTOP</span><svg class="vcx-ch" viewBox="0 0 8 14" fill="none"><path d="M1 1l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<button class="vcx-row" data-vc-go="betting"><span class="vcx-ic vcx-m"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M21 7l-4 4-3-3-5 5"/></svg></span><span class="vcx-lb">Betting</span><svg class="vcx-ch" viewBox="0 0 8 14" fill="none"><path d="M1 1l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
     </div>
     <div class="vcx-empty" id="vc-empty" hidden>Nothing in Vault matches that.</div>
@@ -13420,6 +13420,12 @@ function _sdSetAdp(bucket, field, value){
    The "New" badge in Settings is driven by the newest entry's ts vs. the last
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
+  {
+    ts:'2026-09-09T10:00', tag:'New', title:'Betting now works on your phone',
+    items:[
+      'Game Markets and Player Props are now available on mobile, with the same +EV flags, Vault Best Bets and edge boards you get on desktop.',
+    ],
+  },
   {
     ts:'2026-09-08T14:00', tag:'Improved', title:'A cleaner look across the app on your phone',
     items:[
