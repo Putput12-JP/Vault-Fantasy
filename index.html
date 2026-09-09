@@ -5630,7 +5630,7 @@ function pgsOpen(name, pos, team){
 <div class="page z1" id="page-portfolio" style="overflow-y:auto;padding:24px 20px 40px">
   <div style="max-width:1100px;margin:0 auto">
     <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div id="pf-pagehdr" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
       <div>
         <h1 id="pf-viewdd-title" style="font-size:28px;font-weight:800;color:var(--text);letter-spacing:-0.03em;margin:0 0 4px;font-family:var(--font-sans)">My Portfolio</h1>
         <p id="pf-viewdd-sub" style="font-size:13px;color:var(--muted);margin:0">All your leagues · dynasty values · buy-ins &amp; payouts</p>
@@ -8462,11 +8462,11 @@ function _resRenderLeaderboard(players) {  const body = document.getElementById(
         <div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span style="font-size:14px;font-weight:700;color:var(--text);font-family:var(--font-sans)">${p.name}</span>
-            ${isRedraft && p.posRank ? `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:0.04em;color:${posCol};background:${posBg};border:1px solid ${posCol}55;padding:2px 6px;border-radius:4px" title="Position rank, redraft 1QB">${pos}${p.posRank}</span>` : ''}
             ${(()=>{const r=window._cachedTradeRoster||[];return r.some(rp=>rp.name===p.name)?'<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:0.06em;color:var(--rb);background:rgba(61,204,122,0.12);border:1px solid rgba(61,204,122,0.25);padding:2px 7px;border-radius:4px">ROSTERED</span>':''})()}
           </div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-            <span style="padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;font-family:var(--font-mono);background:${posBg};color:${posCol};border:1px solid ${posCol}33">${pos}</span>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:nowrap;white-space:nowrap">
+            ${isRedraft && p.posRank ? `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);letter-spacing:0.04em;color:${posCol};background:${posBg};border:1px solid ${posCol}55;padding:2px 6px;border-radius:4px;flex:0 0 auto" title="Position rank, redraft 1QB">${pos}${p.posRank}</span>` : ''}
+            <span style="padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;font-family:var(--font-mono);background:${posBg};color:${posCol};border:1px solid ${posCol}33;flex:0 0 auto">${pos}</span>
             <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">${p.team||'—'}</span>
           </div>
         </div>
@@ -13421,6 +13421,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-08T14:00', tag:'Improved', title:'A cleaner look across the app on your phone',
+    items:[
+      'Home, League, Portfolio and Research now share one tidy card style that matches your theme, so on Onyx they finally look Onyx instead of navy.',
+      'Stats and dollar figures line up in neat columns, and section labels are easier to read at a glance.',
+    ],
+  },
+  {
     ts:'2026-09-08T12:00', tag:'Fixed', title:'Best Bets no longer flags an Under the board is calling an Over',
     items:[
       'On a low reception line (like Under 1.5), Vault Best Bets could headline a big “value” Under built on a player’s part-time history, even when the player’s current role — and the props board itself — leaned Over.',
@@ -15421,7 +15428,9 @@ async function renderOverview() {
         totalTeams:totalTeams, overallLabel:_overallLabel, topPct:topPct, redraftTeamVal:_winNowVal,
         rec:_ovRec, pf:_ovPF, pa:_ovPA, pfRank:_ovPFRank, gp:(_ovRec?_ovRec.w+_ovRec.l+_ovRec.t:0),
         playoffOdds:playoffOdds, posRankInfo:_posRankInfo, roster:roster, starters:_starters,
-        isDyn:_ovIsDyn, platform:(_curLeague?vpPlat(_curLeague):'sleeper'), playoffStart:_ovPlayoffStart
+        isDyn:_ovIsDyn, platform:(_curLeague?vpPlat(_curLeague):'sleeper'), playoffStart:_ovPlayoffStart,
+        leagueId:ovLeagueId, season:(_curLeague&&_curLeague.season), rosterPositions:((_curLeague&&_curLeague.roster_positions)||[]),
+        myRosterId:(window._ovSosCtx&&window._ovSosCtx.myRosterId)
       };
       if (!_ovIsDyn && !window._rdvForceMatchup) {
         // Redraft league, Team Review selected → concept-parity Roster Preview.
@@ -24272,6 +24281,7 @@ function renderPortfolioV2(){
   const stripEl = document.getElementById('pf-v2-strip');
   const tableWrap = document.getElementById('pf-v2-table-wrap');
   if (!stripEl || !tableWrap) return;
+  stripEl.classList.remove('pfhig-root'); // cleared each render; the mobile branch re-adds it
   const data = window._pfLeagueData;
   if (!Array.isArray(data) || !data.length){
     stripEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);font-size:13px">Loading leagues...</div>';
@@ -24316,6 +24326,74 @@ function renderPortfolioV2(){
   const _pfInit = String(_pfName).replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase() || 'YV';
   // Format filter lives at the top-right of the hero row (identity left, scope
   // toggle right); it drives the money tiles below and the breakdown.
+  // ═══════════ MOBILE · HIG layout (matches the approved Portfolio mock) ═══════════
+  // Isolated to phones; desktop falls through to the original strip+table below.
+  const _pfMobHIG = (()=>{ try{ return window.matchMedia('(max-width:700px)').matches; }catch(e){ return false; } })();
+  if (_pfMobHIG) {
+    const _e = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const _init = n => String(n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || 'YV';
+    const _posC = {QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+    const _valOfN = n => (window.MyRankings && MyRankings.getValue && MyRankings.getValue(n,'dynasty')) || ((typeof getFCValue==='function') && getFCValue(n)?.value) || 0;
+    const _posOfN = n => ((typeof getFCValue==='function') && getFCValue(n)?.pos) || '';
+
+    // header identity + format switch
+    const _avA = _pfAv
+      ? `<img class="pfhig-acct" src="${_pfAv}" alt="" onerror="this.outerHTML='<div class=\\'pfhig-acct\\'>${_pfInit}</div>'">`
+      : `<div class="pfhig-acct">${_pfInit}</div>`;
+    const _seg = canFilter ? `<div class="vseg sm pf-fmtseg pfhig-seg" role="tablist" aria-label="Filter by format">`
+      + `<button class="${fmt==='all'?'on':''}" onclick="pfV2SetFmt('all')">All</button>`
+      + `<button class="${fmt==='dyn'?'on':''}" onclick="pfV2SetFmt('dyn')">Dynasty</button>`
+      + `<button class="${fmt==='rd'?'on':''}" onclick="pfV2SetFmt('rd')">Redraft</button></div>` : '';
+    const _nav = `<div class="pfhig-nav"><div class="pfhig-navtop"><div class="pfhig-navid">`
+      + `<div class="pfhig-title">Portfolio</div>`
+      + `<div class="pfhig-sub">${_e(_pfName)}'s Vault · ${totalLeagues} ${totalLeagues===1?'league':'leagues'}</div></div>`
+      + _avA + `</div>${_seg}</div>`;
+
+    // ON THE LINE summary card
+    const _staked = hasStake ? `<span class="pfhig-chip">${stakeCount} OF ${totalLeagues} STAKED</span>` : '';
+    const _netCls = net>=0?'up':'dn';
+    const _onLine = `<div class="pfhig-card"><div class="pfhig-cardhd"><span class="pfhig-cardt">On the Line</span>${_staked}</div>`
+      + `<div class="pfhig-3">`
+      + `<div class="pfhig-st"><span class="k">Total Value</span><span class="v gold">${(totalValue/1000).toFixed(1)}<small>k</small></span></div>`
+      + `<div class="pfhig-st"><span class="k">Buy-in</span><span class="v">${hasStake?_pfMoney(totalBuyIn):'—'}</span></div>`
+      + `<div class="pfhig-st"><span class="k">Projected</span><span class="v proj">${financeCount?_pfMoney(projCash):'—'}</span></div></div>`
+      + (hasStake?`<div class="pfhig-pl"><span class="k">Net P / L · if standings hold</span><span class="val"><span class="net ${_netCls}">${net>=0?'+':'−'}${_pfMoney(Math.abs(net))}</span><span class="roi ${_netCls}">${roi>=0?'+':''}${roi}% ROI</span></span></div>`:'')
+      + `</div>`;
+
+    // MOST ROSTERED · cross-league exposure
+    const _actLgs = scoped.filter(d => (d.myNames||[]).length>0 && (d.lg?.status!=='complete'));
+    const _tActive = _actLgs.length || 1;
+    const _pc = {}; _actLgs.forEach(d => (d.myNames||[]).forEach(n => { _pc[n] = (_pc[n]||0)+1; }));
+    const _top = Object.entries(_pc).sort((a,b)=>(b[1]-a[1])||(_valOfN(b[0])-_valOfN(a[0]))).slice(0,6);
+    const _mostRost = _top.length ? `<div class="pfhig-ghead">Most Rostered <span class="acc">· Your exposure</span></div><div class="pfhig-list">`
+      + _top.map(([name,cnt])=>{ const pos=_posOfN(name)||''; const col=_posC[pos]||'var(--muted)'; const v=_valOfN(name); const pct=Math.max(6,Math.round(cnt/_tActive*100));
+          return `<div class="pfhig-xrow"><div class="pfhig-xav" style="background:color-mix(in srgb,${col} 16%,transparent);color:${col}">${_init(name)}</div>`
+            + `<div class="pfhig-xid"><div class="pfhig-xn">${_e(name)}</div><div class="pfhig-xexp"><span class="pfhig-xtrack"><i style="width:${pct}%;background:${col}"></i></span><span class="pfhig-xct">${cnt} of ${_tActive} leagues</span></div></div>`
+            + `<span class="pfhig-xval" style="color:${col}">${v?(v/1000).toFixed(1)+'k':'—'}</span></div>`;
+        }).join('') + `</div>` : '';
+
+    // YOUR LEAGUES · grouped list, highest value first
+    const _rkCol = d => (typeof d.myRank==='number' && d.totalTeams) ? (d.myRank<=3?'var(--rb)':d.myRank<=Math.floor(d.totalTeams/2)?'var(--gold)':'var(--qb)') : 'var(--muted)';
+    const _sorted = scoped.slice().sort((a,b)=>(b.myValue||0)-(a.myValue||0));
+    const _leagues = `<div class="pfhig-ghead">Your Leagues <span class="acc">· ${scoped.length}</span></div><div class="pfhig-list">`
+      + _sorted.map(d=>{ const lg=d.lg||{}; const lgId=lg.league_id||'';
+          const tags = (d.isDynasty?'<span class="pfhig-tag dyn">DYNASTY</span>':'<span class="pfhig-tag rd">REDRAFT</span>')
+            + (d.isSF?'<span class="pfhig-tag sf">SF</span>':'') + `<span class="pfhig-tag tm">${d.totalTeams||'?'}T</span>`;
+          const val = d.myValue?(d.myValue/1000).toFixed(1)+'k':'—';
+          const rk = d.myRank?('#'+d.myRank):'—';
+          const fin=getPfFinance(lgId); const proj=fin?_pfProj(d):null; const nt=fin?(proj-(fin.buyIn||0)):null;
+          const netHtml = (nt!=null)?` · <span class="${nt>=0?'up':'dn'}">${nt>=0?'+':'−'}${_pfMoney(Math.abs(nt))}</span>`:'';
+          return `<div class="pfhig-lgrow" onclick="pfV2OpenLeague('${lgId}',event)"><div class="pfhig-lgid"><div class="pfhig-lgn">${_e(lg.name||'League')}</div><div class="pfhig-lgtags">${tags}</div></div>`
+            + `<div class="pfhig-lgmet"><div class="rk" style="color:${_rkCol(d)}">${rk}</div><div class="sub"><span class="v">${val}</span>${netHtml}</div></div><span class="pfhig-lgchev"></span></div>`;
+        }).join('') + `</div>`;
+
+    stripEl.classList.add('pfhig-root');
+    stripEl.innerHTML = _nav + _onLine + _mostRost + _leagues;
+    tableWrap.innerHTML = '';
+    if(!window._pfMqBound){ window._pfMqBound=1; try{ window.matchMedia('(max-width:700px)').addEventListener('change',()=>{ const p=document.getElementById('page-portfolio'); if(window._pfLeagueData&&p&&p.classList.contains('on')) renderPortfolioV2(); }); }catch(e){} }
+    return;
+  }
+
   const _pfFmtSeg = canFilter ? `<div class="vseg sm pf-fmtseg" role="tablist" aria-label="Filter by format">
       <button class="${fmt==='all'?'on':''}" onclick="pfV2SetFmt('all')">All</button>
       <button class="${fmt==='dyn'?'on':''}" onclick="pfV2SetFmt('dyn')">Dynasty</button>
@@ -36698,9 +36776,161 @@ function _buildRedraftPreview(d){
     + race + pair1 + strip + posGroups + pair2
     + '</div>';
 
+  // ═══════════ MOBILE · HIG "My Team" layout (matches the approved mock) ═══════════
+  // Phones only; desktop returns the two-column preview below. Reuses the real
+  // race / positional-strength / waiver / lineup blocks (so the async fillers for
+  // #rrp-race and #rdv-waiver still populate them) and rebuilds the large-title
+  // nav, the Season/Matchup/Roster segmented control, and SF-Symbol snapshot tiles.
+  var _mobHIG=(function(){ try{ return window.matchMedia('(max-width:700px)').matches; }catch(e){ return false; } })();
+  if (_mobHIG) {
+    var _av = d.avatarUrl
+      ? '<img class="mthx-acct" src="'+_rrpEsc(d.avatarUrl)+'" alt="" onerror="this.outerHTML=\'<div class=&quot;mthx-acct&quot;>'+_rdvInitials(d.managerName)+'</div>\'">'
+      : '<div class="mthx-acct">'+_rdvInitials(d.managerName)+'</div>';
+    var _tab = (window._mthxTab==='matchup'||window._mthxTab==='roster')?window._mthxTab:'season';
+    var _navX = '<div class="mthx-nav"><div class="mthx-navtop"><div class="mthx-navid">'
+      + '<div class="mthx-title">My Team</div>'
+      + '<div class="mthx-sub">'+_rrpEsc(d.leagueName||'My League')+' · '+teams+'-team '+_rrpEsc(d.scoring||'PPR')+'</div></div>'+_av+'</div>'
+      + '<div class="vseg sm mthx-seg" role="tablist" aria-label="View">'
+      + '<button class="'+(_tab==='season'?'on':'')+'" onclick="window._mthxTab=\'season\';renderOverview()">Season</button>'
+      + '<button class="'+(_tab==='matchup'?'on':'')+'" onclick="window._mthxTab=\'matchup\';renderOverview()">Matchup</button>'
+      + '<button class="'+(_tab==='roster'?'on':'')+'" onclick="window._mthxTab=\'roster\';renderOverview()">Roster</button>'
+      + '</div></div>';
+
+    // SF-Symbol snapshot tiles, from the same raw values the emoji tiles use
+    var _ic={
+      faab:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.4"/></svg>',
+      waiver:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 5.5v3M3.5 6.5h-1M3 18h2l-2 2.5h2"/></svg>',
+      win:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15l5-5 3.5 3.5L20 6"/><path d="M15 6h5v5"/></svg>',
+      health:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l2-5 3.5 10L15 8l2 4h4"/></svg>'
+    };
+    var _tFaab = hasFaab
+      ? '<div class="v">$'+faabLeft+' <span>/ $'+faabBudget+'</span></div><div class="tbar"><i style="width:'+Math.round(faabBudget?(faabLeft/faabBudget*100):0)+'%"></i></div>'
+      : ((isEspn&&_esx)?'<div class="v">'+(_esx.moves||0)+' <span>moves</span></div>':'<div class="v">—</div>');
+    var _tWaiver = '<div class="v">'+(d.waiverPos?('#'+d.waiverPos+' <span>of '+teams+'</span>'):(hasFaab?'FAAB':'—'))+'</div>';
+    var _tWin = gp
+      ? '<div class="v">'+Math.round(winPct*100)+'% <span>'+rec.w+'-'+rec.l+'</span></div>'
+      : ((isEspn&&_esx&&_esx.projRank)?'<div class="v">#'+_esx.projRank+' <span>proj</span></div>':'<div class="v">— <span></span></div>');
+    var _tHealth = '<div class="v">'+activeN+'<span>/'+rosterN+' active</span></div>';
+    var _tilesX = '<div class="mthx-sec"><div class="mthx-ghead">Team Snapshot</div><div class="mthx-tiles">'
+      + '<div class="mthx-tile faab"><div class="ic">'+_ic.faab+'</div><div class="k">FAAB Left</div>'+_tFaab+'</div>'
+      + '<div class="mthx-tile waiver"><div class="ic">'+_ic.waiver+'</div><div class="k">Waiver Order</div>'+_tWaiver+'</div>'
+      + '<div class="mthx-tile win"><div class="ic">'+_ic.win+'</div><div class="k">Win %</div>'+_tWin+'</div>'
+      + '<div class="mthx-tile health"><div class="ic">'+_ic.health+'</div><div class="k">Roster Health</div>'+_tHealth+'</div>'
+      + '</div></div>';
+
+    // Compact "The Race" card (mock uses a 3-col stat row + trajectory sparkline,
+    // not the desktop card's stacked stats + full remaining-schedule grid).
+    var _raceX = '<div class="mthx-race">'
+      + '<div class="mthx-race-hd"><span class="t">League Outlook · The Race</span><span class="mthx-chip">'+(gp?('AFTER WK '+gp):'PRESEASON')+'</span></div>'
+      + '<div class="mthx-3">'
+      + '<div class="mthx-rst"><span class="k">Power Seed</span><span class="v">#'+seed+' <small>of '+teams+'</small></span><span class="d">'+_rrpEsc(cutGap)+'</span></div>'
+      + '<div class="mthx-rst"><span class="k">Projected</span><span class="v">'+projW+'-'+projL+'</span><span class="d">#'+seed+' seed</span></div>'
+      + '<div class="mthx-rst hi"><span class="k">Playoff Odds</span><span class="v">'+oddsP+'%</span><span class="d">bye '+oddsBye+'% · title '+oddsTitle+'%</span></div>'
+      + '</div>'
+      + '<div class="mthx-spark">'+trajChart+'</div>'
+      + '</div>';
+
+    // ROSTER tab: full roster grouped by position (HIG grouped lists)
+    var _order=['QB','RB','WR','TE','K','DEF'], _byPos={};
+    (d.roster||[]).forEach(function(p){ var pz=(p.pos||'?'); (_byPos[pz]=_byPos[pz]||[]).push(p); });
+    var _startSet={}; (d.starters||[]).forEach(function(s){ if(s&&s.sleeperId) _startSet[String(s.sleeperId)]=1; });
+    var _rval=function(n){ return (typeof _rdvVal==='function'&&_rdvVal(n))||((typeof getFCValue==='function'&&getFCValue(n))?getFCValue(n).value:0)||0; };
+    var _rosterX='';
+    _order.forEach(function(pz){ var arr=(_byPos[pz]||[]).slice().sort(function(a,b){return _rval(b.name)-_rval(a.name);}); if(!arr.length) return;
+      _rosterX+='<div class="mthx-sec"><div class="mthx-ghead">'+pz+' <span class="acc">· '+arr.length+'</span></div><div class="mthx-list">'
+        + arr.map(function(p){ var col=posC[pz]||'var(--muted)'; var ph=vaultHeadshot(p.name,p.sleeperId,34); var st=_startSet[String(p.sleeperId)]; var v=_rval(p.name);
+            return '<div class="mthx-prow"'+((p.pos!=='DEF'&&p.name)?' onclick="openPlayerProfile(\''+ppArg(p.name)+'\',\''+(p.sleeperId||'')+'\',\''+(p.pos||'')+'\',\''+(p.team||'')+'\')"':'')+'>'
+              +'<div class="mthx-pav" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),0 0 0 2px '+col+'">'+(ph?'<img src="'+ph+'" onerror="this.style.display=\'none\';this.parentNode.textContent=\''+_rdvInitials(p.name)+'\'">':_rdvInitials(p.name))+'</div>'
+              +'<div class="mthx-pid"><div class="mthx-pn">'+_rrpEsc(p.name)+(st?' <span class="mthx-start">STARTER</span>':'')+'</div><div class="mthx-pmeta"><span style="color:'+col+';font-weight:700">'+pz+'</span> · '+_rrpEsc(p.team||'FA')+'</div></div>'
+              +'<div class="mthx-pval" style="color:'+col+'">'+(v?(v/1000).toFixed(1)+'k':'—')+'</div></div>';
+          }).join('') + '</div></div>';
+    });
+    if(!_rosterX) _rosterX='<div class="mthx-mu-empty">No roster loaded for this league yet.</div>';
+
+    var _content;
+    if (_tab==='matchup') {
+      _content='<div class="mthx-mu-wrap"><div class="mthx-ghead">This Week · Matchup</div><div id="mthx-mu"><div class="mthx-mu-empty"><span class="spinner sm"></span> Loading matchup…</div></div></div>';
+      setTimeout(function(){ try{ window._mthxRenderMatchup(d); }catch(e){} }, 0);
+    } else if (_tab==='roster') {
+      _content=_rosterX;
+    } else {
+      _content=_raceX+_tilesX+posStrength+waiver+'<div id="rrp-lineup">'+strip+'</div>';
+    }
+    return '<div class="mthx-root">'+_navX+_content+'</div>';
+  }
+
   return '<div class="rrp-wrap">'+profile+right+'</div>';
 }
 window._buildRedraftPreview=_buildRedraftPreview;
+
+/* HIG mobile Matchup (Season/Matchup/Roster segmented, Matchup tab). Self-
+   contained so it matches the kit exactly: fetches this week's head-to-head and
+   renders an HIG score card + starter-vs-starter grouped list into #mthx-mu. */
+async function _mthxRenderMatchup(d){
+  var el=document.getElementById('mthx-mu'); if(!el) return;
+  try{
+    var lid=d.leagueId, myRid=d.myRosterId;
+    if(!lid || myRid==null){ el.innerHTML='<div class="mthx-mu-empty">Matchup needs a connected league.</div>'; return; }
+    var _lg=(typeof myTeamsData!=='undefined'&&myTeamsData||[]).find(function(l){return l.league_id===lid;})||{};
+    var scoring=_lg.scoring_settings||{};
+    var season=d.season||(new Date().getFullYear()+'');
+    var week=d.curWeek||0;
+    if(!week){ try{ var stt=await fetch('https://api.sleeper.app/v1/state/nfl').then(function(r){return r.json();}); week=(typeof _vaultProjWeek==='function')?_vaultProjWeek(stt):(stt.week||1); }catch(e){ week=1; } }
+    if(!week||week<1) week=1;
+    var slots=(d.rosterPositions||[]).filter(function(s){return s!=='BN'&&s!=='IR'&&s!=='TAXI';});
+    var fj=function(u){ return fetch(u).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}); };
+    var res=await Promise.all([
+      fj('https://api.sleeper.app/v1/league/'+lid+'/matchups/'+week),
+      fj('https://api.sleeper.app/v1/league/'+lid+'/rosters'),
+      fj('https://api.sleeper.app/v1/league/'+lid+'/users'),
+      _rdvFetchProjections(season, week)
+    ]);
+    var mw=res[0], rosters=res[1], users=res[2], proj=res[3];
+    var userById={}; (users||[]).forEach(function(u){ userById[u.user_id]=u; });
+    var tinfo={}; (rosters||[]).forEach(function(r){ var u=userById[r.owner_id]||{},md=u.metadata||{},s=r.settings||{};
+      tinfo[r.roster_id]={ team:md.team_name||u.display_name||('Team '+r.roster_id), mgr:u.display_name||u.username||'', avatar:u.avatar?('https://sleepercdn.com/avatars/thumbs/'+u.avatar):'', rec:(s.wins||0)+'-'+(s.losses||0)+((s.ties)?'-'+s.ties:'') }; });
+    var mine=(mw||[]).find(function(x){return x.roster_id===myRid;});
+    var opp=mine&&mine.matchup_id!=null?(mw||[]).find(function(x){return x.roster_id!==myRid&&x.matchup_id===mine.matchup_id;}):null;
+    var _e=function(s){ return _rrpEsc(s); };
+    function resolve(pid){ pid=String(pid||''); if(!pid||pid==='0')return null; var pm=proj[pid];
+      var name=(pm&&pm.name)||(window.globalPidToName&&globalPidToName[pid])||'—';
+      var pos=(pm&&pm.pos)||''; var team=(pm&&pm.team)||''; var pts=pm?_rdvProjPts(pm.stats,scoring):null;
+      return {name:name,pos:pos,team:team,pts:pts,sid:pid}; }
+    function _pAv(p){ if(!p||p.name==='—') return '<span class="av"></span>';
+      var col=_RDV_POSC[p.pos]||'var(--muted)'; var ph=vaultHeadshot(p.name,p.sid,30);
+      return '<span class="av" style="box-shadow:0 0 0 2px '+col+'">'+(ph?'<img src="'+ph+'" onerror="this.style.display=\'none\';this.parentNode.textContent=\''+_rdvInitials(p.name)+'\'">':_rdvInitials(p.name))+'</span>'; }
+    if(!mine || mine.matchup_id==null || !(mine.starters||[]).length){
+      el.innerHTML='<div class="mthx-mu-empty">This week\'s matchup isn\'t posted yet. Check back when Week '+week+' lineups lock.</div>'; return;
+    }
+    var myStart=mine.starters||[], opStart=(opp&&opp.starters)||[];
+    var myAct=mine.starters_points||[], opAct=(opp&&opp.starters_points)||[];
+    var live=(myAct.reduce(function(s,v){return s+(+v||0);},0)+opAct.reduce(function(s,v){return s+(+v||0);},0))>0.01;
+    var myT=tinfo[myRid]||{team:d.teamName||'My Team',mgr:d.managerName,avatar:d.avatarUrl,rec:'0-0'};
+    var opT=(opp&&tinfo[opp.roster_id])||{team:'Bye / TBD',mgr:'',avatar:'',rec:''};
+    var n=Math.max(myStart.length, opStart.length, slots.length), myTot=0, opTot=0, rows='';
+    for(var i=0;i<n;i++){ var slot=slots[i]||'FLEX', base=_rdvSlotBase(slot); var a=resolve(myStart[i]), b=resolve(opStart[i]);
+      var ap=live&&myAct[i]!=null?+myAct[i]:(a&&a.pts!=null?a.pts:0), bp=live&&opAct[i]!=null?+opAct[i]:(b&&b.pts!=null?b.pts:0);
+      myTot+=ap; opTot+=bp; var col=_RDV_POSC[base]||'var(--muted)';
+      rows+='<div class="mthx-mu-row">'
+        +'<div class="mthx-mu-side me'+(ap>=bp?' win':'')+'">'+_pAv(a)+'<span class="nm">'+(a?_e(_rdvSurname(a.name)):'—')+'</span><span class="pt">'+(a&&a.pts!=null?ap.toFixed(1):'—')+'</span></div>'
+        +'<span class="mthx-mu-slot" style="color:'+col+'">'+_rdvSlotLabel(slot)+'</span>'
+        +'<div class="mthx-mu-side opp'+(bp>ap?' win':'')+'"><span class="pt">'+(b&&b.pts!=null?bp.toFixed(1):'—')+'</span><span class="nm">'+(b?_e(_rdvSurname(b.name)):'—')+'</span>'+_pAv(b)+'</div>'
+        +'</div>';
+    }
+    var wpMe=opp?_rdvWinProb(myTot-opTot):100, wpOp=100-wpMe;
+    var av=function(t){ return t.avatar?'<img src="'+t.avatar+'" onerror="this.style.display=\'none\';this.parentNode.textContent=\''+_rdvInitials(t.team)+'\'">':_rdvInitials(t.team); };
+    var head='<div class="mthx-card mthx-mu-card"><div class="mthx-mu-top">'
+      +'<div class="mthx-mu-team"><div class="av" style="box-shadow:0 0 0 2px var(--accent2)">'+av(myT)+'</div><div class="tn">'+_e(myT.team)+'</div><div class="sc">'+myTot.toFixed(1)+'</div></div>'
+      +'<div class="mthx-mu-vs">VS</div>'
+      +'<div class="mthx-mu-team opp"><div class="av">'+av(opT)+'</div><div class="tn">'+_e(opT.team)+'</div><div class="sc">'+(opp?opTot.toFixed(1):'—')+'</div></div>'
+      +'</div>'
+      +(opp?'<div class="mthx-mu-wp"><span class="me">'+wpMe+'%</span><div class="bar"><i class="me" style="width:'+wpMe+'%"></i><i class="opp" style="width:'+wpOp+'%"></i></div><span class="opp">'+wpOp+'%</span></div>':'')
+      +'</div>';
+    el.innerHTML=head+'<div class="mthx-sec" style="margin-top:16px"><div class="mthx-ghead">Starters <span class="acc">· WK '+week+'</span></div><div class="mthx-list mthx-mu-list">'+rows+'</div></div>';
+  }catch(e){ el.innerHTML='<div class="mthx-mu-empty">Couldn\'t load the matchup right now.</div>'; }
+}
+window._mthxRenderMatchup=_mthxRenderMatchup;
+
 function _rrpOpenTrades(){ try{ if(typeof setPage==='function') setPage('trade'); else if(typeof showPage==='function') showPage('trade'); }catch(e){} }
 window._rrpOpenTrades=_rrpOpenTrades;
 
@@ -50182,6 +50412,327 @@ table.rs-std tr.champ{background:color-mix(in srgb,var(--te) 8%,transparent)}
 .vbud-rcfoot .ghost{background:transparent;color:var(--muted);font-weight:600}
 @media(max-width:700px){.vbud-root{right:14px;bottom:148px}.vbud-panel{width:300px}.vbud-fab{width:50px;height:50px}.vbud-dot{width:13px;height:13px;top:-1px;right:1px}.vbud-grade{min-width:20px;height:19px;font-size:11px}}
 @media(prefers-reduced-motion:reduce){.vbud-root *{animation:none!important}}
+</style>
+
+<style id="vault-hig-mobile">
+/* ══════════════════════════════════════════════════════════════════════
+   VAULT HIG MOBILE KIT · slice 1 (Home / My Team)
+   Retunes the existing mobile Home components onto the Apple-HIG kit from
+   the onyx mockups: theme-token surfaces (so onyx reads as onyx instead of
+   the hardcoded navy), inset grouped lists with hairline separators, iOS
+   spacing, and tabular figures. CSS-only, mobile-scoped (≤700px), and
+   reversible — no markup or JS changes. Kept after dv-shadcn-restyle so it
+   wins the cascade; #page-overview prefixes out-specify the density pass.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(max-width:700px){
+  /* 1 · Surfaces → tokens. The mth-*/cc-card backgrounds are hardcoded navy
+     (rgba(20,30,54,…)), so onyx and light rendered wrong. Tokenise them. */
+  #page-overview .mth-profile,
+  #page-overview .mth-strip-card,
+  #page-overview .cc-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+  }
+  #page-overview .mth-hero-stats{border:1px solid var(--border);background:var(--border)}
+  #page-overview .mth-hero-stat{background:var(--s2)}
+
+  /* 2 · Type. iOS uses the system face for numerals and labels, not a mono
+     terminal font. Move values to sans + tabular figures; calm the labels. */
+  #page-overview .mth-hero-val,
+  #page-overview .mth-snap-v,
+  #page-overview .mth-ps-rank,
+  #page-overview .rrp-stat .v{font-family:var(--font-sans);font-variant-numeric:tabular-nums}
+  #page-overview .mth-snap-title,
+  #page-overview .mth-hero-label,
+  #page-overview .mth-strip-label{font-family:var(--font-sans);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  #page-overview .mth-mgr-label{font-family:var(--font-sans)}
+  #page-overview .mth-mgr-name{font-size:var(--t-title);letter-spacing:-.03em}
+
+  /* 3 · Team Snapshot → grid of inset tiles (each metric is its own card). */
+  #page-overview .mth-snapshot{border-top:none;padding:0;margin-top:16px}
+  #page-overview .mth-snap-grid{gap:9px}
+  #page-overview .mth-snapshot .mth-snap-item{
+    background:var(--s2);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:11px 13px;
+    gap:6px;
+  }
+  #page-overview .mth-snap-k{font-family:var(--font-sans);font-size:12px;color:var(--muted)}
+  #page-overview .mth-snap-v{font-size:var(--t-body);font-weight:800;letter-spacing:-.02em}
+  #page-overview .mth-snap-rank{color:var(--muted);font-weight:600}
+
+  /* 4 · Positional Strength → one inset grouped list with hairline rows. */
+  #page-overview .mth-posstrength{
+    border-top:none;
+    margin-top:16px;
+    padding:6px 14px 10px;
+    background:var(--s2);
+    border:1px solid var(--border);
+    border-radius:16px;
+  }
+  #page-overview .mth-posstrength .mth-snap-title{padding-top:8px}
+  #page-overview .mth-ps-row{padding:11px 0}
+  #page-overview .mth-ps-row + .mth-ps-row{border-top:1px solid var(--border)}
+  #page-overview .mth-ps-pos{font-family:var(--font-sans);font-weight:800}
+  #page-overview .mth-ps-label{font-family:var(--font-sans)}
+
+  /* 5 · League Settings block shares the snapshot divider; tokenise it too. */
+  #page-overview .mth-settings{border-top:1px solid var(--border);margin-top:16px}
+}
+@media(max-width:700px) and (prefers-reduced-motion:reduce){
+  #page-overview .mth-ps-fill{transition:none!important}
+}
+</style>
+
+<style id="vault-hig-mobile-2">
+/* ══════════════════════════════════════════════════════════════════════
+   VAULT HIG MOBILE KIT · slice 2 (League · Portfolio · Research)
+   Extends slice 1 across the other three tabs. League and Research already
+   theme through tokens, so their pass is grouped-list polish + tabular,
+   iOS-scale figures. Portfolio's money strip was hardcoded navy
+   (linear-gradient(#161e36,#10172a)); tokenise it so onyx reads as onyx.
+   CSS-only, ≤700px, page-id scoped, reversible — no markup/JS changes.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(max-width:700px){
+
+  /* ── LEAGUE (#page-teams) — power-ranking rows as calm inset cards ── */
+  #page-teams .lh-pr-list{gap:8px}
+  #page-teams .lh-pr-mcard{border-radius:14px}
+  #page-teams .lh-pr-val,
+  #page-teams .lh-pr-mval .lh-pr-val{font-variant-numeric:tabular-nums}
+  #page-teams .lh-pr-rk{font-variant-numeric:tabular-nums}
+  #page-teams .lh-tierband .lh-tb-label{font-family:var(--font-sans);letter-spacing:.06em;text-transform:uppercase}
+
+  /* ── PORTFOLIO (#page-portfolio) ── */
+  /* kill the hardcoded navy strip so the money summary matches the theme */
+  #page-portfolio .pf-v2-strip{background:var(--surface)}
+  #page-portfolio .pf-v2-stat-num,
+  #page-portfolio .pf-hero-headline b,
+  #page-portfolio .pf-v2-td-num{font-variant-numeric:tabular-nums}
+  #page-portfolio .pf-v2-stat-lbl,
+  #page-portfolio .pf-hero-eyebrow,
+  #page-portfolio .pf-hero-sub{font-family:var(--font-sans);letter-spacing:.06em}
+  /* money tiles: a touch more air so each metric reads as its own cell */
+  #page-portfolio .pf-v2-stat{padding:16px 16px}
+
+  /* ── RESEARCH (#page-research) — leaderboard rows + figures ── */
+  #page-research .res-lb-row{border-radius:12px}
+  /* mobile shows name · value · rank; make the numeric cells tabular */
+  #page-research .res-lb-row > *:nth-child(3),
+  #page-research .res-lb-row.has7 > *:nth-child(6),
+  #page-research .res-lb-row.has6 > *:nth-child(5){font-variant-numeric:tabular-nums}
+}
+</style>
+
+<style id="vault-hig-mobile-3">
+/* ══════════════════════════════════════════════════════════════════════
+   VAULT HIG MOBILE KIT · slice 3 (Portfolio, full mock parity)
+   The mobile Portfolio is rebuilt by renderPortfolioV2's _pfMobHIG branch to
+   match the approved mock: large-title header + account avatar, segmented
+   filter, ON THE LINE summary card, MOST ROSTERED exposure list, YOUR LEAGUES
+   grouped list. This block styles that markup (all .pfhig-*) and hides the
+   classic header/table/bottom-grid on phones. Token-based (theme-safe),
+   ≤700px, #page-portfolio scoped, reversible. Desktop is untouched.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(max-width:700px){
+  #page-portfolio #pf-pagehdr,
+  #page-portfolio #pf-v2-section-table,
+  #page-portfolio .pf-v2-bottom-grid{display:none!important}
+  #page-portfolio #pf-v2-strip.pfhig-root{background:none;border:0;border-radius:0;overflow:visible;margin-bottom:0;padding:0}
+
+  .pfhig-navtop{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  .pfhig-navid{min-width:0}
+  .pfhig-title{font-family:var(--font-sans);font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:1.04;color:var(--text)}
+  .pfhig-sub{font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text2);margin-top:3px}
+  .pfhig-acct{width:36px;height:36px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-family:var(--font-sans);font-size:14px;font-weight:800;color:var(--text);background:var(--s3);box-shadow:0 0 0 2px var(--accent2), inset 0 0 0 1px rgba(255,255,255,.06);object-fit:cover;overflow:hidden}
+  .pfhig-seg{width:100%;margin-top:12px}
+  .pfhig-seg button{flex:1}
+
+  .pfhig-card{margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:15px 15px 14px;box-shadow:0 12px 26px -18px rgba(0,0,0,.8)}
+  .pfhig-cardhd{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+  .pfhig-cardt{font-family:var(--font-sans);font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text)}
+  .pfhig-chip{font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.06em;padding:4px 8px;border-radius:100px;color:var(--accent2);background:color-mix(in srgb,var(--accent2) 15%,transparent)}
+  .pfhig-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .pfhig-st{display:flex;flex-direction:column;gap:3px}
+  .pfhig-st .k{font-family:var(--font-sans);font-size:10px;font-weight:600;color:var(--muted)}
+  .pfhig-st .v{font-family:var(--font-sans);font-size:21px;font-weight:800;letter-spacing:-.03em;line-height:1;color:var(--text);font-variant-numeric:tabular-nums}
+  .pfhig-st .v small{font-size:12px;font-weight:600;opacity:.65}
+  .pfhig-st .v.gold{color:var(--te)} .pfhig-st .v.proj{color:var(--accent2)}
+  .pfhig-pl{display:flex;align-items:center;justify-content:space-between;margin-top:13px;padding-top:11px;border-top:1px solid var(--border)}
+  .pfhig-pl .k{font-family:var(--font-sans);font-size:12px;font-weight:600;color:var(--text2)}
+  .pfhig-pl .val{display:flex;align-items:baseline;gap:8px}
+  .pfhig-pl .net{font-family:var(--font-sans);font-size:18px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .pfhig-pl .roi{font-family:var(--font-sans);font-size:12px;font-weight:700}
+  .pfhig-pl .up{color:var(--rb)} .pfhig-pl .dn{color:var(--qb)}
+
+  .pfhig-ghead{font-family:var(--font-sans);font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 4px 8px;margin-top:18px}
+  .pfhig-ghead .acc{color:var(--accent2)}
+  .pfhig-list{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+
+  .pfhig-xrow{display:flex;align-items:center;gap:11px;padding:10px 13px;position:relative}
+  .pfhig-xrow + .pfhig-xrow::before{content:"";position:absolute;top:0;left:57px;right:0;height:1px;background:var(--border)}
+  .pfhig-xav{width:34px;height:34px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;font-family:var(--font-sans);font-size:12px;font-weight:800;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+  .pfhig-xid{flex:1 1 auto;min-width:0}
+  .pfhig-xn{font-family:var(--font-sans);font-size:15px;font-weight:650;letter-spacing:-.01em;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pfhig-xexp{display:flex;align-items:center;gap:8px;margin-top:5px}
+  .pfhig-xtrack{flex:1 1 auto;height:5px;border-radius:100px;background:var(--s3);overflow:hidden;max-width:130px}
+  .pfhig-xtrack i{display:block;height:100%;border-radius:100px}
+  .pfhig-xct{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text2);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pfhig-xval{font-family:var(--font-sans);font-size:14px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;flex:0 0 auto}
+
+  .pfhig-lgrow{display:flex;align-items:center;gap:11px;padding:11px 13px;position:relative;cursor:pointer}
+  .pfhig-lgrow + .pfhig-lgrow::before{content:"";position:absolute;top:0;left:13px;right:0;height:1px;background:var(--border)}
+  .pfhig-lgid{flex:1 1 auto;min-width:0}
+  .pfhig-lgn{font-family:var(--font-sans);font-size:15px;font-weight:650;letter-spacing:-.01em;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pfhig-lgtags{display:flex;align-items:center;gap:5px;margin-top:4px}
+  .pfhig-tag{font-family:var(--font-sans);font-size:8.5px;font-weight:800;letter-spacing:.05em;padding:2px 5px;border-radius:4px}
+  .pfhig-tag.dyn{color:var(--accent2);background:color-mix(in srgb,var(--accent2) 15%,transparent)}
+  .pfhig-tag.rd{color:var(--te);background:color-mix(in srgb,var(--te) 15%,transparent)}
+  .pfhig-tag.sf{color:var(--wr);background:color-mix(in srgb,var(--wr) 15%,transparent)}
+  .pfhig-tag.tm{color:var(--muted);background:color-mix(in srgb,var(--text) 8%,transparent)}
+  .pfhig-lgmet{flex:0 0 auto;text-align:right}
+  .pfhig-lgmet .rk{font-family:var(--font-sans);font-size:14px;font-weight:800;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+  .pfhig-lgmet .sub{font-family:var(--font-sans);font-size:11px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums;color:var(--text2)}
+  .pfhig-lgmet .sub .v{color:var(--text2)} .pfhig-lgmet .sub .up{color:var(--rb)} .pfhig-lgmet .sub .dn{color:var(--qb)}
+  .pfhig-lgchev{width:8px;height:8px;border-right:2px solid var(--muted);border-top:2px solid var(--muted);transform:rotate(45deg);flex:0 0 auto;opacity:.6;margin-left:2px}
+}
+</style>
+
+<style id="vault-hig-mobile-4">
+/* ══════════════════════════════════════════════════════════════════════
+   VAULT HIG MOBILE KIT · slice 4 (Home / My Team, full mock parity)
+   The mobile Home is rebuilt by _buildRedraftPreview's _mobHIG branch to match
+   the approved mock: large-title nav + account avatar, Season/Matchup/Roster
+   segmented control, The Race, SF-Symbol Team Snapshot tiles, Positional
+   Strength, Waiver Targets, lineup. This block styles the new markup (.mthx-*);
+   the reused race / positional / waiver / lineup blocks keep their slice-1
+   styling. Token-based, ≤700px, #page-overview scoped. Desktop untouched.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(max-width:700px){
+  #page-overview .mthx-root{display:flex;flex-direction:column;gap:16px}
+  #page-overview .mthx-root > *{margin:0!important}
+  #page-overview .mthx-root .mth-strip-card{margin:0!important}
+
+  .mthx-navtop{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  .mthx-navid{min-width:0}
+  .mthx-title{font-family:var(--font-sans);font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:1.04;color:var(--text)}
+  .mthx-sub{font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mthx-acct{width:36px;height:36px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-family:var(--font-sans);font-size:14px;font-weight:800;color:var(--text);background:var(--s3);box-shadow:0 0 0 2px var(--accent2), inset 0 0 0 1px rgba(255,255,255,.06);object-fit:cover;overflow:hidden}
+  .mthx-seg{width:100%;margin-top:12px}
+  .mthx-seg button{flex:1}
+
+  .mthx-ghead{font-family:var(--font-sans);font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 4px 8px}
+  .mthx-tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .mthx-tile{background:var(--s2);border:1px solid var(--border);border-radius:15px;padding:12px 13px;display:flex;flex-direction:column;gap:7px}
+  .mthx-tile .ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:color-mix(in srgb,var(--_c,var(--accent2)) 16%,transparent);color:var(--_c,var(--accent2))}
+  .mthx-tile .ic svg{width:15px;height:15px}
+  .mthx-tile.faab{--_c:var(--rb)} .mthx-tile.waiver{--_c:var(--accent2)} .mthx-tile.win{--_c:var(--rb)} .mthx-tile.health{--_c:var(--te)}
+  .mthx-tile .k{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text2)}
+  .mthx-tile .v{font-family:var(--font-sans);font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--text);line-height:1;font-variant-numeric:tabular-nums}
+  .mthx-tile .v span{font-size:11px;font-weight:600;color:var(--muted)}
+  .mthx-tile .tbar{height:5px;border-radius:100px;background:var(--s3);overflow:hidden;margin-top:1px}
+  .mthx-tile .tbar i{display:block;height:100%;border-radius:100px;background:var(--rb)}
+
+  /* compact The Race card */
+  #page-overview .mthx-race{background:radial-gradient(130% 120% at 100% 0%, color-mix(in srgb,var(--accent2) 20%,transparent), transparent 58%),var(--surface);border:1px solid var(--border);border-radius:20px;padding:15px}
+  .mthx-race-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+  .mthx-race-hd .t{font-family:var(--font-sans);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text)}
+  .mthx-chip{font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.06em;padding:4px 8px;border-radius:100px;color:var(--accent2);background:color-mix(in srgb,var(--accent2) 15%,transparent);white-space:nowrap;flex:0 0 auto}
+  .mthx-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .mthx-rst{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .mthx-rst .k{font-family:var(--font-sans);font-size:10px;font-weight:600;color:var(--muted)}
+  .mthx-rst .v{font-family:var(--font-sans);font-size:20px;font-weight:800;letter-spacing:-.03em;line-height:1.05;color:var(--text);font-variant-numeric:tabular-nums}
+  .mthx-rst .v small{font-size:12px;font-weight:600;color:var(--muted)}
+  .mthx-rst .d{font-family:var(--font-sans);font-size:10.5px;color:var(--text2)}
+  .mthx-rst.hi .v{color:var(--rb)}
+  .mthx-spark{margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
+  .mthx-spark .rrp-tj{margin:0}
+  .mthx-spark svg{width:100%;height:auto;display:block}
+
+  /* Roster tab — grouped-by-position player lists */
+  .mthx-list{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+  .mthx-prow{display:flex;align-items:center;gap:11px;padding:10px 13px;position:relative;cursor:pointer}
+  .mthx-prow + .mthx-prow::before{content:"";position:absolute;top:0;left:58px;right:0;height:1px;background:var(--border)}
+  .mthx-pav{width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-family:var(--font-sans);font-size:12px;font-weight:800;color:var(--text);background:var(--s3);overflow:hidden}
+  .mthx-pav img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .mthx-pid{flex:1 1 auto;min-width:0}
+  .mthx-pn{font-family:var(--font-sans);font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+  .mthx-start{font-family:var(--font-sans);font-size:8px;font-weight:800;letter-spacing:.05em;color:var(--rb);background:color-mix(in srgb,var(--rb) 16%,transparent);padding:1.5px 5px;border-radius:4px;flex:0 0 auto}
+  .mthx-pmeta{font-family:var(--font-sans);font-size:12px;color:var(--text2);margin-top:2px}
+  .mthx-pval{font-family:var(--font-sans);font-size:14px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;flex:0 0 auto}
+
+  /* Matchup tab — score card + starter comparison */
+  .mthx-mu-empty{padding:22px;text-align:center;color:var(--muted);font-family:var(--font-sans);font-size:13px}
+  .mthx-card.mthx-mu-card{background:radial-gradient(130% 120% at 100% 0%, color-mix(in srgb,var(--accent2) 16%,transparent),transparent 58%),var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px 15px}
+  .mthx-mu-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .mthx-mu-team{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+  .mthx-mu-team .av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-family:var(--font-sans);font-weight:800;font-size:15px;color:var(--text);background:var(--s3);overflow:hidden;box-shadow:0 0 0 2px var(--border)}
+  .mthx-mu-team .av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .mthx-mu-team .tn{font-family:var(--font-sans);font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .mthx-mu-team .sc{font-family:var(--font-sans);font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--text);font-variant-numeric:tabular-nums;line-height:1}
+  .mthx-mu-vs{font-family:var(--font-sans);font-size:11px;font-weight:800;color:var(--muted);flex:0 0 auto;align-self:center;padding-top:14px}
+  .mthx-mu-wp{display:flex;align-items:center;gap:8px;margin-top:14px}
+  .mthx-mu-wp .me,.mthx-mu-wp .opp{font-family:var(--font-sans);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text2);flex:0 0 auto}
+  .mthx-mu-wp .bar{flex:1;height:6px;border-radius:100px;overflow:hidden;display:flex;background:var(--s3)}
+  .mthx-mu-wp .bar i{display:block;height:100%}
+  .mthx-mu-wp .bar i.me{background:var(--accent2)} .mthx-mu-wp .bar i.opp{background:var(--qb)}
+  .mthx-mu-row{display:flex;align-items:center;gap:8px;padding:10px 12px;position:relative}
+  .mthx-mu-row + .mthx-mu-row::before{content:"";position:absolute;top:0;left:12px;right:12px;height:1px;background:var(--border)}
+  .mthx-mu-side{flex:1;min-width:0;display:flex;align-items:center;gap:7px}
+  .mthx-mu-side.me{justify-content:flex-end;text-align:right}
+  .mthx-mu-side.opp{justify-content:flex-start;text-align:left}
+  .mthx-mu-side .av{width:28px;height:28px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-family:var(--font-sans);font-size:9px;font-weight:800;color:var(--text);background:var(--s3);overflow:hidden}
+  .mthx-mu-side .av:empty{background:none;box-shadow:none!important}
+  .mthx-mu-side .av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .mthx-mu-side .nm{font-family:var(--font-sans);font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0}
+  .mthx-mu-side .pt{font-family:var(--font-sans);font-size:14px;font-weight:800;color:var(--text2);font-variant-numeric:tabular-nums;flex:0 0 auto}
+  .mthx-mu-side.win .pt{color:var(--rb)}
+  .mthx-mu-slot{font-family:var(--font-sans);font-size:10px;font-weight:800;width:40px;text-align:center;flex:0 0 auto}
+}
+</style>
+
+<style id="vault-hig-mobile-5">
+/* ══════════════════════════════════════════════════════════════════════
+   VAULT HIG MOBILE KIT · slice 5 (League)
+   Brings the League tab's chrome onto the kit: the header becomes a large
+   title (the "League" eyebrow is promoted to the title, the league name drops
+   to the sub) and the mobile sub-tab dropdown is replaced by the scrollable
+   tab strip (its sliding underline is already rail-wired). The tier bands and
+   team cards were already styled in slice 2. ≤700px, #page-teams scoped.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(max-width:700px){
+  #page-teams .lr-head{align-items:flex-start}
+  #page-teams .lr-eyebrow{font-family:var(--font-sans);font-size:32px;font-weight:800;letter-spacing:-.03em;text-transform:none;color:var(--text);margin-bottom:2px;line-height:1.04}
+  #page-teams .lr-title{font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text2);letter-spacing:0;line-height:1.3}
+  #page-teams .lr-title:empty::before{content:'League';color:var(--text2)}
+  #page-teams .lr-head-r{gap:6px;align-items:center}
+  #page-teams .lr-head-r .lr-srcdd{min-width:0}
+
+  /* sub-tabs: hide the dropdown, show the strip as a scrollable segmented row */
+  #page-teams .lh-tabsel{display:none!important}
+  #page-teams #lr-tabs-row{display:flex!important;overflow-x:auto;gap:4px;margin:0 0 14px;padding-bottom:5px;scrollbar-width:none;-webkit-mask:linear-gradient(90deg,#000 90%,transparent)}
+  #page-teams #lr-tabs-row::-webkit-scrollbar{display:none}
+  #page-teams #teams-tab-share{display:none}
+  #page-teams .lr-tab{flex:0 0 auto;white-space:nowrap}
+}
+</style>
+
+<style id="vault-hig-mobile-6">
+/* ══════════════════════════════════════════════════════════════════════
+   VAULT HIG MOBILE KIT · slice 6 (Research)
+   Research already carries the kit from slice 2 (search bar hero, position
+   segmented, leaderboard rows with headshots + value bars + watchlist stars).
+   This trims the header to match the mock: the three action buttons
+   (Rank your way / Export / Watchlist) come off the phone header so the page
+   opens straight into the large title + search. ≤700px, #page-research scoped.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(max-width:700px){
+  #page-research .res-head-actions{display:none!important}
+  #page-research .res-title{font-size:32px;letter-spacing:-.03em}
+  #page-research .res-sub{margin-top:4px}
+}
 </style>
 
 <div class="vbud-root" id="vbud-root">
