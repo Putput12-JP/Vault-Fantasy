@@ -180,6 +180,13 @@ def settle_props(season_filter=None):
         if season not in actuals_cache:
             actuals_cache[season] = load_actuals(season)
         actuals = actuals_cache[season]
+        # Prior season's game log feeds the early-season grade shrink (below): a
+        # Week-1 pick has zero in-season games, which otherwise collapses every
+        # grade to F. Cached the same way; missing file → {} → no supplement.
+        prior = str(int(season) - 1) if season.isdigit() else None
+        if prior and prior not in actuals_cache:
+            actuals_cache[prior] = load_actuals(prior)
+        prior_actuals = actuals_cache.get(prior, {})
 
         actual = actual_for(actuals, name, week, market)
         if actual is None:            # game not played yet, or name didn't join
@@ -243,8 +250,17 @@ def settle_props(season_filter=None):
         p_mkt_side = None
         if q_o is not None and side:
             p_mkt_side = q_o if side == "over" else 1 - q_o
-        g = games_played(actuals, name, week)
-        grade = grade_for(p_model_side, g) if p_model_side is not None else None
+        # Confidence sample for the grade shrink. In-season games are the real
+        # signal, but early in the year there are few (zero in Week 1), so borrow
+        # the player's prior-season track record and let it FADE as in-season
+        # sample accrues: at 0 in-season games the full prior season counts, by
+        # mid-season it is a minor top-up. Capped at one season so playoff weeks
+        # don't over-credit. Rookies / role-less players still shrink hard (no
+        # prior log), which is correct.
+        g_in = games_played(actuals, name, week)
+        g_prior = min(games_played(prior_actuals, name, 10 ** 9), 17)
+        g_shrink = g_in + g_prior * 6.0 / (g_in + 6.0)
+        grade = grade_for(p_model_side, g_shrink) if p_model_side is not None else None
 
         picks.append({
             "kind": "prop", "season": season, "seasonType": seasonType, "week": week,
@@ -254,7 +270,8 @@ def settle_props(season_filter=None):
             "push": bool(push), "won_close": won_close, "won_open": won_open,
             "clv_line": clv_line, "clv_prob": clv_prob, "clv_price": clv_price,
             "beat_close": beat_close,
-            "p_model": p_model_side, "p_market": p_mkt_side, "games": g, "grade": grade,
+            "p_model": p_model_side, "p_market": p_mkt_side, "games": g_in,
+            "grade_n": round(g_shrink, 2), "grade": grade,
         })
 
     return picks, {"unsettled": unsettled, "unmatched_names": unmatched, "settled": len(picks)}
