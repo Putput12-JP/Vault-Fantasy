@@ -13426,6 +13426,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-10T14:00', tag:'Improved', title:'Played games drop off the props board',
+    items:[
+      'Once a game kicks off, its props leave the Player Props board and the Best Bets strip, so you’re only ever looking at lines you can still bet. A game stays up while it’s in progress and clears a few hours after kickoff.',
+    ],
+  },
+  {
     ts:'2026-09-10T12:00', tag:'Improved', title:'Vault Record shows the actual bets, and grades read right in Week 1',
     items:[
       'Vault Record now lists the real settled bets underneath the breakdowns — player, side, line, the final number and whether it hit. Tap any grade, side, market or position to filter, and the list narrows to just those bets so you can see exactly what Vault called.',
@@ -40481,7 +40487,7 @@ body .page,body .page.on{background:transparent!important}
     return (dir || 1) * ((av ?? -Infinity) - (bv ?? -Infinity));
   });
 
-  window.VaultBetting = { load, propRows, sortRows, teams, opponents, marketsFor, bookColumns, fmtOdds, fmtLine, MARKETS, MARKET_BY_KEY, TEAMNAME, headshotFor, normName };
+  window.VaultBetting = { load, propRows, sortRows, teams, opponents, marketsFor, bookColumns, fmtOdds, fmtLine, MARKETS, MARKET_BY_KEY, TEAMNAME, headshotFor, normName, realGameCommence };
 })();
 
 </script>
@@ -42607,6 +42613,22 @@ window.VaultPropModel = (function () {
     return { side, pickem: true, fairProb: null, fairAmerican: null, bestPrice: bp, bestBook: bk, ev: null, edgePts: null, vig: null };
   }
 
+  // A prop whose game has already kicked off doesn't belong on a "live lines"
+  // board — the number is locked and the lean is moot. Hide it once the game is
+  // over, kept until ~4h past kickoff so an in-progress game stays visible, which
+  // mirrors the Game Markets board (GAME_OVER_MS). Kickoff comes from the games
+  // board (realGameCommence by team+opp), NEVER the prop's own commence — that is
+  // the DFS board_time (when the line posted), not kickoff. Unknown kickoff → keep
+  // the row (don't over-filter a line whose game we can't place).
+  const EB_GAME_OVER_MS = 4 * 60 * 60 * 1000;
+  function ebGameOver(r) {
+    const rgc = F().realGameCommence;
+    const gc = (rgc && MODEL) ? rgc(MODEL, r.team, r.opp) : null;
+    if (!gc) return false;
+    const t = Date.parse(gc);
+    return !isNaN(t) && (t + EB_GAME_OVER_MS) < Date.now();
+  }
+
   // Real-line props for the active filters, each enriched with fair/EV. De-vig-
   // gable juiced two-ways rank first (by EV); flat pickem lines follow as plain
   // reference (fe.pickem, no EV). "Real" = a live book line, not a synth/projected.
@@ -42621,6 +42643,7 @@ window.VaultPropModel = (function () {
     const out = [];
     for (const r of rows) {
       if (r.synthetic) continue;                 // never fabricate — real lines only
+      if (ebGameOver(r)) continue;               // game already played — drop off the live board
       const fe = rowFairEV(r) || pickemFE(r); if (!fe) continue;
       out.push(Object.assign(r, { fe }));
     }
@@ -44090,8 +44113,9 @@ window.VaultPropModel = (function () {
     const fb = F(), PM = window.VaultPropModel, BM = window.VaultBettingMath;
     let rows = fb.propRows(MODEL, { timeframe: tf, pos: curPos, market: 'anytime_td', team: teamFilter || undefined, search: searchQ || undefined, posMarketOnly: true });
     if (mineOnly && MINE) rows = rows.filter(r => (r.id && MINE.pids.has(String(r.id))) || MINE.names.has(_nn(r.name)));
-    // real "Yes" prices only — never a synthesized fill (same rule as the board)
-    rows = rows.filter(r => !r.synthetic && (r.over != null || r.prob != null));
+    // real "Yes" prices only — never a synthesized fill (same rule as the board),
+    // and drop games that have already been played (see ebGameOver)
+    rows = rows.filter(r => !r.synthetic && !ebGameOver(r) && (r.over != null || r.prob != null));
     if (!PM || !BM) { _pvInner().innerHTML = '<div class="eb-feat eb-empty"><div class="eb-emk">Vault model loading…</div></div>'; return; }
     if (!rows.length) {
       _pvInner().innerHTML = '<div class="eb-feat eb-empty"><div class="eb-emk">No live anytime-TD prices</div><div class="eb-emt">No book is pricing '
@@ -44571,7 +44595,10 @@ window.VaultPropModel = (function () {
     const bbCountUnderPhantom = b => !!BB_COUNT_MK[b.market] && b.line > 0 && b.line <= 3.5
       && b.side === 'under'
       && ((b.price != null && b.price > 0) || (b.proj != null && b.proj <= b.line - 0.5));
-    const props = ((bb && bb.props) || []).filter(b => !bbCountUnderPhantom(b));
+    // Also drop any best bet whose game has already been played: the precomputed
+    // feed is served until the next cron rebuild, so an early-slate game can be
+    // final while its pick still sits in the feed (see ebGameOver).
+    const props = ((bb && bb.props) || []).filter(b => !bbCountUnderPhantom(b) && !ebGameOver(b));
     const leans = (bb && bb.game_leans) || [];
     if (!props.length && !leans.length) { host.innerHTML = ''; return; }
     const POS = { QB: 'var(--bt-qb,#ff6680)', RB: 'var(--bt-rb,#37d6a3)', WR: 'var(--bt-wr,#5b9dff)', TE: 'var(--bt-te,#ffb545)' };
