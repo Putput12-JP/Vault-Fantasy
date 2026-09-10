@@ -13426,9 +13426,9 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
-    ts:'2026-09-10T14:00', tag:'Improved', title:'Played games drop off the props board',
+    ts:'2026-09-10T14:00', tag:'Improved', title:'Props vanish at kickoff',
     items:[
-      'Once a game kicks off, its props leave the Player Props board and the Best Bets strip, so you’re only ever looking at lines you can still bet. A game stays up while it’s in progress and clears a few hours after kickoff.',
+      'The moment a game kicks off, its props leave the Player Props board and the Best Bets strip, so you’re only ever looking at lines you can still bet.',
     ],
   },
   {
@@ -42614,13 +42614,13 @@ window.VaultPropModel = (function () {
   }
 
   // A prop whose game has already kicked off doesn't belong on a "live lines"
-  // board — the number is locked and the lean is moot. Hide it once the game is
-  // over, kept until ~4h past kickoff so an in-progress game stays visible, which
-  // mirrors the Game Markets board (GAME_OVER_MS). Kickoff comes from the games
-  // board (realGameCommence by team+opp), NEVER the prop's own commence — that is
-  // the DFS board_time (when the line posted), not kickoff. Unknown kickoff → keep
-  // the row (don't over-filter a line whose game we can't place).
-  const EB_GAME_OVER_MS = 4 * 60 * 60 * 1000;
+  // board — the number is locked and the lean is moot. Hide it the moment the
+  // game starts (window 0: props vanish at kickoff, not after the game ends).
+  // Kickoff comes from the games board (realGameCommence by team+opp), NEVER the
+  // prop's own commence — that is the DFS board_time (when the line posted), not
+  // kickoff. Unknown kickoff → keep the row (don't over-filter a line whose game
+  // we can't place).
+  const EB_GAME_OVER_MS = 0;
   function ebGameOver(r) {
     const rgc = F().realGameCommence;
     const gc = (rgc && MODEL) ? rgc(MODEL, r.team, r.opp) : null;
