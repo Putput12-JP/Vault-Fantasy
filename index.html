@@ -13426,6 +13426,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-10T12:00', tag:'Improved', title:'Vault Record shows the actual bets, and grades read right in Week 1',
+    items:[
+      'Vault Record now lists the real settled bets underneath the breakdowns — player, side, line, the final number and whether it hit. Tap any grade, side, market or position to filter, and the list narrows to just those bets so you can see exactly what Vault called.',
+      'The “By grade” breakdown no longer lumps ungraded picks into F. A handful of markets (like pass attempts and interceptions) don’t carry a Vault grade, so counting them as F was dragging that row down with coin-flips. They’re left out of the grade view now.',
+      'Early-season grades are fair again: a Week 1 pick used to collapse to F because the player had no games yet this season. It now leans on last season’s track record, so grades spread across A–F from the opening week.',
+    ],
+  },
+  {
     ts:'2026-09-09T21:45', tag:'Improved', title:'The Vault line on Game Markets now moves with the market',
     items:[
       'Vault’s line on each game used to sit still between refreshes because it only learns from finished games. It now anchors halfway to the live market, so the number shifts as the market moves on injuries, news and sharp money.',
@@ -42945,7 +42953,7 @@ window.VaultPropModel = (function () {
     const f = _trFilter;
     if (f.market && _mkLabel(r.market) !== f.market) return false;
     if (f.pos && (r.pos || null) !== f.pos) return false;
-    if (f.grade && (r.grade || 'F') !== f.grade) return false;
+    if (f.grade && (r.grade || null) !== f.grade) return false;
     if (f.side && (r.side === 'under' ? 'Under' : 'Over') !== f.side) return false;
     return true;
   }
@@ -42997,7 +43005,11 @@ window.VaultPropModel = (function () {
     return {
       W, L, push: rows.filter(r => r.res === 'P').length, pend: rows.filter(r => !r.res).length,
       n: settled.length, wr: settled.length ? W / settled.length : null, units: roi(W, settled.length),
-      byGrade: group(r => r.grade || 'F', ['A', 'B', 'C', 'D', 'F']),
+      // Ungraded picks (count markets with no Vault model → grade null) are
+      // excluded here rather than dumped into F: they were never graded A–F, so
+      // counting them as F inflates the bucket and drags its win rate with
+      // coin-flips. group() skips null keys, so returning null omits them.
+      byGrade: group(r => r.grade || null, ['A', 'B', 'C', 'D', 'F']),
       bySide: group(r => r.side === 'under' ? 'Under' : 'Over', ['Over', 'Under']),
       byMarket: group(r => _mkLabel(r.market)).sort((a, b) => b.n - a.n),
       byPos: group(r => r.pos || null, ['QB', 'RB', 'WR', 'TE']),
@@ -43192,6 +43204,35 @@ window.VaultPropModel = (function () {
     }
   }
 
+  // The actual settled bets behind the aggregates — so a filtered view shows WHAT
+  // the picks were, not just their win rate. Reuses the My-Picks card list (no new
+  // CSS). Newest week first, then grade A→F. Capped: unfiltered this is the whole
+  // league sample (thousands mid-season), so drill in to see a specific slice.
+  const _TR_LIST_CAP = 40;
+  const _trGOrd = { A: 0, B: 1, C: 2, D: 3, F: 4 };
+  function _trVaultList(rows) {
+    const settled = rows.filter(r => r.res === 'W' || r.res === 'L' || r.res === 'P');
+    if (!settled.length) return '';
+    const sorted = settled.slice().sort((x, y) =>
+      (y.week || 0) - (x.week || 0)
+      || (_trGOrd[x.grade] == null ? 9 : _trGOrd[x.grade]) - (_trGOrd[y.grade] == null ? 9 : _trGOrd[y.grade])
+      || String(x.name || '').localeCompare(String(y.name || '')));
+    const list = sorted.slice(0, _TR_LIST_CAP).map(p => {
+      const rc = p.res === 'W' ? 'w' : p.res === 'L' ? 'l' : 'pend';
+      const res = p.res === 'W' ? '<span class="mp-res w">WON</span>' : p.res === 'L' ? '<span class="mp-res l">LOST</span>' : '<span class="mp-res pend">PUSH</span>';
+      const gl = p.grade ? '<span class="eb-grade ' + p.grade.toLowerCase() + '"><span class="eb-gside">' + (p.side === 'over' ? 'O' : 'U') + '</span>' + p.grade + '</span>' : '<span class="tr-nog">' + (p.side === 'over' ? 'O' : 'U') + '</span>';
+      const posTag = p.pos ? '<span class="tr-pk-pos">' + p.pos + '</span>' : '';
+      return '<div class="tr-pk ' + rc + '">'
+        + '<div class="tr-pk-l">' + gl + '<div class="tr-pk-nm"><b>' + _trEsc(p.name) + posTag + '</b>'
+        + '<span>' + (p.side === 'over' ? 'Over' : 'Under') + ' ' + _trEsc(p.line) + ' ' + _trEsc(p.marketLabel) + ' · Wk ' + _trEsc(p.week || '?') + '</span>'
+        + '</div></div>'
+        + '<div class="tr-pk-r">' + (p.actual != null ? '<span class="tr-pk-act" title="Actual result">' + _trEsc(p.actual) + '</span>' : '') + res + '</div></div>';
+    }).join('');
+    const more = settled.length > _TR_LIST_CAP
+      ? '<div class="tr-note" style="border-top:none;padding:6px 0 0">Showing ' + _TR_LIST_CAP + ' of ' + settled.length.toLocaleString() + ' — tap a row above to narrow.</div>' : '';
+    return '<div class="tr-listwrap"><div class="tr-gt">Settled bets' + (_trChips() ? ' <span class="tr-gtn">· filtered</span>' : '') + '</div>' + list + more + '</div>';
+  }
+
   function _drawVault(wire) {
     const paint = ledger => {
       if (propsView !== 'results' || resultsTab !== 'vault') return;
@@ -43203,9 +43244,11 @@ window.VaultPropModel = (function () {
         body = '<div class="tr-empty"><div class="tr-ek">No settled Vault picks yet</div>'
           + '<div class="tr-et">This fills in automatically once games are played. Every prop Vault grades league-wide is settled against the real box score, then shown here by grade, side, market and position. Thousands of picks, so an A-grade’s win rate is a real read, not a coin flip.</div></div>';
       } else {
-        const a = _pkAgg(all.filter(_trMatch));
+        const rows = all.filter(_trMatch);
+        const a = _pkAgg(rows);
         sub = a.n.toLocaleString() + ' graded picks settled' + (_trChips() ? ' · filtered' : '');
         body = _trHero(a, _trChips() ? 'filtered view' : 'every Vault-graded prop') + _trChips() + _trBreak(a)
+          + _trVaultList(rows)
           + '<div class="tr-note">Settled from real closing lines vs the box score. Grades are Vault’s at flag time; units at your break-even. Tap any row to filter.</div>';
       }
       _pvInner().innerHTML = _trShell(sub, body);
