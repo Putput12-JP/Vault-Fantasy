@@ -52,7 +52,14 @@ const normCdf = z => { const t = 1 / (1 + 0.2316419 * Math.abs(z)); const d = 0.
 // index.html. Banked per snapshot so the settlement harness can grade the model
 // line AS IT WAS going into each game (the model refits weekly, so it drifts).
 const GM = readJSON(resolve(HERE, '..', 'data', 'game_model.json'));
+// The game model keys the Rams "LA" (via build_game_model.py's ALIAS) while the
+// feed ships "LAR" — without normalizing, GM.teams['LAR'] is undefined and every
+// Rams game silently banks a null model line (and so never settles). Same map
+// the builders + settle_bets.py use.
+const TEAM_ALIAS = { OAK: 'LV', LVR: 'LV', SD: 'LAC', STL: 'LA', LAR: 'LA', WSH: 'WAS' };
+const teamGm = t => TEAM_ALIAS[t] || t;
 function vaultLine(away, home) {
+  away = teamGm(away); home = teamGm(home);
   // Bank the model line whenever the ratings map both teams — INCLUDING when the
   // model is still on offseason (prior-season) ratings. The settle harness needs
   // Week-1 projections to start the learning corpus (every model predicts Wk 1 on
