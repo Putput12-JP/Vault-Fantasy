@@ -81,8 +81,19 @@
       return { book, line: round(jLine, 1), over, under, prob: null };
     });
   }
-  function bestOf(quotes, side) {
-    return quotes.reduce((b, q) => (q[side] != null && (!b || q[side] > b.price)) ? { book: q.book, price: q[side] } : b, null);
+  // Best price + book for a side, restricted to books hanging the SAME line.
+  // Without the `line` filter this compared prices across different lines: an
+  // off-consensus book (e.g. Underdog Over 1.5) beats every Over-0.5 price
+  // simply because a longer line pays more, then gets stamped onto the 0.5
+  // header, an apples-to-oranges "best". Pass the cell's consensus line so a
+  // 1.5 quote can't win the 0.5 race. Lineless quotes (prob markets, or a book
+  // with no line of its own) stay eligible; line===null means no restriction.
+  function bestOf(quotes, side, line) {
+    return quotes.reduce((b, q) => {
+      if (q[side] == null) return b;
+      if (line != null && q.line != null && q.line !== line) return b;
+      return (!b || q[side] > b.price) ? { book: q.book, price: q[side] } : b;
+    }, null);
   }
 
   async function getJSON(url) {
@@ -324,7 +335,7 @@
         if (!quotes || !quotes.length) quotes = synthQuotes(val, m.kind, (p.id || p.name) + ':' + mk + ':' + tf, books);
         const best = cell.best && (cell.best.over || cell.best.under)
           ? cell.best
-          : { over: bestOf(quotes, 'over'), under: bestOf(quotes, 'under') };
+          : { over: bestOf(quotes, 'over', cell.line), under: bestOf(quotes, 'under', cell.line) };
         rows.push({
           id: p.id, name: p.name, team: p.team, teamName: p.teamName, pos: p.pos,
           headshot: p.headshot, rank: p.rank,

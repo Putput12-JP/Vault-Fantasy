@@ -13426,6 +13426,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-11T13:00', tag:'Fixed', title:'Best price now matches the line on the card',
+    items:[
+      'When a book hangs a different number than everyone else (say Underdog at 1.5 receptions while the board shows 0.5), its price no longer gets shown as the “best” price on the 0.5 line. A longer line naturally pays more, so it was winning that spot unfairly and making the edge look bigger than it was.',
+      'The best over/under price and the book next to it now always come from a book actually offering the line you’re looking at.',
+    ],
+  },
+  {
     ts:'2026-09-11T12:00', tag:'Fixed', title:'Track Record updates as soon as a game’s stats land',
     items:[
       'Results now settle the moment the box scores are published, instead of waiting for the next morning’s update, so the previous night’s game shows up in your Vault Record right away.',
@@ -40004,26 +40011,22 @@ body .page,body .page.on{background:transparent!important}
       return { book, line: round(jLine, 1), over, under, prob: null };
     });
   }
-  /* Best price for a side — LINE-AWARE. A lower line is strictly better for an
-     OVER and a higher line for an UNDER, so ranking on price alone hands the
-     badge to whoever quotes the friendliest price against an unstated number.
-     That failed systematically: pick'em apps price flat by design (PrizePicks
-     +100/-100, Underdog -112/-112) and a sportsbook's -110 can never beat +100,
-     so a DFS app won "best" on every contested cell in the feed while offering
-     a materially worse line. Rank on the line first; price only breaks a tie.
-     Markets with no line (anytime TD, where every quote carries line 0) fall
-     straight through to the price comparison. Pass lineAware=false for
-     synthesized quotes: their per-book lines are jitter, not a real market,
-     so ranking on them would be noise. */
-  function bestOf(quotes, side, lineAware = true) {
-    const better = side === 'over' ? (a, b) => a < b : (a, b) => a > b;
+  /* Best price for a side. LINE-AWARE, pinned to the line the card actually
+     shows (`line`, the consensusLine). Only books hanging THAT line compete, so
+     "best price" is always apples-to-apples with the number on the card.
+     Comparing across lines was the bug: an Underdog Over 1.5 (+110) beats every
+     Over-0.5 price simply because a longer line pays more, then gets stamped
+     onto the 0.5 header. The mirror problem (a book quoting a friendlier
+     line/price against an unstated number) is exactly what `consensusLine`
+     already resolves before this runs, so best price just has to respect it.
+     Pass line=null to skip the restriction: prob markets (anytime TD, no line)
+     and synthesized pre-season quotes, whose per-book lines are jitter, not a
+     real market. Quotes with no line of their own stay eligible. */
+  function bestOf(quotes, side, line = null) {
     return (quotes || []).reduce((best, q) => {
       if (q[side] == null) return best;
-      const cand = { book: q.book, price: q[side], line: q.line ?? null };
-      if (!best) return cand;
-      if (lineAware && cand.line != null && best.line != null && cand.line !== best.line)
-        return better(cand.line, best.line) ? cand : best;
-      return cand.price > best.price ? cand : best;
+      if (line != null && q.line != null && q.line !== line) return best;
+      return (!best || q[side] > best.price) ? { book: q.book, price: q[side], line: q.line ?? null } : best;
     }, null);
   }
 
@@ -40446,7 +40449,7 @@ body .page,body .page.on{background:transparent!important}
         const val = m.kind === 'prob' ? cell.prob : consLine;
         if (f.min != null && val < f.min) continue;
         if (f.max != null && val > f.max) continue;
-        const best = { over: bestOf(quotes, 'over', realQuotes), under: bestOf(quotes, 'under', realQuotes) };
+        const best = { over: bestOf(quotes, 'over', realQuotes ? consLine : null), under: bestOf(quotes, 'under', realQuotes ? consLine : null) };
         // Vault projection for this market (weekly = season ÷ games). Model Lean
         // compares it to the line — meaningful only where the line is a real
         // book line, since a modeled line IS the projection (lean would be 0).
