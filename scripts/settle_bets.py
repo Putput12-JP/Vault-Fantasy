@@ -26,6 +26,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
 GAMES_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
 
+# Vault/Sleeper team codes → nflverse team codes, so the game-settlement join
+# matches. nflverse's games.csv calls the Rams "LA" (Vault ships "LAR"); the
+# rest are historical relocations that surface when settling archive weeks.
+# Same map the model builders use (build_game_model.py etc.). Without this a
+# whole game — SF@LAR — never joins SF@LA and its spread/total/ML bets sit
+# unsettled forever even after the box score lands.
+TEAM_ALIAS = {"OAK": "LV", "LVR": "LV", "SD": "LAC", "STL": "LA", "LAR": "LA", "WSH": "WAS"}
+def team_nfl(t): return TEAM_ALIAS.get(t, t)
+
 # Share the shipped serving math (dist / calibration / shrink) with the builder.
 sys.path.insert(0, HERE)
 import build_prop_projections as B  # noqa: E402
@@ -294,7 +303,7 @@ def load_games_csv(seasons):
             if s not in seasons: continue
             hs, as_ = row.get("home_score"), row.get("away_score")
             if hs in (None, "", "NA") or as_ in (None, "", "NA"): continue
-            key = (str(s), str(row.get("week")), row.get("away_team"), row.get("home_team"))
+            key = (str(s), str(row.get("week")), team_nfl(row.get("away_team")), team_nfl(row.get("home_team")))
             out[key] = {"home_score": float(hs), "away_score": float(as_)}
         except Exception:
             continue
@@ -319,7 +328,8 @@ def settle_games(season_filter=None):
         season = str(g.get("season"))
         if season_filter and season != str(season_filter): continue
         away, home, week = g.get("away"), g.get("home"), str(g.get("week"))
-        sc = scores.get((season, week, away, home))
+        # Join on nflverse codes (LAR→LA); keep Vault codes for display below.
+        sc = scores.get((season, week, team_nfl(away), team_nfl(home)))
         if not sc:
             unsettled += 1; continue
         hs, as_ = sc["home_score"], sc["away_score"]

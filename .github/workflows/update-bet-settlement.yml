@@ -8,10 +8,20 @@ name: Settle bets + CLV
 
 on:
   workflow_dispatch: {}
+  # Primary trigger: settle the moment fresh box scores land. "Update nflverse
+  # data" publishes at a VARIABLE time (nominally 06:00 UTC but often hours
+  # later — Thursday-night / West-coast games regularly aren't in the nflverse
+  # stats release until late morning UTC). A fixed settle clock therefore raced
+  # the data and left the prior night's game unsettled for ~24h. Chaining off
+  # that workflow's completion removes the guesswork: fresh data in → settle now.
+  workflow_run:
+    workflows: ["Update nflverse data"]
+    types: [completed]
   schedule:
-    # Daily at 07:10 UTC — after "Update nflverse data" (06:00) lands the week's
-    # box scores; the hourly game/prop snapshots are always already fresh.
-    - cron: '10 7 * * *'
+    # Fallback safety net, decoupled from the nflverse run: catches days the
+    # chained run was skipped/failed, plus late score corrections. Kept late
+    # enough that nflverse has almost always published by now.
+    - cron: '10 13 * * *'
 
 concurrency:
   group: bet-settlement
@@ -22,6 +32,9 @@ permissions:
 jobs:
   settle:
     runs-on: ubuntu-latest
+    # On the chained trigger, only run when nflverse actually succeeded; the
+    # dispatch / schedule paths always run.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
