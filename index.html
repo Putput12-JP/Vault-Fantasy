@@ -13426,6 +13426,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-11T14:00', tag:'Fixed', title:'Played games leave the Player Props board for good',
+    items:[
+      'Once a game finishes, its early-window games (like the Thursday and Friday openers) drop off the schedule feed, which was letting their props quietly reappear on the board a while after kickoff. They now stay gone the moment the game starts, so you only ever see props you can still bet.',
+    ],
+  },
+  {
     ts:'2026-09-11T13:00', tag:'Fixed', title:'Best price now matches the line on the card',
     items:[
       'When a book hangs a different number than everyone else (say Underdog at 1.5 receptions while the board shows 0.5), its price no longer gets shown as the “best” price on the 0.5 line. A longer line naturally pays more, so it was winning that spot unfairly and making the edge look bigger than it was.',
@@ -40469,6 +40475,7 @@ body .page,body .page.on{background:transparent!important}
           quotes, best,
           timeframe: tf,
           opp: wk ? wk.opp : null, ha: wk ? wk.ha : null, event: wk ? wk.event : null, slot: wk ? wk.slot : null,
+          commence: wk ? wk.commence : null,
           derived: wk ? !!wk.derived : false,
         });
       }
@@ -42625,19 +42632,32 @@ window.VaultPropModel = (function () {
   }
 
   // A prop whose game has already kicked off doesn't belong on a "live lines"
-  // board — the number is locked and the lean is moot. Hide it the moment the
+  // board: the number is locked and the lean is moot. Hide it the moment the
   // game starts (window 0: props vanish at kickoff, not after the game ends).
-  // Kickoff comes from the games board (realGameCommence by team+opp), NEVER the
-  // prop's own commence — that is the DFS board_time (when the line posted), not
-  // kickoff. Unknown kickoff → keep the row (don't over-filter a line whose game
-  // we can't place).
+  // Kickoff comes from the games board (realGameCommence by team+opp) FIRST,
+  // because in preseason a prop's own commence is the DFS board_time (when the
+  // line posted, an August date), not kickoff, so trusting it would wrongly
+  // delete real Week-1 lines.
+  //
+  // But once a game is PLAYED it DROPS OFF the games board, so realGameCommence
+  // can no longer date it and the row would linger forever (this is exactly the
+  // Week-1 opener bug: SF/LAR and SEA/NE Thursday games gone from the board, but
+  // their props still on it). So when the board can't place the matchup, fall
+  // back to the prop's OWN commence, but ONLY in-season, where that commence is
+  // a real kickoff rather than a preseason board_time. A still-upcoming game is
+  // on the board (it runs months out), so this fallback only ever fires on games
+  // that already happened. Preseason keeps the old behavior: unknown kickoff →
+  // keep the row.
   const EB_GAME_OVER_MS = 0;
   function ebGameOver(r) {
     const rgc = F().realGameCommence;
     const gc = (rgc && MODEL) ? rgc(MODEL, r.team, r.opp) : null;
-    if (!gc) return false;
-    const t = Date.parse(gc);
-    return !isNaN(t) && (t + EB_GAME_OVER_MS) < Date.now();
+    if (gc) { const t = Date.parse(gc); return !isNaN(t) && (t + EB_GAME_OVER_MS) < Date.now(); }
+    if (/^(reg|post)/i.test((MODEL && MODEL.season_type) || '') && r.commence) {
+      const t = Date.parse(r.commence);
+      return !isNaN(t) && (t + EB_GAME_OVER_MS) < Date.now();
+    }
+    return false;
   }
 
   // Real-line props for the active filters, each enriched with fair/EV. De-vig-
