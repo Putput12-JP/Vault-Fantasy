@@ -8,14 +8,18 @@ name: Settle bets + CLV
 
 on:
   workflow_dispatch: {}
-  # Primary trigger: settle the moment fresh box scores land. "Update nflverse
-  # data" publishes at a VARIABLE time (nominally 06:00 UTC but often hours
-  # later — Thursday-night / West-coast games regularly aren't in the nflverse
-  # stats release until late morning UTC). A fixed settle clock therefore raced
-  # the data and left the prior night's game unsettled for ~24h. Chaining off
-  # that workflow's completion removes the guesswork: fresh data in → settle now.
+  # Primary triggers: settle the moment fresh data lands.
+  #  • "Update nflverse data" — the canonical player box scores + game scores.
+  #    Publishes at a VARIABLE time (nominally 06:00 UTC but often hours later —
+  #    TNF / West-coast games regularly aren't in the nflverse release until late
+  #    morning UTC), so a fixed settle clock raced it and left the prior night's
+  #    game unsettled ~24h. This drives PROP settlement (needs nflverse stats).
+  #  • "Update game history" — the hourly (:29) line snapshot. Settlement now
+  #    also pulls final scores from ESPN's scoreboard (minutes after a game, vs
+  #    nflverse's hours-to-a-day), so chaining here settles a finished GAME and
+  #    any pick tracked on it within the hour, long before nflverse catches up.
   workflow_run:
-    workflows: ["Update nflverse data"]
+    workflows: ["Update nflverse data", "Update game history"]
     types: [completed]
   schedule:
     # Fallback safety net, decoupled from the nflverse run: catches days the

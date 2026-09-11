@@ -25,6 +25,15 @@ from collections import defaultdict
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
 GAMES_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
+# ESPN public scoreboard — a SECOND, faster score source. nflverse's games.csv
+# is canonical but publishes hours-to-a-day after a game; ESPN carries the final
+# within minutes. Used only to fill games nflverse hasn't scored yet, so a game
+# (and any bet tracked on it) settles the same night. nflverse always wins on
+# conflict, and settlement rebuilds from scratch each run, so a later nflverse
+# correction overrides ESPN automatically. Scores only — player props still need
+# nflverse box scores (ESPN's scoreboard has no per-player stats at this cadence).
+ESPN_SB_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+ESPN_STYPE = {"pre": 1, "reg": 2, "regular": 2, "post": 3, "postseason": 3}
 
 # Vault/Sleeper team codes → nflverse team codes, so the game-settlement join
 # matches. nflverse's games.csv calls the Rams "LA" (Vault ships "LAR"); the
@@ -309,6 +318,43 @@ def load_games_csv(seasons):
             continue
     return out
 
+def load_espn_scores(needed):
+    """Fetch final scores from ESPN's scoreboard for a set of (season, week,
+    espn_seasontype). Returns {(season,week,away,home): {home_score,away_score}}
+    keyed with nflverse team codes (team_nfl), so it merges with load_games_csv.
+    Only COMPLETED games are returned; any fetch/parse failure is skipped so
+    settlement degrades to nflverse-only rather than breaking."""
+    out = {}
+    for season, week, st in sorted(needed):
+        url = f"{ESPN_SB_URL}?dates={season}&seasontype={st}&week={week}"
+        try:
+            # Default urllib UA on purpose — ESPN's edge 403s some custom/browser
+            # UA strings, and the plain Python-urllib UA passes reliably.
+            with urllib.request.urlopen(url, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            print(f"[settle] ESPN scoreboard {season} wk{week} st{st} fetch failed ({e}); skipping")
+            continue
+        for ev in data.get("events", []):
+            try:
+                comp = (ev.get("competitions") or [{}])[0]
+                status = (comp.get("status") or ev.get("status") or {}).get("type", {})
+                if not (status.get("completed") or status.get("state") == "post"):
+                    continue                                    # not final — don't settle a live/partial score
+                home = away = None
+                for c in comp.get("competitors", []):
+                    abbr = team_nfl((c.get("team") or {}).get("abbreviation"))
+                    sc = c.get("score")
+                    sc = float(sc) if sc not in (None, "") else None
+                    if c.get("homeAway") == "home": home = (abbr, sc)
+                    elif c.get("homeAway") == "away": away = (abbr, sc)
+                if not home or not away or home[1] is None or away[1] is None:
+                    continue
+                out[(str(season), str(week), away[0], home[0])] = {"home_score": home[1], "away_score": away[1]}
+            except Exception:
+                continue
+    return out
+
 def settle_games(season_filter=None):
     try:
         blob = json.load(open(os.path.join(DATA, "game_line_history.json")))
@@ -320,6 +366,21 @@ def settle_games(season_filter=None):
         return [], {"settled": 0, "note": "no non-preseason games banked yet"}
     seasons = {int(g["season"]) for g in reg if str(g.get("season")).isdigit()}
     scores = load_games_csv(seasons)
+    # Fill any banked game nflverse hasn't scored yet from ESPN (faster feed).
+    # Only fetch the specific weeks that are still missing, so a fully-settled
+    # backlog costs zero ESPN calls.
+    need = set()
+    for g in reg:
+        k = (str(g.get("season")), str(g.get("week")), team_nfl(g.get("away")), team_nfl(g.get("home")))
+        if k not in scores:
+            st = ESPN_STYPE.get((g.get("seasonType") or "regular").lower(), 2)
+            need.add((str(g.get("season")), str(g.get("week")), st))
+    if need:
+        espn = load_espn_scores(need)
+        n_new = sum(1 for k in espn if k not in scores)
+        for k, v in espn.items():
+            scores.setdefault(k, v)              # nflverse wins; ESPN only fills gaps
+        if n_new: print(f"[settle] ESPN filled {n_new} game(s) nflverse hasn't scored yet")
     if not scores:
         return [], {"settled": 0, "note": "no scores available"}
 
