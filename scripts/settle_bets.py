@@ -332,6 +332,7 @@ def settle_games(season_filter=None):
         sc = scores.get((season, week, team_nfl(away), team_nfl(home)))
         if not sc:
             unsettled += 1; continue
+        n_before = len(picks)
         hs, as_ = sc["home_score"], sc["away_score"]
         margin = hs - as_                                    # home margin (actual)
         total_actual = hs + as_
@@ -405,6 +406,15 @@ def settle_games(season_filter=None):
                           "p_market": (p_mkt_home if side == "home" else (1 - p_mkt_home if p_mkt_home is not None else None)),
                           "actual": margin, "push": push, "won_close": won,
                           "clv_prob": clv_prob, "beat_close": (1.0 if (clv_prob or 0) > 1e-9 else 0.0)})
+
+        # Score-only row for a played game Vault never banked a model line on
+        # (preseason gating, or a team the ratings map missed). Vault grades no
+        # bet here, but the UI still needs the final score to settle a pick the
+        # USER tracked on this game (My Picks → "Game bets"). Tagged "final" so
+        # the scoreboard aggregation below skips it; the frontend reads only the
+        # scores. Without this, a user pick on a no-lean game sits pending forever.
+        if len(picks) == n_before:
+            picks.append({**base, "market": "final"})
 
     return picks, {"settled": len(picks), "unsettled": unsettled}
 
@@ -508,7 +518,9 @@ def build_scoreboard(prop_picks, game_picks):
                                "mean_clv_prob": mean([p["clv_prob"] for p in ps])}
 
     by_gm = defaultdict(list)
-    for p in game_picks: by_gm[p["market"]].append(p)
+    for p in game_picks:
+        if p["market"] == "final": continue    # score-only row (no Vault bet) — UI settlement only
+        by_gm[p["market"]].append(p)
     for mk, ps in by_gm.items():
         graded = [p for p in ps if p["won_close"] is not None]
         reg = [p for p in ps if not p.get("model_offseason")]   # in-season-rating subset (the clean learning slice)
