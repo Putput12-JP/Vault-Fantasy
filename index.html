@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-12T19:30', tag:'Improved', title:'Game Markets is now a full-slate table',
+    items:[
+      'On desktop, Game Markets now reads like a proper odds screen: every game on one line, with spread, total and moneyline side by side at the best available price, the +EV side flagged, and Vault’s model line and the Polymarket money in their own columns.',
+      'Click any game to expand every book’s price inline, with the best number highlighted. On phones the familiar card view stays, so nothing gets cramped.',
+    ],
+  },
+  {
     ts:'2026-09-12T19:00', tag:'New', title:'See which side the money is actually moving to',
     items:[
       'The Polymarket strip now shows the net money that has actively bought into a side in the last 24 hours, for example “$4.2k into BUF.” Because Polymarket is a real exchange, this is the true directional read that a plain traded-volume number can’t give you.',
@@ -41642,6 +41649,46 @@ window.VaultPropModel = (function () {
 #page-betting .bx-flow-taker{color:var(--bt-muted);white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
 #page-betting .bx-flow-taker b{color:var(--bt-text2);font-weight:700}
 #page-betting .bx-flow-taker .tm{color:var(--bt-accent2);font-weight:800}
+/* ── Game Markets TABLE view (desktop) — odds-screen layout, two rows per game.
+   Reuses the card's pricing/Vault-line/flow/drawer logic; cards stay on mobile. */
+#page-betting .bxt-wrap{overflow-x:auto;border:1px solid var(--bt-border);border-radius:16px;background:var(--bt-s2)}
+#page-betting table.bxt{width:100%;border-collapse:collapse;min-width:860px}
+#page-betting .bxt thead th{font-family:var(--bt-mono);font-size:var(--t-nano);letter-spacing:.06em;text-transform:uppercase;color:var(--bt-muted);font-weight:600;text-align:right;padding:12px 15px;background:var(--bt-s1);border-bottom:1px solid var(--bt-border);position:sticky;top:0;z-index:2;white-space:nowrap}
+#page-betting .bxt thead th.l{text-align:left}
+#page-betting tbody.bxt-g{border-top:6px solid var(--bt-s1)}
+#page-betting tbody.bxt-g:hover td{background:color-mix(in srgb,var(--bt-accent2) 3%,transparent)}
+#page-betting .bxt td{padding:8px 15px;border-bottom:1px solid var(--bt-border);text-align:right;white-space:nowrap;vertical-align:middle}
+#page-betting .bxt tr.bxt-r1 td{border-bottom:0;padding-bottom:2px}
+#page-betting .bxt tr.bxt-r2 td{padding-top:2px}
+#page-betting .bxt-tm{text-align:left;font-family:var(--font-sans)}
+#page-betting .bxt-tm .bt-logo{width:22px;height:22px;display:inline-block;vertical-align:middle;margin-right:8px}
+#page-betting .bxt-tm .cd{font-weight:800;letter-spacing:.02em;color:var(--bt-text)}
+#page-betting .bxt-tm .wp{font-family:var(--bt-mono);font-size:var(--t-nano);color:var(--bt-muted);margin-left:7px}
+#page-betting .bxt-chev{background:none;border:0;color:var(--bt-muted);cursor:pointer;font-size:11px;margin-right:5px;padding:2px;transition:color .12s ease}
+#page-betting .bxt-chev:hover{color:var(--bt-text)}
+#page-betting .bxt-cell{font-family:var(--bt-mono);display:inline-flex;align-items:center;gap:6px;justify-content:flex-end}
+#page-betting .bxt-ln{font-weight:800;color:var(--bt-text)}
+#page-betting .bxt-cell.eg .bxt-ln{color:var(--bt-green)}
+#page-betting .bxt-px{color:var(--bt-text2);font-weight:600}
+#page-betting .bxt-sd{font:800 10px/1 var(--bt-mono);padding:2px 4px;border-radius:4px}
+#page-betting .bxt-sd.o{color:var(--bt-green);background:color-mix(in srgb,var(--bt-green) 14%,transparent)}
+#page-betting .bxt-sd.u{color:var(--bt-red);background:color-mix(in srgb,var(--bt-red) 14%,transparent)}
+#page-betting .bxt-eg{font:800 10px/1 var(--bt-mono);color:var(--pos-ink);background:var(--bt-green);border-radius:5px;padding:2px 5px}
+#page-betting .bxt-na{color:var(--bt-muted);opacity:.45}
+#page-betting .bxt-vl{font-family:var(--bt-mono);color:var(--bt-accent2);font-weight:700}
+#page-betting .bxt-vl.lean{color:var(--bt-gold)}
+#page-betting .bxt-vl .vlab{font-size:10px;color:var(--bt-muted);text-transform:uppercase;letter-spacing:.05em;margin-right:5px;font-weight:600}
+#page-betting .bxt-track{font-family:var(--bt-mono);font-size:13px;font-weight:700;color:var(--bt-faint);background:none;border:0;cursor:pointer;padding:0 2px;margin-left:6px;transition:color .12s ease}
+#page-betting .bxt-track:hover{color:var(--bt-text2)}
+#page-betting .bxt-track.on{color:var(--bt-gold)}
+#page-betting .bxt-rm{font-family:var(--bt-mono);background:color-mix(in srgb,#6f7bff 5%,transparent);border-left:1px solid var(--bt-border);text-align:left}
+#page-betting .bxt-tk{color:var(--bt-muted);font-size:var(--t-nano)}
+#page-betting .bxt-tk b{color:var(--bt-text2)}
+#page-betting .bxt-tk .tm{color:#6f7bff;font-weight:800}
+#page-betting .bxt-vol{color:var(--bt-muted);font-size:var(--t-nano);margin-top:2px}
+#page-betting .bxt-vol b{color:var(--bt-text2)}
+#page-betting tr.bxt-drow td{padding:0;background:var(--bt-s2)}
+#page-betting tr.bxt-drow .bx-drawer{border-top:1px solid var(--bt-border)}
 #page-betting .bx-flow-n{color:var(--bt-muted);white-space:nowrap}
 #page-betting .bx-flow-n b{color:var(--bt-text2);font-weight:700}
 #page-betting .bx-flow-hot{color:var(--bt-gold);font-weight:700;white-space:nowrap}
@@ -41888,6 +41935,7 @@ window.VaultPropModel = (function () {
   // the flow-strip logic is shared — but Polymarket trades in DOLLARS, deeper on
   // marquee game markets, so its strip is dollar-denominated and its own colour.
   let _polymarket = null, _polymarketTried = false;
+  let _gmBpWired = false;   // resize listener that re-renders on table/card breakpoint crossing (bound once)
   function loadPolymarket() {
     const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
     return fetch(base + '/polymarket.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
@@ -42330,6 +42378,65 @@ window.VaultPropModel = (function () {
         + drawer + '</article>';
     };
 
+    // Table view (desktop): two rows per game, odds-screen style. Reuses gameBets
+    // for consensus best-price pricing, gmLine for the Vault line, _polymarket for
+    // money, and the SAME gExpanded/gDrawerMkt/_trackMap wiring as the card — so
+    // the [data-tgl]/[data-track]/[data-dmkt] handlers below bind both.
+    const rowH = (x) => {
+      const g = x.g, key = g.away + '@' + g.home;
+      const mlHP = _mlHomeProb(g);
+      const ia = g.implied && g.implied.away, ih = g.implied && g.implied.home;
+      const tot = (ia != null && ih != null) ? (ia + ih) : null;
+      const impH = mlHP != null ? Math.round(mlHP * 100) : (tot ? 100 - Math.round(ia / tot * 100) : null);
+      const impA = impH != null ? 100 - impH : null;
+      const sp = gameBets(g, 'spread'), to = gameBets(g, 'total'), ml = gameBets(g, 'ml');
+      const byCode = (arr, code) => arr.find(b => b.lab.toUpperCase().startsWith(code.toUpperCase() + ' '));
+      const spA = byCode(sp, g.away), spH = byCode(sp, g.home);
+      const mlA = byCode(ml, g.away), mlH = byCode(ml, g.home);
+      const toO = to.find(b => /^over/i.test(b.lab)), toU = to.find(b => /^under/i.test(b.lab));
+      const cell = (bet, kind) => {
+        if (!bet) return '<span class="bxt-na">–</span>';
+        const eg = bet.ev > 0, etag = eg ? '<span class="bxt-eg" title="Best price beats no-vig fair by ' + bet.ev + '%">+' + bet.ev + '%</span>' : '';
+        let ln = '';
+        if (kind === 'spread') ln = '<span class="bxt-ln">' + bet.lab.replace(/^\S+\s/, '') + '</span>';
+        else if (kind === 'over') ln = '<span class="bxt-sd o">O</span><span class="bxt-ln">' + bet.lab.replace(/^\w+\s/, '') + '</span>';
+        else if (kind === 'under') ln = '<span class="bxt-sd u">U</span><span class="bxt-ln">' + bet.lab.replace(/^\w+\s/, '') + '</span>';
+        return '<div class="bxt-cell' + (eg ? ' eg' : '') + '">' + ln + '<span class="bxt-px">' + fb.fmtOdds(bet.bestPrice) + '</span>' + bookChip(bet.bestBook) + etag + '</div>';
+      };
+      const gp = (_gmModel && seasonReg) ? gmLine(g) : null;
+      const conv = (_gmModel && seasonReg) ? gmPredict(g.away, g.home) : null;
+      const mkSp = (g.spread && g.spread.cons && g.spread.cons.home != null) ? round05(g.spread.cons.home) : null;
+      const spLean = gp && mkSp != null && Math.abs(gp.homeSpread - mkSp) >= 1;
+      const mlLean = gp && impH != null && Math.abs(gp.homeWinPct - impH) >= 6;
+      const vl1 = gp ? '<span class="vlab">model</span>' + g.home + ' ' + sline(gp.homeSpread) : '';
+      let trackBtn = '';
+      if (gp) { const lean = bestLean(g, conv); _trackMap[key] = { g, lean };
+        if (lean) { const tr = gamePickLogged(g, lean); trackBtn = '<button class="bxt-track' + (tr ? ' on' : '') + '" data-track="' + key + '" title="' + (tr ? 'Tracking this pick' : 'Track Vault’s best bet — ' + lean.label) + '">' + (tr ? '★' : '☆') + '</button>'; } }
+      const vl2 = gp ? '<span class="vlab">win</span>' + g.home + ' ' + gp.homeWinPct + '%' : '';
+      let money = '';
+      if (_polymarket) { const P = _polymarket[key];
+        if (P && P.flow && P.flow.vol) {
+          const hot = pmSlate && P.flow.vol24 >= pmSlate.hot24;
+          let tk = '';
+          if (P.taker && P.taker.n >= 15 && Math.abs(P.taker.net) >= 2500) { const side = P.taker.net >= 0 ? g.home : g.away; tk = '<div class="bxt-tk" title="Net 24h aggressor money into a side (Polymarket)">💵 <b>' + dc(Math.abs(P.taker.net)) + '</b> → <b class="tm">' + side + '</b></div>'; }
+          money = tk + '<div class="bxt-vol"><b>' + dc(P.flow.vol) + '</b> traded' + (hot ? ' · <span title="Top-quartile 24h volume">🔥</span>' : '') + '</div>';
+        }
+      }
+      const open = gExpanded.has(key);
+      const chev = '<button class="bxt-chev" data-tgl="' + key + '" title="' + (open ? 'Hide books' : 'Compare books') + '">' + (open ? '▾' : '▸') + '</button>';
+      const spacer = '<span style="display:inline-block;width:20px"></span>';
+      const tmCell = (code, imp, head) => '<td class="bxt-tm">' + (head ? chev : spacer) + '<span class="bt-logo" data-logo="' + code + '"></span><span class="cd">' + code + '</span>' + (imp != null ? '<span class="wp">' + imp + '%</span>' : '') + '</td>';
+      let drawer = '';
+      if (open) { const dm = gDrawerMkt[key] || curGM || 'spread';
+        const tabs = GM_TABS.map(([k, l]) => '<button class="' + (k === dm ? 'on' : '') + '" data-dmkt="' + k + '" data-dkey="' + key + '">' + l + '</button>').join('');
+        drawer = '<tr class="bxt-drow"><td colspan="6"><div class="bx-drawer"><div class="bx-dtabs">' + tabs + '</div>' + gameBooksBlock(g, dm) + '</div></td></tr>';
+      }
+      return '<tbody class="bxt-g" data-key="' + key + '">'
+        + '<tr class="bxt-r1">' + tmCell(g.away, impA, true) + '<td>' + cell(spA, 'spread') + '</td><td>' + cell(toO, 'over') + '</td><td>' + cell(mlA, 'ml') + '</td><td class="bxt-vl' + (spLean ? ' lean' : '') + '">' + vl1 + '</td><td class="bxt-rm" rowspan="2">' + money + '</td></tr>'
+        + '<tr class="bxt-r2">' + tmCell(g.home, impH, false) + '<td>' + cell(spH, 'spread') + '</td><td>' + cell(toU, 'under') + '</td><td>' + cell(mlH, 'ml') + '</td><td class="bxt-vl' + (mlLean ? ' lean' : '') + '">' + vl2 + trackBtn + '</td></tr>'
+        + drawer + '</tbody>';
+    };
+
     const nTracked = gamePicksLoad().length;
     const trackedStat = seasonReg ? '<button class="bx-bstat bx-trbtn" id="bx-open-tr" title="See the game bets you\'re tracking in Track Record"><div class="k">Tracked</div><div class="v">' + nTracked + ' ›</div></button>' : '';
     const banner = '<div class="bx-banner"><div class="eyebrow">' + (MODEL.season || '') + (MODEL.week ? ' · Week ' + MODEL.week : '') + (seasonReg ? '' : ' · Preseason') + '</div><h1>Game markets</h1><p>Every spread, total and moneyline across your books, with the +EV side flagged and Vault’s model line alongside.</p><div class="bx-bstats"><div class="bx-bstat"><div class="k">Games priced</div><div class="v">' + withBets.length + '</div></div><div class="bx-bstat"><div class="k">+EV bets</div><div class="v g">' + nEdges + '</div></div>' + trackedStat + '</div></div>';
@@ -42378,8 +42485,20 @@ window.VaultPropModel = (function () {
       }
     }
 
-    inner.innerHTML = banner + moversHTML + withBets.map(cardH).join('');
+    // Desktop → odds-screen table; narrow → the card layout (a 6-column table
+    // can't fit a phone). One board, two renderers, same data + wiring.
+    const narrow = !!(window.matchMedia && window.matchMedia('(max-width:820px)').matches);
+    const boardHTML = narrow
+      ? withBets.map(cardH).join('')
+      : '<div class="bxt-wrap"><table class="bxt"><thead><tr><th class="l">Matchup</th><th>Spread</th><th>Total</th><th>Moneyline</th><th>Vault line</th><th class="l">Real money</th></tr></thead>' + withBets.map(rowH).join('') + '</table></div>';
+    inner.innerHTML = banner + moversHTML + boardHTML;
     paintLogos('#bt-gv-inner');
+    // Re-render when the layout crosses the table/card breakpoint (rare; guarded
+    // so the listener binds once). Flush is cheap — the board already re-renders
+    // on every nav/click/data load.
+    if (!_gmBpWired) { _gmBpWired = true; let _bp = narrow;
+      window.addEventListener('resize', () => { const n = !!(window.matchMedia && window.matchMedia('(max-width:820px)').matches); if (n !== _bp) { _bp = n; if (view === 'games') renderGamesBoard(); } });
+    }
     inner.querySelectorAll('[data-tgl]').forEach(b => b.onclick = () => { const k = b.dataset.tgl; gExpanded.has(k) ? gExpanded.delete(k) : gExpanded.add(k); renderGamesBoard(); });
     inner.querySelectorAll('[data-track]').forEach(b => b.onclick = e => { e.stopPropagation(); const m = _trackMap[b.dataset.track]; if (m && m.lean) { toggleGamePick(m.g, m.lean); renderGamesBoard(); } });
     const mvOpen = inner.querySelector('#bx-mv-open'); if (mvOpen) mvOpen.onclick = () => { view = 'props'; propsView = 'results'; resultsTab = 'mine'; setView('props'); };
