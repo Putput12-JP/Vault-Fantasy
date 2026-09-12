@@ -41688,9 +41688,12 @@ window.VaultPropModel = (function () {
 #page-betting .bxt-sd.u{color:var(--bt-red);background:color-mix(in srgb,var(--bt-red) 14%,transparent)}
 #page-betting .bxt-eg{font:800 10px/1 var(--bt-mono);color:var(--pos-ink);background:var(--bt-green);border-radius:5px;padding:2px 5px}
 #page-betting .bxt-na{color:var(--bt-muted);opacity:.45}
-#page-betting .bxt-vl{font-family:var(--bt-mono);color:var(--bt-accent2);font-weight:700}
-#page-betting .bxt-vl.lean{color:var(--bt-gold)}
-#page-betting .bxt-vl .vlab{font-size:10px;color:var(--bt-muted);text-transform:uppercase;letter-spacing:.05em;margin-right:5px;font-weight:600}
+#page-betting .bxt td.bxt-vl{font-family:var(--bt-mono);vertical-align:middle}
+#page-betting .bxt-vlrow{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;line-height:1.55}
+#page-betting .bxt-vlrow .vlab{font-size:10px;color:var(--bt-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+#page-betting .bxt-vlrow .vv{color:var(--bt-accent2);font-weight:700}
+#page-betting .bxt-vlrow .vv.lean{color:var(--bt-gold)}
+#page-betting .bxt-vltrk{text-align:right;margin-top:4px}
 #page-betting .bxt-track{font-family:var(--bt-mono);font-size:13px;font-weight:700;color:var(--bt-faint);background:none;border:0;cursor:pointer;padding:0 2px;margin-left:6px;transition:color .12s ease}
 #page-betting .bxt-track:hover{color:var(--bt-text2)}
 #page-betting .bxt-track.on{color:var(--bt-gold)}
@@ -41704,9 +41707,9 @@ window.VaultPropModel = (function () {
 #page-betting tr.bxt-drow .bx-drawer{border-top:1px solid var(--bt-border)}
 /* Vault vs. the market — same table language, one row per model-vs-market gap */
 #page-betting .bxt-mv{margin-top:14px}
-#page-betting .bxt-mv td.bxt-tm .bt-logo{width:20px;height:20px;margin-right:2px}
-#page-betting .bxt-mv .bxt-mv-pick{margin-left:7px}
-#page-betting .bxt td.bxt-mv-mkt{text-align:left;color:var(--bt-muted);font-family:var(--bt-mono);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+#page-betting .bxt-mv td.bxt-tm .bt-logo{width:28px;height:28px;margin-right:3px}
+#page-betting .bxt-mv .bxt-mv-pick{margin-left:8px}
+#page-betting .bxt td.bxt-mv-mkt{text-align:center;color:var(--bt-muted);font-family:var(--bt-mono);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 #page-betting .bxt-mv-vl{font-family:var(--bt-mono);color:var(--bt-accent2);font-weight:700}
 #page-betting .bxt-mv-gap{font-family:var(--bt-mono);color:var(--bt-text2)}
 #page-betting .bxt-mv-gap .mut{color:var(--bt-muted)}
@@ -42428,13 +42431,25 @@ window.VaultPropModel = (function () {
       const gp = (_gmModel && seasonReg) ? gmLine(g) : null;
       const conv = (_gmModel && seasonReg) ? gmPredict(g.away, g.home) : null;
       const mkSp = (g.spread && g.spread.cons && g.spread.cons.home != null) ? round05(g.spread.cons.home) : null;
+      const mkT = (g.total && g.total.cons != null) ? g.total.cons : null;
       const spLean = gp && mkSp != null && Math.abs(gp.homeSpread - mkSp) >= 1;
       const mlLean = gp && impH != null && Math.abs(gp.homeWinPct - impH) >= 6;
-      const vl1 = gp ? '<span class="vlab">model</span>' + g.home + ' ' + sline(gp.homeSpread) : '';
+      const totLean = gp && mkT != null && Math.abs(gp.total - mkT) >= 1.5;
       let trackBtn = '';
       if (gp) { const lean = bestLean(g, conv); _trackMap[key] = { g, lean };
         if (lean) { const tr = gamePickLogged(g, lean); trackBtn = '<button class="bxt-track' + (tr ? ' on' : '') + '" data-track="' + key + '" title="' + (tr ? 'Tracking this pick' : 'Track Vault’s best bet — ' + lean.label) + '">' + (tr ? '★' : '☆') + '</button>'; } }
-      const vl2 = gp ? '<span class="vlab">win</span>' + g.home + ' ' + gp.homeWinPct + '%' : '';
+      // Vault line: the model's spread, predicted winner (with win%), and game
+      // total, stacked in one cell spanning both team rows. Each tints gold on a
+      // real lean vs the market.
+      let vaultCell = '';
+      if (gp) {
+        const win = gp.homeWinPct >= 50 ? g.home : g.away, winPct = gp.homeWinPct >= 50 ? gp.homeWinPct : 100 - gp.homeWinPct;
+        const vrow = (lab, val, lean) => '<div class="bxt-vlrow"><span class="vlab">' + lab + '</span><span class="vv' + (lean ? ' lean' : '') + '">' + val + '</span></div>';
+        vaultCell = vrow('Spread', g.home + ' ' + sline(gp.homeSpread), spLean)
+          + vrow('Winner', win + ' ' + winPct + '%', mlLean)
+          + vrow('Total', gp.total, totLean)
+          + (trackBtn ? '<div class="bxt-vltrk">' + trackBtn + '</div>' : '');
+      }
       let money = '';
       if (_polymarket) { const P = _polymarket[key];
         if (P && P.flow && P.flow.vol) {
@@ -42453,8 +42468,8 @@ window.VaultPropModel = (function () {
         drawer = '<tr class="bxt-drow"><td colspan="7"><div class="bx-drawer"><div class="bx-dtabs">' + tabs + '</div>' + gameBooksBlock(g, dm) + '</div></td></tr>';
       }
       return '<tbody class="bxt-g" data-key="' + key + '">'
-        + '<tr class="bxt-r1"><td class="bxt-tog" rowspan="2">' + chev + '</td>' + tmCell(g.away, impA) + '<td>' + cell(spA, 'spread') + '</td><td>' + cell(toO, 'over') + '</td><td>' + cell(mlA, 'ml') + '</td><td class="bxt-vl' + (spLean ? ' lean' : '') + '">' + vl1 + '</td><td class="bxt-rm" rowspan="2">' + money + '</td></tr>'
-        + '<tr class="bxt-r2">' + tmCell(g.home, impH) + '<td>' + cell(spH, 'spread') + '</td><td>' + cell(toU, 'under') + '</td><td>' + cell(mlH, 'ml') + '</td><td class="bxt-vl' + (mlLean ? ' lean' : '') + '">' + vl2 + trackBtn + '</td></tr>'
+        + '<tr class="bxt-r1"><td class="bxt-tog" rowspan="2">' + chev + '</td>' + tmCell(g.away, impA) + '<td>' + cell(spA, 'spread') + '</td><td>' + cell(toO, 'over') + '</td><td>' + cell(mlA, 'ml') + '</td><td class="bxt-vl" rowspan="2">' + vaultCell + '</td><td class="bxt-rm" rowspan="2">' + money + '</td></tr>'
+        + '<tr class="bxt-r2">' + tmCell(g.home, impH) + '<td>' + cell(spH, 'spread') + '</td><td>' + cell(toU, 'under') + '</td><td>' + cell(mlH, 'ml') + '</td></tr>'
         + drawer + '</tbody>';
     };
 
@@ -42503,8 +42518,7 @@ window.VaultPropModel = (function () {
         moversHTML = '<section class="bx-movers">'
           + '<div class="bx-mv-head"><div><div class="bx-mv-eyebrow">VAULT VS. THE MARKET</div><div class="bx-mv-t">Where Vault disagrees most with the market</div></div>'
           + '<button class="bx-mv-open" id="bx-mv-open" title="See these in your Track Record">In your record ›</button></div>'
-          + '<div class="bx-mv-sub">Context, not a bet edge — Vault’s model matches the market, it doesn’t beat the close. The three biggest spread, total and moneyline gaps this week are tracked automatically, so your record shows whether the disagreements actually cash.</div>'
-          + '<div class="bxt-wrap"><table class="bxt bxt-mv"><thead><tr><th class="l">Pick</th><th class="l">Market</th><th>Model line</th><th>Gap vs market</th><th>Tracked</th></tr></thead><tbody>' + mvBody + '</tbody></table></div></section>';
+          + '<div class="bxt-wrap"><table class="bxt bxt-mv"><thead><tr><th class="l">Pick</th><th>Market</th><th>Model line</th><th>Gap vs market</th><th>Tracked</th></tr></thead><tbody>' + mvBody + '</tbody></table></div></section>';
       }
     }
 
