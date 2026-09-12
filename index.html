@@ -41653,7 +41653,8 @@ window.VaultPropModel = (function () {
    Reuses the card's pricing/Vault-line/flow/drawer logic; cards stay on mobile. */
 #page-betting .bxt-wrap{overflow-x:auto;border:1px solid var(--bt-border);border-radius:16px;background:var(--bt-s2)}
 #page-betting table.bxt{width:100%;border-collapse:collapse;min-width:860px}
-#page-betting .bxt thead th{font-family:var(--bt-mono);font-size:var(--t-nano);letter-spacing:.06em;text-transform:uppercase;color:var(--bt-muted);font-weight:600;text-align:center;padding:9px 14px;background:var(--bt-s1);border-bottom:1px solid var(--bt-border);position:sticky;top:0;z-index:2;white-space:nowrap}
+#page-betting .bxt thead th{font-family:var(--bt-mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--bt-muted);font-weight:700;text-align:center;padding:10px 14px;background:var(--bt-s1);border-bottom:1px solid var(--bt-border);position:sticky;top:0;z-index:2;white-space:nowrap}
+#page-betting .bxt thead th.l{text-align:left}
 #page-betting tbody.bxt-g{border-top:5px solid var(--bt-s1)}
 #page-betting tbody.bxt-g:hover td{background:color-mix(in srgb,var(--bt-accent2) 3%,transparent)}
 #page-betting .bxt td{padding:5px 14px;border-bottom:1px solid var(--bt-border);text-align:right;white-space:nowrap;vertical-align:middle}
@@ -41669,7 +41670,16 @@ window.VaultPropModel = (function () {
 #page-betting .bxt-togh{width:30px;padding:0}
 #page-betting .bxt-chev{background:none;border:0;color:var(--bt-muted);cursor:pointer;font-size:18px;line-height:1;padding:4px;transition:color .12s ease}
 #page-betting .bxt-chev:hover{color:var(--bt-text)}
-#page-betting .bxt-cell{font-family:var(--bt-mono);display:inline-flex;align-items:center;gap:6px;justify-content:flex-end}
+#page-betting .bxt-cell{font-family:var(--bt-mono);display:inline-flex;align-items:center;gap:5px;justify-content:flex-end}
+/* fixed-width slots so the first digit of the line stacks down a column: the
+   line's left edge is constant because everything to its right is fixed-width
+   (the +EV badge is always reserved, just hidden when absent). */
+#page-betting .bxt-cell .bxt-ln{min-width:34px;text-align:left;flex:none}
+#page-betting .bxt-cell .bxt-px{min-width:42px;text-align:right;flex:none}
+#page-betting .bxt-cell .bx-book{min-width:28px;text-align:center;flex:none}
+#page-betting .bxt-cell .bxt-eg{min-width:38px;text-align:center;flex:none}
+#page-betting .bxt-cell .bxt-eg.empty{visibility:hidden}
+#page-betting .bxt-cell .bxt-sd{flex:none}
 #page-betting .bxt-ln{font-weight:800;color:var(--bt-text)}
 #page-betting .bxt-cell.eg .bxt-ln{color:var(--bt-green)}
 #page-betting .bxt-px{color:var(--bt-text2);font-weight:600}
@@ -41692,6 +41702,15 @@ window.VaultPropModel = (function () {
 #page-betting .bxt-vol b{color:var(--bt-text2)}
 #page-betting tr.bxt-drow td{padding:0;background:var(--bt-s2)}
 #page-betting tr.bxt-drow .bx-drawer{border-top:1px solid var(--bt-border)}
+/* Vault vs. the market — same table language, one row per model-vs-market gap */
+#page-betting .bxt-mv{margin-top:14px}
+#page-betting .bxt-mv td.bxt-tm .bt-logo{width:20px;height:20px;margin-right:2px}
+#page-betting .bxt-mv .bxt-mv-pick{margin-left:7px}
+#page-betting .bxt td.bxt-mv-mkt{text-align:left;color:var(--bt-muted);font-family:var(--bt-mono);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+#page-betting .bxt-mv-vl{font-family:var(--bt-mono);color:var(--bt-accent2);font-weight:700}
+#page-betting .bxt-mv-gap{font-family:var(--bt-mono);color:var(--bt-text2)}
+#page-betting .bxt-mv-gap .mut{color:var(--bt-muted)}
+#page-betting .bxt td.bxt-mv-trk{text-align:center;color:var(--bt-green);font-family:var(--bt-mono);font-size:12px;white-space:nowrap}
 #page-betting .bx-flow-n{color:var(--bt-muted);white-space:nowrap}
 #page-betting .bx-flow-n b{color:var(--bt-text2);font-weight:700}
 #page-betting .bx-flow-hot{color:var(--bt-gold);font-weight:700;white-space:nowrap}
@@ -42399,7 +42418,7 @@ window.VaultPropModel = (function () {
       const toO = to.find(b => /^over/i.test(b.lab)), toU = to.find(b => /^under/i.test(b.lab));
       const cell = (bet, kind) => {
         if (!bet) return '<span class="bxt-na">–</span>';
-        const eg = bet.ev > 0, etag = eg ? '<span class="bxt-eg" title="Best price beats no-vig fair by ' + bet.ev + '%">+' + bet.ev + '%</span>' : '';
+        const eg = bet.ev > 0, etag = eg ? '<span class="bxt-eg" title="Best price beats no-vig fair by ' + bet.ev + '%">+' + bet.ev + '%</span>' : '<span class="bxt-eg empty"></span>';
         let ln = '';
         if (kind === 'spread') ln = '<span class="bxt-ln">' + bet.lab.replace(/^\S+\s/, '') + '</span>';
         else if (kind === 'over') ln = '<span class="bxt-sd o">O</span><span class="bxt-ln">' + bet.lab.replace(/^\w+\s/, '') + '</span>';
@@ -42467,23 +42486,25 @@ window.VaultPropModel = (function () {
       if (shown.length) {
         shown.forEach(mv => autoTrackLean(mv.g, mv.lean));   // always tracked
         const unitLbl = u => u === 'pt%' ? ' pt win%' : ' pt';
-        const rowH = (mv, i) => {
+        const mkName = m => ({ spread: 'Spread', total: 'Total', ml: 'Moneyline' }[m] || m);
+        // One row per model-vs-market gap, in the same table language as the board.
+        const mvRow = (mv) => {
           const l = mv.lean, g = mv.g;
           const gap = l.diff + unitLbl(l.unit);
-          return '<div class="bx-mv-row">'
-            + '<span class="bx-mv-rk">' + (i + 1) + '</span>'
-            + '<div class="bx-mv-main"><div class="bx-mv-pick"><span class="bt-logo" data-logo="' + g.away + '"></span><span class="bt-logo" data-logo="' + g.home + '"></span><b title="The side to bet, at the market number">' + l.label + '</b></div>'
-            + '<div class="bx-mv-line"><span class="bx-mv-tag">MODEL LINE</span><b>' + l.vault + '</b><span>' + gap + ' vs market</span></div></div>'
-            + '<span class="bx-mv-trk" title="Automatically tracked in your Track Record — settles against the final score">✓ Tracked</span>'
-            + '</div>';
+          return '<tr>'
+            + '<td class="bxt-tm"><span class="bt-logo" data-logo="' + g.away + '"></span><span class="bt-logo" data-logo="' + g.home + '"></span><span class="cd bxt-mv-pick" title="The side to bet, at the market number">' + l.label + '</span></td>'
+            + '<td class="bxt-mv-mkt">' + mkName(l.market) + '</td>'
+            + '<td class="bxt-mv-vl">' + l.vault + '</td>'
+            + '<td class="bxt-mv-gap">' + gap + ' <span class="mut">vs mkt</span></td>'
+            + '<td class="bxt-mv-trk" title="Automatically tracked in your Track Record — settles against the final score">✓ Tracked</td>'
+            + '</tr>';
         };
-        const grpH = ([m, lbl]) => '<div class="bx-mv-grp"><div class="bx-mv-gh">' + lbl + '</div>'
-          + (top[m].length ? top[m].map(rowH).join('') : '<div class="bx-mv-none">No ' + lbl.toLowerCase() + ' gap this week</div>') + '</div>';
+        const mvBody = MKT.map(([m]) => (top[m] || []).map(mvRow).join('')).join('');
         moversHTML = '<section class="bx-movers">'
           + '<div class="bx-mv-head"><div><div class="bx-mv-eyebrow">VAULT VS. THE MARKET</div><div class="bx-mv-t">Where Vault disagrees most with the market</div></div>'
           + '<button class="bx-mv-open" id="bx-mv-open" title="See these in your Track Record">In your record ›</button></div>'
           + '<div class="bx-mv-sub">Context, not a bet edge — Vault’s model matches the market, it doesn’t beat the close. The three biggest spread, total and moneyline gaps this week are tracked automatically, so your record shows whether the disagreements actually cash.</div>'
-          + '<div class="bx-mv-cols">' + MKT.map(grpH).join('') + '</div></section>';
+          + '<div class="bxt-wrap"><table class="bxt bxt-mv"><thead><tr><th class="l">Pick</th><th class="l">Market</th><th>Model line</th><th>Gap vs market</th><th>Tracked</th></tr></thead><tbody>' + mvBody + '</tbody></table></div></section>';
       }
     }
 
