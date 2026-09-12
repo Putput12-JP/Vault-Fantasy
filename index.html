@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-12T19:00', tag:'New', title:'See which side the money is actually moving to',
+    items:[
+      'The Polymarket strip now shows the net money that has actively bought into a side in the last 24 hours, for example “$4.2k into BUF.” Because Polymarket is a real exchange, this is the true directional read that a plain traded-volume number can’t give you.',
+      'It only appears when one side has a real edge in the action, so a game where the money is split stays quiet instead of showing noise.',
+    ],
+  },
+  {
     ts:'2026-09-12T18:30', tag:'New', title:'A second real-money read on game markets: Polymarket',
     items:[
       'Game Markets cards now show a Polymarket strip alongside the Kalshi one. Polymarket is another real-dollar exchange, and it runs much deeper on the marquee games, so you get how much money has actually traded, how much is still open, and the last 24 hours of action.',
@@ -41630,6 +41637,11 @@ window.VaultPropModel = (function () {
 #page-betting .bx-flow-tag .k{font-style:normal;color:#00a99d;font-weight:800}
 #page-betting .bx-flow-tag .p{font-style:normal;color:#6f7bff;font-weight:800}
 #page-betting .bx-flow.pm.hot{background:color-mix(in srgb,#6f7bff 8%,var(--bt-s2))}
+/* taker (aggressor) 24h flow: which side money is actively buying into. Static,
+   data-forward — a directional read, not decoration (Vault design-eng rules). */
+#page-betting .bx-flow-taker{color:var(--bt-muted);white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+#page-betting .bx-flow-taker b{color:var(--bt-text2);font-weight:700}
+#page-betting .bx-flow-taker .tm{color:var(--bt-accent2);font-weight:800}
 #page-betting .bx-flow-n{color:var(--bt-muted);white-space:nowrap}
 #page-betting .bx-flow-n b{color:var(--bt-text2);font-weight:700}
 #page-betting .bx-flow-hot{color:var(--bt-gold);font-weight:700;white-space:nowrap}
@@ -42224,11 +42236,22 @@ window.VaultPropModel = (function () {
           dir = '<span class="bx-flow-lean" title="Polymarket money implies ' + ppct + '% for ' + team + ' — ' + mag + 'pt richer than the book win%. Real dollars leaning a side the books haven’t fully moved to.">💰 Real money leans <b>' + team + '</b> +' + mag + 'pt</span>';
         }
       }
+      // Net 24h aggressor flow: which side takers actively bought into. On a
+      // matched exchange this is the only true directional read (total volume
+      // can't show a side). Gated to a meaningful tilt on enough trades so a
+      // near-balanced book doesn't render noise.
+      let taker = '';
+      const tk = P.taker;
+      if (tk && tk.n >= 15 && Math.abs(tk.net) >= 2500) {
+        const side = tk.net >= 0 ? g.home : g.away;
+        taker = '<span class="bx-flow-taker" title="Net aggressor (taker) money over the last 24h — the side bettors actively bought into. On a matched exchange this is the real directional read; total traded volume can’t show which side money is on.">💵 <b>' + dc(Math.abs(tk.net)) + '</b> into <b class="tm">' + side + '</b></span>';
+      }
       return '<div class="bx-flow pm' + (hot ? ' hot' : '') + '">'
         + '<span class="bx-flow-tag" title="Polymarket is a real-money exchange, so its traded volume is genuine money behind the price — the handle-style signal sportsbooks don’t give us. Amounts are US dollars."><i class="p">Polymarket</i> real money</span>'
         + '<span class="bx-flow-n"><b>' + dc(fl.vol) + '</b> traded</span>'
         + '<span class="bx-flow-n"><b>' + dc(fl.oi) + '</b> open</span>'
         + (fl.vol24 ? '<span class="bx-flow-n"><b>' + dc(fl.vol24) + '</b> last 24h</span>' : '')
+        + taker
         + (hot ? '<span class="bx-flow-hot" title="Top-quartile 24h volume on this week’s slate — action is heating up here">🔥 Heating up</span>' : '')
         + dir + '</div>';
     };
