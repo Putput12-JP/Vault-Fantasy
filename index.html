@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-12T18:00', tag:'Improved', title:'Best Bets now cross-checked against the sharp market',
+    items:[
+      'Every graded prop is now measured against real-money prices on Kalshi, a regulated betting exchange. When our number strongly disagrees with where the sharp money sits on the same bet, we hold that pick back from Best Bets instead of showing it as an A.',
+      'The result is a cleaner board: fewer picks that look great on paper but the market flatly disagrees with. We only defer to the exchange when its market is actually liquid, so a thin, untraded line never overrides our read.',
+    ],
+  },
+  {
     ts:'2026-09-12T16:00', tag:'Improved', title:'Your matchup reads like a real gameday scoreboard',
     items:[
       'Each starter now shows its own game status instead of everyone reading "Live" the moment one game kicks off: players whose games are done show "Final" with their real score, players in progress show "Live", and players who haven\'t kicked off yet show their projection and kickoff time.',

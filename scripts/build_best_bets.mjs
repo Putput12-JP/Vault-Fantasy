@@ -53,6 +53,7 @@ const DRY   = !!ARG.dry;
 const TOP   = Number(ARG.top || 4);
 const LEANS = Number(ARG.leans || 3);
 const FEED  = ARG.feed || resolve(ROOT, 'data/lineup-feed.json');
+const KPROPS = ARG.kprops || resolve(ROOT, 'data/kalshi_props.json');
 let   SEASONS = [2024, 2025];                 // log window [prev, cur] — reset from feed.season in main() so it rolls to [cur-1, cur] once the new season's nflverse logs land (mirrors the client's ebVaultSeasons)
 const BE_REF = 0.524;                         // standard -110 book break-even (entry-agnostic bar)
 const MIN_GAMES = 8;                          // enough log to trust the projection
@@ -88,6 +89,21 @@ const MAX_PROJ_GAP = 0.40;
 const COUNT_MK = new Set(['pass_att', 'pass_cmp', 'rush_att', 'rec']);
 const LOW_COUNT_LINE = 3.5;   // where the Under is still a plus-money longshot
 const ABS_COUNT_GAP = 0.5;    // half a count below the line flips the side w/o moving the ratio much
+// Gate 3 — sharp-anchor agreement. Kalshi is a real-money exchange; its two-
+// sided price on a player prop is a sharp fair the projection can be wrong
+// about. When our confidence-adjusted prob for a side disagrees with the
+// exchange's fair for that SAME side by more than SHARP_GAP, the projection is
+// contrarian to real money — cap the grade below B so it can't headline (same
+// shape as the role-unconfirmed cap; we demote, we don't invent an edge from
+// the disagreement). Trust the exchange ONLY when the strike matches the line
+// and the market is genuinely liquid — a thin exchange market is worse than
+// none, so a 2-contract quote never fades a Vault grade. Null-safe: if
+// kalshi_props.json is missing/thin, sharpFairFor returns null and nothing is
+// gated, exactly like a cold cache in the trade engines.
+const SHARP_GAP = 0.10;          // ≥10-point prob disagreement on the same side → demote
+const SHARP_MIN_OI = 50;         // contracts of open interest before we trust the price
+const SHARP_MAX_SPREAD = 0.06;   // yes bid/ask spread ($) — wider = too thin/stale to fade on
+const SHARP_STRIKE_TOL = 0.25;   // exchange strike must match the book line (counts align on .5)
 const log = (...a) => console.log('[best-bets]', ...a);
 
 /* ── data-key helpers (mirror the app) ─────────────────────────────────── */
@@ -364,8 +380,35 @@ function roleCorrobSet(feed) {
   return ok;
 }
 
+/* ── sharp anchor (Kalshi player props) ──────────────────────────────────
+   The exchange fair for a player/market/line, or null when we shouldn't trust
+   it. Kalshi stores yes = P(value > floor_strike), so a strike that equals the
+   book line is the same over/under question. We return the exchange fair for
+   the OVER, plus its liquidity, and only when a strike matches AND the market
+   clears the OI + spread bars — otherwise null (no gate). Mirrors the trade
+   engines' "return null until the data lands", never a fake 0. */
+function loadKalshiProps() {
+  try {
+    const kp = JSON.parse(readFileSync(KPROPS, 'utf8'));
+    return kp && kp.markets ? kp : null;
+  } catch (e) { return null; }   // cold/missing file → anchor no-ops
+}
+function sharpFairFor(KP, name, mk, line) {
+  if (!KP) return null;
+  const ladder = (KP.markets[mk] || {})[nkey(name)];
+  if (!ladder || !ladder.length || line == null) return null;
+  let best = null;
+  for (const r of ladder) {
+    const d = Math.abs(r.k - line);
+    if (d > SHARP_STRIKE_TOL) continue;
+    if (r.oi < SHARP_MIN_OI || r.spr > SHARP_MAX_SPREAD) continue;   // liquid strikes only
+    if (!best || d < best.d) best = { d, over: r.fair, oi: r.oi, spr: r.spr };
+  }
+  return best ? { over: best.over, oi: best.oi, spr: best.spr } : null;
+}
+
 /* ── score every prop ──────────────────────────────────────────────────── */
-function scoreProps(feed, PM) {
+function scoreProps(feed, PM, KP) {
   const props = feed.vegas_player_props || {};
   const cands = [];
   let scored = 0, gated = 0, preskip = 0;
@@ -389,7 +432,7 @@ function scoreProps(feed, PM) {
   const roleOk = roleCorrobSet(feed);
   const roleParams = loadRoleParams();   // role_volume.json — the board's volume anchor
   const ctx = buildMatchupCtx(feed);   // opponent + environment + game-script, per prop
-  let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0;
+  let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0, sharpskip = 0;
   for (const id in props) {
     const p = props[id];
     if (isPre && p.commence) { const t = new Date(p.commence).getTime(); if (Number.isFinite(t) && t < regCutoff) { preskip++; continue; } }
@@ -440,7 +483,14 @@ function scoreProps(feed, PM) {
         // projection sits far off this line → demote below B so it can't pass.
         const roleUnconfirmed = !!ROLE_VOL_MK[p.pos] && !roleOk.has(String(id))
           && v.proj != null && Math.abs(v.proj - line) / Math.abs(line) >= ROLE_PROJREL;
-        const eff = roleUnconfirmed ? 'C' : letter;
+        // Gate 3: sharp-anchor disagreement. Compare our side's confidence-
+        // adjusted prob to the exchange's fair for the same side; a liquid,
+        // strike-matched market that disagrees by ≥SHARP_GAP caps the grade.
+        const sharp = sharpFairFor(KP, p.name, mk, line);   // {over,oi,spr} or null
+        const sharpSide = sharp ? (side === 'over' ? sharp.over : 1 - sharp.over) : null;
+        const sharpGap = sharpSide != null ? round(g.padj - sharpSide, 3) : null;   // + = we're higher than sharp
+        const sharpDisagree = sharpSide != null && Math.abs(g.padj - sharpSide) >= SHARP_GAP;
+        const eff = (roleUnconfirmed || sharpDisagree) ? 'C' : letter;
         // Gate 1: projection strays too far from this corroborated line → stale/context, not edge.
         const projGap = v.proj != null && Math.abs(line) > 0 ? Math.abs(v.proj - line) / Math.abs(line) : 0;
         const projBlowout = VOL_MK.has(mk) && projGap >= MAX_PROJ_GAP;
@@ -463,6 +513,7 @@ function scoreProps(feed, PM) {
         const pass = preGate && !projBlowout && !countUnderPhantom && realBookAtLine;
         if (!pass) {
           if (roleUnconfirmed && wouldPass) roleskip++;
+          else if (sharpDisagree && wouldPass) sharpskip++;
           else if (preGate && projBlowout) projskip++;
           else if (preGate && countUnderPhantom) countskip++;
           else if (preGate && !realBookAtLine) dfsskip++;
@@ -477,6 +528,11 @@ function scoreProps(feed, PM) {
           proj: v.proj, logProj: v.logProj, roleMult: v.roleMult, // anchored / pre-anchor / role multiplier
           prob: round(g.padj, 3), rawProb: round(sideProb, 3),
           grade: eff, books: trust.books, games: v.games,
+          // sharp anchor (null when no liquid strike-matched exchange market):
+          // the exchange fair for this side, our gap to it, and its liquidity,
+          // so the Edge Board can show "sharp says X" next to the Vault grade.
+          sharpFair: sharpSide != null ? round(sharpSide, 3) : null,
+          sharpGap, sharpOi: sharp ? sharp.oi : null,
         });
       }
     }
@@ -490,7 +546,7 @@ function scoreProps(feed, PM) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, scored, gated, preskip, benchskip, roleskip, projskip, dfsskip, countskip, total: cands.length };
+  return { list, scored, gated, preskip, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, total: cands.length };
 }
 
 /* ── game leans (CONTEXT only; empty while the model is gated) ──────────── */
@@ -535,11 +591,13 @@ function gameLeans(feed) {
     const PM = JSON.parse(readFileSync(resolve(ROOT, 'data/prop_model.json'), 'utf8'));
     if (!PM.markets) { log('prop_model.json has no markets — skipping'); process.exit(0); }
 
-    const props = scoreProps(feed, PM);
+    const KP = loadKalshiProps();   // sharp anchor — null-safe, no-ops if the file isn't there yet
+    log(KP ? `sharp anchor: kalshi_props.json (${KP.count} markets)` : 'sharp anchor: none (kalshi_props.json missing) — agreement gate off');
+    const props = scoreProps(feed, PM, KP);
     const leans = gameLeans(feed);
-    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
+    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.sharpskip} sharp-disagree, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
     log(`game leans: ${leans.gated ? leans.gated : props.total >= 0 ? leans.list.length : 0}${leans.gated ? ' (empty)' : ''}`);
-    for (const b of props.list) log(`  • ${b.name} ${b.marketLabel} ${b.side.toUpperCase()} ${b.line} @ ${b.book} ${b.price > 0 ? '+' : ''}${b.price} — ${b.grade}, ${b.ev}% EV, ${b.books} books, ${b.games}g`);
+    for (const b of props.list) log(`  • ${b.name} ${b.marketLabel} ${b.side.toUpperCase()} ${b.line} @ ${b.book} ${b.price > 0 ? '+' : ''}${b.price} — ${b.grade}, ${b.ev}% EV, ${b.books} books, ${b.games}g${b.sharpFair != null ? `, sharp ${(b.sharpFair * 100).toFixed(0)}% (gap ${b.sharpGap > 0 ? '+' : ''}${(b.sharpGap * 100).toFixed(0)}pt)` : ''}`);
 
     feed.best_bets = {
       generated: new Date().toISOString(),
