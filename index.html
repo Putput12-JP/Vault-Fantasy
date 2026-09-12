@@ -41710,6 +41710,10 @@ window.VaultPropModel = (function () {
 #page-betting .bxt-vol b{color:var(--bt-text2)}
 #page-betting tr.bxt-drow td{padding:0;background:var(--bt-s2)}
 #page-betting tr.bxt-drow .bx-drawer{border-top:1px solid var(--bt-border)}
+/* leading LINE card in the Compare-books drawer: the line shown once, up front */
+#page-betting .eb-bk.eb-lncard{background:color-mix(in srgb,var(--bt-accent2) 12%,var(--bt-s1));border-color:color-mix(in srgb,var(--bt-accent2) 42%,transparent)}
+#page-betting .eb-bk.eb-lncard .bk{color:var(--bt-accent2);font-weight:700}
+#page-betting .eb-bk.eb-lncard .pr{color:var(--bt-text);font-weight:800}
 /* Vault vs. the market — same table language, one row per model-vs-market gap */
 #page-betting .bxt-mv{margin-top:14px}
 #page-betting .bxt-mv td.bxt-tm .bt-logo{width:34px;height:34px;margin-right:4px}
@@ -42160,15 +42164,14 @@ window.VaultPropModel = (function () {
     // +3.5) is flagged .off and can't masquerade as the gold "best price".
     let sides;
     if (gm === 'total') {
-      const ln = M.cons != null ? M.cons : '';
       const cf = v => v == null ? '' : ('' + v);
-      sides = [{ lab: 'Over ' + ln, priceOf: q => q.over, lineOf: q => q.line, consLine: M.cons != null ? M.cons : null, lnFmt: cf, consFmt: cf(M.cons) },
-               { lab: 'Under ' + ln, priceOf: q => q.under, lineOf: q => q.line, consLine: M.cons != null ? M.cons : null, lnFmt: cf, consFmt: cf(M.cons) }];
+      sides = [{ lab: 'Over', priceOf: q => q.over, lineOf: q => q.line, consLine: M.cons != null ? M.cons : null, lnFmt: cf, consFmt: cf(M.cons) },
+               { lab: 'Under', priceOf: q => q.under, lineOf: q => q.line, consLine: M.cons != null ? M.cons : null, lnFmt: cf, consFmt: cf(M.cons) }];
     } else if (gm === 'spread') {
       const sa = M.cons ? round05(M.cons.away) : null, sh = M.cons ? round05(M.cons.home) : null;
       const sf = v => v == null ? '' : sline(round05(v));
-      sides = [{ lab: g.away + ' ' + sline(sa), priceOf: q => q.away && q.away.price, lineOf: q => q.away && q.away.line, consLine: sa, lnFmt: sf, consFmt: sf(sa) },
-               { lab: g.home + ' ' + sline(sh), priceOf: q => q.home && q.home.price, lineOf: q => q.home && q.home.line, consLine: sh, lnFmt: sf, consFmt: sf(sh) }];
+      sides = [{ lab: g.away, priceOf: q => q.away && q.away.price, lineOf: q => q.away && q.away.line, consLine: sa, lnFmt: sf, consFmt: sf(sa) },
+               { lab: g.home, priceOf: q => q.home && q.home.price, lineOf: q => q.home && q.home.line, consLine: sh, lnFmt: sf, consFmt: sf(sh) }];
     } else {
       sides = [{ lab: g.away + ' ML', priceOf: q => q.away, lineOf: null, consLine: null, lnFmt: null, consFmt: '' },
                { lab: g.home + ' ML', priceOf: q => q.home, lineOf: null, consLine: null, lnFmt: null, consFmt: '' }];
@@ -42189,11 +42192,16 @@ window.VaultPropModel = (function () {
         const ln = s.lineOf ? s.lineOf(q) : null;
         const off = s.consLine != null && ln != null && round05(ln) !== s.consLine;
         const isBest = !off && b === s._best.book;
-        const lnHTML = ln != null ? '<div class="ln">' + s.lnFmt(ln) + '</div>' : '';
+        // The consensus line is shown once as the leading LINE card, so a book's
+        // own number appears only when it's OFF that line (i.e. the flag).
+        const lnHTML = off ? '<div class="ln">' + s.lnFmt(ln) + '</div>' : '';
         const tt = b + (off ? ' — hanging ' + s.lnFmt(ln) + ' (off the ' + s.consFmt + ' line)' : (isBest ? ' — best price at ' + s.consFmt : ''));
         return '<div class="eb-bk' + (isBest ? ' best' : '') + (off ? ' off' : '') + '" title="' + tt + '"><div class="bk">' + b + '</div><div class="pr">' + fb.fmtOdds(p) + '</div>' + lnHTML + '</div>';
       }).filter(Boolean).join('');
-      return chips ? '<div class="gb-bkside"><div class="gb-bklab">' + s.lab + '</div><div class="eb-bks">' + chips + '</div></div>' : '';
+      if (!chips) return '';
+      // Leading card: the spread/total number for this side, once, before the books.
+      const lineCard = (s.consLine != null && s.consFmt !== '') ? '<div class="eb-bk eb-lncard" title="The consensus line — every book is priced here unless flagged off"><div class="bk">LINE</div><div class="pr">' + s.consFmt + '</div></div>' : '';
+      return '<div class="gb-bkside"><div class="gb-bklab">' + s.lab + '</div><div class="eb-bks">' + lineCard + chips + '</div></div>';
     };
     const body = sides.map(rowH).join('');
     if (!body) return '';
