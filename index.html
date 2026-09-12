@@ -7048,6 +7048,53 @@ async function getOpponentMap(year, week) {
   } catch(e) { return {}; }
 }
 
+// ── NFL game-state cache ──────────────────────────────────────────────
+// Same ESPN scoreboard call, but keeps each game's live state so a matchup
+// row can read Final / in-progress / kickoff-time PER PLAYER instead of a
+// single "everyone is Live" flag. key: 'YYYY_WW' → {TEAM:{state,short,date}}
+// where state is ESPN's 'pre' | 'in' | 'post'.
+const _espnGameStateCache = {};
+async function getGameStateMap(year, week) {
+  const key = `${year}_${week}`;
+  if (_espnGameStateCache[key]) return _espnGameStateCache[key];
+  try {
+    const data = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&season=${year}&week=${week}`
+    ).then(r => r.json());
+    const map = {};
+    (data?.events || []).forEach(e => {
+      const t = (e.status && e.status.type) || {};
+      const cell = { state: t.state || 'pre', short: t.shortDetail || t.detail || '', date: e.date || null };
+      (e.competitions?.[0]?.competitors || []).forEach(c => {
+        const ab = c.team && c.team.abbreviation;
+        if (ab) map[ab] = cell;
+      });
+    });
+    _espnGameStateCache[key] = map;
+    return map;
+  } catch(e) { return {}; }
+}
+// Team-code drift between fantasy sources and ESPN's scoreboard (Sleeper says
+// WAS/JAC, ESPN says WSH/JAX, etc.). Try the code as-is, then its alias.
+const _GS_ALIAS = { WAS:'WSH', WSH:'WAS', JAC:'JAX', JAX:'JAC', LA:'LAR', OAK:'LV', SD:'LAC', STL:'LAR', ARZ:'ARI' };
+function _gsForTeam(map, team) {
+  if (!map || !team) return null;
+  return map[team] || (_GS_ALIAS[team] && map[_GS_ALIAS[team]]) || null;
+}
+// Stamp a player object with {gs, gl}: game state ('pre'|'in'|'post') and the
+// short label a row shows under the name. No-op when the team has no scoreboard
+// entry (bye week, or the fetch failed) — the renderer falls back to its flag.
+function _tagGameState(map, p) {
+  if (!p || !p.team) return;
+  const g = _gsForTeam(map, p.team);
+  if (!g) return;
+  if (g.state === 'post') { p.gs = 'post'; p.gl = /final/i.test(g.short) ? g.short : 'Final'; return; }
+  if (g.state === 'in')   { p.gs = 'in';   p.gl = g.short || 'Live'; return; }
+  let lab = 'Yet to play';
+  if (g.date) { try { const d = new Date(g.date); lab = d.toLocaleDateString('en-US',{weekday:'short'}) + ' ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); } catch(e){} }
+  p.gs = 'pre'; p.gl = lab;
+}
+
 window._psRenderGameLogs = async function(year, targetEl) {
   const body = targetEl || document.getElementById('ps-body');
   if (!body || !_psPlayer) return;
@@ -13425,6 +13472,13 @@ function _sdSetAdp(bucket, field, value){
    The "New" badge in Settings is driven by the newest entry's ts vs. the last
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
+  {
+    ts:'2026-09-12T16:00', tag:'Improved', title:'Your matchup reads like a real gameday scoreboard',
+    items:[
+      'Each starter now shows its own game status instead of everyone reading "Live" the moment one game kicks off: players whose games are done show "Final" with their real score, players in progress show "Live", and players who haven\'t kicked off yet show their projection and kickoff time.',
+      'Your team total is now a true blend of real points for games that have played and projections for the ones still to come, and the header tells you whether the week is projected, live, or final.',
+    ],
+  },
   {
     ts:'2026-09-12T12:00', tag:'Fixed', title:'Live matchups show up for private ESPN leagues',
     items:[
@@ -36320,6 +36374,8 @@ window.VaultGradeCal = (function () {
 .vtr-cell.info .vtr-dot{color:var(--muted);opacity:.7}
 .vtr-cell.info .gl{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);opacity:.85;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.02em}
 .vtr-cell.info .gl .live{color:var(--you2);opacity:1;font-weight:700}
+.vtr-cell.info .gl .final{color:var(--text2);opacity:1;font-weight:700}
+.vtr-cell.info .gl .pre{color:var(--muted);opacity:.85}
 .vtr-cell.info .vtr-pwrap{display:flex;align-items:center;gap:11px;min-width:0}
 .vtr-cell.info.opp .vtr-pwrap{flex-direction:row-reverse}
 .vtr-cell.info .vtr-ptxt{min-width:0;flex:1}
@@ -37124,10 +37180,17 @@ async function _ovRenderRedraftMatchup(){
       var myAct=mine.starters_points||[], opAct=(opp&&opp.starters_points)||[];
       var actSum=myAct.reduce(function(s,v){return s+(+v||0);},0)+opAct.reduce(function(s,v){return s+(+v||0);},0);
       var isLive=actSum>0.01;
+      // Per-player game state so a row reads Final / in-progress / kickoff rather
+      // than one blanket flag. Also lets us keep the PROJECTION for a player whose
+      // game hasn't kicked off instead of showing Sleeper's pre-game 0 — matching
+      // how the Sleeper app itself paints a live matchup. Best-effort.
+      var gsMap={}; try{ gsMap=await getGameStateMap(season, week); }catch(e){}
       for(var i=0;i<n;i++){
         var slot=slots[i]||'FLEX'; var base=_rdvSlotBase(slot);
         var a=resolve(myStart[i],proj), b=resolve(opStart[i],proj);
-        if(isLive){ if(a&&myAct[i]!=null) a.pts=+myAct[i]; if(b&&opp&&opAct[i]!=null) b.pts=+opAct[i]; }
+        _tagGameState(gsMap,a); _tagGameState(gsMap,b);
+        if(a){ if(a.gs==='in'||a.gs==='post'){ if(myAct[i]!=null) a.pts=+myAct[i]; } else if(a.gs==null && isLive && myAct[i]!=null){ a.pts=+myAct[i]; } }
+        if(b&&opp){ if(b.gs==='in'||b.gs==='post'){ if(opAct[i]!=null) b.pts=+opAct[i]; } else if(b.gs==null && isLive && opAct[i]!=null){ b.pts=+opAct[i]; } }
         var ap=a&&a.pts!=null?a.pts:0, bp=b&&b.pts!=null?b.pts:0;
         myTot+=ap; opTot+=bp;
         var lead = ap>bp?'lead-me':(bp>ap?'lead-opp':'');
@@ -37290,6 +37353,10 @@ async function _rdvEspnMatchup(ctx, lg){
   // Live scoring: ESPN exposes actuals as statSourceId 0 once games begin.
   var isLive=meStart.concat(opStart).some(function(p){return p&&p.act!=null&&p.act>0;});
   if(isLive){ meStart.forEach(function(p){ if(p&&p.act!=null) p.pts=p.act; }); opStart.forEach(function(p){ if(p&&p.act!=null) p.pts=p.act; }); }
+  // Per-player game state (Final / in-progress / kickoff) so the card reads like
+  // a real fantasy app instead of stamping every row "Live" the moment one game
+  // starts. Best-effort — a failed scoreboard fetch leaves rows on the flag.
+  try{ var gsMap=await getGameStateMap(lg.season, week); meStart.concat(opStart).forEach(function(p){ _tagGameState(gsMap, p); }); }catch(e){}
   var myTot=meStart.reduce(function(s,p){return s+(p.pts||0);},0);
   var opTot=opStart.reduce(function(s,p){return s+(p.pts||0);},0);
   var n=Math.max(meStart.length,opStart.length), rowsHtml='', gcRows=[];
@@ -37386,6 +37453,16 @@ window._gcMatchupHTML=function(d){
   var wins=rows.filter(function(r){ return (r.me&&r.me.pts!=null?r.me.pts:0) > (r.op&&r.op.pts!=null?r.op.pts:0); }).length;
   var n=rows.length||9;
   var wpMe=d.wpMe, wpOp=100-wpMe;
+  // Aggregate per-player game states into the card's overall phase. With no
+  // tagged states we defer to the caller's live flag (unchanged behavior).
+  var _gsL=[]; rows.forEach(function(r){ if(r.me&&r.me.gs)_gsL.push(r.me.gs); if(r.op&&r.op.gs)_gsL.push(r.op.gs); });
+  var _hasGs=_gsL.length>0, _anyIn=_gsL.indexOf('in')>=0, _anyPre=_gsL.indexOf('pre')>=0, _anyPost=_gsL.indexOf('post')>=0;
+  var phase = !_hasGs ? (live?'LIVE':'PROJECTED') : (_anyIn||(_anyPost&&_anyPre)) ? 'LIVE' : _anyPost ? 'FINAL' : 'PROJECTED';
+  var stripLive = phase!=='PROJECTED';
+  function _sideStatus(sel){ if(!_hasGs) return (live?'live':'yet to play')+' ('+n+')';
+    var c={pre:0,'in':0,post:0}; rows.forEach(function(r){ var p=r[sel]; if(p&&p.gs&&c[p.gs]!=null)c[p.gs]++; });
+    var parts=[]; if(c['in'])parts.push(c['in']+' live'); if(c.post)parts.push(c.post+' final'); if(c.pre)parts.push(c.pre+' to play');
+    return parts.length?parts.join(' · '):(live?'live':'yet to play')+' ('+n+')'; }
   function av(p){ if(!p) return '';
     var pc=POS[p.pos]||'#7d8aa0', ph=vaultHeadshot(p.name, p.sid, 46);
     return '<div class="vtr-pav" style="--ring:'+pc+'"><span class="ini">'+_rdvInitials(p.name)+'</span>'
@@ -37395,13 +37472,23 @@ window._gcMatchupHTML=function(d){
     return ' role="button" style="cursor:pointer" onclick="event.stopPropagation();openPlayerProfile(\''+ppArg(p.name)+'\',\''+(p.sid||'')+'\',\''+(p.pos||'')+'\',\''+(p.team||'')+'\')"'; }
   function info(p){ return _vtrInfo(p,live); }
   function sc(p){ return _vtrSc(p,live); }
+  function _vtrGl(p,live){
+    // Per-player game state when we have it (set by _tagGameState); otherwise the
+    // caller's single live flag — keeps non-tagged callers behaving as before.
+    if(p&&p.gs==='post') return '<span class="final">'+(p.gl||'Final')+'</span>';
+    if(p&&p.gs==='in')   return '<span class="live">'+(p.gl||'Live')+'</span>';
+    if(p&&p.gs==='pre')  return '<span class="pre">'+(p.gl||'Yet to play')+'</span>';
+    return live?'<span class="live">Live</span>':'Yet to play'; }
   function _vtrInfo(p,live){ if(!p) return '<div class="nm">Empty</div><div class="pm">—</div>';
     var pc=POS[p.pos]||'#7d8aa0';
     return '<div class="nm">'+abbr(p.name)+'</div>'
       + '<div class="pm"><span class="vtr-pchip" style="color:'+pc+'">'+(p.pos||'')+'</span>'+(p.team?' <span class="vtr-dot">·</span> <span class="vtr-pteam">'+p.team+'</span>':'')+'</div>'
-      + '<div class="gl">'+(live?'<span class="live">Live</span>':'Yet to play')+'</div>'; }
+      + '<div class="gl">'+_vtrGl(p,live)+'</div>'; }
   function _vtrSc(p,live){ if(!p||p.pts==null) return '<div class="act">–</div>';
-    return '<div class="act'+(live?' is-live':'')+'">'+f2(p.pts)+'</div>'; }
+    // "Live" styling means a REAL number is on the board — only for started games
+    // when we have per-player state; pregame shows a projection, styled quietly.
+    var lv=(p.gs?(p.gs==='in'||p.gs==='post'):live);
+    return '<div class="act'+(lv?' is-live':'')+'">'+f2(p.pts)+'</div>'; }
   var duels=rows.map(function(r){
     var ap=r.me&&r.me.pts!=null?r.me.pts:0, bp=r.op&&r.op.pts!=null?r.op.pts:0;
     var lean=hasOpp?(ap>bp?'lean-me':(bp>ap?'lean-opp':'')):'';
@@ -37428,12 +37515,12 @@ window._gcMatchupHTML=function(d){
     + '</div>';
   var names='<div class="vtr-tnames"><div class="vtr-tnm me">'+(d.myT.name||'My Team')+'</div><div class="vtr-tnm opp">'+(d.opT.name||'TBD')+'</div></div>';
   var usrs='<div class="vtr-usrs"><div class="vtr-usr me">'+(d.myT.user?'@'+d.myT.user:'')+(meRec?' · '+meRec:'')+'</div><div class="vtr-usr opp">'+(opRec?opRec+(d.opT.user?' · ':''):'')+(d.opT.user?'@'+d.opT.user:'')+'</div></div>';
-  var ytpOut='<div class="vtr-ytp-out"><div class="ytp-side"><div class="t">'+(live?'live':'yet to play')+' ('+n+')</div><div class="d">'+comp+'</div></div><div class="ytp-mid">'+(hasOpp?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z"/></svg>':'')+'</div><div class="ytp-side opp"><div class="t">'+(hasOpp?(live?'live':'yet to play')+' ('+n+')':'')+'</div><div class="d">'+(hasOpp?comp:'')+'</div></div></div>';
+  var ytpOut='<div class="vtr-ytp-out"><div class="ytp-side"><div class="t">'+_sideStatus('me')+'</div><div class="d">'+comp+'</div></div><div class="ytp-mid">'+(hasOpp?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z"/></svg>':'')+'</div><div class="ytp-side opp"><div class="t">'+(hasOpp?_sideStatus('op'):'')+'</div><div class="d">'+(hasOpp?comp:'')+'</div></div></div>';
   var card='<div class="vtr">'
-    + '<div class="vtr-strip'+(live?' live':'')+'"><span class="lv"><span class="dot"></span>'+(live?'LIVE':'PROJECTED')+' · '+(d.src||'SLEEPER')+'</span><span class="wk">WEEK '+(d.week||1)+'</span></div>'
+    + '<div class="vtr-strip'+(stripLive?' live':'')+'"><span class="lv"><span class="dot"></span>'+phase+' · '+(d.src||'SLEEPER')+'</span><span class="wk">WEEK '+(d.week||1)+'</span></div>'
     + '<div class="vtr-head">'+bar+head+names+usrs+'</div>'
     + ytpOut
-    + '<div class="vtr-secbar"><span class="t">Starters</span><span class="wk">'+(hasOpp?(wins+' of '+n+(live?' winning':' lean you')):'Projected')+'</span></div>'
+    + '<div class="vtr-secbar"><span class="t">Starters</span><span class="wk">'+(hasOpp?(wins+' of '+n+(stripLive?' winning':' lean you')):'Projected')+'</span></div>'
     + '<div class="vtr-rows">'+duels+'</div>'
     + '</div>';
   if(!hasOpp) return '<div class="vtr-layout" style="grid-template-columns:1fr;max-width:820px">'+_ovcRow('solo')+card+'</div>';
