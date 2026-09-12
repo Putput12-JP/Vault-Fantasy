@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-12T18:30', tag:'New', title:'A second real-money read on game markets: Polymarket',
+    items:[
+      'Game Markets cards now show a Polymarket strip alongside the Kalshi one. Polymarket is another real-dollar exchange, and it runs much deeper on the marquee games, so you get how much money has actually traded, how much is still open, and the last 24 hours of action.',
+      'When Polymarket money leans a side the sportsbooks haven’t caught up to, Vault flags it the same way it does for Kalshi. Two exchanges agreeing is a strong signal; the two disagreeing is worth a look before the line moves.',
+    ],
+  },
+  {
     ts:'2026-09-12T18:00', tag:'Improved', title:'Best Bets now cross-checked against the sharp market',
     items:[
       'Every graded prop is now measured against real-money prices on Kalshi, a regulated betting exchange. When our number strongly disagrees with where the sharp money sits on the same bet, we hold that pick back from Best Bets instead of showing it as an A.',
@@ -41621,6 +41628,8 @@ window.VaultPropModel = (function () {
 #page-betting .bx-flow.hot{background:color-mix(in srgb,var(--bt-gold) 7%,var(--bt-s2))}
 #page-betting .bx-flow-tag{font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--bt-muted);background:var(--bt-s1);border:1px solid var(--bt-border2);border-radius:5px;padding:2px 7px;white-space:nowrap}
 #page-betting .bx-flow-tag .k{font-style:normal;color:#00a99d;font-weight:800}
+#page-betting .bx-flow-tag .p{font-style:normal;color:#6f7bff;font-weight:800}
+#page-betting .bx-flow.pm.hot{background:color-mix(in srgb,#6f7bff 8%,var(--bt-s2))}
 #page-betting .bx-flow-n{color:var(--bt-muted);white-space:nowrap}
 #page-betting .bx-flow-n b{color:var(--bt-text2);font-weight:700}
 #page-betting .bx-flow-hot{color:var(--bt-gold);font-weight:700;white-space:nowrap}
@@ -41860,6 +41869,17 @@ window.VaultPropModel = (function () {
     const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
     return fetch(base + '/prediction_markets.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
       .then(j => { _kalshiTried = true; _kalshi = (j && j.games) ? j.games : {}; return _kalshi; });
+  }
+
+  // Polymarket real-money flow (data/polymarket.json), lazy + cached. Same shape
+  // as the Kalshi feed ({ games: { "AWY@HOM": { ml, flow:{vol,vol24,oi} } } }) so
+  // the flow-strip logic is shared — but Polymarket trades in DOLLARS, deeper on
+  // marquee game markets, so its strip is dollar-denominated and its own colour.
+  let _polymarket = null, _polymarketTried = false;
+  function loadPolymarket() {
+    const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
+    return fetch(base + '/polymarket.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
+      .then(j => { _polymarketTried = true; _polymarket = (j && j.games) ? j.games : {}; return _polymarket; });
   }
 
   // Line-movement history (data/line_history.json), lazy + cached.
@@ -42147,6 +42167,16 @@ window.VaultPropModel = (function () {
         flowSlate = { hot24: pct(v24, 0.75), medVol: pct(vAll, 0.5) };
       }
     }
+    // Same relative heat/lean distribution for Polymarket (dollar volume).
+    let pmSlate = null;
+    if (_polymarket) {
+      const v24 = [], vAll = [];
+      withBets.forEach(x => { const P = _polymarket[x.g.away + '@' + x.g.home]; if (P && P.flow && P.flow.vol > 0) { v24.push(P.flow.vol24); vAll.push(P.flow.vol); } });
+      if (vAll.length >= 3) {
+        const pct = (arr, p) => { const s = arr.slice().sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * (s.length - 1)))]; };
+        pmSlate = { hot24: pct(v24, 0.75), medVol: pct(vAll, 0.5) };
+      }
+    }
     // One real-money strip per card: exchange contract volume + open interest,
     // a heat flag when 24h action runs top-quartile, and a directional lean when
     // Kalshi's real-dollar win% pulls FLOW_DIVERGE_PTS past the book consensus
@@ -42171,6 +42201,34 @@ window.VaultPropModel = (function () {
         + '<span class="bx-flow-n"><b>' + kc(fl.vol) + '</b> traded</span>'
         + '<span class="bx-flow-n"><b>' + kc(fl.oi) + '</b> open</span>'
         + (fl.vol24 ? '<span class="bx-flow-n"><b>' + kc(fl.vol24) + '</b> last 24h</span>' : '')
+        + (hot ? '<span class="bx-flow-hot" title="Top-quartile 24h volume on this week’s slate — action is heating up here">🔥 Heating up</span>' : '')
+        + dir + '</div>';
+    };
+
+    // Polymarket real-money strip — same logic as Kalshi, but Polymarket trades
+    // in DOLLARS and runs much deeper on marquee game markets, so amounts are
+    // dollar-denominated ($k) and the tag/heat wear Polymarket's colour. Shown
+    // beneath the Kalshi strip so the two exchanges read as independent real-
+    // money signals: agreeing is a strong read, disagreeing is worth seeing.
+    const dc = n => '$' + (n >= 1000 ? ((n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k') : ('' + n));
+    const pmFlowStrip = (g, impH) => {
+      if (!_polymarket || !pmSlate) return '';
+      const P = _polymarket[g.away + '@' + g.home];
+      if (!P || !P.flow || !P.flow.vol) return '';
+      const fl = P.flow, hot = fl.vol24 > 0 && fl.vol24 >= pmSlate.hot24;
+      let dir = '';
+      if (P.ml && impH != null && fl.vol >= pmSlate.medVol) {
+        const pHome = P.ml.home * 100, diff = pHome - impH, mag = Math.abs(Math.round(diff));
+        if (Math.abs(diff) >= FLOW_DIVERGE_PTS) {
+          const team = diff > 0 ? g.home : g.away, ppct = Math.round(diff > 0 ? pHome : 100 - pHome);
+          dir = '<span class="bx-flow-lean" title="Polymarket money implies ' + ppct + '% for ' + team + ' — ' + mag + 'pt richer than the book win%. Real dollars leaning a side the books haven’t fully moved to.">💰 Real money leans <b>' + team + '</b> +' + mag + 'pt</span>';
+        }
+      }
+      return '<div class="bx-flow pm' + (hot ? ' hot' : '') + '">'
+        + '<span class="bx-flow-tag" title="Polymarket is a real-money exchange, so its traded volume is genuine money behind the price — the handle-style signal sportsbooks don’t give us. Amounts are US dollars."><i class="p">Polymarket</i> real money</span>'
+        + '<span class="bx-flow-n"><b>' + dc(fl.vol) + '</b> traded</span>'
+        + '<span class="bx-flow-n"><b>' + dc(fl.oi) + '</b> open</span>'
+        + (fl.vol24 ? '<span class="bx-flow-n"><b>' + dc(fl.vol24) + '</b> last 24h</span>' : '')
         + (hot ? '<span class="bx-flow-hot" title="Top-quartile 24h volume on this week’s slate — action is heating up here">🔥 Heating up</span>' : '')
         + dir + '</div>';
     };
@@ -42244,6 +42302,7 @@ window.VaultPropModel = (function () {
         + '<div class="bx-gtop"><div class="bx-matchup"><div class="bx-when">' + when + '</div>' + teamRow(g.away, impA) + teamRow(g.home, impH) + '</div>'
         + '<div class="bx-markets">' + mCell(g, 'spread', 'Spread') + mCell(g, 'total', 'Total') + mCell(g, 'ml', 'Moneyline') + '</div></div>'
         + flowStrip(g, impH)
+        + pmFlowStrip(g, impH)
         + foot
         + drawer + '</article>';
     };
@@ -42306,6 +42365,7 @@ window.VaultPropModel = (function () {
     const gbTgl = inner.querySelector('.gb-bkstoggle'); if (gbTgl) gbTgl.onclick = () => { gbBooksOpen = !gbBooksOpen; renderGamesBoard(); };
     // Kalshi + line history + game model load once, then repaint so their bits fill in.
     if (!_kalshiTried) loadKalshi().then(() => { if (view === 'games') renderGamesBoard(); });
+    if (!_polymarketTried) loadPolymarket().then(() => { if (view === 'games') renderGamesBoard(); });
     if (!_lineHistTried) loadLineHist().then(() => { if (view === 'games') renderGamesBoard(); });
     if (!_gmTried) loadGameModel().then(() => { if (view === 'games') renderGamesBoard(); });
   }

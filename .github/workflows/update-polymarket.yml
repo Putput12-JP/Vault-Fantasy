@@ -1,0 +1,42 @@
+# Pulls NFL game money flow from Polymarket (real-money prediction exchange) into
+# data/polymarket.json — a second, independent real-dollar read the Betting Game
+# Markets board shows next to Kalshi. Keyless and free — no secrets, no credits.
+name: Update Polymarket markets
+
+on:
+  workflow_dispatch: {}          # run manually any time from the Actions tab
+  schedule:
+    # Hourly, year-round. Polymarket prices/volume move through the day; the job
+    # only commits when the file actually changed, so quiet hours are free. At
+    # :47 to stay off the congested top-of-hour and away from the other feeds.
+    - cron: '47 * * * *'
+
+concurrency:
+  group: polymarket-feed
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  polymarket:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Fetch Polymarket NFL game markets
+        run: node scripts/fetch-polymarket.mjs --out=data/polymarket.json
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- data/polymarket.json; then
+            echo "No Polymarket changes."
+          else
+            git config user.name  "vault-bot"
+            git config user.email "vault-bot@users.noreply.github.com"
+            git add data/polymarket.json
+            git commit -m "polymarket: refresh NFL game markets [skip ci]"
+            git push
+          fi
