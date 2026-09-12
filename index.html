@@ -13426,6 +13426,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-12T12:00', tag:'Fixed', title:'Live matchups show up for private ESPN leagues',
+    items:[
+      'If your ESPN league is private (the kind that needs you to connect your ESPN login), your weekly matchup was showing "No ESPN matchup posted yet" even after games kicked off. It now pulls in your head-to-head with live scores and projections, same as public leagues.',
+    ],
+  },
+  {
     ts:'2026-09-11T14:00', tag:'Fixed', title:'Played games leave the Player Props board for good',
     items:[
       'Once a game finishes, its early-window games (like the Thursday and Friday openers) drop off the schedule feed, which was letting their props quietly reappear on the board a while after kickoff. They now stay gone the moment the game starts, so you only ever see props you can still bet.',
@@ -37250,7 +37256,13 @@ async function _rdvEspnMatchup(ctx, lg){
   // Private leagues 401 on the public endpoint — their SWID/espn_s2 cookies live
   // server-side, so route through the same proxy syncEspnDraft uses.
   var espnPrivate=!!(lg._espnPrivate && window.VaultEspn && window.VaultEspn.league);
-  var mainViews=['mMatchupScore','mScoreboard','mRoster','mTeam'];
+  // mMatchupScore/mScoreboard carry the live per-player points; mMatchup/mStatus
+  // are the schedule pairing + current week. On PRIVATE leagues the proxy only
+  // forwards allowlisted views, so include mMatchup/mStatus (both allowlisted)
+  // to guarantee the schedule comes through even if a view is ever dropped —
+  // otherwise the card falls through to "No ESPN matchup posted." Public leagues
+  // just get a few redundant views ESPN merges for free.
+  var mainViews=['mMatchupScore','mScoreboard','mMatchup','mStatus','mRoster','mTeam'];
   var data = espnPrivate
     ? await window.VaultEspn.league(lg._espnId, lg.season, mainViews, true).catch(function(){return null;})
     : await fetch(apiBase+'?'+mainViews.map(function(v){return 'view='+v;}).join('&'),{headers:{accept:'application/json'}}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});

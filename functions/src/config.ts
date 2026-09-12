@@ -62,6 +62,13 @@ export const ESPN_LEAGUE_VIEWS = [
   "mTeam",
   "mRoster",
   "mMatchup",
+  // Live head-to-head scoring. `mMatchup` gives the schedule pairing but NO
+  // per-player points; only `mMatchupScore` carries the projected (statSourceId
+  // 1) and actual (statSourceId 0) totals the My Team matchup card renders.
+  // Leaving it out stripped private-league reads down to a schedule-less
+  // roster+team payload, so the card fell through to "No ESPN matchup posted."
+  "mMatchupScore",
+  "mScoreboard",
   "mStatus",
   "mDraftDetail",
 ] as const;
