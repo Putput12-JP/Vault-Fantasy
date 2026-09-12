@@ -5,12 +5,21 @@
    Guards the 4-factor grade engine (Upside / Floor / Risk / Situational).
 
    It loads the REAL engine straight out of index.html — the <script
-   id="vaultgrades-inline"> block — and runs it against the REAL
-   data/nflverse_stats.json, with the browser surface stubbed. Nothing is
-   re-implemented here: if the engine changes, this tests the change. A copy
-   of the formula in the test would drift from the app exactly the way the
-   app's two engine copies drifted from each other, which is the bug this
-   whole area is recovering from.
+   id="vaultgrades-inline"> block — and runs it against a FROZEN full-season
+   stats fixture, with the browser surface stubbed. Nothing is re-implemented
+   here: if the engine changes, this tests the change. A copy of the formula
+   in the test would drift from the app exactly the way the app's two engine
+   copies drifted from each other, which is the bug this whole area is
+   recovering from.
+
+   WHY A FIXTURE, NOT data/nflverse_stats.json: that file rolls over to the new
+   season the moment Week 1 plays, so from September through ~Week 8 it holds a
+   few dozen players with one game each and no player has 8 weeks of tape. The
+   pool/ceiling/scoring-tier checks all assume a full season and would fail red
+   on that thin file even though the engine is unchanged. The test's job is to
+   guard the FORMULA, not the current week of data — so it reads a committed
+   snapshot of a completed season (scripts/fixtures/grades-stats.json, the
+   2025 final) and stays deterministic year-round.
 
    Why these checks exist (each one is a real defect we shipped and fixed):
      · pools populate            — a `s.ceil` vs `s.ceiling` typo left every
@@ -43,7 +52,9 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HTML = path.join(ROOT, 'index.html');
-const STATS = path.join(ROOT, 'data', 'nflverse_stats.json');
+// Frozen full-season snapshot (2025 final). NOT data/nflverse_stats.json — that
+// file rolls over to the live season and goes thin in September; see the header.
+const STATS = path.join(ROOT, 'scripts', 'fixtures', 'grades-stats.json');
 
 // ── tiny assert harness ────────────────────────────────────────────────
 const failures = [];
@@ -118,7 +129,7 @@ const avg = arr => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0
 const factorAvg = (map, key) => { const v = []; for (const [, f] of map) v.push(f[key]); return avg(v); };
 
 async function main() {
-  if (!fs.existsSync(STATS)) { console.error(`missing ${STATS} — run the nflverse workflow first`); process.exit(1); }
+  if (!fs.existsSync(STATS)) { console.error(`missing ${STATS} — the frozen full-season fixture is required`); process.exit(1); }
   const stats = JSON.parse(fs.readFileSync(STATS, 'utf8'));
   const sb = loadEngine(stats);
   await sb.VaultGrades.ensure();
@@ -131,7 +142,7 @@ async function main() {
 
   console.log('\nVAULT · grade-math regression');
   console.log(`engine: index.html <script id="vaultgrades-inline">`);
-  console.log(`stats : data/nflverse_stats.json (${Object.keys(stats).length} players)`);
+  console.log(`stats : ${path.relative(ROOT, STATS)} (frozen 2025 season, ${Object.keys(stats).length} players)`);
   console.log(`market universe: ${UNIVERSE.length}\n`);
 
   // ── 1. engine is reachable and grades ────────────────────────────────

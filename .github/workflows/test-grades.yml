@@ -9,19 +9,22 @@ name: Test grade math
 # Nothing here re-implements the formula; the test loads the real engine out of
 # index.html, so it always tests what actually ships.
 #
-# Runs on any push/PR that touches the engine, the stats it reads, or the test.
+# Runs on any push/PR that touches the engine, the frozen stats fixture it reads,
+# or the test. It deliberately does NOT watch data/nflverse_stats.json — that file
+# rolls over to the live season and goes thin in September, which is exactly why
+# the test reads a frozen full-season fixture instead (see scripts/test-grades.mjs).
 
 on:
   push:
     paths:
       - 'index.html'
-      - 'data/nflverse_stats.json'
+      - 'scripts/fixtures/grades-stats.json'
       - 'scripts/test-grades.mjs'
       - '.github/workflows/test-grades.yml'
   pull_request:
     paths:
       - 'index.html'
-      - 'data/nflverse_stats.json'
+      - 'scripts/fixtures/grades-stats.json'
       - 'scripts/test-grades.mjs'
   workflow_dispatch:
 
