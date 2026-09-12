@@ -104,6 +104,18 @@ const SHARP_GAP = 0.10;          // ≥10-point prob disagreement on the same si
 const SHARP_MIN_OI = 50;         // contracts of open interest before we trust the price
 const SHARP_MAX_SPREAD = 0.06;   // yes bid/ask spread ($) — wider = too thin/stale to fade on
 const SHARP_STRIKE_TOL = 0.25;   // exchange strike must match the book line (counts align on .5)
+// Gate 4 — early-season receptions-UNDER hold. The audit (docs/prop-rec-under-
+// bias-finding.md) proved the rec projection is out-of-sample UNBIASED (+0.14
+// signed error), so the wall of grade-A rec unders in weeks 1-3 is NOT a low
+// projection — it is a backward-looking model (2025-only log window at
+// SEASONS=[cur-1,cur]) betting unders into book lines that price a 2026 role the
+// tape can't see yet. The honest response is discipline, not a projection boost:
+// hold rec count-market unders while the window is essentially last season only.
+// This is a GATE, not a model change (needs no walk-forward), and it is behind a
+// flag so it can be A/B'd against the go-forward CLV harness — the only valid
+// arbiter for this market-disagreement regime. `--rechold=0` disables it;
+// `--rechold=N` sets the week cutoff. Default 3 (weeks 1-3).
+const EARLY_REC_HOLD_WEEKS = ARG.rechold != null ? Number(ARG.rechold) : 3;
 const log = (...a) => console.log('[best-bets]', ...a);
 
 /* ── data-key helpers (mirror the app) ─────────────────────────────────── */
@@ -432,7 +444,11 @@ function scoreProps(feed, PM, KP) {
   const roleOk = roleCorrobSet(feed);
   const roleParams = loadRoleParams();   // role_volume.json — the board's volume anchor
   const ctx = buildMatchupCtx(feed);   // opponent + environment + game-script, per prop
-  let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0, sharpskip = 0;
+  let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0, sharpskip = 0, rechold = 0;
+  // Early-season rec-under hold fires only while the log window is essentially
+  // last season only (weeks <= cutoff). feed.week is the served slate week.
+  const _feedWeek = Number(feed.week) || 99;
+  const _earlyRec = EARLY_REC_HOLD_WEEKS > 0 && _feedWeek <= EARLY_REC_HOLD_WEEKS;
   for (const id in props) {
     const p = props[id];
     if (isPre && p.commence) { const t = new Date(p.commence).getTime(); if (Number.isFinite(t) && t < regCutoff) { preskip++; continue; } }
@@ -508,12 +524,15 @@ function scoreProps(feed, PM, KP) {
           && ((bs.price != null && bs.price > 0) || (v.proj != null && v.proj <= line - ABS_COUNT_GAP));
         // Gate 2: at least one true sportsbook must price this exact line (not DFS-only).
         const realBookAtLine = lq.some(q => isRealBook(q.book));
+        // Gate 4: hold rec-count unders in the early season (see EARLY_REC_HOLD_WEEKS).
+        const earlyRecHold = _earlyRec && mk === 'rec' && side === 'under';
         const wouldPass = trust.corrob && (letter === 'A' || letter === 'B') && ev != null && ev > 0 && bettable;
         const preGate = trust.corrob && (eff === 'A' || eff === 'B') && ev != null && ev > 0 && bettable;
-        const pass = preGate && !projBlowout && !countUnderPhantom && realBookAtLine;
+        const pass = preGate && !projBlowout && !countUnderPhantom && !earlyRecHold && realBookAtLine;
         if (!pass) {
           if (roleUnconfirmed && wouldPass) roleskip++;
           else if (sharpDisagree && wouldPass) sharpskip++;
+          else if (earlyRecHold && wouldPass) rechold++;
           else if (preGate && projBlowout) projskip++;
           else if (preGate && countUnderPhantom) countskip++;
           else if (preGate && !realBookAtLine) dfsskip++;
@@ -546,7 +565,7 @@ function scoreProps(feed, PM, KP) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, scored, gated, preskip, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, total: cands.length };
+  return { list, scored, gated, preskip, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, rechold, total: cands.length };
 }
 
 /* ── game leans (CONTEXT only; empty while the model is gated) ──────────── */
@@ -595,7 +614,7 @@ function gameLeans(feed) {
     log(KP ? `sharp anchor: kalshi_props.json (${KP.count} markets)` : 'sharp anchor: none (kalshi_props.json missing) — agreement gate off');
     const props = scoreProps(feed, PM, KP);
     const leans = gameLeans(feed);
-    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.sharpskip} sharp-disagree, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
+    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.sharpskip} sharp-disagree, ${props.rechold} early-rec-hold, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
     log(`game leans: ${leans.gated ? leans.gated : props.total >= 0 ? leans.list.length : 0}${leans.gated ? ' (empty)' : ''}`);
     for (const b of props.list) log(`  • ${b.name} ${b.marketLabel} ${b.side.toUpperCase()} ${b.line} @ ${b.book} ${b.price > 0 ? '+' : ''}${b.price} — ${b.grade}, ${b.ev}% EV, ${b.books} books, ${b.games}g${b.sharpFair != null ? `, sharp ${(b.sharpFair * 100).toFixed(0)}% (gap ${b.sharpGap > 0 ? '+' : ''}${(b.sharpGap * 100).toFixed(0)}pt)` : ''}`);
 
