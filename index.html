@@ -41710,6 +41710,27 @@ window.VaultPropModel = (function () {
 #page-betting .bxt-vol b{color:var(--bt-text2)}
 #page-betting tr.bxt-drow td{padding:0;background:var(--bt-s2)}
 #page-betting tr.bxt-drow .bx-drawer{border-top:1px solid var(--bt-border)}
+/* Mobile: the table treatment as a stacked card (same cells / vault / track / money) */
+#page-betting .bxm{background:var(--bt-s2);border:1px solid var(--bt-border);border-radius:14px;margin-bottom:12px;overflow:hidden}
+#page-betting .bxm-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px}
+#page-betting .bxm-teams{display:flex;flex-direction:column;gap:9px}
+#page-betting .bxm-team{display:flex;align-items:center;gap:9px;font-family:var(--font-sans)}
+#page-betting .bxm-team .bt-logo{width:28px;height:28px;display:inline-block}
+#page-betting .bxm-team .cd{font-weight:800;font-size:15px;color:var(--bt-text);letter-spacing:.02em}
+#page-betting .bxm-team .wp{font-family:var(--bt-mono);font-size:var(--t-nano);color:var(--bt-muted)}
+#page-betting .bxm-mkt{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--bt-border)}
+#page-betting .bxm-mlab{font-family:var(--bt-mono);font-size:var(--t-nano);letter-spacing:.05em;text-transform:uppercase;color:var(--bt-muted);width:66px;flex:none}
+#page-betting .bxm-sides{display:flex;gap:14px;flex:1;justify-content:flex-end}
+#page-betting .bxm-sides .bxt-cell{gap:5px}
+#page-betting .bxm-sides .bxt-cell .bxt-eg.empty{display:none}
+#page-betting .bxm-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 14px;border-top:1px solid var(--bt-border)}
+#page-betting .bxm-vl .bxt-vlrow{justify-content:flex-start;gap:7px;line-height:1.5}
+#page-betting .bxm-money{padding:10px 14px;border-top:1px solid var(--bt-border);background:color-mix(in srgb,#6f7bff 5%,transparent);font-family:var(--bt-mono);font-size:var(--t-secondary);text-align:center}
+#page-betting .bxm-money .bxt-vol{font-size:12px;margin-top:2px}
+/* drawer inside a mobile card: let the book chips wrap into a readable grid
+   instead of the desktop table's single no-wrap row (which squeezes on a phone) */
+#page-betting .bxm .gb-bkside .eb-bks{flex-wrap:wrap;gap:7px}
+#page-betting .bxm .gb-bkside .eb-bk{flex:0 0 auto;min-width:64px;padding:6px 9px}
 /* leading LINE card in the Compare-books drawer: the line shown once, up front */
 #page-betting .eb-bk.eb-lncard{background:color-mix(in srgb,var(--bt-accent2) 12%,var(--bt-s1));border-color:color-mix(in srgb,var(--bt-accent2) 42%,transparent)}
 #page-betting .eb-bk.eb-lncard .bk{color:var(--bt-accent2);font-weight:700}
@@ -42420,7 +42441,20 @@ window.VaultPropModel = (function () {
     // for consensus best-price pricing, gmLine for the Vault line, _polymarket for
     // money, and the SAME gExpanded/gDrawerMkt/_trackMap wiring as the card — so
     // the [data-tgl]/[data-track]/[data-dmkt] handlers below bind both.
-    const rowH = (x) => {
+    // Shared market-side cell (line + best price + book chip + reserved EV badge).
+    const bxCell = (bet, kind) => {
+      if (!bet) return '<span class="bxt-na">–</span>';
+      const eg = bet.ev > 0, etag = eg ? '<span class="bxt-eg" title="Best price beats no-vig fair by ' + bet.ev + '%">+' + bet.ev + '%</span>' : '<span class="bxt-eg empty"></span>';
+      let ln = '';
+      if (kind === 'spread') ln = '<span class="bxt-ln">' + bet.lab.replace(/^\S+\s/, '') + '</span>';
+      else if (kind === 'over') ln = '<span class="bxt-sd o">O</span><span class="bxt-ln">' + bet.lab.replace(/^\w+\s/, '') + '</span>';
+      else if (kind === 'under') ln = '<span class="bxt-sd u">U</span><span class="bxt-ln">' + bet.lab.replace(/^\w+\s/, '') + '</span>';
+      return '<div class="bxt-cell' + (eg ? ' eg' : '') + '">' + ln + '<span class="bxt-px">' + fb.fmtOdds(bet.bestPrice) + '</span>' + bookChip(bet.bestBook) + etag + '</div>';
+    };
+    // Everything one game needs, shared by the desktop table row and the mobile
+    // table-card so both read identically (same cells, Vault line, Track chip,
+    // money, and Compare-books drawer).
+    const gmMeta = (x) => {
       const g = x.g, key = g.away + '@' + g.home;
       const mlHP = _mlHomeProb(g);
       const ia = g.implied && g.implied.away, ih = g.implied && g.implied.home;
@@ -42432,15 +42466,6 @@ window.VaultPropModel = (function () {
       const spA = byCode(sp, g.away), spH = byCode(sp, g.home);
       const mlA = byCode(ml, g.away), mlH = byCode(ml, g.home);
       const toO = to.find(b => /^over/i.test(b.lab)), toU = to.find(b => /^under/i.test(b.lab));
-      const cell = (bet, kind) => {
-        if (!bet) return '<span class="bxt-na">–</span>';
-        const eg = bet.ev > 0, etag = eg ? '<span class="bxt-eg" title="Best price beats no-vig fair by ' + bet.ev + '%">+' + bet.ev + '%</span>' : '<span class="bxt-eg empty"></span>';
-        let ln = '';
-        if (kind === 'spread') ln = '<span class="bxt-ln">' + bet.lab.replace(/^\S+\s/, '') + '</span>';
-        else if (kind === 'over') ln = '<span class="bxt-sd o">O</span><span class="bxt-ln">' + bet.lab.replace(/^\w+\s/, '') + '</span>';
-        else if (kind === 'under') ln = '<span class="bxt-sd u">U</span><span class="bxt-ln">' + bet.lab.replace(/^\w+\s/, '') + '</span>';
-        return '<div class="bxt-cell' + (eg ? ' eg' : '') + '">' + ln + '<span class="bxt-px">' + fb.fmtOdds(bet.bestPrice) + '</span>' + bookChip(bet.bestBook) + etag + '</div>';
-      };
       const gp = (_gmModel && seasonReg) ? gmLine(g) : null;
       const conv = (_gmModel && seasonReg) ? gmPredict(g.away, g.home) : null;
       const mkSp = (g.spread && g.spread.cons && g.spread.cons.home != null) ? round05(g.spread.cons.home) : null;
@@ -42448,21 +42473,14 @@ window.VaultPropModel = (function () {
       const spLean = gp && mkSp != null && Math.abs(gp.homeSpread - mkSp) >= 1;
       const mlLean = gp && impH != null && Math.abs(gp.homeWinPct - impH) >= 6;
       const totLean = gp && mkT != null && Math.abs(gp.total - mkT) >= 1.5;
-      // Track lives in its own column: a chip that names the exact pick (market
-      // + side) Vault is tracking, gold when active. Not crammed into Vault line.
       let trackCell = gp ? '<span class="bxt-na">–</span>' : '';
       if (gp) { const lean = bestLean(g, conv); _trackMap[key] = { g, lean };
         if (lean) { const tr = gamePickLogged(g, lean); trackCell = '<button class="bxt-trk-chip' + (tr ? ' on' : '') + '" data-track="' + key + '" title="' + (tr ? 'Tracking in your record — tap to stop' : 'Track Vault’s best bet — ' + lean.label) + '">' + (tr ? '★' : '☆') + ' <span class="lbl">' + lean.label + '</span></button>'; } }
-      // Vault line: the model's spread, predicted winner (with win%), and game
-      // total, stacked in one cell spanning both team rows. Each tints gold on a
-      // real lean vs the market.
       let vaultCell = '';
       if (gp) {
         const win = gp.homeWinPct >= 50 ? g.home : g.away, winPct = gp.homeWinPct >= 50 ? gp.homeWinPct : 100 - gp.homeWinPct;
         const vrow = (lab, val, lean) => '<div class="bxt-vlrow"><span class="vlab">' + lab + '</span><span class="vv' + (lean ? ' lean' : '') + '">' + val + '</span></div>';
-        vaultCell = vrow('Spread', g.home + ' ' + sline(gp.homeSpread), spLean)
-          + vrow('Winner', win + ' ' + winPct + '%', mlLean)
-          + vrow('Total', gp.total, totLean);
+        vaultCell = vrow('Spread', g.home + ' ' + sline(gp.homeSpread), spLean) + vrow('Winner', win + ' ' + winPct + '%', mlLean) + vrow('Total', gp.total, totLean);
       }
       let money = '';
       if (_polymarket) { const P = _polymarket[key];
@@ -42474,17 +42492,37 @@ window.VaultPropModel = (function () {
         }
       }
       const open = gExpanded.has(key);
-      const chev = '<button class="bxt-chev" data-tgl="' + key + '" title="' + (open ? 'Hide books' : 'Compare books') + '">' + (open ? '▾' : '▸') + '</button>';
-      const tmCell = (code, imp) => '<td class="bxt-tm"><span class="bt-logo" data-logo="' + code + '"></span><span class="cd">' + code + '</span>' + (imp != null ? '<span class="wp">' + imp + '%</span>' : '') + '</td>';
-      let drawer = '';
+      let drawerInner = '';
       if (open) { const dm = gDrawerMkt[key] || curGM || 'spread';
         const tabs = GM_TABS.map(([k, l]) => '<button class="' + (k === dm ? 'on' : '') + '" data-dmkt="' + k + '" data-dkey="' + key + '">' + l + '</button>').join('');
-        drawer = '<tr class="bxt-drow"><td colspan="8"><div class="bx-drawer"><div class="bx-dtabs">' + tabs + '</div>' + gameBooksBlock(g, dm) + '</div></td></tr>';
+        drawerInner = '<div class="bx-drawer"><div class="bx-dtabs">' + tabs + '</div>' + gameBooksBlock(g, dm) + '</div>';
       }
-      return '<tbody class="bxt-g" data-key="' + key + '">'
-        + '<tr class="bxt-r1"><td class="bxt-tog" rowspan="2">' + chev + '</td>' + tmCell(g.away, impA) + '<td>' + cell(spA, 'spread') + '</td><td>' + cell(toO, 'over') + '</td><td>' + cell(mlA, 'ml') + '</td><td class="bxt-vl" rowspan="2">' + vaultCell + '</td><td class="bxt-trk" rowspan="2">' + trackCell + '</td><td class="bxt-rm" rowspan="2">' + money + '</td></tr>'
-        + '<tr class="bxt-r2">' + tmCell(g.home, impH) + '<td>' + cell(spH, 'spread') + '</td><td>' + cell(toU, 'under') + '</td><td>' + cell(mlH, 'ml') + '</td></tr>'
+      return { g, key, impA, impH, spA, spH, toO, toU, mlA, mlH, vaultCell, trackCell, money, open, drawerInner };
+    };
+    const rowH = (x) => {
+      const m = gmMeta(x), g = m.g;
+      const chev = '<button class="bxt-chev" data-tgl="' + m.key + '" title="' + (m.open ? 'Hide books' : 'Compare books') + '">' + (m.open ? '▾' : '▸') + '</button>';
+      const tmCell = (code, imp) => '<td class="bxt-tm"><span class="bt-logo" data-logo="' + code + '"></span><span class="cd">' + code + '</span>' + (imp != null ? '<span class="wp">' + imp + '%</span>' : '') + '</td>';
+      const drawer = m.open ? '<tr class="bxt-drow"><td colspan="8">' + m.drawerInner + '</td></tr>' : '';
+      return '<tbody class="bxt-g" data-key="' + m.key + '">'
+        + '<tr class="bxt-r1"><td class="bxt-tog" rowspan="2">' + chev + '</td>' + tmCell(g.away, m.impA) + '<td>' + bxCell(m.spA, 'spread') + '</td><td>' + bxCell(m.toO, 'over') + '</td><td>' + bxCell(m.mlA, 'ml') + '</td><td class="bxt-vl" rowspan="2">' + m.vaultCell + '</td><td class="bxt-trk" rowspan="2">' + m.trackCell + '</td><td class="bxt-rm" rowspan="2">' + m.money + '</td></tr>'
+        + '<tr class="bxt-r2">' + tmCell(g.home, m.impH) + '<td>' + bxCell(m.spH, 'spread') + '</td><td>' + bxCell(m.toU, 'under') + '</td><td>' + bxCell(m.mlH, 'ml') + '</td></tr>'
         + drawer + '</tbody>';
+    };
+    // Mobile: the table treatment as a stacked card (an 8-column table can't fit a
+    // phone). Same cells / Vault line / Track chip / money / drawer as the row.
+    const mCardH = (x) => {
+      const m = gmMeta(x), g = m.g;
+      const teamRow = (code, imp) => '<div class="bxm-team"><span class="bt-logo" data-logo="' + code + '"></span><span class="cd">' + code + '</span>' + (imp != null ? '<span class="wp">' + imp + '%</span>' : '') + '</div>';
+      const mkt = (lab, a, b) => '<div class="bxm-mkt"><span class="bxm-mlab">' + lab + '</span><div class="bxm-sides">' + a + b + '</div></div>';
+      const chev = '<button class="bxt-chev" data-tgl="' + m.key + '" title="' + (m.open ? 'Hide books' : 'Compare books') + '">' + (m.open ? '▾' : '▸') + '</button>';
+      return '<article class="bxm" data-key="' + m.key + '">'
+        + '<div class="bxm-head"><div class="bxm-teams">' + teamRow(g.away, m.impA) + teamRow(g.home, m.impH) + '</div>' + chev + '</div>'
+        + '<div class="bxm-mkts">' + mkt('Spread', bxCell(m.spA, 'spread'), bxCell(m.spH, 'spread')) + mkt('Total', bxCell(m.toO, 'over'), bxCell(m.toU, 'under')) + mkt('Moneyline', bxCell(m.mlA, 'ml'), bxCell(m.mlH, 'ml')) + '</div>'
+        + (m.vaultCell ? '<div class="bxm-foot"><div class="bxm-vl">' + m.vaultCell + '</div>' + (m.trackCell && !/bxt-na/.test(m.trackCell) ? '<div class="bxm-trk">' + m.trackCell + '</div>' : '') + '</div>' : '')
+        + (m.money ? '<div class="bxm-money">' + m.money + '</div>' : '')
+        + (m.open ? m.drawerInner : '')
+        + '</article>';
     };
 
     const nTracked = gamePicksLoad().length;
@@ -42540,7 +42578,7 @@ window.VaultPropModel = (function () {
     // can't fit a phone). One board, two renderers, same data + wiring.
     const narrow = !!(window.matchMedia && window.matchMedia('(max-width:820px)').matches);
     const boardHTML = narrow
-      ? withBets.map(cardH).join('')
+      ? '<div class="bxm-wrap">' + withBets.map(mCardH).join('') + '</div>'
       : '<div class="bxt-wrap"><table class="bxt"><thead><tr><th class="bxt-togh"></th><th class="l">Matchup</th><th>Spread</th><th>Total</th><th>Moneyline</th><th>Vault line</th><th>Track</th><th>Real money</th></tr></thead>' + withBets.map(rowH).join('') + '</table></div>';
     inner.innerHTML = banner + moversHTML + boardHTML;
     paintLogos('#bt-gv-inner');
