@@ -13,9 +13,18 @@
    is that team's win probability. We take the bid/ask mid and require a little
    liquidity so thin/stale markets never post a fake number.
 
+   MONEY FLOW — Kalshi settles real dollars, so a market's contract volume and
+   open interest are genuine money standing behind the price, the one handle-
+   style signal our sportsbook line feeds don't carry (books give lines, never
+   handle). We capture per-side and per-game volume (lifetime + last 24h) and
+   open interest so the Edge Board can flag where real money is concentrated and
+   heating up. Contracts, not dollars — each Kalshi contract settles $0–$1.
+
    Output shape (read by betting-app.js):
      { source, generated, count, games: {
          "AWY@HOM": { away, home, ml:{away:<prob>,home:<prob>},
+                      flow:{ away:{vol,vol24,oi}, home:{vol,vol24,oi},
+                             vol, vol24, oi },   // per-side + game totals
                       liquidity, close } } }
 
    Moneyline (game winner) only for now; KXNFLSPREAD / KXNFLTOTAL can be added
@@ -80,6 +89,21 @@ function yesQuote(m) {
   return { prob: (yb + ya) / 2, spread: Math.abs(ya - yb) };
 }
 
+// Real-money flow on a Kalshi market: contracts traded (lifetime + last 24h)
+// and open interest. Because the exchange settles real dollars, this is actual
+// money behind the price — not a book-set line. On the nested-markets events
+// endpoint these arrive as fixed-point decimal STRINGS suffixed `_fp` ("9657.09");
+// each contract carries $1 notional, so a contract count ≈ dollars at stake.
+// Accept the older un-suffixed names too in case the shape changes.
+const fp = v => Math.round(num(v) || 0);
+function mktFlow(m) {
+  return {
+    vol:   fp(m.volume_fp != null ? m.volume_fp : m.volume),
+    vol24: fp(m.volume_24h_fp != null ? m.volume_24h_fp : m.volume_24h),
+    oi:    fp(m.open_interest_fp != null ? m.open_interest_fp : m.open_interest),
+  };
+}
+
 // Shared match id from any series ticker: KXNFLGAME-26AUG27PITBUF → 26AUG27PITBUF.
 const matchId = t => String(t || '').split('-')[1] || '';
 
@@ -89,7 +113,7 @@ function parseGame(ev) {
   if (markets.length !== 2) return null;
   const vs = (ev.title || '').split(/\s+vs\.?\s+/i);
   const awayCity = (vs[0] || '').trim(), homeCity = (vs[1] || '').trim();
-  let away = null, home = null, mlAway = null, mlHome = null, worstSpread = 0, close = null;
+  let away = null, home = null, mlAway = null, mlHome = null, worstSpread = 0, close = null, flowAway = null, flowHome = null;
   for (const m of markets) {
     const abbr = code(String(m.ticker || '').split('-').pop());
     const q = yesQuote(m);
@@ -97,13 +121,16 @@ function parseGame(ev) {
     worstSpread = Math.max(worstSpread, q.spread);
     const city = (m.yes_sub_title || '').trim();
     close = m.close_time || close;
-    if (awayCity && city && awayCity.toLowerCase().includes(city.toLowerCase())) { away = abbr; mlAway = q.prob; }
-    else if (homeCity && city && homeCity.toLowerCase().includes(city.toLowerCase())) { home = abbr; mlHome = q.prob; }
-    else if (!away) { away = abbr; mlAway = q.prob; } else { home = abbr; mlHome = q.prob; }
+    const fl = mktFlow(m);
+    if (awayCity && city && awayCity.toLowerCase().includes(city.toLowerCase())) { away = abbr; mlAway = q.prob; flowAway = fl; }
+    else if (homeCity && city && homeCity.toLowerCase().includes(city.toLowerCase())) { home = abbr; mlHome = q.prob; flowHome = fl; }
+    else if (!away) { away = abbr; mlAway = q.prob; flowAway = fl; } else { home = abbr; mlHome = q.prob; flowHome = fl; }
   }
   if (!away || !home || mlAway == null || mlHome == null || worstSpread > MAX_SPREAD) return null;
+  const fa = flowAway || { vol: 0, vol24: 0, oi: 0 }, fh = flowHome || { vol: 0, vol24: 0, oi: 0 };
+  const flow = { away: fa, home: fh, vol: fa.vol + fh.vol, vol24: fa.vol24 + fh.vol24, oi: fa.oi + fh.oi };
   return { mid: matchId(ev.event_ticker), key: away + '@' + home, away, home,
-    ml: { away: +mlAway.toFixed(4), home: +mlHome.toFixed(4) }, close };
+    ml: { away: +mlAway.toFixed(4), home: +mlHome.toFixed(4) }, flow, close };
 }
 
 // KXNFLTOTAL event → sorted "Over strike" ladder [[strike, P(over)], …] (tight strikes only).
@@ -145,10 +172,15 @@ function spreadLadders(ev, away, home) {
   for (const ev of spreadEvs) { const g = byMatch[matchId(ev.event_ticker)]; if (g) g.spread = spreadLadders(ev, g.away, g.home); }
 
   const games = {};
-  for (const mid in byMatch) { const g = byMatch[mid]; games[g.key] = { away: g.away, home: g.home, ml: g.ml, total: g.total || null, spread: g.spread || null, close: g.close }; }
+  for (const mid in byMatch) { const g = byMatch[mid]; games[g.key] = { away: g.away, home: g.home, ml: g.ml, total: g.total || null, spread: g.spread || null, flow: g.flow || null, close: g.close }; }
   const payload = { source: 'kalshi', series: 'KXNFLGAME+SPREAD+TOTAL', generated: new Date().toISOString(), count: Object.keys(games).length, games };
   const nT = Object.values(games).filter(g => g.total).length, nS = Object.values(games).filter(g => g.spread).length;
   log(payload.count + ' games · ' + nT + ' with total ladder · ' + nS + ' with spread ladders');
+  const flowed = Object.values(games).filter(g => g.flow && g.flow.vol > 0);
+  const totVol = flowed.reduce((n, g) => n + g.flow.vol, 0), totVol24 = flowed.reduce((n, g) => n + g.flow.vol24, 0);
+  log(flowed.length + ' games with real-money flow · ' + totVol.toLocaleString() + ' contracts traded (' + totVol24.toLocaleString() + ' last 24h)');
+  flowed.slice().sort((a, b) => b.flow.vol24 - a.flow.vol24).slice(0, 3)
+    .forEach(g => log('  hot: ' + g.away + '@' + g.home + '  ' + g.flow.vol.toLocaleString() + ' vol · ' + g.flow.vol24.toLocaleString() + ' 24h · ' + g.flow.oi.toLocaleString() + ' OI'));
   Object.values(games).slice(0, 5).forEach(g => log('  ' + g.away + '@' + g.home + '  ml ' + (g.ml.away * 100).toFixed(0) + '/' + (g.ml.home * 100).toFixed(0) + '¢  total ' + (g.total ? g.total.length : 0) + ' · spread ' + (g.spread ? Object.keys(g.spread).length : 0)));
   if (DRY) { log('--dry: not written'); return; }
   writeFileSync(OUT, JSON.stringify(payload));
