@@ -59,6 +59,15 @@ jobs:
         with:
           python-version: '3.11'
 
+      # Fast player-stat feed: ESPN box scores for finished games nflverse hasn't
+      # published yet, written to data/espn_player_stats_<season>.json. settle_bets
+      # overlays it (nflverse wins on conflict), so PLAYER PROPS settle within
+      # minutes of a final instead of waiting hours-to-a-day for nflverse — the
+      # same fast-feed trick GAME bets already use off ESPN's scoreboard. The
+      # frontend My Picks view reads the same overlay. Never fails the settle.
+      - name: Fetch ESPN box scores (fast prop feed)
+        run: python3 scripts/fetch_espn_boxscores.py || true
+
       - name: Settle bets + compute CLV
         run: python3 scripts/settle_bets.py
 
@@ -68,7 +77,7 @@ jobs:
           git config user.email "vault-bot@users.noreply.github.com"
           # Rebase in case another data cron pushed while we ran.
           git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
-          git add data/bet_results.json data/edge_scoreboard.json 2>/dev/null || true
+          git add data/bet_results.json data/edge_scoreboard.json data/espn_player_stats_*.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No settlement changes."
           else

@@ -126,7 +126,40 @@ def load_actuals(season):
             if isinstance(row, dict) and row.get("wk") is not None:
                 wk[int(row["wk"])] = row
         if wk: out[name] = wk
+    _overlay_espn(out, season)
     return out
+
+
+def _nkey(s):
+    """Loose name key for cross-source joins (matches VaultPropHistory's nkey)."""
+    import unicodedata
+    s = unicodedata.normalize("NFD", str(s or "")).encode("ascii", "ignore").decode()
+    return "".join(c for c in s.lower() if c.isalpha())
+
+
+def _overlay_espn(out, season):
+    """Fill weeks nflverse hasn't published yet from the ESPN box-score overlay
+    (data/espn_player_stats_<season>.json). nflverse ALWAYS wins: a week already
+    present is never overwritten, so a later nflverse run supersedes ESPN. This is
+    what lets a PLAYER PROP settle within minutes of the game going final instead
+    of waiting hours-to-a-day for nflverse. Missing overlay → no-op."""
+    path = os.path.join(DATA, f"espn_player_stats_{season}.json")
+    if not os.path.exists(path):
+        return
+    try:
+        ov = json.load(open(path))
+    except Exception:
+        return
+    bykey = {_nkey(n): n for n in out}          # nflverse name reachable by loose key
+    for name, rec in ov.items():
+        if not isinstance(rec, dict): continue
+        tgt = bykey.get(_nkey(name), name)      # append to the nflverse entry if one matches
+        wk = out.setdefault(tgt, {})
+        for row in rec.get("weeks", []) or []:
+            if isinstance(row, dict) and row.get("wk") is not None:
+                w = int(row["wk"])
+                if w not in wk:                 # nflverse wins on conflict
+                    wk[w] = row
 
 def actual_for(actuals, name, week, market):
     cols = COL.get(market)
