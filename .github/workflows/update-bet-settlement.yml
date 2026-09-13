@@ -26,6 +26,20 @@ on:
     # chained run was skipped/failed, plus late score corrections. Kept late
     # enough that nflverse has almost always published by now.
     - cron: '10 13 * * *'
+    # Game-window crons (UTC), settling GAMES directly from ESPN so a finished
+    # game clears within minutes. These do NOT depend on "Update game history"
+    # firing — game_line_history is banked pre-kickoff, and settle_bets pulls
+    # final scores from ESPN itself. This matters because the workflow_run chain
+    # above rides GitHub's `schedule` events, which GitHub throttles hardest on
+    # busy Sundays (the hourly game-history cron routinely slips to every 4-6h),
+    # so completed games were sitting unsettled for hours mid-slate. Redundant
+    # */15 ticks across the windows give several chances for one to fire even
+    # under heavy throttling; concurrency + deterministic rebuild make extra
+    # runs free. nflverse still drives PROP settlement on its own trigger.
+    - cron: '*/15 17-23 * * 0'   # Sun early + late afternoon windows (1pm-7pm ET)
+    - cron: '*/15 0-4 * * 1'     # Sun night into Mon morning UTC (SNF)
+    - cron: '*/15 0-4 * * 2'     # Mon night football spilling into Tue UTC
+    - cron: '*/15 0-4 * * 5'     # Thu night football spilling into Fri UTC
 
 concurrency:
   group: bet-settlement
