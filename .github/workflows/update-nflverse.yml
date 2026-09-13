@@ -45,6 +45,18 @@ jobs:
         run: |
           python scripts/build_qb_out_impact.py --since 2007
 
+      - name: Rebuild vacated share
+        # Measures the ROSTER-DEPARTURE analogue of the cascade: how a returning
+        # player's own volume shifts season-over-season when a same-position
+        # starter LEAVES the team (traded/signed elsewhere/retired), net of normal
+        # year-to-year drift, split by whether the departure was ranked above or
+        # below him. Pure stdlib; writes data/vacated_share.json. Buckets publish
+        # only past MIN_EVENTS and a sign + even/odd stability gate, so a thin run
+        # simply ships fewer and the frontend falls back to pure history. Also
+        # emits last season's ranked rooms for the live roster diff.
+        run: |
+          python scripts/build_vacated_share.py --since 2014
+
       - name: Rebuild grade calibration
         # Fits Grade Keys factor weights from the freshly-written nflverse_stats_*
         # seasons (pure stdlib, no deps). Writes data/grade_calibration.json; a

@@ -13473,6 +13473,23 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-13T21:00', tag:'Fixed', title:'Player prop picks settle right after the game, not the next day',
+    items:[
+      'Tracked player props used to sit “pending” for hours after a game finished — sometimes until the next morning — even though the game was clearly over. They now settle within minutes of the final whistle, the same way your game bets already do.',
+      'Both your own picks (My Picks) and the league-wide Vault Record fill in as soon as the box score is available, so your record reflects the day’s results the same day.',
+      'The official stats source still has the final say: if a number is corrected afterward, the pick re-settles to match.',
+    ],
+  },
+  {
+    ts:'2026-09-13T16:00', tag:'Improved', title:'Player props now know when a teammate has left the team',
+    items:[
+      'Vault already reacted when a teammate was hurt; now it also reacts when one has left the roster (traded, signed elsewhere, retired). A player’s history reflects the backfield or receiver room he shared last season, so when a same-position starter is gone, that history can understate his new role.',
+      'Where the effect is real and consistent, Vault raises the projection by a measured amount — for example a clear backup who inherits the lead job when the starter departs. The detail card shows it in plain sight (“Montgomery left ×1.29”).',
+      'Where the data does NOT support a reliable bump — most notably an established lead back who loses a complementary teammate — Vault does not invent one. Instead it flags the lean “room?” and holds back the confident grade, because the market may already price a role Vault’s history hasn’t caught up to yet.',
+      'The size of every adjustment is measured from real season-over-season usage and fades out as the new season’s games pile up. No guesses.',
+    ],
+  },
+  {
     ts:'2026-09-13T12:30', tag:'Improved', title:'Player props now react to gameday inactives',
     items:[
       'When a player is ruled OUT (or doubtful) on the Sunday inactive list, his props are now marked OUT on the board and his edge, projection and grade are withheld — so a stale line can never show up as a phantom edge.',
@@ -40932,8 +40949,34 @@ window.VaultPropHistory = (function () {
     ? window.vaultNameKey(s)
     : String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '');
   const _file = {}, _index = {};
+  // Fold the ESPN box-score overlay (espn_player_stats_<season>.json) into the
+  // nflverse data. ESPN carries per-player stats minutes after a game; nflverse
+  // lags hours-to-a-day. Merging here means a tracked PLAYER PROP settles right
+  // after the whistle instead of sitting "pending" overnight — with nflverse
+  // ALWAYS winning: a week already in nflverse is never replaced, so once the
+  // real box score lands it supersedes ESPN. Matched by loose name key so a
+  // suffix/spelling gap doesn't split one player into two entries.
+  function _mergeOverlay(base, ov) {
+    if (!ov) return base;
+    base = base || {};
+    const byKey = {};
+    for (const n in base) byKey[nkey(n)] = n;
+    for (const n in ov) {
+      const rec = ov[n]; if (!rec || !rec.weeks) continue;
+      const tgt = byKey[nkey(n)] || n;
+      let ent = base[tgt];
+      if (!ent) { ent = base[tgt] = { name: rec.name || n, pos: rec.pos, team: rec.team, weeks: [] }; byKey[nkey(n)] = tgt; }
+      if (!ent.weeks) ent.weeks = [];
+      const have = new Set(ent.weeks.map(w => String(w.wk)));
+      for (const w of rec.weeks) if (!have.has(String(w.wk))) ent.weeks.push(w);
+    }
+    return base;
+  }
   function load(season) {
-    if (!_file[season]) _file[season] = fetch(`${BASE}/nflverse_stats_${season}.json`).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    if (!_file[season]) _file[season] = Promise.all([
+      fetch(`${BASE}/nflverse_stats_${season}.json`).then(r => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`${BASE}/espn_player_stats_${season}.json`).then(r => (r.ok ? r.json() : null)).catch(() => null)
+    ]).then(([base, ov]) => _mergeOverlay(base, ov));
     return _file[season];
   }
   async function index(season) {
@@ -43036,6 +43079,110 @@ window.VaultPropModel = (function () {
     return (r && r.depthRank != null && roleCorroborated(r.id)) ? r.depthRank : undefined;
   }
 
+  // ── roster-departure vacated share (measured; NOT injuries) ─────────────────
+  // build_vacated_share.py → data/vacated_share.json. A player's history reflects
+  // the ROOM he shared; when a real-starter teammate from last completed season
+  // has since LEFT the team (traded / signed elsewhere / retired / cut — not
+  // merely hurt), his own volume shifts. The size of that shift is MEASURED per
+  // group × prior-rank × direction (a lead ABOVE him gone vs a committee-mate
+  // BELOW), NET of normal year-over-year drift, and only ships where it holds up
+  // across an even/odd season split. The injury cascade is blind to this: a
+  // departed player isn't on the roster to be flagged Out, and the cascade only
+  // ever lifts the man BELOW an absence — so the RB1 who loses his RB2 is
+  // invisible to it. Where a starter left but NO bucket is measured (e.g.
+  // RB1-loses-RB2, which the data says does NOT reliably raise the lead's
+  // carries), we WITHHOLD the confident lean instead of inventing a number.
+  // Null until the file lands (silent no-op → pure history), same contract as the
+  // cascade / QB-out getters.
+  const VAC_MK = { rush_yd: 'rush', rush_att: 'rush', rush_td: 'rush', rec: 'rec', rec_yd: 'rec', rec_td: 'rec' };
+  const VAC_SHRINK = 0.85;      // pull the measured net multiplier toward 1 for single-season noise (like the cascade)
+  const VAC_FADE_WEEKS = 8;     // fade the bump out over the season as the live log absorbs the new role (schedule, not effect size)
+  let _vacData = null, _vacTried = false;
+  function vacData() {
+    if (_vacData || _vacTried) return _vacData;
+    _vacTried = true;
+    const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
+    fetch(base + '/vacated_share.json').then(r => (r.ok ? r.json() : null)).then(j => {
+      _vacData = j;
+      // A row cached BEFORE this landed computed its projection + caution with no
+      // departure data (getter returned null). _vaultCache never clears on its
+      // own and the fill skips cached keys, so drop the stale entries once, here,
+      // to force a clean recompute now that the measured buckets are available.
+      if (j) { for (const k in _vaultCache) delete _vaultCache[k]; }
+      if (view === 'props') renderProps();
+    }).catch(() => {});
+    return _vacData;
+  }
+  // Current-season fade: full in Week 1 (history is still last year's room), then
+  // linearly to 0 by VAC_FADE_WEEKS — by then the player's own in-season log
+  // reflects the new role on its own, so keeping the bump would DOUBLE-COUNT.
+  // Preseason / unknown week → full effect.
+  function _vacFade() {
+    const st = (MODEL && MODEL.season_type) || '';
+    if (/^pre/i.test(st)) return 1;
+    const w = MODEL && MODEL.week;
+    if (!(w > 1)) return 1;
+    return Math.max(0, 1 - (w - 1) / VAC_FADE_WEEKS);
+  }
+  // name → current team, at a group's positions, from the live model (memoized).
+  let _vacTeams = null, _vacTeamsTok = null;
+  function _vacCurrentTeams(group) {
+    if (!(_vacTeams && _vacTeamsTok === MODEL)) {
+      const maps = { rush: {}, rec: {} };
+      for (const p of ((MODEL && MODEL.players) || [])) {
+        if (!p.team || !p.name) continue;
+        if (p.pos === 'RB') maps.rush[vaultNameKey(p.name)] = p.team;
+        if (p.pos === 'WR' || p.pos === 'TE') maps.rec[vaultNameKey(p.name)] = p.team;
+      }
+      _vacTeams = maps; _vacTeamsTok = MODEL;
+    }
+    return _vacTeams[group] || {};
+  }
+  // Measured departure multiplier / caution for a row. Returns:
+  //   { mult, raw, dir, who }  a stable bucket applies (mult already shrunk + faded),
+  //   { caution:true, who }    a real starter left but no reliable bucket is measured,
+  //   null                     nothing changed in the room (or data not loaded).
+  function vacatedInfo(r) {
+    const group = VAC_MK[r && r.market];
+    if (!group || !r || !r.team || !r.name) return null;
+    const d = vacData();
+    if (!d || !d.rooms || !d.buckets) return null;
+    const room = d.rooms[r.team + '|' + group];
+    if (!room) return null;
+    const nk = vaultNameKey(r.name);
+    const me = room.find(m => vaultNameKey(m.name) === nk);
+    if (!me) return null;                                   // wasn't in last year's room → nothing to compare
+    const curTeams = _vacCurrentTeams(group);
+    let above = 0, below = 0; const gone = [];
+    for (const m of room) {
+      if (vaultNameKey(m.name) === nk || !m.starter) continue;
+      if (curTeams[vaultNameKey(m.name)] === r.team) continue;   // still on the team
+      if (m.rank < me.rank) { above++; gone.push(m.name); }
+      else { below++; gone.push(m.name); }
+    }
+    if (!above && !below) return null;
+    const who = gone.length === 1 ? gone[0] : gone.slice(0, 2).join(' & ') + (gone.length > 2 ? ' +' + (gone.length - 2) : '');
+    let dir = null, n = 0;
+    if (above && !below) { dir = 'above'; n = above; }
+    else if (below && !above) { dir = 'below'; n = below; }
+    // mixed above+below → no measured bucket (pipeline skips mixed) → caution only
+    const rb = String(Math.min(me.rank - 1, 3));
+    const cell = dir && d.buckets[group] && d.buckets[group][rb] && d.buckets[group][rb][dir] && d.buckets[group][rb][dir][String(Math.min(n, 2))];
+    if (cell && cell.mult > 0) {
+      const eff = 1 + (cell.mult - 1) * VAC_SHRINK * _vacFade();
+      if (Math.abs(eff - 1) < 0.005) return { caution: true, who };   // faded to nothing → still a role change, just no live bump
+      return { mult: eff, raw: cell.mult, dir, who };
+    }
+    return { caution: true, who };                          // starter left, no reliable measured bump → don't invent one
+  }
+  function vacatedTip(r, vi) {
+    const nm = r.name || 'this player';
+    if (vi.mult)
+      return vi.who + ' left the team since last season — Vault raised ' + nm + '’s projection ×' + vi.mult.toFixed(2)
+        + ', the measured season-over-season shift for this role when a same-position starter departs (net of normal year-to-year drift). The bigger number is expected, not a mistake.';
+    return vi.who + ' left the team since last season, so the room ' + nm + '’s history was built in has changed. Vault couldn’t measure a reliable re-projection for this exact case, so it’s projecting from his own past usage and the market may already price a role Vault’s history doesn’t reflect. Treat the lean as unconfirmed and sanity-check the number.';
+  }
+
   // Fair / EV for one real-line prop row (VaultBettingMath). Returns the better
   // +EV side, or null when the market isn't a genuinely juiced two-way.
   //
@@ -43830,8 +43977,9 @@ window.VaultPropModel = (function () {
     // Show how the matchup shaped the number: raw history → opponent × environment × script × QB-out.
     const a = matchupAdj(r), scriptOn = Math.abs((a.scriptMult ?? 1) - 1) > 0.005;
     const qb = qbOutMultFor(r), qbOn = !!qb;
-    const applied = Math.abs(a.oppMult - 1) > 0.005 || Math.abs(a.envMult - 1) > 0.005 || scriptOn || qbOn;
-    const base = applied ? (proj / (a.oppMult * a.envMult * (a.scriptMult ?? 1) * (qbOn ? qb.mult : 1))) : null;
+    const vac = vacatedInfo(r), vacOn = !!(vac && vac.mult);
+    const applied = Math.abs(a.oppMult - 1) > 0.005 || Math.abs(a.envMult - 1) > 0.005 || scriptOn || qbOn || vacOn;
+    const base = applied ? (proj / (a.oppMult * a.envMult * (a.scriptMult ?? 1) * (qbOn ? qb.mult : 1) * (vacOn ? vac.mult : 1))) : null;
     const _spTxt = a.spread != null ? (r.team ? r.team + ' ' : '') + (a.spread > 0 ? '+' : '') + a.spread : null;
     // Line-corroboration provenance. A single-book line is always tagged; when
     // it's a volume market Vault's projection also rejects, the confident lean
@@ -43853,7 +44001,8 @@ window.VaultPropModel = (function () {
           + (a.oppRank != null ? ' · opp <b>' + r.opp + ' ' + _ord(a.oppRank) + '</b> ×' + a.oppMult.toFixed(2) : '')
           + (a.teamTotal != null ? ' · env <b>' + a.teamTotal + '</b> implied ×' + a.envMult.toFixed(2) : '')
           + (scriptOn && _spTxt ? ' · script <b>' + _spTxt + '</b> ×' + a.scriptMult.toFixed(2) : '')
-          + (qbOn ? ' · <b>QB out</b> ×' + qb.raw.toFixed(2) : '') + '</div>' : '')
+          + (qbOn ? ' · <b>QB out</b> ×' + qb.raw.toFixed(2) : '')
+          + (vacOn ? ' · <b>' + vac.who + ' left</b> ×' + vac.mult.toFixed(2) : '') + '</div>' : '')
       + srcTag
       + '</div>'
       + leanBlock;
@@ -44082,7 +44231,8 @@ window.VaultPropModel = (function () {
     const mpo = (fe && fe.sides && fe.sides.over) ? fe.sides.over.fairProb : null;   // vig-free market P(over), if de-viggable
     const ci = cascadeInfo(r);                                                        // injury teammate-cascade volume bump (or null)
     const qb = qbOutMultFor(r);                                                       // measured QB-out re-projection (or null)
-    const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1);
+    const vac = vacatedInfo(r);                                                       // roster-departure vacated share (or null / caution)
+    const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1) * ((vac && vac.mult) ? vac.mult : 1);
     const adj = matchupAdj(r);                                                        // DvP opponent + Vegas-total environment
     PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: usage !== 1 ? usage : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
       const h = document.getElementById('eb-2side');
@@ -44202,7 +44352,18 @@ window.VaultPropModel = (function () {
     const isDbt = st.out && st.outStatus === 'doubtful';
     return '<span class="bx-out" title="' + (isDbt ? 'Doubtful — real workload in question, edge withheld.' : 'A projected starter on this team is OUT (' + (st.impactedBy || 'lineup change') + '); projection assumes a lineup that just changed, edge withheld.') + '" style="color:var(--bt-gold);font-weight:800;font-size:10px;letter-spacing:.04em">' + (isDbt ? 'DBT' : 'LINEUP') + '</span>';
   }
-  function edgeCaution(r, sideProb, marketProb, ev, v, cascade) {
+  function edgeCaution(r, sideProb, marketProb, ev, v, cascade, vac) {
+    // A measured usage bump (injury cascade OR season-over-season departure) is a
+    // known reason the projection disagrees with a not-yet-caught-up market line,
+    // so it EXPLAINS a gap the way the cascade does and suppresses the gap tiers.
+    const explained = cascade || (vac && vac.mult);
+    // Roster DEPARTURE with no reliable measured bump (a real starter left the
+    // room but this exact role/direction didn't clear the stability gate — the
+    // RB1-loses-RB2 case). The room the history was built in has changed, so the
+    // lean is unconfirmed. Not gated by role-corroboration: it fires even for a
+    // correctly-ranked RB1 (exactly the Gibbs case the confident A slipped through).
+    const vacC = (vac && vac.caution)
+      ? { kind: 'room', label: 'room?', tip: vacatedTip(r, vac) } : null;
     // 0. Gameday inactive / lineup change — the hardest data-quality flag, so it
     //    runs BEFORE the EV bail (a vault-led row arrives with negative ev). An
     //    OUT/doubtful player's props are void; a teammate of an OUT starter
@@ -44220,7 +44381,7 @@ window.VaultPropModel = (function () {
     // A projection blowout is a data-quality flag independent of EV sign, so it
     // must survive the positive-edge bail (vault-led rows arrive here with the
     // market side's NEGATIVE ev — see projGapCaution).
-    if (ev == null || ev <= 0) return projGapCaution(r, v && v.proj);
+    if (ev == null || ev <= 0) return vacC || projGapCaution(r, v && v.proj);
     // 1. Injury (this player's own) — projection is built from healthy games, so
     //    the market almost certainly knows something our history doesn't. Uses
     //    the same live source the board's injury badge does (not r.injury, which
@@ -44242,18 +44403,23 @@ window.VaultPropModel = (function () {
     //    explains an expected disagreement, so it wins over this tier.
     //    Thresholds are deliberately conservative and should be validated against
     //    settled outcomes (docs/edge-feedback-loop.md), like the other tiers.
-    if (!cascade && ROLE_VOL_MK[r && r.pos] && !roleCorroborated(r && r.id)) {
+    if (!explained && ROLE_VOL_MK[r && r.pos] && !roleCorroborated(r && r.id)) {
       const devigGap = (marketProb != null && sideProb != null) ? Math.abs(sideProb - marketProb) : null;
       const projRel  = (v && v.proj != null && r.line) ? Math.abs(v.proj - r.line) / Math.abs(r.line) : null;
       if ((devigGap != null && devigGap >= ROLE_CAUTION_GAP) || (devigGap == null && projRel != null && projRel >= ROLE_CAUTION_PROJREL))
         return { kind: 'role', label: 'role?', tip: 'The betting lines rank ' + (r.name || 'this player') + ' differently than his depth chart, so Vault couldn’t confirm his current role and is projecting from his own past usage. When the market implies a bigger or smaller role than Vault’s history reflects, a gap like this is usually a stale role, not a real edge — sanity-check the number before trusting it.' };
     }
+    // 1c. Roster departure with no reliable measured bump — a real starter left
+    //     the room, so even a correctly-ranked player's history reflects a room
+    //     that no longer exists. Fires for confirmed-role players too (the Gibbs
+    //     case), unlike 1b. A measured departure bump (vac.mult) is NOT a caution.
+    if (vacC) return vacC;
     // 2. Implausible disagreement with the fair (vig-free) market — UNLESS the
     //    injury cascade explains it (a boosted next-man-up SHOULD disagree with a
     //    market line that hasn't caught up). The market line ≈ its own projection;
     //    a big unexplained gap usually means a stale role, bad name-join, or thin
     //    sample, not a real edge.
-    if (!cascade && marketProb != null && sideProb != null) {
+    if (!explained && marketProb != null && sideProb != null) {
       const gap = Math.abs(sideProb - marketProb);
       if (gap >= 0.18)
         return { kind: 'implausible', label: '?', tip: 'Vault disagrees with the fair market by ' + Math.round(gap * 100) + ' pts (' + Math.round(sideProb * 100) + '% vs the market’s ' + Math.round(marketProb * 100) + '%). A gap this large is usually a projection problem — stale role, injury, or a bad match — so sanity-check the number before trusting it.' };
@@ -44265,7 +44431,7 @@ window.VaultPropModel = (function () {
     //    shape. The role anchor already corrects KNOWN depth-chart shifts, so a
     //    large gap that survives it is exactly what to doubt. (This is the hole
     //    Tuten fell through — a PrizePicks/Underdog line the de-vig can't reach.)
-    if (!cascade && marketProb == null && v && v.proj != null && r.line) {
+    if (!explained && marketProb == null && v && v.proj != null && r.line) {
       const rel = Math.abs(v.proj - r.line) / Math.abs(r.line);
       if (rel >= 0.33)
         return { kind: 'projgap', label: '?', tip: 'Vault’s projection (' + v.proj + ') is ' + Math.round(rel * 100) + '% off the ' + r.line + ' line, and no second market confirms it. A gap this big on a DFS line is usually a projection issue — a stale role, thin sample, or name mismatch — so sanity-check it before trusting the edge.' };
@@ -44308,6 +44474,9 @@ window.VaultPropModel = (function () {
     // Cascade: a teammate is Out, so this raised projection is EXPECTED — the big
     // edge is explained, not suspect. Green with a ▲ and the reason.
     if (c.cascade) return '<span title="' + cascadeTip(c.cascade).replace(/"/g, '&quot;') + '" style="color:var(--bt-green);font-weight:700">' + (c.ev > 0 ? '+' : '') + c.ev + '%<span style="font-size:9px;opacity:.85"> ▲</span></span>';
+    // Vacated share: a same-position starter LEFT the team, so this raised
+    // projection is EXPECTED (measured season-over-season). Green with a ▲.
+    if (c.vacated) return '<span title="' + vacatedTip(c.vacated.r, c.vacated.vac).replace(/"/g, '&quot;') + '" style="color:var(--bt-green);font-weight:700">' + (c.ev > 0 ? '+' : '') + c.ev + '%<span style="font-size:9px;opacity:.85"> ▲</span></span>';
     return '<span style="color:' + (c.ev > 0 ? 'var(--bt-green)' : 'var(--bt-muted)') + ';font-weight:700">' + (c.ev > 0 ? '+' : '') + c.ev + '%</span>';
   }
 
@@ -44595,7 +44764,8 @@ window.VaultPropModel = (function () {
       const mpo = (r.fe && r.fe.sides && r.fe.sides.over) ? r.fe.sides.over.fairProb : null;   // vig-free market P(over), if de-viggable
       const ci = cascadeInfo(r);                                                                // injury teammate-cascade volume bump (or null)
       const qb = qbOutMultFor(r);                                                               // measured QB-out re-projection (or null)
-      const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1);                                    // same-position vacated share × QB-out cross-market
+      const vac = vacatedInfo(r);                                                               // roster-departure vacated share (or null / caution)
+      const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1) * ((vac && vac.mult) ? vac.mult : 1);  // injury cascade × QB-out × season-over-season departure
       const adj = matchupAdj(r);                                                                // DvP opponent + Vegas-total environment → market-native projection
       return PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: usage !== 1 ? usage : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
         let ev = null, proj = null, g = null, unv = false, over = null, under = null, caution = null;
@@ -44607,11 +44777,11 @@ window.VaultPropModel = (function () {
           ev = ed ? +(ed.evPerDollar * 100).toFixed(1) : null;
           // fair (vig-free) market prob for THIS side, when de-viggable — the plausibility anchor
           const mktSideProb = (r.fe.sides && r.fe.sides[r.fe.side]) ? r.fe.sides[r.fe.side].fairProb : null;
-          caution = edgeCaution(r, sideProb, mktSideProb, ev, v, ci);   // injury / implausible-gap / thin / single-book (cascade explains the gap)
+          caution = edgeCaution(r, sideProb, mktSideProb, ev, v, ci, vac);   // injury / departure / implausible-gap / thin / single-book (a measured bump explains the gap)
           unv = !!caution;                                              // back-compat: any caution flags the row
           g = vaultGrade(v.over, v.under, v.games);       // pickem confidence grade (player's own game count)
         }
-        _vaultCache[k] = { ev, proj, g, unv, over, under, caution, adj, cascade: (ci && ev != null && ev > 0) ? ci : null }; changed = true;
+        _vaultCache[k] = { ev, proj, g, unv, over, under, caution, adj, cascade: (ci && ev != null && ev > 0) ? ci : null, vacated: (vac && vac.mult && ev != null && ev > 0) ? { r, vac } : null }; changed = true;
         const tv = _pvInner() && _pvInner().querySelector('[data-edgek="' + k + '"]');
         if (tv) tv.innerHTML = edgeChipHTML(r);
         const tp = _pvInner() && _pvInner().querySelector('[data-vpk="' + k + '"]');
