@@ -141,6 +141,7 @@ async function loadSleeperMap() {
   const byNameTeam = {}; // normName+team -> {id,team,pos}  (disambiguates dup names)
   const byId = {};       // sleeperId -> {id,name,team,pos}  (Sleeper lines carry native ids)
   const depth = {};      // sleeperId -> [depth_chart_order, active] — the "will they play" signal
+  const status = {};     // sleeperId -> 'out'|'doubtful'|'questionable'|'active' (gameday health)
   const INACTIVE = /inactive|physically unable|injured reserve|\bpup\b|\bir\b|suspend|^out$|\bna\b|not active/i;
   for (const id in all) {
     const p = all[id];
@@ -156,11 +157,98 @@ async function loadSleeperMap() {
     // gate. Only skill positions the props tab covers; keeps the map small.
     if (['QB', 'RB', 'WR', 'TE'].includes(p.position) && team) {
       const dco = Number.isFinite(p.depth_chart_order) ? p.depth_chart_order : null;
-      const active = p.active !== false && !INACTIVE.test(p.status || p.injury_status || '');
-      depth[id] = [dco, active ? 1 : 0];
+      const st = String(p.injury_status || p.status || '');
+      const inactive = p.active === false || INACTIVE.test(st);
+      depth[id] = [dco, inactive ? 0 : 1];
+      // Finer-grained health for the OUT badge + teammate ripple. Sleeper flips
+      // injury_status to "Out" for the 90-min pregame inactive list, so this is
+      // the live gameday signal — refreshed hourly on the free props run.
+      status[id] = inactive ? 'out'
+        : /doubt/i.test(st) ? 'doubtful'
+        : /quest/i.test(st) ? 'questionable'
+        : 'active';
     }
   }
-  return { map, byNameTeam, byId, depth };
+  return { map, byNameTeam, byId, depth, status };
+}
+
+/* ── OUT detection + teammate ripple ──────────────────────────────────────
+   Sunday inactives (posted ~90 min pre-kickoff) never reach Vault's frozen prop
+   model, so a ruled-OUT starter keeps a stale line + starter projection (phantom
+   edge), and his teammates are projected off a lineup that no longer exists. We
+   don't invent replacement numbers — we FLAG so the board can void the OUT
+   player's props and WITHHOLD the lean/grade on impacted teammates.
+
+   Ripple rules (deliberately conservative — a withheld flag can only hide an
+   edge, never fabricate one, so erring wide is safe):
+     • QB1 out  → every skill teammate impacted (whole passing game re-rates).
+     • RB1 out  → same-team RBs impacted (vacated backfield share).
+     • WR1 out  → same-team WRs impacted (vacated target share).
+   Doubtful flags only the player's own props (self-caution), no ripple.        */
+function applyStatusFlags(feed, sl) {
+  const status = (sl && sl.status) || {};
+  const depth = (sl && sl.depth) || {};
+  const byId = (sl && sl.byId) || {};
+  const props = feed.vegas_player_props || {};
+
+  // A lost QB1 has posted passing props (books only price a starter's pass yds),
+  // so props-presence is the robust "was the starter" signal — depth_chart_order
+  // is often stale or null on Sleeper, which is why a ripple keyed only on
+  // dco===1 misses a benched-listed starter. RB1/WR1 use dco (their vacated
+  // share is position-local and low-harm to withhold either way).
+  const hasPassProps = id => {
+    const l = (props[id] && props[id].lines) || {};
+    return !!(l.pass_yd || l.pass_td || l.pass_rush_yd);
+  };
+  const teamOut = {};   // team -> { QB:bool, RB:bool, WR:bool }
+  for (const id in status) {
+    if (status[id] !== 'out') continue;
+    const rec = byId[id]; if (!rec || !rec.team) continue;
+    const dco = depth[id] ? depth[id][0] : null;
+    const starter = rec.pos === 'QB' ? (dco === 1 || hasPassProps(id)) : (dco === 1);
+    if (!starter) continue;                          // only a lost STARTER ripples
+    (teamOut[rec.team] = teamOut[rec.team] || {})[rec.pos] = true;
+  }
+
+  const SKILL = new Set(['QB', 'RB', 'WR', 'TE']);   // ripple never touches K/DEF/IDP props
+  const out = [], impacted = [];
+  for (const id in props) {
+    const p = props[id];
+    delete p.out; delete p.outStatus; delete p.impacted; delete p.impactedBy;  // idempotent
+    const st = status[id];
+    const rec = byId[id] || {};
+    const team = p.team || rec.team;
+    const pos = p.pos || rec.pos;
+
+    if (st === 'out') {                              // player himself is ruled out → void
+      p.out = true; p.outStatus = 'out';
+      out.push({ id, name: p.name, team, pos });
+      continue;
+    }
+    if (st === 'doubtful') {                         // ~coin-flip → withhold, don't void
+      p.impacted = true; p.impactedBy = 'doubtful';
+      impacted.push({ id, name: p.name, team, pos, by: 'doubtful' });
+      continue;
+    }
+
+    const to = team && SKILL.has(pos) && teamOut[team];
+    if (!to) continue;
+    let by = null;
+    if (to.QB) by = 'QB out';                        // passing game re-rates → all skill
+    else if (to.RB && pos === 'RB') by = 'RB1 out';
+    else if (to.WR && pos === 'WR') by = 'WR1 out';
+    if (by) { p.impacted = true; p.impactedBy = by; impacted.push({ id, name: p.name, team, pos, by }); }
+  }
+
+  feed.vegas_status = {
+    generated: new Date().toISOString(),
+    source: 'sleeper-injury',
+    out_count: out.length,
+    impacted_count: impacted.length,
+    teams_qb_out: Object.keys(teamOut).filter(t => teamOut[t].QB),
+    out, impacted,
+  };
+  return { out: out.length, impacted: impacted.length };
 }
 function resolveSleeper(sl, name, team) {
   const key = normName(name); if (!key) return null;
@@ -575,6 +663,13 @@ function mergeFeed(sources, stats, sl) {
   feed.vegas_meta.props_pp_filled = addedPlayers + addedMarkets;   // new cells this run
   feed.vegas_meta.props_pp_refreshed = refreshed;                  // same-book lines corrected
   feed.vegas_meta.props_pp_generated = new Date().toISOString();
+
+  // Flag OUT players (void their props) + teammates whose projection assumes a
+  // lineup that just changed (withhold their lean/grade). Free — reads the same
+  // Sleeper injury feed already loaded above.
+  const flags = applyStatusFlags(feed, sl);
+  log(`status flags: ${flags.out} out/doubtful, ${flags.impacted} impacted teammates`);
+
   const summary = `+${addedPlayers} players, +${addedMarkets} markets, ~${refreshed} refreshed — ${had} → ${Object.keys(existing).length}`;
   if (DRY) { log('DRY — would merge:', summary); return true; }
   writeFileSync(FEED, JSON.stringify(feed));

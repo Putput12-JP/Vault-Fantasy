@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-13T12:30', tag:'Improved', title:'Player props now react to gameday inactives',
+    items:[
+      'When a player is ruled OUT (or doubtful) on the Sunday inactive list, his props are now marked OUT on the board and his edge, projection and grade are withheld — so a stale line can never show up as a phantom edge.',
+      'If a team’s starting QB, lead back or top receiver is OUT, his teammates are flagged too (a “LINEUP” tag): their projections assume a lineup that just changed, so Vault holds back the lean until it catches up. Example: when the starting QB sits, every pass-catcher and the backup QB are marked, instead of Vault quietly recommending an Over built on the wrong starter.',
+      'Flagged players drop to the bottom of the Edge Board and never appear in Best Bets. Status refreshes every hour from the live inactive feed.',
+    ],
+  },
+  {
     ts:'2026-09-12T19:30', tag:'Improved', title:'Game Markets is now a full-slate table',
     items:[
       'On desktop, Game Markets now reads like a proper odds screen: every game on one line, with spread, total and moneyline side by side at the best available price, the +EV side flagged, and Vault’s model line and the Polymarket money in their own columns.',
@@ -40284,12 +40292,20 @@ body .page,body .page.on{background:transparent!important}
     // ── weekly props (live) ──────────────────────────────────────────────
     const weeklyById = {};
     const propIdentityById = {};   // id -> { name, team, pos } embedded by the fetcher
+    // Authoritative gameday status map (id → {out, outStatus, impacted, impactedBy}),
+    // written server-side by fetch-pickem-props from the live Sleeper inactive
+    // feed and refreshed hourly (free). Read by the caution cascade so an OUT
+    // player's props are voided and an OUT-starter's teammates have their lean +
+    // grade withheld — the projection assumes a lineup that just changed.
+    try { window._vaultStatusById = {}; } catch (e) {}
     if (hasFeedProps) {
       for (const id in feed.vegas_player_props) {
         const w = feed.vegas_player_props[id];
         const lines = {};
         for (const mk in (w.lines || {})) { const m = MARKET_BY_KEY[mk]; if (m) lines[mk] = cellFromFeed(w.lines[mk], m.kind); }
-        weeklyById[id] = { lines, opp: w.opp || null, ha: w.ha || null, event: w.event || null, commence: w.commence || null, slot: slotFromCommence(w.commence), derived: false };
+        weeklyById[id] = { lines, opp: w.opp || null, ha: w.ha || null, event: w.event || null, commence: w.commence || null, slot: slotFromCommence(w.commence), derived: false,
+          out: !!w.out, outStatus: w.outStatus || null, impacted: !!w.impacted, impactedBy: w.impactedBy || null };
+        if (w.out || w.impacted) { try { window._vaultStatusById[id] = { out: !!w.out, outStatus: w.outStatus || null, impacted: !!w.impacted, impactedBy: w.impactedBy || null }; } catch (e) {} }
         if (w.name || w.team || w.pos) propIdentityById[id] = { name: w.name || null, team: w.team || null, pos: w.pos || null };
       }
     }
@@ -40327,6 +40343,8 @@ body .page,body .page.on{background:transparent!important}
         rank: ident.rank ?? null, headshot: headshotFor(id, ident.name), season, weekly,
         proj: stats || null,   // raw season stat projection per market → Model Lean
         depthRank: depthRankOf(id),
+        out: !!(weekly && weekly.out), outStatus: (weekly && weekly.outStatus) || null,
+        impacted: !!(weekly && weekly.impacted), impactedBy: (weekly && weekly.impactedBy) || null,
       });
     }
 
@@ -40348,6 +40366,8 @@ body .page,body .page.on{background:transparent!important}
         teamName: ident.team ? TEAMNAME[ident.team] : null, pos: ident.pos || null,
         rank: null, headshot: headshotFor(id, ident.name), season: null, weekly: wk,
         depthRank: depthRankOf(id),
+        out: !!(wk && wk.out), outStatus: (wk && wk.outStatus) || null,
+        impacted: !!(wk && wk.impacted), impactedBy: (wk && wk.impactedBy) || null,
       });
     }
 
@@ -42850,6 +42870,21 @@ window.VaultPropModel = (function () {
     return { code: raw.slice(0, 3).toUpperCase(), sev: 'q', label: raw };
   }
   function injBadge(r) {
+    // Feed-authoritative gameday status wins (server-refreshed hourly from the
+    // live inactive list); betInjFor is the client-side fallback.
+    const st = _betStatusFor(r);
+    if (st && st.out && st.outStatus !== 'doubtful')
+      return '<span class="eb-inj out" title="Ruled OUT on the live inactive list — line is stale, edge withheld">OUT</span>';
+    if (st && st.out)
+      return '<span class="eb-inj out" title="Doubtful — real workload in question, edge withheld">DBT</span>';
+    if (st && st.impacted) {
+      const qb = qbOutMultFor(r);
+      if (qb) {
+        const dir = qb.raw < 1 ? '↓' : '↑';
+        return '<span class="eb-inj q" title="' + (st.impactedBy || 'lineup change') + ' — Vault adjusted this projection ×' + qb.raw.toFixed(2) + ' (measured), so it’s graded on the adjusted number, not withheld">QB' + dir + '</span>';
+      }
+      return '<span class="eb-inj q" title="A projected starter on this team is OUT (' + (st.impactedBy || 'lineup change') + ') — Vault is projecting off a lineup that just changed, so the lean is withheld">LU</span>';
+    }
     const inj = betInjFor(r);
     if (!inj) return '';
     return '<span class="eb-inj ' + inj.sev + '" title="' + inj.label
@@ -42880,6 +42915,36 @@ window.VaultPropModel = (function () {
     const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
     fetch(base + '/usage_cascade.json').then(r => (r.ok ? r.json() : null)).then(j => { _cascadeData = j; if (view === 'props') renderProps(); }).catch(() => {});
     return _cascadeData;
+  }
+
+  // ── QB-out impact (bounded re-projection) ─────────────────────────────────
+  // When a team's PRIMARY QB is out, the passing game re-rates. The size of that
+  // move is MEASURED per pos×market in data/qb_out_impact.json
+  // (scripts/build_qb_out_impact.py), sign- and stability-gated — only buckets
+  // that hold up across an even/odd season split and move the number materially
+  // ship. Currently: WR rec_yd ×0.83, backup-QB pass_yd ×0.90. Markets with NO
+  // shipped bucket stay WITHHELD (LINEUP) rather than guessed. Where a bucket
+  // applies, the projection is scaled and the row is graded on the adjusted
+  // number instead of being withheld.
+  const QBOUT_SHRINK = 0.85;   // pull toward 1 for single-game noise, like the cascade
+  let _qbOutData = null, _qbOutTried = false;
+  function qbOutImpact() {
+    if (_qbOutData || _qbOutTried) return _qbOutData;
+    _qbOutTried = true;
+    const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
+    fetch(base + '/qb_out_impact.json').then(r => (r.ok ? r.json() : null)).then(j => { _qbOutData = j; if (view === 'props') renderProps(); }).catch(() => {});
+    return _qbOutData;
+  }
+  // Measured multiplier for a row whose team's QB1 is OUT and whose pos|market
+  // has a shipped bucket — shrunk toward 1. Null when it doesn't apply (→ the
+  // row keeps the withhold behaviour). Returns { mult, raw } when it does.
+  function qbOutMultFor(r) {
+    const st = _betStatusFor(r);
+    if (!st || !st.impacted || st.impactedBy !== 'QB out' || !r || !r.market || !r.pos) return null;
+    const d = qbOutImpact();
+    const b = d && d.buckets && d.buckets[r.pos + '|' + r.market];
+    if (!b || !(b.mult > 0)) return null;
+    return { mult: 1 + (b.mult - 1) * QBOUT_SHRINK, raw: b.mult };
   }
   // Injury status for ANY player id (teammates), same source/parse as betInjFor.
   function betInjById(id) {
@@ -43076,8 +43141,15 @@ window.VaultPropModel = (function () {
       out.push(Object.assign(r, { fe }));
     }
     // priced edges (real EV) first, ranked by EV; pickem lines (ev null) after,
-    // in propRows order — no ranking signal, just a reference list.
-    out.sort((a, b) => (b.fe.ev ?? -Infinity) - (a.fe.ev ?? -Infinity));
+    // in propRows order — no ranking signal, just a reference list. Gameday-
+    // flagged rows (OUT / doubtful / lineup-impacted) always sink below clean
+    // rows so a stale line can never top the board — still listed, still flagged.
+    const _flagged = r => !!_betStatusFor(r);
+    out.sort((a, b) => {
+      const fa = _flagged(a), fb = _flagged(b);
+      if (fa !== fb) return fa ? 1 : -1;
+      return (b.fe.ev ?? -Infinity) - (a.fe.ev ?? -Infinity);
+    });
     // O/U filter: keep only rows whose O/U column CHIP matches — the same value
     // the cell renders (pickem shows PICK, so it's excluded from Over/Under and
     // only appears under All). resolvePick reads _vaultCache for vault-led rows,
@@ -43755,10 +43827,11 @@ window.VaultPropModel = (function () {
     const c = vOverride || _vaultCache[propKey(r)], line = r.line;
     if (!c || c.proj == null) return '<div class="ph-main"><div class="l">Vault projection</div><div class="v"><span class="spinner sm"></span></div></div>';
     const proj = c.proj, diff = (line != null) ? (proj - line) : null, lean = (line != null) ? (proj > line ? 'over' : 'under') : null;
-    // Show how the matchup shaped the number: raw history → opponent × environment × script.
+    // Show how the matchup shaped the number: raw history → opponent × environment × script × QB-out.
     const a = matchupAdj(r), scriptOn = Math.abs((a.scriptMult ?? 1) - 1) > 0.005;
-    const applied = Math.abs(a.oppMult - 1) > 0.005 || Math.abs(a.envMult - 1) > 0.005 || scriptOn;
-    const base = applied ? (proj / (a.oppMult * a.envMult * (a.scriptMult ?? 1))) : null;
+    const qb = qbOutMultFor(r), qbOn = !!qb;
+    const applied = Math.abs(a.oppMult - 1) > 0.005 || Math.abs(a.envMult - 1) > 0.005 || scriptOn || qbOn;
+    const base = applied ? (proj / (a.oppMult * a.envMult * (a.scriptMult ?? 1) * (qbOn ? qb.mult : 1))) : null;
     const _spTxt = a.spread != null ? (r.team ? r.team + ' ' : '') + (a.spread > 0 ? '+' : '') + a.spread : null;
     // Line-corroboration provenance. A single-book line is always tagged; when
     // it's a volume market Vault's projection also rejects, the confident lean
@@ -43779,7 +43852,8 @@ window.VaultPropModel = (function () {
       + (applied ? '<div class="ph-adj">from <b>' + base.toFixed(1) + '</b> history'
           + (a.oppRank != null ? ' · opp <b>' + r.opp + ' ' + _ord(a.oppRank) + '</b> ×' + a.oppMult.toFixed(2) : '')
           + (a.teamTotal != null ? ' · env <b>' + a.teamTotal + '</b> implied ×' + a.envMult.toFixed(2) : '')
-          + (scriptOn && _spTxt ? ' · script <b>' + _spTxt + '</b> ×' + a.scriptMult.toFixed(2) : '') + '</div>' : '')
+          + (scriptOn && _spTxt ? ' · script <b>' + _spTxt + '</b> ×' + a.scriptMult.toFixed(2) : '')
+          + (qbOn ? ' · <b>QB out</b> ×' + qb.raw.toFixed(2) : '') + '</div>' : '')
       + srcTag
       + '</div>'
       + leanBlock;
@@ -44007,8 +44081,10 @@ window.VaultPropModel = (function () {
     if (!PM || !BM || r.line == null) { host.innerHTML = twoSideInner(r, null, false); _wire2side(r); return; }
     const mpo = (fe && fe.sides && fe.sides.over) ? fe.sides.over.fairProb : null;   // vig-free market P(over), if de-viggable
     const ci = cascadeInfo(r);                                                        // injury teammate-cascade volume bump (or null)
+    const qb = qbOutMultFor(r);                                                       // measured QB-out re-projection (or null)
+    const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1);
     const adj = matchupAdj(r);                                                        // DvP opponent + Vegas-total environment
-    PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: ci ? ci.mult : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
+    PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: usage !== 1 ? usage : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
       const h = document.getElementById('eb-2side');
       if (!h || tok !== _pdTok) return;               // panel moved on
       const vv = (v && v.over != null) ? { over: v.over, under: v.under, proj: v.proj, games: v.games } : null;
@@ -44099,7 +44175,48 @@ window.VaultPropModel = (function () {
     if (!(VOL_GAP_MK[r && r.market] && proj != null && r && r.line)) return false;
     return Math.abs(proj - r.line) / Math.abs(r.line) >= SINGLE_SRC_GAP_MAX;
   }
+  // Gameday status for a betting row (feed-authoritative, server-refreshed
+  // hourly). Falls back to nothing when the feed carries no flag — betInjFor
+  // still covers the player's own client-side injury status below.
+  function _betStatusFor(r) {
+    const m = (typeof window !== 'undefined' && window._vaultStatusById) || null;
+    return (m && r && r.id && m[r.id]) || null;
+  }
+  // Compact chip that REPLACES a numeric prop cell (edge / grade / proj / sim)
+  // when the row is voided by gameday status — so no phantom number ever shows.
+  // OUT is red (void), doubtful/lineup-change amber (withheld, may still play).
+  // Cell-level void chip: OUT/doubtful always void; an impacted teammate is
+  // voided ONLY when no measured QB-out bucket applies to his market — where one
+  // does, the cell shows the adjusted number instead of a LINEUP chip.
+  function _statusCellChip(r) {
+    const st = _betStatusFor(r);
+    if (!st) return null;
+    if (st.out) return statusChipHTML(st);
+    if (st.impacted && !qbOutMultFor(r)) return statusChipHTML(st);
+    return null;
+  }
+  function statusChipHTML(st) {
+    if (!st) return null;
+    if (st.out && st.outStatus !== 'doubtful')
+      return '<span class="bx-out" title="Ruled OUT on the live inactive list — line is stale, edge withheld." style="color:var(--red);font-weight:800;font-size:10px;letter-spacing:.04em">OUT</span>';
+    const isDbt = st.out && st.outStatus === 'doubtful';
+    return '<span class="bx-out" title="' + (isDbt ? 'Doubtful — real workload in question, edge withheld.' : 'A projected starter on this team is OUT (' + (st.impactedBy || 'lineup change') + '); projection assumes a lineup that just changed, edge withheld.') + '" style="color:var(--bt-gold);font-weight:800;font-size:10px;letter-spacing:.04em">' + (isDbt ? 'DBT' : 'LINEUP') + '</span>';
+  }
   function edgeCaution(r, sideProb, marketProb, ev, v, cascade) {
+    // 0. Gameday inactive / lineup change — the hardest data-quality flag, so it
+    //    runs BEFORE the EV bail (a vault-led row arrives with negative ev). An
+    //    OUT/doubtful player's props are void; a teammate of an OUT starter
+    //    (QB1/RB1/WR1) is projected off a lineup that no longer exists. Neither
+    //    is a real edge — withhold the lean + grade regardless of EV sign.
+    const stx = _betStatusFor(r);
+    if (stx && stx.out)
+      return { kind: 'out', hard: true, label: stx.outStatus === 'doubtful' ? 'DBT' : 'OUT',
+        tip: (stx.outStatus === 'doubtful' ? (r.name || 'This player') + ' is DOUBTFUL' : (r.name || 'This player') + ' is ruled OUT') + ' per the live inactive list. Vault’s projection is built from games he played — this line is stale and any edge on it is a phantom. Ignore it.' };
+    if (stx && stx.impacted && !qbOutMultFor(r))
+      return { kind: 'impacted', hard: true, label: 'lineup',
+        tip: 'A projected starter on ' + (r.team || 'this team') + ' is OUT (' + (stx.impactedBy || 'lineup change') + '), so Vault is projecting ' + (r.name || 'this player') + ' off a lineup that just changed — his real workload (and this edge) will shift. Withheld until the projection catches up. Don’t trust the number.' };
+    // If a MEASURED QB-out bucket applies, the projection has already been scaled
+    // (usageMult below) — the row is graded on the adjusted number, not withheld.
     // A projection blowout is a data-quality flag independent of EV sign, so it
     // must survive the positive-edge bail (vault-led rows arrive here with the
     // market side's NEGATIVE ev — see projGapCaution).
@@ -44179,6 +44296,10 @@ window.VaultPropModel = (function () {
   // edge (single-book line) shows amber with a caret and never green.
   function vaultCellHTML(c) {
     if (!c) return '<span class="mut">·</span>';
+    if (c.caution && c.caution.hard) {
+      const isOut = c.caution.kind === 'out' && c.caution.label === 'OUT';
+      return '<span title="' + c.caution.tip.replace(/"/g, '&quot;') + '" style="color:' + (isOut ? 'var(--red)' : 'var(--bt-gold)') + ';font-weight:800;font-size:10px;letter-spacing:.04em">' + c.caution.label + '</span>';
+    }
     if (c.ev == null) return '<span class="mut">—</span>';
     // A flagged edge shows AMBER with the caution's short label + a tooltip that
     // says why to doubt it — a big edge is a question ("is my projection right?"),
@@ -44222,6 +44343,10 @@ window.VaultPropModel = (function () {
   // Title carries the raw hit% and sample size so the shrink is transparent.
   function gradeCellHTML(c) {
     if (!c) return '<span class="mut">·</span>';
+    if (c.caution && c.caution.hard) {
+      const isOut = c.caution.kind === 'out' && c.caution.label === 'OUT';
+      return '<span title="' + c.caution.tip.replace(/"/g, '&quot;') + '" style="color:' + (isOut ? 'var(--red)' : 'var(--bt-gold)') + ';font-weight:800;font-size:10px;letter-spacing:.04em">' + c.caution.label + '</span>';
+    }
     if (!c.g) return '<span class="mut">—</span>';
     const g = c.g, letter = cappedGradeLetter(g.padj, betBE, c.caution), cls = letter.toLowerCase();
     const sd = g.side === 'over' ? 'O' : 'U';
@@ -44233,6 +44358,7 @@ window.VaultPropModel = (function () {
   // ebFillVaultCol repaints [data-gradek] once the projection lands. The side
   // Vault leans is kept in the hover title so nothing is lost.
   function gradeColCell(r) {
+    const _sx = _statusCellChip(r); if (_sx) return _sx;
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
     if (c.over == null || c.under == null || !c.g) return '<span class="mut">—</span>';
@@ -44264,6 +44390,7 @@ window.VaultPropModel = (function () {
   // side when the row is Vault-led), so the column never shows an edge for the
   // opposite side of the Pick.
   function vaultEdgeCellHTML(r) {
+    const _sx = _statusCellChip(r); if (_sx) return _sx;
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
     const pf = resolvePick(r);
@@ -44274,6 +44401,7 @@ window.VaultPropModel = (function () {
   // it backs the displayed pick side. Ungated (this is the per-game projection
   // the grade already uses, valid against a per-game line in any season).
   function projCellHTML(r) {
+    const _sx = _statusCellChip(r); if (_sx) return _sx;
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
     if (c.proj == null) return '<span class="mut">—</span>';
@@ -44287,6 +44415,7 @@ window.VaultPropModel = (function () {
   // dislikes honestly grades low on that side (e.g. O F) instead of showing a
   // conflicting grade for the opposite side.
   function gradeCellFor(r) {
+    const _sx = _statusCellChip(r); if (_sx) return _sx;
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
     if (c.over == null || c.under == null || !c.g) return '<span class="mut">—</span>';
@@ -44302,6 +44431,7 @@ window.VaultPropModel = (function () {
   // forward-looking simulated chance, paired with the historical Hit% L10. Same
   // probability that drives the grade, shown as a plain number for scanning.
   function simCellHTML(r) {
+    const _sx = _statusCellChip(r); if (_sx) return _sx;
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
     if (c.over == null || c.under == null) return '<span class="mut">—</span>';
@@ -44434,6 +44564,7 @@ window.VaultPropModel = (function () {
     return n > 1 ? '<span class="bx-more">+' + (n - 1) + '</span>' : '';
   }
   function edgeChipHTML(r) {
+    const _sx = _statusCellChip(r); if (_sx) return _sx;
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
     const pf = resolvePick(r), ev = (pf && pf.vaultLed) ? pf.vaultEv : c.ev, unv = (pf && pf.vaultLed) ? pf.vaultUnv : c.unv;
@@ -44441,6 +44572,7 @@ window.VaultPropModel = (function () {
     return '<span class="bx-edge ' + (ev > 0 && !unv ? 'pos' : 'neg') + '" title="Vault’s projected win prob vs the best book price">' + (ev > 0 ? '+' : '') + ev + '%</span>';
   }
   function projNumCell(r) {
+    const _sx = _statusCellChip(r); if (_sx) return _sx;
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
     if (c.proj == null) return '<span class="mut">—</span>';
@@ -44462,8 +44594,10 @@ window.VaultPropModel = (function () {
       if (!PM || !BM || r.line == null) { _vaultCache[k] = { ev: null, proj: null, g: null, over: null, under: null }; changed = true; return null; }
       const mpo = (r.fe && r.fe.sides && r.fe.sides.over) ? r.fe.sides.over.fairProb : null;   // vig-free market P(over), if de-viggable
       const ci = cascadeInfo(r);                                                                // injury teammate-cascade volume bump (or null)
+      const qb = qbOutMultFor(r);                                                               // measured QB-out re-projection (or null)
+      const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1);                                    // same-position vacated share × QB-out cross-market
       const adj = matchupAdj(r);                                                                // DvP opponent + Vegas-total environment → market-native projection
-      return PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: ci ? ci.mult : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
+      return PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: usage !== 1 ? usage : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
         let ev = null, proj = null, g = null, unv = false, over = null, under = null, caution = null;
         if (v && v.proj != null) {
           proj = v.proj; over = v.over; under = v.under;

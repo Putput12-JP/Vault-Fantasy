@@ -452,6 +452,12 @@ function scoreProps(feed, PM, KP) {
   for (const id in props) {
     const p = props[id];
     if (isPre && p.commence) { const t = new Date(p.commence).getTime(); if (Number.isFinite(t) && t < regCutoff) { preskip++; continue; } }
+    // Gameday health (set by fetch-pickem-props from the live Sleeper inactive
+    // feed): p.out = ruled out / doubtful → props void; p.impacted = teammate of
+    // an OUT starter (QB1/RB1/WR1) whose projection assumes a lineup that just
+    // changed. Never let either become a best bet — the projection is stale.
+    if (p.out) { benchskip++; continue; }
+    if (p.impacted) { roleskip++; continue; }
     const dep = depth[id];   // [depth_chart_order, active]
     if (dep) {
       if (dep[1] === 0) { benchskip++; continue; }                                 // inactive / out
