@@ -39,5 +39,10 @@ jobs:
             git config user.email "vault-bot@users.noreply.github.com"
             git add data/line_history.json
             git commit -m "lines: snapshot game line movement [skip ci]"
-            git push
+            # Rebase on the latest main before pushing so overlapping cron jobs
+            # never fail with "fetch first" (remote moved ahead). Retry a few times.
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin main && git push && break
+              echo "push race, retrying ($i)…"; sleep 3
+            done
           fi
