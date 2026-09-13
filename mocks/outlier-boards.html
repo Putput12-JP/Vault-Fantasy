@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vault · Betting Boards (Outlier-style mock)</title>
+<style>
+/* ============ Tokens ============ */
+/* Shared (theme-agnostic) */
+:root{
+  --r-card:15px; --r-cell:11px; --r-pill:999px; --r-badge:8px;
+}
+/* ---- LIGHT · Americana paper ---- */
+html[data-theme="light"]{
+  --bg:#f4efe4; --surface:#fffdf8; --surface-2:#f6f1e6; --surface-3:#ece5d4;
+  --ink:#1d2433; --ink-2:#3a4658; --ink-3:#606774; --ink-4:#9aa1af;
+  --line:#e6ddca; --line-2:#efe8d9;
+  --acc:#20527f; --acc-2:#16395f; --acc-soft:#e6ecf2; --acc-line:#cdd8e5;
+  --green:#067648; --green-soft:#e2efe7; --green-line:#c7e0d1;
+  --red:#c22a37; --red-soft:#f6e5e2; --red-line:#ecd0cb;
+  --gold:#8a5a0e; --gold-soft:#f2ead6;
+  --qb:#c22a37; --rb:#067648; --wr:#1a6aab; --te:#8a5a0e; --flex:#6d3fc4;
+  --pos-ink:#ffffff; --on-solid:#ffffff;
+  --active-bg:#16233a; --active-ink:#fffdf8;
+  --glass:rgba(255,255,255,.62); --glass-b:rgba(255,255,255,.9);
+  --top-bg:rgba(244,239,228,.82);
+  --banner:radial-gradient(120% 160% at 88% -30%, #ecdfca 0%, rgba(236,223,202,0) 55%), linear-gradient(100deg,#dfe9ec 0%, #eef0e4 46%, #f5ece0 100%);
+  --sh-1:0 1px 2px rgba(52,40,22,.05); --sh-2:0 2px 10px rgba(52,40,22,.05),0 1px 2px rgba(52,40,22,.04);
+  --sh-3:0 10px 30px rgba(52,40,22,.09),0 2px 6px rgba(52,40,22,.05);
+  --sh-teal:0 8px 22px rgba(32,82,127,.16);
+}
+/* ---- VAPOR · sky (Vault default) ---- */
+html[data-theme="vapor"]{
+  --bg:#070d18; --surface:#0e1626; --surface-2:#131d30; --surface-3:#1b2740;
+  --ink:#eaf2fc; --ink-2:#bdcce2; --ink-3:#808fa6; --ink-4:#5f6d84;
+  --line:rgba(123,170,240,.13); --line-2:rgba(123,170,240,.08);
+  --acc:#7bd0ff; --acc-2:#b3e0ff; --acc-soft:rgba(123,208,255,.13); --acc-line:rgba(123,208,255,.32);
+  --green:#3DCC7A; --green-soft:rgba(61,204,122,.14); --green-line:rgba(61,204,122,.32);
+  --red:#ff5a6e; --red-soft:rgba(226,58,78,.17); --red-line:rgba(226,58,78,.36);
+  --gold:#f5c842; --gold-soft:rgba(245,200,66,.16);
+  --qb:#ff6680; --rb:#3DCC7A; --wr:#7bd0ff; --te:#f5c842; --flex:#a78bfa;
+  --pos-ink:#0a1424; --on-solid:#0a1424;
+  --active-bg:#7bd0ff; --active-ink:#0a1424;
+  --glass:rgba(255,255,255,.06); --glass-b:rgba(255,255,255,.12);
+  --top-bg:rgba(7,13,24,.8);
+  --banner:radial-gradient(120% 160% at 85% -40%, rgba(123,208,255,.24) 0%, rgba(123,208,255,0) 55%), linear-gradient(100deg, rgba(47,99,196,.22) 0%, rgba(14,22,38,0) 62%), var(--surface);
+  --sh-1:0 1px 2px rgba(0,0,0,.3); --sh-2:0 2px 12px rgba(2,6,14,.4),0 1px 2px rgba(0,0,0,.3);
+  --sh-3:0 14px 36px rgba(2,6,14,.55),0 2px 8px rgba(0,0,0,.4);
+  --sh-teal:0 10px 26px rgba(47,99,196,.4);
+}
+/* ---- ONYX · steel frost ---- */
+html[data-theme="onyx"]{
+  --bg:#0e0f13; --surface:#16171c; --surface-2:#1c1e24; --surface-3:#23252c;
+  --ink:#f3f4f7; --ink-2:#c9cdd6; --ink-3:#868c9b; --ink-4:#5c626f;
+  --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.05);
+  --acc:#8fb4e0; --acc-2:#b9d2ec; --acc-soft:rgba(143,180,224,.12); --acc-line:rgba(143,180,224,.28);
+  --green:#5fe09a; --green-soft:rgba(95,224,154,.13); --green-line:rgba(95,224,154,.28);
+  --red:#ff5a6e; --red-soft:rgba(226,58,78,.15); --red-line:rgba(226,58,78,.3);
+  --gold:#c6a15a; --gold-soft:rgba(198,161,90,.15);
+  --qb:#ff6680; --rb:#5fe09a; --wr:#8fb4e0; --te:#f0cf6b; --flex:#a78bfa;
+  --pos-ink:#0b1420; --on-solid:#0b1420;
+  --active-bg:#8fb4e0; --active-ink:#0b1420;
+  --glass:rgba(255,255,255,.05); --glass-b:rgba(255,255,255,.1);
+  --top-bg:rgba(14,15,19,.82);
+  --banner:radial-gradient(120% 160% at 85% -40%, rgba(143,180,224,.16) 0%, rgba(143,180,224,0) 55%), var(--surface);
+  --sh-1:0 1px 2px rgba(0,0,0,.35); --sh-2:0 2px 12px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.35);
+  --sh-3:0 14px 36px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.45);
+  --sh-teal:0 10px 26px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums;
+}
+.num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
+body,.rail,.top,.game,.oc,.banner,.ptable,.pt thead th,.pt tbody td,.lg,.gchip,.searchbox,.iconbtn,.seg,.detail,.detail-side{transition:background-color .28s ease, border-color .28s ease, color .28s ease}
+.themeseg button{padding:5px 12px; font-size:12px}
+button{font:inherit; color:inherit; cursor:pointer; border:0; background:none}
+::selection{background:var(--acc-soft)}
+
+/* ============ App shell ============ */
+.app{display:grid; grid-template-columns:66px 1fr; min-height:100dvh}
+/* left rail */
+.rail{
+  position:sticky; top:0; height:100dvh; background:var(--surface);
+  border-right:1px solid var(--line); display:flex; flex-direction:column;
+  align-items:center; padding:16px 0; gap:4px; z-index:5;
+}
+.rail .logo{
+  width:38px; height:38px; border-radius:11px; margin-bottom:14px;
+  background:linear-gradient(150deg,var(--acc),#1aa0ad); color:var(--on-solid);
+  display:grid; place-items:center; font-weight:800; font-size:19px; letter-spacing:-.03em;
+  box-shadow:var(--sh-teal);
+}
+.rail a{
+  width:42px; height:42px; border-radius:12px; display:grid; place-items:center;
+  color:var(--ink-3); transition:background .18s, color .18s, transform .18s; position:relative;
+}
+.rail a:hover{background:var(--surface-3); color:var(--ink-2)}
+.rail a.on{background:var(--acc-soft); color:var(--acc)}
+.rail a.on::before{content:""; position:absolute; left:-16px; top:11px; bottom:11px; width:3px; border-radius:0 3px 3px 0; background:var(--acc)}
+.rail svg{width:21px; height:21px; stroke-width:1.7}
+.rail .sp{flex:1}
+.rail .me{width:34px; height:34px; border-radius:50%; background:linear-gradient(140deg,#2c4063,#16233a); color:#fff; display:grid; place-items:center; font-weight:700; font-size:12px; margin-top:6px}
+
+/* main */
+.main{min-width:0}
+.wrap{max-width:1360px; margin:0 auto; padding:0 26px 80px}
+
+/* ============ Top bar ============ */
+.top{
+  position:sticky; top:0; z-index:4; background:var(--top-bg);
+  backdrop-filter:saturate(140%) blur(10px); -webkit-backdrop-filter:saturate(140%) blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.top-in{max-width:1360px; margin:0 auto; padding:11px 26px; display:flex; align-items:center; gap:16px}
+.crumb{color:var(--ink-3); font-size:12.5px; font-weight:500}
+.crumb b{color:var(--ink-2); font-weight:600}
+.seg{display:inline-flex; background:var(--surface-3); border:1px solid var(--line); border-radius:var(--r-pill); padding:3px; gap:2px}
+.seg button{padding:6px 15px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--ink-2); transition:color .18s}
+.seg button.on{background:var(--surface); color:var(--ink); box-shadow:var(--sh-1)}
+.top .spacer{flex:1}
+.searchbox{display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-pill); padding:7px 13px; color:var(--ink-3); font-size:12.5px; min-width:190px; transition:border-color .18s, box-shadow .18s}
+.searchbox:hover{border-color:var(--acc-line)}
+.iconbtn{width:36px; height:36px; border-radius:10px; border:1px solid var(--line); background:var(--surface); display:grid; place-items:center; color:var(--ink-2); transition:background .18s, border-color .18s}
+.iconbtn:hover{background:var(--surface-3); border-color:var(--acc-line)}
+.iconbtn svg{width:18px; height:18px; stroke-width:1.8}
+
+/* ============ Page banner ============ */
+.banner{
+  position:relative; overflow:hidden; border-radius:0 0 var(--r-card) var(--r-card);
+  background:var(--banner);
+  border:1px solid var(--line); border-top:0; margin-bottom:20px;
+  padding:26px 28px 22px;
+}
+.banner .eyebrow{font-size:11.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--acc-2); margin-bottom:7px}
+.banner h1{margin:0; font-size:34px; line-height:1.02; letter-spacing:-.025em; font-weight:800}
+.banner p{margin:8px 0 0; color:var(--ink-2); font-size:14px; max-width:60ch}
+.banner .b-right{position:absolute; right:26px; top:24px; display:flex; align-items:center; gap:10px}
+.pill-stat{background:var(--glass); border:1px solid var(--glass-b); border-radius:12px; padding:9px 14px; text-align:right; box-shadow:var(--sh-1); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px)}
+.pill-stat .k{font-size:11px; color:var(--ink-2); font-weight:600}
+.pill-stat .v{font-size:19px; font-weight:800; letter-spacing:-.02em; margin-top:1px}
+.pill-stat .v.g{color:var(--green)}
+
+/* league pills */
+.leagues{display:flex; gap:8px; margin:18px 0 4px; flex-wrap:wrap}
+.lg{display:inline-flex; align-items:center; gap:8px; padding:8px 14px 8px 10px; border-radius:var(--r-pill); background:var(--surface); border:1px solid var(--line); font-size:13px; font-weight:600; color:var(--ink-2); transition:all .18s; box-shadow:var(--sh-1)}
+.lg:hover{border-color:var(--acc-line); color:var(--ink)}
+.lg.on{background:var(--active-bg); color:var(--active-ink); border-color:var(--active-bg)}
+.lg .dot{width:22px; height:22px; border-radius:7px; display:grid; place-items:center; font-size:11px; font-weight:800; color:var(--on-solid); background:var(--acc)}
+.lg.on .dot{background:rgba(255,255,255,.16)}
+
+/* date strip */
+.dates{display:flex; align-items:center; gap:6px; margin:16px 0 6px; border-bottom:1px solid var(--line); padding-bottom:2px}
+.date{padding:8px 13px 11px; text-align:center; color:var(--ink-3); position:relative; transition:color .18s; border-radius:8px 8px 0 0}
+.date:hover{color:var(--ink-2)}
+.date .d{font-size:13px; font-weight:700; color:var(--ink)}
+.date .w{font-size:11px; margin-top:1px}
+.date.on{color:var(--acc)}
+.date.on .d{color:var(--acc)}
+.date.on::after{content:""; position:absolute; left:8px; right:8px; bottom:-3px; height:3px; border-radius:3px; background:var(--acc)}
+.dates .spacer{flex:1}
+
+/* ============ Game rows ============ */
+.section-h{display:flex; align-items:center; gap:10px; margin:22px 2px 12px}
+.section-h h2{margin:0; font-size:13px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3)}
+.section-h .ln{flex:1; height:1px; background:var(--line)}
+
+.game{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r-card);
+  box-shadow:var(--sh-2); margin-bottom:14px; overflow:hidden; transition:box-shadow .2s, border-color .2s;
+}
+.game:hover{box-shadow:var(--sh-3); border-color:var(--acc-line)}
+.game-top{display:grid; grid-template-columns:250px 1fr; gap:0}
+.matchup{padding:16px 18px; border-right:1px solid var(--line-2); display:flex; flex-direction:column; gap:12px; justify-content:center}
+.team{display:flex; align-items:center; gap:11px}
+.tlogo{width:34px; height:34px; border-radius:9px; display:grid; place-items:center; font-size:12px; font-weight:800; color:#fff; letter-spacing:-.02em; flex:none}
+.tname{font-weight:700; font-size:14.5px; line-height:1.1}
+.trec{font-size:11.5px; color:var(--ink-3); margin-top:1px}
+.tscore{margin-left:auto; text-align:right}
+.tscore .rk{font-size:11px; color:var(--ink-3)}
+.matchup .gtime{font-size:11.5px; color:var(--ink-3); font-weight:600; display:flex; align-items:center; gap:6px}
+.matchup .gtime .live{display:inline-flex; align-items:center; gap:5px; color:var(--red); font-weight:700}
+.matchup .gtime .live::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--red); box-shadow:0 0 0 3px var(--red-soft)}
+
+/* market grid */
+.markets{display:grid; grid-template-columns:repeat(3,1fr); }
+.mcol{border-right:1px solid var(--line-2); padding:12px 12px 10px}
+.mcol:last-child{border-right:0}
+.mcol .mh{font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-4); text-align:center; margin-bottom:9px}
+.odds{display:flex; flex-direction:column; gap:7px}
+.oc{
+  position:relative; display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r-cell);
+  padding:9px 11px; transition:border-color .16s, background .16s, transform .12s; cursor:pointer;
+}
+.oc:hover{border-color:var(--acc); background:var(--acc-soft)}
+.oc:active{transform:scale(.985)}
+.oc .lbl{display:flex; align-items:center; gap:7px; font-weight:700; font-size:13px}
+.oc .lbl .glyph{color:var(--ink-4)}
+.oc .lbl .glyph svg{width:13px; height:13px; display:block}
+.oc .px{font-weight:700; font-size:13.5px}
+.oc .px.pos{color:var(--green)}
+.oc .book{width:16px; height:16px; border-radius:5px; display:inline-grid; place-items:center; font-size:8px; font-weight:800; color:#fff; margin-left:7px; vertical-align:-3px}
+/* public split hairlines */
+.oc .split{position:absolute; left:11px; right:11px; height:2.5px; border-radius:2px; overflow:hidden; display:flex}
+.oc .split.t{top:-1px}
+.oc .split.b{bottom:-1px}
+.oc .split i{height:100%}
+.oc .split .g{background:var(--green)}
+.oc .split .r{background:var(--red)}
+/* value / edge cell */
+.oc.edge{border-color:var(--green-line); background:var(--green-soft)}
+.oc.edge:hover{border-color:var(--green)}
+.edgetag{display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:800; color:var(--green); background:var(--surface); border:1px solid var(--green-line); border-radius:6px; padding:1px 5px; margin-left:6px}
+.edgetag svg{width:9px; height:9px}
+
+/* game footer */
+.game-foot{display:flex; align-items:center; gap:14px; padding:9px 16px; border-top:1px solid var(--line-2); background:var(--surface-2)}
+.foot-btn{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--ink-2); transition:color .16s}
+.foot-btn:hover{color:var(--acc)}
+.foot-btn svg{width:14px; height:14px; stroke-width:2}
+.vline{display:inline-flex; align-items:center; gap:8px; font-size:12px; background:var(--surface); border:1px solid var(--acc-line); border-radius:var(--r-pill); padding:5px 12px 5px 9px; color:var(--ink); box-shadow:var(--sh-1)}
+.vline .tag{font-size:9.5px; font-weight:800; letter-spacing:.04em; color:var(--on-solid); background:var(--acc); border-radius:5px; padding:2px 6px}
+.vline b{font-weight:700}
+.vline .lean{color:var(--green); font-weight:700}
+.game-foot .spacer{flex:1}
+
+/* ============ Props table ============ */
+.chips{display:flex; align-items:center; gap:7px; margin:14px 0 4px; overflow-x:auto; padding-bottom:2px}
+.gchip{display:inline-flex; align-items:center; gap:7px; padding:6px 11px; border-radius:10px; background:var(--surface); border:1px solid var(--line); font-size:12px; font-weight:600; color:var(--ink-2); white-space:nowrap; transition:all .16s; box-shadow:var(--sh-1)}
+.gchip:hover{border-color:var(--acc-line)}
+.gchip.on{border-color:var(--acc); background:var(--acc-soft); color:var(--acc-2)}
+.gchip .vs{color:var(--ink-4); font-weight:600}
+.gchip .t{font-size:9px; color:var(--ink-3); font-weight:600}
+.chips .spacer{flex:1}
+.livetoggle{display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--ink-2); white-space:nowrap}
+.switch{width:38px; height:22px; border-radius:999px; background:var(--green); position:relative; transition:background .18s}
+.switch::after{content:""; position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:all .18s}
+
+.ptable{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-card); box-shadow:var(--sh-2); overflow:hidden; margin-top:14px}
+.pt-scroll{overflow-x:auto}
+table.pt{width:100%; border-collapse:collapse; min-width:900px}
+.pt thead th{
+  font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3);
+  text-align:center; padding:12px 8px; background:var(--surface-2); border-bottom:1px solid var(--line); white-space:nowrap;
+}
+.pt thead th.l{text-align:left}
+.pt thead th .srt{color:var(--ink-4); margin-left:3px}
+.pt thead th.act{color:var(--acc)}
+.pt tbody td{padding:11px 8px; border-bottom:1px solid var(--line-2); text-align:center; white-space:nowrap}
+.pt tbody tr{transition:background .14s}
+.pt tbody tr:hover{background:var(--surface-2)}
+.pt tbody tr:last-child td{border-bottom:0}
+.pt .c-add{padding-left:14px; width:34px}
+.addb{width:26px; height:26px; border-radius:8px; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); font-size:17px; line-height:1; display:grid; place-items:center; transition:all .16s}
+.addb:hover{border-color:var(--acc); color:var(--acc); background:var(--acc-soft)}
+.c-player{text-align:left!important; min-width:210px}
+.pl{display:flex; align-items:center; gap:10px}
+.pface{width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:800; color:#fff; flex:none; position:relative}
+.pface .pos{position:absolute; right:-3px; bottom:-3px; font-size:8px; font-weight:800; color:var(--pos-ink); border-radius:5px; padding:1px 3px; border:1.5px solid var(--surface)}
+.pl .pn{font-weight:700; font-size:13.5px; line-height:1.1}
+.pl .pg{font-size:11px; color:var(--ink-3); margin-top:2px}
+.c-prop{text-align:left!important}
+.prop{font-weight:600; font-size:13px}
+.prop .os{font-size:11px; color:var(--ink-3); font-weight:600}
+.line-v{font-weight:800; font-size:14px}
+.px-cell{display:inline-flex; align-items:center; gap:6px; justify-content:center; font-weight:700}
+.px-cell .more{font-size:10.5px; color:var(--ink-3); font-weight:600}
+.proj{font-weight:800}
+.edge-c{font-weight:800; border-radius:8px; padding:4px 8px; display:inline-block; min-width:52px}
+.edge-c.pos{color:var(--green); background:var(--green-soft)}
+.edge-c.neg{color:var(--ink-3); background:var(--surface-3)}
+.ip{font-weight:700; color:var(--ink-2)}
+.hr{font-weight:700; border-radius:7px; padding:5px 7px; display:inline-block; min-width:42px; font-size:12.5px}
+.hr.hi{color:var(--on-solid); background:var(--green)}
+.hr.mid{color:var(--green); background:var(--green-soft)}
+.hr.neu{color:var(--ink-2); background:var(--surface-3)}
+.hr.lo{color:var(--red); background:var(--red-soft)}
+.hr.vlo{color:var(--on-solid); background:var(--red)}
+.opp{display:inline-flex; align-items:center; gap:5px; font-weight:700; font-size:12.5px}
+.opp .rk{font-size:9px; font-weight:800; color:var(--on-solid); border-radius:5px; padding:2px 5px}
+
+/* expanded prop detail row */
+.detail-row td{padding:0!important; background:var(--surface-2)}
+.detail{display:grid; grid-template-columns:1fr 300px; gap:0; border-top:2px solid var(--acc)}
+.detail-main{padding:20px 22px}
+.detail-side{border-left:1px solid var(--line); padding:18px 18px}
+.d-head{display:flex; align-items:center; gap:12px; margin-bottom:16px}
+.d-head .pface{width:44px; height:44px}
+.d-head h3{margin:0; font-size:18px; letter-spacing:-.02em}
+.d-head .sub{font-size:12.5px; color:var(--ink-2); margin-top:2px}
+.d-pill{margin-left:auto; display:flex; align-items:center; gap:8px}
+.d-over{background:var(--active-bg); color:var(--active-ink); border-radius:var(--r-pill); padding:8px 15px; font-weight:700; font-size:13px; display:inline-flex; gap:9px; align-items:center}
+.d-over .op{opacity:.6}
+.filt{display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap}
+.filt button{padding:6px 13px; border-radius:9px; font-size:12px; font-weight:700; color:var(--ink-2); background:var(--surface); border:1px solid var(--line); transition:all .16s}
+.filt button:hover{border-color:var(--acc-line)}
+.filt button.on{background:var(--active-bg); color:var(--active-ink); border-color:var(--active-bg)}
+.d-stat{display:flex; align-items:baseline; gap:18px; margin-bottom:8px}
+.d-stat .big{font-size:15px; font-weight:800}
+.d-stat .big .g{color:var(--green)}
+.d-stat .mut{font-size:12px; color:var(--ink-3); font-weight:600}
+/* bar chart */
+.chart{margin-top:6px}
+.bars{display:flex; align-items:flex-end; gap:10px; height:180px; position:relative; padding:14px 4px 0; border-bottom:1px solid var(--line)}
+.baseline{position:absolute; left:0; right:0; border-top:2px dashed var(--acc); z-index:2}
+.baseline .lv{position:absolute; right:0; top:-9px; background:var(--acc); color:var(--on-solid); font-size:10px; font-weight:800; padding:1px 6px; border-radius:5px}
+.bar{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; position:relative}
+.bar .col{width:74%; border-radius:5px 5px 3px 3px; position:relative; transition:opacity .16s}
+.bar:hover .col{opacity:.82}
+.bar .col.g{background:linear-gradient(180deg,#22a468,var(--green))}
+.bar .col.r{background:linear-gradient(180deg,#d9564f,var(--red))}
+.bar .val{position:absolute; top:-16px; font-size:10.5px; font-weight:800; width:100%; text-align:center}
+.bar .col.g .in{position:absolute; bottom:4px; left:0; right:0; text-align:center; color:#fff; font-size:10px; font-weight:700}
+.bar .xl{font-size:9.5px; color:var(--ink-3); margin-top:6px; text-align:center; line-height:1.15; font-weight:600}
+/* side panels */
+.side-tabs{display:flex; gap:4px; background:var(--surface-3); border:1px solid var(--line); border-radius:10px; padding:3px; margin-bottom:14px}
+.side-tabs button{flex:1; padding:6px; border-radius:8px; font-size:12px; font-weight:700; color:var(--ink-2)}
+.side-tabs button.on{background:var(--surface); color:var(--ink); box-shadow:var(--sh-1)}
+.tl-h{font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); margin:0 0 10px}
+.tl{display:flex; flex-direction:column}
+.tl-row{display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line-2); font-size:12.5px}
+.tl-row:last-child{border-bottom:0}
+.tl-row .tm{color:var(--ink-3); font-weight:600}
+.tl-row .mv{font-weight:800; display:flex; align-items:center; gap:7px}
+.tl-row .mv .arw{font-size:10px}
+.tl-row .mv .arw.up{color:var(--green)} .tl-row .mv .arw.dn{color:var(--red)}
+.def{margin-top:16px}
+.def-row{display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--line-2); font-size:12.5px}
+.def-row .rk{font-size:10px; font-weight:800; color:var(--on-solid); border-radius:5px; padding:2px 6px}
+.def-row .vv{font-weight:700}
+
+.hint{font-size:11.5px; color:var(--ink-3); padding:9px 16px; background:var(--surface-2); border-bottom:1px solid var(--line-2); display:flex; align-items:center; gap:8px}
+.hint svg{width:14px;height:14px}
+
+.view{display:none}
+.view.on{display:block}
+.foot-note{text-align:center; color:var(--ink-4); font-size:11.5px; margin-top:26px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- LEFT RAIL -->
+  <nav class="rail">
+    <div class="logo">V</div>
+    <a title="Insights"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h4l3 8 4-16 3 8h4"/></svg></a>
+    <a class="on" title="Game Markets"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path stroke-linecap="round" d="M3 9h18M9 9v11"/></svg></a>
+    <a title="Player Props"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19V9m4 10V5m4 14v-7m4 7V8m4 11v-4"/></svg></a>
+    <a title="Edge Board"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></a>
+    <a title="Watchlist"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3h14v18l-7-4-7 4z"/></svg></a>
+    <a title="Arbitrage"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/></svg></a>
+    <div class="sp"></div>
+    <a title="Settings"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 6.6 19.5l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 14a2 2 0 0 1 0-4"/></svg></a>
+    <div class="me">JP</div>
+  </nav>
+
+  <div class="main">
+    <!-- TOP BAR -->
+    <div class="top">
+      <div class="top-in">
+        <div class="crumb">Betting / <b id="crumb">Game Markets</b></div>
+        <div class="seg" role="tablist">
+          <button class="on" id="tab-g" onclick="showView('g')">Game markets</button>
+          <button id="tab-p" onclick="showView('p')">Player props</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="seg themeseg" title="Theme">
+          <button class="on" onclick="setTheme('light',this)">Light</button>
+          <button onclick="setTheme('vapor',this)">Vapor</button>
+          <button onclick="setTheme('onyx',this)">Onyx</button>
+        </div>
+        <div class="searchbox">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3-3"/></svg>
+          Search teams, players
+        </div>
+        <button class="iconbtn" title="Filters"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M7 12h10M10 18h4"/></svg></button>
+        <button class="iconbtn" title="Sportsbooks"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18M5 8l7-5 7 5M5 8v9l7 4 7-4V8"/></svg></button>
+      </div>
+    </div>
+
+    <div class="wrap">
+
+      <!-- ============ GAME MARKETS ============ -->
+      <section class="view on" id="view-g">
+        <div class="banner">
+          <div class="eyebrow">NFL · Week 1</div>
+          <h1>Game markets</h1>
+          <p>Every spread, total and moneyline across your books, with Vault's model line and edge on the side that beats the market.</p>
+          <div class="b-right">
+            <div class="pill-stat"><div class="k">Games today</div><div class="v">14</div></div>
+            <div class="pill-stat"><div class="k">Vault edges ≥ 3%</div><div class="v g">6</div></div>
+          </div>
+        </div>
+
+        <div class="leagues">
+          <button class="lg on"><span class="dot">NFL</span> Football</button>
+          <button class="lg"><span class="dot" style="background:#c8642a">CFB</span> NCAAF</button>
+          <button class="lg"><span class="dot" style="background:#b3812a">MLB</span> Baseball</button>
+          <button class="lg"><span class="dot" style="background:#1a6aab">NBA</span> Preseason</button>
+          <button class="lg"><span class="dot" style="background:#5a6478">WNBA</span> W</button>
+        </div>
+
+        <div class="dates">
+          <button class="date on"><div class="d">Thu 4</div><div class="w">Sep</div></button>
+          <button class="date"><div class="d">Sun 7</div><div class="w">Sep</div></button>
+          <button class="date"><div class="d">Mon 8</div><div class="w">Sep</div></button>
+          <button class="date"><div class="d">Thu 11</div><div class="w">Sep</div></button>
+          <button class="date"><div class="d">Sun 14</div><div class="w">Sep</div></button>
+          <div class="spacer"></div>
+          <button class="iconbtn" title="Calendar"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path stroke-linecap="round" d="M3 9h18M8 3v4M16 3v4"/></svg></button>
+        </div>
+
+        <div class="section-h"><h2>Thursday · primetime</h2><div class="ln"></div></div>
+
+        <!-- GAME 1 -->
+        <article class="game">
+          <div class="game-top">
+            <div class="matchup">
+              <div class="gtime"><span class="live">Live · Q1 6:12</span></div>
+              <div class="team"><span class="tlogo" style="background:#0b162a">CHI</span><div><div class="tname">Bears</div><div class="trec">0-0 · +160</div></div><div class="tscore"><div class="tname num">7</div></div></div>
+              <div class="team"><span class="tlogo" style="background:#4f2683">MIN</span><div><div class="tname">Vikings</div><div class="trec">0-0 · -190</div></div><div class="tscore"><div class="tname num">10</div></div></div>
+            </div>
+            <div class="markets">
+              <div class="mcol"><div class="mh">Spread</div><div class="odds">
+                <div class="oc"><span class="split t"><i class="g" style="width:38%"></i><i class="r" style="width:62%"></i></span><span class="lbl"><span class="glyph"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19V10m5 9V5m5 14v-7m5 7V8"/></svg></span>CHI +4.5</span><span class="px">-108<span class="book" style="background:#0a7d3c">DK</span></span></div>
+                <div class="oc"><span class="split b"><i class="g" style="width:62%"></i><i class="r" style="width:38%"></i></span><span class="lbl"><span class="glyph"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19V10m5 9V5m5 14v-7m5 7V8"/></svg></span>MIN -4.5</span><span class="px">-112<span class="book" style="background:#1a44a3">FD</span></span></div>
+              </div></div>
+              <div class="mcol"><div class="mh">Total</div><div class="odds">
+                <div class="oc edge"><span class="lbl"><span class="glyph"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19V10m5 9V5m5 14v-7m5 7V8"/></svg></span>Over 41.5</span><span class="px">-110<span class="edgetag"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>4.2%</span></span></div>
+                <div class="oc"><span class="lbl"><span class="glyph"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19V10m5 9V5m5 14v-7m5 7V8"/></svg></span>Under 41.5</span><span class="px">-110<span class="book" style="background:#0a7d3c">DK</span></span></div>
+              </div></div>
+              <div class="mcol"><div class="mh">Moneyline</div><div class="odds">
+                <div class="oc"><span class="lbl">CHI</span><span class="px pos">+160<span class="book" style="background:#d9241c">BM</span></span></div>
+                <div class="oc"><span class="lbl">MIN</span><span class="px">-190<span class="book" style="background:#1a44a3">FD</span></span></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="game-foot">
+            <button class="foot-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M9 12l2 2 4-4"/></svg> Public betting</button>
+            <div class="vline"><span class="tag">VAULT LINE</span> Total <b class="num">43.1</b> · lean <span class="lean">OVER</span></div>
+            <div class="spacer"></div>
+            <button class="foot-btn">Game details <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"/></svg></button>
+          </div>
+        </article>
+
+        <div class="section-h"><h2>Sunday · 1:00 PM ET</h2><div class="ln"></div></div>
+
+        <!-- GAME 2 -->
+        <article class="game">
+          <div class="game-top">
+            <div class="matchup">
+              <div class="gtime">Sun 4:25 PM · SoFi Stadium</div>
+              <div class="team"><span class="tlogo" style="background:#003594">DAL</span><div><div class="tname">Cowboys</div><div class="trec">0-0</div></div><div class="tscore"><div class="rk">pace 2nd</div></div></div>
+              <div class="team"><span class="tlogo" style="background:#0080c6">LAC</span><div><div class="tname">Chargers</div><div class="trec">0-0</div></div><div class="tscore"><div class="rk">def 6th</div></div></div>
+            </div>
+            <div class="markets">
+              <div class="mcol"><div class="mh">Spread</div><div class="odds">
+                <div class="oc edge"><span class="lbl">DAL +3.0</span><span class="px">-105<span class="edgetag"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>3.6%</span></span></div>
+                <div class="oc"><span class="lbl">LAC -3.0</span><span class="px">-115<span class="book" style="background:#0a7d3c">DK</span></span></div>
+              </div></div>
+              <div class="mcol"><div class="mh">Total</div><div class="odds">
+                <div class="oc"><span class="split t"><i class="g" style="width:57%"></i><i class="r" style="width:43%"></i></span><span class="lbl">Over 47.5</span><span class="px">-110<span class="book" style="background:#1a44a3">FD</span></span></div>
+                <div class="oc"><span class="split b"><i class="g" style="width:43%"></i><i class="r" style="width:57%"></i></span><span class="lbl">Under 47.5</span><span class="px">-110<span class="book" style="background:#0a7d3c">DK</span></span></div>
+              </div></div>
+              <div class="mcol"><div class="mh">Moneyline</div><div class="odds">
+                <div class="oc"><span class="lbl">DAL</span><span class="px pos">+140<span class="book" style="background:#d9241c">BM</span></span></div>
+                <div class="oc"><span class="lbl">LAC</span><span class="px">-165<span class="book" style="background:#1a44a3">FD</span></span></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="game-foot">
+            <button class="foot-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M9 12l2 2 4-4"/></svg> Public betting</button>
+            <div class="vline"><span class="tag">VAULT LINE</span> DAL <b>+1.4</b> · lean <span class="lean">DAL +3</span></div>
+            <div class="spacer"></div>
+            <button class="foot-btn">Game details <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"/></svg></button>
+          </div>
+        </article>
+
+        <!-- GAME 3 -->
+        <article class="game">
+          <div class="game-top">
+            <div class="matchup">
+              <div class="gtime">Sun 1:00 PM · Highmark</div>
+              <div class="team"><span class="tlogo" style="background:#c60c30">KC</span><div><div class="tname">Chiefs</div><div class="trec">0-0</div></div></div>
+              <div class="team"><span class="tlogo" style="background:#00338d">BUF</span><div><div class="tname">Bills</div><div class="trec">0-0</div></div></div>
+            </div>
+            <div class="markets">
+              <div class="mcol"><div class="mh">Spread</div><div class="odds">
+                <div class="oc"><span class="lbl">KC +2.5</span><span class="px">-110<span class="book" style="background:#0a7d3c">DK</span></span></div>
+                <div class="oc"><span class="lbl">BUF -2.5</span><span class="px">-110<span class="book" style="background:#1a44a3">FD</span></span></div>
+              </div></div>
+              <div class="mcol"><div class="mh">Total</div><div class="odds">
+                <div class="oc"><span class="split t"><i class="g" style="width:64%"></i><i class="r" style="width:36%"></i></span><span class="lbl">Over 51.5</span><span class="px">-108<span class="book" style="background:#d9241c">BM</span></span></div>
+                <div class="oc edge"><span class="split b"><i class="g" style="width:36%"></i><i class="r" style="width:64%"></i></span><span class="lbl">Under 51.5</span><span class="px">-112<span class="edgetag"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>3.1%</span></span></div>
+              </div></div>
+              <div class="mcol"><div class="mh">Moneyline</div><div class="odds">
+                <div class="oc"><span class="lbl">KC</span><span class="px pos">+118<span class="book" style="background:#0a7d3c">DK</span></span></div>
+                <div class="oc"><span class="lbl">BUF</span><span class="px">-140<span class="book" style="background:#1a44a3">FD</span></span></div>
+              </div></div>
+            </div>
+          </div>
+          <div class="game-foot">
+            <button class="foot-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M9 12l2 2 4-4"/></svg> Public betting</button>
+            <div class="vline"><span class="tag">VAULT LINE</span> Total <b class="num">49.7</b> · lean <span class="lean">UNDER</span></div>
+            <div class="spacer"></div>
+            <button class="foot-btn">Game details <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"/></svg></button>
+          </div>
+        </article>
+      </section>
+
+      <!-- ============ PLAYER PROPS ============ -->
+      <section class="view" id="view-p">
+        <div class="banner">
+          <div class="eyebrow">NFL · Week 1</div>
+          <h1>Player props</h1>
+          <p>Line, best price and hit rate for every prop, next to Vault's own projection and the edge it implies. Sorted by model edge.</p>
+          <div class="b-right">
+            <div class="pill-stat"><div class="k">Props priced</div><div class="v num">2,184</div></div>
+            <div class="pill-stat"><div class="k">Positive edge</div><div class="v g num">312</div></div>
+          </div>
+        </div>
+
+        <div class="leagues">
+          <button class="lg on"><span class="dot">NFL</span> Football</button>
+          <button class="lg"><span class="dot" style="background:#c8642a">CFB</span> NCAAF</button>
+          <button class="lg"><span class="dot" style="background:#b3812a">MLB</span> Baseball</button>
+        </div>
+
+        <div class="chips">
+          <button class="gchip on"><span class="t">SUN 1:00</span> DAL <span class="vs">@</span> LAC</button>
+          <button class="gchip"><span class="t">SUN 1:00</span> KC <span class="vs">@</span> BUF</button>
+          <button class="gchip"><span class="t">SUN 4:25</span> SF <span class="vs">@</span> SEA</button>
+          <button class="gchip"><span class="t">SUN 4:25</span> DET <span class="vs">@</span> GB</button>
+          <button class="gchip"><span class="t">SUN 8:20</span> BAL <span class="vs">@</span> CIN</button>
+          <div class="spacer"></div>
+          <div class="livetoggle">Live only <span class="switch"></span></div>
+        </div>
+
+        <div class="ptable">
+          <div class="hint"><svg fill="none" stroke="var(--acc)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/></svg> Vault projection and edge come from Vault's own player model, not the books. Click any row to open the breakdown.</div>
+          <div class="pt-scroll">
+          <table class="pt">
+            <thead><tr>
+              <th class="c-add"></th>
+              <th class="l">Player &amp; prop</th>
+              <th>Line <span class="srt">⇅</span></th>
+              <th>Best price <span class="srt">⇅</span></th>
+              <th>Vault proj</th>
+              <th class="act">Edge ↓</th>
+              <th>IP%</th>
+              <th>Opp rank</th>
+              <th>L5</th><th>L10</th><th>2025</th><th>H2H</th>
+            </tr></thead>
+            <tbody>
+              <!-- ROW 1 expanded -->
+              <tr class="pr" onclick="toggleRow(this)" style="cursor:pointer">
+                <td class="c-add"><button class="addb" onclick="event.stopPropagation()">+</button></td>
+                <td class="c-player"><div class="pl"><span class="pface" style="background:#0e7a4a">JG<span class="pos" style="background:var(--rb)">RB</span></span><div><div class="pn">Jahmyr Gibbs</div><div class="pg">Rush yards · DET @ GB</div></div></div></td>
+                <td><span class="line-v num">Over 68.5</span></td>
+                <td><span class="px-cell num">-112 <span class="book" style="background:#0a7d3c">DK</span> <span class="more">+4</span></span></td>
+                <td><span class="proj num">79.4</span></td>
+                <td><span class="edge-c pos num">+6.8%</span></td>
+                <td><span class="ip num">61%</span></td>
+                <td><span class="opp"><span class="rk" style="background:var(--red)">28th</span></span></td>
+                <td><span class="hr hi num">80%</span></td>
+                <td><span class="hr mid num">70%</span></td>
+                <td><span class="hr mid num">65%</span></td>
+                <td><span class="hr hi num">100%</span></td>
+              </tr>
+              <tr class="detail-row" id="det-1" style="display:none"><td colspan="12">
+                <div class="detail">
+                  <div class="detail-main">
+                    <div class="d-head">
+                      <span class="pface" style="background:#0e7a4a">JG<span class="pos" style="background:var(--rb)">RB</span></span>
+                      <div><h3>Jahmyr Gibbs · Rush yards</h3><div class="sub">DET @ GB · Sun 4:25 PM · vs 28th-ranked run defense</div></div>
+                      <div class="d-pill"><div class="d-over">Over 68.5 <span class="op num">-112</span></div></div>
+                    </div>
+                    <div class="filt">
+                      <button>L5</button><button class="on">L10</button><button>L20</button><button>H2H</button><button>2025</button><button>2024</button>
+                    </div>
+                    <div class="d-stat"><span class="big">Hit rate <span class="g num">70%</span> · 7 of 10</span><span class="mut">Avg <b class="num">76.8</b> yds · line 68.5 · Vault proj <b class="num">79.4</b></span></div>
+                    <div class="chart">
+                      <div class="bars" id="gibbs-bars"></div>
+                      <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:10.5px; color:var(--ink-3); font-weight:600; padding:0 4px">
+                        <span>vGB 12/5</span><span>@CHI 12/22</span><span>Season trend →</span><span>@SF 1/3</span><span>vMIN 1/9</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="detail-side">
+                    <div class="side-tabs"><button class="on">Odds</button><button>Matchup</button><button>Splits</button></div>
+                    <div class="tl-h">Odds timeline</div>
+                    <div class="tl">
+                      <div class="tl-row"><span class="tm">Now · 4:25 PM</span><span class="mv num">-112 <span class="arw up">▲</span></span></div>
+                      <div class="tl-row"><span class="tm">Fri 9:00 AM</span><span class="mv num">-108</span></div>
+                      <div class="tl-row"><span class="tm">Thu 6:00 PM</span><span class="mv num">-102 <span class="arw dn">▼</span></span></div>
+                      <div class="tl-row"><span class="tm">Wed open</span><span class="mv num">+100</span></div>
+                    </div>
+                    <div class="def">
+                      <div class="tl-h" style="margin-top:4px">GB run defense (per game)</div>
+                      <div class="def-row"><span>Rush yds allowed</span><span class="rk" style="background:var(--red)">28th</span><span class="vv num">138.2</span></div>
+                      <div class="def-row"><span>Yds before contact</span><span class="rk" style="background:var(--red)">30th</span><span class="vv num">2.9</span></div>
+                      <div class="def-row"><span>RB targets allowed</span><span class="rk" style="background:var(--gold)">19th</span><span class="vv num">6.1</span></div>
+                    </div>
+                  </div>
+                </div>
+              </td></tr>
+
+              <!-- ROW 2 -->
+              <tr class="pr" onclick="toggleRow(this)" style="cursor:pointer">
+                <td class="c-add"><button class="addb" onclick="event.stopPropagation()">+</button></td>
+                <td class="c-player"><div class="pl"><span class="pface" style="background:#1a6aab">PN<span class="pos" style="background:var(--wr)">WR</span></span><div><div class="pn">Puka Nacua</div><div class="pg">Receiving yards · LAR @ ARI</div></div></div></td>
+                <td><span class="line-v num">Over 82.5</span></td>
+                <td><span class="px-cell num">-115 <span class="book" style="background:#1a44a3">FD</span> <span class="more">+4</span></span></td>
+                <td><span class="proj num">91.2</span></td>
+                <td><span class="edge-c pos num">+5.4%</span></td>
+                <td><span class="ip num">58%</span></td>
+                <td><span class="opp"><span class="rk" style="background:var(--red)">26th</span></span></td>
+                <td><span class="hr hi num">80%</span></td>
+                <td><span class="hr hi num">80%</span></td>
+                <td><span class="hr mid num">68%</span></td>
+                <td><span class="hr neu num">50%</span></td>
+              </tr>
+
+              <!-- ROW 3 -->
+              <tr class="pr" onclick="toggleRow(this)" style="cursor:pointer">
+                <td class="c-add"><button class="addb" onclick="event.stopPropagation()">+</button></td>
+                <td class="c-player"><div class="pl"><span class="pface" style="background:#c22a37">JA<span class="pos" style="background:var(--qb)">QB</span></span><div><div class="pn">Josh Allen</div><div class="pg">Pass yards · KC @ BUF</div></div></div></td>
+                <td><span class="line-v num">Over 244.5</span></td>
+                <td><span class="px-cell num">-110 <span class="book" style="background:#d9241c">BM</span> <span class="more">+5</span></span></td>
+                <td><span class="proj num">262.1</span></td>
+                <td><span class="edge-c pos num">+4.1%</span></td>
+                <td><span class="ip num">54%</span></td>
+                <td><span class="opp"><span class="rk" style="background:var(--gold)">14th</span></span></td>
+                <td><span class="hr mid num">60%</span></td>
+                <td><span class="hr mid num">70%</span></td>
+                <td><span class="hr mid num">64%</span></td>
+                <td><span class="hr hi num">75%</span></td>
+              </tr>
+
+              <!-- ROW 4 -->
+              <tr class="pr" onclick="toggleRow(this)" style="cursor:pointer">
+                <td class="c-add"><button class="addb" onclick="event.stopPropagation()">+</button></td>
+                <td class="c-player"><div class="pl"><span class="pface" style="background:#003594">CL<span class="pos" style="background:var(--wr)">WR</span></span><div><div class="pn">CeeDee Lamb</div><div class="pg">Receptions · DAL @ LAC</div></div></div></td>
+                <td><span class="line-v num">Over 6.5</span></td>
+                <td><span class="px-cell num">+102 <span class="book" style="background:#0a7d3c">DK</span> <span class="more">+3</span></span></td>
+                <td><span class="proj num">7.3</span></td>
+                <td><span class="edge-c pos num">+3.3%</span></td>
+                <td><span class="ip num">49%</span></td>
+                <td><span class="opp"><span class="rk" style="background:var(--green)">6th</span></span></td>
+                <td><span class="hr mid num">60%</span></td>
+                <td><span class="hr mid num">70%</span></td>
+                <td><span class="hr hi num">76%</span></td>
+                <td><span class="hr neu num">50%</span></td>
+              </tr>
+
+              <!-- ROW 5 -->
+              <tr class="pr" onclick="toggleRow(this)" style="cursor:pointer">
+                <td class="c-add"><button class="addb" onclick="event.stopPropagation()">+</button></td>
+                <td class="c-player"><div class="pl"><span class="pface" style="background:#8f5406">TK<span class="pos" style="background:var(--te)">TE</span></span><div><div class="pn">Travis Kelce</div><div class="pg">Receiving yards · KC @ BUF</div></div></div></td>
+                <td><span class="line-v num">Under 58.5</span></td>
+                <td><span class="px-cell num">-108 <span class="book" style="background:#1a44a3">FD</span> <span class="more">+4</span></span></td>
+                <td><span class="proj num">49.6</span></td>
+                <td><span class="edge-c pos num">+2.9%</span></td>
+                <td><span class="ip num">52%</span></td>
+                <td><span class="opp"><span class="rk" style="background:var(--green)">4th</span></span></td>
+                <td><span class="hr lo num">40%</span></td>
+                <td><span class="hr neu num">50%</span></td>
+                <td><span class="hr mid num">62%</span></td>
+                <td><span class="hr lo num">33%</span></td>
+              </tr>
+
+              <!-- ROW 6 -->
+              <tr class="pr" onclick="toggleRow(this)" style="cursor:pointer">
+                <td class="c-add"><button class="addb" onclick="event.stopPropagation()">+</button></td>
+                <td class="c-player"><div class="pl"><span class="pface" style="background:#0080c6">JT<span class="pos" style="background:var(--rb)">RB</span></span><div><div class="pn">Jonathan Taylor</div><div class="pg">Rush + rec yards · IND @ MIA</div></div></div></td>
+                <td><span class="line-v num">Over 96.5</span></td>
+                <td><span class="px-cell num">-114 <span class="book" style="background:#0a7d3c">DK</span> <span class="more">+3</span></span></td>
+                <td><span class="proj num">101.8</span></td>
+                <td><span class="edge-c pos num">+2.2%</span></td>
+                <td><span class="ip num">55%</span></td>
+                <td><span class="opp"><span class="rk" style="background:var(--gold)">17th</span></span></td>
+                <td><span class="hr hi num">80%</span></td>
+                <td><span class="hr mid num">60%</span></td>
+                <td><span class="hr mid num">61%</span></td>
+                <td><span class="hr neu num">50%</span></td>
+              </tr>
+
+              <!-- ROW 7 negative edge -->
+              <tr class="pr" onclick="toggleRow(this)" style="cursor:pointer">
+                <td class="c-add"><button class="addb" onclick="event.stopPropagation()">+</button></td>
+                <td class="c-player"><div class="pl"><span class="pface" style="background:#241773">LJ<span class="pos" style="background:var(--qb)">QB</span></span><div><div class="pn">Lamar Jackson</div><div class="pg">Rush yards · BAL @ CIN</div></div></div></td>
+                <td><span class="line-v num">Over 54.5</span></td>
+                <td><span class="px-cell num">-118 <span class="book" style="background:#1a44a3">FD</span> <span class="more">+4</span></span></td>
+                <td><span class="proj num">51.0</span></td>
+                <td><span class="edge-c neg num">-1.9%</span></td>
+                <td><span class="ip num">57%</span></td>
+                <td><span class="opp"><span class="rk" style="background:var(--gold)">15th</span></span></td>
+                <td><span class="hr mid num">60%</span></td>
+                <td><span class="hr neu num">50%</span></td>
+                <td><span class="hr mid num">63%</span></td>
+                <td><span class="hr neu num">50%</span></td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+        <p class="foot-note">Vault · betting boards concept · Outlier-style layout applied to Vault's model. Sample Week 1 data.</p>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function setTheme(t, btn){
+  document.documentElement.setAttribute('data-theme', t);
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b===btn));
+}
+function showView(v){
+  document.getElementById('view-g').classList.toggle('on', v==='g');
+  document.getElementById('view-p').classList.toggle('on', v==='p');
+  document.getElementById('tab-g').classList.toggle('on', v==='g');
+  document.getElementById('tab-p').classList.toggle('on', v==='p');
+  document.getElementById('crumb').textContent = v==='g' ? 'Game Markets' : 'Player Props';
+  window.scrollTo({top:0});
+}
+function toggleRow(tr){
+  // row 1 has the detail; others are inert demo rows
+  const det = document.getElementById('det-1');
+  if(tr.nextElementSibling && tr.nextElementSibling.id==='det-1'){
+    det.style.display = det.style.display==='none' ? '' : 'none';
+  }
+}
+function toggleDetail(){}
+
+// build the Gibbs hit-rate bar chart
+(function(){
+  const games = [
+    {v:74,g:true,x:'@CHI'},{v:61,g:false,x:'vMIN'},{v:88,g:true,x:'@SF'},{v:70,g:true,x:'vSEA'},
+    {v:54,g:false,x:'@ARI'},{v:92,g:true,x:'vTB'},{v:69,g:true,x:'@GB'},{v:48,g:false,x:'vHOU'},
+    {v:81,g:true,x:'@DAL'},{v:76,g:true,x:'vNO'}
+  ];
+  const line=68.5, max=100;
+  const el=document.getElementById('gibbs-bars');
+  if(!el) return;
+  // baseline position (line as % of max, from bottom)
+  const bl=document.createElement('div'); bl.className='baseline';
+  bl.style.bottom=(line/max*100*0.86+ (14/180*100)*0)+'%';
+  bl.style.bottom=((line/max)* (180-14) +0)/180*100 +'%';
+  bl.innerHTML='<span class="lv">Line '+line+'</span>';
+  el.appendChild(bl);
+  games.forEach(gm=>{
+    const b=document.createElement('div'); b.className='bar';
+    const h=(gm.v/max)*100;
+    b.innerHTML='<span class="val" style="bottom:'+h+'%; color:'+(gm.g?'var(--green)':'var(--red)')+'">'+gm.v+'</span>'+
+                '<div class="col '+(gm.g?'g':'r')+'" style="height:'+h+'%"></div>';
+    el.appendChild(b);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault Fantasy — free</title>
+<!--
+  Vanity redirect for share-card attribution.
+  Shared card images print "VAULTFANTASY.COM/FREE". When someone types that in
+  (the only trace an image-only share leaves), this page bounces them to the
+  tagged home URL so the visit is attributed as a share landing — index.html's
+  vf-ref-capture stashes the params and fires landing_from_share.
+  A real file at /free/index.html is served directly by GitHub Pages, so the
+  SPA 404 fallback never touches it.
+-->
+<meta http-equiv="refresh" content="0; url=/?utm_source=vault_share&amp;utm_medium=card_print&amp;utm_campaign=scan">
+<link rel="canonical" href="https://vaultfantasy.com/">
+<script>
+  // Immediate JS redirect (faster than the meta refresh, and keeps history clean
+  // so Back doesn't trap the user on this blank hop).
+  location.replace('/?utm_source=vault_share&utm_medium=card_print&utm_campaign=scan');
+</script>
+<style>
+  html,body{margin:0;height:100%;background:#0e0f13;color:#e7e9ee;
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+  .wrap{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
+  a{color:#5b8def;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Only shown if both JS and meta-refresh are disabled. -->
+    <p>Taking you to Vault… <a href="/?utm_source=vault_share&utm_medium=card_print&utm_campaign=scan">Continue &rarr;</a></p>
+  </div>
+</body>
+</html>

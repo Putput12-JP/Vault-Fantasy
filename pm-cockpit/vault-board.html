@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vault Board</title>
+<!-- Build: 2026-09-03 -->
+<!--
+  Vault Board Cockpit — a single, self-contained page.
+  Pattern: SenteLabsAI / OpenExecutive, re-cast as an executive board that advises
+  on BUILDING Vault Fantasy the product, not on drafting a fantasy team.
+
+  Privacy:
+  - Everything runs in YOUR browser. Nothing is uploaded to any Vault server.
+  - Your Anthropic API key is stored only in this browser (localStorage) and is sent
+    ONLY to api.anthropic.com, directly, to answer your question.
+  - Board answers are generated live by the Claude API and are advisory, not legal,
+    financial, or investment advice.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Vault tokens, inlined so the file works standalone (file:// or Claude Design). */
+  :root{
+    --bg:#070d18; --surface:#0e1626;
+    --s1:#0e1626; --s2:#131d30; --s3:#1b2740; --s4:#243352; --s-bright:#2c3f60;
+    --border:rgba(123,170,240,0.10); --border2:rgba(123,170,240,0.17); --border3:rgba(123,170,240,0.30);
+    --text:#eaf2fc; --text2:#bdcce2; --muted:#808fa6;
+    --accent:#2f63c4; --accent2:#7bd0ff; --sky:#4d86f0;
+    --green:#3DCC7A; --gold:#f5c842; --red:#e23a4e; --violet:#a78bfa; --pink:#ff6680;
+    --font-sans:'Archivo','Hanken Grotesk',system-ui,-apple-system,sans-serif;
+    --font-mono:'JetBrains Mono','Space Mono',monospace;
+    --radius-sm:8px; --radius-md:12px; --radius-lg:18px;
+    --shadow-card:0 24px 60px -20px rgba(4,9,20,0.62),0 1px 0 rgba(255,255,255,0.06) inset;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1100px 620px at 82% -8%, rgba(47,99,196,0.16), transparent 60%),
+      radial-gradient(900px 520px at 8% 4%, rgba(123,208,255,0.08), transparent 55%),
+      var(--bg);
+    color:var(--text); font-family:var(--font-sans); font-size:15px; line-height:1.5;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:26px 22px 96px}
+
+  /* header */
+  header.top{display:flex; align-items:flex-start; justify-content:space-between; gap:22px; flex-wrap:wrap; margin-bottom:20px}
+  .brand{display:flex; align-items:center; gap:14px}
+  .brand .mark{
+    width:46px;height:46px;border-radius:13px;flex:0 0 auto;
+    background:linear-gradient(150deg,#2f63c4,#7bd0ff 92%);
+    display:grid;place-items:center;font-weight:800;font-size:20px;color:#061020;
+    box-shadow:0 10px 26px -10px rgba(47,99,196,.7), 0 1px 0 rgba(255,255,255,.25) inset;
+  }
+  .brand h1{font-size:23px;margin:0;letter-spacing:-.4px;font-weight:800}
+  .brand p{margin:3px 0 0;color:var(--muted);font-size:12.5px;max-width:52ch}
+  .privacy{
+    background:rgba(123,208,255,.06); border:1px solid var(--border2); color:var(--text2);
+    border-radius:12px; padding:9px 13px; font-size:11.5px; max-width:340px; line-height:1.45;
+  }
+  .privacy b{color:var(--accent2)}
+
+  /* setup bar */
+  .setup{
+    background:linear-gradient(180deg, var(--s2), var(--s1));
+    border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-card);
+    padding:16px 18px; margin-bottom:20px;
+    display:grid; grid-template-columns:1fr auto auto auto; gap:12px; align-items:end;
+  }
+  @media(max-width:820px){ .setup{grid-template-columns:1fr 1fr} }
+  .fld{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .fld label{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .setup input[type=password], .setup input[type=text], .setup select{
+    background:var(--bg); border:1px solid var(--border2); color:var(--text);
+    border-radius:10px; padding:10px 12px; font-size:13.5px; font-family:var(--font-sans); width:100%;
+  }
+  .setup select{cursor:pointer}
+  .setup input:focus, .setup select:focus, textarea:focus{outline:2px solid rgba(123,208,255,.35); outline-offset:1px; border-color:var(--border3)}
+  .keyrow{display:flex;gap:8px}
+  .mini{
+    background:var(--s3);border:1px solid var(--border2);color:var(--text2);
+    border-radius:9px;padding:0 11px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;
+  }
+  .mini:hover{background:var(--s4);color:var(--text)}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;user-select:none;padding-bottom:9px}
+  .toggle input{accent-color:var(--accent2);width:15px;height:15px}
+  .keyhint{font-size:10.5px;color:var(--muted);margin-top:5px}
+  .keyhint a{color:var(--accent2)}
+
+  /* ask box */
+  .ask{
+    background:linear-gradient(180deg, var(--s2), var(--s1));
+    border:1px solid var(--border2); border-radius:var(--radius-lg); box-shadow:var(--shadow-card);
+    padding:18px; margin-bottom:16px;
+  }
+  .ask h2{margin:0 0 10px;font-size:14px;font-weight:700;color:var(--text)}
+  textarea#q{
+    width:100%; min-height:82px; resize:vertical; background:var(--bg);
+    border:1px solid var(--border2); color:var(--text); border-radius:12px;
+    padding:13px 14px; font-size:15px; font-family:var(--font-sans); line-height:1.5;
+  }
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0 4px}
+  .chip{
+    background:var(--s3);border:1px solid var(--border);color:var(--text2);
+    border-radius:999px;padding:6px 12px;font-size:11.5px;cursor:pointer;transition:transform .12s ease,background .12s ease;
+  }
+  .chip:hover{background:var(--s4);color:var(--text)}
+  .chip:active{transform:scale(.96)}
+  .askrow{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:12px;flex-wrap:wrap}
+  .convene{
+    background:linear-gradient(135deg,#2f63c4,#7bd0ff);color:#061020;font-weight:800;font-size:14px;
+    border:0;border-radius:12px;padding:12px 22px;cursor:pointer;letter-spacing:-.2px;
+    box-shadow:0 12px 28px -12px rgba(47,99,196,.8);transition:transform .12s ease,filter .12s ease;
+  }
+  .convene:hover{filter:brightness(1.06)}
+  .convene:active{transform:scale(.97)}
+  .convene:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(.3)}
+  .status{font-size:12.5px;color:var(--muted);font-family:var(--font-mono);min-height:16px}
+  .status.err{color:var(--red2,#ff5a6e)}
+
+  /* section label */
+  .seclabel{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 2px 11px}
+
+  /* answer: synthesis */
+  .synth{
+    background:linear-gradient(180deg, rgba(47,99,196,.14), rgba(14,22,38,.9));
+    border:1px solid var(--border3); border-radius:var(--radius-lg); box-shadow:var(--shadow-card);
+    padding:20px 22px; margin-bottom:8px;
+  }
+  .synth .decision{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--accent2);text-transform:uppercase;margin-bottom:9px}
+  .reco{display:flex;align-items:flex-start;gap:12px;margin-bottom:13px}
+  .reco .txt{font-size:20px;font-weight:800;letter-spacing:-.5px;line-height:1.25}
+  .conf{
+    flex:0 0 auto;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    padding:5px 10px;border-radius:999px;border:1px solid;white-space:nowrap;margin-top:3px;
+  }
+  .conf.high{color:var(--green);border-color:rgba(61,204,122,.5);background:rgba(61,204,122,.1)}
+  .conf.medium{color:var(--gold);border-color:rgba(245,200,66,.5);background:rgba(245,200,66,.1)}
+  .conf.low{color:var(--red);border-color:rgba(226,58,78,.5);background:rgba(226,58,78,.1)}
+  .synth .body{font-size:15px;color:var(--text);line-height:1.6}
+  .synth .body p{margin:0 0 10px}
+  .synth .confwhy{font-size:12px;color:var(--muted);margin-top:8px;font-style:italic}
+
+  /* tensions */
+  .tensions{margin:12px 0 0}
+  .tension{
+    display:flex;gap:10px;align-items:flex-start;background:rgba(245,200,66,.07);
+    border:1px solid rgba(245,200,66,.28);border-radius:12px;padding:10px 13px;margin-bottom:8px;font-size:13px;color:var(--text2);
+  }
+  .tension .vs{font-family:var(--font-mono);font-size:10.5px;color:var(--gold);white-space:nowrap;font-weight:600;padding-top:1px}
+
+  /* seat cards */
+  .seats{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .seat{
+    background:var(--s1); border:1px solid var(--border2); border-radius:var(--radius-md);
+    padding:14px 15px; position:relative; overflow:hidden;
+  }
+  .seat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--sc,var(--accent2))}
+  .seat .shead{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .seat .dot{width:9px;height:9px;border-radius:50%;background:var(--sc,var(--accent2));box-shadow:0 0 10px var(--sc,var(--accent2));flex:0 0 auto}
+  .seat .stitle{font-weight:700;font-size:14px;letter-spacing:-.2px}
+  .seat .srole{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-left:auto}
+  .seat .headline{font-size:12px;color:var(--sc,var(--accent2));font-weight:600;margin-bottom:6px}
+  .seat .take{font-size:13.5px;color:var(--text2);line-height:1.5}
+  .seat .remit{font-size:12px;color:var(--muted);line-height:1.45}
+  .stance{
+    display:inline-block;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+    padding:3px 8px;border-radius:999px;border:1px solid;margin-left:auto;
+  }
+  .stance.go{color:var(--green);border-color:rgba(61,204,122,.45);background:rgba(61,204,122,.08)}
+  .stance.caution{color:var(--gold);border-color:rgba(245,200,66,.45);background:rgba(245,200,66,.08)}
+  .stance.block{color:var(--red);border-color:rgba(226,58,78,.45);background:rgba(226,58,78,.08)}
+  .stance.context{color:var(--accent2);border-color:var(--border3);background:rgba(123,208,255,.07)}
+
+  /* quiet seats */
+  .quiet{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .qchip{
+    display:flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--border);
+    border-radius:999px;padding:6px 12px;font-size:11.5px;color:var(--muted);
+  }
+  .qchip .dot{width:7px;height:7px;border-radius:50%;background:var(--sc,var(--muted));opacity:.7}
+  .qchip b{color:var(--text2);font-weight:600}
+
+  /* roster (intro) */
+  .roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+
+  /* history */
+  .hist{margin-top:8px}
+  .hitem{
+    background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:11px 14px;margin-bottom:8px;cursor:pointer;
+    display:flex;justify-content:space-between;gap:12px;align-items:center;transition:border-color .12s ease;
+  }
+  .hitem:hover{border-color:var(--border3)}
+  .hitem .hq{font-size:13px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hitem .hr{font-size:11px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap}
+
+  /* brief editor */
+  details.brief{margin-top:6px;background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:4px 14px}
+  details.brief summary{cursor:pointer;font-size:12.5px;color:var(--text2);padding:9px 0;font-weight:600;list-style:none}
+  details.brief summary::-webkit-details-marker{display:none}
+  details.brief summary::before{content:"▸ ";color:var(--muted)}
+  details.brief[open] summary::before{content:"▾ "}
+  textarea#brief{width:100%;min-height:180px;background:var(--bg);border:1px solid var(--border2);color:var(--text2);
+    border-radius:10px;padding:12px;font-size:12.5px;font-family:var(--font-mono);line-height:1.55;resize:vertical;margin:6px 0 12px}
+  .briefrow{display:flex;gap:8px;margin-bottom:12px}
+
+  .spinner{width:15px;height:15px;border:2px solid rgba(123,208,255,.25);border-top-color:var(--accent2);border-radius:50%;display:inline-block;vertical-align:-2px;margin-right:7px;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .hidden{display:none!important}
+  .foot{margin-top:30px;color:var(--muted);font-size:11px;text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="mark">V</div>
+      <div>
+        <h1>Vault Board</h1>
+        <p>Eight executive seats, one founder voice. Put a decision to the board and get each seat's read plus a synthesized call. Built on the OpenExecutive pattern, re-cast for building Vault Fantasy.</p>
+      </div>
+    </div>
+    <div class="privacy">
+      <b>Local + direct.</b> Your API key lives only in this browser and is sent only to api.anthropic.com. Answers are advisory, not legal or financial advice.
+    </div>
+  </header>
+
+  <!-- setup -->
+  <div class="setup">
+    <div class="fld">
+      <label>Anthropic API key</label>
+      <div class="keyrow">
+        <input id="key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+        <button class="mini" id="clearKey" title="Forget key">Clear</button>
+      </div>
+      <div class="keyhint">Stored in this browser only. Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.</div>
+    </div>
+    <div class="fld">
+      <label>Model</label>
+      <select id="model">
+        <option value="claude-sonnet-5">Sonnet 5 (boardroom pace)</option>
+        <option value="claude-opus-5">Opus 5 (deep reasoning)</option>
+      </select>
+    </div>
+    <label class="toggle" title="Fire one independent call per seat, then synthesize. More faithful, uses more credits.">
+      <input type="checkbox" id="deep" /> Deep mode
+    </label>
+    <label class="toggle" title="Keep this session's questions in this browser.">
+      <input type="checkbox" id="remember" checked /> Save history
+    </label>
+  </div>
+
+  <!-- ask -->
+  <div class="ask">
+    <h2>What decision are you weighing?</h2>
+    <textarea id="q" placeholder="e.g. Should I upgrade the ParlayAPI tier before the season, or trim the in-season cadence to stay in the free cap?"></textarea>
+    <div class="chips" id="chips"></div>
+    <div class="askrow">
+      <button class="convene" id="go">Convene the board</button>
+      <div class="status" id="status"></div>
+    </div>
+    <details class="brief">
+      <summary>Company brief the board reasons from (edit to keep it current)</summary>
+      <textarea id="brief"></textarea>
+      <div class="briefrow">
+        <button class="mini" id="saveBrief">Save brief</button>
+        <button class="mini" id="resetBrief">Reset to default</button>
+      </div>
+    </details>
+  </div>
+
+  <!-- answer mounts here -->
+  <div id="answer"></div>
+
+  <!-- intro roster (hidden once answered) -->
+  <div id="intro">
+    <div class="seclabel">The board</div>
+    <div class="roster" id="roster"></div>
+  </div>
+
+  <!-- history -->
+  <div id="histWrap" class="hidden">
+    <div class="seclabel">This session</div>
+    <div class="hist" id="hist"></div>
+  </div>
+
+  <div class="foot">
+    Vault Board runs entirely in your browser. Pattern credit: SenteLabsAI / OpenExecutive (Apache-2.0).<br>
+    The Compliance seat is a prompt persona, not a lawyer. For anything with real legal or gambling-law exposure, get actual counsel.
+  </div>
+
+</div>
+
+<script>
+/* ------------------------------------------------------------------ seats */
+const SEATS = [
+  { id:'strategy', title:'Product Strategy', role:'CSO', color:'#7bd0ff',
+    remit:'Roadmap, build-vs-cut, seasonal timing, the moat, positioning vs Flock / DFF / Statchasers.',
+    persona:"You are Vault's Head of Product Strategy. You own the roadmap and the ruthless build-vs-cut call. Vault's clock is the NFL calendar: the August to September draft season is the only high-traffic window, and the offseason is for models and infrastructure. You protect the moat (measured models, and the ownable data of roughly 250k real trades and 38k drafts) and sharpen positioning against Flock/Recon, DFF and Statchasers. You push for focus and kill scope that does not compound. You ask: does this earn its complexity, and does it land before the window closes?" },
+  { id:'model', title:'Chief Model Officer', role:'CMO-DS', color:'#a78bfa',
+    remit:'Guards the differentiator: numbers that are measured, not invented. Vetoes claims the data cannot support.',
+    persona:"You are Vault's Chief Model Officer, guardian of the thing that makes Vault different: numbers that are measured, not invented. You own the player-prop model, the trade-market model fit on real Sleeper trades, the NFL game model, and draft-grade calibration fit on real outcomes. You carry institutional memory of past failures: phantom EV from mismatched inputs, overfit touchdown tails, a backwards consolidation premium, and backtests that pooled formats and lied. You veto any claim the data cannot support and insist on honest labels (context vs edge). You ask: is this measured or guessed, does it survive an out-of-sample check, and are we labeling confidence honestly?" },
+  { id:'cfo', title:'CFO / Monetization', role:'CFO', color:'#3DCC7A',
+    remit:'Pricing, unit economics, and the live cost meters (ParlayAPI credits, Claude API spend).',
+    persona:"You are Vault's CFO and head of monetization. You own pricing, unit economics and the live cost meters. Vault's plan is a tiered Season Pass, a capped Founder's Lifetime, and a small Dynasty recurring tier; affiliate revenue is garnish and the live draft is never metered. Two costs are real and recurring: the ParlayAPI free tier (1,000 credits per month, already at risk of overrun in-season) and any Claude API spend if Vault adds AI features. You ask: does this pay for itself, what is the per-user cost, and does it move someone toward paying without gating the core draft?" },
+  { id:'cmo', title:'Growth / CMO', role:'GROWTH', color:'#ff9e64',
+    remit:'Acquisition and distribution: the share-card loop, SEO, @VaultFantasy, content. Skeptical of undiscoverable features.',
+    persona:"You are Vault's head of growth and marketing. You own acquisition and distribution. Today the only real acquisition loop is the draft share-card, and it is currently un-attributed, so you treat fixing measurement as urgent. You work programmatic SEO, the @VaultFantasy channel, the promo video and content. You are skeptical of features nobody can discover. You ask: how does a new user find this, what is the loop, and can we measure whether it works?" },
+  { id:'cpo', title:'CPO / Design', role:'CPO', color:'#f5c842',
+    remit:'Product craft: motion system, mobile, the design system, onboarding. Defends one coherent app feel.',
+    persona:"You are Vault's Chief Product Officer and design lead. You own product craft: the motion system, the mobile experience, the design system (segmented controls, press feedback, sliding rails) and onboarding. You defend a coherent, app-quality feel and resist bolt-on UI that fragments the system. You ask: does this feel like one product, is it usable on a phone mid-draft, and does it respect the existing motion and component vocabulary?" },
+  { id:'ops', title:'Ops / Data Reliability', role:'COO', color:'#4d86f0',
+    remit:'Cron pipelines, data freshness, Firebase hardening, the push-to-main release cadence. Load-bearing: the product IS the data.',
+    persona:"You are Vault's head of operations and data reliability. You own the Python cron pipelines, data freshness, the Firebase backend and hardening (rate limits, App Check), and the push-to-main to GitHub Pages release cadence. For Vault this seat is load-bearing because the entire product is generated data: if a cron job drifts or a feed goes thin, users see wrong numbers. You ask: can we run and monitor this reliably, what breaks it at 2am, and does it fail safe?" },
+  { id:'counsel', title:'Gambling & Compliance', role:'GC', color:'#e23a4e',
+    remit:'Highest-stakes legal seat. Betting edges pull in gambling law, responsible-gambling framing, disclaimers, data licensing.',
+    persona:"You are Vault's gambling and compliance counsel, and for Vault this is the highest-stakes legal seat. Vault ships betting edges, EV and projected lines, which pulls in state-by-state gambling law, responsible-gambling framing, clear not-betting-or-investment-advice disclaimers, age gating, terms of service, and data-licensing questions around Sleeper, ESPN, Yahoo and nflverse. You are not a licensed attorney and you flag clearly when real counsel is required. You ask: can we legally say this, are we exposed, and what disclaimer or gate is missing?" },
+  { id:'community', title:'Community & Retention', role:'CHRO', color:'#ff6680',
+    remit:'Keeping users across a brutally seasonal curve and turning them into advocates. Survives the offseason trough.',
+    persona:"You are Vault's community and retention lead. A solo-built seasonal tool has no HR, so your job is keeping users across a brutally seasonal usage curve and turning them into advocates (community-led growth, Discord, word of mouth, churn between seasons). You ask: what brings someone back after their draft, what makes them tell a leaguemate, and how do we survive the offseason trough?" },
+];
+const SEAT = Object.fromEntries(SEATS.map(s=>[s.id,s]));
+
+const DEFAULT_BRIEF =
+`Vault Fantasy is a solo-built, seasonal fantasy-football and sports-betting companion app.
+
+Shape: a single static index.html on GitHub Pages, Python cron jobs that generate JSON data, and a few Firebase callable functions. It connects to Sleeper (deep), ESPN (reads plus limited writes) and Yahoo (in progress).
+
+Moat: Vault's models are measured, not invented (a player-prop model, a trade-market model fit on ~250k real Sleeper trades, an NFL game model, and draft-grade calibration fit on real outcomes). Ownable data: ~250k trades and ~38k drafts.
+
+Monetization: tiered Season Pass, a capped Founder's Lifetime, and a small Dynasty recurring tier. Affiliate revenue is garnish. The live draft is never gated.
+
+Stage and constraints: pre-revenue and early. One builder. Usage is violently seasonal (the Aug to Sep draft season is the window). The ParlayAPI free tier caps at 1,000 credits per month and in-season cadence risks overrunning it. Betting features carry gambling-compliance exposure. The main growth loop is the draft share-card, currently un-attributed.
+
+Competitors: Flock (Recon "Ultra Cheat Sheet" and DFF, white-labeled), Statchasers, Draft Sharks.`;
+
+const EXAMPLES = [
+  "Should I upgrade the ParlayAPI tier before the season, or trim in-season cadence to stay free?",
+  "How hard should I lean into betting edges given the compliance exposure?",
+  "Build next: mobile polish or the ESPN/Yahoo multi-platform push?",
+  "How aggressive should Founder's Lifetime pricing be?",
+  "The share-card is my only growth loop and it's un-attributed. Fix it or build a new one?",
+  "Is it worth adding a live Claude 'ask Vault' GM layer, given per-query cost?"
+];
+
+/* ------------------------------------------------------------------ state */
+const LS = {
+  key:'vaultboard-key', model:'vaultboard-model', deep:'vaultboard-deep',
+  remember:'vaultboard-remember', brief:'vaultboard-brief', hist:'vaultboard-hist'
+};
+const $ = id => document.getElementById(id);
+let history = [];
+
+function loadSettings(){
+  try{
+    $('key').value = localStorage.getItem(LS.key) || '';
+    $('model').value = localStorage.getItem(LS.model) || 'claude-sonnet-5';
+    $('deep').checked = localStorage.getItem(LS.deep) === '1';
+    $('remember').checked = localStorage.getItem(LS.remember) !== '0';
+    $('brief').value = localStorage.getItem(LS.brief) || DEFAULT_BRIEF;
+    if($('remember').checked){ history = JSON.parse(localStorage.getItem(LS.hist) || '[]'); }
+  }catch(e){ $('brief').value = DEFAULT_BRIEF; }
+}
+function save(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+$('key').addEventListener('input', e=> save(LS.key, e.target.value.trim()));
+$('model').addEventListener('change', e=> save(LS.model, e.target.value));
+$('deep').addEventListener('change', e=> save(LS.deep, e.target.checked?'1':'0'));
+$('remember').addEventListener('change', e=>{ save(LS.remember, e.target.checked?'1':'0'); if(!e.target.checked){ try{localStorage.removeItem(LS.hist)}catch(_){}} });
+$('clearKey').addEventListener('click', ()=>{ $('key').value=''; try{localStorage.removeItem(LS.key)}catch(e){}; setStatus('Key cleared.'); });
+$('saveBrief').addEventListener('click', ()=>{ save(LS.brief, $('brief').value); setStatus('Brief saved.'); });
+$('resetBrief').addEventListener('click', ()=>{ $('brief').value = DEFAULT_BRIEF; save(LS.brief, DEFAULT_BRIEF); setStatus('Brief reset.'); });
+
+function setStatus(msg, isErr){ const s=$('status'); s.textContent=msg||''; s.classList.toggle('err', !!isErr); }
+
+/* ------------------------------------------------------------------ intro roster + chips */
+function renderRoster(){
+  $('roster').innerHTML = SEATS.map(s=>`
+    <div class="seat" style="--sc:${s.color}">
+      <div class="shead">
+        <span class="dot"></span>
+        <span class="stitle">${s.title}</span>
+        <span class="srole">${s.role}</span>
+      </div>
+      <div class="remit">${s.remit}</div>
+    </div>`).join('');
+}
+function renderChips(){
+  $('chips').innerHTML = EXAMPLES.map((e,i)=>`<button class="chip" data-i="${i}">${e}</button>`).join('');
+  $('chips').querySelectorAll('.chip').forEach(c=> c.addEventListener('click', ()=>{
+    $('q').value = EXAMPLES[c.dataset.i]; $('q').focus();
+  }));
+}
+
+/* ------------------------------------------------------------------ API */
+async function callClaude(model, system, userText, maxTokens){
+  const key = $('key').value.trim();
+  if(!key) throw new Error('Add your Anthropic API key up top first.');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify({
+      model, max_tokens:maxTokens||4000,
+      system,
+      messages:[
+        { role:'user', content:userText },
+        { role:'assistant', content:'{' }   // prefill: force a JSON object
+      ]
+    })
+  });
+  if(!res.ok){
+    let detail=''; try{ detail = (await res.json())?.error?.message || ''; }catch(_){}
+    if(res.status===401) throw new Error('Anthropic rejected the key (401). Check it and try again.');
+    throw new Error('API error '+res.status+(detail?': '+detail:''));
+  }
+  const data = await res.json();
+  const text = (data.content||[]).map(b=>b.text||'').join('');
+  return parseJSON('{'+text);
+}
+function parseJSON(raw){
+  let t = String(raw).trim().replace(/^```json\s*/i,'').replace(/```$/,'').trim();
+  const a=t.indexOf('{'), b=t.lastIndexOf('}');
+  if(a>=0 && b>a) t=t.slice(a,b+1);
+  return JSON.parse(t);
+}
+
+/* fast: one call, whole board */
+function fastSystem(brief){
+  const seatSpec = SEATS.map(s=>`- ${s.id} ("${s.title}", ${s.role}): ${s.persona}`).join('\n\n');
+  return `You are the executive board of Vault Fantasy. You advise the solo founder on BUILDING the product and company. You are NOT giving fantasy-football draft advice to a player.
+
+COMPANY BRIEF
+${brief}
+
+THE BOARD (eight seats, each with a persona):
+${seatSpec}
+
+TASK
+Given the founder's decision, have each seat reason from its own lane, then synthesize a single decisive founder voice. Engage a seat only if it has something material to say; a seat with nothing useful stays "quiet". Name real tensions between seats. Be concrete and specific to Vault's actual constraints (seasonal window, ParlayAPI cap, compliance exposure, measured-model moat, solo builder). Do not hedge into generic startup advice.
+
+OUTPUT
+Return ONLY a JSON object, no prose outside it, matching exactly:
+{
+  "decision": "one-line restatement of the decision",
+  "seats": [
+    { "id":"<seat id>", "engaged": true|false, "stance":"go|caution|block|context",
+      "headline":"<= 7 words", "take":"2-4 sentences in this seat's voice, Vault-specific" }
+  ],
+  "tensions": [ { "between":["<seatId>","<seatId>"], "note":"one sentence on the disagreement" } ],
+  "synthesis":"1-2 short paragraphs, one founder voice, decisive, resolves the key tension",
+  "recommendation":"one decisive sentence: what to actually do",
+  "confidence":"high|medium|low",
+  "confidenceWhy":"one short sentence"
+}
+Rules: include an entry in "seats" for ALL eight ids. "stance" of a quiet (engaged:false) seat should be "context". Use plain hyphens, never em dashes.`;
+}
+
+/* deep: one call per seat, then a synthesis call */
+function seatSystem(seat, brief){
+  return `${seat.persona}
+
+You sit on the executive board of Vault Fantasy, advising the solo founder on building the product/company (not on drafting a fantasy team).
+
+COMPANY BRIEF
+${brief}
+
+Answer ONLY from your seat's lane. If you have nothing material to add on this decision, say so honestly (engaged:false). Be concrete to Vault's real constraints. Return ONLY this JSON:
+{ "engaged": true|false, "stance":"go|caution|block|context", "headline":"<= 7 words", "take":"2-4 sentences, your voice, Vault-specific" }
+Use plain hyphens, never em dashes.`;
+}
+function synthSystem(brief){
+  return `You are the chair of Vault Fantasy's executive board, synthesizing the seats' individual reads into ONE decisive founder voice.
+
+COMPANY BRIEF
+${brief}
+
+You will receive the founder's decision and each seat's take. Produce the synthesis. Name the real tension. Be decisive, Vault-specific, no generic startup filler. Return ONLY this JSON:
+{ "decision":"one-line restatement",
+  "tensions":[ {"between":["<seatId>","<seatId>"],"note":"one sentence"} ],
+  "synthesis":"1-2 short paragraphs, one founder voice",
+  "recommendation":"one decisive sentence",
+  "confidence":"high|medium|low", "confidenceWhy":"one short sentence" }
+Use plain hyphens, never em dashes.`;
+}
+
+async function runDeep(model, brief, q){
+  setStatus('Deep mode: polling all eight seats in parallel...');
+  const results = await Promise.all(SEATS.map(async s=>{
+    try{ const r = await callClaude(model, seatSystem(s,brief), 'Decision: '+q, 900); return {id:s.id, ...r}; }
+    catch(e){ return {id:s.id, engaged:false, stance:'context', headline:'(unavailable)', take:'This seat could not be reached: '+e.message}; }
+  }));
+  setStatus('Synthesizing the board...');
+  const takeSummary = results.map(r=>`${SEAT[r.id].title} [${r.engaged?r.stance:'quiet'}]: ${r.take}`).join('\n');
+  const synth = await callClaude(model, synthSystem(brief), `Decision: ${q}\n\nSeat takes:\n${takeSummary}`, 1600);
+  return { decision:synth.decision||q, seats:results, tensions:synth.tensions||[], synthesis:synth.synthesis||'', recommendation:synth.recommendation||'', confidence:synth.confidence||'medium', confidenceWhy:synth.confidenceWhy||'' };
+}
+
+/* ------------------------------------------------------------------ render answer */
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function paras(s){ return String(s||'').split(/\n{2,}|\n/).filter(Boolean).map(p=>`<p>${esc(p)}</p>`).join(''); }
+
+function render(r){
+  $('intro').classList.add('hidden');
+  const conf = (r.confidence||'medium').toLowerCase();
+  const engaged = SEATS.filter(s=> (r.seats.find(x=>x.id===s.id)||{}).engaged);
+  const quiet   = SEATS.filter(s=> !(r.seats.find(x=>x.id===s.id)||{}).engaged);
+  const by = id => r.seats.find(x=>x.id===id) || {};
+
+  const tensionsHTML = (r.tensions&&r.tensions.length) ? `<div class="tensions">${
+    r.tensions.map(t=>{
+      const names=(t.between||[]).map(id=> SEAT[id]?SEAT[id].title:id).join('  vs  ');
+      return `<div class="tension"><span class="vs">${esc(names)}</span><span>${esc(t.note)}</span></div>`;
+    }).join('')}</div>` : '';
+
+  const synthHTML = `
+    <div class="synth">
+      <div class="decision">${esc(r.decision||'')}</div>
+      <div class="reco">
+        <div class="txt">${esc(r.recommendation||'')}</div>
+        <div class="conf ${conf}">${esc(conf)} confidence</div>
+      </div>
+      <div class="body">${paras(r.synthesis)}</div>
+      ${r.confidenceWhy?`<div class="confwhy">${esc(r.confidenceWhy)}</div>`:''}
+      ${tensionsHTML}
+    </div>`;
+
+  const seatsHTML = engaged.length ? `<div class="seclabel">Seat by seat</div><div class="seats">${
+    engaged.map(s=>{ const d=by(s.id); const st=(d.stance||'context').toLowerCase();
+      return `<div class="seat" style="--sc:${s.color}">
+        <div class="shead">
+          <span class="dot"></span><span class="stitle">${s.title}</span>
+          <span class="stance ${st}">${esc(st)}</span>
+        </div>
+        ${d.headline?`<div class="headline">${esc(d.headline)}</div>`:''}
+        <div class="take">${esc(d.take)}</div>
+      </div>`; }).join('')}</div>` : '';
+
+  const quietHTML = quiet.length ? `<div class="quiet">${
+    quiet.map(s=>`<span class="qchip" style="--sc:${s.color}"><span class="dot"></span><b>${s.title}</b> quiet</span>`).join('')
+  }</div>` : '';
+
+  $('answer').innerHTML = synthHTML + seatsHTML + quietHTML;
+  $('answer').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ------------------------------------------------------------------ run */
+async function convene(){
+  const q = $('q').value.trim();
+  if(!q){ setStatus('Type a decision first.', true); return; }
+  const model = $('model').value;
+  const brief = $('brief').value.trim() || DEFAULT_BRIEF;
+  $('go').disabled = true;
+  setStatus('');
+  $('answer').innerHTML = '';
+  try{
+    let r;
+    if($('deep').checked){ r = await runDeep(model, brief, q); }
+    else{
+      setStatus('Convening the board...');
+      r = await callClaude(model, fastSystem(brief), 'Decision: '+q, 4000);
+    }
+    render(r);
+    setStatus('');
+    pushHistory(q, r);
+  }catch(e){
+    setStatus(e.message || 'Something went wrong.', true);
+  }finally{
+    $('go').disabled = false;
+  }
+}
+$('go').addEventListener('click', convene);
+$('q').addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='Enter') convene(); });
+document.querySelector('.convene').title = 'Cmd/Ctrl + Enter';
+
+/* ------------------------------------------------------------------ history */
+function pushHistory(q, r){
+  history.unshift({ q, rec:r.recommendation||'', conf:r.confidence||'', r, ts:Date.now() });
+  history = history.slice(0,20);
+  if($('remember').checked){ try{ localStorage.setItem(LS.hist, JSON.stringify(history)); }catch(e){} }
+  renderHistory();
+}
+function renderHistory(){
+  if(!history.length){ $('histWrap').classList.add('hidden'); return; }
+  $('histWrap').classList.remove('hidden');
+  $('hist').innerHTML = history.map((h,i)=>`
+    <div class="hitem" data-i="${i}">
+      <span class="hq">${esc(h.q)}</span>
+      <span class="hr">${esc((h.conf||'').toUpperCase())}</span>
+    </div>`).join('');
+  $('hist').querySelectorAll('.hitem').forEach(el=> el.addEventListener('click', ()=>{
+    const h = history[el.dataset.i]; $('q').value = h.q; render(h.r);
+  }));
+}
+
+/* ------------------------------------------------------------------ boot */
+loadSettings();
+renderRoster();
+renderChips();
+renderHistory();
+</script>
+</body>
+</html>

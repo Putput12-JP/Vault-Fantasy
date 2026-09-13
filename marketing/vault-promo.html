@@ -1,0 +1,211 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --text:#f3f4f7;--text2:#c9cdd6;--muted:#868c9b;--accent:#8fb4e0;
+    --s2:#161922;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.13);
+    --qb:#ff6680;--wr:#7bd0ff;--te:#f5c842;--rb:#b9d2ec;--pick:#868c9b;
+    --up:#f5c842;--fl:#64d2a0;--rk:#e2647a;--si:#8fb4e0;
+    --sans:'Archivo','Hanken Grotesk',system-ui,sans-serif;
+    --mono:'JetBrains Mono',monospace;
+  }
+  html,body{width:1080px;height:1350px}
+  .card{
+    width:1080px;height:1350px;position:relative;overflow:hidden;
+    font-family:var(--sans);color:var(--text);
+    background:radial-gradient(120% 90% at 50% -8%, #182234 0%, #10131b 44%, #0b0c11 100%);
+    padding:64px 64px 0;
+  }
+  .card::before{content:"";position:absolute;inset:0;
+    background:radial-gradient(60% 40% at 84% 34%, rgba(143,180,224,.10), transparent 70%);
+    pointer-events:none}
+
+  /* ── Header ── */
+  .brand{display:flex;align-items:center;gap:16px;justify-content:center}
+  .brand img{width:52px;height:52px}
+  .brand .wm{font-weight:900;font-size:34px;letter-spacing:.16em}
+  .title{text-align:center;margin-top:30px;font-weight:900;font-size:96px;
+    line-height:.94;letter-spacing:-.02em}
+  .title .accent{color:var(--accent)}
+  .tagline{text-align:center;margin-top:22px;font-family:var(--mono);font-size:19px;
+    font-weight:700;letter-spacing:.34em;text-transform:uppercase;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;gap:18px}
+  .tagline .d{width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:.9}
+
+  /* ── Body: features + mockup ── */
+  .body{display:grid;grid-template-columns:1fr 1fr;gap:44px;margin-top:70px;align-items:start}
+
+  .feat{display:flex;gap:22px;margin-bottom:50px}
+  .feat:last-child{margin-bottom:0}
+  .ficon{flex:none;width:62px;height:62px;border-radius:15px;
+    background:rgba(143,180,224,.10);border:1px solid rgba(143,180,224,.28);
+    display:flex;align-items:center;justify-content:center}
+  .ficon svg{width:31px;height:31px;stroke:var(--accent);fill:none;stroke-width:1.9;
+    stroke-linecap:round;stroke-linejoin:round}
+  .ft{font-weight:800;font-size:25px;letter-spacing:-.01em}
+  .fd{color:var(--text2);font-size:17px;line-height:1.4;margin-top:7px}
+
+  /* ── Product mockups ── */
+  .mockcol{display:flex;flex-direction:column;gap:18px}
+  .mcard{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));
+    border:1px solid var(--border2);border-radius:20px;padding:20px 20px 22px;
+    box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+  .mhead{display:flex;align-items:center;gap:9px;margin-bottom:15px}
+  .mhead img{width:19px;height:19px}
+  .mhead b{font-weight:800;font-size:16px;letter-spacing:-.01em}
+  .pill{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:700;
+    letter-spacing:.1em;color:var(--accent);border:1px solid rgba(143,180,224,.3);
+    border-radius:999px;padding:4px 10px;white-space:nowrap}
+
+  /* grade-keys legend — right-aligned to sit over the number columns */
+  .gk{display:flex;gap:15px;margin-bottom:6px;justify-content:flex-end}
+  .gk span{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:5px}
+  .gk i{width:7px;height:7px;border-radius:2px;display:inline-block}
+
+  /* draft board rows */
+  .brow{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--border)}
+  .brow.first{border-top:none}
+  .brk{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--muted);width:14px;text-align:center;flex:none}
+  .bface{width:37px;height:37px;border-radius:9px;border:1px solid var(--border);flex:none;
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px}
+  .bid{flex:1;min-width:0}
+  .bname{font-weight:800;font-size:15px;letter-spacing:-.01em;line-height:1.1;white-space:nowrap}
+  .bpos{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);margin-top:2px}
+  .bval{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--text);flex:none}
+  .bgr{display:flex;gap:8px;margin-left:13px;flex:none}
+  .bgr b{font-family:var(--mono);font-weight:700;font-size:15px;width:18px;text-align:center;font-variant-numeric:tabular-nums}
+
+  /* team review */
+  .trstats{display:flex;gap:10px;margin-bottom:17px}
+  .trstat{flex:1;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:11px;padding:13px 8px;text-align:center}
+  .trstat .n{font-weight:900;font-size:23px;letter-spacing:-.02em;line-height:1}
+  .trstat .l{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+  .pstr{display:flex;flex-direction:column;gap:12px}
+  .prow{display:flex;align-items:center;gap:13px}
+  .prow .pk{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);width:24px;flex:none}
+  .ptrack{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
+  .ptrack i{display:block;height:100%;border-radius:4px}
+  .prow .pw{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;width:54px;text-align:right;flex:none}
+
+  /* ── Stat strip (fully centered cards) ── */
+  .stats{position:absolute;left:64px;right:64px;bottom:132px;height:120px;
+    display:grid;grid-template-columns:repeat(4,1fr);
+    background:rgba(255,255,255,.025);border:1px solid var(--border2);border-radius:18px;overflow:hidden}
+  .stat{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:0 14px;border-right:1px solid var(--border)}
+  .stat:last-child{border-right:none}
+  .sn{font-weight:900;font-size:36px;letter-spacing:-.02em;line-height:1.02}
+  .sn .accent{color:var(--accent)}
+  .sl{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.11em;
+    text-transform:uppercase;color:var(--muted);margin-top:9px}
+
+  /* ── Footer ── */
+  .footer{position:absolute;left:0;right:0;bottom:0;height:104px;
+    display:flex;align-items:center;justify-content:space-between;padding:0 64px;
+    background:linear-gradient(180deg,transparent,rgba(143,180,224,.05));
+    border-top:1px solid var(--border)}
+  .cta{font-weight:900;font-size:30px;letter-spacing:-.01em}
+  .url{font-family:var(--mono);font-weight:700;font-size:22px;letter-spacing:.14em;color:var(--accent)}
+</style></head>
+<body><div class="card">
+
+  <div class="brand"><img src="/vault-shield.svg" alt=""><div class="wm">VAULT</div></div>
+
+  <div class="title">THE FANTASY<br><span class="accent">WAR ROOM</span></div>
+  <div class="tagline"><span>REAL MARKET</span><span class="d"></span><span>NOT OPINIONS</span></div>
+
+  <div class="body">
+    <div class="feats">
+      <div class="feat">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M4 7h13l-3-3M20 17H7l3 3"/></svg></div>
+        <div><div class="ft">Real-Market Trade Values</div>
+          <div class="fd">Priced from 250k+ real Sleeper trades, not a vote-based calculator.</div></div>
+      </div>
+      <div class="feat">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M13 3 4 14h7l-1 7 9-11h-7z"/></svg></div>
+        <div><div class="ft">Live Draft Room</div>
+          <div class="fd">Reads your live Sleeper draft and calls the pick, with a plan that adapts.</div></div>
+      </div>
+      <div class="feat">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h10M4 17h6"/><path d="M17 8l2.5 2.5L23 6"/></svg></div>
+        <div><div class="ft">Optimal Lineups</div>
+          <div class="fd">One tap. Best lineup. Pushed straight back to Sleeper.</div></div>
+      </div>
+      <div class="feat">
+        <div class="ficon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+        <div><div class="ft">Trade Finder</div>
+          <div class="fd">Surfaces every trade worth making across all your leagues.</div></div>
+      </div>
+      <div class="feat">
+        <div class="ficon"><svg viewBox="0 0 24 24"><path d="M4 5h7v7H4zM13 5h7v4h-7zM13 12h7v7h-7zM4 15h7v4H4z"/></svg></div>
+        <div><div class="ft">Multi-League Portfolio</div>
+          <div class="fd">Every roster, every target, one war room.</div></div>
+      </div>
+    </div>
+
+    <div class="mockcol">
+
+      <div class="mcard">
+        <div class="mhead"><img src="/vault-shield.svg" alt=""><b>Draft Vault</b><span class="pill">REDRAFT · 1QB</span></div>
+        <div class="gk">
+          <span><i style="background:var(--up)"></i>Upside</span>
+          <span><i style="background:var(--fl)"></i>Floor</span>
+          <span><i style="background:var(--rk)"></i>Risk</span>
+          <span><i style="background:var(--si)"></i>Fit</span>
+        </div>
+        <div class="brow first">
+          <div class="brk">1</div>
+          <div class="bface" style="background:linear-gradient(160deg,#2f2a3f,#171522);color:var(--rb)">JG</div>
+          <div class="bid"><div class="bname">Jahmyr Gibbs</div><div class="bpos">RB1 · DET</div></div>
+          <div class="bval">10,657</div>
+          <div class="bgr"><b style="color:var(--up)">10</b><b style="color:var(--fl)">9</b><b style="color:var(--rk)">2</b><b style="color:var(--si)">9</b></div>
+        </div>
+        <div class="brow">
+          <div class="brk">2</div>
+          <div class="bface" style="background:linear-gradient(160deg,#2a2f3f,#151822);color:var(--rb)">BR</div>
+          <div class="bid"><div class="bname">Bijan Robinson</div><div class="bpos">RB2 · ATL</div></div>
+          <div class="bval">10,290</div>
+          <div class="bgr"><b style="color:var(--up)">10</b><b style="color:var(--fl)">10</b><b style="color:var(--rk)">3</b><b style="color:var(--si)">9</b></div>
+        </div>
+        <div class="brow">
+          <div class="brk">3</div>
+          <div class="bface" style="background:linear-gradient(160deg,#22303f,#131a22);color:var(--wr)">JC</div>
+          <div class="bid"><div class="bname">Ja'Marr Chase</div><div class="bpos">WR1 · CIN</div></div>
+          <div class="bval">9,413</div>
+          <div class="bgr"><b style="color:var(--up)">10</b><b style="color:var(--fl)">10</b><b style="color:var(--rk)">3</b><b style="color:var(--si)">9</b></div>
+        </div>
+      </div>
+
+      <div class="mcard">
+        <div class="mhead"><img src="/vault-shield.svg" alt=""><b>Team Review</b><span class="pill">THE RACE</span></div>
+        <div class="trstats">
+          <div class="trstat"><div class="n">#1</div><div class="l">Power Seed</div></div>
+          <div class="trstat"><div class="n">11-3</div><div class="l">Proj Finish</div></div>
+          <div class="trstat"><div class="n" style="color:var(--accent)">95%</div><div class="l">Playoff Odds</div></div>
+        </div>
+        <div class="pstr">
+          <div class="prow"><div class="pk">QB</div><div class="ptrack"><i style="width:34%;background:var(--qb)"></i></div><div class="pw" style="color:var(--qb)">Weak</div></div>
+          <div class="prow"><div class="pk">RB</div><div class="ptrack"><i style="width:72%;background:var(--fl)"></i></div><div class="pw" style="color:var(--fl)">Strong</div></div>
+          <div class="prow"><div class="pk">WR</div><div class="ptrack"><i style="width:95%;background:var(--wr)"></i></div><div class="pw" style="color:var(--wr)">Elite</div></div>
+          <div class="prow"><div class="pk">TE</div><div class="ptrack"><i style="width:30%;background:var(--qb)"></i></div><div class="pw" style="color:var(--qb)">Weak</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="sn">250K<span class="accent">+</span></div><div class="sl">Real Trades</div></div>
+    <div class="stat"><div class="sn">38K<span class="accent">+</span></div><div class="sl">Drafts Analyzed</div></div>
+    <div class="stat"><div class="sn">Dynasty<br>+ Redraft</div><div class="sl">Every Format</div></div>
+    <div class="stat"><div class="sn"><span class="accent">Free</span></div><div class="sl">This Season</div></div>
+  </div>
+
+  <div class="footer">
+    <div class="cta">What's your roster actually worth?</div>
+    <div class="url">VAULTFANTASY.COM</div>
+  </div>
+
+</div></body></html>

@@ -1,0 +1,187 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Game Markets — table mock</title>
+<style>
+:root{--s1:#0e1626;--s2:#131d30;--s3:#1b2740;--s4:#243352;--text:#eaf2fc;--text2:#bdcce2;--muted:#808fa6;
+--border:rgba(123,170,240,0.10);--border2:rgba(123,170,240,0.17);--accent2:#7bd0ff;--gold:#f5c842;--green:#3DCC7A;--red:#e23a4e;
+--mono:ui-monospace,"SF Mono",Menlo,monospace;--pm:#6f7bff;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--s1);color:var(--text);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:20px;margin:0 0 3px}.sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+.tbl{width:100%;border-collapse:collapse;background:var(--s2);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+thead th{font:600 11px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:13px 14px;background:var(--s1);border-bottom:1px solid var(--border)}
+thead th.r{text-align:left}
+tbody.game{border-top:6px solid var(--s1)}
+tbody.game:first-of-type{border-top:0}
+td{padding:9px 14px;vertical-align:middle;border-bottom:1px solid var(--border)}
+tr.r1 td{border-bottom:0;padding-bottom:3px}
+tr.r2 td{padding-top:3px}
+.tm-c{white-space:nowrap;position:relative}
+.tm-c img{width:22px;height:22px;vertical-align:middle;margin-right:8px}
+.cd{font-weight:800;font-size:14px;letter-spacing:.02em}
+.wp{font:600 11px var(--mono);color:var(--muted);margin-left:8px}
+.atH{position:absolute;left:-2px;top:-11px;color:var(--muted);font-size:10px;opacity:.5}
+.mk{font-family:var(--mono);white-space:nowrap}
+.ln{font-weight:800;color:var(--text)}
+.px{color:var(--text2);font-weight:600}
+.px.big{font-size:14px;font-weight:800;color:var(--text)}
+.sd{font:800 10px var(--mono);padding:1px 4px;border-radius:4px;margin-right:5px}
+.sd.o{color:var(--green);background:color-mix(in srgb,var(--green) 15%,transparent)}
+.sd.u{color:var(--red);background:color-mix(in srgb,var(--red) 15%,transparent)}
+.bk{font-style:normal;font-size:10px;color:var(--muted);margin-left:6px;border:1px solid var(--border2);border-radius:4px;padding:1px 4px}
+.vl{font-family:var(--mono);color:var(--accent2);font-weight:700;white-space:nowrap}
+.vlab{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-right:5px;font-weight:600}
+.rm{font-family:var(--mono);white-space:nowrap;background:color-mix(in srgb,var(--pm) 5%,transparent);border-left:1px solid var(--border)}
+.tk{color:var(--muted);font-size:12px}.tk b{color:var(--text2)}.tk .tm{color:var(--pm);font-weight:800}
+.vl2{color:var(--muted);font-size:12px;margin-top:3px}.vl2 b{color:var(--text2)}
+.na{color:var(--muted);opacity:.5}.hot{filter:saturate(1.2)}
+.legend{color:var(--muted);font-size:12px;margin-top:14px;display:flex;gap:18px;flex-wrap:wrap}
+.legend b{color:var(--text2)}
+</style></head>
+<body><div class="wrap">
+<h1>Game Markets</h1>
+<p class="sub">2026 · Week 1 · every spread, total and moneyline at the best available price, with the Vault model line and Polymarket money — table view mock</p>
+<table class="tbl">
+<thead><tr>
+  <th class="r">Matchup</th><th>Spread</th><th>Total</th><th>Moneyline</th><th>Vault line</th><th>Real money</th>
+</tr></thead>
+
+  <tbody class="game">
+    <tr class="r1">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/chi.png"><span class="cd">CHI</span><span class="wp">60%</span></td>
+      <td class="mk"><span class="ln">-3.5</span> <span class="px">+121</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="sd o">O</span><span class="ln">49.5</span> <span class="px">+135</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="px big">-154</span><i class="bk">ProphetX</i></td>
+      <td class="vl"><span class="vlab">model</span> CHI 2.4</td>
+      <td class="rm" rowspan="2"><div class="vl2"><b>$36k</b> traded</div></td>
+    </tr>
+    <tr class="r2">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/car.png"><span class="cd">CAR</span><span class="wp">40%</span><span class="atH">@</span></td>
+      <td class="mk"><span class="ln">-2.5</span> <span class="px">+182</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="sd u">U</span><span class="ln">46.5</span> <span class="px">+107</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="px big">+150</span><i class="bk">Hard Rock Bet</i></td>
+      <td class="vl"><span class="vlab">win</span> CHI 60%</td>
+    </tr>
+  </tbody>
+  <tbody class="game">
+    <tr class="r1">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/tb.png"><span class="cd">TB</span><span class="wp">36%</span></td>
+      <td class="mk"><span class="ln">+1.5</span> <span class="px">+153</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="sd o">O</span><span class="ln">54.5</span> <span class="px">+156</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="px big">+178</span><i class="bk">Novig</i></td>
+      <td class="vl"><span class="vlab">model</span> CIN 2.2</td>
+      <td class="rm" rowspan="2"><div class="vl2"><b>$66k</b> traded</div></td>
+    </tr>
+    <tr class="r2">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/cin.png"><span class="cd">CIN</span><span class="wp">64%</span><span class="atH">@</span></td>
+      <td class="mk"><span class="ln">-4</span> <span class="px">+105</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="sd u">U</span><span class="ln">50</span> <span class="px">-101</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="px big">-184</span><i class="bk">ProphetX</i></td>
+      <td class="vl"><span class="vlab">win</span> CIN 59%</td>
+    </tr>
+  </tbody>
+  <tbody class="game">
+    <tr class="r1">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/no.png"><span class="cd">NO</span><span class="wp">26%</span></td>
+      <td class="mk"><span class="ln">+6.5</span> <span class="px">+115</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="sd o">O</span><span class="ln">50.5</span> <span class="px">-105</span><i class="bk">Fliff</i></td>
+      <td class="mk"><span class="px big">+285</span><i class="bk">Novig</i></td>
+      <td class="vl"><span class="vlab">model</span> DET 8.2</td>
+      <td class="rm" rowspan="2"><div class="vl2"><b>$18k</b> traded</div></td>
+    </tr>
+    <tr class="r2">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/det.png"><span class="cd">DET</span><span class="wp">74%</span><span class="atH">@</span></td>
+      <td class="mk"><span class="ln">-12.5</span> <span class="px">+186</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="sd u">U</span><span class="ln">44.5</span> <span class="px">+178</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="px big">-292</span><i class="bk">Novig</i></td>
+      <td class="vl"><span class="vlab">win</span> DET 81%</td>
+    </tr>
+  </tbody>
+  <tbody class="game">
+    <tr class="r1">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/buf.png"><span class="cd">BUF</span><span class="wp">52%</span></td>
+      <td class="mk"><span class="ln">-4.5</span> <span class="px">+170</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="sd o">O</span><span class="ln">45.5</span> <span class="px">+113</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="px big">-111</span><i class="bk">ProphetX</i></td>
+      <td class="vl"><span class="vlab">model</span> HOU 1.6</td>
+      <td class="rm" rowspan="2"><div class="tk">💵 <b>$4.2k</b> → <b class="tm">BUF</b></div><div class="vl2"><b>$193k</b> traded</div></td>
+    </tr>
+    <tr class="r2">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/hou.png"><span class="cd">HOU</span><span class="wp">48%</span><span class="atH">@</span></td>
+      <td class="mk"><span class="ln">+1</span> <span class="px">+104</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="sd u">U</span><span class="ln">44.5</span> <span class="px">-103</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="px big">+108</span><i class="bk">Novig</i></td>
+      <td class="vl"><span class="vlab">win</span> HOU 57%</td>
+    </tr>
+  </tbody>
+  <tbody class="game">
+    <tr class="r1">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/bal.png"><span class="cd">BAL</span><span class="wp">61%</span></td>
+      <td class="mk"><span class="ln">-3.5</span> <span class="px">+114</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="sd o">O</span><span class="ln">48</span> <span class="px">+100</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="px big">-156</span><i class="bk">Novig</i></td>
+      <td class="vl"><span class="vlab">model</span> BAL 0.8</td>
+      <td class="rm" rowspan="2"><div class="vl2"><b>$110k</b> traded</div></td>
+    </tr>
+    <tr class="r2">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/ind.png"><span class="cd">IND</span><span class="wp">39%</span><span class="atH">@</span></td>
+      <td class="mk"><span class="ln">+3</span> <span class="px">+104</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="sd u">U</span><span class="ln">47.5</span> <span class="px">+104</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="px big">+156</span><i class="bk">ProphetX</i></td>
+      <td class="vl"><span class="vlab">win</span> BAL 54%</td>
+    </tr>
+  </tbody>
+  <tbody class="game">
+    <tr class="r1">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/cle.png"><span class="cd">CLE</span><span class="wp">21%</span></td>
+      <td class="mk"><span class="ln">+4.5</span> <span class="px">+186</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="sd o">O</span><span class="ln">42.5</span> <span class="px">+133</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="px big">+375</span><i class="bk">ProphetX</i></td>
+      <td class="vl"><span class="vlab">model</span> JAX 9.3</td>
+      <td class="rm" rowspan="2"><div class="vl2"><b>$21k</b> traded</div></td>
+    </tr>
+    <tr class="r2">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/jax.png"><span class="cd">JAX</span><span class="wp">79%</span><span class="atH">@</span></td>
+      <td class="mk"><span class="ln">-9</span> <span class="px">-102</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="sd u">U</span><span class="ln">39.5</span> <span class="px">-102</span><i class="bk">DraftKings</i></td>
+      <td class="mk"><span class="px big">-376</span><i class="bk">Novig</i></td>
+      <td class="vl"><span class="vlab">win</span> JAX 84%</td>
+    </tr>
+  </tbody>
+  <tbody class="game">
+    <tr class="r1">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/atl.png"><span class="cd">ATL</span><span class="wp">29%</span></td>
+      <td class="mk"><span class="ln">+3.5</span> <span class="px">+135</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="sd o">O</span><span class="ln">41</span> <span class="px">-101</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="px big">+245</span><i class="bk">Novig</i></td>
+      <td class="vl"><span class="vlab">model</span> PIT 3.6</td>
+      <td class="rm" rowspan="2"><div class="tk">💵 <b>$3.2k</b> → <b class="tm">PIT</b></div><div class="vl2"><b>$182k</b> traded · <span class="hot">🔥</span></div></td>
+    </tr>
+    <tr class="r2">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/pit.png"><span class="cd">PIT</span><span class="wp">71%</span><span class="atH">@</span></td>
+      <td class="mk"><span class="ln">-6</span> <span class="px">-105</span><i class="bk">Pinnacle</i></td>
+      <td class="mk"><span class="sd u">U</span><span class="ln">38.5</span> <span class="px">+135</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="px big">-245</span><i class="bk">ProphetX</i></td>
+      <td class="vl"><span class="vlab">win</span> PIT 65%</td>
+    </tr>
+  </tbody>
+  <tbody class="game">
+    <tr class="r1">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/nyj.png"><span class="cd">NYJ</span><span class="wp">48%</span></td>
+      <td class="mk"><span class="ln">+1</span> <span class="px">-103</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="sd o">O</span><span class="ln">39</span> <span class="px">-104</span><i class="bk">ProphetX</i></td>
+      <td class="mk"><span class="px big">+105</span><i class="bk">ProphetX</i></td>
+      <td class="vl"><span class="vlab">model</span> TEN 3.4</td>
+      <td class="rm" rowspan="2"><div class="vl2"><b>$26k</b> traded</div></td>
+    </tr>
+    <tr class="r2">
+      <td class="tm-c"><img src="https://a.espncdn.com/i/teamlogos/nfl/500/ten.png"><span class="cd">TEN</span><span class="wp">52%</span><span class="atH">@</span></td>
+      <td class="mk"><span class="ln">-5.5</span> <span class="px">+186</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="sd u">U</span><span class="ln">37.5</span> <span class="px">+122</span><i class="bk">Novig</i></td>
+      <td class="mk"><span class="px big">-108</span><i class="bk">Novig</i></td>
+      <td class="vl"><span class="vlab">win</span> TEN 64%</td>
+    </tr>
+  </tbody>
+</table>
+<div class="legend"><span><b>Best price</b> shown per market (book chip)</span><span><b>Vault line</b> = model context, not an edge</span><span><b>💵 → TEAM</b> = net 24h money into a side (Polymarket)</span></div>
+</div></body></html>
