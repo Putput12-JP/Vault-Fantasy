@@ -103,6 +103,8 @@ def is_usage(spec):
 
 MIN_PRIOR = 3          # need this many prior games before we score a projection
 LOOKBACK = 17          # trailing games considered (one season of memory)
+K_INSEASON = 300       # projection-bias shrink: matches the scoreboard's k_shrink
+                       # (Weeks 1–3 barely move; the correction grows with the tape)
 MIN_POINTS = 400       # per-market minimum test points to publish
 
 
@@ -603,7 +605,7 @@ def apply_inseason_overlay(model):
     except Exception:
         return
     mks = sb.get("markets", {})
-    applied, blended = [], []
+    applied, blended, projadj = [], [], []
     for mkt, entry in model.get("markets", {}).items():
         sbm = mks.get(mkt) or {}
 
@@ -638,10 +640,35 @@ def apply_inseason_overlay(model):
             entry["blend_w"] = round(1.0 * (1 - wb) + float(wm) * wb, 4)
             blended.append(f"{mkt}(w={entry['blend_w']},n={nb})")
 
+        # (c) projection-mean overlay — correct a systematic bias in the model's
+        # NUMBER (e.g. QB passing volume ran high in Week 1), not just its prob.
+        # raw multiplier = mean_actual / mean_proj from the tape, sample-shrunk
+        # the same way (n/(n+K)) so a thin week barely moves and the correction
+        # grows only as evidence does, and bounded to ±10% so a noisy estimate
+        # can't distort the projection. The serving JS multiplies proj by
+        # proj_adj (defaults to 1.0 when absent ⇒ no-op offseason). POISSON/TD
+        # markets are excluded: their raw tails are hand-tuned (no_calib) and
+        # TD bias is pure variance at these samples. See docs/edge-feedback-loop.md.
+        if entry.get("kind") != "poisson":
+            mp, ma = sbm.get("mean_proj"), sbm.get("mean_actual")
+            npj = sbm.get("n_proj") or 0
+            if mp and ma and npj > 0:
+                wj = npj / (npj + K_INSEASON)
+                raw_mult = ma / mp
+                adj = 1.0 + wj * (raw_mult - 1.0)
+                adj = max(0.90, min(1.10, adj))
+                if abs(adj - 1.0) >= 1e-4:
+                    entry["proj_adj"] = round(adj, 4)
+                    entry["proj_adj_meta"] = {"raw_mult": round(raw_mult, 4), "n": npj,
+                                              "w": round(wj, 4), "k_shrink": K_INSEASON}
+                    projadj.append(f"{mkt}(×{entry['proj_adj']},n={npj})")
+
     print(f"[prop-model] in-season overlay applied: {', '.join(applied)}" if applied
           else "[prop-model] in-season overlay: no eligible market yet (offseason or thin sample) — no-op")
     if blended:
         print(f"[prop-model] market-blend weights published: {', '.join(blended)}")
+    if projadj:
+        print(f"[prop-model] projection-bias corrections published: {', '.join(projadj)}")
 
 
 def main():

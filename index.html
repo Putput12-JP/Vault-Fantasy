@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-14T12:00', tag:'Improved', title:'Vault’s prop projections now learn from every settled result',
+    items:[
+      'After each week, Vault checks its own player-prop projections against what actually happened and corrects any category that ran high or low. Coming out of Week 1 that means quarterback passing numbers, which had been projecting a touch high, get nudged back toward reality, and rushing-yardage projections, which ran low, get nudged up.',
+      'The correction is deliberately gentle early — one week isn’t much evidence — and gets stronger as more results come in, so the projections you see sharpen as the season goes on.',
+    ],
+  },
+  {
     ts:'2026-09-13T21:00', tag:'Fixed', title:'Player prop picks settle right after the game, not the next day',
     items:[
       'Tracked player props used to sit “pending” for hours after a game finished — sometimes until the next morning — even though the game was clearly over. They now settle within minutes of the final whistle, the same way your game bets already do.',
@@ -41171,6 +41178,12 @@ window.VaultPropModel = (function () {
       ? { params: await roleParams(), pos: opts.pos, rank: num(opts.roleRank) } : null;
     let proj = projectFrom(weeks, m, minPrior, role);
     if (proj == null) return null;
+    // proj_adj: measured projection-bias correction from the settlement loop
+    // (e.g. QB passing ran systematically high). Published per market by
+    // build_prop_projections.py, sample-shrunk + bounded ±10%; absent ⇒ 1.0
+    // (no-op offseason). Applied to the mean BEFORE the inference multipliers so
+    // the corrected number is what feeds both the distribution and the display.
+    if (typeof m.proj_adj === 'number' && m.proj_adj > 0) proj *= m.proj_adj;
     // scriptMult skews pass/rush VOLUME off the spread; folded into the product,
     // it scales the VOLUME term only (proj = vol×eff ⇒ k·vol·eff), never efficiency.
     proj *= (num(opts.oppMult) ?? 1) * (num(opts.envMult) ?? 1) * (num(opts.scriptMult) ?? 1) * (num(opts.usageMult) ?? 1);   // usageMult = measured injury teammate-cascade

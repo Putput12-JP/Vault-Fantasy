@@ -589,6 +589,13 @@ def build_scoreboard(prop_picks, game_picks):
         ml = [logloss1(p["won_close"], p["p_model"]) for p in graded if p["p_model"] is not None]
         kl = [logloss1(p["won_close"], p["p_market"]) for p in graded if p["p_market"] is not None]
         temp, n_temp = fit_temp(rel_pairs)
+        # Projection-mean feedback: does the model's NUMBER (not just its prob)
+        # run systematically high or low vs the actual? bias = mean(proj−actual),
+        # positive ⇒ model over-projects. mean_proj / mean_actual give the builder
+        # a ratio to correct with (proj_adj); every settled row with a projection
+        # counts (pushes included — a push still has a real actual). See docs #… .
+        projd = [p for p in ps if p.get("proj") is not None and p.get("actual") is not None]
+        perr = [(p["proj"] - p["actual"]) for p in projd]
         board["markets"][mk] = {
             "n": len(ps), "n_graded": len(graded),
             "winrate_close": mean([p["won_close"] for p in graded]),
@@ -597,6 +604,9 @@ def build_scoreboard(prop_picks, game_picks):
             "mean_clv_line": mean([p["clv_line"] for p in ps]),
             "model_logloss": mean(ml), "market_logloss": mean(kl),
             "reliability": reliability(rel_pairs),
+            "proj_bias": mean(perr), "proj_mae": mean([abs(e) for e in perr]) if perr else None,
+            "mean_proj": mean([p["proj"] for p in projd]), "mean_actual": mean([p["actual"] for p in projd]),
+            "n_proj": len(perr),
             "inseason_temp": {"t": temp, "n": n_temp, "k_shrink": K_BLEND,
                               "note": "builder composes t onto calib, shrunk by n/(n+K)"},
             "blend": {"w_measured": w_meas, "n": n_blend, "k_shrink": K_BLEND,

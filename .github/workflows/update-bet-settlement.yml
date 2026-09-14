@@ -71,13 +71,22 @@ jobs:
       - name: Settle bets + compute CLV
         run: python3 scripts/settle_bets.py
 
+      # Post-settle retro on Vault's OWN prop projections (record, CLV, per-market
+      # projection bias, model-vs-market log-loss) written to docs/retro/. Reads
+      # the tape settle_bets just wrote; output is DETERMINISTIC (no wall-clock),
+      # so the committed doc only changes when the numbers do and rides the
+      # settlement commit below — no extra churn on quiet */15 ticks. Never fails
+      # the settle.
+      - name: Weekly prop retro
+        run: python3 scripts/weekly_prop_retro.py || true
+
       - name: Commit if changed
         run: |
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
           # Rebase in case another data cron pushed while we ran.
           git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
-          git add data/bet_results.json data/edge_scoreboard.json data/espn_player_stats_*.json 2>/dev/null || true
+          git add data/bet_results.json data/edge_scoreboard.json data/espn_player_stats_*.json docs/retro/*.md 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No settlement changes."
           else
