@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-14T15:00', tag:'New', title:'Track Record: see how Vault does on game markets, and week by week',
+    items:[
+      'New “Vault Game Record” tab sits next to Vault Record — the same kind of scoreboard, but for Vault’s spread, total and moneyline calls league-wide, settled against the final score. Broken down by market and by side, with CLV (did the line move to Vault’s number by kickoff?) as the headline read.',
+      'Both Vault Record and Vault Game Record now have a week filter. Tap All, Week 1, Week 2 and so on to see exactly how the model did on any single slate. The week buttons appear once there’s more than one week of results to compare.',
+    ],
+  },
+  {
     ts:'2026-09-14T12:00', tag:'Improved', title:'Vault’s prop projections now learn from every settled result',
     items:[
       'After each week, Vault checks its own player-prop projections against what actually happened and corrects any category that ran high or low. Coming out of Week 1 that means quarterback passing numbers, which had been projecting a touch high, get nudged back toward reality, and rushing-yardage projections, which ran low, get nudged up.',
@@ -43597,11 +43604,15 @@ window.VaultPropModel = (function () {
   //     picks not your handful. Both aggregate the SAME way, by grade / side /
   //     market / position, so the two records read against each other directly.
   // Units are per-pick at the active entry break-even (win = 1/BE−1, loss −1).
-  let resultsTab = 'mine';   // 'mine' | 'vault'
+  let resultsTab = 'mine';   // 'mine' | 'vault' (props) | 'vaultgame' (game markets)
   // Drill-down filter: dimension → key, stackable across dimensions. Clicking a
   // breakdown row toggles that facet; every group then recomputes inside it, so
   // "Rec Yds by grade + side" is market:'Rec Yds' with the grade/side groups live.
   let _trFilter = {};   // { market?, pos?, grade?, side? }
+  // Week filter for the two league-wide (Vault) tabs — null = every settled week,
+  // else a single week number. Lets you read the model week to week. Reset when
+  // the tab changes (the available weeks differ per lens).
+  let _trWeek = null;
 
   // Live settled ledger (written by scripts/settle_bets.py each week). Null until
   // it lands / when empty in the offseason, so the Vault tab shows a clean empty
@@ -43699,10 +43710,113 @@ window.VaultPropModel = (function () {
     };
   }
 
+  // Week strip for the league-wide tabs. `weeks` is the ascending list of weeks
+  // present in the settled sample; "All" + one chip each. Active reads _trWeek.
+  function _trWeekBar(weeks) {
+    if (!weeks || weeks.length < 2) return '';   // one week ⇒ nothing to filter
+    const btn = (val, lbl) => '<button class="tr-wk' + ((val == null ? _trWeek == null : _trWeek === val) ? ' on' : '')
+      + '" data-wk="' + (val == null ? 'all' : val) + '">' + lbl + '</button>';
+    return '<div class="tr-wkbar"><span class="tr-wklbl">Week</span><div class="tr-wkstrip">'
+      + btn(null, 'All') + weeks.map(w => btn(w, 'Wk ' + w)).join('') + '</div></div>';
+  }
+  const _trWeeksOf = rows => [...new Set(rows.filter(r => r.res === 'W' || r.res === 'L' || r.res === 'P')
+    .map(r => r.week).filter(w => w != null))].sort((a, b) => a - b);
+  const _trWeekMatch = r => _trWeek == null || r.week === _trWeek;
+
+  // ── Vault Game Record — the model's league-wide GAME-MARKET calls (spread /
+  // total / moneyline), settled vs the final score. Separate scale from props:
+  // no A–F grade, and CLV vs the closing line is the headline signal (it accrues
+  // every week at low variance). Units are per bet at each pick's real price
+  // (spread/total at −110, ML at its closing price).
+  const _GVMKL = { spread: 'Spread', total: 'Total', ml: 'Moneyline' };
+  const _gvSide = r => r.market === 'total' ? (r.side === 'under' ? 'Under' : 'Over')
+    : (r.side === 'home' ? 'Home' : 'Away');
+  function _pkVaultGame(ledger) {
+    return ((ledger && ledger.games) || []).filter(g => g.market && g.market !== 'final').map(g => ({
+      market: g.market, side: g.side, week: g.week, season: g.season,
+      away: g.away, home: g.home, awayScore: g.away_score, homeScore: g.home_score,
+      line: g.line_close != null ? g.line_close : g.line_open, vault: g.vault_line,
+      price: g.market === 'ml' ? (g.ml_close != null ? g.ml_close : g.ml_open) : -110,
+      beat: g.beat_close == null ? null : g.beat_close, offseason: !!g.model_offseason,
+      res: g.push ? 'P' : (g.won_close === 1 ? 'W' : g.won_close === 0 ? 'L' : null),
+    }));
+  }
+  function _gameVaultAgg(rows) {
+    const dec = a => a == null ? null : (a > 0 ? 1 + a / 100 : 1 + 100 / Math.abs(a));
+    const settled = rows.filter(r => r.res === 'W' || r.res === 'L');
+    const W = settled.filter(r => r.res === 'W').length, L = settled.length - W;
+    const unitsOf = s => { let u = 0, h = false; s.forEach(r => { const d = dec(r.price); if (d == null) return; h = true; u += r.res === 'W' ? (d - 1) : -1; }); return h && s.length ? u / s.length : null; };
+    const clvOf = s => { const c = s.filter(r => r.beat != null); return c.length ? c.filter(r => r.beat === 1).length / c.length : null; };
+    const group = (keyFn, order) => {
+      const m = {};
+      settled.forEach(r => { const k = keyFn(r); if (k == null) return; (m[k] = m[k] || []).push(r); });
+      const keys = (order || Object.keys(m).sort()).filter(k => m[k]);
+      return keys.map(k => { const s = m[k], w = s.filter(x => x.res === 'W').length;
+        return { k, n: s.length, w, l: s.length - w, wr: w / s.length, roi: unitsOf(s) }; });
+    };
+    return {
+      W, L, push: rows.filter(r => r.res === 'P').length, pend: rows.filter(r => !r.res).length,
+      n: settled.length, wr: settled.length ? W / settled.length : null, units: unitsOf(settled), clv: clvOf(settled),
+      byMarket: group(r => _GVMKL[r.market] || r.market, ['Spread', 'Total', 'Moneyline']),
+      bySide: group(_gvSide, ['Home', 'Away', 'Over', 'Under']),
+    };
+  }
+  // Read-only breakdown bars (game markets don't drill-down like props do).
+  function _trBarsRO(title, rows) {
+    if (!rows.length) return '';
+    const body = rows.map(r => {
+      const cls = _trUC(r.roi), w = Math.round(r.wr * 100);
+      return '<div class="tr-row tr-row-ro">'
+        + '<div class="tr-rlbl"><span class="tr-lbl">' + _trEsc(r.k) + '</span></div>'
+        + '<div class="tr-rbar"><span class="tr-fill ' + cls + '" style="width:' + w + '%"></span></div>'
+        + '<div class="tr-rwr ' + cls + '">' + _trPct(r.wr) + '</div>'
+        + '<div class="tr-rrec">' + r.w + '–' + r.l + '</div>'
+        + '<div class="tr-rroi ' + cls + '">' + _trU(r.roi) + '</div></div>';
+    }).join('');
+    return '<div class="tr-group"><div class="tr-gt">' + title + '</div>'
+      + '<div class="tr-rhead"><span></span><span></span><span>WIN%</span><span>W–L</span><span>UNITS</span></div>'
+      + body + '</div>';
+  }
+  function _gameVaultHero(a, ctx) {
+    return '<div class="tr-hero">'
+      + '<div class="tr-h-main"><div class="tr-h-rec">' + a.W + '–' + a.L + (a.push ? '–' + a.push : '') + '</div>'
+      + '<div class="tr-h-sub">' + (a.n ? a.n.toLocaleString() + ' settled' : 'nothing settled yet')
+      + (a.pend ? ' · ' + a.pend.toLocaleString() + ' pending' : '') + (ctx ? ' · ' + ctx : '') + '</div></div>'
+      + '<div class="tr-h-kpis">'
+      + '<div class="tr-kpi"><div class="tr-kl">Win rate</div><div class="tr-kv ' + (a.wr != null && a.wr >= 0.5 ? 'good' : '') + '">' + _trPct(a.wr) + '</div><div class="tr-kt">vs the closing line</div></div>'
+      + '<div class="tr-kpi"><div class="tr-kl">CLV beat</div><div class="tr-kv ' + (a.clv != null && a.clv >= 0.5 ? 'good' : '') + '">' + _trPct(a.clv) + '</div><div class="tr-kt">closed better than we took</div></div>'
+      + '<div class="tr-kpi"><div class="tr-kl">Units</div><div class="tr-kv ' + _trUC(a.units) + '">' + _trU(a.units) + '</div><div class="tr-kt">per bet at price</div></div>'
+      + '</div></div>';
+  }
+  function _trVaultGameList(rows) {
+    const settled = rows.filter(r => r.res === 'W' || r.res === 'L' || r.res === 'P');
+    if (!settled.length) return '';
+    const sorted = settled.slice().sort((x, y) => (y.week || 0) - (x.week || 0)
+      || String(x.market).localeCompare(String(y.market)) || String(x.home || '').localeCompare(String(y.home || '')));
+    const sideLbl = r => r.market === 'total'
+      ? (r.side === 'under' ? 'Under ' : 'Over ') + (r.line != null ? Math.abs(r.line) : '')
+      : (r.side === 'home' ? r.home : r.away) + (r.market === 'spread' && r.line != null ? ' ' + (r.side === 'home' ? r.line : -r.line) : '');
+    const list = sorted.slice(0, _TR_LIST_CAP).map(r => {
+      const rc = r.res === 'W' ? 'w' : r.res === 'L' ? 'l' : 'pend';
+      const res = r.res === 'W' ? '<span class="mp-res w">WON</span>' : r.res === 'L' ? '<span class="mp-res l">LOST</span>' : '<span class="mp-res pend">PUSH</span>';
+      const sc = (r.homeScore != null) ? '<span class="tr-pk-act" title="Final score">' + r.awayScore + '–' + r.homeScore + '</span>' : '';
+      const vchip = r.vault != null ? '<div class="tr-pk-meta"><span class="tr-mk pos" title="Vault’s projected line for this game">Vault ' + _trEsc(typeof r.vault === 'number' ? Math.round(r.vault * 10) / 10 : r.vault) + '</span></div>' : '';
+      return '<div class="tr-pk ' + rc + '">'
+        + '<div class="tr-pk-l"><span class="tr-gp-mk">' + (_GVMKL[r.market] || r.market) + '</span>'
+        + '<div class="tr-pk-nm"><b>' + _trEsc(sideLbl(r)) + '</b>'
+        + '<span>' + _trEsc(r.away) + ' @ ' + _trEsc(r.home) + ' · Wk ' + _trEsc(r.week || '?') + '</span>' + vchip + '</div></div>'
+        + '<div class="tr-pk-r">' + sc + res + '</div></div>';
+    }).join('');
+    const more = settled.length > _TR_LIST_CAP
+      ? '<div class="tr-note" style="border-top:none;padding:6px 0 0">Showing ' + _TR_LIST_CAP + ' of ' + settled.length.toLocaleString() + '.</div>' : '';
+    return '<div class="tr-listwrap"><div class="tr-gt">Settled game markets</div>' + list + more + '</div>';
+  }
+
   function _trShell(subtitle, body) {
     const tabs = '<span class="bt-seg tr-tabs">'
       + '<button data-rt="mine" class="' + (resultsTab === 'mine' ? 'on' : '') + '">My Picks</button>'
-      + '<button data-rt="vault" class="' + (resultsTab === 'vault' ? 'on' : '') + '">Vault Record</button></span>';
+      + '<button data-rt="vault" class="' + (resultsTab === 'vault' ? 'on' : '') + '">Vault Record</button>'
+      + '<button data-rt="vaultgame" class="' + (resultsTab === 'vaultgame' ? 'on' : '') + '">Vault Game Record</button></span>';
     return '<div class="eb-wrap"><div class="eb-board">'
       + '<div class="eb-bh"><div><div class="eb-t">Track Record</div><div class="eb-cn">' + subtitle + '</div></div>'
       + '<button class="eb-mypicks" id="eb-backboard">← Board</button></div>'
@@ -43757,8 +43871,13 @@ window.VaultPropModel = (function () {
       if (back) back.onclick = () => { propsView = 'board'; renderPropsBoard(); };
       inner.querySelectorAll('.tr-tabs [data-rt]').forEach(b => b.onclick = () => {
         if (resultsTab === b.dataset.rt) return;
-        resultsTab = b.dataset.rt; _trFilter = {};   // each tab starts clean
+        resultsTab = b.dataset.rt; _trFilter = {}; _trWeek = null;   // each tab starts clean
         renderResults();
+      });
+      inner.querySelectorAll('.tr-wk[data-wk]').forEach(b => b.onclick = () => {
+        const v = b.dataset.wk === 'all' ? null : Number(b.dataset.wk);
+        if (_trWeek === v) return;
+        _trWeek = v; renderResults();
       });
       inner.querySelectorAll('.mp-del').forEach(b => b.onclick = () => {
         picksSave(picksLoad().filter(p => p.k !== b.dataset.k)); renderResults();
@@ -43777,6 +43896,7 @@ window.VaultPropModel = (function () {
       });
     };
     if (resultsTab === 'vault') return _drawVault(wire);
+    if (resultsTab === 'vaultgame') return _drawVaultGame(wire);
     return _drawMine(wire);
   }
 
@@ -43927,17 +44047,58 @@ window.VaultPropModel = (function () {
         body = '<div class="tr-empty"><div class="tr-ek">No settled Vault picks yet</div>'
           + '<div class="tr-et">This fills in automatically once games are played. Every prop Vault grades league-wide is settled against the real box score, then shown here by grade, side, market and position. Thousands of picks, so an A-grade’s win rate is a real read, not a coin flip.</div></div>';
       } else {
-        const rows = all.filter(_trMatch);
+        const weeks = _trWeeksOf(all);
+        if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;   // week vanished (source changed) ⇒ fall back
+        const rows = all.filter(r => _trMatch(r) && _trWeekMatch(r));
         const a = _pkAgg(rows);
-        sub = a.n.toLocaleString() + ' graded picks settled' + (_trChips() ? ' · filtered' : '');
-        body = _trHero(a, _trChips() ? 'filtered view' : 'every Vault-graded prop') + _trChips() + _trBreak(a)
+        const wkCtx = _trWeek != null ? 'Week ' + _trWeek : null;
+        sub = a.n.toLocaleString() + ' graded picks settled' + (wkCtx ? ' · ' + wkCtx : '') + (_trChips() ? ' · filtered' : '');
+        body = _trWeekBar(weeks)
+          + _trHero(a, [wkCtx, _trChips() ? 'filtered view' : (_trWeek == null ? 'every Vault-graded prop' : null)].filter(Boolean).join(' · ')) + _trChips() + _trBreak(a)
           + _trVaultList(rows)
-          + '<div class="tr-note">Settled from real closing lines vs the box score. Grades are Vault’s at flag time; units at your break-even. Tap any row to filter.</div>';
+          + '<div class="tr-note">Settled from real closing lines vs the box score. Grades are Vault’s at flag time; units at your break-even. Tap any row to filter' + (weeks.length > 1 ? ', or a week to see that slate' : '') + '.</div>';
       }
       _pvInner().innerHTML = _trShell(sub, body);
       wire();
     };
     if (_ledgerDone) { paint(_ledgerData); return; }   // cached → no spinner flash
+    _pvInner().innerHTML = _trShell('loading Vault results…', '<div class="tr-load"><span class="spinner md"></span></div>');
+    wire();
+    loadLedger().then(paint);
+  }
+
+  // Vault Game Record — same ledger, GAME markets (spread/total/ML) settled vs
+  // the final score. Read against the Vault Record (props) tab: same shell, same
+  // week filter, its own scale (CLV headline, per-bet units, no A–F grade).
+  function _drawVaultGame(wire) {
+    const paint = ledger => {
+      if (propsView !== 'results' || resultsTab !== 'vaultgame') return;
+      const all = _pkVaultGame(ledger);
+      const total = all.filter(r => r.res === 'W' || r.res === 'L').length;
+      let sub, body;
+      if (!total) {
+        sub = 'no settled results yet';
+        body = '<div class="tr-empty"><div class="tr-ek">No settled Vault game calls yet</div>'
+          + '<div class="tr-et">This fills in automatically once games are played. Every spread, total and moneyline Vault prices is settled against the final score, then shown here by market and side — with CLV, whether Vault’s number beat the closing line, as the headline read.</div></div>';
+      } else {
+        const weeks = _trWeeksOf(all);
+        if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;
+        const rows = all.filter(_trWeekMatch);
+        const a = _gameVaultAgg(rows);
+        const wkCtx = _trWeek != null ? 'Week ' + _trWeek : null;
+        sub = a.n.toLocaleString() + ' game calls settled' + (wkCtx ? ' · ' + wkCtx : '');
+        const offAll = rows.filter(r => r.res === 'W' || r.res === 'L').every(r => r.offseason);
+        body = _trWeekBar(weeks)
+          + _gameVaultHero(a, wkCtx || 'every Vault-priced game')
+          + '<div class="tr-breaks">' + _trBarsRO('By market', a.byMarket) + _trBarsRO('By side', a.bySide) + '</div>'
+          + _trVaultGameList(rows)
+          + '<div class="tr-note">Spread/total settle at −110, moneyline at its closing price. CLV — whether the line moved to Vault’s side by close — is the fast read on whether the number was sharp; win rate is the slower confirmation.'
+          + (offAll ? ' Early-season games are priced off Vault’s preseason team ratings until the in-season model has enough games.' : '') + '</div>';
+      }
+      _pvInner().innerHTML = _trShell(sub, body);
+      wire();
+    };
+    if (_ledgerDone) { paint(_ledgerData); return; }
     _pvInner().innerHTML = _trShell('loading Vault results…', '<div class="tr-load"><span class="spinner md"></span></div>');
     wire();
     loadLedger().then(paint);
@@ -45477,9 +45638,19 @@ window.VaultPropModel = (function () {
 #page-betting .mp-res.l{background:color-mix(in srgb,var(--bt-red,#e23a4e) 16%,transparent);color:var(--bt-red,#ff5a6e)}
 #page-betting .mp-res.pend{color:var(--bt-muted)}
 #page-betting .mp-del{background:none;border:none;color:var(--bt-muted);cursor:pointer;font-size:13px}#page-betting .mp-del:hover{color:var(--bt-red,#ff5a6e)}
-/* ── Track Record (My Picks + Vault Record) ── */
+/* ── Track Record (My Picks + Vault Record + Vault Game Record) ── */
 #page-betting .tr-tabbar{padding:12px 16px 0}
-#page-betting .tr-tabs{display:inline-flex}
+#page-betting .tr-tabs{display:inline-flex;max-width:100%}
+/* Week filter — league-wide tabs. Scrolls when the season stacks up. */
+#page-betting .tr-wkbar{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--bt-border)}
+#page-betting .tr-wklbl{font-family:var(--bt-mono);font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--bt-muted);flex-shrink:0}
+#page-betting .tr-wkstrip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+#page-betting .tr-wkstrip::-webkit-scrollbar{display:none}
+#page-betting .tr-wk{font-family:var(--bt-mono);font-size:11px;font-weight:700;color:var(--bt-muted);background:var(--bt-s2);border:1px solid var(--bt-border2);border-radius:9999px;padding:4px 11px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:color 150ms ease,background 150ms ease,border-color 150ms ease}
+#page-betting .tr-wk:hover{color:var(--bt-text)}
+#page-betting .tr-wk.on{color:var(--bt-text);background:color-mix(in srgb,var(--bt-accent2) 18%,transparent);border-color:color-mix(in srgb,var(--bt-accent2) 40%,transparent)}
+#page-betting .tr-row-ro{cursor:default}
+#page-betting .tr-row-ro:hover{background:none}
 #page-betting .tr-hero{display:flex;flex-wrap:wrap;align-items:center;gap:20px 28px;padding:18px 16px;border-bottom:1px solid var(--bt-border)}
 #page-betting .tr-h-main{flex:1 1 auto;min-width:140px}
 #page-betting .tr-h-rec{font-size:38px;font-weight:800;letter-spacing:-.04em;line-height:1}
