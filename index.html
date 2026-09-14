@@ -13473,6 +13473,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-14T17:00', tag:'Fixed', title:'Game markets now label each game by its real week',
+    items:[
+      'When one week is wrapping up, sportsbooks have already posted next week’s lines, so the Game Markets board shows both. It used to stamp every game with the current week — so a Week 2 opener like DET @ BUF appeared under “Week 1.” Each game now shows its own week, and the header reflects the actual span (e.g. “Weeks 1–2”).',
+    ],
+  },
+  {
     ts:'2026-09-14T15:00', tag:'New', title:'Track Record: see how Vault does on game markets, and week by week',
     items:[
       'New “Vault Game Record” tab sits next to Vault Record — the same kind of scoreboard, but for Vault’s spread, total and moneyline calls league-wide, settled against the final score. Broken down by market and by side, with CLV (did the line move to Vault’s number by kickoff?) as the headline read.',
@@ -40501,6 +40507,7 @@ body .page,body .page.on{background:transparent!important}
       total: gameMarket(g.total, 'total'),
       ml: gameMarket(g.ml, 'ml'),
       book: g.book || null, commence: g.commence || null, slot: slotFromCommence(g.commence), sample: false,
+      week: g.week ?? null,   // per-game week (the feed straddles weeks; carry it so the board can label each game)
     };
   }
   function gameMarket(m, kind) {
@@ -41663,6 +41670,9 @@ window.VaultPropModel = (function () {
 #page-betting .bx-gtop{display:grid;grid-template-columns:248px 1fr}
 #page-betting .bx-matchup{padding:14px 18px;border-right:1px solid var(--bt-border);display:flex;flex-direction:column;gap:10px;justify-content:center}
 #page-betting .bx-when{font-family:var(--bt-mono);font-size:var(--t-nano);letter-spacing:.06em;text-transform:uppercase;color:var(--bt-muted);display:flex;align-items:center;gap:7px}
+/* Per-game week chip — the odds feed straddles weeks (current-week games plus
+   next week's posted slate), so each game states its own week. */
+#page-betting .bx-wktag{display:inline-flex;align-items:center;font-family:var(--bt-mono);font-size:8.5px;font-weight:800;letter-spacing:.04em;color:var(--bt-accent2);background:color-mix(in srgb,var(--bt-accent2) 12%,transparent);border:1px solid color-mix(in srgb,var(--bt-accent2) 30%,transparent);border-radius:5px;padding:1px 5px;margin-left:7px;vertical-align:middle;white-space:nowrap}
 #page-betting .bx-when .live{display:inline-flex;align-items:center;gap:5px;color:var(--bt-rb);font-weight:700}
 #page-betting .bx-when .live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--bt-rb);box-shadow:0 0 7px var(--bt-rb)}
 #page-betting .bx-team{display:flex;align-items:center;gap:11px}
@@ -42446,6 +42456,17 @@ window.VaultPropModel = (function () {
         + dir + '</div>';
     };
 
+    // Per-game week. The feed's top-level `week` is the CURRENT NFL week, but the
+    // odds feed posts UPCOMING games, so as a week winds down the board fills with
+    // next week's slate — which is how a Week-2 opener (DET@BUF) showed under a
+    // "Week 1" banner. Each vegas_games row carries its OWN `week`, so label the
+    // slate (banner) and each game by that, not the single feed.week.
+    const _shownWeeks = [...new Set(withBets.map(x => x.g && x.g.week).filter(w => w != null))].sort((a, b) => a - b);
+    const _weekLabel = !_shownWeeks.length ? (MODEL.week ? 'Week ' + MODEL.week : '')
+      : _shownWeeks.length === 1 ? 'Week ' + _shownWeeks[0]
+      : 'Weeks ' + _shownWeeks[0] + '–' + _shownWeeks[_shownWeeks.length - 1];
+    const wkTag = g => (g && g.week != null) ? '<span class="bx-wktag">Wk ' + g.week + '</span>' : '';
+
     const _trackMap = {};   // card key → {g, lean} so the Track button can log on click
     const cardH = (x) => {
       const g = x.g, key = g.away + '@' + g.home;
@@ -42512,7 +42533,7 @@ window.VaultPropModel = (function () {
         drawer = '<div class="bx-drawer"><div class="bx-dtabs">' + tabs + '</div>' + gameBooksBlock(g, dm) + '</div>';
       }
       return '<article class="bx-game" data-key="' + key + '">'
-        + '<div class="bx-gtop"><div class="bx-matchup"><div class="bx-when">' + when + '</div>' + teamRow(g.away, impA) + teamRow(g.home, impH) + '</div>'
+        + '<div class="bx-gtop"><div class="bx-matchup"><div class="bx-when">' + wkTag(g) + when + '</div>' + teamRow(g.away, impA) + teamRow(g.home, impH) + '</div>'
         + '<div class="bx-markets">' + mCell(g, 'spread', 'Spread') + mCell(g, 'total', 'Total') + mCell(g, 'ml', 'Moneyline') + '</div></div>'
         + flowStrip(g, impH)
         + pmFlowStrip(g, impH)
@@ -42585,10 +42606,10 @@ window.VaultPropModel = (function () {
     const rowH = (x) => {
       const m = gmMeta(x), g = m.g;
       const chev = '<button class="bxt-chev" data-tgl="' + m.key + '" title="' + (m.open ? 'Hide books' : 'Compare books') + '">' + (m.open ? '▾' : '▸') + '</button>';
-      const tmCell = (code, imp) => '<td class="bxt-tm"><span class="bt-logo" data-logo="' + code + '"></span><span class="cd">' + code + '</span>' + (imp != null ? '<span class="wp">' + imp + '%</span>' : '') + '</td>';
+      const tmCell = (code, imp, tag) => '<td class="bxt-tm"><span class="bt-logo" data-logo="' + code + '"></span><span class="cd">' + code + '</span>' + (imp != null ? '<span class="wp">' + imp + '%</span>' : '') + (tag || '') + '</td>';
       const drawer = m.open ? '<tr class="bxt-drow"><td colspan="8">' + m.drawerInner + '</td></tr>' : '';
       return '<tbody class="bxt-g" data-key="' + m.key + '">'
-        + '<tr class="bxt-r1"><td class="bxt-tog" rowspan="2">' + chev + '</td>' + tmCell(g.away, m.impA) + '<td>' + bxCell(m.spA, 'spread') + '</td><td>' + bxCell(m.toO, 'over') + '</td><td>' + bxCell(m.mlA, 'ml') + '</td><td class="bxt-vl" rowspan="2">' + m.vaultCell + '</td><td class="bxt-trk" rowspan="2">' + m.trackCell + '</td><td class="bxt-rm" rowspan="2">' + m.money + '</td></tr>'
+        + '<tr class="bxt-r1"><td class="bxt-tog" rowspan="2">' + chev + '</td>' + tmCell(g.away, m.impA, wkTag(g)) + '<td>' + bxCell(m.spA, 'spread') + '</td><td>' + bxCell(m.toO, 'over') + '</td><td>' + bxCell(m.mlA, 'ml') + '</td><td class="bxt-vl" rowspan="2">' + m.vaultCell + '</td><td class="bxt-trk" rowspan="2">' + m.trackCell + '</td><td class="bxt-rm" rowspan="2">' + m.money + '</td></tr>'
         + '<tr class="bxt-r2">' + tmCell(g.home, m.impH) + '<td>' + bxCell(m.spH, 'spread') + '</td><td>' + bxCell(m.toU, 'under') + '</td><td>' + bxCell(m.mlH, 'ml') + '</td></tr>'
         + drawer + '</tbody>';
     };
@@ -42600,7 +42621,7 @@ window.VaultPropModel = (function () {
       const mkt = (lab, a, b) => '<div class="bxm-mkt"><span class="bxm-mlab">' + lab + '</span><div class="bxm-sides">' + a + b + '</div></div>';
       const chev = '<button class="bxt-chev" data-tgl="' + m.key + '" title="' + (m.open ? 'Hide books' : 'Compare books') + '">' + (m.open ? '▾' : '▸') + '</button>';
       return '<article class="bxm" data-key="' + m.key + '">'
-        + '<div class="bxm-head"><div class="bxm-teams">' + teamRow(g.away, m.impA) + teamRow(g.home, m.impH) + '</div>' + chev + '</div>'
+        + '<div class="bxm-head"><div class="bxm-teams">' + teamRow(g.away, m.impA) + teamRow(g.home, m.impH) + '</div>' + wkTag(g) + chev + '</div>'
         + '<div class="bxm-mkts">' + mkt('Spread', bxCell(m.spA, 'spread'), bxCell(m.spH, 'spread')) + mkt('Total', bxCell(m.toO, 'over'), bxCell(m.toU, 'under')) + mkt('Moneyline', bxCell(m.mlA, 'ml'), bxCell(m.mlH, 'ml')) + '</div>'
         + (m.vaultCell ? '<div class="bxm-foot"><div class="bxm-vl">' + m.vaultCell + '</div>' + (m.trackCell && !/bxt-na/.test(m.trackCell) ? '<div class="bxm-trk">' + m.trackCell + '</div>' : '') + '</div>' : '')
         + (m.money ? '<div class="bxm-money">' + m.money + '</div>' : '')
@@ -42610,7 +42631,7 @@ window.VaultPropModel = (function () {
 
     const nTracked = gamePicksLoad().length;
     const trackedStat = seasonReg ? '<button class="bx-bstat bx-trbtn" id="bx-open-tr" title="See the game bets you\'re tracking in Track Record"><div class="k">Tracked</div><div class="v">' + nTracked + ' ›</div></button>' : '';
-    const banner = '<div class="bx-banner"><div class="eyebrow">' + (MODEL.season || '') + (MODEL.week ? ' · Week ' + MODEL.week : '') + (seasonReg ? '' : ' · Preseason') + '</div><h1>Game markets</h1><p>Every spread, total and moneyline across your books, with the +EV side flagged and Vault’s model line alongside.</p><div class="bx-bstats"><div class="bx-bstat"><div class="k">Games priced</div><div class="v">' + withBets.length + '</div></div><div class="bx-bstat"><div class="k">+EV bets</div><div class="v g">' + nEdges + '</div></div>' + trackedStat + '</div></div>';
+    const banner = '<div class="bx-banner"><div class="eyebrow">' + (MODEL.season || '') + (_weekLabel ? ' · ' + _weekLabel : '') + (seasonReg ? '' : ' · Preseason') + '</div><h1>Game markets</h1><p>Every spread, total and moneyline across your books, with the +EV side flagged and Vault’s model line alongside.</p><div class="bx-bstats"><div class="bx-bstat"><div class="k">Games priced</div><div class="v">' + withBets.length + '</div></div><div class="bx-bstat"><div class="k">+EV bets</div><div class="v g">' + nEdges + '</div></div>' + trackedStat + '</div></div>';
 
     // ── Vault vs. the market — the biggest spread/total/moneyline gaps this week ─
     // Ranks Vault's model line against the number and surfaces the top 3 gaps in
