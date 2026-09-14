@@ -80,6 +80,11 @@ jobs:
       - name: Weekly prop retro
         run: python3 scripts/weekly_prop_retro.py || true
 
+      # Same, for game markets (spread/total/ML): CLV + projection bias first,
+      # preseason vs in-season split. Deterministic; rides the same commit.
+      - name: Weekly game retro
+        run: python3 scripts/weekly_game_retro.py || true
+
       - name: Commit if changed
         run: |
           git config user.name  "vault-bot"
