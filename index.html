@@ -13473,6 +13473,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-15T20:00', tag:'Improved', title:'My Picks shows the week filter right away',
+    items:[
+      'The Week strip in My Picks now appears as soon as you’re tracking any picks, instead of waiting until you have picks in two different weeks. Tap a week to narrow your record, and it’s ready the moment you start tracking a player across more than one week.',
+    ],
+  },
+  {
     ts:'2026-09-15T19:00', tag:'Fixed', title:'Player profiles now open on the current season',
     items:[
       'Now that the 2026 season has kicked off, a player profile opens on 2026 by default instead of staying stuck on last season. The header, the week-by-week chart, the percentile profile and the season-by-season table all show live 2026 data, and last season is still one tap away in the season picker.',
@@ -43813,8 +43819,10 @@ window.VaultPropModel = (function () {
 
   // Week strip for the league-wide tabs. `weeks` is the ascending list of weeks
   // present in the settled sample; "All" + one chip each. Active reads _trWeek.
-  function _trWeekBar(weeks) {
-    if (!weeks || weeks.length < 2) return '';   // one week ⇒ nothing to filter
+  function _trWeekBar(weeks, always) {
+    // Hide when there's nothing to filter. League-wide tabs need 2+ weeks; My
+    // Picks passes `always` so the strip appears as soon as you have any picks.
+    if (!weeks || weeks.length < (always ? 1 : 2)) return '';
     const btn = (val, lbl) => '<button class="tr-wk' + ((val == null ? _trWeek == null : _trWeek === val) ? ' on' : '')
       + '" data-wk="' + (val == null ? 'all' : val) + '">' + lbl + '</button>';
     return '<div class="tr-wkbar"><span class="tr-wklbl">Week</span><div class="tr-wkstrip">'
@@ -44167,7 +44175,7 @@ window.VaultPropModel = (function () {
             + '<div class="tr-listwrap"><div class="tr-gt">Your prop picks' + (_trChips() ? ' <span class="tr-gtn">· filtered</span>' : '') + '</div>'
             + (list || '<div class="tr-et" style="padding:6px 0">No picks match this filter.</div>') + '</div>')
           : '';
-        body = _trWeekBar(weeks) + _trGameBar(games) + propsPart + _gameSection(gpkF);
+        body = _trWeekBar(weeks, true) + _trGameBar(games) + propsPart + _gameSection(gpkF);
       }
       const filterCtx = [wkCtx, gmCtx].filter(Boolean).join(' · ');
       const sub = (all.length || gpk.length) ? ((a.n + ga.n) + ' settled · ' + (a.pend + ga.pend) + ' pending' + (filterCtx ? ' · ' + filterCtx : '')) : 'log picks from the board';
