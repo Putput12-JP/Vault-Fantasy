@@ -13473,6 +13473,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-15T19:00', tag:'Fixed', title:'Player profiles now open on the current season',
+    items:[
+      'Now that the 2026 season has kicked off, a player profile opens on 2026 by default instead of staying stuck on last season. The header, the week-by-week chart, the percentile profile and the season-by-season table all show live 2026 data, and last season is still one tap away in the season picker.',
+    ],
+  },
+  {
     ts:'2026-09-15T18:00', tag:'Fixed', title:'Advanced Stats now fills in early in the season',
     items:[
       'The “Qualified” filter used to demand a near-full-season workload, so for the first several weeks of a new season it hid every player and the board sat empty. It now scales to how many games have been played, so real starters show up from Week 1 while one-week sample noise still gets filtered out.',
@@ -34859,7 +34865,7 @@ window.VaultGradeCal = (function () {
 
   const PLR = {
     name: (function () { try { return localStorage.getItem('vault.pp.player') || null; } catch (e) { return null; } })(),
-    season: '2025', tab: 'overview', booted: false, token: 0,
+    season: '2025', _userSeason: false, tab: 'overview', booted: false, token: 0,
     idx: null,                    // current-season player index (search)
     rows: null,                   // active season rows
     row: null,                    // active player's row
@@ -34976,7 +34982,10 @@ window.VaultGradeCal = (function () {
 
   /* ── derived helpers ── */
   function qualRows(rows, pos) {
-    const q = rows.filter(r => r.pos === pos && (r.g || 0) >= 6 && (r.fpts || 0) > 0);
+    // Volume floor scaled to games played so far, so early in a season the pool
+    // isn't the whole position (fallback) — matches Advanced Stats' qualGate.
+    const gate = D.qualGate ? D.qualGate(pos, rows.filter(r => r.pos === pos)) : (r => (r.g || 0) >= 6);
+    const q = rows.filter(r => r.pos === pos && (r.fpts || 0) > 0 && gate(r));
     return q.length >= 12 ? q : rows.filter(r => r.pos === pos && (r.fpts || 0) > 0);
   }
   // rank-based percentile + positional rank for a stat among qualified peers
@@ -35766,6 +35775,7 @@ window.VaultGradeCal = (function () {
   }
   function setSeason(y) {
     PLR.ddOpen = false;
+    PLR._userSeason = true;
     if (PLR.season === y) { const dd = document.getElementById('pp-seasondd'); if (dd) dd.classList.remove('open'); return; }
     PLR.season = y; PLR.token++;
     PLR.log = null; PLR.logErr = false; PLR.logKey = '';
@@ -35790,9 +35800,33 @@ window.VaultGradeCal = (function () {
       const cur = (D.meta && D.meta.current) || 2025;
       const ys = (D.ARCHIVE_YEARS && D.ARCHIVE_YEARS.length ? D.ARCHIVE_YEARS.slice() : [cur, cur - 1, cur - 2]).map(String).slice(0, 3);
       PLR.seasonsSeg = ys;
-      if (!ys.includes(PLR.season)) PLR.season = ys[0];
+      // Default to the current season so the live profile rolls over on its own
+      // once nflverse flips (matching Advanced Stats' syncSeasons). Only pin to a
+      // specific season once the user picks one from the dropdown. The old code
+      // kept a hardcoded '2025' because it was still a valid archive year, so the
+      // profile never advanced to 2026 on its own.
+      const want = (PLR._userSeason && ys.includes(PLR.season)) ? PLR.season
+        : (ys.includes(String(cur)) ? String(cur) : ys[0]);
+      const changed = want !== PLR.season;
+      PLR.season = want;
+      return changed;
     };
-    try { D.fetchMeta().then(() => { applyMeta(); soft(); }).catch(() => {}); } catch (e) {}
+    // Meta is normally primed at app boot, so the synchronous applyMeta below
+    // already lands on the right season before rows load. This async pass is the
+    // cold-open safety net: if meta arrives late and moves the season, reload the
+    // rows (and re-walk the career, which starts from the season) for it rather
+    // than leaving new-season labels over old-season numbers.
+    try { D.fetchMeta().then(() => {
+      const changed = applyMeta();
+      if (changed) {
+        PLR.token++;
+        PLR.rows = null; PLR.row = null; PLR.log = null; PLR.logErr = false; PLR.logKey = '';
+        PLR.career = null; PLR.careerFor = null;
+        PLR.slots.forEach(s => { s.row = null; s.log = null; s.logKey = ''; s.logErr = false; });
+        rowsFor(PLR.season).then(rows => { PLR.rows = rows; refreshRow(rows); ppRender(); loadLog(); loadCareer(); });
+      }
+      soft();
+    }).catch(() => {}); } catch (e) {}
     applyMeta();
     ppRender(); // skeleton while everything loads
     Promise.all([rowsFor(PLR.season), D.playerIndex(Number(PLR.season)).catch(() => []), loadAdp()]).then(res => {
