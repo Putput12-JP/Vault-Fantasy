@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-15T12:00', tag:'New', title:'Track Record: filter by a single game',
+    items:[
+      'My Picks, Vault Record and Vault Game Record now have a game picker. Pick a matchup and the whole scoreboard — record, win rate, units and the settled list — narrows to just that game. Choose a week first to see only that slate’s games, or leave it on All to browse every game across the season.',
+      'My Picks also gained the same week filter Vault Record has, so you can review your own picks one slate at a time.',
+    ],
+  },
+  {
     ts:'2026-09-14T17:00', tag:'Fixed', title:'Game markets now label each game by its real week',
     items:[
       'When one week is wrapping up, sportsbooks have already posted next week’s lines, so the Game Markets board shows both. It used to stamp every game with the current week — so a Week 2 opener like DET @ BUF appeared under “Week 1.” Each game now shows its own week, and the header reflects the actual span (e.g. “Weeks 1–2”).',
@@ -43634,6 +43641,11 @@ window.VaultPropModel = (function () {
   // else a single week number. Lets you read the model week to week. Reset when
   // the tab changes (the available weeks differ per lens).
   let _trWeek = null;
+  // Game filter (Vault tabs) — null = every game, else a canonical game key
+  // (week + sorted team pair, see _trGameKey). Sits alongside the week strip and
+  // narrows to a single matchup. Reset whenever the week or tab changes, since a
+  // game key is week-scoped and the picker rebuilds from the active week's slate.
+  let _trGame = null;
 
   // Live settled ledger (written by scripts/settle_bets.py each week). Null until
   // it lands / when empty in the offseason, so the Vault tab shows a clean empty
@@ -43700,7 +43712,7 @@ window.VaultPropModel = (function () {
     return ((ledger && ledger.props) || []).map(p => ({
       name: p.name, pos: p.pos, market: p.market, marketLabel: _mkLabel(p.market),
       side: p.side, grade: p.grade, line: p.line_close != null ? p.line_close : p.line_open,
-      week: p.week, season: p.season, actual: p.actual,
+      week: p.week, season: p.season, actual: p.actual, team: p.team, opp: p.opp,
       res: p.push ? 'P' : (p.won_close === 1 ? 'W' : p.won_close === 0 ? 'L' : null),
     }));
   }
@@ -43743,6 +43755,63 @@ window.VaultPropModel = (function () {
   const _trWeeksOf = rows => [...new Set(rows.filter(r => r.res === 'W' || r.res === 'L' || r.res === 'P')
     .map(r => r.week).filter(w => w != null))].sort((a, b) => a - b);
   const _trWeekMatch = r => _trWeek == null || r.week === _trWeek;
+
+  // Game filter. One matchup can carry a prop bet (team/opp) and a game-market
+  // bet (away/home) — both normalize to the same canonical key (week + the sorted
+  // team pair) so props and spreads on the same game collapse into one option, and
+  // a division rematch in another week stays a distinct game.
+  const _trTeams = r => r.away ? [r.away, r.home] : [r.team, r.opp];
+  function _trGameKey(r) {
+    const t = _trTeams(r).filter(Boolean);
+    if (t.length < 2) return null;
+    return (r.week == null ? '?' : r.week) + '|' + t.slice().sort().join('-');
+  }
+  // Orientation map (canonical key → "AWAY @ HOME") built from the game-market
+  // rows, which carry home/away. Props lack orientation, so we borrow it here and
+  // fall back to a stable "A vs B" when the matchup isn't in the game ledger.
+  function _trOrient(ledger) {
+    const o = {};
+    ((ledger && ledger.games) || []).forEach(g => {
+      if (!g.away || !g.home) return;
+      const k = (g.week == null ? '?' : g.week) + '|' + [g.away, g.home].slice().sort().join('-');
+      if (!o[k]) o[k] = g.away + ' @ ' + g.home;
+    });
+    return o;
+  }
+  function _trGameLabel(r, orient) {
+    if (r.away && r.home) return r.away + ' @ ' + r.home;
+    // My-Picks prop rows carry the player's team + its home/away, so orient off
+    // that directly (no ledger to borrow from on that tab).
+    if (r.ha && r.team && r.opp) return r.ha === 'away' ? r.team + ' @ ' + r.opp : r.opp + ' @ ' + r.team;
+    const k = _trGameKey(r);
+    if (orient && k && orient[k]) return orient[k];
+    return _trTeams(r).filter(Boolean).slice().sort().join(' vs ');
+  }
+  const _trGameMatch = r => _trGame == null || _trGameKey(r) === _trGame;
+  // Distinct settled games among `rows`, newest week first. Built off the
+  // week-filtered rows (not the game filter itself) so the picker always lists
+  // every game in view.
+  function _trGamesOf(rows, orient, includeAll) {
+    const m = {};
+    rows.filter(r => includeAll || r.res === 'W' || r.res === 'L' || r.res === 'P').forEach(r => {
+      const k = _trGameKey(r); if (k == null) return;
+      if (!m[k]) m[k] = { key: k, label: _trGameLabel(r, orient), week: r.week };
+    });
+    return Object.values(m).sort((a, b) => (b.week || 0) - (a.week || 0) || a.label.localeCompare(b.label));
+  }
+  // Game picker — a native <select> (a slate can be 16 games, too many for a
+  // pill strip). When every week is in view we prefix "Wk N" so rematches read
+  // apart. Hidden until there are at least two games to choose between.
+  function _trGameBar(games) {
+    if (!games || games.length < 2) return '';
+    const showWk = _trWeek == null;
+    const opt = (v, l, sel) => '<option value="' + _trEsc(v) + '"' + (sel ? ' selected' : '') + '>' + _trEsc(l) + '</option>';
+    return '<div class="tr-gmbar"><span class="tr-wklbl">Game</span>'
+      + '<select class="tr-gmsel" id="tr-gmsel" title="Filter to a single game">'
+      + opt('all', 'All games', _trGame == null)
+      + games.map(g => opt(g.key, (showWk ? 'Wk ' + (g.week == null ? '?' : g.week) + ' · ' : '') + g.label, _trGame === g.key)).join('')
+      + '</select></div>';
+  }
 
   // ── Vault Game Record — the model's league-wide GAME-MARKET calls (spread /
   // total / moneyline), settled vs the final score. Separate scale from props:
@@ -43892,14 +43961,19 @@ window.VaultPropModel = (function () {
       if (back) back.onclick = () => { propsView = 'board'; renderPropsBoard(); };
       inner.querySelectorAll('.tr-tabs [data-rt]').forEach(b => b.onclick = () => {
         if (resultsTab === b.dataset.rt) return;
-        resultsTab = b.dataset.rt; _trFilter = {}; _trWeek = null;   // each tab starts clean
+        resultsTab = b.dataset.rt; _trFilter = {}; _trWeek = null; _trGame = null;   // each tab starts clean
         renderResults();
       });
       inner.querySelectorAll('.tr-wk[data-wk]').forEach(b => b.onclick = () => {
         const v = b.dataset.wk === 'all' ? null : Number(b.dataset.wk);
         if (_trWeek === v) return;
-        _trWeek = v; renderResults();
+        _trWeek = v; _trGame = null;   // game keys are week-scoped ⇒ reset with the week
+        renderResults();
       });
+      const gmsel = inner.querySelector('#tr-gmsel');
+      if (gmsel) gmsel.onchange = () => {
+        _trGame = gmsel.value === 'all' ? null : gmsel.value; renderResults();
+      };
       inner.querySelectorAll('.mp-del').forEach(b => b.onclick = () => {
         picksSave(picksLoad().filter(p => p.k !== b.dataset.k)); renderResults();
       });
@@ -43933,8 +44007,8 @@ window.VaultPropModel = (function () {
       n: dcd.length, wr: dcd.length ? W / dcd.length : null, units: hasU ? units : null };
   }
   const _GMKL = { spread: 'Spread', total: 'Total', ml: 'Moneyline' };
-  function _gameSection() {
-    const picks = gamePicksLoad();
+  function _gameSection(picks) {
+    if (picks == null) picks = gamePicksLoad();
     if (!picks.length) return '';
     const a = _gameAgg(picks);
     const rec = '<div class="tr-hero"><div class="tr-h-main"><div class="tr-h-rec">' + a.W + '–' + a.L + (a.push ? '–' + a.push : '') + '</div>'
@@ -43968,8 +44042,18 @@ window.VaultPropModel = (function () {
     const all = _pkMine();
     const gpk = gamePicksLoad();
     const draw = () => {
-      const rows = all.filter(_trMatch);
-      const a = _pkAgg(rows), ga = _gameAgg(gpk);
+      // Week + game pickers span the user's props AND tracked game bets, built
+      // from every logged pick (pending included) so the current slate filters too.
+      const weeks = [...new Set(all.concat(gpk).map(r => r.week).filter(w => w != null))].sort((x, y) => x - y);
+      if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;
+      const orient = _trOrient({ games: gpk });   // game bets carry home/away
+      const games = _trGamesOf(all.concat(gpk).filter(_trWeekMatch), orient, true);   // games in the active week
+      if (_trGame != null && !games.some(g => g.key === _trGame)) _trGame = null;
+      const gmObj = _trGame != null ? games.find(g => g.key === _trGame) : null;
+      const gmCtx = gmObj ? gmObj.label : null, wkCtx = _trWeek != null ? 'Week ' + _trWeek : null;
+      const rows = all.filter(r => _trMatch(r) && _trWeekMatch(r) && _trGameMatch(r));
+      const gpkF = gpk.filter(p => _trWeekMatch(p) && _trGameMatch(p));
+      const a = _pkAgg(rows), ga = _gameAgg(gpkF);
       let body;
       if (!all.length && !gpk.length) {
         body = '<div class="tr-empty"><div class="tr-ek">No picks logged</div>'
@@ -44002,9 +44086,10 @@ window.VaultPropModel = (function () {
             + '<div class="tr-listwrap"><div class="tr-gt">Your prop picks' + (_trChips() ? ' <span class="tr-gtn">· filtered</span>' : '') + '</div>'
             + (list || '<div class="tr-et" style="padding:6px 0">No picks match this filter.</div>') + '</div>')
           : '';
-        body = propsPart + _gameSection();
+        body = _trWeekBar(weeks) + _trGameBar(games) + propsPart + _gameSection(gpkF);
       }
-      const sub = (all.length || gpk.length) ? ((a.n + ga.n) + ' settled · ' + (a.pend + ga.pend) + ' pending') : 'log picks from the board';
+      const filterCtx = [wkCtx, gmCtx].filter(Boolean).join(' · ');
+      const sub = (all.length || gpk.length) ? ((a.n + ga.n) + ' settled · ' + (a.pend + ga.pend) + ' pending' + (filterCtx ? ' · ' + filterCtx : '')) : 'log picks from the board';
       _pvInner().innerHTML = _trShell(sub, body);
       wire();
     };
@@ -44070,12 +44155,17 @@ window.VaultPropModel = (function () {
       } else {
         const weeks = _trWeeksOf(all);
         if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;   // week vanished (source changed) ⇒ fall back
-        const rows = all.filter(r => _trMatch(r) && _trWeekMatch(r));
+        const orient = _trOrient(ledger);
+        const games = _trGamesOf(all.filter(_trWeekMatch), orient);
+        if (_trGame != null && !games.some(g => g.key === _trGame)) _trGame = null;   // game not in the active slate ⇒ fall back
+        const gmObj = _trGame != null ? games.find(g => g.key === _trGame) : null;
+        const gmCtx = gmObj ? gmObj.label : null;
+        const rows = all.filter(r => _trMatch(r) && _trWeekMatch(r) && _trGameMatch(r));
         const a = _pkAgg(rows);
         const wkCtx = _trWeek != null ? 'Week ' + _trWeek : null;
-        sub = a.n.toLocaleString() + ' graded picks settled' + (wkCtx ? ' · ' + wkCtx : '') + (_trChips() ? ' · filtered' : '');
-        body = _trWeekBar(weeks)
-          + _trHero(a, [wkCtx, _trChips() ? 'filtered view' : (_trWeek == null ? 'every Vault-graded prop' : null)].filter(Boolean).join(' · ')) + _trChips() + _trBreak(a)
+        sub = a.n.toLocaleString() + ' graded picks settled' + (wkCtx ? ' · ' + wkCtx : '') + (gmCtx ? ' · ' + gmCtx : '') + (_trChips() ? ' · filtered' : '');
+        body = _trWeekBar(weeks) + _trGameBar(games)
+          + _trHero(a, [wkCtx, gmCtx, _trChips() ? 'filtered view' : (!wkCtx && !gmCtx ? 'every Vault-graded prop' : null)].filter(Boolean).join(' · ')) + _trChips() + _trBreak(a)
           + _trVaultList(rows)
           + '<div class="tr-note">Settled from real closing lines vs the box score. Grades are Vault’s at flag time; units at your break-even. Tap any row to filter' + (weeks.length > 1 ? ', or a week to see that slate' : '') + '.</div>';
       }
@@ -44104,13 +44194,18 @@ window.VaultPropModel = (function () {
       } else {
         const weeks = _trWeeksOf(all);
         if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;
-        const rows = all.filter(_trWeekMatch);
+        const orient = _trOrient(ledger);
+        const games = _trGamesOf(all.filter(_trWeekMatch), orient);
+        if (_trGame != null && !games.some(g => g.key === _trGame)) _trGame = null;
+        const gmObj = _trGame != null ? games.find(g => g.key === _trGame) : null;
+        const gmCtx = gmObj ? gmObj.label : null;
+        const rows = all.filter(r => _trWeekMatch(r) && _trGameMatch(r));
         const a = _gameVaultAgg(rows);
         const wkCtx = _trWeek != null ? 'Week ' + _trWeek : null;
-        sub = a.n.toLocaleString() + ' game calls settled' + (wkCtx ? ' · ' + wkCtx : '');
+        sub = a.n.toLocaleString() + ' game calls settled' + (wkCtx ? ' · ' + wkCtx : '') + (gmCtx ? ' · ' + gmCtx : '');
         const offAll = rows.filter(r => r.res === 'W' || r.res === 'L').every(r => r.offseason);
-        body = _trWeekBar(weeks)
-          + _gameVaultHero(a, wkCtx || 'every Vault-priced game')
+        body = _trWeekBar(weeks) + _trGameBar(games)
+          + _gameVaultHero(a, [wkCtx, gmCtx].filter(Boolean).join(' · ') || 'every Vault-priced game')
           + '<div class="tr-breaks">' + _trBarsRO('By market', a.byMarket) + _trBarsRO('By side', a.bySide) + '</div>'
           + _trVaultGameList(rows)
           + '<div class="tr-note">Spread/total settle at −110, moneyline at its closing price. CLV — whether the line moved to Vault’s side by close — is the fast read on whether the number was sharp; win rate is the slower confirmation.'
@@ -45670,6 +45765,11 @@ window.VaultPropModel = (function () {
 #page-betting .tr-wk{font-family:var(--bt-mono);font-size:11px;font-weight:700;color:var(--bt-muted);background:var(--bt-s2);border:1px solid var(--bt-border2);border-radius:9999px;padding:4px 11px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:color 150ms ease,background 150ms ease,border-color 150ms ease}
 #page-betting .tr-wk:hover{color:var(--bt-text)}
 #page-betting .tr-wk.on{color:var(--bt-text);background:color-mix(in srgb,var(--bt-accent2) 18%,transparent);border-color:color-mix(in srgb,var(--bt-accent2) 40%,transparent)}
+/* Game picker — native select, styled to sit under the week strip. */
+#page-betting .tr-gmbar{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--bt-border)}
+#page-betting .tr-gmsel{font-family:var(--bt-mono);font-size:11px;font-weight:700;color:var(--bt-text);background:var(--bt-s2);border:1px solid var(--bt-border2);border-radius:9999px;padding:7px 32px 7px 13px;cursor:pointer;max-width:100%;text-overflow:ellipsis;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 11px center;transition:color 150ms ease,border-color 150ms ease}
+#page-betting .tr-gmsel:hover{border-color:color-mix(in srgb,var(--bt-accent2) 40%,transparent)}
+#page-betting .tr-gmsel:focus-visible{outline:2px solid color-mix(in srgb,var(--bt-accent2) 55%,transparent);outline-offset:1px}
 #page-betting .tr-row-ro{cursor:default}
 #page-betting .tr-row-ro:hover{background:none}
 #page-betting .tr-hero{display:flex;flex-wrap:wrap;align-items:center;gap:20px 28px;padding:18px 16px;border-bottom:1px solid var(--bt-border)}
