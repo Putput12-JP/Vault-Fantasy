@@ -13473,7 +13473,7 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
-    ts:'2026-09-15T12:00', tag:'New', title:'Track Record: filter by a single game',
+    ts:'2026-09-15T16:00', tag:'New', title:'Track Record: filter by a single game',
     items:[
       'My Picks, Vault Record and Vault Game Record now have a game picker. Pick a matchup and the whole scoreboard — record, win rate, units and the settled list — narrows to just that game. Choose a week first to see only that slate’s games, or leave it on All to browse every game across the season.',
       'My Picks also gained the same week filter Vault Record has, so you can review your own picks one slate at a time.',
@@ -43756,46 +43756,59 @@ window.VaultPropModel = (function () {
     .map(r => r.week).filter(w => w != null))].sort((a, b) => a - b);
   const _trWeekMatch = r => _trWeek == null || r.week === _trWeek;
 
-  // Game filter. One matchup can carry a prop bet (team/opp) and a game-market
-  // bet (away/home) — both normalize to the same canonical key (week + the sorted
-  // team pair) so props and spreads on the same game collapse into one option, and
-  // a division rematch in another week stays a distinct game.
-  const _trTeams = r => r.away ? [r.away, r.home] : [r.team, r.opp];
-  function _trGameKey(r) {
-    const t = _trTeams(r).filter(Boolean);
-    if (t.length < 2) return null;
-    return (r.week == null ? '?' : r.week) + '|' + t.slice().sort().join('-');
-  }
-  // Orientation map (canonical key → "AWAY @ HOME") built from the game-market
-  // rows, which carry home/away. Props lack orientation, so we borrow it here and
-  // fall back to a stable "A vs B" when the matchup isn't in the game ledger.
-  function _trOrient(ledger) {
-    const o = {};
-    ((ledger && ledger.games) || []).forEach(g => {
+  // Game filter. The authoritative slate is the game-market rows (away/home per
+  // week); props are assigned to a real game by their OWN team through that
+  // schedule, never by pairing team+opp. A prop's `opp` can be stale (a player's
+  // listed opponent lagging a week), and pairing on it invents phantom games like
+  // "BAL vs NO" when BAL actually played IND — so team+opp is a last resort only.
+  let _gameSched = {};   // week → team → { key:'wk|AWY-HOM', label:'AWY @ HOM' }
+  function _trSetSched(games) {
+    const s = {};
+    (games || []).forEach(g => {
       if (!g.away || !g.home) return;
-      const k = (g.week == null ? '?' : g.week) + '|' + [g.away, g.home].slice().sort().join('-');
-      if (!o[k]) o[k] = g.away + ' @ ' + g.home;
+      const wk = g.week == null ? '?' : g.week;
+      const key = wk + '|' + [g.away, g.home].slice().sort().join('-');
+      const label = g.away + ' @ ' + g.home;
+      (s[wk] = s[wk] || {})[g.away] = { key, label };
+      s[wk][g.home] = { key, label };
     });
-    return o;
+    _gameSched = s;
   }
-  function _trGameLabel(r, orient) {
-    if (r.away && r.home) return r.away + ' @ ' + r.home;
+  // The scheduled game a row belongs to: game rows key on their own away/home;
+  // props look themselves up in the schedule by team (then opp, for a null/stale
+  // team). Returns null when neither team is on that week's slate.
+  function _trSchedHit(r) {
+    if (r.away && r.home) {
+      const wk = r.week == null ? '?' : r.week;
+      return { key: wk + '|' + [r.away, r.home].slice().sort().join('-'), label: r.away + ' @ ' + r.home };
+    }
+    const sm = _gameSched[r.week == null ? '?' : r.week];
+    return sm ? ((r.team && sm[r.team]) || (r.opp && sm[r.opp]) || null) : null;
+  }
+  function _trGameKey(r) {
+    const hit = _trSchedHit(r);
+    if (hit) return hit.key;
+    // Off-schedule fallback: pair the teams we have (My Picks with no ledger).
+    const t = [r.team, r.opp].filter(Boolean);
+    return t.length < 2 ? null : (r.week == null ? '?' : r.week) + '|' + t.slice().sort().join('-');
+  }
+  function _trGameLabel(r) {
+    const hit = _trSchedHit(r);
+    if (hit) return hit.label;
     // My-Picks prop rows carry the player's team + its home/away, so orient off
-    // that directly (no ledger to borrow from on that tab).
+    // that directly when the schedule doesn't cover it.
     if (r.ha && r.team && r.opp) return r.ha === 'away' ? r.team + ' @ ' + r.opp : r.opp + ' @ ' + r.team;
-    const k = _trGameKey(r);
-    if (orient && k && orient[k]) return orient[k];
-    return _trTeams(r).filter(Boolean).slice().sort().join(' vs ');
+    return [r.team, r.opp].filter(Boolean).slice().sort().join(' vs ');
   }
   const _trGameMatch = r => _trGame == null || _trGameKey(r) === _trGame;
   // Distinct settled games among `rows`, newest week first. Built off the
   // week-filtered rows (not the game filter itself) so the picker always lists
-  // every game in view.
-  function _trGamesOf(rows, orient, includeAll) {
+  // every game in view. Call _trSetSched first so props resolve to real games.
+  function _trGamesOf(rows, includeAll) {
     const m = {};
     rows.filter(r => includeAll || r.res === 'W' || r.res === 'L' || r.res === 'P').forEach(r => {
       const k = _trGameKey(r); if (k == null) return;
-      if (!m[k]) m[k] = { key: k, label: _trGameLabel(r, orient), week: r.week };
+      if (!m[k]) m[k] = { key: k, label: _trGameLabel(r), week: r.week };
     });
     return Object.values(m).sort((a, b) => (b.week || 0) - (a.week || 0) || a.label.localeCompare(b.label));
   }
@@ -44046,8 +44059,8 @@ window.VaultPropModel = (function () {
       // from every logged pick (pending included) so the current slate filters too.
       const weeks = [...new Set(all.concat(gpk).map(r => r.week).filter(w => w != null))].sort((x, y) => x - y);
       if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;
-      const orient = _trOrient({ games: gpk });   // game bets carry home/away
-      const games = _trGamesOf(all.concat(gpk).filter(_trWeekMatch), orient, true);   // games in the active week
+      _trSetSched(gpk);   // tracked game bets carry home/away for this user's slate
+      const games = _trGamesOf(all.concat(gpk).filter(_trWeekMatch), true);   // games in the active week
       if (_trGame != null && !games.some(g => g.key === _trGame)) _trGame = null;
       const gmObj = _trGame != null ? games.find(g => g.key === _trGame) : null;
       const gmCtx = gmObj ? gmObj.label : null, wkCtx = _trWeek != null ? 'Week ' + _trWeek : null;
@@ -44155,8 +44168,8 @@ window.VaultPropModel = (function () {
       } else {
         const weeks = _trWeeksOf(all);
         if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;   // week vanished (source changed) ⇒ fall back
-        const orient = _trOrient(ledger);
-        const games = _trGamesOf(all.filter(_trWeekMatch), orient);
+        _trSetSched(ledger && ledger.games);
+        const games = _trGamesOf(all.filter(_trWeekMatch));
         if (_trGame != null && !games.some(g => g.key === _trGame)) _trGame = null;   // game not in the active slate ⇒ fall back
         const gmObj = _trGame != null ? games.find(g => g.key === _trGame) : null;
         const gmCtx = gmObj ? gmObj.label : null;
@@ -44194,8 +44207,8 @@ window.VaultPropModel = (function () {
       } else {
         const weeks = _trWeeksOf(all);
         if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;
-        const orient = _trOrient(ledger);
-        const games = _trGamesOf(all.filter(_trWeekMatch), orient);
+        _trSetSched(ledger && ledger.games);
+        const games = _trGamesOf(all.filter(_trWeekMatch));
         if (_trGame != null && !games.some(g => g.key === _trGame)) _trGame = null;
         const gmObj = _trGame != null ? games.find(g => g.key === _trGame) : null;
         const gmCtx = gmObj ? gmObj.label : null;
