@@ -13473,6 +13473,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-15T18:00', tag:'Fixed', title:'Advanced Stats now fills in early in the season',
+    items:[
+      'The “Qualified” filter used to demand a near-full-season workload, so for the first several weeks of a new season it hid every player and the board sat empty. It now scales to how many games have been played, so real starters show up from Week 1 while one-week sample noise still gets filtered out.',
+    ],
+  },
+  {
     ts:'2026-09-15T16:00', tag:'New', title:'Track Record: filter by a single game',
     items:[
       'My Picks, Vault Record and Vault Game Record now have a game picker. Pick a matchup and the whole scoreboard — record, win rate, units and the settled list — narrows to just that game. Choose a week first to see only that slate’s games, or leave it on All to browse every game across the season.',
@@ -33145,6 +33151,32 @@ window.VaultGradeCal = (function () {
     WR: r => r.g >= 6 && r.tgt >= 30,
     TE: r => r.g >= 6 && r.tgt >= 24,
   };
+  // Per-game version of the qualify floors above (the constants divided by the
+  // 6-game baseline). Used to scale the threshold to how much of a season has
+  // actually been played — otherwise "g >= 6 & 100 att" empties the whole board
+  // for the first six weeks of every season, when nobody can have hit it yet.
+  const QUAL_RATE = {
+    QB: { vol: r => r.att, pg: 100 / 6 },
+    RB: { vol: r => (r.car || 0) + (r.rec || 0), pg: 50 / 6 },
+    WR: { vol: r => r.tgt, pg: 30 / 6 },
+    TE: { vol: r => r.tgt, pg: 24 / 6 },
+  };
+  // Build a qualify predicate scaled to the games played so far in `rows`.
+  // `seasonG` (the position's games leader) is a proxy for weeks elapsed: the
+  // games floor is half of that, capped at 6, and the volume floor is the
+  // per-game rate times that floor. At a full 17-game season this reproduces
+  // the static QUALIFY thresholds exactly; mid-season it lets real starters
+  // through instead of showing an empty board.
+  function qualGate(pos, rows) {
+    const spec = QUAL_RATE[pos];
+    if (!spec) return () => true;
+    let seasonG = 0;
+    if (rows && rows.length) for (const r of rows) { const g = r.g || 0; if (g > seasonG) seasonG = g; }
+    if (!seasonG) return QUALIFY[pos] || (() => true);
+    const gFloor = Math.min(6, Math.max(1, Math.ceil(seasonG / 2)));
+    const volFloor = spec.pg * gFloor;
+    return r => (r.g || 0) >= gFloor && spec.vol(r) >= volFloor;
+  }
 
   /* ── category leaders, per position ──────────────────────────────── */
   const LEADERS = {
@@ -33180,14 +33212,15 @@ window.VaultGradeCal = (function () {
 
   function computeLeaders(rows, pos) {
     const specs = LEADERS[pos] || [];
-    const pool = rows.filter(r => r.g >= 6); // light qualify for leaders
+    const gate = qualGate(pos, rows); // volume floor scaled to games played so far
+    const pool = rows;
     return specs.map(spec => {
       let best = null;
       pool.forEach(r => {
         const v = r[spec.key];
         if (v == null) return;
         // require some volume so rate stats aren't gamed by tiny samples
-        if (QUALIFY[pos] && !QUALIFY[pos](r)) return;
+        if (!gate(r)) return;
         if (!best || v > best._v) { best = Object.assign({ _v: v }, r); }
       });
       return best ? { spec, player: best, valStr: spec.fmt(best._v) } : null;
@@ -33339,7 +33372,7 @@ window.VaultGradeCal = (function () {
 
   window.RHData = {
     BASE, CURRENT, ARCHIVE_YEARS, POSSET,
-    fetchMeta, buildRows, buildWeekRows, applyAges, COLS, QUALIFY, LEADERS,
+    fetchMeta, buildRows, buildWeekRows, applyAges, COLS, QUALIFY, QUAL_RATE, qualGate, LEADERS,
     computeLeaders, percentiles, loadAges, meta: _meta,
     applyAdvanced, loadNGS, loadSnaps, loadInjuries, inOffseason,
     // game logs
@@ -33490,7 +33523,7 @@ window.VaultGradeCal = (function () {
 
   function asComputed() {
     const posRows = asPosRows();
-    const qualFn = D.QUALIFY[AS.pos];
+    const qualFn = D.qualGate(AS.pos, posRows);
     let rows = AS.qualified ? posRows.filter(qualFn) : posRows;
     const q = AS.search.trim().toLowerCase();
     if (q) rows = rows.filter(r => r.name.toLowerCase().includes(q) || (r.team || '').toLowerCase().includes(q));
@@ -33986,8 +34019,9 @@ window.VaultGradeCal = (function () {
     if (AS.loading) return;
     if (!force && (CMP.seeded || CMP.players.length)) return;
     const rows = cmpRows();
+    const posOnly = rows.filter(r => r.pos === AS.pos);
     const pool = AS.pos === 'ALL' ? rows.slice()
-      : rows.filter(r => r.pos === AS.pos).filter(D.QUALIFY[AS.pos] || (() => true));
+      : posOnly.filter(D.qualGate(AS.pos, posOnly));
     CMP.players = pool.sort((a, b) => (b.fpts || 0) - (a.fpts || 0)).slice(0, 2).map(p => p.name);
     CMP.seeded = true;
   }
@@ -34031,7 +34065,7 @@ window.VaultGradeCal = (function () {
     // rate stats get the qualified floor so 1-game wonders don't top the list
     const isRate = col.group === 'eff' || /\b(rate|per|%|avg|average|share)\b/.test(((col.label || '') + ' ' + (col.hint || '')).toLowerCase());
     let pool = rows.filter(r => r[col.key] != null && isFinite(r[col.key]));
-    if (isRate && D.QUALIFY[pos]) pool = pool.filter(D.QUALIFY[pos]);
+    if (isRate && D.QUAL_RATE[pos]) pool = pool.filter(D.qualGate(pos, rows));
     const wantLow = asc || (!!col.lo && !/\b(most|highest|top)\b/.test(ql));
     pool = pool.slice().sort((a, b) => wantLow ? a[col.key] - b[col.key] : b[col.key] - a[col.key]);
     const picks = pool.slice(0, n);
