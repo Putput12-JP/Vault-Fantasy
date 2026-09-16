@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-16T18:00', tag:'Fixed', title:'Player prop lines now match the sportsbooks',
+    items:[
+      'Some props were showing the wrong number — Cade Otton’s receptions read 0.5 when Underdog had it at 3.5, and a few others were stuck on alternate or first-quarter lines. The Underdog feed had quietly gone stale; it’s now pulling live again, so every line matches what the book actually posts.',
+      'PrizePicks lines that only existed as “demon”/“goblin” boosts (longshot alternates) no longer masquerade as the real line — Otton’s 7.5 receptions is gone.',
+      'Cleaned up mislabeled props: a “completions in the first 10 attempts” prop was showing as full-game completions, a combined-touchdowns prop as receiving TDs, and two-player combo lines as single-player lines. Those no longer appear.',
+      'Stale lines a book has since pulled are now cleared instead of lingering as a bad price, and impossible props (a quarterback with a receptions line) are dropped.',
+    ],
+  },
+  {
     ts:'2026-09-16T14:00', tag:'Fixed', title:'Game Markets shows the upcoming slate again',
     items:[
       'Once a week’s games finished and the sportsbooks rolled to next week’s lines, the Game Markets board could go blank until the full feed caught up. It now always locks onto the next slate of games, so spreads, totals and moneylines stay on screen through the changeover.',

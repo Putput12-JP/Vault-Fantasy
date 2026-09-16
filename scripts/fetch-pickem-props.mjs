@@ -104,6 +104,7 @@ const STAT_MAP = [
   ['longestrush',    'long_rush'],
   ['receivingyards', 'rec_yd'],
   ['recyards',       'rec_yd'],
+  ['rushrectds',     'rush_rec_td'],   // "Rush+Rec TDs" — must precede rectds so the combo doesn't read as receiving TDs
   ['receivingtds',   'rec_td'],
   ['rectds',         'rec_td'],
   ['receptions',     'rec'],
@@ -115,8 +116,20 @@ const STAT_MAP = [
   ['tackles',        'tackles'],
   ['sacks',          'sacks'],
 ];
+// Stat types that a naive substring match would MISread as a core market. These
+// are alt/derived shapes, not the market line — surfacing one as e.g. Receptions
+// puts a wrong number on the board:
+//   • "(Combo)"            two-player parlays — the name resolves to one of them
+//   • "in first N …"       capped segment props (fewer completions/yards/recs)
+//   • "per carry"          a RATE (~4.5), not the counting stat
+//   • "percentage"         a rate, not the counting stat
+//   • "pass+rush+rec tds"  a total-TD parlay — reads as receiving TDs via "rec tds"
+// Checked before STAT_MAP so the greedy `includes()` can't claim them. (A legit
+// single-player "Rush+Rec TDs" still maps, via its own STAT_MAP entry above.)
+const STAT_EXCLUDE = ['combo', 'infirst', 'percarry', 'percentage', 'passrushrectds'];
 function marketKeyFor(statType) {
   const n = (statType || '').toLowerCase().replace(/[^a-z]/g, '');
+  if (STAT_EXCLUDE.some(bad => n.includes(bad))) return null;
   for (const [needle, key] of STAT_MAP) if (n.includes(needle)) return key;
   return null;
 }
@@ -323,12 +336,19 @@ function buildProps(pp, sl) {
   const seen = new Set();   // sleeperId|market — keep first standard line
   let events = new Set(), matched = 0, unmatched = 0, lines = 0;
 
-  // standard lines first (so demon/goblin alt lines don't overwrite the rep line)
+  // STANDARD lines only. demon (higher, longshot) and goblin (lower, easy) are
+  // payout-adjusted ALT lines, not the market number — treating one as the line
+  // is how Cade Otton's receptions showed 7.5 (a demon) when PrizePicks offered
+  // no standard receptions line at all. For 75 players this slate the receptions
+  // market is demon/goblin-only; those correctly get NO PrizePicks quote rather
+  // than a misleading longshot line. (Sort kept so a standard line always wins
+  // its dedupe slot even if the board order ever changes.)
   const ordered = pp.projections.slice().sort((a, b) =>
     (a.oddsType === 'standard' ? 0 : 1) - (b.oddsType === 'standard' ? 0 : 1));
 
   for (const proj of ordered) {
     if (proj.line == null || !proj.ppId) continue;
+    if (proj.oddsType && proj.oddsType !== 'standard') continue;   // drop demon/goblin alts
     if (proj.status && /^(suspended|inactive)$/i.test(proj.status)) continue;
     const market = marketKeyFor(proj.stat); if (!market) continue;
     const ppPlayer = pp.players[proj.ppId]; if (!ppPlayer) continue;
@@ -406,7 +426,13 @@ async function loadUnderdog() {
   let j;
   if (UD_FIX) { j = readFixture(UD_FIX); }
   else {
-    const r = await fetch('https://api.underdogfantasy.com/beta/v5/over_under_lines', {
+    // /beta/v5 is now version-gated (HTTP 426 "upgrade required") for keyless
+    // callers, which silently soft-failed this source and FROZE every Underdog
+    // line in the feed — how Cade Otton's receptions stuck at a stale 0.5 (a
+    // 1st-quarter alt) while his real line was 3.5. /v1 is the current keyless
+    // board and returns the identical response shape (players / appearances /
+    // over_under_lines), so the parse below is unchanged.
+    const r = await fetch('https://api.underdogfantasy.com/v1/over_under_lines', {
       headers: { 'User-Agent': UA, 'Accept': 'application/json', 'Accept-Language': 'en-US,en;q=0.9' },
     });
     if (!r.ok) throw new Error(`underdog HTTP ${r.status}`);
@@ -603,6 +629,61 @@ function upsertQuote(cell, fresh, book) {
   cell.best.under = bestSide(cell.quotes, 'under');
 }
 
+/* ── prune stale pick'em quotes ────────────────────────────────────────────
+   MERGE never removes a quote, so a line this job stops emitting (a demon-only
+   PrizePicks receptions cell, or an Underdog alt that self-corrects) lingers
+   forever as a stale cross-check — and can still win best.over/under. This job
+   is the AUTHORITATIVE source for exactly three books, so for each of them that
+   returned a HEALTHY pull this run, drop that book's quotes for any player+
+   market the fresh board no longer carries. ParlayAPI books (Fanatics, Fliff,
+   DK, …) are never touched — this job doesn't own them. A thin/failed pull
+   (book absent from `sources`, or under PRUNE_MIN players) prunes nothing, so a
+   soft-fail can't wipe a book's last-good lines.                              */
+const OWNED_PICKEM = new Set(['PrizePicks', 'Underdog Fantasy', 'Sleeper']);
+const PRUNE_MIN = 20;   // players a book must cover this run before we trust it to prune
+
+function reHeadline(cell) {
+  // headline book's quote was just removed — promote the best remaining quote
+  // (prefer one with two-sided prices, else any) so the cell keeps a valid line.
+  const qs = cell.quotes || [];
+  const pick = qs.find(q => q.over != null && q.under != null)
+            || qs.find(q => q.over != null || q.under != null)
+            || qs[0];
+  if (!pick) return false;
+  cell.book = pick.book; cell.line = pick.line ?? null;
+  cell.over = pick.over ?? null; cell.under = pick.under ?? null;
+  return true;
+}
+
+function pruneStalePickem(existing, sources) {
+  let removedQuotes = 0, droppedCells = 0;
+  for (const { props, book } of sources) {
+    if (!OWNED_PICKEM.has(book)) continue;
+    const fresh = new Set(); let players = 0;
+    for (const id in (props || {})) { players++; for (const mk in (props[id].lines || {})) fresh.add(id + '|' + mk); }
+    if (players < PRUNE_MIN) continue;                      // thin pull — don't trust it to purge
+    for (const id in existing) {
+      const cell = existing[id].lines || {};
+      for (const mk in cell) {
+        const c = cell[mk]; if (!c || !Array.isArray(c.quotes)) continue;
+        const keyFresh = fresh.has(id + '|' + mk);
+        if (keyFresh) continue;                             // still offered — upsert already refreshed it
+        const before = c.quotes.length;
+        c.quotes = c.quotes.filter(q => q.book !== book);   // this book no longer offers this cell
+        if (c.quotes.length === before) continue;
+        removedQuotes += before - c.quotes.length;
+        if (!c.quotes.length) { delete cell[mk]; droppedCells++; continue; }
+        if (c.book === book) reHeadline(c);                 // stale book was the headline
+        c.best = c.best || {};
+        c.best.over  = bestSide(c.quotes, 'over');
+        c.best.under = bestSide(c.quotes, 'under');
+      }
+      if (existing[id].lines && !Object.keys(existing[id].lines).length) delete existing[id];
+    }
+  }
+  if (removedQuotes) log(`pruned ${removedQuotes} stale pick'em quote(s), dropped ${droppedCells} empty cell(s)`);
+}
+
 function mergeFeed(sources, stats, sl) {
   const depth = sl && sl.depth;
   if (!existsSync(FEED)) { log('feed not found, nothing to merge:', FEED); return false; }
@@ -634,6 +715,23 @@ function mergeFeed(sources, stats, sl) {
       }
     }
   }
+
+  // Purge stale quotes for the pick'em books that refreshed healthily this run,
+  // so a line no longer on their board can't linger as a bad cross-check.
+  pruneStalePickem(existing, sources);
+
+  // Position-impossible line guard. A QB never has a receptions market — such a
+  // cell is always a cross-source name collision (two "Josh Allen"s: the Bills
+  // QB and a defender), which no single book/source owns, so drop it wherever it
+  // came from. This is the ONLY direction that's universally safe: non-QBs DO
+  // throw on trick plays (Taysom Hill), so passing lines are not guarded.
+  const QB_FORBIDDEN = ['rec', 'rec_yd', 'rec_td', 'long_rec'];
+  let posDropped = 0;
+  for (const id in existing) {
+    if (existing[id].pos !== 'QB') continue;
+    for (const mk of QB_FORBIDDEN) if (existing[id].lines && existing[id].lines[mk]) { delete existing[id].lines[mk]; posDropped++; }
+  }
+  if (posDropped) log(`position guard: dropped ${posDropped} impossible QB receiving line(s)`);
 
   // Sleeper-team override: Sleeper is the authoritative CURRENT-team source, and
   // every entry keyed by a Sleeper id already carries that id — so force its team
