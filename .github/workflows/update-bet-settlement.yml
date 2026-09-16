@@ -71,6 +71,13 @@ jobs:
       - name: Settle bets + compute CLV
         run: python3 scripts/settle_bets.py
 
+      # Is the board's "Win %" honest? Reconstructs the calibrated win probability
+      # for every settled prop and buckets predicted vs actual (reliability table,
+      # Brier, ECE) → data/prop_calibration.json, surfaced in Track Record.
+      # Deterministic; rides the settlement commit. Never fails the settle.
+      - name: Prop Win% calibration
+        run: python3 scripts/prop_calibration.py || true
+
       # Post-settle retro on Vault's OWN prop projections (record, CLV, per-market
       # projection bias, model-vs-market log-loss) written to docs/retro/. Reads
       # the tape settle_bets just wrote; output is DETERMINISTIC (no wall-clock),
@@ -91,7 +98,7 @@ jobs:
           git config user.email "vault-bot@users.noreply.github.com"
           # Rebase in case another data cron pushed while we ran.
           git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
-          git add data/bet_results.json data/edge_scoreboard.json data/espn_player_stats_*.json docs/retro/*.md 2>/dev/null || true
+          git add data/bet_results.json data/edge_scoreboard.json data/prop_calibration.json data/espn_player_stats_*.json docs/retro/*.md 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No settlement changes."
           else

@@ -103,40 +103,51 @@ def main():
         return
 
     weeks = sorted({p.get("week") for p in props if p.get("week") is not None})
-    week = args.week if args.week is not None else (weeks[-1] if weeks else None)
     line_key = "line_" + args.line
     won_key = "won_" + args.line
 
-    rows, by_market, skipped = [], {}, 0
+    # Collect graded (win_prob, outcome, market) rows, per week and cumulative.
+    per_week_rows, cum_rows, skipped = {}, [], 0
     for p in props:
-        if p.get("week") != week:
-            continue
+        wk = p.get("week")
         mkt = p.get("market")
         mp = model.get(mkt)
         proj, line, side, won = p.get("proj"), p.get(line_key), p.get("side"), p.get(won_key)
-        if mp is None or proj is None or line is None or side not in ("over", "under") or won not in (0.0, 1.0) or p.get("push"):
+        if wk is None or mp is None or proj is None or line is None or side not in ("over", "under") or won not in (0.0, 1.0) or p.get("push"):
             skipped += 1
             continue
         wp = win_prob(mp, proj, line, side)
         if wp is None:
             skipped += 1
             continue
-        outcome = 1.0 if won >= 0.5 else 0.0
-        rows.append((wp, outcome, mkt))
-        by_market.setdefault(mkt, []).append((wp, outcome, mkt))
+        row = (wp, 1.0 if won >= 0.5 else 0.0, mkt)
+        per_week_rows.setdefault(wk, []).append(row)
+        cum_rows.append(row)
 
-    overall = summarize(rows)
-    if not overall:
-        print(f"No usable settled props for week {week}.")
-        return
-    markets = {m: summarize(v) for m, v in sorted(by_market.items(), key=lambda kv: -len(kv[1]))}
+    def block(rows):
+        ov = summarize(rows)
+        if not ov:
+            return None
+        mk = {m: summarize([r for r in rows if r[2] == m]) for m in {r[2] for r in rows}}
+        mk = {m: mk[m] for m in sorted(mk, key=lambda x: -mk[x]["n"])}
+        return {"overall": ov, "by_market": mk}
 
-    out = {"season": res.get("props", [{}])[0].get("season"), "week": week,
-           "line_basis": args.line, "generated": res.get("generated"),
-           "skipped": skipped, "overall": overall, "by_market": markets}
+    by_week = {str(wk): block(rows) for wk, rows in sorted(per_week_rows.items())}
+    cumulative = block(cum_rows)
+    latest_week = weeks[-1] if weeks else None
+
+    out = {"season": res.get("props", [{}])[0].get("season"), "generated": res.get("generated"),
+           "line_basis": args.line, "latest_week": latest_week, "skipped": skipped,
+           "cumulative": cumulative, "by_week": by_week}
     json.dump(out, open(os.path.join(DATA, "prop_calibration.json"), "w"), indent=2)
 
-    # ── report ──────────────────────────────────────────────────────────────
+    # ── report (the requested week, or the latest) ───────────────────────────
+    week = args.week if args.week is not None else latest_week
+    blk = by_week.get(str(week))
+    if not blk:
+        print(f"No usable settled props for week {week}.")
+        return
+    overall, markets = blk["overall"], blk["by_market"]
     print(f"\n  PROP WIN% CALIBRATION — Week {week} (judged at the {args.line} line)\n")
     print(f"  Settled picks graded : {overall['n']}   (skipped {skipped}: pushes / no model / unsettled)")
     print(f"  Model said, on avg   : {overall['pred_avg']}% to hit")

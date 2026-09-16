@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-16T22:00', tag:'New', title:'A “Win %” check — does the model’s number actually hit?',
+    items:[
+      'The prop model’s calibrated probability is now labeled “Win %” (it used to say “Sim %”). It’s Vault’s own honest guess at how often a pick hits — no book price involved.',
+      'New “Win % Check” tab in Track Record grades that number against real results: when the model promised 60%, did those picks actually hit around 60%? It shows a reliability chart (promised vs actual at each confidence level), the Brier score, and a per-market breakdown.',
+      'It refreshes automatically every time a slate settles, so you can watch — week over week — exactly where the model is sharp and where it’s over-confident.',
+    ],
+  },
+  {
     ts:'2026-09-16T20:00', tag:'Improved', title:'A cleaner, faster Player Props board',
     items:[
       'The board is now a clean, scannable table — grade, Vault projection, edge, sim % and the L5–SZN hit rates at a glance. Tap any player and the full breakdown slides open right under their row: a projection card, the defense they face, the best price, the pick grade, the game log versus the line and every book’s price. Tap again to close.',
@@ -44178,7 +44186,8 @@ window.VaultPropModel = (function () {
     const tabs = '<span class="bt-seg tr-tabs">'
       + '<button data-rt="mine" class="' + (resultsTab === 'mine' ? 'on' : '') + '">My Picks</button>'
       + '<button data-rt="vault" class="' + (resultsTab === 'vault' ? 'on' : '') + '">Vault Record</button>'
-      + '<button data-rt="vaultgame" class="' + (resultsTab === 'vaultgame' ? 'on' : '') + '">Vault Game Record</button></span>';
+      + '<button data-rt="vaultgame" class="' + (resultsTab === 'vaultgame' ? 'on' : '') + '">Vault Game Record</button>'
+      + '<button data-rt="calib" class="' + (resultsTab === 'calib' ? 'on' : '') + '">Win % Check</button></span>';
     return '<div class="eb-wrap"><div class="eb-board">'
       + '<div class="eb-bh"><div><div class="eb-t">Track Record</div><div class="eb-cn">' + subtitle + '</div></div>'
       + '<button class="eb-mypicks" id="eb-backboard">← Board</button></div>'
@@ -44264,7 +44273,88 @@ window.VaultPropModel = (function () {
     };
     if (resultsTab === 'vault') return _drawVault(wire);
     if (resultsTab === 'vaultgame') return _drawVaultGame(wire);
+    if (resultsTab === 'calib') return _drawCalib(wire);
     return _drawMine(wire);
+  }
+
+  // ── Win % Check — is the board's Win % honest? Reads data/prop_calibration.json
+  //    (scripts/prop_calibration.py, written each settlement): for every settled
+  //    prop it compares the win probability the board promised to what actually
+  //    happened. Cumulative by default; tap a week to see one slate. ────────────
+  let _calibP = null, _calibData = null, _calibDone = false;
+  function loadCalib() {
+    if (!_calibP) _calibP = fetch(_LEDGER_BASE + '/prop_calibration.json')
+      .then(r => (r.ok ? r.json() : null)).then(j => { _calibData = j; _calibDone = true; return j; })
+      .catch(() => { _calibDone = true; return null; });
+    return _calibP;
+  }
+  function _calibGap(v) { return v >= 0 ? 'good' : 'bad'; }
+  function _calibReliability(rel) {
+    if (!rel || !rel.length) return '';
+    const rows = rel.map(r => {
+      const cls = Math.abs(r.gap) <= 3 ? 'good' : (r.gap < 0 ? 'bad' : 'warn');
+      return '<div class="tr-row cal-row"><div class="tr-rlbl"><span class="tr-lbl">' + r.bucket + '</span></div>'
+        + '<div class="cal-said">' + r.pred + '%</div>'
+        + '<div class="tr-rbar"><span class="tr-fill ' + cls + '" style="width:' + Math.round(r.actual) + '%"></span><i class="cal-tick" style="left:' + Math.round(r.pred) + '%"></i></div>'
+        + '<div class="tr-rwr ' + cls + '">' + r.actual + '%</div>'
+        + '<div class="tr-rroi ' + cls + '">' + (r.gap > 0 ? '+' : '') + r.gap + '</div></div>';
+    }).join('');
+    return '<div class="tr-group"><div class="tr-gt">When the model promised X, how often did it actually hit?</div>'
+      + '<div class="tr-rhead cal-head"><span></span><span>SAID</span><span>ACTUAL (bar)</span><span></span><span>GAP</span></div>'
+      + rows + '</div>';
+  }
+  function _calibMarkets(byMkt) {
+    const ms = Object.entries(byMkt || {}).filter(([, s]) => s && s.n >= 8);
+    if (!ms.length) return '';
+    const MK = (typeof F === 'function' && F() && F().MARKET_BY_KEY) ? F().MARKET_BY_KEY : {};
+    const rows = ms.map(([k, s]) => {
+      const gap = Math.round((s.actual_avg - s.pred_avg) * 10) / 10, cls = Math.abs(gap) <= 3 ? 'good' : (gap < 0 ? 'bad' : 'warn');
+      const lbl = (MK[k] && (MK[k].short || MK[k].label)) || k;
+      return '<div class="tr-row cal-mrow"><div class="tr-rlbl"><span class="tr-lbl">' + lbl + '</span></div>'
+        + '<div class="cal-said">' + s.pred_avg + '%</div>'
+        + '<div class="tr-rbar"><span class="tr-fill ' + cls + '" style="width:' + Math.round(s.actual_avg) + '%"></span></div>'
+        + '<div class="tr-rwr ' + cls + '">' + s.actual_avg + '%</div>'
+        + '<div class="tr-rrec">' + s.n + '</div>'
+        + '<div class="tr-rroi ' + cls + '">' + (gap > 0 ? '+' : '') + gap + '</div></div>';
+    }).join('');
+    return '<div class="tr-group"><div class="tr-gt">By market</div>'
+      + '<div class="tr-rhead cal-head-m"><span></span><span>SAID</span><span>ACTUAL (bar)</span><span></span><span>N</span><span>GAP</span></div>'
+      + rows + '</div>';
+  }
+  function _drawCalib(wire) {
+    const paint = data => {
+      if (propsView !== 'results' || resultsTab !== 'calib') return;
+      let sub, body;
+      if (!data || !data.cumulative) {
+        sub = 'no settled props yet';
+        body = '<div class="tr-empty"><div class="tr-ek">No Win % check yet</div>'
+          + '<div class="tr-et">Once a slate settles, Vault re-scores every prop it leaned: the win probability the board promised versus what actually happened. If the model says “60%,” the picks it graded 60% should hit about 60% of the time. This fills in automatically after games are played.</div></div>';
+        _pvInner().innerHTML = _trShell(sub, body); wire(); return;
+      }
+      const weeks = Object.keys(data.by_week || {}).map(Number).sort((a, b) => a - b);
+      if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;
+      const blk = _trWeek != null ? (data.by_week[String(_trWeek)]) : data.cumulative;
+      const o = blk && blk.overall;
+      if (!o) { _pvInner().innerHTML = _trShell('no settled props', '<div class="tr-empty"><div class="tr-ek">Nothing settled for this slate</div></div>'); wire(); return; }
+      const gap = Math.round((o.actual_avg - o.pred_avg) * 10) / 10;
+      const wkCtx = _trWeek != null ? 'Week ' + _trWeek : 'every settled week';
+      sub = o.n.toLocaleString() + ' model leans settled · ' + wkCtx;
+      const wkBar = _trWeekBar(weeks, true);   // reuse the standard week strip (wired already)
+      const hero = '<div class="tr-hero cal-hero"><div class="tr-h-main"><div class="tr-h-rec ' + _calibGap(gap) + '">' + o.actual_avg + '%</div>'
+        + '<div class="tr-h-sub">actually hit · model promised ' + o.pred_avg + '% on average</div></div>'
+        + '<div class="tr-h-kpis">'
+        + '<div class="tr-kpi"><div class="tr-kl">Calibration gap</div><div class="tr-kv ' + (Math.abs(gap) <= 1.5 ? 'good' : 'bad') + '">' + (gap > 0 ? '+' : '') + gap + '</div><div class="tr-kt">actual − promised</div></div>'
+        + '<div class="tr-kpi"><div class="tr-kl">Brier</div><div class="tr-kv ' + (o.brier <= 0.25 ? 'good' : 'bad') + '">' + o.brier.toFixed(3) + '</div><div class="tr-kt">0.25 = coin flip</div></div>'
+        + '<div class="tr-kpi"><div class="tr-kl">Avg error</div><div class="tr-kv ' + (o.ece <= 5 ? 'good' : 'bad') + '">' + o.ece + '%</div><div class="tr-kt">promised vs real</div></div>'
+        + '</div></div>';
+      body = wkBar + hero + _calibReliability(o.reliability) + _calibMarkets(blk.by_market)
+        + '<div class="tr-note">Each settled prop is the side Vault’s projection leaned. The board’s Win % is a calibrated probability, not a simulation — so this checks it against real box scores. A green gap near zero means the promise matched reality; a red gap means the model was over-confident at that level. Judged at the ' + (data.line_basis || 'close') + ' line.</div>';
+      _pvInner().innerHTML = _trShell(sub, body); wire();
+    };
+    if (_calibDone) { paint(_calibData); return; }
+    _pvInner().innerHTML = _trShell('loading Win % check…', '<div class="tr-load"><span class="spinner md"></span></div>');
+    wire();
+    loadCalib().then(paint);
   }
 
   // Game bets (Vault's tracked leans) aggregate on their own scale — spread /
@@ -46195,6 +46285,20 @@ window.VaultPropModel = (function () {
 #page-betting .tr-row:hover{background:var(--bt-s2)}
 #page-betting .tr-row:hover .tr-lbl{color:var(--bt-accent2)}
 #page-betting .tr-row:focus-visible{outline:2px solid var(--bt-accent2);outline-offset:-2px}
+/* ── Win % Check (calibration) ─────────────────────────────────────────────── */
+#page-betting .tr-fill.warn{background:var(--bt-gold)}
+#page-betting .tr-h-rec.good{color:var(--bt-green)} #page-betting .tr-h-rec.bad{color:var(--red)}
+#page-betting .cal-hero .tr-h-sub{max-width:none}
+#page-betting .tr-rhead.cal-head,#page-betting .tr-row.cal-row{grid-template-columns:88px 40px 1fr 44px 44px;cursor:default}
+#page-betting .tr-rhead.cal-head-m,#page-betting .tr-row.cal-mrow{grid-template-columns:104px 40px 1fr 44px 34px 44px;cursor:default}
+#page-betting .tr-row.cal-row:hover,#page-betting .tr-row.cal-mrow:hover{background:transparent}
+#page-betting .tr-row.cal-row:hover .tr-lbl,#page-betting .tr-row.cal-mrow:hover .tr-lbl{color:var(--bt-text2)}
+#page-betting .cal-said{font-family:var(--bt-mono);font-size:11px;font-weight:700;color:var(--bt-muted);text-align:right}
+#page-betting .cal-head span,#page-betting .cal-head-m span{text-align:right}
+#page-betting .cal-head span:nth-child(3),#page-betting .cal-head-m span:nth-child(3){text-align:left}
+#page-betting .cal-row .tr-rbar,#page-betting .cal-mrow .tr-rbar{position:relative}
+#page-betting .cal-tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--bt-text);opacity:.55;border-radius:2px;transform:translateX(-1px)}
+#page-betting .cal-tick::after{content:"said";position:absolute;top:-11px;left:50%;transform:translateX(-50%);font-family:var(--bt-mono);font-size:7px;letter-spacing:.04em;color:var(--bt-muted);white-space:nowrap}
 #page-betting .tr-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--bt-border)}
 #page-betting .tr-flabel{font-family:var(--bt-mono);font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--bt-muted)}
 #page-betting .tr-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--bt-mono);font-size:11px;font-weight:700;color:var(--bt-text);background:color-mix(in srgb,var(--bt-accent2) 14%,transparent);border:1px solid color-mix(in srgb,var(--bt-accent2) 30%,transparent);border-radius:9999px;padding:4px 10px;cursor:pointer}
