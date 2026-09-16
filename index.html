@@ -13473,6 +13473,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-16T12:00', tag:'Fixed', title:'Tracked picks land in the right week',
+    items:[
+      'A prop you tracked for this week could get filed under last week in My Picks, so it looked like you couldn’t track the same player again. Each pick now takes its week from the actual game it’s on, so tracking a player week after week gives you a separate, correctly-dated entry every time.',
+    ],
+  },
+  {
     ts:'2026-09-15T20:00', tag:'Improved', title:'My Picks shows the week filter right away',
     items:[
       'The Week strip in My Picks now appears as soon as you’re tracking any picks, instead of waiting until you have picks in two different weeks. Tap a week to narrow your record, and it’s ready the moment you start tracking a player across more than one week.',
@@ -42829,9 +42835,32 @@ window.VaultPropModel = (function () {
   function picksLoad() { try { return JSON.parse(localStorage.getItem(PKEY) || '[]'); } catch (e) { return []; } }
   function picksSave(a) { try { localStorage.setItem(PKEY, JSON.stringify(a)); } catch (e) {} }
   let propsView = 'board';   // 'board' | 'results'
+  // The prop's REAL game week. The feed's top-level week (MODEL.week) can lag the
+  // slate it's actually serving — it stamped every Week-2 prop as Week 1, so a
+  // pick you tracked for this week landed in your record as last week's. Each
+  // game on the board carries its own week, so resolve the prop's week from its
+  // matchup (team + opp) and only fall back to the global week when the game
+  // isn't on the board. Nearest week wins when a pair appears twice (a stray
+  // future game — e.g. a Thanksgiving matchup — can leak into the feed).
+  function propWeek(r) {
+    if (r && r.team && r.opp && MODEL) {
+      if (!MODEL._pairWeek) {
+        const map = {};
+        for (const g of (MODEL._allGames || MODEL.games || [])) {
+          if (!g || g.week == null || !g.home || !g.away) continue;
+          const key = [g.home, g.away].sort().join('|');
+          if (map[key] == null || g.week < map[key]) map[key] = g.week;
+        }
+        MODEL._pairWeek = map;
+      }
+      const w = MODEL._pairWeek[[r.team, r.opp].sort().join('|')];
+      if (w != null) return w;
+    }
+    return MODEL ? MODEL.week : null;
+  }
   // Pick key is SIDE-aware, so Over and Under of the same prop track as separate
   // entries — you choose which side (or both) to follow, not just Vault's lean.
-  const pickKey = (r, side) => propKey(r) + ':' + (side || '') + ':' + (MODEL.season || '') + 'w' + (MODEL.week || '');
+  const pickKey = (r, side) => propKey(r) + ':' + (side || '') + ':' + (MODEL.season || '') + 'w' + (propWeek(r) || '');
   const _sideLbl = s => s === 'under' ? 'Under' : 'Over';
   // Vault's favoured side for a prop (higher win prob) — the header quick-track
   // and the accent-ringed card both key on this.
@@ -42860,7 +42889,7 @@ window.VaultPropModel = (function () {
       price: sm.best != null ? sm.best : null,
       book: sm.book || null,
       ha: r.ha || null,
-      season: MODEL.season, week: MODEL.week, opp: r.opp || null, ts: Date.now(),
+      season: MODEL.season, week: propWeek(r), opp: r.opp || null, ts: Date.now(),
     });
     picksSave(picks);
   }
@@ -42966,7 +42995,7 @@ window.VaultPropModel = (function () {
   function _leanToPick(g, lean) {
     return { k: null, game: gameKeyOf(g), away: g.away, home: g.home, market: lean.market, side: lean.side,
       team: lean.team, line: lean.line, price: lean.price, book: lean.book, label: lean.label, vault: lean.vault,
-      diff: lean.diff, unit: lean.unit, season: MODEL.season, week: MODEL.week };
+      diff: lean.diff, unit: lean.unit, season: MODEL.season, week: (g.week != null ? g.week : MODEL.week) };
   }
   function gamePickLogged(g, lean) { return gamePicksLoad().some(p => p.k === gamePickKey(_leanToPick(g, lean))); }
   function toggleGamePick(g, lean) {
