@@ -43804,7 +43804,7 @@ window.VaultPropModel = (function () {
     const boardTitle = searching ? 'Search · “' + searchQ.trim() + '”' : (curPos === 'ALL' ? ('Edges · All' + (curMarket && (m.short || m.label) ? ' · ' + (m.short || m.label) : ' props')) : 'Edges · ' + curPos + ' ' + (m.short || m.label || ''));
     _pvInner().innerHTML = '<div class="eb-wrap">'
       + '<div class="eb-board"><div class="eb-bh"><div><div class="eb-t">' + boardTitle + '</div><div class="eb-cn">' + cn + '</div></div>'
-      + '<div class="eb-bh-r"><button class="eb-mypicks" id="eb-mypicks" title="Your logged picks + realized results by grade">My Picks' + (picksLoad().length ? ' <b>' + picksLoad().length + '</b>' : '') + '</button></div></div>'
+      + '<div class="eb-bh-r"></div></div>'
       + '<div class="bx-hint"><svg fill="none" stroke="var(--bt-accent2)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/></svg> <b>Grade</b>, <b>Vault proj</b>, <b>Edge</b> and <b>Sim %</b> come from Vault’s own player model, not the books. <b>L5–SZN</b> are real hit rates against the line shown. Click any player for the full breakdown — the opponent’s defense, best price and every book’s line.</div>'
       /* accordion: no persistent panel — the detail opens inline under the clicked row */
       + (isMobile()
@@ -43812,11 +43812,9 @@ window.VaultPropModel = (function () {
           : '<div class="eb-tscroll bx-pscroll"><table class="bx-pt">' + head + '<tbody id="eb-rows">' + body + '</tbody></table></div>')
       + '</div></div>';
     paintHeadshots('#bt-pv-inner');
-    const mpBtn = _pvInner().querySelector('#eb-mypicks');
-    if (mpBtn) mpBtn.onclick = () => { propsView = 'results'; renderPropsBoard(); };
-    // Grade-vs select + Filters button now live in the controls row (renderFilters);
-    // the board render only refreshes the active-filter badge count.
-    ebUpdateFilterBtn();
+    // Grade-vs select, Filters and My Picks now live in the controls row
+    // (renderFilters); the board render only refreshes their live counts.
+    ebUpdateFilterBtn(); ebUpdateMyPicks();
     // Keep an open drawer's control states in sync after a board re-render.
     if (document.getElementById('eb-drawer') && document.getElementById('eb-drawer').classList.contains('open')) ebBuildDrawer();
     _pvInner().querySelectorAll('.bx-pt thead th.s').forEach(th => th.onclick = () => { const k = th.dataset.sk; if (ebSort.key === k) ebSort.dir *= -1; else ebSort = { key: k, dir: k === 'name' ? 1 : -1 }; renderPropsBoard(); });
@@ -45435,6 +45433,10 @@ window.VaultPropModel = (function () {
     const b = document.getElementById('eb-fbadge'); if (!b) return;
     const n = _ebFilterCount(); b.textContent = n || ''; b.style.display = n ? 'inline-grid' : 'none';
   }
+  function ebUpdateMyPicks() {
+    const c = document.getElementById('eb-mp-count'); if (!c) return;
+    const n = picksLoad().length; c.innerHTML = n ? ' <b>' + n + '</b>' : '';
+  }
   function ebBuildDrawer() {
     const el = _ebDrawerEl();
     const fb = F();
@@ -45698,12 +45700,14 @@ window.VaultPropModel = (function () {
           '<label class="eb-be" title="Vault grade is scored against this break-even. Pick the pickem entry you play — a 3-pick power play needs ~55% per leg to profit.">Grade vs <select id="eb-be-sel" class="bt-in">'
           + BE_PRESETS.map(([lab, be]) => '<option value="' + be + '"' + (Math.abs(be - betBE) < 1e-6 ? ' selected' : '') + '>' + lab + ' · ' + Math.round(be * 100) + '%</option>').join('')
           + '</select></label>'
-          + '<button class="eb-filtersbtn" id="eb-filtersbtn" title="Filter &amp; sort the board — side, grade, hit rate, games"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg> Filters<span class="eb-fbadge" id="eb-fbadge"></span></button>';
+          + '<button class="eb-filtersbtn" id="eb-filtersbtn" title="Filter &amp; sort the board — side, grade, hit rate, games"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg> Filters<span class="eb-fbadge" id="eb-fbadge"></span></button>'
+          + '<button class="eb-filtersbtn" id="eb-mypicks" title="Your logged picks + realized results by grade">My Picks<span id="eb-mp-count"></span></button>';
         pc.dataset.built = '1';
         pc.querySelector('#eb-be-sel').onchange = e => { const v = parseFloat(e.target.value); if (v > 0 && v < 1) { betBE = v; try { localStorage.setItem(BEKEY, betBE); } catch (err) {} renderPropsBoard(); } };
         pc.querySelector('#eb-filtersbtn').onclick = ebOpenDrawer;
+        pc.querySelector('#eb-mypicks').onclick = () => { propsView = 'results'; renderPropsBoard(); };
       }
-      if (isP) ebUpdateFilterBtn();
+      if (isP) { ebUpdateFilterBtn(); ebUpdateMyPicks(); }
     }
   }
   function renderNote() {
@@ -46048,10 +46052,6 @@ window.VaultPropModel = (function () {
     let html = '<div class="bb-wrap"><div class="bb-head"><span class="bb-title">' + reIcon('star', { size: 13 }) + ' Vault Best Bets</span>'
       + '<span class="bb-sub">Top ' + props.length + ' by confidence-adjusted value · ≥2 books</span></div>'
       + '<div class="bb-cards">' + props.map(card).join('') + '</div>';
-    if (leans.length) {
-      html += '<div class="bb-leans"><span class="bb-ll" title="Model context, not an edge — the game model matches the market without beating it">Model leans</span>'
-        + leans.map(l => '<span class="bb-lean">' + l.side + ' ' + (l.type === 'total' ? l.market_line : '') + ' <small>' + l.game + ' · ' + l.lean + (l.type === 'spread' ? 'pt' : '') + '</small></span>').join('') + '</div>';
-    }
     html += '</div>';
     host.innerHTML = html;
     // paint headshots (paintHeadshots keys on .bt-hs; our avatars are .bb-hs)
