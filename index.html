@@ -42073,6 +42073,7 @@ window.VaultPropModel = (function () {
 #page-betting .bx-projhero .ph-src.warn{color:var(--bt-gold);font-weight:700}
 /* ── SpariEdge-slim table: side now stacks with the line in the Line cell ─── */
 #page-betting .bx-pt td.c-line .bx-linecell{display:inline-flex;flex-direction:column;align-items:center;gap:3px;line-height:1.1}
+#page-betting .bx-pt td.c-line .bx-lc-side{display:inline-flex;align-items:center;gap:4px}
 #page-betting .bx-pt td.c-line .bx-line{font-weight:800}
 /* ── SpariEdge meta-card strip (replaces the projection hero box) ─────────── */
 #page-betting .bx-projhero{display:block;padding:0;margin-bottom:16px;border:0;background:none;overflow:visible}
@@ -43773,9 +43774,11 @@ window.VaultPropModel = (function () {
         + '<div><div class="bx-pn">' + r.name + injBadge(r) + '</div><div class="bx-pg">' + sub + '</div></div></div></td>'
         + '<td data-gradek="' + k + '">' + gradeColCell(r) + '</td>'
         + '<td class="c-line"><div class="bx-linecell">'
-        +   (pf.pickem ? '<span class="bx-side pick">PICK</span>' : '<span class="bx-side ' + pf.side + '">' + (pf.side === 'over' ? 'Over' : 'Under') + '</span>')
+        +   '<span class="bx-lc-side">'
+        +     (pf.pickem ? '<span class="bx-side pick">PICK</span>' : '<span class="bx-side ' + pf.side + '">' + (pf.side === 'over' ? 'Over' : 'Under') + '</span>')
+        +     (pf.vaultLed ? '<span class="eb-vled" title="Vault-led — no market price edge, but Vault’s projection strongly favors this side">V</span>' : '')
+        +   '</span>'
         +   '<span class="bx-line">' + (r.line != null ? r.line : '') + '</span>'
-        +   (pf.vaultLed ? '<span class="eb-vled" title="Vault-led — no market price edge, but Vault’s projection strongly favors this side">V</span>' : '')
         + '</div></td>'
         + '<td data-vpk="' + k + '">' + projNumCell(r) + '</td>'
         + '<td data-edgek="' + k + '">' + edgeChipHTML(r) + '</td>'
