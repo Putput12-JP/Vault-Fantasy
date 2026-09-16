@@ -13473,6 +13473,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-16T14:00', tag:'Fixed', title:'Game Markets shows the upcoming slate again',
+    items:[
+      'Once a week’s games finished and the sportsbooks rolled to next week’s lines, the Game Markets board could go blank until the full feed caught up. It now always locks onto the next slate of games, so spreads, totals and moneylines stay on screen through the changeover.',
+    ],
+  },
+  {
     ts:'2026-09-16T12:00', tag:'Fixed', title:'Tracked picks land in the right week',
     items:[
       'A prop you tracked for this week could get filed under last week in My Picks, so it looked like you couldn’t track the same player again. Each pick now takes its week from the actual game it’s on, so tracking a player week after week gives you a separate, correctly-dated entry every time.',
@@ -40523,7 +40529,18 @@ body .page,body .page.on{background:transparent!important}
         // keep any game whose kickoff lands in THIS week's window, anchored to
         // the earliest correctly-tagged game (Thu→Mon span, short of next Thu).
         const wkT = fg.filter(g => g.week === feed.week && g.commence).map(g => Date.parse(g.commence)).filter(t => !isNaN(t));
-        const base = wkT.length ? Math.min(...wkT) : null;
+        let base = wkT.length ? Math.min(...wkT) : null;
+        // Stale top-level `week`: when week N is complete but the odds have
+        // already rolled to week N+1, the feed's header can lag a week behind
+        // its own games (every game tagged 2 while `feed.week` still says 1).
+        // Anchoring on feed.week then matches NOTHING, `base` is null, the date
+        // window never forms, and the filter below drops the entire slate — a
+        // blank board. Fall back to the earliest UPCOMING kickoff so the window
+        // forms around the real next slate instead of the dead header week.
+        if (base == null) {
+          const up = fg.map(g => g.commence ? Date.parse(g.commence) : NaN).filter(t => !isNaN(t) && t > Date.now());
+          if (up.length) base = Math.min(...up);
+        }
         const lo = base != null ? base - 1.5 * 864e5 : null, hi = base != null ? base + 5.5 * 864e5 : null;
         fg = fg.filter(g => {
           if (g.week == null || g.week === feed.week) return true;
