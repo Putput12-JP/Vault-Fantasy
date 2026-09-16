@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-16T20:00', tag:'Improved', title:'A cleaner, faster Player Props board',
+    items:[
+      'The board is now a clean, scannable table — grade, Vault projection, edge, sim % and the L5–SZN hit rates at a glance. Tap any player and the full breakdown slides open right under their row: a projection card, the defense they face, the best price, the pick grade, the game log versus the line and every book’s price. Tap again to close.',
+      'New Filters panel (top-right of the board): filter by Over or Under, set a minimum pick grade, sort by any column, keep only a hit-rate range, or narrow to specific games — each game listed with its kickoff day and time. Your team filter and “My players only” live here too.',
+      'New “All” view shows every position’s props on one board at once, ranked by value — and you can still narrow it to a single bet type (rushing yards across every position, say).',
+      'The game filter now lists only games you can still bet — once a game kicks off it drops off the list.',
+    ],
+  },
+  {
     ts:'2026-09-16T18:00', tag:'Fixed', title:'Player prop lines now match the sportsbooks',
     items:[
       'Some props were showing the wrong number — Cade Otton’s receptions read 0.5 when Underdog had it at 3.5, and a few others were stuck on alternate or first-quarter lines. The Underdog feed had quietly gone stale; it’s now pulling live again, so every line matches what the book actually posts.',
@@ -41354,6 +41363,11 @@ window.VaultPropModel = (function () {
   let teamFilter = '', searchQ = '';
   let mineOnly = false;
   let ouFilter = 'all';   // 'all' | 'over' | 'under' — filters the props board by Vault's leaned side
+  // Filters-drawer state (Player Props). Grade + trend read async caches, so a row
+  // stays until its value is known, then the cache-fill re-render re-applies them.
+  let fltGrade = 0;                       // 0 = any; 1 = D-min … 4 = A-min (min pick grade)
+  let fltTrendMin = 0, fltTrendMax = 100; // L10 hit-rate band (%)
+  let fltGames = null;                    // Set<matchup key> or null = every game
   let gSort = { key: 'total', dir: -1 }, pSort = { key: 'value', dir: -1 };
 
   /* ── "My Players" · the user's real Sleeper rosters ──────────────────────
@@ -41488,6 +41502,8 @@ window.VaultPropModel = (function () {
 #page-betting .bt-seg{ --vseg-bg:var(--bt-s1); --vseg-border:var(--bt-border); --vseg-ink:var(--bt-muted); }
 #page-betting .bt-seg > button:hover, #page-betting .bt-seg > button.on{ color:var(--bt-text); }
 #page-betting .bt-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+#page-betting .bt-props-ctl{display:inline-flex;align-items:center;gap:10px}
+#page-betting .bt-props-ctl .eb-be{display:inline-flex;align-items:center;gap:7px;font-family:var(--bt-mono);font-size:var(--t-micro);letter-spacing:.04em;text-transform:uppercase;color:var(--bt-muted);white-space:nowrap}
 #page-betting .bt-tag{font-family:var(--bt-mono);font-size:var(--t-nano);letter-spacing:.1em;text-transform:uppercase;color:var(--bt-gold);border:1px solid rgba(245,200,66,.3);background:rgba(245,200,66,.08);padding:5px 10px;border-radius:7px}
 #page-betting .bt-spacer{flex:1}
 #page-betting .bt-pos{display:inline-flex;gap:4px}
@@ -42047,6 +42063,78 @@ window.VaultPropModel = (function () {
 #page-betting .bx-projhero .ph-adj b{color:var(--bt-text2);font-weight:700}
 #page-betting .bx-projhero .ph-src{font-family:var(--bt-mono);font-size:var(--t-nano);letter-spacing:.02em;color:var(--bt-muted);margin-top:8px}
 #page-betting .bx-projhero .ph-src.warn{color:var(--bt-gold);font-weight:700}
+/* ── SpariEdge-slim table: side now stacks with the line in the Line cell ─── */
+#page-betting .bx-pt td.c-line .bx-linecell{display:inline-flex;flex-direction:column;align-items:center;gap:3px;line-height:1.1}
+#page-betting .bx-pt td.c-line .bx-line{font-weight:800}
+/* ── SpariEdge meta-card strip (replaces the projection hero box) ─────────── */
+#page-betting .bx-projhero{display:block;padding:0;margin-bottom:16px;border:0;background:none;overflow:visible}
+#page-betting .bx-projhero::before{display:none}
+#page-betting .bx-meta{display:flex;gap:8px}
+#page-betting .bx-meta-load{min-height:99px;align-items:center;justify-content:center;border:1px solid var(--bt-border);border-radius:11px;background:var(--bt-s1)}
+#page-betting .bx-metac{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:5px;text-align:center;background:var(--bt-s1);border:1px solid var(--bt-border);border-radius:11px;padding:12px 9px;min-height:99px}
+#page-betting .bx-metac i{font-family:var(--bt-mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--bt-muted);font-style:normal;flex:none}
+#page-betting .bx-metac .mv{flex:1;font-family:var(--bt-mono);font-size:32px;font-weight:800;color:var(--bt-text);line-height:1;display:flex;align-items:center;justify-content:center;gap:5px}
+#page-betting .bx-metac .msub{font-family:var(--bt-mono);font-size:9px;color:var(--bt-muted);flex:none}
+#page-betting .bx-metac .mlean{font-family:var(--bt-mono);font-size:8px;font-weight:800;padding:3px 8px;border-radius:6px;flex:none}
+#page-betting .bx-metac .mlean.over{color:var(--bt-green);background:color-mix(in srgb,var(--bt-green) 14%,transparent)}
+#page-betting .bx-metac .mlean.under{color:var(--red);background:color-mix(in srgb,var(--red) 14%,transparent)}
+#page-betting .bx-metac .mlean.flag{color:var(--bt-gold);background:color-mix(in srgb,var(--bt-gold) 14%,transparent)}
+#page-betting .bx-metac .mgrade .eb-grade{font-size:26px;padding:2px 12px;line-height:1.05}
+#page-betting .bx-metac .msim span{font-weight:800}
+@media(max-width:640px){#page-betting .bx-meta{flex-wrap:wrap}#page-betting .bx-metac{flex-basis:calc(50% - 4px);min-height:82px}#page-betting .bx-metac .mv{font-size:26px}}
+/* ── Filters button (board header) ───────────────────────────────────────── */
+#page-betting .eb-filtersbtn{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-secondary);font-weight:700;color:var(--bt-text2);background:var(--bt-s1);border:1px solid var(--bt-border2);border-radius:9px;padding:8px 13px;cursor:pointer}
+#page-betting .eb-filtersbtn:hover{color:var(--bt-text);border-color:var(--bt-border3)}
+#page-betting .eb-filtersbtn .eb-fbadge:empty{display:none}
+#page-betting .eb-filtersbtn .eb-fbadge{min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--bt-accent2);color:var(--on-primary);font-family:var(--bt-mono);font-size:10px;font-weight:800;display:inline-grid;place-items:center}
+/* ── Filters drawer (appended to <body>, so it reads the ROOT theme tokens) ─ */
+.eb-dscrim{position:fixed;inset:0;background:rgba(4,7,14,.55);opacity:0;pointer-events:none;transition:opacity .35s var(--ease-out,cubic-bezier(.16,1,.3,1));z-index:1200}
+.eb-dscrim.open{opacity:1;pointer-events:auto}
+.eb-drawer{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:92vw;z-index:1201;background:var(--bg);border-left:1px solid var(--border2);box-shadow:-30px 0 80px -30px rgba(0,0,0,.7);transform:translateX(100%);transition:transform .42s var(--ease-out,cubic-bezier(.16,1,.3,1));display:flex;flex-direction:column;color:var(--text);font-family:var(--font-sans)}
+.eb-drawer.open{transform:translateX(0)}
+.eb-dh{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border2);flex:none}
+.eb-dh .eb-dt{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;letter-spacing:-.01em}
+.eb-dh .eb-dt svg{color:var(--muted)}
+.eb-dh .sp{flex:1}
+.eb-dreset{font-size:13px;font-weight:700;color:var(--text2);background:var(--s2);border:1px solid var(--border2);border-radius:9px;padding:7px 13px;cursor:pointer}
+.eb-dreset:hover{color:var(--text);border-color:var(--border3)}
+.eb-dclose{width:34px;height:34px;border-radius:9px;background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer;display:grid;place-items:center}
+.eb-dclose:hover{color:var(--text);background:var(--s2)}
+.eb-dbody{overflow-y:auto;padding:2px 0 44px;flex:1}
+.eb-dsec{padding:16px 18px;border-bottom:1px solid var(--border)}
+.eb-dsec:last-child{border-bottom:0}
+.eb-dlbl{font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.4}
+.eb-dhelp{font-size:11px;color:var(--muted);margin-top:8px}
+.eb-drawer .eb-dfield{width:100%;font-family:var(--font-sans);font-size:14px;font-weight:600;color:var(--text);background:var(--s1);border:1px solid var(--border2);border-radius:10px;padding:11px 13px;outline:none;margin-bottom:9px;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2.5 4.5l3.5 3.5 3.5-3.5' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 13px center}
+.eb-dseg{display:flex;background:var(--s1);border:1px solid var(--border2);border-radius:10px;padding:4px;gap:3px}
+.eb-dseg button{flex:1;font-size:13px;font-weight:700;color:var(--text2);background:none;border:0;padding:9px 6px;border-radius:7px;cursor:pointer}
+.eb-dseg button:hover{color:var(--text)}
+.eb-dseg button.on{color:var(--on-primary);background:var(--accent2)}
+.eb-dseg.grade button.on[data-g="A"]{background:var(--value);color:var(--pos-ink)}
+.eb-dseg.grade button.on[data-g="B"]{background:var(--accent2);color:var(--pos-ink)}
+.eb-dseg.grade button.on[data-g="C"]{background:var(--gold);color:var(--pos-ink)}
+.eb-dseg.grade button.on[data-g="D"]{background:var(--red2);color:#fff}
+.eb-dtrow{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px}
+.eb-dtrow b{color:var(--text);font-family:var(--font-mono)}
+.eb-drange{position:relative;height:24px}
+.eb-drange .trk{position:absolute;top:50%;left:2px;right:2px;height:4px;transform:translateY(-50%);background:var(--s4);border-radius:999px}
+.eb-drange .fill{position:absolute;top:50%;height:4px;transform:translateY(-50%);background:var(--accent2);border-radius:999px}
+.eb-drange input{position:absolute;top:0;left:0;width:100%;height:24px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
+.eb-drange input::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--accent2);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.eb-drange input::-moz-range-thumb{pointer-events:auto;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--accent2);cursor:pointer}
+.eb-dgames{background:var(--s1);border:1px solid var(--border2);border-radius:11px;overflow:hidden}
+.eb-dgh{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)}
+.eb-gclr{font-size:12px;color:var(--accent2);background:none;border:0;cursor:pointer;font-weight:600}
+.eb-gitem{display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--border);cursor:pointer}
+.eb-gitem:first-of-type{border-top:0}
+.eb-gitem .cb{width:20px;height:20px;flex:none;border-radius:6px;border:1.5px solid var(--border3);display:grid;place-items:center;color:transparent;font-size:12px}
+.eb-gitem.on .cb{background:color-mix(in srgb,var(--value) 18%,transparent);border-color:var(--value);color:var(--value)}
+.eb-gitem .gn{font-size:14px;font-weight:600;font-family:var(--font-mono)}
+.eb-gitem .gt{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.eb-dtoggle{width:100%;margin-top:9px;padding:11px 13px;border-radius:10px;font-family:var(--font-sans);font-size:14px;font-weight:700;color:var(--text2);background:var(--s1);border:1px solid var(--border2);cursor:pointer;text-align:center}
+.eb-dtoggle:hover{color:var(--text);border-color:var(--border3)}
+.eb-dtoggle.on{color:var(--value);border-color:color-mix(in srgb,var(--value) 40%,transparent);background:color-mix(in srgb,var(--value) 10%,transparent)}
+@media(max-width:520px){.eb-drawer{width:100vw}}
 /* keep the chart's line tag out of the bars, in a clear right gutter, solid + readable */
 #page-betting .bx-detail .eb-bars{padding-right:46px}
 #page-betting .bx-detail .eb-ltag{right:4px;background:var(--bt-accent2);color:var(--on-primary);border-color:transparent;font-weight:800;z-index:4}
@@ -42147,6 +42235,7 @@ window.VaultPropModel = (function () {
       <input id="bt-search" class="bt-in bt-grow" type="text" placeholder="Search…" autocomplete="off">
       <select id="bt-team" class="bt-in" style="display:none"></select>
       <button id="bt-mine" class="bt-in" style="cursor:pointer;display:none">My Players</button>
+      <span id="bt-props-ctl" class="bt-props-ctl" style="display:none"></span>
     </div>
     <div id="bt-bestbets"></div>
     <div class="bt-view on" id="bt-v-games"></div>
@@ -43455,7 +43544,12 @@ window.VaultPropModel = (function () {
     // type a player and you find them wherever they play, with every real prop
     // line they have. Without a search we stay scoped to the picked pos + market.
     const searching = !!(searchQ && searchQ.trim());
-    let rows = fb.propRows(MODEL, { timeframe: tf, pos: searching ? undefined : curPos, market: searching ? undefined : curMarket, team: teamFilter || undefined, search: searchQ || undefined, posMarketOnly: true });
+    const allPos = curPos === 'ALL';
+    // "All" positions spans every pos; the market select still narrows the bet type
+    // ('' = All markets). A name search widens both, like before.
+    const posArg = (searching || allPos) ? undefined : curPos;
+    const mktArg = searching ? undefined : (allPos ? (curMarket || undefined) : curMarket);
+    let rows = fb.propRows(MODEL, { timeframe: tf, pos: posArg, market: mktArg, team: teamFilter || undefined, search: searchQ || undefined, posMarketOnly: true });
     if (mineOnly && MINE) rows = rows.filter(r => (r.id && MINE.pids.has(String(r.id))) || MINE.names.has(_nn(r.name)));
     const out = [];
     for (const r of rows) {
@@ -43479,9 +43573,26 @@ window.VaultPropModel = (function () {
     // only appears under All). resolvePick reads _vaultCache for vault-led rows,
     // so a filtered board re-applies itself when ebFillVaultCol lands the cache
     // and re-renders.
-    if (ouFilter !== 'all') return out.filter(r => { const pf = resolvePick(r); return pf && !pf.pickem && pf.side === ouFilter; });
-    return out;
+    let res = out;
+    if (ouFilter !== 'all') res = res.filter(r => { const pf = resolvePick(r); return pf && !pf.pickem && pf.side === ouFilter; });
+    // Games multi-select: null = every game; any Set = only those matchups.
+    if (fltGames) res = res.filter(r => fltGames.has(ebGameKey(r)));
+    // Min pick grade: grade lives in the async Vault cache, so a row stays until
+    // its grade is known — ebFillVaultCol's re-render then re-applies this filter.
+    if (fltGrade > 0) res = res.filter(r => { const g = _gradeRankOf(r); return g == null || g >= fltGrade; });
+    // Trend band: filter on the L10 hit-rate cache (async, same keep-until-known rule).
+    if (fltTrendMin > 0 || fltTrendMax < 100) res = res.filter(r => { const h = _hitCache[propKey(r)]; return h == null || (h >= fltTrendMin && h <= fltTrendMax); });
+    return res;
   }
+  // ── Filters-drawer helpers ────────────────────────────────────────────────
+  const _GR = { A: 4, B: 3, C: 2, D: 1, F: 0 };
+  function ebGameKey(r) { const home = r.ha === 'home' ? r.team : r.opp, away = r.ha === 'home' ? r.opp : r.team; return (away || '?') + ' @ ' + (home || '?'); }
+  // null = grade not computed yet (keep the row until it is); -1 = resolved with
+  // no gradeable projection (a grade filter should hide it); else the A–F rank.
+  function _gradeRankOf(r) { const k = propKey(r); if (!(k in _vaultCache)) return null; const c = _vaultCache[k]; if (!c || !c.g) return -1; const L = cappedGradeLetter(c.g.padj, betBE, c.caution); return _GR[L] != null ? _GR[L] : -1; }
+  function _trendActive() { return fltTrendMin > 0 || fltTrendMax < 100; }
+  function _ebFiltersActive() { return ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
+  function _ebFilterCount() { let n = 0; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
 
   function renderProps() {
     const host = document.getElementById('bt-v-props');
@@ -43541,8 +43652,8 @@ window.VaultPropModel = (function () {
     if (propsView === 'results') return renderResults();
     // Keep curMarket valid for the active position — a stale key (e.g. set
     // directly without going through renderMkts) would leave m undefined.
-    if (!fb.MARKET_BY_KEY[curMarket] || !fb.marketsFor(curPos).some(x => x.key === curMarket)) curMarket = fb.marketsFor(curPos)[0].key;
-    const m = fb.MARKET_BY_KEY[curMarket], col = POS_COLOR[curPos];
+    if (curPos !== 'ALL' && (!fb.MARKET_BY_KEY[curMarket] || !fb.marketsFor(curPos).some(x => x.key === curMarket))) curMarket = fb.marketsFor(curPos)[0].key;
+    const m = fb.MARKET_BY_KEY[curMarket] || {}, col = POS_COLOR[curPos] || 'var(--bt-accent2)';
     const searching = !!(searchQ && searchQ.trim());
     if (mineOnly && !MINE && !MINE_TRIED) { _pvInner().innerHTML = '<div class="bt-empty"><span class="spinner sm"></span><br>Reading your rosters…</div>'; mineLoad().then(renderProps); return; }
     // Anytime TD is ONE-SIDED (books/feed carry only a "Yes" price), so it can't
@@ -43551,7 +43662,7 @@ window.VaultPropModel = (function () {
     // own isolated board driven by VaultPropModel. Kept fully separate from the
     // proven de-vig path above. A name search leaves this isolated board so the
     // player is found on the normal cross-market board like everywhere else.
-    if (curMarket === 'anytime_td' && !searching) { ebPendSel = null; ebScrollSel = false; return renderAnytimeBoard(m, col); }
+    if (curMarket === 'anytime_td' && !searching && curPos !== 'ALL') { ebPendSel = null; ebScrollSel = false; return renderAnytimeBoard(m, col); }
     const rows = ebRows();
     document.getElementById('bt-count').textContent = rows.length + ' live ' + (rows.length === 1 ? 'line' : 'lines');
     if (!rows.length) {
@@ -43562,9 +43673,9 @@ window.VaultPropModel = (function () {
       // position/market changes and silently empties the board, so blaming the
       // books here ("No book is pricing …") reads as a broken app. When a filter
       // is active, say so and offer to clear it before falling back to that copy.
-      const activeFilter = searchQ || teamFilter || mineOnly || ouFilter !== 'all';
+      const activeFilter = _ebFiltersActive();
       if (activeFilter) {
-        const what = searchQ ? '“' + searchQ + '”' : (teamFilter ? teamFilter : (ouFilter !== 'all' ? ouFilter === 'over' ? 'Overs' : 'Unders' : 'your players'));
+        const what = searchQ ? '“' + searchQ + '”' : (teamFilter ? teamFilter : (ouFilter !== 'all' ? ouFilter === 'over' ? 'Overs' : 'Unders' : (fltGrade > 0 || _trendActive() || (fltGames && fltGames.size)) ? 'these filters' : 'your players'));
         // A search spans every position/market, so don't blame the current one.
         const emt = searchQ ? 'No player matches that name with a live prop line right now'
           : 'No ' + curPos + ' ' + mLbl + ' line matches your current filters';
@@ -43575,7 +43686,7 @@ window.VaultPropModel = (function () {
           + '<div class="eb-ems">' + ems + '</div>'
           + '<button class="bt-in" id="eb-clearf" style="margin-top:12px;cursor:pointer">Clear filters</button></div>';
         const cb = document.getElementById('eb-clearf');
-        if (cb) cb.onclick = () => { searchQ = ''; teamFilter = ''; mineOnly = false; ouFilter = 'all'; const sb = document.getElementById('bt-search'); if (sb) sb.value = ''; render(); };
+        if (cb) cb.onclick = () => { ebResetFilters(); const sb = document.getElementById('bt-search'); if (sb) sb.value = ''; render(); };
         return;
       }
       _pvInner().innerHTML = '<div class="eb-feat eb-empty"><div class="eb-emk">No live lines</div><div class="eb-emt">No book is pricing '
@@ -43609,8 +43720,11 @@ window.VaultPropModel = (function () {
       if (hit) { ebSel = propKey(hit); ebDetailMkt = curMarket; ebInit = true; }
       ebPendSel = null;
     }
-    if (!ebInit) { ebInit = true; ebSel = propKey(rows[0]); ebDetailMkt = curMarket; }
-    else if (ebSel == null || !rows.some(r => propKey(r) === ebSel)) { ebSel = propKey(rows[0]); ebDetailMkt = curMarket; }
+    // Accordion: the board opens collapsed — nothing auto-featured. A selection
+    // only survives while its row is still on the board (a Best Bets tap seeds
+    // ebSel above); once filtered/sorted away it closes rather than jumping to top.
+    if (!ebInit) ebInit = true;
+    if (ebSel != null && !rows.some(r => propKey(r) === ebSel)) ebSel = null;
     if (!ebDetailMkt) ebDetailMkt = curMarket;
     // Model Lean = projection − line, meaningful only when both are the same
     // timeframe. In preseason the props are preseason-game lines while the
@@ -43620,9 +43734,10 @@ window.VaultPropModel = (function () {
     const anyLean = seasonReg && rows.some(r => r.proj != null && r.line != null);
     const car = k => ebSort.key === k ? '<span class="ebs-c">' + (ebSort.dir < 0 ? ' ▼' : ' ▲') + '</span>' : '';
     const SC = (label, key, cls) => '<th class="ebs' + (cls ? ' ' + cls : '') + (ebSort.key === key ? ' on' : '') + '" data-sk="' + key + '">' + label + car(key) + '</th>';
-    // Column count for the inline detail row's colspan: rank + player + pick +
-    // edge + ev + fair/best + vault proj + vault edge + vault grade + hit + watch + chevron.
-    const nCols = 14;
+    // Column count for the inline detail row's colspan. SpariEdge-slim table:
+    // star · player · grade · line(+side) · vault proj · edge · sim · L5/L10/L20/SZN.
+    // O/U, best price and opp rank moved into the expanded meta-card strip.
+    const nCols = 11;
     // Outlier-exact hit-rate table: player+prop, line, best price (book chip),
     // Vault proj, model edge, IP%, opp rank, and the L5/L10/L20/SZN heat columns.
     const SH = (label, key, cls, title) => '<th class="s' + (cls ? ' ' + cls : '') + (ebSort.key === key ? ' on' : '') + '" data-sk="' + key + '"' + (title ? ' title="' + title + '"' : '') + '>' + label + car(key) + '</th>';
@@ -43631,13 +43746,9 @@ window.VaultPropModel = (function () {
       + SH('Player &amp; prop', 'name', 'l')
       + SH('Grade', 'grade', '', 'Vault’s A–F grade on the pick: how strongly the model favors this side')
       + SH('Line', 'line')
-      + '<th class="eb-ouh' + (ouFilter !== 'all' ? ' on ' + ouFilter : '') + '" id="eb-ouh" style="cursor:pointer" title="Filter by Vault’s side — click to cycle All → Over → Under">O/U'
-        + (ouFilter === 'over' ? ' <span class="bx-side over">Over</span>' : ouFilter === 'under' ? ' <span class="bx-side under">Under</span>' : ' <span class="ebs-c">▾</span>') + '</th>'
-      + SH('Best price', 'best', '', 'Best price across your books')
       + '<th title="Vault’s own per-game projection">Vault proj</th>'
       + SH('Edge', 'vault', '', 'Vault’s projected win prob vs the best book price — the model edge')
       + SH('Sim %', 'sim', '', 'Vault’s own calibrated chance this pick hits — the model’s probability, not the book’s')
-      + '<th title="Opponent defense rank vs this position (1 = toughest)">Opp rank</th>'
       + SH('L5', 'hit', 'hw')
       + '<th class="hw">L10</th><th class="hw">L20</th><th class="hw">SZN</th>'
       + '</tr></thead>';
@@ -43653,13 +43764,14 @@ window.VaultPropModel = (function () {
         + '<td class="c-player"><div class="bx-pl"><div class="bx-facewrap"><span class="bt-hs bx-face" data-hs="' + (r.headshot || '') + '" style="color:' + rcol + '">' + init + '</span><span class="bx-posbadge" style="background:' + rcol + '">' + r.pos + '</span></div>'
         + '<div><div class="bx-pn">' + r.name + injBadge(r) + '</div><div class="bx-pg">' + sub + '</div></div></div></td>'
         + '<td data-gradek="' + k + '">' + gradeColCell(r) + '</td>'
-        + '<td><span class="bx-line">' + (r.line != null ? r.line : '') + '</span>' + (pf.vaultLed ? ' <span class="eb-vled" title="Vault-led — no market price edge, but Vault’s projection strongly favors this side">V</span>' : '') + '</td>'
-        + '<td>' + (pf.pickem ? '<span class="bx-side pick">PICK</span>' : '<span class="bx-side ' + pf.side + '">' + (pf.side === 'over' ? 'Over' : 'Under') + '</span>') + '</td>'
-        + '<td><span class="bx-px">' + fb.fmtOdds(pf.bestPrice) + bookChip(pf.bestBook) + nBooksTag(r) + '</span></td>'
+        + '<td class="c-line"><div class="bx-linecell">'
+        +   (pf.pickem ? '<span class="bx-side pick">PICK</span>' : '<span class="bx-side ' + pf.side + '">' + (pf.side === 'over' ? 'Over' : 'Under') + '</span>')
+        +   '<span class="bx-line">' + (r.line != null ? r.line : '') + '</span>'
+        +   (pf.vaultLed ? '<span class="eb-vled" title="Vault-led — no market price edge, but Vault’s projection strongly favors this side">V</span>' : '')
+        + '</div></td>'
         + '<td data-vpk="' + k + '">' + projNumCell(r) + '</td>'
         + '<td data-edgek="' + k + '">' + edgeChipHTML(r) + '</td>'
         + '<td class="eb-simc" data-simk="' + k + '">' + simCellHTML(r) + '</td>'
-        + '<td>' + oppRankCell(r) + '</td>'
         + hitCell('L5') + hitCell('L10') + hitCell('L20') + hitCell('SZN') + '</tr>';
       // The detail is now a persistent panel above the table (not an accordion),
       // so a row only highlights — it doesn't inject its own drawer.
@@ -43689,24 +43801,24 @@ window.VaultPropModel = (function () {
     const anyVaultLed = rows.some(r => { const p = resolvePick(r); return p && p.vaultLed; });
     const cn = rows.length + ' · sorted by ' + (SORTLBL[ebSort.key] || 'EV') + (ebSort.dir < 0 ? ' ↓' : ' ↑')
       + (anyVaultLed ? ' · <span title="No market price edge on this line, so the pick follows Vault’s projection instead of the book"><b style="color:var(--bt-accent2)">V</b> = Vault-led</span>' : '');
-    const boardTitle = searching ? 'Search · “' + searchQ.trim() + '”' : 'Edges · ' + curPos + ' ' + (m.short || m.label || '');
+    const boardTitle = searching ? 'Search · “' + searchQ.trim() + '”' : (curPos === 'ALL' ? ('Edges · All' + (curMarket && (m.short || m.label) ? ' · ' + (m.short || m.label) : ' props')) : 'Edges · ' + curPos + ' ' + (m.short || m.label || ''));
     _pvInner().innerHTML = '<div class="eb-wrap">'
       + '<div class="eb-board"><div class="eb-bh"><div><div class="eb-t">' + boardTitle + '</div><div class="eb-cn">' + cn + '</div></div>'
-      + '<div class="eb-bh-r"><label class="eb-be" title="Vault grade is scored against this break-even. Pick the pickem entry you play — a 3-pick power play needs ~55% per leg to profit.">Grade vs <select id="eb-be-sel" class="bt-in">'
-      + BE_PRESETS.map(([lab, be]) => '<option value="' + be + '"' + (Math.abs(be - betBE) < 1e-6 ? ' selected' : '') + '>' + lab + ' · ' + Math.round(be * 100) + '%</option>').join('')
-      + '</select></label>'
-      + '<button class="eb-mypicks" id="eb-mypicks" title="Your logged picks + realized results by grade">My Picks' + (picksLoad().length ? ' <b>' + picksLoad().length + '</b>' : '') + '</button></div></div>'
-      + '<div class="bx-hint"><svg fill="none" stroke="var(--bt-accent2)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/></svg> <b>Vault proj</b> and <b>Edge</b> come from Vault’s own player model, not the books. <b>L5–SZN</b> are real hit rates; <b>Opp rank</b> is the defense faced. Click any player to load them into the chart.</div>'
-      + (isMobile() ? '' : '<div class="eb-detailpanel"><div class="eb-feat" id="eb-feat"></div></div>')
+      + '<div class="eb-bh-r"><button class="eb-mypicks" id="eb-mypicks" title="Your logged picks + realized results by grade">My Picks' + (picksLoad().length ? ' <b>' + picksLoad().length + '</b>' : '') + '</button></div></div>'
+      + '<div class="bx-hint"><svg fill="none" stroke="var(--bt-accent2)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/></svg> <b>Grade</b>, <b>Vault proj</b>, <b>Edge</b> and <b>Sim %</b> come from Vault’s own player model, not the books. <b>L5–SZN</b> are real hit rates against the line shown. Click any player for the full breakdown — the opponent’s defense, best price and every book’s line.</div>'
+      /* accordion: no persistent panel — the detail opens inline under the clicked row */
       + (isMobile()
           ? '<div id="eb-rows" class="bx-mprops">' + mbody + '</div>'
           : '<div class="eb-tscroll bx-pscroll"><table class="bx-pt">' + head + '<tbody id="eb-rows">' + body + '</tbody></table></div>')
       + '</div></div>';
     paintHeadshots('#bt-pv-inner');
-    const beSel = _pvInner().querySelector('#eb-be-sel');
-    if (beSel) beSel.onchange = () => { const v = parseFloat(beSel.value); if (v > 0 && v < 1) { betBE = v; try { localStorage.setItem(BEKEY, betBE); } catch (e) {} renderPropsBoard(); } };
     const mpBtn = _pvInner().querySelector('#eb-mypicks');
     if (mpBtn) mpBtn.onclick = () => { propsView = 'results'; renderPropsBoard(); };
+    // Grade-vs select + Filters button now live in the controls row (renderFilters);
+    // the board render only refreshes the active-filter badge count.
+    ebUpdateFilterBtn();
+    // Keep an open drawer's control states in sync after a board re-render.
+    if (document.getElementById('eb-drawer') && document.getElementById('eb-drawer').classList.contains('open')) ebBuildDrawer();
     _pvInner().querySelectorAll('.bx-pt thead th.s').forEach(th => th.onclick = () => { const k = th.dataset.sk; if (ebSort.key === k) ebSort.dir *= -1; else ebSort = { key: k, dir: k === 'name' ? 1 : -1 }; renderPropsBoard(); });
     const ouh = _pvInner().querySelector('#eb-ouh');
     if (ouh) ouh.onclick = () => { ouFilter = ouFilter === 'all' ? 'over' : ouFilter === 'over' ? 'under' : 'all'; renderPropsBoard(); };
@@ -43731,17 +43843,35 @@ window.VaultPropModel = (function () {
         d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
-      if (k === ebSel) return;
-      ebSel = k; ebDetailMkt = curMarket;
-      _pvInner().querySelectorAll('#eb-rows .pr').forEach(x => x.classList.toggle('sel', x.dataset.k === k));
+      // Desktop: accordion — open the clicked row's detail inline underneath;
+      // click the open row again to collapse. One detail open at a time.
+      const existingD = _pvInner().querySelector('tr.eb-drow');
+      const wasThisD = existingD && existingD.previousElementSibling === tr;
+      if (existingD) existingD.remove();
+      _pvInner().querySelectorAll('#eb-rows .pr').forEach(x => x.classList.remove('sel', 'exp'));
+      if (wasThisD) { ebSel = null; return; }
+      ebSel = k; ebDetailMkt = curMarket; tr.classList.add('sel', 'exp');
+      const drow = document.createElement('tr'); drow.className = 'eb-drow';
+      drow.innerHTML = '<td colspan="' + nCols + '"><div class="eb-feat" id="eb-feat"></div></td>';
+      tr.after(drow);
       const sr = rows.find(r => propKey(r) === k);
       if (sr) renderPropDetail(playerRowFor(sr, ebDetailMkt));
+      drow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
     _pvInner().querySelectorAll('.eb-star').forEach(b => b.onclick = e => { e.stopPropagation(); const k = b.dataset.w; watch.has(k) ? watch.delete(k) : watch.add(k); _watchSave(); renderPropsBoard(); });
-    // Desktop keeps a player loaded in the persistent panel; mobile is list-first
-    // (the detail opens inline only when a card is tapped).
-    const selRow = (!isMobile() && ebSel) ? rows.find(r => propKey(r) === ebSel) : null;
-    if (selRow) renderPropDetail(playerRowFor(selRow, ebDetailMkt));
+    // Desktop accordion: after a table rebuild (sort / filter / Best Bets feature),
+    // re-open the selected row's detail inline so the panel survives the re-render.
+    if (!isMobile() && ebSel) {
+      const selTr = _pvInner().querySelector('#eb-rows .pr.sel');
+      const sr = rows.find(r => propKey(r) === ebSel);
+      if (selTr && sr && !(selTr.nextElementSibling && selTr.nextElementSibling.classList.contains('eb-drow'))) {
+        selTr.classList.add('exp');
+        const drow = document.createElement('tr'); drow.className = 'eb-drow';
+        drow.innerHTML = '<td colspan="' + nCols + '"><div class="eb-feat" id="eb-feat"></div></td>';
+        selTr.after(drow);
+        renderPropDetail(playerRowFor(sr, ebDetailMkt));
+      }
+    }
     // A Best Bets tap features a row that may be anywhere in the list — bring it
     // into view (and flag it on mobile, where there's no persistent panel).
     if (ebScrollSel) {
@@ -44406,40 +44536,38 @@ window.VaultPropModel = (function () {
   // until the projection lands, then ebFillVault repaints it.
   function projHeroHTML(r, vOverride) {
     const c = vOverride || _vaultCache[propKey(r)], line = r.line;
-    if (!c || c.proj == null) return '<div class="ph-main"><div class="l">Vault projection</div><div class="v"><span class="spinner sm"></span></div></div>';
+    if (!c || c.proj == null) return '<div class="bx-meta bx-meta-load"><span class="spinner sm"></span></div>';
     const proj = c.proj, diff = (line != null) ? (proj - line) : null, lean = (line != null) ? (proj > line ? 'over' : 'under') : null;
-    // Show how the matchup shaped the number: raw history → opponent × environment × script × QB-out.
-    const a = matchupAdj(r), scriptOn = Math.abs((a.scriptMult ?? 1) - 1) > 0.005;
-    const qb = qbOutMultFor(r), qbOn = !!qb;
-    const vac = vacatedInfo(r), vacOn = !!(vac && vac.mult);
-    const applied = Math.abs(a.oppMult - 1) > 0.005 || Math.abs(a.envMult - 1) > 0.005 || scriptOn || qbOn || vacOn;
-    const base = applied ? (proj / (a.oppMult * a.envMult * (a.scriptMult ?? 1) * (qbOn ? qb.mult : 1) * (vacOn ? vac.mult : 1))) : null;
-    const _spTxt = a.spread != null ? (r.team ? r.team + ' ' : '') + (a.spread > 0 ? '+' : '') + a.spread : null;
-    // Line-corroboration provenance. A single-book line is always tagged; when
-    // it's a volume market Vault's projection also rejects, the confident lean
-    // is withheld (see _uncorroboratedLean).
-    const books = _lineBooks(r), single = books.size <= 1, drop = _uncorroboratedLean(r, proj);
+    // ── SpariEdge-style meta-card strip: Vault projection · opponent D · best
+    //    price · pick grade · sim probability. Grade + sim reuse the board-cell
+    //    helpers so the card stays in lockstep with the table columns. The raw
+    //    history → opp × env adjustment breakdown moved out (now the two-side
+    //    cards + the projection lean carry the read).
+    const fb = F(), a = matchupAdj(r);
+    const drop = _uncorroboratedLean(r, proj);
+    const books = _lineBooks(r), single = books.size <= 1;
     const oneBook = (single && books.size === 1) ? [...books][0] : null;
+    const pf = resolvePick(r) || r.fe || {};
+    const bestPrice = pf.bestPrice, bestBook = pf.bestBook || oneBook || '';
+    const leanTxt = diff == null ? ''
+      : drop ? 'line unconfirmed'
+      : (diff > 0 ? '+' : '') + diff.toFixed(1) + ' · leans ' + (lean === 'over' ? 'Over' : 'Under');
+    const cProj = '<div class="bx-metac proj"><i>Vault projection</i><b class="mv">' + proj + '</b>'
+      + (line != null ? '<span class="msub">vs ' + line + '</span>' : '')
+      + (leanTxt ? '<span class="mlean ' + (drop ? 'flag' : lean) + '">' + leanTxt + '</span>' : '') + '</div>';
+    const cOpp = '<div class="bx-metac"><i>Opponent D</i><b class="mv">' + (a.oppRank != null ? _ord(a.oppRank) : '—') + '</b>'
+      + '<span class="msub">' + (r.opp || '—') + ' vs ' + r.pos + '</span></div>';
+    const cBest = '<div class="bx-metac"><i>Best price</i><b class="mv">' + (bestPrice != null ? fb.fmtOdds(bestPrice) : '—') + '</b>'
+      + '<span class="msub">' + (bestBook || '—') + '</span></div>';
+    const cGrade = '<div class="bx-metac"><i>Pick grade</i><b class="mv mgrade">' + gradeColCell(r) + '</b></div>';
+    const cSim = '<div class="bx-metac"><i>Sim probability</i><b class="mv msim">' + simCellHTML(r) + '</b></div>';
     const srcTag = single
       ? '<div class="ph-src' + (drop ? ' warn' : '') + '" title="Only ' + (oneBook || 'one book')
           + ' is posting this line, so Vault has nothing to cross-check it against. Treat the number as unconfirmed.'
           + (drop ? ' Vault’s projection (' + proj + ') disagrees with it, so the lean and grade are held back until a second book corroborates the line.' : '') + '">'
           + 'single book' + (oneBook ? ' · ' + oneBook : '') + (drop ? ' · line unconfirmed' : '') + '</div>'
       : '';
-    const leanBlock = diff == null ? ''
-      : drop ? '<div class="ph-lean flag" title="Lean held back: this line comes from a single book and Vault’s projection disagrees with it. Verify the number before betting.">line unconfirmed</div>'
-        : '<div class="ph-lean ' + lean + '">' + (diff > 0 ? '+' : '') + diff.toFixed(1) + ' · leans ' + (lean === 'over' ? 'Over' : 'Under') + '</div>';
-    return '<div class="ph-main"><div class="l">Vault projection</div>'
-      + '<div class="v">' + proj + '<span class="vs">vs line ' + (line != null ? line : '—') + '</span></div>'
-      + (applied ? '<div class="ph-adj">from <b>' + base.toFixed(1) + '</b> history'
-          + (a.oppRank != null ? ' · opp <b>' + r.opp + ' ' + _ord(a.oppRank) + '</b> ×' + a.oppMult.toFixed(2) : '')
-          + (a.teamTotal != null ? ' · env <b>' + a.teamTotal + '</b> implied ×' + a.envMult.toFixed(2) : '')
-          + (scriptOn && _spTxt ? ' · script <b>' + _spTxt + '</b> ×' + a.scriptMult.toFixed(2) : '')
-          + (qbOn ? ' · <b>QB out</b> ×' + qb.raw.toFixed(2) : '')
-          + (vacOn ? ' · <b>' + vac.who + ' left</b> ×' + vac.mult.toFixed(2) : '') + '</div>' : '')
-      + srcTag
-      + '</div>'
-      + leanBlock;
+    return '<div class="bx-meta">' + cProj + cOpp + cBest + cGrade + cSim + '</div>' + srcTag;
   }
   // Per-side (over|under) metrics for a prop: best price + book, de-vig fair,
   // market EV, Vault win-prob, Vault edge, and the shrunk grade letter. Shared by
@@ -45250,7 +45378,120 @@ window.VaultPropModel = (function () {
     // If the board is sorted by Hit% and this pass filled in new values, re-sort
     // once. The guard (changed) can't loop: the re-render's fill finds every
     // value already cached, so nothing changes and it stops.
-    Promise.all(ps).then(() => { if (changed && ebSort.key === 'hit') renderPropsBoard(); });
+    Promise.all(ps).then(() => { if (changed && (ebSort.key === 'hit' || _trendActive())) renderPropsBoard(); });
+  }
+
+  // ══ Player Props · Filters drawer ════════════════════════════════════════
+  // A right-side slide-over that drives the board's filter/sort state: Vault's
+  // side, minimum pick grade, sort + direction, an L10 hit-rate band and a
+  // per-game multi-select. Grade/trend read the async caches; the cache-fill
+  // re-renders (ebFillVaultCol / ebFillHits) re-apply them for free.
+  function ebResetFilters() {
+    searchQ = ''; teamFilter = ''; mineOnly = false;
+    ouFilter = 'all'; fltGrade = 0; fltTrendMin = 0; fltTrendMax = 100; fltGames = null;
+    ebSort = { key: 'ev', dir: -1 };
+  }
+  function ebGamesList() {
+    try {
+      const fb = F(), rgc = fb.realGameCommence, allPos = curPos === 'ALL';
+      const rows = fb.propRows(MODEL, { timeframe: tf, pos: allPos ? undefined : curPos, market: allPos ? (curMarket || undefined) : curMarket, posMarketOnly: true });
+      const map = new Map();   // game key → kickoff ISO
+      rows.forEach(r => {
+        if (r.synthetic || ebGameOver(r)) return;   // real, still-bettable games only (drop played)
+        const k = ebGameKey(r);
+        if (!map.has(k)) map.set(k, (rgc ? rgc(MODEL, r.team, r.opp) : null) || r.commence || null);
+      });
+      const fmt = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); };
+      // Chronological, so the list reads like this week's slate (earliest kickoff first).
+      return [...map.entries()].map(([key, iso]) => ({ key, iso, time: fmt(iso) }))
+        .sort((a, b) => (Date.parse(a.iso) || 8.64e15) - (Date.parse(b.iso) || 8.64e15) || a.key.localeCompare(b.key));
+    } catch (e) { return []; }
+  }
+  function _ebDrawerEl() {
+    let el = document.getElementById('eb-drawer');
+    if (el) return el;
+    const scrim = document.createElement('div'); scrim.className = 'eb-dscrim'; scrim.id = 'eb-dscrim'; scrim.onclick = ebCloseDrawer;
+    el = document.createElement('div'); el.className = 'eb-drawer'; el.id = 'eb-drawer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(scrim); document.body.appendChild(el);
+    return el;
+  }
+  function ebCloseDrawer() {
+    const el = document.getElementById('eb-drawer'), s = document.getElementById('eb-dscrim');
+    if (el) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); }
+    if (s) s.classList.remove('open');
+  }
+  function ebOpenDrawer() {
+    ebBuildDrawer();
+    const el = _ebDrawerEl(), s = document.getElementById('eb-dscrim');
+    el.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => { el.classList.add('open'); s.classList.add('open'); });
+  }
+  function _ebSeg(cls, opts, active) {
+    return '<div class="eb-dseg' + (cls ? ' ' + cls : '') + '">'
+      + opts.map(o => '<button data-v="' + o.v + '"' + (o.g ? ' data-g="' + o.g + '"' : '') + (String(o.v) === String(active) ? ' class="on"' : '') + '>' + o.l + '</button>').join('')
+      + '</div>';
+  }
+  function ebUpdateFilterBtn() {
+    const b = document.getElementById('eb-fbadge'); if (!b) return;
+    const n = _ebFilterCount(); b.textContent = n || ''; b.style.display = n ? 'inline-grid' : 'none';
+  }
+  function ebBuildDrawer() {
+    const el = _ebDrawerEl();
+    const fb = F();
+    const games = ebGamesList();
+    const selKeys = fltGames || new Set(games.map(g => g.key));   // everything checked when unfiltered (null)
+    const teams = fb ? fb.teams(MODEL) : [];
+    const synced = !!((_lex(() => myTeamsData) || []).length) || Array.isArray(window._pfLeagueData);
+    const SORTS = [['ev', 'EV'], ['grade', 'Grade'], ['vault', 'Edge'], ['sim', 'Sim %'], ['hit', 'Hit % L10'], ['line', 'Line'], ['name', 'Player']];
+    el.innerHTML =
+      '<div class="eb-dh"><div class="eb-dt"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg> Player Prop Filters</div>'
+      + '<span class="sp"></span><button class="eb-dreset" id="eb-dreset">Reset</button><button class="eb-dclose" id="eb-dclose">✕</button></div>'
+      + '<div class="eb-dbody">'
+      +   '<div class="eb-dsec"><div class="eb-dlbl">Filter by Vault’s leaned side.</div>' + _ebSeg('', [{ v: 'all', l: 'All' }, { v: 'over', l: 'Over' }, { v: 'under', l: 'Under' }], ouFilter) + '</div>'
+      +   '<div class="eb-dsec"><div class="eb-dlbl">Minimum Vault pick grade.</div>' + _ebSeg('grade', [{ v: 0, l: 'Any' }, { v: 4, l: 'A', g: 'A' }, { v: 3, l: 'B', g: 'B' }, { v: 2, l: 'C', g: 'C' }, { v: 1, l: 'D', g: 'D' }], fltGrade) + '</div>'
+      +   '<div class="eb-dsec"><div class="eb-dlbl">Team.</div><select class="eb-dfield" id="eb-dteam"><option value="">All teams</option>' + teams.map(c => '<option value="' + c + '"' + (teamFilter === c ? ' selected' : '') + '>' + c + '</option>').join('') + '</select>'
+      +     (synced ? '<button class="eb-dtoggle' + (mineOnly ? ' on' : '') + '" id="eb-dmine">' + (mineOnly ? '✓ My players only' : 'My players only') + '</button>' : '') + '</div>'
+      +   '<div class="eb-dsec"><div class="eb-dlbl">Sort the board by.</div><select class="eb-dfield" id="eb-dsort">' + SORTS.map(([k, l]) => '<option value="' + k + '"' + (ebSort.key === k ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' + _ebSeg('', [{ v: 'asc', l: 'Asc' }, { v: 'desc', l: 'Desc' }], ebSort.dir < 0 ? 'desc' : 'asc') + '</div>'
+      +   '<div class="eb-dsec"><div class="eb-dtrow"><span>Min hit %: <b id="eb-tmnv">' + fltTrendMin + '%</b></span><span>Max hit %: <b id="eb-tmxv">' + fltTrendMax + '%</b></span></div>'
+      +     '<div class="eb-drange"><div class="trk"></div><div class="fill" id="eb-tfill"></div><input type="range" id="eb-tmin" min="0" max="100" step="5" value="' + fltTrendMin + '"><input type="range" id="eb-tmax" min="0" max="100" step="5" value="' + fltTrendMax + '"></div>'
+      +     '<div class="eb-dhelp">Filters on the L10 hit rate.</div></div>'
+      +   (games.length ? '<div class="eb-dsec"><div class="eb-dlbl">Show only these games.</div><div class="eb-dgames">'
+      +     '<div class="eb-dgh"><span>' + selKeys.size + ' of ' + games.length + ' selected</span><button class="eb-gclr" id="eb-gclr">Clear all</button></div>'
+      +     games.map(g => '<label class="eb-gitem' + (selKeys.has(g.key) ? ' on' : '') + '" data-g="' + g.key + '"><span class="cb">✓</span><span class="gn">' + g.key + '</span>' + (g.time ? '<span class="gt">' + g.time + '</span>' : '') + '</label>').join('')
+      +     '</div></div>' : '')
+      + '</div>';
+    el.querySelector('#eb-dclose').onclick = ebCloseDrawer;
+    el.querySelector('#eb-dreset').onclick = () => { ebResetFilters(); const sb = document.getElementById('bt-search'); if (sb) sb.value = ''; ebBuildDrawer(); renderProps(); };
+    // segmented controls
+    el.querySelectorAll('.eb-dseg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.onclick = () => {
+      seg.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
+      const v = b.dataset.v;
+      if (seg.classList.contains('grade')) fltGrade = +v;
+      else if (v === 'over' || v === 'under' || v === 'all') ouFilter = v;
+      else if (v === 'asc' || v === 'desc') ebSort = { key: ebSort.key, dir: v === 'asc' ? 1 : -1 };
+      renderPropsBoard();
+    }));
+    el.querySelector('#eb-dsort').onchange = e => { ebSort = { key: e.target.value, dir: ebSort.dir }; renderPropsBoard(); };
+    // team + my-players scope (moved in from the controls row)
+    el.querySelector('#eb-dteam').onchange = e => { teamFilter = e.target.value; renderProps(); };
+    const dmine = el.querySelector('#eb-dmine');
+    if (dmine) dmine.onclick = () => { mineOnly = !mineOnly; renderProps(); };
+    // trend dual-range
+    const tmin = el.querySelector('#eb-tmin'), tmax = el.querySelector('#eb-tmax'), tfill = el.querySelector('#eb-tfill'),
+      tmnv = el.querySelector('#eb-tmnv'), tmxv = el.querySelector('#eb-tmxv');
+    const paintT = () => { tfill.style.left = fltTrendMin + '%'; tfill.style.right = (100 - fltTrendMax) + '%'; tmnv.textContent = fltTrendMin + '%'; tmxv.textContent = fltTrendMax + '%'; };
+    tmin.oninput = () => { fltTrendMin = Math.min(+tmin.value, fltTrendMax); tmin.value = fltTrendMin; paintT(); renderPropsBoard(); };
+    tmax.oninput = () => { fltTrendMax = Math.max(+tmax.value, fltTrendMin); tmax.value = fltTrendMax; paintT(); renderPropsBoard(); };
+    paintT();
+    // games multi-select
+    const gclr = el.querySelector('#eb-gclr');
+    if (gclr) gclr.onclick = () => { fltGames = new Set(); ebBuildDrawer(); renderPropsBoard(); };
+    el.querySelectorAll('.eb-gitem').forEach(it => it.onclick = () => {
+      const key = it.dataset.g, cur = fltGames || new Set(games.map(g => g.key));
+      cur.has(key) ? cur.delete(key) : cur.add(key);
+      fltGames = (cur.size === games.length) ? null : cur;   // back to "all" → no filter
+      ebBuildDrawer(); renderPropsBoard();
+    });
   }
 
   // ══ Anytime TD · Vault-only board ════════════════════════════════════════
@@ -45357,14 +45598,7 @@ window.VaultPropModel = (function () {
      claiming "backtested"; that stronger badge waits on the banked snapshots. */
   function renderTrust() {
     const el = document.getElementById('bt-trust'); if (!el) return;
-    el.innerHTML = '<span class="bt-info bt-trust" tabindex="0">✓ Real data<span class="tip">'
-      + '<div class="bt-prov-h">How this data is built</div>'
-      + '<div class="bt-prov-r"><span class="ck">✓</span><div><b>Real sportsbook lines only.</b> The Edge Board ranks live book prices — never modeled or synthesized fills.</div></div>'
-      + '<div class="bt-prov-r"><span class="ck">✓</span><div><b>The house edge removed.</b> Fair value is the two-sided market consensus with the book&rsquo;s vig stripped out.</div></div>'
-      + '<div class="bt-prov-r"><span class="ck">✓</span><div><b>Edge = best price vs. fair.</b> We flag where a book pays more than that fair number, not a football prediction.</div></div>'
-      + '<div class="bt-prov-r"><span class="ck">✓</span><div><b>Real results.</b> Hit rates are counted from actual NFL game logs, not estimates.</div></div>'
-      + '<div class="bt-prov-f">Lines refreshed hourly &middot; ParlayAPI</div>'
-      + '</span></span>';
+    el.innerHTML = '';   // "Real data" badge removed from the betting bar
   }
   /* Pick the market for a position with the MOST actual weekly props in the
      feed. Falls back to the first market in the list if no weekly data is
@@ -45397,12 +45631,12 @@ window.VaultPropModel = (function () {
     seg.style.display = '';
     if (isMobile()) {
       seg.className = 'bt-selwrap';
-      seg.innerHTML = selHTML('bt-possel', [['QB', 'QB'], ['RB', 'RB'], ['WR', 'WR'], ['TE', 'TE']], curPos);
-      seg.querySelector('select').onchange = e => { curPos = e.target.value; curMarket = bestMarketFor(curPos); clearNameSearch(); renderPosSeg(); renderMkts(); renderProps(); };
+      seg.innerHTML = selHTML('bt-possel', [['ALL', 'All'], ['QB', 'QB'], ['RB', 'RB'], ['WR', 'WR'], ['TE', 'TE']], curPos);
+      seg.querySelector('select').onchange = e => { curPos = e.target.value; curMarket = curPos === 'ALL' ? '' : bestMarketFor(curPos); clearNameSearch(); renderPosSeg(); renderMkts(); renderProps(); };
     } else {
       seg.className = 'bt-pos';
-      seg.innerHTML = ['QB', 'RB', 'WR', 'TE'].map(p => { const on = p === curPos, c = POS_COLOR[p]; return '<button data-p="' + p + '" style="' + (on ? 'color:var(--on-primary);background:' + c + ';border-color:transparent' : 'color:' + c) + '">' + p + '</button>'; }).join('');
-      seg.querySelectorAll('button').forEach(b => b.onclick = () => { curPos = b.dataset.p; curMarket = bestMarketFor(curPos); clearNameSearch(); renderPosSeg(); renderMkts(); renderProps(); });
+      seg.innerHTML = ['ALL', 'QB', 'RB', 'WR', 'TE'].map(p => { const on = p === curPos, c = p === 'ALL' ? 'var(--bt-accent2)' : POS_COLOR[p], lbl = p === 'ALL' ? 'All' : p; return '<button data-p="' + p + '" style="' + (on ? 'color:var(--on-primary);background:' + c + ';border-color:transparent' : 'color:' + c) + '">' + lbl + '</button>'; }).join('');
+      seg.querySelectorAll('button').forEach(b => b.onclick = () => { curPos = b.dataset.p; curMarket = curPos === 'ALL' ? '' : bestMarketFor(curPos); clearNameSearch(); renderPosSeg(); renderMkts(); renderProps(); });
     }
   }
   function renderMkts() {
@@ -45413,8 +45647,17 @@ window.VaultPropModel = (function () {
       el.className = ''; el.innerHTML = ''; el.style.display = 'none';
       return;
     }
-    const mks = F().marketsFor(curPos); if (!mks.find(m => m.key === curMarket)) curMarket = mks[0].key;
     el.style.display = ''; el.className = 'bt-selwrap';
+    if (curPos === 'ALL') {
+      // All positions: the market select stays, offering "All markets" plus the
+      // union of every position's markets so the bet type is still filterable.
+      const seen = new Set(), uni = [];
+      ['QB', 'RB', 'WR', 'TE'].forEach(p => F().marketsFor(p).forEach(m => { if (m.key !== 'anytime_td' && !seen.has(m.key)) { seen.add(m.key); uni.push([m.key, m.label]); } }));   // anytime TD is one-sided — its own board, not the combined one
+      el.innerHTML = selHTML('bt-mktsel', [['', 'All markets'], ...uni], curMarket || '');
+      el.querySelector('select').onchange = e => { curMarket = e.target.value; renderProps(); };
+      return;
+    }
+    const mks = F().marketsFor(curPos); if (!mks.find(m => m.key === curMarket)) curMarket = mks[0].key;
     el.innerHTML = selHTML('bt-mktsel', mks.map(m => [m.key, m.label]), curMarket);
     el.querySelector('select').onchange = e => { curMarket = e.target.value; renderProps(); };
   }
@@ -45429,12 +45672,12 @@ window.VaultPropModel = (function () {
     document.getElementById('bt-controls').style.display = 'flex';
     const isP = view === 'props';
     const sel = document.getElementById('bt-team'), mine = document.getElementById('bt-mine');
-    sel.style.display = isP ? '' : 'none';
-    /* Only offer the toggle to a connected account — otherwise it is a button
-       that can only ever report failure. */
+    // Props: Team + My Players live in the Filters drawer now, so keep them hidden
+    // in the controls row. Games view still uses the inline team select.
+    sel.style.display = isP ? 'none' : 'none';
     const synced = !!((_lex(() => myTeamsData) || []).length) || Array.isArray(window._pfLeagueData);
-    if (mine) mine.style.display = (isP && synced) ? '' : 'none';
-    if (mine && !synced && mineOnly) { mineOnly = false; paintMine(mine); }
+    if (mine) mine.style.display = 'none';
+    if (mine && !synced && mineOnly) { mineOnly = false; }
     document.getElementById('bt-search').placeholder = isP ? 'Search player…' : 'Search team…';
     if (!sel.dataset.built) {
       sel.innerHTML = '<option value="">All teams</option>' + F().teams(MODEL).map(c => '<option value="' + c + '">' + c + '</option>').join('');
@@ -45444,6 +45687,23 @@ window.VaultPropModel = (function () {
       /* renderProps owns the resolve — it kicks mineLoad() and re-renders when
          the rosters land, so this only has to flip the flag and repaint. */
       if (mine) mine.onclick = () => { mineOnly = !mineOnly; paintMine(mine); renderProps(); };
+    }
+    // Props-only controls (Grade-vs break-even + Filters drawer) live on the
+    // right of the controls row, next to My Players. Built once, shown for props.
+    const pc = document.getElementById('bt-props-ctl');
+    if (pc) {
+      pc.style.display = isP ? 'inline-flex' : 'none';
+      if (isP && !pc.dataset.built) {
+        pc.innerHTML =
+          '<label class="eb-be" title="Vault grade is scored against this break-even. Pick the pickem entry you play — a 3-pick power play needs ~55% per leg to profit.">Grade vs <select id="eb-be-sel" class="bt-in">'
+          + BE_PRESETS.map(([lab, be]) => '<option value="' + be + '"' + (Math.abs(be - betBE) < 1e-6 ? ' selected' : '') + '>' + lab + ' · ' + Math.round(be * 100) + '%</option>').join('')
+          + '</select></label>'
+          + '<button class="eb-filtersbtn" id="eb-filtersbtn" title="Filter &amp; sort the board — side, grade, hit rate, games"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg> Filters<span class="eb-fbadge" id="eb-fbadge"></span></button>';
+        pc.dataset.built = '1';
+        pc.querySelector('#eb-be-sel').onchange = e => { const v = parseFloat(e.target.value); if (v > 0 && v < 1) { betBE = v; try { localStorage.setItem(BEKEY, betBE); } catch (err) {} renderPropsBoard(); } };
+        pc.querySelector('#eb-filtersbtn').onclick = ebOpenDrawer;
+      }
+      if (isP) ebUpdateFilterBtn();
     }
   }
   function renderNote() {
@@ -45868,7 +46128,7 @@ window.VaultPropModel = (function () {
 #page-betting .eb-fpl{display:flex;gap:12px;align-items:center;min-width:0}
 #page-betting .eb-fhs,#page-betting .eb-hs{width:auto}
 #page-betting .eb-fhs{width:48px;height:48px;border-radius:12px;font-size:15px;flex:none}
-#page-betting .eb-fpn{font-size:18px;font-weight:800;letter-spacing:-.02em}
+#page-betting .eb-fpn{font-size:18px;font-weight:800;letter-spacing:-.02em;text-align:left}
 #page-betting .eb-inj{display:inline-block;margin-left:6px;font-family:var(--bt-mono);font-size:9px;font-weight:800;letter-spacing:.02em;padding:1px 5px;border-radius:4px;vertical-align:middle;cursor:help}
 #page-betting .eb-inj.out{background:color-mix(in srgb,var(--bt-red,#e23a4e) 20%,transparent);color:var(--bt-red,#ff5a6e)}
 #page-betting .eb-inj.q{background:color-mix(in srgb,var(--bt-gold) 20%,transparent);color:var(--bt-gold)}
