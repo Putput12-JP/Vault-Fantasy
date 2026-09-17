@@ -13473,9 +13473,9 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
-    ts:'2026-09-17T15:00', tag:'New', title:'Market Grades — one number for every prop',
+    ts:'2026-09-17T15:00', tag:'New', title:'Prop Outlook — one number for every prop',
     items:[
-      'New Market Grades board under Betting: every player gets a single 0–100 grade per prop, built from how much work he gets, how well he\'s playing, the defense he draws and the game environment — no betting line involved, so it\'s a clean read on the spot itself.',
+      'New Prop Outlook board under Betting: every player gets a single 0–100 grade per prop, built from how much work he gets, how well he\'s playing, the defense he draws and the game environment — no betting line involved, so it\'s a clean read on the spot itself.',
       'Each grade carries a GOOD / BAD / EVEN matchup chip and four pillar scores (Opportunity, Quality, Matchup, Environment) so you can see exactly why it landed where it did. FADE flags the players whose bad-matchup signals all agree.',
       'Filter by market, position, matchup or player, and sort the whole slate by grade. Early in the season the matchup read leans on last year\'s defenses until this season\'s games bank, and the board says so.',
     ]
@@ -44985,7 +44985,7 @@ window.VaultPropModel = (function () {
   // panel). Chart + hit-rate windows load once history lands.
   function renderPropDetail(r, refresh) {
     // `refresh` re-renders whatever host this detail lives in after a state change
-    // (watch/track toggle). Defaults to the Player Props board; the Market Grades
+    // (watch/track toggle). Defaults to the Player Props board; the Prop Outlook
     // inline panel passes its own so it refreshes in place instead.
     refresh = refresh || renderPropsBoard;
     // Colour by the player's OWN position — a cross-position search can load a
@@ -45916,7 +45916,7 @@ window.VaultPropModel = (function () {
     // Desktop switches views from the nav dropdown (Betting → Game Markets /
     // Player Props), so the in-page toggle only exists on mobile, where the
     // bottom dock has no Betting dropdown.
-    if (isMobile()) { w.style.display = ''; w.className = 'bt-seg bt-viewseg-kit'; w.innerHTML = [['games', 'Games'], ['props', 'Props'], ['grades', 'Grades']].map(o => '<button' + (o[0] === view ? ' class="on"' : '') + ' data-bv="' + o[0] + '">' + o[1] + '</button>').join(''); w.querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.bv)); }
+    if (isMobile()) { w.style.display = ''; w.className = 'bt-seg bt-viewseg-kit'; w.innerHTML = [['games', 'Games'], ['props', 'Props'], ['grades', 'Outlook']].map(o => '<button' + (o[0] === view ? ' class="on"' : '') + ' data-bv="' + o[0] + '">' + o[1] + '</button>').join(''); w.querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.bv)); }
     else { w.style.display = 'none'; w.className = ''; w.innerHTML = ''; }
   }
   function infoText() {
@@ -46050,7 +46050,7 @@ window.VaultPropModel = (function () {
   }
   function renderNote() {
     document.getElementById('bt-note').innerHTML = view === 'grades'
-      ? '◆ MARKET GRADES, one 0–100 grade per player per market from Vault\'s role, production, matchup and game-environment signals. No betting line is consulted — the odds are context, not an input.'
+      ? '◆ PROP OUTLOOK, one 0–100 grade per player per market from Vault\'s role, production, matchup and game-environment signals. No betting line is consulted — the odds are context, not an input.'
       : view === 'games'
       ? '◆ GAME MARKETS, spread, total &amp; implied team scores with the price and book each line is from. Live via ParlayAPI during the season.'
       : '◆ PLAYER PROPS, every sportsbook side-by-side; best price each side is highlighted gold. Real book lines show when props post; until then modeled around the projected line (PROJ).';
@@ -46334,7 +46334,7 @@ window.VaultPropModel = (function () {
     document.getElementById('bt-v-games').classList.toggle('on', view === 'games');
     document.getElementById('bt-v-props').classList.toggle('on', view === 'props');
     const gv = document.getElementById('bt-v-grades'); if (gv) gv.classList.toggle('on', isGr);
-    // Market Grades brings its own filter chrome, so the shared market/pos/search
+    // Prop Outlook brings its own filter chrome, so the shared market/pos/search
     // bar is hidden for it.
     const ctl = document.getElementById('bt-controls'); if (ctl) ctl.style.display = isGr ? 'none' : '';
     const tfEl = document.getElementById('bt-tftag');
@@ -46869,7 +46869,7 @@ window.VaultPropModel = (function () {
   }
 
   /* ── entry ────────────────────────────────────────────────────────────── */
-  /* ══ MARKET GRADES ═══════════════════════════════════════════════════════
+  /* ══ PROP OUTLOOK ════════════════════════════════════════════════════════
      One 0–100 grade per player per market, fused from Vault's role, production,
      matchup and game-environment signals (scripts/build_market_grades.py →
      data/market_grades.json). No betting line touches the grade; the odds column
@@ -47025,9 +47025,10 @@ window.VaultPropModel = (function () {
 #page-betting .mg-pil .pb i.hi{background:var(--bt-green)}
 #page-betting .mg-pil .pb i.mid{background:var(--bt-gold)}
 #page-betting .mg-pil .pb i.lo{background:var(--bt-red)}
-#page-betting .mg-grp.mg-open .mg-card{border-radius:0}
-#page-betting .mg-drow{border:1px solid var(--bt-border2);border-top:0;border-radius:0 0 10px 10px;background:var(--bt-s1);padding:6px 14px 14px}
+#page-betting .mg-drow{border-top:1px solid var(--bt-border3);background:var(--bt-s2);padding:6px 16px 16px}
 #page-betting .mg-drow .eb-feat{margin:0}
+#page-betting .mg-row.mg-open{background:var(--bt-s2);box-shadow:inset 2px 0 0 var(--bt-accent2)}
+#page-betting .mg-ghd.mg-open{box-shadow:inset 2px 0 0 var(--bt-accent2)}
 #page-betting .mg-empty{padding:60px 20px;text-align:center;color:var(--bt-muted);font-size:13px}
 @media (max-width:820px){
   #page-betting .mg-thead{display:none}
@@ -47203,18 +47204,25 @@ window.VaultPropModel = (function () {
     // cards). One open at a time; tap again to collapse. Never leaves the board.
     host.querySelectorAll('[data-oname]').forEach(el => el.onclick = () => {
       const name = el.getAttribute('data-oname'), pos = el.getAttribute('data-opos'), mkt = el.getAttribute('data-omkt');
-      const grp = el.closest('.mg-grp'); if (!grp) return;
-      const wasOpenHere = grp.classList.contains('mg-open');
-      // close any open detail (this group or another)
+      const key = name + '|' + mkt;
+      const isRow = el.classList.contains('mg-row');
+      // toggle: tapping the row that's already expanded closes it
+      const openD = host.querySelector('.mg-drow');
+      const wasThis = openD && openD.dataset.k === key && (!isRow || openD.previousElementSibling === el);
       host.querySelectorAll('.mg-drow').forEach(d => d.remove());
-      host.querySelectorAll('.mg-grp.mg-open').forEach(x => x.classList.remove('mg-open'));
-      if (wasOpenHere) return;   // tapped the open one → collapse
+      host.querySelectorAll('.mg-open').forEach(x => x.classList.remove('mg-open'));
+      if (wasThis) return;
       // exactly one #eb-feat at a time (the detail engine targets it by id)
       document.querySelectorAll('#eb-feat').forEach(e => e.remove());
       ebSel = null;
-      const d = document.createElement('div'); d.className = 'mg-drow';
+      const d = document.createElement('div'); d.className = 'mg-drow'; d.dataset.k = key;
       d.innerHTML = '<div class="eb-feat" id="eb-feat"></div>';
-      grp.appendChild(d); grp.classList.add('mg-open');
+      // drop the panel RIGHT under the selected row (not at the end of the group —
+      // group-by-game groups hold many players, so an end-append lands under the
+      // wrong one). Header taps fall back to after the group's card.
+      if (isRow) { el.after(d); }
+      else { const card = el.closest('.mg-grp') && el.closest('.mg-grp').querySelector('.mg-card'); (card || el).after(d); }
+      el.classList.add('mg-open');
       const pr = gradesResolveRow(name, pos, mkt);
       if (pr) {
         const feat = d.querySelector('#eb-feat');
@@ -47796,7 +47804,7 @@ function _adpLoadSleeperStats() {
     menu.innerHTML =
       '<button class="lc-mt-item active" data-view="games"><span class="ic">📊</span><span><b>Game Markets</b><small>Spreads · totals · moneylines</small></span></button>' +
       '<button class="lc-mt-item" data-view="props"><span class="ic">🎯</span><span><b>Player Props</b><small>Edge Board · every book</small></span></button>' +
-      '<button class="lc-mt-item" data-view="grades"><span class="ic">🅰️</span><span><b>Market Grades</b><small>0–100 grade · matchup + role</small></span></button>';
+      '<button class="lc-mt-item" data-view="grades"><span class="ic">🅰️</span><span><b>Prop Outlook</b><small>0–100 grade · role + matchup</small></span></button>';
     document.body.appendChild(menu);
 
     function markActive() {
