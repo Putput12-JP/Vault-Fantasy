@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="vapor">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vault · Market Grades (mock)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Vault tokens (inlined so the mock renders standalone via file:// / Claude Design) ── */
+:root{
+  --bg:#070d18;--s1:#0e1626;--s2:#131d30;--s3:#1b2740;--s4:#243352;--s-bright:#2c3f60;
+  --border:rgba(123,170,240,0.10);--border2:rgba(123,170,240,0.17);--border3:rgba(123,170,240,0.30);
+  --text:#eaf2fc;--text2:#bdcce2;--muted:#808fa6;
+  --primary:#bec6e0;--on-primary:#0a1424;
+  --accent:#2f63c4;--accent2:#7bd0ff;--accent3:#b3e0ff;
+  --red:#e23a4e;--red2:#ff5a6e;--value:#3DCC7A;--gold:#f5c842;
+  --qb:#ff6680;--rb:#3DCC7A;--wr:#7bd0ff;--te:#f5c842;--pos-ink:#0a1424;
+  --purple:#a78bfa;--purple-soft:rgba(167,139,250,.16);--purple-line:rgba(167,139,250,.4);
+  --green-soft:rgba(61,204,122,.14);--green-line:rgba(61,204,122,.34);
+  --red-soft:rgba(226,58,78,.15);--red-line:rgba(226,58,78,.34);
+  --gold-soft:rgba(245,200,66,.15);
+  --font-sans:'Archivo','Hanken Grotesk',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono','SFMono-Regular',ui-monospace,monospace;
+  --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--r-pill:999px;
+  --shadow-card:0 24px 60px -20px rgba(4,9,20,0.62),0 1px 0 rgba(255,255,255,0.06) inset;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --ease-spring:cubic-bezier(0.34,1.56,0.64,1);
+}
+[data-theme="onyx"]{
+  --bg:#0e0f13;--s1:#16171c;--s2:#1c1e24;--s3:#23252c;--s4:#2c2f38;--s-bright:#343844;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.12);--border3:rgba(255,255,255,0.22);
+  --text:#f3f4f7;--text2:#c9cdd6;--muted:#868c9b;
+  --primary:#8fb4e0;--on-primary:#0b1420;--accent:#5e7c9c;--accent2:#8fb4e0;--accent3:#b9d2ec;
+  --red:#e23a4e;--red2:#ff5a6e;--value:#5fe09a;--gold:#c6a15a;
+  --qb:#ff6680;--rb:#5fe09a;--wr:#8fb4e0;--te:#f0cf6b;--pos-ink:#12151c;
+  --purple:#a78bfa;--purple-soft:rgba(167,139,250,.14);--purple-line:rgba(167,139,250,.34);
+  --green-soft:rgba(95,224,154,.13);--green-line:rgba(95,224,154,.3);
+  --red-soft:rgba(226,58,78,.15);--red-line:rgba(226,58,78,.32);
+  --gold-soft:rgba(198,161,90,.16);
+  --shadow-card:0 24px 60px -20px rgba(6,6,8,0.62),0 1px 0 rgba(255,255,255,0.05) inset;
+}
+[data-theme="light"]{
+  --bg:#f4efe4;--s1:#fffdf8;--s2:#f3eede;--s3:#ece5d4;--s4:#e1d8c4;--s-bright:#ffffff;
+  --border:rgba(29,40,66,0.10);--border2:rgba(29,40,66,0.17);--border3:rgba(29,40,66,0.28);
+  --text:#1d2433;--text2:#3a4658;--muted:#606774;
+  --primary:#16233a;--on-primary:#ffffff;--accent:#16233a;--accent2:#2c4063;--accent3:#4a5d80;
+  --red:#c22a37;--red2:#c12c38;--value:#067648;--gold:#955804;
+  --qb:#c22a37;--rb:#067648;--wr:#1a6aab;--te:#955804;--pos-ink:#ffffff;
+  --purple:#6d3fc4;--purple-soft:rgba(109,63,196,.1);--purple-line:rgba(109,63,196,.32);
+  --green-soft:rgba(6,118,72,.1);--green-line:rgba(6,118,72,.28);
+  --red-soft:rgba(194,42,55,.09);--red-line:rgba(194,42,55,.26);
+  --gold-soft:rgba(149,88,4,.12);
+  --shadow-card:0 20px 48px -22px rgba(29,40,66,0.28),0 1px 0 rgba(255,255,255,0.6) inset;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-sans);
+  font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1400px;margin:0 auto;padding:22px 26px 140px}
+.mono{font-family:var(--font-mono)}
+
+/* theme switch (mock chrome only) */
+.themebar{position:fixed;top:14px;right:16px;z-index:50;display:flex;gap:4px;
+  background:var(--s1);border:1px solid var(--border);border-radius:var(--r-pill);padding:4px;box-shadow:var(--shadow-card)}
+.themebar button{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);background:transparent;border:0;padding:6px 12px;border-radius:var(--r-pill);cursor:pointer}
+.themebar button.on{background:var(--accent2);color:var(--pos-ink)}
+
+/* ── header ── */
+.hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:6px 2px 18px}
+.h-title{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.h-title h1{font-size:30px;font-weight:900;letter-spacing:-.02em;margin:0}
+.h-tag{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--muted);
+  border:1px solid var(--border2);border-radius:var(--radius-sm);padding:5px 9px;text-transform:uppercase}
+.h-blurb{color:var(--text2);font-size:13.5px;line-height:1.55;max-width:620px;margin:12px 0 0}
+.h-blurb b{color:var(--text);font-weight:700}
+.h-blurb .g{color:var(--value);font-weight:700}
+.h-blurb .r{color:var(--red2);font-weight:700}
+
+.stat-row{display:flex;gap:10px;flex-wrap:wrap}
+.statcard{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:11px 16px;min-width:104px}
+.statcard .k{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted)}
+.statcard .v{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:1.1;margin-top:5px}
+.statcard.good .v{color:var(--value)}
+.statcard.bad .v{color:var(--red2)}
+.statcard.strong .v{color:var(--purple)}
+.statcard.fade .v{color:var(--gold)}
+
+/* ── control bar ── */
+.controls{background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:14px 16px;margin-top:20px}
+.crow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.crow + .crow{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+
+.mkt-sel{display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:var(--radius-md);padding:8px 14px;cursor:pointer;min-width:220px}
+.mkt-sel .lab{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.mkt-sel .val{font-weight:700;font-size:15px}
+.mkt-sel .car{margin-left:auto;color:var(--muted)}
+
+/* segmented (the pill lives here — reference's purple active) */
+.seg{display:inline-flex;gap:2px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:var(--r-pill);padding:3px}
+.seg button{font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:0;
+  padding:7px 14px;border-radius:var(--r-pill);cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+  transition:color .16s var(--ease-out)}
+.seg button:hover{color:var(--text2)}
+.seg button.on{background:var(--purple);color:#fff}
+[data-theme="light"] .seg button.on{color:#fff}
+.seg button .n{font-family:var(--font-mono);font-size:11px;font-weight:600;opacity:.72}
+.seg button.on .n{opacity:.85}
+.seg.pos button.on{background:var(--te);color:var(--pos-ink)}
+.seg.pos button[data-p="QB"].on{background:var(--qb)}
+.seg.pos button[data-p="RB"].on{background:var(--rb)}
+.seg.pos button[data-p="WR"].on{background:var(--wr)}
+.seg.pos button[data-p="TE"].on{background:var(--te)}
+
+.search{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;background:var(--s2);
+  border:1px solid var(--border2);border-radius:var(--radius-md);padding:8px 12px;color:var(--muted)}
+.search input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-family:var(--font-sans);font-size:13.5px}
+.search input::placeholder{color:var(--muted)}
+
+.morebtn{display:flex;align-items:center;gap:8px;background:var(--purple);color:#fff;border:0;
+  border-radius:var(--radius-md);padding:9px 16px;font-weight:700;font-size:13.5px;cursor:pointer}
+.morebtn .n{background:rgba(255,255,255,.25);border-radius:var(--r-pill);font-size:11px;padding:1px 7px;font-family:var(--font-mono)}
+
+/* filter fields (row 2) */
+.ffield{display:flex;flex-direction:column;gap:7px}
+.ffield > .lab{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.gamesel{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--purple-line);
+  border-radius:var(--radius-md);padding:8px 12px;cursor:pointer;font-weight:700;min-width:180px}
+.gamesel .car{margin-left:auto;color:var(--muted)}
+.chipset{display:inline-flex;gap:6px}
+.chip{font-size:12.5px;font-weight:600;color:var(--text2);background:var(--s2);border:1px solid var(--border2);
+  border-radius:var(--radius-sm);padding:7px 13px;cursor:pointer}
+.chip.on{background:var(--s4);border-color:var(--border3);color:var(--text)}
+.slider{width:210px;display:flex;align-items:center;gap:12px}
+.track{flex:1;height:4px;border-radius:var(--r-pill);background:var(--s3);position:relative}
+.track .fill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:var(--r-pill);background:var(--purple)}
+.track .knob{position:absolute;top:50%;transform:translate(-50%,-50%);width:15px;height:15px;border-radius:50%;
+  background:var(--purple);box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.slider .num{font-family:var(--font-mono);font-weight:700;font-size:15px;min-width:22px;text-align:right}
+.clearall{margin-left:auto;color:var(--purple);font-weight:700;font-size:13px;cursor:pointer;background:none;border:0}
+
+/* ── active filter summary row ── */
+.summary{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 4px 12px}
+.summary .count{font-size:13px;color:var(--muted)}
+.summary .count b{color:var(--text);font-weight:700}
+.fpill{display:inline-flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:var(--r-pill);padding:5px 8px 5px 12px;font-size:12.5px;font-weight:600}
+.fpill .x{color:var(--muted);cursor:pointer}
+.summary .clr{color:var(--muted);font-weight:600;font-size:12.5px;cursor:pointer;background:none;border:0}
+.summary .right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.summary .link{color:var(--text2);font-size:13px;cursor:pointer}
+.summary .btn2{display:flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:var(--radius-md);padding:8px 13px;font-weight:600;font-size:13px;cursor:pointer}
+.summary .sort{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:var(--radius-md);padding:8px 13px;cursor:pointer}
+.summary .sort .lab{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.summary .sort .val{font-weight:700}
+
+/* ── table ── */
+.thead{display:grid;grid-template-columns:2.1fr 1.15fr 1fr 1.15fr 1.35fr 1fr 3.4fr;gap:14px;
+  padding:8px 18px;font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted)}
+.grp{margin-top:6px}
+.grp-hd{display:flex;align-items:center;gap:10px;padding:11px 18px 11px 15px;
+  background:linear-gradient(90deg,var(--s3),var(--s2) 42%);
+  border:1px solid var(--border2);border-left:3px solid var(--border3);
+  border-radius:var(--radius-md) var(--radius-md) 0 0;border-bottom:0;margin-top:16px}
+.grp-hd .team-badge{width:20px;height:20px;border-radius:5px;display:grid;place-items:center;font-size:10px;font-weight:900;
+  font-family:var(--font-mono);color:var(--pos-ink)}
+.grp-hd .nm{font-weight:800;font-size:14.5px}
+.grp-hd .pos{font-family:var(--font-mono);font-size:10px;font-weight:700;color:var(--muted)}
+.grp-hd .rt{margin-left:auto;font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+.rowcard{border:1px solid var(--border);border-top:0;background:var(--s1)}
+.grp .rowcard:last-child{border-radius:0 0 var(--radius-md) var(--radius-md)}
+.prow{display:grid;grid-template-columns:2.1fr 1.15fr 1fr 1.15fr 1.35fr 1fr 3.4fr;gap:14px;
+  align-items:center;padding:14px 18px;transition:background .16s var(--ease-out)}
+.prow:hover{background:var(--s2)}
+.prow + .prow{border-top:1px solid var(--border)}
+
+.player{display:flex;align-items:center;gap:11px}
+.ava{width:38px;height:38px;border-radius:9px;background:var(--s3);display:grid;place-items:center;
+  font-weight:800;font-size:13px;color:var(--text2);border:1px solid var(--border2);flex:none}
+.player .nm{font-weight:700;font-size:14px}
+.player .sub{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+
+.matchup{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12.5px;font-weight:600;color:var(--text2)}
+.matchup .t{color:var(--text)}
+.matchup .arw{color:var(--muted)}
+
+.market{display:flex;flex-direction:column;gap:6px}
+.market .m{font-weight:600;font-size:13px}
+.tag{align-self:flex-start;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.06em;
+  padding:3px 8px;border-radius:var(--radius-sm);text-transform:uppercase}
+.tag.good{color:var(--value);background:var(--green-soft);border:1px solid var(--green-line)}
+.tag.bad{color:var(--red2);background:var(--red-soft);border:1px solid var(--red-line)}
+.tag.even{color:var(--muted);background:var(--s3);border:1px solid var(--border2)}
+
+.odds{display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:var(--radius-md);padding:8px 13px}
+.odds .ln{font-family:var(--font-mono);font-weight:700;font-size:15px;letter-spacing:.01em}
+.odds .px{font-family:var(--font-mono);font-weight:600;font-size:13px;color:var(--text2);margin-left:auto}
+.odds .car{color:var(--muted);font-size:10px}
+
+.grade{display:flex;align-items:baseline;gap:9px}
+.grade .num{font-family:var(--font-mono);font-size:26px;font-weight:800;line-height:1}
+.grade .dir{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.grade.over .num,.grade.over .dir{color:var(--value)}
+.grade.under .num,.grade.under .dir{color:var(--red2)}
+.grade.hold .num,.grade.hold .dir{color:var(--muted)}
+.gbar{height:3px;border-radius:var(--r-pill);background:var(--s3);margin-top:7px;position:relative;overflow:hidden;width:96px}
+.gbar i{position:absolute;left:0;top:0;bottom:0;border-radius:var(--r-pill)}
+.grade.over .gbar i{background:var(--value)}
+.grade.under .gbar i{background:var(--red2)}
+.grade.hold .gbar i{background:var(--muted)}
+
+.conf{align-self:center;justify-self:start;font-family:var(--font-mono);font-size:10.5px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;padding:5px 11px;border-radius:var(--r-pill);border:1px solid var(--border2);color:var(--text2)}
+.conf.high{color:var(--value);border-color:var(--green-line);background:var(--green-soft)}
+.conf.med{color:var(--gold);border-color:var(--gold-soft);background:var(--gold-soft)}
+.conf.low{color:var(--muted)}
+
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.pill .k{font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pill .v{font-family:var(--font-mono);font-size:16px;font-weight:700;margin-top:3px}
+.pbar{height:4px;border-radius:var(--r-pill);background:var(--s3);margin-top:6px;overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:var(--r-pill)}
+.pbar i.hi{background:var(--value)}
+.pbar i.mid{background:var(--gold)}
+.pbar i.lo{background:var(--red2)}
+
+.fav{width:34px;height:34px;border-radius:9px;border:1px solid var(--border2);background:var(--s2);
+  display:grid;place-items:center;color:var(--muted);cursor:pointer;flex:none;font-size:15px}
+
+.footnote{color:var(--muted);font-size:12px;text-align:center;margin-top:30px;line-height:1.6}
+
+@media (max-width:1180px){
+  .thead{display:none}
+  .prow{grid-template-columns:1fr 1fr;gap:12px}
+  .prow .pillars{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<div class="themebar">
+  <button data-t="vapor" class="on">Vapor</button>
+  <button data-t="onyx">Onyx</button>
+  <button data-t="light">Light</button>
+</div>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div>
+      <div class="h-title">
+        <h1>Market Grades</h1>
+        <span class="h-tag">2026 Season · Week 2 · live data</span>
+      </div>
+      <p class="h-blurb">
+        One <b>0–100 grade</b> per player per market — Vault's own projection, usage model,
+        the shrink-adjusted <b>matchup</b> and game <b>environment</b> rolled into a single number.
+        The grade is strength; the chip is the spot: <span class="g">GOOD</span>, <span class="r">BAD</span> or EVEN.
+        <span class="r">FADE</span> flags the props where every bad-matchup signal agrees.
+      </p>
+    </div>
+    <div class="stat-row">
+      <div class="statcard"><div class="k">Graded</div><div class="v mono">668</div></div>
+      <div class="statcard strong"><div class="k">Strong Leans</div><div class="v mono">177</div></div>
+      <div class="statcard good"><div class="k">Good Spots</div><div class="v mono">268</div></div>
+      <div class="statcard fade"><div class="k">Fade Alerts</div><div class="v mono">54</div></div>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="crow">
+      <div class="mkt-sel">
+        <span class="lab">Market</span>
+        <span class="val">Receiving</span>
+        <span class="car">▾</span>
+      </div>
+      <div class="seg">
+        <button class="on">All <span class="n">668</span></button>
+        <button>Good <span class="n">268</span></button>
+        <button>Bad <span class="n">240</span></button>
+        <button>Even <span class="n">160</span></button>
+      </div>
+      <div class="seg pos">
+        <button data-p="QB">QB</button>
+        <button data-p="RB">RB</button>
+        <button data-p="WR">WR</button>
+        <button data-p="TE">TE</button>
+      </div>
+      <div class="search">
+        <span>⌕</span><input placeholder="Search player">
+      </div>
+      <button class="morebtn">More filters <span class="n">1</span> ▴</button>
+    </div>
+
+    <div class="crow">
+      <div class="ffield">
+        <span class="lab">Game</span>
+        <div class="gamesel">All games <span class="car">▾</span></div>
+      </div>
+      <div class="ffield">
+        <span class="lab">Strength</span>
+        <div class="chipset"><span class="chip">Strong</span><span class="chip on">Lean</span><span class="chip">Neutral</span></div>
+      </div>
+      <div class="ffield">
+        <span class="lab">Confidence</span>
+        <div class="chipset"><span class="chip">High</span><span class="chip on">Medium</span><span class="chip">Low</span></div>
+      </div>
+      <div class="ffield">
+        <span class="lab">Min grade</span>
+        <div class="slider">
+          <div class="track"><div class="fill" style="width:55%"></div><div class="knob" style="left:55%"></div></div>
+          <span class="num mono">55</span>
+        </div>
+      </div>
+      <div class="ffield">
+        <span class="lab">Fades</span>
+        <div class="chipset"><span class="chip">Hide fades</span></div>
+      </div>
+      <button class="clearall">Clear all</button>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary">
+    <span class="count"><b>7</b> of 668 grades</span>
+    <span class="fpill">Receiving <span class="x">✕</span></span>
+    <span class="fpill">Min grade 55 <span class="x">✕</span></span>
+    <button class="clr">Clear</button>
+    <div class="right">
+      <span class="link">What's in a grade?</span>
+      <div class="btn2">▦ Group by game</div>
+      <div class="sort"><span class="lab">Sort</span><span class="val">Grade ▾</span></div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="thead">
+    <div>Player</div><div>Team → Opp</div><div>Market</div><div>Odds</div>
+    <div>Grade</div><div>Confidence</div><div>Pillars</div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-hd">
+      <span class="team-badge" style="background:var(--rb)">DET</span>
+      <span class="nm">Jahmyr Gibbs</span><span class="pos">· RB</span>
+      <span class="rt">2 markets · Strong</span>
+    </div>
+    <div class="rowcard">
+      <div class="prow">
+        <div class="player">
+          <div class="ava">JG</div>
+          <div><div class="nm">Jahmyr Gibbs</div><div class="sub">RB · DET</div></div>
+        </div>
+        <div class="matchup"><span class="t">DET</span><span class="arw">@</span><span class="t">NYJ</span></div>
+        <div class="market"><span class="m">Rec Yds</span><span class="tag good">Good</span></div>
+        <div class="odds"><span class="ln">29.5</span><span class="px">−111</span><span class="car">▾</span></div>
+        <div class="grade over">
+          <div><span class="num">84</span> <span class="dir">Strong over</span>
+          <div class="gbar"><i style="width:84%"></i></div></div>
+        </div>
+        <div class="conf med">Medium</div>
+        <div class="pillars">
+          <div class="pill"><div class="k">Opportunity</div><div class="v">71</div><div class="pbar"><i class="hi" style="width:71%"></i></div></div>
+          <div class="pill"><div class="k">Quality</div><div class="v">95</div><div class="pbar"><i class="hi" style="width:95%"></i></div></div>
+          <div class="pill"><div class="k">Matchup</div><div class="v">84</div><div class="pbar"><i class="hi" style="width:84%"></i></div></div>
+          <div class="pill"><div class="k">Environment</div><div class="v">94</div><div class="pbar"><i class="hi" style="width:94%"></i></div></div>
+        </div>
+      </div>
+      <div class="prow">
+        <div class="player">
+          <div class="ava">JG</div>
+          <div><div class="nm">Jahmyr Gibbs</div><div class="sub">RB · DET</div></div>
+        </div>
+        <div class="matchup"><span class="t">DET</span><span class="arw">@</span><span class="t">NYJ</span></div>
+        <div class="market"><span class="m">Receptions</span><span class="tag good">Good</span></div>
+        <div class="odds"><span class="ln">4.5</span><span class="px">+114</span><span class="car">▾</span></div>
+        <div class="grade over">
+          <div><span class="num">84</span> <span class="dir">Strong over</span>
+          <div class="gbar"><i style="width:84%"></i></div></div>
+        </div>
+        <div class="conf med">Medium</div>
+        <div class="pillars">
+          <div class="pill"><div class="k">Opportunity</div><div class="v">71</div><div class="pbar"><i class="hi" style="width:71%"></i></div></div>
+          <div class="pill"><div class="k">Quality</div><div class="v">95</div><div class="pbar"><i class="hi" style="width:95%"></i></div></div>
+          <div class="pill"><div class="k">Matchup</div><div class="v">84</div><div class="pbar"><i class="hi" style="width:84%"></i></div></div>
+          <div class="pill"><div class="k">Environment</div><div class="v">94</div><div class="pbar"><i class="hi" style="width:94%"></i></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grp">
+    <div class="grp-hd">
+      <span class="team-badge" style="background:var(--wr)">DET</span>
+      <span class="nm">Amon-Ra St. Brown</span><span class="pos">· WR</span>
+      <span class="rt">2 markets</span>
+    </div>
+    <div class="rowcard">
+      <div class="prow">
+        <div class="player">
+          <div class="ava">AB</div>
+          <div><div class="nm">Amon-Ra St. Brown</div><div class="sub">WR · DET</div></div>
+        </div>
+        <div class="matchup"><span class="t">DET</span><span class="arw">@</span><span class="t">NYJ</span></div>
+        <div class="market"><span class="m">Rec Yds</span><span class="tag good">Good</span></div>
+        <div class="odds"><span class="ln">79.5</span><span class="px">−112</span><span class="car">▾</span></div>
+        <div class="grade over">
+          <div><span class="num">80</span> <span class="dir">Strong over</span>
+          <div class="gbar"><i style="width:80%"></i></div></div>
+        </div>
+        <div class="conf low">Low</div>
+        <div class="pillars">
+          <div class="pill"><div class="k">Opportunity</div><div class="v">94</div><div class="pbar"><i class="hi" style="width:94%"></i></div></div>
+          <div class="pill"><div class="k">Quality</div><div class="v">93</div><div class="pbar"><i class="hi" style="width:93%"></i></div></div>
+          <div class="pill"><div class="k">Matchup</div><div class="v">31</div><div class="pbar"><i class="lo" style="width:31%"></i></div></div>
+          <div class="pill"><div class="k">Environment</div><div class="v">94</div><div class="pbar"><i class="hi" style="width:94%"></i></div></div>
+        </div>
+      </div>
+      <div class="prow">
+        <div class="player">
+          <div class="ava">AB</div>
+          <div><div class="nm">Amon-Ra St. Brown</div><div class="sub">WR · DET</div></div>
+        </div>
+        <div class="matchup"><span class="t">DET</span><span class="arw">@</span><span class="t">NYJ</span></div>
+        <div class="market"><span class="m">Receptions</span><span class="tag good">Good</span></div>
+        <div class="odds"><span class="ln">7.5</span><span class="px">+102</span><span class="car">▾</span></div>
+        <div class="grade over">
+          <div><span class="num">75</span> <span class="dir">Strong over</span>
+          <div class="gbar"><i style="width:75%"></i></div></div>
+        </div>
+        <div class="conf low">Low</div>
+        <div class="pillars">
+          <div class="pill"><div class="k">Opportunity</div><div class="v">94</div><div class="pbar"><i class="hi" style="width:94%"></i></div></div>
+          <div class="pill"><div class="k">Quality</div><div class="v">77</div><div class="pbar"><i class="hi" style="width:77%"></i></div></div>
+          <div class="pill"><div class="k">Matchup</div><div class="v">31</div><div class="pbar"><i class="lo" style="width:31%"></i></div></div>
+          <div class="pill"><div class="k">Environment</div><div class="v">94</div><div class="pbar"><i class="hi" style="width:94%"></i></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grp">
+    <div class="grp-hd">
+      <span class="team-badge" style="background:var(--te)">DET</span>
+      <span class="nm">Sam LaPorta</span><span class="pos">· TE</span>
+      <span class="rt">2 markets</span>
+    </div>
+    <div class="rowcard">
+      <div class="prow">
+        <div class="player">
+          <div class="ava">SL</div>
+          <div><div class="nm">Sam LaPorta</div><div class="sub">TE · DET</div></div>
+        </div>
+        <div class="matchup"><span class="t">DET</span><span class="arw">@</span><span class="t">NYJ</span></div>
+        <div class="market"><span class="m">Rec Yds</span><span class="tag good">Good</span></div>
+        <div class="odds"><span class="ln">46.5</span><span class="px">−125</span><span class="car">▾</span></div>
+        <div class="grade over">
+          <div><span class="num">74</span> <span class="dir">Strong over</span>
+          <div class="gbar"><i style="width:74%"></i></div></div>
+        </div>
+        <div class="conf low">Low</div>
+        <div class="pillars">
+          <div class="pill"><div class="k">Opportunity</div><div class="v">88</div><div class="pbar"><i class="hi" style="width:88%"></i></div></div>
+          <div class="pill"><div class="k">Quality</div><div class="v">77</div><div class="pbar"><i class="hi" style="width:77%"></i></div></div>
+          <div class="pill"><div class="k">Matchup</div><div class="v">34</div><div class="pbar"><i class="lo" style="width:34%"></i></div></div>
+          <div class="pill"><div class="k">Environment</div><div class="v">94</div><div class="pbar"><i class="hi" style="width:94%"></i></div></div>
+        </div>
+      </div>
+      <div class="prow">
+        <div class="player">
+          <div class="ava">SL</div>
+          <div><div class="nm">Sam LaPorta</div><div class="sub">TE · DET</div></div>
+        </div>
+        <div class="matchup"><span class="t">DET</span><span class="arw">@</span><span class="t">NYJ</span></div>
+        <div class="market"><span class="m">Receptions</span><span class="tag good">Good</span></div>
+        <div class="odds"><span class="ln">4.5</span><span class="px">+106</span><span class="car">▾</span></div>
+        <div class="grade over">
+          <div><span class="num">68</span> <span class="dir">Lean over</span>
+          <div class="gbar"><i style="width:68%"></i></div></div>
+        </div>
+        <div class="conf low">Low</div>
+        <div class="pillars">
+          <div class="pill"><div class="k">Opportunity</div><div class="v">88</div><div class="pbar"><i class="hi" style="width:88%"></i></div></div>
+          <div class="pill"><div class="k">Quality</div><div class="v">58</div><div class="pbar"><i class="mid" style="width:58%"></i></div></div>
+          <div class="pill"><div class="k">Matchup</div><div class="v">34</div><div class="pbar"><i class="lo" style="width:34%"></i></div></div>
+          <div class="pill"><div class="k">Environment</div><div class="v">94</div><div class="pbar"><i class="hi" style="width:94%"></i></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grp">
+    <div class="grp-hd">
+      <span class="team-badge" style="background:var(--wr)">SEA</span>
+      <span class="nm">Cooper Kupp</span><span class="pos">· WR</span>
+      <span class="rt">1 market · <span style="color:var(--red2)">FADE</span></span>
+    </div>
+    <div class="rowcard">
+      <div class="prow">
+        <div class="player">
+          <div class="ava">CK</div>
+          <div><div class="nm">Cooper Kupp</div><div class="sub">WR · SEA</div></div>
+        </div>
+        <div class="matchup"><span class="t">SEA</span><span class="arw">@</span><span class="t">WAS</span></div>
+        <div class="market"><span class="m">Receptions</span><span class="tag bad">Bad</span></div>
+        <div class="odds"><span class="ln">2.5</span><span class="px">+115</span><span class="car">▾</span></div>
+        <div class="grade under">
+          <div><span class="num">43</span> <span class="dir">Lean under</span>
+          <div class="gbar"><i style="width:43%"></i></div></div>
+        </div>
+        <div class="conf med">Medium</div>
+        <div class="pillars">
+          <div class="pill"><div class="k">Opportunity</div><div class="v">58</div><div class="pbar"><i class="mid" style="width:58%"></i></div></div>
+          <div class="pill"><div class="k">Quality</div><div class="v">30</div><div class="pbar"><i class="lo" style="width:30%"></i></div></div>
+          <div class="pill"><div class="k">Matchup</div><div class="v">38</div><div class="pbar"><i class="lo" style="width:38%"></i></div></div>
+          <div class="pill"><div class="k">Environment</div><div class="v">44</div><div class="pbar"><i class="mid" style="width:44%"></i></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote">
+    Grades are matchup + environment only — no betting line is consulted, so the odds column is context, not an input.<br>
+    Mock · Vault Market Grades · demo data
+  </p>
+
+</div>
+
+<script>
+document.querySelectorAll('.themebar button').forEach(b=>{
+  b.onclick=()=>{
+    document.documentElement.setAttribute('data-theme',b.dataset.t);
+    document.querySelectorAll('.themebar button').forEach(x=>x.classList.toggle('on',x===b));
+  };
+});
+</script>
+</body>
+</html>

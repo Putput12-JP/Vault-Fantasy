@@ -55,6 +55,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Build projection feed
         run: |
           node scripts/build-lineup-feed.mjs
@@ -73,15 +76,22 @@ jobs:
           # PARLAY_API_KEY accepted as an alias so either secret name works.
           PARLAY_API_KEY: ${{ secrets.PARLAY_API_KEY }}
           PROPS_API_HOST: ${{ vars.PROPS_API_HOST }}
+      - name: Grade the slate (Market Grades)
+        # Reads the feed just written above (slate, lines, shrunk DvP, Vegas games)
+        # plus nflverse snaps/stats → data/market_grades.json. Pure stdlib, no deps.
+        # Non-fatal: a grade failure must not block the feed commit below.
+        run: |
+          python3 scripts/build_market_grades.py || echo "market grades build failed — keeping previous grades"
       - name: Commit refreshed feed
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/lineup-feed.json
+          git add data/market_grades.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No change in feed."
           else
-            git commit -m "data: refresh Lineup projections feed"
+            git commit -m "data: refresh Lineup projections feed + Market Grades"
             # Rebase on the latest main before pushing so overlapping/re-run jobs
             # never fail with "fetch first" (remote moved ahead). Retry once.
             for i in 1 2 3; do

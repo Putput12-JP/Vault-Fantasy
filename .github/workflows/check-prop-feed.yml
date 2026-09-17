@@ -33,6 +33,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Check feed health
         id: check1
@@ -45,6 +48,8 @@ jobs:
           echo "Feed degraded — re-running the free PrizePicks enrichment…"
           node scripts/fetch-pickem-props.mjs --feed=data/lineup-feed.json
           node scripts/build_best_bets.mjs --feed=data/lineup-feed.json
+          # Regrade off the healed feed so Market Grades never trails it. Non-fatal.
+          python3 scripts/build_market_grades.py || echo "market grades build failed — keeping previous grades"
 
       - name: Commit any healed feed
         if: steps.check1.outcome == 'failure'
@@ -55,6 +60,7 @@ jobs:
             echo "Heal produced no change."
           else
             git add data/lineup-feed.json
+            git add data/market_grades.json 2>/dev/null || true
             git commit -m "props: self-heal degraded feed via PrizePicks [skip ci]"
             for i in 1 2 3; do
               git pull --rebase --autostash origin main && git push && break

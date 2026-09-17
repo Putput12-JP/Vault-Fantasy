@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-17T15:00', tag:'New', title:'Market Grades — one number for every prop',
+    items:[
+      'New Market Grades board under Betting: every player gets a single 0–100 grade per prop, built from how much work he gets, how well he\'s playing, the defense he draws and the game environment — no betting line involved, so it\'s a clean read on the spot itself.',
+      'Each grade carries a GOOD / BAD / EVEN matchup chip and four pillar scores (Opportunity, Quality, Matchup, Environment) so you can see exactly why it landed where it did. FADE flags the players whose bad-matchup signals all agree.',
+      'Filter by market, position, matchup or player, and sort the whole slate by grade. Early in the season the matchup read leans on last year\'s defenses until this season\'s games bank, and the board says so.',
+    ]
+  },
+  {
     ts:'2026-09-17T12:00', tag:'New', title:'A cleaner betting board on your phone',
     items:[
       'Player Props now read as quick rows: player and line, best price, and a green/red streak bar of the last several games with the hit rate right beside it.',
@@ -41504,7 +41512,7 @@ window.VaultPropModel = (function () {
      as "best price" here); the meaning is "this book is on a different number". */
   --bt-alt:var(--te);
   --bt-mono:var(--font-mono);
-  padding:22px 28px 90px;color:var(--bt-text);max-width:1320px;margin:0 auto}
+  padding:22px 14px 90px;color:var(--bt-text);max-width:1460px;margin:0 auto}
 /* .ln renders at --t-body (15px) bold, which is NOT WCAG "large text", so it
    needs 4.5:1. Light theme's --te (#a76a16) only reaches 3.84:1 on the chip
    surface (--s2 #f3eede); this darkened gold clears it at 4.55:1. */
@@ -42370,6 +42378,7 @@ window.VaultPropModel = (function () {
     <div id="bt-bestbets"></div>
     <div class="bt-view on" id="bt-v-games"></div>
     <div class="bt-view" id="bt-v-props"></div>
+    <div class="bt-view" id="bt-v-grades"></div>
     <div class="bt-note" id="bt-note"></div>`;
   }
 
@@ -44974,12 +44983,17 @@ window.VaultPropModel = (function () {
 
   // Featured detail: player header + prop switcher + game-log chart (persistent
   // panel). Chart + hit-rate windows load once history lands.
-  function renderPropDetail(r) {
+  function renderPropDetail(r, refresh) {
+    // `refresh` re-renders whatever host this detail lives in after a state change
+    // (watch/track toggle). Defaults to the Player Props board; the Market Grades
+    // inline panel passes its own so it refreshes in place instead.
+    refresh = refresh || renderPropsBoard;
     // Colour by the player's OWN position — a cross-position search can load a
     // QB into the panel while the board tab still reads WR.
     const fb = F(), fe = resolvePick(r) || r.fe, col = POS_COLOR[r.pos] || POS_COLOR[curPos], init = r.name.split(' ').map(w => w[0]).slice(0, 2).join('');
     const on = watch.has(propKey(r));
     const feat = document.getElementById('eb-feat'); if (!feat) return;
+    feat.__row = r;   // remember the row shown, so a host-provided refresh can re-render the same market
     const tok = ++_pdTok;   // this render's token; async paints below bail if superseded
     feat.innerHTML =
       '<div class="eb-ftop"><div class="eb-fpl"><span class="bt-hs eb-fhs" data-hs="' + (r.headshot || '') + '" style="color:' + col + '">' + init + '</span>'
@@ -45000,14 +45014,14 @@ window.VaultPropModel = (function () {
       +   '<details class="bx-books"><summary>Every book · line ' + (r.line != null ? r.line : '—') + '</summary><div class="eb-booksec">' + bookTableTwo(r) + '</div></details>'
       + '</div>';
     paintHeadshots('#eb-feat');
-    feat.querySelector('.eb-wbtn').onclick = () => { const k = propKey(r); watch.has(k) ? watch.delete(k) : watch.add(k); _watchSave(); renderPropsBoard(); };
+    feat.querySelector('.eb-wbtn').onclick = () => { const k = propKey(r); watch.has(k) ? watch.delete(k) : watch.add(k); _watchSave(); refresh(); };
     const logBtn = feat.querySelector('#eb-logpick');
-    if (logBtn) logBtn.onclick = () => { const ls = _leanSideOf(r); pickLogged(r, ls) ? unlogPick(r, ls) : logPick(r, ls); renderPropsBoard(); };
-    _wire2side(r);   // per-side Track toggles inside the OVER | UNDER cards
+    if (logBtn) logBtn.onclick = () => { const ls = _leanSideOf(r); pickLogged(r, ls) ? unlogPick(r, ls) : logPick(r, ls); refresh(); };
+    _wire2side(r, refresh);   // per-side Track toggles inside the OVER | UNDER cards
     // Prop switcher (Outlier stat tabs): swap which of the player's props the
     // panel shows, without leaving the player or rebuilding the table.
-    feat.querySelectorAll('.eb-proptabs button').forEach(b => b.onclick = () => { ebDetailMkt = b.dataset.pm; renderPropDetail(playerRowFor(r, b.dataset.pm)); });
-    ebFillVault(r, fe);
+    feat.querySelectorAll('.eb-proptabs button').forEach(b => b.onclick = () => { ebDetailMkt = b.dataset.pm; renderPropDetail(playerRowFor(r, b.dataset.pm), refresh); });
+    ebFillVault(r, fe, refresh);
     const PH = window.VaultPropHistory;
     if (!PH) return;
     PH.forProp(r.name, r.market, r.line, displaySide(r), {}).then(h => {
@@ -45073,19 +45087,21 @@ window.VaultPropModel = (function () {
   // it; otherwise it swaps the spinners for real numbers when the fetch lands.
   // Bind the per-side "＋ Track {side}" toggles inside the OVER | UNDER cards.
   // Re-called after every twoSideInner paint (the block re-renders async).
-  function _wire2side(r) {
+  function _wire2side(r, refresh) {
+    refresh = refresh || renderPropsBoard;
     const host = document.getElementById('eb-2side'); if (!host) return;
     host.querySelectorAll('.eb-2track[data-side]').forEach(b => b.onclick = () => {
       const side = b.dataset.side;
       pickLogged(r, side) ? unlogPick(r, side) : logPick(r, side);
-      renderPropsBoard();   // rebuilds board + re-renders this panel with the new state
+      refresh();   // rebuilds host + re-renders this panel with the new state
     });
   }
-  function ebFillVault(r, fe) {
+  function ebFillVault(r, fe, refresh) {
+    refresh = refresh || renderPropsBoard;
     const PM = window.VaultPropModel, BM = window.VaultBettingMath, tok = _pdTok;
     const host = document.getElementById('eb-2side');
     if (!host) return;
-    if (!PM || !BM || r.line == null) { host.innerHTML = twoSideInner(r, null, false); _wire2side(r); return; }
+    if (!PM || !BM || r.line == null) { host.innerHTML = twoSideInner(r, null, false); _wire2side(r, refresh); return; }
     const mpo = (fe && fe.sides && fe.sides.over) ? fe.sides.over.fairProb : null;   // vig-free market P(over), if de-viggable
     const ci = cascadeInfo(r);                                                        // injury teammate-cascade volume bump (or null)
     const qb = qbOutMultFor(r);                                                       // measured QB-out re-projection (or null)
@@ -45096,10 +45112,10 @@ window.VaultPropModel = (function () {
       const h = document.getElementById('eb-2side');
       if (!h || tok !== _pdTok) return;               // panel moved on
       const vv = (v && v.over != null) ? { over: v.over, under: v.under, proj: v.proj, games: v.games } : null;
-      h.innerHTML = twoSideInner(r, vv, false); _wire2side(r);
+      h.innerHTML = twoSideInner(r, vv, false); _wire2side(r, refresh);
       const ph = document.getElementById('eb-projhero');
       if (ph) ph.innerHTML = projHeroHTML(r, vv);
-    }).catch(() => { const h = document.getElementById('eb-2side'); if (h && tok === _pdTok) { h.innerHTML = twoSideInner(r, null, false); _wire2side(r); } });
+    }).catch(() => { const h = document.getElementById('eb-2side'); if (h && tok === _pdTok) { h.innerHTML = twoSideInner(r, null, false); _wire2side(r, refresh); } });
   }
   // ── phantom-edge guard ────────────────────────────────────────────────
   // A single-source line (only one book quotes it) that Vault's projection
@@ -45900,10 +45916,11 @@ window.VaultPropModel = (function () {
     // Desktop switches views from the nav dropdown (Betting → Game Markets /
     // Player Props), so the in-page toggle only exists on mobile, where the
     // bottom dock has no Betting dropdown.
-    if (isMobile()) { w.style.display = ''; w.className = 'bt-seg bt-viewseg-kit'; w.innerHTML = [['games', 'Game Markets'], ['props', 'Player Props']].map(o => '<button' + (o[0] === view ? ' class="on"' : '') + ' data-bv="' + o[0] + '">' + o[1] + '</button>').join(''); w.querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.bv)); }
+    if (isMobile()) { w.style.display = ''; w.className = 'bt-seg bt-viewseg-kit'; w.innerHTML = [['games', 'Games'], ['props', 'Props'], ['grades', 'Grades']].map(o => '<button' + (o[0] === view ? ' class="on"' : '') + ' data-bv="' + o[0] + '">' + o[1] + '</button>').join(''); w.querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.bv)); }
     else { w.style.display = 'none'; w.className = ''; w.innerHTML = ''; }
   }
   function infoText() {
+    if (view === 'grades') return null;
     if (view === 'games') {
       if (MODEL.gamesSample) return ['Sample slate', 'Off-season, no live game lines yet. Spreads & totals are math-consistent with the real implied team totals; matchups, prices & books are illustrative. Live book lines replace this each week.'];
       if (/^pre/i.test(MODEL.season_type || '')) return ['Preseason games', 'These are preseason (exhibition) games. Starters usually sit or play a series or two, so these spreads and totals reflect exhibition matchups — not regular-season action. Games are listed in the order they kick off, earliest first.'];
@@ -46032,7 +46049,9 @@ window.VaultPropModel = (function () {
     }
   }
   function renderNote() {
-    document.getElementById('bt-note').innerHTML = view === 'games'
+    document.getElementById('bt-note').innerHTML = view === 'grades'
+      ? '◆ MARKET GRADES, one 0–100 grade per player per market from Vault\'s role, production, matchup and game-environment signals. No betting line is consulted — the odds are context, not an input.'
+      : view === 'games'
       ? '◆ GAME MARKETS, spread, total &amp; implied team scores with the price and book each line is from. Live via ParlayAPI during the season.'
       : '◆ PLAYER PROPS, every sportsbook side-by-side; best price each side is highlighted gold. Real book lines show when props post; until then modeled around the projected line (PROJ).';
   }
@@ -46311,12 +46330,22 @@ window.VaultPropModel = (function () {
   window.vaultRenderBlueprint = function () { const h = document.getElementById('bp-host'); if (h) renderBlueprint(h); };
 
   function render() {
+    const isGr = view === 'grades';
     document.getElementById('bt-v-games').classList.toggle('on', view === 'games');
     document.getElementById('bt-v-props').classList.toggle('on', view === 'props');
-    document.getElementById('bt-tftag').textContent = view === 'games' ? 'GAME MARKETS · ' + GM_TABS.find(t => t[0] === curGM)[1].toUpperCase() : 'WEEKLY · ' + (MODEL.hasLiveProps ? 'LIVE LINES' : 'PROJECTED');
-    renderViewSel(); renderPosSeg(); renderMkts(); renderFilters(); renderInfo(); renderTrust();
+    const gv = document.getElementById('bt-v-grades'); if (gv) gv.classList.toggle('on', isGr);
+    // Market Grades brings its own filter chrome, so the shared market/pos/search
+    // bar is hidden for it.
+    const ctl = document.getElementById('bt-controls'); if (ctl) ctl.style.display = isGr ? 'none' : '';
+    const tfEl = document.getElementById('bt-tftag');
+    tfEl.style.display = isGr ? 'none' : '';
+    tfEl.textContent = isGr ? '' : (view === 'games' ? 'GAME MARKETS · ' + GM_TABS.find(t => t[0] === curGM)[1].toUpperCase()
+      : 'WEEKLY · ' + (MODEL.hasLiveProps ? 'LIVE LINES' : 'PROJECTED'));
+    renderViewSel();
+    if (!isGr) { renderPosSeg(); renderMkts(); renderFilters(); }
+    renderInfo(); renderTrust();
     renderBestBets();
-    if (view === 'games') renderGames(); else renderProps();
+    if (isGr) renderGrades(); else if (view === 'games') renderGames(); else renderProps();
     renderNote();
   }
 
@@ -46840,6 +46869,392 @@ window.VaultPropModel = (function () {
   }
 
   /* ── entry ────────────────────────────────────────────────────────────── */
+  /* ══ MARKET GRADES ═══════════════════════════════════════════════════════
+     One 0–100 grade per player per market, fused from Vault's role, production,
+     matchup and game-environment signals (scripts/build_market_grades.py →
+     data/market_grades.json). No betting line touches the grade; the odds column
+     is context. Loaded lazily the first time the view opens. */
+  const GBASE = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE)
+    ? NFLVERSE_BASE : ((location.hostname.endsWith('github.io')) ? '' : '/data');
+  let GRADES = null, GRADES_PROMISE = null;
+  // Filter state for the grades board. Persists while the tab stays mounted.
+  const GR = { chip: 'all', pos: 'all', mkt: 'all', q: '', strength: 'all', conf: 'all',
+    min: 0, fades: 'all', sort: 'grade', group: 'player', more: true, info: false, _focus: false };
+  function loadGrades() {
+    if (!GRADES_PROMISE) GRADES_PROMISE = fetch(`${GBASE}/market_grades.json`)
+      .then(r => (r.ok ? r.json() : null)).catch(() => null);
+    return GRADES_PROMISE;
+  }
+  // Resolve a full Player-Props feed row for a graded player+market, so the shared
+  // renderPropDetail engine (chart, hit-rate windows, OVER/UNDER EV cards) can open
+  // inline on the grades board. Same lookup playerRowFor() uses.
+  function gradesResolveRow(name, pos, mkt) {
+    const fb = F(); if (!fb || !MODEL) return null;
+    try {
+      const rows = fb.propRows(MODEL, { timeframe: tf, pos, market: mkt, posMarketOnly: true });
+      const pr = rows.find(x => !x.synthetic && fb.normName(x.name) === fb.normName(name));
+      if (pr) { const fe = rowFairEV(pr) || pickemFE(pr); return Object.assign(pr, { fe: fe || pr.fe }); }
+    } catch (e) {}
+    return null;
+  }
+  const GR_DIR = {
+    strong_over: ['over', 'Strong over'], lean_over: ['over', 'Lean over'],
+    no_edge: ['hold', 'No edge'],
+    lean_under: ['under', 'Lean under'], strong_under: ['under', 'Strong under'],
+  };
+  const GR_CONF = { high: ['high', 'High'], medium: ['med', 'Medium'], low: ['low', 'Low'] };
+  const grBarCls = v => v >= 60 ? 'hi' : (v >= 40 ? 'mid' : 'lo');
+  const grInit = n => (n || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+  function injectGradesStyles() {
+    if (document.getElementById('bt-grades-styles')) return;
+    const s = document.createElement('style'); s.id = 'bt-grades-styles';
+    s.textContent = `
+#page-betting .mg-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:16px}
+#page-betting .mg-blurb{color:var(--bt-text2);font-size:13px;line-height:1.55;max-width:600px;margin:0}
+#page-betting .mg-blurb b{color:var(--bt-text);font-weight:700}
+#page-betting .mg-blurb .g{color:var(--bt-green);font-weight:700}
+#page-betting .mg-blurb .r{color:var(--bt-red);font-weight:700}
+#page-betting .mg-stats{display:flex;gap:9px;flex-wrap:wrap}
+#page-betting .mg-stat{background:var(--bt-s1);border:1px solid var(--bt-border);border-radius:11px;padding:9px 15px;min-width:92px}
+#page-betting .mg-stat .k{font-family:var(--bt-mono);font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--bt-muted)}
+#page-betting .mg-stat .v{font-family:var(--bt-mono);font-size:22px;font-weight:700;line-height:1.1;margin-top:4px}
+#page-betting .mg-stat.strong .v{color:var(--bt-accent2)}
+#page-betting .mg-stat.good .v{color:var(--bt-green)}
+#page-betting .mg-stat.fade .v{color:var(--bt-gold)}
+#page-betting .mg-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bt-s1);border:1px solid var(--bt-border);border-radius:14px;padding:12px 14px;margin-bottom:14px}
+#page-betting .mg-controls .mg-search{flex:1;min-width:150px;display:flex;align-items:center;gap:8px;background:var(--bt-s2);border:1px solid var(--bt-border2);border-radius:10px;padding:8px 12px;color:var(--bt-muted)}
+#page-betting #bt-v-grades .mg-search input{flex:1;background:transparent!important;border:0!important;outline:0!important;box-shadow:none!important;color:var(--bt-text)!important;font-family:var(--font-sans);font-size:13px}
+#page-betting #bt-v-grades .mg-search input::placeholder{color:var(--bt-muted)}
+#page-betting .mg-controls select.bt-mkt{min-width:150px}
+#page-betting .mg-more{margin-left:auto;display:inline-flex;align-items:center;gap:7px;background:var(--bt-accent2);color:var(--pos-ink,#0a1424);border:0;border-radius:10px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer}
+#page-betting .mg-more .n{background:rgba(0,0,0,.18);border-radius:99px;font-family:var(--bt-mono);font-size:10px;padding:1px 7px}
+#page-betting .mg-more .cx{transition:transform .18s var(--ease-out,ease)}
+#page-betting .mg-more.open .cx{transform:rotate(180deg)}
+/* second filter row (drawer) */
+#page-betting .mg-more2{display:none;align-items:flex-end;gap:18px;flex-wrap:wrap;background:var(--bt-s1);border:1px solid var(--bt-border);border-top:0;border-radius:0 0 14px 14px;margin:-14px 0 14px;padding:14px}
+#page-betting .mg-more2.open{display:flex}
+#page-betting .mg-controls.hasdrawer{border-radius:14px 14px 0 0;margin-bottom:0}
+#page-betting .mg-fld{display:flex;flex-direction:column;gap:7px}
+#page-betting .mg-fld > .lab{font-family:var(--bt-mono);font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--bt-muted)}
+#page-betting .mg-chips{display:inline-flex;gap:6px}
+#page-betting .mg-chip{font-size:12px;font-weight:600;color:var(--bt-text2);background:var(--bt-s2);border:1px solid var(--bt-border2);border-radius:7px;padding:6px 12px;cursor:pointer;transition:background .14s var(--ease-out,ease),color .14s}
+#page-betting .mg-chip:hover{border-color:var(--bt-border3);color:var(--bt-text)}
+#page-betting .mg-chip.on{background:var(--bt-accent2);border-color:var(--bt-accent2);color:var(--pos-ink,#0a1424);font-weight:700}
+#page-betting .mg-slider{display:flex;align-items:center;gap:12px}
+#page-betting .mg-slider input[type=range]{width:170px;accent-color:var(--bt-accent2)}
+#page-betting .mg-slider .num{font-family:var(--bt-mono);font-weight:700;font-size:14px;min-width:22px;text-align:right}
+#page-betting .mg-clearall{margin-left:auto;color:var(--bt-accent2);font-weight:700;font-size:12.5px;cursor:pointer;background:none;border:0}
+/* summary row */
+#page-betting .mg-sum{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:2px 4px 12px}
+#page-betting .mg-sum .cnt{font-size:12.5px;color:var(--bt-muted)}
+#page-betting .mg-sum .cnt b{color:var(--bt-text);font-weight:700}
+#page-betting .mg-fpill{display:inline-flex;align-items:center;gap:6px;background:var(--bt-s2);border:1px solid var(--bt-border2);border-radius:99px;padding:4px 8px 4px 11px;font-size:12px;font-weight:600}
+#page-betting .mg-fpill .x{color:var(--bt-muted);cursor:pointer;font-size:11px}
+#page-betting .mg-sum .clr{color:var(--bt-muted);font-weight:600;font-size:12px;cursor:pointer;background:none;border:0}
+#page-betting .mg-sum .right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#page-betting .mg-link{color:var(--bt-text2);font-size:12.5px;cursor:pointer;background:none;border:0}
+#page-betting .mg-link:hover{color:var(--bt-text)}
+#page-betting .mg-gbtn{display:inline-flex;align-items:center;gap:6px;background:var(--bt-s2);border:1px solid var(--bt-border2);border-radius:9px;padding:7px 12px;font-weight:600;font-size:12.5px;cursor:pointer;color:var(--bt-text2)}
+#page-betting .mg-gbtn.on{background:var(--bt-s4);border-color:var(--bt-border3);color:var(--bt-text)}
+#page-betting .mg-sortsel{display:inline-flex;align-items:center;gap:8px;background:var(--bt-s2);border:1px solid var(--bt-border2);border-radius:9px;padding:5px 10px}
+#page-betting .mg-sortsel .lab{font-family:var(--bt-mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--bt-muted)}
+#page-betting .mg-sortsel select{appearance:none;background:transparent;border:0;outline:0;color:var(--bt-text);font-family:var(--font-sans);font-size:12.5px;font-weight:700;cursor:pointer}
+/* info panel — "what's in a grade?" */
+#page-betting .mg-info{display:none;background:var(--bt-s1);border:1px solid var(--bt-border2);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+#page-betting .mg-info.open{display:block}
+#page-betting .mg-info h4{margin:0 0 8px;font-size:12.5px;font-weight:800}
+#page-betting .mg-info .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 20px}
+#page-betting .mg-info .it{font-size:12px;color:var(--bt-text2);line-height:1.45}
+#page-betting .mg-info .it b{color:var(--bt-text)}
+#page-betting .mg-caution{font-family:var(--bt-mono);font-size:10.5px;letter-spacing:.02em;color:var(--bt-gold);background:color-mix(in srgb,var(--bt-gold) 12%,transparent);border:1px solid color-mix(in srgb,var(--bt-gold) 30%,var(--bt-border2));border-radius:9px;padding:7px 11px;margin-bottom:14px}
+#page-betting .mg-thead{display:grid;grid-template-columns:2fr 1fr 1.05fr .95fr 1.3fr .9fr 3fr;gap:14px;padding:6px 16px;font-family:var(--bt-mono);font-size:9.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--bt-muted)}
+#page-betting .mg-grp{margin-top:0}
+#page-betting .mg-ghd{display:flex;align-items:center;gap:9px;padding:9px 16px 9px 13px;background:linear-gradient(90deg,var(--bt-s3),var(--bt-s2) 42%);border:1px solid var(--bt-border2);border-left:3px solid var(--bt-border3);border-radius:10px 10px 0 0;border-bottom:0;margin-top:14px}
+#page-betting .mg-ghd .badge{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-family:var(--bt-mono);font-size:8.5px;font-weight:800;color:var(--bt-text2);background:var(--bt-s3);border:1px solid var(--bt-border2);flex:none;overflow:hidden;position:relative}
+#page-betting .mg-ghd .badge img{width:100%;height:100%;object-fit:contain;padding:1px}
+#page-betting .mg-ghd .gvs{font-family:var(--bt-mono);font-size:13px;font-weight:800;letter-spacing:-.01em}
+#page-betting .mg-ghd .gvs .a{color:var(--bt-muted);font-weight:600;margin:0 3px}
+#page-betting .mg-ghd .nm{font-weight:800;font-size:14px}
+#page-betting .mg-ghd .pos{font-family:var(--bt-mono);font-size:9.5px;font-weight:700;color:var(--bt-muted)}
+#page-betting .mg-ghd .rt{margin-left:auto;font-family:var(--bt-mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--bt-muted)}
+#page-betting .mg-ghd .rt .fade{color:var(--bt-red)}
+#page-betting .mg-card{border:1px solid var(--bt-border);border-top:0;background:var(--bt-s1)}
+#page-betting .mg-grp .mg-card{border-radius:0 0 10px 10px}
+#page-betting .mg-row{display:grid;grid-template-columns:2fr 1fr 1.05fr .95fr 1.3fr .9fr 3fr;gap:14px;align-items:center;padding:13px 16px;cursor:pointer;transition:background .15s var(--ease-out,ease)}
+#page-betting .mg-ghd[data-oname]{cursor:pointer}
+#page-betting .mg-ghd[data-oname]:hover .nm{color:var(--bt-accent2)}
+#page-betting .mg-row:hover{background:var(--bt-s2)}
+#page-betting .mg-row + .mg-row{border-top:1px solid var(--bt-border)}
+#page-betting .mg-pl{display:flex;align-items:center;gap:10px;min-width:0}
+#page-betting .mg-ava{width:38px;height:38px;border-radius:9px;background:var(--bt-s3);display:grid;place-items:center;font-weight:800;font-size:12px;color:var(--bt-text2);border:1px solid var(--bt-border2);flex:none;overflow:hidden;position:relative}
+#page-betting .mg-ava img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center}
+#page-betting .mg-pl .n{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page-betting .mg-pl .s{font-family:var(--bt-mono);font-size:10px;color:var(--bt-muted);margin-top:2px}
+#page-betting .mg-mu{font-family:var(--bt-mono);font-size:12px;font-weight:600;color:var(--bt-text2)}
+#page-betting .mg-mu .a{color:var(--bt-muted)}
+#page-betting .mg-mk{display:flex;flex-direction:column;gap:5px;min-width:0}
+#page-betting .mg-mk .m{font-weight:600;font-size:12.5px}
+#page-betting .mg-tag{align-self:flex-start;font-family:var(--bt-mono);font-size:9px;font-weight:700;letter-spacing:.05em;padding:3px 7px;border-radius:6px;text-transform:uppercase}
+#page-betting .mg-tag.good{color:var(--bt-green);background:color-mix(in srgb,var(--bt-green) 15%,transparent);border:1px solid color-mix(in srgb,var(--bt-green) 34%,transparent)}
+#page-betting .mg-tag.bad{color:var(--bt-red);background:color-mix(in srgb,var(--bt-red) 15%,transparent);border:1px solid color-mix(in srgb,var(--bt-red) 34%,transparent)}
+#page-betting .mg-tag.even{color:var(--bt-muted);background:var(--bt-s3);border:1px solid var(--bt-border2)}
+#page-betting .mg-odds{display:flex;align-items:center;gap:8px;background:var(--bt-s2);border:1px solid var(--bt-border2);border-radius:10px;padding:7px 11px}
+#page-betting .mg-odds .l{font-family:var(--bt-mono);font-weight:700;font-size:14px}
+#page-betting .mg-odds .p{font-family:var(--bt-mono);font-weight:600;font-size:12px;color:var(--bt-text2);margin-left:auto}
+#page-betting .mg-gr{display:flex;flex-direction:column}
+#page-betting .mg-gr .top{display:flex;align-items:baseline;gap:8px}
+#page-betting .mg-gr .num{font-family:var(--bt-mono);font-size:24px;font-weight:800;line-height:1}
+#page-betting .mg-gr .dir{font-family:var(--bt-mono);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+#page-betting .mg-gr.over .num,#page-betting .mg-gr.over .dir{color:var(--bt-green)}
+#page-betting .mg-gr.under .num,#page-betting .mg-gr.under .dir{color:var(--bt-red)}
+#page-betting .mg-gr.hold .num,#page-betting .mg-gr.hold .dir{color:var(--bt-muted)}
+#page-betting .mg-gr .bar{height:3px;border-radius:99px;background:var(--bt-s3);margin-top:6px;overflow:hidden;max-width:96px}
+#page-betting .mg-gr .bar i{display:block;height:100%;border-radius:99px}
+#page-betting .mg-gr.over .bar i{background:var(--bt-green)}
+#page-betting .mg-gr.under .bar i{background:var(--bt-red)}
+#page-betting .mg-gr.hold .bar i{background:var(--bt-muted)}
+#page-betting .mg-conf{justify-self:start;font-family:var(--bt-mono);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:99px;border:1px solid var(--bt-border2);color:var(--bt-text2)}
+#page-betting .mg-conf.high{color:var(--bt-green);border-color:color-mix(in srgb,var(--bt-green) 34%,transparent);background:color-mix(in srgb,var(--bt-green) 12%,transparent)}
+#page-betting .mg-conf.med{color:var(--bt-gold);border-color:color-mix(in srgb,var(--bt-gold) 30%,transparent);background:color-mix(in srgb,var(--bt-gold) 12%,transparent)}
+#page-betting .mg-pil{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+#page-betting .mg-pil .k{font-family:var(--bt-mono);font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--bt-muted)}
+#page-betting .mg-pil .v{font-family:var(--bt-mono);font-size:15px;font-weight:700;margin-top:2px}
+#page-betting .mg-pil .pb{height:4px;border-radius:99px;background:var(--bt-s3);margin-top:5px;overflow:hidden}
+#page-betting .mg-pil .pb i{display:block;height:100%;border-radius:99px}
+#page-betting .mg-pil .pb i.hi{background:var(--bt-green)}
+#page-betting .mg-pil .pb i.mid{background:var(--bt-gold)}
+#page-betting .mg-pil .pb i.lo{background:var(--bt-red)}
+#page-betting .mg-grp.mg-open .mg-card{border-radius:0}
+#page-betting .mg-drow{border:1px solid var(--bt-border2);border-top:0;border-radius:0 0 10px 10px;background:var(--bt-s1);padding:6px 14px 14px}
+#page-betting .mg-drow .eb-feat{margin:0}
+#page-betting .mg-empty{padding:60px 20px;text-align:center;color:var(--bt-muted);font-size:13px}
+@media (max-width:820px){
+  #page-betting .mg-thead{display:none}
+  #page-betting .mg-row{grid-template-columns:1.4fr 1fr;gap:10px 14px}
+  #page-betting .mg-mu{grid-row:1;justify-self:end}
+  #page-betting .mg-pil{grid-column:1/-1;gap:10px}
+}`;
+    document.head.appendChild(s);
+  }
+
+  function renderGrades() {
+    injectGradesStyles();
+    const host = document.getElementById('bt-v-grades'); if (!host) return;
+    if (GRADES === null && GRADES_PROMISE === null) {
+      host.innerHTML = '<div class="mg-empty"><span class="spinner md"></span><div style="margin-top:10px">Loading market grades…</div></div>';
+      loadGrades().then(j => { GRADES = j || { grades: [], counts: {} }; if (view === 'grades') renderGrades(); });
+      return;
+    }
+    if (!GRADES || !Array.isArray(GRADES.grades) || !GRADES.grades.length) {
+      host.innerHTML = '<div class="mg-empty">Market grades aren\'t available yet.<br>They publish once the weekly slate and matchup data land.</div>';
+      return;
+    }
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const rows = GRADES.grades;
+    const strengthOf = d => (d && d.indexOf('strong') >= 0) ? 'strong' : (d === 'no_edge' ? 'neutral' : 'lean');
+    const confRank = { high: 3, medium: 2, low: 1 };
+
+    // market options present in the feed
+    const mkSeen = new Map();
+    rows.forEach(r => { if (!mkSeen.has(r.market)) mkSeen.set(r.market, r.marketLabel || r.market); });
+    const mkOpts = [['all', 'All markets'], ...[...mkSeen.entries()]];
+
+    const q = GR.q.trim().toLowerCase();
+    // predicate parts so chip counts can honour every filter except the chip itself
+    const passBase = r =>
+      (GR.pos === 'all' || r.pos === GR.pos) &&
+      (GR.mkt === 'all' || r.market === GR.mkt) &&
+      (GR.strength === 'all' || strengthOf(r.direction) === GR.strength) &&
+      (GR.conf === 'all' || r.confidence === GR.conf) &&
+      (GR.min <= 0 || r.grade >= GR.min) &&
+      (GR.fades === 'all' || (GR.fades === 'hide' ? !r.fade : r.fade)) &&
+      (!q || (r.name || '').toLowerCase().includes(q));
+    const base = rows.filter(passBase);
+    const cAll = base.length, cGood = base.filter(r => r.chip === 'good').length,
+      cBad = base.filter(r => r.chip === 'bad').length, cEven = base.filter(r => r.chip === 'even').length;
+    let list = base.filter(r => GR.chip === 'all' || r.chip === GR.chip);
+
+    const c = GRADES.counts || {};
+    const sortVal = r => GR.sort === 'confidence' ? (confRank[r.confidence] * 1000 + r.grade)
+      : GR.sort === 'grade' ? r.grade : ((r.pillars && r.pillars[GR.sort] != null) ? r.pillars[GR.sort] : 0);
+
+    // group (by player or by game)
+    const gameKey = r => [r.team, r.opp || '?'].sort().join(' @ ');
+    const groups = new Map();
+    list.forEach(r => { const k = GR.group === 'game' ? gameKey(r) : (r.pid || r.name); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+    const ordered = [...groups.entries()].map(([k, g]) => {
+      g.sort((a, b) => sortVal(b) - sortVal(a));
+      return { k, g, top: Math.max(...g.map(sortVal)) };
+    }).sort((a, b) => b.top - a.top);
+
+    const pilHtml = p => ['opportunity', 'quality', 'matchup', 'environment'].map(k => {
+      const v = (p && p[k] != null) ? p[k] : 0;
+      const lab = { opportunity: 'Opportunity', quality: 'Quality', matchup: 'Matchup', environment: 'Environment' }[k];
+      return '<div><div class="k">' + lab + '</div><div class="v">' + v + '</div><div class="pb"><i class="' + grBarCls(v) + '" style="width:' + v + '%"></i></div></div>';
+    }).join('');
+
+    const rowHtml = r => {
+      const [dcls, dlab] = GR_DIR[r.direction] || ['hold', ''];
+      const [ccls, clab] = GR_CONF[r.confidence] || ['low', 'Low'];
+      // build resolves the leaned side's best real price (r.price); fall back to raw sides.
+      const price = r.price != null ? r.price : (r.direction && r.direction.indexOf('under') >= 0 ? r.under : r.over);
+      const lineTxt = r.line == null ? '—' : (+r.line).toString();
+      const hs = r.headshot ? ' data-hs="' + esc(r.headshot) + '"' : '';
+      return '<div class="mg-row" data-oname="' + esc(r.name) + '" data-opos="' + esc(r.pos) + '" data-omkt="' + esc(r.market) + '">'
+        + '<div class="mg-pl"><div class="mg-ava bt-hs"' + hs + '>' + esc(grInit(r.name)) + '</div>'
+        +   '<div style="min-width:0"><div class="n">' + esc(r.name) + '</div><div class="s">' + esc(r.pos) + ' · ' + esc(r.team) + '</div></div></div>'
+        + '<div class="mg-mu"><span>' + esc(r.team) + '</span> <span class="a">@</span> <span>' + esc(r.opp || '—') + '</span></div>'
+        + '<div class="mg-mk"><span class="m">' + esc(r.marketLabel || r.market) + '</span><span class="mg-tag ' + r.chip + '">' + r.chip + '</span></div>'
+        + '<div class="mg-odds"><span class="l">' + lineTxt + '</span><span class="p">' + (price == null ? '—' : sline(price)) + '</span></div>'
+        + '<div class="mg-gr ' + dcls + '"><div class="top"><span class="num">' + r.grade + '</span><span class="dir">' + dlab + '</span></div>'
+        +   '<div class="bar"><i style="width:' + r.grade + '%"></i></div></div>'
+        + '<div class="mg-conf ' + ccls + '">' + clab + '</div>'
+        + '<div class="mg-pil">' + pilHtml(r.pillars) + '</div>'
+        + '</div>';
+    };
+
+    const grpHtml = ({ k, g }) => {
+      const lead = g[0];
+      let head;
+      if (GR.group === 'game') {
+        const [a, b] = k.split(' @ ');
+        head = '<span class="badge" data-logo="' + esc(a) + '" title="' + esc(a) + '"></span>'
+          + '<span class="gvs"><span class="a">@</span></span>'
+          + '<span class="badge" data-logo="' + esc(b) + '" title="' + esc(b) + '"></span>';
+      } else {
+        head = '<span class="badge" data-logo="' + esc(lead.team) + '" title="' + esc(lead.team) + '"></span>'
+          + '<span class="nm">' + esc(lead.name) + '</span><span class="pos">· ' + esc(lead.pos) + '</span>';
+      }
+      const anyFade = g.some(x => x.fade);
+      const rt = g.length + (GR.group === 'game' ? ' grade' : ' market') + (g.length > 1 ? 's' : '') + (anyFade ? ' · <span class="fade">FADE</span>' : '');
+      const hdAttr = GR.group === 'game' ? '' : ' data-oname="' + esc(lead.name) + '" data-opos="' + esc(lead.pos) + '" data-omkt="' + esc(lead.market) + '"';
+      return '<div class="mg-grp"><div class="mg-ghd"' + hdAttr + '>' + head + '<span class="rt">' + rt + '</span></div>'
+        + '<div class="mg-card">' + g.map(rowHtml).join('') + '</div></div>';
+    };
+
+    // ── controls ──
+    const chip = (id, on, lab, n) => '<button class="' + (on ? 'on' : '') + '" data-' + id + '>' + lab + (n != null ? ' <span class="n">' + n + '</span>' : '') + '</button>';
+    const chipSeg = [['all', 'All', cAll], ['good', 'Good', cGood], ['bad', 'Bad', cBad], ['even', 'Even', cEven]]
+      .map(o => chip('mgchip="' + o[0] + '"', GR.chip === o[0], o[1], o[2])).join('');
+    const posSeg = ['all', 'QB', 'RB', 'WR', 'TE'].map(p =>
+      chip('mgpos="' + p + '"', GR.pos === p, p === 'all' ? 'All' : p)).join('');
+    const strChips = [['all', 'All'], ['strong', 'Strong'], ['lean', 'Lean'], ['neutral', 'Neutral']]
+      .map(o => '<button class="mg-chip ' + (GR.strength === o[0] ? 'on' : '') + '" data-mgstr="' + o[0] + '">' + o[1] + '</button>').join('');
+    const confChips = [['all', 'All'], ['high', 'High'], ['medium', 'Medium'], ['low', 'Low']]
+      .map(o => '<button class="mg-chip ' + (GR.conf === o[0] ? 'on' : '') + '" data-mgconf="' + o[0] + '">' + o[1] + '</button>').join('');
+    const fadeChips = [['all', 'Show all'], ['hide', 'Hide fades'], ['only', 'Only fades']]
+      .map(o => '<button class="mg-chip ' + (GR.fades === o[0] ? 'on' : '') + '" data-mgfade="' + o[0] + '">' + o[1] + '</button>').join('');
+    const activeMore = (GR.strength !== 'all') + (GR.conf !== 'all') + (GR.min > 0) + (GR.fades !== 'all');
+    const sortOpts = [['grade', 'Grade'], ['confidence', 'Confidence'], ['opportunity', 'Opportunity'], ['quality', 'Quality'], ['matchup', 'Matchup'], ['environment', 'Environment']]
+      .map(o => '<option value="' + o[0] + '"' + (GR.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('');
+
+    // active-filter summary pills
+    const pills = [];
+    if (GR.mkt !== 'all') pills.push(['mkt', mkSeen.get(GR.mkt) || GR.mkt]);
+    if (GR.pos !== 'all') pills.push(['pos', GR.pos]);
+    if (GR.chip !== 'all') pills.push(['chip', GR.chip[0].toUpperCase() + GR.chip.slice(1) + ' matchup']);
+    if (GR.strength !== 'all') pills.push(['strength', GR.strength[0].toUpperCase() + GR.strength.slice(1)]);
+    if (GR.conf !== 'all') pills.push(['conf', GR.conf[0].toUpperCase() + GR.conf.slice(1) + ' conf']);
+    if (GR.min > 0) pills.push(['min', 'Grade ≥ ' + GR.min]);
+    if (GR.fades !== 'all') pills.push(['fades', GR.fades === 'hide' ? 'No fades' : 'Fades only']);
+    if (GR.q) pills.push(['q', '“' + GR.q + '”']);
+    const pillHtml = pills.map(p => '<span class="mg-fpill">' + esc(p[1]) + ' <span class="x" data-mgclr="' + p[0] + '">✕</span></span>').join('');
+
+    host.innerHTML =
+      '<div class="mg-controls' + (GR.more ? ' hasdrawer' : '') + '">'
+      +   selHTML('mg-mkt', mkOpts, GR.mkt)
+      +   '<span class="bt-seg mg-chipseg">' + chipSeg + '</span>'
+      +   '<span class="bt-seg mg-posseg">' + posSeg + '</span>'
+      +   '<span class="mg-search">⌕<input id="mg-q" type="text" placeholder="Search player" value="' + esc(GR.q) + '"></span>'
+      +   '<button class="mg-more' + (GR.more ? ' open' : '') + '" id="mg-more">More filters' + (activeMore ? ' <span class="n">' + activeMore + '</span>' : '') + ' <span class="cx">▾</span></button>'
+      + '</div>'
+      + '<div class="mg-more2' + (GR.more ? ' open' : '') + '">'
+      +   '<div class="mg-fld"><span class="lab">Strength</span><span class="mg-chips">' + strChips + '</span></div>'
+      +   '<div class="mg-fld"><span class="lab">Confidence</span><span class="mg-chips">' + confChips + '</span></div>'
+      +   '<div class="mg-fld"><span class="lab">Min grade</span><span class="mg-slider"><input id="mg-min" type="range" min="0" max="100" step="5" value="' + GR.min + '"><span class="num">' + GR.min + '</span></span></div>'
+      +   '<div class="mg-fld"><span class="lab">Fades</span><span class="mg-chips">' + fadeChips + '</span></div>'
+      +   '<button class="mg-clearall" id="mg-clearall">Clear all</button>'
+      + '</div>'
+      + '<div class="mg-info' + (GR.info ? ' open' : '') + '"><h4>What\'s in a grade?</h4><div class="grid">'
+      +   '<div class="it"><b>Opportunity</b> — how much work he commands: snap share, depth-chart role and target or carry volume.</div>'
+      +   '<div class="it"><b>Quality</b> — how well he\'s producing lately: season and last-4 output in this market, versus his position.</div>'
+      +   '<div class="it"><b>Matchup</b> — the defense he draws, defense-vs-position shrunk toward the mean (32nd = softest).</div>'
+      +   '<div class="it"><b>Environment</b> — the game he\'s in: Vegas implied team total and pace, higher means more scoring chances.</div>'
+      + '</div></div>'
+      + '<div class="mg-sum"><span class="cnt"><b>' + list.length + '</b> of ' + rows.length + ' grades</span>'
+      +   pillHtml + (pills.length ? '<button class="clr" id="mg-clrpills">Clear</button>' : '')
+      +   '<span class="right">'
+      +     '<button class="mg-link" id="mg-info-t">What\'s in a grade?</button>'
+      +     '<button class="mg-gbtn' + (GR.group === 'game' ? ' on' : '') + '" id="mg-group">▦ Group by game</button>'
+      +     '<span class="mg-sortsel"><span class="lab">Sort</span><select id="mg-sort">' + sortOpts + '</select></span>'
+      +   '</span>'
+      + '</div>'
+      + '<div class="mg-thead"><div>Player</div><div>Team → Opp</div><div>Market</div><div>Odds</div><div>Grade</div><div>Confidence</div><div>Pillars</div></div>'
+      + (ordered.length ? ordered.map(grpHtml).join('') : '<div class="mg-empty">No grades match these filters.</div>');
+
+    // hydrate real team logos + player photos
+    paintLogos('#bt-v-grades');
+    paintHeadshots('#bt-v-grades');
+
+    // Tap a player (row or player-group header) → expand the full prop detail
+    // INLINE, right under that player's group — the same panel the Player Props
+    // board uses (game-log chart, hit-rate windows, skew explainer, OVER/UNDER EV
+    // cards). One open at a time; tap again to collapse. Never leaves the board.
+    host.querySelectorAll('[data-oname]').forEach(el => el.onclick = () => {
+      const name = el.getAttribute('data-oname'), pos = el.getAttribute('data-opos'), mkt = el.getAttribute('data-omkt');
+      const grp = el.closest('.mg-grp'); if (!grp) return;
+      const wasOpenHere = grp.classList.contains('mg-open');
+      // close any open detail (this group or another)
+      host.querySelectorAll('.mg-drow').forEach(d => d.remove());
+      host.querySelectorAll('.mg-grp.mg-open').forEach(x => x.classList.remove('mg-open'));
+      if (wasOpenHere) return;   // tapped the open one → collapse
+      // exactly one #eb-feat at a time (the detail engine targets it by id)
+      document.querySelectorAll('#eb-feat').forEach(e => e.remove());
+      ebSel = null;
+      const d = document.createElement('div'); d.className = 'mg-drow';
+      d.innerHTML = '<div class="eb-feat" id="eb-feat"></div>';
+      grp.appendChild(d); grp.classList.add('mg-open');
+      const pr = gradesResolveRow(name, pos, mkt);
+      if (pr) {
+        const feat = d.querySelector('#eb-feat');
+        const gRefresh = () => renderPropDetail(feat.__row || pr, gRefresh);
+        renderPropDetail(pr, gRefresh);
+      } else {
+        d.querySelector('#eb-feat').innerHTML = '<div class="mg-empty" style="padding:26px">No line detail available for this player yet.</div>';
+      }
+      d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    // ── wire ──
+    const rerender = () => renderGrades();
+    host.querySelectorAll('[data-mgpos]').forEach(b => b.onclick = () => { GR.pos = b.getAttribute('data-mgpos'); rerender(); });
+    host.querySelectorAll('[data-mgchip]').forEach(b => b.onclick = () => { GR.chip = b.getAttribute('data-mgchip'); rerender(); });
+    host.querySelectorAll('[data-mgstr]').forEach(b => b.onclick = () => { GR.strength = b.getAttribute('data-mgstr'); rerender(); });
+    host.querySelectorAll('[data-mgconf]').forEach(b => b.onclick = () => { GR.conf = b.getAttribute('data-mgconf'); rerender(); });
+    host.querySelectorAll('[data-mgfade]').forEach(b => b.onclick = () => { GR.fades = b.getAttribute('data-mgfade'); rerender(); });
+    host.querySelectorAll('[data-mgclr]').forEach(b => b.onclick = () => {
+      const f = b.getAttribute('data-mgclr');
+      if (f === 'q') GR.q = ''; else if (f === 'min') GR.min = 0;
+      else GR[f] = 'all';
+      rerender();
+    });
+    const mSel = host.querySelector('#mg-mkt'); if (mSel) mSel.onchange = () => { GR.mkt = mSel.value; rerender(); };
+    const sSel = host.querySelector('#mg-sort'); if (sSel) sSel.onchange = () => { GR.sort = sSel.value; rerender(); };
+    const more = host.querySelector('#mg-more'); if (more) more.onclick = () => { GR.more = !GR.more; rerender(); };
+    const grp = host.querySelector('#mg-group'); if (grp) grp.onclick = () => { GR.group = GR.group === 'game' ? 'player' : 'game'; rerender(); };
+    const infoT = host.querySelector('#mg-info-t'); if (infoT) infoT.onclick = () => { GR.info = !GR.info; rerender(); };
+    const clr = host.querySelector('#mg-clrpills'); if (clr) clr.onclick = () => { GR.mkt = GR.pos = GR.chip = GR.strength = GR.conf = GR.fades = 'all'; GR.min = 0; GR.q = ''; rerender(); };
+    const clrAll = host.querySelector('#mg-clearall'); if (clrAll) clrAll.onclick = () => { GR.strength = GR.conf = GR.fades = 'all'; GR.min = 0; rerender(); };
+    const mn = host.querySelector('#mg-min');
+    if (mn) mn.oninput = () => { GR.min = +mn.value; const nn = mn.parentElement.querySelector('.num'); if (nn) nn.textContent = mn.value; GR._minLive = true; clearTimeout(GR._minT); GR._minT = setTimeout(rerender, 220); };
+    const qi = host.querySelector('#mg-q');
+    if (qi) {
+      qi.oninput = () => { GR.q = qi.value; GR._focus = true; rerender(); };
+      if (GR._focus) { GR._focus = false; qi.focus(); const v = qi.value; qi.value = ''; qi.value = v; }
+    }
+  }
+
   async function initBetting() {
     const host = document.getElementById('page-betting');
     if (!host) return;
@@ -46868,7 +47283,7 @@ window.VaultPropModel = (function () {
      just seed `view`; its own first render honours it. On a warm open switch and
      re-render immediately. */
   window.vaultBettingView = function (v) {
-    if (v !== 'games' && v !== 'props') return;
+    if (v !== 'games' && v !== 'props' && v !== 'grades') return;
     view = v;
     if (BOOTED) { try { setView(v); } catch (e) {} }
   };
@@ -47380,7 +47795,8 @@ function _adpLoadSleeperStats() {
     menu.id = 'bt-dd-menu';
     menu.innerHTML =
       '<button class="lc-mt-item active" data-view="games"><span class="ic">📊</span><span><b>Game Markets</b><small>Spreads · totals · moneylines</small></span></button>' +
-      '<button class="lc-mt-item" data-view="props"><span class="ic">🎯</span><span><b>Player Props</b><small>Edge Board · every book</small></span></button>';
+      '<button class="lc-mt-item" data-view="props"><span class="ic">🎯</span><span><b>Player Props</b><small>Edge Board · every book</small></span></button>' +
+      '<button class="lc-mt-item" data-view="grades"><span class="ic">🅰️</span><span><b>Market Grades</b><small>0–100 grade · matchup + role</small></span></button>';
     document.body.appendChild(menu);
 
     function markActive() {
@@ -47401,7 +47817,7 @@ function _adpLoadSleeperStats() {
       var it = e.target.closest('.lc-mt-item');
       if (!it) return;
       menu.classList.remove('show');
-      curView = it.dataset.view === 'props' ? 'props' : 'games';
+      curView = ['props', 'grades'].includes(it.dataset.view) ? it.dataset.view : 'games';
       markActive();
       window.showPage('betting');
       if (typeof window.vaultBettingView === 'function') window.vaultBettingView(curView);
