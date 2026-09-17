@@ -44012,21 +44012,11 @@ window.VaultPropModel = (function () {
     const boardTitle = searching ? 'Search · “' + searchQ.trim() + '”' : (curPos === 'ALL' ? ('Edges · All' + (curMarket && (m.short || m.label) ? ' · ' + (m.short || m.label) : ' props')) : 'Edges · ' + curPos + ' ' + (m.short || m.label || ''));
     const useBxo = isMobile() && bxoMobile;
     if (useBxo) {
-      // The top pick's matchup band, then the streak-sparkline rows.
-      let matchband = '';
-      const rr = rows[0];
-      if (rr && rr.team && rr.opp) {
-        const isHome = rr.ha === 'home', away = isHome ? rr.opp : rr.team, home = isHome ? rr.team : rr.opp;
-        const d = rr.commence ? new Date(rr.commence) : null;
-        const dt = (d && !isNaN(d)) ? ('<b>' + d.toLocaleDateString([], { weekday: 'long' }) + '</b>' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) : '';
-        matchband = '<div class="bxo-matchband"><span class="tn">' + away + '</span><span class="bt-logo lo" data-logo="' + away + '"></span>'
-          + '<span class="dt">' + dt + '</span>'
-          + '<span class="bt-logo lo" data-logo="' + home + '"></span><span class="tn">' + home + '</span></div>';
-      }
+      // No matchup band: the board is edge-ranked across many games, so a single
+      // game's teams up top would misleadingly imply every row is that game.
       _pvInner().innerHTML = '<div class="bxo">' + bxoBandHTML('Player props', '')
-        + matchband + '<div id="eb-rows">' + mbodyBxo + '</div></div>';
+        + '<div id="eb-rows">' + mbodyBxo + '</div></div>';
       bxoFillSparks(rows);
-      paintLogos('#bt-pv-inner');
     } else {
       _pvInner().innerHTML = '<div class="eb-wrap">'
         + '<div class="eb-board"><div class="eb-bh"><div><div class="eb-t">' + boardTitle + '</div><div class="eb-cn">' + cn + '</div></div>'
