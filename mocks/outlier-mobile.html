@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en" data-theme="vapor">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vault · Betting Mobile (Outlier copy)</title>
+<style>
+/* ============================================================
+   Faithful copy of Outlier's mobile UI (flatstudio.co/work/outlier-web)
+   populated with Vault / NFL data. Light = Outlier's own palette.
+   ============================================================ */
+/* Outlier layout, painted with Vault's real theme tokens. */
+/* ---- LIGHT · Americana paper ---- */
+html[data-theme="light"]{
+  --bg:#f4efe4; --screen:#fffdf8; --card:#fffdf8; --card-2:#f6f1e6;
+  --ink:#1d2433; --ink-2:#3a4658; --ink-3:#606774; --ink-4:#9aa1af;
+  --line:#e6ddca; --line-2:#efe8d9;
+  --pill:#f6f1e6; --pill-line:#e6ddca;
+  --active:#16233a; --active-ink:#fffdf8;
+  --green:#067648; --green-2:#067648; --red:#c22a37; --red-2:#c22a37;
+  --teal:#20527f; --save:#067648;
+  --band:radial-gradient(120% 160% at 88% -30%, #ecdfca 0%, rgba(236,223,202,0) 55%), linear-gradient(100deg,#dfe9ec 0%, #eef0e4 46%, #f5ece0 100%);
+  --shadow:0 1px 2px rgba(52,40,22,.05); --shadow-2:0 4px 16px rgba(52,40,22,.08);
+  --device:#d9cfb8; --device-2:#c7ba9d;
+}
+/* ---- VAPOR · sky (Vault default) ---- */
+html[data-theme="vapor"]{
+  --bg:#070d18; --screen:#0e1626; --card:#0e1626; --card-2:#131d30;
+  --ink:#eaf2fc; --ink-2:#bdcce2; --ink-3:#808fa6; --ink-4:#5f6d84;
+  --line:rgba(123,170,240,.13); --line-2:rgba(123,170,240,.08);
+  --pill:#131d30; --pill-line:rgba(123,170,240,.18);
+  --active:#7bd0ff; --active-ink:#0a1424;
+  --green:#3DCC7A; --green-2:#3DCC7A; --red:#ff5a6e; --red-2:#ff5a6e;
+  --teal:#7bd0ff; --save:#3DCC7A;
+  --band:radial-gradient(120% 160% at 85% -40%, rgba(123,208,255,.24) 0%, rgba(123,208,255,0) 55%), linear-gradient(100deg, rgba(47,99,196,.22) 0%, rgba(14,22,38,0) 62%), var(--screen);
+  --shadow:0 1px 2px rgba(0,0,0,.3); --shadow-2:0 6px 22px rgba(2,6,14,.5);
+  --device:#1b2740; --device-2:#243350;
+}
+/* ---- ONYX · steel frost ---- */
+html[data-theme="onyx"]{
+  --bg:#0e0f13; --screen:#16171c; --card:#16171c; --card-2:#1c1e24;
+  --ink:#f3f4f7; --ink-2:#c9cdd6; --ink-3:#868c9b; --ink-4:#5c626f;
+  --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.05);
+  --pill:#1c1e24; --pill-line:rgba(255,255,255,.09);
+  --active:#8fb4e0; --active-ink:#0b1420;
+  --green:#5fe09a; --green-2:#5fe09a; --red:#ff5a6e; --red-2:#ff5a6e;
+  --teal:#8fb4e0; --save:#5fe09a;
+  --band:radial-gradient(120% 160% at 85% -40%, rgba(143,180,224,.16) 0%, rgba(143,180,224,0) 55%), var(--screen);
+  --shadow:0 1px 2px rgba(0,0,0,.35); --shadow-2:0 6px 22px rgba(0,0,0,.5);
+  --device:#000; --device-2:#26282f;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--ink); min-height:100dvh;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:14px; line-height:1.4; -webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums; transition:background-color .3s,color .3s;
+}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+
+/* -------- mock chrome (not part of the design) -------- */
+.pagehead{text-align:center;padding:26px 20px 4px}
+.pagehead h1{margin:0 0 3px;font-size:18px;font-weight:800;letter-spacing:-.02em}
+.pagehead p{margin:0;color:var(--ink-3);font-size:12.5px}
+.ctl{position:sticky;top:0;z-index:20;display:flex;justify-content:center;gap:8px;padding:12px;margin-bottom:4px}
+.segbox{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;box-shadow:var(--shadow)}
+.segbox button{padding:7px 16px;font-size:12.5px;font-weight:600;color:var(--ink-3);border-radius:999px}
+.segbox button.on{background:var(--active);color:var(--active-ink)}
+
+.stage{display:flex;gap:36px;justify-content:center;flex-wrap:wrap;padding:8px 16px 70px}
+.pw{display:flex;flex-direction:column;align-items:center;gap:12px}
+.cap{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4)}
+
+/* -------- phone -------- */
+.phone{width:392px;height:812px;border-radius:54px;padding:11px;flex:none;position:relative;
+  background:linear-gradient(160deg,var(--device-2),var(--device));
+  box-shadow:var(--shadow-2),0 0 0 2px rgba(0,0,0,.04)}
+.screen{width:100%;height:100%;border-radius:43px;overflow:hidden;position:relative;background:var(--screen);display:flex;flex-direction:column}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:122px;height:31px;background:#000;border-radius:0 0 19px 19px;z-index:20}
+.sbar{height:46px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 7px;font-size:13px;font-weight:600;color:var(--ink)}
+.sbar .r{display:flex;gap:6px;align-items:center;font-size:12px}
+
+/* -------- app header -------- */
+.hd{flex:none;display:flex;align-items:center;gap:10px;padding:4px 16px 12px}
+.hd .burger{display:grid;gap:4px;padding:4px}
+.hd .burger i{display:block;width:20px;height:2px;border-radius:2px;background:var(--ink)}
+.hd .burger i:nth-child(2){width:15px}
+.wm{display:flex;align-items:center;gap:7px;font-size:19px;font-weight:800;letter-spacing:-.03em}
+.wm .mk{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:var(--active-ink);font-size:14px;font-weight:800;
+  background:linear-gradient(150deg,var(--teal),color-mix(in srgb,var(--teal) 55%,#12b0a6));box-shadow:var(--shadow)}
+.hd .sp{flex:1}
+.fmt{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink-2);background:var(--pill);border:1px solid var(--pill-line);border-radius:999px;padding:6px 10px}
+.fmt .cn{color:var(--teal);font-weight:800}
+.circ{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--pill);border:1px solid var(--pill-line);color:var(--ink-2)}
+.circ svg{width:18px;height:18px;stroke-width:1.9}
+.circ.av{background:linear-gradient(140deg,#8a5cf6,#e0503a)}
+
+/* -------- gradient banner (title + leagues) -------- */
+.band{flex:none;padding:8px 16px 16px;background:var(--band)}
+.h1{font-size:33px;font-weight:800;letter-spacing:-.035em;line-height:1;margin:4px 2px 2px}
+.leagues{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.leagues::-webkit-scrollbar{display:none}
+.lg{flex:none;display:inline-flex;align-items:center;gap:8px;padding:7px 14px 7px 7px;border-radius:999px;
+  background:var(--screen);border:1px solid var(--pill-line);font-size:13.5px;font-weight:700;color:var(--ink);box-shadow:var(--shadow)}
+.lg .lo{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:800;color:#fff}
+.lg.on{background:var(--active);color:var(--active-ink);border-color:var(--active)}
+.lg.on .lo{background:rgba(255,255,255,.16)}
+
+/* -------- scroll body -------- */
+.body{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;background:var(--screen)}
+.body::-webkit-scrollbar{display:none}
+
+/* ============ PLAYER PROPS (Outlier "Popular") ============ */
+.parlay{display:flex;align-items:center;gap:12px;padding:15px 16px 14px;border-bottom:1px solid var(--line)}
+.parlay .sh{width:26px;height:26px;flex:none;color:var(--teal)}
+.parlay .sh svg{width:26px;height:26px}
+.parlay .tt{font-size:16px;font-weight:800;letter-spacing:-.01em}
+.parlay .tt span{color:var(--green-2)}
+.parlay .su{font-size:12.5px;color:var(--ink-3);margin-top:1px}
+.parlay .su b{color:var(--ink-2);font-weight:700}
+
+.matchband{display:flex;align-items:center;justify-content:center;gap:13px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.matchband .tn{font-size:15px;font-weight:700}
+.matchband .lo{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:8px;font-weight:800;color:#fff;flex:none}
+.matchband .dt{text-align:center;font-size:11.5px;color:var(--ink-3);line-height:1.25;min-width:74px}
+.matchband .dt b{display:block;color:var(--ink-2);font-weight:600}
+
+.prop{padding:13px 16px 14px;border-bottom:1px solid var(--line)}
+.prop-top{display:flex;align-items:center;gap:10px}
+.prop-name{flex:1;min-width:0;font-size:14.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prop-name b{color:var(--ink);font-weight:700}
+.odd{display:inline-flex;align-items:center;font-size:13px;font-weight:700;color:var(--ink);background:var(--pill);border:1px solid var(--pill-line);border-radius:8px;padding:4px 10px;min-width:52px;justify-content:center}
+.save{width:18px;height:18px;flex:none;color:var(--save)}
+.save svg{width:18px;height:18px}
+.prop-spark{display:flex;align-items:center;gap:11px;margin-top:11px}
+.hglyph{display:flex;align-items:flex-end;gap:2px;height:15px;flex:none}
+.hglyph i{width:3px;border-radius:1px;background:var(--ink-4)}
+.hglyph i:nth-child(1){height:5px}.hglyph i:nth-child(2){height:9px}.hglyph i:nth-child(3){height:13px}
+.vdiv{width:1px;height:18px;background:var(--line);flex:none}
+.spark{flex:1;display:flex;align-items:center;gap:3px;height:12px}
+.spark i{flex:1;height:4px;border-radius:3px}
+.spark i.h{background:var(--green)}.spark i.m{background:var(--red)}
+.rate{flex:none;font-size:14px;font-weight:800;min-width:44px;text-align:right}
+.rate.hi{color:var(--green-2)}.rate.lo{color:var(--red-2)}.rate.mid{color:var(--ink-2)}
+
+/* ============ GAMES (Outlier "Games") ============ */
+.sec{padding:14px 16px 6px;font-size:12px;font-weight:700;color:var(--ink-3)}
+.game{margin:8px 14px 12px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-2);overflow:hidden}
+.g-head{display:flex;align-items:center;gap:11px;padding:13px 15px 12px}
+.g-logos{display:flex;flex-direction:column;gap:3px;flex:none}
+.g-logos .lo{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:8px;font-weight:800;color:#fff}
+.g-teams{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.g-teams .tr{display:flex;align-items:center;gap:7px;font-size:14.5px}
+.g-teams .sd{color:var(--ink-4);font-weight:700;font-size:12px;width:18px}
+.g-teams .nm{font-weight:800;letter-spacing:-.01em}
+.g-teams .rc{color:var(--ink-4);font-weight:600;font-size:11.5px}
+.g-when{text-align:right;flex:none}
+.g-when b{font-size:14px;font-weight:800}
+.g-when div{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+
+.g-mkts{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;padding:2px 15px 3px;scroll-snap-type:x mandatory}
+.g-mkts::-webkit-scrollbar{display:none}
+.mc{flex:none;width:180px;border:1px solid var(--line);border-radius:12px;background:var(--card);scroll-snap-align:start;overflow:hidden}
+.mc.hl{box-shadow:var(--shadow-2);border-color:var(--pill-line)}
+.mc .mh{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-4);text-align:center;padding:7px 0 3px}
+.mrow{position:relative;display:flex;align-items:center;gap:7px;padding:9px 10px}
+.mrow+.mrow{border-top:1px solid var(--line-2)}
+.mrow .mg{display:flex;align-items:flex-end;gap:1.5px;height:12px;flex:none}
+.mrow .mg i{width:2.5px;border-radius:1px;background:var(--ink-4)}
+.mrow .mg i:nth-child(1){height:4px}.mrow .mg i:nth-child(2){height:8px}.mrow .mg i:nth-child(3){height:11px}
+.mrow .ml{flex:1;min-width:0;font-size:13px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+.mrow .mo{flex:none;display:inline-flex;align-items:center;font-size:12.5px;font-weight:700;color:var(--ink);background:var(--pill);border:1px solid var(--pill-line);border-radius:7px;padding:3px 7px}
+.mrow .mo.pos{color:var(--green-2)}
+.mrow .sv{width:16px;height:16px;color:var(--save);flex:none}
+.mrow .sv svg{width:16px;height:16px}
+.mrow .bk{width:16px;height:16px;border-radius:4px;display:grid;place-items:center;font-size:8px;font-weight:800;color:#fff;flex:none}
+/* public-betting split hairlines top+bottom of a market cell */
+.mc .splitwrap{position:relative}
+.split{position:absolute;left:0;right:0;height:3px;display:flex;z-index:1}
+.split.t{top:0}.split.b{bottom:0}
+.split i{height:100%}.split i.g{background:var(--green)}.split i.r{background:var(--red)}
+.mc.edge{border-color:color-mix(in srgb,var(--green) 45%,var(--line))}
+.mc.edge .mh{color:var(--green-2)}
+
+.g-foot{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-top:1px solid var(--line);margin-top:3px}
+.g-foot button{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
+.g-foot button svg{width:14px;height:14px;stroke-width:2.2}
+
+/* -------- bottom bar -------- */
+.tb{flex:none;height:58px;display:flex;align-items:center;justify-content:space-around;padding:0 14px;border-top:1px solid var(--line);background:var(--screen)}
+.tb a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;font-weight:600;color:var(--ink-4)}
+.tb a.on{color:var(--ink)}
+.tb a svg{width:21px;height:21px;stroke-width:1.9}
+
+@media(max-width:880px){.phone{transform:scale(.9);transform-origin:top}.stage{gap:4px}}
+@media(max-width:430px){.phone{width:360px}}
+</style>
+</head>
+<body>
+
+<div class="pagehead">
+  <h1>Vault Betting · Outlier copy</h1>
+  <p>Player Props + Game Markets, matched to Outlier's mobile UI. Toggle light / dark.</p>
+</div>
+<div class="ctl">
+  <div class="segbox" id="th">
+    <button data-th="light">Light</button>
+    <button class="on" data-th="vapor">Vapor</button>
+    <button data-th="onyx">Onyx</button>
+  </div>
+</div>
+
+<div class="stage">
+
+  <!-- ================= PLAYER PROPS ================= -->
+  <div class="pw"><div class="cap">Player Props</div>
+  <div class="phone"><div class="screen"><div class="notch"></div>
+    <div class="sbar"><span>9:41</span><span class="r">5G <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="7" rx="1"/><rect x="9" y="2.5" width="3" height="9.5" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg> 84%</span></div>
+    <div class="hd">
+      <button class="burger"><i></i><i></i><i></i></button>
+      <div class="wm"><span class="mk">V</span>Vault</div>
+      <div class="sp"></div>
+      <div class="fmt"><span class="cn">$</span> +3 ▾</div>
+      <div class="circ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="m15 9-4 1.5L9.5 15l4-1.5z"/></svg></div>
+      <div class="circ av"></div>
+    </div>
+    <div class="band">
+      <div class="h1">Player props</div>
+    </div>
+    <div class="body">
+      <div class="parlay">
+        <span class="sh"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5z"/></svg></span>
+        <div style="flex:1"><div class="tt">Trending Parlay <span>+1024</span></div><div class="su"><b>420</b> total bets &nbsp; <b>$590k</b> liability</div></div>
+      </div>
+      <div class="matchband">
+        <span class="tn">Lions</span><span class="lo" style="background:#0076b6">DET</span>
+        <span class="dt"><b>Sunday</b>1:00 PM</span>
+        <span class="lo" style="background:#00338d">BUF</span><span class="tn">Bills</span>
+      </div>
+
+      <div class="prop">
+        <div class="prop-top">
+          <div class="prop-name"><b>Jared Goff</b> - Pass Yds Over 270.5</div>
+          <span class="odd num">-110</span>
+          <span class="save"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span>
+        </div>
+        <div class="prop-spark">
+          <span class="hglyph"><i></i><i></i><i></i></span><span class="vdiv"></span>
+          <span class="spark"><i class="h"></i><i class="h"></i><i class="m"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="m"></i><i class="h"></i><i class="h"></i></span>
+          <span class="rate hi num">80%</span>
+        </div>
+      </div>
+
+      <div class="prop">
+        <div class="prop-top">
+          <div class="prop-name"><b>Amon-Ra St. Brown</b> - Rec Over 6.5</div>
+          <span class="odd num">-125</span>
+          <span class="save"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span>
+        </div>
+        <div class="prop-spark">
+          <span class="hglyph"><i></i><i></i><i></i></span><span class="vdiv"></span>
+          <span class="spark"><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i></span>
+          <span class="rate hi num">100%</span>
+        </div>
+      </div>
+
+      <div class="prop">
+        <div class="prop-top">
+          <div class="prop-name"><b>James Cook</b> - Rush Yds Over 62.5</div>
+          <span class="odd num">-115</span>
+          <span class="save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span>
+        </div>
+        <div class="prop-spark">
+          <span class="hglyph"><i></i><i></i><i></i></span><span class="vdiv"></span>
+          <span class="spark"><i class="h"></i><i class="m"></i><i class="h"></i><i class="m"></i><i class="m"></i><i class="h"></i><i class="m"></i><i class="h"></i><i class="m"></i><i class="m"></i></span>
+          <span class="rate lo num">40%</span>
+        </div>
+      </div>
+
+      <div class="prop">
+        <div class="prop-top">
+          <div class="prop-name"><b>Josh Allen</b> - Pass TDs Over 1.5</div>
+          <span class="odd num">-140</span>
+          <span class="save"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span>
+        </div>
+        <div class="prop-spark">
+          <span class="hglyph"><i></i><i></i><i></i></span><span class="vdiv"></span>
+          <span class="spark"><i class="h"></i><i class="h"></i><i class="m"></i><i class="h"></i><i class="h"></i><i class="m"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="m"></i></span>
+          <span class="rate mid num">70%</span>
+        </div>
+      </div>
+
+      <div class="prop">
+        <div class="prop-top">
+          <div class="prop-name"><b>Jahmyr Gibbs</b> - Rush+Rec Yds Over 96.5</div>
+          <span class="odd num">-108</span>
+          <span class="save"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span>
+        </div>
+        <div class="prop-spark">
+          <span class="hglyph"><i></i><i></i><i></i></span><span class="vdiv"></span>
+          <span class="spark"><i class="h"></i><i class="h"></i><i class="h"></i><i class="m"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="h"></i><i class="m"></i><i class="h"></i></span>
+          <span class="rate hi num">80%</span>
+        </div>
+      </div>
+    </div>
+    <nav class="tb">
+      <a><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m3 11 9-8 9 8M5 10v10h14V10"/></svg>Home</a>
+      <a><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/></svg>Search</a>
+      <a class="on"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19V9m5 10V5m5 14v-7m5 7V11"/></svg>Betting</a>
+      <a><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h6l2 2h10v10H3z"/></svg>Portfolio</a>
+    </nav>
+  </div></div></div>
+
+  <!-- ================= GAME MARKETS ================= -->
+  <div class="pw"><div class="cap">Game Markets</div>
+  <div class="phone"><div class="screen"><div class="notch"></div>
+    <div class="sbar"><span>9:41</span><span class="r">5G <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="7" rx="1"/><rect x="9" y="2.5" width="3" height="9.5" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg> 84%</span></div>
+    <div class="hd">
+      <button class="burger"><i></i><i></i><i></i></button>
+      <div class="wm"><span class="mk">V</span>Vault</div>
+      <div class="sp"></div>
+      <div class="fmt"><span class="cn">$</span> +3 ▾</div>
+      <div class="circ"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="m15 9-4 1.5L9.5 15l4-1.5z"/></svg></div>
+      <div class="circ av"></div>
+    </div>
+    <div class="band">
+      <div class="h1">Games</div>
+    </div>
+    <div class="body">
+      <div class="sec">Sunday · 1:00 PM ET</div>
+
+      <article class="game">
+        <div class="g-head">
+          <div class="g-logos"><span class="lo" style="background:#0076b6">DET</span><span class="lo" style="background:#00338d">BUF</span></div>
+          <div class="g-teams">
+            <div class="tr"><span class="sd">01</span><span class="nm">Lions</span><span class="rc">1-0</span></div>
+            <div class="tr"><span class="sd">04</span><span class="nm">Bills</span><span class="rc">1-0</span></div>
+          </div>
+          <div class="g-when"><b>1:00 PM</b><div>Sun</div></div>
+        </div>
+        <div class="g-mkts">
+          <div class="mc"><div class="mh">Moneyline</div>
+            <div class="splitwrap">
+              <span class="split t"><i class="g" style="width:33%"></i><i class="r" style="width:67%"></i></span>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">DET</span><span class="mo pos num">+203</span><span class="sv"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span></div>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">BUF</span><span class="mo num">-213</span><span class="bk" style="background:#1a44a3">FD</span></div>
+              <span class="split b"><i class="g" style="width:67%"></i><i class="r" style="width:33%"></i></span>
+            </div>
+          </div>
+          <div class="mc"><div class="mh">Spread</div>
+            <div class="splitwrap">
+              <span class="split t"><i class="g" style="width:40%"></i><i class="r" style="width:60%"></i></span>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">DET +4.5</span><span class="mo num">-105</span><span class="sv"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span></div>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">BUF -4.5</span><span class="mo num">-110</span><span class="bk" style="background:#d9241c">BV</span></div>
+              <span class="split b"><i class="g" style="width:60%"></i><i class="r" style="width:40%"></i></span>
+            </div>
+          </div>
+          <div class="mc edge"><div class="mh">Total · +EV</div>
+            <div class="splitwrap">
+              <span class="split t"><i class="g" style="width:56%"></i><i class="r" style="width:44%"></i></span>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">O 54.5</span><span class="mo num">-105</span><span class="sv"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span></div>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">U 54.5</span><span class="mo num">-105</span><span class="bk" style="background:#5a2fa0">HR</span></div>
+              <span class="split b"><i class="g" style="width:44%"></i><i class="r" style="width:56%"></i></span>
+            </div>
+          </div>
+        </div>
+        <div class="g-foot">
+          <button><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M9 12l2 2 4-4"/></svg> Public betting ▾</button>
+          <button>Match details <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"/></svg></button>
+        </div>
+      </article>
+
+      <article class="game">
+        <div class="g-head">
+          <div class="g-logos"><span class="lo" style="background:#0085ca">CAR</span><span class="lo" style="background:#a71930">ATL</span></div>
+          <div class="g-teams">
+            <div class="tr"><span class="sd">12</span><span class="nm">Panthers</span><span class="rc">0-1</span></div>
+            <div class="tr"><span class="sd">09</span><span class="nm">Falcons</span><span class="rc">1-0</span></div>
+          </div>
+          <div class="g-when"><b>1:00 PM</b><div>Sun</div></div>
+        </div>
+        <div class="g-mkts">
+          <div class="mc edge"><div class="mh">Spread · +EV</div>
+            <div class="splitwrap">
+              <span class="split t"><i class="g" style="width:47%"></i><i class="r" style="width:53%"></i></span>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">ATL +2.5</span><span class="mo pos num">+104</span><span class="sv"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span></div>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">CAR -2.5</span><span class="mo num">-108</span><span class="bk" style="background:#0a7d3c">NV</span></div>
+              <span class="split b"><i class="g" style="width:53%"></i><i class="r" style="width:47%"></i></span>
+            </div>
+          </div>
+          <div class="mc"><div class="mh">Total</div>
+            <div class="splitwrap">
+              <span class="split t"><i class="g" style="width:57%"></i><i class="r" style="width:43%"></i></span>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">O 42.5</span><span class="mo num">-110</span><span class="bk" style="background:#1a44a3">FD</span></div>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">U 42.5</span><span class="mo num">-110</span><span class="bk" style="background:#0a7d3c">DK</span></div>
+              <span class="split b"><i class="g" style="width:43%"></i><i class="r" style="width:57%"></i></span>
+            </div>
+          </div>
+          <div class="mc"><div class="mh">Moneyline</div>
+            <div class="splitwrap">
+              <span class="split t"><i class="g" style="width:58%"></i><i class="r" style="width:42%"></i></span>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">CAR</span><span class="mo num">-142</span><span class="bk" style="background:#1a44a3">FD</span></div>
+              <div class="mrow"><span class="mg"><i></i><i></i><i></i></span><span class="ml">ATL</span><span class="mo pos num">+120</span><span class="sv"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></span></div>
+              <span class="split b"><i class="g" style="width:42%"></i><i class="r" style="width:58%"></i></span>
+            </div>
+          </div>
+        </div>
+        <div class="g-foot">
+          <button><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M9 12l2 2 4-4"/></svg> Public betting ▾</button>
+          <button>Match details <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"/></svg></button>
+        </div>
+      </article>
+    </div>
+    <nav class="tb">
+      <a><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m3 11 9-8 9 8M5 10v10h14V10"/></svg>Home</a>
+      <a><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/></svg>Search</a>
+      <a class="on"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19V9m5 10V5m5 14v-7m5 7V11"/></svg>Betting</a>
+      <a><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h6l2 2h10v10H3z"/></svg>Portfolio</a>
+    </nav>
+  </div></div></div>
+
+</div>
+
+<script>
+  const th=document.getElementById('th');
+  th.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    document.documentElement.setAttribute('data-theme',b.dataset.th);
+    th.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));});
+</script>
+</body>
+</html>

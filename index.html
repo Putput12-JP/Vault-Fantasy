@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-16T23:30', tag:'New', title:'A cleaner betting board on your phone',
+    items:[
+      'The Betting page has a new mobile look: Player Props now show each pick as a quick row with a green/red streak bar of the last several games and the hit rate right beside it.',
+      'Game Markets are now tidy cards — swipe the spread, total and moneyline sideways, with the +EV side flagged and every book’s best price in view.',
+      'Prefer the old layout? A “Outlier / Cards” switch at the top of the board flips between the new look and the detailed cards, and remembers your choice.',
+    ]
+  },
+  {
     ts:'2026-09-16T22:00', tag:'New', title:'A “Win %” check — does the model’s number actually hit?',
     items:[
       'The prop model’s calibrated probability is now labeled “Win %” (it used to say “Sim %”). It’s Vault’s own honest guess at how often a pick hits — no book price involved.',
@@ -41368,6 +41376,9 @@ window.VaultPropModel = (function () {
   const F = () => window.VaultBetting;
   let MODEL = null, BOOTED = false, LOADING = false;
   let view = 'games', tf = 'weekly', curPos = 'QB', curMarket = 'pass_yd', curGM = 'spread';
+  // Mobile layout toggle: the Outlier-idiom boards (streak-sparkline props +
+  // horizontal market cells) vs the classic stacked cards. Phone-only; persisted.
+  let bxoMobile = (() => { try { return localStorage.getItem('vault-bxo-mobile') !== '0'; } catch (e) { return true; } })();
   let teamFilter = '', searchQ = '';
   let mineOnly = false;
   let ouFilter = 'all';   // 'all' | 'over' | 'under' — filters the props board by Vault's leaned side
@@ -42169,6 +42180,83 @@ window.VaultPropModel = (function () {
 /* on phones the even split is too tight for 10 props — let it scroll instead */
 @media(max-width:700px){#page-betting .eb-proptabs{width:auto;overflow-x:auto}#page-betting .eb-proptabs>button{flex:0 0 auto}}
 #page-betting .bx-detail .bx-books{margin-top:14px}
+
+/* ══════ OUTLIER-IDIOM MOBILE BOARDS (bxo-) — behind the Layout toggle ══════
+   A faithful port of mocks/outlier-mobile.html: streak-sparkline prop rows and
+   horizontal market-cell game cards. Phone-only (JS-gated); theme-aware via
+   the same --bt-* tokens the rest of the board uses. */
+#page-betting .bxo-lay{display:flex;justify-content:center;margin:0 0 12px}
+#page-betting .bxo-lay .seg{display:inline-flex;background:var(--bt-s2);border:1px solid var(--bt-border);border-radius:999px;padding:3px}
+#page-betting .bxo-lay button{font-family:var(--font-sans);font-size:var(--t-label);font-weight:600;color:var(--bt-muted);border-radius:999px;padding:6px 15px;cursor:pointer}
+#page-betting .bxo-lay button.on{background:var(--bt-accent2);color:var(--bt-s1)}
+/* full-bleed gradient title band (page padding is 12px on phones) */
+#page-betting .bxo-band{margin:-2px -12px 4px;padding:8px 16px 15px;
+  background:radial-gradient(130% 170% at 90% -40%, color-mix(in srgb,var(--bt-te) 14%,transparent) 0%, transparent 55%), linear-gradient(100deg, color-mix(in srgb,var(--bt-accent2) 16%,var(--bt-s1)) 0%, var(--bt-s1) 62%)}
+#page-betting .bxo-h1{font-family:var(--font-sans);font-size:31px;font-weight:800;letter-spacing:-.035em;line-height:1;color:var(--bt-text);margin:4px 0 3px}
+#page-betting .bxo-sub{font-size:var(--t-label);color:var(--bt-muted)}
+
+/* ── Player Props rows ── */
+#page-betting .bxo-props{margin:0 -12px}
+#page-betting .bxo-prop{padding:13px 12px 14px;border-bottom:1px solid var(--bt-border);cursor:pointer}
+#page-betting .bxo-prop.sel{background:color-mix(in srgb,var(--bt-accent2) 7%,transparent)}
+#page-betting .bxo-ptop{display:flex;align-items:center;gap:10px}
+#page-betting .bxo-pn{flex:1;min-width:0;font-size:14.5px;color:var(--bt-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page-betting .bxo-pn b{color:var(--bt-text);font-weight:700}
+#page-betting .bxo-odd{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:52px;font-family:var(--bt-mono);font-size:13px;font-weight:700;color:var(--bt-text);background:var(--bt-s3);border:1px solid var(--bt-border);border-radius:8px;padding:4px 9px}
+#page-betting .bxo-odd .bt-book{margin-left:5px}
+#page-betting .bxo-save{flex:none;background:none;border:0;padding:0;font-size:17px;line-height:1;color:var(--bt-faint);cursor:pointer}
+#page-betting .bxo-save.on{color:var(--bt-gold)}
+#page-betting .bxo-spk{display:flex;align-items:center;gap:11px;margin-top:11px}
+#page-betting .bxo-hgl{display:flex;align-items:flex-end;gap:2px;height:15px;flex:none}
+#page-betting .bxo-hgl i{width:3px;border-radius:1px;background:var(--bt-faint)}
+#page-betting .bxo-hgl i:nth-child(1){height:5px}#page-betting .bxo-hgl i:nth-child(2){height:9px}#page-betting .bxo-hgl i:nth-child(3){height:13px}
+#page-betting .bxo-vd{width:1px;height:18px;background:var(--bt-border);flex:none}
+#page-betting .bxo-spark{flex:1;display:flex;align-items:center;gap:3px;height:12px}
+#page-betting .bxo-spark i{flex:1;height:4px;border-radius:3px;background:var(--bt-border2)}
+#page-betting .bxo-spark i.h{background:var(--bt-green)}#page-betting .bxo-spark i.m{background:var(--bt-red)}
+#page-betting .bxo-rate{flex:none;font-family:var(--bt-mono);font-size:14px;font-weight:800;min-width:44px;text-align:right;color:var(--bt-muted)}
+#page-betting .bxo-rate.hi{color:var(--bt-green)}#page-betting .bxo-rate.lo{color:var(--bt-red)}
+
+/* ── Game Markets cards ── */
+#page-betting .bxo-games{display:flex;flex-direction:column;gap:12px}
+#page-betting .bxo-game{background:var(--bt-s1);border:1px solid var(--bt-border);border-radius:16px;overflow:hidden}
+#page-betting .bxo-ghead{display:flex;align-items:center;gap:11px;padding:13px 14px 11px}
+#page-betting .bxo-glogos{display:flex;flex-direction:column;gap:3px;flex:none}
+#page-betting .bxo-glogos .bt-logo{width:24px;height:24px}
+#page-betting .bxo-gteams{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+#page-betting .bxo-tr{display:flex;align-items:center;gap:7px;font-size:14.5px;white-space:nowrap}
+#page-betting .bxo-tr .nm{font-weight:800;letter-spacing:-.01em;color:var(--bt-text)}
+#page-betting .bxo-tr .imp{color:var(--bt-muted);font-family:var(--bt-mono);font-weight:700;font-size:12px}
+#page-betting .bxo-gwhen{text-align:right;flex:none}
+#page-betting .bxo-gwhen b{font-size:13px;font-weight:800;color:var(--bt-text)}
+#page-betting .bxo-gwhen .wk{display:block;font-size:11px;color:var(--bt-muted);margin-top:1px}
+#page-betting .bxo-mkts{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;padding:2px 14px 4px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+#page-betting .bxo-mkts::-webkit-scrollbar{display:none}
+#page-betting .bxo-mc{flex:none;width:176px;border:1px solid var(--bt-border);border-radius:12px;background:var(--bt-s1);scroll-snap-align:start;overflow:hidden}
+#page-betting .bxo-mc.edge{border-color:color-mix(in srgb,var(--bt-green) 45%,var(--bt-border))}
+#page-betting .bxo-mh{font-family:var(--bt-mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bt-faint);text-align:center;padding:7px 0 3px}
+#page-betting .bxo-mc.edge .bxo-mh{color:var(--bt-green)}
+#page-betting .bxo-mrow{position:relative;display:flex;align-items:center;gap:7px;padding:9px 10px}
+#page-betting .bxo-mrow+.bxo-mrow{border-top:1px solid var(--bt-border)}
+#page-betting .bxo-mg{display:flex;align-items:flex-end;gap:1.5px;height:12px;flex:none}
+#page-betting .bxo-mg i{width:2.5px;border-radius:1px;background:var(--bt-faint)}
+#page-betting .bxo-mg i:nth-child(1){height:4px}#page-betting .bxo-mg i:nth-child(2){height:8px}#page-betting .bxo-mg i:nth-child(3){height:11px}
+#page-betting .bxo-ml{flex:1;min-width:0;font-size:13px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--bt-text)}
+#page-betting .bxo-mo{flex:none;display:inline-flex;align-items:center;font-family:var(--bt-mono);font-size:12.5px;font-weight:700;color:var(--bt-text);background:var(--bt-s3);border:1px solid var(--bt-border);border-radius:7px;padding:3px 7px}
+#page-betting .bxo-mo.pos{color:var(--bt-green)}
+#page-betting .bxo-etag{margin-left:5px;font-family:var(--bt-mono);font-size:10px;font-weight:800;color:var(--bt-green)}
+#page-betting .bxo-msave{flex:none;font-size:14px;line-height:1;color:var(--bt-faint)}
+#page-betting .bxo-split{position:absolute;left:0;right:0;height:3px;display:flex;z-index:1}
+#page-betting .bxo-split.t{top:0}#page-betting .bxo-split.b{bottom:0}
+#page-betting .bxo-split i{height:100%}#page-betting .bxo-split i.g{background:var(--bt-green)}#page-betting .bxo-split i.r{background:var(--bt-red)}
+#page-betting .bxo-splitwrap{position:relative}
+#page-betting .bxo-vl{font-family:var(--bt-mono);font-size:11px;color:var(--bt-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#page-betting .bxo-vl b{color:var(--bt-accent2);font-weight:800}
+#page-betting .bxo-gfoot{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-top:1px solid var(--bt-border)}
+#page-betting .bxo-gfoot button{display:inline-flex;align-items:center;gap:6px;font-family:var(--bt-mono);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--bt-muted);background:none;border:0;cursor:pointer}
+#page-betting .bxo-gfoot button svg{width:14px;height:14px;stroke-width:2.2}
+#page-betting .bxo-game .bx-drawer{margin:0 14px 12px}
+
 @media(max-width:700px){
   #page-betting .bx-banner{padding:16px 16px 15px}
   #page-betting .bx-banner h1{font-size:23px}
@@ -42541,6 +42629,25 @@ window.VaultPropModel = (function () {
       + '<div class="gb-bkbody">' + body + '</div></div>';
   }
 
+  /* ── Outlier-idiom mobile layout: shared chrome + toggle ───────────────── */
+  const BXO_SAVE = '<svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>';
+  function bxoToggleHTML() {
+    return '<div class="bxo-lay"><div class="seg">'
+      + '<button data-bxo="1"' + (bxoMobile ? ' class="on"' : '') + '>Outlier</button>'
+      + '<button data-bxo="0"' + (!bxoMobile ? ' class="on"' : '') + '>Cards</button>'
+      + '</div></div>';
+  }
+  function bxoBandHTML(title, sub) {
+    return '<div class="bxo-band"><div class="bxo-h1">' + title + '</div>' + (sub ? '<div class="bxo-sub">' + sub + '</div>' : '') + '</div>';
+  }
+  function bxoWireToggle(root) {
+    root.querySelectorAll('[data-bxo]').forEach(b => b.onclick = () => {
+      const v = b.dataset.bxo === '1'; if (v === bxoMobile) return;
+      bxoMobile = v; try { localStorage.setItem('vault-bxo-mobile', v ? '1' : '0'); } catch (e) {}
+      view === 'games' ? renderGamesBoard() : renderPropsBoard();
+    });
+  }
+
   function renderGamesBoard() {
     const fb = F(), BM = window.VaultBettingMath, TN = fb.TEAMNAME || {}, fullName = c => TN[c] || c;
     let games = MODEL.games.slice().sort((a, b) => { const ta = a.commence ? Date.parse(a.commence) : Infinity, tb = b.commence ? Date.parse(b.commence) : Infinity; return ta - tb; });
@@ -42889,13 +42996,63 @@ window.VaultPropModel = (function () {
       }
     }
 
+    // One market cell in the Outlier idiom: label header, the two sides stacked
+    // (glyph · line · best price · book/save), the +EV side flagged, and the
+    // market-implied split painted as hairlines top + bottom.
+    const bxoMCell = (label, bets) => {
+      bets = bets.filter(Boolean);
+      if (!bets.length) return '';
+      const bestI = bets[0].ev >= (bets[1] ? bets[1].ev : -99) ? 0 : 1;
+      const anyEdge = bets.some((b, i) => i === bestI && b.ev > 0);
+      let fp = null;
+      if (BM && bets[1]) { const p0 = BM.americanToProb(bets[0].fairAmerican), p1 = BM.americanToProb(bets[1].fairAmerican); if (p0 != null && p1 != null && (p0 + p1) > 0) fp = [p0 / (p0 + p1), p1 / (p0 + p1)]; }
+      const rows = bets.map((b, i) => {
+        const isEdge = i === bestI && b.ev > 0;
+        const etag = isEdge ? '<span class="bxo-etag">+' + b.ev + '%</span>' : '';
+        const right = isEdge ? '<span class="bxo-msave">' + BXO_SAVE + '</span>' : (b.bestBook ? bookChip(b.bestBook) : '');
+        return '<div class="bxo-mrow"><span class="bxo-mg"><i></i><i></i><i></i></span>'
+          + '<span class="bxo-ml">' + b.lab.replace(/\s+ML$/, '') + '</span>'
+          + '<span class="bxo-mo' + (b.bestPrice > 0 ? ' pos' : '') + '">' + fb.fmtOdds(b.bestPrice) + etag + '</span>'
+          + right + '</div>';
+      }).join('');
+      const pc = fp ? Math.round(fp[0] * 100) : null;
+      const splitT = pc != null ? '<span class="bxo-split t"><i class="g" style="width:' + pc + '%"></i><i class="r" style="width:' + (100 - pc) + '%"></i></span>' : '';
+      const splitB = pc != null ? '<span class="bxo-split b"><i class="g" style="width:' + (100 - pc) + '%"></i><i class="r" style="width:' + pc + '%"></i></span>' : '';
+      return '<div class="bxo-mc' + (anyEdge ? ' edge' : '') + '"><div class="bxo-mh">' + label + (anyEdge ? ' &middot; +EV' : '') + '</div><div class="bxo-splitwrap">' + splitT + rows + splitB + '</div></div>';
+    };
+    const bxoGameCard = (x) => {
+      const m = gmMeta(x), g = m.g, key = m.key;
+      const d = g.commence ? new Date(g.commence) : null;
+      const tm = (d && !isNaN(d)) ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : (g.slot || '');
+      const wd = (d && !isNaN(d)) ? d.toLocaleDateString([], { weekday: 'short' }) : (g.week != null ? 'Wk ' + g.week : '');
+      const tr = (code, imp) => '<div class="bxo-tr"><span class="nm">' + fullName(code) + '</span>' + (imp != null ? '<span class="imp">' + imp + '%</span>' : '') + '</div>';
+      const head = '<div class="bxo-ghead"><div class="bxo-glogos"><span class="bt-logo" data-logo="' + g.away + '"></span><span class="bt-logo" data-logo="' + g.home + '"></span></div>'
+        + '<div class="bxo-gteams">' + tr(g.away, m.impA) + tr(g.home, m.impH) + '</div>'
+        + '<div class="bxo-gwhen"><b>' + tm + '</b><span class="wk">' + wd + '</span></div></div>';
+      const mkts = '<div class="bxo-mkts">' + bxoMCell('Moneyline', [m.mlA, m.mlH]) + bxoMCell('Spread', [m.spA, m.spH]) + bxoMCell('Total', [m.toO, m.toU]) + '</div>';
+      const gp = (_gmModel && seasonReg) ? gmLine(g) : null;
+      const left = gp ? '<span class="bxo-vl"><b>Vault</b> ' + g.home + ' ' + sline(gp.homeSpread) + ' &middot; ' + gp.total + '</span>' : '<span></span>';
+      const foot = '<div class="bxo-gfoot">' + left + '<button data-tgl="' + key + '">' + (m.open ? 'Hide books' : 'Match details') + ' <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="' + (m.open ? 'm6 9 6 6 6-6' : 'm9 6 6 6-6 6') + '"/></svg></button></div>';
+      return '<article class="bxo-game" data-key="' + key + '">' + head + mkts + foot + (m.open ? m.drawerInner : '') + '</article>';
+    };
+
     // Desktop → odds-screen table; narrow → the card layout (a 6-column table
-    // can't fit a phone). One board, two renderers, same data + wiring.
+    // can't fit a phone). Phone has two skins: the Outlier boards (default) and
+    // the classic stacked cards, flipped by the Layout toggle. Same data + wiring.
     const narrow = !!(window.matchMedia && window.matchMedia('(max-width:820px)').matches);
-    const boardHTML = narrow
-      ? '<div class="bxm-wrap">' + withBets.map(mCardH).join('') + '</div>'
-      : '<div class="bxt-wrap"><table class="bxt"><thead><tr><th class="bxt-togh"></th><th class="l">Matchup</th><th>Spread</th><th>Total</th><th>Moneyline</th><th>Vault line</th><th>Track</th><th>Real money</th></tr></thead>' + withBets.map(rowH).join('') + '</table></div>';
-    inner.innerHTML = banner + moversHTML + boardHTML;
+    let headHTML, boardHTML;
+    if (narrow && bxoMobile) {
+      headHTML = bxoToggleHTML() + bxoBandHTML('Games', _weekLabel || '');
+      boardHTML = '<div class="bxo-games">' + withBets.map(bxoGameCard).join('') + '</div>';
+    } else if (narrow) {
+      headHTML = bxoToggleHTML() + banner + moversHTML;
+      boardHTML = '<div class="bxm-wrap">' + withBets.map(mCardH).join('') + '</div>';
+    } else {
+      headHTML = banner + moversHTML;
+      boardHTML = '<div class="bxt-wrap"><table class="bxt"><thead><tr><th class="bxt-togh"></th><th class="l">Matchup</th><th>Spread</th><th>Total</th><th>Moneyline</th><th>Vault line</th><th>Track</th><th>Real money</th></tr></thead>' + withBets.map(rowH).join('') + '</table></div>';
+    }
+    inner.innerHTML = headHTML + boardHTML;
+    bxoWireToggle(inner);
     paintLogos('#bt-gv-inner');
     // Re-render when the layout crosses the table/card breakpoint (rare; guarded
     // so the listener binds once). Flush is cheap — the board already re-renders
@@ -43808,20 +43965,48 @@ window.VaultPropModel = (function () {
         + '<div class="mc-hits">' + hit('L5') + hit('L10') + hit('L20') + hit('SZN') + '</div>'
         + '</div>';
     }).join('') : '';
+    // Outlier-idiom rows: bold name + prop, best-price pill, save, then the
+    // green/red streak sparkline + L10 hit rate (async-filled by bxoFillSparks).
+    const mbodyBxo = (isMobile() && bxoMobile) ? rows.map(r => {
+      const pf = resolvePick(r), k = propKey(r), on = watch.has(k), isOpen = k === ebSel;
+      const sideTxt = pf.pickem ? 'O/U' : (pf.side === 'over' ? 'Over' : 'Under');
+      // The board is already filtered to one market (shown in the title), so the
+      // per-row market label is redundant — drop it (keeps the line from being
+      // truncated) unless positions/markets are mixed (ALL or a search).
+      const showMkt = (curPos === 'ALL' || searching);
+      const propTxt = (showMkt ? (r.marketLabel || m.short || m.label || '') + ' ' : '') + sideTxt + (r.line != null ? ' ' + r.line : '');
+      const vled = pf.vaultLed ? ' <span class="eb-vled" title="Vault-led — Vault’s projection favors this side with no book price edge">V</span>' : '';
+      return '<div class="bxo-prop pr' + (isOpen ? ' sel' : '') + '" data-k="' + k + '">'
+        + '<div class="bxo-ptop"><div class="bxo-pn"><b>' + r.name + '</b>' + injBadge(r) + ' - ' + propTxt + vled + '</div>'
+        + '<span class="bxo-odd">' + fb.fmtOdds(pf.bestPrice) + bookChip(pf.bestBook) + '</span>'
+        + '<button class="eb-star bxo-save ' + (on ? 'on' : '') + '" data-w="' + k + '" title="Save">' + BXO_SAVE + '</button></div>'
+        + '<div class="bxo-spk"><span class="bxo-hgl"><i></i><i></i><i></i></span><span class="bxo-vd"></span>'
+        + '<span class="bxo-spark" data-sparkk="' + k + '"></span>'
+        + '<span class="bxo-rate" data-ratek="' + k + '"><span class="mut">·</span></span></div>'
+        + '</div>';
+    }).join('') : '';
     const SORTLBL = { name: 'player', line: 'line', edge: 'edge', ev: 'EV', best: 'best price', lean: 'lean', hit: 'hit rate', vault: 'Vault edge', grade: 'Vault grade', sim: 'Win %' };
     const anyVaultLed = rows.some(r => { const p = resolvePick(r); return p && p.vaultLed; });
     const cn = rows.length + ' · sorted by ' + (SORTLBL[ebSort.key] || 'EV') + (ebSort.dir < 0 ? ' ↓' : ' ↑')
       + (anyVaultLed ? ' · <span title="No market price edge on this line, so the pick follows Vault’s projection instead of the book"><b style="color:var(--bt-accent2)">V</b> = Vault-led</span>' : '');
     const boardTitle = searching ? 'Search · “' + searchQ.trim() + '”' : (curPos === 'ALL' ? ('Edges · All' + (curMarket && (m.short || m.label) ? ' · ' + (m.short || m.label) : ' props')) : 'Edges · ' + curPos + ' ' + (m.short || m.label || ''));
+    const useBxo = isMobile() && bxoMobile;
     _pvInner().innerHTML = '<div class="eb-wrap">'
-      + '<div class="eb-board"><div class="eb-bh"><div><div class="eb-t">' + boardTitle + '</div><div class="eb-cn">' + cn + '</div></div>'
-      + '<div class="eb-bh-r"></div></div>'
-      + '<div class="bx-hint"><svg fill="none" stroke="var(--bt-accent2)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/></svg> <b>Grade</b>, <b>Vault proj</b>, <b>Edge</b> and <b>Win %</b> come from Vault’s own player model, not the books. <b>L5–SZN</b> are real hit rates against the line shown. Click any player for the full breakdown — the opponent’s defense, best price and every book’s line.</div>'
+      + (isMobile() ? bxoToggleHTML() : '')
+      + (useBxo ? bxoBandHTML(boardTitle, cn) : '')
+      + '<div class="eb-board">'
+      + (useBxo ? '' : '<div class="eb-bh"><div><div class="eb-t">' + boardTitle + '</div><div class="eb-cn">' + cn + '</div></div>'
+          + '<div class="eb-bh-r"></div></div>'
+          + '<div class="bx-hint"><svg fill="none" stroke="var(--bt-accent2)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/></svg> <b>Grade</b>, <b>Vault proj</b>, <b>Edge</b> and <b>Win %</b> come from Vault’s own player model, not the books. <b>L5–SZN</b> are real hit rates against the line shown. Click any player for the full breakdown — the opponent’s defense, best price and every book’s line.</div>')
       /* accordion: no persistent panel — the detail opens inline under the clicked row */
-      + (isMobile()
+      + (useBxo
+          ? '<div id="eb-rows" class="bxo-props">' + mbodyBxo + '</div>'
+          : isMobile()
           ? '<div id="eb-rows" class="bx-mprops">' + mbody + '</div>'
           : '<div class="eb-tscroll bx-pscroll"><table class="bx-pt">' + head + '<tbody id="eb-rows">' + body + '</tbody></table></div>')
       + '</div></div>';
+    bxoWireToggle(_pvInner());
+    if (useBxo) bxoFillSparks(rows);
     paintHeadshots('#bt-pv-inner');
     // Grade-vs select, Filters and My Picks now live in the controls row
     // (renderFilters); the board render only refreshes their live counts.
@@ -45452,6 +45637,29 @@ window.VaultPropModel = (function () {
 
   const HIT_WINDOWS = ['L5', 'L10', 'L20', 'SZN'];
   const hitCls = v => v == null ? '' : v >= 68 ? 'hi' : v >= 55 ? 'mid' : v >= 45 ? 'neu' : v >= 35 ? 'lo' : 'vlo';
+  // Outlier streak sparkline: paint each recent game as a green (hit) or red
+  // (miss) segment vs the line, plus the L10 hit rate. Reads the same cached
+  // game log as ebFillHits (no extra network), keyed per prop row.
+  function bxoFillSparks(rows) {
+    const PH = window.VaultPropHistory; if (!PH) return;
+    rows.forEach(r => {
+      const k = propKey(r), side = displaySide(r), over = side !== 'under', line = Number(r.line);
+      PH.forProp(r.name, r.market, r.line, side, { limit: 12 }).then(h => {
+        const root = _pvInner(); if (!root) return;
+        const sp = root.querySelector('[data-sparkk="' + k + '"]');
+        const rt = root.querySelector('[data-ratek="' + k + '"]');
+        const gl = (h && h.gl) ? h.gl : [];
+        if (sp) sp.innerHTML = gl.length ? gl.map(gm => '<i class="' + ((over ? gm.val >= line : gm.val < line) ? 'h' : 'm') + '"></i>').join('') : '';
+        if (rt) {
+          const pct = (h && h.heat && h.heat.L10 != null) ? h.heat.L10
+            : (gl.length ? Math.round(gl.filter(gm => over ? gm.val >= line : gm.val < line).length / gl.length * 100) : null);
+          rt.className = 'bxo-rate' + (pct == null ? '' : (pct >= 60 ? ' hi' : pct < 50 ? ' lo' : ''));
+          rt.innerHTML = pct == null ? '<span class="mut">·</span>' : pct + '%';
+        }
+      }).catch(() => {});
+    });
+  }
+
   function ebFillHits(rows) {
     const PH = window.VaultPropHistory; if (!PH) return;
     let changed = false;
