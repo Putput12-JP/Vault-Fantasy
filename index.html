@@ -41497,7 +41497,7 @@ window.VaultPropModel = (function () {
 #page-betting{--bt-s1:var(--s1);--bt-s2:var(--s2);--bt-s3:var(--s3);--bt-s4:var(--s4);
   --bt-border:var(--border);--bt-border2:var(--border2);--bt-border3:var(--border3);
   --bt-text:var(--text);--bt-text2:var(--text2);--bt-muted:var(--muted);--bt-faint:var(--muted);
-  --bt-accent:var(--accent);--bt-accent2:var(--accent2);--bt-qb:var(--qb);--bt-rb:var(--rb);--bt-wr:var(--wr);--bt-te:var(--te);--bt-gold:var(--gold);--bt-green:var(--value);
+  --bt-accent:var(--accent);--bt-accent2:var(--accent2);--bt-qb:var(--qb);--bt-rb:var(--rb);--bt-wr:var(--wr);--bt-te:var(--te);--bt-gold:var(--gold);--bt-green:var(--value);--bt-red:var(--red);
   /* off-consensus line marker. Sourced from --te only because it is the DS's
      amber in every theme (onyx retunes --gold to steel-blue, which would read
      as "best price" here); the meaning is "this book is on a different number". */
@@ -42211,8 +42211,8 @@ window.VaultPropModel = (function () {
 #page-betting .bxo-hgl i{width:3px;border-radius:1px;background:var(--bt-faint)}
 #page-betting .bxo-hgl i:nth-child(1){height:5px}#page-betting .bxo-hgl i:nth-child(2){height:9px}#page-betting .bxo-hgl i:nth-child(3){height:13px}
 #page-betting .bxo-vd{width:1px;height:18px;background:var(--bt-border);flex:none}
-#page-betting .bxo-spark{flex:1;display:flex;align-items:center;gap:3px;height:12px}
-#page-betting .bxo-spark i{flex:1;height:4px;border-radius:3px;background:var(--bt-border2)}
+#page-betting .bxo-spark{flex:1;display:flex;align-items:center;justify-content:flex-start;gap:4px;height:12px}
+#page-betting .bxo-spark i{flex:1 1 0;min-width:0;max-width:16px;height:5px;border-radius:3px;background:var(--bt-border2)}
 #page-betting .bxo-spark i.h{background:var(--bt-green)}#page-betting .bxo-spark i.m{background:var(--bt-red)}
 #page-betting .bxo-rate{flex:none;font-family:var(--bt-mono);font-size:14px;font-weight:800;min-width:44px;text-align:right;color:var(--bt-muted)}
 #page-betting .bxo-rate.hi{color:var(--bt-green)}#page-betting .bxo-rate.lo{color:var(--bt-red)}
@@ -43008,11 +43008,13 @@ window.VaultPropModel = (function () {
       if (BM && bets[1]) { const p0 = BM.americanToProb(bets[0].fairAmerican), p1 = BM.americanToProb(bets[1].fairAmerican); if (p0 != null && p1 != null && (p0 + p1) > 0) fp = [p0 / (p0 + p1), p1 / (p0 + p1)]; }
       const rows = bets.map((b, i) => {
         const isEdge = i === bestI && b.ev > 0;
-        const etag = isEdge ? '<span class="bxo-etag">+' + b.ev + '%</span>' : '';
+        // +EV is flagged by the green cell border + "· +EV" header (as in the
+        // approved mock) — no inline % tag, which crowded the pill and truncated
+        // the label. The edge side gets the save bookmark; others a book chip.
         const right = isEdge ? '<span class="bxo-msave">' + BXO_SAVE + '</span>' : (b.bestBook ? bookChip(b.bestBook) : '');
         return '<div class="bxo-mrow"><span class="bxo-mg"><i></i><i></i><i></i></span>'
           + '<span class="bxo-ml">' + b.lab.replace(/\s+ML$/, '') + '</span>'
-          + '<span class="bxo-mo' + (b.bestPrice > 0 ? ' pos' : '') + '">' + fb.fmtOdds(b.bestPrice) + etag + '</span>'
+          + '<span class="bxo-mo' + (b.bestPrice > 0 ? ' pos' : '') + '">' + fb.fmtOdds(b.bestPrice) + '</span>'
           + right + '</div>';
       }).join('');
       const pc = fp ? Math.round(fp[0] * 100) : null;
