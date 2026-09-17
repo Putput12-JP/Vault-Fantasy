@@ -41376,9 +41376,10 @@ window.VaultPropModel = (function () {
   const F = () => window.VaultBetting;
   let MODEL = null, BOOTED = false, LOADING = false;
   let view = 'games', tf = 'weekly', curPos = 'QB', curMarket = 'pass_yd', curGM = 'spread';
-  // Mobile layout toggle: the Outlier-idiom boards (streak-sparkline props +
-  // horizontal market cells) vs the classic stacked cards. Phone-only; persisted.
-  let bxoMobile = (() => { try { return localStorage.getItem('vault-bxo-mobile') !== '0'; } catch (e) { return true; } })();
+  // Mobile betting uses the Outlier-idiom boards (streak-sparkline props +
+  // horizontal market cells). Always on; the classic stacked-card path below is
+  // kept only as a fallback and is no longer user-switchable.
+  const bxoMobile = true;
   let teamFilter = '', searchQ = '';
   let mineOnly = false;
   let ouFilter = 'all';   // 'all' | 'over' | 'under' — filters the props board by Vault's leaned side
@@ -42631,21 +42632,8 @@ window.VaultPropModel = (function () {
 
   /* ── Outlier-idiom mobile layout: shared chrome + toggle ───────────────── */
   const BXO_SAVE = '<svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>';
-  function bxoToggleHTML() {
-    return '<div class="bxo-lay"><div class="seg">'
-      + '<button data-bxo="1"' + (bxoMobile ? ' class="on"' : '') + '>Outlier</button>'
-      + '<button data-bxo="0"' + (!bxoMobile ? ' class="on"' : '') + '>Cards</button>'
-      + '</div></div>';
-  }
   function bxoBandHTML(title, sub) {
     return '<div class="bxo-band"><div class="bxo-h1">' + title + '</div>' + (sub ? '<div class="bxo-sub">' + sub + '</div>' : '') + '</div>';
-  }
-  function bxoWireToggle(root) {
-    root.querySelectorAll('[data-bxo]').forEach(b => b.onclick = () => {
-      const v = b.dataset.bxo === '1'; if (v === bxoMobile) return;
-      bxoMobile = v; try { localStorage.setItem('vault-bxo-mobile', v ? '1' : '0'); } catch (e) {}
-      view === 'games' ? renderGamesBoard() : renderPropsBoard();
-    });
   }
 
   function renderGamesBoard() {
@@ -43044,17 +43032,16 @@ window.VaultPropModel = (function () {
     const narrow = !!(window.matchMedia && window.matchMedia('(max-width:820px)').matches);
     let headHTML, boardHTML;
     if (narrow && bxoMobile) {
-      headHTML = bxoToggleHTML() + bxoBandHTML('Games', _weekLabel || '');
+      headHTML = bxoBandHTML('Games', _weekLabel || '');
       boardHTML = '<div class="bxo-games">' + withBets.map(bxoGameCard).join('') + '</div>';
     } else if (narrow) {
-      headHTML = bxoToggleHTML() + banner + moversHTML;
+      headHTML = banner + moversHTML;
       boardHTML = '<div class="bxm-wrap">' + withBets.map(mCardH).join('') + '</div>';
     } else {
       headHTML = banner + moversHTML;
       boardHTML = '<div class="bxt-wrap"><table class="bxt"><thead><tr><th class="bxt-togh"></th><th class="l">Matchup</th><th>Spread</th><th>Total</th><th>Moneyline</th><th>Vault line</th><th>Track</th><th>Real money</th></tr></thead>' + withBets.map(rowH).join('') + '</table></div>';
     }
     inner.innerHTML = headHTML + boardHTML;
-    bxoWireToggle(inner);
     paintLogos('#bt-gv-inner');
     // Re-render when the layout crosses the table/card breakpoint (rare; guarded
     // so the listener binds once). Flush is cheap — the board already re-renders
@@ -43994,7 +43981,6 @@ window.VaultPropModel = (function () {
     const boardTitle = searching ? 'Search · “' + searchQ.trim() + '”' : (curPos === 'ALL' ? ('Edges · All' + (curMarket && (m.short || m.label) ? ' · ' + (m.short || m.label) : ' props')) : 'Edges · ' + curPos + ' ' + (m.short || m.label || ''));
     const useBxo = isMobile() && bxoMobile;
     _pvInner().innerHTML = '<div class="eb-wrap">'
-      + (isMobile() ? bxoToggleHTML() : '')
       + (useBxo ? bxoBandHTML(boardTitle, cn) : '')
       + '<div class="eb-board">'
       + (useBxo ? '' : '<div class="eb-bh"><div><div class="eb-t">' + boardTitle + '</div><div class="eb-cn">' + cn + '</div></div>'
@@ -44007,7 +43993,6 @@ window.VaultPropModel = (function () {
           ? '<div id="eb-rows" class="bx-mprops">' + mbody + '</div>'
           : '<div class="eb-tscroll bx-pscroll"><table class="bx-pt">' + head + '<tbody id="eb-rows">' + body + '</tbody></table></div>')
       + '</div></div>';
-    bxoWireToggle(_pvInner());
     if (useBxo) bxoFillSparks(rows);
     paintHeadshots('#bt-pv-inner');
     // Grade-vs select, Filters and My Picks now live in the controls row
