@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-18T10:00', tag:'Improved', title:'Portfolio breakdown shows your season record',
+    items:[
+      'The League Breakdown table now has Record, Points For and Points Against columns, so you can see how every team is actually doing at a glance — not just its roster value.',
+      'Sort by any of them: click Record to line up your best and worst teams, or PF / PA to see where you\'re scoring big or getting scored on.',
+    ]
+  },
+  {
     ts:'2026-09-17T15:00', tag:'New', title:'Prop Outlook — one number for every prop',
     items:[
       'New Prop Outlook board under Betting: every player gets a single 0–100 grade per prop, built from how much work he gets, how well he\'s playing, the defense he draws and the game environment — no betting line involved, so it\'s a clean read on the spot itself.',
@@ -24725,6 +24732,9 @@ function renderPortfolioV2(){
     else if (sort.col === 'value'){ av = a.myValue||0;                   bv = b.myValue||0; }
     else if (sort.col === 'grade'){ av = a.grade||'Z';                   bv = b.grade||'Z'; }
     else if (sort.col === 'teams'){ av = a.totalTeams||0;                bv = b.totalTeams||0; }
+    else if (sort.col === 'rec')  { const wp=r=>{const rc=r.myRec||{};const g=(rc.w||0)+(rc.l||0)+(rc.t||0);return g?((rc.w||0)+(rc.t||0)*0.5)/g:-1;}; av=wp(a); bv=wp(b); }
+    else if (sort.col === 'pf')   { av = a.myPF||0;                      bv = b.myPF||0; }
+    else if (sort.col === 'pa')   { av = a.myPA||0;                      bv = b.myPA||0; }
     else                          { av = parseInt(a.myRank)||9999;       bv = parseInt(b.myRank)||9999; }
     if (av < bv) return sort.dir==='asc' ? -1 : 1;
     if (av > bv) return sort.dir==='asc' ? 1 : -1;
@@ -24750,6 +24760,15 @@ function renderPortfolioV2(){
     const rankStr = d.myRank ? `#${d.myRank}` : '<span class="pf-v2-na">—</span>';
     const rankColor = (typeof d.myRank==='number' && d.totalTeams) ? (d.myRank<=3?'var(--rb)':d.myRank<=Math.floor(d.totalTeams/2)?'var(--gold)':'var(--qb)') : 'var(--muted)';
     const gradeColor = d.gradeColor || 'var(--muted)';
+
+    // Season record + points for/against
+    const _rc = d.myRec || {w:0,l:0,t:0};
+    const _gp = (_rc.w||0)+(_rc.l||0)+(_rc.t||0);
+    const recStr = _gp ? `${_rc.w||0}-${_rc.l||0}${_rc.t?`-${_rc.t}`:''}` : '<span class="pf-v2-na">—</span>';
+    const _wpct = _gp ? ((_rc.w||0)+(_rc.t||0)*0.5)/_gp : null;
+    const recColor = _wpct==null ? 'var(--muted)' : _wpct>=0.6?'var(--rb)':_wpct>=0.45?'var(--gold)':'var(--qb)';
+    const pfStr = d.myPF>0 ? d.myPF.toFixed(1) : '<span class="pf-v2-na">—</span>';
+    const paStr = d.myPA>0 ? d.myPA.toFixed(1) : '<span class="pf-v2-na">—</span>';
 
     // Finance: buy-in + projected payout cells
     const fin = getPfFinance(lgId);
@@ -24814,7 +24833,7 @@ function renderPortfolioV2(){
       </div>`;
     }
 
-    const detailRow = isExpanded ? `<tr class="pf-v2-detail-row"><td colspan="7">${detailInner}</td></tr>` : '';
+    const detailRow = isExpanded ? `<tr class="pf-v2-detail-row"><td colspan="10">${detailInner}</td></tr>` : '';
     return `<tr class="pf-v2-row ${isExpanded ? 'pf-v2-row-expanded' : ''}" onclick="pfV2OpenLeague('${lgId}',event)" title="Click for league overview">
       <td class="pf-v2-td-chev" onclick="pfV2ToggleRow('${lgId}',event)" title="Toggle buy-in, payouts &amp; position breakdown">
         <span class="pf-v2-chev ${isExpanded ? 'open' : ''}">▸</span>
@@ -24825,6 +24844,9 @@ function renderPortfolioV2(){
       </td>
       <td class="pf-v2-td-num" style="color:${gradeColor};font-weight:800;font-size:18px">${d.grade||'—'}</td>
       <td class="pf-v2-td-num" style="color:${rankColor};font-weight:700">${rankStr}</td>
+      <td class="pf-v2-td-num" style="color:${recColor};font-weight:700;font-family:var(--font-mono)">${recStr}</td>
+      <td class="pf-v2-td-num" style="font-family:var(--font-mono)">${pfStr}</td>
+      <td class="pf-v2-td-num" style="font-family:var(--font-mono);color:var(--muted)">${paStr}</td>
       <td class="pf-v2-td-num pf-v2-td-buyin">${buyInCell}</td>
       <td class="pf-v2-td-num pf-v2-td-payout">${payoutCell}</td>
       <td class="pf-v2-td-num" style="color:var(--gold);font-family:var(--font-mono)">${valStr}</td>
@@ -24845,7 +24867,7 @@ function renderPortfolioV2(){
   const grpHdrRow = (label, cls, arr) =>
     `<tr class="pf-v2-grouphdr ${cls} ${collapsed[cls]?'collapsed':''}" onclick="pfV2ToggleGroup('${cls}',event)" title="Click to ${collapsed[cls]?'expand':'collapse'} ${label}">
       <td class="pf-v2-grouphdr-chevcell"><span class="pf-v2-grpchev">▾</span></td>
-      <td colspan="6"><span class="pf-v2-grouphdr-lbl">${label}</span><span class="pf-v2-grouphdr-count">${arr.length} ${arr.length===1?'league':'leagues'}</span><span class="pf-v2-grouphdr-val">${grpVal(arr)}</span></td>
+      <td colspan="9"><span class="pf-v2-grouphdr-lbl">${label}</span><span class="pf-v2-grouphdr-count">${arr.length} ${arr.length===1?'league':'leagues'}</span><span class="pf-v2-grouphdr-val">${grpVal(arr)}</span></td>
     </tr>`;
   const grpHdrCard = (label, cls, arr) =>
     `<div class="pf-card-grouphdr ${cls} ${collapsed[cls]?'collapsed':''}" onclick="pfV2ToggleGroup('${cls}',event)"><span class="pf-v2-grpchev">▾</span><span class="pf-v2-grouphdr-lbl">${label}</span><span class="pf-v2-grouphdr-count">${arr.length} ${arr.length===1?'league':'leagues'}</span><span class="pf-v2-grouphdr-val">${grpVal(arr)}</span></div>`;
@@ -24870,6 +24892,9 @@ function renderPortfolioV2(){
         <th onclick="pfV2SetSort('name')"  class="pf-v2-th pf-v2-th-name">League <span class="pf-v2-sort-ind">${sortInd('name')}</span></th>
         <th onclick="pfV2SetSort('grade')" class="pf-v2-th pf-v2-th-num">Grade <span class="pf-v2-sort-ind">${sortInd('grade')}</span></th>
         <th onclick="pfV2SetSort('dyn')"   class="pf-v2-th pf-v2-th-num" title="Roster-value rank from your My Rankings board — dynasty board for dynasty leagues, redraft board for redraft leagues">My Rank <span class="pf-v2-sort-ind">${sortInd('dyn')}</span></th>
+        <th onclick="pfV2SetSort('rec')"   class="pf-v2-th pf-v2-th-num" title="Season win-loss record">Record <span class="pf-v2-sort-ind">${sortInd('rec')}</span></th>
+        <th onclick="pfV2SetSort('pf')"    class="pf-v2-th pf-v2-th-num" title="Total points for this season">PF <span class="pf-v2-sort-ind">${sortInd('pf')}</span></th>
+        <th onclick="pfV2SetSort('pa')"    class="pf-v2-th pf-v2-th-num" title="Total points against this season">PA <span class="pf-v2-sort-ind">${sortInd('pa')}</span></th>
         <th class="pf-v2-th pf-v2-th-num">Buy-in</th>
         <th class="pf-v2-th pf-v2-th-num">Payout</th>
         <th onclick="pfV2SetSort('value')" class="pf-v2-th pf-v2-th-num">Value <span class="pf-v2-sort-ind">${sortInd('value')}</span></th>
@@ -25132,7 +25157,13 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
       const _liveStarters = (myMatch?.starters||[]).map(String);
       const _curStarters = _liveStarters.some(s => s && s !== '0')
         ? _liveStarters : [...(myRoster?.starters||[])].map(String);
+      // Season record + points (Sleeper & ESPN rosters both expose roster.settings)
+      const _rs = myRoster?.settings || {};
+      const myRec = { w:_rs.wins||0, l:_rs.losses||0, t:_rs.ties||0 };
+      const myPF  = (_rs.fpts||0) + ((_rs.fpts_decimal||0)/100);
+      const myPA  = (_rs.fpts_against||0) + ((_rs.fpts_against_decimal||0)/100);
       return { lg, myValue, myRank, totalTeams, grade, gradeColor, myNames, posVals, isDynasty, isSF,
+        myRec, myPF, myPA,
         myRosterId: (myRosterIdx==null?null:myRosterIdx),
         myStarters: _curStarters,
         myStartable,
@@ -25145,6 +25176,7 @@ async function renderPortfolio() {  if (!myTeamsData.length) {
         canPush: pfPlatformCaps(lg).write };
     } catch(e) {
       return { lg, myValue:0, myRank:'?', totalTeams:'?', grade:'?', gradeColor:'var(--muted)', myNames:[], posVals:{}, isDynasty:false, isSF:false,
+        myRec:{w:0,l:0,t:0}, myPF:0, myPA:0,
         myRosterId:null, myStarters:[], myStartable:[], myReserve:[], myTaxi:[], myPlayersCount:0, rosterPositions:[],
         caps: pfPlatformCaps(lg), _loadFailed: vpPlat(lg)==='espn', canPush:false };
     }
