@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "generated": "2026-09-18T10:46:06.970168+00:00",
+  "generated": "2026-09-18T11:30:06.800193+00:00",
   "line_basis": "close",
   "latest_week": 2,
   "skipped": 96,
@@ -1354,23 +1354,6 @@
             }
           ]
         },
-        "pass_td": {
-          "n": 2,
-          "pred_avg": 52.5,
-          "actual_avg": 50.0,
-          "brier": 0.2404,
-          "logloss": 0.6739,
-          "ece": 2.5,
-          "reliability": [
-            {
-              "bucket": "50\u201355%",
-              "n": 2,
-              "pred": 52.5,
-              "actual": 50.0,
-              "gap": -2.5
-            }
-          ]
-        },
         "rush_att": {
           "n": 2,
           "pred_avg": 58.5,
@@ -1419,20 +1402,20 @@
             }
           ]
         },
-        "rush_td": {
-          "n": 1,
-          "pred_avg": 70.0,
-          "actual_avg": 0.0,
-          "brier": 0.4897,
-          "logloss": 1.2032,
-          "ece": 70.0,
+        "pass_td": {
+          "n": 2,
+          "pred_avg": 52.5,
+          "actual_avg": 50.0,
+          "brier": 0.2404,
+          "logloss": 0.6739,
+          "ece": 2.5,
           "reliability": [
             {
-              "bucket": "65\u201370%",
-              "n": 1,
-              "pred": 70.0,
-              "actual": 0.0,
-              "gap": -70.0
+              "bucket": "50\u201355%",
+              "n": 2,
+              "pred": 52.5,
+              "actual": 50.0,
+              "gap": -2.5
             }
           ]
         },
@@ -1450,6 +1433,23 @@
               "pred": 53.0,
               "actual": 100.0,
               "gap": 47.0
+            }
+          ]
+        },
+        "rush_td": {
+          "n": 1,
+          "pred_avg": 70.0,
+          "actual_avg": 0.0,
+          "brier": 0.4897,
+          "logloss": 1.2032,
+          "ece": 70.0,
+          "reliability": [
+            {
+              "bucket": "65\u201370%",
+              "n": 1,
+              "pred": 70.0,
+              "actual": 0.0,
+              "gap": -70.0
             }
           ]
         }
