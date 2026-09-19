@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "generated": "2026-09-19T18:07:42.372648+00:00",
+  "generated": "2026-09-19T20:51:43.558277+00:00",
   "line_basis": "close",
   "latest_week": 2,
   "skipped": 96,
@@ -1233,6 +1233,51 @@
         ]
       },
       "by_market": {
+        "rec_yd": {
+          "n": 14,
+          "pred_avg": 53.1,
+          "actual_avg": 35.7,
+          "brier": 0.3054,
+          "logloss": 0.8115,
+          "ece": 28.3,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 7,
+              "pred": 42.7,
+              "actual": 42.9,
+              "gap": 0.2
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 2,
+              "pred": 56.0,
+              "actual": 0.0,
+              "gap": -56.0
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 2,
+              "pred": 62.7,
+              "actual": 100.0,
+              "gap": 37.3
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 2,
+              "pred": 66.8,
+              "actual": 0.0,
+              "gap": -66.8
+            },
+            {
+              "bucket": "70\u201375%",
+              "n": 1,
+              "pred": 74.4,
+              "actual": 0.0,
+              "gap": -74.4
+            }
+          ]
+        },
         "rec": {
           "n": 14,
           "pred_avg": 59.1,
@@ -1282,51 +1327,6 @@
               "pred": 81.5,
               "actual": 100.0,
               "gap": 18.5
-            }
-          ]
-        },
-        "rec_yd": {
-          "n": 14,
-          "pred_avg": 53.1,
-          "actual_avg": 35.7,
-          "brier": 0.3054,
-          "logloss": 0.8115,
-          "ece": 28.3,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 7,
-              "pred": 42.7,
-              "actual": 42.9,
-              "gap": 0.2
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 2,
-              "pred": 56.0,
-              "actual": 0.0,
-              "gap": -56.0
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 2,
-              "pred": 62.7,
-              "actual": 100.0,
-              "gap": 37.3
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 2,
-              "pred": 66.8,
-              "actual": 0.0,
-              "gap": -66.8
-            },
-            {
-              "bucket": "70\u201375%",
-              "n": 1,
-              "pred": 74.4,
-              "actual": 0.0,
-              "gap": -74.4
             }
           ]
         },
