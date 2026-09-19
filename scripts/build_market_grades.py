@@ -115,9 +115,17 @@ def main():
     snaps_by = {nkey(k): v for k, v in snaps.items()}
     stats_by = {nkey(k): v for k, v in stats.items()}
 
-    # team → opponent + Vegas environment, from the game board
+    # team → opponent + Vegas environment, from THIS WEEK's game board only.
+    # The feed carries next week's games too (books post them early), and a team
+    # whose current game has already kicked off drops OFF the board entirely. An
+    # unfiltered map therefore hands that team NEXT week's opponent and grades a
+    # player for a game that already happened — e.g. the day after DET @ BUF
+    # (Wk 2) was played, Amon-Ra was graded for DET @ NYJ (a Wk 3 game). Restrict
+    # env to the current-week slate; a team with no current-week game left (played
+    # or bye) simply isn't in the map and its players are skipped below.
     env_by_team = {}
     for g in feed.get('vegas_games', []):
+        if week is not None and g.get('week') != week: continue
         away, home = g.get('away'), g.get('home')
         imp = g.get('implied', {}) or {}
         tot = (g.get('total', {}) or {}).get('cons')
@@ -131,6 +139,8 @@ def main():
     for pid, p in props.items():
         pos, team = p.get('pos'), p.get('team')
         env = env_by_team.get(team)
+        if env is None:
+            continue  # team's current-week game already played (off the board) or bye — don't grade a stale/next-week matchup
         st  = stats_by.get(nkey(p.get('name')), {})
         sn  = snaps_by.get(nkey(p.get('name')), {})
         season_st = st.get('season', {}) if isinstance(st, dict) else {}

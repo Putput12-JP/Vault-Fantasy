@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-19T12:00', tag:'Fixed', title:'Player Grades no longer shows already-played games',
+    items:[
+      'A player whose game has already kicked off is no longer graded on the Player Grades board — the number is locked and the matchup is settled, so it drops off.',
+      'Fixed a case where a player whose game had already finished (like Amon-Ra St. Brown after Thursday night) was mistakenly shown against next week\'s opponent.',
+    ]
+  },
+  {
     ts:'2026-09-18T10:00', tag:'Improved', title:'Portfolio breakdown shows your season record',
     items:[
       'The League Breakdown table now has Record, Points For and Points Against columns, so you can see how every team is actually doing at a glance — not just its roster value.',
@@ -43764,6 +43771,19 @@ window.VaultPropModel = (function () {
     return false;
   }
 
+  // Same idea for the market-grades board, which has no per-row commence: date
+  // the row by its team+opp on the games board and drop it once kickoff passes,
+  // so a grades file built before a game kicked off can't leave a locked matchup
+  // on a "this week" board between rebuilds.
+  function grGameOver(r) {
+    if (!r || !r.team || !r.opp) return false;
+    const rgc = F().realGameCommence;
+    const gc = (rgc && MODEL) ? rgc(MODEL, r.team, r.opp) : null;
+    if (!gc) return false;
+    const t = Date.parse(gc);
+    return !isNaN(t) && (t + EB_GAME_OVER_MS) < Date.now();
+  }
+
   // Real-line props for the active filters, each enriched with fair/EV. De-vig-
   // gable juiced two-ways rank first (by EV); flat pickem lines follow as plain
   // reference (fe.pickem, no EV). "Real" = a live book line, not a synth/projected.
@@ -47084,7 +47104,13 @@ window.VaultPropModel = (function () {
       return;
     }
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const rows = GRADES.grades;
+    // Drop grades whose game has already kicked off — the number is locked and
+    // the matchup is moot, same as the Player Props board (ebGameOver).
+    const rows = GRADES.grades.filter(r => !grGameOver(r));
+    if (!rows.length) {
+      host.innerHTML = '<div class="mg-empty">This week’s games have all kicked off.<br>Grades return with next week’s slate.</div>';
+      return;
+    }
     const strengthOf = d => (d && d.indexOf('strong') >= 0) ? 'strong' : (d === 'no_edge' ? 'neutral' : 'lean');
     const confRank = { high: 3, medium: 2, low: 1 };
 
