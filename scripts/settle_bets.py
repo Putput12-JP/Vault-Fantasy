@@ -124,10 +124,12 @@ def close_prices(cls):
     """{"close_over", "close_under"} from a closing sample, or both None when
     the pair isn't a real two-way market. Snapshots carry junk (a -19900 under;
     a +483 over paired with a -100 placeholder), so accept a pair only when its
-    combined implied probability is 100-112% (median real prop hold ~105%)."""
+    combined implied probability is 100.5-115% (median real prop hold ~105%;
+    pick'em apps run to ~12.5%, e.g. Sleeper -128/-128). The floor is above
+    100%: +100/-100 is a no-price placeholder, not a market."""
     o, u = cls.get("over"), cls.get("under")
     po, pu = am_prob(o), am_prob(u)
-    if po is None or pu is None or not (1.0 <= po + pu <= 1.12):
+    if po is None or pu is None or not (1.005 <= po + pu <= 1.15):
         return {"close_over": None, "close_under": None}
     return {"close_over": o, "close_under": u}
 

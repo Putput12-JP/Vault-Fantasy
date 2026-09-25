@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-25T12:00', tag:'New', title:'Filter Player Props by book',
+    items:[
+      'The Filters panel on Player Props now lists every book and app with a line on the board. Pick just the ones you bet, like Underdog or Sleeper, and the board uses only their lines and prices.',
+      'Everything follows your pick: the line shown, the best price, the edge, the win chance and the grade are all worked out from the books you chose. Vault remembers your choice for next time.',
+      'Grades on a single app are judged against that app\'s own price. Sleeper\'s -128 needs about 56% to profit, so the same pick can grade a notch lower there than on Underdog at -112.',
+      'Fixed: a few lines showed a placeholder +100/-100 price that no book actually posted, and their grades were judged against an easy 50% bar. Those lines now use the standard bar until a real price posts.',
+    ]
+  },
+  {
     ts:'2026-09-25T01:30', tag:'Improved', title:'Grades pulled back on markets we haven\'t beaten yet',
     items:[
       'A few prop markets (Pass Yards, Pass Completions, Interceptions and Rush + Rec Yards) have come in below break-even every week of the season so far, so a confident A or B grade there is more likely noise than a real edge.',
@@ -40914,7 +40923,7 @@ body .page,body .page.on{background:transparent!important}
     return (dir || 1) * ((av ?? -Infinity) - (bv ?? -Infinity));
   });
 
-  window.VaultBetting = { load, propRows, sortRows, teams, opponents, marketsFor, bookColumns, fmtOdds, fmtLine, MARKETS, MARKET_BY_KEY, TEAMNAME, headshotFor, normName, realGameCommence };
+  window.VaultBetting = { load, propRows, consensusLine, bestOf, sortRows, teams, opponents, marketsFor, bookColumns, fmtOdds, fmtLine, MARKETS, MARKET_BY_KEY, TEAMNAME, headshotFor, normName, realGameCommence };
 })();
 
 </script>
@@ -41477,6 +41486,12 @@ window.VaultPropModel = (function () {
   let fltGrade = 0;                       // 0 = any; 1 = D-min … 4 = A-min (min pick grade)
   let fltTrendMin = 0, fltTrendMax = 100; // L10 hit-rate band (%)
   let fltGames = null;                    // Set<matchup key> or null = every game
+  // Book filter: null = every book; a Set = only these books' quotes count. Rows
+  // are trimmed to those quotes (_bookScope) BEFORE fair/EV/grade are computed,
+  // so the line, best price, edge, win % and price-aware grade all describe the
+  // chosen books. Persisted: people bet the same apps week to week.
+  const BOOKS_KEY = 'vault-bet-books';
+  let fltBooks = (() => { try { const a = JSON.parse(localStorage.getItem(BOOKS_KEY) || 'null'); return Array.isArray(a) && a.length ? new Set(a) : null; } catch (e) { return null; } })();
   let gSort = { key: 'total', dir: -1 }, pSort = { key: 'value', dir: -1 };
 
   /* ── "My Players" · the user's real Sleeper rosters ──────────────────────
@@ -43232,14 +43247,17 @@ window.VaultPropModel = (function () {
   let bePrice = (() => { try { const v = localStorage.getItem(BEKEY); return v == null || v === 'price'; } catch (e) { return true; } })();
   let betBE = (() => { try { const v = parseFloat(localStorage.getItem(BEKEY)); return v > 0 && v < 1 ? v : 0.55; } catch (e) { return 0.55; } })();
   // Break-even a side's headline price implies, or null when the over/under
-  // pair isn't a sane two-way market (combined implied 100-112%). Same check
+  // pair isn't a sane two-way market (combined implied 100.5-115%). Same check
   // settle_bets.close_prices() applies, so the board and Vault Record grade
   // identically. Headline (r.over/r.under), never best-price: best mixes in
   // alt-line quotes (+1329 on a 4.5-reception line).
   function _priceBE(r, side) {
     const imp = a => (a == null || !isFinite(a)) ? null : (a > 0 ? 100 / (a + 100) : -a / (-a + 100));
     const po = imp(r && r.over), pu = imp(r && r.under);
-    if (po == null || pu == null || po + pu < 1 || po + pu > 1.12) return null;
+    // 100.5-115%: a real two-way always carries juice (+100/-100 is a no-price
+    // placeholder, and grading against it means a fake 50% bar); pick'em apps run
+    // up to ~12.5% (Sleeper -128/-128). Above 115% is junk (a -19900 side).
+    if (po == null || pu == null || po + pu < 1.005 || po + pu > 1.15) return null;
     return side === 'over' ? po : pu;
   }
   function _beFor(r, side) {
@@ -43875,6 +43893,7 @@ window.VaultPropModel = (function () {
     const mktArg = searching ? undefined : (allPos ? (curMarket || undefined) : curMarket);
     let rows = fb.propRows(MODEL, { timeframe: tf, pos: posArg, market: mktArg, team: teamFilter || undefined, search: searchQ || undefined, posMarketOnly: true });
     if (mineOnly && MINE) rows = rows.filter(r => (r.id && MINE.pids.has(String(r.id))) || MINE.names.has(_nn(r.name)));
+    if (fltBooks) rows = rows.map(_bookScope).filter(Boolean);
     const out = [];
     for (const r of rows) {
       if (r.synthetic) continue;                 // never fabricate — real lines only
@@ -43910,13 +43929,55 @@ window.VaultPropModel = (function () {
   }
   // ── Filters-drawer helpers ────────────────────────────────────────────────
   const _GR = { A: 4, B: 3, C: 2, D: 1, F: 0 };
+  // Trim a row to the selected books and recompute everything read off its
+  // quotes: the line (the chosen books' consensus), the headline over/under
+  // (their median at that line: what price-aware grading scores against) and
+  // the best price. Returns null when no selected book prices this prop.
+  // Mutates the row like ebRows' own fe assignment; rows are rebuilt per render.
+  function _bookScope(r) {
+    if (!fltBooks || !r || r.synthetic) return r;
+    const q = (r.quotes || []).filter(x => x && fltBooks.has(x.book));
+    if (!q.length) return null;
+    const fb = F(), isProb = r.kind === 'prob';
+    const line = isProb ? r.line : (fb.consensusLine(q) ?? r.line);
+    const at = q.filter(x => isProb || x.line == null || line == null || x.line === line);
+    const med = a => { const s = a.filter(v => v != null).sort((x, y) => x - y); return s.length ? s[Math.floor((s.length - 1) / 2)] : null; };
+    const vals = [...new Set(q.map(x => x.line).filter(v => v != null))].sort((a, b) => a - b);
+    return Object.assign(r, {
+      _allQuotes: r._allQuotes || r.quotes,   // every book, for line corroboration (lineTrust/_lineBooks)
+      quotes: q, line, value: isProb ? r.value : line,
+      over: med(at.map(x => x.over)), under: med(at.map(x => x.under)), book: (at[0] || q[0]).book,
+      best: { over: fb.bestOf(q, 'over', isProb ? null : line), under: fb.bestOf(q, 'under', isProb ? null : line) },
+      lineSpread: vals.length > 1 ? { min: vals[0], max: vals[vals.length - 1], n: vals.length } : null,
+    });
+  }
+  // Every book quoting a real line on the current board, most props first.
+  function ebBookList() {
+    try {
+      const counts = new Map();
+      F().propRows(MODEL, { timeframe: tf, posMarketOnly: true }).forEach(r => {
+        if (r.synthetic || ebGameOver(r)) return;
+        const seen = new Set();
+        (r.quotes || []).forEach(q => { if (q && q.book && !seen.has(q.book)) { seen.add(q.book); counts.set(q.book, (counts.get(q.book) || 0) + 1); } });
+      });
+      return [...counts.entries()].map(([book, n]) => ({ book, n })).sort((a, b) => b.n - a.n || a.book.localeCompare(b.book));
+    } catch (e) { return []; }
+  }
+  // A new book scope changes lines and prices, so every line-keyed cache
+  // (Vault read, L10 hit rate) is stale: clear them and persist the choice.
+  function ebSetBooks(set) {
+    fltBooks = set && set.size ? set : null;
+    try { fltBooks ? localStorage.setItem(BOOKS_KEY, JSON.stringify([...fltBooks])) : localStorage.removeItem(BOOKS_KEY); } catch (e) {}
+    _vaultClear();
+    for (const k in _hitCache) delete _hitCache[k];
+  }
   function ebGameKey(r) { const home = r.ha === 'home' ? r.team : r.opp, away = r.ha === 'home' ? r.opp : r.team; return (away || '?') + ' @ ' + (home || '?'); }
   // null = grade not computed yet (keep the row until it is); -1 = resolved with
   // no gradeable projection (a grade filter should hide it); else the A–F rank.
   function _gradeRankOf(r) { const k = propKey(r); if (!(k in _vaultCache)) return null; const dg = _displayGradeOf(r); if (!dg) return -1; return _GR[dg.letter] != null ? _GR[dg.letter] : -1; }
   function _trendActive() { return fltTrendMin > 0 || fltTrendMax < 100; }
-  function _ebFiltersActive() { return ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
-  function _ebFilterCount() { let n = 0; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
+  function _ebFiltersActive() { return !!fltBooks || ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
+  function _ebFilterCount() { let n = 0; if (fltBooks) n++; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
 
   function renderProps() {
     const host = document.getElementById('bt-v-props');
@@ -45131,7 +45192,8 @@ window.VaultPropModel = (function () {
     if (!mkt || mkt === r.market) return r;
     try {
       const rows = fb.propRows(MODEL, { timeframe: tf, pos: r.pos || curPos, market: mkt, posMarketOnly: true });
-      const pr = rows.find(x => !x.synthetic && ((r.id != null && String(x.id) === String(r.id)) || fb.normName(x.name) === fb.normName(r.name)));
+      const pr0 = rows.find(x => !x.synthetic && ((r.id != null && String(x.id) === String(r.id)) || fb.normName(x.name) === fb.normName(r.name)));
+      const pr = pr0 ? _bookScope(pr0) : null;   // same book scope as the board
       if (pr) { const fe = rowFairEV(pr) || pickemFE(pr); return Object.assign(pr, { fe: fe || pr.fe }); }
     } catch (e) {}
     return r;
@@ -45280,7 +45342,9 @@ window.VaultPropModel = (function () {
   function lineTrust(r) {
     if (!r || r.synthetic) return { books: 0, corrob: false };   // synth jitter isn't a market
     const seen = new Map();                                       // book → its line
-    for (const q of (r.quotes || [])) if (q && q.book && q.line != null && !seen.has(q.book)) seen.set(q.book, q.line);
+    // Corroboration is about the MARKET, not the user's book filter: judge the
+    // line against every book (_allQuotes) even when the board is scoped to one.
+    for (const q of (r._allQuotes || r.quotes || [])) if (q && q.book && q.line != null && !seen.has(q.book)) seen.set(q.book, q.line);
     const books = seen.size;
     if (books < 2) return { books, corrob: false };
     const lines = [...seen.values()];
@@ -45355,7 +45419,7 @@ window.VaultPropModel = (function () {
   // validation like the other caution tiers (docs/edge-feedback-loop.md).
   function _lineBooks(r) {
     const s = new Set();
-    ((r && r.quotes) || []).forEach(q => { if (q && q.book && q.line != null) s.add(q.book); });
+    ((r && (r._allQuotes || r.quotes)) || []).forEach(q => { if (q && q.book && q.line != null) s.add(q.book); });   // every book, not just the filtered ones
     return s;
   }
   const SINGLE_SRC_GAP_MAX = 0.20;
@@ -45991,6 +46055,7 @@ window.VaultPropModel = (function () {
   function ebResetFilters() {
     searchQ = ''; teamFilter = ''; mineOnly = false;
     ouFilter = 'all'; fltGrade = 0; fltTrendMin = 0; fltTrendMax = 100; fltGames = null;
+    if (fltBooks) ebSetBooks(null);
     ebSort = { key: 'ev', dir: -1 };
   }
   function ebGamesList() {
@@ -46000,6 +46065,7 @@ window.VaultPropModel = (function () {
       const map = new Map();   // game key → kickoff ISO
       rows.forEach(r => {
         if (r.synthetic || ebGameOver(r)) return;   // real, still-bettable games only (drop played)
+        if (fltBooks && !(r.quotes || []).some(q => q && fltBooks.has(q.book))) return;   // no selected book prices this game's props
         const k = ebGameKey(r);
         if (!map.has(k)) map.set(k, (rgc ? rgc(MODEL, r.team, r.opp) : null) || r.commence || null);
       });
@@ -46046,6 +46112,7 @@ window.VaultPropModel = (function () {
     const fb = F();
     const games = ebGamesList();
     const selKeys = fltGames || new Set(games.map(g => g.key));   // everything checked when unfiltered (null)
+    const books = ebBookList(), selBooks = fltBooks || new Set(books.map(b => b.book));
     const teams = fb ? fb.teams(MODEL) : [];
     const synced = !!((_lex(() => myTeamsData) || []).length) || Array.isArray(window._pfLeagueData);
     const SORTS = [['ev', 'EV'], ['grade', 'Grade'], ['vault', 'Edge'], ['sim', 'Win %'], ['hit', 'Hit % L10'], ['line', 'Line'], ['name', 'Player']];
@@ -46065,6 +46132,10 @@ window.VaultPropModel = (function () {
       +     '<div class="eb-dgh"><span>' + selKeys.size + ' of ' + games.length + ' selected</span><button class="eb-gclr" id="eb-gclr">Clear all</button></div>'
       +     games.map(g => '<label class="eb-gitem' + (selKeys.has(g.key) ? ' on' : '') + '" data-g="' + g.key + '"><span class="cb">✓</span><span class="gn">' + g.key + '</span>' + (g.time ? '<span class="gt">' + g.time + '</span>' : '') + '</label>').join('')
       +     '</div></div>' : '')
+      +   (books.length ? '<div class="eb-dsec"><div class="eb-dlbl">Only use these books.</div><div class="eb-dgames">'
+      +     '<div class="eb-dgh"><span>' + (fltBooks ? selBooks.size + ' of ' + books.length + ' selected' : 'All ' + books.length + ' books') + '</span><button class="eb-gclr" id="eb-bclr">' + (fltBooks ? 'Use all books' : 'Clear all') + '</button></div>'
+      +     books.map(b => '<label class="eb-gitem eb-bitem' + (selBooks.has(b.book) ? ' on' : '') + '" data-b="' + b.book.replace(/"/g, '&quot;') + '"><span class="cb">✓</span><span class="gn">' + b.book + '</span><span class="gt">' + b.n + ' props</span></label>').join('')
+      +     '</div><div class="eb-dhelp">Lines, prices, edges and grades all use only the books you pick. Pick\'em apps with no posted price (like PrizePicks) are graded against the flat bar in "Grade vs".</div></div>' : '')
       + '</div>';
     el.querySelector('#eb-dclose').onclick = ebCloseDrawer;
     el.querySelector('#eb-dreset').onclick = () => { ebResetFilters(); const sb = document.getElementById('bt-search'); if (sb) sb.value = ''; ebBuildDrawer(); renderProps(); };
@@ -46092,7 +46163,17 @@ window.VaultPropModel = (function () {
     // games multi-select
     const gclr = el.querySelector('#eb-gclr');
     if (gclr) gclr.onclick = () => { fltGames = new Set(); ebBuildDrawer(); renderPropsBoard(); };
-    el.querySelectorAll('.eb-gitem').forEach(it => it.onclick = () => {
+    // books multi-select: "Clear all" empties the pick (then choose), "Use all
+    // books" drops the filter; ticking every book again also drops it.
+    const bclr = el.querySelector('#eb-bclr');
+    if (bclr) bclr.onclick = () => { if (fltBooks) ebSetBooks(null); else { fltBooks = new Set(); } ebBuildDrawer(); if (!fltBooks) renderProps(); };
+    el.querySelectorAll('.eb-bitem').forEach(it => it.onclick = () => {
+      const b = it.dataset.b, cur = new Set(fltBooks || books.map(x => x.book));
+      cur.has(b) ? cur.delete(b) : cur.add(b);
+      ebSetBooks(cur.size === books.length ? null : cur);
+      ebBuildDrawer(); renderProps();
+    });
+    el.querySelectorAll('.eb-gitem:not(.eb-bitem)').forEach(it => it.onclick = () => {
       const key = it.dataset.g, cur = fltGames || new Set(games.map(g => g.key));
       cur.has(key) ? cur.delete(key) : cur.add(key);
       fltGames = (cur.size === games.length) ? null : cur;   // back to "all" → no filter
@@ -46665,7 +46746,7 @@ window.VaultPropModel = (function () {
       const t = g ? Date.parse(g.commence) : NaN;
       return !(t > Date.now());
     };
-    const props = ((bb && bb.props) || []).filter(b => !bbCountUnderPhantom(b) && !ebGameOver(b) && !bbOffSlate(b));
+    const props = ((bb && bb.props) || []).filter(b => !bbCountUnderPhantom(b) && !ebGameOver(b) && !bbOffSlate(b) && (!fltBooks || fltBooks.has(b.book)));
     const leans = (bb && bb.game_leans) || [];
     if (!props.length && !leans.length) { host.innerHTML = ''; return; }
     const POS = { QB: 'var(--bt-qb,#ff6680)', RB: 'var(--bt-rb,#37d6a3)', WR: 'var(--bt-wr,#5b9dff)', TE: 'var(--bt-te,#ffb545)' };
