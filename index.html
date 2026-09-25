@@ -46759,7 +46759,13 @@ window.VaultPropModel = (function () {
       return !(t > Date.now());
     };
     const props = ((bb && bb.props) || []).filter(b => !bbCountUnderPhantom(b) && !ebGameOver(b) && !bbOffSlate(b) && (!fltBooks || fltBooks.has(b.book)));
-    const leans = (bb && bb.game_leans) || [];
+    // Same slate gate for game leans: this week's board only, and gone at
+    // kickoff (a lean carries its game's commence; "AWY @ HOM" names the game).
+    const leans = ((bb && bb.game_leans) || []).filter(l => {
+      if (!bbGames.length || !/^(reg|post)/i.test((MODEL && MODEL.season_type) || '')) return true;
+      const m = /^(\S+) @ (\S+)$/.exec(l.game || ''); if (!m) return false;
+      return !bbOffSlate({ team: m[2], opp: m[1] });
+    });
     if (!props.length && !leans.length) { host.innerHTML = ''; return; }
     const POS = { QB: 'var(--bt-qb,#ff6680)', RB: 'var(--bt-rb,#37d6a3)', WR: 'var(--bt-wr,#5b9dff)', TE: 'var(--bt-te,#ffb545)' };
     const attr = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');

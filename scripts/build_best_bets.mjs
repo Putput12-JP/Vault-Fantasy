@@ -619,8 +619,19 @@ function gameLeans(feed) {
   // in the offseason — honor that. Leans light up in-season.
   if (gm.offseason) return { list: [], gated: 'offseason' };
   const teams = gm.teams || {}, hfa = num(gm.hfa) || 0, base = num(gm.base_pts) || 22.5;
+  // Slate gate (same rule as scoreProps): vegas_games runs weeks ahead, so
+  // in-season a lean only counts for an unstarted game on the served week.
+  // Without it an Oct-4 game headlined the Week 3 tile.
+  const inSeason = /^(reg|post)/i.test(feed.season_type || '');
+  const now = Date.now(), feedWeek = Number(feed.week) || null;
   const out = [];
+  let offslate = 0;
   for (const g of (feed.vegas_games || [])) {
+    if (inSeason) {
+      const t = g.commence ? Date.parse(g.commence) : NaN;
+      const wrongWeek = feedWeek != null && g.week != null && Number(g.week) !== feedWeek;
+      if (wrongWeek || !(Number.isFinite(t) && t > now)) { offslate++; continue; }
+    }
     const home = GM_ALIAS[g.home] || g.home, away = GM_ALIAS[g.away] || g.away;   // feed says LAR, model says LA
     const H = teams[home], A = teams[away]; if (!H || !A) continue;
     const gHfa = (gm.neutral || []).includes(`${away}@${home}`) ? 0 : hfa;   // international games: no home field
@@ -640,7 +651,7 @@ function gameLeans(feed) {
     }
   }
   out.sort((a, b) => b.lean - a.lean);
-  return { list: out.slice(0, LEANS), gated: null };
+  return { list: out.slice(0, LEANS), gated: null, offslate };
 }
 
 /* ── main ──────────────────────────────────────────────────────────────── */
@@ -661,7 +672,7 @@ function gameLeans(feed) {
     const props = scoreProps(feed, PM, KP);
     const leans = gameLeans(feed);
     log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.offslate} off-slate, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.sharpskip} sharp-disagree, ${props.weakskip} thin-edge-market, ${props.rechold} early-rec-hold, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
-    log(`game leans: ${leans.gated ? leans.gated : props.total >= 0 ? leans.list.length : 0}${leans.gated ? ' (empty)' : ''}`);
+    log(`game leans: ${leans.gated ? leans.gated : props.total >= 0 ? leans.list.length : 0}${leans.gated ? ' (empty)' : ` (${leans.offslate} off-slate)`}`);
     for (const b of props.list) log(`  • ${b.name} ${b.marketLabel} ${b.side.toUpperCase()} ${b.line} @ ${b.book} ${b.price > 0 ? '+' : ''}${b.price} — ${b.grade}, ${b.ev}% EV, ${b.books} books, ${b.games}g${b.sharpFair != null ? `, sharp ${(b.sharpFair * 100).toFixed(0)}% (gap ${b.sharpGap > 0 ? '+' : ''}${(b.sharpGap * 100).toFixed(0)}pt)` : ''}`);
 
     feed.best_bets = {
