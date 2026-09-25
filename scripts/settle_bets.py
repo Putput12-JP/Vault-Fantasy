@@ -92,6 +92,34 @@ def load_prop_model():
     except Exception:
         return {}
 
+# ── shadow: history-length shift (docs/history-shift-backtest.json) ─────────
+# The season-holdout found P(over) over-promises for players with little game
+# history (receptions: over hits ~13pt under promise at 3-8 games, honest by
+# 21+). data/prop_history_shift.json carries a per-market logit shift per
+# history bin, fit on past seasons only. It is SHADOW: nothing on the board
+# reads it. Settlement logs the shifted pick beside the live one (p_hist /
+# side_hist / won_hist) so the two can be compared on real closing lines before
+# anyone switches it on. Missing file => every shadow field is None.
+def load_history_shift():
+    try:
+        return json.load(open(os.path.join(DATA, "prop_history_shift.json")))
+    except Exception:
+        return None
+
+def history_shift_p_over(hs, market, p_over, hist_n):
+    """P(over) with the market's history-bin shift applied, or None when the
+    market isn't shifted (or no model prob)."""
+    if not hs or p_over is None or hist_n is None:
+        return None
+    m = (hs.get("markets") or {}).get(market)
+    if not m:
+        return None
+    for i, (lo, hi) in enumerate(hs.get("bins") or []):
+        if hist_n >= lo and (hi is None or hist_n <= hi):
+            p = clamp(p_over, 0.01, 0.99)
+            return sig(logit(p) + m["shift"][i])
+    return None
+
 def model_p_over(mp, proj, line):
     if mp is None or proj is None or line is None: return None
     try:
@@ -216,7 +244,7 @@ def settle_props(season_filter=None):
         better = (r.get("lastSeen") or "", len(r.get("samples") or [])) > \
                  (cur.get("lastSeen") or "", len(cur.get("samples") or []))
         if better: dedup[ident] = r
-    actuals_cache, model = {}, load_prop_model()
+    actuals_cache, model, hshift = {}, load_prop_model(), load_history_shift()
     picks, unmatched, unsettled = [], 0, 0
 
     for r in dedup.values():
@@ -313,6 +341,20 @@ def settle_props(season_filter=None):
         g_shrink = g_in + g_prior * 6.0 / (g_in + 6.0)
         grade = grade_for(p_model_side, g_shrink) if p_model_side is not None else None
 
+        # Shadow pick from the history-shifted P(over): its own side (the shift
+        # can flip a thin lean), settled at the same closing line. History is the
+        # backtest's definition: every prior-season game plus in-season games
+        # before this week, uncapped.
+        hist_n = g_in + games_played(prior_actuals, name, 10 ** 9)
+        p_h = history_shift_p_over(hshift, market, p_model, hist_n)
+        side_h = p_hist = won_hist = None
+        if p_h is not None:
+            side_h = "over" if p_h > 0.5 else "under"
+            p_hist = p_h if side_h == "over" else 1 - p_h
+            if not push:
+                won_hist = 1.0 if side_h == ("over" if actual > line_c else "under") else 0.0
+
+
         picks.append({
             "kind": "prop", "season": season, "seasonType": seasonType, "week": week,
             "pid": r.get("pid"), "name": name, "team": r.get("team"), "pos": r.get("pos"),
@@ -323,6 +365,7 @@ def settle_props(season_filter=None):
             "beat_close": beat_close,
             "p_model": p_model_side, "p_market": p_mkt_side, "games": g_in,
             "grade_n": round(g_shrink, 2), "grade": grade,
+            "hist_n": hist_n, "p_hist": p_hist, "side_hist": side_h, "won_hist": won_hist,
         })
 
     return picks, {"unsettled": unsettled, "unmatched_names": unmatched, "settled": len(picks)}
@@ -702,6 +745,16 @@ def main():
               f"win={wr:.3f} " if wr is not None else f"   {mk:14s} n={m['n']:4d} graded={m['n_graded']:4d} win=  -   "
               , f"clv-beat={cb:.3f}" if cb is not None else "clv-beat=  -  ",
               f"w={m['blend']['w_measured']}" if m['blend']['w_measured'] is not None else "")
+
+    # Shadow side-by-side (history shift vs live), same rows, -110 each.
+    sh = [p for p in prop_picks if p.get("won_hist") is not None and p.get("won_close") is not None]
+    if sh:
+        u = lambda ws: sum(100 / 110 if w == 1.0 else -1.0 for w in ws)
+        cur, hst = [p["won_close"] for p in sh], [p["won_hist"] for p in sh]
+        flips = sum(1 for p in sh if p["side_hist"] != p["side"])
+        print(f"[settle] history-shift shadow: n={len(sh)} flips={flips} "
+              f"live {sum(cur):.0f}-{len(cur) - sum(cur):.0f} {u(cur):+.1f}u | "
+              f"shadow {sum(hst):.0f}-{len(hst) - sum(hst):.0f} {u(hst):+.1f}u")
 
     if args.dry:
         print("[settle] --dry: not written"); return

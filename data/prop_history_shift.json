@@ -1,0 +1,117 @@
+{
+ "generated": "2026-09-25T00:40:28.518681+00:00",
+ "method": "logit shift by games-of-history bin, fit on season-holdout P(over) (calibrated)",
+ "bins": [
+  [
+   0,
+   8
+  ],
+  [
+   9,
+   14
+  ],
+  [
+   15,
+   20
+  ],
+  [
+   21,
+   null
+  ]
+ ],
+ "history": "prior-season games + in-season games before this week (raw count, uncapped)",
+ "min_rows_per_bin": 300,
+ "fit_seasons": [
+  2019,
+  2020,
+  2021,
+  2022,
+  2023,
+  2024,
+  2025
+ ],
+ "status": "shadow",
+ "markets": {
+  "rec": {
+   "shift": [
+    -0.4742,
+    -0.2423,
+    -0.082,
+    0.0474
+   ],
+   "oos_ll": [
+    0.6732,
+    0.6653
+   ]
+  },
+  "rush_att": {
+   "shift": [
+    -0.4578,
+    -0.1751,
+    -0.0861,
+    0.0847
+   ],
+   "oos_ll": [
+    0.6681,
+    0.6616
+   ]
+  },
+  "rush_yd": {
+   "shift": [
+    -0.2299,
+    -0.0705,
+    -0.0414,
+    0.0722
+   ],
+   "oos_ll": [
+    0.6471,
+    0.6466
+   ]
+  },
+  "pass_yd": {
+   "shift": [
+    -0.2884,
+    -0.1032,
+    0.1062,
+    -0.0476
+   ],
+   "oos_ll": [
+    0.6581,
+    0.6557
+   ]
+  },
+  "pass_att": {
+   "shift": [
+    -0.3705,
+    -0.1689,
+    -0.031,
+    -0.0807
+   ],
+   "oos_ll": [
+    0.647,
+    0.6418
+   ]
+  },
+  "pass_cmp": {
+   "shift": [
+    -0.3468,
+    -0.1152,
+    0.0465,
+    -0.0472
+   ],
+   "oos_ll": [
+    0.652,
+    0.6479
+   ]
+  }
+ },
+ "excluded": {
+  "rec_yd": {
+   "reason": "nested walk-forward did not improve OOS log-loss",
+   "oos_ll": [
+    0.6412,
+    0.6424
+   ]
+  }
+ }
+}
