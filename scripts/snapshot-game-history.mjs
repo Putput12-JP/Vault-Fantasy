@@ -68,7 +68,8 @@ function vaultLine(away, home) {
   if (!GM || !GM.teams) return null;
   const A = GM.teams[away], H = GM.teams[home];
   if (!A || !H) return null;
-  const hfa = GM.hfa || 0, base = GM.base_pts || 0;
+  const neutral = (GM.neutral || []).includes(`${away}@${home}`);  // international games: no home field
+  const hfa = neutral ? 0 : (GM.hfa || 0), base = GM.base_pts || 0;
   const margin = H.rate - A.rate + hfa;                       // home margin
   const total = 2 * base + (H.off + A.off) - (A.def + H.def); // hfa/2 terms cancel
   return { spread: num(-margin), total: num(total), winHome: num(normCdf(margin / (GM.sd_margin || 13.2))), off: GM.offseason ? 1 : 0 };

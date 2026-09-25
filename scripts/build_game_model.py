@@ -80,7 +80,9 @@ def fetch_games():
         wk = int(r["week"]) if r.get("week", "").isdigit() else 99
         rec = {"season": season, "week": wk, "ht": norm_team(r["home_team"]), "at": norm_team(r["away_team"]),
                "hs": hs, "as_": as_, "spread": f(r.get("spread_line")), "total_line": f(r.get("total_line")),
-               "played": hs is not None and as_ is not None}
+               "played": hs is not None and as_ is not None,
+               # international games / Super Bowls: nobody is home, so no HFA
+               "neutral": (r.get("location") or "").strip().lower() == "neutral"}
         out.append(rec)
     out.sort(key=lambda g: (g["season"], g["week"]))
     return out
@@ -102,9 +104,10 @@ def run(games, collect_from=None):
                 for t in rate: rate[t] *= CARRY
                 for t in off: off[t] *= CARRY; dff[t] *= CARRY
             cur = g["season"]
-        pm = rate[g["ht"]] - rate[g["at"]] + HFA
-        ph = BASE_PTS + off[g["ht"]] - dff[g["at"]] + HFA / 2
-        pa = BASE_PTS + off[g["at"]] - dff[g["ht"]] - HFA / 2
+        hfa = 0.0 if g["neutral"] else HFA
+        pm = rate[g["ht"]] - rate[g["at"]] + hfa
+        ph = BASE_PTS + off[g["ht"]] - dff[g["at"]] + hfa / 2
+        pa = BASE_PTS + off[g["at"]] - dff[g["ht"]] - hfa / 2
         pt = ph + pa
         if not g["played"]:
             continue
@@ -204,9 +207,10 @@ def main():
     played = [g for g in games if g["played"]]
     print(f"[game-model] {len(played)} completed games {games[0]['season']}–{played[-1]['season']}")
 
-    # fit HFA = mean home margin over the last 3 completed seasons
+    # fit HFA = mean home margin over the last 3 completed seasons (true home
+    # games only — a neutral-site "home" team has no crowd or travel edge)
     last3 = sorted({g["season"] for g in played})[-3:]
-    HFA = round(statistics.fmean([g["hs"] - g["as_"] for g in played if g["season"] in last3]), 3)
+    HFA = round(statistics.fmean([g["hs"] - g["as_"] for g in played if g["season"] in last3 and not g["neutral"]]), 3)
 
     # fit the residual sd's from the walk-forward, then recompute metrics with them
     _, _, _, preds = run(games, collect_from=TEST_FROM)
@@ -234,6 +238,10 @@ def main():
     if offseason:
         for t in rate: rate[t] *= CARRY
         for t in off: off[t] *= CARRY; dff[t] *= CARRY
+    # This season's neutral-site games as "AWAY@HOME" — every consumer of the
+    # line (app, best bets, line snapshots) drops HFA for these.
+    cur_season = max(g["season"] for g in games)
+    neutral = sorted({f'{g["at"]}@{g["ht"]}' for g in games if g["neutral"] and g["season"] == cur_season})
     teams = {t: {"rate": round(rate[t], 3), "off": round(off[t], 3), "def": round(dff[t], 3)}
              for t in sorted(set(list(rate) + list(off)))}
 
@@ -257,7 +265,7 @@ def main():
         "through_season": through[0], "through_week": through[1], "offseason": offseason,
         "base_pts": served_base, "hfa": served_hfa, "sd_margin": served_sd, "sd_total": SD_TOTAL,
         "params": {"k_margin": K_MARGIN, "k_score": K_SCORE, "carry": CARRY, "ridge": RIDGE},
-        "teams": teams, "backtest": m,
+        "teams": teams, "neutral": neutral, "backtest": m,
         "inseason_overlay": (overlay or None),
         "fit": {"hfa": HFA, "base_pts": BASE_PTS, "sd_margin": SD_MARGIN},   # pre-overlay historical fit
         "note": "Context line only — matches the market, does not beat the close. Never present as +EV.",

@@ -13482,6 +13482,13 @@ const VAULT_CHANGELOG = [
     ]
   },
   {
+    ts:'2026-09-25T02:00', tag:'Fixed', title:'No home-field edge for international games',
+    items:[
+      'Games played overseas or at a neutral stadium (like Ravens vs Cowboys in Brazil this week) were still giving the "home" team a home-field bump in the Vault line. Nobody is really home in those games, so that bump is gone.',
+      'Only a handful of games a season are affected, and their Vault spread, total and win % now treat both teams evenly.',
+    ]
+  },
+  {
     ts:'2026-09-25T01:30', tag:'Improved', title:'Grades pulled back on markets we haven\'t beaten yet',
     items:[
       'A few prop markets (Pass Yards, Pass Completions, Interceptions and Rush + Rec Yards) have come in below break-even every week of the season so far, so a confident A or B grade there is more likely noise than a real edge.',
@@ -42549,13 +42556,18 @@ window.VaultPropModel = (function () {
   function _gmPhi(z) { return 0.5 * (1 + _bmErf(z / Math.SQRT2)); }
   function _bmErf(x) { const s = x < 0 ? -1 : 1; x = Math.abs(x); const t = 1 / (1 + 0.3275911 * x);
     const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return s * y; }
+  function gmNeutral(away, home) {
+    const N = _gmModel && _gmModel.neutral;
+    return !!(N && N.indexOf(_gmTeam(away) + '@' + _gmTeam(home)) >= 0);
+  }
   // Sync prediction from the loaded model. { homeSpread, total, homeWinPct } or null.
   function gmPredict(away, home) {
     const M = _gmModel; if (!M || !M.teams) return null;
     const th = M.teams[_gmTeam(home)], ta = M.teams[_gmTeam(away)];
     if (!th || !ta) return null;
-    const pm = th.rate - ta.rate + M.hfa;                    // home margin (+ = home favored)
-    const ph = M.base_pts + th.off - ta.def + M.hfa / 2, pa = M.base_pts + ta.off - th.def - M.hfa / 2;
+    const hfa = gmNeutral(away, home) ? 0 : M.hfa;            // international games: no home field
+    const pm = th.rate - ta.rate + hfa;                      // home margin (+ = home favored)
+    const ph = M.base_pts + th.off - ta.def + hfa / 2, pa = M.base_pts + ta.off - th.def - hfa / 2;
     return { margin: +pm.toFixed(1), homeSpread: +(-pm).toFixed(1), total: +(ph + pa).toFixed(1),
              homePts: +ph.toFixed(1), awayPts: +pa.toFixed(1), homeWinPct: Math.round(_gmPhi(pm / M.sd_margin) * 100) };
   }

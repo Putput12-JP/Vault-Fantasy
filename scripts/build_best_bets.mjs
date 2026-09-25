@@ -611,6 +611,7 @@ function scoreProps(feed, PM, KP) {
 }
 
 /* ── game leans (CONTEXT only; empty while the model is gated) ──────────── */
+const GM_ALIAS = { OAK: 'LV', SD: 'LAC', STL: 'LA', LAR: 'LA', WSH: 'WAS' };
 function gameLeans(feed) {
   let gm = null;
   try { gm = JSON.parse(readFileSync(resolve(ROOT, 'data/game_model.json'), 'utf8')); } catch (e) { return { list: [], gated: 'no-model' }; }
@@ -620,9 +621,12 @@ function gameLeans(feed) {
   const teams = gm.teams || {}, hfa = num(gm.hfa) || 0, base = num(gm.base_pts) || 22.5;
   const out = [];
   for (const g of (feed.vegas_games || [])) {
-    const H = teams[g.home], A = teams[g.away]; if (!H || !A) continue;
-    const projMargin = (num(H.rate) - num(A.rate)) + hfa;            // home minus away
-    const projTotal = 2 * base + num(H.off) + num(A.off) + num(H.def) + num(A.def);
+    const home = GM_ALIAS[g.home] || g.home, away = GM_ALIAS[g.away] || g.away;   // feed says LAR, model says LA
+    const H = teams[home], A = teams[away]; if (!H || !A) continue;
+    const gHfa = (gm.neutral || []).includes(`${away}@${home}`) ? 0 : hfa;   // international games: no home field
+    const projMargin = (num(H.rate) - num(A.rate)) + gHfa;           // home minus away
+    // def is points PREVENTED (positive = good defense), so it comes off the total
+    const projTotal = 2 * base + num(H.off) + num(A.off) - num(H.def) - num(A.def);
     const mktSpreadHome = g.spread && g.spread.cons ? num(g.spread.cons.home) : null;   // home line (neg = favored)
     const mktTotal = g.total ? num(g.total.cons) : null;
     // spread lean: model's home margin vs the market's implied home margin (−spread)
