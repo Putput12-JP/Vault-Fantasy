@@ -352,6 +352,13 @@ function bestSide(quotes, side) {
 }
 const americanToProb = p => p == null ? null : (p < 0 ? (-p) / (-p + 100) : 100 / (p + 100));
 // EV per $1 for a win probability at an American price (payout side only).
+// Break-even the price we'd actually take implies (-130 -> 56.5%, +100 -> 50%).
+// The grade is scored against it, matching the board's default "Each pick's
+// price" mode and settle_bets.py, instead of one flat -110 bar for every price.
+function priceBE(american) {
+  if (american == null || !Number.isFinite(american)) return BE_REF;
+  return american > 0 ? 100 / (american + 100) : -american / (-american + 100);
+}
 function evPerDollar(winProb, american) {
   if (winProb == null || american == null) return null;
   const payout = american > 0 ? american / 100 : 100 / (-american);
@@ -499,7 +506,7 @@ function scoreProps(feed, PM, KP) {
         const trust = lineTrust(lq, line);
         // honest gates: corroborated line, confidence clears the bar, real +EV
         const ev = evPerDollar(g.padj, bs.price);          // confidence-adjusted EV vs best price
-        const letter = gradeLetter(g.padj, BE_REF);
+        const letter = gradeLetter(g.padj, priceBE(bs.price));   // vs THIS price's break-even
         const bettable = bs.price >= PRICE_MIN && bs.price <= PRICE_MAX; // no chalk, no lottery tickets
         // Role-unconfirmed phantom: market contradicts the depth chart AND the
         // projection sits far off this line → demote below B so it can't pass.
@@ -627,7 +634,7 @@ function gameLeans(feed) {
     feed.best_bets = {
       generated: new Date().toISOString(),
       season: feed.season || null, week: feed.week || null,
-      be_ref: BE_REF,
+      be_ref: BE_REF, be_mode: 'price',
       props: props.list,
       game_leans: leans.list,
       game_leans_note: leans.gated === 'offseason'

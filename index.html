@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-25T01:00', tag:'Improved', title:'Prop grades now account for the price',
+    items:[
+      'A Vault grade used to judge every pick against the same bar, no matter its odds. But a -130 under has to win 56.5% of the time to profit, while a +100 over only needs 50%, so heavily juiced picks graded too high and plus-money picks too low.',
+      'Grades now judge each pick against the win rate its own price needs. On the first two weeks of results, A and B grades went from losing money to turning a small profit.',
+      'Prefer the old way for pick\'em? The "Grade vs" menu on Player Props still lets you grade against a pick\'em entry, like a 3-pick power play at 55%.',
+    ]
+  },
+  {
     ts:'2026-09-24T23:30', tag:'Fixed', title:'Player Props grades and win chances now match the Over/Under cards',
     items:[
       'A prop\'s grade, edge and win chance in the list now always match the Over and Under cards when you open it. Before, the same prop could show an A and 82% in the list but an F and 45% in the card.',
@@ -43192,7 +43200,29 @@ window.VaultPropModel = (function () {
     ['5-pick power', 0.549], ['Flex / partial', 0.530], ['Even money', 0.500],
   ];
   const BEKEY = 'vault-bet-be';
+  // Price-aware grading (the default): each pick is graded against the break-
+  // even its OWN price implies (a -130 under needs 56.5%, a +100 over 50%),
+  // not one flat bar. Stored as 'price'; a stored number is a pickem entry the
+  // user chose and stays a flat bar. betBE is the flat bar in either mode (the
+  // fallback for rows with no clean two-way price, e.g. pickem-only lines).
+  let bePrice = (() => { try { const v = localStorage.getItem(BEKEY); return v == null || v === 'price'; } catch (e) { return true; } })();
   let betBE = (() => { try { const v = parseFloat(localStorage.getItem(BEKEY)); return v > 0 && v < 1 ? v : 0.55; } catch (e) { return 0.55; } })();
+  // Break-even a side's headline price implies, or null when the over/under
+  // pair isn't a sane two-way market (combined implied 100-112%). Same check
+  // settle_bets.close_prices() applies, so the board and Vault Record grade
+  // identically. Headline (r.over/r.under), never best-price: best mixes in
+  // alt-line quotes (+1329 on a 4.5-reception line).
+  function _priceBE(r, side) {
+    const imp = a => (a == null || !isFinite(a)) ? null : (a > 0 ? 100 / (a + 100) : -a / (-a + 100));
+    const po = imp(r && r.over), pu = imp(r && r.under);
+    if (po == null || pu == null || po + pu < 1 || po + pu > 1.12) return null;
+    return side === 'over' ? po : pu;
+  }
+  function _beFor(r, side) {
+    if (!bePrice) return betBE;
+    const b = _priceBE(r, side);
+    return b != null ? b : betBE;
+  }
   const WKEY = 'vault-bet-watch';
   function _watchLoad() { try { return new Set(JSON.parse(localStorage.getItem(WKEY) || '[]')); } catch (e) { return new Set(); } }
   const watch = _watchLoad();
@@ -44995,7 +45025,7 @@ window.VaultPropModel = (function () {
       padj = 0.5 + (prob - 0.5) * (n / (n + K));
       // Cap the grade on the side the row presents when its edge is flagged:
       // the same cap the board's Grade column applies, so card and row agree.
-      letter = cappedGradeLetter(padj, betBE, side === displaySide(r) ? _displayCaution(r) : null);
+      letter = cappedGradeLetter(padj, _beFor(r, side), side === displaySide(r) ? _displayCaution(r) : null);
     }
     return { side, best, book, fair, mev, prob, vev, letter, padj };
   }
@@ -45469,6 +45499,12 @@ window.VaultPropModel = (function () {
   // A–C clear the bar with room, D is a near-break-even coin toss, F is a losing
   // pick for that entry. Scored on margin over break-even, not an absolute %, so
   // the grade tracks whatever pickem entry the user actually plays.
+  // Tooltip tail naming the bar a grade was scored against.
+  function _beTip(r, side) {
+    const pb = bePrice ? _priceBE(r, side) : null;
+    return pb != null ? Math.round(pb * 1000) / 10 + '% break-even at this price'
+      : Math.round(betBE * 100) + '% break-even';
+  }
   function gradeLetter(padj, be) {
     const m = padj - be;
     return m >= 0.05 ? 'A' : m >= 0.03 ? 'B' : m >= 0.01 ? 'C' : m >= -0.02 ? 'D' : 'F';
@@ -45518,7 +45554,7 @@ window.VaultPropModel = (function () {
     const side = displaySide(r), sm = _sideMetrics(r, side, _cacheV(r));
     const p = sm.prob, n = c.g.n != null ? c.g.n : 0, letter = sm.letter, cls = letter.toLowerCase();
     const sd = side === 'over' ? 'Over' : 'Under';
-    const tip = 'Vault ' + sd + ' ' + Math.round(p * 100) + '% · ' + n + ' game' + (n === 1 ? '' : 's') + ' of history · vs ' + Math.round(betBE * 100) + '% break-even';
+    const tip = 'Vault ' + sd + ' ' + Math.round(p * 100) + '% · ' + n + ' game' + (n === 1 ? '' : 's') + ' of history · vs ' + _beTip(r, side);
     return '<span class="eb-grade ' + cls + '" title="' + tip + '">' + letter + '</span>';
   }
   // Grade rank (A=4 … F=0) + padj tiebreak for the DISPLAYED side, i.e. what the
@@ -45577,8 +45613,8 @@ window.VaultPropModel = (function () {
     const side = displaySide(r);
     const p = side === 'over' ? c.over : c.under, n = c.g.n != null ? c.g.n : 0, K = 6;
     const padj = 0.5 + (p - 0.5) * (n / (n + K));
-    const letter = cappedGradeLetter(padj, betBE, c.caution), cls = letter.toLowerCase(), sd = side === 'over' ? 'O' : 'U';
-    const tip = 'Vault ' + sd + ' ' + Math.round(p * 100) + '% · ' + n + ' game' + (n === 1 ? '' : 's') + ' of history · vs ' + Math.round(betBE * 100) + '% break-even';
+    const letter = cappedGradeLetter(padj, _beFor(r, side), c.caution), cls = letter.toLowerCase(), sd = side === 'over' ? 'O' : 'U';
+    const tip = 'Vault ' + sd + ' ' + Math.round(p * 100) + '% · ' + n + ' game' + (n === 1 ? '' : 's') + ' of history · vs ' + _beTip(r, side);
     return '<span class="eb-grade ' + cls + '" title="' + tip + '"><span class="eb-gside">' + sd + '</span>' + letter + '</span>';
   }
 
@@ -46179,13 +46215,17 @@ window.VaultPropModel = (function () {
       pc.style.display = isP ? 'inline-flex' : 'none';
       if (isP && !pc.dataset.built) {
         pc.innerHTML =
-          '<label class="eb-be" title="Vault grade is scored against this break-even. Pick the pickem entry you play — a 3-pick power play needs ~55% per leg to profit.">Grade vs <select id="eb-be-sel" class="bt-in">'
-          + BE_PRESETS.map(([lab, be]) => '<option value="' + be + '"' + (Math.abs(be - betBE) < 1e-6 ? ' selected' : '') + '>' + lab + ' · ' + Math.round(be * 100) + '%</option>').join('')
+          '<label class="eb-be" title="What a Vault grade is scored against. Each pick\'s price: the win rate that pick\'s own odds need (a -130 under needs 56.5%). Or pick the pickem entry you play: a 3-pick power play needs ~55% per leg.">Grade vs <select id="eb-be-sel" class="bt-in">'
+          + '<option value="price"' + (bePrice ? ' selected' : '') + '>Each pick\'s price</option>'
+          + BE_PRESETS.map(([lab, be]) => '<option value="' + be + '"' + (!bePrice && Math.abs(be - betBE) < 1e-6 ? ' selected' : '') + '>' + lab + ' · ' + Math.round(be * 100) + '%</option>').join('')
           + '</select></label>'
           + '<button class="eb-filtersbtn" id="eb-filtersbtn" title="Filter &amp; sort the board — side, grade, hit rate, games"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg> Filters<span class="eb-fbadge" id="eb-fbadge"></span></button>'
           + '<button class="eb-filtersbtn" id="eb-mypicks" title="Your logged picks + realized results by grade">My Picks<span id="eb-mp-count"></span></button>';
         pc.dataset.built = '1';
-        pc.querySelector('#eb-be-sel').onchange = e => { const v = parseFloat(e.target.value); if (v > 0 && v < 1) { betBE = v; try { localStorage.setItem(BEKEY, betBE); } catch (err) {} renderPropsBoard(); } };
+        pc.querySelector('#eb-be-sel').onchange = e => {
+          if (e.target.value === 'price') { bePrice = true; betBE = 0.55; try { localStorage.setItem(BEKEY, 'price'); } catch (err) {} renderPropsBoard(); return; }
+          const v = parseFloat(e.target.value); if (v > 0 && v < 1) { bePrice = false; betBE = v; try { localStorage.setItem(BEKEY, betBE); } catch (err) {} renderPropsBoard(); }
+        };
         pc.querySelector('#eb-filtersbtn').onclick = ebOpenDrawer;
         pc.querySelector('#eb-mypicks').onclick = () => { propsView = 'results'; renderPropsBoard(); };
       }
