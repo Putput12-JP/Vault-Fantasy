@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-24T23:00', tag:'Fixed', title:'Moneyline units in Vault Game Record',
+    items:[
+      'When Vault picked the away team on a moneyline, its units were counted at the home team\'s price. An underdog win at +380 was paid out like a -500 favorite, so the moneyline record looked far worse than it was.',
+      'Each moneyline pick is now counted at the price of the team Vault actually took.',
+    ]
+  },
+  {
     ts:'2026-09-19T12:00', tag:'Fixed', title:'Player Grades no longer shows already-played games',
     items:[
       'A player whose game has already kicked off is no longer graded on the Player Grades board — the number is locked and the matchup is settled, so it drops off.',
@@ -44370,12 +44377,25 @@ window.VaultPropModel = (function () {
   const _GVMKL = { spread: 'Spread', total: 'Total', ml: 'Moneyline' };
   const _gvSide = r => r.market === 'total' ? (r.side === 'under' ? 'Under' : 'Over')
     : (r.side === 'home' ? 'Home' : 'Away');
+  // Price of the side Vault TOOK on a moneyline. ml_open/ml_close in the ledger
+  // are always the HOME price, so reading them for an away pick paid an underdog
+  // win at the home favourite's number. Prefer the settler's side price; for
+  // older rows, a home pick uses ml_close and an away pick falls back to the
+  // no-vig price implied by p_market.
+  function _gvMlPrice(g) {
+    if (g.price_close != null) return g.price_close;
+    if (g.price_open != null) return g.price_open;
+    if (g.side === 'home') return g.ml_close != null ? g.ml_close : g.ml_open;
+    const p = g.p_market;
+    if (p == null || !(p > 0 && p < 1)) return null;
+    return p >= 0.5 ? -Math.round(100 * p / (1 - p)) : Math.round(100 * (1 - p) / p);
+  }
   function _pkVaultGame(ledger) {
     return ((ledger && ledger.games) || []).filter(g => g.market && g.market !== 'final').map(g => ({
       market: g.market, side: g.side, week: g.week, season: g.season,
       away: g.away, home: g.home, awayScore: g.away_score, homeScore: g.home_score,
       line: g.line_close != null ? g.line_close : g.line_open, vault: g.vault_line,
-      price: g.market === 'ml' ? (g.ml_close != null ? g.ml_close : g.ml_open) : -110,
+      price: g.market === 'ml' ? _gvMlPrice(g) : -110,
       beat: g.beat_close == null ? null : g.beat_close, offseason: !!g.model_offseason,
       res: g.push ? 'P' : (g.won_close === 1 ? 'W' : g.won_close === 0 ? 'L' : null),
     }));

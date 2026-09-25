@@ -494,7 +494,13 @@ def settle_games(season_filter=None):
                     p_close_side = pc if side == "home" else 1 - pc
                     p_open_side = po if side == "home" else 1 - po
                     clv_prob = p_close_side - p_open_side       # market drift toward the model's side
+            # ml_open/ml_close stay the HOME price (legacy readers key on it);
+            # price_open/price_close are the price of the side Vault TOOK, so an
+            # away pick isn't paid at the home favourite's number.
+            px_c = ml_c if side == "home" else ml_ac
+            px_o = ml_o if side == "home" else ml_ao
             picks.append({**base, "market": "ml", "side": side, "ml_open": ml_o, "ml_close": ml_c,
+                          "price_open": px_o, "price_close": px_c,
                           "vault_winhome": wh, "p_home": wh, "y_home": (None if push else (1.0 if home_won else 0.0)),
                           "p_model": (wh if side == "home" else 1.0 - wh),
                           "p_market": (p_mkt_home if side == "home" else (1 - p_mkt_home if p_mkt_home is not None else None)),
