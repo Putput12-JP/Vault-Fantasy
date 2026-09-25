@@ -120,6 +120,17 @@ def history_shift_p_over(hs, market, p_over, hist_n):
             return sig(logit(p) + m["shift"][i])
     return None
 
+def close_prices(cls):
+    """{"close_over", "close_under"} from a closing sample, or both None when
+    the pair isn't a real two-way market. Snapshots carry junk (a -19900 under;
+    a +483 over paired with a -100 placeholder), so accept a pair only when its
+    combined implied probability is 100-112% (median real prop hold ~105%)."""
+    o, u = cls.get("over"), cls.get("under")
+    po, pu = am_prob(o), am_prob(u)
+    if po is None or pu is None or not (1.0 <= po + pu <= 1.12):
+        return {"close_over": None, "close_under": None}
+    return {"close_over": o, "close_under": u}
+
 def model_p_over(mp, proj, line):
     if mp is None or proj is None or line is None: return None
     try:
@@ -366,6 +377,12 @@ def settle_props(season_filter=None):
             "p_model": p_model_side, "p_market": p_mkt_side, "games": g_in,
             "grade_n": round(g_shrink, 2), "grade": grade,
             "hist_n": hist_n, "p_hist": p_hist, "side_hist": side_h, "won_hist": won_hist,
+            # Closing consensus PRICES at line_close (both sides), so units can be
+            # scored at the real juice instead of a flat -110. None unless the
+            # pair is a sane two-way market; see close_prices(). bestOver/Under
+            # are deliberately NOT used: they mix in alt-line prices (+1329 on a
+            # 4.5-reception line) and would invent profit.
+            **close_prices(cls),
         })
 
     return picks, {"unsettled": unsettled, "unmatched_names": unmatched, "settled": len(picks)}
