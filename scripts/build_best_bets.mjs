@@ -444,6 +444,25 @@ function scoreProps(feed, PM, KP) {
   // committee/rotation players (RB2, WR3) while cutting deep backups.
   const depth = feed.vegas_depth || {};
   const DEPTH_MAX = { QB: 1, RB: 2, WR: 3, TE: 2 };
+  // Slate gate: the props feed merges cells and never subtracts, so a player's
+  // entry from an already-played week survives into the next one (Rice "vs IND"
+  // headlining Week 3 off his Week 2 lines). In-season, a prop only counts when
+  // its team+opp is an unstarted game on the served week's board.
+  const inSeason = /^(reg|post)/i.test(feed.season_type || '');
+  const now = Date.now(), feedWeek = Number(feed.week) || null;
+  const slateKick = {};
+  for (const g of (feed.vegas_games || [])) {
+    if (!g || !g.home || !g.away || !g.commence) continue;
+    if (feedWeek != null && g.week != null && Number(g.week) !== feedWeek) continue;
+    slateKick[[g.home, g.away].sort().join('|')] = g.commence;
+  }
+  const onSlate = p => {
+    if (!p.team || !p.opp) return false;
+    const kick = slateKick[[p.team, p.opp].sort().join('|')];
+    const t = kick ? Date.parse(kick) : NaN;
+    return Number.isFinite(t) && t > now;
+  };
+  let offslate = 0;
   // Role-corroboration guard (mirror the board's edgeCaution role tier): a
   // volume-market player whose depth rank the market contradicts is projected
   // off his own, possibly stale, history — a confident under/over there is a
@@ -459,6 +478,7 @@ function scoreProps(feed, PM, KP) {
   for (const id in props) {
     const p = props[id];
     if (isPre && p.commence) { const t = new Date(p.commence).getTime(); if (Number.isFinite(t) && t < regCutoff) { preskip++; continue; } }
+    if (inSeason && !onSlate(p)) { offslate++; continue; }
     // Gameday health (set by fetch-pickem-props from the live Sleeper inactive
     // feed): p.out = ruled out / doubtful → props void; p.impacted = teammate of
     // an OUT starter (QB1/RB1/WR1) whose projection assumes a lineup that just
@@ -554,6 +574,7 @@ function scoreProps(feed, PM, KP) {
         }
         cands.push({
           id, name: p.name, team: p.team || null, pos: p.pos || null, opp: p.opp || null,
+          commence: slateKick[[p.team, p.opp].sort().join('|')] || p.commence || null,
           market: mk, marketLabel: MKT_LABEL[mk] || mk, line, side,
           book: bs.book, price: bs.price,
           ev: round(ev * 100, 1),                          // % EV per $1 at best price
@@ -578,7 +599,7 @@ function scoreProps(feed, PM, KP) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, scored, gated, preskip, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, rechold, total: cands.length };
+  return { list, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, rechold, total: cands.length };
 }
 
 /* ── game leans (CONTEXT only; empty while the model is gated) ──────────── */
@@ -627,7 +648,7 @@ function gameLeans(feed) {
     log(KP ? `sharp anchor: kalshi_props.json (${KP.count} markets)` : 'sharp anchor: none (kalshi_props.json missing) — agreement gate off');
     const props = scoreProps(feed, PM, KP);
     const leans = gameLeans(feed);
-    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.sharpskip} sharp-disagree, ${props.rechold} early-rec-hold, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
+    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.offslate} off-slate, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.sharpskip} sharp-disagree, ${props.rechold} early-rec-hold, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
     log(`game leans: ${leans.gated ? leans.gated : props.total >= 0 ? leans.list.length : 0}${leans.gated ? ' (empty)' : ''}`);
     for (const b of props.list) log(`  • ${b.name} ${b.marketLabel} ${b.side.toUpperCase()} ${b.line} @ ${b.book} ${b.price > 0 ? '+' : ''}${b.price} — ${b.grade}, ${b.ev}% EV, ${b.books} books, ${b.games}g${b.sharpFair != null ? `, sharp ${(b.sharpFair * 100).toFixed(0)}% (gap ${b.sharpGap > 0 ? '+' : ''}${(b.sharpGap * 100).toFixed(0)}pt)` : ''}`);
 

@@ -13497,6 +13497,13 @@ const VAULT_CHANGELOG = [
     ]
   },
   {
+    ts:'2026-09-24T20:00', tag:'Fixed', title:'Vault Best Bets only shows this week\'s games',
+    items:[
+      'Vault Best Bets could headline a pick from last week\'s slate, like a player shown against the team he already played, with lines from a game that was already over.',
+      'Every pick in Best Bets is now tied to a game on this week\'s board that hasn\'t kicked off yet, and it drops off as soon as that game starts.',
+    ]
+  },
+  {
     ts:'2026-09-19T12:00', tag:'Fixed', title:'Player Grades no longer shows already-played games',
     items:[
       'A player whose game has already kicked off is no longer graded on the Player Grades board — the number is locked and the matchup is settled, so it drops off.',
@@ -46571,7 +46578,23 @@ window.VaultPropModel = (function () {
     // Also drop any best bet whose game has already been played: the precomputed
     // feed is served until the next cron rebuild, so an early-slate game can be
     // final while its pick still sits in the feed (see ebGameOver).
-    const props = ((bb && bb.props) || []).filter(b => !bbCountUnderPhantom(b) && !ebGameOver(b));
+    // Slate gate (mirrors build_best_bets): the props feed never subtracts, so a
+    // pick built off a previous week's entry can ride along (Rice "vs IND" on the
+    // Week 3 tile). Keep a pick only if its matchup is an unstarted game on the
+    // served week. ebGameOver alone can't catch this: played games drop off the
+    // board and the precomputed pick carries no commence of its own.
+    const bbGames = (MODEL && MODEL._allGames) || [];
+    const bbWeek = Number(MODEL && MODEL.week) || null;
+    const bbOffSlate = b => {
+      if (!bbGames.length || !/^(reg|post)/i.test((MODEL && MODEL.season_type) || '')) return false;
+      if (!b.team || !b.opp) return true;
+      const pair = [b.team, b.opp].sort().join('|');
+      const g = bbGames.find(g => g && g.commence && [g.home, g.away].sort().join('|') === pair
+        && (bbWeek == null || g.week == null || Number(g.week) === bbWeek));
+      const t = g ? Date.parse(g.commence) : NaN;
+      return !(t > Date.now());
+    };
+    const props = ((bb && bb.props) || []).filter(b => !bbCountUnderPhantom(b) && !ebGameOver(b) && !bbOffSlate(b));
     const leans = (bb && bb.game_leans) || [];
     if (!props.length && !leans.length) { host.innerHTML = ''; return; }
     const POS = { QB: 'var(--bt-qb,#ff6680)', RB: 'var(--bt-rb,#37d6a3)', WR: 'var(--bt-wr,#5b9dff)', TE: 'var(--bt-te,#ffb545)' };
