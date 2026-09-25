@@ -42559,12 +42559,14 @@ window.VaultPropModel = (function () {
 #page-betting .gmx-cmp{margin-left:auto;cursor:pointer;background:none;border:1px solid var(--bt-border2);color:var(--bt-text2);font:700 11.5px var(--bt-mono);border-radius:999px;padding:4px 10px;transition:transform var(--dur-release) var(--ease-spring),color .15s ease,border-color .15s ease}
 #page-betting .gmx-cmp:hover{color:var(--bt-text);border-color:var(--bt-border3)}
 #page-betting .gmx-vrow{display:grid;grid-template-columns:repeat(3,1fr);padding:8px 0 14px}
-#page-betting .gmx-vrow>div{padding:0 18px;min-width:0}
+#page-betting .gmx-vrow>div{padding:0 18px;min-width:0;text-align:center}
+#page-betting .gmx-vrow .gmx-cmp2{justify-content:center;text-align:left}
 #page-betting .gmx-vrow>div+div{border-left:1px solid var(--bt-border)}
-#page-betting .gmx-cmp2{font:600 12px var(--bt-mono);color:var(--bt-muted);margin-top:3px}
-#page-betting .gmx-cmp2 span{display:block;line-height:1.55}
-#page-betting .gmx-cmp2 b{color:var(--bt-text2)}
-#page-betting .gmx-cmp2 .v b{color:var(--bt-accent2)}
+#page-betting .gmx-cmp2{display:grid;grid-template-columns:auto auto 1fr;column-gap:14px;row-gap:2px;align-items:baseline;justify-content:start;font:600 12px var(--bt-mono);color:var(--bt-muted);margin-top:5px;line-height:1.5}
+#page-betting .gmx-cmp2.nt{grid-template-columns:auto 1fr}
+#page-betting .gmx-cmp2 .hd{font:700 9px var(--bt-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--bt-muted);opacity:.75}
+#page-betting .gmx-cmp2 b{color:var(--bt-text2);font-weight:700}
+#page-betting .gmx-cmp2 b.v{color:var(--bt-accent2)}
 #page-betting .gmx-tilt{font-size:12.5px;color:var(--bt-muted);margin-top:3px}
 #page-betting .gmx-tilt b{color:var(--bt-text)}
 #page-betting .gmx-tilt.even{opacity:.75}
@@ -43384,7 +43386,16 @@ window.VaultPropModel = (function () {
       let vbody;
       if (gp) {
         const mkSp = gmxMkSp(g), mkT = gmxMkT(g);
-        const col = (lab, v, mk, tilt, even) => '<div><div class="gmx-flab">' + lab + '</div><div class="gmx-cmp2"><span class="v">Vault <b>' + v + '</b></span><span>Market <b>' + mk + '</b></span></div><div class="gmx-tilt' + (even ? ' even' : '') + '">' + tilt + '</div></div>';
+        // Each comparison is a tiny aligned grid: source | team | line, one row
+        // for Vault and one for the market. v / mk are [team, value]; a null team
+        // (the total) drops the team column.
+        const col = (lab, v, mk, tilt, even, valHead) => {
+          const hasTeam = v[0] != null;
+          const r = (src, x, cls) => '<span class="src">' + src + '</span>' + (hasTeam ? '<b class="tm' + cls + '">' + x[0] + '</b>' : '') + '<b class="val' + cls + '">' + x[1] + '</b>';
+          return '<div><div class="gmx-flab">' + lab + '</div><div class="gmx-cmp2' + (hasTeam ? '' : ' nt') + '"><span></span>' + (hasTeam ? '<span class="hd">Team</span>' : '') + '<span class="hd">' + valHead + '</span>'
+            + r('Vault', v, ' v') + r('Market', mk, '') + '</div><div class="gmx-tilt' + (even ? ' even' : '') + '">' + tilt + '</div></div>';
+        };
+        const spParts = h => { const t = gmxSp(g, h); const i = t.lastIndexOf(' '); return i < 0 ? ['', t] : [t.slice(0, i), t.slice(i + 1)]; };
         const dS = mkSp != null ? gp.homeSpread - mkSp : 0, dT = mkT != null ? gp.total - mkT : 0;
         const spT = Math.abs(dS) >= 1 ? 'Vault leans <b>' + (dS < 0 ? g.home : g.away) + '</b> by ' + Math.abs(dS).toFixed(1) : 'In line with the market';
         const toT = Math.abs(dT) >= 1.5 ? 'Vault leans <b>' + (dT > 0 ? 'higher' : 'lower') + '</b> by ' + Math.abs(dT).toFixed(1) : 'In line with the market';
@@ -43392,9 +43403,9 @@ window.VaultPropModel = (function () {
         const mf = m.impH == null ? null : (fav === g.home ? m.impH : 100 - m.impH), dW = mf == null ? 0 : vf - mf;
         const wT = Math.abs(dW) >= 6 ? 'Vault ' + (dW > 0 ? 'higher' : 'lower') + ' on <b>' + fav + '</b> by ' + Math.abs(dW) + ' pts' : 'In line with the market';
         vbody = '<div class="gmx-vrow">'
-          + col('Spread', gmxSp(g, gp.homeSpread), gmxSp(g, mkSp), spT, Math.abs(dS) < 1)
-          + col('Total', gp.total.toFixed(1), mkT != null ? round05(mkT) : '–', toT, Math.abs(dT) < 1.5)
-          + col('Win chance', fav + ' ' + vf + '%', mf != null ? fav + ' ' + mf + '%' : '–', wT, Math.abs(dW) < 6) + '</div>';
+          + col('Spread', spParts(gp.homeSpread), mkSp != null ? spParts(mkSp) : ['', '–'], spT, Math.abs(dS) < 1, 'Line')
+          + col('Total', [null, gp.total.toFixed(1)], [null, mkT != null ? round05(mkT) : '–'], toT, Math.abs(dT) < 1.5, 'Line')
+          + col('Win chance', [fav, vf + '%'], [fav, mf != null ? mf + '%' : '–'], wT, Math.abs(dW) < 6, 'Win %') + '</div>';
       } else {
         vbody = '<div class="gmx-vnote">' + (seasonReg ? 'Vault’s line appears once the model loads.' : 'Vault’s line switches on in the regular season.') + '</div>';
       }
