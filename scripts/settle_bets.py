@@ -351,6 +351,15 @@ def settle_props(season_filter=None):
         g_prior = min(games_played(prior_actuals, name, 10 ** 9), 17)
         g_shrink = g_in + g_prior * 6.0 / (g_in + 6.0)
         grade = grade_for(p_model_side, g_shrink) if p_model_side is not None else None
+        # SHADOW price-aware grade: the same shrink, but judged against the
+        # side's OPENING price (what Vault saw when it graded) instead of a flat
+        # 0.55. A -130 under needs 56.5%, a +100 over 50%. Backtest:
+        # scripts/backtest_price_grades.py. Nothing on the board reads it yet.
+        opx = close_prices(opn)      # same two-way sanity check, on the open
+        be_open = am_prob(opx["close_over"] if side == "over" else opx["close_under"]) if side else None
+        grade_px = (grade_for(p_model_side, g_shrink, be_open)
+                    if (p_model_side is not None and be_open is not None) else None)
+
 
         # Shadow pick from the history-shifted P(over): its own side (the shift
         # can flip a thin lean), settled at the same closing line. History is the
@@ -383,6 +392,8 @@ def settle_props(season_filter=None):
             # are deliberately NOT used: they mix in alt-line prices (+1329 on a
             # 4.5-reception line) and would invent profit.
             **close_prices(cls),
+            "open_over": opx["close_over"], "open_under": opx["close_under"],
+            "grade_px": grade_px,
         })
 
     return picks, {"unsettled": unsettled, "unmatched_names": unmatched, "settled": len(picks)}
