@@ -13477,7 +13477,7 @@ const VAULT_CHANGELOG = [
     items:[
       'A Vault grade used to judge every pick against the same bar, no matter its odds. But a -130 under has to win 56.5% of the time to profit, while a +100 over only needs 50%, so heavily juiced picks graded too high and plus-money picks too low.',
       'Grades now judge each pick against the win rate its own price needs. On the first two weeks of results, A and B grades went from losing money to turning a small profit.',
-      'Prefer the old way for pick\'em? The "Grade vs" menu on Player Props still lets you grade against a pick\'em entry, like a 3-pick power play at 55%.',
+      'Everyone starts on price-aware grades, including anyone who had picked a pick\'em entry before. Prefer grading for pick\'em? Choose your entry again in the "Grade vs" menu on Player Props, like a 3-pick power play at 55%, and Vault will remember it.',
     ]
   },
   {
@@ -43205,6 +43205,15 @@ window.VaultPropModel = (function () {
   // not one flat bar. Stored as 'price'; a stored number is a pickem entry the
   // user chose and stays a flat bar. betBE is the flat bar in either mode (the
   // fallback for rows with no clean two-way price, e.g. pickem-only lines).
+  // One-time move to price-aware grading: a pickem preset saved BEFORE the
+  // switch is reset to 'price' once (flag below), so every user starts on
+  // price-aware grades. Any choice made after that is kept as usual.
+  try {
+    if (!localStorage.getItem('vault-bet-be-migrated')) {
+      localStorage.setItem(BEKEY, 'price');
+      localStorage.setItem('vault-bet-be-migrated', '1');
+    }
+  } catch (e) {}
   let bePrice = (() => { try { const v = localStorage.getItem(BEKEY); return v == null || v === 'price'; } catch (e) { return true; } })();
   let betBE = (() => { try { const v = parseFloat(localStorage.getItem(BEKEY)); return v > 0 && v < 1 ? v : 0.55; } catch (e) { return 0.55; } })();
   // Break-even a side's headline price implies, or null when the over/under
