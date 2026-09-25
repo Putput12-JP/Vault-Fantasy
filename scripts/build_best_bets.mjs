@@ -171,7 +171,23 @@ function buildMatchupCtx(feed) {
     if (sp) { if (g.home) spreadByTeam[g.home] = num(sp.home); if (g.away) spreadByTeam[g.away] = num(sp.away); }
     if (tot != null) { if (g.home) totalByTeam[g.home] = num(tot); if (g.away) totalByTeam[g.away] = num(tot); }
   }
-  return { dvp, leagueFpa, spreadByTeam, totalByTeam, gs: loadGameScript() };
+  return { dvp, leagueFpa, spreadByTeam, totalByTeam, gs: loadGameScript(), wx: loadWeather() };
+}
+// Kickoff wind (scripts/fetch-weather.mjs → data/weather.json). Each game carries a
+// ready-made multiplier per market (mult.pass_yd), present only when the measured
+// wind term is active, the game is outdoors and kickoff is near. Team → its SOONEST
+// upcoming game. Absent file / game / market → ×1.
+function loadWeather() {
+  let wx; try { wx = JSON.parse(readFileSync(resolve(ROOT, 'data/weather.json'), 'utf8')); } catch (e) { return {}; }
+  const byTeam = {}, al = t => ({ LAR: 'LA', WSH: 'WAS', LVR: 'LV', JAC: 'JAX' }[t] || t);
+  for (const g of (wx.games || []).slice().sort((a, b) => Date.parse(a.commence) - Date.parse(b.commence)))
+    for (const t of [g.home, g.away]) if (t && !byTeam[al(t)]) byTeam[al(t)] = g;
+  return byTeam;
+}
+function windMultOf(wx, team, mk) {
+  if (!wx || !team) return 1;
+  const g = wx[({ LAR: 'LA', WSH: 'WAS', LVR: 'LV', JAC: 'JAX' }[team] || team)];
+  return num(g && g.mult && g.mult[mk]) ?? 1;
 }
 function matchupAdjFor(ctx, p, mk) {
   let oppMult = 1, envMult = 1;
@@ -182,7 +198,7 @@ function matchupAdjFor(ctx, p, mk) {
   const spread = p.team != null ? (ctx.spreadByTeam[p.team] ?? null) : null;
   const total = p.team != null ? (ctx.totalByTeam[p.team] ?? null) : null;
   if (total != null && spread != null) envMult = clamp(1 + _ENV_BETA * ((total / 2 - spread / 2) / _ENV_AVG - 1), 0.92, 1.10);
-  return { oppMult, envMult, scriptMult: scriptMultOf(ctx.gs, mk, spread) };
+  return { oppMult, envMult, scriptMult: scriptMultOf(ctx.gs, mk, spread), windMult: windMultOf(ctx.wx, p.team, mk) };
 }
 
 /* ── nflverse game logs → per-player weeks (mirror prop-history.js) ─────── */
@@ -312,10 +328,10 @@ function fairProbOver(PM, name, marketKey, line, role, adj) {
   let proj = projectFrom(weeks, m, minPrior, r); if (proj == null) return null;
   const roleMult = r && r.mult != null ? r.mult : null;
   const logProj = roleMult ? proj / roleMult : proj;   // pre-anchor level, for provenance
-  // Fold in the matchup context the board already applies — opponent × environment
+  // Fold in the matchup context the board already applies: opponent × environment
   // × game-script. scriptMult scales the VOLUME term only (proj = vol×eff), never
-  // efficiency. All three are null-safe (×1) so a cold model changes nothing.
-  if (adj) proj *= (num(adj.oppMult) ?? 1) * (num(adj.envMult) ?? 1) * (num(adj.scriptMult) ?? 1);
+  // efficiency. windMult is the measured kickoff-wind cut (pass_yd). All are null-safe (×1).
+  if (adj) proj *= (num(adj.oppMult) ?? 1) * (num(adj.envMult) ?? 1) * (num(adj.scriptMult) ?? 1) * (num(adj.windMult) ?? 1);
   const dist = m.dist || (m.kind === 'poisson' ? 'poisson' : 'normal');
   const count = m.kind === 'count';
   const sd = dist === 'poisson' ? Math.sqrt(Math.max(proj, 0))

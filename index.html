@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-25T22:00', tag:'Improved', title:'Passing yards now account for wind',
+    items:[
+      'Vault now checks the kickoff wind forecast for every outdoor game. When it tops 10 mph, QB passing yards projections come down, by up to 15% in the windiest games.',
+      'The size of the cut comes from how real QBs threw in windy games over the last two seasons, beyond what the betting total already expected.',
+      'Open a passing yards prop in a windy game to see the forecast wind and how much it moved the projection. Domes and closed roofs are never adjusted.',
+    ]
+  },
+  {
     ts:'2026-09-25T20:00', tag:'Improved', title:'The new Game Markets layout, now on your phone',
     items:[
       'On a phone, each game now shows Vault\'s projected score and win chance first, then the best prices, then how Vault\'s line compares to the market, all stacked so nothing needs a sideways scroll.',
@@ -41459,7 +41467,8 @@ window.VaultPropModel = (function () {
     if (typeof m.proj_adj === 'number' && m.proj_adj > 0) proj *= m.proj_adj;
     // scriptMult skews pass/rush VOLUME off the spread; folded into the product,
     // it scales the VOLUME term only (proj = vol×eff ⇒ k·vol·eff), never efficiency.
-    proj *= (num(opts.oppMult) ?? 1) * (num(opts.envMult) ?? 1) * (num(opts.scriptMult) ?? 1) * (num(opts.usageMult) ?? 1);   // usageMult = measured injury teammate-cascade
+    proj *= (num(opts.oppMult) ?? 1) * (num(opts.envMult) ?? 1) * (num(opts.scriptMult) ?? 1) * (num(opts.usageMult) ?? 1)   // usageMult = measured injury teammate-cascade
+          * (num(opts.windMult) ?? 1);   // windMult = measured kickoff-wind cut (data/weather.json; pass_yd only)
     const dist = m.dist || (m.kind === 'poisson' ? 'poisson' : 'normal');   // #4 per-market distribution
     const count = m.kind === 'count';
     const sd = dist === 'poisson' ? Math.sqrt(Math.max(proj, 0))
@@ -45327,7 +45336,7 @@ window.VaultPropModel = (function () {
           + (drop ? ' Vault’s projection (' + proj + ') disagrees with it, so the lean and grade are held back until a second book corroborates the line.' : '') + '">'
           + 'single book' + (oneBook ? ' · ' + oneBook : '') + (drop ? ' · line unconfirmed' : '') + '</div>'
       : '';
-    return '<div class="bx-meta">' + cProj + cOpp + cBest + cGrade + cSim + '</div>' + srcTag;
+    return '<div class="bx-meta">' + cProj + cOpp + cBest + cGrade + cSim + '</div>' + srcTag + windNoteHTML(r);
   }
   // Per-side (over|under) metrics for a prop: best price + book, de-vig fair,
   // market EV, Vault win-prob, Vault edge, and the shrunk grade letter. Shared by
@@ -46124,7 +46133,36 @@ window.VaultPropModel = (function () {
     if (fam === 'pass_td') { const d = (_gs.td_damp == null ? 0.5 : _gs.td_damp); raw = 1 + d * (raw - 1); }  // TD Poisson tail: damp
     return Math.max(lo, Math.min(hi, raw));
   }
-  // { oppMult, envMult, scriptMult, oppRank, teamTotal, spread } — 1× until data loads.
+  // ── kickoff wind (data/weather.json, scripts/fetch-weather.mjs) ──────────────
+  // Each game carries a ready-made multiplier per market (mult.pass_yd), present
+  // only when the measured wind term (scripts/build_wind_model.py) is active, the
+  // game is outdoors and kickoff is within 3 days. Team → its SOONEST upcoming
+  // game. Absent file / game / market → ×1. Same lazy-load + repaint as loadGs.
+  let _wx = null, _wxTried = false;
+  const _wxTeam = t => ({ LAR: 'LA', WSH: 'WAS', LVR: 'LV', JAC: 'JAX' }[t] || t);
+  function loadWx() {
+    if (_wx || _wxTried) return;
+    _wxTried = true;
+    const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
+    fetch(base + '/weather.json').then(r => (r.ok ? r.json() : null)).then(j => {
+      const byTeam = {};
+      ((j && j.games) || []).slice().sort((a, b) => Date.parse(a.commence) - Date.parse(b.commence))
+        .forEach(g => [g.home, g.away].forEach(t => { if (t && !byTeam[_wxTeam(t)]) byTeam[_wxTeam(t)] = g; }));
+      _wx = byTeam;
+      if (Object.values(byTeam).some(g => g.mult)) { _vaultClear(); if (view === 'props') renderPropsBoard(); }
+    }).catch(() => { _wx = {}; });
+  }
+  function _wxGame(team) { if (!_wx) { loadWx(); return null; } return team ? (_wx[_wxTeam(team)] || null) : null; }
+  function _windMult(r) { const g = _wxGame(r.team), m = g && g.mult && g.mult[r.market]; return (typeof m === 'number' && m > 0) ? m : 1; }
+  // Plain-English wind line for the prop detail. Only when the wind actually moved
+  // this projection; a calm or indoor game says nothing.
+  function windNoteHTML(r) {
+    const g = _wxGame(r.team), m = _windMult(r);
+    if (!g || m >= 1 || g.wind_mph == null) return '';
+    return '<div class="ph-src warn" title="Forecast wind at kickoff (' + g.stadium + '). Vault measured that passing yards fall once kickoff wind tops 10 mph, beyond what the Vegas total already expects, and trims this projection to match.">'
+      + 'Wind ' + Math.round(g.wind_mph) + ' mph' + (g.gust_mph != null ? ' (gusts ' + Math.round(g.gust_mph) + ')' : '') + ' · projection −' + Math.round((1 - m) * 100) + '%</div>';
+  }
+  // { oppMult, envMult, scriptMult, windMult, oppRank, teamTotal, spread } — 1× until data loads.
   function matchupAdj(r) {
     let oppMult = 1, envMult = 1, oppRank = null;
     if (!_dvp) loadDvp();
@@ -46136,7 +46174,7 @@ window.VaultPropModel = (function () {
     if (teamTotal != null) envMult = Math.min(1.10, Math.max(0.92, 1 + _ENV_BETA * (teamTotal / _ENV_AVG - 1)));
     const spread = _teamSpread(r.team);
     const scriptMult = _scriptMult(r.market, spread);
-    return { oppMult, envMult, scriptMult, oppRank, teamTotal, spread };
+    return { oppMult, envMult, scriptMult, windMult: _windMult(r), oppRank, teamTotal, spread };
   }
   function oppRankCell(r) {
     if (!r.opp || !r.pos) return '<span class="mut">—</span>';
@@ -46202,7 +46240,7 @@ window.VaultPropModel = (function () {
     const vac = vacatedInfo(r);                                                               // roster-departure vacated share (or null / caution)
     const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1) * ((vac && vac.mult) ? vac.mult : 1);  // injury cascade × QB-out × season-over-season departure
     const adj = matchupAdj(r);                                                                // DvP opponent + Vegas-total environment → market-native projection
-    const p = PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: usage !== 1 ? usage : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
+    const p = PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: usage !== 1 ? usage : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, windMult: adj.windMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
       let ev = null, proj = null, g = null, unv = false, over = null, under = null, caution = null, side = fe.side || 'over';
       if (v && v.proj != null) {
         proj = v.proj; over = v.over; under = v.under;

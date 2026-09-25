@@ -1,0 +1,47 @@
+{
+ "generated": "2026-09-25T12:34Z",
+ "active": true,
+ "markets": [
+  "pass_yd"
+ ],
+ "knot_mph": 10,
+ "slope_per_mph": -0.03335,
+ "floor": 0.85,
+ "mult_at_mph": {
+  "5": 1.0,
+  "10": 1.0,
+  "15": 0.85,
+  "20": 0.85,
+  "25": 0.85
+ },
+ "yds_per_mph_at_avg_proj": -7.0,
+ "n": 1094,
+ "n_outdoor": 713,
+ "seasons": [
+  2024,
+  2025,
+  2026
+ ],
+ "folds": [
+  {
+   "fit": 2024,
+   "test": 2025,
+   "n_test": 507,
+   "n_test_windy": 90,
+   "slope": -0.03359,
+   "rmse_no_wind": 76.6,
+   "rmse_wind": 75.7
+  },
+  {
+   "fit": 2025,
+   "test": 2024,
+   "n_test": 520,
+   "n_test_windy": 97,
+   "slope": -0.03249,
+   "rmse_no_wind": 76.13,
+   "rmse_wind": 76.06
+  }
+ ],
+ "source": "Open-Meteo previous-runs wind_speed_10m_previous_day1 (kickoff + 2h mean) \u00d7 Vault pregame pass_yd projection (prop_model.json priors) vs nflverse actuals; control = closing team implied total (games.csv)",
+ "form": "windMult = clamp(1 + slope_per_mph * max(0, wind_mph - knot_mph), floor, 1); outdoor/open roof only"
+}

@@ -249,7 +249,8 @@ window.VaultPropModel = (function () {
     if (proj == null) return null;
     // scriptMult skews pass/rush VOLUME off the spread; folded into the product it
     // scales the VOLUME term only (proj = vol×eff ⇒ k·vol·eff), never efficiency.
-    proj *= (num(opts.oppMult) ?? 1) * (num(opts.envMult) ?? 1) * (num(opts.scriptMult) ?? 1) * (num(opts.usageMult) ?? 1);   // usageMult = measured injury teammate-cascade
+    proj *= (num(opts.oppMult) ?? 1) * (num(opts.envMult) ?? 1) * (num(opts.scriptMult) ?? 1) * (num(opts.usageMult) ?? 1)   // usageMult = measured injury teammate-cascade
+          * (num(opts.windMult) ?? 1);   // windMult = measured kickoff-wind cut (data/weather.json; pass_yd only)
 
     // #4: the distribution is chosen per market at build time (m.dist). Fall back
     // to kind for pre-#4 model files.

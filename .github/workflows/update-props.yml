@@ -41,18 +41,26 @@ jobs:
         run: |
           node scripts/fetch-kalshi-props.mjs --out=data/kalshi_props.json
 
+      # Kickoff wind forecast + the measured pass-yds wind multiplier. Before Best
+      # Bets so it scores on the same adjustment the board shows. continue-on-error:
+      # an Open-Meteo outage keeps the last committed file (readers fall back to ×1).
+      - name: Fetch kickoff weather
+        continue-on-error: true
+        run: |
+          node scripts/fetch-weather.mjs --feed=data/lineup-feed.json
+
       - name: Score Best Bets → merge feed
         run: |
           node scripts/build_best_bets.mjs --feed=data/lineup-feed.json
 
       - name: Commit if changed
         run: |
-          if git diff --quiet -- data/lineup-feed.json data/kalshi_props.json; then
+          if git diff --quiet -- data/lineup-feed.json data/kalshi_props.json data/weather.json; then
             echo "No prop changes."
           else
             git config user.name  "vault-bot"
             git config user.email "vault-bot@users.noreply.github.com"
-            git add data/lineup-feed.json data/kalshi_props.json
+            git add data/lineup-feed.json data/kalshi_props.json data/weather.json
             git commit -m "props: refresh PrizePicks lines + Kalshi sharp anchor [skip ci]"
             git push
           fi
