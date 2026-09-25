@@ -233,6 +233,72 @@ def grade_for(p_side, g, be=0.55):
     padj = 0.5 + (p_side - 0.5) * g / (g + 6)   # shrink toward 0.5 by sample
     return grade_letter(padj, be)
 
+# ── grade recalibration (isotonic / PAV) ─────────────────────────────────────
+# The shrink above corrects for SAMPLE SIZE, but the first settled weeks showed a
+# second miss it can't touch: overconfidence at high padj (grade A promised ~65%,
+# hit ~51%), a model bias tied to CONVICTION not game count. The fix is a monotone
+# map from padj to the realized win rate, learned from settled outcomes — isotonic
+# regression, so it is ORDER-PRESERVING: tiers never reshuffle, the top just stops
+# overstating. Published to data/grade_recal.json and applied on the board through
+# window.VaultGradeRecal, exactly the VaultTradeMarket contract: INERT until it has
+# enough data. Below RECAL_MIN_WEEKS / RECAL_MIN_SAMPLES the file ships ready:false
+# and every caller falls back to identity, so a cold start or early season costs
+# nothing. Do NOT lower the gate to publish sooner — a curve fit on one or two
+# weeks would overfit the very noise it exists to smooth (see the K-bump retro:
+# 2 weeks could not even tell thin-sample from rich-sample overconfidence apart).
+RECAL_MIN_WEEKS = 4
+RECAL_MIN_SAMPLES = 300
+RECAL_K = 6   # MUST match grade_for's shrink denominator, or the fit is on the wrong x
+
+def _recal_padj(p_side, g):
+    return 0.5 + (p_side - 0.5) * g / (g + RECAL_K)
+
+def _pav(points):
+    """Weighted Pool-Adjacent-Violators isotonic (non-decreasing) fit.
+    points: list of (x, y, w) sorted by x ascending. Returns fitted y per point."""
+    stack = []   # each block: [mean_y, weight, size]
+    for _x, y, w in points:
+        cur = [y, w, 1]
+        while stack and stack[-1][0] >= cur[0]:
+            pm, pw, ps = stack.pop()
+            wm = pw + cur[1]
+            cur = [(pm * pw + cur[0] * cur[1]) / wm, wm, ps + cur[2]]
+        stack.append(cur)
+    out = []
+    for m, _w, s in stack:
+        out.extend([m] * s)
+    return out
+
+def build_grade_recal(prop_picks):
+    import datetime
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    rows = [p for p in prop_picks
+            if not p.get("push") and p.get("p_model") is not None
+            and p.get("grade_n") is not None and p.get("won_close") is not None]
+    weeks = sorted({p.get("week") for p in rows if p.get("week") is not None})
+    out = {"generated": now, "method": "isotonic-pav", "k_shrink": RECAL_K,
+           "min_weeks": RECAL_MIN_WEEKS, "min_samples": RECAL_MIN_SAMPLES,
+           "n_weeks": len(weeks), "n_samples": len(rows), "weeks": weeks}
+    if len(weeks) < RECAL_MIN_WEEKS or len(rows) < RECAL_MIN_SAMPLES:
+        out["ready"] = False   # inert: the board applies identity until this clears
+        return out
+    # Bin padj to 0.01 first (weighted mean outcome per bin), then PAV across bins:
+    # a compact, stable curve (≤ ~40 knots) that doesn't chase individual coin-flips.
+    agg = {}
+    for p in rows:
+        pj = _recal_padj(p["p_model"], p["grade_n"])
+        k = round(pj, 2)
+        a = agg.setdefault(k, [0.0, 0.0, 0])
+        a[0] += pj; a[1] += p["won_close"]; a[2] += 1
+    keys = sorted(agg)
+    pts = [(agg[k][0] / agg[k][2], agg[k][1] / agg[k][2], agg[k][2]) for k in keys]
+    fit = _pav(pts)
+    knots = [[round(pts[i][0], 4), round(fit[i], 4)] for i in range(len(pts))]
+    out["ready"] = True
+    out["domain"] = [knots[0][0], knots[-1][0]]
+    out["knots"] = knots
+    return out
+
 
 # ── prop settlement ─────────────────────────────────────────────────────────
 def settle_props(season_filter=None):
@@ -363,7 +429,6 @@ def settle_props(season_filter=None):
         grade = (grade_for(p_model_side, g_shrink, be_open if be_open is not None else 0.55)
                  if p_model_side is not None else None)
 
-
         # Shadow pick from the history-shifted P(over): its own side (the shift
         # can flip a thin lean), settled at the same closing line. History is the
         # backtest's definition: every prior-season game plus in-season games
@@ -376,7 +441,6 @@ def settle_props(season_filter=None):
             p_hist = p_h if side_h == "over" else 1 - p_h
             if not push:
                 won_hist = 1.0 if side_h == ("over" if actual > line_c else "under") else 0.0
-
 
         picks.append({
             "kind": "prop", "season": season, "seasonType": seasonType, "week": week,
@@ -787,11 +851,17 @@ def main():
               f"live {sum(cur):.0f}-{len(cur) - sum(cur):.0f} {u(cur):+.1f}u | "
               f"shadow {sum(hst):.0f}-{len(hst) - sum(hst):.0f} {u(hst):+.1f}u")
 
+    recal = build_grade_recal(prop_picks)
+    print(f"[settle] grade recal: ready={recal['ready']} "
+          f"weeks={recal['n_weeks']}/{recal['min_weeks']} n={recal['n_samples']}"
+          + (f" knots={len(recal['knots'])}" if recal.get('knots') else ""))
+
     if args.dry:
         print("[settle] --dry: not written"); return
     json.dump(ledger, open(os.path.join(DATA, "bet_results.json"), "w"))
     json.dump(scoreboard, open(os.path.join(DATA, "edge_scoreboard.json"), "w"))
-    print(f"[settle] wrote bet_results.json ({len(prop_picks)} props, {len(game_picks)} games) + edge_scoreboard.json")
+    json.dump(recal, open(os.path.join(DATA, "grade_recal.json"), "w"))
+    print(f"[settle] wrote bet_results.json ({len(prop_picks)} props, {len(game_picks)} games) + edge_scoreboard.json + grade_recal.json")
 
 
 if __name__ == "__main__":

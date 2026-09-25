@@ -98,7 +98,7 @@ jobs:
           git config user.email "vault-bot@users.noreply.github.com"
           # Rebase in case another data cron pushed while we ran.
           git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
-          git add data/bet_results.json data/edge_scoreboard.json data/prop_calibration.json data/espn_player_stats_*.json docs/retro/*.md 2>/dev/null || true
+          git add data/bet_results.json data/edge_scoreboard.json data/prop_calibration.json data/grade_recal.json data/espn_player_stats_*.json docs/retro/*.md 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No settlement changes."
           else

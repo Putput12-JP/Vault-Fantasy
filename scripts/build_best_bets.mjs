@@ -87,6 +87,12 @@ const MAX_PROJ_GAP = 0.40;
 // trips the ratio gate. (This is the Bhayshul Tuten "Under 1.5 Rec, +59.9% EV"
 // case: log proj ~0.9 while his actual role projects ~2.5, so the board leaned Over.)
 const COUNT_MK = new Set(['pass_att', 'pass_cmp', 'rush_att', 'rec']);
+// Structurally-weak markets: mirror of the board's WEAK_MK (index.html). These
+// came in below break-even every settled week of 2026, so the board caps their
+// grade at C ("thin edge"); Best Bets needs A/B, so they can't headline here
+// either. Keep this list identical to the board's and drop a market from both
+// the moment it clears break-even on fresh weeks.
+const WEAK_MK = new Set(['pass_yd', 'pass_cmp', 'pass_int', 'rush_rec_yd']);
 const LOW_COUNT_LINE = 3.5;   // where the Under is still a plus-money longshot
 const ABS_COUNT_GAP = 0.5;    // half a count below the line flips the side w/o moving the ratio much
 // Gate 3 — sharp-anchor agreement. Kalshi is a real-money exchange; its two-
@@ -470,7 +476,7 @@ function scoreProps(feed, PM, KP) {
   const roleOk = roleCorrobSet(feed);
   const roleParams = loadRoleParams();   // role_volume.json — the board's volume anchor
   const ctx = buildMatchupCtx(feed);   // opponent + environment + game-script, per prop
-  let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0, sharpskip = 0, rechold = 0;
+  let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0, sharpskip = 0, weakskip = 0, rechold = 0;
   // Early-season rec-under hold fires only while the log window is essentially
   // last season only (weeks <= cutoff). feed.week is the served slate week.
   const _feedWeek = Number(feed.week) || 99;
@@ -539,7 +545,8 @@ function scoreProps(feed, PM, KP) {
         const sharpSide = sharp ? (side === 'over' ? sharp.over : 1 - sharp.over) : null;
         const sharpGap = sharpSide != null ? round(g.padj - sharpSide, 3) : null;   // + = we're higher than sharp
         const sharpDisagree = sharpSide != null && Math.abs(g.padj - sharpSide) >= SHARP_GAP;
-        const eff = (roleUnconfirmed || sharpDisagree) ? 'C' : letter;
+        const weakMkt = WEAK_MK.has(mk);
+        const eff = (roleUnconfirmed || sharpDisagree || weakMkt) ? 'C' : letter;
         // Gate 1: projection strays too far from this corroborated line → stale/context, not edge.
         const projGap = v.proj != null && Math.abs(line) > 0 ? Math.abs(v.proj - line) / Math.abs(line) : 0;
         const projBlowout = VOL_MK.has(mk) && projGap >= MAX_PROJ_GAP;
@@ -565,6 +572,7 @@ function scoreProps(feed, PM, KP) {
         if (!pass) {
           if (roleUnconfirmed && wouldPass) roleskip++;
           else if (sharpDisagree && wouldPass) sharpskip++;
+          else if (weakMkt && wouldPass) weakskip++;
           else if (earlyRecHold && wouldPass) rechold++;
           else if (preGate && projBlowout) projskip++;
           else if (preGate && countUnderPhantom) countskip++;
@@ -599,7 +607,7 @@ function scoreProps(feed, PM, KP) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, rechold, total: cands.length };
+  return { list, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
 }
 
 /* ── game leans (CONTEXT only; empty while the model is gated) ──────────── */
@@ -648,7 +656,7 @@ function gameLeans(feed) {
     log(KP ? `sharp anchor: kalshi_props.json (${KP.count} markets)` : 'sharp anchor: none (kalshi_props.json missing) — agreement gate off');
     const props = scoreProps(feed, PM, KP);
     const leans = gameLeans(feed);
-    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.offslate} off-slate, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.sharpskip} sharp-disagree, ${props.rechold} early-rec-hold, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
+    log(`props: ${props.total} qualified of ${props.scored} scored (${props.gated} gated, ${props.offslate} off-slate, ${props.benchskip} benched, ${props.roleskip} role-unconfirmed, ${props.sharpskip} sharp-disagree, ${props.weakskip} thin-edge-market, ${props.rechold} early-rec-hold, ${props.projskip} proj-blowout, ${props.countskip} count-under-phantom, ${props.dfsskip} dfs-only) → top ${props.list.length}`);
     log(`game leans: ${leans.gated ? leans.gated : props.total >= 0 ? leans.list.length : 0}${leans.gated ? ' (empty)' : ''}`);
     for (const b of props.list) log(`  • ${b.name} ${b.marketLabel} ${b.side.toUpperCase()} ${b.line} @ ${b.book} ${b.price > 0 ? '+' : ''}${b.price} — ${b.grade}, ${b.ev}% EV, ${b.books} books, ${b.games}g${b.sharpFair != null ? `, sharp ${(b.sharpFair * 100).toFixed(0)}% (gap ${b.sharpGap > 0 ? '+' : ''}${(b.sharpGap * 100).toFixed(0)}pt)` : ''}`);
 

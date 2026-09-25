@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-25T01:30', tag:'Improved', title:'Grades pulled back on markets we haven\'t beaten yet',
+    items:[
+      'A few prop markets (Pass Yards, Pass Completions, Interceptions and Rush + Rec Yards) have come in below break-even every week of the season so far, so a confident A or B grade there is more likely noise than a real edge.',
+      'Vault now holds those grades back to a C and flags them "thin edge" so they stop headlining Best Bets. The pick still shows, with a heads-up that we haven\'t proven an edge on that market yet.',
+      'This is measured, not permanent: the moment one of these markets starts winning, its grades come right back.',
+    ]
+  },
+  {
     ts:'2026-09-25T01:00', tag:'Improved', title:'Prop grades now account for the price',
     items:[
       'A Vault grade used to judge every pick against the same bar, no matter its odds. But a -130 under has to win 56.5% of the time to profit, while a +100 over only needs 50%, so heavily juiced picks graded too high and plus-money picks too low.',
@@ -45038,7 +45046,7 @@ window.VaultPropModel = (function () {
     let letter = null, padj = null;
     if (prob != null) {
       const n = (v && v.games != null) ? v.games : 0, K = 6;
-      padj = 0.5 + (prob - 0.5) * (n / (n + K));
+      padj = _recalPadj(0.5 + (prob - 0.5) * (n / (n + K)));
       // Cap the grade on the side the row presents when its edge is flagged:
       // the same cap the board's Grade column applies, so card and row agree.
       letter = cappedGradeLetter(padj, _beFor(r, side), side === displaySide(r) ? _displayCaution(r) : null);
@@ -45310,6 +45318,18 @@ window.VaultPropModel = (function () {
   // not a de-vig two-way exists. Mirrors build_best_bets' MAX_PROJ_GAP gate.
   const EDGE_PROJ_GAP_MAX = 0.40;
   const VOL_GAP_MK = { pass_yd: 1, pass_att: 1, pass_cmp: 1, rush_yd: 1, rush_att: 1, rec: 1, rec_yd: 1 };
+  // ── structurally-weak markets (measured suppression gate) ────────────────────
+  // Markets that came in UNDER break-even in EVERY settled week of 2026 so far
+  // (Week-2 retro, data/bet_results.json by market × week): pass_yd (31%→42%),
+  // pass_cmp (38%→42%), pass_int (50%→47%), rush_rec_yd (47%→48%). The model has
+  // shown no reliable edge on these yet, so a confident A/B here is far likelier
+  // noise than signal. We DEMOTE (cap the grade like any soft caution, tier 5 in
+  // edgeCaution) rather than hide — a genuine edge still renders, it just stops
+  // headlining Best Bets — and REVISIT as fresh weeks settle: drop a market from
+  // this set the moment it clears break-even, and don't invent one without the
+  // same by-week evidence. This is a whole-market flag, so it's the weakest tier
+  // and fires last, only on a row that already cleared every player-specific gate.
+  const WEAK_MK = { pass_yd: 1, pass_cmp: 1, pass_int: 1, rush_rec_yd: 1 };
   // Projection-vs-line blowout, as a standalone flag: purely |proj − line|/line,
   // so it does NOT depend on which side leads or the sign of the market-side EV.
   // That matters for VAULT-LED rows — the cache scores edgeCaution on the MARKET
@@ -45472,6 +45492,13 @@ window.VaultPropModel = (function () {
     // 4. Single-book (the original check) — no second book to confirm the number.
     if (!lineTrust(r).corrob && ((sideProb != null && sideProb >= 0.75) || ev >= 20))
       return { kind: 'unverified', label: '⚠', tip: 'Single-book line — no second book confirms this number, so the edge is unverified.' };
+    // 5. Structurally-weak market (WEAK_MK) — nothing player-specific is wrong, so
+    //    this is the weakest signal and fires LAST, only on a row that cleared every
+    //    quality gate above and still shows positive EV: exactly the confident A/B
+    //    that would otherwise headline Best Bets on a market with no proven edge.
+    //    Demote (grade capped to C) until the market earns its keep on fresh weeks.
+    if (WEAK_MK[r && r.market])
+      return { kind: 'weakmkt', label: 'thin edge', tip: 'Vault has shown no reliable edge on ' + _mkLabel(r.market) + ' props yet — this market has come in below break-even every settled week this season. The grade is held back until it proves out, so treat any edge here as low-confidence.' };
     return null;
   }
 
@@ -45508,13 +45535,56 @@ window.VaultPropModel = (function () {
     if (over == null || under == null) return null;
     const p = Math.max(over, under), side = over >= under ? 'over' : 'under';
     const K = 6, g = n != null ? n : 0;
-    const padj = 0.5 + (p - 0.5) * (g / (g + K));
+    const padj = _recalPadj(0.5 + (p - 0.5) * (g / (g + K)));
     return { side, p, padj, n: g };   // letter is derived later, against the active break-even
   }
   // Letter from the confidence-adjusted win prob vs the ENTRY's break-even.
   // A–C clear the bar with room, D is a near-break-even coin toss, F is a losing
   // pick for that entry. Scored on margin over break-even, not an absolute %, so
   // the grade tracks whatever pickem entry the user actually plays.
+  // ── grade recalibration (isotonic, fitted from settled outcomes) ───────────
+  // A monotone map from the shrunk probability (padj) to the realized win rate,
+  // built by scripts/settle_bets.py → data/grade_recal.json. It corrects the
+  // model's high-confidence overconfidence (grade A promised ~65%, hit ~51% in
+  // the opening weeks) that the sample-size shrink alone can't reach. Same
+  // contract as VaultTradeMarket: INERT until the file lands AND clears its week
+  // gate — apply() returns padj unchanged until then, so a cold cache, a failed
+  // fetch, or an early-season ready:false all cost nothing. Isotonic ⇒ order-
+  // preserving, so wiring it in can only re-letter a pick, never re-rank one.
+  window.VaultGradeRecal = window.VaultGradeRecal || (function () {
+    let _p = null, _d = null;
+    function ensure() {
+      if (_p) return _p;
+      const base = (typeof NFLVERSE_BASE !== 'undefined') ? NFLVERSE_BASE : '/data';
+      _p = fetch(base + '/grade_recal.json').then(r => r.ok ? r.json() : null)
+        .then(j => { _d = j; return j; })
+        .catch(e => { console.warn('[VaultGradeRecal] load failed:', e); return null; });
+      return _p;
+    }
+    function ready() { return !!(_d && _d.ready && _d.knots && _d.knots.length >= 2); }
+    function apply(padj) {
+      if (padj == null || !ready()) return padj;          // identity until a validated curve lands
+      const k = _d.knots;
+      if (padj <= k[0][0]) return k[0][1];
+      if (padj >= k[k.length - 1][0]) return k[k.length - 1][1];
+      for (let i = 1; i < k.length; i++) {
+        if (padj <= k[i][0]) {
+          const x0 = k[i - 1][0], y0 = k[i - 1][1], x1 = k[i][0], y1 = k[i][1];
+          const t = (x1 === x0) ? 0 : (padj - x0) / (x1 - x0);
+          return y0 + (y1 - y0) * t;                       // piecewise-linear over the isotonic knots
+        }
+      }
+      return k[k.length - 1][1];
+    }
+    ensure();   // warm the cache; harmless (identity) while ready:false
+    return { load: ensure, ready, apply };
+  })();
+  // Recalibrate a shrunk probability before it is graded. Wrapped at every padj
+  // site so the letter, the sort key and the O/U column all agree.
+  function _recalPadj(padj) {
+    try { const R = window.VaultGradeRecal; if (R && R.apply) return R.apply(padj); } catch (e) {}
+    return padj;
+  }
   // Tooltip tail naming the bar a grade was scored against.
   function _beTip(r, side) {
     const pb = bePrice ? _priceBE(r, side) : null;
@@ -45567,6 +45637,7 @@ window.VaultPropModel = (function () {
     // names the side (the graded side stays in the tooltip).
     // Read through _sideMetrics (the exact call the detail's OVER | UNDER cards
     // make), so this letter can never differ from the card for the same side.
+    // _sideMetrics applies _recalPadj, so the recalibrated grade flows through.
     const side = displaySide(r), sm = _sideMetrics(r, side, _cacheV(r));
     const p = sm.prob, n = c.g.n != null ? c.g.n : 0, letter = sm.letter, cls = letter.toLowerCase();
     const sd = side === 'over' ? 'Over' : 'Under';
@@ -45628,7 +45699,7 @@ window.VaultPropModel = (function () {
     if (c.over == null || c.under == null || !c.g) return '<span class="mut">—</span>';
     const side = displaySide(r);
     const p = side === 'over' ? c.over : c.under, n = c.g.n != null ? c.g.n : 0, K = 6;
-    const padj = 0.5 + (p - 0.5) * (n / (n + K));
+    const padj = _recalPadj(0.5 + (p - 0.5) * (n / (n + K)));
     const letter = cappedGradeLetter(padj, _beFor(r, side), c.caution), cls = letter.toLowerCase(), sd = side === 'over' ? 'O' : 'U';
     const tip = 'Vault ' + sd + ' ' + Math.round(p * 100) + '% · ' + n + ' game' + (n === 1 ? '' : 's') + ' of history · vs ' + _beTip(r, side);
     return '<span class="eb-grade ' + cls + '" title="' + tip + '"><span class="eb-gside">' + sd + '</span>' + letter + '</span>';
