@@ -38,7 +38,10 @@ window.VaultPropModel = (function () {
     return _role;
   }
 
-  const num = v => { const f = Number(v); return Number.isFinite(f) ? f : null; };
+  // null/undefined/'' mean "not supplied", NOT zero. Number(null) === 0, so a bare
+  // Number() read turned a missing market anchor into "the market says 0% over"
+  // and blendToward dragged every un-de-viggable (pickem) row hard to the Under.
+  const num = v => { if (v == null || v === '') return null; const f = Number(v); return Number.isFinite(f) ? f : null; };
   // Role-shift multiplier on a VOLUME level (mirror build_role_volume.shift_mult).
   // A player's history reflects the role he HELD; his current depth rank may be a
   // different role. Read which role his own volume resembles (nearest prior), then

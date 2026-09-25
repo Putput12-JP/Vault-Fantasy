@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-24T23:30', tag:'Fixed', title:'Player Props grades and win chances now match the Over/Under cards',
+    items:[
+      'A prop\'s grade, edge and win chance in the list now always match the Over and Under cards when you open it. Before, the same prop could show an A and 82% in the list but an F and 45% in the card.',
+      'Fixed a bug that pushed many Pick-style lines (the flat DFS ones) too far toward the Under, so they showed an A and 90%+ win chance on the Under next to a huge negative edge. Their grades and win chances are now realistic.',
+      'The edge shown on a Pick line now belongs to the same side as its grade.',
+      'When you search a player, tapping one of their props now opens that prop instead of whichever market tab you were on.',
+    ]
+  },
+  {
     ts:'2026-09-24T23:00', tag:'Fixed', title:'Moneyline units in Vault Game Record',
     items:[
       'When Vault picked the away team on a moneyline, its units were counted at the home team\'s price. An underdog win at +380 was paid out like a -500 favorite, so the moneyline record looked far worse than it was.',
@@ -41255,7 +41264,10 @@ window.VaultPropModel = (function () {
     if (!_role) _role = fetch(ROLE_URL).then(r => (r.ok ? r.json() : null)).catch(() => null);
     return _role;
   }
-  const num = v => { const f = Number(v); return Number.isFinite(f) ? f : null; };
+  // null/undefined/'' mean "not supplied", NOT zero. Number(null) === 0, so a bare
+  // Number() read turned a missing market anchor into "the market says 0% over"
+  // and blendToward dragged every un-de-viggable (pickem) row hard to the Under.
+  const num = v => { if (v == null || v === '') return null; const f = Number(v); return Number.isFinite(f) ? f : null; };
   // Role-shift multiplier on a VOLUME level (mirror build_role_volume.shift_mult).
   // A player's history reflects the role he HELD; his current depth rank may be a
   // different role. Read which role his own volume resembles (nearest prior), then
@@ -43169,6 +43181,8 @@ window.VaultPropModel = (function () {
   let ebSort = { key: 'ev', dir: -1 };   // leaderboard column sort
   const _hitCache = {};      // propKey → L10 hit% (async-filled; lets the Hit% column sort)
   const _vaultCache = {};    // propKey → {ev,proj,g} from Vault's OWN projection (async-filled; lets the Vault-edge column show + sort)
+  let _vaultGen = 0;         // bumped by _vaultClear so a read in flight across a clear can't write its stale inputs back
+  function _vaultClear() { _vaultGen++; for (const k in _vaultCache) delete _vaultCache[k]; }
   // Pickem break-even: the win rate a pick must clear to profit, which depends
   // on the ENTRY (a 3-pick power play needs ~55% per leg; even money needs 50%).
   // The Vault grade is scored against this, so it means "+EV for how you play",
@@ -43617,7 +43631,7 @@ window.VaultPropModel = (function () {
       // departure data (getter returned null). _vaultCache never clears on its
       // own and the fill skips cached keys, so drop the stale entries once, here,
       // to force a clean recompute now that the measured buckets are available.
-      if (j) { for (const k in _vaultCache) delete _vaultCache[k]; }
+      if (j) _vaultClear();
       if (view === 'props') renderProps();
     }).catch(() => {});
     return _vacData;
@@ -43845,7 +43859,7 @@ window.VaultPropModel = (function () {
   function ebGameKey(r) { const home = r.ha === 'home' ? r.team : r.opp, away = r.ha === 'home' ? r.opp : r.team; return (away || '?') + ' @ ' + (home || '?'); }
   // null = grade not computed yet (keep the row until it is); -1 = resolved with
   // no gradeable projection (a grade filter should hide it); else the A–F rank.
-  function _gradeRankOf(r) { const k = propKey(r); if (!(k in _vaultCache)) return null; const c = _vaultCache[k]; if (!c || !c.g) return -1; const L = cappedGradeLetter(c.g.padj, betBE, c.caution); return _GR[L] != null ? _GR[L] : -1; }
+  function _gradeRankOf(r) { const k = propKey(r); if (!(k in _vaultCache)) return null; const dg = _displayGradeOf(r); if (!dg) return -1; return _GR[dg.letter] != null ? _GR[dg.letter] : -1; }
   function _trendActive() { return fltTrendMin > 0 || fltTrendMax < 100; }
   function _ebFiltersActive() { return ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
   function _ebFilterCount() { let n = 0; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
@@ -43957,8 +43971,8 @@ window.VaultPropModel = (function () {
       : SK === 'best' ? (r.fe.bestPrice ?? -Infinity)
       : SK === 'lean' ? ((r.proj != null && r.line != null) ? (r.proj - r.line) : -Infinity)
       : SK === 'hit' ? (_hitCache[propKey(r)] ?? -Infinity)
-      : SK === 'vault' ? (() => { const c = _vaultCache[propKey(r)]; if (!c || c.ev == null) return -Infinity; return c.unv ? Math.min(c.ev, 0) : c.ev; })()
-      : SK === 'grade' ? (() => { const c = _vaultCache[propKey(r)]; if (!c || !c.g) return -Infinity; const L = cappedGradeLetter(c.g.padj, betBE, c.caution); return ({ A: 4, B: 3, C: 2, D: 1, F: 0 }[L] ?? 0) + c.g.padj; })()
+      : SK === 'vault' ? (() => { const ev = _displayEv(r); if (ev == null) return -Infinity; return _displayCaution(r) ? Math.min(ev, 0) : ev; })()
+      : SK === 'grade' ? (() => { const dg = _displayGradeOf(r); if (!dg) return -Infinity; return ({ A: 4, B: 3, C: 2, D: 1, F: 0 }[dg.letter] ?? 0) + dg.padj; })()
       : SK === 'sim' ? (() => { const c = _vaultCache[propKey(r)]; if (!c || c.over == null || c.under == null) return -Infinity; return displaySide(r) === 'over' ? c.over : c.under; })()
       : (r.fe.ev ?? -Infinity);
     rows.sort((a, b) => SK === 'name' ? SD * sv(a).localeCompare(sv(b)) : SD * (sv(a) - sv(b)));
@@ -43973,7 +43987,7 @@ window.VaultPropModel = (function () {
     // linger across position/market changes.
     if (ebPendSel) {
       const want = _nn(ebPendSel), hit = rows.find(r => _nn(r.name) === want);
-      if (hit) { ebSel = propKey(hit); ebDetailMkt = curMarket; ebInit = true; }
+      if (hit) { ebSel = propKey(hit); ebDetailMkt = hit.market; ebInit = true; }
       ebPendSel = null;
     }
     // Accordion: the board opens collapsed — nothing auto-featured. A selection
@@ -44117,10 +44131,13 @@ window.VaultPropModel = (function () {
         if (existing) existing.remove();
         _pvInner().querySelectorAll('#eb-rows .pr').forEach(x => x.classList.remove('sel'));
         if (wasThis) { ebSel = null; return; }
-        ebSel = k; ebDetailMkt = curMarket; tr.classList.add('sel');
+        // Open the market of the row that was TAPPED. A name search lists every
+        // market for the player, so curMarket (the position's tab) would open
+        // Pass Yds when you tapped Pass Completions.
+        const sr = rows.find(r => propKey(r) === k);
+        ebSel = k; ebDetailMkt = sr ? sr.market : curMarket; tr.classList.add('sel');
         const d = document.createElement('div'); d.className = 'eb-mfeat'; d.innerHTML = '<div class="eb-feat" id="eb-feat"></div>';
         tr.after(d);
-        const sr = rows.find(r => propKey(r) === k);
         if (sr) renderPropDetail(playerRowFor(sr, ebDetailMkt));
         d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
@@ -44132,11 +44149,11 @@ window.VaultPropModel = (function () {
       if (existingD) existingD.remove();
       _pvInner().querySelectorAll('#eb-rows .pr').forEach(x => x.classList.remove('sel', 'exp'));
       if (wasThisD) { ebSel = null; return; }
-      ebSel = k; ebDetailMkt = curMarket; tr.classList.add('sel', 'exp');
+      const sr = rows.find(r => propKey(r) === k);   // open the clicked row's own market (search spans markets)
+      ebSel = k; ebDetailMkt = sr ? sr.market : curMarket; tr.classList.add('sel', 'exp');
       const drow = document.createElement('tr'); drow.className = 'eb-drow';
       drow.innerHTML = '<td colspan="' + nCols + '"><div class="eb-feat" id="eb-feat"></div></td>';
       tr.after(drow);
-      const sr = rows.find(r => propKey(r) === k);
       if (sr) renderPropDetail(playerRowFor(sr, ebDetailMkt));
       drow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
@@ -44950,10 +44967,21 @@ window.VaultPropModel = (function () {
   // market EV, Vault win-prob, Vault edge, and the shrunk grade letter. Shared by
   // the OVER|UNDER cards and by logPick so a tracked side records exactly what the
   // card shows. `v` = Vault projection {over,under,proj,games} or null.
+  // The caution that applies to the side a row DISPLAYS. The cache's caution was
+  // judged on c.side (the market side, or Vault's side on a pickem line); a
+  // Vault-led row flips to the other side, whose doubt resolvePick measured as
+  // vaultUnv. Hard cautions (OUT / role unknown) hold on either side.
+  function _displayCaution(r) {
+    const c = _vaultCache[propKey(r)];
+    if (!c) return null;
+    if (c.caution && c.caution.hard) return c.caution;
+    const pf = resolvePick(r);
+    if (pf && pf.vaultLed) return pf.vaultUnv ? (c.caution || { kind: 'unverified', label: '⚠', tip: 'Vault-led edge that no second book or plausibility check confirms.' }) : null;
+    return c.caution || null;
+  }
   function _sideMetrics(r, side, v) {
     const fb = F(), BM = window.VaultBettingMath, fe = r.fe, line = r.line;
     const sides = (fe && fe.sides) ? fe.sides : null;
-    const _caution = (_vaultCache[propKey(r)] || {}).caution;   // demote the favoured side's grade if the edge is flagged
     const s = sides ? sides[side] : null;
     let best = s ? s.bestPrice : null, book = s ? s.bestBook : null, fair = s ? s.fairAmerican : null, mev = s ? s.ev : null;
     if (!s) { (r.quotes || []).forEach(q => { const on = q.line == null || line == null || q.line === line; if (on && q[side] != null && (best == null || q[side] > best)) { best = q[side]; book = q.book; } }); }
@@ -44961,13 +44989,15 @@ window.VaultPropModel = (function () {
     const mp = (BM && best != null) ? BM.americanToProb(best) : null;
     const ed = (BM && prob != null && mp != null) ? BM.findEdge(prob, mp) : null;
     const vev = ed ? +(ed.evPerDollar * 100).toFixed(1) : null;
-    let letter = null;
+    let letter = null, padj = null;
     if (prob != null) {
       const n = (v && v.games != null) ? v.games : 0, K = 6;
-      const favored = v && Math.max(v.over, v.under) === prob;   // the side the caution is about
-      letter = cappedGradeLetter(0.5 + (prob - 0.5) * (n / (n + K)), betBE, favored ? _caution : null);
+      padj = 0.5 + (prob - 0.5) * (n / (n + K));
+      // Cap the grade on the side the row presents when its edge is flagged:
+      // the same cap the board's Grade column applies, so card and row agree.
+      letter = cappedGradeLetter(padj, betBE, side === displaySide(r) ? _displayCaution(r) : null);
     }
-    return { side, best, book, fair, mev, prob, vev, letter };
+    return { side, best, book, fair, mev, prob, vev, letter, padj };
   }
   function twoSideInner(r, v, loading) {
     const fb = F(), line = r.line, fmt = fb.fmtOdds;
@@ -45174,20 +45204,17 @@ window.VaultPropModel = (function () {
     const host = document.getElementById('eb-2side');
     if (!host) return;
     if (!PM || !BM || r.line == null) { host.innerHTML = twoSideInner(r, null, false); _wire2side(r, refresh); return; }
-    const mpo = (fe && fe.sides && fe.sides.over) ? fe.sides.over.fairProb : null;   // vig-free market P(over), if de-viggable
-    const ci = cascadeInfo(r);                                                        // injury teammate-cascade volume bump (or null)
-    const qb = qbOutMultFor(r);                                                       // measured QB-out re-projection (or null)
-    const vac = vacatedInfo(r);                                                       // roster-departure vacated share (or null / caution)
-    const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1) * ((vac && vac.mult) ? vac.mult : 1);
-    const adj = matchupAdj(r);                                                        // DvP opponent + Vegas-total environment
-    PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: usage !== 1 ? usage : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
+    // Same shared read the board row uses (_vaultRead), never a second model
+    // call with its own inputs, which is what let the card and the row disagree.
+    // Already cached → renderPropDetail painted it filled; this is a no-op repaint.
+    _vaultRead(r).then(() => {
       const h = document.getElementById('eb-2side');
       if (!h || tok !== _pdTok) return;               // panel moved on
-      const vv = (v && v.over != null) ? { over: v.over, under: v.under, proj: v.proj, games: v.games } : null;
+      const vv = _cacheV(r);
       h.innerHTML = twoSideInner(r, vv, false); _wire2side(r, refresh);
       const ph = document.getElementById('eb-projhero');
       if (ph) ph.innerHTML = projHeroHTML(r, vv);
-    }).catch(() => { const h = document.getElementById('eb-2side'); if (h && tok === _pdTok) { h.innerHTML = twoSideInner(r, null, false); _wire2side(r, refresh); } });
+    });
   }
   // ── phantom-edge guard ────────────────────────────────────────────────
   // A single-source line (only one book quotes it) that Vault's projection
@@ -45486,13 +45513,21 @@ window.VaultPropModel = (function () {
     // so the table's "A · Over" disagreed with the panel's "Over F / Under A".
     // Same padj math as gradeCellFor; badge-less because the O/U column already
     // names the side (the graded side stays in the tooltip).
-    const side = displaySide(r);
-    const p = side === 'over' ? c.over : c.under, n = c.g.n != null ? c.g.n : 0, K = 6;
-    const padj = 0.5 + (p - 0.5) * (n / (n + K));
-    const letter = cappedGradeLetter(padj, betBE, c.caution), cls = letter.toLowerCase();
+    // Read through _sideMetrics (the exact call the detail's OVER | UNDER cards
+    // make), so this letter can never differ from the card for the same side.
+    const side = displaySide(r), sm = _sideMetrics(r, side, _cacheV(r));
+    const p = sm.prob, n = c.g.n != null ? c.g.n : 0, letter = sm.letter, cls = letter.toLowerCase();
     const sd = side === 'over' ? 'Over' : 'Under';
     const tip = 'Vault ' + sd + ' ' + Math.round(p * 100) + '% · ' + n + ' game' + (n === 1 ? '' : 's') + ' of history · vs ' + Math.round(betBE * 100) + '% break-even';
     return '<span class="eb-grade ' + cls + '" title="' + tip + '">' + letter + '</span>';
+  }
+  // Grade rank (A=4 … F=0) + padj tiebreak for the DISPLAYED side, i.e. what the
+  // Grade column shows, so the column sort and the grade filter match it.
+  function _displayGradeOf(r) {
+    const c = _vaultCache[propKey(r)];
+    if (!c || !c.g || c.over == null || c.under == null) return null;
+    const sm = _sideMetrics(r, displaySide(r), _cacheV(r));
+    return sm.letter ? { letter: sm.letter, padj: sm.padj } : null;
   }
 
   // Fill the Vault-edge column from Vault's OWN projection (VaultPropModel):
@@ -45508,9 +45543,14 @@ window.VaultPropModel = (function () {
     const _sx = _statusCellChip(r); if (_sx) return _sx;
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
-    const pf = resolvePick(r);
-    if (pf && pf.vaultLed) return vaultCellHTML({ ev: pf.vaultEv, unv: pf.vaultUnv });
-    return vaultCellHTML(c);
+    if (c.over == null || c.under == null) return vaultCellHTML(c);
+    return vaultCellHTML(Object.assign({}, c, { ev: _displayEv(r), caution: _displayCaution(r) }));
+  }
+  // Vault edge (EV%) on the DISPLAYED side, via the same _sideMetrics the
+  // detail's OVER | UNDER cards use. null until the Vault read lands.
+  function _displayEv(r) {
+    const v = _cacheV(r);
+    return v ? _sideMetrics(r, displaySide(r), v).vev : null;
   }
   // Vault projection cell: Vault's own per-game number vs the line, green when
   // it backs the displayed pick side. Ungated (this is the per-game projection
@@ -45550,7 +45590,7 @@ window.VaultPropModel = (function () {
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
     if (c.over == null || c.under == null) return '<span class="mut">—</span>';
-    const side = displaySide(r), pct = Math.round((side === 'over' ? c.over : c.under) * 100);
+    const pct = Math.round(_sideMetrics(r, displaySide(r), _cacheV(r)).prob * 100);
     const col = pct >= 60 ? 'var(--bt-green)' : pct >= 52 ? 'var(--bt-gold)' : 'var(--bt-muted)';
     return '<span title="Vault’s model probability this pick hits (calibrated). The Hit% column beside it is what actually happened." style="color:' + col + ';font-weight:700">' + pct + '%</span>';
   }
@@ -45569,7 +45609,7 @@ window.VaultPropModel = (function () {
       // The projection folds DvP into an opponent multiplier, so any projection
       // cached before DvP landed is opponent-blind — clear the cache so the next
       // render recomputes every player WITH the matchup.
-      for (const kk in _vaultCache) delete _vaultCache[kk];
+      _vaultClear();
       if (view === 'props') renderPropsBoard();
     }).catch(() => { _dvp = {}; });
   }
@@ -45624,7 +45664,7 @@ window.VaultPropModel = (function () {
     const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
     fetch(base + '/game_script_model.json').then(r => (r.ok ? r.json() : null)).then(j => {
       _gs = j || {};
-      if (_gs.active === true) { for (const kk in _vaultCache) delete _vaultCache[kk]; if (view === 'props') renderPropsBoard(); }
+      if (_gs.active === true) { _vaultClear(); if (view === 'props') renderPropsBoard(); }
     }).catch(() => { _gs = {}; });
   }
   function _gsFamily(mk) {
@@ -45682,7 +45722,7 @@ window.VaultPropModel = (function () {
     const _sx = _statusCellChip(r); if (_sx) return _sx;
     const c = _vaultCache[propKey(r)];
     if (!c) return '<span class="mut">·</span>';
-    const pf = resolvePick(r), ev = (pf && pf.vaultLed) ? pf.vaultEv : c.ev, unv = (pf && pf.vaultLed) ? pf.vaultUnv : c.unv;
+    const ev = (c.over != null && c.under != null) ? _displayEv(r) : c.ev, unv = !!_displayCaution(r);
     if (ev == null) return '<span class="mut">—</span>';
     return '<span class="bx-edge ' + (ev > 0 && !unv ? 'pos' : 'neg') + '" title="Vault’s projected win prob vs the best book price">' + (ev > 0 ? '+' : '') + ev + '%</span>';
   }
@@ -45700,34 +45740,66 @@ window.VaultPropModel = (function () {
     return '<span class="bx-line2">' + sd + (r.line != null ? r.line : '') + '</span>' + (pf.vaultLed ? ' <span class="eb-vled" title="Vault-led — no market price edge, but Vault’s projection strongly favors this side">V</span>' : '');
   }
 
-  function ebFillVaultCol(rows) {
+  // THE Vault read for a prop row: the one calculation every surface shares.
+  // The board row, the detail's PICK GRADE / WIN PROBABILITY tiles and the
+  // detail's OVER | UNDER cards all read the _vaultCache entry this writes. They
+  // used to call the model separately with different inputs (the detail took its
+  // market anchor from resolvePick(r), which is sideless on a Vault-led row), so
+  // the same prop showed "Over A 82%" in the row and "Over F 45%" in the card.
+  // Inputs always come from the RAW market read r.fe, never the resolved pick.
+  // In-flight reads are shared so the board and an open detail never race.
+  const _vaultPending = {};
+  function _vaultRead(r) {
+    const k = propKey(r);
+    if (k in _vaultCache) return Promise.resolve(_vaultCache[k]);
+    const gen = _vaultGen;
+    if (_vaultPending[k] && _vaultPending[k].gen === gen) return _vaultPending[k];
     const PM = window.VaultPropModel, BM = window.VaultBettingMath;
+    const EMPTY = () => ({ ev: null, proj: null, g: null, over: null, under: null });
+    if (!PM || !BM || r.line == null) { _vaultCache[k] = EMPTY(); return Promise.resolve(_vaultCache[k]); }
+    const fe = r.fe || {};
+    const mpo = (fe.sides && fe.sides.over) ? fe.sides.over.fairProb : null;                  // vig-free market P(over), if de-viggable
+    const ci = cascadeInfo(r);                                                                // injury teammate-cascade volume bump (or null)
+    const qb = qbOutMultFor(r);                                                               // measured QB-out re-projection (or null)
+    const vac = vacatedInfo(r);                                                               // roster-departure vacated share (or null / caution)
+    const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1) * ((vac && vac.mult) ? vac.mult : 1);  // injury cascade × QB-out × season-over-season departure
+    const adj = matchupAdj(r);                                                                // DvP opponent + Vegas-total environment → market-native projection
+    const p = PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: usage !== 1 ? usage : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
+      let ev = null, proj = null, g = null, unv = false, over = null, under = null, caution = null, side = fe.side || 'over';
+      if (v && v.proj != null) {
+        proj = v.proj; over = v.over; under = v.under;
+        // The side this entry's edge + caution describe = the side the row
+        // DISPLAYS when market-led. A flat pickem line has no market side (fe.side
+        // is just "whichever price exists"), so it's Vault's favoured side, the
+        // same side displaySide() shows. Edging the market's arbitrary side put a
+        // −93% edge next to the other side's A / 97%.
+        if (fe.pickem && over != null && under != null) side = over >= under ? 'over' : 'under';
+        const sideProb = side === 'under' ? v.under : v.over;
+        ev = _sideMetrics(r, side, { over: v.over, under: v.under, proj: v.proj, games: v.games }).vev;
+        // fair (vig-free) market prob for THIS side, when de-viggable (the plausibility anchor)
+        const mktSideProb = (fe.sides && fe.sides[side]) ? fe.sides[side].fairProb : null;
+        caution = edgeCaution(r, sideProb, mktSideProb, ev, v, ci, vac);   // injury / departure / implausible-gap / thin / single-book (a measured bump explains the gap)
+        unv = !!caution;                                              // back-compat: any caution flags the row
+        g = vaultGrade(v.over, v.under, v.games);       // pickem confidence grade (player's own game count)
+      }
+      const entry = { ev, side, proj, g, unv, over, under, caution, adj, cascade: (ci && ev != null && ev > 0) ? ci : null, vacated: (vac && vac.mult && ev != null && ev > 0) ? { r, vac } : null };
+      if (gen !== _vaultGen) return _vaultRead(r);   // cache was cleared mid-read (new DvP/injury data) → recompute with fresh inputs
+      _vaultCache[k] = entry;
+      return entry;
+    }).catch(() => { if (gen === _vaultGen) _vaultCache[k] = EMPTY(); return _vaultCache[k] || EMPTY(); })
+      .finally(() => { if (_vaultPending[k] === p) delete _vaultPending[k]; });
+    p.gen = gen;
+    _vaultPending[k] = p;
+    return p;
+  }
+
+  function ebFillVaultCol(rows) {
     let changed = false;
     const ps = rows.map(r => {
       const k = propKey(r);
       if (k in _vaultCache) return null;                 // already resolved — body rendered it
-      if (!PM || !BM || r.line == null) { _vaultCache[k] = { ev: null, proj: null, g: null, over: null, under: null }; changed = true; return null; }
-      const mpo = (r.fe && r.fe.sides && r.fe.sides.over) ? r.fe.sides.over.fairProb : null;   // vig-free market P(over), if de-viggable
-      const ci = cascadeInfo(r);                                                                // injury teammate-cascade volume bump (or null)
-      const qb = qbOutMultFor(r);                                                               // measured QB-out re-projection (or null)
-      const vac = vacatedInfo(r);                                                               // roster-departure vacated share (or null / caution)
-      const usage = (ci ? ci.mult : 1) * (qb ? qb.mult : 1) * ((vac && vac.mult) ? vac.mult : 1);  // injury cascade × QB-out × season-over-season departure
-      const adj = matchupAdj(r);                                                                // DvP opponent + Vegas-total environment → market-native projection
-      return PM.fairProbOver(r.name, r.market, r.line, { seasons: ebVaultSeasons(), marketProbOver: mpo, usageMult: usage !== 1 ? usage : undefined, oppMult: adj.oppMult, envMult: adj.envMult, scriptMult: adj.scriptMult, pos: r.pos, roleRank: verifiedRoleRank(r) }).then(v => {
-        let ev = null, proj = null, g = null, unv = false, over = null, under = null, caution = null;
-        if (v && v.proj != null) {
-          proj = v.proj; over = v.over; under = v.under;
-          const sideProb = r.fe.side === 'under' ? v.under : v.over;
-          const mp = BM.americanToProb(r.fe.bestPrice);
-          const ed = (sideProb != null && mp != null) ? BM.findEdge(sideProb, mp) : null;
-          ev = ed ? +(ed.evPerDollar * 100).toFixed(1) : null;
-          // fair (vig-free) market prob for THIS side, when de-viggable — the plausibility anchor
-          const mktSideProb = (r.fe.sides && r.fe.sides[r.fe.side]) ? r.fe.sides[r.fe.side].fairProb : null;
-          caution = edgeCaution(r, sideProb, mktSideProb, ev, v, ci, vac);   // injury / departure / implausible-gap / thin / single-book (a measured bump explains the gap)
-          unv = !!caution;                                              // back-compat: any caution flags the row
-          g = vaultGrade(v.over, v.under, v.games);       // pickem confidence grade (player's own game count)
-        }
-        _vaultCache[k] = { ev, proj, g, unv, over, under, caution, adj, cascade: (ci && ev != null && ev > 0) ? ci : null, vacated: (vac && vac.mult && ev != null && ev > 0) ? { r, vac } : null }; changed = true;
+      return _vaultRead(r).then(() => {
+        changed = true;
         const tv = _pvInner() && _pvInner().querySelector('[data-edgek="' + k + '"]');
         if (tv) tv.innerHTML = edgeChipHTML(r);
         const tp = _pvInner() && _pvInner().querySelector('[data-vpk="' + k + '"]');
