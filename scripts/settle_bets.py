@@ -222,12 +222,15 @@ def games_played(actuals, name, before_week):
 
 
 # ── grade (break-even-aware, confidence-shrunk by games so far) ──────────────
+# Cut-offs MUST match the board's gradeLetter in index.html (A >= +5pt over
+# break-even, B >= +3, C >= +1, D >= -2), or a Track Record "A" is a different
+# claim than the "A" users saw. Until 2026-09-26 this ran stricter (10/5/2/0).
 def grade_letter(padj, be=0.55):
     e = padj - be
-    if e >= 0.10: return "A"
-    if e >= 0.05: return "B"
-    if e >= 0.02: return "C"
-    if e >= 0.0:  return "D"
+    if e >= 0.05: return "A"
+    if e >= 0.03: return "B"
+    if e >= 0.01: return "C"
+    if e >= -0.02: return "D"
     return "F"
 
 def shrink_p(p_side, g):

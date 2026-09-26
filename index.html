@@ -13473,6 +13473,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-26T16:00', tag:'Fixed', title:'Vault Record grades now match the board',
+    items:[
+      'The Vault Record graded past picks on a stricter scale than the prop board, so an A in the record meant something different from the A you saw when you made the pick.',
+      'Both now use the same scale, and every past week has been regraded, so the record shows how the grades you actually saw performed.',
+    ] },
+  {
     ts:'2026-09-26T14:00', tag:'Improved', title:'Prop cards explain when a grade is about the price',
     items:[
       'Sometimes Vault leans one way but the other side gets the better grade, because that side pays enough to be worth it even though it is less likely.',

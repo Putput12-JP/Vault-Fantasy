@@ -24,14 +24,14 @@ would demote won above their bar. So `live` ships, `market` is shadow-tracked
 (settle_bets grade_mkt / grade_mkt_alt) until more weeks settle.
 
 No parameters are fitted here (K=6 is the production constant), so nothing is
-in-sample. Letter cut-offs: --scale board (default) uses the board's
-gradeLetter (A >= +5pt margin); --scale settle uses settle_bets.grade_letter
-(A >= +10pt), the scale bet_results.json / the Track Record records. The last
-block reads the SHADOW grades settle_bets now records (grade_mkt, grade_alt,
-grade_mkt_alt) so the replay and the live record can be checked against each
-other; with --scale settle they should match.
+in-sample. Letter cut-offs: --scale board (default) is the board's
+gradeLetter (A >= +5pt margin), which settle_bets.grade_letter also uses since
+2026-09-26; --scale old-settle is the stricter scale the Track Record used
+before that (A >= +10pt), kept for comparing old reports. The last block reads
+the SHADOW grades settle_bets records (grade_mkt, grade_alt, grade_mkt_alt) so
+the replay and the live record can be checked against each other.
 
-Usage:  python3 scripts/backtest_grade_anchor.py [--scale board|settle]
+Usage:  python3 scripts/backtest_grade_anchor.py [--scale board|old-settle]
 """
 import argparse, json, math, os, statistics
 from collections import defaultdict
@@ -64,8 +64,8 @@ def two_way(o, u):
 
 
 SCALES = {   # margin over break-even -> letter
-    "board": (0.05, 0.03, 0.01, -0.02),    # index.html gradeLetter
-    "settle": (0.10, 0.05, 0.02, 0.0),     # settle_bets.grade_letter
+    "board": (0.05, 0.03, 0.01, -0.02),    # index.html gradeLetter = settle_bets.grade_letter
+    "old-settle": (0.10, 0.05, 0.02, 0.0), # settle_bets.grade_letter before 2026-09-26
 }
 CUTS = SCALES["board"]
 
@@ -153,7 +153,7 @@ def main():
     # ── recorded shadow (what settle_bets wrote; always the settle scale) ─────
     rec = [r for r in rows if not r.get("push") and "grade_mkt" in r]
     if rec:
-        print("== recorded shadow in bet_results.json (settle scale, units at -110)")
+        print("== recorded shadow in bet_results.json (board scale, units at -110)")
         def rl(lbl, gk, wk):
             ws = [r[wk] for r in rec if r.get(gk) in ("A", "B") and r.get(wk) is not None]
             n = len(ws); u = sum(100 / 110 if w == 1.0 else -1.0 for w in ws)
