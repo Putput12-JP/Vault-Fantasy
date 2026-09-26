@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-26T14:00', tag:'Improved', title:'Prop cards explain when a grade is about the price',
+    items:[
+      'Sometimes Vault leans one way but the other side gets the better grade, because that side pays enough to be worth it even though it is less likely.',
+      'That side now carries a Price Value tag, and a short note spells out the math: what it pays, what it needs to hit, and what Vault gives it.',
+      'Fixed long-shot sides getting a top grade they had not earned. A +298 touchdown prop could show an A even when Vault’s own odds were below what the price needs. Those now grade on Vault’s real number.',
+    ] },
+  {
     ts:'2026-09-26T12:00', tag:'New', title:'Lineup Command now shows what the betting market expects',
     items:[
       'A new Market check card lists your players where sportsbook player props see a different week than Sleeper’s projection, scored in each league’s own settings.',
@@ -45745,7 +45752,7 @@ window.VaultMarketProj = (function () {
     let letter = null, padj = null;
     if (prob != null) {
       const n = (v && v.games != null) ? v.games : 0, K = 6;
-      padj = _recalPadj(0.5 + (prob - 0.5) * (n / (n + K)));
+      padj = _recalPadj(_shrinkP(prob, n / (n + K)));
       // Cap the grade on the side the row presents when its edge is flagged:
       // the same cap the board's Grade column applies, so card and row agree.
       letter = cappedGradeLetter(padj, _beFor(r, side), side === displaySide(r) ? _displayCaution(r) : null);
@@ -45765,7 +45772,7 @@ window.VaultMarketProj = (function () {
     const gH = s => drop ? '<span class="mut" title="Grade held back: this line comes from a single book and Vault’s projection disagrees with it, so nothing corroborates a confident grade.">—</span>' : (loading ? '<span class="spinner xs"></span>' : (s.letter == null ? '<span class="mut">—</span>' : '<span class="eb-grade ' + s.letter.toLowerCase() + '">' + s.letter + '</span>'));
     const tracked = s => pickLogged(r, s.side);
     const trackH = s => '<button class="eb-2track' + (tracked(s) ? ' on' : '') + '" data-side="' + s.side + '" title="' + (tracked(s) ? 'Tracking the ' + _sideLbl(s.side) + ' in Track Record — tap to stop' : 'Track the ' + _sideLbl(s.side) + ' ' + (line != null ? line : '') + ' in Track Record') + '">' + (tracked(s) ? '✓ Tracking' : '＋ Track ' + _sideLbl(s.side)) + '</button>';
-    const colH = (s, lab, isLean) => '<div class="eb-2col' + (isLean ? ' lean' : '') + '"><div class="eb-2h"><span>' + lab + '</span><b>' + (line != null ? line : '') + '</b></div>'
+    const colH = (s, lab, isLean, isValue) => '<div class="eb-2col' + (isLean ? ' lean' : '') + (isValue ? ' value' : '') + '"><div class="eb-2h"><span>' + lab + '</span><b>' + (line != null ? line : '') + '</b></div>'
       + '<div class="eb-2big">' + fmt(s.best) + '</div><div class="eb-2bk">' + (s.book || '—') + '</div>'
       + '<div class="eb-2rows">'
       + '<div><span>Fair (no-vig)</span><b>' + fmt(s.fair) + '</b></div>'
@@ -45788,7 +45795,27 @@ window.VaultMarketProj = (function () {
     }
     // The side Vault's projection favours (higher win prob) gets the accent ring.
     const leanSide = (!loading && !drop && O.prob != null && U.prob != null) ? (O.prob >= U.prob ? 'over' : 'under') : null;
-    return ctx + '<div class="eb-2cols">' + colH(O, 'OVER', leanSide === 'over') + colH(U, 'UNDER', leanSide === 'under') + '</div>';
+    // Lean vs price value. The lean follows Vault's win % (which side is more
+    // likely); the grade follows that win % against the side's PRICE. On a juiced
+    // line the less-likely side can grade A because it pays enough (Olave rec 5.5:
+    // leans Over 51%, Under +133 only needs 43%). Say so out loud, or the ring and
+    // the letter read as a contradiction. A near-50/50 price grade is kept: the
+    // Wk1-3 replay (scripts/backtest_grade_anchor.py) found these picks winning
+    // above their bar, and settle_bets shadow-tracks a stricter market-anchored
+    // rule (grade_mkt*) meanwhile. _shrinkP stops the sub-50% lift.
+    const RANK = { A: 0, B: 1, C: 2, D: 3, F: 4 };
+    const other = leanSide === 'over' ? U : leanSide === 'under' ? O : null;
+    const leanM = leanSide === 'over' ? O : U;
+    const valueSide = (other && (other.letter === 'A' || other.letter === 'B')
+      && RANK[other.letter] < RANK[leanM.letter] ? other.side : null);
+    if (valueSide) {
+      const vs = valueSide === 'over' ? O : U, be = _beFor(r, valueSide);
+      ctx += '<div class="eb-2ctx"><b>Why the ' + _sideLbl(valueSide) + ' grades higher than the side Vault leans:</b> Vault thinks the '
+        + _sideLbl(leanSide) + ' is more likely (' + Math.round(leanM.prob * 100) + '%), but the ' + _sideLbl(valueSide)
+        + ' pays ' + fmt(vs.best) + ', so it only needs to hit ' + Math.round(be * 100) + '% to break even and Vault gives it '
+        + Math.round(vs.prob * 100) + '%. That grade is a bet on the price, not a call that the ' + _sideLbl(valueSide) + ' happens.</div>';
+    }
+    return ctx + '<div class="eb-2cols">' + colH(O, 'OVER', leanSide === 'over', valueSide === 'over') + colH(U, 'UNDER', leanSide === 'under', valueSide === 'under') + '</div>';
   }
 
   // Per-book price table showing BOTH sides at the consensus line, best price on
@@ -46236,6 +46263,16 @@ window.VaultMarketProj = (function () {
     return '<span style="color:' + (c.ev > 0 ? 'var(--bt-green)' : 'var(--bt-muted)') + ';font-weight:700">' + (c.ev > 0 ? '+' : '') + c.ev + '%</span>';
   }
 
+  // Sample-size shrink for ONE side's win prob, used wherever a side is graded
+  // against its own price. The coin-flip pull only ever takes confidence AWAY:
+  // on a side Vault already puts under 50% it would push the number UP, which
+  // graded a +298 TD over A while Vault gave it 24% vs a 25% bar (negative edge,
+  // 2026-09-26). So a sub-50% side keeps its raw prob. Measured neutral on the
+  // Wk1-3 settled props (scripts/backtest_grade_anchor.py); settle_bets.grade_for
+  // mirrors it so the Track Record grades what the board showed.
+  function _shrinkP(p, w) {
+    return p < 0.5 ? p : 0.5 + (p - 0.5) * w;
+  }
   // Vault's confidence on a PICK, for pickem play (no price to shop — you just
   // pick more/less). Grades the calibrated hit probability on Vault's favored
   // side, but shrinks it toward a coin-flip when the sample is thin, so a
@@ -46409,7 +46446,7 @@ window.VaultMarketProj = (function () {
     if (c.over == null || c.under == null || !c.g) return '<span class="mut">—</span>';
     const side = displaySide(r);
     const p = side === 'over' ? c.over : c.under, n = c.g.n != null ? c.g.n : 0, K = 6;
-    const padj = _recalPadj(0.5 + (p - 0.5) * (n / (n + K)));
+    const padj = _recalPadj(_shrinkP(p, n / (n + K)));
     const letter = cappedGradeLetter(padj, _beFor(r, side), c.caution), cls = letter.toLowerCase(), sd = side === 'over' ? 'O' : 'U';
     const tip = 'Vault ' + sd + ' ' + Math.round(p * 100) + '% · ' + n + ' game' + (n === 1 ? '' : 's') + ' of history · vs ' + _beTip(r, side);
     return '<span class="eb-grade ' + cls + '" title="' + tip + '"><span class="eb-gside">' + sd + '</span>' + letter + '</span>';
@@ -47697,6 +47734,8 @@ window.VaultMarketProj = (function () {
 #page-betting .eb-2col{position:relative;background:var(--bt-s2);border:1px solid var(--bt-border);border-radius:14px;padding:15px 18px 16px;min-width:0}
 #page-betting .eb-2col.lean{border-color:color-mix(in srgb,var(--bt-accent2) 46%,transparent);background:color-mix(in srgb,var(--bt-accent2) 7%,var(--bt-s2))}
 #page-betting .eb-2col.lean::after{content:"VAULT LEAN";position:absolute;top:15px;right:16px;font-family:var(--bt-mono);font-size:var(--t-nano);font-weight:800;letter-spacing:.08em;color:var(--bt-accent2)}
+/* The other side grades higher on price alone (see twoSideInner). */
+#page-betting .eb-2col.value::after{content:"PRICE VALUE";position:absolute;top:15px;right:16px;font-family:var(--bt-mono);font-size:var(--t-nano);font-weight:800;letter-spacing:.08em;color:var(--bt-gold)}
 #page-betting .eb-2h{display:flex;align-items:baseline;gap:9px}
 #page-betting .eb-2h>span{font-family:var(--bt-mono);font-size:var(--t-secondary);font-weight:800;letter-spacing:.12em;text-transform:uppercase}
 #page-betting .eb-2h>b{font-family:var(--bt-mono);font-size:var(--t-secondary);font-weight:700;color:var(--bt-muted)}

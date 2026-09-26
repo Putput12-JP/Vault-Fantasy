@@ -230,9 +230,34 @@ def grade_letter(padj, be=0.55):
     if e >= 0.0:  return "D"
     return "F"
 
+def shrink_p(p_side, g):
+    """Sample-size shrink toward a coin flip that only ever REMOVES confidence.
+    A side Vault already puts under 50% keeps its raw prob: pulling it toward
+    0.5 pushed it UP and graded a +298 TD over A at 24% vs a 25% bar (board,
+    2026-09-26). Mirrors index.html _shrinkP; neutral on Wk1-3 volume props
+    (scripts/backtest_grade_anchor.py)."""
+    return p_side if p_side < 0.5 else 0.5 + (p_side - 0.5) * g / (g + 6)
+
 def grade_for(p_side, g, be=0.55):
     if p_side is None: return None
-    padj = 0.5 + (p_side - 0.5) * g / (g + 6)   # shrink toward 0.5 by sample
+    return grade_letter(shrink_p(p_side, g), be)
+
+# The pre-2026-09-26 rule (shrink pushed sub-50% sides UP toward 0.5), kept as
+# `grade_boost` so the Track Record can show what changed on past weeks.
+def grade_boost_for(p_side, g, be=0.55):
+    if p_side is None: return None
+    return grade_letter(0.5 + (p_side - 0.5) * g / (g + 6), be)
+
+# SHADOW (not on the board): the same shrink, but toward the side's no-vig
+# MARKET probability instead of a coin flip. On a juiced line the coin-flip
+# anchor hands the plus-money side a grade whenever Vault is near 50/50 (Olave
+# rec 5.5 U +133, 2026 w3: Vault 49%, graded A). The Wk1-3 replay
+# (scripts/backtest_grade_anchor.py) could NOT show that was wrong: those picks
+# won ~45% vs a ~40% bar. So this is recorded next to `grade` until enough weeks
+# settle to decide. No clean two-way price -> None (no market to anchor to).
+def grade_mkt_for(p_side, g, be, q_side):
+    if p_side is None or be is None or q_side is None: return None
+    padj = q_side + (p_side - q_side) * g / (g + 6)
     return grade_letter(padj, be)
 
 # ── grade recalibration (isotonic / PAV) ─────────────────────────────────────
@@ -253,7 +278,7 @@ RECAL_MIN_SAMPLES = 300
 RECAL_K = 6   # MUST match grade_for's shrink denominator, or the fit is on the wrong x
 
 def _recal_padj(p_side, g):
-    return 0.5 + (p_side - 0.5) * g / (g + RECAL_K)
+    return p_side if p_side < 0.5 else 0.5 + (p_side - 0.5) * g / (g + RECAL_K)   # = shrink_p
 
 def _pav(points):
     """Weighted Pool-Adjacent-Violators isotonic (non-decreasing) fit.
@@ -430,6 +455,23 @@ def settle_props(season_filter=None):
         grade_flat = grade_for(p_model_side, g_shrink) if p_model_side is not None else None
         grade = (grade_for(p_model_side, g_shrink, be_open if be_open is not None else 0.55)
                  if p_model_side is not None else None)
+        # Shadow grade-anchor test (grade_mkt_for above). Graded on BOTH sides:
+        # `side` is the projection's side, but the board grades the other card
+        # too, and that ALT side is exactly where the plus-money A's come from.
+        # won_alt is simply the other side of the same settled result.
+        grade_mkt = grade_alt = grade_mkt_alt = won_alt = None
+        if p_model_side is not None and side:
+            alt = "under" if side == "over" else "over"
+            be_alt = am_prob(opx["close_over"] if alt == "over" else opx["close_under"])
+            q_side = None
+            if be_open is not None and be_alt is not None:
+                q_side = be_open / (be_open + be_alt)          # no-vig share of THIS side
+            grade_mkt = grade_mkt_for(p_model_side, g_shrink, be_open, q_side)
+            grade_alt = grade_for(1 - p_model_side, g_shrink, be_alt if be_alt is not None else 0.55)
+            grade_mkt_alt = grade_mkt_for(1 - p_model_side, g_shrink, be_alt,
+                                          None if q_side is None else 1 - q_side)
+            if won_close is not None:
+                won_alt = 1.0 - won_close
 
         # Shadow pick from the history-shifted P(over): its own side (the shift
         # can flip a thin lean), settled at the same closing line. History is the
@@ -463,6 +505,10 @@ def settle_props(season_filter=None):
             **close_prices(cls),
             "open_over": opx["close_over"], "open_under": opx["close_under"],
             "grade_flat": grade_flat,
+            "grade_boost": (grade_boost_for(p_model_side, g_shrink, be_open if be_open is not None else 0.55)
+                            if p_model_side is not None else None),
+            "grade_mkt": grade_mkt, "grade_alt": grade_alt,
+            "grade_mkt_alt": grade_mkt_alt, "won_alt": won_alt,
         })
 
     return picks, {"unsettled": unsettled, "unmatched_names": unmatched, "settled": len(picks)}
@@ -852,6 +898,17 @@ def main():
         print(f"[settle] history-shift shadow: n={len(sh)} flips={flips} "
               f"live {sum(cur):.0f}-{len(cur) - sum(cur):.0f} {u(cur):+.1f}u | "
               f"shadow {sum(hst):.0f}-{len(hst) - sum(hst):.0f} {u(hst):+.1f}u")
+
+    # Grade-anchor shadow: A/B picks under the live coin-flip anchor vs the
+    # market anchor, on the projection side and the alt (against-lean) side.
+    # Units at -110 here; the Track Record artifact prices them at the close.
+    def _ab(rows, gk, wk):
+        ws = [p[wk] for p in rows if p.get(gk) in ("A", "B") and p.get(wk) is not None]
+        return f"{sum(ws):.0f}-{len(ws) - sum(ws):.0f} {sum(100 / 110 if w == 1.0 else -1.0 for w in ws):+.1f}u"
+    if any(p.get("grade_mkt") for p in prop_picks):
+        print(f"[settle] grade-anchor shadow A+B: lean side live {_ab(prop_picks, 'grade', 'won_close')} "
+              f"| mkt {_ab(prop_picks, 'grade_mkt', 'won_close')} ; alt side live "
+              f"{_ab(prop_picks, 'grade_alt', 'won_alt')} | mkt {_ab(prop_picks, 'grade_mkt_alt', 'won_alt')}")
 
     recal = build_grade_recal(prop_picks)
     print(f"[settle] grade recal: ready={recal['ready']} "
