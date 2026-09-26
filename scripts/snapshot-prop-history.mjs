@@ -69,6 +69,15 @@ function snapshot(cell, proj, ts) {
   const { bO, bU } = bestPrices(cell);
   return { line: num(cell.line), over: num(cell.over), under: num(cell.under), bestOver: bO, bestUnder: bU, proj: num(proj), ts };
 }
+// Per-book quotes, compact: [book, line, over, under]. Stored ONLY on the
+// open and cur snapshots (not every sample) so the history file doesn't
+// balloon; settlement reads open.q / q0 (first per-book read for props that
+// predate this field) and cur.q to price +EV-by-book on the Track Record.
+function bookQuotes(cell) {
+  return (cell.quotes || [])
+    .filter(q => q && q.book && (num(q.over) != null || num(q.under) != null))
+    .map(q => [q.book, num(q.line), num(q.over), num(q.under)]);
+}
 // Value signature — used to skip appending a duplicate sample.
 const sig = s => [s.line, s.over, s.under, s.bestOver, s.bestUnder, s.proj].join('|');
 
@@ -101,28 +110,33 @@ for (const pid in feed.vegas_player_props) {
     // (same season+week integers) never collide into one settlement record.
     const key = [season, seasonType, week, pid, mk].join('|');
     const cur = snapshot(cell, projFor(stats, mk), now);
+    const q = bookQuotes(cell);
+    const curQ = Object.assign({}, cur, { q });   // cur/open carry books; samples stay lean
     const rec = props[key];
 
     if (!rec) {
       props[key] = {
         season, week, seasonType, pid, name: p.name || null, team: p.team || null,
         pos: p.pos || null, opp: p.opp || null, ha: p.ha || null, market: mk,
-        open: cur, cur, firstSeen: now, lastSeen: now, samples: [cur],
+        open: curQ, cur: curQ, firstSeen: now, lastSeen: now, samples: [cur],
       };
       created++;
       continue;
     }
     // existing key: roll cur forward, append a sample only when something moved
     rec.lastSeen = now;
+    // A prop opened before per-book capture existed: bank its FIRST per-book
+    // read once, so settlement has the earliest book prices we ever saw.
+    if (!(rec.open && rec.open.q) && !rec.q0 && q.length) rec.q0 = { q, ts: now };
     const last = rec.samples && rec.samples.length ? rec.samples[rec.samples.length - 1] : rec.open;
     if (!last || sig(last) !== sig(cur)) {
-      rec.cur = cur;
+      rec.cur = curQ;
       rec.samples = rec.samples || [rec.open];
       rec.samples.push(cur);
       if (rec.samples.length > MAX_SAMPLES) rec.samples.splice(1, rec.samples.length - MAX_SAMPLES); // keep open (idx 0), drop oldest middles
       moved++;
     } else {
-      rec.cur = cur;   // ts refresh only; not a movement
+      rec.cur = curQ;   // ts refresh only; not a movement (books may still move)
     }
   }
 }

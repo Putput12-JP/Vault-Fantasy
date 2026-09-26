@@ -188,6 +188,27 @@ def close_prices(cls):
         return {"close_over": None, "close_under": None}
     return {"close_over": o, "close_under": u}
 
+def book_prices(q, line):
+    """{book: [over, under]} for books quoting THIS line with a sane two-way
+    price (same 100.5-115% band as close_prices). q = snapshot per-book list
+    [[book, line, over, under], ...]; a book on another number is a different
+    bet, so it's left out rather than priced against this line."""
+    out = {}
+    for row in (q or []):
+        try:
+            book, ln, o, u = row
+        except (TypeError, ValueError):
+            continue
+        if not book or o is None or u is None:
+            continue
+        if line is not None and ln is not None and abs(float(ln) - float(line)) > 1e-9:
+            continue
+        po, pu = am_prob(o), am_prob(u)
+        if po is None or pu is None or not (1.005 <= po + pu <= 1.15):
+            continue
+        out[book] = [o, u]
+    return out or None
+
 def model_p_over(mp, proj, line):
     if mp is None or proj is None or line is None: return None
     try:
@@ -565,6 +586,12 @@ def settle_props(season_filter=None):
             # 4.5-reception line) and would invent profit.
             **close_prices(cls),
             "open_over": opx["close_over"], "open_under": opx["close_under"],
+            # Per-book prices (snapshot q), for +EV-by-book on the Track Record.
+            # Open = the opening snapshot's books; props opened before per-book
+            # capture use q0, the first per-book read (books_open_src says which).
+            "books_open": book_prices((opn.get("q") if opn.get("q") else (r.get("q0") or {}).get("q")), line_o),
+            "books_open_src": ("open" if opn.get("q") else ("first_seen" if r.get("q0") else None)),
+            "books_close": book_prices(((r.get("cur") or {}).get("q")), line_c),
             "grade_flat": grade_flat,
             "grade_boost": (grade_boost_for(p_model_side, g_shrink, be_open if be_open is not None else 0.55)
                             if p_model_side is not None else None),
