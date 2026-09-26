@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-26T21:00', tag:'New', title:'EV column on Player Props',
+    items:[
+      'Player Props now shows an EV column next to Edge. EV is how the best price on the board compares to the fair price once the books\' juice is removed. Positive means the price itself beats the market, no model involved.',
+      'Edge is still Vault\'s own read: its win chance priced against that same best price. When both are green, the price and Vault agree.',
+    ]
+  },
+  {
     ts:'2026-09-26T20:00', tag:'New', title:'+EV and book filters for props and your Vault Record',
     items:[
       'Player Props has a new "Only +EV picks" filter: it keeps the picks where Vault\'s win chance beats the best price on the board. Pair it with the book filter to see only +EV picks at the apps you actually bet.',
@@ -44832,7 +44839,7 @@ window.VaultMarketProj = (function () {
     // Column count for the inline detail row's colspan. SpariEdge-slim table:
     // star · player · grade · line(+side) · vault proj · edge · sim · L5/L10/L20/SZN.
     // O/U, best price and opp rank moved into the expanded meta-card strip.
-    const nCols = 11;
+    const nCols = 12;
     // Outlier-exact hit-rate table: player+prop, line, best price (book chip),
     // Vault proj, model edge, IP%, opp rank, and the L5/L10/L20/SZN heat columns.
     const SH = (label, key, cls, title) => '<th class="s' + (cls ? ' ' + cls : '') + (ebSort.key === key ? ' on' : '') + '" data-sk="' + key + '"' + (title ? ' title="' + title + '"' : '') + '>' + label + car(key) + '</th>';
@@ -44843,6 +44850,7 @@ window.VaultMarketProj = (function () {
       + SH('Line', 'line')
       + '<th title="Vault’s own per-game projection">Vault proj</th>'
       + SH('Edge', 'vault', '', 'Vault’s projected win prob vs the best book price — the model edge')
+      + SH('EV', 'ev', '', 'Market EV: the best price vs the no-vig consensus of the books, no model involved')
       + SH('Win %', 'sim', '', 'Vault’s own calibrated chance this pick hits — the model’s probability, not the book’s')
       + SH('L5', 'hit', 'hw')
       + '<th class="hw">L10</th><th class="hw">L20</th><th class="hw">SZN</th>'
@@ -44868,6 +44876,7 @@ window.VaultMarketProj = (function () {
         + '</div></td>'
         + '<td data-vpk="' + k + '">' + projNumCell(r) + '</td>'
         + '<td data-edgek="' + k + '">' + edgeChipHTML(r) + '</td>'
+        + '<td class="eb-evc">' + mktEvCellHTML(r) + '</td>'
         + '<td class="eb-simc" data-simk="' + k + '">' + simCellHTML(r) + '</td>'
         + hitCell('L5') + hitCell('L10') + hitCell('L20') + hitCell('SZN') + '</tr>';
       // The detail is now a persistent panel above the table (not an accordion),
@@ -46733,6 +46742,20 @@ window.VaultMarketProj = (function () {
     const qs = (r.quotes || []).filter(q => q.line == null || r.line == null || q.line === r.line);
     const n = new Set(qs.map(q => q.book)).size;
     return n > 1 ? '<span class="bx-more">+' + (n - 1) + '</span>' : '';
+  }
+  // Market EV for the side the row shows: the best (book-scoped) price vs the
+  // no-vig consensus of the books at this line, no model involved. This is the
+  // number the board sorts by by default ("sorted by EV"); Edge is Vault's own
+  // win chance vs that same price. Pick'em lines have no two-way to de-vig.
+  function mktEvCellHTML(r) {
+    const _sx = _statusCellChip(r); if (_sx) return _sx;
+    const fe = r.fe || {};
+    if (fe.pickem || !fe.sides) return '<span class="mut" title="Pick\u2019em line: no two-way price to measure against">—</span>';
+    const s = fe.sides[displaySide(r)];
+    const ev = s ? s.ev : null;
+    if (ev == null) return '<span class="mut">—</span>';
+    const tip = 'Best price ' + (s.bestPrice > 0 ? '+' : '') + s.bestPrice + (s.bestBook ? ' at ' + s.bestBook : '') + ' vs the no-vig market';
+    return '<span class="bx-edge ' + (ev > 0 ? 'pos' : 'neg') + '" title="' + tip + '">' + (ev > 0 ? '+' : '') + ev + '%</span>';
   }
   function edgeChipHTML(r) {
     const _sx = _statusCellChip(r); if (_sx) return _sx;
