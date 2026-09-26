@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-26T20:00', tag:'New', title:'+EV and book filters for props and your Vault Record',
+    items:[
+      'Player Props has a new "Only +EV picks" filter: it keeps the picks where Vault\'s win chance beats the best price on the board. Pair it with the book filter to see only +EV picks at the apps you actually bet.',
+      'Vault Record in the Track Record now filters by +EV and by book too, so you can see how those picks did.',
+      'Book-by-book prices start with Week 4 results. Earlier weeks use the single opening price on record.',
+    ]
+  },
+  {
     ts:'2026-09-26T17:00', tag:'New', title:'New prop filter: fade Vault’s team lean',
     items:[
       'Player Props filters have a new option that shows only A and B props on the opposite side of Vault’s team scoring lean: unders when Vault expects a team to beat its implied total, overs when it expects a miss.',
@@ -41902,6 +41910,7 @@ window.VaultMarketProj = (function () {
   let fltTrendMin = 0, fltTrendMax = 100; // L10 hit-rate band (%)
   let fltGames = null;                    // Set<matchup key> or null = every game
   let fltFade = false;                    // A/B props on the side AGAINST Vault's team-total lean (_teamLeanOf)
+  let fltEv = false;                      // only rows where Vault's win chance beats the best (selected-book) price
   // Book filter: null = every book; a Set = only these books' quotes count. Rows
   // are trimmed to those quotes (_bookScope) BEFORE fair/EV/grade are computed,
   // so the line, best price, edge, win % and price-aware grade all describe the
@@ -44607,6 +44616,10 @@ window.VaultMarketProj = (function () {
     // Min pick grade: grade lives in the async Vault cache, so a row stays until
     // its grade is known — ebFillVaultCol's re-render then re-applies this filter.
     if (fltGrade > 0) res = res.filter(r => { const g = _gradeRankOf(r); return g == null || g >= fltGrade; });
+    // +EV only: Vault's EV on the side the row shows, at the best price among the
+    // selected books (_sideMetrics reads the book-scoped quotes). Async like the
+    // grade: a row stays until its Vault read lands, then the refill re-applies.
+    if (fltEv) res = res.filter(r => { const k = propKey(r); if (!(k in _vaultCache)) return true; const v = _cacheV(r); if (!v) return false; const sm = _sideMetrics(r, displaySide(r), v); return sm.vev != null && sm.vev > 0; });
     // Trend band: filter on the L10 hit-rate cache (async, same keep-until-known rule).
     if (fltTrendMin > 0 || fltTrendMax < 100) res = res.filter(r => { const h = _hitCache[propKey(r)]; return h == null || (h >= fltTrendMin && h <= fltTrendMax); });
     // Fade Vault's team lean: A/B only, on the side against the team-total lean.
@@ -44673,8 +44686,8 @@ window.VaultMarketProj = (function () {
   // no gradeable projection (a grade filter should hide it); else the A–F rank.
   function _gradeRankOf(r) { const k = propKey(r); if (!(k in _vaultCache)) return null; const dg = _displayGradeOf(r); if (!dg) return -1; return _GR[dg.letter] != null ? _GR[dg.letter] : -1; }
   function _trendActive() { return fltTrendMin > 0 || fltTrendMax < 100; }
-  function _ebFiltersActive() { return fltFade || !!fltBooks || ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
-  function _ebFilterCount() { let n = 0; if (fltFade) n++; if (fltBooks) n++; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
+  function _ebFiltersActive() { return fltEv || fltFade || !!fltBooks || ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
+  function _ebFilterCount() { let n = 0; if (fltEv) n++; if (fltFade) n++; if (fltBooks) n++; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
 
   function renderProps() {
     const host = document.getElementById('bt-v-props');
@@ -45016,6 +45029,50 @@ window.VaultMarketProj = (function () {
   // narrows to a single matchup. Reset whenever the week or tab changes, since a
   // game key is week-scoped and the picker rebuilds from the active week's slate.
   let _trGame = null;
+  // +EV / book filters (Vault Record tab). EV = Vault's win chance x the opening
+  // payout - 1 at the best of the chosen books (settle_bets books_open); props
+  // with no per-book record (before Week 4) use the single headline opening
+  // price, and only when no book is chosen. With either filter on, units are
+  // counted at that +EV book's opening price.
+  let _trEv = 'all';     // 'all' | 'pos' | 'neg'
+  let _trBooks = [];     // [] = any book
+  const _trDec = a => a > 0 ? 1 + a / 100 : 1 + 100 / Math.abs(a);
+  function _trEvOf(r) {
+    if (r.pm == null || !r.side) return null;
+    const i = r.side === 'under' ? 1 : 0;
+    if (r.bo) {
+      let best = null;
+      for (const b in r.bo) {
+        if (_trBooks.length && !_trBooks.includes(b)) continue;
+        const a = r.bo[b][i]; if (a == null) continue;
+        const ev = r.pm * _trDec(a) - 1;
+        if (!best || ev > best.ev) best = { ev, book: b, price: a };
+      }
+      return best;
+    }
+    if (_trBooks.length) return null;
+    const px = i ? r.ou : r.oo;
+    return px == null ? null : { ev: r.pm * _trDec(px) - 1, book: null, price: px };
+  }
+  const _trEvOn = () => _trEv !== 'all' || _trBooks.length > 0;
+  function _trEvMatch(r) {
+    if (!_trEvOn()) return true;
+    const e = r._ev;
+    if (_trEv === 'pos') return !!(e && e.ev > 0);
+    if (_trEv === 'neg') return !!(e && e.ev <= 0);
+    return !!e;
+  }
+  function _trEvBar(all) {
+    const books = [...new Set(all.flatMap(r => r.bo ? Object.keys(r.bo) : []))].sort();
+    const b = (cls, key, val, lbl, on) => '<button class="tr-wk ' + cls + (on ? ' on' : '') + '" data-' + key + '="' + _trEsc(val) + '">' + _trEsc(lbl) + '</button>';
+    return '<div class="tr-wkbar"><span class="tr-wklbl">+EV</span><div class="tr-wkstrip">'
+      + b('tr-ev', 'ev', 'all', 'All', _trEv === 'all') + b('tr-ev', 'ev', 'pos', '+EV', _trEv === 'pos') + b('tr-ev', 'ev', 'neg', 'Not +EV', _trEv === 'neg')
+      + '</div></div>'
+      + '<div class="tr-wkbar"><span class="tr-wklbl">Books</span><div class="tr-wkstrip">'
+      + (books.length ? b('tr-bk', 'bk', '', 'Any', !_trBooks.length) + books.map(x => b('tr-bk', 'bk', x, x, _trBooks.includes(x))).join('')
+        : '<span class="tr-wklbl" style="text-transform:none;letter-spacing:0">Per-book prices start with Week 4 results</span>')
+      + '</div></div>';
+  }
 
   // Live settled ledger (written by scripts/settle_bets.py each week). Null until
   // it lands / when empty in the offseason, so the Vault tab shows a clean empty
@@ -45084,6 +45141,7 @@ window.VaultMarketProj = (function () {
       side: p.side, grade: p.grade, line: p.line_close != null ? p.line_close : p.line_open,
       week: p.week, season: p.season, actual: p.actual, team: p.team, opp: p.opp,
       res: p.push ? 'P' : (p.won_close === 1 ? 'W' : p.won_close === 0 ? 'L' : null),
+      pm: p.p_model, oo: p.open_over, ou: p.open_under, bo: p.books_open || null,
     }));
   }
 
@@ -45360,7 +45418,7 @@ window.VaultMarketProj = (function () {
       if (back) back.onclick = () => { propsView = 'board'; renderPropsBoard(); };
       inner.querySelectorAll('.tr-tabs [data-rt]').forEach(b => b.onclick = () => {
         if (resultsTab === b.dataset.rt) return;
-        resultsTab = b.dataset.rt; _trFilter = {}; _trWeek = null; _trGame = null;   // each tab starts clean
+        resultsTab = b.dataset.rt; _trFilter = {}; _trWeek = null; _trGame = null; _trEv = 'all'; _trBooks = [];   // each tab starts clean
         renderResults();
       });
       inner.querySelectorAll('.tr-wk[data-wk]').forEach(b => b.onclick = () => {
@@ -45368,6 +45426,10 @@ window.VaultMarketProj = (function () {
         if (_trWeek === v) return;
         _trWeek = v; _trGame = null;   // game keys are week-scoped ⇒ reset with the week
         renderResults();
+      });
+      inner.querySelectorAll('.tr-ev[data-ev]').forEach(b => b.onclick = () => { _trEv = b.dataset.ev; renderResults(); });
+      inner.querySelectorAll('.tr-bk[data-bk]').forEach(b => b.onclick = () => {
+        const k = b.dataset.bk; _trBooks = !k ? [] : (_trBooks.includes(k) ? _trBooks.filter(x => x !== k) : _trBooks.concat(k)); renderResults();
       });
       const gmsel = inner.querySelector('#tr-gmsel');
       if (gmsel) gmsel.onchange = () => {
@@ -45640,12 +45702,15 @@ window.VaultMarketProj = (function () {
         if (_trGame != null && !games.some(g => g.key === _trGame)) _trGame = null;   // game not in the active slate ⇒ fall back
         const gmObj = _trGame != null ? games.find(g => g.key === _trGame) : null;
         const gmCtx = gmObj ? gmObj.label : null;
-        const rows = all.filter(r => _trMatch(r) && _trWeekMatch(r) && _trGameMatch(r));
+        all.forEach(r => { r._ev = _trEvOf(r); r.price = _trEvOn() && r._ev ? r._ev.price : undefined; });
+        const rows = all.filter(r => _trMatch(r) && _trWeekMatch(r) && _trGameMatch(r) && _trEvMatch(r));
         const a = _pkAgg(rows);
         const wkCtx = _trWeek != null ? 'Week ' + _trWeek : null;
         sub = a.n.toLocaleString() + ' graded picks settled' + (wkCtx ? ' · ' + wkCtx : '') + (gmCtx ? ' · ' + gmCtx : '') + (_trChips() ? ' · filtered' : '');
-        body = _trWeekBar(weeks) + _trGameBar(games)
-          + _trHero(a, [wkCtx, gmCtx, _trChips() ? 'filtered view' : (!wkCtx && !gmCtx ? 'every Vault-graded prop' : null)].filter(Boolean).join(' · ')) + _trChips() + _trBreak(a)
+        const evCtx = _trEv === 'pos' ? '+EV at open' : _trEv === 'neg' ? 'not +EV' : null;
+        const bkCtx = _trBooks.length ? _trBooks.join(', ') : null;
+        body = _trWeekBar(weeks) + _trGameBar(games) + _trEvBar(all)
+          + _trHero(a, [wkCtx, gmCtx, evCtx, bkCtx, _trChips() ? 'filtered view' : (!wkCtx && !gmCtx && !evCtx && !bkCtx ? 'every Vault-graded prop' : null)].filter(Boolean).join(' · ')) + _trChips() + _trBreak(a)
           + _trVaultList(rows)
           + '<div class="tr-note">Settled from real closing lines vs the box score. Grades are Vault’s at flag time; units at your break-even. Tap any row to filter' + (weeks.length > 1 ? ', or a week to see that slate' : '') + '.</div>';
       }
@@ -46818,7 +46883,7 @@ window.VaultMarketProj = (function () {
   // re-renders (ebFillVaultCol / ebFillHits) re-apply them for free.
   function ebResetFilters() {
     searchQ = ''; teamFilter = ''; mineOnly = false;
-    ouFilter = 'all'; fltGrade = 0; fltTrendMin = 0; fltTrendMax = 100; fltGames = null; fltFade = false;
+    ouFilter = 'all'; fltGrade = 0; fltTrendMin = 0; fltTrendMax = 100; fltGames = null; fltFade = false; fltEv = false;
     if (fltBooks) ebSetBooks(null);
     ebSort = { key: 'ev', dir: -1 };
   }
@@ -46885,6 +46950,8 @@ window.VaultMarketProj = (function () {
       + '<span class="sp"></span><button class="eb-dreset" id="eb-dreset">Reset</button><button class="eb-dclose" id="eb-dclose">✕</button></div>'
       + '<div class="eb-dbody">'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Filter by Vault’s leaned side.</div>' + _ebSeg('', [{ v: 'all', l: 'All' }, { v: 'over', l: 'Over' }, { v: 'under', l: 'Under' }], ouFilter) + '</div>'
+      +   '<div class="eb-dsec"><div class="eb-dlbl">Only +EV picks.</div><button class="eb-dtoggle' + (fltEv ? ' on' : '') + '" id="eb-dev">' + (fltEv ? '✓ Vault beats the price' : 'Vault beats the price') + '</button>'
+      +     '<div class="eb-dhelp">Keeps picks where Vault’s win chance beats the best price on the board, or at the books you pick below.</div></div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Fade Vault’s team lean.</div><button class="eb-dtoggle' + (fltFade ? ' on' : '') + '" id="eb-dfade">' + (fltFade ? '✓ A and B props against the lean' : 'A and B props against the lean') + '</button>'
       +     '<div class="eb-dhelp">Shows A and B props on the opposite side of Vault’s team scoring lean: unders when Vault expects the team to beat its implied total, overs when it expects a miss. This did well in the first weeks and is still being tested in the Track Record.</div></div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Minimum Vault pick grade.</div>' + _ebSeg('grade', [{ v: 0, l: 'Any' }, { v: 4, l: 'A', g: 'A' }, { v: 3, l: 'B', g: 'B' }, { v: 2, l: 'C', g: 'C' }, { v: 1, l: 'D', g: 'D' }], fltGrade) + '</div>'
@@ -46918,6 +46985,7 @@ window.VaultMarketProj = (function () {
     // team + my-players scope (moved in from the controls row)
     el.querySelector('#eb-dteam').onchange = e => { teamFilter = e.target.value; renderProps(); };
     el.querySelector('#eb-dfade').onclick = () => { fltFade = !fltFade; ebBuildDrawer(); renderPropsBoard(); };
+    el.querySelector('#eb-dev').onclick = () => { fltEv = !fltEv; ebBuildDrawer(); renderPropsBoard(); };
     const dmine = el.querySelector('#eb-dmine');
     if (dmine) dmine.onclick = () => { mineOnly = !mineOnly; renderProps(); };
     // trend dual-range
