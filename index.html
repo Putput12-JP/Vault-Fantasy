@@ -13473,6 +13473,12 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-26T17:00', tag:'New', title:'New prop filter: fade Vault’s team lean',
+    items:[
+      'Player Props filters have a new option that shows only A and B props on the opposite side of Vault’s team scoring lean: unders when Vault expects a team to beat its implied total, overs when it expects a miss.',
+      'In the first weeks those picks did clearly better than A and B props that went with the lean. It is still being tested, and the Track Record keeps score week by week.',
+    ] },
+  {
     ts:'2026-09-26T16:00', tag:'Fixed', title:'Vault Record grades now match the board',
     items:[
       'The Vault Record graded past picks on a stricter scale than the prop board, so an A in the record meant something different from the A you saw when you made the pick.',
@@ -41895,6 +41901,7 @@ window.VaultMarketProj = (function () {
   let fltGrade = 0;                       // 0 = any; 1 = D-min … 4 = A-min (min pick grade)
   let fltTrendMin = 0, fltTrendMax = 100; // L10 hit-rate band (%)
   let fltGames = null;                    // Set<matchup key> or null = every game
+  let fltFade = false;                    // A/B props on the side AGAINST Vault's team-total lean (_teamLeanOf)
   // Book filter: null = every book; a Set = only these books' quotes count. Rows
   // are trimmed to those quotes (_bookScope) BEFORE fair/EV/grade are computed,
   // so the line, best price, edge, win % and price-aware grade all describe the
@@ -43933,6 +43940,32 @@ window.VaultMarketProj = (function () {
   // matchup (team + opp) and only fall back to the global week when the game
   // isn't on the board. Nearest week wins when a pair appears twice (a stray
   // future game — e.g. a Thanksgiving matchup — can leak into the feed).
+  // Vault's team-total lean for a prop's team: Vault's implied team points (raw
+  // game model, gmPredict) vs the market's implied team total (total/2 - team
+  // spread/2), at 1pt. Mirrors settle_bets.load_team_leans exactly, which
+  // shadow-tracks "fade the lean" in the Track Record: Wk1-3 A/B props against
+  // the lean hit 57% (+13% ROI, 126 picks), with it +3%. Vault's team leans
+  // themselves went 16-20. The game is the EARLIEST kickoff for (week, team):
+  // the feed carries future games tagged with the current week. null = no
+  // game, no market total/spread, or the game model isn't loaded.
+  const FADE_MK = { rec: 1, rec_yd: 1, rush_yd: 1, rush_att: 1, rush_rec_yd: 1, pass_yd: 1, pass_att: 1, pass_cmp: 1, pass_td: 1, rush_td: 1, pass_rush_yd: 1 };
+  function _teamLeanOf(r) {
+    if (!r || !r.team || !MODEL || !_gmModel) return null;
+    const wk = propWeek(r);
+    let g = null;
+    for (const x of (MODEL._allGames || MODEL.games || [])) {
+      if (!x || x.sample || (x.home !== r.team && x.away !== r.team) || (wk != null && x.week !== wk)) continue;
+      if (!g || String(x.commence || '9') < String(g.commence || '9')) g = x;
+    }
+    if (!g) return null;
+    const sp = g.spread && g.spread.cons ? g.spread.cons.home : null, tot = g.total ? g.total.cons : null;
+    const gp = gmPredict(g.away, g.home);
+    if (sp == null || tot == null || !gp) return null;
+    const home = g.home === r.team;
+    const mi = tot / 2 - (home ? sp : -sp) / 2, vi = gp.total / 2 - (home ? gp.homeSpread : -gp.homeSpread) / 2;
+    const d = vi - mi;
+    return { lean: d >= 1 ? 'over' : d <= -1 ? 'under' : 'neutral', market: +mi.toFixed(1), vault: +vi.toFixed(1) };
+  }
   function propWeek(r) {
     if (r && r.team && r.opp && MODEL) {
       if (!MODEL._pairWeek) {
@@ -44576,6 +44609,19 @@ window.VaultMarketProj = (function () {
     if (fltGrade > 0) res = res.filter(r => { const g = _gradeRankOf(r); return g == null || g >= fltGrade; });
     // Trend band: filter on the L10 hit-rate cache (async, same keep-until-known rule).
     if (fltTrendMin > 0 || fltTrendMax < 100) res = res.filter(r => { const h = _hitCache[propKey(r)]; return h == null || (h >= fltTrendMin && h <= fltTrendMax); });
+    // Fade Vault's team lean: A/B only, on the side against the team-total lean.
+    // Needs the game model; the first use loads it and re-renders. Grade uses the
+    // same keep-until-known rule as the grade filter.
+    if (fltFade) {
+      if (!_gmTried) loadGameModel().then(() => renderPropsBoard());
+      res = res.filter(r => {
+        if (!FADE_MK[r.market]) return false;
+        const tl = _teamLeanOf(r);
+        if (!tl || tl.lean === 'neutral' || displaySide(r) === tl.lean) return false;
+        const g = _gradeRankOf(r);
+        return g == null || g >= 3;
+      });
+    }
     return res;
   }
   // ── Filters-drawer helpers ────────────────────────────────────────────────
@@ -44627,8 +44673,8 @@ window.VaultMarketProj = (function () {
   // no gradeable projection (a grade filter should hide it); else the A–F rank.
   function _gradeRankOf(r) { const k = propKey(r); if (!(k in _vaultCache)) return null; const dg = _displayGradeOf(r); if (!dg) return -1; return _GR[dg.letter] != null ? _GR[dg.letter] : -1; }
   function _trendActive() { return fltTrendMin > 0 || fltTrendMax < 100; }
-  function _ebFiltersActive() { return !!fltBooks || ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
-  function _ebFilterCount() { let n = 0; if (fltBooks) n++; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
+  function _ebFiltersActive() { return fltFade || !!fltBooks || ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
+  function _ebFilterCount() { let n = 0; if (fltFade) n++; if (fltBooks) n++; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
 
   function renderProps() {
     const host = document.getElementById('bt-v-props');
@@ -46772,7 +46818,7 @@ window.VaultMarketProj = (function () {
   // re-renders (ebFillVaultCol / ebFillHits) re-apply them for free.
   function ebResetFilters() {
     searchQ = ''; teamFilter = ''; mineOnly = false;
-    ouFilter = 'all'; fltGrade = 0; fltTrendMin = 0; fltTrendMax = 100; fltGames = null;
+    ouFilter = 'all'; fltGrade = 0; fltTrendMin = 0; fltTrendMax = 100; fltGames = null; fltFade = false;
     if (fltBooks) ebSetBooks(null);
     ebSort = { key: 'ev', dir: -1 };
   }
@@ -46839,6 +46885,8 @@ window.VaultMarketProj = (function () {
       + '<span class="sp"></span><button class="eb-dreset" id="eb-dreset">Reset</button><button class="eb-dclose" id="eb-dclose">✕</button></div>'
       + '<div class="eb-dbody">'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Filter by Vault’s leaned side.</div>' + _ebSeg('', [{ v: 'all', l: 'All' }, { v: 'over', l: 'Over' }, { v: 'under', l: 'Under' }], ouFilter) + '</div>'
+      +   '<div class="eb-dsec"><div class="eb-dlbl">Fade Vault’s team lean.</div><button class="eb-dtoggle' + (fltFade ? ' on' : '') + '" id="eb-dfade">' + (fltFade ? '✓ A and B props against the lean' : 'A and B props against the lean') + '</button>'
+      +     '<div class="eb-dhelp">Shows A and B props on the opposite side of Vault’s team scoring lean: unders when Vault expects the team to beat its implied total, overs when it expects a miss. This did well in the first weeks and is still being tested in the Track Record.</div></div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Minimum Vault pick grade.</div>' + _ebSeg('grade', [{ v: 0, l: 'Any' }, { v: 4, l: 'A', g: 'A' }, { v: 3, l: 'B', g: 'B' }, { v: 2, l: 'C', g: 'C' }, { v: 1, l: 'D', g: 'D' }], fltGrade) + '</div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Team.</div><select class="eb-dfield" id="eb-dteam"><option value="">All teams</option>' + teams.map(c => '<option value="' + c + '"' + (teamFilter === c ? ' selected' : '') + '>' + c + '</option>').join('') + '</select>'
       +     (synced ? '<button class="eb-dtoggle' + (mineOnly ? ' on' : '') + '" id="eb-dmine">' + (mineOnly ? '✓ My players only' : 'My players only') + '</button>' : '') + '</div>'
@@ -46869,6 +46917,7 @@ window.VaultMarketProj = (function () {
     el.querySelector('#eb-dsort').onchange = e => { ebSort = { key: e.target.value, dir: ebSort.dir }; renderPropsBoard(); };
     // team + my-players scope (moved in from the controls row)
     el.querySelector('#eb-dteam').onchange = e => { teamFilter = e.target.value; renderProps(); };
+    el.querySelector('#eb-dfade').onclick = () => { fltFade = !fltFade; ebBuildDrawer(); renderPropsBoard(); };
     const dmine = el.querySelector('#eb-dmine');
     if (dmine) dmine.onclick = () => { mineOnly = !mineOnly; renderProps(); };
     // trend dual-range

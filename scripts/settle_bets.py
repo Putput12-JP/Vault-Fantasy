@@ -100,6 +100,61 @@ def load_prop_model():
 # reads it. Settlement logs the shifted pick beside the live one (p_hist /
 # side_hist / won_hist) so the two can be compared on real closing lines before
 # anyone switches it on. Missing file => every shadow field is None.
+# ── Vault team-total lean (SHADOW, 2026-09-26) ──────────────────────────────
+# Wk1-3 (scripts/analyze_game_script_props.py): A/B props on the side AGAINST
+# Vault's team-total lean went 60.4%, +18.8% ROI (144 picks), with it -3.7%;
+# Vault's team leans themselves went 16-23. Recorded per prop so the Track
+# Record can test it forward before the board leans on it. Lean = Vault's
+# implied team points (raw game model, banked in game_line_history) minus the
+# market's implied team total (total/2 - team spread/2) at the last snapshot,
+# at the same 1pt bar the analysis used. The board filter mirrors this
+# (index.html _teamLeanOf).
+TEAM_LEAN_PTS = 1.0
+
+def pregame_close(g):
+    """(market sample, vault line) as of kickoff: the last sample stamped at or
+    before `commence` that has a total + spread, and the last banked Vault line
+    by then. Samples after kickoff are ignored (the model refits weekly, and a
+    post-game refit must never grade its own game)."""
+    kick = g.get("commence") or ""
+    samples = [x for x in (g.get("samples") or []) + [g.get("cur") or {}]
+               if x and (not kick or (x.get("ts") or "") <= kick)]
+    close = next((x for x in reversed(samples) if x.get("total") is not None and x.get("spread") is not None), None)
+    vault = next((x["vault"] for x in reversed(samples)
+                  if x.get("vault") and x["vault"].get("total") is not None and x["vault"].get("spread") is not None), None)
+    return close, vault
+
+def load_team_leans():
+    """{(season, seasonType, week, team): (market_implied, vault_implied)}.
+    The history carries FUTURE games mis-tagged with the current week (seven
+    "week 1" PHI games), so a (week, team) key keeps the EARLIEST kickoff, which
+    is the real game. Not keyed on the prop's opponent: that field is stale or
+    missing on ~20% of props (LAR "vs SF" in weeks 1 and 2, JAC vs JAX)."""
+    try:
+        games = json.load(open(os.path.join(DATA, "game_line_history.json"))).get("games", {})
+    except Exception:
+        return {}
+    out, kick = {}, {}
+    for g in games.values():
+        close, vault = pregame_close(g)
+        if not close or not vault:
+            continue
+        k0 = g.get("commence") or "9999"
+        home, away = team_nfl(g["home"]), team_nfl(g["away"])
+        for is_home in (True, False):
+            team = home if is_home else away
+            sp, vsp = float(close["spread"]), float(vault["spread"])       # HOME lines
+            mi = float(close["total"]) / 2 - (sp if is_home else -sp) / 2
+            vi = float(vault["total"]) / 2 - (vsp if is_home else -vsp) / 2
+            key = (str(g.get("season")), (g.get("seasonType") or "").lower(), g.get("week"), team)
+            if key not in out or k0 < kick[key]:
+                out[key], kick[key] = (mi, vi), k0
+    return out
+
+def team_lean(mi, vi):
+    d = vi - mi
+    return "over" if d >= TEAM_LEAN_PTS else "under" if d <= -TEAM_LEAN_PTS else "neutral"
+
 def load_history_shift():
     try:
         return json.load(open(os.path.join(DATA, "prop_history_shift.json")))
@@ -352,6 +407,7 @@ def settle_props(season_filter=None):
                  (cur.get("lastSeen") or "", len(cur.get("samples") or []))
         if better: dedup[ident] = r
     actuals_cache, model, hshift = {}, load_prop_model(), load_history_shift()
+    leans = load_team_leans()
     picks, unmatched, unsettled = [], 0, 0
 
     for r in dedup.values():
@@ -489,6 +545,8 @@ def settle_props(season_filter=None):
             if not push:
                 won_hist = 1.0 if side_h == ("over" if actual > line_c else "under") else 0.0
 
+        tl = leans.get((season, seasonType, week, team_nfl(r.get("team"))))
+
         picks.append({
             "kind": "prop", "season": season, "seasonType": seasonType, "week": week,
             "pid": r.get("pid"), "name": name, "team": r.get("team"), "pos": r.get("pos"),
@@ -512,6 +570,9 @@ def settle_props(season_filter=None):
                             if p_model_side is not None else None),
             "grade_mkt": grade_mkt, "grade_alt": grade_alt,
             "grade_mkt_alt": grade_mkt_alt, "won_alt": won_alt,
+            # Vault team-total lean shadow (see load_team_leans)
+            "team_imp": round(tl[0], 2) if tl else None, "vault_team_imp": round(tl[1], 2) if tl else None,
+            "vault_team_lean": team_lean(*tl) if tl else None,
         })
 
     return picks, {"unsettled": unsettled, "unmatched_names": unmatched, "settled": len(picks)}
@@ -912,6 +973,21 @@ def main():
         print(f"[settle] grade-anchor shadow A+B: lean side live {_ab(prop_picks, 'grade', 'won_close')} "
               f"| mkt {_ab(prop_picks, 'grade_mkt', 'won_close')} ; alt side live "
               f"{_ab(prop_picks, 'grade_alt', 'won_alt')} | mkt {_ab(prop_picks, 'grade_mkt_alt', 'won_alt')}")
+
+    # Fade-Vault-team-lean shadow: A/B props on the side against Vault's team
+    # lean (pass_int excluded: its over is bad offense). Units at -110 here.
+    fade = []
+    for p in prop_picks:
+        ln = p.get("vault_team_lean")
+        if ln not in ("over", "under") or p.get("market") == "pass_int" or p.get("won_close") is None:
+            continue
+        if p.get("side") != ln and p.get("grade") in ("A", "B"):
+            fade.append(p["won_close"])
+        if p.get("side") == ln and p.get("grade_alt") in ("A", "B") and p.get("won_alt") is not None:
+            fade.append(p["won_alt"])
+    if fade:
+        print(f"[settle] fade-team-lean shadow A+B: {sum(fade):.0f}-{len(fade) - sum(fade):.0f} "
+              f"{sum(100 / 110 if w == 1.0 else -1.0 for w in fade):+.1f}u")
 
     recal = build_grade_recal(prop_picks)
     print(f"[settle] grade recal: ready={recal['ready']} "

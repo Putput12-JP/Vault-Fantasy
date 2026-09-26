@@ -56,9 +56,7 @@ def load_games(season):
         sc = scores.get((str(g["season"]), str(g["week"]), S.team_nfl(g["away"]), S.team_nfl(g["home"])))
         if not sc:
             continue
-        samples = (g.get("samples") or []) + [g.get("cur") or {}]
-        close = next((s for s in reversed(samples) if s.get("total") is not None and s.get("spread") is not None), None)
-        vault = next((s["vault"] for s in reversed(samples) if s.get("vault") and s["vault"].get("total") is not None), None)
+        close, vault = S.pregame_close(g)      # lines as of kickoff only
         if not close:
             continue
         tot, sp = float(close["total"]), float(close["spread"])      # spread = HOME line
