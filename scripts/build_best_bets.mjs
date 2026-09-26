@@ -362,11 +362,27 @@ function lineTrust(quotes, line) {
   const tol = Math.max(1.5, 0.06 * Math.abs(line || 0));
   return { books, corrob: spread <= tol, spread };
 }
+// Exchange fees — mirror of VaultBettingMath.netAmerican in index.html (keep in
+// sync). A fee venue competes on what it PAYS, and the pick banks that net price
+// so settlement P/L and the grade's break-even match what the user would get.
+const FEE_ON_WIN = { ProphetX: 0.02 };
+const KALSHI_TAKER = 0.07;
+function netAmerican(book, american) {
+  const a = Number(american);
+  if (american == null || !Number.isFinite(a) || a === 0) return american;
+  const kalshi = String(book || '').toLowerCase() === 'kalshi';
+  if (!kalshi && !FEE_ON_WIN[book]) return a;
+  const dec = a > 0 ? 1 + a / 100 : 1 + 100 / -a;
+  let net;
+  if (kalshi) { const P = 1 / dec, cost = P + KALSHI_TAKER * P * (1 - P); if (!(cost > 0 && cost < 1)) return a; net = 1 / cost; }
+  else net = 1 + (dec - 1) * (1 - FEE_ON_WIN[book]);
+  return Math.round(net >= 2 ? (net - 1) * 100 : -100 / (net - 1));
+}
 function bestSide(quotes, side) {
   const better = side === 'over' ? (a, b) => a < b : (a, b) => a > b;
   return quotes.reduce((best, q) => {
     if (q[side] == null) return best;
-    const cand = { book: q.book, price: q[side], line: q.line ?? null };
+    const cand = { book: q.book, price: netAmerican(q.book, q[side]), line: q.line ?? null };
     if (!best) return cand;
     if (cand.line != null && best.line != null && cand.line !== best.line) return better(cand.line, best.line) ? cand : best;
     return cand.price > best.price ? cand : best;

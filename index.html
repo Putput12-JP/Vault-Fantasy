@@ -13473,6 +13473,23 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-26T12:00', tag:'New', title:'Lineup Command now shows what the betting market expects',
+    items:[
+      'A new Market check card lists your players where sportsbook player props see a different week than Sleeper’s projection, scored in each league’s own settings.',
+      'Each row shows why, like “Rec yds 81 vs 64”, and whether that player is starting or on your bench.',
+      'Swap previews show the market’s number next to Sleeper’s, so you can see if the books agree with a move before you make it.',
+      'Over the first three weeks, the market’s stat lines landed closer to the real result than Sleeper’s in 7 of 8 stat types. Your lineup is still optimized on Sleeper’s projection.',
+    ]
+  },
+  {
+    ts:'2026-09-26T11:00', tag:'Improved', title:'Fairer fair prices and honest exchange prices',
+    items:[
+      'Fair prices on Player Props and Game Markets now strip each sportsbook’s cut one book at a time, then take the middle. Before, one book’s Over could get paired with a different book’s Under, which nudged some fair prices by a point or more.',
+      'Exchanges like ProphetX and Kalshi take a fee from winnings. Best price, EV and Kalshi arbitrage now use what the exchange actually pays after that fee, so a fee venue no longer wins “best price” on a bet that pays less.',
+      'In Compare Books, an exchange shows its posted price with the after-fee price underneath.',
+    ]
+  },
+  {
     ts:'2026-09-25T22:00', tag:'Improved', title:'Passing yards now account for wind',
     items:[
       'Vault now checks the kickoff wind forecast for every outdoor game. When it tops 10 mph, QB passing yards projections come down, by up to 15% in the windiest games.',
@@ -22277,6 +22294,20 @@ function _pfProjFnFor(d){
   };
 }
 // Compute current vs optimal lineup + gain for one _pfLeagueData entry.
+// The betting market's projection for one player in this league's scoring
+// (VaultMarketProj), or null. Only when the prop feed is for the SAME week as
+// the Sleeper projections, else the two numbers describe different games.
+function _lcMarketWeekOk(){
+  const MP = window.VaultMarketProj, key = window._pfProjMapKey;
+  if(!MP || !key || MP.week() == null) return false;
+  return String(MP.week()) === String(key).split('-')[1];
+}
+function _lcMarketFor(d, pid){
+  const MP = window.VaultMarketProj, pm = window._pfProjMap && window._pfProjMap[String(pid)];
+  if(!MP || !pm || !pm.stats || !_lcMarketWeekOk()) return null;
+  try { return MP.project(pid, pm.stats, (d && d.lg && d.lg.scoring_settings) || null); } catch(e){ return null; }
+}
+try { window._lcMarketFor = _lcMarketFor; } catch(e){}
 function pfComputeLineup(d){
   if(!d || !Array.isArray(d.rosterPositions) || !d.rosterPositions.length) return null;
   if(typeof window.optimalStartersFor !== 'function') return null;
@@ -22297,7 +22328,7 @@ function pfComputeLineup(d){
   // Proposed swaps: who moves INTO the lineup (bench→start) and OUT (start→bench)
   const pidToName = (typeof globalPidToName!=='undefined' && globalPidToName) ? globalPidToName : {};
   const curSetIds = new Set(starterIds), optSetIds = new Set(optIds);
-  const mkP = pid => { const nm = pidToName[pid] || pid; const pos = _pfLcPos(nm, pid); return { pid, name: nm, pos, proj: Math.round((projFn(nm,pos,pid).pts||0)*100)/100 }; };
+  const mkP = pid => { const nm = pidToName[pid] || pid; const pos = _pfLcPos(nm, pid); const mk = _lcMarketFor(d, pid); return { pid, name: nm, pos, proj: Math.round((projFn(nm,pos,pid).pts||0)*100)/100, mkt: mk ? Math.round(mk.pts*100)/100 : null }; };
   const swapIn = optIds.filter(p => !curSetIds.has(p)).map(mkP).sort((a,b)=>b.proj-a.proj);
   const swapOut = starterIds.filter(p => !optSetIds.has(p)).map(mkP).sort((a,b)=>b.proj-a.proj);
   return {
@@ -22897,8 +22928,25 @@ function _cxEnsureStyles(){
   .lcs-st{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--te);background:rgba(245,200,66,.13);padding:1px 5px;border-radius:4px;font-family:var(--font-mono)}
   .lcs-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 13px;border-top:1px solid rgba(61,204,122,.16);flex-wrap:wrap}
   .lcs-foot .t{font-size:11.5px;color:var(--muted);line-height:1.5;flex:1 1 240px}
+  .cx-mkt{color:var(--muted)} .cx-mkt.up{color:var(--rb)} .cx-mkt.dn{color:var(--red2)}
+  .cx-mk-list{display:flex;flex-direction:column}
+  .cx-mk-row{display:grid;grid-template-columns:36px minmax(0,1fr) 64px 64px 64px;align-items:center;gap:12px;padding:11px 18px;border-top:1px solid var(--border);font-size:13px}
+  .cx-mk-row.hd{border-top:none;padding-top:4px;padding-bottom:6px;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:var(--font-mono);color:var(--muted)}
+  .cx-mk-row .n{min-width:0;display:flex;flex-direction:column;gap:3px}
+  .cx-mk-row .nl{display:flex;align-items:center;gap:7px;min-width:0;font-weight:600}
+  .cx-mk-row .nl>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cx-mk-row .why{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cx-mk-row .v{text-align:right;font-family:var(--font-mono);font-weight:600}
+  .cx-mk-row .v.pos{color:var(--rb)} .cx-mk-row .v.neg{color:var(--red2)}
+  .cx-mk-tag{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:1px 5px;border-radius:4px;font-family:var(--font-mono);background:var(--s3);color:var(--muted);flex-shrink:0}
+  .cx-mk-tag.st{background:rgba(61,204,122,.13);color:var(--rb)}
+  .cx-mk-tag.m{display:none;margin-right:6px}
+  .cx-mk-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted);line-height:1.5}
   @media (prefers-reduced-motion:reduce){.cx-halo,.cx-spark,.cx-spin svg.cx-ic{animation:none!important}}
   @media (max-width:760px){
+    .cx-mk-row{grid-template-columns:32px minmax(0,1fr) 52px 52px;gap:9px;padding:10px 12px}
+    .cx-mk-row .v.sl{display:none}
+    .cx-mk-row .nl .cx-mk-tag{display:none} .cx-mk-row .why .cx-mk-tag.m{display:inline-block}
     .cx-strip,.cx-strip.c5,.cx-strip.c4{grid-template-columns:repeat(2,1fr)}
     .cx-stat.span2{grid-column:span 2}
     .cx-swap{grid-template-columns:1fr} .cx-tbody{grid-template-columns:1fr} .cx-tmid{display:none}
@@ -22982,6 +23030,7 @@ async function renderLineupCommand(){
   _cxEnsureStyles();
 
   try { await _pfEnsureProjections(); } catch(e){}
+  try { if(window.VaultMarketProj) await window.VaultMarketProj.ready(); } catch(e){}
   // Roster-validity meta loads lazily (14MB dump, 24h cache); render now with
   // structural checks, re-render once designations arrive.
   const meta = window._pfRosterMeta;
@@ -23092,6 +23141,7 @@ async function renderLineupCommand(){
         <tbody>${rowsHtml}</tbody>
       </table></div>
     </div>
+    ${_lcMarketCard(data)}
     ${anyBlocked?`<div class="cx-banner">${_cxIc('alert',16)}<span><b>Some lineups are blocked.</b> ${anyBlockedWritable
         ? `A roster issue (IR / taxi / over-roster) is blocking optimization — Vault can stash spare players on taxi or move IR players to your bench in one tap, or you can resolve it in your league's app.`
         : `A roster issue is blocking optimization. Vault reads ${blockedReadonlyApps.length===1?'this league':'these leagues'} but sets lineups in ${blockedReadonlyApps.length===1?`${blockedReadonlyApps[0]}`:'their native app'} — resolve the issue there, then hit Refresh.`}</span></div>`:''}
@@ -23108,6 +23158,60 @@ function pfLcToggle(lid){
 try { window.pfLcToggle = pfLcToggle; } catch(e){}
 
 // Proposed-swap detail: who moves into the lineup, who sits, and the gain.
+// "Market check": your rostered players where the betting market's props
+// imply a meaningfully different week than Sleeper's projection. A second
+// opinion beside the optimizer, which still runs on Sleeper's numbers.
+const LC_MKT_MIN_GAP = 1.5;      // pts; smaller gaps are inside a normal projection spread
+function _lcMarketCard(data){
+  if(!window.VaultMarketProj || !_lcMarketWeekOk()) return '';
+  const MP = window.VaultMarketProj, pm = window._pfProjMap || {};
+  const nameOf = pid => (typeof globalPidToName!=='undefined' && globalPidToName && globalPidToName[pid]) || null;
+  const seen = new Map();
+  data.forEach(d => {
+    const starters = new Set((d.myStarters||[]).map(String));
+    (d.myStartable||[]).forEach(pid => {
+      pid = String(pid);
+      const res = _lcMarketFor(d, pid); if(!res) return;
+      const starting = starters.has(pid), prev = seen.get(pid);
+      if(prev && (prev.starting || !starting)) return;       // prefer a league where he's starting
+      seen.set(pid, { pid, d, res, starting, gap: res.pts - res.sleeperPts });
+    });
+  });
+  const all = [...seen.values()].filter(x => x.res.sleeperPts >= 3 && Math.abs(x.gap) >= LC_MKT_MIN_GAP)
+    .sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
+  const priced = seen.size;
+  if(!priced) return '';
+  const showAll = !!window._lcMktAll, list = showAll ? all : all.slice(0, 8);
+  const posc = (typeof _RDV_POSC!=='undefined' ? _RDV_POSC : {});
+  const row = x => {
+    const nm = nameOf(x.pid) || x.pid, pos = _pfLcPos(nm, x.pid);
+    const url = (typeof vaultHeadshot==='function') ? vaultHeadshot(nm, x.pid, 34) : '';
+    const ini = String(nm).split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const av = `<span class="cx-av" style="border-color:${posc[pos]||'var(--border2)'}">${url?`<img src="${url}" alt="" onerror="this.style.display='none';this.parentNode.textContent='${ini}'">`:ini}</span>`;
+    const st = pm[x.pid] && pm[x.pid].stats;
+    const why = MP.explain(x.res, st, x.d.lg && x.d.lg.scoring_settings, 2)
+      .map(e => `${e.lab} ${e.m.toFixed(e.dp)} vs ${e.s.toFixed(e.dp)}`).join(' · ');
+    const lg = (x.d.lg && x.d.lg.name) || 'League';
+    return `<div class="cx-mk-row">${av}
+      <div class="n"><div class="nl"><span>${nm}</span>${pos?`<span class="cx-pos ${pos}">${pos}</span>`:''}<span class="cx-mk-tag${x.starting?' st':''}" title="${lg}">${x.starting?'Starting':'Bench'}</span></div>
+      <div class="why" title="Market-implied stat line vs Sleeper's projection"><span class="cx-mk-tag m${x.starting?' st':''}">${x.starting?'Starting':'Bench'}</span>${why||'&nbsp;'}</div></div>
+      <div class="v sl cx-mut">${x.res.sleeperPts.toFixed(1)}</div>
+      <div class="v">${x.res.pts.toFixed(1)}</div>
+      <div class="v ${x.gap>0?'pos':'neg'}">${x.gap>0?'+':''}${x.gap.toFixed(1)}</div></div>`;
+  };
+  const body = list.length
+    ? `<div class="cx-mk-row hd"><span></span><span>Player</span><span class="v sl">Sleeper</span><span class="v">Market</span><span class="v">Gap</span></div>${list.map(row).join('')}`
+    : `<div class="cx-mk-foot" style="border-top:none">The market agrees with Sleeper on all ${priced} of your players it prices this week (within ${LC_MKT_MIN_GAP} pts).</div>`;
+  const more = all.length > 8
+    ? `<button class="cx-btn outline sm" onclick="window._lcMktAll=!window._lcMktAll;renderLineupCommand()">${showAll?'Show fewer':`Show all ${all.length}`}</button>` : '';
+  return `<div class="cx-card">
+    <div class="cx-head"><div><div class="cx-title">${_cxIc('bolt')}Market check</div>
+      <div class="cx-desc">Where sportsbook player props see a different week than Sleeper · scored in each league's settings</div></div>
+      <span class="cx-badge cx-b-muted">${priced} priced</span></div>
+    <div class="cx-mk-list">${body}</div>
+    <div class="cx-mk-foot"><span>Market = the stat line each player's props imply, after removing the books' cut. Stats with no prop keep Sleeper's number. Your lineup is still optimized on Sleeper's projection.</span>${more}</div>
+  </div>`;
+}
 function _lcSwapHtml(lc){
   const posc = (typeof _RDV_POSC!=='undefined' ? _RDV_POSC : {});
   const av = (p) => {
@@ -23117,7 +23221,7 @@ function _lcSwapHtml(lc){
     const img = url ? `<img src="${url}" alt="" onerror="this.style.display='none';this.parentNode.textContent='${ini}'">` : ini;
     return `<span class="cx-av" style="border-color:${col}">${img}</span>`;
   };
-  const row = (p, dir) => `<div class="cx-sr">${av(p)}<span class="nm"><span class="nmline"><span class="nmtxt">${p.name}</span>${p.pos?`<span class="cx-pos ${p.pos}">${p.pos}</span>`:''}</span><span class="pt">${(p.proj||0).toFixed(2)} pts</span></span></div>`;
+  const row = (p, dir) => `<div class="cx-sr">${av(p)}<span class="nm"><span class="nmline"><span class="nmtxt">${p.name}</span>${p.pos?`<span class="cx-pos ${p.pos}">${p.pos}</span>`:''}</span><span class="pt">${(p.proj||0).toFixed(2)} pts${p.mkt!=null?` <span class="cx-mkt${p.mkt-p.proj>=1?' up':p.proj-p.mkt>=1?' dn':''}" title="What the betting market's player props imply, in this league's scoring">· Market ${p.mkt.toFixed(1)}</span>`:''}</span></span></div>`;
   const ins = (lc.swaps.in||[]).map(p=>row(p,'in')).join('') || '<div class="cx-sr cx-mut" style="font-size:12px">—</div>';
   const outs = (lc.swaps.out||[]).map(p=>row(p,'out')).join('') || '<div class="cx-sr cx-mut" style="font-size:12px">—</div>';
   return `<div class="cx-swap">
@@ -40457,7 +40561,9 @@ body .page,body .page.on{background:transparent!important}
     return (quotes || []).reduce((best, q) => {
       if (q[side] == null) return best;
       if (line != null && q.line != null && q.line !== line) return best;
-      return (!best || q[side] > best.price) ? { book: q.book, price: q[side], line: q.line ?? null } : best;
+      // Exchanges compete on what they pay AFTER their fee (VaultBettingMath.netAmerican).
+      const BM = window.VaultBettingMath, px = BM ? BM.netAmerican(q.book, q[side]) : q[side];
+      return (!best || px > best.price) ? { book: q.book, price: px, line: q.line ?? null } : best;
     }, null);
   }
 
@@ -41199,10 +41305,71 @@ window.VaultBettingMath = (function () {
     return out;
   }
 
+  // ── exchange fees ──────────────────────────────────────────────────────────
+  // A sportsbook's price is what it pays. An exchange's is not: it takes a cut,
+  // so the headline number overstates the payout and would win "best price" on
+  // a bet that actually pays less. Every best-price pick and EV goes through
+  // netAmerican so a fee venue competes on what it really pays.
+  //   • Kalshi: taker fee 0.07·P·(1−P) per $1 contract, paid at purchase (win or
+  //     lose). Cost per contract = P + fee, profit = 1 − cost.  +147 → +137.
+  //   • ProphetX: ~2% commission on net winnings.  • Novig: no fee.
+  const FEE_ON_WIN = { 'ProphetX': 0.02 };
+  const KALSHI_TAKER = 0.07;
+  function feeKind(book) {
+    const b = String(book || '').toLowerCase();
+    if (b === 'kalshi') return 'kalshi';
+    return FEE_ON_WIN[book] ? 'win' : null;
+  }
+  function netAmerican(book, american) {
+    const a = Number(american);
+    if (american == null || !Number.isFinite(a) || a === 0) return american == null ? null : american;
+    const kind = feeKind(book);
+    if (!kind) return a;
+    const dec = a > 0 ? 1 + a / 100 : 1 + 100 / -a;
+    let netDec;
+    if (kind === 'kalshi') {
+      const P = 1 / dec, cost = P + KALSHI_TAKER * P * (1 - P);
+      if (!(cost > 0 && cost < 1)) return a;
+      netDec = 1 / cost;
+    } else {
+      netDec = 1 + (dec - 1) * (1 - FEE_ON_WIN[book]);
+    }
+    return Math.round(netDec >= 2 ? (netDec - 1) * 100 : -100 / (netDec - 1));
+  }
+  // Kalshi cost of a contract priced at probability p, fee included.
+  function kalshiCost(p) { return (p > 0 && p < 1) ? p + KALSHI_TAKER * p * (1 - p) : null; }
+
+  // ── consensus fair, de-vigged PER BOOK ───────────────────────────────────────
+  // Median-of-overs vs median-of-unders pairs one book's over with ANOTHER book's
+  // under, then strips a hold nobody charged; with uneven holds the "fair" drifts
+  // toward whichever side's median came from the softer book. Instead: de-vig
+  // each book that hangs BOTH sides at a sane hold, then take the median of those
+  // fair probabilities. Books sharing one trading feed count once.
+  // pairs: [{ book, a, b }] (American, side a / side b, same line).
+  const SHARED_FEED = { 'bwin': 'BetMGM', 'Pick6 (DraftKings)': 'DraftKings' };
+  const MAX_HOLD_PCT = 15;          // wider than this is a stale or broken quote, not a market
+  function consensusFair(pairs) {
+    const seen = new Set(), probs = [], vigs = [];
+    (pairs || []).forEach(q => {
+      if (!q || q.a == null || q.b == null) return;
+      const feed = SHARED_FEED[q.book] || q.book;
+      if (seen.has(feed)) return;
+      const d = devigTwoWay(q.a, q.b);
+      if (!d || d.vigPct < 0 || d.vigPct > MAX_HOLD_PCT) return;
+      seen.add(feed);
+      probs.push(d.over.fairProb); vigs.push(d.vigPct);
+    });
+    if (!probs.length) return null;
+    const median = a => { const s = a.slice().sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+    const pa = median(probs), vig = median(vigs);
+    const side = p => ({ fairProb: r(p, 6), fairAmerican: r(probToAmerican(p), 1) });
+    return { a: side(pa), b: side(1 - pa), books: probs.length, vigPct: r(vig, 2) };
+  }
+
   return {
     americanToProb, probToAmerican, decimalToProb, probToDecimal, toProb, convert,
     devig, devigTwoWay, findEdge, kelly, evaluateBet, findArbitrage, parlay, lineMovement,
-    fairFromRow,
+    fairFromRow, netAmerican, feeKind, kalshiCost, consensusFair,
   };
 })();
 
@@ -41488,7 +41655,203 @@ window.VaultPropModel = (function () {
   }
   async function projectStat(name, marketKey, opts) { const r = await fairProbOver(name, marketKey, null, opts); return r ? r.proj : null; }
   function has(marketKey) { return params().then(P => !!(P && P.markets && P.markets[marketKey])); }
-  return { params, fairProbOver, projectStat, has, BASE };
+
+  // ── market → stat line (the inverse of fairProbOver's distribution step) ────
+  // Given a vig-free market P(over line), find the MEAN of this market's own
+  // fitted distribution (m.dist / sd_v* / nb_r, the same shape fairProbOver
+  // prices with) that gives exactly that probability. Yards are right-skewed, so
+  // a 50/50 line implies a mean a little ABOVE the line. Uses the RAW
+  // distribution, not the isotonic calibration: the market prob is already the
+  // truth we're matching, the calibration corrects Vault's own projection bias.
+  // Sync over a loaded params object (caller awaits params() once).
+  // kScale (data/market_implied_calib.json, build_market_implied_calib.py) is the
+  // MEASURED variance multiplier that makes the implied mean unbiased vs actuals:
+  // the model's spread is fitted on projection residuals, wider than one game.
+  function impliedMeanFrom(P, marketKey, line, pOver, kScale) {
+    let m = P && P.markets && P.markets[marketKey];
+    const k = num(kScale);
+    if (m && k != null && k > 0 && k !== 1) m = Object.assign({}, m, { sd_v0: (m.sd_v0 || 0) * k, sd_v1: (m.sd_v1 || 0) * k });
+    const L = num(line), p = num(pOver);
+    if (!m || L == null || p == null || !(p > 0.005 && p < 0.995)) return null;
+    const dist = m.dist || (m.kind === 'poisson' ? 'poisson' : 'normal'), count = m.kind === 'count';
+    const over = mu => dist === 'poisson' ? poisOver(mu, L)
+                     : dist === 'nbinom' ? nbOver(mu, L, m.nb_r)
+                     : dist === 'lognormal' ? lognormOver(mu, sdAt(m, mu), L)
+                     : rawOver(mu, sdAt(m, mu), L, count);
+    let lo = 1e-4, hi = Math.max(L * 4 + 10, 60);
+    if (over(hi) < p) return null;                        // outside what this shape can express
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (over(mid) < p) lo = mid; else hi = mid; }
+    return round((lo + hi) / 2, 3);
+  }
+  return { params, fairProbOver, projectStat, has, impliedMeanFrom, BASE };
+})();
+
+/* VaultMarketProj — the betting market's own fantasy projection.
+   Every player prop is a price on one stat. De-vig it (VaultBettingMath
+   .consensusFair: per book, then median), invert the prop model's fitted
+   distribution to the MEAN that price implies (VaultPropModel.impliedMeanFrom,
+   variance scale measured in data/market_implied_calib.json), and you have the
+   market's expected stat line. Swap those into Sleeper's projected stat line —
+   stats the market doesn't price (fumbles, 2-pt, first downs…) keep Sleeper's
+   number — and score it with the league's own scoring_settings. The result is
+   apples-to-apples with the Sleeper projection Lineup Command already shows.
+
+   TDs: "rush + rec TD 0.5" / anytime TD is usually ONE-sided (overs only). Its
+   hold is stripped with the median overround MEASURED from this week's
+   two-sided TD quotes in the same feed; with too few of those, TDs keep
+   Sleeper's number. P(≥1 TD) → Poisson λ = −ln(1−p), split rush/rec by
+   Sleeper's own split for that player.
+
+   Null-safe throughout: no feed / wrong week / no model → null, callers show
+   nothing. Sync after ready(). */
+window.VaultMarketProj = (function () {
+  'use strict';
+  const STAT = { pass_yd: 'pass_yd', pass_td: 'pass_td', pass_int: 'pass_int', pass_att: 'pass_att', pass_cmp: 'pass_cmp',
+                 rush_yd: 'rush_yd', rush_att: 'rush_att', rec: 'rec', rec_yd: 'rec_yd' };
+  const LABEL = { pass_yd: 'Pass yds', pass_td: 'Pass TD', pass_int: 'INT', pass_att: 'Pass att', pass_cmp: 'Comp',
+                  rush_yd: 'Rush yds', rush_att: 'Carries', rec: 'Rec', rec_yd: 'Rec yds', td: 'TDs' };
+  // pass_int has no fitted market in prop_model.json; interceptions are a rare
+  // count, so it is priced as the same Poisson the TD markets use.
+  const FALLBACK_MODEL = { pass_int: { kind: 'poisson', dist: 'poisson' } };
+  const MIN_TD_TWO_WAY = 10;     // two-sided TD quotes needed before a one-sided TD hold is trusted
+  const MIN_COVER = 0.6;         // market must price ≥60% of Sleeper's projected points to publish
+  let _ready = null, feed = null, P = null, calib = null, tdOverround = null;
+
+  const median = a => { const s = a.slice().sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
+  function modeLine(qs) {
+    const f = new Map(); qs.forEach(q => { if (q.line != null) f.set(q.line, (f.get(q.line) || 0) + 1); });
+    let best = null, n = -1; f.forEach((c, L) => { if (c > n || (c === n && L < best)) { best = L; n = c; } });
+    return best;
+  }
+  function ready() {
+    if (_ready) return _ready;
+    const get = u => fetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    const PM = window.VaultPropModel;
+    _ready = Promise.all([
+      get('data/lineup-feed.json?d=' + Math.floor(Date.now() / 36e5)),
+      PM ? PM.params() : null,
+      get('data/market_implied_calib.json'),
+    ]).then(([f, p, c]) => {
+      feed = f; P = p; calib = c;
+      tdOverround = measureTdOverround();
+      return !!(feed && feed.vegas_player_props && P);
+    });
+    return _ready;
+  }
+  function measureTdOverround() {
+    const BM = window.VaultBettingMath, props = feed && feed.vegas_player_props, ors = [];
+    if (!BM || !props) return null;
+    for (const id in props) {
+      const L = props[id].lines || {};
+      ['rush_rec_td', 'anytime_td'].forEach(k => (L[k] && L[k].quotes || []).forEach(q => {
+        if (q.over == null || q.under == null) return;
+        const o = BM.americanToProb(q.over) + BM.americanToProb(q.under);
+        if (o >= 1 && o <= 1.15) ors.push(o);
+      }));
+    }
+    return ors.length >= MIN_TD_TWO_WAY ? median(ors) : null;
+  }
+  function week() { return feed ? feed.week : null; }
+  function kFor(mk) { const m = calib && calib.markets && calib.markets[mk]; return m && m.k != null ? m.k : null; }
+
+  // P(over) for a cell at its consensus (modal) line, or null. When the books
+  // disagree on the NUMBER itself by more than a normal hook (Caesars 13.5 vs
+  // everyone else 31.5), the modal line must hold a strict majority of the books
+  // or the market is skipped: one off-market line would otherwise set the stat.
+  function fairAt(cell) {
+    const BM = window.VaultBettingMath, qs = (cell && cell.quotes) || [];
+    const line = modeLine(qs); if (line == null || !BM) return null;
+    const ls = qs.map(q => q.line).filter(v => v != null);
+    const tol = Math.max(1.5, 0.06 * Math.abs(line));      // same corroboration band as build_best_bets
+    if (Math.max(...ls) - Math.min(...ls) > tol && ls.filter(v => v === line).length * 2 <= ls.length) return null;
+    const at = qs.filter(q => q.line == null || q.line === line);
+    const cf = BM.consensusFair(at.map(q => ({ book: q.book, a: q.over, b: q.under })));
+    return cf ? { line, p: cf.a.fairProb, books: cf.books } : null;
+  }
+  // P(≥1 TD) from the rush+rec TD market (else anytime TD): two-way when priced,
+  // otherwise the median one-sided over de-vigged by the measured TD overround.
+  function tdProb(lines) {
+    const BM = window.VaultBettingMath;
+    for (const k of ['rush_rec_td', 'anytime_td']) {
+      const c = lines[k]; if (!c || !c.quotes) continue;
+      const at05 = c.quotes.filter(q => q.line == null || q.line === 0.5);
+      const cf = BM.consensusFair(at05.map(q => ({ book: q.book, a: q.over, b: q.under })));
+      if (cf) return { p: cf.a.fairProb, books: cf.books, oneSided: false };
+      if (!tdOverround) continue;
+      const ps = at05.filter(q => q.over != null && q.under == null).map(q => BM.americanToProb(q.over) / tdOverround);
+      if (ps.length) return { p: median(ps), books: ps.length, oneSided: true };
+    }
+    return null;
+  }
+
+  // Market-implied stat means for one Sleeper player id → { stats, src } or null.
+  function statLine(pid) {
+    const PM = window.VaultPropModel;
+    const pp = feed && feed.vegas_player_props && feed.vegas_player_props[String(pid)];
+    if (!pp || !PM || !P) return null;
+    const lines = pp.lines || {}, stats = {}, src = {};
+    for (const mk in STAT) {
+      const f = fairAt(lines[mk]); if (!f) continue;
+      const PP = (P.markets && P.markets[mk]) ? P : (FALLBACK_MODEL[mk] ? { markets: { [mk]: FALLBACK_MODEL[mk] } } : null);
+      if (!PP) continue;
+      const mu = PM.impliedMeanFrom(PP, mk, f.line, f.p, kFor(mk));
+      if (mu == null) continue;
+      stats[STAT[mk]] = mu; src[mk] = { line: f.line, p: f.p, books: f.books, mean: mu };
+    }
+    const td = tdProb(lines);
+    if (td && td.p > 0 && td.p < 0.99) src.td = { line: 0.5, p: td.p, books: td.books, oneSided: td.oneSided, mean: -Math.log(1 - td.p) };
+    return Object.keys(src).length ? { stats, src, name: pp.name, pos: pp.pos, team: pp.team } : null;
+  }
+
+  // Score the market line with a league's scoring (same scorer Sleeper projections
+  // use). Returns { pts, sleeperPts, cover, src } or null when the market prices
+  // too little of this player's projected output to stand on its own.
+  function project(pid, sleeperStats, scoring) {
+    if (!sleeperStats || typeof _rdvProjPts !== 'function') return null;
+    const ml = statLine(pid); if (!ml) return null;
+    // No full settings (legacy number / missing): score both lines with a standard
+    // table at that reception value, so the market stats actually count. Scoring
+    // Sleeper's precomputed pts_* would ignore the swapped-in stats entirely.
+    if (!scoring || typeof scoring !== 'object')
+      scoring = { pass_yd: 0.04, pass_td: 4, pass_int: -1, rush_yd: 0.1, rush_td: 6, rec: typeof scoring === 'number' ? scoring : 1, rec_yd: 0.1, rec_td: 6, fum_lost: -2 };
+    const merged = Object.assign({}, sleeperStats, ml.stats);
+    if (ml.src.td) {
+      const lam = ml.src.td.mean, sr = +sleeperStats.rush_td || 0, sc = +sleeperStats.rec_td || 0;
+      const share = (sr + sc) > 0 ? sr / (sr + sc) : (ml.pos === 'RB' || ml.pos === 'QB' ? 1 : 0);
+      merged.rush_td = lam * share; merged.rec_td = lam * (1 - share);
+    }
+    const ss = scoring;
+    const sleeperPts = _rdvProjPts(sleeperStats, scoring);
+    const pts = _rdvProjPts(merged, scoring);
+    if (sleeperPts == null || pts == null) return null;
+    // Coverage: share of Sleeper's points that come from stats the market priced.
+    let cover = 0;
+    {
+      const keys = new Set(Object.keys(ml.stats)); if (ml.src.td) { keys.add('rush_td'); keys.add('rec_td'); }
+      let covered = 0, total = 0;
+      for (const k in ss) { const w = ss[k], v = sleeperStats[k]; if (typeof w !== 'number' || typeof v !== 'number') continue; total += v * w; if (keys.has(k)) covered += v * w; }
+      cover = total > 0 ? covered / total : 0;
+    }
+    if (cover < MIN_COVER) return null;
+    return { pts: Math.max(0, pts), sleeperPts: Math.max(0, sleeperPts), cover: Math.min(1, cover), src: ml.src };
+  }
+  // Short "Rec yds 52 vs 44" diffs, biggest point impact first.
+  function explain(res, sleeperStats, scoring, max) {
+    if (!res || !sleeperStats) return [];
+    const ss = (scoring && typeof scoring === 'object') ? scoring : { rec: typeof scoring === 'number' ? scoring : 1, rec_yd: 0.1, rush_yd: 0.1, pass_yd: 0.04, pass_td: 4, rush_td: 6, rec_td: 6, pass_int: -1 };
+    const out = [];
+    for (const mk in res.src) {
+      if (mk === 'td') {
+        const sl = (+sleeperStats.rush_td || 0) + (+sleeperStats.rec_td || 0), mv = res.src.td.mean;
+        out.push({ k: 'td', lab: LABEL.td, m: mv, s: sl, imp: (mv - sl) * (ss.rush_td || ss.rec_td || 6), dp: 2 });
+        continue;
+      }
+      const st = STAT[mk], sv = +sleeperStats[st] || 0, mv = res.src[mk].mean;
+      out.push({ k: mk, lab: LABEL[mk], m: mv, s: sv, imp: (mv - sv) * (ss[st] || 0), dp: /yd/.test(mk) ? 0 : 1 });
+    }
+    return out.filter(x => Math.abs(x.imp) >= 0.1).sort((a, b) => Math.abs(b.imp) - Math.abs(a.imp)).slice(0, max || 3);
+  }
+  return { ready, week, statLine, project, explain, LABEL };
 })();
 
 </script>
@@ -42829,25 +43192,33 @@ window.VaultPropModel = (function () {
     // Best price counts only among quotes AT the consensus line — a plus price
     // at a different (alt) spread/total is not comparable to fair at this line,
     // and would fake a huge edge (the props bug, again).
-    const bestAt = list => { let bp = null, bk = null; list.forEach(x => { if (x.p != null && (bp == null || x.p > bp)) { bp = x.p; bk = x.book; } }); return bp == null ? null : { price: bp, book: bk }; };
-    let sides;
+    // Best price is judged AFTER exchange fees (netAmerican).
+    const bestAt = list => { let bp = null, bk = null; list.forEach(x => { const px = BM.netAmerican(x.book, x.p); if (px != null && (bp == null || px > bp)) { bp = px; bk = x.book; } }); return bp == null ? null : { price: bp, book: bk }; };
+    let sides, pairs;
     if (market === 'total') {
       const ln = M.cons, qs = (M.quotes || []).filter(q => ln == null || q.line == null || q.line === ln);
       sides = [{ lab: 'Over ' + (ln ?? ''), cons: med(qs.map(q => q.over)), best: bestAt(qs.map(q => ({ p: q.over, book: q.book }))) },
                { lab: 'Under ' + (ln ?? ''), cons: med(qs.map(q => q.under)), best: bestAt(qs.map(q => ({ p: q.under, book: q.book }))) }];
+      pairs = qs.map(q => ({ book: q.book, a: q.over, b: q.under }));
     } else if (market === 'spread') {
       const sa = M.cons ? round05(M.cons.away) : null, sh = M.cons ? round05(M.cons.home) : null;
       const qA = (M.quotes || []).filter(q => q.away && (sa == null || q.away.line == null || round05(q.away.line) === sa));
       const qH = (M.quotes || []).filter(q => q.home && (sh == null || q.home.line == null || round05(q.home.line) === sh));
       sides = [{ lab: g.away + ' ' + sline(sa), cons: med(qA.map(q => q.away.price)), best: bestAt(qA.map(q => ({ p: q.away.price, book: q.book }))) },
                { lab: g.home + ' ' + sline(sh), cons: med(qH.map(q => q.home.price)), best: bestAt(qH.map(q => ({ p: q.home.price, book: q.book }))) }];
+      // a book counts toward fair only when it hangs BOTH consensus spreads
+      pairs = qA.filter(q => qH.includes(q)).map(q => ({ book: q.book, a: q.away.price, b: q.home.price }));
     } else {
       sides = [{ lab: g.away + ' ML', cons: med(M.quotes.map(q => q.away)), best: bestAt(M.quotes.map(q => ({ p: q.away, book: q.book }))) },
                { lab: g.home + ' ML', cons: med(M.quotes.map(q => q.home)), best: bestAt(M.quotes.map(q => ({ p: q.home, book: q.book }))) }];
+      pairs = M.quotes.map(q => ({ book: q.book, a: q.away, b: q.home }));
     }
     if (sides[0].cons == null || sides[1].cons == null) return [];
-    const dv = BM.devigTwoWay(sides[0].cons, sides[1].cons);
-    if (!dv || dv.vigPct <= 0) return [];
+    // Per-book de-vig, then median (VaultBettingMath.consensusFair): never strips a
+    // hold off one book's price paired with another book's other side.
+    const cf = BM.consensusFair(pairs);
+    if (!cf) return [];
+    const dv = { over: cf.a, under: cf.b, vigPct: cf.vigPct };
     const fair = [dv.over, dv.under];
     const bets = sides.map((s, i) => {
       const bp = s.best ? s.best.price : null;
@@ -42878,10 +43249,13 @@ window.VaultPropModel = (function () {
       if (kp0 != null && kp1 != null) {
         const kps = [kp0, kp1];
         bets.forEach((b, i) => { b.kp = kps[i]; b.kcents = Math.round(kps[i] * 100); b.xedge = +((kps[i] / b.bestProb - 1) * 100).toFixed(1); });
-        const cA = Math.min(bets[0].bestProb, kp0), cB = Math.min(bets[1].bestProb, kp1);
-        const sum = cA + cB, usedK = (kp0 < bets[0].bestProb) || (kp1 < bets[1].bestProb);
+        // Kalshi's taker fee is paid at purchase, so the arb leg costs price + fee
+        // (kalshiCost), not the bare mid: a 1-2¢ "arb" is often eaten by it.
+        const kc0 = BM.kalshiCost(kp0), kc1 = BM.kalshiCost(kp1);
+        const cA = Math.min(bets[0].bestProb, kc0), cB = Math.min(bets[1].bestProb, kc1);
+        const sum = cA + cB, usedK = (kc0 < bets[0].bestProb) || (kc1 < bets[1].bestProb);
         const arb = (sum < 0.99 && usedK) ? +(((1 / sum) - 1) * 100).toFixed(1) : 0;
-        const bookSide = arb > 0 ? (bets[0].bestProb <= kp0 ? 0 : 1) : -1;
+        const bookSide = arb > 0 ? (bets[0].bestProb <= kc0 ? 0 : 1) : -1;
         bets.forEach((b, i) => { b.arb = arb; b.arbLeg = (i === bookSide); });
       }
     }
@@ -44054,15 +44428,17 @@ window.VaultPropModel = (function () {
     const isProb = r.kind === 'prob';
     const atLine = (r.quotes || []).filter(q => isProb || q.line == null || r.line == null || q.line === r.line);
     if (!atLine.length) return null;
-    const med = a => { const s = a.filter(v => v != null).sort((x, y) => x - y); return s.length ? s[Math.floor((s.length - 1) / 2)] : null; };
-    const consOver = med(atLine.map(q => q.over)), consUnder = med(atLine.map(q => q.under));
-    if (consOver == null || consUnder == null) return null;   // need a real two-way at this line
-    const dv = BM.devigTwoWay(consOver, consUnder);
-    if (!dv || dv.vigPct <= 0) return null;
+    // Fair = median of each two-sided book's OWN de-vig (VaultBettingMath.consensusFair),
+    // never a de-vig of one book's over against another book's under.
+    const cf = BM.consensusFair(atLine.map(q => ({ book: q.book, a: q.over, b: q.under })));
+    if (!cf) return null;                                      // need a real two-way at this line
+    const dv = { over: cf.a, under: cf.b, vigPct: cf.vigPct };
+    // Best price is what the venue actually PAYS: exchange fees come off first.
     let bO = null, boBook = null, bU = null, buBook = null;
     atLine.forEach(q => {
-      if (q.over != null && (bO == null || q.over > bO)) { bO = q.over; boBook = q.book; }
-      if (q.under != null && (bU == null || q.under > bU)) { bU = q.under; buBook = q.book; }
+      const o = BM.netAmerican(q.book, q.over), u = BM.netAmerican(q.book, q.under);
+      if (o != null && (bO == null || o > bO)) { bO = o; boBook = q.book; }
+      if (u != null && (bU == null || u > bU)) { bU = u; buBook = q.book; }
     });
     const evO = bO != null ? BM.findEdge(dv.over.fairProb, BM.americanToProb(bO)) : null;
     const evU = bU != null ? BM.findEdge(dv.under.fairProb, BM.americanToProb(bU)) : null;
@@ -44070,7 +44446,7 @@ window.VaultPropModel = (function () {
     // level for backward compat), but `sides` lets a caller present the other
     // side (e.g. when Vault's projection leads a no-price-edge row).
     const mk = (s, d, bp, bk, e) => ({ side: s, fairProb: d.fairProb, fairAmerican: Math.round(d.fairAmerican), bestPrice: bp, bestBook: bk,
-      ev: e ? +(e.evPerDollar * 100).toFixed(1) : null, edgePts: e ? e.edgePct : null, vig: dv.vigPct });
+      ev: e ? +(e.evPerDollar * 100).toFixed(1) : null, edgePts: e ? e.edgePct : null, vig: dv.vigPct, fairBooks: cf.books });
     const overFE = mk('over', dv.over, bO, boBook, evO), underFE = mk('under', dv.under, bU, buBook, evU);
     const best = (evU && (!evO || evU.edge > evO.edge)) ? underFE : overFE;
     return Object.assign({}, best, { sides: { over: overFE, under: underFE } });
@@ -44087,8 +44463,10 @@ window.VaultPropModel = (function () {
     const atLine = (r.quotes || []).filter(q => q.line == null || r.line == null || q.line === r.line);
     let bO = null, boBook = null, bU = null, buBook = null;
     atLine.forEach(q => {
-      if (q.over != null && (bO == null || q.over > bO)) { bO = q.over; boBook = q.book; }
-      if (q.under != null && (bU == null || q.under > bU)) { bU = q.under; buBook = q.book; }
+      const o = window.VaultBettingMath ? window.VaultBettingMath.netAmerican(q.book, q.over) : q.over;
+      const u = window.VaultBettingMath ? window.VaultBettingMath.netAmerican(q.book, q.under) : q.under;
+      if (o != null && (bO == null || o > bO)) { bO = o; boBook = q.book; }
+      if (u != null && (bU == null || u > bU)) { bU = u; buBook = q.book; }
     });
     const side = bO != null ? 'over' : (bU != null ? 'under' : 'over');
     const bp = side === 'over' ? bO : bU, bk = side === 'over' ? boBook : buBook;
@@ -45359,7 +45737,7 @@ window.VaultPropModel = (function () {
     const sides = (fe && fe.sides) ? fe.sides : null;
     const s = sides ? sides[side] : null;
     let best = s ? s.bestPrice : null, book = s ? s.bestBook : null, fair = s ? s.fairAmerican : null, mev = s ? s.ev : null;
-    if (!s) { (r.quotes || []).forEach(q => { const on = q.line == null || line == null || q.line === line; if (on && q[side] != null && (best == null || q[side] > best)) { best = q[side]; book = q.book; } }); }
+    if (!s) { (r.quotes || []).forEach(q => { const on = q.line == null || line == null || q.line === line; const px = BM ? BM.netAmerican(q.book, q[side]) : q[side]; if (on && px != null && (best == null || px > best)) { best = px; book = q.book; } }); }
     const prob = v ? (side === 'over' ? v.over : v.under) : null;
     const mp = (BM && best != null) ? BM.americanToProb(best) : null;
     const ed = (BM && prob != null && mp != null) ? BM.findEdge(prob, mp) : null;
@@ -45421,13 +45799,21 @@ window.VaultPropModel = (function () {
     const onLine = q => isProb || q.line == null || cons == null || q.line === cons;
     const qs = (r.quotes || []).filter(onLine);
     if (!qs.length) return '';
+    // Best is judged on what each venue PAYS after its fee; a fee venue shows its
+    // posted price with the net underneath so the gold cell is never a mystery.
+    const BM = window.VaultBettingMath, net = (q, sd) => BM ? BM.netAmerican(q.book, q[sd]) : q[sd];
     let bO = null, bU = null;
-    qs.forEach(q => { if (q.over != null && (bO == null || q.over > bO)) bO = q.over; if (q.under != null && (bU == null || q.under > bU)) bU = q.under; });
-    const rows = qs.slice().sort((a, b) => ((b.over ?? -Infinity) - (a.over ?? -Infinity))).map(q => {
-      const bestO = q.over != null && q.over === bO, bestU = q.under != null && q.under === bU;
+    qs.forEach(q => { const o = net(q, 'over'), u = net(q, 'under'); if (o != null && (bO == null || o > bO)) bO = o; if (u != null && (bU == null || u > bU)) bU = u; });
+    const cell = (q, sd) => {
+      if (q[sd] == null) return '—';
+      const n = net(q, sd);
+      return fb.fmtOdds(q[sd]) + (n !== q[sd] ? '<span class="mut" style="display:block;font-size:9px" title="What this exchange pays after its fee">' + fb.fmtOdds(n) + ' net</span>' : '');
+    };
+    const rows = qs.slice().sort((a, b) => ((net(b, 'over') ?? -Infinity) - (net(a, 'over') ?? -Infinity))).map(q => {
+      const bestO = q.over != null && net(q, 'over') === bO, bestU = q.under != null && net(q, 'under') === bU;
       return '<div class="eb-btr"><div class="bk">' + q.book + '</div>'
-        + '<div class="pc' + (bestO ? ' best' : '') + '">' + (q.over != null ? fb.fmtOdds(q.over) : '—') + '</div>'
-        + '<div class="pc' + (bestU ? ' best' : '') + '">' + (q.under != null ? fb.fmtOdds(q.under) : '—') + '</div></div>';
+        + '<div class="pc' + (bestO ? ' best' : '') + '">' + cell(q, 'over') + '</div>'
+        + '<div class="pc' + (bestU ? ' best' : '') + '">' + cell(q, 'under') + '</div></div>';
     }).join('');
     return '<div class="eb-bks-h">Every book' + (isProb ? '' : ' · line ' + cons) + '<span class="mut"> · best price each side highlighted</span></div>'
       + '<div class="eb-bt2"><div class="eb-btr eb-bth"><div class="bk">Sportsbook</div><div class="pc">Over</div><div class="pc">Under</div></div>' + rows + '</div>';

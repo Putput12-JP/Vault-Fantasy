@@ -78,6 +78,13 @@ jobs:
       - name: Prop Win% calibration
         run: python3 scripts/prop_calibration.py || true
 
+      # How wide one game is, for the Market fantasy projection's price -> stat
+      # inverse (yards are log-normal; the model's residual spread overstates the
+      # skew). Refits the variance scale on every settled two-way closing price →
+      # data/market_implied_calib.json. Deterministic; never fails the settle.
+      - name: Market-implied projection calibration
+        run: python3 scripts/build_market_implied_calib.py || true
+
       # Post-settle retro on Vault's OWN prop projections (record, CLV, per-market
       # projection bias, model-vs-market log-loss) written to docs/retro/. Reads
       # the tape settle_bets just wrote; output is DETERMINISTIC (no wall-clock),
@@ -98,7 +105,7 @@ jobs:
           git config user.email "vault-bot@users.noreply.github.com"
           # Rebase in case another data cron pushed while we ran.
           git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
-          git add data/bet_results.json data/edge_scoreboard.json data/prop_calibration.json data/grade_recal.json data/espn_player_stats_*.json docs/retro/*.md 2>/dev/null || true
+          git add data/bet_results.json data/edge_scoreboard.json data/prop_calibration.json data/grade_recal.json data/market_implied_calib.json data/espn_player_stats_*.json docs/retro/*.md 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No settlement changes."
           else

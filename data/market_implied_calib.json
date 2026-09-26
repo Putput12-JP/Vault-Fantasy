@@ -1,0 +1,29 @@
+{
+ "markets": {
+  "rec_yd": {
+   "bias_fit": 0.0,
+   "bias_raw": -4.57,
+   "borrowed": false,
+   "k": 0.4,
+   "n": 373
+  },
+  "rush_yd": {
+   "bias_fit": -1.26,
+   "bias_raw": -6.4,
+   "borrowed": true,
+   "k": 0.35,
+   "n": 71
+  }
+ },
+ "meta": {
+  "method": "variance scale k on prop_model log-normal so implied mean is unbiased vs actuals at the closing two-way fair",
+  "min_n": 150,
+  "pooled_k": 0.35,
+  "pooled_n": 444,
+  "weeks": [
+   "2026w1",
+   "2026w2",
+   "2026w3"
+  ]
+ }
+}
