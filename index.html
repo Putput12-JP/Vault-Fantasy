@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-26T22:00', tag:'Improved', title:'Clearer EV labels on Player Props',
+    items:[
+      'The Edge column is now called +EV. It is Vault’s own expected value for the pick at the best price among your books, and it is what the “Only +EV picks” filter uses.',
+      'The EV column is now called Mkt EV. It compares book prices to each other with no model, so on pick’em apps like Underdog and Sleeper it just shows the juice.'
+    ]
+  },
+  {
     ts:'2026-09-26T21:00', tag:'New', title:'EV column on Player Props',
     items:[
       'Player Props now shows an EV column next to Edge. EV is how the best price on the board compares to the fair price once the books\' juice is removed. Positive means the price itself beats the market, no model involved.',
@@ -44886,8 +44893,8 @@ window.VaultMarketProj = (function () {
       + SH('Grade', 'grade', '', 'Vault’s A–F grade on the pick: how strongly the model favors this side')
       + SH('Line', 'line')
       + '<th title="Vault’s own per-game projection">Vault proj</th>'
-      + SH('Edge', 'vault', '', 'Vault’s projected win prob vs the best book price — the model edge')
-      + SH('EV', 'ev', '', 'Market EV: the best price vs the no-vig consensus of the books, no model involved')
+      + SH('+EV', 'vault', '', 'Vault’s expected value: its win chance for this pick at the best price among your books')
+      + SH('Mkt EV', 'ev', '', 'Market EV: the best price vs the no-vig consensus of the books, no model involved. On pick’em apps this is just the juice.')
       + SH('Win %', 'sim', '', 'Vault’s own calibrated chance this pick hits — the model’s probability, not the book’s')
       + SH('L5', 'hit', 'hw')
       + '<th class="hw">L10</th><th class="hw">L20</th><th class="hw">SZN</th>'
@@ -44936,7 +44943,7 @@ window.VaultMarketProj = (function () {
         + '<div class="mc-id"><div class="bx-pn">' + r.name + injBadge(r) + '</div><div class="bx-pg">' + sub + '</div></div>'
         + '<button class="eb-star ' + (on ? 'on' : '') + '" data-w="' + k + '">' + (on ? '★' : '☆') + '</button></div>'
         + '<div class="mc-line">' + (pf.pickem ? '<span class="bx-side pick">PICK</span>' : '<span class="bx-side ' + pf.side + '">' + (pf.side === 'over' ? 'Over' : 'Under') + '</span>') + '<span class="bx-line">' + (r.line != null ? r.line : '') + '</span>' + (pf.vaultLed ? '<span class="eb-vled">V</span>' : '') + '<span class="mc-best"><span class="bx-px">' + fb.fmtOdds(pf.bestPrice) + bookChip(pf.bestBook) + nBooksTag(r) + '</span></span></div>'
-        + '<div class="mc-stats">' + stat('Grade', gradeColCell(r), ' data-gradek="' + k + '"') + stat('Proj', projNumCell(r), ' data-vpk="' + k + '"') + stat('Edge', edgeChipHTML(r), ' data-edgek="' + k + '"') + stat('Win', simCellHTML(r), ' data-simk="' + k + '"') + stat('Opp', oppRankCell(r)) + '</div>'
+        + '<div class="mc-stats">' + stat('Grade', gradeColCell(r), ' data-gradek="' + k + '"') + stat('Proj', projNumCell(r), ' data-vpk="' + k + '"') + stat('+EV', edgeChipHTML(r), ' data-edgek="' + k + '"') + stat('Win', simCellHTML(r), ' data-simk="' + k + '"') + stat('Opp', oppRankCell(r)) + '</div>'
         + '<div class="mc-hits">' + hit('L5') + hit('L10') + hit('L20') + hit('SZN') + '</div>'
         + '</div>';
     }).join('') : '';
@@ -44958,9 +44965,9 @@ window.VaultMarketProj = (function () {
         + '<span class="bxo-rate" data-ratek="' + k + '"><span class="mut">·</span></span></div>'
         + '</div>';
     }).join('') : '';
-    const SORTLBL = { name: 'player', line: 'line', edge: 'edge', ev: 'EV', best: 'best price', lean: 'lean', hit: 'hit rate', vault: 'Vault edge', grade: 'Vault grade', sim: 'Win %' };
+    const SORTLBL = { name: 'player', line: 'line', edge: 'edge', ev: 'Mkt EV', best: 'best price', lean: 'lean', hit: 'hit rate', vault: '+EV', grade: 'Vault grade', sim: 'Win %' };
     const anyVaultLed = rows.some(r => { const p = resolvePick(r); return p && p.vaultLed; });
-    const cn = rows.length + ' · sorted by ' + (SORTLBL[ebSort.key] || 'EV') + (ebSort.dir < 0 ? ' ↓' : ' ↑')
+    const cn = rows.length + ' · sorted by ' + (SORTLBL[ebSort.key] || 'Mkt EV') + (ebSort.dir < 0 ? ' ↓' : ' ↑')
       + (anyVaultLed ? ' · <span title="No market price edge on this line, so the pick follows Vault’s projection instead of the book"><b style="color:var(--bt-accent2)">V</b> = Vault-led</span>' : '')
       + (fairMode === 'sharp' ? ' · <span title="Fair prices come from sharp books only (change in Filters)">fair: sharp books</span>' : '')
       + (() => { const b = _agoTxt(MODEL.generated), a = _agoTxt((MODEL.meta || {}).props_pp_generated); return b ? ' · <span title="Sportsbook prices refresh hourly in game windows, daily otherwise. Pick’em apps refresh hourly.">books ' + b + (a && a !== b ? ', pick’em ' + a : '') + '</span>' : ''; })();
@@ -44976,7 +44983,7 @@ window.VaultMarketProj = (function () {
       _pvInner().innerHTML = '<div class="eb-wrap">'
         + '<div class="eb-board"><div class="eb-bh"><div><div class="eb-t">' + boardTitle + '</div><div class="eb-cn">' + cn + '</div></div>'
         + '<div class="eb-bh-r"></div></div>'
-        + '<div class="bx-hint"><svg fill="none" stroke="var(--bt-accent2)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/></svg> <b>Grade</b>, <b>Vault proj</b>, <b>Edge</b> and <b>Win %</b> come from Vault’s own player model, not the books. <b>L5–SZN</b> are real hit rates against the line shown. Click any player for the full breakdown — the opponent’s defense, best price and every book’s line.</div>'
+        + '<div class="bx-hint"><svg fill="none" stroke="var(--bt-accent2)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/></svg> <b>Grade</b>, <b>Vault proj</b>, <b>+EV</b> and <b>Win %</b> come from Vault’s own player model, not the books. <b>Mkt EV</b> uses book prices only. <b>L5–SZN</b> are real hit rates against the line shown. Click any player for the full breakdown — the opponent’s defense, best price and every book’s line.</div>'
         + (isMobile()
             ? '<div id="eb-rows" class="bx-mprops">' + mbody + '</div>'
             : '<div class="eb-tscroll bx-pscroll"><table class="bx-pt">' + head + '<tbody id="eb-rows">' + body + '</tbody></table></div>')
@@ -46057,8 +46064,8 @@ window.VaultMarketProj = (function () {
       + '<div class="eb-2big">' + fmt(s.best) + '</div><div class="eb-2bk">' + (s.book || '—') + '</div>'
       + '<div class="eb-2rows">'
       + '<div><span>Fair (no-vig)</span><b>' + fmt(s.fair) + '</b></div>'
-      + '<div><span title="Value from the book price after stripping the hold">Market EV</span><b>' + evH(s.mev) + '</b></div>'
-      + '<div><span title="Value from Vault’s own projection vs this price">Vault edge</span><b>' + vH(s) + '</b></div>'
+      + '<div><span title="Value from the book price after stripping the hold">Mkt EV</span><b>' + evH(s.mev) + '</b></div>'
+      + '<div><span title="Value from Vault’s own projection vs this price">+EV</span><b>' + vH(s) + '</b></div>'
       + '<div><span title="Vault’s calibrated chance this side hits">Win %</span><b>' + sH(s) + '</b></div>'
       + '<div><span title="Vault grade for this side vs your break-even">Grade</span><b>' + gH(s) + '</b></div>'
       + '<div><span title="Quarter Kelly, sized on whichever is lower: the no-vig fair or Vault’s win %. Both have to see an edge. Set your bankroll in Filters.">Stake</span><b>' + kH(s) + '</b></div>'
@@ -47125,7 +47132,7 @@ window.VaultMarketProj = (function () {
     const books = ebBookList(), selBooks = fltBooks || new Set(books.map(b => b.book));
     const teams = fb ? fb.teams(MODEL) : [];
     const synced = !!((_lex(() => myTeamsData) || []).length) || Array.isArray(window._pfLeagueData);
-    const SORTS = [['ev', 'EV'], ['grade', 'Grade'], ['vault', 'Edge'], ['sim', 'Win %'], ['hit', 'Hit % L10'], ['line', 'Line'], ['name', 'Player']];
+    const SORTS = [['ev', 'Mkt EV'], ['grade', 'Grade'], ['vault', '+EV'], ['sim', 'Win %'], ['hit', 'Hit % L10'], ['line', 'Line'], ['name', 'Player']];
     el.innerHTML =
       '<div class="eb-dh"><div class="eb-dt"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg> Player Prop Filters</div>'
       + '<span class="sp"></span><button class="eb-dreset" id="eb-dreset">Reset</button><button class="eb-dclose" id="eb-dclose">✕</button></div>'
