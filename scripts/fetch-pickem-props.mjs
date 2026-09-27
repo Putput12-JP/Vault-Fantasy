@@ -684,6 +684,52 @@ function pruneStalePickem(existing, sources) {
   if (removedQuotes) log(`pruned ${removedQuotes} stale pick'em quote(s), dropped ${droppedCells} empty cell(s)`);
 }
 
+const TEAM_ALIAS = { LA: 'LAR', WSH: 'WAS', JAC: 'JAX', LVR: 'LV', OAK: 'LV', SD: 'LAC', STL: 'LAR' };
+const teamKey = t => { t = String(t || '').toUpperCase(); return TEAM_ALIAS[t] || t; };
+const LIVE_GRACE_MS = 4 * 3600e3;   // a game in progress is still "next" for its team
+
+function retagMatchups(existing, sources, games) {
+  // team → its soonest game that hasn't finished (schedule, not the week label,
+  // so a Thursday team whose game is done rolls to next week on its own)
+  const now = Date.now(), next = {};
+  for (const g of (games || [])) {
+    const t = Date.parse(g && g.commence); if (!Number.isFinite(t) || t < now - LIVE_GRACE_MS) continue;
+    for (const [team, opp, ha] of [[g.home, g.away, 'home'], [g.away, g.home, 'away']]) {
+      const k = teamKey(team); if (!k) continue;
+      if (!next[k] || t < next[k].t) next[k] = { t, opp, ha, commence: g.commence };
+    }
+  }
+  const fresh = new Map();   // id → Set of markets a pick'em book quoted this run
+  for (const { props, book } of sources) if (OWNED_PICKEM.has(book))
+    for (const id in (props || {})) { const s = fresh.get(id) || new Set(); for (const mk in (props[id].lines || {})) s.add(mk); fresh.set(id, s); }
+  let n = 0, droppedQ = 0, droppedC = 0;
+  for (const [id, mks] of fresh) {
+    const p = existing[id], g = p && next[teamKey(p.team)];
+    if (!g) continue;                                     // bye / unknown team: leave as is
+    if (p.opp === g.opp && p.commence === g.commence && p.ha === g.ha) continue;
+    // A REAL opponent change means every sportsbook quote on this player was
+    // priced for the old game: build-lineup-feed sets opp whenever ParlayAPI
+    // prices a player, so an old opp proves its last quote predates this week.
+    // Drop those, keeping only this run's pick'em quotes, or last week's
+    // Pinnacle rec_yd would read as this week's line after the re-tag.
+    if (p.opp && teamKey(p.opp) !== teamKey(g.opp)) {
+      for (const mk in (p.lines || {})) {
+        const c = p.lines[mk];
+        const keep = mks.has(mk) ? (c.quotes || []).filter(q => OWNED_PICKEM.has(q.book)) : [];
+        droppedQ += (c.quotes || []).length - keep.length;
+        if (!keep.length) { delete p.lines[mk]; droppedC++; continue; }
+        c.quotes = keep;
+        if (!keep.some(q => q.book === c.book)) reHeadline(c);
+        c.best = { over: bestSide(c.quotes, 'over'), under: bestSide(c.quotes, 'under') };
+      }
+      if (!Object.keys(p.lines || {}).length) { delete existing[id]; continue; }
+    }
+    p.opp = g.opp; p.commence = g.commence; p.ha = g.ha; n++;
+  }
+  if (droppedQ) log(`matchup re-tag: dropped ${droppedQ} prior-game sportsbook quote(s), ${droppedC} empty cell(s)`);
+  return n;
+}
+
 function mergeFeed(sources, stats, sl) {
   const depth = sl && sl.depth;
   if (!existsSync(FEED)) { log('feed not found, nothing to merge:', FEED); return false; }
@@ -719,6 +765,17 @@ function mergeFeed(sources, stats, sl) {
   // Purge stale quotes for the pick'em books that refreshed healthily this run,
   // so a line no longer on their board can't linger as a bad cross-check.
   pruneStalePickem(existing, sources);
+
+  // Re-tag the matchup of every player a pick'em book quoted THIS run. The
+  // backfill above only fills a blank opp, and only PrizePicks sends one, so a
+  // player refreshed hourly by Underdog/Sleeper kept LAST week's opp forever:
+  // Week 3 had 14 of 29 starting QBs (Allen, Herbert, Burrow…) tagged to their
+  // Week 2 opponent, and every slate gate dropped them as off-slate. A live
+  // quote means the book is pricing the team's next game, so take opp/commence
+  // from the schedule. Players with no fresh quote keep their old tag and stay
+  // off-slate, which is correct for a line nobody is offering any more.
+  const retagged = retagMatchups(existing, sources, feed.vegas_games);
+  if (retagged) log(`matchup re-tag: ${retagged} player(s) moved to their next game`);
 
   // Position-impossible line guard. A QB never has a receptions market — such a
   // cell is always a cross-source name collision (two "Josh Allen"s: the Bills

@@ -125,6 +125,11 @@ for (const pid in feed.vegas_player_props) {
     }
     // existing key: roll cur forward, append a sample only when something moved
     rec.lastSeen = now;
+    // matchup rolls forward: the feed used to keep a player's prior-week opp
+    // (fixed in fetch-pickem-props re-tag), so a row created then carries the
+    // wrong opponent until the feed's corrected tag lands here.
+    if (p.opp) rec.opp = p.opp;
+    if (p.ha) rec.ha = p.ha;
     // A prop opened before per-book capture existed: bank its FIRST per-book
     // read once, so settlement has the earliest book prices we ever saw.
     if (!(rec.open && rec.open.q) && !rec.q0 && q.length) rec.q0 = { q, ts: now };
