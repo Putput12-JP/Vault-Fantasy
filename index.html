@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-26T23:00', tag:'New', title:'Top +EV quick filter on Player Props',
+    items:[
+      'A new Top +EV button next to Filters shows only the strongest picks: +EV of 20% or more, graded A or B, with the edge not flagged.',
+      'That is the group that has paid best on Vault’s Track Record so far. The same switch is in the Filters drawer.'
+    ]
+  },
+  {
     ts:'2026-09-26T22:00', tag:'Improved', title:'Clearer EV labels on Player Props',
     items:[
       'The Edge column is now called +EV. It is Vault’s own expected value for the pick at the best price among your books, and it is what the “Only +EV picks” filter uses.',
@@ -41947,6 +41954,7 @@ window.VaultMarketProj = (function () {
   let fltGames = null;                    // Set<matchup key> or null = every game
   let fltFade = false;                    // A/B props on the side AGAINST Vault's team-total lean (_teamLeanOf)
   let fltEv = false;                      // only rows where Vault's win chance beats the best (selected-book) price
+  let fltStrong = false;                  // quick filter: +EV 20%+, grade A/B, edge not flagged (the Track Record's winning slice)
   // Book filter: null = every book; a Set = only these books' quotes count. Rows
   // are trimmed to those quotes (_bookScope) BEFORE fair/EV/grade are computed,
   // so the line, best price, edge, win % and price-aware grade all describe the
@@ -42098,6 +42106,8 @@ window.VaultMarketProj = (function () {
 #page-betting .bt-seg > button:hover, #page-betting .bt-seg > button.on{ color:var(--bt-text); }
 #page-betting .bt-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
 #page-betting .bt-props-ctl{display:inline-flex;align-items:center;gap:10px}
+#page-betting .bt-props-ctl .eb-filtersbtn{white-space:nowrap;flex:none}
+@media (max-width:767px){#page-betting .bt-props-ctl{flex-wrap:wrap;max-width:100%;row-gap:8px}}
 #page-betting .bt-props-ctl .eb-be{display:inline-flex;align-items:center;gap:7px;font-family:var(--bt-mono);font-size:var(--t-micro);letter-spacing:.04em;text-transform:uppercase;color:var(--bt-muted);white-space:nowrap}
 #page-betting .bt-tag{font-family:var(--bt-mono);font-size:var(--t-nano);letter-spacing:.1em;text-transform:uppercase;color:var(--bt-gold);border:1px solid rgba(245,200,66,.3);background:rgba(245,200,66,.08);padding:5px 10px;border-radius:7px}
 #page-betting .bt-spacer{flex:1}
@@ -42681,6 +42691,7 @@ window.VaultMarketProj = (function () {
 /* ── Filters button (board header) ───────────────────────────────────────── */
 #page-betting .eb-filtersbtn{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-secondary);font-weight:700;color:var(--bt-text2);background:var(--bt-s1);border:1px solid var(--bt-border2);border-radius:9px;padding:8px 13px;cursor:pointer}
 #page-betting .eb-filtersbtn:hover{color:var(--bt-text);border-color:var(--bt-border3)}
+#page-betting .eb-filtersbtn.eb-strongbtn.on{color:var(--bt-green);border-color:var(--bt-green);background:color-mix(in srgb,var(--bt-green) 12%,var(--bt-s1))}
 #page-betting .eb-filtersbtn .eb-fbadge:empty{display:none}
 #page-betting .eb-filtersbtn .eb-fbadge{min-width:17px;height:17px;padding:0 5px;border-radius:999px;background:var(--bt-accent2);color:var(--on-primary);font-family:var(--bt-mono);font-size:10px;font-weight:800;display:inline-grid;place-items:center}
 /* ── Filters drawer (appended to <body>, so it reads the ROOT theme tokens) ─ */
@@ -44671,6 +44682,11 @@ window.VaultMarketProj = (function () {
     // selected books (_sideMetrics reads the book-scoped quotes). Async like the
     // grade: a row stays until its Vault read lands, then the refill re-applies.
     if (fltEv) res = res.filter(r => { const k = propKey(r); if (!(k in _vaultCache)) return true; const v = _cacheV(r); if (!v) return false; const sm = _sideMetrics(r, displaySide(r), v); return sm.vev != null && sm.vev > 0; });
+    // Strong +EV quick filter: the slice that has paid on the Track Record.
+    // Vault +EV of 20%+ on the shown side, grade A or B, and the edge NOT
+    // flagged (a flagged edge is the grey pill: usually a projection far off
+    // the line, i.e. a role mismatch). Keep-until-known like the grade filter.
+    if (fltStrong) res = res.filter(r => { const k = propKey(r); if (!(k in _vaultCache)) return true; if (_statusCellChip(r)) return false; const v = _cacheV(r); if (!v) return false; const sm = _sideMetrics(r, displaySide(r), v); return sm.vev != null && sm.vev >= 20 && (sm.letter === 'A' || sm.letter === 'B') && !_displayCaution(r); });
     // Trend band: filter on the L10 hit-rate cache (async, same keep-until-known rule).
     if (fltTrendMin > 0 || fltTrendMax < 100) res = res.filter(r => { const h = _hitCache[propKey(r)]; return h == null || (h >= fltTrendMin && h <= fltTrendMax); });
     // Fade Vault's team lean: A/B only, on the side against the team-total lean.
@@ -44737,8 +44753,8 @@ window.VaultMarketProj = (function () {
   // no gradeable projection (a grade filter should hide it); else the A–F rank.
   function _gradeRankOf(r) { const k = propKey(r); if (!(k in _vaultCache)) return null; const dg = _displayGradeOf(r); if (!dg) return -1; return _GR[dg.letter] != null ? _GR[dg.letter] : -1; }
   function _trendActive() { return fltTrendMin > 0 || fltTrendMax < 100; }
-  function _ebFiltersActive() { return fltEv || fltFade || !!fltBooks || ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
-  function _ebFilterCount() { let n = 0; if (fltEv) n++; if (fltFade) n++; if (fltBooks) n++; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
+  function _ebFiltersActive() { return fltEv || fltStrong || fltFade || !!fltBooks || ouFilter !== 'all' || fltGrade > 0 || _trendActive() || fltGames != null || !!(searchQ && searchQ.trim()) || !!teamFilter || mineOnly; }
+  function _ebFilterCount() { let n = 0; if (fltEv) n++; if (fltStrong) n++; if (fltFade) n++; if (fltBooks) n++; if (ouFilter !== 'all') n++; if (fltGrade > 0) n++; if (_trendActive()) n++; if (fltGames != null) n++; if (searchQ && searchQ.trim()) n++; if (teamFilter) n++; if (mineOnly) n++; return n; }
 
   function renderProps() {
     const host = document.getElementById('bt-v-props');
@@ -44821,7 +44837,7 @@ window.VaultMarketProj = (function () {
       // is active, say so and offer to clear it before falling back to that copy.
       const activeFilter = _ebFiltersActive();
       if (activeFilter) {
-        const what = searchQ ? '“' + searchQ + '”' : (teamFilter ? teamFilter : (ouFilter !== 'all' ? ouFilter === 'over' ? 'Overs' : 'Unders' : (fltGrade > 0 || _trendActive() || (fltGames && fltGames.size)) ? 'these filters' : 'your players'));
+        const what = searchQ ? '“' + searchQ + '”' : (teamFilter ? teamFilter : (ouFilter !== 'all' ? ouFilter === 'over' ? 'Overs' : 'Unders' : (fltGrade > 0 || fltEv || fltStrong || fltFade || !!fltBooks || _trendActive() || (fltGames && fltGames.size)) ? 'these filters' : 'your players'));
         // A search spans every position/market, so don't blame the current one.
         const emt = searchQ ? 'No player matches that name with a live prop line right now'
           : 'No ' + curPos + ' ' + mLbl + ' line matches your current filters';
@@ -47071,7 +47087,7 @@ window.VaultMarketProj = (function () {
   // re-renders (ebFillVaultCol / ebFillHits) re-apply them for free.
   function ebResetFilters() {
     searchQ = ''; teamFilter = ''; mineOnly = false;
-    ouFilter = 'all'; fltGrade = 0; fltTrendMin = 0; fltTrendMax = 100; fltGames = null; fltFade = false; fltEv = false;
+    ouFilter = 'all'; fltGrade = 0; fltTrendMin = 0; fltTrendMax = 100; fltGames = null; fltFade = false; fltEv = false; fltStrong = false; _ebPaintStrong();
     if (fltBooks) ebSetBooks(null);
     ebSort = { key: 'ev', dir: -1 };
   }
@@ -47120,6 +47136,11 @@ window.VaultMarketProj = (function () {
     const b = document.getElementById('eb-fbadge'); if (!b) return;
     const n = _ebFilterCount(); b.textContent = n || ''; b.style.display = n ? 'inline-grid' : 'none';
   }
+  function _ebPaintStrong() {
+    const b = document.getElementById('eb-strong'); if (!b) return;
+    b.classList.toggle('on', fltStrong); b.setAttribute('aria-pressed', fltStrong ? 'true' : 'false');
+    b.textContent = fltStrong ? '✓ Top +EV' : 'Top +EV';
+  }
   function ebUpdateMyPicks() {
     const c = document.getElementById('eb-mp-count'); if (!c) return;
     const n = picksLoad().length; c.innerHTML = n ? ' <b>' + n + '</b>' : '';
@@ -47140,6 +47161,8 @@ window.VaultMarketProj = (function () {
       +   '<div class="eb-dsec"><div class="eb-dlbl">Filter by Vault’s leaned side.</div>' + _ebSeg('', [{ v: 'all', l: 'All' }, { v: 'over', l: 'Over' }, { v: 'under', l: 'Under' }], ouFilter) + '</div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Only +EV picks.</div><button class="eb-dtoggle' + (fltEv ? ' on' : '') + '" id="eb-dev">' + (fltEv ? '✓ Vault beats the price' : 'Vault beats the price') + '</button>'
       +     '<div class="eb-dhelp">Keeps picks where Vault’s win chance beats the best price on the board, or at the books you pick below.</div></div>'
+      +   '<div class="eb-dsec"><div class="eb-dlbl">Top +EV picks.</div><button class="eb-dtoggle' + (fltStrong ? ' on' : '') + '" id="eb-dstrong">' + (fltStrong ? '✓ +EV 20%+, grade A or B, not flagged' : '+EV 20%+, grade A or B, not flagged') + '</button>'
+      +     '<div class="eb-dhelp">The picks that have paid best on Vault’s Track Record so far: +EV of 20% or more with an A or B grade. Leaves out flagged edges (grey +EV), where Vault’s projection is so far from the line that the model is more likely wrong than the book.</div></div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Fade Vault’s team lean.</div><button class="eb-dtoggle' + (fltFade ? ' on' : '') + '" id="eb-dfade">' + (fltFade ? '✓ A and B props against the lean' : 'A and B props against the lean') + '</button>'
       +     '<div class="eb-dhelp">Shows A and B props on the opposite side of Vault’s team scoring lean: unders when Vault expects the team to beat its implied total, overs when it expects a miss. This did well in the first weeks and is still being tested in the Track Record.</div></div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Fair price from.</div>' + _ebSeg('fair', [{ v: 'all', l: 'Every book' }, { v: 'sharp', l: 'Sharp books' }], fairMode)
@@ -47189,6 +47212,7 @@ window.VaultMarketProj = (function () {
     el.querySelector('#eb-dteam').onchange = e => { teamFilter = e.target.value; renderProps(); };
     el.querySelector('#eb-dfade').onclick = () => { fltFade = !fltFade; ebBuildDrawer(); renderPropsBoard(); };
     el.querySelector('#eb-dev').onclick = () => { fltEv = !fltEv; ebBuildDrawer(); renderPropsBoard(); };
+    el.querySelector('#eb-dstrong').onclick = () => { fltStrong = !fltStrong; _ebPaintStrong(); ebBuildDrawer(); renderPropsBoard(); };
     const dmine = el.querySelector('#eb-dmine');
     if (dmine) dmine.onclick = () => { mineOnly = !mineOnly; renderProps(); };
     // trend dual-range
@@ -47426,6 +47450,7 @@ window.VaultMarketProj = (function () {
           + BE_PRESETS.map(([lab, be]) => '<option value="' + be + '"' + (!bePrice && Math.abs(be - betBE) < 1e-6 ? ' selected' : '') + '>' + lab + ' · ' + Math.round(be * 100) + '%</option>').join('')
           + '</select></label>'
           + '<button class="eb-filtersbtn" id="eb-filtersbtn" title="Filter &amp; sort the board — side, grade, hit rate, games"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h6M14 18h6"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg> Filters<span class="eb-fbadge" id="eb-fbadge"></span></button>'
+          + '<button class="eb-filtersbtn eb-strongbtn" id="eb-strong" aria-pressed="false" title="Quick filter: +EV of 20% or more, grade A or B, and the edge not flagged">Top +EV</button>'
           + '<button class="eb-filtersbtn" id="eb-mypicks" title="Your logged picks + realized results by grade">My Picks<span id="eb-mp-count"></span></button>';
         pc.dataset.built = '1';
         pc.querySelector('#eb-be-sel').onchange = e => {
@@ -47433,6 +47458,7 @@ window.VaultMarketProj = (function () {
           const v = parseFloat(e.target.value); if (v > 0 && v < 1) { bePrice = false; betBE = v; try { localStorage.setItem(BEKEY, betBE); } catch (err) {} renderPropsBoard(); }
         };
         pc.querySelector('#eb-filtersbtn').onclick = ebOpenDrawer;
+        pc.querySelector('#eb-strong').onclick = () => { fltStrong = !fltStrong; _ebPaintStrong(); renderPropsBoard(); };
         pc.querySelector('#eb-mypicks').onclick = () => { propsView = 'results'; renderPropsBoard(); };
       }
       if (isP) { ebUpdateFilterBtn(); ebUpdateMyPicks(); }
