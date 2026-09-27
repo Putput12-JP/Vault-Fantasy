@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Free Betting Calculators: No-Vig, EV, Kelly, Parlay, Pick'em | Vault</title>
+<meta name="description" content="Free sports betting calculators: no-vig fair odds and hold, expected value, Kelly stake size, parlay odds and EV, PrizePicks and Underdog pick'em break-even, and an odds converter. No sign-up.">
+<link rel="canonical" href="https://vaultfantasy.com/calculators.html">
+<meta property="og:title" content="Free betting calculators: no-vig, EV, Kelly, parlay, pick'em">
+<meta property="og:description" content="Fair odds, expected value, stake sizing, parlays and pick'em break-evens. Free, no sign-up.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://vaultfantasy.com/calculators.html">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="fonts/fonts.css" rel="stylesheet">
+<link href="vault-ds.css?v=20260728d-vseg" rel="stylesheet">
+<script>
+  if (/[?&]embed=1\b/.test(location.search)) document.documentElement.classList.add('embed');
+  (function () { try { var t = localStorage.getItem('snapdraft-theme') || 'onyx'; document.documentElement.setAttribute('data-theme', t === 'dark' ? '' : t); } catch (e) { document.documentElement.setAttribute('data-theme', 'onyx'); } })();
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Vault betting calculators","url":"https://vaultfantasy.com/calculators.html","applicationCategory":"FinanceApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"No-vig fair odds, expected value, Kelly stake, parlay and pick'em break-even calculators."}
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-sans);-webkit-font-smoothing:antialiased;line-height:var(--lh-body)}
+a{color:var(--accent2)}
+.wrap{max-width:980px;margin:0 auto;padding:28px 16px 64px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:28px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text)}
+.brand .tile{width:38px;height:38px;border-radius:11px;background:#f2f4f9;border:1px solid rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px -2px rgba(0,0,0,0.4)}
+[data-theme="light"] .brand .tile{border-color:rgba(20,30,45,0.12);box-shadow:0 2px 6px -2px rgba(0,0,0,0.15)}
+.brand .tile img{height:27px;width:auto;display:block}
+.brand .word{line-height:1.02}
+.brand .t1{font-size:var(--t-body);font-weight:800;letter-spacing:-0.01em;text-transform:uppercase;color:var(--text)}
+[data-theme="onyx"] .brand .t1{color:#f6f1e6}
+.brand .t1 span{color:var(--accent)}
+.brand .t2{font-size:var(--t-nano);font-weight:600;letter-spacing:0.16em;color:var(--muted);font-family:var(--font-mono);text-transform:uppercase;margin-top:1px;text-align:center}
+/* embed=1: shown inside Vault's Betting tab, which brings its own chrome */
+.embed body{background:transparent}
+.embed .top,.embed footer{display:none}
+.embed .wrap{padding:8px 0 24px;max-width:none}
+.cta{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:var(--radius-pill);background:var(--primary);color:var(--on-primary);font-weight:700;font-size:var(--t-secondary);text-decoration:none;transition:transform var(--dur-release) var(--ease-spring)}
+.cta:active{transform:scale(var(--press-btn));transition:transform var(--dur-press) ease-out}
+.kick{font-family:var(--font-mono);font-size:var(--t-label);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:var(--t-hero);line-height:var(--lh-hero);font-weight:800;margin:8px 0 10px}
+.lede{font-size:var(--t-body);color:var(--text2);max-width:700px}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 6px}
+.toc a{font-size:var(--t-secondary);font-weight:600;padding:7px 12px;border-radius:var(--radius-pill);border:1px solid var(--border2);background:var(--s1);color:var(--text2);text-decoration:none}
+.toc a:hover{border-color:var(--border3);color:var(--text)}
+.calc{margin-top:22px;background:var(--s1);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:20px;scroll-margin-top:16px}
+.calc h2{font-size:var(--t-h1);font-weight:800}
+.calc .sub{font-size:var(--t-secondary);color:var(--muted);margin:4px 0 16px;max-width:720px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label{display:block;font-size:12px;font-weight:600;color:var(--text2)}
+input,select{display:block;width:100%;margin-top:6px;font-family:var(--font-mono);font-size:15px;color:var(--text);background:var(--s2);border:1px solid var(--border2);border-radius:var(--radius-md);padding:10px 12px;outline:none}
+input:focus,select:focus{border-color:var(--accent2);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent2) 20%,transparent)}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px}
+.o{background:var(--s2);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px}
+.o .k{font-family:var(--font-mono);font-size:var(--t-micro);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.o .v{font-family:var(--font-mono);font-size:22px;font-weight:700;margin-top:2px}
+.good{color:var(--rb)} .bad{color:var(--red2)}
+.hint{font-size:12px;color:var(--muted);margin-top:12px}
+.legs{display:grid;gap:8px}
+.leg{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
+.btn{font-family:var(--font-sans);font-size:var(--t-secondary);font-weight:700;padding:10px 14px;border-radius:var(--radius-md);border:1px solid var(--border2);background:var(--s2);color:var(--text);cursor:pointer;transition:transform var(--dur-release) var(--ease-spring)}
+.btn:active{transform:scale(var(--press-btn));transition:transform var(--dur-press) ease-out}
+.btn.x{padding:10px 12px;color:var(--muted)}
+.row-actions{margin-top:10px}
+.faq{margin-top:34px}
+.faq h2{font-size:var(--t-h1);font-weight:800;margin-bottom:8px}
+.faq details{background:var(--s1);border:1px solid var(--border2);border-radius:var(--radius-md);padding:12px 16px;margin-top:8px}
+.faq summary{cursor:pointer;font-weight:700}
+.faq p{margin-top:8px;color:var(--text2);font-size:var(--t-secondary)}
+footer{margin-top:40px;font-size:12px;color:var(--muted)}
+@media(max-width:600px){h1{font-size:28px}.calc{padding:16px}}
+@media(prefers-reduced-motion:reduce){.cta,.cta:active,.btn,.btn:active{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="brand" href="index.html" aria-label="Vault Fantasy Football home"><span class="tile"><img src="vault-shield-tile.png" alt=""></span><span class="word"><div class="t1">Vault <span>Fantasy</span></div><div class="t2">Football</div></span></a>
+    <a class="cta" href="index.html">Open the board →</a>
+  </div>
+
+  <div class="kick">Free tools · no sign-up</div>
+  <h1>Betting calculators</h1>
+  <p class="lede">The same math Vault runs on every line: strip the hold to find the fair price, check whether a bet has positive expected value, size it, and see what a parlay or pick'em entry really needs to hit.</p>
+  <nav class="toc">
+    <a href="#no-vig">No-vig fair odds</a><a href="#ev">Expected value</a><a href="#kelly">Kelly stake</a><a href="#parlay">Parlay</a><a href="#pickem">Pick'em break-even</a><a href="#odds">Odds converter</a>
+  </nav>
+
+  <section class="calc" id="no-vig">
+    <h2>No-vig fair odds calculator</h2>
+    <p class="sub">Enter both sides of a two-way market (over/under, spread, moneyline). The hold is the book's cut; removing it gives each side's fair probability and fair odds.</p>
+    <div class="grid">
+      <label>Side A odds (American)<input id="nv-a" inputmode="numeric" value="-110"></label>
+      <label>Side B odds (American)<input id="nv-b" inputmode="numeric" value="-110"></label>
+    </div>
+    <div class="out" id="nv-out"></div>
+  </section>
+
+  <section class="calc" id="ev">
+    <h2>Expected value (EV) calculator</h2>
+    <p class="sub">Compare your odds with the true chance of winning. Use the fair probability from the no-vig calculator above, or your own estimate.</p>
+    <div class="grid">
+      <label>Odds you can get<input id="ev-odds" inputmode="numeric" value="+120"></label>
+      <label>True win chance (%)<input id="ev-p" inputmode="decimal" value="48"></label>
+      <label>Stake ($)<input id="ev-stake" inputmode="decimal" value="100"></label>
+    </div>
+    <div class="out" id="ev-out"></div>
+  </section>
+
+  <section class="calc" id="kelly">
+    <h2>Kelly criterion stake calculator</h2>
+    <p class="sub">Kelly sizes a bet by how big your edge is. Full Kelly swings hard, so most bettors use a quarter or half. Vault's board uses quarter Kelly.</p>
+    <div class="grid">
+      <label>Odds<input id="k-odds" inputmode="numeric" value="+120"></label>
+      <label>True win chance (%)<input id="k-p" inputmode="decimal" value="48"></label>
+      <label>Bankroll ($)<input id="k-bank" inputmode="decimal" value="1000"></label>
+      <label>Kelly fraction<select id="k-frac"><option value="1">Full</option><option value="0.5">Half</option><option value="0.25" selected>Quarter</option><option value="0.125">Eighth</option></select></label>
+    </div>
+    <div class="out" id="k-out"></div>
+  </section>
+
+  <section class="calc" id="parlay">
+    <h2>Parlay calculator</h2>
+    <p class="sub">Combined odds and payout for up to 10 legs. Add each leg's fair win chance to see the parlay's real expected value, since the book's hold stacks on every leg.</p>
+    <div class="legs" id="p-legs"></div>
+    <div class="row-actions"><button class="btn" id="p-add" type="button">+ Add leg</button></div>
+    <div class="grid" style="margin-top:12px"><label>Stake ($)<input id="p-stake" inputmode="decimal" value="10"></label></div>
+    <div class="out" id="p-out"></div>
+    <p class="hint">Assumes legs are independent. Legs from the same game often move together (a QB over and his top receiver's over), which makes the true chance higher than this.</p>
+  </section>
+
+  <section class="calc" id="pickem">
+    <h2>Pick'em break-even calculator (PrizePicks, Underdog, Sleeper)</h2>
+    <p class="sub">Pick'em apps pay a flat multiplier, so there's no price on each pick. What matters is the win rate each pick needs for the entry to break even.</p>
+    <div class="grid">
+      <label>Entry type<select id="pk-preset">
+        <option value="2,3">2-pick power (3x)</option>
+        <option value="3,6" selected>3-pick power (6x)</option>
+        <option value="4,10">4-pick power (10x)</option>
+        <option value="5,20">5-pick power (20x)</option>
+        <option value="6,37.5">6-pick power (37.5x)</option>
+        <option value="custom">Custom</option>
+      </select></label>
+      <label>Picks<input id="pk-n" inputmode="numeric" value="3"></label>
+      <label>Payout multiplier (x)<input id="pk-x" inputmode="decimal" value="6"></label>
+      <label>Your win chance per pick (%)<input id="pk-p" inputmode="decimal" value="57"></label>
+    </div>
+    <div class="out" id="pk-out"></div>
+    <p class="hint">Power plays only. Flex entries pay on partial hits, which lowers the break-even; check your app's current payout table.</p>
+  </section>
+
+  <section class="calc" id="odds">
+    <h2>Odds converter</h2>
+    <p class="sub">Type in any box to convert between American, decimal and implied probability.</p>
+    <div class="grid">
+      <label>American<input id="oc-am" inputmode="numeric" value="-110"></label>
+      <label>Decimal<input id="oc-dec" inputmode="decimal"></label>
+      <label>Implied probability (%)<input id="oc-p" inputmode="decimal"></label>
+    </div>
+  </section>
+
+  <section class="faq">
+    <h2>Questions</h2>
+    <details><summary>What is the vig (hold)?</summary><p>The book's built-in margin. At -110 on both sides each side implies 52.4%, adding to 104.8%. With money split evenly, the book keeps about 4.5% of everything bet: that is the hold. Scaling both sides back to 100% gives the fair 50/50.</p></details>
+    <details><summary>What does positive EV mean?</summary><p>Your odds pay more than the bet's true chance of winning is worth. A +5% EV bet returns $5 per $100 on average over many bets. Any single bet can still lose.</p></details>
+    <details><summary>Why not bet full Kelly?</summary><p>Full Kelly assumes your win chance is exactly right. It never is, and overestimating it with full Kelly can drain a bankroll fast. Fractional Kelly gives up a little growth for much smaller swings.</p></details>
+    <details><summary>Where does Vault get fair probabilities?</summary><p>Vault strips the hold from every book that prices both sides and takes the middle, or uses only sharp books like Pinnacle and the exchanges if you choose. See the <a href="record.html">public track record</a> for how its grades have done.</p></details>
+  </section>
+
+  <footer>Vault Fantasy · calculators run in your browser; nothing is sent anywhere · <a href="record.html">Public betting record</a> · For entertainment. Bet only what you can afford to lose.</footer>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var num = function (el) { var v = parseFloat(String(el.value).replace(/[^0-9.+-]/g, '')); return Number.isFinite(v) ? v : null; };
+  var amToDec = function (a) { return a == null || a === 0 || (a > -100 && a < 100) ? null : a > 0 ? 1 + a / 100 : 1 + 100 / -a; };
+  var decToAm = function (d) { return !(d > 1) ? null : d >= 2 ? Math.round((d - 1) * 100) : Math.round(-100 / (d - 1)); };
+  var fmtAm = function (a) { return a == null ? '–' : (a > 0 ? '+' : '') + a; };
+  var pct = function (p, dp) { return p == null ? '–' : (p * 100).toFixed(dp == null ? 1 : dp) + '%'; };
+  var usd = function (v) { return v == null ? '–' : (v < 0 ? '-$' : '$') + Math.abs(v).toFixed(2); };
+  var o = function (k, v, c) { return '<div class="o"><div class="k">' + k + '</div><div class="v' + (c ? ' ' + c : '') + '">' + v + '</div></div>'; };
+  var sign = function (v) { return v > 0 ? 'good' : v < 0 ? 'bad' : ''; };
+  var bind = function (ids, fn) { ids.forEach(function (id) { $(id).addEventListener('input', fn); $(id).addEventListener('change', fn); }); fn(); };
+
+  // No-vig
+  bind(['nv-a', 'nv-b'], function () {
+    var da = amToDec(num($('nv-a'))), db = amToDec(num($('nv-b')));
+    if (!da || !db) { $('nv-out').innerHTML = o('Enter both sides', '–'); return; }
+    var ia = 1 / da, ib = 1 / db, s = ia + ib, fa = ia / s, fb = ib / s;
+    $('nv-out').innerHTML = o('Hold', pct(1 - 1 / s, 2)) + o('Side A fair', pct(fa)) + o('Side A fair odds', fmtAm(decToAm(1 / fa))) + o('Side B fair', pct(fb)) + o('Side B fair odds', fmtAm(decToAm(1 / fb)));
+  });
+
+  // EV
+  bind(['ev-odds', 'ev-p', 'ev-stake'], function () {
+    var d = amToDec(num($('ev-odds'))), p = num($('ev-p')), st = num($('ev-stake'));
+    if (!d || p == null || !(p > 0 && p < 100)) { $('ev-out').innerHTML = o('Enter odds and a win chance', '–'); return; }
+    p /= 100; var ev = p * (d - 1) - (1 - p), imp = 1 / d;
+    $('ev-out').innerHTML = o('EV per $100', usd(ev * 100), sign(ev)) + o('EV %', (ev > 0 ? '+' : '') + (ev * 100).toFixed(1) + '%', sign(ev)) + o('Break-even chance', pct(imp)) + o('Edge', ((p - imp) * 100 > 0 ? '+' : '') + ((p - imp) * 100).toFixed(1) + ' pts', sign(p - imp)) + (st ? o('EV on your stake', usd(ev * st), sign(ev)) : '');
+  });
+
+  // Kelly
+  bind(['k-odds', 'k-p', 'k-bank', 'k-frac'], function () {
+    var d = amToDec(num($('k-odds'))), p = num($('k-p')), bank = num($('k-bank')), fr = parseFloat($('k-frac').value);
+    if (!d || p == null || !(p > 0 && p < 100)) { $('k-out').innerHTML = o('Enter odds and a win chance', '–'); return; }
+    p /= 100; var b = d - 1, f = (b * p - (1 - p)) / b;
+    if (!(f > 0)) { $('k-out').innerHTML = o('Stake', 'No bet', 'bad') + o('Why', 'No edge at this price'); return; }
+    var ff = f * fr;
+    $('k-out').innerHTML = o('Full Kelly', pct(f, 2)) + o('Your fraction', pct(ff, 2), 'good') + (bank ? o('Stake', usd(ff * bank), 'good') : '');
+  });
+
+  // Parlay
+  var legs = $('p-legs');
+  function addLeg(odds, p) {
+    if (legs.children.length >= 10) return;
+    var d = document.createElement('div'); d.className = 'leg';
+    d.innerHTML = '<label>Leg ' + (legs.children.length + 1) + ' odds<input class="pl-o" inputmode="numeric" value="' + (odds || '') + '"></label><label>Fair win chance % (optional)<input class="pl-p" inputmode="decimal" value="' + (p || '') + '"></label><button class="btn x" type="button" aria-label="Remove leg">✕</button>';
+    d.querySelector('button').onclick = function () { if (legs.children.length > 2) { d.remove(); relabel(); parlay(); } };
+    d.querySelectorAll('input').forEach(function (i) { i.addEventListener('input', parlay); });
+    legs.appendChild(d); relabel();
+  }
+  function relabel() { [].forEach.call(legs.children, function (l, i) { l.querySelector('label').firstChild.nodeValue = 'Leg ' + (i + 1) + ' odds'; }); }
+  function parlay() {
+    var dec = 1, fair = 1, allFair = true, n = 0;
+    [].forEach.call(legs.children, function (l) {
+      var d = amToDec(num(l.querySelector('.pl-o'))); if (!d) return;
+      n++; dec *= d;
+      var p = num(l.querySelector('.pl-p')); if (p > 0 && p < 100) fair *= p / 100; else allFair = false;
+    });
+    var st = num($('p-stake'));
+    if (n < 2) { $('p-out').innerHTML = o('Add at least 2 legs', '–'); return; }
+    var html = o('Parlay odds', fmtAm(decToAm(dec))) + o('Decimal', dec.toFixed(2)) + o('Implied chance', pct(1 / dec, 2)) + (st ? o('Pays', usd(st * dec)) : '');
+    if (allFair) { var ev = fair * dec - 1; html += o('Fair chance', pct(fair, 2)) + o('EV %', (ev > 0 ? '+' : '') + (ev * 100).toFixed(1) + '%', sign(ev)); }
+    $('p-out').innerHTML = html;
+  }
+  addLeg('-110', ''); addLeg('-110', '');
+  $('p-add').onclick = function () { addLeg('', ''); parlay(); };
+  $('p-stake').addEventListener('input', parlay);
+  parlay();
+
+  // Pick'em
+  $('pk-preset').addEventListener('change', function () {
+    var v = this.value; if (v === 'custom') return;
+    var a = v.split(','); $('pk-n').value = a[0]; $('pk-x').value = a[1]; pickem();
+  });
+  function pickem() {
+    var n = num($('pk-n')), x = num($('pk-x')), p = num($('pk-p'));
+    if (!(n >= 1) || !(x > 1)) { $('pk-out').innerHTML = o('Enter picks and a multiplier', '–'); return; }
+    n = Math.round(n); var be = Math.pow(1 / x, 1 / n), html = o('Break-even per pick', pct(be)) + o('Entry hits', '1 in ' + Math.round(x));
+    if (p > 0 && p < 100) { var ev = Math.pow(p / 100, n) * x - 1; html += o('Entry EV', (ev > 0 ? '+' : '') + (ev * 100).toFixed(1) + '%', sign(ev)) + o('Chance all hit', pct(Math.pow(p / 100, n))); }
+    $('pk-out').innerHTML = html;
+  }
+  ['pk-n', 'pk-x'].forEach(function (id) { $(id).addEventListener('input', function () { $('pk-preset').value = 'custom'; pickem(); }); });
+  $('pk-p').addEventListener('input', pickem); pickem();
+
+  // Odds converter
+  var busy = false;
+  function fromAm() { if (busy) return; busy = true; var d = amToDec(num($('oc-am'))); $('oc-dec').value = d ? d.toFixed(3) : ''; $('oc-p').value = d ? (100 / d).toFixed(2) : ''; busy = false; }
+  $('oc-am').addEventListener('input', fromAm);
+  $('oc-dec').addEventListener('input', function () { if (busy) return; busy = true; var d = num($('oc-dec')); $('oc-am').value = d > 1 ? fmtAm(decToAm(d)) : ''; $('oc-p').value = d > 1 ? (100 / d).toFixed(2) : ''; busy = false; });
+  $('oc-p').addEventListener('input', function () { if (busy) return; busy = true; var p = num($('oc-p')); var ok = p > 0 && p < 100; $('oc-dec').value = ok ? (100 / p).toFixed(3) : ''; $('oc-am').value = ok ? fmtAm(decToAm(100 / p)) : ''; busy = false; });
+  fromAm();
+})();
+</script>
+<script>
+/* Embedded in Vault's Betting tab: report height so the frame never scrolls on
+   its own, and turn links to the sister page into a Betting view switch. */
+(function () {
+  if (!document.documentElement.classList.contains('embed') || window.parent === window) return;
+  var last = 0;
+  function post() { var h = document.documentElement.scrollHeight; if (h !== last) { last = h; window.parent.postMessage({ vaultEmbedH: h }, location.origin); } }
+  new MutationObserver(post).observe(document.body, { childList: true, subtree: true, attributes: true });
+  window.addEventListener('resize', post);
+  document.addEventListener('toggle', post, true);
+  window.addEventListener('load', post);
+  post();
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+    var href = a.getAttribute('href');
+    var v = /record\.html/.test(href) ? 'record' : /calculators\.html/.test(href) ? 'calc' : null;
+    if (v) { e.preventDefault(); window.parent.postMessage({ vaultBetView: v }, location.origin); }
+    else if (/^#./.test(href)) { var t = document.querySelector(href); if (t) { e.preventDefault(); window.parent.postMessage({ vaultEmbedScroll: t.getBoundingClientRect().top + window.scrollY }, location.origin); } }
+    else a.target = '_top';
+  });
+})();
+</script>
+</body>
+</html>

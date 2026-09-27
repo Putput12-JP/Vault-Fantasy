@@ -13480,6 +13480,16 @@ const VAULT_CHANGELOG = [
     ]
   },
   {
+    ts:'2026-09-26T20:30', tag:'New', title:'See where every fair price comes from, plus stake sizes',
+    items:[
+      'Every prop and game line now says how Vault got its fair price: which books went into it, their typical cut, and how old the prices are.',
+      'New in Filters: choose where fair prices come from. "Every book" uses the middle of all books; "Sharp books" uses only Pinnacle, Circa and the exchanges, and falls back to every book when none of them price a market.',
+      'Each Over and Under card now suggests a stake (quarter Kelly), only when both the market and Vault see an edge. Set your bankroll in Filters to see it in dollars; otherwise it shows as a % of bankroll.',
+      'My Picks now counts your units at the price you actually took, and shows closing-line value on each settled pick plus how often you beat the close.',
+      'Two new pages in the Betting menu: Public Record (every graded prop, settled, win or lose, with a link you can share) and Calculators (no-vig, EV, Kelly, parlay, pick\'em break-even).',
+    ]
+  },
+  {
     ts:'2026-09-26T20:00', tag:'New', title:'+EV and book filters for props and your Vault Record',
     items:[
       'Player Props has a new "Only +EV picks" filter: it keeps the picks where Vault\'s win chance beats the best price on the board. Pair it with the book filter to see only +EV picks at the apps you actually bet.',
@@ -41382,8 +41392,14 @@ window.VaultBettingMath = (function () {
   // pairs: [{ book, a, b }] (American, side a / side b, same line).
   const SHARED_FEED = { 'bwin': 'BetMGM', 'Pick6 (DraftKings)': 'DraftKings' };
   const MAX_HOLD_PCT = 15;          // wider than this is a stale or broken quote, not a market
-  function consensusFair(pairs) {
-    const seen = new Set(), probs = [], vigs = [];
+  // Sharp mode: the fair comes only from venues that take winning action and
+  // move on it (Pinnacle, Circa, and the no-limit exchanges), the "source of
+  // truth" pick OddsJam users make. No invented weights: it is a filter, and it
+  // falls back to every book (sharpFallback) when no sharp venue quotes the
+  // market, so a thin prop never loses its fair.
+  const SHARP_BOOKS = new Set(['Pinnacle', 'Circa', 'Circa Sports', 'Novig', 'ProphetX', 'Sporttrade']);
+  function consensusFair(pairs, opts) {
+    const seen = new Set(), rows = [];
     (pairs || []).forEach(q => {
       if (!q || q.a == null || q.b == null) return;
       const feed = SHARED_FEED[q.book] || q.book;
@@ -41391,19 +41407,25 @@ window.VaultBettingMath = (function () {
       const d = devigTwoWay(q.a, q.b);
       if (!d || d.vigPct < 0 || d.vigPct > MAX_HOLD_PCT) return;
       seen.add(feed);
-      probs.push(d.over.fairProb); vigs.push(d.vigPct);
+      rows.push({ book: feed, p: d.over.fairProb, vig: d.vigPct });
     });
-    if (!probs.length) return null;
+    if (!rows.length) return null;
+    let use = rows, source = 'all', sharpFallback = false;
+    if (opts && opts.sharp) {
+      const sh = rows.filter(x => SHARP_BOOKS.has(x.book));
+      if (sh.length) { use = sh; source = 'sharp'; } else sharpFallback = true;
+    }
     const median = a => { const s = a.slice().sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
-    const pa = median(probs), vig = median(vigs);
+    const pa = median(use.map(x => x.p)), vig = median(use.map(x => x.vig));
     const side = p => ({ fairProb: r(p, 6), fairAmerican: r(probToAmerican(p), 1) });
-    return { a: side(pa), b: side(1 - pa), books: probs.length, vigPct: r(vig, 2) };
+    return { a: side(pa), b: side(1 - pa), books: use.length, vigPct: r(vig, 2),
+      bookList: use.map(x => x.book), source, sharpFallback };
   }
 
   return {
     americanToProb, probToAmerican, decimalToProb, probToDecimal, toProb, convert,
     devig, devigTwoWay, findEdge, kelly, evaluateBet, findArbitrage, parlay, lineMovement,
-    fairFromRow, netAmerican, feeKind, kalshiCost, consensusFair,
+    fairFromRow, netAmerican, feeKind, kalshiCost, consensusFair, SHARP_BOOKS,
   };
 })();
 
@@ -41924,6 +41946,16 @@ window.VaultMarketProj = (function () {
   // chosen books. Persisted: people bet the same apps week to week.
   const BOOKS_KEY = 'vault-bet-books';
   let fltBooks = (() => { try { const a = JSON.parse(localStorage.getItem(BOOKS_KEY) || 'null'); return Array.isArray(a) && a.length ? new Set(a) : null; } catch (e) { return null; } })();
+  // Where the no-vig fair comes from: 'all' = median of every two-sided book,
+  // 'sharp' = only sharp venues (VaultBettingMath.SHARP_BOOKS), falling back to
+  // all when none quotes the market. Drives props AND game markets.
+  const FAIRMODE_KEY = 'vault-fair-mode';
+  let fairMode = (() => { try { return localStorage.getItem(FAIRMODE_KEY) === 'sharp' ? 'sharp' : 'all'; } catch (e) { return 'all'; } })();
+  const _fairOpts = () => ({ sharp: fairMode === 'sharp' });
+  // Bankroll for the stake suggestion on each side card. null = not set (the
+  // card then shows the stake as a % of bankroll).
+  const BANKROLL_KEY = 'vault-bankroll';
+  let bankroll = (() => { try { const v = parseFloat(localStorage.getItem(BANKROLL_KEY)); return v > 0 ? v : null; } catch (e) { return null; } })();
   let gSort = { key: 'total', dir: -1 }, pSort = { key: 'value', dir: -1 };
 
   /* ── "My Players" · the user's real Sleeper rosters ──────────────────────
@@ -42663,6 +42695,7 @@ window.VaultMarketProj = (function () {
 .eb-dlbl{font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.4}
 .eb-dhelp{font-size:11px;color:var(--muted);margin-top:8px}
 .eb-drawer .eb-dfield{width:100%;font-family:var(--font-sans);font-size:14px;font-weight:600;color:var(--text);background:var(--s1);border:1px solid var(--border2);border-radius:10px;padding:11px 13px;outline:none;margin-bottom:9px;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2.5 4.5l3.5 3.5 3.5-3.5' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 13px center}
+.eb-drawer input.eb-dfield{background-image:none;padding-right:13px;cursor:text}
 .eb-dseg{display:flex;background:var(--s1);border:1px solid var(--border2);border-radius:10px;padding:4px;gap:3px}
 .eb-dseg button{flex:1;font-size:13px;font-weight:700;color:var(--text2);background:none;border:0;padding:9px 6px;border-radius:7px;cursor:pointer}
 .eb-dseg button:hover{color:var(--text)}
@@ -43064,6 +43097,8 @@ window.VaultMarketProj = (function () {
     <div class="bt-view on" id="bt-v-games"></div>
     <div class="bt-view" id="bt-v-props"></div>
     <div class="bt-view" id="bt-v-grades"></div>
+    <div class="bt-view" id="bt-v-record"></div>
+    <div class="bt-view" id="bt-v-calc"></div>
     <div class="bt-note" id="bt-note"></div>`;
   }
 
@@ -43252,7 +43287,7 @@ window.VaultMarketProj = (function () {
     if (sides[0].cons == null || sides[1].cons == null) return [];
     // Per-book de-vig, then median (VaultBettingMath.consensusFair): never strips a
     // hold off one book's price paired with another book's other side.
-    const cf = BM.consensusFair(pairs);
+    const cf = BM.consensusFair(pairs, _fairOpts());
     if (!cf) return [];
     const dv = { over: cf.a, under: cf.b, vigPct: cf.vigPct };
     const fair = [dv.over, dv.under];
@@ -43262,7 +43297,8 @@ window.VaultMarketProj = (function () {
       if (bp == null) return null;
       const ev = BM.findEdge(fair[i].fairProb, BM.americanToProb(bp));
       return { g, market, lab: s.lab, bestProb: BM.americanToProb(bp), fairAmerican: Math.round(fair[i].fairAmerican), bestPrice: bp, bestBook: bk,
-        ev: ev ? +(ev.evPerDollar * 100).toFixed(1) : null, edgePts: ev ? ev.edgePct : null, vig: dv.vigPct };
+        ev: ev ? +(ev.evPerDollar * 100).toFixed(1) : null, edgePts: ev ? ev.edgePct : null, vig: dv.vigPct,
+        fairProb: fair[i].fairProb, fairBooks: cf.books, fairBookList: cf.bookList, fairSource: cf.source, sharpFallback: cf.sharpFallback };
     }).filter(Boolean);
     // Kalshi cross-market — a second independent price per side + a guaranteed
     // book+Kalshi arb (findArbitrage), gated <0.99 so 1¢-spread mids don't
@@ -43391,7 +43427,7 @@ window.VaultMarketProj = (function () {
     return '<div class="gb-books' + (open ? '' : ' collapsed') + '">'
       + '<div class="eb-bks-h gb-bkstoggle"><span class="gb-chev">' + (open ? '▾' : '▸') + '</span> Every book · ' + gmLabel
       + (open ? '<span class="mut"> · best price highlighted</span>' : '<span class="gb-bksum"> · ' + summary + '</span>') + '</div>'
-      + '<div class="gb-bkbody">' + body + '</div></div>';
+      + '<div class="gb-bkbody">' + body + (open ? fairProvHTML(gameBets(g, gm)[0], (M.quotes || []).map(q => q.book)) : '') + '</div></div>';
   }
 
   /* ── Outlier-idiom mobile layout: shared chrome + toggle ───────────────── */
@@ -43822,7 +43858,7 @@ window.VaultMarketProj = (function () {
       }
       return '<div class="gmx">'
         + '<div class="gmx-hero"><div><div class="gmx-kick">' + (MODEL.season || '') + ' · NFL' + (_weekLabel ? ' · ' + _weekLabel : '') + (seasonReg ? '' : ' · Preseason') + '</div><h1 class="gmx-h1">Game markets</h1>'
-        + (range ? '<div class="gmx-meta">' + range.toUpperCase() + ' · ' + withBets.length + ' GAMES</div>' : '') + '</div>' + stats + '</div>'
+        + (range ? '<div class="gmx-meta">' + range.toUpperCase() + ' · ' + withBets.length + ' GAMES' + (_agoTxt(MODEL.generated) ? ' · <span title="Sportsbook prices refresh hourly during game windows, daily otherwise">PRICES ' + _agoTxt(MODEL.generated).toUpperCase() + '</span>' : '') + '</div>' : '') + '</div>' + stats + '</div>'
         + rec + gaps;
     };
     const gmxBoard = () => {
@@ -44492,7 +44528,7 @@ window.VaultMarketProj = (function () {
     if (!atLine.length) return null;
     // Fair = median of each two-sided book's OWN de-vig (VaultBettingMath.consensusFair),
     // never a de-vig of one book's over against another book's under.
-    const cf = BM.consensusFair(atLine.map(q => ({ book: q.book, a: q.over, b: q.under })));
+    const cf = BM.consensusFair(atLine.map(q => ({ book: q.book, a: q.over, b: q.under })), _fairOpts());
     if (!cf) return null;                                      // need a real two-way at this line
     const dv = { over: cf.a, under: cf.b, vigPct: cf.vigPct };
     // Best price is what the venue actually PAYS: exchange fees come off first.
@@ -44508,7 +44544,8 @@ window.VaultMarketProj = (function () {
     // level for backward compat), but `sides` lets a caller present the other
     // side (e.g. when Vault's projection leads a no-price-edge row).
     const mk = (s, d, bp, bk, e) => ({ side: s, fairProb: d.fairProb, fairAmerican: Math.round(d.fairAmerican), bestPrice: bp, bestBook: bk,
-      ev: e ? +(e.evPerDollar * 100).toFixed(1) : null, edgePts: e ? e.edgePct : null, vig: dv.vigPct, fairBooks: cf.books });
+      ev: e ? +(e.evPerDollar * 100).toFixed(1) : null, edgePts: e ? e.edgePct : null, vig: dv.vigPct, fairBooks: cf.books,
+      fairBookList: cf.bookList, fairSource: cf.source, sharpFallback: cf.sharpFallback });
     const overFE = mk('over', dv.over, bO, boBook, evO), underFE = mk('under', dv.under, bU, buBook, evU);
     const best = (evU && (!evO || evU.edge > evO.edge)) ? underFE : overFE;
     return Object.assign({}, best, { sides: { over: overFE, under: underFE } });
@@ -44924,7 +44961,9 @@ window.VaultMarketProj = (function () {
     const SORTLBL = { name: 'player', line: 'line', edge: 'edge', ev: 'EV', best: 'best price', lean: 'lean', hit: 'hit rate', vault: 'Vault edge', grade: 'Vault grade', sim: 'Win %' };
     const anyVaultLed = rows.some(r => { const p = resolvePick(r); return p && p.vaultLed; });
     const cn = rows.length + ' · sorted by ' + (SORTLBL[ebSort.key] || 'EV') + (ebSort.dir < 0 ? ' ↓' : ' ↑')
-      + (anyVaultLed ? ' · <span title="No market price edge on this line, so the pick follows Vault’s projection instead of the book"><b style="color:var(--bt-accent2)">V</b> = Vault-led</span>' : '');
+      + (anyVaultLed ? ' · <span title="No market price edge on this line, so the pick follows Vault’s projection instead of the book"><b style="color:var(--bt-accent2)">V</b> = Vault-led</span>' : '')
+      + (fairMode === 'sharp' ? ' · <span title="Fair prices come from sharp books only (change in Filters)">fair: sharp books</span>' : '')
+      + (() => { const b = _agoTxt(MODEL.generated), a = _agoTxt((MODEL.meta || {}).props_pp_generated); return b ? ' · <span title="Sportsbook prices refresh hourly in game windows, daily otherwise. Pick’em apps refresh hourly.">books ' + b + (a && a !== b ? ', pick’em ' + a : '') + '</span>' : ''; })();
     const boardTitle = searching ? 'Search · “' + searchQ.trim() + '”' : (curPos === 'ALL' ? ('Edges · All' + (curMarket && (m.short || m.label) ? ' · ' + (m.short || m.label) : ' props')) : 'Edges · ' + curPos + ' ' + (m.short || m.label || ''));
     const useBxo = isMobile() && bxoMobile;
     if (useBxo) {
@@ -45142,7 +45181,32 @@ window.VaultMarketProj = (function () {
       side: p.side, grade: p.grade, line: p.line, week: p.week, actual: p.actual,
       team: p.team, opp: p.opp, ha: p.ha, vaultEV: p.vaultEV, proj: p.proj, price: p.price, book: p.book,
       res: p.result === 'W' ? 'W' : p.result === 'L' ? 'L' : null, k: p.k, ts: p.ts,
+      clv: _pickClv(p),
     }));
+  }
+  // Closing-line value for one of YOUR picks, from the settled ledger's closing
+  // line and prices for the same prop (the ledger snapshots every board prop, not
+  // only Vault's side). Same line: CLV = the no-vig close probability of your side
+  // minus what your price implied (+ means you beat the close). Line moved: CLV is
+  // the points the line moved your way. null until the prop settles in the ledger.
+  function _pickClv(p) {
+    const L = _ledgerData, BM = window.VaultBettingMath;
+    if (!L || !BM || !p || p.line == null) return null;
+    const nn = x => String(x || '').toLowerCase().replace(/[^a-z]/g, '');
+    const cands = (L.props || []).filter(x => x.market === p.market && String(x.season) === String(p.season) && String(x.week) === String(p.week)
+      && ((p.id != null && String(x.pid) === String(p.id)) || nn(x.name) === nn(p.name)) && x.line_close != null);
+    if (!cands.length) return null;
+    const x = cands.reduce((a, c) => Math.abs(c.line_close - p.line) < Math.abs(a.line_close - p.line) ? c : a);
+    const over = p.side !== 'under';
+    if (x.line_close === p.line) {
+      if (p.price == null || x.close_over == null || x.close_under == null) return null;
+      const d = BM.devigTwoWay(x.close_over, x.close_under);
+      if (!d) return null;
+      const fairClose = over ? d.over.fairProb : d.under.fairProb, paid = BM.americanToProb(p.price);
+      if (paid == null) return null;
+      return { kind: 'prob', v: +((fairClose - paid) * 100).toFixed(1), close: x.line_close };
+    }
+    return { kind: 'line', v: +((over ? x.line_close - p.line : p.line - x.line_close)).toFixed(1), close: x.line_close };
   }
   function _pkVault(ledger) {
     return ((ledger && ledger.props) || []).map(p => ({
@@ -45156,7 +45220,14 @@ window.VaultMarketProj = (function () {
 
   // Record + break-even units, then the four splits the record breaks down by.
   function _pkAgg(rows) {
-    const roi = (w, n) => n ? (w * (1 / betBE - 1) - (n - w)) / n : null;
+    // Profit per 1-unit bet: at the price you actually logged when there is one
+    // (a +145 win pays 1.45u, a -130 win 0.77u), else at the break-even bar.
+    const profit = r => {
+      const px = Number(r.price);
+      const winPays = (r.price != null && Number.isFinite(px) && px !== 0) ? (px > 0 ? px / 100 : 100 / -px) : (1 / betBE - 1);
+      return r.res === 'W' ? winPays : -1;
+    };
+    const roiOf = list => list.length ? list.reduce((t, r) => t + profit(r), 0) / list.length : null;
     const settled = rows.filter(r => r.res === 'W' || r.res === 'L');
     const W = settled.filter(r => r.res === 'W').length, L = settled.length - W;
     const group = (keyFn, order) => {
@@ -45164,11 +45235,14 @@ window.VaultMarketProj = (function () {
       settled.forEach(r => { const k = keyFn(r); if (k == null) return; (m[k] = m[k] || []).push(r); });
       const keys = (order || Object.keys(m).sort()).filter(k => m[k]);
       return keys.map(k => { const s = m[k], w = s.filter(x => x.res === 'W').length;
-        return { k, n: s.length, w, l: s.length - w, wr: w / s.length, roi: roi(w, s.length) }; });
+        return { k, n: s.length, w, l: s.length - w, wr: w / s.length, roi: roiOf(s) }; });
     };
+    const clvRows = rows.filter(r => r.clv && r.clv.v != null);
     return {
       W, L, push: rows.filter(r => r.res === 'P').length, pend: rows.filter(r => !r.res).length,
-      n: settled.length, wr: settled.length ? W / settled.length : null, units: roi(W, settled.length),
+      n: settled.length, wr: settled.length ? W / settled.length : null, units: roiOf(settled),
+      priced: settled.filter(r => r.price != null).length,
+      clvN: clvRows.length, clvBeat: clvRows.length ? clvRows.filter(r => r.clv.v > 0).length / clvRows.length : null,
       // Ungraded picks (count markets with no Vault model → grade null) are
       // excluded here rather than dumped into F: they were never graded A–F, so
       // counting them as F inflates the bucket and drags its win rate with
@@ -45375,7 +45449,8 @@ window.VaultMarketProj = (function () {
       + '<button data-rt="calib" class="' + (resultsTab === 'calib' ? 'on' : '') + '">Win % Check</button></span>';
     return '<div class="eb-wrap"><div class="eb-board">'
       + '<div class="eb-bh"><div><div class="eb-t">Track Record</div><div class="eb-cn">' + subtitle + '</div></div>'
-      + '<button class="eb-mypicks" id="eb-backboard">← Board</button></div>'
+      + '<span style="display:flex;gap:8px;align-items:center"><a class="eb-mypicks" href="record.html" target="_blank" rel="noopener" title="Open Vault\'s record as a public page you can share" style="text-decoration:none">Share page ↗</a>'
+      + '<button class="eb-mypicks" id="eb-backboard">← Board</button></span></div>'
       + '<div class="tr-tabbar">' + tabs + '</div>' + body + '</div></div>';
   }
   function _trHero(a, ctx) {
@@ -45385,7 +45460,9 @@ window.VaultMarketProj = (function () {
       + (a.pend ? ' · ' + a.pend.toLocaleString() + ' pending' : '') + (ctx ? ' · ' + ctx : '') + '</div></div>'
       + '<div class="tr-h-kpis">'
       + '<div class="tr-kpi"><div class="tr-kl">Win rate</div><div class="tr-kv ' + (a.wr != null && a.wr >= betBE ? 'good' : '') + '">' + _trPct(a.wr) + '</div><div class="tr-kt">need ' + Math.round(betBE * 100) + '% to profit</div></div>'
-      + '<div class="tr-kpi"><div class="tr-kl">Units</div><div class="tr-kv ' + _trUC(a.units) + '">' + _trU(a.units) + '</div><div class="tr-kt">at your break-even</div></div>'
+      + '<div class="tr-kpi"><div class="tr-kl">Units</div><div class="tr-kv ' + _trUC(a.units) + '">' + _trU(a.units) + '</div><div class="tr-kt">'
+      + (a.unitsLbl ? a.unitsLbl : a.n && a.priced === a.n ? 'at the prices you took' : a.priced ? 'at your price where logged' : 'at your break-even') + '</div></div>'
+      + (a.clvN ? '<div class="tr-kpi" title="Closing-line value: how often the market moved your way after you took the pick. Sharp bettors beat the close more often than not, even through losing weeks."><div class="tr-kl">Beat the close</div><div class="tr-kv ' + (a.clvBeat > 0.5 ? 'good' : a.clvBeat < 0.5 ? 'bad' : '') + '">' + _trPct(a.clvBeat) + '</div><div class="tr-kt">of ' + a.clvN + ' picks with a closing line</div></div>' : '')
       + '</div></div>';
   }
   function _trBars(title, rows, isGrade, dim) {
@@ -45624,6 +45701,9 @@ window.VaultMarketProj = (function () {
           if (p.proj != null) { const beats = p.line != null && (p.side === 'over' ? p.proj > p.line : p.proj < p.line);
             chips.push('<span class="tr-mk ' + (beats ? 'pos' : '') + '" title="Vault’s projection vs the ' + p.line + ' line">proj ' + p.proj + '</span>'); }
           if (p.price != null) chips.push('<span class="tr-mk tr-mk-px" title="Best price when you tracked it' + (p.book ? ' · ' + p.book : '') + '">' + F().fmtOdds(p.price) + (p.book ? bookChip(p.book) : '') + '</span>');
+          if (p.clv) chips.push(p.clv.kind === 'prob'
+            ? '<span class="tr-mk ' + (p.clv.v > 0 ? 'pos' : p.clv.v < 0 ? 'neg' : '') + '" title="Closing-line value: the no-vig closing chance of your side minus what your price implied">' + (p.clv.v > 0 ? '+' : '') + p.clv.v + '% CLV</span>'
+            : '<span class="tr-mk ' + (p.clv.v > 0 ? 'pos' : p.clv.v < 0 ? 'neg' : '') + '" title="The line closed at ' + p.clv.close + ', ' + Math.abs(p.clv.v) + ' ' + (p.clv.v >= 0 ? 'in your favour' : 'against you') + '">' + (p.clv.v > 0 ? '+' : '') + p.clv.v + ' line CLV</span>');
           const meta = chips.length ? '<div class="tr-pk-meta">' + chips.join('') + '</div>' : '';
           return '<div class="tr-pk ' + (p.res ? p.res.toLowerCase() : 'pend') + '">'
             + '<div class="tr-pk-l">' + gl + '<div class="tr-pk-nm"><b>' + p.name + posTag + '</b>'
@@ -45657,6 +45737,11 @@ window.VaultMarketProj = (function () {
           if (picksLoad().filter(p => p.result).length > before) renderResults();
         });
       }
+    }
+    // Closing lines for CLV live in the same ledger: when it lands for the first
+    // time, draw once more so each settled pick picks up its CLV chip.
+    if (!_ledgerDone && all.length) {
+      loadLedger().then(() => { if (propsView === 'results' && resultsTab === 'mine') renderResults(); });
     }
     // Game picks settle against the live ledger's final scores (backend-written).
     if (gpk.some(p => !p.result)) {
@@ -45714,12 +45799,13 @@ window.VaultMarketProj = (function () {
         all.forEach(r => { r._ev = _trEvOf(r); r.price = _trEvOn() && r._ev ? r._ev.price : undefined; });
         const rows = all.filter(r => _trMatch(r) && _trWeekMatch(r) && _trGameMatch(r) && _trEvMatch(r));
         const a = _pkAgg(rows);
+        if (_trEvOn()) a.unitsLbl = 'at the +EV book’s opening price';
         const wkCtx = _trWeek != null ? 'Week ' + _trWeek : null;
         sub = a.n.toLocaleString() + ' graded picks settled' + (wkCtx ? ' · ' + wkCtx : '') + (gmCtx ? ' · ' + gmCtx : '') + (_trChips() ? ' · filtered' : '');
         const evCtx = _trEv === 'pos' ? '+EV at open' : _trEv === 'neg' ? 'not +EV' : null;
         const bkCtx = _trBooks.length ? _trBooks.join(', ') : null;
         body = _trWeekBar(weeks) + _trGameBar(games) + _trEvBar(all)
-          + _trHero(a, [wkCtx, gmCtx, evCtx, bkCtx, _trChips() ? 'filtered view' : (!wkCtx && !gmCtx && !evCtx && !bkCtx ? 'every Vault-graded prop' : null)].filter(Boolean).join(' · ')) + _trChips() + _trBreak(a)
+          + _trHero(a, [wkCtx, gmCtx, evCtx, bkCtx, _trChips() ? 'filtered view' : (!wkCtx && !gmCtx && !evCtx && !bkCtx ? 'every Vault-graded prop' : null), _trEvOn() ? 'units at the +EV book’s opening price' : null].filter(Boolean).join(' · ')) + _trChips() + _trBreak(a)
           + _trVaultList(rows)
           + '<div class="tr-note">Settled from real closing lines vs the box score. Grades are Vault’s at flag time; units at your break-even. Tap any row to filter' + (weeks.length > 1 ? ', or a week to see that slate' : '') + '.</div>';
       }
@@ -45865,6 +45951,71 @@ window.VaultMarketProj = (function () {
     if (pf && pf.vaultLed) return pf.vaultUnv ? (c.caution || { kind: 'unverified', label: '⚠', tip: 'Vault-led edge that no second book or plausibility check confirms.' }) : null;
     return c.caution || null;
   }
+  // ── price freshness + fair provenance ────────────────────────────────────
+  // Sportsbook prices land with the ParlayAPI feed (MODEL.generated); pick'em
+  // apps are refetched hourly on their own (meta.props_pp_generated). Saying how
+  // old a price is turns the hourly cron from a hidden weakness into a stated one.
+  // Only the apps fetch-pickem-props.mjs refetches hourly (anchored: 'BetRivers' is not Betr).
+  const _PICKEM_RX = /^(prize ?picks|underdog( fantasy)?|sleeper)$/i;
+  const _isPickemApp = b => _PICKEM_RX.test(String(b || ''));
+  function _agoTxt(iso) {
+    const t = iso ? Date.parse(iso) : NaN;
+    if (!Number.isFinite(t)) return null;
+    const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    const h = Math.round(m / 60);
+    return h < 24 ? h + ' hr ago' : Math.round(h / 24) + 'd ago';
+  }
+  function _priceAgeIso(book) {
+    const m = (MODEL && MODEL.meta) || {};
+    return _isPickemApp(book) ? (m.props_pp_generated || MODEL.generated) : MODEL.generated;
+  }
+  // One plain-English line under a market: which books set the fair, their
+  // typical hold, and how old the prices are. `fe` = a rowFairEV side or gameBets bet.
+  function fairProvHTML(fe, books) {
+    if (!fe) return '';
+    const bits = [];
+    const list = fe.fairBookList || [];
+    if (list.length) {
+      const names = list.length > 4 ? list.slice(0, 4).join(', ') + ' +' + (list.length - 4) : list.join(', ');
+      const how = fe.fairSource === 'sharp'
+        ? 'Fair from sharp books only: ' + names
+        : list.length === 1 ? 'Fair is ' + names + '’s no-vig price, the only two-sided book here'
+        : 'Fair is the middle of ' + list.length + ' books’ no-vig prices (' + names + ')';
+      bits.push(how + (fe.vig != null ? ', typical hold ' + (+fe.vig).toFixed(1) + '%' : ''));
+      if (fe.sharpFallback) bits.push('no sharp book prices this, so every book counts');
+    } else if (fe.pickem) {
+      bits.push('No two-sided price here, so there is no fair to strip');
+    }
+    const bk = books || [];
+    const hasApp = bk.some(_isPickemApp), hasBook = bk.some(b => !_isPickemApp(b));
+    const ab = hasBook && _agoTxt(MODEL.generated), aa = hasApp && _agoTxt((MODEL.meta || {}).props_pp_generated || MODEL.generated);
+    if (ab && aa && ab !== aa) bits.push('sportsbook prices ' + ab + ', pick’em ' + aa);
+    else if (ab || aa) bits.push('prices ' + (ab || aa));
+    return bits.length ? '<div class="eb-2prov">' + bits.join(' · ') + '</div>' : '';
+  }
+  // Stake suggestion: quarter Kelly on the SMALLER of the market's no-vig fair
+  // and Vault's calibrated win %, so both engines must agree there is an edge
+  // before any money is suggested. Rounded to amounts a person would type ($1
+  // under $20, then $5), since odd-cent stakes read as a bot to a sportsbook.
+  const KELLY_FRAC = 0.25;
+  function _stakeFor(pFair, pVault, price) {
+    const BM = window.VaultBettingMath;
+    if (!BM || pFair == null || pVault == null || price == null) return null;
+    const mp = BM.americanToProb(price);
+    const k = BM.kelly(Math.min(pFair, pVault), mp);
+    if (!k || !(k.kellyFraction > 0)) {
+      const fOk = pFair > mp, vOk = pVault > mp;
+      return { frac: 0, why: fOk && !vOk ? 'Vault disagrees' : vOk && !fOk ? 'Market disagrees' : 'No edge' };
+    }
+    const frac = k.kellyFraction * KELLY_FRAC;
+    if (!bankroll) return { frac };
+    const raw = frac * bankroll, amt = raw < 20 ? Math.max(1, Math.round(raw)) : Math.round(raw / 5) * 5;
+    return { frac, amt };
+  }
+  const _stakeTxt = st => !st ? null : st.frac === 0 ? (st.why || 'No edge')
+    : st.amt != null ? '$' + st.amt.toLocaleString() : (st.frac * 100).toFixed(1) + '% of bankroll';
   function _sideMetrics(r, side, v) {
     const fb = F(), BM = window.VaultBettingMath, fe = r.fe, line = r.line;
     const sides = (fe && fe.sides) ? fe.sides : null;
@@ -45883,7 +46034,9 @@ window.VaultMarketProj = (function () {
       // the same cap the board's Grade column applies, so card and row agree.
       letter = cappedGradeLetter(padj, _beFor(r, side), side === displaySide(r) ? _displayCaution(r) : null);
     }
-    return { side, best, book, fair, mev, prob, vev, letter, padj };
+    const pFair = s && s.fairProb != null ? s.fairProb : null;
+    const stake = (padj != null && !(side === displaySide(r) && _displayCaution(r))) ? _stakeFor(pFair, padj, best) : null;
+    return { side, best, book, fair, mev, prob, vev, letter, padj, stake };
   }
   function twoSideInner(r, v, loading) {
     const fb = F(), line = r.line, fmt = fb.fmtOdds;
@@ -45896,6 +46049,8 @@ window.VaultMarketProj = (function () {
     const vH = s => loading ? '<span class="spinner xs"></span>' : (s.vev == null ? '<span class="mut">—</span>' : '<span class="' + (s.vev > 0 ? 'pos' : 'neg') + '">' + (s.vev > 0 ? '+' : '') + s.vev + '%</span>');
     const sH = s => loading ? '<span class="spinner xs"></span>' : (s.prob == null ? '<span class="mut">—</span>' : '<span class="' + (s.prob >= 0.5 ? 'pos' : 'neg') + '">' + Math.round(s.prob * 100) + '%</span>');
     const gH = s => drop ? '<span class="mut" title="Grade held back: this line comes from a single book and Vault’s projection disagrees with it, so nothing corroborates a confident grade.">—</span>' : (loading ? '<span class="spinner xs"></span>' : (s.letter == null ? '<span class="mut">—</span>' : '<span class="eb-grade ' + s.letter.toLowerCase() + '">' + s.letter + '</span>'));
+    const kH = s => loading ? '<span class="spinner xs"></span>' : drop ? '<span class="mut">—</span>'
+      : (() => { const t = _stakeTxt(s.stake); return t == null ? '<span class="mut" title="Needs both a two-sided market price and a Vault projection">—</span>' : '<span class="' + (s.stake.frac > 0 ? 'pos' : 'mut') + '">' + t + '</span>'; })();
     const tracked = s => pickLogged(r, s.side);
     const trackH = s => '<button class="eb-2track' + (tracked(s) ? ' on' : '') + '" data-side="' + s.side + '" title="' + (tracked(s) ? 'Tracking the ' + _sideLbl(s.side) + ' in Track Record — tap to stop' : 'Track the ' + _sideLbl(s.side) + ' ' + (line != null ? line : '') + ' in Track Record') + '">' + (tracked(s) ? '✓ Tracking' : '＋ Track ' + _sideLbl(s.side)) + '</button>';
     const colH = (s, lab, isLean, isValue) => '<div class="eb-2col' + (isLean ? ' lean' : '') + (isValue ? ' value' : '') + '"><div class="eb-2h"><span>' + lab + '</span><b>' + (line != null ? line : '') + '</b></div>'
@@ -45906,6 +46061,7 @@ window.VaultMarketProj = (function () {
       + '<div><span title="Value from Vault’s own projection vs this price">Vault edge</span><b>' + vH(s) + '</b></div>'
       + '<div><span title="Vault’s calibrated chance this side hits">Win %</span><b>' + sH(s) + '</b></div>'
       + '<div><span title="Vault grade for this side vs your break-even">Grade</span><b>' + gH(s) + '</b></div>'
+      + '<div><span title="Quarter Kelly, sized on whichever is lower: the no-vig fair or Vault’s win %. Both have to see an edge. Set your bankroll in Filters.">Stake</span><b>' + kH(s) + '</b></div>'
       + '</div>' + trackH(s) + '</div>';
     // Projection context. When the model's MEAN and its PROBABILITY point at
     // different sides (a skewed stat: a few big games drag the average over the
@@ -45941,7 +46097,9 @@ window.VaultMarketProj = (function () {
         + ' pays ' + fmt(vs.best) + ', so it only needs to hit ' + Math.round(be * 100) + '% to break even and Vault gives it '
         + Math.round(vs.prob * 100) + '%. That grade is a bet on the price, not a call that the ' + _sideLbl(valueSide) + ' happens.</div>';
     }
-    return ctx + '<div class="eb-2cols">' + colH(O, 'OVER', leanSide === 'over', valueSide === 'over') + colH(U, 'UNDER', leanSide === 'under', valueSide === 'under') + '</div>';
+    const onLine = (r.quotes || []).filter(q => q.line == null || line == null || q.line === line).map(q => q.book);
+    const prov = fairProvHTML((r.fe && r.fe.sides && r.fe.sides[displaySide(r)]) || r.fe, onLine);
+    return ctx + '<div class="eb-2cols">' + colH(O, 'OVER', leanSide === 'over', valueSide === 'over') + colH(U, 'UNDER', leanSide === 'under', valueSide === 'under') + '</div>' + prov;
   }
 
   // Per-book price table showing BOTH sides at the consensus line, best price on
@@ -46977,6 +47135,10 @@ window.VaultMarketProj = (function () {
       +     '<div class="eb-dhelp">Keeps picks where Vault’s win chance beats the best price on the board, or at the books you pick below.</div></div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Fade Vault’s team lean.</div><button class="eb-dtoggle' + (fltFade ? ' on' : '') + '" id="eb-dfade">' + (fltFade ? '✓ A and B props against the lean' : 'A and B props against the lean') + '</button>'
       +     '<div class="eb-dhelp">Shows A and B props on the opposite side of Vault’s team scoring lean: unders when Vault expects the team to beat its implied total, overs when it expects a miss. This did well in the first weeks and is still being tested in the Track Record.</div></div>'
+      +   '<div class="eb-dsec"><div class="eb-dlbl">Fair price from.</div>' + _ebSeg('fair', [{ v: 'all', l: 'Every book' }, { v: 'sharp', l: 'Sharp books' }], fairMode)
+      +     '<div class="eb-dhelp">Every book: the middle of each book’s no-vig price. Sharp books: only Pinnacle, Circa and the exchanges (Novig, ProphetX), which take big bets from winners and move fast. When no sharp book prices a market, every book is used. Applies to Game Markets too.</div></div>'
+      +   '<div class="eb-dsec"><div class="eb-dlbl">Bankroll for stake sizes.</div><input class="eb-dfield" id="eb-dbank" type="number" inputmode="decimal" min="0" step="50" placeholder="e.g. 1000" value="' + (bankroll || '') + '">'
+      +     '<div class="eb-dhelp">Each side card suggests a quarter Kelly stake, only when both the market and Vault see an edge. Leave empty to see it as a % of bankroll. Stays on this device.</div></div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Minimum Vault pick grade.</div>' + _ebSeg('grade', [{ v: 0, l: 'Any' }, { v: 4, l: 'A', g: 'A' }, { v: 3, l: 'B', g: 'B' }, { v: 2, l: 'C', g: 'C' }, { v: 1, l: 'D', g: 'D' }], fltGrade) + '</div>'
       +   '<div class="eb-dsec"><div class="eb-dlbl">Team.</div><select class="eb-dfield" id="eb-dteam"><option value="">All teams</option>' + teams.map(c => '<option value="' + c + '"' + (teamFilter === c ? ' selected' : '') + '>' + c + '</option>').join('') + '</select>'
       +     (synced ? '<button class="eb-dtoggle' + (mineOnly ? ' on' : '') + '" id="eb-dmine">' + (mineOnly ? '✓ My players only' : 'My players only') + '</button>' : '') + '</div>'
@@ -46999,11 +47161,22 @@ window.VaultMarketProj = (function () {
     el.querySelectorAll('.eb-dseg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.onclick = () => {
       seg.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
       const v = b.dataset.v;
+      if (seg.classList.contains('fair')) {
+        fairMode = v === 'sharp' ? 'sharp' : 'all';
+        try { localStorage.setItem(FAIRMODE_KEY, fairMode); } catch (e) {}
+        renderProps(); return;
+      }
       if (seg.classList.contains('grade')) fltGrade = +v;
       else if (v === 'over' || v === 'under' || v === 'all') ouFilter = v;
       else if (v === 'asc' || v === 'desc') ebSort = { key: ebSort.key, dir: v === 'asc' ? 1 : -1 };
       renderPropsBoard();
     }));
+    el.querySelector('#eb-dbank').onchange = e => {
+      const v = parseFloat(e.target.value);
+      bankroll = v > 0 ? v : null;
+      try { bankroll ? localStorage.setItem(BANKROLL_KEY, String(bankroll)) : localStorage.removeItem(BANKROLL_KEY); } catch (err) {}
+      renderPropsBoard();
+    };
     el.querySelector('#eb-dsort').onchange = e => { ebSort = { key: e.target.value, dir: ebSort.dir }; renderPropsBoard(); };
     // team + my-players scope (moved in from the controls row)
     el.querySelector('#eb-dteam').onchange = e => { teamFilter = e.target.value; renderProps(); };
@@ -47122,7 +47295,7 @@ window.VaultMarketProj = (function () {
     // Desktop switches views from the nav dropdown (Betting → Game Markets /
     // Player Props), so the in-page toggle only exists on mobile, where the
     // bottom dock has no Betting dropdown.
-    if (isMobile()) { w.style.display = ''; w.className = 'bt-seg bt-viewseg-kit'; w.innerHTML = [['games', 'Games'], ['props', 'Props'], ['grades', 'Outlook']].map(o => '<button' + (o[0] === view ? ' class="on"' : '') + ' data-bv="' + o[0] + '">' + o[1] + '</button>').join(''); w.querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.bv)); }
+    if (isMobile()) { w.style.display = ''; w.className = 'bt-seg bt-viewseg-kit'; w.innerHTML = [['games', 'Games'], ['props', 'Props'], ['grades', 'Outlook'], ['record', 'Record'], ['calc', 'Calc']].map(o => '<button' + (o[0] === view ? ' class="on"' : '') + ' data-bv="' + o[0] + '">' + o[1] + '</button>').join(''); w.querySelectorAll('button').forEach(b => b.onclick = () => setView(b.dataset.bv)); }
     else { w.style.display = 'none'; w.className = ''; w.innerHTML = ''; }
   }
   function infoText() {
@@ -47539,11 +47712,44 @@ window.VaultMarketProj = (function () {
   }
   window.vaultRenderBlueprint = function () { const h = document.getElementById('bp-host'); if (h) renderBlueprint(h); };
 
+  // Public Record + Calculators are standalone pages (record.html /
+  // calculators.html: shareable, indexable, no sign-in) shown here in a frame
+  // with ?embed=1, so the page and the tab are one source. The frame reports its
+  // height (vaultEmbedH) and asks for view switches (vaultBetView) by message.
+  const EMBED = { record: { src: 'record.html', title: 'Vault public betting record' }, calc: { src: 'calculators.html', title: 'Betting calculators' } };
+  function renderEmbed(v) {
+    const host = document.getElementById('bt-v-' + v); if (!host) return;
+    if (!host.querySelector('iframe')) host.innerHTML = '<iframe class="bt-embed" src="' + EMBED[v].src + '?embed=1" title="' + EMBED[v].title + '" loading="lazy"></iframe>';
+  }
+  window.addEventListener('message', e => {
+    if (e.origin !== location.origin || !e.data) return;
+    const fr = [...document.querySelectorAll('#page-betting iframe.bt-embed')].find(f => f.contentWindow === e.source);
+    if (!fr) return;
+    if (e.data.vaultEmbedH > 0) fr.style.height = Math.ceil(e.data.vaultEmbedH) + 'px';
+    if (e.data.vaultBetView && EMBED[e.data.vaultBetView]) setView(e.data.vaultBetView);
+    if (e.data.vaultEmbedScroll != null) {
+      // The app scrolls inside a container, not the window: scroll the frame's
+      // nearest scrolling ancestor.
+      let sc = fr.parentElement;
+      while (sc && sc !== document.body && !(sc.scrollHeight > sc.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+      const box = (sc && sc !== document.body) ? sc : (document.scrollingElement || document.documentElement);
+      const base = box === document.scrollingElement || box === document.documentElement ? 0 : box.getBoundingClientRect().top;
+      box.scrollTo({ top: box.scrollTop + fr.getBoundingClientRect().top - base + e.data.vaultEmbedScroll - 90, behavior: 'smooth' });
+    }
+  });
   function render() {
-    const isGr = view === 'grades';
+    const isGr = view === 'grades', isEmb = !!EMBED[view];
     document.getElementById('bt-v-games').classList.toggle('on', view === 'games');
     document.getElementById('bt-v-props').classList.toggle('on', view === 'props');
     const gv = document.getElementById('bt-v-grades'); if (gv) gv.classList.toggle('on', isGr);
+    Object.keys(EMBED).forEach(k => { const el = document.getElementById('bt-v-' + k); if (el) el.classList.toggle('on', view === k); });
+    if (isEmb) {
+      const ctl0 = document.getElementById('bt-controls'); if (ctl0) ctl0.style.display = 'none';
+      const tf0 = document.getElementById('bt-tftag'); if (tf0) { tf0.style.display = ''; tf0.textContent = view === 'record' ? 'PUBLIC RECORD' : 'CALCULATORS'; }
+      renderViewSel(); renderBestBets(); renderEmbed(view);
+      const note0 = document.getElementById('bt-note'); if (note0) note0.innerHTML = '';
+      return;
+    }
     // Prop Outlook brings its own filter chrome, so the shared market/pos/search
     // bar is hidden for it.
     const ctl = document.getElementById('bt-controls'); if (ctl) ctl.style.display = isGr ? 'none' : '';
@@ -47870,6 +48076,10 @@ window.VaultMarketProj = (function () {
 #page-betting .eb-bk.off .ln{color:var(--bt-alt)}
 /* Neutral two-sided (OVER | UNDER) comparison in the prop detail. */
 #page-betting .eb-2side{border-bottom:1px solid var(--bt-border)}
+#page-betting .gb-bkbody .eb-2prov{margin:8px 2px 2px}
+#page-betting iframe.bt-embed{display:block;width:100%;height:1400px;border:0;background:transparent;color-scheme:normal}
+#page-betting .eb-2prov{margin:10px 18px 0;font-size:11px;line-height:1.5;color:var(--bt-text2);opacity:.85}
+@media(max-width:640px){#page-betting .eb-2prov{margin:10px 14px 0}}
 #page-betting .eb-2ctx{margin:14px 18px 0;padding:11px 13px;border:1px solid color-mix(in srgb,var(--bt-gold) 32%,transparent);background:color-mix(in srgb,var(--bt-gold) 8%,transparent);border-radius:11px;font-size:var(--t-label);line-height:1.5;color:var(--bt-text2)}
 #page-betting .eb-2ctx b{color:var(--bt-gold)}
 #page-betting .eb-2ctx.eb-2ctx-sm{border-color:var(--bt-border);background:var(--bt-s1);color:var(--bt-muted);font-family:var(--bt-mono);font-size:var(--t-micro);line-height:1.4}
@@ -48519,7 +48729,8 @@ window.VaultMarketProj = (function () {
       BOOTED = true;
       const m = MODEL.meta || {};
       const src = MODEL.hasLiveProps ? ('props · ' + (m.props_source || 'live')) : (m.live_source && m.live_source !== 'none' ? ('games · ' + m.live_source) : 'preseason workbook');
-      const srcEl = document.getElementById('bt-src'); if (srcEl) srcEl.textContent = 'VEGAS · ' + src + ' · ' + MODEL.games.length + ' games · ' + MODEL.players.length + ' players';
+      const ago = _agoTxt(MODEL.generated);
+      const srcEl = document.getElementById('bt-src'); if (srcEl) { srcEl.textContent = 'VEGAS · ' + src + ' · ' + MODEL.games.length + ' games · ' + MODEL.players.length + ' players' + (ago ? ' · prices ' + ago : ''); if (MODEL.generated) srcEl.title = 'Sportsbook prices last pulled ' + new Date(MODEL.generated).toLocaleString() + '. They refresh hourly during game windows, daily otherwise.'; }
       render();
     } catch (e) {
       host.querySelector('#bt-v-games').innerHTML = '<div class="bt-empty">Couldn\'t load the betting feed.<br>' + (e && e.message ? e.message : '') + '</div>';
@@ -48531,7 +48742,7 @@ window.VaultMarketProj = (function () {
      just seed `view`; its own first render honours it. On a warm open switch and
      re-render immediately. */
   window.vaultBettingView = function (v) {
-    if (v !== 'games' && v !== 'props' && v !== 'grades') return;
+    if (v !== 'games' && v !== 'props' && v !== 'grades' && v !== 'record' && v !== 'calc') return;
     view = v;
     if (BOOTED) { try { setView(v); } catch (e) {} }
   };
@@ -49044,7 +49255,9 @@ function _adpLoadSleeperStats() {
     menu.innerHTML =
       '<button class="lc-mt-item active" data-view="games"><span class="ic">📊</span><span><b>Game Markets</b><small>Spreads · totals · moneylines</small></span></button>' +
       '<button class="lc-mt-item" data-view="props"><span class="ic">🎯</span><span><b>Player Props</b><small>Edge Board · every book</small></span></button>' +
-      '<button class="lc-mt-item" data-view="grades"><span class="ic">🅰️</span><span><b>Prop Outlook</b><small>0–100 grade · role + matchup</small></span></button>';
+      '<button class="lc-mt-item" data-view="grades"><span class="ic">🅰️</span><span><b>Prop Outlook</b><small>0–100 grade · role + matchup</small></span></button>' +
+      '<button class="lc-mt-item" data-view="record"><span class="ic">📈</span><span><b>Public Record</b><small>Every graded prop, settled</small></span></button>' +
+      '<button class="lc-mt-item" data-view="calc"><span class="ic">🧮</span><span><b>Calculators</b><small>No-vig · EV · Kelly · parlay</small></span></button>';
     document.body.appendChild(menu);
 
     function markActive() {
@@ -49065,7 +49278,7 @@ function _adpLoadSleeperStats() {
       var it = e.target.closest('.lc-mt-item');
       if (!it) return;
       menu.classList.remove('show');
-      curView = ['props', 'grades'].includes(it.dataset.view) ? it.dataset.view : 'games';
+      curView = ['props', 'grades', 'record', 'calc'].includes(it.dataset.view) ? it.dataset.view : 'games';
       markActive();
       window.showPage('betting');
       if (typeof window.vaultBettingView === 'function') window.vaultBettingView(curView);

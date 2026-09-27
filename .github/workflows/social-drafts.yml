@@ -1,0 +1,78 @@
+# Drafts @vaultfantasy26 posts and sends them to a private Discord channel for
+# approval (scripts/draft-social-posts.mjs). Nothing is posted to X: each Discord
+# message has a "Post to X" link that opens the composer pre-filled, so a post
+# only goes out when you tap it and hit Post.
+#
+# Setup: repo Settings > Secrets and variables > Actions > New repository secret
+#   DISCORD_WEBHOOK_URL = the webhook URL of your private drafts channel.
+# Until it's set, runs only print the drafts to the job log.
+name: Social post drafts (Discord)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'preview (next slate) or recap (grade the last previewed week)'
+        required: true
+        default: preview
+        type: choice
+        options: [preview, recap]
+      hours:
+        description: 'preview only: include Best Bets kicking off within this many hours'
+        required: false
+        default: '36'
+  schedule:
+    # Times are UTC. Sep-Oct is EDT (UTC-4); from November the ET times shift an hour earlier.
+    - cron: '30 15 * * 0'   # Sun 11:30 ET: preview Sunday + Monday picks
+    - cron: '30 21 * * 4'   # Thu 5:30 ET: preview Thursday night picks
+    - cron: '0 15 * * 2'    # Tue 11:00 ET: recap the week (waits if anything is unsettled)
+    - cron: '0 15 * * 3'    # Wed 11:00 ET: recap retry (no-op if already drafted)
+
+concurrency:
+  group: social-drafts
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Draft and send to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          HOURS="${{ github.event.inputs.hours }}"
+          if [ -z "$MODE" ]; then
+            case "${{ github.event.schedule }}" in
+              '30 15 * * 0') MODE=preview; HOURS=36 ;;
+              '30 21 * * 4') MODE=preview; HOURS=12 ;;
+              *)             MODE=recap ;;
+            esac
+          fi
+          node scripts/draft-social-posts.mjs --mode="$MODE" --hours="${HOURS:-36}"
+
+      - name: Commit draft log if changed
+        run: |
+          F=data/social_posts.json
+          if [ ! -f "$F" ]; then
+            echo "Nothing drafted yet."
+          elif git ls-files --error-unmatch "$F" >/dev/null 2>&1 && git diff --quiet -- "$F"; then
+            echo "Nothing new drafted."
+          else
+            git config user.name  "vault-bot"
+            git config user.email "vault-bot@users.noreply.github.com"
+            git add "$F"
+            git commit -m "social: log drafted posts [skip ci]"
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin main && git push && break
+              echo "push race, retrying ($i)…"; sleep 3
+            done
+          fi
