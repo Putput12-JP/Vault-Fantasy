@@ -56,6 +56,22 @@ const TOP   = Number(ARG.top || 4);
 const LEANS = Number(ARG.leans || 3);
 const FEED  = ARG.feed || resolve(ROOT, 'data/lineup-feed.json');
 const KPROPS = ARG.kprops || resolve(ROOT, 'data/kalshi_props.json');
+// Pick'em pairs (model-upgrade plan Week 4). Same-game legs are correlated
+// (data/prop_correlations.json, scripts/build_prop_correlations.py): QB pass
+// yds and his WR1 rec yds move together (rho ~0.42), so both-over hits more
+// often than p1*p2. Validated: held-out 2025 predicted 25.2% vs 24.6% actual
+// both-over (independent said 18.6%); 2026 real lines 31.0% vs 33.8% (25.0%).
+// At SPORTSBOOK lines a pair almost never clears a 3x 2-pick payout (1 of 133
+// in Wks 1-3), so a pair only surfaces where the pick'em app's line is softer
+// than the books': each leg = the books' no-vig P at their line, shifted to the
+// app's line by Vault's model shape. Logged pre-kickoff and graded in
+// settle_bets.py so pairs earn a record of their own.
+const CORR_FILE = ARG.corr || resolve(ROOT, 'data/prop_correlations.json');
+const PAIRS_LOG = ARG.pairslog || resolve(ROOT, 'data/pickem_pairs_log.json');
+const PAIR_PAYOUT = 3;               // standard 2-pick payout; break-even 1/3
+const PAIR_MIN_EV = Number(ARG.pairminev ?? 0.05);   // joint * payout - 1 (--pairminev=-1 lists every pair, for testing)
+const PAIR_TOP = 3;
+const PAIR_APPS = ['PrizePicks', 'Underdog Fantasy', 'Underdog', 'Sleeper'];
 let   SEASONS = [2024, 2025];                 // log window [prev, cur] — reset from feed.season in main() so it rolls to [cur-1, cur] once the new season's nflverse logs land (mirrors the client's ebVaultSeasons)
 const BE_REF = 0.524;                         // standard -110 book break-even (entry-agnostic bar)
 const MIN_GAMES = 8;                          // enough log to trust the projection
@@ -717,6 +733,126 @@ function logShadow(feed, list, bucketOf) {
   return { file, changed };
 }
 
+/* ── pick'em pairs (see PAIR_PAYOUT) ───────────────────────────────────── */
+// Inverse normal CDF (Acklam) and a bivariate normal CDF by Gauss-Legendre on
+// the rho integral: the JS twin of build_prop_correlations.py joint_over().
+function normInv(p) {
+  const a = [-39.6968302866538, 220.946098424521, -275.928510446969, 138.357751867269, -30.6647980661472, 2.50662827745924];
+  const b = [-54.4760987982241, 161.585836858041, -155.698979859887, 66.8013118877197, -13.2806815528857];
+  const c = [-0.00778489400243029, -0.322396458041136, -2.40075827716184, -2.54973253934373, 4.37466414146497, 2.93816398269878];
+  const d = [0.00778469570904146, 0.32246712907004, 2.445134137143, 3.75440866190742];
+  const pl = 0.02425;
+  if (p < pl) { const q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  if (p > 1 - pl) { const q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  const q = p - 0.5, r = q * q;
+  return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+}
+const GLX = [-0.9739065285, -0.8650633667, -0.6794095683, -0.4333953941, -0.1488743390, 0.1488743390, 0.4333953941, 0.6794095683, 0.8650633667, 0.9739065285];
+const GLW = [0.0666713443, 0.1494513492, 0.2190863625, 0.2692667193, 0.2955242247, 0.2955242247, 0.2692667193, 0.2190863625, 0.1494513492, 0.0666713443];
+function jointOver(pa, pb, rho) {
+  pa = Math.min(Math.max(pa, 1e-6), 1 - 1e-6); pb = Math.min(Math.max(pb, 1e-6), 1 - 1e-6);
+  const h = normInv(pa), k = normInv(pb);
+  let s = 0;
+  for (let i = 0; i < 10; i++) {
+    const r = rho * (GLX[i] + 1) / 2, dd = 1 - r * r;
+    s += GLW[i] * Math.exp(-(h * h - 2 * r * h * k + k * k) / (2 * dd)) / (2 * Math.PI * Math.sqrt(dd));
+  }
+  return normCdf(h) * normCdf(k) + s * rho / 2;
+}
+// Power de-vig (mirror of build_model_scoreboard.devig_power).
+function devigPower(ao, au) {
+  const po = americanToProb(ao), pu = americanToProb(au);
+  if (!(po > 0) || !(pu > 0)) return null;
+  if (po + pu <= 1) return po / (po + pu);
+  let lo = 1, hi = 10;
+  for (let i = 0; i < 60; i++) { const k = (lo + hi) / 2; if (po ** k + pu ** k > 1) lo = k; else hi = k; }
+  const k = (lo + hi) / 2; return po ** k / (po ** k + pu ** k);
+}
+function pickemPairs(feed, PM) {
+  let COR = null;
+  try { COR = JSON.parse(readFileSync(CORR_FILE, 'utf8')).pairs; } catch (e) { return []; }
+  const props = feed.vegas_player_props || {}, depth = feed.vegas_depth || {}, now = Date.now();
+  const byTeam = {};
+  for (const id in props) {
+    const p = props[id];
+    const t = Date.parse(p.commence || '');
+    if (!(t > now) || p.out || p.impacted || !p.team) continue;
+    const dep = depth[id]; if (dep && dep[1] === 0) continue;
+    const want = p.pos === 'QB' ? 'pass_yd' : (p.pos === 'WR' || p.pos === 'TE') ? 'rec_yd' : null;
+    if (!want || !p.lines || !p.lines[want] || !PM.markets[want]) continue;
+    const role = p.pos === 'QB' ? (dep && dep[0] != null && dep[0] > 1 ? null : 'QB1')
+      : (dep && dep[0] != null) ? (p.pos === 'WR' && dep[0] <= 2 ? 'WR' + dep[0] : p.pos === 'TE' && dep[0] === 1 ? 'TE1' : null) : null;
+    if (!role) continue;
+    const quotes = (p.lines[want].quotes || []).filter(q => q && q.line != null);
+    // the books' no-vig P(over) at their most-quoted line
+    const books = quotes.filter(q => isRealBook(q.book) && q.over != null && q.under != null);
+    if (books.length < 2) continue;
+    const cnt = new Map(); books.forEach(q => cnt.set(q.line, (cnt.get(q.line) || 0) + 1));
+    const Lb = [...cnt.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+    const qs = books.filter(q => q.line === Lb).map(q => devigPower(q.over, q.under)).filter(x => x != null);
+    if (qs.length < 2) continue;
+    const qb = qs.reduce((a, b) => a + b, 0) / qs.length;
+    const vB = fairProbOver(PM, p.name, want, Lb, null, null);
+    if (!vB) continue;
+    const apps = {};
+    for (const q of quotes) {
+      if (!PAIR_APPS.includes(q.book) || apps[q.book] != null) continue;
+      const vA = q.line === Lb ? vB : fairProbOver(PM, p.name, want, q.line, null, null);
+      if (!vA) continue;
+      apps[q.book] = { line: q.line, over: Math.min(Math.max(qb + (vA.over - vB.over), 0.02), 0.98) };
+    }
+    if (!Object.keys(apps).length) continue;
+    (byTeam[p.team] = byTeam[p.team] || []).push({ id: String(id), name: p.name, team: p.team, opp: p.opp, pos: p.pos, commence: p.commence,
+      role, market: want, bookLine: Lb, bookOver: round(qb, 4), apps });
+  }
+  const out = [];
+  for (const team in byTeam) {
+    const qbs = byTeam[team].filter(x => x.role === 'QB1'), recs = byTeam[team].filter(x => x.role !== 'QB1');
+    for (const Q of qbs) for (const Rr of recs) {
+      const key = `QB1:pass_yd|${Rr.role}:rec_yd`, c = COR && COR[key];
+      if (!c || c.rho == null) continue;
+      for (const app in Q.apps) {
+        const A = Q.apps[app], B = Rr.apps[app]; if (!B) continue;
+        for (const dir of ['over', 'under']) {
+          const pa = dir === 'over' ? A.over : 1 - A.over, pb = dir === 'over' ? B.over : 1 - B.over;
+          const joint = jointOver(pa, pb, c.rho), ev = joint * PAIR_PAYOUT - 1;
+          if (ev < PAIR_MIN_EV) continue;
+          out.push({ app, dir, rho: c.rho, joint: round(joint, 4), indep: round(pa * pb, 4), ev: round(ev * 100, 1), payout: PAIR_PAYOUT, commence: Q.commence,
+            legs: [{ pid: Q.id, name: Q.name, team, pos: 'QB', role: 'QB1', market: 'pass_yd', side: dir, line: A.line, p: round(pa, 4), bookLine: Q.bookLine },
+                   { pid: Rr.id, name: Rr.name, team, pos: Rr.pos, role: Rr.role, market: 'rec_yd', side: dir, line: B.line, p: round(pb, 4), bookLine: Rr.bookLine }] });
+        }
+      }
+    }
+  }
+  out.sort((a, b) => b.ev - a.ev);
+  const seenQB = new Set(), top = [];
+  for (const x of out) { if (seenQB.has(x.legs[0].pid)) continue; seenQB.add(x.legs[0].pid); top.push(x); if (top.length >= PAIR_TOP) break; }
+  return top;
+}
+function logPairs(feed, pairs) {
+  let file = null;
+  try { file = JSON.parse(readFileSync(PAIRS_LOG, 'utf8')); } catch (e) { /* first run */ }
+  if (!file || !Array.isArray(file.pairs)) file = { pairs: [] };
+  const stRaw = String(feed.season_type || '').toLowerCase();
+  const stype = /^post/.test(stRaw) ? 'post' : /^reg/.test(stRaw) ? 'reg' : null;
+  const season = String(feed.season || ''), week = Number(feed.week) || null;
+  let changed = false;
+  if (stype && week && season) {
+    const have = new Set(file.pairs.map(x => x.key)), now = Date.now();
+    for (const x of pairs) {
+      const key = [season, stype, week, x.app, x.legs[0].pid, x.legs[1].pid, x.dir].join('|');
+      if (have.has(key) || !(Date.parse(x.commence || '') > now)) continue;
+      file.pairs.push({ key, season, stype, week, ...x, posted: new Date().toISOString() });
+      have.add(key); changed = true;
+    }
+  }
+  if (changed) {
+    file.note = "Every pick'em pair Vault surfaced, at the app lines and joint probability when it first showed. Graded by settle_bets.py (both legs must win; a void or push leg voids the pair).";
+    file.updated = new Date().toISOString();
+  }
+  return { file, changed };
+}
+
 /* ── locked weekly card (see CARD_MAX) ─────────────────────────────────────
    Appends any live top-N play not yet on this week's card, up to CARD_MAX and
    one per player, and only before its game kicks off. Existing entries are
@@ -835,6 +971,9 @@ function gameLeans(feed) {
       seenP.add(c.id); eligible.push(c); if (eligible.length >= TOP) break;
     }
     const shadow = logShadow(feed, props.list, bucketOf);
+    const pairs = pickemPairs(feed, PM);
+    const pairLog = logPairs(feed, pairs);
+    log(`pick'em pairs: ${pairs.length}` + pairs.map(x => ` | ${x.app}: ${x.legs[0].name} ${x.dir} ${x.legs[0].line} + ${x.legs[1].name} ${x.dir} ${x.legs[1].line} joint ${(x.joint * 100).toFixed(1)}% (indep ${(x.indep * 100).toFixed(1)}%)`).join(''));
     const card = lockCard(feed, eligible);
 
     feed.best_bets = {
@@ -847,6 +986,7 @@ function gameLeans(feed) {
       // what the hero shows; `props` above is the live top-N that feeds it.
       card: card.picks, card_max: CARD_MAX,
       card_rule: { on: [...rules.on].sort(), source: rules.source },
+      pairs,
       game_leans: leans.list,
       game_leans_note: leans.gated === 'offseason'
         ? 'Game leans light up in-season — the game model is context, not an edge, and is gated off in the offseason.'
@@ -855,6 +995,7 @@ function gameLeans(feed) {
     };
     if (DRY) { log('DRY — not writing'); return; }
     if (shadow.changed) writeFileSync(SHADOW_FILE, JSON.stringify(shadow.file, null, 1) + '\n');
+    if (pairLog.changed) writeFileSync(PAIRS_LOG, JSON.stringify(pairLog.file, null, 1) + '\n');
     if (card.changed) { writeFileSync(CARD_FILE, JSON.stringify(card.file, null, 1) + '\n'); log('card: locked', card.added.join(', ') || 'nothing new'); }
     writeFileSync(FEED, JSON.stringify(feed));
     log('wrote best_bets to', FEED);

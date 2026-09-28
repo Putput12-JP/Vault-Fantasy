@@ -56,11 +56,11 @@ jobs:
         run: |
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
-          if git diff --quiet -- data/lineup-feed.json data/best_bets_card.json data/best_bets_shadow.json; then
+          if git diff --quiet -- data/lineup-feed.json data/best_bets_card.json data/best_bets_shadow.json data/pickem_pairs_log.json; then
             echo "Heal produced no change."
           else
             git add data/lineup-feed.json
-            git add data/best_bets_card.json data/best_bets_shadow.json 2>/dev/null || true
+            git add data/best_bets_card.json data/best_bets_shadow.json data/pickem_pairs_log.json 2>/dev/null || true
             git add data/market_grades.json 2>/dev/null || true
             git commit -m "props: self-heal degraded feed via PrizePicks [skip ci]"
             for i in 1 2 3; do

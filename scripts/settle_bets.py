@@ -1224,6 +1224,29 @@ def settle_card(prop_picks):
     res = {"card_max": card.get("card_max"), "picks": out,
            "seasons": {k: {"summary": _summ(v["all"]), "weeks": {w: _summ(rs) for w, rs in sorted(v["weeks"].items())}}
                        for k, v in seasons.items()}}
+    # Pick'em pairs (build_best_bets.mjs pickemPairs, plan Week 4): each leg is
+    # graded like a card play at its APP line; the entry wins only if both legs
+    # win, and a pushed or void leg voids it (apps differ on reduced payouts, so
+    # no partial credit is counted). Units at the logged payout (3x -> +2 / -1).
+    plog = _load_data("pickem_pairs_log.json")
+    if plog and plog.get("pairs"):
+        prs = []
+        for x in plog["pairs"]:
+            legs = [dict(l, season=x["season"], stype=x.get("stype"), week=x["week"], team=l.get("team"), price=None)
+                    for l in x.get("legs") or []]
+            g = _grade_plays(legs, prop_picks)
+            rs = [l["result"] for l in g]
+            res_ = (None if any(r is None for r in rs) else "V" if any(r in ("V", "P") for r in rs)
+                    else "W" if all(r == "W" for r in rs) else "L")
+            pay = (x.get("payout") or 3) - 1
+            prs.append({**{k: v for k, v in x.items() if k != "legs"}, "legs": g, "result": res_,
+                        "units": None if res_ is None else (pay if res_ == "W" else -1.0 if res_ == "L" else 0.0)})
+        dec = [x for x in prs if x["result"] in ("W", "L")]
+        res["pairs"] = {"picks": prs, "summary": {
+            "W": sum(1 for x in dec if x["result"] == "W"), "L": sum(1 for x in dec if x["result"] == "L"),
+            "void": sum(1 for x in prs if x["result"] == "V"), "pending": sum(1 for x in prs if x["result"] is None),
+            "units": round(sum(x["units"] or 0 for x in prs), 2),
+            "expected_joint": round(sum(x.get("joint") or 0 for x in dec) / len(dec), 4) if dec else None}}
     shadow = _load_data("best_bets_shadow.json")
     if shadow and shadow.get("picks"):
         rows = _grade_plays(shadow["picks"], prop_picks)
@@ -1316,6 +1339,9 @@ def main():
             print(f"[settle] Vault's Plays {s}: {m['W']}-{m['L']}-{m['P']} ({m['pending']} pending) "
                   f"{m['units']:+.1f}u at posted price | {m['units_close']:+.1f}u at the close | "
                   f"beat close {m['beat_close']}/{m['n_clv']}")
+        if plays.get("pairs"):
+            ps = plays["pairs"]["summary"]
+            print(f"[settle] pick'em pairs: {ps['W']}-{ps['L']} ({ps['void']} void, {ps['pending']} pending) {ps['units']:+.1f}u")
         for k, v in ((plays.get("rules") or {}).get("buckets") or {}).items():
             print(f"[settle]   card rule {k:22s} {'ON ' if v['on'] else 'off'} {v.get('W', 0)}-{v.get('L', 0)} {v.get('units', 0):+.1f}u ({v['why']})")
 

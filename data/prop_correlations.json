@@ -1,0 +1,177 @@
+{
+ "method": "Gaussian copula on normal scores of actual-minus-prior-mean residuals; roles from earlier-week usage",
+ "train": "2016-2024",
+ "test": 2025,
+ "pairs": {
+  "QB1:pass_yd|WR1:rec_yd": {
+   "n_train": 3192,
+   "rho": 0.4219,
+   "n_test": 358,
+   "rho_test": 0.3589,
+   "test": {
+    "p_a_over": 0.4972,
+    "p_b_over": 0.3743,
+    "both_over": 0.2458,
+    "pred_both_over": 0.2518,
+    "indep_both_over": 0.1861,
+    "both_under": 0.3743,
+    "pred_both_under": 0.3802,
+    "indep_both_under": 0.3146,
+    "se": 0.0228
+   }
+  },
+  "QB1:pass_yd|WR2:rec_yd": {
+   "n_train": 2985,
+   "rho": 0.3649,
+   "n_test": 321,
+   "rho_test": 0.4025,
+   "test": {
+    "p_a_over": 0.4891,
+    "p_b_over": 0.433,
+    "both_over": 0.2773,
+    "pred_both_over": 0.2704,
+    "indep_both_over": 0.2118,
+    "both_under": 0.3551,
+    "pred_both_under": 0.3483,
+    "indep_both_under": 0.2897,
+    "se": 0.025
+   }
+  },
+  "QB1:pass_yd|TE1:rec_yd": {
+   "n_train": 2946,
+   "rho": 0.3073,
+   "n_test": 327,
+   "rho_test": 0.341,
+   "test": {
+    "p_a_over": 0.5015,
+    "p_b_over": 0.4434,
+    "both_over": 0.2661,
+    "pred_both_over": 0.2716,
+    "indep_both_over": 0.2224,
+    "both_under": 0.3211,
+    "pred_both_under": 0.3266,
+    "indep_both_under": 0.2774,
+    "se": 0.0244
+   }
+  },
+  "QB1:pass_yd|RB1:rush_yd": {
+   "n_train": 3035,
+   "rho": -0.1247,
+   "n_test": 349,
+   "rho_test": -0.1397,
+   "test": {
+    "p_a_over": 0.4957,
+    "p_b_over": 0.4957,
+    "both_over": 0.2235,
+    "pred_both_over": 0.2258,
+    "indep_both_over": 0.2457,
+    "both_under": 0.2321,
+    "pred_both_under": 0.2344,
+    "indep_both_under": 0.2543,
+    "se": 0.0223
+   }
+  },
+  "QB1:pass_yd|RB1:rec_yd": {
+   "n_train": 3035,
+   "rho": 0.2025,
+   "n_test": 349,
+   "rho_test": 0.2771,
+   "test": {
+    "p_a_over": 0.4957,
+    "p_b_over": 0.3582,
+    "both_over": 0.2092,
+    "pred_both_over": 0.2079,
+    "indep_both_over": 0.1775,
+    "both_under": 0.3553,
+    "pred_both_under": 0.354,
+    "indep_both_under": 0.3237,
+    "se": 0.0218
+   }
+  },
+  "WR1:rec_yd|WR2:rec_yd": {
+   "n_train": 3235,
+   "rho": -0.0222,
+   "n_test": 354,
+   "rho_test": 0.0951,
+   "test": {
+    "p_a_over": 0.3616,
+    "p_b_over": 0.4322,
+    "both_over": 0.1751,
+    "pred_both_over": 0.153,
+    "indep_both_over": 0.1563,
+    "both_under": 0.3814,
+    "pred_both_under": 0.3592,
+    "indep_both_under": 0.3625,
+    "se": 0.0202
+   }
+  },
+  "WR1:rec_yd|TE1:rec_yd": {
+   "n_train": 3175,
+   "rho": 0.0087,
+   "n_test": 358,
+   "rho_test": 0.052,
+   "test": {
+    "p_a_over": 0.3687,
+    "p_b_over": 0.433,
+    "both_over": 0.162,
+    "pred_both_over": 0.1609,
+    "indep_both_over": 0.1596,
+    "both_under": 0.3603,
+    "pred_both_under": 0.3592,
+    "indep_both_under": 0.358,
+    "se": 0.0195
+   }
+  },
+  "WR1:rec_yd|RB1:rush_yd": {
+   "n_train": 3279,
+   "rho": -0.0536,
+   "n_test": 378,
+   "rho_test": -0.0242,
+   "test": {
+    "p_a_over": 0.3757,
+    "p_b_over": 0.4683,
+    "both_over": 0.1799,
+    "pred_both_over": 0.1678,
+    "indep_both_over": 0.1759,
+    "both_under": 0.336,
+    "pred_both_under": 0.3239,
+    "indep_both_under": 0.332,
+    "se": 0.0198
+   }
+  },
+  "QB1:pass_yd|WR1:rec": {
+   "n_train": 3192,
+   "rho": 0.3361,
+   "n_test": 358,
+   "rho_test": 0.2644,
+   "test": {
+    "p_a_over": 0.4972,
+    "p_b_over": 0.4078,
+    "both_over": 0.243,
+    "pred_both_over": 0.2558,
+    "indep_both_over": 0.2028,
+    "both_under": 0.338,
+    "pred_both_under": 0.3508,
+    "indep_both_under": 0.2977,
+    "se": 0.0227
+   }
+  },
+  "WR1:rec|WR2:rec": {
+   "n_train": 3235,
+   "rho": 0.0452,
+   "n_test": 354,
+   "rho_test": 0.0938,
+   "test": {
+    "p_a_over": 0.3842,
+    "p_b_over": 0.4096,
+    "both_over": 0.1525,
+    "pred_both_over": 0.1641,
+    "indep_both_over": 0.1574,
+    "both_under": 0.3588,
+    "pred_both_under": 0.3703,
+    "indep_both_under": 0.3636,
+    "se": 0.0191
+   }
+  }
+ }
+}

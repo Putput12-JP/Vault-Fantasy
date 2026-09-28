@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-29T12:00', tag:'New', title:'Pick’em pairs',
+    items:[
+      'A QB and his top receiver tend to have big games, and quiet ones, together. Both hitting is more likely than the two chances multiplied, but pick’em apps pay as if they were unrelated.',
+      'When a pick’em app’s lines for a QB and his receiver are softer than the sportsbooks’, and together they clear the 2-pick payout, Vault shows the pair above the props board with both-hit odds.',
+      'Pairs appear once sportsbooks post the week’s props, usually midweek. Every pair shown is graded, so they build their own record.'
+    ]
+  },
+  {
     ts:'2026-09-28T23:00', tag:'Improved', title:'Vault’s Plays: posted times, earlier lines, corrected record',
     items:[
       'Each play on Vault’s Plays now shows when it was posted, so you can see how early you could have bet it.',
@@ -45730,7 +45738,10 @@ window.VaultMarketProj = (function () {
           + '<div class="pl-rule pl-rh"><span></span><span></span><span class="pl-rn">WIN%</span><span class="pl-rn">W–L</span><span class="pl-rn">UNITS</span></div>' + rows
           + '<div class="tr-note" style="border-top:none;padding:8px 0 0">A play type goes on the card after ' + (pr.on_min_plays || 15) + '+ plays at a ' + Math.round((pr.on_min_roi || 0.05) * 100) + '%+ return over the last ' + (pr.window_weeks || 4) + ' weeks, and comes off once it is losing there. Every Best Bets play keeps being graded, so a new type can earn its way on.</div></div>';
       })() : '';
-      const body = _trWeekBar(weeks, true) + hero + byWeek + ruleTbl
+      const pr = data && data.pairs && data.pairs.summary;
+      const pairsLine = pr && (pr.W + pr.L + pr.pending) ? '<div class="tr-note" style="border-top:none">Pick\u2019em pairs (QB + his receiver at a softer app line, 2-pick 3x): <b>' + pr.W + '–' + pr.L + '</b>'
+        + ' · ' + (pr.units >= 0 ? '+' : '') + pr.units.toFixed(1) + 'u' + (pr.expected_joint ? ' · model said both would hit ' + (pr.expected_joint * 100).toFixed(0) + '% of the time' : '') + (pr.pending ? ' · ' + pr.pending + ' pending' : '') + '</div>' : '';
+      const body = _trWeekBar(weeks, true) + hero + byWeek + pairsLine + ruleTbl
         + '<div class="tr-listwrap"><div class="tr-gt">Every play on the card</div>' + list + '</div>'
         + '<div class="tr-note">Vault’s Plays is the Best Bets card, locked. Up to 10 plays a week, one per player: the first ones to reach the top of Best Bets among the play types that have earned a spot (see What makes the card). Once a play posts, its line and price never change, and it stays on the card win or lose. Units assume 1u a play at the posted price. “At the close” re-prices the same plays at the closing line. A player who sits out is a void, like at a book.</div>';
       _pvInner().innerHTML = _trShell(all.length + ' plays locked · graded at the posted line', body); wire();
@@ -48031,7 +48042,9 @@ window.VaultMarketProj = (function () {
       const m = /^(\S+) @ (\S+)$/.exec(l.game || ''); if (!m) return false;
       return !bbOffSlate({ team: m[2], opp: m[1] });
     });
-    if (!props.length && !leans.length) { host.innerHTML = ''; return; }
+    const attrP = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const pairsHtml = _bbPairsHtml(bb || {}, attrP);
+    if (!props.length && !pairsHtml) { host.innerHTML = ''; return; }
     const POS = { QB: 'var(--bt-qb,#ff6680)', RB: 'var(--bt-rb,#37d6a3)', WR: 'var(--bt-wr,#5b9dff)', TE: 'var(--bt-te,#ffb545)' };
     const attr = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
     const card = b => {
@@ -48050,9 +48063,9 @@ window.VaultMarketProj = (function () {
         + '<span class="bb-ev">+' + b.ev + '%<span>EV</span></span>'
         + '</button>';
     };
-    let html = '<div class="bb-wrap"><div class="bb-head"><span class="bb-title">' + reIcon('star', { size: 13 }) + ' Vault Best Bets</span>'
+    let html = '<div class="bb-wrap">' + (props.length ? '<div class="bb-head"><span class="bb-title">' + reIcon('star', { size: 13 }) + ' Vault Best Bets</span>'
       + '<span class="bb-sub">Top ' + props.length + ' by confidence-adjusted value · ≥2 books</span></div>'
-      + '<div class="bb-cards">' + props.map(card).join('') + '</div>';
+      + '<div class="bb-cards">' + props.map(card).join('') + '</div>' : '') + pairsHtml;
     html += '</div>';
     host.innerHTML = html;
     // paint headshots (paintHeadshots keys on .bt-hs; our avatars are .bb-hs)
@@ -48076,6 +48089,25 @@ window.VaultMarketProj = (function () {
       ebScrollSel = true;      // scroll the featured row into view after the board paints
       render();
     });
+  }
+  // Pick'em pairs (build_best_bets.mjs pickemPairs): a QB and his receiver on
+  // the same pick'em app, where the app's lines are softer than the books' and
+  // the two legs' correlation lifts "both hit" past a 3x 2-pick break-even.
+  // Only shows when a pair qualifies; kicked-off pairs drop off.
+  function _bbPairsHtml(bb, attr) {
+    const now = Date.now();
+    const ps = (bb.pairs || []).filter(x => Date.parse(x.commence || '') > now);
+    if (!ps.length) return '';
+    const MKL = { pass_yd: 'Pass Yds', rec_yd: 'Rec Yds' };
+    const leg = l => '<span class="bb-pl"><b>' + attr(l.name) + '</b> ' + (l.side === 'under' ? 'Under ' : 'Over ') + attr(l.line) + ' ' + (MKL[l.market] || attr(l.market)) + '</span>';
+    const be = x => Math.round(1000 / (x.payout || 3)) / 10;
+    const rec = _playsData && _playsData.pairs && _playsData.pairs.summary;
+    return '<div class="bb-pairs"><div class="bb-phead"><span class="bb-ptitle" title="Teammates in the same game rise and fall together, so both hitting is likelier than the two chances multiplied. Pick\u2019em apps pay a flat amount per entry as if they were independent.">Pick\u2019em pairs</span>'
+      + '<span class="bb-sub">Linked teammates at an app line softer than the books\u2019' + (rec && (rec.W + rec.L) ? ' · record ' + rec.W + '–' + rec.L + ' · ' + (rec.units >= 0 ? '+' : '') + rec.units.toFixed(1) + 'u' : '') + '</span></div>'
+      + '<div class="bb-plist">' + ps.map(x => '<div class="bb-pair"><div class="bb-papp">' + attr(x.app) + ' · 2-pick ' + (x.payout || 3) + 'x</div>'
+        + '<div class="bb-plegs">' + leg(x.legs[0]) + '<span class="bb-pplus">+</span>' + leg(x.legs[1]) + '</div>'
+        + '<div class="bb-pnum"><b>' + (x.joint * 100).toFixed(1) + '%</b> both hit <span>(' + (x.indep * 100).toFixed(1) + '% if unlinked) · need ' + be(x) + '% · +' + x.ev + '% EV</span></div></div>').join('')
+      + '</div></div>';
   }
   function _bbRenderCard(host, bb) {
     const POS = { QB: 'var(--bt-qb,#ff6680)', RB: 'var(--bt-rb,#37d6a3)', WR: 'var(--bt-wr,#5b9dff)', TE: 'var(--bt-te,#ffb545)' };
@@ -48111,7 +48143,7 @@ window.VaultMarketProj = (function () {
       + '<span class="bb-hr"><span class="bb-sub" title="Only play types that have earned a spot on their own recent record go on the card">'
       + (bb.card_rule && bb.card_rule.on && bb.card_rule.on.length ? bb.card_rule.on.map(_plBucketLbl).join(', ') + ' · ' : '')
       + 'Locked when posted · ' + bb.card.length + ' of ' + (bb.card_max || 10) + '</span>' + recChip + '</span></div>'
-      + '<div class="bb-cards lock">' + plays.map(card).join('') + '</div></div>';
+      + '<div class="bb-cards lock">' + plays.map(card).join('') + '</div>' + _bbPairsHtml(bb, attr) + '</div>';
     if (!_playsDone) loadPlays().then(d => { if (d && view === 'props') renderBestBets(); });
     const rc = host.querySelector('#bb-rec');
     if (rc) rc.onclick = () => { propsView = 'results'; resultsTab = 'plays'; _trFilter = {}; _trWeek = null; renderPropsBoard(); };
@@ -48160,6 +48192,19 @@ window.VaultMarketProj = (function () {
 #page-betting .bb-cards.lock{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 @media (max-width:640px){#page-betting .bb-cards.lock{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:220px;overflow-x:auto}}
 #page-betting .bb-card.done{opacity:.72}
+#page-betting .bb-pairs{margin-top:12px;padding-top:11px;border-top:1px solid var(--bt-border)}
+#page-betting .bb-wrap>.bb-pairs:first-child{margin-top:0;padding-top:0;border-top:none}
+#page-betting .bb-phead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+#page-betting .bb-ptitle{font-family:var(--font-sans);font-size:13px;font-weight:800;color:var(--bt-text);cursor:help}
+#page-betting .bb-plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:9px}
+#page-betting .bb-pair{background:var(--bt-s1);border:1px solid var(--bt-border2);border-radius:13px;padding:10px 12px}
+#page-betting .bb-papp{font-family:var(--bt-mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--bt-muted)}
+#page-betting .bb-plegs{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;margin-top:4px;font-size:12.5px;color:var(--bt-text2)}
+#page-betting .bb-pl b{color:var(--bt-text);font-weight:700}
+#page-betting .bb-pplus{color:var(--bt-muted)}
+#page-betting .bb-pnum{font-family:var(--bt-mono);font-size:11px;color:var(--bt-muted);margin-top:5px}
+#page-betting .bb-pnum b{color:var(--bt-green);font-size:13px}
+@media (max-width:640px){#page-betting .bb-plist{grid-template-columns:1fr}}
 #page-betting .pl-rule{display:grid;grid-template-columns:minmax(0,1fr) 78px 56px 64px 72px;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--bt-border);font-size:13px;color:var(--bt-text)}
 #page-betting .pl-rule.pl-rh{border-top:none;padding:0 0 4px;font-family:var(--bt-mono);font-size:9px;letter-spacing:.05em;color:var(--bt-muted)}
 #page-betting .pl-rk{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
