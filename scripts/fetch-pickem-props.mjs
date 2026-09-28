@@ -271,6 +271,40 @@ function applyStatusFlags(feed, sl) {
   };
   return { out: out.length, impacted: impacted.length };
 }
+/* Game-model backup QB (data/qb_status.json). build_game_model.py fits the
+   points a backup start costs and names each team's ESTABLISHED starter
+   (game_model.json qb.established), but it refits twice a week and QB news
+   breaks hourly, so this run decides who is on a backup: the established QB is
+   OUT on Sleeper, or benched (he has no passing props while the depth-chart #1
+   QB does; books only price a starter). Its own file, not the feed: the lineup
+   job rewrites lineup-feed.json between props runs. Keys are the game model's
+   team codes (LA, not LAR). */
+const QB_STATUS = 'data/qb_status.json';
+const GM_TEAM = { LA: 'LAR' };   // game-model code -> Sleeper code
+function gameQbStatus(feed, sl) {
+  let gm;
+  try { gm = JSON.parse(readFileSync('data/game_model.json', 'utf8')); } catch (e) { return null; }
+  const est = (gm.qb && gm.qb.established) || {};
+  const status = sl.status || {}, depth = sl.depth || {}, byId = sl.byId || {};
+  const props = feed.vegas_player_props || {};
+  const passProps = id => { const l = (props[id] && props[id].lines) || {}; return !!(l.pass_yd || l.pass_td || l.pass_rush_yd); };
+  const teams = {};
+  for (const t in est) {
+    const slTeam = GM_TEAM[t] || t;
+    const rec = resolveSleeper(sl, est[t].name, slTeam);
+    if (!rec || rec.pos !== 'QB' || rec.team !== slTeam) continue;   // moved on: no established QB to lose
+    const qbs = Object.values(byId).filter(r => r.team === slTeam && r.pos === 'QB' && r.id !== rec.id);
+    const top = qbs.find(r => depth[r.id] && depth[r.id][0] === 1);
+    let reason = null;
+    if (status[rec.id] === 'out') reason = 'out';
+    else if (top && !passProps(rec.id) && passProps(top.id)) reason = 'benched';
+    if (!reason) continue;
+    const starter = qbs.find(r => passProps(r.id)) || top || null;
+    teams[t] = { backup: true, reason, established: est[t].name, starter: starter ? starter.name : null };
+  }
+  return { generated: new Date().toISOString(), note: 'Teams whose established QB (game_model.json qb.established) is out or benched. The game model takes qb.margin / qb.total points off them.', teams };
+}
+
 // team -> Sleeper id of the QB who started the team's most recent game (most
 // pass attempts that week, nflverse weekly stats in data/). {} when missing.
 function lastStarterQBs(season, sl) {
@@ -875,10 +909,13 @@ function mergeFeed(sources, stats, sl) {
   // Sleeper injury feed already loaded above.
   const flags = applyStatusFlags(feed, sl);
   log(`status flags: ${flags.out} out/doubtful, ${flags.impacted} impacted teammates`);
+  const qbs = gameQbStatus(feed, sl);
+  if (qbs) log(`game-model QB status: backup QB for ${Object.keys(qbs.teams).join(', ') || 'no team'}`);
 
   const summary = `+${addedPlayers} players, +${addedMarkets} markets, ~${refreshed} refreshed — ${had} → ${Object.keys(existing).length}`;
   if (DRY) { log('DRY — would merge:', summary); return true; }
   writeFileSync(FEED, JSON.stringify(feed));
+  if (qbs) writeFileSync(QB_STATUS, JSON.stringify(qbs, null, 1));
   log(`merged into ${FEED}: ${summary}`);
   return true;
 }

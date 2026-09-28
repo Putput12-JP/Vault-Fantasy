@@ -81,21 +81,64 @@ def fetch_games():
         rec = {"season": season, "week": wk, "ht": norm_team(r["home_team"]), "at": norm_team(r["away_team"]),
                "hs": hs, "as_": as_, "spread": f(r.get("spread_line")), "total_line": f(r.get("total_line")),
                "played": hs is not None and as_ is not None,
+               # starting QBs (nflverse fills the expected starter for upcoming games)
+               "hq": (r.get("home_qb_id") or "").strip() or None, "aq": (r.get("away_qb_id") or "").strip() or None,
                # international games / Super Bowls: nobody is home, so no HFA
                "neutral": (r.get("location") or "").strip().lower() == "neutral"}
+        for k in ("home", "away"):
+            qid = (r.get(f"{k}_qb_id") or "").strip()
+            if qid: QB_NAMES[qid] = (r.get(f"{k}_qb_name") or "").strip()
         out.append(rec)
     out.sort(key=lambda g: (g["season"], g["week"]))
     return out
 
 
-def run(games, collect_from=None):
+# Backup-QB adjustment. A team's ESTABLISHED starter = the QB with the most
+# starts in its last QB_WINDOW games (across seasons), at least QB_MIN_STARTS
+# of them. A game started by anyone else is a backup start. Cross-season on
+# purpose: a fill-in who opens a season (Cooper Rush, ATL wks 1-2 2026) must
+# not turn the real starter's return into a "backup" game. Window chosen out of
+# sample (fit < 2020, scored 2020+): 24/10 beat season-only and 8-40 windows.
+QB_WINDOW, QB_MIN_STARTS = 24, 10
+QB_NONE = {"margin": 0.0, "total": 0.0}
+QB = dict(QB_NONE)   # fitted in main() (fit_qb)
+QB_NAMES = {}        # gsis id -> name, filled by fetch_games
+
+
+def established_qb(recent):
+    """Established starter from a team's recent starter ids, or None."""
+    c = defaultdict(int)
+    for q in recent: c[q] += 1
+    if not c: return None
+    prim, n = max(c.items(), key=lambda kv: kv[1])
+    return prim if n >= QB_MIN_STARTS else None
+
+
+def backup_start(recent, g, tk, qk, season_starts):
+    """1 when this game's listed starter is not the team's established QB AND
+    the established QB has started for the team this season. The second part
+    drops offseason moves (Rodgers joining PIT is not a backup start behind a
+    departed Wilson), which history can't see as roster changes."""
+    q = g.get(qk)
+    prim = established_qb(recent[g[tk]])
+    return 1 if q and prim and q != prim and season_starts[(g["season"], g[tk])].get(prim) else 0
+
+
+def run(games, collect_from=None, qb=None):
     """
     Walk the games in order, predicting each BEFORE updating (so predictions are
     out-of-sample), mean-reverting ratings each new season. Returns final ratings
     and the list of prediction records from `collect_from` onward.
+    qb: backup-QB adjustment {margin, total} in points per backup start (see
+    fit_qb); None = off.
+    Ratings update against the ADJUSTED prediction, so a loss with the backup
+    in does not drag down the team's rating with its starter.
     """
+    qb = qb or QB_NONE
     rate = defaultdict(float)                 # net margin rating
     off = defaultdict(float); dff = defaultdict(float)  # scoring ratings (pts vs avg)
+    recent = defaultdict(list)                          # team -> starter ids, last QB_WINDOW games
+    season_starts = defaultdict(lambda: defaultdict(int))   # (season, team) -> {qb id: starts}
     cur = None
     preds = []
     for g in games:
@@ -104,24 +147,33 @@ def run(games, collect_from=None):
                 for t in rate: rate[t] *= CARRY
                 for t in off: off[t] *= CARRY; dff[t] *= CARRY
             cur = g["season"]
+        hb, ab = backup_start(recent, g, "ht", "hq", season_starts), backup_start(recent, g, "at", "aq", season_starts)
         hfa = 0.0 if g["neutral"] else HFA
-        pm = rate[g["ht"]] - rate[g["at"]] + hfa
-        ph = BASE_PTS + off[g["ht"]] - dff[g["at"]] + hfa / 2
-        pa = BASE_PTS + off[g["at"]] - dff[g["ht"]] - hfa / 2
+        pm = rate[g["ht"]] - rate[g["at"]] + hfa - qb["margin"] * (hb - ab)
+        # a backup start moves that team's points by -(total+margin)/2 and the
+        # opponent's by (margin-total)/2: margin -margin, total -total
+        own, opp = (qb["total"] + qb["margin"]) / 2, (qb["margin"] - qb["total"]) / 2
+        ph = BASE_PTS + off[g["ht"]] - dff[g["at"]] + hfa / 2 - own * hb + opp * ab
+        pa = BASE_PTS + off[g["at"]] - dff[g["ht"]] - hfa / 2 - own * ab + opp * hb
         pt = ph + pa
         if not g["played"]:
             continue
+        for tk, qk in (("ht", "hq"), ("at", "aq")):
+            if g[qk]:
+                recent[g[tk]] = (recent[g[tk]] + [g[qk]])[-QB_WINDOW:]
+                season_starts[(g["season"], g[tk])][g[qk]] += 1
         if collect_from is not None and g["season"] >= collect_from:
             preds.append({"pm": pm, "pt": pt, "result": g["hs"] - g["as_"], "total": g["hs"] + g["as_"],
                           "spread": g["spread"], "total_line": g["total_line"],
-                          "home_win": 1 if g["hs"] > g["as_"] else 0})
+                          "home_win": 1 if g["hs"] > g["as_"] else 0, "backup": hb or ab,
+                          "season": g["season"]})
         # updates
         em = (g["hs"] - g["as_"]) - pm
         rate[g["ht"]] += K_MARGIN * em; rate[g["at"]] -= K_MARGIN * em
         eh = g["hs"] - ph; ea = g["as_"] - pa
         off[g["ht"]] += K_SCORE * (eh - RIDGE * off[g["ht"]]); dff[g["at"]] -= K_SCORE * (eh - RIDGE * dff[g["at"]])
         off[g["at"]] += K_SCORE * (ea - RIDGE * off[g["at"]]); dff[g["ht"]] -= K_SCORE * (ea - RIDGE * dff[g["ht"]])
-    return rate, off, dff, preds
+    return rate, off, dff, preds, recent, season_starts
 
 
 HFA = 1.6   # provisional; re-fit from data below
@@ -133,7 +185,7 @@ def phi(z):
 
 def backtest(games):
     """Walk-forward metrics from TEST_FROM: model vs the market's closing line."""
-    _, _, _, preds = run(games, collect_from=TEST_FROM)
+    _, _, _, preds, _, _ = run(games, collect_from=TEST_FROM, qb=QB)
     rt = lambda a: math.sqrt(statistics.fmean(a))
     mp = [p for p in preds if p["spread"] is not None]
     tp = [p for p in preds if p["total_line"] is not None]
@@ -150,6 +202,14 @@ def backtest(games):
         "brier": round(statistics.fmean([(phi(p["pm"] / SD_MARGIN) - p["home_win"]) ** 2 for p in preds]), 4),
         "market_brier": round(statistics.fmean([(phi(p["spread"] / SD_MARGIN) - p["home_win"]) ** 2 for p in mp]), 4),
     }
+    # games with a backup QB: where the adjustment acts, next to the market
+    bp = [p for p in mp if p["backup"]]
+    _, _, _, raw, _, _ = run(games, collect_from=TEST_FROM)
+    rb = [r for r, p in zip(raw, preds) if p["backup"] and p["spread"] is not None]
+    if bp:
+        m["backup_qb"] = {"n": len(bp), "margin_rmse": round(rt([(p["pm"] - p["result"]) ** 2 for p in bp]), 3),
+                          "margin_rmse_unadjusted": round(rt([(r["pm"] - r["result"]) ** 2 for r in rb]), 3),
+                          "market_margin_rmse": round(rt([(p["spread"] - p["result"]) ** 2 for p in bp]), 3)}
     return m
 
 
@@ -163,7 +223,7 @@ def fit_blend(games):
     0.39 -> 0.06), totals w = 0 every season, the old fixed 0.5 blend worse on
     both (12.800 / 13.373). So the served line is the market fair line."""
     played = [g for g in games if g["played"] and g["season"] >= TEST_FROM]
-    _, _, _, preds = run(games, collect_from=TEST_FROM)
+    _, _, _, preds, _, _ = run(games, collect_from=TEST_FROM, qb=QB)
     for p, g in zip(preds, played): p["season"] = g["season"]
     out = {}
     for name, mk, lk, rk in (("spread", "pm", "spread", "result"), ("total", "pt", "total_line", "total")):
@@ -189,6 +249,29 @@ def fit_blend(games):
                      "rmse_market": None if rm_mk is None else round(rm_mk, 3), "n": len(e_mkt)}
     out["win"] = dict(out["spread"])   # win% moves with the margin blend
     return out
+
+
+def fit_qb(games):
+    """Points per backup start (margin, total), fit on seasons before TEST_FROM
+    and GATED on the test seasons: each part ships only if it lowers the
+    out-of-sample RMSE against the actual result. Ratings update against the
+    adjusted prediction, so every grid point re-runs the walk."""
+    def err(qb, lo, hi, key):
+        _, _, _, ps, _, _ = run(games, collect_from=lo, qb=qb)
+        ps = [p for p in ps if p["season"] < hi]
+        mk, rk = ("pm", "result") if key == "margin" else ("pt", "total")
+        return math.sqrt(statistics.fmean([(p[mk] - p[rk]) ** 2 for p in ps]))
+    fitted, out = dict(QB_NONE), {}
+    for key in ("margin", "total"):
+        grid = [x / 4 for x in range(0, 25)]            # 0 .. 6 pts
+        best = min(grid, key=lambda v: err(dict(fitted, **{key: v}), TRAIN_FROM + 2, TEST_FROM, key))
+        fitted[key] = best
+        base = err(dict(fitted, **{key: 0.0}), TEST_FROM, 9999, key)
+        adj = err(fitted, TEST_FROM, 9999, key)
+        ok = adj < base
+        out[key] = {"fit": best, "rmse_test": round(adj, 4), "rmse_test_without": round(base, 4), "gate": "passed" if ok else "failed"}
+        if not ok: fitted[key] = 0.0
+    return fitted, out
 
 
 SD_MARGIN = 13.2   # provisional; re-fit below
@@ -238,7 +321,7 @@ def main():
     ap.add_argument("--dry", action="store_true")
     ap.add_argument("--no-overlay", action="store_true", help="skip the in-season self-correction overlay (pure historical fit)")
     args = ap.parse_args()
-    global HFA, SD_MARGIN, SD_TOTAL
+    global HFA, SD_MARGIN, SD_TOTAL, QB
 
     print("[game-model] fetching nflverse games.csv …")
     games = fetch_games()
@@ -250,8 +333,11 @@ def main():
     last3 = sorted({g["season"] for g in played})[-3:]
     HFA = round(statistics.fmean([g["hs"] - g["as_"] for g in played if g["season"] in last3 and not g["neutral"]]), 3)
 
+    QB, qb_fit = fit_qb(games)
+    print(f"[game-model] backup QB: margin -{QB['margin']} pts, total -{QB['total']} pts per backup start · {qb_fit}")
+
     # fit the residual sd's from the walk-forward, then recompute metrics with them
-    _, _, _, preds = run(games, collect_from=TEST_FROM)
+    _, _, _, preds, _, _ = run(games, collect_from=TEST_FROM, qb=QB)
     SD_MARGIN = round(statistics.pstdev([p["pm"] - p["result"] for p in preds]), 3)
     SD_TOTAL = round(statistics.pstdev([p["pt"] - p["total"] for p in preds]), 3)
 
@@ -266,10 +352,11 @@ def main():
     print(f"   margin RMSE {m['margin_rmse']} vs market {m['market_margin_rmse']}  · ATS {m['ats_pct']}%")
     print(f"   total  RMSE {m['total_rmse']} vs market {m['market_total_rmse']}  · O/U {m['ou_pct']}%")
     print(f"   win-prob Brier {m['brier']} vs market {m['market_brier']}")
+    if m.get("backup_qb"): print(f"   backup-QB games {m['backup_qb']}")
     print(f"   → matches the market, does NOT beat the close (context line, not an edge)")
 
     # final ratings from ALL completed games (current strength)
-    rate, off, dff, _ = run(games)
+    rate, off, dff, _, recent, season_starts = run(games, qb=QB)
     through = max((g["season"], g["week"]) for g in played)
     # If the latest season is fully complete (Super Bowl played, week >= 22) and no
     # next-season games exist yet, the between-season mean-reversion hasn't fired —
@@ -312,6 +399,17 @@ def main():
         # Headline "Vault line" = market fair line + w * (model - market fair).
         # w = 0 unless the walk-forward check beats the close (see fit_blend).
         "blend": blend,
+        # Backup-QB adjustment (points per backup start). Which team is on a
+        # backup is decided hourly from Sleeper (fetch-pickem-props.mjs →
+        # data/qb_status.json) against `established`, because QB news moves
+        # faster than this twice-weekly refit.
+        "qb": {"margin": QB["margin"], "total": QB["total"], "window": QB_WINDOW, "min_starts": QB_MIN_STARTS,
+               "fit": qb_fit,
+               # only QBs who have started for the team this season (same rule
+               # as the fit): no flags in week 1 or for offseason departures
+               "established": {t: {"id": q, "name": QB_NAMES.get(q)} for t in sorted(recent)
+                               for q in [established_qb(recent[t])]
+                               if q and season_starts[(through[0], t)].get(q)}},
         "inseason_overlay": (overlay or None),
         "fit": {"hfa": HFA, "base_pts": BASE_PTS, "sd_margin": SD_MARGIN},   # pre-overlay historical fit
         "note": "Context line only — matches the market, does not beat the close. Never present as +EV.",

@@ -902,6 +902,10 @@ function gameLeans(feed) {
   // in the offseason — honor that. Leans light up in-season.
   if (gm.offseason) return { list: [], gated: 'offseason' };
   const teams = gm.teams || {}, hfa = num(gm.hfa) || 0, base = num(gm.base_pts) || 22.5;
+  // backup QB (fetch-pickem-props.mjs → qb_status.json): fitted points off
+  let qbTeams = {};
+  try { qbTeams = JSON.parse(readFileSync(resolve(ROOT, 'data/qb_status.json'), 'utf8')).teams || {}; } catch (e) { /* none */ }
+  const qbM = num(gm.qb && gm.qb.margin) || 0, qbT = num(gm.qb && gm.qb.total) || 0;
   // Slate gate (same rule as scoreProps): vegas_games runs weeks ahead, so
   // in-season a lean only counts for an unstarted game on the served week.
   // Without it an Oct-4 game headlined the Week 3 tile.
@@ -918,9 +922,10 @@ function gameLeans(feed) {
     const home = GM_ALIAS[g.home] || g.home, away = GM_ALIAS[g.away] || g.away;   // feed says LAR, model says LA
     const H = teams[home], A = teams[away]; if (!H || !A) continue;
     const gHfa = (gm.neutral || []).includes(`${away}@${home}`) ? 0 : hfa;   // international games: no home field
-    const projMargin = (num(H.rate) - num(A.rate)) + gHfa;           // home minus away
+    const hb = qbTeams[home] ? 1 : 0, ab = qbTeams[away] ? 1 : 0;
+    const projMargin = (num(H.rate) - num(A.rate)) + gHfa - qbM * (hb - ab);   // home minus away
     // def is points PREVENTED (positive = good defense), so it comes off the total
-    const projTotal = 2 * base + num(H.off) + num(A.off) - num(H.def) - num(A.def);
+    const projTotal = 2 * base + num(H.off) + num(A.off) - num(H.def) - num(A.def) - qbT * (hb + ab);
     const mktSpreadHome = g.spread && g.spread.cons ? num(g.spread.cons.home) : null;   // home line (neg = favored)
     const mktTotal = g.total ? num(g.total.cons) : null;
     // spread lean: model's home margin vs the market's implied home margin (−spread)

@@ -56,6 +56,7 @@ const GM = readJSON(resolve(HERE, '..', 'data', 'game_model.json'));
 // feed ships "LAR" — without normalizing, GM.teams['LAR'] is undefined and every
 // Rams game silently banks a null model line (and so never settles). Same map
 // the builders + settle_bets.py use.
+const QBS = ((readJSON(resolve(HERE, '..', 'data', 'qb_status.json')) || {}).teams) || {};
 const TEAM_ALIAS = { OAK: 'LV', LVR: 'LV', SD: 'LAC', STL: 'LA', LAR: 'LA', WSH: 'WAS' };
 const teamGm = t => TEAM_ALIAS[t] || t;
 function vaultLine(away, home) {
@@ -70,8 +71,10 @@ function vaultLine(away, home) {
   if (!A || !H) return null;
   const neutral = (GM.neutral || []).includes(`${away}@${home}`);  // international games: no home field
   const hfa = neutral ? 0 : (GM.hfa || 0), base = GM.base_pts || 0;
-  const margin = H.rate - A.rate + hfa;                       // home margin
-  const total = 2 * base + (H.off + A.off) - (A.def + H.def); // hfa/2 terms cancel
+  // backup QB (qb_status.json, hourly from Sleeper): fitted points off
+  const hb = QBS[home] ? 1 : 0, ab = QBS[away] ? 1 : 0, Q = GM.qb || {};
+  const margin = H.rate - A.rate + hfa - (Q.margin || 0) * (hb - ab);        // home margin
+  const total = 2 * base + (H.off + A.off) - (A.def + H.def) - (Q.total || 0) * (hb + ab); // hfa/2 terms cancel
   return { spread: num(-margin), total: num(total), winHome: num(normCdf(margin / (GM.sd_margin || 13.2))), off: GM.offseason ? 1 : 0 };
 }
 

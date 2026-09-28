@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-29T16:00', tag:'Improved', title:'Vault’s game model now knows when a backup QB starts',
+    items:[
+      'When a team’s regular starter is out or benched, Vault’s model now takes about 2 points off that team’s margin and about 1 off the game total. Both numbers are measured from past backup starts, not guessed.',
+      'Tonight’s Bears game is the first to use it: with Case Keenum starting for Caleb Williams, the model moves toward the Eagles instead of favoring Chicago.',
+      'Games with a backup QB now carry a “backup QB” tag. Tap or hover it to see who is starting and how much Vault’s line moved.'
+    ]
+  },
+  {
     ts:'2026-09-29T15:00', tag:'Improved', title:'Vault’s game line is now the sportsbooks’ fair line',
     items:[
       'The Vault line on each game is now the market’s fair number: every sportsbook’s line with its built-in margin removed, then the middle of them. A -2.5 priced heavily one way can read as a fair -3.',
@@ -43093,6 +43101,7 @@ window.VaultMarketProj = (function () {
 #page-betting .gmx-tags{display:flex;gap:6px;flex-wrap:wrap;padding:12px 18px 0}
 #page-betting .gmx-tag{flex:none;font:800 9.5px var(--bt-mono);letter-spacing:.08em;text-transform:uppercase;border-radius:6px;padding:2px 6px;border:1px solid var(--bt-border2);color:var(--bt-text2);background:var(--bt-s2)}
 #page-betting .gmx-tag.neu{color:var(--bt-alt);border-color:color-mix(in srgb,var(--bt-alt) 45%,transparent);background:color-mix(in srgb,var(--bt-alt) 10%,transparent)}
+#page-betting .gmx-tag.qb{color:var(--bt-gold);border-color:color-mix(in srgb,var(--bt-gold) 45%,transparent);background:color-mix(in srgb,var(--bt-gold) 10%,transparent)}
 #page-betting .gmx-tag.hot{color:var(--bt-red);border-color:color-mix(in srgb,var(--bt-red) 40%,transparent);background:color-mix(in srgb,var(--bt-red) 9%,transparent)}
 #page-betting .gmx-tag.arb{color:var(--bt-green);border-color:color-mix(in srgb,var(--bt-green) 40%,transparent);background:color-mix(in srgb,var(--bt-green) 10%,transparent)}
 #page-betting .gmx-proj{padding:12px 18px 18px;flex:1;display:flex;flex-direction:column;justify-content:center}
@@ -43283,12 +43292,16 @@ window.VaultMarketProj = (function () {
   // Game play-type rules (data/game_rules.json, settle_bets.py game_rules): which
   // market x gap band has earned a spot on "Vault's Game Plays". Null until it
   // lands, and then the section just doesn't render.
-  let _gmRules = null;
+  let _gmRules = null, _gmQb = {};
   function loadGameModel() {
     const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
     const rules = fetch(base + '/game_rules.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
       .then(j => { _gmRules = (j && j.buckets) ? j : null; });
-    return Promise.all([fetch(base + '/game_model.json').then(r => (r.ok ? r.json() : null)).catch(() => null), rules])
+    // Backup QB (data/qb_status.json, hourly from Sleeper): which teams have lost
+    // their established starter. The model takes its fitted qb.margin / qb.total off.
+    const qbs = fetch(base + '/qb_status.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
+      .then(j => { _gmQb = (j && j.teams) ? j.teams : {}; });
+    return Promise.all([fetch(base + '/game_model.json').then(r => (r.ok ? r.json() : null)).catch(() => null), rules, qbs])
       .then(([j]) => { _gmTried = true; _gmModel = (j && j.teams) ? j : null; return _gmModel; });
   }
   function _gmPhi(z) { return 0.5 * (1 + _bmErf(z / Math.SQRT2)); }
@@ -43304,10 +43317,15 @@ window.VaultMarketProj = (function () {
     const th = M.teams[_gmTeam(home)], ta = M.teams[_gmTeam(away)];
     if (!th || !ta) return null;
     const hfa = gmNeutral(away, home) ? 0 : M.hfa;            // international games: no home field
-    const pm = th.rate - ta.rate + hfa;                      // home margin (+ = home favored)
-    const ph = M.base_pts + th.off - ta.def + hfa / 2, pa = M.base_pts + ta.off - th.def - hfa / 2;
+    // backup QB: margin moves qb.margin toward the opponent, total drops qb.total
+    const Q = M.qb || {}, qh = _gmQb[_gmTeam(home)] || null, qa = _gmQb[_gmTeam(away)] || null;
+    const hb = qh ? 1 : 0, ab = qa ? 1 : 0, qm = Q.margin || 0, qt = Q.total || 0;
+    const own = (qt + qm) / 2, opp = (qm - qt) / 2;
+    const pm = th.rate - ta.rate + hfa - qm * (hb - ab);     // home margin (+ = home favored)
+    const ph = M.base_pts + th.off - ta.def + hfa / 2 - own * hb + opp * ab, pa = M.base_pts + ta.off - th.def - hfa / 2 - own * ab + opp * hb;
     return { margin: +pm.toFixed(1), homeSpread: +(-pm).toFixed(1), total: +(ph + pa).toFixed(1),
-             homePts: +ph.toFixed(1), awayPts: +pa.toFixed(1), homeWinPct: Math.round(_gmPhi(pm / M.sd_margin) * 100) };
+             homePts: +ph.toFixed(1), awayPts: +pa.toFixed(1), homeWinPct: Math.round(_gmPhi(pm / M.sd_margin) * 100),
+             qb: (qh || qa) ? { home: qh, away: qa, margin: qm, total: qt } : null };
   }
 
   // Served "Vault line": see gmLine below. The team-rating model is refit off
@@ -43762,7 +43780,11 @@ window.VaultMarketProj = (function () {
       const cmpBtn = '<button class="bx-foot-btn" data-tgl="' + key + '">' + (open ? 'Hide books' : 'Compare books') + ' <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="' + (open ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6') + '"/></svg></button>';
       let foot;
       if (gp) {
-        const vTitle = 'Vault’s line is the sportsbooks’ fair line: every book’s number with its margin removed, then the median. Vault’s team-rating model only nudges it when it has proven it beats the market season after season, and today it hasn’t. Context, not a bet edge.';
+        let vTitle = 'Vault’s line is the sportsbooks’ fair line: every book’s number with its margin removed, then the median. Vault’s team-rating model only nudges it when it has proven it beats the market season after season, and today it hasn’t. Context, not a bet edge.';
+        if (conv && conv.qb) {
+          const qn = (t, q) => q ? ' ' + t + ': ' + (q.starter || 'backup') + ' starting for ' + q.established + ' (' + (q.reason === 'benched' ? 'benched' : 'out') + ').' : '';
+          vTitle += ' Backup QB:' + qn(g.away, conv.qb.away) + qn(g.home, conv.qb.home) + ' Vault’s model takes ' + conv.qb.margin + ' pts off that team’s margin and ' + conv.qb.total + ' off the total, measured from past backup starts.';
+        }
         const mkSp = (g.spread && g.spread.cons && g.spread.cons.home != null) ? round05(g.spread.cons.home) : null;
         const mkT = (g.total && g.total.cons != null) ? g.total.cons : null;
         // Market number lives in the columns above, so the footer shows only
@@ -43912,7 +43934,11 @@ window.VaultMarketProj = (function () {
       // Tags: neutral site, heavy real-money action.
       const P = _polymarket && _polymarket[key];
       const hot = !!(P && P.flow && pmSlate && P.flow.vol24 > 0 && P.flow.vol24 >= pmSlate.hot24);
-      const tags = (neutral ? '<span class="gmx-tag neu" title="International / neutral-site game: no home-field edge">Neutral site</span>' : '') + (hot ? '<span class="gmx-tag hot" title="Top-quartile 24h Polymarket volume on this week’s slate">Heating up</span>' : '');
+      // Backup QB: the model takes its measured points off (gmPredict); say so.
+      const qbi = gp ? (gmPredict(g.away, g.home) || {}).qb : null;
+      const qbTag = qbi ? [[g.away, qbi.away], [g.home, qbi.home]].filter(([, q]) => q).map(([t, q]) =>
+        '<span class="gmx-tag qb" title="' + (q.starter ? q.starter + ' starts for ' : 'A backup starts for ') + q.established + ' (' + (q.reason === 'benched' ? 'benched' : 'out') + '). Vault’s model takes ' + qbi.margin + ' pts off ' + t + '’s margin and ' + qbi.total + ' off the total, measured from past backup starts.">' + t + ' backup QB</span>').join('') : '';
+      const tags = qbTag + (neutral ? '<span class="gmx-tag neu" title="International / neutral-site game: no home-field edge">Neutral site</span>' : '') + (hot ? '<span class="gmx-tag hot" title="Top-quartile 24h Polymarket volume on this week’s slate">Heating up</span>' : '');
       const tm = _trackMap[key], lean = tm && tm.lean;
       let trk = '';
       if (lean) { const on = gamePickLogged(g, lean); trk = '<button class="gmx-track press press-btn' + (on ? ' on' : '') + '" data-track="' + key + '" title="' + (on ? 'Tracking in your record. Tap to stop' : 'Track Vault’s best bet: ' + lean.label) + '"><span class="st">' + (on ? '★' : '☆') + '</span>' + (on ? 'Tracking ' : 'Track ') + lean.label + '</button>'; }
