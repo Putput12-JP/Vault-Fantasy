@@ -13473,6 +13473,10 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-29T18:00', tag:'Improved', title:'Game cards show Vault’s own projected score',
+    items:['The projected score and win chance on each game card now come from Vault’s own model, including its backup-QB adjustment. The market’s projected score is shown underneath so you can see where they differ.']
+  },
+  {
     ts:'2026-09-29T17:30', tag:'Fixed', title:'Game Play cards keep their shape',
     items:['When only one or two Game Plays are live, each card now stays card-sized instead of stretching across the page, and its right edge no longer fades out.']
   },
@@ -43135,6 +43139,7 @@ window.VaultMarketProj = (function () {
 #page-betting .gmx-wpbar i{display:block;height:100%;background:var(--bt-s4)}
 #page-betting .gmx-wpbar i.fav{background:var(--bt-accent2)}
 #page-betting .gmx-wplab{display:flex;justify-content:space-between;margin-top:8px;color:var(--bt-muted);font:600 12.5px var(--bt-mono)}
+#page-betting .gmx-mkline{margin-top:10px;font:600 11.5px var(--bt-mono);color:var(--bt-muted);letter-spacing:.01em}
 #page-betting .gmx-wplab b{font-size:14px}
 #page-betting .gmx-wplab b{color:var(--bt-text2)}
 #page-betting .gmx-chd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 18px 0}
@@ -43941,10 +43946,22 @@ window.VaultMarketProj = (function () {
       const m = gmMeta(x), g = m.g, key = m.key, id = 'gmx-' + key.replace('@', '-');
       const gp = (_gmModel && seasonReg) ? gmLine(g) : null;
       const neutral = !!(gp && gmNeutral(g.away, g.home));
-      // Projected score: from the SERVED line (spread + total), so the points,
-      // spread and win% on the card all agree. No model yet → market implied.
-      let ptsA = null, ptsH = null, hw = m.impH, projLab = 'Vault projection';
-      if (gp) { const mg = -gp.homeSpread; ptsH = (gp.total + mg) / 2; ptsA = (gp.total - mg) / 2; hw = gp.homeWinPct; }
+      // Projected score: Vault's OWN model (team ratings + backup-QB
+      // adjustment, gmPredict), not the served line, which is the market fair
+      // line while the model's weight is gated at 0. The market's score sits
+      // underneath for comparison. No model yet → market implied.
+      let ptsA = null, ptsH = null, hw = m.impH, projLab = 'Vault projection', mktLine = '';
+      const vp = gp ? gmPredict(g.away, g.home) : null;
+      if (vp) {
+        // split the model's total by its MARGIN (not the separate off/def
+        // points ratings), so score, spread and win% all tell one story
+        ptsH = (vp.total + vp.margin) / 2; ptsA = (vp.total - vp.margin) / 2; hw = vp.homeWinPct;
+        if (gp.fair && gp.fair.homeSpread != null && gp.fair.total != null) {
+          const fm = -gp.fair.homeSpread, fh = (gp.fair.total + fm) / 2, fa = (gp.fair.total - fm) / 2, fw = gp.fair.homeWin;
+          mktLine = '<div class="gmx-mkline">Market: ' + g.away + ' ' + fa.toFixed(1) + ' · ' + g.home + ' ' + fh.toFixed(1)
+            + (fw != null ? ' · ' + (fw >= .5 ? g.home + ' ' + Math.round(fw * 100) : g.away + ' ' + Math.round((1 - fw) * 100)) + '% to win' : '') + '</div>';
+        }
+      }
       else if (g.implied && g.implied.home != null && g.implied.away != null) { ptsH = g.implied.home; ptsA = g.implied.away; projLab = 'Market implied'; }
       const homeWins = ptsH != null && ptsA != null ? ptsH >= ptsA : (hw != null && hw >= 50);
       const row = (code, pts, win, sub) => '<div class="gmx-tr' + (win ? ' win' : '') + '"><span class="bt-logo" data-logo="' + code + '"></span><div class="gmx-tn"><b>' + fullName(code) + '</b><small>' + sub + '</small></div><div class="gmx-pts">' + (pts != null ? (+pts).toFixed(1) : '–') + '</div></div>';
@@ -43965,7 +43982,7 @@ window.VaultMarketProj = (function () {
       const pc = '<article class="gmx-card gmx-pc"><div class="gmx-ctop"><span class="gmx-clab">' + projLab + '</span>' + trk + '</div>'
         + (tags ? '<div class="gmx-tags">' + tags + '</div>' : '')
         + '<div class="gmx-proj"><div class="gmx-plab"><span>' + (neutral ? 'Neutral site' : 'Away / home') + '</span><span>pts</span></div>'
-        + row(g.away, ptsA, !homeWins, neutral ? g.away : 'Away') + row(g.home, ptsH, homeWins, neutral ? g.home : 'Home') + wbar + '</div></article>';
+        + row(g.away, ptsA, !homeWins, neutral ? g.away : 'Away') + row(g.home, ptsH, homeWins, neutral ? g.home : 'Home') + wbar + mktLine + '</div></article>';
       // Best prices (+ arb flag + real money + the per-book drawer toggle).
       const arbs = [['spread', 'Spread'], ['total', 'Total'], ['ml', 'Moneyline']].map(([mk, l]) => { const b = gameBets(g, mk)[0]; return b && b.arb > 0 ? '<span class="gmx-tag arb" title="Guaranteed cross-venue arbitrage with Kalshi">ARB ' + b.arb + '% · ' + l + '</span>' : ''; }).join('');
       let money = '<span class="gmx-money na">No exchange market yet</span>';
