@@ -30,6 +30,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { repairCell, pricesAtLine, crossSampleVotes } from './prop-quote-guard.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ARG = Object.fromEntries(process.argv.slice(2).map(a => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -52,17 +53,14 @@ function projFor(stats, mk) {
   return null;
 }
 
-// Best price a bettor could actually take on each side (falls back to scanning
-// quotes if the feed didn't precompute `best`).
+// Best price a bettor could actually take on each side AT THE BANKED LINE.
+// This used to scan every quote regardless of line (and the feed's line-first
+// `best`), so bestOver could be a +614 alt on a different number. A book on
+// another line is a different bet and is not priced against this one.
 function bestPrices(cell) {
-  let bO = cell.best && cell.best.over ? num(cell.best.over.price) : null;
-  let bU = cell.best && cell.best.under ? num(cell.best.under.price) : null;
-  for (const q of cell.quotes || []) {
-    const o = num(q.over), u = num(q.under);
-    if (o != null && (bO == null || o > bO)) bO = o;
-    if (u != null && (bU == null || u > bU)) bU = u;
-  }
-  return { bO, bU };
+  if (!Array.isArray(cell.quotes) || !cell.quotes.length) return { bO: num(cell.over), bU: num(cell.under) };
+  const at = pricesAtLine(cell.quotes, cell.line);
+  return { bO: num(at.over), bU: num(at.under) };
 }
 
 function snapshot(cell, proj, ts) {
@@ -93,15 +91,19 @@ const now = new Date().toISOString();
 const prev = readJSON(OUT) || {};
 const props = (prev.props && typeof prev.props === 'object') ? prev.props : {};   // carry ALL prior keys forward (retain finished weeks)
 
-let created = 0, moved = 0, seen = 0;
+let created = 0, moved = 0, seen = 0, contradicted = 0;
 
 for (const pid in feed.vegas_player_props) {
   const p = feed.vegas_player_props[pid];
   if (!p || !p.lines) continue;
   const stats = players[pid] && players[pid].stats;
   for (const mk in p.lines) {
-    const cell = p.lines[mk];
-    if (!cell) continue;
+    if (!p.lines[mk]) continue;
+    // Defence in depth: the feed writers already run the quote guard, but this
+    // is the point where prices become permanent, so re-run it on a copy. Only
+    // prices quoted at exactly cell.line are banked (prop-quote-guard.mjs).
+    const cell = JSON.parse(JSON.stringify(p.lines[mk]));
+    repairCell(cell, mk);
     // real two-way only: need both prices (line may be null for prob-kind markets)
     if (cell.over == null || cell.under == null) continue;
     seen++;
@@ -134,6 +136,13 @@ for (const pid in feed.vegas_player_props) {
     // read once, so settlement has the earliest book prices we ever saw.
     if (!(rec.open && rec.open.q) && !rec.q0 && q.length) rec.q0 = { q, ts: now };
     const last = rec.samples && rec.samples.length ? rec.samples[rec.samples.length - 1] : rec.open;
+    // Cross-snapshot guard: once every other book pulls a market (after
+    // kickoff, typically) a stale lone quote has nothing left in its cell to
+    // contradict, but this week's earlier snapshots on other lines still do.
+    // A pair that contradicts most of them is not banked, so it can't become
+    // the "close" (Kmet: 1.5 rec at -115 all week, then 0.5 at +149 Monday).
+    const votes = crossSampleVotes(rec.samples, cur, mk);
+    if (votes.of && votes.against * 2 > votes.of) { contradicted++; continue; }
     if (!last || sig(last) !== sig(cur)) {
       rec.cur = curQ;
       rec.samples = rec.samples || [rec.open];
@@ -147,7 +156,7 @@ for (const pid in feed.vegas_player_props) {
 }
 
 const payload = { generated: now, season, week, seasonType, keys: Object.keys(props).length, props };
-log(`${seen} live two-way lines · ${created} new keys · ${moved} moved · ${payload.keys} total banked`);
+log(`${seen} live two-way lines · ${created} new keys · ${moved} moved · ${contradicted} contradicted (not banked) · ${payload.keys} total banked`);
 if (DRY) { log('--dry: not written'); process.exit(0); }
 writeFileSync(OUT, JSON.stringify(payload));
 log('wrote ' + OUT);

@@ -79,7 +79,7 @@ def main():
     for p in br.get("props") or []:
         mk, a, lc, proj = p["market"], p.get("actual"), p.get("line_close"), p.get("proj")
         if only and mk not in only: continue
-        if a is None or lc is None or proj is None or lc <= M.HALF or abs(a - lc) < 1e-9: continue
+        if a is None or lc is None or proj is None or abs(a - lc) < 1e-9: continue
         q = M.devig_power(p.get("close_over"), p.get("close_under"))
         pa = SB.model_p_over(A.get(mk), proj, lc)
         pb = SB.model_p_over(Bm.get(mk), proj, lc)
@@ -96,7 +96,7 @@ def main():
             pair[g].add(r["y"], r["A"], r["B"])
             o = over[g]; o[0] += r["A"] > 0.5; o[1] += r["B"] > 0.5; o[2] += r["y"]; o[3] += 1
 
-    print(f"A = {args.a}\nB = {args.b}\nat the close, 0.5 lines excluded, market = power-de-vigged consensus\n")
+    print(f"A = {args.a}\nB = {args.b}\nat the close, market = power-de-vigged consensus\n")
     print(f"{'market':<12}{'n':>5}  {'LL A':>7} {'LL B':>7} {'LL mkt':>7}  {'skill A':>8} {'skill B':>8}  {'z B vs A':>8}   leans over A / B / actual")
     for g in ["all"] + sorted(k for k in acc if k != "all"):
         a, b = acc[g]["A"].out(), acc[g]["B"].out(); o = over[g]; z = pair[g].z()

@@ -32,6 +32,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { repairCell } from './prop-quote-guard.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SEED_PATH = resolve(HERE, 'vegas-preseason.json');
@@ -305,14 +306,21 @@ function bestSide(quotes, side) {
 
 /* build a consensus cell (modal line + best over/under + every book quote)
    from books = { bookTitle: { line, over, under, prob } } */
-function consensusCell(stat, books) {
+export function consensusCell(stat, books) {
   const quotes = Object.entries(books).map(([book, v]) => ({ book, line: v.line ?? null, over: v.over ?? null, under: v.under ?? null, prob: v.prob ?? null }));
   const cons = stat === 'anytime_td' ? null : modalLine(quotes.map(q => q.line).filter(v => v != null));
   const bestOver = bestSide(quotes, 'over');
   const bestUnder = bestSide(quotes, 'under');
-  return stat === 'anytime_td'
-    ? { prob: round(median(quotes.map(q => q.prob).filter(v => v != null))), over: bestOver?.price ?? null, book: bestOver?.book ?? null, quotes, best: { over: bestOver } }
-    : { line: cons, over: bestOver?.price ?? null, under: bestUnder?.price ?? null, book: bestOver?.book ?? null, quotes, best: { over: bestOver, under: bestUnder } };
+  if (stat === 'anytime_td')
+    return { prob: round(median(quotes.map(q => q.prob).filter(v => v != null))), over: bestOver?.price ?? null, book: bestOver?.book ?? null, quotes, best: { over: bestOver } };
+  // Headline over/under are the prices quoted AT the consensus line. The best
+  // over (lowest line) and best under (highest line) used to be the headline
+  // pair, which paired a 0.5-line over with a 1.5-line under; `best` keeps the
+  // line-first view with its own line attached. repairCell also drops quotes
+  // that contradict the rest of the cell (see prop-quote-guard.mjs).
+  const cell = { line: cons, over: null, under: null, book: bestOver?.book ?? null, quotes, best: { over: bestOver, under: bestUnder } };
+  repairCell(cell, stat);
+  return cell;
 }
 
 /* dispatcher: ParlayAPI flat /props (preferred) or TOA per-event (fallback) */

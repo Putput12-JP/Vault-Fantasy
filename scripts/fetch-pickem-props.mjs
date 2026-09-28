@@ -49,6 +49,7 @@
    ════════════════════════════════════════════════════════════════════════ */
 'use strict';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { repairCell } from './prop-quote-guard.mjs';
 
 /* ── args ─────────────────────────────────────────────────────────────── */
 const ARG = Object.fromEntries(process.argv.slice(2).map(a => {
@@ -619,10 +620,14 @@ function upsertQuote(cell, fresh, book) {
   const i = cell.quotes.findIndex(x => x.book === book);
   if (i >= 0) cell.quotes[i] = q; else cell.quotes.push(q);
   // headline book is this book → its direct line is authoritative
+  // Prices move WITH the line: a price-less refresh (PrizePicks never sends
+  // one) used to keep the old line's prices under the new number, which is how
+  // a 0.5 line banked 1.5-line prices. repairCell (end of mergeFeed) refills
+  // the headline from whatever other books quote at this exact line.
   if (cell.book === book && fresh.line != null) {
     cell.line = fresh.line;
-    if (fresh.over != null) cell.over = fresh.over;
-    if (fresh.under != null) cell.under = fresh.under;
+    cell.over = fresh.over ?? null;
+    cell.under = fresh.under ?? null;
   }
   cell.best = cell.best || {};
   cell.best.over  = bestSide(cell.quotes, 'over');
@@ -790,6 +795,23 @@ function mergeFeed(sources, stats, sl) {
   }
   if (posDropped) log(`position guard: dropped ${posDropped} impossible QB receiving line(s)`);
 
+  // Quote guard + headline rebuild on EVERY cell (prop-quote-guard.mjs): drop a
+  // quote that contradicts the rest of its cell (a 0.5 priced less likely to go
+  // over than the 1.5 beside it: Weeks 1-2 carried 91 such Underdog period
+  // lines), then re-derive over/under from quotes at exactly cell.line. Runs
+  // last so upserts, prunes and re-tags above can't leave a cross-line pair.
+  let guardDropped = 0;
+  for (const id in existing) {
+    const lines = existing[id].lines || {};
+    for (const mk in lines) {
+      const n = repairCell(lines[mk], mk);
+      guardDropped += n;
+      if (n && !lines[mk].quotes.length) delete lines[mk];   // every quote contradicted another
+    }
+    if (existing[id].lines && !Object.keys(existing[id].lines).length) delete existing[id];
+  }
+  if (guardDropped) log(`quote guard: dropped ${guardDropped} contradictory quote(s)`);
+
   // Sleeper-team override: Sleeper is the authoritative CURRENT-team source, and
   // every entry keyed by a Sleeper id already carries that id — so force its team
   // to Sleeper's, overriding whatever a prop source (parlay-api) claimed. Prop
@@ -817,6 +839,7 @@ function mergeFeed(sources, stats, sl) {
   feed.vegas_meta.props_players = Object.keys(existing).length;
   feed.vegas_meta.props_pp_filled = addedPlayers + addedMarkets;   // new cells this run
   feed.vegas_meta.props_pp_refreshed = refreshed;                  // same-book lines corrected
+  feed.vegas_meta.props_quotes_rejected = guardDropped;            // quote guard drops this run
   feed.vegas_meta.props_pp_generated = new Date().toISOString();
 
   // Flag OUT players (void their props) + teammates whose projection assumes a

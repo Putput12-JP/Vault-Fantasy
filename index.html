@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-28T22:00', tag:'Fixed', title:'Prop prices always match their line',
+    items:[
+      'Some props showed a price that belonged to a different line, most often on 0.5 lines like "0.5 passing TDs" or "0.5 receptions". Every price on the board is now one a book is actually offering at that exact line.',
+      'Quotes that contradict the other books on the same player, such as a lower line priced as less likely to go over than a higher one, are now left out.',
+      'Weeks 1 to 3 in the Track Record were re-checked the same way, so a few closing prices, grades and results there have been corrected.'
+    ]
+  },
+  {
     ts:'2026-09-28T21:00', tag:'Improved', title:'Receptions and receiving yards odds tuned to real lines',
     items:[
       'Vault now checks its win chances against this season’s real sportsbook lines and results, and corrects a market once it has enough games to trust.',

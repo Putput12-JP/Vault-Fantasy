@@ -65,11 +65,13 @@ def devig_power(a_over, a_under):
     k = (lo + hi) / 2
     return po ** k / (po ** k + pu ** k)
 
-# Prices banked on 0.5 lines (anytime-style: 0.5 pass TDs, 0.5 receptions) are
-# polluted by alt-line quotes: Wks 1-3 the no-vig "market" said ~50% on those
-# overs while they hit 72-77% (0.5 pass TDs closing at +261). Main lines are
-# clean (market 50% -> actual 50%). Until the capture is fixed, 0.5 lines stay
-# out of every market-baseline number here and are counted as excluded.
+# 0.5 lines (anytime-style: 0.5 pass TDs, 0.5 receptions) used to be excluded
+# here: their banked prices were polluted (frozen Underdog 1st-quarter lines and
+# cross-line headline pairs) and said ~50% on overs that hit 72-77%. The capture
+# is fixed (scripts/prop-quote-guard.mjs) and Weeks 1-3 were replayed through it
+# (scripts/backfill-prop-prices.mjs), so they are scored like any other line.
+# half_line_check() keeps watching them: market P(over) vs. the over rate on
+# 0.5 lines, per market, so a regression in the capture shows up here first.
 HALF = 0.5 + 1e-9
 
 def sane_move(lo, lc):
@@ -122,14 +124,11 @@ def score_props(props, model):
     acc = defaultdict(lambda: {"open": Acc(), "close": Acc()})
     bets = defaultdict(Bet)
     weeks = defaultdict(lambda: {"open": Acc(), "close": Acc()})
-    excluded = defaultdict(int)
     for p in props:
         side, a, lo, lc, proj = p.get("side"), p.get("actual"), p.get("line_open"), p.get("line_close"), p.get("proj")
         if a is None or side not in ("over", "under") or lc is None: continue
         mk, wk = p["market"], p["week"]
         keys = ("all", mk)
-        if lc <= HALF or (lo is not None and lo <= HALF):
-            excluded[mk] += 1; continue
         mp = model.get(mk)
         # CLOSE: Vault's P(over) re-priced at the closing line vs. the no-vig close
         q_c = devig_power(p.get("close_over"), p.get("close_under"))
@@ -165,7 +164,28 @@ def score_props(props, model):
                 w = (a > lc) == (side == "over")
                 b.w_close.append(1.0 if w else 0.0)
                 b.u_close.append(pay(p.get("close_over") if side == "over" else p.get("close_under")) if w else -1.0)
-    return acc, bets, weeks, excluded
+    return acc, bets, weeks
+
+
+def half_line_check(props):
+    """Market no-vig P(over) vs. the over rate on 0.5 lines at the close, per
+    market (n >= 5). A gap well past the noise means the capture is pairing
+    prices from another line again."""
+    agg = defaultdict(lambda: [0, 0.0, 0.0])
+    for p in props:
+        a, lc = p.get("actual"), p.get("line_close")
+        if a is None or lc is None or lc > HALF: continue
+        q = devig_power(p.get("close_over"), p.get("close_under"))
+        if q is None: continue
+        for k in ("all", p["market"]):
+            g = agg[k]; g[0] += 1; g[1] += q; g[2] += 1.0 if a > lc else 0.0
+    out = {}
+    for k, (n, qs, ys) in sorted(agg.items()):
+        if n < 5: continue
+        m, h = qs / n, ys / n
+        se = math.sqrt(max(m * (1 - m), 1e-6) / n)
+        out[k] = {"n": n, "market_p_over": round(m, 3), "over_rate": round(h, 3), "z": round((h - m) / se, 2)}
+    return out
 
 
 def score_games(games, gm):
@@ -228,11 +248,12 @@ def main():
     br = json.load(open(os.path.join(DATA, "bet_results.json")))
     try: gm = json.load(open(os.path.join(DATA, "game_model.json")))
     except Exception: gm = None
-    pa, pb, pw, px = score_props(br.get("props") or [], SB.load_prop_model())
+    pa, pb, pw = score_props(br.get("props") or [], SB.load_prop_model())
+    hc = half_line_check(br.get("props") or [])
     ga, gb, gw = score_games(br.get("games") or [], gm)
 
     out = {"generated": br.get("generated"), "devig": "power",
-           "props_excluded_half_lines": dict(sorted(px.items())),
+           "props_half_line_check": hc,
            "props": {k: {"open": v["open"].out(), "close": v["close"].out(), "bets": pb[k].out()}
                      for k, v in sorted(pa.items())},
            "props_by_week": {str(w): {"open": v["open"].out(), "close": v["close"].out()} for w, v in sorted(pw.items())},
@@ -259,10 +280,14 @@ def main():
     for k, v in out["props"].items():
         L.append(f"{k:<14}{fmt(v['close']):<52}{fmt(v['open']):<52}{v['verdict']}")
     L += ["```"]
-    if px:
-        L += ["", f"_Excluded: {sum(px.values())} props on 0.5 lines ({', '.join(f'{k} {v}' for k, v in sorted(px.items()))}). "
-              "Their banked prices come from alt lines (the no-vig market said ~50% on overs that hit 72-77%), "
-              "so they can't serve as a market baseline until the capture is fixed._"]
+    if hc:
+        L += ["", "### 0.5 lines: market vs. result (capture watch)", "",
+              "_0.5 lines were excluded until the price capture was fixed; this checks they stay clean. "
+              "|z| of 3+ means the banked prices are coming from another line again._", "", "```",
+              f"{'market':<14}{'n':>5}{'market P(over)':>16}{'over rate':>11}{'z':>7}"]
+        for k, v in hc.items():
+            L.append(f"{k:<14}{v['n']:>5}{v['market_p_over'] * 100:>15.0f}%{v['over_rate'] * 100:>10.0f}%{v['z']:>+7.1f}")
+        L += ["```"]
     L += ["", "### Props: line value and units on Vault's side", "", "```",
           f"{'market':<14}{'beat close':>11}{'avg CLV':>9}   {'open: win   units':>18}   {'close: win   units':>19}"]
     for k, v in out["props"].items():
