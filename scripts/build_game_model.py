@@ -37,6 +37,12 @@ GAMES_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/game
 # fitted online-learning rates (flat RMSE plateau across the grid; these sit at
 # the minimum). HFA and the sd's are measured from the walk-forward below.
 K_MARGIN = 0.065
+# Market learning: after each game the ratings also move toward what that
+# game's CLOSING line said (w x the line's miss vs the model's own prediction).
+# Final scores can't see a new coach, scheme or roster; the market prices them
+# before Week 1, so this is how offseason change reaches the ratings. Fitted +
+# gated in fit_mkt(); 0 = scores only (the pre-2026-09-28 model).
+MKT = {"margin": 0.0, "total": 0.0}
 K_SCORE = 0.045
 CARRY = 0.72          # cross-season mean-reversion of ratings
 RIDGE = 0.05          # pull scoring ratings toward 0 each update
@@ -173,6 +179,15 @@ def run(games, collect_from=None, qb=None):
         eh = g["hs"] - ph; ea = g["as_"] - pa
         off[g["ht"]] += K_SCORE * (eh - RIDGE * off[g["ht"]]); dff[g["at"]] -= K_SCORE * (eh - RIDGE * dff[g["at"]])
         off[g["at"]] += K_SCORE * (ea - RIDGE * off[g["at"]]); dff[g["ht"]] -= K_SCORE * (ea - RIDGE * dff[g["ht"]])
+        # market learning (nflverse spread_line = closing expected HOME margin,
+        # total_line = closing total; both already price that day's QBs)
+        if MKT["margin"] and g["spread"] is not None:
+            ex = g["spread"] - pm
+            rate[g["ht"]] += MKT["margin"] * ex; rate[g["at"]] -= MKT["margin"] * ex
+        if MKT["total"] and g["total_line"] is not None:
+            et = (g["total_line"] - pt) / 4   # split over both offenses and both defenses: margin unchanged
+            for t in (g["ht"], g["at"]):
+                off[t] += MKT["total"] * et; dff[t] -= MKT["total"] * et
     return rate, off, dff, preds, recent, season_starts
 
 
@@ -249,6 +264,31 @@ def fit_blend(games):
                      "rmse_market": None if rm_mk is None else round(rm_mk, 3), "n": len(e_mkt)}
     out["win"] = dict(out["spread"])   # win% moves with the margin blend
     return out
+
+
+def fit_mkt(games):
+    """Market-learning weights (margin, total): grid-fit on seasons before
+    TEST_FROM, GATED on the test seasons like fit_qb. 2026-09-28 check:
+    margin RMSE 13.123 -> ~13.03 at w 0.1-0.2, still behind the market's own
+    12.87 (the model stays context, not an edge)."""
+    def err(key, lo, hi):
+        _, _, _, ps, _, _ = run(games, collect_from=lo, qb=QB)
+        ps = [p for p in ps if p["season"] < hi]
+        mk, rk = ("pm", "result") if key == "margin" else ("pt", "total")
+        return math.sqrt(statistics.fmean([(p[mk] - p[rk]) ** 2 for p in ps]))
+    out = {}
+    for key in ("margin", "total"):
+        grid = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+        tr = {}
+        for v in grid:
+            MKT[key] = v; tr[v] = err(key, TRAIN_FROM + 2, TEST_FROM)
+        best = min(grid, key=lambda v: tr[v])
+        MKT[key] = 0.0; base = err(key, TEST_FROM, 9999)
+        MKT[key] = best; adj = err(key, TEST_FROM, 9999)
+        ok = best > 0 and adj < base
+        out[key] = {"fit": best, "rmse_test": round(adj, 4), "rmse_test_without": round(base, 4), "gate": "passed" if ok else "failed"}
+        if not ok: MKT[key] = 0.0
+    return dict(MKT), out
 
 
 def fit_qb(games):
@@ -334,6 +374,9 @@ def main():
     HFA = round(statistics.fmean([g["hs"] - g["as_"] for g in played if g["season"] in last3 and not g["neutral"]]), 3)
 
     QB, qb_fit = fit_qb(games)
+    mkt_w, mkt_fit = fit_mkt(games)
+    print(f"[game-model] market learning: margin w {mkt_w['margin']}, total w {mkt_w['total']} · {mkt_fit}")
+    QB, qb_fit = fit_qb(games)   # refit the backup-QB points with market learning on
     print(f"[game-model] backup QB: margin -{QB['margin']} pts, total -{QB['total']} pts per backup start · {qb_fit}")
 
     # fit the residual sd's from the walk-forward, then recompute metrics with them
@@ -395,6 +438,7 @@ def main():
         "through_season": through[0], "through_week": through[1], "offseason": offseason,
         "base_pts": served_base, "hfa": served_hfa, "sd_margin": served_sd, "sd_total": SD_TOTAL,
         "params": {"k_margin": K_MARGIN, "k_score": K_SCORE, "carry": CARRY, "ridge": RIDGE},
+        "market_learning": {"w": dict(MKT), "fit": mkt_fit},
         "teams": teams, "neutral": neutral, "backtest": m,
         # Headline "Vault line" = market fair line + w * (model - market fair).
         # w = 0 unless the walk-forward check beats the close (see fit_blend).

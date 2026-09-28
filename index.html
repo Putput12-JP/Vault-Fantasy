@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-29T18:30', tag:'Improved', title:'Vault’s game model now learns from the betting market, not just final scores',
+    items:[
+      'Final scores can’t show a new coach, a new scheme or a rebuilt roster, but the betting market prices those before Week 1. Vault’s team ratings now also learn from each game’s closing line, so offseason changes show up sooner.',
+      'Tested on every game since 2014, the model’s projected margins got more accurate (average miss 13.1 to 13.0 points), and so did its totals.',
+      'Vault’s line is still the sportsbooks’ fair line. The model is context, and Game Plays only come from gap sizes that have been winning.'
+    ]
+  },
+  {
     ts:'2026-09-29T18:00', tag:'Improved', title:'Game cards show Vault’s own projected score',
     items:['The projected score and win chance on each game card now come from Vault’s own model, including its backup-QB adjustment. The market’s projected score is shown underneath so you can see where they differ.']
   },
