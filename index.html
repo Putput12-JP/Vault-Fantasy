@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-28T18:00', tag:'Improved', title:'Sharper odds on receiving and rushing yards',
+    items:[
+      'Vault’s win chances for receiving and rushing yard props now account for games where a player is active but records zero yards, which happens more often than a smooth curve assumes.',
+      'Tested on this season’s real lines, the new odds are closer to what actually happened. Grades on some yardage props may move slightly.'
+    ]
+  },
+  {
     ts:'2026-09-28T12:00', tag:'Improved', title:'Game Markets: Vault’s Game Plays replaces “differs most”',
     items:[
       'The “Where Vault differs most from the market” cards are gone. Those biggest disagreements lost more often than they won, and they no longer get added to your picks automatically.',
@@ -41673,6 +41680,21 @@ window.VaultPropModel = (function () {
   // #4 alt distributions (chosen per market at build time).
   function nbOver(mean, line, r) { if (!(mean > 0) || !(r > 0)) return 0; const m = Math.ceil(line); if (m <= 0) return 1; const p = r / (r + mean); let term = Math.pow(p, r), cdf = term; for (let k = 1; k < m; k++) { term *= (k - 1 + r) / k * (1 - p); cdf += term; } return Math.max(0, 1 - Math.min(cdf, 1)); }
   function lognormOver(proj, sd, line) { if (proj <= 0) return 0; if (line <= 0) return 1; const s2 = Math.log(1 + (sd * sd) / (proj * proj)); if (s2 <= 0) return proj > line ? 1 : 0; return 1 - normCdf((Math.log(line) - (Math.log(proj) - s2 / 2)) / Math.sqrt(s2)); }
+  // Zero-inflated log-normal (dist 'hurdle_lognormal', build_prop_projections.py):
+  // P(records any yards) x P(positive part > line). m.pi0 = [[proj, P(0)], ...].
+  function pi0At(k, proj) {
+    if (!k || !k.length) return 0;
+    let v = k[k.length - 1][1];
+    if (proj <= k[0][0]) v = k[0][1];
+    else for (let i = 1; i < k.length; i++) if (proj <= k[i][0]) { const [x0, y0] = k[i - 1], [x1, y1] = k[i]; v = y0 + (y1 - y0) * (x1 > x0 ? (proj - x0) / (x1 - x0) : 0); break; }
+    return Math.min(Math.max(v, 0), 0.9);
+  }
+  function hurdleOver(m, proj, line) {
+    if (proj <= 0) return 0;
+    if (line < 0) return 1;
+    const p0 = pi0At(m.pi0, proj), mu = proj / (1 - p0);
+    return (1 - p0) * lognormOver(mu, sdAt(m, mu), line);
+  }
   // #3 market shrink: temperature scaling toward 0.5 (pickem/market prior). w<1 pulls an overconfident prob toward a coin-flip; w≈1 (yards) is a no-op.
   function shrinkProb(p, w) { if (!w || w === 1) return p; p = Math.min(Math.max(p, 1e-6), 1 - 1e-6); return 1 / (1 + Math.exp(-w * Math.log(p / (1 - p)))); }
   // #3 market blend: pull the model's P(over) toward the vig-free market P(over),
@@ -41743,6 +41765,7 @@ window.VaultPropModel = (function () {
     const raw = dist === 'poisson' ? poisOver(proj, L)
               : dist === 'nbinom' ? nbOver(proj, L, m.nb_r)
               : dist === 'lognormal' ? lognormOver(proj, sd, L)
+              : dist === 'hurdle_lognormal' ? hurdleOver(m, proj, L)
               : rawOver(proj, sd, L, count);
     const cal0 = clamp(shrinkProb(clamp(calibrate(m.calib, raw), 0.01, 0.99), m.shrink), 0.01, 0.99);
     const cal = blendToward(cal0, num(opts.marketProbOver), m.blend_w);   // #3: toward the vig-free market where measured
@@ -41773,7 +41796,7 @@ window.VaultPropModel = (function () {
     const dist = m.dist || (m.kind === 'poisson' ? 'poisson' : 'normal'), count = m.kind === 'count';
     const over = mu => dist === 'poisson' ? poisOver(mu, L)
                      : dist === 'nbinom' ? nbOver(mu, L, m.nb_r)
-                     : dist === 'lognormal' ? lognormOver(mu, sdAt(m, mu), L)
+                     : (dist === 'lognormal' || dist === 'hurdle_lognormal') ? lognormOver(mu, sdAt(m, mu), L)   // hurdle: implied-mean k is fitted on the plain log-normal
                      : rawOver(mu, sdAt(m, mu), L, count);
     let lo = 1e-4, hi = Math.max(L * 4 + 10, 60);
     if (over(hi) < p) return null;                        // outside what this shape can express

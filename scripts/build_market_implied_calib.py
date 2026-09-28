@@ -92,7 +92,9 @@ def fit(m, rows):
 def main():
     model = json.load(open(os.path.join(DATA, "prop_model.json")))["markets"]
     tape = json.load(open(os.path.join(DATA, "bet_results.json"))).get("props", [])
-    logn = [k for k, m in model.items() if m.get("dist") == "lognormal"]
+    # hurdle_lognormal (zero-inflated) markets too: the implied-mean inverse in
+    # index.html prices them on the plain log-normal, so k is fitted the same way.
+    logn = [k for k, m in model.items() if m.get("dist") in ("lognormal", "hurdle_lognormal")]
 
     rows, seen, weeks = {k: [] for k in logn}, set(), set()
     for b in tape:

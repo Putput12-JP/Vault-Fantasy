@@ -174,6 +174,21 @@ window.VaultPropModel = (function () {
     if (s2 <= 0) return proj > line ? 1 : 0;
     return 1 - normCdf((Math.log(line) - (Math.log(proj) - s2 / 2)) / Math.sqrt(s2));
   }
+  // Zero-inflated log-normal (dist 'hurdle_lognormal', build_prop_projections.py):
+  // P(records any yards) x P(positive part > line). m.pi0 = [[proj, P(0)], ...].
+  function pi0At(k, proj) {
+    if (!k || !k.length) return 0;
+    let v = k[k.length - 1][1];
+    if (proj <= k[0][0]) v = k[0][1];
+    else for (let i = 1; i < k.length; i++) if (proj <= k[i][0]) { const [x0, y0] = k[i - 1], [x1, y1] = k[i]; v = y0 + (y1 - y0) * (x1 > x0 ? (proj - x0) / (x1 - x0) : 0); break; }
+    return Math.min(Math.max(v, 0), 0.9);
+  }
+  function hurdleOver(m, proj, line) {
+    if (proj <= 0) return 0;
+    if (line < 0) return 1;
+    const p0 = pi0At(m.pi0, proj), mu = proj / (1 - p0);
+    return (1 - p0) * lognormOver(mu, sdAt(m, mu), line);
+  }
   // #3 market shrink: temperature scaling toward 0.5 (the pickem/market prior).
   // w<1 pulls an overconfident prob toward a coin-flip; w≈1 (yards) is a no-op.
   function shrinkProb(p, w) {
@@ -264,6 +279,7 @@ window.VaultPropModel = (function () {
     const raw = dist === 'poisson' ? poisOver(proj, L)
               : dist === 'nbinom' ? nbOver(proj, L, m.nb_r)
               : dist === 'lognormal' ? lognormOver(proj, sd, L)
+              : dist === 'hurdle_lognormal' ? hurdleOver(m, proj, L)
               : rawOver(proj, sd, L, count);
     const cal0 = clamp(shrinkProb(clamp(calibrate(m.calib, raw), 0.01, 0.99), m.shrink), 0.01, 0.99);
     const cal = blendToward(cal0, num(opts.marketProbOver), m.blend_w);   // #3: toward the vig-free market where measured

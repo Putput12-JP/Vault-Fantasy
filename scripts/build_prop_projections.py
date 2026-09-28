@@ -357,6 +357,56 @@ def lognorm_over(proj, sd, line):
     return 1 - phi_cdf((math.log(line) - (math.log(proj) - s2 / 2)) / math.sqrt(s2))
 
 
+# ── zero-inflated ("hurdle") log-normal for yardage ─────────────────────────
+# A log-normal can't produce a zero, but on the tape 8-11% of receivers
+# projected for 25-35 rec yds finish with exactly 0 (rush yds: 3-6% at typical
+# lines). The hurdle splits "does he record any" (pi0, the historical zero rate
+# at that projection, stored as knots) from "how much if he does" (log-normal
+# on the positive part, mean proj/(1-pi0) so the overall mean stays proj).
+# Model-upgrade plan Week 2 (reports/NFL prediction model upgrade.md): won the
+# build bake-off for rec_yd (0.6667 -> 0.6638 raw log-loss) and rush_yd, and
+# improved log-loss vs the de-vigged close on 2026 Wk 2-3 real lines.
+PI0_BIN, PI0_MIN_N, PI0_MAX = 5.0, 30, 0.9
+
+
+def fit_pi0(preds, actuals):
+    """[[proj_mid, P(actual == 0)], ...] over 5-unit projection bins (30+ games)."""
+    bins = {}
+    for p, a in zip(preds, actuals):
+        b = int(max(p, 0) // PI0_BIN)
+        n, z = bins.get(b, (0, 0))
+        bins[b] = (n + 1, z + (1 if a == 0 else 0))
+    return [[round(b * PI0_BIN + PI0_BIN / 2, 2), round(z / n, 4)]
+            for b, (n, z) in sorted(bins.items()) if n >= PI0_MIN_N]
+
+
+def pi0_at(knots, proj):
+    if not knots:
+        return 0.0
+    if proj <= knots[0][0]:
+        v = knots[0][1]
+    elif proj >= knots[-1][0]:
+        v = knots[-1][1]
+    else:
+        v = knots[-1][1]
+        for (x0, y0), (x1, y1) in zip(knots, knots[1:]):
+            if x0 <= proj <= x1:
+                v = y0 + (y1 - y0) * ((proj - x0) / (x1 - x0) if x1 > x0 else 0)
+                break
+    return min(max(v, 0.0), PI0_MAX)
+
+
+def hurdle_lognorm_over(proj, line, v0, v1, knots):
+    """P(Y > line) = P(records any) * P(positive part > line)."""
+    if proj <= 0:
+        return 0.0
+    if line < 0:
+        return 1.0
+    p0 = pi0_at(knots, proj)
+    mu = proj / (1 - p0)
+    return (1 - p0) * lognorm_over(mu, sd_at(v0, v1, mu), line)
+
+
 def prob_fn_for(entry):
     """Return a (proj, line) -> raw P(over) closure for a market's chosen dist."""
     d = entry["dist"]
@@ -368,6 +418,9 @@ def prob_fn_for(entry):
     if d == "lognormal":
         v0, v1 = entry["sd_v0"], entry["sd_v1"]
         return lambda proj, line: lognorm_over(proj, sd_at(v0, v1, proj), line)
+    if d == "hurdle_lognormal":
+        v0, v1, knots = entry["sd_v0"], entry["sd_v1"], entry["pi0"]
+        return lambda proj, line: hurdle_lognorm_over(proj, line, v0, v1, knots)
     v0, v1, count = entry["sd_v0"], entry["sd_v1"], entry.get("count", False)
     return lambda proj, line: raw_prob_over(proj, sd_at(v0, v1, proj), line, count)
 
@@ -473,7 +526,8 @@ def choose_dist(spec, preds, actuals):
     if kind == "yards":
         v0, v1 = fit_sd(preds, actuals)
         cands = [("normal", {"sd_v0": v0, "sd_v1": v1, "count": False}),
-                 ("lognormal", {"sd_v0": v0, "sd_v1": v1})]
+                 ("lognormal", {"sd_v0": v0, "sd_v1": v1}),
+                 ("hurdle_lognormal", {"sd_v0": v0, "sd_v1": v1, "pi0": fit_pi0(preds, actuals)})]
     elif kind == "count":
         v0, v1 = fit_sd(preds, actuals)
         cands = [("normal", {"sd_v0": v0, "sd_v1": v1, "count": True}),
@@ -740,6 +794,7 @@ def main():
         dist_desc = {"poisson": f"λ̄={statistics.fmean(best['preds']):.2f} poisson",
                      "nbinom": f"nbinom r={entry.get('nb_r')}",
                      "lognormal": f"log-normal sd²={entry.get('sd_v0',0):.1f}+{entry.get('sd_v1',0):.3f}·μ",
+                     "hurdle_lognormal": f"hurdle log-normal sd²={entry.get('sd_v0',0):.1f}+{entry.get('sd_v1',0):.3f}·μ, P0 {len(entry.get('pi0') or [])} knots",
                      "normal": f"normal sd²={entry.get('sd_v0',0):.1f}+{entry.get('sd_v1',0):.3f}·μ"}[dist]
         calib = entry["calib"]
         lift = (best["base_rmse"] - best["rmse"]) / best["base_rmse"] * 100 if best["base_rmse"] else 0
