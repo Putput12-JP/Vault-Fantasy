@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-29T19:00', tag:'New', title:'See where the real money is on every game',
+    items:[
+      'Game cards now break down the money traded on Polymarket by market: how much is on the spread, the total and the moneyline, which line is getting the most action, and which side bettors have been buying over the last 24 hours.',
+      'Example: on Eagles at Bears, moneyline money has been going to the Eagles while spread money has been going to the Bears +3.5.'
+    ]
+  },
+  {
     ts:'2026-09-29T18:30', tag:'Improved', title:'Vault’s game model now learns from the betting market, not just final scores',
     items:[
       'Final scores can’t show a new coach, a new scheme or a rebuilt roster, but the betting market prices those before Week 1. Vault’s team ratings now also learn from each game’s closing line, so offseason changes show up sooner.',
@@ -43160,6 +43167,11 @@ window.VaultMarketProj = (function () {
 #page-betting .gmx-px{font:700 12.5px var(--bt-mono);color:var(--bt-text2)}
 #page-betting .gmx-ev{font:800 10px var(--bt-mono);color:var(--bt-green);background:color-mix(in srgb,var(--bt-green) 13%,transparent);border-radius:4px;padding:0 5px;line-height:16px}
 #page-betting .gmx-na{color:var(--bt-muted);opacity:.5}
+#page-betting .gmx-mcell{display:flex;flex-direction:column;align-items:center;gap:1px;padding:8px 0 4px;border-top:1px solid var(--bt-border);text-align:center;min-width:0}
+#page-betting .gmx-mcell b{font:800 13.5px var(--bt-mono);color:var(--bt-text)}
+#page-betting .gmx-mcell span{font:600 10.5px var(--bt-mono);color:var(--bt-muted);line-height:1.35}
+#page-betting .gmx-mcell .nt em{font-style:normal;color:var(--bt-accent2);font-weight:800}
+#page-betting .gmx-mlab{color:var(--bt-green)!important;align-self:start;padding-top:8px}
 #page-betting .gmx-mfoot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px 8px 18px;border-top:1px solid var(--bt-border);background:var(--bt-s2)}
 #page-betting .gmx-money{font:600 12px var(--bt-mono);color:var(--bt-muted)}
 #page-betting .gmx-money b{color:var(--bt-text2)}
@@ -43732,7 +43744,7 @@ window.VaultMarketProj = (function () {
     // dollar-denominated ($k) and the tag/heat wear Polymarket's colour. Shown
     // beneath the Kalshi strip so the two exchanges read as independent real-
     // money signals: agreeing is a strong read, disagreeing is worth seeing.
-    const dc = n => '$' + (n >= 1000 ? ((n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k') : ('' + n));
+    const dc = n => '$' + (n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1000 ? ((n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k') : ('' + n));
     const pmFlowStrip = (g, impH) => {
       if (!_polymarket || !pmSlate) return '';
       const P = _polymarket[g.away + '@' + g.home];
@@ -43998,10 +44010,34 @@ window.VaultMarketProj = (function () {
         const tk = P.taker, side = tk && tk.n >= 15 && Math.abs(tk.net) >= 2500 ? (tk.net >= 0 ? g.home : g.away) : null;
         money = '<span class="gmx-money" title="Real money traded on Polymarket. The 24h figure is net taker (aggressor) money, the side bettors actively bought into."><b>' + dc(P.flow.vol) + '</b> traded on Polymarket' + (side ? ' · <b>' + dc(Math.abs(tk.net)) + '</b> net into <span class="tm">' + side + '</span> (24h)' : ' · no clear side yet') + '</span>';
       }
+      // Where the Polymarket money is, per market (fetch-polymarket.mjs
+      // markets{}): total $ on each, the busiest line, and which side the last
+      // 24h of aggressor money bought (shown only past the same n>=15 /
+      // $2.5k bar as the moneyline read). One row under the price grid, lined
+      // up with its Spread / Total / Moneyline columns.
+      let moneyRow = '';
+      const PM = P && P.markets;
+      if (PM && P.flow && P.flow.vol) {
+        const clear = t => t && t.n >= 15 && t.net >= 2500;
+        const sl = v => (v > 0 ? '+' : '') + v;
+        const sp = PM.spread || {}, st = sp.top && sp.top[0], to = PM.total || {}, tt = to.top && to.top[0];
+        const spSide = clear(sp.taker) && st ? (sp.taker.side === st.fav ? st.fav + ' ' + sl(st.line) : sp.taker.side + ' ' + sl(-st.line)) : null;
+        const toSide = clear(to.taker) && tt ? (to.taker.side === 'over' ? 'Over ' : 'Under ') + tt.line : null;
+        const tk = P.taker, mlSide = tk && tk.n >= 15 && Math.abs(tk.net) >= 2500 ? (tk.net >= 0 ? g.home : g.away) : null;
+        const cell = (vol, top, net, netAmt) => '<div class="gmx-mcell">' + (vol ? '<b>' + dc(vol) + '</b>' : '<b class="gmx-na">–</b>')
+          + (top ? '<span>' + top + '</span>' : '')
+          + (net ? '<span class="nt">24h → <em>' + net + '</em> ' + dc(netAmt) + '</span>' : (vol ? '<span class="nt">24h: no clear side</span>' : '')) + '</div>';
+        moneyRow = '<div class="t gmx-mlab" title="Real money traded on Polymarket, by market. The 24h line is net aggressor money: the side bettors actively bought.">$</div>'
+          + cell(sp.vol, st ? 'Most on ' + st.fav + ' ' + sl(st.line) + ' · ' + dc(st.vol) : '', spSide, sp.taker && sp.taker.net)
+          + cell(to.vol, tt ? 'Most on ' + tt.line + ' · ' + dc(tt.vol) : '', toSide, to.taker && to.taker.net)
+          + cell((PM.ml || {}).vol, P.ml ? (P.ml.home >= .5 ? g.home + ' ' + Math.round(P.ml.home * 100) : g.away + ' ' + Math.round(P.ml.away * 100)) + '% to win' : '', mlSide, tk && Math.abs(tk.net));
+        money = '<span class="gmx-money" title="Real money traded on Polymarket across every market on this game."><b>' + dc(P.flow.vol) + '</b> traded on Polymarket'
+          + (PM.other && PM.other.vol >= 1000 ? ' · ' + dc(PM.other.vol) + ' on halves, quarters and team totals' : '') + '</span>';
+      }
       const mc = '<article class="gmx-card gmx-mc"><div class="gmx-chd"><span>Best prices</span>' + arbs + '</div>'
         + '<div class="gmx-mgrid"><div></div><div class="h">Spread</div><div class="h">Total</div><div class="h">Moneyline</div>'
         + '<div class="t">' + g.away + '</div>' + gmxCell(m.spA, 'spread') + gmxCell(m.toO, 'over') + gmxCell(m.mlA, 'ml')
-        + '<div class="t">' + g.home + '</div>' + gmxCell(m.spH, 'spread') + gmxCell(m.toU, 'under') + gmxCell(m.mlH, 'ml') + '</div>'
+        + '<div class="t">' + g.home + '</div>' + gmxCell(m.spH, 'spread') + gmxCell(m.toU, 'under') + gmxCell(m.mlH, 'ml') + moneyRow + '</div>'
         + '<div class="gmx-mfoot"><span class="gmx-flab">Real money</span>' + money + '<button class="gmx-cmp press press-btn" data-tgl="' + key + '">' + (m.open ? 'Hide books ▴' : 'Compare books ▾') + '</button></div></article>';
       // Vault line vs market — the SERVED (market-anchored) line, lean bars as the old table.
       let vbody;

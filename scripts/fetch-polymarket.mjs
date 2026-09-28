@@ -112,6 +112,79 @@ async function takerFlow(conditionId, homeName, awayName) {
   return n ? { net: Math.round(net), n } : null;
 }
 
+// Net 24h aggressor money into outcome A of ANY two-outcome market (a spread's
+// favorite side, a total's Over): BUY A / SELL B count toward A, the reverse
+// toward B. Same trade feed and caveats as takerFlow. Returns { net, n } | null.
+async function takerFlowAB(conditionId, outA, outB) {
+  if (!conditionId) return null;
+  const a = String(outA || '').toLowerCase(), b = String(outB || '').toLowerCase();
+  const cutoff = Math.floor(Date.now() / 1000) - DAY;
+  let net = 0, n = 0, offset = 0;
+  for (let page = 0; page < 6; page++) {
+    let rows;
+    try { rows = await getJSON(`https://data-api.polymarket.com/trades?market=${conditionId}&takerOnly=true&limit=500&offset=${offset}`); }
+    catch (e) { break; }
+    if (!Array.isArray(rows) || !rows.length) break;
+    let hitOld = false;
+    for (const t of rows) {
+      const ts = num(t.timestamp);
+      if (ts != null && ts < cutoff) { hitOld = true; continue; }
+      const price = num(t.price), size = num(t.size);
+      if (price == null || size == null) continue;
+      const nm = String(t.outcome || '').toLowerCase();
+      if (nm !== a && nm !== b) continue;
+      const buy = String(t.side || '').toUpperCase() === 'BUY';
+      net += (((nm === a) === buy) ? 1 : -1) * price * size;
+      n++;
+    }
+    if (hitOld || rows.length < 500) break;
+    offset += 500;
+  }
+  return n ? { net: Math.round(net), n } : null;
+}
+
+// Where the event's money sits, by market (Gamma tags each sub-market with
+// sportsMarketType + line): full-game moneyline, spreads, totals, and
+// everything else (halves, quarters, team totals, props). For spreads and
+// totals: the busiest lines, plus 24h taker flow on the busiest one. Team names
+// in a spread question ("Spread: Eagles (-3.5)") map to codes via the title.
+async function marketMoney(ev, awayName, homeName, away, home) {
+  const teamOf = nm => { const x = String(nm || '').toLowerCase(); return x && homeName.includes(x) ? home : x && awayName.includes(x) ? away : null; };
+  const S = [], T = [];
+  let ml = 0, ml24 = 0, sp = 0, sp24 = 0, to = 0, to24 = 0, other = 0;
+  for (const m of (ev.markets || [])) {
+    const v = num(m.volumeNum) || 0, v24 = num(m.volume24hr) || 0, ty = m.sportsMarketType;
+    const outs = jparse(m.outcomes) || [], px = (jparse(m.outcomePrices) || []).map(num);
+    if (ty === 'moneyline') { ml += v; ml24 += v24; }
+    else if (ty === 'spreads') {
+      sp += v; sp24 += v24;
+      const fav = teamOf(outs[0]), line = num(m.line);
+      if (fav && line != null) S.push({ fav, line, vol: Math.round(v), vol24: Math.round(v24), p: px[0], cid: m.conditionId, outs });
+    } else if (ty === 'totals') {
+      to += v; to24 += v24;
+      const line = num(m.line);
+      if (line != null) T.push({ line, vol: Math.round(v), vol24: Math.round(v24), p: px[0], cid: m.conditionId, outs });
+    } else other += v;
+  }
+  S.sort((x, y) => y.vol - x.vol); T.sort((x, y) => y.vol - x.vol);
+  let spTaker = null, toTaker = null;
+  if (S[0] && S[0].vol >= MIN_VOL) {
+    const f = await takerFlowAB(S[0].cid, S[0].outs[0], S[0].outs[1]);
+    if (f) spTaker = { side: f.net >= 0 ? S[0].fav : (S[0].fav === home ? away : home), net: Math.abs(f.net), n: f.n };
+  }
+  if (T[0] && T[0].vol >= MIN_VOL) {
+    const f = await takerFlowAB(T[0].cid, 'Over', 'Under');
+    if (f) toTaker = { side: f.net >= 0 ? 'over' : 'under', net: Math.abs(f.net), n: f.n };
+  }
+  const strip = a => a.slice(0, 4).map(({ cid, outs, p, ...r }) => ({ ...r, p: p == null ? null : +p.toFixed(3) }));
+  return {
+    ml: { vol: Math.round(ml), vol24: Math.round(ml24) },
+    spread: { vol: Math.round(sp), vol24: Math.round(sp24), top: strip(S), taker: spTaker },
+    total: { vol: Math.round(to), vol24: Math.round(to24), top: strip(T), taker: toTaker },
+    other: { vol: Math.round(other) },
+  };
+}
+
 // The main moneyline market: two team outcomes, deepest volume, excluding
 // halves / quarters / props / spreads / totals.
 function mainMoneyline(ev) {
@@ -168,6 +241,7 @@ function mainMoneyline(ev) {
     // Net 24h aggressor flow into a side (+ = home). Only the current-slate
     // games carry enough trades to matter; the per-game trades pull is bounded.
     const taker = await takerFlow(ml.m.conditionId, homeName, awayName);
+    const markets = await marketMoney(ev, awayName, homeName, away, home);
 
     out[away + '@' + home] = {
       away, home,
@@ -178,6 +252,7 @@ function mainMoneyline(ev) {
         oi: Math.round(num(ev.openInterest) || 0),
       },
       taker,                    // { net, n } | null — + net = money into home
+      markets,                  // $ by market: ml / spread / total (busiest lines + 24h taker side) / other
       liq: Math.round(num(ev.liquidity) || 0),
       close: ev.endDate || null,
     };

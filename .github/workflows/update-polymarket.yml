@@ -38,5 +38,8 @@ jobs:
             git config user.email "vault-bot@users.noreply.github.com"
             git add data/polymarket.json
             git commit -m "polymarket: refresh NFL game markets [skip ci]"
-            git push
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin main && git push && break
+              echo "push race, retrying ($i)…"; sleep 3
+            done
           fi
