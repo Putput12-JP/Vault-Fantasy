@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-29T17:00', tag:'Fixed', title:'Game cards only offer Vault’s real Game Plays',
+    items:[
+      'The Track button on a game card now only appears for a Vault Game Play, a play type that has been winning. It used to offer the model’s biggest disagreement with the market, which lost most weeks.',
+      'Game picks that Vault added to your Track Record automatically, from the old “differs most” section, are removed if they haven’t been graded yet. Graded results stay in your record.'
+    ]
+  },
+  {
     ts:'2026-09-29T16:00', tag:'Improved', title:'Vault’s game model now knows when a backup QB starts',
     items:[
       'When a team’s regular starter is out or benched, Vault’s model now takes about 2 points off that team’s margin and about 1 off the game total. Both numbers are measured from past backup starts, not guessed.',
@@ -43800,7 +43807,7 @@ window.VaultMarketProj = (function () {
         const mlCell = cell(g.home + ' ' + gp.homeWinPct + '%', impH != null && Math.abs(gp.homeWinPct - impH) >= 6);
         // Track control: only the game's hardest lean (Vault's pushed best bet)
         // is trackable; it logs to Track Record. No lean past the bar → no button.
-        const lean = bestLean(g, conv); _trackMap[key] = { g, lean };
+        const lean = playLean(g, conv); _trackMap[key] = { g, lean };
         let trackBtn = '';
         if (lean) { const tracked = gamePickLogged(g, lean);
           trackBtn = '<button class="bx-track' + (tracked ? ' on' : '') + '" data-track="' + key + '" title="' + (tracked ? 'Tracking this pick in Track Record' : 'Track Vault’s best bet — ' + lean.label) + '">' + (tracked ? '★ Tracking' : '☆ ' + lean.label) + '</button>'; }
@@ -43851,7 +43858,7 @@ window.VaultMarketProj = (function () {
       const mlLean = gp && impH != null && Math.abs(gp.homeWinPct - impH) >= 6;
       const totLean = gp && mkT != null && Math.abs(gp.total - mkT) >= 1.5;
       let trackCell = gp ? '<span class="bxt-na">–</span>' : '';
-      if (gp) { const lean = bestLean(g, conv); _trackMap[key] = { g, lean };
+      if (gp) { const lean = playLean(g, conv); _trackMap[key] = { g, lean };
         if (lean) { const tr = gamePickLogged(g, lean); trackCell = '<button class="bxt-trk-chip' + (tr ? ' on' : '') + '" data-track="' + key + '" title="' + (tr ? 'Tracking in your record — tap to stop' : 'Track Vault’s best bet — ' + lean.label) + '">' + (tr ? '★' : '☆') + ' <span class="lbl">' + lean.label + '</span></button>'; } }
       let vaultCell = '';
       if (gp) {
@@ -44263,6 +44270,16 @@ window.VaultMarketProj = (function () {
   // here we log just the pushed pick and settle it against final scores.)
   const GKEY = 'vault-game-picks';
   function gamePicksLoad() { try { return JSON.parse(localStorage.getItem(GKEY) || '[]'); } catch (e) { return []; } }
+  // One-time cleanup (2026-09-28): the removed "Vault vs. the market" strip
+  // auto-tracked its biggest model gaps into every user's picks. Drop the ones
+  // still pending (the user never chose them); settled results stay.
+  try {
+    if (!localStorage.getItem('vault-game-auto-purge-1')) {
+      const kept = gamePicksLoad().filter(p => !(p && p.auto && !p.result));
+      localStorage.setItem(GKEY, JSON.stringify(kept));
+      localStorage.setItem('vault-game-auto-purge-1', '1');
+    }
+  } catch (e) {}
   function gamePicksSave(a) { try { localStorage.setItem(GKEY, JSON.stringify(a)); } catch (e) {} }
   const gameKeyOf = g => g.away + '@' + g.home;
   const gamePickKey = p => p.game + ':' + p.market + ':' + p.side + ':' + (p.season || '') + 'w' + (p.week || '');
@@ -44344,6 +44361,14 @@ window.VaultMarketProj = (function () {
     return cands;
   }
   function bestLean(g, gp) { return allLeans(g, gp)[0] || null; }
+  // The one lean a game card offers to track: a live Vault Game Play (its
+  // market x gap band is ON in game_rules.json, no backup QB), else nothing.
+  // The raw model's biggest gap is not a pick: those went 3-9 in Weeks 1-3.
+  function playLean(g, gp) {
+    if (!gp || gp.qb || !_gmRules) return null;
+    const B = _gmRules.buckets || {};
+    return allLeans(g, gp, true).find(l => B[l.market + '|' + l.band] && B[l.market + '|' + l.band].on) || null;
+  }
   function _leanToPick(g, lean) {
     return { k: null, game: gameKeyOf(g), away: g.away, home: g.home, market: lean.market, side: lean.side,
       team: lean.team, line: lean.line, price: lean.price, book: lean.book, label: lean.label, vault: lean.vault,
