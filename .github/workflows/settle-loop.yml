@@ -1,0 +1,81 @@
+# Game-window settlement heartbeat.
+#
+# "Settle bets + CLV" has */15 schedule crons for game windows, but GitHub treats
+# `schedule` as best-effort and throttles it hardest on busy Sundays: on
+# 2026-09-27 the */15 ticks actually fired ~every 2h, so finished games sat
+# unsettled for hours. workflow_dispatch events are NOT throttled that way.
+#
+# So this workflow only has to START once per window (any one of its sparse
+# schedule ticks landing is enough). It then dispatches the settlement workflow
+# itself every 15 minutes until the window closes, and before GitHub's 6h job
+# limit it re-dispatches itself to carry on. Outside a window it exits at once.
+# Public repo, so the mostly-sleeping runner costs nothing.
+name: Settle loop (game windows)
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '*/30 13-23 * * 0'   # Sunday (London games through late afternoon)
+    - cron: '*/30 0-4 * * 1'     # Sunday night football into Monday UTC
+    - cron: '*/30 23 * * 1'      # Monday night football start
+    - cron: '*/30 0-4 * * 2'
+    - cron: '*/30 23 * * 4'      # Thursday night football start
+    - cron: '*/30 0-4 * * 5'
+
+# One loop at a time. A tick that fires while a loop runs waits as the single
+# pending run and takes over when the current one hands off, so the chain
+# can't die between runs.
+concurrency:
+  group: settle-loop
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Dispatch settlement every 15 min until the window closes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Window end (epoch seconds) if now is inside a game window, else 0.
+          # Windows in UTC: Sun 13:00 -> Mon 04:30, Mon 23:30 -> Tue 04:30,
+          # Thu 23:30 -> Fri 04:30.
+          window_end() {
+            python3 - <<'PY'
+          from datetime import datetime, timedelta, timezone
+          now = datetime.now(timezone.utc)
+          W = [(6, 13, 0, 15.5), (0, 23, 30, 5.0), (3, 23, 30, 5.0)]  # weekday Mon=0
+          end = 0
+          for back in (0, 1):
+              d = (now - timedelta(days=back)).date()
+              for wd, h, m, dur in W:
+                  if d.weekday() != wd:
+                      continue
+                  s = datetime(d.year, d.month, d.day, h, m, tzinfo=timezone.utc)
+                  e = s + timedelta(hours=dur)
+                  if s <= now < e:
+                      end = max(end, int(e.timestamp()))
+          print(end)
+          PY
+          }
+          END=$(window_end)
+          if [ "$END" = "0" ]; then echo "Outside a game window, nothing to do."; exit 0; fi
+          START=$(date +%s)
+          HANDOFF=$((START + 5*3600 + 30*60))   # hand off well before the 6h cap
+          echo "In window until $(date -u -d @$END). Settling every 15 min."
+          while [ "$(date +%s)" -lt "$END" ] && [ "$(date +%s)" -lt "$HANDOFF" ]; do
+            gh workflow run update-bet-settlement.yml --ref "${GITHUB_REF_NAME}" \
+              && echo "$(date -u +%H:%M) dispatched settlement" \
+              || echo "$(date -u +%H:%M) dispatch failed, will retry next tick"
+            sleep 900
+          done
+          if [ "$(date +%s)" -lt "$END" ]; then
+            echo "Handing off to a fresh loop run."
+            gh workflow run settle-loop.yml --ref "${GITHUB_REF_NAME}"
+          fi
