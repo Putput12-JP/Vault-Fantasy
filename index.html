@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-28T21:00', tag:'Improved', title:'Receptions and receiving yards odds tuned to real lines',
+    items:[
+      'Vault now checks its win chances against this season’s real sportsbook lines and results, and corrects a market once it has enough games to trust.',
+      'Receptions and receiving yards qualify first. Their odds had leaned too far toward the under, and now match what has actually happened far more closely.',
+      'Other prop types join automatically as their sample grows.'
+    ]
+  },
+  {
     ts:'2026-09-28T18:00', tag:'Improved', title:'Sharper odds on receiving and rushing yards',
     items:[
       'Vault’s win chances for receiving and rushing yard props now account for games where a player is active but records zero yards, which happens more often than a smooth curve assumes.',

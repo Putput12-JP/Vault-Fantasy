@@ -641,6 +641,86 @@ def compute_priors(seq):
 
 
 # ── in-season live recalibration (the "gets sharper over time" loop) ─────────
+# ── (d) real-line recalibration ───────────────────────────────────────────────
+# The calibration above is fit on synthetic lines at multiples of Vault's OWN
+# projection, never on where books actually hang the number, and overlay (a) is
+# a temperature (it can sharpen or soften, not shift). So a market can sit a
+# steady few points off the real-line truth in one direction. (d) fits a
+# per-market logit SHIFT c on this season's settled real lines (Vault's served
+# P(over) at the closing line vs the result, data/bet_results.json):
+#     p' = sig(logit(p) + c),   c = c_mle * n / (n + RECAL_K),  |c| <= RECAL_MAX
+# and only once a market has RECAL_MIN_N settled lines: walk-forward on 2026
+# Wks 1-3, ungated shifts HURT thin markets (their lean flips week to week),
+# while gated at 300 lines the correction improved held-out log-loss
+# 0.7017 -> 0.7005 over 1,108 props (paired z +2.1; the corrected bets alone
+# z +2.0). Baked into calib like (a), so every serving copy picks it up with no
+# code change. Poisson / no-calib TD markets are left alone.
+RECAL_MIN_N, RECAL_K, RECAL_MAX = 300, 300, 0.5
+
+
+def _realline_rows(mkt, entry, season_props):
+    pf = prob_fn_for(entry)
+    rows = []
+    for p in season_props:
+        if p.get("market") != mkt: continue
+        a, lc, proj = p.get("actual"), p.get("line_close"), p.get("proj")
+        if a is None or lc is None or proj is None or abs(a - lc) < 1e-9: continue
+        try:
+            q = shrink_prob(apply_calib(entry.get("calib"), pf(proj, lc)), entry.get("shrink", 1.0))
+        except Exception:
+            continue
+        rows.append((1.0 if a > lc else 0.0, min(max(q, 1e-4), 1 - 1e-4)))
+    return rows
+
+
+def _fit_shift(rows):
+    """MLE of c in sig(logit(p) + c): the score sum(y - p') is monotone in c."""
+    lo, hi = -3.0, 3.0
+    for _ in range(60):
+        c = (lo + hi) / 2
+        g = sum(y - _sig(_logit(p) + c) for y, p in rows)
+        if g > 0: lo = c
+        else: hi = c
+    return (lo + hi) / 2
+
+
+def apply_realline_recal(model):
+    try:
+        props = json.load(open(os.path.join(DATA, "bet_results.json"))).get("props") or []
+    except Exception:
+        return
+    seasons = [str(p.get("season")) for p in props if p.get("season")]
+    if not seasons:
+        return
+    cur = max(seasons)
+    season_props = [p for p in props if str(p.get("season")) == cur]
+    done = []
+    for mkt, entry in model.get("markets", {}).items():
+        if entry.get("kind") == "poisson" or not entry.get("calib"):
+            continue
+        rows = _realline_rows(mkt, entry, season_props)
+        n = len(rows)
+        if n < RECAL_MIN_N:
+            continue
+        c_raw = _fit_shift(rows)
+        c = max(-RECAL_MAX, min(RECAL_MAX, c_raw * n / (n + RECAL_K)))
+        if abs(c) < 1e-3:
+            continue
+        # Serving is p = shrink(calib(raw)) = sig(w * logit(calib)). To land on
+        # sig(logit(p) + c), shift the calib table by c / w in logit space.
+        w = entry.get("shrink", 1.0) or 1.0
+        new, prev = [], 0.0
+        for x, y in entry["calib"]:
+            yv = _sig(_logit(y) + c / w)
+            yv = max(prev, min(1.0, yv))
+            new.append([round(x, 4), round(yv, 4)]); prev = yv
+        entry["calib"] = new
+        entry["realline"] = {"season": cur, "n": n, "c_raw": round(c_raw, 4), "c": round(c, 4)}
+        done.append(f"{mkt}(c={c:+.3f},n={n})")
+    print(f"[prop-model] real-line recalibration: {', '.join(done)}" if done
+          else f"[prop-model] real-line recalibration: no market has {RECAL_MIN_N}+ settled real lines yet — no-op")
+
+
 def apply_inseason_overlay(model):
     """Compose this season's MEASURED miscalibration onto each market's shipped
     calib table, so served probabilities sharpen week over week from real
@@ -806,8 +886,10 @@ def main():
             continue                      # fit + reported above, but not shipped
         model["markets"][mkt] = entry
 
-    # Live recalibration: sharpen served probs from this season's settled outcomes.
+    # Live recalibration: sharpen served probs from this season's settled outcomes,
+    # then shift each well-sampled market toward its real-line truth (d).
     apply_inseason_overlay(model)
+    apply_realline_recal(model)
 
     if args.dry:
         print("[prop-model] --dry: not written")
