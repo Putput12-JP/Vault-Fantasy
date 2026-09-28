@@ -704,6 +704,7 @@ def settle_games(season_filter=None):
         if not sc:
             unsettled += 1; continue
         n_before = len(picks)
+        sp_side = None                                       # this game's spread lean (ML must agree)
         hs, as_ = sc["home_score"], sc["away_score"]
         margin = hs - as_                                    # home margin (actual)
         total_actual = hs + as_
@@ -726,6 +727,7 @@ def settle_games(season_filter=None):
         if vl and vl.get("spread") is not None and cls.get("spread") is not None and opn.get("spread") is not None:
             mkt_c, mkt_o = cls["spread"], opn["spread"]
             side = "home" if vl["spread"] < mkt_c else "away"   # model spread lower ⇒ model likes home more than market
+            sp_side = side
             home_cov = margin + mkt_c > 0                       # home covers the closing spread
             push = abs(margin + mkt_c) < 1e-9
             won = None if push else (1.0 if (side == "home") == home_cov else 0.0)
@@ -757,6 +759,14 @@ def settle_games(season_filter=None):
             # single-sided implied (older samples). Right baseline for the lean/CLV.
             p_mkt_home = devig(ml_c, ml_ac) if ml_ac is not None else am_prob(ml_c)
             side = "home" if wh > (p_mkt_home if p_mkt_home is not None else 0.5) else "away"
+            # One model, one opinion per game. The ML lean compares the model's
+            # win% to the moneyline, the spread lean compares its margin to the
+            # spread, and those two market numbers can disagree with each other,
+            # so the model could "lean" SEA on the spread and WAS on the ML (Wk3).
+            # When they point opposite ways there is no ML lean: the row stays for
+            # win-prob calibration (p_home / y_home) but is not graded as a bet.
+            # Wks 1-3: the 10 conflicting ML leans went 3-7.
+            conflict = sp_side is not None and side != sp_side
             home_won = margin > 0
             push = abs(margin) < 1e-9                           # tie (rare) → no grade
             won = None if push else (1.0 if (side == "home") == home_won else 0.0)
@@ -776,6 +786,13 @@ def settle_games(season_filter=None):
             # away pick isn't paid at the home favourite's number.
             px_c = ml_c if side == "home" else ml_ac
             px_o = ml_o if side == "home" else ml_ao
+            if conflict:
+                picks.append({**base, "market": "ml", "side": None, "no_lean": "spread_disagrees",
+                              "ml_open": ml_o, "ml_close": ml_c, "price_open": None, "price_close": None,
+                              "vault_winhome": wh, "p_home": wh, "y_home": (None if push else (1.0 if home_won else 0.0)),
+                              "p_model": None, "p_market": None, "actual": margin, "push": push,
+                              "won_close": None, "clv_prob": None, "beat_close": None})
+                continue
             picks.append({**base, "market": "ml", "side": side, "ml_open": ml_o, "ml_close": ml_c,
                           "price_open": px_o, "price_close": px_c,
                           "vault_winhome": wh, "p_home": wh, "y_home": (None if push else (1.0 if home_won else 0.0)),
@@ -1081,6 +1098,59 @@ def _card_rules(shadow_rows, prev):
                   "roi": None if roi is None else round(roi, 4), "why": why}
     return {"season": season, "weeks": wks, "buckets": out}
 
+# ── Game play types: which game calls earn a spot on the game card ──────────
+# Same rule as the props card (RULE_*), on every settled game call, bucketed by
+# market x how far Vault's raw line sits from the closing market (spread/total
+# in points; moneyline in win-% points). Bands match gmxPlayBand in index.html.
+# Wks 1-3: totals 1.5-3 pts off 12-5 +5.9u (winning every week); ML 2.5-5 pts
+# 6-0 but only 6 plays; every spread band and every "big" gap lost. Units:
+# spreads/totals at -110, moneyline at the side's opening price.
+GAME_BANDS = {"spread": (1.5, 3.0), "total": (1.5, 3.0), "ml": (2.5, 5.0)}
+
+def game_band(g):
+    if g.get("market") == "ml":
+        if g.get("p_model") is None or g.get("p_market") is None: return None
+        x = abs(g["p_model"] - g["p_market"]) * 100
+    elif g.get("market") in ("spread", "total"):
+        if g.get("vault_line") is None or g.get("line_close") is None: return None
+        x = abs(g["vault_line"] - g["line_close"])
+    else:
+        return None
+    lo, hi = GAME_BANDS[g["market"]]
+    return "small" if x < lo else "mid" if x < hi else "big"
+
+def game_rules(game_picks, prev):
+    prev_on = {k for k, v in ((prev or {}).get("buckets") or {}).items() if v.get("on")} if prev else set()
+    rows = []
+    for g in game_picks:
+        b = game_band(g)
+        if b is None or g.get("won_close") is None or g.get("model_offseason"): continue
+        px = g.get("price_open") if g["market"] == "ml" else None
+        if g["market"] == "ml" and px is None: continue
+        rows.append((str(g["season"]), g["week"], f'{g["market"]}|{b}', g["won_close"], _am_pay(px) if g["won_close"] == 1 else -1.0))
+    if not rows:
+        return None
+    season = max(r[0] for r in rows)
+    wks = sorted({int(r[1]) for r in rows if r[0] == season})[-RULE_WEEKS:]
+    by = defaultdict(list)
+    for r in rows:
+        if r[0] == season and int(r[1]) in wks: by[r[2]].append(r)
+    out = {}
+    for k in sorted(set(by) | prev_on):
+        rs = by.get(k, []); n = len(rs); W = sum(1 for r in rs if r[3] == 1); u = sum(r[4] for r in rs)
+        roi = u / n if n else None; was = k in prev_on
+        if was:
+            on = not (n >= RULE_OFF_N and u < 0)
+            why = "losing over the window" if not on else "still winning" if n >= RULE_OFF_N else "not enough new plays to judge"
+        else:
+            on = n >= RULE_ON_N and roi is not None and roi >= RULE_ON_ROI
+            why = "earned it" if on else f"needs {RULE_ON_N}+ plays at {int(RULE_ON_ROI * 100)}%+ return"
+        out[k] = {"on": on, "was": was, "n": n, "W": W, "L": n - W, "units": round(u, 2),
+                  "roi": None if roi is None else round(roi, 4), "why": why}
+    return {"season": season, "weeks": wks, "bands": {m: list(v) for m, v in GAME_BANDS.items()},
+            "params": {"window_weeks": RULE_WEEKS, "on_min_plays": RULE_ON_N, "on_min_roi": RULE_ON_ROI, "off_min_plays": RULE_OFF_N},
+            "buckets": out}
+
 def settle_card(prop_picks):
     card = _load_data("best_bets_card.json")
     if not card:
@@ -1175,6 +1245,10 @@ def main():
           + (f" knots={len(recal['knots'])}" if recal.get('knots') else ""))
 
     plays = settle_card(prop_picks)
+    grules = game_rules(game_picks, _load_data("game_rules.json"))
+    if grules:
+        for k, v in grules["buckets"].items():
+            print(f"[settle]   game rule {k:14s} {'ON ' if v['on'] else 'off'} {v['W']}-{v['L']} {v['units']:+.1f}u ({v['why']})")
     if plays:
         for s, v in plays["seasons"].items():
             m = v["summary"]
@@ -1189,6 +1263,8 @@ def main():
     json.dump(ledger, open(os.path.join(DATA, "bet_results.json"), "w"))
     json.dump(scoreboard, open(os.path.join(DATA, "edge_scoreboard.json"), "w"))
     json.dump(recal, open(os.path.join(DATA, "grade_recal.json"), "w"))
+    if grules:
+        json.dump({"generated": now, **grules}, open(os.path.join(DATA, "game_rules.json"), "w"), indent=1)
     if plays is not None:
         json.dump({"generated": now, **plays}, open(os.path.join(DATA, "best_bets_record.json"), "w"))
         if plays.get("rules"):

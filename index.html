@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-28T12:00', tag:'Improved', title:'Game Markets: Vault’s Game Plays replaces “differs most”',
+    items:[
+      'The “Where Vault differs most from the market” cards are gone. Those biggest disagreements lost more often than they won, and they no longer get added to your picks automatically.',
+      'Vault’s Game Plays shows only game play types with a winning recent record. Right now that is totals where Vault is 1.5 to 3 points off the market.',
+      'Every game call keeps being graded, so other play types can earn a spot, and a cold one drops off.',
+      'Vault no longer leans one team on the spread and the other on the moneyline in the same game.'
+    ]
+  },
+  {
     ts:'2026-09-28T00:00', tag:'Improved', title:'Vault’s Plays only picks play types that are winning',
     items:[
       'The card now only takes play types with a proven recent record. Right now that is receiving-yard unders on WRs and TEs.',
@@ -43200,10 +43209,16 @@ window.VaultMarketProj = (function () {
   let _gmModel = null, _gmTried = false;
   const _GM_ALIAS = { OAK: 'LV', SD: 'LAC', STL: 'LA', LAR: 'LA', WSH: 'WAS' };
   const _gmTeam = t => { t = (t || '').toUpperCase(); return _GM_ALIAS[t] || t; };
+  // Game play-type rules (data/game_rules.json, settle_bets.py game_rules): which
+  // market x gap band has earned a spot on "Vault's Game Plays". Null until it
+  // lands, and then the section just doesn't render.
+  let _gmRules = null;
   function loadGameModel() {
     const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
-    return fetch(base + '/game_model.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
-      .then(j => { _gmTried = true; _gmModel = (j && j.teams) ? j : null; return _gmModel; });
+    const rules = fetch(base + '/game_rules.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
+      .then(j => { _gmRules = (j && j.buckets) ? j : null; });
+    return Promise.all([fetch(base + '/game_model.json').then(r => (r.ok ? r.json() : null)).catch(() => null), rules])
+      .then(([j]) => { _gmTried = true; _gmModel = (j && j.teams) ? j : null; return _gmModel; });
   }
   function _gmPhi(z) { return 0.5 * (1 + _bmErf(z / Math.SQRT2)); }
   function _bmErf(x) { const s = x < 0 ? -1 : 1; x = Math.abs(x); const t = 1 / (1 + 0.3275911 * x);
@@ -43735,50 +43750,23 @@ window.VaultMarketProj = (function () {
     const trackedStat = seasonReg ? '<button class="bx-bstat bx-trbtn" id="bx-open-tr" title="See the game bets you\'re tracking in Track Record"><div class="k">Tracked</div><div class="v">' + nTracked + ' ›</div></button>' : '';
     const banner = '<div class="bx-banner"><div class="eyebrow">' + (MODEL.season || '') + (_weekLabel ? ' · ' + _weekLabel : '') + (seasonReg ? '' : ' · Preseason') + '</div><h1>Game markets</h1><p>Every spread, total and moneyline across your books, with the +EV side flagged and Vault’s model line alongside.</p><div class="bx-bstats"><div class="bx-bstat"><div class="k">Games priced</div><div class="v">' + withBets.length + '</div></div><div class="bx-bstat"><div class="k">+EV bets</div><div class="v g">' + nEdges + '</div></div>' + trackedStat + '</div></div>';
 
-    // ── Vault vs. the market — the biggest spread/total/moneyline gaps this week ─
-    // Ranks Vault's model line against the number and surfaces the top 3 gaps in
-    // EACH market. These are AUTO-TRACKED into Track Record (one-time seed per
-    // pick, so a user opt-out on the card isn't re-added), where each settles
-    // itself against the final score. Context, not an edge — the model matches
-    // the market, doesn't beat the close — framed and recorded as such.
-    let moversHTML = '', moversShown = [];
-    if (_gmModel && seasonReg) {
-      const MKT = [['spread', 'Spread'], ['total', 'Total'], ['ml', 'Moneyline']];
-      const byMkt = { spread: [], total: [], ml: [] };
+    // ── Vault's Game Plays: only play types that have earned a spot ─────────
+    // Replaced "Where Vault differs most from the market" (2026-09-28): its
+    // top-3-per-market biggest gaps went 1-3 every week of Weeks 1-3 (3-9) and
+    // were auto-tracked into every user's record. Now a game shows here only when
+    // its market x gap band is ON in game_rules.json (same rule as the Vault's
+    // Plays props card), and nothing is auto-tracked. Bands mirror settle_bets
+    // GAME_BANDS via allLeans(..., true).
+    const gmPlays = [];
+    const gmOn = _gmRules ? Object.keys(_gmRules.buckets).filter(k => _gmRules.buckets[k].on) : [];
+    if (_gmModel && seasonReg && gmOn.length) {
+      const now = Date.now();
       withBets.forEach(x => {
-        // Full conviction: the movers board ranks the RAW model line against the
-        // number (gmPredict, not the market-anchored gmLine the card shows), so a
-        // divergence is the model's actual disagreement — not the muted half it
-        // serves on the card. Card headline moves with the market; this board and
-        // the Track button it seeds keep the model's full conviction.
+        const t = Date.parse(x.g.commence || ''); if (!(t > now)) return;
         const gp = gmPredict(x.g.away, x.g.home); if (!gp) return;
-        allLeans(x.g, gp).forEach(l => { if (byMkt[l.market]) byMkt[l.market].push({ g: x.g, lean: l }); });
+        allLeans(x.g, gp, true).forEach(l => { const k = l.market + '|' + l.band; if (gmOn.includes(k)) gmPlays.push({ g: x.g, lean: l, rec: _gmRules.buckets[k] }); });
       });
-      const top = {}; MKT.forEach(([m]) => { byMkt[m].sort((a, b) => b.lean.score - a.lean.score); top[m] = byMkt[m].slice(0, 3); });
-      const shown = MKT.flatMap(([m]) => top[m]);
-      if (shown.length) {
-        shown.forEach(mv => autoTrackLean(mv.g, mv.lean));   // always tracked
-        moversShown = shown;
-        const unitLbl = u => u === 'pt%' ? ' pt win%' : ' pt';
-        const mkName = m => ({ spread: 'Spread', total: 'Total', ml: 'Moneyline' }[m] || m);
-        // One row per model-vs-market gap, in the same table language as the board.
-        const mvRow = (mv) => {
-          const l = mv.lean, g = mv.g;
-          const gap = l.diff + unitLbl(l.unit);
-          return '<tr>'
-            + '<td class="bxt-tm"><span class="bt-logo" data-logo="' + g.away + '"></span><span class="bt-logo" data-logo="' + g.home + '"></span><span class="cd bxt-mv-pick" title="The side to bet, at the market number">' + l.label + '</span></td>'
-            + '<td class="bxt-mv-mkt">' + mkName(l.market) + '</td>'
-            + '<td class="bxt-mv-vl">' + l.vault + '</td>'
-            + '<td class="bxt-mv-gap">' + gap + ' <span class="mut">vs mkt</span></td>'
-            + '<td class="bxt-mv-trk" title="Automatically tracked in your Track Record — settles against the final score">✓ Tracked</td>'
-            + '</tr>';
-        };
-        const mvBody = MKT.map(([m]) => (top[m] || []).map(mvRow).join('')).join('');
-        moversHTML = '<section class="bx-movers">'
-          + '<div class="bx-mv-head"><div><div class="bx-mv-eyebrow">VAULT VS. THE MARKET</div><div class="bx-mv-t">Where Vault disagrees most with the market</div></div>'
-          + '<button class="bx-mv-open" id="bx-mv-open" title="See these in your Track Record">In your record ›</button></div>'
-          + '<div class="bxt-wrap"><table class="bxt bxt-mv"><thead><tr><th class="l">Pick</th><th>Market</th><th>Model line</th><th>Gap vs market</th><th>Tracked</th></tr></thead><tbody>' + mvBody + '</tbody></table></div></section>';
-      }
+      gmPlays.sort((a, b) => Date.parse(a.g.commence || '') - Date.parse(b.g.commence || ''));
     }
 
     const gmxWhen = (g, o) => { const d = g.commence ? new Date(g.commence) : null; return (d && !isNaN(d)) ? d.toLocaleString([], o) : ''; };
@@ -43885,12 +43873,15 @@ window.VaultMarketProj = (function () {
       if (R) rec = '<div class="gmx-record"><span>Vault model this season: <b>' + R.w + '–' + R.l + '</b> picking winners</span><span>Avg miss <b>' + R.vMiss + '</b> pts vs market <b>' + R.mMiss + '</b></span>'
         + '<span>Runs level with the market, doesn’t beat it' + (_gmModel && _gmModel.backtest ? ' (' + _gmModel.backtest.n.toLocaleString() + ' past games)' : '') + '</span><button class="gmx-rlink" id="gmx-open-vrec">Full track record →</button></div>';
       let gaps = '';
-      if (moversShown.length) {
+      if (gmPlays.length) {
         const mkName = mk => ({ spread: 'Spread', total: 'Total', ml: 'Moneyline' }[mk] || mk);
-        gaps = '<div class="gmx-sechd"><h2>Where Vault differs most from the market</h2><span>Full-strength model line · auto-tracked <button class="gmx-rlink" id="bx-mv-open">In your record ›</button></span></div>'
-          + '<div class="gmx-gaps">' + moversShown.slice().sort((a, b) => b.lean.score - a.lean.score).map(mv => { const l = mv.lean, g = mv.g;
+        const bandLbl = k => { const [m, b] = k.split('|'), bd = (_gmRules.bands || {})[m] || [], u = m === 'ml' ? ' win% pts' : ' pts';
+          return mkName(m) + (b === 'mid' ? ' ' + bd[0] + '–' + bd[1] + u + ' off' : b === 'small' ? ' under ' + bd[0] + u + ' off' : ' ' + bd[1] + '+' + u + ' off'); };
+        const why = gmOn.map(k => { const r = _gmRules.buckets[k]; return bandLbl(k) + ' (' + r.W + '–' + r.L + ', ' + (r.units >= 0 ? '+' : '') + r.units.toFixed(1) + 'u)'; }).join(' · ');
+        gaps = '<div class="gmx-sechd"><h2>Vault’s Game Plays</h2><span title="Only play types with a winning record over the last ' + ((_gmRules.params || {}).window_weeks || 4) + ' weeks show here. Every game call keeps being graded, so a type can earn its way on or drop off.">' + why + '</span></div>'
+          + '<div class="gmx-gaps">' + gmPlays.map(mv => { const l = mv.lean, g = mv.g;
             return '<button class="gmx-gap press press-card" data-go="gmx-' + g.away + '-' + g.home + '"><div class="top"><span class="bt-logo" data-logo="' + g.away + '"></span><span class="gmx-at">' + (gmNeutral(g.away, g.home) ? 'vs' : '@') + '</span><span class="bt-logo" data-logo="' + g.home + '"></span><span class="mk">' + mkName(l.market) + '</span></div>'
-              + '<div class="side">' + l.label + '</div><div class="why">Model <b>' + l.vault.replace(/^total /, '').replace(/ win$/, '') + '</b><span class="pt">' + l.diff + (l.unit === 'pt%' ? ' pt win%' : ' pt') + '</span></div></button>'; }).join('') + '</div>';
+              + '<div class="side">' + l.label + (l.price != null ? ' <span class="pt">' + (l.price > 0 ? '+' : '') + l.price + '</span>' : '') + '</div><div class="why">Model <b>' + l.vault.replace(/^total /, '').replace(/ win$/, '') + '</b><span class="pt">' + l.diff + (l.unit === 'pt%' ? ' pt win%' : ' pt') + ' off</span></div></button>'; }).join('') + '</div>';
       }
       return '<div class="gmx">'
         + '<div class="gmx-hero"><div><div class="gmx-kick">' + (MODEL.season || '') + ' · NFL' + (_weekLabel ? ' · ' + _weekLabel : '') + (seasonReg ? '' : ' · Preseason') + '</div><h1 class="gmx-h1">Game markets</h1>'
@@ -44162,42 +44153,52 @@ window.VaultMarketProj = (function () {
   // Divergence is scored as a fraction of each bar so the three compare on one
   // scale. bestLean() is just the top of this list; the "biggest divergences"
   // board ranks the whole slate's leans off it.
-  function allLeans(g, gp) {
+  // all=true: every market's lean regardless of gap size, tagged with its gap
+  // band (settle_bets GAME_BANDS), for Vault's Game Plays. The moneyline lean is
+  // dropped whenever it points the other way from the spread lean: the two
+  // compare the model to two different market numbers that can disagree, and
+  // one model should not back both teams (Wks 1-3: those ML leans went 3-7).
+  const GAME_BANDS = { spread: [1.5, 3], total: [1.5, 3], ml: [2.5, 5] };
+  const gmBand = (mk, d) => { const b = GAME_BANDS[mk]; return d < b[0] ? 'small' : d < b[1] ? 'mid' : 'big'; };
+  function allLeans(g, gp, all) {
     if (!gp) return [];
     const cands = [];
     const mkSp = (g.spread && g.spread.cons && g.spread.cons.home != null) ? round05(g.spread.cons.home) : null;
+    let spSide = null;
     if (mkSp != null) {
       const d = Math.abs(gp.homeSpread - mkSp);
-      if (d >= 1) {
+      if (d > 0) spSide = gp.homeSpread < mkSp ? 'home' : 'away';
+      if (all ? d > 0 : d >= 1) {
         const home = gp.homeSpread < mkSp, b = (g.spread.best || {}), bb = home ? b.home : b.away;
         cands.push({ market: 'spread', side: home ? 'home' : 'away', team: home ? g.home : g.away,
           line: home ? mkSp : round05(-mkSp), price: bb ? bb.price : null, book: bb ? bb.book : null,
           label: (home ? g.home : g.away) + ' ' + sline(home ? mkSp : round05(-mkSp)),
           vault: (home ? g.home : g.away) + ' ' + sline(+(home ? gp.homeSpread : -gp.homeSpread).toFixed(1)),
-          diff: +d.toFixed(1), unit: 'pt', score: d / 1 });
+          diff: +d.toFixed(1), unit: 'pt', score: d / 1, band: gmBand('spread', d) });
       }
     }
     const mkT = (g.total && g.total.cons != null) ? g.total.cons : null;
     if (mkT != null) {
       const d = Math.abs(gp.total - mkT);
-      if (d >= 1.5) {
+      if (all ? d > 0 : d >= 1.5) {
         const over = gp.total > mkT, b = (g.total.best || {}), bb = over ? b.over : b.under;
         cands.push({ market: 'total', side: over ? 'over' : 'under', team: null, line: mkT,
           price: bb ? bb.price : null, book: bb ? bb.book : null,
           label: (over ? 'Over ' : 'Under ') + mkT, vault: 'total ' + gp.total,
-          diff: +d.toFixed(1), unit: 'pt', score: d / 1.5 });
+          diff: +d.toFixed(1), unit: 'pt', score: d / 1.5, band: gmBand('total', d) });
       }
     }
     const mlP = _mlHomeProb(g);
     const impH = mlP != null ? Math.round(mlP * 100) : null;   // devigged market home win %
     if (impH != null) {
       const d = Math.abs(gp.homeWinPct - impH);
-      if (d >= 6) {
-        const home = gp.homeWinPct > impH, b = (g.ml && g.ml.best) || {}, bb = home ? b.home : b.away;
+      const mlHome = gp.homeWinPct > impH;
+      if ((all ? d > 0 : d >= 6) && !(spSide && (mlHome ? 'home' : 'away') !== spSide)) {
+        const home = mlHome, b = (g.ml && g.ml.best) || {}, bb = home ? b.home : b.away;
         cands.push({ market: 'ml', side: home ? 'home' : 'away', team: home ? g.home : g.away, line: null,
           price: bb ? bb.price : null, book: bb ? bb.book : null,
           label: (home ? g.home : g.away) + ' ML', vault: (home ? g.home : g.away) + ' ' + gp.homeWinPct + '% win',
-          diff: Math.round(d), unit: 'pt%', score: d / 6 });
+          diff: Math.round(d), unit: 'pt%', score: d / 6, band: gmBand('ml', d) });
       }
     }
     cands.sort((a, b) => b.score - a.score);

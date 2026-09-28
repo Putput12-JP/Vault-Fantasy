@@ -1,0 +1,121 @@
+{
+ "generated": "2026-09-28T11:36:33.891752+00:00",
+ "season": "2026",
+ "weeks": [
+  1,
+  2,
+  3
+ ],
+ "bands": {
+  "spread": [
+   1.5,
+   3.0
+  ],
+  "total": [
+   1.5,
+   3.0
+  ],
+  "ml": [
+   2.5,
+   5.0
+  ]
+ },
+ "params": {
+  "window_weeks": 4,
+  "on_min_plays": 15,
+  "on_min_roi": 0.05,
+  "off_min_plays": 10
+ },
+ "buckets": {
+  "ml|big": {
+   "on": false,
+   "was": false,
+   "n": 19,
+   "W": 7,
+   "L": 12,
+   "units": -1.88,
+   "roi": -0.0987,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "ml|mid": {
+   "on": false,
+   "was": false,
+   "n": 5,
+   "W": 5,
+   "L": 0,
+   "units": 6.24,
+   "roi": 1.2482,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "ml|small": {
+   "on": false,
+   "was": false,
+   "n": 6,
+   "W": 3,
+   "L": 3,
+   "units": -1.58,
+   "roi": -0.2639,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "spread|big": {
+   "on": false,
+   "was": false,
+   "n": 11,
+   "W": 5,
+   "L": 6,
+   "units": -1.45,
+   "roi": -0.1322,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "spread|mid": {
+   "on": false,
+   "was": false,
+   "n": 17,
+   "W": 7,
+   "L": 10,
+   "units": -3.64,
+   "roi": -0.2139,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "spread|small": {
+   "on": false,
+   "was": false,
+   "n": 16,
+   "W": 6,
+   "L": 10,
+   "units": -4.55,
+   "roi": -0.2841,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "total|big": {
+   "on": false,
+   "was": false,
+   "n": 13,
+   "W": 5,
+   "L": 8,
+   "units": -3.45,
+   "roi": -0.2657,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "total|mid": {
+   "on": true,
+   "was": false,
+   "n": 17,
+   "W": 12,
+   "L": 5,
+   "units": 5.91,
+   "roi": 0.3476,
+   "why": "earned it"
+  },
+  "total|small": {
+   "on": false,
+   "was": false,
+   "n": 15,
+   "W": 8,
+   "L": 7,
+   "units": 0.27,
+   "roi": 0.0182,
+   "why": "needs 15+ plays at 5%+ return"
+  }
+ }
+}
