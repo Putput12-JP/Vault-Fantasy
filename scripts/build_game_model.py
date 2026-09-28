@@ -153,6 +153,44 @@ def backtest(games):
     return m
 
 
+def fit_blend(games):
+    """Headline-line weight on the model: line = market + w * (model - market).
+    w is fit by least squares on seasons BEFORE each test season and scored
+    walk-forward against the closing line. GATED: w ships only if that
+    walk-forward error beats the market's own; otherwise 0 (pure market fair
+    line). Model-upgrade plan (reports/NFL prediction model upgrade.md):
+    2014-2026, spreads walk-forward 12.712 vs market 12.699 RMSE (w drifting
+    0.39 -> 0.06), totals w = 0 every season, the old fixed 0.5 blend worse on
+    both (12.800 / 13.373). So the served line is the market fair line."""
+    played = [g for g in games if g["played"] and g["season"] >= TEST_FROM]
+    _, _, _, preds = run(games, collect_from=TEST_FROM)
+    for p, g in zip(preds, played): p["season"] = g["season"]
+    out = {}
+    for name, mk, lk, rk in (("spread", "pm", "spread", "result"), ("total", "pt", "total_line", "total")):
+        def w_of(ps):
+            ps = [p for p in ps if p[lk] is not None]
+            num = sum((p[mk] - p[lk]) * (p[rk] - p[lk]) for p in ps)
+            den = sum((p[mk] - p[lk]) ** 2 for p in ps)
+            return max(0.0, min(1.0, num / den)) if den else 0.0
+        e_wf, e_mkt = [], []
+        for s in sorted({p["season"] for p in preds}):
+            tr = [p for p in preds if p["season"] < s and p[lk] is not None]
+            te = [p for p in preds if p["season"] == s and p[lk] is not None]
+            if len(tr) < 500 or not te: continue
+            w = w_of(tr)
+            for p in te:
+                e_wf.append((p[lk] + w * (p[mk] - p[lk]) - p[rk]) ** 2); e_mkt.append((p[lk] - p[rk]) ** 2)
+        rm_wf = math.sqrt(statistics.fmean(e_wf)) if e_wf else None
+        rm_mk = math.sqrt(statistics.fmean(e_mkt)) if e_mkt else None
+        w_all = w_of(preds)
+        ok = rm_wf is not None and rm_mk is not None and rm_wf < rm_mk
+        out[name] = {"w": round(w_all, 4) if ok else 0.0, "w_fit": round(w_all, 4), "gate": "passed" if ok else "failed",
+                     "rmse_walkforward": None if rm_wf is None else round(rm_wf, 3),
+                     "rmse_market": None if rm_mk is None else round(rm_mk, 3), "n": len(e_mkt)}
+    out["win"] = dict(out["spread"])   # win% moves with the margin blend
+    return out
+
+
 SD_MARGIN = 13.2   # provisional; re-fit below
 SD_TOTAL = 13.5
 
@@ -218,7 +256,12 @@ def main():
     SD_TOTAL = round(statistics.pstdev([p["pt"] - p["total"] for p in preds]), 3)
 
     m = backtest(games)
+    blend = fit_blend(games)
     print(f"[game-model] HFA {HFA} · sd_margin {SD_MARGIN} · sd_total {SD_TOTAL}")
+    for k in ("spread", "total"):
+        b = blend[k]
+        print(f"[game-model] headline blend {k}: fitted w {b['w_fit']} · walk-forward RMSE {b['rmse_walkforward']} vs market {b['rmse_market']} "
+              f"→ gate {b['gate']} → served w {b['w']}")
     print(f"[game-model] BACKTEST (n={m['n']}, out-of-sample from {TEST_FROM}):")
     print(f"   margin RMSE {m['margin_rmse']} vs market {m['market_margin_rmse']}  · ATS {m['ats_pct']}%")
     print(f"   total  RMSE {m['total_rmse']} vs market {m['market_total_rmse']}  · O/U {m['ou_pct']}%")
@@ -266,6 +309,9 @@ def main():
         "base_pts": served_base, "hfa": served_hfa, "sd_margin": served_sd, "sd_total": SD_TOTAL,
         "params": {"k_margin": K_MARGIN, "k_score": K_SCORE, "carry": CARRY, "ridge": RIDGE},
         "teams": teams, "neutral": neutral, "backtest": m,
+        # Headline "Vault line" = market fair line + w * (model - market fair).
+        # w = 0 unless the walk-forward check beats the close (see fit_blend).
+        "blend": blend,
         "inseason_overlay": (overlay or None),
         "fit": {"hfa": HFA, "base_pts": BASE_PTS, "sd_margin": SD_MARGIN},   # pre-overlay historical fit
         "note": "Context line only — matches the market, does not beat the close. Never present as +EV.",

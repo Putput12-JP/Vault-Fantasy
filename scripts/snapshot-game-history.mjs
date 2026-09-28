@@ -93,6 +93,22 @@ function totalPx(g) {
   return [med(qs.map(q => q.over)), med(qs.map(q => q.under))];
 }
 
+// Per-book quotes (2026-09-29): what a fitted book weighting for the fair game
+// line needs (index.html gmFair weights books equally until then). Compact rows:
+//   sp [book, homeLine, homePrice, awayPrice] · to [book, line, over, under] · ml [book, home, away]
+// Kept on `open` and `cur` only (cur = the close once the game kicks off), never
+// on the intermediate samples, so the history file stays small.
+function bookQuotes(g) {
+  const sp = ((g.spread && g.spread.quotes) || []).filter(q => q && q.home && q.away && q.home.line != null)
+    .map(q => [q.book, q.home.line, q.home.price ?? null, q.away.price ?? null]);
+  const to = ((g.total && g.total.quotes) || []).filter(q => q && q.line != null)
+    .map(q => [q.book, q.line, q.over ?? null, q.under ?? null]);
+  const ml = ((g.ml && g.ml.quotes) || []).filter(q => q && (q.home != null || q.away != null))
+    .map(q => [q.book, q.home ?? null, q.away ?? null]);
+  return { sp, to, ml };
+}
+const noQ = s => { const { q, ...rest } = s; return rest; };
+
 function snapshot(g, ts) {
   const [spH, spA] = spreadPx(g), [toO, toU] = totalPx(g);
   return {
@@ -103,6 +119,7 @@ function snapshot(g, ts) {
     spHomePx: num(spH), spAwayPx: num(spA),                              // spread prices at the consensus number
     toOverPx: num(toO), toUnderPx: num(toU),                             // total prices at the consensus number
     vault: vaultLine(g.away, g.home),                                     // model line as-of now (null offseason/unmapped)
+    q: bookQuotes(g),                                                     // per-book (open / cur only)
     ts,
   };
 }
@@ -132,7 +149,7 @@ for (const g of feed.vegas_games) {
   if (!rec) {
     games[key] = {
       season, seasonType, week, away: g.away, home: g.home, commence: g.commence || null,
-      open: cur, cur, firstSeen: now, lastSeen: now, samples: [cur],
+      open: cur, cur, firstSeen: now, lastSeen: now, samples: [noQ(cur)],
     };
     created++;
     continue;
@@ -142,8 +159,8 @@ for (const g of feed.vegas_games) {
   const last = rec.samples && rec.samples.length ? rec.samples[rec.samples.length - 1] : rec.open;
   if (!last || sig(last) !== sig(cur)) {
     rec.cur = cur;
-    rec.samples = rec.samples || [rec.open];
-    rec.samples.push(cur);
+    rec.samples = rec.samples || [noQ(rec.open)];
+    rec.samples.push(noQ(cur));
     if (rec.samples.length > MAX_SAMPLES) rec.samples.splice(1, rec.samples.length - MAX_SAMPLES); // keep open (idx 0), drop oldest middles
     moved++;
   } else {

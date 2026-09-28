@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-29T15:00', tag:'Improved', title:'Vault’s game line is now the sportsbooks’ fair line',
+    items:[
+      'The Vault line on each game is now the market’s fair number: every sportsbook’s line with its built-in margin removed, then the middle of them. A -2.5 priced heavily one way can read as a fair -3.',
+      'Vault’s own team-rating model used to count for half. Tested on over 2,800 past games, that mix was less accurate than the market alone, so the model now only gets a say if it proves it beats the market season after season.',
+      'Vault’s Game Plays still show the model’s number, and only for the play types that have been winning.'
+    ]
+  },
+  {
     ts:'2026-09-29T12:00', tag:'New', title:'Pick’em pairs',
     items:[
       'A QB and his top receiver tend to have big games, and quiet ones, together. Both hitting is more likely than the two chances multiplied, but pick’em apps pay as if they were unrelated.',
@@ -43302,37 +43310,73 @@ window.VaultMarketProj = (function () {
              homePts: +ph.toFixed(1), awayPts: +pa.toFixed(1), homeWinPct: Math.round(_gmPhi(pm / M.sd_margin) * 100) };
   }
 
-  // Served "Vault line" = the raw model line anchored to the LIVE market
-  // consensus, keeping only GM_BLEND of the model's deviation. The team-rating
-  // model is refit off completed games only, so between refits (and all
-  // preseason) its ratings are frozen — it can't move on an injury, a snap-count
-  // change or sharp money. The market can, and does, intraweek. Anchoring the
-  // displayed line to the market therefore makes it MOVE with new information
-  // while still carrying a modest, honest model tilt. The backtest is explicit
-  // that the raw model matches the market and does not beat the close, so a
-  // market-heavy weight loses no measured edge. game_model.json stays pure (the
-  // backtest + in-season loop-closer must see the unblended fit); this blend is a
-  // display concern, computed here from whatever market number is on the card.
-  //
-  // Weight: the served line is the MIDPOINT of the model and the live market.
-  // Half of any market move passes straight through — so the line moves on news
-  // the frozen model can't see — while half the model's tilt survives, enough to
-  // keep the line's own identity and the "Vault vs the market" leans meaningful
-  // rather than extinct. A market-heavier weight would move more but flatten the
-  // leans to nothing; the midpoint is the honest split given the model shows no
-  // measured edge over the close.
-  const GM_BLEND = 0.5;    // 0 = pure market, 1 = pure model; 0.5 = midpoint
+  // Served "Vault line": see gmLine below. The team-rating model is refit off
+  // completed games only, so it can't move on an injury or sharp money; the
+  // market can. Since 2026-09-29 the served line is the market fair line and the
+  // model's share is measured (gated, walk-forward), not a fixed half.
+  // Headline "Vault line" = the market FAIR line + w x (model - fair), with w
+  // from data/game_model.json `blend` (build_game_model.py fit_blend). w is fit
+  // walk-forward against the close and GATED: it stays 0 unless the model beats
+  // the market season after season. 2014-2026 it doesn't (spreads 12.712 vs
+  // market 12.699 RMSE, totals w = 0), and the old fixed 0.5 blend was worse
+  // than the market on both, so today the served line is the fair line.
+  const gmW = mk => { const b = _gmModel && _gmModel.blend && _gmModel.blend[mk]; return b && b.w != null ? b.w : 0; };
+  // Fair line: every real book's line + price pair, de-vigged (power method),
+  // turned into a fair margin / total with the model's fitted game sd, then the
+  // median across books. Falls back to the consensus number when no book has a
+  // two-way price. Book weights are equal until enough per-book history is
+  // banked to fit them (snapshot-game-history.mjs banks per-book quotes).
+  function _gmPow(ao, au) {
+    const p = a => a == null ? null : (a < 0 ? -a / (-a + 100) : 100 / (a + 100));
+    const po = p(ao), pu = p(au);
+    if (!(po > 0) || !(pu > 0)) return null;
+    if (po + pu <= 1) return po / (po + pu);
+    let lo = 1, hi = 10;
+    for (let i = 0; i < 50; i++) { const k = (lo + hi) / 2; if (po ** k + pu ** k > 1) lo = k; else hi = k; }
+    const k = (lo + hi) / 2; return po ** k / (po ** k + pu ** k);
+  }
+  function _gmInvN(p) {   // inverse standard normal (Acklam)
+    const a = [-39.6968302866538, 220.946098424521, -275.928510446969, 138.357751867269, -30.6647980661472, 2.50662827745924];
+    const b = [-54.4760987982241, 161.585836858041, -155.698979859887, 66.8013118877197, -13.2806815528857];
+    const c = [-0.00778489400243029, -0.322396458041136, -2.40075827716184, -2.54973253934373, 4.37466414146497, 2.93816398269878];
+    const d = [0.00778469570904146, 0.32246712907004, 2.445134137143, 3.75440866190742];
+    p = Math.min(Math.max(p, 1e-6), 1 - 1e-6);
+    if (p < 0.02425) { const q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+    if (p > 0.97575) { const q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+    const q = p - 0.5, r = q * q;
+    return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+  }
+  const _gmMed = a => { const s = a.slice().sort((x, y) => x - y); if (!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  function gmFair(g) {
+    const sdM = (_gmModel && _gmModel.sd_margin) || 13.2, sdT = (_gmModel && _gmModel.sd_total) || 13.6;
+    const sp = [], to = [], wh = [];
+    ((g.spread && g.spread.quotes) || []).forEach(q => {
+      if (!q || !q.home || !q.away || q.home.line == null || q.home.price == null || q.away.price == null) return;
+      const p = _gmPow(q.home.price, q.away.price); if (p == null) return;
+      sp.push(-(sdM * _gmInvN(p) - q.home.line));           // fair HOME spread (negative = home favored)
+    });
+    ((g.total && g.total.quotes) || []).forEach(q => {
+      if (!q || q.line == null || q.over == null || q.under == null) return;
+      const p = _gmPow(q.over, q.under); if (p == null) return;
+      to.push(q.line + sdT * _gmInvN(p));
+    });
+    ((g.ml && g.ml.quotes) || []).forEach(q => { const p = q ? _gmPow(q.home, q.away) : null; if (p != null) wh.push(p); });
+    const cons = (g.spread && g.spread.cons && g.spread.cons.home != null) ? g.spread.cons.home : null;
+    const consT = (g.total && g.total.cons != null) ? g.total.cons : null;
+    return { homeSpread: sp.length ? _gmMed(sp) : cons, total: to.length ? _gmMed(to) : consT,
+             homeWin: wh.length ? _gmMed(wh) : _mlHomeProb(g), books: { spread: sp.length, total: to.length, ml: wh.length } };
+  }
   function gmLine(g) {
     const gp = gmPredict(g.away, g.home);
     if (!gp) return null;
-    const mkSp = (g.spread && g.spread.cons && g.spread.cons.home != null) ? g.spread.cons.home : null;
-    const mkT  = (g.total && g.total.cons != null) ? g.total.cons : null;
-    const mlHP = _mlHomeProb(g);                               // vig-free market P(home win), 0..1
-    const blend = (model, mkt) => mkt == null ? model : +(mkt + GM_BLEND * (model - mkt)).toFixed(1);
+    const fair = gmFair(g);
+    const mkSp = fair.homeSpread, mkT = fair.total, mlHP = fair.homeWin;   // market FAIR line (vig removed)
+    const blend = (model, mkt, w) => mkt == null ? model : +(mkt + w * (model - mkt)).toFixed(1);
     const out = Object.assign({}, gp);
-    out.homeSpread = blend(gp.homeSpread, mkSp);
-    out.total      = blend(gp.total,      mkT);
-    if (mlHP != null) out.homeWinPct = Math.round(mlHP * 100 + GM_BLEND * (gp.homeWinPct - mlHP * 100));
+    out.homeSpread = blend(gp.homeSpread, mkSp, gmW('spread'));
+    out.total      = blend(gp.total,      mkT, gmW('total'));
+    if (mlHP != null) out.homeWinPct = Math.round(mlHP * 100 + gmW('win') * (gp.homeWinPct - mlHP * 100));
+    out.fair = fair;
     out.margin  = +(-out.homeSpread).toFixed(1);
     out.blended = (mkSp != null || mkT != null);              // provenance: did we have a market to anchor to
     return out;
@@ -43718,7 +43762,7 @@ window.VaultMarketProj = (function () {
       const cmpBtn = '<button class="bx-foot-btn" data-tgl="' + key + '">' + (open ? 'Hide books' : 'Compare books') + ' <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="' + (open ? 'm18 15-6-6-6 6' : 'm6 9 6 6 6-6') + '"/></svg></button>';
       let foot;
       if (gp) {
-        const vTitle = 'Vault’s team-rating model, anchored halfway to the live market so it moves with news the model can’t see. Context, not a bet edge — it matches the market, doesn’t beat the close.';
+        const vTitle = 'Vault’s line is the sportsbooks’ fair line: every book’s number with its margin removed, then the median. Vault’s team-rating model only nudges it when it has proven it beats the market season after season, and today it hasn’t. Context, not a bet edge.';
         const mkSp = (g.spread && g.spread.cons && g.spread.cons.home != null) ? round05(g.spread.cons.home) : null;
         const mkT = (g.total && g.total.cons != null) ? g.total.cons : null;
         // Market number lives in the columns above, so the footer shows only
@@ -43915,7 +43959,7 @@ window.VaultMarketProj = (function () {
       } else {
         vbody = '<div class="gmx-vnote">' + (seasonReg ? 'Vault’s line appears once the model loads.' : 'Vault’s line switches on in the regular season.') + '</div>';
       }
-      const vc = '<article class="gmx-card gmx-vc"><div class="gmx-chd"><span title="Vault’s team-rating model, anchored halfway to the live market so it moves with news the model can’t see. Context, not a bet edge: it matches the market, doesn’t beat the close.">Vault line vs market</span></div>' + vbody + '</article>';
+      const vc = '<article class="gmx-card gmx-vc"><div class="gmx-chd"><span title="Vault’s line is the sportsbooks’ fair line: every book’s number with its margin removed, then the median. Vault’s team-rating model only nudges it when it has proven it beats the market season after season, and today it hasn’t. Context, not a bet edge.">Vault line vs market</span></div>' + vbody + '</article>';
       const wk = multiWk && g.week != null ? '<span class="gmx-wk">Wk ' + g.week + '</span>' : '';
       return '<div class="gmx-game" id="' + id + '">'
         + '<div class="gmx-ghead"><span class="bt-logo" data-logo="' + g.away + '"></span><span class="gmx-at">' + (neutral ? 'vs' : '@') + '</span><span class="bt-logo" data-logo="' + g.home + '"></span><b>' + gmxNick(g.away) + (neutral ? ' vs ' : ' at ') + gmxNick(g.home) + '</b><span class="gmx-gt">' + gmxTime(g) + '</span>' + wk + '</div>'
