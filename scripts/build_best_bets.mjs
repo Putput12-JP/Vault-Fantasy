@@ -33,11 +33,13 @@
    gate (the same gate the game-line UI honors).
 
    Writes feed.best_bets = { generated, season, week, be_ref, props:[…],
-   game_leans:[…], note }. Run AFTER the props fetch so it scores fresh lines.
+   card:[…], game_leans:[…], note }, and appends newly posted plays to the
+   locked weekly card, data/best_bets_card.json. Run AFTER the props fetch so it scores fresh lines.
 
    Run:  node scripts/build_best_bets.mjs                 # score, write feed
          node scripts/build_best_bets.mjs --dry           # score, print, no write
          node scripts/build_best_bets.mjs --top=3         # how many props (default 3)
+         node scripts/build_best_bets.mjs --cardmax=10    # locked weekly card size (default 10)
    ════════════════════════════════════════════════════════════════════════ */
 'use strict';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -58,6 +60,17 @@ let   SEASONS = [2024, 2025];                 // log window [prev, cur] — rese
 const BE_REF = 0.524;                         // standard -110 book break-even (entry-agnostic bar)
 const MIN_GAMES = 8;                          // enough log to trust the projection
 const PRICE_MIN = -250, PRICE_MAX = 200;      // bettable band: no -300 chalk, no lottery longshots
+// Locked weekly card. The live top-N rotates as lines move (22-31 different
+// plays showed across Weeks 1-3), so a user who looked Thursday and one who
+// looked Sunday followed different cards and neither had a record to check.
+// A play that reaches the top-N is written to the card ONCE, frozen at the line
+// and price it posted with, and never removed. Replaying Weeks 1-3 (git history
+// of this feed): first 10 plays a week, one per player = 18-7, +12.3u, positive
+// every week; 8 = 14-5 and 12 = 20-10 were no better. Append-only; settle_bets.py
+// grades it into data/best_bets_record.json (a separate file, so the props job
+// and the settle job never write the same file).
+const CARD_MAX = Number(ARG.cardmax || 10);
+const CARD_FILE = ARG.card || resolve(ROOT, 'data/best_bets_card.json');
 // Gate 2 — a "consensus" of DFS pick'em apps is not a beatable market. Their
 // yardage lines run low and price flat, so ranking by EV against them surfaces
 // the biggest model-vs-line disagreements (the least trustworthy bets). A best
@@ -642,6 +655,46 @@ function scoreProps(feed, PM, KP) {
   return { list, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
 }
 
+/* ── locked weekly card (see CARD_MAX) ─────────────────────────────────────
+   Appends any live top-N play not yet on this week's card, up to CARD_MAX and
+   one per player, and only before its game kicks off. Existing entries are
+   never edited, so the line + price a user saw is the line + price we grade.
+   In-season only: preseason/offseason feeds never touch the file. */
+function lockCard(feed, list) {
+  let file = null;
+  try { file = JSON.parse(readFileSync(CARD_FILE, 'utf8')); } catch (e) { /* first run */ }
+  if (!file || !Array.isArray(file.picks)) file = { picks: [] };
+  const stRaw = String(feed.season_type || '').toLowerCase();
+  const stype = /^post/.test(stRaw) ? 'post' : /^reg/.test(stRaw) ? 'reg' : null;
+  const season = String(feed.season || ''), week = Number(feed.week) || null;
+  const cur = file.picks.filter(p => p.season === season && p.stype === stype && p.week === week);
+  const added = [];
+  if (stype && week && season) {
+    const now = Date.now(), have = new Set(cur.map(p => String(p.pid)));
+    for (const b of list) {
+      if (cur.length >= CARD_MAX) break;
+      if (have.has(String(b.id))) continue;
+      const kick = Date.parse(b.commence || '');
+      if (!(kick > now)) continue;
+      const pick = {
+        key: [season, stype, week, b.id, b.market].join('|'), season, stype, week,
+        pid: String(b.id), name: b.name, team: b.team, pos: b.pos, opp: b.opp, commence: b.commence,
+        market: b.market, marketLabel: b.marketLabel, side: b.side, line: b.line,
+        book: b.book, price: b.price, ev: b.ev, prob: b.prob, grade: b.grade, proj: b.proj,
+        posted: new Date().toISOString(),
+      };
+      file.picks.push(pick); cur.push(pick); have.add(pick.pid);
+      added.push(`${b.name} ${b.side} ${b.line} ${b.marketLabel}`);
+    }
+  }
+  if (added.length) {
+    file.note = 'Vault\'s locked weekly card: each play frozen at the line and price it posted with. Append-only. Graded into best_bets_record.json by scripts/settle_bets.py.';
+    file.card_max = CARD_MAX;
+    file.updated = new Date().toISOString();
+  }
+  return { picks: cur, file, changed: added.length > 0, added };
+}
+
 /* ── game leans (CONTEXT only; empty while the model is gated) ──────────── */
 const GM_ALIAS = { OAK: 'LV', SD: 'LAC', STL: 'LA', LAR: 'LA', WSH: 'WAS' };
 function gameLeans(feed) {
@@ -707,11 +760,17 @@ function gameLeans(feed) {
     log(`game leans: ${leans.gated ? leans.gated : props.total >= 0 ? leans.list.length : 0}${leans.gated ? ' (empty)' : ` (${leans.offslate} off-slate)`}`);
     for (const b of props.list) log(`  • ${b.name} ${b.marketLabel} ${b.side.toUpperCase()} ${b.line} @ ${b.book} ${b.price > 0 ? '+' : ''}${b.price} — ${b.grade}, ${b.ev}% EV, ${b.books} books, ${b.games}g${b.sharpFair != null ? `, sharp ${(b.sharpFair * 100).toFixed(0)}% (gap ${b.sharpGap > 0 ? '+' : ''}${(b.sharpGap * 100).toFixed(0)}pt)` : ''}`);
 
+    const card = lockCard(feed, props.list);
+
     feed.best_bets = {
       generated: new Date().toISOString(),
       season: feed.season || null, week: feed.week || null,
       be_ref: BE_REF, be_mode: 'price',
       props: props.list,
+      // The locked weekly card (data/best_bets_card.json): every play that has
+      // posted this week, frozen at the line + price it posted with. This is
+      // what the hero shows; `props` above is the live top-N that feeds it.
+      card: card.picks, card_max: CARD_MAX,
       game_leans: leans.list,
       game_leans_note: leans.gated === 'offseason'
         ? 'Game leans light up in-season — the game model is context, not an edge, and is gated off in the offseason.'
@@ -719,6 +778,7 @@ function gameLeans(feed) {
       note: 'Top props by confidence-adjusted EV on corroborated lines (≥2 books), modeled markets only.',
     };
     if (DRY) { log('DRY — not writing'); return; }
+    if (card.changed) { writeFileSync(CARD_FILE, JSON.stringify(card.file, null, 1) + '\n'); log('card: locked', card.added.join(', ') || 'nothing new'); }
     writeFileSync(FEED, JSON.stringify(feed));
     log('wrote best_bets to', FEED);
   } catch (e) {

@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-27T23:30', tag:'New', title:'Vault’s Plays: a locked weekly card with a record',
+    items:[
+      'Best Bets is now Vault’s Plays: up to 10 plays a week, locked at the line and price they posted with. They no longer swap out as lines move.',
+      'Played games stay on the card with their result, win or lose.',
+      'Track Record has a new Vault’s Plays tab with the season record, units at the posted price, units if you had bet at the close, and how often the line moved toward each play.',
+      'Tap the season record on the card to open it.'
+    ]
+  },
+  {
     ts:'2026-09-26T23:00', tag:'New', title:'Top +EV quick filter on Player Props',
     items:[
       'A new Top +EV button next to Filters shows only the strongest picks: +EV of 20% or more, graded A or B, with the edge not flagged.',
@@ -45159,6 +45168,16 @@ window.VaultMarketProj = (function () {
       .catch(() => { _ledgerDone = true; return null; });
     return _ledgerP;
   }
+  // Vault's Plays record: the locked weekly card (build_best_bets.mjs) graded at
+  // the line + price each play posted with (settle_bets.py → best_bets_record.json).
+  let _playsP = null, _playsData = null, _playsDone = false;
+  function loadPlays() {
+    if (!_playsP) _playsP = fetch(_LEDGER_BASE + '/best_bets_record.json')
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { _playsData = j; _playsDone = true; return j; })
+      .catch(() => { _playsDone = true; return null; });
+    return _playsP;
+  }
 
   // Market code → label. Self-contained (MARKETS lives in the props-data IIFE, not
   // this board one); the ledger only carries codes, so map them here.
@@ -45467,6 +45486,7 @@ window.VaultMarketProj = (function () {
   function _trShell(subtitle, body) {
     const tabs = '<span class="bt-seg tr-tabs">'
       + '<button data-rt="mine" class="' + (resultsTab === 'mine' ? 'on' : '') + '">My Picks</button>'
+      + '<button data-rt="plays" class="' + (resultsTab === 'plays' ? 'on' : '') + '">Vault’s Plays</button>'
       + '<button data-rt="vault" class="' + (resultsTab === 'vault' ? 'on' : '') + '">Vault Record</button>'
       + '<button data-rt="vaultgame" class="' + (resultsTab === 'vaultgame' ? 'on' : '') + '">Vault Game Record</button>'
       + '<button data-rt="calib" class="' + (resultsTab === 'calib' ? 'on' : '') + '">Win % Check</button></span>';
@@ -45563,7 +45583,77 @@ window.VaultMarketProj = (function () {
     if (resultsTab === 'vault') return _drawVault(wire);
     if (resultsTab === 'vaultgame') return _drawVaultGame(wire);
     if (resultsTab === 'calib') return _drawCalib(wire);
+    if (resultsTab === 'plays') return _drawPlays(wire);
     return _drawMine(wire);
+  }
+
+  // ── Vault's Plays — the locked weekly card's record. Each play is graded at
+  //    the line and price it posted with (what a user following the card got),
+  //    plus what the same play made at the closing line and whether the market
+  //    moved its way after it posted. ─────────────────────────────────────────
+  const _plAgg = rows => {
+    const dec = rows.filter(r => r.result === 'W' || r.result === 'L'), W = dec.filter(r => r.result === 'W').length;
+    const cl = rows.filter(r => r.units_close != null), bc = rows.filter(r => r.beat_close != null);
+    return { W, L: dec.length - W, P: rows.filter(r => r.result === 'P').length, V: rows.filter(r => r.result === 'V').length,
+      pend: rows.filter(r => !r.result).length, n: dec.length, wr: dec.length ? W / dec.length : null,
+      units: rows.reduce((s, r) => s + (r.units || 0), 0), unitsClose: cl.length ? cl.reduce((s, r) => s + r.units_close, 0) : null, nClose: cl.length,
+      beat: bc.filter(r => r.beat_close).length, nClv: bc.length };
+  };
+  function _plResPill(r) {
+    return r.result === 'W' ? '<span class="mp-res w">WON</span>' : r.result === 'L' ? '<span class="mp-res l">LOST</span>'
+      : r.result === 'P' ? '<span class="mp-res pend">PUSH</span>' : r.result === 'V' ? '<span class="mp-res pend" title="Player did not play; books void the bet">VOID</span>'
+      : '<span class="mp-res pend">pending</span>';
+  }
+  function _drawPlays(wire) {
+    const paint = data => {
+      if (propsView !== 'results' || resultsTab !== 'plays') return;
+      const all = ((data && data.picks) || []).filter(r => r.stype !== 'post');
+      if (!all.length) {
+        _pvInner().innerHTML = _trShell('no plays posted yet', '<div class="tr-empty"><div class="tr-ek">No Vault’s Plays yet</div>'
+          + '<div class="tr-et">Each week Vault locks up to 10 plays on its Best Bets card, frozen at the line and price they posted with. Every one is graded here once its game is played.</div></div>');
+        wire(); return;
+      }
+      const weeks = [...new Set(all.map(r => r.week))].sort((a, b) => a - b);
+      if (_trWeek != null && !weeks.includes(_trWeek)) _trWeek = null;
+      const rows = all.filter(_trWeekMatch), a = _plAgg(rows);
+      const hero = '<div class="tr-hero">'
+        + '<div class="tr-h-main"><div class="tr-h-rec">' + a.W + '–' + a.L + (a.P ? '–' + a.P : '') + '</div>'
+        + '<div class="tr-h-sub">' + rows.length + ' plays' + (a.pend ? ' · ' + a.pend + ' pending' : '') + (a.V ? ' · ' + a.V + ' void' : '')
+        + (_trWeek != null ? ' · Week ' + _trWeek : ' · this season') + '</div></div>'
+        + '<div class="tr-h-kpis">'
+        + '<div class="tr-kpi"><div class="tr-kl">Units</div><div class="tr-kv ' + _trUC(a.units) + '">' + _trU(a.units) + '</div><div class="tr-kt">1u a play at the posted price</div></div>'
+        + '<div class="tr-kpi" title="The same plays bet at the closing line and closing price instead. The gap to the posted-price number is what getting in early is worth."><div class="tr-kl">At the close</div><div class="tr-kv ' + _trUC(a.unitsClose) + '">' + _trU(a.unitsClose) + '</div><div class="tr-kt">' + a.nClose + ' plays with a clean closing line</div></div>'
+        + (a.nClv ? '<div class="tr-kpi" title="Closing-line value: how often the line or price moved toward the play after it posted."><div class="tr-kl">Beat the close</div><div class="tr-kv ' + (a.beat / a.nClv > 0.5 ? 'good' : a.beat / a.nClv < 0.5 ? 'bad' : '') + '">' + _trPct(a.beat / a.nClv) + '</div><div class="tr-kt">' + a.beat + ' of ' + a.nClv + ' plays that moved</div></div>' : '')
+        + '</div></div>';
+      const byWeek = _trWeek == null && weeks.length > 1 ? _trBarsRO('By week', weeks.map(w => {
+        const s = _plAgg(all.filter(r => r.week === w)); return { k: 'Week ' + w, wr: s.wr || 0, w: s.W, l: s.L, roi: s.units };
+      }).filter(r => r.w + r.l)) : '';
+      const sorted = rows.slice().sort((x, y) => (y.week - x.week) || String(x.posted || '').localeCompare(String(y.posted || '')));
+      const list = sorted.map(r => {
+        const rc = r.result === 'W' ? 'w' : r.result === 'L' ? 'l' : 'pend';
+        const gl = r.grade ? '<span class="eb-grade ' + String(r.grade).toLowerCase() + '"><span class="eb-gside">' + (r.side === 'over' ? 'O' : 'U') + '</span>' + r.grade + '</span>' : '<span class="tr-nog">' + (r.side === 'over' ? 'O' : 'U') + '</span>';
+        const chips = [];
+        if (r.price != null) chips.push('<span class="tr-mk tr-mk-px" title="Price when the play posted' + (r.book ? ' · ' + _trEsc(r.book) : '') + '">' + F().fmtOdds(r.price) + (r.book ? bookChip(r.book) : '') + '</span>');
+        if (r.ev != null) chips.push('<span class="tr-mk pos" title="Vault’s edge when the play posted">+' + r.ev + '% edge</span>');
+        if (r.line_close != null && r.clv_line != null) chips.push('<span class="tr-mk ' + (r.beat_close === true ? 'pos' : r.beat_close === false ? 'neg' : '') + '" title="Where the line closed. Green means the market moved toward this play after it posted.">closed ' + _trEsc(r.line_close) + (r.price_close != null ? ' ' + F().fmtOdds(r.price_close) : '') + '</span>');
+        if (r.src === 'rebuilt') chips.push('<span class="tr-mk" title="Weeks 1-3 were rebuilt from saved Best Bets history with the same rule: the first 10 plays to post each week, one per player.">rebuilt</span>');
+        const matchup = r.team ? ' · ' + _trEsc(r.team) + (r.opp ? ' vs ' + _trEsc(r.opp) : '') : '';
+        return '<div class="tr-pk ' + rc + '">'
+          + '<div class="tr-pk-l">' + gl + '<div class="tr-pk-nm"><b>' + _trEsc(r.name) + (r.pos ? '<span class="tr-pk-pos">' + _trEsc(r.pos) + '</span>' : '') + '</b>'
+          + '<span>' + (r.side === 'over' ? 'Over' : 'Under') + ' ' + _trEsc(r.line) + ' ' + _trEsc(r.marketLabel || _mkLabel(r.market)) + matchup + ' · Wk ' + _trEsc(r.week) + '</span>'
+          + '<div class="tr-pk-meta">' + chips.join('') + '</div></div></div>'
+          + '<div class="tr-pk-r">' + (r.actual != null ? '<span class="tr-pk-act" title="Actual result">' + _trEsc(r.actual) + '</span>' : '')
+          + _plResPill(r) + (r.units != null && r.result !== 'V' ? '<span class="tr-pk-act ' + _trUC(r.units) + '" title="Units at the posted price">' + _trU(r.units) + '</span>' : '') + '</div></div>';
+      }).join('');
+      const body = _trWeekBar(weeks, true) + hero + byWeek
+        + '<div class="tr-listwrap"><div class="tr-gt">Every play on the card</div>' + list + '</div>'
+        + '<div class="tr-note">Vault’s Plays is the Best Bets card, locked. Up to 10 plays a week, one per player: the first ones to reach the top of Best Bets. Once a play posts, its line and price never change, and it stays on the card win or lose. Units assume 1u a play at the posted price. “At the close” re-prices the same plays at the closing line. A player who sits out is a void, like at a book.</div>';
+      _pvInner().innerHTML = _trShell(all.length + ' plays locked · graded at the posted line', body); wire();
+    };
+    if (_playsDone) { paint(_playsData); return; }
+    _pvInner().innerHTML = _trShell('loading Vault’s Plays…', '<div class="tr-load"><span class="spinner md"></span></div>');
+    wire();
+    loadPlays().then(paint);
   }
 
   // ── Win % Check — is the board's Win % honest? Reads data/prop_calibration.json
@@ -47810,6 +47900,11 @@ window.VaultMarketProj = (function () {
     // over the Game Markets board where they're just noise.
     if (view !== 'props') { host.innerHTML = ''; return; }
     const bb = MODEL && MODEL.best_bets;
+    // Locked weekly card (build_best_bets.mjs → best_bets.card). Once a feed
+    // carries one, the hero shows the card instead of the rotating live top-N:
+    // every play stays put at the line + price it posted with, and a played one
+    // shows its result instead of vanishing, so the card is a record, not a feed.
+    if (bb && Array.isArray(bb.card) && bb.card.length) { _bbRenderCard(host, bb); return; }
     // Absolute-count guard (mirrors build_best_bets.mjs). On a low integer-count
     // line the builder's relative proj-gap gate is too loose, so a projection half
     // a count below the line clears it yet flips the pick into a plus-money Under
@@ -47897,6 +47992,51 @@ window.VaultMarketProj = (function () {
       render();
     });
   }
+  function _bbRenderCard(host, bb) {
+    const POS = { QB: 'var(--bt-qb,#ff6680)', RB: 'var(--bt-rb,#37d6a3)', WR: 'var(--bt-wr,#5b9dff)', TE: 'var(--bt-te,#ffb545)' };
+    const attr = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const rec = _playsData, byKey = {};
+    ((rec && rec.picks) || []).forEach(r => { byKey[r.key] = r; });
+    const now = Date.now(), kick = p => { const t = Date.parse(p.commence || ''); return Number.isFinite(t) ? t : Infinity; };
+    // Open plays first (soonest kickoff first), then the ones already played.
+    const plays = bb.card.slice().sort((a, b) => ((kick(a) <= now) - (kick(b) <= now)) || (kick(a) - kick(b)));
+    const card = p => {
+      const r = byKey[p.key], started = kick(p) <= now;
+      const col = POS[p.pos] || 'var(--bt-muted)';
+      const sideLbl = p.side === 'under' ? 'Under' : 'Over';
+      const price = p.price == null ? '' : (p.price > 0 ? '+' : '') + p.price;
+      let right;
+      if (r && r.result) right = '<span class="bb-res ' + ({ W: 'w', L: 'l' }[r.result] || 'n') + '">' + ({ W: 'Won', L: 'Lost', P: 'Push', V: 'Void' }[r.result]) + (r.actual != null && r.result !== 'V' ? '<span>' + attr(r.actual) + '</span>' : '') + '</span>';
+      else if (started) right = '<span class="bb-res n">In play<span>pending</span></span>';
+      else right = '<span class="bb-ev">+' + p.ev + '%<span>EV</span></span>';
+      return '<button class="bb-card' + (started ? ' done' : '') + '" title="' + attr(p.name + ': ' + sideLbl + ' ' + p.line + ' ' + p.marketLabel + ', locked at ' + (p.book || '') + ' ' + price) + '" data-bb-name="' + attr(p.name) + '" data-bb-pos="' + attr(p.pos) + '" data-bb-mkt="' + attr(p.market) + '">'
+        + '<span class="bb-grade g' + String(p.grade || '').toLowerCase() + '" style="box-shadow:inset 0 0 0 1px ' + col + '55">' + attr(p.grade || '') + '</span>'
+        + '<span class="bb-body"><span class="bb-nm">' + attr(p.name) + '</span>'
+        + '<span class="bb-pick">' + sideLbl + ' <b>' + attr(p.line) + '</b> ' + attr(p.marketLabel) + '</span>'
+        + '<span class="bb-meta">' + attr(p.team || '') + (p.opp ? ' vs ' + attr(p.opp) : '') + ' · ' + attr(p.book || '') + ' ' + price + '</span></span>'
+        + right + '</button>';
+    };
+    const s = rec && rec.seasons && rec.seasons[String(bb.season)];
+    const sum = s && s.summary;
+    const recChip = sum && (sum.W + sum.L)
+      ? '<button class="bb-rec" id="bb-rec" title="Every play Vault has locked this season, graded at the posted line and price">Season <b>' + sum.W + '–' + sum.L + '</b> · <b class="' + (sum.units >= 0 ? 'up' : 'dn') + '">' + (sum.units >= 0 ? '+' : '') + sum.units.toFixed(1) + 'u</b> ›</button>'
+      : '';
+    host.innerHTML = '<div class="bb-wrap"><div class="bb-head"><span class="bb-title">' + reIcon('star', { size: 13 }) + ' Vault’s Plays · Week ' + attr(bb.week) + '</span>'
+      + '<span class="bb-hr"><span class="bb-sub">Locked when posted · ' + bb.card.length + ' of ' + (bb.card_max || 10) + '</span>' + recChip + '</span></div>'
+      + '<div class="bb-cards lock">' + plays.map(card).join('') + '</div></div>';
+    if (!_playsDone) loadPlays().then(d => { if (d && view === 'props') renderBestBets(); });
+    const rc = host.querySelector('#bb-rec');
+    if (rc) rc.onclick = () => { propsView = 'results'; resultsTab = 'plays'; _trFilter = {}; _trWeek = null; renderPropsBoard(); };
+    host.querySelectorAll('.bb-card').forEach(el => el.onclick = () => {
+      view = 'props';
+      const p = el.dataset.bbPos; if (p && ['QB', 'RB', 'WR', 'TE'].includes(p)) curPos = p;
+      const mk = el.dataset.bbMkt; if (mk) curMarket = mk;
+      searchQ = '';
+      const sb = document.getElementById('bt-search'); if (sb) sb.value = '';
+      ebPendSel = el.dataset.bbName; ebScrollSel = true;
+      render();
+    });
+  }
   function injectBestBetStyles() {
     if (document.getElementById('bt-bb-styles')) return;
     const s = document.createElement('style'); s.id = 'bt-bb-styles';
@@ -47924,6 +48064,17 @@ window.VaultMarketProj = (function () {
 #page-betting .bb-meta{font-family:var(--bt-mono);font-size:10px;color:var(--bt-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #page-betting .bb-ev{display:flex;flex-direction:column;align-items:center;font-family:var(--bt-mono);font-size:14px;font-weight:700;color:var(--bt-green);flex:none}
 #page-betting .bb-ev span{font-size:8px;letter-spacing:.12em;color:var(--bt-green);opacity:.8;margin-top:1px}
+#page-betting .bb-hr{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+#page-betting .bb-rec{font-family:var(--bt-mono);font-size:11px;color:var(--bt-text2);background:var(--bt-s1);border:1px solid var(--bt-border2);border-radius:9999px;padding:4px 11px;cursor:pointer;transition:border-color .15s ease,transform var(--dur-release,.5s) var(--ease-spring,ease)}
+#page-betting .bb-rec:hover{border-color:color-mix(in srgb,var(--bt-gold) 45%,transparent)}
+#page-betting .bb-rec:active{transform:scale(var(--press-chip,.88));transition:transform var(--dur-press,80ms) ease-out}
+#page-betting .bb-rec b{color:var(--bt-text)}#page-betting .bb-rec b.up{color:var(--bt-green)}#page-betting .bb-rec b.dn{color:var(--bt-red,#ff5a6e)}
+#page-betting .bb-cards.lock{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+@media (max-width:640px){#page-betting .bb-cards.lock{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:220px;overflow-x:auto}}
+#page-betting .bb-card.done{opacity:.72}
+#page-betting .bb-res{display:flex;flex-direction:column;align-items:center;font-family:var(--bt-mono);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;flex:none;color:var(--bt-muted)}
+#page-betting .bb-res span{font-size:9px;font-weight:600;letter-spacing:.06em;margin-top:2px;opacity:.85}
+#page-betting .bb-res.w{color:var(--bt-green)}#page-betting .bb-res.l{color:var(--bt-red,#ff5a6e)}
 #page-betting .bb-leans{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:11px;padding-top:10px;border-top:1px solid var(--bt-border)}
 #page-betting .bb-ll{font-family:var(--bt-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--bt-faint);cursor:help}
 #page-betting .bb-lean{font-family:var(--bt-mono);font-size:11px;color:var(--bt-text2)}

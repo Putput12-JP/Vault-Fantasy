@@ -953,6 +953,92 @@ def build_scoreboard(prop_picks, game_picks):
     return board
 
 
+# ── Vault's Plays: grade the locked weekly card ──────────────────────────────
+# data/best_bets_card.json is the append-only card build_best_bets.mjs locks
+# (every play frozen at the line + price it posted with). Graded HERE, at that
+# posted line and price, because that is the bet a user following the card made.
+# The closing line/price comes from the matching ledger row, for two extra
+# reads: units if you had waited and bet the close, and CLV (did the market move
+# toward the play after it posted). A close line more than max(15%, 1) off the
+# posted one is treated as a junk snapshot (alt lines leak in) and gets no CLV.
+def _am_pay(a):
+    return 100 / 110 if a is None else (a / 100 if a > 0 else 100 / abs(a))
+
+def settle_card(prop_picks):
+    try:
+        card = json.load(open(os.path.join(DATA, "best_bets_card.json")))
+    except Exception:
+        return None
+    by_key = {(str(p.get("season")), p.get("week"), str(p.get("pid")), p.get("market")): p for p in prop_picks}
+    # A team whose props have settled this week has played; a card player on it
+    # with no box score sat out, and books void the bet (result "V", 0 units).
+    # Caveat: a player who dressed but recorded no stat also has no row; for the
+    # yardage/catch markets the card plays that is rare (Wk1-3 voids were all
+    # confirmed inactive), but check a V against the injury report if in doubt.
+    team_done = {(str(p.get("season")), p.get("week"), p.get("team")) for p in prop_picks if p.get("actual") is not None}
+    actuals_cache, out = {}, []
+    for c in card.get("picks") or []:
+        season, week, market, side, line = str(c.get("season")), c.get("week"), c.get("market"), c.get("side"), c.get("line")
+        if season not in actuals_cache:
+            actuals_cache[season] = load_actuals(season)
+        row = dict(c)
+        actual = actual_for(actuals_cache[season], c.get("name"), week, market) if market in COL else None
+        led = by_key.get((season, week, str(c.get("pid")), market))
+        if actual is None and led is not None:
+            actual = led.get("actual")          # same box score, joined by the ledger's name matching
+        if market == "anytime_td" and line is not None and line <= 0:
+            line = 0.5                          # "anytime" = over 0.5 TDs; posted as line 0
+        res = units = None
+        if actual is None and (season, week, c.get("team")) in team_done:
+            res, units = "V", 0.0
+        elif actual is not None and line is not None and side in ("over", "under"):
+            if abs(actual - line) < 1e-9:
+                res, units = "P", 0.0
+            else:
+                won = actual > line if side == "over" else actual < line
+                res = "W" if won else "L"
+                units = _am_pay(c.get("price")) if won else -1.0
+        row.update({"actual": actual, "result": res, "units": None if units is None else round(units, 3)})
+        # closing line / price from the ledger (same prop, same week)
+        lc = led.get("line_close") if led else None
+        cp = (led.get("close_over") if side == "over" else led.get("close_under")) if led else None
+        clv_line = beat = units_close = None
+        if lc is not None and line is not None and abs(lc - line) <= max(0.15 * abs(line), 1.0):
+            clv_line = (lc - line) if side == "over" else (line - lc)
+            if abs(clv_line) > 1e-9:
+                beat = clv_line > 0
+            elif cp is not None and c.get("price") is not None:
+                # same number: did the side get more expensive after it posted?
+                d = am_prob(cp) - am_prob(c["price"])
+                beat = True if d > 0.005 else False if d < -0.005 else None
+            if actual is not None and abs(actual - lc) > 1e-9:
+                wc = actual > lc if side == "over" else actual < lc
+                units_close = _am_pay(cp) if wc else -1.0
+            elif actual is not None:
+                units_close = 0.0
+        row.update({"line_close": lc, "price_close": cp, "clv_line": clv_line, "beat_close": beat,
+                    "units_close": None if units_close is None else round(units_close, 3)})
+        out.append(row)
+
+    def summ(rows):
+        dec = [r for r in rows if r["result"] in ("W", "L")]
+        W = sum(1 for r in dec if r["result"] == "W")
+        cl = [r for r in rows if r["units_close"] is not None]
+        bc = [r for r in rows if r["beat_close"] is not None]
+        return {"W": W, "L": len(dec) - W, "P": sum(1 for r in rows if r["result"] == "P"),
+                "pending": sum(1 for r in rows if r["result"] is None), "void": sum(1 for r in rows if r["result"] == "V"), "n": len(rows),
+                "units": round(sum(r["units"] for r in rows if r["units"] is not None), 2),
+                "units_close": round(sum(r["units_close"] for r in cl), 2), "n_close": len(cl),
+                "beat_close": sum(1 for r in bc if r["beat_close"]), "n_clv": len(bc)}
+    seasons = {}
+    for r in out:
+        s = seasons.setdefault(r["season"], {"all": [], "weeks": defaultdict(list)})
+        s["all"].append(r); s["weeks"][f'{r.get("stype") or "reg"}-{r["week"]}'].append(r)
+    return {"card_max": card.get("card_max"), "picks": out,
+            "seasons": {k: {"summary": summ(v["all"]), "weeks": {w: summ(rs) for w, rs in sorted(v["weeks"].items())}}
+                        for k, v in seasons.items()}}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--season", default=None)
@@ -1021,11 +1107,21 @@ def main():
           f"weeks={recal['n_weeks']}/{recal['min_weeks']} n={recal['n_samples']}"
           + (f" knots={len(recal['knots'])}" if recal.get('knots') else ""))
 
+    plays = settle_card(prop_picks)
+    if plays:
+        for s, v in plays["seasons"].items():
+            m = v["summary"]
+            print(f"[settle] Vault's Plays {s}: {m['W']}-{m['L']}-{m['P']} ({m['pending']} pending) "
+                  f"{m['units']:+.1f}u at posted price | {m['units_close']:+.1f}u at the close | "
+                  f"beat close {m['beat_close']}/{m['n_clv']}")
+
     if args.dry:
         print("[settle] --dry: not written"); return
     json.dump(ledger, open(os.path.join(DATA, "bet_results.json"), "w"))
     json.dump(scoreboard, open(os.path.join(DATA, "edge_scoreboard.json"), "w"))
     json.dump(recal, open(os.path.join(DATA, "grade_recal.json"), "w"))
+    if plays is not None:
+        json.dump({"generated": now, **plays}, open(os.path.join(DATA, "best_bets_record.json"), "w"))
     print(f"[settle] wrote bet_results.json ({len(prop_picks)} props, {len(game_picks)} games) + edge_scoreboard.json + grade_recal.json")
 
 
