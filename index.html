@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-28T00:00', tag:'Improved', title:'Vault’s Plays only picks play types that are winning',
+    items:[
+      'The card now only takes play types with a proven recent record. Right now that is receiving-yard unders on WRs and TEs.',
+      'Every Best Bets play is still graded in the background. Any play type that gets hot can earn its way onto the card, and one that cools off comes off.',
+      'Card plays use real sportsbook prices only, so the record shows units you could actually get.',
+      'See which play types are on the card, and why, in Track Record → Vault’s Plays.'
+    ]
+  },
+  {
     ts:'2026-09-27T23:30', tag:'New', title:'Vault’s Plays: a locked weekly card with a record',
     items:[
       'Best Bets is now Vault’s Plays: up to 10 plays a week, locked at the line and price they posted with. They no longer swap out as lines move.',
@@ -45170,6 +45179,8 @@ window.VaultMarketProj = (function () {
   }
   // Vault's Plays record: the locked weekly card (build_best_bets.mjs) graded at
   // the line + price each play posted with (settle_bets.py → best_bets_record.json).
+  // "rec_yd|under|WR/TE" → "Rec Yds Unders · WR/TE" (card-rule bucket label)
+  const _plBucketLbl = k => { const [m, sd, g] = String(k).split('|'); return _mkLabel(m) + ' ' + (sd === 'under' ? 'Unders' : 'Overs') + ' · ' + g; };
   let _playsP = null, _playsData = null, _playsDone = false;
   function loadPlays() {
     if (!_playsP) _playsP = fetch(_LEDGER_BASE + '/best_bets_record.json')
@@ -45645,9 +45656,24 @@ window.VaultMarketProj = (function () {
           + '<div class="tr-pk-r">' + (r.actual != null ? '<span class="tr-pk-act" title="Actual result">' + _trEsc(r.actual) + '</span>' : '')
           + _plResPill(r) + (r.units != null && r.result !== 'V' ? '<span class="tr-pk-act ' + _trUC(r.units) + '" title="Units at the posted price">' + _trU(r.units) + '</span>' : '') + '</div></div>';
       }).join('');
-      const body = _trWeekBar(weeks, true) + hero + byWeek
+      const rules = data && data.rules, rb = rules && rules.buckets ? Object.entries(rules.buckets) : [];
+      const ruleTbl = rb.length ? (() => {
+        const pr = rules.params || {};
+        const rows = rb.sort((x, y) => (y[1].on - x[1].on) || ((y[1].units || 0) - (x[1].units || 0))).map(([k, v]) => {
+          const cls = _trUC(v.units);
+          return '<div class="pl-rule" title="' + _trEsc(v.why || '') + '"><span class="pl-rk">' + _trEsc(_plBucketLbl(k)) + '</span>'
+            + '<span class="mp-res ' + (v.on ? 'w' : 'pend') + '">' + (v.on ? 'ON CARD' : 'OFF') + '</span>'
+            + '<span class="pl-rn">' + (v.n ? _trPct(v.W / v.n) : '—') + '</span>'
+            + '<span class="pl-rn">' + (v.W || 0) + '–' + (v.L || 0) + '</span>'
+            + '<span class="pl-rn ' + cls + '">' + _trU(v.units) + '</span></div>';
+        }).join('');
+        return '<div class="tr-group"><div class="tr-gt">What makes the card <span class="tr-gtn">· every Best Bets play, last ' + (rules.weeks || []).length + ' weeks, real sportsbook prices</span></div>'
+          + '<div class="pl-rule pl-rh"><span></span><span></span><span class="pl-rn">WIN%</span><span class="pl-rn">W–L</span><span class="pl-rn">UNITS</span></div>' + rows
+          + '<div class="tr-note" style="border-top:none;padding:8px 0 0">A play type goes on the card after ' + (pr.on_min_plays || 15) + '+ plays at a ' + Math.round((pr.on_min_roi || 0.05) * 100) + '%+ return over the last ' + (pr.window_weeks || 4) + ' weeks, and comes off once it is losing there. Every Best Bets play keeps being graded, so a new type can earn its way on.</div></div>';
+      })() : '';
+      const body = _trWeekBar(weeks, true) + hero + byWeek + ruleTbl
         + '<div class="tr-listwrap"><div class="tr-gt">Every play on the card</div>' + list + '</div>'
-        + '<div class="tr-note">Vault’s Plays is the Best Bets card, locked. Up to 10 plays a week, one per player: the first ones to reach the top of Best Bets. Once a play posts, its line and price never change, and it stays on the card win or lose. Units assume 1u a play at the posted price. “At the close” re-prices the same plays at the closing line. A player who sits out is a void, like at a book.</div>';
+        + '<div class="tr-note">Vault’s Plays is the Best Bets card, locked. Up to 10 plays a week, one per player: the first ones to reach the top of Best Bets among the play types that have earned a spot (see What makes the card). Once a play posts, its line and price never change, and it stays on the card win or lose. Units assume 1u a play at the posted price. “At the close” re-prices the same plays at the closing line. A player who sits out is a void, like at a book.</div>';
       _pvInner().innerHTML = _trShell(all.length + ' plays locked · graded at the posted line', body); wire();
     };
     if (_playsDone) { paint(_playsData); return; }
@@ -48022,7 +48048,9 @@ window.VaultMarketProj = (function () {
       ? '<button class="bb-rec" id="bb-rec" title="Every play Vault has locked this season, graded at the posted line and price">Season <b>' + sum.W + '–' + sum.L + '</b> · <b class="' + (sum.units >= 0 ? 'up' : 'dn') + '">' + (sum.units >= 0 ? '+' : '') + sum.units.toFixed(1) + 'u</b> ›</button>'
       : '';
     host.innerHTML = '<div class="bb-wrap"><div class="bb-head"><span class="bb-title">' + reIcon('star', { size: 13 }) + ' Vault’s Plays · Week ' + attr(bb.week) + '</span>'
-      + '<span class="bb-hr"><span class="bb-sub">Locked when posted · ' + bb.card.length + ' of ' + (bb.card_max || 10) + '</span>' + recChip + '</span></div>'
+      + '<span class="bb-hr"><span class="bb-sub" title="Only play types that have earned a spot on their own recent record go on the card">'
+      + (bb.card_rule && bb.card_rule.on && bb.card_rule.on.length ? bb.card_rule.on.map(_plBucketLbl).join(', ') + ' · ' : '')
+      + 'Locked when posted · ' + bb.card.length + ' of ' + (bb.card_max || 10) + '</span>' + recChip + '</span></div>'
       + '<div class="bb-cards lock">' + plays.map(card).join('') + '</div></div>';
     if (!_playsDone) loadPlays().then(d => { if (d && view === 'props') renderBestBets(); });
     const rc = host.querySelector('#bb-rec');
@@ -48072,6 +48100,13 @@ window.VaultMarketProj = (function () {
 #page-betting .bb-cards.lock{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 @media (max-width:640px){#page-betting .bb-cards.lock{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:220px;overflow-x:auto}}
 #page-betting .bb-card.done{opacity:.72}
+#page-betting .pl-rule{display:grid;grid-template-columns:minmax(0,1fr) 78px 56px 64px 72px;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--bt-border);font-size:13px;color:var(--bt-text)}
+#page-betting .pl-rule.pl-rh{border-top:none;padding:0 0 4px;font-family:var(--bt-mono);font-size:9px;letter-spacing:.05em;color:var(--bt-muted)}
+#page-betting .pl-rk{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page-betting .pl-rule .mp-res{justify-self:start}
+#page-betting .pl-rn{font-family:var(--bt-mono);font-size:12px;text-align:right}
+#page-betting .pl-rn.good{color:var(--bt-green)}#page-betting .pl-rn.bad{color:var(--bt-red,#ff5a6e)}
+@media (max-width:640px){#page-betting .pl-rule{grid-template-columns:minmax(0,1fr) 64px 48px 58px}#page-betting .pl-rule>:nth-child(3){display:none}}
 #page-betting .bb-res{display:flex;flex-direction:column;align-items:center;font-family:var(--bt-mono);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;flex:none;color:var(--bt-muted)}
 #page-betting .bb-res span{font-size:9px;font-weight:600;letter-spacing:.06em;margin-top:2px;opacity:.85}
 #page-betting .bb-res.w{color:var(--bt-green)}#page-betting .bb-res.l{color:var(--bt-red,#ff5a6e)}

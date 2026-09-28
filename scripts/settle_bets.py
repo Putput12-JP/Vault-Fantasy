@@ -961,14 +961,22 @@ def build_scoreboard(prop_picks, game_picks):
 # reads: units if you had waited and bet the close, and CLV (did the market move
 # toward the play after it posted). A close line more than max(15%, 1) off the
 # posted one is treated as a junk snapshot (alt lines leak in) and gets no CLV.
+#
+# data/best_bets_shadow.json is every play that reached the live Best Bets top-N,
+# card or not. It is graded the same way and drives data/best_bets_rules.json:
+# which play types (market x side x position group) may go on the card. A type
+# earns a spot on its own recent record and loses it the same way, so the card
+# follows whatever is actually winning instead of a hand-picked market.
 def _am_pay(a):
     return 100 / 110 if a is None else (a / 100 if a > 0 else 100 / abs(a))
 
-def settle_card(prop_picks):
+def _load_data(name):
     try:
-        card = json.load(open(os.path.join(DATA, "best_bets_card.json")))
+        return json.load(open(os.path.join(DATA, name)))
     except Exception:
         return None
+
+def _grade_plays(picks, prop_picks):
     by_key = {(str(p.get("season")), p.get("week"), str(p.get("pid")), p.get("market")): p for p in prop_picks}
     # A team whose props have settled this week has played; a card player on it
     # with no box score sat out, and books void the bet (result "V", 0 units).
@@ -977,7 +985,7 @@ def settle_card(prop_picks):
     # confirmed inactive), but check a V against the injury report if in doubt.
     team_done = {(str(p.get("season")), p.get("week"), p.get("team")) for p in prop_picks if p.get("actual") is not None}
     actuals_cache, out = {}, []
-    for c in card.get("picks") or []:
+    for c in picks:
         season, week, market, side, line = str(c.get("season")), c.get("week"), c.get("market"), c.get("side"), c.get("line")
         if season not in actuals_cache:
             actuals_cache[season] = load_actuals(season)
@@ -1019,24 +1027,79 @@ def settle_card(prop_picks):
         row.update({"line_close": lc, "price_close": cp, "clv_line": clv_line, "beat_close": beat,
                     "units_close": None if units_close is None else round(units_close, 3)})
         out.append(row)
+    return out
 
-    def summ(rows):
-        dec = [r for r in rows if r["result"] in ("W", "L")]
-        W = sum(1 for r in dec if r["result"] == "W")
-        cl = [r for r in rows if r["units_close"] is not None]
-        bc = [r for r in rows if r["beat_close"] is not None]
-        return {"W": W, "L": len(dec) - W, "P": sum(1 for r in rows if r["result"] == "P"),
-                "pending": sum(1 for r in rows if r["result"] is None), "void": sum(1 for r in rows if r["result"] == "V"), "n": len(rows),
-                "units": round(sum(r["units"] for r in rows if r["units"] is not None), 2),
-                "units_close": round(sum(r["units_close"] for r in cl), 2), "n_close": len(cl),
-                "beat_close": sum(1 for r in bc if r["beat_close"]), "n_clv": len(bc)}
+def _summ(rows):
+    dec = [r for r in rows if r["result"] in ("W", "L")]
+    W = sum(1 for r in dec if r["result"] == "W")
+    cl = [r for r in rows if r["units_close"] is not None]
+    bc = [r for r in rows if r["beat_close"] is not None]
+    return {"W": W, "L": len(dec) - W, "P": sum(1 for r in rows if r["result"] == "P"),
+            "pending": sum(1 for r in rows if r["result"] is None), "void": sum(1 for r in rows if r["result"] == "V"), "n": len(rows),
+            "units": round(sum(r["units"] for r in rows if r["units"] is not None), 2),
+            "units_close": round(sum(r["units_close"] for r in cl), 2), "n_close": len(cl),
+            "beat_close": sum(1 for r in bc if r["beat_close"]), "n_clv": len(bc)}
+
+# Card eligibility. Measured on Weeks 1-3 of the live top-N (56 valid plays):
+# WR/TE rec-yds unders 28-11 +14.2u (every week positive); RB rec-yds unders
+# 2-3; every other type under 10 plays. A type needs RULE_ON_N settled plays in
+# the last RULE_WEEKS weeks at ROI >= RULE_ON_ROI to switch ON, and switches OFF
+# once it is losing (units < 0) over RULE_OFF_N+ plays in that window. The gap
+# between the two is deliberate: one bad week should not flip a proven type off,
+# and a 3-0 streak should not flip an unproven one on.
+RULE_WEEKS, RULE_ON_N, RULE_ON_ROI, RULE_OFF_N = 4, 15, 0.05, 10
+RULE_DEFAULT_ON = {"rec_yd|under|WR/TE"}   # the seed, used until the first rules file lands
+
+def _bucket(r):
+    pos = r.get("pos")
+    return f'{r.get("market")}|{r.get("side")}|{"RB" if pos == "RB" else "QB" if pos == "QB" else "WR/TE"}'
+
+def _card_rules(shadow_rows, prev):
+    prev_on = {k for k, v in ((prev or {}).get("buckets") or {}).items() if v.get("on")} if prev else set(RULE_DEFAULT_ON)
+    settled = [r for r in shadow_rows if r["result"] in ("W", "L") and r.get("book_real", True)]
+    if not settled:
+        return {"weeks": [], "buckets": {k: {"on": True, "why": "seed"} for k in sorted(prev_on)}}
+    season = max(str(r["season"]) for r in settled)
+    wks = sorted({r["week"] for r in settled if str(r["season"]) == season})[-RULE_WEEKS:]
+    win = [r for r in settled if str(r["season"]) == season and r["week"] in wks]
+    by = defaultdict(list)
+    for r in win:
+        by[_bucket(r)].append(r)
+    out = {}
+    for k in sorted(set(by) | prev_on):
+        rs = by.get(k, [])
+        n = len(rs); W = sum(1 for r in rs if r["result"] == "W"); u = sum(r["units"] for r in rs)
+        roi = u / n if n else None
+        was = k in prev_on
+        if was:
+            on = not (n >= RULE_OFF_N and u < 0)
+            why = "losing over the window" if not on else "still winning" if n >= RULE_OFF_N else "not enough new plays to judge"
+        else:
+            on = n >= RULE_ON_N and roi is not None and roi >= RULE_ON_ROI
+            why = "earned it" if on else f"needs {RULE_ON_N}+ plays at {int(RULE_ON_ROI * 100)}%+ return"
+        out[k] = {"on": on, "was": was, "n": n, "W": W, "L": n - W, "units": round(u, 2),
+                  "roi": None if roi is None else round(roi, 4), "why": why}
+    return {"season": season, "weeks": wks, "buckets": out}
+
+def settle_card(prop_picks):
+    card = _load_data("best_bets_card.json")
+    if not card:
+        return None
+    out = _grade_plays(card.get("picks") or [], prop_picks)
     seasons = {}
     for r in out:
         s = seasons.setdefault(r["season"], {"all": [], "weeks": defaultdict(list)})
         s["all"].append(r); s["weeks"][f'{r.get("stype") or "reg"}-{r["week"]}'].append(r)
-    return {"card_max": card.get("card_max"), "picks": out,
-            "seasons": {k: {"summary": summ(v["all"]), "weeks": {w: summ(rs) for w, rs in sorted(v["weeks"].items())}}
-                        for k, v in seasons.items()}}
+    res = {"card_max": card.get("card_max"), "picks": out,
+           "seasons": {k: {"summary": _summ(v["all"]), "weeks": {w: _summ(rs) for w, rs in sorted(v["weeks"].items())}}
+                       for k, v in seasons.items()}}
+    shadow = _load_data("best_bets_shadow.json")
+    if shadow and shadow.get("picks"):
+        rows = _grade_plays(shadow["picks"], prop_picks)
+        rules = _card_rules(rows, _load_data("best_bets_rules.json"))
+        rules["params"] = {"window_weeks": RULE_WEEKS, "on_min_plays": RULE_ON_N, "on_min_roi": RULE_ON_ROI, "off_min_plays": RULE_OFF_N}
+        res["rules"] = rules
+    return res
 
 
 def main():
@@ -1114,6 +1177,8 @@ def main():
             print(f"[settle] Vault's Plays {s}: {m['W']}-{m['L']}-{m['P']} ({m['pending']} pending) "
                   f"{m['units']:+.1f}u at posted price | {m['units_close']:+.1f}u at the close | "
                   f"beat close {m['beat_close']}/{m['n_clv']}")
+        for k, v in ((plays.get("rules") or {}).get("buckets") or {}).items():
+            print(f"[settle]   card rule {k:22s} {'ON ' if v['on'] else 'off'} {v.get('W', 0)}-{v.get('L', 0)} {v.get('units', 0):+.1f}u ({v['why']})")
 
     if args.dry:
         print("[settle] --dry: not written"); return
@@ -1122,6 +1187,8 @@ def main():
     json.dump(recal, open(os.path.join(DATA, "grade_recal.json"), "w"))
     if plays is not None:
         json.dump({"generated": now, **plays}, open(os.path.join(DATA, "best_bets_record.json"), "w"))
+        if plays.get("rules"):
+            json.dump({"generated": now, **plays["rules"]}, open(os.path.join(DATA, "best_bets_rules.json"), "w"), indent=1)
     print(f"[settle] wrote bet_results.json ({len(prop_picks)} props, {len(game_picks)} games) + edge_scoreboard.json + grade_recal.json")
 
 

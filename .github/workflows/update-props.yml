@@ -55,12 +55,12 @@ jobs:
 
       - name: Commit if changed
         run: |
-          if git diff --quiet -- data/lineup-feed.json data/kalshi_props.json data/weather.json data/best_bets_card.json; then
+          if git diff --quiet -- data/lineup-feed.json data/kalshi_props.json data/weather.json data/best_bets_card.json data/best_bets_shadow.json; then
             echo "No prop changes."
           else
             git config user.name  "vault-bot"
             git config user.email "vault-bot@users.noreply.github.com"
-            git add data/lineup-feed.json data/kalshi_props.json data/weather.json data/best_bets_card.json
+            git add data/lineup-feed.json data/kalshi_props.json data/weather.json data/best_bets_card.json data/best_bets_shadow.json
             git commit -m "props: refresh PrizePicks lines + Kalshi sharp anchor [skip ci]"
             git push
           fi

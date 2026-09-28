@@ -1,0 +1,77 @@
+{
+ "generated": "2026-09-28T02:46:48.056882+00:00",
+ "season": "2026",
+ "weeks": [
+  1,
+  2,
+  3
+ ],
+ "buckets": {
+  "anytime_td|over|WR/TE": {
+   "on": false,
+   "was": false,
+   "n": 1,
+   "W": 0,
+   "L": 1,
+   "units": -1.0,
+   "roi": -1.0,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "rec_yd|under|RB": {
+   "on": false,
+   "was": false,
+   "n": 5,
+   "W": 2,
+   "L": 3,
+   "units": -1.16,
+   "roi": -0.2314,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "rec_yd|under|WR/TE": {
+   "on": true,
+   "was": true,
+   "n": 36,
+   "W": 26,
+   "L": 10,
+   "units": 13.44,
+   "roi": 0.3734,
+   "why": "still winning"
+  },
+  "rec|over|RB": {
+   "on": false,
+   "was": false,
+   "n": 1,
+   "W": 0,
+   "L": 1,
+   "units": -1.0,
+   "roi": -1.0,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "rec|over|WR/TE": {
+   "on": false,
+   "was": false,
+   "n": 4,
+   "W": 2,
+   "L": 2,
+   "units": 0.47,
+   "roi": 0.1175,
+   "why": "needs 15+ plays at 5%+ return"
+  },
+  "rec|under|WR/TE": {
+   "on": false,
+   "was": false,
+   "n": 5,
+   "W": 3,
+   "L": 2,
+   "units": 1.29,
+   "roi": 0.258,
+   "why": "needs 15+ plays at 5%+ return"
+  }
+ },
+ "params": {
+  "window_weeks": 4,
+  "on_min_plays": 15,
+  "on_min_roi": 0.05,
+  "off_min_plays": 10
+ }
+}

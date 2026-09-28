@@ -71,6 +71,16 @@ const PRICE_MIN = -250, PRICE_MAX = 200;      // bettable band: no -300 chalk, n
 // and the settle job never write the same file).
 const CARD_MAX = Number(ARG.cardmax || 10);
 const CARD_FILE = ARG.card || resolve(ROOT, 'data/best_bets_card.json');
+// Which play types may go on the card, and the log that decides it. Every play
+// that reaches the live top-N is appended to the shadow log (card or not);
+// settle_bets.py grades it and writes the rules: a type (market x side x
+// WR/TE|RB|QB) switches on after 15+ plays at a +5% return over the last 4
+// weeks, and off once it is losing there. Seed until the rules file exists:
+// WR/TE rec-yds unders, the only type that won every week of Weeks 1-3
+// (28-11, +14.2u); RB rec-yds unders were 2-3 and nothing else had 10 plays.
+const SHADOW_FILE = ARG.shadow || resolve(ROOT, 'data/best_bets_shadow.json');
+const RULES_FILE = ARG.rules || resolve(ROOT, 'data/best_bets_rules.json');
+const CARD_DEFAULT_ON = ['rec_yd|under|WR/TE'];
 // Gate 2 — a "consensus" of DFS pick'em apps is not a beatable market. Their
 // yardage lines run low and price flat, so ranking by EV against them surfaces
 // the biggest model-vs-line disagreements (the least trustworthy bets). A best
@@ -652,7 +662,43 @@ function scoreProps(feed, PM, KP) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
+  return { list, pool: cands, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
+}
+
+function loadCardRules() {
+  try {
+    const r = JSON.parse(readFileSync(RULES_FILE, 'utf8'));
+    const on = Object.entries(r.buckets || {}).filter(([, v]) => v && v.on).map(([k]) => k);
+    if (on.length) return { on: new Set(on), source: 'rules' };
+  } catch (e) { /* not written yet */ }
+  return { on: new Set(CARD_DEFAULT_ON), source: 'default' };
+}
+/* Every play that reaches the live top-N, once per week per player+market, at
+   the line + price it first showed. Append-only, in-season only. */
+function logShadow(feed, list, bucketOf) {
+  let file = null;
+  try { file = JSON.parse(readFileSync(SHADOW_FILE, 'utf8')); } catch (e) { /* first run */ }
+  if (!file || !Array.isArray(file.picks)) file = { picks: [] };
+  const stRaw = String(feed.season_type || '').toLowerCase();
+  const stype = /^post/.test(stRaw) ? 'post' : /^reg/.test(stRaw) ? 'reg' : null;
+  const season = String(feed.season || ''), week = Number(feed.week) || null;
+  let changed = false;
+  if (stype && week && season) {
+    const have = new Set(file.picks.map(p => p.key)), now = Date.now();
+    for (const b of list) {
+      const key = [season, stype, week, b.id, b.market].join('|');
+      if (have.has(key) || !(Date.parse(b.commence || '') > now)) continue;
+      file.picks.push({ key, season, stype, week, pid: String(b.id), name: b.name, team: b.team, pos: b.pos, opp: b.opp,
+        commence: b.commence, market: b.market, side: b.side, line: b.line, book: b.book, price: b.price,
+        book_real: isRealBook(b.book), ev: b.ev, prob: b.prob, grade: b.grade, bucket: bucketOf(b), posted: new Date().toISOString() });
+      have.add(key); changed = true;
+    }
+  }
+  if (changed) {
+    file.note = 'Every play that reached the live Best Bets top-N, card or not, at the line and price it first showed. Graded by settle_bets.py into best_bets_rules.json (which play types may go on the card).';
+    file.updated = new Date().toISOString();
+  }
+  return { file, changed };
 }
 
 /* ── locked weekly card (see CARD_MAX) ─────────────────────────────────────
@@ -760,7 +806,20 @@ function gameLeans(feed) {
     log(`game leans: ${leans.gated ? leans.gated : props.total >= 0 ? leans.list.length : 0}${leans.gated ? ' (empty)' : ` (${leans.offslate} off-slate)`}`);
     for (const b of props.list) log(`  • ${b.name} ${b.marketLabel} ${b.side.toUpperCase()} ${b.line} @ ${b.book} ${b.price > 0 ? '+' : ''}${b.price} — ${b.grade}, ${b.ev}% EV, ${b.books} books, ${b.games}g${b.sharpFair != null ? `, sharp ${(b.sharpFair * 100).toFixed(0)}% (gap ${b.sharpGap > 0 ? '+' : ''}${(b.sharpGap * 100).toFixed(0)}pt)` : ''}`);
 
-    const card = lockCard(feed, props.list);
+    // Card eligibility (data/best_bets_rules.json, written by settle_bets.py):
+    // only play types whose own recent record earned a spot. The card draws its
+    // top-N from those types alone, at a real sportsbook's price (pick'em apps
+    // pay flat, so their "price" isn't a bet anyone can place). props.list stays
+    // unfiltered: it feeds the shadow log, which is how a type earns its way on.
+    const rules = loadCardRules();
+    const bucketOf = b => `${b.market}|${b.side}|${b.pos === 'RB' ? 'RB' : b.pos === 'QB' ? 'QB' : 'WR/TE'}`;
+    const seenP = new Set(), eligible = [];
+    for (const c of props.pool || []) {
+      if (!rules.on.has(bucketOf(c)) || !isRealBook(c.book) || seenP.has(c.id)) continue;
+      seenP.add(c.id); eligible.push(c); if (eligible.length >= TOP) break;
+    }
+    const shadow = logShadow(feed, props.list, bucketOf);
+    const card = lockCard(feed, eligible);
 
     feed.best_bets = {
       generated: new Date().toISOString(),
@@ -771,6 +830,7 @@ function gameLeans(feed) {
       // posted this week, frozen at the line + price it posted with. This is
       // what the hero shows; `props` above is the live top-N that feeds it.
       card: card.picks, card_max: CARD_MAX,
+      card_rule: { on: [...rules.on].sort(), source: rules.source },
       game_leans: leans.list,
       game_leans_note: leans.gated === 'offseason'
         ? 'Game leans light up in-season — the game model is context, not an edge, and is gated off in the offseason.'
@@ -778,6 +838,7 @@ function gameLeans(feed) {
       note: 'Top props by confidence-adjusted EV on corroborated lines (≥2 books), modeled markets only.',
     };
     if (DRY) { log('DRY — not writing'); return; }
+    if (shadow.changed) writeFileSync(SHADOW_FILE, JSON.stringify(shadow.file, null, 1) + '\n');
     if (card.changed) { writeFileSync(CARD_FILE, JSON.stringify(card.file, null, 1) + '\n'); log('card: locked', card.added.join(', ') || 'nothing new'); }
     writeFileSync(FEED, JSON.stringify(feed));
     log('wrote best_bets to', FEED);
