@@ -40,6 +40,7 @@ const OUT = ARG.out ? resolve(process.cwd(), ARG.out) : resolve(HERE, '..', 'dat
 const MAX_SAMPLES = 80;            // per key; open is always kept, oldest extras drop
 const log = (...a) => console.log('[prop-history]', ...a);
 
+const DAY_MS = 864e5;
 const readJSON = p => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
 const num = v => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
@@ -91,12 +92,21 @@ const now = new Date().toISOString();
 const prev = readJSON(OUT) || {};
 const props = (prev.props && typeof prev.props === 'object') ? prev.props : {};   // carry ALL prior keys forward (retain finished weeks)
 
-let created = 0, moved = 0, seen = 0, contradicted = 0;
+let created = 0, moved = 0, seen = 0, contradicted = 0, started = 0, otherGame = 0;
+const nowMs = Date.parse(now);
 
 for (const pid in feed.vegas_player_props) {
   const p = feed.vegas_player_props[pid];
   if (!p || !p.lines) continue;
   const stats = players[pid] && players[pid].stats;
+  // Kickoff of the game these lines are for. Nothing is banked at or after it:
+  // once a game starts the books pull the market, so what's left is a stale
+  // lone quote or a live in-game line, and settlement's "close" must be the
+  // last PRE-game read. The feed also keeps cells from games already played
+  // (a Week 1 line still in the Week 3 feed), and those carry the old
+  // kickoff, so the same check keeps them out of this week's keys.
+  const kickMs = Date.parse(p.commence || '');
+  const commence = Number.isFinite(kickMs) ? new Date(kickMs).toISOString() : null;
   for (const mk in p.lines) {
     if (!p.lines[mk]) continue;
     // Defence in depth: the feed writers already run the quote guard, but this
@@ -111,20 +121,30 @@ for (const pid in feed.vegas_player_props) {
     // seasonType is in the key so preseason week N and regular-season week N
     // (same season+week integers) never collide into one settlement record.
     const key = [season, seasonType, week, pid, mk].join('|');
+    const rec = props[key];
+    if (commence && nowMs >= kickMs) { started++; continue; }
+    if (rec && rec.commence) {
+      const recKick = Date.parse(rec.commence);
+      if (nowMs >= recKick) { started++; continue; }
+      // A kickoff a day+ away from the banked one is a different game: the
+      // feed rolled to next week's lines while still tagged with this week.
+      // (Hours of drift is a flex / time change and is followed.)
+      if (commence && Math.abs(kickMs - recKick) > DAY_MS) { otherGame++; continue; }
+    }
     const cur = snapshot(cell, projFor(stats, mk), now);
     const q = bookQuotes(cell);
     const curQ = Object.assign({}, cur, { q });   // cur/open carry books; samples stay lean
-    const rec = props[key];
 
     if (!rec) {
       props[key] = {
         season, week, seasonType, pid, name: p.name || null, team: p.team || null,
-        pos: p.pos || null, opp: p.opp || null, ha: p.ha || null, market: mk,
+        pos: p.pos || null, opp: p.opp || null, ha: p.ha || null, market: mk, commence,
         open: curQ, cur: curQ, firstSeen: now, lastSeen: now, samples: [cur],
       };
       created++;
       continue;
     }
+    if (commence) rec.commence = commence;
     // existing key: roll cur forward, append a sample only when something moved
     rec.lastSeen = now;
     // matchup rolls forward: the feed used to keep a player's prior-week opp
@@ -156,7 +176,7 @@ for (const pid in feed.vegas_player_props) {
 }
 
 const payload = { generated: now, season, week, seasonType, keys: Object.keys(props).length, props };
-log(`${seen} live two-way lines · ${created} new keys · ${moved} moved · ${contradicted} contradicted (not banked) · ${payload.keys} total banked`);
+log(`${seen} live two-way lines · ${created} new keys · ${moved} moved · ${contradicted} contradicted · ${started} past kickoff · ${otherGame} other game (not banked) · ${payload.keys} total banked`);
 if (DRY) { log('--dry: not written'); process.exit(0); }
 writeFileSync(OUT, JSON.stringify(payload));
 log('wrote ' + OUT);

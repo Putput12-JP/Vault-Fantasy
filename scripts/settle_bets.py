@@ -429,7 +429,9 @@ def settle_props(season_filter=None):
         if better: dedup[ident] = r
     actuals_cache, model, hshift = {}, load_prop_model(), load_history_shift()
     leans = load_team_leans()
+    kickoffs = load_kickoffs()
     picks, unmatched, unsettled = [], 0, 0
+    n_kick = n_clamped = n_no_pregame = 0
 
     for r in dedup.values():
         seasonType = (r.get("seasonType") or "").lower()
@@ -458,7 +460,16 @@ def settle_props(season_filter=None):
             continue
 
         opn = r.get("open") or {}
-        cls = (r.get("samples") or [r.get("cur")])[-1] or r.get("cur") or {}
+        # Close = last snapshot before kickoff (games.csv by team; the record's
+        # own banked `commence` when nflverse has no row for it).
+        kick = kickoffs.get((season, str(week), team_nfl(r.get("team")))) or r.get("commence")
+        cls, cur_pre = pregame_prop_close(r, kick)
+        if kick:
+            n_kick += 1
+            if cls is None:
+                n_no_pregame += 1; unsettled += 1; continue
+            if cls is not (r.get("samples") or [r.get("cur")])[-1]:
+                n_clamped += 1
         line_o, line_c = opn.get("line"), cls.get("line")
         proj = opn.get("proj")
         if line_o is None or line_c is None:
@@ -591,7 +602,7 @@ def settle_props(season_filter=None):
             # capture use q0, the first per-book read (books_open_src says which).
             "books_open": book_prices((opn.get("q") if opn.get("q") else (r.get("q0") or {}).get("q")), line_o),
             "books_open_src": ("open" if opn.get("q") else ("first_seen" if r.get("q0") else None)),
-            "books_close": book_prices(((r.get("cur") or {}).get("q")), line_c),
+            "books_close": book_prices(((cur_pre or {}).get("q")), line_c),
             "grade_flat": grade_flat,
             "grade_boost": (grade_boost_for(p_model_side, g_shrink, be_open if be_open is not None else 0.55)
                             if p_model_side is not None else None),
@@ -602,21 +613,67 @@ def settle_props(season_filter=None):
             "vault_team_lean": team_lean(*tl) if tl else None,
         })
 
-    return picks, {"unsettled": unsettled, "unmatched_names": unmatched, "settled": len(picks)}
+    return picks, {"unsettled": unsettled, "unmatched_names": unmatched, "settled": len(picks),
+                   "kickoff_known": n_kick, "close_before_kickoff": n_clamped,
+                   "no_pregame_line": n_no_pregame}
 
 
 # ── game-market settlement ───────────────────────────────────────────────────
+_GAMES_CSV = []
+def games_csv_rows():
+    """nflverse games.csv rows, fetched once per run (props need kickoffs,
+    games need scores). [] on failure so settlement still proceeds."""
+    if not _GAMES_CSV:
+        try:
+            with urllib.request.urlopen(GAMES_URL, timeout=30) as resp:
+                text = resp.read().decode("utf-8")
+            _GAMES_CSV.append(list(csv.DictReader(io.StringIO(text))))
+        except Exception as e:
+            print(f"[settle] games.csv fetch failed ({e})")
+            _GAMES_CSV.append([])
+    return _GAMES_CSV[0]
+
+def load_kickoffs():
+    """{(season, week, team): kickoff ISO-UTC} from games.csv. gameday/gametime
+    are US Eastern wall-clock (London/Munich games too), so DST is resolved per
+    date. One game per team per week; unknown -> caller falls back."""
+    import datetime
+    from zoneinfo import ZoneInfo
+    et, out = ZoneInfo("America/New_York"), {}
+    for row in games_csv_rows():
+        try:
+            t = datetime.datetime.strptime(f"{row['gameday']} {row['gametime']}", "%Y-%m-%d %H:%M")
+        except (KeyError, TypeError, ValueError):
+            continue
+        ko = t.replace(tzinfo=et).astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        for team in (row.get("home_team"), row.get("away_team")):
+            out[(str(row.get("season")), str(row.get("week")), team_nfl(team))] = ko
+    return out
+
+def pregame_prop_close(r, kick):
+    """(closing sample, cur-or-None) as of kickoff. The hourly snapshot keeps
+    sampling a week's key until the feed rolls, so the last sample is often a
+    Monday-morning read of a Sunday game: a stale lone quote or a live line.
+    The close is the last sample stamped BEFORE kickoff; cur (the only snapshot
+    carrying per-book quotes) counts only if it was also taken pre-kickoff.
+    kick=None -> the old behaviour (last sample, cur). A record with no
+    pre-kickoff sample at all returns (None, None): every line it holds is
+    in-game or next week's, and it doesn't settle."""
+    samples, cur = r.get("samples") or [r.get("cur")], r.get("cur")
+    if not kick:
+        return samples[-1] or cur or {}, cur
+    pre = [x for x in samples if x and (x.get("ts") or "") < kick]
+    cur_ok = cur if cur and (cur.get("ts") or "") < kick else None
+    return (pre[-1] if pre else None), cur_ok
+
 def load_games_csv(seasons):
-    """nflverse games.csv → {(season,week,away,home): {home_score,away_score}}.
-    Fetches once; on failure returns {} so prop settlement still proceeds."""
-    try:
-        with urllib.request.urlopen(GAMES_URL, timeout=30) as resp:
-            text = resp.read().decode("utf-8")
-    except Exception as e:
-        print(f"[settle] games.csv fetch failed ({e}); skipping game settlement")
+    """nflverse games.csv → {(season,week,away,home): {home_score,away_score}}."""
+    rows = games_csv_rows()
+    if not rows:
+        print("[settle] no games.csv; skipping game settlement")
         return {}
     out = {}
-    for row in csv.DictReader(io.StringIO(text)):
+    for row in rows:
         try:
             s = int(row.get("season") or 0)
             if s not in seasons: continue

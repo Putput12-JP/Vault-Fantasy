@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-28T23:00', tag:'Fixed', title:'Closing lines are taken before kickoff',
+    items:[
+      'The Track Record now grades every prop against the last line posted before the game started. It used to sometimes use a leftover or in-game line read after kickoff, once most books had already pulled the market.',
+      'Props that only had lines after kickoff are no longer counted.',
+      'Weeks 1 to 3 were re-settled this way, so some closing lines, closing prices and "beat the close" marks have changed.'
+    ]
+  },
+  {
     ts:'2026-09-28T22:00', tag:'Fixed', title:'Prop prices always match their line',
     items:[
       'Some props showed a price that belonged to a different line, most often on 0.5 lines like "0.5 passing TDs" or "0.5 receptions". Every price on the board is now one a book is actually offering at that exact line.',
