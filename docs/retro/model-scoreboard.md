@@ -49,10 +49,10 @@ rush_yd               60%   +0.1pp        51%     -3.3u         48%    -12.7u
 ## Game markets (at the close)
 
 ```
-games   n= 124  LL 0.7024 vs 0.6810  skill -0.032 z -1.4    level with the market (within noise)     beat close   35%  units   -4.1u
+games   n= 124  LL 0.7024 vs 0.6808  skill -0.032 z -1.4    level with the market (within noise)     beat close   35%  units   -4.1u
 ml      n=  35  LL 0.6597 vs 0.6500  skill -0.015 z -0.3    level with the market (within noise)     beat close   49%  units   +2.8u
-spread  n=  44  LL 0.7288 vs 0.6931  skill -0.051 z -1.6    level with the market (within noise)     beat close   36%  units   -9.6u
-total   n=  45  LL 0.7098 vs 0.6931  skill -0.024 z -0.6    level with the market (within noise)     beat close   22%  units   +2.7u
+spread  n=  44  LL 0.7288 vs 0.6929  skill -0.052 z -1.6    level with the market (within noise)     beat close   36%  units   -9.6u
+total   n=  45  LL 0.7098 vs 0.6930  skill -0.024 z -0.6    level with the market (within noise)     beat close   22%  units   +2.7u
 ```
 
 ## News triggers (plan Week 3)
@@ -91,7 +91,7 @@ under 6 hours            11-7         +2.8u           +0.7u         4/7
 ```
 Wk  1  props n= 514  LL 0.7012 vs 0.6891  skill -0.018 z -1.5     games n=  40  LL 0.7222 vs 0.6807  skill -0.061 z -1.5
 Wk  2  props n= 553  LL 0.6857 vs 0.6826  skill -0.004 z -0.3     games n=  44  LL 0.7165 vs 0.6851  skill -0.046 z -1.1
-Wk  3  props n= 546  LL 0.6967 vs 0.6877  skill -0.013 z -1.1     games n=  40  LL 0.6670 vs 0.6768  skill +0.014 z +0.4
+Wk  3  props n= 546  LL 0.6967 vs 0.6877  skill -0.013 z -1.1     games n=  40  LL 0.6670 vs 0.6763  skill +0.014 z +0.3
 ```
 
 ## How to read this
