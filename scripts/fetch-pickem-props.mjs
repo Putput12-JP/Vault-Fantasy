@@ -216,9 +216,11 @@ function applyStatusFlags(feed, sl) {
   };
   // Once a starter has been out a few days, books pull his props and Sleeper
   // demotes him on the depth chart (Caleb Williams wk 3 2026: listed 3rd behind
-  // Keenum), so neither signal above fires. The projections were still built on
-  // HIS games, so the season's attempts leader counts as the starter too.
-  const primaryQB = seasonPrimaryQBs(feed.season, sl);
+  // Keenum), so neither signal above fires. The QB who started the team's LAST
+  // game counts too: if he is out, the lineup the projections lean on just
+  // changed. Not the season attempts leader: a fill-in who started wks 1-2
+  // (Cooper Rush, ATL) would flag the real starter's RETURN as a QB loss.
+  const primaryQB = lastStarterQBs(feed.season, sl);
   const teamOut = {};   // team -> { QB:bool, RB:bool, WR:bool }
   for (const id in status) {
     if (status[id] !== 'out') continue;
@@ -269,20 +271,23 @@ function applyStatusFlags(feed, sl) {
   };
   return { out: out.length, impacted: impacted.length };
 }
-// team -> Sleeper id of the QB with the most pass attempts this season (nflverse
-// weekly stats already in data/). {} when the file is missing (preseason).
-function seasonPrimaryQBs(season, sl) {
+// team -> Sleeper id of the QB who started the team's most recent game (most
+// pass attempts that week, nflverse weekly stats in data/). {} when missing.
+function lastStarterQBs(season, sl) {
   const out = {};
   let blob;
   try { blob = JSON.parse(readFileSync(`data/nflverse_stats_${season}.json`, 'utf8')); } catch (e) { return out; }
-  const best = {};
+  const last = {};   // team -> { wk, att, name }
   for (const p of (Array.isArray(blob) ? blob : Object.values(blob))) {
     if (!p || p.pos !== 'QB' || !p.team) continue;
-    const att = (p.weeks || []).reduce((s, w) => s + (w.att || 0), 0);
-    if (att > 0 && (!best[p.team] || att > best[p.team].att)) best[p.team] = { name: p.name, att };
+    for (const w of p.weeks || []) {
+      const wk = Number(w.wk), att = w.att || 0, b = last[p.team];
+      if (!(att > 0)) continue;
+      if (!b || wk > b.wk || (wk === b.wk && att > b.att)) last[p.team] = { wk, att, name: p.name };
+    }
   }
-  for (const t in best) {
-    const rec = resolveSleeper(sl, best[t].name, t);
+  for (const t in last) {
+    const rec = resolveSleeper(sl, last[t].name, t);
     if (rec && rec.pos === 'QB') out[rec.team || t] = rec.id;   // Sleeper team code (LAR, not nflverse LA)
   }
   return out;
