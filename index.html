@@ -13477,6 +13477,7 @@ const VAULT_CHANGELOG = [
     items:[
       'When a team’s regular starter is out or benched, Vault’s model now takes about 2 points off that team’s margin and about 1 off the game total. Both numbers are measured from past backup starts, not guessed.',
       'Tonight’s Bears game is the first to use it: with Case Keenum starting for Caleb Williams, the model moves toward the Eagles instead of favoring Chicago.',
+      'Games with a backup QB don’t get a Vault Game Play. A third-stringer can move a line far more than the average backup, so a gap there says more about the adjustment than about the game.',
       'Games with a backup QB now carry a “backup QB” tag. Tap or hover it to see who is starting and how much Vault’s line moved.'
     ]
   },
@@ -43893,6 +43894,11 @@ window.VaultMarketProj = (function () {
       withBets.forEach(x => {
         const t = Date.parse(x.g.commence || ''); if (!(t > now)) return;
         const gp = gmPredict(x.g.away, x.g.home); if (!gp) return;
+        // Backup QB: the model's fixed average adjustment can leave a gap that
+        // is really the market pricing THIS backup (a 3rd-stringer moves more),
+        // and the play-type records were earned on games without one. Hold it,
+        // same as props hold a team's pass-catchers when its QB is out.
+        if (gp.qb) return;
         allLeans(x.g, gp, true).forEach(l => { const k = l.market + '|' + l.band; if (gmOn.includes(k)) gmPlays.push({ g: x.g, lean: l, rec: _gmRules.buckets[k] }); });
       });
       gmPlays.sort((a, b) => Date.parse(a.g.commence || '') - Date.parse(b.g.commence || ''));

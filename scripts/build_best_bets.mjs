@@ -52,6 +52,9 @@ const ARG = Object.fromEntries(process.argv.slice(2).map(a => {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] ?? true] : [a, true];
 }));
 const DRY   = !!ARG.dry;
+// --dump=path: also write EVERY scored prop line (pass or the gate that stopped
+// it) for this week and next, for the Game Breakdowns page. Implies --dry.
+const DUMP  = ARG.dump || null;
 const TOP   = Number(ARG.top || 4);
 const LEANS = Number(ARG.leans || 3);
 const FEED  = ARG.feed || resolve(ROOT, 'data/lineup-feed.json');
@@ -522,7 +525,7 @@ function sharpFairFor(KP, name, mk, line) {
 /* ── score every prop ──────────────────────────────────────────────────── */
 function scoreProps(feed, PM, KP) {
   const props = feed.vegas_player_props || {};
-  const cands = [];
+  const cands = [], dump = [];
   let scored = 0, gated = 0, preskip = 0;
   // Preseason gate (mirror the board's propRows): exhibition-game props price a
   // starter's cameo or a backup's heavy workload, so they're apples-to-oranges
@@ -546,7 +549,8 @@ function scoreProps(feed, PM, KP) {
   const slateKick = {};
   for (const g of (feed.vegas_games || [])) {
     if (!g || !g.home || !g.away || !g.commence) continue;
-    if (feedWeek != null && g.week != null && Number(g.week) !== feedWeek) continue;
+    const wkOk = DUMP ? (Number(g.week) === feedWeek || Number(g.week) === feedWeek + 1) : Number(g.week) === feedWeek;
+    if (feedWeek != null && g.week != null && !wkOk) continue;
     slateKick[[g.home, g.away].sort().join('|')] = g.commence;
   }
   const onSlate = p => {
@@ -576,8 +580,8 @@ function scoreProps(feed, PM, KP) {
     // feed): p.out = ruled out / doubtful → props void; p.impacted = teammate of
     // an OUT starter (QB1/RB1/WR1) whose projection assumes a lineup that just
     // changed. Never let either become a best bet — the projection is stale.
-    if (p.out) { benchskip++; continue; }
-    if (p.impacted) { roleskip++; continue; }
+    if (p.out) { benchskip++; if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, status: 'out' }); continue; }
+    if (p.impacted) { roleskip++; if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, status: 'withheld', why: p.impactedBy || 'lineup change' }); continue; }
     const dep = depth[id];   // [depth_chart_order, active]
     if (dep) {
       if (dep[1] === 0) { benchskip++; continue; }                                 // inactive / out
@@ -656,6 +660,12 @@ function scoreProps(feed, PM, KP) {
         const wouldPass = trust.corrob && (letter === 'A' || letter === 'B') && ev != null && ev > 0 && bettable;
         const preGate = trust.corrob && (eff === 'A' || eff === 'B') && ev != null && ev > 0 && bettable;
         const pass = preGate && !projBlowout && !countUnderPhantom && !earlyRecHold && realBookAtLine;
+        if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, market: mk, marketLabel: MKT_LABEL[mk] || mk,
+          line, side, prob: round(g.padj, 3), over: round(v.over, 3), proj: v.proj, book: bs.book, price: bs.price,
+          ev: ev != null ? round(ev * 100, 1) : null, grade: eff, books: trust.books,
+          status: pass ? 'pass' : roleUnconfirmed && wouldPass ? 'role' : sharpDisagree && wouldPass ? 'sharp'
+            : weakMkt && wouldPass ? 'thin' : earlyRecHold && wouldPass ? 'hold' : preGate && projBlowout ? 'blowout'
+            : preGate && countUnderPhantom ? 'count' : preGate && !realBookAtLine ? 'dfs' : 'no-edge' });
         if (!pass) {
           if (roleUnconfirmed && wouldPass) roleskip++;
           else if (sharpDisagree && wouldPass) sharpskip++;
@@ -694,7 +704,7 @@ function scoreProps(feed, PM, KP) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, pool: cands, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
+  return { list, pool: cands, dump, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
 }
 
 function loadCardRules() {
@@ -998,6 +1008,7 @@ function gameLeans(feed) {
         : 'Game leans are model context, not an edge — the game model matches the market without beating it.',
       note: 'Top props by confidence-adjusted EV on corroborated lines (≥2 books), modeled markets only.',
     };
+    if (DUMP) { writeFileSync(DUMP, JSON.stringify({ generated: feed.best_bets.generated, props: props.dump, eligible: eligible.map(c => c.id + '|' + c.market) }, null, 1)); log(`dump: ${props.dump.length} rows → ${DUMP}`); return; }
     if (DRY) { log('DRY — not writing'); return; }
     if (shadow.changed) writeFileSync(SHADOW_FILE, JSON.stringify(shadow.file, null, 1) + '\n');
     if (pairLog.changed) writeFileSync(PAIRS_LOG, JSON.stringify(pairLog.file, null, 1) + '\n');
