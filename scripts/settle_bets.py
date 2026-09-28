@@ -732,7 +732,10 @@ def settle_games(season_filter=None):
             push = abs(margin + mkt_c) < 1e-9
             won = None if push else (1.0 if (side == "home") == home_cov else 0.0)
             clv_line = (mkt_o - mkt_c) if side == "home" else (mkt_c - mkt_o)  # signed to model side
+            # Consensus prices at the number, both sides [home, away] (banked from
+            # 2026-09-28; older samples have none -> the scoreboard reads 50/50).
             picks.append({**base, "market": "spread", "side": side, "line_open": mkt_o, "line_close": mkt_c,
+                          "px_open": [opn.get("spHomePx"), opn.get("spAwayPx")], "px_close": [cls.get("spHomePx"), cls.get("spAwayPx")],
                           "vault_line": vl["spread"], "actual": margin, "proj_err": (-vl["spread"]) - margin,
                           "push": push, "won_close": won,
                           "clv_line": clv_line, "beat_close": (1.0 if clv_line > 1e-9 else 0.0)})
@@ -745,6 +748,7 @@ def settle_games(season_filter=None):
             won = None if push else (1.0 if (side == "over") == (total_actual > mkt_c) else 0.0)
             clv_line = (mkt_c - mkt_o) if side == "over" else (mkt_o - mkt_c)
             picks.append({**base, "market": "total", "side": side, "line_open": mkt_o, "line_close": mkt_c,
+                          "px_open": [opn.get("toOverPx"), opn.get("toUnderPx")], "px_close": [cls.get("toOverPx"), cls.get("toUnderPx")],
                           "vault_line": vl["total"], "actual": total_actual, "proj_err": vl["total"] - total_actual,
                           "push": push, "won_close": won,
                           "clv_line": clv_line, "beat_close": (1.0 if clv_line > 1e-9 else 0.0)})

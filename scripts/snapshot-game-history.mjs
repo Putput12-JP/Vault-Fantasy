@@ -75,18 +75,41 @@ function vaultLine(away, home) {
   return { spread: num(-margin), total: num(total), winHome: num(normCdf(margin / (GM.sd_margin || 13.2))), off: GM.offseason ? 1 : 0 };
 }
 
+// Consensus PRICES at the consensus number (median across books quoting that
+// exact line), both sides. Added 2026-09-28 for the model scoreboard: without
+// the juice the spread/total market could only be read as 50/50; with both
+// sides banked, settlement de-vigs them into a real closing probability.
+const atLine = (quotes, pick, line) => (quotes || []).filter(q => q && pick(q) === line);
+function spreadPx(g) {
+  const c = g.spread && g.spread.cons ? g.spread.cons.home : null;
+  if (c == null) return [null, null];
+  const qs = atLine(g.spread.quotes, q => q.home && q.home.line, c);
+  return [med(qs.map(q => q.home && q.home.price)), med(qs.map(q => q.away && q.away.price))];
+}
+function totalPx(g) {
+  const c = g.total ? g.total.cons : null;
+  if (c == null) return [null, null];
+  const qs = atLine(g.total.quotes, q => q.line, c);
+  return [med(qs.map(q => q.over)), med(qs.map(q => q.under))];
+}
+
 function snapshot(g, ts) {
+  const [spH, spA] = spreadPx(g), [toO, toU] = totalPx(g);
   return {
     spread: g.spread && g.spread.cons ? num(g.spread.cons.home) : null,   // home spread (signed)
     total: g.total ? num(g.total.cons) : null,                            // game total
     mlHome: g.ml && g.ml.quotes ? med(g.ml.quotes.map(q => q.home)) : null, // home moneyline (American)
     mlAway: g.ml && g.ml.quotes ? med(g.ml.quotes.map(q => q.away)) : null, // away moneyline — lets settle devig the win prob
+    spHomePx: num(spH), spAwayPx: num(spA),                              // spread prices at the consensus number
+    toOverPx: num(toO), toUnderPx: num(toU),                             // total prices at the consensus number
     vault: vaultLine(g.away, g.home),                                     // model line as-of now (null offseason/unmapped)
     ts,
   };
 }
 // Value signature — used to skip appending a duplicate sample (ts-only refresh is free).
-const sig = s => [s.spread, s.total, s.mlHome, s.mlAway].join('|');
+// Prices are in it too: settlement reads the LAST SAMPLE as the close, so a
+// juice move with no line move has to land as a sample to be the closing price.
+const sig = s => [s.spread, s.total, s.mlHome, s.mlAway, s.spHomePx, s.spAwayPx, s.toOverPx, s.toUnderPx].join('|');
 
 const feed = readJSON(FEED);
 if (!feed || !Array.isArray(feed.vegas_games)) { log('no vegas_games in feed — nothing to snapshot'); process.exit(0); }
