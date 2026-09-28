@@ -72,6 +72,18 @@ Vault vs market disagreements of 8+ pts (close):
   no news                  n= 267  Vault's side won 145-122  skill -0.019 z -0.7
 ```
 
+## Timing: Best Bets by how early they posted (plan Weeks 3-4)
+
+_Every Best Bets play (the locked card plus the background log), graded at the line and price it posted with, then re-priced at the close. If posting early is where the value is, the gap between the two should be widest in the earliest rows._
+
+```
+posted                 record  units posted  units at close  beat close
+3+ days before            2-0         +2.1u           +1.5u         0/1
+1-3 days before           4-3         +1.3u           +0.9u         3/3
+6-24 hours before         5-4         +1.4u           +1.4u         1/1
+under 6 hours            11-6         +3.8u           +1.7u         4/7
+```
+
 - Spread/total market = no-vig closing price at the number where banked (from Sep 28), else 50/50; Vault's cover chance uses its line and the fitted sd. ML = no-vig closing moneyline.
 
 ## By week (props at the close / games at the close)

@@ -345,6 +345,43 @@ def score_news(props):
                                       "score": v[2].out()} for k, v in sorted(dis.items())}}
 
 
+# ── timing: does posting early pay? (plan Weeks 3-4, opening-window capture) ──
+# Every Best Bets play (the card + the shadow log, best_bets_record.json) is
+# graded at the line and price it POSTED with and at the close. Bucketed by
+# how long before kickoff it posted. If early posting is where the value is,
+# the posted-vs-close gap should be widest in the earliest buckets. Plays
+# without a kickoff time (some rebuilt Wk 1-3 rows) are skipped.
+TIMING_BUCKETS = ((72, "3+ days before"), (24, "1-3 days before"), (6, "6-24 hours before"), (0, "under 6 hours"))
+
+
+def score_timing():
+    try:
+        rec = json.load(open(os.path.join(DATA, "best_bets_record.json")))
+    except Exception:
+        return None
+    from datetime import datetime
+    plays = {c["key"]: c for c in rec.get("shadow_picks") or []}
+    plays.update({c["key"]: c for c in rec.get("picks") or []})
+    out = {lbl: {"n": 0, "W": 0, "units": 0.0, "n_close": 0, "units_close": 0.0, "beat": 0, "n_clv": 0}
+           for _, lbl in TIMING_BUCKETS}
+    def ts(x):
+        try: return datetime.fromisoformat(str(x).replace("Z", "+00:00"))
+        except Exception: return None
+    for c in plays.values():
+        if c.get("result") not in ("W", "L"): continue
+        t0, t1 = ts(c.get("posted")), ts(c.get("commence"))
+        if not t0 or not t1: continue
+        h = (t1 - t0).total_seconds() / 3600
+        lbl = next(l for lim, l in TIMING_BUCKETS if h >= lim) if h >= 0 else None
+        if not lbl: continue
+        b = out[lbl]; b["n"] += 1; b["W"] += c["result"] == "W"; b["units"] += c.get("units") or 0
+        if c.get("units_close") is not None: b["n_close"] += 1; b["units_close"] += c["units_close"]
+        if c.get("beat_close") is not None: b["n_clv"] += 1; b["beat"] += 1 if c["beat_close"] else 0
+    for b in out.values():
+        b["units"] = round(b["units"], 2); b["units_close"] = round(b["units_close"], 2)
+    return out
+
+
 def verdict(s):
     # z = paired log-loss difference / its standard error. |z| >= 2 is roughly
     # the 95% line; below it the gap is indistinguishable from noise.
@@ -370,7 +407,8 @@ def main():
            "props_by_week": {str(w): {"open": v["open"].out(), "close": v["close"].out()} for w, v in sorted(pw.items())},
            "games": {k: {"close": v["close"].out(), "bets": gb[k].out()} for k, v in sorted(ga.items())},
            "games_by_week": {str(w): {"close": v["close"].out()} for w, v in sorted(gw.items())},
-           "news": score_news(br.get("props") or [])}
+           "news": score_news(br.get("props") or []),
+           "timing": score_timing()}
     for sec in ("props", "games"):
         for k, v in out[sec].items():
             v["verdict"] = verdict(v.get("close"))
@@ -425,6 +463,18 @@ def main():
             sc = v["score"]
             L.append(f"  {k:<24} n={v['n']:4d}  Vault's side won {v['vault_side_won']}-{v['n'] - v['vault_side_won']}"
                      + (f"  skill {sc['skill']:+.3f} z {sc['z']:+.1f}" if sc else ""))
+    tm = out.get("timing")
+    if tm and any(v["n"] for v in tm.values()):
+        L += ["```", "", "## Timing: Best Bets by how early they posted (plan Weeks 3-4)", "",
+              "_Every Best Bets play (the locked card plus the background log), graded at the line and price it posted "
+              "with, then re-priced at the close. If posting early is where the value is, the gap between the two "
+              "should be widest in the earliest rows._", "", "```",
+              f"{'posted':<20}{'record':>9}{'units posted':>14}{'units at close':>16}{'beat close':>12}"]
+        for _, lbl in TIMING_BUCKETS:
+            v = tm[lbl]
+            if not v["n"]: L.append(f"{lbl:<20}{'–':>9}"); continue
+            bc = f"{v['beat']}/{v['n_clv']}" if v["n_clv"] else "–"
+            L.append(f"{lbl:<20}{str(v['W']) + '-' + str(v['n'] - v['W']):>9}{v['units']:>+13.1f}u{v['units_close']:>+15.1f}u{bc:>12}")
     L += ["```", "", "- Spread/total market = no-vig closing price at the number where banked (from Sep 28), else 50/50; "
           "Vault's cover chance uses its line and the fitted sd. ML = no-vig closing moneyline.", "",
           "## By week (props at the close / games at the close)", "", "```"]

@@ -1,6 +1,7 @@
 # Refresh the Lineup Command projection feed (also pulls ParlayAPI game odds +
-# player props). In-season: a daily baseline plus hourly through the Sun/Mon/Thu
-# game windows, sized to the full free credit budget (see below). Offseason:
+# player props). In-season: a daily baseline, the Tue–Fri opening window when
+# props post, and the Sun/Mon/Thu pregame windows, inside the free credit
+# budget (see below). Offseason:
 # once daily. Matches the repo's scripts/ + data/ + workflows pattern.
 # Place at: .github/workflows/update-lineup.yml
 
@@ -22,18 +23,29 @@ on:
     # swaps in the real ParlayAPI books the moment /props starts returning them.
     - cron: '0 9 * 2,3,4,5,6,7,8 *'
     #
-    # IN-SEASON (Sep–Jan) — sized to the FULL free budget. The busiest month
-    # (Nov 2026: 5 Sun + 5 Mon + 4 Thu) lands at 166 runs = 996 credits, which
-    # is the most whole 6-credit runs that fit under 1,000 (167 = 1,002, over).
-    # Hourly through the windows where lines + props actually move; one daily
-    # baseline otherwise. Per-month runs, measured on the 2026 season:
-    #   Sep 146 · Oct 156 · Nov 166 · Dec 156 · Jan 158  (876–996 credits)
-    #   daily baseline (all days)       08 UTC
-    #   Sunday main slate  13–23 UTC    +11 runs
-    #   Mon + Thu pregame  15–23 UTC    +9 runs
+    # IN-SEASON (Sep–Jan) — rebalanced 2026-09-28 toward the OPENING WINDOW,
+    # still inside the free tier. Vault's evidence (reports/NFL prediction
+    # model upgrade.md; the Vault's Plays record) is that picks win at the
+    # number they post at and give much of it back by the close, and props
+    # open Tue–Fri. The old schedule fetched only once a day (08 UTC = 3-4am
+    # ET) Tue/Wed/Fri/Sat and spent 29 of its 36 weekly runs in game windows.
+    # Same 36 runs/week, moved:
+    #   daily baseline (all days)          08 UTC                        7
+    #   Tue / Wed / Fri opening window     13, 17, 21 UTC  (9a/1p/5p ET) +9
+    #   Sat (Sunday props settle)          16 UTC                        +1
+    #   Thu (openers + TNF pregame)        14,16,18,20,22,23 UTC         +6
+    #   Sunday pregame / between windows   13,14,15,16,18,19,20,22,23    +9
+    #   Mon (MNF pregame)                  17, 19, 21, 23 UTC            +4
+    # Closing prices still land within ~1h of each kickoff (16:00 before the
+    # 1pm ET slate, 20:00 before 4:05/4:25, 23:00 before SNF/TNF/MNF). Checked
+    # per month for Sep 2026 – Jan 2028: 152–161 runs = 912–966 credits (the
+    # old schedule hit 167 = 1,002 in Jan 2028).
     - cron: '0 8 * 9,10,11,12,1 *'
-    - cron: '0 13-23 * 9,10,11,12,1 0'
-    - cron: '0 15-23 * 9,10,11,12,1 1,4'
+    - cron: '0 13,17,21 * 9,10,11,12,1 2,3,5'
+    - cron: '0 16 * 9,10,11,12,1 6'
+    - cron: '0 14,16,18,20,22,23 * 9,10,11,12,1 4'
+    - cron: '0 13,14,15,16,18,19,20,22,23 * 9,10,11,12,1 0'
+    - cron: '0 17,19,21,23 * 9,10,11,12,1 1'
   workflow_dispatch: {}        # manual "Run workflow" button
 
 # Adjacent hourly pregame-window runs (and a manual workflow_dispatch) can

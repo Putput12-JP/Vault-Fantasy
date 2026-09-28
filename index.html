@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-28T23:00', tag:'Improved', title:'Vault’s Plays: posted times, earlier lines, corrected record',
+    items:[
+      'Each play on Vault’s Plays now shows when it was posted, so you can see how early you could have bet it.',
+      'Vault now checks sportsbook prices three times a day Tuesday through Friday, when player props first open, instead of once overnight. Plays can post earlier in the week, when lines are softest.',
+      'We corrected the Weeks 1-3 record. A few plays had first appeared after their game started. They are removed, and the card now stands at 15-9, +6.2 units.'
+    ]
+  },
+  {
     ts:'2026-09-28T23:00', tag:'Fixed', title:'Closing lines are taken before kickoff',
     items:[
       'The Track Record now grades every prop against the last line posted before the game started. It used to sometimes use a leftover or in-game line read after kickoff, once most books had already pulled the market.',
@@ -45228,6 +45236,8 @@ window.VaultMarketProj = (function () {
   // Vault's Plays record: the locked weekly card (build_best_bets.mjs) graded at
   // the line + price each play posted with (settle_bets.py → best_bets_record.json).
   // "rec_yd|under|WR/TE" → "Rec Yds Unders · WR/TE" (card-rule bucket label)
+  // "Wed 1:05 PM": when a play was locked onto the card (its posted line + price).
+  const _plPosted = iso => { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? d.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : null; };
   const _plBucketLbl = k => { const [m, sd, g] = String(k).split('|'); return _mkLabel(m) + ' ' + (sd === 'under' ? 'Unders' : 'Overs') + ' · ' + g; };
   let _playsP = null, _playsData = null, _playsDone = false;
   function loadPlays() {
@@ -45695,6 +45705,7 @@ window.VaultMarketProj = (function () {
         if (r.price != null) chips.push('<span class="tr-mk tr-mk-px" title="Price when the play posted' + (r.book ? ' · ' + _trEsc(r.book) : '') + '">' + F().fmtOdds(r.price) + (r.book ? bookChip(r.book) : '') + '</span>');
         if (r.ev != null) chips.push('<span class="tr-mk pos" title="Vault’s edge when the play posted">+' + r.ev + '% edge</span>');
         if (r.line_close != null && r.clv_line != null) chips.push('<span class="tr-mk ' + (r.beat_close === true ? 'pos' : r.beat_close === false ? 'neg' : '') + '" title="Where the line closed. Green means the market moved toward this play after it posted.">closed ' + _trEsc(r.line_close) + (r.price_close != null ? ' ' + F().fmtOdds(r.price_close) : '') + '</span>');
+        if (_plPosted(r.posted) && r.src !== 'rebuilt') chips.push('<span class="tr-mk" title="When this play was locked at this line and price">posted ' + _trEsc(_plPosted(r.posted)) + '</span>');
         if (r.src === 'rebuilt') chips.push('<span class="tr-mk" title="Weeks 1-3 were rebuilt from saved Best Bets history with the same rule: the first 10 plays to post each week, one per player.">rebuilt</span>');
         const matchup = r.team ? ' · ' + _trEsc(r.team) + (r.opp ? ' vs ' + _trEsc(r.opp) : '') : '';
         return '<div class="tr-pk ' + rc + '">'
@@ -48087,7 +48098,8 @@ window.VaultMarketProj = (function () {
         + '<span class="bb-grade g' + String(p.grade || '').toLowerCase() + '" style="box-shadow:inset 0 0 0 1px ' + col + '55">' + attr(p.grade || '') + '</span>'
         + '<span class="bb-body"><span class="bb-nm">' + attr(p.name) + '</span>'
         + '<span class="bb-pick">' + sideLbl + ' <b>' + attr(p.line) + '</b> ' + attr(p.marketLabel) + '</span>'
-        + '<span class="bb-meta">' + attr(p.team || '') + (p.opp ? ' vs ' + attr(p.opp) : '') + ' · ' + attr(p.book || '') + ' ' + price + '</span></span>'
+        + '<span class="bb-meta">' + attr(p.team || '') + (p.opp ? ' vs ' + attr(p.opp) : '') + ' · ' + attr(p.book || '') + ' ' + price + '</span>'
+        + (_plPosted(p.posted) ? '<span class="bb-meta" title="When this play was locked at this line and price">Posted ' + attr(_plPosted(p.posted)) + '</span>' : '') + '</span>'
         + right + '</button>';
     };
     const s = rec && rec.seasons && rec.seasons[String(bb.season)];
