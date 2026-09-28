@@ -32,7 +32,7 @@
      node scripts/fetch-polymarket.mjs --dry           # summarize, write nothing
      node scripts/fetch-polymarket.mjs --out=path.json # custom output
    ════════════════════════════════════════════════════════════════════════ */
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -84,10 +84,18 @@ const DAY = 86400;
 // Trades of BIG_TRADE dollars or more are split out: big tickets are a
 // different crowd from $20 ones, and the sharp-money study keys on them.
 const BIG_TRADE = 1000;
+// Account scorecard (scripts/build_pm_wallets.py, weekly): accounts whose
+// past $1k+ NFL trades beat the closing price (sharp) or lost to it (dull).
+// Their 24h net is split out below. Context only: the study found their edge
+// is gone within ~30 min of the trade, so it is never framed as a bet to copy.
+let PMW = { sharp: new Set(), dull: new Set() };
+try { const j = JSON.parse(readFileSync(resolve(HERE, '..', 'data', 'pm_wallets.json'), 'utf8')); PMW = { sharp: new Set(j.sharp || []), dull: new Set(j.dull || []) }; } catch (e) { /* none yet */ }
+const acctClass = w => PMW.sharp.has(w) ? 'sharp' : PMW.dull.has(w) ? 'dull' : null;
 async function takerFlow(conditionId, homeName, awayName) {
   if (!conditionId) return null;
   const cutoff = Math.floor(Date.now() / 1000) - DAY;
   let net = 0, n = 0, offset = 0, bigNet = 0, bigN = 0;
+  const acct = { sharp: [0, 0], dull: [0, 0] };
   for (let page = 0; page < 8; page++) {          // cap ~4k recent trades/game
     let rows;
     try {
@@ -109,11 +117,13 @@ async function takerFlow(conditionId, homeName, awayName) {
       const usd = (homeBullish ? 1 : -1) * price * size;
       net += usd; n++;
       if (price * size >= BIG_TRADE) { bigNet += usd; bigN++; }
+      const ac = acctClass(t.proxyWallet); if (ac) { acct[ac][0] += usd; acct[ac][1]++; }
     }
     if (hitOld || rows.length < 500) break;        // reached the 24h edge (or last page)
     offset += 500;
   }
-  return n ? { net: Math.round(net), n, bigNet: Math.round(bigNet), bigN } : null;
+  return n ? { net: Math.round(net), n, bigNet: Math.round(bigNet), bigN,
+    sharpNet: Math.round(acct.sharp[0]), sharpN: acct.sharp[1], dullNet: Math.round(acct.dull[0]), dullN: acct.dull[1] } : null;
 }
 
 // Net 24h aggressor money into outcome A of ANY two-outcome market (a spread's
@@ -124,6 +134,7 @@ async function takerFlowAB(conditionId, outA, outB) {
   const a = String(outA || '').toLowerCase(), b = String(outB || '').toLowerCase();
   const cutoff = Math.floor(Date.now() / 1000) - DAY;
   let net = 0, n = 0, offset = 0, bigNet = 0, bigN = 0;
+  const acct = { sharp: [0, 0], dull: [0, 0] };
   for (let page = 0; page < 6; page++) {
     let rows;
     try { rows = await getJSON(`https://data-api.polymarket.com/trades?market=${conditionId}&takerOnly=true&limit=500&offset=${offset}`); }
@@ -141,11 +152,13 @@ async function takerFlowAB(conditionId, outA, outB) {
       const usd = (((nm === a) === buy) ? 1 : -1) * price * size;
       net += usd; n++;
       if (price * size >= BIG_TRADE) { bigNet += usd; bigN++; }
+      const ac = acctClass(t.proxyWallet); if (ac) { acct[ac][0] += usd; acct[ac][1]++; }
     }
     if (hitOld || rows.length < 500) break;
     offset += 500;
   }
-  return n ? { net: Math.round(net), n, bigNet: Math.round(bigNet), bigN } : null;
+  return n ? { net: Math.round(net), n, bigNet: Math.round(bigNet), bigN,
+    sharpNet: Math.round(acct.sharp[0]), sharpN: acct.sharp[1], dullNet: Math.round(acct.dull[0]), dullN: acct.dull[1] } : null;
 }
 
 // Where the event's money sits, by market (Gamma tags each sub-market with
@@ -176,12 +189,16 @@ async function marketMoney(ev, awayName, homeName, away, home) {
   if (S[0] && S[0].vol >= MIN_VOL) {
     const f = await takerFlowAB(S[0].cid, S[0].outs[0], S[0].outs[1]);
     if (f) spTaker = { side: f.net >= 0 ? S[0].fav : (S[0].fav === home ? away : home), net: Math.abs(f.net), n: f.n,
-      big: f.bigN ? { side: f.bigNet >= 0 ? S[0].fav : (S[0].fav === home ? away : home), net: Math.abs(f.bigNet), n: f.bigN } : null };
+      big: f.bigN ? { side: f.bigNet >= 0 ? S[0].fav : (S[0].fav === home ? away : home), net: Math.abs(f.bigNet), n: f.bigN } : null,
+      sharp: f.sharpN ? { side: f.sharpNet >= 0 ? S[0].fav : (S[0].fav === home ? away : home), net: Math.abs(f.sharpNet), n: f.sharpN } : null,
+      dull: f.dullN ? { side: f.dullNet >= 0 ? S[0].fav : (S[0].fav === home ? away : home), net: Math.abs(f.dullNet), n: f.dullN } : null };
   }
   if (T[0] && T[0].vol >= MIN_VOL) {
     const f = await takerFlowAB(T[0].cid, 'Over', 'Under');
     if (f) toTaker = { side: f.net >= 0 ? 'over' : 'under', net: Math.abs(f.net), n: f.n,
-      big: f.bigN ? { side: f.bigNet >= 0 ? 'over' : 'under', net: Math.abs(f.bigNet), n: f.bigN } : null };
+      big: f.bigN ? { side: f.bigNet >= 0 ? 'over' : 'under', net: Math.abs(f.bigNet), n: f.bigN } : null,
+      sharp: f.sharpN ? { side: f.sharpNet >= 0 ? 'over' : 'under', net: Math.abs(f.sharpNet), n: f.sharpN } : null,
+      dull: f.dullN ? { side: f.dullNet >= 0 ? 'over' : 'under', net: Math.abs(f.dullNet), n: f.dullN } : null };
   }
   const strip = a => a.slice(0, 4).map(({ cid, outs, p, ...r }) => ({ ...r, p: p == null ? null : +p.toFixed(3) }));
   return {
