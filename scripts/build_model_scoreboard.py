@@ -234,6 +234,117 @@ def score_games(games, gm):
     return acc, bets, weeks
 
 
+# ── news triggers (model-upgrade plan, Week 3) ──────────────────────────────
+# Does fresh role news predict props better than the market already prices it,
+# and should Vault disagree with the market when news backs it? Per settled
+# prop, from information available BEFORE its game:
+#   up    usage jump in the player's last game vs his baseline (targets for
+#         WR/TE, carries RB, attempts QB: last >= 1.5x baseline and +2; or
+#         snap share +15 pts), OR his position's top-usage teammate did not play
+#   down  usage / snap-share drop of the same size
+# Baseline = this season's earlier weeks, else last season. Week 3 go/no-go
+# (2026 Wks 1-3): the market priced both triggers (over hit 48.8% where it said
+# 48.9% at the open), and Vault's big disagreements that AGREED with the news
+# went 43-58 (it double-counts news the line already moved on) while those
+# AGAINST it went 91-80. No-go for a news layer; this table keeps the test
+# running as the sample grows. Depth-chart history isn't banked, so it's not
+# a trigger yet.
+USE_KEY = {"WR": "tgt", "TE": "tgt", "RB": "car", "QB": "att"}
+
+
+def _load_news(season):
+    def ld(name):
+        try: return json.load(open(os.path.join(DATA, name)))
+        except Exception: return {}
+    s = str(season)
+    prev = str(int(s) - 1) if s.isdigit() else None
+    cur_s, cur_n = ld(f"nflverse_stats_{s}.json"), ld(f"nflverse_snaps_{s}.json")
+    prv_s = ld(f"nflverse_stats_{prev}.json") if prev else {}
+    prv_n = ld(f"nflverse_snaps_{prev}.json") if prev else {}
+    played = defaultdict(set)                     # (team, wk, pos) -> names who played
+    for n, rec in cur_s.items():
+        for w in rec.get("weeks") or []:
+            played[(rec.get("team"), w["wk"], rec.get("pos"))].add(n)
+    return {"cur_s": cur_s, "cur_n": cur_n, "prv_s": prv_s, "prv_n": prv_n, "played": played}
+
+
+def news_trigger(p, N):
+    """('up'|'down'|'both'|None, teammate_out) for a settled prop, pre-game info only."""
+    n, pos, team, W = p.get("name"), p.get("pos"), p.get("team"), p.get("week")
+    k = USE_KEY.get(pos)
+    if not k or W is None: return None, False
+    rec = N["cur_s"].get(n) or {}
+    wks = {w["wk"]: w for w in rec.get("weeks") or []}
+    prior = sorted(w for w in wks if w < W)
+    last = (wks[prior[-1]].get(k) or 0) if prior else None
+    base_rows = [wks[w].get(k) or 0 for w in prior[:-1]] or [w.get(k) or 0 for w in (N["prv_s"].get(n) or {}).get("weeks") or []]
+    base = sum(base_rows) / len(base_rows) if base_rows else None
+    up = down = False
+    if last is not None and base:
+        r = (last + 0.5) / (base + 0.5)
+        up |= r >= 1.5 and last - base >= 2
+        down |= r <= 0.6 and base - last >= 2
+    sn = {w["wk"]: w.get("off") for w in (N["cur_n"].get(n) or {}).get("weeks") or []}
+    sprior = sorted(w for w in sn if w < W and sn[w] is not None)
+    s_last = sn[sprior[-1]] if sprior else None
+    s_rows = [sn[w] for w in sprior[:-1]] or [w.get("off") for w in (N["prv_n"].get(n) or {}).get("weeks") or [] if w.get("off") is not None]
+    s_base = sum(s_rows) / len(s_rows) if s_rows else None
+    if s_last is not None and s_base is not None:
+        up |= s_last - s_base >= 15
+        down |= s_base - s_last >= 15
+    # top-usage teammate at his position did not play this week
+    tot = defaultdict(float)
+    for nm, r2 in N["cur_s"].items():
+        if r2.get("team") == team and r2.get("pos") == pos and nm != n:
+            for w in r2.get("weeks") or []:
+                if w["wk"] < W: tot[nm] += w.get(k) or 0
+    if not tot:
+        for nm, r2 in N["prv_s"].items():
+            if r2.get("team") == team and r2.get("pos") == pos and nm != n:
+                tot[nm] += sum(w.get(k) or 0 for w in r2.get("weeks") or [])
+    out = False
+    played = N["played"].get((team, W, pos))
+    if tot and played and n in played:
+        top = max(tot, key=tot.get)
+        out = top not in played
+    up |= out
+    return ("both" if up and down else "up" if up else "down" if down else None), out
+
+
+def score_news(props):
+    seasons = sorted({str(p.get("season")) for p in props if p.get("season")})
+    if not seasons: return None
+    N = _load_news(seasons[-1])
+    cal = defaultdict(lambda: {"open": [0, 0.0, 0.0], "close": [0, 0.0, 0.0]})   # n, hits, market prob sum
+    dis = defaultdict(lambda: [0, 0, Acc()])                                      # n, vault-side wins, paired LL
+    model = SB.load_prop_model()
+    for p in props:
+        if str(p.get("season")) != seasons[-1]: continue
+        a, lo, lc, proj = p.get("actual"), p.get("line_open"), p.get("line_close"), p.get("proj")
+        if a is None or lc is None: continue
+        trig, out = news_trigger(p, N)
+        tag = {"up": "usage up / teammate out", "down": "usage down", "both": "mixed", None: "no news"}[trig]
+        qo = devig_power(p.get("open_over"), p.get("open_under"))
+        qc = devig_power(p.get("close_over"), p.get("close_under"))
+        if qo is not None and lo is not None and sane_move(lo, lc) and abs(a - lo) > 1e-9:
+            c = cal[tag]["open"]; c[0] += 1; c[1] += 1.0 if a > lo else 0.0; c[2] += qo
+        if qc is not None and abs(a - lc) > 1e-9:
+            c = cal[tag]["close"]; c[0] += 1; c[1] += 1.0 if a > lc else 0.0; c[2] += qc
+            mp = model.get(p["market"])
+            pv = SB.model_p_over(mp, proj, lc) if (mp and proj is not None) else None
+            if pv is not None and abs(pv - qc) >= 0.08 and trig in ("up", "down", None):
+                vault_over = pv > qc
+                grp = ("no news" if trig is None else
+                       "agrees with the news" if (vault_over == (trig == "up")) else "against the news")
+                y = 1.0 if a > lc else 0.0
+                d = dis[grp]; d[0] += 1; d[1] += 1 if (y == 1.0) == vault_over else 0; d[2].add(y, pv, qc)
+    return {"trigger_vs_market": {k: {s2: ({"n": v[s2][0], "over_hit": round(v[s2][1] / v[s2][0], 4),
+                                            "market_said": round(v[s2][2] / v[s2][0], 4)} if v[s2][0] else None)
+                                      for s2 in ("open", "close")} for k, v in sorted(cal.items())},
+            "big_disagreements": {k: {"n": v[0], "vault_side_won": v[1], "win": round(v[1] / v[0], 4) if v[0] else None,
+                                      "score": v[2].out()} for k, v in sorted(dis.items())}}
+
+
 def verdict(s):
     # z = paired log-loss difference / its standard error. |z| >= 2 is roughly
     # the 95% line; below it the gap is indistinguishable from noise.
@@ -258,7 +369,8 @@ def main():
                      for k, v in sorted(pa.items())},
            "props_by_week": {str(w): {"open": v["open"].out(), "close": v["close"].out()} for w, v in sorted(pw.items())},
            "games": {k: {"close": v["close"].out(), "bets": gb[k].out()} for k, v in sorted(ga.items())},
-           "games_by_week": {str(w): {"close": v["close"].out()} for w, v in sorted(gw.items())}}
+           "games_by_week": {str(w): {"close": v["close"].out()} for w, v in sorted(gw.items())},
+           "news": score_news(br.get("props") or [])}
     for sec in ("props", "games"):
         for k, v in out[sec].items():
             v["verdict"] = verdict(v.get("close"))
@@ -298,6 +410,21 @@ def main():
     for k, v in out["games"].items():
         b = v["bets"]
         L.append(f"{k:<8}{fmt(v['close']):<52}{v['verdict']:<40} beat close {fp(b['beat_close'])}  units {fu(b['units_close'])}")
+    nw = out.get("news")
+    if nw:
+        L += ["```", "", "## News triggers (plan Week 3)", "",
+              "_Does fresh role news beat what the market already priced? Pre-game info only: a usage or snap-share jump "
+              "or drop in the player's last game, or his position's top teammate not playing. **Go** only if Vault's big "
+              "disagreements that agree with the news beat the ones without news._", "", "```",
+              f"{'trigger':<26}{'OPEN: over hit vs market said':<34}{'CLOSE: over hit vs market said'}"]
+        for k, v in nw["trigger_vs_market"].items():
+            f2 = lambda x: "      –" if not x else f"n={x['n']:4d} {x['over_hit'] * 100:5.1f}% vs {x['market_said'] * 100:5.1f}%"
+            L.append(f"{k:<26}{f2(v['open']):<34}{f2(v['close'])}")
+        L += ["", "Vault vs market disagreements of 8+ pts (close):"]
+        for k, v in nw["big_disagreements"].items():
+            sc = v["score"]
+            L.append(f"  {k:<24} n={v['n']:4d}  Vault's side won {v['vault_side_won']}-{v['n'] - v['vault_side_won']}"
+                     + (f"  skill {sc['skill']:+.3f} z {sc['z']:+.1f}" if sc else ""))
     L += ["```", "", "- Spread/total market = no-vig closing price at the number where banked (from Sep 28), else 50/50; "
           "Vault's cover chance uses its line and the fitted sd. ML = no-vig closing moneyline.", "",
           "## By week (props at the close / games at the close)", "", "```"]

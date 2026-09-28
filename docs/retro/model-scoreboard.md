@@ -55,6 +55,23 @@ spread  n=  44  LL 0.7288 vs 0.6931  skill -0.051 z -1.6    level with the marke
 total   n=  45  LL 0.7098 vs 0.6931  skill -0.024 z -0.6    level with the market (within noise)     beat close   22%  units   +2.7u
 ```
 
+## News triggers (plan Week 3)
+
+_Does fresh role news beat what the market already priced? Pre-game info only: a usage or snap-share jump or drop in the player's last game, or his position's top teammate not playing. **Go** only if Vault's big disagreements that agree with the news beat the ones without news._
+
+```
+trigger                   OPEN: over hit vs market said     CLOSE: over hit vs market said
+mixed                     n=  23  17.4% vs  50.0%           n=  28  25.0% vs  49.1%
+no news                   n= 760  48.7% vs  49.3%           n= 882  48.3% vs  49.4%
+usage down                n= 210  49.0% vs  49.3%           n= 245  49.4% vs  49.7%
+usage up / teammate out   n= 694  50.0% vs  49.2%           n= 786  49.5% vs  49.3%
+
+Vault vs market disagreements of 8+ pts (close):
+  against the news         n= 211  Vault's side won 107-104  skill -0.058 z -1.8
+  agrees with the news     n= 140  Vault's side won 69-71  skill -0.019 z -0.5
+  no news                  n= 298  Vault's side won 150-148  skill -0.049 z -1.8
+```
+
 - Spread/total market = no-vig closing price at the number where banked (from Sep 28), else 50/50; Vault's cover chance uses its line and the fitted sd. ML = no-vig closing moneyline.
 
 ## By week (props at the close / games at the close)

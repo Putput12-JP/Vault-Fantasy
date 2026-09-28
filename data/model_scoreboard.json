@@ -558,5 +558,101 @@
     "z": 0.37
    }
   }
+ },
+ "news": {
+  "trigger_vs_market": {
+   "mixed": {
+    "open": {
+     "n": 23,
+     "over_hit": 0.1739,
+     "market_said": 0.4996
+    },
+    "close": {
+     "n": 28,
+     "over_hit": 0.25,
+     "market_said": 0.4906
+    }
+   },
+   "no news": {
+    "open": {
+     "n": 760,
+     "over_hit": 0.4868,
+     "market_said": 0.4934
+    },
+    "close": {
+     "n": 882,
+     "over_hit": 0.483,
+     "market_said": 0.4939
+    }
+   },
+   "usage down": {
+    "open": {
+     "n": 210,
+     "over_hit": 0.4905,
+     "market_said": 0.4931
+    },
+    "close": {
+     "n": 245,
+     "over_hit": 0.4939,
+     "market_said": 0.4968
+    }
+   },
+   "usage up / teammate out": {
+    "open": {
+     "n": 694,
+     "over_hit": 0.5,
+     "market_said": 0.4918
+    },
+    "close": {
+     "n": 786,
+     "over_hit": 0.4949,
+     "market_said": 0.4934
+    }
+   }
+  },
+  "big_disagreements": {
+   "against the news": {
+    "n": 211,
+    "vault_side_won": 107,
+    "win": 0.5071,
+    "score": {
+     "n": 211,
+     "logloss_vault": 0.7271,
+     "logloss_market": 0.6871,
+     "brier_vault": 0.2657,
+     "brier_market": 0.2472,
+     "skill": -0.0581,
+     "z": -1.84
+    }
+   },
+   "agrees with the news": {
+    "n": 140,
+    "vault_side_won": 69,
+    "win": 0.4929,
+    "score": {
+     "n": 140,
+     "logloss_vault": 0.6901,
+     "logloss_market": 0.677,
+     "brier_vault": 0.2501,
+     "brier_market": 0.2423,
+     "skill": -0.0193,
+     "z": -0.51
+    }
+   },
+   "no news": {
+    "n": 298,
+    "vault_side_won": 150,
+    "win": 0.5034,
+    "score": {
+     "n": 298,
+     "logloss_vault": 0.711,
+     "logloss_market": 0.6781,
+     "brier_vault": 0.2581,
+     "brier_market": 0.2425,
+     "skill": -0.0485,
+     "z": -1.83
+    }
+   }
+  }
  }
 }
