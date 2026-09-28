@@ -508,18 +508,40 @@ function loadKalshiProps() {
     return kp && kp.markets ? kp : null;
   } catch (e) { return null; }   // cold/missing file → anchor no-ops
 }
+// Kalshi prices props on a strike ladder (70+, 80+ yards; 5+, 6+ catches), so a
+// book line usually sits BETWEEN two strikes (DeVonta Smith 73.5). Between two
+// liquid neighbours, read P(over) on the normal-quantile scale (probit) and
+// interpolate. Checked 2026-09-28: estimating each liquid strike from the ones
+// two steps away missed Kalshi's own price by ~1 pt (straight-line: 1.2-2.5), and
+// on 1,017 settled Wk 1-3 props Kalshi's read at the close line scored as well
+// as the books' no-vig price (log-loss .6922 vs .6925; between-strike .6906).
+const SHARP_MAX_GAP = { rec: 2, rec_yd: 20, rush_yd: 20, pass_yd: 50, rush_att: 6, pass_att: 10 };
+const _probit = p => { p = Math.min(Math.max(p, 1e-3), 1 - 1e-3);   // Acklam inverse normal
+  const a = [-39.6968302866538, 220.946098424521, -275.928510446969, 138.357751867269, -30.6647980661472, 2.50662827745924];
+  const b = [-54.4760987982241, 161.585836858041, -155.698979859887, 66.8013118877197, -13.2806815528857];
+  const c = [-0.00778489400243029, -0.322396458041136, -2.40075827716184, -2.54973253934373, 4.37466414146497, 2.93816398269878];
+  const d = [0.00778469570904146, 0.32246712907004, 2.445134137143, 3.75440866190742];
+  if (p < 0.02425) { const q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  if (p > 0.97575) { const q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  const q = p - 0.5, r = q * q;
+  return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1); };
+const _ncdf = z => { const t = 1 / (1 + 0.2316419 * Math.abs(z)); const dd = 0.3989423 * Math.exp(-z * z / 2); const p = dd * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - p : p; };
 function sharpFairFor(KP, name, mk, line) {
   if (!KP) return null;
   const ladder = (KP.markets[mk] || {})[nkey(name)];
   if (!ladder || !ladder.length || line == null) return null;
+  const liq = ladder.filter(r => r.oi >= SHARP_MIN_OI && r.spr <= SHARP_MAX_SPREAD).sort((x, y) => x.k - y.k);   // liquid strikes only
   let best = null;
-  for (const r of ladder) {
+  for (const r of liq) {
     const d = Math.abs(r.k - line);
-    if (d > SHARP_STRIKE_TOL) continue;
-    if (r.oi < SHARP_MIN_OI || r.spr > SHARP_MAX_SPREAD) continue;   // liquid strikes only
-    if (!best || d < best.d) best = { d, over: r.fair, oi: r.oi, spr: r.spr };
+    if (d <= SHARP_STRIKE_TOL && (!best || d < best.d)) best = { d, over: r.fair, oi: r.oi, spr: r.spr };
   }
-  return best ? { over: best.over, oi: best.oi, spr: best.spr } : null;
+  if (best) return { over: best.over, oi: best.oi, spr: best.spr };
+  const lo = liq.filter(r => r.k < line).pop(), hi = liq.find(r => r.k > line);
+  if (!lo || !hi || hi.k - lo.k > (SHARP_MAX_GAP[mk] || 20)) return null;
+  const t = (line - lo.k) / (hi.k - lo.k);
+  const over = _ncdf(_probit(lo.fair) + t * (_probit(hi.fair) - _probit(lo.fair)));
+  return { over: Math.round(over * 1000) / 1000, oi: Math.min(lo.oi, hi.oi), spr: Math.max(lo.spr, hi.spr), interp: [lo.k, hi.k] };
 }
 
 /* ── score every prop ──────────────────────────────────────────────────── */
@@ -663,6 +685,7 @@ function scoreProps(feed, PM, KP) {
         if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, market: mk, marketLabel: MKT_LABEL[mk] || mk,
           line, side, prob: round(g.padj, 3), over: round(v.over, 3), proj: v.proj, book: bs.book, price: bs.price,
           ev: ev != null ? round(ev * 100, 1) : null, grade: eff, books: trust.books,
+          kalshi: sharp ? sharp.over : null, kalshiInterp: !!(sharp && sharp.interp),
           status: pass ? 'pass' : roleUnconfirmed && wouldPass ? 'role' : sharpDisagree && wouldPass ? 'sharp'
             : weakMkt && wouldPass ? 'thin' : earlyRecHold && wouldPass ? 'hold' : preGate && projBlowout ? 'blowout'
             : preGate && countUnderPhantom ? 'count' : preGate && !realBookAtLine ? 'dfs' : 'no-edge' });
