@@ -112,6 +112,73 @@ function bookQuotes(g) {
 }
 const noQ = s => { const { q, ...rest } = s; return rest; };
 
+/* ── Sharp-book lead tracker (2026-09-28) ─────────────────────────────────
+   Does Pinnacle lead the recreational books? For each unstarted game this
+   records, per market, the FIRST time a lead book's no-vig line sits
+   >= LEAD_GAP from the rec books' median (3h+ before kickoff), and keeps
+   rolling that rec median forward to the close. build_model_scoreboard.py
+   grades it: did the rec books move toward the lead book by kickoff, and by
+   more than they move toward a CONTROL book (FanDuel)? Weeks 1-3 replay
+   (git history of lineup-feed.json): Pinnacle 24 toward / 9 away on spreads,
+   but FanDuel as a fake "sharp" did about as well, and no single book beat
+   the rest of the market's median. So it is tracked, not shown, until the
+   scoreboard says GO. Per-game `lead` field; tiny. */
+const LEAD_BOOKS = ['Pinnacle', 'FanDuel'];          // FanDuel = control
+const REC_BOOKS = new Set(['FanDuel', 'DraftKings', 'BetRivers', 'Hard Rock Bet', 'Bovada', 'Fliff', 'BetMGM', 'Caesars', 'Fanatics', 'bet365', 'Parx Casino']);
+const LEAD_GAP = 0.5, LEAD_MIN_H = 3, LEAD_LIM = { sp: 2.5, to: 3.5 };
+const _imp = a => a == null ? null : (a < 0 ? -a / (-a + 100) : 100 / (a + 100));
+function _devig(a, b) {
+  const po = _imp(a), pu = _imp(b);
+  if (!(po > 0) || !(pu > 0)) return null;
+  if (po + pu <= 1) return po / (po + pu);
+  let lo = 1, hi = 10; for (let i = 0; i < 40; i++) { const k = (lo + hi) / 2; if (po ** k + pu ** k > 1) lo = k; else hi = k; }
+  const k = (lo + hi) / 2; return po ** k / (po ** k + pu ** k);
+}
+function _invN(p) {   // Acklam
+  const a = [-39.6968302866538, 220.946098424521, -275.928510446969, 138.357751867269, -30.6647980661472, 2.50662827745924];
+  const b = [-54.4760987982241, 161.585836858041, -155.698979859887, 66.8013118877197, -13.2806815528857];
+  const c = [-0.00778489400243029, -0.322396458041136, -2.40075827716184, -2.54973253934373, 4.37466414146497, 2.93816398269878];
+  const d = [0.00778469570904146, 0.32246712907004, 2.445134137143, 3.75440866190742];
+  p = Math.min(Math.max(p, 1e-4), 1 - 1e-4);
+  if (p < 0.02425) { const q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  if (p > 0.97575) { const q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  const q = p - 0.5, r = q * q;
+  return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+}
+const _medAvg = a => { const s = a.slice().sort((x, y) => x - y); if (!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+// per-book fair HOME spread / fair total, outliers (junk quotes) dropped
+function bookFairs(g) {
+  const sdM = (GM && GM.sd_margin) || 13.2, sdT = (GM && GM.sd_total) || 13.5;
+  const sp = {}, to = {};
+  for (const q of ((g.spread && g.spread.quotes) || [])) {
+    if (!q || !q.home || !q.away || q.home.line == null) continue;
+    const p = _devig(q.home.price, q.away.price); if (p != null) sp[q.book] = -(sdM * _invN(p) - q.home.line);
+  }
+  for (const q of ((g.total && g.total.quotes) || [])) {
+    if (!q || q.line == null) continue;
+    const p = _devig(q.over, q.under); if (p != null) to[q.book] = q.line + sdT * _invN(p);
+  }
+  const clean = (o, lim) => { const v = Object.values(o); if (v.length < 3) return o; const m = _medAvg(v); return Object.fromEntries(Object.entries(o).filter(([, x]) => Math.abs(x - m) <= lim)); };
+  return { sp: clean(sp, LEAD_LIM.sp), to: clean(to, LEAD_LIM.to) };
+}
+function trackLead(rec, g, nowIso) {
+  const kick = Date.parse(g.commence || rec.commence || ''), t = Date.parse(nowIso);
+  if (!Number.isFinite(kick) || t >= kick) return;
+  const F = bookFairs(g), r1 = x => Math.round(x * 100) / 100;
+  rec.lead = rec.lead || {};
+  for (const mk of ['sp', 'to']) {
+    const fb = F[mk];
+    for (const b of LEAD_BOOKS) {
+      const rv = Object.entries(fb).filter(([k]) => REC_BOOKS.has(k) && k !== b).map(([, v]) => v);
+      const r = _medAvg(rv); if (r == null || rv.length < 3) continue;
+      const L = ((rec.lead[mk] = rec.lead[mk] || {})[b] = rec.lead[mk][b] || {});
+      L.close = { ts: nowIso, r: r1(r) };                        // rolls forward; the last one before kickoff is the close
+      if (!L.first && fb[b] != null && (kick - t) >= LEAD_MIN_H * 3600e3 && Math.abs(fb[b] - r) >= LEAD_GAP)
+        L.first = { ts: nowIso, b: r1(fb[b]), r: r1(r) };
+    }
+  }
+}
+
 function snapshot(g, ts) {
   const [spH, spA] = spreadPx(g), [toO, toU] = totalPx(g);
   return {
@@ -154,11 +221,13 @@ for (const g of feed.vegas_games) {
       season, seasonType, week, away: g.away, home: g.home, commence: g.commence || null,
       open: cur, cur, firstSeen: now, lastSeen: now, samples: [noQ(cur)],
     };
+    trackLead(games[key], g, now);
     created++;
     continue;
   }
   rec.lastSeen = now;
   rec.commence = g.commence || rec.commence || null;
+  trackLead(rec, g, now);
   const last = rec.samples && rec.samples.length ? rec.samples[rec.samples.length - 1] : rec.open;
   if (!last || sig(last) !== sig(cur)) {
     rec.cur = cur;

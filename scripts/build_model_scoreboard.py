@@ -382,6 +382,50 @@ def score_timing():
     return out
 
 
+def score_sharp_lead():
+    """Sharp-book lead (plan follow-up, 2026-09-28). snapshot-game-history.mjs
+    banks, per game and market, the first time Pinnacle (and FanDuel, the
+    CONTROL) sat >= 0.5 pts off the recreational books' no-vig median 3h+
+    before kickoff, plus that median at the close. Did the rec books move
+    toward the lead book? GO only if Pinnacle beats the control by 2+ standard
+    errors over 50+ games: a book that's merely off the pack gets pulled back
+    toward it too, which is not sharp money."""
+    try:
+        H = json.load(open(os.path.join(DATA, "game_line_history.json"))).get("games") or {}
+    except Exception:
+        return None
+    from datetime import datetime, timezone
+    ts = lambda x: datetime.fromisoformat(x.replace("Z", "+00:00")).timestamp()
+    now = datetime.now(timezone.utc).timestamp()
+    seen, rows = set(), {}
+    for rec in H.values():
+        c, L = rec.get("commence"), rec.get("lead")
+        if not c or not L: continue
+        k = (rec.get("away"), rec.get("home"), c)
+        if k in seen or ts(c) > now: continue          # one per game; played games only
+        seen.add(k)
+        for mk, books in L.items():
+            for b, x in books.items():
+                f, cl = x.get("first"), x.get("close")
+                if not f or not cl or ts(c) - ts(cl["ts"]) > 6 * 3600: continue
+                sgn = 1 if f["b"] > f["r"] else -1
+                rows.setdefault((mk, b), []).append(sgn * (cl["r"] - f["r"]))
+    out = {}
+    for (mk, b), mv in sorted(rows.items()):
+        n = len(mv); m = sum(mv) / n
+        se = (sum((v - m) ** 2 for v in mv) / n) ** .5 / n ** .5 if n > 1 else None
+        out.setdefault(mk, {})[b] = {"n": n, "toward": sum(1 for v in mv if v > .05), "away": sum(1 for v in mv if v < -.05),
+                                     "mean_move": round(m, 3), "se": None if se is None else round(se, 3)}
+    for mk, d in out.items():
+        p, c = d.get("Pinnacle"), d.get("FanDuel")
+        if not p or p["n"] < 50 or not c or p["se"] is None or c["se"] is None:
+            d["verdict"] = f"too few games ({p['n'] if p else 0} of 50)"
+        else:
+            gap, se = p["mean_move"] - c["mean_move"], (p["se"] ** 2 + c["se"] ** 2) ** .5
+            d["verdict"] = "GO: Pinnacle leads the market" if gap > 2 * se else f"NO-GO: not ahead of the control ({gap:+.2f} pts, z {gap / se:+.1f})"
+    return out
+
+
 def verdict(s):
     # z = paired log-loss difference / its standard error. |z| >= 2 is roughly
     # the 95% line; below it the gap is indistinguishable from noise.
@@ -408,7 +452,8 @@ def main():
            "games": {k: {"close": v["close"].out(), "bets": gb[k].out()} for k, v in sorted(ga.items())},
            "games_by_week": {str(w): {"close": v["close"].out()} for w, v in sorted(gw.items())},
            "news": score_news(br.get("props") or []),
-           "timing": score_timing()}
+           "timing": score_timing(),
+           "sharp_lead": score_sharp_lead()}
     for sec in ("props", "games"):
         for k, v in out[sec].items():
             v["verdict"] = verdict(v.get("close"))
@@ -463,6 +508,19 @@ def main():
             sc = v["score"]
             L.append(f"  {k:<24} n={v['n']:4d}  Vault's side won {v['vault_side_won']}-{v['n'] - v['vault_side_won']}"
                      + (f"  skill {sc['skill']:+.3f} z {sc['z']:+.1f}" if sc else ""))
+    sl = out.get("sharp_lead")
+    if sl:
+        L += ["```", "", "## Sharp-book lead: does Pinnacle move first?", "",
+              "_When Pinnacle's no-vig line sat half a point or more off the recreational books 3+ hours out, did those "
+              "books move toward it by kickoff? FanDuel is the control: an off-the-pack book gets pulled back toward "
+              "the pack whoever it is, so Pinnacle only counts as sharp if it clearly beats FanDuel. Weeks 1-3 are "
+              "replayed from the saved odds feed; later weeks are logged live._", "", "```"]
+        for mk, d in sl.items():
+            for b in ("Pinnacle", "FanDuel"):
+                x = d.get(b)
+                if x: L.append(f"{('spread' if mk == 'sp' else 'total'):<8}{b:<10} n={x['n']:3d}  toward {x['toward']:3d} / away {x['away']:3d}  "
+                               f"avg move toward {x['mean_move']:+.2f} pts ±{x['se'] or 0:.2f}")
+            L.append(f"{'':<8}-> {d.get('verdict')}")
     tm = out.get("timing")
     if tm and any(v["n"] for v in tm.values()):
         L += ["```", "", "## Timing: Best Bets by how early they posted (plan Weeks 3-4)", "",
