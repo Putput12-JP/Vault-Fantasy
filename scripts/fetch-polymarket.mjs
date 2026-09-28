@@ -81,10 +81,13 @@ async function fetchNflEvents() {
 // (size × price) gives a real "which way is money actively pushing" read that
 // total volume cannot. + = into home, − = into away. Returns { net, n } or null.
 const DAY = 86400;
+// Trades of BIG_TRADE dollars or more are split out: big tickets are a
+// different crowd from $20 ones, and the sharp-money study keys on them.
+const BIG_TRADE = 1000;
 async function takerFlow(conditionId, homeName, awayName) {
   if (!conditionId) return null;
   const cutoff = Math.floor(Date.now() / 1000) - DAY;
-  let net = 0, n = 0, offset = 0;
+  let net = 0, n = 0, offset = 0, bigNet = 0, bigN = 0;
   for (let page = 0; page < 8; page++) {          // cap ~4k recent trades/game
     let rows;
     try {
@@ -103,13 +106,14 @@ async function takerFlow(conditionId, homeName, awayName) {
       if (!isHome && !isAway) continue;
       const buy = String(t.side || '').toUpperCase() === 'BUY';
       const homeBullish = (isHome && buy) || (isAway && !buy);       // buy home / sell away
-      net += (homeBullish ? 1 : -1) * price * size;
-      n++;
+      const usd = (homeBullish ? 1 : -1) * price * size;
+      net += usd; n++;
+      if (price * size >= BIG_TRADE) { bigNet += usd; bigN++; }
     }
     if (hitOld || rows.length < 500) break;        // reached the 24h edge (or last page)
     offset += 500;
   }
-  return n ? { net: Math.round(net), n } : null;
+  return n ? { net: Math.round(net), n, bigNet: Math.round(bigNet), bigN } : null;
 }
 
 // Net 24h aggressor money into outcome A of ANY two-outcome market (a spread's
@@ -119,7 +123,7 @@ async function takerFlowAB(conditionId, outA, outB) {
   if (!conditionId) return null;
   const a = String(outA || '').toLowerCase(), b = String(outB || '').toLowerCase();
   const cutoff = Math.floor(Date.now() / 1000) - DAY;
-  let net = 0, n = 0, offset = 0;
+  let net = 0, n = 0, offset = 0, bigNet = 0, bigN = 0;
   for (let page = 0; page < 6; page++) {
     let rows;
     try { rows = await getJSON(`https://data-api.polymarket.com/trades?market=${conditionId}&takerOnly=true&limit=500&offset=${offset}`); }
@@ -134,13 +138,14 @@ async function takerFlowAB(conditionId, outA, outB) {
       const nm = String(t.outcome || '').toLowerCase();
       if (nm !== a && nm !== b) continue;
       const buy = String(t.side || '').toUpperCase() === 'BUY';
-      net += (((nm === a) === buy) ? 1 : -1) * price * size;
-      n++;
+      const usd = (((nm === a) === buy) ? 1 : -1) * price * size;
+      net += usd; n++;
+      if (price * size >= BIG_TRADE) { bigNet += usd; bigN++; }
     }
     if (hitOld || rows.length < 500) break;
     offset += 500;
   }
-  return n ? { net: Math.round(net), n } : null;
+  return n ? { net: Math.round(net), n, bigNet: Math.round(bigNet), bigN } : null;
 }
 
 // Where the event's money sits, by market (Gamma tags each sub-market with
@@ -170,11 +175,13 @@ async function marketMoney(ev, awayName, homeName, away, home) {
   let spTaker = null, toTaker = null;
   if (S[0] && S[0].vol >= MIN_VOL) {
     const f = await takerFlowAB(S[0].cid, S[0].outs[0], S[0].outs[1]);
-    if (f) spTaker = { side: f.net >= 0 ? S[0].fav : (S[0].fav === home ? away : home), net: Math.abs(f.net), n: f.n };
+    if (f) spTaker = { side: f.net >= 0 ? S[0].fav : (S[0].fav === home ? away : home), net: Math.abs(f.net), n: f.n,
+      big: f.bigN ? { side: f.bigNet >= 0 ? S[0].fav : (S[0].fav === home ? away : home), net: Math.abs(f.bigNet), n: f.bigN } : null };
   }
   if (T[0] && T[0].vol >= MIN_VOL) {
     const f = await takerFlowAB(T[0].cid, 'Over', 'Under');
-    if (f) toTaker = { side: f.net >= 0 ? 'over' : 'under', net: Math.abs(f.net), n: f.n };
+    if (f) toTaker = { side: f.net >= 0 ? 'over' : 'under', net: Math.abs(f.net), n: f.n,
+      big: f.bigN ? { side: f.bigNet >= 0 ? 'over' : 'under', net: Math.abs(f.bigNet), n: f.bigN } : null };
   }
   const strip = a => a.slice(0, 4).map(({ cid, outs, p, ...r }) => ({ ...r, p: p == null ? null : +p.toFixed(3) }));
   return {
