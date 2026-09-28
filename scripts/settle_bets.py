@@ -1099,6 +1099,10 @@ def settle_card(prop_picks):
         rules = _card_rules(rows, _load_data("best_bets_rules.json"))
         rules["params"] = {"window_weeks": RULE_WEEKS, "on_min_plays": RULE_ON_N, "on_min_roi": RULE_ON_ROI, "off_min_plays": RULE_OFF_N}
         res["rules"] = rules
+        # Every Best Bets play, graded at its posted line + price: the Track
+        # Record artifact's "Best Bets" filter reads these (card plays ride in
+        # "picks" above; a card play the top-N never showed is only there).
+        res["shadow_picks"] = rows
     return res
 
 
