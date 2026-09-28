@@ -416,7 +416,43 @@ def score_sharp_lead():
         se = (sum((v - m) ** 2 for v in mv) / n) ** .5 / n ** .5 if n > 1 else None
         out.setdefault(mk, {})[b] = {"n": n, "toward": sum(1 for v in mv if v > .05), "away": sum(1 for v in mv if v < -.05),
                                      "mean_move": round(m, 3), "se": None if se is None else round(se, 3)}
+    # props: snapshot-prop-history.mjs trackPropLead, P(over) at the lead line;
+    # "toward" = the rec books' line moved the lead book's way, or at the same
+    # line their P(over) did (1-pt dead zone). Controls: FanDuel, DraftKings.
+    try:
+        PH = json.load(open(os.path.join(DATA, "prop_line_history.json"))).get("props") or {}
+    except Exception:
+        PH = {}
+    prow = {}
+    for rec in PH.values():
+        L = rec.get("lead")
+        if not L: continue
+        for b, x in L.items():
+            f, cl = x.get("first"), x.get("close")
+            if not f or not cl: continue
+            sgn = 1 if f["b"] > f["r"] else -1
+            if cl.get("line") is not None and cl["line"] != f["line"]:
+                mv = 1 if cl["line"] > f["line"] else -1
+            elif cl.get("p") is not None:
+                d_ = cl["p"] - f["r"]; mv = 0 if abs(d_) < 0.01 else (1 if d_ > 0 else -1)
+            else:
+                continue
+            prow.setdefault(b, []).append(sgn * mv)
+    if prow:
+        d = out.setdefault("props", {})
+        for b, v in prow.items():
+            n = len(v); tw = v.count(1); aw = v.count(-1)
+            d[b] = {"n": n, "toward": tw, "away": aw, "mean_move": round((tw - aw) / n, 3), "se": round(((1 - ((tw - aw) / n) ** 2) / n) ** .5, 3) if n > 1 else None}
     for mk, d in out.items():
+        if mk == "props":
+            p, cs = d.get("Pinnacle"), [d.get(b) for b in ("FanDuel", "DraftKings") if d.get(b)]
+            if not p or p["n"] < 100 or not cs:
+                d["verdict"] = f"too few props ({p['n'] if p else 0} of 100)"
+            else:
+                c = max(cs, key=lambda x: x["mean_move"])
+                gap, se = p["mean_move"] - c["mean_move"], ((p["se"] or 0) ** 2 + (c["se"] or 0) ** 2) ** .5
+                d["verdict"] = "GO: Pinnacle leads on props" if se and gap > 2 * se else f"NO-GO: not ahead of the controls ({gap:+.2f}, z {gap / se if se else 0:+.1f})"
+            continue
         p, c = d.get("Pinnacle"), d.get("FanDuel")
         if not p or p["n"] < 50 or not c or p["se"] is None or c["se"] is None:
             d["verdict"] = f"too few games ({p['n'] if p else 0} of 50)"
@@ -516,10 +552,13 @@ def main():
               "the pack whoever it is, so Pinnacle only counts as sharp if it clearly beats FanDuel. Weeks 1-3 are "
               "replayed from the saved odds feed; later weeks are logged live._", "", "```"]
         for mk, d in sl.items():
-            for b in ("Pinnacle", "FanDuel"):
+            for b in ("Pinnacle", "FanDuel", "DraftKings"):
                 x = d.get(b)
-                if x: L.append(f"{('spread' if mk == 'sp' else 'total'):<8}{b:<10} n={x['n']:3d}  toward {x['toward']:3d} / away {x['away']:3d}  "
-                               f"avg move toward {x['mean_move']:+.2f} pts ±{x['se'] or 0:.2f}")
+                if not x: continue
+                lbl = {'sp': 'spread', 'to': 'total', 'props': 'props'}[mk]
+                unit = "net share toward" if mk == "props" else "avg move toward"
+                L.append(f"{lbl:<8}{b:<11} n={x['n']:3d}  toward {x['toward']:3d} / away {x['away']:3d}  "
+                         f"{unit} {x['mean_move']:+.2f}{'' if mk == 'props' else ' pts'} ±{x['se'] or 0:.2f}")
             L.append(f"{'':<8}-> {d.get('verdict')}")
     tm = out.get("timing")
     if tm and any(v["n"] for v in tm.values()):

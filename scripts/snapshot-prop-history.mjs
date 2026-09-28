@@ -77,6 +77,50 @@ function bookQuotes(cell) {
     .filter(q => q && q.book && (num(q.over) != null || num(q.under) != null))
     .map(q => [q.book, num(q.line), num(q.over), num(q.under)]);
 }
+/* ── Sharp-book lead tracker, props (2026-09-28) ─────────────────────────
+   Same test as the game-line tracker (snapshot-game-history.mjs): does
+   Pinnacle move first on props? Per prop, per lead book, the FIRST time its
+   no-vig P(over) sits >= PROP_LEAD_GAP from the rec books' median at the SAME
+   line (3h+ before kickoff), and those rec books' state at the close (their
+   modal line + median P(over) at the lead line). FanDuel and DraftKings are
+   controls: an off-the-pack book gets pulled back to the pack whoever it is.
+   Graded by build_model_scoreboard.py; not shown in the app until GO. */
+const PROP_LEAD_BOOKS = ['Pinnacle', 'FanDuel', 'DraftKings'];
+const PROP_REC = new Set(['FanDuel', 'DraftKings', 'BetRivers', 'Hard Rock Bet', 'Fliff', 'BetMGM', 'Caesars', 'Fanatics', 'bet365', 'Parx Casino']);
+const PROP_LEAD_GAP = 0.03, PROP_LEAD_MIN_H = 3;
+const _imp = a => a == null ? null : (a < 0 ? -a / (-a + 100) : 100 / (a + 100));
+function _devig(a, b) {
+  const po = _imp(a), pu = _imp(b);
+  if (!(po > 0) || !(pu > 0)) return null;
+  if (po + pu <= 1) return po / (po + pu);
+  let lo = 1, hi = 10; for (let i = 0; i < 40; i++) { const k = (lo + hi) / 2; if (po ** k + pu ** k > 1) lo = k; else hi = k; }
+  const k = (lo + hi) / 2; return po ** k / (po ** k + pu ** k);
+}
+const _median = a => { const s = a.slice().sort((x, y) => x - y); if (!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function trackPropLead(rec, cell, nowMs, nowIso, kickMs) {
+  if (!Number.isFinite(kickMs) || nowMs >= kickMs) return;
+  const pb = {};                                   // book -> [line, P(over)]
+  for (const q of cell.quotes || []) {
+    if (!q || !q.book || num(q.line) == null) continue;
+    const p = _devig(num(q.over), num(q.under)); if (p != null) pb[q.book] = [num(q.line), p];
+  }
+  const r3 = x => Math.round(x * 1000) / 1000;
+  rec.lead = rec.lead || {};
+  for (const b of PROP_LEAD_BOOKS) {
+    const rb = Object.entries(pb).filter(([k]) => PROP_REC.has(k) && k !== b);
+    if (rb.length < 2) continue;
+    const cnt = {}; for (const [, [L]] of rb) cnt[L] = (cnt[L] || 0) + 1;
+    const modal = +Object.entries(cnt).sort((x, y) => y[1] - x[1])[0][0];
+    const L0 = (rec.lead[b] && rec.lead[b].first) ? rec.lead[b].first.line : (pb[b] ? pb[b][0] : null);
+    const atL = L0 == null ? [] : rb.filter(([, [L]]) => L === L0).map(([, [, p]]) => p);
+    const x = (rec.lead[b] = rec.lead[b] || {});
+    x.close = { ts: nowIso, line: modal, p: atL.length ? r3(_median(atL)) : null };
+    if (!x.first && pb[b] && atL.length >= 2 && (kickMs - nowMs) >= PROP_LEAD_MIN_H * 3600e3) {
+      const r = _median(atL);
+      if (Math.abs(pb[b][1] - r) >= PROP_LEAD_GAP) x.first = { ts: nowIso, line: pb[b][0], b: r3(pb[b][1]), r: r3(r) };
+    }
+  }
+}
 // Value signature — used to skip appending a duplicate sample.
 const sig = s => [s.line, s.over, s.under, s.bestOver, s.bestUnder, s.proj].join('|');
 
@@ -133,6 +177,7 @@ for (const pid in feed.vegas_player_props) {
     }
     const cur = snapshot(cell, projFor(stats, mk), now);
     const q = bookQuotes(cell);
+    if (rec) trackPropLead(rec, cell, nowMs, now, Date.parse(commence || rec.commence || ''));
     const curQ = Object.assign({}, cur, { q });   // cur/open carry books; samples stay lean
 
     if (!rec) {
@@ -141,6 +186,7 @@ for (const pid in feed.vegas_player_props) {
         pos: p.pos || null, opp: p.opp || null, ha: p.ha || null, market: mk, commence,
         open: curQ, cur: curQ, firstSeen: now, lastSeen: now, samples: [cur],
       };
+      trackPropLead(props[key], cell, nowMs, now, kickMs);
       created++;
       continue;
     }
