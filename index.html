@@ -13473,6 +13473,10 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-29T17:30', tag:'Fixed', title:'Game Play cards keep their shape',
+    items:['When only one or two Game Plays are live, each card now stays card-sized instead of stretching across the page, and its right edge no longer fades out.']
+  },
+  {
     ts:'2026-09-29T17:00', tag:'Fixed', title:'Game cards only offer Vault’s real Game Plays',
     items:[
       'The Track button on a game card now only appears for a Vault Game Play, a play type that has been winning. It used to offer the model’s biggest disagreement with the market, which lost most weeks.',
@@ -43063,8 +43067,11 @@ window.VaultMarketProj = (function () {
 #page-betting .gmx-sechd{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:30px 0 12px}
 #page-betting .gmx-sechd h2{font-size:17px;font-weight:800;letter-spacing:-.01em;margin:0;color:var(--bt-text)}
 #page-betting .gmx-sechd>span{color:var(--bt-muted);font-size:12.5px;display:flex;gap:10px;align-items:baseline}
-#page-betting .gmx-gaps{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,1fr);gap:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;
-  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent)}
+/* Cards keep a card's width (a lone play used to stretch across the page and
+   spread its contents to both edges). The edge fade only shows when the row
+   actually overflows (.more, set after render), else it clipped the last card. */
+#page-betting .gmx-gaps{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,280px);justify-content:start;gap:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+#page-betting .gmx-gaps.more{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent)}
 #page-betting .gmx-gaps::-webkit-scrollbar{display:none}
 #page-betting .gmx-gap{appearance:none;text-align:left;font-family:inherit;color:inherit;background:var(--bt-s1);border:1px solid var(--bt-border);border-radius:14px;padding:12px 14px;cursor:pointer;transition:transform var(--dur-release) var(--ease-spring),border-color .15s ease}
 /* keep the .press asymmetry: these rules re-declare transition, so restate the snap-down */
@@ -43174,7 +43181,7 @@ window.VaultMarketProj = (function () {
   #page-betting .gmx-rlink{margin-left:0}
   #page-betting .gmx-sechd{flex-direction:column;gap:4px;margin:24px 0 10px}
   #page-betting .gmx-sechd>span{flex-wrap:wrap}
-  #page-betting .gmx-gaps{grid-auto-columns:minmax(180px,1fr)}
+  #page-betting .gmx-gaps{grid-auto-columns:minmax(210px,250px)}
   #page-betting .gmx-bar{margin-top:24px}
   #page-betting .gmx-bar .bt-seg{max-width:100%}
   #page-betting .gmx-dayhead{padding-top:26px;margin-bottom:16px}
@@ -44063,6 +44070,7 @@ window.VaultMarketProj = (function () {
     inner.innerHTML = gmxHead() + gmxBoard();
     paintLogos('#bt-gv-inner');
     inner.querySelectorAll('[data-tgl]').forEach(b => b.onclick = () => { const k = b.dataset.tgl; gExpanded.has(k) ? gExpanded.delete(k) : gExpanded.add(k); renderGamesBoard(); });
+    { const gg = inner.querySelector('.gmx-gaps'); if (gg) gg.classList.toggle('more', gg.scrollWidth > gg.clientWidth + 1); }
     inner.querySelectorAll('[data-track]').forEach(b => b.onclick = e => { e.stopPropagation(); const m = _trackMap[b.dataset.track]; if (m && m.lean) { toggleGamePick(m.g, m.lean); renderGamesBoard(); } });
     const mvOpen = inner.querySelector('#bx-mv-open'); if (mvOpen) mvOpen.onclick = () => { view = 'props'; propsView = 'results'; resultsTab = 'mine'; setView('props'); };
     const trOpen = inner.querySelector('#bx-open-tr'); if (trOpen) trOpen.onclick = () => { view = 'props'; propsView = 'results'; resultsTab = 'mine'; setView('props'); };
