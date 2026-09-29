@@ -580,7 +580,7 @@ function payload(S, byGame, W, status) {
   for (const [k, G] of Object.entries(S.games)) {
     if (!G.sig || !G.meta) continue;
     const f = G.final, m = G.meta;
-    sigRec.push({ sport: m.sport, game: `${m.away.abbr} @ ${m.home.abbr}`, start: m.start, sharp: G.sig.sharp, sharpN: G.sig.sharpN, crowd: G.sig.crowd, home_p: G.sig.home_p,
+    sigRec.push({ key: k, sport: m.sport, game: `${m.away.abbr} @ ${m.home.abbr}`, start: m.start, sharp: G.sig.sharp, sharpN: G.sig.sharpN, crowd: G.sig.crowd, home_p: G.sig.home_p,
       final: f ? [f.away, f.home] : null, src: 'watch' });
   }
   // NFL before the watch existed: fetch-polymarket's signal log (Weeks 1-3
