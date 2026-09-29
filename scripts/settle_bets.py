@@ -722,6 +722,38 @@ def load_espn_scores(needed):
                 continue
     return out
 
+NEWS_PTS, NEWS_BASE_D = 4, 10   # mirrors snapshot-game-history.mjs lineNews()
+
+def _parse_ts(t):
+    import datetime as _dt
+    try: return _dt.datetime.fromisoformat(str(t).replace("Z", "+00:00")).timestamp()
+    except Exception: return None
+
+def line_news_moves(games):
+    """{(away, home, commence): {"sp": d, "to": d}}: how far each game's closing
+    spread / total sat from its lookahead (the last sample NEWS_BASE_D+ days
+    before kickoff). Samples are pooled across week tags (one matchup can be
+    banked under several). A move of NEWS_PTS+ is the "Big line move" hold in
+    the app; banking the move on every game lets the scoreboard check that the
+    hold is keeping the model out of games it can't read."""
+    pool = {}
+    for g in games.values():
+        if g.get("commence"):
+            pool.setdefault((g.get("away"), g.get("home"), g["commence"]), []).extend(g.get("samples") or [])
+    out = {}
+    for (a, h, c), S in pool.items():
+        kick = _parse_ts(c)
+        if kick is None: continue
+        S = sorted((x for x in S if x and _parse_ts(x.get("ts")) is not None and _parse_ts(x["ts"]) < kick),
+                   key=lambda x: _parse_ts(x["ts"]))
+        mv = {}
+        for mk, f in (("sp", "spread"), ("to", "total")):
+            base = [x for x in S if x.get(f) is not None and _parse_ts(x["ts"]) <= kick - NEWS_BASE_D * 86400]
+            cur = [x for x in S if x.get(f) is not None]
+            mv[mk] = round(cur[-1][f] - base[-1][f], 2) if base and cur else None
+        out[(a, h, c)] = mv
+    return out
+
 def settle_games(season_filter=None):
     try:
         blob = json.load(open(os.path.join(DATA, "game_line_history.json")))
@@ -752,6 +784,7 @@ def settle_games(season_filter=None):
         return [], {"settled": 0, "note": "no scores available"}
 
     picks, unsettled = [], 0
+    news = line_news_moves(games)
     for g in reg:
         season = str(g.get("season"))
         if season_filter and season != str(season_filter): continue
@@ -777,6 +810,9 @@ def settle_games(season_filter=None):
         moff = bool(vl.get("off")) if vl else False          # model was on offseason (prior-season) ratings
         base = {"kind": "game", "season": season, "week": g.get("week"), "away": away, "home": home,
                 "home_score": hs, "away_score": as_, "model_offseason": moff}   # scores let the UI settle too
+        nm = news.get((away, home, g.get("commence"))) or {}
+        base.update({"news_sp": nm.get("sp"), "news_to": nm.get("to"),
+                     "news": any(v is not None and abs(v) >= NEWS_PTS for v in nm.values()) if nm else None})
 
         # SPREAD — the Vault model picks a side vs the closing market spread;
         # does that side cover? (forward ATS test of the game model). proj_err is
@@ -1037,7 +1073,8 @@ def build_scoreboard(prop_picks, game_picks):
 # posted line and price, because that is the bet a user following the card made.
 # The closing line/price comes from the matching ledger row, for two extra
 # reads: units if you had waited and bet the close, and CLV (did the market move
-# toward the play after it posted). A close line more than max(15%, 1) off the
+# toward the play after it posted; on an unmoved number, did the price we took
+# beat the no-vig closing price, fair_close_over()). A close line more than max(15%, 1) off the
 # posted one is treated as a junk snapshot (alt lines leak in) and gets no CLV.
 #
 # data/best_bets_shadow.json is every play that reached the live Best Bets top-N,
@@ -1053,6 +1090,37 @@ def _load_data(name):
         return json.load(open(os.path.join(DATA, name)))
     except Exception:
         return None
+
+def _power_devig(o, u):
+    """Two-way American prices -> vig-free P(over) by the power method (the
+    same de-vig as the app's fair line; it takes more vig off the longshot than
+    the proportional devig() does). None unless a sane two-way pair."""
+    po, pu = am_prob(o), am_prob(u)
+    if po is None or pu is None or not (1.0 < po + pu <= 1.15): return devig(o, u)
+    lo, hi = 1.0, 3.0
+    for _ in range(50):
+        k = (lo + hi) / 2
+        if po ** k + pu ** k > 1: lo = k
+        else: hi = k
+    return po ** ((lo + hi) / 2)
+
+DFS_BOOKS = {"prizepicks", "underdog fantasy", "underdog", "sleeper"}   # = build_best_bets.mjs
+
+def fair_close_over(led):
+    """(P(over) at the closing line with the vig removed, source). Per-book
+    power de-vig then the median (the app's fair line) over REAL books when the
+    close banked per-book quotes; else the consensus closing pair. Pick'em apps
+    price every line the same (-112/-112), which de-vigs to 50% whatever the
+    market thinks, so they are left out, and so is a symmetric consensus pair
+    (the tell of an app-sourced close). (None, None) when no real price."""
+    ps = sorted(p for p in (_power_devig(o, u) for b, (o, u) in ((led or {}).get("books_close") or {}).items()
+                            if str(b).lower() not in DFS_BOOKS) if p is not None)
+    if ps:
+        n = len(ps)
+        return (ps[n // 2] if n % 2 else (ps[n // 2 - 1] + ps[n // 2]) / 2), "books"
+    o, u = (led or {}).get("close_over"), (led or {}).get("close_under")
+    p = _power_devig(o, u) if o is not None and o != u else None
+    return (p, "consensus") if p is not None else (None, None)
 
 def _grade_plays(picks, prop_picks):
     by_key = {(str(p.get("season")), p.get("week"), str(p.get("pid")), p.get("market")): p for p in prop_picks}
@@ -1088,21 +1156,30 @@ def _grade_plays(picks, prop_picks):
         # closing line / price from the ledger (same prop, same week)
         lc = led.get("line_close") if led else None
         cp = (led.get("close_over") if side == "over" else led.get("close_under")) if led else None
-        clv_line = beat = units_close = None
+        clv_line = beat = units_close = clv_prob = fair_side = None
+        fo, fsrc = fair_close_over(led)
         if lc is not None and line is not None and abs(lc - line) <= max(0.15 * abs(line), 1.0):
             clv_line = (lc - line) if side == "over" else (line - lc)
             if abs(clv_line) > 1e-9:
                 beat = clv_line > 0
-            elif cp is not None and c.get("price") is not None:
-                # same number: did the side get more expensive after it posted?
-                d = am_prob(cp) - am_prob(c["price"])
-                beat = True if d > 0.005 else False if d < -0.005 else None
+            elif fo is not None and c.get("price") is not None:
+                # Same number: grade the price we took against the market's
+                # NO-VIG closing price, not the same book's close. A pick'em app
+                # or a book that never moves its -112 used to read "no change"
+                # (6 of Week 3's 9 card plays had no CLV at all); against the fair
+                # close every play gets a verdict, and a flat -112 on a 50/50
+                # close is correctly a loss of the vig.
+                fair_side = fo if side == "over" else 1 - fo
+                clv_prob = fair_side - am_prob(c["price"])
+                beat = clv_prob > 0
             if actual is not None and abs(actual - lc) > 1e-9:
                 wc = actual > lc if side == "over" else actual < lc
                 units_close = _am_pay(cp) if wc else -1.0
             elif actual is not None:
                 units_close = 0.0
         row.update({"line_close": lc, "price_close": cp, "clv_line": clv_line, "beat_close": beat,
+                    "fair_close": None if fair_side is None else round(fair_side, 4), "fair_src": fsrc if fair_side is not None else None,
+                    "clv_prob": None if clv_prob is None else round(clv_prob, 4),
                     "units_close": None if units_close is None else round(units_close, 3)})
         out.append(row)
     return out
@@ -1116,7 +1193,9 @@ def _summ(rows):
             "pending": sum(1 for r in rows if r["result"] is None), "void": sum(1 for r in rows if r["result"] == "V"), "n": len(rows),
             "units": round(sum(r["units"] for r in rows if r["units"] is not None), 2),
             "units_close": round(sum(r["units_close"] for r in cl), 2), "n_close": len(cl),
-            "beat_close": sum(1 for r in bc if r["beat_close"]), "n_clv": len(bc)}
+            "beat_close": sum(1 for r in bc if r["beat_close"]), "n_clv": len(bc),
+            # mean edge vs the no-vig close on same-number plays (EV proxy)
+            "clv_ev": round(sum(r["clv_prob"] for r in ev) / len(ev), 4) if (ev := [r for r in rows if r.get("clv_prob") is not None]) else None, "n_ev": len(ev)}
 
 # Card eligibility. Measured on Weeks 1-3 of the live top-N (56 valid plays):
 # WR/TE rec-yds unders 28-11 +14.2u (every week positive); RB rec-yds unders
@@ -1338,7 +1417,7 @@ def main():
             m = v["summary"]
             print(f"[settle] Vault's Plays {s}: {m['W']}-{m['L']}-{m['P']} ({m['pending']} pending) "
                   f"{m['units']:+.1f}u at posted price | {m['units_close']:+.1f}u at the close | "
-                  f"beat close {m['beat_close']}/{m['n_clv']}")
+                  f"beat close {m['beat_close']}/{m['n_clv']}" + (f" | vs fair close {m['clv_ev']*100:+.1f}% ({m['n_ev']})" if m.get('clv_ev') is not None else ""))
         if plays.get("pairs"):
             ps = plays["pairs"]["summary"]
             print(f"[settle] pick'em pairs: {ps['W']}-{ps['L']} ({ps['void']} void, {ps['pending']} pending) {ps['units']:+.1f}u")

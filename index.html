@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-09-29T21:00', tag:'Improved', title:'Game Plays sit out games after big line moves, and a stricter closing-line check',
+    items:[
+      'When a game’s spread or total moves 4+ points in the 10 days before kickoff, it gets a “Big line move” tag and no Vault Game Play. A move that big almost always means news, like a QB injury, that Vault’s model may not have caught yet.',
+      'Vault’s Plays “Beat the close” now covers plays whose line never moved. They are graded against the market’s fair (no-vig) closing price, so a play only counts as beating the close if its price was better than fair.',
+      'Pick’em apps’ flat prices no longer count as a closing price, since they price every line the same.'
+    ]
+  },
+  {
     ts:'2026-09-29T19:00', tag:'New', title:'See where the real money is on every game',
     items:[
       'Game cards now break down the money traded on Polymarket by market: how much is on the spread, the total and the moneyline, which line is getting the most action, and which side bettors have been buying over the last 24 hours.',
@@ -43332,7 +43340,7 @@ window.VaultMarketProj = (function () {
   // Game play-type rules (data/game_rules.json, settle_bets.py game_rules): which
   // market x gap band has earned a spot on "Vault's Game Plays". Null until it
   // lands, and then the section just doesn't render.
-  let _gmRules = null, _gmQb = {};
+  let _gmRules = null, _gmQb = {}, _gmNews = {};
   function loadGameModel() {
     const base = (typeof NFLVERSE_BASE !== 'undefined' && NFLVERSE_BASE) ? NFLVERSE_BASE : '/data';
     const rules = fetch(base + '/game_rules.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
@@ -43341,12 +43349,21 @@ window.VaultMarketProj = (function () {
     // their established starter. The model takes its fitted qb.margin / qb.total off.
     const qbs = fetch(base + '/qb_status.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
       .then(j => { _gmQb = (j && j.teams) ? j.teams : {}; });
-    return Promise.all([fetch(base + '/game_model.json').then(r => (r.ok ? r.json() : null)).catch(() => null), rules, qbs])
+    // Line news (data/line_news.json, snapshot-game-history.mjs): games whose
+    // spread or total moved 4+ pts from the lookahead, which almost always means
+    // news the model hasn't caught (a QB out). Those get no Game Play.
+    const news = fetch(base + '/line_news.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
+      .then(j => { _gmNews = (j && j.games) ? j.games : {}; });
+    return Promise.all([fetch(base + '/game_model.json').then(r => (r.ok ? r.json() : null)).catch(() => null), rules, qbs, news])
       .then(([j]) => { _gmTried = true; _gmModel = (j && j.teams) ? j : null; return _gmModel; });
   }
   function _gmPhi(z) { return 0.5 * (1 + _bmErf(z / Math.SQRT2)); }
   function _bmErf(x) { const s = x < 0 ? -1 : 1; x = Math.abs(x); const t = 1 / (1 + 0.3275911 * x);
     const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return s * y; }
+  function gmNews(g) {
+    const n = g && _gmNews[g.away + '@' + g.home];
+    return n && (!n.commence || !g.commence || n.commence === g.commence) ? n : null;
+  }
   function gmNeutral(away, home) {
     const N = _gmModel && _gmModel.neutral;
     return !!(N && N.indexOf(_gmTeam(away) + '@' + _gmTeam(home)) >= 0);
@@ -43938,6 +43955,8 @@ window.VaultMarketProj = (function () {
         // and the play-type records were earned on games without one. Hold it,
         // same as props hold a team's pass-catchers when its QB is out.
         if (gp.qb) return;
+        // Line moved 4+ pts since the lookahead: news the model may not have.
+        if (gmNews(x.g)) return;
         allLeans(x.g, gp, true).forEach(l => { const k = l.market + '|' + l.band; if (gmOn.includes(k)) gmPlays.push({ g: x.g, lean: l, rec: _gmRules.buckets[k] }); });
       });
       gmPlays.sort((a, b) => Date.parse(a.g.commence || '') - Date.parse(b.g.commence || ''));
@@ -43995,7 +44014,9 @@ window.VaultMarketProj = (function () {
       const qbi = gp ? (gmPredict(g.away, g.home) || {}).qb : null;
       const qbTag = qbi ? [[g.away, qbi.away], [g.home, qbi.home]].filter(([, q]) => q).map(([t, q]) =>
         '<span class="gmx-tag qb" title="' + (q.starter ? q.starter + ' starts for ' : 'A backup starts for ') + q.established + ' (' + (q.reason === 'benched' ? 'benched' : 'out') + '). Vault’s model takes ' + qbi.margin + ' pts off ' + t + '’s margin and ' + qbi.total + ' off the total, measured from past backup starts.">' + t + ' backup QB</span>').join('') : '';
-      const tags = qbTag + (neutral ? '<span class="gmx-tag neu" title="International / neutral-site game: no home-field edge">Neutral site</span>' : '') + (hot ? '<span class="gmx-tag hot" title="Top-quartile 24h Polymarket volume on this week’s slate">Heating up</span>' : '');
+      const nw = gmNews(g), sgn = v => (v > 0 ? '+' : '') + v;
+      const newsTag = nw ? '<span class="gmx-tag qb" title="' + [nw.spread ? 'The spread moved from ' + g.home + ' ' + sgn(nw.spread.from) + ' to ' + g.home + ' ' + sgn(nw.spread.to) : '', nw.total ? 'The total moved from ' + nw.total.from + ' to ' + nw.total.to : ''].filter(Boolean).join('. ') + ' since the lookahead line, 10 days before kickoff. A move that big almost always means news, like a QB injury. Vault holds its Game Plays here until its model catches up.">Big line move</span>' : '';
+      const tags = qbTag + newsTag + (neutral ? '<span class="gmx-tag neu" title="International / neutral-site game: no home-field edge">Neutral site</span>' : '') + (hot ? '<span class="gmx-tag hot" title="Top-quartile 24h Polymarket volume on this week’s slate">Heating up</span>' : '');
       const tm = _trackMap[key], lean = tm && tm.lean;
       let trk = '';
       if (lean) { const on = gamePickLogged(g, lean); trk = '<button class="gmx-track press press-btn' + (on ? ' on' : '') + '" data-track="' + key + '" title="' + (on ? 'Tracking in your record. Tap to stop' : 'Track Vault’s best bet: ' + lean.label) + '"><span class="st">' + (on ? '★' : '☆') + '</span>' + (on ? 'Tracking ' : 'Track ') + lean.label + '</button>'; }
@@ -44434,7 +44455,7 @@ window.VaultMarketProj = (function () {
   // market x gap band is ON in game_rules.json, no backup QB), else nothing.
   // The raw model's biggest gap is not a pick: those went 3-9 in Weeks 1-3.
   function playLean(g, gp) {
-    if (!gp || gp.qb || !_gmRules) return null;
+    if (!gp || gp.qb || !_gmRules || gmNews(g)) return null;
     const B = _gmRules.buckets || {};
     return allLeans(g, gp, true).find(l => B[l.market + '|' + l.band] && B[l.market + '|' + l.band].on) || null;
   }
@@ -45870,7 +45891,7 @@ window.VaultMarketProj = (function () {
         + '<div class="tr-h-kpis">'
         + '<div class="tr-kpi"><div class="tr-kl">Units</div><div class="tr-kv ' + _trUC(a.units) + '">' + _trU(a.units) + '</div><div class="tr-kt">1u a play at the posted price</div></div>'
         + '<div class="tr-kpi" title="The same plays bet at the closing line and closing price instead. The gap to the posted-price number is what getting in early is worth."><div class="tr-kl">At the close</div><div class="tr-kv ' + _trUC(a.unitsClose) + '">' + _trU(a.unitsClose) + '</div><div class="tr-kt">' + a.nClose + ' plays with a clean closing line</div></div>'
-        + (a.nClv ? '<div class="tr-kpi" title="Closing-line value: how often the line or price moved toward the play after it posted."><div class="tr-kl">Beat the close</div><div class="tr-kv ' + (a.beat / a.nClv > 0.5 ? 'good' : a.beat / a.nClv < 0.5 ? 'bad' : '') + '">' + _trPct(a.beat / a.nClv) + '</div><div class="tr-kt">' + a.beat + ' of ' + a.nClv + ' plays that moved</div></div>' : '')
+        + (a.nClv ? '<div class="tr-kpi" title="Closing-line value: the line moved toward the play after it posted, or, when the number did not move, the price taken beat the market’s fair (no-vig) closing price."><div class="tr-kl">Beat the close</div><div class="tr-kv ' + (a.beat / a.nClv > 0.5 ? 'good' : a.beat / a.nClv < 0.5 ? 'bad' : '') + '">' + _trPct(a.beat / a.nClv) + '</div><div class="tr-kt">' + a.beat + ' of ' + a.nClv + ' plays with a close</div></div>' : '')
         + '</div></div>';
       const byWeek = _trWeek == null && weeks.length > 1 ? _trBarsRO('By week', weeks.map(w => {
         const s = _plAgg(all.filter(r => r.week === w)); return { k: 'Week ' + w, wr: s.wr || 0, w: s.W, l: s.L, roi: s.units };
@@ -45882,7 +45903,7 @@ window.VaultMarketProj = (function () {
         const chips = [];
         if (r.price != null) chips.push('<span class="tr-mk tr-mk-px" title="Price when the play posted' + (r.book ? ' · ' + _trEsc(r.book) : '') + '">' + F().fmtOdds(r.price) + (r.book ? bookChip(r.book) : '') + '</span>');
         if (r.ev != null) chips.push('<span class="tr-mk pos" title="Vault’s edge when the play posted">+' + r.ev + '% edge</span>');
-        if (r.line_close != null && r.clv_line != null) chips.push('<span class="tr-mk ' + (r.beat_close === true ? 'pos' : r.beat_close === false ? 'neg' : '') + '" title="Where the line closed. Green means the market moved toward this play after it posted.">closed ' + _trEsc(r.line_close) + (r.price_close != null ? ' ' + F().fmtOdds(r.price_close) : '') + '</span>');
+        if (r.line_close != null && r.clv_line != null) chips.push('<span class="tr-mk ' + (r.beat_close === true ? 'pos' : r.beat_close === false ? 'neg' : '') + '" title="' + (r.clv_prob != null ? 'The line closed on the same number. The market’s fair (no-vig) closing price made this side ' + (r.fair_close * 100).toFixed(1) + '%, and the price taken needed ' + ((r.fair_close - r.clv_prob) * 100).toFixed(1) + '%. Green means the price taken was better than fair.' : 'Where the line closed. Green means the market moved toward this play after it posted.') + '">closed ' + _trEsc(r.line_close) + (r.clv_prob != null ? ' · ' + (r.clv_prob >= 0 ? '+' : '') + (r.clv_prob * 100).toFixed(1) + '% vs fair' : (r.price_close != null ? ' ' + F().fmtOdds(r.price_close) : '')) + '</span>');
         if (_plPosted(r.posted) && r.src !== 'rebuilt') chips.push('<span class="tr-mk" title="When this play was locked at this line and price">posted ' + _trEsc(_plPosted(r.posted)) + '</span>');
         if (r.src === 'rebuilt') chips.push('<span class="tr-mk" title="Weeks 1-3 were rebuilt from saved Best Bets history with the same rule: the first 10 plays to post each week, one per player.">rebuilt</span>');
         const matchup = r.team ? ' · ' + _trEsc(r.team) + (r.opp ? ' vs ' + _trEsc(r.opp) : '') : '';

@@ -240,8 +240,49 @@ for (const g of feed.vegas_games) {
   }
 }
 
+// ── News flag → data/line_news.json ─────────────────────────────────────
+// A line that moves NEWS_PTS+ from where it sat NEWS_BASE_D days before kickoff
+// (the lookahead, before the previous week's games) almost always means news
+// the model can't see: a QB out, a benching. 2026 Wks 2-3: 4 of 85 games moved
+// 4+ on the spread (PHI@CHI, SEA@WAS, SEA@ARI, CAR@ATL), all QB news, and they
+// produced the model's biggest phantom gaps (CHI -2.3 vs the market's +4.5 for
+// five days before the Caleb Williams adjustment landed). A flagged game gets
+// no Vault Game Play until the model catches up. The same matchup can sit under
+// several week tags in this file, so samples are pooled by (away, home, kickoff).
+const NEWS_PTS = 4, NEWS_BASE_D = 10;
+function lineNews() {
+  const pool = {};
+  for (const r of Object.values(games)) {
+    if (!r.commence) continue;
+    const k = r.away + '@' + r.home + '|' + r.commence;
+    (pool[k] = pool[k] || { away: r.away, home: r.home, commence: r.commence, s: [] }).s.push(...(r.samples || []));
+  }
+  const out = {}, t = Date.parse(now);
+  for (const P of Object.values(pool)) {
+    const kick = Date.parse(P.commence);
+    if (!Number.isFinite(kick) || kick <= t - 6 * 3600e3) continue;          // finished
+    const S = P.s.filter(x => x && x.ts && Date.parse(x.ts) < kick).sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts));
+    const cut = kick - NEWS_BASE_D * 86400e3, last = S[S.length - 1];
+    if (!last) continue;
+    const move = {};
+    for (const mk of ['spread', 'total']) {
+      const base = S.filter(x => x[mk] != null && Date.parse(x.ts) <= cut).pop();
+      const cur = [...S].reverse().find(x => x[mk] != null);
+      if (base && cur && Math.abs(cur[mk] - base[mk]) >= NEWS_PTS)
+        move[mk] = { from: base[mk], to: cur[mk], since: base.ts };
+    }
+    if (Object.keys(move).length) out[P.away + '@' + P.home] = { commence: P.commence, ...move };
+  }
+  return out;
+}
+const NEWS = lineNews();
+log(`line news: ${Object.keys(NEWS).length} flagged` + (Object.keys(NEWS).length ? ' (' + Object.keys(NEWS).join(', ') + ')' : ''));
+
 const payload = { generated: now, season, seasonType, week, keys: Object.keys(games).length, games };
 log(`${seen} live games · ${created} new keys · ${moved} moved · ${payload.keys} total banked`);
 if (DRY) { log('--dry: not written'); process.exit(0); }
 writeFileSync(OUT, JSON.stringify(payload));
 log('wrote ' + OUT);
+const NEWS_OUT = resolve(dirname(OUT), 'line_news.json');
+writeFileSync(NEWS_OUT, JSON.stringify({ generated: now, rule: { pts: NEWS_PTS, base_days: NEWS_BASE_D }, games: NEWS }));
+log('wrote ' + NEWS_OUT);
