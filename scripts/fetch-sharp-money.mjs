@@ -52,11 +52,11 @@ const now = () => Math.floor(Date.now() / 1000);
 // that fires an alert (points for spread/total, win-prob points for ML).
 const SPORTS = {
   nfl: { name: 'NFL', an: 'nfl', pinSport: 15, pinLeague: 889, pm: 12185, kal: 'KXNFLGAME', espn: 'football/nfl', ahead: 7,
-         steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets.json', sigBig: 25000 },
+         steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets.json', sigBig: 25000, crossAt: 25000 },
   cfb: { name: 'College Football', an: 'ncaaf', pinSport: 15, pinLeague: 880, pm: 12756, kal: 'KXNCAAFGAME', espn: 'football/college-football', ahead: 5,
-         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, wallets: 'pm_wallets_cfb.json', sigBig: 25000 },
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, wallets: 'pm_wallets_cfb.json', sigBig: 25000, crossAt: 5000 },
   nba: { name: 'NBA', an: 'nba', pinSport: 4, pinLeague: 487, pm: 10345, kal: 'KXNBAGAME', espn: 'basketball/nba', ahead: 3,
-         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets_nba.json', sigBig: 25000 },
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets_nba.json', sigBig: 25000, crossAt: 25000 },
 };
 const WREC = {};
 const SOFT = { 68: 'DraftKings', 69: 'FanDuel', 75: 'BetMGM', 71: 'BetRivers', 79: 'bet365' };
@@ -413,6 +413,23 @@ function analyse(sk, cfg, g, P, pmInfo, kInfo, S, W) {
     if (ml && ml.px?.length === 2) { const hi = teamSide(g, ml.outs[0]) === 'home' ? 0 : 1; const a = ml.px[hi], b = ml.px[1 - hi]; if (a > 0 && b > 0) home_p = r3(a / (a + b)); }
     if (home_p == null && P?.ml) home_p = r3(devig(P.ml.home, P.ml.away));
     if (sharpN) G.sig = { ts: t, sharp: Math.round(sharp), sharpN, crowd: Math.round(all - sharp), home_p };
+    // Crossed: the first poll where the sharp net on one team reaches the
+    // sport's line (NFL/NBA $25k, CFB $5k: CFB markets are far thinner). One
+    // alert per game per side, so a flip to the other team fires again.
+    const sg = G.sig;
+    if (sg && Math.abs(sg.sharp) >= cfg.crossAt && sg.home_p != null) {
+      const side = sg.sharp > 0 ? 'home' : 'away', q = side === 'home' ? sg.home_p : 1 - sg.home_p;
+      let best = null;
+      for (const [bk, x] of Object.entries(g.soft || {})) { const pr = x.ml?.[side]; if (pr != null && (!best || pr > best.price)) best = { book: bk, price: pr }; }
+      const better = best && imp(best.price) < q;
+      const cr = sg.crowd, crTxt = Math.abs(cr) < 1000 ? 'crowd about even' : `crowd ${(cr > 0) === (sg.sharp > 0) ? 'with them' : 'against them'} $${Math.abs(cr).toLocaleString()}`;
+      const nm = g[side].short || g[side].abbr;
+      pushAlert(S, { game: g.key, sport: sk, gameLbl: `${g.away.abbr || g.away.short} @ ${g.home.abbr || g.home.short}`, start: g.start,
+        ts: t, type: 'cross', m: 'ml', side, usd: Math.abs(sg.sharp), n: sg.sharpN, crowd: cr, px: r3(q), book: best?.book || null, price: best?.price ?? null, better: !!better,
+        fair: r3(pinFair(P, 'ml', side)), id: `${g.key}:cross:${side}`,
+        text: `Sharp accounts now have $${Math.abs(sg.sharp).toLocaleString()} net on ${nm} to win (${sg.sharpN} trade${sg.sharpN === 1 ? "" : "s"}, ${crTxt}). Exchange price ${Math.round(q * 100)}¢` +
+          (best ? `; best US book ${best.book} ${best.price > 0 ? '+' : ''}${best.price}${better ? ', which pays better' : ''}` : '') });
+    }
   }
   const gameLbl = `${g.away.abbr || g.away.short} @ ${g.home.abbr || g.home.short}`;
   const base = { game: g.key, sport: sk, gameLbl, start: g.start };
