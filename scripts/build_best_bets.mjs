@@ -98,6 +98,11 @@ const CARD_FILE = ARG.card || resolve(ROOT, 'data/best_bets_card.json');
 // WR/TE rec-yds unders, the only type that won every week of Weeks 1-3
 // (28-11, +14.2u); RB rec-yds unders were 2-3 and nothing else had 10 plays.
 const SHADOW_FILE = ARG.shadow || resolve(ROOT, 'data/best_bets_shadow.json');
+// Withheld props that would have been Best Bets (best_bets_held.json) and the
+// Kalshi-vs-books-vs-Vault read on every Kalshi-priced line (signal_log.json).
+// Both are graded, never shown as plays: see logHeld / logSignals.
+const HELD_FILE = resolve(ROOT, 'data/best_bets_held.json');
+const SIGNAL_FILE = resolve(ROOT, 'data/signal_log.json');
 const RULES_FILE = ARG.rules || resolve(ROOT, 'data/best_bets_rules.json');
 const CARD_DEFAULT_ON = ['rec_yd|under|WR/TE'];
 // Gate 2 — a "consensus" of DFS pick'em apps is not a beatable market. Their
@@ -590,6 +595,7 @@ function scoreProps(feed, PM, KP) {
   const roleParams = loadRoleParams();   // role_volume.json — the board's volume anchor
   const ctx = buildMatchupCtx(feed);   // opponent + environment + game-script, per prop
   let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0, sharpskip = 0, weakskip = 0, rechold = 0;
+  const heldCands = [], signals = [], heldIds = {};
   // Early-season rec-under hold fires only while the log window is essentially
   // last season only (weeks <= cutoff). feed.week is the served slate week.
   const _feedWeek = Number(feed.week) || 99;
@@ -603,7 +609,12 @@ function scoreProps(feed, PM, KP) {
     // an OUT starter (QB1/RB1/WR1) whose projection assumes a lineup that just
     // changed. Never let either become a best bet — the projection is stale.
     if (p.out) { benchskip++; if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, status: 'out' }); continue; }
-    if (p.impacted) { roleskip++; if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, status: 'withheld', why: p.impactedBy || 'lineup change' }); continue; }
+    // Withheld (teammate of an OUT starter): still never a best bet, but it is
+    // SCORED so the plays it would have made land in the held log
+    // (best_bets_held.json), and settlement can tell us whether withholding
+    // backup-QB games is costing anything (PHI@CHI: the Bears' overs all hit).
+    const held = p.impacted ? (p.impactedBy || 'lineup change') : null;
+    if (held) { roleskip++; heldIds[id] = held; if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, status: 'withheld', why: held }); }
     const dep = depth[id];   // [depth_chart_order, active]
     if (dep) {
       if (dep[1] === 0) { benchskip++; continue; }                                 // inactive / out
@@ -682,6 +693,23 @@ function scoreProps(feed, PM, KP) {
         const wouldPass = trust.corrob && (letter === 'A' || letter === 'B') && ev != null && ev > 0 && bettable;
         const preGate = trust.corrob && (eff === 'A' || eff === 'B') && ev != null && ev > 0 && bettable;
         const pass = preGate && !projBlowout && !countUnderPhantom && !earlyRecHold && realBookAtLine;
+        // Signal log: every line with a liquid Kalshi read, next to the real
+        // books' no-vig P(over) and Vault's, graded by build_model_scoreboard.
+        if (sharp) {
+          const bp = lq.filter(q => isRealBook(q.book) && String(q.book).toLowerCase() !== 'kalshi')
+            .map(q => devigPower(q.over, q.under)).filter(x => x != null).sort((a, b) => a - b);
+          const bm = bp.length ? (bp.length % 2 ? bp[bp.length >> 1] : (bp[bp.length / 2 - 1] + bp[bp.length / 2]) / 2) : null;
+          signals.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, market: mk, line,
+            commence: slateKick[[p.team, p.opp].sort().join('|')] || p.commence || null,
+            kalshi: round(sharp.over, 3), kalshiInterp: !!sharp.interp, books: bm != null ? round(bm, 3) : null, nBooks: bp.length,
+            vault: round(v.over, 3), held: held || undefined });
+        }
+        if (held) {
+          if (pass) heldCands.push({ id, name: p.name, team: p.team || null, pos: p.pos || null, opp: p.opp || null,
+            commence: slateKick[[p.team, p.opp].sort().join('|')] || p.commence || null, market: mk, line, side,
+            book: bs.book, price: bs.price, ev: round(ev * 100, 1), prob: round(g.padj, 3), grade: eff, proj: v.proj, held });
+          continue;
+        }
         if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, market: mk, marketLabel: MKT_LABEL[mk] || mk,
           line, side, prob: round(g.padj, 3), over: round(v.over, 3), proj: v.proj, book: bs.book, price: bs.price,
           ev: ev != null ? round(ev * 100, 1) : null, grade: eff, books: trust.books,
@@ -727,7 +755,7 @@ function scoreProps(feed, PM, KP) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, pool: cands, dump, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
+  return { list, pool: cands, dump, heldCands, heldIds, signals, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
 }
 
 function loadCardRules() {
@@ -763,6 +791,70 @@ function logShadow(feed, list, bucketOf) {
     file.note = 'Every play that reached the live Best Bets top-N, card or not, at the line and price it first showed. Graded by settle_bets.py into best_bets_rules.json (which play types may go on the card).';
     file.updated = new Date().toISOString();
   }
+  return { file, changed };
+}
+
+function _slot(feed) {
+  const stRaw = String(feed.season_type || '').toLowerCase();
+  const stype = /^post/.test(stRaw) ? 'post' : /^reg/.test(stRaw) ? 'reg' : null;
+  return { stype, season: String(feed.season || ''), week: Number(feed.week) || null };
+}
+/* Withheld-but-would-pass log: a player held because a teammate starter is OUT
+   (backup-QB games, mostly) whose line still cleared every Best Bets gate.
+   First read per week/player/market at its line and price, like the shadow
+   log; settle_bets.py grades it into best_bets_record.json "held". */
+function logHeld(feed, list, ids) {
+  let file = null;
+  try { file = JSON.parse(readFileSync(HELD_FILE, 'utf8')); } catch (e) { /* first run */ }
+  if (!file || !Array.isArray(file.picks)) file = { picks: [] };
+  const { stype, season, week } = _slot(feed);
+  let changed = false;
+  if (stype && week && season) {
+    // every withheld player this week (not just would-pass lines), so the
+    // settlement ledger can grade the model's lean on ALL their props
+    const wk = [season, stype, week].join('|'), W = ((file.withheld = file.withheld || {})[wk] = file.withheld[wk] || {});
+    for (const [id, why] of Object.entries(ids || {})) if (!W[id]) { W[id] = why; changed = true; }
+    const have = new Set(file.picks.map(p => p.key)), now = Date.now(), seenP = new Set();
+    for (const b of [...list].sort((x, y) => y.ev - x.ev)) {
+      const key = [season, stype, week, b.id, b.market].join('|');
+      if (seenP.has(key) || have.has(key) || !(Date.parse(b.commence || '') > now)) continue;
+      seenP.add(key);
+      file.picks.push({ key, season, stype, week, pid: String(b.id), name: b.name, team: b.team, pos: b.pos, opp: b.opp,
+        commence: b.commence, market: b.market, side: b.side, line: b.line, book: b.book, price: b.price,
+        book_real: isRealBook(b.book), ev: b.ev, prob: b.prob, grade: b.grade, proj: b.proj, held: b.held, posted: new Date().toISOString() });
+      have.add(key); changed = true;
+    }
+  }
+  if (changed) {
+    file.note = 'Props withheld because a teammate starter is out (usually the QB) whose line still passed every Best Bets gate. Never shown as plays; graded to test whether the hold costs anything.';
+    file.updated = new Date().toISOString();
+  }
+  return { file, changed };
+}
+/* Kalshi signal log: per week/player/market/line, the first and the latest
+   pre-kickoff read of Kalshi's P(over) (strike-interpolated), the real books'
+   no-vig median, and Vault's. build_model_scoreboard.py grades two signals:
+   Kalshi vs the books (when they differ by 5+ pts, whose side wins?) and
+   Vault vs Kalshi (the Best Bets gate: when Vault is 10+ pts off Kalshi, who
+   was right?). */
+function logSignals(feed, rows) {
+  let file = null;
+  try { file = JSON.parse(readFileSync(SIGNAL_FILE, 'utf8')); } catch (e) { /* first run */ }
+  if (!file || typeof file.props !== 'object') file = { props: {} };
+  const { stype, season, week } = _slot(feed);
+  let changed = false;
+  if (stype && week && season) {
+    const now = Date.now(), ts = new Date(now).toISOString();
+    for (const r of rows) {
+      if (!(Date.parse(r.commence || '') > now)) continue;
+      const key = [season, stype, week, r.id, r.market, r.line].join('|');
+      const read = { ts, kalshi: r.kalshi, interp: r.kalshiInterp, books: r.books, nBooks: r.nBooks, vault: r.vault };
+      const e = file.props[key] || (file.props[key] = { season, stype, week, pid: String(r.id), name: r.name, team: r.team, pos: r.pos,
+        opp: r.opp, commence: r.commence, market: r.market, line: r.line, held: r.held, first: read });
+      e.last = read; changed = true;
+    }
+  }
+  if (changed) file.updated = new Date().toISOString();
   return { file, changed };
 }
 
@@ -1034,6 +1126,10 @@ function gameLeans(feed) {
     if (DUMP) { writeFileSync(DUMP, JSON.stringify({ generated: feed.best_bets.generated, props: props.dump, eligible: eligible.map(c => c.id + '|' + c.market) }, null, 1)); log(`dump: ${props.dump.length} rows → ${DUMP}`); return; }
     if (DRY) { log('DRY — not writing'); return; }
     if (shadow.changed) writeFileSync(SHADOW_FILE, JSON.stringify(shadow.file, null, 1) + '\n');
+    const heldLog = logHeld(feed, props.heldCands, props.heldIds), sigLog = logSignals(feed, props.signals);
+    log(`held (withheld but would have passed): ${props.heldCands.length} now · ${heldLog.file.picks.length} logged · kalshi signals: ${props.signals.length} lines now`);
+    if (heldLog.changed) writeFileSync(HELD_FILE, JSON.stringify(heldLog.file, null, 1) + '\n');
+    if (sigLog.changed) writeFileSync(SIGNAL_FILE, JSON.stringify(sigLog.file));
     if (pairLog.changed) writeFileSync(PAIRS_LOG, JSON.stringify(pairLog.file, null, 1) + '\n');
     if (card.changed) { writeFileSync(CARD_FILE, JSON.stringify(card.file, null, 1) + '\n'); log('card: locked', card.added.join(', ') || 'nothing new'); }
     writeFileSync(FEED, JSON.stringify(feed));

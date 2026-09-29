@@ -1336,7 +1336,26 @@ def settle_card(prop_picks):
         # Record artifact's "Best Bets" filter reads these (card plays ride in
         # "picks" above; a card play the top-N never showed is only there).
         res["shadow_picks"] = rows
+    # Withheld-but-would-pass (build_best_bets.mjs logHeld): props held because a
+    # teammate starter was out (a backup QB, mostly) whose line still passed every
+    # Best Bets gate. Graded the same way to test whether the hold costs us plays.
+    heldf = _load_data("best_bets_held.json")
+    if heldf and heldf.get("picks"):
+        rows = _grade_plays(heldf["picks"], prop_picks)
+        res["held"] = {"picks": rows, "summary": _summ(rows)}
     return res
+
+def tag_withheld(prop_picks):
+    """Mark ledger rows for players Best Bets withheld that week (a teammate
+    starter OUT; best_bets_held.json "withheld"), so the scoreboard can grade
+    the model's lean on every line of a held player, not just would-be plays."""
+    W = (_load_data("best_bets_held.json") or {}).get("withheld") or {}
+    n = 0
+    for p in prop_picks:
+        st = "post" if str(p.get("seasonType") or "").lower().startswith("post") else "reg"
+        why = (W.get(f'{p.get("season")}|{st}|{p.get("week")}') or {}).get(str(p.get("pid")))
+        if why: p["withheld"] = why; n += 1
+    return n
 
 
 def main():
@@ -1346,6 +1365,8 @@ def main():
     args = ap.parse_args()
 
     prop_picks, pmeta = settle_props(args.season)
+    n_wh = tag_withheld(prop_picks)
+    if n_wh: print(f"[settle] withheld-player ledger rows: {n_wh}")
     game_picks, gmeta = settle_games(args.season)
     board = build_scoreboard(prop_picks, game_picks)
 
@@ -1418,6 +1439,9 @@ def main():
             print(f"[settle] Vault's Plays {s}: {m['W']}-{m['L']}-{m['P']} ({m['pending']} pending) "
                   f"{m['units']:+.1f}u at posted price | {m['units_close']:+.1f}u at the close | "
                   f"beat close {m['beat_close']}/{m['n_clv']}" + (f" | vs fair close {m['clv_ev']*100:+.1f}% ({m['n_ev']})" if m.get('clv_ev') is not None else ""))
+        if plays.get("held"):
+            hs = plays["held"]["summary"]
+            print(f"[settle] held (would-be plays in withheld games): {hs['W']}-{hs['L']} ({hs['pending']} pending) {hs['units']:+.1f}u")
         if plays.get("pairs"):
             ps = plays["pairs"]["summary"]
             print(f"[settle] pick'em pairs: {ps['W']}-{ps['L']} ({ps['void']} void, {ps['pending']} pending) {ps['units']:+.1f}u")

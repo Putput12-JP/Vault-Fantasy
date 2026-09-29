@@ -471,6 +471,87 @@ def verdict(s):
     return "level with the market (within noise)"
 
 
+SIG_N, SIG_BIG, KB_GAP, VK_GAP = 50, 25000, 0.05, 0.10
+
+def _sig_verdict(n, won, said, var):
+    """GO only with SIG_N+ bets AND the side winning 2+ standard errors more
+    often than the price said (var = sum p(1-p), the binomial variance)."""
+    if n < SIG_N: return f"tracking ({n} of {SIG_N})"
+    z = (won - said) / var ** .5 if var > 0 else 0
+    return f"GO (z {z:+.1f})" if z >= 2 else f"no edge yet (z {z:+.1f})"
+
+def _sig_block(rows):
+    """rows = [(won 0/1, price-implied prob of that side)] -> summary."""
+    n = len(rows); won = sum(w for w, _ in rows); said = sum(q for _, q in rows)
+    var = sum(q * (1 - q) for _, q in rows)
+    return {"n": n, "won": won, "said": round(said, 2), "verdict": _sig_verdict(n, won, said, var)}
+
+def score_signals(br):
+    """Signals logged live and graded here (plan follow-up, 2026-09-29), all
+    context until one says GO:
+      kalshi_vs_books  Kalshi's P(over) 5+ pts off the real books' no-vig median
+                       (signal_log.json, last pre-kickoff read): does Kalshi's
+                       side win more often than the books said?
+      vault_vs_kalshi  Vault 10+ pts off Kalshi (the Best Bets demotion gate):
+                       whose side won?
+      pm_sharp         Polymarket sharp accounts with $25k+ net on a side
+                       (pm_signal_log.json): win rate vs the price, overall and
+                       when the rest of the takers ($25k+) were on the other side.
+      withheld         props Best Bets held because a teammate starter was out:
+                       the model's lean on every line, and the would-be plays."""
+    out = {}
+    act = {(str(p.get("season")), str(p.get("week")), str(p.get("pid")), p.get("market")): p.get("actual")
+           for p in br.get("props") or [] if p.get("actual") is not None}
+    try: SL = (json.load(open(os.path.join(DATA, "signal_log.json"))).get("props") or {}).values()
+    except Exception: SL = []
+    kb, vk, ll = [], [], [0, 0.0, 0.0]
+    for e in SL:
+        a = act.get((str(e.get("season")), str(e.get("week")), str(e.get("pid")), e.get("market")))
+        r, L = e.get("last") or {}, e.get("line")
+        if a is None or L is None or abs(a - L) < 1e-9 or r.get("kalshi") is None: continue
+        y = 1 if a > L else 0
+        k, b, v = r["kalshi"], r.get("books"), r.get("vault")
+        if b is not None:
+            kc, bc = min(max(k, .01), .99), min(max(b, .01), .99)
+            ll[0] += 1; ll[1] -= math.log(kc if y else 1 - kc); ll[2] -= math.log(bc if y else 1 - bc)
+            if abs(k - b) >= KB_GAP:
+                side = 1 if k > b else 0
+                kb.append((1 if y == side else 0, b if side else 1 - b))
+        if v is not None and abs(v - k) >= VK_GAP:
+            side = 1 if k > v else 0            # Kalshi's side vs Vault's
+            vk.append((1 if y == side else 0, k if side else 1 - k))
+    out["kalshi_vs_books"] = {**_sig_block(kb), "all_lines": {"n": ll[0],
+        "logloss_kalshi": round(ll[1] / ll[0], 4) if ll[0] else None, "logloss_books": round(ll[2] / ll[0], 4) if ll[0] else None}}
+    vb = _sig_block(vk); vb["note"] = "won = Kalshi's side; said = Kalshi's own price"
+    out["vault_vs_kalshi"] = vb
+    # Polymarket sharp accounts vs the crowd
+    res = {}
+    for g in br.get("games") or []:
+        if g.get("home_score") is None: continue
+        res[(str(g.get("season")), g.get("away"), g.get("home"))] = (g["home_score"], g["away_score"])
+    try: PS = (json.load(open(os.path.join(DATA, "pm_signal_log.json"))).get("games") or {}).values()
+    except Exception: PS = []
+    allr, dis, agree = [], [], []
+    for e in PS:
+        sc = res.get((str(e.get("commence", ""))[:4], e.get("away"), e.get("home")))
+        r = e.get("last") or {}
+        if not sc or sc[0] == sc[1] or r.get("sharp") is None or abs(r["sharp"]) < SIG_BIG or r.get("home_p") is None: continue
+        home = r["sharp"] > 0; won = 1 if (sc[0] > sc[1]) == home else 0
+        q = r["home_p"] if home else 1 - r["home_p"]
+        allr.append((won, q))
+        c = r.get("crowd")
+        if c is not None and abs(c) >= SIG_BIG:
+            (dis if (c > 0) != home else agree).append((won, q))
+    out["pm_sharp"] = {"all": _sig_block(allr), "crowd_disagrees": _sig_block(dis), "crowd_agrees": _sig_block(agree)}
+    # withheld (teammate starter out): ledger leans + would-be plays
+    wr = [p for p in br.get("props") or [] if p.get("withheld") and p.get("won_close") is not None]
+    try: held = ((json.load(open(os.path.join(DATA, "best_bets_record.json"))).get("held") or {}).get("summary"))
+    except Exception: held = None
+    out["withheld"] = {"lines": len(wr), "lean_won": sum(1 for p in wr if p["won_close"] == 1),
+                       "overs_hit": sum(1 for p in wr if p.get("actual") is not None and p.get("line_close") is not None and p["actual"] > p["line_close"]),
+                       "would_be_plays": held}
+    return out
+
 def main():
     dry = "--dry" in sys.argv
     br = json.load(open(os.path.join(DATA, "bet_results.json")))
@@ -489,7 +570,8 @@ def main():
            "games_by_week": {str(w): {"close": v["close"].out()} for w, v in sorted(gw.items())},
            "news": score_news(br.get("props") or []),
            "timing": score_timing(),
-           "sharp_lead": score_sharp_lead()}
+           "sharp_lead": score_sharp_lead(),
+           "signals": score_signals(br)}
     for sec in ("props", "games"):
         for k, v in out[sec].items():
             v["verdict"] = verdict(v.get("close"))
@@ -560,6 +642,23 @@ def main():
                 L.append(f"{lbl:<8}{b:<11} n={x['n']:3d}  toward {x['toward']:3d} / away {x['away']:3d}  "
                          f"{unit} {x['mean_move']:+.2f}{'' if mk == 'props' else ' pts'} ±{x['se'] or 0:.2f}")
             L.append(f"{'':<8}-> {d.get('verdict')}")
+    sg = out.get("signals")
+    if sg:
+        f3 = lambda b: f"n={b['n']:3d}  side won {b['won']:3d}, price said {b['said']:6.1f}  -> {b['verdict']}"
+        kb, al = sg["kalshi_vs_books"], sg["kalshi_vs_books"]["all_lines"]
+        L += ["```", "", "## Signals: Kalshi, Polymarket sharp accounts, withheld props", "",
+              "_Logged live before kickoff, graded here. Context only until a row says GO (50+ bets and the side "
+              "winning 2+ standard errors more often than its price said)._", "", "```",
+              f"Kalshi vs books (5+ pts apart)     {f3(kb)}",
+              f"  all Kalshi-priced lines: n={al['n']}  log-loss Kalshi {al['logloss_kalshi']}  books {al['logloss_books']}",
+              f"Vault vs Kalshi (10+ pts, Kalshi)  {f3(sg['vault_vs_kalshi'])}",
+              f"PM sharp $25k+ (all)               {f3(sg['pm_sharp']['all'])}",
+              f"PM sharp vs crowd disagree         {f3(sg['pm_sharp']['crowd_disagrees'])}",
+              f"PM sharp with crowd                {f3(sg['pm_sharp']['crowd_agrees'])}"]
+        w = sg["withheld"]
+        hb = w.get("would_be_plays")
+        L.append(f"Withheld props (teammate out)      lines={w['lines']}  model lean won {w['lean_won']}  overs hit {w['overs_hit']}"
+                 + (f"  | would-be plays {hb['W']}-{hb['L']} {hb['units']:+.1f}u" if hb else "  | would-be plays: none yet"))
     tm = out.get("timing")
     if tm and any(v["n"] for v in tm.values()):
         L += ["```", "", "## Timing: Best Bets by how early they posted (plan Weeks 3-4)", "",

@@ -290,4 +290,39 @@ function mainMoneyline(ev) {
   if (DRY) { log('--dry: not written'); return; }
   writeFileSync(OUT, JSON.stringify(payload));
   log('wrote ' + OUT);
+  logSignals(out);
 })();
+
+/* ── Sharp-vs-crowd signal log → data/pm_signal_log.json ─────────────────
+   Per game, the last pre-kickoff read of who put money where: the sharp and
+   dull accounts (pm_wallets.json, scored only on games BEFORE this one, so the
+   log is out-of-sample by construction), the rest of the takers ("crowd" =
+   all 24h taker money minus the sharp accounts'), and the price. first = the
+   first read, last = rolls forward until kickoff. The flows are the 24h taker
+   window, so `last` is the final day's money (where most of it lands), not the
+   whole week's; summing hourly reads would double-count. build_model_scoreboard.py
+   grades it: does the sharp side win more often than the price said, overall
+   and when the crowd is on the other side? Week 3 (backfilled from the trade
+   tape, src:'backfill'): sharp 12-1 on $25k+ positions vs ~7 expected, 3-0
+   when the crowd disagreed. Context until the scoreboard says GO. */
+function logSignals(games) {
+  const F = resolve(dirname(OUT), 'pm_signal_log.json');
+  let L; try { L = JSON.parse(readFileSync(F, 'utf8')); } catch { L = null; }
+  if (!L || typeof L.games !== 'object') L = { games: {} };
+  const now = Date.now(), nowIso = new Date(now).toISOString();
+  let n = 0;
+  for (const g of Object.values(games)) {
+    const kick = Date.parse(g.close || '');
+    if (!Number.isFinite(kick) || now >= kick || !g.taker) continue;
+    const t = g.taker, sp = g.markets && g.markets.spread && g.markets.spread.taker;
+    const read = { ts: nowIso, home_p: g.ml.home, all: t.net, sharp: t.sharpNet ?? null, sharpN: t.sharpN ?? 0,
+      dull: t.dullNet ?? null, crowd: t.sharpNet != null ? t.net - t.sharpNet : null,
+      spread_sharp: sp && sp.sharp ? { side: sp.sharp.side, net: sp.sharp.net } : null };
+    const k = g.away + '@' + g.home + '|' + new Date(kick).toISOString();
+    const e = (L.games[k] = L.games[k] || { away: g.away, home: g.home, commence: new Date(kick).toISOString(), first: read });
+    e.last = read; n++;
+  }
+  L.generated = nowIso;
+  writeFileSync(F, JSON.stringify(L));
+  log(`signal log: ${n} upcoming games updated → ${F}`);
+}

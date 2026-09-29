@@ -36,7 +36,7 @@ jobs:
           else
             git config user.name  "vault-bot"
             git config user.email "vault-bot@users.noreply.github.com"
-            git add data/polymarket.json
+            git add data/polymarket.json data/pm_signal_log.json
             git commit -m "polymarket: refresh NFL game markets [skip ci]"
             for i in 1 2 3; do
               git pull --rebase --autostash origin main && git push && break
