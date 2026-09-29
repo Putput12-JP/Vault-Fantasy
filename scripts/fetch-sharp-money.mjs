@@ -52,11 +52,11 @@ const now = () => Math.floor(Date.now() / 1000);
 // that fires an alert (points for spread/total, win-prob points for ML).
 const SPORTS = {
   nfl: { name: 'NFL', an: 'nfl', pinSport: 15, pinLeague: 889, pm: 12185, kal: 'KXNFLGAME', espn: 'football/nfl', ahead: 7,
-         steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets.json' },
+         steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets.json', sigBig: 25000 },
   cfb: { name: 'College Football', an: 'ncaaf', pinSport: 15, pinLeague: 880, pm: 12756, kal: 'KXNCAAFGAME', espn: 'football/college-football', ahead: 5,
-         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, wallets: 'pm_wallets_cfb.json' },
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, wallets: 'pm_wallets_cfb.json', sigBig: 25000 },
   nba: { name: 'NBA', an: 'nba', pinSport: 4, pinLeague: 487, pm: 10345, kal: 'KXNBAGAME', espn: 'basketball/nba', ahead: 3,
-         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets_nba.json' },
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets_nba.json', sigBig: 25000 },
 };
 const WREC = {};
 const SOFT = { 68: 'DraftKings', 69: 'FanDuel', 75: 'BetMGM', 71: 'BetRivers', 79: 'bet365' };
@@ -401,6 +401,19 @@ function analyse(sk, cfg, g, P, pmInfo, kInfo, S, W) {
   // prune tapes to 3 days
   for (const k of ['pm', 'kal']) if (G[k]) { const seen = new Set(); G[k] = G[k].filter(x => x.ts > t - 3 * DAY && !seen.has(x.id) && seen.add(x.id)); }
 
+  // Sharp side at kickoff (same read as fetch-polymarket's pm_signal_log):
+  // 24h net taker money on the full-game moneyline from sharp accounts vs
+  // everyone else, plus the price. Rolls forward each poll, so the last
+  // pre-game read is what gets graded (+ = money on the home team).
+  if (live && G.pm) {
+    let sharp = 0, all = 0, sharpN = 0;
+    for (const x of G.pm) if (x.m === 'ml' && x.ts > t - DAY) { const v = x.side === 'home' ? x.usd : -x.usd; all += v; if (x.cls === 'sharp') { sharp += v; sharpN++; } }
+    let home_p = null;
+    const ml = pmInfo?.mk?.ml;
+    if (ml && ml.px?.length === 2) { const hi = teamSide(g, ml.outs[0]) === 'home' ? 0 : 1; const a = ml.px[hi], b = ml.px[1 - hi]; if (a > 0 && b > 0) home_p = r3(a / (a + b)); }
+    if (home_p == null && P?.ml) home_p = r3(devig(P.ml.home, P.ml.away));
+    if (sharpN) G.sig = { ts: t, sharp: Math.round(sharp), sharpN, crowd: Math.round(all - sharp), home_p };
+  }
   const gameLbl = `${g.away.abbr || g.away.short} @ ${g.home.abbr || g.home.short}`;
   const base = { game: g.key, sport: sk, gameLbl, start: g.start };
 
@@ -562,14 +575,37 @@ function payload(S, byGame, W, status) {
     });
   }
   games.sort((a, b) => a.start - b.start);
+  // Sharp side at kickoff: every game with a sharp read, graded once final.
+  const sigRec = [];
+  for (const [k, G] of Object.entries(S.games)) {
+    if (!G.sig || !G.meta) continue;
+    const f = G.final, m = G.meta;
+    sigRec.push({ sport: m.sport, game: `${m.away.abbr} @ ${m.home.abbr}`, start: m.start, sharp: G.sig.sharp, sharpN: G.sig.sharpN, crowd: G.sig.crowd, home_p: G.sig.home_p,
+      final: f ? [f.away, f.home] : null, src: 'watch' });
+  }
+  // NFL before the watch existed: fetch-polymarket's signal log (Weeks 1-3
+  // backfilled from the tape, sharp list with the game itself held out).
+  try {
+    const L = JSON.parse(readFileSync(resolve(ROOT, 'data', 'pm_signal_log.json'), 'utf8')).games || {};
+    const BR = JSON.parse(readFileSync(resolve(ROOT, 'data', 'bet_results.json'), 'utf8')).games || [];
+    const born = S.born || now();
+    const sc = {}; for (const g of BR) if (g.home_score != null) sc[`${g.season}|${g.away}|${g.home}`] = [g.away_score, g.home_score];
+    for (const e of Object.values(L)) {
+      const st = Math.floor(Date.parse(e.commence) / 1000), r = e.last || {};
+      if (!(st < born) || r.sharp == null) continue;
+      sigRec.push({ sport: 'nfl', game: `${e.away} @ ${e.home}`, start: st, sharp: r.sharp, sharpN: r.sharpN, crowd: r.crowd, home_p: r.home_p,
+        final: sc[`${e.commence.slice(0, 4)}|${e.away}|${e.home}`] || null, src: 'log' });
+    }
+  } catch (e) { /* no log */ }
+  sigRec.sort((a, b) => b.start - a.start);
   const alerts = S.alerts.filter(a => a.ts > t - 10 * DAY).sort((a, b) => b.ts - a.ts).slice(0, 1500);
-  return { generated: new Date().toISOString(), ts: t, status, wallets: W, games, alerts };
+  return { generated: new Date().toISOString(), ts: t, status, wallets: W, games, alerts, sigRec, sigBig: Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sigBig])) };
 }
 
 // ── main ────────────────────────────────────────────────────────────────
 async function pollOnce() {
   mkdirSync(DIR, { recursive: true });
-  const S = loadState(); S._new = []; S.prevPoll = S.lastPoll || 0; S.lastPoll = now();
+  const S = loadState(); S.born ||= now(); S._new = []; S.prevPoll = S.lastPoll || 0; S.lastPoll = now();
   const status = {}, all = [], walletInfo = {};
   // Accounts are scored per sport, but skill travels: NFL-sharp accounts beat
   // the CFB close by +2.2%/trade (194 trades, t 7, 2026 season). So an account
