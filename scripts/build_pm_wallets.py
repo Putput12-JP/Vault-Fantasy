@@ -25,16 +25,32 @@
 #  NFL games' trades to the per-account aggregates [n, sum, sumsq, games].
 #  Bootstrap: --seed=<dir of cached game files from the study>.
 #
-#  Usage: python3 scripts/build_pm_wallets.py [--max=60] [--dry]
+#  Sports: --sport=nfl (default, data/pm_wallets.json), cfb, nba
+#  (data/pm_wallets_<sport>.json). Same unit and rule for every sport; each is
+#  scored only on its own games. CFB/NBA events are listed by Polymarket
+#  series id (their tag listings are dominated by futures).
+#
+#  Usage: python3 scripts/build_pm_wallets.py [--sport=nfl] [--max=60] [--dry]
 # ════════════════════════════════════════════════════════════════════════════
 import json, math, os, re, sys, time, urllib.request, glob
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+SPORTS = {"nfl": {"series": 12185, "out": "pm_wallets.json", "skip_months": ("07", "08")},
+          "cfb": {"series": 12756, "out": "pm_wallets_cfb.json", "skip_months": ()},
+          "nba": {"series": 10345, "out": "pm_wallets_nba.json", "skip_months": ("07", "08", "09")}}
+SPORT = "nfl"
 OUT = os.path.join(HERE, "..", "data", "pm_wallets.json")
 UA = {"User-Agent": "VaultFantasy/1.0 (+vaultfantasy.com)", "Accept": "application/json"}
 GAME_RE = re.compile(r"^nfl-[a-z]{2,3}-[a-z]{2,3}-(\d{4}-\d{2}-\d{2})$")
+
+
+def set_sport(sp):
+    global SPORT, OUT, GAME_RE
+    SPORT = sp
+    OUT = os.path.join(HERE, "..", "data", SPORTS[sp]["out"])
+    GAME_RE = re.compile(r"^" + sp + r"-[a-z0-9]{2,8}-[a-z0-9]{2,8}-(\d{4}-\d{2}-\d{2})$")
 BIG = 1000              # $ per trade
 MIN_N, MIN_GAMES, T_SHARP = 10, 5, 2.0
 
@@ -51,13 +67,14 @@ def get(url, tries=3):
 
 def closed_games():
     out = []
-    for off in range(0, 3000, 100):
-        r = get(f"https://gamma-api.polymarket.com/events?closed=true&limit=100&offset={off}&tag_slug=nfl&order=endDate&ascending=false")
+    src = "tag_slug=nfl" if SPORT == "nfl" else f"series_id={SPORTS[SPORT]['series']}"
+    for off in range(0, 5000, 100):
+        r = get(f"https://gamma-api.polymarket.com/events?closed=true&limit=100&offset={off}&{src}&order=endDate&ascending=false")
         if not r: break
         out += [e for e in r if GAME_RE.match(e.get("slug") or "")]
         if len(r) < 100: break
     # regular season + playoffs only (preseason games are backups)
-    return [e for e in out if GAME_RE.match(e["slug"]).group(1)[5:7] not in ("07", "08")]
+    return [e for e in out if GAME_RE.match(e["slug"]).group(1)[5:7] not in SPORTS[SPORT]["skip_months"]]
 
 
 def game_record(e):
@@ -118,6 +135,7 @@ def classify(a):
 
 def main():
     args = dict(a.lstrip("-").split("=", 1) if "=" in a else (a.lstrip("-"), True) for a in sys.argv[1:])
+    set_sport(args.get("sport", "nfl"))
     try: S = json.load(open(OUT))
     except Exception: S = {"processed": [], "wallets": {}}
     W, done = S.get("wallets") or {}, set(S.get("processed") or [])
@@ -134,17 +152,20 @@ def main():
         with ThreadPoolExecutor(6) as ex:
             for g in ex.map(game_record, todo):
                 if not g or g["start"] > now - 6 * 3600: continue      # settled games only
+                if args.get("cache"):                                  # keep raw games for walk-forward studies
+                    os.makedirs(args["cache"], exist_ok=True)
+                    json.dump(g, open(os.path.join(args["cache"], g["slug"] + ".json"), "w"))
                 add_game(W, g); done.add(g["slug"]); added += 1
     cls = {w: classify(a) for w, a in W.items()}
     sharp = sorted([w for w, (c, t) in cls.items() if c == "sharp"])
     dull = sorted([w for w, (c, t) in cls.items() if c == "dull"])
-    out = {"generated": datetime.now(timezone.utc).isoformat(), "unit": f"${BIG}+ taker trades, full-game moneyline, pre-kickoff",
+    out = {"generated": datetime.now(timezone.utc).isoformat(), "sport": SPORT, "unit": f"${BIG}+ taker trades, full-game moneyline, pre-kickoff",
            "rule": {"min_trades": MIN_N, "min_games": MIN_GAMES, "t": T_SHARP},
-           "study": {"games": 613, "sharp_clv_after": 0.0038, "dull_clv_after": -0.0090,
+           "study": None if SPORT != "nfl" else {"games": 613, "sharp_clv_after": 0.0038, "dull_clv_after": -0.0090,
                      "sharp_side_won": [151, 260], "close_said": 0.592, "follow_30m_2h_clv": -0.0019,
                      "note": "Skill persists, but the edge is gone within about 30 minutes of the trade; by kickoff the price has priced it in. Context only, not a bet to copy."},
            "sharp": sharp, "dull": dull, "processed": sorted(done), "wallets": W}
-    print(f"[pm-wallets] +{added} games -> {len(done)} total · {len(W)} accounts · {len(sharp)} sharp · {len(dull)} dull")
+    print(f"[pm-wallets:{SPORT}] +{added} games -> {len(done)} total · {len(W)} accounts · {len(sharp)} sharp · {len(dull)} dull")
     if args.get("dry"): return
     json.dump(out, open(OUT, "w"), separators=(",", ":"))
 

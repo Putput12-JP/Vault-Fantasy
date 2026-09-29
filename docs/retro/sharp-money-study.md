@@ -42,3 +42,40 @@ paid - 1. Accounts scored walk-forward (only games before the one being judged).
 Code: `scripts/build_pm_wallets.py` (weekly scorecard, `data/pm_wallets.json`),
 `scripts/fetch-polymarket.mjs` (hourly 24h split: $1k+ tickets, sharp accounts,
 usually-losing accounts per market).
+
+## 3. Other sports (2026-09-29)
+
+The account scorecard now runs per sport (`build_pm_wallets.py --sport=cfb|nba`,
+`data/pm_wallets_<sport>.json`). College football is thin on Polymarket: 560 games
+this season but only 228 accounts made $1k+ trades, 6 of them sharp on their own
+CFB record.
+
+Skill travels across sports. Accounts that are sharp on their NFL record, judged on
+their CFB trades (which were never used to label them):
+
+| Group (labelled on NFL) | CFB trades | vs the close |
+|---|---|---|
+| NFL-sharp | 194 | +2.18% (t 7.0) |
+| NFL-usually-losing | 57 | -0.38% (t -1.1) |
+| Everyone else | 1,071 | +0.33% (t 2.7) |
+
+NBA (195 most recent games, mostly the 2026 playoffs; closes there often fall
+back to the last $1k+ trade before tip because in-game trading buries the true
+close): NFL-sharp accounts +1.76% on 439 NBA trades (t 3.0), everyone else -0.17%.
+The NBA scorecard has 32 sharp / 62 usually-losing accounts of its own.
+
+So the live watch labels an account sharp in a sport where it has no record yet if
+it is sharp in another sport, and says which sport it earned that in.
+
+## 4. Sharp Money watch (live)
+
+`scripts/fetch-sharp-money.mjs` polls Pinnacle (guest API: main + alternate lines,
+limits), Action Network (bets % vs money %, opening line, five US books),
+Polymarket (account-level tape) and Kalshi (big tickets) for NFL, CFB and NBA,
+and turns changes into time-stamped alerts: Pinnacle steam, US book behind
+Pinnacle (+EV priced from Pinnacle's own alt ladder, power de-vig, -300 to +300
+only), sharp-account buys, big tickets, and money-vs-bets splits. Every alert is
+graded against Pinnacle's last pre-game price (CLV) and the final score (ESPN).
+State lives in `.claude/sharp-money/` (gitignored); a local scheduled task runs it
+every 5 minutes and republishes the Sharp Money artifact. Nothing here is a Vault
+pick until an alert type beats the close over a real sample.

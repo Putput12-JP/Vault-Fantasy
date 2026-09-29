@@ -1,6 +1,6 @@
 name: Update Polymarket account scorecard
 
-# Weekly: add newly settled NFL games' $1k+ pre-kickoff trades to the account
+# Weekly: add newly settled NFL, CFB and NBA games' $1k+ pre-kickoff trades to the account
 # scorecard (scripts/build_pm_wallets.py -> data/pm_wallets.json), which the
 # hourly Polymarket job uses to split out sharp vs usually-losing accounts.
 on:
@@ -14,23 +14,26 @@ permissions:
 jobs:
   wallets:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Score newly settled games
-        run: python3 scripts/build_pm_wallets.py --max=80
+        run: |
+          python3 scripts/build_pm_wallets.py --sport=nfl --max=80
+          python3 scripts/build_pm_wallets.py --sport=cfb --max=200
+          python3 scripts/build_pm_wallets.py --sport=nba --max=40
       - name: Commit if changed
         run: |
-          if git diff --quiet -- data/pm_wallets.json; then
+          if git diff --quiet -- data/pm_wallets.json && [ -z "$(git status --porcelain -- 'data/pm_wallets_*.json')" ]; then
             echo "No scorecard changes."
           else
             git config user.name  "vault-bot"
             git config user.email "vault-bot@users.noreply.github.com"
-            git add data/pm_wallets.json
-            git commit -m "polymarket: update NFL account scorecard [skip ci]"
+            git add data/pm_wallets.json data/pm_wallets_*.json
+            git commit -m "polymarket: update NFL/CFB/NBA account scorecards [skip ci]"
             for i in 1 2 3; do
               git pull --rebase --autostash origin main && git push && break
               echo "push race, retrying ($i)…"; sleep 3
