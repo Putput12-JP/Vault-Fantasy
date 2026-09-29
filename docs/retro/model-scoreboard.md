@@ -96,9 +96,9 @@ _Every Best Bets play (the locked card plus the background log), graded at the l
 ```
 posted                 record  units posted  units at close  beat close
 3+ days before            3-0         +3.0u           +2.4u         1/2
-1-3 days before           4-3         +1.3u           +0.9u         3/3
-6-24 hours before         6-4         +2.3u           +2.4u         1/2
-under 6 hours            11-7         +2.8u           +0.7u         4/7
+1-3 days before           4-3         +1.3u           +0.9u         1/6
+6-24 hours before         6-4         +2.3u           +2.4u         1/8
+under 6 hours            11-7         +2.8u           +0.7u        3/12
 ```
 
 - Spread/total market = no-vig closing price at the number where banked (from Sep 28), else 50/50; Vault's cover chance uses its line and the fitted sd. ML = no-vig closing moneyline.
