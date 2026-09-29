@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-29T11:45:49.884914+00:00",
+ "generated": "2026-09-29T11:53:22.581967+00:00",
  "devig": "power",
  "props_half_line_check": {
   "all": {
@@ -751,6 +751,52 @@
     "se": 0.358
    },
    "verdict": "too few props (20 of 100)"
+  }
+ },
+ "signals": {
+  "kalshi_vs_books": {
+   "n": 0,
+   "won": 0,
+   "said": 0,
+   "verdict": "tracking (0 of 50)",
+   "all_lines": {
+    "n": 0,
+    "logloss_kalshi": null,
+    "logloss_books": null
+   }
+  },
+  "vault_vs_kalshi": {
+   "n": 0,
+   "won": 0,
+   "said": 0,
+   "verdict": "tracking (0 of 50)",
+   "note": "won = Kalshi's side; said = Kalshi's own price"
+  },
+  "pm_sharp": {
+   "all": {
+    "n": 13,
+    "won": 12,
+    "said": 6.87,
+    "verdict": "tracking (13 of 50)"
+   },
+   "crowd_disagrees": {
+    "n": 3,
+    "won": 3,
+    "said": 0.97,
+    "verdict": "tracking (3 of 50)"
+   },
+   "crowd_agrees": {
+    "n": 9,
+    "won": 8,
+    "said": 5.15,
+    "verdict": "tracking (9 of 50)"
+   }
+  },
+  "withheld": {
+   "lines": 24,
+   "lean_won": 13,
+   "overs_hit": 15,
+   "would_be_plays": null
   }
  }
 }

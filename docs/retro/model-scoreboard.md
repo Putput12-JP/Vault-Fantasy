@@ -89,6 +89,20 @@ props   DraftKings  n=  5  toward   3 / away   0  net share toward +0.60 ±0.36
         -> too few props (20 of 100)
 ```
 
+## Signals: Kalshi, Polymarket sharp accounts, withheld props
+
+_Logged live before kickoff, graded here. Context only until a row says GO (50+ bets and the side winning 2+ standard errors more often than its price said)._
+
+```
+Kalshi vs books (5+ pts apart)     n=  0  side won   0, price said    0.0  -> tracking (0 of 50)
+  all Kalshi-priced lines: n=0  log-loss Kalshi None  books None
+Vault vs Kalshi (10+ pts, Kalshi)  n=  0  side won   0, price said    0.0  -> tracking (0 of 50)
+PM sharp $25k+ (all)               n= 13  side won  12, price said    6.9  -> tracking (13 of 50)
+PM sharp vs crowd disagree         n=  3  side won   3, price said    1.0  -> tracking (3 of 50)
+PM sharp with crowd                n=  9  side won   8, price said    5.2  -> tracking (9 of 50)
+Withheld props (teammate out)      lines=24  model lean won 13  overs hit 15  | would-be plays: none yet
+```
+
 ## Timing: Best Bets by how early they posted (plan Weeks 3-4)
 
 _Every Best Bets play (the locked card plus the background log), graded at the line and price it posted with, then re-priced at the close. If posting early is where the value is, the gap between the two should be widest in the earliest rows._
