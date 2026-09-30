@@ -14,7 +14,7 @@ Built two ways:
 Board shape (compact, it ships in the page):
   {t, games: [{id, day, tip, away, home, season_type}], players: {pid: [name, team, injury status, lineup]},
    lineup = NBA.com: 'S' confirmed starter, 's' expected starter, 'B' confirmed bench, 'b' expected bench, 'X' inactive,
-   props: [{p, s, g, kal: [[line, bid, ask, open_mid]], books: [[book, line, over, under, open_line, open_over]],
+   props: [{p, s, g, kal: [[line, bid, ask, open_mid, bid_size, ask_size]],   sizes = contracts at the best price books: [[book, line, over, under, open_line, open_over]],
             pk: [[app, line, over, under, open_line]]}],     books include Polymarket (fee in); pk = pick'em apps
    unmapped: {venue: count}}
 Kalshi rung "25+" is YES iff stat > 24.5, so its line is the floor strike, same convention as a book line.
@@ -75,7 +75,7 @@ def pin_stat(label):
     return None
 
 
-def build(games, last, meta, first, proj, now):
+def build(games, last, meta, first, proj, now, sizes=None):
     """games: pre-tip slate games; last/meta/first: {src: {key: value}} current rows, their metadata and the
     first value seen today."""
     R = Roster(proj)
@@ -111,7 +111,8 @@ def build(games, last, meta, first, proj, now):
             continue
         f = (first.get('kalshi') or {}).get(k)
         om = round((f[0] + f[1]) / 2, 3) if f and f[0] is not None and f[1] is not None else None
-        entry(pid, stat, g)['kal'].append([m['floor'], v[0], v[1], om])
+        sz = (sizes or {}).get(k) or [None, None]
+        entry(pid, stat, g)['kal'].append([m['floor'], v[0], v[1], om, sz[0], sz[1]])
 
     # ESPN (DraftKings): rebuild the backfill's row shape so prop_markets() assigns over/under the audited way
     per_game = defaultdict(list)

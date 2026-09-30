@@ -194,6 +194,8 @@ footer b{color:var(--fg2);font-weight:500}
 .banner a,footer a,.card a{color:var(--fg);text-underline-offset:3px;text-decoration-color:var(--fg3)}
 table.ht{min-width:760px}
 table.tb{min-width:1000px}
+.bankroll{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2);white-space:nowrap}
+.bankroll .pfind{width:110px}
 table.tb td,table.ts td{white-space:nowrap}
 table.tb td small,table.ts td small{display:block;color:var(--fg3);font-size:12px;font-weight:400}
 table.tb td b,table.ts td b{font-weight:500}
@@ -509,6 +511,37 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
       </section>
     </main>
     <footer id="tfoot" hidden></footer>
+
+    <main id="v-edges" hidden>
+      <div class="banner" id="ebanner"></div>
+      <div class="kpis" id="ekpis"></div>
+
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Plays</h2><p id="esub">GO signals at 3%+ edge after fees, one per player and stat, sized by fractional Kelly.</p></div>
+          <div class="filters">
+            <label class="bankroll" for="ebank">Bankroll $<input class="pfind" id="ebank" type="number" min="0" step="100" inputmode="decimal" aria-label="Bankroll in dollars"></label>
+            <div class="seg" id="ekelly" role="group" aria-label="Kelly fraction"></div>
+            <div class="seg" id="ecap" role="group" aria-label="Largest stake per play"></div>
+          </div>
+        </div>
+        <div class="card-b"><div class="tablewrap"><table class="ht tb">
+          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Player</th><th class="l" scope="col">Bet</th><th scope="col" title="Price to buy now, before the fee">Price</th><th scope="col" title="Market and model blended">Fair</th><th scope="col" title="Fair chance minus the price and fee">Edge</th><th scope="col" title="Fractional Kelly on the bankroll, capped per play and per game">Stake</th><th scope="col">Contracts</th><th scope="col" title="Contracts offered at this price on Kalshi right now">Offered</th><th scope="col" title="Stake times edge">EV</th><th scope="col" title="This side's price change since the first poll today, in cents">Moved</th><th class="l" scope="col">Status</th></tr></thead>
+          <tbody id="erows"></tbody>
+        </table></div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Watch list</h2><p>WATCH signals at 3%+ edge. Positive in the backtest but under 2 standard errors, so not sized.</p></div>
+        </div>
+        <div class="card-b"><div class="tablewrap"><table class="ht tb">
+          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Player</th><th class="l" scope="col">Bet</th><th scope="col">Price</th><th scope="col">Fair</th><th scope="col">Edge</th><th scope="col" title="Contracts offered at this price on Kalshi right now">Offered</th><th scope="col">Moved</th><th class="l" scope="col">Backtest</th></tr></thead>
+          <tbody id="ewatch"></tbody>
+        </table></div></div>
+      </section>
+    </main>
+    <footer id="efoot" hidden></footer>
   </div>
 </div>
 
@@ -531,7 +564,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : 'lab';
+let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -658,7 +691,7 @@ const PAGES = [
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.'],
   ]],
   ['Betting', [
-    ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Only signals that passed their gate: Kalshi 3-pointer NO blend, overs-bias tracker, totals watch. Size, price and capacity for each.'],
+    ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Only plays whose signal passed its gate, with stake, price, what the book can fill and live status.', 'edges'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
   ['Model', [
@@ -810,7 +843,7 @@ $('pages').addEventListener('click', e => {
 });
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (h === 'HEALTH' || h === 'PROPS' || h === 'TRACK') show(h.toLowerCase());
+  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES'].includes(h)) show(h.toLowerCase());
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -862,6 +895,7 @@ function show(v){
   $('v-health').hidden = $('hfoot').hidden = v !== 'health';
   $('v-props').hidden = $('pfoot').hidden = v !== 'props';
   $('v-track').hidden = $('tfoot').hidden = v !== 'track';
+  $('v-edges').hidden = $('efoot').hidden = v !== 'edges';
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
   $('mode').hidden = lab;
@@ -872,6 +906,14 @@ function show(v){
     $('tsub').textContent = 'PROJECTION · MARKET · BLENDED FAIR';
     renderProps();
     if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'edges'){
+    $('tname').textContent = 'Edges';
+    $('tsub').textContent = 'GATED PLAYS · STAKE · CAPACITY';
+    renderEdges();
+    if (!boardTried) loadBoard();
+    if (!trackTried) loadTrack();
     return;
   }
   if (v === 'track'){
@@ -1231,13 +1273,13 @@ function priceRow(e, cache){
             eo: fair != null ? fair - (po ?? PK_BE) : null, eu: fair != null ? (1 - fair) - (pu ?? PK_BE) : null};
   });
   // Kalshi ladder: YES at the ask, NO at 1 - bid, fee on top
-  r.kal = e.kal.map(([line, bid, ask, om]) => {
+  r.kal = e.kal.map(([line, bid, ask, om, bs, as]) => {
     const mid = bid != null && ask != null ? (bid + ask) / 2 : (ask ?? bid);
     const pm = model(line), fair = pm != null && mid != null && kc ? blendP(kc, Math.min(.99, Math.max(.01, mid)), pm) : null;
-    const k = {line, bid, ask, mid, om, pm, fair, ey: null, en: null};
+    const k = {line, bid, ask, mid, om, pm, fair, ey: null, en: null, bs, as};
     if (fair != null){
-      if (ask != null && ask > 0 && ask < 1){ k.ey = fair - ask - kFee(ask); r.cands.push({venue: 'kalshi', side: 'YES', line, price: ask, edge: k.ey, fair, g: gate('kalshi', e.s, 'YES')}); }
-      if (bid != null && bid > 0 && bid < 1){ k.en = (1 - fair) - (1 - bid) - kFee(1 - bid); r.cands.push({venue: 'kalshi', side: 'NO', line, price: 1 - bid, edge: k.en, fair: 1 - fair, g: gate('kalshi', e.s, 'NO')}); }
+      if (ask != null && ask > 0 && ask < 1){ k.ey = fair - ask - kFee(ask); r.cands.push({venue: 'kalshi', side: 'YES', line, price: ask, edge: k.ey, fair, g: gate('kalshi', e.s, 'YES'), size: as, mid, om}); }
+      if (bid != null && bid > 0 && bid < 1){ k.en = (1 - fair) - (1 - bid) - kFee(1 - bid); r.cands.push({venue: 'kalshi', side: 'NO', line, price: 1 - bid, edge: k.en, fair: 1 - fair, g: gate('kalshi', e.s, 'NO'), size: bs, mid: mid != null ? 1 - mid : null, om: om != null ? 1 - om : null}); }
     }
     return k;
   });
@@ -1262,6 +1304,7 @@ async function loadBoard(){
     const b = await fetch(`https://raw.githubusercontent.com/${PB.repo}/${PB.branch}/board.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
     PS.live = b; PS.liveAt = Date.now() / 1000; PS.liveFetched = true;
     if (view === 'props') renderProps();
+    if (view === 'edges') renderEdges();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -1526,6 +1569,7 @@ async function loadTrack(){
     const d = await fetch(`https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/track.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
     TR = {data: d, live: true, at: Date.now() / 1000};
     if (view === 'track') renderTrack();
+    if (view === 'edges') renderEdges();
     clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -1650,6 +1694,112 @@ function renderTrackChart(d){
 $('tgate').addEventListener('click', e => { const g = e.target.closest('button')?.dataset.g; if (g){ tf.gate = g; tf.limit = 150; renderTrack(); } });
 $('tstatus').addEventListener('change', e => { tf.status = e.target.value; tf.limit = 150; renderTrack(); });
 $('tmore').addEventListener('click', e => { if (e.target.id === 'tmorebtn'){ tf.limit = 1e9; renderTrack(); } });
+
+// ── Edges ─────────────────────────────────────────────────────────────────
+// The actionable subset of the Props board: GO signals at 3%+ edge (WATCH listed, not sized). Same prices and model as
+// the Props page (priceRow). One play per player, stat and side: rungs on one ladder are the same bet, so only the one
+// with the largest Kelly fraction is sized. Stakes are shadow stakes until the signal's live verdict holds up.
+const ECFG_DEF = {bank: 1000, kf: .25, cap: .02};
+const GAME_CAP = 3;                 // a game's plays together stake at most this many per-play caps
+let ecfg = {...ECFG_DEF, ...(store.get('nba-edges') || {})};
+
+function sideCost(c){ return c.venue === 'kalshi' ? c.price + kFee(c.price) : amP(c.price); }
+function kellyF(c){ const k = sideCost(c); return k != null && k < 1 ? Math.max(0, (c.fair - k) / (1 - k)) : 0; }
+// Expected log growth of the bankroll at the stake this play would get: picks the best rung on a ladder (the largest
+// Kelly fraction alone favours near-certain rungs with thin edges).
+function growth(c){
+  const k = sideCost(c), f = Math.min(ecfg.cap, ecfg.kf * kellyF(c));
+  return f > 0 ? c.fair * Math.log(1 + f * (1 - k) / k) + (1 - c.fair) * Math.log(1 - f) : 0;
+}
+function liveStatus(key){
+  const x = TR && TR.data && TR.data.by_signal ? TR.data.by_signal[key] : null;
+  if (x && x.settled >= MIN_LIVE && x.z != null && x.z >= 2) return {ready: true, html: pill('ok', 'Live-ready')};
+  return {ready: false, html: `<span title="${x ? x.settled : 0} of ${MIN_LIVE} settled bets needed on this season's games">${pill('idle', `Shadow ${x ? x.settled : 0}/${MIN_LIVE}`)}</span>`};
+}
+
+function renderEdges(){
+  if (!PR){ $('ebanner').textContent = 'The prop model is missing from this build.'; return; }
+  const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
+  const B = PS.board, live = pick.live || PS.live || (PB && PB.live);
+  const liveN = live && live.props ? live.props.length : 0;
+  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="erefresh" type="button">Refresh</button>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
+    : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pill('idle', 'No props yet');
+  $('erefresh')?.addEventListener('click', () => loadBoard());
+
+  const games = Object.fromEntries((B.games || []).map(g => [String(g.id), g]));
+  const cache = {};
+  const rows = (B.props || []).filter(e => PR.variance[e.s]).map(e => priceRow(e, cache));
+  const cands = rows.flatMap(r => r.cands.filter(c => c.g !== 'no-go' && c.edge >= EDGE_MIN).map(c => ({...c, r, key: `${r.e.s}|${c.venue}|${c.side}`})));
+  const group = {};
+  for (const c of cands){ const k = `${c.r.e.p}|${c.r.e.s}|${c.venue}|${c.side}`; (group[k] = group[k] || []).push(c); }
+  const plays = Object.values(group).map(cs => {
+    cs.sort((a, b) => growth(b) - growth(a));
+    return {...cs[0], also: cs.slice(1), kelly: kellyF(cs[0]), cost: sideCost(cs[0]), g0: games[String(cs[0].r.e.g)]};
+  });
+  const go = plays.filter(p => p.g === 'go'), watch = plays.filter(p => p.g === 'watch');
+
+  // stakes: fractional Kelly, per-play cap, then each game scaled to GAME_CAP x the per-play cap
+  for (const p of go) p.stake = ecfg.bank * Math.min(ecfg.cap, ecfg.kf * p.kelly);
+  const byGame = {};
+  for (const p of go) (byGame[p.r.e.g] = byGame[p.r.e.g] || []).push(p);
+  for (const ps of Object.values(byGame)){
+    const tot = ps.reduce((a, p) => a + p.stake, 0), lim = GAME_CAP * ecfg.cap * ecfg.bank;
+    if (tot > lim) ps.forEach(p => { p.stake *= lim / tot; p.scaled = true; });
+  }
+  for (const p of go){
+    p.n = p.venue === 'kalshi' ? Math.floor(p.stake / p.cost) : null;
+    if (p.venue === 'kalshi') p.stake = p.n * p.cost;
+    p.ev = p.stake * p.edge / p.cost;
+  }
+  const tipSort = (a, b) => (a.g0?.tip ?? 0) - (b.g0?.tip ?? 0) || b.edge - a.edge;
+  go.sort(tipSort); watch.sort(tipSort);
+
+  $('ebanner').innerHTML = pick.mode === 'example'
+    ? `<b>Example: last season's final game at its pre-tip prices.</b><span>${liveN ? '' : 'No props are listed yet; Kalshi lists them the morning of a game. '}Kalshi shows the last trade as bid and ask, and there is no order book for it, so "Offered" is unknown.</span>${liveN ? '<button class="linkbtn" id="eex" type="button">Back to the live board</button>' : ''}`
+    : `<b>Shadow mode.</b><span>Every stake here is what the shadow ledger records, not advice to bet. A signal is live-ready only after ${MIN_LIVE} settled bets on this season's games hold up at 2 standard errors (Track Record).</span>`;
+  $('eex')?.addEventListener('click', () => { showExample = !showExample; renderEdges(); });
+
+  // KPIs
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const money = x => Math.abs(x) < 10 ? '$' + x.toFixed(2) : '$' + Math.round(x).toLocaleString();
+  const staked = go.reduce((a, p) => a + p.stake, 0), ev = go.reduce((a, p) => a + p.ev, 0);
+  const sized = go.filter(p => p.venue === 'kalshi' && p.size != null), full = sized.filter(p => p.size >= p.n);
+  $('ekpis').innerHTML =
+    kpi('GO plays', ICON.star, `${go.length}`, go.length ? `${new Set(go.map(p => p.r.e.g)).size} ${new Set(go.map(p => p.r.e.g)).size === 1 ? 'game' : 'games'} · ${cands.filter(c => c.g === 'go').length} rungs pass` : `None at ${pc(EDGE_MIN)}+ edge right now`) +
+    kpi('Shadow stake', ICON.pts, go.length ? money(staked) : '$0', go.length ? `${(staked / ecfg.bank * 100).toFixed(1)}% of a ${money(ecfg.bank)} bankroll` : `Bankroll ${money(ecfg.bank)}`) +
+    kpi('Expected value', ICON.edit, go.length ? `<span class="pos">+${money(ev)}</span>` : '$0', go.length ? `${(ev / Math.max(1, staked) * 100).toFixed(1)}% of stake at fair prices` : 'Stake times edge') +
+    kpi('Fills at the price', ICON.clock, sized.length ? `${full.length} of ${sized.length}` : 'Unknown', sized.length ? 'Plays the best price covers in full' : pick.mode === 'example' ? 'No order book in the example' : 'No Kalshi plays');
+
+  const who = p => `<b>${esc(p.r.name)}</b><small>${esc(p.r.team)} · ${p.g0 ? `${p.g0.away} @ ${p.g0.home}` : ''}${p.r.lu === 'S' ? ' · Starting' : ''}${p.r.inj ? ` · ${esc(p.r.inj)}` : ''}</small>`;
+  const bet = p => `<b>${SLABEL[p.r.e.s]} ${p.venue === 'kalshi' ? `${p.side} ${p.line + .5}+` : `${p.side} ${p.line}`}</b><small>${p.venue === 'kalshi' ? 'Kalshi' : esc(p.bk)}${p.also.length ? ` · also ${p.also.map(a => `${a.line + .5}+ (${ec(a.edge)})`).join(', ')}` : ''}</small>`;
+  const px = p => p.venue === 'kalshi' ? Math.round(p.price * 100) + '¢' : esc(p.price);
+  const cap = p => p.size == null ? '<span class="muted">unknown</span>' : `${Math.floor(p.size).toLocaleString()}${p.n != null && p.size < p.n ? ' <span class="warnt">short</span>' : ''}`;
+  const moved = p => p.om == null || p.mid == null ? '' : (() => { const c = Math.round((p.mid - p.om) * 100); return c ? `<span class="${c < 0 ? 'pos' : 'neg'}">${c > 0 ? '+' : ''}${c}¢</span>` : '<span class="muted">0</span>'; })();
+  const tipCell = p => p.g0 ? `<td class="l num">${etFmt(p.g0.tip, {month: 'short', day: 'numeric'})}<small>${clock(p.g0.tip)}</small></td>` : '<td></td>';
+  $('erows').innerHTML = go.length ? go.map(p => `<tr>${tipCell(p)}<td class="l">${who(p)}</td><td class="l">${bet(p)}</td>
+      <td class="num">${px(p)}</td><td class="num">${pc(p.fair)}</td><td class="num"><span class="pos">${ec(p.edge)}</span></td>
+      <td class="num">${money(p.stake)}${p.scaled ? ' <span class="muted" title="Scaled down: the game hit its cap">*</span>' : ''}</td><td class="num">${p.n ?? ''}</td>
+      <td class="num">${cap(p)}</td><td class="num pos">+${money(p.ev)}</td><td class="num">${moved(p)}</td><td class="l">${liveStatus(p.key).html}</td></tr>`).join('')
+    : `<tr><td class="l" colspan="12"><p class="empty">${pick.mode === 'empty' ? 'No props listed yet.' : `No GO signal is at ${pc(EDGE_MIN)}+ edge right now. GO signals: ${Object.entries(PR.verdict).filter(([, v]) => /^GO/.test(v)).map(([k, v]) => `Kalshi ${SLABEL[k]} ${v.replace(/^GO \(|\)$/g, '')}`).join(', ')}.`}</p></td></tr>`;
+  const BT = (TR && TR.data && TR.data.backtest) || PR.backtest || {};
+  $('ewatch').innerHTML = watch.length ? watch.map(p => { const b = BT[p.key];
+    return `<tr>${tipCell(p)}<td class="l">${who(p)}</td><td class="l">${bet(p)}</td><td class="num">${px(p)}</td><td class="num">${pc(p.fair)}</td>
+      <td class="num"><span class="pos">${ec(p.edge)}</span></td><td class="num">${cap(p)}</td><td class="num">${moved(p)}</td>
+      <td class="l">${b && b.roi != null ? `${b.roi > 0 ? '+' : ''}${(b.roi * 100).toFixed(1)}% on ${b.n}, z ${b.z}` : ''}</td></tr>`; }).join('')
+    : `<tr><td class="l" colspan="9"><p class="empty">No WATCH signal at ${pc(EDGE_MIN)}+ edge right now.</p></td></tr>`;
+
+  $('ebank').value = ecfg.bank;
+  $('ekelly').innerHTML = [[.125, '⅛ Kelly'], [.25, '¼ Kelly'], [.5, '½ Kelly']].map(([v, l]) => `<button type="button" data-k="${v}" aria-pressed="${ecfg.kf === v}">${l}</button>`).join('');
+  $('ecap').innerHTML = [.01, .02, .03].map(v => `<button type="button" data-c="${v}" aria-pressed="${ecfg.cap === v}">${v * 100}% max</button>`).join('');
+  $('efoot').innerHTML = `
+    <div><b>Which plays:</b> Kalshi sides whose stat and side passed the 2025-26 backtest gate (GO: ${Object.entries(PR.verdict).filter(([, v]) => /^GO/.test(v)).map(([k, v]) => `${SLABEL[k]} ${v.replace(/^GO \(|\)$/g, '')}`).join(', ')}), at ${pc(EDGE_MIN)}+ edge after the fee, priced exactly as on Player Props. Several rungs on one player's ladder are the same bet, so only the rung that grows the bankroll fastest at its stake (expected log growth) is sized; the others are listed under it.</div>
+    <div><b>Stake:</b> Kelly fraction (fair − cost) ÷ (1 − cost), times the Kelly multiple you pick, capped at the per-play maximum; a game's plays together stake at most ${GAME_CAP}× that cap. Contracts are rounded down. EV is stake times edge ÷ cost: what the stake earns on average if the fair price is right.</div>
+    <div><b>Offered</b> is the contracts resting at Kalshi's best price on the last recorder poll (every 5 minutes near tip). Buying more walks the book to worse prices. <b>Moved</b> is this side's price change since the first poll today; a negative number means it got cheaper.</div>`;
+}
+$('ebank').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ ecfg.bank = v; store.set('nba-edges', ecfg); renderEdges(); } });
+$('ekelly').addEventListener('click', e => { const k = e.target.closest('button')?.dataset.k; if (k){ ecfg.kf = +k; store.set('nba-edges', ecfg); renderEdges(); } });
+$('ecap').addEventListener('click', e => { const c = e.target.closest('button')?.dataset.c; if (c){ ecfg.cap = +c; store.set('nba-edges', ecfg); renderEdges(); } });
 
 show(view);
 </script>

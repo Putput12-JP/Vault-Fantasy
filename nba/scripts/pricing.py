@@ -173,7 +173,8 @@ class Pricer:
             if fair is not None:
                 cands.append({'venue': 'book', 'bk': bk, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - po, 'fair': fair, 'mkt': mkt, 'g': self.gate('book', s, 'Over')})
                 cands.append({'venue': 'book', 'bk': bk, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - pu, 'fair': 1 - fair, 'mkt': 1 - mkt, 'g': self.gate('book', s, 'Under')})
-        for line, bid, ask, _ in e.get('kal', []):
+        for rung in e.get('kal', []):
+            line, bid, ask = rung[:3]
             mid = (bid + ask) / 2 if bid is not None and ask is not None else (ask if ask is not None else bid)
             pm = model(line)
             fair = blend(kc, min(.99, max(.01, mid)), pm) if pm is not None and mid is not None and kc else None

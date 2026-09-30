@@ -138,8 +138,13 @@ class Slate:
 
 
 # ── sources: each returns ({key: value list}, {key: meta}) ───────────────────────────────────
+KAL_SIZE = {}     # ticker -> [yes bid size, yes ask size]: contracts at the best prices. Board only (changes every
+                  # poll; logging it would multiply the day files), so capacity is live, not historical.
+
+
 def src_kalshi(slate):
     rows, meta = {}, {}
+    KAL_SIZE.clear()
     for s in PROP_SERIES + GAME_SERIES:
         cur = ''
         while True:
@@ -149,6 +154,7 @@ def src_kalshi(slate):
                     continue
                 k = m['ticker']
                 rows[k] = [num(m.get('yes_bid_dollars')), num(m.get('yes_ask_dollars'))]
+                KAL_SIZE[k] = [num(m.get('yes_bid_size_fp')), num(m.get('yes_ask_size_fp'))]
                 meta[k] = {'series': s, 'event': m['event_ticker'], 'title': m.get('title'), 'sub': m.get('yes_sub_title'),
                            'floor': m.get('floor_strike'), 'close': m.get('close_time')}
             cur = d.get('cursor')
@@ -590,7 +596,7 @@ def write_board(root, day, slate):
     try:
         from prop_board import build
         proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
-        board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now)
+        board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE)
         with open(BOARD, 'w') as f:
             json.dump(board, f, separators=(',', ':'))
         print(f"  board      {len(board['props'])} player-stat markets, unmapped {board['unmapped']}", flush=True)
