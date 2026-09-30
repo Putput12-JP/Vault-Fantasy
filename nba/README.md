@@ -24,6 +24,7 @@ python3 nba/scripts/build_rates_v3.py                           # per-stat memor
 python3 nba/scripts/build_prop_model_v3_full.py                 # v3 candidate (B + C, with and without A's shape) vs v2 (~4 min)
 python3 nba/scripts/pricing.py --check                          # the Props page's pricing in Python (the ledger uses it); prints example rows
 python3 nba/scripts/check_minutes_parity.py [--games 40]         # proof live pricing projects players exactly as the backtest did (~40 s)
+python3 nba/scripts/build_minutes_v3_pricing.py                # pre-registered: v2 pricing with minutes v3 (+ confirmed starters) vs v2 (~5 min)
 python3 nba/scripts/build_consensus.py                          # consensus fair engine backtest: books <-> Kalshi, ladder leave-one-out (~3 min)
 python3 nba/scripts/fetch_lineups.py [--backfill]               # NBA.com starting lineups: today -> data/lineups_today.json, or two seasons -> raw
 python3 nba/scripts/build_starters.py                           # lineup feed accuracy + v3 with confirmed starters vs v2 (~5 min)

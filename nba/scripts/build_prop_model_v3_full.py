@@ -44,10 +44,10 @@ def walk_v2(I):
     return V2.walk(I['box'], I['inj'], I['margins'], I['mm'], I['casc'], I['team_min'], I['lines'])[0]
 
 
-def walk_v3(I, feed=None):
+def walk_v3(I, feed=None, rates=True):
     """v3 base walk; the team minutes target re-tuned on 2022-24 (as v1's was). -> (recs, team_min)"""
     run = lambda tm: V2.walk(I['box'], I['inj'], I['margins'], I['mm'], I['casc'], tm, I['lines'], base='v3',
-                             mv3=I['mv3'], rv3=I['rv3'], feed=feed)[0]
+                             mv3=I['mv3'], rv3=I['rv3'] if rates else None, feed=feed)[0]
     recs = run(I['team_min'])
     tune = [r for r in recs if r['season'] in (2023, 2024) and r['pm'] > 0]
     ratio = sum(r['min'] for r in tune) / sum(r['pm'] for r in tune)
@@ -65,7 +65,7 @@ def compare(recs2, bases, shaped):
     keep = lambda rs: [r for r in rs if (r['gid'], r['aid']) in keys]
     recs2, bases = keep(recs2), {b: keep(rs) for b, rs in bases.items()}
     by = {b: A.by_rec(rs) for b, rs in bases.items()}
-    names = ['v2'] + list(bases) + [shaped + '_shape', shaped + '_shape_linecal']
+    names = ['v2'] + list(bases) + ([shaped + '_shape', shaped + '_shape_linecal'] if shaped else [])
     fit2, test2 = [r for r in recs2 if r['season'] == V2.FIT], [r for r in recs2 if r['season'] == V2.TEST]
     fits = {b: [r for r in rs if r['season'] == V2.FIT] for b, rs in bases.items()}
     tests = {b: [r for r in rs if r['season'] == V2.TEST] for b, rs in bases.items()}
@@ -76,7 +76,7 @@ def compare(recs2, bases, shaped):
     mu = {b: (lambda s: lambda r: V2.mu2(r, s))(stk[b]) for b in stk}
     var = {'v2': V2.fit_var(fit2, mu['v2'], True)}
     var.update({b: V2.fit_var(fits[b], mu[b], True) for b in bases})
-    T3, P3 = A.fit_minutes(fits[shaped]), A.fit_production(fits[shaped], stk[shaped])
+    T3, P3 = (A.fit_minutes(fits[shaped]), A.fit_production(fits[shaped], stk[shaped])) if shaped else (None, None)
     extra = lambda r, m: (V2.minrate(r, m) * r['sdm']) ** 2
     key = lambda r: (r['gid'], r['aid'])
 
@@ -100,7 +100,7 @@ def compare(recs2, bases, shaped):
 
     espn, kal = A.load_markets(A.by_rec(recs2))
     dcache = {}
-    bs = by[shaped]
+    bs = by[shaped] if shaped else {}
 
     def dist3(r3, m):
         k = (id(r3), m)
@@ -112,17 +112,18 @@ def compare(recs2, bases, shaped):
     raw = lambda b, rb, m, L: V2.p_over(m, mu[b](rb)[m], L, var[b], extra(rb, m))
     cal = {b: {m: pav([(raw(b, by[b][key(x['r'])], m, x['L']), 1 if x['over'] else 0) for x in espn.get(('2025', m, 'open'), [])])
                for m in MARKETS} for b in bases}
-    cal_shape = {m: pav([(dist3(bs[key(x['r'])], m).over(x['L']), 1 if x['over'] else 0) for x in espn.get(('2025', m, 'open'), [])]) for m in MARKETS}
+    cal_shape = {m: pav([(dist3(bs[key(x['r'])], m).over(x['L']), 1 if x['over'] else 0) for x in espn.get(('2025', m, 'open'), [])]) for m in MARKETS} if shaped else {}
     probs = {'v2': lambda r, m, L, c: apply_cal(v2cal[m], V2.p_over(m, mu['v2'](r)[m], L, var['v2'], extra(r, m)))}
     for b in bases:
         probs[b] = (lambda b: lambda r, m, L, c: apply_cal(cal[b][m], raw(b, by[b][key(r)], m, L)))(b)
-    probs[shaped + '_shape'] = lambda r, m, L, c: dist3(bs[key(r)], m).over(L)
-    probs[shaped + '_shape_linecal'] = lambda r, m, L, c: apply_cal(cal_shape[m], dist3(bs[key(r)], m).over(L))
-    res['calibration'] = dict(cal, **{shaped + '_shape_linecal': cal_shape})
+    if shaped:
+        probs[shaped + '_shape'] = lambda r, m, L, c: dist3(bs[key(r)], m).over(L)
+        probs[shaped + '_shape_linecal'] = lambda r, m, L, c: apply_cal(cal_shape[m], dist3(bs[key(r)], m).over(L))
+    res['calibration'] = dict(cal, **({shaped + '_shape_linecal': cal_shape} if shaped else {}))
 
     # every player-game: log score of the outcome, and P(over) across each player's range (lines from v2's mean)
     for m in MARKETS:
-        ls = {n: [] for n in ['v2'] + list(bases) + [shaped + '_shape']}
+        ls = {n: [] for n in ['v2'] + list(bases) + ([shaped + '_shape'] if shaped else [])}
         rc = {n: [] for n in names}
         for r in test2:
             y = int(round(A.yval(r, m)))
@@ -130,7 +131,8 @@ def compare(recs2, bases, shaped):
             for b in bases:
                 rb = by[b][key(r)]
                 ls[b].append(-A.v2_logp(var[b], m, mu[b](rb)[m], extra(rb, m), y))
-            ls[shaped + '_shape'].append(-dist3(bs[key(r)], m).logp(y))
+            if shaped:
+                ls[shaped + '_shape'].append(-dist3(bs[key(r)], m).logp(y))
             for t in A.thresholds(m, mu['v2'](r)[m]):
                 o = 1 if y > t else 0
                 for n in names:

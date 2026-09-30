@@ -195,7 +195,7 @@ def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=
         import build_rates_v3 as R3
         ms = M3.State(mv3['alpha'], mv3['a_new'], mv3['new_n'])
         beta = [mv3['beta_hindsight_starters' if feed else 'beta'][f] for f in M3.FEATURES]
-        R = R3.Rates(rv3['alpha'], {c: (v['decay'], v['k']) for c, v in rv3['pct'].items()})
+        R = R3.Rates(rv3['alpha'], {c: (v['decay'], v['k']) for c, v in rv3['pct'].items()}) if rv3 else None   # None: v1 rates
 
         def mfeat(g, team, aid, out):
             ln = lines.get(g['game_id']) or {}

@@ -18,6 +18,9 @@ risk, back-to-backs, team total) and the model's own per-minute rates and usage 
 season-start minutes and rates. `check_minutes_parity.py`: minutes and base projections identical to the backtest on
 845 player-games (differences 0 and 4e-15); the page matches pricing.py to 5e-10. Lab minutes are the fallback only
 for players with no games for their current team, and for teams you edit.
+Pre-registered test, v2 pricing with minutes v3 ([minutes-v3-pricing.md](minutes-v3-pricing.md)): more accurate on
+every stat, but Kalshi points NO earns +3.0% (v3 minutes) vs v2's +3.5% and drops to WATCH with confirmed starters,
+so v2 minutes keep pricing. v3 stays a shadow candidate for the live record.
 Consensus fair engine ([consensus-engine.md](consensus-engine.md)): Kalshi rungs priced from the rest of their ladder
 plus the model pass GO on points NO and 3PM NO (beating the current blend on the same rungs); live pricing and the
 shadow ledger now carry a consensus edge for every venue.
