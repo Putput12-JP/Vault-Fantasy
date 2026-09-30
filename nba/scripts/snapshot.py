@@ -428,6 +428,7 @@ class Day:
         os.makedirs(self.dir, exist_ok=True)
         self.last, self.known = {}, set()
         self.meta, self.first = defaultdict(dict), defaultdict(dict)   # what each key is; its first value today
+        self.when = defaultdict(dict)                                   # when each key last changed (epoch s)
         for f in os.listdir(self.dir):
             src = f[:-6]
             if f == 'meta.jsonl':
@@ -435,9 +436,10 @@ class Day:
                     self.known.add((r['src'], r['k']))
                     self.meta[r['src']][r['k']] = r
             elif f.endswith('.jsonl') and f != 'polls.jsonl':
-                last, first = self.last.setdefault(src, {}), self.first[src]
+                last, first, when = self.last.setdefault(src, {}), self.first[src], self.when[src]
                 for line in open(os.path.join(self.dir, f)):
                     r = json.loads(line)
+                    when[r['k']] = r['t']
                     if r['v'] is None:
                         last.pop(r['k'], None)
                     else:
@@ -455,6 +457,8 @@ class Day:
         out = [{'t': t, 'k': k, 'v': v} for k, v in rows.items() if last.get(k) != v]
         out += [{'t': t, 'k': k, 'v': None} for k in last if k not in rows]
         self.append(src + '.jsonl', out)
+        for r in out:
+            self.when[src][r['k']] = t
         self.append('meta.jsonl', [{'k': k, 'src': src, **m} for k, m in meta.items() if (src, k) not in self.known])
         self.known |= {(src, k) for k in meta}
         self.meta[src].update(meta)
@@ -596,7 +600,7 @@ def write_board(root, day, slate):
     try:
         from prop_board import build
         proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
-        board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE)
+        board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE, when=day.when)
         with open(BOARD, 'w') as f:
             json.dump(board, f, separators=(',', ':'))
         print(f"  board      {len(board['props'])} player-stat markets, unmapped {board['unmapped']}", flush=True)

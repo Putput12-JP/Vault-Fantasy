@@ -66,7 +66,7 @@ def log(day, board, now):
         if k not in tracked and c['edge'] < PX.EDGE_MIN and (c.get('gap') is None or c['gap'] < PX.EDGE_MIN):
             continue
         rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),
-                   c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go')]
+                   c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or [])]
         P = board['players'].get(str(c['p'])) or board['players'].get(c['p']) or [str(c['p']), c['team']]
         meta[k] = {'game': c['gid'], 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': c['p'], 'player': P[0],
                    'team': P[1], 'stat': c['s'], 'venue': c['venue'], 'book': c['bk'], 'side': c['side'], 'line': c['line']}
@@ -179,6 +179,31 @@ def family(b):
     return 'kalshi' if b['venue'] == 'kalshi' else 'pickem' if b['venue'] == 'pickem' else 'polymarket' if b['book'] == 'Polymarket' else 'book'
 
 
+TYPE_COLS = ['type', 'venue', 'stat', 'side', 'bets', 'open', 'w', 'l', 'p', 'units', 'units_sq', 'units_close', 'clv_sum', 'clv_n']
+
+
+def type_rows(bets):
+    """Every bet counted once under each of its edge types (news, stale, ladder, gap, model), all time."""
+    agg = {}
+    for b in bets:
+        side = 'over' if b['side'] in ('Over', 'YES') else 'under'
+        for t in b.get('types') or ['model']:
+            r = agg.setdefault((t, family(b), b['stat'], side), [0] * 10)
+            r[0] += 1
+            r[1] += b['result'] == 'open'
+            r[2] += b['result'] == 'win'
+            r[3] += b['result'] == 'loss'
+            r[4] += b['result'] == 'push'
+            if b['result'] in ('win', 'loss', 'push'):
+                r[5] += b['pnl']
+                r[6] += b['pnl'] ** 2
+                r[7] += b['pnl_close']
+            if b.get('clv') is not None:
+                r[8] += b['clv']
+                r[9] += 1
+    return {k: v for k, v in agg.items()}
+
+
 def tip_day(ts):
     return et(dt.datetime.fromtimestamp(ts, dt.timezone.utc)).date().isoformat()
 
@@ -235,6 +260,7 @@ def bet_from(k, m, series):
             'team': m['team'], 'stat': m['stat'], 'venue': m['venue'], 'book': m['book'], 'side': m['side'], 'line': m['line'],
             'gate': gate, 'etype': etype, 't': te, 'price': ve[0], 'fair': ve[1], 'edge': max(ve[2], gap_of(ve) or -1) if 'gap' in trig else ve[2],
             'model_edge': ve[2], 'cons': ve[6] if len(ve) > 6 else None, 'gap_edge': gap_of(ve), 'mu': ve[4], 'min': ve[5],
+            'types': [x for x in (ve[9] if len(ve) > 9 else '').split(',') if x] or [{'model': 'model', 'gap': 'gap', 'both': 'gap'}[etype]],
             't_close': tc, 'price_close': vc[0], 'fair_close': vc[1], 'edge_close': vc[2],
             'clv': round(cc - ce, 4) if ce is not None and cc is not None else None,
             'result': 'open', 'actual': None, 'pnl': None, 'pnl_close': None}
@@ -304,6 +330,17 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     for bs in changed.values():
         cube += cube_rows(bs)
     cube.sort()
+    # edge-type totals: kept per tip day so only the days touched are recomputed
+    tday = {d: v for d, v in (track.get('types_by_day') or {}).items() if d not in changed}
+    for d, bs in changed.items():
+        tday[d] = [list(k) + [round(x, 4) if isinstance(x, float) else x for x in v] for k, v in type_rows(bs).items()]
+    tot = {}
+    for rows in tday.values():
+        for r in rows:
+            t = tot.setdefault(tuple(r[:4]), [0] * 10)
+            for i, x in enumerate(r[4:]):
+                t[i] += x
+    types = [list(k) + [round(x, 4) if isinstance(x, float) else x for x in v] for k, v in sorted(tot.items())]
     recent = {b['k']: b for b in track.get('bets', [])}
     for bs in changed.values():
         recent.update({b['k']: b for b in bs})
@@ -311,6 +348,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     open_days = sorted(d for d, bs in changed.items() if any(b['result'] == 'open' for b in bs))
     n = sum(r[CUBE_COLS.index('bets')] for r in cube)
     track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube,
+             'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs()}
     with open(tpath, 'w') as f:
         json.dump(track, f, separators=(',', ':'))

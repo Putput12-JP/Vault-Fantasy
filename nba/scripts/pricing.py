@@ -166,7 +166,9 @@ class Pricer:
         kc, bc = self.PR['kalshi'].get(s) or self.PR['book'].get(s), self.PR['book'].get(s)
         model = lambda line: self.cal(s, self.p_over_raw(s, mm['mu'], line, mm['extra'])) if mm['min'] > 0 else None
         cands, bfair = [], []
-        for bk, line, o, u, *_ in e.get('books', []):
+        for row in e.get('books', []):
+            bk, line, o, u = row[:4]
+            t = row[6] if len(row) > 6 else None
             po, pu = am_p(o), am_p(u)
             if po is None or pu is None or line is None:
                 continue
@@ -174,30 +176,33 @@ class Pricer:
             fair = blend(bc, mkt, pm) if pm is not None and bc else None
             bfair.append((line, fair))
             if fair is not None:
-                cands.append({'venue': 'book', 'bk': bk, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - po, 'fair': fair, 'mkt': mkt, 'g': self.gate('book', s, 'Over')})
-                cands.append({'venue': 'book', 'bk': bk, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - pu, 'fair': 1 - fair, 'mkt': 1 - mkt, 'g': self.gate('book', s, 'Under')})
+                cands.append({'venue': 'book', 'bk': bk, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - po, 'fair': fair, 'mkt': mkt, 'g': self.gate('book', s, 'Over'), 't': t})
+                cands.append({'venue': 'book', 'bk': bk, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - pu, 'fair': 1 - fair, 'mkt': 1 - mkt, 'g': self.gate('book', s, 'Under'), 't': t})
         for rung in e.get('kal', []):
             line, bid, ask = rung[:3]
+            t = rung[6] if len(rung) > 6 else None
             mid = (bid + ask) / 2 if bid is not None and ask is not None else (ask if ask is not None else bid)
             pm = model(line)
             fair = blend(kc, min(.99, max(.01, mid)), pm) if pm is not None and mid is not None and kc else None
             if fair is None:
                 continue
             if ask is not None and 0 < ask < 1:
-                cands.append({'venue': 'kalshi', 'bk': 'Kalshi', 'side': 'YES', 'line': line, 'price': ask, 'edge': fair - ask - k_fee(ask), 'fair': fair, 'mkt': mid, 'g': self.gate('kalshi', s, 'YES')})
+                cands.append({'venue': 'kalshi', 'bk': 'Kalshi', 'side': 'YES', 'line': line, 'price': ask, 'edge': fair - ask - k_fee(ask), 'fair': fair, 'mkt': mid, 'g': self.gate('kalshi', s, 'YES'), 't': t})
             if bid is not None and 0 < bid < 1:
-                cands.append({'venue': 'kalshi', 'bk': 'Kalshi', 'side': 'NO', 'line': line, 'price': 1 - bid, 'edge': (1 - fair) - (1 - bid) - k_fee(1 - bid), 'fair': 1 - fair, 'mkt': 1 - mid, 'g': self.gate('kalshi', s, 'NO')})
+                cands.append({'venue': 'kalshi', 'bk': 'Kalshi', 'side': 'NO', 'line': line, 'price': 1 - bid, 'edge': (1 - fair) - (1 - bid) - k_fee(1 - bid), 'fair': 1 - fair, 'mkt': 1 - mid, 'g': self.gate('kalshi', s, 'NO'), 't': t})
         # pick'em apps (the page's Pick'em panel): fair = the first book's blend at the same line, else the model;
         # priced lines against their own price, flat ones against the flex break-even. Never gated.
-        for app, line, o, u, *_ in e.get('pk', []):
+        for row in e.get('pk', []):
+            app, line, o, u = row[:4]
+            t = row[5] if len(row) > 5 else None
             pm = model(line)
             same = next((f for l, f in bfair if l == line and f is not None), None)
             fair = same if same is not None else pm
             if fair is None:
                 continue
             po, pu = am_p(o), am_p(u)
-            cands.append({'venue': 'pickem', 'bk': app, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - (po if po is not None else PK_BE), 'fair': fair, 'mkt': po, 'g': 'no-go'})
-            cands.append({'venue': 'pickem', 'bk': app, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - (pu if pu is not None else PK_BE), 'fair': 1 - fair, 'mkt': pu, 'g': 'no-go'})
+            cands.append({'venue': 'pickem', 'bk': app, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - (po if po is not None else PK_BE), 'fair': fair, 'mkt': po, 'g': 'no-go', 't': t})
+            cands.append({'venue': 'pickem', 'bk': app, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - (pu if pu is not None else PK_BE), 'fair': 1 - fair, 'mkt': pu, 'g': 'no-go', 't': t})
         self.add_consensus(e, s, cands, model, mm['extra'])
         return {'mu': mm['mu'], 'min': mm['min'], 'team': mm['team'], 'cands': cands}
 
@@ -208,7 +213,8 @@ class Pricer:
         venues use the consensus alone (untested there)."""
         V = self.PR['variance']
         quotes = []                                   # (venue, line, P(over), weight)
-        for bk, line, o, u, *_ in e.get('books', []):
+        for row in e.get('books', []):
+            bk, line, o, u = row[:4]
             q = CE.book_quote(line, o, u)
             if q:
                 quotes.append((bk, q[0], q[1], CE.WEIGHTS.get(bk, 1.5)))
@@ -243,7 +249,13 @@ class Pricer:
 
 
 def outs_from_board(board):
-    """team -> [player ids] listed Out (injury report) or Inactive (NBA.com lineups)."""
+    """team -> [player ids] listed Out (injury report) or Inactive (NBA.com lineups). board['outs'] lists everyone ruled
+    out tonight, props or not; older boards only carried the players with props."""
+    if board.get('outs') is not None:
+        out = {}
+        for pid, team in board['outs']:
+            out.setdefault(team, []).append(int(pid))
+        return {t: sorted(v) for t, v in out.items()}
     out = {}
     for pid, P in (board.get('players') or {}).items():
         inj, lu = P[2] if len(P) > 2 else None, P[3] if len(P) > 3 else None
@@ -303,16 +315,46 @@ def k_fee(p):
     return math.ceil(0.07 * p * (1 - p) * 100 - 1e-9) / 100
 
 
+NEWS_S = 3 * 3600       # an injury / lineup change this recent, newer than the price, makes an edge "news"
+STALE_S = 15 * 60       # another venue changed its price this long after this one: "stale"
+
+
+def edge_types(c, others_t, news_t, now):
+    """Why a candidate is an edge, strongest first: news, stale, ladder (Kalshi consensus), gap (other venues'
+    consensus), model. The page's edgeTypes() is the same rule."""
+    E = EDGE_MIN
+    gap = c.get('gap') is not None and c['gap'] >= E
+    any_edge = gap or c['edge'] >= E
+    out = []
+    if any_edge and now and any(now - tn <= NEWS_S and (not c.get('t') or c['t'] < tn) for tn in news_t):
+        out.append('news')
+    if gap and c.get('t') and others_t and max(others_t) - c['t'] >= STALE_S:
+        out.append('stale')
+    if gap:
+        out.append('ladder' if c['venue'] == 'kalshi' else 'gap')
+    if c['edge'] >= E:
+        out.append('model')
+    return out
+
+
 def price_board(board, pricer=None):
-    """Every candidate on a board -> list of dicts with player, stat, game and the priceRow fields."""
+    """Every candidate on a board -> list of dicts with player, stat, game, the priceRow fields and edge types."""
     pricer = pricer or Pricer(example=bool(board.get('example')))
     games = {str(g['id']): g for g in board.get('games', [])}
     outs, cache, rows = outs_from_board(board), {}, []
+    news = {}
+    for n in board.get('news') or []:
+        if n[0]:
+            news.setdefault(n[3], []).append(n[0])
     for e in board.get('props', []):
         g = games.get(str(e['g']))
         r = pricer.price(e, g, cache, outs)
         if r:
+            times = [(row[0], row[6]) for row in e.get('books', []) if len(row) > 6 and row[6]] + \
+                    [('Kalshi', rung[6]) for rung in e.get('kal', []) if len(rung) > 6 and rung[6]] + \
+                    [(row[0], row[5]) for row in e.get('pk', []) if len(row) > 5 and row[5]]
             for c in r['cands']:
+                c['types'] = edge_types(c, [t for v, t in times if v != c['bk']], news.get(r['team'], []), board.get('t'))
                 rows.append(dict(c, p=e['p'], s=e['s'], gid=str(e['g']), mu=r['mu'], min=r['min'], team=r['team']))
     return rows
 

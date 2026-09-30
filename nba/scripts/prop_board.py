@@ -13,6 +13,9 @@ Built two ways:
 
 Board shape (compact, it ships in the page):
   {t, games: [{id, day, tip, away, home, season_type}], players: {pid: [name, team, injury status, lineup]},
+   (players also carry [.., injury changed at, lineup changed at]; outs = [[pid, team]] everyone Out or inactive tonight;
+    news = [[t, pid, name, team, 'inj' | 'lu', status]] newest first; book / Kalshi / pick'em rows end with their last
+    change time)
    lineup = NBA.com: 'S' confirmed starter, 's' expected starter, 'B' confirmed bench, 'b' expected bench, 'X' inactive,
    props: [{p, s, g, kal: [[line, bid, ask, open_mid, bid_size, ask_size]],   sizes = contracts at the best price books: [[book, line, over, under, open_line, open_over]],
             pk: [[app, line, over, under, open_line]]}],     books include Polymarket (fee in); pk = pick'em apps
@@ -75,10 +78,11 @@ def pin_stat(label):
     return None
 
 
-def build(games, last, meta, first, proj, now, sizes=None):
+def build(games, last, meta, first, proj, now, sizes=None, when=None):
     """games: pre-tip slate games; last/meta/first: {src: {key: value}} current rows, their metadata and the
     first value seen today."""
     R = Roster(proj)
+    W = lambda src, *keys: max([t for t in ((when or {}).get(src, {}).get(k) for k in keys) if t] or [None])   # last change
     gkey = {(g['day'], g['home']): g for g in games}
     nicks = {}
     for g in games:
@@ -112,7 +116,7 @@ def build(games, last, meta, first, proj, now, sizes=None):
         f = (first.get('kalshi') or {}).get(k)
         om = round((f[0] + f[1]) / 2, 3) if f and f[0] is not None and f[1] is not None else None
         sz = (sizes or {}).get(k) or [None, None]
-        entry(pid, stat, g)['kal'].append([m['floor'], v[0], v[1], om, sz[0], sz[1]])
+        entry(pid, stat, g)['kal'].append([m['floor'], v[0], v[1], om, sz[0], sz[1], W('kalshi', k)])
 
     # ESPN (DraftKings): rebuild the backfill's row shape so prop_markets() assigns over/under the audited way
     per_game = defaultdict(list)
@@ -122,10 +126,15 @@ def build(games, last, meta, first, proj, now, sizes=None):
             continue
         per_game[str(m['game'])].append({'type': m['type'], 'athlete_id': m['athlete_id'], 'provider_id': int(k.split('|')[1]),
                                          'open_line': m['open_line'], 'open_px': m['open_px'], 'ord': m['ord'],
-                                         'cur_line': v[0], 'cur_px': v[1], 'last_updated': None, '_book': m['book']})
+                                         'cur_line': v[0], 'cur_px': v[1], 'last_updated': None, '_book': m['book'], '_t': W('espn', k)})
     for gid, rows in per_game.items():
         g = by_id.get(gid)
         book = {r['provider_id']: r['_book'] for r in rows}
+        tmk = defaultdict(int)                            # (book, athlete, market) -> last change of any of its rows
+        for r in rows:
+            if r['type'] in ESPN_MKT and r['_t']:
+                kk = (r['provider_id'], r['athlete_id'], ESPN_MKT[r['type']][0])
+                tmk[kk] = max(tmk[kk], r['_t'])
         for mk in prop_markets({'props': rows}):
             pid = mk['athlete_id']
             if mk['market'] not in PRICED:
@@ -134,7 +143,8 @@ def build(games, last, meta, first, proj, now, sizes=None):
                 unmapped['espn'] += mk['kind'] == 'main'
                 continue
             entry(pid, mk['market'], g)['books'].append(
-                [book.get(mk['provider_id'], 'ESPN'), mk['cur_line'], mk['over_cur'], mk['under_cur'], mk['line'], mk['over_open']])
+                [book.get(mk['provider_id'], 'ESPN'), mk['cur_line'], mk['over_cur'], mk['under_cur'], mk['line'], mk['over_open'],
+                 tmk.get((mk['provider_id'], mk['athlete_id'], mk['market'])) or None])
 
     # Pinnacle: "Jalen Brunson (Points)" specials with Over / Under sides
     pin = defaultdict(dict)
@@ -142,11 +152,11 @@ def build(games, last, meta, first, proj, now, sizes=None):
         m = meta.get('pinnacle', {}).get(k)
         if not m or not m.get('parent') or m.get('side') not in ('Over', 'Under'):
             continue
-        pin[m['matchup']][m['side']] = (v, m, (first.get('pinnacle') or {}).get(k))
+        pin[m['matchup']][m['side']] = (v, m, (first.get('pinnacle') or {}).get(k), k)
     for mid, sides in pin.items():
         if 'Over' not in sides or 'Under' not in sides:
             continue
-        (ov, m, fo), (uv, _, _) = sides['Over'], sides['Under']
+        (ov, m, fo, ko), (uv, _, _, ku) = sides['Over'], sides['Under']
         mt = re.match(r'^(.*?)\s*\((.*)\)\s*$', m.get('desc') or '')
         home = next((n for a, n in m.get('teams') or [] if a == 'home'), None)
         g = gkey.get((dt.datetime.fromtimestamp(m['start'], ET).date().isoformat(), nicks.get(nick(home))))
@@ -156,7 +166,7 @@ def build(games, last, meta, first, proj, now, sizes=None):
             unmapped['pinnacle'] += 1
             continue
         entry(pid, stat, g)['books'].append(['Pinnacle', ov[0], fmt_am(ov[1]), fmt_am(uv[1]),
-                                              fo[0] if fo else None, fmt_am(fo[1]) if fo else None])
+                                              fo[0] if fo else None, fmt_am(fo[1]) if fo else None, W('pinnacle', ko, ku)])
 
     # Polymarket player props: YES = over the line. Priced like a book: over = YES ask, under = 1 - YES bid, each
     # plus the taker fee (rate x p x (1 - p) per share), as American odds so the page treats it like any book.
@@ -179,7 +189,7 @@ def build(games, last, meta, first, proj, now, sizes=None):
         f = (first.get('polymarket') or {}).get(k)
         if o and u:
             entry(pid, stat, g)['books'].append(['Polymarket', float(m['line']), o, u, float(m['line']) if f else None,
-                                                  prob_am(f[1] + fee(f[1])) if f and f[1] and 0 < f[1] < 1 else None])
+                                                  prob_am(f[1] + fee(f[1])) if f and f[1] and 0 < f[1] < 1 else None, W('polymarket', k)])
 
     # pick'em apps -> e['pk'] = [app, line, over price, under price, first line today]. PrizePicks standard lines only
     # (demon / goblin are alternate lines at other payouts) and it pays flat, so its prices are None.
@@ -194,7 +204,7 @@ def build(games, last, meta, first, proj, now, sizes=None):
             unmapped['prizepicks'] += 1
             continue
         f = (first.get('prizepicks') or {}).get(k)
-        entry(pid, stat, g)['pk'].append(['PrizePicks', v[0], None, None, f[0] if f else None])
+        entry(pid, stat, g)['pk'].append(['PrizePicks', v[0], None, None, f[0] if f else None, W('prizepicks', k)])
     for k, v in (last.get('underdog') or {}).items():
         m = meta.get('underdog', {}).get(k) or {}
         stat = UD_STAT.get(m.get('stat'))
@@ -206,7 +216,7 @@ def build(games, last, meta, first, proj, now, sizes=None):
             unmapped['underdog'] += 1
             continue
         f = (first.get('underdog') or {}).get(k)
-        entry(pid, stat, g)['pk'].append(['Underdog', v[0], v[1], v[2], f[0] if f else None])
+        entry(pid, stat, g)['pk'].append(['Underdog', v[0], v[1], v[2], f[0] if f else None, W('underdog', k)])
     for k, v in (last.get('sleeper') or {}).items():
         m = meta.get('sleeper', {}).get(k) or {}
         stat = SL_STAT.get(m.get('stat'))
@@ -219,30 +229,41 @@ def build(games, last, meta, first, proj, now, sizes=None):
             unmapped['sleeper'] += 1
             continue
         f = (first.get('sleeper') or {}).get(k)
-        entry(pid, stat, g)['pk'].append(['Sleeper', v[0], dec_am(v[1]), dec_am(v[2]), f[0] if f else None])
+        entry(pid, stat, g)['pk'].append(['Sleeper', v[0], dec_am(v[1]), dec_am(v[2]), f[0] if f else None, W('sleeper', k)])
 
     # injury report: current status per player on tonight's teams
-    inj = {}
+    inj, news = {}, []
     for k, v in (last.get('injuries') or {}).items():
         _, team, player = k.split('|', 2)
         pid = R.find(player, [g[s] for g in games for s in ('away', 'home') if nick(team) == nick(g.get(s + '_name'))])
         if pid:
-            inj[pid] = v[0]
+            inj[pid] = (v[0], W('injuries', k))
+            news.append([W('injuries', k), pid, R.info[pid][0], R.info[pid][1], 'inj', v[0]])
     # NBA.com lineups: starting slot, Expected / Confirmed, Active / Inactive
     lu = {}
     for k, v in (last.get('lineups') or {}).items():
         _, team, player = k.split('|', 2)
         pid = R.find(player, [team])
         if pid:
-            lu[pid] = 'X' if v[2] == 'Inactive' else ('S' if v[0] else 'B') if v[1] == 'Confirmed' else ('s' if v[0] else 'b')
+            code = 'X' if v[2] == 'Inactive' else ('S' if v[0] else 'B') if v[1] == 'Confirmed' else ('s' if v[0] else 'b')
+            lu[pid] = (code, W('lineups', k))
+            if code in ('S', 'X'):
+                news.append([W('lineups', k), pid, R.info[pid][0], team, 'lu', code])
     for pid in players:
-        players[pid][2] = inj.get(pid)
-        players[pid][3] = lu.get(pid)
+        players[pid][2], it = inj.get(pid, (None, None))
+        players[pid][3], lt = lu.get(pid, (None, None))
+        players[pid] += [it, lt]
+    # everyone ruled out tonight, with or without props (books pull an Out player's props, but his teammates still
+    # need his minutes): [pid, team]. pricing.py and the page apply these before anything else.
+    outs = sorted({(pid, R.info[pid][1]) for pid, (st, _) in inj.items() if st and st.lower().startswith('out')} |
+                  {(pid, R.info[pid][1]) for pid, (c, _) in lu.items() if c == 'X'})
 
     for e in props.values():
         e['kal'].sort()
     glines = game_lines(games, last, meta, gkey, nicks)
-    return {'t': now, 'games': [dict({k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}, **glines.get(str(g['id']), {}))
+    news = sorted((n for n in news if n[0] and (n[4] == 'lu' or (n[5] or '').lower().startswith(('out', 'doubt', 'quest')))), reverse=True)[:60]
+    return {'t': now, 'outs': [list(x) for x in outs], 'news': news,
+            'games': [dict({k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}, **glines.get(str(g['id']), {}))
                                 for g in games],
             'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped)}
 

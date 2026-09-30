@@ -37,8 +37,14 @@ def _nb_sf(k, mu, v):
     return max(0.0, 1 - cdf)
 
 
+def _erf(x):                      # Abramowitz-Stegun 7.1.26, the same approximation as the page and pricing.py
+    t = 1 / (1 + 0.3275911 * abs(x))
+    y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * math.exp(-x * x)
+    return y if x >= 0 else -y
+
+
 def _phi(x):
-    return 0.5 * (1 + math.erf(x / math.sqrt(2)))
+    return 0.5 * (1 + _erf(x / math.sqrt(2)))
 
 
 def lg(p):
