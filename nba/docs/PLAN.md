@@ -6,6 +6,8 @@ Prop model v2 (2026-09-30, [prop-model-v2.md](prop-model-v2.md)): opponent defen
 shooting volume x regressed %, season form, home, back-to-back and player-specific minutes swing, weighted by a ridge
 stacker fit on 2024-25. On 2025-26: RMSE better on every stat, Kalshi log loss better on all four (3PM now equals the
 market's), Kalshi points NO joins 3PM NO as GO. The page prices with v2; daily refresh job keeps its state current.
+Prop model v3 plan: [v3-plan.md](v3-plan.md). Workstream A (ladder distributions) tested: better probabilities, same
+blended edge, so v2 keeps pricing ([prop-model-v3.md](prop-model-v3.md)). Next: B (minutes) and C (per-stat memory).
 Week 4 = live snapshots (RUNNING from 2026-09-30: `scripts/snapshot.py` on GitHub Actions, data on the `nba-data`
 branch) + injury re-pricer + shadow the GO/WATCH signals; strategy in [differentiation.md](differentiation.md).
 Minutes Lab page: `nba/projections.html` (built by `build_player_projections.py`).

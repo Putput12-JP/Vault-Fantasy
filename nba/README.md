@@ -18,6 +18,7 @@ python3 nba/scripts/build_usage_cascade.py                      # per-minute cas
 python3 nba/scripts/build_prop_model.py                         # week 3: prop model + backtest vs ESPN + Kalshi (~1 min)
 python3 nba/scripts/build_prop_model_v2.py                      # prop model v2 (opponent, market total, shooting, form, minutes swing) vs v1 (~40 s)
 python3 nba/scripts/build_model_state.py                        # v2's current state for the page (daily)
+python3 nba/scripts/build_prop_model_v3.py                      # v3 ladder distributions vs v2, all 8 markets (~90 s)
 python3 nba/scripts/fetch_depth_charts.py                       # CURRENT depth charts -> data/depth_charts.json (~15 s, run daily)
 python3 nba/scripts/build_data_health.py                        # Data Health snapshot (reads origin/nba-data) + re-render the app page
 python3 nba/scripts/prop_board.py                               # Player Props snapshot (origin/nba-live) + example board + re-render

@@ -79,6 +79,13 @@ class Context:
         pct = {k: (p['m' + k] + SHRINK[k] * self.lg_pct(k)) / (p['a' + k] + SHRINK[k]) for k in ('p3', 'p2', 'ft')}
         return (p['r2'] * 2 * pct['p2'] + p['r3'] * 3 * pct['p3'] + p['rf'] * pct['ft'], p['r3'] * pct['p3'])
 
+    def shoot(self, aid):
+        """(3PA per minute, regressed 3P%) or None: the two halves of a 3PM projection."""
+        p = self.sh.get(aid)
+        if not p or p['n'] < 3:
+            return None
+        return p['r3'], (p['mp3'] + SHRINK['p3'] * self.lg_pct('p3')) / (p['ap3'] + SHRINK['p3'])
+
     def update(self, g, rows, rt_before):
         by = defaultdict(list)
         for r in rows:
@@ -225,7 +232,11 @@ def walk(box, inj, margins, mm, casc, team_min, lines):
                         else:
                             mu[s] = max(0.0, pm[aid] * rate)
                     y = {s: sv(r, BASE[s]) for s in BASE}
+                    ln = lines.get(g['game_id']) or {}
+                    sh = ctx.shoot(aid)
                     recs.append({'gid': g['game_id'], 'season': g['season'], 'aid': aid, 'min': r['minutes'], 'pm': pm[aid],
+                                 'pos': pos, 'st': ms.pl[aid]['st'], 'spread': ln.get('spread_close'), 'y3pa': r['three_point_field_goals_attempted'],
+                                 'r3': sh[0] if sh else None, 'p3': sh[1] if sh else None,
                                  'mu': mu, 'rate': dict(p['rate']), 'sdm': math.sqrt(ctx.vol.get(aid, 36.0)),
                                  'x': features(ctx, g, team, opp, aid, pos, mu, pm[aid], p['rate'], lines.get(g['game_id'])),
                                  'y': y})
@@ -489,11 +500,11 @@ def main():
     print(open(OUT_MD).read())
 
 
-def verdicts(res):
+def verdicts(res, names=('v1', 'v2')):
     """Same gate as week 3, per model: GO = 50+ games and z >= 2 on the Kalshi blend, and the blend beats the
     price-only baseline on the same side; WATCH = positive but not yet 2 SE."""
     out = {}
-    for name in ('v1', 'v2'):
+    for name in names:
         out[name] = {}
         for mkt in MARKETS:
             kb = (res['kalshi_bias'].get(mkt) or {}).get(name)
