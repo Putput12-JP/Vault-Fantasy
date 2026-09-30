@@ -194,9 +194,11 @@ footer b{color:var(--fg2);font-weight:500}
 .banner a,footer a,.card a{color:var(--fg);text-underline-offset:3px;text-decoration-color:var(--fg3)}
 table.ht{min-width:760px}
 table.tb{min-width:1000px}
-.tfilters{display:grid;gap:10px}
-.tfrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
-.tfrow > span{font-size:12px;color:var(--fg3);width:64px;flex:none;text-transform:uppercase;letter-spacing:.06em}
+.tbar{display:flex;align-items:center;gap:10px;padding:10px 12px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:5}
+.tfilters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex:1;min-width:0}
+.tfilters .seg button{height:26px;padding:0 9px;font-size:12px}
+.tfilters .sel{height:32px;font-size:12.5px;padding-left:9px}
+.tfilters .div{width:1px;height:20px;background:var(--border);margin:0 2px}
 table.tmx{min-width:900px}
 table.tmx th small{display:block;font-weight:400;color:var(--fg3);text-transform:none;letter-spacing:0}
 table.tmx td.cell{cursor:pointer;border-radius:6px;font-variant-numeric:tabular-nums}
@@ -207,7 +209,7 @@ table.tmx td.cell.watch{box-shadow:inset 0 0 0 1px rgba(251,191,36,.55)}
 table.tmx td.cell.on{background:rgba(255,255,255,.08)}
 table.tmx tr.tot td{border-top:1px solid var(--border2)}
 .tbreaks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-@media (max-width:900px){ .tbreaks{grid-template-columns:minmax(0,1fr)} .tfrow > span{width:100%} }
+@media (max-width:900px){ .tbreaks{grid-template-columns:minmax(0,1fr)} .tbar{position:static} }
 .tbreak h3{margin:0 0 6px;font-size:12px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em}
 .tbreak{min-width:0}
 .tbreak table{width:100%;min-width:0;border-collapse:collapse;font-size:13px}
@@ -498,10 +500,9 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
     <main id="v-track" hidden>
       <div class="banner" id="tbanner"></div>
 
-      <section class="card">
-        <div class="card-h"><div><h2>Slice the record</h2><p>Every chart and table below follows these filters. Click any cell or row to narrow further.</p></div>
-          <button class="btn" id="treset" type="button">Clear filters</button></div>
-        <div class="card-b"><div class="tfilters" id="tfilters"></div></div>
+      <section class="card tbar" aria-label="Filters: every chart and table below follows them">
+        <div class="tfilters" id="tfilters"></div>
+        <button class="linkbtn" id="treset" type="button">Clear</button>
       </section>
 
       <div class="kpis" id="tkpis"></div>
@@ -1683,16 +1684,18 @@ function renderTrack(){
   const days = [...new Set(all.map(r => r.day))].sort().reverse();
   if (tf.book !== 'all' && !books.some(b => b.endsWith('|' + tf.book))) tf.book = 'all';
   const seg = (key, opts) => `<div class="seg" data-f="${key}" role="group">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${tf[key] === v}">${l}</button>`).join('')}</div>`;
+  const dd = (key, label, opts) => `<select class="sel" data-f="${key}" aria-label="${label}">${opts.map(([v, l]) => `<option value="${esc(v)}"${tf[key] === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
   $('tfilters').innerHTML = [
-    ['Venue', seg('venue', [['all', 'All'], ...VENUES_T])],
-    ['Stat', seg('stat', [['all', 'All'], ...MSTATS.map(s => [s, SLABEL[s]])])],
-    ['Side', seg('side', [['all', 'Both'], ['over', 'Over / YES'], ['under', 'Under / NO']])],
-    ['Gate', seg('gate', [['all', 'All'], ['gated', 'GO + WATCH'], ['go', 'GO'], ['watch', 'WATCH'], ['no-go', 'Not gated']])],
-    ['Edge', seg('ebin', [['all', 'All'], ...EBINS.map(e => [e, e])])],
-    ['Price', seg('clock', [['entry', 'At entry'], ['close', 'At close']])],
-    ['More', `<select class="sel" data-f="book" aria-label="Book"><option value="all">All books and apps</option>${books.map(b => { const [v, bk] = b.split('|'); return `<option value="${esc(bk)}"${tf.book === bk ? ' selected' : ''}>${esc(bk)}${v === 'book' ? '' : ` (${VLABEL[v]})`}</option>`; }).join('')}</select>
-      <select class="sel" data-f="day" aria-label="Game day"><option value="all">All game days</option>${days.map(x => `<option value="${x}"${tf.day === x ? ' selected' : ''}>${new Date(x + 'T12:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}</option>`).join('')}</select>`],
-  ].map(([l, h]) => `<div class="tfrow"><span>${l}</span>${h}</div>`).join('');
+    seg('venue', [['all', 'All venues'], ...VENUES_T]),
+    seg('stat', [['all', 'All stats'], ...MSTATS.map(s => [s, SLABEL[s]])]),
+    seg('side', [['all', 'Both sides'], ['over', 'Over'], ['under', 'Under']]),
+    '<span class="div"></span>',
+    dd('gate', 'Gate', [['all', 'Any gate'], ['gated', 'GO + WATCH'], ['go', 'GO only'], ['watch', 'WATCH only'], ['no-go', 'Not gated']]),
+    dd('ebin', 'Edge at entry', [['all', 'Any edge'], ...EBINS.map(e => [e, `Edge ${e}`])]),
+    dd('book', 'Book or app', [['all', 'All books and apps'], ...books.map(b => { const [v, bk] = b.split('|'); return [bk, `${esc(bk)}${v === 'book' ? '' : ` (${VLABEL[v]})`}`]; })]),
+    dd('day', 'Game day', [['all', 'All game days'], ...days.map(x => [x, new Date(x + 'T12:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})])]),
+    dd('clock', 'Price clock', [['entry', 'At entry price'], ['close', 'At close price']]),
+  ].join('');
   $('treset').hidden = Object.keys(TF0).every(k => tf[k] === TF0[k]);
 
   // KPIs over the current selection
