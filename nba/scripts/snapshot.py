@@ -11,8 +11,12 @@ appends ONLY what changed since the last poll:
   espn        ESPN core odds per upcoming game (DraftKings etc.): game line + every player prop
   pinnacle    guest API: main lines, team totals, player props, with bet limits
   action      Action Network scoreboard: 7 books + bets % / money % splits
-  polymarket  NBA game events: best bid / ask / last per market
+  polymarket  NBA events (game markets and player props): best bid / ask / last per market, fee rate in meta
   injuries    official NBA injury report, parsed; one row per player status change
+  prizepicks  PrizePicks NBA board (partner API; the public host 403s servers): line per projection, with its
+              odds_type (standard / demon / goblin) in meta. Flat payout, so the line is the price.
+  underdog    Underdog Pick'em NBA lines: line plus each side's fantasy price (American) and payout multiplier
+  sleeper     Sleeper Picks NBA lines: line plus each side's payout multiplier (decimal price)
   lineups     NBA.com daily lineups: each listed player's starting slot, Expected / Confirmed, active / inactive,
               so the log shows when each team's five went from Expected to Confirmed
 
@@ -241,8 +245,10 @@ def src_polymarket(slate):
                 continue
             k = str(m['id'])
             rows[k] = [num(m.get('bestBid')), num(m.get('bestAsk')), num(m.get('lastTradePrice'))]
+            fs = m.get('feeSchedule') or {}
             meta[k] = {'event': e.get('slug'), 'q': m.get('question'), 'type': m.get('sportsMarketType'),
-                       'line': m.get('line'), 'outcomes': m.get('outcomes'), 'start': start, 'cid': m.get('conditionId')}
+                       'line': m.get('line'), 'outcomes': m.get('outcomes'), 'start': start, 'cid': m.get('conditionId'),
+                       'fee': fs.get('rate') if m.get('feesEnabled') else 0}   # taker fee per share = rate x p x (1 - p)
     return rows, meta
 
 
@@ -266,6 +272,100 @@ def src_lineups(slate):
                     rows[k] = [p.get('position') or '', p.get('lineupStatus') or '', p.get('rosterStatus') or '']
                     meta[k] = {'day': day, 'team': team, 'player': p.get('playerName'), 'nba_id': p.get('personId'),
                                'nba_game': gm.get('gameId')}
+    return rows, meta
+
+
+# ── pick'em apps ──────────────────────────────────────────────────────────────────────────────
+UA_HDR = ['User-Agent: Mozilla/5.0', 'Accept: application/json']
+PP = 'https://partner-api.prizepicks.com/projections?league_id=7&per_page=250&single_stat=true&page={}'
+UD = 'https://api.underdogfantasy.com/v1/over_under_lines?sport_id=NBA'
+SL = 'https://api.sleeper.com/lines/available?dynamic=true&include_preseason=true'
+SL_SPORT = 'nba'
+_sleeper_players = {}
+
+
+def team_code(c):
+    c = (c or '').upper()
+    return TEAM.get(c, c)
+
+
+def pre_teams(slate):
+    return {t for g in slate.games if g['pre'] for t in (g['away'], g['home'])}
+
+
+def src_prizepicks(slate):
+    rows, meta = {}, {}
+    inc, page, pages = {}, 1, 1
+    data = []
+    while page <= min(pages, 20):
+        d = curl(PP.format(page), UA_HDR)
+        data += d.get('data', [])
+        inc.update({(i['type'], i['id']): i['attributes'] for i in d.get('included', [])})
+        pages = (d.get('meta') or {}).get('total_pages') or 1
+        page += 1
+    for x in data:
+        a, rel = x['attributes'], x.get('relationships') or {}
+        start = iso(a.get('start_time'))
+        if a.get('status') != 'pre_game' or a.get('in_game') or not start or not (slate.now < start <= slate.ahead):
+            continue
+        pl = inc.get(('new_player', ((rel.get('new_player') or {}).get('data') or {}).get('id')), {})
+        if pl.get('combo'):
+            continue
+        rows[x['id']] = [num(a.get('line_score')), num(a.get('flash_sale_line_score'))]
+        meta[x['id']] = {'player': pl.get('name'), 'team': team_code(pl.get('team')), 'stat': a.get('stat_type'),
+                         'odds': a.get('odds_type'), 'dur': ((rel.get('duration') or {}).get('data') or {}).get('id'),
+                         'start': start, 'opp': team_code(a.get('description'))}
+    return rows, meta
+
+
+def src_underdog(slate):
+    d = curl(UD, UA_HDR)
+    rows, meta = {}, {}
+    team, start = {}, {}
+    for g in d.get('games', []) + d.get('solo_games', []):
+        ab = (g.get('abbreviated_title') or '').split(' @ ')
+        if len(ab) == 2:
+            team[g.get('away_team_id')], team[g.get('home_team_id')] = team_code(ab[0]), team_code(ab[1])
+        start[g['id']] = iso(g.get('scheduled_at'))
+    players = {p['id']: p for p in d.get('players', [])}
+    apps = {a['id']: a for a in d.get('appearances', [])}
+    for l in d.get('over_under_lines', []):
+        ast = (l.get('over_under') or {}).get('appearance_stat') or {}
+        app = apps.get(ast.get('appearance_id'))
+        t0 = start.get(app.get('match_id')) if app else None
+        if l.get('status') != 'active' or l.get('live_event') or not t0 or not (slate.now < t0 <= slate.ahead):
+            continue
+        side = {o.get('choice'): o for o in l.get('options', [])}
+        px = lambda o: ((((o or {}).get('odds') or {}).get('fantasy') or {}).get('american')) or (o or {}).get('american_price')
+        hi, lo = side.get('higher'), side.get('lower')
+        rows[l['id']] = [num(l.get('stat_value')), px(hi), px(lo), num((hi or {}).get('payout_multiplier')),
+                         num((lo or {}).get('payout_multiplier'))]
+        p = players.get(app.get('player_id')) or {}
+        meta[l['id']] = {'player': f"{p.get('first_name', '')} {p.get('last_name', '')}".strip(), 'team': team.get(p.get('team_id')),
+                         'stat': ast.get('stat'), 'kind': l.get('line_type'), 'start': t0}
+    return rows, meta
+
+
+def src_sleeper(slate):
+    if not _sleeper_players:        # once per process: Sleeper ids -> name, team, ESPN id
+        for pid, p in curl('https://api.sleeper.app/v1/players/nba').items():
+            _sleeper_players[pid] = {'name': p.get('full_name'), 'team': p.get('team'), 'espn': p.get('espn_id')}
+    teams = pre_teams(slate)
+    rows, meta = {}, {}
+    for l in curl(SL, UA_HDR):
+        if l.get('sport') != SL_SPORT or l.get('subject_type') != 'player' or l.get('game_status') != 'pre_game':
+            continue
+        side = {o.get('outcome'): o for o in l.get('options', [])}
+        o = side.get('over') or side.get('under')
+        tm = team_code((o or {}).get('subject_team'))
+        if not o or tm not in teams:
+            continue
+        k = f"{l['subject_id']}|{l.get('wager_type')}|{l.get('line_type')}"
+        rows[k] = [num(o.get('outcome_value')), num((side.get('over') or {}).get('payout_multiplier')),
+                   num((side.get('under') or {}).get('payout_multiplier'))]
+        sp = _sleeper_players.get(str(l['subject_id']), {})
+        meta[k] = {'player': sp.get('name'), 'team': tm, 'espn': sp.get('espn'), 'stat': l.get('wager_type'),
+                   'kind': l.get('line_type'), 'game': l.get('game_id')}
     return rows, meta
 
 
@@ -363,7 +463,8 @@ def poll(root):
     slate = Slate(now)
     day = Day(root, dt.datetime.fromtimestamp(now, ET).date().isoformat())
     sources = [('kalshi', src_kalshi), ('espn', src_espn), ('pinnacle', src_pinnacle), ('action', src_action),
-               ('polymarket', src_polymarket), ('injuries', Injuries(day.dir)), ('lineups', src_lineups)]
+               ('polymarket', src_polymarket), ('injuries', Injuries(day.dir)), ('lineups', src_lineups),
+               ('prizepicks', src_prizepicks), ('underdog', src_underdog), ('sleeper', src_sleeper)]
     polls, metas = [], {}
     for name, fn in sources:
         t0 = time.time()
@@ -439,6 +540,16 @@ def coverage(slate, day, metas):
         for key, g in games.items():
             if key[0] == d_ and nick(team) in (slate.nick.get(g['home']), slate.nick.get(g['away'])):
                 g['cov'].setdefault('injuries', [0, 0])[0] += 1
+    # pick'em apps: [0, lines], joined on team (and start time when the app gives one)
+    by_team = defaultdict(list)
+    for key, g in games.items():
+        for t in (g['away'], g['home']):
+            by_team[t].append((g['tip'], key))
+    for src in ('prizepicks', 'underdog', 'sleeper'):
+        for k, m in (metas.get(src) or {}).items():
+            c = by_team.get(m.get('team'))
+            if c and (src != 'prizepicks' or m.get('odds') == 'standard'):
+                add(src, min(c, key=lambda x: abs(x[0] - (m.get('start') or x[0])))[1], True)
     # lineups: [teams whose five is Confirmed, starters listed]
     team_game = {(g['day'], t): (g['day'], slate.nick.get(g['home'])) for g in slate.games if g['pre'] for t in (g['away'], g['home'])}
     conf = defaultdict(dict)

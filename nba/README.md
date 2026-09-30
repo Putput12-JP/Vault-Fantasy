@@ -40,7 +40,9 @@ were.
 
 ## Live snapshots (week 4, from 2026-09-30)
 
-`scripts/snapshot.py` records every venue's pre-tip price, the injury report and NBA.com's starting lineups, change-only, and runs on
+`scripts/snapshot.py` records every venue's pre-tip price (Kalshi, ESPN/DraftKings, Pinnacle, Action Network's
+books, Polymarket incl. player props, and the pick'em apps PrizePicks, Underdog and Sleeper), the injury report and
+NBA.com's starting lineups, change-only, and runs on
 GitHub Actions (`.github/workflows/nba-snapshots.yml`): an hourly poll, and on game days a loop from 9am ET
 to the last tip (every 15 min, every 5 min inside 3h of a tip). Output goes to the **`nba-data` branch**,
 not main, under `snapshots/<ET date>/`. Read it with:

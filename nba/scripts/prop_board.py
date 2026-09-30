@@ -14,7 +14,8 @@ Built two ways:
 Board shape (compact, it ships in the page):
   {t, games: [{id, day, tip, away, home, season_type}], players: {pid: [name, team, injury status, lineup]},
    lineup = NBA.com: 'S' confirmed starter, 's' expected starter, 'B' confirmed bench, 'b' expected bench, 'X' inactive,
-   props: [{p, s, g, kal: [[line, bid, ask, open_mid]], books: [[book, line, over, under, open_line, open_over]]}],
+   props: [{p, s, g, kal: [[line, bid, ask, open_mid]], books: [[book, line, over, under, open_line, open_over]],
+            pk: [[app, line, over, under, open_line]]}],     books include Polymarket (fee in); pk = pick'em apps
    unmapped: {venue: count}}
 Kalshi rung "25+" is YES iff stat > 24.5, so its line is the floor strike, same convention as a book line.
 """
@@ -34,6 +35,13 @@ PIN_STAT = [(r'pts\s*\+\s*rebs?\s*\+\s*asts?|points.*rebounds.*assists', 'pra'),
             (r'pts\s*\+\s*asts?|points.*assists', 'pa'), (r'rebs?\s*\+\s*asts?|rebounds.*assists', 'ra'),
             (r'3|three', '3pm'), (r'point', 'pts'), (r'rebound', 'reb'), (r'assist', 'ast')]
 PRICED = {'pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra'}   # what the prop model can price
+PM_STAT = {'points': 'pts', 'rebounds': 'reb', 'assists': 'ast', 'threes': '3pm'}
+PP_STAT = {'Points': 'pts', 'Rebounds': 'reb', 'Assists': 'ast', '3-PT Made': '3pm', 'Pts+Rebs+Asts': 'pra',
+           'Pts+Rebs': 'pr', 'Pts+Asts': 'pa', 'Rebs+Asts': 'ra'}
+UD_STAT = {'points': 'pts', 'rebounds': 'reb', 'assists': 'ast', 'three_points_made': '3pm', 'pts_rebs_asts': 'pra',
+           'pts_rebs': 'pr', 'pts_asts': 'pa', 'rebs_asts': 'ra'}
+SL_STAT = {'points': 'pts', 'rebounds': 'reb', 'assists': 'ast', 'threes_made': '3pm', 'pts_reb_ast': 'pra',
+           'pts_reb': 'pr', 'pts_ast': 'pa', 'reb_ast': 'ra'}
 TEAM = {'GSW': 'GS', 'NYK': 'NY', 'SAS': 'SA', 'NOP': 'NO', 'UTA': 'UTAH', 'WAS': 'WSH', 'PHO': 'PHX', 'BRK': 'BKN'}
 
 
@@ -83,7 +91,12 @@ def build(games, last, meta, first, proj, now):
     def entry(pid, stat, g):
         name, team = R.info[pid]
         players[pid] = [name, team, None, None]
-        return props.setdefault((pid, stat), {'p': pid, 's': stat, 'g': g['id'], 'kal': [], 'books': []})
+        return props.setdefault((pid, stat), {'p': pid, 's': stat, 'g': g['id'], 'kal': [], 'books': [], 'pk': []})
+
+    def team_game(team, start=None):
+        """Tonight's game for a team (the one nearest `start` when a team has two on the slate)."""
+        c = [g for g in games if team in (g['away'], g['home'])]
+        return min(c, key=lambda g: abs(g['tip'] - (start or g['tip']))) if c else None
 
     # Kalshi ladders
     for k, v in (last.get('kalshi') or {}).items():
@@ -144,6 +157,69 @@ def build(games, last, meta, first, proj, now):
         entry(pid, stat, g)['books'].append(['Pinnacle', ov[0], fmt_am(ov[1]), fmt_am(uv[1]),
                                               fo[0] if fo else None, fmt_am(fo[1]) if fo else None])
 
+    # Polymarket player props: YES = over the line. Priced like a book: over = YES ask, under = 1 - YES bid, each
+    # plus the taker fee (rate x p x (1 - p) per share), as American odds so the page treats it like any book.
+    for k, v in (last.get('polymarket') or {}).items():
+        m = meta.get('polymarket', {}).get(k) or {}
+        stat = PM_STAT.get(m.get('type'))
+        if not stat or m.get('line') is None:
+            continue
+        p = (m.get('event') or '').split('-')              # nba-<away>-<home>-YYYY-MM-DD
+        tm = [TEAM.get(x.upper(), x.upper()) for x in p[1:3]] if len(p) >= 6 else []
+        g = next((team_game(t, m.get('start')) for t in tm if team_game(t, m.get('start'))), None)
+        pid = g and R.find((m.get('q') or '').split(':')[0], (g['away'], g['home']))
+        if not pid:
+            unmapped['polymarket'] += 1
+            continue
+        bid, ask = v[0], v[1]
+        fee = lambda x: (m.get('fee') or 0) * x * (1 - x)
+        o = prob_am(ask + fee(ask)) if ask and 0 < ask < 1 else None
+        u = prob_am(1 - bid + fee(1 - bid)) if bid and 0 < bid < 1 else None
+        f = (first.get('polymarket') or {}).get(k)
+        if o and u:
+            entry(pid, stat, g)['books'].append(['Polymarket', float(m['line']), o, u, float(m['line']) if f else None,
+                                                  prob_am(f[1] + fee(f[1])) if f and f[1] and 0 < f[1] < 1 else None])
+
+    # pick'em apps -> e['pk'] = [app, line, over price, under price, first line today]. PrizePicks standard lines only
+    # (demon / goblin are alternate lines at other payouts) and it pays flat, so its prices are None.
+    for k, v in (last.get('prizepicks') or {}).items():
+        m = meta.get('prizepicks', {}).get(k) or {}
+        stat = PP_STAT.get(m.get('stat'))
+        if not stat or m.get('odds') != 'standard' or v[0] is None:
+            continue
+        g = team_game(m.get('team'), m.get('start'))
+        pid = g and R.find(m.get('player'), [m.get('team')])
+        if not pid:
+            unmapped['prizepicks'] += 1
+            continue
+        f = (first.get('prizepicks') or {}).get(k)
+        entry(pid, stat, g)['pk'].append(['PrizePicks', v[0], None, None, f[0] if f else None])
+    for k, v in (last.get('underdog') or {}).items():
+        m = meta.get('underdog', {}).get(k) or {}
+        stat = UD_STAT.get(m.get('stat'))
+        if not stat or v[0] is None:
+            continue
+        g = team_game(m.get('team'), m.get('start'))
+        pid = g and R.find(m.get('player'), [m.get('team')])
+        if not pid:
+            unmapped['underdog'] += 1
+            continue
+        f = (first.get('underdog') or {}).get(k)
+        entry(pid, stat, g)['pk'].append(['Underdog', v[0], v[1], v[2], f[0] if f else None])
+    for k, v in (last.get('sleeper') or {}).items():
+        m = meta.get('sleeper', {}).get(k) or {}
+        stat = SL_STAT.get(m.get('stat'))
+        if not stat or v[0] is None:
+            continue
+        g = team_game(m.get('team'))
+        espn = int(m['espn']) if str(m.get('espn') or '').isdigit() else None
+        pid = espn if espn in R.info else g and R.find(m.get('player'), [m.get('team')])
+        if not pid or not g:
+            unmapped['sleeper'] += 1
+            continue
+        f = (first.get('sleeper') or {}).get(k)
+        entry(pid, stat, g)['pk'].append(['Sleeper', v[0], dec_am(v[1]), dec_am(v[2]), f[0] if f else None])
+
     # injury report: current status per player on tonight's teams
     inj = {}
     for k, v in (last.get('injuries') or {}).items():
@@ -203,6 +279,18 @@ def game_lines(games, last, meta, gkey, nicks):
     return out
 
 
+def prob_am(p):
+    """Cost of $1 payout (fee included) -> American odds string."""
+    if not p or not 0 < p < 1:
+        return None
+    return fmt_am(-round(100 * p / (1 - p)) if p >= .5 else round(100 * (1 - p) / p))
+
+
+def dec_am(d):
+    """Decimal payout multiplier (total return) -> American odds string."""
+    return prob_am(1 / d) if d and d > 1 else None
+
+
 def fmt_am(x):
     if x is None:
         return None
@@ -241,7 +329,7 @@ def example(proj):
 
     def entry(pid, stat, r):
         players[pid] = [R.info[pid][0], r['team'], None, None]   # the team he played for that night
-        return props.setdefault((pid, stat), {'p': pid, 's': stat, 'g': gid, 'kal': [], 'books': []})
+        return props.setdefault((pid, stat), {'p': pid, 's': stat, 'g': gid, 'kal': [], 'books': [], 'pk': []})
     for r in kal:
         pid = int(r['athlete_id'])
         px = r['yes_last_pretip'] or r['yes_vwap30_pretip']

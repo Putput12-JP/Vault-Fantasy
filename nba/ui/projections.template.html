@@ -280,6 +280,7 @@ table.pb tr.open td{background:rgba(255,255,255,.02);border-bottom-color:transpa
 tr.open .chev{transform:rotate(90deg)}
 tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 .dgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:4px 8px 0}
+.dgrid .wide{grid-column:1/-1}
 .dpanel{border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:12px 14px;min-width:0;overflow-x:auto;text-align:left}
 .dpanel h4{margin:0 0 8px;font-size:12.5px;font-weight:600}
 .dpanel h4 small{font-weight:400;color:var(--fg3);margin-left:6px}
@@ -446,7 +447,7 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
           <div><h2>Upcoming games</h2><p>Markets recorded per venue for every game in the next 3 days: game lines, then player props.</p></div>
         </div>
         <div class="card-b"><div class="tablewrap"><table class="ht">
-          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Game</th><th scope="col">Kalshi</th><th scope="col">ESPN</th><th scope="col">Pinnacle</th><th scope="col">Action</th><th scope="col">Polymarket</th><th scope="col">Injury report</th><th scope="col">Lineups</th></tr></thead>
+          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Game</th><th scope="col">Kalshi</th><th scope="col">ESPN</th><th scope="col">Pinnacle</th><th scope="col">Action</th><th scope="col">Polymarket</th><th scope="col">Injury report</th><th scope="col">Lineups</th><th scope="col">Pick'em</th></tr></thead>
           <tbody id="hgames"></tbody>
         </table></div></div>
       </section>
@@ -828,10 +829,14 @@ const SRC = [
   ['espn', 'ESPN', 'DraftKings lines and player props'],
   ['pinnacle', 'Pinnacle', 'Lines, player props and bet limits'],
   ['action', 'Action Network', 'Seven books, plus bets % and money %'],
-  ['polymarket', 'Polymarket', 'Game markets, bid and ask'],
+  ['polymarket', 'Polymarket', 'Game markets and player props, bid and ask'],
   ['injuries', 'Injury report', 'Official NBA report, posted every 15 min'],
   ['lineups', 'Starting lineups', 'NBA.com starters, Expected then Confirmed'],
+  ['prizepicks', 'PrizePicks', "Pick'em lines (standard, demon, goblin)"],
+  ['underdog', 'Underdog', "Pick'em lines with a price per side"],
+  ['sleeper', 'Sleeper', "Pick'em lines with a payout per side"],
 ];
+const PICKEM = [['prizepicks', 'PP'], ['underdog', 'UD'], ['sleeper', 'SL']];
 const VENUES = ['kalshi', 'espn', 'pinnacle', 'action', 'polymarket'];
 let HS = H0 ? {status: H0.recorder.status, polls: H0.recorder.polls || [], live: false, at: Date.parse(H0.built) / 1000} : null;
 let liveTried = false, liveTimer = null;
@@ -948,7 +953,7 @@ function renderHealth(){
     } else if (k === 'injuries'){
       note = `<span class="note">${p?.report === 'no games' ? 'No report posts without games in the next 36 hours' : reportTime(p?.report) ? `Latest: ${reportTime(p.report)} ET report` : 'No report in the last 2 hours'}</span>`;
     } else if (p && !p.n){
-      note = `<span class="note">${k === 'kalshi' ? 'Kalshi lists props the morning of a game' : k === 'lineups' ? 'Posted for games in the next 36 hours' : 'Nothing listed for games in the next 3 days'}</span>`;
+      note = `<span class="note">${k === 'kalshi' ? 'Kalshi lists props the morning of a game' : k === 'lineups' ? 'Posted for games in the next 36 hours' : k === 'underdog' || k === 'sleeper' ? 'No NBA lines listed yet' : 'Nothing listed for games in the next 3 days'}</span>`;
     }
     const n = k === 'injuries' ? (injCount ? `${injCount} players` : '') : p?.n != null ? p.n.toLocaleString() : '';
     return `<tr><td class="l src"><b>${name}</b><small>${what}</small></td><td class="l">${pill(c, label)}</td>
@@ -971,11 +976,13 @@ function renderHealth(){
     };
     const inj = g.cov.injuries ? `<td class="cov">${g.cov.injuries[0]}<small>listed</small></td>` : `<td class="cov none">none</td>`;
     const lu = g.cov.lineups;
+    const pkN = PICKEM.filter(([k]) => g.cov[k]);
+    const pke = pkN.length ? `<td class="cov">${pkN.reduce((a, [k]) => a + g.cov[k][1], 0).toLocaleString()}<small>${pkN.map(([k, s]) => `${s} ${g.cov[k][1]}`).join(' · ')}</small></td>` : `<td class="cov none">none</td>`;
     const lin = lu ? `<td class="cov">${lu[0]} of 2<small>${lu[0] === 2 ? 'confirmed' : lu[0] ? 'confirmed, 1 expected' : 'expected'}</small></td>` : `<td class="cov none">none</td>`;
-    const sep = g.day !== lastDay ? `<tr class="sep"><td colspan="9">${etFmt(g.tip, {weekday: 'long', month: 'long', day: 'numeric'})}</td></tr>` : '';
+    const sep = g.day !== lastDay ? `<tr class="sep"><td colspan="10">${etFmt(g.tip, {weekday: 'long', month: 'long', day: 'numeric'})}</td></tr>` : '';
     lastDay = g.day;
-    return `${sep}<tr><td class="l num">${clock(g.tip)}</td><td class="l"><b>${g.away} @ ${g.home}</b>${g.season_type === 1 ? ' <span class="badge">Preseason</span>' : ''}</td>${VENUES.map(cell).join('')}${inj}${lin}</tr>`;
-  }).join('') : `<tr><td class="l" colspan="9"><p class="empty">No games in the next 3 days. Preseason starts October 3; opening night is October 20.</p></td></tr>`;
+    return `${sep}<tr><td class="l num">${clock(g.tip)}</td><td class="l"><b>${g.away} @ ${g.home}</b>${g.season_type === 1 ? ' <span class="badge">Preseason</span>' : ''}</td>${VENUES.map(cell).join('')}${inj}${lin}${pke}</tr>`;
+  }).join('') : `<tr><td class="l" colspan="10"><p class="empty">No games in the next 3 days. Preseason starts October 3; opening night is October 20.</p></td></tr>`;
 
   // model inputs (static files: judged against the real clock)
   const now = Date.now() / 1000;
@@ -1026,6 +1033,7 @@ const SLABEL = Object.fromEntries(STATS);
 const COMBO = {pra: ['pts','reb','ast'], pr: ['pts','reb'], pa: ['pts','ast'], ra: ['reb','ast']};
 const COUNT = new Set(['reb','ast','3pm']);
 const EDGE_MIN = 0.03;             // the backtest's betting threshold
+const PK_BE = 0.5425;              // pick'em break-even per pick on standard 5- and 6-pick flex entries (flat-payout lines)
 let PS = {board: null, mode: 'none', at: null};
 let boardTried = false, boardTimer = null, showExample = false;
 let pf = {game: 'all', stat: 'all', sort: 'edge', q: '', gated: false, open: new Set(), limit: 120};
@@ -1144,6 +1152,15 @@ function priceRow(e, cache){
     }
     return b;
   }).filter(Boolean);
+  // pick'em apps: shown, never a best bet (flat payouts rank first on price alone). Fair = the book blend when a book
+  // has the same line, else the calibrated model. Priced lines (Underdog, Sleeper) are judged against their own price,
+  // flat ones (PrizePicks) against the flex break-even.
+  r.pk = (e.pk || []).map(([app, line, o, u, l0]) => {
+    const pm = model(line), same = r.books.find(b => b.line === line && b.fair != null);
+    const fair = same ? same.fair : pm, po = o != null ? amP(o) : null, pu = u != null ? amP(u) : null;
+    return {app, line, o, u, l0, pm, fair, flat: po == null,
+            eo: fair != null ? fair - (po ?? PK_BE) : null, eu: fair != null ? (1 - fair) - (pu ?? PK_BE) : null};
+  });
   // Kalshi ladder: YES at the ask, NO at 1 - bid, fee on top
   r.kal = e.kal.map(([line, bid, ask, om]) => {
     const mid = bid != null && ask != null ? (bid + ask) / 2 : (ask ?? bid);
@@ -1162,6 +1179,7 @@ function priceRow(e, cache){
     const k = [...r.kal].filter(k => k.mid != null).sort((a, b) => Math.abs(a.mid - .5) - Math.abs(b.mid - .5))[0];
     if (k){ r.line = k.line; r.lineFrom = 'Kalshi'; r.mkt = k.mid; r.pm = k.pm; r.fair = k.fair; }
   }
+  else if (r.pk.length){ const k = r.pk[0]; r.line = k.line; r.lineFrom = k.app; r.pm = k.pm; r.fair = k.fair; }
   const gated = r.cands.filter(c => c.g !== 'no-go' && c.edge >= EDGE_MIN).sort((a, b) => b.edge - a.edge);
   r.best = gated[0] || [...r.cands].sort((a, b) => b.edge - a.edge)[0] || null;
   r.passing = gated.some(c => c.g === 'go');
@@ -1382,6 +1400,9 @@ function detailRow(r){
     const po = amP(b.o), pu = amP(b.u);
     return `<tr><td class="l">${esc(b.bk)}</td><td>${b.l0 ?? ''}</td><td>${b.line}</td><td>${b.o}</td><td>${b.u}</td><td>${pc(b.mkt)}</td><td>${pc(b.fair)}</td><td>${b.fair != null ? ed(b.fair - po) : ''}</td><td>${b.fair != null ? ed((1 - b.fair) - pu) : ''}</td></tr>`;
   }).join('')}</tbody></table>` : '<p class="empty">No sportsbook line.</p>';
+  const pk = r.pk.length ? `<div class="dpanel wide"><h4>Pick'em apps<small>flat lines judged against the ${pc(PK_BE)} flex break-even</small></h4><table><thead><tr><th class="l">App</th><th>Open</th><th>Line</th><th>Over</th><th>Under</th><th>Model</th><th>Fair</th><th>Over edge</th><th>Under edge</th></tr></thead><tbody>${r.pk.map(k =>
+    `<tr><td class="l">${esc(k.app)}</td><td>${k.l0 ?? ''}</td><td>${k.line}</td><td>${k.o ?? '<span class="muted">flat</span>'}</td><td>${k.u ?? '<span class="muted">flat</span>'}</td><td>${pc(k.pm)}</td><td>${pc(k.fair)}</td><td>${ed(k.eo)}</td><td>${ed(k.eu)}</td></tr>`).join('')}</tbody></table>
+    <p class="empty" style="margin-top:10px">Not ranked as a best bet: flat payouts would win every price comparison. No backtest gate yet.</p></div>` : '';
   const team = PIDX[r.e.p]?.t;
   const B = r.build, g0 = (PS.board.games || []).find(x => String(x.id) === String(r.e.g));
   const build = B && r.min > 0 ? `<div class="dpanel glpanel"><h4>How the projection is built<small>${r.v2 ? `prop model v2, ${g0 && g0.total != null ? `game total ${g0.total} (${esc(g0.line_from || '')})` : 'no game line yet'}` : 'minutes × rate only'}</small></h4>
@@ -1393,9 +1414,10 @@ function detailRow(r){
     <div class="dpanel glpanel"><h4>Game log<small>${SLABEL[r.e.s]} against the ${r.lineFrom || ''} line of ${r.line ?? 'none'} · pick a window</small></h4>${logChart(r)}</div>
     <div class="dgrid">
     <div class="dpanel"><h4>Kalshi ladder<small>YES pays if he reaches the rung; edge after fees</small></h4>${kal}</div>
-    <div class="dpanel"><h4>Sportsbooks<small>market = vig removed</small></h4>${books}
+    <div class="dpanel"><h4>Sportsbooks<small>market = vig removed; Polymarket prices include its fee</small></h4>${books}
       ${PS.mode === 'example' ? `<p class="empty" style="margin-top:10px">Example: ${fmt(r.min ?? 0)} minutes, his average going into that game.</p>`
         : team ? `<p class="empty" style="margin-top:10px">Projection uses ${fmt(r.min ?? 0)} minutes. <button class="linkbtn" type="button" data-lab="${team}">Change minutes in the Minutes Lab</button></p>` : ''}</div>
+    ${pk}
   </div></td></tr>`;
 }
 
