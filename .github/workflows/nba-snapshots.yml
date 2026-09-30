@@ -13,7 +13,12 @@
 name: NBA snapshots
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      ahead_h:
+        description: 'Record games tipping within this many hours (default 72)'
+        required: false
+        default: '72'
   schedule:
     - cron: '11 * * * *'
 
@@ -49,7 +54,7 @@ jobs:
         run: |
           git -C nba-data config user.name  "vault-bot"
           git -C nba-data config user.email "vault-bot@users.noreply.github.com"
-          python3 nba/scripts/snapshot.py --dir=nba-data --loop --commit --max-minutes=330
+          python3 nba/scripts/snapshot.py --dir=nba-data --loop --commit --max-minutes=330 --ahead-h=${{ inputs.ahead_h || '72' }}
 
       - name: Hand off to a fresh run
         if: steps.rec.outputs.handoff == 'true'
