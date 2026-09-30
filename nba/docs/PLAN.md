@@ -207,7 +207,7 @@ from the header slicer. Planned pages, each fed by something the models already 
 | Research | Slate | Tonight's games: Vault line vs market, injuries, back-to-backs, pace | game model + schedule + injury reports |
 | Research | Injury Wire | Each injury report change, the teammates it moves, how fast each venue reacted | injury poller + minutes model + snapshots |
 | Markets | Game Lines | Spread / total / ML across books, Kalshi, Polymarket; Vault line as context | snapshot pipeline + game model |
-| Markets | Player Props (LIVE) | Every prop line and Kalshi ladder next to the Minutes Lab projection, calibrated model %, blended fair %, edge after fees, gate chip; Kalshi overs-bias check | `board.json` on nba-live (recorder, each poll), prop model params, Minutes Lab edits |
+| Markets | Player Props (LIVE) | Every prop line and Kalshi ladder next to the Minutes Lab projection, calibrated model %, blended fair %, edge after fees, gate chip; Kalshi overs-bias check; hit rates at the line (L5/L10/L20/Season/H2H) and a game-log chart with minutes per game | `board.json` on nba-live (recorder, each poll), prop model params, Minutes Lab edits, `data/gamelogs.json` (build_gamelogs.py) |
 | Markets | Sharp Price | Pinnacle / Kalshi / Polymarket anchor, line moves, sharp-account flow | `scripts/fetch-sharp-money.mjs` (already polls NBA) |
 | Betting | Edges | Only gated signals (Kalshi 3PM NO blend, overs-bias tracker, totals watch) with size, price, capacity | prop / game backtests + live prices |
 | Betting | Track Record | Shadow + live picks settled: ROI per contract, CLV, each signal vs its gate | settlement (week 4) |

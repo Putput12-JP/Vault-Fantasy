@@ -19,6 +19,7 @@ python3 nba/scripts/build_prop_model.py                         # week 3: prop m
 python3 nba/scripts/fetch_depth_charts.py                       # CURRENT depth charts -> data/depth_charts.json (~15 s, run daily)
 python3 nba/scripts/build_data_health.py                        # Data Health snapshot (reads origin/nba-data) + re-render the app page
 python3 nba/scripts/prop_board.py                               # Player Props snapshot (origin/nba-live) + example board + re-render
+python3 nba/scripts/build_gamelogs.py                           # per-player game logs for hit rates + game-log chart (rerun after fetch_hoopr in season)
 ```
 
 ## Live snapshots (week 4, from 2026-09-30)

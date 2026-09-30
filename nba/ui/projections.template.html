@@ -232,8 +232,29 @@ table.ht .src small{color:var(--fg3);font-size:12px}
 .sel{height:34px;padding:0 30px 0 10px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center/14px;appearance:none;font-size:13px;color:var(--fg)}
 .pfind{height:34px;width:180px;padding:0 10px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface);outline:none;font-size:13px}
 .pfind::placeholder{color:var(--fg3)}
-table.pb{min-width:980px}
-table.pb td,table.pb th{text-align:right}
+table.pb{min-width:1120px}
+table.pb td,table.pb th{text-align:center}
+table.pb .betname{font-weight:500;white-space:nowrap}
+.warnt{color:var(--warn)}
+.wrow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.wcell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface);cursor:pointer;color:inherit}
+.wcell:hover{border-color:var(--border2)}
+.wcell.on{border-color:var(--fg);background:var(--raised)}
+.wcell .wv{font-family:var(--font-mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.wcell .wl{font-size:11px;color:var(--fg3);white-space:nowrap}
+.glpanel{margin:4px 8px 16px}
+.glhead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;font-size:12.5px;color:var(--fg2);margin-bottom:6px}
+.glhead b{color:var(--fg);font-weight:600}
+.glc{min-width:600px}
+.glc .grid{stroke:var(--border)}
+.glc .gb.o{fill:var(--up);opacity:.85}
+.glc .gb.u{fill:var(--fg3);opacity:.55}
+.glc .gm{fill:var(--fg2);opacity:.4}
+.glc .gv{font-size:9.5px;fill:var(--fg2)}
+.glc .lline{stroke:var(--fg);stroke-width:1.5}
+.glc .pline{stroke:var(--warn);stroke-width:1.5;stroke-dasharray:4 4}
+.tlegend i.o{background:var(--up)} .tlegend i.u{background:var(--fg3)} .tlegend i.mn{background:var(--fg2);opacity:.5}
+.tlegend i.ln{width:14px;height:2px;background:var(--fg)} .tlegend i.pj{width:14px;height:0;border-top:2px dashed var(--warn);background:none}
 table.pb td.l,table.pb th.l{text-align:left}
 table.pb tbody tr.prow{cursor:pointer}
 table.pb tbody tr.prow:hover td{background:rgba(255,255,255,.025)}
@@ -260,6 +281,8 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 .dpanel table{min-width:0;font-size:12.5px}
 .dpanel th{padding:6px;font-size:10px}
 .dpanel td{padding:6px;font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dpanel th,.dpanel td{text-align:center}
+.dpanel th.l,.dpanel td.l{text-align:left}
 .dpanel tr.near td{background:rgba(255,255,255,.035)}
 .mv{color:var(--fg3);font-size:10.5px;margin-left:4px}
 .more{display:flex;justify-content:center;padding-top:14px}
@@ -380,7 +403,7 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
         </div>
         <div class="card-b">
           <div class="tablewrap"><table class="pb">
-            <thead><tr><th class="l" scope="col">Player</th><th class="l" scope="col">Stat</th><th scope="col" title="Minutes the projection uses. Change them in the Minutes Lab.">Min</th><th scope="col">Projection</th><th scope="col" title="Main line: Pinnacle, then DraftKings, then the Kalshi rung nearest even">Line</th><th scope="col" title="Model chance of going over that line">Model</th><th scope="col" title="Market chance of over, vig removed">Market</th><th scope="col" title="Market and model blended with the weights fit on held-out games">Fair</th><th scope="col">Best bet</th><th scope="col" aria-label="Details"></th></tr></thead>
+            <thead><tr><th class="l" scope="col">Player</th><th scope="col">Stat</th><th scope="col" title="Minutes the projection uses. Change them in the Minutes Lab.">Min</th><th scope="col">Proj</th><th scope="col" title="Main line: Pinnacle, then DraftKings, then the Kalshi rung nearest even">Line</th><th scope="col" id="phit" title="Share of games over the line in the selected window. Pick the window in any row's game log.">L10</th><th scope="col" title="Model chance of going over that line">Model</th><th scope="col" title="Market chance of over, vig removed">Market</th><th scope="col" title="Market and model blended with the weights fit on held-out games">Fair</th><th class="l" scope="col">Best bet</th><th scope="col">Price</th><th scope="col" title="Fair chance minus the break-even chance of the price, after fees">Edge</th><th scope="col">Gate</th><th scope="col" aria-label="Details"></th></tr></thead>
             <tbody id="prows"></tbody>
           </table></div>
           <div class="more" id="pmore" hidden></div>
@@ -1160,27 +1183,33 @@ function renderProps(){
     kpi('Best gated edge', ICON.edit, top && top.best.edge > 0 ? `<span class="pos">${ec(top.best.edge)}</span>` : 'None', top && top.best.edge > 0 ? `${esc(last(top.name))} ${SLABEL[top.e.s]} ${betTxt(top.best)} · ${GATE_LABEL[top.best.g]}` : 'No GO or WATCH bet clears zero') +
     kpi('Kalshi overs check', ICON.clock, bias == null ? 'No ladder' : `${bias >= 0 ? '+' : ''}${(bias * 100).toFixed(1)} pts`, bias == null ? 'Nothing listed on Kalshi yet' : `YES price above fair on ${Math.round(over / rungs.length * 100)}% of ${rungs.length} rungs`);
 
-  // table
+  // table: every value in its own centred column; flags (injury, edited minutes) live in the player's sub-line
   const P = shown.slice(0, pf.limit);
-  const cellPct = (x, sub) => `<td class="pct">${x == null ? '<span class="muted">none</span>' : pc(x)}${sub ? `<small>${sub}</small>` : ''}</td>`;
+  const cellPct = x => `<td class="pct">${x == null ? '<span class="muted">none</span>' : pc(x)}</td>`;
   const chev = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>`;
+  $('phit').textContent = WLABEL[pwin];
   $('prows').innerHTML = P.length ? P.map(r => {
     const key = `${r.e.p}|${r.e.s}`, open = pf.open.has(key), g = games.find(x => String(x.id) === String(r.e.g));
     const rg = r.mu != null && r.min > 0 ? range2(r.e.s, r.mu) : null;
     const edited = r.min != null && Math.abs(r.min - r.min0) > .05;
-    const injB = r.inj ? `<span class="badge ${/out/i.test(r.inj) ? 'bad' : 'warn'}">${esc(r.inj)}</span>` : '';
+    const flags = [r.inj ? `<span class="${/out/i.test(r.inj) ? 'neg' : 'warnt'}">${esc(r.inj)}</span>` : '', edited ? '<span class="warnt" title="You changed his minutes in the Minutes Lab">minutes edited</span>' : ''].filter(Boolean).join(' · ');
+    const hr = r.line != null ? hitRate(windowGames(r, pwin).gl, r.e.s, r.line) : null;
     const b = r.best;
-    const bet = b ? `<div class="bet"><b>${b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`} <span class="muted num">${b.venue === 'kalshi' ? Math.round(b.price * 100) + '¢' : b.price}</span></b>
-      <span><span class="edge ${b.edge > 0 ? 'pos' : 'neg'}">${ec(b.edge)}</span><span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span></span></div>` : '<span class="muted">no price</span>';
+    const betCells = b ? `<td class="l"><span class="betname">${b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`}</span></td>
+      <td class="num">${b.venue === 'kalshi' ? Math.round(b.price * 100) + '¢' : b.price}</td>
+      <td class="num"><span class="edge ${b.edge > 0 ? 'pos' : 'neg'}">${ec(b.edge)}</span></td>
+      <td><span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span></td>`
+      : `<td class="l"><span class="muted">no price</span></td><td></td><td></td><td></td>`;
     return `<tr class="prow${open ? ' open' : ''}" data-k="${key}" tabindex="0" aria-expanded="${open}">
-      <td class="l"><div class="pwho"><b>${esc(r.name)}${injB}</b><small>${esc(r.team)}${g ? ` · ${gname(g)} · ${clock(g.tip)}` : ''}</small></div></td>
-      <td class="l"><span class="stat">${SLABEL[r.e.s]}</span></td>
-      <td class="num">${r.min == null ? '<span class="muted">none</span>' : `${fmt(r.min)}${edited ? ' <span class="badge" title="You changed his minutes in the Minutes Lab">edited</span>' : ''}`}</td>
-      <td class="pct">${r.mu == null ? '<span class="muted">none</span>' : fmt(r.mu)}${rg ? `<small>${fmt(rg[0],0)} to ${fmt(rg[1],0)}</small>` : ''}</td>
-      <td class="pct">${r.line ?? '<span class="muted">none</span>'}${r.lineFrom ? `<small>${esc(r.lineFrom)}</small>` : ''}</td>
+      <td class="l"><div class="pwho"><b>${esc(r.name)}</b><small>${esc(r.team)}${g ? ` · ${gname(g)} · ${clock(g.tip)}` : ''}${flags ? ' · ' + flags : ''}</small></div></td>
+      <td><span class="stat">${SLABEL[r.e.s]}</span></td>
+      <td class="num">${r.min == null ? '<span class="muted">none</span>' : fmt(r.min)}</td>
+      <td class="pct">${r.mu == null ? '<span class="muted">none</span>' : fmt(r.mu)}<small>${rg ? `${fmt(rg[0],0)} to ${fmt(rg[1],0)}` : '&nbsp;'}</small></td>
+      <td class="pct">${r.line ?? '<span class="muted">none</span>'}<small>${r.lineFrom ? esc(r.lineFrom) : '&nbsp;'}</small></td>
+      <td class="pct">${hr && hr.n ? `<span class="${hr.pct >= .6 ? 'pos' : hr.pct <= .4 ? 'neg' : ''}">${pc(hr.pct)}</span>` : '<span class="muted">none</span>'}<small>${hr && hr.n ? `${hr.over} of ${hr.n}` : '&nbsp;'}</small></td>
       ${cellPct(r.pm)}${cellPct(r.mkt)}${cellPct(r.fair)}
-      <td>${bet}</td><td>${chev}</td></tr>${open ? detailRow(r) : ''}`;
-  }).join('') : `<tr><td class="l" colspan="10"><p class="empty">${rows.length ? 'No props match these filters.' : 'Nothing on the board yet.'}</p></td></tr>`;
+      ${betCells}<td>${chev}</td></tr>${open ? detailRow(r) : ''}`;
+  }).join('') : `<tr><td class="l" colspan="14"><p class="empty">${rows.length ? 'No props match these filters.' : 'Nothing on the board yet.'}</p></td></tr>`;
   $('pmore').hidden = shown.length <= pf.limit;
   $('pmore').innerHTML = `<button class="btn" type="button" id="pmorebtn">Show all ${shown.length.toLocaleString()}</button>`;
   $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props. Click a row for the Kalshi ladder and each book.`;
@@ -1193,19 +1222,107 @@ function renderProps(){
 }
 function range2(stat, mu){ const v = PR.variance[stat]; if (!v || mu <= 0) return null; const sd = Math.sqrt(Math.max(.25, v[0] + v[1]*mu + v[2]*mu*mu)); return [Math.max(0, mu - Z*sd), mu + Z*sd]; }
 
+// ── game logs: hit rates at the line and the game-log chart ───────────────
+// Logs come from box scores (build_gamelogs.py), only games before this game's date, newest first.
+// Row: [day, season, opp, home, playoff, min, pts, reb, ast, 3pm]
+const GL = /*LOGS*/null;
+const WINS = ['L5', 'L10', 'L20', 'SZN', 'H2H'];
+const WLABEL = {L5: 'L5', L10: 'L10', L20: 'L20', SZN: 'Season', H2H: 'H2H'};
+let pwin = 'L10';
+const GI = {pts: 6, reb: 7, ast: 8, '3pm': 9};
+const gval = (g, s) => COMBO[s] ? COMBO[s].reduce((a, x) => a + g[GI[x]], 0) : g[GI[s]];
+const seasonLabel = y => `${y - 1}-${String(y).slice(2)}`;
+function logsOf(r){
+  const B = PS.board, g = (B.games || []).find(x => String(x.id) === String(r.e.g));
+  const cutoff = g ? Math.floor(Date.parse(g.day + 'T00:00Z') / 864e5) : Infinity;
+  const all = (GL && GL.players[r.e.p] || []).filter(x => x[0] < cutoff);
+  const opp = g ? (r.team === g.home ? g.away : r.team === g.away ? g.home : null) : null;
+  return {all, opp};
+}
+function windowGames(r, w){
+  const {all, opp} = r._logs || (r._logs = logsOf(r));
+  if (w === 'SZN'){
+    const cur = all.filter(g => g[1] === GL.current_season);
+    if (cur.length) return {gl: cur, label: 'This season'};
+    const prev = all.filter(g => g[1] === GL.current_season - 1);
+    return {gl: prev, label: seasonLabel(GL.current_season - 1)};
+  }
+  if (w === 'H2H') return {gl: opp ? all.filter(g => GL.teams[g[2]] === opp) : [], label: opp ? `vs ${opp}` : 'H2H', opp};
+  return {gl: all.slice(0, +w.slice(1)), label: `Last ${w.slice(1)}`};
+}
+function hitRate(gl, s, line){
+  if (!gl.length) return {n: 0};
+  const over = gl.filter(g => gval(g, s) > line).length;
+  return {n: gl.length, over, pct: over / gl.length};
+}
+const gdate = d => new Date(d * 864e5).toLocaleDateString('en-US', {month: 'short', day: 'numeric', timeZone: 'UTC'});
+
+function logChart(r){
+  const line = r.line, s = r.e.s, W = {gl: [], ...windowGames(r, pwin)};
+  const cells = WINS.map(w => {
+    const h = line != null ? hitRate(windowGames(r, w).gl, s, line) : {n: 0};
+    const cls = !h.n ? 'muted' : h.pct >= .6 ? 'pos' : h.pct <= .4 ? 'neg' : '';
+    return `<button type="button" class="wcell${w === pwin ? ' on' : ''}" data-w="${w}" aria-pressed="${w === pwin}">
+      <span class="wv ${cls}">${h.n ? pc(h.pct) : 'none'}</span><span class="wl">${WLABEL[w]}${h.n ? ` · ${h.over}/${h.n}` : ''}</span></button>`;
+  }).join('');
+  const gl = [...W.gl].reverse();                       // oldest to newest, left to right
+  if (!gl.length || line == null){
+    return `<div class="wrow">${cells}</div><p class="empty">${line == null ? 'No line to compare against.' : pwin === 'H2H' ? `He has not played ${W.opp || 'this opponent'} in the last two seasons.` : 'No games in this window.'}</p>`;
+  }
+  const n = gl.length, vals = gl.map(g => gval(g, s)), mins = gl.map(g => g[5]);
+  const avg = vals.reduce((a, b) => a + b, 0) / n, avgMin = mins.reduce((a, b) => a + b, 0) / n;
+  const over = vals.filter(v => v > line).length;
+  const VW = 1040, X0 = 44, X1 = VW - 16, T = 16, CH = 140, MT = T + CH + 10, MH = 24, H = MT + MH + (n <= 20 ? 22 : 16);
+  const ymax = Math.max(...vals, line, r.mu || 0, 1) * 1.15;
+  const y = v => T + CH * (1 - v / ymax);
+  const step = (X1 - X0) / n, bw = Math.max(2, Math.min(34, step * .68));
+  const cx = i => X0 + step * (i + .5);
+  let g = '';
+  for (const t of niceTicks(ymax)) g += `<line class="grid" x1="${X0}" x2="${X1}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/><text x="${X0 - 8}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end">${t}</text>`;
+  gl.forEach((gm, i) => {
+    const v = vals[i], o = v > line, opp = GL.teams[gm[2]];
+    const tip = `${gdate(gm[0])} ${gm[3] ? 'vs' : '@'} ${opp}${gm[4] ? ' (playoffs)' : ''}: ${v} ${SLABEL[s]} in ${gm[5]} min`;
+    g += `<g><title>${esc(tip)}</title><rect class="gb ${o ? 'o' : 'u'}" x="${(cx(i) - bw / 2).toFixed(1)}" y="${y(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${(T + CH - y(v)).toFixed(1)}" rx="${Math.min(3, bw / 4).toFixed(1)}"/>`;
+    if (n <= 20) g += `<text class="gv" x="${cx(i).toFixed(1)}" y="${(y(v) - 4).toFixed(1)}" text-anchor="middle">${v}</text>`;
+    g += `<rect class="gm" x="${(cx(i) - bw / 2).toFixed(1)}" y="${(MT + MH - gm[5] / 48 * MH).toFixed(1)}" width="${bw.toFixed(1)}" height="${(gm[5] / 48 * MH).toFixed(1)}" rx="1"/></g>`;
+    if (n <= 20) g += `<text x="${cx(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${gm[3] ? '' : '@'}${opp}</text>`;
+    else if (i === 0 || new Date(gm[0] * 864e5).getUTCMonth() !== new Date(gl[i - 1][0] * 864e5).getUTCMonth())
+      g += `<text x="${cx(i).toFixed(1)}" y="${H - 4}" text-anchor="start">${new Date(gm[0] * 864e5).toLocaleDateString('en-US', {month: 'short', timeZone: 'UTC'})}</text>`;
+  });
+  g += `<line class="lline" x1="${X0}" x2="${X1}" y1="${y(line).toFixed(1)}" y2="${y(line).toFixed(1)}"/>`;
+  if (r.mu != null && r.min > 0) g += `<line class="pline" x1="${X0}" x2="${X1}" y1="${y(r.mu).toFixed(1)}" y2="${y(r.mu).toFixed(1)}"/>`;
+  if (r.min > 0){ const my = MT + MH - r.min / 48 * MH; g += `<line class="pline" x1="${X0}" x2="${X1}" y1="${my.toFixed(1)}" y2="${my.toFixed(1)}"/>`; }
+  g += `<text x="${X0 - 8}" y="${MT + MH - 4}" text-anchor="end">MIN</text>`;
+  const rate = avgMin > 0 ? avg / avgMin : 0;
+  return `<div class="wrow">${cells}</div>
+    <div class="glhead"><span><b>${esc(W.label)}</b> · ${over} of ${n} over ${line} · averaged ${fmt(avg)} in ${fmt(avgMin)} min</span>
+      ${r.min > 0 ? `<span class="muted">That rate × ${fmt(r.min)} projected min = <b class="num">${fmt(rate * r.min)}</b> · projection ${fmt(r.mu)}</span>` : ''}</div>
+    <div class="chartwrap"><svg class="chart glc" viewBox="0 0 ${VW} ${H}" role="img" aria-label="${esc(r.name)} ${SLABEL[s]} game log against the line">${g}</svg></div>
+    <div class="tlegend"><span><i class="o"></i>Over ${line}</span><span><i class="u"></i>Under</span><span><i class="ln"></i>Line</span><span><i class="pj"></i>Projection and projected minutes</span><span><i class="mn"></i>Minutes played</span></div>`;
+}
+function niceTicks(max){
+  const raw = max / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), st = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw);
+  const out = []; for (let v = 0; v <= max; v += st) out.push(+v.toFixed(2)); return out;
+}
+
 function detailRow(r){
   const near = r.kal.length ? r.kal.reduce((a, k) => Math.abs(k.line - (r.mu ?? 0)) < Math.abs(a.line - (r.mu ?? 0)) ? k : a) : null;
   const cents = x => x == null ? '' : Math.round(x * 100) + '¢';
   const ed = x => x == null ? '' : `<span class="${x > 0 ? 'pos' : 'neg'}">${ec(x)}</span>`;
-  const kal = r.kal.length ? `<table><thead><tr><th class="l">Rung</th><th>Bid</th><th>Ask</th><th>Model</th><th>Fair</th><th>YES edge</th><th>NO edge</th></tr></thead><tbody>${r.kal.map(k =>
-    `<tr class="${k === near ? 'near' : ''}"><td class="l">${k.line + .5}+</td><td>${cents(k.bid)}</td><td>${cents(k.ask)}${k.om != null && k.mid != null && Math.abs(k.mid - k.om) >= .005 ? `<span class="mv">${k.mid > k.om ? '+' : ''}${Math.round((k.mid - k.om) * 100)} today</span>` : ''}</td><td>${pc(k.pm)}</td><td>${pc(k.fair)}</td><td>${ed(k.ey)}</td><td>${ed(k.en)}</td></tr>`).join('')}</tbody></table>`
+  const wg = windowGames(r, pwin).gl;
+  const kal = r.kal.length ? `<table><thead><tr><th class="l">Rung</th><th>Bid</th><th>Ask</th><th title="Mid price change since the first poll today">Today</th><th title="Share of games in the selected window that reached the rung">${WLABEL[pwin]}</th><th>Model</th><th>Fair</th><th>YES edge</th><th>NO edge</th></tr></thead><tbody>${r.kal.map(k => {
+    const h = hitRate(wg, r.e.s, k.line), mv = k.om != null && k.mid != null ? Math.round((k.mid - k.om) * 100) : null;
+    return `<tr class="${k === near ? 'near' : ''}"><td class="l">${k.line + .5}+</td><td>${cents(k.bid)}</td><td>${cents(k.ask)}</td><td>${mv ? `${mv > 0 ? '+' : ''}${mv}` : '<span class="muted">0</span>'}</td><td>${h.n ? pc(h.pct) : ''}</td><td>${pc(k.pm)}</td><td>${pc(k.fair)}</td><td>${ed(k.ey)}</td><td>${ed(k.en)}</td></tr>`;
+  }).join('')}</tbody></table>`
     : '<p class="empty">Not listed on Kalshi.</p>';
-  const books = r.books.length ? `<table><thead><tr><th class="l">Book</th><th>Line</th><th>Over</th><th>Under</th><th>Market</th><th>Fair</th><th>Over edge</th><th>Under edge</th></tr></thead><tbody>${r.books.map(b => {
-    const po = amP(b.o), pu = amP(b.u), moved = b.l0 != null && b.l0 !== b.line;
-    return `<tr><td class="l">${esc(b.bk)}</td><td>${b.line}${moved ? `<span class="mv">from ${b.l0}</span>` : ''}</td><td>${b.o}</td><td>${b.u}</td><td>${pc(b.mkt)}</td><td>${pc(b.fair)}</td><td>${b.fair != null ? ed(b.fair - po) : ''}</td><td>${b.fair != null ? ed((1 - b.fair) - pu) : ''}</td></tr>`;
+  const books = r.books.length ? `<table><thead><tr><th class="l">Book</th><th>Open</th><th>Line</th><th>Over</th><th>Under</th><th>Market</th><th>Fair</th><th>Over edge</th><th>Under edge</th></tr></thead><tbody>${r.books.map(b => {
+    const po = amP(b.o), pu = amP(b.u);
+    return `<tr><td class="l">${esc(b.bk)}</td><td>${b.l0 ?? ''}</td><td>${b.line}</td><td>${b.o}</td><td>${b.u}</td><td>${pc(b.mkt)}</td><td>${pc(b.fair)}</td><td>${b.fair != null ? ed(b.fair - po) : ''}</td><td>${b.fair != null ? ed((1 - b.fair) - pu) : ''}</td></tr>`;
   }).join('')}</tbody></table>` : '<p class="empty">No sportsbook line.</p>';
   const team = PIDX[r.e.p]?.t;
-  return `<tr class="detail"><td colspan="10"><div class="dgrid">
+  return `<tr class="detail"><td colspan="14">
+    <div class="dpanel glpanel"><h4>Game log<small>${SLABEL[r.e.s]} against the ${r.lineFrom || ''} line of ${r.line ?? 'none'} · pick a window</small></h4>${logChart(r)}</div>
+    <div class="dgrid">
     <div class="dpanel"><h4>Kalshi ladder<small>YES pays if he reaches the rung; edge after fees</small></h4>${kal}</div>
     <div class="dpanel"><h4>Sportsbooks<small>market = vig removed</small></h4>${books}
       ${team ? `<p class="empty" style="margin-top:10px">Projection uses ${fmt(r.min ?? 0)} minutes. <button class="linkbtn" type="button" data-lab="${team}">Change minutes in the Minutes Lab</button></p>` : ''}</div>
@@ -1221,6 +1338,8 @@ $('pgated').addEventListener('change', e => { pf.gated = e.target.checked; rende
 $('pmore').addEventListener('click', e => { if (e.target.id === 'pmorebtn'){ pf.limit = 1e9; renderProps(); } });
 const toggleRow = tr => { const k = tr.dataset.k; pf.open.has(k) ? pf.open.delete(k) : pf.open.add(k); renderProps(); };
 $('prows').addEventListener('click', e => {
+  const wc = e.target.closest('[data-w]');
+  if (wc){ pwin = wc.dataset.w; renderProps(); return; }
   const lab = e.target.closest('[data-lab]');
   if (lab){ history.replaceState(null, '', '#' + lab.dataset.lab.toLowerCase()); goTeam(lab.dataset.lab); return; }
   const tr = e.target.closest('tr.prow'); if (tr) toggleRow(tr);
