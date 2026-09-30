@@ -5,10 +5,12 @@ Season-start player projections for the team minutes page (nba/projections.html)
 Per rostered player (from data/depth_charts.json):
   rates    per-minute pts/reb/ast/3pm/stl/blk/tov/fga, recency-weighted over the last
            three seasons and shrunk to the position prior (same scheme as the prop model)
-  minutes  season-start minutes WHEN HE PLAYS, from MEASURED transitions, not guesses:
+  minutes  minutes WHEN HE PLAYS. Before he has played this season, from MEASURED transitions:
              returning player  early = a + b * last_mpg      (fit on 2024->25 and 2025->26)
              changed teams     early = a + b * last_mpg      (separate fit: new role)
              rookie            early = mean by draft-pick bucket (2023-24..2025-26 rookies)
+           Once he has played this season, blended toward his current-season minutes (EWMA), weight
+           n / (n + IN_SEASON_K) after n games, so the daily refresh follows the rotation as it settles.
            top 13 active, the rest start at 0. Players listed OUT on the roster start at 0.
   spread   variance fits from data/prop_model.json, for a 10th-90th percentile range
 
@@ -35,6 +37,7 @@ EARLY_GAMES = 15            # "season start" = a player's first 15 games of the 
 ACTIVE = 13                 # NBA active list
 TEAM_MIN = 240.0            # replaced by prop_model.json team_min (measured)
 PICK_BUCKETS = [(1, 3), (4, 10), (11, 20), (21, 30), (31, 45), (46, 60)]
+IN_SEASON_K, IN_SEASON_ALPHA = 4, 0.25       # alpha = the minutes model's EWMA speed
 
 
 def sv(r, cols):
@@ -83,6 +86,25 @@ def season_mpg(season):
     return out
 
 
+def current_minutes(season):
+    """athlete_id -> (games played this season, EWMA minutes, team), regular season + playoffs, oldest first."""
+    path = os.path.join(C.RAW, 'hoopr', f'player_box_{season}.csv')
+    if not os.path.exists(path):
+        return {}
+    gs = defaultdict(list)
+    for r in csv.DictReader(open(path)):
+        if r['athlete_id'] and r['did_not_play'] != 'true' and r['season_type'] in ('2', '3') and C.num(r['minutes']) > 0:
+            gs[int(r['athlete_id'])].append((r['game_date'], C.num(r['minutes']), r['team_abbreviation']))
+    out = {}
+    for a, g in gs.items():
+        g.sort()
+        m = g[0][1]
+        for _, x, _ in g[1:]:
+            m += IN_SEASON_ALPHA * (x - m)
+        out[a] = (len(g), m, g[-1][2])
+    return out
+
+
 def draft(year):
     url = f'https://github.com/sportsdataverse/sportsdataverse-data/releases/download/espn_nba_draft/draft_{year}.csv'
     body = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'vault-nba'}), timeout=60).read().decode()
@@ -123,7 +145,11 @@ def fit_minutes():
 
 def main():
     depth = json.load(open(os.path.join(DATA, 'depth_charts.json')))
-    rt, pos_prior = rates([2024, 2025, 2026])
+    cur = int(depth['season'])                                 # 2027 = the 2026-27 season
+    have = [s for s in range(cur - 3, cur + 1) if os.path.exists(os.path.join(C.RAW, 'hoopr', f'player_box_{s}.csv'))]
+    rt, pos_prior = rates(have[-3:])                           # last three seasons that exist, this one once it starts
+    now_min = current_minutes(cur)
+    print(f'rates from {have[-3:]}; {len(now_min)} players with minutes this season', flush=True)
     fit = fit_minutes()
     print('season-start minutes fit', json.dumps(fit), flush=True)
     prop = json.load(open(os.path.join(DATA, 'prop_model.json')))
@@ -135,6 +161,11 @@ def main():
     def default_minutes(p):
         if p['injury'] and 'Out' in p['injury']:
             return 0.0
+        start = season_start_minutes(p)
+        n, m, _ = now_min.get(p['id'], (0, 0.0, None))
+        return start if not n else (n * m + IN_SEASON_K * start) / (n + IN_SEASON_K)
+
+    def season_start_minutes(p):
         if p['draft'] and (p['rookie'] or not p['last_gp']):
             for lo, hi in PICK_BUCKETS:
                 if lo <= p['draft']['pick'] <= hi:

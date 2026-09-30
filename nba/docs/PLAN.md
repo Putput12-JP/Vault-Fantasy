@@ -2,6 +2,10 @@
 
 Status: WEEK 3 DONE (2026-09-30). Week 3 result: [prop-model.md](prop-model.md). Only Kalshi 3-pointers passes
 (blend, mostly NO side); Kalshi player props carry a structural overs bias; sportsbook props show no reliable edge.
+Prop model v2 (2026-09-30, [prop-model-v2.md](prop-model-v2.md)): opponent defense by position, market game total,
+shooting volume x regressed %, season form, home, back-to-back and player-specific minutes swing, weighted by a ridge
+stacker fit on 2024-25. On 2025-26: RMSE better on every stat, Kalshi log loss better on all four (3PM now equals the
+market's), Kalshi points NO joins 3PM NO as GO. The page prices with v2; daily refresh job keeps its state current.
 Week 4 = live snapshots (RUNNING from 2026-09-30: `scripts/snapshot.py` on GitHub Actions, data on the `nba-data`
 branch) + injury re-pricer + shadow the GO/WATCH signals; strategy in [differentiation.md](differentiation.md).
 Minutes Lab page: `nba/projections.html` (built by `build_player_projections.py`).

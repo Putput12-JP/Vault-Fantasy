@@ -18,14 +18,24 @@ def load(name):
 
 
 def pricing():
-    """What the page needs to price a prop the way build_prop_model.py backtested it: variance fits, calibration
-    knots, and the market/model blend fit on held-out data, per venue (Kalshi) and for sportsbooks (ESPN close)."""
+    """What the page needs to price a prop the way the backtest did. Prop model v2 when it has been built
+    (build_prop_model_v2.py): stacker weights, variance with the minutes term, calibration, and blend weights fit
+    on all the priced history (Kalshi 2025-26, ESPN 2024-25 open + 2025-26 close). Else v1's held-out blend."""
+    coef = lambda c: c and {'a': round(c['a'], 4), 'wm': round(c['w_market'], 4), 'wp': round(c['w_model'], 4), 't': c.get('t')}
+    v2 = load('prop_model_v2.json')
+    if v2:
+        return {'model': 'v2', 'features': v2['features'],
+                'stacker': {s: v['beta'] for s, v in v2['stacker'].items()},
+                'variance': v2['variance']['v2'],
+                'calibration': {k: [[round(x, 4), round(y, 4)] for x, y in v] for k, v in v2['calibration']['v2'].items() if v},
+                'kalshi': {s: coef(c) for s, c in v2['blend_live']['kalshi'].items() if c},
+                'book': {s: coef(c) for s, c in v2['blend_live']['book'].items() if c},
+                'verdict': v2['verdict']['v2'], 'generated': v2['generated']}
     pm = load('prop_model.json')
     if not pm:
         return None
-    coef = lambda c: c and {'a': round(c['a'], 4), 'wm': round(c['w_market'], 4), 'wp': round(c['w_model'], 4), 't': c.get('t')}
     B = pm.get('blend_oos', {})
-    return {'variance': pm['variance'], 'calibration': {k: [[round(x, 4), round(y, 4)] for x, y in v] for k, v in pm['calibration'].items() if v},
+    return {'model': 'v1', 'variance': pm['variance'], 'calibration': {k: [[round(x, 4), round(y, 4)] for x, y in v] for k, v in pm['calibration'].items() if v},
             'kalshi': {s: coef(B[f'kalshi/{s}']['coef']) for s in ('pts', 'reb', 'ast', '3pm') if B.get(f'kalshi/{s}')},
             'book': {s: coef(B[f'espn25->26/{s}/close']['coef']) for s in ('pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra') if B.get(f'espn25->26/{s}/close')},
             'verdict': pm.get('verdict', {}), 'generated': pm.get('generated')}
@@ -37,7 +47,8 @@ def render():
                .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')))
                .replace('/*PRICING*/null', json.dumps(pricing(), separators=(',', ':')))
                .replace('/*BOARD*/null', json.dumps(load('prop_board.json'), separators=(',', ':')))
-               .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':'))))
+               .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':')))
+               .replace('/*STATE*/null', json.dumps(load('model_state.json'), separators=(',', ':'))))
     out = os.path.join(HERE, '..', 'projections.html')
     open(out, 'w').write(html)
     print(f'rendered {os.path.relpath(out)} ({os.path.getsize(out) // 1000} KB)')

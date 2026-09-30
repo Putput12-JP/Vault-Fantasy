@@ -30,9 +30,12 @@ POLL_DAYS = 3
 INPUTS = [
     ('depth_charts.json', 'Rosters and depth charts', 'fetch_depth_charts.py', 2),
     ('player_projections.json', 'Minutes Lab projections', 'build_player_projections.py', 2),
+    ('gamelogs.json', 'Game logs (hit rates)', 'build_gamelogs.py', 2),
+    ('model_state.json', 'Prop model v2 state (defense, pace, shooting)', 'build_model_state.py', 2),
+    ('prop_model_v2.json', 'Prop model v2 fit and backtest', 'build_prop_model_v2.py', 45),
     ('minutes_model.json', 'Minutes model', 'build_minutes_model.py', 21),
     ('usage_cascade.json', 'Usage cascade', 'build_usage_cascade.py', 21),
-    ('prop_model.json', 'Prop model and variance', 'build_prop_model.py', 21),
+    ('prop_model.json', 'Prop model v1 (baseline)', 'build_prop_model.py', 45),
     ('game_model.json', 'Game model ratings', 'build_game_model.py', 7),
 ]
 
@@ -84,8 +87,8 @@ def last_of(pattern, field):
 
 def archive():
     """Backfilled history. Local only, so these numbers are as of the last build on this Mac."""
-    if not os.path.isdir(RAW):
-        return None
+    if not all(os.path.isdir(os.path.join(RAW, d)) for d in ('espn_odds', 'kalshi', 'injuries')):
+        return None                                   # no local archive here (the daily job): main() keeps the last numbers
     box_last = None
     p = os.path.join(RAW, 'hoopr', 'player_box_2026.csv')
     if os.path.exists(p):
@@ -102,9 +105,13 @@ def archive():
 
 
 def main():
+    arc = archive()
+    prev = os.path.join(DATA, 'data_health.json')
+    if arc is None and os.path.exists(prev):
+        arc = json.load(open(prev)).get('archive')
     out = {'built': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'),
            'repo': 'Putput12-JP/Vault-Fantasy', 'branch': 'nba-data',
-           'recorder': recorder(), 'inputs': inputs(), 'archive': archive()}
+           'recorder': recorder(), 'inputs': inputs(), 'archive': arc}
     json.dump(out, open(os.path.join(DATA, 'data_health.json'), 'w'), separators=(',', ':'))
     r = out['recorder']
     print(f"recorder: {len(r['days'])} days, {len(r['polls'])} polls in the last {POLL_DAYS} days, "

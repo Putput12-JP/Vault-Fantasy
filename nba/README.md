@@ -16,11 +16,21 @@ python3 nba/scripts/backtest_game_vs_kalshi.py                  # game model vs 
 python3 nba/scripts/build_minutes_model.py                      # minutes model (~30 s)
 python3 nba/scripts/build_usage_cascade.py                      # per-minute cascade when teammates sit (~20 s)
 python3 nba/scripts/build_prop_model.py                         # week 3: prop model + backtest vs ESPN + Kalshi (~1 min)
+python3 nba/scripts/build_prop_model_v2.py                      # prop model v2 (opponent, market total, shooting, form, minutes swing) vs v1 (~40 s)
+python3 nba/scripts/build_model_state.py                        # v2's current state for the page (daily)
 python3 nba/scripts/fetch_depth_charts.py                       # CURRENT depth charts -> data/depth_charts.json (~15 s, run daily)
 python3 nba/scripts/build_data_health.py                        # Data Health snapshot (reads origin/nba-data) + re-render the app page
 python3 nba/scripts/prop_board.py                               # Player Props snapshot (origin/nba-live) + example board + re-render
 python3 nba/scripts/build_gamelogs.py                           # per-player game logs for hit rates + game-log chart (rerun after fetch_hoopr in season)
 ```
+
+## Daily refresh (GitHub Actions)
+
+`.github/workflows/nba-daily.yml`, 7:23 AM ET: fetch_hoopr (last three seasons + this one), fetch_depth_charts,
+build_player_projections, build_gamelogs, build_model_state, prop_board, build_data_health, then commits
+`nba/data/` and `nba/projections.html` to main. Refits (build_prop_model_v2.py) need the local price archive in
+`nba/raw/tables` and stay manual; the job keeps the archive-derived pieces (example board, archive counts) as they
+were.
 
 ## Live snapshots (week 4, from 2026-09-30)
 

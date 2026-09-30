@@ -155,8 +155,43 @@ def build(games, last, meta, first, proj, now):
 
     for e in props.values():
         e['kal'].sort()
-    return {'t': now, 'games': [{k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')} for g in games],
+    glines = game_lines(games, last, meta, gkey, nicks)
+    return {'t': now, 'games': [dict({k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}, **glines.get(str(g['id']), {}))
+                                for g in games],
             'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped)}
+
+
+def num(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def game_lines(games, last, meta, gkey, nicks):
+    """game id -> {total, spread (home, negative = home favoured), line_from}: the market's game environment,
+    which prop model v2 reads. DraftKings via ESPN first, Pinnacle's main line otherwise."""
+    out = {}
+    for k, v in (last.get('espn') or {}).items():
+        if k.endswith('|game') and num(v[5]) is not None and num(v[0]) is not None:
+            out.setdefault(k.split('|')[0], {'total': num(v[5]), 'spread': num(v[0]), 'line_from': (meta.get('espn', {}).get(k) or {}).get('book', 'ESPN')})
+    pin = defaultdict(dict)
+    for k, v in (last.get('pinnacle') or {}).items():
+        m = meta.get('pinnacle', {}).get(k)
+        if not m or m.get('parent') or m.get('period') != 0 or m.get('type') not in ('total', 'spread'):
+            continue
+        home = next((n for a, n in m.get('teams') or [] if a == 'home'), None)
+        g = gkey.get((dt.datetime.fromtimestamp(m['start'], ET).date().isoformat(), nicks.get(nick(home))))
+        if not g:
+            continue
+        if m['type'] == 'total' and str(m.get('side')).lower() == 'over':
+            pin[str(g['id'])]['total'] = num(v[0])
+        if m['type'] == 'spread' and str(m.get('side')).lower() == 'home':
+            pin[str(g['id'])]['spread'] = num(v[0])
+    for gid, d in pin.items():
+        if gid not in out and d.get('total') is not None and d.get('spread') is not None:
+            out[gid] = dict(d, line_from='Pinnacle')
+    return out
 
 
 def fmt_am(x):
@@ -189,6 +224,10 @@ def example(proj):
     home = TEAM.get(kal[0]['ticker'].split('-')[1][-3:], kal[0]['ticker'].split('-')[1][-3:])
     away = next(t for t in teams if t != home)
     g = {'id': gid, 'day': dt.datetime.fromtimestamp(tip, ET).date().isoformat(), 'tip': tip, 'away': away, 'home': home, 'season_type': 3}
+    for r in csv.DictReader(open(os.path.join(tab, 'game_lines.csv'))):
+        if r['game_id'] == gid and r['total_close'] and r['spread_close']:
+            g.update(total=float(r['total_close']), spread=float(r['spread_close']), line_from=r['book'])
+            break
     props, players = {}, {}
 
     def entry(pid, stat, r):
@@ -219,7 +258,11 @@ def main():
     subprocess.run(['git', '-C', root, 'fetch', '-q', 'origin', 'nba-live'], check=False)
     p = subprocess.run(['git', '-C', root, 'show', 'origin/nba-live:board.json'], capture_output=True, text=True)
     live = json.loads(p.stdout) if p.returncode == 0 and p.stdout.strip() else None
-    out = {'live': live, 'example': example(proj), 'repo': 'Putput12-JP/Vault-Fantasy', 'branch': 'nba-live'}
+    ex = example(proj)
+    prev = os.path.join(DATA, 'prop_board.json')
+    if ex is None and os.path.exists(prev):              # no local archive (e.g. the daily job): keep the last example
+        ex = json.load(open(prev)).get('example')
+    out = {'live': live, 'example': ex, 'repo': 'Putput12-JP/Vault-Fantasy', 'branch': 'nba-live'}
     json.dump(out, open(os.path.join(DATA, 'prop_board.json'), 'w'), separators=(',', ':'))
     for k in ('live', 'example'):
         b = out[k]

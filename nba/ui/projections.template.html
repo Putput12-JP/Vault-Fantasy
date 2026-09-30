@@ -243,6 +243,11 @@ table.pb .betname{font-weight:500;white-space:nowrap}
 .wcell .wv{font-family:var(--font-mono);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
 .wcell .wl{font-size:11px;color:var(--fg3);white-space:nowrap}
 .glpanel{margin:4px 8px 16px}
+.build{display:flex;flex-wrap:wrap;gap:8px}
+.bstep{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:96px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface)}
+.bstep .bl{font-size:11px;color:var(--fg3);white-space:nowrap}
+.bstep .bv{font-family:var(--font-mono);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.bstep.tot{border-color:var(--fg);background:var(--raised)}
 .glhead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;font-size:12.5px;color:var(--fg2);margin-bottom:6px}
 .glhead b{color:var(--fg);font-weight:600}
 .glc{min-width:600px}
@@ -466,6 +471,7 @@ const D = /*DATA*/null;
 const H0 = /*HEALTH*/null;
 const PR = /*PRICING*/null;     // prop model: variance, calibration, blend weights (build_prop_model.py)
 const PB = /*BOARD*/null;       // props board: {live, example} (prop_board.py)
+const MS = /*STATE*/null;       // prop model v2 state: team defense / pace / scoring, player shooting / minutes swing (build_model_state.py)
 const EAST = ['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NY','ORL','PHI','TOR','WSH'];
 const NB = D.rebalance.same / D.rebalance.other;  // same-position teammates absorb this many times more (minutes model)
 const Z = 1.2816;                                   // 10th / 90th percentile
@@ -1031,8 +1037,8 @@ function nbSf(k, mu, v){
   for (let i = 0; i <= k; i++){ cdf += p; p *= (i + r) / (i + 1) * (1 - q); }
   return Math.max(0, 1 - cdf);
 }
-function pOverRaw(stat, mu, line){
-  const [v0, v1, v2] = PR.variance[stat], v = Math.max(.25, v0 + v1*mu + v2*mu*mu);
+function pOverRaw(stat, mu, line, extra = 0){
+  const [v0, v1, v2, v3] = PR.variance[stat], v = Math.max(.25, v0 + v1*mu + v2*mu*mu + (v3 ? v3 * extra : 0));
   return COUNT.has(stat) ? nbSf(Math.floor(line), mu, v) : 1 - Phi((line - mu) / Math.sqrt(v));
 }
 function cal(stat, p){
@@ -1052,26 +1058,70 @@ const ec = x => (x >= 0 ? '+' : '') + (x * 100).toFixed(1);
 // Gate per venue x stat x side, from the week 3 verdicts (docs/prop-model.md). Only Kalshi 3PM NO passed.
 function gate(venue, stat, side){
   if (venue !== 'kalshi') return 'no-go';
-  const v = (PR.verdict[stat] || 'NO-GO').toLowerCase();
-  if (v === 'go') return side === 'NO' ? 'go' : 'watch';
-  return v;
+  const m = /^(GO|WATCH|NO-GO)(?: \((YES|NO)\))?/.exec(PR.verdict[stat] || 'NO-GO');
+  if (!m || m[1] === 'NO-GO') return 'no-go';
+  if (m[2] && m[2] !== side) return 'no-go';       // v2 gates name the side that passed
+  return m[1].toLowerCase();
 }
 const GATE_LABEL = {go: 'GO', watch: 'WATCH', 'no-go': 'NO-GO'};
 
-function muFor(pid, stat, cache){
-  const pl = PIDX[pid]; if (!pl) return null;
+// Prop model v2 in the page: the Minutes Lab projection (minutes x rate, usage cascade) is v1's base; the stacker
+// adds what the box score alone misses, each term in stat units, weights fit on 2024-25 (build_prop_model_v2.py).
+const PARTS = ['opp', 'pace', 'market', 'shooting', 'season', 'home', 'b2b'];
+const PART_LABEL = {base: 'Minutes × rate', opp: 'Opponent defense', pace: 'Pace', market: 'Game total', shooting: 'Shooting volume',
+                    season: 'Season form', home: 'Home / road', b2b: 'Back-to-back', bias: 'Calibration'};
+function v2Terms(pl, s, mu, min, g, state){
+  const zero = {opp: 0, pace: 0, market: 0, shooting: 0, season: 0, home: 0, b2b: 0, bias: 0};
+  if (!PR.stacker || !PR.stacker[s] || !state || !g || !(min > 0)) return zero;
+  const team = pl.t, opp = team === g.home ? g.away : team === g.away ? g.home : null;
+  const T = state.teams[team], O = opp && state.teams[opp], P = state.players[pl.p.id] || {};
+  const home = team === g.home ? 1 : 0;
+  const b2b = T && T.last && g.tip - T.last < 30 * 3600 ? 1 : 0;
+  const pace = T && O && state.lg_pace ? (T.pace + O.pace - state.lg_pace) / T.pace : 1;
+  let mkt = 1;
+  if (g.total != null && g.spread != null && T && T.pts) mkt = (g.total / 2 + (home ? -g.spread : g.spread) / 2) / T.pts;
+  const oppF = O && O.def[pl.p.grp] ? O.def[pl.p.grp][s] : 1;
+  const rate = pl.p.rate[s];
+  const struct = P.sr && (s === 'pts' || s === '3pm') ? min * (s === 'pts' ? P.sr[0] : P.sr[1]) - mu : 0;
+  const z = P.szn, season = z && z.season === state.season && z.M > 0 ? min * ((z.S[s] + 200 * rate) / (z.M + 200) - rate) : 0;
+  const f = [mu * (oppF - 1), mu * (pace - 1), mu * (mkt - 1), struct, season, mu * (home - .5), mu * b2b, mu, 1];
+  const b = PR.stacker[s], c = f.map((x, i) => x * b[i]);
+  return {opp: c[0], pace: c[1], market: c[2], shooting: c[3], season: c[4], home: c[5], b2b: c[6], bias: c[7] + c[8]};
+}
+function muFor(pid, stat, cache, g){
+  let pl = PIDX[pid]; if (!pl) return null;
   if (!cache[pl.t]) cache[pl.t] = {m: mins(pl.t), pr: project(pl.t, mins(pl.t))};
-  const {m, pr} = cache[pl.t], x = pr[pid];
-  const mu = COMBO[stat] ? COMBO[stat].reduce((a, s) => a + x[s], 0) : x[stat];
-  return {mu, min: m[pid], min0: pl.p.min0, team: pl.t};
+  const state = MS && (PS.mode === 'example' ? MS.example : MS.live);
+  let {m, pr} = cache[pl.t], x = pr[pid], min = m[pid];
+  const snap = PS.mode === 'example' && state && state.players[pid];
+  if (snap && snap.min && snap.rate){                 // the example is priced as of that morning, not with this season's minutes
+    min = snap.min;
+    x = Object.fromEntries(Object.keys(snap.rate).map(s => [s, min * snap.rate[s]]));
+    pl = {...pl, p: {...pl.p, rate: snap.rate}};
+  }
+  const parts = COMBO[stat] || [stat];
+  const build = {base: 0, opp: 0, pace: 0, market: 0, shooting: 0, season: 0, home: 0, b2b: 0, bias: 0};
+  let mu = 0;
+  for (const s of parts){
+    const t = v2Terms(pl, s, x[s], min, g, state);
+    const adj = Object.values(t).reduce((a, v) => a + v, 0);
+    const ms = Math.max(0, x[s] + adj);
+    build.base += x[s];
+    for (const k in t) build[k] += t[k];
+    mu += ms;
+  }
+  const sdm = state && state.players[pid] ? state.players[pid].sdm : 6;
+  const rate = parts.reduce((a, s) => a + pl.p.rate[s], 0);
+  return {mu, min, min0: pl.p.min0, team: pl.t, build, extra: (rate * sdm) ** 2, v2: !!(PR.stacker && state && g)};
 }
 
 function priceRow(e, cache){
   const P = PS.board.players[e.p] || [String(e.p), '', null];
-  const mm = muFor(e.p, e.s, cache);
-  const r = {e, name: P[0], team: P[1], inj: P[2], mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, cands: []};
+  const gm = (PS.board.games || []).find(x => String(x.id) === String(e.g));
+  const mm = muFor(e.p, e.s, cache, gm);
+  const r = {e, name: P[0], team: P[1], inj: P[2], mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, build: mm && mm.build, v2: mm && mm.v2, cands: []};
   const kc = PR.kalshi[e.s] || PR.book[e.s], bc = PR.book[e.s];
-  const model = line => mm && mm.min > 0 ? cal(e.s, pOverRaw(e.s, mm.mu, line)) : null;
+  const model = line => mm && mm.min > 0 ? cal(e.s, pOverRaw(e.s, mm.mu, line, mm.extra)) : null;
   // books: fair over at each book's line
   r.books = e.books.map(([bk, line, o, u, l0, o0]) => {
     const po = amP(o), pu = amP(u); if (po == null || pu == null || line == null) return null;
@@ -1142,7 +1192,7 @@ function renderProps(){
   const ex = B.games && B.games[0];
   if (pick.mode === 'example'){
     $('pbanner').hidden = false;
-    $('pbanner').innerHTML = `<b>Example board.</b><span>${liveN ? '' : `No player props are listed yet. Kalshi lists them the morning of a game${nextGame ? `; the next game is ${gname(nextGame)}, ${etFmt(nextGame.tip, {weekday: 'short', month: 'short', day: 'numeric'})} at ${clock(nextGame.tip)} ET` : ''}. `}This is ${ex ? `${gname(ex)} on ${etFmt(ex.tip, {month: 'long', day: 'numeric', year: 'numeric'})}, last season's final game,` : 'last season’s final game'} at its pre-tip prices, priced with this season's projections. Kalshi shows the last trade as both bid and ask.</span>${liveN ? '<button class="linkbtn" id="pex" type="button">Back to the live board</button>' : ''}`;
+    $('pbanner').innerHTML = `<b>Example board.</b><span>${liveN ? '' : `No player props are listed yet. Kalshi lists them the morning of a game${nextGame ? `; the next game is ${gname(nextGame)}, ${etFmt(nextGame.tip, {weekday: 'short', month: 'short', day: 'numeric'})} at ${clock(nextGame.tip)} ET` : ''}. `}This is ${ex ? `${gname(ex)} on ${etFmt(ex.tip, {month: 'long', day: 'numeric', year: 'numeric'})}, last season's final game,` : 'last season’s final game'} at its pre-tip prices, projected with only what was known that morning (each player's minutes, rates and the model's state before tip). Kalshi shows the last trade as both bid and ask.</span>${liveN ? '<button class="linkbtn" id="pex" type="button">Back to the live board</button>' : ''}`;
   } else if (pick.mode === 'empty'){
     $('pbanner').hidden = false;
     $('pbanner').innerHTML = `<b>No player props listed yet.</b><span>Kalshi lists them the morning of a game.</span>`;
@@ -1179,7 +1229,7 @@ function renderProps(){
   const betTxt = c => c.venue === 'kalshi' ? `${c.side} ${c.line + .5}+` : `${c.side} ${c.line}`;
   $('pkpis').innerHTML =
     kpi('On the board', ICON.pts, `${rows.length.toLocaleString()}`, `player props · ${nPlayers} players · ${games.length} ${games.length === 1 ? 'game' : 'games'}`) +
-    kpi('Passing their gate', ICON.star, `${passing.length}`, passing.length ? `Kalshi 3PM NO with ${pc(EDGE_MIN)}+ edge after fees` : `None at ${pc(EDGE_MIN)}+ edge; only Kalshi 3PM NO has passed`) +
+    kpi('Passing their gate', ICON.star, `${passing.length}`, passing.length ? `GO signals with ${pc(EDGE_MIN)}+ edge after fees` : `None at ${pc(EDGE_MIN)}+ edge; GO: ${Object.entries(PR.verdict).filter(([, v]) => /^GO/.test(v)).map(([k, v]) => `Kalshi ${SLABEL[k]} ${v.replace(/^GO \(|\)$/g, '')}`).join(', ') || 'none'}`) +
     kpi('Best gated edge', ICON.edit, top && top.best.edge > 0 ? `<span class="pos">${ec(top.best.edge)}</span>` : 'None', top && top.best.edge > 0 ? `${esc(last(top.name))} ${SLABEL[top.e.s]} ${betTxt(top.best)} · ${GATE_LABEL[top.best.g]}` : 'No GO or WATCH bet clears zero') +
     kpi('Kalshi overs check', ICON.clock, bias == null ? 'No ladder' : `${bias >= 0 ? '+' : ''}${(bias * 100).toFixed(1)} pts`, bias == null ? 'Nothing listed on Kalshi yet' : `YES price above fair on ${Math.round(over / rungs.length * 100)}% of ${rungs.length} rungs`);
 
@@ -1191,7 +1241,7 @@ function renderProps(){
   $('prows').innerHTML = P.length ? P.map(r => {
     const key = `${r.e.p}|${r.e.s}`, open = pf.open.has(key), g = games.find(x => String(x.id) === String(r.e.g));
     const rg = r.mu != null && r.min > 0 ? range2(r.e.s, r.mu) : null;
-    const edited = r.min != null && Math.abs(r.min - r.min0) > .05;
+    const edited = PS.mode !== 'example' && r.min != null && Math.abs(r.min - r.min0) > .05;
     const flags = [r.inj ? `<span class="${/out/i.test(r.inj) ? 'neg' : 'warnt'}">${esc(r.inj)}</span>` : '', edited ? '<span class="warnt" title="You changed his minutes in the Minutes Lab">minutes edited</span>' : ''].filter(Boolean).join(' · ');
     const hr = r.line != null ? hitRate(windowGames(r, pwin).gl, r.e.s, r.line) : null;
     const b = r.best;
@@ -1215,10 +1265,12 @@ function renderProps(){
   $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props. Click a row for the Kalshi ladder and each book.`;
 
   const vs = PR.verdict;
+  const gos = Object.entries(PR.verdict).filter(([, v]) => /^GO/.test(v)).map(([k, v]) => `Kalshi ${SLABEL[k]} ${v.replace(/^GO \(|\)$/g, '')}`);
+  const watch = Object.entries(PR.verdict).filter(([, v]) => /^WATCH/.test(v)).map(([k, v]) => `${SLABEL[k]} ${v.replace(/^WATCH \(|\)$/g, '')}`);
   $('pfoot').innerHTML = `
-    <div><b>Projection</b> is minutes × per-minute rates from the Minutes Lab, so a minutes change there reprices this board. <b>Model</b> is the chance of going over from the fitted spread, calibrated on 2024-25. <b>Fair</b> blends the market price with the model, using weights fit on held-out games: the market does most of the work (Kalshi 3PM: ${PR.kalshi['3pm'] ? `${PR.kalshi['3pm'].wm.toFixed(2)} market, ${PR.kalshi['3pm'].wp.toFixed(2)} model` : 'n/a'}).</div>
-    <div><b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig. <b>Gates</b> come from the week 3 backtest: Kalshi 3PM NO is the only GO; Kalshi points and rebounds are WATCH; sportsbook props showed no edge. Nothing is bet for real until a signal passes on this season's games.</div>
-    <div>The projections are season-start minutes. Injury-report statuses show as badges but do not move minutes yet; mark a player OUT in the Minutes Lab to reprice his teammates.</div>`;
+    <div><b>Projection</b> is prop model ${PR.model}: the Minutes Lab's minutes × per-minute rate, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread.</div>
+    <div><b>Model</b> is the chance of going over, calibrated on 2024-25 lines. <b>Fair</b> blends the market price with the model; the market carries most of the weight. <b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig.</div>
+    <div><b>Gates</b> (2025-26 backtest, blend vs the price-only baseline): GO ${gos.join(', ') || 'none'}; WATCH ${watch.join(', ') || 'none'}; sportsbook props NO-GO. Nothing is bet for real until a signal passes on this season's games. Injury-report statuses show in the player line but do not move minutes yet; mark a player OUT in the Minutes Lab to reprice his teammates.</div>`;
 }
 function range2(stat, mu){ const v = PR.variance[stat]; if (!v || mu <= 0) return null; const sd = Math.sqrt(Math.max(.25, v[0] + v[1]*mu + v[2]*mu*mu)); return [Math.max(0, mu - Z*sd), mu + Z*sd]; }
 
@@ -1320,12 +1372,19 @@ function detailRow(r){
     return `<tr><td class="l">${esc(b.bk)}</td><td>${b.l0 ?? ''}</td><td>${b.line}</td><td>${b.o}</td><td>${b.u}</td><td>${pc(b.mkt)}</td><td>${pc(b.fair)}</td><td>${b.fair != null ? ed(b.fair - po) : ''}</td><td>${b.fair != null ? ed((1 - b.fair) - pu) : ''}</td></tr>`;
   }).join('')}</tbody></table>` : '<p class="empty">No sportsbook line.</p>';
   const team = PIDX[r.e.p]?.t;
-  return `<tr class="detail"><td colspan="14">
+  const B = r.build, g0 = (PS.board.games || []).find(x => String(x.id) === String(r.e.g));
+  const build = B && r.min > 0 ? `<div class="dpanel glpanel"><h4>How the projection is built<small>${r.v2 ? `prop model v2, ${g0 && g0.total != null ? `game total ${g0.total} (${esc(g0.line_from || '')})` : 'no game line yet'}` : 'minutes × rate only'}</small></h4>
+      <div class="build">${['base', ...PARTS, 'bias'].map(k => {
+        const v = B[k]; if (k !== 'base' && Math.abs(v) < .005) return '';
+        return `<div class="bstep${k === 'base' ? ' base' : ''}"><span class="bl">${PART_LABEL[k]}</span><span class="bv ${k === 'base' ? '' : v > 0 ? 'pos' : 'neg'}">${k === 'base' ? fmt(v, 2) : (v > 0 ? '+' : '') + fmt(v, 2)}</span></div>`;
+      }).join('')}<div class="bstep tot"><span class="bl">Projection</span><span class="bv">${fmt(r.mu, 2)}</span></div></div></div>` : '';
+  return `<tr class="detail"><td colspan="14">${build}
     <div class="dpanel glpanel"><h4>Game log<small>${SLABEL[r.e.s]} against the ${r.lineFrom || ''} line of ${r.line ?? 'none'} · pick a window</small></h4>${logChart(r)}</div>
     <div class="dgrid">
     <div class="dpanel"><h4>Kalshi ladder<small>YES pays if he reaches the rung; edge after fees</small></h4>${kal}</div>
     <div class="dpanel"><h4>Sportsbooks<small>market = vig removed</small></h4>${books}
-      ${team ? `<p class="empty" style="margin-top:10px">Projection uses ${fmt(r.min ?? 0)} minutes. <button class="linkbtn" type="button" data-lab="${team}">Change minutes in the Minutes Lab</button></p>` : ''}</div>
+      ${PS.mode === 'example' ? `<p class="empty" style="margin-top:10px">Example: ${fmt(r.min ?? 0)} minutes, his average going into that game.</p>`
+        : team ? `<p class="empty" style="margin-top:10px">Projection uses ${fmt(r.min ?? 0)} minutes. <button class="linkbtn" type="button" data-lab="${team}">Change minutes in the Minutes Lab</button></p>` : ''}</div>
   </div></td></tr>`;
 }
 
