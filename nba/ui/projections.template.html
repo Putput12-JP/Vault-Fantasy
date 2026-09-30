@@ -786,7 +786,7 @@ function propMins(team){
   const m = mins(team);
   if (PS.mode === 'example' || edits[team] && Object.keys(edits[team]).length) return m;
   const T = D.teams[team], P = (PS.board && PS.board.players) || {};
-  const outs = PS.board && PS.board.outs ? PS.board.outs.filter(([, t]) => t === team).map(([id]) => +id).sort((a, b) => a - b)   // everyone ruled out, props or not
+  const outs = PS.board && PS.board.outs ? PS.board.outs.filter(o => o[1] === team && (o.length < 3 || o[2] === 'Out' || o[2] === 'Inactive')).map(([id]) => +id).sort((a, b) => a - b)   // Out or inactive, props or not (Doubtful keeps his Lab minutes)
     : Object.keys(P).map(Number).filter(id => P[id][1] === team && ((P[id][2] && /^out/i.test(P[id][2])) || P[id][3] === 'X')).sort((a, b) => a - b);
   for (const id of outs){ const p = T.players.find(x => x.id === id); if (p && m[id] > 0) rebalance(T, m, p, 0, true); }
   return m;
@@ -1411,7 +1411,86 @@ function v2Terms(pl, s, mu, min, g, state){
   const b = PR.stacker[s], c = f.map((x, i) => x * b[i]);
   return {opp: c[0], pace: c[1], market: c[2], shooting: c[3], season: c[4], home: c[5], b2b: c[6], bias: c[7] + c[8]};
 }
-function muFor(pid, stat, cache, g){
+// Tonight's minutes and base projection, exactly as the backtest ran them (scripts/pricing.py game_minutes;
+// check_minutes_parity.py proves the Python matches the backtest): minutes model v2 on the model's own state
+// (EWMA minutes, start rate, position), vacated minutes of teammates out (Out and Doubtful on the injury report,
+// inactive on NBA.com), blowout risk from the spread, back-to-backs, the team rescaled to its minutes total, then
+// the model's per-minute rates x minutes plus the usage cascade. Teams you edit in the Minutes Lab use your minutes.
+function statusFromBoard(B){
+  const st = {};
+  for (const [pid, P] of Object.entries((B && B.players) || {})){
+    if (P[2]){ const w = String(P[2]).split(/\s/)[0]; st[+pid] = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }
+    if (P[3] === 'X') st[+pid] = 'Inactive';
+  }
+  for (const o of (B && B.outs) || []) st[+o[0]] = o[2] || 'Out';
+  return st;
+}
+function gameMinutes(team, g, cache){
+  const key = `gm|${team}|${g.id}`;
+  if (cache[key]) return cache[key];
+  const state = MS && (PS.mode === 'example' ? MS.example : MS.live), M = MS && MS.minutes;
+  if (!state || !M || !Object.values(state.players).some(v => v && v.ms)){ cache[key] = {}; return cache[key]; }
+  const P = state.players, S = a => P[String(a)] || {}, tip = g.tip;
+  if (!cache.__status) cache.__status = statusFromBoard(PS.board);
+  const out = {};
+  for (const [a, s] of Object.entries(cache.__status)) if (s === 'Out' || s === 'Doubtful' || s === 'Inactive') out[+a] = 1;
+  const rot = {};
+  for (const [a, v] of Object.entries(P)) if (v && v.ms && v.ms[3] === team && v.ms[0] >= M.rot_min && v.ms[4] >= tip - M.rot_days * 86400) rot[+a] = v.ms;
+  const roster = new Set((D.teams[team] ? D.teams[team].players : []).map(p => p.id));
+  for (const [a, v] of Object.entries(P)) if (v && v.ms && v.ms[3] === team && v.ms[4] >= tip - 30 * 86400) roster.add(+a);
+  const cand = [...roster].sort((a, b) => a - b).filter(a => S(a).ms && S(a).ms[3] === team && S(a).r && !out[a]);
+  const tl = (state.team_last || {})[team], b2b = tl && tip - tl < 30 * 3600 ? 1 : 0;
+  const blow = g.spread != null ? Math.max(0, Math.abs(g.spread) - 6) : 0;
+  let pm = {};
+  for (const a of cand){
+    const [m, stt, pos] = S(a).ms;
+    let vs = 0, vo = 0;
+    for (const [b, q] of Object.entries(rot)){ if (+b === a) continue; if (q[2] === pos) vs += q[0] * (out[+b] || 0); else vo += q[0] * (out[+b] || 0); }
+    const share = m / 48, starter = stt >= .5;
+    const x = [vs, vo, vs * share, vo * share, starter ? blow : 0, starter ? 0 : blow, b2b, b2b * share, 1];
+    pm[a] = Math.max(0, Math.min(48, m + M.beta.reduce((acc, b, i) => acc + b * x[i], 0)));
+  }
+  const tot = Object.values(pm).reduce((a, b) => a + b, 0);
+  if (tot > 0 && Object.keys(pm).length >= 7){ const f = M.team_min / tot; for (const a in pm) pm[a] = Math.min(48, pm[a] * f); }
+  const present = cand.map(a => S(a).r), res = {};
+  for (const a of cand){
+    const pos = S(a).ms[2], rates = S(a).r, mu = {};
+    for (const s of ['pts', 'reb', 'ast', '3pm']){
+      const rate = rates[s], c = M.cascade[s];
+      if (c && c.use){
+        let vs = 0, vo = 0;
+        for (const b of Object.keys(out).map(Number)){ if (!S(b).pg || b === a || !rot[b]) continue; if (rot[b][2] === pos) vs += S(b).pg[s]; else vo += S(b).pg[s]; }
+        const avg = present.length ? present.reduce((acc, q) => acc + q[s], 0) / present.length : 0, rel = avg > 0 ? rate / avg : 1, bb = c.beta;
+        mu[s] = Math.max(0, pm[a] * rate + pm[a] / 48 * (bb[0] * vs + bb[1] * vo + bb[2] * vs * rel + bb[3] * vo * rel));
+      } else mu[s] = Math.max(0, pm[a] * rate);
+    }
+    res[a] = {min: pm[a], rate: rates, pos, mu, base: S(a).ms[0]};
+  }
+  cache[key] = res;
+  return res;
+}
+function muFor(pid, stat, cache, g, bteam){
+  const state0 = MS && (PS.mode === 'example' ? MS.example : MS.live);
+  const team0 = bteam || (PIDX[pid] && PIDX[pid].t);
+  const edited = team0 && edits[team0] && Object.keys(edits[team0]).length;
+  if (g && team0 && !edited){
+    const G = gameMinutes(team0, g, cache)[pid];
+    if (G){
+      const pl = {t: team0, p: {id: pid, grp: G.pos, rate: G.rate, min0: G.base}};
+      const parts = COMBO[stat] || [stat];
+      const build = {base: 0, opp: 0, pace: 0, market: 0, shooting: 0, season: 0, home: 0, b2b: 0, bias: 0};
+      let mu = 0;
+      for (const s of parts){
+        const t = v2Terms(pl, s, G.mu[s], G.min, g, state0);
+        build.base += G.mu[s];
+        for (const k in t) build[k] += t[k];
+        mu += Math.max(0, G.mu[s] + Object.values(t).reduce((a, v) => a + v, 0));
+      }
+      const sdm = state0 && state0.players[pid] ? state0.players[pid].sdm : 6;
+      const rate = parts.reduce((a, s) => a + G.rate[s], 0);
+      return {mu, min: G.min, min0: G.base, team: team0, build, extra: (rate * sdm) ** 2, v2: !!(PR.stacker && state0), src: 'model'};
+    }
+  }
   let pl = PIDX[pid]; if (!pl) return null;
   if (!cache[pl.t]){ const m = propMins(pl.t); cache[pl.t] = {m, pr: project(pl.t, m)}; }
   const state = MS && (PS.mode === 'example' ? MS.example : MS.live);
@@ -1435,7 +1514,7 @@ function muFor(pid, stat, cache, g){
   }
   const sdm = state && state.players[pid] ? state.players[pid].sdm : 6;
   const rate = parts.reduce((a, s) => a + pl.p.rate[s], 0);
-  return {mu, min, min0: pl.p.min0, team: pl.t, build, extra: (rate * sdm) ** 2, v2: !!(PR.stacker && state && g)};
+  return {mu, min, min0: pl.p.min0, team: pl.t, build, extra: (rate * sdm) ** 2, v2: !!(PR.stacker && state && g), src: 'lab'};
 }
 
 // NBA.com lineups (prop_board.py): confirmed starter / expected starter / confirmed bench / expected bench / inactive
@@ -1449,8 +1528,8 @@ const LINEUP = {
 function priceRow(e, cache){
   const P = PS.board.players[e.p] || [String(e.p), '', null];
   const gm = (PS.board.games || []).find(x => String(x.id) === String(e.g));
-  const mm = muFor(e.p, e.s, cache, gm);
-  const r = {e, name: P[0], team: P[1], inj: P[2], lu: P[3], tm: mm && mm.team, extra: mm && mm.extra, mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, build: mm && mm.build, v2: mm && mm.v2, cands: []};
+  const mm = muFor(e.p, e.s, cache, gm, P[1]);
+  const r = {e, name: P[0], team: P[1], inj: P[2], lu: P[3], tm: mm && mm.team, extra: mm && mm.extra, src: mm && mm.src, mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, build: mm && mm.build, v2: mm && mm.v2, cands: []};
   const kc = PR.kalshi[e.s] || PR.book[e.s], bc = PR.book[e.s];
   const model = line => mm && mm.min > 0 ? cal(e.s, pOverRaw(e.s, mm.mu, line, mm.extra)) : null;
   // books: fair over at each book's line
@@ -1589,7 +1668,7 @@ function renderProps(){
   $('prows').innerHTML = P.length ? P.map(r => {
     const key = `${r.e.p}|${r.e.s}`, open = pf.open.has(key), g = games.find(x => String(x.id) === String(r.e.g));
     const rg = r.mu != null && r.min > 0 ? range2(r.e.s, r.mu) : null;
-    const moved = PS.mode !== 'example' && r.min != null && Math.abs(r.min - r.min0) > .05;
+    const moved = PS.mode !== 'example' && r.src === 'lab' && r.min != null && Math.abs(r.min - r.min0) > .05;
     const edited = moved && edits[r.tm] && Object.keys(edits[r.tm]).length;
     const flags = [LINEUP[r.lu] || '', r.inj ? `<span class="${/out/i.test(r.inj) ? 'neg' : 'warnt'}">${esc(r.inj)}</span>` : '',
       edited ? '<span class="warnt" title="You changed this team\'s minutes in the Minutes Lab">minutes edited</span>'
@@ -1619,7 +1698,7 @@ function renderProps(){
   const gos = Object.entries(PR.verdict).filter(([, v]) => /^GO/.test(v)).map(([k, v]) => `Kalshi ${SLABEL[k]} ${v.replace(/^GO \(|\)$/g, '')}`);
   const watch = Object.entries(PR.verdict).filter(([, v]) => /^WATCH/.test(v)).map(([k, v]) => `${SLABEL[k]} ${v.replace(/^WATCH \(|\)$/g, '')}`);
   $('pfoot').innerHTML = `
-    <div><b>Projection</b> is prop model ${PR.model}: the Minutes Lab's minutes × per-minute rate, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread.</div>
+    <div><b>Projection</b> is prop model ${PR.model}: tonight's minutes from the minutes model (recent minutes, teammates out, blowout risk from the spread, back-to-backs, the team total), exactly as the backtest ran it, × the model's per-minute rates, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread. A team you edit in the Minutes Lab uses your minutes instead, and a player with no games yet for his current team (a trade, a rookie) uses the Lab's estimate.</div>
     <div><b>Model</b> is the chance of going over, calibrated on 2024-25 lines. <b>Fair</b> blends the market price with the model; the market carries most of the weight. <b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig.</div>
     <div><b>Gates</b> (2025-26 backtest, blend vs the price-only baseline): GO ${gos.join(', ') || 'none'}; WATCH ${watch.join(', ') || 'none'}; sportsbook props NO-GO. Nothing is bet for real until a signal passes on this season's games. Players listed Out on the injury report or Inactive on NBA.com get 0 minutes and their teammates are repriced automatically, unless you have edited that team in the Minutes Lab. Questionable and Doubtful players keep their minutes.</div>`;
 }

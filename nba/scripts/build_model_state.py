@@ -18,19 +18,25 @@ sys.path.insert(0, os.path.dirname(__file__))
 import nba_common as C
 import build_minutes_model as MM
 import build_prop_model_v2 as V2
+import build_prop_model as V1
 from build_prop_model import BASE
 
 DATA = os.path.join(C.HERE, '..', 'data')
 WARM = 2          # seasons of history before the current one
+keep_roster = set()
 
 
-def export(ctx, rt, ms, keep, season, base=False):
+def export(ctx, rt, ms, keep, season, base=False, asof=None):
     teams = {}
     for t in set(ctx.pace) | set(ctx.pts):
         teams[t] = {'pace': round(ctx.pace.get(t, 0), 3), 'pts': round(ctx.pts.get(t, 0), 3),
                     'last': int(ctx.last[t].timestamp()) if t in ctx.last else None,
                     'def': {pos: {s: round(ctx.opp_factor(t, pos, s), 4) for s in BASE} for pos in ('G', 'F', 'C')}}
     players = {}
+    # the minutes model's rotation reaches back ROT_DAYS: players off the roster who played for a team recently count
+    if asof is not None:
+        recent = {a for a, p in ms.pl.items() if p['last'] >= asof - dt.timedelta(days=MM.ROT_DAYS + 3)}
+        keep = set(keep) | recent
     for aid in keep:
         sr = ctx.struct_rates(aid)
         z = ctx.szn.get(aid)
@@ -39,8 +45,16 @@ def export(ctx, rt, ms, keep, season, base=False):
                         'min': round(ms.pl[aid]['m'], 1) if base and aid in ms.pl else None,
                         'rate': {s: round(rt[aid]['rate'][s], 5) for s in BASE} if base and aid in rt else None,
                         'sr': [round(sr[0], 5), round(sr[1], 5)] if sr else None,
-                        'szn': {'season': z['season'], 'M': round(z['M'], 1), 'S': {s: round(z['S'][s], 1) for s in BASE}} if z and z['M'] else None}
-    return {'season': season, 'lg_pace': round(ctx.lg_pace or 0, 3), 'teams': teams, 'players': players}
+                        'szn': {'season': z['season'], 'M': round(z['M'], 1), 'S': {s: round(z['S'][s], 1) for s in BASE}} if z and z['M'] else None,
+                        # the backtest's own minutes and rate state (tonight's minutes are computed from these, as in
+                        # build_prop_model_v2.walk): [EWMA minutes, start rate, position group, team, last game, games]
+                        'ms': [ms.pl[aid]['m'], ms.pl[aid]['st'], ms.pl[aid]['pos'], ms.pl[aid]['team'], int(ms.pl[aid]['last'].timestamp()),
+                               ms.pl[aid]['n']] if aid in ms.pl else None,
+                        'r': dict(rt[aid]['rate']) if aid in rt else None, 'pg': dict(rt[aid]['pg']) if aid in rt else None}
+        if players[aid]['ms'] is None and aid not in keep_roster:
+            players.pop(aid)
+    return {'season': season, 'lg_pace': round(ctx.lg_pace or 0, 3), 'teams': teams, 'players': players,
+            'team_last': {t: int(v.timestamp()) for t, v in ms.team_last.items()}}
 
 
 def main():
@@ -48,6 +62,8 @@ def main():
     cur = int(proj['season'][:4]) + 1
     seasons = [s for s in range(cur - WARM, cur + 1) if os.path.exists(os.path.join(C.RAW, 'hoopr', f'player_box_{s}.csv'))]
     keep = {p['id'] for t in proj['teams'].values() for p in t['players']}
+    global keep_roster
+    keep_roster = keep
     ex_gid = None
     pb = os.path.join(DATA, 'prop_board.json')
     if os.path.exists(pb):
@@ -62,14 +78,20 @@ def main():
         if not rows:
             continue
         if g['game_id'] == ex_gid:
-            example = export(ctx, rt, ms, keep, g['season'], base=True)
+            example = export(ctx, rt, ms, keep, g['season'], base=True, asof=g['tip'])
             example['asof'] = g['tip_et'].strftime('%Y-%m-%d')
         V2.update_after(g, rows, rt, prior, ms, ctx)
         last_day, n = g['tip_et'].strftime('%Y-%m-%d'), n + 1
-    live = export(ctx, rt, ms, keep, cur)
+    live = export(ctx, rt, ms, keep, cur, asof=max(ms.team_last.values()) if ms.team_last else None)
     live['asof'] = last_day
+    mm = json.load(open(MM.OUT_JSON))
+    casc = json.load(open(os.path.join(DATA, 'usage_cascade.json')))['stats']
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'seasons': seasons,
-           'games': n, 'live': live, 'example': example}
+           'games': n, 'live': live, 'example': example,
+           # minutes model v2 as the backtest ran it: weights in MM.FEATURES order, team total, rotation rule, usage cascade
+           'minutes': {'features': MM.FEATURES, 'beta': [mm['beta'][f] for f in MM.FEATURES],
+                       'team_min': json.load(open(V1.OUT_JSON))['team_min'], 'rot_min': MM.ROT_MIN, 'rot_days': MM.ROT_DAYS,
+                       'cascade': {s: {'use': c['use'], 'beta': c['beta']} for s, c in casc.items() if s in BASE}}}
     path = os.path.join(DATA, 'model_state.json')
     json.dump(out, open(path, 'w'), separators=(',', ':'))
     print(f"walked {n:,} games {seasons}; state through {last_day}; example snapshot "

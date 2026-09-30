@@ -30,7 +30,9 @@ class Pricer:
         self.PR = PR or render_app.pricing()
         ms = MS or json.load(open(os.path.join(DATA, 'model_state.json')))
         self.state = ms.get('example' if example else 'live') if ms else None
+        self.MM = (ms or {}).get('minutes') if self.state and any((v or {}).get('ms') for v in self.state['players'].values()) else None
         self.example = example
+        self.cand_override = {}          # (team, game id) -> [player ids]: tests feed the backtest's own candidates
         self.NB = self.D['rebalance']['same'] / self.D['rebalance']['other']
         self.pidx = {p['id']: (t, p) for t, T in self.D['teams'].items() for p in T['players']}
 
@@ -106,10 +108,87 @@ class Pricer:
         c = [x * b for x, b in zip(f, self.PR['stacker'][s])]
         return {'opp': c[0], 'pace': c[1], 'market': c[2], 'shooting': c[3], 'season': c[4], 'home': c[5], 'b2b': c[6], 'bias': c[7] + c[8]}
 
-    def mu_for(self, pid, stat, g, cache, outs):
-        if pid not in self.pidx:
+    # ── tonight's minutes: minutes model v2 on the backtest's own state (build_prop_model_v2.walk) ─────────
+    def game_minutes(self, team, g, status, cache):
+        """{pid: {'min', 'rate', 'pos', 'mu'}} for the team's players who have minutes state with this team, exactly
+        as the backtest projected them: EWMA minutes + minutes model v2 (vacated minutes, blowout from the spread,
+        back-to-back), the candidates rescaled to team_min, then per-minute rate x minutes plus the usage cascade.
+        status: pid -> injury / lineup status; Out and Doubtful are out (as in the backtest), Inactive too."""
+        key = ('gm', team, str(g['id']))
+        if key in cache:
+            return cache[key]
+        M, P, tip = self.MM, self.state['players'], g['tip']
+        S = lambda a: P.get(str(a)) or {}
+        out = {a: 1.0 for a, stt in status.items() if stt in ('Out', 'Doubtful', 'Inactive')}
+        rot = {int(a): v['ms'] for a, v in P.items() if v.get('ms') and v['ms'][3] == team and v['ms'][0] >= M['rot_min']
+               and v['ms'][4] >= tip - M['rot_days'] * 86400}
+        roster = {x['id'] for x in self.D['teams'].get(team, {}).get('players', [])}
+        roster |= {int(a) for a, v in P.items() if v.get('ms') and v['ms'][3] == team and v['ms'][4] >= tip - 30 * 86400}
+        cand = self.cand_override.get((team, str(g['id'])))
+        cand = [a for a in (cand if cand is not None else sorted(roster))
+                if S(a).get('ms') and S(a)['ms'][3] == team and S(a).get('r') and a not in out]
+        tl = (self.state.get('team_last') or {}).get(team)
+        b2b = 1.0 if tl and tip - tl < 30 * 3600 else 0.0
+        sp = g.get('blow_spread', g.get('spread'))       # tests pass the backtest's game-model margin here
+        blow = max(0.0, abs(sp) - 6.0) if sp is not None else 0.0
+        pm = {}
+        for a in cand:
+            m, stt, pos = S(a)['ms'][:3]
+            vs = sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] == pos)
+            vo = sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] != pos)
+            share, starter = m / 48.0, stt >= 0.5
+            x = [vs, vo, vs * share, vo * share, blow if starter else 0.0, 0.0 if starter else blow, b2b, b2b * share, 1.0]
+            pm[a] = max(0.0, min(48.0, m + sum(b * v for b, v in zip(M['beta'], x))))
+        tot = sum(pm.values())
+        if tot > 0 and len(pm) >= 7:
+            f = M['team_min'] / tot
+            pm = {a: min(48.0, v * f) for a, v in pm.items()}
+        present = [S(a)['r'] for a in cand]
+        res = {}
+        for a in cand:
+            pos, rates, mu = S(a)['ms'][2], S(a)['r'], {}
+            for st_ in ('pts', 'reb', 'ast', '3pm'):
+                rate, c = rates[st_], M['cascade'].get(st_)
+                if c and c['use']:
+                    vs = sum(S(b)['pg'][st_] for b in out if S(b).get('pg') and b != a and b in rot and rot[b][2] == pos)
+                    vo = sum(S(b)['pg'][st_] for b in out if S(b).get('pg') and b != a and b in rot and rot[b][2] != pos)
+                    avg = sum(q[st_] for q in present) / len(present) if present else 0
+                    rel = rate / avg if avg > 0 else 1.0
+                    bb = c['beta']
+                    mu[st_] = max(0.0, pm[a] * rate + pm[a] / 48.0 * (bb[0] * vs + bb[1] * vo + bb[2] * vs * rel + bb[3] * vo * rel))
+                else:
+                    mu[st_] = max(0.0, pm[a] * rate)
+            res[a] = {'min': pm[a], 'rate': rates, 'pos': pos, 'mu': mu}
+        cache[key] = res
+        return res
+
+    def mu_for(self, pid, stat, g, cache, outs, team=None, status=None):
+        if pid not in self.pidx and not (self.MM and g and team):
             return None
-        team, p = self.pidx[pid]
+        rteam, p = self.pidx.get(pid, (team, None))
+        team = team or rteam
+        gm = self.game_minutes(team, g, status or {}, cache) if self.MM and g else {}
+        if pid in gm:                                 # the backtest's path: per-game minutes, the model's own rates
+            G = gm[pid]
+            mn, x = G['min'], G['mu']
+            p = dict(p or {'id': pid}, rate=G['rate'], grp=G['pos'])
+            src = 'model'
+        elif p is None:
+            return None
+        else:
+            return self.mu_lab(pid, stat, g, cache, outs, team, p)
+        mu = 0
+        for s in COMBO.get(stat, [stat]):
+            t = self.v2_terms(team, p, s, x[s], mn, g)
+            mu += max(0, x[s] + sum(t.values()))
+        P = self.state['players'].get(str(pid)) if self.state else None
+        sdm = P['sdm'] if P else 6
+        rate = sum(p['rate'][s] for s in COMBO.get(stat, [stat]))
+        return {'mu': mu, 'min': mn, 'team': team, 'extra': (rate * sdm) ** 2, 'src': src}
+
+    def mu_lab(self, pid, stat, g, cache, outs, team, p):
+        """Fallback for players with no minutes history on their current team (moved, rookies): Minutes Lab minutes
+        and rates, as before."""
         if team not in cache:
             m = self.mins(team, outs.get(team, ()))
             cache[team] = (m, self.project(team, m))
@@ -127,7 +206,7 @@ class Pricer:
         P = self.state['players'].get(str(pid)) if self.state else None
         sdm = P['sdm'] if P else 6
         rate = sum(p['rate'][s] for s in COMBO.get(stat, [stat]))
-        return {'mu': mu, 'min': mn, 'team': team, 'extra': (rate * sdm) ** 2}
+        return {'mu': mu, 'min': mn, 'team': team, 'extra': (rate * sdm) ** 2, 'src': 'lab'}
 
     # ── distribution, calibration, blend ─────────────────────────────────────────────────────
     def p_over_raw(self, stat, mu, line, extra=0):
@@ -158,8 +237,8 @@ class Pricer:
         return m.group(1).lower()
 
     # ── one prop, every venue (priceRow) ─────────────────────────────────────────────────────
-    def price(self, e, g, cache, outs):
-        mm = self.mu_for(e['p'], e['s'], g, cache, outs)
+    def price(self, e, g, cache, outs, team=None, status=None):
+        mm = self.mu_for(e['p'], e['s'], g, cache, outs, team, status)
         if not mm:
             return None
         s = e['s']
@@ -253,8 +332,9 @@ def outs_from_board(board):
     out tonight, props or not; older boards only carried the players with props."""
     if board.get('outs') is not None:
         out = {}
-        for pid, team in board['outs']:
-            out.setdefault(team, []).append(int(pid))
+        for o in board['outs']:
+            if len(o) < 3 or o[2] in ('Out', 'Inactive'):      # the Lab's rebalance: Out and inactive, not Doubtful
+                out.setdefault(o[1], []).append(int(o[0]))
         return {t: sorted(v) for t, v in out.items()}
     out = {}
     for pid, P in (board.get('players') or {}).items():
@@ -262,6 +342,21 @@ def outs_from_board(board):
         if (inj and re.match(r'out', inj, re.I)) or lu == 'X':
             out.setdefault(P[1], []).append(int(pid))
     return {t: sorted(v) for t, v in out.items()}      # the page rebalances in id order too
+
+
+def status_from_board(board):
+    """pid -> 'Out' / 'Doubtful' / 'Questionable' / 'Inactive' / ... for tonight's players (the minutes model counts
+    Out and Doubtful as out, as the backtest did, and inactive players too)."""
+    st = {}
+    for pid, P in (board.get('players') or {}).items():
+        inj, lu = P[2] if len(P) > 2 else None, P[3] if len(P) > 3 else None
+        if inj:
+            st[int(pid)] = inj.split()[0].capitalize()
+        if lu == 'X':
+            st[int(pid)] = 'Inactive'
+    for o in board.get('outs') or []:
+        st[int(o[0])] = o[2] if len(o) > 2 else 'Out'
+    return st
 
 
 def erf(x):
@@ -342,13 +437,15 @@ def price_board(board, pricer=None):
     pricer = pricer or Pricer(example=bool(board.get('example')))
     games = {str(g['id']): g for g in board.get('games', [])}
     outs, cache, rows = outs_from_board(board), {}, []
+    status = status_from_board(board)
     news = {}
     for n in board.get('news') or []:
         if n[0]:
             news.setdefault(n[3], []).append(n[0])
     for e in board.get('props', []):
         g = games.get(str(e['g']))
-        r = pricer.price(e, g, cache, outs)
+        P = (board.get('players') or {}).get(str(e['p'])) or (board.get('players') or {}).get(e['p'])
+        r = pricer.price(e, g, cache, outs, P[1] if P else None, status)
         if r:
             times = [(row[0], row[6]) for row in e.get('books', []) if len(row) > 6 and row[6]] + \
                     [('Kalshi', rung[6]) for rung in e.get('kal', []) if len(rung) > 6 and rung[6]] + \

@@ -12,6 +12,12 @@ together: more accurate on every stat, but Kalshi points NO slips to WATCH, so v
 ([prop-model-v3-full.md](prop-model-v3-full.md)); v3 is a shadow candidate. Confirmed starters feed (NBA.com daily
 lineups, [starters-feed.md](starters-feed.md)): 99.98% accurate, best model accuracy yet, but backtest prices already knew
 the lineups, so v2 stays; the recorder now logs lineup confirmations to test the timing edge live.
+Minutes Lab v2, step 1 (2026-09-30): live pricing now projects every player the way the backtest did. Tonight's
+minutes come from minutes model v2 on the model's own state (recent minutes, teammates out incl. Doubtful, blowout
+risk, back-to-backs, team total) and the model's own per-minute rates and usage cascade, instead of the Lab's
+season-start minutes and rates. `check_minutes_parity.py`: minutes and base projections identical to the backtest on
+845 player-games (differences 0 and 4e-15); the page matches pricing.py to 5e-10. Lab minutes are the fallback only
+for players with no games for their current team, and for teams you edit.
 Consensus fair engine ([consensus-engine.md](consensus-engine.md)): Kalshi rungs priced from the rest of their ladder
 plus the model pass GO on points NO and 3PM NO (beating the current blend on the same rungs); live pricing and the
 shadow ledger now carry a consensus edge for every venue.

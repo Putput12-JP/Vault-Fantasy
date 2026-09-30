@@ -13,7 +13,7 @@ Built two ways:
 
 Board shape (compact, it ships in the page):
   {t, games: [{id, day, tip, away, home, season_type}], players: {pid: [name, team, injury status, lineup]},
-   (players also carry [.., injury changed at, lineup changed at]; outs = [[pid, team]] everyone Out or inactive tonight;
+   (players also carry [.., injury changed at, lineup changed at]; outs = [[pid, team, status]] everyone Out, Doubtful or inactive tonight;
     news = [[t, pid, name, team, 'inj' | 'lu', status]] newest first; book / Kalshi / pick'em rows end with their last
     change time)
    lineup = NBA.com: 'S' confirmed starter, 's' expected starter, 'B' confirmed bench, 'b' expected bench, 'X' inactive,
@@ -255,14 +255,18 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
         players[pid] += [it, lt]
     # everyone ruled out tonight, with or without props (books pull an Out player's props, but his teammates still
     # need his minutes): [pid, team]. pricing.py and the page apply these before anything else.
-    outs = sorted({(pid, R.info[pid][1]) for pid, (st, _) in inj.items() if st and st.lower().startswith('out')} |
-                  {(pid, R.info[pid][1]) for pid, (c, _) in lu.items() if c == 'X'})
+    # [pid, team, status]: Out and Doubtful from the injury report (the minutes model counts both as out, as the
+    # backtest did), Inactive from NBA.com. The Lab's minutes rebalance uses Out and Inactive only.
+    outs = {pid: (R.info[pid][1], st.split()[0].capitalize()) for pid, (st, _) in inj.items()
+            if st and st.lower().startswith(('out', 'doubt'))}
+    outs.update({pid: (R.info[pid][1], 'Inactive') for pid, (c, _) in lu.items() if c == 'X'})
+    outs = sorted([pid, t, s_] for pid, (t, s_) in outs.items())
 
     for e in props.values():
         e['kal'].sort()
     glines = game_lines(games, last, meta, gkey, nicks)
     news = sorted((n for n in news if n[0] and (n[4] == 'lu' or (n[5] or '').lower().startswith(('out', 'doubt', 'quest')))), reverse=True)[:60]
-    return {'t': now, 'outs': [list(x) for x in outs], 'news': news,
+    return {'t': now, 'outs': outs, 'news': news,
             'games': [dict({k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}, **glines.get(str(g['id']), {}))
                                 for g in games],
             'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped)}
