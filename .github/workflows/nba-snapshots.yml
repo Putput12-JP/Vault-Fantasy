@@ -2,7 +2,8 @@
 #
 # Records every free venue's pre-tip price (Kalshi, ESPN/DraftKings, Pinnacle,
 # Action Network, Polymarket) plus the official injury report, change-only, to
-# the `nba-data` branch. Kept off main so the per-poll commits don't rebuild
+# the `nba-data` branch, and force-pushes the current props board (prop_board.py,
+# matched to our player ids) to `nba-live` for the Player Props page. Kept off main so the per-poll commits don't rebuild
 # Pages or collide with the other data bots.
 #
 # Hourly ticks poll once. On a game day a tick after 9am ET stays running and
@@ -39,7 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          sparse-checkout: nba/scripts
+          sparse-checkout: |
+            nba/scripts
+            nba/data
       - uses: actions/checkout@v5
         with:
           ref: nba-data

@@ -29,6 +29,7 @@ Game window: 9am ET until the last tip of the day. Every 5 min inside 3h of a ti
 Injury parsing needs pdfplumber (pip install pdfplumber); without it that source is skipped.
 """
 import datetime as dt, json, os, subprocess, sys, time, traceback
+from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -101,12 +102,13 @@ class Slate:
             for e in d.get('events', []):
                 comp = e['competitions'][0]
                 side = {c['homeAway']: c['team']['abbreviation'] for c in comp['competitors']}
+                names = {c['homeAway']: c['team'].get('displayName') for c in comp['competitors']}
                 for c in comp['competitors']:          # abbreviation -> nickname, the join key across venues
                     self.nick[c['team']['abbreviation']] = nick(c['team'].get('displayName'))
                 tip = iso(e['date'])
                 pre = e['status']['type']['state'] == 'pre' and now < tip <= self.ahead
                 g = {'id': e['id'], 'day': day.isoformat(), 'tip': tip, 'away': side.get('away'), 'home': side.get('home'),
-                     'pre': pre, 'season_type': e['season']['type']}
+                     'pre': pre, 'season_type': e['season']['type'], 'away_name': names.get('away'), 'home_name': names.get('home')}
                 self.games.append(g)
                 if not pre:
                     self.started.add((g['day'], g['away'], g['home']))
@@ -294,18 +296,22 @@ class Day:
         self.dir = os.path.join(root, 'snapshots', day)
         os.makedirs(self.dir, exist_ok=True)
         self.last, self.known = {}, set()
+        self.meta, self.first = defaultdict(dict), defaultdict(dict)   # what each key is; its first value today
         for f in os.listdir(self.dir):
             src = f[:-6]
             if f == 'meta.jsonl':
-                self.known = {(r['src'], r['k']) for r in map(json.loads, open(os.path.join(self.dir, f)))}
+                for r in map(json.loads, open(os.path.join(self.dir, f))):
+                    self.known.add((r['src'], r['k']))
+                    self.meta[r['src']][r['k']] = r
             elif f.endswith('.jsonl') and f != 'polls.jsonl':
-                last = self.last.setdefault(src, {})
+                last, first = self.last.setdefault(src, {}), self.first[src]
                 for line in open(os.path.join(self.dir, f)):
                     r = json.loads(line)
                     if r['v'] is None:
                         last.pop(r['k'], None)
                     else:
                         last[r['k']] = r['v']
+                        first.setdefault(r['k'], r['v'])
 
     def append(self, name, recs):
         if recs:
@@ -320,6 +326,9 @@ class Day:
         self.append(src + '.jsonl', out)
         self.append('meta.jsonl', [{'k': k, 'src': src, **m} for k, m in meta.items() if (src, k) not in self.known])
         self.known |= {(src, k) for k in meta}
+        self.meta[src].update(meta)
+        for k, v in rows.items():
+            self.first[src].setdefault(k, v)
         self.last[src] = dict(rows)
         return len(out)
 
@@ -353,6 +362,7 @@ def poll(root):
               f"{rec['s']}s {rec.get('err', '') or rec.get('report') or ''}", flush=True)
     day.append('polls.jsonl', polls)
     write_status(root, day, slate, polls, metas)
+    write_board(root, day, slate)
     games = ', '.join(f"{g['away']}@{g['home']}" for g in slate.games if g['pre'] and g['day'] == day.dir[-10:])
     print(f"{dt.datetime.fromtimestamp(now, ET):%Y-%m-%d %H:%M ET} polled. today pre-tip: {games or 'none'}", flush=True)
     return slate
@@ -424,7 +434,36 @@ def write_status(root, day, slate, polls, metas):
         json.dump(status, f, separators=(',', ':'))
 
 
+BOARD = os.path.join(os.environ.get('RUNNER_TEMP') or os.path.join(os.path.dirname(__file__), '..', 'raw'), 'nba_board.json')
+
+
+def write_board(root, day, slate):
+    """Props board for the page (prop_board.py). Kept off nba-data: it is derived, and changes every poll."""
+    try:
+        from prop_board import build
+        proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
+        board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now)
+        with open(BOARD, 'w') as f:
+            json.dump(board, f, separators=(',', ':'))
+        print(f"  board      {len(board['props'])} player-stat markets, unmapped {board['unmapped']}", flush=True)
+    except Exception:
+        traceback.print_exc(limit=2)
+
+
+def push_board(root):
+    """Force-push board.json as a single parentless commit to nba-live: always one file, no history."""
+    if not os.path.exists(BOARD):
+        return
+    git = ['git', '-C', root]
+    blob = subprocess.run(git + ['hash-object', '-w', BOARD], capture_output=True, text=True).stdout.strip()
+    tree = subprocess.run(git + ['mktree'], input=f'100644 blob {blob}\tboard.json\n', capture_output=True, text=True).stdout.strip()
+    c = subprocess.run(git + ['commit-tree', tree, '-m', 'nba live board'], capture_output=True, text=True).stdout.strip()
+    if c and subprocess.run(git + ['push', '-q', '--force', 'origin', f'{c}:refs/heads/nba-live']).returncode != 0:
+        print('board push failed', flush=True)
+
+
 def commit(root):
+    push_board(root)
     git = ['git', '-C', root]
     subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'], check=True)
     if subprocess.run(git + ['diff', '--cached', '--quiet']).returncode == 0:

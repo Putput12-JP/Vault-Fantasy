@@ -6,7 +6,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
 <style>
 /* Layout: dashboard. App sidebar (pages) | sticky header | one view per page: Minutes Lab (team slicer + search, KPIs, minutes chart,
-   rotation table, movers + change log) and Data Health (KPIs, sources table, 48h poll timeline, game coverage, inputs + archive).
+   rotation table, movers + change log), Player Props (KPIs, filter bar, board with expandable ladders) and Data Health (KPIs, sources
+   table, 48h poll timeline, game coverage, inputs + archive).
    Single dark look by design (Campaign Engine system): black ground, zinc surfaces, white as the action colour. */
 :root{
   --bg:#000000; --surface:#18181B; --surface2:#1f1f23; --raised:#27272A;
@@ -222,9 +223,52 @@ table.ht .src small{color:var(--fg3);font-size:12px}
 .irow small{grid-column:1/-1;color:var(--fg3);font-size:12px}
 .irow small code{font-family:var(--font-mono);font-size:11px;color:var(--fg2)}
 
+/* player props */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--bg);flex-wrap:wrap}
+.seg button{height:28px;padding:0 10px;border:0;border-radius:6px;background:none;cursor:pointer;font-size:12.5px;color:var(--fg2);font-weight:500}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary)}
+.sel{height:34px;padding:0 30px 0 10px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center/14px;appearance:none;font-size:13px;color:var(--fg)}
+.pfind{height:34px;width:180px;padding:0 10px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface);outline:none;font-size:13px}
+.pfind::placeholder{color:var(--fg3)}
+table.pb{min-width:980px}
+table.pb td,table.pb th{text-align:right}
+table.pb td.l,table.pb th.l{text-align:left}
+table.pb tbody tr.prow{cursor:pointer}
+table.pb tbody tr.prow:hover td{background:rgba(255,255,255,.025)}
+table.pb tr.open td{background:rgba(255,255,255,.02);border-bottom-color:transparent}
+.pwho b{font-weight:500;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pwho small{display:block;color:var(--fg3);font-size:12px}
+.stat{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--fg2)}
+.pct{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pct small{display:block;font-size:10.5px;color:var(--fg3)}
+.bet{display:inline-flex;flex-direction:column;align-items:flex-end;gap:3px}
+.bet b{font-weight:500;white-space:nowrap}
+.bet span{display:flex;gap:6px;align-items:center}
+.edge{font-family:var(--font-mono);font-size:12px;font-weight:600}
+.gate{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.06em;padding:1px 6px;border-radius:var(--r-pill);border:1px solid var(--border2);color:var(--fg3)}
+.gate.go{color:var(--up);border-color:rgba(74,222,128,.4)}
+.gate.watch{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.chev{width:16px;height:16px;color:var(--fg3);transition:transform .2s}
+tr.open .chev{transform:rotate(90deg)}
+tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
+.dgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:4px 8px 0}
+.dpanel{border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:12px 14px;min-width:0;overflow-x:auto;text-align:left}
+.dpanel h4{margin:0 0 8px;font-size:12.5px;font-weight:600}
+.dpanel h4 small{font-weight:400;color:var(--fg3);margin-left:6px}
+.dpanel table{min-width:0;font-size:12.5px}
+.dpanel th{padding:6px;font-size:10px}
+.dpanel td{padding:6px;font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dpanel tr.near td{background:rgba(255,255,255,.035)}
+.mv{color:var(--fg3);font-size:10.5px;margin-left:4px}
+.more{display:flex;justify-content:center;padding-top:14px}
+.linkbtn{border:0;background:none;padding:0;color:var(--fg2);text-decoration:underline;text-decoration-color:var(--fg3);text-underline-offset:3px;cursor:pointer;font-size:12px}
+.linkbtn:hover{color:var(--fg)}
+
 /* responsive */
 @media (max-width:1100px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
-@media (max-width:900px){ .two{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:900px){ .two,.dgrid{grid-template-columns:minmax(0,1fr)} .pfind{flex:1 1 140px;width:auto} }
 @media (max-width:820px){
   .app{grid-template-columns:minmax(0,1fr)}
   .sidebar{position:fixed;z-index:30;left:0;top:0;width:260px;transform:translateX(-100%);transition:transform .3s cubic-bezier(.22,1,.36,1);padding-top:calc(20px + env(safe-area-inset-top,0px))}
@@ -318,6 +362,33 @@ table.ht .src small{color:var(--fg3);font-size:12px}
     </main>
     <footer id="foot"></footer>
 
+    <main id="v-props" hidden>
+      <div class="banner" id="pbanner" hidden></div>
+      <div class="kpis" id="pkpis"></div>
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Props board</h2><p id="psub">Every listed prop next to our projection. Click a row for the Kalshi ladder and each book.</p></div>
+          <div class="filters">
+            <select class="sel" id="pgame" aria-label="Game"></select>
+            <div class="seg" id="pstat" role="group" aria-label="Stat"></div>
+            <select class="sel" id="psort" aria-label="Sort">
+              <option value="edge">Sort: best edge</option><option value="proj">Sort: projection</option><option value="game">Sort: game, player</option>
+            </select>
+            <input class="pfind" id="pq" type="search" placeholder="Filter players" autocomplete="off" aria-label="Filter players">
+            <label class="switch" for="pgated"><input type="checkbox" id="pgated" role="switch"> Passing gates only</label>
+          </div>
+        </div>
+        <div class="card-b">
+          <div class="tablewrap"><table class="pb">
+            <thead><tr><th class="l" scope="col">Player</th><th class="l" scope="col">Stat</th><th scope="col" title="Minutes the projection uses. Change them in the Minutes Lab.">Min</th><th scope="col">Projection</th><th scope="col" title="Main line: Pinnacle, then DraftKings, then the Kalshi rung nearest even">Line</th><th scope="col" title="Model chance of going over that line">Model</th><th scope="col" title="Market chance of over, vig removed">Market</th><th scope="col" title="Market and model blended with the weights fit on held-out games">Fair</th><th scope="col">Best bet</th><th scope="col" aria-label="Details"></th></tr></thead>
+            <tbody id="prows"></tbody>
+          </table></div>
+          <div class="more" id="pmore" hidden></div>
+        </div>
+      </section>
+    </main>
+    <footer id="pfoot" hidden></footer>
+
     <main id="v-health" hidden>
       <div class="banner" id="hbanner"></div>
       <div class="kpis" id="hkpis"></div>
@@ -370,6 +441,8 @@ table.ht .src small{color:var(--fg3);font-size:12px}
 <script>
 const D = /*DATA*/null;
 const H0 = /*HEALTH*/null;
+const PR = /*PRICING*/null;     // prop model: variance, calibration, blend weights (build_prop_model.py)
+const PB = /*BOARD*/null;       // props board: {live, example} (prop_board.py)
 const EAST = ['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NY','ORL','PHI','TOR','WSH'];
 const NB = D.rebalance.same / D.rebalance.other;  // same-position teammates absorb this many times more (minutes model)
 const Z = 1.2816;                                   // 10th / 90th percentile
@@ -382,7 +455,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : 'lab';
+let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -491,7 +564,7 @@ const PAGES = [
   ]],
   ['Markets', [
     ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.'],
-    ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'Every prop line and ladder next to the projection and the blended fair price.'],
+    ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'Every prop line and Kalshi ladder next to the projection, the blended fair price and the edge.', 'props'],
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.'],
   ]],
   ['Betting', [
@@ -621,7 +694,7 @@ function renderChart(T, m){
 }
 
 // events
-const goTeam = t => { cur = t; view = 'lab'; history.replaceState(null, '', '#' + t.toLowerCase()); openList(false); render(); $('slicebtn').focus(); };
+const goTeam = t => { cur = t; view = 'lab'; history.replaceState(null, '', '#' + t.toLowerCase()); openList(false); show('lab'); $('slicebtn').focus(); };
 $('slicebtn').addEventListener('click', () => openList($('teamlist').hidden));
 $('teamlist').addEventListener('click', e => { const t = e.target.closest('[role=option]')?.dataset.t; if (t) goTeam(t); });
 $('teamlist').addEventListener('keydown', e => {
@@ -642,12 +715,12 @@ $('teamlist').addEventListener('keydown', e => {
 $('pages').addEventListener('click', e => {
   const a = e.target.closest('a.nav'); if (!a) return;
   e.preventDefault(); $('app').classList.remove('open');
-  history.replaceState(null, '', a.dataset.view === 'lab' ? '#' + cur.toLowerCase() : '#health');
+  history.replaceState(null, '', a.dataset.view === 'lab' ? '#' + cur.toLowerCase() : '#' + a.dataset.view);
   show(a.dataset.view);
 });
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (h === 'HEALTH') show('health');
+  if (h === 'HEALTH' || h === 'PROPS') show(h.toLowerCase());
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -672,6 +745,7 @@ $('fit').addEventListener('click', () => {
   save(cur, m); addLog(cur, T.name, `fit to 240 minutes (was ${fmt(before,0)})`); render();
 });
 const ALL = TEAMS.flatMap(t => D.teams[t].players.map(p => ({t, p})));
+const PIDX = Object.fromEntries(ALL.map(x => [x.p.id, x]));
 $('q').addEventListener('input', e => {
   const q = e.target.value.trim().toLowerCase(), h = $('hits');
   if (q.length < 2){ h.hidden = true; return; }
@@ -695,12 +769,20 @@ function show(v){
   view = v;
   const lab = v === 'lab';
   $('v-lab').hidden = $('foot').hidden = !lab;
-  $('v-health').hidden = $('hfoot').hidden = lab;
+  $('v-health').hidden = $('hfoot').hidden = v !== 'health';
+  $('v-props').hidden = $('pfoot').hidden = v !== 'props';
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
   $('mode').hidden = lab;
   renderNav();
   if (lab){ render(); return; }
+  if (v === 'props'){
+    $('tname').textContent = 'Player Props';
+    $('tsub').textContent = 'PROJECTION · MARKET · BLENDED FAIR';
+    renderProps();
+    if (!boardTried) loadBoard();
+    return;
+  }
   $('tname').textContent = 'Data Health';
   $('tsub').textContent = 'RECORDER · MODEL INPUTS · ARCHIVE';
   renderHealth();
@@ -901,6 +983,249 @@ function renderTimeline(polls, ref){
   g += `<line class="now" x1="${x(ref)}" x2="${x(ref)}" y1="${T0}" y2="${H - B}"/>`;
   const svg = $('htl'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = g;
 }
+
+// ── Player Props ──────────────────────────────────────────────────────────
+// Pricing follows build_prop_model.py exactly: projection (minutes x rate, from the Minutes Lab, so your edits count)
+// -> P(over) from the fitted spread (negative binomial for counts, normal otherwise) -> calibration -> blend with the
+// market price using weights fit on held-out games. Edge = fair chance minus the break-even chance of the price you
+// would pay (Kalshi: ask plus taker fee; books: the price as quoted, vig included).
+const STATS = [['all','All'],['pts','PTS'],['reb','REB'],['ast','AST'],['3pm','3PM'],['pra','PRA'],['pr','P+R'],['pa','P+A'],['ra','R+A']];
+const SLABEL = Object.fromEntries(STATS);
+const COMBO = {pra: ['pts','reb','ast'], pr: ['pts','reb'], pa: ['pts','ast'], ra: ['reb','ast']};
+const COUNT = new Set(['reb','ast','3pm']);
+const EDGE_MIN = 0.03;             // the backtest's betting threshold
+let PS = {board: null, mode: 'none', at: null};
+let boardTried = false, boardTimer = null, showExample = false;
+let pf = {game: 'all', stat: 'all', sort: 'edge', q: '', gated: false, open: new Set(), limit: 120};
+
+const erf = x => { const t = 1 / (1 + 0.3275911 * Math.abs(x)); const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x); return x >= 0 ? y : -y; };
+const Phi = x => 0.5 * (1 + erf(x / Math.SQRT2));
+function nbSf(k, mu, v){
+  if (mu <= 0) return 0;
+  let p, cdf = 0;
+  if (v <= mu * 1.0001){ p = Math.exp(-mu); for (let i = 0; i <= k; i++){ cdf += p; p *= mu / (i + 1); } return Math.max(0, 1 - cdf); }
+  const r = mu * mu / (v - mu), q = mu / v; p = Math.pow(q, r);
+  for (let i = 0; i <= k; i++){ cdf += p; p *= (i + r) / (i + 1) * (1 - q); }
+  return Math.max(0, 1 - cdf);
+}
+function pOverRaw(stat, mu, line){
+  const [v0, v1, v2] = PR.variance[stat], v = Math.max(.25, v0 + v1*mu + v2*mu*mu);
+  return COUNT.has(stat) ? nbSf(Math.floor(line), mu, v) : 1 - Phi((line - mu) / Math.sqrt(v));
+}
+function cal(stat, p){
+  const K = PR.calibration[stat]; if (!K || !K.length) return p;
+  if (p <= K[0][0]) return K[0][0] > 0 ? K[0][1] * p / K[0][0] : K[0][1];
+  const L = K[K.length-1]; if (p >= L[0]) return L[1] + (1 - L[1]) * (p - L[0]) / Math.max(1e-9, 1 - L[0]);
+  for (let i = 1; i < K.length; i++) if (p <= K[i][0]) return K[i-1][1] + (K[i][1] - K[i-1][1]) * (p - K[i-1][0]) / Math.max(1e-9, K[i][0] - K[i-1][0]);
+  return p;
+}
+const lg = p => { p = Math.min(Math.max(p, 1e-4), 1 - 1e-4); return Math.log(p / (1 - p)); };
+const blendP = (c, mkt, mdl) => 1 / (1 + Math.exp(-(c.a + c.wm * lg(mkt) + c.wp * lg(mdl))));
+const amP = a => { a = +a; if (!isFinite(a) || a === 0) return null; return a > 0 ? 100 / (a + 100) : -a / (-a + 100); };
+const kFee = p => Math.ceil(0.07 * p * (1 - p) * 100 - 1e-9) / 100;
+const pc = (x, d=0) => x == null ? '' : (x * 100).toFixed(d) + '%';
+const ec = x => (x >= 0 ? '+' : '') + (x * 100).toFixed(1);
+
+// Gate per venue x stat x side, from the week 3 verdicts (docs/prop-model.md). Only Kalshi 3PM NO passed.
+function gate(venue, stat, side){
+  if (venue !== 'kalshi') return 'no-go';
+  const v = (PR.verdict[stat] || 'NO-GO').toLowerCase();
+  if (v === 'go') return side === 'NO' ? 'go' : 'watch';
+  return v;
+}
+const GATE_LABEL = {go: 'GO', watch: 'WATCH', 'no-go': 'NO-GO'};
+
+function muFor(pid, stat, cache){
+  const pl = PIDX[pid]; if (!pl) return null;
+  if (!cache[pl.t]) cache[pl.t] = {m: mins(pl.t), pr: project(pl.t, mins(pl.t))};
+  const {m, pr} = cache[pl.t], x = pr[pid];
+  const mu = COMBO[stat] ? COMBO[stat].reduce((a, s) => a + x[s], 0) : x[stat];
+  return {mu, min: m[pid], min0: pl.p.min0, team: pl.t};
+}
+
+function priceRow(e, cache){
+  const P = PS.board.players[e.p] || [String(e.p), '', null];
+  const mm = muFor(e.p, e.s, cache);
+  const r = {e, name: P[0], team: P[1], inj: P[2], mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, cands: []};
+  const kc = PR.kalshi[e.s] || PR.book[e.s], bc = PR.book[e.s];
+  const model = line => mm && mm.min > 0 ? cal(e.s, pOverRaw(e.s, mm.mu, line)) : null;
+  // books: fair over at each book's line
+  r.books = e.books.map(([bk, line, o, u, l0, o0]) => {
+    const po = amP(o), pu = amP(u); if (po == null || pu == null || line == null) return null;
+    const mkt = po / (po + pu), pm = model(line), fair = pm != null && bc ? blendP(bc, mkt, pm) : null;
+    const b = {bk, line, o, u, l0, o0, mkt, pm, fair};
+    if (fair != null){
+      r.cands.push({venue: 'book', bk, side: 'Over', line, price: o, edge: fair - po, fair, g: gate('book', e.s, 'Over')});
+      r.cands.push({venue: 'book', bk, side: 'Under', line, price: u, edge: (1 - fair) - pu, fair: 1 - fair, g: gate('book', e.s, 'Under')});
+    }
+    return b;
+  }).filter(Boolean);
+  // Kalshi ladder: YES at the ask, NO at 1 - bid, fee on top
+  r.kal = e.kal.map(([line, bid, ask, om]) => {
+    const mid = bid != null && ask != null ? (bid + ask) / 2 : (ask ?? bid);
+    const pm = model(line), fair = pm != null && mid != null && kc ? blendP(kc, Math.min(.99, Math.max(.01, mid)), pm) : null;
+    const k = {line, bid, ask, mid, om, pm, fair, ey: null, en: null};
+    if (fair != null){
+      if (ask != null && ask > 0 && ask < 1){ k.ey = fair - ask - kFee(ask); r.cands.push({venue: 'kalshi', side: 'YES', line, price: ask, edge: k.ey, fair, g: gate('kalshi', e.s, 'YES')}); }
+      if (bid != null && bid > 0 && bid < 1){ k.en = (1 - fair) - (1 - bid) - kFee(1 - bid); r.cands.push({venue: 'kalshi', side: 'NO', line, price: 1 - bid, edge: k.en, fair: 1 - fair, g: gate('kalshi', e.s, 'NO')}); }
+    }
+    return k;
+  });
+  // headline line: Pinnacle, then DraftKings / any book, then the Kalshi rung nearest even
+  const main = r.books.find(b => b.bk === 'Pinnacle') || r.books[0];
+  if (main){ r.line = main.line; r.lineFrom = main.bk; r.mkt = main.mkt; r.pm = main.pm; r.fair = main.fair; }
+  else if (r.kal.length){
+    const k = [...r.kal].filter(k => k.mid != null).sort((a, b) => Math.abs(a.mid - .5) - Math.abs(b.mid - .5))[0];
+    if (k){ r.line = k.line; r.lineFrom = 'Kalshi'; r.mkt = k.mid; r.pm = k.pm; r.fair = k.fair; }
+  }
+  const gated = r.cands.filter(c => c.g !== 'no-go' && c.edge >= EDGE_MIN).sort((a, b) => b.edge - a.edge);
+  r.best = gated[0] || [...r.cands].sort((a, b) => b.edge - a.edge)[0] || null;
+  r.passing = gated.some(c => c.g === 'go');
+  return r;
+}
+
+async function loadBoard(){
+  boardTried = true;
+  if (!PB || !/^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+  try {
+    const b = await fetch(`https://raw.githubusercontent.com/${PB.repo}/${PB.branch}/board.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
+    PS.live = b; PS.liveAt = Date.now() / 1000; PS.liveFetched = true;
+    if (view === 'props') renderProps();
+    clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, 5 * 60 * 1000);
+  } catch (e) { /* keep the snapshot */ }
+}
+
+function pickBoard(){
+  const live = PS.live || (PB && PB.live);
+  const hasLive = live && live.props && live.props.length;
+  if (hasLive && !showExample) return {board: live, mode: PS.liveFetched ? 'live' : 'snapshot'};
+  if (PB && PB.example && (showExample || !hasLive)) return {board: PB.example, mode: 'example', live};
+  return {board: live || {props: [], players: {}, games: []}, mode: 'empty', live};
+}
+
+function renderProps(){
+  if (!PR){ $('pbanner').hidden = false; $('pbanner').textContent = 'The prop model is missing from this build.'; return; }
+  const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
+  const B = PS.board, live = pick.live || PS.live || (PB && PB.live);
+  const liveN = live && live.props ? live.props.length : 0;
+  const nextGame = (live && live.games || []).filter(g => g.tip > Date.now()/1000).sort((a, b) => a.tip - b.tip)[0];
+  const gname = g => `${g.away} @ ${g.home}`;
+
+  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="prefresh" type="button">Refresh</button>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
+    : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pill('idle', 'No props yet');
+  $('prefresh')?.addEventListener('click', () => loadBoard());
+
+  const ex = B.games && B.games[0];
+  if (pick.mode === 'example'){
+    $('pbanner').hidden = false;
+    $('pbanner').innerHTML = `<b>Example board.</b><span>${liveN ? '' : `No player props are listed yet. Kalshi lists them the morning of a game${nextGame ? `; the next game is ${gname(nextGame)}, ${etFmt(nextGame.tip, {weekday: 'short', month: 'short', day: 'numeric'})} at ${clock(nextGame.tip)} ET` : ''}. `}This is ${ex ? `${gname(ex)} on ${etFmt(ex.tip, {month: 'long', day: 'numeric', year: 'numeric'})}, last season's final game,` : 'last season’s final game'} at its pre-tip prices, priced with this season's projections. Kalshi shows the last trade as both bid and ask.</span>${liveN ? '<button class="linkbtn" id="pex" type="button">Back to the live board</button>' : ''}`;
+  } else if (pick.mode === 'empty'){
+    $('pbanner').hidden = false;
+    $('pbanner').innerHTML = `<b>No player props listed yet.</b><span>Kalshi lists them the morning of a game.</span>`;
+  } else {
+    $('pbanner').hidden = !PB?.example;
+    $('pbanner').innerHTML = PB?.example ? `<span>Want to see how a full board reads?</span><button class="linkbtn" id="pex" type="button">Show last season's final game</button>` : '';
+  }
+  $('pex')?.addEventListener('click', () => { showExample = !showExample; pf.open.clear(); renderProps(); });
+
+  // filters
+  const games = B.games || [];
+  if (!games.some(g => String(g.id) === pf.game)) pf.game = 'all';
+  $('pgame').innerHTML = `<option value="all">All games (${games.length})</option>` + games.map(g => `<option value="${g.id}"${String(g.id) === pf.game ? ' selected' : ''}>${gname(g)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}</option>`).join('');
+  $('pstat').innerHTML = STATS.map(([k, l]) => `<button type="button" data-s="${k}" aria-pressed="${pf.stat === k}">${l}</button>`).join('');
+
+  const cache = {};
+  const rows = (B.props || []).filter(e => PR.variance[e.s]).map(e => priceRow(e, cache));
+  const gid = pf.game, q = pf.q.trim().toLowerCase();
+  let shown = rows.filter(r => (gid === 'all' || String(r.e.g) === gid) && (pf.stat === 'all' || r.e.s === pf.stat)
+    && (!q || r.name.toLowerCase().includes(q)) && (!pf.gated || r.passing));
+  const tipOf = Object.fromEntries(games.map(g => [String(g.id), g.tip]));
+  shown.sort(pf.sort === 'edge' ? (a, b) => (b.best?.edge ?? -9) - (a.best?.edge ?? -9)
+    : pf.sort === 'proj' ? (a, b) => (b.mu ?? -1) - (a.mu ?? -1)
+    : (a, b) => (tipOf[a.e.g] - tipOf[b.e.g]) || a.name.localeCompare(b.name) || STATS.findIndex(x => x[0] === a.e.s) - STATS.findIndex(x => x[0] === b.e.s));
+
+  // KPIs
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const nPlayers = new Set(rows.map(r => r.e.p)).size;
+  const rungs = rows.flatMap(r => r.kal.filter(k => k.mid != null && k.fair != null));
+  const bias = rungs.length ? rungs.reduce((a, k) => a + (k.mid - k.fair), 0) / rungs.length : null;
+  const over = rungs.filter(k => k.mid > k.fair).length;
+  const passing = rows.filter(r => r.passing);
+  const top = [...rows].filter(r => r.best && r.best.g !== 'no-go').sort((a, b) => b.best.edge - a.best.edge)[0];
+  const betTxt = c => c.venue === 'kalshi' ? `${c.side} ${c.line + .5}+` : `${c.side} ${c.line}`;
+  $('pkpis').innerHTML =
+    kpi('On the board', ICON.pts, `${rows.length.toLocaleString()}`, `player props · ${nPlayers} players · ${games.length} ${games.length === 1 ? 'game' : 'games'}`) +
+    kpi('Passing their gate', ICON.star, `${passing.length}`, passing.length ? `Kalshi 3PM NO with ${pc(EDGE_MIN)}+ edge after fees` : `None at ${pc(EDGE_MIN)}+ edge; only Kalshi 3PM NO has passed`) +
+    kpi('Best gated edge', ICON.edit, top && top.best.edge > 0 ? `<span class="pos">${ec(top.best.edge)}</span>` : 'None', top && top.best.edge > 0 ? `${esc(last(top.name))} ${SLABEL[top.e.s]} ${betTxt(top.best)} · ${GATE_LABEL[top.best.g]}` : 'No GO or WATCH bet clears zero') +
+    kpi('Kalshi overs check', ICON.clock, bias == null ? 'No ladder' : `${bias >= 0 ? '+' : ''}${(bias * 100).toFixed(1)} pts`, bias == null ? 'Nothing listed on Kalshi yet' : `YES price above fair on ${Math.round(over / rungs.length * 100)}% of ${rungs.length} rungs`);
+
+  // table
+  const P = shown.slice(0, pf.limit);
+  const cellPct = (x, sub) => `<td class="pct">${x == null ? '<span class="muted">none</span>' : pc(x)}${sub ? `<small>${sub}</small>` : ''}</td>`;
+  const chev = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>`;
+  $('prows').innerHTML = P.length ? P.map(r => {
+    const key = `${r.e.p}|${r.e.s}`, open = pf.open.has(key), g = games.find(x => String(x.id) === String(r.e.g));
+    const rg = r.mu != null && r.min > 0 ? range2(r.e.s, r.mu) : null;
+    const edited = r.min != null && Math.abs(r.min - r.min0) > .05;
+    const injB = r.inj ? `<span class="badge ${/out/i.test(r.inj) ? 'bad' : 'warn'}">${esc(r.inj)}</span>` : '';
+    const b = r.best;
+    const bet = b ? `<div class="bet"><b>${b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`} <span class="muted num">${b.venue === 'kalshi' ? Math.round(b.price * 100) + '¢' : b.price}</span></b>
+      <span><span class="edge ${b.edge > 0 ? 'pos' : 'neg'}">${ec(b.edge)}</span><span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span></span></div>` : '<span class="muted">no price</span>';
+    return `<tr class="prow${open ? ' open' : ''}" data-k="${key}" tabindex="0" aria-expanded="${open}">
+      <td class="l"><div class="pwho"><b>${esc(r.name)}${injB}</b><small>${esc(r.team)}${g ? ` · ${gname(g)} · ${clock(g.tip)}` : ''}</small></div></td>
+      <td class="l"><span class="stat">${SLABEL[r.e.s]}</span></td>
+      <td class="num">${r.min == null ? '<span class="muted">none</span>' : `${fmt(r.min)}${edited ? ' <span class="badge" title="You changed his minutes in the Minutes Lab">edited</span>' : ''}`}</td>
+      <td class="pct">${r.mu == null ? '<span class="muted">none</span>' : fmt(r.mu)}${rg ? `<small>${fmt(rg[0],0)} to ${fmt(rg[1],0)}</small>` : ''}</td>
+      <td class="pct">${r.line ?? '<span class="muted">none</span>'}${r.lineFrom ? `<small>${esc(r.lineFrom)}</small>` : ''}</td>
+      ${cellPct(r.pm)}${cellPct(r.mkt)}${cellPct(r.fair)}
+      <td>${bet}</td><td>${chev}</td></tr>${open ? detailRow(r) : ''}`;
+  }).join('') : `<tr><td class="l" colspan="10"><p class="empty">${rows.length ? 'No props match these filters.' : 'Nothing on the board yet.'}</p></td></tr>`;
+  $('pmore').hidden = shown.length <= pf.limit;
+  $('pmore').innerHTML = `<button class="btn" type="button" id="pmorebtn">Show all ${shown.length.toLocaleString()}</button>`;
+  $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props. Click a row for the Kalshi ladder and each book.`;
+
+  const vs = PR.verdict;
+  $('pfoot').innerHTML = `
+    <div><b>Projection</b> is minutes × per-minute rates from the Minutes Lab, so a minutes change there reprices this board. <b>Model</b> is the chance of going over from the fitted spread, calibrated on 2024-25. <b>Fair</b> blends the market price with the model, using weights fit on held-out games: the market does most of the work (Kalshi 3PM: ${PR.kalshi['3pm'] ? `${PR.kalshi['3pm'].wm.toFixed(2)} market, ${PR.kalshi['3pm'].wp.toFixed(2)} model` : 'n/a'}).</div>
+    <div><b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig. <b>Gates</b> come from the week 3 backtest: Kalshi 3PM NO is the only GO; Kalshi points and rebounds are WATCH; sportsbook props showed no edge. Nothing is bet for real until a signal passes on this season's games.</div>
+    <div>The projections are season-start minutes. Injury-report statuses show as badges but do not move minutes yet; mark a player OUT in the Minutes Lab to reprice his teammates.</div>`;
+}
+function range2(stat, mu){ const v = PR.variance[stat]; if (!v || mu <= 0) return null; const sd = Math.sqrt(Math.max(.25, v[0] + v[1]*mu + v[2]*mu*mu)); return [Math.max(0, mu - Z*sd), mu + Z*sd]; }
+
+function detailRow(r){
+  const near = r.kal.length ? r.kal.reduce((a, k) => Math.abs(k.line - (r.mu ?? 0)) < Math.abs(a.line - (r.mu ?? 0)) ? k : a) : null;
+  const cents = x => x == null ? '' : Math.round(x * 100) + '¢';
+  const ed = x => x == null ? '' : `<span class="${x > 0 ? 'pos' : 'neg'}">${ec(x)}</span>`;
+  const kal = r.kal.length ? `<table><thead><tr><th class="l">Rung</th><th>Bid</th><th>Ask</th><th>Model</th><th>Fair</th><th>YES edge</th><th>NO edge</th></tr></thead><tbody>${r.kal.map(k =>
+    `<tr class="${k === near ? 'near' : ''}"><td class="l">${k.line + .5}+</td><td>${cents(k.bid)}</td><td>${cents(k.ask)}${k.om != null && k.mid != null && Math.abs(k.mid - k.om) >= .005 ? `<span class="mv">${k.mid > k.om ? '+' : ''}${Math.round((k.mid - k.om) * 100)} today</span>` : ''}</td><td>${pc(k.pm)}</td><td>${pc(k.fair)}</td><td>${ed(k.ey)}</td><td>${ed(k.en)}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="empty">Not listed on Kalshi.</p>';
+  const books = r.books.length ? `<table><thead><tr><th class="l">Book</th><th>Line</th><th>Over</th><th>Under</th><th>Market</th><th>Fair</th><th>Over edge</th><th>Under edge</th></tr></thead><tbody>${r.books.map(b => {
+    const po = amP(b.o), pu = amP(b.u), moved = b.l0 != null && b.l0 !== b.line;
+    return `<tr><td class="l">${esc(b.bk)}</td><td>${b.line}${moved ? `<span class="mv">from ${b.l0}</span>` : ''}</td><td>${b.o}</td><td>${b.u}</td><td>${pc(b.mkt)}</td><td>${pc(b.fair)}</td><td>${b.fair != null ? ed(b.fair - po) : ''}</td><td>${b.fair != null ? ed((1 - b.fair) - pu) : ''}</td></tr>`;
+  }).join('')}</tbody></table>` : '<p class="empty">No sportsbook line.</p>';
+  const team = PIDX[r.e.p]?.t;
+  return `<tr class="detail"><td colspan="10"><div class="dgrid">
+    <div class="dpanel"><h4>Kalshi ladder<small>YES pays if he reaches the rung; edge after fees</small></h4>${kal}</div>
+    <div class="dpanel"><h4>Sportsbooks<small>market = vig removed</small></h4>${books}
+      ${team ? `<p class="empty" style="margin-top:10px">Projection uses ${fmt(r.min ?? 0)} minutes. <button class="linkbtn" type="button" data-lab="${team}">Change minutes in the Minutes Lab</button></p>` : ''}</div>
+  </div></td></tr>`;
+}
+
+// events
+$('pgame').addEventListener('change', e => { pf.game = e.target.value; renderProps(); });
+$('psort').addEventListener('change', e => { pf.sort = e.target.value; renderProps(); });
+$('pstat').addEventListener('click', e => { const s = e.target.closest('button')?.dataset.s; if (s){ pf.stat = s; renderProps(); } });
+$('pq').addEventListener('input', e => { pf.q = e.target.value; renderProps(); });
+$('pgated').addEventListener('change', e => { pf.gated = e.target.checked; renderProps(); });
+$('pmore').addEventListener('click', e => { if (e.target.id === 'pmorebtn'){ pf.limit = 1e9; renderProps(); } });
+const toggleRow = tr => { const k = tr.dataset.k; pf.open.has(k) ? pf.open.delete(k) : pf.open.add(k); renderProps(); };
+$('prows').addEventListener('click', e => {
+  const lab = e.target.closest('[data-lab]');
+  if (lab){ history.replaceState(null, '', '#' + lab.dataset.lab.toLowerCase()); goTeam(lab.dataset.lab); return; }
+  const tr = e.target.closest('tr.prow'); if (tr) toggleRow(tr);
+});
+$('prows').addEventListener('keydown', e => { const tr = e.target.closest('tr.prow'); if (tr && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); toggleRow(tr); } });
 
 show(view);
 </script>
