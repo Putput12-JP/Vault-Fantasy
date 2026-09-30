@@ -1,0 +1,234 @@
+{
+ "generated": "2026-09-30T17:27Z",
+ "alpha": 0.2,
+ "a_new": 0.35,
+ "new_n": 8,
+ "return_missed": 3,
+ "team_min": 251.6,
+ "features": [
+  "vac_same",
+  "vac_other",
+  "vac_same_x_share",
+  "vac_other_x_share",
+  "blowout_starter",
+  "blowout_bench",
+  "b2b",
+  "b2b_x_share",
+  "role",
+  "back1",
+  "back2_3",
+  "back4_6",
+  "const"
+ ],
+ "beta": {
+  "vac_same": 0.1084,
+  "vac_other": 0.0567,
+  "vac_same_x_share": -0.1174,
+  "vac_other_x_share": -0.0567,
+  "blowout_starter": -0.0775,
+  "blowout_bench": -0.0332,
+  "b2b": 0.7506,
+  "b2b_x_share": -0.83,
+  "role": 0.2754,
+  "back1": -0.1624,
+  "back2_3": -0.043,
+  "back4_6": 0.0069,
+  "const": -1.518
+ },
+ "beta_hindsight_starters": {
+  "vac_same": 0.0884,
+  "vac_other": 0.0493,
+  "vac_same_x_share": -0.0972,
+  "vac_other_x_share": -0.0505,
+  "blowout_starter": -0.0694,
+  "blowout_bench": -0.0297,
+  "b2b": 0.7244,
+  "b2b_x_share": -1.0146,
+  "role": 0.7321,
+  "back1": -0.1346,
+  "back2_3": -0.0378,
+  "back4_6": 0.008,
+  "const": -1.2306
+ },
+ "grid": [
+  {
+   "alpha": 0.2,
+   "a_new": null,
+   "mae": 4.671,
+   "bias": 1.081,
+   "miss8": 0.1678,
+   "rmse": 6.107
+  },
+  {
+   "alpha": 0.2,
+   "a_new": 0.35,
+   "mae": 4.658,
+   "bias": 1.081,
+   "miss8": 0.1676,
+   "rmse": 6.093
+  },
+  {
+   "alpha": 0.2,
+   "a_new": 0.5,
+   "mae": 4.66,
+   "bias": 1.081,
+   "miss8": 0.1689,
+   "rmse": 6.097
+  },
+  {
+   "alpha": 0.25,
+   "a_new": null,
+   "mae": 4.671,
+   "bias": 1.081,
+   "miss8": 0.1686,
+   "rmse": 6.112
+  },
+  {
+   "alpha": 0.25,
+   "a_new": 0.35,
+   "mae": 4.663,
+   "bias": 1.081,
+   "miss8": 0.1684,
+   "rmse": 6.103
+  },
+  {
+   "alpha": 0.25,
+   "a_new": 0.5,
+   "mae": 4.664,
+   "bias": 1.081,
+   "miss8": 0.1691,
+   "rmse": 6.105
+  },
+  {
+   "alpha": 0.3,
+   "a_new": null,
+   "mae": 4.682,
+   "bias": 1.081,
+   "miss8": 0.1706,
+   "rmse": 6.127
+  },
+  {
+   "alpha": 0.3,
+   "a_new": 0.35,
+   "mae": 4.679,
+   "bias": 1.081,
+   "miss8": 0.1702,
+   "rmse": 6.123
+  },
+  {
+   "alpha": 0.3,
+   "a_new": 0.5,
+   "mae": 4.677,
+   "bias": 1.081,
+   "miss8": 0.1705,
+   "rmse": 6.124
+  },
+  {
+   "alpha": 0.4,
+   "a_new": null,
+   "mae": 4.726,
+   "bias": 1.081,
+   "miss8": 0.1749,
+   "rmse": 6.186
+  },
+  {
+   "alpha": 0.4,
+   "a_new": 0.35,
+   "mae": 4.726,
+   "bias": 1.081,
+   "miss8": 0.1749,
+   "rmse": 6.186
+  },
+  {
+   "alpha": 0.4,
+   "a_new": 0.5,
+   "mae": 4.725,
+   "bias": 1.081,
+   "miss8": 0.1751,
+   "rmse": 6.187
+  }
+ ],
+ "n_test": 28254,
+ "test": {
+  "v2": {
+   "mae": 4.69,
+   "bias": 1.075,
+   "miss8": 0.1711,
+   "rmse": 6.119
+  },
+  "v3": {
+   "mae": 4.65,
+   "bias": 1.074,
+   "miss8": 0.1693,
+   "rmse": 6.065
+  },
+  "v3_hindsight_starters": {
+   "mae": 4.515,
+   "bias": 1.076,
+   "miss8": 0.1597,
+   "rmse": 5.907
+  }
+ },
+ "slices": {
+  "first game back": {
+   "n": 1221,
+   "v2": {
+    "mae": 5.489,
+    "bias": 2.237,
+    "miss8": 0.2473,
+    "rmse": 7.017
+   },
+   "v3": {
+    "mae": 5.04,
+    "bias": 0.206,
+    "miss8": 0.2056,
+    "rmse": 6.517
+   }
+  },
+  "games 2-3 back": {
+   "n": 1860,
+   "v2": {
+    "mae": 5.051,
+    "bias": 0.069,
+    "miss8": 0.1941,
+    "rmse": 6.449
+   },
+   "v3": {
+    "mae": 5.046,
+    "bias": -0.231,
+    "miss8": 0.1941,
+    "rmse": 6.414
+   }
+  },
+  "role switch (last game role differs from usual)": {
+   "n": 1621,
+   "v2": {
+    "mae": 6.003,
+    "bias": 0.435,
+    "miss8": 0.2795,
+    "rmse": 7.537
+   },
+   "v3": {
+    "mae": 5.812,
+    "bias": 1.036,
+    "miss8": 0.2647,
+    "rmse": 7.353
+   }
+  },
+  "market spread 12+": {
+   "n": 4716,
+   "v2": {
+    "mae": 4.651,
+    "bias": 1.107,
+    "miss8": 0.1667,
+    "rmse": 6.031
+   },
+   "v3": {
+    "mae": 4.617,
+    "bias": 1.107,
+    "miss8": 0.1675,
+    "rmse": 5.988
+   }
+  }
+ }
+}

@@ -1,6 +1,6 @@
 # Prop model v3: ladder distributions (workstream A)
 
-Generated 2026-09-30T17:21Z by `nba/scripts/build_prop_model_v3.py`. Same projected mean as v2; new shape.
+Generated 2026-09-30T17:30Z by `nba/scripts/build_prop_model_v3.py`. Same projected mean as v2; new shape.
 Fit on 2024-25, tested on 2025-26, identical rows. Lower log score / log loss / Brier is better.
 
 Variants differ only in calibration: **v3** = isotonic across each player's whole range (all 2024-25 player-games),

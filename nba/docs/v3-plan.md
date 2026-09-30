@@ -6,6 +6,26 @@ same rows as the model it replaces, ship a component only if it helps where we b
 
 ## Status
 
+**Workstreams B (minutes v3) and C (per-stat memory) done 2026-09-30, combined test in
+[prop-model-v3-full.md](prop-model-v3-full.md): more accurate everywhere, v2 keeps pricing bets (pre-registered rule).**
+
+- Minutes v3 ([minutes-model-v3.md](minutes-model-v3.md)): MAE 4.690 to 4.650, 8+ minute misses 17.1% to 16.9%. The
+  wins are where the new terms act: first game back from absence 5.49 to 5.04 MAE (24.7% to 20.6% big misses), role
+  switches 6.00 to 5.81. Knowing who started would take MAE to 4.515, over three times the gain of everything else
+  combined, so a confirmed-starters feed is the largest remaining minutes lever.
+- Per-stat memory ([rates-v3.md](rates-v3.md)): with true minutes, component rates (2PA, 3PA, FTA, OREB, DREB, AST
+  per minute with their own half-lives, plus regressed shooting %) beat one shared EWMA on all four stats, points
+  RMSE 5.038 to 4.994. Volume moves fast (2PA half-life 6.6 games), rebounding slow (19.5), shooting % slower still.
+- Combined (v3m = minutes v3 x memory rates, stacker refit): RMSE and MAE better on all 8 stats, Kalshi log loss better
+  on points, rebounds and 3PM, 3PM model alone now beats Kalshi's price (0.5265 vs 0.5281; with v3 shape 0.5235).
+  Blended with the market, held-out log loss is again a tie with v2 (within 0.0003).
+- Why it did not ship: Kalshi points NO fell from GO (+3.5%, z 2.14) to WATCH (+2.4%, z 1.44) under v3m. 3PM NO stays GO
+  (+9.8%, z 3.43 vs v2 +9.4%). The rule needs every v2 GO kept, so v2 stays. Points NO under v2 sits right on the
+  z 2 line, so this is a coin flip on noise, not evidence v3 is worse; it stays a shadow candidate and gets re-scored
+  on live 2026-27 prices once 50+ games of snapshots exist.
+- Lesson, again: better means shrink toward the market's price and do not create edge on their own. Edge has to come
+  from information the market prices late: confirmed starters, late injury news, and early-season role changes.
+
 **Workstream A (ladder distributions) done 2026-09-30, result in [prop-model-v3.md](prop-model-v3.md): better
 probabilities, same betting edge. v2 keeps pricing bets (pre-registered rule).**
 

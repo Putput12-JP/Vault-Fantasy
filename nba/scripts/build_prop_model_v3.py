@@ -241,55 +241,12 @@ def decile_table(rows):
     return [(k / 10, len(v), round(statistics.mean(p for p, _ in v), 3), round(statistics.mean(o for _, o in v), 3)) for k, v in sorted(b.items()) if len(v) >= 100]
 
 
-def main():
-    box = C.player_games(V2.SEASONS)
-    inj = C.InjuryAsOf([2025, 2026], C.player_index(box))
-    margins = MM.expected_margins(box)
-    mm = json.load(open(MM.OUT_JSON))
-    casc = json.load(open(os.path.join(C.HERE, '..', 'data', 'usage_cascade.json')))['stats']
-    team_min = json.load(open(V1.OUT_JSON))['team_min']
-    recs, _ = V2.walk(box, inj, margins, mm, casc, team_min, C.closing_lines())
-    fit = [r for r in recs if r['season'] == V2.FIT and r['pm'] > 0]
-    test = [r for r in recs if r['season'] == V2.TEST and r['pm'] > 0]
-    print(f'player-games: fit {len(fit):,}  test {len(test):,}', flush=True)
+def by_rec(recs):
+    return {(r['gid'], r['aid']): r for r in recs if r['pm'] > 0}
 
-    stk = V2.fit_stacker(fit)                            # v2's mean, as shipped
-    V = V2.fit_var(fit, lambda r: V2.mu2(r, stk), True)  # v2's spread, as shipped
-    T = fit_minutes(fit)
-    P = fit_production(fit, stk)
-    print('minutes quantiles', {k: (v[0], v[len(v) // 2], v[-1]) for k, v in T.items()}, flush=True)
-    print('production', json.dumps(P), flush=True)
 
-    def dist(r, m, cache):
-        key = (id(r), m)
-        if key not in cache:
-            cache[key] = Dist(P, r, m, V2.mu2(r, stk)[m], T)
-        return cache[key]
-
-    extra = lambda r, m: (V2.minrate(r, m) * r['sdm']) ** 2
-
-    # calibration on 2024-25 across each player's range; v2 keeps its own (ESPN 2024-25 open lines) as shipped
-    c3 = {}
-    cal_pts = defaultdict(list)
-    cache = {}
-    for r in fit:
-        for m in MARKETS:
-            mu = V2.mu2(r, stk)[m]
-            d = dist(r, m, cache)
-            for t in thresholds(m, mu):
-                cal_pts[m].append((d.over(t), 1 if yval(r, m) > t else 0))
-    for m in MARKETS:
-        c3[m] = pav(cal_pts[m], bins=30, pseudo=30)
-    cache.clear()
-    v2cal = json.load(open(V2.OUT_JSON))['calibration']['v2']
-
-    def p2(r, m, line):
-        return apply_cal(v2cal[m], V2.p_over(m, V2.mu2(r, stk)[m], line, V, extra(r, m)))
-
-    raw3 = lambda r, m, line, cache: dist(r, m, cache).over(line)
-
-    # ── prices: ESPN main lines and Kalshi ladders ──
-    by = {(r['gid'], r['aid']): r for r in recs if r['pm'] > 0}
+def load_markets(by):
+    """ESPN main lines (2024-25 open, 2025-26 pre-tip close) and Kalshi strikes (pre-tip price), joined to player-games."""
     espn = defaultdict(list)
     for row in csv.DictReader(open(os.path.join(C.RAW, 'tables', 'props_espn.csv'))):
         if row['kind'] != 'main' or row['played'] != '1' or row['market'] not in MARKETS:
@@ -320,41 +277,12 @@ def main():
             continue
         kal[row['market']].append({'r': r, 'L': float(row['strike']), 'k': float(px), 'yes': row['result'] == 'yes',
                                    'tip': int(row['tip_ts']), 'gid': row['game_id']})
+    return espn, kal
 
-    # v3 variants differ only in the calibration step:
-    #   v3          isotonic across each player's whole range, 2024-25 player-games (tails included)
-    #   v3_linecal  isotonic on 2024-25 sportsbook main lines, the way v2 was calibrated (carries where books set lines)
-    #   v3_raw      the distribution as built, no calibration
-    cache = {}
-    cals = {'v3': c3, 'v3_raw': {m: None for m in MARKETS},
-            'v3_linecal': {m: pav([(raw3(x['r'], m, x['L'], cache), 1 if x['over'] else 0) for x in espn.get(('2025', m, 'open'), [])]) for m in MARKETS}}
-    NAMES = ['v2', 'v3', 'v3_linecal', 'v3_raw']
-    probs = {'v2': lambda r, m, L, cache: p2(r, m, L)}
-    for nm in ('v3', 'v3_linecal', 'v3_raw'):
-        probs[nm] = (lambda cal: lambda r, m, L, cache: apply_cal(cal[m], raw3(r, m, L, cache)))(cals[nm])
 
-    # ── test 1: every player-game, log score and calibration across the range ──
-    res = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'Q': Q, 'levels': LEVELS, 'names': NAMES,
-           'minutes': T, 'production': P, 'calibration': cals, 'logscore': {}, 'range_cal': {}, 'kalshi': {}, 'espn': {},
-           'blend_oos': {}, 'kalshi_bias': {}}
-    cache = {}
-    for m in MARKETS:
-        l2, l3, rc = [], [], defaultdict(list)
-        for r in test:
-            mu = V2.mu2(r, stk)[m]
-            y = int(round(yval(r, m)))
-            l2.append(-v2_logp(V, m, mu, extra(r, m), y))
-            l3.append(-dist(r, m, cache).logp(y))
-            for t in thresholds(m, mu):
-                o = 1 if y > t else 0
-                for nm in NAMES:
-                    rc[nm].append((probs[nm](r, m, t, cache), o))
-        res['logscore'][m] = {'v2': round(statistics.mean(l2), 4), 'v3': round(statistics.mean(l3), 4), 'n': len(l2)}
-        res['range_cal'][m] = {nm: {'deciles': decile_table(v), 'brier': round(statistics.mean((p - o) ** 2 for p, o in v), 5)} for nm, v in rc.items()}
-        print(f"  {m:4s} log score v2 {res['logscore'][m]['v2']:.4f}  v3 {res['logscore'][m]['v3']:.4f}   range Brier " +
-              '  '.join(f"{nm} {res['range_cal'][m][nm]['brier']:.4f}" for nm in NAMES), flush=True)
-        cache = {k: v for k, v in cache.items() if k[1] != m}
-
+def eval_markets(res, NAMES, probs, espn, kal):
+    """Kalshi ladders and ESPN close lines for every model in NAMES: log loss, blend t, blended betting out of sample
+    vs the price-only baseline. probs[name](player-game, market, line, cache) -> P(over)."""
     def kprice(r_, yes):
         c = r_['k'] if yes else 1 - r_['k']
         c += kalshi_fee(c)
@@ -410,6 +338,92 @@ def main():
                 if ff:
                     res['blend_oos'].setdefault(f'espn25->26/{m}', {})[name] = V1.blended_backtest(
                         ff, tt, 'pm', 'pk', 'over', lambda r_, o: (1.0, am_payout(r_['over_px'] if o else r_['under_px'])))
+
+
+def main():
+    box = C.player_games(V2.SEASONS)
+    inj = C.InjuryAsOf([2025, 2026], C.player_index(box))
+    margins = MM.expected_margins(box)
+    mm = json.load(open(MM.OUT_JSON))
+    casc = json.load(open(os.path.join(C.HERE, '..', 'data', 'usage_cascade.json')))['stats']
+    team_min = json.load(open(V1.OUT_JSON))['team_min']
+    recs, _ = V2.walk(box, inj, margins, mm, casc, team_min, C.closing_lines())
+    fit = [r for r in recs if r['season'] == V2.FIT and r['pm'] > 0]
+    test = [r for r in recs if r['season'] == V2.TEST and r['pm'] > 0]
+    print(f'player-games: fit {len(fit):,}  test {len(test):,}', flush=True)
+
+    stk = V2.fit_stacker(fit)                            # v2's mean, as shipped
+    V = V2.fit_var(fit, lambda r: V2.mu2(r, stk), True)  # v2's spread, as shipped
+    T = fit_minutes(fit)
+    P = fit_production(fit, stk)
+    print('minutes quantiles', {k: (v[0], v[len(v) // 2], v[-1]) for k, v in T.items()}, flush=True)
+    print('production', json.dumps(P), flush=True)
+
+    def dist(r, m, cache):
+        key = (id(r), m)
+        if key not in cache:
+            cache[key] = Dist(P, r, m, V2.mu2(r, stk)[m], T)
+        return cache[key]
+
+    extra = lambda r, m: (V2.minrate(r, m) * r['sdm']) ** 2
+
+    # calibration on 2024-25 across each player's range; v2 keeps its own (ESPN 2024-25 open lines) as shipped
+    c3 = {}
+    cal_pts = defaultdict(list)
+    cache = {}
+    for r in fit:
+        for m in MARKETS:
+            mu = V2.mu2(r, stk)[m]
+            d = dist(r, m, cache)
+            for t in thresholds(m, mu):
+                cal_pts[m].append((d.over(t), 1 if yval(r, m) > t else 0))
+    for m in MARKETS:
+        c3[m] = pav(cal_pts[m], bins=30, pseudo=30)
+    cache.clear()
+    v2cal = json.load(open(V2.OUT_JSON))['calibration']['v2']
+
+    def p2(r, m, line):
+        return apply_cal(v2cal[m], V2.p_over(m, V2.mu2(r, stk)[m], line, V, extra(r, m)))
+
+    raw3 = lambda r, m, line, cache: dist(r, m, cache).over(line)
+
+    espn, kal = load_markets(by_rec(recs))
+
+    # v3 variants differ only in the calibration step:
+    #   v3          isotonic across each player's whole range, 2024-25 player-games (tails included)
+    #   v3_linecal  isotonic on 2024-25 sportsbook main lines, the way v2 was calibrated (carries where books set lines)
+    #   v3_raw      the distribution as built, no calibration
+    cache = {}
+    cals = {'v3': c3, 'v3_raw': {m: None for m in MARKETS},
+            'v3_linecal': {m: pav([(raw3(x['r'], m, x['L'], cache), 1 if x['over'] else 0) for x in espn.get(('2025', m, 'open'), [])]) for m in MARKETS}}
+    NAMES = ['v2', 'v3', 'v3_linecal', 'v3_raw']
+    probs = {'v2': lambda r, m, L, cache: p2(r, m, L)}
+    for nm in ('v3', 'v3_linecal', 'v3_raw'):
+        probs[nm] = (lambda cal: lambda r, m, L, cache: apply_cal(cal[m], raw3(r, m, L, cache)))(cals[nm])
+
+    # ── test 1: every player-game, log score and calibration across the range ──
+    res = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'Q': Q, 'levels': LEVELS, 'names': NAMES,
+           'minutes': T, 'production': P, 'calibration': cals, 'logscore': {}, 'range_cal': {}, 'kalshi': {}, 'espn': {},
+           'blend_oos': {}, 'kalshi_bias': {}}
+    cache = {}
+    for m in MARKETS:
+        l2, l3, rc = [], [], defaultdict(list)
+        for r in test:
+            mu = V2.mu2(r, stk)[m]
+            y = int(round(yval(r, m)))
+            l2.append(-v2_logp(V, m, mu, extra(r, m), y))
+            l3.append(-dist(r, m, cache).logp(y))
+            for t in thresholds(m, mu):
+                o = 1 if y > t else 0
+                for nm in NAMES:
+                    rc[nm].append((probs[nm](r, m, t, cache), o))
+        res['logscore'][m] = {'v2': round(statistics.mean(l2), 4), 'v3': round(statistics.mean(l3), 4), 'n': len(l2)}
+        res['range_cal'][m] = {nm: {'deciles': decile_table(v), 'brier': round(statistics.mean((p - o) ** 2 for p, o in v), 5)} for nm, v in rc.items()}
+        print(f"  {m:4s} log score v2 {res['logscore'][m]['v2']:.4f}  v3 {res['logscore'][m]['v3']:.4f}   range Brier " +
+              '  '.join(f"{nm} {res['range_cal'][m][nm]['brier']:.4f}" for nm in NAMES), flush=True)
+        cache = {k: v for k, v in cache.items() if k[1] != m}
+
+    eval_markets(res, NAMES, probs, espn, kal)
 
     res['verdict'] = V2.verdicts(res, NAMES)
     ship = choose(res)

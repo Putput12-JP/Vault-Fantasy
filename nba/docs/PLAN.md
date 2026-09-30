@@ -7,7 +7,9 @@ shooting volume x regressed %, season form, home, back-to-back and player-specif
 stacker fit on 2024-25. On 2025-26: RMSE better on every stat, Kalshi log loss better on all four (3PM now equals the
 market's), Kalshi points NO joins 3PM NO as GO. The page prices with v2; daily refresh job keeps its state current.
 Prop model v3 plan: [v3-plan.md](v3-plan.md). Workstream A (ladder distributions) tested: better probabilities, same
-blended edge, so v2 keeps pricing ([prop-model-v3.md](prop-model-v3.md)). Next: B (minutes) and C (per-stat memory).
+blended edge, so v2 keeps pricing ([prop-model-v3.md](prop-model-v3.md)). B (minutes v3) + C (per-stat memory) tested
+together: more accurate on every stat, but Kalshi points NO slips to WATCH, so v2 still prices
+([prop-model-v3-full.md](prop-model-v3-full.md)); v3 is a shadow candidate. Biggest open lever: confirmed starters.
 Week 4 = live snapshots (RUNNING from 2026-09-30: `scripts/snapshot.py` on GitHub Actions, data on the `nba-data`
 branch) + injury re-pricer + shadow the GO/WATCH signals; strategy in [differentiation.md](differentiation.md).
 Minutes Lab page: `nba/projections.html` (built by `build_player_projections.py`).

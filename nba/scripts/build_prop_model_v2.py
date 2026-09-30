@@ -180,12 +180,30 @@ def features(ctx, g, team, opp, aid, pos, mu, pm, rate, line):
     return out
 
 
-def walk(box, inj, margins, mm, casc, team_min, lines):
+def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None):
     """v1's projection exactly (the 'tip' clock), plus v2 features, for every player-game from 2023 on.
-    Injuries: who actually sat before 2025 (no archived reports), the report 30 min pre-tip from 2025."""
-    ms = MM.State(mm['alpha'])
-    beta = [mm['beta'][f] for f in MM.FEATURES]
+    Injuries: who actually sat before 2025 (no archived reports), the report 30 min pre-tip from 2025.
+    base='v3' swaps in the v3 base (docs/v3-plan.md B + C): minutes model v3 (role, returns, new team, market spread;
+    data/minutes_model_v3.json) and per-stat memory component rates (data/rates_v3.json). Everything else is shared."""
     rt, ctx = {}, Context()
+    R = None
+    if base == 'v3':
+        import build_minutes_model_v3 as M3
+        import build_rates_v3 as R3
+        ms = M3.State(mv3['alpha'], mv3['a_new'], mv3['new_n'])
+        beta = [mv3['beta'][f] for f in M3.FEATURES]
+        R = R3.Rates(rv3['alpha'], {c: (v['decay'], v['k']) for c, v in rv3['pct'].items()})
+
+        def mfeat(g, team, aid, out):
+            ln = lines.get(g['game_id']) or {}
+            sp = ln.get('spread_close') if ln.get('spread_close') is not None else margins.get(g['game_id'])
+            return M3.features(ms, g, team, aid, out, sp)
+    else:
+        ms = MM.State(mm['alpha'])
+        beta = [mm['beta'][f] for f in MM.FEATURES]
+
+        def mfeat(g, team, aid, out):
+            return MM.features(ms, g, team, aid, out, margins.get(g['game_id']))
     prior = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
     recs = []
     for g in C.games(SEASONS):
@@ -206,7 +224,7 @@ def walk(box, inj, margins, mm, casc, team_min, lines):
                         and ms.pl[r['athlete_id']]['team'] == team and r['athlete_id'] in rt and r['athlete_id'] not in out]
                 pm = {}
                 for r in cand:
-                    x = MM.features(ms, g, team, r['athlete_id'], out, margins.get(g['game_id']))
+                    x = mfeat(g, team, r['athlete_id'], out)
                     pm[r['athlete_id']] = max(0.0, min(48.0, ms.pl[r['athlete_id']]['m'] + sum(b * v for b, v in zip(beta, x))))
                 tot = sum(pm.values())
                 if tot > 0 and len(pm) >= 7:
@@ -218,9 +236,10 @@ def walk(box, inj, margins, mm, casc, team_min, lines):
                     if not r['played']:
                         continue
                     p, pos = rt[aid], ms.pl[aid]['pos']
+                    rates = (R.stat_rates(aid) if R else None) or p['rate']
                     mu = {}
                     for s in BASE:
-                        rate = p['rate'][s]
+                        rate = rates[s]
                         c = casc.get(s)
                         if c and c['use']:
                             vs = sum(rt[a]['pg'][s] for a in out if a in rt and a != aid and a in rot and rot[a]['pos'] == pos)
@@ -237,10 +256,12 @@ def walk(box, inj, margins, mm, casc, team_min, lines):
                     recs.append({'gid': g['game_id'], 'season': g['season'], 'aid': aid, 'min': r['minutes'], 'pm': pm[aid],
                                  'pos': pos, 'st': ms.pl[aid]['st'], 'spread': ln.get('spread_close'), 'y3pa': r['three_point_field_goals_attempted'],
                                  'r3': sh[0] if sh else None, 'p3': sh[1] if sh else None,
-                                 'mu': mu, 'rate': dict(p['rate']), 'sdm': math.sqrt(ctx.vol.get(aid, 36.0)),
-                                 'x': features(ctx, g, team, opp, aid, pos, mu, pm[aid], p['rate'], lines.get(g['game_id'])),
+                                 'mu': mu, 'rate': dict(rates), 'sdm': math.sqrt(ctx.vol.get(aid, 36.0)),
+                                 'x': features(ctx, g, team, opp, aid, pos, mu, pm[aid], rates, lines.get(g['game_id'])),
                                  'y': y})
         update_after(g, rows, rt, prior, ms, ctx)
+        if R:
+            R.update(rows)
     return recs, ctx
 
 
