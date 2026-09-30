@@ -22,6 +22,8 @@ python3 nba/scripts/build_prop_model_v3.py                      # v3 ladder dist
 python3 nba/scripts/build_minutes_model_v3.py                   # v3 minutes (role, returns, new team, spread) vs v2 (~2 min)
 python3 nba/scripts/build_rates_v3.py                           # per-stat memory: component rates, own half-lives (~1 min)
 python3 nba/scripts/build_prop_model_v3_full.py                 # v3 candidate (B + C, with and without A's shape) vs v2 (~4 min)
+python3 nba/scripts/fetch_lineups.py [--backfill]               # NBA.com starting lineups: today -> data/lineups_today.json, or two seasons -> raw
+python3 nba/scripts/build_starters.py                           # lineup feed accuracy + v3 with confirmed starters vs v2 (~5 min)
 python3 nba/scripts/fetch_depth_charts.py                       # CURRENT depth charts -> data/depth_charts.json (~15 s, run daily)
 python3 nba/scripts/build_data_health.py                        # Data Health snapshot (reads origin/nba-data) + re-render the app page
 python3 nba/scripts/prop_board.py                               # Player Props snapshot (origin/nba-live) + example board + re-render
@@ -38,7 +40,7 @@ were.
 
 ## Live snapshots (week 4, from 2026-09-30)
 
-`scripts/snapshot.py` records every venue's pre-tip price and the injury report, change-only, and runs on
+`scripts/snapshot.py` records every venue's pre-tip price, the injury report and NBA.com's starting lineups, change-only, and runs on
 GitHub Actions (`.github/workflows/nba-snapshots.yml`): an hourly poll, and on game days a loop from 9am ET
 to the last tip (every 15 min, every 5 min inside 3h of a tip). Output goes to the **`nba-data` branch**,
 not main, under `snapshots/<ET date>/`. Read it with:

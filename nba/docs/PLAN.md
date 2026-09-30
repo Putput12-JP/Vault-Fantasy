@@ -9,7 +9,9 @@ market's), Kalshi points NO joins 3PM NO as GO. The page prices with v2; daily r
 Prop model v3 plan: [v3-plan.md](v3-plan.md). Workstream A (ladder distributions) tested: better probabilities, same
 blended edge, so v2 keeps pricing ([prop-model-v3.md](prop-model-v3.md)). B (minutes v3) + C (per-stat memory) tested
 together: more accurate on every stat, but Kalshi points NO slips to WATCH, so v2 still prices
-([prop-model-v3-full.md](prop-model-v3-full.md)); v3 is a shadow candidate. Biggest open lever: confirmed starters.
+([prop-model-v3-full.md](prop-model-v3-full.md)); v3 is a shadow candidate. Confirmed starters feed (NBA.com daily
+lineups, [starters-feed.md](starters-feed.md)): 99.98% accurate, best model accuracy yet, but backtest prices already knew
+the lineups, so v2 stays; the recorder now logs lineup confirmations to test the timing edge live.
 Week 4 = live snapshots (RUNNING from 2026-09-30: `scripts/snapshot.py` on GitHub Actions, data on the `nba-data`
 branch) + injury re-pricer + shadow the GO/WATCH signals; strategy in [differentiation.md](differentiation.md).
 Minutes Lab page: `nba/projections.html` (built by `build_player_projections.py`).

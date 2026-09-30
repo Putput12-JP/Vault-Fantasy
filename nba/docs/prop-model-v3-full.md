@@ -1,6 +1,6 @@
 # Prop model v3 candidate (minutes v3 + per-stat memory + ladder shape) vs v2
 
-Generated 2026-09-30T17:31Z by `nba/scripts/build_prop_model_v3_full.py`. Fit on 2024-25, tested on 2025-26,
+Generated 2026-09-30T17:43Z by `nba/scripts/build_prop_model_v3_full.py`. Fit on 2024-25, tested on 2025-26,
 28,252 identical player-games and identical prices for every model.
 
 - **v2**: shipped. **v3m**: minutes model v3 x per-stat-memory rates, stacker refit, v2-style spread and line
@@ -13,6 +13,7 @@ Generated 2026-09-30T17:31Z by `nba/scripts/build_prop_model_v3_full.py`. Fit on
 
 | Stat | RMSE v2 | RMSE v3m | MAE v2 | MAE v3m | Bias v2 | Bias v3m |
 |---|---|---|---|---|---|---|
+| minutes |  |  | 4.899 | 4.867 | 8+ miss 18.5% | 8+ miss 18.4% |
 | pts | 5.879 | 5.862 | 4.491 | 4.479 | +0.088 | +0.057 |
 | reb | 2.451 | 2.439 | 1.863 | 1.853 | +0.024 | +0.036 |
 | ast | 1.791 | 1.789 | 1.323 | 1.321 | +0.007 | +0.000 |
@@ -24,7 +25,7 @@ Generated 2026-09-30T17:31Z by `nba/scripts/build_prop_model_v3_full.py`. Fit on
 
 ## Every player-game: log score of the outcome, and range Brier
 
-| Stat | Log score v2 | v3m | v3m_shape | Range Brier v2 | Range Brier v3m | Range Brier v3m_shape | Range Brier v3m_shape_linecal |
+| Stat | Log score v2 | Log score v3m | Log score v3m_shape | Range Brier v2 | Range Brier v3m | Range Brier v3m_shape | Range Brier v3m_shape_linecal |
 |---|---|---|---|---|---|---|---|
 | pts | 3.1198 | 3.1169 | 3.0625 | 0.1840 | 0.1828 | 0.1790 | 0.1819 |
 | reb | 2.1429 | 2.1387 | 2.1368 | 0.1776 | 0.1761 | 0.1739 | 0.1760 |

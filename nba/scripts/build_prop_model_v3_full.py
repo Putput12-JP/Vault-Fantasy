@@ -31,124 +31,163 @@ OUT_MD = os.path.join(C.HERE, '..', 'docs', 'prop-model-v3-full.md')
 NAMES = ['v2', 'v3m', 'v3m_shape', 'v3m_shape_linecal']
 
 
-def main():
+def inputs():
     box = C.player_games(V2.SEASONS)
-    inj = C.InjuryAsOf([2025, 2026], C.player_index(box))
-    margins = MM.expected_margins(box)
-    mm = json.load(open(MM.OUT_JSON))
-    casc = json.load(open(os.path.join(DATA, 'usage_cascade.json')))['stats']
-    team_min = json.load(open(V1.OUT_JSON))['team_min']
-    lines = C.closing_lines()
-    mv3 = json.load(open(os.path.join(DATA, 'minutes_model_v3.json')))
-    rv3 = json.load(open(os.path.join(DATA, 'rates_v3.json')))
+    return {'box': box, 'inj': C.InjuryAsOf([2025, 2026], C.player_index(box)), 'margins': MM.expected_margins(box),
+            'mm': json.load(open(MM.OUT_JSON)), 'casc': json.load(open(os.path.join(DATA, 'usage_cascade.json')))['stats'],
+            'team_min': json.load(open(V1.OUT_JSON))['team_min'], 'lines': C.closing_lines(),
+            'mv3': json.load(open(os.path.join(DATA, 'minutes_model_v3.json'))),
+            'rv3': json.load(open(os.path.join(DATA, 'rates_v3.json')))}
 
-    recs2, _ = V2.walk(box, inj, margins, mm, casc, team_min, lines)
-    recs3, _ = V2.walk(box, inj, margins, mm, casc, team_min, lines, base='v3', mv3=mv3, rv3=rv3)
-    tune3 = [r for r in recs3 if r['season'] in (2023, 2024) and r['pm'] > 0]
-    ratio = sum(r['min'] for r in tune3) / sum(r['pm'] for r in tune3)
-    team_min3 = round(team_min * ratio, 1)
-    print(f'v3 minutes: team target {team_min} -> {team_min3} (fit on 2022-24, as v1\'s was)', flush=True)
-    if abs(ratio - 1) > 0.003:
-        recs3, _ = V2.walk(box, inj, margins, mm, casc, team_min3, lines, base='v3', mv3=mv3, rv3=rv3)
 
-    by2, by3 = A.by_rec(recs2), A.by_rec(recs3)
-    keys = set(by2) & set(by3)
-    recs2 = [r for r in recs2 if (r['gid'], r['aid']) in keys]
-    recs3 = [r for r in recs3 if (r['gid'], r['aid']) in keys]
-    by2, by3 = A.by_rec(recs2), A.by_rec(recs3)
+def walk_v2(I):
+    return V2.walk(I['box'], I['inj'], I['margins'], I['mm'], I['casc'], I['team_min'], I['lines'])[0]
+
+
+def walk_v3(I, feed=None):
+    """v3 base walk; the team minutes target re-tuned on 2022-24 (as v1's was). -> (recs, team_min)"""
+    run = lambda tm: V2.walk(I['box'], I['inj'], I['margins'], I['mm'], I['casc'], tm, I['lines'], base='v3',
+                             mv3=I['mv3'], rv3=I['rv3'], feed=feed)[0]
+    recs = run(I['team_min'])
+    tune = [r for r in recs if r['season'] in (2023, 2024) and r['pm'] > 0]
+    ratio = sum(r['min'] for r in tune) / sum(r['pm'] for r in tune)
+    tm = round(I['team_min'] * ratio, 1)
+    print(f"v3 minutes{' + lineup feed' if feed else ''}: team target {I['team_min']} -> {tm}", flush=True)
+    return (run(tm) if abs(ratio - 1) > 0.003 else recs), tm
+
+
+def compare(recs2, bases, shaped):
+    """v2 against each v3-style base (stacker, v2-style spread and line calibration refit to it), plus workstream A's
+    ladder shape on the base named `shaped`, uncalibrated and line-calibrated. Identical player-games and prices."""
+    keys = set(A.by_rec(recs2))
+    for recs in bases.values():
+        keys &= set(A.by_rec(recs))
+    keep = lambda rs: [r for r in rs if (r['gid'], r['aid']) in keys]
+    recs2, bases = keep(recs2), {b: keep(rs) for b, rs in bases.items()}
+    by = {b: A.by_rec(rs) for b, rs in bases.items()}
+    names = ['v2'] + list(bases) + [shaped + '_shape', shaped + '_shape_linecal']
     fit2, test2 = [r for r in recs2 if r['season'] == V2.FIT], [r for r in recs2 if r['season'] == V2.TEST]
-    fit3, test3 = [r for r in recs3 if r['season'] == V2.FIT], [r for r in recs3 if r['season'] == V2.TEST]
+    fits = {b: [r for r in rs if r['season'] == V2.FIT] for b, rs in bases.items()}
+    tests = {b: [r for r in rs if r['season'] == V2.TEST] for b, rs in bases.items()}
     print(f'identical player-games: fit {len(fit2):,}  test {len(test2):,}', flush=True)
 
-    stk2, stk3 = V2.fit_stacker(fit2), V2.fit_stacker(fit3)
-    mu_2 = lambda r: V2.mu2(r, stk2)
-    mu_3 = lambda r: V2.mu2(r, stk3)
-    V_2 = V2.fit_var(fit2, mu_2, True)
-    V_3 = V2.fit_var(fit3, mu_3, True)
-    T3, P3 = A.fit_minutes(fit3), A.fit_production(fit3, stk3)
+    stk = {'v2': V2.fit_stacker(fit2)}
+    stk.update({b: V2.fit_stacker(fits[b]) for b in bases})
+    mu = {b: (lambda s: lambda r: V2.mu2(r, s))(stk[b]) for b in stk}
+    var = {'v2': V2.fit_var(fit2, mu['v2'], True)}
+    var.update({b: V2.fit_var(fits[b], mu[b], True) for b in bases})
+    T3, P3 = A.fit_minutes(fits[shaped]), A.fit_production(fits[shaped], stk[shaped])
     extra = lambda r, m: (V2.minrate(r, m) * r['sdm']) ** 2
     key = lambda r: (r['gid'], r['aid'])
 
-    res = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'names': NAMES, 'team_min_v3': team_min3,
-           'n_test': len(test2), 'mean': {}, 'logscore': {}, 'range_cal': {}, 'kalshi': {}, 'espn': {}, 'blend_oos': {}, 'kalshi_bias': {},
-           'stacker_v3': stk3, 'variance_v3': V_3, 'minutes_v3_shape': T3, 'production_v3': P3}
+    res = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'names': names, 'bases': list(bases),
+           'shaped': shaped, 'n_test': len(test2), 'mean': {}, 'logscore': {}, 'range_cal': {}, 'kalshi': {}, 'espn': {},
+           'blend_oos': {}, 'kalshi_bias': {}, 'stacker': {b: stk[b] for b in bases}, 'variance': {b: var[b] for b in bases},
+           'minutes_shape': T3, 'production_shape': P3}
 
-    # projection accuracy on the test season
+    # minutes and projection accuracy on the test season
+    e = lambda recs: [r['pm'] - r['min'] for r in recs]
+    res['minutes'] = {n: {'mae': round(statistics.mean(abs(x) for x in e(rs)), 3), 'miss8': round(sum(abs(x) >= 8 for x in e(rs)) / len(rs), 4)}
+                      for n, rs in [('v2', test2)] + list(tests.items())}
     for m in MARKETS:
         out = {}
-        for name, recs, mf in (('v2', test2, mu_2), ('v3m', test3, mu_3)):
-            e = [mf(r)[m] - A.yval(r, m) for r in recs]
-            out[name] = {'mae': round(statistics.mean(abs(x) for x in e), 4), 'rmse': round(math.sqrt(statistics.mean(x * x for x in e)), 4),
-                         'bias': round(statistics.mean(e), 4)}
+        for name, recs in [('v2', test2)] + list(tests.items()):
+            er = [mu[name](r)[m] - A.yval(r, m) for r in recs]
+            out[name] = {'mae': round(statistics.mean(abs(x) for x in er), 4), 'rmse': round(math.sqrt(statistics.mean(x * x for x in er)), 4),
+                         'bias': round(statistics.mean(er), 4)}
         res['mean'][m] = out
-        print(f"  {m:4s} RMSE v2 {out['v2']['rmse']:.3f}  v3m {out['v3m']['rmse']:.3f}   MAE v2 {out['v2']['mae']:.3f}  v3m {out['v3m']['mae']:.3f}", flush=True)
+        print(f'  {m:4s} RMSE ' + '  '.join(f"{n} {v['rmse']:.3f}" for n, v in out.items()), flush=True)
 
-    espn, kal = A.load_markets(by2)
+    espn, kal = A.load_markets(A.by_rec(recs2))
     dcache = {}
+    bs = by[shaped]
 
     def dist3(r3, m):
         k = (id(r3), m)
         if k not in dcache:
-            dcache[k] = A.Dist(P3, r3, m, mu_3(r3)[m], T3)
+            dcache[k] = A.Dist(P3, r3, m, mu[shaped](r3)[m], T3)
         return dcache[k]
 
     v2cal = json.load(open(V2.OUT_JSON))['calibration']['v2']
-    raw_v3m = lambda r3, m, L: V2.p_over(m, mu_3(r3)[m], L, V_3, extra(r3, m))
-    cal_v3m = {m: pav([(raw_v3m(by3[key(x['r'])], m, x['L']), 1 if x['over'] else 0) for x in espn.get(('2025', m, 'open'), [])]) for m in MARKETS}
-    cal_shape = {m: pav([(dist3(by3[key(x['r'])], m).over(x['L']), 1 if x['over'] else 0) for x in espn.get(('2025', m, 'open'), [])]) for m in MARKETS}
-    probs = {
-        'v2': lambda r, m, L, c: apply_cal(v2cal[m], V2.p_over(m, mu_2(r)[m], L, V_2, extra(r, m))),
-        'v3m': lambda r, m, L, c: apply_cal(cal_v3m[m], raw_v3m(by3[key(r)], m, L)),
-        'v3m_shape': lambda r, m, L, c: dist3(by3[key(r)], m).over(L),
-        'v3m_shape_linecal': lambda r, m, L, c: apply_cal(cal_shape[m], dist3(by3[key(r)], m).over(L)),
-    }
-    res['calibration'] = {'v3m': cal_v3m, 'v3m_shape_linecal': cal_shape}
+    raw = lambda b, rb, m, L: V2.p_over(m, mu[b](rb)[m], L, var[b], extra(rb, m))
+    cal = {b: {m: pav([(raw(b, by[b][key(x['r'])], m, x['L']), 1 if x['over'] else 0) for x in espn.get(('2025', m, 'open'), [])])
+               for m in MARKETS} for b in bases}
+    cal_shape = {m: pav([(dist3(bs[key(x['r'])], m).over(x['L']), 1 if x['over'] else 0) for x in espn.get(('2025', m, 'open'), [])]) for m in MARKETS}
+    probs = {'v2': lambda r, m, L, c: apply_cal(v2cal[m], V2.p_over(m, mu['v2'](r)[m], L, var['v2'], extra(r, m)))}
+    for b in bases:
+        probs[b] = (lambda b: lambda r, m, L, c: apply_cal(cal[b][m], raw(b, by[b][key(r)], m, L)))(b)
+    probs[shaped + '_shape'] = lambda r, m, L, c: dist3(bs[key(r)], m).over(L)
+    probs[shaped + '_shape_linecal'] = lambda r, m, L, c: apply_cal(cal_shape[m], dist3(bs[key(r)], m).over(L))
+    res['calibration'] = dict(cal, **{shaped + '_shape_linecal': cal_shape})
 
     # every player-game: log score of the outcome, and P(over) across each player's range (lines from v2's mean)
     for m in MARKETS:
-        ls = {'v2': [], 'v3m': [], 'v3m_shape': []}
-        rc = {n: [] for n in NAMES}
+        ls = {n: [] for n in ['v2'] + list(bases) + [shaped + '_shape']}
+        rc = {n: [] for n in names}
         for r in test2:
-            r3 = by3[key(r)]
             y = int(round(A.yval(r, m)))
-            ls['v2'].append(-A.v2_logp(V_2, m, mu_2(r)[m], extra(r, m), y))
-            ls['v3m'].append(-A.v2_logp(V_3, m, mu_3(r3)[m], extra(r3, m), y))
-            ls['v3m_shape'].append(-dist3(r3, m).logp(y))
-            for t in A.thresholds(m, mu_2(r)[m]):
+            ls['v2'].append(-A.v2_logp(var['v2'], m, mu['v2'](r)[m], extra(r, m), y))
+            for b in bases:
+                rb = by[b][key(r)]
+                ls[b].append(-A.v2_logp(var[b], m, mu[b](rb)[m], extra(rb, m), y))
+            ls[shaped + '_shape'].append(-dist3(bs[key(r)], m).logp(y))
+            for t in A.thresholds(m, mu['v2'](r)[m]):
                 o = 1 if y > t else 0
-                for n in NAMES:
+                for n in names:
                     rc[n].append((probs[n](r, m, t, None), o))
         res['logscore'][m] = {n: round(statistics.mean(v), 4) for n, v in ls.items()}
         res['range_cal'][m] = {n: {'brier': round(statistics.mean((p - o) ** 2 for p, o in v), 5), 'deciles': A.decile_table(v)} for n, v in rc.items()}
         print(f"  {m:4s} log score " + '  '.join(f'{n} {v:.4f}' for n, v in res['logscore'][m].items()), flush=True)
         dcache = {k: v for k, v in dcache.items() if k[1] != m}
 
-    A.eval_markets(res, NAMES, probs, espn, kal)
-    res['verdict'] = V2.verdicts(res, NAMES)
+    A.eval_markets(res, names, probs, espn, kal)
+    res['verdict'] = V2.verdicts(res, names)
     res['ship'] = A.choose(res)
     print('ship:', res['ship'], flush=True)
+    return res
+
+
+def main():
+    I = inputs()
+    recs3, tm3 = walk_v3(I)
+    res = compare(walk_v2(I), {'v3m': recs3}, 'v3m')
+    res['team_min_v3'] = tm3
     json.dump(res, open(OUT_JSON, 'w'), indent=1)
-    write_md(res, rv3, mv3)
+    write_md(res)
     print(open(OUT_MD).read())
 
 
-def write_md(res, rv3, mv3):
-    N = res['names']
-    L = ['# Prop model v3 candidate (minutes v3 + per-stat memory + ladder shape) vs v2', '',
-         f"Generated {res['generated']} by `nba/scripts/build_prop_model_v3_full.py`. Fit on 2024-25, tested on 2025-26,",
-         f"{res['n_test']:,} identical player-games and identical prices for every model.", '',
-         '- **v2**: shipped. **v3m**: minutes model v3 x per-stat-memory rates, stacker refit, v2-style spread and line',
-         '  calibration (isolates workstreams B + C). **v3m_shape**: v3m\'s mean with workstream A\'s ladder distribution,',
-         '  uncalibrated. **v3m_shape_linecal**: the same, calibrated on 2024-25 sportsbook main lines.', '',
-         f"**Shipped: {res['ship']}** (rule: keep every v2 GO at GO with ROI at least v2's, then lowest Kalshi log loss).", '',
-         '## Projection accuracy, 2025-26', '', '| Stat | RMSE v2 | RMSE v3m | MAE v2 | MAE v3m | Bias v2 | Bias v3m |', '|---|---|---|---|---|---|---|']
+HEAD = ['# Prop model v3 candidate (minutes v3 + per-stat memory + ladder shape) vs v2', '',
+        'Generated {generated} by `nba/scripts/build_prop_model_v3_full.py`. Fit on 2024-25, tested on 2025-26,',
+        '{n_test:,} identical player-games and identical prices for every model.', '',
+        '- **v2**: shipped. **v3m**: minutes model v3 x per-stat-memory rates, stacker refit, v2-style spread and line',
+        '  calibration (isolates workstreams B + C). **v3m_shape**: v3m\'s mean with workstream A\'s ladder distribution,',
+        '  uncalibrated. **v3m_shape_linecal**: the same, calibrated on 2024-25 sportsbook main lines.']
+FOOT = ['Inputs: [minutes-model-v3.md](minutes-model-v3.md), [rates-v3.md](rates-v3.md), [prop-model-v3.md](prop-model-v3.md). '
+        'Team minutes target for v3 minutes: {team_min_v3}.']
+
+
+def write_md(res, head=HEAD, foot=FOOT, out=OUT_MD):
+    N, P = res['names'], ['v2'] + res['bases']
+    fmt = lambda lines: [x.format(**res) for x in lines]
+    L = fmt(head) + ['', f"**Shipped: {res['ship']}** (rule: keep every v2 GO at GO with ROI at least v2's, then lowest Kalshi log loss).", '',
+                     '## Projection accuracy, 2025-26', '',
+                     '| Stat | ' + ' | '.join(f'RMSE {n}' for n in P) + ' | ' + ' | '.join(f'MAE {n}' for n in P) + ' | '
+                     + ' | '.join(f'Bias {n}' for n in P) + ' |', '|---|' + '---|' * (3 * len(P))]
+    mn = res.get('minutes')
+    if mn:
+        L.append('| minutes | ' + ' | '.join('' for n in P) + ' | ' + ' | '.join(f"{mn[n]['mae']:.3f}" for n in P) + ' | '
+                 + ' | '.join(f"8+ miss {mn[n]['miss8']:.1%}" for n in P) + ' |')
     for m, d in res['mean'].items():
-        L.append(f"| {m} | {d['v2']['rmse']:.3f} | {d['v3m']['rmse']:.3f} | {d['v2']['mae']:.3f} | {d['v3m']['mae']:.3f} | {d['v2']['bias']:+.3f} | {d['v3m']['bias']:+.3f} |")
+        L.append(f'| {m} | ' + ' | '.join(f"{d[n]['rmse']:.3f}" for n in P) + ' | ' + ' | '.join(f"{d[n]['mae']:.3f}" for n in P) + ' | '
+                 + ' | '.join(f"{d[n]['bias']:+.3f}" for n in P) + ' |')
+    LS = list(res['logscore'][MARKETS[0]])
     L += ['', '## Every player-game: log score of the outcome, and range Brier', '',
-          '| Stat | Log score v2 | v3m | v3m_shape | ' + ' | '.join(f'Range Brier {n}' for n in N) + ' |', '|---|---|---|---|' + '---|' * len(N)]
+          '| Stat | ' + ' | '.join(f'Log score {n}' for n in LS) + ' | ' + ' | '.join(f'Range Brier {n}' for n in N) + ' |',
+          '|---|' + '---|' * (len(LS) + len(N))]
     for m in MARKETS:
         a, b = res['logscore'][m], res['range_cal'][m]
-        L.append(f"| {m} | {a['v2']:.4f} | {a['v3m']:.4f} | {a['v3m_shape']:.4f} | " + ' | '.join(f"{b[n]['brier']:.4f}" for n in N) + ' |')
+        L.append(f'| {m} | ' + ' | '.join(f'{a[n]:.4f}' for n in LS) + ' | ' + ' | '.join(f"{b[n]['brier']:.4f}" for n in N) + ' |')
     L += ['', '## Kalshi ladders, 2025-26 (log loss; blend t in brackets)', '', '| Stat | Rows | Market | ' + ' | '.join(N) + ' |', '|---|---|---|' + '---|' * len(N)]
     for m, d in res['kalshi'].items():
         L.append(f"| {m} | {d['n']:,} | {d['logloss_market']:.4f} | " + ' | '.join(f"{d[n]['logloss']:.4f} ({d[n]['blend_t']})" for n in N) + ' |')
@@ -173,9 +212,8 @@ def write_md(res, rv3, mv3):
     L += ['', '## Gates', '', '| Stat | ' + ' | '.join(N) + ' |', '|---|' + '---|' * len(N)]
     for m in MARKETS:
         L.append(f"| {m} | " + ' | '.join(res['verdict'][n][m] for n in N) + ' |')
-    L += ['', f"Inputs: [minutes-model-v3.md](minutes-model-v3.md), [rates-v3.md](rates-v3.md), [prop-model-v3.md](prop-model-v3.md). "
-          f"Team minutes target for v3 minutes: {res['team_min_v3']}.", '']
-    open(OUT_MD, 'w').write('\n'.join(L))
+    L += [''] + fmt(foot) + ['']
+    open(out, 'w').write('\n'.join(L))
 
 
 if __name__ == '__main__':

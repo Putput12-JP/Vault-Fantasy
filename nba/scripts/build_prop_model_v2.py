@@ -180,24 +180,31 @@ def features(ctx, g, team, opp, aid, pos, mu, pm, rate, line):
     return out
 
 
-def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None):
+def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None, feed=None):
     """v1's projection exactly (the 'tip' clock), plus v2 features, for every player-game from 2023 on.
     Injuries: who actually sat before 2025 (no archived reports), the report 30 min pre-tip from 2025.
     base='v3' swaps in the v3 base (docs/v3-plan.md B + C): minutes model v3 (role, returns, new team, market spread;
-    data/minutes_model_v3.json) and per-stat memory component rates (data/rates_v3.json). Everything else is shared."""
+    data/minutes_model_v3.json) and per-stat memory component rates (data/rates_v3.json). Everything else is shared.
+    feed (base v3 only, build_starters.py): {(game_id, team): {'start': {aid}, 'inactive': {aid}}} from NBA.com's
+    confirmed lineups. The role term then uses who is starting tonight (minutes v3's starters-known weights) and
+    the inactive list joins the injury report's Out."""
     rt, ctx = {}, Context()
     R = None
     if base == 'v3':
         import build_minutes_model_v3 as M3
         import build_rates_v3 as R3
         ms = M3.State(mv3['alpha'], mv3['a_new'], mv3['new_n'])
-        beta = [mv3['beta'][f] for f in M3.FEATURES]
+        beta = [mv3['beta_hindsight_starters' if feed else 'beta'][f] for f in M3.FEATURES]
         R = R3.Rates(rv3['alpha'], {c: (v['decay'], v['k']) for c, v in rv3['pct'].items()})
 
         def mfeat(g, team, aid, out):
             ln = lines.get(g['game_id']) or {}
             sp = ln.get('spread_close') if ln.get('spread_close') is not None else margins.get(g['game_id'])
-            return M3.features(ms, g, team, aid, out, sp)
+            x = M3.features(ms, g, team, aid, out, sp)
+            lu = feed.get((g['game_id'], team)) if feed else None
+            if lu:
+                x[M3.FEATURES.index('role')] = M3.role_term(ms.pl[aid], aid in lu['start'])
+            return x
     else:
         ms = MM.State(mm['alpha'])
         beta = [mm['beta'][f] for f in MM.FEATURES]
@@ -220,6 +227,8 @@ def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=
                     out = {a: 1.0 for a in rot if a not in played}
                 else:
                     out = {a: 1.0 for a, s in inj.status(day, team, clk).items() if s in ('Out', 'Doubtful')}
+                if feed and (g['game_id'], team) in feed:
+                    out.update({a: 1.0 for a in feed[(g['game_id'], team)]['inactive']})
                 cand = [r for r in rows if r['team'] == team and r['athlete_id'] in ms.pl
                         and ms.pl[r['athlete_id']]['team'] == team and r['athlete_id'] in rt and r['athlete_id'] not in out]
                 pm = {}

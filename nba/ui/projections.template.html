@@ -446,7 +446,7 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
           <div><h2>Upcoming games</h2><p>Markets recorded per venue for every game in the next 3 days: game lines, then player props.</p></div>
         </div>
         <div class="card-b"><div class="tablewrap"><table class="ht">
-          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Game</th><th scope="col">Kalshi</th><th scope="col">ESPN</th><th scope="col">Pinnacle</th><th scope="col">Action</th><th scope="col">Polymarket</th><th scope="col">Injury report</th></tr></thead>
+          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Game</th><th scope="col">Kalshi</th><th scope="col">ESPN</th><th scope="col">Pinnacle</th><th scope="col">Action</th><th scope="col">Polymarket</th><th scope="col">Injury report</th><th scope="col">Lineups</th></tr></thead>
           <tbody id="hgames"></tbody>
         </table></div></div>
       </section>
@@ -830,6 +830,7 @@ const SRC = [
   ['action', 'Action Network', 'Seven books, plus bets % and money %'],
   ['polymarket', 'Polymarket', 'Game markets, bid and ask'],
   ['injuries', 'Injury report', 'Official NBA report, posted every 15 min'],
+  ['lineups', 'Starting lineups', 'NBA.com starters, Expected then Confirmed'],
 ];
 const VENUES = ['kalshi', 'espn', 'pinnacle', 'action', 'polymarket'];
 let HS = H0 ? {status: H0.recorder.status, polls: H0.recorder.polls || [], live: false, at: Date.parse(H0.built) / 1000} : null;
@@ -947,7 +948,7 @@ function renderHealth(){
     } else if (k === 'injuries'){
       note = `<span class="note">${p?.report === 'no games' ? 'No report posts without games in the next 36 hours' : reportTime(p?.report) ? `Latest: ${reportTime(p.report)} ET report` : 'No report in the last 2 hours'}</span>`;
     } else if (p && !p.n){
-      note = `<span class="note">${k === 'kalshi' ? 'Kalshi lists props the morning of a game' : 'Nothing listed for games in the next 3 days'}</span>`;
+      note = `<span class="note">${k === 'kalshi' ? 'Kalshi lists props the morning of a game' : k === 'lineups' ? 'Posted for games in the next 36 hours' : 'Nothing listed for games in the next 3 days'}</span>`;
     }
     const n = k === 'injuries' ? (injCount ? `${injCount} players` : '') : p?.n != null ? p.n.toLocaleString() : '';
     return `<tr><td class="l src"><b>${name}</b><small>${what}</small></td><td class="l">${pill(c, label)}</td>
@@ -969,10 +970,12 @@ function renderHealth(){
       return `<td class="cov">${c[0].toLocaleString()}<small>${sub}</small></td>`;
     };
     const inj = g.cov.injuries ? `<td class="cov">${g.cov.injuries[0]}<small>listed</small></td>` : `<td class="cov none">none</td>`;
-    const sep = g.day !== lastDay ? `<tr class="sep"><td colspan="8">${etFmt(g.tip, {weekday: 'long', month: 'long', day: 'numeric'})}</td></tr>` : '';
+    const lu = g.cov.lineups;
+    const lin = lu ? `<td class="cov">${lu[0]} of 2<small>${lu[0] === 2 ? 'confirmed' : lu[0] ? 'confirmed, 1 expected' : 'expected'}</small></td>` : `<td class="cov none">none</td>`;
+    const sep = g.day !== lastDay ? `<tr class="sep"><td colspan="9">${etFmt(g.tip, {weekday: 'long', month: 'long', day: 'numeric'})}</td></tr>` : '';
     lastDay = g.day;
-    return `${sep}<tr><td class="l num">${clock(g.tip)}</td><td class="l"><b>${g.away} @ ${g.home}</b>${g.season_type === 1 ? ' <span class="badge">Preseason</span>' : ''}</td>${VENUES.map(cell).join('')}${inj}</tr>`;
-  }).join('') : `<tr><td class="l" colspan="8"><p class="empty">No games in the next 3 days. Preseason starts October 3; opening night is October 20.</p></td></tr>`;
+    return `${sep}<tr><td class="l num">${clock(g.tip)}</td><td class="l"><b>${g.away} @ ${g.home}</b>${g.season_type === 1 ? ' <span class="badge">Preseason</span>' : ''}</td>${VENUES.map(cell).join('')}${inj}${lin}</tr>`;
+  }).join('') : `<tr><td class="l" colspan="9"><p class="empty">No games in the next 3 days. Preseason starts October 3; opening night is October 20.</p></td></tr>`;
 
   // model inputs (static files: judged against the real clock)
   const now = Date.now() / 1000;
@@ -1115,11 +1118,19 @@ function muFor(pid, stat, cache, g){
   return {mu, min, min0: pl.p.min0, team: pl.t, build, extra: (rate * sdm) ** 2, v2: !!(PR.stacker && state && g)};
 }
 
+// NBA.com lineups (prop_board.py): confirmed starter / expected starter / confirmed bench / expected bench / inactive
+const LINEUP = {
+  S: '<span class="pos" title="NBA.com confirmed starting lineup">Starting</span>',
+  s: '<span class="muted" title="NBA.com expected lineup, not yet confirmed">Expected to start</span>',
+  B: '<span class="muted" title="NBA.com confirmed starting lineup; he is not in it">Bench</span>',
+  b: '<span class="muted" title="NBA.com expected lineup, not yet confirmed">Expected off the bench</span>',
+  X: '<span class="neg" title="On the NBA inactive list">Inactive</span>',
+};
 function priceRow(e, cache){
   const P = PS.board.players[e.p] || [String(e.p), '', null];
   const gm = (PS.board.games || []).find(x => String(x.id) === String(e.g));
   const mm = muFor(e.p, e.s, cache, gm);
-  const r = {e, name: P[0], team: P[1], inj: P[2], mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, build: mm && mm.build, v2: mm && mm.v2, cands: []};
+  const r = {e, name: P[0], team: P[1], inj: P[2], lu: P[3], mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, build: mm && mm.build, v2: mm && mm.v2, cands: []};
   const kc = PR.kalshi[e.s] || PR.book[e.s], bc = PR.book[e.s];
   const model = line => mm && mm.min > 0 ? cal(e.s, pOverRaw(e.s, mm.mu, line, mm.extra)) : null;
   // books: fair over at each book's line
@@ -1242,7 +1253,7 @@ function renderProps(){
     const key = `${r.e.p}|${r.e.s}`, open = pf.open.has(key), g = games.find(x => String(x.id) === String(r.e.g));
     const rg = r.mu != null && r.min > 0 ? range2(r.e.s, r.mu) : null;
     const edited = PS.mode !== 'example' && r.min != null && Math.abs(r.min - r.min0) > .05;
-    const flags = [r.inj ? `<span class="${/out/i.test(r.inj) ? 'neg' : 'warnt'}">${esc(r.inj)}</span>` : '', edited ? '<span class="warnt" title="You changed his minutes in the Minutes Lab">minutes edited</span>' : ''].filter(Boolean).join(' · ');
+    const flags = [LINEUP[r.lu] || '', r.inj ? `<span class="${/out/i.test(r.inj) ? 'neg' : 'warnt'}">${esc(r.inj)}</span>` : '', edited ? '<span class="warnt" title="You changed his minutes in the Minutes Lab">minutes edited</span>' : ''].filter(Boolean).join(' · ');
     const hr = r.line != null ? hitRate(windowGames(r, pwin).gl, r.e.s, r.line) : null;
     const b = r.best;
     const betCells = b ? `<td class="l"><span class="betname">${b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`}</span></td>

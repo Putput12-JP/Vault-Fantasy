@@ -6,6 +6,26 @@ same rows as the model it replaces, ship a component only if it helps where we b
 
 ## Status
 
+**Confirmed starters feed built 2026-09-30, result in [starters-feed.md](starters-feed.md): the most accurate model yet,
+v2 keeps pricing bets (pre-registered rule). The feed is now recorded live to measure its timing edge.**
+
+- Source: NBA.com's daily lineups file (free, no key, the one behind nba.com/players/todays-lineups), backfilled for
+  2024-25 and 2025-26 (`fetch_lineups.py --backfill`). Its confirmed five matched the box score's starters in 5,285 of
+  5,286 team-games; its inactive list named 21,485 players, none of whom played.
+- Model (v3s = v3 base with tonight's starters in minutes v3's role term, inactives added to Out): minutes MAE 4.90 to
+  4.72 and 8+ minute misses 18.5% to 17.1% on the prop rows; RMSE better on all 8 stats (PRA 7.589 to 7.494); Kalshi
+  log loss better on all four, rebounds blend t 5.1 to 6.2.
+- Why it did not ship: the backtest prices (Kalshi 30-minute pre-tip VWAP, ESPN last pre-tip line) were set by a
+  market that could already see the lineups, so the model only caught up with it. Blended out-of-sample log loss moved
+  within 0.0006 of v2. The best variant (v3s ladder shape, line-calibrated) keeps both GO signals but at lower ROI
+  (points NO +3.1% vs +3.5%, 3PM NO +8.6% vs +9.4%). Rebounds YES reached z 2.9 on 41 bets, short of the 50-game gate.
+- What is left to test is timing, and it needs live data: how long after a lineup is confirmed do Kalshi and the books
+  finish repricing? The recorder now logs every Expected to Confirmed change (`lineups` source, polled every 5 minutes
+  within 3 hours of tip), next to every price. After a few weeks of 2026-27, score v3s at the first price seen after
+  confirmation.
+- Historical lineup files are stamped with their final update (about 2.5 hours after tip), so the backfill cannot say
+  when lineups were confirmed.
+
 **Workstreams B (minutes v3) and C (per-stat memory) done 2026-09-30, combined test in
 [prop-model-v3-full.md](prop-model-v3-full.md): more accurate everywhere, v2 keeps pricing bets (pre-registered rule).**
 

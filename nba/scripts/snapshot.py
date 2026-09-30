@@ -13,6 +13,8 @@ appends ONLY what changed since the last poll:
   action      Action Network scoreboard: 7 books + bets % / money % splits
   polymarket  NBA game events: best bid / ask / last per market
   injuries    official NBA injury report, parsed; one row per player status change
+  lineups     NBA.com daily lineups: each listed player's starting slot, Expected / Confirmed, active / inactive,
+              so the log shows when each team's five went from Expected to Confirmed
 
 Layout (under --dir, the nba-data branch; one folder per ET game day, self-contained):
   snapshots/YYYY-MM-DD/<source>.jsonl  {"t": epoch, "k": key, "v": [...]}   v null = market gone
@@ -244,6 +246,29 @@ def src_polymarket(slate):
     return rows, meta
 
 
+def src_lineups(slate):
+    """NBA.com's daily lineups file (fetch_lineups.py) for each ET day with a game tipping within 36 h.
+    Key 'YYYY-MM-DD|TEAM|player' -> [slot or '', Expected / Confirmed, Active / Inactive]. Pre-tip games only."""
+    from fetch_lineups import URL, team_abbr
+    rows, meta = {}, {}
+    days = sorted({g['day'] for g in slate.games if g['pre'] and g['tip'] - slate.now < 36 * 3600})
+    for day in days:
+        d = curl(URL.format(day.replace('-', '')))
+        pre = {(g['day'], t) for g in slate.games if g['pre'] for t in (g['away'], g['home'])}
+        for gm in d.get('games', []):
+            for side in ('homeTeam', 'awayTeam'):
+                t = gm.get(side) or {}
+                team = team_abbr(t.get('teamAbbreviation'))
+                if (day, team) not in pre:
+                    continue
+                for p in t.get('players') or []:
+                    k = f"{day}|{team}|{p.get('playerName')}"
+                    rows[k] = [p.get('position') or '', p.get('lineupStatus') or '', p.get('rosterStatus') or '']
+                    meta[k] = {'day': day, 'team': team, 'player': p.get('playerName'), 'nba_id': p.get('personId'),
+                               'nba_game': gm.get('gameId')}
+    return rows, meta
+
+
 class Injuries:
     """Latest official report. Filenames are the ET slot, every 15 min: Injury-Report_2026-10-20_05_30PM.pdf.
     A missing file is a 403 on this CDN, so walk back from now until one exists or we reach the one we have."""
@@ -338,7 +363,7 @@ def poll(root):
     slate = Slate(now)
     day = Day(root, dt.datetime.fromtimestamp(now, ET).date().isoformat())
     sources = [('kalshi', src_kalshi), ('espn', src_espn), ('pinnacle', src_pinnacle), ('action', src_action),
-               ('polymarket', src_polymarket), ('injuries', Injuries(day.dir))]
+               ('polymarket', src_polymarket), ('injuries', Injuries(day.dir)), ('lineups', src_lineups)]
     polls, metas = [], {}
     for name, fn in sources:
         t0 = time.time()
@@ -414,6 +439,17 @@ def coverage(slate, day, metas):
         for key, g in games.items():
             if key[0] == d_ and nick(team) in (slate.nick.get(g['home']), slate.nick.get(g['away'])):
                 g['cov'].setdefault('injuries', [0, 0])[0] += 1
+    # lineups: [teams whose five is Confirmed, starters listed]
+    team_game = {(g['day'], t): (g['day'], slate.nick.get(g['home'])) for g in slate.games if g['pre'] for t in (g['away'], g['home'])}
+    conf = defaultdict(dict)
+    for k, v in day.last.get('lineups', {}).items():
+        d_, team, _ = k.split('|', 2)
+        key = team_game.get((d_, team))
+        if key in games and v[0]:
+            games[key]['cov'].setdefault('lineups', [0, 0])[1] += 1
+            conf[key][team] = conf[key].get(team, True) and v[1] == 'Confirmed'
+    for key, teams in conf.items():
+        games[key]['cov']['lineups'][0] = sum(teams.values())
     return sorted(games.values(), key=lambda g: g['tip'])
 
 

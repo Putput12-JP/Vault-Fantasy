@@ -12,7 +12,8 @@ Built two ways:
             writes data/prop_board.json and re-renders the page
 
 Board shape (compact, it ships in the page):
-  {t, games: [{id, day, tip, away, home, season_type}], players: {pid: [name, team, injury status]},
+  {t, games: [{id, day, tip, away, home, season_type}], players: {pid: [name, team, injury status, lineup]},
+   lineup = NBA.com: 'S' confirmed starter, 's' expected starter, 'B' confirmed bench, 'b' expected bench, 'X' inactive,
    props: [{p, s, g, kal: [[line, bid, ask, open_mid]], books: [[book, line, over, under, open_line, open_over]]}],
    unmapped: {venue: count}}
 Kalshi rung "25+" is YES iff stat > 24.5, so its line is the floor strike, same convention as a book line.
@@ -81,7 +82,7 @@ def build(games, last, meta, first, proj, now):
 
     def entry(pid, stat, g):
         name, team = R.info[pid]
-        players[pid] = [name, team, None]
+        players[pid] = [name, team, None, None]
         return props.setdefault((pid, stat), {'p': pid, 's': stat, 'g': g['id'], 'kal': [], 'books': []})
 
     # Kalshi ladders
@@ -150,8 +151,16 @@ def build(games, last, meta, first, proj, now):
         pid = R.find(player, [g[s] for g in games for s in ('away', 'home') if nick(team) == nick(g.get(s + '_name'))])
         if pid:
             inj[pid] = v[0]
+    # NBA.com lineups: starting slot, Expected / Confirmed, Active / Inactive
+    lu = {}
+    for k, v in (last.get('lineups') or {}).items():
+        _, team, player = k.split('|', 2)
+        pid = R.find(player, [team])
+        if pid:
+            lu[pid] = 'X' if v[2] == 'Inactive' else ('S' if v[0] else 'B') if v[1] == 'Confirmed' else ('s' if v[0] else 'b')
     for pid in players:
         players[pid][2] = inj.get(pid)
+        players[pid][3] = lu.get(pid)
 
     for e in props.values():
         e['kal'].sort()
@@ -231,7 +240,7 @@ def example(proj):
     props, players = {}, {}
 
     def entry(pid, stat, r):
-        players[pid] = [R.info[pid][0], r['team'], None]   # the team he played for that night
+        players[pid] = [R.info[pid][0], r['team'], None, None]   # the team he played for that night
         return props.setdefault((pid, stat), {'p': pid, 's': stat, 'g': gid, 'kal': [], 'books': []})
     for r in kal:
         pid = int(r['athlete_id'])
@@ -246,6 +255,13 @@ def example(proj):
         if o and u:
             entry(int(r['athlete_id']), r['market'], r)['books'].append(
                 ['DraftKings' if r['book_id'] == '100' else 'ESPN BET', float(line), o, u, float(r['line_open']), r['over_px_open']])
+    lpath = os.path.join(tab, 'lineups.csv')             # that night's confirmed lineups (fetch_lineups.py --backfill)
+    if os.path.exists(lpath):
+        day = g['day'].replace('-', '')
+        for r in csv.DictReader(open(lpath)):
+            pid = R.find(r['player'], [r['team']]) if r['day'] == day and r['team'] in (home, away) else None
+            if pid in players:
+                players[pid][3] = 'X' if r['roster'] == 'Inactive' else ('S' if r['slot'] else 'B') if r['status'] == 'Confirmed' else ('s' if r['slot'] else 'b')
     for e in props.values():
         e['kal'].sort()
     return {'t': tip - 1800, 'example': True, 'games': [g], 'players': players,
