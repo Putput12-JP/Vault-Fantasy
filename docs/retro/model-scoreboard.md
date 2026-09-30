@@ -100,7 +100,7 @@ Vault vs Kalshi (10+ pts, Kalshi)  n=  0  side won   0, price said    0.0  -> tr
 PM sharp $25k+ (all)               n= 13  side won  12, price said    6.9  -> tracking (13 of 50)
 PM sharp vs crowd disagree         n=  3  side won   3, price said    1.0  -> tracking (3 of 50)
 PM sharp with crowd                n=  9  side won   8, price said    5.2  -> tracking (9 of 50)
-Withheld props (teammate out)      lines=26  model lean won 14  overs hit 15  | would-be plays: none yet
+Withheld props (teammate out)      lines=26  model lean won 14  overs hit 15  | would-be plays 0-0 +0.0u
 ```
 
 ## Timing: Best Bets by how early they posted (plan Weeks 3-4)
