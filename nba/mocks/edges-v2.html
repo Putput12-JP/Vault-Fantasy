@@ -1,0 +1,473 @@
+<title>Vault NBA Edges v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: Vault NBA app page (single dark look, the app's own system). Header | summary strip + news alerts |
+   list of edges grouped by game (filter toolbar on top) beside a rail that scores each edge type. Rows expand into
+   the case for the bet: every venue on one scale, how the price moved, what happened, and the record behind it. */
+:root{
+  --bg:#000000; --surface:#18181B; --surface2:#1f1f23; --raised:#27272A;
+  --border:#27272A; --border2:#3f3f46;
+  --fg:#FFFFFF; --fg2:#A1A1AA; --fg3:#71717A;
+  --primary:#FFFFFF; --on-primary:#000000;
+  --up:#4ade80; --down:#f87171; --warn:#fbbf24; --info:#93c5fd;
+  --up-soft:rgba(74,222,128,.14); --warn-soft:rgba(251,191,36,.12); --down-soft:rgba(248,113,113,.12);
+  --font-sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'JetBrains Mono','SFMono-Regular',Menlo,monospace;
+  --r-card:16px; --r-ctl:8px; --r-pill:9999px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--font-sans);font-size:14px;line-height:1.5}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--fg3)} .pos{color:var(--up)} .neg{color:var(--down)} .warnt{color:var(--warn)}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 24px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.88);backdrop-filter:blur(10px)}
+.top h1{margin:0;font-size:19px;font-weight:600;letter-spacing:-.01em}
+.top .sub{font-family:var(--font-mono);font-size:11px;color:var(--fg3);letter-spacing:.08em;text-transform:uppercase}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--fg2)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:var(--r-pill);font-size:11.5px;font-weight:500;white-space:nowrap;border:1px solid var(--border2);color:var(--fg2)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.proven{color:var(--up);border-color:rgba(74,222,128,.4)}
+.pill.tracking{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.pill.untested{color:var(--fg3)}
+.pill.mock{color:var(--warn);border-color:rgba(251,191,36,.4)}
+
+.wrap{max-width:1360px;margin:0 auto;padding-inline:24px;padding-block:20px 48px;display:grid;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);min-width:0}
+.banner{display:flex;flex-wrap:wrap;gap:4px 10px;padding:10px 14px;border:1px dashed var(--border2);border-radius:var(--r-ctl);color:var(--fg2);font-size:13px}
+.banner b{color:var(--fg);font-weight:500}
+
+/* summary strip */
+.strip{display:flex;flex-wrap:wrap;align-items:stretch}
+.strip > div{padding:14px 20px;display:grid;gap:2px;min-width:0}
+.strip > div + div{border-left:1px solid var(--border)}
+.strip .k{font-family:var(--font-mono);font-size:11px;color:var(--fg3);letter-spacing:.08em;text-transform:uppercase}
+.strip .v{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.strip .v small{font-size:13px;font-weight:500;color:var(--fg2)}
+.strip .conf{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:2px}
+
+/* news alerts */
+.alerts{display:grid;gap:8px}
+.alert{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px;border-radius:var(--r-ctl);background:var(--warn-soft);border:1px solid rgba(251,191,36,.28);font-size:13px}
+.alert .t{font-family:var(--font-mono);font-size:12px;color:var(--warn)}
+.alert b{font-weight:600}
+.alert button{border:1px solid rgba(251,191,36,.45);background:none;color:var(--warn);border-radius:var(--r-ctl);height:28px;padding:0 10px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+
+/* toolbar */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px}
+.seg{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--bg);flex-wrap:wrap}
+.seg button{height:26px;padding:0 9px;border:0;border-radius:6px;background:none;cursor:pointer;font-size:12px;color:var(--fg2);font-weight:500}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary)}
+.sel{height:32px;padding:0 28px 0 9px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center/14px;appearance:none;font-size:12.5px}
+
+/* games + edge rows */
+.game{overflow:hidden}
+.ghead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--border)}
+.ghead h2{margin:0;font-size:15px;font-weight:600}
+.ghead .meta{font-size:12.5px;color:var(--fg2)}
+.ghead .count{margin-left:auto;font-size:12px;color:var(--fg3)}
+.cols-h,.edge-row{display:grid;grid-template-columns:minmax(170px,1.6fr) minmax(112px,.9fr) minmax(150px,1.2fr) 64px minmax(150px,1.3fr) 104px 86px 28px;gap:12px;align-items:center;padding:10px 18px}
+.cols-h{font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);letter-spacing:.07em;text-transform:uppercase;padding-block:8px;border-bottom:1px solid var(--border)}
+.cols-h .r,.edge-row .r{text-align:right}
+.edge{border-bottom:1px solid var(--border)}
+.edge:last-child{border-bottom:0}
+.edge-row{cursor:pointer}
+.edge-row:hover{background:rgba(255,255,255,.025)}
+.edge.open .edge-row{background:rgba(255,255,255,.035)}
+.who b{display:block;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .bet{display:block;font-size:13px;color:var(--fg)}
+.who small{display:block;font-size:12px;color:var(--fg3)}
+.venue b{display:block;font-weight:500;font-size:13px}
+.venue small{display:block;font-size:12px;color:var(--fg3)}
+.edgev{font-family:var(--font-mono);font-weight:600;color:var(--up);text-align:right;font-size:14px}
+.stake{text-align:right;font-family:var(--font-mono);font-size:13px}
+.stake small{display:block;font-family:var(--font-sans);font-size:11.5px;color:var(--fg3)}
+.chev{width:16px;height:16px;color:var(--fg3);transition:transform .2s ease-out}
+.edge.open .chev{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){ .chev{transition:none} }
+
+/* fair vs cost gauge */
+.gauge{display:grid;gap:3px}
+.gauge .track{position:relative;height:8px;border-radius:4px;background:var(--raised)}
+.gauge .gap{position:absolute;top:0;bottom:0;background:var(--up-soft);border-left:2px solid var(--down);border-right:2px solid var(--up)}
+.gauge .lab{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--fg3)}
+.gauge .lab .f{color:var(--fg)}
+
+.why{display:flex;flex-wrap:wrap;gap:4px}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;font-size:11px;font-weight:500;background:var(--raised);color:var(--fg2);white-space:nowrap}
+.chip.model{color:#e4e4e7}
+.chip.gap{color:var(--info);background:rgba(147,197,253,.1)}
+.chip.stale{color:#c4b5fd;background:rgba(196,181,253,.1)}
+.chip.news{color:var(--warn);background:var(--warn-soft)}
+.chip.structural{color:#f9a8d4;background:rgba(249,168,212,.1)}
+
+/* expanded case */
+.case{display:none;padding:4px 18px 18px;gap:14px;grid-template-columns:repeat(3,minmax(0,1fr))}
+.edge.open .case{display:grid}
+.case .lede{grid-column:1/-1;margin:6px 0 2px;font-size:13.5px;color:var(--fg2);max-width:88ch}
+.case .lede b{color:var(--fg);font-weight:500}
+.panel{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;min-width:0}
+.panel h3{margin:0 0 10px;font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+.panel h3 small{font-weight:400;color:var(--fg3)}
+.vt{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.vt td,.vt th{padding:5px 4px;border-top:1px solid var(--border);text-align:right;white-space:nowrap}
+.vt th{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;border-top:0}
+.vt td.l,.vt th.l{text-align:left}
+.vt tr.bet td{color:var(--fg);font-weight:600}
+.vt td{color:var(--fg2);font-variant-numeric:tabular-nums}
+svg text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
+svg .lab2{font-family:var(--font-sans);font-size:10.5px;fill:var(--fg2)}
+.tl{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:7px;font-size:12.5px}
+.tl li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;color:var(--fg2)}
+.tl .t{font-family:var(--font-mono);font-size:11.5px;color:var(--fg3)}
+.tl li.news{color:var(--fg)} .tl li.news .t{color:var(--warn)}
+.tl li.vault .t{color:var(--up)}
+.rec{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.rec div{display:grid}
+.rec .k{font-size:11px;color:var(--fg3)}
+.rec .v{font-family:var(--font-mono);font-size:15px;font-weight:600}
+.size{border-top:1px solid var(--border);padding-top:12px;display:grid;gap:6px;font-size:12.5px}
+.size .row{display:flex;justify-content:space-between;gap:8px;color:var(--fg2)}
+.size .row b{color:var(--fg);font-family:var(--font-mono);font-weight:600}
+.size .note{color:var(--fg3);font-size:12px}
+
+/* rail */
+.rail{display:grid;gap:16px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px)}
+.rail .card{padding:16px}
+.rail h2{margin:0 0 4px;font-size:14px;font-weight:600}
+.rail p{margin:0 0 12px;font-size:12.5px;color:var(--fg2)}
+.types{display:grid;gap:2px}
+.type{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;padding:9px 8px;border-radius:var(--r-ctl);cursor:pointer;border:0;background:none;text-align:left}
+.type:hover{background:rgba(255,255,255,.04)}
+.type[aria-pressed="true"]{background:rgba(255,255,255,.07)}
+.type .nm{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+.type .roi{font-family:var(--font-mono);font-size:13px;font-weight:600;text-align:right}
+.type .sub{grid-column:1/-1;display:flex;justify-content:space-between;font-size:11.5px;color:var(--fg3)}
+.type .bar{grid-column:1/-1;height:4px;border-radius:2px;background:var(--raised);overflow:hidden}
+.type .bar i{display:block;height:100%}
+.legend{display:grid;gap:8px;font-size:12.5px;color:var(--fg2)}
+.legend div{display:grid;grid-template-columns:86px minmax(0,1fr);gap:8px;align-items:start}
+
+@media (max-width:1100px){
+  .cols{grid-template-columns:minmax(0,1fr)}
+  .rail{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .case{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .case .panel:last-child{grid-column:1/-1}
+}
+@media (max-width:760px){
+  .top{padding:10px 16px}
+  .wrap{padding-inline:16px}
+  .strip > div{flex:1 1 45%}
+  .strip > div + div{border-left:0}
+  .strip > div:nth-child(n+3){border-top:1px solid var(--border)}
+  .rail{grid-template-columns:minmax(0,1fr)}
+  .cols-h{display:none}
+  .edge-row{grid-template-columns:minmax(0,1fr) auto 20px;grid-template-areas:"who edge chev" "venue conf conf" "gauge gauge gauge" "why why why";row-gap:8px}
+  .edge-row .who{grid-area:who} .edge-row .edgev{grid-area:edge} .edge-row .chevc{grid-area:chev}
+  .edge-row .venue{grid-area:venue} .edge-row .confc{grid-area:conf;text-align:right} .edge-row .gauge{grid-area:gauge}
+  .edge-row .why{grid-area:why} .edge-row .stake{display:none}
+  .case{grid-template-columns:minmax(0,1fr);padding-inline:12px}
+  .alert{grid-template-columns:minmax(0,1fr)}
+}
+</style>
+
+<header class="top">
+  <div><h1>Edges</h1><div class="sub">Every market · why it's mispriced · how far to trust it</div></div>
+  <div class="right"><span class="pill mock">Mock</span><span>Board 2 min ago</span></div>
+</header>
+
+<div class="wrap">
+  <div class="banner"><b>Design mock with example data.</b><span>Opening night slate, invented prices and records, for reviewing the layout. Nothing here is live or a real bet.</span></div>
+
+  <section class="card strip" id="strip"></section>
+  <div class="alerts" id="alerts"></div>
+
+  <div class="cols">
+    <div style="display:grid;gap:16px;min-width:0">
+      <section class="card toolbar" id="toolbar" aria-label="Filters"></section>
+      <div id="games" style="display:grid;gap:16px"></div>
+    </div>
+
+    <aside class="rail">
+      <section class="card">
+        <h2>Which edges are working</h2>
+        <p>Every edge type's record this season, all markets. Click one to filter the list.</p>
+        <div class="types" id="types"></div>
+      </section>
+      <section class="card">
+        <h2>How to read a row</h2>
+        <div class="legend">
+          <div><span class="pill proven">Proven</span><span>Backtest gate passed and 50+ live bets holding up at 2 standard errors. Sized.</span></div>
+          <div><span class="pill tracking">Tracking</span><span>Positive record, not proven yet. Shown, not sized.</span></div>
+          <div><span class="pill untested">Untested</span><span>Too few bets to judge. Shown, not sized.</span></div>
+          <div><span class="muted num" style="font-size:12px">cost | fair</span><span>The bar spans what the price needs (red) to what we think it is (green). The wider the green, the bigger the edge.</span></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+// ── example data (invented) ────────────────────────────────────────────────
+const GAMES = [
+  {id: 'g1', away: 'BOS', home: 'DET', name: 'Celtics at Pistons', tip: '7:00 PM', mins: 42, total: 221.5, spread: 'DET -2.5'},
+  {id: 'g2', away: 'PHI', home: 'NY', name: '76ers at Knicks', tip: '7:30 PM', mins: 72, total: 224.0, spread: 'NY -4.5'},
+  {id: 'g3', away: 'OKC', home: 'SA', name: 'Thunder at Spurs', tip: '10:00 PM', mins: 222, total: 226.5, spread: 'OKC -3.0'},
+];
+const TYPES = {
+  model: {name: 'Model edge', desc: 'Our projection disagrees with the price'},
+  gap: {name: 'Price gap', desc: 'One venue is off the market consensus'},
+  stale: {name: 'Stale line', desc: "Consensus moved, this venue didn't"},
+  news: {name: 'News lag', desc: 'Injury or lineup news not priced in yet'},
+  structural: {name: 'Structural', desc: 'Known venue bias or a ladder out of line'},
+};
+const TYPE_REC = {   // season to date, every market (example numbers)
+  model: {n: 1240, roi: .034, clv: .004, z: 2.6, status: 'proven', note: 'Proven on Kalshi PTS NO and 3PM NO'},
+  gap: {n: 860, roi: .046, clv: .019, z: 1.8, status: 'tracking', note: 'Best on pick\'em apps, +6.1%'},
+  stale: {n: 214, roi: .059, clv: .027, z: 1.5, status: 'tracking', note: 'Best within 30 min of tip'},
+  news: {n: 44, roi: .108, clv: .041, z: 1.1, status: 'untested', note: 'Collecting, 44 of 50 settled'},
+  structural: {n: 431, roi: .011, clv: .002, z: .4, status: 'tracking', note: 'Kalshi overs bias holds, ladders do not'},
+};
+// venues: [venue, their line and side, their price, P(bet side) at THIS line with vig removed, is the bet venue]
+const EDGES = [
+  {id: 'e1', g: 'g1', player: 'Jaylen Brown', team: 'BOS', bet: '3PM NO 3+', stat: '3PM', venue: 'Kalshi', price: '58¢', priceNote: 'NO, 2¢ fee', cost: .60, fair: .646, model: .672, cons: .621, types: ['model', 'structural'], conf: 'proven',
+   lede: '<b>Our projection is 1.9 threes.</b> Books put 3+ at about 38%, the model at 33%, and the NO side costs 60¢ with the fee. Kalshi\'s YES side runs rich on overs, which is why 3PM NO passed its gate.',
+   venues: [['Pinnacle', 'U 2.5', '-128', .612], ['DraftKings', 'U 2.5', '-135', .624], ['FanDuel', 'U 2.5', '-130', .618], ['Polymarket', '3+ NO', '61¢', .607], ['Kalshi', '3+ NO', '58¢', .600, true]],
+   moves: [['Pinnacle', [.60, .60, .605, .612, .612]], ['Kalshi', [.55, .56, .57, .58, .58]]],
+   events: [['12:10 PM', 'Kalshi ladder listed, 3+ NO at 55¢', ''], ['5:30 PM', 'Injury report: no change for BOS', ''], ['6:05 PM', 'Pinnacle under 2.5 moves -122 to -128', ''], ['6:31 PM', 'Starting lineups confirmed, Brown starts', 'news']],
+   rec: {label: 'Model edge on Kalshi 3PM NO', n: 212, roi: .079, z: 2.41, bt: '+9.4% on 3,200 (z 3.53)'},
+   stake: {usd: 19.80, n: 33, offered: 180, ev: 1.52}},
+  {id: 'e2', g: 'g1', player: 'Cade Cunningham', team: 'DET', bet: 'AST Over 8.5', stat: 'AST', venue: 'FanDuel', price: '+112', priceNote: 'unchanged since 11:40 AM', cost: .472, fair: .544, model: .551, cons: .539, types: ['gap', 'stale'], conf: 'tracking',
+   lede: '<b>FanDuel is still at +112</b> while Pinnacle, DraftKings and BetMGM moved to about -118 after 4:15 PM. Consensus says 53.9% over; FanDuel\'s price only needs 47.2%.',
+   venues: [['Pinnacle', 'O 8.5', '-118', .540], ['DraftKings', 'O 8.5', '-115', .535], ['BetMGM', 'O 8.5', '-120', .545], ['Kalshi', '9+ YES', '55¢', .548], ['FanDuel', 'O 8.5', '+112', .459, true]],
+   moves: [['Pinnacle', [.50, .50, .535, .54, .54]], ['FanDuel', [.47, .47, .47, .47, .47]]],
+   events: [['11:40 AM', 'FanDuel opens 8.5 at +112', ''], ['4:15 PM', 'Pinnacle 8.5 over -105 to -118', ''], ['4:20 PM', 'DraftKings and BetMGM follow to -115 and -120', ''], ['6:35 PM', 'FanDuel still +112, 4 h 20 min behind', 'news']],
+   rec: {label: 'Price gap on sportsbooks', n: 318, roi: .052, z: 1.62, bt: 'no backtest yet'}},
+  {id: 'e3', g: 'g1', player: 'Jalen Duren', team: 'DET', bet: 'REB Under 10.5', stat: 'REB', venue: 'PrizePicks', price: 'flat', priceNote: 'needs 54.3% (flex)', cost: .5425, fair: .611, model: .621, cons: .603, types: ['gap', 'stale'], conf: 'tracking',
+   lede: '<b>Every book dropped Duren from 10.5 to 9.5 rebounds</b> before 6 PM. PrizePicks still has 10.5, so its under is a full point better than anywhere else. At 10.5 the consensus gives the under 60%.',
+   venues: [['Pinnacle', 'U 9.5', '-115', .603], ['DraftKings', 'U 9.5', '-110', .598], ['Underdog', 'U 9.5', '-112', .600], ['Kalshi', '10+ NO', '53¢', .590], ['PrizePicks', 'U 10.5', 'flat', .611, true]],
+   moves: [['Pinnacle', [.52, .52, .60, .603, .603]], ['PrizePicks', [.52, .52, .52, .52, .52]]],
+   events: [['10:05 AM', 'PrizePicks posts 10.5', ''], ['5:48 PM', 'Pinnacle 10.5 to 9.5', ''], ['5:52 PM', 'DraftKings and Underdog 10.5 to 9.5', ''], ['6:30 PM', 'PrizePicks still 10.5', 'news']],
+   rec: {label: 'Stale line on pick\'em apps', n: 86, roi: .041, z: 1.08, bt: 'no backtest yet'}},
+
+  {id: 'e4', g: 'g2', player: 'Mitchell Robinson', team: 'NY', bet: 'REB Over 7.5', stat: 'REB', venue: 'DraftKings', price: '-110', priceNote: 'still 7.5 at 7:02 PM', cost: .524, fair: .610, model: .640, cons: .600, types: ['news', 'stale'], conf: 'untested',
+   lede: '<b>Towns was ruled out at 6:51 PM.</b> Robinson\'s minutes go from 24 to 31 and his rebound projection from 7.1 to 9.0. Pinnacle moved to 8.5 within 7 minutes; DraftKings is still at 7.5.',
+   venues: [['Pinnacle', 'O 8.5', '-105', .598], ['FanDuel', 'O 8.5', '-110', .590], ['Kalshi', '8+ YES', '61¢', .605], ['DraftKings', 'O 7.5', '-110', .600, true]],
+   moves: [['Pinnacle', [.48, .48, .48, .60, .60]], ['DraftKings', [.48, .48, .48, .48, .48]]],
+   events: [['6:51 PM', 'Injury report: Karl-Anthony Towns OUT (knee)', 'news'], ['6:53 PM', 'Vault reprices: Robinson 24.1 to 30.8 min, rebounds 7.1 to 9.0', 'vault'], ['6:58 PM', 'Pinnacle 7.5 to 8.5', ''], ['7:02 PM', 'DraftKings still 7.5 at -110', 'news']],
+   rec: {label: 'News lag on sportsbooks', n: 38, roi: .112, z: .9, bt: 'no backtest yet'}},
+  {id: 'e5', g: 'g2', player: 'Jalen Brunson', team: 'NY', bet: 'P+A Over 33.5', stat: 'P+A', venue: 'Underdog', price: '-108', priceNote: 'priced line', cost: .519, fair: .559, model: .571, cons: .548, types: ['news', 'model'], conf: 'untested',
+   lede: '<b>With Towns out, Brunson\'s usage goes up.</b> The model adds 2.1 points and 0.6 assists. Pinnacle moved P+A from 33.5 to 34.5; Underdog has not.',
+   venues: [['Pinnacle', 'O 34.5', '-110', .552], ['DraftKings', 'O 33.5', '-125', .541], ['Underdog', 'O 33.5', '-108', .559, true]],
+   moves: [['Pinnacle', [.50, .50, .50, .552, .552]], ['Underdog', [.50, .50, .50, .50, .50]]],
+   events: [['6:51 PM', 'Injury report: Karl-Anthony Towns OUT', 'news'], ['6:53 PM', 'Vault reprices: Brunson +2.1 pts, +0.6 ast', 'vault'], ['7:00 PM', 'Pinnacle 33.5 to 34.5', '']],
+   rec: {label: 'News lag on pick\'em apps', n: 12, roi: .158, z: .6, bt: 'no backtest yet'}},
+  {id: 'e6', g: 'g2', player: 'Tyrese Maxey', team: 'PHI', bet: 'PTS NO 30+', stat: 'PTS', venue: 'Kalshi', price: '71¢', priceNote: 'NO, 2¢ fee', cost: .73, fair: .770, model: .790, cons: .752, types: ['model'], conf: 'proven',
+   lede: '<b>Our projection is 25.4 points.</b> Books imply 30+ about 25% of the time, the model 21%, and Kalshi\'s NO costs 73¢ with the fee.',
+   venues: [['Pinnacle', 'U 29.5', '-300', .752], ['DraftKings', 'U 29.5', '-320', .760], ['Kalshi', '30+ NO', '71¢', .730, true]],
+   moves: [['Pinnacle', [.74, .745, .75, .752, .752]], ['Kalshi', [.70, .70, .71, .71, .71]]],
+   events: [['12:05 PM', 'Kalshi ladder listed, 30+ NO at 70¢', ''], ['5:30 PM', 'Injury report: Embiid questionable', 'news'], ['6:55 PM', 'Embiid confirmed active', '']],
+   rec: {label: 'Model edge on Kalshi PTS NO', n: 340, roi: .039, z: 2.08, bt: '+3.5% on 5,023 (z 2.11)'},
+   stake: {usd: 19.71, n: 27, offered: 95, ev: 1.08}},
+  {id: 'e7', g: 'g2', player: 'Kelly Oubre Jr.', team: 'PHI', bet: '3PM Over 1.5', stat: '3PM', venue: 'Polymarket', price: '44¢', priceNote: 'YES, 1.2¢ fee', cost: .452, fair: .498, model: .505, cons: .494, types: ['gap'], conf: 'untested',
+   lede: '<b>Polymarket\'s over is 44¢.</b> The books average 49% for 2+ threes, so even with Polymarket\'s fee the YES side is about 4.6 points cheap.',
+   venues: [['Pinnacle', 'O 1.5', '+100', .496], ['FanDuel', 'O 1.5', '-102', .492], ['Kalshi', '2+ YES', '50¢', .500], ['Polymarket', 'O 1.5', '44¢', .452, true]],
+   moves: [['Pinnacle', [.49, .49, .495, .496, .496]], ['Polymarket', [.45, .44, .44, .44, .44]]],
+   events: [['2:10 PM', 'Polymarket lists Oubre 3PM 1.5', ''], ['6:20 PM', 'Thin book: 140 shares at 44¢', '']],
+   rec: {label: 'Price gap on Polymarket', n: 24, roi: .071, z: .5, bt: 'no backtest yet'}},
+
+  {id: 'e8', g: 'g3', player: 'Victor Wembanyama', team: 'SA', bet: '3PM NO 3+', stat: '3PM', venue: 'Kalshi', price: '48¢', priceNote: 'NO, 2¢ fee', cost: .50, fair: .540, model: .561, cons: .522, types: ['model', 'structural'], conf: 'proven',
+   lede: '<b>Our projection is 2.2 threes.</b> The ladder prices 3+ at 52% YES; books and the model both say under 48%, so NO at 50¢ with the fee is cheap.',
+   venues: [['Pinnacle', 'U 2.5', '+105', .522], ['DraftKings', 'U 2.5', '+100', .515], ['Kalshi', '3+ NO', '48¢', .500, true]],
+   moves: [['Pinnacle', [.51, .515, .52, .522, .522]], ['Kalshi', [.47, .47, .48, .48, .48]]],
+   events: [['12:15 PM', 'Kalshi ladder listed', ''], ['7:45 PM', 'Injury report: no change for SA', '']],
+   rec: {label: 'Model edge on Kalshi 3PM NO', n: 212, roi: .079, z: 2.41, bt: '+9.4% on 3,200 (z 3.53)'},
+   stake: {usd: 20.00, n: 40, offered: 64, ev: 1.60}},
+  {id: 'e9', g: 'g3', player: 'Shai Gilgeous-Alexander', team: 'OKC', bet: 'PTS Over 31.5', stat: 'PTS', venue: 'Sleeper', price: '-105', priceNote: '1.95x payout', cost: .513, fair: .558, model: .552, cons: .561, types: ['gap'], conf: 'tracking',
+   lede: '<b>Sleeper has SGA at 31.5.</b> Every book is at 32.5, and moving the consensus down a point puts the over at 56%. Sleeper pays 1.95x, which needs 51.3%.',
+   venues: [['Pinnacle', 'O 32.5', '-110', .561], ['DraftKings', 'O 32.5', '-115', .565], ['PrizePicks', 'O 32.5', 'flat', .561], ['Sleeper', 'O 31.5', '-105', .558, true]],
+   moves: [['Pinnacle', [.555, .56, .56, .561, .561]], ['Sleeper', [.51, .51, .51, .51, .51]]],
+   events: [['11:00 AM', 'Sleeper posts 31.5', ''], ['3:40 PM', 'Books move 31.5 to 32.5', ''], ['9:10 PM', 'Sleeper still 31.5', 'news']],
+   rec: {label: 'Price gap on pick\'em apps', n: 151, roi: .036, z: .88, bt: 'no backtest yet'}},
+  {id: 'e10', g: 'g3', player: "De'Aaron Fox", team: 'SA', bet: 'AST YES 6+', stat: 'AST', venue: 'Kalshi', price: '52¢', priceNote: 'YES, 2¢ fee', cost: .54, fair: .589, model: .604, cons: .571, types: ['structural', 'model'], conf: 'tracking',
+   lede: '<b>Kalshi\'s ladder is out of line.</b> 5+ is 55¢ and 6+ is 52¢, only 3¢ apart, when the books put about 11 points between them. The 6+ YES is the cheap rung.',
+   venues: [['Pinnacle', 'O 5.5', '-130', .571], ['DraftKings', 'O 5.5', '-125', .566], ['Kalshi', '5+ YES', '55¢', .680], ['Kalshi', '6+ YES', '52¢', .540, true]],
+   moves: [['Pinnacle', [.56, .565, .57, .571, .571]], ['Kalshi', [.52, .52, .52, .52, .52]]],
+   events: [['12:20 PM', 'Kalshi ladder listed', ''], ['8:30 PM', '5+ and 6+ within 3¢ for 2 hours', '']],
+   rec: {label: 'Model edge on Kalshi AST YES (WATCH)', n: 48, roi: .094, z: 1.21, bt: '+13.6% on 65 (z 1.52)'}},
+  {id: 'e11', g: 'g3', player: 'Stephon Castle', team: 'SA', bet: 'PTS Under 16.5', stat: 'PTS', venue: 'PrizePicks', price: 'flat', priceNote: 'needs 54.3% (flex)', cost: .5425, fair: .602, model: .610, cons: .596, types: ['gap'], conf: 'tracking',
+   lede: '<b>PrizePicks is a point high on Castle.</b> Books sit at 15.5; at 16.5 the consensus under is 60%, well past the 54.3% a flex pick needs.',
+   venues: [['Pinnacle', 'U 15.5', '-110', .596], ['DraftKings', 'U 15.5', '-105', .590], ['Underdog', 'U 15.5', '-112', .598], ['PrizePicks', 'U 16.5', 'flat', .602, true]],
+   moves: [['Pinnacle', [.59, .595, .596, .596, .596]], ['PrizePicks', [.54, .54, .54, .54, .54]]],
+   events: [['10:05 AM', 'PrizePicks posts 16.5', ''], ['2:15 PM', 'Books open 15.5', '']],
+   rec: {label: 'Price gap on pick\'em apps', n: 151, roi: .036, z: .88, bt: 'no backtest yet'}},
+];
+for (const e of EDGES) e.edge = e.fair - e.cost;
+
+// ── state ──────────────────────────────────────────────────────────────────
+const st = {type: 'all', conf: 'all', venue: 'all', sort: 'tip', open: new Set(['e4'])};
+const $ = id => document.getElementById(id);
+const pc = (x, d = 0) => (x * 100).toFixed(d) + '%';
+const pts = x => (x >= 0 ? '+' : '') + (x * 100).toFixed(1);
+const CONF = {proven: 'Proven', tracking: 'Tracking', untested: 'Untested'};
+const CONF_ORDER = {proven: 0, tracking: 1, untested: 2};
+const VKIND = v => v === 'Kalshi' ? 'Kalshi' : v === 'Polymarket' ? 'Polymarket' : ['PrizePicks', 'Underdog', 'Sleeper'].includes(v) ? "Pick'em" : 'Sportsbooks';
+const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>';
+
+function shown(){
+  let E = EDGES.filter(e => (st.type === 'all' || e.types.includes(st.type)) && (st.conf === 'all' || e.conf === st.conf) && (st.venue === 'all' || VKIND(e.venue) === st.venue));
+  if (st.sort === 'edge') E = [...E].sort((a, b) => b.edge - a.edge);
+  if (st.sort === 'conf') E = [...E].sort((a, b) => CONF_ORDER[a.conf] - CONF_ORDER[b.conf] || b.edge - a.edge);
+  return E;
+}
+
+function renderStrip(){
+  const c = k => EDGES.filter(e => e.conf === k).length;
+  const sized = EDGES.filter(e => e.stake), stake = sized.reduce((a, e) => a + e.stake.usd, 0), ev = sized.reduce((a, e) => a + e.stake.ev, 0);
+  $('strip').innerHTML = `
+    <div><span class="k">Tonight</span><span class="v">3 games <small>opening night</small></span><span class="muted" style="font-size:12.5px">Next tip ${GAMES[0].tip} ET, in ${GAMES[0].mins} min</span></div>
+    <div><span class="k">Edges at 3%+</span><span class="v">${EDGES.length}</span><span class="conf"><span class="pill proven">${c('proven')} Proven</span><span class="pill tracking">${c('tracking')} Tracking</span><span class="pill untested">${c('untested')} Untested</span></span></div>
+    <div><span class="k">Sized (Proven only)</span><span class="v">$${stake.toFixed(0)} <small>on ${sized.length} bets</small></span><span class="muted" style="font-size:12.5px">EV +$${ev.toFixed(2)} at ¼ Kelly, $1,000 bankroll</span></div>
+    <div><span class="k">News since 6 PM</span><span class="v">2 <small>alerts</small></span><span class="muted" style="font-size:12.5px">4 props not repriced yet</span></div>`;
+}
+
+function renderAlerts(){
+  $('alerts').innerHTML = [
+    ['6:51 PM', '<b>Karl-Anthony Towns OUT</b> (knee, official report). Robinson, Brunson and Hart repriced; DraftKings and Underdog have not moved.', 'news'],
+    ['6:30 PM', '<b>PrizePicks is a point off</b> the books on 2 lines (Duren REB, Castle PTS) and has not moved since posting.', 'stale'],
+  ].map(([t, txt, ty]) => `<div class="alert"><span class="t">${t}</span><span>${txt}</span><button type="button" data-type="${ty}">Show these</button></div>`).join('');
+}
+
+function renderToolbar(){
+  const seg = (key, opts) => `<div class="seg" data-k="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${st[key] === v}">${l}</button>`).join('')}</div>`;
+  $('toolbar').innerHTML =
+    seg('type', [['all', 'All types'], ...Object.entries(TYPES).map(([k, t]) => [k, t.name])]) +
+    seg('conf', [['all', 'Any confidence'], ['proven', 'Proven'], ['tracking', 'Tracking'], ['untested', 'Untested']]) +
+    `<select class="sel" id="fvenue" aria-label="Venue">${[['all', 'All venues'], ['Kalshi', 'Kalshi'], ['Sportsbooks', 'Sportsbooks'], ['Polymarket', 'Polymarket'], ["Pick'em", "Pick'em apps"]].map(([v, l]) => `<option value="${v}"${st.venue === v ? ' selected' : ''}>${l}</option>`).join('')}</select>
+     <select class="sel" id="fsort" aria-label="Sort">${[['tip', 'By game'], ['edge', 'Biggest edge'], ['conf', 'Most trusted']].map(([v, l]) => `<option value="${v}"${st.sort === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+}
+
+function gauge(e){
+  const lo = Math.max(0, Math.min(e.cost, e.fair) - .08), hi = Math.min(1, Math.max(e.cost, e.fair) + .08), x = v => (v - lo) / (hi - lo) * 100;
+  return `<div class="gauge" title="Needs ${pc(e.cost, 1)}; fair ${pc(e.fair, 1)}"><div class="track"><span class="gap" style="left:${x(e.cost)}%;width:${x(e.fair) - x(e.cost)}%"></span></div>
+    <div class="lab"><span>cost ${pc(e.cost, 1)}</span><span class="f">fair ${pc(e.fair, 1)}</span></div></div>`;
+}
+
+// every venue's P(bet side) at this line, with consensus, model, fair and the cost of the bet
+function dotplot(e){
+  const W = 360, H = 30 + e.venues.length * 22 + 26, L = 88, R = 14, T = 24;
+  const vals = [...e.venues.map(v => v[3]), e.cons, e.model, e.fair, e.cost];
+  const lo = Math.floor((Math.min(...vals) - .03) * 50) / 50, hi = Math.ceil((Math.max(...vals) + .03) * 50) / 50;
+  const x = v => L + (v - lo) / (hi - lo) * (W - L - R);
+  let s = '';
+  const step = (hi - lo) > .25 ? .1 : .05;
+  for (let t = Math.ceil(lo / step) * step; t <= hi + 1e-9; t += step) s += `<line x1="${x(t)}" x2="${x(t)}" y1="${T - 6}" y2="${H - 22}" stroke="var(--border)"/><text x="${x(t)}" y="${H - 8}" text-anchor="middle">${Math.round(t * 100)}%</text>`;
+  s += `<rect x="${x(e.cost)}" y="${T - 6}" width="${x(e.fair) - x(e.cost)}" height="${H - 22 - T + 6}" fill="rgba(74,222,128,.08)"/>`;
+  s += `<line x1="${x(e.cost)}" x2="${x(e.cost)}" y1="${T - 10}" y2="${H - 22}" stroke="var(--down)" stroke-width="2"/><text x="${x(e.cost)}" y="${T - 12}" text-anchor="middle" style="fill:var(--down)">cost</text>`;
+  s += `<line x1="${x(e.fair)}" x2="${x(e.fair)}" y1="${T - 10}" y2="${H - 22}" stroke="var(--up)" stroke-width="2"/><text x="${x(e.fair)}" y="${T - 12}" text-anchor="middle" style="fill:var(--up)">fair</text>`;
+  s += `<line x1="${x(e.cons)}" x2="${x(e.cons)}" y1="${T - 6}" y2="${H - 22}" stroke="var(--fg3)" stroke-dasharray="3 3"/>`;
+  e.venues.forEach(([name, line, px, p, bet], i) => {
+    const y = T + 8 + i * 22;
+    s += `<text x="${L - 8}" y="${y + 3.5}" text-anchor="end" class="lab2"${bet ? ' style="fill:var(--fg);font-weight:600"' : ''}>${name}</text>`;
+    s += bet ? `<circle cx="${x(p)}" cy="${y}" r="6" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>` : `<circle cx="${x(p)}" cy="${y}" r="4.5" fill="var(--fg2)"/>`;
+  });
+  const ym = T + 8 + e.venues.length * 22 - 6;
+  s += `<path d="M${x(e.model)} ${ym - 5} l5 8 h-10 z" fill="var(--info)"/><text x="${x(e.model) + 8}" y="${ym + 3}" style="fill:var(--info)">model</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Each venue's chance for this bet at the same line">${s}</svg>`;
+}
+
+function spark(e){
+  const W = 360, H = 120, L = 34, R = 10, T = 10, B = 22;
+  const all = e.moves.flatMap(m => m[1]), lo = Math.min(...all) - .02, hi = Math.max(...all) + .02;
+  const n = e.moves[0][1].length, x = i => L + i / (n - 1) * (W - L - R), y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  let s = '';
+  for (const t of [lo + .02, (lo + hi) / 2, hi - .02]) s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--border)"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${Math.round(t * 100)}%</text>`;
+  ['Noon', '3 PM', '5 PM', '6:30', 'Now'].forEach((l, i) => s += `<text x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${l}</text>`);
+  e.moves.forEach(([name, v], k) => {
+    const c = k === 0 ? 'var(--fg2)' : 'var(--fg)';
+    s += `<polyline fill="none" stroke="${c}" stroke-width="${k ? 2 : 1.5}"${k ? '' : ' stroke-dasharray="4 3"'} points="${v.map((p, i) => `${x(i)},${y(p)}`).join(' ')}"/>`;
+    s += `<circle cx="${x(n - 1)}" cy="${y(v[n - 1])}" r="3" fill="${c}"/>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="How the price moved today">${s}</svg>
+    <div style="display:flex;gap:14px;font-size:11.5px;color:var(--fg3);margin-top:4px">${e.moves.map(([n], k) => `<span><span style="display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px;background:${k ? 'var(--fg)' : 'var(--fg2)'}"></span>${n}</span>`).join('')}</div>`;
+}
+
+function caseHtml(e){
+  const r = e.rec, st2 = e.conf;
+  return `<div class="case">
+    <p class="lede">${e.lede}</p>
+    <div class="panel"><h3>Every venue at this line <small>chance of ${e.bet.replace(/^\S+ /, '')}, vig removed</small></h3>${dotplot(e)}
+      <table class="vt"><thead><tr><th class="l">Venue</th><th class="l">Their line</th><th>Price</th><th>At this line</th></tr></thead><tbody>
+      ${e.venues.map(([n, l, p, pr, bet]) => `<tr class="${bet ? 'bet' : ''}"><td class="l">${n}</td><td class="l">${l}</td><td>${p}</td><td>${pc(pr, 1)}</td></tr>`).join('')}
+      <tr><td class="l" colspan="3">Consensus (books, Pinnacle weighted)</td><td>${pc(e.cons, 1)}</td></tr>
+      <tr><td class="l" colspan="3">Vault model</td><td>${pc(e.model, 1)}</td></tr></tbody></table></div>
+    <div class="panel"><h3>What moved and when <small>implied chance, today</small></h3>${spark(e)}
+      <ul class="tl">${e.events.map(([t, txt, k]) => `<li class="${k}"><span class="t">${t}</span><span>${txt}</span></li>`).join('')}</ul></div>
+    <div class="panel"><h3>The record behind it <span class="pill ${st2}">${CONF[st2]}</span></h3>
+      <div style="font-size:12.5px;color:var(--fg2);margin-bottom:10px">${r.label}, this season</div>
+      <div class="rec"><div><span class="k">Bets</span><span class="v">${r.n}</span></div><div><span class="k">ROI</span><span class="v ${r.roi >= 0 ? 'pos' : 'neg'}">${pts(r.roi)}%</span></div><div><span class="k">z</span><span class="v">${r.z.toFixed(2)}</span></div></div>
+      <div style="font-size:12px;color:var(--fg3);margin-bottom:12px">2025-26 backtest: ${r.bt}</div>
+      <div class="size">${e.stake
+        ? `<div class="row"><span>Stake at ¼ Kelly</span><b>$${e.stake.usd.toFixed(2)}</b></div><div class="row"><span>Contracts</span><b>${e.stake.n}</b></div><div class="row"><span>Offered at ${e.price}</span><b>${e.stake.offered}</b></div><div class="row"><span>Expected value</span><b class="pos">+$${e.stake.ev.toFixed(2)}</b></div>`
+        : `<div class="note">Not sized. ${st2 === 'tracking' ? `This edge type is positive in this market but under 2 standard errors (z ${r.z.toFixed(2)}).` : `Only ${r.n} settled bets of this kind so far; the verdict needs 50.`} It is logged in the Track Record either way.</div>`}</div></div>
+  </div>`;
+}
+
+function renderGames(){
+  const E = shown();
+  const row = e => `<article class="edge${st.open.has(e.id) ? ' open' : ''}" data-id="${e.id}">
+      <div class="edge-row" role="button" tabindex="0" aria-expanded="${st.open.has(e.id)}">
+        <div class="who"><b>${e.player}</b><span class="bet">${e.bet}</span><small>${e.team}</small></div>
+        <div class="venue"><b>${e.venue} <span class="num">${e.price}</span></b><small>${e.priceNote}</small></div>
+        ${gauge(e)}
+        <div class="edgev">${pts(e.edge)}</div>
+        <div class="why">${e.types.map(t => `<span class="chip ${t}">${TYPES[t].name}</span>`).join('')}</div>
+        <div class="confc"><span class="pill ${e.conf}">${CONF[e.conf]}</span></div>
+        <div class="stake">${e.stake ? `$${e.stake.usd.toFixed(0)}<small>${e.stake.n} contracts</small>` : '<small>not sized</small>'}</div>
+        <div class="chevc">${chev}</div>
+      </div>${caseHtml(e)}</article>`;
+  const head = `<div class="cols-h"><span>Bet</span><span>Best price</span><span>Cost vs fair</span><span class="r">Edge</span><span>Why</span><span>Confidence</span><span class="r">Stake</span><span></span></div>`;
+  if (st.sort !== 'tip'){
+    $('games').innerHTML = E.length ? `<section class="card game"><div class="ghead"><h2>All games</h2><span class="meta">${st.sort === 'edge' ? 'Biggest edge first' : 'Most trusted first'}</span><span class="count">${E.length} edges</span></div>${head}${E.map(e => row({...e, team: `${e.team} · ${GAMES.find(g => g.id === e.g).away} at ${GAMES.find(g => g.id === e.g).home}`})).join('')}</section>`
+      : `<section class="card" style="padding:18px"><p class="muted" style="margin:0">No edges match these filters.</p></section>`;
+    return;
+  }
+  const html = GAMES.map(g => {
+    const ge = E.filter(e => e.g === g.id);
+    if (!ge.length) return '';
+    return `<section class="card game"><div class="ghead"><h2>${g.away} at ${g.home}</h2><span class="meta">${g.tip} ET · tips in ${g.mins < 60 ? g.mins + ' min' : Math.floor(g.mins / 60) + ' h ' + (g.mins % 60) + ' min'} · total ${g.total} · ${g.spread}</span><span class="count">${ge.length} ${ge.length === 1 ? 'edge' : 'edges'}</span></div>${head}${ge.map(row).join('')}</section>`;
+  }).join('');
+  $('games').innerHTML = html || `<section class="card" style="padding:18px"><p class="muted" style="margin:0">No edges match these filters.</p></section>`;
+}
+
+function renderTypes(){
+  const mx = Math.max(...Object.values(TYPE_REC).map(t => Math.abs(t.roi)));
+  $('types').innerHTML = Object.entries(TYPES).map(([k, t]) => { const r = TYPE_REC[k];
+    return `<button type="button" class="type" data-type="${k}" aria-pressed="${st.type === k}">
+      <span class="nm"><span class="chip ${k}">${t.name}</span><span class="pill ${r.status}" style="height:18px;font-size:10.5px">${CONF[r.status]}</span></span>
+      <span class="roi ${r.roi >= 0 ? 'pos' : 'neg'}">${pts(r.roi)}%</span>
+      <span class="bar"><i style="width:${Math.abs(r.roi) / mx * 100}%;background:${r.roi >= 0 ? 'var(--up)' : 'var(--down)'}"></i></span>
+      <span class="sub"><span>${r.n.toLocaleString()} bets · CLV ${pts(r.clv)} · z ${r.z}</span></span>
+      <span class="sub"><span>${r.note}</span></span></button>`; }).join('');
+}
+
+function render(){ renderToolbar(); renderGames(); renderTypes(); }
+renderStrip(); renderAlerts(); render();
+
+// events
+$('toolbar').addEventListener('click', ev => { const b = ev.target.closest('.seg button'); if (b){ st[b.parentElement.dataset.k] = b.dataset.v; render(); } });
+$('toolbar').addEventListener('change', ev => { if (ev.target.id === 'fvenue') st.venue = ev.target.value; if (ev.target.id === 'fsort') st.sort = ev.target.value; render(); });
+$('types').addEventListener('click', ev => { const b = ev.target.closest('.type'); if (b){ st.type = st.type === b.dataset.type ? 'all' : b.dataset.type; render(); } });
+$('alerts').addEventListener('click', ev => { const b = ev.target.closest('button[data-type]'); if (b){ st.type = b.dataset.type; render(); $('games').scrollIntoView({behavior: 'smooth', block: 'start'}); } });
+const toggle = el => { const id = el.closest('.edge').dataset.id; st.open.has(id) ? st.open.delete(id) : st.open.add(id); renderGames(); };
+$('games').addEventListener('click', ev => { const r = ev.target.closest('.edge-row'); if (r) toggle(r); });
+$('games').addEventListener('keydown', ev => { const r = ev.target.closest('.edge-row'); if (r && (ev.key === 'Enter' || ev.key === ' ')){ ev.preventDefault(); toggle(r); } });
+</script>
