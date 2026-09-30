@@ -212,5 +212,5 @@ from the header slicer. Planned pages, each fed by something the models already 
 | Betting | Edges | Only gated signals (Kalshi 3PM NO blend, overs-bias tracker, totals watch) with size, price, capacity | prop / game backtests + live prices |
 | Betting | Track Record | Shadow + live picks settled: ROI per contract, CLV, each signal vs its gate | settlement (week 4) |
 | Model | Backtests | Game, minutes, usage, prop results and what passed | `nba/docs/*.md` |
-| Model | Data Health | Freshness of every feed | fetcher logs |
+| Model | Data Health (LIVE) | Recorder status per source, 48h poll timeline, per-game venue coverage, model input freshness, archive sizes | `status.json` + `polls.jsonl` on nba-data (live on vaultfantasy.com), `build_data_health.py` snapshot |
 

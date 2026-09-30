@@ -1,9 +1,12 @@
-<title>NBA Minutes Lab</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vault NBA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: dashboard. App sidebar (pages) | sticky header with team slicer + search, KPI row, minutes chart, rotation table, movers + change log.
+/* Layout: dashboard. App sidebar (pages) | sticky header | one view per page: Minutes Lab (team slicer + search, KPIs, minutes chart,
+   rotation table, movers + change log) and Data Health (KPIs, sources table, 48h poll timeline, game coverage, inputs + archive).
    Single dark look by design (Campaign Engine system): black ground, zinc surfaces, white as the action colour. */
 :root{
   --bg:#000000; --surface:#18181B; --surface2:#1f1f23; --raised:#27272A;
@@ -174,6 +177,51 @@ tr.sep td{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-
 footer{padding:0 24px 32px;color:var(--fg3);font-size:12.5px;display:grid;gap:6px;max-width:92ch}
 footer b{color:var(--fg2);font-weight:500}
 
+[hidden]{display:none!important}
+
+/* data health */
+.mode{display:flex;align-items:center;gap:10px;margin-left:auto;font-size:12.5px;color:var(--fg2);min-width:0}
+.mode .badge{flex:none}
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:var(--r-pill);font-size:11.5px;font-weight:500;white-space:nowrap;border:1px solid var(--border2);color:var(--fg2)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.ok{color:var(--up);border-color:rgba(74,222,128,.35)}
+.pill.warn{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.pill.bad{color:var(--down);border-color:rgba(248,113,113,.45)}
+.pill.idle{color:var(--fg3)}
+.banner{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:12px 16px;border:1px dashed var(--border2);border-radius:var(--r-ctl);color:var(--fg2);font-size:13px}
+.banner b{color:var(--fg);font-weight:500}
+.banner a,footer a,.card a{color:var(--fg);text-underline-offset:3px;text-decoration-color:var(--fg3)}
+table.ht{min-width:760px}
+table.ht td{text-align:right}
+table.ht td.l,table.ht th.l{text-align:left}
+table.ht .src b{font-weight:500;display:block}
+table.ht .src small{color:var(--fg3);font-size:12px}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.muted{color:var(--fg3)}
+.note{font-size:12px;color:var(--fg3);max-width:34ch;text-align:left;overflow-wrap:anywhere}
+.note.err{color:var(--down)}
+.cov{font-family:var(--font-mono);font-size:12.5px;white-space:nowrap}
+.cov small{display:block;font-size:10.5px;color:var(--fg3)}
+.cov.none{color:var(--fg3)}
+.tl text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
+.tl .lab{font-family:var(--font-sans);font-size:11.5px;fill:var(--fg2)}
+.tl .grid{stroke:var(--border)}
+.tl .lane{fill:var(--bg)}
+.tl .ok{fill:var(--fg)}
+.tl .empty{fill:var(--fg3)}
+.tl .err{fill:var(--down)}
+.tl .now{stroke:var(--fg2);stroke-dasharray:2 3}
+.tlegend{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:12px;color:var(--fg2)}
+.tlegend span{display:inline-flex;align-items:center;gap:6px}
+.tlegend i{width:3px;height:12px;border-radius:1px;background:var(--fg)}
+.tlegend i.e{background:var(--fg3)} .tlegend i.x{background:var(--down)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.irow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.irow:last-child{border-bottom:0;padding-bottom:0}
+.irow b{font-weight:500}
+.irow small{grid-column:1/-1;color:var(--fg3);font-size:12px}
+.irow small code{font-family:var(--font-mono);font-size:11px;color:var(--fg2)}
+
 /* responsive */
 @media (max-width:1100px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:900px){ .two{grid-template-columns:minmax(0,1fr)} }
@@ -187,6 +235,7 @@ footer b{color:var(--fg2);font-weight:500}
   .slicer>button{min-width:0;width:100%}
   .list{left:0;right:auto;width:min(300px,calc(100vw - 32px))}
   .search{order:6;flex:1 1 160px;width:auto}
+  .mode{order:5;flex:1 1 100%;margin-left:0}
   main{padding:16px;gap:16px}
   footer{padding:0 16px 28px}
   :root{--pad:16px}
@@ -215,6 +264,7 @@ footer b{color:var(--fg2);font-weight:500}
         </button>
         <div class="list" id="teamlist" role="listbox" aria-label="Team" tabindex="-1" hidden></div>
       </div>
+      <div class="mode" id="mode" hidden></div>
       <div class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="q" type="search" placeholder="Search players" autocomplete="off" aria-label="Search players">
@@ -222,7 +272,7 @@ footer b{color:var(--fg2);font-weight:500}
       </div>
     </header>
 
-    <main>
+    <main id="v-lab">
       <div class="kpis" id="kpis"></div>
 
       <section class="card">
@@ -267,11 +317,59 @@ footer b{color:var(--fg2);font-weight:500}
       </div>
     </main>
     <footer id="foot"></footer>
+
+    <main id="v-health" hidden>
+      <div class="banner" id="hbanner"></div>
+      <div class="kpis" id="hkpis"></div>
+
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Sources</h2><p>Each venue the recorder reads, as of its latest poll. Only pre-tip prices are kept.</p></div>
+        </div>
+        <div class="card-b"><div class="tablewrap"><table class="ht">
+          <thead><tr><th class="l" scope="col">Source</th><th class="l" scope="col">Status</th><th scope="col">Last poll</th><th scope="col">Markets</th><th scope="col" title="Prices that moved since the poll before">Changed</th><th scope="col">Success, 24h</th><th scope="col">Time</th><th class="l" scope="col">Note</th></tr></thead>
+          <tbody id="hsrc"></tbody>
+        </table></div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Poll timeline</h2><p>Every poll in the last 48 hours, Eastern time. Gaps are time the recorder was not running.</p></div>
+        </div>
+        <div class="card-b">
+          <div class="chartwrap"><svg class="chart tl" id="htl" viewBox="0 0 760 196" role="img" aria-label="Polls per source over the last 48 hours"></svg></div>
+          <div class="tlegend"><span><i></i>Answered with prices</span><span><i class="e"></i>Answered, nothing listed</span><span><i class="x"></i>Failed</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Upcoming games</h2><p>Markets recorded per venue for every game in the next 3 days: game lines, then player props.</p></div>
+        </div>
+        <div class="card-b"><div class="tablewrap"><table class="ht">
+          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Game</th><th scope="col">Kalshi</th><th scope="col">ESPN</th><th scope="col">Pinnacle</th><th scope="col">Action</th><th scope="col">Polymarket</th><th scope="col">Injury report</th></tr></thead>
+          <tbody id="hgames"></tbody>
+        </table></div></div>
+      </section>
+
+      <div class="two">
+        <section class="card">
+          <div class="card-h"><div><h2>Model inputs</h2><p>Fitted models and roster files the projections read</p></div></div>
+          <div class="card-b"><div class="stack" id="hinputs"></div></div>
+        </section>
+        <section class="card">
+          <div class="card-h"><div><h2>History archive</h2><p>Backfilled seasons the models were fit and tested on</p></div></div>
+          <div class="card-b"><div class="stack" id="harchive"></div></div>
+        </section>
+      </div>
+    </main>
+    <footer id="hfoot" hidden></footer>
   </div>
 </div>
 
 <script>
 const D = /*DATA*/null;
+const H0 = /*HEALTH*/null;
 const EAST = ['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NY','ORL','PHI','TOR','WSH'];
 const NB = D.rebalance.same / D.rebalance.other;  // same-position teammates absorb this many times more (minutes model)
 const Z = 1.2816;                                   // 10th / 90th percentile
@@ -284,6 +382,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
+let view = hashT === 'HEALTH' ? 'health' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -382,11 +481,11 @@ const ICON = {
   edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'
 };
 
-// App pages. Only the Minutes Lab exists; the rest are planned (docs/PLAN.md, "Pages") and say what they will hold.
+// App pages. Minutes Lab and Data Health exist; the rest are planned (docs/PLAN.md, "Pages") and say what they will hold.
 const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const PAGES = [
   ['Research', [
-    ['Minutes Lab', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), 'Projected minutes and stats per team; edit minutes and every stat reprices.', true],
+    ['Minutes Lab', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), 'Projected minutes and stats per team; edit minutes and every stat reprices.', 'lab'],
     ['Slate', SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'), "Tonight's games: Vault line vs market, injuries, back-to-backs, pace."],
     ['Injury Wire', SVG('<path d="M12 3v18M3 12h18"/>'), 'Every injury report change as it posts, with the teammates it moves and how fast each venue reacted.'],
   ]],
@@ -401,12 +500,12 @@ const PAGES = [
   ]],
   ['Model', [
     ['Backtests', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'Game, minutes, usage and prop model results, held-out tests and what passed.'],
-    ['Data Health', SVG('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'), 'Freshness of every feed: box scores, injury reports, odds snapshots, Kalshi tape.'],
+    ['Data Health', SVG('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'), 'Is every feed alive: the live price recorder, model inputs and the history archive.', 'health'],
   ]],
 ];
 function renderNav(){
   $('pages').innerHTML = PAGES.map(([sec, items]) => `<div class="navsec"><h3>${sec}</h3>${items.map(([name, icon, what, live]) =>
-    live ? `<a class="nav" href="#" aria-current="page" title="${esc(what)}">${icon}<span class="nm">${name}</span></a>`
+    live ? `<a class="nav" href="#${live}" data-view="${live}"${live === view ? ' aria-current="page"' : ''} title="${esc(what)}">${icon}<span class="nm">${name}</span></a>`
          : `<span class="nav soon" title="${esc(what)}" aria-disabled="true">${icon}<span class="nm">${name}</span><span class="tag">Soon</span></span>`
   ).join('')}</div>`).join('');
 }
@@ -423,6 +522,7 @@ function openList(open){
 }
 
 function render(){
+  if (view !== 'lab'){ show(view); return; }
   const T = D.teams[cur], m = mins(cur), pr = project(cur, m), b0 = baseline(cur);
   renderSlicer();
   $('tname').textContent = T.name;
@@ -521,7 +621,7 @@ function renderChart(T, m){
 }
 
 // events
-const goTeam = t => { cur = t; history.replaceState(null, '', '#' + t.toLowerCase()); openList(false); render(); $('slicebtn').focus(); };
+const goTeam = t => { cur = t; view = 'lab'; history.replaceState(null, '', '#' + t.toLowerCase()); openList(false); render(); $('slicebtn').focus(); };
 $('slicebtn').addEventListener('click', () => openList($('teamlist').hidden));
 $('teamlist').addEventListener('click', e => { const t = e.target.closest('[role=option]')?.dataset.t; if (t) goTeam(t); });
 $('teamlist').addEventListener('keydown', e => {
@@ -539,7 +639,17 @@ $('teamlist').addEventListener('keydown', e => {
     if (j >= 0){ opts[i]?.classList.remove('kb'); opts[j].classList.add('kb'); opts[j].scrollIntoView({block:'nearest'}); }
   }
 });
-$('pages').addEventListener('click', e => { if (e.target.closest('a.nav')) e.preventDefault(); });
+$('pages').addEventListener('click', e => {
+  const a = e.target.closest('a.nav'); if (!a) return;
+  e.preventDefault(); $('app').classList.remove('open');
+  history.replaceState(null, '', a.dataset.view === 'lab' ? '#' + cur.toLowerCase() : '#health');
+  show(a.dataset.view);
+});
+window.addEventListener('hashchange', () => {           // back / forward and typed links
+  const h = location.hash.slice(1).toUpperCase();
+  if (h === 'HEALTH') show('health');
+  else { if (D.teams[h]) cur = h; show('lab'); }
+});
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
 document.addEventListener('keydown', e => { if (e.key === 'Escape'){ $('app').classList.remove('open'); openList(false); } });
 document.addEventListener('click', e => {
@@ -579,5 +689,218 @@ $('foot').innerHTML = `
   <div><b>Stats</b> are minutes × each player's per-minute rate over the last three seasons, weighted to recent games and pulled toward his position average when the sample is small. The grey range under each stat is the 10th to 90th percentile for one game.</div>
   <div><b>Moving minutes:</b> freed minutes go to teammates in proportion to their minutes, with same-position players taking about ${NB.toFixed(1)}× more, as the minutes model measured. Marking a player OUT also nudges teammates' points and rebounds per minute by the small usage effect we measured.</div>
   <div>Rosters as of ${D.depth_generated.slice(0,10)}. Your edits stay in this browser. Generated ${D.generated.slice(0,10)}.</div>`;
-render();
+
+// ── views ─────────────────────────────────────────────────────────────────
+function show(v){
+  view = v;
+  const lab = v === 'lab';
+  $('v-lab').hidden = $('foot').hidden = !lab;
+  $('v-health').hidden = $('hfoot').hidden = lab;
+  $('slicer').hidden = !lab;
+  document.querySelector('.search').hidden = !lab;
+  $('mode').hidden = lab;
+  renderNav();
+  if (lab){ render(); return; }
+  $('tname').textContent = 'Data Health';
+  $('tsub').textContent = 'RECORDER · MODEL INPUTS · ARCHIVE';
+  renderHealth();
+  if (!liveTried) loadLive();
+}
+
+// ── Data Health ───────────────────────────────────────────────────────────
+// The page ships with a snapshot (H0, built by build_data_health.py). Served from GitHub Pages or localhost it also
+// reads the recorder's own status.json and poll log from the nba-data branch; inside an artifact that fetch is blocked,
+// so the snapshot stands and the banner says when it was built.
+const LIVE_PAGE = 'https://vaultfantasy.com/nba/projections.html#health';
+const SRC = [
+  ['kalshi', 'Kalshi', 'Player props and game markets, bid and ask'],
+  ['espn', 'ESPN', 'DraftKings lines and player props'],
+  ['pinnacle', 'Pinnacle', 'Lines, player props and bet limits'],
+  ['action', 'Action Network', 'Seven books, plus bets % and money %'],
+  ['polymarket', 'Polymarket', 'Game markets, bid and ask'],
+  ['injuries', 'Injury report', 'Official NBA report, posted every 15 min'],
+];
+const VENUES = ['kalshi', 'espn', 'pinnacle', 'action', 'polymarket'];
+let HS = H0 ? {status: H0.recorder.status, polls: H0.recorder.polls || [], live: false, at: Date.parse(H0.built) / 1000} : null;
+let liveTried = false, liveTimer = null;
+const TZ = 'America/New_York';
+const etFmt = (t, o) => new Intl.DateTimeFormat('en-US', {timeZone: TZ, ...o}).format(new Date(t * 1000));
+const etDay = t => new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(t * 1000));
+const etHour = t => +new Intl.DateTimeFormat('en-US', {timeZone: TZ, hour: 'numeric', hourCycle: 'h23'}).format(new Date(t * 1000));
+const clock = t => etFmt(t, {hour: 'numeric', minute: '2-digit'});
+const stamp = t => etFmt(t, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
+function agoFrom(t, ref){
+  const s = Math.max(0, Math.round(ref - t));
+  if (s < 90) return 'just now';
+  if (s < 5400) return `${Math.round(s / 60)} min ago`;
+  if (s < 172800) return `${Math.round(s / 3600)} h ago`;
+  return `${Math.round(s / 86400)} days ago`;
+}
+const median = a => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+const pill = (cls, text) => `<span class="pill ${cls}">${text}</span>`;
+
+async function loadLive(){
+  liveTried = true;
+  if (!H0 || !/^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+  const base = `https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/`;
+  try {
+    const st = await fetch(base + 'status.json', {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
+    const days = [2, 1, 0].map(i => etDay(st.t - i * 86400)).filter(d => !st.storage?.first || d >= st.storage.first);
+    const texts = await Promise.all(days.map(d => fetch(`${base}snapshots/${d}/polls.jsonl`, {cache: 'no-store'}).then(r => r.ok ? r.text() : '').catch(() => '')));
+    const polls = texts.flatMap(t => t.split('\n').filter(Boolean).map(l => JSON.parse(l)));
+    HS = {status: st, polls, live: true, at: Date.now() / 1000};
+    if (view === 'health') renderHealth();
+    clearTimeout(liveTimer);
+    liveTimer = setTimeout(loadLive, 5 * 60 * 1000);   // GitHub's raw files cache for 5 minutes anyway
+  } catch (e) { /* keep the snapshot */ }
+}
+
+function recState(st, ref){
+  const age = ref - st.t, w = st.window || {};
+  if (w.live){
+    const every = Math.round((w.next_s || 900) / 60);
+    if (age <= (w.next_s || 900) + 600) return ['ok', 'Recording', `Game day, polling every ${every} min`];
+    return age <= 3 * 3600 ? ['warn', 'Late', `Expected a poll every ${every} min`] : ['bad', 'Down', 'Missed the game window'];
+  }
+  if (age <= 2 * 3600) return ['idle', 'Standing by', 'No game window now, hourly check'];
+  return age <= 6 * 3600 ? ['warn', 'Late', 'Hourly check missed; GitHub may be throttling it'] : ['bad', 'Down', 'No poll for over 6 hours'];
+}
+function srcState(p){
+  if (!p) return ['idle', 'Not polled'];
+  if (!p.ok) return ['bad', 'Failing'];
+  if (p.src === 'injuries'){
+    if (p.report === 'no games') return ['idle', 'Waiting'];
+    return p.report ? ['ok', 'Current'] : ['warn', 'No report found'];
+  }
+  return p.n ? ['ok', 'Healthy'] : ['idle', 'Nothing listed'];
+}
+const pollClass = p => !p.ok ? 'err' : p.src === 'injuries' ? (p.report && p.report !== 'no games' ? 'ok' : 'empty') : (p.n ? 'ok' : 'empty');
+function reportTime(name){
+  const m = /_(\d\d)_(\d\d)(AM|PM)$/.exec(name || ''); return m ? `${+m[1]}:${m[2]} ${m[3]}` : null;
+}
+
+function renderHealth(){
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  if (!HS){
+    $('hbanner').innerHTML = 'No health data in this build. Run <b>build_data_health.py</b> and re-render the page.';
+    $('hkpis').innerHTML = $('hsrc').innerHTML = $('hgames').innerHTML = $('hinputs').innerHTML = $('harchive').innerHTML = '';
+    return;
+  }
+  const st = HS.status, ref = HS.live ? Date.now() / 1000 : HS.at;
+  $('mode').innerHTML = HS.live
+    ? `${pill('ok', 'Live')}<span>Checked ${clock(HS.at)} ET</span><button class="btn" id="hrefresh" type="button">Refresh</button>`
+    : `${pill('idle', 'Snapshot')}<span>Built ${stamp(HS.at)} ET</span>`;
+  $('hbanner').innerHTML = HS.live
+    ? `<b>Live.</b><span>Read from the recorder on GitHub every 5 minutes. GitHub can serve files up to 5 minutes old.</span>`
+    : `<b>Snapshot from ${stamp(HS.at)} ET.</b><span>Statuses below are as of that time. The live version of this page: <a href="${LIVE_PAGE}" target="_blank" rel="noopener">vaultfantasy.com/nba/projections.html</a></span>`;
+  $('hrefresh')?.addEventListener('click', () => loadLive());
+
+  const polls = HS.polls.filter(p => p.t <= ref + 60);
+  const day24 = polls.filter(p => p.t >= ref - 86400);
+  const games = (st && st.games) || [];
+
+  // KPIs
+  const I = {
+    rec: SVG('<circle cx="12" cy="12" r="3"/><path d="M12 3a9 9 0 1 0 9 9"/>'),
+    src: SVG('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'),
+    ok: SVG('<path d="M20 6 9 17l-5-5"/>'),
+    game: SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'),
+  };
+  if (st){
+    const [rc, rl, rd] = recState(st, ref);
+    const last = SRC.map(([k]) => st.sources[k]).filter(Boolean);
+    const okN = last.filter(p => p.ok).length, bad = SRC.filter(([k]) => st.sources[k] && !st.sources[k].ok).map(x => x[1]);
+    const okP = day24.filter(p => p.ok).length;
+    const covered = games.filter(g => VENUES.filter(v => g.cov[v]).length >= 3).length;
+    const next = games[0];
+    $('hkpis').innerHTML =
+      kpi('Recorder', I.rec, `<span class="${rc === 'ok' ? 'pos' : rc === 'bad' ? 'neg' : ''}">${rl}</span>`, `Last poll ${agoFrom(st.t, ref)} · ${rd}`) +
+      kpi('Sources answering', I.src, `${okN} of ${SRC.length}`, bad.length ? `<span class="neg">${bad.join(', ')} failed</span>` : 'All answered on the last poll') +
+      kpi('Poll success, 24h', I.ok, day24.length ? `${Math.round(okP / day24.length * 100)}%` : 'None', day24.length ? `${okP} of ${day24.length} source polls` : 'No polls in the last 24 hours') +
+      kpi('Games priced by 3+ venues', I.game, `${covered} of ${games.length}`, next ? `Next tip ${etFmt(next.tip, {weekday: 'short', month: 'short', day: 'numeric'})}, ${clock(next.tip)} ET` : 'No games in the next 3 days');
+  } else {
+    $('hkpis').innerHTML = kpi('Recorder', I.rec, 'No status yet', 'The first poll with status has not landed');
+  }
+
+  // sources table
+  const injCount = games.reduce((a, g) => a + (g.cov.injuries ? g.cov.injuries[0] : 0), 0);
+  $('hsrc').innerHTML = SRC.map(([k, name, what]) => {
+    const p = st && st.sources[k], [c, label] = srcState(p);
+    const mine = day24.filter(q => q.src === k), okN = mine.filter(q => q.ok).length;
+    const secs = median(mine.map(q => q.s).filter(x => x != null));
+    let note = '';
+    if (p && !p.ok){
+      let since = p.t;
+      for (const q of [...polls].filter(q => q.src === k).sort((a, b) => b.t - a.t)){ if (q.ok) break; since = q.t; }
+      note = `<span class="note err">${esc(p.err || 'Error')} · failing since ${stamp(since)}</span>`;
+    } else if (k === 'injuries'){
+      note = `<span class="note">${p?.report === 'no games' ? 'No report posts without games in the next 36 hours' : reportTime(p?.report) ? `Latest: ${reportTime(p.report)} ET report` : 'No report in the last 2 hours'}</span>`;
+    } else if (p && !p.n){
+      note = `<span class="note">${k === 'kalshi' ? 'Kalshi lists props the morning of a game' : 'Nothing listed for games in the next 3 days'}</span>`;
+    }
+    const n = k === 'injuries' ? (injCount ? `${injCount} players` : '') : p?.n != null ? p.n.toLocaleString() : '';
+    return `<tr><td class="l src"><b>${name}</b><small>${what}</small></td><td class="l">${pill(c, label)}</td>
+      <td class="num">${p ? agoFrom(p.t, ref) : ''}</td><td class="num">${n || '<span class="muted">0</span>'}</td>
+      <td class="num">${p?.chg != null ? p.chg.toLocaleString() : '<span class="muted">none</span>'}</td>
+      <td class="num">${mine.length ? `${Math.round(okN / mine.length * 100)}% <span class="muted">of ${mine.length}</span>` : '<span class="muted">no polls</span>'}</td>
+      <td class="num">${secs != null ? secs.toFixed(1) + ' s' : ''}</td><td class="l">${note}</td></tr>`;
+  }).join('');
+
+  renderTimeline(polls, ref);
+
+  // games table
+  let lastDay = null;
+  $('hgames').innerHTML = games.length ? games.map(g => {
+    const cell = v => {
+      const c = g.cov[v];
+      if (!c) return `<td class="cov none">none</td>`;
+      const sub = v === 'action' ? 'lines' : c[1] ? `${c[1].toLocaleString()} props` : 'no props';
+      return `<td class="cov">${c[0].toLocaleString()}<small>${sub}</small></td>`;
+    };
+    const inj = g.cov.injuries ? `<td class="cov">${g.cov.injuries[0]}<small>listed</small></td>` : `<td class="cov none">none</td>`;
+    const sep = g.day !== lastDay ? `<tr class="sep"><td colspan="8">${etFmt(g.tip, {weekday: 'long', month: 'long', day: 'numeric'})}</td></tr>` : '';
+    lastDay = g.day;
+    return `${sep}<tr><td class="l num">${clock(g.tip)}</td><td class="l"><b>${g.away} @ ${g.home}</b>${g.season_type === 1 ? ' <span class="badge">Preseason</span>' : ''}</td>${VENUES.map(cell).join('')}${inj}</tr>`;
+  }).join('') : `<tr><td class="l" colspan="8"><p class="empty">No games in the next 3 days. Preseason starts October 3; opening night is October 20.</p></td></tr>`;
+
+  // model inputs (static files: judged against the real clock)
+  const now = Date.now() / 1000;
+  $('hinputs').innerHTML = (H0.inputs || []).map(f => {
+    const t = f.generated ? Date.parse(f.generated) / 1000 : null;
+    const stale = !t || now - t > f.stale_days * 86400;
+    return `<div class="irow"><b>${f.what}</b>${pill(stale ? 'warn' : 'ok', !t ? 'Missing' : stale ? 'Stale' : 'Fresh')}
+      <small>${t ? `Built ${stamp(t)} ET (${agoFrom(t, now)})` : 'Not built yet'} · stale after ${f.stale_days} days · rebuild with <code>${f.script}</code></small></div>`;
+  }).join('');
+  $('harchive').innerHTML = H0.archive ? H0.archive.map(a => `<div class="irow"><b>${a.what}</b><span class="num">${a.rows.toLocaleString()}</span>
+      <small>${a.unit} · ${a.seasons}${a.through ? ` · through ${new Date(a.through.length > 10 ? a.through : a.through + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}` : ''}</small></div>`).join('')
+    : '<p class="empty">This build ran without the local archive (it lives in nba/raw on the Mac that backfilled it).</p>';
+
+  const S = st && st.storage;
+  $('hfoot').innerHTML = `
+    <div><b>The recorder</b> runs on GitHub Actions: an hourly check, and on game days a loop from 9am ET to the last tip that polls every 15 minutes, every 5 within 3 hours of a tip. It saves a price only when it changes, and drops a game once it tips, so every row is a pre-game price with the time it was seen.</div>
+    <div><b>Where it goes:</b> the <a href="https://github.com/${H0.repo}/tree/${H0.branch}" target="_blank" rel="noopener">${H0.branch}</a> branch, one folder per game day${S ? `. ${S.days} ${S.days === 1 ? 'day' : 'days'} recorded since ${S.first}, ${(S.bytes / 1e6).toFixed(1)} MB` : ''}.${st?.run ? ` <a href="${st.run}" target="_blank" rel="noopener">Latest run</a>.` : ''}</div>
+    <div><b>Model inputs</b> are rebuilt by hand for now. Rosters should be refreshed daily until the season starts; that is not automated yet.</div>`;
+}
+
+// 48h poll timeline: one lane per source, one tick per poll. Hour grid every 6 hours, Eastern time.
+function renderTimeline(polls, ref){
+  const W = 760, L = 112, R = 12, T0 = 6, RH = 26, B = 24, H = T0 + SRC.length * RH + B, span = 48 * 3600, start = ref - span;
+  const x = t => L + (t - start) / span * (W - L - R);
+  let g = '';
+  for (let t = Math.ceil(start / 3600) * 3600; t <= ref; t += 3600){
+    const h = etHour(t); if (h % 6) continue;
+    const lab = h === 0 ? etFmt(t, {weekday: 'short'}) : etFmt(t, {hour: 'numeric'});
+    g += `<line class="grid" x1="${x(t).toFixed(1)}" x2="${x(t).toFixed(1)}" y1="${T0}" y2="${H - B}"/><text x="${x(t).toFixed(1)}" y="${H - 8}" text-anchor="middle">${lab}</text>`;
+  }
+  SRC.forEach(([k, name], i) => {
+    const y = T0 + i * RH;
+    g += `<rect class="lane" x="${L}" y="${y + 4}" width="${W - L - R}" height="${RH - 8}" rx="4"/><text class="lab" x="0" y="${y + RH / 2 + 4}">${name}</text>`;
+    for (const p of polls) if (p.src === k && p.t >= start)
+      g += `<rect class="${pollClass(p)}" x="${(x(p.t) - 1).toFixed(1)}" y="${y + 7}" width="2" height="${RH - 14}" rx="1"><title>${esc(name)} · ${stamp(p.t)} ET · ${p.ok ? (p.n != null ? p.n + ' markets' : p.report || 'ok') : esc(p.err || 'failed')}</title></rect>`;
+  });
+  g += `<line class="now" x1="${x(ref)}" x2="${x(ref)}" y1="${T0}" y2="${H - B}"/>`;
+  const svg = $('htl'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = g;
+}
+
+show(view);
 </script>

@@ -17,6 +17,7 @@ python3 nba/scripts/build_minutes_model.py                      # minutes model 
 python3 nba/scripts/build_usage_cascade.py                      # per-minute cascade when teammates sit (~20 s)
 python3 nba/scripts/build_prop_model.py                         # week 3: prop model + backtest vs ESPN + Kalshi (~1 min)
 python3 nba/scripts/fetch_depth_charts.py                       # CURRENT depth charts -> data/depth_charts.json (~15 s, run daily)
+python3 nba/scripts/build_data_health.py                        # Data Health snapshot (reads origin/nba-data) + re-render the app page
 ```
 
 ## Live snapshots (week 4, from 2026-09-30)
@@ -31,7 +32,10 @@ git fetch origin nba-data && git worktree add nba/raw/nba-data nba-data   # then
 python3 nba/scripts/snapshot.py --dir=nba/raw/snap_test --ahead-h=500     # one local poll, all upcoming games
 ```
 
-Row format and what each source holds: the docstring at the top of `snapshot.py`. The price of a key at
+The app page (`projections.html`: Minutes Lab + Data Health) is rendered by `render_app.py` from
+`ui/projections.template.html`. As an artifact it shows the Data Health snapshot baked in at build time; served
+from Pages (vaultfantasy.com/nba/projections.html#health) or localhost it reads `status.json` and the poll logs
+live from the branch. Row format and what each source holds: the docstring at the top of `snapshot.py`. The price of a key at
 time X is its last row at or before X; `polls.jsonl` says whether each source actually answered around X.
 
 The injury script needs `pdfplumber`: `python3 -m venv nba/.venv && nba/.venv/bin/pip install pdfplumber`.

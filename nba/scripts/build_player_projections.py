@@ -18,13 +18,14 @@ Also ships the measured rules the page uses when minutes are edited:
   cascade    per-minute bump for stats where the usage cascade beat the plain rate
 
   python3 nba/scripts/build_player_projections.py
-Writes nba/data/player_projections.json and nba/projections.html (the page, data inlined).
+Writes nba/data/player_projections.json and re-renders nba/projections.html (render_app.py).
 """
 import csv, datetime as dt, json, os, statistics, sys, urllib.request
 from collections import defaultdict
 sys.path.insert(0, os.path.dirname(__file__))
 import nba_common as C
 from build_minutes_model import group, ols
+import render_app
 
 DATA = os.path.join(C.HERE, '..', 'data')
 STATS = {'pts': ['points'], 'reb': ['rebounds'], 'ast': ['assists'], '3pm': ['three_point_field_goals_made'],
@@ -186,10 +187,7 @@ def main():
         'teams': teams,
     }
     json.dump(out, open(os.path.join(DATA, 'player_projections.json'), 'w'), separators=(',', ':'))
-    # Render the Minutes Lab page with the data inlined (artifacts cannot fetch local files).
-    tpl = open(os.path.join(C.HERE, '..', 'ui', 'projections.template.html')).read()
-    open(os.path.join(C.HERE, '..', 'projections.html'), 'w').write(
-        tpl.replace('/*DATA*/null', json.dumps(out, separators=(',', ':'))))
+    render_app.render()   # the app page, data inlined (artifacts cannot fetch local files)
     n = sum(len(t['players']) for t in teams.values())
     print(f"{len(teams)} teams, {n} players -> data/player_projections.json "
           f"({os.path.getsize(os.path.join(DATA, 'player_projections.json')) // 1000} KB)")
