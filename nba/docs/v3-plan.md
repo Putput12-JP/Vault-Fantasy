@@ -6,6 +6,22 @@ same rows as the model it replaces, ship a component only if it helps where we b
 
 ## Status
 
+**Consensus fair engine built 2026-09-30, result in [consensus-engine.md](consensus-engine.md).** `scripts/consensus.py`
+turns every other venue's prices for a player-stat into one implied mean (prop model v2's distribution shape, the
+market's mean), so any line on any venue gets a fair price. Backtest on 2025-26, fit first half, bet second half:
+
+- Kalshi rung priced from the rest of its ladder (+ model): **points NO +7.3% (1,782 bets, 383 games, z 2.26) and 3PM
+  NO +16.8% (1,526, 278 g, z 3.30): GO** by the pre-registered rule. On the same rungs the current blend (price +
+  model) makes +3.8% and +12.4%, and the price alone (plain Kalshi overs bias) makes no 3%+ bets on points and +5.2%
+  on 3PM, so this is more than the known bias. Assists NO +14.3% at z 1.99 (WATCH), rebounds WATCH.
+- DraftKings close moved to Kalshi rungs: better log loss than Kalshi's own price on all four stats, but the archive
+  overlaps in only ~35 games, so WATCH at most. The live recorder has Pinnacle and 8 books every 5 minutes; this is
+  re-scored live.
+- Kalshi ladder moved to DraftKings' line: worse than DraftKings' own price (books are sharper at their main line). NO-GO.
+- Live: every candidate now carries the consensus fair (all other venues, Pinnacle weighted); Kalshi rungs use the
+  fitted ladder blend and its gate. The ledger logs a bet when the model edge OR the consensus edge reaches 3% and
+  tags which (Track Record: "Edge source"). The Edges page does not size consensus edges yet (Edges v2).
+
 **Confirmed starters feed built 2026-09-30, result in [starters-feed.md](starters-feed.md): the most accurate model yet,
 v2 keeps pricing bets (pre-registered rule). The feed is now recorded live to measure its timing edge.**
 

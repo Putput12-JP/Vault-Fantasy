@@ -23,6 +23,7 @@ python3 nba/scripts/build_minutes_model_v3.py                   # v3 minutes (ro
 python3 nba/scripts/build_rates_v3.py                           # per-stat memory: component rates, own half-lives (~1 min)
 python3 nba/scripts/build_prop_model_v3_full.py                 # v3 candidate (B + C, with and without A's shape) vs v2 (~4 min)
 python3 nba/scripts/pricing.py --check                          # the Props page's pricing in Python (the ledger uses it); prints example rows
+python3 nba/scripts/build_consensus.py                          # consensus fair engine backtest: books <-> Kalshi, ladder leave-one-out (~3 min)
 python3 nba/scripts/fetch_lineups.py [--backfill]               # NBA.com starting lineups: today -> data/lineups_today.json, or two seasons -> raw
 python3 nba/scripts/build_starters.py                           # lineup feed accuracy + v3 with confirmed starters vs v2 (~5 min)
 python3 nba/scripts/fetch_depth_charts.py                       # CURRENT depth charts -> data/depth_charts.json (~15 s, run daily)

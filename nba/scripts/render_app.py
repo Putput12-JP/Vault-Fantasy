@@ -28,6 +28,18 @@ def backtest(v2):
     return out
 
 
+def consensus_params():
+    """The consensus engine's fitted Kalshi blend (a + b logit(consensus) + c logit(model), per stat, from the ladder test)
+    and its verdicts by stat and side (build_consensus.py)."""
+    cb = load('consensus_backtest.json')
+    if not cb:
+        return None
+    lad = cb['tests'].get('kalshi_ladder', {})
+    return {'kalshi': {m: d['blends']['consensus + model'] for m, d in lad.items() if d.get('blends')},
+            'verdict': {m: v.get('consensus + model', {}) for m, v in cb['verdicts'].get('kalshi_ladder', {}).items()},
+            'generated': cb['generated']}
+
+
 def pricing():
     """What the page needs to price a prop the way the backtest did. Prop model v2 when it has been built
     (build_prop_model_v2.py): stacker weights, variance with the minutes term, calibration, and blend weights fit
@@ -41,7 +53,7 @@ def pricing():
                 'calibration': {k: [[round(x, 4), round(y, 4)] for x, y in v] for k, v in v2['calibration']['v2'].items() if v},
                 'kalshi': {s: coef(c) for s, c in v2['blend_live']['kalshi'].items() if c},
                 'book': {s: coef(c) for s, c in v2['blend_live']['book'].items() if c},
-                'verdict': v2['verdict']['v2'], 'backtest': backtest(v2), 'generated': v2['generated']}
+                'verdict': v2['verdict']['v2'], 'backtest': backtest(v2), 'consensus': consensus_params(), 'generated': v2['generated']}
     pm = load('prop_model.json')
     if not pm:
         return None

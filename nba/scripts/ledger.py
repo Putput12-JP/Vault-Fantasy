@@ -11,7 +11,10 @@ Logging (called by snapshot.py after each poll, from the same board the page rea
     tipping within TRACK_H hours, and then recorded every time its price, fair or edge changes until tip, whether or
     not the edge lasts. Stored as source 'ledger' in the day folder: snapshots/<day>/ledger.jsonl (change-only, like
     prices) with meta.jsonl describing each key.
-  - Key: game|player|stat|venue|book|side|line.  Value: [price, fair, edge, gate, projection, minutes].
+  - Key: game|player|stat|venue|book|side|line.  Value: [price, fair, edge, gate, projection, minutes, consensus,
+    consensus edge, consensus gate]. A candidate is tracked when EITHER edge reaches 3%: the model's (fair from our
+    projection blended with the price) or the consensus engine's (consensus.py: every other venue moved to this line).
+    Each bet records which one triggered it (etype model / gap / both), so the Track Record can compare them.
 
 Settling (settle(), same job, each poll): for games that tipped 3+ hours ago, ESPN's box score (cached under
 results/<game>.json). One shadow bet per key, 1 unit:
@@ -60,9 +63,10 @@ def log(day, board, now):
         if not g or not (now < g['tip'] <= now + TRACK_H * 3600):
             continue
         k = f"{c['gid']}|{c['p']}|{c['s']}|{c['venue']}|{c['bk']}|{c['side']}|{c['line']}"
-        if k not in tracked and c['edge'] < PX.EDGE_MIN:
+        if k not in tracked and c['edge'] < PX.EDGE_MIN and (c.get('gap') is None or c['gap'] < PX.EDGE_MIN):
             continue
-        rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1)]
+        rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),
+                   c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go')]
         P = board['players'].get(str(c['p'])) or board['players'].get(c['p']) or [str(c['p']), c['team']]
         meta[k] = {'game': c['gid'], 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': c['p'], 'player': P[0],
                    'team': P[1], 'stat': c['s'], 'venue': c['venue'], 'book': c['bk'], 'side': c['side'], 'line': c['line']}
@@ -166,7 +170,7 @@ def backtest_refs():
 
 
 EDGE_BINS = [(0.05, '3-5%'), (0.08, '5-8%'), (0.12, '8-12%'), (9, '12%+')]
-CUBE_COLS = ['day', 'stat', 'venue', 'book', 'side', 'gate', 'ebin', 'bets', 'open', 'void', 'w', 'l', 'p',
+CUBE_COLS = ['day', 'stat', 'venue', 'book', 'side', 'gate', 'ebin', 'etype', 'bets', 'open', 'void', 'w', 'l', 'p',
              'units', 'units_sq', 'units_close', 'clv_sum', 'clv_n', 'edge_sum']
 
 
@@ -185,7 +189,7 @@ def cube_rows(bets):
     for b in bets:
         ebin = next(l for hi, l in EDGE_BINS if b['edge'] < hi)
         side = 'over' if b['side'] in ('Over', 'YES') else 'under'
-        k = (tip_day(b['tip']), b['stat'], family(b), b['book'], side, b['gate'], ebin)
+        k = (tip_day(b['tip']), b['stat'], family(b), b['book'], side, b['gate'], ebin, b.get('etype', 'model'))
         r = agg.setdefault(k, [0] * 12)
         r[0] += 1
         r[1] += b['result'] == 'open'
@@ -204,17 +208,33 @@ def cube_rows(bets):
     return [list(k) + [round(x, 4) if isinstance(x, float) else x for x in v] for k, v in sorted(agg.items())]
 
 
+GATE_RANK = {'go': 0, 'watch': 1, 'no-go': 2}
+
+
+def gap_of(v):
+    return v[7] if len(v) > 7 else None
+
+
+def triggers(v):
+    """Which edges reached EDGE_MIN in a ledger value: ['model'], ['gap'] or both."""
+    return [t for t, x in (('model', v[2]), ('gap', gap_of(v))) if x is not None and x >= PX.EDGE_MIN]
+
+
 def bet_from(k, m, series):
     """One shadow bet from a ledger key's history, or None if it never reached EDGE_MIN before tip."""
     pre = [(t, v) for t, v in series if v is not None and t < m['tip']]
-    ent = next(((t, v) for t, v in pre if v[2] >= PX.EDGE_MIN), None)
+    ent = next(((t, v) for t, v in pre if triggers(v)), None)
     if not ent:
         return None
     (te, ve), (tc, vc) = ent, pre[-1]
     ce, cc = cost(m['venue'], ve[0]), cost(m['venue'], vc[0])
+    trig = triggers(ve)
+    gate = min((ve[3] if 'model' in trig else 'no-go', ve[8] if 'gap' in trig else 'no-go'), key=lambda g: GATE_RANK[g])
+    etype = 'both' if len(trig) == 2 else trig[0]
     return {'k': k, 'game': m['game'], 'tip': m['tip'], 'matchup': m['matchup'], 'pid': m['pid'], 'player': m['player'],
             'team': m['team'], 'stat': m['stat'], 'venue': m['venue'], 'book': m['book'], 'side': m['side'], 'line': m['line'],
-            'gate': ve[3], 't': te, 'price': ve[0], 'fair': ve[1], 'edge': ve[2], 'mu': ve[4], 'min': ve[5],
+            'gate': gate, 'etype': etype, 't': te, 'price': ve[0], 'fair': ve[1], 'edge': max(ve[2], gap_of(ve) or -1) if 'gap' in trig else ve[2],
+            'model_edge': ve[2], 'cons': ve[6] if len(ve) > 6 else None, 'gap_edge': gap_of(ve), 'mu': ve[4], 'min': ve[5],
             't_close': tc, 'price_close': vc[0], 'fair_close': vc[1], 'edge_close': vc[2],
             'clv': round(cc - ce, 4) if ce is not None and cc is not None else None,
             'result': 'open', 'actual': None, 'pnl': None, 'pnl_close': None}

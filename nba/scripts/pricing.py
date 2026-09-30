@@ -11,6 +11,7 @@ NBA.com's lineups get 0 minutes, and their minutes go to teammates by the Minute
 minutes, same-position players NB times more). The page does this for any team the viewer has not edited.
 """
 import json, math, os, re, sys
+import consensus as CE
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
@@ -197,7 +198,48 @@ class Pricer:
             po, pu = am_p(o), am_p(u)
             cands.append({'venue': 'pickem', 'bk': app, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - (po if po is not None else PK_BE), 'fair': fair, 'mkt': po, 'g': 'no-go'})
             cands.append({'venue': 'pickem', 'bk': app, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - (pu if pu is not None else PK_BE), 'fair': 1 - fair, 'mkt': pu, 'g': 'no-go'})
+        self.add_consensus(e, s, cands, model, mm['extra'])
         return {'mu': mm['mu'], 'min': mm['min'], 'team': mm['team'], 'cands': cands}
+
+    # ── consensus (consensus.py): every other venue's price moved to this line ──────────────────
+    def add_consensus(self, e, s, cands, model, extra):
+        """Adds to each candidate: cons (the other venues' consensus P(this side)), gap (cons-based fair minus cost),
+        gap_g (the gate from build_consensus.py). Kalshi rungs use the backtested blend of consensus and model; other
+        venues use the consensus alone (untested there)."""
+        V = self.PR['variance']
+        quotes = []                                   # (venue, line, P(over), weight)
+        for bk, line, o, u, *_ in e.get('books', []):
+            q = CE.book_quote(line, o, u)
+            if q:
+                quotes.append((bk, q[0], q[1], CE.WEIGHTS.get(bk, 1.5)))
+        for rung in e.get('kal', []):
+            line, bid, ask = rung[:3]
+            if bid is not None and ask is not None and 0 < bid <= ask < 1:
+                quotes.append(('Kalshi', line, (bid + ask) / 2, CE.WEIGHTS['Kalshi']))
+        CP = self.PR.get('consensus') or {}
+        memo = {}
+        for c in cands:
+            excl = (c['bk'], c['line']) if c['venue'] == 'kalshi' else (c['bk'], None)
+            if excl not in memo:
+                qs = [(L, p, w) for v, L, p, w in quotes if not (v == excl[0] and (excl[1] is None or L == excl[1]))]
+                mu = CE.implied_mean(s, qs, V, extra) if qs else None
+                memo[excl] = mu
+            mu = memo[excl]
+            if mu is None:
+                c.update(cons=None, gap=None, gap_g='no-go')
+                continue
+            over = c['side'] in ('Over', 'YES')
+            p_over = CE.p_over(s, mu, c['line'], V, extra)
+            fair_over, g = p_over, 'no-go'
+            if c['venue'] == 'kalshi' and CP.get('kalshi', {}).get(s):
+                pm = model(c['line'])
+                if pm is not None:
+                    a, bc, bm = CP['kalshi'][s]
+                    fair_over = 1 / (1 + math.exp(-max(-30, min(30, a + bc * CE.lg(p_over) + bm * CE.lg(pm)))))
+                g = {'GO': 'go', 'WATCH': 'watch'}.get((CP.get('verdict', {}).get(s) or {}).get(c['side']), 'no-go')
+            fair = fair_over if over else 1 - fair_over
+            cost = c['price'] + k_fee(c['price']) if c['venue'] == 'kalshi' else PK_BE if c['venue'] == 'pickem' and c['price'] is None else am_p(c['price'])
+            c.update(cons=round(p_over if over else 1 - p_over, 4), gap=fair - cost if cost is not None else None, gap_g=g)
 
 
 def outs_from_board(board):

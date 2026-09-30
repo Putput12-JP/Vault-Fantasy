@@ -209,6 +209,7 @@ table.tmx td.cell.watch{box-shadow:inset 0 0 0 1px rgba(251,191,36,.55)}
 table.tmx td.cell.on{background:rgba(255,255,255,.08)}
 table.tmx tr.tot td{border-top:1px solid var(--border2)}
 .tbreaks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.tbreaks .tbreak:first-child{grid-row:span 2}
 @media (max-width:900px){ .tbreaks{grid-template-columns:minmax(0,1fr)} .tbar{position:static} }
 .tbreak h3{margin:0 0 6px;font-size:12px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em}
 .tbreak{min-width:0}
@@ -515,7 +516,7 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
       </section>
 
       <section class="card">
-        <div class="card-h"><div><h2>Breakdowns</h2><p>The same bets cut four ways. Click a row to filter by it.</p></div></div>
+        <div class="card-h"><div><h2>Breakdowns</h2><p>The same bets cut five ways. Click a row to filter by it.</p></div></div>
         <div class="card-b"><div class="tbreaks" id="tbreaks"></div></div>
       </section>
 
@@ -1601,7 +1602,8 @@ $('prows').addEventListener('keydown', e => { const tr = e.target.closest('tr.pr
 // cube (one row per tip day x stat x venue x book x side x gate x edge bucket) so every market can be sliced, plus the
 // latest bets. Snapshot baked in (TR0); live from nba-data/track.json on the site.
 let TR = TR0 ? {data: TR0, live: false} : null, trackTried = false, trackTimer = null;
-const TF0 = {venue: 'all', stat: 'all', side: 'all', gate: 'all', ebin: 'all', book: 'all', day: 'all', clock: 'entry'};
+const TF0 = {venue: 'all', stat: 'all', side: 'all', gate: 'all', ebin: 'all', etype: 'all', book: 'all', day: 'all', clock: 'entry'};
+const ETYPE = {model: 'Model edge', gap: 'Consensus edge', both: 'Both'};
 let tf = {...TF0, status: 'all', limit: 150};
 const MIN_LIVE = 50;                // settled bets before a live verdict (the backtest gate's 50-game floor)
 const GATE_ORDER = {go: 0, watch: 1, 'no-go': 2};
@@ -1629,10 +1631,10 @@ function cubeRows(){
   const d = TR && TR.data;
   if (!d || !d.cube) return [];
   const C = Object.fromEntries(d.cube_cols.map((c, i) => [c, i]));
-  return d.cube.map(r => Object.fromEntries(Object.entries(C).map(([k, i]) => [k, r[i]])));
+  return d.cube.map(r => { const o = Object.fromEntries(Object.entries(C).map(([k, i]) => [k, r[i]])); o.etype = o.etype || 'model'; return o; });
 }
 function trMatch(r, skip = []){
-  for (const k of ['venue', 'stat', 'side', 'gate', 'ebin', 'book', 'day']){
+  for (const k of ['venue', 'stat', 'side', 'gate', 'ebin', 'etype', 'book', 'day']){
     if (skip.includes(k) || tf[k] === 'all') continue;
     if (k === 'gate' && tf.gate === 'gated'){ if (r.gate === 'no-go') return false; continue; }
     if (r[k] !== tf[k]) return false;
@@ -1692,6 +1694,7 @@ function renderTrack(){
     '<span class="div"></span>',
     dd('gate', 'Gate', [['all', 'Any gate'], ['gated', 'GO + WATCH'], ['go', 'GO only'], ['watch', 'WATCH only'], ['no-go', 'Not gated']]),
     dd('ebin', 'Edge at entry', [['all', 'Any edge'], ...EBINS.map(e => [e, `Edge ${e}`])]),
+    dd('etype', 'Edge source', [['all', 'Model or consensus'], ['model', 'Model edge only'], ['gap', 'Consensus edge only'], ['both', 'Both agreed']]),
     dd('book', 'Book or app', [['all', 'All books and apps'], ...books.map(b => { const [v, bk] = b.split('|'); return [bk, `${esc(bk)}${v === 'book' ? '' : ` (${VLABEL[v]})`}`]; })]),
     dd('day', 'Game day', [['all', 'All game days'], ...days.map(x => [x, new Date(x + 'T12:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})])]),
     dd('clock', 'Price clock', [['entry', 'At entry price'], ['close', 'At close price']]),
@@ -1740,7 +1743,8 @@ function renderTrack(){
     brk('By book or app', 'book', k => esc(k)) +
     brk('By edge at entry', 'ebin', k => k, EBINS) +
     brk('By gate', 'gate', k => GATE_LABEL[k], ['go', 'watch', 'no-go']) +
-    brk('By side', 'side', k => k === 'over' ? 'Over / YES' : 'Under / NO', ['over', 'under']);
+    brk('By side', 'side', k => k === 'over' ? 'Over / YES' : 'Under / NO', ['over', 'under']) +
+    brk('By edge source', 'etype', k => ETYPE[k] || k, ['model', 'gap', 'both']);
 
   // gated signals, all time
   const BT = (d && d.backtest) || PR.backtest || {};
@@ -1760,7 +1764,7 @@ function renderTrack(){
   const fam = b => b.venue === 'kalshi' ? 'kalshi' : b.venue === 'pickem' ? 'pickem' : b.book === 'Polymarket' ? 'polymarket' : 'book';
   const ebinOf = e => e < .05 ? '3-5%' : e < .08 ? '5-8%' : e < .12 ? '8-12%' : '12%+';
   const dayOf = t => new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(t * 1000));
-  let B = bets.filter(b => trMatch({venue: fam(b), stat: b.stat, side: ['Over', 'YES'].includes(b.side) ? 'over' : 'under', gate: b.gate, ebin: ebinOf(b.edge), book: b.book, day: dayOf(b.tip)}));
+  let B = bets.filter(b => trMatch({venue: fam(b), stat: b.stat, side: ['Over', 'YES'].includes(b.side) ? 'over' : 'under', gate: b.gate, ebin: ebinOf(b.edge), etype: b.etype || 'model', book: b.book, day: dayOf(b.tip)}));
   if (tf.status === 'open') B = B.filter(b => b.result === 'open');
   if (tf.status === 'settled') B = B.filter(b => b.result !== 'open');
   B = [...B].sort((a, b) => b.tip - a.tip || a.player.localeCompare(b.player));
@@ -1771,7 +1775,7 @@ function renderTrack(){
       <td class="l num">${etFmt(b.tip, {month: 'short', day: 'numeric'})}<small>${clock(b.tip)}</small></td>
       <td class="l"><b>${esc(b.player)}</b><small>${esc(b.team)} · ${esc(b.matchup)}</small></td>
       <td class="l"><b>${SLABEL[b.stat] || b.stat} ${b.venue === 'kalshi' ? `${b.side} ${b.line + .5}+` : `${b.side} ${b.line}`}</b><small>${esc(b.book)}</small></td>
-      <td class="l">${gatePill(b.gate)}</td>
+      <td class="l">${gatePill(b.gate)}<small>${ETYPE[b.etype || 'model']}</small></td>
       <td class="num">${tPrice(b.venue, b.price)}</td><td class="num">${tPrice(b.venue, b.price_close)}</td>
       <td class="num">${pc(b.fair)}</td><td class="num">${ec(b.edge)}</td>
       <td class="num">${b.actual ?? ''}</td><td class="l">${RES[b.result] || ''}</td><td class="num">${tUnits(tf.clock === 'close' ? b.pnl_close : b.pnl)}</td></tr>`).join('')

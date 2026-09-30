@@ -12,6 +12,9 @@ together: more accurate on every stat, but Kalshi points NO slips to WATCH, so v
 ([prop-model-v3-full.md](prop-model-v3-full.md)); v3 is a shadow candidate. Confirmed starters feed (NBA.com daily
 lineups, [starters-feed.md](starters-feed.md)): 99.98% accurate, best model accuracy yet, but backtest prices already knew
 the lineups, so v2 stays; the recorder now logs lineup confirmations to test the timing edge live.
+Consensus fair engine ([consensus-engine.md](consensus-engine.md)): Kalshi rungs priced from the rest of their ladder
+plus the model pass GO on points NO and 3PM NO (beating the current blend on the same rungs); live pricing and the
+shadow ledger now carry a consensus edge for every venue.
 Recorder venues (2026-09-30): Kalshi, ESPN/DraftKings, Pinnacle, Action Network (7 books), Polymarket (game
 markets + player props, fee included on the page), PrizePicks, Underdog, Sleeper, the injury report and NBA.com
 lineups. Pick'em lines show on the Props page but never rank as a best bet (flat payouts) and have no gate yet.
