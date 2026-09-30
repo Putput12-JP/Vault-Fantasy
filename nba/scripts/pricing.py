@@ -17,6 +17,7 @@ DATA = os.path.join(HERE, '..', 'data')
 sys.path.insert(0, HERE)
 
 EDGE_MIN = 0.03
+PK_BE = 0.5425               # pick'em break-even per pick on standard 5- and 6-pick flex entries (flat-payout lines)
 COMBO = {'pra': ['pts', 'reb', 'ast'], 'pr': ['pts', 'reb'], 'pa': ['pts', 'ast'], 'ra': ['reb', 'ast']}
 COUNT = {'reb', 'ast', '3pm'}
 
@@ -163,13 +164,14 @@ class Pricer:
         s = e['s']
         kc, bc = self.PR['kalshi'].get(s) or self.PR['book'].get(s), self.PR['book'].get(s)
         model = lambda line: self.cal(s, self.p_over_raw(s, mm['mu'], line, mm['extra'])) if mm['min'] > 0 else None
-        cands = []
+        cands, bfair = [], []
         for bk, line, o, u, *_ in e.get('books', []):
             po, pu = am_p(o), am_p(u)
             if po is None or pu is None or line is None:
                 continue
             mkt, pm = po / (po + pu), model(line)
             fair = blend(bc, mkt, pm) if pm is not None and bc else None
+            bfair.append((line, fair))
             if fair is not None:
                 cands.append({'venue': 'book', 'bk': bk, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - po, 'fair': fair, 'mkt': mkt, 'g': self.gate('book', s, 'Over')})
                 cands.append({'venue': 'book', 'bk': bk, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - pu, 'fair': 1 - fair, 'mkt': 1 - mkt, 'g': self.gate('book', s, 'Under')})
@@ -184,6 +186,17 @@ class Pricer:
                 cands.append({'venue': 'kalshi', 'bk': 'Kalshi', 'side': 'YES', 'line': line, 'price': ask, 'edge': fair - ask - k_fee(ask), 'fair': fair, 'mkt': mid, 'g': self.gate('kalshi', s, 'YES')})
             if bid is not None and 0 < bid < 1:
                 cands.append({'venue': 'kalshi', 'bk': 'Kalshi', 'side': 'NO', 'line': line, 'price': 1 - bid, 'edge': (1 - fair) - (1 - bid) - k_fee(1 - bid), 'fair': 1 - fair, 'mkt': 1 - mid, 'g': self.gate('kalshi', s, 'NO')})
+        # pick'em apps (the page's Pick'em panel): fair = the first book's blend at the same line, else the model;
+        # priced lines against their own price, flat ones against the flex break-even. Never gated.
+        for app, line, o, u, *_ in e.get('pk', []):
+            pm = model(line)
+            same = next((f for l, f in bfair if l == line and f is not None), None)
+            fair = same if same is not None else pm
+            if fair is None:
+                continue
+            po, pu = am_p(o), am_p(u)
+            cands.append({'venue': 'pickem', 'bk': app, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - (po if po is not None else PK_BE), 'fair': fair, 'mkt': po, 'g': 'no-go'})
+            cands.append({'venue': 'pickem', 'bk': app, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - (pu if pu is not None else PK_BE), 'fair': 1 - fair, 'mkt': pu, 'g': 'no-go'})
         return {'mu': mm['mu'], 'min': mm['min'], 'team': mm['team'], 'cands': cands}
 
 

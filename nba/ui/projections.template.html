@@ -194,6 +194,30 @@ footer b{color:var(--fg2);font-weight:500}
 .banner a,footer a,.card a{color:var(--fg);text-underline-offset:3px;text-decoration-color:var(--fg3)}
 table.ht{min-width:760px}
 table.tb{min-width:1000px}
+.tfilters{display:grid;gap:10px}
+.tfrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.tfrow > span{font-size:12px;color:var(--fg3);width:64px;flex:none;text-transform:uppercase;letter-spacing:.06em}
+table.tmx{min-width:900px}
+table.tmx th small{display:block;font-weight:400;color:var(--fg3);text-transform:none;letter-spacing:0}
+table.tmx td.cell{cursor:pointer;border-radius:6px;font-variant-numeric:tabular-nums}
+table.tmx td.cell small{display:block;color:var(--fg3);font-size:11.5px}
+table.tmx td.cell:hover{background:var(--surface2,rgba(255,255,255,.04))}
+table.tmx td.cell.go{box-shadow:inset 0 0 0 1px rgba(74,222,128,.55)}
+table.tmx td.cell.watch{box-shadow:inset 0 0 0 1px rgba(251,191,36,.55)}
+table.tmx td.cell.on{background:rgba(255,255,255,.08)}
+table.tmx tr.tot td{border-top:1px solid var(--border2)}
+.tbreaks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+@media (max-width:900px){ .tbreaks{grid-template-columns:minmax(0,1fr)} .tfrow > span{width:100%} }
+.tbreak h3{margin:0 0 6px;font-size:12px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em}
+.tbreak{min-width:0}
+.tbreak table{width:100%;min-width:0;border-collapse:collapse;font-size:13px}
+.tbreak td{padding:7px 6px;border-top:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbreak td.l{text-align:left}
+.tbreak tr{cursor:pointer} .tbreak tr:hover td{background:rgba(255,255,255,.03)}
+.tbreak .rbar{display:inline-block;height:6px;border-radius:3px;vertical-align:middle;margin-right:6px}
+.tbreak th{padding:0 6px 6px;font-size:11px;font-weight:500;color:var(--fg3);text-align:right;text-transform:uppercase;letter-spacing:.06em}
+.tbreak th.l{text-align:left}
+.tbreak tr.on td{background:rgba(255,255,255,.06)}
 .bankroll{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2);white-space:nowrap}
 .bankroll .pfind{width:110px}
 table.tb td,table.ts td{white-space:nowrap}
@@ -473,11 +497,30 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 
     <main id="v-track" hidden>
       <div class="banner" id="tbanner"></div>
+
+      <section class="card">
+        <div class="card-h"><div><h2>Slice the record</h2><p>Every chart and table below follows these filters. Click any cell or row to narrow further.</p></div>
+          <button class="btn" id="treset" type="button">Clear filters</button></div>
+        <div class="card-b"><div class="tfilters" id="tfilters"></div></div>
+      </section>
+
       <div class="kpis" id="tkpis"></div>
 
       <section class="card">
         <div class="card-h">
-          <div><h2>Signals against their backtest</h2><p>Every stat, venue and side that produced a 3%+ edge. GO and WATCH signals carry their 2025-26 out-of-sample result.</p></div>
+          <div><h2>Every market</h2><p id="tmxsub">ROI per unit for every stat on every venue and side. Outlined cells are GO / WATCH signals.</p></div>
+        </div>
+        <div class="card-b"><div class="tablewrap"><table class="ht tmx" id="tmx"></table></div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><div><h2>Breakdowns</h2><p>The same bets cut four ways. Click a row to filter by it.</p></div></div>
+        <div class="card-b"><div class="tbreaks" id="tbreaks"></div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Gated signals against their backtest</h2><p>The GO and WATCH signals, all time, next to their 2025-26 out-of-sample result.</p></div>
         </div>
         <div class="card-b"><div class="tablewrap"><table class="ht ts">
           <thead><tr><th class="l" scope="col">Signal</th><th class="l" scope="col">Gate</th><th scope="col">Bets</th><th scope="col">W-L-P</th><th scope="col">Units</th><th scope="col" title="ROI per unit at the first price that showed a 3% edge">ROI at entry</th><th scope="col" title="The same bets at the last price before tip, the backtest's clock">ROI at close</th><th scope="col" title="Same side's price at close minus at entry, fee included. Positive means the market moved our way.">CLV</th><th scope="col" title="2025-26 out of sample: ROI (bets, z)">Backtest</th><th class="l" scope="col">Live verdict</th></tr></thead>
@@ -487,11 +530,10 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 
       <section class="card">
         <div class="card-h">
-          <div><h2>Units over time</h2><p>Cumulative units at entry prices, 1 unit per bet, by game day.</p></div>
+          <div><h2>Units over time</h2><p id="tchsub">Cumulative units for the current selection, 1 unit per bet, by game day.</p></div>
         </div>
         <div class="card-b">
-          <div class="chartwrap"><svg class="chart tl" id="tchart" viewBox="0 0 760 220" role="img" aria-label="Cumulative units by gate"></svg></div>
-          <div class="tlegend" id="tlegend"></div>
+          <div class="chartwrap"><svg class="chart tl" id="tchart" viewBox="0 0 760 220" role="img" aria-label="Cumulative units"></svg></div>
         </div>
       </section>
 
@@ -499,7 +541,6 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
         <div class="card-h">
           <div><h2>Shadow bets</h2><p id="tbsub">Every logged edge, newest first.</p></div>
           <div class="filters">
-            <div class="seg" id="tgate" role="group" aria-label="Gate"></div>
             <select class="sel" id="tstatus" aria-label="Status"><option value="all">All bets</option><option value="open">Open</option><option value="settled">Settled</option></select>
           </div>
         </div>
@@ -1554,19 +1595,27 @@ $('prows').addEventListener('click', e => {
 $('prows').addEventListener('keydown', e => { const tr = e.target.closest('tr.prow'); if (tr && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); toggleRow(tr); } });
 
 // ── Track Record ──────────────────────────────────────────────────────────
-// The shadow ledger (scripts/ledger.py): every 3%+ edge the Props page showed, logged by the recorder from the first
-// poll it appeared, settled from ESPN's box score. Snapshot baked in (TR0); live from nba-data/track.json on the site.
+// The shadow ledger (scripts/ledger.py): every 3%+ edge the Props page priced (Kalshi, sportsbooks, Polymarket and
+// pick'em apps), logged from the first recorder poll it appeared and settled from ESPN's box score. The page reads the
+// cube (one row per tip day x stat x venue x book x side x gate x edge bucket) so every market can be sliced, plus the
+// latest bets. Snapshot baked in (TR0); live from nba-data/track.json on the site.
 let TR = TR0 ? {data: TR0, live: false} : null, trackTried = false, trackTimer = null;
-let tf = {gate: 'gated', status: 'all', limit: 150};
+const TF0 = {venue: 'all', stat: 'all', side: 'all', gate: 'all', ebin: 'all', book: 'all', day: 'all', clock: 'entry'};
+let tf = {...TF0, status: 'all', limit: 150};
 const MIN_LIVE = 50;                // settled bets before a live verdict (the backtest gate's 50-game floor)
 const GATE_ORDER = {go: 0, watch: 1, 'no-go': 2};
-const SIDE_NAME = {YES: 'YES', NO: 'NO', over: 'Over', under: 'Under'};
+const VENUES_T = [['kalshi', 'Kalshi'], ['book', 'Sportsbooks'], ['polymarket', 'Polymarket'], ['pickem', "Pick'em"]];
+const VLABEL = Object.fromEntries(VENUES_T);
+const EBINS = ['3-5%', '5-8%', '8-12%', '12%+'];
+const MSTATS = ['pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra'];
+const sideWord = (venue, side) => venue === 'kalshi' ? (side === 'over' ? 'YES' : 'NO') : (side === 'over' ? 'Over' : 'Under');
 
 async function loadTrack(){
   trackTried = true;
   if (!H0 || !/^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
   try {
     const d = await fetch(`https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/track.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
+    if (!d.cube) return;             // an older format; keep the snapshot
     TR = {data: d, live: true, at: Date.now() / 1000};
     if (view === 'track') renderTrack();
     if (view === 'edges') renderEdges();
@@ -1574,15 +1623,42 @@ async function loadTrack(){
   } catch (e) { /* keep the snapshot */ }
 }
 
-const tPrice = (venue, x) => x == null ? '' : venue === 'kalshi' ? Math.round(x * 100) + '¢' : esc(String(x));
+// cube helpers
+function cubeRows(){
+  const d = TR && TR.data;
+  if (!d || !d.cube) return [];
+  const C = Object.fromEntries(d.cube_cols.map((c, i) => [c, i]));
+  return d.cube.map(r => Object.fromEntries(Object.entries(C).map(([k, i]) => [k, r[i]])));
+}
+function trMatch(r, skip = []){
+  for (const k of ['venue', 'stat', 'side', 'gate', 'ebin', 'book', 'day']){
+    if (skip.includes(k) || tf[k] === 'all') continue;
+    if (k === 'gate' && tf.gate === 'gated'){ if (r.gate === 'no-go') return false; continue; }
+    if (r[k] !== tf[k]) return false;
+  }
+  return true;
+}
+function trAgg(rows){
+  const a = {bets: 0, open: 0, void: 0, w: 0, l: 0, p: 0, units: 0, units_sq: 0, units_close: 0, clv_sum: 0, clv_n: 0, edge_sum: 0};
+  for (const r of rows) for (const k in a) a[k] += r[k] || 0;
+  const n = a.w + a.l + a.p;
+  a.settled = n;
+  a.roi = n ? a.units / n : null;
+  a.roi_close = n ? a.units_close / n : null;
+  a.clv = a.clv_n ? a.clv_sum / a.clv_n : null;
+  const mean = n ? a.units / n : 0, v = n > 1 ? (a.units_sq - n * mean * mean) / (n - 1) : null;
+  a.z = v && v > 0 ? +(mean / Math.sqrt(v / n)).toFixed(2) : null;
+  a.wr = a.w + a.l ? a.w / (a.w + a.l) : null;
+  return a;
+}
+const clockRoi = a => tf.clock === 'close' ? a.roi_close : a.roi;
+const clockUnits = a => tf.clock === 'close' ? a.units_close : a.units;
+
+const tPrice = (venue, x) => x == null ? (venue === 'pickem' ? '<span class="muted">flat</span>' : '') : venue === 'kalshi' ? Math.round(x * 100) + '¢' : esc(String(x));
 const tUnits = x => x == null ? '' : `<span class="${x > 0 ? 'pos' : x < 0 ? 'neg' : ''}">${x > 0 ? '+' : ''}${x.toFixed(2)}</span>`;
 const tRoi = x => x == null ? '<span class="muted">none</span>' : `<span class="${x > 0 ? 'pos' : x < 0 ? 'neg' : ''}">${x > 0 ? '+' : ''}${(x * 100).toFixed(1)}%</span>`;
 const tClv = x => x == null ? '' : `<span class="${x > 0 ? 'pos' : x < 0 ? 'neg' : ''}">${x > 0 ? '+' : ''}${(x * 100).toFixed(1)}</span>`;
 const gatePill = g => pill(g === 'go' ? 'ok' : g === 'watch' ? 'warn' : 'idle', GATE_LABEL[g] || g);
-function signalName(key){
-  const [stat, venue, side] = key.split('|');
-  return `${SLABEL[stat] || stat} ${SIDE_NAME[side] || side} · ${venue === 'kalshi' ? 'Kalshi' : 'Sportsbooks'}`;
-}
 function liveVerdict(sm, bt){
   if (!sm || !sm.settled) return pill('idle', 'No settled bets');
   if (sm.settled < MIN_LIVE) return `<span class="muted">Collecting, ${sm.settled} of ${MIN_LIVE}</span>`;
@@ -1590,58 +1666,104 @@ function liveVerdict(sm, bt){
   if (sm.roi > 0) return pill('warn', 'Positive, under 2 SE');
   return pill('bad', bt ? 'Not matching backtest' : 'Losing');
 }
+// a signal's all-time live record (Edges status and the gated table)
+function signalAgg(stat, venue, side){ return trAgg(cubeRows().filter(r => r.stat === stat && r.venue === venue && r.side === side)); }
 
 function renderTrack(){
-  const d = TR && TR.data;
+  const d = TR && TR.data, all = cubeRows();
   $('mode').innerHTML = !d ? pill('idle', 'No ledger yet')
     : TR.live ? `${pill('ok', 'Live')}<span>Checked ${clock(TR.at)} ET</span>` : `${pill('idle', 'Snapshot')}<span>Ledger as of ${stamp(d.t)} ET</span>`;
-  const bets = (d && d.bets) || [];
-  const settled = bets.filter(b => ['win', 'loss', 'push'].includes(b.result));
-  $('tbanner').innerHTML = !bets.length
-    ? `<b>No shadow bets yet.</b><span>The recorder logs an edge the first time the Props page shows it at 3% or more, for games within 24 hours. Kalshi lists props the morning of a game; preseason starts October 3, opening night is October 20. Nothing here is a real bet.</span>`
-    : `<b>${bets.length.toLocaleString()} shadow bets, ${settled.length.toLocaleString()} settled.</b><span>Logged from the recorder's prices at the first poll each edge reached 3%, 1 unit each, settled from ESPN's box score. None were placed.${d.bets_total && d.bets_total > bets.length ? ` This snapshot lists the latest ${bets.length} of ${d.bets_total.toLocaleString()}; the live page has all of them.` : ''}</span>`;
+  const tot = trAgg(all);
+  $('tbanner').innerHTML = !tot.bets
+    ? `<b>No shadow bets yet.</b><span>The recorder logs every edge the Props page prices at 3% or more (Kalshi, sportsbooks, Polymarket and pick'em apps) for games within 24 hours, and settles it from the box score. Props list the morning of a game; preseason starts October 3, opening night is October 20. Nothing here is a real bet.</span>`
+    : `<b>${tot.bets.toLocaleString()} shadow bets, ${tot.settled.toLocaleString()} settled.</b><span>Each is 1 unit at the first price that showed a 3% edge, settled from ESPN's box score. None were placed.</span>`;
 
-  // KPIs
-  const G = (d && d.by_gate) || {};
-  const all = Object.values(G).reduce((a, x) => ({settled: a.settled + x.settled, units: a.units + x.units, w: a.w + x.w, l: a.l + x.l}), {settled: 0, units: 0, w: 0, l: 0});
-  const clvs = bets.filter(b => b.gate !== 'no-go' && b.clv != null).map(b => b.clv);
-  const kc = (label, x) => kpi(label, SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'),
-    x && x.settled ? `${x.w}-${x.l}${x.p ? '-' + x.p : ''} <span class="${x.units >= 0 ? 'pos' : 'neg'}" style="font-size:16px">${x.units >= 0 ? '+' : ''}${x.units.toFixed(1)}u</span>` : '<span class="muted">0 settled</span>',
-    x && x.settled ? `ROI ${x.roi >= 0 ? '+' : ''}${(x.roi * 100).toFixed(1)}% on ${x.settled} · ${x.open} open` : x && x.open ? `${x.open} open` : 'Nothing logged yet');
+  // filters
+  const books = [...new Set(all.filter(r => trMatch(r, ['book'])).map(r => r.venue + '|' + r.book))].sort();
+  const days = [...new Set(all.map(r => r.day))].sort().reverse();
+  if (tf.book !== 'all' && !books.some(b => b.endsWith('|' + tf.book))) tf.book = 'all';
+  const seg = (key, opts) => `<div class="seg" data-f="${key}" role="group">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${tf[key] === v}">${l}</button>`).join('')}</div>`;
+  $('tfilters').innerHTML = [
+    ['Venue', seg('venue', [['all', 'All'], ...VENUES_T])],
+    ['Stat', seg('stat', [['all', 'All'], ...MSTATS.map(s => [s, SLABEL[s]])])],
+    ['Side', seg('side', [['all', 'Both'], ['over', 'Over / YES'], ['under', 'Under / NO']])],
+    ['Gate', seg('gate', [['all', 'All'], ['gated', 'GO + WATCH'], ['go', 'GO'], ['watch', 'WATCH'], ['no-go', 'Not gated']])],
+    ['Edge', seg('ebin', [['all', 'All'], ...EBINS.map(e => [e, e])])],
+    ['Price', seg('clock', [['entry', 'At entry'], ['close', 'At close']])],
+    ['More', `<select class="sel" data-f="book" aria-label="Book"><option value="all">All books and apps</option>${books.map(b => { const [v, bk] = b.split('|'); return `<option value="${esc(bk)}"${tf.book === bk ? ' selected' : ''}>${esc(bk)}${v === 'book' ? '' : ` (${VLABEL[v]})`}</option>`; }).join('')}</select>
+      <select class="sel" data-f="day" aria-label="Game day"><option value="all">All game days</option>${days.map(x => `<option value="${x}"${tf.day === x ? ' selected' : ''}>${new Date(x + 'T12:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}</option>`).join('')}</select>`],
+  ].map(([l, h]) => `<div class="tfrow"><span>${l}</span>${h}</div>`).join('');
+  $('treset').hidden = Object.keys(TF0).every(k => tf[k] === TF0[k]);
+
+  // KPIs over the current selection
+  const sel = all.filter(r => trMatch(r)), A = trAgg(sel);
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
-  $('tkpis').innerHTML = kc('GO signals', G.go) + kc('WATCH signals', G.watch) +
-    kc('Every 3%+ edge', all.settled ? {...all, p: 0, roi: all.units / all.settled, open: bets.filter(b => b.result === 'open').length} : null) +
-    kpi('Closing-line value', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'),
-      clvs.length ? tClv(clvs.reduce((a, x) => a + x, 0) / clvs.length) + '<span class="muted" style="font-size:14px"> pts</span>' : '<span class="muted">none</span>',
-      clvs.length ? `GO + WATCH bets, entry to close, ${clvs.length} bets` : 'Needs a price at entry and at close');
+  const r0 = clockRoi(A), u0 = clockUnits(A);
+  $('tkpis').innerHTML =
+    kpi('Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), A.settled ? `${A.w}-${A.l}${A.p ? '-' + A.p : ''}` : '<span class="muted">0 settled</span>',
+      A.bets ? `${A.settled} settled · ${A.open} open${A.void ? ` · ${A.void} void` : ''}` : 'Nothing logged for this selection') +
+    kpi('Units', ICON.pts, A.settled ? `<span class="${u0 >= 0 ? 'pos' : 'neg'}">${u0 >= 0 ? '+' : ''}${u0.toFixed(1)}u</span>` : '<span class="muted">0u</span>', `1 unit per bet, ${tf.clock === 'close' ? 'at close' : 'at entry'}`) +
+    kpi('ROI', ICON.star, A.settled ? tRoi(r0) : '<span class="muted">none</span>', A.settled ? `z ${A.z ?? 'n/a'} · win rate ${A.wr != null ? pc(A.wr) : 'n/a'} · average edge ${ec(A.edge_sum / A.bets)}` : 'Per unit risked') +
+    kpi('Closing-line value', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), A.clv != null ? tClv(A.clv) + '<span class="muted" style="font-size:14px"> pts</span>' : '<span class="muted">none</span>',
+      A.clv_n ? `Entry to close, ${A.clv_n.toLocaleString()} bets` : 'Needs a price at entry and at close');
 
-  // signals
-  const S = (d && d.by_signal) || {}, BT = (d && d.backtest) || PR.backtest || {};
-  const sig = Object.keys({...S, ...Object.fromEntries(Object.keys(BT).map(k => [k, 1]))});
-  const gateOf = k => { const [st, ve, sd] = k.split('|'); return ve === 'kalshi' ? gate('kalshi', st, sd) : 'no-go'; };
-  sig.sort((a, b) => GATE_ORDER[gateOf(a)] - GATE_ORDER[gateOf(b)] || ((S[b] || {}).bets || 0) - ((S[a] || {}).bets || 0));
-  $('tsig').innerHTML = sig.length ? sig.map(k => {
-    const x = S[k], bt = BT[k], g = gateOf(k);
-    const [st, ve, sd] = k.split('|');
-    return `<tr><td class="l"><b>${SLABEL[st] || st} ${SIDE_NAME[sd] || sd}</b><small>${ve === 'kalshi' ? 'Kalshi' : 'Sportsbooks'}</small></td><td class="l">${gatePill(g)}</td>
-      <td class="num">${x ? x.bets : 0}</td><td class="num">${x ? `${x.w}-${x.l}-${x.p}` : ''}</td><td class="num">${x ? tUnits(x.units) : ''}</td>
-      <td class="num">${x ? tRoi(x.roi) : ''}</td><td class="num">${x ? tRoi(x.roi_close) : ''}</td><td class="num">${x ? tClv(x.clv) : ''}</td>
-      <td class="num">${bt && bt.roi != null ? `${tRoi(bt.roi)} <span class="muted">(${bt.n.toLocaleString()}, z ${bt.z})</span>` : '<span class="muted">not gated</span>'}</td>
-      <td class="l">${g === 'no-go' ? '<span class="muted">Tracked only</span>' : liveVerdict(x, bt)}</td></tr>`;
-  }).join('') : `<tr><td class="l" colspan="10"><p class="empty">No signals yet.</p></td></tr>`;
+  // every market: stats x venue/side, other filters applied
+  const MX = all.filter(r => trMatch(r, ['stat', 'venue', 'side']));
+  const cols = VENUES_T.flatMap(([v, l]) => ['over', 'under'].map(sd => [v, sd, l]));
+  const gateOf = (st, v, sd) => v === 'kalshi' ? gate('kalshi', st, sd === 'over' ? 'YES' : 'NO') : 'no-go';
+  const cell = (st, v, sd) => {
+    const a = trAgg(MX.filter(r => (st === 'all' || r.stat === st) && r.venue === v && r.side === sd)), g = st === 'all' ? 'no-go' : gateOf(st, v, sd);
+    const on = tf.stat === st && tf.venue === v && tf.side === sd;
+    const main = a.settled ? tRoi(clockRoi(a)) : a.bets ? '<span class="muted">open</span>' : '<span class="muted">none</span>';
+    return `<td class="cell num ${g === 'no-go' ? '' : g}${on ? ' on' : ''}" data-st="${st}" data-v="${v}" data-sd="${sd}" title="${st === 'all' ? 'All stats' : SLABEL[st]} ${sideWord(v, sd)} · ${VLABEL[v]}${g !== 'no-go' ? ' · ' + GATE_LABEL[g] : ''}">${main}<small>${a.settled ? `${a.w}-${a.l}${a.p ? '-' + a.p : ''} · ${clockUnits(a) >= 0 ? '+' : ''}${clockUnits(a).toFixed(1)}u` : a.bets ? `${a.bets} open` : '0 bets'}</small></td>`;
+  };
+  $('tmx').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th>${cols.map(([v, sd, l]) => `<th scope="col">${sideWord(v, sd)}<small>${l}</small></th>`).join('')}</tr></thead><tbody>
+    ${MSTATS.map(st => `<tr><td class="l"><b style="font-weight:500">${SLABEL[st]}</b></td>${cols.map(([v, sd]) => cell(st, v, sd)).join('')}</tr>`).join('')}
+    <tr class="tot"><td class="l"><b style="font-weight:500">All stats</b></td>${cols.map(([v, sd]) => cell('all', v, sd)).join('')}</tr></tbody>`;
+  $('tmxsub').textContent = `ROI per unit ${tf.clock === 'close' ? 'at close' : 'at entry'} for every stat on every venue and side, with the record and units under it. Outlined cells are GO (green) and WATCH (amber) signals. Click a cell to filter by it.`;
 
-  renderTrackChart(d);
+  // breakdowns: each ignores its own filter, so the other options stay visible
+  const brk = (title, key, labelOf, order) => {
+    const rows = all.filter(r => trMatch(r, [key]));
+    const keys = order || [...new Set(rows.map(r => r[key]))];
+    const items = keys.map(k => ({k, a: trAgg(rows.filter(r => r[key] === k))})).filter(x => x.a.bets);
+    if (!order) items.sort((x, y) => y.a.bets - x.a.bets);
+    const mx = Math.max(.05, ...items.map(x => Math.abs(clockRoi(x.a) || 0)));
+    return `<div class="tbreak"><h3>${title}</h3>${items.length ? `<table><thead><tr><th class="l"></th><th>Bets</th><th>W-L-P</th><th>ROI</th><th>CLV</th></tr></thead>${items.map(({k, a}) => { const r = clockRoi(a);
+      return `<tr data-f="${key}" data-v="${esc(k)}" class="${tf[key] === k ? 'on' : ''}"><td class="l">${tf[key] === k ? '<b>' : ''}${labelOf(k)}${tf[key] === k ? '</b>' : ''}</td><td>${a.bets}</td><td>${a.settled ? `${a.w}-${a.l}${a.p ? '-' + a.p : ''}` : ''}</td>
+        <td>${r != null ? `<span class="rbar" style="width:${Math.round(Math.abs(r) / mx * 48)}px;background:${r >= 0 ? 'var(--up)' : 'var(--down)'}"></span>` : ''}${tRoi(r)}</td><td>${tClv(a.clv)}</td></tr>`; }).join('')}</table>` : '<p class="empty">No bets.</p>'}</div>`;
+  };
+  $('tbreaks').innerHTML =
+    brk('By book or app', 'book', k => esc(k)) +
+    brk('By edge at entry', 'ebin', k => k, EBINS) +
+    brk('By gate', 'gate', k => GATE_LABEL[k], ['go', 'watch', 'no-go']) +
+    brk('By side', 'side', k => k === 'over' ? 'Over / YES' : 'Under / NO', ['over', 'under']);
 
-  // bets
-  const segs = [['gated', 'GO + WATCH'], ['go', 'GO'], ['watch', 'WATCH'], ['all', 'All 3%+ edges']];
-  $('tgate').innerHTML = segs.map(([k, l]) => `<button type="button" data-g="${k}" class="${tf.gate === k ? 'on' : ''}" aria-pressed="${tf.gate === k}">${l}</button>`).join('');
-  $('tstatus').value = tf.status;
-  let B = bets.filter(b => tf.gate === 'all' || (tf.gate === 'gated' ? b.gate !== 'no-go' : b.gate === tf.gate));
+  // gated signals, all time
+  const BT = (d && d.backtest) || PR.backtest || {};
+  $('tsig').innerHTML = Object.keys(BT).length ? Object.keys(BT).sort((a, b) => GATE_ORDER[BT[a].gate] - GATE_ORDER[BT[b].gate]).map(k => {
+    const [st, ve, sd] = k.split('|'), side = sd === 'YES' ? 'over' : 'under', x = signalAgg(st, ve, side), bt = BT[k], g = gate('kalshi', st, sd);
+    return `<tr><td class="l"><b>${SLABEL[st] || st} ${sd}</b><small>Kalshi</small></td><td class="l">${gatePill(g)}</td>
+      <td class="num">${x.bets}</td><td class="num">${x.settled ? `${x.w}-${x.l}-${x.p}` : ''}</td><td class="num">${x.settled ? tUnits(x.units) : ''}</td>
+      <td class="num">${x.settled ? tRoi(x.roi) : ''}</td><td class="num">${x.settled ? tRoi(x.roi_close) : ''}</td><td class="num">${tClv(x.clv)}</td>
+      <td class="num">${bt.roi != null ? `${tRoi(bt.roi)} <span class="muted">(${bt.n.toLocaleString()}, z ${bt.z})</span>` : ''}</td>
+      <td class="l">${liveVerdict(x, bt)}</td></tr>`;
+  }).join('') : `<tr><td class="l" colspan="10"><p class="empty">No gated signals in this build.</p></td></tr>`;
+
+  renderTrackChart(sel);
+
+  // bets (the latest ones the file carries), filtered the same way
+  const bets = (d && d.bets) || [];
+  const fam = b => b.venue === 'kalshi' ? 'kalshi' : b.venue === 'pickem' ? 'pickem' : b.book === 'Polymarket' ? 'polymarket' : 'book';
+  const ebinOf = e => e < .05 ? '3-5%' : e < .08 ? '5-8%' : e < .12 ? '8-12%' : '12%+';
+  const dayOf = t => new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(t * 1000));
+  let B = bets.filter(b => trMatch({venue: fam(b), stat: b.stat, side: ['Over', 'YES'].includes(b.side) ? 'over' : 'under', gate: b.gate, ebin: ebinOf(b.edge), book: b.book, day: dayOf(b.tip)}));
   if (tf.status === 'open') B = B.filter(b => b.result === 'open');
   if (tf.status === 'settled') B = B.filter(b => b.result !== 'open');
   B = [...B].sort((a, b) => b.tip - a.tip || a.player.localeCompare(b.player));
-  $('tbsub').textContent = `${B.length.toLocaleString()} ${B.length === 1 ? 'bet' : 'bets'}, newest first. Kalshi prices in cents with the fee added at settlement; books in American odds.`;
+  $('tbsub').textContent = `${B.length.toLocaleString()} ${B.length === 1 ? 'bet' : 'bets'} in this selection${(d && d.n || 0) > bets.length ? ` among the latest ${bets.length.toLocaleString()} of ${d.n.toLocaleString()}` : ''}, newest first. Kalshi prices in cents (fee added at settlement), books and apps in American odds; flat pick'em lines settle at the ${pc((d && d.pk_be) || PK_BE, 1)} break-even.`;
   const RES = {win: pill('ok', 'Win'), loss: pill('bad', 'Loss'), push: pill('idle', 'Push'), void: pill('idle', 'Void, DNP'), open: '<span class="muted">Open</span>'};
+  $('tstatus').value = tf.status;
   $('tbets').innerHTML = B.length ? B.slice(0, tf.limit).map(b => `<tr>
       <td class="l num">${etFmt(b.tip, {month: 'short', day: 'numeric'})}<small>${clock(b.tip)}</small></td>
       <td class="l"><b>${esc(b.player)}</b><small>${esc(b.team)} · ${esc(b.matchup)}</small></td>
@@ -1649,49 +1771,48 @@ function renderTrack(){
       <td class="l">${gatePill(b.gate)}</td>
       <td class="num">${tPrice(b.venue, b.price)}</td><td class="num">${tPrice(b.venue, b.price_close)}</td>
       <td class="num">${pc(b.fair)}</td><td class="num">${ec(b.edge)}</td>
-      <td class="num">${b.actual ?? ''}</td><td class="l">${RES[b.result] || ''}</td><td class="num">${tUnits(b.pnl)}</td></tr>`).join('')
+      <td class="num">${b.actual ?? ''}</td><td class="l">${RES[b.result] || ''}</td><td class="num">${tUnits(tf.clock === 'close' ? b.pnl_close : b.pnl)}</td></tr>`).join('')
     : `<tr><td class="l" colspan="11"><p class="empty">${bets.length ? 'No bets match these filters.' : 'No shadow bets logged yet.'}</p></td></tr>`;
   $('tmore').hidden = B.length <= tf.limit;
   $('tmore').innerHTML = `<button class="btn" id="tmorebtn" type="button">Show all ${B.length.toLocaleString()}</button>`;
 
   $('tfoot').innerHTML = `
-    <div><b>What is logged:</b> every candidate the Props page prices (same projection, minutes with Outs applied, calibration, market blend and fees, computed by <code>scripts/pricing.py</code>), from the first recorder poll its edge reached ${Math.round(((d && d.edge_min) || .03) * 100)}%, for games within 24 hours. After that it is followed to tip whether or not the edge lasts.</div>
-    <div><b>How it settles:</b> 1 unit per bet. Kalshi YES wins if the stat is over the rung's floor; the taker fee is added to the price. Books pay their American odds; a whole-number line landed exactly is a push. A player who did not play is void (Kalshi's own rules may settle those differently). CLV is the same side's close price minus its entry price, fee included.</div>
-    <div><b>Live verdicts</b> need ${MIN_LIVE} settled bets before they mean anything. A signal holds up when its live ROI is 2 standard errors above zero; the backtest column is what 2025-26 said to expect.</div>`;
+    <div><b>What is logged:</b> every price the Props page shows at ${Math.round(((d && d.edge_min) || EDGE_MIN) * 100)}%+ edge, on every venue: Kalshi rungs, sportsbooks, Polymarket and pick'em apps (same projection, minutes with Outs applied, calibration, blend and fees, computed by <code>scripts/pricing.py</code>), for games within 24 hours, from the first recorder poll it reached that edge. Each rung is its own bet, as in the backtest.</div>
+    <div><b>How it settles:</b> 1 unit per bet. A win returns (1 − cost) ÷ cost, where cost is the price in probability with fees in: Kalshi's taker fee, the book's odds, Polymarket's fee, the pick'em app's own price, or the ${pc((d && d.pk_be) || PK_BE, 1)} flex break-even for flat lines. A whole-number line landed exactly is a push; a player who did not play is void. CLV is the same side's close price minus its entry price.</div>
+    <div><b>Live verdicts</b> need ${MIN_LIVE} settled bets. A gated signal holds up when its live ROI is 2 standard errors above zero. Ungated markets are tracked the same way, so a market that keeps winning here is a candidate for its own backtest.</div>`;
 }
 
 function rangeTicks(lo, hi){          // about 5 round ticks across a range that can go below zero
   const raw = (hi - lo) / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), st = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw);
   const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9; v += st) out.push(+v.toFixed(2)); return out;
 }
-function renderTrackChart(d){
+function renderTrackChart(sel){
   const W = 760, H = 220, L = 44, R = 12, T = 10, B = 26;
   const days = {};
-  for (const [k, x] of Object.entries((d && d.by_day) || {})){ const [day, g] = k.split('|'); (days[day] = days[day] || {})[g] = x.units; }
+  for (const r of sel) days[r.day] = (days[r.day] || 0) + (tf.clock === 'close' ? r.units_close : r.units);
   const dl = Object.keys(days).sort();
-  const series = [['go', 'var(--up)', 'GO'], ['watch', 'var(--warn)', 'WATCH'], ['all', 'var(--fg2)', 'Every 3%+ edge']];
-  const pts = {}; for (const [g] of series) pts[g] = [];
-  const acc = {go: 0, watch: 0, all: 0};
-  for (const day of dl){
-    for (const [g, u] of Object.entries(days[day])){ if (acc[g] != null) acc[g] += u; acc.all += u; }
-    for (const [g] of series) pts[g].push(acc[g]);
-  }
-  $('tlegend').innerHTML = series.map(([g, c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join('');
+  let acc = 0; const pts = dl.map(x => acc += days[x]);
+  $('tchsub').textContent = `Cumulative units for the current selection ${tf.clock === 'close' ? 'at close prices' : 'at entry prices'}, 1 unit per bet, by game day.`;
   const svg = $('tchart');
   if (dl.length < 2){ svg.setAttribute('viewBox', `0 0 ${W} 60`); svg.innerHTML = `<text x="${W / 2}" y="34" text-anchor="middle" class="lab">The chart starts after two game days settle.</text>`; return; }
-  const all = Object.values(pts).flat(), lo = Math.min(0, ...all), hi = Math.max(0, ...all), pad = (hi - lo) * .08 || 1;
-  const y0 = lo - pad, y1 = hi + pad;
+  const lo = Math.min(0, ...pts), hi = Math.max(0, ...pts), pad = (hi - lo) * .08 || 1, y0 = lo - pad, y1 = hi + pad;
   const x = i => L + i / (dl.length - 1) * (W - L - R), y = v => T + (y1 - v) / (y1 - y0) * (H - T - B);
   let g = '';
   for (const t of rangeTicks(y0, y1)) g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${t > 0 ? '+' : ''}${t}</text>`;
   g += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border2)"/>`;
   const step = Math.max(1, Math.ceil(dl.length / 8));
-  dl.forEach((day, i) => { if (i % step === 0 || i === dl.length - 1) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${new Date(day + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</text>`; });
-  for (const [k, c] of series) g += `<polyline fill="none" stroke="${c}" stroke-width="2" points="${pts[k].map((v, i) => `${x(i)},${y(v)}`).join(' ')}"/>`;
+  dl.forEach((day, i) => { if (i % step === 0 || i === dl.length - 1) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : i === dl.length - 1 ? 'end' : 'middle'}">${new Date(day + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</text>`; });
+  g += `<polyline fill="none" stroke="${acc >= 0 ? 'var(--up)' : 'var(--down)'}" stroke-width="2" points="${pts.map((v, i) => `${x(i)},${y(v)}`).join(' ')}"/>`;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = g;
 }
 
-$('tgate').addEventListener('click', e => { const g = e.target.closest('button')?.dataset.g; if (g){ tf.gate = g; tf.limit = 150; renderTrack(); } });
+$('tfilters').addEventListener('click', e => { const b = e.target.closest('.seg[data-f] button'); if (b){ tf[b.parentElement.dataset.f] = b.dataset.v; tf.limit = 150; renderTrack(); } });
+$('tfilters').addEventListener('change', e => { const f = e.target.dataset.f; if (f){ tf[f] = e.target.value; tf.limit = 150; renderTrack(); } });
+$('treset').addEventListener('click', () => { Object.assign(tf, TF0); renderTrack(); });
+$('tmx').addEventListener('click', e => { const c = e.target.closest('td.cell'); if (!c) return;
+  const same = tf.stat === c.dataset.st && tf.venue === c.dataset.v && tf.side === c.dataset.sd;
+  Object.assign(tf, same ? {stat: 'all', venue: 'all', side: 'all'} : {stat: c.dataset.st, venue: c.dataset.v, side: c.dataset.sd}); tf.limit = 150; renderTrack(); });
+$('tbreaks').addEventListener('click', e => { const r = e.target.closest('tr[data-f]'); if (r){ const f = r.dataset.f; tf[f] = tf[f] === r.dataset.v ? 'all' : r.dataset.v; tf.limit = 150; renderTrack(); } });
 $('tstatus').addEventListener('change', e => { tf.status = e.target.value; tf.limit = 150; renderTrack(); });
 $('tmore').addEventListener('click', e => { if (e.target.id === 'tmorebtn'){ tf.limit = 1e9; renderTrack(); } });
 
@@ -1712,7 +1833,7 @@ function growth(c){
   return f > 0 ? c.fair * Math.log(1 + f * (1 - k) / k) + (1 - c.fair) * Math.log(1 - f) : 0;
 }
 function liveStatus(key){
-  const x = TR && TR.data && TR.data.by_signal ? TR.data.by_signal[key] : null;
+  const [st, ve, sd] = key.split('|'), x = ve === 'kalshi' ? signalAgg(st, 'kalshi', sd === 'YES' ? 'over' : 'under') : null;
   if (x && x.settled >= MIN_LIVE && x.z != null && x.z >= 2) return {ready: true, html: pill('ok', 'Live-ready')};
   return {ready: false, html: `<span title="${x ? x.settled : 0} of ${MIN_LIVE} settled bets needed on this season's games">${pill('idle', `Shadow ${x ? x.settled : 0}/${MIN_LIVE}`)}</span>`};
 }

@@ -65,9 +65,12 @@ time X is its last row at or before X; `polls.jsonl` says whether each source ac
 (`scripts/pricing.py`, checked against the page's JavaScript on every example candidate: equal to 1e-9), applying
 injury-report Outs and NBA.com inactives to minutes. Every candidate whose edge reaches 3% for a game within 24 hours
 is logged as source `ledger` in the day folder and followed to tip. `scripts/ledger.py` settles finished games from
-ESPN's box score (cached in `results/`) and writes `track.json` on nba-data: one 1-unit shadow bet per key at its
-first 3% price (and again at close), ROI, CLV, and each GO / WATCH signal against its 2025-26 backtest. The Track
-Record page reads it live on the site; `build_data_health.py` bakes the summaries and latest 400 bets into the page.
+ESPN's box score (cached in `results/`): one 1-unit shadow bet per key at its first 3% price (and again at close),
+on every venue including Polymarket and the pick'em apps (flat lines settle at the flex break-even). Bets live in
+`bets/<tip date>.json`; `track.json` holds the cube (tip day x stat x venue x book x side x gate x edge bucket, with
+counts, units, sums of squares and CLV) plus the latest bets and the GO / WATCH backtest results. The Track Record
+page slices that cube in the browser: every market in one grid, breakdowns by book, edge, gate and side, filters by
+day and price clock. `build_data_health.py` bakes the cube and the latest 400 bets into the page.
 
 The injury script needs `pdfplumber`: `python3 -m venv nba/.venv && nba/.venv/bin/pip install pdfplumber`.
 

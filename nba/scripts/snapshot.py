@@ -637,7 +637,7 @@ def push_board(root):
 def commit(root):
     push_board(root)
     git = ['git', '-C', root]
-    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('track.json', 'results') if os.path.exists(os.path.join(root, p))], check=True)
+    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('track.json', 'results', 'bets') if os.path.exists(os.path.join(root, p))], check=True)
     if subprocess.run(git + ['diff', '--cached', '--quiet']).returncode == 0:
         return
     stamp = dt.datetime.now(ET).strftime('%Y-%m-%d %H:%M ET')

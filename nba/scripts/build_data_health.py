@@ -108,8 +108,8 @@ TRACK_KEEP = 400      # bets baked into the page snapshot; the live page reads t
 
 
 def track_snapshot():
-    """Shadow ledger (ledger.py writes track.json on nba-data) -> data/track.json for the page: every summary, the
-    latest TRACK_KEEP bets. Keeps the previous file when the branch has none yet."""
+    """Shadow ledger (ledger.py writes track.json on nba-data) -> data/track.json for the page: the whole cube (every
+    market, every day) and the latest TRACK_KEEP bets. Keeps the previous file when the branch has none yet."""
     try:
         t = json.loads(git('show', f'{BRANCH}:track.json') or 'null')
     except json.JSONDecodeError:
@@ -117,9 +117,9 @@ def track_snapshot():
     if not t:
         return
     bets = sorted(t.get('bets', []), key=lambda b: b['tip'])
-    t['bets_total'], t['bets'] = len(bets), bets[-TRACK_KEEP:]
+    t['bets_total'], t['bets'] = t.get('n', len(bets)), bets[-TRACK_KEEP:]
     json.dump(t, open(os.path.join(DATA, 'track.json'), 'w'), separators=(',', ':'))
-    print(f"track: {t['bets_total']} shadow bets, {len(t['bets'])} in the page snapshot")
+    print(f"track: {t['bets_total']} shadow bets, {len(t.get('cube', []))} cube rows, {len(t['bets'])} bets in the page snapshot")
 
 
 def main():

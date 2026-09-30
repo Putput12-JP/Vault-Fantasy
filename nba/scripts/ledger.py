@@ -21,8 +21,14 @@ results/<game>.json). One shadow bet per key, 1 unit:
   Books: over / under the line, American odds, a whole-number landing on the line is a push.
   Player did not play: void (books refund; Kalshi's own rule may differ, noted on the page).
   CLV = the same side's price at close minus at entry, in probability points (positive = the market came to us).
-Writes track.json at the recorder root: every bet plus summaries by gate and by signal, with each GO / WATCH signal's
-2025-26 backtest result next to it.
+Pick'em lines are logged too (venue 'pickem'): a flat line (PrizePicks) is settled as one pick at the flex
+break-even price (PK_BE, about -119), a priced line (Underdog, Sleeper) at its own price.
+
+Storage, sized for a season of 100k+ bets:
+  bets/<tip ET date>.json   every bet for games tipping that day (only recent days are rewritten)
+  track.json                the cube (one row per tip day x stat x venue x book x side x gate x edge bucket with
+                            counts, units, sum of squares, CLV sums; every market the page can filter or group),
+                            the latest bets, and the GO / WATCH backtest results. Small enough to read every poll.
 """
 import datetime as dt, glob, json, math, os, subprocess, sys, time
 from collections import defaultdict
@@ -109,18 +115,17 @@ def cost(venue, price):
     """Probability-scale cost of the side, fee included (what a win must beat)."""
     if venue == 'kalshi':
         return price + PX.k_fee(price)
+    if venue == 'pickem' and price is None:
+        return PX.PK_BE
     return PX.am_p(price)
 
 
 def profit(venue, price, won):
-    """Per 1 unit risked."""
+    """Per 1 unit risked: a win returns (1 - cost) / cost (the same as American odds for a book price)."""
     if won is None:
         return 0.0
-    if venue == 'kalshi':
-        c = price + PX.k_fee(price)
-        return (1 - c) / c if won else -1.0
-    a = float(price)
-    return (a / 100 if a > 0 else 100 / -a) if won else -1.0
+    c = cost(venue, price)
+    return (1 - c) / c if won else -1.0
 
 
 def outcome(side, line, y):
@@ -160,26 +165,43 @@ def backtest_refs():
     return (render_app.pricing() or {}).get('backtest') or {}
 
 
-def summarize(bets, keyf):
-    groups = defaultdict(list)
+EDGE_BINS = [(0.05, '3-5%'), (0.08, '5-8%'), (0.12, '8-12%'), (9, '12%+')]
+CUBE_COLS = ['day', 'stat', 'venue', 'book', 'side', 'gate', 'ebin', 'bets', 'open', 'void', 'w', 'l', 'p',
+             'units', 'units_sq', 'units_close', 'clv_sum', 'clv_n', 'edge_sum']
+
+
+def family(b):
+    """Kalshi / Sportsbooks / Polymarket / Pick'em."""
+    return 'kalshi' if b['venue'] == 'kalshi' else 'pickem' if b['venue'] == 'pickem' else 'polymarket' if b['book'] == 'Polymarket' else 'book'
+
+
+def tip_day(ts):
+    return et(dt.datetime.fromtimestamp(ts, dt.timezone.utc)).date().isoformat()
+
+
+def cube_rows(bets):
+    """Aggregate bets into cube rows (CUBE_COLS)."""
+    agg = {}
     for b in bets:
-        groups[keyf(b)].append(b)
-    out = {}
-    for k, bs in groups.items():
-        done = [b for b in bs if b['result'] in ('win', 'loss', 'push')]
-        pnl = [b['pnl'] for b in done]
-        pnl_c = [b['pnl_close'] for b in done if b.get('pnl_close') is not None]
-        clv = [b['clv'] for b in bs if b.get('clv') is not None]
-        n = len(pnl)
-        sd = math.sqrt(sum((x - sum(pnl) / n) ** 2 for x in pnl) / (n - 1)) if n > 1 else None
-        out[k] = {'bets': len(bs), 'settled': n, 'open': sum(b['result'] == 'open' for b in bs), 'void': sum(b['result'] == 'void' for b in bs),
-                  'w': sum(b['result'] == 'win' for b in bs), 'l': sum(b['result'] == 'loss' for b in bs), 'p': sum(b['result'] == 'push' for b in bs),
-                  'units': round(sum(pnl), 3), 'roi': round(sum(pnl) / n, 4) if n else None,
-                  'roi_close': round(sum(pnl_c) / len(pnl_c), 4) if pnl_c else None,
-                  'z': round(sum(pnl) / n / (sd / math.sqrt(n)), 2) if sd else None,
-                  'clv': round(sum(clv) / len(clv), 4) if clv else None, 'games': len({b['game'] for b in done}),
-                  'edge': round(sum(b['edge'] for b in bs) / len(bs), 4)}
-    return out
+        ebin = next(l for hi, l in EDGE_BINS if b['edge'] < hi)
+        side = 'over' if b['side'] in ('Over', 'YES') else 'under'
+        k = (tip_day(b['tip']), b['stat'], family(b), b['book'], side, b['gate'], ebin)
+        r = agg.setdefault(k, [0] * 12)
+        r[0] += 1
+        r[1] += b['result'] == 'open'
+        r[2] += b['result'] == 'void'
+        r[3] += b['result'] == 'win'
+        r[4] += b['result'] == 'loss'
+        r[5] += b['result'] == 'push'
+        if b['result'] in ('win', 'loss', 'push'):
+            r[6] += b['pnl']
+            r[7] += b['pnl'] ** 2
+            r[8] += b['pnl_close']
+        if b.get('clv') is not None:
+            r[9] += b['clv']
+            r[10] += 1
+        r[11] += b['edge']
+    return [list(k) + [round(x, 4) if isinstance(x, float) else x for x in v] for k, v in sorted(agg.items())]
 
 
 def bet_from(k, m, series):
@@ -215,35 +237,61 @@ def grade(b, root, now):
              pnl=round(profit(b['venue'], b['price'], won), 4), pnl_close=round(profit(b['venue'], b['price_close'], won), 4))
 
 
-def settle(root, now=None, rescan_days=3):
-    """Settle what is settleable and write track.json. Bets whose games are more than a day past tip come from the
-    previous track.json; only the last few day folders are re-read (a key is logged within TRACK_H of its tip).
-    Returns the number of bets."""
+def settle(root, now=None, rescan_days=3, keep_recent=600):
+    """Settle what is settleable; rewrite bets/<day>.json for the days touched and their cube rows in track.json.
+    Only the last `rescan_days` of ledger folders are re-read (a key is logged within TRACK_H of its tip), plus the
+    bet files of those days and of any day that still has open bets. Returns the number of bets in the record."""
     now = now or int(time.time())
-    path = os.path.join(root, 'track.json')
-    prev = {b['k']: b for b in (json.load(open(path)).get('bets', []) if os.path.exists(path) else [])}
-    since = et(dt.datetime.fromtimestamp(now - rescan_days * 86400, dt.timezone.utc)).date().isoformat()
+    tpath, bdir = os.path.join(root, 'track.json'), os.path.join(root, 'bets')
+    track = json.load(open(tpath)) if os.path.exists(tpath) else {}
+    if 'cube' not in track:                       # the first format kept every bet in track.json: move them to files
+        old = track.get('bets') or []
+        track = {'cube': [], 'open_days': sorted({tip_day(b['tip']) for b in old}), 'n': 0}
+        for d in track['open_days']:
+            os.makedirs(bdir, exist_ok=True)
+            json.dump([b for b in old if tip_day(b['tip']) == d], open(os.path.join(bdir, f'{d}.json'), 'w'), separators=(',', ':'))
+    since = tip_day(now - rescan_days * 86400)
     fresh = {}
     for k, x in load_ledger(root, since).items():
         if x['meta'] and x['series']:
             b = bet_from(k, x['meta'], x['series'])
             if b:
-                old = prev.get(k)
-                if old and old['t'] < b['t']:          # the entry was logged before the rescan window: keep it
-                    b.update({f: old[f] for f in ('t', 'price', 'fair', 'edge', 'gate', 'mu', 'min')})
-                    ce, cc = cost(b['venue'], b['price']), cost(b['venue'], b['price_close'])
-                    b['clv'] = round(cc - ce, 4) if ce is not None and cc is not None else None
                 fresh[k] = b
-    bets = {**prev, **fresh}
-    for b in bets.values():
-        grade(b, root, now)
-    bets = sorted(bets.values(), key=lambda b: (b['tip'], b['player'], b['stat'], b['line']))
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'n': len(bets),
-             'by_gate': summarize(bets, lambda b: b['gate']),
-             'by_signal': summarize(bets, lambda b: f"{b['stat']}|{b['venue']}|{b['side'] if b['venue'] == 'kalshi' else b['side'].lower()}"),
-             'by_day': summarize([b for b in bets if b['result'] != 'open'],
-                                 lambda b: et(dt.datetime.fromtimestamp(b['tip'], dt.timezone.utc)).date().isoformat() + '|' + b['gate']),
-             'backtest': backtest_refs(), 'bets': bets}
-    with open(path, 'w') as f:
+    days = {tip_day(b['tip']) for b in fresh.values()} | set(track.get('open_days') or [])
+    changed = {}
+    for d in sorted(days):
+        path = os.path.join(bdir, f'{d}.json')
+        prev = {b['k']: b for b in (json.load(open(path)) if os.path.exists(path) else [])}
+        cur = dict(prev)
+        for k, b in fresh.items():
+            if tip_day(b['tip']) != d:
+                continue
+            old = prev.get(k)
+            if old and old['t'] < b['t']:              # entry logged before the rescan window: keep it
+                b.update({f: old[f] for f in ('t', 'price', 'fair', 'edge', 'gate', 'mu', 'min')})
+                ce, cc = cost(b['venue'], b['price']), cost(b['venue'], b['price_close'])
+                b['clv'] = round(cc - ce, 4) if ce is not None and cc is not None else None
+            if old and old['result'] != 'open':
+                b.update({f: old[f] for f in ('result', 'actual', 'pnl', 'pnl_close')})
+            cur[k] = b
+        for b in cur.values():
+            grade(b, root, now)
+        changed[d] = sorted(cur.values(), key=lambda b: (b['tip'], b['player'], b['stat'], b['line']))
+    os.makedirs(bdir, exist_ok=True)
+    for d, bs in changed.items():
+        json.dump(bs, open(os.path.join(bdir, f'{d}.json'), 'w'), separators=(',', ':'))
+    cube = [r for r in track.get('cube', []) if r[0] not in changed]
+    for bs in changed.values():
+        cube += cube_rows(bs)
+    cube.sort()
+    recent = {b['k']: b for b in track.get('bets', [])}
+    for bs in changed.values():
+        recent.update({b['k']: b for b in bs})
+    recent = sorted(recent.values(), key=lambda b: (b['tip'], b['player'], b['stat'], b['line']))[-keep_recent:]
+    open_days = sorted(d for d, bs in changed.items() if any(b['result'] == 'open' for b in bs))
+    n = sum(r[CUBE_COLS.index('bets')] for r in cube)
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube,
+             'open_days': open_days, 'bets': recent, 'backtest': backtest_refs()}
+    with open(tpath, 'w') as f:
         json.dump(track, f, separators=(',', ':'))
-    return len(bets)
+    return n
