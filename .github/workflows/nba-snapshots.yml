@@ -1,0 +1,59 @@
+# NBA live price + injury recorder (nba/scripts/snapshot.py).
+#
+# Records every free venue's pre-tip price (Kalshi, ESPN/DraftKings, Pinnacle,
+# Action Network, Polymarket) plus the official injury report, change-only, to
+# the `nba-data` branch. Kept off main so the per-poll commits don't rebuild
+# Pages or collide with the other data bots.
+#
+# Hourly ticks poll once. On a game day a tick after 9am ET stays running and
+# polls every 15 min (5 min inside 3h of a tip) until the last tip, then hands
+# off to a fresh run before GitHub's 6h job cap. Hourly `schedule` ticks are
+# best-effort (throttled on busy days), so the loop, not the cron, carries the
+# game window; the cron only has to land once to start it.
+name: NBA snapshots
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '11 * * * *'
+
+# One recorder at a time; a tick that fires mid-loop waits as the single
+# pending run and polls once when the loop ends.
+concurrency:
+  group: nba-snapshots
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: nba/scripts
+      - uses: actions/checkout@v5
+        with:
+          ref: nba-data
+          path: nba-data
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q pdfplumber
+
+      - name: Record
+        id: rec
+        run: |
+          git -C nba-data config user.name  "vault-bot"
+          git -C nba-data config user.email "vault-bot@users.noreply.github.com"
+          python3 nba/scripts/snapshot.py --dir=nba-data --loop --commit --max-minutes=330
+
+      - name: Hand off to a fresh run
+        if: steps.rec.outputs.handoff == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run nba-snapshots.yml --ref "${GITHUB_REF_NAME}"
