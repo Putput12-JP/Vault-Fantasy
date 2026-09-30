@@ -33,7 +33,7 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(__file__))
 from backfill_espn_odds import game_lines, props as espn_props, CORE
-from backfill_kalshi import PROP_SERIES, GAME_SERIES, parse_event
+from backfill_kalshi import PROP_SERIES, GAME_SERIES, TEAM as KTEAM, parse_event
 
 ET = ZoneInfo('America/New_York')
 KAL = 'https://api.elections.kalshi.com/trade-api/v2'
@@ -42,6 +42,8 @@ PIN_HDR = ['X-API-Key: CmX2KcMrXuFmNg6YFbmTxE0y9CIrOi0R', 'Referer: https://www.
 SCORE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard'
 AN_BOOKS = '15,30,68,69,75,71,79'   # consensus, open, DK, FD, MGM, BetRivers, bet365
 PM_SERIES = 10345
+PM_GAME_TYPES = {'moneyline', 'spreads', 'totals', 'basketball_team_to_score_first', 'basketball_odd_even'}
+TEAM = {**KTEAM, 'GSW': 'GS', 'NYK': 'NY', 'SAS': 'SA', 'NOP': 'NO', 'UTA': 'UTAH', 'WAS': 'WSH', 'PHO': 'PHX', 'BRK': 'BKN'}
 INJ = 'https://ak-static.cms.nba.com/referee/injury/Injury-Report_'
 ESPN_SKIP = {59}                    # ESPN Bet Live Odds: in-game prices
 AHEAD_H = 72                        # record games tipping within 3 days (skips futures like season wins)
@@ -79,6 +81,11 @@ def num(x):
         return None
 
 
+def nick(name):
+    """'Portland Trail Blazers' / 'LA Clippers' / 'Los Angeles Clippers' -> 'blazers' / 'clippers'. Unique per team."""
+    return (name or '').split()[-1].lower() if name else None
+
+
 # ── what is on today: ESPN scoreboard ────────────────────────────────────────────────────────
 class Slate:
     """Games from yesterday..tomorrow (ET). `pre` = has not tipped; `started` = keys to exclude."""
@@ -86,7 +93,7 @@ class Slate:
     def __init__(self, now):
         self.now = now
         self.ahead = now + AHEAD_H * 3600
-        self.games, self.started = [], set()
+        self.games, self.started, self.nick = [], set(), {}
         today = dt.datetime.fromtimestamp(now, ET).date()
         for off in range(-1, AHEAD_H // 24 + 1):   # yesterday (late tips) through the look-ahead
             day = today + dt.timedelta(days=off)
@@ -94,6 +101,8 @@ class Slate:
             for e in d.get('events', []):
                 comp = e['competitions'][0]
                 side = {c['homeAway']: c['team']['abbreviation'] for c in comp['competitors']}
+                for c in comp['competitors']:          # abbreviation -> nickname, the join key across venues
+                    self.nick[c['team']['abbreviation']] = nick(c['team'].get('displayName'))
                 tip = iso(e['date'])
                 pre = e['status']['type']['state'] == 'pre' and now < tip <= self.ahead
                 g = {'id': e['id'], 'day': day.isoformat(), 'tip': tip, 'away': side.get('away'), 'home': side.get('home'),
@@ -321,7 +330,7 @@ def poll(root):
     day = Day(root, dt.datetime.fromtimestamp(now, ET).date().isoformat())
     sources = [('kalshi', src_kalshi), ('espn', src_espn), ('pinnacle', src_pinnacle), ('action', src_action),
                ('polymarket', src_polymarket), ('injuries', Injuries(day.dir))]
-    polls = []
+    polls, metas = [], {}
     for name, fn in sources:
         t0 = time.time()
         rec = {'t': int(t0), 'src': name, 'ok': True}
@@ -334,6 +343,7 @@ def poll(root):
                 rows, meta = got
                 rec['n'] = len(rows)
                 rec['chg'] = day.record(name, int(t0), rows, meta)
+                metas[name] = meta
         except Exception as e:  # one dead source must not stop the others
             rec.update(ok=False, err=str(e)[:200])
             traceback.print_exc(limit=1)
@@ -342,14 +352,81 @@ def poll(root):
         print(f"  {name:10s} {'ok ' if rec['ok'] else 'ERR'} n={rec.get('n', '-')} chg={rec.get('chg', '-')} "
               f"{rec['s']}s {rec.get('err', '') or rec.get('report') or ''}", flush=True)
     day.append('polls.jsonl', polls)
+    write_status(root, day, slate, polls, metas)
     games = ', '.join(f"{g['away']}@{g['home']}" for g in slate.games if g['pre'] and g['day'] == day.dir[-10:])
     print(f"{dt.datetime.fromtimestamp(now, ET):%Y-%m-%d %H:%M ET} polled. today pre-tip: {games or 'none'}", flush=True)
     return slate
 
 
+# ── status.json: what the Data Health page reads ──────────────────────────────────────────────
+def coverage(slate, day, metas):
+    """Per upcoming game, markets per venue as [game markets, player props]. Venues name teams differently
+    (ESPN abbreviations, Kalshi / Action / Polymarket codes, full names), so everything joins on the home team's
+    nickname plus the ET date."""
+    games = {}
+    for g in slate.games:
+        if g['pre']:
+            g = {k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}
+            g['cov'] = {}
+            games[(g['day'], slate.nick.get(g['home']))] = g
+    code_nick = lambda c: slate.nick.get(TEAM.get(c.upper(), c.upper()))
+    et_day = lambda t: dt.datetime.fromtimestamp(t, ET).date().isoformat() if t else None
+
+    def add(src, key, prop):
+        g = games.get(key)
+        if g:
+            c = g['cov'].setdefault(src, [0, 0])
+            c[1 if prop else 0] += 1
+
+    by_id = {g['id']: k for k, g in games.items()}
+    for k, m in (metas.get('kalshi') or {}).items():
+        for d_, a, h in parse_event(m['event']) or []:
+            if (d_, slate.nick.get(h)) in games:
+                add('kalshi', (d_, slate.nick.get(h)), m['series'] in PROP_SERIES)
+                break
+    for k, m in (metas.get('espn') or {}).items():
+        add('espn', by_id.get(m['game']), not k.endswith('|game'))
+    for k, m in (metas.get('pinnacle') or {}).items():
+        home = next((n for a, n in m.get('teams') or [] if a == 'home'), None)
+        add('pinnacle', (et_day(m['start']), nick(home)), bool(m.get('parent')))
+    for k, m in (metas.get('action') or {}).items():
+        add('action', (et_day(m['start']), code_nick(m.get('home') or '')), False)
+    for k, m in (metas.get('polymarket') or {}).items():
+        p = (m.get('event') or '').split('-')          # nba-<away>-<home>-YYYY-MM-DD
+        if len(p) >= 6:
+            add('polymarket', ('-'.join(p[3:6]), code_nick(p[2])), (m.get('type') or 'moneyline') not in PM_GAME_TYPES)
+    for k in day.last.get('injuries', {}):             # report rows persist between reports, so read current state
+        gd, team, _ = k.split('|', 2)
+        try:
+            d_ = dt.datetime.strptime(gd, '%m/%d/%Y').date().isoformat()
+        except ValueError:
+            continue
+        for key, g in games.items():
+            if key[0] == d_ and nick(team) in (slate.nick.get(g['home']), slate.nick.get(g['away'])):
+                g['cov'].setdefault('injuries', [0, 0])[0] += 1
+    return sorted(games.values(), key=lambda g: g['tip'])
+
+
+def write_status(root, day, slate, polls, metas):
+    live, wait = slate.window()
+    snap = os.path.join(root, 'snapshots')
+    days = sorted(d for d in os.listdir(snap) if d[:2] == '20')
+    size = sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(snap) for f in fs)
+    run = os.environ.get('GITHUB_RUN_ID')
+    status = {
+        't': slate.now, 'window': {'live': live, 'next_s': wait},
+        'run': f"{os.environ.get('GITHUB_SERVER_URL')}/{os.environ.get('GITHUB_REPOSITORY')}/actions/runs/{run}" if run else None,
+        'sources': {p['src']: p for p in polls},
+        'games': coverage(slate, day, metas),
+        'storage': {'days': len(days), 'first': days[0] if days else None, 'bytes': size},
+    }
+    with open(os.path.join(root, 'status.json'), 'w') as f:
+        json.dump(status, f, separators=(',', ':'))
+
+
 def commit(root):
     git = ['git', '-C', root]
-    subprocess.run(git + ['add', '-A', 'snapshots'], check=True)
+    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'], check=True)
     if subprocess.run(git + ['diff', '--cached', '--quiet']).returncode == 0:
         return
     stamp = dt.datetime.now(ET).strftime('%Y-%m-%d %H:%M ET')
