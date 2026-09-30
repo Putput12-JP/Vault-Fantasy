@@ -223,7 +223,7 @@ from the header slicer. Planned pages, each fed by something the models already 
 | Markets | Player Props (LIVE) | Every prop line and Kalshi ladder next to the Minutes Lab projection, calibrated model %, blended fair %, edge after fees, gate chip; Kalshi overs-bias check; hit rates at the line (L5/L10/L20/Season/H2H) and a game-log chart with minutes per game | `board.json` on nba-live (recorder, each poll), prop model params, Minutes Lab edits, `data/gamelogs.json` (build_gamelogs.py) |
 | Markets | Sharp Price | Pinnacle / Kalshi / Polymarket anchor, line moves, sharp-account flow | `scripts/fetch-sharp-money.mjs` (already polls NBA) |
 | Betting | Edges | Only gated signals (Kalshi 3PM NO blend, overs-bias tracker, totals watch) with size, price, capacity | prop / game backtests + live prices |
-| Betting | Track Record | Shadow + live picks settled: ROI per contract, CLV, each signal vs its gate | settlement (week 4) |
+| Betting | Track Record (LIVE) | Shadow ledger: every 3%+ edge the Props page shows, logged at first sight and at close, settled from ESPN's box score; ROI at entry and close, CLV, each GO / WATCH signal vs its 2025-26 backtest, live verdict after 50 settled bets | `scripts/ledger.py` (run by the recorder each poll, prices via `scripts/pricing.py`) -> `track.json` on nba-data; page snapshot via `build_data_health.py` |
 | Model | Backtests | Game, minutes, usage, prop results and what passed | `nba/docs/*.md` |
 | Model | Data Health (LIVE) | Recorder status per source, 48h poll timeline, per-game venue coverage, model input freshness, archive sizes | `status.json` + `polls.jsonl` on nba-data (live on vaultfantasy.com), `build_data_health.py` snapshot |
 

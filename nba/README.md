@@ -22,6 +22,7 @@ python3 nba/scripts/build_prop_model_v3.py                      # v3 ladder dist
 python3 nba/scripts/build_minutes_model_v3.py                   # v3 minutes (role, returns, new team, spread) vs v2 (~2 min)
 python3 nba/scripts/build_rates_v3.py                           # per-stat memory: component rates, own half-lives (~1 min)
 python3 nba/scripts/build_prop_model_v3_full.py                 # v3 candidate (B + C, with and without A's shape) vs v2 (~4 min)
+python3 nba/scripts/pricing.py --check                          # the Props page's pricing in Python (the ledger uses it); prints example rows
 python3 nba/scripts/fetch_lineups.py [--backfill]               # NBA.com starting lineups: today -> data/lineups_today.json, or two seasons -> raw
 python3 nba/scripts/build_starters.py                           # lineup feed accuracy + v3 with confirmed starters vs v2 (~5 min)
 python3 nba/scripts/fetch_depth_charts.py                       # CURRENT depth charts -> data/depth_charts.json (~15 s, run daily)
@@ -59,6 +60,14 @@ live from the branch. The recorder also force-pushes `board.json` (current props
 `nba-live` branch, one commit with no history; the Player Props page prices it in the browser from the Minutes Lab
 minutes, so a minutes edit reprices the board. Row format and what each source holds: the docstring at the top of `snapshot.py`. The price of a key at
 time X is its last row at or before X; `polls.jsonl` says whether each source actually answered around X.
+
+**Shadow ledger and Track Record.** After each poll the recorder prices the board exactly as the Props page does
+(`scripts/pricing.py`, checked against the page's JavaScript on every example candidate: equal to 1e-9), applying
+injury-report Outs and NBA.com inactives to minutes. Every candidate whose edge reaches 3% for a game within 24 hours
+is logged as source `ledger` in the day folder and followed to tip. `scripts/ledger.py` settles finished games from
+ESPN's box score (cached in `results/`) and writes `track.json` on nba-data: one 1-unit shadow bet per key at its
+first 3% price (and again at close), ROI, CLV, and each GO / WATCH signal against its 2025-26 backtest. The Track
+Record page reads it live on the site; `build_data_health.py` bakes the summaries and latest 400 bets into the page.
 
 The injury script needs `pdfplumber`: `python3 -m venv nba/.venv && nba/.venv/bin/pip install pdfplumber`.
 

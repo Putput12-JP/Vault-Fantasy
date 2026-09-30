@@ -104,6 +104,24 @@ def archive():
     ]
 
 
+TRACK_KEEP = 400      # bets baked into the page snapshot; the live page reads the full file from nba-data
+
+
+def track_snapshot():
+    """Shadow ledger (ledger.py writes track.json on nba-data) -> data/track.json for the page: every summary, the
+    latest TRACK_KEEP bets. Keeps the previous file when the branch has none yet."""
+    try:
+        t = json.loads(git('show', f'{BRANCH}:track.json') or 'null')
+    except json.JSONDecodeError:
+        t = None
+    if not t:
+        return
+    bets = sorted(t.get('bets', []), key=lambda b: b['tip'])
+    t['bets_total'], t['bets'] = len(bets), bets[-TRACK_KEEP:]
+    json.dump(t, open(os.path.join(DATA, 'track.json'), 'w'), separators=(',', ':'))
+    print(f"track: {t['bets_total']} shadow bets, {len(t['bets'])} in the page snapshot")
+
+
 def main():
     arc = archive()
     prev = os.path.join(DATA, 'data_health.json')
@@ -113,6 +131,7 @@ def main():
            'repo': 'Putput12-JP/Vault-Fantasy', 'branch': 'nba-data',
            'recorder': recorder(), 'inputs': inputs(), 'archive': arc}
     json.dump(out, open(os.path.join(DATA, 'data_health.json'), 'w'), separators=(',', ':'))
+    track_snapshot()
     r = out['recorder']
     print(f"recorder: {len(r['days'])} days, {len(r['polls'])} polls in the last {POLL_DAYS} days, "
           f"status {'present' if r['status'] else 'missing'}")

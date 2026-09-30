@@ -193,6 +193,10 @@ footer b{color:var(--fg2);font-weight:500}
 .banner b{color:var(--fg);font-weight:500}
 .banner a,footer a,.card a{color:var(--fg);text-underline-offset:3px;text-decoration-color:var(--fg3)}
 table.ht{min-width:760px}
+table.tb{min-width:1000px}
+table.tb td,table.ts td{white-space:nowrap}
+table.tb td small,table.ts td small{display:block;color:var(--fg3);font-size:12px;font-weight:400}
+table.tb td b,table.ts td b{font-weight:500}
 table.ht td{text-align:right}
 table.ht td.l,table.ht th.l{text-align:left}
 table.ht .src b{font-weight:500;display:block}
@@ -464,6 +468,47 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
       </div>
     </main>
     <footer id="hfoot" hidden></footer>
+
+    <main id="v-track" hidden>
+      <div class="banner" id="tbanner"></div>
+      <div class="kpis" id="tkpis"></div>
+
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Signals against their backtest</h2><p>Every stat, venue and side that produced a 3%+ edge. GO and WATCH signals carry their 2025-26 out-of-sample result.</p></div>
+        </div>
+        <div class="card-b"><div class="tablewrap"><table class="ht ts">
+          <thead><tr><th class="l" scope="col">Signal</th><th class="l" scope="col">Gate</th><th scope="col">Bets</th><th scope="col">W-L-P</th><th scope="col">Units</th><th scope="col" title="ROI per unit at the first price that showed a 3% edge">ROI at entry</th><th scope="col" title="The same bets at the last price before tip, the backtest's clock">ROI at close</th><th scope="col" title="Same side's price at close minus at entry, fee included. Positive means the market moved our way.">CLV</th><th scope="col" title="2025-26 out of sample: ROI (bets, z)">Backtest</th><th class="l" scope="col">Live verdict</th></tr></thead>
+          <tbody id="tsig"></tbody>
+        </table></div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Units over time</h2><p>Cumulative units at entry prices, 1 unit per bet, by game day.</p></div>
+        </div>
+        <div class="card-b">
+          <div class="chartwrap"><svg class="chart tl" id="tchart" viewBox="0 0 760 220" role="img" aria-label="Cumulative units by gate"></svg></div>
+          <div class="tlegend" id="tlegend"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <div><h2>Shadow bets</h2><p id="tbsub">Every logged edge, newest first.</p></div>
+          <div class="filters">
+            <div class="seg" id="tgate" role="group" aria-label="Gate"></div>
+            <select class="sel" id="tstatus" aria-label="Status"><option value="all">All bets</option><option value="open">Open</option><option value="settled">Settled</option></select>
+          </div>
+        </div>
+        <div class="card-b"><div class="tablewrap"><table class="ht tb">
+          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Player</th><th class="l" scope="col">Bet</th><th class="l" scope="col">Gate</th><th scope="col" title="Price when the edge first reached 3%">Entry</th><th scope="col" title="Last price before tip">Close</th><th scope="col">Fair</th><th scope="col">Edge</th><th scope="col">Actual</th><th class="l" scope="col">Result</th><th scope="col">Units</th></tr></thead>
+          <tbody id="tbets"></tbody>
+        </table></div>
+        <div class="more" id="tmore" hidden></div></div>
+      </section>
+    </main>
+    <footer id="tfoot" hidden></footer>
   </div>
 </div>
 
@@ -472,6 +517,7 @@ const D = /*DATA*/null;
 const H0 = /*HEALTH*/null;
 const PR = /*PRICING*/null;     // prop model: variance, calibration, blend weights (build_prop_model.py)
 const PB = /*BOARD*/null;       // props board: {live, example} (prop_board.py)
+const TR0 = /*TRACK*/null;      // shadow ledger summary + recent bets (ledger.py via build_data_health.py)
 const MS = /*STATE*/null;       // prop model v2 state: team defense / pace / scoring, player shooting / minutes swing (build_model_state.py)
 const EAST = ['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NY','ORL','PHI','TOR','WSH'];
 const NB = D.rebalance.same / D.rebalance.other;  // same-position teammates absorb this many times more (minutes model)
@@ -485,7 +531,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : 'lab';
+let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -544,22 +590,36 @@ function addLog(team, who, text){
   store.set('nml-log', logs);
 }
 
+// Set one player's minutes; with `bal`, his change goes to teammates in proportion to minutes, same position NB x more.
+function rebalance(T, m, p, val, bal){
+  let delta = m[p.id] - val;
+  m[p.id] = val;
+  if (!bal) return m;
+  for (let k = 0; k < 4 && Math.abs(delta) > .05; k++){
+    const pool = T.players.filter(q => q.id !== p.id && m[q.id] > 0 && (delta > 0 ? m[q.id] < 48 : true));
+    const w = pool.map(q => m[q.id] * (q.grp === p.grp ? NB : 1)), W = w.reduce((a,b) => a+b, 0);
+    if (!W) break;
+    let moved = 0;
+    pool.forEach((q,i) => { const nv = Math.max(0, Math.min(48, m[q.id] + delta*w[i]/W)); moved += nv - m[q.id]; m[q.id] = nv; });
+    delta -= moved;
+  }
+  return m;
+}
+// Props pricing minutes: players listed Out (injury report) or Inactive (NBA.com) get 0, rebalanced, for any team the
+// viewer has not edited in the Lab. scripts/pricing.py does the same, so the shadow ledger logs what this page shows.
+function propMins(team){
+  const m = mins(team);
+  if (PS.mode === 'example' || edits[team] && Object.keys(edits[team]).length) return m;
+  const T = D.teams[team], P = (PS.board && PS.board.players) || {};
+  const outs = Object.keys(P).map(Number).filter(id => P[id][1] === team && ((P[id][2] && /^out/i.test(P[id][2])) || P[id][3] === 'X')).sort((a, b) => a - b);
+  for (const id of outs){ const p = T.players.find(x => x.id === id); if (p && m[id] > 0) rebalance(T, m, p, 0, true); }
+  return m;
+}
 function setMin(team, pid, val){
   val = Math.max(0, Math.min(48, +val || 0));
   const T = D.teams[team], m = mins(team), before = {...m}, p = T.players.find(x => x.id === pid);
   if (Math.abs(before[pid] - val) < .05){ render(); return; }
-  let delta = m[pid] - val;
-  m[pid] = val;
-  if ($('bal').checked){
-    for (let k = 0; k < 4 && Math.abs(delta) > .05; k++){
-      const pool = T.players.filter(q => q.id !== pid && m[q.id] > 0 && (delta > 0 ? m[q.id] < 48 : true));
-      const w = pool.map(q => m[q.id] * (q.grp === p.grp ? NB : 1)), W = w.reduce((a,b) => a+b, 0);
-      if (!W) break;
-      let moved = 0;
-      pool.forEach((q,i) => { const nv = Math.max(0, Math.min(48, m[q.id] + delta*w[i]/W)); moved += nv - m[q.id]; m[q.id] = nv; });
-      delta -= moved;
-    }
-  }
+  rebalance(T, m, p, val, $('bal').checked);
   save(team, m);
   const gainers = T.players.filter(q => q.id !== pid && Math.abs(m[q.id] - before[q.id]) > .3)
     .sort((a,b) => Math.abs(m[b.id]-before[b.id]) - Math.abs(m[a.id]-before[a.id])).slice(0,2)
@@ -599,7 +659,7 @@ const PAGES = [
   ]],
   ['Betting', [
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Only signals that passed their gate: Kalshi 3-pointer NO blend, overs-bias tracker, totals watch. Size, price and capacity for each.'],
-    ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow and live picks settled: ROI per contract, closing-line value and each signal against its gate.'],
+    ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
   ['Model', [
     ['Backtests', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'Game, minutes, usage and prop model results, held-out tests and what passed.'],
@@ -750,7 +810,7 @@ $('pages').addEventListener('click', e => {
 });
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (h === 'HEALTH' || h === 'PROPS') show(h.toLowerCase());
+  if (h === 'HEALTH' || h === 'PROPS' || h === 'TRACK') show(h.toLowerCase());
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -801,6 +861,7 @@ function show(v){
   $('v-lab').hidden = $('foot').hidden = !lab;
   $('v-health').hidden = $('hfoot').hidden = v !== 'health';
   $('v-props').hidden = $('pfoot').hidden = v !== 'props';
+  $('v-track').hidden = $('tfoot').hidden = v !== 'track';
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
   $('mode').hidden = lab;
@@ -811,6 +872,13 @@ function show(v){
     $('tsub').textContent = 'PROJECTION · MARKET · BLENDED FAIR';
     renderProps();
     if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'track'){
+    $('tname').textContent = 'Track Record';
+    $('tsub').textContent = 'SHADOW LEDGER · SETTLED FROM THE BOX SCORE';
+    renderTrack();
+    if (!trackTried) loadTrack();
     return;
   }
   $('tname').textContent = 'Data Health';
@@ -835,6 +903,7 @@ const SRC = [
   ['prizepicks', 'PrizePicks', "Pick'em lines (standard, demon, goblin)"],
   ['underdog', 'Underdog', "Pick'em lines with a price per side"],
   ['sleeper', 'Sleeper', "Pick'em lines with a payout per side"],
+  ['ledger', 'Shadow ledger', 'Logs and settles every 3%+ edge (Track Record)'],
 ];
 const PICKEM = [['prizepicks', 'PP'], ['underdog', 'UD'], ['sleeper', 'SL']];
 const VENUES = ['kalshi', 'espn', 'pinnacle', 'action', 'polymarket'];
@@ -953,7 +1022,7 @@ function renderHealth(){
     } else if (k === 'injuries'){
       note = `<span class="note">${p?.report === 'no games' ? 'No report posts without games in the next 36 hours' : reportTime(p?.report) ? `Latest: ${reportTime(p.report)} ET report` : 'No report in the last 2 hours'}</span>`;
     } else if (p && !p.n){
-      note = `<span class="note">${k === 'kalshi' ? 'Kalshi lists props the morning of a game' : k === 'lineups' ? 'Posted for games in the next 36 hours' : k === 'underdog' || k === 'sleeper' ? 'No NBA lines listed yet' : 'Nothing listed for games in the next 3 days'}</span>`;
+      note = `<span class="note">${k === 'kalshi' ? 'Kalshi lists props the morning of a game' : k === 'lineups' ? 'Posted for games in the next 36 hours' : k === 'underdog' || k === 'sleeper' ? 'No NBA lines listed yet' : k === 'ledger' ? `No 3%+ edges within 24 hours of tip${p.bets ? ` · ${p.bets} bets in the record` : ''}` : 'Nothing listed for games in the next 3 days'}</span>`;
     }
     const n = k === 'injuries' ? (injCount ? `${injCount} players` : '') : p?.n != null ? p.n.toLocaleString() : '';
     return `<tr><td class="l src"><b>${name}</b><small>${what}</small></td><td class="l">${pill(c, label)}</td>
@@ -1101,7 +1170,7 @@ function v2Terms(pl, s, mu, min, g, state){
 }
 function muFor(pid, stat, cache, g){
   let pl = PIDX[pid]; if (!pl) return null;
-  if (!cache[pl.t]) cache[pl.t] = {m: mins(pl.t), pr: project(pl.t, mins(pl.t))};
+  if (!cache[pl.t]){ const m = propMins(pl.t); cache[pl.t] = {m, pr: project(pl.t, m)}; }
   const state = MS && (PS.mode === 'example' ? MS.example : MS.live);
   let {m, pr} = cache[pl.t], x = pr[pid], min = m[pid];
   const snap = PS.mode === 'example' && state && state.players[pid];
@@ -1138,7 +1207,7 @@ function priceRow(e, cache){
   const P = PS.board.players[e.p] || [String(e.p), '', null];
   const gm = (PS.board.games || []).find(x => String(x.id) === String(e.g));
   const mm = muFor(e.p, e.s, cache, gm);
-  const r = {e, name: P[0], team: P[1], inj: P[2], lu: P[3], mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, build: mm && mm.build, v2: mm && mm.v2, cands: []};
+  const r = {e, name: P[0], team: P[1], inj: P[2], lu: P[3], tm: mm && mm.team, mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, build: mm && mm.build, v2: mm && mm.v2, cands: []};
   const kc = PR.kalshi[e.s] || PR.book[e.s], bc = PR.book[e.s];
   const model = line => mm && mm.min > 0 ? cal(e.s, pOverRaw(e.s, mm.mu, line, mm.extra)) : null;
   // books: fair over at each book's line
@@ -1270,8 +1339,11 @@ function renderProps(){
   $('prows').innerHTML = P.length ? P.map(r => {
     const key = `${r.e.p}|${r.e.s}`, open = pf.open.has(key), g = games.find(x => String(x.id) === String(r.e.g));
     const rg = r.mu != null && r.min > 0 ? range2(r.e.s, r.mu) : null;
-    const edited = PS.mode !== 'example' && r.min != null && Math.abs(r.min - r.min0) > .05;
-    const flags = [LINEUP[r.lu] || '', r.inj ? `<span class="${/out/i.test(r.inj) ? 'neg' : 'warnt'}">${esc(r.inj)}</span>` : '', edited ? '<span class="warnt" title="You changed his minutes in the Minutes Lab">minutes edited</span>' : ''].filter(Boolean).join(' · ');
+    const moved = PS.mode !== 'example' && r.min != null && Math.abs(r.min - r.min0) > .05;
+    const edited = moved && edits[r.tm] && Object.keys(edits[r.tm]).length;
+    const flags = [LINEUP[r.lu] || '', r.inj ? `<span class="${/out/i.test(r.inj) ? 'neg' : 'warnt'}">${esc(r.inj)}</span>` : '',
+      edited ? '<span class="warnt" title="You changed this team\'s minutes in the Minutes Lab">minutes edited</span>'
+        : moved && r.min > 0 ? `<span class="muted" title="Minutes rebalanced for teammates listed Out or Inactive">${sign(r.min - r.min0)} min, teammates out</span>` : ''].filter(Boolean).join(' · ');
     const hr = r.line != null ? hitRate(windowGames(r, pwin).gl, r.e.s, r.line) : null;
     const b = r.best;
     const betCells = b ? `<td class="l"><span class="betname">${b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`}</span></td>
@@ -1299,7 +1371,7 @@ function renderProps(){
   $('pfoot').innerHTML = `
     <div><b>Projection</b> is prop model ${PR.model}: the Minutes Lab's minutes × per-minute rate, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread.</div>
     <div><b>Model</b> is the chance of going over, calibrated on 2024-25 lines. <b>Fair</b> blends the market price with the model; the market carries most of the weight. <b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig.</div>
-    <div><b>Gates</b> (2025-26 backtest, blend vs the price-only baseline): GO ${gos.join(', ') || 'none'}; WATCH ${watch.join(', ') || 'none'}; sportsbook props NO-GO. Nothing is bet for real until a signal passes on this season's games. Injury-report statuses show in the player line but do not move minutes yet; mark a player OUT in the Minutes Lab to reprice his teammates.</div>`;
+    <div><b>Gates</b> (2025-26 backtest, blend vs the price-only baseline): GO ${gos.join(', ') || 'none'}; WATCH ${watch.join(', ') || 'none'}; sportsbook props NO-GO. Nothing is bet for real until a signal passes on this season's games. Players listed Out on the injury report or Inactive on NBA.com get 0 minutes and their teammates are repriced automatically, unless you have edited that team in the Minutes Lab. Questionable and Doubtful players keep their minutes.</div>`;
 }
 function range2(stat, mu){ const v = PR.variance[stat]; if (!v || mu <= 0) return null; const sd = Math.sqrt(Math.max(.25, v[0] + v[1]*mu + v[2]*mu*mu)); return [Math.max(0, mu - Z*sd), mu + Z*sd]; }
 
@@ -1437,6 +1509,147 @@ $('prows').addEventListener('click', e => {
   const tr = e.target.closest('tr.prow'); if (tr) toggleRow(tr);
 });
 $('prows').addEventListener('keydown', e => { const tr = e.target.closest('tr.prow'); if (tr && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); toggleRow(tr); } });
+
+// ── Track Record ──────────────────────────────────────────────────────────
+// The shadow ledger (scripts/ledger.py): every 3%+ edge the Props page showed, logged by the recorder from the first
+// poll it appeared, settled from ESPN's box score. Snapshot baked in (TR0); live from nba-data/track.json on the site.
+let TR = TR0 ? {data: TR0, live: false} : null, trackTried = false, trackTimer = null;
+let tf = {gate: 'gated', status: 'all', limit: 150};
+const MIN_LIVE = 50;                // settled bets before a live verdict (the backtest gate's 50-game floor)
+const GATE_ORDER = {go: 0, watch: 1, 'no-go': 2};
+const SIDE_NAME = {YES: 'YES', NO: 'NO', over: 'Over', under: 'Under'};
+
+async function loadTrack(){
+  trackTried = true;
+  if (!H0 || !/^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+  try {
+    const d = await fetch(`https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/track.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
+    TR = {data: d, live: true, at: Date.now() / 1000};
+    if (view === 'track') renderTrack();
+    clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
+  } catch (e) { /* keep the snapshot */ }
+}
+
+const tPrice = (venue, x) => x == null ? '' : venue === 'kalshi' ? Math.round(x * 100) + '¢' : esc(String(x));
+const tUnits = x => x == null ? '' : `<span class="${x > 0 ? 'pos' : x < 0 ? 'neg' : ''}">${x > 0 ? '+' : ''}${x.toFixed(2)}</span>`;
+const tRoi = x => x == null ? '<span class="muted">none</span>' : `<span class="${x > 0 ? 'pos' : x < 0 ? 'neg' : ''}">${x > 0 ? '+' : ''}${(x * 100).toFixed(1)}%</span>`;
+const tClv = x => x == null ? '' : `<span class="${x > 0 ? 'pos' : x < 0 ? 'neg' : ''}">${x > 0 ? '+' : ''}${(x * 100).toFixed(1)}</span>`;
+const gatePill = g => pill(g === 'go' ? 'ok' : g === 'watch' ? 'warn' : 'idle', GATE_LABEL[g] || g);
+function signalName(key){
+  const [stat, venue, side] = key.split('|');
+  return `${SLABEL[stat] || stat} ${SIDE_NAME[side] || side} · ${venue === 'kalshi' ? 'Kalshi' : 'Sportsbooks'}`;
+}
+function liveVerdict(sm, bt){
+  if (!sm || !sm.settled) return pill('idle', 'No settled bets');
+  if (sm.settled < MIN_LIVE) return `<span class="muted">Collecting, ${sm.settled} of ${MIN_LIVE}</span>`;
+  if (sm.z != null && sm.z >= 2) return pill('ok', 'Holding up (z ' + sm.z + ')');
+  if (sm.roi > 0) return pill('warn', 'Positive, under 2 SE');
+  return pill('bad', bt ? 'Not matching backtest' : 'Losing');
+}
+
+function renderTrack(){
+  const d = TR && TR.data;
+  $('mode').innerHTML = !d ? pill('idle', 'No ledger yet')
+    : TR.live ? `${pill('ok', 'Live')}<span>Checked ${clock(TR.at)} ET</span>` : `${pill('idle', 'Snapshot')}<span>Ledger as of ${stamp(d.t)} ET</span>`;
+  const bets = (d && d.bets) || [];
+  const settled = bets.filter(b => ['win', 'loss', 'push'].includes(b.result));
+  $('tbanner').innerHTML = !bets.length
+    ? `<b>No shadow bets yet.</b><span>The recorder logs an edge the first time the Props page shows it at 3% or more, for games within 24 hours. Kalshi lists props the morning of a game; preseason starts October 3, opening night is October 20. Nothing here is a real bet.</span>`
+    : `<b>${bets.length.toLocaleString()} shadow bets, ${settled.length.toLocaleString()} settled.</b><span>Logged from the recorder's prices at the first poll each edge reached 3%, 1 unit each, settled from ESPN's box score. None were placed.${d.bets_total && d.bets_total > bets.length ? ` This snapshot lists the latest ${bets.length} of ${d.bets_total.toLocaleString()}; the live page has all of them.` : ''}</span>`;
+
+  // KPIs
+  const G = (d && d.by_gate) || {};
+  const all = Object.values(G).reduce((a, x) => ({settled: a.settled + x.settled, units: a.units + x.units, w: a.w + x.w, l: a.l + x.l}), {settled: 0, units: 0, w: 0, l: 0});
+  const clvs = bets.filter(b => b.gate !== 'no-go' && b.clv != null).map(b => b.clv);
+  const kc = (label, x) => kpi(label, SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'),
+    x && x.settled ? `${x.w}-${x.l}${x.p ? '-' + x.p : ''} <span class="${x.units >= 0 ? 'pos' : 'neg'}" style="font-size:16px">${x.units >= 0 ? '+' : ''}${x.units.toFixed(1)}u</span>` : '<span class="muted">0 settled</span>',
+    x && x.settled ? `ROI ${x.roi >= 0 ? '+' : ''}${(x.roi * 100).toFixed(1)}% on ${x.settled} · ${x.open} open` : x && x.open ? `${x.open} open` : 'Nothing logged yet');
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  $('tkpis').innerHTML = kc('GO signals', G.go) + kc('WATCH signals', G.watch) +
+    kc('Every 3%+ edge', all.settled ? {...all, p: 0, roi: all.units / all.settled, open: bets.filter(b => b.result === 'open').length} : null) +
+    kpi('Closing-line value', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'),
+      clvs.length ? tClv(clvs.reduce((a, x) => a + x, 0) / clvs.length) + '<span class="muted" style="font-size:14px"> pts</span>' : '<span class="muted">none</span>',
+      clvs.length ? `GO + WATCH bets, entry to close, ${clvs.length} bets` : 'Needs a price at entry and at close');
+
+  // signals
+  const S = (d && d.by_signal) || {}, BT = (d && d.backtest) || PR.backtest || {};
+  const sig = Object.keys({...S, ...Object.fromEntries(Object.keys(BT).map(k => [k, 1]))});
+  const gateOf = k => { const [st, ve, sd] = k.split('|'); return ve === 'kalshi' ? gate('kalshi', st, sd) : 'no-go'; };
+  sig.sort((a, b) => GATE_ORDER[gateOf(a)] - GATE_ORDER[gateOf(b)] || ((S[b] || {}).bets || 0) - ((S[a] || {}).bets || 0));
+  $('tsig').innerHTML = sig.length ? sig.map(k => {
+    const x = S[k], bt = BT[k], g = gateOf(k);
+    const [st, ve, sd] = k.split('|');
+    return `<tr><td class="l"><b>${SLABEL[st] || st} ${SIDE_NAME[sd] || sd}</b><small>${ve === 'kalshi' ? 'Kalshi' : 'Sportsbooks'}</small></td><td class="l">${gatePill(g)}</td>
+      <td class="num">${x ? x.bets : 0}</td><td class="num">${x ? `${x.w}-${x.l}-${x.p}` : ''}</td><td class="num">${x ? tUnits(x.units) : ''}</td>
+      <td class="num">${x ? tRoi(x.roi) : ''}</td><td class="num">${x ? tRoi(x.roi_close) : ''}</td><td class="num">${x ? tClv(x.clv) : ''}</td>
+      <td class="num">${bt && bt.roi != null ? `${tRoi(bt.roi)} <span class="muted">(${bt.n.toLocaleString()}, z ${bt.z})</span>` : '<span class="muted">not gated</span>'}</td>
+      <td class="l">${g === 'no-go' ? '<span class="muted">Tracked only</span>' : liveVerdict(x, bt)}</td></tr>`;
+  }).join('') : `<tr><td class="l" colspan="10"><p class="empty">No signals yet.</p></td></tr>`;
+
+  renderTrackChart(d);
+
+  // bets
+  const segs = [['gated', 'GO + WATCH'], ['go', 'GO'], ['watch', 'WATCH'], ['all', 'All 3%+ edges']];
+  $('tgate').innerHTML = segs.map(([k, l]) => `<button type="button" data-g="${k}" class="${tf.gate === k ? 'on' : ''}" aria-pressed="${tf.gate === k}">${l}</button>`).join('');
+  $('tstatus').value = tf.status;
+  let B = bets.filter(b => tf.gate === 'all' || (tf.gate === 'gated' ? b.gate !== 'no-go' : b.gate === tf.gate));
+  if (tf.status === 'open') B = B.filter(b => b.result === 'open');
+  if (tf.status === 'settled') B = B.filter(b => b.result !== 'open');
+  B = [...B].sort((a, b) => b.tip - a.tip || a.player.localeCompare(b.player));
+  $('tbsub').textContent = `${B.length.toLocaleString()} ${B.length === 1 ? 'bet' : 'bets'}, newest first. Kalshi prices in cents with the fee added at settlement; books in American odds.`;
+  const RES = {win: pill('ok', 'Win'), loss: pill('bad', 'Loss'), push: pill('idle', 'Push'), void: pill('idle', 'Void, DNP'), open: '<span class="muted">Open</span>'};
+  $('tbets').innerHTML = B.length ? B.slice(0, tf.limit).map(b => `<tr>
+      <td class="l num">${etFmt(b.tip, {month: 'short', day: 'numeric'})}<small>${clock(b.tip)}</small></td>
+      <td class="l"><b>${esc(b.player)}</b><small>${esc(b.team)} · ${esc(b.matchup)}</small></td>
+      <td class="l"><b>${SLABEL[b.stat] || b.stat} ${b.venue === 'kalshi' ? `${b.side} ${b.line + .5}+` : `${b.side} ${b.line}`}</b><small>${esc(b.book)}</small></td>
+      <td class="l">${gatePill(b.gate)}</td>
+      <td class="num">${tPrice(b.venue, b.price)}</td><td class="num">${tPrice(b.venue, b.price_close)}</td>
+      <td class="num">${pc(b.fair)}</td><td class="num">${ec(b.edge)}</td>
+      <td class="num">${b.actual ?? ''}</td><td class="l">${RES[b.result] || ''}</td><td class="num">${tUnits(b.pnl)}</td></tr>`).join('')
+    : `<tr><td class="l" colspan="11"><p class="empty">${bets.length ? 'No bets match these filters.' : 'No shadow bets logged yet.'}</p></td></tr>`;
+  $('tmore').hidden = B.length <= tf.limit;
+  $('tmore').innerHTML = `<button class="btn" id="tmorebtn" type="button">Show all ${B.length.toLocaleString()}</button>`;
+
+  $('tfoot').innerHTML = `
+    <div><b>What is logged:</b> every candidate the Props page prices (same projection, minutes with Outs applied, calibration, market blend and fees, computed by <code>scripts/pricing.py</code>), from the first recorder poll its edge reached ${Math.round(((d && d.edge_min) || .03) * 100)}%, for games within 24 hours. After that it is followed to tip whether or not the edge lasts.</div>
+    <div><b>How it settles:</b> 1 unit per bet. Kalshi YES wins if the stat is over the rung's floor; the taker fee is added to the price. Books pay their American odds; a whole-number line landed exactly is a push. A player who did not play is void (Kalshi's own rules may settle those differently). CLV is the same side's close price minus its entry price, fee included.</div>
+    <div><b>Live verdicts</b> need ${MIN_LIVE} settled bets before they mean anything. A signal holds up when its live ROI is 2 standard errors above zero; the backtest column is what 2025-26 said to expect.</div>`;
+}
+
+function rangeTicks(lo, hi){          // about 5 round ticks across a range that can go below zero
+  const raw = (hi - lo) / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), st = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw);
+  const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9; v += st) out.push(+v.toFixed(2)); return out;
+}
+function renderTrackChart(d){
+  const W = 760, H = 220, L = 44, R = 12, T = 10, B = 26;
+  const days = {};
+  for (const [k, x] of Object.entries((d && d.by_day) || {})){ const [day, g] = k.split('|'); (days[day] = days[day] || {})[g] = x.units; }
+  const dl = Object.keys(days).sort();
+  const series = [['go', 'var(--up)', 'GO'], ['watch', 'var(--warn)', 'WATCH'], ['all', 'var(--fg2)', 'Every 3%+ edge']];
+  const pts = {}; for (const [g] of series) pts[g] = [];
+  const acc = {go: 0, watch: 0, all: 0};
+  for (const day of dl){
+    for (const [g, u] of Object.entries(days[day])){ if (acc[g] != null) acc[g] += u; acc.all += u; }
+    for (const [g] of series) pts[g].push(acc[g]);
+  }
+  $('tlegend').innerHTML = series.map(([g, c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join('');
+  const svg = $('tchart');
+  if (dl.length < 2){ svg.setAttribute('viewBox', `0 0 ${W} 60`); svg.innerHTML = `<text x="${W / 2}" y="34" text-anchor="middle" class="lab">The chart starts after two game days settle.</text>`; return; }
+  const all = Object.values(pts).flat(), lo = Math.min(0, ...all), hi = Math.max(0, ...all), pad = (hi - lo) * .08 || 1;
+  const y0 = lo - pad, y1 = hi + pad;
+  const x = i => L + i / (dl.length - 1) * (W - L - R), y = v => T + (y1 - v) / (y1 - y0) * (H - T - B);
+  let g = '';
+  for (const t of rangeTicks(y0, y1)) g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${t > 0 ? '+' : ''}${t}</text>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border2)"/>`;
+  const step = Math.max(1, Math.ceil(dl.length / 8));
+  dl.forEach((day, i) => { if (i % step === 0 || i === dl.length - 1) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${new Date(day + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</text>`; });
+  for (const [k, c] of series) g += `<polyline fill="none" stroke="${c}" stroke-width="2" points="${pts[k].map((v, i) => `${x(i)},${y(v)}`).join(' ')}"/>`;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = g;
+}
+
+$('tgate').addEventListener('click', e => { const g = e.target.closest('button')?.dataset.g; if (g){ tf.gate = g; tf.limit = 150; renderTrack(); } });
+$('tstatus').addEventListener('change', e => { tf.status = e.target.value; tf.limit = 150; renderTrack(); });
+$('tmore').addEventListener('click', e => { if (e.target.id === 'tmorebtn'){ tf.limit = 1e9; renderTrack(); } });
 
 show(view);
 </script>

@@ -17,6 +17,17 @@ def load(name):
     return json.load(open(path)) if os.path.exists(path) else None
 
 
+def backtest(v2):
+    """Each GO / WATCH signal's 2025-26 out-of-sample Kalshi result, keyed stat|kalshi|side (Track Record compares)."""
+    out = {}
+    for m, v in v2['verdict']['v2'].items():
+        if v.startswith(('GO', 'WATCH')) and '(' in v:
+            side = v.split('(')[1].rstrip(')')
+            b = v2.get('kalshi_bias', {}).get(m, {}).get('v2', {}).get(f'blend/{side}') or {}
+            out[f'{m}|kalshi|{side}'] = {'gate': v.split()[0].lower(), 'roi': b.get('roi'), 'n': b.get('n'), 'z': b.get('z')}
+    return out
+
+
 def pricing():
     """What the page needs to price a prop the way the backtest did. Prop model v2 when it has been built
     (build_prop_model_v2.py): stacker weights, variance with the minutes term, calibration, and blend weights fit
@@ -30,7 +41,7 @@ def pricing():
                 'calibration': {k: [[round(x, 4), round(y, 4)] for x, y in v] for k, v in v2['calibration']['v2'].items() if v},
                 'kalshi': {s: coef(c) for s, c in v2['blend_live']['kalshi'].items() if c},
                 'book': {s: coef(c) for s, c in v2['blend_live']['book'].items() if c},
-                'verdict': v2['verdict']['v2'], 'generated': v2['generated']}
+                'verdict': v2['verdict']['v2'], 'backtest': backtest(v2), 'generated': v2['generated']}
     pm = load('prop_model.json')
     if not pm:
         return None
@@ -48,6 +59,7 @@ def render():
                .replace('/*PRICING*/null', json.dumps(pricing(), separators=(',', ':')))
                .replace('/*BOARD*/null', json.dumps(load('prop_board.json'), separators=(',', ':')))
                .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':')))
+               .replace('/*TRACK*/null', json.dumps(load('track.json'), separators=(',', ':')))
                .replace('/*STATE*/null', json.dumps(load('model_state.json'), separators=(',', ':'))))
     out = os.path.join(HERE, '..', 'projections.html')
     open(out, 'w').write(html)

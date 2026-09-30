@@ -488,7 +488,8 @@ def poll(root):
               f"{rec['s']}s {rec.get('err', '') or rec.get('report') or ''}", flush=True)
     day.append('polls.jsonl', polls)
     write_status(root, day, slate, polls, metas)
-    write_board(root, day, slate)
+    board = write_board(root, day, slate)
+    shadow(root, day, board, now, polls)
     games = ', '.join(f"{g['away']}@{g['home']}" for g in slate.games if g['pre'] and g['day'] == day.dir[-10:])
     print(f"{dt.datetime.fromtimestamp(now, ET):%Y-%m-%d %H:%M ET} polled. today pre-tip: {games or 'none'}", flush=True)
     return slate
@@ -593,8 +594,26 @@ def write_board(root, day, slate):
         with open(BOARD, 'w') as f:
             json.dump(board, f, separators=(',', ':'))
         print(f"  board      {len(board['props'])} player-stat markets, unmapped {board['unmapped']}", flush=True)
+        return board
     except Exception:
         traceback.print_exc(limit=2)
+        return None
+
+
+def shadow(root, day, board, now, polls):
+    """Shadow ledger (ledger.py): log every 3%+ edge the page would show, then settle finished games -> track.json."""
+    rec = {'t': now, 'src': 'ledger', 'ok': True}
+    try:
+        import ledger
+        if board is not None:                    # no board = unknown, not "every edge is gone"
+            rows, meta = ledger.log(day, board, now)
+            rec.update(n=len(rows), chg=day.record('ledger', now, rows, meta))
+        rec['bets'] = ledger.settle(root, now)
+    except Exception as e:
+        rec.update(ok=False, err=str(e)[:200])
+        traceback.print_exc(limit=2)
+    day.append('polls.jsonl', [rec])
+    print(f"  ledger     {'ok ' if rec['ok'] else 'ERR'} tracked={rec.get('n', '-')} chg={rec.get('chg', '-')} bets={rec.get('bets', '-')} {rec.get('err', '')}", flush=True)
 
 
 def push_board(root):
@@ -612,7 +631,7 @@ def push_board(root):
 def commit(root):
     push_board(root)
     git = ['git', '-C', root]
-    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'], check=True)
+    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('track.json', 'results') if os.path.exists(os.path.join(root, p))], check=True)
     if subprocess.run(git + ['diff', '--cached', '--quiet']).returncode == 0:
         return
     stamp = dt.datetime.now(ET).strftime('%Y-%m-%d %H:%M ET')
