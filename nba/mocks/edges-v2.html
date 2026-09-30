@@ -110,15 +110,21 @@ button,select{font:inherit;color:inherit}
 .chip.structural{color:#f9a8d4;background:rgba(249,168,212,.1)}
 
 /* expanded case */
+.edge{container-type:inline-size}
 .case{display:none;padding:4px 18px 18px;gap:14px;grid-template-columns:repeat(3,minmax(0,1fr))}
+@container (max-width:1000px){ .case{grid-template-columns:repeat(2,minmax(0,1fr))} .case .panel:last-child{grid-column:1/-1} }
+@container (max-width:640px){ .case{grid-template-columns:minmax(0,1fr)} }
 .edge.open .case{display:grid}
 .case .lede{grid-column:1/-1;margin:6px 0 2px;font-size:13.5px;color:var(--fg2);max-width:88ch}
 .case .lede b{color:var(--fg);font-weight:500}
 .panel{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;min-width:0}
-.panel h3{margin:0 0 10px;font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
-.panel h3 small{font-weight:400;color:var(--fg3)}
-.vt{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
-.vt td,.vt th{padding:5px 4px;border-top:1px solid var(--border);text-align:right;white-space:nowrap}
+.panel h3{margin:0 0 10px;font-size:12.5px;font-weight:600;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.panel h3 small{display:block;font-weight:400;color:var(--fg3);font-size:11.5px;margin-top:1px}
+.tw{overflow-x:auto}
+.vt{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.vt col.c1{width:34%} .vt col.c2{width:24%} .vt col.c3{width:20%} .vt col.c4{width:22%}
+.vt td,.vt th{padding:5px 4px;border-top:1px solid var(--border);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vt td small{display:block;font-size:11px;color:var(--fg3);white-space:normal}
 .vt th{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;border-top:0}
 .vt td.l,.vt th.l{text-align:left}
 .vt tr.bet td{color:var(--fg);font-weight:600}
@@ -159,8 +165,6 @@ svg .lab2{font-family:var(--font-sans);font-size:10.5px;fill:var(--fg2)}
 @media (max-width:1100px){
   .cols{grid-template-columns:minmax(0,1fr)}
   .rail{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}
-  .case{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .case .panel:last-child{grid-column:1/-1}
 }
 @media (max-width:760px){
   .top{padding:10px 16px}
@@ -174,7 +178,7 @@ svg .lab2{font-family:var(--font-sans);font-size:10.5px;fill:var(--fg2)}
   .edge-row .who{grid-area:who} .edge-row .edgev{grid-area:edge} .edge-row .chevc{grid-area:chev}
   .edge-row .venue{grid-area:venue} .edge-row .confc{grid-area:conf;text-align:right} .edge-row .gauge{grid-area:gauge}
   .edge-row .why{grid-area:why} .edge-row .stake{display:none}
-  .case{grid-template-columns:minmax(0,1fr);padding-inline:12px}
+  .case{padding-inline:12px}
   .alert{grid-template-columns:minmax(0,1fr)}
 }
 </style>
@@ -404,12 +408,13 @@ function caseHtml(e){
   const r = e.rec, st2 = e.conf;
   return `<div class="case">
     <p class="lede">${e.lede}</p>
-    <div class="panel"><h3>Every venue at this line <small>chance of ${e.bet.replace(/^\S+ /, '')}, vig removed</small></h3>${dotplot(e)}
-      <table class="vt"><thead><tr><th class="l">Venue</th><th class="l">Their line</th><th>Price</th><th>At this line</th></tr></thead><tbody>
+    <div class="panel"><h3><span>Every venue at this line<small>Chance of ${e.bet.replace(/^\S+ /, '')}, vig removed</small></span></h3>${dotplot(e)}
+      <div class="tw"><table class="vt"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+      <thead><tr><th class="l">Venue</th><th class="l">Line</th><th>Price</th><th>Chance</th></tr></thead><tbody>
       ${e.venues.map(([n, l, p, pr, bet]) => `<tr class="${bet ? 'bet' : ''}"><td class="l">${n}</td><td class="l">${l}</td><td>${p}</td><td>${pc(pr, 1)}</td></tr>`).join('')}
-      <tr><td class="l" colspan="3">Consensus (books, Pinnacle weighted)</td><td>${pc(e.cons, 1)}</td></tr>
-      <tr><td class="l" colspan="3">Vault model</td><td>${pc(e.model, 1)}</td></tr></tbody></table></div>
-    <div class="panel"><h3>What moved and when <small>implied chance, today</small></h3>${spark(e)}
+      <tr><td class="l" colspan="3">Consensus<small>Books, Pinnacle weighted</small></td><td>${pc(e.cons, 1)}</td></tr>
+      <tr><td class="l" colspan="3">Vault model</td><td>${pc(e.model, 1)}</td></tr></tbody></table></div></div>
+    <div class="panel"><h3><span>What moved and when<small>Implied chance, today</small></span></h3>${spark(e)}
       <ul class="tl">${e.events.map(([t, txt, k]) => `<li class="${k}"><span class="t">${t}</span><span>${txt}</span></li>`).join('')}</ul></div>
     <div class="panel"><h3>The record behind it <span class="pill ${st2}">${CONF[st2]}</span></h3>
       <div style="font-size:12.5px;color:var(--fg2);margin-bottom:10px">${r.label}, this season</div>
