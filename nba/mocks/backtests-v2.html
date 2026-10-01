@@ -137,6 +137,38 @@ h2.sec{margin:8px 0 -6px;font-size:13px;font-family:var(--font-mono);font-weight
 .nw p{margin:0;font-size:13px;color:var(--fg2)}
 .nw .n{font-size:12px;color:var(--fg3);font-family:var(--font-mono)}
 
+/* myth check */
+.myth{padding:22px 24px;display:grid;gap:18px}
+.myth-h{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 20px}
+.myth-h .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn)}
+.myth-h h3{margin:2px 0 4px;font-size:22px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.myth-h p{margin:0;color:var(--fg2);font-size:13.5px;max-width:64ch}
+.dots{display:grid;gap:4px}
+.dots .axis,.dots .dr{display:grid;grid-template-columns:110px minmax(0,1fr) 86px;gap:14px;align-items:center}
+.dots .axis div{position:relative;height:16px;font-family:var(--font-mono);font-size:10px;color:var(--fg3)}
+.dots .axis div span{position:absolute;transform:translateX(-50%)}
+.dots .dr{padding:9px 0;border-top:1px solid var(--border)}
+.dots .dr > span{font-size:13px;font-weight:500}
+.dots .lm{display:none}
+.dots .dr > small{font-size:11px;color:var(--fg3);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dtrack{position:relative;height:22px}
+.dtrack::before{content:"";position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:var(--raised);border-radius:1px}
+.dtrack .gap{position:absolute;top:50%;height:2px;margin-top:-1px;background:repeating-linear-gradient(90deg,var(--fg3) 0 4px,transparent 4px 7px)}
+.dtrack i{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%}
+.dtrack i.s{border:2px solid var(--warn);background:var(--bg)}
+.dtrack i.m{background:var(--fg3)}
+.dtrack i.a{background:var(--up);box-shadow:0 0 0 3px rgba(74,222,128,.2)}
+.legend2{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--fg2)}
+.legend2 span{display:inline-flex;align-items:center;gap:7px}
+.legend2 i{width:12px;height:12px;border-radius:50%;display:inline-block}
+.legend2 i.s{border:2px solid var(--warn)} .legend2 i.m{background:var(--fg3)} .legend2 i.a{background:var(--up)}
+.myth .big b{font-size:22px}
+.read{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.read div{padding:12px 14px;border-radius:10px;border:1px solid var(--border);font-size:12.5px;color:var(--fg2)}
+.read b{display:block;color:var(--fg);font-weight:600;font-size:13px;margin-bottom:2px}
+@media (max-width:900px){ .read{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:600px){ .myth{padding:18px 16px} .dots .ln{display:none} .dots .lt{display:none} .dots .lm{display:inline} .dots .axis,.dots .dr{grid-template-columns:72px minmax(0,1fr) 58px;gap:8px} .dots .dr > span{font-size:12px} }
+
 footer{font-size:12.5px;color:var(--fg3);display:grid;gap:8px;max-width:84ch}
 footer b{color:var(--fg2);font-weight:500}
 [hidden]{display:none!important}
@@ -198,6 +230,7 @@ footer b{color:var(--fg2);font-weight:500}
   <section id="s-not" hidden>
     <div class="wrap" style="padding:0;max-width:none">
       <p class="lede">Things that look like they should work and did not. Each one was tested the same way as the bets that passed.</p>
+      <article class="card myth" id="myth"></article>
       <div class="nw" id="notlist"></div>
     </div>
   </section>
@@ -386,6 +419,38 @@ const NOT = [
   ['Following the biggest tickets', 'Size is not skill: even $100k+ tickets lost to the closing price on average.', 'Polymarket tape'],
 ];
 $('notlist').innerHTML = NOT.map(([t, d, n]) => `<div class="card"><h4><span class="tag no">NO</span>${t}</h4><p>${d}</p><span class="n">${n}</span></div>`).join('');
+
+
+// ── myth check: "8 of his last 10" (build_hit_rates.py, real results) ──
+const HR = {"books":{"cal":[{"l10":"0-2 of 10","n":4215,"streak_rate":0.158,"market":0.492,"actual":0.453},{"l10":"3-4 of 10","n":13237,"streak_rate":0.36,"market":0.501,"actual":0.468},{"l10":"5-6 of 10","n":16492,"streak_rate":0.545,"market":0.512,"actual":0.483},{"l10":"7-8 of 10","n":5854,"streak_rate":0.728,"market":0.522,"actual":0.51},{"l10":"9-10 of 10","n":496,"streak_rate":0.91,"market":0.533,"actual":0.498}],"hot":{"n":2159,"games":632,"roi":-0.0728,"z":-2.96},"cold":{"n":4215,"games":784,"roi":0.0078,"z":0.42},"base_over":{"n":40332,"games":926,"roi":-0.1193,"z":-16.09},"base_under":{"n":40332,"games":926,"roi":-0.0122,"z":-1.69},"same":{"cold_under":{"diff":0.0121,"n":4215},"hot_over":{"diff":0.0347,"n":2159}},"persist":{"players":147,"corr":0.031,"top_first":0.15,"top_second":-0.007,"bot_first":-0.189,"bot_second":-0.04,"bet_top_over":{"n":526,"games":214,"roi":-0.0857,"z":-1.81},"bet_bot_under":{"n":549,"games":213,"roi":0.0002,"z":0.01}},"n":40332},"books26":{"cal":[{"l10":"0-2 of 10","n":315,"streak_rate":0.17,"market":0.469,"actual":0.432},{"l10":"3-4 of 10","n":1528,"streak_rate":0.362,"market":0.486,"actual":0.453},{"l10":"5-6 of 10","n":2126,"streak_rate":0.548,"market":0.498,"actual":0.489},{"l10":"7-8 of 10","n":904,"streak_rate":0.729,"market":0.514,"actual":0.462},{"l10":"9-10 of 10","n":69,"streak_rate":0.907,"market":0.524,"actual":0.536}],"hot":{"n":332,"games":96,"roi":-0.1502,"z":-2.81},"cold":{"n":315,"games":105,"roi":0.0084,"z":0.13},"base_over":{"n":4951,"games":288,"roi":-0.113,"z":-5.04},"base_under":{"n":4951,"games":288,"roi":-0.0142,"z":-0.74},"same":{"cold_under":{"diff":0.0235,"n":315},"hot_over":{"diff":-0.0411,"n":332}},"persist":null,"n":4951},"kalshi":{"cal":[{"l10":"0-2 of 10","n":19962,"streak_rate":0.098,"market":0.181,"actual":0.153},{"l10":"3-4 of 10","n":11839,"streak_rate":0.35,"market":0.391,"actual":0.364},{"l10":"5-6 of 10","n":11022,"streak_rate":0.548,"market":0.547,"actual":0.516},{"l10":"7-8 of 10","n":8784,"streak_rate":0.746,"market":0.701,"actual":0.67},{"l10":"9-10 of 10","n":5351,"streak_rate":0.937,"market":0.833,"actual":0.82}],"hot":{"n":9358,"games":1013,"roi":-0.0376,"z":-4.68},"cold":{"n":19962,"games":1043,"roi":0.0255,"z":4.83},"base_over":{"n":56958,"games":1079,"roi":-0.1451,"z":-13.21},"base_under":{"n":56958,"games":1079,"roi":0.0331,"z":3.72},"same":{"cold_under":{"diff":0.0323,"n":19923},"hot_over":{"diff":0.0348,"n":9339}},"persist":{"players":322,"corr":0.006,"top_first":0.104,"top_second":-0.03,"bot_first":-0.143,"bot_second":-0.034,"bet_top_over":{"n":4397,"games":339,"roi":-0.1438,"z":-4.63},"bet_bot_under":{"n":4351,"games":332,"roi":0.002,"z":0.08}},"n":56958}};
+let mv = 'books';
+function renderMyth(){
+  const D0 = HR[mv], books = mv === 'books';
+  const hot = D0.hot, cold = D0.cold, bo = D0.base_over, bu = D0.base_under, top = D0.cal[D0.cal.length - 1];
+  const pct = v => (v * 100).toFixed(0) + '%';
+  const rows = D0.cal.map(c => { const lo = Math.min(c.streak_rate, c.market, c.actual), hi = Math.max(c.streak_rate, c.market, c.actual);
+    return `<div class="dr"><span>${c.l10.replace(' of 10', '')}<span class="lt"> of last 10</span><span class="lm">/10</span></span>
+      <div class="dtrack" title="Streak said ${pct(c.streak_rate)} · line said ${pct(c.market)} · actually hit ${pct(c.actual)}"><span class="gap" style="left:${lo * 100}%;width:${(hi - lo) * 100}%"></span>
+        <i class="s" style="left:${c.streak_rate * 100}%"></i><i class="m" style="left:${c.market * 100}%"></i><i class="a" style="left:${c.actual * 100}%"></i></div>
+      <small>${c.n.toLocaleString()}<span class="ln"> lines</span></small></div>`; }).join('');
+  $('myth').innerHTML = `<div class="myth-h"><div><div class="eyebrow">Myth check</div><h3>"He's hit this in 8 of his last 10" is not an edge</h3>
+      <p>Betting apps lead with hit rates. We checked every ${books ? 'sportsbook' : 'Kalshi'} line from ${books ? '2024-25' : '2025-26'} against the player's record on that exact number before the game. The green dot is what actually happened: it sits on the line's price, not the streak.</p></div>
+      ${seg('mv', [['books', 'Sportsbooks'], ['kalshi', 'Kalshi']], mv)}</div>
+    <div class="legend2"><span><i class="s"></i>What the streak said</span><span><i class="m"></i>What the line's price said</span><span><i class="a"></i>What actually happened</span></div>
+    <div class="dots"><div class="axis"><span></span><div>${[0, 25, 50, 75, 100].map(v => `<span style="left:${v}%">${v}%</span>`).join('')}</div><span></span></div>${rows}</div>
+    <div class="big">
+      <div><small>"Hot" bets: over when he hit 8+ of 10</small><b class="neg">${per100(hot.roi)}</b><span>per $100 · ${hot.n.toLocaleString()} bets${books ? `; ${per100(HR.books26.hot.roi)} on 2025-26 closing lines` : ''}</span></div>
+      <div><small>"Cold" bets: under when he hit 2 or fewer</small><b class="${cold.roi >= 0 ? '' : 'neg'}">${per100(cold.roi)}</b><span>per $100 · betting every under blind: ${per100(bu.roi)}</span></div>
+      <div><small>Players who beat their lines, again?</small><b>No</b><span>first half vs second half: correlation ${D0.persist.corr.toFixed(2)} (0 = no link)</span></div>
+    </div>
+    <div class="read">
+      <div><b>Why it fails</b>When a player keeps clearing 24.5, the book raises his line. "8 of 10" is usually counted against an old, lower number.</div>
+      <div><b>Ten games is not much</b>A 50% player hits 8+ of 10 about 1 time in 18. With hundreds of players, many look hot by pure chance.</div>
+      <div><b>What a streak is worth</b>At the same price, about ${per100(HR.kalshi.same.cold_under.diff).replace('+', '+')} per $100 on Kalshi: a sliver the price has not caught. Our model already counts recent games, so it is in our numbers, not on top of them.</div>
+    </div>`;
+}
+$('myth').addEventListener('click', e => { const b = e.target.closest('.seg[data-k="mv"] button[data-v]'); if (b){ mv = b.dataset.v; renderMyth(); } });
+renderMyth();
 
 // tabs
 $('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-t]'); if (!b) return;
