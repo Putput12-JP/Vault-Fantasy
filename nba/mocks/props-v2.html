@@ -135,6 +135,20 @@ table.lt small{display:block;font-size:11px;color:var(--fg3)}
 .verdict .plain{font-size:15px;color:var(--fg)}
 .more{justify-self:start;height:30px;padding:0 12px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:12.5px;color:var(--fg2)}
 .more:hover{color:var(--fg)}
+.shp{font-size:11px!important;color:var(--fg2)!important}
+.shp.with{color:var(--up)!important} .shp.against{color:var(--down)!important}
+.xtag{display:inline-flex;align-items:center;height:18px;padding:0 7px;margin-left:6px;border-radius:var(--r-pill);border:1px dashed rgba(251,191,36,.5);color:var(--warn);font-size:10.5px;font-weight:500;vertical-align:2px}
+.shead{display:grid;gap:2px;padding:10px 14px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--fg2)}
+.shead b{color:var(--fg);font-weight:600;font-size:14px}
+.shead.with{background:rgba(74,222,128,.07);border-color:rgba(74,222,128,.35)} .shead.with b{color:var(--up)}
+.shead.against{background:rgba(248,113,113,.07);border-color:rgba(248,113,113,.35)} .shead.against b{color:var(--down)}
+.sg{display:grid;grid-template-columns:118px minmax(0,1fr);gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--border)}
+.sg p{margin:0;font-size:13px}
+.sg small{font-size:11.5px;color:var(--fg3)}
+.sk{display:inline-flex;justify-content:center;height:22px;align-items:center;padding:0 8px;border-radius:var(--r-pill);font-size:11px;font-weight:500;border:1px solid var(--border2);color:var(--fg2);white-space:nowrap}
+.sk.pin{color:var(--info);border-color:rgba(147,197,253,.4)} .sk.acct{color:var(--up);border-color:rgba(74,222,128,.35)} .sk.kal{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.snote{margin:0;font-size:12px;color:var(--fg3)}
+@media (max-width:600px){ .sg{grid-template-columns:minmax(0,1fr);gap:4px} .sk{justify-self:start} }
 .wf{display:grid;gap:5px}
 .wf .wr{display:grid;grid-template-columns:170px minmax(0,1fr) 64px;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}
 .wf .wr > b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
@@ -198,6 +212,45 @@ const kLine = l => `${Math.ceil(l)}+`;
 const betTxt = c => c.venue === 'kalshi' ? `Kalshi ${c.side} on ${kLine(c.line)}` : `${c.bk} ${c.side} ${c.line}`;
 const TIER = {go: ['passed', 'Passed the backtest'], watch: ['tracking', 'Tracking'], 'no-go': ['', 'Untested']};
 
+// ── sharp money per prop ──
+// None of this was recorded for last season's example game, so three props carry EXAMPLE signals showing the three
+// states (with our bet, against it, on a prop we pass); the cross-venue move since open is real wherever a book opened.
+const TIP = X.game.tip, ago = m => TIP - m * 60;
+const SHARP_EX = {
+  'OG Anunoby|3pm': [
+    {t: ago(95), k: 'pin', dir: 'under', txt: 'Pinnacle moved Under 2.5 from -105 to -128 and raised its limit to $1,000', fair: [.555, .583]},
+    {t: ago(70), k: 'acct', dir: 'under', txt: '2 sharp Polymarket accounts bought Under 2.5: $3,400 at 47¢ (NBA record: 61 trades, +2.9% vs the close)', fair: [.561, .583]},
+    {t: ago(40), k: 'kal', dir: 'under', txt: '$2,600 Kalshi ticket on NO 3+ at 49¢', fair: [.575, .583]}],
+  'Josh Hart|ra': [
+    {t: ago(120), k: 'acct', dir: 'over', txt: 'Sharp Polymarket account bought Over 13.5: $2,100 at 52¢ (NBA record: 44 trades, +3.4% vs the close)', fair: [.43, .403]},
+    {t: ago(60), k: 'pin', dir: 'over', txt: 'Pinnacle moved Over 13.5 from +102 to -112', fair: [.42, .403]}],
+  'Jalen Brunson|pts': [
+    {t: ago(150), k: 'pin', dir: 'over', txt: 'Pinnacle moved 27.5 to 28.5 (over -105)', fair: null},
+    {t: ago(35), k: 'kal', dir: 'over', txt: '$6,200 Kalshi ticket on YES 30+ at 44¢', fair: null}],
+};
+const SK = {pin: 'Pinnacle move', acct: 'Sharp accounts', kal: 'Big ticket', mkt: 'Market move'};
+function marketMove(p){
+  let o = 0, u = 0; const txt = [];
+  for (const q of p.quotes.filter(q => q.kind === 'book' && q.open_line != null)){
+    const dl = q.line - q.open_line, po = (x => { x = +x; return x < 0 ? -x / (-x + 100) : 100 / (x + 100); });
+    const dp = dl === 0 && q.open_over != null ? po(q.over) - po(q.open_over) : 0;
+    if (dl > 0 || dp > .005){ o++; txt.push(`${q.v} toward the over (${q.open_line} ${q.open_over} to ${q.line} ${q.over})`); }
+    else if (dl < 0 || dp < -.005){ u++; txt.push(`${q.v} toward the under (${q.open_line} ${q.open_over} to ${q.line} ${q.over})`); }
+  }
+  return {o, u, txt};
+}
+function sharpOf(p){
+  const ex = SHARP_EX[`${p.name}|${p.s}`] || [], mm = marketMove(p);
+  const sig = [...ex];
+  // one retail book moving is not informed money (it shows under Timing); 2+ venues moving the same way is
+  if ((mm.o >= 2 && !mm.u) || (mm.u >= 2 && !mm.o)) sig.push({t: null, k: 'mkt', dir: mm.o ? 'over' : 'under', txt: mm.txt.join('; '), real: true});
+  const o = sig.filter(x => x.dir === 'over').length, u = sig.filter(x => x.dir === 'under').length;
+  const lean = !sig.length ? null : o > u ? 'over' : u > o ? 'under' : 'split';
+  const b = p.verdict !== 'pass' ? p.best : null, bOver = b && (b.side === 'Over' || b.side === 'YES');
+  const vs = !lean || lean === 'split' || !b ? null : (lean === 'over') === bOver ? 'with' : 'against';
+  return {sig, lean, vs, example: ex.length > 0};
+}
+
 // one decision per prop
 for (const p of X.props){
   const best = [...p.cands].sort((a, b) => b.edge - a.edge)[0];
@@ -210,6 +263,7 @@ const PRESETS = [
   ['edges', 'All edges 3%+', p => p.verdict !== 'pass'],
   ['kalno', 'Kalshi NO', p => p.cands.some(c => c.venue === 'kalshi' && c.side === 'NO' && c.edge >= .03)],
   ['pickem', "Pick'em plays", p => p.cands.some(c => c.venue === 'pickem' && c.edge >= .03)],
+  ['sharp', 'Sharp money', p => sharpOf(p).sig.length > 0],
   ['all', 'Everything', () => true],
 ];
 let st = {preset: 'passed', stat: 'all', sort: 'trust', q: '', sel: null, allWays: false};
@@ -236,7 +290,7 @@ function renderList(){
     return `<button class="li" type="button" data-i="${X.props.indexOf(p)}" aria-current="${p === st.sel}">
       <span class="av">${esc(initials(p.name))}</span>
       <span class="who"><b>${esc(p.name)}</b><span>${SL[p.s]} · proj ${fmt(p.mu)} · ${esc(where)}</span></span>
-      <span class="r"><span class="vp ${p.verdict}">${p.verdict.toUpperCase()}</span>${p.verdict !== 'pass' ? `<small class="pos">+${pc(b.edge, 1)}</small>` : '<small class="muted">no edge</small>'}</span></button>`; }).join('')
+      <span class="r"><span class="vp ${p.verdict}">${p.verdict.toUpperCase()}</span>${p.verdict !== 'pass' ? `<small class="pos">+${pc(b.edge, 1)}</small>` : '<small class="muted">no edge</small>'}${(sh => sh.vs ? `<small class="shp ${sh.vs}" title="Sharp money ${sh.vs} this bet">⚡ ${sh.vs}</small>` : sh.lean && sh.example ? `<small class="shp" title="Sharp money leans ${sh.lean}">⚡ ${sh.lean}</small>` : '')(sharpOf(p))}</span></button>`; }).join('')
     : `<p class="empty">${st.preset === 'pickem' ? "No pick'em lines on this board: PrizePicks, Underdog and Sleeper post them on game days." : 'Nothing matches.'}</p>`;
   renderDetail();
 }
@@ -295,6 +349,20 @@ function recentSvg(p, line){
   g10.forEach((r, i) => { const v = r[1], over = v > line;
     s += `<rect x="${L + i * bw + 3}" y="${y(v)}" width="${bw - 6}" height="${Math.max(1, H - B - y(v))}" rx="2" fill="${over ? 'var(--up)' : 'var(--raised)'}"><title>${fmt(v, 0)} vs ${X.opp[r[2]] || ''}</title></rect><text x="${L + i * bw + bw / 2}" y="${H - 8}" text-anchor="middle">${esc(X.opp[r[2]] || '')}</text>`; });
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Last 10 games against the line">${s}</svg>`;
+}
+function sharpSec(p){
+  const S = sharpOf(p), when = t => t ? `${Math.round((TIP - t) / 60)} min before tip` : 'since open';
+  const head = !S.sig.length ? ['none', 'No sharp signal on this prop']
+    : S.vs === 'with' ? ['with', 'Sharp money is with this bet'] : S.vs === 'against' ? ['against', 'Sharp money is against this bet']
+    : S.lean === 'split' ? ['none', 'Sharp signals are split'] : ['none', `Sharp money leans ${S.lean}`];
+  const rows = S.sig.sort((a, b) => (a.t ?? 9e12) - (b.t ?? 9e12)).map(x => `<div class="sg"><span class="sk ${x.k}">${SK[x.k]}</span>
+      <div><p>${esc(x.txt)}</p><small>${when(x.t)} · toward the ${x.dir}${x.fair ? ` · our fair for the ${x.dir} went ${pc(x.fair[0], 1)} to ${pc(x.fair[1], 1)}` : ''}${x.real ? '' : ''}</small></div></div>`).join('');
+  return `<section class="card sec">
+    <div class="sec-h"><h3>Sharp money ${S.example ? '<span class="xtag">Example</span>' : ''}</h3><p>Where informed money went on this prop: Pinnacle's moves, Polymarket accounts with a winning record against the close, big Kalshi tickets, and the market as a whole.</p></div>
+    <div class="shead ${head[0]}"><b>${head[1]}</b>${S.vs === 'against' ? '<span>Worth a second look before betting: sharp accounts beat the closing price on average.</span>' : S.vs === 'with' ? '<span>Agreement adds comfort, not edge: by the time you see it, the price has usually moved.</span>' : ''}</div>
+    ${rows || '<p class="muted" style="margin:0;font-size:13px">No Pinnacle move, sharp-account trade, big ticket or market-wide move on this prop.</p>'}
+    <p class="snote">${S.example ? 'Example signals: the recorder did not capture sharp data for this past game. ' : ''}Context, not a bet. Sharp accounts beat the close, but copying them 30+ minutes later lost money in our study. Each prop signal is graded on closing-line value on the Sharp Price page; none has a record yet.</p>
+  </section>`;
 }
 function renderDetail(){
   const p = st.sel;
@@ -358,9 +426,10 @@ function renderDetail(){
       <div class="sec-h"><h3>Recent games</h3><p>Last ${n10} games against tonight's line of ${line}.</p></div>
       <div class="recent"><div class="chart">${recentSvg(p, line)}</div>
         <div class="honest"><span>Over ${line} in</span><span class="big">${hits} of ${n10}</span>
-          ${cal ? `<span>Sounds like ${pc(hits / Math.max(1, n10))}. Historically, ${cal.l10} at the line has meant about <b>${pc(cal.actual)}</b>, close to what the price said (${pc(cal.market)}). The line already moves to meet a hot player, so trust the price strip above, not the streak.</span>` : ''}
+          ${cal ? `<span>Sounds like ${pc(hits / Math.max(1, n10))}. Historically, ${cal.l10} at the line has meant about <b>${pc(cal.actual)}</b>, close to what the price said (${pc(cal.market)}). The line already moves to meet a hot player, so trust the prices above, not the streak.</span>` : ''}
           ${mainQ && mainQ.p != null ? `<span class="muted">The price tonight says ${pc(mainQ.p)}; we say ${pc(p.curve.find(c => c[0] === line) ? p.curve.find(c => c[0] === line)[1] : null)}.</span>` : ''}</div></div>
     </section>
+    ${sharpSec(p)}
     <section class="card sec">
       <div class="sec-h"><h3>Timing</h3><p>The biggest mispricings come from prices that have not caught up with news.</p></div>
       <div class="moves">
