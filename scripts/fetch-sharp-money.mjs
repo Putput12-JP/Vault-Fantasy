@@ -233,6 +233,44 @@ function pinFair(P, mkt, side, line) {
   return (side === 'home' || side === 'over') ? f : 1 - f;
 }
 
+// ── 2b. Polymarket: every sharp account's own activity ──────────────────
+// The per-market tape only sees taker fills on markets we matched to a game, so
+// a sharp account working a resting limit order, or betting a market we did not
+// match, never shows up. Reading each sharp wallet's own activity closes that,
+// and feeds the Sharp Accounts page (recent buys + current holdings).
+let WT = [];                                                  // new sharp-wallet trades this poll
+async function walletPoll(S, wallets) {
+  const t = now(); S.acct ||= {}; WT = [];
+  await pool(wallets, 6, async w => {
+    const A = S.acct[w] ||= { cur: 0, who: null, trades: [], pos: [] };
+    const cur = A.cur || t - 3 * DAY;
+    let off = 0, newest = cur; const rows = [];
+    for (let p = 0; p < 6; p++) {
+      const r = await getJSON(`https://data-api.polymarket.com/activity?user=${w}&type=TRADE&limit=100&offset=${off}&sortBy=TIMESTAMP&sortDirection=DESC`);
+      if (!Array.isArray(r) || !r.length) break;
+      let old = false;
+      for (const x of r) { if (x.timestamp <= cur) { old = true; continue; } rows.push(x); newest = Math.max(newest, x.timestamp); }
+      if (old || r.length < 100) break; off += 100;
+    }
+    A.cur = newest;
+    for (const x of rows) {
+      A.who = x.pseudonym || x.name || A.who;
+      const usd = x.usdcSize != null ? +x.usdcSize : x.price * x.size; if (usd < 25) continue;
+      const tr = { ts: x.timestamp, side: x.side, usd: Math.round(usd), px: r3(x.price), title: x.title, slug: x.slug, ev: x.eventSlug, out: x.outcome, oi: x.outcomeIndex, cid: x.conditionId, size: x.size,
+        id: x.transactionHash?.slice(0, 18) + ':' + x.outcomeIndex + ':' + Math.round(x.size) };
+      A.trades.push(tr); WT.push({ ...tr, w });
+    }
+    A.trades = A.trades.filter(x => x.ts > t - 7 * DAY).sort((a, b) => b.ts - a.ts).slice(0, 200);
+    // Holdings: only for accounts that traded in the last 3 days.
+    if (A.trades[0] && A.trades[0].ts > t - 3 * DAY) {
+      const ps = await getJSON(`https://data-api.polymarket.com/positions?user=${w}&sizeThreshold=1&limit=40&sortBy=CURRENT&sortDirection=DESC`);
+      if (Array.isArray(ps)) A.pos = ps.filter(x => x.currentValue >= 100 && !x.redeemable).slice(0, 15)
+        .map(x => ({ title: x.title, slug: x.slug, ev: x.eventSlug, out: x.outcome, size: Math.round(x.size), avg: r3(x.avgPrice), cur: r3(x.curPrice), val: Math.round(x.currentValue), cost: Math.round(x.initialValue), pnl: Math.round(x.cashPnl), end: x.endDate }));
+    } else A.pos = [];
+  });
+  for (const [w, A] of Object.entries(S.acct)) if (!A.trades.length && !A.pos.length && A.cur < t - 14 * DAY) delete S.acct[w];
+}
+
 // ── 3. Polymarket: tape by account ──────────────────────────────────────
 async function polymarket(sk, cfg, games, S, W) {
   const evs = await getJSON(`https://gamma-api.polymarket.com/events?series_id=${cfg.pm}&closed=false&limit=300`);
@@ -279,6 +317,21 @@ async function polymarket(sk, cfg, games, S, W) {
       tape.push({ ts: x.timestamp, m: k, side, usd: Math.round(usd), px: r3(px), line: m.line, w: x.proxyWallet, who: x.pseudonym || x.name || null, cls, id: x.transactionHash?.slice(0, 18) + ':' + x.outcomeIndex + ':' + Math.round(x.size) });
     }
   });
+  // Sharp accounts' own trades on these markets (resting-order fills the taker
+  // tape never shows). Same row shape + id as above, so a trade seen both ways
+  // is counted once; `late` makes the alert pass look at it even though it may
+  // be older than the tape's newest row.
+  const byCid = new Map();
+  for (const [g, o] of out) for (const [k, m] of Object.entries(o.mk)) if (m) byCid.set(m.cid, [g, k, m]);
+  for (const x of WT) {
+    const hit = byCid.get(x.cid); if (!hit || !W.sharp.has(x.w)) continue;
+    const [g, k, m] = hit, G = S.games[g.key] ||= {}, tape = G.pm ||= [];
+    if (tape.some(y => y.id === x.id)) continue;
+    const oi = x.side === 'BUY' ? x.oi : 1 - x.oi;
+    const side = k === 'tot' ? (oi === 0 ? 'over' : 'under') : teamSide(g, m.outs[oi]);
+    const px = x.side === 'BUY' ? x.px : 1 - x.px;
+    tape.push({ ts: x.ts, m: k, side, usd: x.usd, px: r3(px), line: m.line, w: x.w, who: S.acct?.[x.w]?.who || null, cls: 'sharp', id: x.id, late: 1 });
+  }
   return out;
 }
 
@@ -489,7 +542,7 @@ function analyse(sk, cfg, g, P, pmInfo, kInfo, S, W) {
 
   // (c) Polymarket sharp accounts, (d) whale tickets (PM + Kalshi).
   const cutoff = t - 40 * 60;
-  const pmNew = (G.pm || []).filter(x => x.ts > (G._pmSeen || 0));
+  const pmNew = (G.pm || []).filter(x => x.ts > (G._pmSeen || 0) || x.late);
   const groups = {};
   for (const x of pmNew.filter(x => x.cls === 'sharp')) (groups[x.m + ':' + x.side] ||= []).push(x);
   for (const [k, xs] of Object.entries(groups)) {
@@ -508,6 +561,7 @@ function analyse(sk, cfg, g, P, pmInfo, kInfo, S, W) {
       text: `$${x.usd.toLocaleString()} ticket on ${x.m === 'ml' ? nameSide(g, x.m, x.side) + ' to win' : nameSide(g, x.m, x.side)} at ${Math.round(x.px * 100)}¢ (${x.src}${x.cls === 'sharp' ? ', sharp account' : x.cls === 'dull' ? ', usually-losing account' : ''})` });
   }
   if (G.pm?.length) G._pmSeen = Math.max(...G.pm.map(x => x.ts));
+  for (const x of G.pm || []) delete x.late;
   if (G.kal?.length) G._kSeen = Math.max(...G.kal.map(x => x.ts));
 
   // (e) Money vs tickets: big-bettor side (money % well above tickets %)
@@ -619,7 +673,15 @@ function payload(S, byGame, W, status) {
   } catch (e) { /* no log */ }
   sigRec.sort((a, b) => b.start - a.start);
   const alerts = S.alerts.filter(a => a.ts > t - 10 * DAY).sort((a, b) => b.ts - a.ts).slice(0, 1500);
-  return { generated: new Date().toISOString(), ts: t, status, wallets: W, games, alerts, sigRec, sigBig: Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sigBig])) };
+  // Sharp Accounts page: each sharp wallet's own buys + current holdings.
+  const accounts = Object.entries(S.acct || {}).filter(([, A]) => A.trades.length || A.pos.length).map(([w, A]) => {
+    const recs = Object.values(WREC).map(r => r[w]).filter(Boolean);
+    const rec = recs.sort((a, b) => b.n - a.n)[0] || null;
+    const b24 = A.trades.filter(x => x.ts > t - DAY && x.side === 'BUY');
+    return { w, who: A.who, rec, last: A.trades[0]?.ts || 0, n7: A.trades.length, buy24: b24.reduce((s, x) => s + x.usd, 0), n24: b24.length,
+      trades: A.trades.slice(0, 25).map(({ ts, side, usd, px, title, slug, out }) => ({ ts, side, usd, px, title, slug, out })), pos: A.pos.map(({ ev, ...x }) => x), posVal: A.pos.reduce((s, x) => s + x.val, 0) };
+  }).filter(a => a.last > t - 7 * DAY || a.pos.length).sort((a, b) => b.buy24 - a.buy24 || b.last - a.last).slice(0, 80);
+  return { generated: new Date().toISOString(), ts: t, status, wallets: W, games, alerts, accounts, sigRec, sigBig: Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sigBig])) };
 }
 
 // ── main ────────────────────────────────────────────────────────────────
@@ -631,6 +693,8 @@ async function pollOnce() {
   // the CFB close by +2.2%/trade (194 trades, t 7, 2026 season). So an account
   // with no record in this sport borrows its sharp label from another sport.
   const OWN = Object.fromEntries(Object.entries(SPORTS).map(([sk, c]) => [sk, loadWallets(c.wallets)]));
+  const allSharp = [...new Set(Object.values(OWN).flatMap(o => [...o.sharp]))];
+  await walletPoll(S, allSharp).catch(e => { status.accounts = 'error: ' + e.message; });
   for (const [sk, cfg] of Object.entries(SPORTS)) {
     const st = status[sk] = {};
     const own = OWN[sk], W = { sharp: new Set(own.sharp), dull: new Set(own.dull), rec: { ...own.rec }, n: own.n, generated: own.generated };
