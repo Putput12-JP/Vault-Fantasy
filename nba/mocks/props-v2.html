@@ -225,6 +225,32 @@ table.lt small{display:block;font-size:11px;color:var(--fg3)}
 .clvbar u{position:absolute;top:0;height:10px}
 .clvbar i{position:absolute;left:50%;top:0;width:1px;height:10px;background:var(--fg3)}
 
+/* ── Phase 3: pick'em pairs ── */
+.tests{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.tst{padding:16px 18px;display:grid;gap:4px;align-content:start}
+.tst .tierp{justify-self:start}
+.tst b{font-size:15px;margin-top:6px}
+.tst .big{font-size:28px;font-weight:600;letter-spacing:-.02em;color:var(--up);font-variant-numeric:tabular-nums}
+.tst .big.muted{color:var(--fg3)}
+.tst span{font-size:12.5px;color:var(--fg2)}
+.tst small{font-size:11.5px;color:var(--fg3);margin-top:4px}
+.pay{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg2)}
+.pay input{height:30px;width:64px;padding:0 8px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--bg);font-size:13px}
+.prs{display:grid}
+.pr{display:grid;grid-template-columns:minmax(0,1.8fr) repeat(3,minmax(0,.7fr)) 64px;gap:4px 16px;align-items:center;padding:12px 18px;border-top:1px solid var(--border)}
+.pr.hl{background:rgba(251,191,36,.04)}
+.pr .p1{display:grid;grid-template-columns:auto;gap:0}
+.pr .p1 b{font-size:13.5px;font-weight:600}
+.pr .p1 span{font-size:11.5px;color:var(--fg3);margin-bottom:3px}
+.pr .p2{display:grid;justify-items:end;line-height:1.25}
+.pr .p2 small{font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em;font-family:var(--font-mono)}
+.pr .p2 b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.pr .p2 span{font-size:11px;color:var(--fg3)}
+.pr .vp{justify-self:end}
+.pr .p3{grid-column:1/-1;font-size:12px;color:var(--fg2)}
+.res2{color:var(--fg3)}
+.pairs-sec .pr{padding-inline:0}
+@media (max-width:1000px){ .tests{grid-template-columns:minmax(0,1fr)} .pr{grid-template-columns:repeat(3,minmax(0,1fr)) auto} .pr .p1{grid-column:1/-1} .pr .p2{justify-items:start} }
 @media (max-width:1000px){
   .main{grid-template-columns:minmax(0,1fr)} .list{position:static;max-height:none}
   .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -243,14 +269,15 @@ table.lt small{display:block;font-size:11px;color:var(--fg3)}
 
 <header class="top">
   <div><h1>Player Props</h1><div class="sub" id="gsub"></div></div>
-  <div class="seg" id="views" role="group" aria-label="View"><button type="button" data-v="props" aria-pressed="true">Props</button><button type="button" data-v="bets" aria-pressed="false">My bets</button></div>
+  <div class="seg" id="views" role="group" aria-label="View"><button type="button" data-v="props" aria-pressed="true">Props</button><button type="button" data-v="pairs" aria-pressed="false">Pick'em pairs</button><button type="button" data-v="bets" aria-pressed="false">My bets</button></div>
   <span class="grow"></span>
   <button class="bell" id="bell" type="button" aria-expanded="false" aria-controls="alerts">Alerts <span class="ct" id="bellct"></span></button>
 </header>
 <main class="wrap">
-  <div class="banner"><b>Design mock, real numbers. Phase 2:</b><span>watchlist with alerts (star a prop), a log of the bets you actually placed with your closing-line value, and stake sizing on Bets. Last season's final game (NY @ SA, June 13, 2026) at its real prices: the line moves, closing prices and results are real; the five watched props and eight logged bets are examples to show the flow. Your stars and bets are saved in this browser.</span></div>
+  <div class="banner"><b>Design mock, real numbers. Phase 3:</b><span>Pick'em pairs: teammate picks that hit together more often than their prices say, from a pre-registered test (points or 3-pointers with a teammate's assists), on its own tab and as "Pairs well with" on each prop. Phase 2: watchlist with alerts (star a prop), a log of the bets you actually placed with your closing-line value, and stake sizing on Bets. Last season's final game (NY @ SA, June 13, 2026) at its real prices: the line moves, closing prices and results are real; the five watched props and eight logged bets are examples to show the flow. Your stars and bets are saved in this browser.</span></div>
   <section class="card alerts" id="alerts" hidden></section>
   <div id="v-bets" class="mb" hidden></div>
+  <div id="v-pairs" class="mb" hidden></div>
   <div id="v-props" class="wrap" style="padding:0;max-width:none">
   <section class="card">
     <div class="tools"><div class="presets" id="presets"></div></div>
@@ -596,11 +623,89 @@ function insights(S, calls){
   if (pass && pass[1].n >= 3) out.push(`<p>Your <b>${pass[1].n} picks we rated Pass</b> averaged <b class="${pass[1].clv >= 0 ? 'pos' : 'neg'}">${sgn(pass[1].clv)}</b> and went ${pass[1].w}-${pass[1].l}${pass[1].clv > .02 ? ': you found prices we did not flag, worth noting where' : pass[1].clv < 0 ? ': on those you paid more than the fair price' : ''}.</p>`);
   return out.join('');
 }
+
+// ── Phase 3: correlated pick'em pairs (docs/pickem-correlation.md, data/pickem_corr.json) ──
+// Only the two families that passed the pre-registered test are used: a player's assists with a teammate's points or
+// 3-pointers, both over or both under. c = the measured covariance on 2025-26 (the untouched test season), so the chance
+// both hit is our chance for each times each other, plus c.
+const CORR = {
+  'pts|ast': {c: .0107, z: 5.1, n: 12096, games: 390, c0: .0081, z0: 3.3, zc: 2.6, label: 'points with a teammate’s assists'},
+  'ast|3pm': {c: .0104, z: 4.2, n: 6817, games: 364, c0: .0126, z0: 3.4, zc: 2.6, label: 'assists with a teammate’s 3-pointers'},
+};
+const CORR_FAIL = {label: 'Teammates’ points with points', c: -.0062, z: -2.5};
+const ck = (a, b) => [a, b].sort((x, y) => ['pts', 'ast', '3pm'].indexOf(x) - ['pts', 'ast', '3pm'].indexOf(y)).join('|');
+let PAY = 3;                                                           // 2-pick power play: PrizePicks and Underdog pay 3x
+const be2 = () => 1 / PAY;
+// one pick'em leg per prop: the line nearest even money (apps post lines near 50/50). The example has no app lines,
+// so the sportsbook line stands in when it is priced between 40% and 60%.
+const LEGS = X.props.filter(p => ['pts', 'ast', '3pm'].includes(p.s)).map(p => {
+  const q = p.quotes.filter(q => q.kind === 'book' && q.p >= .4 && q.p <= .6).sort((a, b) => Math.abs(a.p - .5) - Math.abs(b.p - .5))[0];
+  const c = q && p.cands.find(c => c.venue === 'book' && c.side === 'Over' && c.line === q.line && c.bk === q.v);
+  return c ? {p, line: q.line, fo: c.fair, g: c.g, gu: (p.cands.find(x => x.venue === 'book' && x.side === 'Under' && x.line === q.line) || {}).g || 'no-go'} : null;
+}).filter(Boolean);
+function pairsAll(){
+  const out = [];
+  for (let i = 0; i < LEGS.length; i++) for (let j = i + 1; j < LEGS.length; j++){
+    const A = LEGS[i], B = LEGS[j], F = CORR[ck(A.p.s, B.p.s)];
+    if (!F || A.p.name === B.p.name || A.p.team !== B.p.team) continue;
+    for (const side of ['over', 'under']){
+      const fa = side === 'over' ? A.fo : 1 - A.fo, fb = side === 'over' ? B.fo : 1 - B.fo, ind = fa * fb, joint = ind + F.c;
+      const ev = PAY * joint - 1, gates = side === 'over' ? [A.g, B.g] : [A.gu, B.gu];
+      const v = ev >= .03 ? (gates.every(g => g === 'go') ? 'bet' : 'lean') : 'pass';
+      const r = A.p.result != null && B.p.result != null ? (side === 'over' ? A.p.result > A.line && B.p.result > B.line : A.p.result < A.line && B.p.result < B.line) : null;
+      out.push({A, B, side, fa, fb, ind, joint, ev, v, F, hit: r, k: `${keyOf(A.p)}+${keyOf(B.p)}+${side}`});
+    }
+  }
+  return out.sort((a, b) => VRANK[a.v] - VRANK[b.v] || b.ev - a.ev);
+}
+const legTxt = (L, side) => `${esc(L.p.name)} ${side === 'over' ? 'Over' : 'Under'} ${L.line} ${NOUN[L.p.s]}`;
+function pairRow(x, compact){
+  const need = Math.sqrt(Math.max(0, be2() - x.F.c));
+  return `<div class="pr ${x.v === 'pass' ? '' : 'hl'}">
+    <div class="p1"><b>${legTxt(x.A, x.side)}</b><span>our chance ${pc(x.fa)}${x.A.p.team ? '' : ''}</span><b>${legTxt(x.B, x.side)}</b><span>our chance ${pc(x.fb)}</span></div>
+    <div class="p2"><small>Both hit</small><b>${pc(x.joint, 1)}</b><span>${pc(x.ind, 1)} if unrelated</span></div>
+    <div class="p2"><small>Needs</small><b>${pc(be2(), 1)}</b><span>${PAY}x pays</span></div>
+    <div class="p2"><small>$10 entry</small><b class="${x.ev >= 0 ? (x.v === 'pass' ? 'muted' : 'pos') : 'neg'}">${x.ev >= 0 ? '+' : '-'}$${Math.abs(10 * x.ev).toFixed(2)}</b><span>on average</span></div>
+    <span class="vp ${x.v}">${x.v.toUpperCase()}</span>
+    ${compact ? '' : `<div class="p3">${x.v === 'pass' ? `Each pick needs about ${pc(need, 1)} for this pair to pay; together they reach ${pc(x.joint, 1)} of the ${pc(be2(), 1)} needed.` : `The pairing is proven (${x.F.label}, +${pc(x.F.c / .25, 1)} on a 2-pick); ${x.v === 'bet' ? 'both picks are bet types that passed the backtest.' : 'the two picks rest on our model, which is untested on these lines. Worth a look, not a stake.'}`}${x.hit != null ? ` <span class="res2">What happened (example only): ${x.hit ? '<b class="pos">both hit</b>' : '<b class="neg">did not both hit</b>'}.</span>` : ''}</div>`}
+  </div>`;
+}
+function renderPairs(){
+  const all = pairsAll(), play = all.filter(x => x.v !== 'pass'), show = st.pairAll ? all : play.length ? play : all.slice(0, 8);
+  const need = (F) => Math.sqrt(be2() - F.c);
+  $('v-pairs').innerHTML = `
+    <section class="card read">
+      <p class="big">Two kinds of teammate picks hit together more often than their prices say.</p>
+      <p>PrizePicks and Underdog pay the same ${PAY}x on any 2-pick entry, as if the picks had nothing to do with each other. A player's <b>assists</b> and his teammate's <b>points</b> or <b>3-pointers</b> do: when one goes over, the other tends to as well (the passes become the shots), and when one goes under, so does the other. Pair them the same way, both over or both under, and the entry wins more often than the app pays for.</p>
+      <p>The lift is modest: about <b>4%</b> on a 2-pick. On a ${PAY}x entry it lowers the bar each pick has to clear from <b>${pc(Math.sqrt(be2()), 1)}</b> to about <b>${pc(need(CORR['pts|ast']), 1)}</b>. Pairing helps good picks; it does not rescue bad ones.</p>
+    </section>
+    <div class="tests">${Object.entries(CORR).map(([k, F]) => `<section class="card tst"><span class="tierp passed">Passed a pre-registered test</span><b>${k === 'pts|ast' ? 'Points with assists' : 'Assists with 3-pointers'}</b>
+        <span class="big">+${pc(F.c / .25, 1)}</span><span>more often both hit on a 2-pick, teammates, both over or both under</span>
+        <small>2025-26, a season it was never tuned on: ${F.n.toLocaleString()} pairs, ${F.games} games, ${F.z} standard errors from zero (counted by game). Found first in 2024-25 (${F.z0}); holds at closing prices (${F.zc}).</small></section>`).join('')}
+      <section class="card tst"><span class="tierp">Did not pass</span><b>Everything else</b><span class="big muted">none</span><span>reliable enough to use</span>
+        <small>${CORR_FAIL.label} tend to split (one over, one under) but by only ${pc(-CORR_FAIL.c / .25, 1)}, under the 4% bar. Opponents' stats, rebounds and the other 27 combinations showed nothing that held up.</small></section></div>
+    <section class="card">
+      <div class="tools"><b style="font-size:14px">Pairs on this game</b><span class="grow"></span>
+        <label class="pay">Your app pays <input id="pay" type="number" min="2" max="5" step="0.25" value="${PAY}" aria-label="2-pick payout multiple">x on a 2-pick</label>
+        <div class="seg" id="pairseg"><button type="button" data-pa="0" aria-pressed="${!st.pairAll}">Worth a look (${play.length})</button><button type="button" data-pa="1" aria-pressed="${!!st.pairAll}">All pairs (${all.length})</button></div></div>
+      <div class="prs">${show.map(x => pairRow(x)).join('') || '<p class="empty">No pairs on this board.</p>'}</div>
+      ${!play.length ? '<p class="empty">No pair clears the payout at these prices; showing the closest.</p>' : ''}
+      ${(() => { const cnt = {}; for (const x of play) for (const L of [x.A, x.B]){ const k = legTxt(L, x.side); cnt[k] = (cnt[k] || 0) + 1; }
+        const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+        return top && top[1] >= 2 ? `<p class="empty" style="color:var(--warn)">These pairs share picks: ${top[0]} is in ${top[1]} of them. Playing several is mostly one bet on that pick, so they tend to win or lose together.</p>` : ''; })()}
+    </section>
+    <p class="snote">Lines: pick'em apps post their own lines on game days; this example uses the sportsbook line where it sits near even money, as the apps' lines do. Our chance for each pick is the same fair price as the Props page. Only teammates, only the two tested combinations, and only 2-pick entries: apps do not allow the same player twice, picks from different games are unrelated, and longer entries were not tested.</p>`;
+}
+function pairsFor(p){
+  return pairsAll().filter(x => x.A.p === p || x.B.p === p).slice(0, 3);
+}
+
 function setView(v){
   st.view = v;
   document.querySelectorAll('#views [data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
-  $('v-props').hidden = v !== 'props'; $('v-bets').hidden = v !== 'bets';
+  $('v-props').hidden = v !== 'props'; $('v-bets').hidden = v !== 'bets'; $('v-pairs').hidden = v !== 'pairs';
   if (v === 'bets') renderBets();
+  if (v === 'pairs') renderPairs();
 }
 function openProp(k){
   const p = PROP[k]; if (!p) return;
@@ -705,6 +810,10 @@ function renderDetail(){
       <div class="sec-h"><h3>Ways to bet it</h3><p>Every venue, line and side for this prop, the recommended bet first. Value is what a $100 bet makes on average if our chance is right; fees and vig are already in the price. Pass means the edge is under 3%: a small plus there is inside the model's margin of error.</p></div>
       ${waysTable(p)}
     </section>
+    ${['pts', 'ast', '3pm'].includes(p.s) ? (P3 => `<section class="card sec pairs-sec">
+      <div class="sec-h"><h3>Pairs well with</h3><p>On a pick'em 2-pick, ${p.s === 'ast' ? 'his assists go with a teammate\'s points or 3-pointers' : 'his ' + NOUN[p.s] + ' go with a teammate\'s assists'}: both over or both under hit together about 4% more often than the prices say (a pre-registered test). Best pairs for him on this game:</p></div>
+      <div class="prs">${P3.length ? P3.map(x => pairRow(x, true)).join('') : '<p class="muted" style="margin:0;font-size:13px">No teammate line near even money to pair with.</p>'}</div>
+      <button class="more" type="button" data-goview="pairs">All pick'em pairs</button></section>`)(pairsFor(p)) : ''}
     <section class="card sec">
       <div class="sec-h"><h3>Why our number is ${fmt(p.mu)}</h3><p>From his usual game to tonight, in ${SL[p.s].toLowerCase()}. Each step is a piece of the model; together they are exactly the projection.</p></div>
       ${waterfall(p)}
@@ -741,6 +850,7 @@ $('detail').addEventListener('click', e => {
   const lg = t.closest('[data-log]'); if (lg){ st.logIdx = +lg.dataset.log; renderDetail(); const f = document.querySelector('.logf input[name="price"]'); if (f) f.focus(); return; }
   if (t.closest('[data-logcancel]')){ st.logIdx = null; renderDetail(); return; }
   if (t.closest('[data-view="bets"]')) setView('bets');
+  if (t.closest('[data-goview]')){ setView('pairs'); window.scrollTo({top: 0, behavior: 'smooth'}); }
 });
 $('detail').addEventListener('change', e => { const wt = e.target.closest('[data-wt]'); if (wt && st.sel){ WATCH[keyOf(st.sel)][wt.dataset.wt] = wt.checked; saveP2(); renderBell(); } });
 $('detail').addEventListener('submit', e => {
@@ -750,6 +860,8 @@ $('detail').addEventListener('submit', e => {
   BETS.unshift(b); st.logIdx = null; saveP2(); renderList();
   toast('Saved to My bets. This example game is over, so it settled right away.');
 });
+$('v-pairs').addEventListener('click', e => { const b = e.target.closest('[data-pa]'); if (b){ st.pairAll = b.dataset.pa === '1'; renderPairs(); } });
+$('v-pairs').addEventListener('change', e => { if (e.target.id === 'pay'){ const v = +e.target.value; if (v >= 2 && v <= 5){ PAY = v; renderPairs(); } } });
 $('views').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); });
 $('bell').addEventListener('click', () => { const open = $('alerts').hidden; $('alerts').hidden = !open; $('bell').setAttribute('aria-expanded', open); if (open) renderAlerts(); });
 $('alerts').addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openProp(o.dataset.open); });
