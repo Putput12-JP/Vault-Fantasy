@@ -1997,6 +1997,12 @@ const lg = p => { p = Math.min(Math.max(p, 1e-4), 1 - 1e-4); return Math.log(p /
 const blendP = (c, mkt, mdl) => 1 / (1 + Math.exp(-(c.a + c.wm * lg(mkt) + c.wp * lg(mdl))));
 const amP = a => { a = +a; if (!isFinite(a) || a === 0) return null; return a > 0 ? 100 / (a + 100) : -a / (-a + 100); };
 const kFee = p => Math.ceil(0.07 * p * (1 - p) * 100 - 1e-9) / 100;
+// What a venue can fill at the price shown, in dollars: Kalshi = contracts resting at the best price x their cost with
+// the fee; Polymarket = dollars resting within 1c of the best price (the recorder reads the order books each poll).
+// Sportsbooks: null (their limits are not public). A stake never goes past this.
+const fillUSD = c => c.venue === 'kalshi' ? (c.size != null ? c.size * (c.price + kFee(c.price)) : null) : (c.avail ?? null);
+const fillTxt = c => { const v = fillUSD(c); if (v == null) return '';
+  return c.venue === 'kalshi' ? `${Math.round(c.size).toLocaleString()} contracts ($${Math.round(v).toLocaleString()}) at this price` : `about $${Math.round(v).toLocaleString()} within 1¢ of this price`; };
 
 // Consensus engine (scripts/consensus.py): the implied mean whose distribution (the model's shape) best matches the
 // quotes [line, P(over) vig removed, weight]; one quote is reproduced exactly, several by weighted log-odds fit.
@@ -2275,13 +2281,13 @@ function priceRow(e, cache){
   const kc = PR.kalshi[e.s] || PR.book[e.s], bc = PR.book[e.s];
   const model = line => mm && mm.min > 0 ? cal(e.s, pOverRaw(e.s, mm.mu, line, mm.extra)) : null;
   // books: fair over at each book's line
-  r.books = e.books.map(([bk, line, o, u, l0, o0, t]) => {
+  r.books = e.books.map(([bk, line, o, u, l0, o0, t, dp]) => {
     const po = amP(o), pu = amP(u); if (po == null || pu == null || line == null) return null;
     const mkt = po / (po + pu), pm = model(line), fair = pm != null && bc ? blendP(bc, mkt, pm) : null;
-    const b = {bk, line, o, u, l0, o0, mkt, pm, fair};
+    const b = {bk, line, o, u, l0, o0, mkt, pm, fair, dp};
     if (fair != null){
-      r.cands.push({venue: 'book', bk, side: 'Over', line, price: o, edge: fair - po, fair, g: gate('book', e.s, 'Over'), t});
-      r.cands.push({venue: 'book', bk, side: 'Under', line, price: u, edge: (1 - fair) - pu, fair: 1 - fair, g: gate('book', e.s, 'Under'), t});
+      r.cands.push({venue: 'book', bk, side: 'Over', line, price: o, edge: fair - po, fair, g: gate('book', e.s, 'Over'), t, avail: dp ? dp[0] : null});
+      r.cands.push({venue: 'book', bk, side: 'Under', line, price: u, edge: (1 - fair) - pu, fair: 1 - fair, g: gate('book', e.s, 'Under'), t, avail: dp ? dp[1] : null});
     }
     return b;
   }).filter(Boolean);
@@ -2980,7 +2986,12 @@ function renderEdges(){
   const sizedAll = all.filter(p => p.stake), byGame = {};
   for (const p of sizedAll) (byGame[p.r.e.g] = byGame[p.r.e.g] || []).push(p);
   for (const ps of Object.values(byGame)){ const tot = ps.reduce((a, p) => a + p.stake, 0), lim = GAME_CAP * ecfg.cap * ecfg.bank; if (tot > lim) ps.forEach(p => { p.stake *= lim / tot; p.scaled = true; }); }
-  for (const p of sizedAll){ if (p.venue === 'kalshi'){ p.n = Math.floor(p.stake / p.costP); p.stake = p.n * p.costP; } p.ev = p.stake * p.edgeP / p.costP; }
+  for (const p of sizedAll){
+    const av = fillUSD(p);                                                    // never past what the order book holds
+    if (av != null && p.stake > av){ p.stake = av; p.capped = av; }
+    if (p.venue === 'kalshi'){ p.n = Math.floor(p.stake / p.costP); if (p.size != null) p.n = Math.min(p.n, Math.floor(p.size)); p.stake = p.n * p.costP; }
+    p.ev = p.stake * p.edgeP / p.costP;
+  }
 
   $('ebanner').hidden = pick.mode !== 'example';
   $('ebanner').innerHTML = pick.mode === 'example' ? `<b>Example: last season's final game at its pre-tip prices.</b><span>${liveN ? '' : 'No props are listed yet; Kalshi lists them the morning of a game. '}The example has no timestamps or news, so only model, price gap and ladder edges show, and there is no order book.</span>${liveN ? '<button class="linkbtn" id="eex" type="button">Back to the live board</button>' : ''}` : '';
@@ -3022,7 +3033,7 @@ function renderEdges(){
         <div class="ev-ev">${ec(p.edgeP)}</div>
         <div class="ev-why">${p.types.map(t => `<span class="ev-chip ${t}">${ETYPES[t]}</span>`).join('')}</div>
         <div class="ev-conf">${pill(p.tier, TIER[p.tier])}</div>
-        <div class="ev-stk">${p.stake != null ? `$${p.stake.toFixed(0)}${p.scaled ? '*' : ''}<small>${p.n != null ? p.n + ' contracts' : 'shadow'}</small>` : '<small>not sized</small>'}</div>
+        <div class="ev-stk"${p.capped != null ? ` title="Capped: the order book only holds about $${Math.round(p.capped).toLocaleString()} at this price"` : ''}>${p.stake != null ? `$${p.stake.toFixed(0)}${p.scaled ? '*' : ''}<small>${p.capped != null ? 'all the book holds' : p.n != null ? p.n + ' contracts' : 'shadow'}</small>` : '<small>not sized</small>'}</div>
         <div class="ev-chevc">${chev}</div>
       </div>${ef.open.has(key(p)) ? evCase(p, B) : ''}</article>`;
   const head = `<div class="ev-colh"><span>Bet</span><span>Best price</span><span>Cost vs fair</span><span class="r">Edge</span><span>Why</span><span>Confidence</span><span class="r">Stake</span><span></span></div>`;
@@ -3058,7 +3069,7 @@ function renderEdges(){
   $('efoot').innerHTML = `
     <div><b>Edges</b> are every price at ${pc(EDGE_MIN)}+ off our fair after fees, on Kalshi, the sportsbooks, Polymarket and the pick'em apps. Fair is either the model (projection blended with the price) or the consensus of the other venues moved to this line (<code>scripts/consensus.py</code>), whichever edge fired; when both did, the bigger. Several venues or rungs for the same player, stat and side are one play: the best price is sized and the others are listed.</div>
     <div><b>Types:</b> News lag = an injury or lineup change in the last 3 hours that is newer than the price. Stale line = another venue moved 15+ minutes after this one last did. Ladder gap = a Kalshi rung off the rest of its ladder and the books (passed on points and 3PM NO). Price gap = a venue off the other venues' consensus. Model edge = our projection disagrees.</div>
-    <div><b>Stake:</b> Kelly fraction (fair − cost) ÷ (1 − cost) times your multiple, capped per play; a game's plays together at most ${GAME_CAP}× the cap. Every edge here is also logged and settled in the Track Record.</div>`;
+    <div><b>Stake:</b> Kelly fraction (fair − cost) ÷ (1 − cost) times your multiple, capped per play; a game's plays together at most ${GAME_CAP}× the cap; and never more than the venue holds at that price (Kalshi: contracts at the best price; Polymarket: dollars within 1¢, read from the order books each poll). Every edge here is also logged and settled in the Track Record.</div>`;
 }
 $('ebank').addEventListener('change', e => { const v = +e.target.value; if (v > 0){ ecfg.bank = v; store.set('nba-edges', ecfg); renderEdges(); } });
 $('ekelly').addEventListener('click', e => { const k = e.target.closest('button')?.dataset.k; if (k){ ecfg.kf = +k; store.set('nba-edges', ecfg); renderEdges(); } });
@@ -4053,7 +4064,7 @@ function pvWays(r){
       <div class="w1"><b>${esc(pvBetName(c))} · ${esc(c.bk)}</b><span>${esc(pvOutcome(c, r.e.s))}</span></div>
       <div class="w2"><b class="${ev < 0 ? 'neg' : v === 'pass' ? 'muted' : 'pos'}">${pvUsd(ev)}</b><small>per $100</small></div>
       <span class="pv-vp ${v}">${v.toUpperCase()}</span>
-      <div class="w3"><span>${c.venue === 'kalshi' ? `${Math.round(pvCost(c) * 100)}¢ (${Math.round(c.price * 100)}¢ + fee)` : c.price == null ? `flat pick (break-even ${pc(PK_BE, 1)})` : `${esc(String(c.price))} (${pc(pvCost(c))} with the vig)`} · our chance ${pc(c.fair)} · $10 wins $${fmt(pvWin10(c), 2)}</span><button class="pv-ghost" type="button" data-log="${r.all.indexOf(c)}">Log bet</button></div>${pv.logIdx === r.all.indexOf(c) ? pvLogForm(r, c) : ''}</div>`; };
+      <div class="w3"><span>${c.venue === 'kalshi' ? `${Math.round(pvCost(c) * 100)}¢ (${Math.round(c.price * 100)}¢ + fee)` : c.price == null ? `flat pick (break-even ${pc(PK_BE, 1)})` : `${esc(String(c.price))} (${pc(pvCost(c))} with the vig)`} · our chance ${pc(c.fair)} · $10 wins $${fmt(pvWin10(c), 2)}${fillTxt(c) ? ` · ${fillTxt(c)}` : ''}</span><button class="pv-ghost" type="button" data-log="${r.all.indexOf(c)}">Log bet</button></div>${pv.logIdx === r.all.indexOf(c) ? pvLogForm(r, c) : ''}</div>`; };
   return `${ref && ref !== top && pvRowV(top) !== 'pass' ? `<div class="pv-shop"><b>Shopping matters here.</b> The recommended bet is worth <b class="pos">${pvUsd(pvEV(top))}</b> per $100; the main line at ${esc(ref.bk)} (${esc(pvBetName(ref))}) is worth <b class="${pvEV(ref) >= 0 ? 'pos' : 'neg'}">${pvUsd(pvEV(ref))}</b>.</div>` : ''}
     <div class="pv-ways">${rows.map(tr).join('')}</div>${!open ? `<button class="pv-more" type="button" data-allways="1">Show all ${all.length} ways</button>` : ''}`;
 }
@@ -4171,7 +4182,7 @@ const pvMoney = x => (x < 0 ? '-$' : '+$') + Math.abs(x).toFixed(2);
 const pvUnseen = () => pvA.filter(a => !a.seen).length;
 function pvNavCount(){ try { return pvUnseen(); } catch (e) { return 0; } }   // the nav renders before this block runs
 const pvKelly = (fair, cost) => cost > 0 && cost < 1 ? Math.max(0, (fair - cost) / (1 - cost)) : 0;
-const pvStakeFor = (fair, cost) => ecfg.bank * Math.min(ecfg.cap, ecfg.kf * pvKelly(fair, cost));
+const pvStakeFor = (fair, cost, c) => { const s = ecfg.bank * Math.min(ecfg.cap, ecfg.kf * pvKelly(fair, cost)), av = c ? fillUSD(c) : null; return av != null ? Math.min(s, av) : s; };
 const PV_KF = {0.125: '⅛', 0.25: '¼', 0.5: '½'};
 PV_PRESETS.splice(5, 0, ['watch', 'Watching', r => !!pvW[pvKey(r)]]);
 
@@ -4250,12 +4261,12 @@ function pvWatchUI(r){
     ${w ? `<div class="pv-watch"><b>Alert me when</b><div class="pv-chk">${PV_WT.map(([t, l]) => `<label><input type="checkbox" data-wt="${t}" ${w[t] ? 'checked' : ''}> ${l}</label>`).join('')}</div><small>${PS.mode === 'example' ? 'The example board never changes, so it will not raise alerts; star props on a live board.' : 'Alerts land under Alerts at the top of this page and as a count on Player Props in the menu.'}</small></div>` : ''}`;
 }
 function pvStakeHtml(c){
-  const s = pvStakeFor(c.fair, pvCost(c));
-  return `<p class="pv-stake">Suggested stake <b>$${s.toFixed(0)}</b><span>${PV_KF[ecfg.kf] || ''} Kelly on your $${ecfg.bank.toLocaleString()} bankroll, at most ${ecfg.cap * 100}% a play. Set on Edges.</span></p>`;
+  const s = pvStakeFor(c.fair, pvCost(c), c), full = pvStakeFor(c.fair, pvCost(c)), av = fillUSD(c);
+  return `<p class="pv-stake">Suggested stake <b>$${s.toFixed(0)}</b><span>${s < full - 0.5 ? `Capped: the order book only holds about $${Math.round(av).toLocaleString()} at this price (Kelly would say $${full.toFixed(0)}). ` : ''}${PV_KF[ecfg.kf] || ''} Kelly on your $${ecfg.bank.toLocaleString()} bankroll, at most ${ecfg.cap * 100}% a play. Set on Edges.</span></p>`;
 }
 function pvLogForm(r, c){
   const v = pvRowV(c), kal = c.venue === 'kalshi', flat = c.venue === 'pickem' && c.price == null;
-  const s = v === 'bet' ? Math.max(1, Math.round(pvStakeFor(c.fair, pvCost(c)))) : 10;
+  const s = v === 'bet' ? Math.max(1, Math.round(pvStakeFor(c.fair, pvCost(c), c))) : 10;
   return `<form class="pv-logf" data-logform="${r.all.indexOf(c)}">
     <label>Price you got<input name="price" value="${flat ? 'flat' : kal ? Math.round(c.price * 100) : esc(String(c.price))}" ${flat ? 'readonly' : ''} inputmode="${kal ? 'decimal' : 'text'}" aria-label="Price you got${kal ? ' in cents' : ''}"></label>
     <label>Stake $<input name="stake" type="number" min="1" step="1" value="${s}"></label>

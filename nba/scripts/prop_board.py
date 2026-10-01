@@ -17,7 +17,7 @@ Board shape (compact, it ships in the page):
     news = [[t, pid, name, team, 'inj' | 'lu', status]] newest first; book / Kalshi / pick'em rows end with their last
     change time)
    lineup = NBA.com: 'S' confirmed starter, 's' expected starter, 'B' confirmed bench, 'b' expected bench, 'X' inactive,
-   props: [{p, s, g, kal: [[line, bid, ask, open_mid, bid_size, ask_size]],   sizes = contracts at the best price books: [[book, line, over, under, open_line, open_over]],
+   props: [{p, s, g, kal: [[line, bid, ask, open_mid, bid_size, ask_size]],   sizes = contracts at the best price books: [[book, line, over, under, open_line, open_over, changed, depth]] (depth: Polymarket only, [$ over, $ under] within 1c),
             pk: [[app, line, over, under, open_line]]}],     books include Polymarket (fee in); pk = pick'em apps
    unmapped: {venue: count}}
 Kalshi rung "25+" is YES iff stat > 24.5, so its line is the floor strike, same convention as a book line.
@@ -78,7 +78,7 @@ def pin_stat(label):
     return None
 
 
-def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None):
+def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None, pm_depth=None):
     """games: pre-tip slate games; last/meta/first: {src: {key: value}} current rows, their metadata and the
     first value seen today."""
     R = Roster(proj)
@@ -198,7 +198,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
         f = (first.get('polymarket') or {}).get(k)
         if o and u:
             entry(pid, stat, g)['books'].append(['Polymarket', float(m['line']), o, u, float(m['line']) if f else None,
-                                                  prob_am(f[1] + fee(f[1])) if f and f[1] and 0 < f[1] < 1 else None, W('polymarket', k)])
+                                                  prob_am(f[1] + fee(f[1])) if f and f[1] and 0 < f[1] < 1 else None, W('polymarket', k),
+                                                  (pm_depth or {}).get(k)])      # [$ over, $ under] within 1c (snapshot.pm_depth)
             qk[(R.info[pid][1], str(g['id']))].append(('Polymarket', 'polymarket', k))
         if pid:
             pkeys['polymarket'][k] = [pid, stat, float(m['line']), str(g['id'])]

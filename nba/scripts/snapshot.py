@@ -141,6 +141,34 @@ class Slate:
 KAL_SIZE = {}     # ticker -> [yes bid size, yes ask size]: contracts at the best prices. Board only (changes every
                   # poll; logging it would multiply the day files), so capacity is live, not historical.
 KAL_VOL = {}      # ticker -> contracts traded, all time: Sharp Price diffs it poll to poll for heavy prop flow
+PM_DEPTH = {}     # Polymarket market id -> [$ to buy the first outcome, $ to buy the second] within 1c of the best price,
+                  # from the CLOB order books. Board only, like KAL_SIZE: what a stake can actually fill right now.
+
+
+def pm_depth(tokens):
+    """{market id: first-outcome token} -> PM_DEPTH. One POST per 100 books (clob.polymarket.com/books, free, keyless).
+    The first outcome's book holds both sides: its asks fill a buy of that outcome, its bids a buy of the other one."""
+    PM_DEPTH.clear()
+    ids = list(tokens.items())
+    for i in range(0, len(ids), 100):
+        chunk = ids[i:i + 100]
+        body = json.dumps([{'token_id': t} for _, t in chunk])
+        try:
+            p = subprocess.run(['curl', '-s', '--max-time', '30', '-X', 'POST', 'https://clob.polymarket.com/books', '-H', 'Content-Type: application/json', '-d', body],
+                               capture_output=True, text=True)
+            books = {b.get('asset_id'): b for b in json.loads(p.stdout or '[]')}
+        except (ValueError, OSError):
+            continue
+        for k, t in chunk:
+            b = books.get(t)
+            if not b:
+                continue
+            asks = [(float(x['price']), float(x['size'])) for x in b.get('asks') or []]
+            bids = [(float(x['price']), float(x['size'])) for x in b.get('bids') or []]
+            ba, bb = min((a for a, _ in asks), default=None), max((a for a, _ in bids), default=None)
+            yes = sum(a * z for a, z in asks if a <= ba + 0.01 + 1e-9) if ba is not None else 0
+            no = sum((1 - a) * z for a, z in bids if a >= bb - 0.01 - 1e-9) if bb is not None else 0
+            PM_DEPTH[k] = [round(yes), round(no)]
 
 
 def src_kalshi(slate):
@@ -246,7 +274,7 @@ def src_action(slate):
 
 
 def src_polymarket(slate):
-    rows, meta = {}, {}
+    rows, meta, tok0 = {}, {}, {}
     for e in curl(f'https://gamma-api.polymarket.com/events?series_id={PM_SERIES}&closed=false&limit=500'):
         for m in e.get('markets', []):
             start = iso(m.get('gameStartTime', '').replace(' ', 'T').replace('+00', '+00:00') if m.get('gameStartTime') else e.get('endDate'))
@@ -255,9 +283,14 @@ def src_polymarket(slate):
             k = str(m['id'])
             rows[k] = [num(m.get('bestBid')), num(m.get('bestAsk')), num(m.get('lastTradePrice'))]
             fs = m.get('feeSchedule') or {}
+            try:
+                tok0[k] = json.loads(m.get('clobTokenIds') or '[]')[0]
+            except (ValueError, IndexError):
+                pass
             meta[k] = {'event': e.get('slug'), 'q': m.get('question'), 'type': m.get('sportsMarketType'),
                        'line': m.get('line'), 'outcomes': m.get('outcomes'), 'start': start, 'cid': m.get('conditionId'),
                        'fee': fs.get('rate') if m.get('feesEnabled') else 0}   # taker fee per share = rate x p x (1 - p)
+    pm_depth(tok0)
     return rows, meta
 
 
@@ -631,7 +664,7 @@ def write_board(root, day, slate):
     try:
         from prop_board import build
         proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
-        board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE, when=day.when,
+        board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE, pm_depth=PM_DEPTH, when=day.when,
                       wire=(day.hist, day.log, day.t0))
         try:                                            # Sharp Price: Pinnacle history, tapes, signals (sharp.py)
             import sharp
