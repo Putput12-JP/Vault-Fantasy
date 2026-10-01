@@ -620,11 +620,29 @@ def write_board(root, day, slate):
                       wire=(day.hist, day.log, day.t0))
         with open(BOARD, 'w') as f:
             json.dump(board, f, separators=(',', ':'))
+        save_wire(day, board.get('wire') or [], slate.now)
         print(f"  board      {len(board['props'])} player-stat markets, unmapped {board['unmapped']}", flush=True)
         return board
     except Exception:
         traceback.print_exc(limit=2)
         return None
+
+
+def save_wire(day, events, now):
+    """Keep today's Injury Wire in the day folder (snapshots/<day>/wire.json): every event with its venue reactions,
+    updated each poll until its game tips, then frozen (after tip the game leaves the board). Settlement turns the
+    days into the season's venue record (ledger.wire_record)."""
+    path = os.path.join(day.dir, 'wire.json')
+    try:
+        kept = json.load(open(path)) if os.path.exists(path) else {}
+    except ValueError:
+        kept = {}
+    for e in events:
+        k = f"{e[0]}|{e[1]}|{e[2]}|{e[3] or e[4]}"
+        if k not in kept or now < kept[k][-1]:                     # before tip: the latest reactions win
+            kept[k] = e
+    with open(path, 'w') as f:
+        json.dump(kept, f, separators=(',', ':'))
 
 
 def shadow(root, day, board, now, polls):

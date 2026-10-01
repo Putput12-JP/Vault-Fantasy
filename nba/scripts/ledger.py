@@ -179,6 +179,32 @@ def load_src(root, src, since):
     return L
 
 
+def wire_record(root, now, prev, rescan_days=3):
+    """The Injury Wire's season record: per ET day, per venue, per kind of news (inj / five / inactive), the quotes
+    affected, how many moved before tip, and each change's first-move time in seconds (-1 = never moved before tip).
+    Read from snapshots/<day>/wire.json (snapshot.save_wire); days older than the rescan window are kept as they were."""
+    days = dict(prev or {})
+    since = tip_day(now - rescan_days * 86400)
+    for d in sorted(glob.glob(os.path.join(root, 'snapshots', '20*'))):
+        day = os.path.basename(d)
+        path = os.path.join(d, 'wire.json')
+        if day < since or not os.path.exists(path):
+            continue
+        try:
+            events = json.load(open(path)).values()
+        except ValueError:
+            continue
+        rec = {}
+        for e in events:
+            for venue, (n, m, med, first) in (e[7] or {}).items():
+                r = rec.setdefault(venue, {}).setdefault(e[1], {'n': 0, 'm': 0, 'f': []})
+                r['n'] += n
+                r['m'] += m
+                r['f'].append(int(first) if first is not None else -1)
+        days[day] = rec
+    return days
+
+
 def minutes_record(root, now, prev, rescan_days=3):
     """Per tip day: projected minutes (last value before tip) against the box score. Players who did not play are
     counted apart (books void their props; the backtest scored players who played). Days already final are kept."""
@@ -460,7 +486,8 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     open_days = sorted(d for d, bs in changed.items() if any(b['result'] == 'open' for b in bs))
     n = sum(r[CUBE_COLS.index('bets')] for r in cube)
     minutes_days = minutes_record(root, now, track.get('minutes_days'), rescan_days)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days,
+    wire_days = wire_record(root, now, track.get('wire_days'), rescan_days)
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs()}
     with open(tpath, 'w') as f:

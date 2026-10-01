@@ -708,6 +708,10 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
         <div class="card-b"><div class="nt-tw"><table class="nt" id="wvenues"></table></div></div>
       </section>
       <section class="card">
+        <div class="card-h"><div><h2>This season</h2><p id="wseasub">Every saved game day: which venues reprice news, and how fast, before tip.</p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt" id="wseason"></table></div></div>
+      </section>
+      <section class="card">
         <div class="card-h"><div><h2>Today's changes</h2><p id="wsub">Injury report and NBA.com lineup changes, newest first.</p></div>
           <div class="filters"><div class="seg" id="wkind" role="group" aria-label="Kind"></div><select class="sel" id="wteam" aria-label="Team"></select></div></div>
         <div class="card-b"><div class="nt-tw"><table class="nt wt" id="wevents"></table></div></div>
@@ -1120,6 +1124,7 @@ function show(v){
     $('tsub').textContent = 'NEWS · WHO REPRICED · HOW FAST';
     renderWire();
     if (!boardTried) loadBoard();
+    if (!trackTried) loadTrack();
     return;
   }
   if (v === 'tonight'){
@@ -2010,6 +2015,7 @@ async function loadTrack(){
     if (view === 'track') renderTrack();
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
+    if (view === 'wire') renderWire();
     clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -2638,6 +2644,7 @@ function renderWire(){
   $('wvenues').innerHTML = `<thead><tr><th class="l">Venue</th><th>Changes covered</th><th>Quotes affected</th><th title="Changes after which this venue moved at least one quote within 5 minutes">Moved within 5 min</th><th>Within 15 min</th><th title="Median time to this venue's first move after the news">Median first move</th><th title="Changes at least 30 minutes old where this venue has not moved any affected quote">Still not moved (30+ min)</th></tr></thead><tbody>
     ${rows.length ? rows.map(x => `<tr><td class="l"><b>${esc(x.v)}</b></td><td>${x.ev}</td><td>${x.n.toLocaleString()}</td><td>${pc(x.w5 / Math.max(1, x.ev))}</td><td>${pc(x.w15 / Math.max(1, x.ev))}</td><td>${x.med != null ? lagTxt(x.med) : '<span class="muted">none</span>'}</td><td>${x.old ? `<span class="${x.old - x.oldMoved ? 'warnt' : ''}">${x.old - x.oldMoved} of ${x.old}</span>` : ''}</td></tr>`).join('')
       : `<tr><td class="l" colspan="7"><p class="empty">No changes with affected props yet.</p></td></tr>`}</tbody>`;
+  renderWireSeason();
   // KPIs
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
   const inj = ev.filter(e => e[1] === 'inj'), outs = inj.filter(e => /^out/i.test(e[6] || ''));
@@ -2667,6 +2674,24 @@ function renderWire(){
   $('wfoot').innerHTML = `
     <div><b>Changes</b> are the official injury report (posted every 15 minutes on game days) and NBA.com's lineups, as the recorder saw them after its first poll of the day, which is the starting state. The time is when the recorder saw the change; it polls every 5 minutes within 3 hours of a tip and every 15 minutes otherwise, so a venue that moved in the same poll shows as under 1 minute.</div>
     <div><b>A move</b> is any change to one of that team's player prop quotes after the news, including a book pulling the prop. Other news can move a quote too, so read a fast move as an upper bound on reaction time, and "not yet" as a price that is older than the news. Those stale prices are what the Edges page tags News lag.</div>`;
+}
+// the season so far, from the recorder's saved days (track.json wire_days, ledger.wire_record); follows the kind filter
+function renderWireSeason(){
+  const W = (TR && TR.data && TR.data.wire_days) || {}, days = Object.keys(W).sort();
+  const kinds = wf.kind === 'all' ? ['inj', 'five', 'inactive'] : [wf.kind], V = {};
+  for (const d of days) for (const [v, byk] of Object.entries(W[d])) for (const k of kinds){
+    const r = byk[k]; if (!r) continue;
+    const x = V[v] = V[v] || {n: 0, m: 0, f: [], days: new Set()};
+    x.n += r.n; x.m += r.m; x.f.push(...r.f); x.days.add(d);
+  }
+  const rows = Object.entries(V).map(([v, x]) => { const moved = x.f.filter(s => s >= 0).sort((a, b) => a - b);
+    return {v, ...x, ev: x.f.length, med: moved.length ? moved[Math.floor(moved.length / 2)] : null, w5: moved.filter(s => s <= 300).length, w15: moved.filter(s => s <= 900).length, never: x.f.filter(s => s < 0).length}; })
+    .sort((a, b) => (a.med ?? 1e9) - (b.med ?? 1e9));
+  $('wseasub').textContent = days.length ? `${days.length} game ${days.length === 1 ? 'day' : 'days'} saved (${new Date(days[0] + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} to ${new Date(days[days.length - 1] + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}). First move per change, before the team's tip.`
+    : 'Every saved game day: which venues reprice news, and how fast, before tip.';
+  $('wseason').innerHTML = `<thead><tr><th class="l">Venue</th><th>Changes</th><th>Quotes affected</th><th>Moved within 5 min</th><th>Within 15 min</th><th>Median first move</th><th title="Changes this venue never reacted to before the team tipped: the window to bet into, if the news mattered">Never moved before tip</th></tr></thead><tbody>
+    ${rows.length ? rows.map(x => `<tr><td class="l"><b>${esc(x.v)}</b><small>${x.days.size} ${x.days.size === 1 ? 'day' : 'days'}</small></td><td>${x.ev.toLocaleString()}</td><td>${x.n.toLocaleString()}</td><td>${pc(x.w5 / Math.max(1, x.ev))}</td><td>${pc(x.w15 / Math.max(1, x.ev))}</td><td>${x.med != null ? lagTxt(x.med) : '<span class="muted">none</span>'}</td><td><span class="${x.never / Math.max(1, x.ev) >= .25 ? 'warnt' : ''}">${pc(x.never / Math.max(1, x.ev))}</span></td></tr>`).join('')
+      : `<tr><td class="l" colspan="7"><p class="empty">Nothing saved yet. The recorder saves each game day's changes and reactions as it goes; the season table starts after the first settled day.</p></td></tr>`}</tbody>`;
 }
 $('wkind').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ wf.kind = b.dataset.v; renderWire(); } });
 $('wteam').addEventListener('change', e => { wf.team = e.target.value; renderWire(); });

@@ -91,7 +91,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
                 nicks[nick(g[side + '_name'])] = g[side]
     by_id = {str(g['id']): g for g in games}
     props, players, unmapped = {}, {}, defaultdict(int)
-    qk = defaultdict(list)          # team -> [(venue, source, key)]: every prop quote, for the Injury Wire's reaction times
+    qk = defaultdict(list)          # (team, game id) -> [(venue, source, key)]: every prop quote, for the Injury Wire
 
     def entry(pid, stat, g):
         name, team = R.info[pid]
@@ -118,7 +118,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
         om = round((f[0] + f[1]) / 2, 3) if f and f[0] is not None and f[1] is not None else None
         sz = (sizes or {}).get(k) or [None, None]
         entry(pid, stat, g)['kal'].append([m['floor'], v[0], v[1], om, sz[0], sz[1], W('kalshi', k)])
-        qk[R.info[pid][1]].append(('Kalshi', 'kalshi', k))
+        qk[(R.info[pid][1], str(g['id']))].append(('Kalshi', 'kalshi', k))
 
     # ESPN (DraftKings): rebuild the backfill's row shape so prop_markets() assigns over/under the audited way
     per_game = defaultdict(list)
@@ -134,8 +134,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
         book = {r['provider_id']: r['_book'] for r in rows}
         tmk = defaultdict(int)                            # (book, athlete, market) -> last change of any of its rows
         for r in rows:
-            if r['type'] in ESPN_MKT and r['athlete_id'] in R.info:
-                qk[R.info[r['athlete_id']][1]].append((r['_book'], 'espn', r['_k']))
+            if r['type'] in ESPN_MKT and r['athlete_id'] in R.info and g:
+                qk[(R.info[r['athlete_id']][1], str(g['id']))].append((r['_book'], 'espn', r['_k']))
             if r['type'] in ESPN_MKT and r['_t']:
                 kk = (r['provider_id'], r['athlete_id'], ESPN_MKT[r['type']][0])
                 tmk[kk] = max(tmk[kk], r['_t'])
@@ -171,7 +171,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
             continue
         entry(pid, stat, g)['books'].append(['Pinnacle', ov[0], fmt_am(ov[1]), fmt_am(uv[1]),
                                               fo[0] if fo else None, fmt_am(fo[1]) if fo else None, W('pinnacle', ko, ku)])
-        qk[R.info[pid][1]] += [('Pinnacle', 'pinnacle', ko), ('Pinnacle', 'pinnacle', ku)]
+        qk[(R.info[pid][1], str(g['id']))] += [('Pinnacle', 'pinnacle', ko), ('Pinnacle', 'pinnacle', ku)]
 
     # Polymarket player props: YES = over the line. Priced like a book: over = YES ask, under = 1 - YES bid, each
     # plus the taker fee (rate x p x (1 - p) per share), as American odds so the page treats it like any book.
@@ -195,7 +195,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
         if o and u:
             entry(pid, stat, g)['books'].append(['Polymarket', float(m['line']), o, u, float(m['line']) if f else None,
                                                   prob_am(f[1] + fee(f[1])) if f and f[1] and 0 < f[1] < 1 else None, W('polymarket', k)])
-            qk[R.info[pid][1]].append(('Polymarket', 'polymarket', k))
+            qk[(R.info[pid][1], str(g['id']))].append(('Polymarket', 'polymarket', k))
 
     # pick'em apps -> e['pk'] = [app, line, over price, under price, first line today]. PrizePicks standard lines only
     # (demon / goblin are alternate lines at other payouts) and it pays flat, so its prices are None.
@@ -211,7 +211,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
             continue
         f = (first.get('prizepicks') or {}).get(k)
         entry(pid, stat, g)['pk'].append(['PrizePicks', v[0], None, None, f[0] if f else None, W('prizepicks', k)])
-        qk[R.info[pid][1]].append(('PrizePicks', 'prizepicks', k))
+        qk[(R.info[pid][1], str(g['id']))].append(('PrizePicks', 'prizepicks', k))
     for k, v in (last.get('underdog') or {}).items():
         m = meta.get('underdog', {}).get(k) or {}
         stat = UD_STAT.get(m.get('stat'))
@@ -224,7 +224,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
             continue
         f = (first.get('underdog') or {}).get(k)
         entry(pid, stat, g)['pk'].append(['Underdog', v[0], v[1], v[2], f[0] if f else None, W('underdog', k)])
-        qk[R.info[pid][1]].append(('Underdog', 'underdog', k))
+        qk[(R.info[pid][1], str(g['id']))].append(('Underdog', 'underdog', k))
     for k, v in (last.get('sleeper') or {}).items():
         m = meta.get('sleeper', {}).get(k) or {}
         stat = SL_STAT.get(m.get('stat'))
@@ -238,7 +238,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
             continue
         f = (first.get('sleeper') or {}).get(k)
         entry(pid, stat, g)['pk'].append(['Sleeper', v[0], dec_am(v[1]), dec_am(v[2]), f[0] if f else None, W('sleeper', k)])
-        qk[R.info[pid][1]].append(('Sleeper', 'sleeper', k))
+        qk[(R.info[pid][1], str(g['id']))].append(('Sleeper', 'sleeper', k))
 
     # injury report: current status per player on tonight's teams
     inj, news = {}, []
@@ -325,8 +325,9 @@ def injury_wire(wire, qk, R, games, nicks):
     """Today's injury and lineup changes for teams on the board, each with how fast every venue moved that team's
     player props afterwards: [t, kind, team, pid, who, before, after, {venue: [quotes, moved, median s, first s]}].
     kind: 'inj' (injury report status change), 'five' (NBA.com starting five confirmed), 'inactive'. Times are when
-    the recorder first saw the change (polls every 5 to 15 minutes); a move is any change to a quote after that,
-    including the book pulling it, so other news can move a quote too."""
+    the recorder first saw the change (polls every 5 to 15 minutes); a move is any change to a quote after that and
+    before the team's next tip, including the book pulling it, so other news can move a quote too. Each event ends
+    with [.., game id, tip]."""
     hist, log, t0 = wire
     teams = {g[s] for g in games for s in ('away', 'home')}
     events = []
@@ -355,15 +356,21 @@ def injury_wire(wire, qk, R, games, nicks):
         events.append([t, 'five', team, None, ', '.join(who), 'Expected', 'Confirmed'])
     out = []
     for e in sorted(events, key=lambda x: -x[0])[:150]:
+        # the news matters for the team's next game: only that game's quotes, only moves before its tip (the recorder
+        # removes a game's quotes at tip, which is not a reaction)
+        nxt_g = min((g for g in games if e[2] in (g['away'], g['home']) and g['tip'] > e[0]), key=lambda g: g['tip'], default=None)
+        if not nxt_g:
+            continue
         react = {}
-        for venue, src, key in qk.get(e[2], []):
+        for venue, src, key in qk.get((e[2], str(nxt_g['id'])), []):
             r = react.setdefault(venue, [0, 0, []])
             r[0] += 1
-            nxt = [x for x in hist.get(src, {}).get(key, []) if x > e[0]]
+            nxt = [x for x in hist.get(src, {}).get(key, []) if e[0] < x < nxt_g['tip']]
             if nxt:
                 r[1] += 1
                 r[2].append(min(nxt) - e[0])
-        out.append(e + [{v: [n, m, sorted(l)[len(l) // 2] if l else None, min(l) if l else None] for v, (n, m, l) in react.items()}])
+        out.append(e + [{v: [n, m, sorted(l)[len(l) // 2] if l else None, min(l) if l else None] for v, (n, m, l) in react.items()},
+                        str(nxt_g['id']), nxt_g['tip']])
     return out
 
 
