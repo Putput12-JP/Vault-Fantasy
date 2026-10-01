@@ -1,0 +1,395 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vault NBA What Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Backtests v2 mock: the page answers a bettor's questions, not a modeller's. What works (one card per proven bet,
+   in dollars and plain-language confidence), an Edge Finder over the real out-of-sample slices, what does not work,
+   and the technical lab behind a tab. Single dark look: the Vault NBA app's own system. */
+:root{
+  --bg:#000000; --surface:#18181B; --surface2:#1f1f23; --raised:#27272A;
+  --border:#27272A; --border2:#3f3f46;
+  --fg:#FFFFFF; --fg2:#A1A1AA; --fg3:#71717A;
+  --primary:#FFFFFF; --on-primary:#000000;
+  --up:#4ade80; --down:#f87171; --warn:#fbbf24;
+  --up-soft:rgba(74,222,128,.12); --warn-soft:rgba(251,191,36,.10); --down-soft:rgba(248,113,113,.10);
+  --font-sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'JetBrains Mono','SFMono-Regular',Menlo,monospace;
+  --r-card:16px; --r-ctl:8px; --r-pill:9999px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--font-sans);font-size:14px;line-height:1.5}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--fg3)} .pos{color:var(--up)} .neg{color:var(--down)} .warnt{color:var(--warn)}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;padding:12px 24px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.9);backdrop-filter:blur(10px)}
+.top h1{margin:0;font-size:19px;font-weight:600;letter-spacing:-.01em}
+.top .sub{font-family:var(--font-mono);font-size:11px;color:var(--fg3);letter-spacing:.08em;text-transform:uppercase}
+.tabs{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--border);border-radius:var(--r-ctl);margin-left:auto;flex-wrap:wrap}
+.tabs button,.seg button{height:30px;padding:0 12px;border:0;border-radius:6px;background:none;cursor:pointer;font-size:13px;color:var(--fg2);font-weight:500}
+.tabs button[aria-pressed="true"],.seg button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary)}
+.tabs button:hover:not([aria-pressed="true"]),.seg button:hover:not([aria-pressed="true"]):not(:disabled){color:var(--fg)}
+.seg{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--bg);flex-wrap:wrap}
+.seg button{height:28px;font-size:12.5px;padding:0 10px}
+.seg button:disabled{color:var(--border2);cursor:not-allowed}
+
+.wrap{max-width:1180px;margin:0 auto;padding-inline:24px;padding-block:20px 56px;display:grid;gap:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);min-width:0}
+.banner{display:flex;flex-wrap:wrap;gap:4px 10px;padding:10px 14px;border:1px dashed rgba(251,191,36,.45);border-radius:var(--r-ctl);color:var(--fg2);font-size:13px}
+.banner b{color:var(--warn);font-weight:500}
+h2.sec{margin:8px 0 -6px;font-size:13px;font-family:var(--font-mono);font-weight:500;color:var(--fg3);letter-spacing:.08em;text-transform:uppercase}
+.lede{margin:0;font-size:15px;color:var(--fg2);max-width:70ch}
+.lede b{color:var(--fg);font-weight:500}
+
+/* how to read */
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+.how div{padding:16px 20px;display:grid;gap:4px}
+.how div + div{border-left:1px solid var(--border)}
+.how b{font-size:13.5px;font-weight:600}
+.how p{margin:0;font-size:12.5px;color:var(--fg2)}
+
+/* proven bet */
+.bet{padding:22px 24px;display:grid;gap:18px}
+.bet-h{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 20px}
+.bet-h h3{margin:0 0 4px;font-size:20px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.bet-h p{margin:0;color:var(--fg2);font-size:13.5px;max-width:62ch}
+.tag{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:var(--r-pill);font-size:12px;font-weight:600;letter-spacing:.02em;white-space:nowrap}
+.tag.proven{background:var(--up-soft);color:var(--up);border:1px solid rgba(74,222,128,.35)}
+.tag.watch{background:var(--warn-soft);color:var(--warn);border:1px solid rgba(251,191,36,.35)}
+.tag.no{background:var(--down-soft);color:var(--down);border:1px solid rgba(248,113,113,.35)}
+.tag.ex{color:var(--warn);border:1px dashed rgba(251,191,36,.5);height:20px;font-size:10.5px;font-weight:500;padding:0 7px}
+.big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.big div{padding:14px 16px;border-radius:12px;background:var(--surface2);display:grid;gap:2px;min-width:0}
+.big small{font-size:12px;color:var(--fg3)}
+.big b{font-size:24px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.big span{font-size:12px;color:var(--fg2)}
+.row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;align-items:center}
+.row > .lbl{font-size:12.5px;color:var(--fg2)}
+.row > .lbl b{display:block;color:var(--fg);font-weight:500;font-size:13.5px}
+.meter{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.meter .bars{display:flex;gap:4px}
+.meter .bars i{width:26px;height:10px;border-radius:3px;background:var(--raised)}
+.meter .bars i.on{background:var(--up)}
+.meter .bars.mid i.on{background:var(--warn)}
+.meter .bars.low i.on{background:var(--fg3)}
+.meter p{margin:0;font-size:13px;color:var(--fg2)}
+.meter p b{color:var(--fg);font-weight:600}
+.steps{display:flex;flex-wrap:wrap;gap:8px}
+.step{display:grid;gap:0;padding:7px 11px;border-radius:10px;border:1px solid var(--border2);min-width:92px}
+.step small{font-size:11px;color:var(--fg3)}
+.step b{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.step.good{border-color:rgba(74,222,128,.35)} .step.good b{color:var(--up)}
+.step.meh b{color:var(--fg2)}
+.verdict{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px;color:var(--fg2)}
+.verdict .ic{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.verdict .ic.y{background:var(--up-soft);color:var(--up)} .verdict .ic.n{background:var(--warn-soft);color:var(--warn)}
+.ways{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ways div{padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:12.5px;color:var(--fg2)}
+.ways b{color:var(--fg);font-weight:500;display:block;font-size:13px}
+.charts{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
+.chartbox{padding:12px 14px;border:1px solid var(--border);border-radius:12px;display:grid;gap:6px;min-width:0}
+.chartbox .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--fg2)}
+.chartbox svg{width:100%;height:auto;display:block}
+.chartbox svg text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
+.live{display:grid;gap:6px}
+.live .track{height:10px;border-radius:5px;background:var(--raised);overflow:hidden}
+.live .track u{display:block;height:100%;width:0;background:var(--fg)}
+.live p{margin:0;font-size:12.5px;color:var(--fg2)}
+.cta{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:var(--r-ctl);background:var(--primary);color:var(--on-primary);font-weight:600;font-size:13px;text-decoration:none;border:0;cursor:pointer}
+.btn.ghost{background:none;color:var(--fg);border:1px solid var(--border2)}
+
+/* promising list */
+.list{display:grid}
+.li{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 120px;gap:16px;align-items:center;padding:14px 20px;border-top:1px solid var(--border)}
+.li:first-child{border-top:0}
+.li > .tag{justify-self:end}
+.li h4{margin:0;font-size:14px;font-weight:600}
+.li p{margin:2px 0 0;font-size:12.5px;color:var(--fg2)}
+.li .nums{font-size:12.5px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.li .nums b{color:var(--fg);font-weight:600}
+
+/* finder */
+.finder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:0}
+.f-ctl{padding:20px 22px;display:grid;gap:14px;align-content:start;border-right:1px solid var(--border)}
+.f-ctl label{display:grid;gap:6px;font-size:12px;color:var(--fg3);font-family:var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
+.f-ctl label .seg button{font-family:var(--font-sans);letter-spacing:0;text-transform:none}
+.f-ctl .hint{margin:0;font-size:12px;color:var(--fg3);text-transform:none;letter-spacing:0;font-family:var(--font-sans)}
+.f-res{padding:20px 22px;display:grid;gap:16px;align-content:start;min-width:0}
+.f-res h3{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.f-res .say{margin:0;font-size:13.5px;color:var(--fg2);max-width:60ch}
+.f-res .big b{font-size:20px}
+.warnbox{padding:12px 14px;border-radius:10px;background:var(--warn-soft);border:1px solid rgba(251,191,36,.28);font-size:12.5px;color:var(--fg2)}
+.warnbox b{color:var(--warn);font-weight:600}
+.checks{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:13px}
+.checks li{display:flex;gap:8px;align-items:flex-start}
+
+/* doesn't work */
+.nw{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.nw div{padding:16px 18px;display:grid;gap:4px}
+.nw h4{margin:0;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:center}
+.nw p{margin:0;font-size:13px;color:var(--fg2)}
+.nw .n{font-size:12px;color:var(--fg3);font-family:var(--font-mono)}
+
+footer{font-size:12.5px;color:var(--fg3);display:grid;gap:8px;max-width:84ch}
+footer b{color:var(--fg2);font-weight:500}
+[hidden]{display:none!important}
+
+@media (max-width:900px){
+  .how{grid-template-columns:minmax(0,1fr)} .how div + div{border-left:0;border-top:1px solid var(--border)}
+  .charts,.ways,.nw,.finder{grid-template-columns:minmax(0,1fr)} .f-ctl{border-right:0;border-bottom:1px solid var(--border)}
+  .row{grid-template-columns:minmax(0,1fr);gap:6px}
+  .li{grid-template-columns:minmax(0,1fr);gap:6px}
+}
+@media (max-width:600px){
+  .wrap{padding-inline:16px} .top{padding:12px 16px} .tabs{margin-left:0;flex-wrap:nowrap;overflow-x:auto;max-width:100%} .tabs button{flex:none}
+  .steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .big{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .big div:last-child{grid-column:1/-1}
+  .bet{padding:18px 16px}
+}
+</style>
+
+<header class="top">
+  <div><h1>What works</h1><div class="sub">Backtests, for bettors</div></div>
+  <nav class="tabs" id="tabs" aria-label="Sections">
+    <button type="button" data-t="works" aria-pressed="true">What works</button>
+    <button type="button" data-t="finder" aria-pressed="false">Find an edge</button>
+    <button type="button" data-t="not" aria-pressed="false">What doesn't</button>
+    <button type="button" data-t="lab" aria-pressed="false">Model lab</button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="banner"><b>Design mock.</b><span>Every record, return and confidence level here is real: last season's (2025-26) out-of-sample backtest, after Kalshi's fees. The charts tagged <span class="tag ex">Example</span> show the layout only; they need the bet-by-bet export, which is the next build step.</span></div>
+
+  <!-- WHAT WORKS -->
+  <section id="s-works" class="wrap" style="padding:0;max-width:none">
+    <p class="lede">We tested every idea on a season of games <b>the model never saw while it was being built</b>, at prices you could actually have taken. Two bets made money convincingly. Everything below is in plain numbers: what it returned, how sure we are it is not luck, and how it is doing this season.</p>
+    <div class="card how">
+      <div><b>Return per $100</b><p>What you would have kept, on average, for every $100 bet, after fees. +$5 is a big edge in sports betting.</p></div>
+      <div><b>Confidence</b><p>How likely a record this good is pure luck. We call it real at about 1 in 40 or rarer, over at least 50 games.</p></div>
+      <div><b>This season</b><p>Past results can fade. Every proven bet is tracked live from opening night; it has to hold up again before we trust it with money.</p></div>
+    </div>
+    <h2 class="sec">Proven bets</h2>
+    <div id="proven" style="display:grid;gap:16px"></div>
+    <h2 class="sec">Promising, not proven yet</h2>
+    <p class="lede" style="font-size:13.5px">Made money last season, but not convincingly enough to call real. We track them live; any of them can be promoted.</p>
+    <div class="card list" id="promising"></div>
+  </section>
+
+  <!-- FINDER -->
+  <section id="s-finder" hidden>
+    <div class="wrap" style="padding:0;max-width:none">
+      <p class="lede">Slice last season's out-of-sample bets any way you like and see how that slice did. <b>Use it to find ideas, not to bet them</b>: an idea counts once it also holds up live.</p>
+      <div class="card finder">
+        <div class="f-ctl" id="fctl"></div>
+        <div class="f-res" id="fres"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOESN'T WORK -->
+  <section id="s-not" hidden>
+    <div class="wrap" style="padding:0;max-width:none">
+      <p class="lede">Things that look like they should work and did not. Each one was tested the same way as the bets that passed.</p>
+      <div class="nw" id="notlist"></div>
+    </div>
+  </section>
+
+  <!-- LAB -->
+  <section id="s-lab" hidden>
+    <div class="wrap" style="padding:0;max-width:none">
+      <p class="lede">For the model builders: every test's rule, written before it ran, and the technical scores behind the verdicts (log loss, calibration, z-scores). This is today's Backtests page, moved here unchanged.</p>
+      <div class="card" style="padding:20px 22px;display:grid;gap:10px">
+        <p style="margin:0;font-size:13.5px;color:var(--fg2)"><b style="color:var(--fg);font-weight:500">14 tests so far.</b> 3 shipped a model change, 2 found a passing bet, 4 kept the current model because a more accurate version would have made less money, and 3 ended as context only.</p>
+        <div class="cta"><a class="btn ghost" href="#">Open the technical results</a></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div><b>How these were tested.</b> Each model was fit on earlier seasons and scored on 2025-26 games it never saw, using only what was known before tip: the official injury report as it stood, and Kalshi's prices in the 30 minutes before tip. Returns are after Kalshi's taker fee.</div>
+    <div><b>Why "1 in N" matters.</b> We tested many ideas. If you test 40, about one will look 1-in-40 lucky by chance, which is why a proven bet also has to get stronger when the model is more sure, and hold up live.</div>
+  </footer>
+</main>
+
+<script>
+const F = {"model":{"books":{"pts":{"0.02":[151,107,0.5894,0.1419,1.73],"0.03":[68,57,0.5,-0.0609,-0.5],"0.05":[9,9,0.7778,0.4701,1.68],"0.08":[5,5,0.6,0.1518,0.32]},"reb":{"0.02":[749,162,0.534,0.0551,1.0],"0.03":[633,153,0.5387,0.0748,1.34],"0.05":[349,123,0.5301,0.0573,0.81],"0.08":[84,54,0.5952,0.1584,1.37]},"ast":{"0.02":[594,144,0.5791,-0.0165,-0.29],"0.03":[450,134,0.5667,-0.0291,-0.47],"0.05":[215,107,0.5535,0.0077,0.1],"0.08":[51,43,0.4902,-0.0819,-0.59]},"3pm":{"0.02":[596,103,0.5268,0.0272,0.51],"0.03":[438,91,0.532,0.0019,0.03],"0.05":[129,61,0.5039,0.0006,0.01],"0.08":[13,11,0.6154,0.4832,1.42]},"pra":{"0.02":[156,57,0.5577,0.1439,1.63],"0.03":[77,40,0.4805,0.1083,0.86],"0.05":[28,17,0.6071,0.3117,1.59],"0.08":[4,4,0.5,-0.0892,-0.17]},"pr":{"0.02":[195,63,0.5436,0.1249,1.49],"0.03":[58,33,0.5345,0.0748,0.53],"0.05":[20,16,0.65,0.2242,1.01],"0.08":[1,1,0.0,-1.0,-1.0]},"pa":{"0.02":[91,46,0.5055,0.0481,0.4],"0.03":[36,27,0.5278,0.0228,0.14],"0.05":[12,11,0.5833,0.1682,0.6],"0.08":[2,2,0.5,-0.0798,-0.09]},"ra":{"0.02":[472,75,0.5466,0.0113,0.22],"0.03":[434,73,0.5507,0.0246,0.46],"0.05":[252,70,0.5198,-0.0319,-0.48],"0.08":[66,40,0.6061,0.0791,0.58]}},"kalshi":{"pts":{"0.02":[7262,372,0.5949,0.0136,0.72],"0.03":[5026,371,0.5621,0.0452,2.03],"0.05":[1044,268,0.5144,0.0456,0.83],"0.08":[48,28,0.75,0.7716,1.56]},"reb":{"0.02":[3685,332,0.5047,0.021,0.6],"0.03":[2370,313,0.4937,0.0274,0.64],"0.05":[593,180,0.4469,-0.0217,-0.32],"0.08":[24,13,0.6667,0.8306,1.9]},"ast":{"0.02":[2349,332,0.5653,0.0557,1.52],"0.03":[1452,309,0.5406,0.0702,1.56],"0.05":[472,180,0.5191,0.081,1.1],"0.08":[67,35,0.6119,0.4162,2.39]},"3pm":{"0.02":[3898,344,0.5649,0.1063,3.31],"0.03":[3220,342,0.5422,0.1247,3.54],"0.05":[1854,330,0.4984,0.1463,3.21],"0.08":[504,200,0.494,0.204,2.78]}}},"cons":{"books_to_kalshi":{"pts":{"NO":[523,37,null,0.0067,-0.92]},"reb":{"NO":[190,32,null,0.143,0.65],"YES":[4,4,null,-0.7222,-2.6]},"ast":{"NO":[470,36,null,0.2924,1.94],"YES":[1,1,null,9.0,null]},"3pm":{"NO":[473,31,null,0.1828,1.94],"YES":[2,2,null,-1.0,null]}},"kalshi_to_books":{"pts":{"Under":[145,36,null,-0.0649,-1.42],"Over":[4,4,null,-0.5531,-1.24]},"reb":{"Under":[76,33,null,-0.1591,-1.76],"Over":[14,13,null,-0.1971,-1.03]},"ast":{"Under":[107,36,null,0.1201,1.03],"Over":[5,5,null,0.06,0.09]},"3pm":{"Under":[41,21,null,0.3196,1.85],"Over":[3,3,null,-0.3333,-0.5]}},"kalshi_ladder":{"pts":{"NO":[1782,383,null,0.0732,2.26],"YES":[65,45,null,-0.1722,-0.83]},"reb":{"YES":[167,114,null,0.0626,0.31],"NO":[648,222,null,0.0782,1.44]},"ast":{"NO":[754,223,null,0.1429,1.99],"YES":[224,132,null,0.1001,0.91]},"3pm":{"NO":[1526,278,null,0.1676,3.3],"YES":[29,22,null,0.1309,-0.08]}}},"model_side":{"pts":{"YES":[3,2,null,0.3316,0],"NO":[5023,370,null,0.035,2.11]},"reb":{"YES":[29,18,null,0.1252,1.81],"NO":[2341,312,null,0.0536,0.33]},"ast":{"YES":[65,33,null,0.1358,1.52],"NO":[1387,299,null,0.073,1.46]},"3pm":{"YES":[20,10,null,0.4434,1.13],"NO":[3200,341,null,0.0939,3.53]}}};
+const $ = id => document.getElementById(id);
+const erf = x => { const t = 1 / (1 + .3275911 * Math.abs(x)); const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - .284496736) * t + .254829592) * t * Math.exp(-x * x); return x >= 0 ? y : -y; };
+const Phi = x => .5 * (1 + erf(x / Math.SQRT2));
+const STAT = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': '3-pointers', pra: 'pts + reb + ast', pr: 'pts + reb', pa: 'pts + ast', ra: 'reb + ast'};
+const money = x => (x < 0 ? '-' : '+') + '$' + Math.abs(x).toLocaleString(undefined, {maximumFractionDigits: 0});
+const per100 = roi => (roi < 0 ? '-' : '+') + '$' + Math.abs(roi * 100).toFixed(2);
+const oneIn = z => { const p = 1 - Phi(z); if (p >= .5) return null; const n = 1 / p; return n >= 1000 ? Math.round(n / 100) * 100 : n >= 100 ? Math.round(n / 10) * 10 : Math.round(n); };
+function conf(z, games){
+  if (games < 50) return {lvl: 0, cls: 'low', word: 'Too few games', say: `only ${games} games: too few to tell luck from skill`};
+  const n = oneIn(z);
+  if (z >= 3) return {lvl: 5, cls: '', word: 'Strong', say: `about a 1 in ${n.toLocaleString()} chance a record this good is luck`};
+  if (z >= 2) return {lvl: 4, cls: '', word: 'Solid', say: `about a 1 in ${n} chance a record this good is luck`};
+  if (z >= 1) return {lvl: 2, cls: 'mid', word: 'Promising', say: `a 1 in ${n} chance it is luck: not rare enough to call real`};
+  if (z > -1) return {lvl: 1, cls: 'low', word: 'Coin flip', say: 'indistinguishable from luck'};
+  return {lvl: 0, cls: 'low', word: 'Loses', say: 'lost money, and not by chance'};
+}
+const meter = c => `<div class="meter"><div class="bars ${c.cls}">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= c.lvl ? 'on' : ''}"></i>`).join('')}</div><p><b>${c.word}</b> · ${c.say}</p></div>`;
+
+// an example curve (placeholder until the bet export exists): a seeded walk with the signal's real average return
+function exampleCurve(roi, n, seed){
+  let s = seed, pts = [0], cum = 0; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  const days = 160, per = n / days;
+  for (let d = 0; d < days; d++){ cum += per * (roi + (rnd() - .5) * .55) * 10; pts.push(cum); }
+  const k = n * 10 * roi / (cum || 1);                     // land on the real season total
+  return pts.map(v => v * k);
+}
+function curveSvg(pts){
+  const W = 520, H = 150, L = 46, R = 8, T = 10, B = 22, lo = Math.min(0, ...pts), hi = Math.max(...pts);
+  const x = i => L + (W - L - R) * i / (pts.length - 1), y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo || 1));
+  const months = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  let g = `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border2)"/>`;
+  [lo, hi].forEach(v => g += `<text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${money(Math.round(v / 10) * 10)}</text>`);
+  months.forEach((m, i) => g += `<text x="${L + (W - L - R) * i / (months.length - 1)}" y="${H - 6}" text-anchor="middle">${m}</text>`);
+  const d = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profit over the season, example">${g}<path d="${d} L${x(pts.length - 1)} ${y(0)} L${L} ${y(0)} Z" fill="var(--up)" fill-opacity=".1"/><path d="${d}" fill="none" stroke="var(--up)" stroke-width="2"/></svg>`;
+}
+function monthsSvg(vals){
+  const W = 280, H = 150, L = 8, R = 8, T = 10, B = 22, mx = Math.max(...vals.map(Math.abs)), bw = (W - L - R) / vals.length;
+  const y0 = T + (H - T - B) / 2, sc = (H - T - B) / 2 / mx, ms = ['O', 'N', 'D', 'J', 'F', 'M', 'A', 'M', 'J'];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profit by month, example"><line x1="${L}" x2="${W - R}" y1="${y0}" y2="${y0}" stroke="var(--border2)"/>${vals.map((v, i) =>
+    `<rect x="${L + i * bw + 4}" y="${v >= 0 ? y0 - v * sc : y0}" width="${bw - 8}" height="${Math.abs(v * sc)}" rx="2" fill="${v >= 0 ? 'var(--up)' : 'var(--down)'}"/><text x="${L + i * bw + bw / 2}" y="${H - 6}" text-anchor="middle">${ms[i]}</text>`).join('')}</svg>`;
+}
+
+// ── what works ──
+const M = F.model, MS = F.model_side, CL = F.cons.kalshi_ladder;
+const PROVEN = [
+  {stat: '3pm', title: 'Kalshi 3-pointers: bet NO', one: "When Kalshi's price on a 3-pointer over is too high, take the NO side.",
+   why: 'People like betting overs, so Kalshi\'s YES side is overpriced: last season YES hit 2 to 5 points less often than its price said, in every stat. Our model points at the rungs that are overpriced the most.', seed: 7, months: [3, 5, -1, 4, 6, 2, 5, 1, 2]},
+  {stat: 'pts', title: 'Kalshi points: bet NO', one: "When Kalshi's price on a points over is too high, take the NO side.",
+   why: 'The same overs bias as 3-pointers, smaller. Points markets are deeper and better priced, so the edge is thinner and less consistent.', seed: 11, months: [2, -1, 3, 1, -2, 4, 1, -1, 2]},
+];
+$('proven').innerHTML = PROVEN.map(P => {
+  const s = MS[P.stat].NO, c = CL[P.stat].NO, mt = M.kalshi[P.stat];
+  const n = s[0], games = s[1], roi = s[3], z = s[4], C = conf(z, games);
+  const steps = ['0.02', '0.03', '0.05', '0.08'].map(t => ({t, r: mt[t]}));
+  const consistent = steps.filter(x => x.r[4] >= 2).length >= 3;
+  return `<article class="card bet">
+    <div class="bet-h"><div><h3>${P.title}</h3><p>${P.one}</p></div><span class="tag proven">PROVEN</span></div>
+    <div class="big">
+      <div><small>Return per $100 bet</small><b class="pos">${per100(roi)}</b><span>after Kalshi's fee</span></div>
+      <div><small>Last season</small><b>${n.toLocaleString()}</b><span>bets in ${games} games</span></div>
+      <div><small>At $10 a bet</small><b class="pos">${money(n * 10 * roi)}</b><span>over the season, before liquidity limits</span></div>
+    </div>
+    <div class="row"><div class="lbl"><b>Is it luck?</b>Confidence</div>${meter(C)}</div>
+    <div class="row"><div class="lbl"><b>Does it get stronger when the model is more sure?</b>Return by edge size, every bet on this stat</div>
+      <div><div class="steps">${steps.map(x => `<div class="step ${x.r[4] >= 2 ? 'good' : 'meh'}"><small>${Math.round(x.t * 100)}%+ edge</small><b>${per100(x.r[3])}</b><small>${x.r[1]} games</small></div>`).join('')}</div>
+      <div class="verdict"><span class="ic ${consistent ? 'y' : 'n'}">${consistent ? '✓' : '!'}</span>${consistent ? 'Yes: it pays at every edge size, which is what a real edge looks like.' : 'Only clearly at a 3% edge. Real but fragile: we size it smaller.'}</div></div></div>
+    <div class="row"><div class="lbl"><b>Two ways to spot it</b>Independent methods agree</div>
+      <div class="ways"><div><b>Our model + Kalshi's price</b>${per100(roi)} per $100 · ${n.toLocaleString()} bets</div><div><b>Every other venue's price, moved to Kalshi's line</b>${per100(c[3])} per $100 · ${c[0].toLocaleString()} bets</div></div></div>
+    <div class="charts">
+      <div class="chartbox"><div class="hd"><span>Profit over last season, $10 a bet</span><span class="tag ex">Example</span></div>${curveSvg(exampleCurve(roi, n, P.seed))}</div>
+      <div class="chartbox"><div class="hd"><span>Months profitable: ${P.months.filter(v => v > 0).length} of 9</span><span class="tag ex">Example</span></div>${monthsSvg(P.months)}</div>
+    </div>
+    <div class="row"><div class="lbl"><b>This season</b>Live shadow bets</div>
+      <div class="live"><div class="track"><u></u></div><p><b style="color:var(--fg);font-weight:500">0 of 300 bets.</b> Tracking starts on opening night, October 20. Confirmed once 300 bets agree with last season.</p></div></div>
+    <div class="cta"><a class="btn" href="#">Find tonight's ${STAT[P.stat]} NO bets</a><span class="muted" style="font-size:12.5px">Opens Edges, filtered to this bet</span></div>
+  </article>`;
+}).join('');
+
+const PROM = [
+  ['Kalshi assists: bet NO', 'Same overs bias. Just short of proven.', CL.ast.NO, 'Every other venue\'s price'],
+  ['Kalshi rebounds: bet NO', 'Made money, but the record could still be luck.', CL.reb.NO, 'Every other venue\'s price'],
+  ['Kalshi assists: bet YES', 'A small number of underpriced overs.', MS.ast.YES, 'Our model + price'],
+  ['Kalshi rebounds: bet YES', 'Very few bets: a handful of games.', MS.reb.YES, 'Our model + price'],
+];
+$('promising').innerHTML = PROM.map(([t, d, r, how]) => { const C = conf(r[4], r[1]);
+  return `<div class="li"><div><h4>${t}</h4><p>${d} Found by: ${how}.</p></div>
+    <div class="nums"><b class="${r[3] >= 0 ? 'pos' : 'neg'}">${per100(r[3])}</b> per $100 · ${r[0].toLocaleString()} bets · ${r[1]} games</div>
+    <span class="tag ${C.lvl >= 2 ? 'watch' : 'no'}" title="${C.say}">${C.word}</span></div>`; }).join('');
+
+// ── edge finder (real out-of-sample slices) ──
+let fs = {method: 'model', venue: 'kalshi', stat: '3pm', side: 'any', edge: '0.03', test: 'kalshi_ladder'};
+const STATS_K = ['pts', 'reb', 'ast', '3pm'], STATS_B = [...STATS_K, 'pra', 'pr', 'pa', 'ra'];
+const TESTS = {kalshi_ladder: 'Other Kalshi rungs', books_to_kalshi: 'Sportsbooks', kalshi_to_books: 'Kalshi, on a sportsbook line'};
+function slice(){
+  if (fs.method === 'model'){
+    if (fs.side !== 'any'){
+      if (fs.venue !== 'kalshi' || fs.edge !== '0.03') return {missing: 'Split by side only exists for Kalshi at a 3% edge. Pick "Either side" or Kalshi + 3%.'};
+      const r = (MS[fs.stat] || {})[fs.side === 'no' ? 'NO' : 'YES'];
+      return r ? {r} : {missing: 'No bets on this side.'};
+    }
+    const r = ((M[fs.venue] || {})[fs.stat] || {})[fs.edge];
+    return r ? {r} : {missing: 'Not tested.'};
+  }
+  const by = (F.cons[fs.test] || {})[fs.stat] || {};
+  const key = fs.side === 'any' ? null : fs.test === 'kalshi_to_books' ? (fs.side === 'no' ? 'Under' : 'Over') : (fs.side === 'no' ? 'NO' : 'YES');
+  if (!key){
+    const rs = Object.values(by); if (!rs.length) return {missing: 'Not tested.'};
+    const n = rs.reduce((a, r) => a + r[0], 0), g = Math.max(...rs.map(r => r[1])), roi = rs.reduce((a, r) => a + r[0] * r[3], 0) / n;
+    return {r: [n, g, null, roi, Math.max(...rs.map(r => r[4] ?? 0))], approx: true};
+  }
+  return by[key] ? {r: by[key]} : {missing: 'No bets on this side.'};
+}
+function seg(key, opts, cur){ return `<div class="seg" data-k="${key}">${opts.map(([v, l, dis]) => `<button type="button" data-v="${v}" aria-pressed="${cur === v}"${dis ? ' disabled' : ''}>${l}</button>`).join('')}</div>`; }
+function renderFinder(){
+  if (fs.method === 'cons' && fs.side === 'any') fs.side = 'no';     // consensus is tested per side: never pool them
+  const stats = fs.method === 'model' && fs.venue === 'books' ? STATS_B : STATS_K;
+  if (!stats.includes(fs.stat)) fs.stat = 'pts';
+  $('fctl').innerHTML = `
+    <label>How the edge is found${seg('method', [['model', 'Our model + the price'], ['cons', 'Other venues\' prices']], fs.method)}<p class="hint">${fs.method === 'model' ? 'Our projection blended with the venue\'s own price.' : 'Every other venue\'s price, moved to this venue\'s line. Our projection is a small part.'}</p></label>
+    ${fs.method === 'model' ? `<label>Where you bet${seg('venue', [['kalshi', 'Kalshi'], ['books', 'Sportsbooks']], fs.venue)}</label>`
+      : `<label>Compared against${seg('test', Object.entries(TESTS).map(([k, l]) => [k, l]), fs.test)}<p class="hint">${fs.test === 'kalshi_to_books' ? 'Betting the sportsbook, priced from Kalshi.' : 'Betting Kalshi.'}</p></label>`}
+    <label>Stat${seg('stat', stats.map(s => [s, s.toUpperCase()]), fs.stat)}</label>
+    <label>Side${seg('side', [['any', 'Either side', fs.method === 'cons'], ['no', fs.method === 'cons' && fs.test === 'kalshi_to_books' ? 'Under' : 'NO (under)'], ['yes', fs.method === 'cons' && fs.test === 'kalshi_to_books' ? 'Over' : 'YES (over)']], fs.side)}</label>
+    ${fs.method === 'model' ? `<label>Only bets with an edge of at least${seg('edge', [['0.02', '2%'], ['0.03', '3%'], ['0.05', '5%'], ['0.08', '8%']], fs.edge)}<p class="hint">Bigger edges mean fewer bets. A real edge should pay more as the edge grows.</p></label>` : `<p class="hint" style="margin:0">Consensus bets use a 3% edge.</p>`}`;
+  const {r, missing, approx} = slice();
+  if (missing){ $('fres').innerHTML = `<h3 class="muted">Not in the backtest</h3><p class="say">${missing}</p>`; return; }
+  const [n, games, win, roi, z] = r, C = conf(z ?? 0, games);
+  const steady = fs.method === 'model' && fs.side === 'any' ? ['0.02', '0.03', '0.05', '0.08'].filter(t => (M[fs.venue][fs.stat][t] || [])[4] >= 2).length >= 3 : null;
+  const head = C.lvl >= 4 && roi > 0 && steady === false ? ['Real but fragile', 'warnt'] : C.lvl >= 4 && roi > 0 ? ['Looks real', 'pos'] : C.lvl >= 2 && roi > 0 ? ['Promising', 'warnt'] : games < 50 ? ['Can\'t tell yet', 'muted'] : roi <= 0 ? ['Doesn\'t work', 'neg'] : ['Probably luck', 'muted'];
+  const where = fs.method === 'model' ? (fs.venue === 'kalshi' ? 'Kalshi' : 'sportsbook') : (fs.test === 'kalshi_to_books' ? 'sportsbook' : 'Kalshi');
+  const sideW = fs.side === 'any' ? '' : fs.side === 'no' ? ' NO / under' : ' YES / over';
+  let steps = '';
+  if (fs.method === 'model' && fs.side === 'any'){
+    const mt = M[fs.venue][fs.stat];
+    steps = `<div><div class="steps">${['0.02', '0.03', '0.05', '0.08'].map(t => mt[t] ? `<div class="step ${mt[t][4] >= 2 ? 'good' : 'meh'}"${t === fs.edge ? ' style="outline:1px solid var(--fg2)"' : ''}><small>${Math.round(t * 100)}%+ edge</small><b>${per100(mt[t][3])}</b><small>${mt[t][1]} games</small></div>` : '').join('')}</div></div>`;
+  }
+  const passes = [games >= 50, (z ?? 0) >= 2, fs.method === 'model' && fs.side === 'any' ? ['0.02', '0.03', '0.05', '0.08'].filter(t => (M[fs.venue][fs.stat][t] || [])[4] >= 2).length >= 3 : null];
+  $('fres').innerHTML = `<div><h3 class="${head[1]}">${head[0]}</h3><p class="say">${STAT[fs.stat][0].toUpperCase() + STAT[fs.stat].slice(1)}${sideW} on ${where}, ${fs.method === 'model' ? `edge ${Math.round(fs.edge * 100)}%+` : 'consensus edge 3%+'}, last season, games the model never saw.${approx ? ' Both sides combined; confidence shown is the better side\'s.' : ''}</p></div>
+    <div class="big"><div><small>Return per $100</small><b class="${roi >= 0 ? 'pos' : 'neg'}">${per100(roi)}</b><span>after fees</span></div>
+      <div><small>Bets</small><b>${n.toLocaleString()}</b><span>in ${games} games${win != null ? ` · won ${Math.round(win * 100)}%` : ''}</span></div>
+      <div><small>At $10 a bet</small><b class="${roi >= 0 ? 'pos' : 'neg'}">${money(n * 10 * roi)}</b><span>over the season</span></div></div>
+    ${meter(C)}${steps}
+    <ul class="checks">
+      <li><span>${passes[0] ? '✅' : '⬜'}</span>At least 50 games (${games})</li>
+      <li><span>${passes[1] ? '✅' : '⬜'}</span>Rare enough to call real: 1 in 40 or rarer</li>
+      ${passes[2] != null ? `<li><span>${passes[2] ? '✅' : '⬜'}</span>Pays at most edge sizes, not just one</li>` : ''}
+      <li><span>⬜</span>Holds up live this season <span class="muted">(starts October 20)</span></li></ul>
+    <div class="warnbox"><b>Careful with slices.</b> There are about 100 combinations here; a few will look good by luck alone. Treat anything you find as an idea, and only trust it when every box above is ticked.</div>`;
+}
+$('fctl').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (!b || b.disabled) return; fs[b.parentElement.dataset.k] = b.dataset.v; renderFinder(); });
+renderFinder();
+
+// ── what doesn't work ──
+const NOT = [
+  ['Betting game spreads with our game model', 'The closing line already knows everything our model knows. Against the close, the model\'s side won 50.8% of 2,641 games; you need 52.4% to beat the vig.', 'Game model, 2024-25 and 2025-26'],
+  ['Game totals', 'Our side won 49.9% against the closing total. The model\'s totals miss by more than the line does.', 'Game model'],
+  ['Kalshi game winners', 'At the prices you could actually trade (1pm), betting where the model disagreed lost after fees at 4 of 5 edge sizes.', '2,790 sides'],
+  ['Sportsbook player props', 'Sportsbook closing prop lines are sharp: no stat passed. The best, rebounds at a 3% edge, returned +$7.48 per $100 but could easily be luck.', 'ESPN closing lines, 2025-26'],
+  ['Combo props (PRA, P+R, P+A, R+A)', 'No edge at any size on sportsbooks; Kalshi does not list them.', 'ESPN closing lines'],
+  ['Buying overs (YES) on Kalshi', 'The mirror image of the proven bets: YES is overpriced in every stat, so buying it loses unless our model finds a rare exception.', 'Kalshi, 2025-26'],
+  ['Copying sharp bettors late', 'Accounts with a winning record do beat the closing price, but copying their side 30 minutes to 2 hours later lost money.', '31k Polymarket trades'],
+  ['Following the biggest tickets', 'Size is not skill: even $100k+ tickets lost to the closing price on average.', 'Polymarket tape'],
+];
+$('notlist').innerHTML = NOT.map(([t, d, n]) => `<div class="card"><h4><span class="tag no">NO</span>${t}</h4><p>${d}</p><span class="n">${n}</span></div>`).join('');
+
+// tabs
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-t]'); if (!b) return;
+  for (const x of $('tabs').children) x.setAttribute('aria-pressed', x === b);
+  for (const t of ['works', 'finder', 'not', 'lab']) $('s-' + t).hidden = t !== b.dataset.t;
+  document.querySelector('.top h1').textContent = b.textContent; window.scrollTo(0, 0); });
+</script>
