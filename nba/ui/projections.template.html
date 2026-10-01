@@ -493,6 +493,38 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 }
 @media (max-width:480px){ .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px} .kpi .val{font-size:20px} }
 @media (prefers-reduced-motion:reduce){ .btn,.switch input::after,.prog .tr i,.sidebar{transition:none} }
+/* Sharp Price */
+table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
+.sx-type{display:inline-flex;align-items:center;height:19px;padding:0 7px;margin-right:4px;border-radius:var(--r-pill);border:1px solid var(--border2);font-size:10.5px;font-family:var(--font-mono);color:var(--fg2);white-space:nowrap;vertical-align:1px}
+.sx-type.t-steam,.sx-type.t-behind{color:var(--fg);border-color:var(--fg3)}
+.sx-type.t-sharp,.sx-type.t-cross{color:var(--up);border-color:rgba(74,222,128,.35)}
+.sx-type.t-whale{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.sx-card{display:flex;flex-direction:column;gap:12px;padding:18px 20px}
+.sx-lab{margin:0 0 6px;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em}
+.sx-fair{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:-6px}
+.sx-fair div{display:flex;flex-direction:column;gap:1px;min-width:0}
+.sx-fair small{font-size:11px;color:var(--fg3)}
+.sx-fair b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.sx-fair span{font-size:11.5px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.sx-none{margin:0;font-size:12.5px}
+.sx-rest{grid-column:1/-1;margin:0;font-size:12.5px}
+.sx-move{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sx-move p{margin:0;font-size:12px;color:var(--fg2);flex:1;min-width:180px}
+.sx-spark{width:220px;max-width:100%;height:44px;flex:none}
+.sx-chips{display:flex;flex-wrap:wrap;gap:6px}
+.sx-chip{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:var(--r-pill);border:1px solid var(--border2);font-size:11.5px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.sx-chip.go{color:var(--up);border-color:rgba(74,222,128,.4)}
+.sx-flow{display:grid;gap:6px}
+.sx-fr{display:grid;grid-template-columns:110px minmax(0,1fr) auto;align-items:center;gap:10px;font-size:12px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.sx-fr i{position:relative;height:6px;border-radius:3px;background:var(--raised)}
+.sx-fr i::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--border2)}
+.sx-fr u{position:absolute;top:0;bottom:0;border-radius:3px}
+.sx-fr u.h{left:50%;background:var(--fg)}
+.sx-fr u.a{right:50%;background:var(--fg3)}
+.sx-fr b{font-weight:500;color:var(--fg)}
+.sx-fr small{grid-column:2/-1;margin-top:-4px;font-size:11px;color:var(--fg3)}
+table.nt.sx-tk{min-width:420px}
+@media (max-width:600px){ .sx-card{padding:16px} .sx-fair{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .sx-fr{grid-template-columns:92px minmax(0,1fr) auto} }
 /* Slate & Game Lines */
 .sl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr));gap:var(--gap)}
 .sl-card{display:flex;flex-direction:column;gap:12px;padding:18px 20px}
@@ -797,6 +829,21 @@ table.nt.sl-rt{min-width:420px}
       </section>
     </main>
     <footer id="sfoot" hidden></footer>
+    <main id="v-sharp" hidden>
+      <div class="banner" id="xbanner" hidden></div>
+      <div class="kpis" id="xkpis"></div>
+      <section class="card">
+        <div class="card-h"><div><h2>Signals</h2><p>Every Pinnacle move, price behind Pinnacle, sharp-account trade, big ticket and money split on the board's games, newest first. Context until its type beats the close.</p></div>
+          <div class="filters" id="xfilters"></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt sx-feed" id="xfeed"></table></div></div>
+      </section>
+      <div class="sl-grid" id="xgames"></div>
+      <section class="card">
+        <div class="card-h"><div><h2>Signal record</h2><p>Graded against Pinnacle's close and the final score, this season.</p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt" id="xrecord"></table></div></div>
+      </section>
+    </main>
+    <footer id="xfoot" hidden></footer>
   </div>
 </div>
 
@@ -819,7 +866,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : hashT === 'SLATE' ? 'slate' : hashT === 'LINES' ? 'lines' : 'lab';
+let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : hashT === 'SLATE' ? 'slate' : hashT === 'LINES' ? 'lines' : hashT === 'SHARP' ? 'sharp' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -945,7 +992,7 @@ const PAGES = [
   ['Markets', [
     ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.', 'lines'],
     ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'Every prop line and Kalshi ladder next to the projection, the blended fair price and the edge.', 'props'],
-    ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.'],
+    ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.', 'sharp'],
   ]],
   ['Betting', [
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
@@ -1100,7 +1147,7 @@ $('pages').addEventListener('click', e => {
 });
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE', 'SLATE', 'LINES'].includes(h)) show(h.toLowerCase());
+  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE', 'SLATE', 'LINES', 'SHARP'].includes(h)) show(h.toLowerCase());
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -1156,6 +1203,7 @@ function show(v){
   $('v-tonight').hidden = $('nfoot').hidden = v !== 'tonight';
   $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
   $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
+  $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
   $('mode').hidden = lab;
@@ -1166,6 +1214,14 @@ function show(v){
     $('tsub').textContent = 'PROJECTION · MARKET · BLENDED FAIR';
     renderProps();
     if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'sharp'){
+    $('tname').textContent = 'Sharp Price';
+    $('tsub').textContent = 'PINNACLE FAIR · LINE MOVES · SHARP ACCOUNTS · GRADED ON CLV';
+    renderSharp();
+    if (!boardTried) loadBoard();
+    if (!trackTried) loadTrack();
     return;
   }
   if (v === 'slate' || v === 'lines'){
@@ -1229,6 +1285,7 @@ const SRC = [
   ['underdog', 'Underdog', "Pick'em lines with a price per side"],
   ['sleeper', 'Sleeper', "Pick'em lines with a payout per side"],
   ['ledger', 'Shadow ledger', 'Logs and settles every 3%+ edge (Track Record)'],
+  ['tape', 'Trade tapes', 'Polymarket trades by account, Kalshi big tickets (Sharp Price)'],
 ];
 const PICKEM = [['prizepicks', 'PP'], ['underdog', 'UD'], ['sleeper', 'SL']];
 const VENUES = ['kalshi', 'espn', 'pinnacle', 'action', 'polymarket'];
@@ -1796,6 +1853,7 @@ async function loadBoard(){
     if (view === 'tonight') renderTonight();
     if (view === 'wire') renderWire();
     if (view === 'slate' || view === 'lines') renderSlate();
+    if (view === 'sharp') renderSharp();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -2073,6 +2131,7 @@ async function loadTrack(){
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
     if (view === 'wire') renderWire();
+    if (view === 'sharp') renderSharp();
     clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -2897,6 +2956,150 @@ function renderSlateRatings(){
 }
 $('sdays').addEventListener('click', e => { const b = e.target.closest('button[data-d]'); if (b){ sv.day = b.dataset.d; renderSlate(); } });
 $('sgames').addEventListener('toggle', e => { const d = e.target.closest('details[data-g]'); if (d) sv.open[d.dataset.g] = d.open; }, true);
+
+// ── Sharp Price ───────────────────────────────────────────────────────────
+// Where informed money is on game markets (sharp.py, in the recorder): Pinnacle's fair price from its own ladder,
+// its line history, soft books and Kalshi priced better than that fair at the same number, Polymarket accounts scored
+// on their record against the close, big tickets, and money vs bets. Every signal is graded on closing-line value
+// against Pinnacle's last pre-tip price; the study says copying sharp money late does not pay, so none of this is a
+// bet until its type beats the close over 50+ graded signals.
+let xf = {type: 'all', game: 'all'};
+const XTYPE = {steam: 'Pinnacle move', behind: 'Behind Pinnacle', sharp: 'Sharp accounts', cross: 'Sharp net $25k+', whale: 'Big ticket', split: 'Money vs bets'};
+const XMK = {ml: 'moneyline', sp: 'spread', tot: 'total'};
+function pDevig(a, b){
+  const x = amP(a), y = amP(b); if (!x || !y) return null;
+  let lo = .5, hi = 3;
+  for (let i = 0; i < 40; i++){ const k = (lo + hi) / 2; if (x ** k + y ** k > 1) lo = k; else hi = k; }
+  return x ** ((lo + hi) / 2);
+}
+function ladFair(lad, m, side, line){
+  if (!lad) return null;
+  if (m === 'ml'){ const p = lad.ml ? pDevig(lad.ml[0], lad.ml[1]) : null; return p == null ? null : side === 'home' ? p : 1 - p; }
+  const L = lad[m] || {}, k = Object.keys(L).find(x => line != null && Math.abs(+x - line) < 1e-9);
+  const p = k ? pDevig(L[k][0], L[k][1]) : null;
+  return p == null ? null : (side === 'home' || side === 'over') ? p : 1 - p;
+}
+const pAm = p => p == null || !(p > 0 && p < 1) ? '' : (p >= .5 ? '-' + Math.round(100 * p / (1 - p)) : '+' + Math.round(100 * (1 - p) / p));
+const usdK = x => Math.abs(x) >= 1000 ? '$' + (Math.abs(x) / 1000).toFixed(Math.abs(x) >= 1e4 ? 0 : 1) + 'k' : '$' + Math.abs(Math.round(x));
+function xSide(a, g){
+  const tm = a.side === 'home' ? g.home : g.away;
+  if (a.m === 'ml') return `${tm} to win`;
+  if (a.m === 'tot') return `${a.side === 'over' ? 'Over' : 'Under'}${a.line != null ? ' ' + fmt(a.line) : ''}`;
+  if (a.line == null) return `${tm} spread`;
+  const l = a.side === 'home' ? a.line : -a.line;
+  return `${tm} ${l > 0 ? '+' : ''}${fmt(l)}`;
+}
+function xText(a, g){
+  const S = xSide(a, g);
+  if (a.type === 'steam'){
+    const tm = a.m === 'tot' ? (a.side === 'over' ? 'the over' : 'the under') : (a.side === 'home' ? g.home : g.away);
+    const f = a.m === 'ml' ? `${pc(a.side === 'home' ? a.from : 1 - a.from)} to ${pc(a.side === 'home' ? a.to : 1 - a.to)}`
+      : a.m === 'sp' ? `${g.home} ${fmt(a.from)} to ${fmt(a.to)}` : `${fmt(a.from)} to ${fmt(a.to)}`;
+    return `Pinnacle moved the ${XMK[a.m]} toward ${tm}: ${f}`;
+  }
+  if (a.type === 'behind') return `${esc(a.venue)} still has ${S} ${a.venue === 'Kalshi' ? Math.round(a.price * 100) + '¢' : (a.price > 0 ? '+' : '') + a.price}; Pinnacle's fair is ${pAm(a.fair)} (${pc(a.ev, 1)} EV)`;
+  if (a.type === 'sharp') return `${a.accts > 1 ? a.accts + ' sharp accounts' : 'Sharp account ' + esc(a.who || 'unnamed')} put ${usdK(a.usd)} on ${S} at ${Math.round(a.px * 100)}¢${a.rec ? ` <span class="muted">(${a.rec[3].toUpperCase()} record: ${a.rec[0]} trades, ${a.rec[1] >= 0 ? '+' : ''}${(a.rec[1] * 100).toFixed(1)}% vs close)</span>` : ''}`;
+  if (a.type === 'cross') return `Sharp accounts' 24-hour net on ${S} reached ${usdK(a.usd)} (${a.n} ${a.n === 1 ? 'trade' : 'trades'}; ${Math.abs(a.crowd) < 1000 ? 'everyone else about even' : `everyone else ${usdK(a.crowd)} ${(a.crowd > 0) === (a.side === 'home') ? 'with them' : 'against them'}`})`;
+  if (a.type === 'whale') return `${usdK(a.usd)} ticket on ${S} at ${Math.round(a.px * 100)}¢ (${esc(a.venue)}${a.cls === 'sharp' ? ', sharp account' : a.cls === 'dull' ? ', usually-losing account' : ''})`;
+  if (a.type === 'split') return `${a.money}% of the money but ${a.bets}% of bets on ${S}${a.moved > 0 ? ', and Pinnacle has moved their way' : ''}`;
+  return '';
+}
+function xSpark(pin, tip){
+  const pts = (pin || []).filter(s => s[1] != null);
+  if (pts.length < 2) return '';
+  const W = 220, H = 44, t0 = pts[0][0], t1 = Math.max(pts[pts.length - 1][0], t0 + 1);
+  const lv = pts.map(s => -s[1] + (s[2] - .5) * 2.5), lo = Math.min(...lv) - .25, hi = Math.max(...lv) + .25;
+  const x = t => 4 + (W - 8) * (t - t0) / (t1 - t0), y = v => 4 + (H - 8) * (1 - (v - lo) / (hi - lo));
+  let d = '';                                                     // a step line: a price holds until it changes
+  pts.forEach((s, i) => { d += (i ? `H${x(s[0]).toFixed(1)}V` : `M${x(s[0]).toFixed(1)} `) + y(lv[i]).toFixed(1); });
+  return `<svg class="sx-spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pinnacle spread over time"><path d="${d}" fill="none" stroke="var(--fg)" stroke-width="1.5"/><circle cx="${x(pts[pts.length - 1][0])}" cy="${y(lv[lv.length - 1])}" r="2.5" fill="var(--fg)"/></svg>`;
+}
+function xGame(g, o){
+  const P = o.pin || [], c = P[P.length - 1], f = P[0], lad = o.lad;
+  const tn = t => (D.teams[t] && D.teams[t].name) || t;
+  const lim = c && c[6] ? c[6] : [];
+  const fairRow = c ? `<div class="sx-fair">
+      <div><small>Spread</small><b>${c[1] != null ? `${g.home} ${c[1] > 0 ? '+' : ''}${fmt(c[1])}` : 'n/a'}</b><span>${c[2] != null ? `${g.home} ${pc(c[2])}` : ''}${lim[0] ? ` · limit $${lim[0].toLocaleString()}` : ''}</span></div>
+      <div><small>Total</small><b>${c[3] != null ? fmt(c[3]) : 'n/a'}</b><span>${c[4] != null ? `over ${pc(c[4])}` : ''}${lim[1] ? ` · limit $${lim[1].toLocaleString()}` : ''}</span></div>
+      <div><small>To win</small><b>${c[5] != null ? `${g.home} ${pc(c[5])}` : 'n/a'}</b><span>${c[5] != null ? `fair ${pAm(c[5])} / ${pAm(1 - c[5])}` : ''}${lim[2] ? ` · limit $${lim[2].toLocaleString()}` : ''}</span></div></div>` : `<p class="muted sx-none">Pinnacle has not posted this game yet.</p>`;
+  const mv = [];
+  if (f && c && f !== c){
+    if (f[1] != null && c[1] != null && f[1] !== c[1]) mv.push(`spread ${g.home} ${fmt(f[1])} to ${fmt(c[1])}`);
+    if (f[3] != null && c[3] != null && f[3] !== c[3]) mv.push(`total ${fmt(f[3])} to ${fmt(c[3])}`);
+    if (f[5] != null && c[5] != null && Math.abs(f[5] - c[5]) >= .01) mv.push(`${g.home} win ${pc(f[5])} to ${pc(c[5])}`);
+  }
+  const moveH = c ? `<div class="sx-move">${xSpark(P, g.tip)}<p>${f && f !== c ? `Since ${stamp(f[0])} ET: ${mv.length ? mv.join(', ') : 'prices moved at the same numbers'}.` : 'No move recorded yet.'}${o.open ? '' : ''}</p></div>` : '';
+  const beh = (o.behind || []).map(b => `<span class="sx-chip ${b.ev >= .03 ? 'go' : ''}" title="Pinnacle's fair at the same number: ${pAm(b.fair)} (${pc(b.fair, 1)})">${esc(b.venue)} ${xSide(b, g)} ${b.venue === 'Kalshi' ? Math.round(b.price * 100) + '¢' : (b.price > 0 ? '+' : '') + b.price} · ${pc(b.ev, 1)}</span>`).join('');
+  const F = o.flow || {}, team = v => v > 0 ? g.home : g.away;
+  const fl = [['Sharp accounts', F.sharp, F.sharpN ? `${F.sharpN} ${F.sharpN === 1 ? 'trade' : 'trades'}` : ''], ['Usually losing', F.dull, ''], ['Everyone', F.all, F.vol ? `${usdK(F.vol)} traded` : '']];
+  const mx = Math.max(1, ...fl.map(x => Math.abs(x[1] || 0)));
+  const flowH = (F.vol || F.kalVol) ? `<div class="sx-flow"><p class="sx-lab">Polymarket winner market, last 24 hours, net</p>${fl.map(([l, v, sub]) => `<div class="sx-fr"><span>${l}</span><i><u class="${v > 0 ? 'h' : 'a'}" style="width:${Math.abs(v || 0) / mx * 50}%"></u></i><b>${v ? `${usdK(v)} ${team(v)}` : 'even'}</b>${sub ? `<small>${sub}</small>` : ''}</div>`).join('')}
+      ${F.kalVol ? `<p class="sx-lab">Kalshi tickets $500+: ${usdK(F.kalVol)}, net ${F.kal ? `${usdK(F.kal)} on ${team(F.kal)}` : 'even'}</p>` : ''}</div>` : '';
+  const tk = (o.tickets || []).slice().reverse().slice(0, 5).map(x => `<tr><td class="l muted">${clock(x[0])}</td><td class="l">${esc(x[1])}</td><td class="l">${xSide({m: x[2], side: x[3], line: x[8]}, g)}</td><td>${usdK(x[4])}</td><td>${Math.round(x[5] * 100)}¢</td><td class="l">${x[6] === 'sharp' ? '<span class="badge">sharp</span>' : x[6] === 'dull' ? '<span class="badge bad">usually losing</span>' : ''}</td></tr>`).join('');
+  return `<article class="card sx-card"><header class="sl-h"><div class="sl-teams"><b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span><b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
+      <div class="sl-meta">${g.season_type === 1 ? '<span class="badge">Preseason</span>' : ''}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
+    <p class="sx-lab">Pinnacle fair, vig removed</p>${fairRow}${moveH}
+    ${beh ? `<div><p class="sx-lab">Priced better than Pinnacle's fair at the same number</p><div class="sx-chips">${beh}</div></div>` : ''}
+    ${flowH}${tk ? `<details class="sl-lines"><summary>Big and sharp tickets · ${(o.tickets || []).length}</summary><div class="nt-tw"><table class="nt sx-tk"><tbody>${tk}</tbody></table></div></details>` : ''}</article>`;
+}
+function xRecord(){
+  const S = TR && TR.data && TR.data.signals, T = {};
+  for (const by of Object.values((S && S.days) || {})) for (const [t, r] of Object.entries(by)){
+    const x = T[t] = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    r.forEach((v, i) => x[i] += v);
+  }
+  const rows = Object.keys(XTYPE).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null;
+    const se = g > 1 ? Math.sqrt(Math.max(r[3] / g - m * m, 0) / g) : null, tt = se ? m / se : null, dec = r[5] + r[6] + r[7];
+    const st = g < 50 ? `<span class="muted">Tracking · ${g} of 50</span>` : tt >= 2 ? '<span class="pos">Beats the close</span>' : tt <= -2 ? '<span class="neg">Loses to the close</span>' : 'No edge yet';
+    return `<tr><td class="l"><b>${XTYPE[t]}</b></td><td>${r[0]}</td><td>${g}</td><td>${m != null ? `<span class="${m > 0 ? 'pos' : m < 0 ? 'neg' : ''}">${m >= 0 ? '+' : ''}${(m * 100).toFixed(2)}</span>${se ? ` <small>± ${(se * 100).toFixed(2)}</small>` : ''}` : ''}</td><td>${g ? pc(r[4] / g) : ''}</td><td>${dec ? `${r[5]}-${r[6]}${r[7] ? '-' + r[7] : ''}` : ''}</td><td>${dec ? `${pc(r[5] / Math.max(1, r[5] + r[6]))} <small>vs ${pc(r[8] / dec)}</small>` : ''}</td><td class="l">${st}</td></tr>`; });
+  $('xrecord').innerHTML = `<thead><tr><th class="l">Signal</th><th>Fired</th><th title="Games final, with Pinnacle's close at the signal's number">Graded</th><th title="Pinnacle's closing fair minus the fair when it fired, in probability points (behind: EV at the closing fair)">Avg CLV, pts</th><th>Beat the close</th><th>W-L-P</th><th title="Win rate vs the fair probability when it fired">Won vs fair</th><th class="l">Status</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+  return Object.values(T).reduce((a, r) => [a[0] + r[1], a[1] + r[2]], [0, 0]);
+}
+function renderSharp(){
+  const pick = slateBoard(), B = pick.board, SH = B.sharp, now = Date.now() / 1000;
+  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No games yet');
+  const games = [...(B.games || [])].sort((a, b) => a.tip - b.tip), byId = Object.fromEntries(games.map(g => [String(g.id), g]));
+  $('xbanner').hidden = !!(SH && games.length);
+  $('xbanner').innerHTML = !games.length ? `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. Preseason starts October 3; opening night is October 20.</span>`
+    : `<b>Sharp Price needs the recorder's new board.</b><span>It fills on the next poll after this build ships.</span>`;
+  const [gN, gS] = xRecord();
+  if (!SH){ $('xkpis').innerHTML = $('xfeed').innerHTML = $('xgames').innerHTML = ''; $('xfilters').innerHTML = ''; xFoot(null); return; }
+  const A = (SH.alerts || []).filter(a => byId[a.g]);
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const steam = A.filter(a => a.type === 'steam' && now - a.t < 86400);
+  const beh = Object.entries(SH.games).flatMap(([gid, o]) => (o.behind || []).filter(b => b.ev >= .03).map(b => ({...b, g: byId[gid]}))).filter(b => b.g).sort((a, b) => b.ev - a.ev);
+  const sm = Object.entries(SH.games).map(([gid, o]) => ({g: byId[gid], v: (o.flow || {}).sharp || 0})).filter(x => x.g && x.v).sort((a, b) => Math.abs(b.v) - Math.abs(a.v))[0];
+  $('xkpis').innerHTML =
+    kpi('Pinnacle moves, 24 h', ICON.pts, `${steam.length}`, steam.length ? `Latest: ${byId[steam[0].g].away} @ ${byId[steam[0].g].home}, ${XMK[steam[0].m]}` : 'No steam yet') +
+    kpi('Behind Pinnacle now', ICON.star, `${beh.length}`, beh.length ? `Best: ${esc(beh[0].venue)} ${xSide(beh[0], beh[0].g)}, ${pc(beh[0].ev, 1)} EV` : 'Every price within 3% of fair') +
+    kpi('Sharp-account money', ICON.clock, sm ? usdK(sm.v) : '$0', sm ? `Net on ${sm.v > 0 ? sm.g.home : sm.g.away} (${sm.g.away} @ ${sm.g.home}), last 24 h` : `${SH.accounts ? SH.accounts.sharp : 0} sharp accounts watched`) +
+    kpi('Signal record', ICON.edit, `${gN}`, gN ? `graded · avg CLV ${gS / gN >= 0 ? '+' : ''}${(gS / gN * 100).toFixed(2)} pts` : 'Grades start after the first final');
+  const gameIds = [...new Set(A.map(a => a.g))];
+  if (xf.game !== 'all' && !byId[xf.game]) xf.game = 'all';
+  $('xfilters').innerHTML = `<div class="seg" id="xtype" role="group" aria-label="Signal type">${[['all', 'All'], ...Object.entries(XTYPE)].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${xf.type === v}">${l}${v !== 'all' ? ` · ${A.filter(a => a.type === v).length}` : ''}</button>`).join('')}</div>
+    <select class="sel" id="xgame" aria-label="Game"><option value="all">All games</option>${games.filter(g => gameIds.includes(String(g.id))).map(g => `<option value="${g.id}"${xf.game === String(g.id) ? ' selected' : ''}>${g.away} @ ${g.home}</option>`).join('')}</select>`;
+  const F = A.filter(a => (xf.type === 'all' || a.type === xf.type) && (xf.game === 'all' || a.g === xf.game)).slice(0, 80);
+  $('xfeed').innerHTML = `<thead><tr><th class="l">Seen (ET)</th><th class="l">Game</th><th class="l">Signal</th><th title="Pinnacle's fair for this side at this number when it fired">Fair then</th><th title="Pinnacle's fair now, same side and number">Now</th><th title="Now minus then, probability points: positive = the market has come to this side">Since</th></tr></thead><tbody>
+    ${F.length ? F.map(a => { const g = byId[a.g], o = SH.games[a.g] || {}, fn = ladFair(o.lad, a.m, a.side, a.line), d = fn != null && a.fair != null ? fn - a.fair : null;
+      return `<tr><td class="l num">${etFmt(a.t, {weekday: 'short'})} ${clock(a.t)}</td><td class="l"><b>${g.away} @ ${g.home}</b></td><td class="l sx-txt"><span class="sx-type t-${a.type}">${XTYPE[a.type]}</span> ${xText(a, g)}</td>
+        <td>${a.fair != null ? pc(a.fair, 1) : ''}</td><td>${fn != null ? pc(fn, 1) : ''}</td><td>${d != null ? (Math.abs(d) < .0005 ? '<span class="muted">0.0</span>' : `<span class="${d > .0049 ? 'pos' : d < -.0049 ? 'neg' : 'muted'}">${d > 0 ? '+' : ''}${(d * 100).toFixed(1)}</span>`) : ''}</td></tr>`; }).join('')
+      : `<tr><td class="l" colspan="6"><p class="empty">${A.length ? 'No signals match these filters.' : 'No signals yet on these games. Pinnacle moves, soft books lagging it, sharp accounts and big tickets show up here as they happen.'}</p></td></tr>`}</tbody>`;
+  const has = o => o && ((o.pin || []).length || (o.behind || []).length || (o.tickets || []).length || (o.flow && (o.flow.vol || o.flow.kalVol)));
+  const shown = games.filter(g => has(SH.games[String(g.id)])), rest = games.length - shown.length;
+  $('xgames').innerHTML = shown.map(g => xGame(g, SH.games[String(g.id)])).join('') +
+    (rest ? `<p class="muted sx-rest">${rest} more ${rest === 1 ? 'game has' : 'games have'} no Pinnacle price or trades yet.</p>` : '');
+  xFoot(SH);
+}
+function xFoot(SH){
+  const ac = SH && SH.accounts;
+  $('xfoot').innerHTML = `
+    <div><b>Pinnacle</b> is the market-making book: it takes big bets and moves on them, so its price is the best free estimate of the true odds. Fair = its price with the vig removed (power method, which keeps the favourite-longshot bias out), read from its own alternate lines so a soft book's number is compared at that number. A move is steam when it passes 1 point on the spread, 1.5 on the total or 3% on the moneyline within 30 minutes; a price change at the same number counts as a twentieth of a point. Limits are Pinnacle's maximum stake, which rise as it trusts its number.</div>
+    <div><b>Accounts</b> are Polymarket wallets scored on their own trades against the close (${ac ? `${ac.scored.toLocaleString()} scored, ${ac.nba_sharp} sharp on their NBA record, ${ac.sharp - ac.nba_sharp} on another sport's, ${ac.dull} usually losing` : 'scorecard pending'}). The study behind this (613 NFL games, 31k trades): sharp accounts beat the close by 0.38%, but copying them 30 minutes to 2 hours later lost 0.19%, and trade size alone is not skill.</div>
+    <div><b>Every signal is graded</b> once its game is final: closing-line value is Pinnacle's last pre-tip fair at the signal's number minus the fair when it fired (for a price behind Pinnacle, its EV at the closing fair), plus the result against the fair it implied. A type counts as an edge only after 50+ graded signals with CLV 2 standard errors above zero. Until then this page is context: where informed money went, not a bet.</div>`;
+}
+$('xfilters').addEventListener('click', e => { const b = e.target.closest('#xtype button[data-v]'); if (b){ xf.type = b.dataset.v; renderSharp(); } });
+$('xfilters').addEventListener('change', e => { if (e.target.id === 'xgame'){ xf.game = e.target.value; renderSharp(); } });
 
 show(view);
 </script>

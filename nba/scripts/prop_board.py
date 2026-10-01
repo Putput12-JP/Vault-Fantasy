@@ -284,7 +284,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
     wire_events = injury_wire(wire, qk, R, games, nicks) if wire else []
     gm = game_markets(games, last, meta, gkey, nicks, when)
     return {'t': now, 'outs': outs, 'news': news, 'starters': starters, 'wire': wire_events,
-            'games': [dict({k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}, **glines.get(str(g['id']), {}), mk=gm.get(str(g['id'])))
+            'games': [dict({k: g.get(k) for k in ('id', 'day', 'tip', 'away', 'home', 'season_type', 'away_name', 'home_name')}, **glines.get(str(g['id']), {}), mk=gm.get(str(g['id'])))
                                 for g in games],
             'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped)}
 

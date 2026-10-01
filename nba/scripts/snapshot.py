@@ -442,7 +442,7 @@ class Day:
                 for r in map(json.loads, open(os.path.join(self.dir, f))):
                     self.known.add((r['src'], r['k']))
                     self.meta[r['src']][r['k']] = r
-            elif f.endswith('.jsonl') and f != 'polls.jsonl':
+            elif f.endswith('.jsonl') and f not in ('polls.jsonl', 'tape.jsonl'):   # tape: trades, not a change log
                 last, first, when = self.last.setdefault(src, {}), self.first[src], self.when[src]
                 for line in open(os.path.join(self.dir, f)):
                     r = json.loads(line)
@@ -512,6 +512,18 @@ def poll(root):
         polls.append(rec)
         print(f"  {name:10s} {'ok ' if rec['ok'] else 'ERR'} n={rec.get('n', '-')} chg={rec.get('chg', '-')} "
               f"{rec['s']}s {rec.get('err', '') or rec.get('report') or ''}", flush=True)
+    t0 = time.time()                                    # trade tapes: Polymarket accounts, Kalshi big tickets (sharp.py)
+    rec = {'t': int(t0), 'src': 'tape', 'ok': True}
+    try:
+        import sharp
+        from prop_board import TEAM as BTEAM
+        rec['n'], rec['chg'] = sharp.poll_tapes(root, day, slate, int(t0), curl, parse_event, BTEAM)
+    except Exception as e:
+        rec.update(ok=False, err=str(e)[:200])
+        traceback.print_exc(limit=1)
+    rec['s'] = round(time.time() - t0, 1)
+    polls.append(rec)
+    print(f"  tape       {'ok ' if rec['ok'] else 'ERR'} markets={rec.get('n', '-')} new={rec.get('chg', '-')} {rec['s']}s {rec.get('err', '')}", flush=True)
     day.append('polls.jsonl', polls)
     write_status(root, day, slate, polls, metas)
     board = write_board(root, day, slate)
@@ -618,6 +630,12 @@ def write_board(root, day, slate):
         proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
         board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE, when=day.when,
                       wire=(day.hist, day.log, day.t0))
+        try:                                            # Sharp Price: Pinnacle history, tapes, signals (sharp.py)
+            import sharp
+            from prop_board import TEAM as BTEAM
+            board['sharp'] = sharp.build(board, day, root, slate.now, BTEAM, parse_event)
+        except Exception:
+            traceback.print_exc(limit=2)
         with open(BOARD, 'w') as f:
             json.dump(board, f, separators=(',', ':'))
         save_wire(day, board.get('wire') or [], slate.now)

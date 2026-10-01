@@ -487,7 +487,13 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     n = sum(r[CUBE_COLS.index('bets')] for r in cube)
     minutes_days = minutes_record(root, now, track.get('minutes_days'), rescan_days)
     wire_days = wire_record(root, now, track.get('wire_days'), rescan_days)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days,
+    try:                                          # Sharp Price signals: CLV vs Pinnacle's close, and the final score
+        import sharp
+        signals = sharp.grade_signals(root, now, track.get('signals'), box, box_meta)
+    except Exception as e:
+        print('signals grading failed:', e, flush=True)
+        signals = track.get('signals')
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs()}
     with open(tpath, 'w') as f:
