@@ -110,13 +110,6 @@ button,input,select{font:inherit;color:inherit}
 .sec-h p{margin:0;font-size:12.5px;color:var(--fg2);max-width:64ch}
 .chart svg{width:100%;height:auto;display:block}
 .chart text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
-.lg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--fg2)}
-.lg span{display:inline-flex;align-items:center;gap:6px}
-.lg i{display:inline-block;width:11px;height:11px}
-.lg .cv{height:2px;width:16px;background:var(--fg)}
-.lg .bk{border-radius:50%;background:var(--info)}
-.lg .ka{border-radius:2px;background:var(--warn)}
-.lg .bt{border-radius:50%;border:2px solid var(--up)}
 .tw{overflow-x:auto}
 table.lt{width:100%;min-width:340px;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
 table.lt th{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
@@ -126,6 +119,22 @@ table.lt tr:last-child td{border-bottom:0}
 table.lt tr.hl td{background:rgba(74,222,128,.06)}
 table.lt small{display:block;font-size:11px;color:var(--fg3)}
 
+.shop{padding:10px 14px;border-radius:10px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.25);font-size:13px;color:var(--fg2)}
+.shop b{color:var(--fg);font-weight:600}
+.ways{display:grid;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.way{display:grid;grid-template-columns:minmax(0,1fr) auto 64px;gap:2px 14px;align-items:center;padding:10px 14px;border-top:1px solid var(--border)}
+.way:first-child{border-top:0}
+.way.hl{background:rgba(74,222,128,.07)}
+.way .w1 b{display:block;font-size:13.5px;font-weight:600}
+.way .w1 span{font-size:12px;color:var(--fg3)}
+.way .w2{display:grid;justify-items:end;line-height:1.2}
+.way .w2 b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.way .w2 small{font-size:10.5px;color:var(--fg3)}
+.way .vp{justify-self:end}
+.way .w3{grid-column:1/-1;font-size:12px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.verdict .plain{font-size:15px;color:var(--fg)}
+.more{justify-self:start;height:30px;padding:0 12px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:12.5px;color:var(--fg2)}
+.more:hover{color:var(--fg)}
 .wf{display:grid;gap:5px}
 .wf .wr{display:grid;grid-template-columns:170px minmax(0,1fr) 64px;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}
 .wf .wr > b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
@@ -203,7 +212,7 @@ const PRESETS = [
   ['pickem', "Pick'em plays", p => p.cands.some(c => c.venue === 'pickem' && c.edge >= .03)],
   ['all', 'Everything', () => true],
 ];
-let st = {preset: 'passed', stat: 'all', sort: 'trust', q: '', sel: null};
+let st = {preset: 'passed', stat: 'all', sort: 'trust', q: '', sel: null, allWays: false};
 
 function filtered(){
   const f = PRESETS.find(x => x[0] === st.preset)[2], q = st.q.toLowerCase();
@@ -233,37 +242,37 @@ function renderList(){
 }
 
 // ── the case for one prop ──
-function ladderSvg(p){
-  const W = window.innerWidth < 600 ? 380 : 640, H = window.innerWidth < 600 ? 200 : 230, L = 40, R = 14, T = 12, B = 30;
-  const xs = p.curve.map(c => c[0]), x0 = xs[0], x1 = xs[xs.length - 1];
-  const x = v => L + (W - L - R) * (v - x0) / (x1 - x0 || 1), y = v => T + (H - T - B) * (1 - v);
-  let g = '';
-  for (const v of [0, .25, .5, .75, 1]) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--border)"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v * 100}%</text>`;
-  const step = Math.max(1, Math.round((x1 - x0) / 8));
-  for (let v = Math.ceil(x0); v <= x1; v += step) g += `<text x="${x(v)}" y="${H - 10}" text-anchor="middle">${v}</text>`;
-  g += `<line x1="${x(p.mu)}" x2="${x(p.mu)}" y1="${T}" y2="${H - B}" stroke="var(--fg3)" stroke-dasharray="3 4"/><text x="${x(p.mu) + 4}" y="${T + 10}" fill="var(--fg2)">proj ${fmt(p.mu)}</text>`;
-  g += `<path d="${p.curve.map((c, i) => (i ? 'L' : 'M') + x(c[0]).toFixed(1) + ' ' + y(c[1]).toFixed(1)).join(' ')}" fill="none" stroke="var(--fg)" stroke-width="2"/>`;
-  const b = p.best && p.verdict !== 'pass' ? p.best : null;
-  for (const q of p.quotes.filter(q => q.p != null && q.line >= x0 && q.line <= x1)){
-    const hit = b && q.line === b.line && ((b.venue === 'kalshi') === (q.kind === 'kalshi'));
-    g += q.kind === 'kalshi' ? `<rect x="${x(q.line) - 5}" y="${y(q.p) - 5}" width="10" height="10" rx="2" fill="var(--warn)"><title>Kalshi ${kLine(q.line)}: ${pc(q.p)} (last trade)</title></rect>`
-      : `<circle cx="${x(q.line)}" cy="${y(q.p)}" r="6" fill="var(--info)"><title>${esc(q.v)} ${q.line}: over ${q.over} / under ${q.under} = ${pc(q.p, 1)} with the vig removed</title></circle>`;
-    if (hit) g += `<circle cx="${x(q.line)}" cy="${y(q.p)}" r="11" fill="none" stroke="var(--up)" stroke-width="2"/>`;
-  }
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Our probability of going over each line, with every venue's price">${g}</svg>`;
+// every way to bet this prop, best value first
+const NOUN = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': 'threes', pra: 'pts + reb + ast', pr: 'pts + reb', pa: 'pts + ast', ra: 'reb + ast'};
+const isOver = c => c.side === 'Over' || c.side === 'YES';
+const outcome = (c, s) => isOver(c) ? `${Math.ceil(c.line)}+ ${NOUN[s]}` : Math.floor(c.line) <= 0 ? `no ${NOUN[s]}` : `${Math.floor(c.line)} or fewer ${NOUN[s]}`;
+const betName = (c, s) => c.venue === 'kalshi' ? `${isOver(c) ? 'Over' : 'Under'} ${c.line} (${c.side} on ${kLine(c.line)})` : `${c.side} ${c.line}`;
+const costOf = c => c.fair - c.edge;                                   // what the bet costs per $1 of payout, fees and vig in
+const ev100 = c => (c.fair / costOf(c) - 1) * 100;                     // expected profit per $100 staked
+const win10 = c => 10 * (1 - costOf(c)) / costOf(c);
+const priceShown = c => c.venue === 'kalshi' ? `${Math.round(costOf(c) * 100)}¢<small>${Math.round(c.price * 100)}¢ + fee</small>` : `${esc(String(c.price))}<small>${pc(costOf(c))} with the vig</small>`;
+const usd = x => (x < 0 ? '-' : '+') + '$' + Math.abs(x).toFixed(Math.abs(x) >= 10 ? 0 : 2);
+function rowVerdict(c){ return c.edge >= .03 ? (c.g === 'go' ? 'bet' : 'lean') : 'pass'; }
+const VRANK = {bet: 0, lean: 1, pass: 2};
+function waysTable(p){
+  // verdict first, then edge: the top row is always the recommended bet. Value per $100 is shown but not ranked on, since it
+  // favours cheap long shots; at the same value the bigger edge is the better bet to size (it carries less risk per dollar).
+  const all = [...p.cands].filter(c => costOf(c) > 0 && costOf(c) < 1).sort((a, b) => VRANK[rowVerdict(a)] - VRANK[rowVerdict(b)] || b.edge - a.edge);
+  if (!all.length) return '<p class="muted">No prices on this prop.</p>';
+  const open = st.allWays || all.length <= 8, rows = open ? all : all.slice(0, 8);
+  const ref = p.main && all.filter(c => c.line === p.main.line && c.bk === p.main.v);            // the bet most people make
+  const refBest = ref && ref.length ? [...ref].sort((a, b) => b.edge - a.edge)[0] : null, top = all[0];
+  const tr = c => { const v = rowVerdict(c), ev = ev100(c);
+    return `<div class="way ${c === p.best && p.verdict !== 'pass' ? 'hl' : ''}">
+      <div class="w1"><b>${esc(betName(c, p.s))} · ${esc(c.bk)}</b><span>${esc(outcome(c, p.s))}</span></div>
+      <div class="w2"><b class="${ev < 0 ? 'neg' : v === 'pass' ? 'muted' : 'pos'}">${usd(ev)}</b><small>per $100</small></div>
+      <span class="vp ${v}">${v.toUpperCase()}</span>
+      <div class="w3">${c.venue === 'kalshi' ? `${Math.round(costOf(c) * 100)}¢ (${Math.round(c.price * 100)}¢ + fee)` : `${esc(String(c.price))} (${pc(costOf(c))} with the vig)`} · our chance ${pc(c.fair)} · $10 wins $${fmt(win10(c), 2)}</div></div>`; };
+  return `${refBest && top !== refBest && rowVerdict(top) !== 'pass' ? `<div class="shop"><b>Shopping matters here.</b> The recommended bet is worth <b class="pos">${usd(ev100(top))}</b> per $100; the main line at ${esc(refBest.bk)} (${esc(betName(refBest, p.s))}) is worth <b class="${ev100(refBest) >= 0 ? 'pos' : 'neg'}">${usd(ev100(refBest))}</b>. Same player, same stat, ${usd(ev100(top) - ev100(refBest)).replace('+', '')} apart.</div>` : ''}
+    <div class="ways">${rows.map(tr).join('')}</div>
+    ${!open ? `<button class="more" type="button" data-allways="1">Show all ${all.length} ways</button>` : ''}`;
 }
-function fairTable(p){
-  const lines = [...new Set(p.cands.map(c => c.line))].sort((a, b) => a - b);
-  const rows = lines.map(l => {
-    const cs = p.cands.filter(c => c.line === l), over = cs.filter(c => c.side === 'Over' || c.side === 'YES'), under = cs.filter(c => c.side === 'Under' || c.side === 'NO');
-    const fo = over[0] ? over[0].fair : under[0] ? 1 - under[0].fair : null;
-    const bo = [...over].sort((a, b) => b.edge - a.edge)[0], bu = [...under].sort((a, b) => b.edge - a.edge)[0];
-    const top = [bo, bu].filter(Boolean).sort((a, b) => b.edge - a.edge)[0];
-    const cell = c => c ? `<span class="${c.edge >= .03 ? 'pos' : ''}">${esc(c.bk)} ${priceTxt(c)}</span><small>${c.edge >= 0 ? '+' : ''}${pc(c.edge, 1)} edge</small>` : '';
-    return `<tr class="${top && top === p.best && p.verdict !== 'pass' ? 'hl' : ''}"><td class="l"><b>${cs[0].venue === 'kalshi' && !cs.some(c => c.venue === 'book') ? kLine(l) : l}</b></td><td>${pc(fo)} over<small>${pAm(fo)} / ${pAm(1 - fo)}</small></td><td>${cell(bo)}</td><td>${cell(bu)}</td></tr>`;
-  }).join('');
-  return `<div class="tw"><table class="lt"><thead><tr><th class="l">Line</th><th title="Our fair chance of over, and as prices">Fair</th><th>Best over / YES</th><th>Best under / NO</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-}
+
 function waterfall(p){
   if (!p.wf) return '<p class="muted">No breakdown for this player.</p>';
   const steps = p.wf.steps, start = steps[0][1], nz = steps.slice(1).filter(s => Math.abs(s[1]) >= .05), zero = steps.slice(1).filter(s => Math.abs(s[1]) < .05);
@@ -300,10 +309,12 @@ function renderDetail(){
   if (p.verdict === 'bet'){
     const key = `${p.s}|${b.side}`, rec = X.sig[key];
     vh = `<div class="verdict bet"><div class="l1"><span class="vp bet">BET</span><h3>${betTxt(b)} at ${priceTxt(b)}</h3><span class="tierp passed">Passed the backtest</span></div>
-      <p>Our fair chance is <b>${pc(b.fair, 1)}</b>; the price costs ${pc(b.fair - b.edge, 1)} with fees, an edge of <b class="pos">+${pc(b.edge, 1)}</b>.${rec ? ` This kind of bet (Kalshi ${SL[p.s].toLowerCase()} ${b.side}) returned <b>${rec.roi >= 0 ? '+' : '-'}$${Math.abs(rec.roi * 100).toFixed(2)} per $100</b> over ${rec.n.toLocaleString()} bets last season.` : ''}</p>`;
+      <p class="plain">We think he gets <b>${esc(outcome(b, p.s))}</b> ${pc(b.fair)} of the time; ${b.venue === 'kalshi' ? `Kalshi charges ${Math.round(costOf(b) * 100)}¢ with its fee` : `at ${esc(b.bk)}, ${esc(String(b.price))} prices it at ${pc(costOf(b))}`}. That is worth <b class="pos">${usd(ev100(b))} per $100</b>.</p>
+      <p>Edge <b class="pos">+${pc(b.edge, 1)}</b> (our ${pc(b.fair, 1)} vs a ${pc(b.fair - b.edge, 1)} cost).${rec ? ` This kind of bet (Kalshi ${SL[p.s].toLowerCase()} ${b.side}) returned <b>${rec.roi >= 0 ? '+' : '-'}$${Math.abs(rec.roi * 100).toFixed(2)} per $100</b> over ${rec.n.toLocaleString()} bets last season.` : ''}</p>`;
   } else if (p.verdict === 'lean'){
     const t = TIER[b.g];
     vh = `<div class="verdict lean"><div class="l1"><span class="vp lean">LEAN</span><h3>${betTxt(b)} at ${priceTxt(b)}</h3><span class="tierp ${t[0]}">${t[1]}</span></div>
+      <p class="plain">We think he gets <b>${esc(outcome(b, p.s))}</b> ${pc(b.fair)} of the time; ${b.venue === 'kalshi' ? `Kalshi charges ${Math.round(costOf(b) * 100)}¢ with its fee` : `at ${esc(b.bk)}, ${esc(String(b.price))} prices it at ${pc(costOf(b))}`}.</p>
       <p>The price looks <b>+${pc(b.edge, 1)}</b> off our fair ${pc(b.fair, 1)}, but this kind of edge ${b.g === 'watch' ? 'made money last season without being conclusive' : 'has no record yet'}. Worth a look, not a stake.</p>`;
   } else {
     vh = `<div class="verdict pass"><div class="l1"><span class="vp pass">PASS</span><h3>No price is 3% better than fair</h3></div><p>The best available is ${b ? `${betTxt(b)} at ${priceTxt(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}` : 'nothing'}. Priced about right.</p>`;
@@ -336,10 +347,8 @@ function renderDetail(){
     </section>
     ${vh}
     <section class="card sec">
-      <div class="sec-h"><h3>Every price, on our curve</h3><p>The line is our chance of going over each number. Each dot is a venue's price at its own line. A dot far from the line is a price worth a look.</p></div>
-      <div class="lg"><span><i class="cv"></i>Our chance of over</span><span><i class="bk"></i>Sportsbook (vig removed)</span><span><i class="ka"></i>Kalshi rung</span>${p.verdict !== 'pass' ? '<span><i class="bt"></i>The bet</span>' : ''}</div>
-      <div class="chart">${ladderSvg(p)}</div>
-      ${fairTable(p)}
+      <div class="sec-h"><h3>Ways to bet it</h3><p>Every venue, line and side for this prop, the recommended bet first. Value is what a $100 bet makes on average if our chance is right; fees and vig are already in the price. Pass means the edge is under 3%: a small plus there is inside the model's margin of error.</p></div>
+      ${waysTable(p)}
     </section>
     <section class="card sec">
       <div class="sec-h"><h3>Why our number is ${fmt(p.mu)}</h3><p>From his usual game to tonight, in ${SL[p.s].toLowerCase()}. Each step is a piece of the model; together they are exactly the projection.</p></div>
@@ -367,7 +376,8 @@ $('presets').addEventListener('click', e => { const b = e.target.closest('[data-
 $('stats').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b){ st.stat = b.dataset.s; renderTools(); renderList(); } });
 $('sort').addEventListener('change', e => { st.sort = e.target.value; renderList(); });
 $('q').addEventListener('input', e => { st.q = e.target.value.trim(); renderList(); });
-$('list').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b){ st.sel = X.props[+b.dataset.i]; renderList();
+$('detail').addEventListener('click', e => { if (e.target.closest('[data-allways]')){ st.allWays = true; renderDetail(); } });
+$('list').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b){ st.sel = X.props[+b.dataset.i]; st.allWays = false; renderList();
   if (window.innerWidth <= 1000) $('detail').scrollIntoView({behavior: 'smooth', block: 'start'}); } });
 renderTools(); renderList();
 </script>
