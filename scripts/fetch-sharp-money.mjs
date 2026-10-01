@@ -70,7 +70,10 @@ async function getJSON(url, headers = {}, tries = 2) {
       if (r.status === 429) { await new Promise(s => setTimeout(s, 1500 * (i + 1))); continue; }
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return await r.json();
-    } catch (e) { if (i === tries - 1) throw new Error(e.message + ' ' + url.slice(0, 90)); }
+    } catch (e) {
+      if (i === tries - 1) throw new Error(e.message + ' ' + url.slice(0, 90));
+      await new Promise(s => setTimeout(s, 1500 * (i + 1)));   // Pinnacle now and then 403s a cloud IP for a few seconds
+    }
   }
 }
 async function pool(items, n, fn) {
@@ -186,10 +189,10 @@ async function actionGames(sk, cfg) {
 
 // ── 2. Pinnacle: main lines, alt ladders, limits ────────────────────────
 async function pinnacle(cfg, games) {
-  const hdr = { 'X-API-Key': PIN_KEY, Referer: 'https://www.pinnacle.com/' };
+  const hdr = { 'X-API-Key': PIN_KEY, Referer: 'https://www.pinnacle.com/', Origin: 'https://www.pinnacle.com' };
   const [mus, mk] = await Promise.all([
-    getJSON(`https://guest.api.arcadia.pinnacle.com/0.1/sports/${cfg.pinSport}/matchups`, hdr),
-    getJSON(`https://guest.api.arcadia.pinnacle.com/0.1/leagues/${cfg.pinLeague}/markets/straight`, hdr),
+    getJSON(`https://guest.api.arcadia.pinnacle.com/0.1/sports/${cfg.pinSport}/matchups`, hdr, 4),
+    getJSON(`https://guest.api.arcadia.pinnacle.com/0.1/leagues/${cfg.pinLeague}/markets/straight`, hdr, 4),
   ]);
   const byId = {};
   for (const m of mus) {

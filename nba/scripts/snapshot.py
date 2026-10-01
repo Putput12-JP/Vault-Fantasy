@@ -45,7 +45,10 @@ from backfill_kalshi import PROP_SERIES, GAME_SERIES, TEAM as KTEAM, parse_event
 ET = ZoneInfo('America/New_York')
 KAL = 'https://api.elections.kalshi.com/trade-api/v2'
 PIN = 'https://guest.api.arcadia.pinnacle.com/0.1'
-PIN_HDR = ['X-API-Key: CmX2KcMrXuFmNg6YFbmTxE0y9CIrOi0R', 'Referer: https://www.pinnacle.com/']  # Pinnacle's public web-client key
+PIN_HDR = ['X-API-Key: CmX2KcMrXuFmNg6YFbmTxE0y9CIrOi0R', 'Referer: https://www.pinnacle.com/',   # Pinnacle's public web-client key
+           'Origin: https://www.pinnacle.com', 'Accept: application/json',
+           'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36']
+PIN_LEAGUES = (487, 5270)           # NBA, NBA Preseason (Pinnacle lists preseason games in their own league)
 SCORE = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard'
 AN_BOOKS = '15,30,68,69,75,71,79'   # consensus, open, DK, FD, MGM, BetRivers, bet365
 PM_SERIES = 10345
@@ -57,8 +60,9 @@ AHEAD_H = 72                        # record games tipping within 3 days (skips 
 FAST_S, SLOW_S, FAST_WITHIN_H, WINDOW_START_ET = 300, 900, 3, 9
 
 
-def curl(url, headers=(), tries=2, raw=False):
-    """ESPN 403s urllib, so everything goes through curl. Raises after `tries` failures."""
+def curl(url, headers=(), tries=2, raw=False, retry403=False):
+    """ESPN 403s urllib, so everything goes through curl. Raises after `tries` failures.
+    A 403 / 404 is final unless retry403: Pinnacle's guest API now and then 403s a cloud IP for a few seconds."""
     # No custom user agent by default: ESPN 403s anything Mozilla-like that is not a real browser.
     cmd = ['curl', '-s', '--compressed', '--max-time', '30', '-w', '\n%{http_code}']
     for h in headers:
@@ -71,7 +75,11 @@ def curl(url, headers=(), tries=2, raw=False):
         if code == '200':
             return body if raw else json.loads(body)
         err = f'HTTP {code or "timeout"}'
-        if code in ('403', '404'):
+        try:                                            # Pinnacle says why: {"reason": "location", ...}
+            err += f" ({json.loads(body)['reason']})"
+        except Exception:
+            pass
+        if code == '404' or (code == '403' and not retry403):
             break
         time.sleep(1.5 * (i + 1))
     raise RuntimeError(f'{err} {url[:100]}')
@@ -222,9 +230,19 @@ def src_espn(slate):
 
 
 def src_pinnacle(slate):
-    matchups = {m['id']: m for m in curl(f'{PIN}/leagues/487/matchups', PIN_HDR)}
+    pin = lambda path: curl(f'{PIN}/{path}', PIN_HDR, tries=4, retry403=True)
+    try:                                  # an empty league answers 403 "location", so only ask the ones with games
+        live = {l['id'] for l in pin('sports/4/leagues?all=false') if l.get('matchupCount')}
+    except RuntimeError:
+        live = {PIN_LEAGUES[0]}
+    matchups, markets = {}, []
+    for lg in PIN_LEAGUES:
+        if lg not in live:
+            continue
+        matchups.update((m['id'], m) for m in pin(f'leagues/{lg}/matchups'))
+        markets += pin(f'leagues/{lg}/markets/straight')
     rows, meta = {}, {}
-    for mk in curl(f'{PIN}/leagues/487/markets/straight', PIN_HDR):
+    for mk in markets:
         m = matchups.get(mk['matchupId'])
         if not m or m.get('isLive') or (m.get('type') == 'special' and not m.get('parent')):
             continue                      # specials without a parent game are futures (playoffs, season wins)

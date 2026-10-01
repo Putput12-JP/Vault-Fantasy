@@ -25,14 +25,17 @@ NICK = {'Cardinals': 'ARI', 'Falcons': 'ATL', 'Ravens': 'BAL', 'Bills': 'BUF', '
         '49ers': 'SF', 'Buccaneers': 'TB', 'Titans': 'TEN', 'Commanders': 'WAS'}
 
 
-def get(url, hdr=()):
+def get(url, hdr=(), tries=1):
+    """JSON or None. Pinnacle's guest API now and then 403s a cloud IP for a few seconds, so it gets retries."""
     cmd = ['curl', '-s', '--compressed', '--max-time', '30', '-A', UA, '-H', 'Accept: application/json']
     for h in hdr:
         cmd += ['-H', h]
-    try:
-        return json.loads(subprocess.run(cmd + [url], capture_output=True).stdout)
-    except ValueError:
-        return None
+    for i in range(tries):
+        try:
+            return json.loads(subprocess.run(cmd + [url], capture_output=True).stdout)
+        except ValueError:
+            time.sleep(1.5 * (i + 1)) if i + 1 < tries else None
+    return None
 
 
 def action(now):
@@ -58,9 +61,9 @@ def action(now):
 
 
 def pinnacle(now):
-    hdr = (f'X-API-Key: {PIN_KEY}', 'Referer: https://www.pinnacle.com/')
-    mus = get('https://guest.api.arcadia.pinnacle.com/0.1/leagues/889/matchups', hdr) or []
-    mk = get('https://guest.api.arcadia.pinnacle.com/0.1/leagues/889/markets/straight', hdr) or []
+    hdr = (f'X-API-Key: {PIN_KEY}', 'Referer: https://www.pinnacle.com/', 'Origin: https://www.pinnacle.com')
+    mus = get('https://guest.api.arcadia.pinnacle.com/0.1/leagues/889/matchups', hdr, tries=4) or []
+    mk = get('https://guest.api.arcadia.pinnacle.com/0.1/leagues/889/markets/straight', hdr, tries=4) or []
     games = {}
     for m in mus:
         if m.get('type') != 'matchup' or m.get('parentId') or (m.get('units') and m['units'] != 'Regular'):
