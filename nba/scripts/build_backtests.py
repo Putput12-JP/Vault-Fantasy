@@ -29,10 +29,25 @@ def side_of(v):
     return v.split('(')[1].rstrip(')') if '(' in v else None
 
 
+def hr_text(hr):
+    if not hr:
+        return ''
+    S = hr['sets']
+    o = lambda k, rule: S[k]['rules'][rule]
+    c = next(c for c in S['espn2025_open']['calibration'] if c['l10'] == '9-10 of 10')
+    return (f"Sportsbooks: at 9-10 of 10 the streak said {c['streak_rate']:.0%}, the line said {c['market']:.0%}, it hit {c['actual']:.0%}; "
+            f"8+ of 10 overs returned {o('espn2025_open', 'L10 over (hit 8+ of 10)')['roi']:+.1%} (2024-25) and {o('espn2026_close', 'L10 over (hit 8+ of 10)')['roi']:+.1%} (2025-26 close). "
+            f"Kalshi: 8+ of 10 overs {o('kalshi2026', 'L10 over (hit 8+ of 10)')['roi']:+.1%}; 2-or-fewer unders {o('kalshi2026', 'L10 under (hit 2 or fewer of 10)')['roi']:+.1%}, "
+            f"less than betting every NO ({o('kalshi2026', 'Baseline: every under')['roi']:+.1%}). At the same price a streak is worth about "
+            f"{S['kalshi2026']['same_price']['cold_under']['diff']:+.1%}: a little information, not enough to make the losing side win. Players who beat their lines one half did not the next "
+            f"(correlation {S['kalshi2026']['persistence']['corr']}).")
+
+
 def main():
     gm, mm, m3, uc = load('game_model.json'), load('minutes_model.json'), load('minutes_model_v3.json'), load('usage_cascade.json')
     p1, p2, p3, pf = load('prop_model.json'), load('prop_model_v2.json'), load('prop_model_v3.json'), load('prop_model_v3_full.json')
     rv3, st, mp, cb = load('rates_v3.json'), load('starters_backtest.json'), load('minutes_v3_pricing.json'), load('consensus_backtest.json')
+    hr = load('hit_rates.json')
 
     # ── signals: what passed, out of sample (2025-26 second half for Kalshi blends) ──
     signals = []
@@ -173,6 +188,10 @@ def main():
          'rule': "Replace v2's minutes only if every v2 GO stays GO with ROI at least v2's; then lowest Kalshi log loss.",
          'result': f"Points NO ROI {k3(mp, 'v2m3', 'pts').get('roi', 0) * 100:.1f}% vs v2's {k3(mp, 'v2', 'pts').get('roi', 0) * 100:.1f}%; with starters z {k3(mp, 'v2m3s', 'pts').get('z')}, below 2." if mp else '',
          'verdict': f"Kept {ship_of(mp)}", 'shipped': 'v3 minutes as a logged shadow'},
+        {'id': 'hit_rates', 'area': 'Streaks', 'when': (hr or {}).get('generated'), 'doc': 'hit-rates.md',
+         'q': 'Players who keep hitting a line ("8 of his last 10"): do they keep hitting it, and do players who beat their lines keep beating them?',
+         'rule': 'Bet OVER at 8+ of last 10 against the same line, UNDER at 2 or fewer; GO = test ROI > 0 with z >= 2 over 50+ games, and better than betting that side blind.',
+         'result': hr_text(hr), 'verdict': 'NO-GO', 'shipped': 'Nothing; a myth check for the page'},
         {'id': 'sharp', 'area': 'Sharp money', 'when': '2026-09-28', 'doc': 'https://github.com/Putput12-JP/Vault-Fantasy/blob/main/docs/retro/sharp-money-study.md',
          'q': 'Can Vault tell where sharp money is, and does following it pay?',
          'rule': 'Polymarket accounts scored walk-forward on their own trades vs the close; then copy their side later.',

@@ -1,0 +1,567 @@
+{
+ "generated": "2026-10-01T05:52Z",
+ "sets": {
+  "espn2025_open": {
+   "calibration": [
+    {
+     "l10": "0-2 of 10",
+     "n": 4215,
+     "streak_rate": 0.158,
+     "market": 0.492,
+     "actual": 0.453
+    },
+    {
+     "l10": "3-4 of 10",
+     "n": 13237,
+     "streak_rate": 0.36,
+     "market": 0.501,
+     "actual": 0.468
+    },
+    {
+     "l10": "5-6 of 10",
+     "n": 16492,
+     "streak_rate": 0.545,
+     "market": 0.512,
+     "actual": 0.483
+    },
+    {
+     "l10": "7-8 of 10",
+     "n": 5854,
+     "streak_rate": 0.728,
+     "market": 0.522,
+     "actual": 0.51
+    },
+    {
+     "l10": "9-10 of 10",
+     "n": 496,
+     "streak_rate": 0.91,
+     "market": 0.533,
+     "actual": 0.498
+    }
+   ],
+   "slope": {
+    "n": 40294,
+    "b": 0.032,
+    "t": 2.24,
+    "bias": -0.029
+   },
+   "rules": {
+    "L5 over (hit 4+ of 5)": {
+     "n": 6658,
+     "games": 888,
+     "roi": -0.1045,
+     "z": -7.25
+    },
+    "L5 under (hit 1 or fewer of 5)": {
+     "n": 8660,
+     "games": 903,
+     "roi": -0.0135,
+     "z": -0.93
+    },
+    "L10 over (hit 8+ of 10)": {
+     "n": 2159,
+     "games": 632,
+     "roi": -0.0728,
+     "z": -2.96
+    },
+    "L10 under (hit 2 or fewer of 10)": {
+     "n": 4215,
+     "games": 784,
+     "roi": 0.0078,
+     "z": 0.42
+    },
+    "L20 over (hit 16+ of 20)": {
+     "n": 781,
+     "games": 349,
+     "roi": -0.028,
+     "z": -0.69
+    },
+    "L20 under (hit 4 or fewer of 20)": {
+     "n": 2775,
+     "games": 580,
+     "roi": -0.0048,
+     "z": -0.19
+    },
+    "Season over (80%+, 10+ games)": {
+     "n": 394,
+     "games": 203,
+     "roi": -0.0795,
+     "z": -1.42
+    },
+    "Season under (20% or less, 10+ games)": {
+     "n": 2650,
+     "games": 531,
+     "roi": -0.0009,
+     "z": -0.03
+    },
+    "L10 over, 15+ pts above price": {
+     "n": 6022,
+     "games": 840,
+     "roi": -0.0956,
+     "z": -6.25
+    },
+    "L10 under, 15+ pts below price": {
+     "n": 9502,
+     "games": 898,
+     "roi": 0.0063,
+     "z": 0.47
+    },
+    "Baseline: every over": {
+     "n": 40332,
+     "games": 926,
+     "roi": -0.1193,
+     "z": -16.09
+    },
+    "Baseline: every under": {
+     "n": 40332,
+     "games": 926,
+     "roi": -0.0122,
+     "z": -1.69
+    }
+   },
+   "same_price": {
+    "cold_under": {
+     "diff": 0.0121,
+     "n": 4215
+    },
+    "hot_over": {
+     "diff": 0.0347,
+     "n": 2159
+    }
+   },
+   "n": 40332,
+   "persistence": {
+    "players": 147,
+    "corr": 0.031,
+    "top_first": 0.15,
+    "top_second": -0.007,
+    "bot_first": -0.189,
+    "bot_second": -0.04,
+    "bet_top_over": {
+     "n": 526,
+     "games": 214,
+     "roi": -0.0857,
+     "z": -1.81
+    },
+    "bet_bot_under": {
+     "n": 549,
+     "games": 213,
+     "roi": 0.0002,
+     "z": 0.01
+    }
+   }
+  },
+  "espn2026_close": {
+   "calibration": [
+    {
+     "l10": "0-2 of 10",
+     "n": 315,
+     "streak_rate": 0.17,
+     "market": 0.469,
+     "actual": 0.432
+    },
+    {
+     "l10": "3-4 of 10",
+     "n": 1528,
+     "streak_rate": 0.362,
+     "market": 0.486,
+     "actual": 0.453
+    },
+    {
+     "l10": "5-6 of 10",
+     "n": 2126,
+     "streak_rate": 0.548,
+     "market": 0.498,
+     "actual": 0.489
+    },
+    {
+     "l10": "7-8 of 10",
+     "n": 904,
+     "streak_rate": 0.729,
+     "market": 0.514,
+     "actual": 0.462
+    },
+    {
+     "l10": "9-10 of 10",
+     "n": 69,
+     "streak_rate": 0.907,
+     "market": 0.524,
+     "actual": 0.536
+    }
+   ],
+   "slope": {
+    "n": 4942,
+    "b": 0.0143,
+    "t": 0.33,
+    "bias": -0.0258
+   },
+   "rules": {
+    "L5 over (hit 4+ of 5)": {
+     "n": 909,
+     "games": 131,
+     "roi": -0.128,
+     "z": -3.41
+    },
+    "L5 under (hit 1 or fewer of 5)": {
+     "n": 947,
+     "games": 151,
+     "roi": 0.0131,
+     "z": 0.41
+    },
+    "L10 over (hit 8+ of 10)": {
+     "n": 332,
+     "games": 96,
+     "roi": -0.1502,
+     "z": -2.81
+    },
+    "L10 under (hit 2 or fewer of 10)": {
+     "n": 315,
+     "games": 105,
+     "roi": 0.0084,
+     "z": 0.13
+    },
+    "L20 over (hit 16+ of 20)": {
+     "n": 136,
+     "games": 57,
+     "roi": -0.0617,
+     "z": -0.77
+    },
+    "L20 under (hit 4 or fewer of 20)": {
+     "n": 114,
+     "games": 64,
+     "roi": -0.0829,
+     "z": -0.88
+    },
+    "Season over (80%+, 10+ games)": {
+     "n": 156,
+     "games": 41,
+     "roi": -0.2053,
+     "z": -1.98
+    },
+    "Season under (20% or less, 10+ games)": {
+     "n": 29,
+     "games": 20,
+     "roi": -0.0952,
+     "z": -0.44
+    },
+    "L10 over, 15+ pts above price": {
+     "n": 961,
+     "games": 139,
+     "roi": -0.1303,
+     "z": -3.31
+    },
+    "L10 under, 15+ pts below price": {
+     "n": 817,
+     "games": 147,
+     "roi": -0.0176,
+     "z": -0.4
+    },
+    "Baseline: every over": {
+     "n": 4951,
+     "games": 288,
+     "roi": -0.113,
+     "z": -5.04
+    },
+    "Baseline: every under": {
+     "n": 4951,
+     "games": 288,
+     "roi": -0.0142,
+     "z": -0.74
+    }
+   },
+   "same_price": {
+    "cold_under": {
+     "diff": 0.0235,
+     "n": 315
+    },
+    "hot_over": {
+     "diff": -0.0411,
+     "n": 332
+    }
+   },
+   "n": 4951,
+   "persistence": null
+  },
+  "espn2026_open": {
+   "calibration": [
+    {
+     "l10": "0-2 of 10",
+     "n": 1775,
+     "streak_rate": 0.167,
+     "market": 0.484,
+     "actual": 0.437
+    },
+    {
+     "l10": "3-4 of 10",
+     "n": 6586,
+     "streak_rate": 0.359,
+     "market": 0.492,
+     "actual": 0.459
+    },
+    {
+     "l10": "5-6 of 10",
+     "n": 8483,
+     "streak_rate": 0.546,
+     "market": 0.502,
+     "actual": 0.494
+    },
+    {
+     "l10": "7-8 of 10",
+     "n": 3208,
+     "streak_rate": 0.729,
+     "market": 0.512,
+     "actual": 0.498
+    },
+    {
+     "l10": "9-10 of 10",
+     "n": 297,
+     "streak_rate": 0.918,
+     "market": 0.523,
+     "actual": 0.613
+    }
+   ],
+   "slope": {
+    "n": 20349,
+    "b": 0.1037,
+    "t": 5.06,
+    "bias": -0.0195
+   },
+   "rules": {
+    "L5 over (hit 4+ of 5)": {
+     "n": 3729,
+     "games": 383,
+     "roi": -0.0777,
+     "z": -4.0
+    },
+    "L5 under (hit 1 or fewer of 5)": {
+     "n": 4061,
+     "games": 391,
+     "roi": 0.0252,
+     "z": 1.21
+    },
+    "L10 over (hit 8+ of 10)": {
+     "n": 1235,
+     "games": 286,
+     "roi": -0.0226,
+     "z": -0.67
+    },
+    "L10 under (hit 2 or fewer of 10)": {
+     "n": 1775,
+     "games": 346,
+     "roi": 0.022,
+     "z": 0.74
+    },
+    "L20 over (hit 16+ of 20)": {
+     "n": 524,
+     "games": 165,
+     "roi": 0.0367,
+     "z": 0.68
+    },
+    "L20 under (hit 4 or fewer of 20)": {
+     "n": 976,
+     "games": 265,
+     "roi": 0.0347,
+     "z": 0.91
+    },
+    "Season over (80%+, 10+ games)": {
+     "n": 346,
+     "games": 94,
+     "roi": -0.0306,
+     "z": -0.47
+    },
+    "Season under (20% or less, 10+ games)": {
+     "n": 292,
+     "games": 111,
+     "roi": -0.0121,
+     "z": -0.16
+    },
+    "L10 over, 15+ pts above price": {
+     "n": 3502,
+     "games": 380,
+     "roi": -0.0666,
+     "z": -2.95
+    },
+    "L10 under, 15+ pts below price": {
+     "n": 4292,
+     "games": 388,
+     "roi": 0.0204,
+     "z": 0.95
+    },
+    "Baseline: every over": {
+     "n": 20630,
+     "games": 395,
+     "roi": -0.1008,
+     "z": -8.83
+    },
+    "Baseline: every under": {
+     "n": 20630,
+     "games": 395,
+     "roi": -0.0274,
+     "z": -2.55
+    }
+   },
+   "same_price": {
+    "cold_under": {
+     "diff": 0.0521,
+     "n": 1775
+    },
+    "hot_over": {
+     "diff": 0.0799,
+     "n": 1235
+    }
+   },
+   "n": 20630,
+   "persistence": null
+  },
+  "kalshi2026": {
+   "calibration": [
+    {
+     "l10": "0-2 of 10",
+     "n": 19962,
+     "streak_rate": 0.098,
+     "market": 0.181,
+     "actual": 0.153
+    },
+    {
+     "l10": "3-4 of 10",
+     "n": 11839,
+     "streak_rate": 0.35,
+     "market": 0.391,
+     "actual": 0.364
+    },
+    {
+     "l10": "5-6 of 10",
+     "n": 11022,
+     "streak_rate": 0.548,
+     "market": 0.547,
+     "actual": 0.516
+    },
+    {
+     "l10": "7-8 of 10",
+     "n": 8784,
+     "streak_rate": 0.746,
+     "market": 0.701,
+     "actual": 0.67
+    },
+    {
+     "l10": "9-10 of 10",
+     "n": 5351,
+     "streak_rate": 0.937,
+     "market": 0.833,
+     "actual": 0.82
+    }
+   ],
+   "slope": {
+    "n": 56958,
+    "b": 0.0663,
+    "t": 5.23,
+    "bias": -0.0275
+   },
+   "rules": {
+    "L5 over (hit 4+ of 5)": {
+     "n": 13039,
+     "games": 1043,
+     "roi": -0.0554,
+     "z": -6.87
+    },
+    "L5 under (hit 1 or fewer of 5)": {
+     "n": 23879,
+     "games": 1054,
+     "roi": 0.0266,
+     "z": 4.6
+    },
+    "L10 over (hit 8+ of 10)": {
+     "n": 9358,
+     "games": 1013,
+     "roi": -0.0376,
+     "z": -4.68
+    },
+    "L10 under (hit 2 or fewer of 10)": {
+     "n": 19962,
+     "games": 1043,
+     "roi": 0.0255,
+     "z": 4.83
+    },
+    "L20 over (hit 16+ of 20)": {
+     "n": 7516,
+     "games": 980,
+     "roi": -0.0255,
+     "z": -3.11
+    },
+    "L20 under (hit 4 or fewer of 20)": {
+     "n": 17714,
+     "games": 1039,
+     "roi": 0.0226,
+     "z": 4.48
+    },
+    "Season over (80%+, 10+ games)": {
+     "n": 6307,
+     "games": 940,
+     "roi": -0.0243,
+     "z": -2.75
+    },
+    "Season under (20% or less, 10+ games)": {
+     "n": 15348,
+     "games": 1030,
+     "roi": 0.0229,
+     "z": 4.55
+    },
+    "L10 over, 15+ pts above price": {
+     "n": 6114,
+     "games": 906,
+     "roi": -0.0643,
+     "z": -2.68
+    },
+    "L10 under, 15+ pts below price": {
+     "n": 9175,
+     "games": 1026,
+     "roi": 0.0738,
+     "z": 3.7
+    },
+    "Baseline: every over": {
+     "n": 56958,
+     "games": 1079,
+     "roi": -0.1451,
+     "z": -13.21
+    },
+    "Baseline: every under": {
+     "n": 56958,
+     "games": 1079,
+     "roi": 0.0331,
+     "z": 3.72
+    }
+   },
+   "same_price": {
+    "cold_under": {
+     "diff": 0.0323,
+     "n": 19923
+    },
+    "hot_over": {
+     "diff": 0.0348,
+     "n": 9339
+    }
+   },
+   "n": 56958,
+   "persistence": {
+    "players": 322,
+    "corr": 0.006,
+    "top_first": 0.104,
+    "top_second": -0.03,
+    "bot_first": -0.143,
+    "bot_second": -0.034,
+    "bet_top_over": {
+     "n": 4397,
+     "games": 339,
+     "roi": -0.1438,
+     "z": -4.63
+    },
+    "bet_bot_under": {
+     "n": 4351,
+     "games": 332,
+     "roi": 0.002,
+     "z": 0.08
+    }
+   }
+  }
+ }
+}
