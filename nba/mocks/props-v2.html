@@ -166,6 +166,11 @@ table.lt small{display:block;font-size:11px;color:var(--fg3)}
 .mv i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;background:var(--raised);color:var(--fg2)}
 .mv b{color:var(--fg);font-weight:500}
 
+/* page links: in the app these are separate menu pages, never tabs inside one page */
+.pnav{display:flex;gap:18px;align-items:center}
+.pnav a{font-size:13.5px;color:var(--fg2);text-decoration:none;padding:6px 0;border-bottom:2px solid transparent}
+.pnav a:hover{color:var(--fg)}
+.pnav a[aria-current]{color:var(--fg);border-bottom-color:var(--fg);font-weight:600}
 /* ── Phase 2: watchlist, alerts, my bets ── */
 .top .grow{flex:1}
 .bell{position:relative;display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:13px;color:var(--fg2)}
@@ -308,13 +313,13 @@ table.lt small{display:block;font-size:11px;color:var(--fg3)}
 </style>
 
 <header class="top">
-  <div><h1>Player Props</h1><div class="sub" id="gsub"></div></div>
-  <div class="seg" id="views" role="group" aria-label="View"><button type="button" data-v="props" aria-pressed="true">Props</button><button type="button" data-v="pairs" aria-pressed="false">Pick'em pairs</button><button type="button" data-v="bets" aria-pressed="false">My bets</button></div>
+  <div><h1 id="h1">Player Props</h1><div class="sub" id="gsub"></div></div>
+  <nav class="pnav" id="views" aria-label="App pages (stand-ins for the app menu)"><a href="#props" data-v="props" aria-current="page">Player Props</a><a href="#pairs" data-v="pairs">Pick'em Pairs</a><a href="#bets" data-v="bets">My Bets</a></nav>
   <span class="grow"></span>
   <button class="bell" id="bell" type="button" aria-expanded="false" aria-controls="alerts">Alerts <span class="ct" id="bellct"></span></button>
 </header>
 <main class="wrap">
-  <div class="banner"><b>Design mock, real numbers. Phase 3:</b><span>Pick'em pairs: teammate picks that hit together more often than their prices say, from a pre-registered test (points or 3-pointers with a teammate's assists), on its own tab and as "Pairs well with" on each prop. Phase 2: watchlist with alerts (star a prop), a log of the bets you actually placed with your closing-line value, and stake sizing on Bets. Last season's final game (NY @ SA, June 13, 2026) at its real prices: the line moves, closing prices and results are real; the five watched props and eight logged bets are examples to show the flow. Your stars and bets are saved in this browser.</span></div>
+  <div class="banner"><b>Design mock, real numbers. Phase 3:</b><span>The links at the top stand in for the app menu: Player Props, Pick'em Pairs and My Bets are separate pages there. Pick'em Pairs: teammate picks that hit together more often than their prices say, from a pre-registered test (points or 3-pointers with a teammate's assists), on its own tab and as "Pairs well with" on each prop. Phase 2: watchlist with alerts (star a prop), a log of the bets you actually placed with your closing-line value, and stake sizing on Bets. Last season's final game (NY @ SA, June 13, 2026) at its real prices: the line moves, closing prices and results are real; the five watched props and eight logged bets are examples to show the flow. Your stars and bets are saved in this browser.</span></div>
   <section class="card alerts" id="alerts" hidden></section>
   <div id="v-bets" class="mb" hidden></div>
   <div id="v-pairs" class="mb" hidden></div>
@@ -754,7 +759,8 @@ function pairsFor(p){
 
 function setView(v){
   st.view = v;
-  document.querySelectorAll('#views [data-v]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
+  document.querySelectorAll('#views [data-v]').forEach(b => b.toggleAttribute('aria-current', b.dataset.v === v));
+  $('h1').textContent = {props: 'Player Props', pairs: "Pick'em Pairs", bets: 'My Bets'}[v];
   $('v-props').hidden = v !== 'props'; $('v-bets').hidden = v !== 'bets'; $('v-pairs').hidden = v !== 'pairs';
   if (v === 'bets') renderBets();
   if (v === 'pairs') renderPairs();
@@ -914,7 +920,7 @@ $('detail').addEventListener('submit', e => {
 });
 $('v-pairs').addEventListener('click', e => { const b = e.target.closest('[data-pa]'); if (b){ st.pairAll = b.dataset.pa === '1'; renderPairs(); } });
 $('v-pairs').addEventListener('change', e => { if (e.target.id === 'pay'){ const v = +e.target.value; if (v >= 2 && v <= 5){ PAY = v; renderPairs(); } } });
-$('views').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); });
+$('views').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b){ e.preventDefault(); setView(b.dataset.v); window.scrollTo(0, 0); } });
 $('bell').addEventListener('click', () => { const open = $('alerts').hidden; $('alerts').hidden = !open; $('bell').setAttribute('aria-expanded', open); if (open) renderAlerts(); });
 $('alerts').addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openProp(o.dataset.open); });
 $('alerts').addEventListener('change', e => { if (e.target.id === 'anybet'){ ANYBET = e.target.checked; SEEN.clear(); saveP2(); renderAlerts(); } });

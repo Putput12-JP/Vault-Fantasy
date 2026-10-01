@@ -1,6 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vault NBA</title>
+<meta name="description" content="Vault NBA: player props and game lines priced by our own model, what passed the backtest, sharp money, and your own bet record.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
@@ -495,6 +496,14 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 @media (prefers-reduced-motion:reduce){ .btn,.switch input::after,.prog .tr i,.sidebar{transition:none} }
 /* Player Props v2 */
 .pv-wrap{display:grid;gap:var(--gap);min-width:0}
+/* type: no orphaned words; small controls answer hover and press (press depth stays shallow, rows never scale) */
+h1,h2,h3,h4{text-wrap:balance} p{text-wrap:pretty}
+.pv-preset,.pv-ghost,.pv-bell,.pv-star,.pv-more,.seg button,.btn,.linkbtn{transition:color .15s ease,background-color .15s ease,border-color .15s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
+.pv-preset:hover:not([aria-pressed="true"]),.pv-ghost:hover,.pv-bell:hover,.pv-star:hover{border-color:var(--fg3);color:var(--fg)}
+.pv-preset:active,.pv-ghost:active,.pv-bell:active,.pv-star:active,.pv-more:active,.seg button:active,.btn:active{transform:scale(.96);transition:transform 80ms ease-out}
+@media (prefers-reduced-motion:reduce){ .pv-preset,.pv-ghost,.pv-bell,.pv-star,.pv-more,.seg button,.btn{transition:none} .pv-preset:active,.pv-ghost:active,.pv-bell:active,.pv-star:active,.pv-more:active,.seg button:active,.btn:active{transform:none} }
+.wk-h2{margin:18px 0 0;font-size:20px;font-weight:600;letter-spacing:-.01em;padding-top:18px;border-top:1px solid var(--border)}
+#v-props > .pv-alerts{margin-bottom:0}
 .pv-toolcard{display:grid;gap:10px;padding:12px 14px}
 .pv-presets{display:flex;flex-wrap:wrap;gap:8px}
 .pv-preset{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:var(--r-pill);border:1px solid var(--border2);background:none;cursor:pointer;font-size:13px;color:var(--fg2)}
@@ -979,7 +988,6 @@ table.nt.sl-rt{min-width:420px}
 
     <main id="v-props" hidden>
       <div class="banner" id="pbanner" hidden></div>
-      <section class="card tbar"><div class="tfilters"><div class="seg" id="pvtabs" role="group" aria-label="View"></div></div><button class="pv-bell" id="pv-bell" type="button" aria-expanded="false" aria-controls="pv-alerts">Alerts</button></section>
       <section class="card pv-alerts" id="pv-alerts" hidden></section>
       <div id="pv-bets" class="pv-wrap" hidden></div>
       <div class="pv-toast" id="pv-toast" role="status" hidden></div>
@@ -1194,7 +1202,6 @@ table.nt.sl-rt{min-width:420px}
     </main>
     <footer id="xfoot" hidden></footer>
     <main id="v-backtests" hidden>
-      <section class="card tbar"><div class="tfilters"><div class="seg" id="wktabs" role="group" aria-label="Section"></div></div></section>
       <div class="wk-sec-wrap" id="wk-works"></div>
       <div class="wk-sec-wrap" id="wk-finder" hidden></div>
       <div class="wk-sec-wrap" id="wk-not" hidden></div>
@@ -1241,7 +1248,11 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : hashT === 'SLATE' ? 'slate' : hashT === 'LINES' ? 'lines' : hashT === 'SHARP' ? 'sharp' : hashT === 'BACKTESTS' || hashT === 'WORKS' ? 'backtests' : 'lab';
+// Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
+// controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
+const VIEWS = ['health', 'props', 'mybets', 'propboard', 'track', 'edges', 'tonight', 'wire', 'slate', 'lines', 'sharp', 'backtests', 'finder', 'btlab'];
+const viewOf = h => h === 'WORKS' ? 'backtests' : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
+let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -1366,15 +1377,19 @@ const PAGES = [
   ]],
   ['Markets', [
     ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.', 'lines'],
-    ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'Every prop line and Kalshi ladder next to the projection, the blended fair price and the edge.', 'props'],
+    ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'One decision per prop: Bet, Lean or Pass, where to take it and why. Watch props for alerts.', 'props'],
+    ['Props Table', SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>'), 'Every prop line and Kalshi ladder in one table, next to the projection, the blended fair price and the edge.', 'propboard'],
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.', 'sharp'],
   ]],
   ['Betting', [
-    ['What Works', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'Which bets passed the backtest, in dollars and plain-language confidence; an Edge Finder; what does not work; the technical results.', 'backtests'],
+    ['What Works', SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'), 'Which bets passed the backtest, in dollars and plain-language confidence, and what does not work.', 'backtests'],
+    ['Edge Finder', SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'), "Slice last season's tests by venue, stat and side and see what held up out of sample.", 'finder'],
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
+    ['My Bets', SVG('<path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 8h6M9 12h6"/>'), 'The bets you placed: results, closing-line value and where your edge is coming from.', 'mybets'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
   ['Model', [
+    ['Backtest Lab', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'The technical results: every held-out test, the model versions and the decision log.', 'btlab'],
     ['Data Health', SVG('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'), 'Is every feed alive: the live price recorder, model inputs and the history archive.', 'health'],
   ]],
 ];
@@ -1520,9 +1535,10 @@ $('pages').addEventListener('click', e => {
   history.replaceState(null, '', a.dataset.view === 'lab' ? '#' + cur.toLowerCase() : '#' + a.dataset.view);
   show(a.dataset.view);
 });
+function goView(v){ history.replaceState(null, '', '#' + v); show(v); window.scrollTo(0, 0); }
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE', 'SLATE', 'LINES', 'SHARP', 'BACKTESTS', 'WORKS'].includes(h)) show(h === 'WORKS' ? 'backtests' : h.toLowerCase());
+  if (viewOf(h)) show(viewOf(h));
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -1572,29 +1588,30 @@ function show(v){
   const lab = v === 'lab';
   $('v-lab').hidden = $('foot').hidden = !lab;
   $('v-health').hidden = $('hfoot').hidden = v !== 'health';
-  $('v-props').hidden = $('pfoot').hidden = v !== 'props';
+  $('v-props').hidden = $('pfoot').hidden = !['props', 'mybets', 'propboard'].includes(v);
   $('v-track').hidden = $('tfoot').hidden = v !== 'track';
   $('v-edges').hidden = $('efoot').hidden = v !== 'edges';
   $('v-tonight').hidden = $('nfoot').hidden = v !== 'tonight';
   $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
   $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
-  $('v-backtests').hidden = $('btfoot').hidden = v !== 'backtests';
+  $('v-backtests').hidden = $('btfoot').hidden = !['backtests', 'finder', 'btlab'].includes(v);
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
   $('mode').hidden = lab;
   renderNav();
   if (lab){ render(); return; }
-  if (v === 'props'){
-    $('tname').textContent = 'Player Props';
-    $('tsub').textContent = 'PROJECTION · MARKET · BLENDED FAIR';
+  if (v === 'props' || v === 'mybets' || v === 'propboard'){
+    pv.tab = {props: 'v2', mybets: 'bets', propboard: 'full'}[v];
+    $('tname').textContent = {props: 'Player Props', mybets: 'My Bets', propboard: 'Props Table'}[v];
+    $('tsub').textContent = {props: 'ONE DECISION PER PROP · WHERE TO BET IT · WHY', mybets: 'YOUR BETS · RESULTS · CLOSING-LINE VALUE', propboard: 'EVERY LINE · EVERY VENUE · ONE TABLE'}[v];
     renderProps();
+    if (v === 'props' && pvNavCount()){ $('pv-alerts').hidden = false; pvRenderAlerts(); }    // new alerts open on arrival, not behind a button
     if (!boardTried) loadBoard();
     return;
   }
-  if (v === 'backtests'){
-    $('tname').textContent = 'What Works';
-    $('tsub').textContent = '';
+  if (v === 'backtests' || v === 'finder' || v === 'btlab'){
+    wk.tab = {backtests: 'works', finder: 'finder', btlab: 'lab'}[v];
     renderBacktests();
     if (!trackTried) loadTrack();
     return;
@@ -2231,7 +2248,7 @@ async function loadBoard(){
   try {
     const b = await fetch(`https://raw.githubusercontent.com/${PB.repo}/${PB.branch}/board.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
     PS.live = b; PS.liveAt = Date.now() / 1000; PS.liveFetched = true;
-    if (view === 'props') renderProps();
+    if (view === 'props' || view === 'mybets' || view === 'propboard') renderProps();
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
     if (view === 'wire') renderWire();
@@ -2517,7 +2534,7 @@ async function loadTrack(){
     if (view === 'tonight') renderTonight();
     if (view === 'wire') renderWire();
     if (view === 'sharp') renderSharp();
-    if (view === 'backtests') renderBacktests();
+    if (['backtests', 'finder', 'btlab'].includes(view)) renderBacktests();
     clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -3621,7 +3638,7 @@ const WK_STAT = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': '3-point
 const WK_WHY = {
   '3pm': "People like betting overs, so Kalshi's YES side is overpriced: last season YES hit 2 to 5 points less often than its price said, in every stat. The model points at the rungs that are overpriced the most.",
   pts: 'The same overs bias as 3-pointers, smaller. Points markets are deeper and better priced, so the edge is thinner and less consistent.'};
-const WK_TABS = [['works', 'What works'], ['finder', 'Find an edge'], ['not', "What doesn't"], ['lab', 'Model lab']];
+const WK_PAGES = {works: ['What Works', 'BETS THAT PASSED · IN DOLLARS · WHAT DID NOT WORK'], finder: ['Edge Finder', 'SLICE LAST SEASON · SEE WHAT HELD UP'], lab: ['Backtest Lab', 'HELD-OUT TESTS · RULES FIXED FIRST · TECHNICAL RESULTS']};
 const money = x => (x < 0 ? '-' : '+') + '$' + Math.abs(x).toLocaleString(undefined, {maximumFractionDigits: 0});
 const per100 = roi => roi == null ? '' : (roi < 0 ? '-' : '+') + '$' + Math.abs(roi * 100).toFixed(2);
 const oneIn = z => { const p = 1 - Phi(z); if (p >= .5) return null; const n = 1 / p; return n >= 1000 ? Math.round(n / 100) * 100 : n >= 100 ? Math.round(n / 10) * 10 : Math.round(n); };
@@ -3676,15 +3693,13 @@ const WK_MONTHS = {'3pm': [3, 5, -1, 4, 6, 2, 5, 1, 2], pts: [2, -1, 3, 1, -2, 4
 const exTag = '<span class="wk-tag ex" title="Layout only until the bet-by-bet export is built">Example</span>';
 
 function renderBacktests(){
-  $('wktabs').innerHTML = WK_TABS.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${wk.tab === v}">${l}</button>`).join('');
-  for (const [v] of WK_TABS) $('wk-' + v).hidden = wk.tab !== v;
-  $('tname').textContent = wk.tab === 'lab' ? 'Model lab' : 'What Works';
-  $('tsub').textContent = {works: 'BETS THAT PASSED · IN DOLLARS · HOW SURE WE ARE', finder: 'SLICE LAST SEASON · SEE WHAT HELD UP', not: 'TESTED THE SAME WAY · DID NOT WORK', lab: 'HELD-OUT TESTS · RULES FIXED FIRST · TECHNICAL RESULTS'}[wk.tab];
+  for (const v of ['works', 'finder', 'lab']) $('wk-' + v).hidden = wk.tab !== v;
+  $('wk-not').hidden = wk.tab !== 'works';                             // what doesn't work sits under what works
+  [$('tname').textContent, $('tsub').textContent] = WK_PAGES[wk.tab];
   if (!BT){ $('wk-works').innerHTML = '<p class="empty">The backtest summary is missing from this build (build_backtests.py).</p>'; return; }
   $('mode').innerHTML = `${pill('idle', 'Built')}<span>${esc(BT.generated.slice(0, 10))}</span>`;
-  if (wk.tab === 'works') renderWorks();
+  if (wk.tab === 'works'){ renderWorks(); renderNot(); }
   else if (wk.tab === 'finder') renderFinder();
-  else if (wk.tab === 'not') renderNot();
   else renderLab();
   $('btfoot').innerHTML = wk.tab === 'lab' ? $('btfoot').innerHTML : `
     <div><b>How these were tested.</b> Each model was fit on earlier seasons and scored on 2025-26 games it never saw, using only what was known before tip: the official injury report as it stood, and Kalshi's prices in the 30 minutes before tip. Returns are after Kalshi's taker fee.</div>
@@ -3830,10 +3845,9 @@ function renderNot(){
         <div><b>What a streak is worth</b>${same != null ? `At the same price, about ${per100(same)} per $100 on Kalshi: a sliver the price has not caught.` : 'A sliver at the same price.'} Our model already counts recent games, so it is in our numbers, not on top of them.</div>
       </div></article>`;
   }
-  $('wk-not').innerHTML = `<p class="wk-lede">Things that look like they should work and did not. Each one was tested the same way as the bets that passed.</p>${myth}
+  $('wk-not').innerHTML = `<h2 class="wk-h2" id="wk-dont">What doesn't work</h2><p class="wk-lede">Things that look like they should work and did not. Each one was tested the same way as the bets that passed.</p>${myth}
     <div class="wk-nw">${(BT.dont || []).map(([t, d, n]) => `<div class="card"><h4><span class="wk-tag no">NO</span>${esc(t)}</h4><p>${esc(d)}</p><span class="n">${esc(n)}</span></div>`).join('')}</div>`;
 }
-$('wktabs').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ wk.tab = b.dataset.v; renderBacktests(); window.scrollTo(0, 0); } });
 $('v-backtests').addEventListener('click', e => {
   const b = e.target.closest('.seg[data-k] button[data-v]');
   if (b && !b.disabled){
@@ -3926,7 +3940,7 @@ function renderPropsV2(){
     : pv.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) || a.e.s.localeCompare(b.e.s)
     : (a, b) => a.trust - b.trust || (b.best ? b.best.edge : -1) - (a.best ? a.best.edge : -1));
   const stats = ['all', ...new Set(rows.map(r => r.e.s))];
-  $('pv-tools').innerHTML = `<div class="pv-presets">${PV_PRESETS.map(([k, l, fn]) => `<button class="pv-preset" type="button" data-p="${k}" aria-pressed="${pv.preset === k}">${l}<b>${rows.filter(fn).length}</b></button>`).join('')}</div>
+  $('pv-tools').innerHTML = `<div class="pv-presets">${PV_PRESETS.map(([k, l, fn]) => `<button class="pv-preset" type="button" data-p="${k}" aria-pressed="${pv.preset === k}">${l}<b>${rows.filter(fn).length}</b></button>`).join('')}<span class="pv-grow"></span><button class="pv-bell" id="pv-bell" type="button" aria-expanded="${!$('pv-alerts').hidden}" aria-controls="pv-alerts">Alerts</button></div>
     <div class="pv-row2"><div class="seg" id="pv-stat">${stats.map(s => `<button type="button" data-s="${s}" aria-pressed="${pv.stat === s}">${s === 'all' ? 'All' : PV_SS[s] || s}</button>`).join('')}</div>
       <span class="pv-grow"></span>
       ${games.length > 1 ? `<select class="sel" id="pv-game" aria-label="Game"><option value="all">All games</option>${games.map(g => `<option value="${g.id}"${pv.game === String(g.id) ? ' selected' : ''}>${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}</option>`).join('')}</select>` : ''}
@@ -4133,6 +4147,7 @@ function pvBackground(){
 }
 function pvBell(){
   const n = pvUnseen();
+  if (!$('pv-bell')) return;
   $('pv-bell').innerHTML = `Alerts${n ? ` <span class="pv-ct">${n}</span>` : ''}`;
 }
 function pvAgo(t){ const d = etFmt(t, {month: 'short', day: 'numeric'}), today = etFmt(Date.now() / 1000, {month: 'short', day: 'numeric'}); return `${d === today ? '' : d + ', '}${clock(t)} ET`; }
@@ -4235,7 +4250,7 @@ async function pvSettle(){
     b.res = {...pvGrade(b, bx), ...(pvCloseFor(b, G && G.props ? G.props[`${b.p}|${b.s}`] : null) || {})};
     changed = true;
   }
-  if (changed){ pvSave(); if (view === 'props' && pv.tab === 'bets') pvRenderBets(); }
+  if (changed){ pvSave(); if (view === 'mybets') pvRenderBets(); }
 }
 
 // My bets: the user's own record, judged first on closing-line value
@@ -4267,7 +4282,7 @@ function pvRenderBets(){
       <div class="pv-acts"><button class="pv-ghost" type="button" data-copy="1">Copy backup</button></div>
       <textarea id="pv-restore" placeholder="Paste a backup here" aria-label="Paste a backup"></textarea>
       <div class="pv-acts"><button class="pv-ghost" type="button" data-restore="1">Restore from backup</button></div></details>`;
-  if (!S.length){ $('pv-bets').innerHTML = `<section class="card pv-read"><p class="big">No bets logged yet.</p><p>Open any prop on the Props tab, find the bet under Ways to bet it and press <b>Log bet</b> with the price you actually got. Each bet settles after the game with its result and your closing-line value: whether your price beat the market's fair price at tip.</p></section>${backup}`; return; }
+  if (!S.length){ $('pv-bets').innerHTML = `<section class="card pv-read"><p class="big">No bets logged yet.</p><p>Open any prop on <a href="#props" data-go="props">Player Props</a>, find the bet under Ways to bet it and press <b>Log bet</b> with the price you actually got. Each bet settles after the game with its result and your closing-line value: whether your price beat the market's fair price at tip.</p></section>${backup}`; return; }
   const by = (f, order) => { const m = {}; for (const x of S) (m[f(x)] = m[f(x)] || []).push(x); return (order || Object.keys(m)).filter(k => m[k]).map(k => [k, pvGrp(m[k])]); };
   const calls = by(x => x.b.call, ['bet', 'lean', 'pass']), CALL = {bet: 'Bet', lean: 'Lean', pass: 'Pass'};
   const row = (l, g) => `<tr><td class="l">${esc(l)}</td><td>${g.n}</td><td>${g.w}-${g.l}</td><td class="${g.pl >= 0 ? 'pos' : 'neg'}">${pvMoney(g.pl)}</td><td>${g.roi == null ? '' : pvSg(g.roi)}</td><td class="${g.clv >= 0 ? 'pos' : 'neg'}">${g.clv == null ? '' : pvSg(g.clv)}</td><td>${g.ncl ? `${g.beat} of ${g.ncl}` : ''}</td></tr>`;
@@ -4312,19 +4327,22 @@ let pvToastT = null;
 function pvToast(t){ $('pv-toast').textContent = t; $('pv-toast').hidden = false; clearTimeout(pvToastT); pvToastT = setTimeout(() => { $('pv-toast').hidden = true; }, 3800); }
 function pvOpen(k){
   if (!pv.rows || !pv.rows.some(r => pvKey(r) === k)){ pvToast('That prop is no longer on the board.'); return; }
-  pv.tab = 'v2'; pv.preset = pvW[k] ? 'watch' : 'all'; pv.stat = 'all'; pv.game = 'all'; pv.q = ''; pv.sel = k; pv.logIdx = null;
-  $('pv-alerts').hidden = true; $('pv-bell').setAttribute('aria-expanded', 'false');
-  pvShow(); $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'});
+  pv.preset = pvW[k] ? 'watch' : 'all'; pv.stat = 'all'; pv.game = 'all'; pv.q = ''; pv.sel = k; pv.logIdx = null;
+  $('pv-alerts').hidden = true;
+  goView('props'); $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'});
 }
 function pvShow(){
   for (const t of ['v2', 'bets', 'full']) $('pv-' + t).hidden = pv.tab !== t;
-  $('pvtabs').innerHTML = [['v2', 'Props'], ['bets', `My bets${pvBets.length ? ` (${pvBets.length})` : ''}`], ['full', 'Full board']].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${pv.tab === v}">${l}</button>`).join('');
-  pvBell();
+  if (pv.tab !== 'v2') $('pv-alerts').hidden = true;
+  if (pv.tab === 'bets'){                                               // the board's notes are about the props list, not your bets
+    $('pbanner').hidden = $('pfoot').hidden = true;
+    $('mode').innerHTML = `<span>${pvBets.length} bet${pvBets.length === 1 ? '' : 's'} logged · saved in this browser</span>`;
+  }
   if (pv.tab === 'v2') renderPropsV2();
   if (pv.tab === 'bets'){ if (!pv.rows) pv.rows = pvRows().rows; pvRenderBets(); pvSettle(); }
 }
-$('pvtabs').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ pv.tab = b.dataset.v; pvShow(); } });
 $('pv-tools').addEventListener('click', e => {
+  if (e.target.closest('#pv-bell')){ pvToggleAlerts(); return; }
   const p = e.target.closest('[data-p]'); if (p){ pv.preset = p.dataset.p; renderPropsV2(); return; }
   const s = e.target.closest('#pv-stat button[data-s]'); if (s){ pv.stat = s.dataset.s; renderPropsV2(); }
 });
@@ -4344,7 +4362,7 @@ $('pv-detail').addEventListener('click', e => {
   const lg = t.closest('[data-log]');
   if (lg){ pv.logIdx = +lg.dataset.log; renderPropsV2(); document.querySelector('.pv-logf input[name="price"]')?.focus(); return; }
   if (t.closest('[data-logcancel]')){ pv.logIdx = null; renderPropsV2(); return; }
-  if (t.closest('[data-tab="bets"]')){ pv.tab = 'bets'; pvShow(); }
+  if (t.closest('[data-tab="bets"]')) goView('mybets');
 });
 $('pv-detail').addEventListener('change', e => { const wt = e.target.closest('[data-wt]'); if (wt && pvW[pv.sel]){ pvW[pv.sel][wt.dataset.wt] = wt.checked; pvSave(); } });
 $('pv-detail').addEventListener('submit', e => {
@@ -4355,7 +4373,7 @@ $('pv-detail').addEventListener('submit', e => {
   pvBets.unshift(b); pv.logIdx = null; pvSave(); pvShow(); pvSettle();
   pvToast(b.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.');
 });
-$('pv-bell').addEventListener('click', () => { const open = $('pv-alerts').hidden; $('pv-alerts').hidden = !open; $('pv-bell').setAttribute('aria-expanded', open); if (open) pvRenderAlerts(); });
+function pvToggleAlerts(){ const open = $('pv-alerts').hidden; $('pv-alerts').hidden = !open; $('pv-bell')?.setAttribute('aria-expanded', open); if (open) pvRenderAlerts(); }
 $('pv-alerts').addEventListener('click', e => {
   const o = e.target.closest('[data-open]'); if (o){ pvOpen(o.dataset.open); return; }
   if (e.target.closest('[data-clearal]')){ pvA = []; pvSave(); pvRenderAlerts(); }
@@ -4368,6 +4386,7 @@ $('pv-alerts').addEventListener('change', e => {
 });
 $('pv-bets').addEventListener('click', async e => {
   const t = e.target, o = t.closest('[data-open]'), d = t.closest('[data-del]');
+  if (t.closest('[data-go]')){ e.preventDefault(); goView(t.closest('[data-go]').dataset.go); return; }
   if (o){ pvOpen(o.dataset.open); return; }
   if (d){ pvBets = pvBets.filter(b => b.id !== d.dataset.del); pvSave(); pvShow(); return; }
   if (t.closest('[data-copy]')){

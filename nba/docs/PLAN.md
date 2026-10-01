@@ -225,6 +225,12 @@ Everything else ships as **context** (a model line next to the market) or stays 
 
 ## Pages (app sidebar)
 
+Design rule (2026-10-01): **no sub-pages inside a page.** Every distinct job is its own menu item with its own hash
+(#props, #mybets, #propboard, #backtests, #finder, #btlab, ...). Segmented controls only narrow the list in front of
+you (stat, day, game, side, signal type); they never swap in different content. Content that serves the same job sits
+on one scroll in order of importance (What Works shows what works, then what doesn't). Anything new that matters, like
+alerts, opens on arrival instead of waiting behind a button. Pick'em Pairs will be its own page under Betting.
+
 The Minutes Lab (`nba/projections.html`) is the app shell: the sidebar is page navigation and teams are picked
 from the header slicer. Planned pages, each fed by something the models already produce or week 4 builds:
 
