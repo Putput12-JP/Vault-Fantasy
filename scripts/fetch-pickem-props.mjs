@@ -198,7 +198,15 @@ async function loadSleeperMap() {
      • QB1 out  → every skill teammate impacted (whole passing game re-rates).
      • RB1 out  → same-team RBs impacted (vacated backfield share).
      • WR1 out  → same-team WRs impacted (vacated target share).
-   Doubtful flags only the player's own props (self-caution), no ripple.        */
+   Doubtful flags only the player's own props (self-caution), no ripple.
+
+   Backup RB out (p.backupOut, NOT p.impacted): the remaining lead back now
+   carries the whole backfield, so his volume UNDERS are projected off a
+   committee that no longer exists (Warren wk 4 2026: Dowdle out, books at 75.5
+   rush yds / 17.5 att, Vault at 48.6 off a shared-backfield history, and the
+   rec yds Under still made Best Bets). Only his unders are held, in
+   build_best_bets; his overs are still scored. "Lead back" = the healthy RB the
+   books price highest on rush yds, so a stale depth chart can't misname him.  */
 function applyStatusFlags(feed, sl) {
   const status = (sl && sl.status) || {};
   const depth = (sl && sl.depth) || {};
@@ -231,11 +239,31 @@ function applyStatusFlags(feed, sl) {
     (teamOut[rec.team] = teamOut[rec.team] || {})[rec.pos] = true;
   }
 
+  // A backup RB counts as "having a role" when he is RB2 on the depth chart or
+  // the books posted props for him (Dowdle had no depth entry, but a line).
+  const rbOut = {};     // team -> names of out non-starter RBs
+  for (const id in status) {
+    if (status[id] !== 'out') continue;
+    const rec = byId[id]; if (!rec || !rec.team || rec.pos !== 'RB') continue;
+    const dco = depth[id] ? depth[id][0] : null;
+    if (dco === 1 || (teamOut[rec.team] && teamOut[rec.team].RB)) continue;   // starter: the RB1 ripple covers it
+    const hasLines = !!(props[id] && Object.keys(props[id].lines || {}).length);
+    if (dco === 2 || hasLines) (rbOut[rec.team] = rbOut[rec.team] || []).push(rec.name || (props[id] && props[id].name) || id);
+  }
+  const leadRB = {};    // team -> id of the healthy RB with the highest rush_yd line
+  for (const id in props) {
+    const p = props[id], team = p.team || (byId[id] || {}).team;
+    if (!rbOut[team] || (p.pos || (byId[id] || {}).pos) !== 'RB' || status[id] === 'out' || status[id] === 'doubtful') continue;
+    const c = (p.lines || {}).rush_yd, L = c && c.line != null ? Number(c.line) : null;
+    if (L == null || !Number.isFinite(L)) continue;
+    if (!leadRB[team] || L > leadRB[team].L) leadRB[team] = { id, L };
+  }
+
   const SKILL = new Set(['QB', 'RB', 'WR', 'TE']);   // ripple never touches K/DEF/IDP props
-  const out = [], impacted = [];
+  const out = [], impacted = [], backup = [];
   for (const id in props) {
     const p = props[id];
-    delete p.out; delete p.outStatus; delete p.impacted; delete p.impactedBy;  // idempotent
+    delete p.out; delete p.outStatus; delete p.impacted; delete p.impactedBy; delete p.backupOut;  // idempotent
     const st = status[id];
     const rec = byId[id] || {};
     const team = p.team || rec.team;
@@ -252,6 +280,10 @@ function applyStatusFlags(feed, sl) {
       continue;
     }
 
+    if (leadRB[team] && leadRB[team].id === id) {
+      p.backupOut = 'RB2 out';
+      backup.push({ id, name: p.name, team, pos, by: 'RB2 out', out: rbOut[team] });
+    }
     const to = team && SKILL.has(pos) && teamOut[team];
     if (!to) continue;
     let by = null;
@@ -267,9 +299,9 @@ function applyStatusFlags(feed, sl) {
     out_count: out.length,
     impacted_count: impacted.length,
     teams_qb_out: Object.keys(teamOut).filter(t => teamOut[t].QB),
-    out, impacted,
+    out, impacted, backup_out: backup,
   };
-  return { out: out.length, impacted: impacted.length };
+  return { out: out.length, impacted: impacted.length, backup: backup.length };
 }
 /* Game-model backup QB (data/qb_status.json). build_game_model.py fits the
    points a backup start costs and names each team's ESTABLISHED starter
@@ -908,7 +940,7 @@ function mergeFeed(sources, stats, sl) {
   // lineup that just changed (withhold their lean/grade). Free — reads the same
   // Sleeper injury feed already loaded above.
   const flags = applyStatusFlags(feed, sl);
-  log(`status flags: ${flags.out} out/doubtful, ${flags.impacted} impacted teammates`);
+  log(`status flags: ${flags.out} out/doubtful, ${flags.impacted} impacted teammates, ${flags.backup} lead backs with the backup out`);
   const qbs = gameQbStatus(feed, sl);
   if (qbs) log(`game-model QB status: backup QB for ${Object.keys(qbs.teams).join(', ') || 'no team'}`);
 

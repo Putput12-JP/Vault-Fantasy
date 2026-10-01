@@ -596,6 +596,11 @@ function scoreProps(feed, PM, KP) {
   const ctx = buildMatchupCtx(feed);   // opponent + environment + game-script, per prop
   let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0, sharpskip = 0, weakskip = 0, rechold = 0;
   const heldCands = [], signals = [], heldIds = {};
+  // Players whose role the books contradict on ANY volume market. The check
+  // above is per line, so one market could slip under ROLE_PROJREL while his
+  // others tripped it (Warren wk 4 2026: rush yds + receptions flagged "role",
+  // rec yds 17.6% off the line made Best Bets). One bad role read voids all.
+  const roleBad = new Set();
   // Early-season rec-under hold fires only while the log window is essentially
   // last season only (weeks <= cutoff). feed.week is the served slate week.
   const _feedWeek = Number(feed.week) || 99;
@@ -653,6 +658,11 @@ function scoreProps(feed, PM, KP) {
         const sideProb = side === 'under' ? v.under : v.over;
         const bs = bestSide(lq, side);                     // best price for this side AT this line
         if (!bs || bs.price == null) continue;
+        // Backup RB out (fetch-pickem-props p.backupOut): the lead back now has
+        // the whole backfield, so a volume UNDER off his committee history is
+        // the phantom; hold it like a withheld prop. Overs still score.
+        const lineHeld = held || (p.backupOut && side === 'under' && VOL_MK.has(mk) ? p.backupOut : null);
+        if (lineHeld && !held) heldIds[id] = lineHeld;
         const trust = lineTrust(lq, line);
         // honest gates: corroborated line, confidence clears the bar, real +EV
         const ev = evPerDollar(g.padj, bs.price);          // confidence-adjusted EV vs best price
@@ -662,6 +672,7 @@ function scoreProps(feed, PM, KP) {
         // projection sits far off this line → demote below B so it can't pass.
         const roleUnconfirmed = !!ROLE_VOL_MK[p.pos] && !roleOk.has(String(id))
           && v.proj != null && Math.abs(v.proj - line) / Math.abs(line) >= ROLE_PROJREL;
+        if (roleUnconfirmed && VOL_MK.has(mk)) roleBad.add(id);   // player-level, applied after the loop
         // Gate 3: sharp-anchor disagreement. Compare our side's confidence-
         // adjusted prob to the exchange's fair for the same side; a liquid,
         // strike-matched market that disagrees by ≥SHARP_GAP caps the grade.
@@ -702,12 +713,13 @@ function scoreProps(feed, PM, KP) {
           signals.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, market: mk, line,
             commence: slateKick[[p.team, p.opp].sort().join('|')] || p.commence || null,
             kalshi: round(sharp.over, 3), kalshiInterp: !!sharp.interp, books: bm != null ? round(bm, 3) : null, nBooks: bp.length,
-            vault: round(v.over, 3), held: held || undefined });
+            vault: round(v.over, 3), held: lineHeld || undefined });
         }
-        if (held) {
+        if (lineHeld) {
+          if (DUMP && !held) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, market: mk, marketLabel: MKT_LABEL[mk] || mk, line, side, status: 'withheld', why: lineHeld });
           if (pass) heldCands.push({ id, name: p.name, team: p.team || null, pos: p.pos || null, opp: p.opp || null,
             commence: slateKick[[p.team, p.opp].sort().join('|')] || p.commence || null, market: mk, line, side,
-            book: bs.book, price: bs.price, ev: round(ev * 100, 1), prob: round(g.padj, 3), grade: eff, proj: v.proj, held });
+            book: bs.book, price: bs.price, ev: round(ev * 100, 1), prob: round(g.padj, 3), grade: eff, proj: v.proj, held: lineHeld });
           continue;
         }
         if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, market: mk, marketLabel: MKT_LABEL[mk] || mk,
@@ -745,6 +757,12 @@ function scoreProps(feed, PM, KP) {
         });
       }
     }
+  }
+  if (roleBad.size) {
+    const before = cands.length;
+    for (let i = cands.length - 1; i >= 0; i--) if (roleBad.has(cands[i].id)) cands.splice(i, 1);
+    roleskip += before - cands.length;
+    for (const r of dump) if (r.status === 'pass' && roleBad.has(r.id)) { r.status = 'role'; r.grade = 'C'; }
   }
   // Rank by confidence-adjusted EV — the real value. The price band (above)
   // already strips both -300 chalk (trivial certainties) and lottery longshots

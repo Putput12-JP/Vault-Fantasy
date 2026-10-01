@@ -440,8 +440,17 @@ async function main() {
   const freshProps = vegas.vegas_player_props || {};
   let preservedProps = freshProps;
   let preservedMeta = { ...vegas.meta };
+  // Keys other jobs own (update-props: fetch-pickem-props writes vegas_depth +
+  // vegas_status, build_best_bets writes best_bets). This builder used to write
+  // a fixed key list and silently DROP them on every run, so between props runs
+  // the feed had no depth chart: no player's role could be corroborated, the
+  // starter gate and role anchor went dark, and anything re-scoring the feed then
+  // (Game Breakdowns) saw a different Best Bets than the app (Warren wk 4 2026).
+  const CARRY = ['vegas_depth', 'vegas_status', 'best_bets'];
+  let carried = {};
   try {
     const prev = JSON.parse(await readFile(OUT, 'utf8'));
+    for (const k of CARRY) if (prev && prev[k] != null) carried[k] = prev[k];
     const prevProps = (prev && prev.vegas_player_props) || {};
     const prevMeta = (prev && prev.vegas_meta) || {};
     if (Object.keys(prevProps).length) {
@@ -482,6 +491,7 @@ async function main() {
     vegas_players: vegas.vegas_players,
     vegas_player_props: preservedProps,
     vegas_meta: preservedMeta,
+    ...carried,
   };
   await mkdir(dirname(OUT), { recursive: true });
   await writeFile(OUT, JSON.stringify(feed));
