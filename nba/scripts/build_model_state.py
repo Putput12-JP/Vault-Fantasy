@@ -24,6 +24,7 @@ from build_prop_model import BASE
 DATA = os.path.join(C.HERE, '..', 'data')
 WARM = 2          # seasons of history before the current one
 keep_roster = set()
+names = {}        # athlete id -> name, from the box scores walked (players off the current rosters need one too)
 
 
 def export(ctx, rt, ms, keep, season, base=False, asof=None):
@@ -50,7 +51,8 @@ def export(ctx, rt, ms, keep, season, base=False, asof=None):
                         # build_prop_model_v2.walk): [EWMA minutes, start rate, position group, team, last game, games]
                         'ms': [ms.pl[aid]['m'], ms.pl[aid]['st'], ms.pl[aid]['pos'], ms.pl[aid]['team'], int(ms.pl[aid]['last'].timestamp()),
                                ms.pl[aid]['n']] if aid in ms.pl else None,
-                        'r': dict(rt[aid]['rate']) if aid in rt else None, 'pg': dict(rt[aid]['pg']) if aid in rt else None}
+                        'r': dict(rt[aid]['rate']) if aid in rt else None, 'pg': dict(rt[aid]['pg']) if aid in rt else None,
+                        'nm': names.get(aid)}
         if players[aid]['ms'] is None and aid not in keep_roster:
             players.pop(aid)
     return {'season': season, 'lg_pace': round(ctx.lg_pace or 0, 3), 'teams': teams, 'players': players,
@@ -81,6 +83,7 @@ def main():
             example = export(ctx, rt, ms, keep, g['season'], base=True, asof=g['tip'])
             example['asof'] = g['tip_et'].strftime('%Y-%m-%d')
         V2.update_after(g, rows, rt, prior, ms, ctx)
+        names.update({r['athlete_id']: r['name'] for r in rows if r.get('name')})
         last_day, n = g['tip_et'].strftime('%Y-%m-%d'), n + 1
     live = export(ctx, rt, ms, keep, cur, asof=max(ms.team_last.values()) if ms.team_last else None)
     live['asof'] = last_day

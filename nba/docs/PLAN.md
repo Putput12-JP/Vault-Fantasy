@@ -229,6 +229,7 @@ from the header slicer. Planned pages, each fed by something the models already 
 | Group | Page | What it holds | Fed by |
 |---|---|---|---|
 | Research | Minutes Lab (live) | Minutes and stat projections per team, editable | `build_player_projections.py` |
+| Research | Tonight (LIVE) | Minutes Lab v2: every game on the board, both teams; tonight's minutes as pricing computes them (backtest path) with the pieces behind each number (recent average, teammates out, blowout risk, back-to-back, team fit) and a 10th-90th range; status with source and time; the minutes the market prices (consensus mean / our rate, flagged at 4+ apart); what-if minutes that reprice Props and Edges in this browser, with the edges they create or remove; the Lab's record (projected minutes at tip vs the box score, misses labelled did not play / blowout / foul trouble) | board.json + model_state.json (minutes state, names) + `track.json` minutes_days (recorder logs source `minutes`, ledger.py settles) |
 | Research | Slate | Tonight's games: Vault line vs market, injuries, back-to-backs, pace | game model + schedule + injury reports |
 | Research | Injury Wire | Each injury report change, the teammates it moves, how fast each venue reacted | injury poller + minutes model + snapshots |
 | Markets | Game Lines | Spread / total / ML across books, Kalshi, Polymarket; Vault line as context | snapshot pipeline + game model |

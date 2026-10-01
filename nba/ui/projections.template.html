@@ -222,6 +222,37 @@ table.tmx tr.tot td{border-top:1px solid var(--border2)}
 .tbreak th.l{text-align:left}
 .tbreak tr.on td{background:rgba(255,255,255,.06)}
 .bankroll{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2);white-space:nowrap}
+/* Tonight */
+.nt-teams{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
+@media (max-width:1750px){ .nt-teams{grid-template-columns:minmax(0,1fr)} }
+.nt-team{overflow:hidden;min-width:0}
+.nt-tw{overflow-x:auto}
+table.nt{width:100%;min-width:640px;border-collapse:collapse;font-size:13px}
+table.nt th{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:8px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+table.nt td{padding:8px 8px;border-bottom:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:middle}
+table.nt th.l,table.nt td.l{text-align:left}
+table.nt td.l b{display:block;font-weight:500}
+table.nt td small{display:block;font-size:11.5px;color:var(--fg3);font-weight:400}
+table.nt tr.off td{color:var(--fg3)}
+table.nt tr:last-child td{border-bottom:0}
+.nt-min{display:inline-flex;align-items:center;gap:6px}
+.nt-min input{width:58px;height:28px;padding:0 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);font-family:var(--font-mono);font-size:13px;text-align:right}
+.nt-min input.mine{border-color:rgba(251,191,36,.6);color:var(--warn)}
+.nt-parts{display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-start;max-width:230px}
+.nt-p{display:inline-flex;height:19px;align-items:center;padding:0 6px;border-radius:5px;font-size:11px;background:var(--raised);color:var(--fg2);white-space:nowrap}
+.nt-p.up{color:var(--up);background:rgba(74,222,128,.1)} .nt-p.dn{color:var(--down);background:rgba(248,113,113,.1)}
+.nt-mkt.flag{color:var(--warn);font-weight:600}
+.nt-rec{display:grid;gap:14px}
+.nt-rec .row3{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.nt-rec .stat{display:grid;gap:2px;min-width:0}
+.nt-rec .stat .k{display:block;font-size:11.5px;color:var(--fg3)} .nt-rec .stat .v{font-family:var(--font-mono);font-size:18px;font-weight:600}
+.nt-rec .stat small{display:block;font-size:11.5px}
+@media (max-width:760px){ .nt-rec .row3{grid-template-columns:repeat(2,minmax(0,1fr))} }
+table.nt-days{width:100%;min-width:0;border-collapse:collapse;font-size:12.5px}
+table.nt-days td,table.nt-days th{padding:6px 6px;border-top:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.nt-days th{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;border-top:0}
+table.nt-days .l{text-align:left}
+
 /* Edges v2 */
 .ev-strip{display:flex;flex-wrap:wrap}
 .ev-strip > div{padding:14px 20px;display:grid;gap:2px;min-width:0;flex:1 1 200px}
@@ -665,6 +696,18 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
     </main>
     <footer id="tfoot" hidden></footer>
 
+    <main id="v-tonight" hidden>
+      <div class="banner" id="nbanner" hidden></div>
+      <section class="card tbar"><div class="tfilters" id="ngames"></div></section>
+      <div class="kpis" id="nkpis"></div>
+      <div class="nt-teams" id="nteams"></div>
+      <section class="card" id="nwhatif" hidden></section>
+      <section class="card">
+        <div class="card-h"><div><h2>The Lab's record</h2><p>Projected minutes at tip against the box score, every player the model projected.</p></div></div>
+        <div class="card-b" id="nrecord"></div>
+      </section>
+    </main>
+    <footer id="nfoot" hidden></footer>
     <main id="v-edges" hidden>
       <div class="banner" id="ebanner"></div>
       <section class="card ev-strip" id="estrip"></section>
@@ -706,7 +749,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : 'lab';
+let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -825,6 +868,7 @@ const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const PAGES = [
   ['Research', [
     ['Minutes Lab', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), 'Projected minutes and stats per team; edit minutes and every stat reprices.', 'lab'],
+    ['Tonight', SVG('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'), "Tonight's minutes for every game: the model's adjustments, what the market prices, your what-ifs and the Lab's record.", 'tonight'],
     ['Slate', SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'), "Tonight's games: Vault line vs market, injuries, back-to-backs, pace."],
     ['Injury Wire', SVG('<path d="M12 3v18M3 12h18"/>'), 'Every injury report change as it posts, with the teammates it moves and how fast each venue reacted.'],
   ]],
@@ -986,7 +1030,7 @@ $('pages').addEventListener('click', e => {
 });
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES'].includes(h)) show(h.toLowerCase());
+  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT'].includes(h)) show(h.toLowerCase());
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -1039,6 +1083,7 @@ function show(v){
   $('v-props').hidden = $('pfoot').hidden = v !== 'props';
   $('v-track').hidden = $('tfoot').hidden = v !== 'track';
   $('v-edges').hidden = $('efoot').hidden = v !== 'edges';
+  $('v-tonight').hidden = $('nfoot').hidden = v !== 'tonight';
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
   $('mode').hidden = lab;
@@ -1049,6 +1094,14 @@ function show(v){
     $('tsub').textContent = 'PROJECTION · MARKET · BLENDED FAIR';
     renderProps();
     if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'tonight'){
+    $('tname').textContent = 'Tonight';
+    $('tsub').textContent = "MINUTES · WHAT THE MARKET PRICES · WHAT-IF · RECORD";
+    renderTonight();
+    if (!boardTried) loadBoard();
+    if (!trackTried) loadTrack();
     return;
   }
   if (v === 'edges'){
@@ -1340,10 +1393,14 @@ function impliedMean(s, quotes, extra){
 }
 // Every candidate gets cons (the other venues' consensus chance of its side), gap (consensus-based fair minus cost)
 // and gap_g (gate). Kalshi rungs use the backtested blend of consensus and model; other venues the consensus alone.
-function addConsensus(e, s, cands, model, extra){
+function quotesOf(e){               // [venue, line, P(over) vig removed, weight] for every priced venue
   const quotes = [];
   for (const row of e.books || []){ const po = amP(row[2]), pu = amP(row[3]); if (po != null && pu != null && row[1] != null) quotes.push([row[0], row[1], po / (po + pu), CONS_W[row[0]] ?? 1.5]); }
   for (const rung of e.kal || []){ const [line, bid, ask] = rung; if (bid != null && ask != null && bid > 0 && bid <= ask && ask < 1) quotes.push(['Kalshi', line, (bid + ask) / 2, CONS_W.Kalshi]); }
+  return quotes;
+}
+function addConsensus(e, s, cands, model, extra){
+  const quotes = quotesOf(e);
   const CP = PR.consensus || {}, memo = {};
   for (const c of cands){
     const ex = c.venue === 'kalshi' ? `${c.bk}|${c.line}` : `${c.bk}|`;
@@ -1425,8 +1482,9 @@ function statusFromBoard(B){
   for (const o of (B && B.outs) || []) st[+o[0]] = o[2] || 'Out';
   return st;
 }
+let tonightEdits = store.get('nba-tonight') || {};     // {game id: {player id: minutes}}: what-if, this browser only
 function gameMinutes(team, g, cache){
-  const key = `gm|${team}|${g.id}`;
+  const key = `gm|${team}|${g.id}|${cache.__noEdits ? 0 : 1}`;
   if (cache[key]) return cache[key];
   const state = MS && (PS.mode === 'example' ? MS.example : MS.live), M = MS && MS.minutes;
   if (!state || !M || !Object.values(state.players).some(v => v && v.ms)){ cache[key] = {}; return cache[key]; }
@@ -1442,6 +1500,7 @@ function gameMinutes(team, g, cache){
   const tl = (state.team_last || {})[team], b2b = tl && tip - tl < 30 * 3600 ? 1 : 0;
   const blow = g.spread != null ? Math.max(0, Math.abs(g.spread) - 6) : 0;
   let pm = {};
+  const parts = {};
   for (const a of cand){
     const [m, stt, pos] = S(a).ms;
     let vs = 0, vo = 0;
@@ -1449,9 +1508,28 @@ function gameMinutes(team, g, cache){
     const share = m / 48, starter = stt >= .5;
     const x = [vs, vo, vs * share, vo * share, starter ? blow : 0, starter ? 0 : blow, b2b, b2b * share, 1];
     pm[a] = Math.max(0, Math.min(48, m + M.beta.reduce((acc, b, i) => acc + b * x[i], 0)));
+    const t = M.beta.map((b, i) => b * x[i]);
+    parts[a] = {base: m, vac: t[0] + t[1] + t[2] + t[3], blow: t[4] + t[5], b2b: t[6] + t[7], other: t[8], pre: pm[a]};
   }
   const tot = Object.values(pm).reduce((a, b) => a + b, 0);
   if (tot > 0 && Object.keys(pm).length >= 7){ const f = M.team_min / tot; for (const a in pm) pm[a] = Math.min(48, pm[a] * f); }
+  for (const a of cand) parts[a].rescale = pm[a] - parts[a].pre;
+  // what-if: your minutes for tonight, the change moved to teammates by the Lab's rule (in proportion to minutes,
+  // same position NB x more). Only this page and your browser see it; the shadow ledger never does.
+  const ed = cache.__noEdits ? {} : (tonightEdits[String(g.id)] || {}), mine = new Set();
+  for (const [a0, val] of Object.entries(ed).sort((x, y) => +x[0] - +y[0])){
+    const a = +a0; if (!(a in pm)) continue;
+    let delta = pm[a] - val; pm[a] = Math.max(0, Math.min(48, +val)); mine.add(a);
+    const pos = S(a).ms[2];
+    for (let k = 0; k < 4 && Math.abs(delta) > .05; k++){
+      const pool = cand.filter(q => q !== a && !mine.has(q) && pm[q] > 0 && (delta > 0 ? pm[q] < 48 : true));
+      const w = pool.map(q => pm[q] * (S(q).ms[2] === pos ? NB : 1)), W = w.reduce((x, y) => x + y, 0);
+      if (!W) break;
+      let moved = 0;
+      pool.forEach((q, i) => { const nv = Math.max(0, Math.min(48, pm[q] + delta * w[i] / W)); moved += nv - pm[q]; pm[q] = nv; });
+      delta -= moved;
+    }
+  }
   const present = cand.map(a => S(a).r), res = {};
   for (const a of cand){
     const pos = S(a).ms[2], rates = S(a).r, mu = {};
@@ -1464,7 +1542,7 @@ function gameMinutes(team, g, cache){
         mu[s] = Math.max(0, pm[a] * rate + pm[a] / 48 * (bb[0] * vs + bb[1] * vo + bb[2] * vs * rel + bb[3] * vo * rel));
       } else mu[s] = Math.max(0, pm[a] * rate);
     }
-    res[a] = {min: pm[a], rate: rates, pos, mu, base: S(a).ms[0]};
+    res[a] = {min: pm[a], rate: rates, pos, mu, base: S(a).ms[0], parts: parts[a], mine: mine.has(a), sdm: S(a).sdm};
   }
   cache[key] = res;
   return res;
@@ -1488,7 +1566,7 @@ function muFor(pid, stat, cache, g, bteam){
       }
       const sdm = state0 && state0.players[pid] ? state0.players[pid].sdm : 6;
       const rate = parts.reduce((a, s) => a + G.rate[s], 0);
-      return {mu, min: G.min, min0: G.base, team: team0, build, extra: (rate * sdm) ** 2, v2: !!(PR.stacker && state0), src: 'model'};
+      return {mu, min: G.min, min0: G.base, team: team0, build, extra: (rate * sdm) ** 2, v2: !!(PR.stacker && state0), src: G.mine ? 'yours' : 'model'};
     }
   }
   let pl = PIDX[pid]; if (!pl) return null;
@@ -1591,6 +1669,7 @@ async function loadBoard(){
     PS.live = b; PS.liveAt = Date.now() / 1000; PS.liveFetched = true;
     if (view === 'props') renderProps();
     if (view === 'edges') renderEdges();
+    if (view === 'tonight') renderTonight();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -1672,7 +1751,8 @@ function renderProps(){
     const edited = moved && edits[r.tm] && Object.keys(edits[r.tm]).length;
     const flags = [LINEUP[r.lu] || '', r.inj ? `<span class="${/out/i.test(r.inj) ? 'neg' : 'warnt'}">${esc(r.inj)}</span>` : '',
       edited ? '<span class="warnt" title="You changed this team\'s minutes in the Minutes Lab">minutes edited</span>'
-        : moved && r.min > 0 ? `<span class="muted" title="Minutes rebalanced for teammates listed Out or Inactive">${sign(r.min - r.min0)} min, teammates out</span>` : ''].filter(Boolean).join(' · ');
+        : moved && r.min > 0 ? `<span class="muted" title="Minutes rebalanced for teammates listed Out or Inactive">${sign(r.min - r.min0)} min, teammates out</span>`
+        : r.src === 'yours' ? '<span class="warnt" title="You set his minutes on the Tonight page">your minutes</span>' : ''].filter(Boolean).join(' · ');
     const hr = r.line != null ? hitRate(windowGames(r, pwin).gl, r.e.s, r.line) : null;
     const b = r.best;
     const betCells = b ? `<td class="l"><span class="betname">${b.venue === 'kalshi' ? `Kalshi ${b.side} ${b.line + .5}+` : `${esc(b.bk)} ${b.side} ${b.line}`}</span></td>
@@ -1865,6 +1945,7 @@ async function loadTrack(){
     TR = {data: d, live: true, at: Date.now() / 1000};
     if (view === 'track') renderTrack();
     if (view === 'edges') renderEdges();
+    if (view === 'tonight') renderTonight();
     clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -2109,11 +2190,11 @@ const tAt = t => t ? clock(t) : '';
 const betLabel = p => `${SLABEL[p.r.e.s]} ${p.venue === 'kalshi' ? `${p.side} ${p.line + .5}+` : `${p.side} ${p.line}`}`;
 const priceLabel = p => p.venue === 'kalshi' ? Math.round(p.price * 100) + '¢' : p.price == null ? 'flat' : esc(p.price);
 
-function edgePlays(B){
+function edgePlays(B, noEdits){
   const games = Object.fromEntries((B.games || []).map(g => [String(g.id), g]));
   const news = {};
   for (const n of B.news || []) if (n[0]) (news[n[3]] = news[n[3]] || []).push(n[0]);
-  const cache = {}, groups = {};
+  const cache = noEdits ? {__noEdits: true} : {}, groups = {};
   for (const e of (B.props || []).filter(e => PR.variance[e.s])){
     const r = priceRow(e, cache);
     if (!r.all || !r.all.length) continue;
@@ -2316,6 +2397,147 @@ $('ealerts').addEventListener('click', e => { const b = e.target.closest('button
 const evToggle = el => { const k = el.closest('.ev-edge').dataset.k; ef.open.has(k) ? ef.open.delete(k) : ef.open.add(k); renderEdges(); };
 $('egames').addEventListener('click', e => { const r = e.target.closest('.ev-row'); if (r) evToggle(r); });
 $('egames').addEventListener('keydown', e => { const r = e.target.closest('.ev-row'); if (r && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); evToggle(r); } });
+
+// ── Tonight (Minutes Lab v2) ──────────────────────────────────────────────
+// Every game on the board, both teams: tonight's minutes as the pricing computes them (gameMinutes: the backtest's
+// minutes model on its own state), the pieces behind each number, status with its source, the minutes the market
+// is pricing (consensus mean of his points, or PRA / REB / AST, divided by our rate), your what-if minutes with the
+// edges they create or remove, and the Lab's record against the box score.
+let nt = {game: null};
+const MKT_FLAG = 4;                 // minutes of disagreement with the market worth a flag
+function nameOf(B, pid){
+  const P = (B.players || {})[pid], st = MS && (PS.mode === 'example' ? MS.example : MS.live);
+  return P ? P[0] : (PIDX[pid] && PIDX[pid].p.name) || (st && st.players[pid] && st.players[pid].nm) || String(pid);
+}
+function marketMinutes(B, g, team, pid, min, cache){
+  for (const s of ['pts', 'pra', 'reb', 'ast']){
+    const e = (B.props || []).find(x => x.p === pid && x.s === s && String(x.g) === String(g.id));
+    if (!e) continue;
+    const mm = muFor(pid, s, cache, g, team);
+    if (!mm || !(mm.mu > 0) || !(min > 0)) continue;
+    const q = quotesOf(e);
+    if (!q.length) continue;
+    const mean = impliedMean(s, q.map(x => [x[1], x[2], x[3]]), mm.extra);
+    if (mean == null) continue;
+    return {min: min * mean / mm.mu, stat: s, mean, ours: mm.mu};
+  }
+  return null;
+}
+function renderTonight(){
+  const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
+  const B = PS.board, games = [...(B.games || [])].sort((a, b) => a.tip - b.tip);
+  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
+    : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's final game</span>` : pill('idle', 'No games yet');
+  $('nbanner').hidden = pick.mode !== 'example' && games.length > 0;
+  $('nbanner').innerHTML = pick.mode === 'example' ? `<b>Example: last season's final game, as the model saw it that morning.</b><span>There was no injury report or lineup feed in this snapshot, so every rotation player is available and nothing is confirmed.</span>`
+    : '<b>No games on the board yet.</b><span>The board lists games within 3 days of tip; preseason starts October 3, opening night is October 20.</span>';
+  renderTonightRecord();
+  if (!games.length){ $('ngames').innerHTML = $('nkpis').innerHTML = $('nteams').innerHTML = ''; $('nwhatif').hidden = true; return; }
+  if (!games.some(g => String(g.id) === nt.game)) nt.game = String(games[0].id);
+  const g = games.find(x => String(x.id) === nt.game), gid = String(g.id);
+  $('ngames').innerHTML = `<div class="seg" id="ngame">${games.map(x => `<button type="button" data-g="${x.id}" aria-pressed="${String(x.id) === nt.game}">${x.away} @ ${x.home} · ${etFmt(x.tip, {weekday: 'short'})} ${clock(x.tip)}${tonightEdits[String(x.id)] && Object.keys(tonightEdits[String(x.id)]).length ? ' •' : ''}</button>`).join('')}</div>`;
+
+  const cache = {}, status = statusFromBoard(B), P = B.players || {};
+  const edits = tonightEdits[gid] || {};
+  const teams = [g.away, g.home].map(team => {
+    const model = gameMinutes(team, g, cache), rows = [];
+    for (const [a, G] of Object.entries(model)){
+      const pid = +a, mu = {};
+      for (const s of ['pts', 'reb', 'ast', '3pm']){ const m = muFor(pid, s, cache, g, team); mu[s] = m ? m.mu : null; }
+      const sd = G.sdm || 6;
+      rows.push({pid, name: nameOf(B, pid), min: G.min, lo: Math.max(0, G.min - 1.2816 * sd), hi: Math.min(48, G.min + 1.2816 * sd), parts: G.parts, mine: G.mine,
+                 st: status[pid], lu: P[pid] ? P[pid][3] : null, stT: P[pid] ? P[pid][4] : null, luT: P[pid] ? P[pid][5] : null, mu, mkt: marketMinutes(B, g, team, pid, G.min, cache), src: 'model'});
+    }
+    const seen = new Set(rows.map(r => r.pid));
+    for (const [a, st] of Object.entries(status)){
+      const pid = +a, t = (P[pid] && P[pid][1]) || (B.outs || []).find(o => +o[0] === pid)?.[1] || (PIDX[pid] && PIDX[pid].t);
+      if (t !== team || seen.has(pid) || !['Out', 'Doubtful', 'Inactive'].includes(st)) continue;
+      rows.push({pid, name: nameOf(B, pid), min: 0, st, off: true, lu: P[pid] ? P[pid][3] : null, stT: P[pid] ? P[pid][4] : null, mu: {}});
+      seen.add(pid);
+    }
+    if (pick.mode !== 'example') for (const p of (D.teams[team] ? D.teams[team].players : [])){
+      if (seen.has(p.id)) continue;
+      const m = muFor(p.id, 'pts', cache, g, team);
+      if (!m || !(m.min > 0)) continue;
+      const mu = {}; for (const s of ['pts', 'reb', 'ast', '3pm']){ const x = muFor(p.id, s, cache, g, team); mu[s] = x ? x.mu : null; }
+      rows.push({pid: p.id, name: p.name, min: m.min, st: status[p.id], mu, src: 'lab'});
+    }
+    rows.sort((a, b) => (a.off ? 1 : 0) - (b.off ? 1 : 0) || b.min - a.min);
+    return {team, rows, total: rows.filter(r => !r.off).reduce((x, r) => x + r.min, 0)};
+  });
+
+  // KPIs
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const outs = teams.flatMap(t => t.rows.filter(r => r.off || r.st === 'Doubtful' || r.st === 'Questionable'));
+  const starters = teams.map(t => t.rows.filter(r => r.lu === 'S').length);
+  const flags = teams.flatMap(t => t.rows.filter(r => r.mkt && Math.abs(r.mkt.min - r.min) >= MKT_FLAG));
+  const nEd = Object.keys(edits).length;
+  const news = (B.news || []).filter(n => n[3] === g.away || n[3] === g.home);
+  $('nkpis').innerHTML =
+    kpi('Game', ICON.clock, `${clock(g.tip)}`, `${etFmt(g.tip, {weekday: 'long', month: 'short', day: 'numeric'})}${g.spread != null ? ` · ${g.home} ${g.spread > 0 ? '+' : ''}${g.spread}` : ''}${g.total != null ? ` · total ${g.total}` : ''}`) +
+    kpi('Status', ICON.star, `${outs.filter(r => r.off).length} out`, `${outs.filter(r => !r.off).length} questionable or doubtful · lineups ${starters.every(n => n >= 5) ? 'confirmed' : starters.some(n => n) ? 'partly confirmed' : 'not out yet'}${news.length ? ` · last change ${clock(news[0][0])}` : ''}`) +
+    kpi('Market disagrees', ICON.pts, `${flags.length}`, flags.length ? `${flags.slice(0, 2).map(r => `${last(r.name)} ${fmt(r.mkt.min, 0)} vs our ${fmt(r.min, 0)}`).join(' · ')}` : `No player ${MKT_FLAG}+ minutes off the market`) +
+    kpi('Your what-ifs', ICON.edit, `${nEd}`, nEd ? 'Minutes you set for this game; see what they change below' : "Type a player's minutes to see what moves");
+
+  // teams
+  const chip = (v, lab) => Math.abs(v) >= .3 ? `<span class="nt-p ${v > 0 ? 'up' : 'dn'}">${v > 0 ? '+' : ''}${fmt(v)} ${lab}</span>` : '';
+  const stTxt = r => [LINEUP[r.lu] || '', r.st ? `<span class="${/out|inactive/i.test(r.st) ? 'neg' : 'warnt'}">${esc(r.st)}${r.stT ? ' ' + clock(r.stT) : ''}</span>` : '', r.src === 'lab' ? '<span class="muted" title="No games yet for this team: the Minutes Lab estimate">Lab estimate</span>' : ''].filter(Boolean).join(' · ');
+  $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
+      <div class="card-h"><div><h2>${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.total, 0)} minutes projected across ${T.rows.filter(r => !r.off).length} players</p></div></div>
+      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
+      ${T.rows.map(r => r.off ? `<tr class="off"><td class="l"><b>${esc(r.name)}</b><small>${stTxt(r)}</small></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td></tr>`
+        : `<tr><td class="l"><b>${esc(r.name)}</b><small>${stTxt(r) || '&nbsp;'}</small></td>
+        <td><span class="nt-min"><input type="number" min="0" max="48" step="0.5" data-pid="${r.pid}" value="${fmt(r.min)}" class="${r.mine ? 'mine' : ''}" aria-label="Minutes for ${esc(r.name)}" ${r.src === 'lab' ? 'disabled title="Edit this team in the Minutes Lab"' : ''}></span>${r.lo != null ? `<small>${fmt(r.lo, 0)} to ${fmt(r.hi, 0)}</small>` : ''}</td>
+        <td class="l"><div class="nt-parts">${r.mine ? '<span class="nt-p" style="color:var(--warn)">your minutes</span>' : r.parts ? `<span class="nt-p">avg ${fmt(r.parts.base)}</span>${chip(r.parts.vac, 'teammates out')}${chip(r.parts.blow, 'blowout risk')}${chip(r.parts.b2b, 'back-to-back')}${chip(r.parts.other + r.parts.rescale, 'team fit')}` : ''}</div></td>
+        <td>${r.mkt ? `<span class="nt-mkt ${Math.abs(r.mkt.min - r.min) >= MKT_FLAG ? 'flag' : ''}" title="Market ${SLABEL[r.mkt.stat]} mean ${fmt(r.mkt.mean)} vs our ${fmt(r.mkt.ours)}">${fmt(r.mkt.min)}</span><small>${r.mkt.min - r.min >= 0 ? '+' : ''}${fmt(r.mkt.min - r.min)}</small>` : '<span class="muted">none</span>'}</td>
+        ${['pts', 'reb', 'ast', '3pm'].map(s => `<td>${r.mu[s] != null ? fmt(r.mu[s]) : ''}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></div></section>`).join('');
+
+  // what-if: edges with your minutes vs without, this game
+  if (nEd){
+    const pick1 = p => String(p.r.e.g) === gid, k = p => `${p.r.e.p}|${p.r.e.s}|${sideKey(p)}`;
+    const w = Object.fromEntries(edgePlays(B).filter(pick1).map(p => [k(p), p])), wo = Object.fromEntries(edgePlays(B, true).filter(pick1).map(p => [k(p), p]));
+    const keys = [...new Set([...Object.keys(w), ...Object.keys(wo)])];
+    const ch = keys.map(x => ({x, a: wo[x], b: w[x]})).filter(c => !c.a || !c.b || Math.abs(c.a.edgeP - c.b.edgeP) >= .005).sort((p, q) => Math.abs((q.b?.edgeP ?? 0) - (q.a?.edgeP ?? 0)) - Math.abs((p.b?.edgeP ?? 0) - (p.a?.edgeP ?? 0)));
+    $('nwhatif').hidden = false;
+    $('nwhatif').innerHTML = `<div class="card-h"><div><h2>What your minutes change</h2><p>Edges on this game with your ${nEd} ${nEd === 1 ? 'edit' : 'edits'} against the model's minutes. Props and Edges use your minutes too until you reset.</p></div><button class="btn" id="nreset" type="button">Reset this game</button></div>
+      <div class="card-b"><div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th class="l">Bet</th><th class="l">Best price</th><th>Before</th><th>After</th><th>Change</th></tr></thead><tbody>
+      ${ch.length ? ch.slice(0, 30).map(c => { const p = c.b || c.a; return `<tr><td class="l"><b>${esc(p.r.name)}</b></td><td class="l">${betLabel(p)}</td><td class="l">${esc(p.bk)} ${priceLabel(p)}</td><td>${c.a ? ec(c.a.edgeP) : '<span class="muted">none</span>'}</td><td>${c.b ? ec(c.b.edgeP) : '<span class="muted">gone</span>'}</td><td class="${!c.a ? 'pos' : !c.b ? 'neg' : ''}">${!c.a ? 'new edge' : !c.b ? 'no longer an edge' : ((c.b.edgeP - c.a.edgeP) > 0 ? '+' : '') + ((c.b.edgeP - c.a.edgeP) * 100).toFixed(1)}</td></tr>`; }).join('')
+        : `<tr><td class="l" colspan="6"><p class="empty">No edge on this game moves by half a point or more.</p></td></tr>`}</tbody></table></div></div>`;
+  } else $('nwhatif').hidden = true;
+
+  $('nfoot').innerHTML = `
+    <div><b>Minutes</b> are the minutes model as the backtest ran it: his recent minutes, plus minutes freed by teammates who are out (Out or Doubtful on the injury report, inactive on NBA.com), less for blowout risk when the spread is wide, a back-to-back adjustment, then the team fitted to its usual total. The range is his 10th to 90th percentile night. Stats are those minutes times his per-minute rates with prop model v2's adjustments.</div>
+    <div><b>Market</b> is the minutes the betting market is pricing: the consensus of every venue's line for his points (or PRA, rebounds, assists), moved through our model, divided by our per-minute projection. ${MKT_FLAG}+ minutes apart is flagged: usually news the market has, sometimes an edge.</div>
+    <div><b>What-if:</b> type a minutes number to try a scenario; the change goes to teammates by the Lab's rule and every price on Props and Edges moves with it, in this browser only. The shadow ledger always uses the model's minutes.</div>`;
+}
+function renderTonightRecord(){
+  const d = TR && TR.data, days = d && d.minutes_days ? Object.entries(d.minutes_days).sort((a, b) => b[0] < a[0] ? -1 : 1) : [];
+  if (!days.length){ $('nrecord').innerHTML = `<p class="empty">No settled games yet. The recorder logs every player's projected minutes before tip and scores them against the box score the next time it polls after the final.</p>`; return; }
+  const n = days.reduce((a, [, x]) => a + x.n, 0), mae = days.reduce((a, [, x]) => a + (x.mae || 0) * x.n, 0) / Math.max(1, n);
+  const m8 = days.reduce((a, [, x]) => a + x.miss8, 0), dnp = days.reduce((a, [, x]) => a + x.dnp, 0), [d0, x0] = days[0];
+  const dl = x => new Date(x + 'T12:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'});
+  $('nrecord').innerHTML = `<div class="nt-rec">
+    <div class="row3"><div class="stat"><span class="k">Last night (${dl(d0)})</span><span class="v">${x0.mae != null ? fmt(x0.mae, 2) : 'n/a'} min</span><small class="muted">average miss, ${x0.n} players</small></div>
+      <div class="stat"><span class="k">Season</span><span class="v">${fmt(mae, 2)} min</span><small class="muted">${n.toLocaleString()} players · backtest 4.90</small></div>
+      <div class="stat"><span class="k">Missed by 8+</span><span class="v">${n ? pc(m8 / n) : 'n/a'}</span><small class="muted">backtest 18.5%</small></div>
+      <div class="stat"><span class="k">Projected, did not play</span><span class="v">${dnp}</span><small class="muted">not in the averages; books void these</small></div></div>
+    <div class="two"><div class="nt-tw"><table class="nt-days"><thead><tr><th class="l">Day</th><th>Players</th><th>Avg miss</th><th>Bias</th><th>8+ misses</th><th>DNP</th></tr></thead><tbody>
+      ${days.slice(0, 10).map(([dd, x]) => `<tr><td class="l">${dl(dd)}</td><td>${x.n}</td><td>${x.mae != null ? fmt(x.mae, 2) : ''}</td><td>${x.bias != null ? (x.bias > 0 ? '+' : '') + fmt(x.bias, 2) : ''}</td><td>${x.miss8}</td><td>${x.dnp}</td></tr>`).join('')}</tbody></table></div>
+    <div class="nt-tw"><table class="nt-days"><thead><tr><th class="l">Biggest misses, ${dl(d0)}</th><th>Proj</th><th>Actual</th><th class="l">Why</th></tr></thead><tbody>
+      ${x0.worst.slice(0, 8).map(w => `<tr><td class="l">${esc(w[0])} <span class="muted">${esc(w[1])}</span></td><td>${fmt(w[3])}</td><td>${fmt(w[4])}</td><td class="l">${esc(w[5] || '')}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+}
+$('ngames').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (b){ nt.game = b.dataset.g; renderTonight(); } });
+$('nteams').addEventListener('change', e => {
+  const i = e.target.closest('input[data-pid]'); if (!i) return;
+  const gid = nt.game, pid = i.dataset.pid, v = i.value.trim();
+  tonightEdits[gid] = tonightEdits[gid] || {};
+  if (v === '') delete tonightEdits[gid][pid]; else tonightEdits[gid][pid] = Math.max(0, Math.min(48, +v));
+  if (!Object.keys(tonightEdits[gid]).length) delete tonightEdits[gid];
+  store.set('nba-tonight', tonightEdits); renderTonight();
+});
+$('nwhatif').addEventListener('click', e => { if (e.target.id === 'nreset'){ delete tonightEdits[nt.game]; store.set('nba-tonight', tonightEdits); renderTonight(); } });
 
 show(view);
 </script>

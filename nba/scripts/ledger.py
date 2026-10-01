@@ -93,12 +93,14 @@ def box(root, gid):
             return None
     except (KeyError, IndexError, TypeError):
         return None
-    out = {}
+    out, starters = {}, []
     for team in (d.get('boxscore') or {}).get('players', []):
         for block in team.get('statistics', [])[:1]:
             keys = block.get('keys') or []
             for a in block.get('athletes', []):
                 aid = int(a['athlete']['id'])
+                if a.get('starter'):
+                    starters.append(aid)
                 if a.get('didNotPlay') or not a.get('stats'):
                     out[aid] = None
                     continue
@@ -112,7 +114,105 @@ def box(root, gid):
                 out[aid] = v
     os.makedirs(os.path.dirname(path), exist_ok=True)
     json.dump(out, open(path, 'w'), separators=(',', ':'))
+    try:                                          # final score and starters, for the Minutes Lab's record
+        comp = d['header']['competitions'][0]
+        score = {c['team']['abbreviation']: float(c.get('score') or 0) for c in comp['competitors']}
+    except (KeyError, IndexError, TypeError, ValueError):
+        score = {}
+    json.dump({'score': score, 'starters': starters}, open(os.path.join(root, 'results', f'{gid}.meta.json'), 'w'), separators=(',', ':'))
     return out
+
+
+def box_meta(root, gid):
+    path = os.path.join(root, 'results', f'{gid}.meta.json')
+    return json.load(open(path)) if os.path.exists(path) else {}
+
+
+# ── the Minutes Lab's record: tonight's projected minutes against the box score ─────────────────
+def minutes_log(board, now):
+    """Every player's projected minutes for games within TRACK_H, as live pricing computes them (pricing.py
+    game_minutes, the backtest's path) -> (rows, meta) for Day.record('minutes', ...). Value: [minutes, recent avg]."""
+    rows, meta = {}, {}
+    if not board or not board.get('games'):
+        return rows, meta
+    pr = PX.Pricer(example=bool(board.get('example')))
+    if not pr.MM:
+        return rows, meta
+    status, cache = PX.status_from_board(board), {}
+    names = {int(k): v.get('nm') for k, v in pr.state['players'].items() if v.get('nm')}
+    names.update({x['id']: x['name'] for T in pr.D['teams'].values() for x in T['players']})
+    names.update({int(k): v[0] for k, v in (board.get('players') or {}).items()})
+    for g in board['games']:
+        if not (now < g['tip'] <= now + TRACK_H * 3600):
+            continue
+        for team in (g['away'], g['home']):
+            for pid, G in pr.game_minutes(team, g, status, cache).items():
+                k = f"{g['id']}|{pid}"
+                rows[k] = [round(G['min'], 2), round((pr.state['players'].get(str(pid)) or {}).get('ms', [0])[0], 2)]
+                meta[k] = {'game': str(g['id']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': pid,
+                           'player': names.get(pid, str(pid)), 'team': team}
+    return rows, meta
+
+
+def load_src(root, src, since):
+    """key -> {'meta', 'series'} for one logged source across day folders from `since` on."""
+    L = defaultdict(lambda: {'meta': None, 'series': []})
+    tag = f'"src":"{src}"'
+    for d in sorted(glob.glob(os.path.join(root, 'snapshots', '20*'))):
+        if os.path.basename(d) < since:
+            continue
+        mp = os.path.join(d, 'meta.jsonl')
+        if os.path.exists(mp):
+            for line in open(mp):
+                if tag in line:
+                    r = json.loads(line)
+                    L[r['k']]['meta'] = {k: v for k, v in r.items() if k not in ('k', 'src')}
+        lp = os.path.join(d, f'{src}.jsonl')
+        if os.path.exists(lp):
+            for line in open(lp):
+                r = json.loads(line)
+                L[r['k']]['series'].append((r['t'], r['v']))
+    return L
+
+
+def minutes_record(root, now, prev, rescan_days=3):
+    """Per tip day: projected minutes (last value before tip) against the box score. Players who did not play are
+    counted apart (books void their props; the backtest scored players who played). Days already final are kept."""
+    days = dict(prev or {})
+    since = tip_day(now - rescan_days * 86400)
+    per_day = defaultdict(list)
+    for k, x in load_src(root, 'minutes', since).items():
+        m = x['meta']
+        pre = [v for t, v in sorted(x['series']) if v is not None and m and t < m['tip']]
+        if not m or not pre or now < m['tip'] + SETTLE_AFTER_S:
+            continue
+        bx = box(root, m['game'])
+        if bx is None:
+            continue
+        meta = box_meta(root, m['game'])
+        st = bx.get(int(m['pid']))
+        actual = st.get('minutes', 0.0) if st else 0.0
+        reason = ''
+        if not st:
+            reason = 'did not play'
+        else:
+            sc = meta.get('score') or {}
+            if len(sc) == 2:
+                margin = abs(list(sc.values())[0] - list(sc.values())[1])
+                if margin >= 20:
+                    reason = f'blowout ({int(margin)} pts)'
+            if st.get('fouls', 0) >= 5:
+                reason = f"foul trouble ({int(st['fouls'])} fouls)"
+        per_day[tip_day(m['tip'])].append([m['player'], m['team'], m['matchup'], round(pre[-1][0], 1), round(actual, 1), reason])
+    for d, rows in per_day.items():
+        played = [r for r in rows if r[5] != 'did not play']
+        err = [r[3] - r[4] for r in played]
+        days[d] = {'n': len(played), 'dnp': len(rows) - len(played),
+                   'mae': round(sum(abs(e) for e in err) / len(err), 2) if err else None,
+                   'bias': round(sum(err) / len(err), 2) if err else None,
+                   'miss8': sum(abs(e) >= 8 for e in err),
+                   'worst': sorted(rows, key=lambda r: -abs(r[3] - r[4]))[:12]}
+    return days
 
 
 def cost(venue, price):
@@ -347,7 +447,8 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     recent = sorted(recent.values(), key=lambda b: (b['tip'], b['player'], b['stat'], b['line']))[-keep_recent:]
     open_days = sorted(d for d, bs in changed.items() if any(b['result'] == 'open' for b in bs))
     n = sum(r[CUBE_COLS.index('bets')] for r in cube)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube,
+    minutes_days = minutes_record(root, now, track.get('minutes_days'), rescan_days)
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs()}
     with open(tpath, 'w') as f:

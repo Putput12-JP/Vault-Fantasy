@@ -80,6 +80,7 @@ def main(n_games=40):
                         worst['mu2'] = max(worst['mu2'], abs(mm['mu'] - m2[s]))
                     n += 1
         V2.update_after(g, rows, rt, prior, ms, ctx)
+        BS.names.update({r['athlete_id']: r['name'] for r in rows if r.get('name')})
     print(f'{n:,} player-games in {len(sample)} games of 2025-26. Largest difference: minutes {worst["min"]:.2e}, '
           f'base projection {worst["base"]:.2e}, projection after v2 adjustments {worst["mu2"]:.2e}')
     return worst

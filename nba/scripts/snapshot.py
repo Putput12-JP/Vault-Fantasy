@@ -618,6 +618,9 @@ def shadow(root, day, board, now, polls):
         if board is not None:                    # no board = unknown, not "every edge is gone"
             rows, meta = ledger.log(day, board, now)
             rec.update(n=len(rows), chg=day.record('ledger', now, rows, meta))
+            mrows, mmeta = ledger.minutes_log(board, now)      # the Minutes Lab's record
+            rec['minutes'] = len(mrows)
+            day.record('minutes', now, mrows, mmeta)
         rec['bets'] = ledger.settle(root, now)
     except Exception as e:
         rec.update(ok=False, err=str(e)[:200])
