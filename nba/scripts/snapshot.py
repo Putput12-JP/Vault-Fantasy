@@ -78,7 +78,7 @@ def curl(url, headers=(), tries=2, raw=False, retry403=False):
         try:                                            # Pinnacle says why: {"reason": "location", ...}
             err += f" ({json.loads(body)['reason']})"
         except Exception:
-            pass
+            err += f" [{body[:80].decode('utf8', 'replace').strip()!r}]" if body else ''   # edge-block page vs Pinnacle's own JSON
         if code == '404' or (code == '403' and not retry403):
             break
         time.sleep(1.5 * (i + 1))
@@ -230,7 +230,7 @@ def src_espn(slate):
 
 
 def src_pinnacle(slate):
-    pin = lambda path: curl(f'{PIN}/{path}', PIN_HDR, tries=4, retry403=True)
+    pin = lambda path: curl(f'{PIN}/{path}', PIN_HDR, tries=7, retry403=True)   # ~40s of backoff rides out a cloud-IP 403 blip
     listed = True
     try:                                  # an empty league answers 403 "location", so only ask the ones with games
         live = {l['id'] for l in pin('sports/4/leagues?all=false') if l.get('matchupCount')}
