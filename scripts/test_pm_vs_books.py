@@ -154,16 +154,17 @@ def main():
     snaps = book_snapshots()
     PM = pm_series(a.cache)
     # every game: its book snapshots before kickoff, Polymarket's series, and the closes
+    # one game = one Polymarket moneyline; a snapshot joins it by teams and a kickoff within 3 hours (the feed's
+    # kickoff can shift between snapshots, which must not split a game in two)
     games = defaultdict(list)
     for t, gs in snaps:
         for away, home, ko, ml in gs:
-            if t < ko:
-                games[(away, home, ko)].append((t, ml))
+            key = next(((k, tm) for (k, tm) in PM if tm == frozenset([away, home]) and abs(k - ko) < 3 * 3600), None)
+            if key and t < key[0]:
+                games[(away, home, key)].append((t, ml))
     obs, bets, matched, no_pin = [], [], 0, 0
-    for (away, home, ko), L in games.items():
-        ser = next((v for (k, tm), v in PM.items() if tm == frozenset([away, home]) and abs(k - ko) < 3 * 3600), None)
-        if not ser:
-            continue
+    for (away, home, key), L in games.items():
+        ser, ko = PM[key], key[0]
         pm_close = pm_at(ser, home, ko)
         last = L[-1][1]
         pin_close = novig(last['Pinnacle']) if 'Pinnacle' in last else None
@@ -225,7 +226,7 @@ def main():
     r = res[THR]
     go = r['clv'] is not None and r['se'] == r['se'] and r['clv'] >= 2 * r['se'] and r['clv'] > 0
     pc = lambda v, d=1: '' if v is None else f'{v * 100:+.{d}f}%'
-    L = ['# Polymarket vs the sportsbooks: results', '', 'Rules: docs/pm-vs-books-test.md (committed before this ran). NFL 2026 weeks 1-4, moneylines. '
+    L = ['# Polymarket vs the sportsbooks: results', '', 'Rules: docs/pm-vs-books-test.md (committed before this ran). NFL 2026, every game played through Sept 29 (weeks 1-3), moneylines. '
          'Polymarket from the Pendulum Flow orderbook archive (archive.pendulumflow.com, CC BY 4.0).', '',
          f"Games matched: {matched} ({no_pin} without a Pinnacle close). Sportsbook snapshots: {len(snaps)} fetched, changed snapshots. Game-moments with both prices: {len(obs)}.", '',
          '## 1. Who closes the gap', '',

@@ -786,6 +786,46 @@ def grade_prop(a, close_props, actual):
         a['result'] = 1 if d > 0 else -1 if d < 0 else 0
 
 
+def pm_close_for(a):
+    """Polymarket's chance for an alert's side at its number at tip (data/pm_closes.json, scripts/pm_archive.py from the
+    Pendulum Flow orderbook archive, about 6 hours after tip). Matched by tip time and the home nickname."""
+    global _PMC
+    if _PMC is None:
+        try:
+            _PMC = [g for g in json.load(open(os.path.join(REPO_DATA, 'pm_closes.json'))).get('games', {}).values() if g.get('sport') == 'nba' and g.get('ml')]
+        except (OSError, ValueError):
+            _PMC = []
+    hn = (a.get('hn') or '').lower()
+    g = next((g for g in _PMC if abs(g['kickoff'] - a['tip']) < 3 * 3600 and hn in [o.lower() for o in g['ml']['outcomes']]), None)
+    if not g:
+        return None
+    hi = [o.lower() for o in g['ml']['outcomes']].index(hn)
+    def interp(pts, x):
+        pts = sorted(pts)
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            if x0 <= x <= x1:
+                return y0 if x1 == x0 else y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+        return next((y for xx, y in pts if xx == x), None)
+    if a['m'] == 'ml':
+        ph = g['ml']['p'] if hi == 0 else 1 - g['ml']['p']
+        return ph if a['side'] == 'home' else 1 - ph
+    if a.get('line') is None:
+        return None
+    if a['m'] == 'sp':                               # alert line is the side's own handicap
+        home_line = a['line'] if a['side'] == 'home' else -a['line']
+        pts = [(r['line'], r['p']) if r['outcomes'][0].lower() == hn else (-r['line'], 1 - r['p']) for r in g.get('spreads', []) if r.get('line') is not None]
+        c = interp(pts, home_line)
+        return None if c is None else c if a['side'] == 'home' else 1 - c
+    if a['m'] == 'tot':
+        pts = [(r['line'], r['p'] if r['outcomes'][0] == 'Over' else 1 - r['p']) for r in g.get('totals', []) if r.get('line') is not None]
+        o = interp(pts, a['line'])
+        return None if o is None else o if a['side'] == 'over' else 1 - o
+    return None
+
+
+_PMC = None
+
+
 def grade_alert(a, close, score):
     """In place: a['close'] (Pinnacle's closing fair at the alert's number), a['clv'], a['result'] (1 / -1 / 0)."""
     if close is not None and a.get('close') is None:
@@ -796,6 +836,14 @@ def grade_alert(a, close, score):
                 a['clv'] = r3(f * (1 + payout(a['price'])) - 1 if a['venue'] != 'Kalshi' else f / (a['price'] + kal_fee(a['price'])) - 1)
             elif a.get('fair') is not None:
                 a['clv'] = r3(f - a['fair'])
+    if a.get('pm_close') is None:                     # Polymarket's close lands about 6 hours after tip
+        f = pm_close_for(a)
+        if f is not None:
+            a['pm_close'] = r3(f)
+            if a['type'] == 'behind':
+                a['pm_clv'] = r3(f * (1 + payout(a['price'])) - 1 if a['venue'] != 'Kalshi' else f / (a['price'] + kal_fee(a['price'])) - 1)
+            elif a.get('fair') is not None:
+                a['pm_clv'] = r3(f - a['fair'])
     if score and a.get('result') is None:
         h, w = score.get(a['home']), score.get(a['away'])
         if h is None or w is None:
@@ -840,7 +888,7 @@ def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_
         else:
             grade_alert(a, _lad(c['lad']) if c and c.get('lad') else None, (box_meta(root, a['g']) or {}).get('score'))
         recent[a['id']] = a
-    touched = defaultdict(lambda: defaultdict(lambda: [0, 0, 0.0, 0.0, 0, 0, 0, 0, 0.0]))
+    touched = defaultdict(lambda: defaultdict(lambda: [0, 0, 0.0, 0.0, 0, 0, 0, 0, 0.0, 0, 0.0, 0.0, 0]))
     for a in alerts.values():
         if a['tday'] < since:
             continue
@@ -854,6 +902,11 @@ def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_
         if a.get('result') is not None:
             r[5 + {1: 0, -1: 1, 0: 2}[a['result']]] += 1
             r[8] += a.get('fair') or 0
+        if a.get('pm_clv') is not None:              # [9..12]: the same CLV against Polymarket's close
+            r[9] += 1
+            r[10] += a['pm_clv']
+            r[11] += a['pm_clv'] ** 2
+            r[12] += a['pm_clv'] > 0
     for d, by in touched.items():
         days[d] = {t: [round(x, 4) if isinstance(x, float) else x for x in v] for t, v in by.items()}
     rec = sorted((a for a in recent.values() if a.get('clv') is not None or a.get('result') is not None), key=lambda a: -a['t'])[:keep]

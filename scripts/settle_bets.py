@@ -754,6 +754,63 @@ def line_news_moves(games):
         out[(a, h, c)] = mv
     return out
 
+# ── Polymarket's price at kickoff (scripts/pm_archive.py -> data/pm_closes.json) ───────────────
+# The deepest market on NFL game lines (about $400k resting within 1c of the touch before Sunday kickoffs), from the
+# Pendulum Flow orderbook archive. For each settled game call: Polymarket's chance for the model's side at the closing
+# number, so the season can say whether our leans land where the sharpest money finished. Spread and total read the
+# Polymarket ladder at the market's closing number, interpolated between neighbouring lines.
+PM_NICK = {"Cardinals": "ARI", "Falcons": "ATL", "Ravens": "BAL", "Bills": "BUF", "Panthers": "CAR", "Bears": "CHI", "Bengals": "CIN",
+           "Browns": "CLE", "Cowboys": "DAL", "Broncos": "DEN", "Lions": "DET", "Packers": "GB", "Texans": "HOU", "Colts": "IND",
+           "Jaguars": "JAX", "Chiefs": "KC", "Chargers": "LAC", "Rams": "LAR", "Raiders": "LV", "Dolphins": "MIA", "Vikings": "MIN",
+           "Patriots": "NE", "Saints": "NO", "Giants": "NYG", "Jets": "NYJ", "Eagles": "PHI", "Steelers": "PIT", "Seahawks": "SEA",
+           "49ers": "SF", "Buccaneers": "TB", "Titans": "TEN", "Commanders": "WAS"}
+
+
+def load_pm_closes():
+    """(away, home) in Vault codes -> [(kickoff, close)] for NFL games in data/pm_closes.json."""
+    try:
+        G = json.load(open(os.path.join(DATA, "pm_closes.json"))).get("games", {})
+    except Exception:
+        return {}
+    out = defaultdict(list)
+    for g in G.values():
+        if g.get("sport") != "nfl" or not g.get("ml"):
+            continue
+        teams = [PM_NICK.get(o) for o in g["ml"]["outcomes"]]
+        if None in teams:
+            continue
+        for a, h in (teams, teams[::-1]):
+            out[(a, h)].append((g["kickoff"], g))
+    return out
+
+
+def _interp(points, x):
+    """Linear interpolation on (x, y) points; None outside the ladder."""
+    pts = sorted(points)
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        if x0 <= x <= x1:
+            return y0 if x1 == x0 else y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return next((y for xx, y in pts if xx == x), None)
+
+
+def pm_close_for(pmc, away, home, commence):
+    """Polymarket at kickoff for one game: home win chance, home-cover chance at a home line, over chance at a total."""
+    try:
+        ko = _parse_ts(commence).timestamp() if commence else None
+    except Exception:
+        ko = None
+    c = [g for k, g in pmc.get((away, home), []) if ko is None or abs(k - ko) < 6 * 3600]
+    if not c:
+        return None
+    g = c[0]
+    names = [PM_NICK.get(o) for o in g["ml"]["outcomes"]]
+    p_home = g["ml"]["p"] if names[0] == home else 1 - g["ml"]["p"]
+    cover = [(r["line"], r["p"]) if PM_NICK.get(r["outcomes"][0]) == home else (-r["line"], 1 - r["p"])
+             for r in g.get("spreads", []) if r.get("line") is not None and PM_NICK.get(r["outcomes"][0]) in (home, away)]
+    over = [(r["line"], r["p"] if r["outcomes"][0] == "Over" else 1 - r["p"]) for r in g.get("totals", []) if r.get("line") is not None]
+    return {"p_home": p_home, "cover": lambda line: _interp(cover, line), "over": lambda line: _interp(over, line)}
+
+
 def settle_games(season_filter=None):
     try:
         blob = json.load(open(os.path.join(DATA, "game_line_history.json")))
@@ -785,6 +842,7 @@ def settle_games(season_filter=None):
 
     picks, unsettled = [], 0
     news = line_news_moves(games)
+    pmc = load_pm_closes()
     for g in reg:
         season = str(g.get("season"))
         if season_filter and season != str(season_filter): continue
@@ -813,6 +871,7 @@ def settle_games(season_filter=None):
         nm = news.get((away, home, g.get("commence"))) or {}
         base.update({"news_sp": nm.get("sp"), "news_to": nm.get("to"),
                      "news": any(v is not None and abs(v) >= NEWS_PTS for v in nm.values()) if nm else None})
+        pm = pm_close_for(pmc, away, home, g.get("commence"))
 
         # SPREAD — the Vault model picks a side vs the closing market spread;
         # does that side cover? (forward ATS test of the game model). proj_err is
@@ -831,7 +890,8 @@ def settle_games(season_filter=None):
                           "px_open": [opn.get("spHomePx"), opn.get("spAwayPx")], "px_close": [cls.get("spHomePx"), cls.get("spAwayPx")],
                           "vault_line": vl["spread"], "actual": margin, "proj_err": (-vl["spread"]) - margin,
                           "push": push, "won_close": won,
-                          "clv_line": clv_line, "beat_close": (1.0 if clv_line > 1e-9 else 0.0)})
+                          "clv_line": clv_line, "beat_close": (1.0 if clv_line > 1e-9 else 0.0),
+                          "pm_close": (lambda c: None if c is None else round(c if side == "home" else 1 - c, 4))(pm["cover"](mkt_c) if pm else None)})
 
         # TOTAL — model over/under vs the closing market total (proj_err = model total − actual)
         if vl and vl.get("total") is not None and cls.get("total") is not None and opn.get("total") is not None:
@@ -844,7 +904,8 @@ def settle_games(season_filter=None):
                           "px_open": [opn.get("toOverPx"), opn.get("toUnderPx")], "px_close": [cls.get("toOverPx"), cls.get("toUnderPx")],
                           "vault_line": vl["total"], "actual": total_actual, "proj_err": vl["total"] - total_actual,
                           "push": push, "won_close": won,
-                          "clv_line": clv_line, "beat_close": (1.0 if clv_line > 1e-9 else 0.0)})
+                          "clv_line": clv_line, "beat_close": (1.0 if clv_line > 1e-9 else 0.0),
+                          "pm_close": (lambda c: None if c is None else round(c if side == "over" else 1 - c, 4))(pm["over"](mkt_c) if pm else None)})
 
         # MONEYLINE / WIN-PROB — the model's home win% vs the market, plus its raw
         # calibration against the actual result (the win-prob learning signal).
@@ -896,7 +957,8 @@ def settle_games(season_filter=None):
                           "p_model": (wh if side == "home" else 1.0 - wh),
                           "p_market": (p_mkt_home if side == "home" else (1 - p_mkt_home if p_mkt_home is not None else None)),
                           "actual": margin, "push": push, "won_close": won,
-                          "clv_prob": clv_prob, "beat_close": (1.0 if (clv_prob or 0) > 1e-9 else 0.0)})
+                          "clv_prob": clv_prob, "beat_close": (1.0 if (clv_prob or 0) > 1e-9 else 0.0),
+                          "pm_close": None if not pm else round(pm["p_home"] if side == "home" else 1 - pm["p_home"], 4)})
 
         # Score-only row for a played game Vault never banked a model line on
         # (preseason gating, or a team the ratings map missed). Vault grades no
@@ -1030,6 +1092,11 @@ def build_scoreboard(prop_picks, game_picks):
                  "clv_beat_rate": mean([p["beat_close"] for p in ps]),
                  "mean_clv_line": mean([p.get("clv_line") for p in ps]),
                  "mean_clv_prob": mean([p.get("clv_prob") for p in ps])}
+        # Polymarket at kickoff: its average chance for our side, and how often it had our side above 50%
+        pmv = [p["pm_close"] for p in ps if p.get("pm_close") is not None]
+        entry["pm_close_mean"] = mean(pmv) if pmv else None
+        entry["pm_agree_rate"] = mean([1.0 if v > 0.5 else 0.0 for v in pmv]) if pmv else None
+        entry["n_pm"] = len(pmv)
         if mk in ("spread", "total"):
             # Projection error is the direct regression signal: MAE = how far off,
             # bias = systematic over/under (positive ⇒ model runs high vs actual).

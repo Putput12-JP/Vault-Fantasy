@@ -1,0 +1,42 @@
+# Polymarket's price at kickoff for every NFL and NBA game (moneyline, every spread and total line), from the
+# Pendulum Flow orderbook archive (archive.pendulumflow.com, CC BY 4.0), into data/pm_closes.json.
+# settle_bets.py grades NFL game calls against it; the NBA recorder grades Sharp Price signals against it.
+# The archive publishes about 5 hours behind, so twice a day covers every game by the next morning.
+name: Polymarket closes
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '41 9,16 * * *'
+
+concurrency:
+  group: pm-closes
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  closes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install DuckDB
+        run: pip install --quiet duckdb pytz
+      - name: Pull closes from the archive
+        run: python scripts/pm_archive.py closes --sports nfl,nba --days 4
+      - name: Commit if changed
+        run: |
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
+          git add data/pm_closes.json
+          if git diff --staged --quiet; then
+            echo "No new closes."
+          else
+            git commit -m "data: Polymarket closes from the orderbook archive [skip ci]"
+            git push
+          fi

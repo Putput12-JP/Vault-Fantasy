@@ -3532,15 +3532,15 @@ function xGame(g, o){
 function xRecord(){
   const S = TR && TR.data && TR.data.signals, T = {};
   for (const by of Object.values((S && S.days) || {})) for (const [t, r] of Object.entries(by)){
-    const x = T[t] = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const x = T[t] = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     r.forEach((v, i) => x[i] += v);
   }
   const XREC = {...XTYPE, p_pin: 'Prop: Pinnacle move', p_acct: 'Prop: sharp accounts', p_kal: 'Prop: heavy Kalshi money'};
-  const rows = Object.keys(XREC).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null;
+  const rows = Object.keys(XREC).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null, pg = r[9] || 0, pm = pg ? r[10] / pg : null;
     const se = g > 1 ? Math.sqrt(Math.max(r[3] / g - m * m, 0) / g) : null, tt = se ? m / se : null, dec = r[5] + r[6] + r[7];
     const st = g < 50 ? `<span class="muted">Tracking · ${g} of 50</span>` : tt >= 2 ? '<span class="pos">Beats the close</span>' : tt <= -2 ? '<span class="neg">Loses to the close</span>' : 'No edge yet';
-    return `<tr><td class="l"><b>${XREC[t]}</b></td><td>${r[0]}</td><td>${g}</td><td>${m != null ? `<span class="${m > 0 ? 'pos' : m < 0 ? 'neg' : ''}">${m >= 0 ? '+' : ''}${(m * 100).toFixed(2)}</span>${se ? ` <small>± ${(se * 100).toFixed(2)}</small>` : ''}` : ''}</td><td>${g ? pc(r[4] / g) : ''}</td><td>${dec ? `${r[5]}-${r[6]}${r[7] ? '-' + r[7] : ''}` : ''}</td><td>${dec ? `${pc(r[5] / Math.max(1, r[5] + r[6]))} <small>vs ${pc(r[8] / dec)}</small>` : ''}</td><td class="l">${st}</td></tr>`; });
-  $('xrecord').innerHTML = `<thead><tr><th class="l">Signal</th><th>Fired</th><th title="Games final, with Pinnacle's close at the signal's number">Graded</th><th title="Pinnacle's closing fair minus the fair when it fired, in probability points (behind: EV at the closing fair)">Avg CLV, pts</th><th>Beat the close</th><th>W-L-P</th><th title="Win rate vs the fair probability when it fired">Won vs fair</th><th class="l">Status</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+    return `<tr><td class="l"><b>${XREC[t]}</b></td><td>${r[0]}</td><td>${g}</td><td>${m != null ? `<span class="${m > 0 ? 'pos' : m < 0 ? 'neg' : ''}">${m >= 0 ? '+' : ''}${(m * 100).toFixed(2)}</span>${se ? ` <small>± ${(se * 100).toFixed(2)}</small>` : ''}` : ''}</td><td>${g ? pc(r[4] / g) : ''}</td><td>${pm != null ? `<span class="${pm > 0 ? 'pos' : pm < 0 ? 'neg' : ''}">${pm >= 0 ? '+' : ''}${(pm * 100).toFixed(2)}</span> <small>${pg}</small>` : '<span class="muted">-</span>'}</td><td>${dec ? `${r[5]}-${r[6]}${r[7] ? '-' + r[7] : ''}` : ''}</td><td>${dec ? `${pc(r[5] / Math.max(1, r[5] + r[6]))} <small>vs ${pc(r[8] / dec)}</small>` : ''}</td><td class="l">${st}</td></tr>`; });
+  $('xrecord').innerHTML = `<thead><tr><th class="l">Signal</th><th>Fired</th><th title="Games final, with Pinnacle's close at the signal's number">Graded</th><th title="Pinnacle's closing fair minus the fair when it fired, in probability points (behind: EV at the closing fair)">Avg CLV, pts</th><th>Beat the close</th><th title="The same CLV against Polymarket's price at tip, from the Pendulum Flow orderbook archive (about 6 hours after tip). NBA game lines only; props have too little Polymarket money">vs Polymarket close</th><th>W-L-P</th><th title="Win rate vs the fair probability when it fired">Won vs fair</th><th class="l">Status</th></tr></thead><tbody>${rows.join('')}</tbody>`;
   return Object.values(T).reduce((a, r) => [a[0] + r[1], a[1] + r[2]], [0, 0]);
 }
 function renderSharp(){

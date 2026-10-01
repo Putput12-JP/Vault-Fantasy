@@ -54,3 +54,20 @@ Polymarket follows the books, there is nothing to bet.
   were, which favors Polymarket. Reported alongside the result: the share of triggers where the book had moved since
   the previous snapshot.
 - Four weeks is about 60 games; the result is a first read, and the forward test decides.
+
+## Result and re-test (added 2026-10-01, after the run)
+
+Results: docs/pm-vs-books-results.md. The sample is every game played through Sept 29, which is weeks 1-3 (week 4
+starts Oct 1); "weeks 1-4" above meant everything played to date.
+
+Both measures lean toward Polymarket being the better read: books close about half the gap toward Polymarket (0.47)
+while Polymarket closes little of it toward the books (0.16), and the bet beat Pinnacle's close by 3.1% at the
+pre-registered 3 points, more at wider gaps. Neither clears 2 standard errors. The limit is the sample: the lineup
+feed fetches sportsbook lines 2 to 4 times a day, so three weeks give 71 snapshots, 226 moments with a Polymarket
+trade alongside, and 28 bets at 3 points. The 4- and 5-point rows were reported, not pre-registered, and are too small
+to act on. **Verdict: NO-GO.** Polymarket stays context and a closing-price reference.
+
+**Re-test, declared now, before the data exists:** the same rules, unchanged, on NFL weeks 4 through 7 alone (every
+game from Oct 1 on), run after week 7 settles. No overlap with the first sample. If it passes, the signal ships as a
+forward test; if not, the idea is closed. Sportsbook moneylines will be snapshotted more often before then to grow the
+sample; the observation time stays the time the book line was fetched.

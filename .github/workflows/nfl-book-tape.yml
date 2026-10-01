@@ -1,0 +1,38 @@
+# NFL sportsbook tape: every book's moneyline, main spread and total, appended only when it changes
+# (scripts/book_tape.py -> data/book_tape/nfl/). Free, keyless: Action Network's scoreboard and Pinnacle's guest API.
+# Feeds the declared Polymarket vs sportsbooks re-test (docs/pm-vs-books-test.md, weeks 4-7), which needs book
+# prices far more often than the lineup feed fetches them. GitHub may skip some scheduled runs; each run that
+# lands records whatever changed since the last one.
+name: NFL book tape
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '*/20 * * * *'
+
+concurrency:
+  group: nfl-book-tape
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  tape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Record changed lines
+        run: python3 scripts/book_tape.py
+      - name: Commit if changed
+        run: |
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
+          git add data/book_tape/
+          if git diff --staged --quiet; then
+            echo "No line changes."
+          else
+            git commit -m "data: NFL book tape [skip ci]"
+            git push
+          fi
