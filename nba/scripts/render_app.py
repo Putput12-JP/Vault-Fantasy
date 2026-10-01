@@ -64,6 +64,19 @@ def pricing():
             'verdict': pm.get('verdict', {}), 'generated': pm.get('generated')}
 
 
+def pickem():
+    """The correlated pick'em test (build_pickem_corr.py): the families that passed, measured on the test season, plus
+    the closest miss, for the Pick'em Pairs page."""
+    d = load('pickem_corr.json')
+    if not d:
+        return None
+    fam = lambda r: {'rel': r['key'][0], 'a': r['key'][1], 'b': r['key'][2], 'family': r['family'], 'c': r['test']['c'], 'z': r['test']['z'],
+                     'n': r['test']['n'], 'games': r['test']['games'], 'z0': r['explore']['z'], 'zc': (r.get('close') or {}).get('z')}
+    rows = d['families']
+    return {'verdict': d['verdict'], 'rules': d['rules'], 'n_families': len(rows), 'pass': [fam(r) for r in rows if r['pass']],
+            'near': [fam(r) for r in rows if r['candidate'] and not r['pass']]}
+
+
 def render():
     tpl = open(os.path.join(HERE, '..', 'ui', 'projections.template.html')).read()
     html = (tpl.replace('/*DATA*/null', json.dumps(load('player_projections.json'), separators=(',', ':')))
@@ -73,7 +86,8 @@ def render():
                .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':')))
                .replace('/*TRACK*/null', json.dumps(load('track.json'), separators=(',', ':')))
                .replace('/*STATE*/null', json.dumps(load('model_state.json'), separators=(',', ':')))
-               .replace('/*BACKTESTS*/null', json.dumps(load('backtests.json'), separators=(',', ':'))))
+               .replace('/*BACKTESTS*/null', json.dumps(load('backtests.json'), separators=(',', ':')))
+               .replace('/*PICKEM*/null', json.dumps(pickem(), separators=(',', ':'))))
     out = os.path.join(HERE, '..', 'projections.html')
     open(out, 'w').write(html)
     print(f'rendered {os.path.relpath(out)} ({os.path.getsize(out) // 1000} KB)')

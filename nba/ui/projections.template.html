@@ -607,6 +607,72 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pv-moves .mv b{color:var(--fg);font-weight:500}
 @media (max-width:1200px){ .pv-main{grid-template-columns:minmax(0,1fr)} .pv-list{position:static;max-height:420px} .pv-recent{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:600px){ .pv-dh,.pv-sec{padding:16px} .pv-wf .wr{grid-template-columns:120px minmax(0,1fr) 52px} .pv-mins{grid-template-columns:minmax(0,1fr) auto} .pv-mins .pv-mbar{grid-column:1/-1;order:3} .pv-sg{grid-template-columns:minmax(0,1fr);gap:4px} .pv-sk{justify-self:start} .pv-row2 .pfind{flex:1 1 140px} }
+/* Pick'em Pairs: teammate pairs from the correlation test, drawn as entry slips */
+.pp-wrap{display:grid;gap:var(--gap);min-width:0}
+.pp-read{padding:18px 22px;display:grid;gap:8px}
+.pp-read p{margin:0;font-size:13.5px;color:var(--fg2);max-width:84ch}
+.pp-read p b{color:var(--fg);font-weight:600}
+.pp-read .big{font-size:17px;color:var(--fg);font-weight:600;letter-spacing:-.01em}
+.pp-tests{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap)}
+.pp-tst{padding:16px 18px;display:grid;gap:4px;align-content:start}
+.pp-tst .pill{justify-self:start}
+.pp-tst b{font-size:15px;font-weight:600;margin-top:6px}
+.pp-tst .big{font-size:28px;font-weight:600;letter-spacing:-.02em;color:var(--up);font-variant-numeric:tabular-nums}
+.pp-tst .big.none{color:var(--fg3)}
+.pp-tst span{font-size:12.5px;color:var(--fg2)}
+.pp-tst small{font-size:11.5px;color:var(--fg3);margin-top:4px}
+.pp-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.pp-tools h2{margin:0;font-size:15px;font-weight:600}
+.pp-pay{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg2)}
+.pp-pay input{height:30px;width:64px;padding:0 8px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--bg);color:var(--fg);font:inherit;font-size:13px}
+.pp-note{margin:0;padding:10px 14px 0;font-size:12.5px;color:var(--fg3)}
+.pp-note.warn{color:var(--warn)}
+.pp-slips{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:14px;padding:14px}
+.pv-sec .pp-slips{padding:0}
+.pp-slip{position:relative;display:grid;background:var(--surface2);border:1px solid var(--border2);border-radius:18px;overflow:hidden;min-width:0;align-content:start}
+.pp-slip.lean{border-color:rgba(229,185,85,.45)} .pp-slip.bet{border-color:rgba(95,207,140,.5)}
+.pp-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 10px}
+.pp-h b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+.pp-h span:not(.pv-vp){font-size:11.5px;color:var(--fg3)}
+.pp-picks{display:grid;padding:0 10px}
+.pp-pk{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 8px;border-radius:12px;background:var(--surface)}
+.pp-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:2px solid var(--border2);font-size:12px;font-weight:700;color:var(--fg2)}
+.pp-who{min-width:0}
+.pp-who > b{display:block;font-size:13.5px;font-weight:700;line-height:1.25}
+.pp-who span{display:block;font-size:11px;color:var(--fg3)}
+.pp-who .ch{color:var(--fg2)} .pp-who .ch b{font-weight:700;color:var(--fg)}
+.pp-who .res{font-size:10.5px;font-weight:700} .pp-who .res.w{color:var(--up)} .pp-who .res.l{color:var(--down)}
+.pp-line{display:grid;justify-items:center;line-height:1.1;min-width:52px}
+.pp-line b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.pp-line span{font-size:10px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.pp-ml{display:grid;gap:4px}
+.pp-ml span{display:grid;place-items:center;height:22px;padding:0 8px;border-radius:7px;border:1px solid var(--border2);font-size:10.5px;font-weight:700;color:var(--fg3);white-space:nowrap}
+.pp-ml span.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.pp-link{display:flex;justify-content:center;padding:3px 0}
+.pp-link span{display:inline-flex;align-items:center;height:20px;padding:0 9px;border-radius:999px;background:rgba(95,207,140,.1);border:1px solid rgba(95,207,140,.35);color:var(--up);font-size:10.5px;font-weight:600}
+.pp-tear{position:relative;height:22px;margin-top:6px}
+.pp-tear::before{content:"";position:absolute;left:18px;right:18px;top:11px;border-top:2px dashed var(--border2)}
+.pp-tear::after{content:"";position:absolute;left:-12px;right:-12px;top:0;height:22px;background:radial-gradient(circle at 0 50%,var(--surface) 11px,transparent 12px) left/50% 100% no-repeat,radial-gradient(circle at 100% 50%,var(--surface) 11px,transparent 12px) right/50% 100% no-repeat}
+.pp-f{display:grid;gap:10px;padding:2px 16px 14px}
+.pp-paybox{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pp-paybox div{display:grid;padding:8px 12px;border-radius:10px;background:var(--surface)}
+.pp-paybox small,.pp-math small{font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em}
+.pp-paybox b{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.pp-paybox div:last-child b{color:var(--up)}
+.pp-math{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pp-math div{display:grid;line-height:1.25}
+.pp-math b{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.pp-math span{font-size:10.5px;color:var(--fg3)}
+.pp-f p{margin:0;font-size:11.5px;color:var(--fg2)}
+.pp-f p .muted{color:var(--fg3)}
+.pp-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pp-logf{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 10px;padding:10px;border-radius:10px;background:var(--bg);border:1px solid var(--border2)}
+.pp-logf label{display:grid;gap:3px;font-size:11px;color:var(--fg3)}
+.pp-logf input{height:30px;width:86px;padding:0 8px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--surface);color:var(--fg);font:inherit;font-size:13px}
+.pp-logf .go{height:30px;padding:0 12px;border-radius:var(--r-ctl);border:0;background:var(--primary);color:var(--on-primary);font-weight:600;font-size:12.5px;cursor:pointer}
+.pp-empty{padding:20px 16px;color:var(--fg3);font-size:13px}
+@media (max-width:1000px){ .pp-tests{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:600px){ .pp-slips{padding:10px} .pp-pk{grid-template-columns:36px minmax(0,1fr) auto auto;gap:8px} .pp-av{width:36px;height:36px} .pp-read{padding:16px} }
 /* Player Props phase 2: watchlist, alerts, my bets */
 .tbar .pv-grow{flex:1}
 .pv-bell{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:13px;color:var(--fg2);white-space:nowrap}
@@ -1231,6 +1297,8 @@ table.nt.sl-rt{min-width:420px}
       </div>
     </main>
     <footer id="btfoot" hidden></footer>
+    <main id="v-pairs" hidden><div class="pp-wrap" id="pp-root"></div></main>
+    <footer id="ppfoot" hidden></footer>
   </div>
 </div>
 
@@ -1256,7 +1324,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['health', 'props', 'mybets', 'propboard', 'track', 'edges', 'tonight', 'wire', 'slate', 'lines', 'sharp', 'backtests', 'finder', 'btlab'];
+const VIEWS = ['health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'lines', 'sharp', 'backtests', 'finder', 'btlab'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -1391,6 +1459,7 @@ const PAGES = [
     ['What Works', SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'), 'Which bets passed the backtest, in dollars and plain-language confidence, and what does not work.', 'backtests'],
     ['Edge Finder', SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'), "Slice last season's tests by venue, stat and side and see what held up out of sample.", 'finder'],
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
+    ['Pick\'em Pairs', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'Teammate picks that hit together more often than their prices say, from a pre-registered test, drawn as 2-pick entry slips.', 'pairs'],
     ['My Bets', SVG('<path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 8h6M9 12h6"/>'), 'The bets you placed: results, closing-line value and where your edge is coming from.', 'mybets'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
@@ -1601,6 +1670,7 @@ function show(v){
   $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
   $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
+  $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
   $('v-backtests').hidden = $('btfoot').hidden = !['backtests', 'finder', 'btlab'].includes(v);
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
@@ -1620,6 +1690,13 @@ function show(v){
     wk.tab = {backtests: 'works', finder: 'finder', btlab: 'lab'}[v];
     renderBacktests();
     if (!trackTried) loadTrack();
+    return;
+  }
+  if (v === 'pairs'){
+    $('tname').textContent = "Pick'em Pairs";
+    $('tsub').textContent = 'TEAMMATES THAT HIT TOGETHER · PRE-REGISTERED TEST · 2-PICK ENTRIES';
+    renderPairs();
+    if (!boardTried) loadBoard();
     return;
   }
   if (v === 'sharp'){
@@ -2260,6 +2337,7 @@ async function loadBoard(){
     if (view === 'wire') renderWire();
     if (view === 'slate' || view === 'lines') renderSlate();
     if (view === 'sharp') renderSharp();
+    if (view === 'pairs') renderPairs();
     pvBackground(); pvSettle();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
@@ -4065,6 +4143,7 @@ function pvDetail(r){
         <span class="muted">${fmt(lo, 0)} to ${fmt(hi, 0)} likely${r.min0 ? ` · usual ${fmt(r.min0, 0)}` : ''}${r.src === 'yours' ? ' · your minutes' : ''}</span></div>${pvWatchUI(r)}</section>
     ${vh}
     <section class="card pv-sec"><div class="pv-sh"><h3>Ways to bet it</h3><p>Every venue, line and side for this prop, the recommended bet first. Value is what a $100 bet makes on average if our chance is right; fees and vig are already in the price. Pass means the edge is under 3%: a small plus there is inside the model's margin of error.</p></div>${pvWays(r)}</section>
+    ${ppFor(r)}
     ${pvSharpSec(r)}
     <section class="card pv-sec"><div class="pv-sh"><h3>Why our number is ${fmt(r.mu)}</h3><p>From his usual game to tonight. Each step is a piece of the model; together they are exactly the projection.</p></div>${pvWaterfall(r)}</section>
     <section class="card pv-sec"><div class="pv-sh"><h3>Recent games</h3><p>Last 10 against tonight's line${r.line != null ? ` of ${r.line}` : ''}.</p></div>${pvRecent(r)}</section>
@@ -4238,6 +4317,22 @@ async function pvSettle(){
   let changed = false;
   for (const b of pvBets){
     if (b.res || !b.tip) continue;
+    if (b.kind === 'pair'){                              // a 2-pick entry: both legs from one game's box score
+      let G = null;
+      if (!b.ex){
+        if (now < b.tip + 3 * 3600) continue;
+        if (live){
+          const c = pvCloses[b.day];
+          if (!c || (now - c.at > 600 && !(c.data && c.data.games && c.data.games[b.gid] && c.data.games[b.gid].box)))
+            pvCloses[b.day] = {at: now, data: await fetch(`https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/snapshots/${b.day}/closes.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null)};
+          G = pvCloses[b.day].data && pvCloses[b.day].data.games[b.gid];
+        }
+      }
+      const bxs = b.legs.map(l => G && G.box ? (G.box[l.p] === undefined ? null : G.box[l.p]) : pvGlBox(l));
+      if (bxs.some(x => x === undefined)) continue;
+      b.res = ppGrade(b, bxs); changed = true;
+      continue;
+    }
     if (b.ex){                                           // the example game: its own pre-tip board is the close
       const e = PB && PB.example && PB.example.props.find(x => x.p === b.p && x.s === b.s), bx = pvGlBox(b);
       if (bx !== undefined){ b.res = {...pvGrade(b, bx), ...(pvCloseFor(b, e ? pvCloseList(e) : null) || {})}; changed = true; }
@@ -4314,6 +4409,15 @@ function pvRenderBets(){
     <section class="card"><div class="pv-bets">
       <div class="pv-bt h"><span>Bet</span><span>Price you got</span><span>Fair close</span><span>Closing-line value</span><span>Our call then</span><span>Result</span><span></span></div>
       ${S.map(({b}) => { const R = b.res;
+        if (b.kind === 'pair'){ const ml = b.side === 'Over' ? 'More' : 'Less';
+          return `<div class="pv-bt">
+          <span class="b1"><b>${b.legs.map(l => `${esc(l.name)} ${ml} ${l.line} ${PV_NOUN[l.s]}`).join(' + ')}</b><small>Pick'em pair · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span>
+          <span><small class="k">Price</small>${esc(b.price)}<small>needs ${pc(b.cost, 1)}</small></span>
+          <span><small class="k">Fair close</small><span class="muted">n/a</span><small>entries have no closing price</small></span>
+          <span><small class="k">CLV</small><span class="muted">-</span></span>
+          <span><small class="k">Our call</small><span class="pv-vp ${b.call}" title="Both hit ${pc(b.fair, 1)} vs ${pc(b.cost, 1)} needed">${b.call.toUpperCase()}</span></span>
+          <span><small class="k">Result</small>${!R ? '<span class="muted">open</span>' : R.res === 'void' ? '<span class="muted">void, a player did not play</span>' : `<b class="${R.pl > 0 ? 'pos' : R.pl < 0 ? 'neg' : ''}">${R.res === 'won' ? 'Won' : R.res === 'lost' ? 'Lost' : 'Push'} ${pvMoney(R.pl)}</b><small>had ${R.ys.map(y => fmt(y, 0)).join(' and ')}</small>`}</span>
+          <span class="acts"><button class="pv-ghost" type="button" data-del="${esc(b.id)}" aria-label="Remove this entry">Remove</button></span></div>`; }
         return `<div class="pv-bt">
           <span class="b1"><b>${esc(b.name)} · ${esc(pvBetName(b))}</b><small>${PV_SL[b.s] || b.s} · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span>
           <span><small class="k">Price</small>${esc(b.price)}<small>costs ${pc(b.cost)}</small></span>
@@ -4337,6 +4441,150 @@ function pvOpen(k){
   $('pv-alerts').hidden = true;
   goView('props'); $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'});
 }
+
+// ── Pick'em Pairs (docs/pickem-correlation.md, build_pickem_corr.py -> data/pickem_corr.json) ──
+// Only the families that passed the pre-registered test are used: a player's assists with a teammate's points or
+// 3-pointers, both over or both under. c = the covariance measured on the untouched test season, so the chance both
+// hit is our chance for each, multiplied, plus c. Picks come from the same app at that app's own line; before the apps
+// post, a sportsbook line near even money stands in (apps set lines near 50/50). The legs rest on our fair price,
+// which is untested on these lines, so a pair is a Lean at most until both legs are bet types that passed.
+const PKC = /*PICKEM*/null;
+const PP_STATS = ['pts', 'ast', '3pm'];
+const PP_SHORT = {pts: 'Points', ast: 'Assists', '3pm': '3-PT Made'};
+const ppKey = (a, b) => [a, b].sort((x, y) => PP_STATS.indexOf(x) - PP_STATS.indexOf(y)).join('|');
+const PP_FAM = Object.fromEntries(((PKC && PKC.pass) || []).filter(f => f.rel === 'team').map(f => [ppKey(f.a, f.b), f]));
+let pp = {all: false, game: 'all', logK: null, pay: +(store.get('nba-pickem-pay') || 3)};
+const ppBE = () => 1 / pp.pay;
+
+function ppLegs(rows){
+  const legs = [];
+  for (const r of rows){
+    if (!PP_STATS.includes(r.e.s) || !r.game) continue;
+    const team = r.tm || r.team, app = (r.pk || []).filter(k => k.fair != null && k.line != null);
+    for (const k of app) legs.push({r, team, app: k.app, line: k.line, fo: k.fair, go: 'no-go', gu: 'no-go'});
+    if (!app.length){
+      const b = (r.books || []).filter(b => b.fair != null && b.mkt >= .4 && b.mkt <= .6).sort((x, y) => Math.abs(x.mkt - .5) - Math.abs(y.mkt - .5))[0];
+      if (b){
+        const g = side => (r.cands.find(c => c.venue === 'book' && c.bk === b.bk && c.line === b.line && c.side === side) || {}).g || 'no-go';
+        legs.push({r, team, app: null, bk: b.bk, line: b.line, fo: b.fair, go: g('Over'), gu: g('Under')});
+      }
+    }
+  }
+  return legs;
+}
+function ppPairs(rows){
+  const L = ppLegs(rows), out = [];
+  for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++){
+    const A = L[i], B = L[j], F = PP_FAM[ppKey(A.r.e.s, B.r.e.s)];
+    if (!F || A.r.e.p === B.r.e.p || A.team !== B.team || String(A.r.e.g) !== String(B.r.e.g) || A.app !== B.app) continue;
+    for (const side of ['over', 'under']){
+      const fa = side === 'over' ? A.fo : 1 - A.fo, fb = side === 'over' ? B.fo : 1 - B.fo, ind = fa * fb, joint = ind + F.c, ev = pp.pay * joint - 1;
+      const gates = side === 'over' ? [A.go, B.go] : [A.gu, B.gu];
+      const v = ev >= EDGE_MIN ? (gates.every(g => g === 'go') ? 'bet' : 'lean') : 'pass';
+      const res = l => l.r.e.p != null && PS.mode === 'example' ? pvGlBox({p: l.r.e.p, day: l.r.game.day}) : undefined;
+      out.push({A, B, side, fa, fb, ind, joint, ev, v, F, ra: res(A), rb: res(B), k: `${pvKey(A.r)}|${A.line}+${pvKey(B.r)}|${B.line}+${side}+${A.app || 'book'}`});
+    }
+  }
+  return out.sort((a, b) => PV_VR[a.v] - PV_VR[b.v] || b.ev - a.ev);
+}
+function ppSlip(x, compact){
+  const g = x.A.r.game, opp = t => t === g.home ? g.away : g.home, ev10 = 10 * x.ev, need = Math.sqrt(Math.max(0, ppBE() - x.F.c));
+  const pick = (L, f, bx) => { const y = bx == null ? null : PV_BOXI[L.r.e.s].reduce((a, i) => a + bx[i], 0), hit = y == null ? null : x.side === 'over' ? y > L.line : y < L.line;
+    return `<div class="pp-pk"><span class="pp-av">${esc(initials(L.r.name))}</span>
+      <div class="pp-who"><b>${esc(L.r.name)}</b><span>${esc(L.team)} vs ${esc(opp(L.team))}</span><span class="ch">Our chance <b>${pc(f)}</b></span>${hit != null ? `<span class="res ${hit ? 'w' : 'l'}" title="What happened (example game only)">${hit ? '✓' : '✗'} had ${fmt(y, 0)}</span>` : ''}</div>
+      <div class="pp-line"><b>${L.line}</b><span>${PP_SHORT[L.r.e.s]}</span></div>
+      <div class="pp-ml" aria-label="${x.side === 'over' ? 'More' : 'Less'}"><span class="${x.side === 'over' ? 'on' : ''}">▲ More</span><span class="${x.side === 'under' ? 'on' : ''}">▼ Less</span></div></div>`; };
+  const both = x.ra != null && x.rb != null ? [x.ra, x.rb].every((bx, i) => { const L = i ? x.B : x.A, y = PV_BOXI[L.r.e.s].reduce((a, j) => a + bx[j], 0); return x.side === 'over' ? y > L.line : y < L.line; }) : null;
+  const logged = pvBets.some(b => b.k === x.k);
+  return `<article class="pp-slip ${x.v}">
+    <header class="pp-h"><div><b>2-Pick Power Play</b><span>${x.A.app ? `${esc(x.A.app)} lines` : `${esc(x.A.bk)} line as a stand-in`} · pays ${pp.pay}x</span></div><span class="pv-vp ${x.v}">${x.v.toUpperCase()}</span></header>
+    <div class="pp-picks">${pick(x.A, x.fa, x.ra)}<div class="pp-link"><span>Hit together +${pc(x.F.c / .25, 1)}</span></div>${pick(x.B, x.fb, x.rb)}</div>
+    <div class="pp-tear" aria-hidden="true"></div>
+    <footer class="pp-f">
+      <div class="pp-paybox"><div><small>Entry</small><b>$10</b></div><div><small>To win</small><b>$${(10 * pp.pay).toFixed(2)}</b></div></div>
+      <div class="pp-math"><div><small>Both hit</small><b>${pc(x.joint, 1)}</b><span>${pc(x.ind, 1)} if unrelated</span></div><div><small>Needs</small><b>${pc(ppBE(), 1)}</b><span>to break even</span></div><div><small>Average</small><b class="${x.ev >= 0 ? (x.v === 'pass' ? '' : 'pos') : 'neg'}">${ev10 >= 0 ? '+' : '-'}$${Math.abs(ev10).toFixed(2)}</b><span>per $10 entry</span></div></div>
+      ${compact ? '' : `<p>${x.v === 'pass' ? `Each pick needs about ${pc(need, 1)} for this pair to pay.` : x.v === 'bet' ? 'Proven pairing, and both picks are bet types that passed the backtest.' : 'Proven pairing; the two picks rest on our model, untested on these lines. Worth a look, not a stake.'}${both != null ? ` <span class="muted">Example game: ${both ? 'both hit' : 'did not both hit'}.</span>` : ''}</p>`}
+      ${compact ? '' : pp.logK === x.k ? `<form class="pp-logf" data-ppform="${esc(x.k)}"><label>Stake $<input name="stake" type="number" min="1" step="1" value="10"></label><label>Pays<input name="pay" type="number" min="1.5" max="10" step="0.25" value="${pp.pay}"></label><button class="go" type="submit">Save to My Bets</button><button class="pv-ghost" type="button" data-ppcancel="1">Cancel</button></form>`
+        : `<div class="pp-acts"><button class="pv-ghost" type="button" data-pplog="${esc(x.k)}">${logged ? 'Logged · log again' : 'Log entry'}</button></div>`}
+    </footer></article>`;
+}
+function renderPairs(){
+  const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
+  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
+  if (!PKC || !Object.keys(PP_FAM).length){ $('pp-root').innerHTML = '<p class="pp-empty">The correlation test results are missing from this build (build_pickem_corr.py).</p>'; return; }
+  const rows = pv.rows = pvRows().rows;
+  const games = PS.board.games || [];
+  if (pp.game !== 'all' && !games.some(g => String(g.id) === pp.game)) pp.game = 'all';
+  const all = ppPairs(rows).filter(x => pp.game === 'all' || String(x.A.r.e.g) === pp.game), play = all.filter(x => x.v !== 'pass');
+  const show = pp.all ? all : play.length ? play : all.slice(0, 8);
+  const anyApp = all.some(x => x.A.app), anyStand = all.some(x => !x.A.app);
+  const F1 = PP_FAM['pts|ast'] || Object.values(PP_FAM)[0], need = Math.sqrt(ppBE() - F1.c);
+  const cnt = {}; for (const x of play) for (const L of [x.A, x.B]){ const k = `${L.r.name} ${x.side === 'over' ? 'More' : 'Less'} ${L.line} ${PV_NOUN[L.r.e.s]}`; cnt[k] = (cnt[k] || 0) + 1; }
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  const near = (PKC.near || [])[0];
+  $('pp-root').innerHTML = `
+    <section class="card pp-read">
+      <p class="big">Two kinds of teammate picks hit together more often than their prices say.</p>
+      <p>Pick'em apps pay the same multiple on any 2-pick entry, as if the picks had nothing to do with each other. A player's <b>assists</b> and his teammate's <b>points</b> or <b>3-pointers</b> do: the passes become the shots, so when one goes over the other tends to as well, and when one goes under, so does the other. Pair them the same way, both More or both Less, and the entry wins more often than the app pays for.</p>
+      <p>The lift is modest: about <b>4%</b> on a 2-pick. At ${pp.pay}x it lowers the bar each pick has to clear from <b>${pc(Math.sqrt(ppBE()), 1)}</b> to about <b>${pc(need, 1)}</b>. Pairing helps good picks; it does not rescue bad ones. Picks from different games are unrelated, so every pair here is two teammates.</p>
+    </section>
+    <div class="pp-tests">${Object.values(PP_FAM).map(F => `<section class="card pp-tst">${pill('ok', 'Passed a pre-registered test')}<b>${F.a === 'ast' || F.b === 'ast' ? (F.a === 'pts' || F.b === 'pts' ? 'Points with assists' : 'Assists with 3-pointers') : esc(F.family)}</b>
+        <span class="big">+${pc(F.c / .25, 1)}</span><span>more often both hit on a 2-pick: teammates, both More or both Less</span>
+        <small>2025-26, a season it was never tuned on: ${F.n.toLocaleString()} pairs in ${F.games} games, ${F.z} standard errors from zero (counted by game). Found first in 2024-25 (${F.z0}); holds at closing prices (${F.zc}).</small></section>`).join('')}
+      <section class="card pp-tst">${pill('idle', 'Did not pass')}<b>Everything else</b><span class="big none">none</span><span>reliable enough to use</span>
+        <small>${near ? `${esc(near.family)} tend to split (one More, one Less) but by only ${pc(-near.c / .25, 1)}, under the 4% bar. ` : ''}Opponents' stats, rebounds and the other ${PKC.n_families - Object.keys(PP_FAM).length - (near ? 1 : 0)} combinations showed nothing that held up.</small></section></div>
+    <section class="card">
+      <div class="pp-tools"><h2>Pairs on the board</h2><span class="pv-grow"></span>
+        ${games.length > 1 ? `<select class="sel" id="pp-game" aria-label="Game"><option value="all">All games</option>${games.map(g => `<option value="${g.id}"${pp.game === String(g.id) ? ' selected' : ''}>${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}</option>`).join('')}</select>` : ''}
+        <label class="pp-pay">Your app pays <input id="pp-pay" type="number" min="1.5" max="10" step="0.25" value="${pp.pay}" aria-label="2-pick payout multiple">x on a 2-pick</label>
+        <div class="seg" id="pp-seg"><button type="button" data-pa="0" aria-pressed="${!pp.all}">Worth a look (${play.length})</button><button type="button" data-pa="1" aria-pressed="${pp.all}">All pairs (${all.length})</button></div></div>
+      ${anyStand ? `<p class="pp-note">${anyApp ? 'Some props have no pick\'em line yet; those pairs' : 'No pick\'em lines are posted yet, so these pairs'} use the sportsbook line nearest even money as a stand-in. On game days PrizePicks, Underdog and Sleeper post their own lines and pairs use them, both picks from the same app.</p>` : ''}
+      ${top && top[1] >= 2 ? `<p class="pp-note warn">These pairs share picks: ${esc(top[0])} is in ${top[1]} of them. Playing several is mostly one bet on that pick, so they tend to win or lose together.</p>` : ''}
+      ${!play.length && all.length ? '<p class="pp-note">No pair clears the payout at these prices; showing the closest.</p>' : ''}
+      <div class="pp-slips">${show.map(x => ppSlip(x)).join('') || `<p class="pp-empty">${rows.length ? 'No teammate pairs on this board yet: they need points, assists or 3-pointer lines for two teammates.' : 'No player props listed yet. Kalshi and the books list them the morning of a game.'}</p>`}</div>
+    </section>`;
+  $('ppfoot').innerHTML = `<div><b>How the pairs are priced.</b> Our chance for each pick is the same fair price as Player Props, at the app's own line. Both hit = our chance for one times the other, plus the covariance the test measured. Needs = 1 / the payout. Only teammates, only the two tested combinations, only 2-pick entries: apps do not allow the same player twice, and longer entries were not tested. Some Underdog and Sleeper picks carry their own multipliers; set the payout to what your entry shows.</div>`;
+}
+function ppFor(r){
+  if (!PP_STATS.includes(r.e.s) || !Object.keys(PP_FAM).length) return '';
+  const P = ppPairs(pv.rows || []).filter(x => x.A.r === r || x.B.r === r).slice(0, 3);
+  return `<section class="card pv-sec"><div class="pv-sh"><h3>Pairs well with</h3><p>On a pick'em 2-pick, ${r.e.s === 'ast' ? 'his assists go with a teammate\'s points or 3-pointers' : `his ${PV_NOUN[r.e.s]} go with a teammate's assists`}: both More or both Less hit together about 4% more often than the prices say (a pre-registered test).</p></div>
+    <div class="pp-slips">${P.length ? P.map(x => ppSlip(x, true)).join('') : '<p class="muted pv-none">No teammate line near even money to pair with yet.</p>'}</div>
+    <div class="pp-acts"><a class="pv-ghost" href="#pairs" data-go="pairs" style="display:inline-flex;align-items:center;text-decoration:none">All Pick'em Pairs</a></div></section>`;
+}
+function ppMkBet(x, stake, pay){
+  if (!(stake > 0) || !(pay >= 1.5)) return null;
+  const g = x.A.r.game, leg = L => ({p: L.r.e.p, s: L.r.e.s, gid: String(L.r.e.g), day: g.day, name: L.r.name, line: L.line, fair: +(x.side === 'over' ? L.fo : 1 - L.fo).toFixed(4)});
+  const ev = pay * x.joint - 1;
+  return {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind: 'pair', k: x.k, gid: String(x.A.r.e.g), day: g.day, tip: g.tip, m: `${g.away} @ ${g.home}`,
+          name: `${x.A.r.name} + ${x.B.r.name}`, venue: 'pickem', bk: x.A.app || `${x.A.bk} line`, side: x.side === 'over' ? 'Over' : 'Under', legs: [leg(x.A), leg(x.B)],
+          pay, price: `${pay}x`, cost: +(1 / pay).toFixed(4), stake: Math.round(stake * 100) / 100, t: Math.round(Date.now() / 1000), fair: +x.joint.toFixed(4), edge: +(x.joint - 1 / pay).toFixed(4),
+          call: ev >= EDGE_MIN ? x.v === 'bet' ? 'bet' : 'lean' : 'pass', ex: PS.mode === 'example', res: null};
+}
+function ppGrade(b, bxs){
+  if (bxs.some(bx => bx === null)) return {res: 'void', y: null, ys: bxs.map(() => null), pl: 0};
+  const ys = b.legs.map((l, i) => PV_BOXI[l.s].reduce((a, j) => a + bxs[i][j], 0)), over = b.side === 'Over';
+  const r = b.legs.map((l, i) => ys[i] === l.line ? 'push' : (over ? ys[i] > l.line : ys[i] < l.line) ? 'won' : 'lost');
+  const res = r.includes('lost') ? 'lost' : r.includes('push') ? 'push' : 'won';
+  return {res, ys, y: null, pl: res === 'won' ? +(b.stake * (b.pay - 1)).toFixed(2) : res === 'lost' ? -b.stake : 0};
+}
+$('pp-root').addEventListener('click', e => {
+  const t = e.target;
+  const a = t.closest('[data-pa]'); if (a){ pp.all = a.dataset.pa === '1'; renderPairs(); return; }
+  const l = t.closest('[data-pplog]'); if (l){ pp.logK = l.dataset.pplog; renderPairs(); document.querySelector('.pp-logf input')?.focus(); return; }
+  if (t.closest('[data-ppcancel]')){ pp.logK = null; renderPairs(); }
+});
+$('pp-root').addEventListener('change', e => {
+  if (e.target.id === 'pp-game'){ pp.game = e.target.value; renderPairs(); }
+  if (e.target.id === 'pp-pay'){ const v = +e.target.value; if (v >= 1.5 && v <= 10){ pp.pay = v; store.set('nba-pickem-pay', v); renderPairs(); } }
+});
+$('pp-root').addEventListener('submit', e => {
+  e.preventDefault(); const f = e.target.closest('[data-ppform]'); if (!f) return;
+  const x = ppPairs(pv.rows || []).find(x => x.k === f.dataset.ppform), b = x && ppMkBet(x, +f.stake.value, +f.pay.value);
+  if (!b){ pvToast('Enter a stake and the payout your entry shows.'); return; }
+  pvBets.unshift(b); pp.logK = null; pvSave(); renderPairs(); pvSettle();
+  pvToast(b.ex ? 'Saved to My Bets. The example game is over, so it settles right away.' : 'Saved to My Bets. It settles after the game.');
+});
 function pvShow(){
   for (const t of ['v2', 'bets', 'full']) $('pv-' + t).hidden = pv.tab !== t;
   if (pv.tab !== 'v2') $('pv-alerts').hidden = true;
@@ -4359,6 +4607,7 @@ $('pv-list').addEventListener('click', e => { const b = e.target.closest('[data-
 $('pv-detail').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('[data-allways]')){ pv.allWays = true; renderPropsV2(); return; }
+  if (t.closest('[data-go]')){ e.preventDefault(); goView(t.closest('[data-go]').dataset.go); return; }
   const sb = t.closest('[data-star]');
   if (sb){
     const k = sb.dataset.star, r = (pv.rows || []).find(x => pvKey(x) === k);
