@@ -79,6 +79,9 @@ def pickem():
 
 def render():
     tpl = open(os.path.join(HERE, '..', 'ui', 'projections.template.html')).read()
+    hk = os.path.join(HERE, '..', 'ui', 'halaska', 'dist.js')
+    # Halaska UI bundle (ui/halaska/dist.js, built by `node build.mjs` there); the page degrades to no kit if it is absent
+    tpl = tpl.replace('<script>/*HALASKA*/</script>', '<script>' + (open(hk).read() if os.path.exists(hk) else 'window.HK = null;') + '</script>')
     html = (tpl.replace('/*DATA*/null', json.dumps(load('player_projections.json'), separators=(',', ':')))
                .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')))
                .replace('/*PRICING*/null', json.dumps(pricing(), separators=(',', ':')))

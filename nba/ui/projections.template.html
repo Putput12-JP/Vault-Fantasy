@@ -982,13 +982,18 @@ details.sl-lines table.nt{min-width:560px;margin-top:6px}
 table.nt.sl-rt{min-width:420px}
 @media (max-width:600px){ .sl-card{padding:16px} table.sl-t td.l{white-space:normal} table.sl-t td.l small{display:block;margin-left:0} table.sl-t th,table.sl-t td{padding-left:4px;padding-right:4px}
   .sl-bar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .sl-bar>span:first-child{grid-column:1/-1} }
+
+/* Halaska kit regions: the page's own markup inside kit cards, and its remaining .card sections matched to the kit card */
+.hk-html p{margin:0 0 8px;color:var(--fg2);font-size:13px;line-height:1.55;max-width:80ch}
+.hk-html p.plain{font-size:15px;color:var(--fg)}
+.hk-html p b{color:var(--fg);font-weight:500}
+.hk-raw>.card,#v-props .card,#v-lab .card{background:rgba(42,42,42,.7);border:1px solid rgba(255,255,255,.06);border-radius:24px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.hk-raw>.card.pv-sec{padding:24px}
 </style>
 
 <div class="app" id="app">
   <aside class="sidebar" id="sidebar" aria-label="Pages">
-    <div class="brand"><span class="mark">NBA</span><span><b>Vault NBA</b><small id="season"></small></span></div>
-    <nav id="pages"></nav>
-    <div class="sidefoot"><b>Shadow mode</b>No live bets until a signal passes its gate on this season's games.</div>
+    <div id="hk-side"></div>
   </aside>
 
   <div class="inset">
@@ -1012,50 +1017,7 @@ table.nt.sl-rt{min-width:420px}
       </div>
     </header>
 
-    <main id="v-lab">
-      <div class="kpis" id="kpis"></div>
-
-      <section class="card">
-        <div class="card-h">
-          <div><h2>Minutes by player</h2><p>Your minutes against the season-start projection, top 15 by minutes</p></div>
-        </div>
-        <div class="card-b" style="position:relative">
-          <div class="chartwrap"><svg class="chart" id="chart" viewBox="0 0 760 240" role="img" aria-label="Minutes by player"></svg></div>
-          <div class="legend"><span><i></i>Your minutes</span><span><i class="dash"></i>Projection</span></div>
-          <div class="tip" id="tip" hidden></div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="card-h">
-          <div><h2>Rotation</h2><p>Change a player's minutes and every stat moves with them</p></div>
-          <div class="controls">
-            <label class="switch" for="bal"><input type="checkbox" id="bal" role="switch" checked> Move freed minutes to teammates</label>
-            <button class="btn" id="reset" type="button">Reset team</button>
-            <button class="btn primary" id="fit" type="button">Fit to 240</button>
-          </div>
-        </div>
-        <div class="card-b">
-          <div class="tablewrap">
-            <table>
-              <thead><tr><th scope="col">Player</th><th scope="col">Minutes</th><th scope="col">PTS</th><th scope="col">REB</th><th scope="col">AST</th><th scope="col">3PM</th><th scope="col">PRA</th><th scope="col" title="Steals plus blocks">STL+BLK</th></tr></thead>
-              <tbody id="rows"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <div class="two">
-        <section class="card">
-          <div class="card-h"><div><h2>Biggest movers</h2><p>Largest change in points + rebounds + assists from your edits</p></div></div>
-          <div class="card-b"><div class="movers" id="movers"></div></div>
-        </section>
-        <section class="card">
-          <div class="card-h"><div><h2>Recent changes</h2><p>What you changed on this team, newest first</p></div></div>
-          <div class="card-b"><ol class="log" id="log"></ol></div>
-        </section>
-      </div>
-    </main>
+    <main id="v-lab"><div id="lab-root"></div></main>
     <footer id="foot"></footer>
 
     <main id="v-props" hidden>
@@ -1064,8 +1026,8 @@ table.nt.sl-rt{min-width:420px}
       <div id="pv-bets" class="pv-wrap" hidden></div>
       <div class="pv-toast" id="pv-toast" role="status" hidden></div>
       <div id="pv-v2" class="pv-wrap">
-        <section class="card pv-toolcard" id="pv-tools"></section>
-        <div class="pv-main"><section class="card pv-list" id="pv-list" aria-label="Props"></section><section class="pv-detail" id="pv-detail"></section></div>
+        <div id="pv-tools"></div>
+        <div class="pv-main"><div class="pv-list" id="pv-list" aria-label="Props"></div><section class="pv-detail" id="pv-detail"></section></div>
       </div>
       <div id="pv-full" class="pv-wrap" hidden>
       <div class="kpis" id="pkpis"></div>
@@ -1302,6 +1264,7 @@ table.nt.sl-rt{min-width:420px}
   </div>
 </div>
 
+<script>/*HALASKA*/</script>
 <script>
 const D = /*DATA*/null;
 const H0 = /*HEALTH*/null;
@@ -1337,6 +1300,7 @@ const initials = n => n.split(/\s+/).filter(w => /^[A-Z]/.test(w)).slice(0,2).ma
 const last = n => { const w = n.replace(/ (Jr\.|Sr\.|II|III|IV)$/,'').split(' '); return w[w.length-1]; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+let balOn = true;   // "Move freed minutes to teammates"
 function mins(team){ const e = edits[team] || {}, m = {}; for (const p of D.teams[team].players) m[p.id] = e[p.id] ?? p.min0; return m; }
 function isOut(p, m){ return p.min0 >= 10 && m[p.id] === 0; }
 
@@ -1415,7 +1379,7 @@ function setMin(team, pid, val){
   val = Math.max(0, Math.min(48, +val || 0));
   const T = D.teams[team], m = mins(team), before = {...m}, p = T.players.find(x => x.id === pid);
   if (Math.abs(before[pid] - val) < .05){ render(); return; }
-  rebalance(T, m, p, val, $('bal').checked);
+  rebalance(T, m, p, val, balOn);
   save(team, m);
   const gainers = T.players.filter(q => q.id !== pid && Math.abs(m[q.id] - before[q.id]) > .3)
     .sort((a,b) => Math.abs(m[b.id]-before[b.id]) - Math.abs(m[a.id]-before[a.id])).slice(0,2)
@@ -1469,10 +1433,8 @@ const PAGES = [
   ]],
 ];
 function renderNav(){
-  $('pages').innerHTML = PAGES.map(([sec, items]) => `<div class="navsec"><h3>${sec}</h3>${items.map(([name, icon, what, live]) =>
-    live ? `<a class="nav" href="#${live}" data-view="${live}"${live === view ? ' aria-current="page"' : ''} title="${esc(what)}">${icon}<span class="nm">${name}</span>${live === 'props' && pvNavCount() ? `<span class="pv-nb" title="New alerts on props you watch">${pvNavCount()}</span>` : ''}</a>`
-         : `<span class="nav soon" title="${esc(what)}" aria-disabled="true">${icon}<span class="nm">${name}</span><span class="tag">Soon</span></span>`
-  ).join('')}</div>`).join('');
+  let n = 0; try { n = pvNavCount(); } catch (e) {}
+  HK.mount($('hk-side'), 'Sidebar', {pages: PAGES, view, season: `${D.season} · ${(PAGES.flatMap(g => g[1]).find(x => x[3] === view) || [''])[0]}`, pvCount: n, onGo: navGo});
 }
 function renderSlicer(){
   $('sab').textContent = cur;
@@ -1501,56 +1463,42 @@ function render(){
   const top = [...T.players].sort((a,b) => pr[b.id].pts - pr[a.id].pts)[0];
   const nEdit = Object.keys(edits[cur] || {}).length, nOut = T.players.filter(p => isOut(p, m)).length;
   const dPts = per240 - per2400;
-  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
-  $('kpis').innerHTML =
-    kpi('Team points per 240 min', ICON.pts, fmt(per240), Math.abs(dPts) >= .05 ? `<span class="${dPts>0?'pos':'neg'}">${sign(dPts)}</span> vs projection` : 'Matches the projection') +
-    kpi('Rotation minutes', ICON.clock, `${fmt(tot,0)}`, tot > 250 ? 'If everyone listed plays · a game is 240' : tot < 230 ? 'Under 240: someone must play more' : 'About one game of minutes') +
-    kpi('Top scorer', ICON.star, esc(last(top.name)), `${fmt(pr[top.id].pts)} pts · ${fmt(pr[top.id].pra)} PRA`) +
-    kpi('Players changed', ICON.edit, `${nEdit}`, nOut ? `${nOut} marked out · ${nEdit - nOut} absorbing minutes` : nEdit ? 'minutes differ from projection' : 'No edits yet');
+  const kpis = [
+    {label: 'Team points per 240 min', icon: ICON.pts, val: fmt(per240), delta: dPts, hint: 'Matches the projection'},
+    {label: 'Rotation minutes', icon: ICON.clock, val: `${fmt(tot,0)}`, hint: tot > 250 ? 'If everyone listed plays · a game is 240' : tot < 230 ? 'Under 240: someone must play more' : 'About one game of minutes'},
+    {label: 'Top scorer', icon: ICON.star, val: last(top.name), hint: `${fmt(pr[top.id].pts)} pts · ${fmt(pr[top.id].pra)} PRA`},
+    {label: 'Players changed', icon: ICON.edit, val: `${nEdit}`, hint: nOut ? `${nOut} marked out · ${nEdit - nOut} absorbing minutes` : nEdit ? 'minutes differ from projection' : 'No edits yet'},
+  ];
 
-  renderChart(T, m);
+  // chart: top 15 by minutes (yours or the projection)
+  const chart = [...T.players].filter(p => m[p.id] > 0 || p.min0 > 0).sort((a,b) => Math.max(m[b.id],b.min0) - Math.max(m[a.id],a.min0)).slice(0,15)
+    .map(p => ({name: p.name, last: last(p.name), now: m[p.id], base: p.min0}));
 
   // rotation table
   const act = T.players.filter(p => p.active || m[p.id] > 0).sort((a,b) => m[b.id]-m[a.id] || b.min0-a.min0);
   const rest = T.players.filter(p => !(p.active || m[p.id] > 0));
-  const cell = (mu, base, stat) => {
-    const r = range(stat, mu), d = mu - base;
-    return `<td class="s ${stat==='pra'?'pra':''}"><span class="v">${fmt(mu)}</span>${Math.abs(d) >= .05 ? `<span class="d ${d>0?'pos':'neg'}">${sign(d)}</span>` : ''}${r ? `<span class="r">${fmt(r[0],0)}–${fmt(r[1],0)}</span>` : ''}</td>`;
-  };
+  const stat = (mu, base, s) => { const r = range(s, mu); return {v: mu, d: mu - base, lo: r ? Math.round(r[0]) : null, hi: r ? Math.round(r[1]) : null}; };
   const badges = p => [
-    p.injury ? `<span class="badge ${/out/i.test(p.injury)?'bad':'warn'}">${esc(p.injury)}</span>` : '',
-    p.draft ? `<span class="badge solid">Rookie · #${p.draft}</span>` : p.rookie ? `<span class="badge">Rookie</span>` : '',
-    p.moved && p.last_team ? `<span class="badge">New · was ${p.last_team}</span>` : '',
-    !p.slotted ? `<span class="badge" title="ESPN has not placed this player on its depth chart yet">No depth slot</span>` : ''
-  ].join('');
-  const row = p => {
-    const mu = pr[p.id], out = isOut(p, m);
-    const meta = `${p.pos}${p.rank ? ` · depth ${p.rank}` : ''} · ${p.gp ? fmt(p.last_mpg) + ' mpg last season' : 'no NBA minutes last season'}`;
-    return `<tr class="${out?'out':''}">
-      <td><div class="who"><span class="av">${esc(initials(p.name))}</span><div><b>${esc(p.name)}${badges(p)}</b><small>${meta}</small></div></div></td>
-      <td><div class="minctl">
-        <button class="outbtn" type="button" data-out="${p.id}" aria-pressed="${out}" title="Sit this player and hand his minutes to teammates">OUT</button>
-        <input type="range" min="0" max="48" step="0.5" value="${m[p.id]}" data-r="${p.id}" aria-label="${esc(p.name)} minutes">
-        <input type="number" min="0" max="48" step="0.5" value="${fmt(m[p.id])}" data-n="${p.id}" id="n${p.id}" aria-label="${esc(p.name)} minutes">
-      </div></td>
-      ${cell(mu.pts,b0[p.id].pts,'pts')}${cell(mu.reb,b0[p.id].reb,'reb')}${cell(mu.ast,b0[p.id].ast,'ast')}${cell(mu['3pm'],b0[p.id]['3pm'],'3pm')}${cell(mu.pra,b0[p.id].pra,'pra')}
-      <td class="s"><span class="v">${fmt(mu.stl+mu.blk)}</span></td></tr>`;
-  };
-  $('rows').innerHTML = act.map(row).join('') + (rest.length ? `<tr class="sep"><td colspan="8">Beyond the 13-man rotation · give minutes to include</td></tr>` + rest.map(row).join('') : '');
+    p.injury ? {t: p.injury, bad: /out/i.test(p.injury), warn: !/out/i.test(p.injury)} : null,
+    p.draft ? {t: `Rookie · #${p.draft}`, solid: true} : p.rookie ? {t: 'Rookie'} : null,
+    p.moved && p.last_team ? {t: `New · was ${p.last_team}`} : null,
+    !p.slotted ? {t: 'No depth slot'} : null
+  ].filter(Boolean);
+  const rowOf = p => { const mu = pr[p.id];
+    return {id: p.id, name: p.name, ini: initials(p.name), min: m[p.id], out: isOut(p, m), badges: badges(p),
+      meta: `${p.pos}${p.rank ? ` · depth ${p.rank}` : ''} · ${p.gp ? fmt(p.last_mpg) + ' mpg last season' : 'no NBA minutes last season'}`,
+      stats: {pts: stat(mu.pts,b0[p.id].pts,'pts'), reb: stat(mu.reb,b0[p.id].reb,'reb'), ast: stat(mu.ast,b0[p.id].ast,'ast'), '3pm': stat(mu['3pm'],b0[p.id]['3pm'],'3pm'), pra: stat(mu.pra,b0[p.id].pra,'pra')},
+      sb: mu.stl + mu.blk}; };
 
-  // movers
-  const mv = T.players.map(p => ({p, d: pr[p.id].pra - b0[p.id].pra})).filter(x => Math.abs(x.d) >= .1).sort((a,b) => Math.abs(b.d)-Math.abs(a.d)).slice(0,6);
-  $('movers').innerHTML = mv.length ? mv.map(({p,d}) => `
-    <div class="mover">
-      <div class="top"><h3>${esc(p.name)}</h3><span class="badge ${d>0?'':'bad'}">${sign(d)} PRA</span></div>
-      <p>${fmt(pr[p.id].pts)} pts · ${fmt(pr[p.id].reb)} reb · ${fmt(pr[p.id].ast)} ast</p>
-      <div class="prog"><div class="tr"><i style="width:${m[p.id]/48*100}%"></i><u style="left:${p.min0/48*100}%"></u></div><span>${fmt(m[p.id])} / ${fmt(p.min0)}</span></div>
-    </div>`).join('') : `<p class="empty">No changes yet. Mark a player OUT or move a slider and the players who gain or lose the most show up here.</p>`;
+  // movers + log
+  const movers = T.players.map(p => ({p, d: pr[p.id].pra - b0[p.id].pra})).filter(x => Math.abs(x.d) >= .1).sort((a,b) => Math.abs(b.d)-Math.abs(a.d)).slice(0,6)
+    .map(({p,d}) => ({name: p.name, d, line: `${fmt(pr[p.id].pts)} pts · ${fmt(pr[p.id].reb)} reb · ${fmt(pr[p.id].ast)} ast`, min: m[p.id], base: p.min0}));
+  const log = (logs[cur] || []).map(e => ({who: e.who, ini: initials(e.who), text: e.text, ago: ago(e.at)}));
 
-  // log
-  const L = logs[cur] || [];
-  $('log').innerHTML = L.length ? L.map(e => `<li><span class="av">${esc(initials(e.who))}</span><div><p>${esc(e.who)} <span>${esc(e.text)}</span></p><small>${ago(e.at)}</small></div></li>`).join('')
-    : `<li><p class="empty">Nothing changed on the ${esc(T.name)} yet.</p></li>`;
+  HK.mount($('lab-root'), 'LabView', {kpis, chart, rows: act.concat(rest).map(rowOf), nAct: act.length, movers, log, teamName: T.name, bal: balOn,
+    onBal: v => { balOn = v; render(); }, onSetMin: (id, v) => setMin(cur, id, v),
+    onOut: id => { const p = T.players.find(x => x.id === id), mm = mins(cur); setMin(cur, id, mm[id] > 0 ? 0 : (p.min0 || 20)); },
+    onReset: labReset, onFit: labFit});
   store.set('nml-team', cur);
 }
 
@@ -1604,12 +1552,11 @@ $('teamlist').addEventListener('keydown', e => {
     if (j >= 0){ opts[i]?.classList.remove('kb'); opts[j].classList.add('kb'); opts[j].scrollIntoView({block:'nearest'}); }
   }
 });
-$('pages').addEventListener('click', e => {
-  const a = e.target.closest('a.nav'); if (!a) return;
-  e.preventDefault(); $('app').classList.remove('open');
-  history.replaceState(null, '', a.dataset.view === 'lab' ? '#' + cur.toLowerCase() : '#' + a.dataset.view);
-  show(a.dataset.view);
-});
+function navGo(v){   // sidebar link
+  $('app').classList.remove('open');
+  history.replaceState(null, '', v === 'lab' ? '#' + cur.toLowerCase() : '#' + v);
+  show(v);
+}
 function goView(v){ history.replaceState(null, '', '#' + v); show(v); window.scrollTo(0, 0); }
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
@@ -1623,20 +1570,13 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.search')) $('hits').hidden = true;
   if (!e.target.closest('.slicer')) openList(false);
 });
-$('rows').addEventListener('input', e => { const r = e.target.dataset.r; if (r){ const n = $('n'+r); if (n) n.value = fmt(+e.target.value); } });
-$('rows').addEventListener('change', e => { const id = e.target.dataset.r || e.target.dataset.n; if (id) setMin(cur, +id, e.target.value); });
-$('rows').addEventListener('click', e => {
-  const id = e.target.closest('[data-out]')?.dataset.out; if (!id) return;
-  const p = D.teams[cur].players.find(x => x.id === +id), m = mins(cur);
-  setMin(cur, +id, m[+id] > 0 ? 0 : (p.min0 || 20));
-});
-$('reset').addEventListener('click', () => { delete edits[cur]; delete logs[cur]; store.set('nml-edits', edits); store.set('nml-log', logs); render(); });
-$('fit').addEventListener('click', () => {
+function labReset(){ delete edits[cur]; delete logs[cur]; store.set('nml-edits', edits); store.set('nml-log', logs); render(); }
+function labFit(){
   const T = D.teams[cur], m = mins(cur);
   const before = T.players.reduce((a,p) => a + m[p.id], 0);
   for (let k = 0; k < 5; k++){ const tot = T.players.reduce((a,p) => a + m[p.id], 0); if (!tot) break; const f = 240/tot; T.players.forEach(p => m[p.id] = Math.min(48, m[p.id]*f)); }
   save(cur, m); addLog(cur, T.name, `fit to 240 minutes (was ${fmt(before,0)})`); render();
-});
+}
 const ALL = TEAMS.flatMap(t => D.teams[t].players.map(p => ({t, p})));
 const PIDX = Object.fromEntries(ALL.map(x => [x.p.id, x]));
 $('q').addEventListener('input', e => {
@@ -1649,7 +1589,6 @@ $('q').addEventListener('input', e => {
 $('hits').addEventListener('click', e => { const t = e.target.closest('button')?.dataset.t; if (t){ $('hits').hidden = true; $('q').value = ''; goTeam(t); } });
 
 const f = D.minutes_fit;
-$('season').textContent = `${D.season} · Minutes Lab`;
 renderNav();
 $('foot').innerHTML = `
   <div><b>Minutes</b> are what a player gets when he plays, measured from how minutes carried over between the last two seasons: returning players ${f.same[1].toFixed(2)} × last season + ${f.same[0].toFixed(1)}, players on a new team ${f.moved[1].toFixed(2)} × last season + ${f.moved[0].toFixed(1)}, rookies by draft slot (picks 1–3 averaged ${f.rookie['1-3'][0]} early-season minutes).</div>
@@ -4035,22 +3974,31 @@ function renderPropsV2(){
     : pv.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) || a.e.s.localeCompare(b.e.s)
     : (a, b) => a.trust - b.trust || (b.best ? b.best.edge : -1) - (a.best ? a.best.edge : -1));
   const stats = ['all', ...new Set(rows.map(r => r.e.s))];
-  $('pv-tools').innerHTML = `<div class="pv-presets">${PV_PRESETS.map(([k, l, fn]) => `<button class="pv-preset" type="button" data-p="${k}" aria-pressed="${pv.preset === k}">${l}<b>${rows.filter(fn).length}</b></button>`).join('')}<span class="pv-grow"></span><button class="pv-bell" id="pv-bell" type="button" aria-expanded="${!$('pv-alerts').hidden}" aria-controls="pv-alerts">Alerts</button></div>
-    <div class="pv-row2"><div class="seg" id="pv-stat">${stats.map(s => `<button type="button" data-s="${s}" aria-pressed="${pv.stat === s}">${s === 'all' ? 'All' : PV_SS[s] || s}</button>`).join('')}</div>
-      <span class="pv-grow"></span>
-      ${games.length > 1 ? `<select class="sel" id="pv-game" aria-label="Game"><option value="all">All games</option>${games.map(g => `<option value="${g.id}"${pv.game === String(g.id) ? ' selected' : ''}>${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}</option>`).join('')}</select>` : ''}
-      <select class="sel" id="pv-sort" aria-label="Sort"><option value="trust"${pv.sort === 'trust' ? ' selected' : ''}>Sort: bets you can trust</option><option value="edge"${pv.sort === 'edge' ? ' selected' : ''}>Sort: biggest edge</option><option value="name"${pv.sort === 'name' ? ' selected' : ''}>Sort: player</option></select>
-      <input class="pfind" id="pv-q" type="search" placeholder="Find a player" value="${esc(pv.q)}" aria-label="Find a player"></div>`;
+  pv.tp = {presets: PV_PRESETS.map(([k, l, fn]) => ({k, l, n: rows.filter(fn).length})), preset: pv.preset,
+    stats: stats.map(x => ({s: x, l: x === 'all' ? 'All' : PV_SS[x] || x})), stat: pv.stat,
+    games: games.length > 1 ? games.map(g => ({id: String(g.id), label: `${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}`})) : [], game: pv.game, sort: pv.sort, q: pv.q,
+    onPreset: k => { pv.preset = k; renderPropsV2(); }, onStat: x => { pv.stat = x; renderPropsV2(); },
+    onGame: v => { pv.game = v; renderPropsV2(); }, onSort: v => { pv.sort = v; renderPropsV2(); }, onQ: v => { pv.q = v.trim(); renderPropsV2(); },
+    onBell: () => { pvToggleAlerts(); pvMountTools(); }};
+  pvMountTools();
   const key = r => `${r.e.p}|${r.e.s}|${r.e.g}`;
   if (!pv.sel || !L.some(r => key(r) === pv.sel)) pv.sel = L[0] ? key(L[0]) : null;
-  $('pv-list').innerHTML = L.length ? L.map(r => { const b = r.best, sh = r.sharp;
-    const where = r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`;
-    return `<button class="pv-li" type="button" data-k="${key(r)}" aria-current="${key(r) === pv.sel}">
-      <span class="av">${esc(initials(r.name))}</span>
-      <span class="pv-who"><b>${esc(r.name)}</b><span>${PV_SL[r.e.s] || r.e.s} · proj ${fmt(r.mu)} · ${esc(where)}</span></span>
-      <span class="r"><span class="pv-marks">${pvW[key(r)] ? '<span class="pv-mk w" title="Watching">★</span>' : ''}${pvBets.some(x => x.k === key(r)) ? '<span class="pv-mk">LOGGED</span>' : ''}<span class="pv-vp ${r.verdict}">${r.verdict.toUpperCase()}</span></span>${r.verdict !== 'pass' ? `<small class="pos">+${pc(b.edge, 1)}</small>` : '<small class="muted">no edge</small>'}${sh.vs ? `<small class="pv-shp ${sh.vs}" title="Sharp money ${sh.vs} this bet">⚡ ${sh.vs}</small>` : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? `<small class="pv-shp">⚡ ${sh.lean}</small>` : ''}</span></button>`; }).join('')
-    : `<p class="empty">${!rows.length ? 'No player props listed yet. Kalshi lists them the morning of a game.' : pv.preset === 'pickem' ? "No pick'em edges right now: PrizePicks, Underdog and Sleeper post lines on game days." : 'Nothing matches.'}</p>`;
+  HK.mount($('pv-list'), 'PropsList', {sel: pv.sel,
+    items: L.map(r => { const b = r.best, sh = r.sharp;
+      return {key: key(r), name: r.name, ini: initials(r.name), stat: PV_SL[r.e.s] || r.e.s, proj: fmt(r.mu), verdict: r.verdict,
+        where: r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`,
+        edge: r.verdict !== 'pass' ? `+${pc(b.edge, 1)}` : null,
+        shp: sh.vs ? {t: sh.vs, strong: true} : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? {t: sh.lean} : null,
+        watch: !!pvW[key(r)], logged: pvBets.some(x => x.k === key(r))}; }),
+    empty: !rows.length ? 'No player props listed yet. Kalshi lists them the morning of a game.' : pv.preset === 'pickem' ? "No pick'em edges right now: PrizePicks, Underdog and Sleeper post lines on game days." : 'Nothing matches.',
+    onSelect: k => { pv.sel = k; pv.allWays = false; pv.logIdx = null; renderPropsV2();
+      if (window.innerWidth <= 1000) $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'}); }});
   pvDetail(L.find(r => key(r) === pv.sel));
+}
+
+function pvMountTools(){
+  if (!pv.tp) return;
+  HK.mount($('pv-tools'), 'PropsTools', {...pv.tp, alerts: pvUnseen(), bellOpen: !$('pv-alerts').hidden});
 }
 
 function pvWays(r){
@@ -4132,36 +4080,36 @@ function pvDetail(r){
   const sdm = state && state.players[r.e.p] ? state.players[r.e.p].sdm : 6, mn = r.min || 0, lo = Math.max(0, mn - 1.2816 * sdm), hi = Math.min(48, mn + 1.2816 * sdm);
   const rg = range2(r.e.s, r.mu), opp = g ? (r.tm === g.home ? g.away : g.home) : '';
   const fiveS = B.starters && B.starters[r.tm] && B.starters[r.tm].includes(r.e.p);
-  let vh;
+  let verdictOf;
+  const plainTxt = () => `<p class="plain">We think he gets <b>${esc(pvOutcome(b, r.e.s))}</b> ${pc(b.fair)} of the time; ${b.venue === 'kalshi' ? `Kalshi charges ${Math.round(pvCost(b) * 100)}¢ with its fee` : `at ${esc(b.bk)}, ${esc(String(b.price))} prices it at ${pc(pvCost(b))}`}`;
   if (r.verdict === 'bet'){
     const rec = (BT && BT.signals || []).find(s => s.gate === 'GO' && s.stat === r.e.s && s.side === b.side && s.engine.startsWith('Prop'));
-    vh = `<div class="pv-verdict bet"><div class="l1"><span class="pv-vp bet">BET</span><h3>${esc(pvBetShort(b))} at ${pvPrice(b)}</h3><span class="pill ok">Passed the backtest</span></div>
-      <p class="plain">We think he gets <b>${esc(pvOutcome(b, r.e.s))}</b> ${pc(b.fair)} of the time; ${b.venue === 'kalshi' ? `Kalshi charges ${Math.round(pvCost(b) * 100)}¢ with its fee` : `at ${esc(b.bk)}, ${esc(String(b.price))} prices it at ${pc(pvCost(b))}`}. That is worth <b class="pos">${pvUsd(pvEV(b))} per $100</b>.</p>
-      <p>Edge <b class="pos">+${pc(b.edge, 1)}</b> (our ${pc(b.fair, 1)} vs a ${pc(pvCost(b), 1)} cost).${rec ? ` This kind of bet (Kalshi ${PV_SL[r.e.s].toLowerCase()} ${b.side}) returned <b>${pvUsd(rec.roi * 100)} per $100</b> over ${rec.n.toLocaleString()} bets last season.` : ''}</p>${pvStakeHtml(b)}</div>`;
+    verdictOf = () => ({kind: 'bet', title: `${pvBetShort(b)} at ${pvPrice(b)}`, pill: {t: 'Passed the backtest', cls: 'ok'},
+      html: `${plainTxt()}. That is worth <b class="pos">${pvUsd(pvEV(b))} per $100</b>.</p>
+      <p>Edge <b class="pos">+${pc(b.edge, 1)}</b> (our ${pc(b.fair, 1)} vs a ${pc(pvCost(b), 1)} cost).${rec ? ` This kind of bet (Kalshi ${PV_SL[r.e.s].toLowerCase()} ${b.side}) returned <b>${pvUsd(rec.roi * 100)} per $100</b> over ${rec.n.toLocaleString()} bets last season.` : ''}</p>${pvStakeHtml(b)}`});
   } else if (r.verdict === 'lean'){
     const t = PV_TIER[b.g] || PV_TIER['no-go'];
-    vh = `<div class="pv-verdict lean"><div class="l1"><span class="pv-vp lean">LEAN</span><h3>${esc(pvBetShort(b))} at ${pvPrice(b)}</h3><span class="pill ${t[0] === 'tracking' ? 'warn' : 'idle'}">${t[1]}</span></div>
-      <p class="plain">We think he gets <b>${esc(pvOutcome(b, r.e.s))}</b> ${pc(b.fair)} of the time; ${b.venue === 'kalshi' ? `Kalshi charges ${Math.round(pvCost(b) * 100)}¢ with its fee` : `at ${esc(b.bk)}, ${esc(String(b.price))} prices it at ${pc(pvCost(b))}`}.</p>
-      <p>The price looks <b>+${pc(b.edge, 1)}</b> off our fair ${pc(b.fair, 1)}, but this kind of edge ${b.g === 'watch' ? 'made money last season without being conclusive' : 'has no record yet'}. Worth a look, not a stake.</p></div>`;
-  } else vh = `<div class="pv-verdict pass"><div class="l1"><span class="pv-vp pass">PASS</span><h3>No price is 3% better than fair</h3></div><p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p></div>`;
+    verdictOf = () => ({kind: 'lean', title: `${pvBetShort(b)} at ${pvPrice(b)}`, pill: {t: t[1], cls: t[0] === 'tracking' ? 'warn' : 'idle'},
+      html: `${plainTxt()}.</p>
+      <p>The price looks <b>+${pc(b.edge, 1)}</b> off our fair ${pc(b.fair, 1)}, but this kind of edge ${b.g === 'watch' ? 'made money last season without being conclusive' : 'has no record yet'}. Worth a look, not a stake.</p>`});
+  } else verdictOf = () => ({kind: 'pass', title: 'No price is 3% better than fair', pill: null,
+      html: `<p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p>`});
   const mv = (r.books || []).filter(x => x.l0 != null).map(x => x.l0 === x.line && x.o0 === x.o ? `<b>${esc(x.bk)}</b> has not moved since it opened (${x.line}, over ${x.o}).` : `<b>${esc(x.bk)}</b> opened ${x.l0} (over ${x.o0}); now ${x.line} (over ${x.o}).`);
   const news = (B.news || []).filter(n => n[3] === r.tm).slice(0, 3).map(n => `<b>${clock(n[0])} ET</b> ${esc(n[2])}: ${n[4] === 'lu' ? (n[5] === 'X' ? 'inactive (NBA.com)' : 'confirmed starter') : esc(n[5] || '') + ' (injury report)'}`);
-  $('pv-detail').innerHTML = `
-    <section class="card pv-dh"><div class="pv-dtop"><div><h2>${esc(r.name)}</h2><div class="pv-meta"><span>${PV_SL[r.e.s] || r.e.s}</span>${g ? `<span>${esc(r.tm || '')} vs ${esc(opp)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span>` : ''}
-        ${fiveS || r.lu === 'S' ? '<span class="badge">Starting five confirmed</span>' : r.lu === 's' ? '<span class="badge">Expected to start</span>' : r.lu === 'B' ? '<span class="badge">Bench</span>' : ''}${r.inj ? `<span class="badge warn">${esc(r.inj)}</span>` : ''}</div></div>
-      <div class="pv-proj"><small>Tonight's projection</small><b>${fmt(r.mu)}</b><span>${rg ? `usually ${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : ''}</span></div></div>
-      <div class="pv-mins"><span>Minutes <b>${fmt(mn)}</b></span><div class="pv-mbar"><span class="rng" style="left:${lo / 48 * 100}%;width:${(hi - lo) / 48 * 100}%"></span>${r.min0 ? `<span class="us" style="left:${r.min0 / 48 * 100}%" title="His usual ${fmt(r.min0)}"></span>` : ''}<span class="pt" style="left:${mn / 48 * 100}%"></span>${[0, 12, 24, 36, 48].map(v => `<span class="tk" style="left:${v / 48 * 100}%">${v}</span>`).join('')}</div>
-        <span class="muted">${fmt(lo, 0)} to ${fmt(hi, 0)} likely${r.min0 ? ` · usual ${fmt(r.min0, 0)}` : ''}${r.src === 'yours' ? ' · your minutes' : ''}</span></div>${pvWatchUI(r)}</section>
-    ${vh}
-    <section class="card pv-sec"><div class="pv-sh"><h3>Ways to bet it</h3><p>Every venue, line and side for this prop, the recommended bet first. Value is what a $100 bet makes on average if our chance is right; fees and vig are already in the price. Pass means the edge is under 3%: a small plus there is inside the model's margin of error.</p></div>${pvWays(r)}</section>
-    ${ppFor(r)}
-    ${pvSharpSec(r)}
-    <section class="card pv-sec"><div class="pv-sh"><h3>Why our number is ${fmt(r.mu)}</h3><p>From his usual game to tonight. Each step is a piece of the model; together they are exactly the projection.</p></div>${pvWaterfall(r)}</section>
-    <section class="card pv-sec"><div class="pv-sh"><h3>Recent games</h3><p>Last 10 against tonight's line${r.line != null ? ` of ${r.line}` : ''}.</p></div>${pvRecent(r)}</section>
-    <section class="card pv-sec"><div class="pv-sh"><h3>Timing</h3><p>The biggest mispricings come from prices that have not caught up with news.</p></div>
-      <div class="pv-moves">${(mv.length ? mv : ['No sportsbook history for this prop yet.']).map(m => `<div class="mv"><i>↕</i><span>${m}</span></div>`).join('')}
+  const head = {name: r.name, stat: PV_SL[r.e.s] || r.e.s, game: g ? `${r.tm || ''} vs ${opp} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET` : '',
+    badges: [fiveS || r.lu === 'S' ? {t: 'Starting five confirmed'} : r.lu === 's' ? {t: 'Expected to start'} : r.lu === 'B' ? {t: 'Bench'} : null, r.inj ? {t: r.inj, warn: true} : null].filter(Boolean),
+    proj: fmt(r.mu), range: rg ? `usually ${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : ''};
+  const minsHtml = `<div class="pv-mins"><span>Minutes <b>${fmt(mn)}</b></span><div class="pv-mbar"><span class="rng" style="left:${lo / 48 * 100}%;width:${(hi - lo) / 48 * 100}%"></span>${r.min0 ? `<span class="us" style="left:${r.min0 / 48 * 100}%" title="His usual ${fmt(r.min0)}"></span>` : ''}<span class="pt" style="left:${mn / 48 * 100}%"></span></div>
+        <span class="muted">${fmt(lo, 0)} to ${fmt(hi, 0)} likely${r.min0 ? ` · usual ${fmt(r.min0, 0)}` : ''}${r.src === 'yours' ? ' · your minutes' : ''}</span></div>`;
+  HK.mount($('pv-detail'), 'PvDetail', {head, minsHtml, watchHtml: pvWatchUI(r), verdict: verdictOf(), sections: [
+    {title: 'Ways to bet it', sub: "Every venue, line and side for this prop, the recommended bet first. Value is what a $100 bet makes on average if our chance is right; fees and vig are already in the price. Pass means the edge is under 3%: a small plus there is inside the model's margin of error.", html: pvWays(r)},
+    ...(ppFor(r) ? [{raw: ppFor(r)}] : []),
+    {raw: pvSharpSec(r)},
+    {title: `Why our number is ${fmt(r.mu)}`, sub: 'From his usual game to tonight. Each step is a piece of the model; together they are exactly the projection.', html: pvWaterfall(r)},
+    {title: 'Recent games', sub: `Last 10 against tonight's line${r.line != null ? ` of ${r.line}` : ''}.`, html: pvRecent(r)},
+    {title: 'Timing', sub: 'The biggest mispricings come from prices that have not caught up with news.', html: `<div class="pv-moves">${(mv.length ? mv : ['No sportsbook history for this prop yet.']).map(m => `<div class="mv"><i>↕</i><span>${m}</span></div>`).join('')}
         ${news.length ? news.map(m => `<div class="mv"><i>!</i><span>${m}</span></div>`).join('') : '<div class="mv"><i>!</i><span><b>No injury or lineup news</b> for this team since the first poll. A price older than the news is flagged on Edges as News lag.</span></div>'}
-        <div class="mv"><i>⏱</i><span>${fiveS ? '<b>Starting five confirmed</b> by NBA.com.' : 'Lineups usually post about 30 minutes before tip.'}</span></div></div></section>`;
+        <div class="mv"><i>⏱</i><span>${fiveS ? '<b>Starting five confirmed</b> by NBA.com.' : 'Lineups usually post about 30 minutes before tip.'}</span></div></div>`}]});
 }
 
 // ── Player Props phase 2: watchlist, alerts and the user's own bets (browser storage, backup by copy and paste) ──
@@ -4241,11 +4189,7 @@ function pvBackground(){
   try { pvCheck(pvRows().rows, Date.now() / 1000); } catch (e) {} finally { [PS.board, PS.mode] = keep; }
   renderNav();
 }
-function pvBell(){
-  const n = pvUnseen();
-  if (!$('pv-bell')) return;
-  $('pv-bell').innerHTML = `Alerts${n ? ` <span class="pv-ct">${n}</span>` : ''}`;
-}
+function pvBell(){ pvMountTools(); }
 function pvAgo(t){ const d = etFmt(t, {month: 'short', day: 'numeric'}), today = etFmt(Date.now() / 1000, {month: 'short', day: 'numeric'}); return `${d === today ? '' : d + ', '}${clock(t)} ET`; }
 function pvRenderAlerts(){
   const nW = Object.keys(pvW).length;
@@ -4606,15 +4550,6 @@ function pvShow(){
   if (pv.tab === 'v2') renderPropsV2();
   if (pv.tab === 'bets'){ if (!pv.rows) pv.rows = pvRows().rows; pvRenderBets(); pvSettle(); }
 }
-$('pv-tools').addEventListener('click', e => {
-  if (e.target.closest('#pv-bell')){ pvToggleAlerts(); return; }
-  const p = e.target.closest('[data-p]'); if (p){ pv.preset = p.dataset.p; renderPropsV2(); return; }
-  const s = e.target.closest('#pv-stat button[data-s]'); if (s){ pv.stat = s.dataset.s; renderPropsV2(); }
-});
-$('pv-tools').addEventListener('change', e => { if (e.target.id === 'pv-sort'){ pv.sort = e.target.value; renderPropsV2(); } if (e.target.id === 'pv-game'){ pv.game = e.target.value; renderPropsV2(); } });
-$('pv-tools').addEventListener('input', e => { if (e.target.id === 'pv-q'){ pv.q = e.target.value.trim(); const pos = e.target.selectionStart; renderPropsV2(); const q = $('pv-q'); q.focus(); q.setSelectionRange(pos, pos); } });
-$('pv-list').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b){ pv.sel = b.dataset.k; pv.allWays = false; pv.logIdx = null; renderPropsV2();
-  if (window.innerWidth <= 1000) $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'}); } });
 $('pv-detail').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('[data-allways]')){ pv.allWays = true; renderPropsV2(); return; }
