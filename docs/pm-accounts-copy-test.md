@@ -51,3 +51,24 @@ the closing price? And how fast does the market move toward these accounts after
 - Copying at the ask assumes a small order; the archive cannot say what a large one would have paid beyond the touch.
 - Only the high-grade archive era is used (from Aug 18, 2026), so the sample is about seven weeks of football.
 - Labels rest on the scorecard's older seasons; accounts new this season are in the "every other" group.
+
+## Result and re-test (added 2026-10-01, after the run)
+
+Results: docs/pm-accounts-copy-results.md. **Verdict: NO-GO.** Copying a sharp account at the ask 15 minutes later
+averaged +0.09% against the close (SE 0.59) on 36 copies in 27 games; every delay sits within one standard error of
+zero. Sharp accounts stay context.
+
+What the exact quotes add: the market does not jump to a sharp account's side within minutes. Measured on the mid of
+the side they bought, it sits near their price for the first 30 minutes and then moves their way: +0.32% at an hour,
++0.76% at two hours, +1.05% by kickoff (usually-losing accounts stay near -0.6% throughout). That is the opposite of
+"the edge is gone within 30 minutes", which the earlier study inferred from later trade prices. With 40 trades it
+proves nothing either way; it is the reason for the re-test.
+
+The limit was the sample: the archive's high-grade era starts Aug 18, and only 47 accounts carry a sharp label from
+their older record, so the test window held 40 sharp-account trades.
+
+**Re-test, declared now, before the data exists:** the same rules, unchanged (labels from the scorecard with the test
+games taken out, first trade per account, game and side, 15-minute primary delay, GO at 2 standard errors), on NFL
+weeks 4-7 (games Oct 1 - Oct 27) and college football Sept 29 - Oct 26, run after both windows settle:
+`python3 scripts/pm_account_copy_test.py --cache <dir> --nfl 2026-10-01:2026-10-28 --cfb 2026-09-29:2026-10-27 --tag retest`.
+NBA games are not in it: the season opens Oct 20 and the scorecard has no in-archive NBA history yet.

@@ -79,3 +79,16 @@ graded against Pinnacle's last pre-game price (CLV) and the final score (ESPN).
 State lives in `.claude/sharp-money/` (gitignored); a local scheduled task runs it
 every 5 minutes and republishes the Sharp Money artifact. Nothing here is a Vault
 pick until an alert type beats the close over a real sample.
+
+## 4. Exact quotes from the orderbook archive (2026-10-01)
+
+Pre-registered test: docs/pm-accounts-copy-test.md; results: docs/pm-accounts-copy-results.md. NFL weeks 1-3 and
+college football from Aug 22, priced at the Pendulum Flow archive's best bid and ask (archive.pendulumflow.com,
+CC BY 4.0) instead of later trade prices.
+
+- Copying a sharp account at the ask 15 minutes later: +0.09% vs the close (SE 0.59, 36 copies). NO-GO; context only
+  stands.
+- After a sharp account trades, the mid of its side barely moves for 30 minutes, then drifts its way: +0.32% at an
+  hour, +0.76% at two hours, +1.05% by kickoff. Usually-losing accounts: about -0.6% throughout. Takers pay about
+  0.6-0.8% to cross the spread.
+- 40 sharp-account trades is far too few to settle it; a re-test on the next four weeks is declared in the test doc.
