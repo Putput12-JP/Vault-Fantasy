@@ -265,8 +265,14 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
     for e in props.values():
         e['kal'].sort()
     glines = game_lines(games, last, meta, gkey, nicks)
+    # confirmed starting fives (minutes v3's starters-known weights use them): {team: [pid x 5]}
+    five = defaultdict(list)
+    for pid, (c, _) in lu.items():
+        if c == 'S':
+            five[R.info[pid][1]].append(pid)
+    starters = {t: sorted(v) for t, v in five.items() if len(v) == 5}
     news = sorted((n for n in news if n[0] and (n[4] == 'lu' or (n[5] or '').lower().startswith(('out', 'doubt', 'quest')))), reverse=True)[:60]
-    return {'t': now, 'outs': outs, 'news': news,
+    return {'t': now, 'outs': outs, 'news': news, 'starters': starters,
             'games': [dict({k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}, **glines.get(str(g['id']), {}))
                                 for g in games],
             'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped)}
@@ -378,7 +384,11 @@ def example(proj):
                 players[pid][3] = 'X' if r['roster'] == 'Inactive' else ('S' if r['slot'] else 'B') if r['status'] == 'Confirmed' else ('s' if r['slot'] else 'b')
     for e in props.values():
         e['kal'].sort()
-    return {'t': tip - 1800, 'example': True, 'games': [g], 'players': players,
+    five = defaultdict(list)
+    for pid, P in players.items():
+        if P[3] == 'S':
+            five[P[1]].append(pid)
+    return {'t': tip - 1800, 'example': True, 'starters': {t: sorted(v) for t, v in five.items() if len(v) == 5}, 'games': [g], 'players': players,
             'props': sorted(props.values(), key=lambda e: (e['p'], e['s'])), 'unmapped': {}}
 
 

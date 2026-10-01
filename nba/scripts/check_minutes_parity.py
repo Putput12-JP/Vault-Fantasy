@@ -22,6 +22,8 @@ import build_minutes_model as MM
 import build_prop_model_v2 as V2
 import build_prop_model_v3_full as F
 import build_model_state as BS
+import build_minutes_model_v3 as M3
+import build_starters as ST
 import pricing as PX
 from build_prop_model import BASE
 
@@ -31,6 +33,11 @@ def main(n_games=40):
     box, inj, margins, lines = I['box'], I['inj'], I['margins'], I['lines']
     recs = V2.walk(box, inj, margins, I['mm'], I['casc'], I['team_min'], lines)[0]
     by = {(r['gid'], r['aid']): r for r in recs}
+    # the shadow: minutes v3 as the pre-registered test ran it, without and with NBA.com's confirmed starters
+    pv3 = json.load(open(os.path.join(BS.DATA, 'minutes_v3_pricing.json')))
+    feed, _ = ST.load_feed(box)
+    w3 = lambda tm, fd: {(r['gid'], r['aid']): r for r in V2.walk(box, inj, margins, I['mm'], I['casc'], tm, lines, base='v3', mv3=I['mv3'], feed=fd)[0]}
+    by3, by3s = w3(pv3['team_min_m3'], None), w3(pv3['team_min_m3s'], feed)
     stk = json.load(open(V2.OUT_JSON))['stacker']
     games = [g for g in C.games(V2.SEASONS) if g['season'] == 2026 and box.get(g['game_id'])]
     random.seed(7)
@@ -39,29 +46,43 @@ def main(n_games=40):
     keep = {p['id'] for t in proj['teams'].values() for p in t['players']}
     BS.keep_roster = keep
     D = dict(proj, teams={})                      # no current rosters: candidates come from the box score, as in the walk
-    minutes = json.load(open(os.path.join(BS.DATA, 'model_state.json')))['minutes']
+    MSF = json.load(open(os.path.join(BS.DATA, 'model_state.json')))
+    minutes = MSF['minutes']
+    m3 = M3.State(I['mv3']['alpha'], I['mv3']['a_new'], I['mv3']['new_n'])
 
     ms, ctx, rt = MM.State(I['mm']['alpha']), V2.Context(), {}
     prior = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
-    worst = {'min': 0.0, 'base': 0.0, 'mu2': 0.0}
+    worst = {'min': 0.0, 'base': 0.0, 'mu2': 0.0, 'v3': 0.0, 'v3s': 0.0}
+    n3 = 0
     n = 0
     for g in C.games(V2.SEASONS):
         rows = box.get(g['game_id'], [])
         if not rows:
             continue
         if g['game_id'] in sample:
-            state = json.loads(json.dumps(BS.export(ctx, rt, ms, keep | {r['athlete_id'] for r in rows}, g['season'], asof=g['tip'])))
-            pr = PX.Pricer(D=D, MS={'live': state, 'minutes': minutes})
+            state = json.loads(json.dumps(BS.export(ctx, rt, ms, keep | {r['athlete_id'] for r in rows}, g['season'], asof=g['tip'], m3=m3)))
+            pr = PX.Pricer(D=D, MS={'live': state, 'minutes': minutes, 'minutes_v3': MSF['minutes_v3']})
             day = g['tip_et'].strftime('%Y-%m-%d')
             clk = (g['tip_et'] - dt.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
             ln = lines.get(g['game_id']) or {}
             gg = {'id': str(g['game_id']), 'home': g['home'], 'away': g['away'], 'tip': int(g['tip'].timestamp()),
-                  'total': ln.get('total_close'), 'spread': ln.get('spread_close'), 'blow_spread': margins.get(g['game_id'])}
+                  'total': ln.get('total_close'), 'spread': ln.get('spread_close'), 'blow_spread': margins.get(g['game_id']),
+                  'blow_spread3': ln['spread_close'] if ln.get('spread_close') is not None else margins.get(g['game_id'])}
             cache = {}
             for team in (g['home'], g['away']):
                 status = {a: s for a, s in inj.status(day, team, clk).items()}
                 pr.cand_override[(team, gg['id'])] = [r['athlete_id'] for r in rows if r['team'] == team]
                 res = pr.game_minutes(team, gg, status, cache)
+                st5 = (feed.get((g['game_id'], team)) or {}).get('start')
+                # the v3 walk adds the feed's inactive list to Out; the board's status carries it live
+                status3 = {**status, **{a: 'Inactive' for a in (feed.get((g['game_id'], team)) or {}).get('inactive', ())}}
+                r3, r3s = pr.game_minutes_v3(team, gg, status, cache), pr.game_minutes_v3(team, gg, status3, cache, starters=st5 or None)
+                for a, v in r3.items():
+                    if (g['game_id'], a) in by3:
+                        worst['v3'] = max(worst['v3'], abs(v - by3[(g['game_id'], a)]['pm'])); n3 += 1
+                for a, v in r3s.items():
+                    if (g['game_id'], a) in by3s and st5:
+                        worst['v3s'] = max(worst['v3s'], abs(v - by3s[(g['game_id'], a)]['pm']))
                 for r in rows:
                     rec = by.get((g['game_id'], r['athlete_id']))
                     if r['team'] != team or not rec:
@@ -80,9 +101,11 @@ def main(n_games=40):
                         worst['mu2'] = max(worst['mu2'], abs(mm['mu'] - m2[s]))
                     n += 1
         V2.update_after(g, rows, rt, prior, ms, ctx)
+        m3.update(g, rows)
         BS.names.update({r['athlete_id']: r['name'] for r in rows if r.get('name')})
     print(f'{n:,} player-games in {len(sample)} games of 2025-26. Largest difference: minutes {worst["min"]:.2e}, '
           f'base projection {worst["base"]:.2e}, projection after v2 adjustments {worst["mu2"]:.2e}')
+    print(f'shadow minutes v3 on {n3:,} player-games: largest difference {worst["v3"]:.2e}; with confirmed starters {worst["v3s"]:.2e}')
     return worst
 
 

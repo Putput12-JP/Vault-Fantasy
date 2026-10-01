@@ -29,6 +29,7 @@ class Pricer:
         self.D = D or json.load(open(os.path.join(DATA, 'player_projections.json')))
         self.PR = PR or render_app.pricing()
         ms = MS or json.load(open(os.path.join(DATA, 'model_state.json')))
+        self.MS_all = ms
         self.state = ms.get('example' if example else 'live') if ms else None
         self.MM = (ms or {}).get('minutes') if self.state and any((v or {}).get('ms') for v in self.state['players'].values()) else None
         self.example = example
@@ -161,6 +162,55 @@ class Pricer:
             res[a] = {'min': pm[a], 'rate': rates, 'pos': pos, 'mu': mu}
         cache[key] = res
         return res
+
+    # ── shadow: minutes model v3 (docs/minutes-v3-pricing.md), logged next to v2, never priced ─────────────
+    def game_minutes_v3(self, team, g, status, cache, starters=None):
+        """{pid: minutes} from minutes model v3 on its own state, as build_prop_model_v2.walk(base='v3') ran it:
+        v2's terms plus role (minutes as a starter or off the bench vs overall, keyed on last game's role, or on
+        tonight's confirmed five when `starters` is given, with the starters-known weights) and return from absence,
+        rescaled to that test's team total."""
+        M3 = (self.MS_all or {}).get('minutes_v3')
+        tg = self.state.get('m3_games') if self.state else None
+        if not M3 or tg is None:
+            return {}
+        key = ('gm3', team, str(g['id']), bool(starters))
+        if key in cache:
+            return cache[key]
+        P, tip = self.state['players'], g['tip']
+        S = lambda a: P.get(str(a)) or {}
+        out = {a: 1.0 for a, stt in status.items() if stt in ('Out', 'Doubtful', 'Inactive')}
+        rot = {int(a): v['m3'] for a, v in P.items() if v.get('m3') and v['m3'][3] == team and v['m3'][0] >= M3['rot_min']
+               and v['m3'][4] >= tip - M3['rot_days'] * 86400}
+        roster = {x['id'] for x in self.D['teams'].get(team, {}).get('players', [])}
+        roster |= {int(a) for a, v in P.items() if v.get('m3') and v['m3'][3] == team and v['m3'][4] >= tip - 30 * 86400}
+        cand = self.cand_override.get((team, str(g['id'])))
+        cand = [a for a in (cand if cand is not None else sorted(roster))
+                if S(a).get('m3') and S(a)['m3'][3] == team and S(a).get('r') and a not in out]
+        beta = M3['beta_starters'] if starters else M3['beta']
+        tl = (self.state.get('team_last') or {}).get(team)
+        b2b = 1.0 if tl and tip - tl < 30 * 3600 else 0.0
+        sp = g.get('blow_spread3', g.get('spread'))
+        blow = max(0.0, abs(sp) - 6.0) if sp is not None else 0.0
+        pm = {}
+        for a in cand:
+            m, stt, pos, tm, last, mst, mbn, st_last, idx, since = S(a)['m3']
+            vs = sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] == pos)
+            vo = sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] != pos)
+            share, starter = m / 48.0, stt >= 0.5
+            started = (a in starters) if starters else st_last
+            ref = mst if started else mbn
+            role = (ref - m) if ref is not None else 0.0
+            missed = tg.get(team, 0) - (idx if idx is not None else tg.get(team, 0)) - 1 if tm == team else 0
+            k = 0 if missed >= M3['return_missed'] else (since + 1 if since is not None else None)
+            x = [vs, vo, vs * share, vo * share, blow if starter else 0.0, 0.0 if starter else blow, b2b, b2b * share,
+                 role, m * (k == 0), m * (k in (1, 2)), m * (k in (3, 4, 5)), 1.0]
+            pm[a] = max(0.0, min(48.0, m + sum(b * v for b, v in zip(beta, x))))
+        tot = sum(pm.values())
+        if tot > 0 and len(pm) >= 7:
+            f = (M3['team_min_starters'] if starters else M3['team_min']) / tot
+            pm = {a: min(48.0, v * f) for a, v in pm.items()}
+        cache[key] = pm
+        return pm
 
     def mu_for(self, pid, stat, g, cache, outs, team=None, status=None):
         if pid not in self.pidx and not (self.MM and g and team):

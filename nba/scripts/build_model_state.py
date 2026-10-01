@@ -19,6 +19,7 @@ import nba_common as C
 import build_minutes_model as MM
 import build_prop_model_v2 as V2
 import build_prop_model as V1
+import build_minutes_model_v3 as M3
 from build_prop_model import BASE
 
 DATA = os.path.join(C.HERE, '..', 'data')
@@ -27,7 +28,7 @@ keep_roster = set()
 names = {}        # athlete id -> name, from the box scores walked (players off the current rosters need one too)
 
 
-def export(ctx, rt, ms, keep, season, base=False, asof=None):
+def export(ctx, rt, ms, keep, season, base=False, asof=None, m3=None):
     teams = {}
     for t in set(ctx.pace) | set(ctx.pts):
         teams[t] = {'pace': round(ctx.pace.get(t, 0), 3), 'pts': round(ctx.pts.get(t, 0), 3),
@@ -37,6 +38,8 @@ def export(ctx, rt, ms, keep, season, base=False, asof=None):
     # the minutes model's rotation reaches back ROT_DAYS: players off the roster who played for a team recently count
     if asof is not None:
         recent = {a for a, p in ms.pl.items() if p['last'] >= asof - dt.timedelta(days=MM.ROT_DAYS + 3)}
+        if m3:
+            recent |= {a for a, p in m3.pl.items() if p['last'] >= asof - dt.timedelta(days=MM.ROT_DAYS + 3)}
         keep = set(keep) | recent
     for aid in keep:
         sr = ctx.struct_rates(aid)
@@ -52,11 +55,20 @@ def export(ctx, rt, ms, keep, season, base=False, asof=None):
                         'ms': [ms.pl[aid]['m'], ms.pl[aid]['st'], ms.pl[aid]['pos'], ms.pl[aid]['team'], int(ms.pl[aid]['last'].timestamp()),
                                ms.pl[aid]['n']] if aid in ms.pl else None,
                         'r': dict(rt[aid]['rate']) if aid in rt else None, 'pg': dict(rt[aid]['pg']) if aid in rt else None,
-                        'nm': names.get(aid)}
-        if players[aid]['ms'] is None and aid not in keep_roster:
+                        'nm': names.get(aid),
+                        # minutes model v3's state (shadow): [EWMA minutes, start rate, position, team, last game,
+                        # minutes as a starter, minutes off the bench, started last game, team game index, games since return]
+                        'm3': m3_row(m3.pl[aid]) if m3 and aid in m3.pl else None}
+        if players[aid]['ms'] is None and players[aid]['m3'] is None and aid not in keep_roster:
             players.pop(aid)
     return {'season': season, 'lg_pace': round(ctx.lg_pace or 0, 3), 'teams': teams, 'players': players,
-            'team_last': {t: int(v.timestamp()) for t, v in ms.team_last.items()}}
+            'team_last': {t: int(v.timestamp()) for t, v in ms.team_last.items()},
+            'm3_games': dict(m3.tg) if m3 else None}
+
+
+def m3_row(p):
+    return [p['m'], p['st'], p['pos'], p['team'], int(p['last'].timestamp()), p.get('ms'), p.get('mb'), p.get('st_last'),
+            p.get('idx'), p.get('since')]
 
 
 def main():
@@ -73,6 +85,8 @@ def main():
         ex_gid = int(ex[0]['id']) if ex else None
     box = C.player_games(seasons)
     ms, ctx, rt = MM.State(json.load(open(MM.OUT_JSON))['alpha']), V2.Context(), {}
+    mv3 = json.load(open(os.path.join(DATA, 'minutes_model_v3.json')))
+    m3 = M3.State(mv3['alpha'], mv3['a_new'], mv3['new_n'])
     prior = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
     example, last_day, n = None, None, 0
     for g in C.games(seasons):
@@ -80,21 +94,29 @@ def main():
         if not rows:
             continue
         if g['game_id'] == ex_gid:
-            example = export(ctx, rt, ms, keep, g['season'], base=True, asof=g['tip'])
+            example = export(ctx, rt, ms, keep, g['season'], base=True, asof=g['tip'], m3=m3)
             example['asof'] = g['tip_et'].strftime('%Y-%m-%d')
         V2.update_after(g, rows, rt, prior, ms, ctx)
+        m3.update(g, rows)
         names.update({r['athlete_id']: r['name'] for r in rows if r.get('name')})
         last_day, n = g['tip_et'].strftime('%Y-%m-%d'), n + 1
-    live = export(ctx, rt, ms, keep, cur, asof=max(ms.team_last.values()) if ms.team_last else None)
+    live = export(ctx, rt, ms, keep, cur, asof=max(ms.team_last.values()) if ms.team_last else None, m3=m3)
     live['asof'] = last_day
     mm = json.load(open(MM.OUT_JSON))
     casc = json.load(open(os.path.join(DATA, 'usage_cascade.json')))['stats']
+    pv3 = json.load(open(os.path.join(DATA, 'minutes_v3_pricing.json')))
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'seasons': seasons,
            'games': n, 'live': live, 'example': example,
            # minutes model v2 as the backtest ran it: weights in MM.FEATURES order, team total, rotation rule, usage cascade
            'minutes': {'features': MM.FEATURES, 'beta': [mm['beta'][f] for f in MM.FEATURES],
                        'team_min': json.load(open(V1.OUT_JSON))['team_min'], 'rot_min': MM.ROT_MIN, 'rot_days': MM.ROT_DAYS,
-                       'cascade': {s: {'use': c['use'], 'beta': c['beta']} for s, c in casc.items() if s in BASE}}}
+                       'cascade': {s: {'use': c['use'], 'beta': c['beta']} for s, c in casc.items() if s in BASE}},
+           # minutes model v3 as the shadow (docs/minutes-v3-pricing.md): weights without and with confirmed starters,
+           # each fitted team total from that test, the return-from-absence rule
+           'minutes_v3': {'features': M3.FEATURES, 'beta': [mv3['beta'][f] for f in M3.FEATURES],
+                          'beta_starters': [mv3['beta_hindsight_starters'][f] for f in M3.FEATURES],
+                          'team_min': pv3['team_min_m3'], 'team_min_starters': pv3['team_min_m3s'],
+                          'return_missed': M3.RETURN_MISSED, 'rot_min': MM.ROT_MIN, 'rot_days': MM.ROT_DAYS}}
     path = os.path.join(DATA, 'model_state.json')
     json.dump(out, open(path, 'w'), separators=(',', ':'))
     print(f"walked {n:,} games {seasons}; state through {last_day}; example snapshot "

@@ -20,7 +20,9 @@ season-start minutes and rates. `check_minutes_parity.py`: minutes and base proj
 for players with no games for their current team, and for teams you edit.
 Pre-registered test, v2 pricing with minutes v3 ([minutes-v3-pricing.md](minutes-v3-pricing.md)): more accurate on
 every stat, but Kalshi points NO earns +3.0% (v3 minutes) vs v2's +3.5% and drops to WATCH with confirmed starters,
-so v2 minutes keep pricing. v3 stays a shadow candidate for the live record.
+so v2 minutes keep pricing. v3 runs live as a shadow: the Tonight page shows it next to v2 (with the confirmed
+starting five once NBA.com posts it), the recorder logs it, and the Lab's record scores both on the same players.
+`check_minutes_parity.py` shows the shadow equals the v3 test's walk exactly, with and without confirmed starters.
 Consensus fair engine ([consensus-engine.md](consensus-engine.md)): Kalshi rungs priced from the rest of their ladder
 plus the model pass GO on points NO and 3PM NO (beating the current blend on the same rungs); live pricing and the
 shadow ledger now carry a consensus edge for every venue.

@@ -703,7 +703,7 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
       <div class="nt-teams" id="nteams"></div>
       <section class="card" id="nwhatif" hidden></section>
       <section class="card">
-        <div class="card-h"><div><h2>The Lab's record</h2><p>Projected minutes at tip against the box score, every player the model projected.</p></div></div>
+        <div class="card-h"><div><h2>The Lab's record</h2><p>Projected minutes at tip against the box score, every player the model projected, with the v3 shadow on the same players.</p></div></div>
         <div class="card-b" id="nrecord"></div>
       </section>
     </main>
@@ -1546,6 +1546,43 @@ function gameMinutes(team, g, cache){
   }
   cache[key] = res;
   return res;
+}
+// Shadow: minutes model v3 (scripts/pricing.py game_minutes_v3, proven equal to the v3 test's walk). Shown and logged
+// next to v2, never priced: the pre-registered test kept v2 (docs/minutes-v3-pricing.md).
+function gameMinutesV3(team, g, cache){
+  const key = `gm3|${team}|${g.id}`;
+  if (cache[key]) return cache[key];
+  const state = MS && (PS.mode === 'example' ? MS.example : MS.live), M3 = MS && MS.minutes_v3, tg = state && state.m3_games;
+  if (!state || !M3 || !tg){ cache[key] = {}; return cache[key]; }
+  const P = state.players, S = a => P[String(a)] || {}, tip = g.tip;
+  if (!cache.__status) cache.__status = statusFromBoard(PS.board);
+  const five = (PS.board && PS.board.starters && PS.board.starters[team]) || null, starters = five ? new Set(five.map(Number)) : null;
+  const out = {};
+  for (const [a, s] of Object.entries(cache.__status)) if (s === 'Out' || s === 'Doubtful' || s === 'Inactive') out[+a] = 1;
+  const rot = {};
+  for (const [a, v] of Object.entries(P)) if (v && v.m3 && v.m3[3] === team && v.m3[0] >= M3.rot_min && v.m3[4] >= tip - M3.rot_days * 86400) rot[+a] = v.m3;
+  const roster = new Set((D.teams[team] ? D.teams[team].players : []).map(p => p.id));
+  for (const [a, v] of Object.entries(P)) if (v && v.m3 && v.m3[3] === team && v.m3[4] >= tip - 30 * 86400) roster.add(+a);
+  const cand = [...roster].sort((a, b) => a - b).filter(a => S(a).m3 && S(a).m3[3] === team && S(a).r && !out[a]);
+  const beta = starters ? M3.beta_starters : M3.beta;
+  const tl = (state.team_last || {})[team], b2b = tl && tip - tl < 30 * 3600 ? 1 : 0;
+  const blow = g.spread != null ? Math.max(0, Math.abs(g.spread) - 6) : 0;
+  const pm = {};
+  for (const a of cand){
+    const [m, stt, pos, tm, last, mst, mbn, stLast, idx, since] = S(a).m3;
+    let vs = 0, vo = 0;
+    for (const [b, q] of Object.entries(rot)){ if (+b === a) continue; if (q[2] === pos) vs += q[0] * (out[+b] || 0); else vo += q[0] * (out[+b] || 0); }
+    const share = m / 48, starter = stt >= .5, started = starters ? starters.has(a) : stLast;
+    const ref = started ? mst : mbn, role = ref != null ? ref - m : 0;
+    const t0 = tg[team] || 0, missed = tm === team ? t0 - (idx != null ? idx : t0) - 1 : 0;
+    const k = missed >= M3.return_missed ? 0 : (since != null ? since + 1 : null);
+    const x = [vs, vo, vs * share, vo * share, starter ? blow : 0, starter ? 0 : blow, b2b, b2b * share, role, k === 0 ? m : 0, (k === 1 || k === 2) ? m : 0, (k === 3 || k === 4 || k === 5) ? m : 0, 1];
+    pm[a] = Math.max(0, Math.min(48, m + beta.reduce((acc, b, i) => acc + b * x[i], 0)));
+  }
+  const tot = Object.values(pm).reduce((x, y) => x + y, 0);
+  if (tot > 0 && Object.keys(pm).length >= 7){ const f = (starters ? M3.team_min_starters : M3.team_min) / tot; for (const a in pm) pm[a] = Math.min(48, pm[a] * f); }
+  cache[key] = {pm, starters: !!starters};
+  return cache[key];
 }
 function muFor(pid, stat, cache, g, bteam){
   const state0 = MS && (PS.mode === 'example' ? MS.example : MS.live);
@@ -2441,12 +2478,12 @@ function renderTonight(){
   const cache = {}, status = statusFromBoard(B), P = B.players || {};
   const edits = tonightEdits[gid] || {};
   const teams = [g.away, g.home].map(team => {
-    const model = gameMinutes(team, g, cache), rows = [];
+    const model = gameMinutes(team, g, cache), v3m = gameMinutesV3(team, g, cache), rows = [];
     for (const [a, G] of Object.entries(model)){
       const pid = +a, mu = {};
       for (const s of ['pts', 'reb', 'ast', '3pm']){ const m = muFor(pid, s, cache, g, team); mu[s] = m ? m.mu : null; }
       const sd = G.sdm || 6;
-      rows.push({pid, name: nameOf(B, pid), min: G.min, lo: Math.max(0, G.min - 1.2816 * sd), hi: Math.min(48, G.min + 1.2816 * sd), parts: G.parts, mine: G.mine,
+      rows.push({pid, name: nameOf(B, pid), min: G.min, lo: Math.max(0, G.min - 1.2816 * sd), hi: Math.min(48, G.min + 1.2816 * sd), parts: G.parts, mine: G.mine, v3: v3m.pm[pid],
                  st: status[pid], lu: P[pid] ? P[pid][3] : null, stT: P[pid] ? P[pid][4] : null, luT: P[pid] ? P[pid][5] : null, mu, mkt: marketMinutes(B, g, team, pid, G.min, cache), src: 'model'});
     }
     const seen = new Set(rows.map(r => r.pid));
@@ -2464,7 +2501,7 @@ function renderTonight(){
       rows.push({pid: p.id, name: p.name, min: m.min, st: status[p.id], mu, src: 'lab'});
     }
     rows.sort((a, b) => (a.off ? 1 : 0) - (b.off ? 1 : 0) || b.min - a.min);
-    return {team, rows, total: rows.filter(r => !r.off).reduce((x, r) => x + r.min, 0)};
+    return {team, rows, total: rows.filter(r => !r.off).reduce((x, r) => x + r.min, 0), v3s: v3m.starters};
   });
 
   // KPIs
@@ -2484,12 +2521,13 @@ function renderTonight(){
   const chip = (v, lab) => Math.abs(v) >= .3 ? `<span class="nt-p ${v > 0 ? 'up' : 'dn'}">${v > 0 ? '+' : ''}${fmt(v)} ${lab}</span>` : '';
   const stTxt = r => [LINEUP[r.lu] || '', r.st ? `<span class="${/out|inactive/i.test(r.st) ? 'neg' : 'warnt'}">${esc(r.st)}${r.stT ? ' ' + clock(r.stT) : ''}</span>` : '', r.src === 'lab' ? '<span class="muted" title="No games yet for this team: the Minutes Lab estimate">Lab estimate</span>' : ''].filter(Boolean).join(' · ');
   $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
-      <div class="card-h"><div><h2>${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.total, 0)} minutes projected across ${T.rows.filter(r => !r.off).length} players</p></div></div>
-      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
-      ${T.rows.map(r => r.off ? `<tr class="off"><td class="l"><b>${esc(r.name)}</b><small>${stTxt(r)}</small></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td></tr>`
+      <div class="card-h"><div><h2>${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.total, 0)} minutes projected across ${T.rows.filter(r => !r.off).length} players · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div></div>
+      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
+      ${T.rows.map(r => r.off ? `<tr class="off"><td class="l"><b>${esc(r.name)}</b><small>${stTxt(r)}</small></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
         : `<tr><td class="l"><b>${esc(r.name)}</b><small>${stTxt(r) || '&nbsp;'}</small></td>
         <td><span class="nt-min"><input type="number" min="0" max="48" step="0.5" data-pid="${r.pid}" value="${fmt(r.min)}" class="${r.mine ? 'mine' : ''}" aria-label="Minutes for ${esc(r.name)}" ${r.src === 'lab' ? 'disabled title="Edit this team in the Minutes Lab"' : ''}></span>${r.lo != null ? `<small>${fmt(r.lo, 0)} to ${fmt(r.hi, 0)}</small>` : ''}</td>
         <td class="l"><div class="nt-parts">${r.mine ? '<span class="nt-p" style="color:var(--warn)">your minutes</span>' : r.parts ? `<span class="nt-p">avg ${fmt(r.parts.base)}</span>${chip(r.parts.vac, 'teammates out')}${chip(r.parts.blow, 'blowout risk')}${chip(r.parts.b2b, 'back-to-back')}${chip(r.parts.other + r.parts.rescale, 'team fit')}` : ''}</div></td>
+        <td>${r.v3 != null ? `<span class="muted">${fmt(r.v3)}</span><small>${r.v3 - r.min >= 0 ? '+' : ''}${fmt(r.v3 - r.min)}</small>` : ''}</td>
         <td>${r.mkt ? `<span class="nt-mkt ${Math.abs(r.mkt.min - r.min) >= MKT_FLAG ? 'flag' : ''}" title="Market ${SLABEL[r.mkt.stat]} mean ${fmt(r.mkt.mean)} vs our ${fmt(r.mkt.ours)}">${fmt(r.mkt.min)}</span><small>${r.mkt.min - r.min >= 0 ? '+' : ''}${fmt(r.mkt.min - r.min)}</small>` : '<span class="muted">none</span>'}</td>
         ${['pts', 'reb', 'ast', '3pm'].map(s => `<td>${r.mu[s] != null ? fmt(r.mu[s]) : ''}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div></section>`).join('');
@@ -2517,16 +2555,20 @@ function renderTonightRecord(){
   if (!days.length){ $('nrecord').innerHTML = `<p class="empty">No settled games yet. The recorder logs every player's projected minutes before tip and scores them against the box score the next time it polls after the final.</p>`; return; }
   const n = days.reduce((a, [, x]) => a + x.n, 0), mae = days.reduce((a, [, x]) => a + (x.mae || 0) * x.n, 0) / Math.max(1, n);
   const m8 = days.reduce((a, [, x]) => a + x.miss8, 0), dnp = days.reduce((a, [, x]) => a + x.dnp, 0), [d0, x0] = days[0];
+  const v3d = days.map(([, x]) => x.v3).filter(v => v && v.n), n3 = v3d.reduce((a, v) => a + v.n, 0);
+  const w = k => v3d.reduce((a, v) => a + (v[k] || 0) * v.n, 0) / Math.max(1, n3);
+  const s3 = v3d.reduce((a, v) => a + (v.starters || 0), 0), b8 = k => v3d.reduce((a, v) => a + (v[k] || 0), 0);
   const dl = x => new Date(x + 'T12:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'});
   $('nrecord').innerHTML = `<div class="nt-rec">
     <div class="row3"><div class="stat"><span class="k">Last night (${dl(d0)})</span><span class="v">${x0.mae != null ? fmt(x0.mae, 2) : 'n/a'} min</span><small class="muted">average miss, ${x0.n} players</small></div>
       <div class="stat"><span class="k">Season</span><span class="v">${fmt(mae, 2)} min</span><small class="muted">${n.toLocaleString()} players · backtest 4.90</small></div>
       <div class="stat"><span class="k">Missed by 8+</span><span class="v">${n ? pc(m8 / n) : 'n/a'}</span><small class="muted">backtest 18.5%</small></div>
       <div class="stat"><span class="k">Projected, did not play</span><span class="v">${dnp}</span><small class="muted">not in the averages; books void these</small></div></div>
-    <div class="two"><div class="nt-tw"><table class="nt-days"><thead><tr><th class="l">Day</th><th>Players</th><th>Avg miss</th><th>Bias</th><th>8+ misses</th><th>DNP</th></tr></thead><tbody>
-      ${days.slice(0, 10).map(([dd, x]) => `<tr><td class="l">${dl(dd)}</td><td>${x.n}</td><td>${x.mae != null ? fmt(x.mae, 2) : ''}</td><td>${x.bias != null ? (x.bias > 0 ? '+' : '') + fmt(x.bias, 2) : ''}</td><td>${x.miss8}</td><td>${x.dnp}</td></tr>`).join('')}</tbody></table></div>
-    <div class="nt-tw"><table class="nt-days"><thead><tr><th class="l">Biggest misses, ${dl(d0)}</th><th>Proj</th><th>Actual</th><th class="l">Why</th></tr></thead><tbody>
-      ${x0.worst.slice(0, 8).map(w => `<tr><td class="l">${esc(w[0])} <span class="muted">${esc(w[1])}</span></td><td>${fmt(w[3])}</td><td>${fmt(w[4])}</td><td class="l">${esc(w[5] || '')}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+    ${n3 ? `<p style="margin:0;font-size:13px;color:var(--fg2)"><b style="font-weight:500;color:var(--fg)">Shadow, minutes v3:</b> average miss <span class="num ${w('mae_v3') < w('mae_v2') ? 'pos' : 'neg'}">${fmt(w('mae_v3'), 2)}</span> against v2's <span class="num">${fmt(w('mae_v2'), 2)}</span> on the same ${n3.toLocaleString()} players; 8+ misses ${b8('miss8_v3')} vs ${b8('miss8_v2')}${s3 ? `; ${s3} of them priced with the confirmed starting five` : ''}. Never priced: the pre-registered test kept v2.</p>` : ''}
+    <div class="two"><div class="nt-tw"><table class="nt-days"><thead><tr><th class="l">Day</th><th>Players</th><th>Avg miss</th><th>Bias</th><th>8+ misses</th><th>DNP</th><th title="Shadow minutes v3, same players">v3 miss</th></tr></thead><tbody>
+      ${days.slice(0, 10).map(([dd, x]) => `<tr><td class="l">${dl(dd)}</td><td>${x.n}</td><td>${x.mae != null ? fmt(x.mae, 2) : ''}</td><td>${x.bias != null ? (x.bias > 0 ? '+' : '') + fmt(x.bias, 2) : ''}</td><td>${x.miss8}</td><td>${x.dnp}</td><td>${x.v3 && x.v3.mae_v3 != null ? fmt(x.v3.mae_v3, 2) : ''}</td></tr>`).join('')}</tbody></table></div>
+    <div class="nt-tw"><table class="nt-days"><thead><tr><th class="l">Biggest misses, ${dl(d0)}</th><th>Proj</th><th title="Shadow minutes v3">v3</th><th>Actual</th><th class="l">Why</th></tr></thead><tbody>
+      ${x0.worst.slice(0, 8).map(w => `<tr><td class="l">${esc(w[0])} <span class="muted">${esc(w[1])}</span></td><td>${fmt(w[3])}</td><td class="muted">${w[6] != null ? fmt(w[6]) : ''}</td><td>${fmt(w[4])}</td><td class="l">${esc(w[5] || '')}</td></tr>`).join('')}</tbody></table></div></div></div>`;
 }
 $('ngames').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (b){ nt.game = b.dataset.g; renderTonight(); } });
 $('nteams').addEventListener('change', e => {

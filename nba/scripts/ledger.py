@@ -142,13 +142,17 @@ def minutes_log(board, now):
     names = {int(k): v.get('nm') for k, v in pr.state['players'].items() if v.get('nm')}
     names.update({x['id']: x['name'] for T in pr.D['teams'].values() for x in T['players']})
     names.update({int(k): v[0] for k, v in (board.get('players') or {}).items()})
+    fives = board.get('starters') or {}
     for g in board['games']:
         if not (now < g['tip'] <= now + TRACK_H * 3600):
             continue
         for team in (g['away'], g['home']):
+            five = fives.get(team)
+            v3 = pr.game_minutes_v3(team, g, status, cache, starters=five)       # shadow, never priced
             for pid, G in pr.game_minutes(team, g, status, cache).items():
                 k = f"{g['id']}|{pid}"
-                rows[k] = [round(G['min'], 2), round((pr.state['players'].get(str(pid)) or {}).get('ms', [0])[0], 2)]
+                rows[k] = [round(G['min'], 2), round((pr.state['players'].get(str(pid)) or {}).get('ms', [0])[0], 2),
+                           round(v3[pid], 2) if pid in v3 else None, 1 if five else 0]
                 meta[k] = {'game': str(g['id']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': pid,
                            'player': names.get(pid, str(pid)), 'team': team}
     return rows, meta
@@ -203,14 +207,22 @@ def minutes_record(root, now, prev, rescan_days=3):
                     reason = f'blowout ({int(margin)} pts)'
             if st.get('fouls', 0) >= 5:
                 reason = f"foul trouble ({int(st['fouls'])} fouls)"
-        per_day[tip_day(m['tip'])].append([m['player'], m['team'], m['matchup'], round(pre[-1][0], 1), round(actual, 1), reason])
+        v3 = pre[-1][2] if len(pre[-1]) > 2 else None
+        per_day[tip_day(m['tip'])].append([m['player'], m['team'], m['matchup'], round(pre[-1][0], 1), round(actual, 1), reason,
+                                           round(v3, 1) if v3 is not None else None, pre[-1][3] if len(pre[-1]) > 3 else 0])
     for d, rows in per_day.items():
         played = [r for r in rows if r[5] != 'did not play']
         err = [r[3] - r[4] for r in played]
+        both = [r for r in played if r[6] is not None]                 # the shadow: v3 on the same players
+        e2, e3 = [r[3] - r[4] for r in both], [r[6] - r[4] for r in both]
         days[d] = {'n': len(played), 'dnp': len(rows) - len(played),
                    'mae': round(sum(abs(e) for e in err) / len(err), 2) if err else None,
                    'bias': round(sum(err) / len(err), 2) if err else None,
                    'miss8': sum(abs(e) >= 8 for e in err),
+                   'v3': {'n': len(both), 'starters': sum(r[7] for r in both),
+                          'mae_v2': round(sum(abs(e) for e in e2) / len(e2), 3) if e2 else None,
+                          'mae_v3': round(sum(abs(e) for e in e3) / len(e3), 3) if e3 else None,
+                          'miss8_v2': sum(abs(e) >= 8 for e in e2), 'miss8_v3': sum(abs(e) >= 8 for e in e3)},
                    'worst': sorted(rows, key=lambda r: -abs(r[3] - r[4]))[:12]}
     return days
 
