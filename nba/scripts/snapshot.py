@@ -422,6 +422,9 @@ class Injuries:
 
 
 # ── day folder: diff against the last value per key ─────────────────────────────────────────
+WIRE_SRC = ('injuries', 'lineups')
+
+
 class Day:
     def __init__(self, root, day):
         self.dir = os.path.join(root, 'snapshots', day)
@@ -429,6 +432,10 @@ class Day:
         self.last, self.known = {}, set()
         self.meta, self.first = defaultdict(dict), defaultdict(dict)   # what each key is; its first value today
         self.when = defaultdict(dict)                                   # when each key last changed (epoch s)
+        self.hist = defaultdict(lambda: defaultdict(list))              # every change time per key today (Injury Wire)
+        self.t0 = {}                                                    # first poll today per source: its rows are the
+                                                                        # starting state, not news
+        self.log = defaultdict(list)                                    # injuries / lineups: (t, key, before, after)
         for f in os.listdir(self.dir):
             src = f[:-6]
             if f == 'meta.jsonl':
@@ -440,6 +447,10 @@ class Day:
                 for line in open(os.path.join(self.dir, f)):
                     r = json.loads(line)
                     when[r['k']] = r['t']
+                    self.hist[src][r['k']].append(r['t'])
+                    self.t0.setdefault(src, r['t'])
+                    if src in WIRE_SRC:
+                        self.log[src].append((r['t'], r['k'], last.get(r['k']), r['v']))
                     if r['v'] is None:
                         last.pop(r['k'], None)
                     else:
@@ -459,6 +470,11 @@ class Day:
         self.append(src + '.jsonl', out)
         for r in out:
             self.when[src][r['k']] = t
+            self.hist[src][r['k']].append(t)
+            if src in WIRE_SRC:
+                self.log[src].append((t, r['k'], last.get(r['k']), r['v']))
+        if out:
+            self.t0.setdefault(src, t)
         self.append('meta.jsonl', [{'k': k, 'src': src, **m} for k, m in meta.items() if (src, k) not in self.known])
         self.known |= {(src, k) for k in meta}
         self.meta[src].update(meta)
@@ -600,7 +616,8 @@ def write_board(root, day, slate):
     try:
         from prop_board import build
         proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
-        board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE, when=day.when)
+        board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE, when=day.when,
+                      wire=(day.hist, day.log, day.t0))
         with open(BOARD, 'w') as f:
             json.dump(board, f, separators=(',', ':'))
         print(f"  board      {len(board['props'])} player-stat markets, unmapped {board['unmapped']}", flush=True)

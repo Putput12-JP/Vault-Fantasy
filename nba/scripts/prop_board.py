@@ -78,7 +78,7 @@ def pin_stat(label):
     return None
 
 
-def build(games, last, meta, first, proj, now, sizes=None, when=None):
+def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None):
     """games: pre-tip slate games; last/meta/first: {src: {key: value}} current rows, their metadata and the
     first value seen today."""
     R = Roster(proj)
@@ -91,6 +91,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
                 nicks[nick(g[side + '_name'])] = g[side]
     by_id = {str(g['id']): g for g in games}
     props, players, unmapped = {}, {}, defaultdict(int)
+    qk = defaultdict(list)          # team -> [(venue, source, key)]: every prop quote, for the Injury Wire's reaction times
 
     def entry(pid, stat, g):
         name, team = R.info[pid]
@@ -117,6 +118,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
         om = round((f[0] + f[1]) / 2, 3) if f and f[0] is not None and f[1] is not None else None
         sz = (sizes or {}).get(k) or [None, None]
         entry(pid, stat, g)['kal'].append([m['floor'], v[0], v[1], om, sz[0], sz[1], W('kalshi', k)])
+        qk[R.info[pid][1]].append(('Kalshi', 'kalshi', k))
 
     # ESPN (DraftKings): rebuild the backfill's row shape so prop_markets() assigns over/under the audited way
     per_game = defaultdict(list)
@@ -126,12 +128,14 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
             continue
         per_game[str(m['game'])].append({'type': m['type'], 'athlete_id': m['athlete_id'], 'provider_id': int(k.split('|')[1]),
                                          'open_line': m['open_line'], 'open_px': m['open_px'], 'ord': m['ord'],
-                                         'cur_line': v[0], 'cur_px': v[1], 'last_updated': None, '_book': m['book'], '_t': W('espn', k)})
+                                         'cur_line': v[0], 'cur_px': v[1], 'last_updated': None, '_book': m['book'], '_t': W('espn', k), '_k': k})
     for gid, rows in per_game.items():
         g = by_id.get(gid)
         book = {r['provider_id']: r['_book'] for r in rows}
         tmk = defaultdict(int)                            # (book, athlete, market) -> last change of any of its rows
         for r in rows:
+            if r['type'] in ESPN_MKT and r['athlete_id'] in R.info:
+                qk[R.info[r['athlete_id']][1]].append((r['_book'], 'espn', r['_k']))
             if r['type'] in ESPN_MKT and r['_t']:
                 kk = (r['provider_id'], r['athlete_id'], ESPN_MKT[r['type']][0])
                 tmk[kk] = max(tmk[kk], r['_t'])
@@ -167,6 +171,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
             continue
         entry(pid, stat, g)['books'].append(['Pinnacle', ov[0], fmt_am(ov[1]), fmt_am(uv[1]),
                                               fo[0] if fo else None, fmt_am(fo[1]) if fo else None, W('pinnacle', ko, ku)])
+        qk[R.info[pid][1]] += [('Pinnacle', 'pinnacle', ko), ('Pinnacle', 'pinnacle', ku)]
 
     # Polymarket player props: YES = over the line. Priced like a book: over = YES ask, under = 1 - YES bid, each
     # plus the taker fee (rate x p x (1 - p) per share), as American odds so the page treats it like any book.
@@ -190,6 +195,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
         if o and u:
             entry(pid, stat, g)['books'].append(['Polymarket', float(m['line']), o, u, float(m['line']) if f else None,
                                                   prob_am(f[1] + fee(f[1])) if f and f[1] and 0 < f[1] < 1 else None, W('polymarket', k)])
+            qk[R.info[pid][1]].append(('Polymarket', 'polymarket', k))
 
     # pick'em apps -> e['pk'] = [app, line, over price, under price, first line today]. PrizePicks standard lines only
     # (demon / goblin are alternate lines at other payouts) and it pays flat, so its prices are None.
@@ -205,6 +211,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
             continue
         f = (first.get('prizepicks') or {}).get(k)
         entry(pid, stat, g)['pk'].append(['PrizePicks', v[0], None, None, f[0] if f else None, W('prizepicks', k)])
+        qk[R.info[pid][1]].append(('PrizePicks', 'prizepicks', k))
     for k, v in (last.get('underdog') or {}).items():
         m = meta.get('underdog', {}).get(k) or {}
         stat = UD_STAT.get(m.get('stat'))
@@ -217,6 +224,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
             continue
         f = (first.get('underdog') or {}).get(k)
         entry(pid, stat, g)['pk'].append(['Underdog', v[0], v[1], v[2], f[0] if f else None, W('underdog', k)])
+        qk[R.info[pid][1]].append(('Underdog', 'underdog', k))
     for k, v in (last.get('sleeper') or {}).items():
         m = meta.get('sleeper', {}).get(k) or {}
         stat = SL_STAT.get(m.get('stat'))
@@ -230,6 +238,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
             continue
         f = (first.get('sleeper') or {}).get(k)
         entry(pid, stat, g)['pk'].append(['Sleeper', v[0], dec_am(v[1]), dec_am(v[2]), f[0] if f else None, W('sleeper', k)])
+        qk[R.info[pid][1]].append(('Sleeper', 'sleeper', k))
 
     # injury report: current status per player on tonight's teams
     inj, news = {}, []
@@ -272,7 +281,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None):
             five[R.info[pid][1]].append(pid)
     starters = {t: sorted(v) for t, v in five.items() if len(v) == 5}
     news = sorted((n for n in news if n[0] and (n[4] == 'lu' or (n[5] or '').lower().startswith(('out', 'doubt', 'quest')))), reverse=True)[:60]
-    return {'t': now, 'outs': outs, 'news': news, 'starters': starters,
+    wire_events = injury_wire(wire, qk, R, games, nicks) if wire else []
+    return {'t': now, 'outs': outs, 'news': news, 'starters': starters, 'wire': wire_events,
             'games': [dict({k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}, **glines.get(str(g['id']), {}))
                                 for g in games],
             'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped)}
@@ -308,6 +318,52 @@ def game_lines(games, last, meta, gkey, nicks):
     for gid, d in pin.items():
         if gid not in out and d.get('total') is not None and d.get('spread') is not None:
             out[gid] = dict(d, line_from='Pinnacle')
+    return out
+
+
+def injury_wire(wire, qk, R, games, nicks):
+    """Today's injury and lineup changes for teams on the board, each with how fast every venue moved that team's
+    player props afterwards: [t, kind, team, pid, who, before, after, {venue: [quotes, moved, median s, first s]}].
+    kind: 'inj' (injury report status change), 'five' (NBA.com starting five confirmed), 'inactive'. Times are when
+    the recorder first saw the change (polls every 5 to 15 minutes); a move is any change to a quote after that,
+    including the book pulling it, so other news can move a quote too."""
+    hist, log, t0 = wire
+    teams = {g[s] for g in games for s in ('away', 'home')}
+    events = []
+    for t, k, before, after in log.get('injuries', []):
+        if t <= t0.get('injuries', 0):
+            continue                                       # the day's first report is the starting state
+        _, team_name, player = k.split('|', 2)
+        pid = R.find(player, [g[s] for g in games for s in ('away', 'home') if nick(team_name) == nick(g.get(s + '_name'))])
+        b, a = (before or [None])[0], (after or [None])[0]
+        if not pid or b == a or R.info[pid][1] not in teams:
+            continue
+        events.append([t, 'inj', R.info[pid][1], pid, R.info[pid][0], b, a or 'removed'])
+    fives = defaultdict(list)
+    for t, k, before, after in log.get('lineups', []):
+        if t <= t0.get('lineups', 0) or not after:
+            continue
+        _, team, player = k.split('|', 2)
+        if team not in teams:
+            continue
+        if after[1] == 'Confirmed' and after[0] and (not before or before[1] != 'Confirmed'):
+            fives[(t, team)].append(player)
+        if after[2] == 'Inactive' and (not before or before[2] != 'Inactive'):
+            pid = R.find(player, [team])
+            events.append([t, 'inactive', team, pid, R.info[pid][0] if pid else player, before[2] if before else None, 'Inactive'])
+    for (t, team), who in fives.items():
+        events.append([t, 'five', team, None, ', '.join(who), 'Expected', 'Confirmed'])
+    out = []
+    for e in sorted(events, key=lambda x: -x[0])[:150]:
+        react = {}
+        for venue, src, key in qk.get(e[2], []):
+            r = react.setdefault(venue, [0, 0, []])
+            r[0] += 1
+            nxt = [x for x in hist.get(src, {}).get(key, []) if x > e[0]]
+            if nxt:
+                r[1] += 1
+                r[2].append(min(nxt) - e[0])
+        out.append(e + [{v: [n, m, sorted(l)[len(l) // 2] if l else None, min(l) if l else None] for v, (n, m, l) in react.items()}])
     return out
 
 

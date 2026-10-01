@@ -248,6 +248,10 @@ table.nt tr:last-child td{border-bottom:0}
 .nt-rec .stat .k{display:block;font-size:11.5px;color:var(--fg3)} .nt-rec .stat .v{font-family:var(--font-mono);font-size:18px;font-weight:600}
 .nt-rec .stat small{display:block;font-size:11.5px}
 @media (max-width:760px){ .nt-rec .row3{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.wt td.l{white-space:normal}
+.wt .rx{display:flex;flex-wrap:wrap;gap:4px;max-width:520px}
+.wt .rx span{display:inline-flex;height:20px;align-items:center;padding:0 7px;border-radius:5px;font-size:11px;background:var(--raised);color:var(--fg2);white-space:nowrap}
+.wt .rx span.fast{color:var(--up);background:rgba(74,222,128,.1)} .wt .rx span.slow{color:var(--warn);background:rgba(251,191,36,.1)} .wt .rx span.none{color:var(--down);background:rgba(248,113,113,.1)}
 table.nt-days{width:100%;min-width:0;border-collapse:collapse;font-size:12.5px}
 table.nt-days td,table.nt-days th{padding:6px 6px;border-top:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 table.nt-days th{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;border-top:0}
@@ -696,6 +700,20 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
     </main>
     <footer id="tfoot" hidden></footer>
 
+    <main id="v-wire" hidden>
+      <div class="banner" id="wbanner" hidden></div>
+      <div class="kpis" id="wkpis"></div>
+      <section class="card">
+        <div class="card-h"><div><h2>Who reprices, and how fast</h2><p>Every venue's player props on the affected team, from the moment the recorder saw each change today.</p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt" id="wvenues"></table></div></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><div><h2>Today's changes</h2><p id="wsub">Injury report and NBA.com lineup changes, newest first.</p></div>
+          <div class="filters"><div class="seg" id="wkind" role="group" aria-label="Kind"></div><select class="sel" id="wteam" aria-label="Team"></select></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt wt" id="wevents"></table></div></div>
+      </section>
+    </main>
+    <footer id="wfoot" hidden></footer>
     <main id="v-tonight" hidden>
       <div class="banner" id="nbanner" hidden></div>
       <section class="card tbar"><div class="tfilters" id="ngames"></div></section>
@@ -749,7 +767,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : 'lab';
+let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -870,7 +888,7 @@ const PAGES = [
     ['Minutes Lab', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), 'Projected minutes and stats per team; edit minutes and every stat reprices.', 'lab'],
     ['Tonight', SVG('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'), "Tonight's minutes for every game: the model's adjustments, what the market prices, your what-ifs and the Lab's record.", 'tonight'],
     ['Slate', SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'), "Tonight's games: Vault line vs market, injuries, back-to-backs, pace."],
-    ['Injury Wire', SVG('<path d="M12 3v18M3 12h18"/>'), 'Every injury report change as it posts, with the teammates it moves and how fast each venue reacted.'],
+    ['Injury Wire', SVG('<path d="M12 3v18M3 12h18"/>'), 'Every injury report and lineup change as it posts, and how fast each venue repriced the props it should move.', 'wire'],
   ]],
   ['Markets', [
     ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.'],
@@ -1030,7 +1048,7 @@ $('pages').addEventListener('click', e => {
 });
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT'].includes(h)) show(h.toLowerCase());
+  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE'].includes(h)) show(h.toLowerCase());
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -1084,6 +1102,7 @@ function show(v){
   $('v-track').hidden = $('tfoot').hidden = v !== 'track';
   $('v-edges').hidden = $('efoot').hidden = v !== 'edges';
   $('v-tonight').hidden = $('nfoot').hidden = v !== 'tonight';
+  $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
   $('mode').hidden = lab;
@@ -1093,6 +1112,13 @@ function show(v){
     $('tname').textContent = 'Player Props';
     $('tsub').textContent = 'PROJECTION · MARKET · BLENDED FAIR';
     renderProps();
+    if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'wire'){
+    $('tname').textContent = 'Injury Wire';
+    $('tsub').textContent = 'NEWS · WHO REPRICED · HOW FAST';
+    renderWire();
     if (!boardTried) loadBoard();
     return;
   }
@@ -1307,7 +1333,7 @@ function renderHealth(){
   $('hfoot').innerHTML = `
     <div><b>The recorder</b> runs on GitHub Actions: an hourly check, and on game days a loop from 9am ET to the last tip that polls every 15 minutes, every 5 within 3 hours of a tip. It saves a price only when it changes, and drops a game once it tips, so every row is a pre-game price with the time it was seen.</div>
     <div><b>Where it goes:</b> the <a href="https://github.com/${H0.repo}/tree/${H0.branch}" target="_blank" rel="noopener">${H0.branch}</a> branch, one folder per game day${S ? `. ${S.days} ${S.days === 1 ? 'day' : 'days'} recorded since ${S.first}, ${(S.bytes / 1e6).toFixed(1)} MB` : ''}.${st?.run ? ` <a href="${st.run}" target="_blank" rel="noopener">Latest run</a>.` : ''}</div>
-    <div><b>Model inputs</b> are rebuilt by hand for now. Rosters should be refreshed daily until the season starts; that is not automated yet.</div>`;
+    <div><b>Model inputs</b> rebuild every morning at 7:23 ET (GitHub Actions, nba-daily.yml): box scores, depth charts, player projections, game logs, the model's minutes and rate state, then this page. Fitted models (prop model v2, minutes, consensus) are rebuilt only when a backtest is re-run.</div>`;
 }
 
 // 48h poll timeline: one lane per source, one tick per poll. Hour grid every 6 hours, Eastern time.
@@ -1707,6 +1733,7 @@ async function loadBoard(){
     if (view === 'props') renderProps();
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
+    if (view === 'wire') renderWire();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -2580,6 +2607,70 @@ $('nteams').addEventListener('change', e => {
   store.set('nba-tonight', tonightEdits); renderTonight();
 });
 $('nwhatif').addEventListener('click', e => { if (e.target.id === 'nreset'){ delete tonightEdits[nt.game]; store.set('nba-tonight', tonightEdits); renderTonight(); } });
+
+// ── Injury Wire ───────────────────────────────────────────────────────────
+// Today's injury report and NBA.com lineup changes for teams on the board (prop_board.injury_wire, from the
+// recorder's day files), and for each, how fast every venue moved that team's player props afterwards. The question
+// it answers: is there a window between news and repricing to bet into? A move is any change to a quote after the
+// recorder saw the news (5 to 15 minute polls), including a book pulling the prop; other news can move a quote too.
+let wf = {kind: 'all', team: 'all'};
+const lagTxt = s => s == null ? '' : s < 60 ? 'under 1 min' : s < 3600 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`;
+const WKIND = {inj: 'Injury report', inactive: 'Inactive', five: 'Starting five'};
+function renderWire(){
+  const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
+  const B = PS.board, ev = (B.wire || []).filter(e => e[7]);
+  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No live board');
+  $('wbanner').hidden = !!ev.length;
+  $('wbanner').innerHTML = pick.mode === 'example' || !B.wire ? `<b>The wire fills on game days.</b><span>It needs the recorder's live day: every injury report and lineup change after the first poll of the morning, and every price change since. The example game has neither. Preseason starts October 3.</span>`
+    : `<b>No changes yet today.</b><span>The injury report posts every 15 minutes on game days and NBA.com confirms lineups about 30 minutes before tip.</span>`;
+  const now = B.t || Date.now() / 1000;
+  // venue scoreboard over today's events
+  const V = {};
+  for (const e of ev) for (const [v, [n, m, med, first]] of Object.entries(e[7])){
+    const x = V[v] = V[v] || {ev: 0, n: 0, m: 0, lags: [], old: 0, oldMoved: 0};
+    x.ev++; x.n += n; x.m += m; if (first != null) x.lags.push(first);
+    if (now - e[0] >= 1800){ x.old += 1; x.oldMoved += m > 0 ? 1 : 0; }
+  }
+  const rows = Object.entries(V).map(([v, x]) => { const l = [...x.lags].sort((a, b) => a - b);
+    return {v, ...x, med: l.length ? l[Math.floor(l.length / 2)] : null, w5: x.lags.filter(s => s <= 300).length, w15: x.lags.filter(s => s <= 900).length}; })
+    .sort((a, b) => (a.med ?? 1e9) - (b.med ?? 1e9));
+  $('wvenues').innerHTML = `<thead><tr><th class="l">Venue</th><th>Changes covered</th><th>Quotes affected</th><th title="Changes after which this venue moved at least one quote within 5 minutes">Moved within 5 min</th><th>Within 15 min</th><th title="Median time to this venue's first move after the news">Median first move</th><th title="Changes at least 30 minutes old where this venue has not moved any affected quote">Still not moved (30+ min)</th></tr></thead><tbody>
+    ${rows.length ? rows.map(x => `<tr><td class="l"><b>${esc(x.v)}</b></td><td>${x.ev}</td><td>${x.n.toLocaleString()}</td><td>${pc(x.w5 / Math.max(1, x.ev))}</td><td>${pc(x.w15 / Math.max(1, x.ev))}</td><td>${x.med != null ? lagTxt(x.med) : '<span class="muted">none</span>'}</td><td>${x.old ? `<span class="${x.old - x.oldMoved ? 'warnt' : ''}">${x.old - x.oldMoved} of ${x.old}</span>` : ''}</td></tr>`).join('')
+      : `<tr><td class="l" colspan="7"><p class="empty">No changes with affected props yet.</p></td></tr>`}</tbody>`;
+  // KPIs
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const inj = ev.filter(e => e[1] === 'inj'), outs = inj.filter(e => /^out/i.test(e[6] || ''));
+  const fastest = rows.find(x => x.med != null), slowest = [...rows].filter(x => x.old).sort((a, b) => (b.old - b.oldMoved) / b.old - (a.old - a.oldMoved) / a.old)[0];
+  const plays = ev.length ? edgePlays(B) : [], newsEdges = plays.filter(p => p.types.includes('news'));
+  $('wkpis').innerHTML =
+    kpi('Changes today', ICON.clock, `${ev.length}`, `${inj.length} injury report · ${ev.filter(e => e[1] === 'five').length} lineups confirmed · ${ev.filter(e => e[1] === 'inactive').length} inactive`) +
+    kpi('Ruled out today', ICON.star, `${outs.length}`, outs.length ? outs.slice(0, 3).map(e => esc(e[4])).join(', ') : 'Nobody newly out') +
+    kpi('Fastest to reprice', ICON.pts, fastest ? esc(fastest.v) : 'n/a', fastest ? `median first move ${lagTxt(fastest.med)}${slowest && slowest.old - slowest.oldMoved ? ` · slowest: ${esc(slowest.v)}` : ''}` : 'Needs a change and a price move') +
+    kpi('News edges open', ICON.edit, `${newsEdges.length}`, newsEdges.length ? 'Edges whose price is older than the news (Edges, News lag)' : 'No price is lagging the news by 3%+');
+  // timeline
+  const teams = [...new Set(ev.map(e => e[2]))].sort();
+  $('wkind').innerHTML = [['all', 'All'], ['inj', 'Injury report'], ['five', 'Lineups'], ['inactive', 'Inactive']].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${wf.kind === v}">${l}</button>`).join('');
+  if (wf.team !== 'all' && !teams.includes(wf.team)) wf.team = 'all';
+  $('wteam').innerHTML = `<option value="all">All teams</option>${teams.map(t => `<option value="${t}"${wf.team === t ? ' selected' : ''}>${t}</option>`).join('')}`;
+  const E = ev.filter(e => (wf.kind === 'all' || e[1] === wf.kind) && (wf.team === 'all' || e[2] === wf.team));
+  $('wsub').textContent = `${E.length} ${E.length === 1 ? 'change' : 'changes'}, newest first. A venue chip shows its first move after the news; red means it has not moved yet.`;
+  const chips = r => Object.entries(r).sort((a, b) => (a[1][3] ?? 1e9) - (b[1][3] ?? 1e9)).map(([v, [n, m, med, first]]) =>
+    `<span class="${first == null ? 'none' : first <= 300 ? 'fast' : first > 900 ? 'slow' : ''}" title="${m} of ${n} quotes moved${med != null ? `, median ${lagTxt(med)}` : ''}">${esc(v)} ${first == null ? 'not yet' : lagTxt(first)}</span>`).join('');
+  $('wevents').innerHTML = `<thead><tr><th class="l">Seen (ET)</th><th class="l">Team</th><th class="l">Change</th><th class="l">How fast each venue moved</th><th title="Edges on this team the Edges page tags News lag">News edges</th></tr></thead><tbody>
+    ${E.length ? E.map(e => { const ne = newsEdges.filter(p => p.r.tm === e[2]).length;
+      return `<tr><td class="l num">${clock(e[0])}</td><td class="l"><b>${esc(e[2])}</b></td>
+        <td class="l"><b>${e[1] === 'five' ? 'Starting five confirmed' : esc(e[4])}</b><small>${e[1] === 'five' ? esc(e[4]) : `${WKIND[e[1]]}: ${esc(e[5] || 'not listed')} to <span class="${/out|inactive/i.test(e[6] || '') ? 'neg' : ''}">${esc(e[6])}</span>`}</small></td>
+        <td class="l"><div class="rx">${chips(e[7]) || '<span>No props listed for this team</span>'}</div></td>
+        <td>${ne ? `<a href="#edges" class="linkbtn" data-wedges="1">${ne}</a>` : ''}</td></tr>`; }).join('')
+      : `<tr><td class="l" colspan="5"><p class="empty">${ev.length ? 'No changes match these filters.' : 'No changes recorded yet today.'}</p></td></tr>`}</tbody>`;
+  $('wfoot').innerHTML = `
+    <div><b>Changes</b> are the official injury report (posted every 15 minutes on game days) and NBA.com's lineups, as the recorder saw them after its first poll of the day, which is the starting state. The time is when the recorder saw the change; it polls every 5 minutes within 3 hours of a tip and every 15 minutes otherwise, so a venue that moved in the same poll shows as under 1 minute.</div>
+    <div><b>A move</b> is any change to one of that team's player prop quotes after the news, including a book pulling the prop. Other news can move a quote too, so read a fast move as an upper bound on reaction time, and "not yet" as a price that is older than the news. Those stale prices are what the Edges page tags News lag.</div>`;
+}
+$('wkind').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ wf.kind = b.dataset.v; renderWire(); } });
+$('wteam').addEventListener('change', e => { wf.team = e.target.value; renderWire(); });
+$('wevents').addEventListener('click', e => { if (e.target.closest('[data-wedges]')){ ef.type = 'news'; } });
 
 show(view);
 </script>
