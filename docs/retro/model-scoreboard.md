@@ -83,10 +83,10 @@ spread  FanDuel     n= 22  toward  14 / away   6  avg move toward +0.34 pts ±0.
 total   Pinnacle    n= 13  toward   9 / away   3  avg move toward +0.44 pts ±0.22
 total   FanDuel     n= 13  toward   9 / away   2  avg move toward +0.19 pts ±0.19
         -> too few games (13 of 50)
-props   Pinnacle    n= 23  toward   8 / away   5  net share toward +0.13 ±0.21
-props   FanDuel     n=  3  toward   1 / away   0  net share toward +0.33 ±0.54
+props   Pinnacle    n= 24  toward   9 / away   5  net share toward +0.17 ±0.20
+props   FanDuel     n=  4  toward   1 / away   0  net share toward +0.25 ±0.48
 props   DraftKings  n=  5  toward   3 / away   0  net share toward +0.60 ±0.36
-        -> too few props (23 of 100)
+        -> too few props (24 of 100)
 ```
 
 ## Signals: Kalshi, Polymarket sharp accounts, withheld props
