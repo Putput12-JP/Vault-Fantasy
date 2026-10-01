@@ -1,0 +1,1515 @@
+{
+ "rules": {
+  "min_pairs": 2000,
+  "z_explore": 3.0,
+  "z_test": 2.0,
+  "min_c": 0.01
+ },
+ "n_legs": {
+  "explore": null,
+  "test": null
+ },
+ "families": [
+  {
+   "family": "Teammates: points with points",
+   "key": [
+    "team",
+    "pts",
+    "pts"
+   ],
+   "combo": "over / under",
+   "candidate": true,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "pts",
+    "b": "pts",
+    "n": 9492,
+    "games": 518,
+    "c": -0.00899,
+    "se": 0.00222,
+    "z": -4.05,
+    "lift": 0.9641,
+    "oo": 0.2301,
+    "oo_indep": 0.2538
+   },
+   "test": {
+    "rel": "team",
+    "a": "pts",
+    "b": "pts",
+    "n": 8478,
+    "games": 392,
+    "c": -0.00615,
+    "se": 0.00242,
+    "z": -2.54,
+    "lift": 0.9754,
+    "oo": 0.2138,
+    "oo_indep": 0.2507
+   },
+   "close": {
+    "rel": "team",
+    "a": "pts",
+    "b": "pts",
+    "n": 1203,
+    "games": 103,
+    "c": -0.00338,
+    "se": 0.00605,
+    "z": -0.56,
+    "lift": 0.9865,
+    "oo": 0.2219,
+    "oo_indep": 0.2498
+   }
+  },
+  {
+   "family": "Teammates: assists with 3-pointers",
+   "key": [
+    "team",
+    "ast",
+    "3pm"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": true,
+   "pass": true,
+   "explore": {
+    "rel": "team",
+    "a": "ast",
+    "b": "3pm",
+    "n": 4446,
+    "games": 476,
+    "c": 0.01256,
+    "se": 0.00375,
+    "z": 3.35,
+    "lift": 1.0502,
+    "oo": 0.2193,
+    "oo_indep": 0.2624
+   },
+   "test": {
+    "rel": "team",
+    "a": "ast",
+    "b": "3pm",
+    "n": 6817,
+    "games": 364,
+    "c": 0.01044,
+    "se": 0.00252,
+    "z": 4.15,
+    "lift": 1.0418,
+    "oo": 0.228,
+    "oo_indep": 0.2448
+   },
+   "close": {
+    "rel": "team",
+    "a": "ast",
+    "b": "3pm",
+    "n": 2945,
+    "games": 74,
+    "c": 0.00755,
+    "se": 0.00285,
+    "z": 2.65,
+    "lift": 1.0302,
+    "oo": 0.2109,
+    "oo_indep": 0.2412
+   }
+  },
+  {
+   "family": "Teammates: points with assists",
+   "key": [
+    "team",
+    "pts",
+    "ast"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": true,
+   "pass": true,
+   "explore": {
+    "rel": "team",
+    "a": "pts",
+    "b": "ast",
+    "n": 10548,
+    "games": 510,
+    "c": 0.00805,
+    "se": 0.00242,
+    "z": 3.33,
+    "lift": 1.0322,
+    "oo": 0.2289,
+    "oo_indep": 0.2583
+   },
+   "test": {
+    "rel": "team",
+    "a": "pts",
+    "b": "ast",
+    "n": 12096,
+    "games": 390,
+    "c": 0.01066,
+    "se": 0.00209,
+    "z": 5.1,
+    "lift": 1.0426,
+    "oo": 0.2261,
+    "oo_indep": 0.2501
+   },
+   "close": {
+    "rel": "team",
+    "a": "pts",
+    "b": "ast",
+    "n": 2522,
+    "games": 94,
+    "c": 0.00942,
+    "se": 0.00367,
+    "z": 2.57,
+    "lift": 1.0377,
+    "oo": 0.2197,
+    "oo_indep": 0.2488
+   }
+  },
+  {
+   "family": "Teammates: points with pts + reb + ast",
+   "key": [
+    "team",
+    "pts",
+    "pra"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "pts",
+    "b": "pra",
+    "n": 18513,
+    "games": 522,
+    "c": -0.00499,
+    "se": 0.00197,
+    "z": -2.53,
+    "lift": 0.98,
+    "oo": 0.2274,
+    "oo_indep": 0.2554
+   },
+   "test": {
+    "rel": "team",
+    "a": "pts",
+    "b": "pra",
+    "n": 14989,
+    "games": 384,
+    "c": -0.00416,
+    "se": 0.00226,
+    "z": -1.84,
+    "lift": 0.9834,
+    "oo": 0.2196,
+    "oo_indep": 0.2503
+   },
+   "close": {
+    "rel": "team",
+    "a": "pts",
+    "b": "pra",
+    "n": 1688,
+    "games": 68,
+    "c": -0.00011,
+    "se": 0.00634,
+    "z": -0.02,
+    "lift": 0.9996,
+    "oo": 0.2056,
+    "oo_indep": 0.2498
+   }
+  },
+  {
+   "family": "Opponents: rebounds with rebounds",
+   "key": [
+    "opp",
+    "reb",
+    "reb"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "reb",
+    "n": 6234,
+    "games": 489,
+    "c": 0.00751,
+    "se": 0.00319,
+    "z": 2.35,
+    "lift": 1.0301,
+    "oo": 0.2166,
+    "oo_indep": 0.2594
+   },
+   "test": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "reb",
+    "n": 7824,
+    "games": 370,
+    "c": 0.00338,
+    "se": 0.00287,
+    "z": 1.18,
+    "lift": 1.0135,
+    "oo": 0.2393,
+    "oo_indep": 0.2466
+   },
+   "close": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "reb",
+    "n": 2188,
+    "games": 75,
+    "c": -0.00046,
+    "se": 0.00438,
+    "z": -0.1,
+    "lift": 0.9982,
+    "oo": 0.2468,
+    "oo_indep": 0.2445
+   }
+  },
+  {
+   "family": "Teammates: points with 3-pointers",
+   "key": [
+    "team",
+    "pts",
+    "3pm"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "pts",
+    "b": "3pm",
+    "n": 7531,
+    "games": 495,
+    "c": -0.00602,
+    "se": 0.00295,
+    "z": -2.04,
+    "lift": 0.9759,
+    "oo": 0.2093,
+    "oo_indep": 0.2573
+   },
+   "test": {
+    "rel": "team",
+    "a": "pts",
+    "b": "3pm",
+    "n": 9484,
+    "games": 364,
+    "c": -0.00758,
+    "se": 0.00247,
+    "z": -3.07,
+    "lift": 0.9697,
+    "oo": 0.2151,
+    "oo_indep": 0.2466
+   },
+   "close": {
+    "rel": "team",
+    "a": "pts",
+    "b": "3pm",
+    "n": 2517,
+    "games": 77,
+    "c": -0.01033,
+    "se": 0.00374,
+    "z": -2.76,
+    "lift": 0.9587,
+    "oo": 0.2054,
+    "oo_indep": 0.2436
+   }
+  },
+  {
+   "family": "Teammates: pts + reb + ast with pts + reb + ast",
+   "key": [
+    "team",
+    "pra",
+    "pra"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "pra",
+    "b": "pra",
+    "n": 14750,
+    "games": 908,
+    "c": -0.00368,
+    "se": 0.00196,
+    "z": -1.88,
+    "lift": 0.9853,
+    "oo": 0.2302,
+    "oo_indep": 0.2567
+   },
+   "test": {
+    "rel": "team",
+    "a": "pra",
+    "b": "pra",
+    "n": 6906,
+    "games": 379,
+    "c": -0.00415,
+    "se": 0.00281,
+    "z": -1.47,
+    "lift": 0.9834,
+    "oo": 0.2226,
+    "oo_indep": 0.2502
+   },
+   "close": {
+    "rel": "team",
+    "a": "pra",
+    "b": "pra",
+    "n": 640,
+    "games": 62,
+    "c": 0.00712,
+    "se": 0.0121,
+    "z": 0.59,
+    "lift": 1.0285,
+    "oo": 0.2047,
+    "oo_indep": 0.2491
+   }
+  },
+  {
+   "family": "Teammates: assists with pts + reb + ast",
+   "key": [
+    "team",
+    "ast",
+    "pra"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "ast",
+    "b": "pra",
+    "n": 10539,
+    "games": 513,
+    "c": 0.00446,
+    "se": 0.0024,
+    "z": 1.86,
+    "lift": 1.0179,
+    "oo": 0.2219,
+    "oo_indep": 0.2603
+   },
+   "test": {
+    "rel": "team",
+    "a": "ast",
+    "b": "pra",
+    "n": 10793,
+    "games": 383,
+    "c": 0.00863,
+    "se": 0.00236,
+    "z": 3.65,
+    "lift": 1.0345,
+    "oo": 0.2285,
+    "oo_indep": 0.2504
+   },
+   "close": {
+    "rel": "team",
+    "a": "ast",
+    "b": "pra",
+    "n": 1831,
+    "games": 69,
+    "c": 0.00937,
+    "se": 0.00479,
+    "z": 1.96,
+    "lift": 1.0375,
+    "oo": 0.1972,
+    "oo_indep": 0.2474
+   }
+  },
+  {
+   "family": "Opponents: points with 3-pointers",
+   "key": [
+    "opp",
+    "pts",
+    "3pm"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "3pm",
+    "n": 8336,
+    "games": 490,
+    "c": 0.00394,
+    "se": 0.00242,
+    "z": 1.63,
+    "lift": 1.0158,
+    "oo": 0.2208,
+    "oo_indep": 0.2579
+   },
+   "test": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "3pm",
+    "n": 10839,
+    "games": 366,
+    "c": -0.00037,
+    "se": 0.00237,
+    "z": -0.16,
+    "lift": 0.9985,
+    "oo": 0.2255,
+    "oo_indep": 0.2466
+   },
+   "close": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "3pm",
+    "n": 2636,
+    "games": 73,
+    "c": -0.0022,
+    "se": 0.00365,
+    "z": -0.6,
+    "lift": 0.9912,
+    "oo": 0.1999,
+    "oo_indep": 0.2431
+   }
+  },
+  {
+   "family": "Teammates: rebounds with 3-pointers",
+   "key": [
+    "team",
+    "reb",
+    "3pm"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "reb",
+    "b": "3pm",
+    "n": 5913,
+    "games": 488,
+    "c": 0.00508,
+    "se": 0.00319,
+    "z": 1.59,
+    "lift": 1.0203,
+    "oo": 0.1994,
+    "oo_indep": 0.2604
+   },
+   "test": {
+    "rel": "team",
+    "a": "reb",
+    "b": "3pm",
+    "n": 8684,
+    "games": 363,
+    "c": 0.00211,
+    "se": 0.00254,
+    "z": 0.83,
+    "lift": 1.0084,
+    "oo": 0.2356,
+    "oo_indep": 0.2446
+   },
+   "close": {
+    "rel": "team",
+    "a": "reb",
+    "b": "3pm",
+    "n": 3416,
+    "games": 76,
+    "c": 0.00541,
+    "se": 0.00405,
+    "z": 1.34,
+    "lift": 1.0216,
+    "oo": 0.2324,
+    "oo_indep": 0.2403
+   }
+  },
+  {
+   "family": "Opponents: assists with pts + reb + ast",
+   "key": [
+    "opp",
+    "ast",
+    "pra"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "ast",
+    "b": "pra",
+    "n": 11823,
+    "games": 511,
+    "c": 0.00344,
+    "se": 0.0023,
+    "z": 1.5,
+    "lift": 1.0138,
+    "oo": 0.2202,
+    "oo_indep": 0.2606
+   },
+   "test": {
+    "rel": "opp",
+    "a": "ast",
+    "b": "pra",
+    "n": 12578,
+    "games": 382,
+    "c": 0.00321,
+    "se": 0.00198,
+    "z": 1.62,
+    "lift": 1.0129,
+    "oo": 0.2244,
+    "oo_indep": 0.2504
+   },
+   "close": {
+    "rel": "opp",
+    "a": "ast",
+    "b": "pra",
+    "n": 1937,
+    "games": 64,
+    "c": -0.00392,
+    "se": 0.00453,
+    "z": -0.87,
+    "lift": 0.9843,
+    "oo": 0.176,
+    "oo_indep": 0.2467
+   }
+  },
+  {
+   "family": "Teammates: points with rebounds",
+   "key": [
+    "team",
+    "pts",
+    "reb"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "pts",
+    "b": "reb",
+    "n": 14535,
+    "games": 522,
+    "c": 0.003,
+    "se": 0.00206,
+    "z": 1.46,
+    "lift": 1.012,
+    "oo": 0.2219,
+    "oo_indep": 0.2566
+   },
+   "test": {
+    "rel": "team",
+    "a": "pts",
+    "b": "reb",
+    "n": 15214,
+    "games": 389,
+    "c": -0.00148,
+    "se": 0.00201,
+    "z": -0.74,
+    "lift": 0.9941,
+    "oo": 0.2275,
+    "oo_indep": 0.2484
+   },
+   "close": {
+    "rel": "team",
+    "a": "pts",
+    "b": "reb",
+    "n": 3017,
+    "games": 105,
+    "c": 0.00208,
+    "se": 0.00407,
+    "z": 0.51,
+    "lift": 1.0083,
+    "oo": 0.235,
+    "oo_indep": 0.2462
+   }
+  },
+  {
+   "family": "Opponents: 3-pointers with pts + reb + ast",
+   "key": [
+    "opp",
+    "3pm",
+    "pra"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "3pm",
+    "b": "pra",
+    "n": 8280,
+    "games": 491,
+    "c": 0.00365,
+    "se": 0.00267,
+    "z": 1.37,
+    "lift": 1.0146,
+    "oo": 0.2145,
+    "oo_indep": 0.2592
+   },
+   "test": {
+    "rel": "opp",
+    "a": "3pm",
+    "b": "pra",
+    "n": 9305,
+    "games": 360,
+    "c": 0.00368,
+    "se": 0.00241,
+    "z": 1.53,
+    "lift": 1.0147,
+    "oo": 0.2269,
+    "oo_indep": 0.2461
+   },
+   "close": {
+    "rel": "opp",
+    "a": "3pm",
+    "b": "pra",
+    "n": 1897,
+    "games": 64,
+    "c": 0.0038,
+    "se": 0.00451,
+    "z": 0.84,
+    "lift": 1.0152,
+    "oo": 0.1877,
+    "oo_indep": 0.2421
+   }
+  },
+  {
+   "family": "Teammates: rebounds with pts + reb + ast",
+   "key": [
+    "team",
+    "reb",
+    "pra"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "reb",
+    "b": "pra",
+    "n": 14398,
+    "games": 523,
+    "c": -0.00278,
+    "se": 0.00212,
+    "z": -1.31,
+    "lift": 0.9889,
+    "oo": 0.2142,
+    "oo_indep": 0.2586
+   },
+   "test": {
+    "rel": "team",
+    "a": "reb",
+    "b": "pra",
+    "n": 13247,
+    "games": 382,
+    "c": -0.00113,
+    "se": 0.0023,
+    "z": -0.49,
+    "lift": 0.9955,
+    "oo": 0.2296,
+    "oo_indep": 0.2479
+   },
+   "close": {
+    "rel": "team",
+    "a": "reb",
+    "b": "pra",
+    "n": 2179,
+    "games": 69,
+    "c": -0.00308,
+    "se": 0.00571,
+    "z": -0.54,
+    "lift": 0.9877,
+    "oo": 0.2318,
+    "oo_indep": 0.2459
+   }
+  },
+  {
+   "family": "Opponents: assists with assists",
+   "key": [
+    "opp",
+    "ast",
+    "ast"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "ast",
+    "b": "ast",
+    "n": 3428,
+    "games": 447,
+    "c": 0.00451,
+    "se": 0.00394,
+    "z": 1.14,
+    "lift": 1.018,
+    "oo": 0.215,
+    "oo_indep": 0.2641
+   },
+   "test": {
+    "rel": "opp",
+    "a": "ast",
+    "b": "ast",
+    "n": 5160,
+    "games": 361,
+    "c": 0.00449,
+    "se": 0.00315,
+    "z": 1.43,
+    "lift": 1.0179,
+    "oo": 0.2155,
+    "oo_indep": 0.2503
+   },
+   "close": {
+    "rel": "opp",
+    "a": "ast",
+    "b": "ast",
+    "n": 1629,
+    "games": 70,
+    "c": -0.00066,
+    "se": 0.0054,
+    "z": -0.12,
+    "lift": 0.9974,
+    "oo": 0.1903,
+    "oo_indep": 0.2465
+   }
+  },
+  {
+   "family": "Opponents: pts + reb + ast with pts + reb + ast",
+   "key": [
+    "opp",
+    "pra",
+    "pra"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "pra",
+    "b": "pra",
+    "n": 16400,
+    "games": 884,
+    "c": 0.00178,
+    "se": 0.0019,
+    "z": 0.94,
+    "lift": 1.0071,
+    "oo": 0.2324,
+    "oo_indep": 0.2568
+   },
+   "test": {
+    "rel": "opp",
+    "a": "pra",
+    "b": "pra",
+    "n": 8014,
+    "games": 378,
+    "c": 0.00501,
+    "se": 0.00261,
+    "z": 1.92,
+    "lift": 1.0201,
+    "oo": 0.236,
+    "oo_indep": 0.2504
+   },
+   "close": {
+    "rel": "opp",
+    "a": "pra",
+    "b": "pra",
+    "n": 647,
+    "games": 51,
+    "c": 0.0146,
+    "se": 0.01172,
+    "z": 1.25,
+    "lift": 1.0584,
+    "oo": 0.1917,
+    "oo_indep": 0.2489
+   }
+  },
+  {
+   "family": "Teammates: assists with assists",
+   "key": [
+    "team",
+    "ast",
+    "ast"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "ast",
+    "b": "ast",
+    "n": 3082,
+    "games": 469,
+    "c": -0.00366,
+    "se": 0.00418,
+    "z": -0.88,
+    "lift": 0.9854,
+    "oo": 0.2057,
+    "oo_indep": 0.2639
+   },
+   "test": {
+    "rel": "team",
+    "a": "ast",
+    "b": "ast",
+    "n": 4397,
+    "games": 375,
+    "c": -0.00617,
+    "se": 0.00353,
+    "z": -1.75,
+    "lift": 0.9753,
+    "oo": 0.2067,
+    "oo_indep": 0.2502
+   },
+   "close": {
+    "rel": "team",
+    "a": "ast",
+    "b": "ast",
+    "n": 1522,
+    "games": 76,
+    "c": -0.01041,
+    "se": 0.0047,
+    "z": -2.21,
+    "lift": 0.9584,
+    "oo": 0.1807,
+    "oo_indep": 0.2463
+   }
+  },
+  {
+   "family": "Opponents: 3-pointers with 3-pointers",
+   "key": [
+    "opp",
+    "3pm",
+    "3pm"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "3pm",
+    "b": "3pm",
+    "n": 1741,
+    "games": 370,
+    "c": 0.00456,
+    "se": 0.00544,
+    "z": 0.84,
+    "lift": 1.0182,
+    "oo": 0.2154,
+    "oo_indep": 0.2625
+   },
+   "test": {
+    "rel": "opp",
+    "a": "3pm",
+    "b": "3pm",
+    "n": 3330,
+    "games": 258,
+    "c": -0.00134,
+    "se": 0.00382,
+    "z": -0.35,
+    "lift": 0.9947,
+    "oo": 0.2222,
+    "oo_indep": 0.2425
+   },
+   "close": {
+    "rel": "opp",
+    "a": "3pm",
+    "b": "3pm",
+    "n": 1611,
+    "games": 66,
+    "c": -0.00042,
+    "se": 0.00536,
+    "z": -0.08,
+    "lift": 0.9983,
+    "oo": 0.2005,
+    "oo_indep": 0.2365
+   }
+  },
+  {
+   "family": "Opponents: points with rebounds",
+   "key": [
+    "opp",
+    "pts",
+    "reb"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "reb",
+    "n": 16065,
+    "games": 518,
+    "c": -0.00131,
+    "se": 0.00189,
+    "z": -0.69,
+    "lift": 0.9948,
+    "oo": 0.2213,
+    "oo_indep": 0.2567
+   },
+   "test": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "reb",
+    "n": 17348,
+    "games": 390,
+    "c": -0.0037,
+    "se": 0.00182,
+    "z": -2.04,
+    "lift": 0.9852,
+    "oo": 0.2269,
+    "oo_indep": 0.2487
+   },
+   "close": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "reb",
+    "n": 3218,
+    "games": 104,
+    "c": -0.01314,
+    "se": 0.00431,
+    "z": -3.05,
+    "lift": 0.9474,
+    "oo": 0.2169,
+    "oo_indep": 0.2475
+   }
+  },
+  {
+   "family": "Opponents: assists with 3-pointers",
+   "key": [
+    "opp",
+    "ast",
+    "3pm"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "ast",
+    "b": "3pm",
+    "n": 4938,
+    "games": 473,
+    "c": 0.00207,
+    "se": 0.00332,
+    "z": 0.62,
+    "lift": 1.0083,
+    "oo": 0.206,
+    "oo_indep": 0.2623
+   },
+   "test": {
+    "rel": "opp",
+    "a": "ast",
+    "b": "3pm",
+    "n": 7927,
+    "games": 364,
+    "c": 0.00531,
+    "se": 0.00237,
+    "z": 2.24,
+    "lift": 1.0212,
+    "oo": 0.2206,
+    "oo_indep": 0.2454
+   },
+   "close": {
+    "rel": "opp",
+    "a": "ast",
+    "b": "3pm",
+    "n": 3202,
+    "games": 70,
+    "c": 0.00503,
+    "se": 0.003,
+    "z": 1.68,
+    "lift": 1.0201,
+    "oo": 0.2027,
+    "oo_indep": 0.2413
+   }
+  },
+  {
+   "family": "Opponents: points with pts + reb + ast",
+   "key": [
+    "opp",
+    "pts",
+    "pra"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "pra",
+    "n": 20595,
+    "games": 521,
+    "c": 0.00115,
+    "se": 0.00194,
+    "z": 0.59,
+    "lift": 1.0046,
+    "oo": 0.2314,
+    "oo_indep": 0.2559
+   },
+   "test": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "pra",
+    "n": 17134,
+    "games": 385,
+    "c": 0.00237,
+    "se": 0.00197,
+    "z": 1.2,
+    "lift": 1.0095,
+    "oo": 0.2276,
+    "oo_indep": 0.2505
+   },
+   "close": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "pra",
+    "n": 1744,
+    "games": 58,
+    "c": 0.00608,
+    "se": 0.00759,
+    "z": 0.8,
+    "lift": 1.0243,
+    "oo": 0.207,
+    "oo_indep": 0.2496
+   }
+  },
+  {
+   "family": "Opponents: points with assists",
+   "key": [
+    "opp",
+    "pts",
+    "ast"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "ast",
+    "n": 11810,
+    "games": 508,
+    "c": 0.00078,
+    "se": 0.0022,
+    "z": 0.35,
+    "lift": 1.0031,
+    "oo": 0.2227,
+    "oo_indep": 0.2588
+   },
+   "test": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "ast",
+    "n": 13925,
+    "games": 389,
+    "c": 0.00156,
+    "se": 0.00175,
+    "z": 0.89,
+    "lift": 1.0062,
+    "oo": 0.2187,
+    "oo_indep": 0.2502
+   },
+   "close": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "ast",
+    "n": 2686,
+    "games": 88,
+    "c": -0.00135,
+    "se": 0.00368,
+    "z": -0.37,
+    "lift": 0.9946,
+    "oo": 0.1951,
+    "oo_indep": 0.2475
+   }
+  },
+  {
+   "family": "Teammates: 3-pointers with pts + reb + ast",
+   "key": [
+    "team",
+    "3pm",
+    "pra"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "3pm",
+    "b": "pra",
+    "n": 7518,
+    "games": 496,
+    "c": -0.001,
+    "se": 0.00289,
+    "z": -0.35,
+    "lift": 0.996,
+    "oo": 0.2086,
+    "oo_indep": 0.2586
+   },
+   "test": {
+    "rel": "team",
+    "a": "3pm",
+    "b": "pra",
+    "n": 8025,
+    "games": 359,
+    "c": -0.00335,
+    "se": 0.00254,
+    "z": -1.32,
+    "lift": 0.9866,
+    "oo": 0.2188,
+    "oo_indep": 0.2458
+   },
+   "close": {
+    "rel": "team",
+    "a": "3pm",
+    "b": "pra",
+    "n": 1814,
+    "games": 69,
+    "c": -0.00687,
+    "se": 0.00566,
+    "z": -1.21,
+    "lift": 0.9725,
+    "oo": 0.204,
+    "oo_indep": 0.2427
+   }
+  },
+  {
+   "family": "Teammates: rebounds with rebounds",
+   "key": [
+    "team",
+    "reb",
+    "reb"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "reb",
+    "b": "reb",
+    "n": 5688,
+    "games": 509,
+    "c": -0.00106,
+    "se": 0.00339,
+    "z": -0.31,
+    "lift": 0.9957,
+    "oo": 0.1955,
+    "oo_indep": 0.2595
+   },
+   "test": {
+    "rel": "team",
+    "a": "reb",
+    "b": "reb",
+    "n": 6816,
+    "games": 378,
+    "c": -0.00328,
+    "se": 0.00305,
+    "z": -1.08,
+    "lift": 0.9869,
+    "oo": 0.2302,
+    "oo_indep": 0.2461
+   },
+   "close": {
+    "rel": "team",
+    "a": "reb",
+    "b": "reb",
+    "n": 2009,
+    "games": 83,
+    "c": -0.00402,
+    "se": 0.00517,
+    "z": -0.78,
+    "lift": 0.9839,
+    "oo": 0.2459,
+    "oo_indep": 0.2436
+   }
+  },
+  {
+   "family": "Teammates: 3-pointers with 3-pointers",
+   "key": [
+    "team",
+    "3pm",
+    "3pm"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "3pm",
+    "b": "3pm",
+    "n": 1560,
+    "games": 398,
+    "c": 0.00134,
+    "se": 0.0059,
+    "z": 0.23,
+    "lift": 1.0054,
+    "oo": 0.2103,
+    "oo_indep": 0.2638
+   },
+   "test": {
+    "rel": "team",
+    "a": "3pm",
+    "b": "3pm",
+    "n": 2846,
+    "games": 261,
+    "c": -0.0106,
+    "se": 0.00441,
+    "z": -2.41,
+    "lift": 0.9576,
+    "oo": 0.2105,
+    "oo_indep": 0.2424
+   },
+   "close": {
+    "rel": "team",
+    "a": "3pm",
+    "b": "3pm",
+    "n": 1457,
+    "games": 72,
+    "c": -0.01274,
+    "se": 0.00603,
+    "z": -2.11,
+    "lift": 0.9491,
+    "oo": 0.1922,
+    "oo_indep": 0.2365
+   }
+  },
+  {
+   "family": "Opponents: points with points",
+   "key": [
+    "opp",
+    "pts",
+    "pts"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "pts",
+    "n": 10485,
+    "games": 509,
+    "c": -0.0004,
+    "se": 0.00203,
+    "z": -0.2,
+    "lift": 0.9984,
+    "oo": 0.2328,
+    "oo_indep": 0.2541
+   },
+   "test": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "pts",
+    "n": 9730,
+    "games": 384,
+    "c": 0.00185,
+    "se": 0.00223,
+    "z": 0.83,
+    "lift": 1.0074,
+    "oo": 0.2272,
+    "oo_indep": 0.2508
+   },
+   "close": {
+    "rel": "opp",
+    "a": "pts",
+    "b": "pts",
+    "n": 1226,
+    "games": 91,
+    "c": 0.00309,
+    "se": 0.00672,
+    "z": 0.46,
+    "lift": 1.0124,
+    "oo": 0.2031,
+    "oo_indep": 0.25
+   }
+  },
+  {
+   "family": "Opponents: rebounds with assists",
+   "key": [
+    "opp",
+    "reb",
+    "ast"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "ast",
+    "n": 9164,
+    "games": 506,
+    "c": 0.00021,
+    "se": 0.00258,
+    "z": 0.08,
+    "lift": 1.0008,
+    "oo": 0.2045,
+    "oo_indep": 0.2615
+   },
+   "test": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "ast",
+    "n": 12538,
+    "games": 383,
+    "c": -0.00219,
+    "se": 0.00206,
+    "z": -1.06,
+    "lift": 0.9912,
+    "oo": 0.2219,
+    "oo_indep": 0.2482
+   },
+   "close": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "ast",
+    "n": 3712,
+    "games": 75,
+    "c": -0.00315,
+    "se": 0.00293,
+    "z": -1.08,
+    "lift": 0.9874,
+    "oo": 0.2163,
+    "oo_indep": 0.2453
+   }
+  },
+  {
+   "family": "Opponents: rebounds with 3-pointers",
+   "key": [
+    "opp",
+    "reb",
+    "3pm"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "3pm",
+    "n": 6438,
+    "games": 486,
+    "c": -0.00023,
+    "se": 0.0031,
+    "z": -0.07,
+    "lift": 0.9991,
+    "oo": 0.2022,
+    "oo_indep": 0.2612
+   },
+   "test": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "3pm",
+    "n": 9913,
+    "games": 364,
+    "c": -0.00203,
+    "se": 0.0022,
+    "z": -0.92,
+    "lift": 0.9919,
+    "oo": 0.2299,
+    "oo_indep": 0.2447
+   },
+   "close": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "3pm",
+    "n": 3707,
+    "games": 70,
+    "c": -0.00047,
+    "se": 0.00295,
+    "z": -0.16,
+    "lift": 0.9981,
+    "oo": 0.2158,
+    "oo_indep": 0.2404
+   }
+  },
+  {
+   "family": "Teammates: rebounds with assists",
+   "key": [
+    "team",
+    "reb",
+    "ast"
+   ],
+   "combo": "over / over (or under / under)",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "team",
+    "a": "reb",
+    "b": "ast",
+    "n": 8313,
+    "games": 507,
+    "c": 0.00015,
+    "se": 0.00285,
+    "z": 0.05,
+    "lift": 1.0006,
+    "oo": 0.1985,
+    "oo_indep": 0.2617
+   },
+   "test": {
+    "rel": "team",
+    "a": "reb",
+    "b": "ast",
+    "n": 10953,
+    "games": 387,
+    "c": -0.00057,
+    "se": 0.00222,
+    "z": -0.25,
+    "lift": 0.9977,
+    "oo": 0.2224,
+    "oo_indep": 0.248
+   },
+   "close": {
+    "rel": "team",
+    "a": "reb",
+    "b": "ast",
+    "n": 3461,
+    "games": 85,
+    "c": -0.00189,
+    "se": 0.00355,
+    "z": -0.53,
+    "lift": 0.9925,
+    "oo": 0.2216,
+    "oo_indep": 0.2457
+   }
+  },
+  {
+   "family": "Opponents: rebounds with pts + reb + ast",
+   "key": [
+    "opp",
+    "reb",
+    "pra"
+   ],
+   "combo": "over / under",
+   "candidate": false,
+   "pass": false,
+   "explore": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "pra",
+    "n": 16047,
+    "games": 518,
+    "c": 0.0,
+    "se": 0.00205,
+    "z": 0.0,
+    "lift": 1.0,
+    "oo": 0.2178,
+    "oo_indep": 0.2589
+   },
+   "test": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "pra",
+    "n": 15195,
+    "games": 382,
+    "c": -0.00138,
+    "se": 0.00206,
+    "z": -0.67,
+    "lift": 0.9945,
+    "oo": 0.2321,
+    "oo_indep": 0.248
+   },
+   "close": {
+    "rel": "opp",
+    "a": "reb",
+    "b": "pra",
+    "n": 2284,
+    "games": 64,
+    "c": -0.01013,
+    "se": 0.00544,
+    "z": -1.86,
+    "lift": 0.9595,
+    "oo": 0.2189,
+    "oo_indep": 0.2467
+   }
+  }
+ ],
+ "verdict": "GO"
+}
