@@ -493,7 +493,135 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 }
 @media (max-width:480px){ .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px} .kpi .val{font-size:20px} }
 @media (prefers-reduced-motion:reduce){ .btn,.switch input::after,.prog .tr i,.sidebar{transition:none} }
-/* Backtests */
+/* What Works */
+.wk-sec-wrap{display:grid;gap:var(--gap);min-width:0}
+.wk-lede{margin:0;font-size:15px;color:var(--fg2);max-width:72ch}
+.wk-lede b{color:var(--fg);font-weight:500}
+.wk-lede.sm{font-size:13.5px}
+.wk-sec{margin:10px 0 -4px;font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--fg3);letter-spacing:.08em;text-transform:uppercase}
+.wk-how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.wk-how div{padding:16px 20px;display:grid;gap:4px;align-content:start}
+.wk-how div + div{border-left:1px solid var(--border)}
+.wk-how b{font-size:13.5px;font-weight:600}
+.wk-how p{margin:0;font-size:12.5px;color:var(--fg2)}
+.wk-tag{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:var(--r-pill);font-size:11.5px;font-weight:600;letter-spacing:.03em;white-space:nowrap;border:1px solid var(--border2);color:var(--fg2)}
+.wk-tag.passed{background:rgba(74,222,128,.08);color:var(--up);border-color:rgba(74,222,128,.3)}
+.wk-tag.proven{background:rgba(74,222,128,.16);color:var(--up);border-color:rgba(74,222,128,.5)}
+.wk-tag.watch{background:rgba(251,191,36,.1);color:var(--warn);border-color:rgba(251,191,36,.35)}
+.wk-tag.no{background:rgba(248,113,113,.1);color:var(--down);border-color:rgba(248,113,113,.35)}
+.wk-tag.ex{height:20px;padding:0 7px;font-size:10.5px;font-weight:500;color:var(--warn);border:1px dashed rgba(251,191,36,.5);background:none}
+.wk-bet{padding:22px 24px;display:grid;gap:18px}
+.wk-bet-h{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 20px}
+.wk-bet-h h3{margin:0 0 4px;font-size:20px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.wk-bet-h p,.wk-why{margin:0;color:var(--fg2);font-size:13.5px;max-width:68ch}
+.wk-why{margin-top:-8px;font-size:13px;color:var(--fg3)}
+.wk-big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.wk-big > div{padding:14px 16px;border-radius:12px;background:var(--surface2);display:grid;gap:2px;min-width:0;align-content:start}
+.wk-big small{font-size:12px;color:var(--fg3)}
+.wk-big b{font-size:24px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.wk-big span{font-size:12px;color:var(--fg2)}
+.wk-row{display:grid;grid-template-columns:210px minmax(0,1fr);gap:16px;align-items:center}
+.wk-lbl{font-size:12.5px;color:var(--fg2)}
+.wk-lbl b{display:block;color:var(--fg);font-weight:500;font-size:13.5px}
+.wk-meter{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.wk-bars{display:flex;gap:4px}
+.wk-bars i{width:26px;height:10px;border-radius:3px;background:var(--raised)}
+.wk-bars i.on{background:var(--up)}
+.wk-bars.mid i.on{background:var(--warn)}
+.wk-bars.low i.on{background:var(--fg3)}
+.wk-meter p{margin:0;font-size:13px;color:var(--fg2)}
+.wk-meter p b{color:var(--fg);font-weight:600}
+.wk-steps{display:flex;flex-wrap:wrap;gap:8px}
+.wk-step{display:grid;padding:7px 11px;border-radius:10px;border:1px solid var(--border2);min-width:92px}
+.wk-step small{font-size:11px;color:var(--fg3)}
+.wk-step b{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--fg2)}
+.wk-step.good{border-color:rgba(74,222,128,.35)}
+.wk-step.good b{color:var(--up)}
+.wk-step.cur{outline:1px solid var(--fg2)}
+.wk-verdict{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:var(--fg2)}
+.wk-verdict .ic{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.wk-verdict .ic.y{background:rgba(74,222,128,.14);color:var(--up)}
+.wk-verdict .ic.n{background:rgba(251,191,36,.12);color:var(--warn)}
+.wk-ways{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.wk-ways div{padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:12.5px;color:var(--fg2)}
+.wk-ways b{display:block;color:var(--fg);font-weight:500;font-size:13px}
+.wk-charts{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
+.wk-chart{padding:12px 14px;border:1px solid var(--border);border-radius:12px;display:grid;gap:6px;min-width:0}
+.wk-chart .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--fg2)}
+.wk-chart svg{width:100%;height:auto;display:block}
+.wk-chart svg text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
+.wk-live{display:grid;gap:6px}
+.wk-track{height:10px;border-radius:5px;background:var(--raised);overflow:hidden}
+.wk-track u{display:block;height:100%;background:var(--fg)}
+.wk-live p{margin:0;font-size:12.5px;color:var(--fg2)}
+.wk-live p b{color:var(--fg);font-weight:500}
+.wk-cta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:12.5px}
+.wk-list{display:grid}
+.wk-li{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 130px;gap:16px;align-items:center;padding:14px 20px;border-top:1px solid var(--border)}
+.wk-li:first-child{border-top:0}
+.wk-li h4{margin:0;font-size:14px;font-weight:600}
+.wk-li p{margin:2px 0 0;font-size:12.5px;color:var(--fg2)}
+.wk-li > .wk-tag{justify-self:end}
+.wk-nums{font-size:12.5px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.wk-nums b{font-weight:600}
+.wk-finder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}
+.wk-ctl{padding:20px 22px;display:grid;gap:14px;align-content:start;border-right:1px solid var(--border)}
+.wk-ctl label{display:grid;gap:6px;font-size:11.5px;color:var(--fg3);font-family:var(--font-mono);letter-spacing:.06em;text-transform:uppercase}
+.wk-ctl .seg button{font-family:var(--font-sans);letter-spacing:0;text-transform:none}
+.wk-ctl .seg button:disabled{color:var(--border2);cursor:not-allowed}
+.wk-ctl .hint{margin:0;font-size:12px;color:var(--fg3);text-transform:none;letter-spacing:0;font-family:var(--font-sans)}
+.wk-res{padding:20px 22px;display:grid;gap:16px;align-content:start;min-width:0}
+.wk-res h3{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.wk-res .say{margin:2px 0 0;font-size:13.5px;color:var(--fg2);max-width:60ch}
+.wk-res .wk-big b{font-size:20px}
+.wk-warn{padding:12px 14px;border-radius:10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.28);font-size:12.5px;color:var(--fg2)}
+.wk-warn b{color:var(--warn);font-weight:600}
+.wk-checks{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:13px}
+.wk-checks li{display:flex;gap:8px;align-items:flex-start}
+.wk-nw{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.wk-nw > .card{padding:16px 18px;display:grid;gap:4px;align-content:start}
+.wk-nw h4{margin:0;font-size:14px;font-weight:600;display:flex;gap:8px;align-items:center}
+.wk-nw p{margin:0;font-size:13px;color:var(--fg2)}
+.wk-nw .n{font-size:12px;color:var(--fg3);font-family:var(--font-mono)}
+.wk-myth{padding:22px 24px;display:grid;gap:18px}
+.wk-myth-h{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 20px}
+.wk-myth-h .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn)}
+.wk-myth-h h3{margin:2px 0 4px;font-size:22px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.wk-myth-h p{margin:0;color:var(--fg2);font-size:13.5px;max-width:64ch}
+.wk-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--fg2)}
+.wk-legend span{display:inline-flex;align-items:center;gap:7px}
+.wk-legend i{width:12px;height:12px;border-radius:50%;display:inline-block}
+.wk-legend i.s,.wk-dt i.s{border:2px solid var(--warn)}
+.wk-legend i.m,.wk-dt i.m{background:var(--fg3)}
+.wk-legend i.a,.wk-dt i.a{background:var(--up)}
+.wk-dots{display:grid;gap:4px}
+.wk-dots .axis,.wk-dots .dr{display:grid;grid-template-columns:110px minmax(0,1fr) 86px;gap:14px;align-items:center}
+.wk-dots .axis div{position:relative;height:16px;font-family:var(--font-mono);font-size:10px;color:var(--fg3)}
+.wk-dots .axis div span{position:absolute;transform:translateX(-50%)}
+.wk-dots .dr{padding:9px 0;border-top:1px solid var(--border)}
+.wk-dots .dr > span{font-size:13px;font-weight:500}
+.wk-dots .dr > small{font-size:11px;color:var(--fg3);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.wk-dots .lm{display:none}
+.wk-dt{position:relative;height:22px}
+.wk-dt::before{content:"";position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:var(--raised);border-radius:1px}
+.wk-dt .gap{position:absolute;top:50%;height:2px;margin-top:-1px;background:repeating-linear-gradient(90deg,var(--fg3) 0 4px,transparent 4px 7px)}
+.wk-dt i{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%}
+.wk-dt i.s{background:var(--bg)}
+.wk-dt i.a{box-shadow:0 0 0 3px rgba(74,222,128,.2)}
+.wk-read{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.wk-read div{padding:12px 14px;border-radius:10px;border:1px solid var(--border);font-size:12.5px;color:var(--fg2)}
+.wk-read b{display:block;color:var(--fg);font-weight:600;font-size:13px;margin-bottom:2px}
+@media (max-width:1100px){
+  .wk-how,.wk-read{grid-template-columns:minmax(0,1fr)} .wk-how div + div{border-left:0;border-top:1px solid var(--border)}
+  .wk-charts,.wk-ways,.wk-nw,.wk-finder{grid-template-columns:minmax(0,1fr)} .wk-ctl{border-right:0;border-bottom:1px solid var(--border)}
+  .wk-row{grid-template-columns:minmax(0,1fr);gap:6px} .wk-li{grid-template-columns:minmax(0,1fr);gap:6px} .wk-li > .wk-tag{justify-self:start}
+}
+@media (max-width:600px){
+  .wk-bet,.wk-myth{padding:18px 16px} .wk-big{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .wk-big > div:last-child{grid-column:1/-1}
+  .wk-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .wk-dots .axis,.wk-dots .dr{grid-template-columns:58px minmax(0,1fr) 54px;gap:8px} .wk-dots .ln,.wk-dots .lt{display:none} .wk-dots .lm{display:inline}
+}
+/* Backtests (Model lab) */
 .bt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
 @media (max-width:1200px){ .bt-grid{grid-template-columns:minmax(0,1fr)} }
 .bt-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-top:16px;align-items:start}
@@ -884,6 +1012,11 @@ table.nt.sl-rt{min-width:420px}
     </main>
     <footer id="xfoot" hidden></footer>
     <main id="v-backtests" hidden>
+      <section class="card tbar"><div class="tfilters"><div class="seg" id="wktabs" role="group" aria-label="Section"></div></div></section>
+      <div class="wk-sec-wrap" id="wk-works"></div>
+      <div class="wk-sec-wrap" id="wk-finder" hidden></div>
+      <div class="wk-sec-wrap" id="wk-not" hidden></div>
+      <div class="wk-sec-wrap" id="wk-lab" hidden>
       <div class="kpis" id="btkpis"></div>
       <section class="card">
         <div class="card-h"><div><h2>What passed</h2><p>Every signal at GO or WATCH, out of sample on 2025-26 after fees, next to its shadow record this season.</p></div></div>
@@ -900,6 +1033,7 @@ table.nt.sl-rt{min-width:420px}
           <div class="filters"><div class="seg" id="btarea" role="group" aria-label="Area"></div></div></div>
         <div class="card-b"><div class="bt-log" id="btlog"></div></div>
       </section>
+      </div>
     </main>
     <footer id="btfoot" hidden></footer>
   </div>
@@ -925,7 +1059,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : hashT === 'SLATE' ? 'slate' : hashT === 'LINES' ? 'lines' : hashT === 'SHARP' ? 'sharp' : hashT === 'BACKTESTS' ? 'backtests' : 'lab';
+let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : hashT === 'SLATE' ? 'slate' : hashT === 'LINES' ? 'lines' : hashT === 'SHARP' ? 'sharp' : hashT === 'BACKTESTS' || hashT === 'WORKS' ? 'backtests' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -1054,11 +1188,11 @@ const PAGES = [
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.', 'sharp'],
   ]],
   ['Betting', [
+    ['What Works', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'Which bets passed the backtest, in dollars and plain-language confidence; an Edge Finder; what does not work; the technical results.', 'backtests'],
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
   ['Model', [
-    ['Backtests', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'Game, minutes, usage and prop model results, held-out tests and what passed.', 'backtests'],
     ['Data Health', SVG('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'), 'Is every feed alive: the live price recorder, model inputs and the history archive.', 'health'],
   ]],
 ];
@@ -1206,7 +1340,7 @@ $('pages').addEventListener('click', e => {
 });
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE', 'SLATE', 'LINES', 'SHARP', 'BACKTESTS'].includes(h)) show(h.toLowerCase());
+  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE', 'SLATE', 'LINES', 'SHARP', 'BACKTESTS', 'WORKS'].includes(h)) show(h === 'WORKS' ? 'backtests' : h.toLowerCase());
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -1277,8 +1411,8 @@ function show(v){
     return;
   }
   if (v === 'backtests'){
-    $('tname').textContent = 'Backtests';
-    $('tsub').textContent = 'HELD-OUT TESTS · RULES FIXED FIRST · WHAT PASSED';
+    $('tname').textContent = 'What Works';
+    $('tsub').textContent = '';
     renderBacktests();
     if (!trackTried) loadTrack();
     return;
@@ -3218,7 +3352,7 @@ function btCal(m){
   g += D0.map(d => `<circle cx="${x(d[1])}" cy="${y(d[2])}" r="${(2.5 + 5 * Math.sqrt(d[0] / nmax)).toFixed(1)}" fill="var(--fg)" fill-opacity=".85"><title>Model ${pc(d[1])} · hit ${pc(d[2])} · ${d[0].toLocaleString()} strikes</title></circle>`).join('');
   return `<svg class="bt-cal" viewBox="0 0 ${W} ${H}" role="img" aria-label="Calibration">${g}</svg>`;
 }
-function renderBacktests(){
+function renderLab(){
   $('mode').innerHTML = BT ? `${pill('idle', 'Built')}<span>${esc(BT.generated.slice(0, 10))}</span>` : '';
   if (!BT){ $('btkpis').innerHTML = ''; $('btlog').innerHTML = '<p class="empty">The backtest summary is missing from this build (build_backtests.py).</p>'; return; }
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
@@ -3290,6 +3424,242 @@ function renderBacktests(){
 }
 $('btarea').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ bf.area = b.dataset.v; renderBacktests(); } });
 $('btprop').addEventListener('click', e => { const b = e.target.closest('#btcal button[data-v]'); if (b){ bf.cal = b.dataset.v; renderBacktests(); } });
+
+// ── What Works ────────────────────────────────────────────────────────────
+// The backtests, for bettors (build_backtests.py): bets that passed, in dollars and plain-language confidence, next to
+// this season's live record; an Edge Finder over the real out-of-sample slices; what does not work (incl. the streak
+// myth check, build_hit_rates.py); and the technical results under Model lab (renderLab). Vocabulary matches Edges:
+// "passed the backtest" until a bet also holds up over MIN_LIVE settled live bets, then "proven".
+let wk = {tab: 'works', mv: 'books'};
+let fs = {method: 'model', venue: 'kalshi', stat: '3pm', side: 'any', edge: '0.03', test: 'kalshi_ladder'};
+const WK_STAT = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': '3-pointers', pra: 'pts + reb + ast', pr: 'pts + reb', pa: 'pts + ast', ra: 'reb + ast'};
+const WK_WHY = {
+  '3pm': "People like betting overs, so Kalshi's YES side is overpriced: last season YES hit 2 to 5 points less often than its price said, in every stat. The model points at the rungs that are overpriced the most.",
+  pts: 'The same overs bias as 3-pointers, smaller. Points markets are deeper and better priced, so the edge is thinner and less consistent.'};
+const WK_TABS = [['works', 'What works'], ['finder', 'Find an edge'], ['not', "What doesn't"], ['lab', 'Model lab']];
+const money = x => (x < 0 ? '-' : '+') + '$' + Math.abs(x).toLocaleString(undefined, {maximumFractionDigits: 0});
+const per100 = roi => roi == null ? '' : (roi < 0 ? '-' : '+') + '$' + Math.abs(roi * 100).toFixed(2);
+const oneIn = z => { const p = 1 - Phi(z); if (p >= .5) return null; const n = 1 / p; return n >= 1000 ? Math.round(n / 100) * 100 : n >= 100 ? Math.round(n / 10) * 10 : Math.round(n); };
+function wkConf(z, games){
+  if (games < 50) return {lvl: 0, cls: 'low', word: 'Too few games', say: `only ${games} games: too few to tell luck from skill`};
+  const n = oneIn(z);
+  if (z >= 3) return {lvl: 5, cls: '', word: 'Strong', say: `about a 1 in ${n.toLocaleString()} chance a record this good is luck`};
+  if (z >= 2) return {lvl: 4, cls: '', word: 'Solid', say: `about a 1 in ${n} chance a record this good is luck`};
+  if (z >= 1) return {lvl: 2, cls: 'mid', word: 'Promising', say: `a 1 in ${n} chance it is luck: not rare enough to call real`};
+  if (z > -1) return {lvl: 1, cls: 'low', word: 'Coin flip', say: 'indistinguishable from luck'};
+  return {lvl: 0, cls: 'low', word: 'Loses', say: 'lost money, and not by chance'};
+}
+const wkMeter = c => `<div class="wk-meter"><div class="wk-bars ${c.cls}">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= c.lvl ? 'on' : ''}"></i>`).join('')}</div><p><b>${c.word}</b> · ${c.say}</p></div>`;
+const wkSeg = (key, opts, cur) => `<div class="seg" data-k="${key}">${opts.map(([v, l, dis]) => `<button type="button" data-v="${v}" aria-pressed="${cur === v}"${dis ? ' disabled' : ''}>${l}</button>`).join('')}</div>`;
+// this season's shadow bets on one Kalshi stat + side, every engine (Track Record's cube)
+function wkLive(stat, side){
+  const C = TR && TR.data && TR.data.cube_cols, rows = (TR && TR.data && TR.data.cube) || [];
+  if (!C) return null;
+  const ix = k => C.indexOf(k);
+  let w = 0, l = 0, p = 0, u = 0, uq = 0, bets = 0;
+  for (const r of rows){
+    if (r[ix('stat')] !== stat || r[ix('venue')] !== 'kalshi' || String(r[ix('side')]).toUpperCase() !== side) continue;
+    bets += r[ix('bets')]; w += r[ix('w')]; l += r[ix('l')]; p += r[ix('p')]; u += r[ix('units')]; uq += r[ix('units_sq')] || 0;
+  }
+  const n = w + l + p, m = n ? u / n : null, sd = n > 1 ? Math.sqrt(Math.max(uq / n - m * m, 0)) : null;
+  return {bets, settled: n, w, l, p, roi: m, z: sd ? m / (sd / Math.sqrt(n)) : null};
+}
+// placeholder curve until the bet-by-bet export exists: a seeded walk that lands on the real season total
+function wkCurve(roi, n, seed){
+  let s = seed, cum = 0; const pts = [0], rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  for (let d = 0; d < 160; d++){ cum += n / 160 * (roi + (rnd() - .5) * .55) * 10; pts.push(cum); }
+  const k = n * 10 * roi / (cum || 1);
+  return pts.map(v => v * k);
+}
+function wkCurveSvg(pts){
+  const W = 520, H = 150, L = 50, R = 8, T = 10, B = 22, lo = Math.min(0, ...pts), hi = Math.max(...pts);
+  const x = i => L + (W - L - R) * i / (pts.length - 1), y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo || 1));
+  const ms = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  let g = `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border2)"/>`;
+  [lo, hi].forEach(v => g += `<text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${money(Math.round(v / 10) * 10)}</text>`);
+  ms.forEach((m, i) => g += `<text x="${L + (W - L - R) * i / (ms.length - 1)}" y="${H - 6}" text-anchor="middle">${m}</text>`);
+  const d = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profit over the season (example)">${g}<path d="${d} L${x(pts.length - 1)} ${y(0)} L${L} ${y(0)} Z" fill="var(--up)" fill-opacity=".1"/><path d="${d}" fill="none" stroke="var(--up)" stroke-width="2"/></svg>`;
+}
+function wkMonthsSvg(vals){
+  const W = 280, H = 150, L = 8, R = 8, T = 10, B = 22, mx = Math.max(...vals.map(Math.abs)), bw = (W - L - R) / vals.length;
+  const y0 = T + (H - T - B) / 2, sc = (H - T - B) / 2 / mx, ms = ['O', 'N', 'D', 'J', 'F', 'M', 'A', 'M', 'J'];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profit by month (example)"><line x1="${L}" x2="${W - R}" y1="${y0}" y2="${y0}" stroke="var(--border2)"/>${vals.map((v, i) =>
+    `<rect x="${L + i * bw + 4}" y="${v >= 0 ? y0 - v * sc : y0}" width="${bw - 8}" height="${Math.abs(v * sc)}" rx="2" fill="${v >= 0 ? 'var(--up)' : 'var(--down)'}"/><text x="${L + i * bw + bw / 2}" y="${H - 6}" text-anchor="middle">${ms[i]}</text>`).join('')}</svg>`;
+}
+const WK_MONTHS = {'3pm': [3, 5, -1, 4, 6, 2, 5, 1, 2], pts: [2, -1, 3, 1, -2, 4, 1, -1, 2]};
+const exTag = '<span class="wk-tag ex" title="Layout only until the bet-by-bet export is built">Example</span>';
+
+function renderBacktests(){
+  $('wktabs').innerHTML = WK_TABS.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${wk.tab === v}">${l}</button>`).join('');
+  for (const [v] of WK_TABS) $('wk-' + v).hidden = wk.tab !== v;
+  $('tname').textContent = wk.tab === 'lab' ? 'Model lab' : 'What Works';
+  $('tsub').textContent = {works: 'BETS THAT PASSED · IN DOLLARS · HOW SURE WE ARE', finder: 'SLICE LAST SEASON · SEE WHAT HELD UP', not: 'TESTED THE SAME WAY · DID NOT WORK', lab: 'HELD-OUT TESTS · RULES FIXED FIRST · TECHNICAL RESULTS'}[wk.tab];
+  if (!BT){ $('wk-works').innerHTML = '<p class="empty">The backtest summary is missing from this build (build_backtests.py).</p>'; return; }
+  $('mode').innerHTML = `${pill('idle', 'Built')}<span>${esc(BT.generated.slice(0, 10))}</span>`;
+  if (wk.tab === 'works') renderWorks();
+  else if (wk.tab === 'finder') renderFinder();
+  else if (wk.tab === 'not') renderNot();
+  else renderLab();
+  $('btfoot').innerHTML = wk.tab === 'lab' ? $('btfoot').innerHTML : `
+    <div><b>How these were tested.</b> Each model was fit on earlier seasons and scored on 2025-26 games it never saw, using only what was known before tip: the official injury report as it stood, and Kalshi's prices in the 30 minutes before tip. Returns are after Kalshi's taker fee.</div>
+    <div><b>Why "1 in N" matters.</b> We tested many ideas. Test 40 and about one will look 1-in-40 lucky by chance, which is why a bet that passed also has to get stronger when the model is more sure, and hold up live (${MIN_LIVE}+ settled bets) before it is called proven.</div>`;
+}
+
+function renderWorks(){
+  const F = BT.finder, sig = BT.signals;
+  const go = {};
+  for (const s of sig.filter(s => s.gate === 'GO')) (go[`${s.stat}|${s.side}`] = go[`${s.stat}|${s.side}`] || []).push(s);
+  const cards = Object.entries(go).sort((a, b) => Math.max(...b[1].map(s => s.z)) - Math.max(...a[1].map(s => s.z))).map(([k, ss], ci) => {
+    const [stat, side] = k.split('|'), main = ss.find(s => s.engine.startsWith('Prop')) || ss[0], other = ss.find(s => s !== main);
+    const C = wkConf(main.z, main.games), mt = (F.model.kalshi || {})[stat] || {};
+    const steps = ['0.02', '0.03', '0.05', '0.08'].filter(t => mt[t]).map(t => ({t, r: mt[t]}));
+    const steady = steps.filter(x => x.r[4] >= 2).length >= 3;
+    const lv = wkLive(stat, side), proven = lv && lv.settled >= MIN_LIVE && lv.z != null && lv.z >= 2;
+    const word = WK_STAT[stat], sideW = side === 'NO' ? 'NO' : 'YES';
+    return `<article class="card wk-bet">
+      <div class="wk-bet-h"><div><h3>Kalshi ${word}: bet ${sideW}</h3><p>When Kalshi's price on a ${word === '3-pointers' ? '3-pointer' : word} over is too ${side === 'NO' ? 'high' : 'low'}, take the ${sideW} side.</p></div>
+        <span class="wk-tag ${proven ? 'proven' : 'passed'}">${proven ? 'PROVEN LIVE' : 'PASSED THE BACKTEST'}</span></div>
+      ${WK_WHY[stat] ? `<p class="wk-why">${WK_WHY[stat]}</p>` : ''}
+      <div class="wk-big">
+        <div><small>Return per $100 bet</small><b class="pos">${per100(main.roi)}</b><span>after Kalshi's fee</span></div>
+        <div><small>Last season</small><b>${main.n.toLocaleString()}</b><span>bets in ${main.games} games</span></div>
+        <div><small>At $10 a bet</small><b class="pos">${money(main.n * 10 * main.roi)}</b><span>over the season, before liquidity limits</span></div>
+      </div>
+      <div class="wk-row"><div class="wk-lbl"><b>Is it luck?</b>Confidence</div>${wkMeter(C)}</div>
+      ${steps.length ? `<div class="wk-row"><div class="wk-lbl"><b>Does it get stronger when the model is more sure?</b>Return by edge size, every bet on this stat</div>
+        <div><div class="wk-steps">${steps.map(x => `<div class="wk-step ${x.r[4] >= 2 ? 'good' : ''}"><small>${Math.round(x.t * 100)}%+ edge</small><b>${per100(x.r[3])}</b><small>${x.r[1]} games</small></div>`).join('')}</div>
+        <div class="wk-verdict"><span class="ic ${steady ? 'y' : 'n'}">${steady ? '✓' : '!'}</span>${steady ? 'Yes: it pays at every edge size, which is what a real edge looks like.' : 'Only clearly at one edge size. Real but fragile: size it smaller.'}</div></div></div>` : ''}
+      ${other ? `<div class="wk-row"><div class="wk-lbl"><b>Two ways to spot it</b>Independent methods agree</div>
+        <div class="wk-ways"><div><b>Our model + Kalshi's price</b>${per100(main.roi)} per $100 · ${main.n.toLocaleString()} bets</div><div><b>Every other venue's price, moved to Kalshi's line</b>${per100(other.roi)} per $100 · ${other.n.toLocaleString()} bets</div></div></div>` : ''}
+      <div class="wk-charts">
+        <div class="wk-chart"><div class="hd"><span>Profit over last season, $10 a bet</span>${exTag}</div>${wkCurveSvg(wkCurve(main.roi, main.n, 7 + ci * 4))}</div>
+        <div class="wk-chart"><div class="hd"><span>Profitable months</span>${exTag}</div>${wkMonthsSvg(WK_MONTHS[stat] || [1, 2, -1, 1, 2, 1, -1, 2, 1])}</div>
+      </div>
+      <div class="wk-row"><div class="wk-lbl"><b>This season</b>Live shadow bets</div>
+        <div class="wk-live"><div class="wk-track"><u style="width:${lv ? Math.min(100, lv.settled / MIN_LIVE * 100) : 0}%"></u></div>
+          <p>${!lv ? 'Track Record has not loaded yet.' : lv.settled ? `<b>${lv.settled} of ${MIN_LIVE} settled</b> · ${lv.w}-${lv.l}${lv.p ? '-' + lv.p : ''} · <span class="${lv.roi >= 0 ? 'pos' : 'neg'}">${per100(lv.roi)} per $100</span>${proven ? ' · holding up' : ''}` : `<b>0 of ${MIN_LIVE} settled.</b> Shadow bets start on opening night, October 20; it is called proven once ${MIN_LIVE} live bets agree with last season.`}</p></div></div>
+      <div class="wk-cta"><button class="btn primary" type="button" data-edges="kalshi">Find tonight's Kalshi bets</button><span class="muted">Opens Edges on Kalshi</span></div>
+    </article>`;
+  }).join('');
+  const seen = new Set(Object.keys(go)), watch = [];
+  for (const s of sig.filter(s => s.gate === 'WATCH').sort((a, b) => (b.games >= 50) - (a.games >= 50) || b.z - a.z)){ const k = `${s.stat}|${s.side}`; if (!seen.has(k)){ seen.add(k); watch.push(s); } }
+  $('wk-works').innerHTML = `
+    <p class="wk-lede">We tested every idea on a season of games <b>the model never saw while it was being built</b>, at prices you could actually have taken. ${['No', 'One', 'Two', 'Three', 'Four', 'Five'][Object.keys(go).length] || Object.keys(go).length} ${Object.keys(go).length === 1 ? 'bet' : 'bets'} made money convincingly. Everything below is in plain numbers: what it returned, how sure we are it is not luck, and how it is doing this season.</p>
+    <div class="card wk-how">
+      <div><b>Return per $100</b><p>What you would have kept, on average, for every $100 bet, after fees. +$5 is a big edge in sports betting.</p></div>
+      <div><b>Confidence</b><p>How likely a record this good is pure luck. We call it real at about 1 in 40 or rarer, over at least 50 games.</p></div>
+      <div><b>This season</b><p>Past results can fade. Every bet that passed is tracked live from opening night and is only called proven once it holds up again.</p></div>
+    </div>
+    <h2 class="wk-sec">Bets that passed</h2>${cards}
+    <h2 class="wk-sec">Promising, not proven yet</h2>
+    <p class="wk-lede sm">Made money last season, but not convincingly enough to call real. Tracked live; any of them can be promoted.</p>
+    <div class="card wk-list">${watch.map(s => { const C = wkConf(s.z, s.games);
+      return `<div class="wk-li"><div><h4>Kalshi ${WK_STAT[s.stat]}: bet ${s.side}</h4><p>Found by: ${s.engine.startsWith('Prop') ? 'our model + the price' : "every other venue's price"}.</p></div>
+        <div class="wk-nums"><b class="${s.roi >= 0 ? 'pos' : 'neg'}">${per100(s.roi)}</b> per $100 · ${s.n.toLocaleString()} bets · ${s.games} games</div>
+        <span class="wk-tag ${C.lvl >= 2 ? 'watch' : 'no'}" title="${esc(C.say)}">${C.word}</span></div>`; }).join('')}</div>`;
+}
+
+// ── Edge Finder: real out-of-sample slices ──
+function wkSlice(){
+  const M = BT.finder.model, MS = BT.finder.model_side;
+  if (fs.method === 'model'){
+    if (fs.side !== 'any'){
+      if (fs.venue !== 'kalshi' || fs.edge !== '0.03') return {missing: 'Split by side only exists for Kalshi at a 3% edge. Pick "Either side", or Kalshi at 3%.'};
+      const r = (MS[fs.stat] || {})[fs.side === 'no' ? 'NO' : 'YES'];
+      return r ? {r} : {missing: 'No bets on this side.'};
+    }
+    const r = ((M[fs.venue] || {})[fs.stat] || {})[fs.edge];
+    return r ? {r} : {missing: 'Not tested.'};
+  }
+  const by = (BT.finder.cons[fs.test] || {})[fs.stat] || {};
+  const key = fs.test === 'kalshi_to_books' ? (fs.side === 'no' ? 'Under' : 'Over') : (fs.side === 'no' ? 'NO' : 'YES');
+  return by[key] ? {r: by[key]} : {missing: 'No bets on this side.'};
+}
+function renderFinder(){
+  const M = BT.finder.model;
+  if (fs.method === 'cons' && fs.side === 'any') fs.side = 'no';          // consensus is tested per side: never pool them
+  const stats = fs.method === 'model' && fs.venue === 'books' ? ['pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra'] : ['pts', 'reb', 'ast', '3pm'];
+  if (!stats.includes(fs.stat)) fs.stat = 'pts';
+  const tb = fs.method === 'cons' && fs.test === 'kalshi_to_books';
+  const ctl = `
+    <label>How the edge is found${wkSeg('method', [['model', 'Our model + the price'], ['cons', "Other venues' prices"]], fs.method)}<p class="hint">${fs.method === 'model' ? "Our projection blended with the venue's own price." : "Every other venue's price, moved to this venue's line. Our projection is a small part."}</p></label>
+    ${fs.method === 'model' ? `<label>Where you bet${wkSeg('venue', [['kalshi', 'Kalshi'], ['books', 'Sportsbooks']], fs.venue)}</label>`
+      : `<label>Compared against${wkSeg('test', [['kalshi_ladder', 'Other Kalshi rungs'], ['books_to_kalshi', 'Sportsbooks'], ['kalshi_to_books', 'Kalshi, on a book line']], fs.test)}<p class="hint">${tb ? 'Betting the sportsbook, priced from Kalshi.' : 'Betting Kalshi.'}</p></label>`}
+    <label>Stat${wkSeg('stat', stats.map(s => [s, s.toUpperCase()]), fs.stat)}</label>
+    <label>Side${wkSeg('side', [['any', 'Either side', fs.method === 'cons'], ['no', tb ? 'Under' : 'NO (under)'], ['yes', tb ? 'Over' : 'YES (over)']], fs.side)}</label>
+    ${fs.method === 'model' ? `<label>Only bets with an edge of at least${wkSeg('edge', [['0.02', '2%'], ['0.03', '3%'], ['0.05', '5%'], ['0.08', '8%']], fs.edge)}<p class="hint">Bigger edges mean fewer bets. A real edge should pay more as the edge grows.</p></label>` : '<p class="hint">Consensus bets use a 3% edge.</p>'}`;
+  const {r, missing} = wkSlice();
+  let res;
+  if (missing) res = `<h3 class="muted">Not in the backtest</h3><p class="say">${missing}</p>`;
+  else {
+    const [n, games, win, roi, z] = r, C = wkConf(z ?? 0, games);
+    const steady = fs.method === 'model' && fs.side === 'any' ? ['0.02', '0.03', '0.05', '0.08'].filter(t => ((M[fs.venue][fs.stat] || {})[t] || [])[4] >= 2).length >= 3 : null;
+    const head = C.lvl >= 4 && roi > 0 && steady === false ? ['Real but fragile', 'warnt'] : C.lvl >= 4 && roi > 0 ? ['Looks real', 'pos'] : C.lvl >= 2 && roi > 0 ? ['Promising', 'warnt'] : games < 50 ? ["Can't tell yet", 'muted'] : roi <= 0 ? ["Doesn't work", 'neg'] : ['Probably luck', 'muted'];
+    const where = fs.method === 'model' ? (fs.venue === 'kalshi' ? 'Kalshi' : 'sportsbooks') : (tb ? 'sportsbooks' : 'Kalshi');
+    const sideW = fs.side === 'any' ? '' : fs.side === 'no' ? ' NO / under' : ' YES / over';
+    const mt = fs.method === 'model' && fs.side === 'any' ? M[fs.venue][fs.stat] : null;
+    res = `<div><h3 class="${head[1]}">${head[0]}</h3><p class="say">${WK_STAT[fs.stat][0].toUpperCase() + WK_STAT[fs.stat].slice(1)}${sideW} on ${where}, ${fs.method === 'model' ? `edge ${Math.round(fs.edge * 100)}%+` : 'consensus edge 3%+'}, last season, games the model never saw.</p></div>
+      <div class="wk-big"><div><small>Return per $100</small><b class="${roi >= 0 ? 'pos' : 'neg'}">${per100(roi)}</b><span>after fees</span></div>
+        <div><small>Bets</small><b>${n.toLocaleString()}</b><span>in ${games} games${win != null ? ` · won ${Math.round(win * 100)}%` : ''}</span></div>
+        <div><small>At $10 a bet</small><b class="${roi >= 0 ? 'pos' : 'neg'}">${money(n * 10 * roi)}</b><span>over the season</span></div></div>
+      ${wkMeter(C)}
+      ${mt ? `<div class="wk-steps">${['0.02', '0.03', '0.05', '0.08'].filter(t => mt[t]).map(t => `<div class="wk-step ${mt[t][4] >= 2 ? 'good' : ''}${t === fs.edge ? ' cur' : ''}"><small>${Math.round(t * 100)}%+ edge</small><b>${per100(mt[t][3])}</b><small>${mt[t][1]} games</small></div>`).join('')}</div>` : ''}
+      <ul class="wk-checks">
+        <li><span>${games >= 50 ? '✅' : '⬜'}</span>At least 50 games (${games})</li>
+        <li><span>${(z ?? 0) >= 2 ? '✅' : '⬜'}</span>Rare enough to call real: 1 in 40 or rarer</li>
+        ${steady != null ? `<li><span>${steady ? '✅' : '⬜'}</span>Pays at most edge sizes, not just one</li>` : ''}
+        <li><span>⬜</span>Holds up live this season <span class="muted">(${MIN_LIVE}+ settled bets)</span></li></ul>
+      <div class="wk-warn"><b>Careful with slices.</b> There are about 100 combinations here; a few will look good by luck alone. Treat anything you find as an idea, and only trust it when every box above is ticked.</div>`;
+  }
+  $('wk-finder').innerHTML = `<p class="wk-lede">Slice last season's out-of-sample bets any way you like and see how that slice did. <b>Use it to find ideas, not to bet them</b>: an idea counts once it also holds up live.</p>
+    <div class="card wk-finder"><div class="wk-ctl">${ctl}</div><div class="wk-res">${res}</div></div>`;
+}
+
+// ── What doesn't work, led by the streak myth check ──
+function renderNot(){
+  const H = BT.myth;
+  let myth = '';
+  if (H){
+    const D0 = H[wk.mv], books = wk.mv === 'books', pct = v => (v * 100).toFixed(0) + '%';
+    const rows = D0.cal.map(c => { const lo = Math.min(c.streak_rate, c.market, c.actual), hi = Math.max(c.streak_rate, c.market, c.actual);
+      return `<div class="dr"><span>${c.l10.replace(' of 10', '')}<span class="lt"> of last 10</span><span class="lm">/10</span></span>
+        <div class="wk-dt" title="Streak said ${pct(c.streak_rate)} · line said ${pct(c.market)} · actually hit ${pct(c.actual)}"><span class="gap" style="left:${lo * 100}%;width:${(hi - lo) * 100}%"></span>
+          <i class="s" style="left:${c.streak_rate * 100}%"></i><i class="m" style="left:${c.market * 100}%"></i><i class="a" style="left:${c.actual * 100}%"></i></div>
+        <small>${c.n.toLocaleString()}<span class="ln"> lines</span></small></div>`; }).join('');
+    const same = H.kalshi.same && H.kalshi.same.cold_under && H.kalshi.same.cold_under.diff;
+    myth = `<article class="card wk-myth">
+      <div class="wk-myth-h"><div><div class="eyebrow">Myth check</div><h3>"He's hit this in 8 of his last 10" is not an edge</h3>
+        <p>Betting apps lead with hit rates. We checked every ${books ? 'sportsbook' : 'Kalshi'} line from ${books ? '2024-25' : '2025-26'} against the player's record on that exact number before the game. The green dot is what actually happened: it sits on the line's price, not the streak.</p></div>
+        ${wkSeg('mv', [['books', 'Sportsbooks'], ['kalshi', 'Kalshi']], wk.mv)}</div>
+      <div class="wk-legend"><span><i class="s"></i>What the streak said</span><span><i class="m"></i>What the line's price said</span><span><i class="a"></i>What actually happened</span></div>
+      <div class="wk-dots"><div class="axis"><span></span><div>${[0, 25, 50, 75, 100].map(v => `<span style="left:${v}%">${v}%</span>`).join('')}</div><span></span></div>${rows}</div>
+      <div class="wk-big">
+        <div><small>"Hot" bets: over when he hit 8+ of 10</small><b class="neg">${per100(D0.hot.roi)}</b><span>per $100 · ${D0.hot.n.toLocaleString()} bets${books ? `; ${per100(H.books26.hot.roi)} on 2025-26 closing lines` : ''}</span></div>
+        <div><small>"Cold" bets: under when he hit 2 or fewer</small><b class="${D0.cold.roi >= 0 ? '' : 'neg'}">${per100(D0.cold.roi)}</b><span>per $100 · betting every under blind: ${per100(D0.base_under.roi)}</span></div>
+        <div><small>Players who beat their lines, again?</small><b>No</b><span>first half vs second half: correlation ${D0.persist.corr.toFixed(2)} (0 = no link)</span></div>
+      </div>
+      <div class="wk-read">
+        <div><b>Why it fails</b>When a player keeps clearing 24.5, the book raises his line. "8 of 10" is usually counted against an old, lower number.</div>
+        <div><b>Ten games is not much</b>A 50% player hits 8+ of 10 about 1 time in 18. With hundreds of players, many look hot by pure chance.</div>
+        <div><b>What a streak is worth</b>${same != null ? `At the same price, about ${per100(same)} per $100 on Kalshi: a sliver the price has not caught.` : 'A sliver at the same price.'} Our model already counts recent games, so it is in our numbers, not on top of them.</div>
+      </div></article>`;
+  }
+  $('wk-not').innerHTML = `<p class="wk-lede">Things that look like they should work and did not. Each one was tested the same way as the bets that passed.</p>${myth}
+    <div class="wk-nw">${(BT.dont || []).map(([t, d, n]) => `<div class="card"><h4><span class="wk-tag no">NO</span>${esc(t)}</h4><p>${esc(d)}</p><span class="n">${esc(n)}</span></div>`).join('')}</div>`;
+}
+$('wktabs').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ wk.tab = b.dataset.v; renderBacktests(); window.scrollTo(0, 0); } });
+$('v-backtests').addEventListener('click', e => {
+  const b = e.target.closest('.seg[data-k] button[data-v]');
+  if (b && !b.disabled){
+    const k = b.parentElement.dataset.k;
+    if (k === 'mv'){ wk.mv = b.dataset.v; renderNot(); }
+    else if (k in fs){ fs[k] = b.dataset.v; renderFinder(); }
+    return;
+  }
+  const g = e.target.closest('[data-edges]');
+  if (g){ ef.venue = g.dataset.edges; ef.tier = 'all'; ef.type = 'all'; history.replaceState(null, '', '#edges'); show('edges'); window.scrollTo(0, 0); }
+});
 
 show(view);
 </script>

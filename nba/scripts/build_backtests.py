@@ -14,6 +14,7 @@ DATA = os.path.join(HERE, '..', 'data')
 OUT = os.path.join(DATA, 'backtests.json')
 DOC = 'https://github.com/Putput12-JP/Vault-Fantasy/blob/main/nba/docs/'
 STATS = ['pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra']
+SNAME = {'pts': 'points', 'reb': 'rebounds', 'ast': 'assists', '3pm': '3-pointers', 'pra': 'pts + reb + ast', 'pr': 'pts + reb', 'pa': 'pts + ast', 'ra': 'reb + ast'}
 
 
 def load(name):
@@ -200,8 +201,45 @@ def main():
     ]
     for e in log:
         e['when'] = (e['when'] or '')[:10]
+
+    # ── What Works page: the Edge Finder's slices, the streak myth check, what does not work ──
+    finder = {'model': {}, 'model_side': {}, 'cons': {}}
+    for k, v in ((p2 or {}).get('blend_oos') or {}).items():
+        d = v.get('v2') or {}
+        finder['model'].setdefault('kalshi' if k.startswith('kalshi') else 'books', {})[k.split('/')[-1]] = \
+            {t: [d[t]['n'], d[t]['games'], d[t]['win'], d[t]['roi'], d[t]['z']] for t in d if t.startswith('0.')}
+    for m, by in ((p2 or {}).get('kalshi_bias') or {}).items():
+        for sd in ('YES', 'NO'):
+            b = by.get('v2', {}).get(f'blend/{sd}') or {}
+            if b.get('n'):
+                finder['model_side'].setdefault(m, {})[sd] = [b['n'], b['games'], None, b['roi'], b['z']]
+    for test, by in ((cb or {}).get('tests') or {}).items():
+        for m, d in by.items():
+            for sd, b in ((d.get('bets') or {}).get('consensus + model') or {}).items():
+                if b.get('n'):
+                    finder['cons'].setdefault(test, {}).setdefault(m, {})[sd] = [b['n'], b['games'], None, b['roi'], b['z']]
+    myth = None
+    if hr:
+        pick = lambda k: {'cal': hr['sets'][k]['calibration'], 'hot': hr['sets'][k]['rules']['L10 over (hit 8+ of 10)'],
+                          'cold': hr['sets'][k]['rules']['L10 under (hit 2 or fewer of 10)'], 'base_under': hr['sets'][k]['rules']['Baseline: every under'],
+                          'same': hr['sets'][k].get('same_price'), 'persist': hr['sets'][k]['persistence'], 'n': hr['sets'][k]['n']}
+        myth = {'books': pick('espn2025_open'), 'books26': pick('espn2026_close'), 'kalshi': pick('kalshi2026')}
+    dont = []
+    if game:
+        w = game['ats_close']['0']['win']
+        dont.append(['Betting game spreads with our game model', f"The closing line already knows everything our model knows. Against the close the model's side won {w:.1%} of {game['games']:,} games; you need 52.4% to beat the vig.", 'Game model, 2024-25 and 2025-26'])
+        dont.append(['Game totals', f"Our side won {game['ou_close']['0']['win']:.1%} against the closing total. The model's totals miss by more than the line does ({game['mae']['tip']['total']} vs {game['mae']['market_close']['total']} points).", 'Game model'])
+        lost = sum(1 for r in game['kalshi']['ml'] if r[2] < 0)
+        dont.append(['Kalshi game winners', f"At prices you could actually trade (1pm), betting where the model disagreed lost after fees at {lost} of {len(game['kalshi']['ml'])} edge sizes.", f"{game['kalshi']['sides']:,} sides"])
+    if props:
+        best = max(((m, r) for m, r in (finder['model'].get('books') or {}).items() if r.get('0.03')), key=lambda x: x[1]['0.03'][4], default=None)
+        dont.append(['Sportsbook player props', 'Sportsbook prop lines are sharp: no stat passed.' + (f" The best, {SNAME.get(best[0], best[0])} at a 3% edge, returned {'+' if best[1]['0.03'][3] >= 0 else '-'}${abs(best[1]['0.03'][3]) * 100:.2f} per $100 but could easily be luck." if best else ''), 'ESPN lines, 2025-26'])
+        dont.append(['Combo props (PRA, P+R, P+A, R+A)', 'No edge at any edge size on sportsbooks; Kalshi does not list them.', 'ESPN lines'])
+        dont.append(['Buying overs (YES) on Kalshi', 'The mirror image of the bets that pass: YES is overpriced in every stat, so buying it loses unless our model finds a rare exception.', 'Kalshi, 2025-26'])
+    dont.append(['Copying sharp bettors late', 'Accounts with a winning record do beat the closing price, but copying their side 30 minutes to 2 hours later lost money.', '31k Polymarket trades'])
+    dont.append(['Following the biggest tickets', 'Size is not skill: even $100k+ tickets lost to the closing price on average.', 'Polymarket tape'])
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'doc': DOC,
-           'signals': signals, 'log': log, 'game': game, 'minutes': minutes, 'usage': usage, 'props': props, 'consensus': consensus,
+           'signals': signals, 'log': log, 'finder': finder, 'myth': myth, 'dont': dont, 'game': game, 'minutes': minutes, 'usage': usage, 'props': props, 'consensus': consensus,
            'test': {'seasons': 'fit 2024-25, test 2025-26', 'player_games': (pf or {}).get('n_test'), 'games': (game or {}).get('games')}}
     json.dump(out, open(OUT, 'w'), separators=(',', ':'))
     print(f"backtests: {len(log)} tests, {len(signals)} GO / WATCH signals -> {os.path.relpath(OUT)} ({os.path.getsize(OUT) // 1000} KB)")
