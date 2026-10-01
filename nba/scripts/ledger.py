@@ -489,7 +489,8 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     wire_days = wire_record(root, now, track.get('wire_days'), rescan_days)
     try:                                          # Sharp Price signals: CLV vs Pinnacle's close, and the final score
         import sharp
-        signals = sharp.grade_signals(root, now, track.get('signals'), box, box_meta)
+        stat_of = lambda bx, pid, stat: (sum(bx[int(pid)].get(c, 0) for c in STAT_COL[stat]) if bx.get(int(pid)) else None)
+        signals = sharp.grade_signals(root, now, track.get('signals'), box, box_meta, stat_of=stat_of)
     except Exception as e:
         print('signals grading failed:', e, flush=True)
         signals = track.get('signals')

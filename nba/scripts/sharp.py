@@ -22,6 +22,10 @@ Signals (one alert each, kept the first time it fires in snapshots/<day>/signals
   cross    sharp accounts' 24-hour net on one team reached $25k
   whale    one $10k+ ticket (Polymarket or Kalshi)
   split    20+ points more of the money than of the bets on a side with at most half the bets
+Per-prop signals (Player Props page, prop_signals): Pinnacle moving a player prop, sharp accounts trading a
+Polymarket prop, heavy money on a Kalshi rung (contracts traded between two polls with the price moving; Kalshi's
+tape cannot be filtered to props cheaply, so volume x price is the proxy). Their thresholds are NOT backtested: no
+prop sharp history existed. They are logged and graded like the rest and the page says so.
 Every alert is graded (grade_signals, from ledger.settle) on closing-line value: Pinnacle's last pre-tip fair at the
 alert's number minus the fair when it fired (for behind: the price's EV at the closing fair), and on the final score.
 The study's verdict stands until this season says otherwise: sharp accounts beat the close but copying them 30+ minutes
@@ -42,6 +46,10 @@ TAPE_MIN = {'pm': 100, 'kal': 500}                            # dollars; smaller
 TAPE_AHEAD_H = 48
 SOFT = ['DraftKings', 'FanDuel', 'BetMGM', 'BetRivers', 'bet365', 'ESPN BET', 'Caesars']
 GRADE_AFTER_S = 3 * 3600
+# per-prop thresholds, chosen to be rare, not fitted: a full point on Pinnacle's line or 5 points of its no-vig chance at
+# the same line within an hour; $500 of sharp-account money (props trade thinner than game lines); $2,000 traded on one
+# Kalshi rung between two polls with the price moving 3 cents
+P_LINE, P_PROB, P_WIN, P_SHARP, P_KAL_USD, P_KAL_MOVE = 1.0, 0.05, 3600, 500, 2000, 0.03
 try:
     from zoneinfo import ZoneInfo
     ET = ZoneInfo('America/New_York')
@@ -148,9 +156,16 @@ def poll_tapes(root, day, slate, now, curl, parse_event, team):
     tips = {(g['day'], team.get(g['home'], g['home'])): g['tip'] for g in slate.games if g['pre']}
     tips.update({(g['day'], g['home']): g['tip'] for g in slate.games if g['pre']})
     jobs = []
+    props = []
     for k, m in (day.meta.get('polymarket') or {}).items():
-        if m.get('type') in ('moneyline', 'spreads', 'totals') and m.get('cid') and m.get('start') and now < m['start'] <= now + TAPE_AHEAD_H * 3600:
+        if not (m.get('cid') and m.get('start') and now < m['start'] <= now + TAPE_AHEAD_H * 3600):
+            continue
+        if m.get('type') in ('moneyline', 'spreads', 'totals'):
             jobs.append(('pm', k, m))
+        elif m.get('type') in ('points', 'rebounds', 'assists', 'threes'):
+            props.append((k, m))
+    for i in range(0, len(props), 25):                  # player props: thin markets, so one request per 25 of them
+        jobs.append(('pmb', [k for k, _ in props[i:i + 25]], {'cids': {m['cid']: k for k, m in props[i:i + 25]}}))
     for k, m in (day.meta.get('kalshi') or {}).items():
         if m.get('series') != 'KXNBAGAME':
             continue
@@ -160,6 +175,29 @@ def poll_tapes(root, day, slate, now, curl, parse_event, team):
 
     def fetch(job):
         src, k, m = job
+        if src == 'pmb':                                # batched props: the oldest cursor of the batch, dedup by id
+            since, out = min([cur.get(x) or now - 86400 for x in k]), []
+            for page in range(5):
+                r = curl(f"https://data-api.polymarket.com/trades?market={','.join(m['cids'])}&takerOnly=true&limit=500&offset={page * 500}"
+                         f"&filterType=CASH&filterAmount={TAPE_MIN['pm']}")
+                if not isinstance(r, list) or not r:
+                    break
+                old = False
+                for x in r:
+                    kk = m['cids'].get(x.get('conditionId'))
+                    if not kk or x.get('timestamp', 0) <= (cur.get(kk) or now - 86400):
+                        old = old or x.get('timestamp', 0) <= since
+                        continue
+                    usd = (x.get('price') or 0) * (x.get('size') or 0)
+                    if usd < TAPE_MIN['pm']:
+                        continue
+                    buy = x.get('side') == 'BUY'
+                    oi = x.get('outcomeIndex') if buy else 1 - (x.get('outcomeIndex') or 0)
+                    out.append({'t': x['timestamp'], 's': 'pm', 'k': kk, 'o': oi, 'usd': round(usd), 'px': round(x['price'] if buy else 1 - x['price'], 4),
+                                'w': x.get('proxyWallet'), 'who': x.get('pseudonym') or x.get('name'), 'id': f"{(x.get('transactionHash') or '')[:18]}:{oi}:{round(x.get('size') or 0)}"})
+                if old or len(r) < 500:
+                    break
+            return out
         since, out = cur.get(k) or now - 86400, []
         if src == 'pm':
             for page in range(10):
@@ -344,7 +382,7 @@ def snap_at(series, t):
 
 
 # ── the board's sharp block ──────────────────────────────────────────────────────────────────────
-def build(board, day, root, now, team, parse_event):
+def build(board, day, root, now, team, parse_event, kal_vol=None):
     """board -> board['sharp'] = {games: {gid: {...}}, alerts: [...], accounts: {...}}, and the day's new alerts and
     each upcoming game's current ladder (the close, once it tips) saved in the day folders."""
     games = [g for g in board.get('games') or [] if g.get('tip')]
@@ -505,6 +543,11 @@ def build(board, day, root, now, team, parse_event):
         tickets = [[x['t'], x['v'], x['m'], x['side'], x['usd'], x['px'], x['cls'], x.get('who'), x['line']]
                    for x in T if x['usd'] >= 5000 or (x['cls'] == 'sharp' and x['usd'] >= SHARP_MIN)][-12:]
         out[gid] = {'pin': thin(S, 60), 'lad': lad_json(lad), 'behind': behind[:8], 'flow': flow, 'tickets': tickets}
+    # per-prop signals (Player Props): Pinnacle prop moves, sharp accounts on Polymarket props, heavy Kalshi rung flow
+    pin_props, pkeys = {}, board.get('_pkeys') or {}
+    if pkeys:
+        pin_props = pin_prop_series(dirs, pkeys.get('pinnacle') or {}, tips)
+        alerts += prop_signals(by_id, pkeys, pin_props, polls, _tape_rows(day_dirs(root, now, 1)), W, day, now, kal_vol or {})
     # first sighting wins: an alert keeps the time and fair price of the poll that first saw it
     saved = load_signals(dirs)
     for a in alerts:
@@ -512,10 +555,13 @@ def build(board, day, root, now, team, parse_event):
         a.update(tip=g['tip'], tday=et_day(g['tip']), home=g['home'], away=g['away'], hn=nick(g.get('home_name')))
     fresh = [a for a in alerts if a['id'] not in saved]
     save_signals(day.dir, fresh)
-    save_close(root, by_id, pins, now)
+    save_close(root, by_id, pins, now, pin_props)
     every = {**saved, **{a['id']: a for a in fresh}}
-    shown = sorted((a for a in every.values() if a['g'] in by_id), key=lambda a: -a['t'])[:300]
-    return {'games': out, 'alerts': shown,
+    shown = sorted((a for a in every.values() if a['g'] in by_id and not a['type'].startswith('p_')), key=lambda a: -a['t'])[:300]
+    per_prop = defaultdict(list)
+    for a in sorted((a for a in every.values() if a['g'] in by_id and a['type'].startswith('p_')), key=lambda a: a['t']):
+        per_prop[f"{a['pid']}|{a['stat']}"].append({k: v for k, v in a.items() if k not in ('g', 'tip', 'tday', 'home', 'away', 'hn', 'pid', 'stat')})
+    return {'games': out, 'alerts': shown, 'props': dict(per_prop),
             'accounts': {'sharp': len(W['sharp']), 'nba_sharp': sum(1 for s in W['sharp'].values() if s == 'nba'), 'dull': len(W['dull']),
                          'scored': W['n'], 'generated': W['generated']}}
 
@@ -571,13 +617,19 @@ def save_signals(day_dir, fresh):
     json.dump(cur, open(p, 'w'), separators=(',', ':'))
 
 
-def save_close(root, by_id, pins, now):
-    """Each upcoming game's ladder, rewritten every poll until tip: the last write is Pinnacle's close."""
+def save_close(root, by_id, pins, now, pin_props=None):
+    """Each upcoming game's ladder (and each player prop's main line), rewritten every poll until tip: the last write
+    is Pinnacle's close."""
     per = defaultdict(dict)
+    props = defaultdict(dict)
+    for (pid, stat, gid), S in (pin_props or {}).items():
+        if S and S[-1][2] is not None:
+            props[gid][f'{pid}|{stat}'] = [S[-1][1], S[-1][2]]
     for gid, g in by_id.items():
         P = pins.get(gid)
-        if P and P['ladder'] and now < g['tip'] and P['series']:
-            per[et_day(g['tip'])][gid] = {'t': P['series'][-1][0], 'tip': g['tip'], 'lad': lad_json(P['ladder'])}
+        if now < g['tip'] and ((P and P['ladder'] and P['series']) or props.get(gid)):
+            per[et_day(g['tip'])][gid] = {'t': P['series'][-1][0] if P and P['series'] else now, 'tip': g['tip'],
+                                          'lad': lad_json(P['ladder']) if P and P['ladder'] else None, 'props': props.get(gid) or {}}
     for d, games in per.items():
         p = os.path.join(root, 'snapshots', d, 'pinclose.json')
         os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -586,11 +638,152 @@ def save_close(root, by_id, pins, now):
         json.dump(cur, open(p, 'w'), separators=(',', ':'))
 
 
+# ── per-prop signals ─────────────────────────────────────────────────────────────────────────────
+def pin_prop_series(dirs, pin_keys, tips):
+    """Pinnacle player props from the day files: {(pid, stat, gid): [[t, line, no-vig P(over), limit]]}. A prop is one
+    Pinnacle special (matchup id) with Over / Under sides; the line moves within the same keys."""
+    mids = {k.split('|')[0]: (v[0], v[1], v[3]) for k, v in pin_keys.items()}
+    out, polls = {}, []
+    state = defaultdict(dict)
+    for d in dirs:
+        lp = os.path.join(d, 'pinnacle.jsonl')
+        if not os.path.exists(lp):
+            continue
+        rows = []
+        for line in open(lp):
+            r = json.loads(line)
+            mid = r['k'].split('|')[0]
+            if mid in mids:
+                rows.append(r)
+        rows.sort(key=lambda r: r['t'])
+        first, i = True, 0
+        while i < len(rows):                            # apply a whole poll before pricing: Over and Under move together
+            t, touched = rows[i]['t'], set()
+            if first:
+                state.clear()
+                first = False
+            while i < len(rows) and rows[i]['t'] == t:
+                r = rows[i]
+                i += 1
+                pid, stat, gid = mids[r['k'].split('|')[0]]
+                side = r['k'].rsplit('|', 1)[-1]
+                if t >= tips.get(gid, 1e12) or side not in ('Over', 'Under'):
+                    continue
+                st = state[(pid, stat, gid)]
+                if r['v'] is None:
+                    st.pop(side, None)
+                else:
+                    st[side] = r['v']
+                touched.add((pid, stat, gid))
+            for key in touched:
+                st = state[key]
+                if 'Over' in st and 'Under' in st and st['Over'][0] is not None:
+                    row = [t, st['Over'][0], r3(devig(st['Over'][1], st['Under'][1])), st['Over'][2] if len(st['Over']) > 2 else None]
+                    S = out.setdefault(key, [])
+                    if not S or S[-1][1:3] != row[1:3]:
+                        S.append(row)
+    return out
+
+
+def prop_signals(by_id, pkeys, pin_props, polls, tape, W, day, now, kal_vol):
+    """-> alert dicts (type p_pin / p_acct / p_kal) for every prop on the board."""
+    out = []
+    # Pinnacle prop moves: a full point, or 5 points of no-vig chance at the same line, within an hour (timed moves only)
+    for (pid, stat, gid), S in pin_props.items():
+        last = {}
+        for i, cur in enumerate(S):
+            t = cur[0]
+            if not any(t - GAP_MAX <= q < t for q in polls):
+                continue
+            ref = next((x for x in reversed(S[:i]) if x[0] <= t - P_WIN), S[0])
+            if ref is cur or ref[2] is None or cur[2] is None:
+                continue
+            dl, dp = cur[1] - ref[1], cur[2] - ref[2]
+            if abs(dl) >= P_LINE:
+                side = 'over' if dl > 0 else 'under'
+            elif dl == 0 and abs(dp) >= P_PROB:
+                side = 'over' if dp > 0 else 'under'
+            else:
+                continue
+            if last.get(side, -1e12) > t - STEAM_COOL:
+                continue
+            last[side] = t
+            out.append({'g': gid, 'pid': pid, 'stat': stat, 'type': 'p_pin', 't': t, 'side': side, 'line': cur[1],
+                        'from': [ref[1], ref[2]], 'to': [cur[1], cur[2]], 'lim': cur[3],
+                        'fair': r3(cur[2] if side == 'over' else 1 - cur[2]), 'id': f"{gid}:p_pin:{pid}:{stat}:{side}:{t}"})
+    def pin_at(key, t, line):                          # Pinnacle's fair at that moment, only if it was dealing that line then
+        x = next((x for x in reversed(pin_props.get(key) or []) if x[0] <= t), None)
+        return x[2] if x and x[1] == line else None
+    # sharp accounts on Polymarket props, per 30-minute bucket
+    W_ = W or {'sharp': {}, 'dull': set(), 'rec': {}}
+    pm = pkeys.get('polymarket') or {}
+    groups = defaultdict(list)
+    for r in tape:
+        if r.get('s') != 'pm' or r['k'] not in pm or r.get('w') not in W_['sharp']:
+            continue
+        pid, stat, line, gid = pm[r['k']]
+        if gid not in by_id or r['t'] >= by_id[gid]['tip']:
+            continue
+        groups[(pid, stat, gid, line, 'over' if r['o'] == 0 else 'under', r['t'] // 1800)].append(r)
+    for (pid, stat, gid, line, side, b), xs in groups.items():
+        usd = sum(x['usd'] for x in xs)
+        if usd < P_SHARP:
+            continue
+        top = max(xs, key=lambda x: x['usd'])
+        t = max(x['t'] for x in xs)
+        f = pin_at((pid, stat, gid), t, line)
+        out.append({'g': gid, 'pid': pid, 'stat': stat, 'type': 'p_acct', 't': t, 'side': side, 'line': line, 'usd': usd, 'n': len(xs),
+                    'accts': len({x['w'] for x in xs}), 'px': top['px'], 'who': top.get('who'), 'rec': W_['rec'].get(top['w']),
+                    'fair': r3(f if side == 'over' else 1 - f) if f is not None else None, 'id': f"{gid}:p_acct:{pid}:{stat}:{line}:{side}:{b}"})
+    # heavy Kalshi flow: contracts traded on one rung between two polls, with the price moving
+    path = os.path.join(day.dir, 'kalvol.json')
+    try:
+        prev = json.load(open(path))
+    except (OSError, ValueError):
+        prev = {}
+    kal, nxt = pkeys.get('kalshi') or {}, {}
+    for k, (pid, stat, line, gid) in kal.items():
+        v, q = kal_vol.get(k), (day.last.get('kalshi') or {}).get(k)
+        if v is None or not q or q[0] is None or q[1] is None or gid not in by_id:
+            continue
+        mid = (q[0] + q[1]) / 2
+        nxt[k] = [now, v, round(mid, 4)]
+        pv = prev.get(k)
+        if not pv or now - pv[0] > GAP_MAX or now >= by_id[gid]['tip']:
+            continue
+        dv, dm = v - pv[1], mid - pv[2]
+        usd = dv * (mid + pv[2]) / 2
+        if usd >= P_KAL_USD and abs(dm) >= P_KAL_MOVE:
+            side = 'over' if dm > 0 else 'under'
+            f = pin_at((pid, stat, gid), now, line)
+            out.append({'g': gid, 'pid': pid, 'stat': stat, 'type': 'p_kal', 't': now, 'side': side, 'line': line, 'usd': round(usd),
+                        'from': round(pv[2], 3), 'to': round(mid, 3), 'fair': r3(f if side == 'over' else 1 - f) if f is not None else None,
+                        'id': f"{gid}:p_kal:{k}:{now}"})
+    try:
+        json.dump(nxt, open(path, 'w'), separators=(',', ':'))
+    except OSError:
+        pass
+    return out
+
+
 # ── grading (ledger.settle) ──────────────────────────────────────────────────────────────────────
 def _lad(j):
     if not j:
         return None
     return {'sp': {float(k): v for k, v in (j.get('sp') or {}).items()}, 'tot': {float(k): v for k, v in (j.get('tot') or {}).items()}, 'ml': j.get('ml')}
+
+
+def grade_prop(a, close_props, actual):
+    """A player-prop signal: CLV against Pinnacle's closing no-vig chance when it closed at the same line; result from
+    the box score (did the stat finish on the signal's side of its line)."""
+    c = (close_props or {}).get(f"{a['pid']}|{a['stat']}")
+    if c and a.get('close') is None and c[0] == a.get('line') and c[1] is not None:
+        a['close'] = r3(c[1] if a['side'] == 'over' else 1 - c[1])
+        if a.get('fair') is not None:
+            a['clv'] = r3(a['close'] - a['fair'])
+    if actual is not None and a.get('result') is None and a.get('line') is not None:
+        d = (actual - a['line']) * (1 if a['side'] == 'over' else -1)
+        a['result'] = 1 if d > 0 else -1 if d < 0 else 0
 
 
 def grade_alert(a, close, score):
@@ -618,7 +811,7 @@ def grade_alert(a, close, score):
         a['result'] = 1 if d > 0 else -1 if d < 0 else 0
 
 
-def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400):
+def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_of=None):
     """track.json 'signals': {'days': {tip day: {type: [n, graded, clv_sum, clv_sq, clv_pos, w, l, p, exp_sum]}},
     'recent': graded alerts, newest first}. Days outside the rescan window keep their totals."""
     prev = prev or {}
@@ -639,9 +832,13 @@ def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400):
             p = os.path.join(root, 'snapshots', a['tday'], 'pinclose.json')
             closes[a['tday']] = json.load(open(p)) if os.path.exists(p) else {}
         c = closes[a['tday']].get(a['g'])
-        if box(root, a['g']) is None:
+        bx = box(root, a['g'])
+        if bx is None:
             continue
-        grade_alert(a, _lad(c['lad']) if c else None, (box_meta(root, a['g']) or {}).get('score'))
+        if a['type'].startswith('p_'):
+            grade_prop(a, (c or {}).get('props'), stat_of(bx, a['pid'], a['stat']) if stat_of else None)
+        else:
+            grade_alert(a, _lad(c['lad']) if c and c.get('lad') else None, (box_meta(root, a['g']) or {}).get('score'))
         recent[a['id']] = a
     touched = defaultdict(lambda: defaultdict(lambda: [0, 0, 0.0, 0.0, 0, 0, 0, 0, 0.0]))
     for a in alerts.values():

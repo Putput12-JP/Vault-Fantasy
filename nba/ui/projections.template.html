@@ -493,6 +493,105 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 }
 @media (max-width:480px){ .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px} .kpi .val{font-size:20px} }
 @media (prefers-reduced-motion:reduce){ .btn,.switch input::after,.prog .tr i,.sidebar{transition:none} }
+/* Player Props v2 */
+.pv-wrap{display:grid;gap:var(--gap);min-width:0}
+.pv-toolcard{display:grid;gap:10px;padding:12px 14px}
+.pv-presets{display:flex;flex-wrap:wrap;gap:8px}
+.pv-preset{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:var(--r-pill);border:1px solid var(--border2);background:none;cursor:pointer;font-size:13px;color:var(--fg2)}
+.pv-preset b{font-family:var(--font-mono);font-size:11.5px;color:var(--fg3);font-weight:500}
+.pv-preset[aria-pressed="true"]{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.pv-preset[aria-pressed="true"] b{color:var(--on-primary)}
+.pv-row2{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding-top:10px;border-top:1px solid var(--border)}
+.pv-grow{flex:1}
+.pv-main{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);gap:var(--gap);align-items:start}
+.pv-list{display:grid;max-height:calc(100dvh - 220px);overflow:auto;position:sticky;top:calc(env(safe-area-inset-top,0px) + 132px)}
+.pv-li{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 14px;border:0;border-top:1px solid var(--border);cursor:pointer;text-align:left;background:none;width:100%;color:inherit}
+.pv-li:first-child{border-top:0}
+.pv-li:hover{background:var(--surface2)}
+.pv-li[aria-current="true"]{background:var(--raised)}
+.pv-li .av{width:36px;height:36px}
+.pv-li .pv-who{min-width:0}
+.pv-li .pv-who b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-li .pv-who span{display:block;font-size:12px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-li .r{display:grid;justify-items:end;gap:3px}
+.pv-li .r small{font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pv-vp{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:var(--r-pill);font-size:11.5px;font-weight:700;letter-spacing:.04em}
+.pv-vp.bet{background:rgba(74,222,128,.16);color:var(--up);border:1px solid rgba(74,222,128,.45)}
+.pv-vp.lean{background:rgba(251,191,36,.12);color:var(--warn);border:1px solid rgba(251,191,36,.4)}
+.pv-vp.pass{color:var(--fg3);border:1px solid var(--border2)}
+.pv-shp{color:var(--fg2)} .pv-shp.with{color:var(--up)} .pv-shp.against{color:var(--down)}
+.pv-detail{display:grid;gap:var(--gap);min-width:0}
+.pv-dh{padding:18px 22px;display:grid;gap:14px}
+.pv-dtop{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 20px}
+.pv-dh h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.pv-meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:13px;color:var(--fg2)}
+.pv-proj{display:grid;justify-items:end}
+.pv-proj small{font-size:11.5px;color:var(--fg3)}
+.pv-proj b{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums}
+.pv-proj span{font-size:12px;color:var(--fg2)}
+.pv-mins{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:12px;align-items:center;font-size:12.5px;color:var(--fg2)}
+.pv-mins b{color:var(--fg)}
+.pv-mbar{position:relative;height:30px}
+.pv-mbar::before{content:"";position:absolute;left:0;right:0;top:8px;height:2px;background:var(--raised)}
+.pv-mbar .rng{position:absolute;top:5px;height:8px;border-radius:4px;background:rgba(161,161,170,.3)}
+.pv-mbar .pt{position:absolute;top:2px;width:3px;height:14px;margin-left:-1px;background:var(--fg);border-radius:2px}
+.pv-mbar .us{position:absolute;top:0;width:2px;height:18px;margin-left:-1px;background:var(--fg3)}
+.pv-mbar .tk{position:absolute;top:18px;font-family:var(--font-mono);font-size:9.5px;color:var(--fg3);transform:translateX(-50%)}
+.pv-verdict{padding:16px 20px;border-radius:var(--r-card);display:grid;gap:6px}
+.pv-verdict.bet{background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.35)}
+.pv-verdict.lean{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.35)}
+.pv-verdict.pass{background:var(--surface);border:1px solid var(--border)}
+.pv-verdict .l1{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.pv-verdict h3{margin:0;font-size:18px;font-weight:600}
+.pv-verdict p{margin:0;font-size:13px;color:var(--fg2);max-width:80ch}
+.pv-verdict p b{color:var(--fg);font-weight:500}
+.pv-verdict .plain{font-size:15px;color:var(--fg)}
+.pv-sec{padding:16px 20px 18px;display:grid;gap:12px}
+.pv-sh{display:grid;gap:2px}
+.pv-sh h3{margin:0;font-size:15px;font-weight:600}
+.pv-sh p{margin:0;font-size:12.5px;color:var(--fg2);max-width:80ch}
+.pv-shop{padding:10px 14px;border-radius:10px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.25);font-size:13px;color:var(--fg2)}
+.pv-shop b{color:var(--fg);font-weight:600}
+.pv-ways{display:grid;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.pv-way{display:grid;grid-template-columns:minmax(0,1fr) auto 64px;gap:2px 14px;align-items:center;padding:10px 14px;border-top:1px solid var(--border)}
+.pv-way:first-child{border-top:0}
+.pv-way.hl{background:rgba(74,222,128,.07)}
+.pv-way .w1 b{display:block;font-size:13.5px;font-weight:600}
+.pv-way .w1 span{font-size:12px;color:var(--fg3)}
+.pv-way .w2{display:grid;justify-items:end;line-height:1.2}
+.pv-way .w2 b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.pv-way .w2 small{font-size:10.5px;color:var(--fg3)}
+.pv-way .pv-vp{justify-self:end}
+.pv-way .w3{grid-column:1/-1;font-size:12px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.pv-more{justify-self:start;height:30px;padding:0 12px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:12.5px;color:var(--fg2)}
+.pv-shead{display:grid;gap:2px;padding:10px 14px;border-radius:10px;border:1px solid var(--border);font-size:13px;color:var(--fg2)}
+.pv-shead b{color:var(--fg);font-weight:600;font-size:14px}
+.pv-shead.with{background:rgba(74,222,128,.07);border-color:rgba(74,222,128,.35)} .pv-shead.with b{color:var(--up)}
+.pv-shead.against{background:rgba(248,113,113,.07);border-color:rgba(248,113,113,.35)} .pv-shead.against b{color:var(--down)}
+.pv-sg{display:grid;grid-template-columns:118px minmax(0,1fr);gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--border)}
+.pv-sg p{margin:0;font-size:13px}
+.pv-sg small{font-size:11.5px;color:var(--fg3)}
+.pv-sk{display:inline-flex;justify-content:center;height:22px;align-items:center;padding:0 8px;border-radius:var(--r-pill);font-size:11px;font-weight:500;border:1px solid var(--border2);color:var(--fg2);white-space:nowrap}
+.pv-sk.p_pin{color:#93c5fd;border-color:rgba(147,197,253,.4)} .pv-sk.p_acct{color:var(--up);border-color:rgba(74,222,128,.35)} .pv-sk.p_kal{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.pv-note,.pv-none{margin:0;font-size:12px;color:var(--fg3)}
+.pv-wf{display:grid;gap:5px}
+.pv-wf .wr{display:grid;grid-template-columns:170px minmax(0,1fr) 64px;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}
+.pv-wf .wr > b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+.pv-wf .pv-bar{position:relative;height:16px}
+.pv-wf .pv-bar u{position:absolute;top:2px;height:12px;border-radius:3px}
+.pv-wf .wr.tot > span,.pv-wf .wr.tot > b{color:var(--fg);font-weight:600}
+.pv-recent{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:center}
+.pv-chart{width:100%;max-width:480px;height:auto;display:block}
+.pv-chart text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
+.pv-honest{padding:12px 14px;border-radius:10px;border:1px solid var(--border);font-size:12.5px;color:var(--fg2);display:grid;gap:6px}
+.pv-honest b{color:var(--fg);font-weight:600}
+.pv-honest .big{font-size:22px;font-weight:600;color:var(--fg)}
+.pv-moves{display:grid;gap:8px}
+.pv-moves .mv{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:start;font-size:13px;color:var(--fg2)}
+.pv-moves .mv i{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;background:var(--raised)}
+.pv-moves .mv b{color:var(--fg);font-weight:500}
+@media (max-width:1200px){ .pv-main{grid-template-columns:minmax(0,1fr)} .pv-list{position:static;max-height:420px} .pv-recent{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:600px){ .pv-dh,.pv-sec{padding:16px} .pv-wf .wr{grid-template-columns:120px minmax(0,1fr) 52px} .pv-mins{grid-template-columns:minmax(0,1fr) auto} .pv-mins .pv-mbar{grid-column:1/-1;order:3} .pv-sg{grid-template-columns:minmax(0,1fr);gap:4px} .pv-sk{justify-self:start} .pv-row2 .pfind{flex:1 1 140px} }
 /* What Works */
 .wk-sec-wrap{display:grid;gap:var(--gap);min-width:0}
 .wk-lede{margin:0;font-size:15px;color:var(--fg2);max-width:72ch}
@@ -807,6 +906,12 @@ table.nt.sl-rt{min-width:420px}
 
     <main id="v-props" hidden>
       <div class="banner" id="pbanner" hidden></div>
+      <section class="card tbar"><div class="tfilters"><div class="seg" id="pvtabs" role="group" aria-label="View"></div></div></section>
+      <div id="pv-v2" class="pv-wrap">
+        <section class="card pv-toolcard" id="pv-tools"></section>
+        <div class="pv-main"><section class="card pv-list" id="pv-list" aria-label="Props"></section><section class="pv-detail" id="pv-detail"></section></div>
+      </div>
+      <div id="pv-full" class="pv-wrap" hidden>
       <div class="kpis" id="pkpis"></div>
       <section class="card">
         <div class="card-h">
@@ -829,6 +934,7 @@ table.nt.sl-rt{min-width:420px}
           <div class="more" id="pmore" hidden></div>
         </div>
       </section>
+      </div>
     </main>
     <footer id="pfoot" hidden></footer>
 
@@ -2166,6 +2272,7 @@ function renderProps(){
     <div><b>Projection</b> is prop model ${PR.model}: tonight's minutes from the minutes model (recent minutes, teammates out, blowout risk from the spread, back-to-backs, the team total), exactly as the backtest ran it, × the model's per-minute rates, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread. A team you edit in the Minutes Lab uses your minutes instead, and a player with no games yet for his current team (a trade, a rookie) uses the Lab's estimate.</div>
     <div><b>Model</b> is the chance of going over, calibrated on 2024-25 lines. <b>Fair</b> blends the market price with the model; the market carries most of the weight. <b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig.</div>
     <div><b>Gates</b> (2025-26 backtest, blend vs the price-only baseline): GO ${gos.join(', ') || 'none'}; WATCH ${watch.join(', ') || 'none'}; sportsbook props NO-GO. Nothing is bet for real until a signal passes on this season's games. Players listed Out on the injury report or Inactive on NBA.com get 0 minutes and their teammates are repriced automatically, unless you have edited that team in the Minutes Lab. Questionable and Doubtful players keep their minutes.</div>`;
+  pvShow();
 }
 function range2(stat, mu){ const v = PR.variance[stat]; if (!v || mu <= 0) return null; const sd = Math.sqrt(Math.max(.25, v[0] + v[1]*mu + v[2]*mu*mu)); return [Math.max(0, mu - Z*sd), mu + Z*sd]; }
 
@@ -3250,10 +3357,11 @@ function xRecord(){
     const x = T[t] = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0];
     r.forEach((v, i) => x[i] += v);
   }
-  const rows = Object.keys(XTYPE).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null;
+  const XREC = {...XTYPE, p_pin: 'Prop: Pinnacle move', p_acct: 'Prop: sharp accounts', p_kal: 'Prop: heavy Kalshi money'};
+  const rows = Object.keys(XREC).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null;
     const se = g > 1 ? Math.sqrt(Math.max(r[3] / g - m * m, 0) / g) : null, tt = se ? m / se : null, dec = r[5] + r[6] + r[7];
     const st = g < 50 ? `<span class="muted">Tracking · ${g} of 50</span>` : tt >= 2 ? '<span class="pos">Beats the close</span>' : tt <= -2 ? '<span class="neg">Loses to the close</span>' : 'No edge yet';
-    return `<tr><td class="l"><b>${XTYPE[t]}</b></td><td>${r[0]}</td><td>${g}</td><td>${m != null ? `<span class="${m > 0 ? 'pos' : m < 0 ? 'neg' : ''}">${m >= 0 ? '+' : ''}${(m * 100).toFixed(2)}</span>${se ? ` <small>± ${(se * 100).toFixed(2)}</small>` : ''}` : ''}</td><td>${g ? pc(r[4] / g) : ''}</td><td>${dec ? `${r[5]}-${r[6]}${r[7] ? '-' + r[7] : ''}` : ''}</td><td>${dec ? `${pc(r[5] / Math.max(1, r[5] + r[6]))} <small>vs ${pc(r[8] / dec)}</small>` : ''}</td><td class="l">${st}</td></tr>`; });
+    return `<tr><td class="l"><b>${XREC[t]}</b></td><td>${r[0]}</td><td>${g}</td><td>${m != null ? `<span class="${m > 0 ? 'pos' : m < 0 ? 'neg' : ''}">${m >= 0 ? '+' : ''}${(m * 100).toFixed(2)}</span>${se ? ` <small>± ${(se * 100).toFixed(2)}</small>` : ''}` : ''}</td><td>${g ? pc(r[4] / g) : ''}</td><td>${dec ? `${r[5]}-${r[6]}${r[7] ? '-' + r[7] : ''}` : ''}</td><td>${dec ? `${pc(r[5] / Math.max(1, r[5] + r[6]))} <small>vs ${pc(r[8] / dec)}</small>` : ''}</td><td class="l">${st}</td></tr>`; });
   $('xrecord').innerHTML = `<thead><tr><th class="l">Signal</th><th>Fired</th><th title="Games final, with Pinnacle's close at the signal's number">Graded</th><th title="Pinnacle's closing fair minus the fair when it fired, in probability points (behind: EV at the closing fair)">Avg CLV, pts</th><th>Beat the close</th><th>W-L-P</th><th title="Win rate vs the fair probability when it fired">Won vs fair</th><th class="l">Status</th></tr></thead><tbody>${rows.join('')}</tbody>`;
   return Object.values(T).reduce((a, r) => [a[0] + r[1], a[1] + r[2]], [0, 0]);
 }
@@ -3660,6 +3768,228 @@ $('v-backtests').addEventListener('click', e => {
   const g = e.target.closest('[data-edges]');
   if (g){ ef.venue = g.dataset.edges; ef.tier = 'all'; ef.type = 'all'; history.replaceState(null, '', '#edges'); show('edges'); window.scrollTo(0, 0); }
 });
+
+// ── Player Props v2 ───────────────────────────────────────────────────────
+// One decision per prop (Bet / Lean / Pass), where to take it and how far to trust it; tap a prop for the case:
+// every way to bet it in dollars, sharp money on it (sharp.py prop signals + venues moving together), why our number
+// is what it is (exactly the projection), recent games read honestly (build_hit_rates.py), and timing. Everything is
+// priced by priceRow, the same code as the Full board tab and Edges. Vocabulary matches What Works and Edges.
+let pv = {tab: 'v2', preset: 'passed', stat: 'all', game: 'all', sort: 'trust', q: '', sel: null, allWays: false};
+const PV_NOUN = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': 'threes', pra: 'pts + reb + ast', pr: 'pts + reb', pa: 'pts + ast', ra: 'reb + ast'};
+const PV_SL = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast'};
+const PV_SS = {pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM', pra: 'PRA', pr: 'P+R', pa: 'P+A', ra: 'R+A'};
+const pvOver = c => c.side === 'Over' || c.side === 'YES';
+const pvK = l => `${Math.ceil(l)}+`;
+const pvCost = c => c.fair - c.edge;                                   // per $1 of payout, fees and vig in (edge = fair - cost)
+const pvEV = c => (c.fair / pvCost(c) - 1) * 100;
+const pvWin10 = c => 10 * (1 - pvCost(c)) / pvCost(c);
+const pvUsd = x => (x < 0 ? '-' : '+') + '$' + Math.abs(x).toFixed(Math.abs(x) >= 10 ? 0 : 2);
+const pvOutcome = (c, s) => pvOver(c) ? `${Math.ceil(c.line)}+ ${PV_NOUN[s]}` : Math.floor(c.line) <= 0 ? `no ${PV_NOUN[s]}` : `${Math.floor(c.line)} or fewer ${PV_NOUN[s]}`;
+const pvBetName = c => c.venue === 'kalshi' ? `${pvOver(c) ? 'Over' : 'Under'} ${c.line} (${c.side} on ${pvK(c.line)})` : `${c.side} ${c.line}`;
+const pvBetShort = c => c.venue === 'kalshi' ? `Kalshi ${c.side} on ${pvK(c.line)}` : `${c.bk} ${c.side} ${c.line}`;
+const pvPrice = c => c.venue === 'kalshi' ? Math.round(c.price * 100) + '¢' : c.price == null ? 'flat' : String(c.price);
+const pvRowV = c => c.edge >= EDGE_MIN ? (c.g === 'go' ? 'bet' : 'lean') : 'pass';
+const PV_VR = {bet: 0, lean: 1, pass: 2};
+const PV_TIER = {go: ['passed', 'Passed the backtest'], watch: ['tracking', 'Tracking'], 'no-go': ['', 'Untested']};
+
+function pvRows(){
+  const B = PS.board, cache = {}, rows = [];
+  for (const e of B.props || []){
+    const r = priceRow(e, cache);
+    if (!r.mu && r.mu !== 0) continue;
+    const b = r.best;
+    r.verdict = b && b.edge >= EDGE_MIN ? (b.g === 'go' ? 'bet' : 'lean') : 'pass';
+    r.trust = r.verdict === 'bet' ? 0 : r.verdict === 'lean' ? (b.g === 'watch' ? 1 : 2) : 3;
+    r.game = (B.games || []).find(x => String(x.id) === String(e.g));
+    r.sharp = pvSharp(r);
+    rows.push(r);
+  }
+  return {rows, cache};
+}
+// sharp money on one prop: the recorder's signals plus 2+ venues moving the same way since open (one book alone is not)
+function pvSharp(r){
+  const sig = [...(((PS.board.sharp || {}).props || {})[`${r.e.p}|${r.e.s}`] || [])];
+  let o = 0, u = 0; const mt = [];
+  for (const b of r.books || []){
+    if (b.l0 == null || b.line == null) continue;
+    const dl = b.line - b.l0, dp = b.line === b.l0 && b.o0 != null ? amP(b.o) - amP(b.o0) : 0;
+    if (dl > 0 || dp > .01){ o++; mt.push(`${b.bk} ${b.l0} (${b.o0}) to ${b.line} (${b.o})`); }
+    else if (dl < 0 || dp < -.01){ u++; mt.push(`${b.bk} ${b.l0} (${b.o0}) to ${b.line} (${b.o})`); }
+  }
+  for (const k of r.kal || []){
+    if (k.om == null || k.mid == null) continue;
+    if (k.mid - k.om >= .03){ o++; mt.push(`Kalshi ${pvK(k.line)} ${Math.round(k.om * 100)}¢ to ${Math.round(k.mid * 100)}¢`); }
+    else if (k.om - k.mid >= .03){ u++; mt.push(`Kalshi ${pvK(k.line)} ${Math.round(k.om * 100)}¢ to ${Math.round(k.mid * 100)}¢`); }
+  }
+  if ((o >= 2 && !u) || (u >= 2 && !o)) sig.push({type: 'p_mkt', t: null, side: o ? 'over' : 'under', txt: mt.join('; ')});
+  const no = sig.filter(x => x.side === 'over').length, nu = sig.filter(x => x.side === 'under').length;
+  const lean = !sig.length ? null : no > nu ? 'over' : nu > no ? 'under' : 'split';
+  const b = r.best && r.best.edge >= EDGE_MIN ? r.best : null;
+  const vs = !b || !lean || lean === 'split' ? null : (lean === 'over') === pvOver(b) ? 'with' : 'against';
+  return {sig, lean, vs};
+}
+const PV_PRESETS = [
+  ['passed', 'Bets that passed', r => r.verdict === 'bet'],
+  ['edges', 'All edges 3%+', r => r.verdict !== 'pass'],
+  ['kalno', 'Kalshi NO', r => r.cands.some(c => c.venue === 'kalshi' && c.side === 'NO' && c.edge >= EDGE_MIN)],
+  ['pickem', "Pick'em plays", r => (r.pkc || []).some(c => c.edge >= EDGE_MIN)],
+  ['sharp', 'Sharp money', r => r.sharp.sig.length > 0],
+  ['all', 'Everything', () => true],
+];
+function renderPropsV2(){
+  pv.cache = {};
+  const {rows} = pvRows(), B = PS.board;
+  pv.rows = rows;
+  const f = PV_PRESETS.find(x => x[0] === pv.preset)[2], q = pv.q.toLowerCase();
+  const games = B.games || [];
+  if (pv.game !== 'all' && !games.some(g => String(g.id) === pv.game)) pv.game = 'all';
+  let L = rows.filter(r => f(r) && (pv.stat === 'all' || r.e.s === pv.stat) && (pv.game === 'all' || String(r.e.g) === pv.game) && (!q || r.name.toLowerCase().includes(q)));
+  L.sort(pv.sort === 'edge' ? (a, b) => (b.best ? b.best.edge : -1) - (a.best ? a.best.edge : -1)
+    : pv.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) || a.e.s.localeCompare(b.e.s)
+    : (a, b) => a.trust - b.trust || (b.best ? b.best.edge : -1) - (a.best ? a.best.edge : -1));
+  const stats = ['all', ...new Set(rows.map(r => r.e.s))];
+  $('pv-tools').innerHTML = `<div class="pv-presets">${PV_PRESETS.map(([k, l, fn]) => `<button class="pv-preset" type="button" data-p="${k}" aria-pressed="${pv.preset === k}">${l}<b>${rows.filter(fn).length}</b></button>`).join('')}</div>
+    <div class="pv-row2"><div class="seg" id="pv-stat">${stats.map(s => `<button type="button" data-s="${s}" aria-pressed="${pv.stat === s}">${s === 'all' ? 'All' : PV_SS[s] || s}</button>`).join('')}</div>
+      <span class="pv-grow"></span>
+      ${games.length > 1 ? `<select class="sel" id="pv-game" aria-label="Game"><option value="all">All games</option>${games.map(g => `<option value="${g.id}"${pv.game === String(g.id) ? ' selected' : ''}>${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}</option>`).join('')}</select>` : ''}
+      <select class="sel" id="pv-sort" aria-label="Sort"><option value="trust"${pv.sort === 'trust' ? ' selected' : ''}>Sort: bets you can trust</option><option value="edge"${pv.sort === 'edge' ? ' selected' : ''}>Sort: biggest edge</option><option value="name"${pv.sort === 'name' ? ' selected' : ''}>Sort: player</option></select>
+      <input class="pfind" id="pv-q" type="search" placeholder="Find a player" value="${esc(pv.q)}" aria-label="Find a player"></div>`;
+  const key = r => `${r.e.p}|${r.e.s}|${r.e.g}`;
+  if (!pv.sel || !L.some(r => key(r) === pv.sel)) pv.sel = L[0] ? key(L[0]) : null;
+  $('pv-list').innerHTML = L.length ? L.map(r => { const b = r.best, sh = r.sharp;
+    const where = r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`;
+    return `<button class="pv-li" type="button" data-k="${key(r)}" aria-current="${key(r) === pv.sel}">
+      <span class="av">${esc(initials(r.name))}</span>
+      <span class="pv-who"><b>${esc(r.name)}</b><span>${PV_SL[r.e.s] || r.e.s} · proj ${fmt(r.mu)} · ${esc(where)}</span></span>
+      <span class="r"><span class="pv-vp ${r.verdict}">${r.verdict.toUpperCase()}</span>${r.verdict !== 'pass' ? `<small class="pos">+${pc(b.edge, 1)}</small>` : '<small class="muted">no edge</small>'}${sh.vs ? `<small class="pv-shp ${sh.vs}" title="Sharp money ${sh.vs} this bet">⚡ ${sh.vs}</small>` : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? `<small class="pv-shp">⚡ ${sh.lean}</small>` : ''}</span></button>`; }).join('')
+    : `<p class="empty">${!rows.length ? 'No player props listed yet. Kalshi lists them the morning of a game.' : pv.preset === 'pickem' ? "No pick'em edges right now: PrizePicks, Underdog and Sleeper post lines on game days." : 'Nothing matches.'}</p>`;
+  pvDetail(L.find(r => key(r) === pv.sel));
+}
+
+function pvWays(r){
+  const all = [...(r.all || [])].filter(c => c.fair != null && c.edge != null && pvCost(c) > 0 && pvCost(c) < 1)
+    .sort((a, b) => PV_VR[pvRowV(a)] - PV_VR[pvRowV(b)] || b.edge - a.edge);
+  if (!all.length) return '<p class="muted">No prices on this prop.</p>';
+  const open = pv.allWays || all.length <= 8, rows = open ? all : all.slice(0, 8), top = all[0];
+  const ref = r.lineFrom && [...all].filter(c => c.bk === r.lineFrom && c.line === r.line).sort((a, b) => b.edge - a.edge)[0];
+  const tr = c => { const v = pvRowV(c), ev = pvEV(c);
+    return `<div class="pv-way ${c === r.best && r.verdict !== 'pass' ? 'hl' : ''}">
+      <div class="w1"><b>${esc(pvBetName(c))} · ${esc(c.bk)}</b><span>${esc(pvOutcome(c, r.e.s))}</span></div>
+      <div class="w2"><b class="${ev < 0 ? 'neg' : v === 'pass' ? 'muted' : 'pos'}">${pvUsd(ev)}</b><small>per $100</small></div>
+      <span class="pv-vp ${v}">${v.toUpperCase()}</span>
+      <div class="w3">${c.venue === 'kalshi' ? `${Math.round(pvCost(c) * 100)}¢ (${Math.round(c.price * 100)}¢ + fee)` : c.price == null ? `flat pick (break-even ${pc(PK_BE, 1)})` : `${esc(String(c.price))} (${pc(pvCost(c))} with the vig)`} · our chance ${pc(c.fair)} · $10 wins $${fmt(pvWin10(c), 2)}</div></div>`; };
+  return `${ref && ref !== top && pvRowV(top) !== 'pass' ? `<div class="pv-shop"><b>Shopping matters here.</b> The recommended bet is worth <b class="pos">${pvUsd(pvEV(top))}</b> per $100; the main line at ${esc(ref.bk)} (${esc(pvBetName(ref))}) is worth <b class="${pvEV(ref) >= 0 ? 'pos' : 'neg'}">${pvUsd(pvEV(ref))}</b>.</div>` : ''}
+    <div class="pv-ways">${rows.map(tr).join('')}</div>${!open ? `<button class="pv-more" type="button" data-allways="1">Show all ${all.length} ways</button>` : ''}`;
+}
+const PV_SK = {p_pin: 'Pinnacle move', p_acct: 'Sharp accounts', p_kal: 'Heavy money', p_mkt: 'Market move'};
+function pvSharpText(x, r){
+  const s = r.e.s, side = x.side === 'over' ? 'over' : 'under';
+  if (x.type === 'p_pin') return x.from[0] !== x.to[0] ? `Pinnacle moved the line ${x.from[0]} to ${x.to[0]}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`
+    : `Pinnacle moved toward the ${side} at ${x.line}: over ${pc(x.from[1])} to ${pc(x.to[1])}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`;
+  if (x.type === 'p_acct') return `${x.accts > 1 ? x.accts + ' sharp Polymarket accounts' : 'Sharp Polymarket account ' + esc(x.who || '')} bought ${side === 'over' ? 'Over' : 'Under'} ${x.line}: $${x.usd.toLocaleString()} at ${Math.round(x.px * 100)}¢${x.rec ? ` (${x.rec[3].toUpperCase()} record: ${x.rec[0]} trades, ${x.rec[1] >= 0 ? '+' : ''}${(x.rec[1] * 100).toFixed(1)}% vs the close)` : ''}`;
+  if (x.type === 'p_kal') return `$${x.usd.toLocaleString()} traded on Kalshi ${pvK(x.line)} in one poll; YES ${Math.round(x.from * 100)}¢ to ${Math.round(x.to * 100)}¢`;
+  return `Venues moving the same way: ${esc(x.txt)}`;
+}
+function pvSharpSec(r){
+  const S = r.sharp, tip = r.game ? r.game.tip : null;
+  const head = !S.sig.length ? ['none', 'No sharp signal on this prop'] : S.vs === 'with' ? ['with', 'Sharp money is with this bet']
+    : S.vs === 'against' ? ['against', 'Sharp money is against this bet'] : S.lean === 'split' ? ['none', 'Sharp signals are split'] : ['none', `Sharp money leans ${S.lean}`];
+  const rows = [...S.sig].sort((a, b) => (a.t ?? 9e12) - (b.t ?? 9e12)).map(x => `<div class="pv-sg"><span class="pv-sk ${x.type}">${PV_SK[x.type]}</span>
+    <div><p>${pvSharpText(x, r)}</p><small>${x.t ? `${clock(x.t)} ET${tip ? ` · ${Math.max(0, Math.round((tip - x.t) / 60))} min before tip` : ''}` : 'since open'} · toward the ${x.side}${x.fair != null ? ` · Pinnacle's fair for the ${x.side} then ${pc(x.fair, 1)}` : ''}</small></div></div>`).join('');
+  return `<section class="card pv-sec"><div class="pv-sh"><h3>Sharp money</h3><p>Where informed money went on this prop: Pinnacle's moves, Polymarket accounts with a winning record against the close, heavy money on a Kalshi rung, and venues moving together.</p></div>
+    <div class="pv-shead ${head[0]}"><b>${head[1]}</b>${S.vs === 'against' ? '<span>Worth a second look before betting: sharp accounts beat the closing price on average.</span>' : S.vs === 'with' ? '<span>Agreement adds comfort, not edge: by the time you see it, the price has usually moved.</span>' : ''}</div>
+    ${rows || '<p class="muted pv-none">No Pinnacle move, sharp-account trade, heavy Kalshi money or market-wide move on this prop.</p>'}
+    <p class="pv-note">Context, not a bet. Copying sharp money 30+ minutes later lost money in our study. Prop signals use thresholds that have not been backtested yet; each one is graded on the Sharp Price page.</p></section>`;
+}
+function pvWaterfall(r){
+  const state = MS && (PS.mode === 'example' ? MS.example : MS.live), parts = COMBO[r.e.s] || [r.e.s];
+  const G = r.game && r.tm ? (gameMinutes(r.tm, r.game, pv.cache || (pv.cache = {})) || {})[r.e.p] : null;
+  const T = {opp: 'Opponent defense', pace: 'Pace', market: 'Game total and spread', shooting: 'Shooting volume', season: 'Season form', home: 'Home / away', b2b: 'Back-to-back', bias: 'Model calibration'};
+  if (!r.build) return '<p class="muted">No breakdown for this player.</p>';
+  let steps;
+  if (G && r.src !== 'lab'){
+    const rate = parts.reduce((a, s) => a + G.rate[s], 0);
+    steps = [[`His usual (${fmt(G.base, 0)} min)`, G.base * rate], ['Minutes tonight', (G.min - G.base) * rate], ['Teammates out', r.build.base - G.min * rate]];
+  } else steps = [['Minutes x rate', r.build.base]];
+  steps = steps.concat(Object.entries(T).map(([k, l]) => [l, r.build[k] || 0]));
+  const start = steps[0][1], nz = steps.slice(1).filter(s => Math.abs(s[1]) >= .05), zero = steps.slice(1).filter(s => Math.abs(s[1]) < .05);
+  const vals = [start]; let run = start; for (const s of nz){ run += s[1]; vals.push(run); }
+  const lo = Math.min(0, ...vals), hi = Math.max(...vals, r.mu) * 1.05, X = v => (v - lo) / (hi - lo) * 100;
+  let cur = start;
+  const rows = [`<div class="wr"><span>${esc(steps[0][0])}</span><div class="pv-bar"><u style="left:${X(0)}%;width:${X(start) - X(0)}%;background:var(--fg3)"></u></div><b>${fmt(start)}</b></div>`];
+  for (const [l, v] of nz){ const a = cur, b = cur + v; cur = b;
+    rows.push(`<div class="wr"><span>${esc(l)}</span><div class="pv-bar"><u style="left:${X(Math.min(a, b))}%;width:${Math.max(.6, Math.abs(X(b) - X(a)))}%;background:${v >= 0 ? 'var(--up)' : 'var(--down)'}"></u></div><b class="${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${fmt(v, 2)}</b></div>`); }
+  rows.push(`<div class="wr tot"><span>Tonight's projection</span><div class="pv-bar"><u style="left:${X(0)}%;width:${X(r.mu) - X(0)}%;background:var(--fg)"></u></div><b>${fmt(r.mu, 2)}</b></div>`);
+  return `<div class="pv-wf">${rows.join('')}${zero.length ? `<p class="pv-none">No effect tonight: ${zero.map(z => z[0].toLowerCase()).join(', ')}.</p>` : ''}</div>`;
+}
+function pvRecent(r){
+  if (typeof GL === 'undefined' || !GL) return '';
+  const {all} = r._logs || (r._logs = logsOf(r)), line = r.line;
+  if (line == null) return '';
+  const g10 = all.filter(g => g[5] > 0).slice(0, 10).reverse();
+  if (!g10.length) return '<p class="muted">No games yet this season.</p>';
+  const W = 380, H = 150, L = 28, R = 6, T = 10, Bm = 24, vals = g10.map(g => gval(g, r.e.s)), mx = Math.max(line * 1.5, ...vals) || 1, bw = (W - L - R) / g10.length, y = v => T + (H - T - Bm) * (1 - v / mx);
+  let s = `<line x1="${L}" x2="${W - R}" y1="${y(line)}" y2="${y(line)}" stroke="var(--warn)" stroke-dasharray="4 4"/><text x="${L - 4}" y="${y(line) + 3}" text-anchor="end" fill="var(--warn)">${line}</text>`;
+  g10.forEach((g, i) => { const v = vals[i];
+    s += `<rect x="${L + i * bw + 3}" y="${y(v)}" width="${bw - 6}" height="${Math.max(1, H - Bm - y(v))}" rx="2" fill="${v > line ? 'var(--up)' : 'var(--raised)'}"><title>${fmt(v, 0)} vs ${esc(GL.teams[g[2]] || '')}, ${gdate(g[0])}</title></rect><text x="${L + i * bw + bw / 2}" y="${H - 8}" text-anchor="middle">${esc(GL.teams[g[2]] || '')}</text>`; });
+  const hits = vals.filter(v => v > line).length, n = vals.length;
+  const cal = BT && BT.myth ? (r.lineFrom === 'Kalshi' ? BT.myth.kalshi : BT.myth.books).cal.find(c => { const [a, z] = c.l10.split(' ')[0].split('-').map(Number); return hits >= a && hits <= z; }) : null;
+  return `<div class="pv-recent"><svg class="pv-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Last ${n} games against tonight's line">${s}</svg>
+    <div class="pv-honest"><span>Over ${line} in</span><span class="big">${hits} of ${n}</span>
+      ${cal && n >= 10 ? `<span>Sounds like ${pc(hits / n)}. Historically, ${cal.l10} at the line has meant about <b>${pc(cal.actual)}</b>, close to what the price said (${pc(cal.market)}). The line already moves to meet a hot player, so trust the prices above, not the streak.</span>` : ''}
+      ${r.mkt != null && r.fair != null ? `<span class="muted">The price says ${pc(r.mkt)} over; our fair says ${pc(r.fair)}.</span>` : ''}</div></div>`;
+}
+function pvDetail(r){
+  if (!r){ $('pv-detail').innerHTML = ''; return; }
+  const B = PS.board, b = r.best, g = r.game, state = MS && (PS.mode === 'example' ? MS.example : MS.live);
+  const sdm = state && state.players[r.e.p] ? state.players[r.e.p].sdm : 6, mn = r.min || 0, lo = Math.max(0, mn - 1.2816 * sdm), hi = Math.min(48, mn + 1.2816 * sdm);
+  const rg = range2(r.e.s, r.mu), opp = g ? (r.tm === g.home ? g.away : g.home) : '';
+  const fiveS = B.starters && B.starters[r.tm] && B.starters[r.tm].includes(r.e.p);
+  let vh;
+  if (r.verdict === 'bet'){
+    const rec = (BT && BT.signals || []).find(s => s.gate === 'GO' && s.stat === r.e.s && s.side === b.side && s.engine.startsWith('Prop'));
+    vh = `<div class="pv-verdict bet"><div class="l1"><span class="pv-vp bet">BET</span><h3>${esc(pvBetShort(b))} at ${pvPrice(b)}</h3><span class="pill ok">Passed the backtest</span></div>
+      <p class="plain">We think he gets <b>${esc(pvOutcome(b, r.e.s))}</b> ${pc(b.fair)} of the time; ${b.venue === 'kalshi' ? `Kalshi charges ${Math.round(pvCost(b) * 100)}¢ with its fee` : `at ${esc(b.bk)}, ${esc(String(b.price))} prices it at ${pc(pvCost(b))}`}. That is worth <b class="pos">${pvUsd(pvEV(b))} per $100</b>.</p>
+      <p>Edge <b class="pos">+${pc(b.edge, 1)}</b> (our ${pc(b.fair, 1)} vs a ${pc(pvCost(b), 1)} cost).${rec ? ` This kind of bet (Kalshi ${PV_SL[r.e.s].toLowerCase()} ${b.side}) returned <b>${pvUsd(rec.roi * 100)} per $100</b> over ${rec.n.toLocaleString()} bets last season.` : ''}</p></div>`;
+  } else if (r.verdict === 'lean'){
+    const t = PV_TIER[b.g] || PV_TIER['no-go'];
+    vh = `<div class="pv-verdict lean"><div class="l1"><span class="pv-vp lean">LEAN</span><h3>${esc(pvBetShort(b))} at ${pvPrice(b)}</h3><span class="pill ${t[0] === 'tracking' ? 'warn' : 'idle'}">${t[1]}</span></div>
+      <p class="plain">We think he gets <b>${esc(pvOutcome(b, r.e.s))}</b> ${pc(b.fair)} of the time; ${b.venue === 'kalshi' ? `Kalshi charges ${Math.round(pvCost(b) * 100)}¢ with its fee` : `at ${esc(b.bk)}, ${esc(String(b.price))} prices it at ${pc(pvCost(b))}`}.</p>
+      <p>The price looks <b>+${pc(b.edge, 1)}</b> off our fair ${pc(b.fair, 1)}, but this kind of edge ${b.g === 'watch' ? 'made money last season without being conclusive' : 'has no record yet'}. Worth a look, not a stake.</p></div>`;
+  } else vh = `<div class="pv-verdict pass"><div class="l1"><span class="pv-vp pass">PASS</span><h3>No price is 3% better than fair</h3></div><p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p></div>`;
+  const mv = (r.books || []).filter(x => x.l0 != null).map(x => x.l0 === x.line && x.o0 === x.o ? `<b>${esc(x.bk)}</b> has not moved since it opened (${x.line}, over ${x.o}).` : `<b>${esc(x.bk)}</b> opened ${x.l0} (over ${x.o0}); now ${x.line} (over ${x.o}).`);
+  const news = (B.news || []).filter(n => n[3] === r.tm).slice(0, 3).map(n => `<b>${clock(n[0])} ET</b> ${esc(n[2])}: ${n[4] === 'lu' ? (n[5] === 'X' ? 'inactive (NBA.com)' : 'confirmed starter') : esc(n[5] || '') + ' (injury report)'}`);
+  $('pv-detail').innerHTML = `
+    <section class="card pv-dh"><div class="pv-dtop"><div><h2>${esc(r.name)}</h2><div class="pv-meta"><span>${PV_SL[r.e.s] || r.e.s}</span>${g ? `<span>${esc(r.tm || '')} vs ${esc(opp)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span>` : ''}
+        ${fiveS || r.lu === 'S' ? '<span class="badge">Starting five confirmed</span>' : r.lu === 's' ? '<span class="badge">Expected to start</span>' : r.lu === 'B' ? '<span class="badge">Bench</span>' : ''}${r.inj ? `<span class="badge warn">${esc(r.inj)}</span>` : ''}</div></div>
+      <div class="pv-proj"><small>Tonight's projection</small><b>${fmt(r.mu)}</b><span>${rg ? `usually ${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : ''}</span></div></div>
+      <div class="pv-mins"><span>Minutes <b>${fmt(mn)}</b></span><div class="pv-mbar"><span class="rng" style="left:${lo / 48 * 100}%;width:${(hi - lo) / 48 * 100}%"></span>${r.min0 ? `<span class="us" style="left:${r.min0 / 48 * 100}%" title="His usual ${fmt(r.min0)}"></span>` : ''}<span class="pt" style="left:${mn / 48 * 100}%"></span>${[0, 12, 24, 36, 48].map(v => `<span class="tk" style="left:${v / 48 * 100}%">${v}</span>`).join('')}</div>
+        <span class="muted">${fmt(lo, 0)} to ${fmt(hi, 0)} likely${r.min0 ? ` · usual ${fmt(r.min0, 0)}` : ''}${r.src === 'yours' ? ' · your minutes' : ''}</span></div></section>
+    ${vh}
+    <section class="card pv-sec"><div class="pv-sh"><h3>Ways to bet it</h3><p>Every venue, line and side for this prop, the recommended bet first. Value is what a $100 bet makes on average if our chance is right; fees and vig are already in the price. Pass means the edge is under 3%: a small plus there is inside the model's margin of error.</p></div>${pvWays(r)}</section>
+    ${pvSharpSec(r)}
+    <section class="card pv-sec"><div class="pv-sh"><h3>Why our number is ${fmt(r.mu)}</h3><p>From his usual game to tonight. Each step is a piece of the model; together they are exactly the projection.</p></div>${pvWaterfall(r)}</section>
+    <section class="card pv-sec"><div class="pv-sh"><h3>Recent games</h3><p>Last 10 against tonight's line${r.line != null ? ` of ${r.line}` : ''}.</p></div>${pvRecent(r)}</section>
+    <section class="card pv-sec"><div class="pv-sh"><h3>Timing</h3><p>The biggest mispricings come from prices that have not caught up with news.</p></div>
+      <div class="pv-moves">${(mv.length ? mv : ['No sportsbook history for this prop yet.']).map(m => `<div class="mv"><i>↕</i><span>${m}</span></div>`).join('')}
+        ${news.length ? news.map(m => `<div class="mv"><i>!</i><span>${m}</span></div>`).join('') : '<div class="mv"><i>!</i><span><b>No injury or lineup news</b> for this team since the first poll. A price older than the news is flagged on Edges as News lag.</span></div>'}
+        <div class="mv"><i>⏱</i><span>${fiveS ? '<b>Starting five confirmed</b> by NBA.com.' : 'Lineups usually post about 30 minutes before tip.'}</span></div></div></section>`;
+}
+function pvShow(){
+  for (const t of ['v2', 'full']) $('pv-' + t).hidden = pv.tab !== t;
+  $('pvtabs').innerHTML = [['v2', 'Props'], ['full', 'Full board']].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${pv.tab === v}">${l}</button>`).join('');
+  if (pv.tab === 'v2') renderPropsV2();
+}
+$('pvtabs').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ pv.tab = b.dataset.v; pvShow(); } });
+$('pv-tools').addEventListener('click', e => {
+  const p = e.target.closest('[data-p]'); if (p){ pv.preset = p.dataset.p; renderPropsV2(); return; }
+  const s = e.target.closest('#pv-stat button[data-s]'); if (s){ pv.stat = s.dataset.s; renderPropsV2(); }
+});
+$('pv-tools').addEventListener('change', e => { if (e.target.id === 'pv-sort'){ pv.sort = e.target.value; renderPropsV2(); } if (e.target.id === 'pv-game'){ pv.game = e.target.value; renderPropsV2(); } });
+$('pv-tools').addEventListener('input', e => { if (e.target.id === 'pv-q'){ pv.q = e.target.value.trim(); const pos = e.target.selectionStart; renderPropsV2(); const q = $('pv-q'); q.focus(); q.setSelectionRange(pos, pos); } });
+$('pv-list').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b){ pv.sel = b.dataset.k; pv.allWays = false; renderPropsV2();
+  if (window.innerWidth <= 1000) $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'}); } });
+$('pv-detail').addEventListener('click', e => { if (e.target.closest('[data-allways]')){ pv.allWays = true; renderPropsV2(); } });
 
 show(view);
 </script>

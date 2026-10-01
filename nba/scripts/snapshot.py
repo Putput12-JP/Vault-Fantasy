@@ -140,11 +140,13 @@ class Slate:
 # ── sources: each returns ({key: value list}, {key: meta}) ───────────────────────────────────
 KAL_SIZE = {}     # ticker -> [yes bid size, yes ask size]: contracts at the best prices. Board only (changes every
                   # poll; logging it would multiply the day files), so capacity is live, not historical.
+KAL_VOL = {}      # ticker -> contracts traded, all time: Sharp Price diffs it poll to poll for heavy prop flow
 
 
 def src_kalshi(slate):
     rows, meta = {}, {}
     KAL_SIZE.clear()
+    KAL_VOL.clear()
     for s in PROP_SERIES + GAME_SERIES:
         cur = ''
         while True:
@@ -155,6 +157,7 @@ def src_kalshi(slate):
                 k = m['ticker']
                 rows[k] = [num(m.get('yes_bid_dollars')), num(m.get('yes_ask_dollars'))]
                 KAL_SIZE[k] = [num(m.get('yes_bid_size_fp')), num(m.get('yes_ask_size_fp'))]
+                KAL_VOL[k] = num(m.get('volume_fp'))
                 meta[k] = {'series': s, 'event': m['event_ticker'], 'title': m.get('title'), 'sub': m.get('yes_sub_title'),
                            'floor': m.get('floor_strike'), 'close': m.get('close_time')}
             cur = d.get('cursor')
@@ -633,9 +636,10 @@ def write_board(root, day, slate):
         try:                                            # Sharp Price: Pinnacle history, tapes, signals (sharp.py)
             import sharp
             from prop_board import TEAM as BTEAM
-            board['sharp'] = sharp.build(board, day, root, slate.now, BTEAM, parse_event)
+            board['sharp'] = sharp.build(board, day, root, slate.now, BTEAM, parse_event, kal_vol=KAL_VOL)
         except Exception:
             traceback.print_exc(limit=2)
+        board.pop('_pkeys', None)
         with open(BOARD, 'w') as f:
             json.dump(board, f, separators=(',', ':'))
         save_wire(day, board.get('wire') or [], slate.now)

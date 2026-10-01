@@ -92,6 +92,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
     by_id = {str(g['id']): g for g in games}
     props, players, unmapped = {}, {}, defaultdict(int)
     qk = defaultdict(list)          # (team, game id) -> [(venue, source, key)]: every prop quote, for the Injury Wire
+    pkeys = {'kalshi': {}, 'pinnacle': {}, 'polymarket': {}}   # source key -> [pid, stat, ...]: Sharp Price's per-prop signals
 
     def entry(pid, stat, g):
         name, team = R.info[pid]
@@ -118,6 +119,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
         om = round((f[0] + f[1]) / 2, 3) if f and f[0] is not None and f[1] is not None else None
         sz = (sizes or {}).get(k) or [None, None]
         entry(pid, stat, g)['kal'].append([m['floor'], v[0], v[1], om, sz[0], sz[1], W('kalshi', k)])
+        pkeys['kalshi'][k] = [pid, stat, m['floor'], str(g['id'])]
         qk[(R.info[pid][1], str(g['id']))].append(('Kalshi', 'kalshi', k))
 
     # ESPN (DraftKings): rebuild the backfill's row shape so prop_markets() assigns over/under the audited way
@@ -172,6 +174,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
         entry(pid, stat, g)['books'].append(['Pinnacle', ov[0], fmt_am(ov[1]), fmt_am(uv[1]),
                                               fo[0] if fo else None, fmt_am(fo[1]) if fo else None, W('pinnacle', ko, ku)])
         qk[(R.info[pid][1], str(g['id']))] += [('Pinnacle', 'pinnacle', ko), ('Pinnacle', 'pinnacle', ku)]
+        pkeys['pinnacle'][ko] = [pid, stat, 'Over', str(g['id'])]
+        pkeys['pinnacle'][ku] = [pid, stat, 'Under', str(g['id'])]
 
     # Polymarket player props: YES = over the line. Priced like a book: over = YES ask, under = 1 - YES bid, each
     # plus the taker fee (rate x p x (1 - p) per share), as American odds so the page treats it like any book.
@@ -196,6 +200,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
             entry(pid, stat, g)['books'].append(['Polymarket', float(m['line']), o, u, float(m['line']) if f else None,
                                                   prob_am(f[1] + fee(f[1])) if f and f[1] and 0 < f[1] < 1 else None, W('polymarket', k)])
             qk[(R.info[pid][1], str(g['id']))].append(('Polymarket', 'polymarket', k))
+        if pid:
+            pkeys['polymarket'][k] = [pid, stat, float(m['line']), str(g['id'])]
 
     # pick'em apps -> e['pk'] = [app, line, over price, under price, first line today]. PrizePicks standard lines only
     # (demon / goblin are alternate lines at other payouts) and it pays flat, so its prices are None.
@@ -286,7 +292,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
     return {'t': now, 'outs': outs, 'news': news, 'starters': starters, 'wire': wire_events,
             'games': [dict({k: g.get(k) for k in ('id', 'day', 'tip', 'away', 'home', 'season_type', 'away_name', 'home_name')}, **glines.get(str(g['id']), {}), mk=gm.get(str(g['id'])))
                                 for g in games],
-            'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped)}
+            'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped),
+            '_pkeys': pkeys}                    # internal: Sharp Price joins per-prop signals on it; dropped before the board is written
 
 
 def num(x):
