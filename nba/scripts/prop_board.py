@@ -282,8 +282,9 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None)
     starters = {t: sorted(v) for t, v in five.items() if len(v) == 5}
     news = sorted((n for n in news if n[0] and (n[4] == 'lu' or (n[5] or '').lower().startswith(('out', 'doubt', 'quest')))), reverse=True)[:60]
     wire_events = injury_wire(wire, qk, R, games, nicks) if wire else []
+    gm = game_markets(games, last, meta, gkey, nicks, when)
     return {'t': now, 'outs': outs, 'news': news, 'starters': starters, 'wire': wire_events,
-            'games': [dict({k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}, **glines.get(str(g['id']), {}))
+            'games': [dict({k: g[k] for k in ('id', 'day', 'tip', 'away', 'home', 'season_type')}, **glines.get(str(g['id']), {}), mk=gm.get(str(g['id'])))
                                 for g in games],
             'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped)}
 
@@ -319,6 +320,164 @@ def game_lines(games, last, meta, gkey, nicks):
         if gid not in out and d.get('total') is not None and d.get('spread') is not None:
             out[gid] = dict(d, line_from='Pinnacle')
     return out
+
+
+AN_BOOK = {15: 'Consensus', 30: 'Open', 68: 'DraftKings', 69: 'FanDuel', 75: 'BetMGM', 71: 'BetRivers', 79: 'bet365'}
+
+
+def _median_cross(pts):
+    """[(x, P(value > x))] -> x where P crosses 0.5 (linear between the two rungs around it), or None."""
+    pts = sorted(pts)
+    for (x0, p0), (x1, p1) in zip(pts, pts[1:]):
+        if p0 >= 0.5 >= p1 and p0 != p1:
+            return round(x0 + (p0 - 0.5) / (p0 - p1) * (x1 - x0), 1)
+    return None
+
+
+def game_markets(games, last, meta, gkey, nicks, when=None):
+    """game id -> {books: [[book, home spread, home px, away px, home ml, away ml, total, over px, under px, changed]],
+    splits: {spread|total|moneyline: [bets %, money %] for the home / over side}, open: {spread, total},
+    kalshi: {win (home), spread (home, implied by the ladder), total (implied)}, poly: {win (home), total, over}}.
+    Books from Action Network (seven books incl. consensus and open), ESPN where Action lacks the book, Pinnacle."""
+    W = lambda src, *ks: max([t for t in ((when or {}).get(src, {}).get(k) for k in ks) if t] or [None])
+    et_day = lambda t: dt.datetime.fromtimestamp(t, ET).date().isoformat() if t else None
+    out = defaultdict(lambda: {'books': {}, 'splits': {}, 'open': {}, 'kalshi': {}, 'poly': {}})
+    row = lambda: [None] * 9 + [None]
+    # Action Network
+    for k, v in (last.get('action') or {}).items():
+        m = meta.get('action', {}).get(k) or {}
+        g = gkey.get((et_day(m.get('start')), TEAM.get(m.get('home'), m.get('home'))))
+        if not g:
+            continue
+        o = out[str(g['id'])]
+        book, typ, side = AN_BOOK.get(m.get('book'), str(m.get('book'))), m.get('type'), str(m.get('side') or '')
+        r = o['books'].setdefault(book, row())
+        home = side.startswith('home')
+        if typ == 'spread':
+            if home:
+                r[0], r[1] = num(v[0]), fmt_am(v[1])
+            elif side.startswith('away'):
+                r[2] = fmt_am(v[1])
+        elif typ == 'moneyline' and (home or side.startswith('away')):
+            r[3 if home else 4] = fmt_am(v[1])
+        elif typ == 'total':
+            if side == 'over':
+                r[5], r[6] = num(v[0]), fmt_am(v[1])
+            elif side == 'under':
+                r[7] = fmt_am(v[1])
+        r[9] = max([x for x in (r[9], W('action', k)) if x is not None] or [None])
+        if (v[2] or v[3]) and (home or side == 'over') and typ in ('spread', 'total', 'moneyline'):   # 0 / 0 = not reported
+            o['splits'][typ] = [v[2], v[3]]
+        if book == 'Open' and typ == 'spread' and home:
+            o['open']['spread'] = num(v[0])
+        if book == 'Open' and typ == 'total' and side == 'over':
+            o['open']['total'] = num(v[0])
+    # ESPN (DraftKings / ESPN BET) where Action does not carry the book
+    for k, v in (last.get('espn') or {}).items():
+        if not k.endswith('|game'):
+            continue
+        m = meta.get('espn', {}).get(k) or {}
+        gid = k.split('|')[0]
+        if gid not in {str(g['id']) for g in games}:
+            continue
+        r = out[gid]['books'].setdefault(m.get('book', 'ESPN'), row())        # Action first; ESPN fills its gaps
+        e = [num(v[0]), fmt_am(v[1]), fmt_am(v[2]), fmt_am(v[3]), fmt_am(v[4]), num(v[5]), fmt_am(v[6]), fmt_am(v[7])]
+        for i, x in enumerate(e):
+            if r[i] is None:
+                r[i] = x
+        r[9] = max([x for x in (r[9], W('espn', k)) if x is not None] or [None])
+    # Pinnacle: main lines (the spread / total pair priced closest to even), moneyline
+    pin = defaultdict(lambda: defaultdict(dict))
+    for k, v in (last.get('pinnacle') or {}).items():
+        m = meta.get('pinnacle', {}).get(k)
+        if not m or m.get('parent') or m.get('period') != 0 or m.get('type') not in ('total', 'spread', 'moneyline'):
+            continue
+        home = next((n for a_, n in m.get('teams') or [] if a_ == 'home'), None)
+        g = gkey.get((et_day(m['start']), nicks.get(nick(home))))
+        side = str(m.get('side')).lower()
+        if g:                     # one key per line from the home side: home -2 / away +2 pair, never home +2
+            pt = num(v[0])
+            pin[str(g['id'])][(m['type'], -pt if side == 'away' and pt is not None else pt)][side] = (v, k)
+    for gid, mk in pin.items():
+        r = row()
+        best = lambda typ, a, b: min(((key, s) for key, s in mk.items() if key[0] == typ and a in s and b in s),
+                                     key=lambda x: abs(am_prob(x[1][a][0][1]) - am_prob(x[1][b][0][1])), default=None)
+        sp, to = best('spread', 'home', 'away'), best('total', 'over', 'under')
+        ml = next((s for key, s in mk.items() if key[0] == 'moneyline' and 'home' in s and 'away' in s), None)
+        ks = []
+        if sp:
+            r[0], r[1], r[2] = num(sp[1]['home'][0][0]), fmt_am(sp[1]['home'][0][1]), fmt_am(sp[1]['away'][0][1])
+            ks += [sp[1]['home'][1], sp[1]['away'][1]]
+        if ml:
+            r[3], r[4] = fmt_am(ml['home'][0][1]), fmt_am(ml['away'][0][1])
+            ks += [ml['home'][1], ml['away'][1]]
+        if to:
+            r[5], r[6], r[7] = num(to[1]['over'][0][0]), fmt_am(to[1]['over'][0][1]), fmt_am(to[1]['under'][0][1])
+            ks += [to[1]['over'][1], to[1]['under'][1]]
+        r[9] = W('pinnacle', *ks)
+        out[gid]['books']['Pinnacle'] = r
+    # Kalshi: winner, and the spread / total ladders turned into the line they imply
+    lad = defaultdict(lambda: {'win': [], 'margin': [], 'total': []})
+    for k, v in (last.get('kalshi') or {}).items():
+        m = meta.get('kalshi', {}).get(k) or {}
+        if m.get('series') not in ('KXNBAGAME', 'KXNBASPREAD', 'KXNBATOTAL') or not tight(v):
+            continue
+        g = next((gkey[(d, TEAM.get(h, h))] for d, a_, h in parse_event(m['event']) or [] if (d, TEAM.get(h, h)) in gkey), None)
+        if not g:
+            continue
+        mid, L = (v[0] + v[1]) / 2, lad[str(g['id'])]
+        code = re.sub(r'\d+$', '', k.rsplit('-', 1)[-1])
+        team = TEAM.get(code, code)
+        if m['series'] == 'KXNBAGAME':
+            if team in (g['home'], g['away']):
+                L['win'].append(mid if team == g['home'] else 1 - mid)
+        elif m['series'] == 'KXNBASPREAD' and m.get('floor') is not None:
+            f = float(m['floor'])
+            L['margin'].append((f, mid) if team == g['home'] else (-f, 1 - mid))      # P(home margin > x)
+        elif m['series'] == 'KXNBATOTAL' and m.get('floor') is not None:
+            L['total'].append((float(m['floor']), mid))
+    for gid, L in lad.items():
+        mm = _median_cross(L['margin'])
+        out[gid]['kalshi'] = {'win': round(sum(L['win']) / len(L['win']), 4) if L['win'] else None,
+                              'spread': -mm if mm is not None else None, 'total': _median_cross(L['total'])}
+    # Polymarket: moneyline and total (first outcome's price; the slug is nba-<away>-<home>-date)
+    for k, v in (last.get('polymarket') or {}).items():
+        m = meta.get('polymarket', {}).get(k) or {}
+        if m.get('type') not in ('moneyline', 'totals') or not tight(v):
+            continue
+        p = (m.get('event') or '').split('-')
+        if len(p) < 6:
+            continue
+        home = TEAM.get(p[2].upper(), p[2].upper())
+        g = gkey.get(('-'.join(p[3:6]), home))
+        if not g:
+            continue
+        mid = (v[0] + v[1]) / 2
+        try:
+            first = json.loads(m.get('outcomes') or '[]')[0]
+        except (ValueError, IndexError):
+            continue
+        po = out[str(g['id'])]['poly']
+        if m['type'] == 'moneyline':
+            po['win'] = round(mid if nick(first) == nicks_rev(g, 'home') else 1 - mid, 4)
+        elif str(first).lower() == 'over' and m.get('line') is not None:
+            po['total'], po['over'] = float(m['line']), round(mid, 4)
+    return {gid: dict(o, books=[[b] + r for b, r in o['books'].items()]) for gid, o in out.items()}
+
+
+def nicks_rev(g, side):
+    return nick(g.get(side + '_name'))
+
+
+def tight(v, width=0.10):
+    """A two-sided quote worth reading as a probability: both sides, at most 10 cents wide. Thin preseason markets
+    sit at 13c / 87c placeholders, whose midpoint (50%) says nothing."""
+    return v and v[0] is not None and v[1] is not None and 0 < v[0] <= v[1] < 1 and v[1] - v[0] <= width + 1e-9
+
+
+def am_prob(x):
+    x = num(x)
+    return 0.5 if x is None or x == 0 else (100 / (x + 100) if x > 0 else -x / (-x + 100))
 
 
 def injury_wire(wire, qk, R, games, nicks):

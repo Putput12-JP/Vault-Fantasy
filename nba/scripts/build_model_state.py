@@ -20,6 +20,7 @@ import build_minutes_model as MM
 import build_prop_model_v2 as V2
 import build_prop_model as V1
 import build_minutes_model_v3 as M3
+import build_game_model as GM
 from build_prop_model import BASE
 
 DATA = os.path.join(C.HERE, '..', 'data')
@@ -71,6 +72,28 @@ def m3_row(p):
             p.get('idx'), p.get('since')]
 
 
+def game_state(box, seasons, cur):
+    """The game model (build_game_model.py, context only: it does not beat the closing line) as of today, for the
+    Slate page's Vault line: team ratings carried into the new season, home edge, league base, each player's value
+    for the availability adjustment, and how often each injury status actually sits."""
+    gm = json.load(open(GM.OUT_JSON))
+    m, _ = GM.run(gm['params'], seasons, box)
+    if m.season is not None and cur != m.season:              # the season-start carry the backtest applies
+        m.new_season(cur)
+    rates = gm.get('status_play_rates') or {}
+    tune = gm.get('tune_mae') or [10.53, 14.61]               # as backtest_game_vs_kalshi.py: Normal sigma from the tune MAE
+    lim = max(m.team_last.values()) - dt.timedelta(days=60) if m.team_last else None
+    return {'R': {t: round(v, 3) for t, v in m.R.items()}, 'O': {t: round(v, 3) for t, v in m.O.items()},
+            'D': {t: round(v, 3) for t, v in m.D.items()}, 'base': round(m.base, 3), 'hfa': round(m.hfa, 3),
+            'P': {k: gm['params'][k] for k in ('C', 'CT', 'B2B', 'REP', 'ROT_MIN', 'ROT_DAYS')},
+            'p_out': {'Out': 1.0, **{s: round(1 - r, 4) for s, r in rates.items()}},
+            'players': {str(a): [round(p['gs'], 3), round(p['mpg'], 2), p['team'], int(p['last'].timestamp())]
+                        for a, p in m.pl.items() if p['mpg'] >= gm['params']['ROT_MIN'] and (lim is None or p['last'] >= lim)},
+            'team_last': {t: int(v.timestamp()) for t, v in m.team_last.items()},
+            'sd_margin': round(tune[0] * (3.14159265 / 2) ** 0.5, 2), 'sd_total': round(tune[1] * (3.14159265 / 2) ** 0.5, 2),
+            'season': cur}
+
+
 def main():
     proj = json.load(open(os.path.join(DATA, 'player_projections.json')))
     cur = int(proj['season'][:4]) + 1
@@ -102,11 +125,12 @@ def main():
         last_day, n = g['tip_et'].strftime('%Y-%m-%d'), n + 1
     live = export(ctx, rt, ms, keep, cur, asof=max(ms.team_last.values()) if ms.team_last else None, m3=m3)
     live['asof'] = last_day
+    game = game_state(box, seasons, cur)
     mm = json.load(open(MM.OUT_JSON))
     casc = json.load(open(os.path.join(DATA, 'usage_cascade.json')))['stats']
     pv3 = json.load(open(os.path.join(DATA, 'minutes_v3_pricing.json')))
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'seasons': seasons,
-           'games': n, 'live': live, 'example': example,
+           'games': n, 'live': live, 'example': example, 'game': game,
            # minutes model v2 as the backtest ran it: weights in MM.FEATURES order, team total, rotation rule, usage cascade
            'minutes': {'features': MM.FEATURES, 'beta': [mm['beta'][f] for f in MM.FEATURES],
                        'team_min': json.load(open(V1.OUT_JSON))['team_min'], 'rot_min': MM.ROT_MIN, 'rot_days': MM.ROT_DAYS,

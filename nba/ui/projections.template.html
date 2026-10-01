@@ -493,6 +493,43 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 }
 @media (max-width:480px){ .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px} .kpi .val{font-size:20px} }
 @media (prefers-reduced-motion:reduce){ .btn,.switch input::after,.prog .tr i,.sidebar{transition:none} }
+/* Slate & Game Lines */
+.sl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr));gap:var(--gap)}
+.sl-card{display:flex;flex-direction:column;gap:12px;padding:18px 20px}
+.sl-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 12px}
+.sl-teams{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;font-size:15px}
+.sl-teams b{font-weight:600}
+.sl-teams small{font-size:12.5px;color:var(--fg2)}
+.sl-teams span{color:var(--fg3);margin:0 4px}
+.sl-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11.5px;color:var(--fg3)}
+table.sl-t{min-width:0;width:100%;border-collapse:collapse;font-size:13px}
+table.sl-t th{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:6px;border-bottom:1px solid var(--border);white-space:nowrap}
+table.sl-t td{padding:7px 6px;border-bottom:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.sl-t th.l,table.sl-t td.l{text-align:left}
+table.sl-t td.l b{font-weight:500}
+table.sl-t td.l small{margin-left:6px;font-size:11px;color:var(--fg3)}
+table.sl-t tr.vault td{font-weight:600}
+table.sl-t tr.vault td.l small{font-weight:400}
+table.sl-t td.sl-none{text-align:left;white-space:normal;font-weight:400;font-size:12px}
+table.sl-t tr.gap td{border-bottom:0;font-size:12px;color:var(--fg2)}
+table.sl-t .sl-sub{display:block;font-size:10.5px;color:var(--fg3)}
+.sl-gap{color:var(--fg)}
+.sl-gap.big{color:var(--warn)}
+.sl-why{margin:0;font-size:12px;color:var(--fg2)}
+.sl-inj{display:flex;flex-wrap:wrap;gap:6px}
+.sl-split{display:grid;gap:6px}
+.sl-bar{display:grid;grid-template-columns:96px minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:center;font-size:12px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.sl-bar>span:first-child{color:var(--fg3);font-family:var(--font-mono);font-size:11px}
+.sl-bar i{display:block;height:5px;margin-bottom:3px;border-radius:3px;background:var(--raised);position:relative;overflow:hidden}
+.sl-bar u{position:absolute;inset:0 auto 0 0;background:var(--fg3);border-radius:3px}
+.sl-bar u.m{background:var(--fg)}
+details.sl-lines{border-top:1px solid var(--border);padding-top:10px}
+details.sl-lines summary{cursor:pointer;font-size:12.5px;color:var(--fg2)}
+details.sl-lines summary:hover{color:var(--fg)}
+details.sl-lines table.nt{min-width:560px;margin-top:6px}
+table.nt.sl-rt{min-width:420px}
+@media (max-width:600px){ .sl-card{padding:16px} table.sl-t td.l{white-space:normal} table.sl-t td.l small{display:block;margin-left:0} table.sl-t th,table.sl-t td{padding-left:4px;padding-right:4px}
+  .sl-bar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .sl-bar>span:first-child{grid-column:1/-1} }
 </style>
 
 <div class="app" id="app">
@@ -749,6 +786,17 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
       </div>
     </main>
     <footer id="efoot" hidden></footer>
+    <main id="v-slate" hidden>
+      <div class="banner" id="sbanner" hidden></div>
+      <section class="card tbar"><div class="tfilters" id="sdays"></div></section>
+      <div class="kpis" id="skpis"></div>
+      <div class="sl-grid" id="sgames"></div>
+      <section class="card" id="sratings" hidden>
+        <div class="card-h"><div><h2>Vault team ratings</h2><p id="sratsub"></p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt sl-rt" id="srat"></table></div></div>
+      </section>
+    </main>
+    <footer id="sfoot" hidden></footer>
   </div>
 </div>
 
@@ -771,7 +819,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : 'lab';
+let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : hashT === 'SLATE' ? 'slate' : hashT === 'LINES' ? 'lines' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -891,11 +939,11 @@ const PAGES = [
   ['Research', [
     ['Minutes Lab', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), 'Projected minutes and stats per team; edit minutes and every stat reprices.', 'lab'],
     ['Tonight', SVG('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'), "Tonight's minutes for every game: the model's adjustments, what the market prices, your what-ifs and the Lab's record.", 'tonight'],
-    ['Slate', SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'), "Tonight's games: Vault line vs market, injuries, back-to-backs, pace."],
+    ['Slate', SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'), "Every game: the Vault line next to the market, injuries in points, back-to-backs, betting splits.", 'slate'],
     ['Injury Wire', SVG('<path d="M12 3v18M3 12h18"/>'), 'Every injury report and lineup change as it posts, and how fast each venue repriced the props it should move.', 'wire'],
   ]],
   ['Markets', [
-    ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.'],
+    ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.', 'lines'],
     ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'Every prop line and Kalshi ladder next to the projection, the blended fair price and the edge.', 'props'],
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.'],
   ]],
@@ -1052,7 +1100,7 @@ $('pages').addEventListener('click', e => {
 });
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE'].includes(h)) show(h.toLowerCase());
+  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE', 'SLATE', 'LINES'].includes(h)) show(h.toLowerCase());
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -1107,6 +1155,7 @@ function show(v){
   $('v-edges').hidden = $('efoot').hidden = v !== 'edges';
   $('v-tonight').hidden = $('nfoot').hidden = v !== 'tonight';
   $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
+  $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
   $('mode').hidden = lab;
@@ -1116,6 +1165,13 @@ function show(v){
     $('tname').textContent = 'Player Props';
     $('tsub').textContent = 'PROJECTION · MARKET · BLENDED FAIR';
     renderProps();
+    if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'slate' || v === 'lines'){
+    $('tname').textContent = v === 'lines' ? 'Game Lines' : 'Slate';
+    $('tsub').textContent = v === 'lines' ? 'EVERY BOOK · KALSHI · POLYMARKET · VAULT LINE AS CONTEXT' : 'VAULT LINE · MARKET · INJURIES · REST · SPLITS';
+    renderSlate();
     if (!boardTried) loadBoard();
     return;
   }
@@ -1739,6 +1795,7 @@ async function loadBoard(){
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
     if (view === 'wire') renderWire();
+    if (view === 'slate' || view === 'lines') renderSlate();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -2696,6 +2753,150 @@ function renderWireSeason(){
 $('wkind').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ wf.kind = b.dataset.v; renderWire(); } });
 $('wteam').addEventListener('change', e => { wf.team = e.target.value; renderWire(); });
 $('wevents').addEventListener('click', e => { if (e.target.closest('[data-wedges]')){ ef.type = 'news'; } });
+
+// ── Slate & Game Lines ────────────────────────────────────────────────────
+// Every game on the board with the Vault line next to the market. The Vault line is the game model
+// (build_game_model.py, exported as model_state.json `game`): team ratings carried into the season, home court,
+// the injury report through each player's value above replacement, and back-to-backs, the same arithmetic the
+// backtest walked. It does not beat the closing line (docs/game-model.md), so a gap is a reason to look, never a bet.
+// "Game Lines" is the same page with every book's lines open.
+let sv = {day: null, open: {}};
+const SL_BOOKS = ['Pinnacle', 'Consensus', 'DraftKings', 'FanDuel', 'BetMGM', 'ESPN BET', 'bet365', 'BetRivers'];
+function slateBoard(){
+  const live = PS.live || (PB && PB.live);
+  if (live && (live.games || []).length) return {board: live, mode: PS.liveFetched ? 'live' : 'snapshot'};
+  return {board: {games: [], players: {}}, mode: 'empty'};
+}
+function vaultLine(g, B, status){
+  const G = MS && MS.game;
+  if (!G || !(g.season_type >= 2)) return null;
+  const P = G.P, cut = g.tip - P.ROT_DAYS * 86400, P2 = B.players || {};
+  const prev = t => (B.games || []).some(x => x !== g && (x.home === t || x.away === t) && x.tip < g.tip && g.tip - x.tip < 30 * 3600);
+  const b2b = t => (G.team_last[t] && g.tip > G.team_last[t] && g.tip - G.team_last[t] < 30 * 3600) || prev(t) ? 1 : 0;
+  const side = t => {
+    let m = 0; const who = [], seen = new Set();
+    for (const [a, p] of Object.entries(G.players)){
+      const st = status[+a];
+      if (p[2] !== t || !st) continue;
+      const po = st === 'Inactive' ? 1 : (G.p_out[st] || 0);
+      if (!po) continue;
+      const v = Math.max(0, p[0] - P.REP * p[1]), inRot = p[3] >= cut;   // the backtest's rotation: played in the last ROT_DAYS
+      if (inRot) m += v * po;
+      who.push({pid: +a, st, po, v, pts: P.C * v * po, inRot}); seen.add(+a);
+    }
+    for (const [a, st] of Object.entries(status)){                      // listed, but no rating (short minutes, or new)
+      const team = (P2[a] && P2[a][1]) || ((B.outs || []).find(o => +o[0] === +a) || [])[1];
+      if (team === t && !seen.has(+a) && /^(Out|Doubtful|Questionable|Inactive)$/.test(st)) who.push({pid: +a, st, po: st === 'Inactive' ? 1 : (G.p_out[st] || 0), v: null, pts: 0, inRot: false});
+    }
+    return {m, who: who.sort((x, y) => (y.v || 0) * y.po - (x.v || 0) * x.po)};
+  };
+  const h = g.home, a = g.away, R = k => G.R[k] || 0, O = k => G.O[k] || 0, Dd = k => G.D[k] || 0;
+  const H = side(h), A = side(a), bh = b2b(h), ba = b2b(a), hfa = G.hfa;
+  const margin = R(h) - R(a) + hfa - P.C * (H.m - A.m) + P.B2B * (ba - bh);
+  const ph = G.base + O(h) - Dd(a) + hfa / 2 - P.CT * H.m - P.B2B / 2 * bh;
+  const pa = G.base + O(a) - Dd(h) - hfa / 2 - P.CT * A.m - P.B2B / 2 * ba;
+  return {spread: -margin, total: ph + pa, win: Phi(margin / G.sd_margin), bh, ba, inj: {[h]: H, [a]: A},
+          parts: {rating: R(h) - R(a), hfa, inj: -P.C * (H.m - A.m), rest: P.B2B * (ba - bh)}};
+}
+function marketLine(mk){
+  if (!mk) return null;
+  const by = Object.fromEntries((mk.books || []).map(r => [r[0], r])), order = [...SL_BOOKS, ...Object.keys(by)];
+  const first = f => order.map(b => by[b]).find(r => r && f(r));
+  const sp = first(r => r[1] != null), to = first(r => r[6] != null), ml = first(r => amP(r[4]) && amP(r[5]));
+  const win = ml ? amP(ml[4]) / (amP(ml[4]) + amP(ml[5])) : null;          // no-vig
+  return {spread: sp ? sp[1] : null, spFrom: sp && sp[0], total: to ? to[6] : null, toFrom: to && to[0], win, winFrom: ml && ml[0]};
+}
+const spTxt = (g, s, d = 1) => s == null ? '' : Math.abs(s) < .05 ? 'Pick' : s < 0 ? `${g.home} ${fmt(s, d)}` : `${g.away} -${fmt(s, d)}`;
+const slDay = t => etFmt(t, {weekday: 'short', month: 'short', day: 'numeric'});
+function slateGame(g, B, status, openAll){
+  const gid = String(g.id), mk = g.mk || {}, V = vaultLine(g, B, status), M = marketLine(g.mk), K = mk.kalshi || {}, PM = mk.poly || {};
+  const tn = t => (D.teams[t] && D.teams[t].name) || t;
+  const pre = g.season_type === 1;
+  const dS = V && M && M.spread != null ? V.spread - M.spread : null, dT = V && M && M.total != null ? V.total - M.total : null;
+  const dW = V && M && M.win != null ? V.win - M.win : null;
+  const gapS = dS == null ? '' : Math.abs(dS) < .25 ? '<span class="muted">same</span>' : `<span class="sl-gap${Math.abs(dS) >= 3 ? ' big' : ''}">${dS < 0 ? g.home : g.away} +${fmt(Math.abs(dS))}</span>`;
+  const gapT = dT == null ? '' : Math.abs(dT) < .25 ? '<span class="muted">same</span>' : `<span class="sl-gap${Math.abs(dT) >= 4 ? ' big' : ''}">${dT > 0 ? 'Over' : 'Under'} ${fmt(Math.abs(dT))}</span>`;
+  const gapW = dW == null ? '' : Math.abs(dW) < .005 ? '<span class="muted">same</span>' : `<span class="sl-gap${Math.abs(dW) >= .08 ? ' big' : ''}">${dW > 0 ? g.home : g.away} +${fmt(Math.abs(dW) * 100, 1)}%</span>`;
+  const row = (lab, sub, s, t, w, cls = '') => `<tr class="${cls}"><td class="l"><b>${lab}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</td><td>${s ?? ''}</td><td>${t ?? ''}</td><td>${w ?? ''}</td></tr>`;
+  const opened = mk.open && (mk.open.spread != null || mk.open.total != null) ? `opened ${[spTxt(g, mk.open.spread), mk.open.total != null ? fmt(mk.open.total) : ''].filter(Boolean).join(' · ')}` : '';
+  const badges = [pre ? '<span class="badge">Preseason</span>' : '',
+    V && V.ba ? `<span class="badge warn" title="Played within 30 hours: the model takes ${MS.game.P.B2B} pts off">${g.away} back-to-back</span>` : '',
+    V && V.bh ? `<span class="badge warn" title="Played within 30 hours: the model takes ${MS.game.P.B2B} pts off">${g.home} back-to-back</span>` : ''].join('');
+  const tbl = `<div class="nt-tw"><table class="sl-t"><thead><tr><th class="l"></th><th>Spread</th><th>Total</th><th>${g.home} win</th></tr></thead><tbody>
+    ${V ? row('Vault', 'context, not a bet', spTxt(g, V.spread), fmt(V.total), pc(V.win), 'vault')
+        : `<tr class="vault"><td class="l"><b>Vault</b></td><td colspan="3" class="muted sl-none">${pre ? 'No Vault line in preseason: starters rest and the model was never tested on these games' : 'Needs the game model state'}</td></tr>`}
+    ${M ? row('Market', [M.spFrom, opened].filter(Boolean).join(' · '), spTxt(g, M.spread), M.total != null ? fmt(M.total) : '', M.win != null ? pc(M.win) : '') : row('Market', 'no book has posted', '', '', '')}
+    ${K.win != null || K.spread != null || K.total != null ? row('Kalshi', 'mid, ladder implied', spTxt(g, K.spread), K.total != null ? fmt(K.total) : '', K.win != null ? pc(K.win) : '') : ''}
+    ${PM.win != null || PM.total != null ? row('Polymarket', 'mid', '', PM.total != null ? `${fmt(PM.total)}<small class="sl-sub">over ${pc(PM.over)}</small>` : '', PM.win != null ? pc(PM.win) : '') : ''}
+    ${V && M ? row('Gap', 'Vault vs market', gapS, gapT, gapW, 'gap') : ''}
+  </tbody></table></div>`;
+  const why = V ? `<p class="sl-why">Vault margin ${g.home} ${V.spread <= 0 ? '+' : '-'}${fmt(Math.abs(V.spread))}: ratings ${sgn(V.parts.rating)}, home court ${sgn(V.parts.hfa)}${Math.abs(V.parts.inj) >= .05 ? `, injuries ${sgn(V.parts.inj)}` : ''}${V.parts.rest ? `, rest ${sgn(V.parts.rest)}` : ''}.</p>` : '';
+  const injChips = V ? [g.away, g.home].flatMap(t => V.inj[t].who.map(x => {
+    const name = nameOf(B, x.pid), cls = /^(Out|Inactive|Doubtful)/.test(x.st) ? 'bad' : 'warn';
+    const tip = x.v == null ? 'No rating: under the rotation minutes or no NBA games yet' : !x.inRot ? `Not in the Vault line: no game in the last ${MS.game.P.ROT_DAYS} days (the backtest's rotation rule)` : `Worth ${fmt(x.v)} game score above replacement; at ${pc(x.po)} to sit, ${fmt(x.pts)} pts of margin`;
+    return `<span class="badge ${cls}" title="${esc(tip)}">${t} ${esc(last(name))} · ${esc(x.st)}${x.inRot && x.pts >= .05 ? ` · ${fmt(x.pts)}` : x.v != null && !x.inRot ? ' · not in line' : ''}</span>`; })) : [];
+  const SPL = {spread: `${g.home} spread`, total: 'Over', moneyline: `${g.home} ML`};
+  const splits = Object.entries(mk.splits || {}).filter(([, v]) => v && (v[0] || v[1]));
+  const splitH = splits.length ? `<div class="sl-split">${splits.map(([k, [b, m]]) => `<div class="sl-bar"><span>${SPL[k] || k}</span>
+      <span title="Share of bets"><i><u style="width:${b}%"></u></i>${b}% bets</span><span title="Share of money"><i><u class="m" style="width:${m}%"></u></i>${m}% money${Math.abs(m - b) >= 10 ? ` <b class="sl-gap">${m > b ? '+' : ''}${m - b}</b>` : ''}</span></div>`).join('')}</div>` : '';
+  const books = mk.books || [];
+  const open = openAll || sv.open[gid];
+  const lines = books.length || K.win != null || PM.win != null ? `<details class="sl-lines" data-g="${gid}"${open ? ' open' : ''}><summary>Every book · ${books.length} ${books.length === 1 ? 'book' : 'books'}${K.win != null ? ', Kalshi' : ''}${PM.win != null ? ', Polymarket' : ''}</summary>
+    <div class="nt-tw"><table class="nt sl-bt"><thead><tr><th class="l">Book</th><th>${g.home} spread</th><th>${g.home} / ${g.away}</th><th>Total</th><th>Over / under</th><th>Moneyline ${g.home} / ${g.away}</th><th>Changed</th></tr></thead><tbody>
+    ${books.map(r => `<tr><td class="l">${esc(r[0])}</td><td>${r[1] != null ? (r[1] > 0 ? '+' : '') + fmt(r[1]) : ''}</td><td class="muted">${[r[2], r[3]].filter(x => x != null).join(' / ')}</td><td>${r[6] != null ? fmt(r[6]) : ''}</td><td class="muted">${[r[7], r[8]].filter(x => x != null).join(' / ')}</td><td>${[r[4], r[5]].filter(x => x != null).join(' / ')}</td><td class="muted">${r[10] ? clock(r[10]) : ''}</td></tr>`).join('')}
+    ${K.win != null ? `<tr><td class="l">Kalshi</td><td>${K.spread != null ? (K.spread > 0 ? '+' : '') + fmt(K.spread) : ''}</td><td></td><td>${K.total != null ? fmt(K.total) : ''}</td><td></td><td>${pc(K.win)} / ${pc(1 - K.win)}</td><td></td></tr>` : ''}
+    ${PM.win != null || PM.total != null ? `<tr><td class="l">Polymarket</td><td></td><td></td><td>${PM.total != null ? fmt(PM.total) : ''}</td><td class="muted">${PM.over != null ? `${pc(PM.over)} / ${pc(1 - PM.over)}` : ''}</td><td>${PM.win != null ? `${pc(PM.win)} / ${pc(1 - PM.win)}` : ''}</td><td></td></tr>` : ''}
+    </tbody></table></div></details>` : '';
+  return `<article class="card sl-card" id="sg-${gid}"><header class="sl-h">
+      <div class="sl-teams"><b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span><b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
+      <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
+    ${tbl}${why}${injChips.length ? `<div class="sl-inj">${injChips.join('')}</div>` : ''}${splitH}${lines}</article>`;
+}
+const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
+function renderSlate(){
+  const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, lines = view === 'lines';
+  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No games yet');
+  const games = [...(B.games || [])].sort((a, b) => a.tip - b.tip), days = [...new Set(games.map(g => etDay(g.tip)))];
+  if (!days.includes(sv.day)) sv.day = days[0] || null;
+  const G = games.filter(g => etDay(g.tip) === sv.day), status = statusFromBoard(B);
+  $('sbanner').hidden = !!games.length;
+  $('sbanner').innerHTML = `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. Preseason starts October 3; opening night is October 20.</span>`;
+  $('sdays').innerHTML = days.length ? `<div class="seg" id="sday">${days.map(d => { const n = games.filter(g => etDay(g.tip) === d).length;
+    return `<button type="button" data-d="${d}" aria-pressed="${d === sv.day}">${slDay(games.find(g => etDay(g.tip) === d).tip)} · ${n}</button>`; }).join('')}</div>` : '';
+  $('sdays').parentElement.hidden = !days.length;
+  // KPIs over the chosen day
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const vs = G.map(g => ({g, V: vaultLine(g, B, status), M: marketLine(g.mk)}));
+  const gaps = vs.filter(x => x.V && x.M && x.M.spread != null).map(x => ({...x, d: x.V.spread - x.M.spread})).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+  const spl = G.flatMap(g => Object.entries((g.mk && g.mk.splits) || {}).filter(([, v]) => v && (v[0] || v[1])).map(([k, v]) => ({g, k, b: v[0], m: v[1]}))).sort((a, b) => Math.abs(b.m - b.b) - Math.abs(a.m - a.b));
+  const b2b = vs.flatMap(x => x.V ? [x.V.ba ? x.g.away : null, x.V.bh ? x.g.home : null].filter(Boolean) : []);
+  const reg = G.filter(g => g.season_type >= 2).length, top = gaps[0], s0 = spl[0];
+  const SPK = {spread: g => `${g.home} spread`, total: () => 'Over', moneyline: g => `${g.home} moneyline`};
+  $('skpis').innerHTML = !G.length ? '' :
+    kpi('Games', ICON.clock, `${G.length}`, `${reg ? `${reg} regular season` : ''}${reg && G.length - reg ? ' · ' : ''}${G.length - reg ? `${G.length - reg} preseason` : ''}`) +
+    kpi('Biggest Vault gap', ICON.pts, top ? `${fmt(Math.abs(top.d))} pts` : 'n/a', top ? `${top.g.away} @ ${top.g.home}: Vault leans ${top.d < 0 ? top.g.home : top.g.away}. Context, not a bet` : reg ? 'Needs a posted spread' : 'No Vault line in preseason') +
+    kpi('Money vs tickets', ICON.star, s0 ? `${Math.abs(s0.m - s0.b)} pts` : 'n/a', s0 ? `${SPK[s0.k] ? SPK[s0.k](s0.g) : s0.k} (${s0.g.away} @ ${s0.g.home}): ${s0.b}% of bets, ${s0.m}% of money` : 'Action Network posts splits closer to tip') +
+    kpi('Back-to-backs', ICON.edit, `${b2b.length}`, b2b.length ? `${b2b.join(', ')} · ${MS.game.P.B2B} pts each in the Vault line` : 'Nobody on the second night');
+  $('sgames').innerHTML = G.map(g => slateGame(g, B, status, lines)).join('');
+  renderSlateRatings();
+  $('sfoot').innerHTML = `
+    <div><b>The Vault line</b> is the game model: each team's rating (points better than an average team on a neutral floor, updated after every game and carried into a new season at the rate the backtest chose), ${MS && MS.game ? fmt(MS.game.hfa) : ''} points of home court, ${MS && MS.game ? MS.game.P.B2B : ''} points off a team on the second night of a back-to-back, and the injury report: each listed player's game score above replacement times how often players with that status actually sat (Questionable ${MS && MS.game ? pc(MS.game.p_out.Questionable) : ''}, Doubtful ${MS && MS.game ? pc(MS.game.p_out.Doubtful) : ''}), for players who played in the last ${MS && MS.game ? MS.game.P.ROT_DAYS : 21} days. Win % is a normal curve around the margin, sigma ${MS && MS.game ? fmt(MS.game.sd_margin) : ''} points, as backtested.</div>
+    <div><b>Context, not an edge.</b> Tested on 2,641 games of 2024-25 and 2025-26, the model adds nothing the closing spread has not priced (t = 1.23), and at prices you could actually trade (Kalshi at 1pm) its moneyline lost after fees. A big gap means the market knows something the model does not, more often than the reverse. Nothing here is logged to the shadow ledger.</div>
+    <div><b>Market</b> is Pinnacle's main line (the pair priced closest to even), else Action Network's consensus, else DraftKings; win % removes the vig from the moneyline. Kalshi's spread and total are where its ladder crosses 50%; Kalshi and Polymarket quotes wider than 10 cents are left out. Splits are Action Network's share of bets and of money on the home side or the over.</div>`;
+}
+function renderSlateRatings(){
+  const G = MS && MS.game;
+  if (!G){ $('sratings').hidden = true; return; }
+  const ts = Object.keys(G.R).sort((a, b) => G.R[b] - G.R[a]);
+  const rk = (o, k) => Object.keys(o).sort((a, b) => o[b] - o[a]).indexOf(k) + 1;
+  $('sratings').hidden = false;
+  $('sratsub').textContent = `Going into ${G.season - 1}-${String(G.season).slice(2)}, from every game through ${etFmt(Math.max(...Object.values(G.team_last)), {month: 'short', day: 'numeric', year: 'numeric'})}, carried into the new season. Ratings move after every regular season game.`;
+  $('srat').innerHTML = `<thead><tr><th class="l">#</th><th class="l">Team</th><th title="Points better than an average team on a neutral floor">Rating</th><th title="Points scored above the league base">Offense</th><th title="Points held below the league base">Defense</th></tr></thead><tbody>
+    ${ts.map((t, i) => `<tr><td class="l muted">${i + 1}</td><td class="l"><b>${t}</b><small>${esc((D.teams[t] && D.teams[t].name) || t)}</small></td><td class="${G.R[t] >= 0 ? 'pos' : 'neg'}">${sgn(G.R[t])}</td><td>${sgn(G.O[t] || 0)} <span class="muted">${rk(G.O, t)}</span></td><td>${sgn(G.D[t] || 0)} <span class="muted">${rk(G.D, t)}</span></td></tr>`).join('')}</tbody>`;
+}
+$('sdays').addEventListener('click', e => { const b = e.target.closest('button[data-d]'); if (b){ sv.day = b.dataset.d; renderSlate(); } });
+$('sgames').addEventListener('toggle', e => { const d = e.target.closest('details[data-g]'); if (d) sv.open[d.dataset.g] = d.open; }, true);
 
 show(view);
 </script>
