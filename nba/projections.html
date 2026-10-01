@@ -4,20 +4,22 @@
 <meta name="description" content="Vault NBA: player props and game lines priced by our own model, what passed the backtest, sharp money, and your own bet record.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600&display=swap">
 <style>
 /* Layout: dashboard. App sidebar (pages) | sticky header | one view per page: Minutes Lab (team slicer + search, KPIs, minutes chart,
    rotation table, movers + change log), Player Props (KPIs, filter bar, board with expandable ladders) and Data Health (KPIs, sources
    table, 48h poll timeline, game coverage, inputs + archive).
-   Single dark look by design (Campaign Engine system): black ground, zinc surfaces, white as the action colour. */
+   Single dark look by design, "Graphite" (chosen 2026-10-01 from mocks/look-options.html): Geist with Geist Mono numbers
+   on a cool off-black, slightly lifted cool-gray surfaces, off-white as the action colour, softened up / down / warn,
+   a faint grain. One gray family (cool); change the look here, not in component rules. */
 :root{
-  --bg:#000000; --surface:#18181B; --surface2:#1f1f23; --raised:#27272A;
-  --border:#27272A; --border2:#3f3f46;
-  --fg:#FFFFFF; --fg2:#A1A1AA; --fg3:#71717A;
-  --primary:#FFFFFF; --on-primary:#000000;
-  --up:#4ade80; --down:#f87171; --warn:#fbbf24;
-  --font-sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --font-mono:'JetBrains Mono','SFMono-Regular',Menlo,monospace;
+  --bg:#0b0c0e; --surface:#131418; --surface2:#191b20; --raised:#22252b;
+  --border:#22252b; --border2:#343841;
+  --fg:#f3f4f6; --fg2:#a2a7b1; --fg3:#6e7380;
+  --primary:#f3f4f6; --on-primary:#0b0c0e;
+  --up:#5fcf8c; --down:#ec7f7f; --warn:#e5b955;
+  --font-sans:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'Geist Mono','SFMono-Regular',Menlo,monospace;
   --r-card:16px; --r-ctl:8px; --r-pill:9999px;
   --gap:16px; --pad:24px;
   color-scheme:dark;
@@ -66,7 +68,7 @@ button,input{font:inherit;color:inherit}
 
 /* header */
 .inset{min-width:0;display:flex;flex-direction:column}
-.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;display:flex;align-items:center;gap:12px;min-height:64px;padding:10px 24px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.86);backdrop-filter:blur(10px)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;display:flex;align-items:center;gap:12px;min-height:64px;padding:10px 24px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px)}
 .iconbtn{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:var(--r-ctl);border:1px solid transparent;background:none;cursor:pointer;color:var(--fg2)}
 .iconbtn:hover{background:var(--surface);color:var(--fg)}
 .iconbtn svg{width:18px;height:18px}
@@ -87,7 +89,7 @@ button,input{font:inherit;color:inherit}
 
 /* main */
 main{display:flex;flex-direction:column;gap:24px;padding:24px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 12px 32px rgba(0,0,0,.35);min-width:0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 12px 32px -14px rgba(0,0,10,.6);min-width:0}
 .card-h{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;padding:var(--pad) var(--pad) 0}
 .card-h h2{margin:0;font-size:15px;font-weight:600}
 .card-h p{margin:2px 0 0;color:var(--fg2);font-size:13px}
@@ -498,6 +500,10 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 .pv-wrap{display:grid;gap:var(--gap);min-width:0}
 /* type: no orphaned words; small controls answer hover and press (press depth stays shallow, rows never scale) */
 h1,h2,h3,h4{text-wrap:balance} p{text-wrap:pretty}
+h1,h2{letter-spacing:-.025em}
+/* grain: a fixed, faint noise layer over the whole app (pointer-events off, under menus and toasts) */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 .pv-preset,.pv-ghost,.pv-bell,.pv-star,.pv-more,.seg button,.btn,.linkbtn{transition:color .15s ease,background-color .15s ease,border-color .15s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
 .pv-preset:hover:not([aria-pressed="true"]),.pv-ghost:hover,.pv-bell:hover,.pv-star:hover{border-color:var(--fg3);color:var(--fg)}
 .pv-preset:active,.pv-ghost:active,.pv-bell:active,.pv-star:active,.pv-more:active,.seg button:active,.btn:active{transform:scale(.96);transition:transform 80ms ease-out}
