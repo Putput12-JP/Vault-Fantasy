@@ -49,6 +49,7 @@ def main():
     p1, p2, p3, pf = load('prop_model.json'), load('prop_model_v2.json'), load('prop_model_v3.json'), load('prop_model_v3_full.json')
     rv3, st, mp, cb = load('rates_v3.json'), load('starters_backtest.json'), load('minutes_v3_pricing.json'), load('consensus_backtest.json')
     hr = load('hit_rates.json')
+    gv = load('game_venues.json')
 
     # ── signals: what passed, out of sample (2025-26 second half for Kalshi blends) ──
     signals = []
@@ -198,6 +199,17 @@ def main():
          'rule': 'Polymarket accounts scored walk-forward on their own trades vs the close; then copy their side later.',
          'result': 'Sharp accounts beat the close (+0.38%, t 7 on 2,684 NFL trades; NFL-sharp accounts +1.76% on 439 NBA trades). Copying 30 min to 2 h later: -0.19%. Size alone is not skill.',
          'verdict': 'Context', 'shipped': 'Sharp Price page, every signal graded live'},
+        {'id': 'sharp_copy', 'area': 'Sharp money', 'when': '2026-10-01', 'doc': 'https://github.com/Putput12-JP/Vault-Fantasy/blob/main/docs/pm-accounts-copy-results.md',
+         'q': "Priced at the exact ask from Polymarket's order-book archive, does copying a sharp account 15 minutes later beat the close?",
+         'rule': 'Labels from older games only; GO if the average at 15 minutes is above zero by 2+ standard errors (NFL and college, Aug 18 - Sept 29).',
+         'result': 'Copy at 15 minutes +0.09% vs the close (SE 0.59, 36 copies). The market drifts toward sharp accounts over hours (+1.05% by kickoff), not minutes; 40 trades settle nothing. Re-test declared on Oct 1-27.',
+         'verdict': 'NO-GO', 'shipped': 'Nothing; sharp accounts stay context'},
+        {'id': 'game_venues', 'area': 'Game model', 'when': '2026-10-01', 'doc': 'game-venues-results.md',
+         'q': 'Which market is sharpest on NBA game lines at tip: Polymarket, Kalshi or the sportsbooks? And does the game model add to the sharpest?',
+         'rule': "A venue moves ahead of the sportsbook in the Slate's fallback only if its log loss is lower by 2+ SE; the model must improve the sharpest venue's log loss on games after Feb 1 by 2+ SE.",
+         'result': (f"{gv['n']:,} games of 2025-26. Log loss: sportsbook {gv['logloss']['book']:.4f}, Polymarket {gv['logloss']['pm']:.4f}, Kalshi {gv['logloss']['kal']:.4f}: "
+                    f"Polymarket ties the sportsbook close, Kalshi trails by a hair (not significant). Model blend on later games: {gv['model']['gain']:+.4f} (SE {gv['model']['se']:.4f}).") if gv else '',
+         'verdict': 'NO-GO', 'shipped': 'Nothing changes: the Slate keeps its fallback order, the game model stays context'},
     ]
     for e in log:
         e['when'] = (e['when'] or '')[:10]
