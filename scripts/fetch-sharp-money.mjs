@@ -267,6 +267,33 @@ async function walletPoll(S, wallets) {
       if (Array.isArray(ps)) A.pos = ps.filter(x => x.currentValue >= 100 && !x.redeemable).slice(0, 15)
         .map(x => ({ title: x.title, slug: x.slug, ev: x.eventSlug, out: x.outcome, size: Math.round(x.size), avg: r3(x.avgPrice), cur: r3(x.curPrice), val: Math.round(x.currentValue), cost: Math.round(x.initialValue), pnl: Math.round(x.cashPnl), end: x.endDate }));
     } else A.pos = [];
+    // Results per account (refreshed every 6h, active accounts only). Polymarket's
+    // closed-positions list leaves out losing bets nobody redeemed, which makes every
+    // account look like a 90% winner, so this is rebuilt from the account's own
+    // cash flow instead: per market, sells + redemptions - buys + what it still holds.
+    // Markets still in play are skipped; only markets we saw from their first trade count.
+    if (A.trades[0] && A.trades[0].ts > t - 7 * DAY && (!A.stats || t - A.stats.ts > 6 * H)) {
+      const act = [];
+      for (let p = 0; p < 10; p++) {
+        const r = await getJSON(`https://data-api.polymarket.com/activity?user=${w}&limit=500&offset=${p * 500}&sortBy=TIMESTAMP&sortDirection=DESC`);
+        if (!Array.isArray(r) || !r.length) break;
+        act.push(...r); if (r.length < 500) break;
+      }
+      const hp = await getJSON(`https://data-api.polymarket.com/positions?user=${w}&sizeThreshold=1&limit=500&sortBy=CURRENT&sortDirection=DESC`);
+      const held = {}, live = new Set();
+      for (const x of Array.isArray(hp) ? hp : []) { held[x.conditionId] = (held[x.conditionId] || 0) + x.currentValue; if (x.curPrice > 0.03 && x.curPrice < 0.97) live.add(x.conditionId); }
+      const t0 = act.length ? act[act.length - 1].timestamp : t, C = {};
+      for (const x of act) {
+        const c = C[x.conditionId] ||= { buy: 0, sell: 0, cash: 0, first: x.timestamp, slug: x.slug };
+        c.first = Math.min(c.first, x.timestamp);
+        if (x.type === 'TRADE') { if (x.side === 'BUY') { c.buy += x.usdcSize; c.cash -= x.usdcSize; } else { c.sell += x.usdcSize; c.cash += x.usdcSize; } }
+        else if (x.type === 'REDEEM') c.cash += x.usdcSize;
+      }
+      const SPORTY = /^(nfl|cfb|nba|cbb|ncaaf|mlb|nhl|wnba)-/;
+      const agg = xs => { let n = 0, wn = 0, buy = 0, sell = 0, pnl = 0; for (const [, c] of xs) { n++; buy += c.buy; sell += c.sell; pnl += c.pnl; if (c.pnl > 0) wn++; } return n >= 5 && buy > 0 ? { n, win: r3(wn / n), roi: r3(pnl / buy), pnl: Math.round(pnl), vol: Math.round(buy), flip: r3(sell / buy) } : null; };
+      const done = Object.entries(C).filter(([id, c]) => !live.has(id) && c.first > t0 + DAY && c.buy > 0).map(([id, c]) => [id, { ...c, pnl: c.cash + (held[id] || 0) }]);
+      A.stats = { ts: t, days: Math.round((t - t0) / DAY), capped: act.length >= 5000, all: agg(done), sp: agg(done.filter(([, c]) => SPORTY.test(c.slug || ''))) };
+    }
   });
   for (const [w, A] of Object.entries(S.acct)) if (!A.trades.length && !A.pos.length && A.cur < t - 14 * DAY) delete S.acct[w];
 }
@@ -679,7 +706,7 @@ function payload(S, byGame, W, status) {
     const rec = recs.sort((a, b) => b.n - a.n)[0] || null;
     const b24 = A.trades.filter(x => x.ts > t - DAY && x.side === 'BUY');
     return { w, who: A.who, rec, last: A.trades[0]?.ts || 0, n7: A.trades.length, buy24: b24.reduce((s, x) => s + x.usd, 0), n24: b24.length,
-      trades: A.trades.slice(0, 25).map(({ ts, side, usd, px, title, slug, out }) => ({ ts, side, usd, px, title, slug, out })), pos: A.pos.map(({ ev, ...x }) => x), posVal: A.pos.reduce((s, x) => s + x.val, 0) };
+      trades: A.trades.slice(0, 25).map(({ ts, side, usd, px, title, slug, out }) => ({ ts, side, usd, px, title, slug, out })), pos: A.pos.map(({ ev, ...x }) => x), posVal: A.pos.reduce((s, x) => s + x.val, 0), stats: A.stats ? { all: A.stats.all, sp: A.stats.sp, days: A.stats.days, capped: A.stats.capped } : null };
   }).filter(a => a.last > t - 7 * DAY || a.pos.length).sort((a, b) => b.buy24 - a.buy24 || b.last - a.last).slice(0, 80);
   return { generated: new Date().toISOString(), ts: t, status, wallets: W, games, alerts, accounts, sigRec, sigBig: Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sigBig])) };
 }
