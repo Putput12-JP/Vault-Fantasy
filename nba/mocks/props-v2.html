@@ -251,6 +251,46 @@ table.lt small{display:block;font-size:11px;color:var(--fg3)}
 .res2{color:var(--fg3)}
 .pairs-sec .pr{padding-inline:0}
 @media (max-width:1000px){ .tests{grid-template-columns:minmax(0,1fr)} .pr{grid-template-columns:repeat(3,minmax(0,1fr)) auto} .pr .p1{grid-column:1/-1} .pr .p2{justify-items:start} }
+/* pick'em slip */
+.slips{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px;padding:14px}
+.pairs-sec .slips{padding:0}
+.slip{position:relative;display:grid;background:var(--surface2);border:1px solid var(--border2);border-radius:18px;overflow:hidden;min-width:0}
+.slip.lean{border-color:rgba(251,191,36,.45)} .slip.bet{border-color:rgba(74,222,128,.5)}
+.sl-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 10px}
+.sl-h b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+.sl-h span:not(.vp){font-size:11.5px;color:var(--fg3)}
+.sl-picks{display:grid;padding:0 10px}
+.pk{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 8px;border-radius:12px;background:var(--surface);position:relative}
+.pk-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:2px solid var(--border2);font-size:12px;font-weight:700;color:var(--fg2)}
+.pk-who{min-width:0}
+.pk-who > b{display:block;font-size:13.5px;font-weight:700;line-height:1.25}
+.pk-who .pk-ch{color:var(--fg2)} .pk-who .pk-ch b{font-weight:700;color:var(--fg)}
+.pk-who span{display:block;font-size:11px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk-line{display:grid;justify-items:center;line-height:1.1;min-width:52px}
+.pk-line b{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.pk-line span{font-size:10px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.pk-ml{display:grid;gap:4px}
+.pk-ml span{display:grid;place-items:center;height:22px;padding:0 8px;border-radius:7px;border:1px solid var(--border2);font-size:10.5px;font-weight:700;color:var(--fg3);white-space:nowrap}
+.pk-ml span.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.pk-who .pk-res{font-size:10.5px;font-weight:700;margin-top:1px}
+.pk-who .pk-res.w{color:var(--up)} .pk-who .pk-res.l{color:var(--down)}
+.sl-link{display:flex;justify-content:center;padding:3px 0}
+.sl-link span{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 9px;border-radius:999px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.35);color:var(--up);font-size:10.5px;font-weight:600}
+.sl-tear{position:relative;height:22px;margin-top:6px}
+.sl-tear::before{content:"";position:absolute;left:18px;right:18px;top:11px;border-top:2px dashed var(--border2)}
+.sl-tear::after{content:"";position:absolute;left:-12px;right:-12px;top:0;height:22px;background:radial-gradient(circle at 0 50%,var(--surface) 11px,transparent 12px) left/50% 100% no-repeat,radial-gradient(circle at 100% 50%,var(--surface) 11px,transparent 12px) right/50% 100% no-repeat}
+.sl-f{display:grid;gap:10px;padding:2px 16px 14px}
+.sl-pay{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sl-pay div{display:grid;padding:8px 12px;border-radius:10px;background:var(--surface)}
+.sl-pay small,.sl-math small{font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.05em}
+.sl-pay b{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.sl-pay div:last-child b{color:var(--up)}
+.sl-math{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sl-math div{display:grid;line-height:1.25}
+.sl-math b{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.sl-math span{font-size:10.5px;color:var(--fg3)}
+.sl-f p{margin:0;font-size:11.5px;color:var(--fg2)}
+@media (max-width:600px){ .slips{grid-template-columns:minmax(0,1fr);padding:10px} .pk{grid-template-columns:36px minmax(0,1fr) auto auto;gap:8px} .pk-av{width:36px;height:36px} }
 @media (max-width:1000px){
   .main{grid-template-columns:minmax(0,1fr)} .list{position:static;max-height:none}
   .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -659,16 +699,28 @@ function pairsAll(){
   return out.sort((a, b) => VRANK[a.v] - VRANK[b.v] || b.ev - a.ev);
 }
 const legTxt = (L, side) => `${esc(L.p.name)} ${side === 'over' ? 'Over' : 'Under'} ${L.line} ${NOUN[L.p.s]}`;
+const SLIPSTAT = {pts: 'Points', ast: 'Assists', '3pm': '3-PT Made'};
+// one pair drawn as a pick'em entry slip: entry type and payout, each pick with its line and More / Less, then the
+// entry and what it pays, with our math under the tear line
 function pairRow(x, compact){
-  const need = Math.sqrt(Math.max(0, be2() - x.F.c));
-  return `<div class="pr ${x.v === 'pass' ? '' : 'hl'}">
-    <div class="p1"><b>${legTxt(x.A, x.side)}</b><span>our chance ${pc(x.fa)}${x.A.p.team ? '' : ''}</span><b>${legTxt(x.B, x.side)}</b><span>our chance ${pc(x.fb)}</span></div>
-    <div class="p2"><small>Both hit</small><b>${pc(x.joint, 1)}</b><span>${pc(x.ind, 1)} if unrelated</span></div>
-    <div class="p2"><small>Needs</small><b>${pc(be2(), 1)}</b><span>${PAY}x pays</span></div>
-    <div class="p2"><small>$10 entry</small><b class="${x.ev >= 0 ? (x.v === 'pass' ? 'muted' : 'pos') : 'neg'}">${x.ev >= 0 ? '+' : '-'}$${Math.abs(10 * x.ev).toFixed(2)}</b><span>on average</span></div>
-    <span class="vp ${x.v}">${x.v.toUpperCase()}</span>
-    ${compact ? '' : `<div class="p3">${x.v === 'pass' ? `Each pick needs about ${pc(need, 1)} for this pair to pay; together they reach ${pc(x.joint, 1)} of the ${pc(be2(), 1)} needed.` : `The pairing is proven (${x.F.label}, +${pc(x.F.c / .25, 1)} on a 2-pick); ${x.v === 'bet' ? 'both picks are bet types that passed the backtest.' : 'the two picks rest on our model, which is untested on these lines. Worth a look, not a stake.'}`}${x.hit != null ? ` <span class="res2">What happened (example only): ${x.hit ? '<b class="pos">both hit</b>' : '<b class="neg">did not both hit</b>'}.</span>` : ''}</div>`}
-  </div>`;
+  const need = Math.sqrt(Math.max(0, be2() - x.F.c)), opp = t => t === X.game.home ? X.game.away : X.game.home, ev10 = 10 * x.ev;
+  const pick = (L, f) => { const r = L.p.result, hit = r == null ? null : x.side === 'over' ? r > L.line : r < L.line;
+    return `<div class="pk">
+      <span class="pk-av">${esc(initials(L.p.name))}</span>
+      <div class="pk-who"><b>${esc(L.p.name)}</b><span>${esc(L.p.team)} vs ${esc(opp(L.p.team))}</span><span class="pk-ch">Our chance <b>${pc(f)}</b></span>${hit != null ? `<span class="pk-res ${hit ? 'w' : 'l'}" title="What happened (example game only)">${hit ? '✓' : '✗'} had ${fmt(r, 0)}</span>` : ''}</div>
+      <div class="pk-line"><b>${L.line}</b><span>${SLIPSTAT[L.p.s]}</span></div>
+      <div class="pk-ml" aria-label="${x.side === 'over' ? 'More' : 'Less'}"><span class="${x.side === 'over' ? 'on' : ''}">▲ More</span><span class="${x.side === 'under' ? 'on' : ''}">▼ Less</span></div>
+    </div>`; };
+  return `<article class="slip ${x.v}">
+    <header class="sl-h"><div><b>2-Pick Power Play</b><span>Same game · pays ${PAY}x</span></div><span class="vp ${x.v}">${x.v.toUpperCase()}</span></header>
+    <div class="sl-picks">${pick(x.A, x.fa)}<div class="sl-link"><span>Hit together +${pc(x.F.c / .25, 1)}</span></div>${pick(x.B, x.fb)}</div>
+    <div class="sl-tear" aria-hidden="true"></div>
+    <footer class="sl-f">
+      <div class="sl-pay"><div><small>Entry</small><b>$10</b></div><div><small>To win</small><b>$${(10 * PAY).toFixed(2)}</b></div></div>
+      <div class="sl-math"><div><small>Both hit</small><b>${pc(x.joint, 1)}</b><span>${pc(x.ind, 1)} if unrelated</span></div><div><small>Needs</small><b>${pc(be2(), 1)}</b><span>to break even</span></div><div><small>Average</small><b class="${x.ev >= 0 ? (x.v === 'pass' ? '' : 'pos') : 'neg'}">${ev10 >= 0 ? '+' : '-'}$${Math.abs(ev10).toFixed(2)}</b><span>per $10 entry</span></div></div>
+      ${compact ? '' : `<p>${x.v === 'pass' ? `Each pick needs about ${pc(need, 1)} for this pair to pay.` : x.v === 'bet' ? 'Proven pairing, and both picks are bet types that passed the backtest.' : 'Proven pairing; the two picks rest on our model, untested on these lines. Worth a look, not a stake.'}${x.hit != null ? ` <span class="res2">Example game: ${x.hit ? 'both hit' : 'did not both hit'}.</span>` : ''}</p>`}
+    </footer>
+  </article>`;
 }
 function renderPairs(){
   const all = pairsAll(), play = all.filter(x => x.v !== 'pass'), show = st.pairAll ? all : play.length ? play : all.slice(0, 8);
@@ -688,7 +740,7 @@ function renderPairs(){
       <div class="tools"><b style="font-size:14px">Pairs on this game</b><span class="grow"></span>
         <label class="pay">Your app pays <input id="pay" type="number" min="2" max="5" step="0.25" value="${PAY}" aria-label="2-pick payout multiple">x on a 2-pick</label>
         <div class="seg" id="pairseg"><button type="button" data-pa="0" aria-pressed="${!st.pairAll}">Worth a look (${play.length})</button><button type="button" data-pa="1" aria-pressed="${!!st.pairAll}">All pairs (${all.length})</button></div></div>
-      <div class="prs">${show.map(x => pairRow(x)).join('') || '<p class="empty">No pairs on this board.</p>'}</div>
+      <div class="slips">${show.map(x => pairRow(x)).join('') || '<p class="empty">No pairs on this board.</p>'}</div>
       ${!play.length ? '<p class="empty">No pair clears the payout at these prices; showing the closest.</p>' : ''}
       ${(() => { const cnt = {}; for (const x of play) for (const L of [x.A, x.B]){ const k = legTxt(L, x.side); cnt[k] = (cnt[k] || 0) + 1; }
         const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
@@ -812,7 +864,7 @@ function renderDetail(){
     </section>
     ${['pts', 'ast', '3pm'].includes(p.s) ? (P3 => `<section class="card sec pairs-sec">
       <div class="sec-h"><h3>Pairs well with</h3><p>On a pick'em 2-pick, ${p.s === 'ast' ? 'his assists go with a teammate\'s points or 3-pointers' : 'his ' + NOUN[p.s] + ' go with a teammate\'s assists'}: both over or both under hit together about 4% more often than the prices say (a pre-registered test). Best pairs for him on this game:</p></div>
-      <div class="prs">${P3.length ? P3.map(x => pairRow(x, true)).join('') : '<p class="muted" style="margin:0;font-size:13px">No teammate line near even money to pair with.</p>'}</div>
+      <div class="slips">${P3.length ? P3.map(x => pairRow(x, true)).join('') : '<p class="muted" style="margin:0;font-size:13px">No teammate line near even money to pair with.</p>'}</div>
       <button class="more" type="button" data-goview="pairs">All pick'em pairs</button></section>`)(pairsFor(p)) : ''}
     <section class="card sec">
       <div class="sec-h"><h3>Why our number is ${fmt(p.mu)}</h3><p>From his usual game to tonight, in ${SL[p.s].toLowerCase()}. Each step is a piece of the model; together they are exactly the projection.</p></div>
