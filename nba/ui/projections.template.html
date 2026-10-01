@@ -592,6 +592,79 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 .pv-moves .mv b{color:var(--fg);font-weight:500}
 @media (max-width:1200px){ .pv-main{grid-template-columns:minmax(0,1fr)} .pv-list{position:static;max-height:420px} .pv-recent{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:600px){ .pv-dh,.pv-sec{padding:16px} .pv-wf .wr{grid-template-columns:120px minmax(0,1fr) 52px} .pv-mins{grid-template-columns:minmax(0,1fr) auto} .pv-mins .pv-mbar{grid-column:1/-1;order:3} .pv-sg{grid-template-columns:minmax(0,1fr);gap:4px} .pv-sk{justify-self:start} .pv-row2 .pfind{flex:1 1 140px} }
+/* Player Props phase 2: watchlist, alerts, my bets */
+.tbar .pv-grow{flex:1}
+.pv-bell{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:13px;color:var(--fg2);white-space:nowrap}
+.pv-bell[aria-expanded="true"]{color:var(--fg);border-color:var(--fg3)}
+.pv-ct{min-width:18px;height:18px;padding:0 5px;border-radius:var(--r-pill);background:var(--warn);color:#000;font-size:11px;font-weight:700;display:inline-grid;place-items:center}
+.nav .pv-nb{margin-left:auto;min-width:18px;height:18px;padding:0 5px;border-radius:var(--r-pill);background:var(--warn);color:#000;font-size:10.5px;font-weight:700;display:inline-grid;place-items:center}
+.pv-alerts{padding:14px 18px 16px;display:grid;gap:10px}
+.pv-al{display:grid;grid-template-columns:118px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--border)}
+.pv-al:first-child{border-top:0}
+.pv-al p{margin:0;font-size:13px;color:var(--fg2)} .pv-al p b{color:var(--fg);font-weight:600}
+.pv-al small{display:block;font-size:11.5px;color:var(--fg3)}
+.pv-al.new p::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-right:7px;vertical-align:1px}
+.pv-ak{display:inline-flex;justify-content:center;align-items:center;height:22px;padding:0 8px;border-radius:var(--r-pill);font-size:11px;font-weight:500;border:1px solid var(--border2);color:var(--fg2);white-space:nowrap}
+.pv-ak.k-edge{color:var(--up);border-color:rgba(74,222,128,.4)} .pv-ak.k-gone{color:var(--down);border-color:rgba(248,113,113,.4)}
+.pv-ak.k-line{color:#93c5fd;border-color:rgba(147,197,253,.4)} .pv-ak.k-sharp,.pv-ak.k-news{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.pv-ghost{height:28px;padding:0 10px;border-radius:var(--r-ctl);border:1px solid var(--border2);background:none;cursor:pointer;font-size:12px;color:var(--fg2);white-space:nowrap}
+.pv-ghost:hover{color:var(--fg)}
+.pv-chk{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--fg2)}
+.pv-chk label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.pv-chk input{accent-color:var(--fg);margin:0}
+.pv-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pv-star{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:var(--r-pill);border:1px solid var(--border2);background:none;cursor:pointer;font-size:12.5px;color:var(--fg2)}
+.pv-star[aria-pressed="true"]{color:var(--warn);border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08)}
+.pv-watch{display:grid;gap:8px;padding:12px 14px;border-radius:10px;border:1px dashed rgba(251,191,36,.35)}
+.pv-watch b{font-size:12.5px;font-weight:600}
+.pv-watch small{font-size:11.5px;color:var(--fg3)}
+.pv-marks{display:inline-flex;gap:6px;align-items:center}
+.pv-mk{font-size:10px;font-weight:600;letter-spacing:.05em;color:#93c5fd}
+.pv-mk.w{color:var(--warn);font-size:12px}
+.pv-way .w3{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px}
+.pv-logf{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 12px;margin-top:6px;padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--border2)}
+.pv-logf label{display:grid;gap:3px;font-size:11.5px;color:var(--fg3)}
+.pv-logf input{height:32px;width:110px;padding:0 10px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--surface);color:var(--fg);font:inherit;font-size:13px;font-variant-numeric:tabular-nums}
+.pv-logf .go{height:32px;padding:0 14px;border-radius:var(--r-ctl);border:0;background:var(--primary);color:var(--on-primary);font-weight:600;font-size:13px;cursor:pointer}
+.pv-logf p{margin:0;flex-basis:100%;font-size:12px;color:var(--fg2)}
+.pv-stake{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font-size:13px;color:var(--fg2)}
+.pv-stake b{font-size:15px;color:var(--fg)}
+.pv-toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;padding:10px 16px;border-radius:10px;background:var(--raised);border:1px solid var(--border2);font-size:13px;max-width:calc(100vw - 32px)}
+.pv-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--border);border-radius:var(--r-card);overflow:hidden;border:1px solid var(--border)}
+.pv-kpi{background:var(--surface);padding:14px 16px;display:grid;gap:2px;min-width:0}
+.pv-kpi small{font-size:11.5px;color:var(--fg3)}
+.pv-kpi b{font-size:22px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.pv-kpi span{font-size:11.5px;color:var(--fg2)}
+.pv-read{padding:16px 20px;display:grid;gap:8px}
+.pv-read p{margin:0;font-size:13.5px;color:var(--fg2);max-width:84ch}
+.pv-read p b{color:var(--fg);font-weight:600}
+.pv-read .big{font-size:16px;color:var(--fg)}
+.pv-read .fine{font-size:12px;color:var(--fg3)}
+.pv-bets{display:grid}
+.pv-bt{display:grid;grid-template-columns:minmax(0,1.7fr) repeat(5,minmax(0,.8fr)) 128px;gap:4px 14px;align-items:center;padding:11px 18px;border-top:1px solid var(--border);font-size:13px}
+.pv-bt.h{font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;padding-block:9px;border-top:0}
+.pv-bt > span{font-variant-numeric:tabular-nums;min-width:0}
+.pv-bt .b1 b{display:block;font-weight:600;font-size:13.5px}
+.pv-bt small{display:block;font-size:11.5px;color:var(--fg3)}
+.pv-bt small.k{display:none}
+.pv-bt .acts{display:flex;gap:6px;justify-content:flex-end}
+.pv-clvbar{position:relative;height:10px;margin-top:4px;background:var(--raised);border-radius:5px;overflow:hidden}
+.pv-clvbar u{position:absolute;top:0;height:10px}
+.pv-clvbar i{position:absolute;left:50%;top:0;width:1px;height:10px;background:var(--fg3)}
+.pv-backup{padding:14px 18px;display:grid;gap:10px}
+.pv-backup summary{cursor:pointer;font-size:13.5px;font-weight:600}
+.pv-backup p{margin:0;font-size:12.5px;color:var(--fg2);max-width:84ch}
+.pv-backup textarea{width:100%;min-height:90px;padding:10px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--bg);color:var(--fg);font-family:var(--font-mono);font-size:11.5px}
+@media (max-width:1200px){
+  .pv-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .pv-bt{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px}
+  .pv-bt.h{display:none} .pv-bt .b1,.pv-bt .acts{grid-column:1/-1} .pv-bt .acts{justify-content:flex-start}
+  .pv-bt small.k{display:inline;margin-right:6px}
+}
+@media (max-width:600px){
+  .pv-al{grid-template-columns:minmax(0,1fr) auto} .pv-al .pv-ak{justify-self:start;grid-column:1/-1}
+  .pv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))} .pv-bt{padding-inline:14px} .pv-read,.pv-backup{padding:16px}
+}
 /* What Works */
 .wk-sec-wrap{display:grid;gap:var(--gap);min-width:0}
 .wk-lede{margin:0;font-size:15px;color:var(--fg2);max-width:72ch}
@@ -906,7 +979,10 @@ table.nt.sl-rt{min-width:420px}
 
     <main id="v-props" hidden>
       <div class="banner" id="pbanner" hidden></div>
-      <section class="card tbar"><div class="tfilters"><div class="seg" id="pvtabs" role="group" aria-label="View"></div></div></section>
+      <section class="card tbar"><div class="tfilters"><div class="seg" id="pvtabs" role="group" aria-label="View"></div></div><button class="pv-bell" id="pv-bell" type="button" aria-expanded="false" aria-controls="pv-alerts">Alerts</button></section>
+      <section class="card pv-alerts" id="pv-alerts" hidden></section>
+      <div id="pv-bets" class="pv-wrap" hidden></div>
+      <div class="pv-toast" id="pv-toast" role="status" hidden></div>
       <div id="pv-v2" class="pv-wrap">
         <section class="card pv-toolcard" id="pv-tools"></section>
         <div class="pv-main"><section class="card pv-list" id="pv-list" aria-label="Props"></section><section class="pv-detail" id="pv-detail"></section></div>
@@ -1304,7 +1380,7 @@ const PAGES = [
 ];
 function renderNav(){
   $('pages').innerHTML = PAGES.map(([sec, items]) => `<div class="navsec"><h3>${sec}</h3>${items.map(([name, icon, what, live]) =>
-    live ? `<a class="nav" href="#${live}" data-view="${live}"${live === view ? ' aria-current="page"' : ''} title="${esc(what)}">${icon}<span class="nm">${name}</span></a>`
+    live ? `<a class="nav" href="#${live}" data-view="${live}"${live === view ? ' aria-current="page"' : ''} title="${esc(what)}">${icon}<span class="nm">${name}</span>${live === 'props' && pvNavCount() ? `<span class="pv-nb" title="New alerts on props you watch">${pvNavCount()}</span>` : ''}</a>`
          : `<span class="nav soon" title="${esc(what)}" aria-disabled="true">${icon}<span class="nm">${name}</span><span class="tag">Soon</span></span>`
   ).join('')}</div>`).join('');
 }
@@ -2161,6 +2237,7 @@ async function loadBoard(){
     if (view === 'wire') renderWire();
     if (view === 'slate' || view === 'lines') renderSlate();
     if (view === 'sharp') renderSharp();
+    pvBackground(); pvSettle();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -3774,7 +3851,7 @@ $('v-backtests').addEventListener('click', e => {
 // every way to bet it in dollars, sharp money on it (sharp.py prop signals + venues moving together), why our number
 // is what it is (exactly the projection), recent games read honestly (build_hit_rates.py), and timing. Everything is
 // priced by priceRow, the same code as the Full board tab and Edges. Vocabulary matches What Works and Edges.
-let pv = {tab: 'v2', preset: 'passed', stat: 'all', game: 'all', sort: 'trust', q: '', sel: null, allWays: false};
+let pv = {tab: 'v2', preset: 'passed', stat: 'all', game: 'all', sort: 'trust', q: '', sel: null, allWays: false, logIdx: null};
 const PV_NOUN = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': 'threes', pra: 'pts + reb + ast', pr: 'pts + reb', pa: 'pts + ast', ra: 'reb + ast'};
 const PV_SL = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast'};
 const PV_SS = {pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM', pra: 'PRA', pr: 'P+R', pa: 'P+A', ra: 'R+A'};
@@ -3840,6 +3917,7 @@ function renderPropsV2(){
   pv.cache = {};
   const {rows} = pvRows(), B = PS.board;
   pv.rows = rows;
+  pvCheck(rows, Date.now() / 1000); pvBell();
   const f = PV_PRESETS.find(x => x[0] === pv.preset)[2], q = pv.q.toLowerCase();
   const games = B.games || [];
   if (pv.game !== 'all' && !games.some(g => String(g.id) === pv.game)) pv.game = 'all';
@@ -3861,7 +3939,7 @@ function renderPropsV2(){
     return `<button class="pv-li" type="button" data-k="${key(r)}" aria-current="${key(r) === pv.sel}">
       <span class="av">${esc(initials(r.name))}</span>
       <span class="pv-who"><b>${esc(r.name)}</b><span>${PV_SL[r.e.s] || r.e.s} · proj ${fmt(r.mu)} · ${esc(where)}</span></span>
-      <span class="r"><span class="pv-vp ${r.verdict}">${r.verdict.toUpperCase()}</span>${r.verdict !== 'pass' ? `<small class="pos">+${pc(b.edge, 1)}</small>` : '<small class="muted">no edge</small>'}${sh.vs ? `<small class="pv-shp ${sh.vs}" title="Sharp money ${sh.vs} this bet">⚡ ${sh.vs}</small>` : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? `<small class="pv-shp">⚡ ${sh.lean}</small>` : ''}</span></button>`; }).join('')
+      <span class="r"><span class="pv-marks">${pvW[key(r)] ? '<span class="pv-mk w" title="Watching">★</span>' : ''}${pvBets.some(x => x.k === key(r)) ? '<span class="pv-mk">LOGGED</span>' : ''}<span class="pv-vp ${r.verdict}">${r.verdict.toUpperCase()}</span></span>${r.verdict !== 'pass' ? `<small class="pos">+${pc(b.edge, 1)}</small>` : '<small class="muted">no edge</small>'}${sh.vs ? `<small class="pv-shp ${sh.vs}" title="Sharp money ${sh.vs} this bet">⚡ ${sh.vs}</small>` : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? `<small class="pv-shp">⚡ ${sh.lean}</small>` : ''}</span></button>`; }).join('')
     : `<p class="empty">${!rows.length ? 'No player props listed yet. Kalshi lists them the morning of a game.' : pv.preset === 'pickem' ? "No pick'em edges right now: PrizePicks, Underdog and Sleeper post lines on game days." : 'Nothing matches.'}</p>`;
   pvDetail(L.find(r => key(r) === pv.sel));
 }
@@ -3877,7 +3955,7 @@ function pvWays(r){
       <div class="w1"><b>${esc(pvBetName(c))} · ${esc(c.bk)}</b><span>${esc(pvOutcome(c, r.e.s))}</span></div>
       <div class="w2"><b class="${ev < 0 ? 'neg' : v === 'pass' ? 'muted' : 'pos'}">${pvUsd(ev)}</b><small>per $100</small></div>
       <span class="pv-vp ${v}">${v.toUpperCase()}</span>
-      <div class="w3">${c.venue === 'kalshi' ? `${Math.round(pvCost(c) * 100)}¢ (${Math.round(c.price * 100)}¢ + fee)` : c.price == null ? `flat pick (break-even ${pc(PK_BE, 1)})` : `${esc(String(c.price))} (${pc(pvCost(c))} with the vig)`} · our chance ${pc(c.fair)} · $10 wins $${fmt(pvWin10(c), 2)}</div></div>`; };
+      <div class="w3"><span>${c.venue === 'kalshi' ? `${Math.round(pvCost(c) * 100)}¢ (${Math.round(c.price * 100)}¢ + fee)` : c.price == null ? `flat pick (break-even ${pc(PK_BE, 1)})` : `${esc(String(c.price))} (${pc(pvCost(c))} with the vig)`} · our chance ${pc(c.fair)} · $10 wins $${fmt(pvWin10(c), 2)}</span><button class="pv-ghost" type="button" data-log="${r.all.indexOf(c)}">Log bet</button></div>${pv.logIdx === r.all.indexOf(c) ? pvLogForm(r, c) : ''}</div>`; };
   return `${ref && ref !== top && pvRowV(top) !== 'pass' ? `<div class="pv-shop"><b>Shopping matters here.</b> The recommended bet is worth <b class="pos">${pvUsd(pvEV(top))}</b> per $100; the main line at ${esc(ref.bk)} (${esc(pvBetName(ref))}) is worth <b class="${pvEV(ref) >= 0 ? 'pos' : 'neg'}">${pvUsd(pvEV(ref))}</b>.</div>` : ''}
     <div class="pv-ways">${rows.map(tr).join('')}</div>${!open ? `<button class="pv-more" type="button" data-allways="1">Show all ${all.length} ways</button>` : ''}`;
 }
@@ -3950,7 +4028,7 @@ function pvDetail(r){
     const rec = (BT && BT.signals || []).find(s => s.gate === 'GO' && s.stat === r.e.s && s.side === b.side && s.engine.startsWith('Prop'));
     vh = `<div class="pv-verdict bet"><div class="l1"><span class="pv-vp bet">BET</span><h3>${esc(pvBetShort(b))} at ${pvPrice(b)}</h3><span class="pill ok">Passed the backtest</span></div>
       <p class="plain">We think he gets <b>${esc(pvOutcome(b, r.e.s))}</b> ${pc(b.fair)} of the time; ${b.venue === 'kalshi' ? `Kalshi charges ${Math.round(pvCost(b) * 100)}¢ with its fee` : `at ${esc(b.bk)}, ${esc(String(b.price))} prices it at ${pc(pvCost(b))}`}. That is worth <b class="pos">${pvUsd(pvEV(b))} per $100</b>.</p>
-      <p>Edge <b class="pos">+${pc(b.edge, 1)}</b> (our ${pc(b.fair, 1)} vs a ${pc(pvCost(b), 1)} cost).${rec ? ` This kind of bet (Kalshi ${PV_SL[r.e.s].toLowerCase()} ${b.side}) returned <b>${pvUsd(rec.roi * 100)} per $100</b> over ${rec.n.toLocaleString()} bets last season.` : ''}</p></div>`;
+      <p>Edge <b class="pos">+${pc(b.edge, 1)}</b> (our ${pc(b.fair, 1)} vs a ${pc(pvCost(b), 1)} cost).${rec ? ` This kind of bet (Kalshi ${PV_SL[r.e.s].toLowerCase()} ${b.side}) returned <b>${pvUsd(rec.roi * 100)} per $100</b> over ${rec.n.toLocaleString()} bets last season.` : ''}</p>${pvStakeHtml(b)}</div>`;
   } else if (r.verdict === 'lean'){
     const t = PV_TIER[b.g] || PV_TIER['no-go'];
     vh = `<div class="pv-verdict lean"><div class="l1"><span class="pv-vp lean">LEAN</span><h3>${esc(pvBetShort(b))} at ${pvPrice(b)}</h3><span class="pill ${t[0] === 'tracking' ? 'warn' : 'idle'}">${t[1]}</span></div>
@@ -3964,7 +4042,7 @@ function pvDetail(r){
         ${fiveS || r.lu === 'S' ? '<span class="badge">Starting five confirmed</span>' : r.lu === 's' ? '<span class="badge">Expected to start</span>' : r.lu === 'B' ? '<span class="badge">Bench</span>' : ''}${r.inj ? `<span class="badge warn">${esc(r.inj)}</span>` : ''}</div></div>
       <div class="pv-proj"><small>Tonight's projection</small><b>${fmt(r.mu)}</b><span>${rg ? `usually ${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : ''}</span></div></div>
       <div class="pv-mins"><span>Minutes <b>${fmt(mn)}</b></span><div class="pv-mbar"><span class="rng" style="left:${lo / 48 * 100}%;width:${(hi - lo) / 48 * 100}%"></span>${r.min0 ? `<span class="us" style="left:${r.min0 / 48 * 100}%" title="His usual ${fmt(r.min0)}"></span>` : ''}<span class="pt" style="left:${mn / 48 * 100}%"></span>${[0, 12, 24, 36, 48].map(v => `<span class="tk" style="left:${v / 48 * 100}%">${v}</span>`).join('')}</div>
-        <span class="muted">${fmt(lo, 0)} to ${fmt(hi, 0)} likely${r.min0 ? ` · usual ${fmt(r.min0, 0)}` : ''}${r.src === 'yours' ? ' · your minutes' : ''}</span></div></section>
+        <span class="muted">${fmt(lo, 0)} to ${fmt(hi, 0)} likely${r.min0 ? ` · usual ${fmt(r.min0, 0)}` : ''}${r.src === 'yours' ? ' · your minutes' : ''}</span></div>${pvWatchUI(r)}</section>
     ${vh}
     <section class="card pv-sec"><div class="pv-sh"><h3>Ways to bet it</h3><p>Every venue, line and side for this prop, the recommended bet first. Value is what a $100 bet makes on average if our chance is right; fees and vig are already in the price. Pass means the edge is under 3%: a small plus there is inside the model's margin of error.</p></div>${pvWays(r)}</section>
     ${pvSharpSec(r)}
@@ -3975,10 +4053,275 @@ function pvDetail(r){
         ${news.length ? news.map(m => `<div class="mv"><i>!</i><span>${m}</span></div>`).join('') : '<div class="mv"><i>!</i><span><b>No injury or lineup news</b> for this team since the first poll. A price older than the news is flagged on Edges as News lag.</span></div>'}
         <div class="mv"><i>⏱</i><span>${fiveS ? '<b>Starting five confirmed</b> by NBA.com.' : 'Lineups usually post about 30 minutes before tip.'}</span></div></div></section>`;
 }
+
+// ── Player Props phase 2: watchlist, alerts and the user's own bets (browser storage, backup by copy and paste) ──
+// Alerts compare each refresh of the board with what the prop looked like when last checked; they land in the Alerts
+// list here and in a count on the nav. Bets settle from closes.json on nba-data (ledger.closes_record: each prop's
+// closing prices and the box score), or from the game logs when that file cannot be reached.
+const PV_ONE = {pts: 'point', reb: 'rebound', ast: 'assist', '3pm': 'three'};
+const PV_BOXI = {pts: [0], reb: [1], ast: [2], '3pm': [3], pra: [0, 1, 2], pr: [0, 1], pa: [0, 2], ra: [1, 2]};
+const PV_WT = [['edge', 'its edge reaches 3% or goes away'], ['line', 'a line moves a point'], ['sharp', 'sharp money shows up'], ['news', 'news on him or his team']];
+let pvW = store.get('nba-watch') || {};
+let pvA = store.get('nba-alerts') || [];
+let pvBets = store.get('nba-bets') || [];
+let pvCfg = {anyBet: false, ...(store.get('nba-alertcfg') || {})};
+const pvSave = () => { store.set('nba-watch', pvW); store.set('nba-alerts', pvA.slice(0, 150)); store.set('nba-bets', pvBets); store.set('nba-alertcfg', pvCfg); };
+const pvKey = r => `${r.e.p}|${r.e.s}|${r.e.g}`;
+const pvSg = (x, d = 1) => x == null ? '' : (x >= 0 ? '+' : '-') + pc(Math.abs(x), d);
+const pvMoney = x => (x < 0 ? '-$' : '+$') + Math.abs(x).toFixed(2);
+const pvUnseen = () => pvA.filter(a => !a.seen).length;
+function pvNavCount(){ try { return pvUnseen(); } catch (e) { return 0; } }   // the nav renders before this block runs
+const pvKelly = (fair, cost) => cost > 0 && cost < 1 ? Math.max(0, (fair - cost) / (1 - cost)) : 0;
+const pvStakeFor = (fair, cost) => ecfg.bank * Math.min(ecfg.cap, ecfg.kf * pvKelly(fair, cost));
+const PV_KF = {0.125: '⅛', 0.25: '¼', 0.5: '½'};
+PV_PRESETS.splice(5, 0, ['watch', 'Watching', r => !!pvW[pvKey(r)]]);
+
+function pvSnap(r, now){
+  return {v: r.verdict, best: r.best ? `${pvBetShort(r.best)} at ${pvPrice(r.best)}` : null, books: Object.fromEntries((r.books || []).map(b => [b.bk, [b.line, b.o]])),
+          sig: r.sharp.sig.length, inj: r.inj || null, lu: r.lu || null, newsT: now};
+}
+// what changed on the watched props since the last check -> new alerts (the example board never changes, so it is skipped)
+function pvCheck(rows, now){
+  if (PS.mode !== 'live' && PS.mode !== 'snapshot') return;
+  const byK = new Map(rows.map(r => [pvKey(r), r])), news = PS.board.news || [], add = [];
+  for (const [k, w] of Object.entries(pvW)){
+    if (w.tip && now > w.tip + 6 * 3600){ delete pvW[k]; continue; }       // game over: the watch ends with it
+    const r = byK.get(k); if (!r) continue;
+    if (!w.snap){ w.snap = pvSnap(r, now); continue; }
+    const s = w.snap, who = `<b>${esc(r.name)}</b> ${(PV_SL[r.e.s] || r.e.s).toLowerCase()}`, A = (kind, tag, txt) => add.push({k, kind, tag, txt});
+    if (w.edge && r.verdict !== s.v){
+      if (r.verdict !== 'pass' && (s.v === 'pass' || r.verdict === 'bet')) A('edge', r.verdict === 'bet' ? 'Now a Bet' : 'Now a Lean', `${who}: ${esc(pvBetShort(r.best))} at ${pvPrice(r.best)}, +${pc(r.best.edge, 1)} edge${r.verdict === 'bet' ? ', a kind of bet that passed the backtest' : ''}.`);
+      else if (r.verdict === 'pass') A('gone', 'Edge gone', `${who}: the ${s.v} is gone${s.best ? ` (was ${esc(s.best)})` : ''}. Best price now ${r.best ? `${esc(pvBetShort(r.best))} at ${pvPrice(r.best)}, ${pvSg(r.best.edge)}` : 'none'}.`);
+      s.v = r.verdict;
+    }
+    s.best = r.best ? `${pvBetShort(r.best)} at ${pvPrice(r.best)}` : null;
+    for (const b of r.books || []){
+      const o = s.books[b.bk];
+      if (o && Math.abs(b.line - o[0]) >= 1){ if (w.line) A('line', 'Line moved', `${who}: ${esc(b.bk)} moved ${o[0]} to ${b.line} (over ${o[1]} to ${b.o}). We project ${fmt(r.mu)}.`); s.books[b.bk] = [b.line, b.o]; }
+      else if (!o) s.books[b.bk] = [b.line, b.o];
+    }
+    if (r.sharp.sig.length > s.sig){
+      const x = r.sharp.sig[r.sharp.sig.length - 1];
+      if (w.sharp) A('sharp', 'Sharp money', `${who}: ${x.type === 'p_mkt' ? `venues moving together toward the ${x.side}` : pvSharpText(x, r)}${r.sharp.vs ? `; that is <b>${r.sharp.vs}</b> our ${r.verdict}` : ''}.`);
+      s.sig = r.sharp.sig.length;
+    }
+    if ((r.inj || null) !== s.inj){ if (w.news) A('news', 'News', `${who}: ${r.inj ? `now listed ${esc(r.inj)}` : 'off the injury report'}. We project ${fmt(r.mu)}.`); s.inj = r.inj || null; }
+    if ((r.lu || null) !== s.lu){ if (w.news && (r.lu === 'S' || r.lu === 'B' || r.lu === 'X')) A('news', 'Lineup', `${who}: ${r.lu === 'S' ? 'confirmed starter' : r.lu === 'B' ? 'not in the starting five' : 'inactive'} (NBA.com).`); s.lu = r.lu || null; }
+    const fresh = news.filter(n => n[3] === r.tm && n[0] > s.newsT && n[2] !== r.name);
+    if (w.news) for (const n of fresh.slice(0, 3)) A('news', 'Team news', `${who}: ${esc(n[2])} ${n[4] === 'lu' ? (n[5] === 'X' ? 'inactive (NBA.com)' : 'confirmed starter') : `${esc(n[5] || '')} (injury report)`}. We project ${fmt(r.mu)}.`);
+    if (fresh.length) s.newsT = Math.max(...fresh.map(n => n[0]));
+  }
+  if (pvCfg.anyBet){
+    const seen = new Set(store.get('nba-betseen') || []);
+    for (const r of rows) if (r.verdict === 'bet' && !seen.has(pvKey(r))){
+      seen.add(pvKey(r));
+      if (!pvW[pvKey(r)]) add.push({k: pvKey(r), kind: 'edge', tag: 'New Bet', txt: `<b>${esc(r.name)}</b> ${(PV_SL[r.e.s] || r.e.s).toLowerCase()}: ${esc(pvBetShort(r.best))} at ${pvPrice(r.best)}, +${pc(r.best.edge, 1)} edge.`});
+    }
+    store.set('nba-betseen', [...seen].slice(-800));
+  }
+  if (add.length) pvA = [...add.map((a, i) => ({...a, id: `${now}-${i}-${a.k}`, t: now, seen: false})), ...pvA].slice(0, 150);
+  pvSave();
+}
+// on other pages the board still refreshes: check the watchlist there too, so the nav count is current
+function pvBackground(){
+  if (view === 'props' || (!Object.keys(pvW).length && !pvCfg.anyBet)) return;
+  const keep = [PS.board, PS.mode], pick = pickBoard();
+  if (pick.mode !== 'live') return;
+  PS.board = pick.board; PS.mode = pick.mode;
+  try { pvCheck(pvRows().rows, Date.now() / 1000); } catch (e) {} finally { [PS.board, PS.mode] = keep; }
+  renderNav();
+}
+function pvBell(){
+  const n = pvUnseen();
+  $('pv-bell').innerHTML = `Alerts${n ? ` <span class="pv-ct">${n}</span>` : ''}`;
+}
+function pvAgo(t){ const d = etFmt(t, {month: 'short', day: 'numeric'}), today = etFmt(Date.now() / 1000, {month: 'short', day: 'numeric'}); return `${d === today ? '' : d + ', '}${clock(t)} ET`; }
+function pvRenderAlerts(){
+  const nW = Object.keys(pvW).length;
+  $('pv-alerts').innerHTML = `<div class="pv-sh"><h3>Since you last looked</h3><p>Alerts on the ${nW} prop${nW === 1 ? '' : 's'} you watch: the edge reaching 3% or going away, a line moving a point, sharp money, news. They collect here while the page is open and wait for you when you come back.</p></div>
+    <div>${pvA.slice(0, 40).map(a => `<div class="pv-al ${a.seen ? '' : 'new'}"><span class="pv-ak k-${a.kind}">${esc(a.tag)}</span><div><p>${a.txt}</p><small>${pvAgo(a.t)}</small></div><button class="pv-ghost" type="button" data-open="${esc(a.k)}">Open</button></div>`).join('')
+      || `<p class="muted pv-none">Nothing yet. ${nW ? 'Alerts appear as the board refreshes, every 5 minutes on vaultfantasy.com.' : 'Star a prop (☆ Watch on its page) and you will hear when its edge reaches 3%, a line moves, sharp money shows up or news hits.'}</p>`}</div>
+    <div class="pv-acts"><span class="pv-chk"><label><input type="checkbox" id="pv-anybet" ${pvCfg.anyBet ? 'checked' : ''}> Also alert me to any prop that becomes a Bet, watched or not</label></span><span class="pv-grow"></span>${pvA.length ? '<button class="pv-ghost" type="button" data-clearal="1">Clear alerts</button>' : ''}</div>`;
+  pvA.forEach(a => { a.seen = true; }); pvSave(); pvBell(); renderNav();
+}
+function pvWatchUI(r){
+  const k = pvKey(r), w = pvW[k], n = pvBets.filter(b => b.k === k).length;
+  return `<div class="pv-acts"><button class="pv-star" type="button" data-star="${esc(k)}" aria-pressed="${!!w}">${w ? '★ Watching' : '☆ Watch'}</button>${n ? `<button class="pv-ghost" type="button" data-tab="bets">${n} bet${n > 1 ? 's' : ''} logged</button>` : ''}</div>
+    ${w ? `<div class="pv-watch"><b>Alert me when</b><div class="pv-chk">${PV_WT.map(([t, l]) => `<label><input type="checkbox" data-wt="${t}" ${w[t] ? 'checked' : ''}> ${l}</label>`).join('')}</div><small>${PS.mode === 'example' ? 'The example board never changes, so it will not raise alerts; star props on a live board.' : 'Alerts land under Alerts at the top of this page and as a count on Player Props in the menu.'}</small></div>` : ''}`;
+}
+function pvStakeHtml(c){
+  const s = pvStakeFor(c.fair, pvCost(c));
+  return `<p class="pv-stake">Suggested stake <b>$${s.toFixed(0)}</b><span>${PV_KF[ecfg.kf] || ''} Kelly on your $${ecfg.bank.toLocaleString()} bankroll, at most ${ecfg.cap * 100}% a play. Set on Edges.</span></p>`;
+}
+function pvLogForm(r, c){
+  const v = pvRowV(c), kal = c.venue === 'kalshi', flat = c.venue === 'pickem' && c.price == null;
+  const s = v === 'bet' ? Math.max(1, Math.round(pvStakeFor(c.fair, pvCost(c)))) : 10;
+  return `<form class="pv-logf" data-logform="${r.all.indexOf(c)}">
+    <label>Price you got<input name="price" value="${flat ? 'flat' : kal ? Math.round(c.price * 100) : esc(String(c.price))}" ${flat ? 'readonly' : ''} inputmode="${kal ? 'decimal' : 'text'}" aria-label="Price you got${kal ? ' in cents' : ''}"></label>
+    <label>Stake $<input name="stake" type="number" min="1" step="1" value="${s}"></label>
+    <button class="go" type="submit">Save to My bets</button><button class="pv-ghost" type="button" data-logcancel="1">Cancel</button>
+    <p>${kal ? 'Cents per contract; the fee is added for you. ' : flat ? 'A flat pick, counted at the break-even of a 5- or 6-pick flex entry. ' : 'American odds, as the book showed them. '}Saved with our fair chance (${pc(c.fair)}) and our call at your price. After the game it settles with the result and your closing-line value.</p></form>`;
+}
+function pvMkBet(r, c, priceIn, stake){
+  const kal = c.venue === 'kalshi', flat = c.venue === 'pickem' && c.price == null;
+  const cents = kal ? parseFloat(String(priceIn).replace(/[¢c\s]/g, '')) : null, am = +String(priceIn).trim().replace('−', '-');
+  const cost = flat ? PK_BE : kal ? (cents > 0 && cents < 100 ? cents / 100 + kFee(cents / 100) : null) : Math.abs(am) >= 100 ? amP(am) : null;
+  if (cost == null || !(cost > 0 && cost < 1) || !(stake > 0)) return null;
+  const g = r.game, edge = c.fair - cost, cv = [];
+  for (let l = c.line - 6; l <= c.line + 6; l++) if (l > 0 && r.extra != null) cv.push([l, +cal(r.e.s, pOverRaw(r.e.s, r.mu, l, r.extra)).toFixed(4)]);
+  return {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), k: pvKey(r), p: r.e.p, s: r.e.s, gid: String(r.e.g), day: g ? g.day : null, tip: g ? g.tip : null,
+          m: g ? `${g.away} @ ${g.home}` : '', name: r.name, venue: c.venue, bk: c.bk, side: c.side, line: c.line,
+          price: flat ? 'flat' : kal ? `${Math.round(cents)}¢` : (am > 0 ? '+' : '') + am, cost: +cost.toFixed(4), stake: Math.round(stake * 100) / 100,
+          t: Math.round(Date.now() / 1000), fair: +c.fair.toFixed(4), edge: +edge.toFixed(4), call: edge >= EDGE_MIN ? (c.g === 'go' ? 'bet' : 'lean') : 'pass',
+          ex: PS.mode === 'example', cv, res: null};
+}
+
+// settling: the close at the bet's own number from a real price when one exists, else the nearest close moved along the
+// curve saved with the bet; the result from the box score
+function pvCloseList(e){                                   // a board entry's prices -> [[line, P(over), src]], as ledger.close_log
+  const pin = {}, other = {};
+  for (const b of e.books || []){ const po = amP(b[2]), pu = amP(b[3]); if (po && pu && b[1] != null){ if (b[0] === 'Pinnacle') pin[b[1]] = po / (po + pu); else (other[b[1]] = other[b[1]] || []).push(po / (po + pu)); } }
+  const out = Object.entries(pin).map(([l, p]) => [+l, p, 'pin']);
+  for (const [l, ps] of Object.entries(other)) if (!(l in pin)){ ps.sort((a, b) => a - b); const m = ps.length; out.push([+l, m % 2 ? ps[m >> 1] : (ps[m / 2 - 1] + ps[m / 2]) / 2, 'mkt']); }
+  for (const k of e.kal || []) if (k[1] != null && k[2] != null && k[2] - k[1] <= .1 && !(k[0] in pin) && !(k[0] in other)) out.push([k[0], (k[1] + k[2]) / 2, 'kal']);
+  return out;
+}
+function pvCloseFor(b, list){
+  if (!list || !list.length) return null;
+  const over = b.side === 'Over' || b.side === 'YES', rank = {pin: 0, mkt: 1, kal: 2}, cv = l => (b.cv || []).find(x => x[0] === l)?.[1];
+  const ex = list.filter(x => x[0] === b.line).sort((a, c) => rank[a[2]] - rank[c[2]])[0];
+  let po = ex ? ex[1] : null, src = ex ? ex[2] : null, from = null;
+  if (po == null && cv(b.line) != null){
+    const near = list.filter(x => x[2] !== 'kal' && cv(x[0]) != null).sort((a, c) => Math.abs(a[0] - b.line) - Math.abs(c[0] - b.line) || rank[a[2]] - rank[c[2]])[0];
+    if (near){ po = Math.min(.99, Math.max(.01, near[1] + cv(b.line) - cv(near[0]))); src = near[2]; from = near[0]; }
+  }
+  if (po == null) return null;
+  const cf = over ? po : 1 - po;
+  return {cf: +cf.toFixed(4), clv: +(cf / b.cost - 1).toFixed(4), src, from};
+}
+function pvGrade(b, bx){                                  // bx: [pts, reb, ast, 3pm], or null = did not play
+  if (bx === null) return {res: 'void', y: null, pl: 0};
+  const y = PV_BOXI[b.s].reduce((a, i) => a + bx[i], 0), over = b.side === 'Over' || b.side === 'YES';
+  const res = y === b.line ? 'push' : (over ? y > b.line : y < b.line) ? 'won' : 'lost';
+  return {res, y, pl: res === 'won' ? +(b.stake * (1 - b.cost) / b.cost).toFixed(2) : res === 'lost' ? -b.stake : 0};
+}
+function pvGlBox(b){                                       // the game logs' line for that day, when the page has them
+  if (!GL || !b.day) return undefined;
+  const d = Math.floor(Date.parse(b.day + 'T00:00Z') / 864e5), row = (GL.players[b.p] || []).find(x => x[0] === d);
+  if (row) return row[5] > 0 ? [row[6], row[7], row[8], row[9]] : null;
+  return GL.through && GL.through >= b.day ? null : undefined;
+}
+const pvCloses = {};
+async function pvSettle(){
+  const now = Date.now() / 1000, live = H0 && /^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname);
+  let changed = false;
+  for (const b of pvBets){
+    if (b.res || !b.tip) continue;
+    if (b.ex){                                           // the example game: its own pre-tip board is the close
+      const e = PB && PB.example && PB.example.props.find(x => x.p === b.p && x.s === b.s), bx = pvGlBox(b);
+      if (bx !== undefined){ b.res = {...pvGrade(b, bx), ...(pvCloseFor(b, e ? pvCloseList(e) : null) || {})}; changed = true; }
+      continue;
+    }
+    if (now < b.tip + 3 * 3600) continue;
+    let G = null;
+    if (live){
+      const c = pvCloses[b.day];
+      if (!c || (now - c.at > 600 && !(c.data && c.data.games && c.data.games[b.gid] && c.data.games[b.gid].box)))
+        pvCloses[b.day] = {at: now, data: await fetch(`https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/snapshots/${b.day}/closes.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null)};
+      G = pvCloses[b.day].data && pvCloses[b.day].data.games[b.gid];
+    }
+    let bx = G && G.box ? (G.box[b.p] === undefined ? null : G.box[b.p]) : pvGlBox(b);
+    if (bx === undefined) continue;
+    b.res = {...pvGrade(b, bx), ...(pvCloseFor(b, G && G.props ? G.props[`${b.p}|${b.s}`] : null) || {})};
+    changed = true;
+  }
+  if (changed){ pvSave(); if (view === 'props' && pv.tab === 'bets') pvRenderBets(); }
+}
+
+// My bets: the user's own record, judged first on closing-line value
+function pvWhen(b){ if (b.ex) return 'Example game'; const h = (b.tip - b.t) / 3600; return h >= 6 ? '6+ hours before tip' : h >= 1 ? '1 to 6 hours before' : 'Last hour'; }
+function pvGrp(S){
+  const done = S.filter(x => x.b.res && x.b.res.res !== 'void'), staked = done.reduce((a, x) => a + x.b.stake, 0), pl = done.reduce((a, x) => a + x.b.res.pl, 0);
+  const cl = S.filter(x => x.b.res && x.b.res.clv != null);
+  return {n: S.length, open: S.filter(x => !x.b.res).length, w: done.filter(x => x.b.res.res === 'won').length, l: done.filter(x => x.b.res.res === 'lost').length,
+          pl, roi: staked ? pl / staked : null, clv: cl.length ? cl.reduce((a, x) => a + x.b.res.clv, 0) / cl.length : null, beat: cl.filter(x => x.b.res.clv > 0).length, ncl: cl.length};
+}
+function pvInsights(S, calls){
+  const out = [], W = {}, avg = L => L.reduce((a, x) => a + x.b.res.clv, 0) / L.length;
+  for (const x of S) if (x.b.res && x.b.res.clv != null && !x.b.ex) (W[pvWhen(x.b)] = W[pvWhen(x.b)] || []).push(x);
+  const early = W['6+ hours before tip'], late = W['Last hour'];
+  if (early && late && early.length >= 3 && late.length >= 3){
+    const a = avg(early), b = avg(late);
+    out.push(`<p><b>${a > b ? 'Betting early is where your value comes from.' : 'Your late bets get the better prices.'}</b> Bets 6+ hours before tip averaged <b class="${a >= 0 ? 'pos' : 'neg'}">${pvSg(a)}</b>; bets in the last hour <b class="${b >= 0 ? 'pos' : 'neg'}">${pvSg(b)}</b>${b < 0 && b > -.08 ? ', about the vig or fee, since the price has little time to move after you bet' : ''}.</p>`);
+  }
+  const bet = calls.find(c => c[0] === 'bet'), pass = calls.find(c => c[0] === 'pass');
+  if (bet && bet[1].clv != null) out.push(bet[1].clv < 0 ? `<p>The <b>${bet[1].n} bet${bet[1].n > 1 ? 's' : ''} we rated Bet</b> ${bet[1].n > 1 ? 'show' : 'shows'} ${pvSg(bet[1].clv)} here, and that alone is not a warning: those bet types passed a backtest against game results at prices like these, so the closing price is not the right judge for them. Judge them on results over a season, as the Track Record does.</p>`
+    : `<p>The <b>${bet[1].n} bet${bet[1].n > 1 ? 's' : ''} we rated Bet</b> averaged <b class="pos">${pvSg(bet[1].clv)}</b> closing-line value.</p>`);
+  if (pass && pass[1].n >= 3 && pass[1].clv != null) out.push(`<p>Your <b>${pass[1].n} picks we rated Pass</b> averaged <b class="${pass[1].clv >= 0 ? 'pos' : 'neg'}">${pvSg(pass[1].clv)}</b> and went ${pass[1].w}-${pass[1].l}${pass[1].clv > .02 ? ': you are finding prices we do not flag, worth noting where' : pass[1].clv < 0 ? ': on those you paid more than the fair price' : ''}.</p>`);
+  return out.join('');
+}
+function pvRenderBets(){
+  const S = [...pvBets].sort((a, b) => (b.tip || 0) - (a.tip || 0) || b.t - a.t).map(b => ({b})), T = pvGrp(S);
+  const backup = `<details class="card pv-backup"><summary>Back up or move your bets</summary>
+      <p>Your bets and watchlist are saved in this browser only, so they do not follow you to another device or browser. Copy a backup, keep it somewhere safe, and paste it here on the other device to bring everything over.</p>
+      <div class="pv-acts"><button class="pv-ghost" type="button" data-copy="1">Copy backup</button></div>
+      <textarea id="pv-restore" placeholder="Paste a backup here" aria-label="Paste a backup"></textarea>
+      <div class="pv-acts"><button class="pv-ghost" type="button" data-restore="1">Restore from backup</button></div></details>`;
+  if (!S.length){ $('pv-bets').innerHTML = `<section class="card pv-read"><p class="big">No bets logged yet.</p><p>Open any prop on the Props tab, find the bet under Ways to bet it and press <b>Log bet</b> with the price you actually got. Each bet settles after the game with its result and your closing-line value: whether your price beat the market's fair price at tip.</p></section>${backup}`; return; }
+  const by = (f, order) => { const m = {}; for (const x of S) (m[f(x)] = m[f(x)] || []).push(x); return (order || Object.keys(m)).filter(k => m[k]).map(k => [k, pvGrp(m[k])]); };
+  const calls = by(x => x.b.call, ['bet', 'lean', 'pass']), CALL = {bet: 'Bet', lean: 'Lean', pass: 'Pass'};
+  const row = (l, g) => `<tr><td class="l">${esc(l)}</td><td>${g.n}</td><td>${g.w}-${g.l}</td><td class="${g.pl >= 0 ? 'pos' : 'neg'}">${pvMoney(g.pl)}</td><td>${g.roi == null ? '' : pvSg(g.roi)}</td><td class="${g.clv >= 0 ? 'pos' : 'neg'}">${g.clv == null ? '' : pvSg(g.clv)}</td><td>${g.ncl ? `${g.beat} of ${g.ncl}` : ''}</td></tr>`;
+  const sec = (h, rows) => `<tr><td class="l muted" colspan="7" style="font-size:11.5px;padding-top:14px">${h}</td></tr>${rows.map(([k, g]) => row(k, g)).join('')}`;
+  const bar = v => { const w = Math.min(50, Math.abs(v) * 250); return `<div class="pv-clvbar" aria-hidden="true"><i></i><u style="${v >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `left:${50 - w}%;width:${w}%;background:var(--down)`}"></u></div>`; };
+  const SRC = {pin: 'Pinnacle close', mkt: 'sportsbook close', kal: 'Kalshi close'};
+  $('pv-bets').innerHTML = `
+    <div class="pv-kpis">
+      <div class="pv-kpi"><small>Bets</small><b>${T.n}</b><span>${T.open ? `${T.open} still open` : 'all settled'}</span></div>
+      <div class="pv-kpi"><small>Record</small><b>${T.w}-${T.l}</b><span>${T.w + T.l < 200 ? 'mostly luck at this size' : 'starting to mean something'}</span></div>
+      <div class="pv-kpi"><small>Profit</small><b class="${T.pl >= 0 ? 'pos' : 'neg'}">${pvMoney(T.pl)}</b><span>${T.roi == null ? 'nothing settled yet' : `${pvSg(T.roi)} of what you staked`}</span></div>
+      <div class="pv-kpi"><small>Closing-line value</small><b class="${T.clv == null ? '' : T.clv >= 0 ? 'pos' : 'neg'}">${T.clv == null ? '-' : pvSg(T.clv)}</b><span>average per bet</span></div>
+      <div class="pv-kpi"><small>Beat the close</small><b>${T.ncl ? `${T.beat} of ${T.ncl}` : '-'}</b><span>got a better price than fair</span></div>
+      <div class="pv-kpi"><small>Bankroll</small><b>$${Math.round(ecfg.bank + T.pl).toLocaleString()}</b><span>from $${ecfg.bank.toLocaleString()} on Edges</span></div>
+    </div>
+    <section class="card pv-read">
+      ${T.clv == null ? '<p class="big">Closing-line value shows up here once your first bet settles.</p>'
+        : `<p class="big">${T.clv >= 0 ? `Your prices beat the fair closing price by <b class="pos">${pc(T.clv, 1)}</b> on average.` : `Your prices were <b class="neg">${pc(-T.clv, 1)}</b> worse than the fair closing price on average.`}</p>
+      <p>That tells you more than the ${T.w}-${T.l} record: over ${T.w + T.l} bets, wins and losses are mostly luck, while closing-line value shows whether you are getting good prices long before the record can.</p>`}
+      ${pvInsights(S, calls)}
+      <p class="fine">Closing-line value: the fair chance at tip (Pinnacle's closing price with the vig removed, else the other sportsbooks', else Kalshi's) divided by what your price charged, minus one. +3% means your price was 3% cheaper than fair. Measured at your number: the close at your exact line where one exists; if the line moved off it, the nearest close is moved back to your line along our curve.</p>
+    </section>
+    <section class="card"><div class="pv-bets">
+      <div class="pv-bt h"><span>Bet</span><span>Price you got</span><span>Fair close</span><span>Closing-line value</span><span>Our call then</span><span>Result</span><span></span></div>
+      ${S.map(({b}) => { const R = b.res;
+        return `<div class="pv-bt">
+          <span class="b1"><b>${esc(b.name)} · ${esc(pvBetName(b))}</b><small>${PV_SL[b.s] || b.s} · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span>
+          <span><small class="k">Price</small>${esc(b.price)}<small>costs ${pc(b.cost)}</small></span>
+          <span><small class="k">Fair close</small>${R && R.cf != null ? `${pAm(R.cf)}<small title="${R.from != null ? `moved from ${R.from}` : ''}">${pc(R.cf)}, ${SRC[R.src] || ''}</small>` : `<span class="muted">${R ? 'none recorded' : 'after the game'}</span>`}</span>
+          <span><small class="k">CLV</small>${R && R.clv != null ? `<b class="${R.clv >= 0 ? 'pos' : 'neg'}">${pvSg(R.clv)}</b>${bar(R.clv)}` : '<span class="muted">-</span>'}</span>
+          <span><small class="k">Our call</small><span class="pv-vp ${b.call}" title="Edge at your price ${pvSg(b.edge)}">${b.call.toUpperCase()}</span></span>
+          <span><small class="k">Result</small>${!R ? '<span class="muted">open</span>' : R.res === 'void' ? '<span class="muted">void, did not play</span>' : `<b class="${R.pl > 0 ? 'pos' : R.pl < 0 ? 'neg' : ''}">${R.res === 'won' ? 'Won' : R.res === 'lost' ? 'Lost' : 'Push'} ${pvMoney(R.pl)}</b><small>had ${fmt(R.y, 0)} ${R.y === 1 && PV_ONE[b.s] ? PV_ONE[b.s] : PV_NOUN[b.s]}</small>`}</span>
+          <span class="acts">${pv.rows && pv.rows.some(r => pvKey(r) === b.k) ? `<button class="pv-ghost" type="button" data-open="${esc(b.k)}">Open</button>` : ''}<button class="pv-ghost" type="button" data-del="${esc(b.id)}" aria-label="Remove this bet">Remove</button></span></div>`; }).join('')}
+    </div></section>
+    <section class="card pv-sec"><div class="pv-sh"><h3>Where your edge is coming from</h3><p>The same numbers split by our call when you bet, where and when. Small groups swing a lot; read the closing-line value column first.</p></div>
+      <div class="nt-tw"><table class="nt"><thead><tr><th class="l"></th><th>Bets</th><th>Record</th><th>Profit</th><th>Return</th><th>CLV</th><th>Beat close</th></tr></thead><tbody>
+        ${sec('By our call when you bet', calls.map(([k, g]) => [CALL[k], g]))}${sec('By where', by(x => x.b.bk))}${sec('By when', by(x => pvWhen(x.b)))}
+      </tbody></table></div></section>
+    ${backup}`;
+}
+let pvToastT = null;
+function pvToast(t){ $('pv-toast').textContent = t; $('pv-toast').hidden = false; clearTimeout(pvToastT); pvToastT = setTimeout(() => { $('pv-toast').hidden = true; }, 3800); }
+function pvOpen(k){
+  if (!pv.rows || !pv.rows.some(r => pvKey(r) === k)){ pvToast('That prop is no longer on the board.'); return; }
+  pv.tab = 'v2'; pv.preset = pvW[k] ? 'watch' : 'all'; pv.stat = 'all'; pv.game = 'all'; pv.q = ''; pv.sel = k; pv.logIdx = null;
+  $('pv-alerts').hidden = true; $('pv-bell').setAttribute('aria-expanded', 'false');
+  pvShow(); $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
 function pvShow(){
-  for (const t of ['v2', 'full']) $('pv-' + t).hidden = pv.tab !== t;
-  $('pvtabs').innerHTML = [['v2', 'Props'], ['full', 'Full board']].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${pv.tab === v}">${l}</button>`).join('');
+  for (const t of ['v2', 'bets', 'full']) $('pv-' + t).hidden = pv.tab !== t;
+  $('pvtabs').innerHTML = [['v2', 'Props'], ['bets', `My bets${pvBets.length ? ` (${pvBets.length})` : ''}`], ['full', 'Full board']].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${pv.tab === v}">${l}</button>`).join('');
+  pvBell();
   if (pv.tab === 'v2') renderPropsV2();
+  if (pv.tab === 'bets'){ if (!pv.rows) pv.rows = pvRows().rows; pvRenderBets(); pvSettle(); }
 }
 $('pvtabs').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ pv.tab = b.dataset.v; pvShow(); } });
 $('pv-tools').addEventListener('click', e => {
@@ -3987,9 +4330,62 @@ $('pv-tools').addEventListener('click', e => {
 });
 $('pv-tools').addEventListener('change', e => { if (e.target.id === 'pv-sort'){ pv.sort = e.target.value; renderPropsV2(); } if (e.target.id === 'pv-game'){ pv.game = e.target.value; renderPropsV2(); } });
 $('pv-tools').addEventListener('input', e => { if (e.target.id === 'pv-q'){ pv.q = e.target.value.trim(); const pos = e.target.selectionStart; renderPropsV2(); const q = $('pv-q'); q.focus(); q.setSelectionRange(pos, pos); } });
-$('pv-list').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b){ pv.sel = b.dataset.k; pv.allWays = false; renderPropsV2();
+$('pv-list').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b){ pv.sel = b.dataset.k; pv.allWays = false; pv.logIdx = null; renderPropsV2();
   if (window.innerWidth <= 1000) $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'}); } });
-$('pv-detail').addEventListener('click', e => { if (e.target.closest('[data-allways]')){ pv.allWays = true; renderPropsV2(); } });
+$('pv-detail').addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('[data-allways]')){ pv.allWays = true; renderPropsV2(); return; }
+  const sb = t.closest('[data-star]');
+  if (sb){
+    const k = sb.dataset.star, r = (pv.rows || []).find(x => pvKey(x) === k);
+    if (pvW[k]) delete pvW[k]; else pvW[k] = {edge: true, line: true, sharp: true, news: true, tip: r && r.game ? r.game.tip : null, snap: r ? pvSnap(r, Date.now() / 1000) : null};
+    pvSave(); renderPropsV2(); pvToast(pvW[k] ? 'Watching. Changes on this prop show under Alerts.' : 'No longer watching.'); return;
+  }
+  const lg = t.closest('[data-log]');
+  if (lg){ pv.logIdx = +lg.dataset.log; renderPropsV2(); document.querySelector('.pv-logf input[name="price"]')?.focus(); return; }
+  if (t.closest('[data-logcancel]')){ pv.logIdx = null; renderPropsV2(); return; }
+  if (t.closest('[data-tab="bets"]')){ pv.tab = 'bets'; pvShow(); }
+});
+$('pv-detail').addEventListener('change', e => { const wt = e.target.closest('[data-wt]'); if (wt && pvW[pv.sel]){ pvW[pv.sel][wt.dataset.wt] = wt.checked; pvSave(); } });
+$('pv-detail').addEventListener('submit', e => {
+  e.preventDefault(); const f = e.target.closest('[data-logform]'); if (!f) return;
+  const r = (pv.rows || []).find(x => pvKey(x) === pv.sel), c = r && r.all[+f.dataset.logform];
+  const b = c && pvMkBet(r, c, f.price.value, +f.stake.value);
+  if (!b){ pvToast(c && c.venue === 'kalshi' ? 'Enter the price in cents, like 48, and a stake.' : 'Enter American odds, like -115 or +120, and a stake.'); return; }
+  pvBets.unshift(b); pv.logIdx = null; pvSave(); pvShow(); pvSettle();
+  pvToast(b.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.');
+});
+$('pv-bell').addEventListener('click', () => { const open = $('pv-alerts').hidden; $('pv-alerts').hidden = !open; $('pv-bell').setAttribute('aria-expanded', open); if (open) pvRenderAlerts(); });
+$('pv-alerts').addEventListener('click', e => {
+  const o = e.target.closest('[data-open]'); if (o){ pvOpen(o.dataset.open); return; }
+  if (e.target.closest('[data-clearal]')){ pvA = []; pvSave(); pvRenderAlerts(); }
+});
+$('pv-alerts').addEventListener('change', e => {
+  if (e.target.id !== 'pv-anybet') return;
+  pvCfg.anyBet = e.target.checked;
+  if (pvCfg.anyBet) store.set('nba-betseen', (pv.rows || []).filter(r => r.verdict === 'bet').map(pvKey));   // from now on, not the ones already showing
+  pvSave(); pvToast(pvCfg.anyBet ? 'You will get an alert when any prop becomes a Bet.' : 'Only watched props raise alerts now.');
+});
+$('pv-bets').addEventListener('click', async e => {
+  const t = e.target, o = t.closest('[data-open]'), d = t.closest('[data-del]');
+  if (o){ pvOpen(o.dataset.open); return; }
+  if (d){ pvBets = pvBets.filter(b => b.id !== d.dataset.del); pvSave(); pvShow(); return; }
+  if (t.closest('[data-copy]')){
+    const txt = JSON.stringify({v: 1, bets: pvBets, watch: pvW});
+    try { await navigator.clipboard.writeText(txt); pvToast(`Backup copied: ${pvBets.length} bets. Paste it somewhere safe.`); }
+    catch (err) { const ta = $('pv-restore'); ta.value = txt; ta.select(); pvToast('Copy the selected text to keep your backup.'); }
+    return;
+  }
+  if (t.closest('[data-restore]')){
+    let x; try { x = JSON.parse($('pv-restore').value); } catch (err) { pvToast('That is not a backup. Paste the whole text you copied.'); return; }
+    const bets = Array.isArray(x) ? x : x && x.bets;
+    if (!Array.isArray(bets) || bets.some(b => !b || !b.id || !b.k || !(b.cost > 0 && b.cost < 1))){ pvToast('That is not a backup. Paste the whole text you copied.'); return; }
+    const have = new Set(pvBets.map(b => b.id)), add = bets.filter(b => !have.has(b.id));
+    pvBets = [...pvBets, ...add]; if (x.watch && typeof x.watch === 'object') pvW = {...x.watch, ...pvW};
+    pvSave(); pvShow(); pvSettle(); pvToast(`Restored ${add.length} bet${add.length === 1 ? '' : 's'}${bets.length - add.length ? `; ${bets.length - add.length} were already here` : ''}.`);
+  }
+});
 
 show(view);
+pvSettle();
 </script>

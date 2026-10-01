@@ -643,6 +643,11 @@ def write_board(root, day, slate):
         with open(BOARD, 'w') as f:
             json.dump(board, f, separators=(',', ':'))
         save_wire(day, board.get('wire') or [], slate.now)
+        try:                                            # each prop's close, for My bets (ledger.closes_record)
+            import ledger
+            ledger.close_log(root, board, slate.now)
+        except Exception:
+            traceback.print_exc(limit=2)
         print(f"  board      {len(board['props'])} player-stat markets, unmapped {board['unmapped']}", flush=True)
         return board
     except Exception:

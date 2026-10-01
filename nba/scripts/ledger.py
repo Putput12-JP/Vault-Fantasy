@@ -128,6 +128,71 @@ def box_meta(root, gid):
     return json.load(open(path)) if os.path.exists(path) else {}
 
 
+# ── closing prices and results for the page's "My bets" (users' own bet logs settle in the browser) ────────────────────
+CLOSE_SPREAD = 0.10           # a Kalshi rung wider than this is not a price
+
+
+def close_log(root, board, now):
+    """Every prop's market price at each number, rewritten each poll until its game tips, so the last write is the close:
+    snapshots/<tip ET date>/propclose.json {gid: {t, tip, m, props: {'pid|stat': [[line, P(over) no-vig, src]]}}}.
+    src: pin = Pinnacle, mkt = median of the other books (vig removed proportionally, as the page does), kal = Kalshi mid."""
+    if not board or not board.get('props'):
+        return
+    games = {str(g['id']): g for g in board.get('games', [])}
+    per = defaultdict(dict)
+    for e in board['props']:
+        g = games.get(str(e['g']))
+        if not g or now >= g['tip']:
+            continue
+        pin, other = {}, defaultdict(list)
+        for b in e.get('books') or []:
+            po, pu = PX.am_p(b[2]), PX.am_p(b[3])
+            if po and pu and b[1] is not None:
+                (pin.__setitem__(b[1], po / (po + pu)) if b[0] == 'Pinnacle' else other[b[1]].append(po / (po + pu)))
+        rows = [[l, round(p, 4), 'pin'] for l, p in pin.items()]
+        for l, ps in other.items():
+            if l not in pin:
+                ps = sorted(ps)
+                rows.append([l, round(ps[len(ps) // 2] if len(ps) % 2 else (ps[len(ps) // 2 - 1] + ps[len(ps) // 2]) / 2, 4), 'mkt'])
+        for k in e.get('kal') or []:
+            if k[1] is not None and k[2] is not None and k[2] - k[1] <= CLOSE_SPREAD and k[0] not in pin and k[0] not in other:
+                rows.append([k[0], round((k[1] + k[2]) / 2, 4), 'kal'])
+        if rows:
+            G = per[tip_day(g['tip'])].setdefault(str(g['id']), {'t': now, 'tip': g['tip'], 'm': f"{g['away']} @ {g['home']}", 'props': {}})
+            G['props'][f"{e['p']}|{e['s']}"] = sorted(rows)
+    for d, gs in per.items():
+        p = os.path.join(root, 'snapshots', d, 'propclose.json')
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        cur = json.load(open(p)) if os.path.exists(p) else {}
+        cur.update(gs)
+        json.dump(cur, open(p, 'w'), separators=(',', ':'))
+
+
+BOX_COLS = ['points', 'rebounds', 'assists', 'threePointFieldGoalsMade']
+
+
+def closes_record(root, now, rescan_days=3):
+    """snapshots/<day>/closes.json for the page: each game's closing prices (propclose.json) and, once final, every
+    player's box line {pid: [pts, reb, ast, 3pm]} or null for did not play. Only recent days are rewritten."""
+    since = tip_day(now - rescan_days * 86400)
+    for p in sorted(glob.glob(os.path.join(root, 'snapshots', '20*', 'propclose.json'))):
+        d = os.path.basename(os.path.dirname(p))
+        if d < since:
+            continue
+        out = os.path.join(os.path.dirname(p), 'closes.json')
+        prev = json.load(open(out)) if os.path.exists(out) else {}
+        games = {}
+        for gid, g in json.load(open(p)).items():
+            old = (prev.get('games') or {}).get(gid)
+            if old and old.get('box') is not None:
+                games[gid] = dict(g, box=old['box'])
+                continue
+            bx = box(root, gid) if now >= g['tip'] + SETTLE_AFTER_S else None
+            games[gid] = dict(g, box=None if bx is None else {str(a): (None if v is None else [v.get(c, 0) for c in BOX_COLS]) for a, v in bx.items()})
+        if games != prev.get('games'):
+            json.dump({'t': now, 'games': games}, open(out, 'w'), separators=(',', ':'))
+
+
 # ── the Minutes Lab's record: tonight's projected minutes against the box score ─────────────────
 def minutes_log(board, now):
     """Every player's projected minutes for games within TRACK_H, as live pricing computes them (pricing.py
@@ -487,6 +552,10 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     n = sum(r[CUBE_COLS.index('bets')] for r in cube)
     minutes_days = minutes_record(root, now, track.get('minutes_days'), rescan_days)
     wire_days = wire_record(root, now, track.get('wire_days'), rescan_days)
+    try:                                          # closing prices + box lines for users' own bet logs
+        closes_record(root, now, rescan_days)
+    except Exception as e:
+        print('closes record failed:', e, flush=True)
     try:                                          # Sharp Price signals: CLV vs Pinnacle's close, and the final score
         import sharp
         stat_of = lambda bx, pid, stat: (sum(bx[int(pid)].get(c, 0) for c in STAT_COL[stat]) if bx.get(int(pid)) else None)
