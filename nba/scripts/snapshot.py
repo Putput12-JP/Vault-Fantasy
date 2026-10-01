@@ -231,16 +231,27 @@ def src_espn(slate):
 
 def src_pinnacle(slate):
     pin = lambda path: curl(f'{PIN}/{path}', PIN_HDR, tries=4, retry403=True)
+    listed = True
     try:                                  # an empty league answers 403 "location", so only ask the ones with games
         live = {l['id'] for l in pin('sports/4/leagues?all=false') if l.get('matchupCount')}
     except RuntimeError:
-        live = {PIN_LEAGUES[0]}
-    matchups, markets = {}, []
+        live, listed = {PIN_LEAGUES[0]}, False
+    matchups, markets, errs = {}, [], []
     for lg in PIN_LEAGUES:
         if lg not in live:
             continue
-        matchups.update((m['id'], m) for m in pin(f'leagues/{lg}/matchups'))
-        markets += pin(f'leagues/{lg}/markets/straight')
+        try:
+            mu = pin(f'leagues/{lg}/matchups')
+            mk = pin(f'leagues/{lg}/markets/straight')
+        except RuntimeError as e:
+            if '403' not in str(e):
+                raise
+            errs.append(e)                # a league that emptied between the listing and this call: skip it
+            continue
+        matchups.update((m['id'], m) for m in mu)
+        markets += mk
+    if errs and listed and not markets:
+        raise errs[0]                     # listing said games exist yet every league refused: a real block
     rows, meta = {}, {}
     for mk in markets:
         m = matchups.get(mk['matchupId'])
