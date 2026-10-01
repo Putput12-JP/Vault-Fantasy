@@ -983,11 +983,44 @@ table.nt.sl-rt{min-width:420px}
 @media (max-width:600px){ .sl-card{padding:16px} table.sl-t td.l{white-space:normal} table.sl-t td.l small{display:block;margin-left:0} table.sl-t th,table.sl-t td{padding-left:4px;padding-right:4px}
   .sl-bar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .sl-bar>span:first-child{grid-column:1/-1} }
 
-/* Halaska kit regions: the page's own markup inside kit cards, and its remaining .card sections matched to the kit card */
+/* ── Halaska theme: the whole app on the kit's palette, radii and control shapes, so pages that are still plain
+   HTML sit next to the kit-built views without a seam. Palette = usePal("dark") in src/halaska-kit.jsx. ── */
+:root{
+  --bg:#1a1a1a; --surface:#252525; --surface2:#2a2a2a; --raised:#333333;
+  --border:#2f2f2f; --border2:#3a3a3a;
+  --fg:#d8d8d8; --fg2:#999999; --fg3:#6a6a6a;
+  --primary:#d8d8d8; --on-primary:#1a1a1a;
+  --up:#4ade80; --down:#f87171; --warn:#fbbf24;
+  --r-card:24px; --r-ctl:8px;
+}
+body::after{display:none}
+.card{background:#252525;border:1px solid rgba(255,255,255,.06);border-radius:24px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.card-b{padding-bottom:24px}
+/* controls: pills for buttons and chips, a soft rounded track for segmented controls */
+.btn,.pv-ghost,.pv-bell,.pv-star,.pv-more,.ev-alert button{border-radius:var(--r-pill)}
+.btn{background:#333}
+.btn:hover{background:#3d3d3d}
+.btn.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn.primary:hover{background:#e6e6e6}
+.pv-preset{border-radius:var(--r-pill);background:#2a2a2a;border-color:transparent;height:30px}
+.pv-preset:hover:not([aria-pressed="true"]){background:#333}
+.pv-preset[aria-pressed="true"]{background:rgba(147,197,253,.12);color:#93c5fd;border-color:rgba(147,197,253,.33)}
+.pv-preset[aria-pressed="true"] b{color:#93c5fd}
+.seg{border:0;background:rgba(51,51,51,.5);border-radius:16px;padding:3px}
+.seg button{border-radius:11px;height:30px;padding:0 12px}
+.seg button[aria-pressed="true"]{background:#2a2a2a;color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sel,.pfind,.search input,.slicer>button,.minctl input[type=number],.nt-min input{background-color:#252525;border:1px solid rgba(255,255,255,.06);border-radius:8px}
+.sel{background-color:#252525}
+.slicer>button:hover{border-color:#3a3a3a}
+.list,.hits{background:#2a2a2a;border:1px solid #3a3a3a;border-radius:16px}
+.badge,.pill,.gate,.ev-chip,.pv-vp,.pv-sk,.nt-p{border-radius:var(--r-pill)}
+th{font-weight:500}
+.nav[aria-current="page"]{background:#333}
+.bar{background:color-mix(in srgb,#1a1a1a 86%,transparent)}
+/* the page's own markup inside kit cards */
 .hk-html p{margin:0 0 8px;color:var(--fg2);font-size:13px;line-height:1.55;max-width:80ch}
 .hk-html p.plain{font-size:15px;color:var(--fg)}
 .hk-html p b{color:var(--fg);font-weight:500}
-.hk-raw>.card,#v-props .card,#v-lab .card{background:rgba(42,42,42,.7);border:1px solid rgba(255,255,255,.06);border-radius:24px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 .hk-raw>.card.pv-sec{padding:24px}
 </style>
 
