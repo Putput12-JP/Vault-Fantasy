@@ -493,6 +493,45 @@ tr.detail td{padding:0 0 16px;background:rgba(255,255,255,.02)}
 }
 @media (max-width:480px){ .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px} .kpi .val{font-size:20px} }
 @media (prefers-reduced-motion:reduce){ .btn,.switch input::after,.prog .tr i,.sidebar{transition:none} }
+/* Backtests */
+.bt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
+@media (max-width:1200px){ .bt-grid{grid-template-columns:minmax(0,1fr)} }
+.bt-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-top:16px;align-items:start}
+@media (max-width:900px){ .bt-two{grid-template-columns:minmax(0,1fr)} }
+.bt-two .seg{margin-bottom:8px}
+.bt-chart{width:100%;max-width:640px;height:auto;display:block;margin-top:14px}
+.bt-cal{width:100%;max-width:340px;height:auto;display:block}
+.bt-chart text,.bt-cal text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
+.bt-chart .grid,.bt-cal .grid{stroke:var(--border)}
+.bt-cap{margin:8px 0 0;font-size:12px;color:var(--fg2);max-width:72ch}
+.bt-key{display:inline-flex;align-items:center;gap:6px;margin-right:12px;color:var(--fg2)}
+.bt-key i{width:16px;height:2px;background:var(--fg)}
+.bt-key.d i{background:repeating-linear-gradient(90deg,var(--fg3) 0 5px,transparent 5px 9px)}
+.bt-bars{display:grid;gap:7px}
+.bt-cap + .bt-bars{margin-top:18px}
+.bt-bar{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2);font-variant-numeric:tabular-nums}
+.bt-bar i{height:8px;border-radius:4px;background:var(--raised);overflow:hidden}
+.bt-bar u{display:block;height:100%;background:var(--fg3);border-radius:4px}
+.bt-bar.best u{background:var(--fg)}
+.bt-bar.best span,.bt-bar.best b{color:var(--fg)}
+.bt-bar b{font-weight:500;min-width:44px;text-align:right}
+.bt-bar small{grid-column:1/-1;margin-top:-4px;font-size:11px;color:var(--fg3)}
+table.nt.bt-small{min-width:520px}
+table.nt.bt-small.bt-narrow{min-width:280px}
+table.nt .bt-best{color:var(--fg);font-weight:600}
+#v-backtests table.nt td.l small{display:inline;margin-left:6px}
+.bt-log{display:grid}
+.bt-entry{display:grid;grid-template-columns:120px minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--border)}
+.bt-entry:first-child{border-top:0;padding-top:0}
+.bt-when{display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:11.5px;color:var(--fg2)}
+.bt-when small{color:var(--fg3);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em}
+.bt-body h3{margin:0 0 6px;font-size:14px;font-weight:600;text-wrap:balance}
+.bt-body p{margin:0 0 6px;font-size:13px;color:var(--fg2);max-width:80ch}
+.bt-body p b{color:var(--fg);font-weight:500}
+.bt-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:8px!important}
+.bt-foot span:not(.pill){font-size:12px;color:var(--fg3)}
+.bt-foot a{font-size:12px;color:var(--fg);text-underline-offset:3px;text-decoration-color:var(--fg3)}
+@media (max-width:600px){ .bt-entry{grid-template-columns:minmax(0,1fr);gap:6px} .bt-when{flex-direction:row;gap:10px} .bt-bar{grid-template-columns:minmax(0,1fr) auto} .bt-bar i{grid-column:1/-1;order:3} .bt-bar small{order:4;margin-top:0} }
 /* Sharp Price */
 table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
 .sx-type{display:inline-flex;align-items:center;height:19px;padding:0 7px;margin-right:4px;border-radius:var(--r-pill);border:1px solid var(--border2);font-size:10.5px;font-family:var(--font-mono);color:var(--fg2);white-space:nowrap;vertical-align:1px}
@@ -844,6 +883,25 @@ table.nt.sl-rt{min-width:420px}
       </section>
     </main>
     <footer id="xfoot" hidden></footer>
+    <main id="v-backtests" hidden>
+      <div class="kpis" id="btkpis"></div>
+      <section class="card">
+        <div class="card-h"><div><h2>What passed</h2><p>Every signal at GO or WATCH, out of sample on 2025-26 after fees, next to its shadow record this season.</p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt" id="btsig"></table></div></div>
+      </section>
+      <div class="bt-grid">
+        <section class="card"><div class="card-h"><div><h2>Game model</h2><p>Ratings, home court, rest and the injury report against the spread.</p></div></div><div class="card-b" id="btgame"></div></section>
+        <section class="card"><div class="card-h"><div><h2>Minutes</h2><p>Every prop starts with minutes.</p></div></div><div class="card-b" id="btmin"></div></section>
+      </div>
+      <section class="card"><div class="card-h"><div><h2>Prop model</h2><p>Each version against the price it would bet into, same rows for every model.</p></div></div><div class="card-b" id="btprop"></div></section>
+      <section class="card"><div class="card-h"><div><h2>Consensus engine</h2><p>One venue's prices moved to another venue's line, blended with the model.</p></div></div><div class="card-b" id="btcons"></div></section>
+      <section class="card">
+        <div class="card-h"><div><h2>Decision log</h2><p>Every test, newest first: the question, the rule written before it ran, the result and what shipped.</p></div>
+          <div class="filters"><div class="seg" id="btarea" role="group" aria-label="Area"></div></div></div>
+        <div class="card-b"><div class="bt-log" id="btlog"></div></div>
+      </section>
+    </main>
+    <footer id="btfoot" hidden></footer>
   </div>
 </div>
 
@@ -852,6 +910,7 @@ const D = /*DATA*/null;
 const H0 = /*HEALTH*/null;
 const PR = /*PRICING*/null;     // prop model: variance, calibration, blend weights (build_prop_model.py)
 const PB = /*BOARD*/null;       // props board: {live, example} (prop_board.py)
+const BT = /*BACKTESTS*/null;   // every test, its rule, result and verdict (build_backtests.py)
 const TR0 = /*TRACK*/null;      // shadow ledger summary + recent bets (ledger.py via build_data_health.py)
 const MS = /*STATE*/null;       // prop model v2 state: team defense / pace / scoring, player shooting / minutes swing (build_model_state.py)
 const EAST = ['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NY','ORL','PHI','TOR','WSH'];
@@ -866,7 +925,7 @@ let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
-let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : hashT === 'SLATE' ? 'slate' : hashT === 'LINES' ? 'lines' : hashT === 'SHARP' ? 'sharp' : 'lab';
+let view = hashT === 'HEALTH' ? 'health' : hashT === 'PROPS' ? 'props' : hashT === 'TRACK' ? 'track' : hashT === 'EDGES' ? 'edges' : hashT === 'TONIGHT' ? 'tonight' : hashT === 'WIRE' ? 'wire' : hashT === 'SLATE' ? 'slate' : hashT === 'LINES' ? 'lines' : hashT === 'SHARP' ? 'sharp' : hashT === 'BACKTESTS' ? 'backtests' : 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
 
@@ -999,7 +1058,7 @@ const PAGES = [
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
   ['Model', [
-    ['Backtests', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'Game, minutes, usage and prop model results, held-out tests and what passed.'],
+    ['Backtests', SVG('<path d="M9 3h6M10 3v6L4 20h16L14 9V3"/>'), 'Game, minutes, usage and prop model results, held-out tests and what passed.', 'backtests'],
     ['Data Health', SVG('<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'), 'Is every feed alive: the live price recorder, model inputs and the history archive.', 'health'],
   ]],
 ];
@@ -1147,7 +1206,7 @@ $('pages').addEventListener('click', e => {
 });
 window.addEventListener('hashchange', () => {           // back / forward and typed links
   const h = location.hash.slice(1).toUpperCase();
-  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE', 'SLATE', 'LINES', 'SHARP'].includes(h)) show(h.toLowerCase());
+  if (['HEALTH', 'PROPS', 'TRACK', 'EDGES', 'TONIGHT', 'WIRE', 'SLATE', 'LINES', 'SHARP', 'BACKTESTS'].includes(h)) show(h.toLowerCase());
   else { if (D.teams[h]) cur = h; show('lab'); }
 });
 $('menu').addEventListener('click', () => $('app').classList.toggle('open'));
@@ -1204,6 +1263,7 @@ function show(v){
   $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
   $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
+  $('v-backtests').hidden = $('btfoot').hidden = v !== 'backtests';
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
   $('mode').hidden = lab;
@@ -1214,6 +1274,13 @@ function show(v){
     $('tsub').textContent = 'PROJECTION · MARKET · BLENDED FAIR';
     renderProps();
     if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'backtests'){
+    $('tname').textContent = 'Backtests';
+    $('tsub').textContent = 'HELD-OUT TESTS · RULES FIXED FIRST · WHAT PASSED';
+    renderBacktests();
+    if (!trackTried) loadTrack();
     return;
   }
   if (v === 'sharp'){
@@ -2132,6 +2199,7 @@ async function loadTrack(){
     if (view === 'tonight') renderTonight();
     if (view === 'wire') renderWire();
     if (view === 'sharp') renderSharp();
+    if (view === 'backtests') renderBacktests();
     clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
@@ -3100,6 +3168,128 @@ function xFoot(SH){
 }
 $('xfilters').addEventListener('click', e => { const b = e.target.closest('#xtype button[data-v]'); if (b){ xf.type = b.dataset.v; renderSharp(); } });
 $('xfilters').addEventListener('change', e => { if (e.target.id === 'xgame'){ xf.game = e.target.value; renderSharp(); } });
+
+// ── Backtests ─────────────────────────────────────────────────────────────
+// Every test the model has been through, from each test's own output (build_backtests.py): the question, the rule
+// fixed before it ran, what came out and what shipped; what passed, next to how it is doing live (Track Record's
+// cube); and the charts behind the verdicts. Walk-forward throughout: fit on earlier games, scored on later ones.
+let bf = {area: 'all', cal: '3pm'};
+const BT_VERDICT = v => /^GO/.test(v) ? 'ok' : /^Shipped/.test(v) ? 'ok' : /^NO-GO/.test(v) ? 'bad' : /^Kept/.test(v) ? 'idle' : 'warn';
+const btDoc = d => /^https?:/.test(d) ? d : BT.doc + d;
+function btLive(s){
+  const C = TR && TR.data && TR.data.cube_cols, rows = (TR && TR.data && TR.data.cube) || [];
+  if (!C) return null;
+  const ix = k => C.indexOf(k), et = s.engine.startsWith('Consensus') ? ['gap', 'both'] : ['model', 'both'];
+  let bets = 0, w = 0, l = 0, p = 0, u = 0;
+  for (const r of rows){
+    if (r[ix('stat')] !== s.stat || r[ix('venue')] !== 'kalshi' || String(r[ix('side')]).toUpperCase() !== s.side || !et.includes(r[ix('etype')])) continue;
+    bets += r[ix('bets')]; w += r[ix('w')]; l += r[ix('l')]; p += r[ix('p')]; u += r[ix('units')];
+  }
+  return {bets, w, l, p, u, settled: w + l + p};
+}
+function btLine(series, {W = 520, H = 200, yMin, yMax, yFmt = v => v, ref, xs}){
+  const L = 40, R = 30, T = 12, B = 28;
+  const x = i => L + (xs.length < 2 ? 0 : i * (W - L - R) / (xs.length - 1)), y = v => T + (H - T - B) * (1 - (v - yMin) / (yMax - yMin));
+  let g = '';
+  const step = (yMax - yMin) / 4;
+  for (let k = 0; k <= 4; k++){ const v = yMin + k * step; g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${yFmt(v)}</text>`; }
+  xs.forEach((t, i) => g += `<text x="${x(i)}" y="${H - B + 16}" text-anchor="middle">${t}</text>`);
+  if (ref != null) g += `<line x1="${L}" x2="${W - R}" y1="${y(ref.v)}" y2="${y(ref.v)}" stroke="var(--warn)" stroke-dasharray="4 4"/><text x="${W - R}" y="${y(ref.v) - 5}" text-anchor="end" fill="var(--warn)">${ref.label}</text>`;
+  for (const s of series){
+    const pts = s.v.map((v, i) => v == null ? null : [x(i), y(v)]).filter(Boolean);
+    g += `<path d="${pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ')}" fill="none" stroke="${s.c}" stroke-width="2"${s.dash ? ' stroke-dasharray="5 4"' : ''}/>` + pts.map(q => `<circle cx="${q[0]}" cy="${q[1]}" r="3" fill="${s.c}"/>`).join('');
+  }
+  return `<svg class="bt-chart" viewBox="0 0 ${W} ${H}" role="img">${g}</svg>`;
+}
+function btBars(rows, {fmtv = v => fmt(v, 2), best = 'min'}){
+  const vals = rows.map(r => r[1]), lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi - lo) * .6 || hi * .05;
+  const b = best === 'min' ? lo : hi;
+  return `<div class="bt-bars">${rows.map(([l, v, note]) => `<div class="bt-bar${v === b ? ' best' : ''}"><span>${esc(l)}</span><i><u style="width:${((v - (lo - pad)) / (hi - (lo - pad)) * 100).toFixed(1)}%"></u></i><b>${fmtv(v)}</b>${note ? `<small>${note}</small>` : ''}</div>`).join('')}</div>`;
+}
+function btCal(m){
+  const D0 = BT.props && BT.props.cal && BT.props.cal[m];
+  if (!D0) return '<p class="muted">No calibration table for this stat.</p>';
+  const W = 300, H = 260, L = 36, R = 10, T = 10, B = 30, x = v => L + (W - L - R) * v, y = v => T + (H - T - B) * (1 - v);
+  let g = '';
+  for (const v of [0, .25, .5, .75, 1]) g += `<line class="grid" x1="${x(0)}" x2="${x(1)}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${v * 100}%</text><text x="${x(v)}" y="${H - B + 16}" text-anchor="middle">${v * 100}%</text>`;
+  g += `<line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--fg3)" stroke-dasharray="4 4"/>`;
+  const nmax = Math.max(...D0.map(d => d[0]));
+  g += `<path d="${D0.map((d, i) => (i ? 'L' : 'M') + x(d[1]).toFixed(1) + ' ' + y(d[2]).toFixed(1)).join(' ')}" fill="none" stroke="var(--fg)" stroke-width="1.5"/>`;
+  g += D0.map(d => `<circle cx="${x(d[1])}" cy="${y(d[2])}" r="${(2.5 + 5 * Math.sqrt(d[0] / nmax)).toFixed(1)}" fill="var(--fg)" fill-opacity=".85"><title>Model ${pc(d[1])} · hit ${pc(d[2])} · ${d[0].toLocaleString()} strikes</title></circle>`).join('');
+  return `<svg class="bt-cal" viewBox="0 0 ${W} ${H}" role="img" aria-label="Calibration">${g}</svg>`;
+}
+function renderBacktests(){
+  $('mode').innerHTML = BT ? `${pill('idle', 'Built')}<span>${esc(BT.generated.slice(0, 10))}</span>` : '';
+  if (!BT){ $('btkpis').innerHTML = ''; $('btlog').innerHTML = '<p class="empty">The backtest summary is missing from this build (build_backtests.py).</p>'; return; }
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const L = BT.log, go = BT.signals.filter(s => s.gate === 'GO');
+  const n = k => L.filter(e => k.test(e.verdict)).length;
+  $('btkpis').innerHTML =
+    kpi('Tests run', ICON.clock, `${L.length}`, `${n(/^Shipped/)} shipped · ${n(/^GO/)} found a GO · ${n(/^Kept/)} kept v2`) +
+    kpi('Passing signals', ICON.star, `${go.length}`, go.length ? [...new Set(go.map(s => `${s.stat.toUpperCase()} ${s.side}`))].join(', ') + ' on Kalshi' : 'None') +
+    kpi('Held out', ICON.pts, BT.test.player_games ? BT.test.player_games.toLocaleString() : 'n/a', 'player-games of 2025-26, never fit on') +
+    kpi('Pricing today', ICON.edit, 'v2', 'prop model and minutes; v3 is a shadow');
+  // what passed
+  $('btsig').innerHTML = `<thead><tr><th class="l">Signal</th><th class="l">Engine</th><th class="l">Status</th><th>Bets</th><th>Games</th><th title="Out of sample, after Kalshi's taker fee">ROI</th><th title="Standard errors above zero, per game">z</th><th class="l" title="This season's shadow bets on the same signal (Track Record)">Live this season</th></tr></thead><tbody>
+    ${BT.signals.map(s => { const lv = btLive(s);
+      return `<tr><td class="l"><b>Kalshi ${s.stat.toUpperCase()} ${s.side}</b></td><td class="l">${esc(s.engine)}</td><td class="l">${pill(s.gate === 'GO' ? 'ok' : 'warn', s.gate)}</td><td>${(s.n || 0).toLocaleString()}</td><td>${s.games || ''}</td>
+        <td class="${s.roi > 0 ? 'pos' : 'neg'}">${s.roi != null ? (s.roi >= 0 ? '+' : '') + (s.roi * 100).toFixed(1) + '%' : ''}</td><td>${s.z != null ? fmt(s.z, 2) : ''}</td>
+        <td class="l">${!lv ? '<span class="muted">Track Record not loaded</span>' : lv.settled ? `${lv.w}-${lv.l}${lv.p ? '-' + lv.p : ''} · <span class="${lv.u >= 0 ? 'pos' : 'neg'}">${lv.u >= 0 ? '+' : ''}${(lv.u / lv.settled * 100).toFixed(1)}%</span> <small>${lv.settled} settled</small>` : lv.bets ? `${lv.bets} open` : '<span class="muted">No bets yet</span>'}</td></tr>`; }).join('')}</tbody>`;
+  // decision log
+  const areas = [...new Set(L.map(e => e.area))];
+  if (bf.area !== 'all' && !areas.includes(bf.area)) bf.area = 'all';
+  $('btarea').innerHTML = [['all', 'All'], ...areas.map(a => [a, a])].map(([v, l]) => `<button type="button" data-v="${esc(v)}" aria-pressed="${bf.area === v}">${esc(l)}</button>`).join('');
+  $('btlog').innerHTML = L.map((e, i) => [e, i]).filter(([e]) => bf.area === 'all' || e.area === bf.area).sort((a, b) => b[0].when.localeCompare(a[0].when) || b[1] - a[1]).map(([e]) => `<article class="bt-entry">
+      <div class="bt-when"><span>${esc(e.when)}</span><small>${esc(e.area)}</small></div>
+      <div class="bt-body"><h3>${esc(e.q)}</h3>
+        <p><b>Rule, fixed first.</b> ${esc(e.rule)}</p><p><b>Result.</b> ${esc(e.result)}</p>
+        <p class="bt-foot">${pill(BT_VERDICT(e.verdict), esc(e.verdict))}<span>${esc(e.shipped)}</span><a href="${btDoc(e.doc)}" target="_blank" rel="noopener">Full results</a></p></div></article>`).join('');
+  // game model
+  const G = BT.game;
+  if (G){
+    const ths = Object.keys(G.ats_close);
+    $('btgame').innerHTML = `${btBars([['Model, no injuries', G.mae.none.margin], ['Model, report 30 min pre-tip', G.mae.tip.margin], ['Model, hindsight lineups', G.mae.oracle.margin], ['Opening line', G.mae.market_open.margin], ['Closing line', G.mae.market_close.margin]], {})}
+      <p class="bt-cap">Average miss on the final margin, points, ${G.games.toLocaleString()} games of 2024-25 and 2025-26. The close is the bar; the model never reaches it.</p>
+      ${btLine([{v: ths.map(k => G.ats_close[k].win), c: 'var(--fg)'}, {v: ths.map(k => (G.ats_open[k] || {}).win ?? null), c: 'var(--fg3)', dash: 1}],
+        {xs: ths.map(k => k + '+ pts'), yMin: .42, yMax: .62, yFmt: v => Math.round(v * 100) + '%', ref: {v: .5238, label: 'break-even at -110'}})}
+      <p class="bt-cap"><span class="bt-key"><i></i>vs the close, report at tip</span><span class="bt-key d"><i></i>vs the untimed open, report at 1pm</span> Win rate betting the model's side when it disagrees by at least the gap. Against the close it never clears break-even (t = ${G.info.info_spread_close.t}).</p>
+      <div class="nt-tw"><table class="nt bt-small"><thead><tr><th class="l">Kalshi moneyline at 1pm, model edge</th>${G.kalshi.ml.map(r => `<th>${r[0]}</th>`).join('')}</tr></thead><tbody>
+        <tr><td class="l">Bets</td>${G.kalshi.ml.map(r => `<td>${r[1].toLocaleString()}</td>`).join('')}</tr>
+        <tr><td class="l">ROI after fees</td>${G.kalshi.ml.map(r => `<td class="${r[2] >= 0 ? 'pos' : 'neg'}">${(r[2] >= 0 ? '+' : '') + (r[2] * 100).toFixed(1)}%</td>`).join('')}</tr></tbody></table></div>
+      <p class="bt-cap">Brier: Kalshi at 1pm ${G.kalshi.brier_kalshi_1pm}, model ${G.kalshi.brier_model}. Spread ladder ${esc(G.kalshi.spread_ladder)}. Total ladder ${esc(G.kalshi.total_ladder)}.</p>`;
+  }
+  // minutes
+  const M = BT.minutes;
+  if (M) $('btmin').innerHTML = `${btBars(M.v1.rows.map(r => [r[0], r[1]]), {})}<p class="bt-cap">Average miss, minutes, ${M.v1.n.toLocaleString()} player-games of ${M.v1.seasons} who played. Injury report as of 30 minutes before tip.</p>
+    ${M.v3 ? btBars(M.v3.rows.map(r => [r[0], r[1], `${pc(r[2], 1)} miss by 8+`]), {fmtv: v => fmt(v, 3)}) + `<p class="bt-cap">A second test on ${M.v3.n.toLocaleString()} player-games of ${M.v3.seasons}, so compare within each chart, not across. "Knowing who started" is what a perfect lineups feed adds.</p>` : ''}`;
+  // prop model
+  const P = BT.props;
+  if (P){
+    const ks = Object.keys(P.kalshi), cols = [['market', 'Kalshi price'], ['v1', 'v1'], ['v2', 'v2 (pricing)'], ['v3_shape', 'v3 ladder shape'], ['v3m', 'v3 minutes + memory']];
+    if (!P.cal[bf.cal]) bf.cal = Object.keys(P.cal)[0];
+    $('btprop').innerHTML = `<div class="nt-tw"><table class="nt bt-small"><thead><tr><th class="l">Kalshi log loss</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}<th title="t of the model's weight when blended with the price">Blend t</th></tr></thead><tbody>
+      ${ks.map(m => { const r = P.kalshi[m], best = Math.min(...cols.map(c => r[c[0]]).filter(v => v != null));
+        return `<tr><td class="l"><b>${m.toUpperCase()}</b><small>${r.n.toLocaleString()} strikes</small></td>${cols.map(c => `<td class="${r[c[0]] === best ? 'bt-best' : ''}">${r[c[0]] != null ? r[c[0]].toFixed(4) : ''}</td>`).join('')}<td>${r.t}</td></tr>`; }).join('')}</tbody></table></div>
+      <p class="bt-cap">Lower is better. Alone, no model beats the Kalshi price on points, rebounds or assists; blended with the price it adds real information (t 4 to 7). That blend is what the GO signals bet.</p>
+      <div class="bt-two"><div><div class="seg" id="btcal" role="group" aria-label="Stat">${Object.keys(P.cal).map(m => `<button type="button" data-v="${m}" aria-pressed="${bf.cal === m}">${m.toUpperCase()}</button>`).join('')}</div>${btCal(bf.cal)}
+        <p class="bt-cap">Prop model v2 alone on every Kalshi strike of 2025-26: its probability (across) vs how often YES hit (up). Dots sized by strikes; on the dashed line is perfectly calibrated.</p></div>
+      <div><div class="nt-tw"><table class="nt bt-small bt-narrow"><thead><tr><th class="l">Sportsbook close, log loss</th><th>Book</th><th>v2</th><th>Blend t</th></tr></thead><tbody>
+        ${Object.entries(P.books).map(([m, r]) => `<tr><td class="l"><b>${m.toUpperCase()}</b><small>${(r.n || 0).toLocaleString()} lines</small></td><td class="${r.market <= r.v2 ? 'bt-best' : ''}">${r.market.toFixed(4)}</td><td class="${r.v2 < r.market ? 'bt-best' : ''}">${r.v2.toFixed(4)}</td><td>${r.t}</td></tr>`).join('')}</tbody></table></div>
+        <p class="bt-cap">Sportsbook prop closes are sharper: the model adds little (t under 2 almost everywhere), which is why no book signal passed.</p></div></div>`;
+  }
+  // consensus
+  const CS = BT.consensus;
+  const TN = {kalshi_ladder: 'Kalshi ladder, leave one out', books_to_kalshi: 'Books moved to Kalshi\'s line', kalshi_to_books: 'Kalshi moved to the book\'s line'};
+  if (CS) $('btcons').innerHTML = `<div class="nt-tw"><table class="nt bt-small"><thead><tr><th class="l">Test</th><th class="l">Bet</th><th class="l">Verdict</th><th>Bets</th><th>Games</th><th>ROI</th><th>z</th></tr></thead><tbody>
+    ${Object.entries(CS).flatMap(([t, rows]) => rows.map((r, i) => `<tr><td class="l">${i ? '' : `<b>${TN[t] || t}</b>`}</td><td class="l">${r[0].toUpperCase()} ${r[1]}</td><td class="l">${pill(r[2] === 'GO' ? 'ok' : r[2] === 'WATCH' ? 'warn' : 'bad', r[2])}</td><td>${(r[3] || 0).toLocaleString()}</td><td>${r[4] || ''}</td><td class="${r[5] > 0 ? 'pos' : 'neg'}">${r[5] != null ? (r[5] >= 0 ? '+' : '') + (r[5] * 100).toFixed(1) + '%' : ''}</td><td>${r[6] != null ? fmt(r[6], 2) : ''}</td></tr>`)).join('')}</tbody></table></div>
+    <p class="bt-cap">Consensus + model, second half of 2025-26, 3%+ edge after fees. Small samples (under 50 games) cannot reach GO however good they look.</p>`;
+  $('btfoot').innerHTML = `
+    <div><b>Walk-forward.</b> Every model is fit on earlier seasons and scored on games it never saw: the prop models fit on 2024-25 and tested on 2025-26; the game and minutes models tuned on 2022-23 and 2023-24 and tested on both later seasons. Injury news is the official report as it stood at bet time, never who actually sat. Prices are what you could have taken: Kalshi's 30-minute pre-tip trades, the last sportsbook line before tip.</div>
+    <div><b>Rules come first.</b> Each test's ship rule is written before it runs and the verdict follows the rule, including when a newer model is more accurate but loses a passing signal (${n(/^Kept/)} of these kept the incumbent that way). GO = out-of-sample ROI above zero by 2+ standard errors over 50+ games; WATCH = positive but short of that.</div>
+    <div><b>Live checks the backtest.</b> GO signals are logged as shadow bets from opening night (Track Record); a signal is only trusted with money when this season's results agree with the backtest.</div>`;
+}
+$('btarea').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ bf.area = b.dataset.v; renderBacktests(); } });
+$('btprop').addEventListener('click', e => { const b = e.target.closest('#btcal button[data-v]'); if (b){ bf.cal = b.dataset.v; renderBacktests(); } });
 
 show(view);
 </script>
