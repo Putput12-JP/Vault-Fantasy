@@ -156,10 +156,23 @@ function LabView(p) {
             </div>))}</div> : <Dim size="base">No changes yet. Mark a player OUT or move a slider and the players who gain or lose the most show up here.</Dim>}
         </Card>
         <Card padding={20}>
-          <Text size="lg" weight="semibold">Recent changes</Text><div style={{ marginBottom: 10 }}><Dim>What you changed on this team, newest first</Dim></div>
-          {p.log.length ? <div style={{ display: 'grid', gap: 10 }}>{p.log.map((e, i) => (
-            <div key={i} style={{ display: 'flex', gap: 10 }}><Av ini={e.ini} size={28} /><div><Text size="sm"><b>{e.who}</b> <span style={{ color: pal.textSecondary }}>{e.text}</span></Text><div><Dim size="xs">{e.ago}</Dim></div></div></div>))}</div>
-            : <Dim size="base">Nothing changed on the {p.teamName} yet.</Dim>}
+          <Text size="lg" weight="semibold">Recent changes</Text><div style={{ marginBottom: 12 }}><Dim>Roster moves since last season, then what you changed on this team, newest first</Dim></div>
+          <Stack gap={14}>
+            <div>
+              <Mono>Roster moves</Mono>
+              {p.roster.arrived.length + p.roster.left.length ? <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>
+                {p.roster.arrived.map(r => <div key={'a' + r.name} style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Av ini={r.ini} size={28} /><div style={{ flex: 1, minWidth: 0 }}><Text size="sm" weight="medium">{r.name}</Text><div><Dim size="xs">Joined from {r.team}{r.mpg ? ` · ${r.mpg} mpg last season` : ''}</Dim></div></div><Badge variant="success">In</Badge></div>)}
+                {p.roster.left.map(r => <div key={'l' + r.name} style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Av ini={r.ini} size={28} /><div style={{ flex: 1, minWidth: 0 }}><Text size="sm" weight="medium">{r.name}</Text><div><Dim size="xs">Left for {r.team}{r.mpg ? ` · ${r.mpg} mpg last season` : ''}</Dim></div></div><Badge variant="danger">Out</Badge></div>)}
+              </div> : <div style={{ marginTop: 6 }}><Dim size="base">No roster moves on file for the {p.teamName}.</Dim></div>}
+            </div>
+            <Divider theme={THEME} spacing={0} />
+            <div>
+              <Mono>Your edits</Mono>
+              {p.log.length ? <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>{p.log.map((e, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10 }}><Av ini={e.ini} size={28} /><div><Text size="sm"><b>{e.who}</b> <span style={{ color: pal.textSecondary }}>{e.text}</span></Text><div><Dim size="xs">{e.ago}</Dim></div></div></div>))}</div>
+                : <div style={{ marginTop: 6 }}><Dim size="base">Nothing changed on the {p.teamName} yet.</Dim></div>}
+            </div>
+          </Stack>
         </Card>
       </div>
     </Stack>
