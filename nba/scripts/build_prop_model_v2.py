@@ -180,14 +180,18 @@ def features(ctx, g, team, opp, aid, pos, mu, pm, rate, line):
     return out
 
 
-def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None, feed=None):
+def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None, feed=None, moved=False):
     """v1's projection exactly (the 'tip' clock), plus v2 features, for every player-game from 2023 on.
     Injuries: who actually sat before 2025 (no archived reports), the report 30 min pre-tip from 2025.
     base='v3' swaps in the v3 base (docs/v3-plan.md B + C): minutes model v3 (role, returns, new team, market spread;
     data/minutes_model_v3.json) and per-stat memory component rates (data/rates_v3.json). Everything else is shared.
     feed (base v3 only, build_starters.py): {(game_id, team): {'start': {aid}, 'inactive': {aid}}} from NBA.com's
     confirmed lineups. The role term then uses who is starting tonight (minutes v3's starters-known weights) and
-    the inactive list joins the injury report's Out."""
+    the inactive list joins the injury report's Out.
+    moved (docs/moved-players-test.md): a dressed player whose minutes history is from another team counts as a
+    candidate (his own minutes and starter share carried over) instead of being left out of his first game.
+    Every record carries 'na' (a dressed player on this team is within his first 10 games after moving) and 'mv'
+    (this player is that mover)."""
     rt, ctx = {}, Context()
     R = None
     if base == 'v3':
@@ -213,6 +217,7 @@ def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=
             return MM.features(ms, g, team, aid, out, margins.get(g['game_id']))
     prior = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
     recs = []
+    with_n, mover = defaultdict(int), set()           # (aid, team) -> games dressed for it; (aid, team) that moved in
     for g in C.games(SEASONS):
         rows = box.get(g['game_id'], [])
         if not rows:
@@ -223,6 +228,8 @@ def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=
             clk = (g['tip_et'] - dt.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
             for team, opp in ((g['home'], g['away']), (g['away'], g['home'])):
                 rot = ms.rotation(team, g['tip'])
+                new_in = {r['athlete_id'] for r in rows if r['team'] == team and (r['athlete_id'], team) in mover
+                          and with_n[(r['athlete_id'], team)] < 10}
                 if g['season'] < 2025:
                     out = {a: 1.0 for a in rot if a not in played}
                 else:
@@ -230,7 +237,7 @@ def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=
                 if feed and (g['game_id'], team) in feed:
                     out.update({a: 1.0 for a in feed[(g['game_id'], team)]['inactive']})
                 cand = [r for r in rows if r['team'] == team and r['athlete_id'] in ms.pl
-                        and ms.pl[r['athlete_id']]['team'] == team and r['athlete_id'] in rt and r['athlete_id'] not in out]
+                        and (moved or ms.pl[r['athlete_id']]['team'] == team) and r['athlete_id'] in rt and r['athlete_id'] not in out]
                 pm = {}
                 for r in cand:
                     x = mfeat(g, team, r['athlete_id'], out)
@@ -263,11 +270,17 @@ def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=
                     ln = lines.get(g['game_id']) or {}
                     sh = ctx.shoot(aid)
                     recs.append({'gid': g['game_id'], 'season': g['season'], 'aid': aid, 'min': r['minutes'], 'pm': pm[aid],
+                                 'team': team, 'na': bool(new_in), 'mv': aid in new_in,
                                  'pos': pos, 'st': ms.pl[aid]['st'], 'spread': ln.get('spread_close'), 'y3pa': r['three_point_field_goals_attempted'],
                                  'r3': sh[0] if sh else None, 'p3': sh[1] if sh else None,
                                  'mu': mu, 'rate': dict(rates), 'sdm': math.sqrt(ctx.vol.get(aid, 36.0)),
                                  'x': features(ctx, g, team, opp, aid, pos, mu, pm[aid], rates, lines.get(g['game_id'])),
                                  'y': y})
+        for r in rows:                                # who moved in (had minutes history elsewhere), before the state learns this game
+            k = (r['athlete_id'], r['team'])
+            if with_n[k] == 0 and r['athlete_id'] in ms.pl and ms.pl[r['athlete_id']]['team'] != r['team']:
+                mover.add(k)
+            with_n[k] += 1
         update_after(g, rows, rt, prior, ms, ctx)
         if R:
             R.update(rows)
