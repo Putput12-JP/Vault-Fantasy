@@ -2652,9 +2652,12 @@ function renderTrack(){
   $('mode').innerHTML = !d ? pill('idle', 'No ledger yet')
     : TR.live ? `${pill('ok', 'Live')}<span>Checked ${clock(TR.at)} ET</span>` : `${pill('idle', 'Snapshot')}<span>Ledger as of ${stamp(d.t)} ET</span>`;
   const tot = trAgg(all);
+  // preseason: logged and settled the same way as a rehearsal, kept out of every number on this page (ledger.py)
+  const P = d && d.preseason && d.preseason.cube ? trAgg(d.preseason.cube.map(r => Object.fromEntries(d.cube_cols.map((c, i) => [c, r[i]])))) : null;
+  const preTxt = P && P.bets ? ` Preseason is kept apart and counts toward nothing: ${P.bets.toLocaleString()} bets logged, ${P.settled ? `${P.w}-${P.l}${P.p ? '-' + P.p : ''}, ${P.units >= 0 ? '+' : ''}${P.units.toFixed(1)}u` : 'none settled yet'}.` : '';
   $('tbanner').innerHTML = !tot.bets
-    ? `<b>No shadow bets yet.</b><span>The recorder logs every edge the Props page prices at 3% or more (Kalshi, sportsbooks, Polymarket and pick'em apps) for games within 24 hours, and settles it from the box score. Props list the morning of a game; preseason starts October 3, opening night is October 20. Nothing here is a real bet.</span>`
-    : `<b>${tot.bets.toLocaleString()} shadow bets, ${tot.settled.toLocaleString()} settled.</b><span>Each is 1 unit at the first price that showed a 3% edge, settled from ESPN's box score. None were placed.</span>`;
+    ? `<b>No shadow bets yet.</b><span>The recorder logs every edge the Props page prices at 3% or more (Kalshi, sportsbooks, Polymarket and pick'em apps) for games within 24 hours, and settles it from the box score. Props list the morning of a game; the record starts on opening night, October 20 (the models were never tested on preseason minutes). Nothing here is a real bet.${preTxt}</span>`
+    : `<b>${tot.bets.toLocaleString()} shadow bets, ${tot.settled.toLocaleString()} settled.</b><span>Each is 1 unit at the first price that showed a 3% edge, settled from ESPN's box score. None were placed.${preTxt}</span>`;
 
   // filters
   const books = [...new Set(all.filter(r => trMatch(r, ['book'])).map(r => r.venue + '|' + r.book))].sort();

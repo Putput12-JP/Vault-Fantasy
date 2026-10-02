@@ -32,6 +32,9 @@ Storage, sized for a season of 100k+ bets:
   track.json                the cube (one row per tip day x stat x venue x book x side x gate x edge bucket with
                             counts, units, sum of squares, CLV sums; every market the page can filter or group),
                             the latest bets, and the GO / WATCH backtest results. Small enough to read every poll.
+Preseason games (season_types.json, saved by snapshot.py from ESPN) are logged and settled the same way, as a rehearsal,
+but go to track.json 'preseason' instead: the models were never tested on preseason minutes, so those bets never count
+toward the season's record, a signal's 50-bet promotion, the Minutes Lab's record, the Injury Wire or Sharp Price.
 """
 import datetime as dt, glob, json, math, os, subprocess, sys, time
 from collections import defaultdict
@@ -244,7 +247,7 @@ def load_src(root, src, since):
     return L
 
 
-def wire_record(root, now, prev, rescan_days=3):
+def wire_record(root, now, prev, rescan_days=3, games=None):
     """The Injury Wire's season record: per ET day, per venue, per kind of news (inj / five / inactive), the quotes
     affected, how many moved before tip, and each change's first-move time in seconds (-1 = never moved before tip).
     Read from snapshots/<day>/wire.json (snapshot.save_wire); days older than the rescan window are kept as they were."""
@@ -261,6 +264,8 @@ def wire_record(root, now, prev, rescan_days=3):
             continue
         rec = {}
         for e in events:
+            if games and not games(str(e[-2])):
+                continue
             for venue, (n, m, med, first) in (e[7] or {}).items():
                 r = rec.setdefault(venue, {}).setdefault(e[1], {'n': 0, 'm': 0, 'f': []})
                 r['n'] += n
@@ -270,7 +275,7 @@ def wire_record(root, now, prev, rescan_days=3):
     return days
 
 
-def minutes_record(root, now, prev, rescan_days=3):
+def minutes_record(root, now, prev, rescan_days=3, games=None):
     """Per tip day: projected minutes (last value before tip) against the box score. Players who did not play are
     counted apart (books void their props; the backtest scored players who played). Days already final are kept."""
     days = dict(prev or {})
@@ -279,7 +284,7 @@ def minutes_record(root, now, prev, rescan_days=3):
     for k, x in load_src(root, 'minutes', since).items():
         m = x['meta']
         pre = [v for t, v in sorted(x['series']) if v is not None and m and t < m['tip']]
-        if not m or not pre or now < m['tip'] + SETTLE_AFTER_S:
+        if not m or not pre or now < m['tip'] + SETTLE_AFTER_S or (games and not games(str(m['game']))):
             continue
         bx = box(root, m['game'])
         if bx is None:
@@ -407,6 +412,14 @@ def type_rows(bets):
     return {k: v for k, v in agg.items()}
 
 
+def preseason_games(root):
+    """Game ids ESPN lists as preseason (season type 1), from season_types.json (snapshot.save_season_types)."""
+    try:
+        return {g for g, t in json.load(open(os.path.join(root, 'season_types.json'))).items() if t == 1}
+    except (OSError, ValueError):
+        return set()
+
+
 def tip_day(ts):
     return et(dt.datetime.fromtimestamp(ts, dt.timezone.utc)).date().isoformat()
 
@@ -527,15 +540,23 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
             grade(b, root, now)
         changed[d] = sorted(cur.values(), key=lambda b: (b['tip'], b['player'], b['stat'], b['line']))
     os.makedirs(bdir, exist_ok=True)
+    PRE = preseason_games(root)
+    season = lambda gid: str(gid) not in PRE
     for d, bs in changed.items():
+        for b in bs:
+            b['pre'] = not season(b['game'])
         json.dump(bs, open(os.path.join(bdir, f'{d}.json'), 'w'), separators=(',', ':'))
+    reg = {d: [b for b in bs if not b['pre']] for d, bs in changed.items()}
     cube = [r for r in track.get('cube', []) if r[0] not in changed]
-    for bs in changed.values():
+    for bs in reg.values():
         cube += cube_rows(bs)
     cube.sort()
+    P0 = track.get('preseason') or {}             # the rehearsal: same records, kept apart
+    pcube = sorted([r for r in P0.get('cube', []) if r[0] not in changed] +
+                   [r for d, bs in changed.items() for r in cube_rows([b for b in bs if b['pre']])])
     # edge-type totals: kept per tip day so only the days touched are recomputed
     tday = {d: v for d, v in (track.get('types_by_day') or {}).items() if d not in changed}
-    for d, bs in changed.items():
+    for d, bs in reg.items():
         tday[d] = [list(k) + [round(x, 4) if isinstance(x, float) else x for x in v] for k, v in type_rows(bs).items()]
     tot = {}
     for rows in tday.values():
@@ -544,14 +565,18 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
             for i, x in enumerate(r[4:]):
                 t[i] += x
     types = [list(k) + [round(x, 4) if isinstance(x, float) else x for x in v] for k, v in sorted(tot.items())]
-    recent = {b['k']: b for b in track.get('bets', [])}
-    for bs in changed.values():
+    recent = {b['k']: b for b in track.get('bets', []) if not b.get('pre')}
+    for bs in reg.values():
         recent.update({b['k']: b for b in bs})
     recent = sorted(recent.values(), key=lambda b: (b['tip'], b['player'], b['stat'], b['line']))[-keep_recent:]
     open_days = sorted(d for d, bs in changed.items() if any(b['result'] == 'open' for b in bs))
     n = sum(r[CUBE_COLS.index('bets')] for r in cube)
-    minutes_days = minutes_record(root, now, track.get('minutes_days'), rescan_days)
-    wire_days = wire_record(root, now, track.get('wire_days'), rescan_days)
+    minutes_days = minutes_record(root, now, track.get('minutes_days'), rescan_days, games=season)
+    wire_days = wire_record(root, now, track.get('wire_days'), rescan_days, games=season)
+    pre = {'n': sum(r[CUBE_COLS.index('bets')] for r in pcube), 'cube': pcube,
+           'minutes_days': minutes_record(root, now, P0.get('minutes_days'), rescan_days, games=lambda g: not season(g)),
+           'wire_days': wire_record(root, now, P0.get('wire_days'), rescan_days, games=lambda g: not season(g)),
+           'signals': P0.get('signals')}
     try:                                          # closing prices + box lines for users' own bet logs
         closes_record(root, now, rescan_days)
     except Exception as e:
@@ -559,13 +584,14 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     try:                                          # Sharp Price signals: CLV vs Pinnacle's close, and the final score
         import sharp
         stat_of = lambda bx, pid, stat: (sum(bx[int(pid)].get(c, 0) for c in STAT_COL[stat]) if bx.get(int(pid)) else None)
-        signals = sharp.grade_signals(root, now, track.get('signals'), box, box_meta, stat_of=stat_of)
+        signals = sharp.grade_signals(root, now, track.get('signals'), box, box_meta, stat_of=stat_of, games=season)
+        pre['signals'] = sharp.grade_signals(root, now, P0.get('signals'), box, box_meta, stat_of=stat_of, games=lambda g: not season(g))
     except Exception as e:
         print('signals grading failed:', e, flush=True)
         signals = track.get('signals')
     track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
-             'open_days': open_days, 'bets': recent, 'backtest': backtest_refs()}
+             'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre}
     with open(tpath, 'w') as f:
         json.dump(track, f, separators=(',', ':'))
     return n

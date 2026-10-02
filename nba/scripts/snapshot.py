@@ -553,6 +553,7 @@ def poll(root):
     now = int(time.time())
     slate = Slate(now)
     day = Day(root, dt.datetime.fromtimestamp(now, ET).date().isoformat())
+    save_season_types(root, slate)
     sources = [('kalshi', src_kalshi), ('espn', src_espn), ('pinnacle', src_pinnacle), ('action', src_action),
                ('polymarket', src_polymarket), ('injuries', Injuries(day.dir)), ('lineups', src_lineups),
                ('prizepicks', src_prizepicks), ('underdog', src_underdog), ('sleeper', src_sleeper)]
@@ -717,6 +718,21 @@ def write_board(root, day, slate):
         return None
 
 
+def save_season_types(root, slate):
+    """season_types.json {game id: ESPN season type (1 preseason, 2 regular, 3 playoffs)} for every game the slate has
+    seen. ledger.py keeps preseason games out of the season's record (the models were never tested on them)."""
+    path = os.path.join(root, 'season_types.json')
+    try:
+        st = json.load(open(path)) if os.path.exists(path) else {}
+    except ValueError:
+        st = {}
+    new = {str(g['id']): g['season_type'] for g in slate.games if str(g['id']) not in st and g.get('season_type')}
+    if new:
+        st.update(new)
+        with open(path, 'w') as f:
+            json.dump(st, f, separators=(',', ':'), sort_keys=True)
+
+
 def save_wire(day, events, now):
     """Keep today's Injury Wire in the day folder (snapshots/<day>/wire.json): every event with its venue reactions,
     updated each poll until its game tips, then frozen (after tip the game leaves the board). Settlement turns the
@@ -768,7 +784,7 @@ def push_board(root):
 def commit(root):
     push_board(root)
     git = ['git', '-C', root]
-    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('track.json', 'results', 'bets') if os.path.exists(os.path.join(root, p))], check=True)
+    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('track.json', 'results', 'bets', 'season_types.json') if os.path.exists(os.path.join(root, p))], check=True)
     if subprocess.run(git + ['diff', '--cached', '--quiet']).returncode == 0:
         return
     stamp = dt.datetime.now(ET).strftime('%Y-%m-%d %H:%M ET')

@@ -859,9 +859,10 @@ def grade_alert(a, close, score):
         a['result'] = 1 if d > 0 else -1 if d < 0 else 0
 
 
-def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_of=None):
+def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_of=None, games=None):
     """track.json 'signals': {'days': {tip day: {type: [n, graded, clv_sum, clv_sq, clv_pos, w, l, p, exp_sum]}},
-    'recent': graded alerts, newest first}. Days outside the rescan window keep their totals."""
+    'recent': graded alerts, newest first}. Days outside the rescan window keep their totals. `games(gid)` -> False
+    leaves a game's alerts out (ledger.py grades preseason apart from the season)."""
     prev = prev or {}
     days, recent = dict(prev.get('days') or {}), {a['id']: a for a in prev.get('recent') or []}
     since = (dt.datetime.fromtimestamp(now, ET).date() - dt.timedelta(days=rescan_days)).isoformat()
@@ -872,6 +873,8 @@ def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_
                 alerts.update(json.load(open(os.path.join(d, 'signals.json'))))
             except ValueError:
                 pass
+    if games:
+        alerts = {k: a for k, a in alerts.items() if games(str(a['g']))}
     closes = {}
     for a in alerts.values():
         if now < a['tip'] + GRADE_AFTER_S:
