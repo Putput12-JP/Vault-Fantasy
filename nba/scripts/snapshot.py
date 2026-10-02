@@ -60,6 +60,10 @@ AHEAD_H = 72                        # record games tipping within 3 days (skips 
 GAME_AHEAD_H = 21 * 24              # game lines (not props) are saved from further out: openers post weeks early and
                                     # cannot be recovered later. Only the recorder keeps them; pages show the 3-day board.
 FAR_DAYS = set()                    # ET days past the board with game lines posted (Kalshi, Pinnacle) -> src_action asks those too
+OPENER_PASS_END = '2026-10-20'      # one-time pass: until opening night the board also carries 'opening', every game past
+                                    # the 3-day window with lines posted, for the Slate / Game Lines page only (no props,
+                                    # ledger or alerts). Off once this ET date has passed.
+OPEN_CACHE = {}                     # ET day -> (fetched at, [games]): ESPN's schedule for those days, refreshed hourly
 FAST_S, SLOW_S, FAST_WITHIN_H, WINDOW_START_ET = 300, 900, 3, 9
 
 
@@ -105,6 +109,21 @@ def nick(name):
 
 
 # ── what is on today: ESPN scoreboard ────────────────────────────────────────────────────────
+def espn_day(day, nicks):
+    """ESPN's schedule for one ET date -> [game]; fills `nicks` {abbreviation: nickname}, the join key across venues."""
+    out = []
+    for e in curl(f'{SCORE}?dates={day:%Y%m%d}').get('events', []):
+        comp = e['competitions'][0]
+        side = {c['homeAway']: c['team']['abbreviation'] for c in comp['competitors']}
+        names = {c['homeAway']: c['team'].get('displayName') for c in comp['competitors']}
+        for c in comp['competitors']:
+            nicks[c['team']['abbreviation']] = nick(c['team'].get('displayName'))
+        out.append({'id': e['id'], 'day': day.isoformat(), 'tip': iso(e['date']), 'away': side.get('away'), 'home': side.get('home'),
+                    'state': e['status']['type']['state'], 'season_type': e['season']['type'],
+                    'away_name': names.get('away'), 'home_name': names.get('home')})
+    return out
+
+
 class Slate:
     """Games from yesterday..tomorrow (ET). `pre` = has not tipped; `started` = keys to exclude."""
 
@@ -115,20 +134,28 @@ class Slate:
         today = dt.datetime.fromtimestamp(now, ET).date()
         for off in range(-1, AHEAD_H // 24 + 1):   # yesterday (late tips) through the look-ahead
             day = today + dt.timedelta(days=off)
-            d = curl(f'{SCORE}?dates={day:%Y%m%d}')
-            for e in d.get('events', []):
-                comp = e['competitions'][0]
-                side = {c['homeAway']: c['team']['abbreviation'] for c in comp['competitors']}
-                names = {c['homeAway']: c['team'].get('displayName') for c in comp['competitors']}
-                for c in comp['competitors']:          # abbreviation -> nickname, the join key across venues
-                    self.nick[c['team']['abbreviation']] = nick(c['team'].get('displayName'))
-                tip = iso(e['date'])
-                pre = e['status']['type']['state'] == 'pre' and now < tip <= self.ahead
-                g = {'id': e['id'], 'day': day.isoformat(), 'tip': tip, 'away': side.get('away'), 'home': side.get('home'),
-                     'pre': pre, 'season_type': e['season']['type'], 'away_name': names.get('away'), 'home_name': names.get('home')}
+            for g in espn_day(day, self.nick):
+                state = g.pop('state')
+                g['pre'] = state == 'pre' and now < g['tip'] <= self.ahead
                 self.games.append(g)
-                if not pre:
+                if state != 'pre' or g['tip'] <= now:   # tipped (a game past the look-ahead has not started)
                     self.started.add((g['day'], g['away'], g['home']))
+
+    def opening(self):
+        """The one-time opening pass (OPENER_PASS_END): games past the board on days with game lines posted."""
+        if dt.datetime.fromtimestamp(self.now, ET).date().isoformat() > OPENER_PASS_END:
+            return []
+        out = []
+        for day in sorted(d for d in FAR_DAYS if d <= OPENER_PASS_END):
+            t, gs = OPEN_CACHE.get(day, (0, None))
+            if gs is None or self.now - t > 3600:
+                try:
+                    gs = espn_day(dt.date.fromisoformat(day), {})
+                except RuntimeError:
+                    gs = gs or []
+                OPEN_CACHE[day] = (self.now, gs)
+            out += [g for g in gs if g['state'] == 'pre' and g['tip'] > self.ahead]
+        return [{k: v for k, v in g.items() if k != 'state'} for g in out]
 
     def kalshi_started(self, event_ticker):
         return any(k in self.started for k in parse_event(event_ticker) or [])
@@ -197,7 +224,7 @@ def src_kalshi(slate):
                     continue
                 k = m['ticker']
                 if s in GAME_SERIES:
-                    FAR_DAYS.update(d_ for d_, _, _ in parse_event(m['event_ticker']) or [] if d_ > board_end)
+                    FAR_DAYS.update(d_ for d_, _, _ in parse_event(m['event_ticker']) or [] if d_ >= board_end)
                 rows[k] = [num(m.get('yes_bid_dollars')), num(m.get('yes_ask_dollars'))]
                 KAL_SIZE[k] = [num(m.get('yes_bid_size_fp')), num(m.get('yes_ask_size_fp'))]
                 KAL_VOL[k] = num(m.get('volume_fp'))
@@ -716,6 +743,13 @@ def write_board(root, day, slate):
         except Exception:
             traceback.print_exc(limit=2)
         board.pop('_pkeys', None)
+        try:                                            # one-time opening pass: early lines, Slate / Game Lines only
+            from prop_board import opening
+            op = slate.opening()
+            if op:
+                board['opening'] = opening(op, day.last, day.meta, day.when)
+        except Exception:
+            traceback.print_exc(limit=2)
         with open(BOARD, 'w') as f:
             json.dump(board, f, separators=(',', ':'))
         save_wire(day, board.get('wire') or [], slate.now)

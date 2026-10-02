@@ -3296,7 +3296,7 @@ let sv = {day: null, open: {}};
 const SL_BOOKS = ['Pinnacle', 'Consensus', 'DraftKings', 'FanDuel', 'BetMGM', 'ESPN BET', 'bet365', 'BetRivers'];
 function slateBoard(){
   const live = PS.live || (PB && PB.live);
-  if (live && (live.games || []).length) return {board: live, mode: PS.liveFetched ? 'live' : 'snapshot'};
+  if (live && ((live.games || []).length || (live.opening || []).length)) return {board: live, mode: PS.liveFetched ? 'live' : 'snapshot'};
   return {board: {games: [], players: {}}, mode: 'empty'};
 }
 function vaultLine(g, B, status){
@@ -3351,7 +3351,8 @@ function slateGame(g, B, status, openAll){
   const gapW = dW == null ? '' : Math.abs(dW) < .005 ? '<span class="muted">same</span>' : `<span class="sl-gap${Math.abs(dW) >= .08 ? ' big' : ''}">${dW > 0 ? g.home : g.away} +${fmt(Math.abs(dW) * 100, 1)}%</span>`;
   const row = (lab, sub, s, t, w, cls = '') => `<tr class="${cls}"><td class="l"><b>${lab}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</td><td>${s ?? ''}</td><td>${t ?? ''}</td><td>${w ?? ''}</td></tr>`;
   const opened = mk.open && (mk.open.spread != null || mk.open.total != null) ? `opened ${[spTxt(g, mk.open.spread), mk.open.total != null ? fmt(mk.open.total) : ''].filter(Boolean).join(' · ')}` : '';
-  const badges = [pre ? '<span class="badge">Preseason</span>' : '',
+  const badges = [g.opening ? '<span class="badge" title="Posted early. Props, edges and alerts start when the game is 3 days out">Early lines</span>' : '',
+    pre ? '<span class="badge">Preseason</span>' : '',
     V && V.ba ? `<span class="badge warn" title="Played within 30 hours: the model takes ${MS.game.P.B2B} pts off">${g.away} back-to-back</span>` : '',
     V && V.bh ? `<span class="badge warn" title="Played within 30 hours: the model takes ${MS.game.P.B2B} pts off">${g.home} back-to-back</span>` : ''].join('');
   const tbl = `<div class="nt-tw"><table class="sl-t"><thead><tr><th class="l"></th><th>Spread</th><th>Total</th><th>${g.home} win</th></tr></thead><tbody>
@@ -3389,7 +3390,8 @@ function renderSlate(){
   const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, lines = view === 'lines';
   $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No games yet');
-  const games = [...(B.games || [])].sort((a, b) => a.tip - b.tip), days = [...new Set(games.map(g => etDay(g.tip)))];
+  // one-time opening pass (snapshot.py OPENER_PASS_END): games past the 3-day board with lines already posted, here only
+  const games = [...(B.games || []), ...(B.opening || [])].sort((a, b) => a.tip - b.tip), days = [...new Set(games.map(g => etDay(g.tip)))];
   if (!days.includes(sv.day)) sv.day = days[0] || null;
   const G = games.filter(g => etDay(g.tip) === sv.day), status = statusFromBoard(B);
   $('sbanner').hidden = !!games.length;

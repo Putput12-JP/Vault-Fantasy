@@ -304,6 +304,17 @@ def num(x):
         return None
 
 
+def opening(games, last, meta, when=None):
+    """Games past the 3-day board with lines posted (snapshot.py's one-time opening pass): the same game fields and
+    market rows as board['games'], nothing else."""
+    gkey = {(g['day'], g['home']): g for g in games}
+    nicks = {nick(g[s + '_name']): g[s] for g in games for s in ('away', 'home') if g.get(s + '_name')}
+    glines, gm = game_lines(games, last, meta, gkey, nicks), game_markets(games, last, meta, gkey, nicks, when)
+    return [dict({k: g.get(k) for k in ('id', 'day', 'tip', 'away', 'home', 'season_type', 'away_name', 'home_name')},
+                 **glines.get(str(g['id']), {}), mk=gm.get(str(g['id'])), opening=True) for g in sorted(games, key=lambda g: g['tip'])
+            if (lambda m: m and (m['books'] or m['kalshi'].get('win') is not None or m['poly'].get('win') is not None))(gm.get(str(g['id'])))]
+
+
 def game_lines(games, last, meta, gkey, nicks):
     """game id -> {total, spread (home, negative = home favoured), line_from}: the market's game environment,
     which prop model v2 reads. DraftKings via ESPN first, Pinnacle's main line otherwise."""
