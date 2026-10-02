@@ -68,6 +68,8 @@ def log(day, board, now):
         k = f"{c['gid']}|{c['p']}|{c['s']}|{c['venue']}|{c['bk']}|{c['side']}|{c['line']}"
         if k not in tracked and c['edge'] < PX.EDGE_MIN and (c.get('gap') is None or c['gap'] < PX.EDGE_MIN):
             continue
+        if k not in tracked and c.get('hold'):        # roster guard: the minutes model cannot see this team yet
+            continue
         rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),
                    c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or [])]
         P = board['players'].get(str(c['p'])) or board['players'].get(c['p']) or [str(c['p']), c['team']]

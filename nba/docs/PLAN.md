@@ -225,6 +225,8 @@ Everything else ships as **context** (a model line next to the market) or stays 
 
 ## Pages (app sidebar)
 
+Roster guard (2026-10-02, [moved-players-results.md](moved-players-results.md)): counting moved players in the minutes model failed its pre-registered test, so props on a team the model can't see (fewer than 8 projected players, or anyone at 44+ minutes) and players with no minutes for their current team are priced and shown but held from every call, edge, pick'em leg and shadow bet until they play for the team.
+
 Design rule (2026-10-01): **no sub-pages inside a page.** Every distinct job is its own menu item with its own hash
 (#props, #mybets, #propboard, #backtests, #finder, #btlab, ...). Segmented controls only narrow the list in front of
 you (stat, day, game, side, signal type); they never swap in different content. Content that serves the same job sits

@@ -163,6 +163,28 @@ class Pricer:
         cache[key] = res
         return res
 
+    # ── roster guard (docs/moved-players-results.md) ───────────────────────────────────────────────────────
+    HOLD_MIN_PLAYERS, HOLD_MAX_MIN = 8, 44.0
+
+    def roster_hold(self, team, g, status, cache, src=None):
+        """None, or why a prop is held: priced and shown, but never a Bet / Lean, an edge, a pick'em leg or a shadow bet.
+        The page's rosterHold is the same rule. Measured in the backtest (2022-24 and 2025-26, see
+        docs/moved-players-results.md): with 7 or fewer players projected, or anyone projected at 44+ minutes, the
+        team's minutes run 2 to 4 too high.
+          team    the minutes model projects fewer than HOLD_MIN_PLAYERS of the team's players, or someone at HOLD_MAX_MIN+
+          player  src 'lab': no minutes history with his current team (moved in, or a rookie), so his minutes come from
+                  the Minutes Lab's estimate, which the backtest never scored. Clears after his first game for the team."""
+        if self.example or not self.MM or not team or not g:
+            return None
+        key = ('hold', team, str(g['id']))
+        if key not in cache:
+            gm = self.game_minutes(team, g, status, cache)
+            top = max((v['min'] for v in gm.values()), default=0.0)
+            cache[key] = {'why': 'team', 'n': len(gm), 'top': round(top, 1)} if len(gm) < self.HOLD_MIN_PLAYERS or top >= self.HOLD_MAX_MIN else None
+        if cache[key]:
+            return cache[key]
+        return {'why': 'player'} if src == 'lab' else None
+
     # ── shadow: minutes model v3 (docs/minutes-v3-pricing.md), logged next to v2, never priced ─────────────
     def game_minutes_v3(self, team, g, status, cache, starters=None):
         """{pid: minutes} from minutes model v3 on its own state, as build_prop_model_v2.walk(base='v3') ran it:
@@ -333,7 +355,7 @@ class Pricer:
             cands.append({'venue': 'pickem', 'bk': app, 'side': 'Over', 'line': line, 'price': o, 'edge': fair - (po if po is not None else PK_BE), 'fair': fair, 'mkt': po, 'g': 'no-go', 't': t})
             cands.append({'venue': 'pickem', 'bk': app, 'side': 'Under', 'line': line, 'price': u, 'edge': (1 - fair) - (pu if pu is not None else PK_BE), 'fair': 1 - fair, 'mkt': pu, 'g': 'no-go', 't': t})
         self.add_consensus(e, s, cands, model, mm['extra'])
-        return {'mu': mm['mu'], 'min': mm['min'], 'team': mm['team'], 'cands': cands}
+        return {'mu': mm['mu'], 'min': mm['min'], 'team': mm['team'], 'cands': cands, 'src': mm.get('src')}
 
     # ── consensus (consensus.py): every other venue's price moved to this line ──────────────────
     def add_consensus(self, e, s, cands, model, extra):
@@ -500,9 +522,10 @@ def price_board(board, pricer=None):
             times = [(row[0], row[6]) for row in e.get('books', []) if len(row) > 6 and row[6]] + \
                     [('Kalshi', rung[6]) for rung in e.get('kal', []) if len(rung) > 6 and rung[6]] + \
                     [(row[0], row[5]) for row in e.get('pk', []) if len(row) > 5 and row[5]]
+            hold = pricer.roster_hold(r['team'], g, status, cache, r.get('src'))
             for c in r['cands']:
                 c['types'] = edge_types(c, [t for v, t in times if v != c['bk']], news.get(r['team'], []), board.get('t'))
-                rows.append(dict(c, p=e['p'], s=e['s'], gid=str(e['g']), mu=r['mu'], min=r['min'], team=r['team']))
+                rows.append(dict(c, p=e['p'], s=e['s'], gid=str(e['g']), mu=r['mu'], min=r['min'], team=r['team'], hold=hold))
     return rows
 
 

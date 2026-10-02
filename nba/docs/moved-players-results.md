@@ -30,3 +30,13 @@ moves with him after that), and teams almost always dress enough returning playe
 anyone (median 10 projected players per team-game; only 19 of 2,642 team-games had 7 or fewer, where projections ran
 3.1 minutes high on average and 12 hit 48). The 2026-27 opener is far more extreme than anything in the test: PHI has 7
 projectable players and four teams have someone at 48 minutes.
+
+## What shipped instead: the roster guard
+
+Because counting moved players did not earn its place, live pricing keeps the v2 minutes rule and holds the cases the
+backtest shows it cannot price (`pricing.roster_hold`, the page's `rosterHold`, same rule): a team the minutes model
+projects with fewer than 8 players, or with anyone at 44+ minutes (2 to 4 minutes too high per player in both 2022-24
+and 2025-26), and any player with no minutes history on his current team (priced from the Minutes Lab's estimate,
+never scored by the backtest). Held props are priced and shown, but never a Bet / Lean, an Edges play, a pick'em leg
+or a shadow bet. This changes no projection. On the 2026-27 opener it holds PHI, LAL, MIA, DET, BOS and POR, plus each
+moved player and rookie, until they play a game for their team.
