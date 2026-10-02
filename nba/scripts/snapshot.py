@@ -57,6 +57,9 @@ TEAM = {**KTEAM, 'GSW': 'GS', 'NYK': 'NY', 'SAS': 'SA', 'NOP': 'NO', 'UTA': 'UTA
 INJ = 'https://ak-static.cms.nba.com/referee/injury/Injury-Report_'
 ESPN_SKIP = {59}                    # ESPN Bet Live Odds: in-game prices
 AHEAD_H = 72                        # record games tipping within 3 days (skips futures like season wins)
+GAME_AHEAD_H = 21 * 24              # game lines (not props) are saved from further out: openers post weeks early and
+                                    # cannot be recovered later. Only the recorder keeps them; pages show the 3-day board.
+FAR_DAYS = set()                    # ET days past the board with game lines posted (Kalshi, Pinnacle) -> src_action asks those too
 FAST_S, SLOW_S, FAST_WITHIN_H, WINDOW_START_ET = 300, 900, 3, 9
 
 
@@ -183,6 +186,8 @@ def src_kalshi(slate):
     rows, meta = {}, {}
     KAL_SIZE.clear()
     KAL_VOL.clear()
+    FAR_DAYS.clear()
+    board_end = dt.datetime.fromtimestamp(slate.ahead, ET).date().isoformat()
     for s in PROP_SERIES + GAME_SERIES:
         cur = ''
         while True:
@@ -191,6 +196,8 @@ def src_kalshi(slate):
                 if slate.kalshi_started(m['event_ticker']):
                     continue
                 k = m['ticker']
+                if s in GAME_SERIES:
+                    FAR_DAYS.update(d_ for d_, _, _ in parse_event(m['event_ticker']) or [] if d_ > board_end)
                 rows[k] = [num(m.get('yes_bid_dollars')), num(m.get('yes_ask_dollars'))]
                 KAL_SIZE[k] = [num(m.get('yes_bid_size_fp')), num(m.get('yes_ask_size_fp'))]
                 KAL_VOL[k] = num(m.get('volume_fp'))
@@ -258,8 +265,12 @@ def src_pinnacle(slate):
         if not m or m.get('isLive') or (m.get('type') == 'special' and not m.get('parent')):
             continue                      # specials without a parent game are futures (playoffs, season wins)
         start = iso(m.get('startTime'))
-        if not start or start <= slate.now or start > slate.ahead:
+        if not start or start <= slate.now or start > slate.now + GAME_AHEAD_H * 3600:
             continue
+        if start > slate.ahead:           # past the board: the game's own lines only (openers), no props
+            if m.get('type') != 'matchup' or m.get('parent'):
+                continue
+            FAR_DAYS.add(dt.datetime.fromtimestamp(start, ET).date().isoformat())
         limit = next((x['amount'] for x in mk.get('limits') or [] if x.get('type') == 'maxRiskStake'), None)
         names = {p.get('id'): p.get('name') for p in m.get('participants') or []}
         for p in mk.get('prices') or []:
@@ -275,7 +286,7 @@ def src_pinnacle(slate):
 
 def src_action(slate):
     rows, meta = {}, {}
-    days = sorted({g['day'] for g in slate.games if g['pre']})
+    days = sorted({g['day'] for g in slate.games if g['pre']} | FAR_DAYS)
     for day in days:
         d = curl(f"https://api.actionnetwork.com/web/v2/scoreboard/nba?bookIds={AN_BOOKS}&date={day.replace('-', '')}&periods=event",
                  ['User-Agent: Mozilla/5.0'])
@@ -307,8 +318,10 @@ def src_polymarket(slate):
     for e in curl(f'https://gamma-api.polymarket.com/events?series_id={PM_SERIES}&closed=false&limit=500'):
         for m in e.get('markets', []):
             start = iso(m.get('gameStartTime', '').replace(' ', 'T').replace('+00', '+00:00') if m.get('gameStartTime') else e.get('endDate'))
-            if m.get('closed') or not start or start <= slate.now or start > slate.ahead:
+            if m.get('closed') or not start or start <= slate.now or start > slate.now + GAME_AHEAD_H * 3600:
                 continue
+            if start > slate.ahead and m.get('sportsMarketType') not in PM_GAME_TYPES:
+                continue                  # past the board: game lines only
             k = str(m['id'])
             rows[k] = [num(m.get('bestBid')), num(m.get('bestAsk')), num(m.get('lastTradePrice'))]
             fs = m.get('feeSchedule') or {}
