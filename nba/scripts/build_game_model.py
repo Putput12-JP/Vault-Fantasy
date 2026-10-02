@@ -55,15 +55,51 @@ class Model:
         self.team_last = {}               # team -> datetime of last game
         self.season = None
         self.status_counts = defaultdict(lambda: [1, 1])  # status -> [sat, played], Laplace prior
+        self.pts = [0.0, 0]                 # this regular season's points scored, team-games (season-start option T)
+        self.moves = {}                     # team -> {'in': [(aid, value)], 'out': [...]} at the last season start
 
     # ── state helpers ──
-    def new_season(self, s):
+    def new_season(self, s, roster=None):
+        """Season start: shrink ratings by CARRY. Options (docs/season-start-test.md), off unless set in P:
+          ROSTER_K  roster: aid -> team for the new season; each team's rating moves by
+                    ROSTER_K x C x (value of players who joined - value of players who left), and players take the team
+          TOT_RESET league base = last regular season's points per team; offense / defense re-centered to zero"""
         if self.season is not None and s != self.season:
             c = self.P['CARRY']
             for d in (self.R, self.O, self.D):
                 for t in d:
                     d[t] *= c
+            if self.P.get('TOT_RESET') and self.pts[1]:
+                self.base = self.pts[0] / self.pts[1]
+                for d in (self.O, self.D):
+                    mu = statistics.mean(d.values()) if d else 0.0
+                    for t in d:
+                        d[t] -= mu
+            self.pts = [0.0, 0]
+            if roster is not None:
+                self.apply_roster(roster)
         self.season = s
+
+    def apply_roster(self, roster):
+        """roster: aid -> team now. Records who joined / left each team; with ROSTER_K, moves team ratings by it."""
+        k, moves = self.P.get('ROSTER_K') or 0.0, defaultdict(lambda: {'in': [], 'out': []})
+        for a, p in self.pl.items():
+            if p.get('s') != self.season:          # only last season's players can join or leave a team
+                continue
+            new = roster.get(a)
+            if new is None or new == p['team']:
+                if new is None and p['team'] and self.value(p) > 0:
+                    moves[p['team']]['out'].append((a, self.value(p)))     # not on any roster now
+                continue
+            v = self.value(p)
+            moves[new]['in'].append((a, v))
+            if p['team']:
+                moves[p['team']]['out'].append((a, v))
+            p['team'] = new
+        if k:
+            for t, mv in moves.items():
+                self.R[t] += k * self.P['C'] * (sum(v for _, v in mv['in']) - sum(v for _, v in mv['out']))
+        self.moves = dict(moves)
 
     def value(self, p):
         return max(0.0, p['gs'] - self.P['REP'] * p['mpg'])
@@ -113,11 +149,15 @@ class Model:
         self.R[g['home']] += P['K'] * err
         self.R[g['away']] -= P['K'] * err
         eh, ea = g['hs'] - ph, g['as'] - pa
-        self.O[g['home']] += P['KP'] * eh
-        self.D[g['away']] -= P['KP'] * eh
-        self.O[g['away']] += P['KP'] * ea
-        self.D[g['home']] -= P['KP'] * ea
-        self.base += 0.002 * (eh + ea) / 2
+        if not (P.get('TOT_RESET') and g['playoff']):       # option T: playoff games do not move scoring
+            self.O[g['home']] += P['KP'] * eh
+            self.D[g['away']] -= P['KP'] * eh
+            self.O[g['away']] += P['KP'] * ea
+            self.D[g['home']] -= P['KP'] * ea
+            self.base += 0.002 * (eh + ea) / 2
+        if not g['playoff']:
+            self.pts[0] += g['hs'] + g['as']
+            self.pts[1] += 2
         if not g['neutral'] and not g['playoff']:
             self.hfa_n += 1
             self.hfa += (g['hs'] - g['as'] - (margin - self.hfa) - self.hfa) / min(self.hfa_n, 1500)
@@ -128,13 +168,13 @@ class Model:
             p = self.pl.get(r['athlete_id'])
             gs, m = C.game_score(r), r['minutes']
             if p is None:
-                self.pl[r['athlete_id']] = {'mpg': m, 'gs': gs, 'n': 1, 'team': r['team'], 'last': g['tip']}
+                self.pl[r['athlete_id']] = {'mpg': m, 'gs': gs, 'n': 1, 'team': r['team'], 'last': g['tip'], 's': self.season}
             else:
                 a = max(al, 1 / (p['n'] + 1))
                 p['mpg'] += a * (m - p['mpg'])
                 p['gs'] += a * (gs - p['gs'])
                 p['n'] += 1
-                p['team'], p['last'] = r['team'], g['tip']
+                p['team'], p['last'], p['s'] = r['team'], g['tip'], self.season
         self.team_last[g['home']] = self.team_last[g['away']] = g['tip']
         return oracle
 
@@ -148,8 +188,9 @@ def run(P, seasons, box, lines=None, inj=None, record_from=None):
     """Walk forward over seasons. Returns per-game records for seasons >= record_from."""
     m = Model(P)
     recs = []
+    first = season_rosters(seasons, box) if P.get('ROSTER_K') else {}
     for g in C.games(seasons):
-        m.new_season(g['season'])
+        m.new_season(g['season'], first.get(g['season']) if P.get('ROSTER_K') else None)
         rows = box.get(g['game_id'], [])
         if not rows:
             continue
@@ -177,6 +218,16 @@ def run(P, seasons, box, lines=None, inj=None, record_from=None):
                     m.learn_status(inj.status(day, t, c), played)
         m.update(g, rows)
     return m, recs
+
+
+def season_rosters(seasons, box):
+    """season -> {aid: team he first plays for that season}: the opening roster as the backtest can know it."""
+    out = defaultdict(dict)
+    for g in C.games(seasons):
+        for r in box.get(g['game_id'], []):
+            if r['played']:
+                out[g['season']].setdefault(r['athlete_id'], r['team'])
+    return out
 
 
 def mae(xs):

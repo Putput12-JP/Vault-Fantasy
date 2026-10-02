@@ -72,14 +72,16 @@ def m3_row(p):
             p.get('idx'), p.get('since')]
 
 
-def game_state(box, seasons, cur):
+def game_state(box, seasons, cur, roster=None, names=None):
     """The game model (build_game_model.py, context only: it does not beat the closing line) as of today, for the
     Slate page's Vault line: team ratings carried into the new season, home edge, league base, each player's value
-    for the availability adjustment, and how often each injury status actually sits."""
+    for the availability adjustment, and how often each injury status actually sits. roster: {aid: team} from the
+    current rosters (the Minutes Lab's ESPN rosters): at a season start players take their new team, the moves are
+    exported (who joined and left each team, with the model's value), and with ROSTER_K they move team ratings."""
     gm = json.load(open(GM.OUT_JSON))
     m, _ = GM.run(gm['params'], seasons, box)
     if m.season is not None and cur != m.season:              # the season-start carry the backtest applies
-        m.new_season(cur)
+        m.new_season(cur, roster)
     rates = gm.get('status_play_rates') or {}
     tune = gm.get('tune_mae') or [10.53, 14.61]               # as backtest_game_vs_kalshi.py: Normal sigma from the tune MAE
     lim = max(m.team_last.values()) - dt.timedelta(days=60) if m.team_last else None
@@ -90,6 +92,12 @@ def game_state(box, seasons, cur):
             'players': {str(a): [round(p['gs'], 3), round(p['mpg'], 2), p['team'], int(p['last'].timestamp())]
                         for a, p in m.pl.items() if p['mpg'] >= gm['params']['ROT_MIN'] and (lim is None or p['last'] >= lim)},
             'team_last': {t: int(v.timestamp()) for t, v in m.team_last.items()},
+            'moves': {t: {k: [[(names or {}).get(a, str(a)), round(v, 2)] for a, v in sorted(mv[k], key=lambda x: -x[1]) if v > 0]
+                          for k in ('in', 'out')} for t, mv in m.moves.items()},
+            'roster_k': gm['params'].get('ROSTER_K') or 0, 'tot_reset': bool(gm['params'].get('TOT_RESET')),
+            # first tip of the current season, once played (docs/season-start-results.md: totals run low for 4 weeks)
+            'season_start': min((int(g['tip'].timestamp()) for g in C.games([cur]) if box.get(g['game_id'])), default=None)
+                            if os.path.exists(os.path.join(C.RAW, 'hoopr', f'schedule_{cur}.csv')) else None,
             'sd_margin': round(tune[0] * (3.14159265 / 2) ** 0.5, 2), 'sd_total': round(tune[1] * (3.14159265 / 2) ** 0.5, 2),
             'season': cur}
 
@@ -125,7 +133,7 @@ def main():
         last_day, n = g['tip_et'].strftime('%Y-%m-%d'), n + 1
     live = export(ctx, rt, ms, keep, cur, asof=max(ms.team_last.values()) if ms.team_last else None, m3=m3)
     live['asof'] = last_day
-    game = game_state(box, seasons, cur)
+    game = game_state(box, seasons, cur, roster={x['id']: t for t, T in proj['teams'].items() for x in T['players']}, names=names)
     mm = json.load(open(MM.OUT_JSON))
     casc = json.load(open(os.path.join(DATA, 'usage_cascade.json')))['stats']
     pv3 = json.load(open(os.path.join(DATA, 'minutes_v3_pricing.json')))

@@ -3366,13 +3366,32 @@ function marketLine(mk){
   const win = ml ? amP(ml[4]) / (amP(ml[4]) + amP(ml[5])) : null;          // no-vig
   return {spread: sp ? sp[1] : null, spFrom: sp && sp[0], total: to ? to[6] : null, toFrom: to && to[0], win, winFrom: ml && ml[0]};
 }
+// Season start (docs/season-start-results.md): neither roster carry nor a scoring-level reset passed its test, so the
+// Vault line starts from last season's teams. For each season's first 4 weeks the page says so, names who joined and
+// left each team (model value, game score above replacement), and leaves out the Vault total (it ran 4 points under
+// the close in week 1 of both test seasons).
+const EARLY_DAYS = 28;
+function seasonStart(B){
+  const G = MS && MS.game;
+  if (G && G.season_start) return G.season_start;
+  const reg = [...(B.games || []), ...(B.opening || [])].filter(x => x.season_type >= 2).map(x => x.tip);
+  return reg.length ? Math.min(...reg) : null;
+}
+const isEarly = (g, B) => { const s = seasonStart(B); return g.season_type >= 2 && s != null && g.tip < s + EARLY_DAYS * 86400; };
+function movesHtml(g){
+  const MV = (MS && MS.game && MS.game.moves) || {};
+  const f = a => a.slice(0, 5).map(x => esc(x[0])).join(', ') + (a.length > 5 ? ` and ${a.length - 5} more` : '');
+  const rows = [g.away, g.home].map(t => { const m = MV[t]; if (!m || (!m.in.length && !m.out.length)) return '';
+    return `<div><b>${t}</b>${m.in.length ? ` joined: ${f(m.in)}` : ''}${m.in.length && m.out.length ? ';' : ''}${m.out.length ? ` left: ${f(m.out)}` : ''}</div>`; }).filter(Boolean);
+  return rows.length ? `<div class="sl-why sl-moves"><span class="muted">Since last season (not in the Vault line):</span>${rows.join('')}</div>` : '';
+}
 const spTxt = (g, s, d = 1) => s == null ? '' : Math.abs(s) < .05 ? 'Pick' : s < 0 ? `${g.home} ${fmt(s, d)}` : `${g.away} -${fmt(s, d)}`;
 const slDay = t => etFmt(t, {weekday: 'short', month: 'short', day: 'numeric'});
 function slateGame(g, B, status, openAll){
   const gid = String(g.id), mk = g.mk || {}, V = vaultLine(g, B, status), M = marketLine(g.mk), K = mk.kalshi || {}, PM = mk.poly || {};
   const tn = t => (D.teams[t] && D.teams[t].name) || t;
-  const pre = g.season_type === 1;
-  const dS = V && M && M.spread != null ? V.spread - M.spread : null, dT = V && M && M.total != null ? V.total - M.total : null;
+  const pre = g.season_type === 1, early = isEarly(g, B), noT = early && !(MS.game && MS.game.tot_reset);
+  const dS = V && M && M.spread != null ? V.spread - M.spread : null, dT = V && M && M.total != null && !noT ? V.total - M.total : null;
   const dW = V && M && M.win != null ? V.win - M.win : null;
   const gapS = dS == null ? '' : Math.abs(dS) < .25 ? '<span class="muted">same</span>' : `<span class="sl-gap${Math.abs(dS) >= 3 ? ' big' : ''}">${dS < 0 ? g.home : g.away} +${fmt(Math.abs(dS))}</span>`;
   const gapT = dT == null ? '' : Math.abs(dT) < .25 ? '<span class="muted">same</span>' : `<span class="sl-gap${Math.abs(dT) >= 4 ? ' big' : ''}">${dT > 0 ? 'Over' : 'Under'} ${fmt(Math.abs(dT))}</span>`;
@@ -3384,7 +3403,7 @@ function slateGame(g, B, status, openAll){
     V && V.ba ? `<span class="badge warn" title="Played within 30 hours: the model takes ${MS.game.P.B2B} pts off">${g.away} back-to-back</span>` : '',
     V && V.bh ? `<span class="badge warn" title="Played within 30 hours: the model takes ${MS.game.P.B2B} pts off">${g.home} back-to-back</span>` : ''].join('');
   const tbl = `<div class="nt-tw"><table class="sl-t"><thead><tr><th class="l"></th><th>Spread</th><th>Total</th><th>${g.home} win</th></tr></thead><tbody>
-    ${V ? row('Vault', 'context, not a bet', spTxt(g, V.spread), fmt(V.total), pc(V.win), 'vault')
+    ${V ? row('Vault', early && !(MS.game && MS.game.roster_k) ? "context, not a bet · last season's rosters" : 'context, not a bet', spTxt(g, V.spread), noT ? '<span class="muted" title="In week 1 of both test seasons the Vault total ran about 4 points under the close; it is left out for the first 4 weeks">later</span>' : fmt(V.total), pc(V.win), 'vault')
         : `<tr class="vault"><td class="l"><b>Vault</b></td><td colspan="3" class="muted sl-none">${pre ? 'No Vault line in preseason: starters rest and the model was never tested on these games' : 'Needs the game model state'}</td></tr>`}
     ${M ? row('Market', [M.spFrom, opened].filter(Boolean).join(' · '), spTxt(g, M.spread), M.total != null ? fmt(M.total) : '', M.win != null ? pc(M.win) : '') : row('Market', 'no book has posted', '', '', '')}
     ${K.win != null || K.spread != null || K.total != null ? row('Kalshi', 'mid, ladder implied', spTxt(g, K.spread), K.total != null ? fmt(K.total) : '', K.win != null ? pc(K.win) : '') : ''}
@@ -3411,7 +3430,7 @@ function slateGame(g, B, status, openAll){
   return `<article class="card sl-card" id="sg-${gid}"><header class="sl-h">
       <div class="sl-teams"><b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span><b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
       <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
-    ${tbl}${why}${injChips.length ? `<div class="sl-inj">${injChips.join('')}</div>` : ''}${splitH}${lines}</article>`;
+    ${tbl}${why}${early ? movesHtml(g) : ''}${injChips.length ? `<div class="sl-inj">${injChips.join('')}</div>` : ''}${splitH}${lines}</article>`;
 }
 const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
 function renderSlate(){

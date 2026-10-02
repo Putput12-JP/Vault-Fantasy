@@ -50,6 +50,7 @@ def main():
     rv3, st, mp, cb = load('rates_v3.json'), load('starters_backtest.json'), load('minutes_v3_pricing.json'), load('consensus_backtest.json')
     hr = load('hit_rates.json')
     gv = load('game_venues.json')
+    mvp, ss = load('moved_players_test.json'), load('season_start_test.json')
 
     # ── signals: what passed, out of sample (2025-26 second half for Kalshi blends) ──
     signals = []
@@ -210,6 +211,19 @@ def main():
          'result': (f"{gv['n']:,} games of 2025-26. Log loss: sportsbook {gv['logloss']['book']:.4f}, Polymarket {gv['logloss']['pm']:.4f}, Kalshi {gv['logloss']['kal']:.4f}: "
                     f"Polymarket ties the sportsbook close, Kalshi trails by a hair (not significant). Model blend on later games: {gv['model']['gain']:+.4f} (SE {gv['model']['se']:.4f}).") if gv else '',
          'verdict': 'NO-GO', 'shipped': 'Nothing changes: the Slate keeps its fallback order, the game model stays context'},
+        {'id': 'moved_players', 'area': 'Minutes', 'when': '2026-10-02', 'doc': 'moved-players-results.md',
+         'q': 'Should a player on a new team (trade, signing) count toward its minutes from his first game with it?',
+         'rule': 'Minutes MAE on new-arrival team-games lower by 2+ SE, and not worse on all team-games by more than 2 SE.',
+         'result': (f"New-arrival games {mvp['new_arrival']['diff']:+.2f} min (z {mvp['new_arrival']['z']}); a mover is left out of only his first game, and teams rarely "
+                    "have too few players for it to matter. Where they do (7 or fewer projected, or anyone at 44+ minutes), minutes run 2 to 4 too high.") if mvp else '',
+         'verdict': 'NO-GO', 'shipped': "Roster guard: those teams and players with no minutes for their current team are priced and shown but never a call, edge, pick'em leg or shadow bet"},
+        {'id': 'season_start', 'area': 'Game model', 'when': '2026-10-02', 'doc': 'season-start-results.md',
+         'q': "Should the game model's season start use the new rosters (who joined and left) and reset the league scoring level?",
+         'rule': 'Each variant: first-4-weeks MAE lower by 2+ SE (margin for rosters, total for scoring level), whole season not worse by more than 2 SE.',
+         'result': (f"Rosters: first 4 weeks {ss['R']['early']['diff']:+.3f} pts margin (z {ss['R']['early']['z']}). Scoring level: first 4 weeks {ss['T']['early']['diff']:+.2f} pts total "
+                    f"(z {ss['T']['early']['z']}), whole season {ss['T']['season']['diff']:+.2f} (z {ss['T']['season']['z']}); it does fix the week-1 lean (model minus close "
+                    f"{ss['T']['week1_close_bias']['current']['model_minus_close']:+.1f} to {ss['T']['week1_close_bias']['T']['model_minus_close']:+.1f}).") if ss else '',
+         'verdict': 'NO-GO', 'shipped': "Neither. The Slate labels the Vault line as last season's rosters for 4 weeks, names who joined and left, and leaves out the Vault total"},
     ]
     for e in log:
         e['when'] = (e['when'] or '')[:10]
