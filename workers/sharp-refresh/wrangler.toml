@@ -1,0 +1,14 @@
+name = "sharp-refresh"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Every 10 minutes, UTC. The workflow's own gate decides whether a run is worth doing
+# (busy windows every 10 min, otherwise every 30 min, nothing overnight).
+[triggers]
+crons = ["*/10 * * * *"]
+
+[vars]
+REPO = "Putput12-JP/Vault-Fantasy"
+WORKFLOW = "update-sharp-money.yml"
+REF = "main"
+# GITHUB_TOKEN is a secret: `wrangler secret put GITHUB_TOKEN`
