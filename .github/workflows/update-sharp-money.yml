@@ -13,7 +13,7 @@ on:
         type: boolean
         default: true
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '3,13,23,33,43,53 * * * *'
 
 concurrency:
   group: sharp-money
@@ -38,7 +38,7 @@ jobs:
             6)   [ "$h" -ge 10 ] && [ "$h" -le 23 ] && go=1 ;;
             7)   [ "$h" -ge 8 ]  && [ "$h" -le 20 ] && go=1 ;;
           esac
-          if [ "$go" = 0 ] && [ "$h" -ge 9 ] && [ "$h" -le 23 ] && [ "$m" -lt 12 -o "$m" -ge 30 -a "$m" -lt 42 ]; then go=1; fi
+          if [ "$go" = 0 ] && [ "$h" -ge 9 ] && [ "$h" -le 23 ] && [ "$m" -lt 10 -o "$m" -ge 30 -a "$m" -lt 40 ]; then go=1; fi
           [ "${{ github.event_name }}" = "workflow_dispatch" ] && go=1
           echo "go=$go" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v5
