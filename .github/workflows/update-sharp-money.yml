@@ -1,0 +1,71 @@
+# Sharp Money page (vaultfantasy.com/sharp-money/): polls Pinnacle, Action Network,
+# Polymarket and Kalshi, then rewrites data.json + state.json on the `sharp-data`
+# branch. The page reads data.json from that branch, so nothing is republished
+# and no Claude usage is involved. The branch is force-pushed as ONE commit so
+# the ~2MB state file never piles up in history.
+name: Update Sharp Money
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Run even outside the busy windows'
+        type: boolean
+        default: true
+  schedule:
+    - cron: '*/10 * * * *'
+
+concurrency:
+  group: sharp-money
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      # Busy windows (Central): Mon/Thu 5-11pm, Sat 10am-11pm, Sun 8am-8pm every
+      # 10 min; other days 9am-11pm every 30 min. Quiet hours are skipped.
+      - name: Gate
+        id: gate
+        run: |
+          export TZ=America/Chicago
+          d=$(date +%u); h=$(date +%-H); m=$(date +%-M); go=0
+          case "$d" in
+            1|4) [ "$h" -ge 17 ] && [ "$h" -le 23 ] && go=1 ;;
+            6)   [ "$h" -ge 10 ] && [ "$h" -le 23 ] && go=1 ;;
+            7)   [ "$h" -ge 8 ]  && [ "$h" -le 20 ] && go=1 ;;
+          esac
+          if [ "$go" = 0 ] && [ "$h" -ge 9 ] && [ "$h" -le 23 ] && [ "$m" -lt 12 -o "$m" -ge 30 -a "$m" -lt 42 ]; then go=1; fi
+          [ "${{ github.event_name }}" = "workflow_dispatch" ] && go=1
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v5
+        if: steps.gate.outputs.go == '1'
+      - uses: actions/setup-node@v5
+        if: steps.gate.outputs.go == '1'
+        with:
+          node-version: 20
+      - name: Load previous state
+        if: steps.gate.outputs.go == '1'
+        run: |
+          mkdir -p sharp-out
+          if git ls-remote --exit-code --heads origin sharp-data >/dev/null 2>&1; then
+            git fetch --depth=1 origin sharp-data
+            git show FETCH_HEAD:state.json > sharp-out/state.json || true
+          fi
+      - name: Poll sources
+        if: steps.gate.outputs.go == '1'
+        run: node scripts/fetch-sharp-money.mjs --dir=sharp-out
+      - name: Publish to sharp-data
+        if: steps.gate.outputs.go == '1'
+        run: |
+          cd sharp-out
+          rm -f new_alerts.json
+          git init -q -b sharp-data
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git add data.json state.json
+          git commit -q -m "sharp money: $(date -u +%FT%TZ) [skip ci]"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" sharp-data
