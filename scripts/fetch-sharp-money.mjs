@@ -496,6 +496,24 @@ function analyse(sk, cfg, g, P, pmInfo, kInfo, S, W) {
     if (ml && ml.px?.length === 2) { const hi = teamSide(g, ml.outs[0]) === 'home' ? 0 : 1; const a = ml.px[hi], b = ml.px[1 - hi]; if (a > 0 && b > 0) home_p = r3(a / (a + b)); }
     if (home_p == null && P?.ml) home_p = r3(devig(P.ml.home, P.ml.away));
     if (sharpN) G.sig = { ts: t, sharp: Math.round(sharp), sharpN, crowd: Math.round(all - sharp), home_p };
+    // Same read on the main spread and total (NFL and NBA only: docs/pm-spread-total-results.md
+    // found sharp-account skill on those, none on college). Only trades at the market's
+    // current line count, so a line move starts the read over. + = home (spread) / over (total).
+    // `line` is the HOME handicap for spreads and the number for totals; `p` is the price of the + side.
+    if (sk === 'nfl' || sk === 'nba') {
+      for (const [m, key] of [['sp', 'sigSp'], ['tot', 'sigTot']]) {
+        const mk = pmInfo?.mk?.[m]; if (!mk || mk.line == null || mk.px?.length !== 2) continue;
+        const pos = x => m === 'tot' ? x.side === 'over' : x.side === 'home';
+        let sh = 0, al = 0, n = 0;
+        for (const x of G.pm) if (x.m === m && x.line === mk.line && x.ts > t - DAY) { const v = pos(x) ? x.usd : -x.usd; al += v; if (x.cls === 'sharp') { sh += v; n++; } }
+        if (!n) continue;
+        let p, line;
+        if (m === 'tot') { p = mk.px[0]; line = mk.line; }
+        else { const hi = teamSide(g, mk.outs[0]) === 'home' ? 0 : 1; p = mk.px[hi]; line = hi === 0 ? mk.line : -mk.line; }
+        const q = mk.px[0] + mk.px[1]; if (!(q > 0)) continue;
+        G[key] = { ts: t, sharp: Math.round(sh), sharpN: n, crowd: Math.round(al - sh), p: r3(p / q), line };
+      }
+    }
     // Crossed: the first poll where the sharp net on one team reaches the
     // sport's line (NFL/NBA $25k, CFB $5k: CFB markets are far thinner). One
     // alert per game per side, so a flip to the other team fires again.
@@ -683,6 +701,15 @@ function payload(S, byGame, W, status) {
     const f = G.final, m = G.meta;
     sigRec.push({ key: k, sport: m.sport, game: `${m.away.abbr} @ ${m.home.abbr}`, start: m.start, sharp: G.sig.sharp, sharpN: G.sig.sharpN, crowd: G.sig.crowd, home_p: G.sig.home_p,
       final: f ? [f.away, f.home] : null, src: 'watch' });
+  }
+  for (const [k, G] of Object.entries(S.games)) {          // spread / total reads, same record shape plus m + line
+    if (!G.meta) continue;
+    for (const [m, key] of [['sp', 'sigSp'], ['tot', 'sigTot']]) {
+      const x = G[key]; if (!x) continue;
+      const f = G.final, mt = G.meta;
+      sigRec.push({ key: k, sport: mt.sport, game: `${mt.away.abbr} @ ${mt.home.abbr}`, start: mt.start, m, line: x.line, sharp: x.sharp, sharpN: x.sharpN, crowd: x.crowd, home_p: x.p,
+        final: f ? [f.away, f.home] : null, src: 'watch' });
+    }
   }
   // NFL before the watch existed: fetch-polymarket's signal log (Weeks 1-3
   // backfilled from the tape, sharp list with the game itself held out).
