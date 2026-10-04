@@ -1,10 +1,6 @@
 {
   "season": "2026",
-<<<<<<< Updated upstream
-  "generated": "2026-10-04T18:41:12.920836+00:00",
-=======
-  "generated": "2026-10-04T18:41:37.359709+00:00",
->>>>>>> Stashed changes
+  "generated": "2026-10-04T18:56:10.182844+00:00",
   "line_basis": "close",
   "latest_week": 4,
   "skipped": 297,
@@ -2322,6 +2318,68 @@
             }
           ]
         },
+        "pass_yd": {
+          "n": 4,
+          "pred_avg": 61.4,
+          "actual_avg": 50.0,
+          "brier": 0.2884,
+          "logloss": 0.7711,
+          "ece": 52.1,
+          "reliability": [
+            {
+              "bucket": "50\u201355%",
+              "n": 1,
+              "pred": 50.7,
+              "actual": 100.0,
+              "gap": 49.3
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 2,
+              "pred": 63.5,
+              "actual": 0.0,
+              "gap": -63.5
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 1,
+              "pred": 67.9,
+              "actual": 100.0,
+              "gap": 32.1
+            }
+          ]
+        },
+        "pass_att": {
+          "n": 4,
+          "pred_avg": 55.3,
+          "actual_avg": 50.0,
+          "brier": 0.2914,
+          "logloss": 0.777,
+          "ece": 32.4,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 1,
+              "pred": 45.8,
+              "actual": 100.0,
+              "gap": 54.2
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 2,
+              "pred": 57.0,
+              "actual": 50.0,
+              "gap": -7.0
+            },
+            {
+              "bucket": "60\u201365%",
+              "n": 1,
+              "pred": 61.2,
+              "actual": 0.0,
+              "gap": -61.2
+            }
+          ]
+        },
         "pass_td": {
           "n": 4,
           "pred_avg": 65.3,
@@ -2360,105 +2418,6 @@
             }
           ]
         },
-<<<<<<< Updated upstream
-        "pass_att": {
-          "n": 4,
-          "pred_avg": 55.3,
-          "actual_avg": 50.0,
-          "brier": 0.2914,
-          "logloss": 0.777,
-          "ece": 32.4,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 1,
-              "pred": 45.8,
-              "actual": 100.0,
-              "gap": 54.2
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 2,
-              "pred": 57.0,
-              "actual": 50.0,
-              "gap": -7.0
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 1,
-              "pred": 61.2,
-              "actual": 0.0,
-              "gap": -61.2
-            }
-          ]
-        },
-=======
->>>>>>> Stashed changes
-        "pass_yd": {
-          "n": 4,
-          "pred_avg": 61.4,
-          "actual_avg": 50.0,
-          "brier": 0.2884,
-          "logloss": 0.7711,
-          "ece": 52.1,
-          "reliability": [
-            {
-              "bucket": "50\u201355%",
-              "n": 1,
-              "pred": 50.7,
-              "actual": 100.0,
-              "gap": 49.3
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 2,
-              "pred": 63.5,
-              "actual": 0.0,
-              "gap": -63.5
-            },
-            {
-              "bucket": "65\u201370%",
-              "n": 1,
-              "pred": 67.9,
-              "actual": 100.0,
-              "gap": 32.1
-            }
-          ]
-        },
-<<<<<<< Updated upstream
-=======
-        "pass_att": {
-          "n": 4,
-          "pred_avg": 55.3,
-          "actual_avg": 50.0,
-          "brier": 0.2914,
-          "logloss": 0.777,
-          "ece": 32.4,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 1,
-              "pred": 45.8,
-              "actual": 100.0,
-              "gap": 54.2
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 2,
-              "pred": 57.0,
-              "actual": 50.0,
-              "gap": -7.0
-            },
-            {
-              "bucket": "60\u201365%",
-              "n": 1,
-              "pred": 61.2,
-              "actual": 0.0,
-              "gap": -61.2
-            }
-          ]
-        },
->>>>>>> Stashed changes
         "pass_cmp": {
           "n": 2,
           "pred_avg": 60.9,
