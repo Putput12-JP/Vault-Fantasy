@@ -67,21 +67,26 @@ OPEN_CACHE = {}                     # ET day -> (fetched at, [games]): ESPN's sc
 FAST_S, SLOW_S, FAST_WITHIN_H, WINDOW_START_ET = 300, 900, 3, 9
 
 
-def curl(url, headers=(), tries=2, raw=False, retry403=False):
+def curl(url, headers=(), tries=2, raw=False, retry403=False, follow=False):
     """ESPN 403s urllib, so everything goes through curl. Raises after `tries` failures.
     A 403 / 404 is final unless retry403: Pinnacle's guest API now and then 403s a cloud IP for a few seconds."""
     # No custom user agent by default: ESPN 403s anything Mozilla-like that is not a real browser.
-    cmd = ['curl', '-s', '--compressed', '--max-time', '30', '-w', '\n%{http_code}']
+    cmd = ['curl', '-s', '--compressed', '--max-time', '30', '-w', '\n%{http_code}|%{redirect_url}|%{url_effective}'] + (['-L', '--max-redirs', '5'] if follow else [])
     for h in headers:
         cmd += ['-H', h]
     err = ''
     for i in range(tries):
         p = subprocess.run(cmd + [url], capture_output=True)
         body, _, code = p.stdout.rpartition(b'\n')
-        code = code.decode()
+        code, loc, eff = (code.decode().split('|') + ['', ''])[:3]
         if code == '200':
-            return body if raw else json.loads(body)
-        err = f'HTTP {code or "timeout"}'
+            if raw:
+                return body
+            try:
+                return json.loads(body)
+            except ValueError:            # a redirect that ended on a web page, not data: say where it landed
+                raise RuntimeError(f"not JSON at {eff[:120]} [{body[:60].decode('utf8', 'replace').strip()!r}]")
+        err = f'HTTP {code or "timeout"}' + (f' -> {loc[:120]}' if loc else '')
         try:                                            # Pinnacle says why: {"reason": "location", ...}
             err += f" ({json.loads(body)['reason']})"
         except Exception:
@@ -369,8 +374,14 @@ def src_lineups(slate):
     from fetch_lineups import URL, team_abbr
     rows, meta = {}, {}
     days = sorted({g['day'] for g in slate.games if g['pre'] and g['tip'] - slate.now < 36 * 3600})
+    errs, got = [], 0
     for day in days:
-        d = curl(URL.format(day.replace('-', '')))
+        try:
+            d = curl(URL.format(day.replace('-', '')), follow=True)
+        except RuntimeError as e:     # tomorrow's file is a 403 until NBA.com posts it; skip that day, keep today's
+            errs.append(e)
+            continue
+        got += 1
         pre = {(g['day'], t) for g in slate.games if g['pre'] for t in (g['away'], g['home'])}
         for gm in d.get('games', []):
             for side in ('homeTeam', 'awayTeam'):
@@ -383,12 +394,17 @@ def src_lineups(slate):
                     rows[k] = [p.get('position') or '', p.get('lineupStatus') or '', p.get('rosterStatus') or '']
                     meta[k] = {'day': day, 'team': team, 'player': p.get('playerName'), 'nba_id': p.get('personId'),
                                'nba_game': gm.get('gameId')}
+    if errs and not got:
+        raise errs[0]                 # every day failed: a block or an outage, not just a file not posted yet
     return rows, meta
 
 
 # ── pick'em apps ──────────────────────────────────────────────────────────────────────────────
 UA_HDR = ['User-Agent: Mozilla/5.0', 'Accept: application/json']
-PP = 'https://partner-api.prizepicks.com/projections?league_id=7&per_page=250&single_stat=true&page={}'
+PP = 'https://partner-api.prizepicks.com/projections?league_id={}&per_page=250&single_stat=true&page={}'
+PP_LEAGUES = (7, 237)               # NBA, NBAP (PrizePicks lists NBA preseason in its own league)
+PK_SEEN = {}                        # pick'em source -> lines it listed for games in the window, before our parsing: polls
+                                    # record it next to n, so "none listed" and "listed but parsed 0" look different
 UD = 'https://api.underdogfantasy.com/v1/over_under_lines?sport_id=NBA'
 SL = 'https://api.sleeper.com/lines/available?dynamic=true&include_preseason=true'
 SL_SPORT = 'nba'
@@ -406,19 +422,29 @@ def pre_teams(slate):
 
 def src_prizepicks(slate):
     rows, meta = {}, {}
-    inc, page, pages = {}, 1, 1
-    data = []
-    while page <= min(pages, 20):
-        d = curl(PP.format(page), UA_HDR)
-        data += d.get('data', [])
-        inc.update({(i['type'], i['id']): i['attributes'] for i in d.get('included', [])})
-        pages = (d.get('meta') or {}).get('total_pages') or 1
-        page += 1
+    inc, data, errs = {}, [], []
+    for n_lg, lg in enumerate(PP_LEAGUES):
+        if n_lg:
+            time.sleep(2)             # PrizePicks answers back-to-back calls with 429
+        page, pages = 1, 1
+        try:
+            while page <= min(pages, 20):
+                d = curl(PP.format(lg, page), UA_HDR, tries=3)
+                data += d.get('data', [])
+                inc.update({(i['type'], i['id']): i['attributes'] for i in d.get('included', [])})
+                pages = (d.get('meta') or {}).get('total_pages') or 1
+                page += 1
+        except RuntimeError as e:     # one league failing keeps the other's lines
+            errs.append(e)
+    if len(errs) == len(PP_LEAGUES):
+        raise errs[0]
+    PK_SEEN['prizepicks'] = 0
     for x in data:
         a, rel = x['attributes'], x.get('relationships') or {}
         start = iso(a.get('start_time'))
         if a.get('status') != 'pre_game' or a.get('in_game') or not start or not (slate.now < start <= slate.ahead):
             continue
+        PK_SEEN['prizepicks'] += 1
         pl = inc.get(('new_player', ((rel.get('new_player') or {}).get('data') or {}).get('id')), {})
         if pl.get('combo'):
             continue
@@ -440,12 +466,14 @@ def src_underdog(slate):
         start[g['id']] = iso(g.get('scheduled_at'))
     players = {p['id']: p for p in d.get('players', [])}
     apps = {a['id']: a for a in d.get('appearances', [])}
+    PK_SEEN['underdog'] = 0
     for l in d.get('over_under_lines', []):
         ast = (l.get('over_under') or {}).get('appearance_stat') or {}
         app = apps.get(ast.get('appearance_id'))
         t0 = start.get(app.get('match_id')) if app else None
         if l.get('status') != 'active' or l.get('live_event') or not t0 or not (slate.now < t0 <= slate.ahead):
-            continue
+            continue                  # (season-long lines like regular_season_ppg have no game, so never count)
+        PK_SEEN['underdog'] += 1
         side = {o.get('choice'): o for o in l.get('options', [])}
         px = lambda o: ((((o or {}).get('odds') or {}).get('fantasy') or {}).get('american')) or (o or {}).get('american_price')
         hi, lo = side.get('higher'), side.get('lower')
@@ -463,9 +491,11 @@ def src_sleeper(slate):
             _sleeper_players[pid] = {'name': p.get('full_name'), 'team': p.get('team'), 'espn': p.get('espn_id')}
     teams = pre_teams(slate)
     rows, meta = {}, {}
+    PK_SEEN['sleeper'] = 0
     for l in curl(SL, UA_HDR):
         if l.get('sport') != SL_SPORT or l.get('subject_type') != 'player' or l.get('game_status') != 'pre_game':
             continue
+        PK_SEEN['sleeper'] += 1
         side = {o.get('outcome'): o for o in l.get('options', [])}
         o = side.get('over') or side.get('under')
         tm = team_code((o or {}).get('subject_team'))
@@ -610,6 +640,10 @@ def poll(root):
                 rows, meta = got
                 rec['n'] = len(rows)
                 rec['chg'] = day.record(name, int(t0), rows, meta)
+                if name in PK_SEEN:           # lines listed for games in the window vs lines we kept
+                    rec['seen'] = PK_SEEN[name]
+                    if PK_SEEN[name] and not rows:
+                        rec['warn'] = f'listed {PK_SEEN[name]}, parsed 0'
                 metas[name] = meta
         except Exception as e:  # one dead source must not stop the others
             rec.update(ok=False, err=str(e)[:200])
@@ -617,6 +651,7 @@ def poll(root):
         rec['s'] = round(time.time() - t0, 1)
         polls.append(rec)
         print(f"  {name:10s} {'ok ' if rec['ok'] else 'ERR'} n={rec.get('n', '-')} chg={rec.get('chg', '-')} "
+              f"{('seen=' + str(rec['seen']) + ' ') if 'seen' in rec else ''}{('WARN ' + rec['warn'] + ' ') if rec.get('warn') else ''}"
               f"{rec['s']}s {rec.get('err', '') or rec.get('report') or ''}", flush=True)
     t0 = time.time()                                    # trade tapes: Polymarket accounts, Kalshi big tickets (sharp.py)
     rec = {'t': int(t0), 'src': 'tape', 'ok': True}

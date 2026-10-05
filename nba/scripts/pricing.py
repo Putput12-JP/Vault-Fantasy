@@ -173,9 +173,13 @@ class Pricer:
         team's minutes run 2 to 4 too high.
           team    the minutes model projects fewer than HOLD_MIN_PLAYERS of the team's players, or someone at HOLD_MAX_MIN+
           player  src 'lab': no minutes history with his current team (moved in, or a rookie), so his minutes come from
-                  the Minutes Lab's estimate, which the backtest never scored. Clears after his first game for the team."""
+                  the Minutes Lab's estimate, which the backtest never scored. Clears after his first game for the team.
+          preseason  every preseason game: the model was never tested there (starters rest, rotations are random).
+                  The shadow ledger still logs these, into its separate preseason record."""
         if self.example or not self.MM or not team or not g:
             return None
+        if g.get('season_type') == 1:      # preseason: never tested; on 2026-10-03 a starter projected 42 minutes played 17
+            return {'why': 'preseason'}
         key = ('hold', team, str(g['id']))
         if key not in cache:
             gm = self.game_minutes(team, g, status, cache)

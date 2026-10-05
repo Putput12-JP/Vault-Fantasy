@@ -2437,6 +2437,7 @@ const HOLD_MIN_PLAYERS = 8, HOLD_MAX_MIN = 44;
 function rosterHold(team, g, cache, src){
   if (PS.mode === 'example' || !team || !g || !(MS && MS.minutes)) return null;
   if (edits[team] && Object.keys(edits[team]).length) return null;
+  if (g.season_type === 1) return {why: 'preseason'};
   const key = `hold|${team}|${g.id}|${cache.__noEdits ? 0 : 1}`;
   if (!(key in cache)){
     const gm = Object.values(gameMinutes(team, g, cache)), top = Math.max(0, ...gm.map(v => v.min));
@@ -2444,7 +2445,9 @@ function rosterHold(team, g, cache, src){
   }
   return cache[key] || (src === 'lab' ? {why: 'player'} : null);
 }
-const holdTxt = (h, r) => h.why === 'team'
+const holdTxt = (h, r) => h.why === 'preseason'
+  ? `This is a preseason game. Starters rest and rotations are a guess, and the model was never tested on preseason games: on the first preseason night it had a starter at 42 minutes who played 17.`
+  : h.why === 'team'
   ? `The minutes model can't see ${esc(r.tm || r.team)}'s rotation yet (${h.n < HOLD_MIN_PLAYERS ? `only ${h.n} players it can project` : `it has someone at ${fmt(h.top, 0)} minutes`}), usually because of new arrivals. Teams like that ran 2 to 4 minutes too high per player in the backtest.`
   : `${esc(r.name)} hasn't played for ${esc(r.tm || r.team)} yet, so his minutes are the Minutes Lab's estimate, which the backtest never scored.`;
 function priceRow(e, cache){
@@ -4231,7 +4234,7 @@ function renderPropsV2(){
   HK.mount($('pv-list'), 'PropsList', {sel: pv.sel,
     items: L.map(r => { const b = r.best, sh = r.sharp;
       return {key: key(r), name: r.name, ini: initials(r.name), stat: PV_SL[r.e.s] || r.e.s, proj: fmt(r.mu), verdict: r.verdict,
-        where: r.hold ? 'On hold: roster changed' : r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`,
+        where: r.hold ? (r.hold.why === 'preseason' ? 'On hold: preseason' : 'On hold: roster changed') : r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`,
         edge: r.verdict !== 'pass' ? `+${pc(b.edge, 1)}` : null,
         shp: sh.vs ? {t: sh.vs, strong: true} : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? {t: sh.lean} : null,
         watch: !!pvW[key(r)], logged: pvBets.some(x => x.k === key(r))}; }),
@@ -4394,8 +4397,8 @@ function pvDetail(r){
     verdictOf = () => ({kind: 'lean', title: `${pvBetShort(b)} at ${pvPrice(b)}`, pill: {t: t[1], cls: t[0] === 'tracking' ? 'warn' : 'idle'},
       html: `${plainTxt()}.</p>
       <p>The price looks <b>+${pc(b.edge, 1)}</b> off our fair ${pc(b.fair, 1)}, but this kind of edge ${b.g === 'watch' ? 'made money last season without being conclusive' : 'has no record yet'}. Worth a look, not a stake.</p>`});
-  } else if (r.hold) verdictOf = () => ({kind: 'pass', title: 'On hold: roster changed', pill: {t: 'No call', cls: 'idle'},
-      html: `<p>${holdTxt(r.hold, r)} So no Bet or Lean, and it stays out of Edges, Pick'em Pairs and the Track Record until ${r.hold.why === 'team' ? 'the new players have a game with the team' : 'he plays a game for them'}.</p>
+  } else if (r.hold) verdictOf = () => ({kind: 'pass', title: r.hold.why === 'preseason' ? 'On hold: preseason' : 'On hold: roster changed', pill: {t: 'No call', cls: 'idle'},
+      html: `<p>${holdTxt(r.hold, r)} So no Bet or Lean, and it stays out of Edges, Pick'em Pairs and the Track Record${r.hold.why === 'preseason' ? ' (preseason is logged apart, as a rehearsal)' : ` until ${r.hold.why === 'team' ? 'the new players have a game with the team' : 'he plays a game for them'}`}.</p>
       <p>${b ? `For reference, the best price is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)} against our number.` : 'No prices to compare yet.'}</p>`});
   else verdictOf = () => ({kind: 'pass', title: 'No price is 3% better than fair', pill: null,
       html: `<p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p>`});
