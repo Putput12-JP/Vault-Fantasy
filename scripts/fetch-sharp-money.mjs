@@ -683,8 +683,20 @@ function payload(S, byGame, W, status) {
     const tickets = [...(G.pm || []).filter(x => x.usd >= 1000 || x.cls === 'sharp').map(x => ({ ...x, src: 'PM' })), ...(G.kal || []).filter(x => x.usd >= 2000).map(x => ({ ...x, src: 'Kalshi' }))]
       .filter(x => x.ts > t - 2 * DAY).sort((a, b) => b.ts - a.ts).slice(0, 40)
       .map(({ w, id, ...x }) => ({ ...x, w: w ? w.slice(0, 6) + '…' + w.slice(-4) : null, rec: w && WREC[g.sport]?.[w] ? WREC[g.sport][w] : null }));
+    // Per-account rollup over the same 24h as flow.sharp, so the game page's money bar adds up
+    // to the sharp net it headlines (the 40-row ticket tape above is too short for that).
+    const A = {};
+    for (const x of G.pm || []) {
+      if (x.ts < t - DAY || !x.w) continue;
+      const k = x.w + '|' + x.m + ':' + x.side, a = A[k] ||= { w: x.w, who: x.who || null, cls: x.cls || null, m: x.m, side: x.side, usd: 0, n: 0, last: 0 };
+      a.usd += x.usd; a.n++; a.last = Math.max(a.last, x.ts);
+    }
+    for (const [k, v] of Object.entries(flow.kalBig)) { const [m, side] = k.split(':'); A['kal|' + k] = { w: null, who: 'Kalshi big tickets', cls: null, m, side, usd: v, n: (G.kal || []).filter(x => x.ts >= t - DAY && x.usd >= 1000 && x.m === m && x.side === side).length, last: 0, src: 'Kalshi' }; }
+    const rolled = Object.values(A).sort((a, b) => b.usd - a.usd);
+    const accts = [...rolled.filter(a => a.cls === 'sharp'), ...rolled.filter(a => a.cls !== 'sharp' && a.usd >= 1000).slice(0, 16)]
+      .map(({ w, ...a }) => ({ ...a, usd: Math.round(a.usd), w: w ? w.slice(0, 6) + '…' + w.slice(-4) : null, rec: w && WREC[g.sport]?.[w] ? WREC[g.sport][w] : null }));
     games.push({
-      key: g.key, sport: g.sport, start: g.start, status: g.status, away: g.away, home: g.home, bets: g.bets,
+      key: g.key, sport: g.sport, start: g.start, status: g.status, away: g.away, home: g.home, bets: g.bets, accts,
       splits: g.splits, open: g.open, consensus: g.consensus, soft: g.soft,
       pin: P ? { ml: P.ml, sp: P.sp, tot: P.tot, lim: P.lim } : null,
       pinHist: (G.pin || []).map(s => [s.ts, s.ml ?? null, s.sp ?? null, s.spP ?? null, s.tot ?? null, s.oP ?? null]),
