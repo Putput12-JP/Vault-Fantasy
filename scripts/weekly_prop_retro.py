@@ -146,9 +146,13 @@ def find_findings(rows):
 
 
 def fmt_row(name, s, w=14):
+    # Pieces built outside the f-string: a nested f-string that reuses the outer
+    # quote parses on Python 3.12+ but is a SyntaxError on the 3.11 CI runner.
+    mae = '   - ' if s['mae'] is None else f"{s['mae']:5.1f}"
+    edge = '  -  ' if s['edge_ll'] is None else f"{s['edge_ll']:+.3f}"
     return (f"{str(name):{w}s} n={s['n']:4d} {s['rec']:>8s} {pct(s['wr'])} | "
-            f"CLV {pct(s['clv_beat'])} | MAE {('   - ' if s['mae'] is None else f'{s['mae']:5.1f}')} "
-            f"bias {sgn(s['bias'])} | edge {('  -  ' if s['edge_ll'] is None else f'{s['edge_ll']:+.3f}')}")
+            f"CLV {pct(s['clv_beat'])} | MAE {mae} "
+            f"bias {sgn(s['bias'])} | edge {edge}")
 
 
 def render(label, rows):
@@ -225,9 +229,9 @@ def render(label, rows):
         if ranked and edge_score(ranked[0][1]) > -9:
             bk, bs = ranked[0]
             bedge = "  -  " if bs["edge_ll"] is None else f"{bs['edge_ll']:+.3f}"
+            bmae = "  - " if bs["mae"] is None else f"{bs['mae']:.1f}"
             P(f"- **Best {lbl}: {bk}** — {bs['rec']} ({pct(bs['wr'])}), CLV {pct(bs['clv_beat'])}, "
-              f"log-loss edge {bedge}, projection MAE "
-              f"{('  - ' if bs['mae'] is None else f'{bs['mae']:.1f}')}.")
+              f"log-loss edge {bedge}, projection MAE {bmae}.")
     P("")
     # findings
     findings = find_findings(rows)
