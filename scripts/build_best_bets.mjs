@@ -242,7 +242,10 @@ function matchupAdjFor(ctx, p, mk) {
   let oppMult = 1, envMult = 1;
   if (p.opp && p.pos) {
     const c = ctx.dvp[p.opp] && ctx.dvp[p.opp][p.pos], avg = ctx.leagueFpa[p.pos];
-    if (c && c.fpa != null && avg) oppMult = clamp(c.fpa / avg, 0.88, 1.15);
+    // c.mult = fitted damped term (RB/WR/TE, data/dvp_damp.json via the feed);
+    // QB carries none and keeps the raw ratio (docs/dvp-damp-backtest.md).
+    if (c && num(c.mult) > 0) oppMult = num(c.mult);
+    else if (c && c.fpa != null && avg) oppMult = clamp(c.fpa / avg, 0.88, 1.15);
   }
   const spread = p.team != null ? (ctx.spreadByTeam[p.team] ?? null) : null;
   const total = p.team != null ? (ctx.totalByTeam[p.team] ?? null) : null;

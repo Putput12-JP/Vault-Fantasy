@@ -1,0 +1,26 @@
+{
+ "generated": "2026-10-05T21:13Z",
+ "k": 16,
+ "a": 0.25,
+ "w": 0.5,
+ "clamp": [
+  0.88,
+  1.15
+ ],
+ "positions": [
+  "RB",
+  "WR",
+  "TE"
+ ],
+ "fit": {
+  "train": "2016-2021",
+  "test": "2022-2025",
+  "holdout_rmse_lift_pct": {
+   "shipped": -0.485,
+   "damped": 0.119
+  },
+  "cells_better": 7,
+  "cells": 8
+ },
+ "doc": "docs/dvp-damp-backtest.md"
+}

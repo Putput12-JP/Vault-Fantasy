@@ -193,6 +193,51 @@ async function loadDvpShrink() {
   catch { _dvpShrink = null; }   // missing file → graceful no-op (raw prior-season DvP)
   return _dvpShrink;
 }
+/* Dampened opponent term for RB/WR/TE (scripts/backtest_dvp_damp.py --write →
+   data/dvp_damp.json). The raw FPA ratio overreacts to a few weeks of noise: on a
+   2022-25 holdout it made RB/WR/TE projections WORSE, and against 2026 closing
+   lines its side flips won no more than a shuffled null. The fitted fix blends
+   this season's ratio with last season's (k games of prior weight, a of last
+   season's deviation carried) and takes it to the w power. QB keeps the raw
+   term: its direction beat the closing line well beyond the null. Published as
+   dvp[team][pos].mult; consumers prefer it over fpa/avg when present. Missing
+   file → no mult field → the shipped raw term everywhere.               */
+let _dvpDamp;
+async function loadDvpDamp() {
+  if (_dvpDamp !== undefined) return _dvpDamp;
+  try { _dvpDamp = JSON.parse(await readFile(resolve(process.cwd(), 'data/dvp_damp.json'), 'utf8')); }
+  catch { _dvpDamp = null; }
+  return _dvpDamp;
+}
+// Last season's per-position FPA ratio-to-league per defense, from the nflverse
+// weekly logs already in the repo (regular season only). {} when missing.
+async function prevSeasonDvpRatios(season) {
+  const ALIAS = { LA: 'LAR', STL: 'LAR', SD: 'LAC', OAK: 'LV', WSH: 'WAS', JAC: 'JAX' };
+  let blob;
+  try { blob = JSON.parse(await readFile(resolve(process.cwd(), `data/nflverse_stats_${season}.json`), 'utf8')); }
+  catch { return {}; }
+  const pts = {}, wks = {};
+  for (const p of Object.values(blob)) {
+    if (!SKILL.has(p.pos)) continue;
+    for (const w of p.weeks || []) {
+      const opp = ALIAS[w.opp] || w.opp;
+      if (!opp || !(w.wk <= 18)) continue;
+      (pts[opp] = pts[opp] || [0, 0, 0, 0])[POS_IDX[p.pos]] += Number(w.pts) || 0;
+      (wks[opp] = wks[opp] || new Set()).add(w.wk);
+    }
+  }
+  return ratiosToLeague(Object.fromEntries(Object.keys(pts).map(t => [t, pts[t].map(v => v / wks[t].size)])));
+}
+// {team: [QB,RB,WR,TE] per-game fpa} → {team: {pos: ratio to the league mean}}
+function ratiosToLeague(perGame) {
+  const out = {}, tms = Object.keys(perGame);
+  for (const pos of ['QB', 'RB', 'WR', 'TE']) {
+    const i = POS_IDX[pos], lg = tms.reduce((s, t) => s + perGame[t][i], 0) / (tms.length || 1);
+    if (lg > 0) for (const t of tms) (out[t] = out[t] || {})[pos] = perGame[t][i] / lg;
+  }
+  return out;
+}
+
 async function buildDvP(season, week) {
   try {
     const completed = [];
@@ -225,6 +270,12 @@ async function buildDvP(season, week) {
       const g = Math.max(1, (games[tm] || weeks.length));
       perGame[tm] = allow[tm].map(v => round(v / g));
     }
+    // Damped term inputs, captured BEFORE the λ shrink below rewrites perGame:
+    // in-season the current ratios + games played, plus last season from the
+    // nflverse logs; preseason the (raw) last-season table itself is the prior.
+    const damp = await loadDvpDamp();
+    const curRatio = stale ? {} : ratiosToLeague(perGame);
+    const prevRatio = damp ? (stale ? ratiosToLeague(perGame) : await prevSeasonDvpRatios(Number(season) - 1)) : {};
     // Roster-blind fallback: shrink last season's grade toward the league mean by
     // the fitted per-position weight, then rank the SHRUNK values. Only in the
     // stale/preseason case; live current-season data is left untouched.
@@ -250,9 +301,22 @@ async function buildDvP(season, week) {
       const order = Object.keys(perGame).sort((a, b) => perGame[a][i] - perGame[b][i]);
       order.forEach((tm, idx) => { (dvp[tm] = dvp[tm] || {})[pos] = { fpa: perGame[tm][i], rank: idx + 1 }; });
     }
+    if (damp && Array.isArray(damp.positions)) {
+      const { k, a, w } = damp, [lo, hi] = damp.clamp || [0.88, 1.15];
+      for (const pos of damp.positions) {
+        for (const tm of Object.keys(dvp)) {
+          if (!dvp[tm][pos]) continue;
+          const pv = prevRatio[tm] && prevRatio[tm][pos], cur = curRatio[tm] && curRatio[tm][pos];
+          const prior = 1 + a * ((pv != null ? pv : 1) - 1), n = stale ? 0 : (games[tm] || 0);
+          const est = (cur == null || n <= 0) ? prior : (n * cur + k * prior) / (n + k);
+          dvp[tm][pos].mult = est > 0 ? Math.round(Math.min(hi, Math.max(lo, Math.pow(est, w))) * 1000) / 1000 : 1;
+        }
+      }
+    }
     // Return the table plus provenance so the feed can label it (last season /
     // roster-shrunk) rather than presenting stale context as current.
-    return { table: dvp, stale, season: useSeason, shrunk };
+    return { table: dvp, stale, season: useSeason, shrunk,
+             damp: damp && Array.isArray(damp.positions) ? { k: damp.k, a: damp.a, w: damp.w, positions: damp.positions } : null };
   } catch (e) { warn('dvp', e); return null; }
 }
 async function getSchedule(season) {
@@ -485,7 +549,7 @@ async function main() {
     ...(dvp ? { dvp } : {}),
     // DvP provenance so the app can label it (e.g. "last season, roster-adjusted")
     // instead of presenting a stale preseason grade as the current defense.
-    ...(dvpRes ? { dvp_meta: { stale: !!dvpRes.stale, season: dvpRes.season, shrunk: !!dvpRes.shrunk } } : {}),
+    ...(dvpRes ? { dvp_meta: { stale: !!dvpRes.stale, season: dvpRes.season, shrunk: !!dvpRes.shrunk, ...(dvpRes.damp ? { damp: dvpRes.damp } : {}) } } : {}),
     vegas_teams: vegas.vegas_teams,
     vegas_games: vegas.vegas_games,
     vegas_players: vegas.vegas_players,

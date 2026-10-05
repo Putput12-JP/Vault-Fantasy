@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-05T21:30', tag:'Improved', title:'Calmer matchup adjustments on RB, WR and TE props',
+    items:[
+      'Vault no longer swings running back, receiver and tight end projections up to 15% based on a few weeks of how a defense has played. It now blends this season with last season and moves projections a few percent at most. Tested on four past seasons, the gentler version predicted nearly every one of those markets better.',
+      'Quarterback props keep the full matchup adjustment. Against this season’s closing lines it has been picking the right side on QB props far more often than chance, so it stays as is.'
+    ]
+  },
+  {
     ts:'2026-10-05T12:00', tag:'Improved', title:'A more honest Track Record, and sharper prop prices',
     items:[
       'Vault Record now leads with the props Vault actually grades A or B, the ones it would bet. Tap “Every lean” to see every prop it graded, including the C, D and F leans it says to skip.',
@@ -47317,7 +47324,10 @@ window.VaultMarketProj = (function () {
     if (!_dvp) loadDvp();
     else if (r.opp && r.pos) {
       const cell = _dvp[r.opp] && _dvp[r.opp][r.pos], avg = _leagueFpa(r.pos);
-      if (cell && cell.fpa != null && avg) { oppMult = Math.min(1.15, Math.max(0.88, cell.fpa / avg)); oppRank = cell.rank; }
+      // cell.mult = fitted damped term (RB/WR/TE, data/dvp_damp.json via the feed);
+      // QB carries none and keeps the raw ratio. Mirrors build_best_bets matchupAdjFor.
+      if (cell && typeof cell.mult === 'number' && cell.mult > 0) { oppMult = cell.mult; oppRank = cell.rank; }
+      else if (cell && cell.fpa != null && avg) { oppMult = Math.min(1.15, Math.max(0.88, cell.fpa / avg)); oppRank = cell.rank; }
     }
     const teamTotal = _teamTotal(r.team);
     if (teamTotal != null) envMult = Math.min(1.10, Math.max(0.92, 1 + _ENV_BETA * (teamTotal / _ENV_AVG - 1)));
