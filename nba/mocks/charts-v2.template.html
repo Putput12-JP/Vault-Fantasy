@@ -1,0 +1,222 @@
+<meta charset="utf-8">
+<title>NBA Chart Kit</title>
+<meta name="description" content="Mock: one shared chart kit for the Vault NBA app (shadcn's chart pattern, drawn in our own SVG on the Graphite look).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600&display=swap">
+<style>
+/* Graphite, the NBA app's look (dark only, by design), plus shadcn-style chart tokens --chart-1..5 */
+:root{
+  --bg:#0b0c0e; --surface:#131418; --surface2:#191b20; --raised:#22252b; --border:#22252b; --border2:#343841;
+  --fg:#f3f4f6; --fg2:#a2a7b1; --fg3:#6e7380; --up:#5fcf8c; --down:#ec7f7f; --warn:#e5b955;
+  --chart-1:#f3f4f6; --chart-2:#5fcf8c; --chart-3:#e5b955; --chart-4:#7fb4ec; --chart-5:#c9a2f0;
+  --font-sans:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif; --font-mono:'Geist Mono','SFMono-Regular',Menlo,monospace;
+  --ease-spring:cubic-bezier(.34,1.56,.64,1); --ease-out:cubic-bezier(.22,1,.36,1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--font-sans);font-size:14px;line-height:1.5;margin:0}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.wrap{max-width:1180px;margin:0 auto;padding-block:40px 64px;padding-inline:16px;display:grid;gap:28px}
+h1{margin:0;font-size:28px;letter-spacing:-.025em;text-wrap:balance}
+h2{margin:0;font-size:15px;font-weight:600;text-wrap:balance}
+.lede{margin:6px 0 0;color:var(--fg2);max-width:72ch;text-wrap:pretty}
+.mono{font-family:var(--font-mono)}
+.kit{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 12px 32px -14px rgba(0,0,10,.6);min-width:0}
+.spec{padding:20px 22px;display:grid;gap:12px}
+.spec dl{margin:0;display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px 14px;font-size:13px}
+.spec dt{font-family:var(--font-mono);font-size:12px;color:var(--fg)}
+.spec dd{margin:0;color:var(--fg2)}
+.sw{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.sw div{display:grid;gap:4px;font-family:var(--font-mono);font-size:11px;color:var(--fg3)}
+.sw i{display:block;height:28px;border-radius:6px}
+.note{font-size:12.5px;color:var(--fg3);margin:0}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:980px){ .kit,.grid2{grid-template-columns:minmax(0,1fr)} }
+
+/* ── the kit: ChartCard = header (key value + context) + plot + legend + footnote ── */
+.ck{padding:20px 22px 18px;display:grid;gap:12px;min-width:0}
+.ck-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.ck-title p{margin:2px 0 0;font-size:12.5px;color:var(--fg3)}
+.ck-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:4px}
+.ck-k{margin:0;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);letter-spacing:.02em}
+.ck-v{margin:2px 0 0;font-family:var(--font-mono);font-size:30px;line-height:1;font-weight:600;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.ck-v small{font-size:13px;font-weight:500;color:var(--fg3);letter-spacing:0;margin-left:6px}
+.ck-r{display:grid;justify-items:end;gap:2px;text-align:right}
+.ck-r p{margin:0;font-family:var(--font-mono);font-size:12px}
+.ck-r .sub{font-size:11px;color:var(--fg3)}
+.pos{color:var(--up)} .neg{color:var(--down)} .warn{color:var(--warn)} .dim{color:var(--fg3)}
+@keyframes bump{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
+.ck-v.bump{animation:bump .32s var(--ease-out)}
+.ck svg{display:block;width:100%;height:auto;outline:none;touch-action:pan-y}
+.ck svg:focus-visible{outline:2px solid var(--fg);outline-offset:4px;border-radius:6px}
+.ck svg text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
+.ck .grid{stroke:var(--border)} .ck .zero{stroke:var(--border2)}
+.ck .hit{fill:transparent;cursor:crosshair}
+.ck-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--fg2)}
+.ck-legend span{display:inline-flex;align-items:center;gap:6px}
+.ck-legend i{display:inline-block;width:10px;height:10px;border-radius:3px}
+.ck-legend i.ln{width:14px;height:0;border-top:2px dashed currentColor;border-radius:0}
+.ck-legend i.dot{width:9px;height:9px;border-radius:50%}
+.ck-legend i.ring{width:9px;height:9px;border-radius:50%;background:none;border:1.5px solid currentColor}
+/* trace: the one shared hover idiom, a dashed guide at the focused value with its number in a pill */
+.trace{transition:transform .5s var(--ease-spring)}
+.trace line{stroke:var(--fg);stroke-width:1;stroke-dasharray:3 3}
+.trace rect,.trace circle{fill:var(--fg)} .trace text{fill:var(--bg);font-size:11px;font-weight:600}
+.vtrace{transition:transform .35s var(--ease-out)} .vtrace line{stroke:var(--fg);stroke-width:1;stroke-dasharray:3 3}
+/* series */
+.bar{opacity:.22;transition:opacity .2s ease} g.on .bar{opacity:1} g.hov .bar{stroke:var(--fg);stroke-opacity:.35}
+.lineS{fill:none;stroke-width:2;stroke-linejoin:round}
+.area{opacity:.10}
+.ref{stroke-width:1.25;stroke-dasharray:4 4}
+.row .stem{stroke:var(--border2);stroke-width:2;transition:stroke .2s} .row.on .stem{stroke:var(--fg2)}
+.row .lab{fill:var(--fg2)} .row.on .lab{fill:var(--fg)}
+.row .now{transition:r .2s var(--ease-spring)} .row.on .now{r:6}
+.rowbg{fill:transparent} .row.on .rowbg{fill:rgba(255,255,255,.035)}
+@media (prefers-reduced-motion:reduce){ .trace,.vtrace,.bar,.row .now{transition:none} .ck-v.bump{animation:none} }
+.why{display:grid;gap:6px;font-size:13px;color:var(--fg2);padding:16px 18px;border:1px dashed var(--border2);border-radius:12px}
+.why b{color:var(--fg);font-weight:500}
+</style>
+
+<main class="wrap">
+  <header>
+    <p class="ck-k">[mock] Vault NBA · shared chart kit</p>
+    <h1>One chart kit for every page</h1>
+    <p class="lede">shadcn's chart pattern (declare each series once, then one container, one tooltip, one legend), drawn in our own SVG on the Graphite look instead of recharts. Every chart gets the same header that reads the point in focus, the same dashed trace, the same legend, arrow-key stepping and the same motion. Real numbers from last season's Finals and the 2025-26 backtest.</p>
+  </header>
+
+  <section class="kit">
+    <div class="card spec">
+      <h2>The pieces</h2>
+      <dl>
+        <dt>config</dt><dd>Each series once: label, color token, kind (bar, line, area, dot, reference line). Legends and tooltips read it, so a color never drifts between charts.</dd>
+        <dt>ChartCard</dt><dd>Title, a header that shows the point in focus (big mono number, context on the right), the plot, the legend, a footnote.</dd>
+        <dt>trace</dt><dd>The shared hover: dashed guide at the focused value with its number in a pill (horizontal for values, vertical for time). Rest state is the newest point.</dd>
+        <dt>axes + grid</dt><dd>One tick rule (nice steps), mono 10px labels, grid on the border tone.</dd>
+        <dt>keyboard</dt><dd>Tab to a chart, arrow keys step points, Home / End jump. Header is a live region.</dd>
+      </dl>
+    </div>
+    <div class="card spec">
+      <h2>Series colors</h2>
+      <div class="sw">
+        <div><i style="background:var(--chart-1)"></i>chart-1<br>primary</div>
+        <div><i style="background:var(--chart-2)"></i>chart-2<br>over / up</div>
+        <div><i style="background:var(--chart-3)"></i>chart-3<br>line / ref</div>
+        <div><i style="background:var(--chart-4)"></i>chart-4<br>compare</div>
+        <div><i style="background:var(--chart-5)"></i>chart-5<br>extra</div>
+      </div>
+      <p class="note">shadcn's --chart-1..5 names mapped onto Graphite. Meaning stays fixed: green is always over or profit, the amber dashed line is always the betting line or a reference.</p>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card ck" id="c-recent"></div>
+    <div class="card ck" id="c-minutes"></div>
+  </section>
+  <section class="card ck" id="c-units"></section>
+
+  <section class="why">
+    <div><b>What changes from today.</b> Recent games already uses the trace (shipped this week); it becomes the template. The Minutes Lab chart was a line drawn across players, which implies a sequence that isn't there; a dot pair per player (usual vs tonight) reads the change directly. Track Record's units chart gains the same header and a vertical trace, so every chart on the site answers "what am I pointing at" the same way.</div>
+    <div><b>Not in this mock.</b> Price-on-curve and the projection waterfall (Player Props), Injury Wire timings: they move to the kit in the same pass.</div>
+  </section>
+</main>
+
+<script>
+const DATA = /*DATA*/null;
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 1) => (+v).toFixed(d).replace(/\.0+$/, '');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+function niceTicks(lo, hi, n = 4){
+  const raw = (hi - lo) / n, mag = Math.pow(10, Math.floor(Math.log10(raw || 1))), st = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw);
+  const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9; v += st) out.push(+v.toFixed(4)); return out;
+}
+
+// ChartCard: shell shared by every chart. head(i) returns {k, v, unit, right: [[text, cls]]} for the point in focus.
+function chartCard(el, {title, sub, svg, legend, foot, n, def, head, onFocus}){
+  el.innerHTML = `<div class="ck-top"><div class="ck-title"><h2>${title}</h2><p>${sub}</p></div></div>
+    <div class="ck-head"><div><p class="ck-k"></p><p class="ck-v" aria-live="polite"></p></div><div class="ck-r"></div></div>
+    ${svg}<div class="ck-legend">${legend.map(([lab, cls, color]) => `<span><i class="${cls || ''}" style="${cls === 'ln' || cls === 'ring' ? `color:${color}` : `background:${color}`}"></i>${lab}</span>`).join('')}</div>
+    ${foot ? `<p class="note">${foot}</p>` : ''}`;
+  const sv = el.querySelector('svg'), kv = el.querySelector('.ck-v');
+  let cur = null;
+  const focus = (i, hover) => {
+    const h = head(i);
+    el.querySelector('.ck-k').textContent = h.k;
+    const txt = `${h.v}${h.unit ? `<small>${h.unit}</small>` : ''}`;
+    if (kv.innerHTML !== txt){ kv.innerHTML = txt; kv.classList.remove('bump'); void kv.offsetWidth; kv.classList.add('bump'); }
+    if (h.cls) kv.className = 'ck-v bump ' + h.cls; else kv.className = 'ck-v bump';
+    el.querySelector('.ck-r').innerHTML = h.right.map(([t, c]) => `<p class="${c || ''}">${t}</p>`).join('');
+    sv.querySelectorAll('[data-i]').forEach(g => { g.classList.toggle('on', +g.dataset.i === i); g.classList.toggle('hov', hover && +g.dataset.i === i); });
+    onFocus(i, sv); cur = i;
+  };
+  sv.addEventListener('pointerover', e => { const g = e.target.closest('[data-i]'); if (g) focus(+g.dataset.i, true); });
+  sv.addEventListener('pointerleave', () => focus(def, false));
+  sv.addEventListener('keydown', e => { const nx = {ArrowLeft: cur - 1, ArrowUp: cur - 1, ArrowRight: cur + 1, ArrowDown: cur + 1, Home: 0, End: n - 1}[e.key];
+    if (nx == null) return; e.preventDefault(); focus(Math.max(0, Math.min(n - 1, nx)), true); });
+  focus(def, false);
+}
+const pill = (x, v) => { const t = String(v), w = t.length * 6.8 + 12; return `<rect x="${x - w - 4}" y="-9" width="${w}" height="18" rx="4"/><text x="${x - w + 2}" y="4">${t}</text>`; };
+
+// 1. Recent games: bars vs tonight's line, horizontal trace
+(function(){
+  const D = DATA.recent, W = 560, X0 = 46, X1 = W - 40, T = 14, CH = 150, H = T + CH + 24, n = D.games.length;
+  const ymax = Math.max(...D.games.map(g => g.v), D.line) * 1.15, y = v => T + CH * (1 - v / ymax), step = (X1 - X0) / n, bw = step * .64, cx = i => X0 + step * (i + .5);
+  let s = niceTicks(0, ymax).map(t => `<line class="grid" x1="${X0}" x2="${X1}" y1="${y(t)}" y2="${y(t)}"/><text x="${X0 - 8}" y="${y(t) + 3}" text-anchor="end">${t}</text>`).join('');
+  D.games.forEach((g, i) => { const o = g.v > D.line;
+    s += `<g data-i="${i}"><rect class="bar" x="${cx(i) - bw / 2}" y="${y(g.v)}" width="${bw}" height="${T + CH - y(g.v)}" rx="4" fill="var(--${o ? 'chart-2' : 'chart-1'})"/><rect class="hit" x="${X0 + step * i}" y="${T}" width="${step}" height="${CH}"/></g>
+      <text x="${cx(i)}" y="${H - 6}" text-anchor="middle">${g.home ? '' : '@'}${g.opp}</text>`; });
+  s += `<line class="ref" stroke="var(--chart-3)" x1="${X0}" x2="${X1}" y1="${y(D.line)}" y2="${y(D.line)}"/><text x="${X1 + 8}" y="${y(D.line) + 3.5}" fill="var(--chart-3)" style="fill:var(--chart-3)">${D.line}</text>`;
+  s += `<g class="trace"><line x1="${X0}" x2="${X1}" y1="0" y2="0"/><g class="pl"></g><circle cx="${X1}" cy="0" r="3"/></g>`;
+  const hits = D.games.filter(g => g.v > D.line).length;
+  chartCard($('c-recent'), {title: 'Recent games', sub: `${D.player}, points, last 10 against tonight's line of ${D.line}`, n, def: n - 1,
+    svg: `<svg viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="Last ${n} games against tonight's line; arrow keys step games">${s}</svg>`,
+    legend: [[`Over ${D.line}`, '', 'var(--chart-2)'], ['Under', '', 'var(--chart-1)'], ["Tonight's line", 'ln', 'var(--chart-3)']],
+    foot: `Over in ${hits} of ${n}. The kit's rest state is the newest game.`,
+    head: i => { const g = D.games[i]; return {k: '[points] this game', v: g.v, right: [[`${g.date} ${g.home ? 'vs' : '@'} ${g.opp} · ${g.min} min`], [`${g.v > D.line ? 'Over' : 'Under'} ${D.line}`, g.v > D.line ? 'pos' : 'dim']]}; },
+    onFocus: (i, sv) => { const tr = sv.querySelector('.trace'); tr.style.transform = `translateY(${y(D.games[i].v)}px)`; tr.querySelector('.pl').innerHTML = pill(X0, D.games[i].v); }});
+})();
+
+// 2. Minutes: a dot pair per player (usual, hollow; tonight, solid) on a shared 0-48 axis
+(function(){
+  const D = DATA.minutes, rows = D.players, RH = 26, L = 150, W = 560, R = 18, T = 8, H = T + rows.length * RH + 24, x = v => L + (W - L - R) * v / 48;
+  let s = [0, 12, 24, 36, 48].map(t => `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H - 22}"/><text x="${x(t)}" y="${H - 8}" text-anchor="middle">${t}</text>`).join('');
+  rows.forEach((p, i) => { const cy = T + i * RH + RH / 2;
+    s += `<g class="row" data-i="${i}"><rect class="rowbg" x="0" y="${cy - RH / 2}" width="${W}" height="${RH}" rx="6"/>
+      <text class="lab" x="${L - 12}" y="${cy + 3.5}" text-anchor="end" style="font-family:var(--font-sans);font-size:12px">${esc(p.name)}</text>
+      <line class="stem" x1="${x(Math.min(p.usual, p.tonight))}" x2="${x(Math.max(p.usual, p.tonight))}" y1="${cy}" y2="${cy}"/>
+      <circle cx="${x(p.usual)}" cy="${cy}" r="4.5" fill="var(--bg)" stroke="var(--chart-4)" stroke-width="1.5"/>
+      <circle class="now" cx="${x(p.tonight)}" cy="${cy}" r="4.5" fill="var(--chart-1)"/>
+      <rect class="hit" x="0" y="${cy - RH / 2}" width="${W}" height="${RH}"/></g>`; });
+  chartCard($('c-minutes'), {title: 'Minutes tonight', sub: `${D.team}, the model's minutes for tonight against each player's usual`, n: rows.length, def: 0,
+    svg: `<svg viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="Minutes by player, tonight against usual; arrow keys step players">${s}</svg>`,
+    legend: [['Tonight', 'dot', 'var(--chart-1)'], ['Usual (recent average)', 'ring', 'var(--chart-4)']],
+    foot: 'Replaces the line drawn across players: a line implies an order between players that is not there.',
+    head: i => { const p = rows[i], d = p.tonight - p.usual; return {k: `[minutes] ${p.name}`, v: fmt(p.tonight), unit: 'min', right: [[`usual ${fmt(p.usual)} min`], [`${d >= 0 ? '+' : ''}${fmt(d)} tonight`, d >= 0 ? 'pos' : 'neg']]}; },
+    onFocus: () => {}});
+})();
+
+// 3. Track Record units: cumulative units by day, area + line, vertical trace
+(function(){
+  const D = DATA.units, P = D.days, n = P.length, W = 1100, X0 = 52, X1 = W - 16, T = 14, CH = 200, H = T + CH + 26;
+  const lo = Math.min(0, ...P.map(p => p.cum)), hi = Math.max(0, ...P.map(p => p.cum)), pad = (hi - lo) * .08 || 1;
+  const y = v => T + CH * (1 - (v - lo + pad) / (hi - lo + 2 * pad)), x = i => X0 + (X1 - X0) * i / Math.max(1, n - 1);
+  let s = niceTicks(lo, hi).map(t => `<line class="grid" x1="${X0}" x2="${X1}" y1="${y(t)}" y2="${y(t)}"/><text x="${X0 - 8}" y="${y(t) + 3}" text-anchor="end">${t > 0 ? '+' : ''}${t}</text>`).join('');
+  s += `<line class="zero" x1="${X0}" x2="${X1}" y1="${y(0)}" y2="${y(0)}"/>`;
+  const path = P.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.cum).toFixed(1)}`).join('');
+  s += `<path class="area" fill="var(--chart-2)" d="${path}L${x(n - 1)},${y(0)}L${x(0)},${y(0)}Z"/><path class="lineS" stroke="var(--chart-2)" d="${path}"/>`;
+  let lastM = '';
+  P.forEach((p, i) => { const m = p.day.slice(0, 7); if (m !== lastM){ lastM = m; s += `<text x="${x(i)}" y="${H - 8}" text-anchor="start">${new Date(p.day + 'T12:00').toLocaleDateString('en-US', {month: 'short'})}</text>`; }
+    const w = (X1 - X0) / Math.max(1, n - 1); s += `<g data-i="${i}"><rect class="hit" x="${x(i) - w / 2}" y="${T}" width="${w}" height="${CH}"/></g>`; });
+  s += `<g class="vtrace"><line x1="0" x2="0" y1="${T}" y2="${T + CH}"/></g><circle class="vdot" r="4" fill="var(--chart-1)" stroke="var(--bg)" stroke-width="2"/>`;
+  chartCard($('c-units'), {title: 'Track Record: units over time', sub: `${D.label}. The live season's chart uses this exact component.`, n, def: n - 1,
+    svg: `<svg viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="Cumulative units by game day; arrow keys step days">${s}</svg>`,
+    legend: [['Cumulative units, 1 unit per bet', '', 'var(--chart-2)'], ['Break-even', 'ln', 'var(--border2)']],
+    foot: `${D.n.toLocaleString()} bets on ${n} game days, ROI ${D.roi > 0 ? '+' : ''}${(D.roi * 100).toFixed(1)}%. Backtest on 2025-26 test-season prices, not live bets.`,
+    head: i => { const p = P[i]; return {k: `[units] through ${new Date(p.day + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`, v: `${p.cum > 0 ? '+' : ''}${fmt(p.cum)}`, unit: 'u', cls: p.cum >= 0 ? 'pos' : 'neg',
+      right: [[`that day ${p.w}-${p.l} · ${p.u > 0 ? '+' : ''}${fmt(p.u)}u`], [`${p.bets} bets so far`, 'sub']]}; },
+    onFocus: (i, sv) => { sv.querySelector('.vtrace').style.transform = `translateX(${x(i)}px)`; const d = sv.querySelector('.vdot'); d.setAttribute('cx', x(i)); d.setAttribute('cy', y(P[i].cum)); }});
+})();
+</script>
