@@ -1,6 +1,6 @@
 # Prop model v2: backtest against v1
 
-Generated 2026-09-30T15:10Z by `nba/scripts/build_prop_model_v2.py`. Fit on 2024-25, tested on 2025-26,
+Generated 2026-10-05T11:38Z by `nba/scripts/build_prop_model_v2.py`. Fit on 2024-25, tested on 2025-26,
 identical player-games and prices for both models. Lower log loss is better; the market row is the bar to beat.
 
 ## Projection accuracy, 2025-26

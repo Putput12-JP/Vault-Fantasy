@@ -596,41 +596,47 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pv-wf .pv-bar u{position:absolute;top:2px;height:12px;border-radius:3px}
 .pv-wf .wr.tot > span,.pv-wf .wr.tot > b{color:var(--fg);font-weight:600}
 .pv-recent{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:center}
-/* Hover-trace bar charts (Recent games, Props Table game log): dimmed bars, a dashed trace that follows the bar in
-   focus with its value in a pill, tonight's line always drawn. Built by traceChart(), driven by traceWire(). */
-.trc{display:grid;gap:10px;min-width:0}
-.tr-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
-.trc p.tr-k{margin:0;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);letter-spacing:.02em}
-.trc p.tr-v{margin:2px 0 0;font-family:var(--font-mono);font-size:30px;line-height:1;font-weight:600;letter-spacing:-.04em;color:var(--fg);font-variant-numeric:tabular-nums}
-.trc p.tr-v small{font-size:13px;font-weight:500;color:var(--fg3);letter-spacing:0;margin-left:6px}
-.tr-r{text-align:right;display:grid;gap:2px;justify-items:end}
-.trc p.tr-g{margin:0;font-family:var(--font-mono);font-size:12px;color:var(--fg)}
-.trc p.tr-ou{margin:0;font-family:var(--font-mono);font-size:11px;color:var(--fg3)} .trc p.tr-ou.pos{color:var(--up)}
-.trc svg{display:block;width:100%;height:auto;outline:none;touch-action:pan-y}
-.trc svg:focus-visible{outline:2px solid var(--primary);outline-offset:4px;border-radius:6px}
-.trc svg text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
-.trc .tb{fill:var(--fg);opacity:.22;transition:opacity .2s ease}
-.trc .tb.o{fill:var(--up)}
-.trc .tm{fill:var(--fg2);opacity:.18;transition:opacity .2s ease}
-.trc g.on .tb{opacity:1} .trc g.on .tm{opacity:.55}
-.trc g.hov .tb{stroke:var(--fg);stroke-opacity:.35;stroke-width:1}
-.trc .hit{fill:transparent;cursor:crosshair}
-.trc .grid{stroke:var(--border)}
-.trc .tl-line{stroke:var(--warn);stroke-width:1.25;stroke-dasharray:4 4}
-.trc .tl-lab{fill:var(--warn)}
-.trc .tp-line{stroke:var(--fg3);stroke-width:1;stroke-dasharray:1 3}
-.trc .tr-trace{transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
-.trc .tr-trace line{stroke:var(--fg);stroke-width:1;stroke-dasharray:3 3}
-.trc .tr-trace rect,.trc .tr-trace circle{fill:var(--fg)}
-.trc .tr-trace text{fill:var(--bg);font-size:11px;font-weight:600}
-@keyframes trBump{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
-.trc p.tr-v.bump{animation:trBump .32s cubic-bezier(.22,1,.36,1)}
-.tr-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--fg2)}
-.tr-legend span{display:inline-flex;align-items:center;gap:6px}
-.tr-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--fg)}
-.tr-legend i.o{background:var(--up)} .tr-legend i.ln{width:14px;height:0;border-top:2px dashed var(--warn);border-radius:0;background:none}
-.tr-legend i.pj{width:14px;height:0;border-top:2px dotted var(--fg3);border-radius:0;background:none} .tr-legend i.mn{background:var(--fg2);opacity:.5}
-@media (prefers-reduced-motion:reduce){ .trc .tr-trace,.trc .tb,.trc .tm{transition:none} .trc p.tr-v.bump{animation:none} }
+/* Chart kit (nba/mocks/charts-v2.html): shadcn's chart pattern in our own SVG. Every chart: a header that reads the
+   point in focus, the plot, a legend, a footnote; one hover idiom (a dashed trace with its value in a pill); arrow keys
+   step points. Series colors are --chart-1..5 (Graphite): green is always over / profit, the amber dashed line is
+   always the betting line or a reference. Built by ckBars / ckDots / ckArea / ckCols, driven by one controller (ckSel). */
+:root{--chart-1:var(--fg);--chart-2:var(--up);--chart-3:var(--warn);--chart-4:#7fb4ec;--chart-5:#c9a2f0}
+.ck{display:grid;gap:10px;min-width:0}
+.ck-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.ck p.ck-k{margin:0;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);letter-spacing:.02em}
+.ck p.ck-v{margin:2px 0 0;font-family:var(--font-mono);font-size:30px;line-height:1;font-weight:600;letter-spacing:-.04em;color:var(--fg);font-variant-numeric:tabular-nums}
+.ck p.ck-v small{font-size:13px;font-weight:500;color:var(--fg3);letter-spacing:0;margin-left:6px}
+.ck p.ck-v.pos{color:var(--up)} .ck p.ck-v.neg{color:var(--down)}
+.ck .ck-r{display:grid;justify-items:end;gap:2px;text-align:right}
+.ck .ck-r p{margin:0;font-family:var(--font-mono);font-size:12px;color:var(--fg)}
+.ck .ck-r p.sub,.ck .ck-r p.dim{font-size:11px;color:var(--fg3)} .ck .ck-r p.pos{color:var(--up)} .ck .ck-r p.neg{color:var(--down)}
+@keyframes ckBump{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
+.ck p.ck-v.bump{animation:ckBump .32s cubic-bezier(.22,1,.36,1)}
+.ck svg{display:block;width:100%;height:auto;outline:none;touch-action:pan-y}
+.ck svg:focus-visible{outline:2px solid var(--primary);outline-offset:4px;border-radius:6px}
+.ck svg text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
+.ck .ck-grid{stroke:var(--border)} .ck .ck-zero{stroke:var(--border2)}
+.ck .ck-hit{fill:transparent;cursor:crosshair}
+.ck .ck-bar{opacity:.22;transition:opacity .2s ease} .ck g.on .ck-bar{opacity:1} .ck g.hov .ck-bar{stroke:var(--fg);stroke-opacity:.35;stroke-width:1}
+.ck .ck-min{fill:var(--fg2);opacity:.18;transition:opacity .2s ease} .ck g.on .ck-min{opacity:.55}
+.ck .ck-ref{stroke:var(--chart-3);stroke-width:1.25;stroke-dasharray:4 4} .ck .ck-reflab{fill:var(--chart-3)}
+.ck .ck-proj{stroke:var(--fg3);stroke-width:1;stroke-dasharray:1 3}
+.ck .ck-trace{transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.ck .ck-trace line,.ck .ck-vtrace line{stroke:var(--fg);stroke-width:1;stroke-dasharray:3 3}
+.ck .ck-trace rect,.ck .ck-trace circle{fill:var(--fg)} .ck .ck-trace text{fill:var(--bg);font-size:11px;font-weight:600}
+.ck .ck-vtrace{transition:transform .35s cubic-bezier(.22,1,.36,1)}
+.ck .ck-line{fill:none;stroke-width:2;stroke-linejoin:round} .ck .ck-area{opacity:.1}
+.ck .ck-rowbg{fill:transparent} .ck g.on .ck-rowbg{fill:rgba(255,255,255,.035)}
+.ck .ck-stem{stroke:var(--border2);stroke-width:2} .ck g.on .ck-stem{stroke:var(--fg2)}
+.ck .ck-lab{fill:var(--fg2);font-family:var(--font-sans);font-size:12px} .ck g.on .ck-lab{fill:var(--fg)}
+.ck .ck-col{opacity:.3;transition:opacity .2s ease} .ck g.on .ck-col{opacity:1}
+.ck-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--fg2)}
+.ck-legend span{display:inline-flex;align-items:center;gap:6px}
+.ck-legend i{display:inline-block;width:10px;height:10px;border-radius:3px}
+.ck-legend i.ln{width:14px;height:0;border-top:2px dashed currentColor;border-radius:0} .ck-legend i.dt{width:14px;height:0;border-top:2px dotted currentColor;border-radius:0}
+.ck-legend i.dot{width:9px;height:9px;border-radius:50%} .ck-legend i.ring{width:9px;height:9px;border-radius:50%;background:none;border:1.5px solid currentColor}
+.ck p.ck-foot{margin:0;font-size:12.5px;color:var(--fg3)}
+@media (prefers-reduced-motion:reduce){ .ck .ck-trace,.ck .ck-vtrace,.ck .ck-bar,.ck .ck-min,.ck .ck-col{transition:none} .ck p.ck-v.bump{animation:none} }
 
 .pv-chart{width:100%;max-width:480px;height:auto;display:block}
 .pv-chart text{font-family:var(--font-mono);font-size:10px;fill:var(--fg3)}
@@ -1209,7 +1215,7 @@ th{font-weight:500}
           <div><h2>Units over time</h2><p id="tchsub">Cumulative units for the current selection, 1 unit per bet, by game day.</p></div>
         </div>
         <div class="card-b">
-          <div class="chartwrap"><svg class="chart tl" id="tchart" viewBox="0 0 760 220" role="img" aria-label="Cumulative units"></svg></div>
+          <div id="tchart"></div>
         </div>
       </section>
 
@@ -1572,7 +1578,8 @@ function render(){
       .map(({t, p}) => ({name: p.name, ini: initials(p.name), team: t, mpg: p.gp ? fmt(p.last_mpg) : null})),
   };
 
-  HK.mount($('lab-root'), 'LabView', {roster, kpis, chart, rows: act.concat(rest).map(rowOf), nAct: act.length, movers, log, teamName: T.name, bal: balOn,
+  const chartHtml = chart.length ? ckDots('lab-minutes', {rows: chart.map(p => ({name: p.name, a: p.now, b: p.base})), a: 'Your minutes', b: 'Projection', kLabel: 'minutes'}) : '';
+  HK.mount($('lab-root'), 'LabView', {roster, kpis, chartHtml, rows: act.concat(rest).map(rowOf), nAct: act.length, movers, log, teamName: T.name, bal: balOn,
     onBal: v => { balOn = v; render(); }, onSetMin: (id, v) => setMin(cur, id, v),
     onOut: id => { const p = T.players.find(x => x.id === id), mm = mins(cur); setMin(cur, id, mm[id] > 0 ? 0 : (p.min0 || 20)); },
     onReset: labReset, onFit: labFit});
@@ -2550,7 +2557,7 @@ function logChart(r){
   const avg = vals.reduce((a, b) => a + b, 0) / n, avgMin = mins.reduce((a, b) => a + b, 0) / n;
   const over = vals.filter(v => v > line).length;
   const mon = gm => new Date(gm[0] * 864e5).getUTCMonth();
-  const chart = traceChart({stat: SLABEL[s], line, mu: r.mu != null && r.min > 0 ? r.mu : null, W: 1040, CH: 140, minutes: true, minProj: r.min > 0 ? r.min : null, ticks: true,
+  const chart = ckBars(`glog-${r.e.p}-${s}-${pwin}`, {stat: SLABEL[s], line, mu: r.mu != null && r.min > 0 ? r.mu : null, W: 1040, CH: 140, minutes: true, minProj: r.min > 0 ? r.min : null, ticks: true,
     games: gl.map((gm, i) => { const opp = GL.teams[gm[2]];
       return {v: vals[i], o: vals[i] > line, min: gm[5],
         axis: n <= 20 ? `${gm[3] ? '' : '@'}${opp}` : i === 0 || mon(gm) !== mon(gl[i - 1]) ? new Date(gm[0] * 864e5).toLocaleDateString('en-US', {month: 'short', timeZone: 'UTC'}) : '',
@@ -2560,7 +2567,7 @@ function logChart(r){
     <div class="glhead"><span><b>${esc(W.label)}</b> · ${over} of ${n} over ${line} · averaged ${fmt(avg)} in ${fmt(avgMin)} min</span>
       ${r.min > 0 ? `<span class="muted">That rate × ${fmt(r.min)} projected min = <b class="num">${fmt(rate * r.min)}</b> · projection ${fmt(r.mu)}</span>` : ''}</div>
     <div class="chartwrap">${chart}</div>
-    <div class="tr-legend"><span><i class="o"></i>Over ${line}</span><span><i></i>Under</span><span><i class="ln"></i>Line</span>${r.mu != null && r.min > 0 ? '<span><i class="pj"></i>Projection and projected minutes</span>' : ''}<span><i class="mn"></i>Minutes played</span></div>`;
+    <div class="ck-legend"><span><i style="background:var(--chart-2)"></i>Over ${line}</span><span><i style="background:var(--chart-1)"></i>Under</span><span><i class="ln" style="color:var(--chart-3)"></i>Line</span>${r.mu != null && r.min > 0 ? '<span><i class="dt" style="color:var(--fg3)"></i>Projection and projected minutes</span>' : ''}<span><i style="background:var(--fg2);opacity:.5"></i>Minutes played</span></div>`;
 }
 function niceTicks(max){
   const raw = max / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), st = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw);
@@ -2819,28 +2826,20 @@ function renderTrack(){
     <div><b>Live verdicts</b> need ${MIN_LIVE} settled bets. A gated signal holds up when its live ROI is 2 standard errors above zero. Ungated markets are tracked the same way, so a market that keeps winning here is a candidate for its own backtest.</div>`;
 }
 
-function rangeTicks(lo, hi){          // about 5 round ticks across a range that can go below zero
-  const raw = (hi - lo) / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), st = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw);
-  const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9; v += st) out.push(+v.toFixed(2)); return out;
-}
 function renderTrackChart(sel){
-  const W = 760, H = 220, L = 44, R = 12, T = 10, B = 26;
   const days = {};
-  for (const r of sel) days[r.day] = (days[r.day] || 0) + (tf.clock === 'close' ? r.units_close : r.units);
+  for (const r of sel){ const d = days[r.day] = days[r.day] || {u: 0, w: 0, l: 0, p: 0};
+    d.u += (tf.clock === 'close' ? r.units_close : r.units) || 0; d.w += r.w || 0; d.l += r.l || 0; d.p += r.p || 0; }
   const dl = Object.keys(days).sort();
-  let acc = 0; const pts = dl.map(x => acc += days[x]);
   $('tchsub').textContent = `Cumulative units for the current selection ${tf.clock === 'close' ? 'at close prices' : 'at entry prices'}, 1 unit per bet, by game day.`;
-  const svg = $('tchart');
-  if (dl.length < 2){ svg.setAttribute('viewBox', `0 0 ${W} 60`); svg.innerHTML = `<text x="${W / 2}" y="34" text-anchor="middle" class="lab">The chart starts after two game days settle.</text>`; return; }
-  const lo = Math.min(0, ...pts), hi = Math.max(0, ...pts), pad = (hi - lo) * .08 || 1, y0 = lo - pad, y1 = hi + pad;
-  const x = i => L + i / (dl.length - 1) * (W - L - R), y = v => T + (y1 - v) / (y1 - y0) * (H - T - B);
-  let g = '';
-  for (const t of rangeTicks(y0, y1)) g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${t > 0 ? '+' : ''}${t}</text>`;
-  g += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border2)"/>`;
-  const step = Math.max(1, Math.ceil(dl.length / 8));
-  dl.forEach((day, i) => { if (i % step === 0 || i === dl.length - 1) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : i === dl.length - 1 ? 'end' : 'middle'}">${new Date(day + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</text>`; });
-  g += `<polyline fill="none" stroke="${acc >= 0 ? 'var(--up)' : 'var(--down)'}" stroke-width="2" points="${pts.map((v, i) => `${x(i)},${y(v)}`).join(' ')}"/>`;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = g;
+  if (dl.length < 2){ $('tchart').innerHTML = '<p class="empty">The chart starts after two game days settle.</p>'; return; }
+  let acc = 0, nb = 0;
+  const pts = dl.map(d => { acc += days[d].u; nb += days[d].w + days[d].l + days[d].p; return {day: d, v: +acc.toFixed(2), d: days[d], nb, label: new Date(d + 'T12:00').toLocaleDateString('en-US', {month: 'short'})}; });
+  const dd = d => new Date(d + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+  $('tchart').innerHTML = ckArea('track-units', {pts, aria: 'Cumulative units by game day',
+    legend: [['Cumulative units, 1 unit per bet', '', pts[pts.length - 1].v >= 0 ? 'var(--chart-2)' : 'var(--down)'], ['Break-even', 'ln', 'var(--border2)']],
+    head: i => { const p = pts[i], u = p.d.u; return {k: `[units] through ${dd(p.day)}`, v: `${p.v > 0 ? '+' : ''}${fmt(p.v)}`, unit: 'u', cls: p.v >= 0 ? 'pos' : 'neg',
+      right: [[`that day ${p.d.w}-${p.d.l}${p.d.p ? '-' + p.d.p : ''} · ${u > 0 ? '+' : ''}${fmt(u)}u`], [`${p.nb.toLocaleString()} settled so far`, 'sub']]}; }});
 }
 
 $('tfilters').addEventListener('click', e => { const b = e.target.closest('.seg[data-f] button'); if (b){ tf[b.parentElement.dataset.f] = b.dataset.v; tf.limit = 150; renderTrack(); } });
@@ -3809,31 +3808,26 @@ function wkLive(stat, side){
   const n = w + l + p, m = n ? u / n : null, sd = n > 1 ? Math.sqrt(Math.max(uq / n - m * m, 0)) : null;
   return {bets, settled: n, w, l, p, roi: m, z: sd ? m / (sd / Math.sqrt(n)) : null};
 }
-// placeholder curve until the bet-by-bet export exists: a seeded walk that lands on the real season total
-function wkCurve(roi, n, seed){
-  let s = seed, cum = 0; const pts = [0], rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
-  for (let d = 0; d < 160; d++){ cum += n / 160 * (roi + (rnd() - .5) * .55) * 10; pts.push(cum); }
-  const k = n * 10 * roi / (cum || 1);
-  return pts.map(v => v * k);
+// Last season's results for a GO signal, day by day (build_prop_model_v2.py exports each Kalshi signal's out-of-sample
+// bets as [ET day, wins, losses, units]): running profit at $10 a bet, and profit by month. Chart kit.
+function wkCharts(main, key){
+  const D = main.daily;
+  if (!D || !D.length) return '<p class="muted">Day-by-day results are not in this build.</p>';
+  const dd = d => new Date(d + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'}), mon = d => new Date(d + 'T12:00').toLocaleDateString('en-US', {month: 'short'});
+  let acc = 0, nb = 0;
+  const pts = D.map(([d, w, l, u]) => { acc += u * 10; nb += w + l; return {day: d, w, l, u: u * 10, v: Math.round(acc), nb, label: mon(d)}; });
+  const months = [];
+  for (const p of pts){ const m = months[months.length - 1]; if (m && m.label === p.label){ m.v += p.u; m.w += p.w; m.l += p.l; } else months.push({label: p.label, v: p.u, w: p.w, l: p.l}); }
+  const span = `${dd(pts[0].day)} to ${dd(pts[pts.length - 1].day)}`;
+  const curve = ckArea(`wk-profit-${key}`, {pts, W: ckNarrow() ? 400 : 620, CH: ckNarrow() ? 170 : 150, aria: 'Running profit at $10 a bet by game day', yFmt: v => money(v),
+    head: i => { const p = pts[i]; return {k: `[profit] through ${dd(p.day)}`, v: money(p.v), cls: p.v >= 0 ? 'pos' : 'neg',
+      right: [[`that day ${p.w}-${p.l} · ${money(Math.round(p.u))}`], [`${p.nb.toLocaleString()} bets so far`, 'sub']]}; }});
+  const cols = ckCols(`wk-months-${key}`, {vals: months.map(m => ({label: m.label, v: Math.round(m.v)})), aria: 'Profit by month at $10 a bet',
+    head: i => { const m = months[i]; return {k: `[month] ${m.label}`, v: money(Math.round(m.v)), cls: m.v >= 0 ? 'pos' : 'neg', right: [[`${m.w}-${m.l}`], [`${(m.w + m.l).toLocaleString()} bets`, 'sub']]}; }});
+  const up = months.filter(m => m.v > 0).length;
+  return `<div class="wk-chart"><div class="hd"><span>Profit at $10 a bet, ${span} (the half it was tested on)</span></div>${curve}</div>
+    <div class="wk-chart"><div class="hd"><span>Profit by month: ${up} of ${months.length} up</span></div>${cols}</div>`;
 }
-function wkCurveSvg(pts){
-  const W = 520, H = 150, L = 50, R = 8, T = 10, B = 22, lo = Math.min(0, ...pts), hi = Math.max(...pts);
-  const x = i => L + (W - L - R) * i / (pts.length - 1), y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo || 1));
-  const ms = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  let g = `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--border2)"/>`;
-  [lo, hi].forEach(v => g += `<text x="${L - 6}" y="${y(v) + 3}" text-anchor="end">${money(Math.round(v / 10) * 10)}</text>`);
-  ms.forEach((m, i) => g += `<text x="${L + (W - L - R) * i / (ms.length - 1)}" y="${H - 6}" text-anchor="middle">${m}</text>`);
-  const d = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profit over the season (example)">${g}<path d="${d} L${x(pts.length - 1)} ${y(0)} L${L} ${y(0)} Z" fill="var(--up)" fill-opacity=".1"/><path d="${d}" fill="none" stroke="var(--up)" stroke-width="2"/></svg>`;
-}
-function wkMonthsSvg(vals){
-  const W = 280, H = 150, L = 8, R = 8, T = 10, B = 22, mx = Math.max(...vals.map(Math.abs)), bw = (W - L - R) / vals.length;
-  const y0 = T + (H - T - B) / 2, sc = (H - T - B) / 2 / mx, ms = ['O', 'N', 'D', 'J', 'F', 'M', 'A', 'M', 'J'];
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profit by month (example)"><line x1="${L}" x2="${W - R}" y1="${y0}" y2="${y0}" stroke="var(--border2)"/>${vals.map((v, i) =>
-    `<rect x="${L + i * bw + 4}" y="${v >= 0 ? y0 - v * sc : y0}" width="${bw - 8}" height="${Math.abs(v * sc)}" rx="2" fill="${v >= 0 ? 'var(--up)' : 'var(--down)'}"/><text x="${L + i * bw + bw / 2}" y="${H - 6}" text-anchor="middle">${ms[i]}</text>`).join('')}</svg>`;
-}
-const WK_MONTHS = {'3pm': [3, 5, -1, 4, 6, 2, 5, 1, 2], pts: [2, -1, 3, 1, -2, 4, 1, -1, 2]};
-const exTag = '<span class="wk-tag ex" title="Layout only until the bet-by-bet export is built">Example</span>';
 
 function renderBacktests(){
   for (const v of ['works', 'finder', 'lab']) $('wk-' + v).hidden = wk.tab !== v;
@@ -3876,8 +3870,7 @@ function renderWorks(){
       ${other ? `<div class="wk-row"><div class="wk-lbl"><b>Two ways to spot it</b>Independent methods agree</div>
         <div class="wk-ways"><div><b>Our model + Kalshi's price</b>${per100(main.roi)} per $100 · ${main.n.toLocaleString()} bets</div><div><b>Every other venue's price, moved to Kalshi's line</b>${per100(other.roi)} per $100 · ${other.n.toLocaleString()} bets</div></div></div>` : ''}
       <div class="wk-charts">
-        <div class="wk-chart"><div class="hd"><span>Profit over last season, $10 a bet</span>${exTag}</div>${wkCurveSvg(wkCurve(main.roi, main.n, 7 + ci * 4))}</div>
-        <div class="wk-chart"><div class="hd"><span>Profitable months</span>${exTag}</div>${wkMonthsSvg(WK_MONTHS[stat] || [1, 2, -1, 1, 2, 1, -1, 2, 1])}</div>
+        ${wkCharts(main, `${stat}-${side}`)}
       </div>
       <div class="wk-row"><div class="wk-lbl"><b>This season</b>Live shadow bets</div>
         <div class="wk-live"><div class="wk-track"><u style="width:${lv ? Math.min(100, lv.settled / MIN_LIVE * 100) : 0}%"></u></div>
@@ -4166,61 +4159,113 @@ function pvWaterfall(r){
   rows.push(`<div class="wr tot"><span>Tonight's projection</span><div class="pv-bar"><u style="left:${X(0)}%;width:${X(r.mu) - X(0)}%;background:var(--fg)"></u></div><b>${fmt(r.mu, 2)}</b></div>`);
   return `<div class="pv-wf">${rows.join('')}${zero.length ? `<p class="pv-none">No effect tonight: ${zero.map(z => z[0].toLowerCase()).join(', ')}.</p>` : ''}</div>`;
 }
-// ── Hover-trace bar chart ─────────────────────────────────────────────────────────────────────
-// games: oldest to newest, [{v, o (over the line), axis (label under the bar, may be ''), when (header text), min}].
-// The bar in focus (the newest at rest, the hovered or arrowed one otherwise) is full strength, the rest dim; a dashed
-// trace sits at its value with the number in a pill; tonight's line (and, given, the projection) stays drawn.
-function traceChart({games, line, mu, stat, W = 640, CH = 130, minutes = false, minProj = null, ticks = false}){
-  const n = games.length, X0 = 46, X1 = W - (line != null ? 40 : 14), T = 14, MH = minutes ? 22 : 0, MT = T + CH + (minutes ? 10 : 0);
-  const H = MT + MH + 22, vals = games.map(g => g.v), ymax = Math.max(...vals, line ?? 0, mu ?? 0, 1) * 1.15;
-  const y = v => T + CH * (1 - v / ymax), step = (X1 - X0) / n, bw = Math.max(2, Math.min(34, step * .7)), cx = i => X0 + step * (i + .5);
-  const r4 = Math.min(4, bw / 3), def = n - 1;
-  let s = '';
-  if (ticks) for (const t of niceTicks(ymax)) s += `<line class="grid" x1="${X0}" x2="${X1}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/><text x="${X0 - 8}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end">${t}</text>`;
+// ── Chart kit (nba/mocks/charts-v2.html) ───────────────────────────────────────────────────────────
+// shadcn's chart pattern in our own SVG. Each builder returns HTML (so it works in vanilla pages and inside the Halaska
+// island's raw HTML), registers its header and trace functions under an id, and draws its rest state (the newest point
+// unless said otherwise). One delegated controller (ckSel) handles hover, pointer leave and arrow keys everywhere.
+const CK = new Map();                                       // chart id -> {n, def, head(i), focus(i, root)}
+const ckNarrow = () => window.innerWidth < 640;
+const ckPill = (x, t) => { t = String(t); const w = t.length * 6.8 + 12; return `<rect x="${(x - w - 4).toFixed(1)}" y="-9" width="${w.toFixed(1)}" height="18" rx="4"/><text x="${(x - w + 2).toFixed(1)}" y="4">${esc(t)}</text>`; };
+const ckTicks = (lo, hi, n = 4) => { const raw = (hi - lo) / n || 1, mag = Math.pow(10, Math.floor(Math.log10(raw))), st = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw);
+  const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9; v += st) out.push(+v.toFixed(4)); return out; };
+function ckHeadHtml(h){
+  return `<div class="ck-head"><div><p class="ck-k">${esc(h.k)}</p><p class="ck-v${h.cls ? ' ' + h.cls : ''}" aria-live="polite">${h.v}${h.unit ? `<small>${h.unit}</small>` : ''}</p></div>
+    <div class="ck-r">${h.right.map(([t, c]) => `<p class="${c || ''}">${t}</p>`).join('')}</div></div>`;
+}
+function ckCard(id, {svg, legend = [], foot = '', n, def, head, focus, aria}){
+  CK.set(id, {n, def, head, focus});
+  return `<div class="ck" data-ck="${id}" data-cur="${def}">${ckHeadHtml(head(def))}
+    ${svg.replace('<svg ', `<svg tabindex="0" role="img" aria-label="${esc(aria)}; arrow keys step through it" `)}
+    ${legend.length ? `<div class="ck-legend">${legend.map(([lab, kind, color]) => `<span><i class="${kind || ''}" style="${['ln', 'dt', 'ring'].includes(kind) ? `color:${color}` : `background:${color}`}"></i>${lab}</span>`).join('')}</div>` : ''}
+    ${foot ? `<p class="ck-foot">${foot}</p>` : ''}</div>`;
+}
+function ckSel(root, i, hover){
+  const C = CK.get(root.dataset.ck);
+  if (!C || i < 0 || i >= C.n) return;
+  root.dataset.cur = i;
+  root.querySelectorAll('svg [data-i]').forEach(g => { const k = +g.dataset.i; g.classList.toggle('on', k === i); g.classList.toggle('hov', hover && k === i); });
+  const h = C.head(i), v = root.querySelector('.ck-v'), txt = `${h.v}${h.unit ? `<small>${h.unit}</small>` : ''}`;
+  root.querySelector('.ck-k').textContent = h.k;
+  if (v.innerHTML !== txt){ v.innerHTML = txt; v.className = 'ck-v' + (h.cls ? ' ' + h.cls : ''); void v.offsetWidth; v.classList.add('bump'); }
+  root.querySelector('.ck-r').innerHTML = h.right.map(([t, c]) => `<p class="${c || ''}">${t}</p>`).join('');
+  if (C.focus) C.focus(i, root);
+}
+(function ckWire(){
+  document.addEventListener('pointerover', e => { const g = e.target.closest && e.target.closest('.ck svg [data-i]'); if (g) ckSel(g.closest('.ck'), +g.dataset.i, true); });
+  document.addEventListener('pointerout', e => { const sv = e.target.closest && e.target.closest('.ck svg');
+    if (sv && !sv.contains(e.relatedTarget)){ const r = sv.closest('.ck'), C = CK.get(r.dataset.ck); if (C) ckSel(r, C.def, false); } });
+  document.addEventListener('keydown', e => { const sv = e.target.closest && e.target.closest('.ck svg'); if (!sv) return;
+    const r = sv.closest('.ck'), C = CK.get(r.dataset.ck); if (!C) return;
+    const cur = +r.dataset.cur, nx = {ArrowLeft: cur - 1, ArrowUp: cur - 1, ArrowRight: cur + 1, ArrowDown: cur + 1, Home: 0, End: C.n - 1}[e.key];
+    if (nx == null) return; e.preventDefault(); ckSel(r, Math.max(0, Math.min(C.n - 1, nx)), true); });
+})();
+
+// Bars against a line (game logs). games oldest to newest: [{v, o (over the line), axis, when, min}]
+function ckBars(id, {games, line, mu, stat, W = 640, CH = 130, minutes = false, minProj = null, ticks = false}){
+  const n = games.length, X0 = 46, X1 = W - (line != null ? 40 : 14), T = 14, MH = minutes ? 22 : 0, MT = T + CH + (minutes ? 10 : 0), H = MT + MH + 22;
+  const ymax = Math.max(...games.map(g => g.v), line ?? 0, mu ?? 0, 1) * 1.15, y = v => T + CH * (1 - v / ymax);
+  const step = (X1 - X0) / n, bw = Math.max(2, Math.min(34, step * .66)), cx = i => X0 + step * (i + .5), r4 = Math.min(4, bw / 3), def = n - 1;
+  let s = ticks ? ckTicks(0, ymax).map(t => `<line class="ck-grid" x1="${X0}" x2="${X1}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/><text x="${X0 - 8}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end">${t}</text>`).join('') : '';
   games.forEach((g, i) => {
-    s += `<g data-i="${i}" class="${i === def ? 'on' : ''}"><title>${esc(g.when)}: ${fmt(g.v, 0)}</title>
-      <rect class="tb${g.o ? ' o' : ''}" x="${(cx(i) - bw / 2).toFixed(1)}" y="${y(g.v).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, T + CH - y(g.v)).toFixed(1)}" rx="${r4.toFixed(1)}"/>
-      ${minutes ? `<rect class="tm" x="${(cx(i) - bw / 2).toFixed(1)}" y="${(MT + MH - g.min / 48 * MH).toFixed(1)}" width="${bw.toFixed(1)}" height="${(g.min / 48 * MH).toFixed(1)}" rx="1"/>` : ''}
-      <rect class="hit" x="${(X0 + step * i).toFixed(1)}" y="${T}" width="${step.toFixed(1)}" height="${MT + MH - T}"/></g>`;
+    s += `<g data-i="${i}" class="${i === def ? 'on' : ''}"><rect class="ck-bar" x="${(cx(i) - bw / 2).toFixed(1)}" y="${y(g.v).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, T + CH - y(g.v)).toFixed(1)}" rx="${r4.toFixed(1)}" fill="var(--chart-${g.o ? 2 : 1})"/>
+      ${minutes ? `<rect class="ck-min" x="${(cx(i) - bw / 2).toFixed(1)}" y="${(MT + MH - g.min / 48 * MH).toFixed(1)}" width="${bw.toFixed(1)}" height="${(g.min / 48 * MH).toFixed(1)}" rx="1"/>` : ''}
+      <rect class="ck-hit" x="${(X0 + step * i).toFixed(1)}" y="${T}" width="${step.toFixed(1)}" height="${MT + MH - T}"/></g>`;
     if (g.axis) s += `<text x="${cx(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(g.axis)}</text>`;
   });
-  if (line != null) s += `<line class="tl-line" x1="${X0}" x2="${X1}" y1="${y(line).toFixed(1)}" y2="${y(line).toFixed(1)}"/><text class="tl-lab" x="${X1 + 8}" y="${(y(line) + 3.5).toFixed(1)}">${line}</text>`;
-  if (mu != null) s += `<line class="tp-line" x1="${X0}" x2="${X1}" y1="${y(mu).toFixed(1)}" y2="${y(mu).toFixed(1)}"/>`;
+  if (line != null) s += `<line class="ck-ref" x1="${X0}" x2="${X1}" y1="${y(line).toFixed(1)}" y2="${y(line).toFixed(1)}"/><text class="ck-reflab" x="${X1 + 8}" y="${(y(line) + 3.5).toFixed(1)}">${line}</text>`;
+  if (mu != null) s += `<line class="ck-proj" x1="${X0}" x2="${X1}" y1="${y(mu).toFixed(1)}" y2="${y(mu).toFixed(1)}"/>`;
   if (minutes) s += `<text x="${X0 - 8}" y="${MT + MH - 4}" text-anchor="end">MIN</text>`;
-  if (minutes && minProj) s += `<line class="tp-line" x1="${X0}" x2="${X1}" y1="${(MT + MH - minProj / 48 * MH).toFixed(1)}" y2="${(MT + MH - minProj / 48 * MH).toFixed(1)}"/>`;
-  const pill = v => { const t = fmt(v, 0), w = t.length * 6.8 + 12; return `<rect x="${X0 - w - 4}" y="-9" width="${w.toFixed(1)}" height="18" rx="4"/><text x="${X0 - w + 2}" y="4">${t}</text>`; };
-  s += `<g class="tr-trace" style="transform:translateY(${y(games[def].v).toFixed(1)}px)"><line x1="${X0}" x2="${X1}" y1="0" y2="0"/><g class="tr-pill">${pill(games[def].v)}</g><circle cx="${X1}" cy="0" r="3"/></g>`;
-  const data = games.map(g => [+fmt(g.v, 0), +y(g.v).toFixed(1), g.when, g.o ? 1 : 0]);
-  const G = games[def];
-  return `<div class="trc" data-d="${esc(JSON.stringify(data))}" data-def="${def}" data-line="${line ?? ''}" data-x0="${X0}">
-    <div class="tr-head"><div><p class="tr-k">[${esc(stat)}] this game</p><p class="tr-v" aria-live="polite">${fmt(G.v, 0)}</p></div>
-      <div class="tr-r"><p class="tr-k">[game]</p><p class="tr-g">${esc(G.when)}</p>${line != null ? `<p class="tr-ou${G.o ? ' pos' : ''}">${G.o ? 'Over' : 'Under'} ${line}</p>` : ''}</div></div>
-    <svg viewBox="0 0 ${W} ${H}" tabindex="0" role="img" aria-label="${n} games against tonight's line; arrow keys move between games">${s}</svg></div>`;
+  if (minutes && minProj) s += `<line class="ck-proj" x1="${X0}" x2="${X1}" y1="${(MT + MH - minProj / 48 * MH).toFixed(1)}" y2="${(MT + MH - minProj / 48 * MH).toFixed(1)}"/>`;
+  s += `<g class="ck-trace" style="transform:translateY(${y(games[def].v).toFixed(1)}px)"><line x1="${X0}" x2="${X1}" y1="0" y2="0"/><g class="ck-pl">${ckPill(X0, fmt(games[def].v, 0))}</g><circle cx="${X1}" cy="0" r="3"/></g>`;
+  return ckCard(id, {svg: `<svg viewBox="0 0 ${W} ${H}">${s}</svg>`, n, def, aria: `${n} games against the line`,
+    head: i => { const g = games[i]; return {k: `[${stat}] this game`, v: fmt(g.v, 0), right: [[esc(g.when)], ...(line != null ? [[`${g.o ? 'Over' : 'Under'} ${line}`, g.o ? 'pos' : 'dim']] : [])]}; },
+    focus: (i, root) => { const tr = root.querySelector('.ck-trace'); tr.style.transform = `translateY(${y(games[i].v).toFixed(1)}px)`; tr.querySelector('.ck-pl').innerHTML = ckPill(X0, fmt(games[i].v, 0)); }});
 }
-function traceSel(box, i, hover){
-  const d = box._d || (box._d = JSON.parse(box.dataset.d));
-  if (!d[i]) return;
-  box.dataset.cur = i;
-  box.querySelectorAll('g[data-i]').forEach(g => { const k = +g.dataset.i; g.classList.toggle('on', k === i); g.classList.toggle('hov', hover && k === i); });
-  const [v, yy, when, o] = d[i], X0 = +box.dataset.x0, w = String(v).length * 6.8 + 12, tr = box.querySelector('.tr-trace');
-  tr.style.transform = `translateY(${yy}px)`;
-  const pr = tr.querySelector('.tr-pill rect'), pt = tr.querySelector('.tr-pill text');
-  pr.setAttribute('x', (X0 - w - 4).toFixed(1)); pr.setAttribute('width', w.toFixed(1)); pt.setAttribute('x', (X0 - w + 2).toFixed(1)); pt.textContent = v;
-  const tv = box.querySelector('.tr-v');
-  if (tv.textContent !== String(v)){ tv.textContent = v; tv.classList.remove('bump'); void tv.offsetWidth; tv.classList.add('bump'); }
-  box.querySelector('.tr-g').textContent = when;
-  const ou = box.querySelector('.tr-ou');
-  if (ou){ ou.textContent = `${o ? 'Over' : 'Under'} ${box.dataset.line}`; ou.classList.toggle('pos', !!o); }
+
+// Dot pairs on a shared axis, one row per item (minutes by player). rows: [{name, a (solid), b (hollow)}]
+function ckDots(id, {rows, a, b, kLabel, unit = 'min', max = 48, fmtD = v => fmt(v)}){
+  const RH = 26, L = ckNarrow() ? 118 : 160, W = ckNarrow() ? 560 : 980, R = 18, T = 6, H = T + rows.length * RH + 24, x = v => L + (W - L - R) * Math.min(max, Math.max(0, v)) / max, def = 0;
+  let s = (max === 48 ? [0, 12, 24, 36, 48] : ckTicks(0, max)).map(t => `<line class="ck-grid" x1="${x(t).toFixed(1)}" x2="${x(t).toFixed(1)}" y1="${T}" y2="${H - 22}"/><text x="${x(t).toFixed(1)}" y="${H - 8}" text-anchor="middle">${t}</text>`).join('');
+  rows.forEach((p, i) => { const cy = T + i * RH + RH / 2;
+    s += `<g data-i="${i}" class="${i === def ? 'on' : ''}"><rect class="ck-rowbg" x="0" y="${cy - RH / 2}" width="${W}" height="${RH}" rx="6"/>
+      <text class="ck-lab" x="${L - 12}" y="${cy + 3.5}" text-anchor="end">${esc(p.name)}</text>
+      <line class="ck-stem" x1="${x(Math.min(p.a, p.b)).toFixed(1)}" x2="${x(Math.max(p.a, p.b)).toFixed(1)}" y1="${cy}" y2="${cy}"/>
+      <circle cx="${x(p.b).toFixed(1)}" cy="${cy}" r="4.5" fill="var(--bg)" stroke="var(--chart-4)" stroke-width="1.5"/>
+      <circle cx="${x(p.a).toFixed(1)}" cy="${cy}" r="${i === def ? 6 : 4.5}" fill="var(--chart-1)"/>
+      <rect class="ck-hit" x="0" y="${cy - RH / 2}" width="${W}" height="${RH}"/></g>`; });
+  return ckCard(id, {svg: `<svg viewBox="0 0 ${W} ${H}">${s}</svg>`, n: rows.length, def, aria: `${a} against ${b} by player`,
+    legend: [[a, 'dot', 'var(--chart-1)'], [b, 'ring', 'var(--chart-4)']],
+    head: i => { const p = rows[i], d = p.a - p.b; return {k: `[${kLabel}] ${p.name}`, v: fmtD(p.a), unit, right: [[`${b.toLowerCase()} ${fmtD(p.b)} ${unit}`], [Math.abs(d) < .05 ? `same as ${b.toLowerCase()}` : `${d > 0 ? '+' : ''}${fmtD(d)} vs ${b.toLowerCase()}`, Math.abs(d) < .05 ? 'dim' : d > 0 ? 'pos' : 'neg']]}; },
+    focus: (i, root) => root.querySelectorAll('svg [data-i]').forEach(g => { const c = g.querySelectorAll('circle')[1]; if (c) c.setAttribute('r', +g.dataset.i === i ? 6 : 4.5); })});
 }
-(function traceWire(){
-  document.addEventListener('pointerover', e => { const h = e.target.closest && e.target.closest('.trc g[data-i]'); if (h) traceSel(h.closest('.trc'), +h.dataset.i, true); });
-  document.addEventListener('pointerout', e => { const sv = e.target.closest && e.target.closest('.trc svg');
-    if (sv && !sv.contains(e.relatedTarget)){ const b = sv.closest('.trc'); traceSel(b, +b.dataset.def, false); } });
-  document.addEventListener('keydown', e => { const sv = e.target.closest && e.target.closest('.trc svg'); if (!sv) return;
-    const b = sv.closest('.trc'), n = JSON.parse(b.dataset.d).length, cur = +(b.dataset.cur ?? b.dataset.def);
-    const nx = {ArrowLeft: cur - 1, ArrowRight: cur + 1, Home: 0, End: n - 1}[e.key];
-    if (nx == null) return; e.preventDefault(); traceSel(b, Math.max(0, Math.min(n - 1, nx)), true); });
-})();
+
+// Running total over time with a vertical trace (units, profit). pts: [{label (x axis, shown when it changes), v}]
+function ckArea(id, {pts, head, legend, foot, aria, yFmt = v => `${v > 0 ? '+' : ''}${v}`, W = ckNarrow() ? 560 : 1040, CH = 200}){
+  const n = pts.length, X0 = 52, X1 = W - 16, T = 14, H = T + CH + 26, def = n - 1;
+  const lo = Math.min(0, ...pts.map(p => p.v)), hi = Math.max(0, ...pts.map(p => p.v)), pad = (hi - lo) * .08 || 1;
+  const y = v => T + CH * (1 - (v - lo + pad) / (hi - lo + 2 * pad)), x = i => X0 + (X1 - X0) * i / Math.max(1, n - 1);
+  const col = pts[n - 1].v >= 0 ? 'var(--chart-2)' : 'var(--down)';
+  let s = ckTicks(lo, hi).map(t => `<line class="ck-grid" x1="${X0}" x2="${X1}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/><text x="${X0 - 8}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end">${yFmt(t)}</text>`).join('');
+  s += `<line class="ck-zero" x1="${X0}" x2="${X1}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}"/>`;
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+  s += `<path class="ck-area" fill="${col}" d="${d}L${x(n - 1).toFixed(1)},${y(0).toFixed(1)}L${x(0).toFixed(1)},${y(0).toFixed(1)}Z"/><path class="ck-line" stroke="${col}" d="${d}"/>`;
+  let last = null, lastX = -99;
+  pts.forEach((p, i) => { if (p.label !== last && x(i) - lastX > 34){ s += `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="start">${esc(p.label)}</text>`; lastX = x(i); } last = p.label;
+    const w = (X1 - X0) / Math.max(1, n - 1); s += `<g data-i="${i}"><rect class="ck-hit" x="${(x(i) - w / 2).toFixed(1)}" y="${T}" width="${w.toFixed(1)}" height="${CH}"/></g>`; });
+  s += `<g class="ck-vtrace" style="transform:translateX(${x(def).toFixed(1)}px)"><line x1="0" x2="0" y1="${T}" y2="${T + CH}"/></g><circle class="ck-vdot" cx="${x(def).toFixed(1)}" cy="${y(pts[def].v).toFixed(1)}" r="4" fill="var(--chart-1)" stroke="var(--bg)" stroke-width="2"/>`;
+  return ckCard(id, {svg: `<svg viewBox="0 0 ${W} ${H}">${s}</svg>`, n, def, aria, legend, foot, head,
+    focus: (i, root) => { root.querySelector('.ck-vtrace').style.transform = `translateX(${x(i).toFixed(1)}px)`; const c = root.querySelector('.ck-vdot'); c.setAttribute('cx', x(i).toFixed(1)); c.setAttribute('cy', y(pts[i].v).toFixed(1)); }});
+}
+
+// Signed columns by category (profit by month). vals: [{label, v}]
+function ckCols(id, {vals, head, aria, foot, W = 360, CH = 120}){
+  const n = vals.length, X0 = 10, X1 = W - 10, T = 10, H = T + CH + 22, mx = Math.max(...vals.map(v => Math.abs(v.v)), 1), y0 = T + CH / 2, sc = CH / 2 / mx, step = (X1 - X0) / n, def = n - 1;
+  let s = `<line class="ck-zero" x1="${X0}" x2="${X1}" y1="${y0}" y2="${y0}"/>`;
+  vals.forEach((v, i) => { const h = Math.abs(v.v) * sc;
+    s += `<g data-i="${i}" class="${i === def ? 'on' : ''}"><rect class="ck-col" x="${(X0 + i * step + step * .18).toFixed(1)}" y="${(v.v >= 0 ? y0 - h : y0).toFixed(1)}" width="${(step * .64).toFixed(1)}" height="${Math.max(1, h).toFixed(1)}" rx="3" fill="${v.v >= 0 ? 'var(--chart-2)' : 'var(--down)'}"/>
+      <rect class="ck-hit" x="${(X0 + i * step).toFixed(1)}" y="${T}" width="${step.toFixed(1)}" height="${CH}"/></g><text x="${(X0 + i * step + step / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(v.label)}</text>`; });
+  return ckCard(id, {svg: `<svg viewBox="0 0 ${W} ${H}">${s}</svg>`, n, def, aria, foot, head});
+}
 function pvRecent(r){
   if (typeof GL === 'undefined' || !GL) return '';
   const {all} = r._logs || (r._logs = logsOf(r)), line = r.line;
@@ -4228,7 +4273,7 @@ function pvRecent(r){
   const g10 = all.filter(g => g[5] > 0).slice(0, 10).reverse();
   if (!g10.length) return '<p class="muted">No games yet this season.</p>';
   const vals = g10.map(g => gval(g, r.e.s));
-  const chart = traceChart({stat: PV_SL[r.e.s] || r.e.s, line, W: 560, CH: 120,
+  const chart = ckBars(`recent-${r.e.p}-${r.e.s}`, {stat: PV_SL[r.e.s] || r.e.s, line, W: 560, CH: 120,
     games: g10.map((g, i) => ({v: vals[i], o: vals[i] > line, axis: `${g[3] ? '' : '@'}${GL.teams[g[2]] || ''}`,
       when: `${gdate(g[0])} ${g[3] ? 'vs' : '@'} ${GL.teams[g[2]] || ''}${g[4] ? ' (playoffs)' : ''} · ${g[5]} min`}))});
   const hits = vals.filter(v => v > line).length, n = vals.length;

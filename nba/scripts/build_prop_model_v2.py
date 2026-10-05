@@ -508,7 +508,7 @@ def main():
             for label, f_, t_ in (('blend', fr, tr), ('price_only', [dict(x, pm=0.5) for x in fr], [dict(x, pm=0.5) for x in tr])):
                 coef = blend(f_, 'pm', 'k', 'yes', keep_intercept=True)
                 for side in (True, False):
-                    gm = defaultdict(list)
+                    gm, daily = defaultdict(list), defaultdict(lambda: [0, 0, 0.0])
                     for x in t_:
                         e = blend_prob(coef, x['k'], x['pm']) - x['k']
                         if abs(e) < 0.03 or (e > 0) != side:
@@ -517,10 +517,15 @@ def main():
                         c += kalshi_fee(c)
                         win = x['yes'] if side else not x['yes']
                         gm[x['gid']].append(((1 - c) if win else -c) / c)
+                        dd = daily[tip_day(x['tip'])]
+                        dd[0 if win else 1] += 1
+                        dd[2] += gm[x['gid']][-1]
                     allr = [v for vs in gm.values() for v in vs]
                     means = [statistics.mean(v) for v in gm.values()]
                     z = (statistics.mean(means) / (statistics.stdev(means) / math.sqrt(len(means)))) if len(means) > 2 and statistics.stdev(means) > 0 else 0
-                    out[f"{label}/{'YES' if side else 'NO'}"] = {'n': len(allr), 'games': len(gm), 'roi': round(statistics.mean(allr), 4) if allr else None, 'z': round(z, 2)}
+                    out[f"{label}/{'YES' if side else 'NO'}"] = {'n': len(allr), 'games': len(gm), 'roi': round(statistics.mean(allr), 4) if allr else None, 'z': round(z, 2),
+                                                                 # each game day's bets [ET day, wins, losses, units]: What Works draws the season from it
+                                                                 'daily': [[d, w_, l_, round(u_, 3)] for d, (w_, l_, u_) in sorted(daily.items())] if label == 'blend' else None}
             res['kalshi_bias'].setdefault(mkt, {})[name] = out
 
     # the page needs the v2 blend coefficients: fit on ALL of 2025-26 Kalshi / the 2024-25 ESPN open lines
@@ -564,6 +569,12 @@ def verdicts(res, names=('v1', 'v2')):
                         best = f'WATCH ({side})'
             out[name][mkt] = best
     return out
+
+
+def tip_day(t):
+    """ET date of a tip (datetime or epoch seconds)."""
+    t = t if isinstance(t, dt.datetime) else dt.datetime.fromtimestamp(t, dt.timezone.utc)
+    return C.et(t).date().isoformat() if hasattr(C, 'et') else t.date().isoformat()
 
 
 def write_md(res):

@@ -59,7 +59,8 @@ def main():
             sd = side_of(v)
             b = p2['kalshi_bias'].get(m, {}).get('v2', {}).get(f'blend/{sd}') or {}
             signals.append({'engine': 'Prop model v2 + Kalshi price', 'venue': 'Kalshi', 'stat': m, 'side': sd, 'gate': v.split()[0],
-                            'n': b.get('n'), 'games': b.get('games'), 'roi': b.get('roi'), 'z': b.get('z'), 'key': f'{m}|kalshi|{sd}', 'doc': 'prop-model-v2.md'})
+                            'n': b.get('n'), 'games': b.get('games'), 'roi': b.get('roi'), 'z': b.get('z'), 'key': f'{m}|kalshi|{sd}', 'doc': 'prop-model-v2.md',
+                            'daily': b.get('daily')})          # [ET day, wins, losses, units] per game day of the test half
     for m, by in ((cb or {}).get('verdicts', {}).get('kalshi_ladder') or {}).items():
         for sd, v in (by.get('consensus + model') or {}).items():
             if v in ('GO', 'WATCH'):

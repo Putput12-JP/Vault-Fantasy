@@ -63,31 +63,6 @@ function Kpi({ k }) {
   );
 }
 
-function MinutesChart({ pts }) {
-  const pal = usePal(THEME);
-  const [hov, setHov] = useState(null);
-  const W = 760, H = 240, L = 34, R = 10, T = 12, B = 34;
-  const mx = Math.max(40, Math.ceil(Math.max(...pts.map(p => Math.max(p.now, p.base))) / 10) * 10);
-  const x = i => L + (W - L - R) * (i / Math.max(pts.length - 1, 1)), y = v => T + (1 - v / mx) * (H - T - B);
-  const path = k => pts.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(p[k]).toFixed(1)).join(' ');
-  const ticks = []; for (let v = 0; v <= mx; v += 10) ticks.push(v);
-  return (
-    <div style={{ position: 'relative' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Minutes by player" style={{ display: 'block', fontFamily: tokens.font.mono, fontSize: 10 }} onMouseLeave={() => setHov(null)}>
-        {ticks.map(v => <g key={v}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke={pal.borderSubtle} /><text x={L - 8} y={y(v) + 3} textAnchor="end" fill={pal.textTertiary}>{v}</text></g>)}
-        <path d={path('now') + ` L${x(pts.length - 1)},${y(0)} L${x(0)},${y(0)} Z`} fill={pal.accent} opacity=".08" />
-        <path d={path('base')} fill="none" stroke={pal.textTertiary} strokeWidth="1.5" strokeDasharray="4 4" />
-        <path d={path('now')} fill="none" stroke={pal.text} strokeWidth="2" strokeLinejoin="round" />
-        {pts.map((p, i) => <g key={i} onMouseEnter={() => setHov(i)}><rect x={x(i) - 18} y={T} width="36" height={H - T - B} fill="transparent" /><circle cx={x(i)} cy={y(p.now)} r={hov === i ? 5 : 3} fill={pal.text} /><text x={x(i)} y={H - 12} textAnchor="middle" fill={hov === i ? pal.text : pal.textTertiary}>{p.last.slice(0, 8)}</text></g>)}
-      </svg>
-      {hov != null && <div style={{ position: 'absolute', left: `${(x(hov) / W) * 100}%`, top: 0, transform: 'translateX(-50%)', background: pal.bgElevated, border: `1px solid ${pal.border}`, borderRadius: tokens.radius.sm, padding: '6px 10px', pointerEvents: 'none', whiteSpace: 'nowrap' }}><Text size="sm" weight="semibold">{pts[hov].name}</Text><div><Dim size="xs">{pts[hov].now.toFixed(1)} min · projection {pts[hov].base.toFixed(1)}</Dim></div></div>}
-      <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><i style={{ width: 14, height: 2, background: pal.text }} /><Dim size="xs" mono>Your minutes</Dim></span>
-        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><i style={{ width: 14, borderTop: `2px dashed ${pal.textTertiary}` }} /><Dim size="xs" mono>Projection</Dim></span>
-      </div>
-    </div>
-  );
-}
 
 // Slider + number box that edit locally while dragging and commit once, so the page recomputes once per edit
 // (and the "Recent changes" log gets one line, not one per pixel).
@@ -127,7 +102,7 @@ function LabView(p) {
       <Card padding={20}>
         <Text size="lg" weight="semibold">Minutes by player</Text>
         <div style={{ marginBottom: 8 }}><Dim>Your minutes against the season-start projection, top 15 by minutes</Dim></div>
-        <MinutesChart pts={p.chart} />
+        <Html html={p.chartHtml} />   {/* chart kit (page ckDots): your minutes against the projection, one row per player */}
       </Card>
       <Card padding={0} style={{ overflow: 'hidden' }}>
         <div style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
