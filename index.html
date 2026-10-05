@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-05T12:00', tag:'Improved', title:'A more honest Track Record, and sharper prop prices',
+    items:[
+      'Vault Record now leads with the props Vault actually grades A or B, the ones it would bet. Tap “Every lean” to see every prop it graded, including the C, D and F leans it says to skip.',
+      'Past grades no longer change when Vault’s model updates. Each prop keeps the grade Vault gave it when its line first came out, so the record shows what you saw at the time.',
+      'Pass attempts props now hold at a C grade (“thin edge”), like passing yards and completions. Vault’s projection hasn’t beaten the sportsbook line on these this season. Pass TD props are unchanged.',
+      'Player props now include Pinnacle’s prices once Pinnacle posts them, usually a day or two before kickoff. Pinnacle sets the sharpest lines in the market, so props get a better reference price and more books to compare.'
+    ]
+  },
+  {
     ts:'2026-09-29T21:00', tag:'Improved', title:'Game Plays sit out games after big line moves, and a stricter closing-line check',
     items:[
       'When a game’s spread or total moves 4+ points in the 10 days before kickoff, it gets a “Big line move” tag and no Vault Game Play. A move that big almost always means news, like a QB injury, that Vault’s model may not have caught yet.',
@@ -45380,6 +45389,19 @@ window.VaultMarketProj = (function () {
   // counted at that +EV book's opening price.
   let _trEv = 'all';     // 'all' | 'pos' | 'neg'
   let _trBooks = [];     // [] = any book
+  // Which picks the Vault Record counts. Default = the props Vault actually
+  // grades A or B (what it would bet); 'all' = every prop it graded, including
+  // the C/D/F leans it says to skip. The full board of leans loses the vig by
+  // design (it includes every F), so leading with it misread the model (Week 4
+  // retro). Resets to A/B whenever the tab changes.
+  let _trPicks = 'ab';   // 'ab' | 'all'
+  const _trPicksMatch = r => _trPicks === 'all' || r.grade === 'A' || r.grade === 'B';
+  function _trPicksBar() {
+    const b = (val, lbl, on) => '<button class="tr-wk tr-pks' + (on ? ' on' : '') + '" data-pks="' + val + '">' + lbl + '</button>';
+    return '<div class="tr-wkbar"><span class="tr-wklbl">Picks</span><div class="tr-wkstrip">'
+      + b('ab', 'A and B grades', _trPicks === 'ab') + b('all', 'Every lean', _trPicks === 'all')
+      + '</div></div>';
+  }
   const _trDec = a => a > 0 ? 1 + a / 100 : 1 + 100 / Math.abs(a);
   function _trEvOf(r) {
     if (r.pm == null || !r.side) return null;
@@ -45525,6 +45547,7 @@ window.VaultMarketProj = (function () {
       week: p.week, season: p.season, actual: p.actual, team: p.team, opp: p.opp,
       res: p.push ? 'P' : (p.won_close === 1 ? 'W' : p.won_close === 0 ? 'L' : null),
       pm: p.p_model, oo: p.open_over, ou: p.open_under, bo: p.books_open || null,
+      pc: p.side === 'under' ? p.close_under : p.side === 'over' ? p.close_over : null,   // closing price of the graded side
     }));
   }
 
@@ -45548,9 +45571,13 @@ window.VaultMarketProj = (function () {
         return { k, n: s.length, w, l: s.length - w, wr: w / s.length, roi: roiOf(s) }; });
     };
     const clvRows = rows.filter(r => r.clv && r.clv.v != null);
+    // Break-even the scored prices imply (a -110 needs 52.4%, a +120 45.5%), so
+    // "need X% to profit" matches the units beside it; unpriced rows use betBE.
+    const beOf = r => { const px = Number(r.price); return (r.price != null && Number.isFinite(px) && px !== 0) ? (px > 0 ? 100 / (px + 100) : -px / (-px + 100)) : betBE; };
     return {
       W, L, push: rows.filter(r => r.res === 'P').length, pend: rows.filter(r => !r.res).length,
       n: settled.length, wr: settled.length ? W / settled.length : null, units: roiOf(settled),
+      be: settled.some(r => r.price != null) ? settled.reduce((t, r) => t + beOf(r), 0) / settled.length : null,
       priced: settled.filter(r => r.price != null).length,
       clvN: clvRows.length, clvBeat: clvRows.length ? clvRows.filter(r => r.clv.v > 0).length / clvRows.length : null,
       // Ungraded picks (count markets with no Vault model → grade null) are
@@ -45770,7 +45797,7 @@ window.VaultMarketProj = (function () {
       + '<div class="tr-h-sub">' + (a.n ? a.n.toLocaleString() + ' settled' : 'nothing settled yet')
       + (a.pend ? ' · ' + a.pend.toLocaleString() + ' pending' : '') + (ctx ? ' · ' + ctx : '') + '</div></div>'
       + '<div class="tr-h-kpis">'
-      + '<div class="tr-kpi"><div class="tr-kl">Win rate</div><div class="tr-kv ' + (a.wr != null && a.wr >= betBE ? 'good' : '') + '">' + _trPct(a.wr) + '</div><div class="tr-kt">need ' + Math.round(betBE * 100) + '% to profit</div></div>'
+      + '<div class="tr-kpi"><div class="tr-kl">Win rate</div><div class="tr-kv ' + (a.wr != null && a.wr >= (a.be != null ? a.be : betBE) ? 'good' : '') + '">' + _trPct(a.wr) + '</div><div class="tr-kt">need ' + Math.round((a.be != null ? a.be : betBE) * 100) + '% to profit</div></div>'
       + '<div class="tr-kpi"><div class="tr-kl">Units</div><div class="tr-kv ' + _trUC(a.units) + '">' + _trU(a.units) + '</div><div class="tr-kt">'
       + (a.unitsLbl ? a.unitsLbl : a.n && a.priced === a.n ? 'at the prices you took' : a.priced ? 'at your price where logged' : 'at your break-even') + '</div></div>'
       + (a.clvN ? '<div class="tr-kpi" title="Closing-line value: how often the market moved your way after you took the pick. Sharp bettors beat the close more often than not, even through losing weeks."><div class="tr-kl">Beat the close</div><div class="tr-kv ' + (a.clvBeat > 0.5 ? 'good' : a.clvBeat < 0.5 ? 'bad' : '') + '">' + _trPct(a.clvBeat) + '</div><div class="tr-kt">of ' + a.clvN + ' picks with a closing line</div></div>' : '')
@@ -45815,7 +45842,7 @@ window.VaultMarketProj = (function () {
       if (back) back.onclick = () => { propsView = 'board'; renderPropsBoard(); };
       inner.querySelectorAll('.tr-tabs [data-rt]').forEach(b => b.onclick = () => {
         if (resultsTab === b.dataset.rt) return;
-        resultsTab = b.dataset.rt; _trFilter = {}; _trWeek = null; _trGame = null; _trEv = 'all'; _trBooks = [];   // each tab starts clean
+        resultsTab = b.dataset.rt; _trFilter = {}; _trWeek = null; _trGame = null; _trEv = 'all'; _trBooks = []; _trPicks = 'ab';   // each tab starts clean
         renderResults();
       });
       inner.querySelectorAll('.tr-wk[data-wk]').forEach(b => b.onclick = () => {
@@ -45825,6 +45852,12 @@ window.VaultMarketProj = (function () {
         renderResults();
       });
       inner.querySelectorAll('.tr-ev[data-ev]').forEach(b => b.onclick = () => { _trEv = b.dataset.ev; renderResults(); });
+      inner.querySelectorAll('.tr-pks[data-pks]').forEach(b => b.onclick = () => {
+        if (_trPicks === b.dataset.pks) return;
+        _trPicks = b.dataset.pks;
+        if (_trPicks === 'ab' && _trFilter.grade && _trFilter.grade !== 'A' && _trFilter.grade !== 'B') delete _trFilter.grade;   // a C/D/F facet can't match A/B
+        renderResults();
+      });
       inner.querySelectorAll('.tr-bk[data-bk]').forEach(b => b.onclick = () => {
         const k = b.dataset.bk; _trBooks = !k ? [] : (_trBooks.includes(k) ? _trBooks.filter(x => x !== k) : _trBooks.concat(k)); renderResults();
       });
@@ -46196,18 +46229,23 @@ window.VaultMarketProj = (function () {
         if (_trGame != null && !games.some(g => g.key === _trGame)) _trGame = null;   // game not in the active slate ⇒ fall back
         const gmObj = _trGame != null ? games.find(g => g.key === _trGame) : null;
         const gmCtx = gmObj ? gmObj.label : null;
-        all.forEach(r => { r._ev = _trEvOf(r); r.price = _trEvOn() && r._ev ? r._ev.price : undefined; });
-        const rows = all.filter(r => _trMatch(r) && _trWeekMatch(r) && _trGameMatch(r) && _trEvMatch(r));
+        // Units at the closing price of the graded side (the same number the
+        // public record and the scoreboard score against), or at the +EV book's
+        // opening price when that filter is on. A row with no clean closing pair
+        // falls back to the break-even bar.
+        all.forEach(r => { r._ev = _trEvOf(r); r.price = _trEvOn() && r._ev ? r._ev.price : (r.pc != null ? r.pc : undefined); });
+        const rows = all.filter(r => _trMatch(r) && _trWeekMatch(r) && _trGameMatch(r) && _trEvMatch(r) && _trPicksMatch(r));
         const a = _pkAgg(rows);
-        if (_trEvOn()) a.unitsLbl = 'at the +EV book’s opening price';
+        a.unitsLbl = _trEvOn() ? 'at the +EV book’s opening price' : 'at the closing price';
         const wkCtx = _trWeek != null ? 'Week ' + _trWeek : null;
         sub = a.n.toLocaleString() + ' graded picks settled' + (wkCtx ? ' · ' + wkCtx : '') + (gmCtx ? ' · ' + gmCtx : '') + (_trChips() ? ' · filtered' : '');
         const evCtx = _trEv === 'pos' ? '+EV at open' : _trEv === 'neg' ? 'not +EV' : null;
         const bkCtx = _trBooks.length ? _trBooks.join(', ') : null;
-        body = _trWeekBar(weeks) + _trGameBar(games) + _trEvBar(all)
-          + _trHero(a, [wkCtx, gmCtx, evCtx, bkCtx, _trChips() ? 'filtered view' : (!wkCtx && !gmCtx && !evCtx && !bkCtx ? 'every Vault-graded prop' : null), _trEvOn() ? 'units at the +EV book’s opening price' : null].filter(Boolean).join(' · ')) + _trChips() + _trBreak(a)
+        const pkCtx = _trPicks === 'ab' ? 'Vault’s A and B grades' : 'every Vault-graded prop';
+        body = _trPicksBar() + _trWeekBar(weeks) + _trGameBar(games) + _trEvBar(all)
+          + _trHero(a, [pkCtx, wkCtx, gmCtx, evCtx, bkCtx, _trChips() ? 'filtered view' : null, _trEvOn() ? 'units at the +EV book’s opening price' : null].filter(Boolean).join(' · ')) + _trChips() + _trBreak(a)
           + _trVaultList(rows)
-          + '<div class="tr-note">Settled from real closing lines vs the box score. Grades are Vault’s at flag time; units at your break-even. Tap any row to filter' + (weeks.length > 1 ? ', or a week to see that slate' : '') + '.</div>';
+          + '<div class="tr-note">Settled from real closing lines vs the box score. Grades are the ones Vault gave when each line first came out; units are at the closing price of the graded side. Tap any row to filter' + (weeks.length > 1 ? ', or a week to see that slate' : '') + '.</div>';
       }
       _pvInner().innerHTML = _trShell(sub, body);
       wire();
@@ -46750,7 +46788,11 @@ window.VaultMarketProj = (function () {
   // this set the moment it clears break-even, and don't invent one without the
   // same by-week evidence. This is a whole-market flag, so it's the weakest tier
   // and fires last, only on a row that already cleared every player-specific gate.
-  const WEAK_MK = { pass_yd: 1, pass_cmp: 1, pass_int: 1, rush_rec_yd: 1 };
+  // pass_att joined after the Week 4 retro (docs/retro/week-4-deep-dive.md): fit
+  // walk-forward against the no-vig market, the model's opinion earns 0 weight on
+  // all three QB volume markets, and A/B pass-attempt picks went 9-14. Keep this
+  // list identical to build_best_bets.mjs WEAK_MK and settle_bets.py WEAK_MK.
+  const WEAK_MK = { pass_yd: 1, pass_cmp: 1, pass_int: 1, rush_rec_yd: 1, pass_att: 1 };
   // Projection-vs-line blowout, as a standalone flag: purely |proj − line|/line,
   // so it does NOT depend on which side leads or the sign of the market-side EV.
   // That matters for VAULT-LED rows — the cache scores edgeCaution on the MARKET
@@ -46919,7 +46961,7 @@ window.VaultMarketProj = (function () {
     //    that would otherwise headline Best Bets on a market with no proven edge.
     //    Demote (grade capped to C) until the market earns its keep on fresh weeks.
     if (WEAK_MK[r && r.market])
-      return { kind: 'weakmkt', label: 'thin edge', tip: 'Vault has shown no reliable edge on ' + _mkLabel(r.market) + ' props yet — this market has come in below break-even every settled week this season. The grade is held back until it proves out, so treat any edge here as low-confidence.' };
+      return { kind: 'weakmkt', label: 'thin edge', tip: 'Vault’s projection hasn’t beaten the sportsbook line on ' + _mkLabel(r.market) + ' props this season, so the grade is held at C until it proves out. Treat any edge here as low-confidence.' };
     return null;
   }
 

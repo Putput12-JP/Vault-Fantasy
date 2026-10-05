@@ -139,7 +139,9 @@ const COUNT_MK = new Set(['pass_att', 'pass_cmp', 'rush_att', 'rec']);
 // grade at C ("thin edge"); Best Bets needs A/B, so they can't headline here
 // either. Keep this list identical to the board's and drop a market from both
 // the moment it clears break-even on fresh weeks.
-const WEAK_MK = new Set(['pass_yd', 'pass_cmp', 'pass_int', 'rush_rec_yd']);
+// pass_att joined after the Week 4 retro: the model earns 0 weight against the
+// no-vig market on all three QB volume markets (docs/retro/week-4-deep-dive.md).
+const WEAK_MK = new Set(['pass_yd', 'pass_cmp', 'pass_int', 'rush_rec_yd', 'pass_att']);
 const LOW_COUNT_LINE = 3.5;   // where the Under is still a plus-money longshot
 const ABS_COUNT_GAP = 0.5;    // half a count below the line flips the side w/o moving the ratio much
 // Gate 3 — sharp-anchor agreement. Kalshi is a real-money exchange; its two-

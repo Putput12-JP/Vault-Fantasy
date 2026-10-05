@@ -129,7 +129,7 @@ def score_props(props, model):
         if a is None or side not in ("over", "under") or lc is None: continue
         mk, wk = p["market"], p["week"]
         keys = ("all", mk)
-        mp = model.get(mk)
+        mp = SB.prop_model_for_row(p, model).get(mk)     # the version that graded this prop
         # CLOSE: Vault's P(over) re-priced at the closing line vs. the no-vig close
         q_c = devig_power(p.get("close_over"), p.get("close_under"))
         pv_c = SB.model_p_over(mp, proj, lc) if (mp and proj is not None) else None
@@ -330,7 +330,7 @@ def score_news(props):
             c = cal[tag]["open"]; c[0] += 1; c[1] += 1.0 if a > lo else 0.0; c[2] += qo
         if qc is not None and abs(a - lc) > 1e-9:
             c = cal[tag]["close"]; c[0] += 1; c[1] += 1.0 if a > lc else 0.0; c[2] += qc
-            mp = model.get(p["market"])
+            mp = SB.prop_model_for_row(p, model).get(p["market"])
             pv = SB.model_p_over(mp, proj, lc) if (mp and proj is not None) else None
             if pv is not None and abs(pv - qc) >= 0.08 and trig in ("up", "down", None):
                 vault_over = pv > qc
@@ -343,6 +343,59 @@ def score_news(props):
                                       for s2 in ("open", "close")} for k, v in sorted(cal.items())},
             "big_disagreements": {k: {"n": v[0], "vault_side_won": v[1], "win": round(v[1] / v[0], 4) if v[0] else None,
                                       "score": v[2].out()} for k, v in sorted(dis.items())}}
+
+
+# ── anchored shadow (Week 4 retro): live grades vs market-anchored grades ────
+# settle_bets.anchor_shadow() grades every prop it can price a second way: the
+# no-vig opening market moved toward Vault's probability only as far as Vault's
+# measured skill (per-market weight, fit on earlier weeks only). Same rows, both
+# grades, so this answers "would the anchored engine have bet better?" on fresh
+# weeks before anything switches. Units at the side's own price: open = opening
+# line and price (when the grade is made), close = closing line and price.
+def score_anchor(props):
+    rows = [p for p in props if p.get("grade_anchor") is not None]
+    if not rows: return None
+    def side_res(p, sd, at):
+        a = p.get("actual")
+        if at == "open":
+            ln, px = p.get("line_open"), (p.get("open_over") if sd == "over" else p.get("open_under"))
+            if not sane_move(ln, p.get("line_close")): return None
+        else:
+            ln, px = p.get("line_close"), (p.get("close_over") if sd == "over" else p.get("close_under"))
+        if a is None or ln is None or abs(a - ln) < 1e-9: return None
+        w = (a > ln) == (sd == "over")
+        return (1.0 if w else 0.0, pay(px) if w else -1.0)
+    def tally(sel, sk):
+        o = {"open": [0, 0, 0.0], "close": [0, 0, 0.0]}
+        for p in sel:
+            for at in ("open", "close"):
+                r = side_res(p, p.get(sk), at)
+                if r is None: continue
+                x = o[at]; x[0] += 1; x[1] += r[0]; x[2] += r[1]
+        return {at: {"n": v[0], "W": int(v[1]), "units": round(v[2], 2)} for at, v in o.items()}
+    by_wk = defaultdict(list)
+    for p in rows: by_wk[p["week"]].append(p)
+    out = {"weeks": {}, "all": None, "ll_open": None}
+    for wk, rs in sorted(by_wk.items()):
+        out["weeks"][str(wk)] = {
+            "rows": len(rs),
+            "live": tally([p for p in rs if p.get("grade") in ("A", "B")], "side"),
+            "anchored": tally([p for p in rs if p.get("grade_anchor") in ("A", "B")], "anchor_side")}
+    out["all"] = {"rows": len(rows),
+                  "live": tally([p for p in rows if p.get("grade") in ("A", "B")], "side"),
+                  "anchored": tally([p for p in rows if p.get("grade_anchor") in ("A", "B")], "anchor_side")}
+    # Probability quality at the open on the same rows: market vs live model vs anchored.
+    m = v = a_ = 0.0; n = 0
+    for p in rows:
+        lo, act, pm = p.get("line_open"), p.get("actual"), p.get("p_model")
+        q = devig_power(p.get("open_over"), p.get("open_under"))
+        if None in (lo, act, pm, q) or not sane_move(lo, p.get("line_close")) or abs(act - lo) < 1e-9: continue
+        y = 1.0 if act > lo else 0.0
+        pv = pm if p.get("side") == "over" else 1 - pm
+        m += ll(y, q); v += ll(y, pv); a_ += ll(y, p["p_anchor_over"]); n += 1
+    if n:
+        out["ll_open"] = {"n": n, "market": round(m / n, 4), "live": round(v / n, 4), "anchored": round(a_ / n, 4)}
+    return out
 
 
 # ── timing: does posting early pay? (plan Weeks 3-4, opening-window capture) ──
@@ -569,6 +622,7 @@ def main():
            "games": {k: {"close": v["close"].out(), "bets": gb[k].out()} for k, v in sorted(ga.items())},
            "games_by_week": {str(w): {"close": v["close"].out()} for w, v in sorted(gw.items())},
            "news": score_news(br.get("props") or []),
+           "anchor": score_anchor(br.get("props") or []),
            "timing": score_timing(),
            "sharp_lead": score_sharp_lead(),
            "signals": score_signals(br)}
@@ -659,6 +713,26 @@ def main():
         hb = w.get("would_be_plays")
         L.append(f"Withheld props (teammate out)      lines={w['lines']}  model lean won {w['lean_won']}  overs hit {w['overs_hit']}"
                  + (f"  | would-be plays {hb['W']}-{hb['L']} {hb['units']:+.1f}u" if hb else "  | would-be plays: none yet"))
+    an = out.get("anchor")
+    if an:
+        def fa(t):
+            o, c = t["open"], t["close"]
+            fo = f"{o['W']}-{o['n'] - o['W']} {o['units']:+.1f}u" if o["n"] else "–"
+            fc = f"{c['W']}-{c['n'] - c['W']} {c['units']:+.1f}u" if c["n"] else "–"
+            return f"{fo:>15} {fc:>15}"
+        L += ["```", "", "## Anchored shadow: live grades vs market-anchored grades (Week 4 retro)", "",
+              "_The anchored grade starts from the no-vig opening price and moves toward Vault only as far as Vault's "
+              "measured skill in that market (weights fit on earlier weeks only, so every row is out of sample). "
+              "Shadow only: the board still shows live grades. Switch only if the anchored A/B beat the live A/B "
+              "on fresh weeks and its log-loss stays below the market's._", "", "```",
+              f"{'week':<6}{'rows':>6}   {'live A/B: open':>15} {'close':>15}   {'anchored A/B: open':>15} {'close':>15}"]
+        for wk, x in an["weeks"].items():
+            L.append(f"Wk {wk:<3}{x['rows']:>6}   {fa(x['live'])}   {fa(x['anchored'])}")
+        x = an["all"]
+        L.append(f"{'all':<6}{x['rows']:>6}   {fa(x['live'])}   {fa(x['anchored'])}")
+        if an.get("ll_open"):
+            l = an["ll_open"]
+            L.append(f"log-loss at the open, same {l['n']} props: market {l['market']:.4f}  live model {l['live']:.4f}  anchored {l['anchored']:.4f}")
     tm = out.get("timing")
     if tm and any(v["n"] for v in tm.values()):
         L += ["```", "", "## Timing: Best Bets by how early they posted (plan Weeks 3-4)", "",

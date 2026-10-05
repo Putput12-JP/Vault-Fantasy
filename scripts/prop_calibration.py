@@ -28,6 +28,7 @@ ROOT = os.path.dirname(HERE)
 DATA = os.path.join(ROOT, "data")
 sys.path.insert(0, HERE)
 import build_prop_projections as B  # noqa: E402  (reuse the exact model math)
+import settle_bets as SB  # noqa: E402  (point-in-time model lookup: the version that graded each prop)
 
 
 def clamp(p, lo=1e-6, hi=1 - 1e-6):
@@ -111,7 +112,7 @@ def main():
     for p in props:
         wk = p.get("week")
         mkt = p.get("market")
-        mp = model.get(mkt)
+        mp = SB.prop_model_for_row(p, model).get(mkt)
         proj, line, side, won = p.get("proj"), p.get(line_key), p.get("side"), p.get(won_key)
         if wk is None or mp is None or proj is None or line is None or side not in ("over", "under") or won not in (0.0, 1.0) or p.get("push"):
             skipped += 1

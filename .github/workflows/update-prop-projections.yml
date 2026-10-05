@@ -31,14 +31,17 @@ jobs:
       - name: Fit prop projection model
         run: python3 scripts/build_prop_projections.py --since=2016
 
+      # prop_model_versions.json is the dated history settlement grades each prop
+      # against (the version live when its line was first graded), so it ships in
+      # the same commit as the model it records.
       - name: Commit if changed
         run: |
-          if git diff --quiet -- data/prop_model.json; then
+          if git diff --quiet -- data/prop_model.json data/prop_model_versions.json; then
             echo "No prop-model changes."
           else
             git config user.name  "vault-bot"
             git config user.email "vault-bot@users.noreply.github.com"
-            git add data/prop_model.json
+            git add data/prop_model.json data/prop_model_versions.json
             git commit -m "props: refit Vault prop projection model [skip ci]"
             git push
           fi

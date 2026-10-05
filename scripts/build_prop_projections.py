@@ -897,6 +897,31 @@ def main():
     with open(OUT, "w") as f:
         json.dump(model, f)
     print(f"[prop-model] wrote {OUT}")
+    record_version(model)
+
+
+# Every published model, with the time it went live, so settlement can grade a
+# prop with the version Vault showed when its line was first graded instead of
+# a later refit that has seen the result (scripts/backfill_prop_model_versions.py
+# rebuilds the same file from git). Appends only when the markets changed.
+VERSIONS = os.path.join(DATA, "prop_model_versions.json")
+
+
+def record_version(model):
+    from datetime import datetime, timezone
+    try:
+        blob = json.load(open(VERSIONS))
+    except Exception:
+        blob = {"versions": []}
+    versions = blob.setdefault("versions", [])
+    if versions and versions[-1].get("markets") == model["markets"]:
+        print("[prop-model] version history: unchanged")
+        return
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    versions.append({"from": stamp, "sha": None, "markets": model["markets"]})
+    with open(VERSIONS, "w") as f:
+        json.dump(blob, f, separators=(",", ":"))
+    print(f"[prop-model] version history: appended {stamp} ({len(versions)} versions)")
 
 
 if __name__ == "__main__":

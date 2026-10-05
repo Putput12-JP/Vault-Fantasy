@@ -8,6 +8,8 @@
                        Cloudflare-blocked)
      • Underdog       (api.underdogfantasy.com over/under lines)
      • Sleeper        (api.sleeper.com native pick'em — priced, native ids)
+     • Pinnacle       (guest.api.arcadia.pinnacle.com — the sharp book's
+                       two-way player props, posted near kickoff)
    Resolves each player to its Sleeper id (Sleeper's board already carries it),
    maps each book's stat types to Vault's market keys, and merges the result
    into data/lineup-feed.json under `vegas_player_props` — the exact shape
@@ -66,6 +68,8 @@ const SLN_FIX  = ARG['sleeper-lines-fixture'] || null;
 const NO_UD    = !!ARG['no-underdog'];
 const NO_PP    = !!ARG['no-prizepicks'];
 const NO_SL    = !!ARG['no-sleeper'];
+const NO_PIN   = !!ARG['no-pinnacle'];
+const PIN_FIX  = ARG['pin-fixture'] || null;      // {matchups:[...], markets:[...]} saved from the guest API
 
 // api.prizepicks.com/projections is Cloudflare-blocked (403) for keyless
 // server-side callers. partner-api.prizepicks.com serves the same JSON:API
@@ -676,6 +680,116 @@ function buildSleeper(sln, sl) {
   return { props: out, stats: { players: matched, unmatched: unknown, lines: count } };
 }
 
+/* ── Pinnacle (sharp book) ──────────────────────────────────────────────
+   Pinnacle's public web API (the same guest key scripts/book_tape.py and
+   fetch-sharp-money.mjs use for game lines) lists NFL player props with
+   two-way prices, usually a day or two before kickoff. Pinnacle is the
+   market-making book, so its no-vig price is the sharp anchor the board and
+   settlement measure against. Before this, 83% of Week 4 props were priced
+   only by pick'em apps (docs/retro/week-4-deep-dive.md). Limits are low
+   ($250 to $1,000 a bet), so treat it as a reference price more than a place
+   to bet size. Matchups come from the sport-level endpoint (the league-level
+   one is geo-blocked from some US IPs), filtered to the NFL league (889).
+   Players resolve to Sleeper ids only when Sleeper has them on one of the two
+   teams in that game, so a shared name can never cross games.             */
+const PIN_BASE = 'https://guest.api.arcadia.pinnacle.com/0.1';
+const PIN_KEY = 'CmX2KcMrXuFmNg6YFbmTxE0y9CIrOi0R';     // Pinnacle's public web-client key
+const PIN_NFL = 889;
+const PIN_UNITS = {
+  'Receiving Yards': 'rec_yd', Receptions: 'rec', 'Rushing Yards': 'rush_yd', 'Rush Attempts': 'rush_att',
+  'Passing Yards': 'pass_yd', 'Pass Attempts': 'pass_att', 'Pass Completions': 'pass_cmp',
+  'Touchdown Passes': 'pass_td', Interceptions: 'pass_int',
+  // 'Touchdowns' (a player's total TDs) is left out: for a QB it is not the
+  // same stat as any Vault market, so it would need its own mapping first.
+};
+const PIN_NICK = {
+  Cardinals: 'ARI', Falcons: 'ATL', Ravens: 'BAL', Bills: 'BUF', Panthers: 'CAR', Bears: 'CHI', Bengals: 'CIN',
+  Browns: 'CLE', Cowboys: 'DAL', Broncos: 'DEN', Lions: 'DET', Packers: 'GB', Texans: 'HOU', Colts: 'IND',
+  Jaguars: 'JAX', Chiefs: 'KC', Chargers: 'LAC', Rams: 'LAR', Raiders: 'LV', Dolphins: 'MIA', Vikings: 'MIN',
+  Patriots: 'NE', Saints: 'NO', Giants: 'NYG', Jets: 'NYJ', Eagles: 'PHI', Steelers: 'PIT', Seahawks: 'SEA',
+  '49ers': 'SF', Buccaneers: 'TB', Titans: 'TEN', Commanders: 'WAS',
+};
+
+async function pinJSON(path) {
+  const headers = { 'X-API-Key': PIN_KEY, Referer: 'https://www.pinnacle.com/', Origin: 'https://www.pinnacle.com',
+                    'User-Agent': UA, Accept: 'application/json' };
+  let last = null;
+  for (let i = 0; i < 5; i++) {               // the guest API now and then 403s a cloud IP for a few seconds
+    try {
+      const r = await fetch(PIN_BASE + path, { headers });
+      if (r.ok) return await r.json();
+      last = `HTTP ${r.status}`;
+    } catch (e) { last = e.message; }
+    await new Promise(res => setTimeout(res, 1500 * (i + 1)));
+  }
+  throw new Error(`pinnacle ${path}: ${last}`);
+}
+
+async function loadPinnacle() {
+  let mus, mks;
+  if (PIN_FIX) ({ matchups: mus, markets: mks } = readFixture(PIN_FIX));
+  else {
+    mus = await pinJSON('/sports/15/matchups');
+    mks = await pinJSON(`/leagues/${PIN_NFL}/markets/straight`);
+  }
+  const now = Date.now();
+  const team = p => p && PIN_NICK[String(p.name || '').split(' ').pop()];
+  const games = {};                            // parent matchup id -> { home, away, start }
+  for (const m of mus || []) {
+    if (m.type !== 'matchup' || m.parentId || (m.league || {}).id !== PIN_NFL) continue;
+    const h = (m.participants || []).find(p => p.alignment === 'home');
+    const a = (m.participants || []).find(p => p.alignment === 'away');
+    if (team(h) && team(a)) games[m.id] = { home: team(h), away: team(a), start: m.startTime };
+  }
+  const specials = {};                         // special id -> { name, market, overId, underId, game }
+  for (const m of mus || []) {
+    const sp = m.special || {};
+    if (m.type !== 'special' || sp.category !== 'Player Props' || (m.league || {}).id !== PIN_NFL) continue;
+    const market = PIN_UNITS[m.units]; if (!market) continue;
+    const game = games[m.parentId]; if (!game) continue;
+    // A prop whose own start isn't its game's start is a leftover listing
+    // (seen live: two Sunday-dated props hanging off the Monday game).
+    if (Date.parse(m.startTime) !== Date.parse(game.start) || Date.parse(game.start) <= now) continue;
+    const nm = String(sp.description || '').match(/^(.*?)\s+Total\s+/); if (!nm) continue;
+    const over = (m.participants || []).find(p => p.name === 'Over');
+    const under = (m.participants || []).find(p => p.name === 'Under');
+    if (over && under) specials[m.id] = { name: nm[1].trim(), market, overId: over.id, underId: under.id, game };
+  }
+  const lines = [];
+  for (const x of mks || []) {
+    const sp = specials[x.matchupId];
+    if (!sp || x.type !== 'total' || x.period !== 0 || x.isAlternate) continue;
+    if (x.cutoffAt && Date.parse(x.cutoffAt) <= now) continue;
+    const po = (x.prices || []).find(p => p.participantId === sp.overId);
+    const pu = (x.prices || []).find(p => p.participantId === sp.underId);
+    if (!po || !pu || po.points == null || po.points !== pu.points || po.price == null || pu.price == null) continue;
+    lines.push({ name: sp.name, market: sp.market, line: Number(po.points), over: po.price, under: pu.price, game: sp.game });
+  }
+  return { lines };
+}
+
+function buildPinnacle(pin, sl) {
+  const out = {};
+  let unmatched = 0, count = 0;
+  for (const row of pin.lines) {
+    const g = row.game, key = normName(row.name);
+    const hit = sl.byNameTeam[key + ':' + g.home] || sl.byNameTeam[key + ':' + g.away] || null;
+    if (!hit) { unmatched++; continue; }
+    const id = hit.id;
+    const home = hit.team === g.home;
+    if (!out[id]) out[id] = { name: row.name, team: hit.team, pos: hit.pos || null, lines: {},
+                              opp: home ? g.away : g.home, ha: home ? 'home' : 'away', commence: g.start };
+    if (out[id].lines[row.market]) continue;   // one main line per market (alternates are skipped above)
+    const q = { book: 'Pinnacle', line: row.line, over: row.over, under: row.under };
+    out[id].lines[row.market] = {
+      line: row.line, over: row.over, under: row.under, book: 'Pinnacle', quotes: [q],
+      best: { over: { book: 'Pinnacle', price: row.over, line: row.line }, under: { book: 'Pinnacle', price: row.under, line: row.line } },
+    };
+    count++;
+  }
+  return { props: out, stats: { players: Object.keys(out).length, unmatched, lines: count } };
+}
+
 /* line-first best price for a side (mirrors src-vegas.mjs bestSide): a lower
    line is strictly better for an OVER, a higher line for an UNDER; price only
    breaks a tie. Recomputed after upserting a keyless quote. */
@@ -738,7 +852,7 @@ function upsertQuote(cell, fresh, book) {
    DK, …) are never touched — this job doesn't own them. A thin/failed pull
    (book absent from `sources`, or under PRUNE_MIN players) prunes nothing, so a
    soft-fail can't wipe a book's last-good lines.                              */
-const OWNED_PICKEM = new Set(['PrizePicks', 'Underdog Fantasy', 'Sleeper']);
+const OWNED_PICKEM = new Set(['PrizePicks', 'Underdog Fantasy', 'Sleeper', 'Pinnacle']);   // every book this job pulls directly
 const PRUNE_MIN = 20;   // players a book must cover this run before we trust it to prune
 
 function reHeadline(cell) {
@@ -996,6 +1110,18 @@ function mergeFeed(sources, stats, sl) {
         sources.push({ props, book: 'Sleeper' });
         totalPlayers += stats.players;
       } catch (e) { log('sleeper skipped:', e.message); }
+    }
+
+    // Pinnacle (sharp book) — two-way prices from the market maker, near kickoff.
+    if (!NO_PIN) {
+      try {
+        const pin = await loadPinnacle();
+        log('pinnacle:', pin.lines.length, 'nfl player lines');
+        const { props, stats } = buildPinnacle(pin, sl);
+        log(`  → mapped ${stats.players} players, ${stats.lines} lines, ${stats.unmatched} unmatched`);
+        sources.push({ props, book: 'Pinnacle' });
+        totalPlayers += stats.players;
+      } catch (e) { log('pinnacle skipped:', e.message); }
     }
 
     mergeFeed(sources, { players: totalPlayers }, sl);

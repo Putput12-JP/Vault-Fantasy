@@ -92,6 +92,80 @@ def load_prop_model():
     except Exception:
         return {}
 
+# ── point-in-time prop model ─────────────────────────────────────────────────
+# Every prop is graded with the model Vault was SHOWING when its line was first
+# graded, never today's refit. The in-season corrections (real-line recal,
+# projection-bias and in-season overlays) are fitted on settled results, so
+# grading old weeks with the current file lets the record see the answers: it
+# moved 448 of 2,007 Week 1-3 grades in 2026 (docs/retro/week-4-deep-dive.md).
+# data/prop_model_versions.json holds each published model with the time it went
+# live (build_prop_projections.py appends; scripts/backfill_prop_model_versions.py
+# rebuilds it from git). No file => today's model, the old behaviour.
+_PM_VERSIONS = None
+
+def load_prop_model_versions():
+    """[(epoch, from_iso, markets)] oldest first; [] when the file is missing."""
+    global _PM_VERSIONS
+    if _PM_VERSIONS is None:
+        out = []
+        try:
+            blob = json.load(open(os.path.join(DATA, "prop_model_versions.json")))
+            for v in blob.get("versions") or []:
+                t = _parse_ts(v.get("from"))
+                if t is not None and v.get("markets"):
+                    out.append((t, v["from"], v["markets"]))
+        except Exception:
+            pass
+        out.sort(key=lambda x: x[0])
+        _PM_VERSIONS = out
+    return _PM_VERSIONS
+
+def prop_model_at(ts, current):
+    """(markets, from_iso) live at epoch `ts`: the newest version published at or
+    before it. A line first seen before the oldest version uses the oldest one.
+    No history or no timestamp -> (current, None)."""
+    V = load_prop_model_versions()
+    if not V or ts is None:
+        return current, None
+    pick = V[0]
+    for v in V:
+        if v[0] <= ts: pick = v
+        else: break
+    return pick[2], pick[1]
+
+def prop_model_for_row(row, current):
+    """The markets a settled bet_results row was graded with (its `model_from`),
+    so downstream scoring (scoreboard, calibration) stays point-in-time too."""
+    f = row.get("model_from")
+    if f:
+        for _, frm, m in load_prop_model_versions():
+            if frm == f:
+                return m
+    return current
+
+# ── structurally weak markets (grade capped at C) ────────────────────────────
+# Mirror of the board's WEAK_MK (index.html) and build_best_bets.mjs: markets
+# where Vault's projection has shown no edge over the sportsbook line, so the
+# board holds their grade at C ("thin edge") and they can't headline. Each
+# market carries the time it joined the list, so the record shows what the
+# board showed: a prop first graded before then keeps its letter. `grade_raw`
+# keeps the uncapped letter so a market can be re-tested and dropped from the
+# list the moment it clears break-even. Keep all three lists in step.
+WEAK_MK = {
+    "pass_yd": "2026-09-25T01:08:21Z", "pass_cmp": "2026-09-25T01:08:21Z",      # 845360ed
+    "pass_int": "2026-09-25T01:08:21Z", "rush_rec_yd": "2026-09-25T01:08:21Z",
+    # Week 4 retro: the model carries no information beyond the market on pass
+    # attempts (walk-forward weight 0.00) and A/B pass-attempt picks went 9-14.
+    "pass_att": "2026-10-05T21:08:00Z",
+}
+
+def weak_cap(letter, market, ts):
+    """Cap an A/B letter at C on a weak market graded on or after it joined."""
+    since = WEAK_MK.get(market)
+    if letter in ("A", "B") and since and ts is not None and ts >= (_parse_ts(since) or 0):
+        return "C"
+    return letter
+
 # ── shadow: history-length shift (docs/history-shift-backtest.json) ─────────
 # The season-holdout found P(over) over-promises for players with little game
 # history (receptions: over hits ~13pt under promise at 3-8 games, honest by
@@ -517,7 +591,11 @@ def settle_props(season_filter=None):
                                  or (abs(clv_line) < 1e-9 and (clv_price or 0) > 1e-9)) else 0.0
 
         # ── model vs market probabilities (blend-weight + reliability inputs) ─
-        p_model = model_p_over(model.get(market) if market in model else None, proj, line_o)
+        # Graded with the model live when this line was first graded (see
+        # prop_model_at), not today's refit.
+        t_graded = _parse_ts(opn.get("ts") or r.get("firstSeen"))
+        model_t, model_from = prop_model_at(t_graded, model)
+        p_model = model_p_over(model_t.get(market) if market in model_t else None, proj, line_o)
         p_model_side = None
         if p_model is not None and side:
             p_model_side = p_model if side == "over" else 1 - p_model
@@ -563,6 +641,11 @@ def settle_props(season_filter=None):
                                           None if q_side is None else 1 - q_side)
             if won_close is not None:
                 won_alt = 1.0 - won_close
+        # Weak markets: every letter is held at C once the market joined WEAK_MK,
+        # same as the board; grade_raw keeps the uncapped live letter.
+        grade_raw = grade
+        grade, grade_flat, grade_mkt, grade_alt, grade_mkt_alt = (
+            weak_cap(x, market, t_graded) for x in (grade, grade_flat, grade_mkt, grade_alt, grade_mkt_alt))
 
         # Shadow pick from the history-shifted P(over): its own side (the shift
         # can flip a thin lean), settled at the same closing line. History is the
@@ -588,7 +671,8 @@ def settle_props(season_filter=None):
             "clv_line": clv_line, "clv_prob": clv_prob, "clv_price": clv_price,
             "beat_close": beat_close,
             "p_model": p_model_side, "p_market": p_mkt_side, "games": g_in,
-            "grade_n": round(g_shrink, 2), "grade": grade,
+            "grade_n": round(g_shrink, 2), "grade": grade, "grade_raw": grade_raw,
+            "model_from": model_from,
             "hist_n": hist_n, "p_hist": p_hist, "side_hist": side_h, "won_hist": won_hist,
             # Closing consensus PRICES at line_close (both sides), so units can be
             # scored at the real juice instead of a flat -110. None unless the
@@ -604,8 +688,8 @@ def settle_props(season_filter=None):
             "books_open_src": ("open" if opn.get("q") else ("first_seen" if r.get("q0") else None)),
             "books_close": book_prices(((cur_pre or {}).get("q")), line_c),
             "grade_flat": grade_flat,
-            "grade_boost": (grade_boost_for(p_model_side, g_shrink, be_open if be_open is not None else 0.55)
-                            if p_model_side is not None else None),
+            "grade_boost": (weak_cap(grade_boost_for(p_model_side, g_shrink, be_open if be_open is not None else 0.55),
+                                     market, t_graded) if p_model_side is not None else None),
             "grade_mkt": grade_mkt, "grade_alt": grade_alt,
             "grade_mkt_alt": grade_mkt_alt, "won_alt": won_alt,
             # Vault team-total lean shadow (see load_team_leans)
@@ -1425,6 +1509,114 @@ def tag_withheld(prop_picks):
     return n
 
 
+# ── market-anchored shadow (Week 4 retro, finding 2) ─────────────────────────
+# Vault's raw probabilities are ~4x too confident against the market: fitting
+# outcome ~ no-vig market + w * (Vault - market) on real lines puts w near 0.22
+# pooled (pass TDs ~1.0, QB volume 0). The anchored probability
+#     logit p = logit q_market + w_market * (logit p_vault - logit q_market)
+# keeps the market as the baseline and lets Vault move it only as far as its
+# measured skill. SHADOW: nothing on the board reads it. Each week's weights are
+# fit only on EARLIER settled weeks of the same season (walk-forward), so every
+# row is out of sample; the scoreboard compares these grades with the live ones
+# before anything switches. Inputs are the opening line, the opening two-way
+# price (power de-vig) and the point-in-time model; no clean opening price -> no
+# anchored row. data/prop_anchor_weights.json carries the newest weights.
+ANCHOR_K = 200          # pseudo-count pulling a thin market's weight to the pooled one
+ANCHOR_MIN_TRAIN = 150  # fewer pooled training rows than this -> no anchored grade yet
+
+
+def _fit_anchor_w(rows):
+    """w in [0, 1] minimizing log-loss of sig(a + w*b) over rows (y, a, b); the
+    loss is convex in w, so a clamped Newton step converges in a few passes."""
+    if not rows: return None
+    w = 0.3
+    for _ in range(30):
+        g = h = 0.0
+        for y, a, b in rows:
+            p = sig(a + w * b)
+            g += (p - y) * b; h += p * (1 - p) * b * b
+        if h <= 1e-12: break
+        w2 = min(1.0, max(0.0, w - g / h))
+        if abs(w2 - w) < 1e-7:
+            w = w2; break
+        w = w2
+    return w
+
+
+def _anchor_inputs(p):
+    """(y_open, a, b, q) for one ledger row, or None. a = logit(market P(over)),
+    b = logit(Vault P(over)) - a, both at the opening line."""
+    lo, lc, act, pm, side = p.get("line_open"), p.get("line_close"), p.get("actual"), p.get("p_model"), p.get("side")
+    q = _power_devig(p.get("open_over"), p.get("open_under"))
+    if None in (lo, lc, act, pm, q) or side not in ("over", "under"): return None
+    if abs(lo - lc) > max(0.15 * abs(lc), 1.0): return None          # junk opening snapshot
+    pv = pm if side == "over" else 1 - pm
+    a = logit(q)
+    y = None if abs(act - lo) < 1e-9 else (1.0 if act > lo else 0.0)
+    return y, a, logit(pv) - a, q
+
+
+def _anchor_weights(train):
+    """{'pooled': w, 'markets': {mk: {'w', 'w_fit', 'n'}}} from rows (mk, y, a, b)."""
+    if len(train) < ANCHOR_MIN_TRAIN: return None
+    pooled = _fit_anchor_w([(y, a, b) for _, y, a, b in train])
+    by = defaultdict(list)
+    for mk, y, a, b in train: by[mk].append((y, a, b))
+    mks = {}
+    for mk, rows in by.items():
+        wf = _fit_anchor_w(rows)
+        mks[mk] = {"w": round((len(rows) * wf + ANCHOR_K * pooled) / (len(rows) + ANCHOR_K), 4),
+                   "w_fit": round(wf, 4), "n": len(rows)}
+    return {"pooled": round(pooled, 4), "markets": mks}
+
+
+def anchor_shadow(prop_picks):
+    """Adds p_anchor_over / anchor_side / p_anchor / ev_anchor / grade_anchor /
+    won_anchor / w_anchor to each row it can price; returns the newest season's
+    weights fit on every settled week (for prop_anchor_weights.json)."""
+    by_season = defaultdict(list)
+    for p in prop_picks: by_season[str(p.get("season"))].append(p)
+    latest = None
+    for season in sorted(by_season):
+        rows = by_season[season]
+        inp = {id(p): _anchor_inputs(p) for p in rows}
+        weeks = sorted({p["week"] for p in rows if p.get("week") is not None})
+        for wk in weeks:
+            train = [(p["market"], x[0], x[1], x[2]) for p in rows
+                     if p.get("week") is not None and p["week"] < wk
+                     for x in [inp[id(p)]] if x is not None and x[0] is not None]
+            W = _anchor_weights(train)
+            if not W: continue
+            for p in rows:
+                if p.get("week") != wk: continue
+                x = inp[id(p)]
+                if x is None: continue
+                _, a, b, q = x
+                w = (W["markets"].get(p["market"]) or {}).get("w", W["pooled"])
+                po = sig(a + w * b)
+                best = None
+                for sd, px, ps in (("over", p.get("open_over"), po), ("under", p.get("open_under"), 1 - po)):
+                    dec = am_dec(px)
+                    if dec is None: continue
+                    ev = ps * dec - 1
+                    if best is None or ev > best[1]: best = (sd, ev, ps, am_prob(px))
+                if best is None: continue
+                sd, ev, ps, be = best
+                lc, act = p.get("line_close"), p.get("actual")
+                won = None if (p.get("push") or lc is None or act is None or abs(act - lc) < 1e-9) \
+                    else (1.0 if (act > lc) == (sd == "over") else 0.0)
+                p.update({"w_anchor": round(w, 3), "p_anchor_over": round(po, 4), "anchor_side": sd,
+                          "p_anchor": round(ps, 4), "ev_anchor": round(ev, 4),
+                          "grade_anchor": grade_letter(ps, be), "won_anchor": won})
+        full = [(p["market"], x[0], x[1], x[2]) for p in rows
+                for x in [inp[id(p)]] if x is not None and x[0] is not None]
+        Wf = _anchor_weights(full)
+        if Wf:
+            latest = {"season": season, "through_week": weeks[-1] if weeks else None,
+                      "k": ANCHOR_K, "n": len(full), **Wf}
+    return latest
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--season", default=None)
@@ -1434,6 +1626,10 @@ def main():
     prop_picks, pmeta = settle_props(args.season)
     n_wh = tag_withheld(prop_picks)
     if n_wh: print(f"[settle] withheld-player ledger rows: {n_wh}")
+    anchor_w = anchor_shadow(prop_picks)
+    if anchor_w:
+        mk = ", ".join(f"{k} {v['w']:.2f} (n {v['n']})" for k, v in sorted(anchor_w["markets"].items()))
+        print(f"[settle] anchored shadow weights (season {anchor_w['season']}, pooled {anchor_w['pooled']:.2f}): {mk}")
     game_picks, gmeta = settle_games(args.season)
     board = build_scoreboard(prop_picks, game_picks)
 
@@ -1490,6 +1686,21 @@ def main():
         print(f"[settle] fade-team-lean shadow A+B: {sum(fade):.0f}-{len(fade) - sum(fade):.0f} "
               f"{sum(100 / 110 if w == 1.0 else -1.0 for w in fade):+.1f}u")
 
+    # Anchored shadow vs live: A/B picks graded each way, settled at the close,
+    # units at the closing price of the side taken.
+    def _abu(rows, gk, sk, wk):
+        n = w_ = 0; u = 0.0
+        for p in rows:
+            if p.get(gk) not in ("A", "B") or p.get(wk) is None: continue
+            px = p.get("close_over") if p.get(sk) == "over" else p.get("close_under")
+            dec = am_dec(px) or (1 + 100 / 110)
+            n += 1; w_ += p[wk] == 1.0; u += (dec - 1) if p[wk] == 1.0 else -1.0
+        return f"{w_}-{n - w_} {u:+.1f}u"
+    an = [p for p in prop_picks if p.get("grade_anchor")]
+    if an:
+        print(f"[settle] anchored shadow A+B (rows it could price, n={len(an)}): live {_abu(an, 'grade', 'side', 'won_close')} "
+              f"| anchored {_abu(an, 'grade_anchor', 'anchor_side', 'won_anchor')}")
+
     recal = build_grade_recal(prop_picks)
     print(f"[settle] grade recal: ready={recal['ready']} "
           f"weeks={recal['n_weeks']}/{recal['min_weeks']} n={recal['n_samples']}"
@@ -1520,6 +1731,8 @@ def main():
     json.dump(ledger, open(os.path.join(DATA, "bet_results.json"), "w"))
     json.dump(scoreboard, open(os.path.join(DATA, "edge_scoreboard.json"), "w"))
     json.dump(recal, open(os.path.join(DATA, "grade_recal.json"), "w"))
+    if anchor_w:
+        json.dump({"generated": now, **anchor_w}, open(os.path.join(DATA, "prop_anchor_weights.json"), "w"), indent=1)
     if grules:
         json.dump({"generated": now, **grules}, open(os.path.join(DATA, "game_rules.json"), "w"), indent=1)
     if plays is not None:
