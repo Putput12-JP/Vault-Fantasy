@@ -685,6 +685,25 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .av{position:relative;overflow:hidden}
 .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;transform:scale(1.3);transform-origin:50% 10%;background:var(--raised)}
 .pl{display:flex;align-items:center;gap:10px}.pl>div{min-width:0}.pp-av.sm{width:32px;height:32px;border-width:1px;font-size:10px;flex:none}.tm{display:inline-flex;align-items:center;gap:6px}
+.gstrip{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;flex:1;min-width:0;padding:2px 2px 6px;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.gday{display:flex;gap:6px;flex:none;padding-right:10px;margin-right:2px;border-right:1px solid var(--border);scroll-snap-align:start}
+.gday:last-child{border-right:0;padding-right:2px}
+.gdl{display:grid;align-content:center;justify-items:start;width:38px;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);letter-spacing:.04em;line-height:1.35}
+.gdl b{font-weight:600;color:var(--fg2);text-transform:uppercase}
+.gtile{position:relative;flex:none;display:grid;gap:3px;width:122px;padding:7px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--fg2);cursor:pointer;text-align:left;
+  transition:border-color .15s ease,background-color .15s ease,color .15s ease,transform .5s cubic-bezier(.34,1.56,.64,1)}
+.gtile:hover{border-color:var(--border2);color:var(--fg)}
+.gtile:active{transform:scale(.97);transition:transform 80ms ease-out}
+.gtile[aria-pressed="true"]{border-color:var(--fg);background:var(--raised);color:var(--fg)}
+.gtile .gr{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;line-height:1.25}
+.gtile .gn{display:inline-flex;align-items:center;gap:6px;font-weight:600;letter-spacing:.01em}
+.gtile em{font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.gtile[aria-pressed="true"] em{color:var(--fg2)}
+.gtile.gall{width:84px;align-content:center;justify-items:start}
+.gtile.gall b{font-size:13px;font-weight:600}.gtile.gall small{font-size:11px;color:var(--fg3)}
+.gdot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+@media (prefers-reduced-motion:reduce){ .gtile{transition:none} .gtile:active{transform:none} }
+.pp-strip{padding:10px 14px 4px;border-bottom:1px solid var(--border)}
 .gs-legs{display:grid;gap:10px}.gs-leg{display:flex;flex-wrap:wrap;gap:8px}.gs-leg .sel{min-width:0;flex:1 1 150px}.gs-line{width:90px;flex:none}
 .gs-out{display:flex;flex-wrap:wrap;gap:10px 28px;margin:16px 0 8px}.gs-out div{display:grid}.gs-out small{font-size:11.5px;color:var(--fg3)}.gs-out b{font-family:var(--font-mono);font-size:22px;font-weight:600;letter-spacing:-.02em}
 .gs-checks{display:grid;gap:12px}.gs-checks>div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}.gs-checks small{display:block;color:var(--fg3);font-size:12.5px}.gs-checks b{font-weight:500}
@@ -1322,6 +1341,7 @@ th{font-weight:500}
     <main id="v-sharp" hidden>
       <div class="banner" id="xbanner" hidden></div>
       <div class="kpis" id="xkpis"></div>
+      <section class="card tbar" id="xstripbar" hidden><div class="tfilters" id="xstrip"></div></section>
       <section class="card">
         <div class="card-h"><div><h2>Signals</h2><p>Every Pinnacle move, price behind Pinnacle, sharp-account trade, big ticket and money split on the board's games, newest first. Context until its type beats the close.</p></div>
           <div class="filters" id="xfilters"></div></div>
@@ -1550,6 +1570,27 @@ const lgImg = (t, s = 18) => PH && PH.logos && PH.logos[t] ? `<img class="lg" sr
 // Empty until the Worker is deployed; the page then falls back to GitHub as before.
 const NBA_WORKER = 'https://nba-refresh.vaultfantasy.workers.dev';
 const onSite = /^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname);
+
+// Game picker, used by every page that picks a game: tiles grouped by day, away over home with logos, tip time and the home spread,
+// an optional "All games" tile first. Buttons carry data-g, so each page's own click handler picks the game.
+function gameStrip(games, sel, {all = false, mark = null} = {}){
+  const days = [];
+  for (const g of games){ const k = etDay(g.tip); let d = days[days.length - 1]; if (!d || d.k !== k){ d = {k, t: g.tip, g: []}; days.push(d); } d.g.push(g); }
+  const tile = g => { const m = mark && mark(g); return `<button type="button" class="gtile" data-g="${g.id}" aria-pressed="${String(g.id) === sel}" title="${g.away} at ${g.home}, ${etFmt(g.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(g.tip)} ET${m ? ', has changes' : ''}">
+    <span class="gr"><span class="gn">${lgImg(g.away, 16)}${g.away}</span><em>${clock(g.tip).replace(' ', '')}</em></span>
+    <span class="gr"><span class="gn">${lgImg(g.home, 16)}${g.home}</span><em>${g.spread != null ? (g.spread > 0 ? '+' : '') + g.spread : ''}</em></span>${m ? '<i class="gdot" aria-hidden="true"></i>' : ''}</button>`; };
+  return `<div class="gstrip" role="group" aria-label="Pick a game">${all ? `<button type="button" class="gtile gall" data-g="all" aria-pressed="${sel === 'all'}"><b>All</b><small>${games.length} ${games.length === 1 ? 'game' : 'games'}</small></button>` : ''}
+    ${days.map(d => `<div class="gday"><span class="gdl"><b>${etFmt(d.t, {weekday: 'short'})}</b>${etFmt(d.t, {month: 'numeric', day: 'numeric'})}</span>${d.g.map(tile).join('')}</div>`).join('')}</div>`;
+}
+function gameStripMount(el, html){                 // keeps the scroll position and focus across a re-render, and brings the picked tile into view
+  const old = el.querySelector('.gstrip'), left = old ? old.scrollLeft : 0, hadFocus = !!old && old.contains(document.activeElement);
+  el.innerHTML = html;
+  const st = el.querySelector('.gstrip'), on = st.querySelector('.gtile[aria-pressed="true"]');
+  st.scrollLeft = left;
+  if (on){ const a = on.offsetLeft, b = a + on.offsetWidth; if (a < st.scrollLeft || b > st.scrollLeft + st.clientWidth) st.scrollLeft = a - (st.clientWidth - on.offsetWidth) / 2; if (hadFocus) on.focus({preventScroll: true}); }
+}
+document.addEventListener('keydown', e => { const t = e.target.closest && e.target.closest('.gtile'); if (!t || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  const all = [...t.closest('.gstrip').querySelectorAll('.gtile')], n = all[all.indexOf(t) + (e.key === 'ArrowRight' ? 1 : -1)]; if (n){ e.preventDefault(); n.click(); } });
 
 let balOn = true;   // "Move freed minutes to teammates"
 function mins(team){ const e = edits[team] || {}, m = {}; for (const p of D.teams[team].players) m[p.id] = e[p.id] ?? p.min0; return m; }
@@ -3344,7 +3385,7 @@ function renderTonight(){
   if (!games.length){ $('ngames').innerHTML = $('nkpis').innerHTML = $('nteams').innerHTML = ''; $('nwhatif').hidden = true; return; }
   if (!games.some(g => String(g.id) === nt.game)) nt.game = String(games[0].id);
   const g = games.find(x => String(x.id) === nt.game), gid = String(g.id);
-  $('ngames').innerHTML = `<div class="seg" id="ngame">${games.map(x => `<button type="button" data-g="${x.id}" aria-pressed="${String(x.id) === nt.game}">${x.away} @ ${x.home} · ${etFmt(x.tip, {weekday: 'short'})} ${clock(x.tip)}${tonightEdits[String(x.id)] && Object.keys(tonightEdits[String(x.id)]).length ? ' •' : ''}</button>`).join('')}</div>`;
+  gameStripMount($('ngames'), gameStrip(games, nt.game, {mark: x => !!(tonightEdits[String(x.id)] && Object.keys(tonightEdits[String(x.id)]).length)}));
 
   const cache = {}, status = statusFromBoard(B), P = B.players || {};
   const edits = tonightEdits[gid] || {};
@@ -3577,7 +3618,7 @@ function renderSim(){
   if (!games.length){ for (const k of ['gsgames', 'gsenv', 'gskpis', 'gscharts', 'gsteams', 'gsjoint', 'gschecks']) $(k).innerHTML = ''; return; }
   if (!games.some(g => String(g.id) === sim.game)) sim.game = String(games[0].id);
   const g = games.find(x => String(x.id) === sim.game), gid = String(g.id), status = statusFromBoard(B);
-  $('gsgames').innerHTML = `<div class="seg" id="gsgame">${games.map(x => `<button type="button" data-g="${x.id}" aria-pressed="${String(x.id) === sim.game}">${x.away} @ ${x.home} · ${etFmt(x.tip, {weekday: 'short'})} ${clock(x.tip)}</button>`).join('')}</div>`;
+  gameStripMount($('gsgames'), gameStrip(games, sim.game));
 
   const T = simInputs(g, B, pick), eH = T[1].rows.reduce((a, r) => a + r.mu.pts * r.pPlay, 0), eA = T[0].rows.reduce((a, r) => a + r.mu.pts * r.pPlay, 0);
   const V = vaultLine(g, B, status), M = marketLine(g.mk), avail = {players: true, market: !!(M && M.spread != null && M.total != null), vault: !!V};
@@ -4005,7 +4046,7 @@ function renderSharp(){
   $('xbanner').innerHTML = !games.length ? `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. Preseason starts October 3; opening night is October 20.</span>`
     : `<b>Sharp Price needs the recorder's new board.</b><span>It fills on the next poll after this build ships.</span>`;
   const [gN, gS] = xRecord();
-  if (!SH){ $('xkpis').innerHTML = $('xfeed').innerHTML = $('xgames').innerHTML = ''; $('xfilters').innerHTML = ''; xFoot(null); return; }
+  if (!SH){ $('xkpis').innerHTML = $('xfeed').innerHTML = $('xgames').innerHTML = ''; $('xfilters').innerHTML = ''; $('xstripbar').hidden = true; xFoot(null); return; }
   const A = (SH.alerts || []).filter(a => byId[a.g]);
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
   const steam = A.filter(a => a.type === 'steam' && now - a.t < 86400);
@@ -4018,8 +4059,9 @@ function renderSharp(){
     kpi('Signal record', ICON.edit, `${gN}`, gN ? `graded · avg CLV ${gS / gN >= 0 ? '+' : ''}${(gS / gN * 100).toFixed(2)} pts` : 'Grades start after the first final');
   const gameIds = [...new Set(A.map(a => a.g))];
   if (xf.game !== 'all' && !byId[xf.game]) xf.game = 'all';
-  $('xfilters').innerHTML = `<div class="seg" id="xtype" role="group" aria-label="Signal type">${[['all', 'All'], ...Object.entries(XTYPE)].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${xf.type === v}">${l}${v !== 'all' ? ` · ${A.filter(a => a.type === v).length}` : ''}</button>`).join('')}</div>
-    <select class="sel" id="xgame" aria-label="Game"><option value="all">All games</option>${games.filter(g => gameIds.includes(String(g.id))).map(g => `<option value="${g.id}"${xf.game === String(g.id) ? ' selected' : ''}>${g.away} @ ${g.home}</option>`).join('')}</select>`;
+  $('xfilters').innerHTML = `<div class="seg" id="xtype" role="group" aria-label="Signal type">${[['all', 'All'], ...Object.entries(XTYPE)].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${xf.type === v}">${l}${v !== 'all' ? ` · ${A.filter(a => a.type === v).length}` : ''}</button>`).join('')}</div>`;
+  $('xstripbar').hidden = !gameIds.length;
+  if (gameIds.length) gameStripMount($('xstrip'), gameStrip(games.filter(g => gameIds.includes(String(g.id))), xf.game, {all: true}));
   const F = A.filter(a => (xf.type === 'all' || a.type === xf.type) && (xf.game === 'all' || a.g === xf.game)).slice(0, 80);
   $('xfeed').innerHTML = `<thead><tr><th class="l">Seen (ET)</th><th class="l">Game</th><th class="l">Signal</th><th title="Pinnacle's fair for this side at this number when it fired">Fair then</th><th title="Pinnacle's fair now, same side and number">Now</th><th title="Now minus then, probability points: positive = the market has come to this side">Since</th></tr></thead><tbody>
     ${F.length ? F.map(a => { const g = byId[a.g], o = SH.games[a.g] || {}, fn = ladFair(o.lad, a.m, a.side, a.line), d = fn != null && a.fair != null ? fn - a.fair : null;
@@ -4040,7 +4082,7 @@ function xFoot(SH){
     <div><b>Every signal is graded</b> once its game is final: closing-line value is Pinnacle's last pre-tip fair at the signal's number minus the fair when it fired (for a price behind Pinnacle, its EV at the closing fair), plus the result against the fair it implied. A type counts as an edge only after 50+ graded signals with CLV 2 standard errors above zero. Until then this page is context: where informed money went, not a bet.</div>`;
 }
 $('xfilters').addEventListener('click', e => { const b = e.target.closest('#xtype button[data-v]'); if (b){ xf.type = b.dataset.v; renderSharp(); } });
-$('xfilters').addEventListener('change', e => { if (e.target.id === 'xgame'){ xf.game = e.target.value; renderSharp(); } });
+$('xstrip').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (b){ xf.game = b.dataset.g; renderSharp(); } });
 
 // ── Backtests ─────────────────────────────────────────────────────────────
 // Every test the model has been through, from each test's own output (build_backtests.py): the question, the rule
@@ -5099,14 +5141,15 @@ function renderPairs(){
         <small>${near ? `${esc(near.family)} tend to split (one More, one Less) but by only ${pc(-near.c / .25, 1)}, under the 4% bar. ` : ''}Opponents' stats, rebounds and the other ${PKC.n_families - Object.keys(PP_FAM).length - (near ? 1 : 0)} combinations showed nothing that held up.</small></section></div>
     <section class="card">
       <div class="pp-tools"><h2>Pairs on the board</h2><span class="pv-grow"></span>
-        ${games.length > 1 ? `<select class="sel" id="pp-game" aria-label="Game"><option value="all">All games</option>${games.map(g => `<option value="${g.id}"${pp.game === String(g.id) ? ' selected' : ''}>${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}</option>`).join('')}</select>` : ''}
         <label class="pp-pay">Your app pays <input id="pp-pay" type="number" min="1.5" max="10" step="0.25" value="${pp.pay}" aria-label="2-pick payout multiple">x on a 2-pick</label>
         <div class="seg" id="pp-seg"><button type="button" data-pa="0" aria-pressed="${!pp.all}">Worth a look (${play.length})</button><button type="button" data-pa="1" aria-pressed="${pp.all}">All pairs (${all.length})</button></div></div>
+      <div class="pp-strip" id="pp-strip"${games.length > 1 ? '' : ' hidden'}></div>
       ${anyStand ? `<p class="pp-note">${anyApp ? 'Some props have no pick\'em line yet; those pairs' : 'No pick\'em lines are posted yet, so these pairs'} use the sportsbook line nearest even money as a stand-in. On game days PrizePicks, Underdog and Sleeper post their own lines and pairs use them, both picks from the same app.</p>` : ''}
       ${top && top[1] >= 2 ? `<p class="pp-note warn">These pairs share picks: ${esc(top[0])} is in ${top[1]} of them. Playing several is mostly one bet on that pick, so they tend to win or lose together.</p>` : ''}
       ${!play.length && all.length ? '<p class="pp-note">No pair clears the payout at these prices; showing the closest.</p>' : ''}
       <div class="pp-slips">${show.map(x => ppSlip(x)).join('') || `<p class="pp-empty">${rows.length ? 'No teammate pairs on this board yet: they need points, assists or 3-pointer lines for two teammates.' : 'No player props listed yet. Kalshi and the books list them the morning of a game.'}</p>`}</div>
     </section>`;
+  if (games.length > 1) gameStripMount($('pp-strip'), gameStrip(games, pp.game, {all: true}));
   $('ppfoot').innerHTML = `<div><b>How the pairs are priced.</b> Our chance for each pick is the same fair price as Player Props, at the app's own line. Both hit = our chance for one times the other, plus the covariance the test measured. Needs = 1 / the payout. Only teammates, only the two tested combinations, only 2-pick entries: apps do not allow the same player twice, and longer entries were not tested. Some Underdog and Sleeper picks carry their own multipliers; set the payout to what your entry shows.</div>`;
 }
 function ppFor(r){
@@ -5134,12 +5177,12 @@ function ppGrade(b, bxs){
 }
 $('pp-root').addEventListener('click', e => {
   const t = e.target;
+  const gt = t.closest('.gtile[data-g]'); if (gt){ pp.game = gt.dataset.g; renderPairs(); return; }
   const a = t.closest('[data-pa]'); if (a){ pp.all = a.dataset.pa === '1'; renderPairs(); return; }
   const l = t.closest('[data-pplog]'); if (l){ pp.logK = l.dataset.pplog; renderPairs(); document.querySelector('.pp-logf input')?.focus(); return; }
   if (t.closest('[data-ppcancel]')){ pp.logK = null; renderPairs(); }
 });
 $('pp-root').addEventListener('change', e => {
-  if (e.target.id === 'pp-game'){ pp.game = e.target.value; renderPairs(); }
   if (e.target.id === 'pp-pay'){ const v = +e.target.value; if (v >= 1.5 && v <= 10){ pp.pay = v; store.set('nba-pickem-pay', v); renderPairs(); } }
 });
 $('pp-root').addEventListener('submit', e => {
