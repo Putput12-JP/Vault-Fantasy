@@ -1111,6 +1111,17 @@ th{font-weight:500}
 :root[data-theme="light"] body::after{display:none}
 :root[data-theme="light"] .ev-chip.model{color:var(--fg)}
 .themebtn svg{width:18px;height:18px}
+/* scrollbars: thin and quiet, in the theme's own greys. The sidebar's only shows while you hover it. */
+*{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.sidebar{scrollbar-color:transparent transparent;scrollbar-gutter:stable}
+.sidebar:hover{scrollbar-color:var(--border2) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border:3px solid transparent;background-clip:padding-box;border-radius:9999px}
+::-webkit-scrollbar-thumb:hover{background:var(--fg3);background-clip:padding-box}
+.sidebar::-webkit-scrollbar-thumb{background:transparent;background-clip:padding-box}
+.sidebar:hover::-webkit-scrollbar-thumb{background:var(--border2);background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
 /* the page's own markup inside kit cards */
 .hk-html p{margin:0 0 8px;color:var(--fg2);font-size:13px;line-height:1.55;max-width:80ch}
 .hk-html p.plain{font-size:15px;color:var(--fg)}
