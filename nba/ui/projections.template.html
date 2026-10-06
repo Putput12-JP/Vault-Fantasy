@@ -184,6 +184,7 @@ footer b{color:var(--fg2);font-weight:500}
 [hidden]{display:none!important}
 
 /* data health */
+.mode:has(.btn) + #refresh{display:none}   /* a page with its own Refresh button owns it */
 .mode{display:flex;align-items:center;gap:10px;margin-left:auto;font-size:12.5px;color:var(--fg2);min-width:0}
 .mode .badge{flex:none}
 .pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:var(--r-pill);font-size:11.5px;font-weight:500;white-space:nowrap;border:1px solid var(--border2);color:var(--fg2)}
@@ -2398,17 +2399,17 @@ function priceRow(e, cache){
   return r;
 }
 
-async function refreshNow(){
-  const b = $('refresh'); b.disabled = true; b.textContent = 'Starting...';
+async function refreshNow(btn){
+  const b = btn && btn.tagName ? btn : $('refresh'); b.disabled = true; b.textContent = 'Starting...';
   try {
     const r = await fetch(`${NBA_WORKER}/`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({what: 'prices'})});
     const j = await r.json();
     b.textContent = j.ok ? 'Running, about 2 min' : j.error === 'cooldown' ? 'Just refreshed' : 'Could not start';
     if (j.ok) { setTimeout(loadBoard, 90 * 1000); setTimeout(loadBoard, 150 * 1000); }
   } catch (e) { b.textContent = 'Could not start'; }
-  setTimeout(() => { b.disabled = false; b.textContent = 'Refresh'; }, 60 * 1000);
+  setTimeout(() => { b.disabled = false; b.textContent = 'Refresh'; }, 60 * 1000);   // pages that re-render drop the button; the global one comes back here
 }
-if (NBA_WORKER && onSite){ $('refresh').hidden = false; $('refresh').addEventListener('click', refreshNow); }
+if (NBA_WORKER && onSite){ $('refresh').hidden = false; $('refresh').addEventListener('click', () => refreshNow()); }
 
 async function loadBoard(){
   boardTried = true;
@@ -2447,7 +2448,7 @@ function renderProps(){
   $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="prefresh" type="button">Refresh</button>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pill('idle', 'No props yet');
-  $('prefresh')?.addEventListener('click', () => loadBoard());
+  $('prefresh')?.addEventListener('click', e => NBA_WORKER && onSite ? refreshNow(e.currentTarget) : loadBoard());
 
   const ex = B.games && B.games[0];
   if (pick.mode === 'example'){
@@ -3036,7 +3037,7 @@ function renderEdges(){
   $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="erefresh" type="button">Refresh</button>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pill('idle', 'No props yet');
-  $('erefresh')?.addEventListener('click', () => loadBoard());
+  $('erefresh')?.addEventListener('click', e => NBA_WORKER && onSite ? refreshNow(e.currentTarget) : loadBoard());
   const games = B.games || [];
   const all = edgePlays(B);
 
