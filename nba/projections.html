@@ -1140,11 +1140,11 @@ th{font-weight:500}
       </div>
       <div id="pv-full" class="pv-wrap" hidden>
       <div class="kpis" id="pkpis"></div>
+      <section class="card pv-games" id="pgames" hidden></section>
       <section class="card">
         <div class="card-h">
           <div><h2>Props board</h2><p id="psub">Every listed prop next to our projection. Click a row for the Kalshi ladder and each book.</p></div>
           <div class="filters">
-            <select class="sel" id="pgame" aria-label="Game"></select>
             <div class="seg" id="pstat" role="group" aria-label="Stat"></div>
             <select class="sel" id="psort" aria-label="Sort">
               <option value="edge">Sort: best edge</option><option value="proj">Sort: projection</option><option value="game">Sort: game, player</option>
@@ -2673,7 +2673,8 @@ function renderProps(){
   // filters
   const games = B.games || [];
   if (!games.some(g => String(g.id) === pf.game)) pf.game = 'all';
-  $('pgame').innerHTML = `<option value="all">All games (${games.length})</option>` + games.map(g => `<option value="${g.id}"${String(g.id) === pf.game ? ' selected' : ''}>${gname(g)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}</option>`).join('');
+  $('pgames').hidden = games.length < 2;
+  if (games.length > 1) gameStripMount($('pgames'), gameStrip(games, pf.game, {all: true}));
   $('pstat').innerHTML = STATS.map(([k, l]) => `<button type="button" data-s="${k}" aria-pressed="${pf.stat === k}">${l}</button>`).join('');
 
   const cache = {};
@@ -2852,7 +2853,7 @@ function detailRow(r){
 
 // events
 $('pv-games').addEventListener('click', e => { const b = e.target.closest('.gtile[data-g]'); if (b){ pv.game = b.dataset.g; renderPropsV2(); } });
-$('pgame').addEventListener('change', e => { pf.game = e.target.value; renderProps(); });
+$('pgames').addEventListener('click', e => { const b = e.target.closest('.gtile[data-g]'); if (b){ pf.game = b.dataset.g; renderProps(); } });
 $('psort').addEventListener('change', e => { pf.sort = e.target.value; renderProps(); });
 $('pstat').addEventListener('click', e => { const s = e.target.closest('button')?.dataset.s; if (s){ pf.stat = s; renderProps(); } });
 $('pq').addEventListener('input', e => { pf.q = e.target.value; renderProps(); });
