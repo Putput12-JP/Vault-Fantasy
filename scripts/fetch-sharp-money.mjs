@@ -406,12 +406,47 @@ async function polymarket(sk, cfg, games, S, W) {
         if (x.timestamp <= r.cur) { old = true; continue; }
         const usd = x.price * x.size; newest = Math.max(newest, x.timestamp); if (usd < 5) continue;
         const oi = x.side === 'BUY' ? x.outcomeIndex : 1 - x.outcomeIndex;
-        r.usd[oi] += usd; r.n++; if (W.sharp.has(x.proxyWallet)) r.sharp[oi] += usd;
+        r.usd[oi] += usd; r.ct = (r.ct || 0) + x.size; r.n++; if (W.sharp.has(x.proxyWallet)) r.sharp[oi] += usd;
       }
       if (old || rows.length < 500) break;
     }
-    r.cur = newest; r.usd = r.usd.map(Math.round); r.sharp = r.sharp.map(Math.round);
+    r.cur = newest; r.usd = r.usd.map(Math.round); r.sharp = r.sharp.map(Math.round); if (r.ct) r.ct = Math.round(r.ct);
   });
+  return out;
+}
+
+// ── 4b. Kalshi player props: a snapshot of every open prop ladder ────────
+// Each Kalshi prop market is one rung ("Bijan Robinson: 90+ rushing yards"). Its event
+// ticker carries the same game suffix as the winner market (KXNFLRSHYDS-26OCT05ATLNO vs
+// KXNFLGAME-26OCT05ATLNO), so the join is exact. Volume is contracts ($1 at stake each,
+// both sides together). Kalshi trades are anonymous, so there is no sharp read here.
+const KPROPS = {
+  nfl: ['KXNFLTD', 'KXNFLRSHYDS', 'KXNFLRECYDS', 'KXNFLREC', 'KXNFLPASSYDS', 'KXNFLPASSTDS', 'KXNFLRRYDS', 'KXNFLRSHATT', 'KXNFLPASSATT', 'KXNFLPASSCOMP', 'KXNFLPASSINT'],
+  nba: ['KXNBAPTS', 'KXNBAREB', 'KXNBAAST', 'KXNBA3PT', 'KXNBAPRA'],
+};
+async function kalshiProps(sk, games, K) {
+  const out = new Map(), bySfx = new Map();
+  for (const g of games) { const tk = K.get(g)?.ticker; if (tk) bySfx.set(tk.split('-').slice(1).join('-'), g); }
+  if (!bySfx.size || !KPROPS[sk]) return out;
+  const B = 'https://api.elections.kalshi.com/trade-api/v2';
+  await pool(KPROPS[sk], 4, async series => {
+    let cursor = '';
+    for (let p = 0; p < 4; p++) {
+      const r = await getJSON(`${B}/markets?series_ticker=${series}&status=open&limit=1000${cursor ? '&cursor=' + cursor : ''}`).catch(() => null);
+      for (const m of r?.markets || []) {
+        const g = bySfx.get(m.event_ticker.split('-').slice(1).join('-')); if (!g) continue;
+        const mt = /^([^:]+): (\d+)\+ (.+)$/.exec(m.title || ''); if (!mt) continue;
+        const vol = +m.volume_fp || 0; if (vol < 100) continue;
+        const bid = +m.yes_bid_dollars || 0, ask = +m.yes_ask_dollars || 0, px = bid && ask && ask - bid <= 0.2 ? (bid + ask) / 2 : +m.last_price_dollars || null;
+        const key = mt[1] + '|' + mt[3], arr = out.get(g) || out.set(g, {}).get(g);
+        const x = arr[key] ||= { player: mt[1], stat: mt[3], ct: 0, vol24: 0, rungs: 0, top: null };
+        x.ct += vol; x.vol24 += +m.volume_24h_fp || 0; x.rungs++;
+        if (!x.top || vol > x.top.vol) x.top = { k: +mt[2], vol, px: px != null ? +px.toFixed(3) : null };
+      }
+      cursor = r?.cursor; if (!cursor || !(r?.markets || []).length) break;
+    }
+  });
+  for (const [g, o] of out) out.set(g, Object.values(o).map(x => ({ ...x, ct: Math.round(x.ct), vol24: Math.round(x.vol24) })).sort((a, b) => b.ct - a.ct).slice(0, 40));
   return out;
 }
 
@@ -751,7 +786,7 @@ function payload(S, byGame, W, status) {
     games.push({
       key: g.key, sport: g.sport, start: g.start, status: g.status, away: g.away, home: g.home, bets: g.bets, accts,
       props: G.props ? Object.values(G.props).filter(r => r.usd[0] + r.usd[1] >= 100).sort((a, b) => (b.usd[0] + b.usd[1]) - (a.usd[0] + a.usd[1])).slice(0, 40).map(({ cur, vol, ...r }) => r) : null,
-      flowH: flowHours(G, g.start, t), model: vaultModel(g),
+      kprops: g._kp || null, flowH: flowHours(G, g.start, t), model: vaultModel(g),
       splits: g.splits, open: g.open, consensus: g.consensus, soft: g.soft,
       pin: P ? { ml: P.ml, sp: P.sp, tot: P.tot, lim: P.lim } : null,
       pinHist: (G.pin || []).map(s => [s.ts, s.ml ?? null, s.sp ?? null, s.spP ?? null, s.tot ?? null, s.oP ?? null]),
@@ -834,6 +869,8 @@ async function pollOnce() {
       kalshi(sk, cfg, games, S).catch(e => { st.kalshi = 'error: ' + e.message; return new Map(); }),
     ]);
     st.pinnacle ??= P.size; st.polymarket ??= PM.size; st.kalshi ??= K.size; st.games = games.length;
+    const KP = await kalshiProps(sk, games, K).catch(e => { st.kalshiProps = 'error: ' + e.message; return new Map(); });
+    for (const g of games) g._kp = KP.get(g) || null;
     for (const g of games) {
       g._P = P.get(g) || null; g._pm = PM.get(g) || null; g._k = K.get(g) || null;
       analyse(sk, cfg, g, g._P, g._pm, g._k, S, W);
