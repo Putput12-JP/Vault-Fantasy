@@ -1,0 +1,593 @@
+{
+ "note": "Every candidate tried, with its out-of-fold numbers. ACCEPT needs all 3 folds better, bootstrap CI > 0, and gain > a bar that rises with trials taken.",
+ "trials": [
+  {
+   "t": "2026-10-06T01:55:18.159187+00:00",
+   "candidate": "market_only",
+   "verdict": "reject",
+   "pooled_gain": -3.9e-05,
+   "ci_lo": -0.000399,
+   "min_gain": 0.000208,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69012,
+     "hit": 0.5304,
+     "n": 6923,
+     "vs_incumbent": 0.000179
+    },
+    "2025->2024": {
+     "ll": 0.68789,
+     "hit": 0.5307,
+     "n": 7746,
+     "vs_incumbent": -0.000204
+    },
+    "replay->live2026": {
+     "ll": 0.69652,
+     "hit": 0.5158,
+     "n": 2375,
+     "vs_incumbent": -0.000135
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:55:20.163629+00:00",
+   "candidate": "incumbent(base)",
+   "verdict": "reject",
+   "pooled_gain": 0.0,
+   "ci_lo": 0.0,
+   "min_gain": 0.00033,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.6903,
+     "hit": 0.5225,
+     "n": 6923,
+     "vs_incumbent": 0.0
+    },
+    "2025->2024": {
+     "ll": 0.68769,
+     "hit": 0.5303,
+     "n": 7746,
+     "vs_incumbent": 0.0
+    },
+    "replay->live2026": {
+     "ll": 0.69638,
+     "hit": 0.5217,
+     "n": 2375,
+     "vs_incumbent": 0.0
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:55:28.442913+00:00",
+   "candidate": "per_market_icpt",
+   "verdict": "reject",
+   "pooled_gain": -6.8e-05,
+   "ci_lo": -0.0007,
+   "min_gain": 0.000416,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69098,
+     "hit": 0.5226,
+     "n": 6923,
+     "vs_incumbent": -0.000675
+    },
+    "2025->2024": {
+     "ll": 0.68735,
+     "hit": 0.5294,
+     "n": 7746,
+     "vs_incumbent": 0.000333
+    },
+    "replay->live2026": {
+     "ll": 0.69599,
+     "hit": 0.5305,
+     "n": 2375,
+     "vs_incumbent": 0.000394
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:55:36.794081+00:00",
+   "candidate": "per_market_model",
+   "verdict": "reject",
+   "pooled_gain": -0.00086,
+   "ci_lo": -0.001458,
+   "min_gain": 0.000483,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69062,
+     "hit": 0.5206,
+     "n": 6923,
+     "vs_incumbent": -0.000322
+    },
+    "2025->2024": {
+     "ll": 0.68899,
+     "hit": 0.5311,
+     "n": 7746,
+     "vs_incumbent": -0.001306
+    },
+    "replay->live2026": {
+     "ll": 0.69736,
+     "hit": 0.5171,
+     "n": 2375,
+     "vs_incumbent": -0.000977
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:55:41.019780+00:00",
+   "candidate": "side_split",
+   "verdict": "reject",
+   "pooled_gain": 0.000114,
+   "ci_lo": -0.000194,
+   "min_gain": 0.000538,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69017,
+     "hit": 0.5274,
+     "n": 6923,
+     "vs_incumbent": 0.000132
+    },
+    "2025->2024": {
+     "ll": 0.68753,
+     "hit": 0.5293,
+     "n": 7746,
+     "vs_incumbent": 0.000158
+    },
+    "replay->live2026": {
+     "ll": 0.69647,
+     "hit": 0.5267,
+     "n": 2375,
+     "vs_incumbent": -8.5e-05
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:55:44.644594+00:00",
+   "candidate": "agree_interaction",
+   "verdict": "reject",
+   "pooled_gain": 2.3e-05,
+   "ci_lo": -0.000256,
+   "min_gain": 0.000584,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69016,
+     "hit": 0.5304,
+     "n": 6923,
+     "vs_incumbent": 0.000135
+    },
+    "2025->2024": {
+     "ll": 0.6877,
+     "hit": 0.5302,
+     "n": 7746,
+     "vs_incumbent": -1.5e-05
+    },
+    "replay->live2026": {
+     "ll": 0.69656,
+     "hit": 0.5225,
+     "n": 2375,
+     "vs_incumbent": -0.00018
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:55:47.291308+00:00",
+   "candidate": "zero_model_on_QB_volume",
+   "verdict": "reject",
+   "pooled_gain": -0.000334,
+   "ci_lo": -0.000787,
+   "min_gain": 0.000624,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69114,
+     "hit": 0.5264,
+     "n": 6923,
+     "vs_incumbent": -0.000842
+    },
+    "2025->2024": {
+     "ll": 0.68763,
+     "hit": 0.5289,
+     "n": 7746,
+     "vs_incumbent": 5.5e-05
+    },
+    "replay->live2026": {
+     "ll": 0.69651,
+     "hit": 0.5225,
+     "n": 2375,
+     "vs_incumbent": -0.000124
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:55:50.953100+00:00",
+   "candidate": "squares",
+   "verdict": "reject",
+   "pooled_gain": -0.000359,
+   "ci_lo": -0.000716,
+   "min_gain": 0.000659,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69114,
+     "hit": 0.5258,
+     "n": 6923,
+     "vs_incumbent": -0.00084
+    },
+    "2025->2024": {
+     "ll": 0.68777,
+     "hit": 0.5289,
+     "n": 7746,
+     "vs_incumbent": -8.5e-05
+    },
+    "replay->live2026": {
+     "ll": 0.69623,
+     "hit": 0.5204,
+     "n": 2375,
+     "vs_incumbent": 0.000151
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:17.616057+00:00",
+   "candidate": "market_only",
+   "verdict": "reject",
+   "pooled_gain": -3.9e-05,
+   "ci_lo": -0.000399,
+   "min_gain": 0.000691,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69012,
+     "hit": 0.5304,
+     "n": 6923,
+     "vs_incumbent": 0.000179
+    },
+    "2025->2024": {
+     "ll": 0.68789,
+     "hit": 0.5307,
+     "n": 7746,
+     "vs_incumbent": -0.000204
+    },
+    "replay->live2026": {
+     "ll": 0.69652,
+     "hit": 0.5158,
+     "n": 2375,
+     "vs_incumbent": -0.000135
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:19.623321+00:00",
+   "candidate": "incumbent(base)",
+   "verdict": "reject",
+   "pooled_gain": 0.0,
+   "ci_lo": 0.0,
+   "min_gain": 0.000719,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.6903,
+     "hit": 0.5225,
+     "n": 6923,
+     "vs_incumbent": 0.0
+    },
+    "2025->2024": {
+     "ll": 0.68769,
+     "hit": 0.5303,
+     "n": 7746,
+     "vs_incumbent": 0.0
+    },
+    "replay->live2026": {
+     "ll": 0.69638,
+     "hit": 0.5217,
+     "n": 2375,
+     "vs_incumbent": 0.0
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:27.931848+00:00",
+   "candidate": "per_market_icpt",
+   "verdict": "reject",
+   "pooled_gain": -6.8e-05,
+   "ci_lo": -0.0007,
+   "min_gain": 0.000745,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69098,
+     "hit": 0.5226,
+     "n": 6923,
+     "vs_incumbent": -0.000675
+    },
+    "2025->2024": {
+     "ll": 0.68735,
+     "hit": 0.5294,
+     "n": 7746,
+     "vs_incumbent": 0.000333
+    },
+    "replay->live2026": {
+     "ll": 0.69599,
+     "hit": 0.5305,
+     "n": 2375,
+     "vs_incumbent": 0.000394
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:36.353095+00:00",
+   "candidate": "per_market_model",
+   "verdict": "reject",
+   "pooled_gain": -0.00086,
+   "ci_lo": -0.001458,
+   "min_gain": 0.000769,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69062,
+     "hit": 0.5206,
+     "n": 6923,
+     "vs_incumbent": -0.000322
+    },
+    "2025->2024": {
+     "ll": 0.68899,
+     "hit": 0.5311,
+     "n": 7746,
+     "vs_incumbent": -0.001306
+    },
+    "replay->live2026": {
+     "ll": 0.69736,
+     "hit": 0.5171,
+     "n": 2375,
+     "vs_incumbent": -0.000977
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:40.617042+00:00",
+   "candidate": "side_split",
+   "verdict": "reject",
+   "pooled_gain": 0.000114,
+   "ci_lo": -0.000194,
+   "min_gain": 0.000792,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69017,
+     "hit": 0.5274,
+     "n": 6923,
+     "vs_incumbent": 0.000132
+    },
+    "2025->2024": {
+     "ll": 0.68753,
+     "hit": 0.5293,
+     "n": 7746,
+     "vs_incumbent": 0.000158
+    },
+    "replay->live2026": {
+     "ll": 0.69647,
+     "hit": 0.5267,
+     "n": 2375,
+     "vs_incumbent": -8.5e-05
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:44.286725+00:00",
+   "candidate": "agree_interaction",
+   "verdict": "reject",
+   "pooled_gain": 2.3e-05,
+   "ci_lo": -0.000256,
+   "min_gain": 0.000812,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69016,
+     "hit": 0.5304,
+     "n": 6923,
+     "vs_incumbent": 0.000135
+    },
+    "2025->2024": {
+     "ll": 0.6877,
+     "hit": 0.5302,
+     "n": 7746,
+     "vs_incumbent": -1.5e-05
+    },
+    "replay->live2026": {
+     "ll": 0.69656,
+     "hit": 0.5225,
+     "n": 2375,
+     "vs_incumbent": -0.00018
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:46.969026+00:00",
+   "candidate": "zero_model_on_QB_volume",
+   "verdict": "reject",
+   "pooled_gain": -0.000334,
+   "ci_lo": -0.000787,
+   "min_gain": 0.000832,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69114,
+     "hit": 0.5264,
+     "n": 6923,
+     "vs_incumbent": -0.000842
+    },
+    "2025->2024": {
+     "ll": 0.68763,
+     "hit": 0.5289,
+     "n": 7746,
+     "vs_incumbent": 5.5e-05
+    },
+    "replay->live2026": {
+     "ll": 0.69651,
+     "hit": 0.5225,
+     "n": 2375,
+     "vs_incumbent": -0.000124
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:50.670718+00:00",
+   "candidate": "squares",
+   "verdict": "reject",
+   "pooled_gain": -0.000359,
+   "ci_lo": -0.000716,
+   "min_gain": 0.00085,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69114,
+     "hit": 0.5258,
+     "n": 6923,
+     "vs_incumbent": -0.00084
+    },
+    "2025->2024": {
+     "ll": 0.68777,
+     "hit": 0.5289,
+     "n": 7746,
+     "vs_incumbent": -8.5e-05
+    },
+    "replay->live2026": {
+     "ll": 0.69623,
+     "hit": 0.5204,
+     "n": 2375,
+     "vs_incumbent": 0.000151
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:53.808017+00:00",
+   "candidate": "line_move",
+   "verdict": "reject",
+   "pooled_gain": -0.000519,
+   "ci_lo": -0.0008,
+   "min_gain": 0.000867,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69051,
+     "hit": 0.5213,
+     "n": 6923,
+     "vs_incumbent": -0.000207
+    },
+    "2025->2024": {
+     "ll": 0.68832,
+     "hit": 0.5302,
+     "n": 7746,
+     "vs_incumbent": -0.000637
+    },
+    "replay->live2026": {
+     "ll": 0.69743,
+     "hit": 0.5242,
+     "n": 2375,
+     "vs_incumbent": -0.001044
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:56:56.947439+00:00",
+   "candidate": "price_move",
+   "verdict": "reject",
+   "pooled_gain": 4e-06,
+   "ci_lo": -5e-05,
+   "min_gain": 0.000883,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69028,
+     "hit": 0.5225,
+     "n": 6923,
+     "vs_incumbent": 2.1e-05
+    },
+    "2025->2024": {
+     "ll": 0.68774,
+     "hit": 0.531,
+     "n": 7746,
+     "vs_incumbent": -5e-05
+    },
+    "replay->live2026": {
+     "ll": 0.69625,
+     "hit": 0.5217,
+     "n": 2375,
+     "vs_incumbent": 0.00013
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:57:00.812094+00:00",
+   "candidate": "move_both",
+   "verdict": "reject",
+   "pooled_gain": -0.000699,
+   "ci_lo": -0.001026,
+   "min_gain": 0.000899,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69074,
+     "hit": 0.5229,
+     "n": 6923,
+     "vs_incumbent": -0.000439
+    },
+    "2025->2024": {
+     "ll": 0.68817,
+     "hit": 0.5284,
+     "n": 7746,
+     "vs_incumbent": -0.000486
+    },
+    "replay->live2026": {
+     "ll": 0.69853,
+     "hit": 0.5234,
+     "n": 2375,
+     "vs_incumbent": -0.002149
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:57:04.533560+00:00",
+   "candidate": "move_vs_model_side",
+   "verdict": "reject",
+   "pooled_gain": 0.00015,
+   "ci_lo": -0.000138,
+   "min_gain": 0.000913,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69044,
+     "hit": 0.5212,
+     "n": 6923,
+     "vs_incumbent": -0.000136
+    },
+    "2025->2024": {
+     "ll": 0.68798,
+     "hit": 0.5294,
+     "n": 7746,
+     "vs_incumbent": -0.000296
+    },
+    "replay->live2026": {
+     "ll": 0.69394,
+     "hit": 0.5238,
+     "n": 2375,
+     "vs_incumbent": 0.00244
+    }
+   }
+  },
+  {
+   "t": "2026-10-06T01:57:07.744958+00:00",
+   "candidate": "open_price",
+   "verdict": "reject",
+   "pooled_gain": -9e-06,
+   "ci_lo": -7.4e-05,
+   "min_gain": 0.000927,
+   "folds": {
+    "2024->2025": {
+     "ll": 0.69028,
+     "hit": 0.5225,
+     "n": 6923,
+     "vs_incumbent": 1.8e-05
+    },
+    "2025->2024": {
+     "ll": 0.68776,
+     "hit": 0.532,
+     "n": 7746,
+     "vs_incumbent": -7e-05
+    },
+    "replay->live2026": {
+     "ll": 0.69627,
+     "hit": 0.5217,
+     "n": 2375,
+     "vs_incumbent": 0.000112
+    }
+   }
+  }
+ ]
+}

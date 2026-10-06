@@ -61,15 +61,26 @@ def build_replay():
             prev = W.get((P.nkey(name), yr - 1), (None, []))[1]
             proj = P.project(m, mkt, prev + [w for w in cur if (B.num(w.get("wk")) or 0) < wk]); act = P.actual_of(m, row)
             if proj is None or act is None or lc is None or oc is None or uc is None or abs(act - lc) < 1e-9: continue
+            qo = (P.imp(oo) / (P.imp(oo) + P.imp(uo))) if (oo is not None and uo is not None) else None
             rows.append([mkt, yr, round(P.p_over(m, proj, lc), 4), round(P.imp(oc) / (P.imp(oc) + P.imp(uc)), 4), int(act > lc),
-                         round((proj - lc) / max(abs(lc), 0.5), 4)])
-    json.dump({"cols": ["mkt", "yr", "p", "q", "y", "gap"], "rows": rows, "built": datetime.now(timezone.utc).isoformat()}, open(REPLAY, "w"), separators=(",", ":"))
+                         round((proj - lc) / max(abs(lc), 0.5), 4), None if lo is None else round((lc - lo) / max(abs(lc), 0.5), 4),
+                         None if qo is None else round(qo, 4)])
+    json.dump({"cols": ["mkt", "yr", "p", "q", "y", "gap", "mv", "qo"], "rows": rows, "built": datetime.now(timezone.utc).isoformat()}, open(REPLAY, "w"), separators=(",", ":"))
     print(f"[lean-loop] replay: {len(rows)} lines → {REPLAY}")
 
 
 def load_replay():
     d = json.load(open(REPLAY)); c = d["cols"]
     return [dict(zip(c, r), live=False, wk=0) for r in d["rows"]]
+
+
+def _devig_open(r):
+    try:
+        imp = lambda a: 100 / (a + 100) if a > 0 else -a / (-a + 100)
+        o, u = r.get("open_over"), r.get("open_under")
+        return None if o is None or u is None else imp(o) / (imp(o) + imp(u))
+    except Exception:
+        return None
 
 
 def load_live():
@@ -80,7 +91,9 @@ def load_live():
         s = r["side"] == "over"
         out.append({"mkt": r["market"], "yr": int(r["season"]), "wk": int(r["week"]), "p": r["p_model"] if s else 1 - r["p_model"],
                     "q": r["p_market"] if s else 1 - r["p_market"], "y": int(r["actual"] > r["line_close"]), "live": True,
-                    "gap": ((r.get("proj") or r["line_close"]) - r["line_close"]) / max(abs(r["line_close"]), 0.5)})
+                    "gap": ((r.get("proj") or r["line_close"]) - r["line_close"]) / max(abs(r["line_close"]), 0.5),
+                    "mv": None if r.get("line_open") is None else (r["line_close"] - r["line_open"]) / max(abs(r["line_close"]), 0.5),
+                    "qo": _devig_open(r)})
     return out
 
 
