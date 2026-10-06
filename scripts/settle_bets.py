@@ -1512,6 +1512,13 @@ def settle_card(prop_picks):
     if heldf and heldf.get("picks"):
         rows = _grade_plays(heldf["picks"], prop_picks)
         res["held"] = {"picks": rows, "summary": _summ(rows)}
+    # Strict tier (build_best_bets.mjs logStrict): shadow-only plays where Vault's P(side) and the
+    # real books' no-vig P(side) both cleared a bar. Graded like a card play to test whether the
+    # backtest's ~70% hit rate (docs/strict-tier-backtest.md) holds on live games.
+    strictf = _load_data("best_bets_strict.json")
+    if strictf and strictf.get("picks"):
+        rows = _grade_plays(strictf["picks"], prop_picks)
+        res["strict"] = {"picks": rows, "summary": _summ(rows)}
     return res
 
 def tag_withheld(prop_picks):

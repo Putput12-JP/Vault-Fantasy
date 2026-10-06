@@ -102,6 +102,13 @@ const SHADOW_FILE = ARG.shadow || resolve(ROOT, 'data/best_bets_shadow.json');
 // Kalshi-vs-books-vs-Vault read on every Kalshi-priced line (signal_log.json).
 // Both are graded, never shown as plays: see logHeld / logSignals.
 const HELD_FILE = resolve(ROOT, 'data/best_bets_held.json');
+// STRICT TIER (shadow only, 2026-10-05): Vault's own P(side) AND the real books'
+// no-vig P(side) both clear a bar, on a market with a measured signal. Backtest on
+// 2024-25 ESPN BET closes (scripts/backtest_strict_tier.py, docs/strict-tier-backtest.md):
+// ~71% hit, but 2025 alone was 67% at +1% ROI, so it is LOGGED and graded here, never
+// shown as a play, until live results confirm it. Thresholds are the backtest's.
+const STRICT_FILE = ARG.strict || resolve(ROOT, 'data/best_bets_strict.json');
+const STRICT_MODEL = Number(ARG.strictmodel ?? 0.70), STRICT_MKT = Number(ARG.strictmkt ?? 0.58);   // overrides are for testing only
 const SIGNAL_FILE = resolve(ROOT, 'data/signal_log.json');
 const RULES_FILE = ARG.rules || resolve(ROOT, 'data/best_bets_rules.json');
 const CARD_DEFAULT_ON = ['rec_yd|under|WR/TE'];
@@ -602,7 +609,7 @@ function scoreProps(feed, PM, KP) {
   const roleParams = loadRoleParams();   // role_volume.json — the board's volume anchor
   const ctx = buildMatchupCtx(feed);   // opponent + environment + game-script, per prop
   let benchskip = 0, roleskip = 0, projskip = 0, dfsskip = 0, countskip = 0, sharpskip = 0, weakskip = 0, rechold = 0;
-  const heldCands = [], signals = [], heldIds = {};
+  const heldCands = [], signals = [], heldIds = {}, strictCands = [];
   // Players whose role the books contradict on ANY volume market. The check
   // above is per line, so one market could slip under ROLE_PROJREL while his
   // others tripped it (Warren wk 4 2026: rush yds + receptions flagged "role",
@@ -711,6 +718,17 @@ function scoreProps(feed, PM, KP) {
         const wouldPass = trust.corrob && (letter === 'A' || letter === 'B') && ev != null && ev > 0 && bettable;
         const preGate = trust.corrob && (eff === 'A' || eff === 'B') && ev != null && ev > 0 && bettable;
         const pass = preGate && !projBlowout && !countUnderPhantom && !earlyRecHold && realBookAtLine;
+        // Strict tier: both probabilities for THIS side, no grade/EV needed. Real books only
+        // (median no-vig at the exact line); QB attempts/completions/yards sit out via weakMkt.
+        if (!lineHeld && realBookAtLine && bettable && !weakMkt && !roleUnconfirmed && !projBlowout
+            && !countUnderPhantom && !earlyRecHold && !sharpDisagree && sideProb >= STRICT_MODEL) {
+          const rq = lq.filter(q => isRealBook(q.book)).map(q => devigPower(q.over, q.under)).filter(x => x != null).sort((x, y) => x - y);
+          const mO = rq.length ? (rq.length % 2 ? rq[rq.length >> 1] : (rq[rq.length / 2 - 1] + rq[rq.length / 2]) / 2) : null;
+          const mSide = mO == null ? null : side === 'over' ? mO : 1 - mO;
+          if (mSide != null && mSide >= STRICT_MKT) strictCands.push({ id, name: p.name, team: p.team || null, pos: p.pos || null, opp: p.opp || null,
+            commence: slateKick[[p.team, p.opp].sort().join('|')] || p.commence || null, market: mk, line, side,
+            book: bs.book, price: bs.price, prob: round(sideProb, 3), mkt: round(mSide, 3), nBooks: rq.length, proj: v.proj, ev: ev != null ? round(ev * 100, 1) : null });
+        }
         // Signal log: every line with a liquid Kalshi read, next to the real
         // books' no-vig P(over) and Vault's, graded by build_model_scoreboard.
         if (sharp) {
@@ -780,7 +798,7 @@ function scoreProps(feed, PM, KP) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, pool: cands, dump, heldCands, heldIds, signals, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
+  return { list, pool: cands, dump, heldCands, heldIds, strictCands, signals, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
 }
 
 function loadCardRules() {
@@ -854,6 +872,32 @@ function logHeld(feed, list, ids) {
   }
   if (changed) {
     file.note = 'Props withheld because a teammate starter is out (usually the QB) whose line still passed every Best Bets gate. Never shown as plays; graded to test whether the hold costs anything.';
+    file.updated = new Date().toISOString();
+  }
+  return { file, changed };
+}
+/* Strict-tier shadow log (see STRICT_MODEL): first read per week/player/market at the
+   line and price it showed, ranked by model probability so the best line per market
+   wins the key. Graded by settle_bets.py into best_bets_record.json "strict". */
+function logStrict(feed, list) {
+  let file = null;
+  try { file = JSON.parse(readFileSync(STRICT_FILE, 'utf8')); } catch (e) { /* first run */ }
+  if (!file || !Array.isArray(file.picks)) file = { picks: [] };
+  const { stype, season, week } = _slot(feed);
+  let changed = false;
+  if (stype && week && season) {
+    const have = new Set(file.picks.map(p => p.key)), now = Date.now();
+    for (const b of [...list].sort((x, y) => y.prob - x.prob)) {
+      const key = [season, stype, week, b.id, b.market].join('|');
+      if (have.has(key) || !(Date.parse(b.commence || '') > now)) continue;
+      file.picks.push({ key, season, stype, week, pid: String(b.id), name: b.name, team: b.team, pos: b.pos, opp: b.opp,
+        commence: b.commence, market: b.market, side: b.side, line: b.line, book: b.book, price: b.price, book_real: true,
+        prob: b.prob, mkt: b.mkt, nBooks: b.nBooks, proj: b.proj, ev: b.ev, posted: new Date().toISOString() });
+      have.add(key); changed = true;
+    }
+  }
+  if (changed) {
+    file.note = `Strict tier (shadow): Vault P(side) >= ${STRICT_MODEL} and real-book no-vig P(side) >= ${STRICT_MKT}, QB volume excluded. Never shown as plays; graded to test whether the backtest's ~70% hit rate holds live.`;
     file.updated = new Date().toISOString();
   }
   return { file, changed };
@@ -1153,6 +1197,9 @@ function gameLeans(feed) {
     if (DUMP) { writeFileSync(DUMP, JSON.stringify({ generated: feed.best_bets.generated, props: props.dump, eligible: eligible.map(c => c.id + '|' + c.market) }, null, 1)); log(`dump: ${props.dump.length} rows → ${DUMP}`); return; }
     if (DRY) { log('DRY — not writing'); return; }
     if (shadow.changed) writeFileSync(SHADOW_FILE, JSON.stringify(shadow.file, null, 1) + '\n');
+    const strictLog = logStrict(feed, props.strictCands);
+    log(`strict tier (shadow): ${props.strictCands.length} lines now · ${strictLog.file.picks.length} logged`);
+    if (strictLog.changed) writeFileSync(STRICT_FILE, JSON.stringify(strictLog.file, null, 1) + '\n');
     const heldLog = logHeld(feed, props.heldCands, props.heldIds), sigLog = logSignals(feed, props.signals);
     log(`held (withheld but would have passed): ${props.heldCands.length} now · ${heldLog.file.picks.length} logged · kalshi signals: ${props.signals.length} lines now`);
     if (heldLog.changed) writeFileSync(HELD_FILE, JSON.stringify(heldLog.file, null, 1) + '\n');
