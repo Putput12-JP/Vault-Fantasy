@@ -59,6 +59,25 @@ const SPORTS = {
          steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets_nba.json', sigBig: 25000, crossAt: 25000 },
 };
 const WREC = {};
+const PROP_MIN_VOL = 300, PROP_MAX = 25;   // prop markets read per game (by Polymarket volume)
+// Vault's own team ratings (scripts/build_game_model.py), NFL only. Context on the game page, never an edge.
+let GM = null; try { GM = JSON.parse(readFileSync(resolve(ROOT, 'data', 'game_model.json'), 'utf8')); } catch (e) {}
+function vaultModel(g) {
+  const A = GM?.teams?.[g.away.abbr], Hm = GM?.teams?.[g.home.abbr]; if (!A || !Hm || g.sport !== 'nfl') return null;
+  const ph = GM.base_pts + Hm.off - A.def + GM.hfa / 2, pa = GM.base_pts + A.off - Hm.def - GM.hfa / 2, mg = Hm.rate - A.rate + GM.hfa;
+  const phi = z => 0.5 * (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (z + 0.044715 * z ** 3)));
+  const rank = Object.fromEntries(['rate', 'off', 'def'].map(k => { const xs = Object.entries(GM.teams).sort((p, q) => q[1][k] - p[1][k]).map(e => e[0]); return [k, { home: xs.indexOf(g.home.abbr) + 1, away: xs.indexOf(g.away.abbr) + 1, n: xs.length }]; }));
+  return { home: { pts: +ph.toFixed(1) }, away: { pts: +pa.toFixed(1) }, margin: +mg.toFixed(1), total: +(ph + pa).toFixed(1), homeWin: +phi(mg / GM.sd_margin).toFixed(3), rank };
+}
+// Hourly money on each side over the last 36h (or up to kickoff), sharp vs everyone else.
+function flowHours(G, start, t) {
+  const t1 = Math.min(t, start), t0 = t1 - 36 * H, NB = 36, rows = {};
+  const add = (x, sharp) => { if (x.ts < t0 || x.ts > t1) return; const b = Math.min(NB - 1, Math.floor((x.ts - t0) / H)), r = rows[x.m + ':' + x.side] ||= { sharp: Array(NB).fill(0), other: Array(NB).fill(0) }; r[sharp ? 'sharp' : 'other'][b] += x.usd; };
+  for (const x of G.pm || []) add(x, x.cls === 'sharp');
+  for (const x of G.kal || []) add(x, false);
+  for (const r of Object.values(rows)) { r.sharp = r.sharp.map(Math.round); r.other = r.other.map(Math.round); }
+  return Object.keys(rows).length ? { t0, t1, bins: NB, rows } : null;
+}
 const SOFT = { 68: 'DraftKings', 69: 'FanDuel', 75: 'BetMGM', 71: 'BetRivers', 79: 'bet365' };
 const AN_BOOKS = [15, 30, ...Object.keys(SOFT).map(Number)];
 
@@ -359,6 +378,40 @@ async function polymarket(sk, cfg, games, S, W) {
     const px = x.side === 'BUY' ? x.px : 1 - x.px;
     tape.push({ ts: x.ts, m: k, side, usd: x.usd, px: r3(px), line: m.line, w: x.w, who: S.acct?.[x.w]?.who || null, cls: 'sharp', id: x.id, late: 1 });
   }
+  // Player props. The series listing above already carries each game's separate
+  // "<game slug>-player-props" event, so this costs no extra listing call: only the
+  // busiest prop markets (games within 2 days) get their taker tape read, incrementally,
+  // and the money per side is accumulated in state (G.props[cid]) with the sharp share.
+  const bySlug = new Map([...out].map(([g, o]) => [o.slug, g]));
+  const ptodo = [];
+  for (const ev of evs || []) {
+    if (!/-player-props$/.test(ev.slug || '')) continue;
+    const g = bySlug.get(ev.slug.replace(/-player-props$/, '')); if (!g || g.start > t + 2 * DAY || g.start < t - 5 * H) continue;
+    const G = S.games[g.key] ||= {}, P = G.props ||= {};
+    const ms = (ev.markets || []).filter(m => +m.volumeNum >= PROP_MIN_VOL && !m.closed).sort((a, b) => +b.volumeNum - +a.volumeNum).slice(0, PROP_MAX);
+    for (const m of ms) {
+      const mt = /^([^:]+): (.+)$/.exec(m.question || ''); if (!mt) continue;
+      const r = P[m.conditionId] ||= { player: mt[1], stat: mt[2].replace(/ O\/U [\d.]+$/, ''), line: m.line != null ? +m.line : null, usd: [0, 0], sharp: [0, 0], n: 0, cur: 0 };
+      r.outs = JSON.parse(m.outcomes || '[]'); r.px = JSON.parse(m.outcomePrices || '[]').map(Number); r.vol = Math.round(+m.volumeNum);
+      if (g.start > t) ptodo.push([m.conditionId, r]);
+    }
+  }
+  await pool(ptodo, 6, async ([cid, r]) => {
+    let newest = r.cur;
+    for (let off = 0; off < 1500; off += 500) {
+      const rows = await getJSON(`https://data-api.polymarket.com/trades?market=${cid}&takerOnly=true&limit=500&offset=${off}`).catch(() => null);
+      if (!Array.isArray(rows) || !rows.length) break;
+      let old = false;
+      for (const x of rows) {
+        if (x.timestamp <= r.cur) { old = true; continue; }
+        const usd = x.price * x.size; newest = Math.max(newest, x.timestamp); if (usd < 5) continue;
+        const oi = x.side === 'BUY' ? x.outcomeIndex : 1 - x.outcomeIndex;
+        r.usd[oi] += usd; r.n++; if (W.sharp.has(x.proxyWallet)) r.sharp[oi] += usd;
+      }
+      if (old || rows.length < 500) break;
+    }
+    r.cur = newest; r.usd = r.usd.map(Math.round); r.sharp = r.sharp.map(Math.round);
+  });
   return out;
 }
 
@@ -697,6 +750,8 @@ function payload(S, byGame, W, status) {
       .map(({ w, ...a }) => ({ ...a, usd: Math.round(a.usd), w: w ? w.slice(0, 6) + '…' + w.slice(-4) : null, rec: w && WREC[g.sport]?.[w] ? WREC[g.sport][w] : null }));
     games.push({
       key: g.key, sport: g.sport, start: g.start, status: g.status, away: g.away, home: g.home, bets: g.bets, accts,
+      props: G.props ? Object.values(G.props).filter(r => r.usd[0] + r.usd[1] >= 100).sort((a, b) => (b.usd[0] + b.usd[1]) - (a.usd[0] + a.usd[1])).slice(0, 40).map(({ cur, vol, ...r }) => r) : null,
+      flowH: flowHours(G, g.start, t), model: vaultModel(g),
       splits: g.splits, open: g.open, consensus: g.consensus, soft: g.soft,
       pin: P ? { ml: P.ml, sp: P.sp, tot: P.tot, lim: P.lim } : null,
       pinHist: (G.pin || []).map(s => [s.ts, s.ml ?? null, s.sp ?? null, s.spP ?? null, s.tot ?? null, s.oP ?? null]),
