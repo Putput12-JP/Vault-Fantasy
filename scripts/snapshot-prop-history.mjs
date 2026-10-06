@@ -137,6 +137,45 @@ const prev = readJSON(OUT) || {};
 const props = (prev.props && typeof prev.props === 'object') ? prev.props : {};   // carry ALL prior keys forward (retain finished weeks)
 
 let created = 0, moved = 0, seen = 0, contradicted = 0, started = 0, otherGame = 0;
+
+/* ── Anytime TD archive → data/anytime_td_history.json ───────────────────
+   Anytime TD is one-sided (books post a "yes" price only), so the two-way
+   ledger above skips it, and settlement's proj-vs-line side doesn't apply to
+   it either. It is banked here instead, with nothing downstream reading it
+   yet: no free source has historical anytime prices (ESPN BET priced only
+   2025 Week 1), so this file IS the future backtest set for the anytime
+   board. Same freeze rules: first read = open, a sample only when the best
+   price or the books move, nothing banked at or after kickoff. */
+const ATD_OUT = ARG['atd-out'] ? resolve(process.cwd(), ARG['atd-out']) : resolve(dirname(OUT), 'anytime_td_history.json');
+const atdPrev = readJSON(ATD_OUT) || {};
+const atd = (atdPrev.props && typeof atdPrev.props === 'object') ? atdPrev.props : {};
+let atdSeen = 0, atdNew = 0, atdMoved = 0;
+function bankAnytime(pid, p, cell, stats, commence, kickMs) {
+  // every book's yes price (quotes carry line 0 = "anytime"), best first
+  const q = (cell.quotes || []).filter(x => x && x.book && num(x.over) != null).map(x => [x.book, num(x.over)]).sort((a, b) => b[1] - a[1]);
+  const best = q.length ? q[0] : (num(cell.over) != null ? [cell.book || null, num(cell.over)] : null);
+  if (!best) return;
+  if (commence && Date.parse(now) >= kickMs) return;
+  atdSeen++;
+  const snap = { over: best[1], book: best[0], books: q.length, proj: stats ? num(stats.anytime_td) : null, ts: now };
+  const key = [season, seasonType, week, pid].join('|');
+  const rec = atd[key];
+  if (!rec) {
+    atd[key] = { season, week, seasonType, pid, name: p.name || null, team: p.team || null, pos: p.pos || null,
+                 opp: p.opp || null, commence, open: { ...snap, q }, cur: { ...snap, q }, samples: [snap] };
+    atdNew++;
+    return;
+  }
+  if (rec.commence && Date.parse(now) >= Date.parse(rec.commence)) return;
+  if (commence && rec.commence && Math.abs(kickMs - Date.parse(rec.commence)) > DAY_MS) return;   // feed rolled to next week's game
+  const last = rec.samples[rec.samples.length - 1];
+  rec.cur = { ...snap, q };
+  if (!last || last.over !== snap.over || last.book !== snap.book || last.books !== snap.books) {
+    rec.samples.push(snap);
+    if (rec.samples.length > MAX_SAMPLES) rec.samples.splice(1, rec.samples.length - MAX_SAMPLES);
+    atdMoved++;
+  }
+}
 const nowMs = Date.parse(now);
 
 for (const pid in feed.vegas_player_props) {
@@ -157,6 +196,7 @@ for (const pid in feed.vegas_player_props) {
     // is the point where prices become permanent, so re-run it on a copy. Only
     // prices quoted at exactly cell.line are banked (prop-quote-guard.mjs).
     const cell = JSON.parse(JSON.stringify(p.lines[mk]));
+    if (mk === 'anytime_td') { bankAnytime(pid, p, cell, stats, commence, kickMs); continue; }
     repairCell(cell, mk);
     // real two-way only: need both prices (line may be null for prob-kind markets)
     if (cell.over == null || cell.under == null) continue;
@@ -223,6 +263,9 @@ for (const pid in feed.vegas_player_props) {
 
 const payload = { generated: now, season, week, seasonType, keys: Object.keys(props).length, props };
 log(`${seen} live two-way lines · ${created} new keys · ${moved} moved · ${contradicted} contradicted · ${started} past kickoff · ${otherGame} other game (not banked) · ${payload.keys} total banked`);
+log(`anytime TD: ${atdSeen} live yes-prices · ${atdNew} new · ${atdMoved} moved · ${Object.keys(atd).length} total banked`);
 if (DRY) { log('--dry: not written'); process.exit(0); }
 writeFileSync(OUT, JSON.stringify(payload));
 log('wrote ' + OUT);
+writeFileSync(ATD_OUT, JSON.stringify({ generated: now, season, week, seasonType, keys: Object.keys(atd).length, props: atd }));
+log('wrote ' + ATD_OUT);

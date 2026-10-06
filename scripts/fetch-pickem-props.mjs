@@ -341,6 +341,30 @@ function gameQbStatus(feed, sl) {
   return { generated: new Date().toISOString(), note: 'Teams whose established QB (game_model.json qb.established) is out or benched. The game model takes qb.margin / qb.total points off them.', teams };
 }
 
+/* QB news timing (data/qb_news_log.json). Every change in qb_status (a team
+   goes onto a backup, comes back, or changes backups) is appended with the
+   time THIS run saw it. scripts/build_qb_news_lag.py grades each one against
+   the line history: had the spread already moved when Vault noticed, or did it
+   move after? Only a move AFTER is an edge you can bet. Append-only. */
+const QB_NEWS_LOG = 'data/qb_news_log.json';
+function logQbNews(next) {
+  let prev = {}, log_ = { events: [] };
+  try { prev = JSON.parse(readFileSync(QB_STATUS, 'utf8')).teams || {}; } catch (e) { /* first run */ }
+  try { log_ = JSON.parse(readFileSync(QB_NEWS_LOG, 'utf8')); } catch (e) { /* first run */ }
+  if (!Array.isArray(log_.events)) log_.events = [];
+  const cur = next.teams || {}, t = next.generated, add = [];
+  for (const team of new Set([...Object.keys(prev), ...Object.keys(cur)])) {
+    const a = prev[team], b = cur[team];
+    if (!a && b) add.push({ t, team, kind: 'out', reason: b.reason, established: b.established, starter: b.starter });
+    else if (a && !b) add.push({ t, team, kind: 'back', established: a.established, starter: a.established });
+    else if (a && b && a.starter !== b.starter) add.push({ t, team, kind: 'starter', reason: b.reason, established: b.established, starter: b.starter, was: a.starter });
+  }
+  if (!add.length) return;
+  log_.events.push(...add);
+  writeFileSync(QB_NEWS_LOG, JSON.stringify(log_, null, 1));
+  log(`QB news: ${add.map(e => `${e.team} ${e.kind}${e.starter ? ' (' + e.starter + ')' : ''}`).join(', ')}`);
+}
+
 // team -> Sleeper id of the QB who started the team's most recent game (most
 // pass attempts that week, nflverse weekly stats in data/). {} when missing.
 function lastStarterQBs(season, sl) {
@@ -1061,7 +1085,7 @@ function mergeFeed(sources, stats, sl) {
   const summary = `+${addedPlayers} players, +${addedMarkets} markets, ~${refreshed} refreshed — ${had} → ${Object.keys(existing).length}`;
   if (DRY) { log('DRY — would merge:', summary); return true; }
   writeFileSync(FEED, JSON.stringify(feed));
-  if (qbs) writeFileSync(QB_STATUS, JSON.stringify(qbs, null, 1));
+  if (qbs) { logQbNews(qbs); writeFileSync(QB_STATUS, JSON.stringify(qbs, null, 1)); }
   log(`merged into ${FEED}: ${summary}`);
   return true;
 }

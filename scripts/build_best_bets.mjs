@@ -330,7 +330,9 @@ function roleShift(rp, stat, pos, rank, level) {
 // the player's current role; the applied multiplier is written to role.mult for
 // provenance. TD/poisson markets are left alone (goal-line scoring doesn't track
 // volume rank), matching prop-model.js.
+function gateWeeks(weeks, m) { const g = m.gate; return g ? weeks.filter(w => (num(w[g[0]]) || 0) >= g[1]) : weeks; }  // starter gate: QB history = games with 15+ pass att
 function projectFrom(weeks, m, minPrior, role) {
+  weeks = gateWeeks(weeks, m);
   const anchor = (stat, level) => {
     if (!role || m.kind === 'poisson') return level;
     const mult = roleShift(role.params, stat, role.pos, role.rank, level);
@@ -785,7 +787,9 @@ function loadCardRules() {
   try {
     const r = JSON.parse(readFileSync(RULES_FILE, 'utf8'));
     const on = Object.entries(r.buckets || {}).filter(([, v]) => v && v.on).map(([k]) => k);
-    if (on.length) return { on: new Set(on), source: 'rules' };
+    // A rules file with every type off means NO card (e.g. the history veto in
+    // settle_bets.py turned the seed off); the default is only for a missing file.
+    if (on.length || Object.keys(r.buckets || {}).length) return { on: new Set(on), source: 'rules' };
   } catch (e) { /* not written yet */ }
   return { on: new Set(CARD_DEFAULT_ON), source: 'default' };
 }

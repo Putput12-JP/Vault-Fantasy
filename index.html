@@ -13473,6 +13473,21 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-06T01:30', tag:'Fixed', title:'Quarterback projections no longer count backup games',
+    items:[
+      'Quarterback passing projections were pulled down by games where a QB only played a few snaps, so Vault read passing yards and attempts too low. Projections now use only games a QB actually started.',
+      'Passing yards, attempts, completions and TD probabilities are now closer to what the books post. They still are not a reliable edge on their own, so treat them as context, not a pick.',
+    ],
+  },
+  {
+    ts:'2026-10-05T23:30', tag:'Improved', title:'More honest prop edges and anytime TD odds',
+    items:[
+      'We tested Vault’s player prop model against about 15,000 real sportsbook lines from the last two seasons. On its own it did not beat the books in any market, so prop probabilities now lean much more on the market’s own price. Expect smaller, more realistic edges on the Player Props board.',
+      'Receiving yards unders for receivers and tight ends are off the Best Bets card. They lost money over nearly 1,700 bets on those past lines, even though this season started hot. A play type now needs a clean record on past lines, not just a good month.',
+      'Anytime TD chances were running a few points too high for almost every player. They are now in line with how often players actually score, so fewer longshot TD bets will look like value when they are not.'
+    ]
+  },
+  {
     ts:'2026-10-05T21:30', tag:'Improved', title:'Calmer matchup adjustments on RB, WR and TE props',
     items:[
       'Vault no longer swings running back, receiver and tight end projections up to 15% based on a few weeks of how a defense has played. It now blends this season with last season and moves projections a few percent at most. Tested on four past seasons, the gentler version predicted nearly every one of those markets better.',
@@ -41753,7 +41768,9 @@ window.VaultPropModel = (function () {
   // VOLUME is anchored toward the player's current depth-chart role; the applied
   // shift is written back onto role.applied for callers to explain. TD/poisson
   // markets are left alone (goal-line scoring doesn't track volume rank).
+  function gateWeeks(weeks, m) { const g = m.gate; return g ? weeks.filter(w => (num(w[g[0]]) || 0) >= g[1]) : weeks; }  // starter gate: QB history = games with 15+ pass att
   function projectFrom(weeks, m, minPrior, role) {
+    weeks = gateWeeks(weeks, m);
     const anchor = (stat, level) => {
       if (!role || m.kind === 'poisson') return level;
       const rs = roleShift(role.params, stat, role.pos, role.rank, level);
@@ -45967,7 +45984,7 @@ window.VaultMarketProj = (function () {
         }).join('');
         return '<div class="tr-group"><div class="tr-gt">What makes the card <span class="tr-gtn">· every Best Bets play, last ' + (rules.weeks || []).length + ' weeks, real sportsbook prices</span></div>'
           + '<div class="pl-rule pl-rh"><span></span><span></span><span class="pl-rn">WIN%</span><span class="pl-rn">W–L</span><span class="pl-rn">UNITS</span></div>' + rows
-          + '<div class="tr-note" style="border-top:none;padding:8px 0 0">A play type goes on the card after ' + (pr.on_min_plays || 15) + '+ plays at a ' + Math.round((pr.on_min_roi || 0.05) * 100) + '%+ return over the last ' + (pr.window_weeks || 4) + ' weeks, and comes off once it is losing there. Every Best Bets play keeps being graded, so a new type can earn its way on.</div></div>';
+          + '<div class="tr-note" style="border-top:none;padding:8px 0 0">A play type goes on the card after ' + (pr.on_min_plays || 15) + '+ plays at a ' + Math.round((pr.on_min_roi || 0.05) * 100) + '%+ return over the last ' + (pr.window_weeks || 4) + ' weeks, and comes off once it is losing there. A type that lost over 200+ bets on real 2024-25 sportsbook lines stays off whatever its recent run (hover a row for the numbers). Every Best Bets play keeps being graded, so a new type can earn its way on.</div></div>';
       })() : '';
       const pr = data && data.pairs && data.pairs.summary;
       const pairsLine = pr && (pr.W + pr.L + pr.pending) ? '<div class="tr-note" style="border-top:none">Pick\u2019em pairs (QB + his receiver at a softer app line, 2-pick 3x): <b>' + pr.W + '–' + pr.L + '</b>'
@@ -48277,7 +48294,12 @@ window.VaultMarketProj = (function () {
       const t = g ? Date.parse(g.commence) : NaN;
       return !(t > Date.now());
     };
-    const props = ((bb && bb.props) || []).filter(b => !bbCountUnderPhantom(b) && !ebGameOver(b) && !bbOffSlate(b) && (!fltBooks || fltBooks.has(b.book)));
+    // Card rules gate this fallback too: bb.props is the raw model top-N (it feeds
+    // the shadow log), so without this an empty card would show every play type
+    // the rules turned off, as "Best Bets". No rules on → no props tiles.
+    const bbRule = bb && bb.card_rule && bb.card_rule.source === 'rules' ? new Set(bb.card_rule.on || []) : null;
+    const bbRuleOk = b => !bbRule || bbRule.has(b.market + '|' + b.side + '|' + (b.pos === 'RB' ? 'RB' : b.pos === 'QB' ? 'QB' : 'WR/TE'));
+    const props = ((bb && bb.props) || []).filter(b => bbRuleOk(b) && !bbCountUnderPhantom(b) && !ebGameOver(b) && !bbOffSlate(b) && (!fltBooks || fltBooks.has(b.book)));
     // Same slate gate for game leans: this week's board only, and gone at
     // kickoff (a lean carries its game's commence; "AWY @ HOM" names the game).
     const leans = ((bb && bb.game_leans) || []).filter(l => {

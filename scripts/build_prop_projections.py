@@ -35,22 +35,28 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DATA = os.path.join(ROOT, "data")
 OUT = os.path.join(DATA, "prop_model.json")
+# Measured model-vs-market on real 2024-25 lines (scripts/build_prop_market_prior.py).
+# Seeds each market's blend weight; absent file → the old 1.0 prior.
+try:
+    PRIOR = json.load(open(os.path.join(DATA, "prop_market_prior.json")))
+except Exception:
+    PRIOR = {}
 
 # ── market spec ────────────────────────────────────────────────────────────
 # kind 'yards'  → project volume x efficiency (stabilizes noisy yardage)
 # kind 'count'  → project the stat directly (attempts/receptions/completions)
 # vol/effNum are weekly-row keys; stat is the direct key. pos = eligible spots.
 MARKETS = {
-    "pass_yd":  {"kind": "yards", "vol": "att", "eff_num": "pyds", "pos": ["QB"]},
-    "pass_att": {"kind": "count", "stat": "att",                    "pos": ["QB"]},
-    "pass_cmp": {"kind": "count", "stat": "cmp",                    "pos": ["QB"]},
+    "pass_yd":  {"kind": "yards", "vol": "att", "eff_num": "pyds", "pos": ["QB"], "gate": ["att", 15]},
+    "pass_att": {"kind": "count", "stat": "att",                    "pos": ["QB"], "gate": ["att", 15]},
+    "pass_cmp": {"kind": "count", "stat": "cmp",                    "pos": ["QB"], "gate": ["att", 15]},
     "rush_yd":  {"kind": "yards", "vol": "car", "eff_num": "ryds", "pos": ["RB", "QB", "WR"]},
     "rush_att": {"kind": "count", "stat": "car",                    "pos": ["RB", "QB"]},
     "rec":      {"kind": "count", "stat": "rec",                    "pos": ["WR", "TE", "RB"]},
     "rec_yd":   {"kind": "yards", "vol": "tgt", "eff_num": "recyds","pos": ["WR", "TE", "RB"]},
     # TD markets — rare counts, so the projection (λ) drives a POISSON tail, not
     # a Normal. Projected like a count; only the distribution/calibration differ.
-    "pass_td":  {"kind": "poisson", "stat": "ptds",  "pos": ["QB"]},
+    "pass_td":  {"kind": "poisson", "stat": "ptds",  "pos": ["QB"], "gate": ["att", 15]},
     # rush_td: SHIPS RAW (no_calib), same story as the combined-TD markets. The
     # season-holdout first flagged its calibrated tail as non-transferring, but the
     # culprit was the isotonic calibration, not the projection: raw, its favored-
@@ -79,19 +85,26 @@ MARKETS = {
     # dropping the overfit calibration is what actually un-held these markets.
     "rush_rec_td": {"kind": "poisson", "stat_sum": ["rtds", "rectds"], "pos": ["RB", "WR", "TE"], "no_calib": True},
 }
+# STARTER GATE (2026-10-05): QB history counts only games with 15+ pass attempts.
+# Lines are posted for the starter, but the pooled history included cameos and
+# backups, so QB volume projected ~1.5 att / ~13 pass yds LOW against 2024-25
+# closing lines (590 of 779 attempt leans were unders). Gating history, priors
+# and scored games removes the bias and cut yardage error 61 -> 58 (the line:
+# 56). Mirrored in prop-model.js, index.html, build_best_bets.mjs, and the replay.
+def gated(rows, spec):
+    g = spec.get("gate")
+    return rows if not g else [r for r in rows if (num(r[1].get(g[0])) or 0) >= g[1]]
+
 IS_COUNT = {"count", "poisson"}      # projected the same way (direct stat, shrunk)
 # no_calib: SHIP the raw distribution prob (calib=[] → identity, shrink=1.0). Only
 # the rare-event combined-TD markets use it — isotonic PAV overfits their tail so
 # badly that calibrating turns a clearing grade into a coin flip. rec_td/pass_td
 # keep their calibration (they validated WITH it).
 NO_CALIB = {mkt for mkt, spec in MARKETS.items() if spec.get("no_calib")}
-# Confidence shrink (temperature toward 0.5) applied to the RAW TD markets instead
-# of a fitted one: fit_shrink minimizes log-loss over pooled probs → w≈1, which
-# misses the overconfident MID-tail. This w is the value at which the season-
-# holdout grade ladder becomes monotonic and A/B/C clear the 55% break-even at the
-# BETTABLE 0.5 line, validated per-market (scratchpad/validate_raw_td.py: rush_rec_td
-# A .84/B .73/C .62, anytime_td A .85/B .72/C .63). Pure raw (w=1) left C at 0.53.
-TD_RAW_SHRINK = 0.85
+# RETIRED 2026-10-05: a fixed 0.85 temperature toward 0.5 used to ride on the raw
+# TD markets, picked so a price-less grade ladder cleared 55%. Toward 0.5 is UP
+# for a ~20% event, so anytime TD read 4-9 pts high in every bucket. The raw TD
+# markets now ship raw (shrink 1.0); td_shrink_loglosses prints the comparison.
 HOLD = set()                          # all TD markets now ship raw (validated); nothing held
 
 
@@ -207,6 +220,7 @@ def eval_market(mkt, spec, seq, half_life, k_vol, k_eff, priors):
         pos = key[1]
         if pos not in spec["pos"]:
             continue
+        rows = gated(rows, spec)
         if not is_usage(spec):
             series = market_series(rows, spec)
             for i in range(len(series)):
@@ -564,6 +578,22 @@ def shrink_prob(p, w):
     return _sig(w * _logit(p))
 
 
+def td_shrink_loglosses(mkt, preds, actuals):
+    """Log-loss of a raw (no_calib) TD market over its real lines (anytime =
+    P(1+ TD); the O/U TD markets at 0.5 and 1.5) with the retired 0.85 shrink
+    vs shipped raw — printed each build so the choice stays measured."""
+    lines = (0.5,) if mkt == "anytime_td" else (0.5, 1.5)
+    def ll(p, y):
+        p = min(max(p, 1e-6), 1 - 1e-6); return -math.log(p) if y else -math.log(1 - p)
+    def score(w):
+        s = n = 0
+        for lam, a in zip(preds, actuals):
+            for L in lines:
+                s += ll(shrink_prob(pois_over(lam, L), w), a > L); n += 1
+        return s / max(n, 1)
+    return score(0.85), score(1.0)
+
+
 def apply_calib(calib, p):
     """Piecewise-linear isotonic apply (mirror of the JS calibrate())."""
     if not calib:
@@ -621,6 +651,7 @@ def compute_priors(seq):
             for key, rows in seq.items():
                 if key[1] not in spec["pos"]:
                     continue
+                rows = gated(rows, spec)
                 vals += [v for v in market_series(rows, spec) if v is not None]
             pri[mkt] = statistics.fmean(vals) if vals else 0.0
         else:
@@ -628,6 +659,7 @@ def compute_priors(seq):
             for key, rows in seq.items():
                 if key[1] not in spec["pos"]:
                     continue
+                rows = gated(rows, spec)
                 vol_s = collect_series(rows, spec["vol"])
                 num_s = collect_series(rows, spec["eff_num"])
                 for a, b in zip(vol_s, num_s):
@@ -767,12 +799,21 @@ def apply_inseason_overlay(model):
         # the market is sharper. w_prior = 1.0 (pure model, no blend) until
         # evidence, shrunk the same way; the JS defaults to 1.0 when absent, so
         # this is a no-op offseason and only priced two-way rows ever use it.
+        # The prior used to be 1.0 (trust the model fully). It is now the weight
+        # MEASURED on 2024-25 real ESPN BET lines (build_prop_market_prior.py:
+        # thousands of lines, best weight on Vault 0.0-0.2 in every market),
+        # and this season's settled bets move it from there, shrunk as before.
         bl = sbm.get("blend") or {}
         wm, nb, Kb = bl.get("w_measured"), bl.get("n") or 0, (bl.get("k_shrink") or 300)
+        hist = (PRIOR.get("markets") or {}).get(mkt) or {}
+        w0 = float(hist["w_model"]) if hist.get("w_model") is not None else 1.0
         if wm is not None and nb > 0:
             wb = nb / (nb + Kb)
-            entry["blend_w"] = round(1.0 * (1 - wb) + float(wm) * wb, 4)
-            blended.append(f"{mkt}(w={entry['blend_w']},n={nb})")
+            entry["blend_w"] = round(w0 * (1 - wb) + float(wm) * wb, 4)
+            blended.append(f"{mkt}(w={entry['blend_w']},n={nb},prior={w0})")
+        elif w0 < 1.0:
+            entry["blend_w"] = round(w0, 4)
+            blended.append(f"{mkt}(w={entry['blend_w']},history only)")
 
         # (c) projection-mean overlay — correct a systematic bias in the model's
         # NUMBER (e.g. QB passing volume ran high in Week 1), not just its prob.
@@ -850,6 +891,7 @@ def main():
             # weekly-row field names so the JS inference stays data-driven
             "vol": spec.get("vol"), "eff_num": spec.get("eff_num"),
             "stat": spec.get("stat"), "stat_sum": spec.get("stat_sum"),
+            "gate": spec.get("gate"),
             "half_life": best["hl"], "k_vol": best["k_vol"], "k_eff": best["k_eff"],
             "prior": {k: round(priors[k], 4) for k in priors if k == mkt or k.startswith(mkt + "|")},
             "rmse": round(best["rmse"], 3), "r2": round(best["r2"], 4), "n": best["n"],
@@ -865,8 +907,17 @@ def main():
             # a coin flip. Empty calib → JS identity. A fixed w<1 shrink (not the
             # log-loss fit, which misses the mid-tail) then makes the OOS grade
             # ladder monotonic and A/B/C clear at the bettable 0.5 line.
+            # 2026-10-05: the fixed 0.85 temperature pulled every probability
+            # toward 0.5, which for a ~20% event is UP: anytime TD read 24.8%
+            # on average vs 20.5% actual over 7,662 RB/WR/TE games (2024-25),
+            # high in every bucket. The 0.85 was picked to make a grade ladder
+            # clear 55% without prices. Ship the raw Poisson (shrink 1.0) with a
+            # raw (A λ scale was tried and dropped: 0.94 on 2024-25, 1.06 on
+            # 2016-25, i.e. era noise, not a stable correction.)
             entry["calib"] = []
-            entry["shrink"] = TD_RAW_SHRINK
+            entry["shrink"] = 1.0
+            old_ll, new_ll = td_shrink_loglosses(mkt, best["preds"], best["actuals"])
+            print(f"[prop-model] {mkt:9s} raw log-loss {new_ll:.4f} vs {old_ll:.4f} with the retired 0.85 shrink")
         else:
             entry["calib"] = fit_calibration_fn(best["preds"], best["actuals"], prob_fn_for(entry), spec["kind"])
             # #3 market shrink: pull overconfident probs toward the market/coin-flip.

@@ -107,7 +107,9 @@ window.VaultPropModel = (function () {
   // VOLUME is anchored toward the player's current depth-chart role; the applied
   // shift is written onto role.applied for callers to explain. TD/poisson markets
   // are left alone (goal-line scoring doesn't track volume rank).
+  function gateWeeks(weeks, m) { const g = m.gate; return g ? weeks.filter(w => (num(w[g[0]]) || 0) >= g[1]) : weeks; }  // starter gate: QB history = games with 15+ pass att
   function projectFrom(weeks, m, minPrior, role) {
+    weeks = gateWeeks(weeks, m);
     const anchor = (stat, level) => {
       if (!role || m.kind === 'poisson') return level;
       const rs = roleShift(role.params, stat, role.pos, role.rank, level);

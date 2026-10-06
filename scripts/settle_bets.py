@@ -1362,11 +1362,24 @@ def _bucket(r):
     pos = r.get("pos")
     return f'{r.get("market")}|{r.get("side")}|{"RB" if pos == "RB" else "QB" if pos == "QB" else "WR/TE"}'
 
+# History veto (2026-10-05). A few weeks of live plays can't tell a real edge
+# from a hot run: the seed type above, WR/TE rec-yds unders, went 28-11 in Wks
+# 1-3 and 15-6 in the window after, yet lost -4.2% over 1,691 bets on 2024-25
+# ESPN BET closing lines (scripts/build_prop_market_prior.py replays the shipped
+# model). A type whose history has MIN_VETO_N+ bets and lost cannot be on,
+# whatever the window says; with no history it is judged on the window alone.
+def _history_veto():
+    pr = _load_data("prop_market_prior.json") or {}
+    return {k: v for k, v in (pr.get("buckets") or {}).items() if v.get("veto")}, pr.get("seasons")
+
 def _card_rules(shadow_rows, prev):
+    veto, hist_seasons = _history_veto()
+    hist_tag = "-".join(str(s)[2:] if i else str(s) for i, s in enumerate(hist_seasons or [])) or "past"
     prev_on = {k for k, v in ((prev or {}).get("buckets") or {}).items() if v.get("on")} if prev else set(RULE_DEFAULT_ON)
     settled = [r for r in shadow_rows if r["result"] in ("W", "L") and r.get("book_real", True)]
     if not settled:
-        return {"weeks": [], "buckets": {k: {"on": True, "why": "seed"} for k in sorted(prev_on)}}
+        return {"weeks": [], "buckets": {k: ({"on": False, "why": f"lost on {hist_tag} real lines"} if k in veto
+                                             else {"on": True, "why": "seed"}) for k in sorted(prev_on)}}
     season = max(str(r["season"]) for r in settled)
     wks = sorted({r["week"] for r in settled if str(r["season"]) == season})[-RULE_WEEKS:]
     win = [r for r in settled if str(r["season"]) == season and r["week"] in wks]
@@ -1385,8 +1398,13 @@ def _card_rules(shadow_rows, prev):
         else:
             on = n >= RULE_ON_N and roi is not None and roi >= RULE_ON_ROI
             why = "earned it" if on else f"needs {RULE_ON_N}+ plays at {int(RULE_ON_ROI * 100)}%+ return"
+        hv = veto.get(k)
+        if hv and on:
+            on = False
+            why = f"lost on {hist_tag} real lines ({hv['n']} bets, {hv['roi'] * 100:+.1f}%)"
         out[k] = {"on": on, "was": was, "n": n, "W": W, "L": n - W, "units": round(u, 2),
-                  "roi": None if roi is None else round(roi, 4), "why": why}
+                  "roi": None if roi is None else round(roi, 4), "why": why,
+                  **({"history": {"n": hv["n"], "roi": hv["roi"]}} if hv else {})}
     return {"season": season, "weeks": wks, "buckets": out}
 
 # ── Game play types: which game calls earn a spot on the game card ──────────

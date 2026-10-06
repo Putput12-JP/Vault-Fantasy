@@ -119,6 +119,8 @@ def shrink(vals, prior, hl, k):
 
 
 def pregame_proj(prior_weeks, m, min_prior):
+    g = m.get("gate")
+    if g: prior_weeks = [w for w in prior_weeks if (w.get(g[0]) or 0) >= g[1]]
     vs = [w["att"] for w in prior_weeks if w.get("att") is not None]
     es = [w["pyds"] / w["att"] for w in prior_weeks if w.get("att") and w.get("pyds") is not None]
     if len(vs) < min_prior or len(es) < min_prior:

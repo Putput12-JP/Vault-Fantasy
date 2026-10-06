@@ -33,12 +33,13 @@ jobs:
 
       - name: Commit if changed
         run: |
-          if git diff --quiet -- data/prop_line_history.json; then
+          # status, not diff: anytime_td_history.json is untracked until its first commit
+          if [ -z "$(git status --porcelain -- data/prop_line_history.json data/anytime_td_history.json)" ]; then
             echo "No prop-history changes."
           else
             git config user.name  "vault-bot"
             git config user.email "vault-bot@users.noreply.github.com"
-            git add data/prop_line_history.json
+            git add data/prop_line_history.json data/anytime_td_history.json
             git commit -m "props: snapshot prop line history [skip ci]"
             git push
           fi
