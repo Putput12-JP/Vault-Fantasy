@@ -180,7 +180,6 @@ function PropsTools(p) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
           <div style={{ maxWidth: '100%', overflowX: 'auto' }}><SegmentedControl theme={THEME} options={p.stats.map(x => x.l)} value={labelOf[p.stat]} onChange={l => p.onStat(statLabel[l])} /></div>
           <span style={{ flex: 1 }} />
-          {p.games.length > 0 && <div style={{ minWidth: 200 }}><Select theme={THEME} value={p.game} onChange={p.onGame} options={[{ value: 'all', label: 'All games' }, ...p.games.map(g => ({ value: g.id, label: g.label }))]} /></div>}
           <div style={{ minWidth: 220 }}><Select theme={THEME} value={p.sort} onChange={p.onSort} options={sorts} /></div>
         </div>
         <div style={{ maxWidth: 280 }}><SearchInput theme={THEME} value={q} placeholder="Find a player" shortcut="" onChange={v => { setQ(v); clearTimeout(t.current); t.current = setTimeout(() => p.onQ(v), 160); }} /></div>

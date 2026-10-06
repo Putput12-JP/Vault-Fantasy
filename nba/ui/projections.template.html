@@ -703,6 +703,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .gtile.gall b{font-size:13px;font-weight:600}.gtile.gall small{font-size:11px;color:var(--fg3)}
 .gdot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
 @media (prefers-reduced-motion:reduce){ .gtile{transition:none} .gtile:active{transform:none} }
+.pv-games{padding:10px 14px 4px}
 .pp-strip{padding:10px 14px 4px;border-bottom:1px solid var(--border)}
 .gs-legs{display:grid;gap:10px}.gs-leg{display:flex;flex-wrap:wrap;gap:8px}.gs-leg .sel{min-width:0;flex:1 1 150px}.gs-line{width:90px;flex:none}
 .gs-out{display:flex;flex-wrap:wrap;gap:10px 28px;margin:16px 0 8px}.gs-out div{display:grid}.gs-out small{font-size:11.5px;color:var(--fg3)}.gs-out b{font-family:var(--font-mono);font-size:22px;font-weight:600;letter-spacing:-.02em}
@@ -1134,6 +1135,7 @@ th{font-weight:500}
       <div class="pv-toast" id="pv-toast" role="status" hidden></div>
       <div id="pv-v2" class="pv-wrap">
         <div id="pv-tools"></div>
+        <section class="card pv-games" id="pv-games" hidden></section>
         <div class="pv-main"><div class="pv-list" id="pv-list" aria-label="Props"></div><section class="pv-detail" id="pv-detail"></section></div>
       </div>
       <div id="pv-full" class="pv-wrap" hidden>
@@ -2710,6 +2712,7 @@ function detailRow(r){
 }
 
 // events
+$('pv-games').addEventListener('click', e => { const b = e.target.closest('.gtile[data-g]'); if (b){ pv.game = b.dataset.g; renderPropsV2(); } });
 $('pgame').addEventListener('change', e => { pf.game = e.target.value; renderProps(); });
 $('psort').addEventListener('change', e => { pf.sort = e.target.value; renderProps(); });
 $('pstat').addEventListener('click', e => { const s = e.target.closest('button')?.dataset.s; if (s){ pf.stat = s; renderProps(); } });
@@ -4381,6 +4384,8 @@ function renderPropsV2(){
     onGame: v => { pv.game = v; renderPropsV2(); }, onSort: v => { pv.sort = v; renderPropsV2(); }, onQ: v => { pv.q = v.trim(); renderPropsV2(); },
     onBell: () => { pvToggleAlerts(); pvMountTools(); }};
   pvMountTools();
+  $('pv-games').hidden = games.length < 2;
+  if (games.length > 1) gameStripMount($('pv-games'), gameStrip(games, pv.game, {all: true}));
   const key = r => `${r.e.p}|${r.e.s}|${r.e.g}`;
   if (!pv.sel || !L.some(r => key(r) === pv.sel)) pv.sel = L[0] ? key(L[0]) : null;
   HK.mount($('pv-list'), 'PropsList', {sel: pv.sel,
