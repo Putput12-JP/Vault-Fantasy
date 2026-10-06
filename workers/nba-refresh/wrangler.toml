@@ -1,0 +1,14 @@
+name = "nba-refresh"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# UTC. GitHub's own schedules drop runs on busy days, so this Worker starts the workflows instead.
+#   every 10 min  recorder (nba-snapshots.yml); skipped while one is already running or queued
+#   11:23 daily   box scores, rosters, projections, model state (nba-daily.yml)
+[triggers]
+crons = ["*/10 * * * *", "23 11 * * *"]
+
+[vars]
+REPO = "Putput12-JP/Vault-Fantasy"
+REF = "main"
+# GITHUB_TOKEN is a secret (fine-grained, this repo, Actions: read and write):  wrangler secret put GITHUB_TOKEN

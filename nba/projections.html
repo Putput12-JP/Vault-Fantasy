@@ -1092,6 +1092,7 @@ th{font-weight:500}
         <div class="list" id="teamlist" role="listbox" aria-label="Team" tabindex="-1" hidden></div>
       </div>
       <div class="mode" id="mode" hidden></div>
+      <button class="btn" id="refresh" type="button" hidden title="Start the recorder now and reload the board when it lands">Refresh</button>
       <div class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input id="q" type="search" placeholder="Search players" autocomplete="off" aria-label="Search players">
@@ -1528,6 +1529,11 @@ const phSrc = id => (PH && PH.heads[id]) || `https://a.espncdn.com/combiner/i?im
 const phImg = id => id == null ? '' : `<img class="ph" src="${phSrc(id)}" alt="" loading="lazy" onerror="this.remove()">`;
 const avSm = (pid, name) => `<span class="pp-av sm">${esc(initials(name || ''))}${phImg(pid)}</span>`;
 const lgImg = (t, s = 18) => PH && PH.logos && PH.logos[t] ? `<img class="lg" src="${PH.logos[t]}" alt="" width="${s}" height="${s}">` : '';
+
+// Cloudflare Worker (workers/nba-refresh): starts the recorder on time, serves the board without the 5 minute CDN lag, and backs the Refresh button.
+// Empty until the Worker is deployed; the page then falls back to GitHub as before.
+const NBA_WORKER = '';
+const onSite = /^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname);
 
 let balOn = true;   // "Move freed minutes to teammates"
 function mins(team){ const e = edits[team] || {}, m = {}; for (const p of D.teams[team].players) m[p.id] = e[p.id] ?? p.min0; return m; }
@@ -2531,11 +2537,23 @@ function priceRow(e, cache){
   return r;
 }
 
+async function refreshNow(){
+  const b = $('refresh'); b.disabled = true; b.textContent = 'Starting...';
+  try {
+    const r = await fetch(`${NBA_WORKER}/`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({what: 'prices'})});
+    const j = await r.json();
+    b.textContent = j.ok ? 'Running, about 2 min' : j.error === 'cooldown' ? 'Just refreshed' : 'Could not start';
+    if (j.ok) { setTimeout(loadBoard, 90 * 1000); setTimeout(loadBoard, 150 * 1000); }
+  } catch (e) { b.textContent = 'Could not start'; }
+  setTimeout(() => { b.disabled = false; b.textContent = 'Refresh'; }, 60 * 1000);
+}
+if (NBA_WORKER && onSite){ $('refresh').hidden = false; $('refresh').addEventListener('click', refreshNow); }
+
 async function loadBoard(){
   boardTried = true;
   if (!PB || !/^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
   try {
-    const b = await fetch(`https://raw.githubusercontent.com/${PB.repo}/${PB.branch}/board.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
+    const b = await fetch(NBA_WORKER ? `${NBA_WORKER}/board` : `https://raw.githubusercontent.com/${PB.repo}/${PB.branch}/board.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
     PS.live = b; PS.liveAt = Date.now() / 1000; PS.liveFetched = true;
     if (view === 'props' || view === 'mybets' || view === 'propboard') renderProps();
     if (view === 'edges') renderEdges();
@@ -2545,7 +2563,7 @@ async function loadBoard(){
     if (view === 'sharp') renderSharp();
     if (view === 'pairs') renderPairs();
     pvBackground(); pvSettle();
-    clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, 5 * 60 * 1000);
+    clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, (NBA_WORKER ? 60 : 5 * 60) * 1000);
   } catch (e) { /* keep the snapshot */ }
 }
 
