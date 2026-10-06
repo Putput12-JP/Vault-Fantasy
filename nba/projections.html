@@ -1532,7 +1532,7 @@ const lgImg = (t, s = 18) => PH && PH.logos && PH.logos[t] ? `<img class="lg" sr
 
 // Cloudflare Worker (workers/nba-refresh): starts the recorder on time, serves the board without the 5 minute CDN lag, and backs the Refresh button.
 // Empty until the Worker is deployed; the page then falls back to GitHub as before.
-const NBA_WORKER = '';
+const NBA_WORKER = 'https://nba-refresh.vaultfantasy.workers.dev';
 const onSite = /^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname);
 
 let balOn = true;   // "Move freed minutes to teammates"
