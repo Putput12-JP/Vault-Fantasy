@@ -8,7 +8,8 @@ import {
   SegmentedControl, Select, SearchInput, EmptyState,
 } from '../../../src/halaska-kit.jsx';
 
-const THEME = 'dark';
+let THEME = 'dark';
+export const setThemeName = n => { THEME = n; };
 const Dim = ({ children, size = 'sm', mono, style }) => { const pal = usePal(THEME); return <Text size={size} mono={mono} color={pal.textSecondary} style={style}>{children}</Text>; };
 const Mono = ({ children, style }) => { const pal = usePal(THEME); return <span style={{ fontFamily: tokens.font.mono, ...tokens.type.xs, letterSpacing: '0.1em', textTransform: 'uppercase', color: pal.textTertiary, ...style }}>{children}</span>; };
 const Tone = ({ children, tone, size = 'sm', weight, mono }) => { const pal = usePal(THEME); return <Text size={size} weight={weight} mono={mono} color={tone === 'pos' ? pal.success : tone === 'neg' ? pal.danger : undefined} style={{ fontVariantNumeric: 'tabular-nums' }}>{children}</Text>; };
