@@ -678,7 +678,13 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pp-h span:not(.pv-vp){font-size:11.5px;color:var(--fg3)}
 .pp-picks{display:grid;padding:0 10px}
 .pp-pk{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 8px;border-radius:12px;background:var(--surface)}
-.pp-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:2px solid var(--border2);font-size:12px;font-weight:700;color:var(--fg2)}
+.pp-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:2px solid var(--border2);font-size:12px;font-weight:700;color:var(--fg2);position:relative;overflow:hidden}
+/* photos: a headshot covers the initials circle, cropped to the face; logos sit inline before a team code */
+.av{position:relative;overflow:hidden}
+.ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;transform:scale(1.3);transform-origin:50% 10%;background:var(--raised)}
+.lg{display:inline-block;vertical-align:middle;object-fit:contain;flex:none}
+.slicer .ab,.list [role=option] .ab{display:inline-flex;align-items:center;gap:8px;width:auto;min-width:34px}
+.sl-teams .lg{align-self:center}
 .pp-who{min-width:0}
 .pp-who > b{display:block;font-size:13.5px;font-weight:700;line-height:1.25}
 .pp-who span{display:block;font-size:11px;color:var(--fg3)}
@@ -1374,6 +1380,13 @@ const sign = (x,d=1) => (x > 0 ? '+' : '') + fmt(x,d);
 const initials = n => n.split(/\s+/).filter(w => /^[A-Z]/.test(w)).slice(0,2).map(w => w[0]).join('');
 const last = n => { const w = n.replace(/ (Jr\.|Sr\.|II|III|IV)$/,'').split(' '); return w[w.length-1]; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// Photos (scripts/fetch_photos.py -> data/photos.json): headshots embedded for each team's top 12 by minutes and all 30 logos,
+// because the published artifact blocks external images. Everyone else gets ESPN's image URL, which loads on the website; where
+// it is blocked the image is dropped and the initials stay.
+const PH = /*PHOTOS*/null;
+const phSrc = id => (PH && PH.heads[id]) || `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=96&h=70`;
+const phImg = id => id == null ? '' : `<img class="ph" src="${phSrc(id)}" alt="" loading="lazy" onerror="this.remove()">`;
+const lgImg = (t, s = 18) => PH && PH.logos && PH.logos[t] ? `<img class="lg" src="${PH.logos[t]}" alt="" width="${s}" height="${s}">` : '';
 
 let balOn = true;   // "Move freed minutes to teammates"
 function mins(team){ const e = edits[team] || {}, m = {}; for (const p of D.teams[team].players) m[p.id] = e[p.id] ?? p.min0; return m; }
@@ -1512,9 +1525,9 @@ function renderNav(){
   HK.mount($('hk-side'), 'Sidebar', {pages: PAGES, view, season: `${D.season} · ${(PAGES.flatMap(g => g[1]).find(x => x[3] === view) || [''])[0]}`, pvCount: n, onGo: navGo});
 }
 function renderSlicer(){
-  $('sab').textContent = cur;
+  $('sab').innerHTML = `${lgImg(cur, 20)}${cur}`;
   $('snm').textContent = D.teams[cur].name;
-  const opt = t => `<div role="option" id="opt-${t}" data-t="${t}" aria-selected="${t===cur}"><span class="ab">${t}</span><span>${esc(D.teams[t].name)}</span>${edits[t] ? '<span class="dot" title="Edited"></span>' : ''}</div>`;
+  const opt = t => `<div role="option" id="opt-${t}" data-t="${t}" aria-selected="${t===cur}"><span class="ab">${lgImg(t, 18)}${t}</span><span>${esc(D.teams[t].name)}</span>${edits[t] ? '<span class="dot" title="Edited"></span>' : ''}</div>`;
   $('teamlist').innerHTML = `<h4>East</h4>${TEAMS.filter(t => EAST.includes(t)).map(opt).join('')}<h4>West</h4>${TEAMS.filter(t => !EAST.includes(t)).map(opt).join('')}`;
 }
 function openList(open){
@@ -1560,7 +1573,7 @@ function render(){
     !p.slotted ? {t: 'No depth slot'} : null
   ].filter(Boolean);
   const rowOf = p => { const mu = pr[p.id];
-    return {id: p.id, name: p.name, ini: initials(p.name), min: m[p.id], out: isOut(p, m), badges: badges(p),
+    return {id: p.id, name: p.name, ini: initials(p.name), src: phSrc(p.id), min: m[p.id], out: isOut(p, m), badges: badges(p),
       meta: `${p.pos}${p.rank ? ` · depth ${p.rank}` : ''} · ${p.gp ? fmt(p.last_mpg) + ' mpg last season' : 'no NBA minutes last season'}`,
       stats: {pts: stat(mu.pts,b0[p.id].pts,'pts'), reb: stat(mu.reb,b0[p.id].reb,'reb'), ast: stat(mu.ast,b0[p.id].ast,'ast'), '3pm': stat(mu['3pm'],b0[p.id]['3pm'],'3pm'), pra: stat(mu.pra,b0[p.id].pra,'pra')},
       sb: mu.stl + mu.blk}; };
@@ -1573,9 +1586,9 @@ function render(){
   const byMpg = (x, y) => (y.p.last_mpg || 0) - (x.p.last_mpg || 0);
   const roster = {
     arrived: T.players.filter(p => p.moved && p.last_team && p.last_team !== cur).map(p => ({p})).sort(byMpg).slice(0, 10)
-      .map(({p}) => ({name: p.name, ini: initials(p.name), team: p.last_team, mpg: p.gp ? fmt(p.last_mpg) : null})),
+      .map(({p}) => ({name: p.name, ini: initials(p.name), src: phSrc(p.id), team: p.last_team, mpg: p.gp ? fmt(p.last_mpg) : null})),
     left: ALL.filter(x => x.t !== cur && x.p.moved && x.p.last_team === cur).sort(byMpg).slice(0, 10)
-      .map(({t, p}) => ({name: p.name, ini: initials(p.name), team: t, mpg: p.gp ? fmt(p.last_mpg) : null})),
+      .map(({t, p}) => ({name: p.name, ini: initials(p.name), src: phSrc(p.id), team: t, mpg: p.gp ? fmt(p.last_mpg) : null})),
   };
 
   const chartHtml = chart.length ? ckDots('lab-minutes', {rows: chart.map(p => ({name: p.name, a: p.now, b: p.base})), a: 'Your minutes', b: 'Projection', kLabel: 'minutes'}) : '';
@@ -3068,7 +3081,7 @@ function renderEdges(){
     $('egames').innerHTML = P.length ? `<section class="card ev-game"><div class="ev-ghead"><h2>All games</h2><span class="meta">${ef.sort === 'edge' ? 'Biggest edge first' : 'Most trusted first'}</span><span class="count">${P.length} edges</span></div>${head}${P.map(p => row(p, true)).join('')}</section>` : empty;
   } else {
     const html = [...games].sort((a, b) => a.tip - b.tip).map(g => { const ge = P.filter(p => String(p.r.e.g) === String(g.id)); if (!ge.length) return '';
-      return `<section class="card ev-game"><div class="ev-ghead"><h2>${g.away} @ ${g.home}</h2><span class="meta">${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})} · ${clock(g.tip)} ET${g.total != null ? ` · total ${g.total}` : ''}${g.spread != null ? ` · ${g.home} ${g.spread > 0 ? '+' : ''}${g.spread}` : ''}</span><span class="count">${ge.length} ${ge.length === 1 ? 'edge' : 'edges'}</span></div>${head}${ge.map(p => row(p, false)).join('')}</section>`; }).join('');
+      return `<section class="card ev-game"><div class="ev-ghead"><h2 style="display:inline-flex;align-items:center;gap:8px">${lgImg(g.away, 20)}${g.away} @ ${lgImg(g.home, 20)}${g.home}</h2><span class="meta">${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})} · ${clock(g.tip)} ET${g.total != null ? ` · total ${g.total}` : ''}${g.spread != null ? ` · ${g.home} ${g.spread > 0 ? '+' : ''}${g.spread}` : ''}</span><span class="count">${ge.length} ${ge.length === 1 ? 'edge' : 'edges'}</span></div>${head}${ge.map(p => row(p, false)).join('')}</section>`; }).join('');
     $('egames').innerHTML = html || empty;
   }
 
@@ -3451,7 +3464,7 @@ function slateGame(g, B, status, openAll){
     ${PM.win != null || PM.total != null ? `<tr><td class="l">Polymarket</td><td></td><td></td><td>${PM.total != null ? fmt(PM.total) : ''}</td><td class="muted">${PM.over != null ? `${pc(PM.over)} / ${pc(1 - PM.over)}` : ''}</td><td>${PM.win != null ? `${pc(PM.win)} / ${pc(1 - PM.win)}` : ''}</td><td></td></tr>` : ''}
     </tbody></table></div></details>` : '';
   return `<article class="card sl-card" id="sg-${gid}"><header class="sl-h">
-      <div class="sl-teams"><b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span><b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
+      <div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
       <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
     ${tbl}${why}${early ? movesHtml(g) : ''}${injChips.length ? `<div class="sl-inj">${injChips.join('')}</div>` : ''}${splitH}${lines}</article>`;
 }
@@ -3581,7 +3594,7 @@ function xGame(g, o){
   const flowH = (F.vol || F.kalVol) ? `<div class="sx-flow"><p class="sx-lab">Polymarket winner market, last 24 hours, net</p>${fl.map(([l, v, sub]) => `<div class="sx-fr"><span>${l}</span><i><u class="${v > 0 ? 'h' : 'a'}" style="width:${Math.abs(v || 0) / mx * 50}%"></u></i><b>${v ? `${usdK(v)} ${team(v)}` : 'even'}</b>${sub ? `<small>${sub}</small>` : ''}</div>`).join('')}
       ${F.kalVol ? `<p class="sx-lab">Kalshi tickets $500+: ${usdK(F.kalVol)}, net ${F.kal ? `${usdK(F.kal)} on ${team(F.kal)}` : 'even'}</p>` : ''}</div>` : '';
   const tk = (o.tickets || []).slice().reverse().slice(0, 5).map(x => `<tr><td class="l muted">${clock(x[0])}</td><td class="l">${esc(x[1])}</td><td class="l">${xSide({m: x[2], side: x[3], line: x[8]}, g)}</td><td>${usdK(x[4])}</td><td>${Math.round(x[5] * 100)}¢</td><td class="l">${x[6] === 'sharp' ? '<span class="badge">sharp</span>' : x[6] === 'dull' ? '<span class="badge bad">usually losing</span>' : ''}</td></tr>`).join('');
-  return `<article class="card sx-card"><header class="sl-h"><div class="sl-teams"><b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span><b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
+  return `<article class="card sx-card"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
       <div class="sl-meta">${g.season_type === 1 ? '<span class="badge">Preseason</span>' : ''}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
     <p class="sx-lab">Pinnacle fair, vig removed</p>${fairRow}${moveH}
     ${beh ? `<div><p class="sx-lab">Priced better than Pinnacle's fair at the same number</p><div class="sx-chips">${beh}</div></div>` : ''}
@@ -4087,7 +4100,7 @@ function renderPropsV2(){
   if (!pv.sel || !L.some(r => key(r) === pv.sel)) pv.sel = L[0] ? key(L[0]) : null;
   HK.mount($('pv-list'), 'PropsList', {sel: pv.sel,
     items: L.map(r => { const b = r.best, sh = r.sharp;
-      return {key: key(r), name: r.name, ini: initials(r.name), stat: PV_SL[r.e.s] || r.e.s, proj: fmt(r.mu), verdict: r.verdict,
+      return {key: key(r), name: r.name, ini: initials(r.name), src: phSrc(r.e.p), stat: PV_SL[r.e.s] || r.e.s, proj: fmt(r.mu), verdict: r.verdict,
         where: r.hold ? (r.hold.why === 'preseason' ? 'On hold: preseason' : 'On hold: roster changed') : r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`,
         edge: r.verdict !== 'pass' ? `+${pc(b.edge, 1)}` : null,
         shp: sh.vs ? {t: sh.vs, strong: true} : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? {t: sh.lean} : null,
@@ -4310,7 +4323,7 @@ function pvDetail(r){
       html: `<p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p>`});
   const mv = (r.books || []).filter(x => x.l0 != null).map(x => x.l0 === x.line && x.o0 === x.o ? `<b>${esc(x.bk)}</b> has not moved since it opened (${x.line}, over ${x.o}).` : `<b>${esc(x.bk)}</b> opened ${x.l0} (over ${x.o0}); now ${x.line} (over ${x.o}).`);
   const news = (B.news || []).filter(n => n[3] === r.tm).slice(0, 3).map(n => `<b>${clock(n[0])} ET</b> ${esc(n[2])}: ${n[4] === 'lu' ? (n[5] === 'X' ? 'inactive (NBA.com)' : 'confirmed starter') : esc(n[5] || '') + ' (injury report)'}`);
-  const head = {name: r.name, stat: PV_SL[r.e.s] || r.e.s, game: g ? `${r.tm || ''} vs ${opp} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET` : '',
+  const head = {name: r.name, ini: initials(r.name), src: phSrc(r.e.p), stat: PV_SL[r.e.s] || r.e.s, game: g ? `${r.tm || ''} vs ${opp} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET` : '',
     badges: [fiveS || r.lu === 'S' ? {t: 'Starting five confirmed'} : r.lu === 's' ? {t: 'Expected to start'} : r.lu === 'B' ? {t: 'Bench'} : null, r.inj ? {t: r.inj, warn: true} : null].filter(Boolean),
     proj: fmt(r.mu), range: rg ? `usually ${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : ''};
   const minsHtml = `<div class="pv-mins"><span>Minutes <b>${fmt(mn)}</b></span><div class="pv-mbar"><span class="rng" style="left:${lo / 48 * 100}%;width:${(hi - lo) / 48 * 100}%"></span>${r.min0 ? `<span class="us" style="left:${r.min0 / 48 * 100}%" title="His usual ${fmt(r.min0)}"></span>` : ''}<span class="pt" style="left:${mn / 48 * 100}%"></span></div>
@@ -4659,7 +4672,7 @@ function ppPairs(rows){
 function ppSlip(x, compact){
   const g = x.A.r.game, opp = t => t === g.home ? g.away : g.home, ev10 = 10 * x.ev, need = Math.sqrt(Math.max(0, ppBE() - x.F.c));
   const pick = (L, f, bx) => { const y = bx == null ? null : PV_BOXI[L.r.e.s].reduce((a, i) => a + bx[i], 0), hit = y == null ? null : x.side === 'over' ? y > L.line : y < L.line;
-    return `<div class="pp-pk"><span class="pp-av">${esc(initials(L.r.name))}</span>
+    return `<div class="pp-pk"><span class="pp-av">${esc(initials(L.r.name))}${phImg(L.r.e.p)}</span>
       <div class="pp-who"><b>${esc(L.r.name)}</b><span>${esc(L.team)} vs ${esc(opp(L.team))}</span><span class="ch">Our chance <b>${pc(f)}</b></span>${hit != null ? `<span class="res ${hit ? 'w' : 'l'}" title="What happened (example game only)">${hit ? '✓' : '✗'} had ${fmt(y, 0)}</span>` : ''}</div>
       <div class="pp-line"><b>${L.line}</b><span>${PP_SHORT[L.r.e.s]}</span></div>
       <div class="pp-ml" aria-label="${x.side === 'over' ? 'More' : 'Less'}"><span class="${x.side === 'over' ? 'on' : ''}">▲ More</span><span class="${x.side === 'under' ? 'on' : ''}">▼ Less</span></div></div>`; };

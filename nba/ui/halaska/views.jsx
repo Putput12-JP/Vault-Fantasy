@@ -12,7 +12,11 @@ const THEME = 'dark';
 const Dim = ({ children, size = 'sm', mono, style }) => { const pal = usePal(THEME); return <Text size={size} mono={mono} color={pal.textSecondary} style={style}>{children}</Text>; };
 const Mono = ({ children, style }) => { const pal = usePal(THEME); return <span style={{ fontFamily: tokens.font.mono, ...tokens.type.xs, letterSpacing: '0.1em', textTransform: 'uppercase', color: pal.textTertiary, ...style }}>{children}</span>; };
 const Tone = ({ children, tone, size = 'sm', weight, mono }) => { const pal = usePal(THEME); return <Text size={size} weight={weight} mono={mono} color={tone === 'pos' ? pal.success : tone === 'neg' ? pal.danger : undefined} style={{ fontVariantNumeric: 'tabular-nums' }}>{children}</Text>; };
-const Av = ({ ini, size = 32 }) => { const pal = usePal(THEME); return <span style={{ width: size, height: size, borderRadius: '50%', background: pal.bgMuted, color: pal.textSecondary, ...tokens.type.xs, fontWeight: tokens.weight.medium, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{ini}</span>; };
+// Initials circle; with `src` (page phSrc: an embedded headshot, or ESPN's image URL on the website) the photo covers it, cropped to the
+// face. A photo that fails to load (the published artifact blocks external images) is dropped and the initials show.
+const Av = ({ ini, size = 32, src }) => { const pal = usePal(THEME); const [bad, setBad] = useState(false);
+  return <span style={{ position: 'relative', overflow: 'hidden', width: size, height: size, borderRadius: '50%', background: pal.bgMuted, color: pal.textSecondary, ...tokens.type.xs, fontWeight: tokens.weight.medium, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{ini}
+    {src && !bad && <img src={src} alt="" loading="lazy" onError={() => setBad(true)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 0', transform: 'scale(1.3)', transformOrigin: '50% 10%', background: pal.bgMuted }} />}</span>; };
 const useWidth = () => { const [w, setW] = useState(window.innerWidth); useEffect(() => { const f = () => setW(window.innerWidth); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []); return w; };
 const Ico = ({ html, size = 16 }) => <span aria-hidden="true" style={{ display: 'inline-flex', width: size, height: size }} dangerouslySetInnerHTML={{ __html: html.replace('<svg ', `<svg width="${size}" height="${size}" `) }} />;
 
@@ -87,7 +91,7 @@ function LabView(p) {
   const pal = usePal(THEME); const w = useWidth(); const narrow = w < 900;
   const row = r => [
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, opacity: r.out ? .55 : 1 }}>
-      <Av ini={r.ini} />
+      <Av ini={r.ini} src={r.src} />
       <span><Text size="sm" weight="medium">{r.name}</Text>{r.badges.map((b, i) => <React.Fragment key={i}> <Badge variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge></React.Fragment>)}<div><Dim size="xs">{r.meta}</Dim></div></span>
     </span>,
     <MinCtl r={r} onSetMin={p.onSetMin} onOut={p.onOut} />,
@@ -136,8 +140,8 @@ function LabView(p) {
             <div>
               <Mono>Roster moves</Mono>
               {p.roster.arrived.length + p.roster.left.length ? <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>
-                {p.roster.arrived.map(r => <div key={'a' + r.name} style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Av ini={r.ini} size={28} /><div style={{ flex: 1, minWidth: 0 }}><Text size="sm" weight="medium">{r.name}</Text><div><Dim size="xs">Joined from {r.team}{r.mpg ? ` · ${r.mpg} mpg last season` : ''}</Dim></div></div><Badge variant="success">In</Badge></div>)}
-                {p.roster.left.map(r => <div key={'l' + r.name} style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Av ini={r.ini} size={28} /><div style={{ flex: 1, minWidth: 0 }}><Text size="sm" weight="medium">{r.name}</Text><div><Dim size="xs">Left for {r.team}{r.mpg ? ` · ${r.mpg} mpg last season` : ''}</Dim></div></div><Badge variant="danger">Out</Badge></div>)}
+                {p.roster.arrived.map(r => <div key={'a' + r.name} style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Av ini={r.ini} src={r.src} size={28} /><div style={{ flex: 1, minWidth: 0 }}><Text size="sm" weight="medium">{r.name}</Text><div><Dim size="xs">Joined from {r.team}{r.mpg ? ` · ${r.mpg} mpg last season` : ''}</Dim></div></div><Badge variant="success">In</Badge></div>)}
+                {p.roster.left.map(r => <div key={'l' + r.name} style={{ display: 'flex', gap: 10, alignItems: 'center' }}><Av ini={r.ini} src={r.src} size={28} /><div style={{ flex: 1, minWidth: 0 }}><Text size="sm" weight="medium">{r.name}</Text><div><Dim size="xs">Left for {r.team}{r.mpg ? ` · ${r.mpg} mpg last season` : ''}</Dim></div></div><Badge variant="danger">Out</Badge></div>)}
               </div> : <div style={{ marginTop: 6 }}><Dim size="base">No roster moves on file for the {p.teamName}.</Dim></div>}
             </div>
             <Divider theme={THEME} spacing={0} />
@@ -194,7 +198,7 @@ function PropsList(p) {
         const on = r.key === p.sel;
         return (
           <button key={r.key} type="button" aria-current={on} onClick={() => p.onSelect(r.key)} style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', borderBottom: i < p.items.length - 1 ? `1px solid ${pal.borderSubtle}` : 'none', background: on ? pal.bgSubtle : 'transparent', transition: `background ${motion.normal} ${motion.easeInOut}` }}>
-            <Av ini={r.ini} size={36} />
+            <Av ini={r.ini} src={r.src} size={36} />
             <span style={{ flex: 1, minWidth: 0 }}><Text size="md" weight="semibold">{r.name}</Text><div><Dim>{r.stat} · proj {r.proj}{r.where ? ' · ' + r.where : ''}</Dim></div></span>
             <span style={{ textAlign: 'right', display: 'grid', gap: 3, justifyItems: 'end' }}>
               <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
@@ -219,11 +223,14 @@ function PvDetail(p) {
     <Stack gap={16}>
       <Card padding={24}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, display: 'flex', gap: 14, alignItems: 'center' }}>
+            <Av ini={h.ini} src={h.src} size={56} />
+            <div style={{ minWidth: 0 }}>
             <Heading level={2} style={{ margin: 0 }}>{h.name}</Heading>
             <div style={{ margin: '4px 0 0', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <Dim size="base">{h.stat}</Dim>{h.game && <Dim size="base">{h.game}</Dim>}
               {h.badges.map((b, i) => <Badge key={i} variant={b.warn ? 'warning' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge>)}
+            </div>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}><Dim>Tonight's projection</Dim><div><Text size="display" weight="bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{h.proj}</Text></div>{h.range && <Dim>{h.range}</Dim>}</div>

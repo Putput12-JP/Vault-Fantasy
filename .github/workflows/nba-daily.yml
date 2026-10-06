@@ -47,6 +47,9 @@ jobs:
           python3 nba/scripts/build_gamelogs.py
           python3 nba/scripts/build_model_state.py
 
+      - name: Player photos and team logos
+        run: python3 nba/scripts/fetch_photos.py      # only new players are downloaded; embedded in the page
+
       - name: Page snapshots
         run: |
           python3 nba/scripts/prop_board.py
