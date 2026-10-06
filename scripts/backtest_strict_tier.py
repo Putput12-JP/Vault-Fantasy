@@ -93,13 +93,17 @@ def main():
     out += ["", "3) Sensitivity (both seasons):"]
     for a, b in grid:
         out.append(f"   model>={a:.2f} mkt>={b:.2f}: {fmt(stats(tier(rows, a, b)))}")
+    out += ["", "4) GAP tier (rush yds / rush att / rec yds where Vault's P(side) beats the market's by >= 0.15):"]
+    for y in (2024, 2025, None):
+        X = [r for r in rows if (y is None or r["yr"] == y) and r["mkt"] in ("rush_yd", "rush_att", "rec_yd") and r["conf"] - r["mq"] >= 0.15]
+        out.append(f"   {y or 'both':>4}: {fmt(stats(X))} | edge vs price {(stats(X)['hit'] - stats(X)['imp'])*100:+.1f} pts")
     out += ["", "By market at the shipped thresholds:"]
     for mk in sorted({r["mkt"] for r in rows}):
         X = tier([r for r in rows if r["mkt"] == mk], t, m)
         if X: out.append(f"   {mk:9s} {fmt(stats(X))}")
     out += ["", "Caveats: one book's closing line (live uses the median of real books at the posted price); the replay",
             "omits matchup/role/script multipliers the live board adds; the shipped thresholds were first found on this",
-            "same data, so the walk-forward in (2) is the honest number. Live shadow tracking is the real test."]
+            "same data, so the walk-forward in (2) is the honest number. Judge tiers on edge vs price (hit minus the\nmarket's implied probability): chalk hits often at a price that already says so. Live shadow tracking is the real test."]
     txt = "\n".join(out); print(txt)
     if "--write" in sys.argv:
         os.makedirs(os.path.join(ROOT, "docs"), exist_ok=True)

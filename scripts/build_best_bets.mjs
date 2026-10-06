@@ -109,6 +109,13 @@ const HELD_FILE = resolve(ROOT, 'data/best_bets_held.json');
 // shown as a play, until live results confirm it. Thresholds are the backtest's.
 const STRICT_FILE = ARG.strict || resolve(ROOT, 'data/best_bets_strict.json');
 const STRICT_MODEL = Number(ARG.strictmodel ?? 0.70), STRICT_MKT = Number(ARG.strictmkt ?? 0.58);   // overrides are for testing only
+// GAP TIER (shadow, same log, tier:'gap'): where the model carries information is not
+// "confident" but "far from the market": rush yards / rush attempts / receiving yards
+// when Vault's P(side) beats the real books' no-vig P(side) by 15+ points. Backtest
+// (2024-25): ~54% hit, ~5 pts better than the market's price, ROI +2.8% but 2025 -1.5%.
+// Judge it on edge vs price, not hit rate.
+const GAP_MK = new Set(['rush_yd', 'rush_att', 'rec_yd']);
+const GAP_MIN = Number(ARG.gapmin ?? 0.15);
 const SIGNAL_FILE = resolve(ROOT, 'data/signal_log.json');
 const RULES_FILE = ARG.rules || resolve(ROOT, 'data/best_bets_rules.json');
 const CARD_DEFAULT_ON = ['rec_yd|under|WR/TE'];
@@ -718,16 +725,20 @@ function scoreProps(feed, PM, KP) {
         const wouldPass = trust.corrob && (letter === 'A' || letter === 'B') && ev != null && ev > 0 && bettable;
         const preGate = trust.corrob && (eff === 'A' || eff === 'B') && ev != null && ev > 0 && bettable;
         const pass = preGate && !projBlowout && !countUnderPhantom && !earlyRecHold && realBookAtLine;
-        // Strict tier: both probabilities for THIS side, no grade/EV needed. Real books only
-        // (median no-vig at the exact line); QB attempts/completions/yards sit out via weakMkt.
+        // Strict + gap tiers (shadow): both probabilities for THIS side, no grade/EV needed. Real
+        // books only (median no-vig at the exact line); QB attempts/completions/yards sit out via weakMkt.
         if (!lineHeld && realBookAtLine && bettable && !weakMkt && !roleUnconfirmed && !projBlowout
-            && !countUnderPhantom && !earlyRecHold && !sharpDisagree && sideProb >= STRICT_MODEL) {
+            && !countUnderPhantom && !earlyRecHold && !sharpDisagree) {
           const rq = lq.filter(q => isRealBook(q.book)).map(q => devigPower(q.over, q.under)).filter(x => x != null).sort((x, y) => x - y);
           const mO = rq.length ? (rq.length % 2 ? rq[rq.length >> 1] : (rq[rq.length / 2 - 1] + rq[rq.length / 2]) / 2) : null;
           const mSide = mO == null ? null : side === 'over' ? mO : 1 - mO;
-          if (mSide != null && mSide >= STRICT_MKT) strictCands.push({ id, name: p.name, team: p.team || null, pos: p.pos || null, opp: p.opp || null,
-            commence: slateKick[[p.team, p.opp].sort().join('|')] || p.commence || null, market: mk, line, side,
-            book: bs.book, price: bs.price, prob: round(sideProb, 3), mkt: round(mSide, 3), nBooks: rq.length, proj: v.proj, ev: ev != null ? round(ev * 100, 1) : null });
+          if (mSide != null) {
+            const base = { id, name: p.name, team: p.team || null, pos: p.pos || null, opp: p.opp || null,
+              commence: slateKick[[p.team, p.opp].sort().join('|')] || p.commence || null, market: mk, line, side,
+              book: bs.book, price: bs.price, prob: round(sideProb, 3), mkt: round(mSide, 3), nBooks: rq.length, proj: v.proj, ev: ev != null ? round(ev * 100, 1) : null };
+            if (sideProb >= STRICT_MODEL && mSide >= STRICT_MKT) strictCands.push({ ...base, tier: 'strict' });
+            if (GAP_MK.has(mk) && sideProb - mSide >= GAP_MIN) strictCands.push({ ...base, tier: 'gap' });
+          }
         }
         // Signal log: every line with a liquid Kalshi read, next to the real
         // books' no-vig P(over) and Vault's, graded by build_model_scoreboard.
@@ -888,16 +899,16 @@ function logStrict(feed, list) {
   if (stype && week && season) {
     const have = new Set(file.picks.map(p => p.key)), now = Date.now();
     for (const b of [...list].sort((x, y) => y.prob - x.prob)) {
-      const key = [season, stype, week, b.id, b.market].join('|');
+      const key = [season, stype, week, b.id, b.market, b.tier || 'strict'].join('|');
       if (have.has(key) || !(Date.parse(b.commence || '') > now)) continue;
-      file.picks.push({ key, season, stype, week, pid: String(b.id), name: b.name, team: b.team, pos: b.pos, opp: b.opp,
+      file.picks.push({ key, tier: b.tier || 'strict', season, stype, week, pid: String(b.id), name: b.name, team: b.team, pos: b.pos, opp: b.opp,
         commence: b.commence, market: b.market, side: b.side, line: b.line, book: b.book, price: b.price, book_real: true,
         prob: b.prob, mkt: b.mkt, nBooks: b.nBooks, proj: b.proj, ev: b.ev, posted: new Date().toISOString() });
       have.add(key); changed = true;
     }
   }
   if (changed) {
-    file.note = `Strict tier (shadow): Vault P(side) >= ${STRICT_MODEL} and real-book no-vig P(side) >= ${STRICT_MKT}, QB volume excluded. Never shown as plays; graded to test whether the backtest's ~70% hit rate holds live.`;
+    file.note = `Shadow tiers, never shown as plays. strict: Vault P(side) >= ${STRICT_MODEL} and real-book no-vig P(side) >= ${STRICT_MKT}. gap: rush yds/att + rec yds where Vault beats the real-book no-vig P(side) by >= ${GAP_MIN}. QB volume excluded. Graded on edge vs price (hit rate minus the market's implied probability), not hit rate alone.`;
     file.updated = new Date().toISOString();
   }
   return { file, changed };
@@ -1198,7 +1209,7 @@ function gameLeans(feed) {
     if (DRY) { log('DRY — not writing'); return; }
     if (shadow.changed) writeFileSync(SHADOW_FILE, JSON.stringify(shadow.file, null, 1) + '\n');
     const strictLog = logStrict(feed, props.strictCands);
-    log(`strict tier (shadow): ${props.strictCands.length} lines now · ${strictLog.file.picks.length} logged`);
+    log(`shadow tiers: ${props.strictCands.filter(c => c.tier === 'strict').length} strict + ${props.strictCands.filter(c => c.tier === 'gap').length} gap lines now · ${strictLog.file.picks.length} logged`);
     if (strictLog.changed) writeFileSync(STRICT_FILE, JSON.stringify(strictLog.file, null, 1) + '\n');
     const heldLog = logHeld(feed, props.heldCands, props.heldIds), sigLog = logSignals(feed, props.signals);
     log(`held (withheld but would have passed): ${props.heldCands.length} now · ${heldLog.file.picks.length} logged · kalshi signals: ${props.signals.length} lines now`);

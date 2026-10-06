@@ -31,6 +31,11 @@ price band -250..200
    model>=0.75 mkt>=0.58: 68.9% hit (±5.9) | market 62.1% | ROI  +4.5% | n=61
    model>=0.75 mkt>=0.60: 64.6% hit (±6.9) | market 63.0% | ROI  -3.8% | n=48
 
+4) GAP tier (rush yds / rush att / rec yds where Vault's P(side) beats the market's by >= 0.15):
+   2024: 55.6% hit (±2.0) | market 48.4% | ROI  +6.9% | n=590 | edge vs price +7.2 pts
+   2025: 51.8% hit (±2.1) | market 49.1% | ROI  -1.5% | n=570 | edge vs price +2.6 pts
+   both: 53.7% hit (±1.5) | market 48.8% | ROI  +2.8% | n=1160 | edge vs price +4.9 pts
+
 By market at the shipped thresholds:
    pass_td   70.6% hit (±6.4) | market 63.0% | ROI  +5.3% | n=51
    rec       68.7% hit (±5.1) | market 60.6% | ROI  +6.2% | n=83
@@ -40,5 +45,6 @@ By market at the shipped thresholds:
 
 Caveats: one book's closing line (live uses the median of real books at the posted price); the replay
 omits matchup/role/script multipliers the live board adds; the shipped thresholds were first found on this
-same data, so the walk-forward in (2) is the honest number. Live shadow tracking is the real test.
+same data, so the walk-forward in (2) is the honest number. Judge tiers on edge vs price (hit minus the
+market's implied probability): chalk hits often at a price that already says so. Live shadow tracking is the real test.
 ```

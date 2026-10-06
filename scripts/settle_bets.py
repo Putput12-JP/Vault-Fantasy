@@ -1460,6 +1460,22 @@ def game_rules(game_picks, prev):
             "params": {"window_weeks": RULE_WEEKS, "on_min_plays": RULE_ON_N, "on_min_roi": RULE_ON_ROI, "off_min_plays": RULE_OFF_N},
             "buckets": out}
 
+def _tier_edges(rows):
+    """Per shadow tier (build_best_bets.mjs logStrict): hit rate, the market's implied
+    probability for the same plays, and the EDGE between them. A high hit rate alone is
+    cheap (chalk); only a hit rate above the price's implied probability is an edge."""
+    out = {}
+    for tier in sorted({r.get("tier") or "strict" for r in rows}):
+        rs = [r for r in rows if (r.get("tier") or "strict") == tier]
+        dec = [r for r in rs if r.get("result") in ("W", "L") and r.get("mkt") is not None]
+        n, w = len(dec), sum(1 for r in dec if r["result"] == "W")
+        imp = sum(r["mkt"] for r in dec) / n if n else None
+        out[tier] = {"summary": _summ(rs), "n": n, "hit": round(w / n, 4) if n else None,
+                     "market_implied": round(imp, 4) if imp is not None else None,
+                     "edge_pts": round((w / n - imp) * 100, 1) if n else None,
+                     "units": round(sum(r.get("units") or 0 for r in dec), 2)}
+    return out
+
 def settle_card(prop_picks):
     card = _load_data("best_bets_card.json")
     if not card:
@@ -1518,7 +1534,7 @@ def settle_card(prop_picks):
     strictf = _load_data("best_bets_strict.json")
     if strictf and strictf.get("picks"):
         rows = _grade_plays(strictf["picks"], prop_picks)
-        res["strict"] = {"picks": rows, "summary": _summ(rows)}
+        res["strict"] = {"picks": rows, "summary": _summ(rows), "tiers": _tier_edges(rows)}
     return res
 
 def tag_withheld(prop_picks):
