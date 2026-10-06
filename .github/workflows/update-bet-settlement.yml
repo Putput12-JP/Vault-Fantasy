@@ -112,13 +112,19 @@ jobs:
       - name: QB news timing
         run: python3 scripts/build_qb_news_lag.py || true
 
+      # Lean learning loop: refit the model+market stack on every newly settled
+      # prop and score it walk-forward (predictions made before each week's games).
+      # Shadow only: data/lean_stack.json / lean_stack_log.json. Never fails.
+      - name: Lean learning loop
+        run: python3 scripts/lean_loop.py || true
+
       - name: Commit if changed
         run: |
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
           # Rebase in case another data cron pushed while we ran.
           git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
-          git add data/bet_results.json data/best_bets_record.json data/best_bets_rules.json data/game_rules.json data/model_scoreboard.json data/edge_scoreboard.json data/prop_calibration.json data/grade_recal.json data/prop_anchor_weights.json data/market_implied_calib.json data/qb_news_lag.json data/espn_player_stats_*.json docs/retro/*.md 2>/dev/null || true
+          git add data/bet_results.json data/best_bets_record.json data/best_bets_rules.json data/game_rules.json data/model_scoreboard.json data/edge_scoreboard.json data/prop_calibration.json data/grade_recal.json data/prop_anchor_weights.json data/market_implied_calib.json data/qb_news_lag.json data/lean_stack.json data/lean_stack_log.json data/espn_player_stats_*.json docs/retro/*.md 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No settlement changes."
           else
