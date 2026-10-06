@@ -4,11 +4,12 @@ A menu page that plays one game 10,000 times and reports the score, each player'
 
 ## How a simulated game runs
 
-1. Environment. A margin and a total are drawn: normal around the chosen source (the players' own sum, the market line, or the Vault line), with the game model's margin spread (`MS.game.sd_margin`) and a total spread of 17 points. Each team's target score is (total +/- margin) / 2.
+1. Environment. A margin and a total are drawn: normal around the chosen source (the players' own sum, the market line, or the Vault line), with the game model's margin spread (`MS.game.sd_margin`) and total spread (`MS.game.sd_total`, 17 points if it is not exported). Each team's target score is (total +/- margin) / 2. There is no separate bench term: the modeled rotation players carry the whole score.
 2. Availability. Anyone Questionable, Doubtful or Probable plays with the probability the game model already uses (`MS.game.p_out`). Anyone Out or Inactive does not play.
 3. Raw stat draws. Every player's points come from a normal with the prop model's mean (his minutes times his rate, with the Lab and what-if edits) and the prop model's variance for points; rebounds, assists and 3-pointers from a gamma-Poisson (negative binomial) with the model's variance. The draws are independent.
-4. Tie to the game. Each team's raw points are scaled so the team sums to its target score less a bench term. Teammate points therefore move against each other, and a fast game lifts everyone. Assists and 3-pointers scale with their team's score ratio at exponent 1; rebounds scale with the game total ratio at exponent 0.5. These exponents are fixed here, not fit.
-5. Minutes are scaled to 240 per team when the projected sum is off by more than 3%, and the page says so.
+4. Tie to the game. Each team's raw points are scaled so the team sums to its target score. Teammate points therefore move against each other, and a fast game lifts everyone. Assists and 3-pointers scale with their team's score ratio at exponent 1; rebounds scale with the game total ratio at exponent 0.5. These exponents are fixed here, not fit.
+5. Calibration pilot (added during the build, before any real-game result): scaling to the team score nudges high-variance players down and low-variance players up, and a normal cut at zero thins small scorers. A 3,000-game pilot measures each player's mean and spread and corrects the raw points centre (within 0.8x to 1.25x) and spread (within 0.7x to 1.5x) before the 10,000-game run. Rebounds, assists and 3-pointers need no pilot.
+6. Minutes are scaled to 240 per team when the projected sum is off by more than 3%, and the page says so.
 
 ## What version 1 is, and is not
 
@@ -29,3 +30,7 @@ Pre-registered, to run once at least 150 regular-season games have settled:
 4. Only if both pass may a pair price use the simulation. Until then it stays a view.
 
 Record the outcome in `docs/game-simulation-results.md`, NO-GO included.
+
+## Known limit at build time
+
+Scorers projected under about 3 points are flagged Off by the marginal check: the prop model's normal for points puts mass below zero there, which a non-negative integer draw cannot match. The page shows the flag.

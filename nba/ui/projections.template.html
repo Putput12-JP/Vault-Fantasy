@@ -685,6 +685,9 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .av{position:relative;overflow:hidden}
 .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;transform:scale(1.3);transform-origin:50% 10%;background:var(--raised)}
 .pl{display:flex;align-items:center;gap:10px}.pl>div{min-width:0}.pp-av.sm{width:32px;height:32px;border-width:1px;font-size:10px;flex:none}.tm{display:inline-flex;align-items:center;gap:6px}
+.gs-legs{display:grid;gap:10px}.gs-leg{display:flex;flex-wrap:wrap;gap:8px}.gs-leg .sel{min-width:0;flex:1 1 150px}.gs-line{width:90px;flex:none}
+.gs-out{display:flex;flex-wrap:wrap;gap:10px 28px;margin:16px 0 8px}.gs-out div{display:grid}.gs-out small{font-size:11.5px;color:var(--fg3)}.gs-out b{font-family:var(--font-mono);font-size:22px;font-weight:600;letter-spacing:-.02em}
+.gs-checks{display:grid;gap:12px}.gs-checks>div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}.gs-checks small{display:block;color:var(--fg3);font-size:12.5px}.gs-checks b{font-weight:500}
 .lg{display:inline-block;vertical-align:middle;object-fit:contain;flex:none}
 .slicer .ab,.list [role=option] .ab{display:inline-flex;align-items:center;gap:8px;width:auto;min-width:34px}
 .sl-teams .lg{align-self:center}
@@ -1275,6 +1278,17 @@ th{font-weight:500}
       </section>
     </main>
     <footer id="nfoot" hidden></footer>
+    <main id="v-sim" hidden>
+      <div class="banner" id="gsbanner" hidden></div>
+      <section class="card tbar"><div class="tfilters" id="gsgames"></div></section>
+      <section class="card"><div class="card-b tfilters"><span class="muted">Game environment</span><div class="seg" id="gsenv"></div><button class="btn" id="gsrun" type="button" title="Play the game 10,000 more times with a new random draw">Run again</button></div></section>
+      <div class="kpis" id="gskpis"></div>
+      <div class="two" id="gscharts"></div>
+      <div class="nt-teams" id="gsteams"></div>
+      <section class="card" id="gsjoint"></section>
+      <section class="card" id="gschecks"></section>
+    </main>
+    <footer id="gsfoot" hidden></footer>
     <main id="v-edges" hidden>
       <div class="banner" id="ebanner"></div>
       <section class="card ev-strip" id="estrip"></section>
@@ -1372,7 +1386,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'lines', 'sharp', 'backtests', 'finder', 'btlab'];
+const VIEWS = ['health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -1509,6 +1523,7 @@ const PAGES = [
     ['Minutes Lab', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), 'Projected minutes and stats per team; edit minutes and every stat reprices.', 'lab'],
     ['Tonight', SVG('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'), "Tonight's minutes for every game: the model's adjustments, what the market prices, your what-ifs and the Lab's record.", 'tonight'],
     ['Slate', SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'), "Every game: the Vault line next to the market, injuries in points, back-to-backs, betting splits.", 'slate'],
+    ['Game Simulation', SVG('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/>'), 'Play a game 10,000 times: the score, every player\'s stat range and how often two legs hit together.', 'sim'],
     ['Injury Wire', SVG('<path d="M12 3v18M3 12h18"/>'), 'Every injury report and lineup change as it posts, and how fast each venue repriced the props it should move.', 'wire'],
   ]],
   ['Markets', [
@@ -1713,6 +1728,7 @@ function show(v){
   $('v-track').hidden = $('tfoot').hidden = v !== 'track';
   $('v-edges').hidden = $('efoot').hidden = v !== 'edges';
   $('v-tonight').hidden = $('nfoot').hidden = v !== 'tonight';
+  $('v-sim').hidden = $('gsfoot').hidden = v !== 'sim';
   $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
   $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
@@ -1766,6 +1782,13 @@ function show(v){
     renderWire();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
+    return;
+  }
+  if (v === 'sim'){
+    $('tname').textContent = 'Game Simulation';
+    $('tsub').textContent = "10,000 GAMES · SCORE · PLAYER STATS · JOINT ODDS";
+    renderSim();
+    if (!boardTried) loadBoard();
     return;
   }
   if (v === 'tonight'){
@@ -2421,6 +2444,7 @@ async function loadBoard(){
     if (view === 'props' || view === 'mybets' || view === 'propboard') renderProps();
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
+    if (view === 'sim') renderSim();
     if (view === 'wire') renderWire();
     if (view === 'slate' || view === 'lines') renderSlate();
     if (view === 'sharp') renderSharp();
@@ -3288,6 +3312,203 @@ $('nteams').addEventListener('change', e => {
   store.set('nba-tonight', tonightEdits); renderTonight();
 });
 $('nwhatif').addEventListener('click', e => { if (e.target.id === 'nreset'){ delete tonightEdits[nt.game]; store.set('nba-tonight', tonightEdits); renderTonight(); } });
+
+// ── Game Simulation (docs/game-simulation.md) ───────────────────────────────────────────────────────
+// Plays one game 10,000 times. A margin and a total are drawn around the chosen environment; every player's raw stats come
+// from the prop model's own distributions; each team's points are then tied to its simulated score (so teammates trade
+// shots and a fast game lifts everyone). A view, not a bet source: nothing here produces a Bet, Lean, Edge or shadow bet.
+const sim = {game: null, env: 'players', seed: 1, a: null, b: null, res: null, key: ''};
+const SIM_N = 10000, SIM_STATS = ['pts', 'reb', 'ast', '3pm'], SIM_LBL = {pts: 'Pts', reb: 'Reb', ast: 'Ast', '3pm': '3PM', pra: 'PRA'};
+const SIM_ENV = [['players', "Players' own sum", 'Each team scores what its simulated players add up to on average, so every player keeps the prop model\'s numbers.'],
+  ['market', 'Market line', "The game's spread and total from the books; players shift to fit."], ['vault', 'Vault line', "The game model's spread and total (regular season only); players shift to fit."]];
+function simRng(seed){ let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function simNorm(R){ let u = 0; while (!u) u = R(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * R()); }
+function simGamma(R, k){                          // Marsaglia and Tsang
+  if (k < 1) return simGamma(R, k + 1) * Math.pow(R() || 1e-9, 1 / k);
+  const d = k - 1 / 3, c = 1 / Math.sqrt(9 * d);
+  for (;;){ let x, v; do { x = simNorm(R); v = 1 + c * x; } while (v <= 0); v = v * v * v; const u = R();
+    if (u < 1 - .0331 * x ** 4 || Math.log(u) < .5 * x * x + d * (1 - v + Math.log(v))) return d * v; }
+}
+function simPois(R, lam){ if (lam <= 0) return 0; if (lam < 30){ const L = Math.exp(-lam); let k = 0, p = 1; do { k++; p *= R(); } while (p > L); return k - 1; } return Math.max(0, Math.round(lam + Math.sqrt(lam) * simNorm(R))); }
+const simVar = (s, mu, extra) => { const [v0, v1, v2, v3] = PR.variance[s]; return Math.max(.25, v0 + v1 * mu + v2 * mu * mu + (v3 ? v3 * extra : 0)); };
+function simCount(R, mu, v){ if (mu <= 0) return 0; if (v <= mu * 1.001) return simPois(R, mu); return simPois(R, simGamma(R, mu * mu / (v - mu)) * (v - mu) / mu); }
+
+// who plays and what the prop model says about each: the same minutes and stats Tonight shows, with your what-ifs
+function simInputs(g, B, pick){
+  const cache = {}, status = statusFromBoard(B), pOut = (MS && MS.game && MS.game.p_out) || {};
+  return [g.away, g.home].map(team => {
+    const model = gameMinutes(team, g, cache), rows = [], seen = new Set();
+    const add = (pid, name, src) => {
+      const st = status[pid];
+      if (seen.has(pid) || st === 'Out' || st === 'Inactive') return;
+      const mu = {}, ex = {}; let min = 0;
+      for (const s of SIM_STATS){ const m = muFor(pid, s, cache, g, team); if (!m || !(m.min > 0)) return; mu[s] = m.mu; ex[s] = m.extra; min = m.min; }
+      seen.add(pid); rows.push({pid, name, st, min, mu, ex, src, pPlay: 1 - (st ? (pOut[st] || 0) : 0)});
+    };
+    for (const a of Object.keys(model)) add(+a, nameOf(B, +a), 'model');
+    if (pick.mode !== 'example') for (const p of (D.teams[team] ? D.teams[team].players : [])) add(p.id, p.name, 'lab');
+    const sumMin = rows.reduce((a, r) => a + r.min * r.pPlay, 0), f = sumMin > 0 && Math.abs(sumMin - 240) / 240 > .03 ? 240 / sumMin : 1;
+    if (f !== 1) for (const r of rows){ r.min *= f; for (const s of SIM_STATS) r.mu[s] *= f; }
+    rows.sort((a, b) => b.min - a.min);
+    return {team, rows, f, sumMin, hold: rosterHold(team, g, cache, null)};
+  });
+}
+function simRun(T, mean, seed){
+  const G = (MS && MS.game) || {}, sdM = G.sd_margin || 12, sdT = G.sd_total || 17, sdTeam = Math.sqrt((sdM * sdM + sdT * sdT) / 4);
+  for (const t of T){
+    const e = t.rows.reduce((a, r) => a + r.mu.pts * r.pPlay, 0), vs = t.rows.map(r => simVar('pts', r.mu.pts, r.ex.pts)), vsum = vs.reduce((a, v) => a + v, 0) || 1;
+    t.rows.forEach((r, j) => { const share = e > 0 ? r.mu.pts * r.pPlay / e : 0, w = vs[j] / vsum;     // raw spread so the player's final spread, after the team tie, is the model's
+      r.rawSd = Math.sqrt(Math.max(.25, (vs[j] - (share * sdTeam) ** 2) / (1 - w))); r.rawMu = r.mu.pts; r.wantSd = Math.sqrt(vs[j]); });
+  }
+  // The team tie (scale to the team's score) nudges high-variance players down and low-variance players up, and a normal cut at
+  // zero thins small scorers. One short pilot measures that per player and corrects the raw centre and spread; the real run follows.
+  const pilot = simCore(T, mean, seed + 101, 3000, sdM, sdT);
+  pilot.teams.forEach((tm, k) => tm.rows.forEach((r, j) => {
+    const o = tm.out[j], m = simMean(o.pts), a = simPlayed(o, 'pts'), want = r.mu.pts * r.pPlay;
+    if (m > .05) r.rawMu *= Math.max(.8, Math.min(1.25, want / m));
+    if (a.length > 50){ const sd = simSd(a); if (sd > .05) r.rawSd *= Math.max(.7, Math.min(1.5, r.wantSd / sd)); } }));
+  return simCore(T, mean, seed, SIM_N, sdM, sdT);
+}
+function simCore(T, mean, seed, N, sdM, sdT){
+  const R = simRng(seed);
+  const teams = T.map(t => {
+    const e = t.rows.reduce((a, r) => a + r.mu.pts * r.pPlay, 0);
+    return {rows: t.rows, e, out: t.rows.map(() => { const o = {on: new Uint8Array(N)}; for (const s of [...SIM_STATS, 'pra']) o[s] = new Float32Array(N); return o; })};
+  });
+  const eAll = teams[0].e + teams[1].e, margin = new Float32Array(N), total = new Float32Array(N), score = [new Float32Array(N), new Float32Array(N)];
+  for (let i = 0; i < N; i++){
+    const mar = mean.m + sdM * simNorm(R), tot = mean.t + sdT * simNorm(R), tgt = [(tot - mar) / 2, (tot + mar) / 2];
+    margin[i] = mar; total[i] = tot; score[0][i] = tgt[0]; score[1][i] = tgt[1];
+    for (let k = 0; k < 2; k++){
+      const {rows, e, out} = teams[k], raw = new Array(rows.length).fill(0); let sum = 0;
+      rows.forEach((r, j) => { if (R() < r.pPlay){ out[j].on[i] = 1; raw[j] = Math.max(0, r.rawMu + r.rawSd * simNorm(R)); sum += raw[j]; } });
+      const sc = sum > 5 ? tgt[k] / sum : 1, q = e > 0 ? tgt[k] / e : 1, qr = Math.pow(Math.max(.5, tot) / (eAll || 1), .5);
+      rows.forEach((r, j) => { if (!out[j].on[i]) return;
+        const pts = Math.round(raw[j] * sc), ast = simCount(R, r.mu.ast * q, simVar('ast', r.mu.ast * q, r.ex.ast)),
+          reb = simCount(R, r.mu.reb * qr, simVar('reb', r.mu.reb * qr, r.ex.reb)), tp = simCount(R, r.mu['3pm'] * q, simVar('3pm', r.mu['3pm'] * q, r.ex['3pm']));
+        const o = out[j]; o.pts[i] = pts; o.ast[i] = ast; o.reb[i] = reb; o['3pm'][i] = tp; o.pra[i] = pts + reb + ast; });
+    }
+  }
+  return {teams, margin, total, score, N, mean, sdM, sdT};
+}
+const simQ = (arr, p) => arr[Math.min(arr.length - 1, Math.floor(p * arr.length))];
+function simPlayed(o, s){ const v = []; for (let i = 0; i < o.on.length; i++) if (o.on[i]) v.push(o[s][i]); return Float32Array.from(v).sort(); }
+const simSort = a => Float32Array.from(a).sort();
+const simMean = a => { let t = 0; for (let i = 0; i < a.length; i++) t += a[i]; return t / (a.length || 1); };
+const simSd = a => { const m = simMean(a); let t = 0; for (let i = 0; i < a.length; i++) t += (a[i] - m) ** 2; return Math.sqrt(t / (a.length || 1)); };
+
+function simHist(id, arr, {bin, lo, hi, mark, markLabel = 'The line', fmtBin, title, unit}){
+  const n = Math.ceil((hi - lo) / bin), c = new Array(n).fill(0), N = arr.length;
+  for (let i = 0; i < N; i++) c[Math.max(0, Math.min(n - 1, Math.floor((arr[i] - lo) / bin)))]++;
+  const cum = []; c.reduce((a, v, i) => (cum[i] = a + v), 0);
+  const med = cum.findIndex(v => v >= N / 2), W = 520, CH = 130, X0 = 8, X1 = W - 8, T = 12, H = T + CH + 22, step = (X1 - X0) / n, mx = Math.max(...c, 1), X = v => X0 + (v - lo) / bin * step;
+  let s = '';
+  c.forEach((v, i) => { const h = Math.max(1, v / mx * CH);
+    s += `<g data-i="${i}" class="${i === med ? 'on' : ''}"><rect class="ck-col" x="${(X0 + i * step + step * .12).toFixed(1)}" y="${(T + CH - h).toFixed(1)}" width="${(step * .76).toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="var(--chart-1)"/><rect class="ck-hit" x="${(X0 + i * step).toFixed(1)}" y="${T}" width="${step.toFixed(1)}" height="${CH}"/></g>`; });
+  if (mark != null && mark >= lo && mark <= hi) s += `<line x1="${X(mark).toFixed(1)}" x2="${X(mark).toFixed(1)}" y1="${T}" y2="${T + CH}" stroke="var(--chart-3)" stroke-dasharray="4 4" stroke-width="1.5"/>`;
+  for (let i = 0; i < n; i += Math.max(1, Math.round(n / 6))) s += `<text x="${(X0 + i * step).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(fmtBin(i, true))}</text>`;
+  return ckCard(id, {svg: `<svg viewBox="0 0 ${W} ${H}">${s}</svg>`, n, def: med, aria: title, foot: unit,
+    legend: mark != null ? [[markLabel, 'ln', 'var(--chart-3)']] : [],
+    head: i => ({k: fmtBin(i), v: pc(c[i] / N, 1), unit: 'of games', right: [[`${pc(cum[i] / N)} at or below`, ''], [`${pc(1 - cum[i] / N)} above`, '']]})});
+}
+function simPlayerStats(res){ return res.teams.map(t => t.rows.map((r, j) => { const o = t.out[j], on = o.on.reduce((a, v) => a + v, 0), q = {}; for (const s of [...SIM_STATS, 'pra']){ const a = simPlayed(o, s); q[s] = a.length ? [simQ(a, .1), simQ(a, .5), simQ(a, .9)] : null; } return {on, q}; })); }
+
+function simChecks(res, T, withMarginals){
+  const out = [], m = simMean(res.margin), t = simMean(res.total), sm = simSd(res.margin), st = simSd(res.total), M = res.mean;
+  out.push([Math.abs(m - M.m) <= .3 && Math.abs(t - M.t) <= .3 && Math.abs(sm / res.sdM - 1) <= .05 && Math.abs(st / res.sdT - 1) <= .05, 'Score environment',
+    `margin ${fmt(m)} (asked ${fmt(M.m)}), spread ${fmt(sm)} (asked ${fmt(res.sdM)}); total ${fmt(t)} (asked ${fmt(M.t)}), spread ${fmt(st)} (asked ${fmt(res.sdT)})`]);
+  if (!withMarginals){ out.push([null, 'Player stats', 'Not checked in this environment: the players are shifted to fit the line, so they are meant to differ from the prop model.']); return out; }
+  let n = 0, ok = 0; const bad = [];
+  res.teams.forEach((tm, k) => tm.rows.forEach((r, j) => { for (const s of SIM_STATS){
+    const a = simPlayed(tm.out[j], s); if (a.length < 200) continue;
+    const mean = simMean(tm.out[j][s]), want = r.mu[s] * r.pPlay, sd = simSd(a), wsd = Math.sqrt(simVar(s, r.mu[s], r.ex[s]));
+    n++; const pass = Math.abs(mean - want) <= Math.max(.03 * want, .3) && Math.abs(sd / wsd - 1) <= .10; if (pass) ok++; else bad.push(`${r.name} ${SIM_LBL[s]} (mean ${fmt(mean)} vs ${fmt(want)}, spread ${fmt(sd)} vs ${fmt(wsd)})`); } }));
+  out.push([ok === n, 'Player stats', `${ok} of ${n} player stats match the prop model within 3% on the mean and 10% on the spread${bad.length ? `. Off: ${bad.slice(0, 4).map(esc).join('; ')}${bad.length > 4 ? `; and ${bad.length - 4} more` : ''}` : ''}`]);
+  return out;
+}
+
+function renderSim(){
+  const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
+  const B = PS.board, games = [...(B.games || [])].sort((a, b) => a.tip - b.tip);
+  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now() / 1000) : ''}</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
+    : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's final game</span>` : pill('idle', 'No games yet');
+  $('gsbanner').hidden = games.length > 0;
+  $('gsbanner').innerHTML = '<b>No games on the board yet.</b><span>The board lists games within 3 days of tip; preseason starts October 3, opening night is October 20.</span>';
+  if (!games.length){ for (const k of ['gsgames', 'gsenv', 'gskpis', 'gscharts', 'gsteams', 'gsjoint', 'gschecks']) $(k).innerHTML = ''; return; }
+  if (!games.some(g => String(g.id) === sim.game)) sim.game = String(games[0].id);
+  const g = games.find(x => String(x.id) === sim.game), gid = String(g.id), status = statusFromBoard(B);
+  $('gsgames').innerHTML = `<div class="seg" id="gsgame">${games.map(x => `<button type="button" data-g="${x.id}" aria-pressed="${String(x.id) === sim.game}">${x.away} @ ${x.home} · ${etFmt(x.tip, {weekday: 'short'})} ${clock(x.tip)}</button>`).join('')}</div>`;
+
+  const T = simInputs(g, B, pick), eH = T[1].rows.reduce((a, r) => a + r.mu.pts * r.pPlay, 0), eA = T[0].rows.reduce((a, r) => a + r.mu.pts * r.pPlay, 0);
+  const V = vaultLine(g, B, status), M = marketLine(g.mk), avail = {players: true, market: !!(M && M.spread != null && M.total != null), vault: !!V};
+  if (!avail[sim.env]) sim.env = 'players';
+  const mean = sim.env === 'market' ? {m: -M.spread, t: M.total} : sim.env === 'vault' ? {m: -V.spread, t: V.total} : {m: eH - eA, t: eH + eA};
+  $('gsenv').innerHTML = SIM_ENV.map(([k, l, tip]) => `<button type="button" data-e="${k}" aria-pressed="${sim.env === k}" ${avail[k] ? '' : 'disabled'} title="${avail[k] ? esc(tip) : k === 'vault' ? 'The Vault line starts with the regular season' : 'No spread and total from the books yet'}">${l}</button>`).join('');
+
+  const key = [gid, sim.env, sim.seed, JSON.stringify(tonightEdits[gid] || {}), JSON.stringify(edits), T.map(t => t.rows.map(r => r.pid + ':' + r.min.toFixed(1) + ':' + r.pPlay).join(',')).join('|'), fmt(mean.m, 2), fmt(mean.t, 2)].join('#');
+  if (sim.key !== key){ sim.res = simRun(T, mean, sim.seed * 7919 + (+gid % 100003)); sim.key = key; }
+  const res = sim.res, N = res.N, ms = simSort(res.margin), ts = simSort(res.total), sa = simSort(res.score[0]), sh = simSort(res.score[1]);
+  const homeWin = res.margin.reduce((a, v) => a + (v > 0 ? 1 : 0), 0) / N, hold = T.find(t => t.hold);
+  const holdNote = T.some(t => t.hold) ? (T.find(t => t.hold).hold.why === 'preseason'
+    ? "<b>Preseason game.</b><span>Starters rest and rotations are a guess, and the minutes model was never tested on preseason games. Read this as a rehearsal of the page, not a forecast.</span>"
+    : `<b>${esc(T.find(t => t.hold).team)}'s rotation is not trusted yet.</b><span>The minutes model can't see its rotation (new arrivals), so its simulated players are shown but should not be relied on.</span>`) : '';
+  const norm = T.filter(t => t.f !== 1).map(t => `${t.team} minutes scaled from ${fmt(t.sumMin, 0)} to 240`);
+  $('gsbanner').hidden = !holdNote && !norm.length;
+  if (holdNote || norm.length){ $('gsbanner').innerHTML = holdNote || ''; if (norm.length) $('gsbanner').innerHTML += `<span>${norm.join('; ')}.</span>`; }
+
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const mk = (a, p) => simQ(a, p), rng = a => `${fmt(mk(a, .1), 0)} to ${fmt(mk(a, .9), 0)}`;
+  const mlTxt = M && M.total != null ? `market total ${M.total}` : 'no market total yet';
+  $('gskpis').innerHTML =
+    kpi(`${g.home} win`, ICON.star, pc(homeWin, 1), `${g.away} ${pc(1 - homeWin, 1)} · ${M && M.win != null ? `market ${pc(M.win, 1)}` : 'no market price yet'}`) +
+    kpi('Typical score', ICON.pts, `${fmt(mk(sa, .5), 0)}-${fmt(mk(sh, .5), 0)}`, `${g.away} ${fmt(mk(sa, .5), 0)}, ${g.home} ${fmt(mk(sh, .5), 0)} (middle of 10,000 games)`) +
+    kpi('Margin', ICON.clock, mk(ms, .5) >= 0 ? `${g.home} by ${fmt(mk(ms, .5), 1)}` : `${g.away} by ${fmt(-mk(ms, .5), 1)}`, `80% of games: ${fmt(mk(ms, .1), 0)} to ${fmt(mk(ms, .9), 0)} · ${M && M.spread != null ? `market ${g.home} ${M.spread > 0 ? '+' : ''}${M.spread}` : 'no market spread yet'}`) +
+    kpi('Total', ICON.edit, fmt(mk(ts, .5), 1), `80% of games: ${rng(ts)} · ${mlTxt}`);
+
+  const lo = Math.floor(mk(ms, .005) / 4) * 4 - 4, hi = Math.ceil(mk(ms, .995) / 4) * 4 + 4, tlo = Math.floor(mk(ts, .005) / 8) * 8 - 8, thi = Math.ceil(mk(ts, .995) / 8) * 8 + 8;
+  $('gscharts').innerHTML = `<section class="card"><div class="card-h"><div><h2>Margin</h2><p>${g.home} points minus ${g.away} points, every simulated game. Above zero is a ${g.home} win.</p></div></div><div class="card-b">${simHist('sim-margin', res.margin, {bin: 4, lo, hi, mark: 0, markLabel: 'Even game', title: 'Simulated margin', unit: `${g.home} minus ${g.away}, 4-point bins`, fmtBin: (i, short) => { const a = lo + i * 4; return short ? `${a}` : `${g.home} by ${a} to ${a + 4}`; }})}</div></section>
+    <section class="card"><div class="card-h"><div><h2>Total points</h2><p>Both teams combined, every simulated game.${M && M.total != null ? ` The dashed line is the market total, ${M.total}.` : ''}</p></div></div><div class="card-b">${simHist('sim-total', res.total, {bin: 8, lo: tlo, hi: thi, mark: M && M.total != null ? M.total : null, markLabel: 'Market total', title: 'Simulated total', unit: '8-point bins', fmtBin: (i, short) => { const a = tlo + i * 8; return short ? `${a}` : `${a} to ${a + 8} total`; }})}</div></section>`;
+
+  const PS_ = simPlayerStats(res), cellF = q => q ? `<b>${fmt(q[1], 0)}</b><small>${fmt(q[0], 0)} to ${fmt(q[2], 0)}</small>` : '';
+  $('gsteams').innerHTML = T.map((t, k) => `<section class="card nt-team"><div class="card-h"><div><h2 class="tm">${lgImg(t.team, 22)}${t.team}${D.teams[t.team] ? ' · ' + esc(D.teams[t.team].name) : ''}</h2><p>Middle of 10,000 games, with the 10th to 90th percentile under it. Counts only the games he plays.</p></div></div>
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Plays</th><th>Min</th>${[...SIM_STATS, 'pra'].map(s => `<th>${SIM_LBL[s]}</th>`).join('')}</tr></thead><tbody>
+    ${t.rows.map((r, j) => { const P = PS_[k][j]; return `<tr><td class="l"><div class="pl">${avSm(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${r.st ? `<span class="warnt">${esc(r.st)}</span>` : LINEUP[(B.players[r.pid] || [])[3]] || '&nbsp;'}</small></div></div></td>
+      <td>${pc(P.on / N)}</td><td>${fmt(r.min, 0)}</td>${[...SIM_STATS, 'pra'].map(s => `<td>${cellF(P.q[s])}</td>`).join('')}</tr>`; }).join('')}</tbody></table></div></section>`).join('');
+
+  // joint odds: two legs, the sim's own both-hit rate against the independent product
+  const all = T.flatMap((t, k) => t.rows.map((r, j) => ({k, j, r, o: res.teams[k].out[j]})));
+  const defLine = (e, s) => { const a = simPlayed(e.o, s); return a.length ? Math.floor(simQ(a, .5)) + .5 : 0.5; };
+  const leg = (cur, def) => cur && all.some(e => e.r.pid === cur.pid) ? cur : def;
+  sim.a = leg(sim.a, all[0] ? {pid: all[0].r.pid, stat: 'pts', side: 'over', line: defLine(all[0], 'pts')} : null);
+  sim.b = leg(sim.b, all[1] ? {pid: all[1].r.pid, stat: 'ast', side: 'over', line: defLine(all[1], 'ast')} : null);
+  const hit = L => { const e = all.find(x => x.r.pid === L.pid), a = e.o[L.stat], c = e.o.on; let n = 0; const m = new Uint8Array(N);
+    for (let i = 0; i < N; i++) if (c[i] && (L.side === 'over' ? a[i] > L.line : a[i] < L.line)){ m[i] = 1; n++; } return {m, p: n / N}; };
+  const legHtml = (L, id) => `<div class="gs-leg" data-leg="${id}"><select class="sel" data-f="pid" aria-label="Player">${all.map(e => `<option value="${e.r.pid}"${e.r.pid === L.pid ? ' selected' : ''}>${esc(e.r.name)} (${T[e.k].team})</option>`).join('')}</select>
+    <select class="sel" data-f="stat" aria-label="Stat">${[...SIM_STATS, 'pra'].map(s => `<option value="${s}"${s === L.stat ? ' selected' : ''}>${SIM_LBL[s]}</option>`).join('')}</select>
+    <select class="sel" data-f="side" aria-label="Over or under"><option value="over"${L.side === 'over' ? ' selected' : ''}>Over</option><option value="under"${L.side === 'under' ? ' selected' : ''}>Under</option></select>
+    <input class="pfind gs-line" data-f="line" type="number" step="0.5" min="0" value="${L.line}" aria-label="Line"></div>`;
+  for (const L of [sim.a, sim.b]) if (L && !(L.line >= 0)) L.line = defLine(all.find(e => e.r.pid === L.pid), L.stat);
+  if (sim.a && sim.b){
+    const A = hit(sim.a), Bh = hit(sim.b); let both = 0; for (let i = 0; i < N; i++) if (A.m[i] && Bh.m[i]) both++;
+    const pb = both / N, ind = A.p * Bh.p, lift = ind > 0 ? pb / ind : null, same = sim.a.pid === sim.b.pid;
+    $('gsjoint').innerHTML = `<div class="card-h"><div><h2>Joint odds</h2><p>Pick two legs and see how often both hit in the same simulated game. A leg misses when the player does not play.</p></div></div>
+      <div class="card-b"><div class="gs-legs">${legHtml(sim.a, 'a')}${legHtml(sim.b, 'b')}</div>
+      <div class="gs-out"><div><small>Leg 1</small><b>${pc(A.p, 1)}</b></div><div><small>Leg 2</small><b>${pc(Bh.p, 1)}</b></div><div><small>If independent</small><b>${pc(ind, 1)}</b></div><div><small>Both, in the simulation</small><b>${pc(pb, 1)}</b></div>
+        <div><small>Together vs apart</small><b class="${lift != null && lift > 1.02 ? 'pos' : lift != null && lift < .98 ? 'neg' : ''}">${lift != null ? fmt(lift, 2) + 'x' : 'n/a'}</b></div></div>
+      <p class="pv-note">${same ? 'Both legs are the same player, so this shows how one stat moves with another.' : 'Above 1.00x the two tend to hit together; below 1.00x they work against each other. The simulation ties teammates through the team score, so teammates\' points compete while a fast game lifts everyone. It has not been tested against real results yet (docs/game-simulation.md), so use it to look, not to price a bet.'}</p></div>`;
+  } else $('gsjoint').innerHTML = '';
+
+  const checks = simChecks(res, T, sim.env === 'players');
+  $('gschecks').innerHTML = `<div class="card-h"><div><h2>Does the simulation match its inputs</h2><p>Checked on every run, against the rules written before the build.</p></div></div><div class="card-b"><div class="gs-checks">${checks.map(([ok, name, txt]) => `<div><span class="pill ${ok == null ? 'idle' : ok ? 'ok' : 'warn'}">${ok == null ? 'n/a' : ok ? 'Pass' : 'Off'}</span><div><b>${name}</b><small>${txt}</small></div></div>`).join('')}</div></div>`;
+  $('gsfoot').innerHTML = `<div><b>How it plays a game.</b> It draws a margin and a total around the environment you pick, then each player's points, rebounds, assists and 3-pointers from the prop model's own distributions (his minutes times his rate, with your what-ifs and who is questionable), and ties each team's points to its simulated score. Teammates' points therefore trade off, and a fast game lifts everyone.</div>
+    <div><b>What it is not.</b> A view, not a bet source: it never makes a Bet, Lean or Edge. It has not been scored against real games yet; the test is written in docs/game-simulation.md and runs after opening night.</div>`;
+}
+$('gsgames').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (b){ sim.game = b.dataset.g; renderSim(); } });
+$('gsenv').addEventListener('click', e => { const b = e.target.closest('button[data-e]'); if (b && !b.disabled){ sim.env = b.dataset.e; renderSim(); } });
+$('gsrun').addEventListener('click', () => { sim.seed++; renderSim(); });
+$('gsjoint').addEventListener('change', e => { const f = e.target.dataset.f, L = e.target.closest('[data-leg]'); if (!f || !L) return;
+  const t = sim[L.dataset.leg]; t[f] = f === 'pid' || f === 'line' ? +e.target.value : e.target.value; if (f === 'pid' || f === 'stat') delete t.line; renderSim(); });
 
 // ── Injury Wire ───────────────────────────────────────────────────────────
 // Today's injury report and NBA.com lineup changes for teams on the board (prop_board.injury_wire, from the
