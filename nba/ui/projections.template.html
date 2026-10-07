@@ -714,6 +714,7 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .sn-c-wrap{display:flex;flex-wrap:wrap;gap:6px}.sn-c{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;padding:4px 10px;border-radius:var(--r-pill);background:var(--raised);color:var(--fg2);font-size:12.5px}.sn-c b{font-weight:600;color:var(--fg)}
 .sn-c.up b{color:var(--up)}.sn-c.warn b{color:var(--warn)}.sn-c.down b{color:var(--down)}
 .pp-strip{padding:10px 14px 4px;border-bottom:1px solid var(--border)}
+.yours{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:9999px;font-size:10.5px;font-weight:600;background:color-mix(in srgb,var(--c-blue) 16%,transparent);color:var(--c-blue);margin-left:6px;vertical-align:1px}
 .pro-hero{overflow:hidden}.pro-badge.logo{background:transparent;width:96px;height:96px;border-radius:0}
 .pro-h{display:flex;align-items:center;gap:20px;padding:22px 24px;background:color-mix(in srgb,var(--tc,transparent) 18%,var(--surface))}
 .pro-badge{width:84px;height:84px;border-radius:20px;background:var(--raised);display:grid;place-items:center;flex:none;font-weight:700;color:var(--fg2)}.pro-badge img{display:block}
@@ -2749,6 +2750,8 @@ function renderProps(){
   shown.sort(pf.sort === 'edge' ? (a, b) => (b.best?.edge ?? -9) - (a.best?.edge ?? -9)
     : pf.sort === 'proj' ? (a, b) => (b.mu ?? -1) - (a.mu ?? -1)
     : (a, b) => (tipOf[a.e.g] - tipOf[b.e.g]) || a.name.localeCompare(b.name) || STATS.findIndex(x => x[0] === a.e.s) - STATS.findIndex(x => x[0] === b.e.s));
+  const favP = new Set(PRO.players.map(String));          // favorite players (Profile) first; the sort is stable, so everyone keeps the order chosen above
+  if (favP.size) shown.sort((a, b) => favP.has(String(b.e.p)) - favP.has(String(a.e.p)));
 
   // KPIs
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
@@ -2787,7 +2790,7 @@ function renderProps(){
       <td><span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span></td>`
       : `<td class="l"><span class="muted">no price</span></td><td></td><td></td><td></td>`;
     return `<tr class="prow${open ? ' open' : ''}" data-k="${key}" tabindex="0" aria-expanded="${open}">
-      <td class="l"><div class="pwho"><b>${esc(r.name)}</b><small>${esc(r.team)}${g ? ` · ${gname(g)} · ${clock(g.tip)}` : ''}${flags ? ' · ' + flags : ''}</small></div></td>
+      <td class="l"><div class="pwho"><b>${esc(r.name)}${favP.has(String(r.e.p)) ? '<span class="yours">Yours</span>' : ''}</b><small>${esc(r.team)}${g ? ` · ${gname(g)} · ${clock(g.tip)}` : ''}${flags ? ' · ' + flags : ''}</small></div></td>
       <td><span class="stat">${SLABEL[r.e.s]}</span></td>
       <td class="num">${r.min == null ? '<span class="muted">none</span>' : fmt(r.min)}</td>
       <td class="pct">${r.mu == null ? '<span class="muted">none</span>' : fmt(r.mu)}<small>${rg ? `${fmt(rg[0],0)} to ${fmt(rg[1],0)}` : '&nbsp;'}</small></td>
