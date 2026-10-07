@@ -32,33 +32,36 @@ const useWidth = () => { const [w, setW] = useState(window.innerWidth); useEffec
 const Ico = ({ html, size = 16 }) => <span aria-hidden="true" style={{ display: 'inline-flex', width: size, height: size }} dangerouslySetInnerHTML={{ __html: html.replace('<svg ', `<svg width="${size}" height="${size}" `) }} />;
 
 // ───────────────────────── sidebar ─────────────────────────
-export function Sidebar({ pages, view, season, pvCount, onGo }) {
+export function Sidebar({ pages, view, season, pvCount, onGo, collapsed, onToggle }) {
   const pal = usePal(THEME);
+  // Classes (sb-*) carry the collapsed-rail and active-card styling in the page's stylesheet; the rail shows icons only, with a tooltip.
+  const chev = <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: collapsed ? 'rotate(180deg)' : 'none' }}><path d="m11 17-5-5 5-5M18 17l-5-5 5-5" /></svg>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minHeight: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 8px' }}>
+      <div className="sb-head" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 8px' }}>
         <span style={{ width: 36, height: 36, borderRadius: tokens.radius.sm, background: pal.text, color: pal.bg, ...tokens.type.xs, fontWeight: tokens.weight.bold, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>NBA</span>
-        <div style={{ minWidth: 0 }}><Text size="md" weight="semibold">Vault NBA</Text><div><Mono>{season}</Mono></div></div>
+        <div className="sb-brandtxt" style={{ minWidth: 0, flex: 1 }}><Text size="md" weight="semibold">Vault NBA</Text><div><Mono>{season}</Mono></div></div>
+        <button type="button" className="sb-tog" onClick={onToggle} aria-label={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'} aria-expanded={!collapsed} data-tip={collapsed ? 'Expand' : 'Collapse'} title="Collapse or expand ( [ )">{chev}</button>
       </div>
       <nav aria-label="Pages">
         {pages.map(([sec, items]) => (
-          <div key={sec} style={{ marginBottom: 10 }}>
-            <div style={{ padding: '8px 10px 6px' }}><Mono>{sec}</Mono></div>
+          <div key={sec} className="sb-sec" style={{ marginBottom: 10 }}>
+            <div className="sb-secl" style={{ padding: '8px 10px 6px' }}><Mono>{sec}</Mono></div>
             {items.map(([name, icon, what, live]) => {
               if (!live) return <div key={name} title={what} aria-disabled="true" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', opacity: .5, ...tokens.type.base, color: pal.textTertiary }}><Ico html={icon} />{name}<Badge style={{ marginLeft: 'auto' }}>Soon</Badge></div>;
               const on = view === live;
               return (
-                <a key={live} href={'#' + live} title={what} aria-current={on ? 'page' : undefined} onClick={e => { e.preventDefault(); onGo(live); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', borderRadius: tokens.radius.sm, textDecoration: 'none', ...tokens.type.base, background: on ? pal.bgMuted : 'transparent', color: on ? pal.text : pal.textSecondary, fontWeight: on ? tokens.weight.medium : tokens.weight.regular, transition: `background ${motion.normal} ${motion.easeInOut}, color ${motion.normal} ${motion.easeInOut}` }}>
-                  <span style={{ display: 'inline-flex', color: on ? pal.text : pal.textTertiary }}><Ico html={icon} /></span>{name}
-                  {live === 'props' && pvCount ? <Badge variant="accent" style={{ marginLeft: 'auto' }}>{pvCount}</Badge> : null}
+                <a key={live} href={'#' + live} className="sb-a" data-tip={name} title={collapsed ? undefined : what} aria-current={on ? 'page' : undefined} aria-label={collapsed ? name : undefined} onClick={e => { e.preventDefault(); onGo(live); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', borderRadius: tokens.radius.sm, textDecoration: 'none', ...tokens.type.base, color: on ? pal.text : pal.textSecondary, fontWeight: on ? tokens.weight.medium : tokens.weight.regular, transition: `background ${motion.fast || '120ms'} ease, color ${motion.fast || '120ms'} ease` }}>
+                  <span style={{ display: 'inline-flex', color: on ? pal.text : pal.textTertiary, flex: 'none' }}><Ico html={icon} /></span><span className="sb-l">{name}</span>
+                  {live === 'props' && pvCount ? <><span className="sb-l" style={{ marginLeft: 'auto' }}><Badge variant="accent">{pvCount}</Badge></span><i className="sb-dot" aria-hidden="true" /></> : null}
                 </a>
               );
             })}
           </div>
         ))}
       </nav>
-      <div style={{ marginTop: 'auto', border: `1px solid ${pal.borderSubtle}`, borderRadius: tokens.radius.md, padding: 12 }}>
+      <div className="sb-foot" style={{ marginTop: 'auto', border: `1px solid ${pal.borderSubtle}`, borderRadius: tokens.radius.md, padding: 12 }}>
         <Text size="sm" weight="semibold">Shadow mode</Text>
         <div style={{ marginTop: 2 }}><Dim size="xs" style={{ lineHeight: 1.5 }}>No live bets until a signal passes its gate on this season's games.</Dim></div>
       </div>

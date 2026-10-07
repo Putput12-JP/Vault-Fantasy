@@ -1,7 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vault NBA</title>
-<script>try{var __t=JSON.parse(localStorage.getItem("nba-theme"));if(__t==="light"||__t==="dark")document.documentElement.dataset.theme=__t}catch(e){}</script>
+<script>try{var __t=JSON.parse(localStorage.getItem("nba-theme"));if(__t==="light"||__t==="dark")document.documentElement.dataset.theme=__t;if(localStorage.getItem("nba-side")==="1")document.documentElement.dataset.side="1"}catch(e){}</script>
 <meta name="description" content="Vault NBA: player props and game lines priced by our own model, what passed the backtest, sharp money, and your own bet record.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1123,6 +1123,31 @@ th{font-weight:500}
 }
 :root[data-theme="light"] body::after{display:none}
 :root[data-theme="light"] .ev-chip.model{color:var(--fg)}
+/* Sidebar rail, raised active page, breadcrumb, engraved edge (patterns from jubayer910/Admin-panel, in our own look) */
+.title{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;align-items:baseline}.title p{grid-column:1/-1}
+.crumb{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.crumb:not(:empty)::after{content:" /";opacity:.6}
+.sb-a{border:1px solid transparent;box-sizing:border-box}.sb-a:hover{background:rgb(var(--ink) / .05)}
+.sb-a[aria-current="page"]{background:var(--nav-on)!important;border-color:var(--border2);box-shadow:0 1px 0 rgb(var(--ink) / .06) inset,0 1px 3px rgb(var(--shc) / calc(.35 * var(--shk)))}
+.sb-tog{all:unset;box-sizing:border-box;width:30px;height:30px;border-radius:8px;display:inline-grid;place-items:center;cursor:pointer;color:var(--fg3);flex:none;transition:background-color .12s ease,color .12s ease}
+.sb-tog:hover{background:rgb(var(--ink) / .07);color:var(--fg)}.sb-tog:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
+.sb-dot{display:none;position:absolute;top:7px;right:12px;width:7px;height:7px;border-radius:50%;background:var(--c-blue)}
+.sidebar{box-shadow:inset -1px 0 0 rgb(var(--ink) / .05)}.bar{box-shadow:0 1px 0 rgb(var(--ink) / .04)}
+#sbtip{position:fixed;z-index:60;pointer-events:none;background:var(--pop);border:1px solid var(--pop-b);border-radius:8px;padding:4px 10px;font-size:12px;white-space:nowrap;box-shadow:0 6px 18px rgb(var(--shc) / calc(.4 * var(--shk)));opacity:0;transform:translateX(-4px);transition:opacity .12s ease-out,transform .12s ease-out}
+#sbtip.on{opacity:1;transform:none}
+@media (min-width:821px){
+  .app{transition:grid-template-columns .22s cubic-bezier(.22,1,.36,1)}
+  :root[data-side="1"] .app{grid-template-columns:72px minmax(0,1fr)}
+  :root[data-side="1"] .sidebar{padding-left:10px;padding-right:10px;overflow-x:hidden}
+  :root[data-side="1"] .sb-head{flex-direction:column;gap:10px;padding:0}
+  :root[data-side="1"] .sb-brandtxt,:root[data-side="1"] .sb-l,:root[data-side="1"] .sb-foot,:root[data-side="1"] .sb-secl{display:none}
+  :root[data-side="1"] .sb-sec{margin-bottom:0!important}
+  :root[data-side="1"] .sb-sec::before{content:"";display:block;height:1px;background:var(--border);margin:8px 10px}
+  :root[data-side="1"] .sb-sec:first-child::before{display:none}
+  :root[data-side="1"] .sb-a{justify-content:center;position:relative;padding-left:0!important;padding-right:0!important}
+  :root[data-side="1"] .sb-dot{display:block}
+}
+@media (max-width:820px){ .sb-tog{display:none} }
+@media (prefers-reduced-motion:reduce){ .app,#sbtip,.sb-tog{transition:none} }
 .themebtn svg{width:18px;height:18px}
 .theme-fade *,.theme-fade *::before,.theme-fade *::after{transition:background-color .15s ease,color .15s ease,border-color .15s ease,fill .15s ease,stroke .15s ease!important}
 /* scrollbars: thin and quiet, in the theme's own greys. The sidebar's only shows while you hover it. */
@@ -1153,7 +1178,7 @@ th{font-weight:500}
       <button class="iconbtn" id="menu" type="button" aria-label="Show pages">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <div class="title"><h1 id="tname"></h1><p id="tsub"></p></div>
+      <div class="title"><span id="tcrumb" class="crumb" aria-hidden="true"></span><h1 id="tname"></h1><p id="tsub"></p></div>
       <div class="slicer" id="slicer">
         <button type="button" id="slicebtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="teamlist">
           <span class="ab" id="sab"></span><span class="nm" id="snm"></span>
@@ -1690,8 +1715,19 @@ const PAGES = [
 ];
 function renderNav(){
   let n = 0; try { n = pvNavCount(); } catch (e) {}
-  HK.mount($('hk-side'), 'Sidebar', {pages: PAGES, view, season: `${D.season} · ${(PAGES.flatMap(g => g[1]).find(x => x[3] === view) || [''])[0]}`, pvCount: n, onGo: navGo});
+  HK.mount($('hk-side'), 'Sidebar', {pages: PAGES, view, season: `${D.season} · ${(PAGES.flatMap(g => g[1]).find(x => x[3] === view) || [''])[0]}`, pvCount: n, onGo: navGo, collapsed: sideOn(), onToggle: toggleSide});
+  const g = PAGES.find(gr => gr[1].some(x => x[3] === view)); $('tcrumb').textContent = g ? g[0] : '';
 }
+// Sidebar rail: collapses to icons (desktop only), saved per browser; the first group's label and every name show as a tooltip on hover or focus.
+const sideOn = () => document.documentElement.dataset.side === '1';
+function toggleSide(){ const r = document.documentElement; if (sideOn()) delete r.dataset.side; else r.dataset.side = '1'; try { localStorage.setItem('nba-side', sideOn() ? '1' : '0'); } catch (e) {} sbTip(null); renderNav(); }
+document.addEventListener('keydown', e => { if (e.key === '[' && !e.metaKey && !e.ctrlKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName) && innerWidth > 820) toggleSide(); });
+const sbTipEl = document.createElement('div'); sbTipEl.id = 'sbtip'; sbTipEl.setAttribute('role', 'tooltip'); document.body.appendChild(sbTipEl);
+function sbTip(el){ if (!el || !sideOn() || innerWidth <= 820){ sbTipEl.classList.remove('on'); return; } const r = el.getBoundingClientRect(); sbTipEl.textContent = el.dataset.tip; sbTipEl.style.left = Math.round(r.right + 10) + 'px'; sbTipEl.style.top = Math.round(r.top + r.height / 2 - 14) + 'px'; sbTipEl.classList.add('on'); }
+document.addEventListener('pointerover', e => { const a = e.target.closest && e.target.closest('.sb-a, .sb-tog'); sbTip(a); });
+document.addEventListener('pointerout', e => { if (e.target.closest && e.target.closest('.sb-a, .sb-tog')) sbTip(null); });
+document.addEventListener('focusin', e => { const a = e.target.closest && e.target.closest('.sb-a, .sb-tog'); if (a) sbTip(a); });
+document.addEventListener('focusout', () => sbTip(null));
 function renderSlicer(){
   $('sab').innerHTML = `${lgImg(cur, 20)}${cur}`;
   $('snm').textContent = D.teams[cur].name;
