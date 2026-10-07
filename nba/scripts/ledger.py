@@ -49,7 +49,9 @@ SETTLE_AFTER_S = 3 * 3600    # a game is checked for a final score this long aft
 SUMMARY = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={}'
 STAT_COL = {'pts': ['points'], 'reb': ['rebounds'], 'ast': ['assists'], '3pm': ['threePointFieldGoalsMade'],
             'pra': ['points', 'rebounds', 'assists'], 'pr': ['points', 'rebounds'], 'pa': ['points', 'assists'],
-            'ra': ['rebounds', 'assists'], 'stl': ['steals'], 'blk': ['blocks'], 'tov': ['turnovers'], 'sb': ['steals', 'blocks']}
+            'ra': ['rebounds', 'assists'], 'stl': ['steals'], 'blk': ['blocks'], 'tov': ['turnovers'], 'sb': ['steals', 'blocks'],
+            'fgm': ['fieldGoalsMade'], 'fga': ['fieldGoalsAttempted'], 'ftm': ['freeThrowsMade'], 'fta': ['freeThrowsAttempted'],
+            'tpa': ['threePointFieldGoalsAttempted'], 'oreb': ['offensiveRebounds'], 'dreb': ['defensiveRebounds'], 'pf': ['fouls']}
 
 
 # ── logging ──────────────────────────────────────────────────────────────────────────────────
@@ -173,12 +175,13 @@ def close_log(root, board, now):
         json.dump(cur, open(p, 'w'), separators=(',', ':'))
 
 
-BOX_COLS = ['points', 'rebounds', 'assists', 'threePointFieldGoalsMade', 'steals', 'blocks', 'turnovers']   # the page's PV_BOXI indexes into this
+BOX_COLS = ['points', 'rebounds', 'assists', 'threePointFieldGoalsMade', 'steals', 'blocks', 'turnovers', 'fieldGoalsMade', 'fieldGoalsAttempted',
+            'freeThrowsMade', 'freeThrowsAttempted', 'threePointFieldGoalsAttempted', 'offensiveRebounds', 'defensiveRebounds', 'fouls']   # the page's PV_BOXI indexes into this
 
 
 def closes_record(root, now, rescan_days=3):
     """snapshots/<day>/closes.json for the page: each game's closing prices (propclose.json) and, once final, every
-    player's box line {pid: [pts, reb, ast, 3pm, stl, blk, tov]} or null for did not play. Only recent days are rewritten."""
+    player's box line {pid: [pts, reb, ast, 3pm, stl, blk, tov, fgm, fga, ftm, fta, tpa, oreb, dreb, pf]} or null for did not play. Only recent days are rewritten."""
     since = tip_day(now - rescan_days * 86400)
     for p in sorted(glob.glob(os.path.join(root, 'snapshots', '20*', 'propclose.json'))):
         d = os.path.basename(os.path.dirname(p))

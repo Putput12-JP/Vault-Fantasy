@@ -508,7 +508,7 @@ def edge_types(c, others_t, news_t, now):
     return out
 
 
-STOCKS = {'stl', 'blk', 'tov', 'sb'}    # prop_model_stocks.json: priced on the page only
+EXTRA = {'stl', 'blk', 'tov', 'sb', 'fgm', 'fga', 'ftm', 'fta', 'tpa', 'oreb', 'dreb', 'pf'}    # prop_model_extra.json: priced on the page only
 
 
 def price_board(board, pricer=None):
@@ -522,7 +522,7 @@ def price_board(board, pricer=None):
         if n[0]:
             news.setdefault(n[3], []).append(n[0])
     for e in board.get('props', []):
-        if e['s'] in STOCKS:        # steals / blocks / turnovers: shown on the page, never logged as bets (always NO-GO)
+        if e['s'] in EXTRA:        # the extra markets: shown on the page, never logged as bets (always NO-GO)
             continue
         g = games.get(str(e['g']))
         P = (board.get('players') or {}).get(str(e['p'])) or (board.get('players') or {}).get(e['p'])

@@ -40,37 +40,50 @@ def consensus_params():
             'generated': cb['generated']}
 
 
-def stocks():
-    """Steals, blocks, turnovers and steals + blocks (build_prop_model_stocks.py): variance and a standing NO-GO, plus a plain
+def extra():
+    """The extra markets (build_prop_model_extra.py): variance and a standing NO-GO, plus a plain
     scorecard against ESPN's 2025-26 closing lines. Merged into the pricing and model state so the page prices them like any stat."""
-    return load('prop_model_stocks.json')
+    return load('prop_model_extra.json')
 
 
-def with_stocks(d):
-    st = stocks()
+def with_extra(d):
+    st = extra()
     if d and st:
         d['variance'] = {**d['variance'], **st['variance']}
         d['verdict'] = {**d.get('verdict', {}), **st['verdict']}
-        d['stocks'] = {'accuracy': st['accuracy'], 'espn_2026': st['espn_2026'], 'why': st['why']}
+        d['extra'] = {'accuracy': st['accuracy'], 'espn_2026': st['espn_2026'], 'why': st['why']}
+    return d
+
+
+def projections():
+    """player_projections.json for the page, with the extra markets' per-minute rates filled in where a player's rate dict lacks them
+    (never overwriting: the existing stats' rates, fga included, are what the other models were fit on)."""
+    d = load('player_projections.json')
+    st = extra()
+    if d and st:
+        for t in d['teams'].values():
+            for p in t['players']:
+                for k, v in (st['rates'].get(str(p['id'])) or {}).items():
+                    p['rate'].setdefault(k, v)
     return d
 
 
 def model_state():
     m = load('model_state.json')
-    st = stocks()
+    st = extra()
     if m and st:                        # per-minute steal / block / turnover rates ride in each player's rate state
         for side in ('live', 'example'):
             for pid, p in ((m.get(side) or {}).get('players') or {}).items():
-                extra = st['rates'].get(str(pid))
-                if extra and p.get('r'):
-                    p['r'].update(extra)
-                if extra and p.get('rate'):
-                    p['rate'].update(extra)
+                rates = st['rates'].get(str(pid))
+                if rates and p.get('r'):
+                    p['r'].update(rates)
+                if rates and p.get('rate'):
+                    p['rate'].update(rates)
     return m
 
 
 def pricing():
-    return with_stocks(pricing_base())
+    return with_extra(pricing_base())
 
 
 def pricing_base():
@@ -134,7 +147,7 @@ def render():
     hk = os.path.join(HERE, '..', 'ui', 'halaska', 'dist.js')
     # Halaska UI bundle (ui/halaska/dist.js, built by `node build.mjs` there); the page degrades to no kit if it is absent
     tpl = tpl.replace('<script>/*HALASKA*/</script>', '<script>' + (open(hk).read() if os.path.exists(hk) else 'window.HK = null;') + '</script>')
-    html = (tpl.replace('/*DATA*/null', json.dumps(load('player_projections.json'), separators=(',', ':')))
+    html = (tpl.replace('/*DATA*/null', json.dumps(projections(), separators=(',', ':')))
                .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')))
                .replace('/*PRICING*/null', json.dumps(pricing(), separators=(',', ':')))
                .replace('/*BOARD*/null', json.dumps(load('prop_board.json'), separators=(',', ':')))

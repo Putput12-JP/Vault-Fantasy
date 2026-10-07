@@ -34,18 +34,29 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
 KAL_STAT = {'KXNBAPTS': 'pts', 'KXNBAREB': 'reb', 'KXNBAAST': 'ast', 'KXNBA3PT': '3pm',
             'KXNBAPRA': 'pra', 'KXNBAPR': 'pr', 'KXNBAPA': 'pa', 'KXNBARA': 'ra'}
-PIN_STAT = [(r'pts\s*\+\s*rebs?\s*\+\s*asts?|points.*rebounds.*assists', 'pra'), (r'pts\s*\+\s*rebs?|points.*rebounds', 'pr'),
+PIN_STAT = [(r'offensive\s*reb', 'oreb'), (r'defensive\s*reb', 'dreb'), (r'3.*att|three.*att', 'tpa'), (r'free\s*throw.*att', 'fta'), (r'free\s*throw', 'ftm'),
+            (r'field\s*goal.*att', 'fga'), (r'field\s*goal', 'fgm'), (r'personal\s*foul|fouls', 'pf'),
+            (r'pts\s*\+\s*rebs?\s*\+\s*asts?|points.*rebounds.*assists', 'pra'), (r'pts\s*\+\s*rebs?|points.*rebounds', 'pr'),
             (r'pts\s*\+\s*asts?|points.*assists', 'pa'), (r'rebs?\s*\+\s*asts?|rebounds.*assists', 'ra'),
             (r'3|three', '3pm'), (r'point', 'pts'), (r'rebound', 'reb'), (r'assist', 'ast'),
             (r'steal.*block|block.*steal', 'sb'), (r'steal', 'stl'), (r'block', 'blk'), (r'turnover', 'tov')]
-PRICED = {'pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra', 'stl', 'blk', 'tov', 'sb'}   # what the prop model can price (the last four: build_prop_model_stocks.py, NO-GO)
+PRICED = {'pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra', 'stl', 'blk', 'tov', 'sb', 'fgm', 'fga', 'ftm', 'fta', 'tpa', 'oreb', 'dreb', 'pf'}   # what the prop model can price (the last twelve: build_prop_model_extra.py, NO-GO)
 
 
-def stock_stat(label):
-    """Steals / blocks / turnovers / steals + blocks from whatever a venue calls them ("Steals", "Blocked Shots", "blks_stls",
-    "Blks+Stls", "stl_blk", "turnovers"). Matched on the words, not an exact key, because the feeds name them differently and a
-    preseason board carries none of them to check against. None for anything else."""
-    n = re.sub(r'[^a-z]', '', (label or '').lower())
+def extra_stat(label):
+    """The extra markets from whatever a venue calls them: steals, blocks, turnovers, steals + blocks, field goals made /
+    attempted, free throws made / attempted, 3-pointers attempted, offensive / defensive rebounds, personal fouls ("Steals",
+    "Blocked Shots", "Blks+Stls", "FG Made", "free_throws_attempted", "3-PT Attempted", "Off Reb", "Personal Fouls").
+    Matched on the words, not an exact key: the feeds name them differently and a preseason board carries none of them to
+    check against. Callers try their exact map first, so this only sees labels they did not know. None for anything else."""
+    n = re.sub(r'[^a-z0-9]', '', (label or '').lower())
+    if not n or re.search(r'fantasy|double|first|quarter|half|dunk|minutes|twopoint|2pt|2point', n):
+        return None
+    att = bool(re.search(r'att|^(fga|fta|tpa|3pa)$', n))
+    if re.search(r'(3pt|3point|3p|threepoint|threes|three).*att|^(3pa|tpa)$', n):
+        return 'tpa'
+    if re.search(r'3pt|3point|threepoint|threes?made|^3pm$', n):
+        return None                                        # 3-pointers made is a mapped market; do not let it fall into field goals
     st, bl = bool(re.search(r'stl|steal', n)), bool(re.search(r'blk|block', n))
     if st and bl:
         return 'sb'
@@ -53,7 +64,19 @@ def stock_stat(label):
         return 'stl'
     if bl:
         return 'blk'
-    return 'tov' if re.search(r'turnover|^tov$', n) else None
+    if re.search(r'turnover|^tov$', n):
+        return 'tov'
+    if re.search(r'off(ensive)?reb|^oreb$', n):
+        return 'oreb'
+    if re.search(r'def(ensive)?reb|^dreb$', n):
+        return 'dreb'
+    if re.search(r'personalfoul|^fouls?$|^pf$', n):
+        return 'pf'
+    if re.search(r'freethrow|^ft', n):
+        return 'fta' if att else 'ftm'
+    if re.search(r'fieldgoal|^fg', n):
+        return 'fga' if att else 'fgm'
+    return None
 PM_STAT = {'points': 'pts', 'rebounds': 'reb', 'assists': 'ast', 'threes': '3pm'}
 PP_STAT = {'Points': 'pts', 'Rebounds': 'reb', 'Assists': 'ast', '3-PT Made': '3pm', 'Pts+Rebs+Asts': 'pra',
            'Pts+Rebs': 'pr', 'Pts+Asts': 'pa', 'Rebs+Asts': 'ra'}
@@ -197,7 +220,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     # plus the taker fee (rate x p x (1 - p) per share), as American odds so the page treats it like any book.
     for k, v in (last.get('polymarket') or {}).items():
         m = meta.get('polymarket', {}).get(k) or {}
-        stat = PM_STAT.get(m.get('type')) or stock_stat(m.get('type'))
+        stat = PM_STAT.get(m.get('type')) or extra_stat(m.get('type'))
         if not stat or m.get('line') is None:
             continue
         p = (m.get('event') or '').split('-')              # nba-<away>-<home>-YYYY-MM-DD
@@ -224,7 +247,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     # (demon / goblin are alternate lines at other payouts) and it pays flat, so its prices are None.
     for k, v in (last.get('prizepicks') or {}).items():
         m = meta.get('prizepicks', {}).get(k) or {}
-        stat = PP_STAT.get(m.get('stat')) or stock_stat(m.get('stat'))
+        stat = PP_STAT.get(m.get('stat')) or extra_stat(m.get('stat'))
         if not stat or m.get('odds') != 'standard' or v[0] is None:
             continue
         g = team_game(m.get('team'), m.get('start'))
@@ -237,7 +260,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
         qk[(R.info[pid][1], str(g['id']))].append(('PrizePicks', 'prizepicks', k))
     for k, v in (last.get('underdog') or {}).items():
         m = meta.get('underdog', {}).get(k) or {}
-        stat = UD_STAT.get(m.get('stat')) or stock_stat(m.get('stat'))
+        stat = UD_STAT.get(m.get('stat')) or extra_stat(m.get('stat'))
         if not stat or v[0] is None:
             continue
         g = team_game(m.get('team'), m.get('start'))
@@ -250,7 +273,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
         qk[(R.info[pid][1], str(g['id']))].append(('Underdog', 'underdog', k))
     for k, v in (last.get('sleeper') or {}).items():
         m = meta.get('sleeper', {}).get(k) or {}
-        stat = SL_STAT.get(m.get('stat')) or stock_stat(m.get('stat'))
+        stat = SL_STAT.get(m.get('stat')) or extra_stat(m.get('stat'))
         if not stat or v[0] is None:
             continue
         g = team_game(m.get('team'))

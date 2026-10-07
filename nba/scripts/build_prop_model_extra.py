@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Steals, blocks, turnovers and steals + blocks ("stocks") for the prop board.
+The extra prop markets: steals, blocks, turnovers, steals + blocks, field goals made and attempted, free throws made and
+attempted, 3-pointers attempted, offensive and defensive rebounds, personal fouls.
 
 Same projection walk as build_prop_model.py (minutes model, per-minute rate shrunk to the position prior, no usage
 cascade for these stats), run on these four markets only so the existing model's numbers are untouched:
@@ -10,12 +11,14 @@ cascade for these stats), run on these four markets only so the existing model's
 What it can and cannot say (written down before anyone bets on it):
   * ESPN carries steals and blocks as MAIN lines for 2025-26 only (the 2024-25 rows are alternate ladders), so there is no
     prior season to fit a calibration or a market blend on, and turnovers / steals + blocks have no book history at all.
-  * So every market here is NO-GO: priced and shown on the board, never a gated best bet. The report below scores the
-    model against ESPN's 2025-26 closing lines (Brier, log loss, and a +EV bet's hit rate) so the table can say how it did.
-  * Kalshi lists none of these four.
+  * So every market here is NO-GO: priced and shown on the board, never a gated best bet. Steals and blocks are scored against
+    ESPN's 2025-26 closing lines (Brier, log loss, a +EV bet's hit rate). The rest have no price history at all, so they get a
+    SELF-CHECK instead: at the line a book would post (the integer below the mean, plus a half), how often the model's
+    over chance matches what happened (Brier against always guessing the base rate, and a reliability table).
+  * Kalshi lists none of these.
 
-  python3 nba/scripts/build_prop_model_stocks.py
-Writes nba/data/prop_model_stocks.json and nba/docs/prop-model-stocks.md
+  python3 nba/scripts/build_prop_model_extra.py
+Writes nba/data/prop_model_extra.json and nba/docs/prop-model-extra.md
 """
 import csv, datetime as dt, json, math, os, statistics, sys
 from collections import defaultdict
@@ -24,13 +27,15 @@ import nba_common as C
 import build_minutes_model as MM
 import build_prop_model as P
 
-P.BASE = {'stl': ['steals'], 'blk': ['blocks'], 'tov': ['turnovers']}
+P.BASE = {'stl': ['steals'], 'blk': ['blocks'], 'tov': ['turnovers'], 'fgm': ['field_goals_made'], 'fga': ['field_goals_attempted'],
+          'ftm': ['free_throws_made'], 'fta': ['free_throws_attempted'], 'tpa': ['three_point_field_goals_attempted'],
+          'oreb': ['offensive_rebounds'], 'dreb': ['defensive_rebounds'], 'pf': ['fouls']}
 P.COMBO = {'sb': ['stl', 'blk']}
 P.MARKETS = list(P.BASE) + list(P.COMBO)
 P.COUNT_MKTS = set(P.MARKETS)
 
-OUT_JSON = os.path.join(C.HERE, '..', 'data', 'prop_model_stocks.json')
-OUT_MD = os.path.join(C.HERE, '..', 'docs', 'prop-model-stocks.md')
+OUT_JSON = os.path.join(C.HERE, '..', 'data', 'prop_model_extra.json')
+OUT_MD = os.path.join(C.HERE, '..', 'docs', 'prop-model-extra.md')
 
 
 def p_over(mkt, mu, line, V):
@@ -120,11 +125,33 @@ def main():
                      'bets_3pt': n, 'win_3pt': round(w / n, 4) if n else None, 'roi_3pt': round(profit / n, 4) if n else None}
         print(mkt, espn[mkt], flush=True)
 
-    res = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'variance': V, 'accuracy': acc, 'espn_2026': espn,
+    selfcheck = {}
+    for mkt in P.MARKETS:
+        pts = []
+        for r in te:
+            mu = r['pred']['tip'][1][mkt]
+            if mu < 0.3 or r['min'] < 5:
+                continue
+            L = math.floor(mu) + 0.5
+            pts.append((p_over(mkt, mu, L, V), 1 if r['y'][mkt] > L else 0))
+        if not pts:
+            continue
+        base = statistics.mean(o for _, o in pts)
+        buckets = []
+        for lo, hi in ((0, .2), (.2, .4), (.4, .6), (.6, .8), (.8, 1.01)):
+            b = [(p, o) for p, o in pts if lo <= p < hi]
+            if len(b) >= 30:
+                buckets.append({'range': f'{lo:.1f}-{min(hi, 1):.1f}', 'n': len(b), 'predicted': round(statistics.mean(p for p, _ in b), 3),
+                                'actual': round(statistics.mean(o for _, o in b), 3)})
+        selfcheck[mkt] = {'n': len(pts), 'over_rate': round(base, 3), 'brier_model': round(statistics.mean((p - o) ** 2 for p, o in pts), 4),
+                          'brier_base_rate': round(statistics.mean((base - o) ** 2 for _, o in pts), 4), 'reliability': buckets}
+        print('selfcheck', mkt, {k: v for k, v in selfcheck[mkt].items() if k != 'reliability'}, flush=True)
+
+    res = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'variance': V, 'accuracy': acc, 'espn_2026': espn, 'selfcheck': selfcheck,
            'verdict': {m: 'NO-GO' for m in P.MARKETS},
            'rates': final_rates(box, P.WARM + P.TUNE + P.TEST),
            'why': 'No prior season of main-line prices to fit a calibration or a market blend on (ESPN steals/blocks main lines start in 2025-26), '
-                  'no book history for turnovers or steals + blocks, and Kalshi lists none of them. Shown on the board, never a gated best bet.'}
+                  'no book history for the other markets, and Kalshi lists none of them. Shown on the board, never a gated best bet.'}
     json.dump(res, open(OUT_JSON, 'w'), indent=1)
     md = ['# Steals, blocks, turnovers and steals + blocks', '',
           f"Generated {res['generated']}. Same walk-forward projection as `build_prop_model.py`; these markets only.", '',
@@ -134,6 +161,9 @@ def main():
     md += ['', '## Against ESPN 2025-26 closing lines (main lines only)', '',
            '| market | rows | games | Brier model | Brier market | log loss model | log loss market | bets at 3+ pts | win | ROI |', '|---|---|---|---|---|---|---|---|---|---|']
     md += [f"| {m} | {e['n_rows']:,} | {e['games']} | {e['brier_model']} | {e['brier_market']} | {e['logloss_model']} | {e['logloss_market']} | {e['bets_3pt']} | {e['win_3pt']} | {e['roi_3pt']} |" for m, e in espn.items()]
+    md += ['', '## Self-check at the line a book would post (floor of the mean + 0.5)', '',
+           '| market | player-games | over rate | Brier model | Brier base rate |', '|---|---|---|---|---|']
+    md += [f"| {m} | {c['n']:,} | {c['over_rate']} | {c['brier_model']} | {c['brier_base_rate']} |" for m, c in selfcheck.items()]
     md += ['', 'Variance fits (v0, v1, v2): ' + json.dumps(V), '']
     open(OUT_MD, 'w').write('\n'.join(md))
     print('wrote', OUT_JSON)
