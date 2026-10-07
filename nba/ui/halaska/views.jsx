@@ -157,7 +157,7 @@ function BenchRow({ r, onSetMin, onOut, onProps }) {
 }
 
 // The 240-minute budget as one bar: a segment per player, a marker at 240. Over or under 240 is visible at a glance.
-function Budget({ rows, total, onFit }) {
+function Budget({ rows, total, onFit, note }) {
   const live = rows.filter(r => r.min > 0), span = Math.max(240, total), mk = 240 / span * 100, diff = total - 240;
   const ok = Math.abs(diff) < .5;
   return (
@@ -171,6 +171,7 @@ function Budget({ rows, total, onFit }) {
         <u style={{ left: mk + '%' }} aria-hidden="true"><em>240</em></u>
       </div>
       {!ok && <button type="button" className="ml-fit" onClick={onFit}>{diff > 0 ? 'Trim to 240' : 'Fill to 240'}</button>}
+      {note && diff > 5 && <p className="ml-bnote">{note}</p>}
     </div>
   );
 }
@@ -192,11 +193,17 @@ function LabView(p) {
           <div><h2>{p.teamName} rotation</h2><p>Set each player's minutes. Every stat, and every prop price, moves with them.</p></div>
           <div className="ml-act">
             <SwitchToggle theme={THEME} checked={p.bal} onChange={p.onBal} label="Hand freed minutes to teammates" />
-            {p.onTonight && <span title={`Replace these minutes with the game-day model for ${p.tonightLabel}: injuries, lineup, rest and blowout risk`}><Button theme={THEME} size="sm" onClick={p.onTonight}>Use tonight's minutes</Button></span>}
             <Button theme={THEME} size="sm" variant="secondary" onClick={p.onReset}>Reset team</Button>
           </div>
         </div>
-        <Budget rows={p.rows} total={total} onFit={p.onFit} />
+        {p.mode && <div className="ml-mode">
+          <div className="seg" role="group" aria-label="Which minutes to start from">
+            <button type="button" aria-pressed={p.mode === 'tonight'} onClick={() => p.onMode('tonight')}>Tonight's game</button>
+            <button type="button" aria-pressed={p.mode === 'season'} onClick={() => p.onMode('season')}>Season start</button>
+          </div>
+          <span className="ml-modet">{p.mode === 'tonight' ? <>Game-day minutes for <b>{p.tonightLabel}</b>: injuries, lineup, rest and blowout risk applied.</> : p.mode === 'season' ? <>The usual season-start projection, with no game-day news.</> : <>Your edits. Pick a button to start over from it.</>}</span>
+        </div>}
+        <Budget rows={p.rows} total={total} onFit={p.onFit} note={p.mode === 'tonight' ? "The model's expected minutes add up to more than 240 because every player who might play is counted. Trim to 240 for one game's worth." : ''} />
         <div className="ml-kp">
           <div><small>Team points per 240</small><b>{pts.val}</b>{pts.delta != null && Math.abs(pts.delta) >= .05 ? <i className={pts.delta > 0 ? 'pos' : 'neg'}>{pts.delta > 0 ? '+' : ''}{pts.delta.toFixed(1)}</i> : <i>vs projection: same</i>}</div>
           <div><small>Top scorer</small><b>{top.val}</b><i>{top.hint}</i></div>

@@ -1095,6 +1095,8 @@ table.nt.sx-tk{min-width:420px}
 .ml-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px}.ml-stats>div{display:grid;gap:1px;text-align:center;min-width:0}.ml-stats small{font:600 9.5px var(--font-mono);letter-spacing:.06em;color:var(--fg3)}.ml-stats b{font:600 16px var(--font-mono);letter-spacing:-.03em}.ml-stats .pra b{color:var(--fg)}.ml-stats i{font:500 10.5px var(--font-mono);font-style:normal;min-height:13px}
 .ml-more{border:1px dashed var(--border2);background:transparent;color:var(--fg2);border-radius:14px;padding:12px 16px;font:600 13px var(--font-sans);cursor:pointer;text-align:left;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.ml-more span{font-weight:400;color:var(--fg3);font-size:12px}.ml-more:hover{background:var(--raised)}
 /* Minutes Lab V2 (depth chart): five starter cards, bench rows */
+.ml-bnote{margin:0;font-size:12px;color:var(--fg3)}
+.ml-mode{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.ml-modet{font-size:12.5px;color:var(--fg2);flex:1;min-width:220px}.ml-modet b{color:var(--fg);font-weight:600}
 .ml-lu{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--fg2)}.ml-lu b{font-weight:600;color:var(--fg)}.ml-lu .dot{width:8px;height:8px;border-radius:50%;background:var(--fg3)}.ml-lu.conf .dot{background:var(--up)}.ml-lu.exp .dot{background:var(--warn)}
 .ml-starters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .ml-sc{position:relative;border:1px solid var(--border);border-radius:18px;padding:0 12px 12px;display:grid;gap:8px;text-align:center;justify-items:center;min-width:0;background:linear-gradient(180deg,color-mix(in srgb,var(--ml-c,#888) 14%,transparent),var(--raised) 62%);transition:border-color .2s}
@@ -1831,7 +1833,7 @@ function propMins(team){
 }
 function setMin(team, pid, val){
   val = Math.max(0, Math.min(48, +val || 0));
-  const T = D.teams[team], m = mins(team), before = {...m}, p = T.players.find(x => x.id === pid);
+  const T = D.teams[team], m = labM(team), before = {...m}, p = T.players.find(x => x.id === pid);
   if (Math.abs(before[pid] - val) < .05){ render(); return; }
   rebalance(T, m, p, val, balOn);
   save(team, m);
@@ -1921,7 +1923,7 @@ function openList(open){
 
 function render(){
   if (view !== 'lab'){ show(view); return; }
-  const T = D.teams[cur], m = mins(cur), pr = project(cur, m), b0 = baseline(cur), lineup = labLineup(cur), liveSt = statusFromBoard(slateBoard().board);
+  const T = D.teams[cur], m = labM(cur), pr = project(cur, m), bm = labBase(cur), bz = id => bm ? bm[id] : T.players.find(x => x.id === id).min0, b0 = bm ? project(cur, bm) : baseline(cur), lineup = labLineup(cur), liveSt = statusFromBoard(slateBoard().board);
   labSig = JSON.stringify(lineup && [lineup.ids, lineup.confirmed]);
   renderSlicer();
   $('tname').textContent = T.name;
@@ -1929,11 +1931,11 @@ function render(){
 
   // KPIs
   const tot = T.players.reduce((a,p) => a + m[p.id], 0);
-  const tot0 = T.players.reduce((a,p) => a + p.min0, 0);
+  const tot0 = T.players.reduce((a,p) => a + bz(p.id), 0);
   const pts = T.players.reduce((a,p) => a + pr[p.id].pts, 0), pts0 = T.players.reduce((a,p) => a + b0[p.id].pts, 0);
   const per240 = tot ? pts * 240 / tot : 0, per2400 = tot0 ? pts0 * 240 / tot0 : 0;
   const top = [...T.players].sort((a,b) => pr[b.id].pts - pr[a.id].pts)[0];
-  const nEdit = Object.keys(edits[cur] || {}).length, nOut = T.players.filter(p => isOut(p, m)).length;
+  const nEdit = T.players.filter(p => Math.abs(m[p.id] - bz(p.id)) > .05).length, nOut = T.players.filter(p => isOut(p, m)).length;
   const dPts = per240 - per2400;
   const kpis = [
     {label: 'Team points per 240 min', icon: ICON.pts, val: fmt(per240), delta: dPts, hint: 'Matches the projection'},
@@ -1943,11 +1945,11 @@ function render(){
   ];
 
   // chart: top 15 by minutes (yours or the projection)
-  const chart = [...T.players].filter(p => m[p.id] > 0 || p.min0 > 0).sort((a,b) => Math.max(m[b.id],b.min0) - Math.max(m[a.id],a.min0)).slice(0,15)
-    .map(p => ({name: p.name, last: last(p.name), now: m[p.id], base: p.min0}));
+  const chart = [...T.players].filter(p => m[p.id] > 0 || bz(p.id) > 0).sort((a,b) => Math.max(m[b.id],bz(b.id)) - Math.max(m[a.id],bz(a.id))).slice(0,15)
+    .map(p => ({name: p.name, last: last(p.name), now: m[p.id], base: bz(p.id)}));
 
   // rotation table
-  const act = T.players.filter(p => p.active || m[p.id] > 0).sort((a,b) => b.min0-a.min0 || m[b.id]-m[a.id]);   // by the projection, not your edit, so a card does not jump while you tune it
+  const act = T.players.filter(p => p.active || m[p.id] > 0)    .sort((a,b) => bz(b.id)-bz(a.id) || m[b.id]-m[a.id]);   // by the projection, not your edit, so a card does not jump while you tune it
   const rest = T.players.filter(p => !(p.active || m[p.id] > 0));
   const stat = (mu, base, s) => { const r = range(s, mu); return {v: mu, d: mu - base, lo: r ? Math.round(r[0]) : null, hi: r ? Math.round(r[1]) : null}; };
   const badges = p => [
@@ -1957,14 +1959,14 @@ function render(){
     !p.slotted ? {t: 'No depth slot'} : null
   ].filter(Boolean);
   const rowOf = p => { const mu = pr[p.id];
-    return {id: p.id, name: p.name, pos: p.pos, ini: initials(p.name), src: phSrc(p.id), fit: phFit(p.id), min: m[p.id], base: p.min0, last: last(p.name), out: isOut(p, m), badges: badges(p),
+    return {id: p.id, name: p.name, pos: p.pos, ini: initials(p.name), src: phSrc(p.id), fit: phFit(p.id), min: m[p.id], base: bz(p.id), last: last(p.name), out: isOut(p, m), badges: badges(p),
       meta: `${p.pos}${p.rank ? ` · depth ${p.rank}` : ''} · ${p.gp ? fmt(p.last_mpg) + ' mpg last season' : 'no NBA minutes last season'}`,
       stats: {pts: stat(mu.pts,b0[p.id].pts,'pts'), reb: stat(mu.reb,b0[p.id].reb,'reb'), ast: stat(mu.ast,b0[p.id].ast,'ast'), '3pm': stat(mu['3pm'],b0[p.id]['3pm'],'3pm'), pra: stat(mu.pra,b0[p.id].pra,'pra'), stl: stat(mu.stl,b0[p.id].stl,'stl'), blk: stat(mu.blk,b0[p.id].blk,'blk')},
       sb: mu.stl + mu.blk}; };
 
   // movers + log
   const movers = T.players.map(p => ({p, d: pr[p.id].pra - b0[p.id].pra})).filter(x => Math.abs(x.d) >= .1).sort((a,b) => Math.abs(b.d)-Math.abs(a.d)).slice(0,6)
-    .map(({p,d}) => ({name: p.name, d, line: `${fmt(pr[p.id].pts)} pts · ${fmt(pr[p.id].reb)} reb · ${fmt(pr[p.id].ast)} ast`, min: m[p.id], base: p.min0}));
+    .map(({p,d}) => ({name: p.name, d, line: `${fmt(pr[p.id].pts)} pts · ${fmt(pr[p.id].reb)} reb · ${fmt(pr[p.id].ast)} ast`, min: m[p.id], base: bz(p.id)}));
   const log = (logs[cur] || []).map(e => ({who: e.who, ini: initials(e.who), text: e.text, ago: ago(e.at)}));
   // roster moves since last season: arrivals are on this roster with a different last team; departures are on another roster with this team as their last
   const byMpg = (x, y) => (y.p.last_mpg || 0) - (x.p.last_mpg || 0);
@@ -1978,8 +1980,8 @@ function render(){
   const chartHtml = chart.length ? ckDots('lab-minutes', {rows: chart.map(p => ({name: p.name, a: p.now, b: p.base})), a: 'Your minutes', b: 'Projection', kLabel: 'minutes'}) : '';
   HK.mount($('lab-root'), 'LabView', {roster, kpis, chartHtml, rows: act.concat(rest).map(rowOf), nAct: act.length, movers, log, teamName: T.name, lineup, wash: teamWash(cur), bal: balOn,
     onBal: v => { balOn = v; render(); }, onSetMin: (id, v) => setMin(cur, id, v),
-    onOut: id => { const p = T.players.find(x => x.id === id), mm = mins(cur); setMin(cur, id, mm[id] > 0 ? 0 : (p.min0 || 20)); },
-    onReset: labReset, onFit: labFit, onProps: labProps, onTonight: labGame(cur) ? labTonight : null, tonightLabel: labGame(cur) ? `${labGame(cur).away} @ ${labGame(cur).home}` : ''});
+    onOut: id => { const p = T.players.find(x => x.id === id), mm = labM(cur), bb = labBase(cur); setMin(cur, id, mm[id] > 0 ? 0 : ((bb && bb[id]) || p.min0 || 20)); },
+    onReset: labReset, onFit: labFit, onProps: labProps, mode: labGame(cur) ? (edits[cur] && Object.keys(edits[cur]).length ? 'edited' : labPref[cur] === 'season' ? 'season' : 'tonight') : null, onMode: labMode, tonightLabel: labGame(cur) ? `${labGame(cur).away} @ ${labGame(cur).home}` : ''});
   store.set('nml-team', cur);
 }
 
@@ -2058,13 +2060,21 @@ function labGame(team){
   const B = slateBoard().board, now = Date.now() / 1000;
   return [...(B.games || []), ...(B.opening || [])].filter(x => (x.away === team || x.home === team) && x.tip > now - 3 * 3600).sort((a, b) => a.tip - b.tip)[0] || null;
 }
-// "Use tonight's minutes": load the game-day minutes model (injuries, lineup, rest, blowout risk) for the team's next game into the Lab as your edits.
-function labTonight(){
-  const g = labGame(cur); if (!g) return;
-  const T = D.teams[cur], model = gameMinutes(cur, g, {}), m = mins(cur), before = T.players.reduce((a, p) => a + m[p.id], 0);
-  for (const p of T.players) m[p.id] = model[p.id] ? Math.round(model[p.id].min * 10) / 10 : 0;
-  save(cur, m); addLog(cur, T.name, `loaded tonight's minutes for ${g.away} @ ${g.home} (${fmt(T.players.reduce((a, p) => a + m[p.id], 0), 0)} total, was ${fmt(before, 0)})`); render();
+// On a team's game day the Lab starts from the game-day minutes model (injuries, lineup, rest, blowout risk), the same minutes the Tonight page shows,
+// instead of the season-start projection. This is display only: nothing is stored (so props pricing elsewhere is untouched) until you edit, and then your
+// edits are saved like any other. "Season start" switches a team back to the usual projection.
+let labPref = {}, labTC = {};
+function labBase(team){   // minutes map the Lab compares against, or null for the season-start projection
+  const g = labPref[team] === 'season' ? null : labGame(team), T = D.teams[team]; if (!g || !T) return null;
+  const k = g.id + '|' + (PS.liveAt || 0);
+  if (!labTC[team] || labTC[team].k !== k){ const model = gameMinutes(team, g, {}), m = {}; for (const p of T.players) m[p.id] = model[p.id] ? Math.round(model[p.id].min * 10) / 10 : 0; labTC[team] = {k, m}; }
+  return labTC[team].m;
 }
+function labM(team){   // the minutes the Lab shows: your edits, else tonight's model on a game day, else the season-start projection
+  const has = edits[team] && Object.keys(edits[team]).length, b = labBase(team);
+  return !has && b ? {...b} : mins(team);
+}
+function labMode(mode){ labPref[cur] = mode; delete edits[cur]; store.set('nml-edits', edits); addLog(cur, D.teams[cur].name, mode === 'season' ? 'switched to season-start minutes' : "switched to tonight's game minutes"); render(); }
 function labLineup(team){
   const B = slateBoard().board, P = B.players || {};
   const g = labGame(team);
@@ -2080,7 +2090,7 @@ function labLineup(team){
 function labProps(name){ const ev = PV_PRESETS.find(p => /every/i.test(p[1])) || PV_PRESETS[PV_PRESETS.length - 1]; pv.q = name; pv.preset = ev[0]; pv.game = 'all'; pv.stat = 'all'; goView('props'); }   // same hop the Profile's Props button makes
 function labReset(){ delete edits[cur]; delete logs[cur]; store.set('nml-edits', edits); store.set('nml-log', logs); render(); }
 function labFit(){
-  const T = D.teams[cur], m = mins(cur);
+  const T = D.teams[cur], m = labM(cur);
   const before = T.players.reduce((a,p) => a + m[p.id], 0);
   for (let k = 0; k < 5; k++){ const tot = T.players.reduce((a,p) => a + m[p.id], 0); if (!tot) break; const f = 240/tot; T.players.forEach(p => m[p.id] = Math.min(48, m[p.id]*f)); }
   save(cur, m); addLog(cur, T.name, `fit to 240 minutes (was ${fmt(before,0)})`); render();
