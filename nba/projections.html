@@ -4449,11 +4449,16 @@ function renderSlate(){
   const spl = G.flatMap(g => Object.entries((g.mk && g.mk.splits) || {}).filter(([, v]) => v && (v[0] || v[1])).map(([k, v]) => ({g, k, b: v[0], m: v[1]}))).sort((a, b) => Math.abs(b.m - b.b) - Math.abs(a.m - a.b));
   const b2b = vs.flatMap(x => x.V ? [x.V.ba ? x.g.away : null, x.V.bh ? x.g.home : null].filter(Boolean) : []);
   const reg = G.filter(g => g.season_type >= 2).length, top = gaps[0], s0 = spl[0];
+  const lean = G.map(g => { const SG = lvSignals(g, g.mk || {}, B.sharp && B.sharp.games && B.sharp.games[String(g.id)]), side = v => Math.abs(v) < .06 ? 0 : v < 0 ? -1 : 1;
+    const A = SG.filter(x => side(x.v) < 0), H = SG.filter(x => side(x.v) > 0), w = H.length > A.length ? H : A, o = w === H ? A : H;
+    if (w.length < 2 || o.length) return null;
+    return {g, team: w === H ? g.home : g.away, n: w.length, of: SG.length, names: w.map(x => x.k), str: w.reduce((m, x) => m + Math.abs(x.v), 0)}; })
+    .filter(Boolean).sort((a, b) => b.n - a.n || b.str - a.str)[0];
   const SPK = {spread: g => `${g.home} spread`, total: () => 'Over', moneyline: g => `${g.home} moneyline`};
   $('skpis').innerHTML = !G.length ? '' :
     kpi('Games', ICON.clock, `${G.length}`, `${reg ? `${reg} regular season` : ''}${reg && G.length - reg ? ' · ' : ''}${G.length - reg ? `${G.length - reg} preseason` : ''}`) +
     kpi('Biggest Vault gap', ICON.pts, top ? `${fmt(Math.abs(top.d))} pts` : 'n/a', top ? `${top.g.away} @ ${top.g.home}: Vault leans ${top.d < 0 ? top.g.home : top.g.away}. Context, not a bet` : reg ? 'Needs a posted spread' : 'No Vault line in preseason') +
-    kpi('Biggest bets vs money split', ICON.star, s0 ? `${s0.g.away} @ ${s0.g.home}` : 'n/a', s0 ? (() => { const nm = SPK[s0.k] ? SPK[s0.k](s0.g) : s0.k; return `${nm}: ${s0.b}% of bets, ${s0.m}% of money. ${s0.m < s0.b ? 'Lots of small bets here, the big money is on the other side.' : 'Fewer bets here, but the big money is on this side.'}`; })() : 'Action Network posts splits closer to tip') +
+    kpi('Strongest sharp lean', ICON.star, lean ? lean.team : 'No clear lean', lean ? `${lean.n} of ${lean.of} sharp signals point to ${lean.team} in ${lean.g.away} @ ${lean.g.home}: ${lean.names.join(', ')}.${lean.n < lean.of ? ` ${lean.of - lean.n} stayed quiet or disagree.` : ''} Context, not a bet.` : 'Needs two sharp signals to agree. Splits and sharp trades fill in closer to tip.') +
     kpi('Back-to-backs', ICON.edit, `${b2b.length}`, b2b.length ? `${b2b.join(', ')} · ${MS.game.P.B2B} pts each in the Vault line` : 'Nobody on the second night');
   $('sgames').classList.add('lv');
   $('sgames').innerHTML = G.map(g => lineCard(g, B, status)).join('');
