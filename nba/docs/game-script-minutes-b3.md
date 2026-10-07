@@ -36,8 +36,8 @@ result is recorded in docs/game-script-minutes-b3-results.md and nothing in the 
 
 ## Test (the pass rules are B2's, fixed)
 
-Holdout: 2026-27 regular season (no play-in or playoffs), scored once **200 settled regular-season team-games**... counted as
-games: when 200 games have settled. Minutes come from `raw/hoopr/player_box_2027.csv` (the daily job's fetch of the box
+Holdout: the 2026-27 regular season (no preseason, play-in or playoffs), scored once, when **200 regular-season games** have
+settled. Minutes come from `raw/hoopr/player_box_2027.csv` (the daily job's fetch of the box
 scores), the base and starter flag from the same walk-forward state as the fit, E from the game model's walk-forward
 expected margin. 200 simulated draws per team-game, fixed seed.
 
