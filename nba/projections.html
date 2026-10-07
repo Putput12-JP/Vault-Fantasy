@@ -1059,7 +1059,30 @@ table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
 table.nt.sx-tk{min-width:420px}
 @media (max-width:600px){ .sx-card{padding:16px} .sx-fair{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .sx-fr{grid-template-columns:92px minmax(0,1fr) auto} }
 /* Slate & Game Lines */
-.sl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr));gap:var(--gap)}
+.sl-grid.lv{grid-template-columns:minmax(0,1fr)}
+.lv-card{padding:0;gap:0;overflow:hidden}.lv-card>.sl-h{padding:18px 22px;border-bottom:1px solid var(--border)}
+.lv-asof{color:var(--fg3);font-family:var(--font-sans)}
+.lv-sr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 22px;border-bottom:1px solid var(--border)}.lv-vd{font-weight:600;font-size:13px;margin-right:4px;white-space:nowrap}
+.lv-sp{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 9px;border-radius:9px;background:var(--raised);font-size:12.5px;color:var(--fg2);white-space:nowrap}.lv-sp b{color:var(--fg);font-weight:600}
+.lv-mini{position:relative;display:inline-block;width:30px;height:6px;border-radius:3px;background:var(--border2);flex:none}.lv-mini::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--fg3)}.lv-mini u{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--warn)}.lv-mini u.h{background:var(--c-blue)}
+.lv-tog{margin-left:auto}.lv-tog svg{vertical-align:-1px;margin-left:4px;transition:transform .2s ease-out}.lv-tog[aria-expanded="true"] svg{transform:rotate(180deg)}
+.lv-sd{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));border-bottom:1px solid var(--border)}.lv-sd>div{padding:14px 22px;border-left:1px solid var(--border);min-width:0}.lv-sd>div:first-child{border-left:0}
+.lv-lab{margin:0 0 6px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.lv-sd>div>.lv-lab:not(:first-child){margin-top:14px}.lv-fine{margin:8px 0 0;font-size:11.5px;color:var(--fg3)}
+.lv-sd .sx-spark{width:100%;height:auto;max-height:70px}
+.lv-fl{display:grid;gap:6px}.lv-fr{display:grid;grid-template-columns:92px 38px minmax(0,1fr);gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}.lv-fr .num{text-align:right;color:var(--fg);font-size:12px}.lv-hi{color:var(--c-blue);margin-left:4px}
+.lv-sd .lv-fr:has(.lv-mini){grid-template-columns:96px 38px minmax(0,1fr)}
+.lv-tk{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:10px;font-size:12.5px;padding:7px 0;border-top:1px solid var(--border);color:var(--fg2)}.lv-tk b{color:var(--fg);font-weight:600}
+.lv-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));border-bottom:1px solid var(--border)}.lv-tile{padding:16px 22px;border-left:1px solid var(--border);min-width:0}.lv-tile:first-child{border-left:0}
+.lv-k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}.lv-v{font-family:var(--font-mono);font-size:28px;font-weight:600;letter-spacing:-.04em;margin:4px 0 2px;line-height:1.1}.lv-v small{font-size:12.5px;color:var(--fg2);letter-spacing:0;font-weight:500;margin-left:6px;font-family:var(--font-sans)}
+.lv-mv{font-size:12.5px;color:var(--fg2);min-height:19px}.lv-mv b{color:var(--fg);font-weight:600}.lv-src{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.lv-src span{font-size:11.5px;padding:2px 8px;border-radius:6px;background:var(--raised);color:var(--fg2)}.lv-src span b{color:var(--fg);font-weight:600;font-family:var(--font-mono)}.lv-none{padding:16px 22px;margin:0}
+.lv-vault{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;padding:10px 22px;border-bottom:1px solid var(--border);font-size:13px}.lv-vault b{font-weight:600}.lv-vault span{font-family:var(--font-mono)}.lv-vault small{color:var(--fg3);font-size:12px;margin-left:auto}
+.lv-card>.sl-moves,.lv-card>.sl-mv{margin:10px 22px 0}
+.lv-spot{display:flex;gap:12px;align-items:flex-start;margin:12px 22px 0;padding:8px 12px;border-radius:10px;background:rgb(251 191 36 / .08);border:1px solid rgb(251 191 36 / .3)}.lv-spot i{width:8px;height:8px;border-radius:50%;background:var(--warn);margin-top:7px;flex:none}.lv-spot p{margin:0;font-size:12.5px;color:var(--fg2)}.lv-spot b{color:var(--fg);font-weight:600}
+.lv-board{padding:16px 22px 14px}.lv-bh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 12px;margin-bottom:6px}.lv-bh h3{margin:0;font-size:15px;font-weight:600}.lv-bh p{margin:2px 0 0;color:var(--fg2);font-size:12.5px}
+table.lv-t{min-width:0}table.lv-t td{padding:9px 10px}table.lv-t td:first-child{padding-left:0;font-weight:500}table.lv-t tr.lv-pin td{color:var(--fg2)}table.lv-t tr.lv-pin td:first-child{color:var(--fg)}
+.lv-c{display:inline-grid;justify-items:end;gap:1px}.lv-c small{font-size:11.5px;color:var(--fg3)}.lv-best{display:inline-block;background:rgb(74 222 128 / .14);color:var(--up);border-radius:8px;padding:4px 9px}.lv-best small{color:var(--up);opacity:.8}
+.lv-stale{font-size:10.5px;color:var(--warn);border:1px solid rgb(251 191 36 / .4);border-radius:9999px;padding:1px 7px;margin-left:8px;font-weight:500}.lv-more{padding-top:8px}
+.sl-gridgrid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr));gap:var(--gap)}
 .sl-card{display:flex;flex-direction:column;gap:12px;padding:18px 20px}
 .sl-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 12px}
 .sl-teams{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;font-size:15px}
@@ -4185,7 +4208,7 @@ $('wevents').addEventListener('click', e => { if (e.target.closest('[data-wedges
 // the injury report through each player's value above replacement, and back-to-backs, the same arithmetic the
 // backtest walked. It does not beat the closing line (docs/game-model.md), so a gap is a reason to look, never a bet.
 // "Game Lines" is the same page with every book's lines open.
-let sv = {day: null, open: {}};
+let sv = {day: null, open: {}, mk: {}, all: {}, sd: {}};
 const SL_BOOKS = ['Pinnacle', 'Consensus', 'DraftKings', 'FanDuel', 'BetMGM', 'ESPN BET', 'bet365', 'BetRivers'];
 function slateBoard(){
   const live = PS.live || (PB && PB.live);
@@ -4297,6 +4320,101 @@ function slateGame(g, B, status, openAll){
       <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
     ${tbl}${why}${early ? movesHtml(g) : ''}${injChips.length ? `<div class="sl-inj">${injChips.join('')}</div>` : ''}${splitH}${lines}</article>`;
 }
+// ── Game Lines V2 card (mocks/game-lines-v2.html): headline numbers, one slim sharp-money row with a drawer, a stale-book callout and one book board with a market switch.
+const lvNum = s => s == null ? null : parseInt(String(s).replace('+', ''), 10);
+const lvF1 = n => (n > 0 ? '+' : '') + n.toFixed(1);
+const lvPx = a => a == null ? '' : (a > 0 ? '+' : '') + a;
+const lvPr = a => a == null ? -1e9 : a > 0 ? a - 100 : a + 100;                 // price quality: -105 beats -115, +112 beats +105
+function lvBooks(mk){                                                        // the board's rows, one per book ("Draft Kings" and "DraftKings" are the same book)
+  const by = {};
+  for (const r of mk.books || []){ const k = String(r[0]).toLowerCase().replace(/\s+/g, ''); if (!by[k] || (r[10] || 0) > (by[k][10] || 0)) by[k] = r; }
+  return Object.values(by).map(r => ({n: r[0], pin: r[0] === 'Consensus' || r[0] === 'Open', ts: r[10] || 0,
+    s: r[1] == null ? null : {l: r[1], h: lvNum(r[2]), a: lvNum(r[3])}, m: {h: lvNum(r[4]), a: lvNum(r[5])}, t: r[6] == null ? null : {l: r[6], o: lvNum(r[7]), u: lvNum(r[8])}}));
+}
+function lvScore(b, mkt, side){                                              // higher is a better number for the bettor on that side
+  if (mkt === 'm'){ const v = side ? b.m.a : b.m.h; return v == null ? -1e9 : lvPr(v); }
+  if (mkt === 's') return b.s ? (side ? -b.s.l * 1000 + lvPr(b.s.a) : b.s.l * 1000 + lvPr(b.s.h)) : -1e9;
+  return b.t ? (side ? b.t.l * 1000 + lvPr(b.t.u) : -b.t.l * 1000 + lvPr(b.t.o)) : -1e9;
+}
+function lvMini(v){ const w = Math.abs(v) * 50; return `<span class="lv-mini"><u class="${v > 0 ? 'h' : ''}" style="${v < 0 ? `right:50%;width:${w}%` : `left:50%;width:${w}%`}"></u></span>`; }
+function lvSignals(g, mk, o){                                               // each signal in [-1, 1]: negative leans the away team, positive the home team
+  const out = [], F = o && o.flow, P = o && (o.pin || []).filter(p => p[1] != null);
+  if (P && P.length >= 2){ const a = P[0], z = P[P.length - 1], mx = P.reduce((m, x) => x[1] > m[1] ? x : m, a), mn = P.reduce((m, x) => x[1] < m[1] ? x : m, a);
+    out.push({k: 'Pinnacle', v: Math.max(-1, Math.min(1, (z[1] - a[1]) / 3)), tiny: z[1] === a[1] ? 'no move' : `${Math.abs(z[1] - a[1]).toFixed(1)} to ${z[1] < a[1] ? g.away : g.home}`,
+      tip: `Pinnacle's ${g.home} spread: ${lvF1(a[1])} at ${clock(a[0])} ET to ${lvF1(z[1])} now${mx[1] > a[1] + 1 ? `, after a high of ${lvF1(mx[1])}` : mn[1] < a[1] - 1 ? `, after a low of ${lvF1(mn[1])}` : ''}`}); }
+  if (F && (F.sharpN || F.vol)) out.push({k: 'Sharp accts', v: Math.max(-1, Math.min(1, (F.sharp || 0) / 5000)), tiny: `${usdK(F.sharp || 0)} ${(F.sharp || 0) < 0 ? g.away : g.home}`, tip: `Polymarket sharp accounts, last 24 hours, net: ${usdK(F.sharp || 0)} on ${(F.sharp || 0) < 0 ? g.away : g.home} over ${F.sharpN || 0} trades`});
+  if (F && F.kalVol) out.push({k: 'Kalshi big', v: Math.max(-1, Math.min(1, (F.kal || 0) / 10000)), tiny: `${usdK(F.kal || 0)} ${(F.kal || 0) < 0 ? g.away : g.home}`, tip: `Kalshi tickets of $500 and up: ${usdK(F.kalVol)} traded, net ${usdK(F.kal || 0)} on ${(F.kal || 0) < 0 ? g.away : g.home}`});
+  const sp = mk.splits && mk.splits.spread; if (sp && (sp[0] || sp[1])) out.push({k: 'Money', v: Math.max(-1, Math.min(1, (sp[1] - sp[0]) / 12)), tiny: `${sp[1] - sp[0] >= 0 ? '+' : ''}${sp[1] - sp[0]} pts ${sp[1] >= sp[0] ? g.home : g.away}`, tip: `${g.home} spread: ${sp[0]}% of bets and ${sp[1]}% of the money`});
+  return out;
+}
+function lineCard(g, B, status){
+  const gid = String(g.id), mk = g.mk || {}, V = vaultLine(g, B, status), M = marketLine(g.mk), K = mk.kalshi || {}, PM = mk.poly || {}, o = B.sharp && B.sharp.games && B.sharp.games[gid];
+  const tn = t => (D.teams[t] && D.teams[t].name) || t, pre = g.season_type === 1, early = isEarly(g, B), noT = early && !(MS.game && MS.game.tot_reset);
+  const books = lvBooks(mk), cons = books.find(b => b.n === 'Consensus'), opn = books.find(b => b.n === 'Open'), P = o && (o.pin || []).filter(p => p[1] != null), c = P && P.length ? P[P.length - 1] : null, p0 = P && P.length ? P[0] : null;
+  const mkt = sv.mk[gid] || 's', showAll = !!sv.all[gid], sdOpen = !!sv.sd[gid], now = Date.now() / 1000;
+  const badges = [g.opening ? '<span class="badge" title="Posted early. Props, edges and alerts start when the game is 3 days out">Early lines</span>' : '', pre ? '<span class="badge warn">Preseason: no Vault line</span>' : '',
+    V && V.ba ? `<span class="badge warn" title="Played within 30 hours">${g.away} back-to-back</span>` : '', V && V.bh ? `<span class="badge warn" title="Played within 30 hours">${g.home} back-to-back</span>` : ''].join('');
+  const asof = cons && cons.ts ? `Odds as of ${Math.max(1, Math.round((now - cons.ts) / 60))} min ago` : '';
+  // sharp read
+  const SIG = lvSignals(g, mk, o), side = v => Math.abs(v) < .06 ? 0 : v < 0 ? -1 : 1, L = SIG.map(x => side(x.v)), nA = L.filter(x => x < 0).length, nH = L.filter(x => x > 0).length;
+  const verdict = SIG.length < 2 ? 'Early' : nA && nH ? 'Mixed' : nA ? `Leaning ${g.away}` : nH ? `Leaning ${g.home}` : 'Quiet';
+  const drawer = () => {
+    const F = o.flow || {}, mx = Math.max(1, ...[F.sharp, F.dull, F.all].map(x => Math.abs(x || 0)), 2500);
+    const fr = [['Sharp accounts', F.sharp], ['Usually losing', F.dull], ['Everyone', F.all]].filter(x => x[1] != null).map(([l, v]) => `<div class="lv-fr"><span>${l}</span>${lvMini(Math.max(-1, Math.min(1, v / mx)))}<span class="num">${usdK(v)} ${v < 0 ? g.away : g.home}</span></div>`).join('');
+    const tk = (o.tickets || []).slice().reverse().slice(0, 4).map(x => `<div class="lv-tk"><span class="num">${clock(x[0])}</span><span><b>${esc(x[1])}</b> ${esc(x[7] || '')} ${xSide({m: x[2], side: x[3], line: x[8]}, g)} at ${Math.round(x[5] * 100)}¢</span><span class="num">${usdK(x[4])}</span></div>`).join('');
+    const beh = (o.behind || []).map(b => `<span class="sx-chip ${b.ev >= .03 ? 'go' : ''}">${esc(b.venue)} ${xSide(b, g)} ${pc(b.ev, 1)} EV</span>`).join('');
+    const spl = Object.entries(mk.splits || {}).filter(([, v]) => v && (v[0] || v[1])), SPK = {spread: `${g.home} spread`, total: 'Over', moneyline: `${g.home} ML`};
+    return `<div class="lv-sd"><div><p class="lv-lab">Pinnacle's ${g.home} spread</p>${P && P.length > 1 ? xSpark(o.pin, g.tip) : '<p class="muted">No move recorded yet.</p>'}<p class="lv-fine">Pinnacle takes the biggest limits and moves first: its line is the benchmark.</p>
+        <p class="lv-lab">Priced better than Pinnacle</p>${beh ? `<div class="sx-chips">${beh}</div>` : '<p class="muted">None right now.</p>'}</div>
+      <div><p class="lv-lab">Polymarket winner market, 24 h net</p><div class="lv-fl">${fr || '<p class="muted">No trades yet.</p>'}</div>${F.kalVol ? `<p class="lv-fine">Kalshi tickets of $500 and up: ${usdK(F.kalVol)} traded.</p>` : ''}
+        <p class="lv-lab">Bets against money</p>${spl.length ? spl.map(([k, [b, m]]) => `<div class="lv-fr"><span>${SPK[k] || k}</span><span class="num">${b}% bets</span><span class="num">${m}% money${Math.abs(m - b) >= 6 ? ` <b class="lv-hi">${m > b ? '+' : ''}${m - b}</b>` : ''}</span></div>`).join('') : '<p class="muted">Splits post closer to tip.</p>'}</div>
+      <div><p class="lv-lab">Largest sharp tickets</p>${tk || '<p class="muted">None yet.</p>'}<p class="lv-fine">Context, not a bet: in our tests, copying sharp money after the fact lost money. Each signal is graded on Sharp Price.</p></div></div>`;
+  };
+  const sharpRow = SIG.length ? `<div class="lv-sr"><span class="lv-vd" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span>${SIG.map(x => `<span class="lv-sp" title="${esc(x.tip)}"><b>${x.k}</b>${lvMini(x.v)}<span>${esc(x.tiny)}</span></span>`).join('')}
+      ${o ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</div>${sdOpen && o ? drawer() : ''}` : '';
+  // tiles
+  const spVal = c ? `${g.home} ${lvF1(c[1])}` : M && M.spread != null ? spTxt(g, M.spread) : 'n/a', toVal = c && c[3] != null ? c[3].toFixed(1) : M && M.total != null ? fmt(M.total) : 'n/a', wnVal = c && c[5] != null ? pc(c[5], 1) : M && M.win != null ? pc(M.win, 1) : 'n/a';
+  const from = c ? 'Pinnacle' : M && M.spFrom || '';
+  const opened = mk.open && (mk.open.spread != null || mk.open.total != null) ? `Opened ${[spTxt(g, mk.open.spread), mk.open.total != null ? fmt(mk.open.total) : ''].filter(Boolean).join(' · ')}` : '';
+  const tile = (k, v, sub, h, pills) => `<div class="lv-tile"><div class="lv-k">${k}</div><div class="lv-v">${v}${sub ? `<small>${sub}</small>` : ''}</div><div class="lv-mv">${h}</div><div class="lv-src">${pills}</div></div>`;
+  const pill = (n, v) => v == null || v === '' ? '' : `<span>${n} <b>${v}</b></span>`;
+  const tiles = M || c ? `<div class="lv-tiles">${tile('Spread', spVal, from, opened, pill('Kalshi', K.spread != null ? spTxt(g, K.spread) : '') + pill('Books', M && M.spread != null ? spTxt(g, M.spread) : ''))}
+    ${tile('Total', toVal, from, p0 && c && p0[3] != null ? `Pinnacle started at <b>${p0[3].toFixed(1)}</b>` : opened ? `Books opened ${mk.open.total != null ? fmt(mk.open.total) : ''}` : '', pill('Kalshi', K.total != null ? fmt(K.total) : '') + pill('Polymarket', PM.total != null ? fmt(PM.total) : '') + pill('Over', PM.over != null ? pc(PM.over) : ''))}
+    ${tile(`${g.home} win`, wnVal, c ? 'no vig' : '', p0 && c && p0[5] != null ? `Started the day at <b>${pc(p0[5], 1)}</b>` : '', pill('Kalshi', K.win != null ? pc(K.win) : '') + pill('Polymarket', PM.win != null ? pc(PM.win) : ''))}</div>` : '<p class="muted lv-none">No book has posted yet.</p>';
+  // Vault line (regular season)
+  const dS = V && M && M.spread != null ? V.spread - M.spread : null, dT = V && M && M.total != null && !noT ? V.total - M.total : null, dW = V && M && M.win != null ? V.win - M.win : null;
+  const vault = V ? `<div class="lv-vault"><b>Vault</b><span>${spTxt(g, V.spread)}</span><span>${noT ? '<span class="muted" title="Left out for the first weeks of a season: it ran about 4 points under the close">total later</span>' : fmt(V.total)}</span><span>${g.home} ${pc(V.win)}</span>
+      <small>${dS != null ? (Math.abs(dS) < .25 ? 'matches the market' : `leans ${dS < 0 ? g.home : g.away} by ${fmt(Math.abs(dS))} vs the market`) : ''} · context, not a bet${early ? " · last season's rosters" : ''}</small></div>${early ? movesHtml(g) : ''}` : '';
+  // books behind the market
+  const behind = cons ? books.filter(b => !b.pin && b.ts && cons.ts - b.ts > 1800 && ((b.s && cons.s && Math.abs(b.s.l - cons.s.l) >= 1) || (b.t && cons.t && Math.abs(b.t.l - cons.t.l) >= 1))) : [];
+  const spot = behind.length ? `<div class="lv-spot"><i></i><p><b>${behind.map(b => esc(b.n)).join(' and ')}</b> ${behind.length === 1 ? 'is' : 'are'} behind the market (${behind.map(b => `${b.s ? `${g.home} ${lvF1(b.s.l)}` : ''}${b.s && b.t ? ', ' : ''}${b.t ? `total ${b.t.l}` : ''}`).join(' and ')} against ${cons.s ? `${g.home} ${lvF1(cons.s.l)}` : ''}${cons.s && cons.t ? ' and ' : ''}${cons.t ? cons.t.l : ''}), updated up to ${Math.round((cons.ts - Math.min(...behind.map(b => b.ts))) / 60)} minutes earlier.</p></div>` : '';
+  // book board
+  const rows = books.filter(b => !b.pin && (mkt === 'm' ? (b.m.h != null || b.m.a != null) : mkt === 's' ? b.s : b.t));
+  const best = [0, 1].map(s => Math.max(...rows.map(b => lvScore(b, mkt, s))));
+  const sorted = [...rows].sort((a, b) => (lvScore(b, mkt, 0) + lvScore(b, mkt, 1)) - (lvScore(a, mkt, 0) + lvScore(a, mkt, 1))), shown = showAll ? sorted : sorted.slice(0, 4);
+  const cell = (b, s, pin) => { let inner;
+    if (mkt === 'm'){ const v = s ? b.m.a : b.m.h; inner = v == null ? '<span class="muted">-</span>' : `<b>${lvPx(v)}</b>`; }
+    else if (mkt === 's'){ if (!b.s) inner = '<span class="muted">-</span>'; else { const l = s ? -b.s.l : b.s.l; inner = `<span class="lv-c"><b>${s ? g.away : g.home} ${lvF1(l)}</b><small>${lvPx(s ? b.s.a : b.s.h)}</small></span>`; } }
+    else { if (!b.t) inner = '<span class="muted">-</span>'; else inner = `<span class="lv-c"><b>${s ? 'U' : 'O'} ${b.t.l}</b><small>${lvPx(s ? b.t.u : b.t.o)}</small></span>`; }
+    return `<td><span class="${!pin && lvScore(b, mkt, s) === best[s] && rows.length > 1 ? 'lv-best' : ''}">${inner}</span></td>`; };
+  const tr = (b, pin) => { let vs = '';
+    if (mkt !== 'm' && !pin && cons){ const d = mkt === 's' ? (b.s && cons.s ? b.s.l - cons.s.l : null) : (b.t && cons.t ? b.t.l - cons.t.l : null); if (d != null) vs = d === 0 ? '<span class="muted">in line</span>' : `<span class="${Math.abs(d) >= 1 ? 'neg' : ''}">${d > 0 ? '+' : ''}${d.toFixed(1)} pts</span>`; }
+    return `<tr class="${pin ? 'lv-pin' : ''}"><td class="l">${esc(b.n)}${behind.includes(b) ? '<span class="lv-stale">behind</span>' : ''}</td>${cell(b, 0, pin)}${cell(b, 1, pin)}${mkt === 'm' ? '' : `<td>${vs}</td>`}</tr>`; };
+  const hd = mkt === 'm' ? [g.home, g.away] : mkt === 's' ? [`${g.home} spread`, `${g.away} spread`, 'vs consensus'] : ['Over', 'Under', 'vs consensus'];
+  const board = books.length ? `<div class="lv-board"><div class="lv-bh"><div><h3>Book board</h3><p>The best price on each side is highlighted. Open and Consensus are pinned; books are sorted best first.</p></div>
+      <div class="seg" role="group" aria-label="Market">${[['s', 'Spread'], ['t', 'Total'], ['m', 'Moneyline']].map(([k, l]) => `<button type="button" data-lm="${k}" data-g="${gid}" aria-pressed="${mkt === k}">${l}</button>`).join('')}</div></div>
+    <div class="nt-tw"><table class="nt lv-t"><thead><tr><th class="l">Book</th>${hd.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${books.filter(b => b.pin).map(b => tr(b, true)).join('')}${shown.map(b => tr(b, false)).join('')}</tbody></table></div>
+    ${rows.length > 4 ? `<div class="lv-more"><button class="linkbtn" type="button" data-lall="${gid}">${showAll ? 'Show fewer books' : `Show all ${rows.length} books`}</button></div>` : ''}</div>` : '';
+  return `<article class="card sl-card lv-card" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
+    <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
+    ${sharpRow}${tiles}${vault}${spot}${board}</article>`;
+}
+function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el) el.outerHTML = lineCard(g, B, statusFromBoard(B)); }
+$('sgames').addEventListener('click', e => {
+  const m = e.target.closest('[data-lm]'), a = e.target.closest('[data-lall]'), d = e.target.closest('[data-lsd]');
+  if (m){ sv.mk[m.dataset.g] = m.dataset.lm; lvRefresh(m.dataset.g); }
+  else if (a){ sv.all[a.dataset.lall] = !sv.all[a.dataset.lall]; lvRefresh(a.dataset.lall); }
+  else if (d){ sv.sd[d.dataset.lsd] = !sv.sd[d.dataset.lsd]; lvRefresh(d.dataset.lsd); } });
 const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
 function renderSlate(){
   const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, lines = view === 'lines';
@@ -4324,7 +4442,8 @@ function renderSlate(){
     kpi('Biggest Vault gap', ICON.pts, top ? `${fmt(Math.abs(top.d))} pts` : 'n/a', top ? `${top.g.away} @ ${top.g.home}: Vault leans ${top.d < 0 ? top.g.home : top.g.away}. Context, not a bet` : reg ? 'Needs a posted spread' : 'No Vault line in preseason') +
     kpi('Money vs tickets', ICON.star, s0 ? `${Math.abs(s0.m - s0.b)} pts` : 'n/a', s0 ? `${SPK[s0.k] ? SPK[s0.k](s0.g) : s0.k} (${s0.g.away} @ ${s0.g.home}): ${s0.b}% of bets, ${s0.m}% of money` : 'Action Network posts splits closer to tip') +
     kpi('Back-to-backs', ICON.edit, `${b2b.length}`, b2b.length ? `${b2b.join(', ')} · ${MS.game.P.B2B} pts each in the Vault line` : 'Nobody on the second night');
-  $('sgames').innerHTML = G.map(g => slateGame(g, B, status, lines)).join('');
+  $('sgames').classList.toggle('lv', lines);
+  $('sgames').innerHTML = G.map(g => lines ? lineCard(g, B, status) : slateGame(g, B, status, false)).join('');
   renderSlateRatings();
   $('sfoot').innerHTML = `
     <div><b>The Vault line</b> is the game model: each team's rating (points better than an average team on a neutral floor, updated after every game and carried into a new season at the rate the backtest chose), ${MS && MS.game ? fmt(MS.game.hfa) : ''} points of home court, ${MS && MS.game ? MS.game.P.B2B : ''} points off a team on the second night of a back-to-back, and the injury report: each listed player's game score above replacement times how often players with that status actually sat (Questionable ${MS && MS.game ? pc(MS.game.p_out.Questionable) : ''}, Doubtful ${MS && MS.game ? pc(MS.game.p_out.Doubtful) : ''}), for players who played in the last ${MS && MS.game ? MS.game.P.ROT_DAYS : 21} days. Win % is a normal curve around the margin, sigma ${MS && MS.game ? fmt(MS.game.sd_margin) : ''} points, as backtested.</div>
