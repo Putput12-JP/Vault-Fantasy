@@ -1077,6 +1077,7 @@ table.nt.sx-tk{min-width:420px}
 .lv-mv{font-size:12px;color:var(--fg2);min-height:16px}.lv-mv b{color:var(--fg);font-weight:600}.lv-src{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}.lv-src span{font-size:11px;padding:1px 7px;border-radius:6px;background:var(--raised);color:var(--fg2)}.lv-src span b{color:var(--fg);font-weight:600;font-family:var(--font-mono)}.lv-none{padding:16px 22px;margin:0}
 .lv-vault{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;padding:6px 16px;border-bottom:1px solid var(--border);font-size:12.5px}.lv-vault b{font-weight:600}.lv-vault span{font-family:var(--font-mono)}.lv-vault small{color:var(--fg3);font-size:12px;margin-left:auto}
 .lv-card>.sl-moves,.lv-card>.sl-mv{margin:8px 16px 0}
+.lv-sl{padding:8px 16px 10px;border-bottom:1px solid var(--border);display:grid;gap:8px}.lv-sl .sl-why{margin:0;font-size:12px}.lv-sl .sl-inj{margin:0}.lv-sl .sl-t td,.lv-sl .sl-t th{padding-top:4px;padding-bottom:4px}
 @media(max-width:640px){
 .lv-card>.sl-h{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px}.lv-card .sl-teams{flex-wrap:wrap;gap:6px 8px}.lv-card .sl-teams small{display:none}.lv-card .sl-meta{flex-wrap:wrap;gap:4px 8px}
 .lv-sr{padding:8px 12px;gap:6px}.lv-vd{width:100%}.lv-sp{height:24px;padding:0 7px;font-size:11.5px;gap:5px}.lv-mini{width:22px}.lv-tog{margin-left:auto}
@@ -4145,7 +4146,7 @@ function movesHtml(g){
 }
 const spTxt = (g, s, d = 1) => s == null ? '' : Math.abs(s) < .05 ? 'Pick' : s < 0 ? `${g.home} ${fmt(s, d)}` : `${g.away} -${fmt(s, d)}`;
 const slDay = t => etFmt(t, {weekday: 'short', month: 'short', day: 'numeric'});
-function slateGame(g, B, status, openAll){
+function slateGame(g, B, status, openAll, parts){
   const gid = String(g.id), mk = g.mk || {}, V = vaultLine(g, B, status), M = marketLine(g.mk), K = mk.kalshi || {}, PM = mk.poly || {};
   const tn = t => (D.teams[t] && D.teams[t].name) || t;
   const pre = g.season_type === 1, early = isEarly(g, B), noT = early && !(MS.game && MS.game.tot_reset);
@@ -4185,6 +4186,7 @@ function slateGame(g, B, status, openAll){
     ${K.win != null ? `<tr><td class="l">Kalshi</td><td>${K.spread != null ? (K.spread > 0 ? '+' : '') + fmt(K.spread) : ''}</td><td></td><td>${K.total != null ? fmt(K.total) : ''}</td><td></td><td>${pc(K.win)} / ${pc(1 - K.win)}</td><td></td></tr>` : ''}
     ${PM.win != null || PM.total != null ? `<tr><td class="l">Polymarket</td><td></td><td></td><td>${PM.total != null ? fmt(PM.total) : ''}</td><td class="muted">${PM.over != null ? `${pc(PM.over)} / ${pc(1 - PM.over)}` : ''}</td><td>${PM.win != null ? `${pc(PM.win)} / ${pc(1 - PM.win)}` : ''}</td><td></td></tr>` : ''}
     </tbody></table></div></details>` : '';
+  if (parts) return {tbl, why, moves: early ? movesHtml(g) : '', inj: injChips.length ? `<div class="sl-inj">${injChips.join('')}</div>` : ''};
   return `<article class="card sl-card" id="sg-${gid}"><header class="sl-h">
       <div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
       <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
@@ -4218,6 +4220,7 @@ function lvSignals(g, mk, o){                                               // e
   return out;
 }
 function lineCard(g, B, status){
+  const slate = view !== 'lines', SP = slate ? slateGame(g, B, status, false, true) : null;
   const gid = String(g.id), mk = g.mk || {}, V = vaultLine(g, B, status), M = marketLine(g.mk), K = mk.kalshi || {}, PM = mk.poly || {}, o = B.sharp && B.sharp.games && B.sharp.games[gid];
   const tn = t => (D.teams[t] && D.teams[t].name) || t, pre = g.season_type === 1, early = isEarly(g, B), noT = early && !(MS.game && MS.game.tot_reset);
   const books = lvBooks(mk), cons = books.find(b => b.n === 'Consensus'), opn = books.find(b => b.n === 'Open'), P = o && (o.pin || []).filter(p => p[1] != null), c = P && P.length ? P[P.length - 1] : null, p0 = P && P.length ? P[0] : null;
@@ -4277,7 +4280,7 @@ function lineCard(g, B, status){
     ${rows.length > 4 ? `<div class="lv-more"><button class="linkbtn" type="button" data-lall="${gid}">${showAll ? 'Show fewer books' : `Show all ${rows.length} books`}</button></div>` : ''}</div>` : '';
   return `<article class="card sl-card lv-card" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
-    ${sharpRow}${tiles}${vault}${spot}${board}</article>`;
+    ${sharpRow}${slate ? `<div class="lv-sl">${SP.tbl}${SP.why}${SP.moves}${SP.inj}</div>` : tiles + vault}${spot}${board}</article>`;
 }
 function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el) el.outerHTML = lineCard(g, B, statusFromBoard(B)); }
 $('sgames').addEventListener('click', e => {
@@ -4312,8 +4315,8 @@ function renderSlate(){
     kpi('Biggest Vault gap', ICON.pts, top ? `${fmt(Math.abs(top.d))} pts` : 'n/a', top ? `${top.g.away} @ ${top.g.home}: Vault leans ${top.d < 0 ? top.g.home : top.g.away}. Context, not a bet` : reg ? 'Needs a posted spread' : 'No Vault line in preseason') +
     kpi('Money vs tickets', ICON.star, s0 ? `${Math.abs(s0.m - s0.b)} pts` : 'n/a', s0 ? `${SPK[s0.k] ? SPK[s0.k](s0.g) : s0.k} (${s0.g.away} @ ${s0.g.home}): ${s0.b}% of bets, ${s0.m}% of money` : 'Action Network posts splits closer to tip') +
     kpi('Back-to-backs', ICON.edit, `${b2b.length}`, b2b.length ? `${b2b.join(', ')} · ${MS.game.P.B2B} pts each in the Vault line` : 'Nobody on the second night');
-  $('sgames').classList.toggle('lv', lines);
-  $('sgames').innerHTML = G.map(g => lines ? lineCard(g, B, status) : slateGame(g, B, status, false)).join('');
+  $('sgames').classList.add('lv');
+  $('sgames').innerHTML = G.map(g => lineCard(g, B, status)).join('');
   renderSlateRatings();
   $('sfoot').innerHTML = `
     <div><b>The Vault line</b> is the game model: each team's rating (points better than an average team on a neutral floor, updated after every game and carried into a new season at the rate the backtest chose), ${MS && MS.game ? fmt(MS.game.hfa) : ''} points of home court, ${MS && MS.game ? MS.game.P.B2B : ''} points off a team on the second night of a back-to-back, and the injury report: each listed player's game score above replacement times how often players with that status actually sat (Questionable ${MS && MS.game ? pc(MS.game.p_out.Questionable) : ''}, Doubtful ${MS && MS.game ? pc(MS.game.p_out.Doubtful) : ''}), for players who played in the last ${MS && MS.game ? MS.game.P.ROT_DAYS : 21} days. Win % is a normal curve around the margin, sigma ${MS && MS.game ? fmt(MS.game.sd_margin) : ''} points, as backtested.</div>
