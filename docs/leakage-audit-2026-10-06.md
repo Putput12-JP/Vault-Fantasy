@@ -141,3 +141,34 @@ change (log loss within 0.01 either way) and both lose to the no-vig market on a
 
 Read: the refit is a small, consistent calibration gain out of sample (log loss -0.3 to -0.5%, ECE down 20 to
 35%) but does not fix QB overconfidence on real lines; that gap is the projection itself, not the tails.
+
+## Addendum 3: NBA candidate set (finding 2), `nba/scripts/audit_candidate_set.py`
+
+Re-ran `build_prop_model_v2.walk` with the live-style candidate rule (team players seen in the last 30 days, minus
+report Outs; non-dressed ones take minutes but are never scored) in place of "everyone in the post-game box score".
+Nothing written to `nba/data/`. Test season 2025-26, 27,799 common player-games.
+
+| | Box-score candidates (shipped backtest) | As-of candidates (live-style) |
+|---|---|---|
+| Candidates per team-game | 12.23 | 12.86 |
+| Minutes MAE | 4.860 | 5.040 (+3.7%) |
+| pts MAE, v1 / v2 | 4.505 / 4.479 | 4.525 / 4.509 |
+| reb, ast, 3pm MAE | unchanged to 0.002 | unchanged to 0.002 |
+
+Betting-grade effect (v2 vs the no-vig market, weighted log-loss gap): ESPN 0.0040 -> 0.0058, Kalshi 0.0119 -> 0.0139
+(model still loses to the market on price). The model's weight in the market blend stays significant
+(pts t 2.45 -> 2.55 ESPN, 2.59 -> 2.15 Kalshi).
+
+What flips: the pts verdict. v2 pts "GO (NO)" -> "WATCH (YES)", v1 pts "WATCH (NO)" -> "NO-GO". ESPN pts at a 2% gap went
+from +14.2% ROI (n 151, z 1.73) to -6.9% (n 173, z -0.8). Caveat: the two runs bet different rows (906 vs 884
+ESPN-matched), and ROI on ~150 bets has an SE near 10 points, so this is fragility, not proof of a negative edge.
+Kalshi pts ROI barely moves (+4.5% z 2.0 -> +3.1% z 1.5 at the 3% gap).
+
+Direction and size: the box-score rule leaks the dressed-roster decision (healthy scratches, late DNPs). Cost is
+about 0.18 minutes of error per player-game and almost nothing on stats other than pts. The as-of rule is slightly
+pessimistic (it drops 455 played arrivals who live pricing would add from the depth chart), so the truth sits between.
+
+Verdict: finding 2 downgrades from "unknown" to REVIEW REQUIRED with measured size: small on projection accuracy,
+material only for the pts GO label on ESPN prices. Repair: switch `build_prop_model_v2.walk` (and v3, minutes v3,
+pickem corr) to the as-of rule with depth-chart arrivals, re-issue the verdict table, and point the parity check at
+live-style candidates instead of `cand_override`.
