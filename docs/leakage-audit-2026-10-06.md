@@ -239,3 +239,35 @@ voids); the fit/test split is by tip time and all fits use first-half rows only;
 available at the same clock; the books-to-Kalshi and Kalshi-to-books tests compare the books' last pre-tip update with Kalshi's
 30-minute average, a clock mismatch that favours the fresher side (none of the GO signals comes from those two tests). Not
 fixed: bets assume fills at the 30-minute average with no spread or size limit.
+
+## Addendum 8: NBA minutes v3, injury as-of, starters feed (`nba/scripts/audit_minutes_v3.py`)
+
+**Injury as-of (`nba_common.InjuryAsOf`): mechanically sound.** It uses the latest report snapshot at or before the cutoff,
+report labels (`report_et`, 11:00 to 22:00 hourly) and the cutoff share one string format, and the 2022-24 "who actually
+sat" oracle is only used for fitting, disclosed in the docs.
+
+**Minutes v3 walk: hindsight candidate set, same family as finding 2.** `build_minutes_model_v3.walk` only emits players who
+played, and `predict` then rescales team minutes over exactly those players, so DNPs and late scratches never take minutes.
+Re-run with the as-of rule (state on the team in the last 30 days, minus Outs; non-players take minutes but are not scored),
+shipped alpha 0.2 and a_new 0.35, test 2025-26:
+
+| Candidate rule | v2 MAE / bias / 8+ miss | v3 MAE / bias / 8+ miss |
+|---|---|---|
+| Played-only (shipped backtest) | 4.69 / +1.08 / 17.1% | 4.65 / +1.07 / 16.9% |
+| As-of (live-style) | 5.04 / -1.18 / 19.7% | 5.00 / -1.13 / 19.5% |
+
+v3's gain over v2 holds (about 0.04 minutes), but the absolute numbers were optimistic by about 0.35 minutes (7%).
+
+**Team-minutes target is stale under the as-of rule.** The constant 251.6 was fit on played-only rows. With 1.26 non-playing
+candidates per team-game absorbing minutes, played players are under-projected by 1.2 minutes. Fit on 2024-25 only, the best
+target is 264 (fit-season MAE 4.926, bias -0.08); on the 2025-26 test it gives MAE 5.04 -> 4.92 and bias -1.18 -> -0.14.
+v2's stacker already absorbs the stat-level effect (v2 stat bias is within 0.012 for every market, v1 raw bias is -0.4 pts),
+so prices are mostly protected, but minutes themselves, v1-based cells and anything using minutes directly are not. Not applied:
+changing `team_min` touches live pricing (`build_model_state.py`, `pricing.py`) and needs a full v2 refit.
+
+**Starters feed: hindsight by construction.** `lineups.csv` files are stamped with their final update, about 2.5 hours after
+tip (docs/starters-feed.md says so). The feed gets all five starters right in 5,285 of 5,286 team-games and lists 21,485
+inactives of whom 0 played, which is the post-game truth, not what was known 30 to 90 minutes before tip. The reported v3s gain
+(minutes MAE 4.899 -> 4.723, 8+ misses 18.5% -> 17.1%) is therefore an upper bound. v3s is shadow-only, so no live price
+depends on it. The live recorder logs Expected -> Confirmed changes from 2026-27; v3s must be re-tested on those timestamps
+before it can ship (written into nba/docs/experiment-log.md).

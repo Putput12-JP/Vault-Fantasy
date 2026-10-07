@@ -90,3 +90,12 @@ consensus + model): last trade instead of the 30-minute VWAP leaves 3pm NO intac
 (+5.3%, z 1.59). Requiring 500+ contracts in the last 30 minutes leaves too few rungs to test (pts NO n 221, z 0.84; the other
 cells fall under the 400-row minimum): median 30-minute volume per rung is 105 contracts and 86% of rungs trade under 1,000, so
 none of these edges has been shown to be executable at size. Only the live ledger can show that.
+
+## 6. Starters feed and minutes v3 (2026-10-07)
+
+The starters feed used in backtests is stamped about 2.5 hours after tip and is effectively post-game truth (5,285 of 5,286
+team-games all five starters right; 0 of 21,485 listed inactives played). Rule fixed now: **minutes v3 with starters (v3s) does
+not ship, and its backtest gain is not cited, until it is re-tested on live Expected -> Confirmed timestamps (recorder logs them
+from 2026-27) with candidates built by the as-of rule.** Minutes v3 without the feed is unaffected in ranking (still ahead of v2
+by about 0.04 minutes) but its absolute error is 5.00, not 4.65, once non-dressed candidates take minutes
+(`nba/scripts/audit_minutes_v3.py`).
