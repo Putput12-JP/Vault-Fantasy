@@ -49,9 +49,9 @@ rush_yd               59%   +0.1pp        47%    -21.1u         44%    -38.4u
 ## Game markets (at the close)
 
 ```
-games   n= 171  LL 0.7016 vs 0.6853  skill -0.024 z -1.2    level with the market (within noise)     beat close   30%  units   -1.8u
+games   n= 171  LL 0.7022 vs 0.6853  skill -0.025 z -1.2    level with the market (within noise)     beat close   30%  units   -1.8u
 ml      n=  50  LL 0.6560 vs 0.6667  skill +0.016 z +0.4    level with the market (within noise)     beat close   42%  units   +8.4u
-spread  n=  59  LL 0.7095 vs 0.6938  skill -0.022 z -0.8    level with the market (within noise)     beat close   31%  units   -7.5u
+spread  n=  59  LL 0.7113 vs 0.6938  skill -0.025 z -0.8    level with the market (within noise)     beat close   31%  units   -7.5u
 total   n=  62  LL 0.7308 vs 0.6922  skill -0.056 z -1.7    level with the market (within noise)     beat close   21%  units   -2.8u
 ```
 
@@ -133,10 +133,10 @@ under 6 hours           15-12         +1.4u           -0.8u        6/21
 ## By week (props at the close / games at the close)
 
 ```
-Wk  1  props n= 514  LL 0.7137 vs 0.6891  skill -0.036 z -2.3     games n=  40  LL 0.7233 vs 0.6807  skill -0.063 z -1.6
-Wk  2  props n= 553  LL 0.6919 vs 0.6826  skill -0.014 z -0.8     games n=  44  LL 0.7175 vs 0.6851  skill -0.047 z -1.1
-Wk  3  props n= 590  LL 0.6974 vs 0.6883  skill -0.013 z -0.9     games n=  43  LL 0.6657 vs 0.6847  skill +0.028 z +0.7
-Wk  4  props n= 680  LL 0.7079 vs 0.6946  skill -0.019 z -1.9     games n=  44  LL 0.7010 vs 0.6903  skill -0.015 z -0.4
+Wk  1  props n= 514  LL 0.7137 vs 0.6891  skill -0.036 z -2.3     games n=  40  LL 0.7249 vs 0.6807  skill -0.065 z -1.6
+Wk  2  props n= 553  LL 0.6919 vs 0.6826  skill -0.014 z -0.8     games n=  44  LL 0.7191 vs 0.6851  skill -0.050 z -1.2
+Wk  3  props n= 590  LL 0.6974 vs 0.6883  skill -0.013 z -0.9     games n=  43  LL 0.6656 vs 0.6847  skill +0.028 z +0.7
+Wk  4  props n= 680  LL 0.7079 vs 0.6946  skill -0.019 z -1.9     games n=  44  LL 0.7005 vs 0.6903  skill -0.015 z -0.4
 ```
 
 ## How to read this
