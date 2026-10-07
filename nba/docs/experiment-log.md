@@ -61,6 +61,11 @@ Frozen candidate list, as of the commit that adds this file: **(a)** v2 blend 3p
 
 - **Evidence needed to promote a cell to a shipped GO:** at least 300 live bets and 50 game days; ROI > 0 after fees; live z >= 2.13
   (one-sided 0.05 split across the 3 frozen cells); mean CLV against the close not negative.
+- **Which price counts:** promotion is judged on the **entry price**, the first poll the edge reached 3% (the price a live
+  bettor could actually take, paying the ask for YES or 1 minus the bid for NO, plus the taker fee). Close ROI and CLV are
+  reported beside it as diagnostics, never as a substitute. The backtest's clock (Kalshi 30-minute pre-tip VWAP, no spread, no
+  size limit) is not comparable to either, so backtest ROI is never used to meet or excuse a live threshold. Added 2026-10-07,
+  before the ledger was read.
 - **Demote (GO becomes WATCH):** live ROI < 0 with z <= -1 once there are 150 live bets.
 - **Anything not on this list** (a new stat, side, venue or engine) gets no live credit; it must be pre-registered here first
   and wait for its own 300 bets. Reading the ledger for a new pattern and then proposing it does not count.
