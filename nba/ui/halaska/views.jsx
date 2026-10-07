@@ -18,6 +18,14 @@ const Tone = ({ children, tone, size = 'sm', weight, mono }) => { const pal = us
 const Av = ({ ini, size = 32, src }) => { const pal = usePal(THEME); const [bad, setBad] = useState(false);
   return <span style={{ position: 'relative', overflow: 'hidden', width: size, height: size, borderRadius: '50%', background: pal.bgMuted, color: pal.textSecondary, ...tokens.type.xs, fontWeight: tokens.weight.medium, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{ini}
     {src && !bad && <img src={src} alt="" loading="lazy" onError={() => setBad(true)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 0', transform: 'scale(1.3)', transformOrigin: '50% 10%', background: pal.bgMuted }} />}</span>; };
+// A player cutout with no chip behind it: the photo is a transparent bust that stands on the bottom edge of its row. Falls back to initials
+// when no photo loads. `big` is a sharper image tried first (the website; the published artifact blocks it and the embedded one is used).
+const Cut = ({ ini, src, big, h = 52, w }) => { const pal = usePal(THEME); const [st, setSt] = useState(big ? 'big' : 'ok'); const [ok, setOk] = useState(false);
+  const url = st === 'big' ? big : st === 'ok' ? src : null;
+  return <span style={{ position: 'relative', flex: 'none', display: 'inline-block', overflow: 'hidden', width: w || Math.round(h * 1.1), height: h, alignSelf: 'flex-end' }}>
+    {!ok && <span style={{ position: 'absolute', left: '50%', bottom: Math.round(h * .12), transform: 'translateX(-50%)', width: Math.round(h * .62), height: Math.round(h * .62), borderRadius: '50%', background: pal.bgMuted, color: pal.textSecondary, ...tokens.type.xs, display: 'grid', placeItems: 'center' }}>{ini}</span>}
+    {url && <img src={url} alt="" loading="lazy" onLoad={() => setOk(true)} onError={() => setSt(st === 'big' ? 'ok' : 'bad')} style={{ position: 'absolute', left: '50%', bottom: 0, height: '100%', width: 'auto', maxWidth: 'none', transform: 'translateX(-50%)' }} />}
+  </span>; };
 const useWidth = () => { const [w, setW] = useState(window.innerWidth); useEffect(() => { const f = () => setW(window.innerWidth); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []); return w; };
 const Ico = ({ html, size = 16 }) => <span aria-hidden="true" style={{ display: 'inline-flex', width: size, height: size }} dangerouslySetInnerHTML={{ __html: html.replace('<svg ', `<svg width="${size}" height="${size}" `) }} />;
 
@@ -197,10 +205,10 @@ function PropsList(p) {
       {p.items.map((r, i) => {
         const on = r.key === p.sel;
         return (
-          <button key={r.key} type="button" aria-current={on} onClick={() => p.onSelect(r.key)} style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', borderBottom: i < p.items.length - 1 ? `1px solid ${pal.borderSubtle}` : 'none', background: on ? pal.bgSubtle : 'transparent', transition: `background ${motion.normal} ${motion.easeInOut}` }}>
-            <Av ini={r.ini} src={r.src} size={36} />
-            <span style={{ flex: 1, minWidth: 0 }}><Text size="md" weight="semibold">{r.name}</Text><div><Dim>{r.stat} · proj {r.proj}{r.where ? ' · ' + r.where : ''}</Dim></div></span>
-            <span style={{ textAlign: 'right', display: 'grid', gap: 3, justifyItems: 'end' }}>
+          <button key={r.key} type="button" aria-current={on} onClick={() => p.onSelect(r.key)} style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: '0 18px', minHeight: 66, borderBottom: i < p.items.length - 1 ? `1px solid ${pal.borderSubtle}` : 'none', background: on ? pal.bgSubtle : 'transparent', transition: `background ${motion.normal} ${motion.easeInOut}` }}>
+            <Cut ini={r.ini} src={r.src} h={60} />
+            <span style={{ flex: 1, minWidth: 0, padding: '10px 0' }}><Text size="md" weight="semibold">{r.name}</Text><div><Dim>{r.stat} · proj {r.proj}{r.where ? ' · ' + r.where : ''}</Dim></div></span>
+            <span style={{ textAlign: 'right', display: 'grid', gap: 3, justifyItems: 'end', padding: '10px 0' }}>
               <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                 {r.watch && <span title="Watching" style={{ color: pal.warning }}>★</span>}{r.logged && <Badge>Logged</Badge>}
                 <Badge variant={r.verdict === 'bet' ? 'success' : r.verdict === 'lean' ? 'warning' : 'default'}>{r.verdict}</Badge>
@@ -221,22 +229,24 @@ function PvDetail(p) {
   const vc = v.kind === 'bet' ? { b: pal.success, bg: pal.successBg } : v.kind === 'lean' ? { b: pal.warning, bg: pal.warningBg } : { b: pal.borderSubtle, bg: 'transparent' };
   return (
     <Stack gap={16}>
-      <Card padding={24}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 0, display: 'flex', gap: 14, alignItems: 'center' }}>
-            <Av ini={h.ini} src={h.src} size={56} />
-            <div style={{ minWidth: 0 }}>
-            <Heading level={2} style={{ margin: 0 }}>{h.name}</Heading>
-            <div style={{ margin: '4px 0 0', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Dim size="base">{h.stat}</Dim>{h.game && <Dim size="base">{h.game}</Dim>}
-              {h.badges.map((b, i) => <Badge key={i} variant={b.warn ? 'warning' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge>)}
-            </div>
+      <Card padding={0} style={{ overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', padding: '0 24px', background: h.wash ? `color-mix(in srgb, ${h.wash} 20%, ${pal.bgElevated || 'transparent'})` : 'transparent', borderBottom: `1px solid ${pal.borderSubtle}` }}>
+          <div style={{ minWidth: 0, display: 'flex', gap: 16, alignItems: 'flex-end' }}>
+            <Cut ini={h.ini} src={h.src} big={h.big} h={112} w={150} />
+            <div style={{ minWidth: 0, padding: '24px 0' }}>
+              <Heading level={2} style={{ margin: 0 }}>{h.name}</Heading>
+              <div style={{ margin: '4px 0 0', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Dim size="base">{h.stat}</Dim>{h.game && <Dim size="base">{h.game}</Dim>}
+                {h.badges.map((b, i) => <Badge key={i} variant={b.warn ? 'warning' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge>)}
+              </div>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}><Dim>Tonight's projection</Dim><div><Text size="display" weight="bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{h.proj}</Text></div>{h.range && <Dim>{h.range}</Dim>}</div>
+          <div style={{ textAlign: 'right', padding: '24px 0' }}><Dim>Tonight's projection</Dim><div><Text size="display" weight="bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{h.proj}</Text></div>{h.range && <Dim>{h.range}</Dim>}</div>
         </div>
-        <Html html={p.minsHtml} className="hk-html" style={{ marginTop: 14 }} />
-        <Html html={p.watchHtml} className="hk-html" style={{ marginTop: 12 }} />
+        <div style={{ padding: '14px 24px 24px' }}>
+          <Html html={p.minsHtml} className="hk-html" />
+          <Html html={p.watchHtml} className="hk-html" style={{ marginTop: 12 }} />
+        </div>
       </Card>
       <div style={{ border: `1px solid ${vc.b}${v.kind === 'pass' ? '' : '66'}`, background: vc.bg, borderRadius: tokens.radius.md, padding: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>

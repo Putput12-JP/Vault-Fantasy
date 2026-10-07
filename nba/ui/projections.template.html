@@ -686,6 +686,10 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 /* photos: a headshot covers the initials circle, cropped to the face; logos sit inline before a team code */
 .av{position:relative;overflow:hidden}
 .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;transform:scale(1.3);transform-origin:50% 10%;background:var(--raised)}
+.cutbox{position:relative;flex:none;display:block;overflow:hidden;width:calc(var(--h) * 1.1);height:var(--h);align-self:flex-end}
+.cutini{position:absolute;left:50%;bottom:calc(var(--h) * .12);transform:translateX(-50%);width:calc(var(--h) * .62);height:calc(var(--h) * .62);border-radius:50%;background:var(--raised);color:var(--fg2);font-size:11px;font-weight:600;display:grid;place-items:center}
+.cutph{position:absolute;left:50%;bottom:0;height:100%;width:auto;max-width:none;transform:translateX(-50%)}
+table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.cutc .pl>div{align-self:center;padding:6px 0}
 .pl{display:flex;align-items:center;gap:10px}.pl>div{min-width:0}.pp-av.sm{width:32px;height:32px;border-width:1px;font-size:10px;flex:none}.tm{display:inline-flex;align-items:center;gap:6px}
 .gstrip{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;flex:1;min-width:0;padding:2px 2px 6px;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
 .gday{display:flex;gap:6px;flex:none;padding-right:10px;margin-right:2px;border-right:1px solid var(--border);scroll-snap-align:start}
@@ -1466,6 +1470,11 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 const PH = /*PHOTOS*/null;
 const phSrc = id => (PH && PH.heads[id]) || `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=96&h=70`;
 const phImg = id => id == null ? '' : `<img class="ph" src="${phSrc(id)}" alt="" loading="lazy" onerror="this.remove()">`;
+const phBig = id => `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=192&h=140`;     // sharper copy for the big header (the website; the artifact keeps the embedded one)
+const lum = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const c = [0, 2, 4].map(i => parseInt(m[1].substr(i, 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
+const teamWash = t => { const c = PH && PH.colors && PH.colors[t]; if (!c) return ''; for (const x of c){ const l = lum(x); if (l != null && l > .04 && l < .7) return x; } return ''; };
+// A player cutout with no chip, standing on the bottom of its table cell: the cell takes class cutc (no vertical padding).
+const cutImg = (pid, name, h = 52) => `<span class="cutbox" style="--h:${h}px"><span class="cutini">${esc(initials(name || ''))}</span>${pid == null ? '' : `<img class="cutph" src="${phSrc(pid)}" alt="" loading="lazy" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.remove()">`}</span>`;
 const avSm = (pid, name) => `<span class="pp-av sm">${esc(initials(name || ''))}${phImg(pid)}</span>`;
 const lgImg = (t, s = 18) => PH && PH.logos && PH.logos[t] ? `<img class="lg" src="${PH.logos[t]}" alt="" width="${s}" height="${s}">` : '';
 
@@ -3378,8 +3387,8 @@ function renderTonight(){
   $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
       <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.total, 0)} minutes projected across ${T.rows.filter(r => !r.off).length} players · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div></div>
       <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
-      ${T.rows.map(r => r.off ? `<tr class="off"><td class="l"><div class="pl">${avSm(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
-        : `<tr><td class="l"><div class="pl">${avSm(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
+      ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
+        : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
         <td><span class="nt-min"><input type="number" min="0" max="48" step="0.5" data-pid="${r.pid}" value="${fmt(r.min)}" class="${r.mine ? 'mine' : ''}" aria-label="Minutes for ${esc(r.name)}" ${r.src === 'lab' ? 'disabled title="Edit this team in the Minutes Lab"' : ''}></span>${r.lo != null ? `<small>${fmt(r.lo, 0)} to ${fmt(r.hi, 0)}</small>` : ''}</td>
         <td class="l"><div class="nt-parts">${r.mine ? '<span class="nt-p" style="color:var(--warn)">your minutes</span>' : r.parts ? `<span class="nt-p">avg ${fmt(r.parts.base)}</span>${chip(r.parts.vac, 'teammates out')}${chip(r.parts.blow, 'blowout risk')}${chip(r.parts.b2b, 'back-to-back')}${chip(r.parts.other + r.parts.rescale, 'team fit')}` : ''}</div></td>
         <td>${r.v3 != null ? `<span class="muted">${fmt(r.v3)}</span><small>${r.v3 - r.min >= 0 ? '+' : ''}${fmt(r.v3 - r.min)}</small>` : ''}</td>
@@ -3600,7 +3609,7 @@ function renderSim(){
   const PS_ = simPlayerStats(res), cellF = q => q ? `<b>${fmt(q[1], 0)}</b><small>${fmt(q[0], 0)} to ${fmt(q[2], 0)}</small>` : '';
   $('gsteams').innerHTML = T.map((t, k) => `<section class="card nt-team"><div class="card-h"><div><h2 class="tm">${lgImg(t.team, 22)}${t.team}${D.teams[t.team] ? ' · ' + esc(D.teams[t.team].name) : ''}</h2><p>Middle of 10,000 games, with the 10th to 90th percentile under it. Counts only the games he plays.</p></div></div>
     <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Plays</th><th>Min</th>${[...SIM_STATS, 'pra'].map(s => `<th>${SIM_LBL[s]}</th>`).join('')}</tr></thead><tbody>
-    ${t.rows.map((r, j) => { const P = PS_[k][j]; return `<tr><td class="l"><div class="pl">${avSm(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${r.st ? `<span class="warnt">${esc(r.st)}</span>` : LINEUP[(B.players[r.pid] || [])[3]] || '&nbsp;'}</small></div></div></td>
+    ${t.rows.map((r, j) => { const P = PS_[k][j]; return `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${r.st ? `<span class="warnt">${esc(r.st)}</span>` : LINEUP[(B.players[r.pid] || [])[3]] || '&nbsp;'}</small></div></div></td>
       <td>${pc(P.on / N)}</td><td>${fmt(r.min, 0)}</td>${[...SIM_STATS, 'pra'].map(s => `<td>${cellF(P.q[s])}</td>`).join('')}</tr>`; }).join('')}</tbody></table></div></section>`).join('');
 
   // joint odds: two legs, the sim's own both-hit rate against the independent product
@@ -4697,7 +4706,7 @@ function pvDetail(r){
       html: `<p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p>`});
   const mv = (r.books || []).filter(x => x.l0 != null).map(x => x.l0 === x.line && x.o0 === x.o ? `<b>${esc(x.bk)}</b> has not moved since it opened (${x.line}, over ${x.o}).` : `<b>${esc(x.bk)}</b> opened ${x.l0} (over ${x.o0}); now ${x.line} (over ${x.o}).`);
   const news = (B.news || []).filter(n => n[3] === r.tm).slice(0, 3).map(n => `<b>${clock(n[0])} ET</b> ${esc(n[2])}: ${n[4] === 'lu' ? (n[5] === 'X' ? 'inactive (NBA.com)' : 'confirmed starter') : esc(n[5] || '') + ' (injury report)'}`);
-  const head = {name: r.name, ini: initials(r.name), src: phSrc(r.e.p), stat: PV_SL[r.e.s] || r.e.s, game: g ? `${r.tm || ''} vs ${opp} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET` : '',
+  const head = {name: r.name, ini: initials(r.name), src: phSrc(r.e.p), big: onSite ? phBig(r.e.p) : null, wash: teamWash(r.tm), stat: PV_SL[r.e.s] || r.e.s, game: g ? `${r.tm || ''} vs ${opp} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET` : '',
     badges: [fiveS || r.lu === 'S' ? {t: 'Starting five confirmed'} : r.lu === 's' ? {t: 'Expected to start'} : r.lu === 'B' ? {t: 'Bench'} : null, r.inj ? {t: r.inj, warn: true} : null].filter(Boolean),
     proj: fmt(r.mu), range: rg ? `usually ${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : ''};
   const minsHtml = `<div class="pv-mins"><span>Minutes <b>${fmt(mn)}</b></span><div class="pv-mbar"><span class="rng" style="left:${lo / 48 * 100}%;width:${(hi - lo) / 48 * 100}%"></span>${r.min0 ? `<span class="us" style="left:${r.min0 / 48 * 100}%" title="His usual ${fmt(r.min0)}"></span>` : ''}<span class="pt" style="left:${mn / 48 * 100}%"></span></div>
