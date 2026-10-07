@@ -2454,6 +2454,7 @@ const SLABEL = Object.fromEntries(STATS);
 const COMBO = {pra: ['pts','reb','ast'], pr: ['pts','reb'], pa: ['pts','ast'], ra: ['reb','ast']};
 const COUNT = new Set(['reb','ast','3pm']);
 const EDGE_MIN = 0.03;             // the backtest's betting threshold
+const PKN = {prizepicks: 'PrizePicks', underdog: 'Underdog', sleeper: 'Sleeper'};
 const PK_BE = 0.5425;              // pick'em break-even per pick on standard 5- and 6-pick flex entries (flat-payout lines)
 let PS = {board: null, mode: 'none', at: null};
 let boardTried = false, boardTimer = null, showExample = false;
@@ -2837,6 +2838,8 @@ function priceRow(e, cache){
   const gated = r.cands.filter(c => c.g !== 'no-go' && c.edge >= EDGE_MIN).sort((a, b) => b.edge - a.edge);
   r.best = gated[0] || [...r.cands].sort((a, b) => b.edge - a.edge)[0] || null;
   r.passing = gated.some(c => c.g === 'go');
+  // A pick'em line far from the projection is usually a different minutes situation (a preseason rest night, a mismapped market), so it gets no edge: same 40% rule the Best Bets use.
+  r.pkBest = [...r.pkc].filter(c => r.mu > 0 && Math.abs(c.line - r.mu) / r.mu <= .40).sort((a, b) => b.edge - a.edge)[0] || null;   // the pick'em side with the most edge: shown (and sorted on) when a row has no priced bet, never a gated best bet
   r.hold = mm ? rosterHold(r.tm, gm, cache, r.src) : null;
   return r;
 }
@@ -2923,7 +2926,7 @@ function renderProps(){
   let shown = rows.filter(r => (gid === 'all' || String(r.e.g) === gid) && (pf.stat === 'all' || r.e.s === pf.stat)
     && (!q || r.name.toLowerCase().includes(q)) && (!pf.gated || r.passing));
   const tipOf = Object.fromEntries(games.map(g => [String(g.id), g.tip]));
-  shown.sort(pf.sort === 'edge' ? (a, b) => (b.best?.edge ?? -9) - (a.best?.edge ?? -9)
+  shown.sort(pf.sort === 'edge' ? (a, b) => (!!b.best - !!a.best) || ((b.best ? b.best.edge : b.pkBest?.edge ?? -9) - (a.best ? a.best.edge : a.pkBest?.edge ?? -9))   // priced bets first, then pick'em-only rows by their pick'em edge
     : pf.sort === 'proj' ? (a, b) => (b.mu ?? -1) - (a.mu ?? -1)
     : (a, b) => (tipOf[a.e.g] - tipOf[b.e.g]) || a.name.localeCompare(b.name) || STATS.findIndex(x => x[0] === a.e.s) - STATS.findIndex(x => x[0] === b.e.s));
   const favP = new Set(PRO.players.map(String));          // favorite players (Profile) first; the sort is stable, so everyone keeps the order chosen above
@@ -2964,6 +2967,10 @@ function renderProps(){
       <td class="num">${b.venue === 'kalshi' ? Math.round(b.price * 100) + '¢' : b.price}</td>
       <td class="num"><span class="edge ${b.edge > 0 ? 'pos' : 'neg'}">${ec(b.edge)}</span></td>
       <td><span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span></td>`
+      : r.pkBest ? `<td class="l"><span class="betname">${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line}</span></td>
+      <td class="num">${r.pkBest.price != null ? r.pkBest.price : '<span class="muted">flat</span>'}</td>
+      <td class="num"><span class="edge ${r.pkBest.edge > 0 ? 'pos' : 'neg'}" title="Model chance minus ${r.pkBest.price != null ? 'the break-even of this price' : 'the flex-entry break-even (' + (PK_BE * 100).toFixed(1) + '%)'}. Pick\'em lines have no market price to blend with, so this is the model alone: treat it as a lean.">${ec(r.pkBest.edge)}</span></td>
+      <td><span class="gate" title="Pick'em lines are shown, never a gated best bet">PICK'EM</span></td>`
       : `<td class="l"><span class="muted">no price</span></td><td></td><td></td><td></td>`;
     return `<tr class="prow${open ? ' open' : ''}" data-k="${key}" tabindex="0" aria-expanded="${open}">
       <td class="l cutc"><div class="pl">${cutImg(r.e.p, r.name, 52)}<div class="pwho"><b>${esc(r.name)}${favP.has(String(r.e.p)) ? '<span class="yours">Yours</span>' : ''}</b><small>${esc(r.team)}${g ? ` · ${gname(g)} · ${clock(g.tip)}` : ''}${flags ? ' · ' + flags : ''}</small></div></div></td>
