@@ -293,3 +293,29 @@ So the stale target was a real inconsistency, but not one the shipped v2 prices 
 See nba/docs/experiment-log.md section 7. Adding an assumed half-spread to the consensus ladder backtest: 3pm NO holds its ROI to
 3 cents (z falls from 2.80 to 1.15 as fewer bets qualify); points NO is gone at 2 cents. Real spreads are unmeasured (no book in
 the historical archive, almost no live Kalshi prop books yet).
+
+## Addendum 11: NBA calibration check (`nba/scripts/audit_calibration.py`, skill: calibration-check)
+
+2025-26 test season; v2 fit on 2024-25. 42,051 rows: ESPN pre-tip main lines (model vs no-vig price) and Kalshi ladder rungs (model,
+leave-one-out consensus, price). Log loss (ECE in brackets), lower is better:
+
+| Source / stat | Rows | Model | Consensus | Price (market) |
+|---|---|---|---|---|
+| ESPN pts | 884 | 0.6967 (.036) | | 0.6920 (.020) |
+| ESPN pra | 403 | 0.7091 (.084) | | 0.6913 (.053) |
+| ESPN pa | 392 | 0.7056 (.079) | | 0.6902 (.054) |
+| ESPN 3pm | 776 | 0.6778 (.028) | | 0.6715 (.041) |
+| Kalshi pts | 12,563 | 0.5494 (.058) | 0.5239 (.040) | 0.5219 (.034) |
+| Kalshi reb | 9,552 | 0.5639 (.042) | 0.5470 (.022) | 0.5480 (.016) |
+| Kalshi ast | 6,678 | 0.5360 (.026) | 0.5302 (.025) | 0.5289 (.020) |
+| Kalshi 3pm | 8,051 | 0.5200 (.037) | 0.5166 (.040) | 0.5176 (.040) |
+
+Findings:
+- The model alone is worse than the market on every stat and venue (ESPN: all eight stats; Kalshi: pts, reb, ast clearly, 3pm roughly level).
+  Combos (pra, pa) are the worst calibrated (ECE .08). The model is a component of fitted blends, not a standalone probability, and
+  should not be quoted as one. The skill's verdict on the Kalshi model probabilities: manual-review-required (ECE .037).
+- Kalshi structural bias is visible in every price bucket: YES is overpriced by 2.6 to 3.4 points (price 0.250 / hit 0.216; 0.534 / 0.504;
+  0.789 / 0.763). The model errs the other way in the middle (0.482 predicted, 0.504 hit), so a blend of the two beats either, which is
+  most of the NO-side edge. It is also why "price only" recalibration earns part of it (3pm NO +5.2%).
+- Consensus matches or slightly beats the raw price on pts and reb and is flat on ast and 3pm: moving lines adds little beyond the price.
+Not fixed: nothing here changes shipped numbers; it only sizes how much of the edge comes from the model versus the market's bias.
