@@ -715,6 +715,9 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .sn-c.up b{color:var(--up)}.sn-c.warn b{color:var(--warn)}.sn-c.down b{color:var(--down)}
 .pp-strip{padding:10px 14px 4px;border-bottom:1px solid var(--border)}
 .yours{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:9999px;font-size:10.5px;font-weight:600;background:color-mix(in srgb,var(--c-blue) 16%,transparent);color:var(--c-blue);margin-left:6px;vertical-align:1px}
+.favchip{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px 0 8px;border-radius:9999px;border:1px solid color-mix(in srgb,var(--fav,var(--border2)) 45%,var(--border2));background:color-mix(in srgb,var(--fav,transparent) 10%,var(--surface));font-size:12.5px;color:var(--fg);cursor:pointer;white-space:nowrap;transition:border-color .15s ease,background-color .15s ease,transform .16s ease-out;flex:none}
+.favchip:hover{border-color:var(--fav,var(--fg3))}.favchip:active{transform:scale(.97)}.favchip b{font-weight:600;font-family:var(--font-mono);letter-spacing:.02em}.favchip .txt{color:var(--fg2)}
+@media (max-width:900px){ .favchip .txt{display:none}.favchip{padding:0 10px 0 8px} }
 .pro-hero{overflow:hidden}.pro-streak{margin-left:auto;display:grid;gap:8px;justify-items:end;flex:none}.pro-sn{display:flex;align-items:baseline;gap:8px;color:var(--fav,var(--warn))}.pro-sn svg{align-self:center}.pro-sn b{font-family:var(--font-mono);font-size:30px;font-weight:600;letter-spacing:-.04em;color:var(--fg);line-height:1}.pro-sn span{font-size:12.5px;color:var(--fg2)}
 .pro-dots{display:flex;gap:4px}.pro-dots i{width:9px;height:9px;border-radius:3px;background:var(--raised);display:block}.pro-dots i[data-on="true"]{background:var(--fav,var(--up))}.pro-dots i[data-today]{outline:1.5px solid var(--fg3);outline-offset:1.5px}.pro-streak small{color:var(--fg3);font-size:12px}
 @media (max-width:700px){ .pro-h{flex-wrap:wrap}.pro-streak{margin-left:0;justify-items:start} }.pro-badge.logo{background:transparent;width:96px;height:96px;border-radius:0}
@@ -1146,7 +1149,7 @@ th{font-weight:500}
 :root[data-theme="light"] body::after{display:none}
 :root[data-theme="light"] .ev-chip.model{color:var(--fg)}
 /* Sidebar rail, raised active page, breadcrumb, engraved edge (patterns from jubayer910/Admin-panel, in our own look) */
-.title{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;align-items:baseline}.title p{grid-column:1/-1}
+.title{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;align-items:baseline;flex:0 1 auto;min-width:0}.title p{grid-column:1/-1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crumb{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.crumb:not(:empty)::after{content:" /";opacity:.6}
 .sb-a{border:1px solid transparent;box-sizing:border-box}.sb-a:hover{background:rgb(var(--ink) / .05)}
 .sb-a[aria-current="page"]{background:var(--nav-on)!important;border-color:var(--border2);box-shadow:0 1px 0 rgb(var(--ink) / .06) inset,0 1px 3px rgb(var(--shc) / calc(.35 * var(--shk)))}
@@ -1215,6 +1218,7 @@ th{font-weight:500}
         </button>
         <div class="list" id="teamlist" role="listbox" aria-label="Team" tabindex="-1" hidden></div>
       </div>
+      <button class="favchip" id="favchip" type="button" hidden></button>
       <div class="mode" id="mode" hidden></div>
       <button class="iconbtn themebtn" id="themebtn" type="button" aria-label="Switch to light mode" title="Light mode"></button>
       <button class="btn" id="refresh" type="button" hidden title="Start the recorder now and reload the board when it lands">Refresh</button>
@@ -1425,6 +1429,7 @@ th{font-weight:500}
       <section class="card pro-hero" id="prohero"></section>
       <section class="card"><div class="card-h"><div><h2>Favorite team</h2><p>Pick one. Its logo becomes the badge at the top of the sidebar, and its color tints the header edge.</p></div><button class="btn" id="proclear" type="button" hidden>Clear</button></div><div class="card-b"><div class="pro-teams" id="proteams"></div></div></section>
       <div class="two"><section class="card" id="proteam"></section><section class="card" id="proplayers"></section></div>
+      <section class="card" id="prostyle"></section>
       <section class="card" id="probadges"></section>
       <section class="card" id="proprefs"></section>
     </main>
@@ -1770,6 +1775,7 @@ function renderNav(){
   let n = 0; try { n = pvNavCount(); } catch (e) {}
   HK.mount($('hk-side'), 'Sidebar', {pages: PAGES, view, season: `${D.season} · ${(PAGES.flatMap(g => g[1]).find(x => x[3] === view) || [''])[0]}`, pvCount: n, onGo: navGo, collapsed: sideOn(), onToggle: toggleSide, brand: favBrand(), onBrand: () => navGo('profile')});
   const g = PAGES.find(gr => gr[1].some(x => x[3] === view)); $('tcrumb').textContent = g ? g[0] : '';
+  renderChip();
 }
 // Sidebar rail: collapses to icons (desktop only), saved per browser; the first group's label and every name show as a tooltip on hover or focus.
 const sideOn = () => document.documentElement.dataset.side === '1';
@@ -2698,6 +2704,7 @@ async function loadBoard(){
     if (view === 'sim') renderSim();
     if (view === 'control') renderControl();
     if (view === 'profile') renderProfile();
+    renderChip();
     if (view === 'wire') renderWire();
     if (view === 'slate' || view === 'lines') renderSlate();
     if (view === 'sharp') renderSharp();
@@ -3882,6 +3889,7 @@ function renderProfile(){
     <div class="pro-pl">${PRO.players.length ? PRO.players.map(id => { const p = proFindPlayer(id); if (!p) return ''; const g = proGame(p.team, B), n = (B.props || []).filter(e => String(e.p) === String(id)).length;
       return `<div class="pro-p">${cutImg(id, p.name, 56)}<div class="pro-pt"><b>${esc(p.name)}</b><small>${p.team}${g ? ` · ${g.home === p.team ? 'vs' : 'at'} ${g.home === p.team ? g.away : g.home}, ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}` : ' · no game soon'}</small><small>${n ? `${n} ${n === 1 ? 'prop' : 'props'} on the board` : 'no props posted'}</small></div>
         <div class="pro-pa"><button class="btn" type="button" data-pprops="${esc(p.name)}">Props</button><button class="linkbtn" type="button" data-prm="${id}">Remove</button></div></div>`; }).join('') : '<p class="empty">Nobody yet. Start typing a name.</p>'}</div></div>`;
+  $('prostyle').innerHTML = proStyleHtml();
   // badges
   const bd = proBadges();
   $('probadges').innerHTML = `<div class="card-h"><div><h2>Trophy case</h2><p>${bd.filter(b => b[2]).length} of ${bd.length} earned. All of it stays in this browser.</p></div></div><div class="card-b"><div class="pro-bd">${bd.map(([n, h, on]) => `<div class="pro-b" data-on="${on}"><i aria-hidden="true">${on ? '&#10003;' : ''}</i><div><b>${n}</b><small>${h}</small></div></div>`).join('')}</div></div>`;
@@ -3893,6 +3901,43 @@ function renderProfile(){
     <div><span class="muted">Profile</span><button class="btn" type="button" id="proreset">${proReset ? 'Click again to erase it' : 'Reset profile'}</button></div></div>`;
   $('profoot').innerHTML = '<div><b>Where this lives.</b> Your profile is saved in this browser only (nothing is sent anywhere), so it will not follow you to another device.</div>';
 }
+// Header chip: your favorite team's next game, one click to Tonight with that game selected.
+function renderChip(){
+  const el = $('favchip'); if (!el) return;
+  const T = PRO.team; if (!T){ el.hidden = true; return; }
+  let g = null; try { g = proGame(T, pickBoard().board || {}); } catch (e) { /* board not ready */ }
+  const now = Date.now() / 1000, L = lgImg(T, 20);
+  el.hidden = false; el.dataset.g = g ? String(g.id) : '';
+  if (!g){ el.innerHTML = `${L}<b>${T}</b><span class="txt">no game soon</span>`; el.title = 'Open your profile'; return; }
+  const opp = g.home === T ? g.away : g.home, when = g.tip < now ? `started ${clock(g.tip)}` : `${etDay(g.tip) === etDay(now) ? 'today' : etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}`;
+  el.innerHTML = `${L}<b>${T}</b><span class="txt">${g.home === T ? 'vs' : 'at'} ${opp} · ${when}</span>`;
+  el.title = `${D.teams[T] ? D.teams[T].name : T} ${g.home === T ? 'vs' : 'at'} ${D.teams[opp] ? D.teams[opp].name : opp}, ${etFmt(g.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(g.tip)} ET. Open it in Tonight.`;
+}
+$('favchip').addEventListener('click', () => { const id = $('favchip').dataset.g; if (id){ nt.game = id; goView('tonight'); } else goView('profile'); });
+setInterval(renderChip, 60000);
+
+// Betting style: your logged bets read the way My Bets reads them (pvGrp), turned into a short portrait.
+function proStyleHtml(){
+  const S = (pvBets || []).filter(b => b.kind !== 'pair').map(b => ({b})), T = pvGrp(S);
+  if (!S.length) return `<div class="card-h"><div><h2>Betting style</h2><p>How you bet, from the bets you log.</p></div></div><div class="card-b"><p class="empty">Nothing yet. Open a prop on <a href="#props" data-pgo="props">Player Props</a>, find the bet under Ways to bet it and press Log bet; your style shows up here.</p></div>`;
+  const by = f => { const m = {}; for (const x of S) (m[f(x.b)] = m[f(x.b)] || []).push(x); return m; };
+  const stats = Object.entries(by(b => b.s)).map(([k, L]) => [k, pvGrp(L)]).sort((a, b) => b[1].pl - a[1].pl);
+  const overs = S.filter(x => /over|more|yes/i.test(x.b.side || '')).length, oPct = overs / S.length;
+  const chips = [];
+  if (S.length >= 5){
+    chips.push(oPct >= .65 ? `Leans over (${Math.round(oPct * 100)}%)` : oPct <= .35 ? `Leans under (${Math.round((1 - oPct) * 100)}%)` : 'Balanced over and under');
+    const best = stats.find(([, g]) => g.w + g.l >= 3 && g.pl > 0); if (best) chips.push(`Best at ${PV_SL[best[0]] || best[0]}`);
+    if (T.ncl >= 5) chips.push(T.clv >= 0 ? 'Beats the close' : 'Pays up for prices');
+    const calls = S.filter(x => x.b.call === 'bet').length; if (calls / S.length >= .5) chips.push('Follows our Bet calls');
+  }
+  const mine = S.filter(x => PRO.players.map(String).includes(String(x.b.p))), M = mine.length ? pvGrp(mine) : null;
+  const tile = (k, v, h, cls = '') => `<div class="pv-kpi"><small>${k}</small><b class="${cls}">${v}</b><span>${h}</span></div>`;
+  return `<div class="card-h"><div><h2>Betting style</h2><p>${S.length >= 5 ? 'Your portrait, from the bets you have logged.' : `${S.length} ${S.length === 1 ? 'bet' : 'bets'} logged. A style shows after five.`}</p></div><a class="linkbtn" href="#mybets" data-pgo="mybets">See every bet</a></div>
+    <div class="card-b">${chips.length ? `<div class="sn-c-wrap" style="margin-bottom:14px">${chips.map(c => `<span class="sn-c"><b>${esc(c)}</b></span>`).join('')}</div>` : ''}
+    <div class="pv-kpis">${tile('Bets', T.n, T.open ? `${T.open} still open` : 'all settled')}${tile('Record', `${T.w}-${T.l}`, 'wins and losses')}${tile('Profit', pvMoney(T.pl), T.roi == null ? 'nothing settled yet' : `${pvSg(T.roi)} of staked`, T.pl >= 0 ? 'pos' : 'neg')}${tile('Closing-line value', T.clv == null ? '-' : pvSg(T.clv), 'average per bet', T.clv == null ? '' : T.clv >= 0 ? 'pos' : 'neg')}</div>
+    ${stats.length ? `<div class="nt-tw" style="margin-top:14px"><table class="nt" style="min-width:0"><thead><tr><th class="l">By stat</th><th>Bets</th><th>Record</th><th>Profit</th></tr></thead><tbody>${stats.map(([k, g]) => `<tr><td class="l">${esc(PV_SL[k] || k)}</td><td>${g.n}</td><td>${g.w}-${g.l}</td><td class="${g.pl >= 0 ? 'pos' : 'neg'}">${pvMoney(g.pl)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    ${M ? `<p class="pv-note" style="margin-top:12px">On your favorite players: ${M.n} ${M.n === 1 ? 'bet' : 'bets'}, ${M.w}-${M.l}, ${pvMoney(M.pl)}.</p>` : ''}</div>`;
+}
 function proChanged(){ proSave(); applyFav(); renderNav(); renderProfile(); }
 $('v-profile').addEventListener('input', e => { if (e.target.id === 'proname'){ PRO.name = e.target.value.slice(0, 24); proSave(); } });
 $('v-profile').addEventListener('change', e => {
@@ -3900,7 +3945,8 @@ $('v-profile').addEventListener('change', e => {
   if (e.target.id === 'proadd'){ const p = proPlayerIndex()[e.target.value.trim().toLowerCase()];
     if (p && !PRO.players.map(String).includes(String(p.id)) && PRO.players.length < PRO_MAX_PLAYERS){ PRO.players.push(p.id); proChanged(); } else e.target.value = ''; } });
 $('v-profile').addEventListener('click', e => {
-  const t = e.target.closest('button'); if (!t) return;
+  const t = e.target.closest('button, a[data-pgo]'); if (!t) return;
+  if (t.dataset.pgo && t.tagName === 'A'){ e.preventDefault(); goView(t.dataset.pgo); return; }
   if (t.dataset.t){ PRO.team = PRO.team === t.dataset.t ? null : t.dataset.t; proChanged(); }
   else if (t.id === 'proclear'){ PRO.team = null; proChanged(); }
   else if (t.dataset.prm){ PRO.players = PRO.players.filter(x => String(x) !== t.dataset.prm); proChanged(); }
