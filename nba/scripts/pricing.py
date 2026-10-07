@@ -508,6 +508,9 @@ def edge_types(c, others_t, news_t, now):
     return out
 
 
+STOCKS = {'stl', 'blk', 'tov', 'sb'}    # prop_model_stocks.json: priced on the page only
+
+
 def price_board(board, pricer=None):
     """Every candidate on a board -> list of dicts with player, stat, game, the priceRow fields and edge types."""
     pricer = pricer or Pricer(example=bool(board.get('example')))
@@ -519,6 +522,8 @@ def price_board(board, pricer=None):
         if n[0]:
             news.setdefault(n[3], []).append(n[0])
     for e in board.get('props', []):
+        if e['s'] in STOCKS:        # steals / blocks / turnovers: shown on the page, never logged as bets (always NO-GO)
+            continue
         g = games.get(str(e['g']))
         P = (board.get('players') or {}).get(str(e['p'])) or (board.get('players') or {}).get(e['p'])
         r = pricer.price(e, g, cache, outs, P[1] if P else None, status)

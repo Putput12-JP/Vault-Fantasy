@@ -1769,7 +1769,7 @@ function project(team, m){
   const res = {};
   for (const p of T.players){
     const mu = {};
-    for (const s of ['pts','reb','ast','3pm','stl','blk']){
+    for (const s of ['pts','reb','ast','3pm','stl','blk','tov']){
       let v = m[p.id] * p.rate[s];
       const c = D.cascade[s];
       if (c && c.use && out.length && m[p.id] > 0){
@@ -2449,11 +2449,15 @@ function renderTimeline(polls, ref){
 // -> P(over) from the fitted spread (negative binomial for counts, normal otherwise) -> calibration -> blend with the
 // market price using weights fit on held-out games. Edge = fair chance minus the break-even chance of the price you
 // would pay (Kalshi: ask plus taker fee; books: the price as quoted, vig included).
-const STATS = [['all','All'],['pts','PTS'],['reb','REB'],['ast','AST'],['3pm','3PM'],['pra','PRA'],['pr','P+R'],['pa','P+A'],['ra','R+A']];
+const STATS = [['all','All'],['pts','PTS'],['reb','REB'],['ast','AST'],['3pm','3PM'],['pra','PRA'],['pr','P+R'],['pa','P+A'],['ra','R+A'],['stl','STL'],['blk','BLK'],['tov','TO'],['sb','STL+BLK']];
 const SLABEL = Object.fromEntries(STATS);
-const COMBO = {pra: ['pts','reb','ast'], pr: ['pts','reb'], pa: ['pts','ast'], ra: ['reb','ast']};
-const COUNT = new Set(['reb','ast','3pm']);
+const COMBO = {pra: ['pts','reb','ast'], pr: ['pts','reb'], pa: ['pts','ast'], ra: ['reb','ast'], sb: ['stl','blk']};
+const COUNT = new Set(['reb','ast','3pm','stl','blk','tov','sb']);
+const STOCKS = new Set(['stl','blk','tov','sb']);   // steals, blocks, turnovers, steals + blocks: priced by the model alone, never a gated bet (build_prop_model_stocks.py)
 const EDGE_MIN = 0.03;             // the backtest's betting threshold
+// Steals / blocks / turnovers have no fitted market blend (no prior season of main lines to fit it on): lean on the book's price, with the model as a minor voice.
+// The backtest scorecard (data/prop_model_stocks.json) has the model level with the closing line on steals and behind it on blocks.
+const STOCK_BLEND = {a: 0, wm: .7, wp: .3};
 const PKN = {prizepicks: 'PrizePicks', underdog: 'Underdog', sleeper: 'Sleeper'};
 const PK_BE = 0.5425;              // pick'em break-even per pick on standard 5- and 6-pick flex entries (flat-payout lines)
 let PS = {board: null, mode: 'none', at: null};
@@ -2654,8 +2658,9 @@ function gameMinutes(team, g, cache){
   const present = cand.map(a => S(a).r), res = {};
   for (const a of cand){
     const pos = S(a).ms[2], rates = S(a).r, mu = {};
-    for (const s of ['pts', 'reb', 'ast', '3pm']){
-      const rate = rates[s], c = M.cascade[s];
+    for (const s of ['pts', 'reb', 'ast', '3pm', 'stl', 'blk', 'tov']){
+      const rate = rates[s]; if (rate == null) continue;   // steals / blocks / turnovers: no usage cascade, and no rate in last season's example state
+      const c = M.cascade[s];
       if (c && c.use){
         let vs = 0, vo = 0;
         for (const b of Object.keys(out).map(Number)){ if (!S(b).pg || b === a || !rot[b]) continue; if (rot[b][2] === pos) vs += S(b).pg[s]; else vo += S(b).pg[s]; }
@@ -2788,7 +2793,7 @@ function priceRow(e, cache){
   const gm = (PS.board.games || []).find(x => String(x.id) === String(e.g));
   const mm = muFor(e.p, e.s, cache, gm, P[1]);
   const r = {e, name: P[0], team: P[1], inj: P[2], lu: P[3], tm: mm && mm.team, extra: mm && mm.extra, src: mm && mm.src, mu: mm && mm.mu, min: mm && mm.min, min0: mm && mm.min0, build: mm && mm.build, v2: mm && mm.v2, cands: []};
-  const kc = PR.kalshi[e.s] || PR.book[e.s], bc = PR.book[e.s];
+  const kc = PR.kalshi[e.s] || PR.book[e.s] || (STOCKS.has(e.s) ? STOCK_BLEND : undefined), bc = PR.book[e.s] || (STOCKS.has(e.s) ? STOCK_BLEND : undefined);
   const model = line => mm && mm.min > 0 ? cal(e.s, pOverRaw(e.s, mm.mu, line, mm.extra)) : null;
   // books: fair over at each book's line
   r.books = e.books.map(([bk, line, o, u, l0, o0, t, dp]) => {
@@ -2992,6 +2997,7 @@ function renderProps(){
   $('pfoot').innerHTML = `
     <div><b>Projection</b> is prop model ${PR.model}: tonight's minutes from the minutes model (recent minutes, teammates out, blowout risk from the spread, back-to-backs, the team total), exactly as the backtest ran it, × the model's per-minute rates, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread. A team you edit in the Minutes Lab uses your minutes instead, and a player with no games yet for his current team (a trade, a rookie) uses the Lab's estimate. <b>On hold</b>: that player, and every player on a team the minutes model projects with fewer than ${HOLD_MIN_PLAYERS} players or with anyone at ${HOLD_MAX_MIN}+ minutes (in the backtest those teams ran 2 to 4 minutes too high), is priced and shown but never a Bet or Lean, an edge, a pick'em leg or a Track Record bet, until the new players have a game with the team.</div>
     <div><b>Model</b> is the chance of going over, calibrated on 2024-25 lines. <b>Fair</b> blends the market price with the model; the market carries most of the weight. <b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig.</div>
+    <div><b>Steals, blocks, turnovers, steals + blocks</b> are priced by the same projection (minutes × per-minute rate, no usage cascade) with a count distribution fit on 2023-25. They are <b>not backtested like the rest</b>: ESPN's steals and blocks main lines only start in 2025-26, turnovers and steals + blocks have no book history, and Kalshi lists none. On 2025-26 closing lines the model matched the book on steals (Brier ${PR.stocks ? PR.stocks.espn_2026.stl.brier_model : ''} vs ${PR.stocks ? PR.stocks.espn_2026.stl.brier_market : ''}) and trailed it on blocks (${PR.stocks ? PR.stocks.espn_2026.blk.brier_model : ''} vs ${PR.stocks ? PR.stocks.espn_2026.blk.brier_market : ''}). So Fair leans on the book's price (70%) and these are always NO-GO: shown for the lines and the lean, never a gated bet.</div>
     <div><b>Gates</b> (2025-26 backtest, blend vs the price-only baseline): GO ${gos.join(', ') || 'none'}; WATCH ${watch.join(', ') || 'none'}; sportsbook props NO-GO. Nothing is bet for real until a signal passes on this season's games. Players listed Out on the injury report or Inactive on NBA.com get 0 minutes and their teammates are repriced automatically, unless you have edited that team in the Minutes Lab. Questionable and Doubtful players keep their minutes.</div>`;
   pvShow();
 }
@@ -3004,7 +3010,7 @@ const GL = /*LOGS*/null;
 const WINS = ['L5', 'L10', 'L20', 'SZN', 'H2H'];
 const WLABEL = {L5: 'L5', L10: 'L10', L20: 'L20', SZN: 'Season', H2H: 'H2H'};
 let pwin = 'L10';
-const GI = {pts: 6, reb: 7, ast: 8, '3pm': 9};
+const GI = {pts: 6, reb: 7, ast: 8, '3pm': 9, stl: 10, blk: 11, tov: 12};
 const gval = (g, s) => COMBO[s] ? COMBO[s].reduce((a, x) => a + g[GI[x]], 0) : g[GI[s]];
 const seasonLabel = y => `${y - 1}-${String(y).slice(2)}`;
 function logsOf(r){
@@ -4987,9 +4993,9 @@ $('v-backtests').addEventListener('click', e => {
 // is what it is (exactly the projection), recent games read honestly (build_hit_rates.py), and timing. Everything is
 // priced by priceRow, the same code as the Full board tab and Edges. Vocabulary matches What Works and Edges.
 let pv = {tab: 'v2', preset: 'passed', stat: 'all', game: 'all', sort: 'trust', q: '', sel: null, allWays: false, logIdx: null};
-const PV_NOUN = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': 'threes', pra: 'pts + reb + ast', pr: 'pts + reb', pa: 'pts + ast', ra: 'reb + ast'};
-const PV_SL = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast'};
-const PV_SS = {pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM', pra: 'PRA', pr: 'P+R', pa: 'P+A', ra: 'R+A'};
+const PV_NOUN = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': 'threes', pra: 'pts + reb + ast', pr: 'pts + reb', pa: 'pts + ast', ra: 'reb + ast', stl: 'steals', blk: 'blocks', tov: 'turnovers', sb: 'steals + blocks'};
+const PV_SL = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast', stl: 'Steals', blk: 'Blocks', tov: 'Turnovers', sb: 'Steals + Blocks'};
+const PV_SS = {pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM', pra: 'PRA', pr: 'P+R', pa: 'P+A', ra: 'R+A', stl: 'STL', blk: 'BLK', tov: 'TO', sb: 'STL+BLK'};
 const pvOver = c => c.side === 'Over' || c.side === 'YES';
 const pvK = l => `${Math.ceil(l)}+`;
 const pvCost = c => c.fair - c.edge;                                   // per $1 of payout, fees and vig in (edge = fair - cost)
@@ -5320,8 +5326,8 @@ function pvDetail(r){
 // Alerts compare each refresh of the board with what the prop looked like when last checked; they land in the Alerts
 // list here and in a count on the nav. Bets settle from closes.json on nba-data (ledger.closes_record: each prop's
 // closing prices and the box score), or from the game logs when that file cannot be reached.
-const PV_ONE = {pts: 'point', reb: 'rebound', ast: 'assist', '3pm': 'three'};
-const PV_BOXI = {pts: [0], reb: [1], ast: [2], '3pm': [3], pra: [0, 1, 2], pr: [0, 1], pa: [0, 2], ra: [1, 2]};
+const PV_ONE = {pts: 'point', reb: 'rebound', ast: 'assist', '3pm': 'three', stl: 'steal', blk: 'block', tov: 'turnover'};
+const PV_BOXI = {pts: [0], reb: [1], ast: [2], '3pm': [3], pra: [0, 1, 2], pr: [0, 1], pa: [0, 2], ra: [1, 2], stl: [4], blk: [5], tov: [6], sb: [4, 5]};
 const PV_WT = [['edge', 'its edge reaches 3% or goes away'], ['line', 'a line moves a point'], ['sharp', 'sharp money shows up'], ['news', 'news on him or his team']];
 let pvW = store.get('nba-watch') || {};
 let pvA = store.get('nba-alerts') || [];
@@ -5467,7 +5473,7 @@ function pvGrade(b, bx){                                  // bx: [pts, reb, ast,
 function pvGlBox(b){                                       // the game logs' line for that day, when the page has them
   if (!GL || !b.day) return undefined;
   const d = Math.floor(Date.parse(b.day + 'T00:00Z') / 864e5), row = (GL.players[b.p] || []).find(x => x[0] === d);
-  if (row) return row[5] > 0 ? [row[6], row[7], row[8], row[9]] : null;
+  if (row) return row[5] > 0 ? [row[6], row[7], row[8], row[9], row[10], row[11], row[12]] : null;
   return GL.through && GL.through >= b.day ? null : undefined;
 }
 const pvCloses = {};

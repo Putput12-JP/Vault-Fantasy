@@ -40,7 +40,40 @@ def consensus_params():
             'generated': cb['generated']}
 
 
+def stocks():
+    """Steals, blocks, turnovers and steals + blocks (build_prop_model_stocks.py): variance and a standing NO-GO, plus a plain
+    scorecard against ESPN's 2025-26 closing lines. Merged into the pricing and model state so the page prices them like any stat."""
+    return load('prop_model_stocks.json')
+
+
+def with_stocks(d):
+    st = stocks()
+    if d and st:
+        d['variance'] = {**d['variance'], **st['variance']}
+        d['verdict'] = {**d.get('verdict', {}), **st['verdict']}
+        d['stocks'] = {'accuracy': st['accuracy'], 'espn_2026': st['espn_2026'], 'why': st['why']}
+    return d
+
+
+def model_state():
+    m = load('model_state.json')
+    st = stocks()
+    if m and st:                        # per-minute steal / block / turnover rates ride in each player's rate state
+        for side in ('live', 'example'):
+            for pid, p in ((m.get(side) or {}).get('players') or {}).items():
+                extra = st['rates'].get(str(pid))
+                if extra and p.get('r'):
+                    p['r'].update(extra)
+                if extra and p.get('rate'):
+                    p['rate'].update(extra)
+    return m
+
+
 def pricing():
+    return with_stocks(pricing_base())
+
+
+def pricing_base():
     """What the page needs to price a prop the way the backtest did. Prop model v2 when it has been built
     (build_prop_model_v2.py): stacker weights, variance with the minutes term, calibration, and blend weights fit
     on all the priced history (Kalshi 2025-26, ESPN 2024-25 open + 2025-26 close). Else v1's held-out blend."""
@@ -107,7 +140,7 @@ def render():
                .replace('/*BOARD*/null', json.dumps(load('prop_board.json'), separators=(',', ':')))
                .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':')))
                .replace('/*TRACK*/null', json.dumps(load('track.json'), separators=(',', ':')))
-               .replace('/*STATE*/null', json.dumps(load('model_state.json'), separators=(',', ':')))
+               .replace('/*STATE*/null', json.dumps(model_state(), separators=(',', ':')))
                .replace('/*BACKTESTS*/null', json.dumps(load('backtests.json'), separators=(',', ':')))
                .replace('/*PICKEM*/null', json.dumps(pickem(), separators=(',', ':')))
                .replace('/*CONTROL*/null', json.dumps(control(), separators=(',', ':')))
