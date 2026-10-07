@@ -714,6 +714,7 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .sn-c-wrap{display:flex;flex-wrap:wrap;gap:6px}.sn-c{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;padding:4px 10px;border-radius:var(--r-pill);background:var(--raised);color:var(--fg2);font-size:12.5px}.sn-c b{font-weight:600;color:var(--fg)}
 .sn-c.up b{color:var(--up)}.sn-c.warn b{color:var(--warn)}.sn-c.down b{color:var(--down)}
 .pp-strip{padding:10px 14px 4px;border-bottom:1px solid var(--border)}
+.pro-hero{overflow:hidden}.pro-badge.logo{background:transparent;width:96px;height:96px;border-radius:0}
 .pro-h{display:flex;align-items:center;gap:20px;padding:22px 24px;background:color-mix(in srgb,var(--tc,transparent) 18%,var(--surface))}
 .pro-badge{width:84px;height:84px;border-radius:20px;background:var(--raised);display:grid;place-items:center;flex:none;font-weight:700;color:var(--fg2)}.pro-badge img{display:block}
 .pro-who{display:grid;gap:6px;min-width:0}.pro-who small{color:var(--fg3);font-size:12.5px}.pro-name{width:min(320px,100%);height:40px;font-size:16px;font-weight:600}
@@ -3841,7 +3842,7 @@ function renderProfile(){
   // hero
   const since = PRO.since ? etFmt(Date.parse(PRO.since + 'T12:00:00Z') / 1000, {month: 'short', day: 'numeric', year: 'numeric'}) : '';
   $('prohero').innerHTML = `<div class="pro-h" ${col ? `style="--tc:${col}"` : ''}>
-    <div class="pro-badge">${brand ? `<img src="${brand.logo}" alt="${esc(brand.name)} logo" width="72" height="72">` : '<span>NBA</span>'}</div>
+    <div class="pro-badge${brand ? ' logo' : ''}">${brand ? `<img src="${brand.logo}" alt="${esc(brand.name)} logo" width="92" height="92">` : '<span>NBA</span>'}</div>
     <div class="pro-who"><label class="muted" for="proname">Your name</label><input class="pfind pro-name" id="proname" type="text" maxlength="24" placeholder="What should we call you?" value="${esc(PRO.name)}" autocomplete="off">
       <small>${brand ? `${esc(brand.name)} fan` : 'No favorite team yet'} · here since ${since} · ${PRO.visits.length} ${PRO.visits.length === 1 ? 'day' : 'days'} visited</small></div></div>`;
   // team grid
@@ -4718,6 +4719,8 @@ function renderPropsV2(){
   L.sort(pv.sort === 'edge' ? (a, b) => (b.best ? b.best.edge : -1) - (a.best ? a.best.edge : -1)
     : pv.sort === 'name' ? (a, b) => a.name.localeCompare(b.name) || a.e.s.localeCompare(b.e.s)
     : (a, b) => a.trust - b.trust || (b.best ? b.best.edge : -1) - (a.best ? a.best.edge : -1));
+  const favP = new Set(PRO.players.map(String));          // your favorite players (Profile) lead the list, in the same order as everyone else
+  if (favP.size) L = [...L.filter(r => favP.has(String(r.e.p))), ...L.filter(r => !favP.has(String(r.e.p)))];
   const stats = ['all', ...new Set(rows.map(r => r.e.s))];
   pv.tp = {presets: PV_PRESETS.map(([k, l, fn]) => ({k, l, n: rows.filter(fn).length})), preset: pv.preset,
     stats: stats.map(x => ({s: x, l: x === 'all' ? 'All' : PV_SS[x] || x})), stat: pv.stat,
@@ -4737,7 +4740,7 @@ function renderPropsV2(){
         where: r.hold ? (r.hold.why === 'preseason' ? 'On hold: preseason' : 'On hold: roster changed') : r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`,
         edge: r.verdict !== 'pass' ? `+${pc(b.edge, 1)}` : null,
         shp: sh.vs ? {t: sh.vs, strong: true} : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? {t: sh.lean} : null,
-        watch: !!pvW[key(r)], logged: pvBets.some(x => x.k === key(r))}; }),
+        watch: !!pvW[key(r)], fav: favP.has(String(r.e.p)), logged: pvBets.some(x => x.k === key(r))}; }),
     empty: !rows.length ? 'No player props listed yet. Kalshi lists them the morning of a game.' : pv.preset === 'pickem' ? "No pick'em edges right now: PrizePicks, Underdog and Sleeper post lines on game days." : 'Nothing matches.',
     onSelect: k => { pv.sel = k; pv.allWays = false; pv.logIdx = null; renderPropsV2();
       if (window.innerWidth <= 1000) $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'}); }});

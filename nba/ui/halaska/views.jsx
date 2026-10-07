@@ -218,7 +218,7 @@ function PropsList(p) {
             <span style={{ flex: 1, minWidth: 0, padding: '10px 0' }}><Text size="md" weight="semibold">{r.name}</Text><div><Dim>{r.stat} · proj {r.proj}{r.where ? ' · ' + r.where : ''}</Dim></div></span>
             <span style={{ textAlign: 'right', display: 'grid', gap: 3, justifyItems: 'end', padding: '10px 0' }}>
               <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                {r.watch && <span title="Watching" style={{ color: pal.warning }}>★</span>}{r.logged && <Badge>Logged</Badge>}
+                {r.fav && <Badge variant="accent" style={{ textTransform: 'none', letterSpacing: 0 }}>Yours</Badge>}{r.watch && <span title="Watching" style={{ color: pal.warning }}>★</span>}{r.logged && <Badge>Logged</Badge>}
                 <Badge variant={r.verdict === 'bet' ? 'success' : r.verdict === 'lean' ? 'warning' : 'default'}>{r.verdict}</Badge>
               </span>
               {r.edge ? <Tone tone="pos" weight="medium">{r.edge}</Tone> : <Dim size="xs">no edge</Dim>}
