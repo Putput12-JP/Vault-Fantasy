@@ -77,6 +77,25 @@ def pickem():
             'near': [fam(r) for r in rows if r['candidate'] and not r['pass']]}
 
 
+def control():
+    """Control Room page: the frozen models, the pre-registered tests with their dates, and past verdicts. Run history is fetched live by the page."""
+    fz = lambda name: (lambda d: d and {'fingerprint': d['fingerprint'][:12], 'games': d.get('games'), 'rows': d.get('rows') or d.get('legs')})(load(name))
+    v = lambda name: (lambda d: d and d.get('verdict'))(load(name))
+    return {'repo': 'Putput12-JP/Vault-Fantasy',
+            'frozen': [{'name': 'Dependence model (step A2)', 'what': 'Latent correlations between props, fit on 2024-25 and 2025-26', 'doc': 'nba/docs/copula-fit-a2.md', **(fz('copula_frozen.json') or {})},
+                       {'name': 'Game-script minutes model (step B3)', 'what': 'Minutes tied to the game score, overtime and a team shock', 'doc': 'nba/docs/game-script-minutes-b3.md', **(fz('game_script_frozen.json') or {})}],
+            'milestones': [
+                {'date': '2026-10-20', 'title': 'Opening night', 'what': "Regular season starts. The regular-season record begins; the dependence and minutes models are already frozen.", 'doc': 'nba/docs/game-simulation.md'},
+                {'date': '2026-10-21', 'title': 'Opening-night check', 'what': "Review of pick'em mappings, the injury report, the Injury Wire, starting fives, roster holds and season-record routing.", 'doc': None},
+                {'date': '2026-11-09', 'title': 'Dependence test (step A2)', 'what': 'Scores the frozen correlations on the first 150 regular-season games. GO needs z of 2.4 and the slope rule.', 'doc': 'nba/docs/copula-fit-a2.md'},
+                {'date': '2026-11-16', 'title': 'Minutes test (step B3)', 'what': 'Scores the frozen minutes model on the first 200 regular-season games; all four rules must hold.', 'doc': 'nba/docs/game-script-minutes-b3.md'},
+                {'date': '2026-11-20', 'title': 'Minutes v3 shadow review', 'what': "Compares the v3 minutes model's shadow record against v2.", 'doc': 'nba/docs/minutes-model-v3.md'}],
+            'results': [{'name': 'Dependence fit, step A', 'verdict': v('copula_corr.json'), 'note': 'prices were biased; fixed in A2', 'doc': 'nba/docs/copula-fit-results.md'},
+                        {'name': 'Minutes tied to the margin, step B', 'verdict': v('game_script_minutes.json'), 'note': 'missed overtime and the team shock', 'doc': 'nba/docs/game-script-minutes-results.md'},
+                        {'name': 'Overtime and team shock, step B2', 'verdict': v('game_script_minutes_b2.json'), 'note': 'missed one check by 0.009; B3 fixes the bench floor', 'doc': 'nba/docs/game-script-minutes-b2-results.md'},
+                        {'name': "Correlated pick'em pairs", 'verdict': (pickem() or {}).get('verdict'), 'note': 'two families passed', 'doc': 'nba/docs/pickem-correlation-results.md'}]}
+
+
 def render():
     tpl = open(os.path.join(HERE, '..', 'ui', 'projections.template.html')).read()
     hk = os.path.join(HERE, '..', 'ui', 'halaska', 'dist.js')
@@ -91,6 +110,7 @@ def render():
                .replace('/*STATE*/null', json.dumps(load('model_state.json'), separators=(',', ':')))
                .replace('/*BACKTESTS*/null', json.dumps(load('backtests.json'), separators=(',', ':')))
                .replace('/*PICKEM*/null', json.dumps(pickem(), separators=(',', ':')))
+               .replace('/*CONTROL*/null', json.dumps(control(), separators=(',', ':')))
                .replace('/*PHOTOS*/null', json.dumps(load('photos.json'), separators=(',', ':'))))
     out = os.path.join(HERE, '..', 'projections.html')
     open(out, 'w').write(html)
