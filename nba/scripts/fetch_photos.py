@@ -6,7 +6,7 @@ external images, so anything it shows has to ride inside the file).
   players  each team's top ROSTER_N by minutes (data/player_projections.json min0) at 96x70 (cutouts shown without a chip, up to ~60 px tall), from ESPN's image service
            (a.espncdn.com, keyed by the same ESPN athlete id the whole app uses). Everyone else shows initials; on the
            website (where external images load) the page falls back to ESPN's URL for them.
-  teams    all 30 logos at 48x48.
+  teams    all 30 logos at 160x160.
 
 Only missing images are downloaded: an existing data/photos.json is kept, entries for players who left the top set are
 dropped, so the daily job costs a handful of requests.
@@ -25,7 +25,8 @@ HEAD_W, HEAD_H = 96, 70            # everyone in the top ROSTER_N
 HQ_N, HQ_W, HQ_H = 4, 192, 140    # each team's top HQ_N get a sharper copy (the big header, retina lists)
 HEAD = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/{}.png&w=%d&h=%d'
 SPEC = f'{HEAD_W}x{HEAD_H}+top{HQ_N}@{HQ_W}x{HQ_H}'
-LOGO = 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/{}.png&w=48&h=48'
+LOGO_PX = 160                      # shown from 16 px (headers) to 92 px (the profile), so keep plenty of pixels for retina screens
+LOGO = 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/{}.png&w=%d&h=%d' % (LOGO_PX, LOGO_PX)
 
 
 def alpha_bbox(png):
@@ -97,6 +98,8 @@ def main():
             if i < HQ_N:
                 hq.add(str(p['id']))
     old = json.load(open(OUT)) if os.path.exists(OUT) else {'heads': {}, 'logos': {}}
+    if old.get('lspec') != LOGO_PX:
+        old['logos'] = {}
     if old.get('spec') != SPEC:      # the image size changed: refetch every headshot
         old['heads'] = {}
     heads = {k: v for k, v in old.get('heads', {}).items() if k in want}
@@ -119,7 +122,7 @@ def main():
             f = None
         if f:
             fit[k] = f
-    json.dump({'spec': SPEC, 'heads': heads, 'hq': sorted(k for k in hq if k in heads), 'fit': fit, 'logos': logos, 'colors': team_colors()}, open(OUT, 'w'), separators=(',', ':'), sort_keys=True)
+    json.dump({'spec': SPEC, 'lspec': LOGO_PX, 'heads': heads, 'hq': sorted(k for k in hq if k in heads), 'fit': fit, 'logos': logos, 'colors': team_colors()}, open(OUT, 'w'), separators=(',', ':'), sort_keys=True)
     print(f"photos: {len(heads)} headshots ({len(todo)} fetched, {len([k for k in todo if k not in heads])} without a photo), "
           f"{len(logos)} logos ({len(miss)} fetched) -> data/photos.json {os.path.getsize(OUT) // 1024} KB")
 
