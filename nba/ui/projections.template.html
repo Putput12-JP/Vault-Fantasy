@@ -715,7 +715,9 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .sn-c.up b{color:var(--up)}.sn-c.warn b{color:var(--warn)}.sn-c.down b{color:var(--down)}
 .pp-strip{padding:10px 14px 4px;border-bottom:1px solid var(--border)}
 .yours{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:9999px;font-size:10.5px;font-weight:600;background:color-mix(in srgb,var(--c-blue) 16%,transparent);color:var(--c-blue);margin-left:6px;vertical-align:1px}
-.pro-hero{overflow:hidden}.pro-badge.logo{background:transparent;width:96px;height:96px;border-radius:0}
+.pro-hero{overflow:hidden}.pro-streak{margin-left:auto;display:grid;gap:8px;justify-items:end;flex:none}.pro-sn{display:flex;align-items:baseline;gap:8px;color:var(--fav,var(--warn))}.pro-sn svg{align-self:center}.pro-sn b{font-family:var(--font-mono);font-size:30px;font-weight:600;letter-spacing:-.04em;color:var(--fg);line-height:1}.pro-sn span{font-size:12.5px;color:var(--fg2)}
+.pro-dots{display:flex;gap:4px}.pro-dots i{width:9px;height:9px;border-radius:3px;background:var(--raised);display:block}.pro-dots i[data-on="true"]{background:var(--fav,var(--up))}.pro-dots i[data-today]{outline:1.5px solid var(--fg3);outline-offset:1.5px}.pro-streak small{color:var(--fg3);font-size:12px}
+@media (max-width:700px){ .pro-h{flex-wrap:wrap}.pro-streak{margin-left:0;justify-items:start} }.pro-badge.logo{background:transparent;width:96px;height:96px;border-radius:0}
 .pro-h{display:flex;align-items:center;gap:20px;padding:22px 24px;background:color-mix(in srgb,var(--tc,transparent) 18%,var(--surface))}
 .pro-badge{width:84px;height:84px;border-radius:20px;background:var(--raised);display:grid;place-items:center;flex:none;font-weight:700;color:var(--fg2)}.pro-badge img{display:block}
 .pro-who{display:grid;gap:6px;min-width:0}.pro-who small{color:var(--fg3);font-size:12.5px}.pro-name{width:min(320px,100%);height:40px;font-size:16px;font-weight:600}
@@ -1556,6 +1558,11 @@ const PRO = Object.assign({name: '', team: null, players: [], since: null, visit
 const proSave = () => store.set('nba-profile', PRO);
 const proDay = () => new Intl.DateTimeFormat('en-CA', {timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
 { const d = proDay(); if (!PRO.since) PRO.since = d; if (!PRO.visits.includes(d)) PRO.visits = [...PRO.visits, d].slice(-90); proSave(); }
+// Streak: consecutive days (Eastern) you opened the app, counted back from today; the best one is kept even after old days drop out of the 90-day list.
+const proPrev = day => new Date(Date.parse(day + 'T12:00:00Z') - 86400000).toISOString().slice(0, 10);
+function proStreak(visits, today){ const v = new Set(visits); let n = 0, d = today; while (v.has(d)){ n++; d = proPrev(d); } return n; }
+function proBest(visits){ const v = [...new Set(visits)].sort(); let best = 0, run = 0, prev = null; for (const d of v){ run = prev && proPrev(d) === prev ? run + 1 : 1; best = Math.max(best, run); prev = d; } return best; }
+PRO.best = Math.max(PRO.best || 0, proBest(PRO.visits)); proSave();
 const favBrand = () => PRO.team && PH && PH.logos && PH.logos[PRO.team] ? {logo: PH.logos[PRO.team], team: PRO.team, name: D.teams[PRO.team] ? D.teams[PRO.team].name : PRO.team} : null;
 function applyFav(){ const c = PRO.team ? teamWash(PRO.team) : ''; const r = document.documentElement; if (c) r.style.setProperty('--fav', c); else r.style.removeProperty('--fav'); }
 applyFav();
@@ -3836,7 +3843,9 @@ function proBadges(){
     ['Scout', 'Follow 3 players', PRO.players.length >= 3],
     ['First ticket', 'Log your first bet', bets >= 1],
     ['On watch', 'Watch 3 props', watch >= 3],
-    ['Regular', 'Visit on 3 different days', PRO.visits.length >= 3]];
+    ['Regular', 'Visit on 3 different days', PRO.visits.length >= 3],
+    ['On a roll', 'Open the app 3 days in a row', (PRO.best || 0) >= 3],
+    ['Locked in', 'Open the app 7 days in a row', (PRO.best || 0) >= 7]];
 }
 function renderProfile(){
   const pick = pickBoard(); PS.board = pick.board; const B = pick.board || {}, now = Date.now() / 1000;
@@ -3848,6 +3857,8 @@ function renderProfile(){
     <div class="pro-badge${brand ? ' logo' : ''}">${brand ? `<img src="${brand.logo}" alt="${esc(brand.name)} logo" width="92" height="92">` : '<span>NBA</span>'}</div>
     <div class="pro-who"><label class="muted" for="proname">Your name</label><input class="pfind pro-name" id="proname" type="text" maxlength="24" placeholder="What should we call you?" value="${esc(PRO.name)}" autocomplete="off">
       <small>${brand ? `${esc(brand.name)} fan` : 'No favorite team yet'} · here since ${since} · ${PRO.visits.length} ${PRO.visits.length === 1 ? 'day' : 'days'} visited</small></div></div>`;
+  const streak = proStreak(PRO.visits, proDay()), vset = new Set(PRO.visits); let dd = proDay(); const days14 = []; for (let i = 0; i < 14; i++){ days14.unshift(dd); dd = proPrev(dd); }
+  $('prohero').querySelector('.pro-h').insertAdjacentHTML('beforeend', `<div class="pro-streak" title="Days in a row you opened the app"><div class="pro-sn"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.8 3.2 4.2 4.6 4.2 8.4a4.2 4.2 0 0 1-8.4 0c0-1.6.6-2.7 1.6-3.8.3 1 .9 1.6 1.6 1.8C11 7.8 11.6 5.8 12 3z"/></svg><b>${streak}</b><span>day streak</span></div><div class="pro-dots" aria-label="Last 14 days">${days14.map((d, i) => `<i data-on="${vset.has(d)}" ${i === 13 ? 'data-today="1"' : ''} title="${d}"></i>`).join('')}</div><small>Best: ${PRO.best} ${PRO.best === 1 ? 'day' : 'days'}</small></div>`);
   // team grid
   $('proteams').innerHTML = TEAMS.map(t => `<button type="button" class="pro-t" data-t="${t}" aria-pressed="${t === T}" title="${esc(D.teams[t].name)}">${lgImg(t, 30)}<b>${t}</b></button>`).join('');
   $('proclear').hidden = !T;
