@@ -20,9 +20,9 @@ const Av = ({ ini, size = 32, src }) => { const pal = usePal(THEME); const [bad,
     {src && !bad && <img src={src} alt="" loading="lazy" onError={() => setBad(true)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 0', transform: 'scale(1.3)', transformOrigin: '50% 10%', background: pal.bgMuted }} />}</span>; };
 // A player cutout with no chip behind it: the photo is a transparent bust that stands on the bottom edge of its row. Falls back to initials
 // when no photo loads. `big` is a sharper image tried first (the website; the published artifact blocks it and the embedded one is used).
-const Cut = ({ ini, src, big, h = 52, w }) => { const pal = usePal(THEME); const [st, setSt] = useState(big ? 'big' : 'ok'); const [ok, setOk] = useState(false);
+const Cut = ({ ini, src, big, h = 52, w, bleed = 0 }) => { const pal = usePal(THEME); const [st, setSt] = useState(big ? 'big' : 'ok'); const [ok, setOk] = useState(false);
   const url = st === 'big' ? big : st === 'ok' ? src : null;
-  return <span style={{ position: 'relative', flex: 'none', display: 'inline-block', overflow: 'hidden', width: w || Math.round(h * 1.1), height: h, alignSelf: 'flex-end' }}>
+  return <span style={{ position: 'relative', flex: 'none', display: 'inline-block', overflow: 'hidden', width: w || Math.round(h * 1.1), height: h, alignSelf: 'flex-end', marginBottom: -bleed }}>
     {!ok && <span style={{ position: 'absolute', left: '50%', bottom: Math.round(h * .12), transform: 'translateX(-50%)', width: Math.round(h * .62), height: Math.round(h * .62), borderRadius: '50%', background: pal.bgMuted, color: pal.textSecondary, ...tokens.type.xs, display: 'grid', placeItems: 'center' }}>{ini}</span>}
     {url && <img src={url} alt="" loading="lazy" onLoad={() => setOk(true)} onError={() => setSt(st === 'big' ? 'ok' : 'bad')} style={{ position: 'absolute', left: '50%', bottom: 0, height: '100%', width: 'auto', maxWidth: 'none', transform: 'translateX(-50%)' }} />}
   </span>; };
@@ -100,7 +100,7 @@ function LabView(p) {
   const pal = usePal(THEME); const w = useWidth(); const narrow = w < 900;
   const row = r => [
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, opacity: r.out ? .55 : 1 }}>
-      <Av ini={r.ini} src={r.src} />
+      <Cut ini={r.ini} src={r.src} h={62} bleed={10} />
       <span><Text size="sm" weight="medium">{r.name}</Text>{r.badges.map((b, i) => <React.Fragment key={i}> <Badge variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge></React.Fragment>)}<div><Dim size="xs">{r.meta}</Dim></div></span>
     </span>,
     <MinCtl r={r} onSetMin={p.onSetMin} onOut={p.onOut} />,
