@@ -232,7 +232,7 @@ function PvDetail(p) {
       <Card padding={0} style={{ overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', padding: '0 24px', background: h.wash ? `color-mix(in srgb, ${h.wash} 20%, ${pal.bgElevated || 'transparent'})` : 'transparent', borderBottom: `1px solid ${pal.borderSubtle}` }}>
           <div style={{ minWidth: 0, display: 'flex', gap: 16, alignItems: 'flex-end' }}>
-            <Cut ini={h.ini} src={h.src} big={h.big} h={112} w={150} />
+            <Cut ini={h.ini} src={h.src} big={h.big} h={h.hq ? 112 : 84} w={h.hq ? 150 : 115} />
             <div style={{ minWidth: 0, padding: '24px 0' }}>
               <Heading level={2} style={{ margin: 0 }}>{h.name}</Heading>
               <div style={{ margin: '4px 0 0', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

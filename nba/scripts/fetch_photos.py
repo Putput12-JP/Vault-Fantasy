@@ -21,8 +21,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
 OUT = os.path.join(DATA, 'photos.json')
 ROSTER_N = 12
-HEAD_W, HEAD_H = 96, 70
-HEAD = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/{}.png&w=%d&h=%d' % (HEAD_W, HEAD_H)
+HEAD_W, HEAD_H = 96, 70            # everyone in the top ROSTER_N
+HQ_N, HQ_W, HQ_H = 3, 192, 140    # each team's top HQ_N get a sharper copy (the big header, retina lists)
+HEAD = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/{}.png&w=%d&h=%d'
+SPEC = f'{HEAD_W}x{HEAD_H}+top{HQ_N}@{HQ_W}x{HQ_H}'
 LOGO = 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/{}.png&w=48&h=48'
 
 
@@ -55,18 +57,20 @@ def team_colors():
 
 def main():
     proj = json.load(open(os.path.join(DATA, 'player_projections.json')))
-    want = {}
+    want, hq = {}, set()
     for t, T in proj['teams'].items():
-        for p in sorted(T['players'], key=lambda p: -(p.get('min0') or 0))[:ROSTER_N]:
+        for i, p in enumerate(sorted(T['players'], key=lambda p: -(p.get('min0') or 0))[:ROSTER_N]):
             want[str(p['id'])] = t
+            if i < HQ_N:
+                hq.add(str(p['id']))
     old = json.load(open(OUT)) if os.path.exists(OUT) else {'heads': {}, 'logos': {}}
-    if old.get('spec') != f'{HEAD_W}x{HEAD_H}':      # the image size changed: refetch every headshot
+    if old.get('spec') != SPEC:      # the image size changed: refetch every headshot
         old['heads'] = {}
     heads = {k: v for k, v in old.get('heads', {}).items() if k in want}
     logos = dict(old.get('logos', {}))
     todo = [k for k in want if k not in heads]
     with ThreadPoolExecutor(8) as ex:
-        for k, png in zip(todo, ex.map(lambda k: get(HEAD.format(k)), todo)):
+        for k, png in zip(todo, ex.map(lambda k: get(HEAD.format(k) % ((HQ_W, HQ_H) if k in hq else (HEAD_W, HEAD_H))), todo)):
             if png:
                 heads[k] = uri(png)
     miss = [t for t in proj['teams'] if t not in logos]
@@ -74,7 +78,7 @@ def main():
         png = get(LOGO.format(t.lower()))
         if png:
             logos[t] = uri(png)
-    json.dump({'spec': f'{HEAD_W}x{HEAD_H}', 'heads': heads, 'logos': logos, 'colors': team_colors()}, open(OUT, 'w'), separators=(',', ':'), sort_keys=True)
+    json.dump({'spec': SPEC, 'heads': heads, 'hq': sorted(k for k in hq if k in heads), 'logos': logos, 'colors': team_colors()}, open(OUT, 'w'), separators=(',', ':'), sort_keys=True)
     print(f"photos: {len(heads)} headshots ({len(todo)} fetched, {len([k for k in todo if k not in heads])} without a photo), "
           f"{len(logos)} logos ({len(miss)} fetched) -> data/photos.json {os.path.getsize(OUT) // 1024} KB")
 
