@@ -39,6 +39,7 @@ export default {
   async scheduled(event, env) {
     const what = event.cron === '23 11 * * *' ? 'daily' : 'prices';
     const r = await dispatch(env, what, false);
+    console.log('cron', event.cron, what, JSON.stringify(r));
     if (!r.ok) console.error('dispatch failed', what, r.status);
   },
 
