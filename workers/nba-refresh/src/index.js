@@ -1,6 +1,8 @@
 // Vault NBA refresh trigger. Starts the recorder and the daily job on time and serves the page's Refresh button.
 //   cron */10      -> recorder, unless a run is already in progress or queued (its own loop covers game windows)
 //   cron 23 11     -> daily job
+//   cron */10, at 15:xx and 19:xx UTC -> the daily job again if it has not succeeded since 10:30 UTC today (GitHub sometimes
+//                     never starts a runner: the Oct 5 run died with 'job not acquired')
 //   GET /board     -> the live board from the nba-live branch, with raw.githubusercontent's 5 minute CDN cache bypassed (30 s here)
 //   POST {what}    -> a person asked: 'prices' (recorder) or 'daily'; a cooldown keeps it from being spammed
 
@@ -41,6 +43,15 @@ export default {
     const r = await dispatch(env, what, false);
     console.log('cron', event.cron, what, JSON.stringify(r));
     if (!r.ok) console.error('dispatch failed', what, r.status);
+    const t = new Date(event.scheduledTime);
+    if (what === 'prices' && (t.getUTCHours() === 15 || t.getUTCHours() === 19) && t.getUTCMinutes() < 10) {
+      const since = `${t.toISOString().slice(0, 10)}T10:30:00Z`;
+      const ok = await gh(env, `workflows/${FLOW.daily}/runs?status=success&created=${encodeURIComponent('>=' + since)}&per_page=1`);
+      if (ok.ok && (await ok.json()).total_count === 0) {
+        const d = await dispatch(env, 'daily', false);
+        console.log('daily retry', JSON.stringify(d));
+      }
+    }
   },
 
   async fetch(req, env) {

@@ -2082,6 +2082,8 @@ function agoFrom(t, ref){
 }
 const median = a => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
 const pill = (cls, text) => `<span class="pill ${cls}">${text}</span>`;
+// A live board older than 75 minutes means the recorder is behind (the Worker starts it every 10 minutes); say so instead of showing Live.
+const livePill = () => { const t = PS.board && PS.board.t; return t && Date.now() / 1000 - t > 75 * 60 ? pill('warn', 'Board behind') : pill('ok', 'Live'); };
 
 async function loadLive(){
   liveTried = true;
@@ -2694,7 +2696,7 @@ function renderProps(){
   const nextGame = (live && live.games || []).filter(g => g.tip > Date.now()/1000).sort((a, b) => a.tip - b.tip)[0];
   const gname = g => `${g.away} @ ${g.home}`;
 
-  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="prefresh" type="button">Refresh</button>`
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="prefresh" type="button">Refresh</button>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pill('idle', 'No props yet');
   $('prefresh')?.addEventListener('click', e => NBA_WORKER && onSite ? refreshNow(e.currentTarget) : loadBoard());
@@ -3285,7 +3287,7 @@ function renderEdges(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   const B = PS.board, live = pick.live || PS.live || (PB && PB.live);
   const liveN = live && live.props ? live.props.length : 0;
-  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="erefresh" type="button">Refresh</button>`
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="erefresh" type="button">Refresh</button>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pill('idle', 'No props yet');
   $('erefresh')?.addEventListener('click', e => NBA_WORKER && onSite ? refreshNow(e.currentTarget) : loadBoard());
@@ -3421,7 +3423,7 @@ function marketMinutes(B, g, team, pid, min, cache){
 function renderTonight(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   const B = PS.board, games = [...(B.games || [])].sort((a, b) => a.tip - b.tip);
-  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's final game</span>` : pill('idle', 'No games yet');
   $('nbanner').hidden = pick.mode !== 'example' && games.length > 0;
@@ -3660,7 +3662,7 @@ function simChecks(res, T, withMarginals){
 function renderSim(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   const B = PS.board, games = [...(B.games || [])].sort((a, b) => a.tip - b.tip);
-  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now() / 1000) : ''}</span>`
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now() / 1000) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's final game</span>` : pill('idle', 'No games yet');
   $('gsbanner').hidden = games.length > 0;
@@ -3751,7 +3753,7 @@ const WKIND = {inj: 'Injury report', inactive: 'Inactive', five: 'Starting five'
 function renderWire(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   const B = PS.board, ev = (B.wire || []).filter(e => e[7]);
-  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No live board');
   $('wbanner').hidden = !!ev.length;
   $('wbanner').innerHTML = pick.mode === 'example' || !B.wire ? `<b>The wire fills on game days.</b><span>It needs the recorder's live day: every injury report and lineup change after the first poll of the morning, and every price change since. The example game has neither. Preseason starts October 3.</span>`
@@ -3944,7 +3946,7 @@ function slateGame(g, B, status, openAll){
 const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
 function renderSlate(){
   const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, lines = view === 'lines';
-  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No games yet');
   // one-time opening pass (snapshot.py OPENER_PASS_END): games past the 3-day board with lines already posted, here only
   const games = [...(B.games || []), ...(B.opening || [])].sort((a, b) => a.tip - b.tip), days = [...new Set(games.map(g => etDay(g.tip)))];
@@ -4089,7 +4091,7 @@ function xRecord(){
 }
 function renderSharp(){
   const pick = slateBoard(), B = pick.board, SH = B.sharp, now = Date.now() / 1000;
-  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No games yet');
   const games = [...(B.games || [])].sort((a, b) => a.tip - b.tip), byId = Object.fromEntries(games.map(g => [String(g.id), g]));
   $('xbanner').hidden = !!(SH && games.length);
@@ -5168,7 +5170,7 @@ function ppSlip(x, compact){
 }
 function renderPairs(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
-  $('mode').innerHTML = pick.mode === 'live' ? `${pill('ok', 'Live')}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
   if (!PKC || !Object.keys(PP_FAM).length){ $('pp-root').innerHTML = '<p class="pp-empty">The correlation test results are missing from this build (build_pickem_corr.py).</p>'; return; }
   const rows = pv.rows = pvRows().rows;
   const games = PS.board.games || [];
