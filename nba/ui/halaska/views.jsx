@@ -32,14 +32,17 @@ const useWidth = () => { const [w, setW] = useState(window.innerWidth); useEffec
 const Ico = ({ html, size = 16 }) => <span aria-hidden="true" style={{ display: 'inline-flex', width: size, height: size }} dangerouslySetInnerHTML={{ __html: html.replace('<svg ', `<svg width="${size}" height="${size}" `) }} />;
 
 // ───────────────────────── sidebar ─────────────────────────
-export function Sidebar({ pages, view, season, pvCount, onGo, collapsed, onToggle }) {
+export function Sidebar({ pages, view, season, pvCount, onGo, collapsed, onToggle, brand, onBrand }) {
   const pal = usePal(THEME);
   // Classes (sb-*) carry the collapsed-rail and active-card styling in the page's stylesheet; the rail shows icons only, with a tooltip.
   const chev = <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: collapsed ? 'rotate(180deg)' : 'none' }}><path d="m11 17-5-5 5-5M18 17l-5-5 5-5" /></svg>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minHeight: '100%' }}>
       <div className="sb-head" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 8px' }}>
-        <span style={{ width: 36, height: 36, borderRadius: tokens.radius.sm, background: pal.text, color: pal.bg, ...tokens.type.xs, fontWeight: tokens.weight.bold, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>NBA</span>
+        <button type="button" onClick={onBrand} aria-label="Open your profile" title={brand ? brand.name + ' (your profile)' : 'Your profile'} style={{ all: 'unset', cursor: 'pointer', display: 'inline-flex', flex: 'none' }}>
+          {brand && brand.logo ? <img src={brand.logo} alt="" width="36" height="36" style={{ display: 'block', objectFit: 'contain' }} />
+            : <span style={{ width: 36, height: 36, borderRadius: tokens.radius.sm, background: pal.text, color: pal.bg, ...tokens.type.xs, fontWeight: tokens.weight.bold, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>NBA</span>}
+        </button>
         <div className="sb-brandtxt" style={{ minWidth: 0, flex: 1 }}><Text size="md" weight="semibold">Vault NBA</Text><div><Mono>{season}</Mono></div></div>
         <button type="button" className="sb-tog" onClick={onToggle} aria-label={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'} aria-expanded={!collapsed} data-tip={collapsed ? 'Expand' : 'Collapse'} title="Collapse or expand ( [ )">{chev}</button>
       </div>
