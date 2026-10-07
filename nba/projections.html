@@ -497,6 +497,7 @@ tr.detail td{padding:0 0 16px;background:rgb(var(--ink) / .02)}
   footer{padding:0 16px 28px}
   :root{--pad:16px}
 }
+#skpis .kpi .hint{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
 @media (max-width:480px){ .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px} .kpi .val{font-size:20px} .kpi .hint{white-space:normal;overflow:visible;text-overflow:clip} }
 @media (prefers-reduced-motion:reduce){ .btn,.switch input::after,.prog .tr i,.sidebar{transition:none} }
 /* Player Props v2 */
@@ -4452,7 +4453,7 @@ function renderSlate(){
   $('skpis').innerHTML = !G.length ? '' :
     kpi('Games', ICON.clock, `${G.length}`, `${reg ? `${reg} regular season` : ''}${reg && G.length - reg ? ' · ' : ''}${G.length - reg ? `${G.length - reg} preseason` : ''}`) +
     kpi('Biggest Vault gap', ICON.pts, top ? `${fmt(Math.abs(top.d))} pts` : 'n/a', top ? `${top.g.away} @ ${top.g.home}: Vault leans ${top.d < 0 ? top.g.home : top.g.away}. Context, not a bet` : reg ? 'Needs a posted spread' : 'No Vault line in preseason') +
-    kpi('Money vs tickets', ICON.star, s0 ? `${Math.abs(s0.m - s0.b)} pts` : 'n/a', s0 ? `${SPK[s0.k] ? SPK[s0.k](s0.g) : s0.k} (${s0.g.away} @ ${s0.g.home}): ${s0.b}% of bets, ${s0.m}% of money` : 'Action Network posts splits closer to tip') +
+    kpi('Biggest bets vs money split', ICON.star, s0 ? `${s0.g.away} @ ${s0.g.home}` : 'n/a', s0 ? (() => { const nm = SPK[s0.k] ? SPK[s0.k](s0.g) : s0.k; return `${nm}: ${s0.b}% of bets, ${s0.m}% of money. ${s0.m < s0.b ? 'Lots of small bets here, the big money is on the other side.' : 'Fewer bets here, but the big money is on this side.'}`; })() : 'Action Network posts splits closer to tip') +
     kpi('Back-to-backs', ICON.edit, `${b2b.length}`, b2b.length ? `${b2b.join(', ')} · ${MS.game.P.B2B} pts each in the Vault line` : 'Nobody on the second night');
   $('sgames').classList.add('lv');
   $('sgames').innerHTML = G.map(g => lineCard(g, B, status)).join('');
