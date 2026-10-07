@@ -20,11 +20,13 @@ const Av = ({ ini, size = 32, src }) => { const pal = usePal(THEME); const [bad,
     {src && !bad && <img src={src} alt="" loading="lazy" onError={() => setBad(true)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 0', transform: 'scale(1.3)', transformOrigin: '50% 10%', background: pal.bgMuted }} />}</span>; };
 // A player cutout with no chip behind it: the photo is a transparent bust that stands on the bottom edge of its row. Falls back to initials
 // when no photo loads. `big` is a sharper image tried first (the website; the published artifact blocks it and the embedded one is used).
-const Cut = ({ ini, src, big, h = 52, w, bleed = 0 }) => { const pal = usePal(THEME); const [st, setSt] = useState(big ? 'big' : 'ok'); const [ok, setOk] = useState(false);
+const Cut = ({ ini, src, big, h = 52, w, bleed = 0, fit }) => { const pal = usePal(THEME); const [st, setSt] = useState(big ? 'big' : 'ok'); const [ok, setOk] = useState(false);
   const url = st === 'big' ? big : st === 'ok' ? src : null;
-  return <span style={{ position: 'relative', flex: 'none', display: 'inline-block', overflow: 'hidden', width: w || Math.round(h * 1.1), height: h, alignSelf: 'flex-end', marginBottom: -bleed }}>
+  // ESPN frames every photo a little differently: scale so each head starts 8% below the top of the frame, and centre the figure
+  const bw = w || Math.round(h * 1.1), sc = fit ? Math.max(.9, Math.min(1.15, .92 / (1 - fit[0]))) : 1, ih = h * sc, iw = ih * 1.3714, left = bw / 2 - (fit ? fit[1] : .5) * iw;
+  return <span style={{ position: 'relative', flex: 'none', display: 'inline-block', overflow: 'hidden', width: bw, height: h, alignSelf: 'flex-end', marginBottom: -bleed }}>
     {!ok && <span style={{ position: 'absolute', left: '50%', bottom: Math.round(h * .12), transform: 'translateX(-50%)', width: Math.round(h * .62), height: Math.round(h * .62), borderRadius: '50%', background: pal.bgMuted, color: pal.textSecondary, ...tokens.type.xs, display: 'grid', placeItems: 'center' }}>{ini}</span>}
-    {url && <img src={url} alt="" loading="lazy" onLoad={() => setOk(true)} onError={() => setSt(st === 'big' ? 'ok' : 'bad')} style={{ position: 'absolute', left: '50%', bottom: 0, height: '100%', width: 'auto', maxWidth: 'none', transform: 'translateX(-50%)' }} />}
+    {url && <img src={url} alt="" loading="lazy" onLoad={() => setOk(true)} onError={() => setSt(st === 'big' ? 'ok' : 'bad')} style={{ position: 'absolute', left: Math.round(left), bottom: 0, height: Math.round(ih), width: Math.round(iw), maxWidth: 'none' }} />}
   </span>; };
 const useWidth = () => { const [w, setW] = useState(window.innerWidth); useEffect(() => { const f = () => setW(window.innerWidth); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []); return w; };
 const Ico = ({ html, size = 16 }) => <span aria-hidden="true" style={{ display: 'inline-flex', width: size, height: size }} dangerouslySetInnerHTML={{ __html: html.replace('<svg ', `<svg width="${size}" height="${size}" `) }} />;
@@ -100,7 +102,7 @@ function LabView(p) {
   const pal = usePal(THEME); const w = useWidth(); const narrow = w < 900;
   const row = r => [
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, opacity: r.out ? .55 : 1 }}>
-      <Cut ini={r.ini} src={r.src} h={62} bleed={10} />
+      <Cut ini={r.ini} src={r.src} fit={r.fit} h={62} bleed={10} />
       <span><Text size="sm" weight="medium">{r.name}</Text>{r.badges.map((b, i) => <React.Fragment key={i}> <Badge variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge></React.Fragment>)}<div><Dim size="xs">{r.meta}</Dim></div></span>
     </span>,
     <MinCtl r={r} onSetMin={p.onSetMin} onOut={p.onOut} />,
@@ -206,7 +208,7 @@ function PropsList(p) {
         const on = r.key === p.sel;
         return (
           <button key={r.key} type="button" aria-current={on} onClick={() => p.onSelect(r.key)} style={{ all: 'unset', boxSizing: 'border-box', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: '0 18px', minHeight: 66, borderBottom: i < p.items.length - 1 ? `1px solid ${pal.borderSubtle}` : 'none', background: on ? pal.bgSubtle : 'transparent', transition: `background ${motion.normal} ${motion.easeInOut}` }}>
-            <Cut ini={r.ini} src={r.src} h={60} />
+            <Cut ini={r.ini} src={r.src} fit={r.fit} h={60} />
             <span style={{ flex: 1, minWidth: 0, padding: '10px 0' }}><Text size="md" weight="semibold">{r.name}</Text><div><Dim>{r.stat} · proj {r.proj}{r.where ? ' · ' + r.where : ''}</Dim></div></span>
             <span style={{ textAlign: 'right', display: 'grid', gap: 3, justifyItems: 'end', padding: '10px 0' }}>
               <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
@@ -232,7 +234,7 @@ function PvDetail(p) {
       <Card padding={0} style={{ overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', padding: '0 24px', background: h.wash ? `color-mix(in srgb, ${h.wash} 20%, ${pal.bgElevated || 'transparent'})` : 'transparent', borderBottom: `1px solid ${pal.borderSubtle}` }}>
           <div style={{ minWidth: 0, display: 'flex', gap: 16, alignItems: 'flex-end' }}>
-            <Cut ini={h.ini} src={h.src} big={h.big} h={h.hq ? 112 : 84} w={h.hq ? 150 : 115} />
+            <Cut ini={h.ini} src={h.src} big={h.big} fit={h.fit} h={100} w={136} />
             <div style={{ minWidth: 0, padding: '24px 0' }}>
               <Heading level={2} style={{ margin: 0 }}>{h.name}</Heading>
               <div style={{ margin: '4px 0 0', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

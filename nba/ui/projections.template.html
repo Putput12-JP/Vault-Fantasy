@@ -688,7 +688,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;transform:scale(1.3);transform-origin:50% 10%;background:var(--raised)}
 .cutbox{position:relative;flex:none;display:block;overflow:hidden;width:calc(var(--h) * 1.1);height:var(--h);align-self:flex-end}
 .cutini{position:absolute;left:50%;bottom:calc(var(--h) * .12);transform:translateX(-50%);width:calc(var(--h) * .62);height:calc(var(--h) * .62);border-radius:50%;background:var(--raised);color:var(--fg2);font-size:11px;font-weight:600;display:grid;place-items:center}
-.cutph{position:absolute;left:50%;bottom:0;height:100%;width:auto;max-width:none;transform:translateX(-50%)}
+.cutph{position:absolute;bottom:0;height:calc(var(--h) * var(--sc,1));width:calc(var(--h) * var(--sc,1) * 1.3714);max-width:none;left:calc(var(--h) * .55 - var(--cx,.5) * var(--h) * var(--sc,1) * 1.3714)}
 table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.cutc .pl>div{align-self:center;padding:6px 0}
 .pl{display:flex;align-items:center;gap:10px}.pl>div{min-width:0}.pp-av.sm{width:32px;height:32px;border-width:1px;font-size:10px;flex:none}.tm{display:inline-flex;align-items:center;gap:6px}
 .gstrip{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;flex:1;min-width:0;padding:2px 2px 6px;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
@@ -1471,10 +1471,11 @@ const PH = /*PHOTOS*/null;
 const phSrc = id => (PH && PH.heads[id]) || `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=96&h=70`;
 const phImg = id => id == null ? '' : `<img class="ph" src="${phSrc(id)}" alt="" loading="lazy" onerror="this.remove()">`;
 const phBig = id => `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=192&h=140`;     // sharper copy for the big header (the website; the artifact keeps the embedded one)
+const phFit = id => (PH && PH.fit && PH.fit[id]) || null;     // [top of the figure, horizontal centre] as fractions of the photo
 const lum = hex => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null; const c = [0, 2, 4].map(i => parseInt(m[1].substr(i, 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
 const teamWash = t => { const c = PH && PH.colors && PH.colors[t]; if (!c) return ''; for (const x of c){ const l = lum(x); if (l != null && l > .04 && l < .7) return x; } return ''; };
 // A player cutout with no chip, standing on the bottom of its table cell: the cell takes class cutc (no vertical padding).
-const cutImg = (pid, name, h = 52) => `<span class="cutbox" style="--h:${h}px"><span class="cutini">${esc(initials(name || ''))}</span>${pid == null ? '' : `<img class="cutph" src="${phSrc(pid)}" alt="" loading="lazy" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.remove()">`}</span>`;
+const cutImg = (pid, name, h = 52) => { const f = phFit(pid), sc = f ? Math.max(.9, Math.min(1.15, .92 / (1 - f[0]))) : 1; return `<span class="cutbox" style="--h:${h}px;--sc:${sc.toFixed(3)};--cx:${f ? f[1] : .5}"><span class="cutini">${esc(initials(name || ''))}</span>${pid == null ? '' : `<img class="cutph" src="${phSrc(pid)}" alt="" loading="lazy" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.remove()">`}</span>`; };
 const avSm = (pid, name) => `<span class="pp-av sm">${esc(initials(name || ''))}${phImg(pid)}</span>`;
 const lgImg = (t, s = 18) => PH && PH.logos && PH.logos[t] ? `<img class="lg" src="${PH.logos[t]}" alt="" width="${s}" height="${s}">` : '';
 
@@ -1725,7 +1726,7 @@ function render(){
     !p.slotted ? {t: 'No depth slot'} : null
   ].filter(Boolean);
   const rowOf = p => { const mu = pr[p.id];
-    return {id: p.id, name: p.name, ini: initials(p.name), src: phSrc(p.id), min: m[p.id], out: isOut(p, m), badges: badges(p),
+    return {id: p.id, name: p.name, ini: initials(p.name), src: phSrc(p.id), fit: phFit(p.id), min: m[p.id], out: isOut(p, m), badges: badges(p),
       meta: `${p.pos}${p.rank ? ` · depth ${p.rank}` : ''} · ${p.gp ? fmt(p.last_mpg) + ' mpg last season' : 'no NBA minutes last season'}`,
       stats: {pts: stat(mu.pts,b0[p.id].pts,'pts'), reb: stat(mu.reb,b0[p.id].reb,'reb'), ast: stat(mu.ast,b0[p.id].ast,'ast'), '3pm': stat(mu['3pm'],b0[p.id]['3pm'],'3pm'), pra: stat(mu.pra,b0[p.id].pra,'pra')},
       sb: mu.stl + mu.blk}; };
@@ -4483,7 +4484,7 @@ function renderPropsV2(){
   if (!pv.sel || !L.some(r => key(r) === pv.sel)) pv.sel = L[0] ? key(L[0]) : null;
   HK.mount($('pv-list'), 'PropsList', {sel: pv.sel,
     items: L.map(r => { const b = r.best, sh = r.sharp;
-      return {key: key(r), name: r.name, ini: initials(r.name), src: phSrc(r.e.p), stat: PV_SL[r.e.s] || r.e.s, proj: fmt(r.mu), verdict: r.verdict,
+      return {key: key(r), name: r.name, ini: initials(r.name), src: phSrc(r.e.p), fit: phFit(r.e.p), stat: PV_SL[r.e.s] || r.e.s, proj: fmt(r.mu), verdict: r.verdict,
         where: r.hold ? (r.hold.why === 'preseason' ? 'On hold: preseason' : 'On hold: roster changed') : r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`,
         edge: r.verdict !== 'pass' ? `+${pc(b.edge, 1)}` : null,
         shp: sh.vs ? {t: sh.vs, strong: true} : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? {t: sh.lean} : null,
@@ -4706,7 +4707,7 @@ function pvDetail(r){
       html: `<p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p>`});
   const mv = (r.books || []).filter(x => x.l0 != null).map(x => x.l0 === x.line && x.o0 === x.o ? `<b>${esc(x.bk)}</b> has not moved since it opened (${x.line}, over ${x.o}).` : `<b>${esc(x.bk)}</b> opened ${x.l0} (over ${x.o0}); now ${x.line} (over ${x.o}).`);
   const news = (B.news || []).filter(n => n[3] === r.tm).slice(0, 3).map(n => `<b>${clock(n[0])} ET</b> ${esc(n[2])}: ${n[4] === 'lu' ? (n[5] === 'X' ? 'inactive (NBA.com)' : 'confirmed starter') : esc(n[5] || '') + ' (injury report)'}`);
-  const head = {name: r.name, ini: initials(r.name), src: phSrc(r.e.p), big: onSite ? phBig(r.e.p) : null, hq: !!(PH && PH.hq && PH.hq.includes(String(r.e.p))), wash: teamWash(r.tm), stat: PV_SL[r.e.s] || r.e.s, game: g ? `${r.tm || ''} vs ${opp} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET` : '',
+  const head = {name: r.name, ini: initials(r.name), src: phSrc(r.e.p), big: onSite ? phBig(r.e.p) : null, fit: phFit(r.e.p), wash: teamWash(r.tm), stat: PV_SL[r.e.s] || r.e.s, game: g ? `${r.tm || ''} vs ${opp} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET` : '',
     badges: [fiveS || r.lu === 'S' ? {t: 'Starting five confirmed'} : r.lu === 's' ? {t: 'Expected to start'} : r.lu === 'B' ? {t: 'Bench'} : null, r.inj ? {t: r.inj, warn: true} : null].filter(Boolean),
     proj: fmt(r.mu), range: rg ? `usually ${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : ''};
   const minsHtml = `<div class="pv-mins"><span>Minutes <b>${fmt(mn)}</b></span><div class="pv-mbar"><span class="rng" style="left:${lo / 48 * 100}%;width:${(hi - lo) / 48 * 100}%"></span>${r.min0 ? `<span class="us" style="left:${r.min0 / 48 * 100}%" title="His usual ${fmt(r.min0)}"></span>` : ''}<span class="pt" style="left:${mn / 48 * 100}%"></span></div>
