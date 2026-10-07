@@ -208,6 +208,47 @@ def market_series(rows, spec):
     return collect_sum_series(rows, spec["stat_sum"]) if spec.get("stat_sum") else collect_series(rows, spec["stat"])
 
 
+def eval_market_starters(mkt, spec, seq, half_life, k_vol, k_eff, priors):
+    """Gated markets (QB passing). HISTORY counts only starter-sized games (the gate), but
+    every game the player actually played is SCORED, so the fitted sd, calibration and
+    shrink see the early-exit tail the book still grades. Gating the scored game on its own
+    outcome (the pre-2026-10-06 behavior) truncated the target. A game is scored only once
+    the player has MIN_PRIOR gated games before it, a rule knowable at kickoff.
+    docs/leakage-audit-2026-10-06.md, finding 1."""
+    gkey, gmin = spec["gate"]
+    resid, preds, actuals, base = [], [], [], []
+    for key, rows in seq.items():
+        if key[1] not in spec["pos"]:
+            continue
+        for i, (_wk, r) in enumerate(rows):
+            played = num(r.get(gkey))
+            if not played or played <= 0:
+                continue
+            hist = [x for _, x in rows[:i] if (num(x.get(gkey)) or 0) >= gmin]
+            if len(hist) < MIN_PRIOR:
+                continue
+            if is_usage(spec):
+                actual = num(r.get(spec["eff_num"]))
+                vs = [num(x.get(spec["vol"])) for x in hist if num(x.get(spec["vol"])) is not None]
+                es = [num(x.get(spec["eff_num"])) / num(x.get(spec["vol"])) for x in hist
+                      if num(x.get(spec["vol"])) and num(x.get(spec["eff_num"])) is not None]
+                if actual is None or len(vs) < MIN_PRIOR or len(es) < MIN_PRIOR:
+                    continue
+                proj = project_series(vs, priors[mkt + "|vol"], half_life, k_vol) * \
+                       project_series(es, priors[mkt + "|eff"], half_life, k_eff)
+                b = statistics.fmean([num(x.get(spec["eff_num"])) for x in hist[-4:] if num(x.get(spec["eff_num"])) is not None] or [proj])
+            else:
+                stat = spec["stat"]
+                actual = num(r.get(stat))
+                vals = [num(x.get(stat)) for x in hist if num(x.get(stat)) is not None]
+                if actual is None or len(vals) < MIN_PRIOR:
+                    continue
+                proj = project_series(vals, priors[mkt], half_life, k_vol)
+                b = statistics.fmean(vals[-4:])
+            preds.append(proj); actuals.append(actual); resid.append(actual - proj); base.append(b)
+    return resid, preds, actuals, base
+
+
 # ── walk-forward evaluation of one hyperparameter set for one market ───────
 def eval_market(mkt, spec, seq, half_life, k_vol, k_eff, priors):
     """
@@ -215,6 +256,8 @@ def eval_market(mkt, spec, seq, half_life, k_vol, k_eff, priors):
     prior games, project from prior games only and compare to the actual.
     Returns (residuals, preds, actuals, baseline_preds).
     """
+    if spec.get("gate"):
+        return eval_market_starters(mkt, spec, seq, half_life, k_vol, k_eff, priors)
     resid, preds, actuals, base = [], [], [], []
     for key, rows in seq.items():
         pos = key[1]

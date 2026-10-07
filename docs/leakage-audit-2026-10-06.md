@@ -1,0 +1,143 @@
+# Leakage audit: NFL and NBA models (2026-10-06)
+
+Method: `leakage-audit` skill (sports-analytic-skills). Code read and traced by hand against its pattern
+catalog. No metric was re-run except where stated. Verdict scale: CLEAN / REVIEW REQUIRED / NOT CLEAN.
+
+## Scope and verdicts
+
+| Pipeline | T (decision time) | Verdict |
+|---|---|---|
+| NFL prop projection, trainer (`build_prop_projections.py`) | kickoff | REVIEW REQUIRED |
+| NFL prop season-holdout (`backtest_prop_model.py`) | kickoff | CLEAN (one caveat) |
+| NFL live grading (`settle_bets.py`, `model_from`) | bet time | CLEAN |
+| NFL game model (`build_game_model.py`) | kickoff | REVIEW REQUIRED (low severity) |
+| NFL grade calibration (`build_grade_calibration.py`) | draft day | CLEAN |
+| NFL vacated share (`build_vacated_share.py`) | preseason | REVIEW REQUIRED |
+| NBA game model (`nba/scripts/build_game_model.py`) | 1pm ET / 30 min pre-tip | REVIEW REQUIRED (disclosed) |
+| NBA prop model v2 (`build_prop_model_v2.py`) | 30 min pre-tip | REVIEW REQUIRED |
+
+## Findings, most severe first
+
+### 1. NFL: the QB starter gate filters on the target (REVIEW, medium)
+`gated()` (`build_prop_projections.py:94`) keeps only games where the QB threw 15+ attempts. It is applied to
+history and priors (legal, past games) and also to the scored games in `eval_market` (line 223). The
+scored-game filter uses the same game's actual attempts, a post-T variable. Effects:
+- pass_att, pass_cmp, pass_yd and pass_td are scored and calibrated with the left tail removed.
+- Data check: of 3,046 games by QBs who threw 25+ in some game (2021-26 files), 252 (8.3%, mean 6.6 attempts)
+  fall under the gate. Those are in-game injuries and pulled starters.
+- The 2026-10-05 claim "yardage error 61 -> 58 (the line: 56)" is therefore measured on a truncated population.
+- Mitigation: books usually void a QB who does not start, so part of the gate is defensible. It does not cover a
+  QB who starts and leaves hurt.
+Repair: gate on information available at T (listed starter, prior-week attempts), score every game that
+player started, report voids separately, then re-run the model-vs-line comparison.
+
+### 2. NBA: backtest candidate set is the post-game box score (REVIEW, medium)
+`build_prop_model_v2.py:~240` builds `cand` from `rows`, the box-score rows (`nba_common.py:74`: "played or
+DNP"). That includes healthy scratches and anyone dressed, none of which is known 30 minutes before tip beyond
+the injury report. Minutes are then normalized to team minutes over that set.
+`check_minutes_parity.py:74` proves code parity but does so by forcing `cand_override` to the same box-score
+players, so it cannot detect this. Live pricing builds candidates from rosters and depth charts.
+Repair: re-run v2 and minutes v3 with candidates = roster as of the pre-tip report plus confirmed lineup feed
+(2025-26 has `lineups` data), compare MAE and ROI. If unchanged, mark CLEAN with the evidence.
+
+### 3. NBA: one test season reused for many candidates (REVIEW, medium)
+v2, v3, v3_full, minutes v3, minutes-v3 pricing, starters, consensus, moved-players, season-start, copula and
+the game-model options are all judged on 2025-26, and the game model's params (K, CARRY, C, B2B) were tuned
+before several of those checks. Each look is individually honest. Together they are a forking-paths risk, and
+"GO" calls with t of 2 to 3 need that discount. The untouched holdout is the live shadow ledger recorded since
+2026-09-30. Treat its results as the real test.
+Repair: write the accept rule for each candidate in `experiment-log` before the live ledger is read; count trials.
+
+### 4. NFL vacated share: label filter uses next-season survival (REVIEW, medium)
+`build_vacated_share.py` records a ratio only for players who return to the same team and play 6+ games in S+1.
+Injured, cut or demoted players drop out, and a departed lead raises the survival chance, so the effect is
+biased up. Serving applies the multiplier to everyone. The stability gate is an even/odd season split, which is
+not time-ordered, and adjacent pairs share a season.
+Repair: include every player in the S room (volume 0 for non-returners, or model survival), validate with
+train-before-test season pairs.
+
+### 5. NFL: in-season real-line recalibration gate picked after viewing results (REVIEW, low)
+`RECAL_MIN_N = 300` was chosen after "ungated shifts HURT" on 2026 Wks 1-3, then reported as +2.1 z on 1,108
+props from the same weeks. A selected gate on the sample that selected it. The point-in-time machinery around it
+(`model_from`, `prop_model_at`) is correct.
+Repair: re-score the gate on Wks 4+ only, which is untouched.
+
+### 6. NBA game model: tuned on hindsight availability (REVIEW, low, disclosed)
+Tuned on 2023-24 with who actually sat; tested with injury reports. That is train/serve skew, not test leakage,
+and the docs already say the verdict is "context, not an edge". The ESPN open line has no timestamp (known).
+
+### 7. NFL game model: learning rates picked on the reported walk-forward (REVIEW, low)
+"Sit at the minimum" of the same RMSE reported from 2014. The model already loses to the close (13.21 vs 12.87),
+so optimism only strengthens the conclusion.
+
+### 8. Data vintage (REVIEW, low, both)
+Backtests read current nflverse and hoopR files, which include later stat corrections. Live use sees the
+as-published numbers. Likely tiny, unmeasured.
+
+## Checked and clean
+- Shift-before-roll: `eval_market` projects from `series[:i]`; NBA `update_after` runs after each record and
+  scores defense against pre-game rates (`rt_before`).
+- Season-holdout refits projections, priors, distribution and calibration on train seasons only
+  (`backtest_prop_model.py:fit_market`, `holdout`).
+- Grade calibration is walk-forward by target season, pooled and scored once.
+- Live settlement grades with the model version in force at grading time (`model_from`).
+- NBA ESPN "current" post-tip prices are excluded by `cur_is_pretip`; live-odds book 59 is excluded.
+
+## Not verified
+- I did not re-run any backtest. Findings 1 to 4 are code-reading plus one data count; sizes of the effects are
+  unmeasured except the 8.3% in finding 1.
+- Not audited: build_usage_cascade (NFL and NBA), build_role_volume, wind and DvP models, lean_search.py,
+  Kalshi anchor, consensus engine.
+
+## Addendum: QB gate re-score (finding 1), `scripts/audit_qb_gate.py`
+
+Walk-forward 2018-2026, shipped hyperparameters, QBs with 3+ prior 15-attempt games (a rule knowable at T).
+Variants: A = current (gated history, score only att >= 15); B = gated history, score every game the QB played;
+C = ungated history, score every game.
+
+| Market | A rmse | B rmse (bias) | C rmse (bias) | C on A's games |
+|---|---|---|---|---|
+| pass_att | 8.05 | 9.27 (+1.16) | 9.20 (-0.87) | 8.25 |
+| pass_cmp | 5.77 | 6.48 (+0.77) | 6.43 (-0.55) | 5.88 |
+| pass_yd | 73.8 | 80.6 (+10.3) | 80.1 (-7.8) | 75.1 |
+| pass_td | 1.15 | 1.15 | 1.15 | 1.15 |
+
+Findings:
+- On the games the gate keeps, gated history beats ungated by 1.7-2.5% (the October 5 gain is real *there*).
+- On every game a starter plays, the gate gives no gain (B is not better than C) and flips the bias from
+  too low to too high. The headline improvement came from the scored population, not the projection.
+- Only 3.6% of established-starter games fall under 15 attempts, but they cost 15% of attempts RMSE.
+- Real lines (2026 settled, n = 39-79 per market): Vault's pass_yd projection runs +14 yards above actual
+  (line +0.6) and loses to the line on MAE in att, cmp and yds. Not significant alone (about 1.4 SE).
+- All 367 settled QB props: Vault's average win probability is 0.582 on overs (hit 51.5%) and 0.552 on
+  unders (hit 49.3%); the market said 0.513 and 0.532. QB props are overconfident on both sides, which a
+  left-tail leak alone would not explain (it would hit overs only).
+
+Verdict: finding 1 stands as REVIEW REQUIRED, but the damage is smaller and different from first stated.
+The gate is a reasonable history cleaner; the flaw is fitting sd and calibration on the truncated target.
+Repair: keep the gated history, fit sd and isotonic calibration on all games by established starters, and
+re-compare to the line on that population. No shipped numbers were changed.
+
+## Addendum 2: refit of QB passing markets (`scripts/refit_qb_gate.py`, nothing written to data/)
+
+"After" = same gated history, but sd/distribution, isotonic calibration and shrink are fit on every game by an
+established starter. Season holdout, trained on seasons before each test year, test 2021-2025, all established
+starter games, lines at 0.85/1.0/1.15 x projection (7,875 games per market):
+
+| Market | Fit | Log loss | Brier | ECE | Mean p | Hit |
+|---|---|---|---|---|---|---|
+| pass_att | before / after | 0.6272 / 0.6238 | 0.2182 / 0.2167 | 0.057 / 0.047 | 0.494 / 0.481 | 0.437 |
+| pass_cmp | before / after | 0.6386 / 0.6340 | 0.2234 / 0.2214 | 0.047 / 0.030 | 0.496 / 0.477 | 0.449 |
+| pass_yd | before / after | 0.6397 / 0.6370 | 0.2243 / 0.2230 | 0.050 / 0.039 | 0.464 / 0.453 | 0.414 |
+| pass_td | before / after | 0.5446 / 0.5414 | 0.1826 / 0.1813 | 0.043 / 0.030 | 0.484 / 0.471 | 0.442 |
+
+Fitted change (trained < 2025): attempts and completions NB dispersion r 32.5/40.7 -> 16.7/16.7 (fatter tails);
+pass_yd log-normal sd^2 = 2050 + 13.2*mu -> 6301 + 0*mu (constant, a boundary solution to look at) and its shrink
+0.956 -> 1.0; pass_td unchanged except its n.
+
+2026 settled QB props at the closing line (n = 66 to 115 per market; both fits trained < 2026): no measurable
+change (log loss within 0.01 either way) and both lose to the no-vig market on att, cmp and yds (e.g. pass_yd
+0.713 / 0.723 vs 0.693). pass_td is the one market at or better than the market (0.683 / 0.679 vs 0.684).
+
+Read: the refit is a small, consistent calibration gain out of sample (log loss -0.3 to -0.5%, ECE down 20 to
+35%) but does not fix QB overconfidence on real lines; that gap is the projection itself, not the tails.
