@@ -271,3 +271,19 @@ inactives of whom 0 played, which is the post-game truth, not what was known 30 
 (minutes MAE 4.899 -> 4.723, 8+ misses 18.5% -> 17.1%) is therefore an upper bound. v3s is shadow-only, so no live price
 depends on it. The live recorder logs Expected -> Confirmed changes from 2026-27; v3s must be re-tested on those timestamps
 before it can ship (written into nba/docs/experiment-log.md).
+
+## Addendum 9: team-minutes target applied
+
+`build_prop_model_v2.main` now refits the team-minutes target under the as-of candidate rule: ratio of actual to projected
+minutes on the FIT season only (2025, report-based, the live regime; the test season is not used), 251.6 -> 264.9. It is stored
+in `prop_model_v2.json` and read through `V2.team_min()` by v3, v3 full, the consensus backtest (via `F.inputs`) and
+`build_model_state.py` (so live pricing). A ratio on the oracle seasons (2023-24) would give only 259.5, because the oracle
+removes every player who sat; the report-based season is the one that matches live. v3's own retune (oracle seasons) is unchanged.
+
+Result after rebuilding v2, v3, v3 full, consensus, backtests, model state and the page; parity check still exact (0 minutes
+difference on 40 games, 839 player-games):
+- v1 raw stat bias fixed: pts -0.40 -> +0.15, reb -0.19 -> +0.01, pra -0.74 -> +0.14. v1 MAE got slightly worse (pts 4.525 -> 4.549).
+- v2 is unchanged (pts MAE 4.509, bias +0.011; its stacker had already absorbed the bias), verdicts unchanged.
+- Signals: all within noise (consensus 3pm NO z 2.84 -> 2.80; v2 3pm NO z 2.86 -> 2.90; consensus pts NO z 2.38 -> 2.38; v2 ast YES
+  z 1.70 -> 1.80). No GO or WATCH label changed.
+So the stale target was a real inconsistency, but not one the shipped v2 prices depended on.

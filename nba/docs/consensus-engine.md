@@ -1,6 +1,6 @@
 # Consensus fair engine: backtest
 
-Generated 2026-10-07T00:44Z by `nba/scripts/build_consensus.py`. 2025-26 only (the seasons with both venues archived):
+Generated 2026-10-07T01:07Z by `nba/scripts/build_consensus.py`. 2025-26 only (the seasons with both venues archived):
 blends fit on the first half by tip time, scored and bet on the second half, 3%+ edge after fees.
 Consensus = one venue's prices moved to the other venue's line through prop model v2's distribution shape
 (`scripts/consensus.py`); our projection is not in it. "consensus + model" adds our projection in a fitted blend.
@@ -14,9 +14,9 @@ bias, e.g. Kalshi overs), "price + model" = the blend the current GO signals use
 | Stat | Rows | LL price | LL consensus | LL model | LL cons + model | LL price + model | LL price + cons + model |
 |---|---|---|---|---|---|---|---|
 | pts | 1,114 | 0.4496 | 0.4448 | 0.4971 | 0.4519 | 0.4545 | 0.4540 |
-| reb | 1,610 | 0.5079 | 0.5070 | 0.5215 | 0.5027 | 0.5048 | 0.5028 |
-| ast | 1,159 | 0.5336 | 0.5269 | 0.5324 | 0.5101 | 0.5123 | 0.5100 |
-| 3pm | 1,436 | 0.5120 | 0.5069 | 0.5150 | 0.5015 | 0.5010 | 0.5014 |
+| reb | 1,610 | 0.5079 | 0.5070 | 0.5213 | 0.5028 | 0.5047 | 0.5028 |
+| ast | 1,159 | 0.5336 | 0.5269 | 0.5326 | 0.5101 | 0.5124 | 0.5100 |
+| 3pm | 1,436 | 0.5120 | 0.5069 | 0.5146 | 0.5015 | 0.5010 | 0.5013 |
 
 Moving a line: mean consensus vs hit rate and price, by distance between the lines (all rows):
 
@@ -48,7 +48,7 @@ Betting the second half at 3%+ edge (ROI per unit, bets, games, z by game) and v
 | pts | price only | NO | +1.3% (449, 37 g, z -0.95) | baseline |
 | pts | price + model | NO | +1.3% (461, 37 g, z -0.98) | baseline |
 | pts | price + model | YES | -100.0% (1, 1 g, z None) | baseline |
-| reb | consensus | NO | +35.5% (83, 24 g, z 1.75) | WATCH |
+| reb | consensus | NO | +35.3% (84, 24 g, z 1.74) | WATCH |
 | reb | consensus | YES | -77.8% (5, 5 g, z -3.5) | NO-GO |
 | reb | consensus + model | NO | +18.8% (149, 29 g, z 0.75) | WATCH |
 | reb | consensus + model | YES | -72.2% (4, 4 g, z -2.6) | NO-GO |
@@ -58,9 +58,9 @@ Betting the second half at 3%+ edge (ROI per unit, bets, games, z by game) and v
 | ast | consensus + model | NO | +29.4% (464, 36 g, z 1.95) | WATCH |
 | ast | consensus + model | YES | +900.0% (1, 1 g, z None) | WATCH |
 | ast | price only | NO | +28.4% (467, 36 g, z 1.76) | baseline |
-| ast | price + model | NO | +27.6% (413, 36 g, z 1.62) | baseline |
+| ast | price + model | NO | +27.6% (414, 36 g, z 1.62) | baseline |
 | 3pm | consensus | NO | +31.5% (347, 31 g, z 3.12) | WATCH |
-| 3pm | consensus + model | NO | +18.8% (478, 31 g, z 2.09) | WATCH |
+| 3pm | consensus + model | NO | +19.4% (474, 31 g, z 2.1) | WATCH |
 | 3pm | price only | NO | +18.5% (369, 31 g, z 1.98) | baseline |
 | 3pm | price + model | NO | +17.7% (314, 31 g, z 2.13) | baseline |
 
@@ -69,9 +69,9 @@ Betting the second half at 3%+ edge (ROI per unit, bets, games, z by game) and v
 | Stat | Rows | LL price | LL consensus | LL model | LL cons + model | LL price + model | LL price + cons + model |
 |---|---|---|---|---|---|---|---|
 | pts | 329 | 0.6871 | 0.7070 | 0.6945 | 0.7349 | 0.7079 | 0.7271 |
-| reb | 379 | 0.6847 | 0.6822 | 0.6880 | 0.7046 | 0.6964 | 0.7039 |
-| ast | 302 | 0.6827 | 0.6900 | 0.6834 | 0.6875 | 0.6775 | 0.6855 |
-| 3pm | 342 | 0.6909 | 0.6932 | 0.6921 | 0.6736 | 0.6782 | 0.6786 |
+| reb | 379 | 0.6847 | 0.6822 | 0.6878 | 0.7048 | 0.6965 | 0.7041 |
+| ast | 302 | 0.6827 | 0.6900 | 0.6834 | 0.6877 | 0.6776 | 0.6857 |
+| 3pm | 342 | 0.6909 | 0.6932 | 0.6919 | 0.6737 | 0.6784 | 0.6788 |
 
 Moving a line: mean consensus vs hit rate and price, by distance between the lines (all rows):
 
@@ -102,8 +102,8 @@ Betting the second half at 3%+ edge (ROI per unit, bets, games, z by game) and v
 | reb | consensus + model | Under | -10.1% (69, 30 g, z -1.26) | NO-GO |
 | reb | price only | Over | -13.5% (13, 10 g, z -0.64) | baseline |
 | reb | price only | Under | -12.6% (58, 25 g, z -1.86) | baseline |
-| reb | price + model | Over | -13.5% (13, 10 g, z -0.64) | baseline |
-| reb | price + model | Under | -12.6% (58, 25 g, z -1.86) | baseline |
+| reb | price + model | Over | +2.2% (11, 10 g, z -0.28) | baseline |
+| reb | price + model | Under | -14.4% (57, 25 g, z -2.11) | baseline |
 | ast | consensus | Over | +6.0% (5, 5 g, z 0.09) | WATCH |
 | ast | consensus | Under | +9.7% (106, 36 g, z 0.84) | WATCH |
 | ast | consensus + model | Over | +6.0% (5, 5 g, z 0.09) | WATCH |
@@ -111,33 +111,33 @@ Betting the second half at 3%+ edge (ROI per unit, bets, games, z by game) and v
 | ast | price only | Over | +76.7% (3, 3 g, z 0.87) | baseline |
 | ast | price only | Under | +12.1% (107, 36 g, z 0.64) | baseline |
 | ast | price + model | Over | +76.7% (3, 3 g, z 0.87) | baseline |
-| ast | price + model | Under | +8.4% (109, 37 g, z 0.22) | baseline |
+| ast | price + model | Under | +9.0% (110, 37 g, z 0.2) | baseline |
 | 3pm | consensus | Over | +0.0% (2, 2 g, z 0.0) | NO-GO |
 | 3pm | consensus | Under | +7.9% (22, 15 g, z 0.24) | WATCH |
 | 3pm | consensus + model | Over | -21.3% (3, 3 g, z -0.27) | NO-GO |
 | 3pm | consensus + model | Under | +19.8% (57, 24 g, z 0.91) | WATCH |
 | 3pm | price only | Under | +97.5% (4, 4 g, z 1.48) | baseline |
 | 3pm | price + model | Over | -22.6% (5, 5 g, z -0.47) | baseline |
-| 3pm | price + model | Under | +19.5% (89, 28 g, z 1.12) | baseline |
+| 3pm | price + model | Under | +20.7% (92, 28 g, z 1.11) | baseline |
 
 ## Kalshi rung from the rest of its ladder (Structural)
 
 | Stat | Rows | LL price | LL consensus | LL model | LL cons + model | LL price + model | LL price + cons + model |
 |---|---|---|---|---|---|---|---|
 | pts | 12,563 | 0.5040 | 0.5078 | 0.5389 | 0.5026 | 0.5011 | 0.5008 |
-| reb | 9,552 | 0.5450 | 0.5451 | 0.5608 | 0.5442 | 0.5434 | 0.5436 |
-| ast | 6,678 | 0.5256 | 0.5271 | 0.5309 | 0.5213 | 0.5198 | 0.5199 |
-| 3pm | 8,051 | 0.5042 | 0.5023 | 0.5078 | 0.4965 | 0.4974 | 0.4966 |
+| reb | 9,552 | 0.5450 | 0.5451 | 0.5607 | 0.5442 | 0.5434 | 0.5437 |
+| ast | 6,678 | 0.5256 | 0.5271 | 0.5309 | 0.5213 | 0.5198 | 0.5198 |
+| 3pm | 8,051 | 0.5042 | 0.5023 | 0.5075 | 0.4964 | 0.4974 | 0.4966 |
 
 Moving a line: mean consensus vs hit rate and price, by distance between the lines (all rows):
 
 | Stat | Distance | Rows | Consensus | Hit rate | Price | LL consensus | LL price |
 |---|---|---|---|---|---|---|---|
-| pts | same line | 66 | 0.329 | 0.151 | 0.321 | 0.4526 | 0.4406 |
+| pts | same line | 66 | 0.329 | 0.151 | 0.321 | 0.4527 | 0.4406 |
 | pts | 1 away | 428 | 0.531 | 0.500 | 0.524 | 0.6872 | 0.6855 |
 | pts | 2-3 away | 573 | 0.533 | 0.483 | 0.524 | 0.6676 | 0.6596 |
 | pts | 4-6 away | 11,439 | 0.440 | 0.401 | 0.435 | 0.5118 | 0.5098 |
-| pts | 7+ away | 57 | 0.224 | 0.193 | 0.238 | 0.3793 | 0.4146 |
+| pts | 7+ away | 57 | 0.224 | 0.193 | 0.238 | 0.3794 | 0.4146 |
 | reb | 1 away | 3,477 | 0.511 | 0.527 | 0.518 | 0.6574 | 0.6566 |
 | reb | 2-3 away | 5,989 | 0.442 | 0.412 | 0.441 | 0.4862 | 0.4886 |
 | reb | 4-6 away | 72 | 0.201 | 0.167 | 0.198 | 0.2511 | 0.2469 |
@@ -151,28 +151,28 @@ Betting the second half at 3%+ edge (ROI per unit, bets, games, z by game) and v
 
 | Stat | Fair | Side | Result | Verdict |
 |---|---|---|---|---|
-| pts | consensus | NO | +6.3% (1,743, 381 g, z 1.73) | WATCH |
+| pts | consensus | NO | +6.4% (1,746, 381 g, z 1.74) | WATCH |
 | pts | consensus | YES | -21.9% (66, 44 g, z -1.17) | NO-GO |
-| pts | consensus + model | NO | +8.8% (1,835, 382 g, z 2.38) | GO |
+| pts | consensus + model | NO | +8.9% (1,834, 382 g, z 2.38) | GO |
 | pts | consensus + model | YES | -22.6% (62, 42 g, z -1.29) | NO-GO |
-| pts | price + model | NO | +4.2% (1,359, 303 g, z 1.18) | baseline |
+| pts | price + model | NO | +4.2% (1,357, 303 g, z 1.12) | baseline |
 | pts | price + model | YES | +61.6% (1, 1 g, z None) | baseline |
-| reb | consensus | NO | +5.8% (670, 225 g, z 1.34) | WATCH |
+| reb | consensus | NO | +5.9% (669, 225 g, z 1.35) | WATCH |
 | reb | consensus | YES | +13.0% (151, 105 g, z 0.9) | WATCH |
-| reb | consensus + model | NO | +7.7% (701, 225 g, z 1.5) | WATCH |
+| reb | consensus + model | NO | +7.7% (701, 226 g, z 1.47) | WATCH |
 | reb | consensus + model | YES | +15.2% (148, 103 g, z 1.18) | WATCH |
-| reb | price + model | NO | +8.7% (323, 75 g, z 1.07) | baseline |
+| reb | price + model | NO | +10.2% (313, 72 g, z 0.99) | baseline |
 | reb | price + model | YES | +6.8% (5, 4 g, z 0.97) | baseline |
-| ast | consensus | NO | +21.1% (538, 233 g, z 1.76) | WATCH |
-| ast | consensus | YES | -13.7% (204, 110 g, z -0.92) | NO-GO |
-| ast | consensus + model | NO | +10.8% (787, 222 g, z 0.41) | WATCH |
+| ast | consensus | NO | +20.7% (537, 233 g, z 1.73) | WATCH |
+| ast | consensus | YES | -13.2% (203, 109 g, z -0.86) | NO-GO |
+| ast | consensus + model | NO | +10.4% (795, 222 g, z 0.36) | WATCH |
 | ast | consensus + model | YES | -3.8% (214, 126 g, z -0.81) | NO-GO |
-| ast | price + model | NO | +10.8% (469, 120 g, z 1.68) | baseline |
-| ast | price + model | YES | +59.7% (35, 18 g, z 2.03) | baseline |
-| 3pm | consensus | NO | +15.3% (1,584, 279 g, z 2.95) | GO |
+| ast | price + model | NO | +12.8% (480, 120 g, z 2.03) | baseline |
+| ast | price + model | YES | +51.6% (34, 18 g, z 1.96) | baseline |
+| 3pm | consensus | NO | +15.3% (1,585, 279 g, z 2.95) | GO |
 | 3pm | consensus | YES | -7.8% (43, 26 g, z -1.5) | NO-GO |
-| 3pm | consensus + model | NO | +16.5% (1,545, 277 g, z 2.84) | GO |
+| 3pm | consensus + model | NO | +15.7% (1,548, 277 g, z 2.8) | GO |
 | 3pm | consensus + model | YES | +17.2% (27, 19 g, z 0.04) | WATCH |
 | 3pm | price only | NO | +5.9% (1,191, 282 g, z 1.86) | baseline |
-| 3pm | price + model | NO | +15.6% (1,350, 258 g, z 2.48) | baseline |
+| 3pm | price + model | NO | +15.0% (1,351, 258 g, z 2.41) | baseline |
 | 3pm | price + model | YES | +19.1% (1, 1 g, z None) | baseline |

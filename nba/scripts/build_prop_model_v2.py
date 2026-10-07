@@ -44,6 +44,16 @@ SHRINK = {'p3': 150.0, 'p2': 100.0, 'ft': 60.0}            # attempts of league-
 DEF_N0 = 10                                                # games before a defense factor is trusted half-way
 
 
+def team_min():
+    """The team-minutes target for v2's walk and live pricing. Fit by main() under the as-of candidate rule on the FIT
+    season (report-based, the live regime). Falls back to v1's played-only value (251.6) until main() has run.
+    docs/leakage-audit-2026-10-06.md, addendum 8 and 9."""
+    try:
+        return json.load(open(OUT_JSON))['team_min']
+    except Exception:
+        return json.load(open(V1.OUT_JSON))['team_min']
+
+
 def ewma(old, new, a):
     return new if old is None else old + a * (new - old)
 
@@ -411,6 +421,14 @@ def main():
     team_min = json.load(open(V1.OUT_JSON))['team_min']
     lines = C.closing_lines()
     recs, ctx = walk(box, inj, margins, mm, casc, team_min, lines)
+    # As-of candidates include players who end up not dressing, so 240 x (1 + their share) is the right target, not v1's
+    # played-only 251.6. Ratio of actual to projected minutes on the FIT season only (the test season is not used).
+    fit0 = [r for r in recs if r['season'] == FIT and r['pm'] > 0]
+    ratio = sum(r['min'] for r in fit0) / sum(r['pm'] for r in fit0)
+    if abs(ratio - 1) > 0.003:
+        team_min = round(team_min * ratio, 1)
+        print(f'team minutes target {json.load(open(V1.OUT_JSON))["team_min"]} -> {team_min} (as-of candidates, fit season {FIT})', flush=True)
+        recs, ctx = walk(box, inj, margins, mm, casc, team_min, lines)
     fit = [r for r in recs if r['season'] == FIT]
     test = [r for r in recs if r['season'] == TEST]
     print(f'player-games: fit {len(fit):,}  test {len(test):,}', flush=True)
@@ -427,7 +445,7 @@ def main():
         'v1_mean_v2_spread': (mu1, fit_var(fit, mu1, True), True),
     }
 
-    res = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'features': FEAT,
+    res = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'team_min': team_min, 'features': FEAT,
            'stacker': stk, 'variance': {k: v[1] for k, v in models.items()}, 'mae': {}, 'espn': {}, 'kalshi': {},
            'blend_oos': {}, 'kalshi_bias': {}, 'calibration': {}}
     # projection accuracy, test season

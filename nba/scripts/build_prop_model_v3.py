@@ -346,7 +346,7 @@ def main():
     margins = MM.expected_margins(box)
     mm = json.load(open(MM.OUT_JSON))
     casc = json.load(open(os.path.join(C.HERE, '..', 'data', 'usage_cascade.json')))['stats']
-    team_min = json.load(open(V1.OUT_JSON))['team_min']
+    team_min = V2.team_min()
     recs, _ = V2.walk(box, inj, margins, mm, casc, team_min, C.closing_lines())
     fit = [r for r in recs if r['season'] == V2.FIT and r['pm'] > 0]
     test = [r for r in recs if r['season'] == V2.TEST and r['pm'] > 0]

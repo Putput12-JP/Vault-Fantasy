@@ -141,7 +141,7 @@ def main():
            'games': n, 'live': live, 'example': example, 'game': game,
            # minutes model v2 as the backtest ran it: weights in MM.FEATURES order, team total, rotation rule, usage cascade
            'minutes': {'features': MM.FEATURES, 'beta': [mm['beta'][f] for f in MM.FEATURES],
-                       'team_min': json.load(open(V1.OUT_JSON))['team_min'], 'rot_min': MM.ROT_MIN, 'rot_days': MM.ROT_DAYS,
+                       'team_min': V2.team_min(), 'rot_min': MM.ROT_MIN, 'rot_days': MM.ROT_DAYS,
                        'cascade': {s: {'use': c['use'], 'beta': c['beta']} for s, c in casc.items() if s in BASE}},
            # minutes model v3 as the shadow (docs/minutes-v3-pricing.md): weights without and with confirmed starters,
            # each fitted team total from that test, the return-from-absence rule

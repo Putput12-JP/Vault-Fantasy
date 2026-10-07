@@ -35,7 +35,7 @@ def inputs():
     box = C.player_games(V2.SEASONS)
     return {'box': box, 'inj': C.InjuryAsOf([2025, 2026], C.player_index(box)), 'margins': MM.expected_margins(box),
             'mm': json.load(open(MM.OUT_JSON)), 'casc': json.load(open(os.path.join(DATA, 'usage_cascade.json')))['stats'],
-            'team_min': json.load(open(V1.OUT_JSON))['team_min'], 'lines': C.closing_lines(),
+            'team_min': V2.team_min(), 'lines': C.closing_lines(),
             'mv3': json.load(open(os.path.join(DATA, 'minutes_model_v3.json'))),
             'rv3': json.load(open(os.path.join(DATA, 'rates_v3.json')))}
 
