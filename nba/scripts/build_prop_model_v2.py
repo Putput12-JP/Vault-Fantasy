@@ -190,7 +190,7 @@ def features(ctx, g, team, opp, aid, pos, mu, pm, rate, line):
     return out
 
 
-def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None, feed=None, moved=False, cand_rule='asof'):
+def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None, feed=None, moved=False, cand_rule='asof', dress=None):
     """v1's projection exactly (the 'tip' clock), plus v2 features, for every player-game from 2023 on.
     Injuries: who actually sat before 2025 (no archived reports), the report 30 min pre-tip from 2025.
     base='v3' swaps in the v3 base (docs/v3-plan.md B + C): minutes model v3 (role, returns, new team, market spread;
@@ -271,6 +271,8 @@ def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=
                 if tot > 0 and len(pm) >= 7:
                     f = team_min / tot
                     pm = {a: min(48.0, m * f) for a, m in pm.items()}
+                if dress is not None:      # every candidate's projected minutes and whether he dressed (nba/scripts/build_dress_table.py)
+                    dress.extend((g['season'], pm[r['athlete_id']], bool(r['played'])) for r in cand)
                 present = [rt[r['athlete_id']] for r in cand]
                 for r in cand:
                     aid = r['athlete_id']

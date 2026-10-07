@@ -332,3 +332,21 @@ weaknesses, both fixed in the script (`--dry` added to test without logging):
    (nba/docs/experiment-log.md); `EXTERNAL_LOOKS = 15` now adds them (for the first candidate of a re-run the bar goes from 0.0003 x ln(13) = 7.7e-4 to 0.0003 x ln(28) = 10.0e-4).
 Re-running as a dry run: all 10 candidates still reject. The best pooled gain is blowout_risk at +5.2e-4 with a cluster CI of
 -20.2e-4 to the upside; none is close. The 11 logged trials stand.
+
+## Addendum 13: Game Simulation (NBA) was affected by the team-minutes change
+
+Yes. The simulation rescales each team's minutes and means to 240 whenever the projected sum is more than 3% off. Raising `team_min` from
+251.6 to 264.9 (addendum 9) moved that factor from about 0.95 to 0.91 on a full model rotation, cutting every starter's minutes and stat
+means about 9% (it was about 5% before, which was already wrong in kind). The cause is that the model's minutes are for players who
+dress while the candidate list carries about 1.3 players per team who will not.
+
+Fix (pre-registered rules were revised before any result, noted in nba/docs/game-simulation.md rule 6): `nba/scripts/build_dress_table.py`
+measures P(dress | projected minutes) from the as-of candidates (fit 2024-25, test 2025-26 agrees within 0.01 per bin, e.g. 15-20 minutes
+0.873 / 0.879, 30-35 0.986 / 0.986). It goes into `model_state.json` and the simulation's `simInputs` uses it for untagged players instead of
+playing everyone and scaling by 240 / sum. On a full model rotation (GS vs LAL), the sum of minutes times P(play) is 233.7 instead of 264.9.
+
+What is not verified: the live preseason board has changed rosters, so many players come from the Minutes Lab rather than the model and
+their raw minutes still push the team sum to 260-340 (factor 0.70 to 0.92, the safety net firing). That was already so before and is a
+roster-state issue, not the dress table; re-check on a regular-season board. The simulation's pre-registered calibration test (after 150
+settled games) will measure the final effect. No other change in this audit touches it: the NFL changes and the consensus / calibration /
+spread work do not feed the simulation; the v2 stacker and variance refit did, and they are refreshed automatically on render.

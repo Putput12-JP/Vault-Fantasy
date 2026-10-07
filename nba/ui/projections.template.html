@@ -3420,6 +3420,10 @@ function simPois(R, lam){ if (lam <= 0) return 0; if (lam < 30){ const L = Math.
 const simVar = (s, mu, extra) => { const [v0, v1, v2, v3] = PR.variance[s]; return Math.max(.25, v0 + v1 * mu + v2 * mu * mu + (v3 ? v3 * extra : 0)); };
 function simCount(R, mu, v){ if (mu <= 0) return 0; if (v <= mu * 1.001) return simPois(R, mu); return simPois(R, simGamma(R, mu * mu / (v - mu)) * (v - mu) / mu); }
 
+// The model's minutes are for players who dress, and the candidate list carries about 1.3 players per team who will not.
+// A player with no injury tag plays with the measured chance for his projected minutes (data/dress_table.json): ~99% at 30+,
+// ~87% at 15-20, ~40% under 10. The old fix scaled every player by 240 / sum, which cut starters about 9% (docs/leakage-audit-2026-10-06.md, addendum 13).
+const dressP = m => { const T = MS && MS.minutes && MS.minutes.dress; if (!T || !T.length) return 1; for (const [hi, p] of T) if (m < hi) return p; return T[T.length - 1][1]; };
 // who plays and what the prop model says about each: the same minutes and stats Tonight shows, with your what-ifs
 function simInputs(g, B, pick){
   const cache = {}, status = statusFromBoard(B), pOut = (MS && MS.game && MS.game.p_out) || {};
@@ -3430,7 +3434,7 @@ function simInputs(g, B, pick){
       if (seen.has(pid) || st === 'Out' || st === 'Inactive') return;
       const mu = {}, ex = {}; let min = 0;
       for (const s of SIM_STATS){ const m = muFor(pid, s, cache, g, team); if (!m || !(m.min > 0)) return; mu[s] = m.mu; ex[s] = m.extra; min = m.min; }
-      seen.add(pid); rows.push({pid, name, st, min, mu, ex, src, pPlay: 1 - (st ? (pOut[st] || 0) : 0)});
+      seen.add(pid); rows.push({pid, name, st, min, mu, ex, src, pPlay: st ? 1 - (pOut[st] || 0) : dressP(min)});
     };
     for (const a of Object.keys(model)) add(+a, nameOf(B, +a), 'model');
     if (pick.mode !== 'example') for (const p of (D.teams[team] ? D.teams[team].players : [])) add(p.id, p.name, 'lab');

@@ -9,7 +9,11 @@ A menu page that plays one game 10,000 times and reports the score, each player'
 3. Raw stat draws. Every player's points come from a normal with the prop model's mean (his minutes times his rate, with the Lab and what-if edits) and the prop model's variance for points; rebounds, assists and 3-pointers from a gamma-Poisson (negative binomial) with the model's variance. The draws are independent.
 4. Tie to the game. Each team's raw points are scaled so the team sums to its target score. Teammate points therefore move against each other, and a fast game lifts everyone. Assists and 3-pointers scale with their team's score ratio at exponent 1; rebounds scale with the game total ratio at exponent 0.5. These exponents are fixed here, not fit.
 5. Calibration pilot (added during the build, before any real-game result): scaling to the team score nudges high-variance players down and low-variance players up, and a normal cut at zero thins small scorers. A 3,000-game pilot measures each player's mean and spread and corrects the raw points centre (within 0.8x to 1.25x) and spread (within 0.7x to 1.5x) before the 10,000-game run. Rebounds, assists and 3-pointers need no pilot.
-6. Minutes are scaled to 240 per team when the projected sum is off by more than 3%, and the page says so.
+6. Minutes are scaled to 240 per team when the projected sum is off by more than 3%, and the page says so. **Revised 2026-10-07, before any
+   result:** a player with no injury tag now plays with the measured chance for his projected minutes (`data/dress_table.json`, fit on 2024-25,
+   checked on 2025-26: about 99% at 30+ minutes, 87% at 15-20, 33% to 44% under 10), because the model's minutes are for players who dress and
+   the candidate list holds about 1.3 players per team who will not. The uniform 240 / sum scaling stays only as a safety net (it cut every
+   starter about 9% once the team-minutes target moved from 251.6 to 264.9).
 
 ## What version 1 is, and is not
 
