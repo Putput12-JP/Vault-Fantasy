@@ -60,7 +60,9 @@ def main(n_games=40):
         if not rows:
             continue
         if g['game_id'] in sample:
-            state = json.loads(json.dumps(BS.export(ctx, rt, ms, keep | {r['athlete_id'] for r in rows}, g['season'], asof=g['tip'], m3=m3)))
+            # the live roster is not knowable historically: a player seen in the last 30 days stands in for it (the walk's rule)
+            seen30 = {a for a, pp in ms.pl.items() if pp['last'] >= g['tip'] - dt.timedelta(days=30)}
+            state = json.loads(json.dumps(BS.export(ctx, rt, ms, keep | seen30 | {r['athlete_id'] for r in rows}, g['season'], asof=g['tip'], m3=m3)))
             pr = PX.Pricer(D=D, MS={'live': state, 'minutes': minutes, 'minutes_v3': MSF['minutes_v3']})
             day = g['tip_et'].strftime('%Y-%m-%d')
             clk = (g['tip_et'] - dt.timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M')
@@ -71,7 +73,8 @@ def main(n_games=40):
             cache = {}
             for team in (g['home'], g['away']):
                 status = {a: s for a, s in inj.status(day, team, clk).items()}
-                pr.cand_override[(team, gg['id'])] = [r['athlete_id'] for r in rows if r['team'] == team]
+                # no cand_override: live pricing builds its own candidates and the backtest now uses the same rule
+                # (docs/leakage-audit-2026-10-06.md, addendum 3)
                 res = pr.game_minutes(team, gg, status, cache)
                 st5 = (feed.get((g['game_id'], team)) or {}).get('start')
                 # the v3 walk adds the feed's inactive list to Out; the board's status carries it live

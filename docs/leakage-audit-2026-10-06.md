@@ -172,3 +172,18 @@ Verdict: finding 2 downgrades from "unknown" to REVIEW REQUIRED with measured si
 material only for the pts GO label on ESPN prices. Repair: switch `build_prop_model_v2.walk` (and v3, minutes v3,
 pickem corr) to the as-of rule with depth-chart arrivals, re-issue the verdict table, and point the parity check at
 live-style candidates instead of `cand_override`.
+
+## Addendum 4: NBA candidate rule applied (finding 2 repaired)
+
+`build_prop_model_v2.walk` now defaults to `cand_rule='asof'`: candidates are players with minutes state on the team in
+the last 30 days who are not Out on the pre-tip report, matching `pricing.py`. `cand_rule='box'` keeps the old leaky rule
+for comparison. `check_minutes_parity.py` no longer forces box-score candidates and its exported state includes the same
+30-day set; it reports 0 minutes difference on 40 sampled games (839 player-games), so live pricing and the backtest
+now agree under the shared rule. Rebuilt: prop_model_v2, v3, v3_full, backtests, model_state and the rendered page.
+
+Signal changes in `nba/data/backtests.json` (11 signals before and after):
+- "Prop model v2 + Kalshi price, pts NO" was GO (n 5,023, ROI +3.5%, z 2.11). It is gone (no pts NO signal survives).
+- v2 + Kalshi 3pm NO stays GO, weaker: z 3.53 -> 2.86, ROI +9.4% -> +8.7%.
+- v2 ast YES and reb YES stay WATCH (n and ROI move, still below GO).
+- All seven "Consensus ladder + model" signals are unchanged (that engine does not use the walk's candidate set).
+Not rebuilt: v1 (`build_prop_model.py`, its own walk and candidate rule), `build_consensus.py`.

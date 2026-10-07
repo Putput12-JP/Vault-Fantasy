@@ -180,7 +180,7 @@ def features(ctx, g, team, opp, aid, pos, mu, pm, rate, line):
     return out
 
 
-def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None, feed=None, moved=False):
+def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=None, feed=None, moved=False, cand_rule='asof'):
     """v1's projection exactly (the 'tip' clock), plus v2 features, for every player-game from 2023 on.
     Injuries: who actually sat before 2025 (no archived reports), the report 30 min pre-tip from 2025.
     base='v3' swaps in the v3 base (docs/v3-plan.md B + C): minutes model v3 (role, returns, new team, market spread;
@@ -236,8 +236,23 @@ def walk(box, inj, margins, mm, casc, team_min, lines, base='v2', mv3=None, rv3=
                     out = {a: 1.0 for a, s in inj.status(day, team, clk).items() if s in ('Out', 'Doubtful')}
                 if feed and (g['game_id'], team) in feed:
                     out.update({a: 1.0 for a in feed[(g['game_id'], team)]['inactive']})
-                cand = [r for r in rows if r['team'] == team and r['athlete_id'] in ms.pl
-                        and (moved or ms.pl[r['athlete_id']]['team'] == team) and r['athlete_id'] in rt and r['athlete_id'] not in out]
+                if cand_rule == 'box':
+                    # LEAKY (docs/leakage-audit-2026-10-06.md, addendum 3): the post-game box score says who dressed.
+                    cand = [r for r in rows if r['team'] == team and r['athlete_id'] in ms.pl
+                            and (moved or ms.pl[r['athlete_id']]['team'] == team) and r['athlete_id'] in rt and r['athlete_id'] not in out]
+                else:
+                    # As live pricing does it (pricing.py game_minutes): everyone with minutes state on this team in the
+                    # last 30 days who is not Out on the pre-tip report. Players who did not dress take minutes but
+                    # get a stub row, so they are never scored.
+                    byid = {r['athlete_id']: r for r in rows if r['team'] == team}
+                    lim = g['tip'] - dt.timedelta(days=30)
+                    cand = [byid.get(a) or {'athlete_id': a, 'team': team, 'played': False, 'minutes': 0.0}
+                            for a, pp in ms.pl.items()
+                            if pp['team'] == team and pp['last'] >= lim and a in rt and a not in out]
+                    if moved:    # a dressed player whose history is from another team is still a candidate (docs/moved-players-test.md)
+                        have = {r['athlete_id'] for r in cand}
+                        cand += [r for r in byid.values() if r['athlete_id'] in ms.pl and r['athlete_id'] in rt
+                                 and r['athlete_id'] not in out and r['athlete_id'] not in have]
                 pm = {}
                 for r in cand:
                     x = mfeat(g, team, r['athlete_id'], out)
