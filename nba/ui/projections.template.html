@@ -496,7 +496,7 @@ tr.detail td{padding:0 0 16px;background:rgb(var(--ink) / .02)}
   footer{padding:0 16px 28px}
   :root{--pad:16px}
 }
-@media (max-width:480px){ .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px} .kpi .val{font-size:20px} }
+@media (max-width:480px){ .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px} .kpi .val{font-size:20px} .kpi .hint{white-space:normal;overflow:visible;text-overflow:clip} }
 @media (prefers-reduced-motion:reduce){ .btn,.switch input::after,.prog .tr i,.sidebar{transition:none} }
 /* Player Props v2 */
 .pv-wrap{display:grid;gap:var(--gap);min-width:0}
@@ -705,8 +705,11 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .gdot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
 @media (prefers-reduced-motion:reduce){ .gtile{transition:none} .gtile:active{transform:none} }
 .pv-games{padding:10px 14px 4px}
+.pv-since{padding:12px 16px;display:grid;gap:8px}.sn-h{display:flex;align-items:baseline;gap:10px;font-size:13px}.sn-h .linkbtn{margin-left:auto}
+.sn-c-wrap{display:flex;flex-wrap:wrap;gap:6px}.sn-c{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center;padding:4px 10px;border-radius:var(--r-pill);background:var(--raised);color:var(--fg2);font-size:12.5px}.sn-c b{font-weight:600;color:var(--fg)}
+.sn-c.up b{color:var(--up)}.sn-c.warn b{color:var(--warn)}.sn-c.down b{color:var(--down)}
 .pp-strip{padding:10px 14px 4px;border-bottom:1px solid var(--border)}
-.gs-legs{display:grid;gap:10px}.gs-leg{display:flex;flex-wrap:wrap;gap:8px}.gs-leg .sel{min-width:0;flex:1 1 150px}.gs-line{width:90px;flex:none}
+.gs-legs{display:grid;gap:10px}.gs-leg{display:flex;flex-wrap:wrap;gap:8px}.gs-leg .sel{min-width:0;flex:1 1 90px}.gs-leg .sel[data-f="pid"]{flex:1 1 100%}.gs-line{width:90px;flex:none}
 .gs-out{display:flex;flex-wrap:wrap;gap:10px 28px;margin:16px 0 8px}.gs-out div{display:grid}.gs-out small{font-size:11.5px;color:var(--fg3)}.gs-out b{font-family:var(--font-mono);font-size:22px;font-weight:600;letter-spacing:-.02em}
 .gs-checks{display:grid;gap:12px}.gs-checks>div{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}.gs-checks small{display:block;color:var(--fg3);font-size:12.5px}.gs-checks b{font-weight:500}
 .lg{display:inline-block;vertical-align:middle;object-fit:contain;flex:none}
@@ -800,6 +803,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pv-bt{display:grid;grid-template-columns:minmax(0,1.7fr) repeat(5,minmax(0,.8fr)) 128px;gap:4px 14px;align-items:center;padding:11px 18px;border-top:1px solid var(--border);font-size:13px}
 .pv-bt.h{font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;padding-block:9px;border-top:0}
 .pv-bt > span{font-variant-numeric:tabular-nums;min-width:0}
+.pv-bt .b1{display:flex;align-items:center;gap:10px}.pv-bt .b1t{min-width:0}
 .pv-bt .b1 b{display:block;font-weight:600;font-size:13.5px}
 .pv-bt small{display:block;font-size:11.5px;color:var(--fg3)}
 .pv-bt small.k{display:none}
@@ -1167,6 +1171,7 @@ th{font-weight:500}
       <div class="pv-toast" id="pv-toast" role="status" hidden></div>
       <div id="pv-v2" class="pv-wrap">
         <div id="pv-tools"></div>
+        <div id="pv-since"></div>
         <section class="card pv-games" id="pv-games" hidden></section>
         <div class="pv-main"><div class="pv-list" id="pv-list" aria-label="Props"></div><section class="pv-detail" id="pv-detail"></section></div>
       </div>
@@ -1496,6 +1501,31 @@ function paintThemeBtn(){ const b = $('themebtn'), light = themeNow() === 'light
 function setTheme(t){ document.documentElement.dataset.theme = t; store.set('nba-theme', t); paintThemeBtn(); if (window.HK && HK.setTheme) HK.setTheme(); }
 $('themebtn').addEventListener('click', () => setTheme(themeNow() === 'light' ? 'dark' : 'light'));
 paintThemeBtn();
+
+// "Since you last looked": what changed on the Player Props board since this browser last opened it (new Bets and Leans, ones that went away, newly out
+// players, new games). Compared once per visit against a small snapshot saved in this browser; dismissable.
+let sinceHtml = null;
+function sinceLast(rows, B){
+  if (PS.mode !== 'live') return '';
+  if (sinceHtml !== null) return sinceHtml;
+  const now = Date.now() / 1000, prev = store.get('nba-since'), cur = {t: now, v: {}, outs: [], games: (B.games || []).map(g => String(g.id))};
+  const byKey = {}; for (const r of rows){ byKey[pvKey(r)] = r; if (r.verdict !== 'pass') cur.v[pvKey(r)] = r.verdict === 'bet' ? 'b' : 'l'; }
+  cur.outs = Object.entries(statusFromBoard(B)).filter(([, st]) => /^(Out|Inactive)$/.test(st)).map(([p]) => +p);
+  sinceHtml = '';
+  if (prev && prev.v && now - prev.t > 20 * 60){
+    const nm = k => { const r = byKey[k]; const [p, s] = k.split('|'); return `${esc(r ? r.name : nameOf(B, +p))} ${esc(PV_SS[s] || s)}`; };
+    const chip = (cls, lab, list) => list.length ? `<span class="sn-c ${cls}"><b>${lab}</b> ${list.slice(0, 3).join(', ')}${list.length > 3 ? ` and ${list.length - 3} more` : ''}</span>` : '';
+    const newB = Object.keys(cur.v).filter(k => cur.v[k] === 'b' && prev.v[k] !== 'b'), newL = Object.keys(cur.v).filter(k => cur.v[k] === 'l' && !prev.v[k]);
+    const gone = Object.keys(prev.v).filter(k => !cur.v[k]);
+    const outs = cur.outs.filter(p => !(prev.outs || []).includes(p)), games = cur.games.filter(g => !(prev.games || []).includes(g));
+    const parts = [chip('up', `${newB.length} new ${newB.length === 1 ? 'Bet' : 'Bets'}`, newB.map(nm)), chip('warn', `${newL.length} new ${newL.length === 1 ? 'Lean' : 'Leans'}`, newL.map(nm)),
+      chip('', `${gone.length} no longer a Bet or Lean`, gone.map(nm)), chip('down', `${outs.length} newly out`, outs.map(p => esc(nameOf(B, p)))),
+      games.length ? `<span class="sn-c"><b>${games.length} new ${games.length === 1 ? 'game' : 'games'}</b> on the board</span>` : ''].filter(Boolean);
+    if (parts.length) sinceHtml = `<section class="card pv-since"><div class="sn-h"><b>Since you last looked</b><span class="muted">${agoFrom(prev.t, now)}</span><button type="button" class="linkbtn" data-since-x="1">Dismiss</button></div><div class="sn-c-wrap">${parts.join('')}</div></section>`;
+  }
+  store.set('nba-since', cur);
+  return sinceHtml;
+}
 
 let balOn = true;   // "Move freed minutes to teammates"
 function mins(team){ const e = edits[team] || {}, m = {}; for (const p of D.teams[team].players) m[p.id] = e[p.id] ?? p.min0; return m; }
@@ -2757,6 +2787,7 @@ function detailRow(r){
 }
 
 // events
+$('pv-since').addEventListener('click', e => { if (e.target.closest('[data-since-x]')){ sinceHtml = ''; $('pv-since').innerHTML = ''; } });
 $('pv-games').addEventListener('click', e => { const b = e.target.closest('.gtile[data-g]'); if (b){ pv.game = b.dataset.g; renderPropsV2(); } });
 $('pgames').addEventListener('click', e => { const b = e.target.closest('.gtile[data-g]'); if (b){ pf.game = b.dataset.g; renderProps(); } });
 $('psort').addEventListener('change', e => { pf.sort = e.target.value; renderProps(); });
@@ -2958,7 +2989,7 @@ function renderTrack(){
   $('tstatus').value = tf.status;
   $('tbets').innerHTML = B.length ? B.slice(0, tf.limit).map(b => `<tr>
       <td class="l num">${etFmt(b.tip, {month: 'short', day: 'numeric'})}<small>${clock(b.tip)}</small></td>
-      <td class="l"><b>${esc(b.player)}</b><small>${esc(b.team)} · ${esc(b.matchup)}</small></td>
+      <td class="l"><div class="pl">${avSm(b.pid, b.player)}<div><b>${esc(b.player)}</b><small>${esc(b.team)} · ${esc(b.matchup)}</small></div></div></td>
       <td class="l"><b>${SLABEL[b.stat] || b.stat} ${b.venue === 'kalshi' ? `${b.side} ${b.line + .5}+` : `${b.side} ${b.line}`}</b><small>${esc(b.book)}</small></td>
       <td class="l">${gatePill(b.gate)}<small>${ETYPE[b.etype || 'model']}</small></td>
       <td class="num">${tPrice(b.venue, b.price)}</td><td class="num">${tPrice(b.venue, b.price_close)}</td>
@@ -4433,6 +4464,7 @@ function renderPropsV2(){
     onGame: v => { pv.game = v; renderPropsV2(); }, onSort: v => { pv.sort = v; renderPropsV2(); }, onQ: v => { pv.q = v.trim(); renderPropsV2(); },
     onBell: () => { pvToggleAlerts(); pvMountTools(); }};
   pvMountTools();
+  $('pv-since').innerHTML = sinceLast(rows, PS.board);
   $('pv-games').hidden = games.length < 2;
   if (games.length > 1) gameStripMount($('pv-games'), gameStrip(games, pv.game, {all: true}));
   const key = r => `${r.e.p}|${r.e.s}|${r.e.g}`;
@@ -4940,7 +4972,7 @@ function pvRenderBets(){
           <span><small class="k">Result</small>${!R ? '<span class="muted">open</span>' : R.res === 'void' ? '<span class="muted">void, a player did not play</span>' : `<b class="${R.pl > 0 ? 'pos' : R.pl < 0 ? 'neg' : ''}">${R.res === 'won' ? 'Won' : R.res === 'lost' ? 'Lost' : 'Push'} ${pvMoney(R.pl)}</b><small>had ${R.ys.map(y => fmt(y, 0)).join(' and ')}</small>`}</span>
           <span class="acts"><button class="pv-ghost" type="button" data-del="${esc(b.id)}" aria-label="Remove this entry">Remove</button></span></div>`; }
         return `<div class="pv-bt">
-          <span class="b1"><b>${esc(b.name)} · ${esc(pvBetName(b))}</b><small>${PV_SL[b.s] || b.s} · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span>
+          <span class="b1">${avSm(b.p, b.name)}<span class="b1t"><b>${esc(b.name)} · ${esc(pvBetName(b))}</b><small>${PV_SL[b.s] || b.s} · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span></span>
           <span><small class="k">Price</small>${esc(b.price)}<small>costs ${pc(b.cost)}</small></span>
           <span><small class="k">Fair close</small>${R && R.cf != null ? `${pAm(R.cf)}<small title="${R.from != null ? `moved from ${R.from}` : ''}">${pc(R.cf)}, ${SRC[R.src] || ''}</small>` : `<span class="muted">${R ? 'none recorded' : 'after the game'}</span>`}</span>
           <span><small class="k">CLV</small>${R && R.clv != null ? `<b class="${R.clv >= 0 ? 'pos' : 'neg'}">${pvSg(R.clv)}</b>${bar(R.clv)}` : '<span class="muted">-</span>'}</span>
