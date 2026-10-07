@@ -103,24 +103,34 @@ const Stepper = ({ r, v, setV, set, big }) => (
     <button type="button" className="ml-step" onClick={() => set(v + 1)} aria-label={`${r.name}: one minute more`} disabled={v >= 48}>+</button>
   </div>
 );
-// Every counting stat as a labelled cell with its change under it. Starter cards use 4 columns (PRA first-class), bench rows one line of 7.
-const SG_KEYS = ['pts', 'reb', 'ast', 'pra', '3pm', 'stl', 'blk'];
-const SG_LAB = { pts: 'PTS', reb: 'REB', ast: 'AST', pra: 'PRA', '3pm': '3PM', stl: 'STL', blk: 'BLK' };
-const StatGrid = ({ r, row }) => (
-  <div className={'ml-sg' + (row ? ' row' : '')}>{(row ? ['pts', 'reb', 'ast', '3pm', 'stl', 'blk', 'pra'] : SG_KEYS).map(k => { const s = r.stats[k]; if (!s) return null; const dd = Math.abs(s.d) >= .05;
-    return <div key={k} className={k === 'pra' ? 'pra' : ''} title={s.lo != null ? `Typical range ${s.lo} to ${s.hi}` : undefined}><small>{SG_LAB[k]}</small><b>{fm(s.v)}</b><i className={dd ? (s.d > 0 ? 'pos' : 'neg') : ''}>{dd ? (s.d > 0 ? '+' : '') + fm(s.d) : ' '}</i></div>; })}</div>
-);
+// Counting stats. PRA is the headline with a bar showing how it splits into points, rebounds and assists; the three parts sit under it
+// in their bar colours, and the small stats (3PM, STL, BLK) are chips. Each stat carries a coloured change pill. Bench rows lay the same pieces out on one line.
+const Dlt = ({ d }) => Math.abs(d) < .05 ? null : <i className={'ml-d ' + (d > 0 ? 'pos' : 'neg')}>{d > 0 ? '▲' : '▼'}{fm(Math.abs(d))}</i>;
+const StatGrid = ({ r, row }) => { const S = r.stats, pra = Math.max(.01, S.pts.v + S.reb.v + S.ast.v);
+  const part = (k, l) => <div className={'ml-p ' + k}><small><u />{l}</small><b>{fm(S[k].v)}</b><Dlt d={S[k].d} /></div>;
+  const chip = (k, l) => <span className="ml-c" key={k} title={S[k].lo != null ? `Typical range ${S[k].lo} to ${S[k].hi}` : undefined}>{l}<b>{fm(S[k].v)}</b><Dlt d={S[k].d} /></span>;
+  return (
+    <div className={'ml-sg' + (row ? ' row' : '')}>
+      <div className="ml-pra"><div className="ml-prah"><small>PRA</small><b>{fm(S.pra.v)}</b><Dlt d={S.pra.d} /></div>
+        <div className="ml-split" aria-hidden="true"><i className="pts" style={{ flex: S.pts.v / pra }} /><i className="reb" style={{ flex: S.reb.v / pra }} /><i className="ast" style={{ flex: S.ast.v / pra }} /></div></div>
+      <div className="ml-parts">{part('pts', 'PTS')}{part('reb', 'REB')}{part('ast', 'AST')}</div>
+      <div className="ml-chips">{chip('3pm', '3PM')}{chip('stl', 'STL')}{chip('blk', 'BLK')}</div>
+    </div>
+  ); };
 
 // The five projected starters: big cards, like a lineup card.
-function StarterCard({ r, onSetMin, onOut }) {
+function StarterCard({ r, onSetMin, onOut, onProps }) {
   const [v, setV, set] = useMin(r, onSetMin); const d = v - r.base, changed = Math.abs(d) >= .05;
   return (
     <article className={'ml-sc' + (changed ? ' ml-ed' : '') + (r.out ? ' ml-out' : '')}>
       <span className="ml-pos">{r.pos}</span>
+      <button type="button" className="ml-pb" onClick={() => onProps(r.name)} title={`See ${r.name}'s prop lines`}>Props<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></button>
       <div className="ml-ph"><Cut ini={r.ini} src={r.src} fit={r.fit} h={78} w={92} /></div>
       <b className="ml-nm">{r.name}</b>
       {r.badges.length > 0 && <span className="ml-bdg c">{r.badges.slice(0, 2).map((b, i) => <Badge key={i} variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge>)}</span>}
       <Stepper r={r} v={v} setV={setV} set={set} big />
+      <input type="range" className="ml-range" min="0" max="48" step="0.5" value={v} style={{ '--p': (v / 48 * 100) + '%' }} aria-label={`${r.name} minutes`} onChange={e => set(e.target.value)} />
+      <div className="ml-q">{[[12, 'Bench'], [22, 'Role'], [30, 'Starter'], [36, 'Star']].map(([m, l]) => <button key={m} type="button" className={Math.abs(v - m) < .01 ? 'on' : ''} onClick={() => set(m)}>{m}<small>{l}</small></button>)}</div>
       <StatGrid r={r} />
       <div className="ml-ft">
         <span>{changed ? <><b className={d > 0 ? 'pos' : 'neg'}>{d > 0 ? '+' : ''}{fm(d)} min</b> <button type="button" className="ml-reset" onClick={() => set(r.base)}>Reset</button></> : <span className="ml-same">Projection {fm(r.base)}</span>}</span>
@@ -131,15 +141,17 @@ function StarterCard({ r, onSetMin, onOut }) {
 }
 
 // Everyone after the starters: one slim row each.
-function BenchRow({ r, onSetMin, onOut }) {
+function BenchRow({ r, onSetMin, onOut, onProps }) {
   const [v, setV, set] = useMin(r, onSetMin); const d = v - r.base, changed = Math.abs(d) >= .05;
   return (
     <div className={'ml-br' + (changed ? ' ml-ed' : '') + (r.out ? ' ml-out' : '')}>
       <Cut ini={r.ini} src={r.src} fit={r.fit} h={46} w={54} />
-      <div className="ml-bi"><b>{r.name}</b>{r.badges.slice(0, 1).map((b, i) => <Badge key={i} variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0, marginLeft: 6 }}>{b.t}</Badge>)}<StatGrid r={r} row /></div>
+      <div className="ml-bi"><b>{r.name}</b>{r.badges.slice(0, 1).map((b, i) => <Badge key={i} variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0, marginLeft: 6 }}>{b.t}</Badge>)}</div>
       <span className="ml-bd">{changed ? <><b className={d > 0 ? 'pos' : 'neg'}>{d > 0 ? '+' : ''}{fm(d)}</b> <button type="button" className="ml-reset" onClick={() => set(r.base)}>Reset</button></> : null}</span>
+      <button type="button" className="ml-pb" onClick={() => onProps(r.name)} title={`See ${r.name}'s prop lines`}>Props<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></button>
       <button type="button" className={'ml-outb' + (r.out ? ' on' : '')} aria-pressed={r.out} onClick={() => onOut(r.id)} title="Mark him out">{r.out ? 'OUT' : 'Out'}</button>
       <Stepper r={r} v={v} setV={setV} set={set} />
+      <StatGrid r={r} row />
     </div>
   );
 }
@@ -187,11 +199,11 @@ function LabView(p) {
           <div><small>Players changed</small><b>{chg.val}</b><i>{chg.hint}</i></div>
         </div>
       </section>
-      <div className="ml-starters">{act.slice(0, 5).map(r => <StarterCard key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} />)}</div>
-      {act.length > 5 && <><Mono>Bench</Mono><div className="ml-bench">{act.slice(5).map(r => <BenchRow key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} />)}</div></>}
+      <div className="ml-starters">{act.slice(0, 5).map(r => <StarterCard key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} onProps={p.onProps} />)}</div>
+      {act.length > 5 && <><Mono>Bench</Mono><div className="ml-bench">{[...act.slice(5)].sort((a, b) => b.min - a.min || b.base - a.base).map(r => <BenchRow key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} onProps={p.onProps} />)}</div></>}
       {rest.length > 0 && <>
         <button type="button" className="ml-more" aria-expanded={more} onClick={() => setMore(!more)}>{more ? 'Hide' : 'Show'} {rest.length} players outside the rotation<span>give a player minutes to bring him in</span></button>
-        {more && <div className="ml-bench">{rest.map(r => <BenchRow key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} />)}</div>}
+        {more && <div className="ml-bench">{[...rest].sort((a, b) => b.min - a.min || b.base - a.base).map(r => <BenchRow key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} onProps={p.onProps} />)}</div>}
       </>}
       <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 16 }}>
         <Card padding={20}>
