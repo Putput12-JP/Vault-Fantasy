@@ -229,3 +229,13 @@ Verdict: the 300 gate was chosen after the fact but it is not the thing doing th
 and also require |z| >= 2 (z from the logit model's information, no tuned constant), logged per market. Current outputs
 are unchanged: rec (c +0.165, z 3.14, n 791) and rec_yd (c +0.125, z 2.38, n 754) still apply; rush_yd and the QB markets would
 now be refused if they reach 300 rows with a noise-level shift. Caveat: 1,886 rows over three test weeks, one season.
+
+## Addendum 7: consensus engine (NBA)
+
+Correction to addendum 4: `build_consensus.py` does use the v2 walk (`F.walk_v2`), so its results were stale after the
+candidate-rule fix; they are rebuilt now. Findings and the Holm table are in `nba/docs/experiment-log.md` section 5.
+Other checks on the engine itself: the played-only filter is harmless (606 non-playing Kalshi rows of 68,081, settled as
+voids); the fit/test split is by tip time and all fits use first-half rows only; the leave-one-out ladder uses only prices
+available at the same clock; the books-to-Kalshi and Kalshi-to-books tests compare the books' last pre-tip update with Kalshi's
+30-minute average, a clock mismatch that favours the fresher side (none of the GO signals comes from those two tests). Not
+fixed: bets assume fills at the 30-minute average with no spread or size limit.

@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-30T20:05Z",
+ "generated": "2026-10-07T00:44Z",
  "edge": 0.03,
  "tests": {
   "books_to_kalshi": {
@@ -9,38 +9,38 @@
     "test_n": 557,
     "logloss": {
      "price": 0.44962,
-     "cons": 0.44457,
-     "model": 0.48672,
-     "consensus": 0.44682,
-     "consensus + model": 0.45427,
+     "cons": 0.44478,
+     "model": 0.49715,
+     "consensus": 0.44688,
+     "consensus + model": 0.45192,
      "price only": 0.45127,
-     "price + model": 0.4553,
-     "price + consensus + model": 0.45598
+     "price + model": 0.45451,
+     "price + consensus + model": 0.45402
     },
     "blend_all": [
-     -0.4928,
-     0.6391,
-     0.7127,
-     -0.4121
+     -0.4978,
+     0.6734,
+     0.6307,
+     -0.348
     ],
     "blends": {
      "consensus": [
-      -0.3645,
-      1.0666
+      -0.3653,
+      1.0677
      ],
      "consensus + model": [
-      -0.4173,
-      1.3718,
-      -0.4112
+      -0.4169,
+      1.3146,
+      -0.3324
      ],
      "price only": [
       -0.4896,
       1.0205
      ],
      "price + model": [
-      -0.5289,
-      1.1472,
-      -0.1775
+      -0.5306,
+      1.1398,
+      -0.1662
      ]
     },
     "by_distance": {
@@ -54,52 +54,52 @@
      },
      "1 away": {
       "n": 115,
-      "cons": 0.5048,
+      "cons": 0.5047,
       "price": 0.5134,
       "hit": 0.4261,
-      "ll_cons": 0.67725,
+      "ll_cons": 0.67732,
       "ll_price": 0.67598
      },
      "2-3 away": {
       "n": 264,
-      "cons": 0.4759,
+      "cons": 0.476,
       "price": 0.4931,
       "hit": 0.428,
-      "ll_cons": 0.62202,
+      "ll_cons": 0.62217,
       "ll_price": 0.62711
      },
      "4-6 away": {
       "n": 287,
-      "cons": 0.4032,
+      "cons": 0.4036,
       "price": 0.4226,
       "hit": 0.3868,
-      "ll_cons": 0.51309,
+      "ll_cons": 0.51344,
       "ll_price": 0.50935
      },
      "7+ away": {
       "n": 378,
-      "cons": 0.1882,
+      "cons": 0.1887,
       "price": 0.2082,
       "hit": 0.1429,
-      "ll_cons": 0.24087,
+      "ll_cons": 0.24119,
       "ll_price": 0.25694
      }
     },
     "bets": {
      "consensus": {
       "NO": {
-       "n": 501,
+       "n": 498,
        "games": 37,
-       "roi": 0.0226,
-       "z": -0.56
+       "roi": 0.0221,
+       "z": -0.72
       }
      },
      "consensus + model": {
       "NO": {
-       "n": 523,
+       "n": 524,
        "games": 37,
-       "roi": 0.0067,
-       "z": -0.92
+       "roi": 0.012,
+       "z": -0.98
       }
      },
      "price only": {
@@ -114,12 +114,12 @@
       "NO": {
        "n": 461,
        "games": 37,
-       "roi": 0.0105,
-       "z": -0.99
+       "roi": 0.0126,
+       "z": -0.98
       },
       "YES": {
-       "n": 2,
-       "games": 2,
+       "n": 1,
+       "games": 1,
        "roi": -1.0,
        "z": null
       }
@@ -132,38 +132,38 @@
     "test_n": 805,
     "logloss": {
      "price": 0.50786,
-     "cons": 0.50696,
-     "model": 0.51525,
-     "consensus": 0.50216,
-     "consensus + model": 0.50442,
+     "cons": 0.50701,
+     "model": 0.52149,
+     "consensus": 0.50218,
+     "consensus + model": 0.50274,
      "price only": 0.50497,
-     "price + model": 0.50373,
-     "price + consensus + model": 0.50474
+     "price + model": 0.50476,
+     "price + consensus + model": 0.50278
     },
     "blend_all": [
-     -0.1697,
-     -0.4184,
-     1.6818,
-     -0.2501
+     -0.148,
+     -0.3842,
+     1.5534,
+     -0.1344
     ],
     "blends": {
      "consensus": [
-      -0.0994,
-      1.0433
+      -0.0997,
+      1.0438
      ],
      "consensus + model": [
-      -0.1648,
-      1.2271,
-      -0.2278
+      -0.1442,
+      1.1404,
+      -0.1201
      ],
      "price only": [
       -0.0969,
       0.9822
      ],
      "price + model": [
-      -0.0465,
-      0.836,
-      0.1887
+      -0.0324,
+      0.8395,
+      0.1849
      ]
     },
     "by_distance": {
@@ -180,23 +180,23 @@
       "cons": 0.5056,
       "price": 0.5097,
       "hit": 0.4879,
-      "ll_cons": 0.63453,
+      "ll_cons": 0.63455,
       "ll_price": 0.641
      },
      "2-3 away": {
       "n": 637,
-      "cons": 0.4808,
+      "cons": 0.4809,
       "price": 0.4806,
       "hit": 0.449,
-      "ll_cons": 0.46415,
+      "ll_cons": 0.4643,
       "ll_price": 0.46951
      },
      "4-6 away": {
       "n": 259,
-      "cons": 0.3232,
+      "cons": 0.3233,
       "price": 0.3143,
       "hit": 0.2548,
-      "ll_cons": 0.27532,
+      "ll_cons": 0.27554,
       "ll_price": 0.26963
      }
     },
@@ -205,8 +205,8 @@
       "NO": {
        "n": 83,
        "games": 24,
-       "roi": 0.3485,
-       "z": 1.74
+       "roi": 0.3547,
+       "z": 1.75
       },
       "YES": {
        "n": 5,
@@ -217,10 +217,10 @@
      },
      "consensus + model": {
       "NO": {
-       "n": 190,
-       "games": 32,
-       "roi": 0.143,
-       "z": 0.65
+       "n": 149,
+       "games": 29,
+       "roi": 0.1878,
+       "z": 0.75
       },
       "YES": {
        "n": 4,
@@ -232,10 +232,10 @@
      "price only": {},
      "price + model": {
       "NO": {
-       "n": 3,
+       "n": 4,
        "games": 2,
-       "roi": -0.2593,
-       "z": 0.1
+       "roi": 1.2222,
+       "z": 0.55
       }
      }
     }
@@ -246,38 +246,38 @@
     "test_n": 580,
     "logloss": {
      "price": 0.53356,
-     "cons": 0.52702,
-     "model": 0.53188,
-     "consensus": 0.51048,
-     "consensus + model": 0.51038,
+     "cons": 0.52692,
+     "model": 0.53243,
+     "consensus": 0.51038,
+     "consensus + model": 0.51011,
      "price only": 0.51311,
-     "price + model": 0.51243,
-     "price + consensus + model": 0.51029
+     "price + model": 0.51232,
+     "price + consensus + model": 0.51002
     },
     "blend_all": [
-     -0.5183,
-     -0.1653,
-     1.1499,
-     0.0308
+     -0.5034,
+     -0.1323,
+     1.0785,
+     0.0741
     ],
     "blends": {
      "consensus": [
-      -0.5306,
-      1.0032
+      -0.5303,
+      1.0017
      ],
      "consensus + model": [
-      -0.5231,
-      0.9738,
-      0.0344
+      -0.5064,
+      0.936,
+      0.0793
      ],
      "price only": [
       -0.5526,
       0.9439
      ],
      "price + model": [
-      -0.4656,
-      0.6291,
-      0.3883
+      -0.4306,
+      0.6309,
+      0.3966
      ]
     },
     "by_distance": {
@@ -299,10 +299,10 @@
      },
      "2-3 away": {
       "n": 419,
-      "cons": 0.392,
+      "cons": 0.3918,
       "price": 0.3913,
       "hit": 0.3294,
-      "ll_cons": 0.43214,
+      "ll_cons": 0.43223,
       "ll_price": 0.44359
      },
      "4-6 away": {
@@ -310,7 +310,7 @@
       "cons": 0.2086,
       "price": 0.2051,
       "hit": 0.1594,
-      "ll_cons": 0.23195,
+      "ll_cons": 0.23165,
       "ll_price": 0.23906
      }
     },
@@ -319,8 +319,8 @@
       "NO": {
        "n": 469,
        "games": 36,
-       "roi": 0.2881,
-       "z": 1.9
+       "roi": 0.2882,
+       "z": 1.91
       },
       "YES": {
        "n": 1,
@@ -331,10 +331,10 @@
      },
      "consensus + model": {
       "NO": {
-       "n": 470,
+       "n": 464,
        "games": 36,
-       "roi": 0.2924,
-       "z": 1.94
+       "roi": 0.2941,
+       "z": 1.95
       },
       "YES": {
        "n": 1,
@@ -353,10 +353,10 @@
      },
      "price + model": {
       "NO": {
-       "n": 430,
+       "n": 413,
        "games": 36,
-       "roi": 0.284,
-       "z": 1.71
+       "roi": 0.2762,
+       "z": 1.62
       }
      }
     }
@@ -368,37 +368,37 @@
     "logloss": {
      "price": 0.51202,
      "cons": 0.50686,
-     "model": 0.51467,
-     "consensus": 0.49871,
-     "consensus + model": 0.50131,
+     "model": 0.51498,
+     "consensus": 0.49873,
+     "consensus + model": 0.50152,
      "price only": 0.50092,
      "price + model": 0.50103,
-     "price + consensus + model": 0.50117
+     "price + consensus + model": 0.50136
     },
     "blend_all": [
-     -0.3879,
-     -0.0888,
-     1.7682,
-     -0.7205
+     -0.4228,
+     -0.1034,
+     1.7049,
+     -0.6478
     ],
     "blends": {
      "consensus": [
-      -0.2466,
-      1.0652
+      -0.2464,
+      1.0643
      ],
      "consensus + model": [
-      -0.393,
-      1.6792,
-      -0.7246
+      -0.4285,
+      1.5997,
+      -0.6505
      ],
      "price only": [
       -0.3024,
       1.0013
      ],
      "price + model": [
-      -0.2568,
-      0.8517,
-      0.1886
+      -0.2559,
+      0.889,
+      0.146
      ]
     },
     "by_distance": {
@@ -415,12 +415,12 @@
       "cons": 0.4894,
       "price": 0.4959,
       "hit": 0.4359,
-      "ll_cons": 0.55082,
+      "ll_cons": 0.55081,
       "ll_price": 0.55484
      },
      "2-3 away": {
       "n": 446,
-      "cons": 0.2618,
+      "cons": 0.2617,
       "price": 0.2629,
       "hit": 0.2175,
       "ll_cons": 0.30452,
@@ -430,24 +430,18 @@
     "bets": {
      "consensus": {
       "NO": {
-       "n": 349,
+       "n": 347,
        "games": 31,
-       "roi": 0.311,
-       "z": 3.08
+       "roi": 0.3146,
+       "z": 3.12
       }
      },
      "consensus + model": {
       "NO": {
-       "n": 473,
+       "n": 478,
        "games": 31,
-       "roi": 0.1828,
-       "z": 1.94
-      },
-      "YES": {
-       "n": 2,
-       "games": 2,
-       "roi": -1.0,
-       "z": null
+       "roi": 0.1881,
+       "z": 2.09
       }
      },
      "price only": {
@@ -460,10 +454,10 @@
      },
      "price + model": {
       "NO": {
-       "n": 307,
+       "n": 314,
        "games": 31,
-       "roi": 0.1589,
-       "z": 1.99
+       "roi": 0.1767,
+       "z": 2.13
       }
      }
     }
@@ -476,73 +470,73 @@
     "test_n": 165,
     "logloss": {
      "price": 0.68706,
-     "cons": 0.70741,
-     "model": 0.68956,
-     "consensus": 0.70463,
-     "consensus + model": 0.73224,
+     "cons": 0.70698,
+     "model": 0.69446,
+     "consensus": 0.70485,
+     "consensus + model": 0.73494,
      "price only": 0.68351,
-     "price + model": 0.70559,
-     "price + consensus + model": 0.7233
+     "price + model": 0.70788,
+     "price + consensus + model": 0.72708
     },
     "blend_all": [
-     -0.5656,
-     1.119,
-     1.2269,
-     -1.2594
+     -0.6036,
+     0.9121,
+     1.2729,
+     -1.1963
     ],
     "blends": {
      "consensus": [
-      -0.4379,
-      1.1395
+      -0.4368,
+      1.1584
      ],
      "consensus + model": [
-      -0.5816,
-      1.3105,
-      -1.2758
+      -0.6181,
+      1.344,
+      -1.2178
      ],
      "price only": [
       -0.2871,
       2.0814
      ],
      "price + model": [
-      -0.3925,
-      2.0094,
-      -1.1037
+      -0.4224,
+      1.8516,
+      -1.0447
      ]
     },
     "by_distance": {
      "same line": {
       "n": 69,
-      "cons": 0.5356,
+      "cons": 0.5344,
       "price": 0.5012,
       "hit": 0.4638,
-      "ll_cons": 0.68478,
+      "ll_cons": 0.68479,
       "ll_price": 0.68694
      },
      "1 away": {
       "n": 111,
-      "cons": 0.5197,
+      "cons": 0.5187,
       "price": 0.4982,
       "hit": 0.4234,
-      "ll_cons": 0.69546,
+      "ll_cons": 0.69493,
       "ll_price": 0.69047
      },
      "2-3 away": {
       "n": 137,
-      "cons": 0.5295,
+      "cons": 0.5286,
       "price": 0.5001,
       "hit": 0.4745,
-      "ll_cons": 0.70182,
+      "ll_cons": 0.70162,
       "ll_price": 0.69002
      }
     },
     "bets": {
      "consensus": {
       "Under": {
-       "n": 119,
+       "n": 121,
        "games": 34,
-       "roi": -0.0507,
-       "z": -1.11
+       "roi": -0.0511,
+       "z": -1.12
       },
       "Over": {
        "n": 3,
@@ -553,16 +547,16 @@
      },
      "consensus + model": {
       "Under": {
-       "n": 145,
+       "n": 139,
        "games": 36,
-       "roi": -0.0649,
-       "z": -1.42
+       "roi": -0.0624,
+       "z": -1.54
       },
       "Over": {
-       "n": 4,
-       "games": 4,
-       "roi": -0.5531,
-       "z": -1.24
+       "n": 5,
+       "games": 5,
+       "roi": -0.6425,
+       "z": -1.8
       }
      },
      "price only": {
@@ -575,10 +569,16 @@
      },
      "price + model": {
       "Under": {
-       "n": 155,
+       "n": 151,
        "games": 36,
-       "roi": -0.0176,
-       "z": -0.91
+       "roi": -0.0169,
+       "z": -0.96
+      },
+      "Over": {
+       "n": 2,
+       "games": 2,
+       "roi": -1.0,
+       "z": null
       }
      }
     }
@@ -589,55 +589,55 @@
     "test_n": 190,
     "logloss": {
      "price": 0.6847,
-     "cons": 0.68225,
-     "model": 0.67911,
-     "consensus": 0.70438,
-     "consensus + model": 0.71032,
+     "cons": 0.68221,
+     "model": 0.68799,
+     "consensus": 0.70454,
+     "consensus + model": 0.70464,
      "price only": 0.69634,
-     "price + model": 0.70212,
-     "price + consensus + model": 0.71173
+     "price + model": 0.69637,
+     "price + consensus + model": 0.70392
     },
     "blend_all": [
-     -0.3188,
-     1.0849,
-     -1.2675,
-     -0.4141
+     -0.2339,
+     0.8272,
+     -1.2226,
+     -0.1154
     ],
     "blends": {
      "consensus": [
-      -0.1836,
-      -0.7632
+      -0.1846,
+      -0.7697
      ],
      "consensus + model": [
-      -0.2623,
-      -0.6864,
-      -0.2572
+      -0.1869,
+      -0.7683,
+      -0.0063
      ],
      "price only": [
       -0.1491,
       -0.4197
      ],
      "price + model": [
-      -0.2483,
-      -0.1914,
-      -0.3258
+      -0.1505,
+      -0.417,
+      -0.0038
      ]
     },
     "by_distance": {
      "same line": {
       "n": 340,
-      "cons": 0.4881,
+      "cons": 0.4879,
       "price": 0.4907,
       "hit": 0.4794,
-      "ll_cons": 0.69391,
+      "ll_cons": 0.69389,
       "ll_price": 0.6898
      },
      "1 away": {
       "n": 39,
-      "cons": 0.5075,
+      "cons": 0.5073,
       "price": 0.5105,
       "hit": 0.359,
-      "ll_cons": 0.69544,
+      "ll_cons": 0.69531,
       "ll_price": 0.70764
      }
     },
@@ -658,16 +658,16 @@
      },
      "consensus + model": {
       "Under": {
-       "n": 76,
-       "games": 33,
-       "roi": -0.1591,
-       "z": -1.76
+       "n": 69,
+       "games": 30,
+       "roi": -0.101,
+       "z": -1.26
       },
       "Over": {
-       "n": 14,
-       "games": 13,
-       "roi": -0.1971,
-       "z": -1.03
+       "n": 15,
+       "games": 11,
+       "roi": -0.2507,
+       "z": -0.54
       }
      },
      "price only": {
@@ -686,16 +686,16 @@
      },
      "price + model": {
       "Under": {
-       "n": 61,
-       "games": 27,
-       "roi": -0.2341,
-       "z": -2.47
+       "n": 58,
+       "games": 25,
+       "roi": -0.1257,
+       "z": -1.86
       },
       "Over": {
-       "n": 8,
-       "games": 7,
-       "roi": -0.435,
-       "z": -2.1
+       "n": 13,
+       "games": 10,
+       "roi": -0.1354,
+       "z": -0.64
       }
      }
     }
@@ -706,47 +706,47 @@
     "test_n": 151,
     "logloss": {
      "price": 0.68268,
-     "cons": 0.68994,
-     "model": 0.68279,
-     "consensus": 0.68746,
-     "consensus + model": 0.68857,
+     "cons": 0.69003,
+     "model": 0.68337,
+     "consensus": 0.68711,
+     "consensus + model": 0.68752,
      "price only": 0.67693,
-     "price + model": 0.67814,
-     "price + consensus + model": 0.6863
+     "price + model": 0.6775,
+     "price + consensus + model": 0.68553
     },
     "blend_all": [
-     -0.4347,
-     0.7465,
-     -0.7507,
-     -0.2206
+     -0.4258,
+     0.6677,
+     -0.7352,
+     -0.1374
     ],
     "blends": {
      "consensus": [
-      -0.3905,
-      -0.4385
+      -0.39,
+      -0.4244
      ],
      "consensus + model": [
-      -0.4172,
-      -0.3905,
-      -0.1089
+      -0.4025,
+      -0.4095,
+      -0.0383
      ],
      "price only": [
       -0.3907,
       -0.1176
      ],
      "price + model": [
-      -0.4475,
-      0.0634,
-      -0.242
+      -0.4336,
+      -0.0195,
+      -0.135
      ]
     },
     "by_distance": {
      "same line": {
       "n": 273,
-      "cons": 0.5075,
+      "cons": 0.5079,
       "price": 0.4998,
       "hit": 0.3846,
-      "ll_cons": 0.69925,
+      "ll_cons": 0.69928,
       "ll_price": 0.68881
      }
     },
@@ -795,16 +795,16 @@
      },
      "price + model": {
       "Under": {
-       "n": 111,
+       "n": 109,
        "games": 37,
-       "roi": 0.0964,
+       "roi": 0.0843,
        "z": 0.22
       },
       "Over": {
-       "n": 1,
-       "games": 1,
-       "roi": 1.62,
-       "z": null
+       "n": 3,
+       "games": 3,
+       "roi": 0.7667,
+       "z": 0.87
       }
      }
     }
@@ -815,47 +815,47 @@
     "test_n": 171,
     "logloss": {
      "price": 0.69092,
-     "cons": 0.69325,
-     "model": 0.69226,
-     "consensus": 0.67964,
-     "consensus + model": 0.67436,
+     "cons": 0.69324,
+     "model": 0.69211,
+     "consensus": 0.67961,
+     "consensus + model": 0.6736,
      "price only": 0.68175,
-     "price + model": 0.677,
-     "price + consensus + model": 0.67729
+     "price + model": 0.67824,
+     "price + consensus + model": 0.67856
     },
     "blend_all": [
-     -0.3399,
-     1.6742,
-     -0.2116,
-     -1.0135
+     -0.3815,
+     1.6741,
+     -0.2535,
+     -1.0704
     ],
     "blends": {
      "consensus": [
-      -0.135,
-      0.5293
+      -0.1353,
+      0.5304
      ],
      "consensus + model": [
-      -0.2721,
-      0.866,
-      -0.5282
+      -0.3204,
+      0.8956,
+      -0.6495
      ],
      "price only": [
       -0.1059,
       0.7434
      ],
      "price + model": [
-      -0.3497,
-      1.4941,
-      -1.034
+      -0.3913,
+      1.4493,
+      -1.084
      ]
     },
     "by_distance": {
      "same line": {
       "n": 340,
-      "cons": 0.4835,
+      "cons": 0.4837,
       "price": 0.4764,
       "hit": 0.4265,
-      "ll_cons": 0.69229,
+      "ll_cons": 0.69227,
       "ll_price": 0.68856
      }
     },
@@ -875,17 +875,17 @@
       }
      },
      "consensus + model": {
-      "Under": {
-       "n": 41,
-       "games": 21,
-       "roi": 0.3196,
-       "z": 1.85
-      },
       "Over": {
        "n": 3,
        "games": 3,
-       "roi": -0.3333,
-       "z": -0.5
+       "roi": -0.2133,
+       "z": -0.27
+      },
+      "Under": {
+       "n": 57,
+       "games": 24,
+       "roi": 0.1981,
+       "z": 0.91
       }
      },
      "price only": {
@@ -898,16 +898,16 @@
      },
      "price + model": {
       "Under": {
-       "n": 72,
+       "n": 89,
        "games": 28,
-       "roi": 0.2016,
-       "z": 0.95
+       "roi": 0.1948,
+       "z": 1.12
       },
       "Over": {
-       "n": 4,
-       "games": 4,
-       "roi": -0.435,
-       "z": -0.77
+       "n": 5,
+       "games": 5,
+       "roi": -0.226,
+       "z": -0.47
       }
      }
     }
@@ -915,458 +915,458 @@
   },
   "kalshi_ladder": {
    "pts": {
-    "n": 12591,
-    "fit_n": 6295,
-    "test_n": 6296,
+    "n": 12563,
+    "fit_n": 6281,
+    "test_n": 6282,
     "logloss": {
-     "price": 0.50414,
-     "cons": 0.5078,
-     "model": 0.53575,
-     "consensus": 0.50245,
-     "consensus + model": 0.50262,
-     "price only": 0.50099,
-     "price + model": 0.50147,
-     "price + consensus + model": 0.50079
+     "price": 0.50403,
+     "cons": 0.50777,
+     "model": 0.53887,
+     "consensus": 0.50248,
+     "consensus + model": 0.50257,
+     "price only": 0.50089,
+     "price + model": 0.50115,
+     "price + consensus + model": 0.50075
     },
     "blend_all": [
-     -0.1989,
-     0.449,
-     0.5631,
-     0.0501
+     -0.1971,
+     0.4335,
+     0.5681,
+     0.0642
     ],
     "blends": {
      "consensus": [
-      -0.2151,
-      1.0696
+      -0.2152,
+      1.0655
      ],
      "consensus + model": [
-      -0.2035,
-      1.0199,
-      0.0655
+      -0.2021,
+      1.0089,
+      0.0785
      ],
      "price only": [
-      -0.2002,
-      1.0083
+      -0.1998,
+      1.0069
      ],
      "price + model": [
-      -0.1726,
-      0.8925,
-      0.1632
+      -0.1733,
+      0.8941,
+      0.1664
      ]
     },
     "by_distance": {
      "same line": {
       "n": 66,
-      "cons": 0.3292,
+      "cons": 0.329,
       "price": 0.3212,
       "hit": 0.1515,
-      "ll_cons": 0.45285,
+      "ll_cons": 0.45265,
       "ll_price": 0.44063
      },
      "1 away": {
-      "n": 430,
-      "cons": 0.5308,
-      "price": 0.5245,
-      "hit": 0.4977,
-      "ll_cons": 0.68806,
-      "ll_price": 0.68612
+      "n": 428,
+      "cons": 0.531,
+      "price": 0.5243,
+      "hit": 0.5,
+      "ll_cons": 0.68722,
+      "ll_price": 0.68546
      },
      "2-3 away": {
       "n": 573,
-      "cons": 0.5329,
+      "cons": 0.5332,
       "price": 0.5238,
       "hit": 0.4834,
-      "ll_cons": 0.66779,
+      "ll_cons": 0.66764,
       "ll_price": 0.65958
      },
      "4-6 away": {
-      "n": 11465,
-      "cons": 0.4398,
-      "price": 0.4352,
-      "hit": 0.4016,
-      "ll_cons": 0.5117,
-      "ll_price": 0.50974
+      "n": 11439,
+      "cons": 0.4397,
+      "price": 0.4351,
+      "hit": 0.4014,
+      "ll_cons": 0.51177,
+      "ll_price": 0.50984
      },
      "7+ away": {
       "n": 57,
-      "cons": 0.2253,
+      "cons": 0.2243,
       "price": 0.2381,
       "hit": 0.193,
-      "ll_cons": 0.37968,
+      "ll_cons": 0.37934,
       "ll_price": 0.41462
      }
     },
     "bets": {
      "consensus": {
       "NO": {
-       "n": 1763,
-       "games": 380,
-       "roi": 0.0803,
-       "z": 2.03
+       "n": 1743,
+       "games": 381,
+       "roi": 0.0634,
+       "z": 1.73
       },
       "YES": {
-       "n": 71,
-       "games": 48,
-       "roi": -0.2051,
-       "z": -1.01
+       "n": 66,
+       "games": 44,
+       "roi": -0.2186,
+       "z": -1.17
       }
      },
      "consensus + model": {
       "NO": {
-       "n": 1782,
-       "games": 383,
-       "roi": 0.0732,
-       "z": 2.26
+       "n": 1835,
+       "games": 382,
+       "roi": 0.088,
+       "z": 2.38
       },
       "YES": {
-       "n": 65,
-       "games": 45,
-       "roi": -0.1722,
-       "z": -0.83
+       "n": 62,
+       "games": 42,
+       "roi": -0.2258,
+       "z": -1.29
       }
      },
      "price only": {},
      "price + model": {
       "NO": {
-       "n": 1255,
-       "games": 309,
-       "roi": 0.0376,
-       "z": 1.38
+       "n": 1359,
+       "games": 303,
+       "roi": 0.0421,
+       "z": 1.18
       },
       "YES": {
-       "n": 2,
-       "games": 2,
-       "roi": 0.8833,
-       "z": 3.3
+       "n": 1,
+       "games": 1,
+       "roi": 0.6155,
+       "z": null
       }
      }
     }
    },
    "reb": {
-    "n": 9569,
-    "fit_n": 4784,
-    "test_n": 4785,
+    "n": 9552,
+    "fit_n": 4776,
+    "test_n": 4776,
     "logloss": {
-     "price": 0.54465,
-     "cons": 0.54476,
-     "model": 0.55573,
-     "consensus": 0.54415,
-     "consensus + model": 0.54402,
-     "price only": 0.54414,
-     "price + model": 0.54285,
-     "price + consensus + model": 0.54356
+     "price": 0.54495,
+     "cons": 0.54505,
+     "model": 0.56077,
+     "consensus": 0.54447,
+     "consensus + model": 0.54416,
+     "price only": 0.54446,
+     "price + model": 0.54344,
+     "price + consensus + model": 0.54364
     },
     "blend_all": [
-     -0.0775,
-     0.3906,
-     0.6808,
-     -0.0319
+     -0.0808,
+     0.3759,
+     0.6705,
+     0.0072
     ],
     "blends": {
      "consensus": [
-      -0.069,
-      1.0493
+      -0.0758,
+      1.0545
      ],
      "consensus + model": [
-      -0.0674,
-      1.0356,
-      0.0176
+      -0.0706,
+      1.0149,
+      0.052
      ],
      "price only": [
-      -0.0849,
-      1.0132
+      -0.0923,
+      1.0185
      ],
      "price + model": [
-      -0.0654,
-      0.861,
-      0.2014
+      -0.0693,
+      0.8578,
+      0.2162
      ]
     },
     "by_distance": {
      "1 away": {
-      "n": 3486,
+      "n": 3477,
       "cons": 0.5107,
       "price": 0.5181,
-      "hit": 0.5278,
-      "ll_cons": 0.65754,
-      "ll_price": 0.65686
+      "hit": 0.5266,
+      "ll_cons": 0.65742,
+      "ll_price": 0.65664
      },
      "2-3 away": {
-      "n": 5997,
+      "n": 5989,
       "cons": 0.4416,
-      "price": 0.4409,
-      "hit": 0.412,
-      "ll_cons": 0.48689,
-      "ll_price": 0.4891
+      "price": 0.441,
+      "hit": 0.4116,
+      "ll_cons": 0.48624,
+      "ll_price": 0.4886
      },
      "4-6 away": {
       "n": 72,
-      "cons": 0.2018,
+      "cons": 0.2011,
       "price": 0.1983,
       "hit": 0.1667,
-      "ll_cons": 0.25078,
+      "ll_cons": 0.25114,
       "ll_price": 0.24692
      }
     },
     "bets": {
      "consensus": {
       "YES": {
-       "n": 170,
-       "games": 114,
-       "roi": 0.0244,
-       "z": 0.09
+       "n": 151,
+       "games": 105,
+       "roi": 0.1297,
+       "z": 0.9
       },
       "NO": {
-       "n": 641,
-       "games": 221,
-       "roi": 0.0836,
-       "z": 1.51
+       "n": 670,
+       "games": 225,
+       "roi": 0.0576,
+       "z": 1.34
       }
      },
      "consensus + model": {
       "YES": {
-       "n": 167,
-       "games": 114,
-       "roi": 0.0626,
-       "z": 0.31
+       "n": 148,
+       "games": 103,
+       "roi": 0.1516,
+       "z": 1.18
       },
       "NO": {
-       "n": 648,
-       "games": 222,
-       "roi": 0.0782,
-       "z": 1.44
+       "n": 701,
+       "games": 225,
+       "roi": 0.0773,
+       "z": 1.5
       }
      },
      "price only": {},
      "price + model": {
       "NO": {
-       "n": 127,
-       "games": 39,
-       "roi": 0.1749,
-       "z": 1.5
+       "n": 323,
+       "games": 75,
+       "roi": 0.0874,
+       "z": 1.07
       },
       "YES": {
-       "n": 3,
-       "games": 3,
-       "roi": 0.2865,
-       "z": 1.91
+       "n": 5,
+       "games": 4,
+       "roi": 0.0675,
+       "z": 0.97
       }
      }
     }
    },
    "ast": {
-    "n": 6683,
-    "fit_n": 3341,
-    "test_n": 3342,
+    "n": 6678,
+    "fit_n": 3339,
+    "test_n": 3339,
     "logloss": {
-     "price": 0.52568,
-     "cons": 0.52707,
-     "model": 0.53023,
-     "consensus": 0.52536,
-     "consensus + model": 0.52212,
-     "price only": 0.52428,
-     "price + model": 0.52082,
-     "price + consensus + model": 0.5206
+     "price": 0.52557,
+     "cons": 0.52708,
+     "model": 0.53087,
+     "consensus": 0.52531,
+     "consensus + model": 0.52129,
+     "price only": 0.52412,
+     "price + model": 0.51984,
+     "price + consensus + model": 0.51987
     },
     "blend_all": [
-     -0.0273,
-     0.4748,
-     0.2709,
-     0.3134
+     -0.0272,
+     0.504,
+     0.29,
+     0.2666
     ],
     "blends": {
      "consensus": [
-      -0.0681,
-      0.9939
+      -0.0703,
+      0.9919
      ],
      "consensus + model": [
-      -0.0251,
-      0.6472,
-      0.415
+      -0.0236,
+      0.6936,
+      0.372
      ],
      "price only": [
-      -0.0542,
-      1.0009
+      -0.0551,
+      1.0014
      ],
      "price + model": [
-      -0.0167,
-      0.6554,
-      0.4106
+      -0.0131,
+      0.6998,
+      0.3721
      ]
     },
     "by_distance": {
      "1 away": {
-      "n": 2746,
-      "cons": 0.5135,
-      "price": 0.5146,
-      "hit": 0.4909,
-      "ll_cons": 0.64914,
-      "ll_price": 0.64879
+      "n": 2743,
+      "cons": 0.5136,
+      "price": 0.5145,
+      "hit": 0.4903,
+      "ll_cons": 0.64951,
+      "ll_price": 0.64897
      },
      "2-3 away": {
-      "n": 3868,
-      "cons": 0.3896,
-      "price": 0.3851,
+      "n": 3866,
+      "cons": 0.3899,
+      "price": 0.3852,
       "hit": 0.3681,
-      "ll_cons": 0.44976,
-      "ll_price": 0.44761
+      "ll_cons": 0.44974,
+      "ll_price": 0.44738
      },
      "4-6 away": {
       "n": 47,
-      "cons": 0.1332,
+      "cons": 0.1331,
       "price": 0.1535,
       "hit": 0.1489,
-      "ll_cons": 0.2145,
+      "ll_cons": 0.2147,
       "ll_price": 0.23976
      }
     },
     "bets": {
      "consensus": {
       "NO": {
-       "n": 524,
-       "games": 228,
-       "roi": 0.2078,
-       "z": 1.45
+       "n": 538,
+       "games": 233,
+       "roi": 0.2115,
+       "z": 1.76
       },
       "YES": {
-       "n": 202,
-       "games": 109,
-       "roi": -0.1432,
-       "z": -0.84
+       "n": 204,
+       "games": 110,
+       "roi": -0.1366,
+       "z": -0.92
       }
      },
      "consensus + model": {
       "NO": {
-       "n": 754,
-       "games": 223,
-       "roi": 0.1429,
-       "z": 1.99
+       "n": 787,
+       "games": 222,
+       "roi": 0.1085,
+       "z": 0.41
       },
       "YES": {
-       "n": 224,
-       "games": 132,
-       "roi": 0.1001,
-       "z": 0.91
+       "n": 214,
+       "games": 126,
+       "roi": -0.038,
+       "z": -0.81
       }
      },
      "price only": {},
      "price + model": {
       "NO": {
-       "n": 437,
-       "games": 138,
-       "roi": 0.1087,
-       "z": 1.36
+       "n": 469,
+       "games": 120,
+       "roi": 0.1085,
+       "z": 1.68
       },
       "YES": {
-       "n": 42,
-       "games": 23,
-       "roi": 0.0944,
-       "z": 0.99
+       "n": 35,
+       "games": 18,
+       "roi": 0.5965,
+       "z": 2.03
       }
      }
     }
    },
    "3pm": {
-    "n": 8066,
-    "fit_n": 4033,
-    "test_n": 4033,
+    "n": 8051,
+    "fit_n": 4025,
+    "test_n": 4026,
     "logloss": {
-     "price": 0.50382,
-     "cons": 0.50199,
-     "model": 0.50725,
-     "consensus": 0.4971,
-     "consensus + model": 0.49678,
-     "price only": 0.4991,
-     "price + model": 0.49773,
-     "price + consensus + model": 0.49684
+     "price": 0.50419,
+     "cons": 0.50232,
+     "model": 0.50779,
+     "consensus": 0.49741,
+     "consensus + model": 0.49645,
+     "price only": 0.49942,
+     "price + model": 0.49736,
+     "price + consensus + model": 0.49661
     },
     "blend_all": [
-     -0.1602,
-     0.3988,
-     0.3172,
-     0.3373
+     -0.1499,
+     0.4063,
+     0.312,
+     0.3436
     ],
     "blends": {
      "consensus": [
-      -0.2223,
-      1.0046
+      -0.2232,
+      1.0018
      ],
      "consensus + model": [
-      -0.1478,
-      0.661,
-      0.4141
+      -0.136,
+      0.6675,
+      0.4178
      ],
      "price only": [
-      -0.2205,
-      0.9714
+      -0.2211,
+      0.9699
      ],
      "price + model": [
-      -0.141,
-      0.6143,
-      0.4455
+      -0.1282,
+      0.6229,
+      0.4482
      ]
     },
     "by_distance": {
      "1 away": {
-      "n": 7995,
-      "cons": 0.4426,
+      "n": 7980,
+      "cons": 0.4427,
       "price": 0.4418,
-      "hit": 0.4021,
-      "ll_cons": 0.5179,
-      "ll_price": 0.51873
+      "hit": 0.402,
+      "ll_cons": 0.5183,
+      "ll_price": 0.51913
      },
      "2-3 away": {
       "n": 57,
-      "cons": 0.2184,
+      "cons": 0.2182,
       "price": 0.2336,
       "hit": 0.2456,
-      "ll_cons": 0.26327,
+      "ll_cons": 0.26315,
       "ll_price": 0.26833
      }
     },
     "bets": {
      "consensus": {
       "NO": {
-       "n": 1581,
+       "n": 1584,
        "games": 279,
-       "roi": 0.1524,
-       "z": 2.92
+       "roi": 0.1532,
+       "z": 2.95
       },
       "YES": {
-       "n": 42,
+       "n": 43,
        "games": 26,
-       "roi": -0.1285,
-       "z": -1.6
+       "roi": -0.0783,
+       "z": -1.5
       }
      },
      "consensus + model": {
       "NO": {
-       "n": 1526,
-       "games": 278,
-       "roi": 0.1676,
-       "z": 3.3
+       "n": 1545,
+       "games": 277,
+       "roi": 0.1649,
+       "z": 2.84
       },
       "YES": {
-       "n": 29,
-       "games": 22,
-       "roi": 0.1309,
-       "z": -0.08
+       "n": 27,
+       "games": 19,
+       "roi": 0.1716,
+       "z": 0.04
       }
      },
      "price only": {
       "NO": {
-       "n": 1185,
+       "n": 1191,
        "games": 282,
-       "roi": 0.0519,
-       "z": 1.66
+       "roi": 0.0595,
+       "z": 1.86
       }
      },
      "price + model": {
       "NO": {
-       "n": 1300,
-       "games": 257,
-       "roi": 0.1241,
-       "z": 2.9
+       "n": 1350,
+       "games": 258,
+       "roi": 0.156,
+       "z": 2.48
       },
       "YES": {
        "n": 1,
@@ -1414,8 +1414,7 @@
      "NO": "WATCH"
     },
     "consensus + model": {
-     "NO": "WATCH",
-     "YES": "NO-GO"
+     "NO": "WATCH"
     }
    }
   },
@@ -1456,15 +1455,15 @@
      "Over": "NO-GO"
     },
     "consensus + model": {
-     "Under": "WATCH",
-     "Over": "NO-GO"
+     "Over": "NO-GO",
+     "Under": "WATCH"
     }
    }
   },
   "kalshi_ladder": {
    "pts": {
     "consensus": {
-     "NO": "GO",
+     "NO": "WATCH",
      "YES": "NO-GO"
     },
     "consensus + model": {
@@ -1489,7 +1488,7 @@
     },
     "consensus + model": {
      "NO": "WATCH",
-     "YES": "WATCH"
+     "YES": "NO-GO"
     }
    },
    "3pm": {

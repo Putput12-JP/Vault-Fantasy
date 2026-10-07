@@ -35,21 +35,23 @@ new test.
 ## 2. Multiplicity on the Kalshi GO signals
 
 The GO gate is z >= 2 per cell, and there are many cells. Re-counting the cells with 50+ bets across the v2 and consensus
-backtests gives 67 (engine variants overlap heavily, so 67 overstates independent tests and the correction below is
-conservative). At z >= 2, 67 cells should produce about 1.5 false GO cells by chance alone. Holm-adjusted one-sided p-values:
+backtests gives 68 (engine variants overlap heavily, so 68 overstates independent tests and the correction below is
+conservative). At z >= 2, 68 cells should produce about 1.5 false GO cells by chance alone. Holm-adjusted one-sided p-values,
+after the consensus backtest was rebuilt with the as-of candidate rule (see section 5):
 
-| Cell | n | ROI | z | Holm p (67 cells) |
+| Cell | n | ROI | z | Holm p (68 cells) |
 |---|---|---|---|---|
-| v1 blend 3pm NO | 3,200 | +10.2% | 3.56 | 0.012 |
-| Consensus + model 3pm NO | 1,526 | +16.8% | 3.30 | 0.031 |
-| v2 blend 3pm NO | 3,262 | +8.7% | 2.86 | 0.127 |
-| Consensus + model pts NO | 1,782 | +7.3% | 2.26 | 0.691 |
-| Consensus + model ast NO | 754 | +14.3% | 1.99 | 1 |
+| v1 blend 3pm NO | 3,200 | +10.2% | 3.56 | 0.013 |
+| v2 blend 3pm NO | 3,262 | +8.7% | 2.86 | 0.133 |
+| Consensus + model 3pm NO | 1,545 | +16.5% | 2.84 | 0.140 |
+| Consensus + model pts NO | 1,835 | +8.8% | 2.38 | 0.511 |
 
-Read: the 3-pointer NO edge survives correction on the stronger cells. **Consensus + model points NO does not** (Holm 0.69), and
-it is the only points GO left after the candidate-set fix (docs/leakage-audit-2026-10-06.md, addendum 4). Treat it as WATCH
-until the live ledger says otherwise. These ROIs are also before the Kalshi structural bias check: any NO-side edge must beat
-the price-only "bet every NO" baseline (nba/README gotchas), which the doc reports separately.
+Read: only the strongest 3-pointer NO cell clears a 5% family-wise bar; the other two 3-pointer cells sit at about 0.13 to
+0.14 and the consensus points NO cell at 0.51. These are the conservative bound, not proof of no edge: the variants are
+correlated, so the true family is smaller than 68. Treat points NO as WATCH, and the 3-pointer NO cells as probable but
+unproven until the live ledger agrees. These ROIs are also before the Kalshi structural bias check: any NO-side edge must beat
+the price-only "bet every NO" baseline (nba/README gotchas). On the ladder test price-only NO earns +5.2% on 3-pointers and
+makes no points NO bets at all, so the consensus 3-pointer edge is about 11 points above the plain bias.
 
 ## 3. Accept rules for the live ledger (fixed now)
 
@@ -73,3 +75,13 @@ Frozen candidate list, as of the commit that adds this file: **(a)** v2 blend 3p
   copula holdout are clean.
 - The multiplicity count is of cells in files on disk; any test that was run and not saved is not in it.
 - Not audited this pass: `build_consensus.py` candidates, the live pricing code's bet clock, `lean_search_nba.py` internals.
+
+## 5. Consensus audit (2026-10-07)
+
+`build_consensus.py` uses the v2 walk, so its saved results were built with the old box-score candidate rule and were stale
+after the candidate fix. Rebuilt. Changes: consensus 3pm NO z 3.30 -> 2.84 (ROI +16.8% -> +16.5%), pts NO z 2.26 -> 2.38,
+ast NO z 1.99 -> 0.41, ast YES dropped below the signal list. Robustness (`nba/scripts/audit_consensus.py`, ladder test,
+consensus + model): last trade instead of the 30-minute VWAP leaves 3pm NO intact (+17.3%, z 3.01) and weakens pts NO
+(+5.3%, z 1.59). Requiring 500+ contracts in the last 30 minutes leaves too few rungs to test (pts NO n 221, z 0.84; the other
+cells fall under the 400-row minimum): median 30-minute volume per rung is 105 contracts and 86% of rungs trade under 1,000, so
+none of these edges has been shown to be executable at size. Only the live ledger can show that.
