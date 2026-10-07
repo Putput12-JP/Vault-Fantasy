@@ -178,7 +178,10 @@ function Budget({ rows, total, onFit }) {
 function LabView(p) {
   const pal = usePal(THEME); const w = useWidth(); const narrow = w < 900;
   const [more, setMore] = useState(false);
-  const act = p.rows.slice(0, p.nAct), rest = p.rows.slice(p.nAct);
+  const L = p.lineup, byId = new Map(p.rows.map(r => [r.id, r]));
+  const starters = (L ? L.ids.map(id => byId.get(id)).filter(Boolean) : p.rows.slice(0, Math.min(5, p.nAct))).sort((a, b) => b.base - a.base || b.min - a.min);
+  const sid = new Set(starters.map(r => r.id));
+  const act = p.rows.slice(0, p.nAct).filter(r => !sid.has(r.id)), rest = p.rows.slice(p.nAct).filter(r => !sid.has(r.id));
   const total = p.rows.reduce((a, r) => a + r.min, 0);
   const K = Object.fromEntries(p.kpis.map(k => [k.label, k]));
   const pts = K['Team points per 240 min'], top = K['Top scorer'], chg = K['Players changed'];
@@ -199,8 +202,9 @@ function LabView(p) {
           <div><small>Players changed</small><b>{chg.val}</b><i>{chg.hint}</i></div>
         </div>
       </section>
-      <div className="ml-starters">{act.slice(0, 5).map(r => <StarterCard key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} onProps={p.onProps} />)}</div>
-      {act.length > 5 && <><Mono>Bench</Mono><div className="ml-bench">{[...act.slice(5)].sort((a, b) => b.min - a.min || b.base - a.base).map(r => <BenchRow key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} onProps={p.onProps} />)}</div></>}
+      <div className={'ml-lu ' + (L ? (L.confirmed ? 'conf' : 'exp') : '')}><i className="dot" /><span>{L ? <><b>{L.confirmed ? 'Confirmed starters' : 'Expected starters'}</b> for {L.label}{!L.confirmed && L.listed < 5 ? ` · NBA.com has named ${L.listed} so far, the rest are projected` : ''}</> : <><b>Starters</b> from the season-start projection. Tonight's lineup replaces them once NBA.com posts it.</>}</span></div>
+      <div className="ml-starters">{starters.map(r => <StarterCard key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} onProps={p.onProps} />)}</div>
+      {act.length > 0 && <><Mono>Bench</Mono><div className="ml-bench">{[...act].sort((a, b) => b.min - a.min || b.base - a.base).map(r => <BenchRow key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} onProps={p.onProps} />)}</div></>}
       {rest.length > 0 && <>
         <button type="button" className="ml-more" aria-expanded={more} onClick={() => setMore(!more)}>{more ? 'Hide' : 'Show'} {rest.length} players outside the rotation<span>give a player minutes to bring him in</span></button>
         {more && <div className="ml-bench">{[...rest].sort((a, b) => b.min - a.min || b.base - a.base).map(r => <BenchRow key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} onProps={p.onProps} />)}</div>}

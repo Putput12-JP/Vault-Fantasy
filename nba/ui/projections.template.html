@@ -1095,6 +1095,7 @@ table.nt.sx-tk{min-width:420px}
 .ml-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px}.ml-stats>div{display:grid;gap:1px;text-align:center;min-width:0}.ml-stats small{font:600 9.5px var(--font-mono);letter-spacing:.06em;color:var(--fg3)}.ml-stats b{font:600 16px var(--font-mono);letter-spacing:-.03em}.ml-stats .pra b{color:var(--fg)}.ml-stats i{font:500 10.5px var(--font-mono);font-style:normal;min-height:13px}
 .ml-more{border:1px dashed var(--border2);background:transparent;color:var(--fg2);border-radius:14px;padding:12px 16px;font:600 13px var(--font-sans);cursor:pointer;text-align:left;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.ml-more span{font-weight:400;color:var(--fg3);font-size:12px}.ml-more:hover{background:var(--raised)}
 /* Minutes Lab V2 (depth chart): five starter cards, bench rows */
+.ml-lu{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--fg2)}.ml-lu b{font-weight:600;color:var(--fg)}.ml-lu .dot{width:8px;height:8px;border-radius:50%;background:var(--fg3)}.ml-lu.conf .dot{background:var(--up)}.ml-lu.exp .dot{background:var(--warn)}
 .ml-starters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 .ml-sc{position:relative;border:1px solid var(--border);border-radius:18px;padding:0 12px 12px;display:grid;gap:8px;text-align:center;justify-items:center;min-width:0;background:linear-gradient(180deg,color-mix(in srgb,var(--ml-c,#888) 14%,transparent),var(--raised) 62%);transition:border-color .2s}
 .ml-sc.ml-ed,.ml-br.ml-ed{border-color:color-mix(in srgb,var(--c-blue,#7fb4ec) 55%,var(--border))}.ml-sc.ml-out,.ml-br.ml-out{opacity:.65}
@@ -1920,7 +1921,8 @@ function openList(open){
 
 function render(){
   if (view !== 'lab'){ show(view); return; }
-  const T = D.teams[cur], m = mins(cur), pr = project(cur, m), b0 = baseline(cur);
+  const T = D.teams[cur], m = mins(cur), pr = project(cur, m), b0 = baseline(cur), lineup = labLineup(cur), liveSt = statusFromBoard(slateBoard().board);
+  labSig = JSON.stringify(lineup && [lineup.ids, lineup.confirmed]);
   renderSlicer();
   $('tname').textContent = T.name;
   $('tsub').textContent = `${cur} · ${D.season} · SEASON START`;
@@ -1949,7 +1951,7 @@ function render(){
   const rest = T.players.filter(p => !(p.active || m[p.id] > 0));
   const stat = (mu, base, s) => { const r = range(s, mu); return {v: mu, d: mu - base, lo: r ? Math.round(r[0]) : null, hi: r ? Math.round(r[1]) : null}; };
   const badges = p => [
-    p.injury ? {t: p.injury, bad: /out/i.test(p.injury), warn: !/out/i.test(p.injury)} : null,
+    (liveSt[p.id] || p.injury) ? {t: liveSt[p.id] || p.injury, bad: /out|inactive/i.test(liveSt[p.id] || p.injury), warn: !/out|inactive/i.test(liveSt[p.id] || p.injury)} : null,
     p.draft ? {t: `Rookie · #${p.draft}`, solid: true} : p.rookie ? {t: 'Rookie'} : null,
     p.moved && p.last_team ? {t: `New · was ${p.last_team}`} : null,
     !p.slotted ? {t: 'No depth slot'} : null
@@ -1974,7 +1976,7 @@ function render(){
   };
 
   const chartHtml = chart.length ? ckDots('lab-minutes', {rows: chart.map(p => ({name: p.name, a: p.now, b: p.base})), a: 'Your minutes', b: 'Projection', kLabel: 'minutes'}) : '';
-  HK.mount($('lab-root'), 'LabView', {roster, kpis, chartHtml, rows: act.concat(rest).map(rowOf), nAct: act.length, movers, log, teamName: T.name, wash: teamWash(cur), bal: balOn,
+  HK.mount($('lab-root'), 'LabView', {roster, kpis, chartHtml, rows: act.concat(rest).map(rowOf), nAct: act.length, movers, log, teamName: T.name, lineup, wash: teamWash(cur), bal: balOn,
     onBal: v => { balOn = v; render(); }, onSetMin: (id, v) => setMin(cur, id, v),
     onOut: id => { const p = T.players.find(x => x.id === id), mm = mins(cur); setMin(cur, id, mm[id] > 0 ? 0 : (p.min0 || 20)); },
     onReset: labReset, onFit: labFit, onProps: labProps});
@@ -2049,6 +2051,21 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.search')) $('hits').hidden = true;
   if (!e.target.closest('.slicer')) openList(false);
 });
+// Tonight's starting five from the NBA.com lineup feed (board players[pid][3]: S confirmed, s expected), for the team's next game
+// (or one that tipped in the last 3 hours). null until a usable lineup posts, and the Lab falls back to the season-start projection.
+let labSig = '';
+function labLineup(team){
+  const B = slateBoard().board, P = B.players || {}, now = Date.now() / 1000;
+  const g = [...(B.games || []), ...(B.opening || [])].filter(x => (x.away === team || x.home === team) && x.tip > now - 3 * 3600).sort((a, b) => a.tip - b.tip)[0];
+  const T = D.teams[team]; if (!g || !T) return null;
+  const flag = p => P[p.id] ? P[p.id][3] : null, conf = T.players.filter(p => flag(p) === 'S'), exp = T.players.filter(p => flag(p) === 's').sort((a, b) => b.min0 - a.min0);
+  if (!conf.length && !exp.length) return null;
+  const st = statusFromBoard(B), listed = [...conf, ...exp].slice(0, 5), have = listed.length;
+  // NBA.com sometimes lists only some of the five: fill the rest with the highest projected minutes who are not flagged bench, inactive or out
+  const fill = T.players.filter(p => !listed.includes(p) && !['b', 'B', 'X'].includes(flag(p)) && !/^(Out|Inactive)/.test(st[p.id] || '')).sort((a, b) => b.min0 - a.min0).slice(0, 5 - have);
+  const five = [...listed, ...fill];
+  return {ids: five.map(p => p.id), confirmed: conf.length >= 5, listed: have, label: `${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET`};
+}
 function labProps(name){ const ev = PV_PRESETS.find(p => /every/i.test(p[1])) || PV_PRESETS[PV_PRESETS.length - 1]; pv.q = name; pv.preset = ev[0]; pv.game = 'all'; pv.stat = 'all'; goView('props'); }   // same hop the Profile's Props button makes
 function labReset(){ delete edits[cur]; delete logs[cur]; store.set('nml-edits', edits); store.set('nml-log', logs); render(); }
 function labFit(){
@@ -2821,6 +2838,7 @@ async function loadBoard(){
     if (view === 'props' || view === 'mybets' || view === 'propboard') renderProps();
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
+    if (view === 'lab' && JSON.stringify((l => l && [l.ids, l.confirmed])(labLineup(cur))) !== labSig) render();
     if (view === 'sim') renderSim();
     if (view === 'control') renderControl();
     if (view === 'profile') renderProfile();
