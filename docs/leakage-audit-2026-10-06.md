@@ -187,3 +187,23 @@ Signal changes in `nba/data/backtests.json` (11 signals before and after):
 - v2 ast YES and reb YES stay WATCH (n and ROI move, still below GO).
 - All seven "Consensus ladder + model" signals are unchanged (that engine does not use the walk's candidate set).
 Not rebuilt: v1 (`build_prop_model.py`, its own walk and candidate rule), `build_consensus.py`.
+
+## Addendum 5: vacated share repaired (finding 4)
+
+`scripts/build_vacated_share.py` changes: (1) a returner now needs 1 game in S+1, not 6 (`NEXT_MIN`); (2) the stability
+gate is out of time (early half vs late half of the season pairs) instead of even/odd; (3) a bucket must also have a
+lower 90% bootstrap bound above 1 on median(departed)/median(control) (2,000 draws, fixed seed).
+
+Measured survivorship was real but small: share of returners playing 6+ games was 85.4% (departed) vs 84.3% (control)
+for RBs and 83.6% vs 87.7% for WR/TE. The larger problem was that no bucket carried an uncertainty test:
+
+| Bucket | Before | After relaxing the games filter | 90% CI (after) | Shipped now |
+|---|---|---|---|---|
+| WR/TE rank 4+, 2+ higher left | x1.125 | x1.106 | 1.01 to 1.18 | yes (x1.106) |
+| WR/TE rank 3, 1 higher left | not published | x1.091 | 0.93 to 1.25 | no |
+| RB rank 2, 1 higher left | x1.289 | x1.223 | 0.92 to 1.47 | no |
+| RB rank 3, 1 higher left | x1.214 | x1.059 | 0.77 to 1.48 (halves 1.45 / 0.70) | no |
+| RB rank 1, 1 lower left | withheld | x1.061 | 0.95 to 1.15 | no |
+
+Effect on users: RB props lose the room-opened bump and show the existing "room?" caution (a starter left, no
+reliable measured bump); the WR/TE bump gets a little smaller. Changelog entry added.

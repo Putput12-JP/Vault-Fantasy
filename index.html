@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-06T20:00', tag:'Improved', title:'More honest odds on passing props and running back role changes',
+    items:[
+      'Quarterback passing probabilities now account for games where a starter leaves early or gets pulled, so overs on yards and attempts are no longer slightly too rosy.',
+      'When a running back ahead of someone leaves the team, Vault no longer adds a usage bump to their props. The history we measured it on was too thin to trust, so you now just see a "room changed" flag instead.',
+      'The bump for a wide receiver or tight end whose depth chart opens up is kept, but it is a bit smaller after we corrected a bias in how it was measured.',
+    ],
+  },
+  {
     ts:'2026-10-06T01:30', tag:'Fixed', title:'Quarterback projections no longer count backup games',
     items:[
       'Quarterback passing projections were pulled down by games where a QB only played a few snaps, so Vault read passing yards and attempts too low. Projections now use only games a QB actually started.',

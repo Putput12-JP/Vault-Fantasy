@@ -47,7 +47,7 @@
 #
 #  Usage:  python3 scripts/build_vacated_share.py [--since 2014] [--dry]
 # ════════════════════════════════════════════════════════════════════════════
-import argparse, datetime, json, os, statistics as st
+import argparse, datetime, json, os, random, statistics as st
 from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -56,7 +56,12 @@ OUT = os.path.join(DATA, "vacated_share.json")
 
 LAST_COMPLETE = 2025   # season whose rooms the frontend diffs the live roster against
 
-MIN_PRESENT = 6            # games needed in a season to count as a real roster piece
+MIN_PRESENT = 6            # games needed in a season S to count as a real roster piece (known at T)
+NEXT_MIN = 1               # games a returner needs in S+1 to have a measurable ratio. Was MIN_PRESENT (6): requiring
+                           # six games of the OUTCOME season dropped injured, cut and benched returners, and a departed
+                           # lead raises the odds a returner survives, so the multipliers read high.
+                           # docs/leakage-audit-2026-10-06.md, finding 4.
+STABILITY = "chrono"       # "chrono": early half vs late half of the season pairs (out of time); "parity": even/odd (legacy)
 MIN_EVENTS = 40            # events required before a bucket publishes a multiplier
 RANK_CAP = 3               # rank buckets 1..3 (3 = "rank 4+" prior role)
 DEP_CAP = 2                # departed buckets 1, or 2+ higher gone
@@ -101,7 +106,7 @@ def per_game_vol(rec, vol_field):
     return (sum(vals) / len(vals), len(vals)) if vals else (None, 0)
 
 
-def team_rooms(blob, positions, vol_field):
+def team_rooms(blob, positions, vol_field, min_games=None):
     """team → ranked [ (norm_name, display_name, vol_pg, games) ] for real room members."""
     by_team = defaultdict(list)
     if not blob:
@@ -113,7 +118,7 @@ def team_rooms(blob, positions, vol_field):
         if not team:
             continue
         vol, games = per_game_vol(rec, vol_field)
-        if vol is None or games < MIN_PRESENT:
+        if vol is None or games < (MIN_PRESENT if min_games is None else min_games):
             continue
         by_team[team].append([norm_name(name), name, vol, games])
     for t in by_team:
@@ -147,7 +152,7 @@ def measure(seasons):
             rooms_S = team_rooms(a, positions, vol_field)
             # next-season lookup: norm_name → (team, vol_pg)
             next_by_name = {}
-            for team, members in team_rooms(b, positions, vol_field).items():
+            for team, members in team_rooms(b, positions, vol_field, NEXT_MIN).items():
                 for nn, _dn, vol, _g in members:
                     next_by_name[nn] = (team, vol)
             starter_vol = MIN_STARTER_VOL[group]
@@ -178,13 +183,36 @@ def _median(xs):
     return st.median(xs) if xs else None
 
 
+def _boot_lo(dep, ctl, draws=2000, seed=7):
+    """Lower 90% bootstrap bound of median(dep)/median(ctl). A multiplier only ships if even its pessimistic
+    end is above 1; the even/odd and early/late halves alone let noisy buckets through (RB rank 2: x1.22, 90% CI 0.92-1.47)."""
+    rng = random.Random(seed)
+    out = []
+    for _ in range(draws):
+        a = _median([rng.choice(dep) for _ in dep]); c = _median([rng.choice(ctl) for _ in ctl])
+        if c and c > 0:
+            out.append(a / c)
+    out.sort()
+    return out[int(0.05 * len(out))] if out else None
+
+
 def _iqr(xs):
     s = sorted(xs)
     return [round(s[len(s) // 4], 3), round(s[3 * len(s) // 4], 3)]
 
 
-def measure_split(seasons, parity):
-    ev, _ = measure([s for s in seasons if s % 2 == parity])
+def _halves(seasons):
+    ss = sorted(seasons); h = len(ss) // 2
+    return ss[:h], ss[h:]
+
+
+def measure_split(seasons, part):
+    """part 0/1: even/odd seasons (legacy "parity") or early/late half of the season pairs ("chrono")."""
+    if STABILITY == "chrono":
+        sub = _halves(seasons)[part]
+    else:
+        sub = [s for s in seasons if s % 2 == part]
+    ev, _ = measure(sub)
     out = {}
     for (group, rb), d in ev.items():
         ctl = _median(d["ctl"])
@@ -214,16 +242,20 @@ def summarize(events, seasons):
                 if n < MIN_EVENTS:
                     continue
                 net = _median(ds) / ctl
-                # stability gate: same side and both > 1 across the even/odd split
+                # stability gate: same side and both > 1 across the two halves (early/late seasons; legacy: even/odd)
                 e, o = even.get(key), odd.get(key)
                 if e is None or o is None or not (e > 1.0 and o > 1.0 and net > 1.0):
                     rejected.append((key, n, net, e, o))
+                    continue
+                lo = _boot_lo(ds, d["ctl"])
+                if lo is None or lo <= 1.0:
+                    rejected.append((key, n, net, e, o, lo))
                     continue
                 net = max(1 / CLAMP, min(CLAMP, net))
                 out.setdefault(group, {}).setdefault(str(rb), {}) \
                    .setdefault(direction, {})[str(hb)] = {
                     "mult": round(net, 3), "n": n, "iqr": _iqr(ds),
-                    "ctl": round(ctl, 3), "split": [round(e, 3), round(o, 3)],
+                    "ctl": round(ctl, 3), "split": [round(e, 3), round(o, 3)], "lo90": round(lo, 3),
                 }
     return out, rejected
 
@@ -274,11 +306,11 @@ def main():
                           f"(n={c['n']}, IQR {c['iqr'][0]:.2f}–{c['iqr'][1]:.2f}, "
                           f"ctl {c['ctl']:.2f}, split {c['split']})")
     if rejected:
-        print(f"── rejected buckets (thin or failed even/odd stability): {len(rejected)}")
-        for key, n, net, e, o in rejected:
+        print(f"── rejected buckets (failed half-split stability or the bootstrap bound): {len(rejected)}")
+        for key, n, net, e, o, *lo in rejected:
             es = f"{e:.2f}" if e is not None else "—"
             os_ = f"{o:.2f}" if o is not None else "—"
-            print(f"     {key} n={n} net={net:.2f} even={es} odd={os_}")
+            print(f"     {key} n={n} net={net:.2f} halves={es}/{os_}" + (f" lo90={lo[0]:.2f}" if lo and lo[0] is not None else ""))
     print(f"── rooms emitted for {LAST_COMPLETE}: {len(rooms)} team-groups")
 
     payload = {
