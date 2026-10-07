@@ -277,11 +277,10 @@ function PropsTools(p) {
         </div>
         <Divider theme={THEME} spacing={0} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          <div style={{ maxWidth: '100%', overflowX: 'auto' }}><SegmentedControl theme={THEME} options={p.stats.map(x => x.l)} value={labelOf[p.stat]} onChange={l => p.onStat(statLabel[l])} /></div>
-          <span style={{ flex: 1 }} />
-          <div style={{ minWidth: 220 }}><Select theme={THEME} value={p.sort} onChange={p.onSort} options={sorts} /></div>
+          <div style={{ flex: '1 1 200px', maxWidth: 280, minWidth: 0 }}><SearchInput theme={THEME} value={q} placeholder="Find a player" shortcut="" onChange={v => { setQ(v); clearTimeout(t.current); t.current = setTimeout(() => p.onQ(v), 160); }} /></div>
+          <div style={{ flex: '1 1 280px', minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none' }}><SegmentedControl theme={THEME} options={p.stats.map(x => x.l)} value={labelOf[p.stat]} onChange={l => p.onStat(statLabel[l])} /></div>
+          <div style={{ flex: '0 0 auto', minWidth: 210 }}><Select theme={THEME} value={p.sort} onChange={p.onSort} options={sorts} /></div>
         </div>
-        <div style={{ maxWidth: 280 }}><SearchInput theme={THEME} value={q} placeholder="Find a player" shortcut="" onChange={v => { setQ(v); clearTimeout(t.current); t.current = setTimeout(() => p.onQ(v), 160); }} /></div>
       </Stack>
     </Card>
   );

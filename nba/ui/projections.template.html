@@ -1035,7 +1035,13 @@ table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
 .sx-type.t-steam,.sx-type.t-behind{color:var(--fg);border-color:var(--fg3)}
 .sx-type.t-sharp,.sx-type.t-cross{color:var(--up);border-color:rgba(74,222,128,.35)}
 .sx-type.t-whale{color:var(--warn);border-color:rgba(251,191,36,.4)}
-#pstat{max-width:100%;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}#pstat::-webkit-scrollbar{display:none}#pstat button{flex:none;white-space:nowrap}
+/* Props Table toolbar: the stat chips are one scrolling line, then search, the gates switch and the sort sit on a second line */
+#pv-full > .card > .card-h{flex-direction:column;align-items:stretch;gap:14px}
+#pv-full .card-h .filters{display:grid;grid-template-columns:minmax(180px,260px) auto 1fr auto;gap:12px 16px;align-items:center}
+#pstat{grid-column:1/-1;order:-1;display:flex;flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain;justify-self:start}
+#pstat::-webkit-scrollbar{display:none}#pstat button{flex:none;white-space:nowrap}
+#pstat{grid-row:1}#pv-full .card-h .filters .pfind{grid-area:2/1;width:100%;min-width:0}#pv-full .card-h .filters .switch{grid-area:2/2;white-space:nowrap}#pv-full .card-h .filters #psort{grid-area:2/4;justify-self:end}
+@media(max-width:640px){#pv-full .card-h .filters{grid-template-columns:1fr auto}#pv-full .card-h .filters .pfind{grid-area:2/1/3/3}#pv-full .card-h .filters .switch{grid-area:3/1}#pv-full .card-h .filters #psort{grid-area:3/2}}
 #xgames{display:flex;flex-direction:column;gap:16px}
 .sx-card{display:flex;flex-direction:column;gap:16px;padding:20px 22px}
 .sx-lab{margin:0 0 6px;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em}
