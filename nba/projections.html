@@ -1028,6 +1028,8 @@ table.nt .bt-best{color:var(--fg);font-weight:600}
 .bt-foot a{font-size:12px;color:var(--fg);text-underline-offset:3px;text-decoration-color:var(--fg3)}
 @media (max-width:600px){ .bt-entry{grid-template-columns:minmax(0,1fr);gap:6px} .bt-when{flex-direction:row;gap:10px} .bt-bar{grid-template-columns:minmax(0,1fr) auto} .bt-bar i{grid-column:1/-1;order:3} .bt-bar small{order:4;margin-top:0} }
 /* Sharp Price */
+.nt-tw.sx-cap{overflow-y:auto;overscroll-behavior:contain}.nt-tw.sx-cap #xfeed thead th{position:sticky;top:0;z-index:1;background:var(--surface);box-shadow:0 1px 0 var(--border)}
+.sx-note{margin:8px 0 0;font-size:12px;color:var(--fg3)}
 table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
 .sx-type{display:inline-flex;align-items:center;height:19px;padding:0 7px;margin-right:4px;border-radius:var(--r-pill);border:1px solid var(--border2);font-size:10.5px;font-family:var(--font-mono);color:var(--fg2);white-space:nowrap;vertical-align:1px}
 .sx-type.t-steam,.sx-type.t-behind{color:var(--fg);border-color:var(--fg3)}
@@ -4706,6 +4708,14 @@ function xRecord(){
   $('xrecord').innerHTML = `<thead><tr><th class="l">Signal</th><th>Fired</th><th title="Games final, with Pinnacle's close at the signal's number">Graded</th><th title="Pinnacle's closing fair minus the fair when it fired, in probability points (behind: EV at the closing fair)">Avg CLV, pts</th><th>Beat the close</th><th title="The same CLV against Polymarket's price at tip, from the Pendulum Flow orderbook archive (about 6 hours after tip). NBA game lines only; props have too little Polymarket money">vs Polymarket close</th><th>W-L-P</th><th title="Win rate vs the fair probability when it fired">Won vs fair</th><th class="l">Status</th></tr></thead><tbody>${rows.join('')}</tbody>`;
   return Object.values(T).reduce((a, r) => [a[0] + r[1], a[1] + r[2]], [0, 0]);
 }
+// The signal feed shows its newest 10 rows; the rest scroll inside the card (header stays put). The height comes from the 10th row, since rows wrap to different heights.
+const XFEED_ROWS = 10;
+function xFeedCap(n){
+  const wrap = $('xfeed').closest('.nt-tw'); wrap.style.maxHeight = ''; wrap.classList.toggle('sx-cap', n > XFEED_ROWS);
+  let note = $('xfeedn'); if (!note){ note = document.createElement('p'); note.id = 'xfeedn'; note.className = 'sx-note'; wrap.after(note); }
+  note.hidden = n <= XFEED_ROWS; note.textContent = `Newest ${XFEED_ROWS} of ${n} signals. Scroll the list for the rest.`;
+  if (n > XFEED_ROWS){ const rows = $('xfeed').querySelectorAll('tbody tr'), r = rows[XFEED_ROWS - 1]; if (r) wrap.style.maxHeight = (r.offsetTop + r.offsetHeight + 2) + 'px'; }
+}
 function renderSharp(){
   const pick = slateBoard(), B = pick.board, SH = B.sharp, now = Date.now() / 1000;
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
@@ -4737,6 +4747,7 @@ function renderSharp(){
       return `<tr><td class="l num">${etFmt(a.t, {weekday: 'short'})} ${clock(a.t)}</td><td class="l"><b>${g.away} @ ${g.home}</b></td><td class="l sx-txt"><span class="sx-type t-${a.type}">${XTYPE[a.type]}</span> ${xText(a, g)}</td>
         <td>${a.fair != null ? pc(a.fair, 1) : ''}</td><td>${fn != null ? pc(fn, 1) : ''}</td><td>${d != null ? (Math.abs(d) < .0005 ? '<span class="muted">0.0</span>' : `<span class="${d > .0049 ? 'pos' : d < -.0049 ? 'neg' : 'muted'}">${d > 0 ? '+' : ''}${(d * 100).toFixed(1)}</span>`) : ''}</td></tr>`; }).join('')
       : `<tr><td class="l" colspan="6"><p class="empty">${A.length ? 'No signals match these filters.' : 'No signals yet on these games. Pinnacle moves, soft books lagging it, sharp accounts and big tickets show up here as they happen.'}</p></td></tr>`}</tbody>`;
+  xFeedCap(F.length);
   const has = o => o && ((o.pin || []).length || (o.behind || []).length || (o.tickets || []).length || (o.flow && (o.flow.vol || o.flow.kalVol)));
   const shown = games.filter(g => has(SH.games[String(g.id)])), rest = games.length - shown.length;
   $('xgames').innerHTML = shown.map(g => xGame(g, SH.games[String(g.id)])).join('') +
