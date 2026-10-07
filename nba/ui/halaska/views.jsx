@@ -192,6 +192,7 @@ function LabView(p) {
           <div><h2>{p.teamName} rotation</h2><p>Set each player's minutes. Every stat, and every prop price, moves with them.</p></div>
           <div className="ml-act">
             <SwitchToggle theme={THEME} checked={p.bal} onChange={p.onBal} label="Hand freed minutes to teammates" />
+            {p.onTonight && <span title={`Replace these minutes with the game-day model for ${p.tonightLabel}: injuries, lineup, rest and blowout risk`}><Button theme={THEME} size="sm" onClick={p.onTonight}>Use tonight's minutes</Button></span>}
             <Button theme={THEME} size="sm" variant="secondary" onClick={p.onReset}>Reset team</Button>
           </div>
         </div>

@@ -1979,7 +1979,7 @@ function render(){
   HK.mount($('lab-root'), 'LabView', {roster, kpis, chartHtml, rows: act.concat(rest).map(rowOf), nAct: act.length, movers, log, teamName: T.name, lineup, wash: teamWash(cur), bal: balOn,
     onBal: v => { balOn = v; render(); }, onSetMin: (id, v) => setMin(cur, id, v),
     onOut: id => { const p = T.players.find(x => x.id === id), mm = mins(cur); setMin(cur, id, mm[id] > 0 ? 0 : (p.min0 || 20)); },
-    onReset: labReset, onFit: labFit, onProps: labProps});
+    onReset: labReset, onFit: labFit, onProps: labProps, onTonight: labGame(cur) ? labTonight : null, tonightLabel: labGame(cur) ? `${labGame(cur).away} @ ${labGame(cur).home}` : ''});
   store.set('nml-team', cur);
 }
 
@@ -2054,9 +2054,20 @@ document.addEventListener('click', e => {
 // Tonight's starting five from the NBA.com lineup feed (board players[pid][3]: S confirmed, s expected), for the team's next game
 // (or one that tipped in the last 3 hours). null until a usable lineup posts, and the Lab falls back to the season-start projection.
 let labSig = '';
+function labGame(team){
+  const B = slateBoard().board, now = Date.now() / 1000;
+  return [...(B.games || []), ...(B.opening || [])].filter(x => (x.away === team || x.home === team) && x.tip > now - 3 * 3600).sort((a, b) => a.tip - b.tip)[0] || null;
+}
+// "Use tonight's minutes": load the game-day minutes model (injuries, lineup, rest, blowout risk) for the team's next game into the Lab as your edits.
+function labTonight(){
+  const g = labGame(cur); if (!g) return;
+  const T = D.teams[cur], model = gameMinutes(cur, g, {}), m = mins(cur), before = T.players.reduce((a, p) => a + m[p.id], 0);
+  for (const p of T.players) m[p.id] = model[p.id] ? Math.round(model[p.id].min * 10) / 10 : 0;
+  save(cur, m); addLog(cur, T.name, `loaded tonight's minutes for ${g.away} @ ${g.home} (${fmt(T.players.reduce((a, p) => a + m[p.id], 0), 0)} total, was ${fmt(before, 0)})`); render();
+}
 function labLineup(team){
-  const B = slateBoard().board, P = B.players || {}, now = Date.now() / 1000;
-  const g = [...(B.games || []), ...(B.opening || [])].filter(x => (x.away === team || x.home === team) && x.tip > now - 3 * 3600).sort((a, b) => a.tip - b.tip)[0];
+  const B = slateBoard().board, P = B.players || {};
+  const g = labGame(team);
   const T = D.teams[team]; if (!g || !T) return null;
   const flag = p => P[p.id] ? P[p.id][3] : null, conf = T.players.filter(p => flag(p) === 'S'), exp = T.players.filter(p => flag(p) === 's').sort((a, b) => b.min0 - a.min0);
   if (!conf.length && !exp.length) return null;
