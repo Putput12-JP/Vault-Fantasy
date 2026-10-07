@@ -85,61 +85,98 @@ function Kpi({ k }) {
 }
 
 
-// Slider + number box that edit locally while dragging and commit once, so the page recomputes once per edit
-// (and the "Recent changes" log gets one line, not one per pixel).
-function MinCtl({ r, onSetMin, onOut }) {
-  const pal = usePal(THEME);
+// Quick-set chips: the minutes a role usually plays. One tap sets the number, so nobody has to drag a slider to a spot.
+const QUICK = [[12, 'Bench'], [22, 'Role'], [30, 'Starter'], [36, 'Star']];
+const STAT_KEYS = ['pts', 'reb', 'ast', '3pm', 'pra'];
+const STAT_LAB = { pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM', pra: 'PRA' };
+const fm = x => (Math.round(x * 10) / 10).toFixed(1);
+
+// One player: photo, big minutes number with +/- steppers, slider, quick chips and the projected line. Edits locally while
+// dragging and commits once (debounced), so the page recomputes once per edit and "Recent changes" gets one line.
+function PlayerCard({ r, onSetMin, onOut }) {
   const [v, setV] = useState(r.min); const t = useRef(0);
   useEffect(() => { setV(r.min); }, [r.min, r.id]);
   const commit = val => { clearTimeout(t.current); t.current = setTimeout(() => onSetMin(r.id, val), 220); };
+  const set = val => { val = Math.max(0, Math.min(48, Math.round(+val * 2) / 2)); if (isNaN(val)) return; setV(val); commit(val); };
+  const d = v - r.base, changed = Math.abs(d) >= .05;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 270 }}>
-      <Chip theme={THEME} selected={r.out} onToggle={() => onOut(r.id)}>OUT</Chip>
-      <div style={{ flex: 1, minWidth: 100 }}><Slider theme={THEME} min={0} max={48} value={Math.round(v)} onChange={val => { setV(val); commit(val); }} aria-label={`${r.name} minutes`} /></div>
-      <input type="number" min="0" max="48" step="0.5" value={Number(v).toFixed(1)} aria-label={`${r.name} minutes`}
-        onChange={e => setV(+e.target.value)} onBlur={e => onSetMin(r.id, +e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
-        style={{ width: 58, background: pal.bgInput, color: pal.text, border: `1px solid ${pal.borderInput}`, borderRadius: tokens.radius.sm, padding: '5px 6px', fontFamily: tokens.font.mono, ...tokens.type.sm, textAlign: 'right' }} />
+    <article className={'ml-card' + (changed ? ' ml-ed' : '') + (r.out ? ' ml-out' : '')}>
+      <div className="ml-top">
+        <Cut ini={r.ini} src={r.src} fit={r.fit} h={76} w={88} />
+        <div className="ml-id">
+          <b>{r.name}</b>
+          <span className="ml-meta">{r.meta}</span>
+          <span className="ml-bdg">{r.badges.map((b, i) => <Badge key={i} variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge>)}</span>
+        </div>
+        <button type="button" className={'ml-outb' + (r.out ? ' on' : '')} aria-pressed={r.out} onClick={() => onOut(r.id)} title={r.out ? 'Put him back in the rotation' : 'Mark him out: his minutes go to teammates'}>{r.out ? 'OUT' : 'Mark out'}</button>
+      </div>
+      <div className="ml-min">
+        <button type="button" className="ml-step" onClick={() => set(v - 1)} aria-label={`${r.name}: one minute less`} disabled={v <= 0}>−</button>
+        <label className="ml-big">
+          <input type="number" min="0" max="48" step="0.5" value={fm(v)} aria-label={`${r.name} minutes`} onChange={e => setV(+e.target.value)} onBlur={e => set(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }} />
+          <small>min</small>
+        </label>
+        <button type="button" className="ml-step" onClick={() => set(v + 1)} aria-label={`${r.name}: one minute more`} disabled={v >= 48}>+</button>
+      </div>
+      <div className="ml-sub"><span>Projection {fm(r.base)}</span>{changed ? <b className={d > 0 ? 'pos' : 'neg'}>{d > 0 ? '+' : ''}{fm(d)}</b> : <span className="ml-same">unchanged</span>}
+        {changed && <button type="button" className="ml-reset" onClick={() => set(r.base)}>Reset</button>}</div>
+      <input type="range" className="ml-range" min="0" max="48" step="0.5" value={v} style={{ '--p': (v / 48 * 100) + '%', '--b': (r.base / 48 * 100) + '%' }} aria-label={`${r.name} minutes`} onChange={e => set(e.target.value)} />
+      <div className="ml-q">{QUICK.map(([m, l]) => <button key={m} type="button" className={Math.abs(v - m) < .01 ? 'on' : ''} onClick={() => set(m)}>{m}<small>{l}</small></button>)}</div>
+      <div className="ml-stats">{STAT_KEYS.map(k => { const s = r.stats[k]; const dd = Math.abs(s.d) >= .05;
+        return <div key={k} className={k === 'pra' ? 'pra' : ''} title={s.lo != null ? `Typical range ${s.lo} to ${s.hi}` : undefined}><small>{STAT_LAB[k]}</small><b>{fm(s.v)}</b>{dd ? <i className={s.d > 0 ? 'pos' : 'neg'}>{s.d > 0 ? '+' : ''}{fm(s.d)}</i> : <i> </i>}</div>; })}</div>
+    </article>
+  );
+}
+
+// The 240-minute budget as one bar: a segment per player, a marker at 240. Over or under 240 is visible at a glance.
+function Budget({ rows, total, onFit }) {
+  const live = rows.filter(r => r.min > 0), span = Math.max(240, total), mk = 240 / span * 100, diff = total - 240;
+  const ok = Math.abs(diff) < .5;
+  return (
+    <div className="ml-bud">
+      <div className="ml-budh">
+        <div><b className="ml-bn">{fm(total)}</b><span className="ml-bo"> of 240 minutes</span></div>
+        <span className={'ml-bs ' + (ok ? 'ok' : diff > 0 ? 'hi' : 'lo')}>{ok ? 'Balanced' : diff > 0 ? `${fm(diff)} over 240` : `${fm(-diff)} left to hand out`}</span>
+      </div>
+      <div className="ml-bar" role="img" aria-label={`${fm(total)} of 240 minutes assigned`}>
+        {live.map((r, i) => { const w = r.min / span * 100; return <i key={r.id} title={`${r.name} ${fm(r.min)}`} style={{ width: w + '%', '--a': Math.max(.28, 1 - i * .075) }}>{w >= 10 ? <span>{r.last}</span> : null}</i>; })}
+        <u style={{ left: mk + '%' }} aria-hidden="true"><em>240</em></u>
+      </div>
+      {!ok && <button type="button" className="ml-fit" onClick={onFit}>{diff > 0 ? 'Trim to 240' : 'Fill to 240'}</button>}
     </div>
   );
 }
 
-const STAT_KEYS = ['pts', 'reb', 'ast', '3pm', 'pra'];
 function LabView(p) {
   const pal = usePal(THEME); const w = useWidth(); const narrow = w < 900;
-  const row = r => [
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, opacity: r.out ? .55 : 1 }}>
-      <Cut ini={r.ini} src={r.src} fit={r.fit} h={62} bleed={10} />
-      <span><Text size="sm" weight="medium">{r.name}</Text>{r.badges.map((b, i) => <React.Fragment key={i}> <Badge variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge></React.Fragment>)}<div><Dim size="xs">{r.meta}</Dim></div></span>
-    </span>,
-    <MinCtl r={r} onSetMin={p.onSetMin} onOut={p.onOut} />,
-    ...STAT_KEYS.map(k => { const s = r.stats[k]; return <div style={{ lineHeight: 1.25 }}><Tone weight={k === 'pra' ? 'semibold' : undefined}>{s.v.toFixed(1)}</Tone>{Math.abs(s.d) >= .05 && <> <Tone tone={s.d > 0 ? 'pos' : 'neg'} size="xs">{s.d > 0 ? '+' : ''}{s.d.toFixed(1)}</Tone></>}{s.lo != null && <div><Dim size="xs" mono>{s.lo}–{s.hi}</Dim></div>}</div>; }),
-    <Tone>{r.sb.toFixed(1)}</Tone>,
-  ];
-  const cols = ['Player', 'Minutes', 'PTS', 'REB', 'AST', '3PM', 'PRA', 'STL+BLK'];
+  const [more, setMore] = useState(false);
   const act = p.rows.slice(0, p.nAct), rest = p.rows.slice(p.nAct);
+  const total = p.rows.reduce((a, r) => a + r.min, 0);
+  const K = Object.fromEntries(p.kpis.map(k => [k.label, k]));
+  const pts = K['Team points per 240 min'], top = K['Top scorer'], chg = K['Players changed'];
+  const card = r => <PlayerCard key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} />;
   return (
     <Stack gap={16}>
-      <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr 1fr' : 'repeat(4,minmax(0,1fr))', gap: 16 }}>{p.kpis.map(k => <Kpi key={k.label} k={k} />)}</div>
-      <Card padding={20}>
-        <Text size="lg" weight="semibold">Minutes by player</Text>
-        <div style={{ marginBottom: 8 }}><Dim>Your minutes against the season-start projection, top 15 by minutes</Dim></div>
-        <Html html={p.chartHtml} />   {/* chart kit (page ckDots): your minutes against the projection, one row per player */}
-      </Card>
-      <Card padding={0} style={{ overflow: 'hidden' }}>
-        <div style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div><Text size="lg" weight="semibold">Rotation</Text><div><Dim>Change a player's minutes and every stat moves with them</Dim></div></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <SwitchToggle theme={THEME} checked={p.bal} onChange={p.onBal} label="Move freed minutes to teammates" />
+      <section className="ml-hero" style={{ '--ml-c': p.wash || 'var(--accent2, #7fb4ec)' }}>
+        <div className="ml-hh">
+          <div><h2>{p.teamName} rotation</h2><p>Set each player's minutes. Every stat, and every prop price, moves with them.</p></div>
+          <div className="ml-act">
+            <SwitchToggle theme={THEME} checked={p.bal} onChange={p.onBal} label="Hand freed minutes to teammates" />
             <Button theme={THEME} size="sm" variant="secondary" onClick={p.onReset}>Reset team</Button>
-            <Button theme={THEME} size="sm" onClick={p.onFit}>Fit to 240</Button>
           </div>
         </div>
-        <div style={{ overflowX: 'auto' }}><div style={{ minWidth: 940 }}><Table theme={THEME} columns={cols} rows={act.map(row)} /></div></div>
-        {rest.length > 0 && <>
-          <div style={{ padding: '12px 20px' }}><Dim>Beyond the 13-man rotation · give minutes to include</Dim></div>
-          <div style={{ overflowX: 'auto' }}><div style={{ minWidth: 940 }}><Table theme={THEME} columns={cols} rows={rest.map(row)} /></div></div>
-        </>}
-      </Card>
+        <Budget rows={p.rows} total={total} onFit={p.onFit} />
+        <div className="ml-kp">
+          <div><small>Team points per 240</small><b>{pts.val}</b>{pts.delta != null && Math.abs(pts.delta) >= .05 ? <i className={pts.delta > 0 ? 'pos' : 'neg'}>{pts.delta > 0 ? '+' : ''}{pts.delta.toFixed(1)}</i> : <i>vs projection: same</i>}</div>
+          <div><small>Top scorer</small><b>{top.val}</b><i>{top.hint}</i></div>
+          <div><small>Players changed</small><b>{chg.val}</b><i>{chg.hint}</i></div>
+        </div>
+      </section>
+      <div className="ml-grid">{act.map(card)}</div>
+      {rest.length > 0 && <>
+        <button type="button" className="ml-more" aria-expanded={more} onClick={() => setMore(!more)}>{more ? 'Hide' : 'Show'} {rest.length} players outside the rotation<span>give a player minutes to bring him in</span></button>
+        {more && <div className="ml-grid">{rest.map(card)}</div>}
+      </>}
       <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 16 }}>
         <Card padding={20}>
           <Text size="lg" weight="semibold">Biggest movers</Text><div style={{ marginBottom: 10 }}><Dim>Largest change in points + rebounds + assists from your edits</Dim></div>
@@ -171,6 +208,11 @@ function LabView(p) {
           </Stack>
         </Card>
       </div>
+      <Card padding={20}>
+        <Text size="lg" weight="semibold">Minutes by player</Text>
+        <div style={{ marginBottom: 8 }}><Dim>Your minutes against the season-start projection, top 15 by minutes</Dim></div>
+        <Html html={p.chartHtml} />
+      </Card>
     </Stack>
   );
 }

@@ -1060,6 +1060,42 @@ table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
 table.nt.sx-tk{min-width:420px}
 @media (max-width:600px){ .sx-card{padding:16px} .sx-fair{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .sx-fr{grid-template-columns:92px minmax(0,1fr) auto} }
 /* Slate & Game Lines */
+/* Minutes Lab V2: team budget bar + one card per player */
+.ml-hero{border:1px solid var(--border);border-radius:20px;padding:20px 22px;background:linear-gradient(180deg,color-mix(in srgb,var(--ml-c) 14%,var(--raised)),var(--raised) 70%);display:grid;gap:16px}
+.ml-hero{grid-template-columns:minmax(0,1fr);min-width:0}.ml-hero>*{min-width:0}.ml-bar i{flex:0 1 auto}
+.ml-hh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px}.ml-hh h2{margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em}.ml-hh p{margin:3px 0 0;color:var(--fg2);font-size:13px}
+.ml-act{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ml-bud{display:grid;gap:8px}.ml-budh{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ml-bn{font-family:var(--font-mono);font-size:30px;font-weight:600;letter-spacing:-.04em}.ml-bo{color:var(--fg2);font-size:13px}
+.ml-bs{font-size:12px;font-weight:600;padding:3px 10px;border-radius:9999px;border:1px solid var(--border2);color:var(--fg2)}.ml-bs.ok{color:var(--up);border-color:rgb(74 222 128 / .4);background:rgb(74 222 128 / .1)}.ml-bs.hi{color:var(--down,#f87171);border-color:rgb(248 113 113 / .4);background:rgb(248 113 113 / .1)}.ml-bs.lo{color:var(--warn);border-color:rgb(251 191 36 / .4);background:rgb(251 191 36 / .1)}
+.ml-bar{position:relative;display:flex;height:34px;border-radius:10px;background:var(--border);overflow:visible;gap:2px;padding:0}
+.ml-bar i{display:flex;align-items:center;justify-content:center;height:100%;min-width:0;background:color-mix(in srgb,var(--ml-c) calc(var(--a)*100%),transparent);border-radius:6px;overflow:hidden;transition:width .3s var(--ease-out,ease-out)}
+.ml-bar i:first-child{border-radius:10px 6px 6px 10px}.ml-bar i span{font-size:11px;font-weight:600;color:var(--fg);white-space:nowrap;padding:0 4px;mix-blend-mode:normal;text-shadow:0 1px 2px rgb(0 0 0 / .35)}
+.ml-bar u{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--fg);border-radius:1px;text-decoration:none}.ml-bar{margin-bottom:14px}.ml-bar u em{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font:600 10px var(--font-mono);color:var(--fg2);font-style:normal}
+.ml-bud{padding-top:10px}.ml-fit{justify-self:start;border:1px solid var(--border2);background:var(--raised);color:var(--fg);border-radius:9999px;padding:5px 14px;font:600 12.5px var(--font-sans);cursor:pointer;transition:transform var(--dur-release,.4s) var(--ease-spring,ease-out),background .15s}.ml-fit:hover{background:var(--border)}.ml-fit:active{transform:scale(.94);transition:transform 80ms ease-out}
+.ml-kp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;border-top:1px solid var(--border);padding-top:14px}.ml-kp>div{display:grid;gap:2px;min-width:0}.ml-kp small{font:600 10.5px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}.ml-kp b{font-size:20px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.ml-kp i{font-style:normal;font-size:12px;color:var(--fg2)}
+.pos{color:var(--up)}.neg{color:var(--down,#f87171)}
+.ml-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.ml-card{border:1px solid var(--border);border-radius:18px;background:var(--raised);padding:0 16px 14px;display:grid;gap:10px;min-width:0;transition:border-color .2s,background .2s}
+.ml-card.ml-ed{border-color:color-mix(in srgb,var(--c-blue,#7fb4ec) 55%,var(--border))}.ml-card.ml-out{opacity:.7}
+.ml-top{display:flex;align-items:flex-end;gap:12px;margin:0 -16px;padding:0 16px;border-radius:18px 18px 0 0;background:linear-gradient(180deg,color-mix(in srgb,var(--ml-c,#888) 16%,transparent),transparent)}
+.ml-id{flex:1;min-width:0;padding:12px 0 8px;display:grid;gap:3px}.ml-id b{font-size:15px;font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ml-meta{font-size:11.5px;color:var(--fg3)}.ml-bdg{display:flex;gap:4px;flex-wrap:wrap}
+.ml-outb{align-self:flex-start;margin-top:12px;border:1px solid var(--border2);background:transparent;color:var(--fg2);border-radius:8px;padding:3px 9px;font:600 11px var(--font-mono);letter-spacing:.06em;cursor:pointer;transition:background .15s,color .15s,transform var(--dur-release,.4s) var(--ease-spring,ease-out)}.ml-outb:hover{background:var(--border)}.ml-outb:active{transform:scale(.92);transition:transform 80ms ease-out}.ml-outb.on{background:rgb(248 113 113 / .15);color:var(--down,#f87171);border-color:rgb(248 113 113 / .5)}
+.ml-min{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ml-step{width:44px;height:44px;border-radius:12px;border:1px solid var(--border2);background:var(--bg,transparent);color:var(--fg);font:500 22px/1 var(--font-sans);cursor:pointer;transition:background .15s,transform var(--dur-release,.4s) var(--ease-spring,ease-out)}.ml-step:hover:not(:disabled){background:var(--border)}.ml-step:active:not(:disabled){transform:scale(.92);transition:transform 80ms ease-out}.ml-step:disabled{opacity:.35;cursor:default}
+.ml-big{display:flex;align-items:baseline;justify-content:center;gap:5px;flex:1}.ml-big input{width:96px;border:0;background:transparent;color:var(--fg);font:600 36px var(--font-mono);letter-spacing:-.05em;text-align:right;padding:0;outline:none;-moz-appearance:textfield;border-radius:8px}.ml-big input::-webkit-outer-spin-button,.ml-big input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}.ml-big input:focus-visible{box-shadow:0 0 0 2px var(--c-blue,#7fb4ec)}.ml-big small{font-size:12px;color:var(--fg3)}
+.ml-sub{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--fg3);margin-top:-4px;justify-content:center}.ml-sub b{font-family:var(--font-mono)}.ml-same{opacity:.7}.ml-reset{border:0;background:transparent;color:var(--fg2);text-decoration:underline;cursor:pointer;font:inherit;padding:0}
+.ml-range{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;cursor:pointer;margin:0}
+.ml-range::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--fg) var(--p),var(--border) var(--p))}
+.ml-range::-moz-range-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--fg) var(--p),var(--border) var(--p))}
+.ml-range::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--fg);border:3px solid var(--raised);margin-top:-7px;box-shadow:0 1px 4px rgb(0 0 0 / .35)}
+.ml-range::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--fg);border:3px solid var(--raised)}
+.ml-range:focus-visible{outline:2px solid var(--c-blue,#7fb4ec);outline-offset:2px;border-radius:6px}
+.ml-q{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.ml-q button{border:1px solid var(--border);background:transparent;color:var(--fg);border-radius:10px;padding:5px 0;font:600 13px var(--font-mono);cursor:pointer;display:grid;gap:0;transition:background .15s,transform var(--dur-release,.4s) var(--ease-spring,ease-out)}.ml-q button small{font:500 10px var(--font-sans);color:var(--fg3)}.ml-q button:hover{background:var(--border)}.ml-q button:active{transform:scale(.94);transition:transform 80ms ease-out}.ml-q button.on{background:var(--fg);color:var(--bg,#111)}.ml-q button.on small{color:inherit;opacity:.7}
+.ml-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px}.ml-stats>div{display:grid;gap:1px;text-align:center;min-width:0}.ml-stats small{font:600 9.5px var(--font-mono);letter-spacing:.06em;color:var(--fg3)}.ml-stats b{font:600 16px var(--font-mono);letter-spacing:-.03em}.ml-stats .pra b{color:var(--fg)}.ml-stats i{font:500 10.5px var(--font-mono);font-style:normal;min-height:13px}
+.ml-more{border:1px dashed var(--border2);background:transparent;color:var(--fg2);border-radius:14px;padding:12px 16px;font:600 13px var(--font-sans);cursor:pointer;text-align:left;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.ml-more span{font-weight:400;color:var(--fg3);font-size:12px}.ml-more:hover{background:var(--raised)}
+@media(max-width:640px){.ml-hero{padding:16px 14px;border-radius:16px}.ml-kp{grid-template-columns:1fr 1fr}.ml-kp>div:last-child{grid-column:1/-1}.ml-grid{grid-template-columns:minmax(0,1fr)}.ml-bn{font-size:26px}}
+@media(prefers-reduced-motion:reduce){.ml-bar i,.ml-step,.ml-q button,.ml-outb,.ml-fit{transition:none}}
 .sl-grid.lv{display:flex;flex-direction:column;gap:16px}
 .lv-card{padding:0;gap:0;overflow:hidden}.lv-card>.sl-h{padding:10px 16px;border-bottom:1px solid var(--border)}
 .lv-asof{color:var(--fg3);font-family:var(--font-sans)}
@@ -1861,7 +1897,7 @@ function render(){
     .map(p => ({name: p.name, last: last(p.name), now: m[p.id], base: p.min0}));
 
   // rotation table
-  const act = T.players.filter(p => p.active || m[p.id] > 0).sort((a,b) => m[b.id]-m[a.id] || b.min0-a.min0);
+  const act = T.players.filter(p => p.active || m[p.id] > 0).sort((a,b) => b.min0-a.min0 || m[b.id]-m[a.id]);   // by the projection, not your edit, so a card does not jump while you tune it
   const rest = T.players.filter(p => !(p.active || m[p.id] > 0));
   const stat = (mu, base, s) => { const r = range(s, mu); return {v: mu, d: mu - base, lo: r ? Math.round(r[0]) : null, hi: r ? Math.round(r[1]) : null}; };
   const badges = p => [
@@ -1871,7 +1907,7 @@ function render(){
     !p.slotted ? {t: 'No depth slot'} : null
   ].filter(Boolean);
   const rowOf = p => { const mu = pr[p.id];
-    return {id: p.id, name: p.name, ini: initials(p.name), src: phSrc(p.id), fit: phFit(p.id), min: m[p.id], out: isOut(p, m), badges: badges(p),
+    return {id: p.id, name: p.name, ini: initials(p.name), src: phSrc(p.id), fit: phFit(p.id), min: m[p.id], base: p.min0, last: last(p.name), out: isOut(p, m), badges: badges(p),
       meta: `${p.pos}${p.rank ? ` · depth ${p.rank}` : ''} · ${p.gp ? fmt(p.last_mpg) + ' mpg last season' : 'no NBA minutes last season'}`,
       stats: {pts: stat(mu.pts,b0[p.id].pts,'pts'), reb: stat(mu.reb,b0[p.id].reb,'reb'), ast: stat(mu.ast,b0[p.id].ast,'ast'), '3pm': stat(mu['3pm'],b0[p.id]['3pm'],'3pm'), pra: stat(mu.pra,b0[p.id].pra,'pra')},
       sb: mu.stl + mu.blk}; };
@@ -1890,7 +1926,7 @@ function render(){
   };
 
   const chartHtml = chart.length ? ckDots('lab-minutes', {rows: chart.map(p => ({name: p.name, a: p.now, b: p.base})), a: 'Your minutes', b: 'Projection', kLabel: 'minutes'}) : '';
-  HK.mount($('lab-root'), 'LabView', {roster, kpis, chartHtml, rows: act.concat(rest).map(rowOf), nAct: act.length, movers, log, teamName: T.name, bal: balOn,
+  HK.mount($('lab-root'), 'LabView', {roster, kpis, chartHtml, rows: act.concat(rest).map(rowOf), nAct: act.length, movers, log, teamName: T.name, wash: teamWash(cur), bal: balOn,
     onBal: v => { balOn = v; render(); }, onSetMin: (id, v) => setMin(cur, id, v),
     onOut: id => { const p = T.players.find(x => x.id === id), mm = mins(cur); setMin(cur, id, mm[id] > 0 ? 0 : (p.min0 || 20)); },
     onReset: labReset, onFit: labFit});
