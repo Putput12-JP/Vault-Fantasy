@@ -207,3 +207,25 @@ for RBs and 83.6% vs 87.7% for WR/TE. The larger problem was that no bucket carr
 
 Effect on users: RB props lose the room-opened bump and show the existing "room?" caution (a starter left, no
 reliable measured bump); the WR/TE bump gets a little smaller. Changelog entry added.
+
+## Addendum 6: real-line recalibration gate (finding 5)
+
+Question: does the post-hoc `RECAL_MIN_N = 300` hold up on weeks it was not chosen on? Walk-forward on 2026 settled props
+at the closing line, base = the point-in-time served probability (`p_model`), shift fit on weeks before w, scored on
+week w, w = 2, 3, 4 (1,886 rows; 1,886 is shared by every row below).
+
+| Rule | Log-loss gain per row vs no shift |
+|---|---|
+| N >= 300, K 300 (shipped) | +0.00194 |
+| N >= 100 / 50, K 300 | +0.00213 / +0.00206 |
+| z >= 2, K 300 | +0.00127 |
+| z >= 2.5, K 300 | +0.00044 |
+
+All rules help a little, and the differences between them are inside noise. The gain comes from `rec` (+0.0051 per row,
+c stable at 0.22 to 0.26 at every cutoff) and `rec_yd` (+0.0023, c 0.11 to 0.16). The markets a low N gate would also
+shift lose: `rush_yd` -0.0021 (c cutoffs +0.62, +0.10, +0.09, -0.20), `pass_td` -0.0008, `pass_cmp` -0.0010.
+
+Verdict: the 300 gate was chosen after the fact but it is not the thing doing the protecting. Fix shipped: keep N >= 300
+and also require |z| >= 2 (z from the logit model's information, no tuned constant), logged per market. Current outputs
+are unchanged: rec (c +0.165, z 3.14, n 791) and rec_yd (c +0.125, z 2.38, n 754) still apply; rush_yd and the QB markets would
+now be refused if they reach 300 rows with a noise-level shift. Caveat: 1,886 rows over three test weeks, one season.

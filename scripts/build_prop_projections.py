@@ -731,6 +731,7 @@ def compute_priors(seq):
 # z +2.0). Baked into calib like (a), so every serving copy picks it up with no
 # code change. Poisson / no-calib TD markets are left alone.
 RECAL_MIN_N, RECAL_K, RECAL_MAX = 300, 300, 0.5
+RECAL_MIN_Z = 2.0
 
 
 def _realline_rows(mkt, entry, season_props):
@@ -778,6 +779,16 @@ def apply_realline_recal(model):
         if n < RECAL_MIN_N:
             continue
         c_raw = _fit_shift(rows)
+        # z of the shift (Fisher information of the logit model). RECAL_MIN_N was picked after looking at
+        # Wks 1-3, so it cannot be the only guard: a shift must also be statistically distinguishable from 0.
+        # Walk-forward on Wks 2-4 (docs/leakage-audit-2026-10-06.md, addendum 6): rec and rec_yd shifts are
+        # stable and help out of sample; rush_yd (c flips 0.62, 0.10, 0.09, -0.20), pass_td and the QB markets
+        # are noise and cost log-loss when shifted.
+        info = sum(_sig(_logit(q) + c_raw) * (1 - _sig(_logit(q) + c_raw)) for _, q in rows)
+        z = c_raw * math.sqrt(info) if info > 0 else 0.0
+        if abs(z) < RECAL_MIN_Z:
+            print(f"[prop-model] real-line recalibration: {mkt} c={c_raw:+.3f} z={z:+.2f} < {RECAL_MIN_Z} — not applied")
+            continue
         c = max(-RECAL_MAX, min(RECAL_MAX, c_raw * n / (n + RECAL_K)))
         if abs(c) < 1e-3:
             continue
@@ -790,7 +801,7 @@ def apply_realline_recal(model):
             yv = max(prev, min(1.0, yv))
             new.append([round(x, 4), round(yv, 4)]); prev = yv
         entry["calib"] = new
-        entry["realline"] = {"season": cur, "n": n, "c_raw": round(c_raw, 4), "c": round(c, 4)}
+        entry["realline"] = {"season": cur, "n": n, "c_raw": round(c_raw, 4), "c": round(c, 4), "z": round(z, 2)}
         done.append(f"{mkt}(c={c:+.3f},n={n})")
     print(f"[prop-model] real-line recalibration: {', '.join(done)}" if done
           else f"[prop-model] real-line recalibration: no market has {RECAL_MIN_N}+ settled real lines yet — no-op")
