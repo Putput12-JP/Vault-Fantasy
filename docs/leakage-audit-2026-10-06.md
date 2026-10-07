@@ -287,3 +287,9 @@ difference on 40 games, 839 player-games):
 - Signals: all within noise (consensus 3pm NO z 2.84 -> 2.80; v2 3pm NO z 2.86 -> 2.90; consensus pts NO z 2.38 -> 2.38; v2 ast YES
   z 1.70 -> 1.80). No GO or WATCH label changed.
 So the stale target was a real inconsistency, but not one the shipped v2 prices depended on.
+
+## Addendum 10: execution cost (NBA Kalshi cells)
+
+See nba/docs/experiment-log.md section 7. Adding an assumed half-spread to the consensus ladder backtest: 3pm NO holds its ROI to
+3 cents (z falls from 2.80 to 1.15 as fewer bets qualify); points NO is gone at 2 cents. Real spreads are unmeasured (no book in
+the historical archive, almost no live Kalshi prop books yet).

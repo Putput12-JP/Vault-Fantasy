@@ -99,3 +99,21 @@ not ship, and its backtest gain is not cited, until it is re-tested on live Expe
 from 2026-27) with candidates built by the as-of rule.** Minutes v3 without the feed is unaffected in ranking (still ahead of v2
 by about 0.04 minutes) but its absolute error is 5.00, not 4.65, once non-dressed candidates take minutes
 (`nba/scripts/audit_minutes_v3.py`).
+
+## 7. Execution cost sensitivity (2026-10-07), `nba/scripts/audit_spread.py`
+
+Historical Kalshi data here is trades only (no bid or ask), and the live recorder has almost no Kalshi player-prop books yet
+(8 points rungs on 2026-10-05, none for 3-pointers), so the real spread is unmeasured. Instead, an extra half-spread h was added to
+both the 3% edge test and the bet cost (YES at the ask, NO at 1 minus the bid). Consensus + model, Kalshi ladder, second half:
+
+| Half-spread h | 3pm NO | pts NO |
+|---|---|---|
+| 0.00 | +15.7%, z 2.80, n 1,548 | +8.9%, z 2.38, n 1,834 |
+| 0.01 | +17.0%, z 2.41, n 1,109 | +3.9%, z 1.68, n 1,105 |
+| 0.02 | +15.0%, z 1.86, n 794 | -2.5%, z 0.22, n 614 |
+| 0.03 | +14.8%, z 1.15, n 527 | -11.0%, z -1.70, n 331 |
+
+Read: the 3-pointer NO edge keeps its ROI up to a 3-cent half-spread (fewer bets qualify, so z falls), while the points NO edge is
+gone by 2 cents. Points NO therefore needs a half-spread under about 1 cent, which thin rungs (median 105 contracts per 30 minutes)
+rarely offer. Once regular-season props list, measure the real half-spread per stat from the recorder's bid and ask before
+trusting either cell; this section's table is the bar to compare it against.
