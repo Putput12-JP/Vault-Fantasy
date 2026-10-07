@@ -4389,7 +4389,7 @@ function lvMini(v){ const w = Math.abs(v) * 50; return `<span class="lv-mini"><u
 function lvSignals(g, mk, o){                                               // each signal in [-1, 1]: negative leans the away team, positive the home team
   const out = [], F = o && o.flow, P = o && (o.pin || []).filter(p => p[1] != null);
   if (P && P.length >= 2){ const a = P[0], z = P[P.length - 1], mx = P.reduce((m, x) => x[1] > m[1] ? x : m, a), mn = P.reduce((m, x) => x[1] < m[1] ? x : m, a);
-    out.push({k: 'Pinnacle', v: Math.max(-1, Math.min(1, (z[1] - a[1]) / 3)), tiny: z[1] === a[1] ? 'no move' : `${Math.abs(z[1] - a[1]).toFixed(1)} to ${z[1] < a[1] ? g.away : g.home}`,
+    out.push({k: 'Pinnacle', v: Math.max(-1, Math.min(1, (a[1] - z[1]) / 3)), tiny: z[1] === a[1] ? 'no move' : `${Math.abs(z[1] - a[1]).toFixed(1)} to ${z[1] < a[1] ? g.home : g.away}`,
       tip: `Pinnacle's ${g.home} spread: ${lvF1(a[1])} at ${clock(a[0])} ET to ${lvF1(z[1])} now${mx[1] > a[1] + 1 ? `, after a high of ${lvF1(mx[1])}` : mn[1] < a[1] - 1 ? `, after a low of ${lvF1(mn[1])}` : ''}`}); }
   if (F && (F.sharpN || F.vol)) out.push({k: 'Sharp accts', v: Math.max(-1, Math.min(1, (F.sharp || 0) / 5000)), tiny: `${usdK(F.sharp || 0)} ${(F.sharp || 0) < 0 ? g.away : g.home}`, tip: `Polymarket sharp accounts, last 24 hours, net: ${usdK(F.sharp || 0)} on ${(F.sharp || 0) < 0 ? g.away : g.home} over ${F.sharpN || 0} trades`});
   if (F && F.kalVol) out.push({k: 'Kalshi big', v: Math.max(-1, Math.min(1, (F.kal || 0) / 10000)), tiny: `${usdK(F.kal || 0)} ${(F.kal || 0) < 0 ? g.away : g.home}`, tip: `Kalshi tickets of $500 and up: ${usdK(F.kalVol)} traded, net ${usdK(F.kal || 0)} on ${(F.kal || 0) < 0 ? g.away : g.home}`});
