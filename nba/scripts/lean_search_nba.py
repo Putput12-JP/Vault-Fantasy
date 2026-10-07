@@ -21,6 +21,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 DATA = os.path.join(os.path.dirname(__file__), '..', 'data'); ROWS = os.path.join(DATA, 'lean_rows_nba.json'); TRIALS = os.path.join(DATA, 'lean_trials_nba.json')
 lg = lambda p: math.log(min(max(p, 1e-4), 1 - 1e-4) / (1 - min(max(p, 1e-4), 1 - 1e-4)))
 sig = lambda z: 1 / (1 + math.exp(-max(-30, min(30, z))))
+# Looks the 2025-26 season has already had outside this file (nba/docs/experiment-log.md section 1: 15 rows). The bar below counts
+# these too, not just the trials logged here, because they all draw on the same 2025-26 lines.
+EXTERNAL_LOOKS = 15
 STATS = ['pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra']
 
 def build_rows():
@@ -97,14 +100,21 @@ def main():
     print(f"{'candidate':22s} " + ' '.join(f'{k:>22s}' for k in F) + '   verdict')
     for name, fn in CANDS.items():
         s = score(fn, F); better = {k: inc[k]['ll'] - s[k]['ll'] for k in F}
-        diffs = [a - b for k in F for a, b in zip(inc[k]['_l'], s[k]['_l'])]; m = len(diffs)
-        lo = sorted(st.mean(random.choices(diffs, k=m)) for _ in range(300))[7]
-        looks = len(prior) + len(results) + 1; bar = 0.0003 * math.log(1 + looks)
+        diffs = [a - b for k in F for a, b in zip(inc[k]['_l'], s[k]['_l'])]
+        # Resample whole GAMES, not rows: a game contributes ~16 rows (8 stats, near-duplicate combos), so an iid row bootstrap
+        # understates the interval (docs/leakage-audit-2026-10-06.md, addendum 12).
+        by = {}
+        for g, d in zip([r['gid'] for k in F for r in F[k][1]], diffs): by.setdefault(g, []).append(d)
+        gk = list(by)
+        lo = sorted(st.mean([d for g in random.choices(gk, k=len(gk)) for d in by[g]]) for _ in range(1000))[25]
+        looks = EXTERNAL_LOOKS + len(prior) + len(results) + 1; bar = 0.0003 * math.log(1 + looks)
         ok = name not in ('incumbent(base)', 'market_only') and all(v > 0 for v in better.values()) and lo > 0 and st.mean(diffs) > bar
         print(f"{name:22s} " + ' '.join(f"{s[k]['ll']:.4f} ({better[k]*1e4:+5.1f}e-4) {s[k]['hit']*100:4.1f}%" for k in F) + f"   {'ACCEPT' if ok else 'reject'} (pooled {st.mean(diffs)*1e4:+.1f}e-4, CI lo {lo*1e4:+.1f}e-4)")
         results.append({'t': datetime.now(timezone.utc).isoformat(), 'candidate': name, 'verdict': 'ACCEPT' if ok else 'reject', 'pooled_gain': round(st.mean(diffs), 6), 'ci_lo': round(lo, 6),
                         'folds': {k: {'ll': round(s[k]['ll'], 5), 'hit': round(s[k]['hit'], 4), 'n': s[k]['n'], 'vs_incumbent': round(better[k], 6)} for k in F}})
-    json.dump({'note': 'NBA lean search trials (2025-26 ESPN pre-tip lines, expanding time folds). ACCEPT needs all folds better + bootstrap CI > 0 + a gain bar that rises with trials.',
+    if '--dry' in sys.argv:
+        print('[lean-search-nba] --dry: trials not logged'); return
+    json.dump({'note': 'NBA lean search trials (2025-26 ESPN pre-tip lines, expanding time folds). ACCEPT needs all folds better + game-clustered bootstrap CI > 0 + a gain bar that rises with ALL looks on 2025-26 (EXTERNAL_LOOKS + trials).',
                'trials': prior + results}, open(TRIALS, 'w'), indent=1)
     print(f"\n[lean-search-nba] {len(results)} scored, {len(prior)+len(results)} total looks logged")
 

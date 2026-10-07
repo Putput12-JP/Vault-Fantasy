@@ -319,3 +319,16 @@ Findings:
   most of the NO-side edge. It is also why "price only" recalibration earns part of it (3pm NO +5.2%).
 - Consensus matches or slightly beats the raw price on pts and reb and is flat on ast and 3pm: moving lines adds little beyond the price.
 Not fixed: nothing here changes shipped numbers; it only sizes how much of the edge comes from the model versus the market's bias.
+
+## Addendum 12: `lean_search_nba.py`
+
+Read the whole script. Folds are expanding in time (fit 0-40% score 40-60%, and so on) over 5,250 ESPN pre-tip lines, the incumbent
+is the same logistic on [1, logit(price), gap], the metric is log loss over all lines, seeds are fixed, every trial is logged. Two
+weaknesses, both fixed in the script (`--dry` added to test without logging):
+1. **Row bootstrap.** The interval resampled rows, but a game contributes about 16 rows (8 stats, five of them near-duplicate
+   combos), 320 games in all. It is now a game-clustered bootstrap (1,000 draws). Lower bounds move from, e.g., minutes_confidence
+   -3.8e-4 to -7.2e-4 and blowout_risk -12.3e-4 to -20.2e-4, so the old interval was too narrow.
+2. **The rising bar counted only trials in this file** (0.0003 x ln(1 + looks)). 2025-26 has had 15 other looks
+   (nba/docs/experiment-log.md); `EXTERNAL_LOOKS = 15` now adds them (bar 0.0003 x ln(27) = 9.9e-4 on the next run, vs 8.3e-4 before).
+Re-running as a dry run: all 10 candidates still reject. The best pooled gain is blowout_risk at +5.2e-4 with a cluster CI of
+-20.2e-4 to the upside; none is close. The 11 logged trials stand.
