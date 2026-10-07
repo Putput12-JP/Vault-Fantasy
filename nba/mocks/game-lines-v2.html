@@ -41,6 +41,14 @@ tr.pin td{color:var(--fg2)}tr.pin td:first-child{color:var(--fg)}tr:last-child t
 .more{padding-top:10px}.linkbtn{all:unset;cursor:pointer;color:var(--fg2);font-size:12.5px;text-decoration:underline;text-underline-offset:3px}
 .note{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;font-size:13px;color:var(--fg2)}.note b{color:var(--fg)}
 @media (max-width:820px){.cols{grid-template-columns:1fr}.cols>div+div{border-left:0;border-top:1px solid var(--border)}.tr,.ends{grid-template-columns:1fr}.ends{display:none}}
+.sr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 22px;border-bottom:1px solid var(--border)}
+.sr .t{font-size:12px;font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);margin-right:2px}.sr .vd{font-weight:600;font-size:13px;margin-right:4px;white-space:nowrap}
+.sp{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 9px;border-radius:9px;background:var(--raised);font-size:12.5px;color:var(--fg2);white-space:nowrap}.sp b{color:var(--fg);font-weight:600}
+.mini{position:relative;width:30px;height:6px;border-radius:3px;background:#454545;flex:none}.mini::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--fg3)}.mini u{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--orange)}.mini u.r{background:var(--blue)}
+.sr .tog{margin-left:auto}.tog svg{width:12px;height:12px;vertical-align:-1px;margin-left:4px;transition:transform .2s ease-out}.tog[aria-expanded=true] svg{transform:rotate(180deg)}
+.sdet{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:0;border-bottom:1px solid var(--border)}.sdet>div{padding:14px 22px;border-left:1px solid var(--border)}.sdet>div:first-child{border-left:0}
+.sdet .lab{margin-top:0}.sdet .fine{margin:8px 0 0}
+.spot{margin:12px 22px 0;padding:8px 12px;border-radius:10px}.spot p{font-size:12.5px}
 </style></head><body><div class="wrap">
 <div><h1>Game Lines, V2 mock with sharp money</h1><p class="sub">MIN at IND (preseason), from the live board's own numbers. The "Who is on which side" strip and the sharp column are new; click the market tabs under Book board.</p></div>
 <div class="card" id="card"></div>
@@ -61,11 +69,14 @@ const F=D.flow, sp=D.splits.spread, SIG=[
  {k:'Sharp accounts',s:'Polymarket, 24 h net',v:Math.max(-1,Math.min(1,F.sharp/5000)),txt:`${usd(Math.abs(F.sharp))} on ${F.sharp<0?'MIN':'IND'}, ${F.sharpN} trades`},
  {k:'Big Kalshi tickets',s:'$500 and up, net',v:Math.max(-1,Math.min(1,F.kal/10000)),txt:`${usd(Math.abs(F.kal))} on ${F.kal<0?'MIN':'IND'} of ${usd(F.kalVol)}`},
  {k:'Money against bets',s:'IND spread',v:Math.max(-1,Math.min(1,(sp[1]-sp[0])/12)),txt:`${sp[0]}% of bets, ${sp[1]}% of money on IND`}];
+SIG[0].short='Pinnacle';SIG[0].tiny=(p0[1]===pL[1]?'no move':Math.abs(pL[1]-p0[1]).toFixed(1)+' '+(pL[1]<p0[1]?'to MIN':'to IND'));SIG[1].short='Sharp accts';SIG[1].tiny=usd(Math.abs(F.sharp))+' '+(F.sharp<0?'MIN':'IND');SIG[2].short='Kalshi big';SIG[2].tiny=usd(Math.abs(F.kal))+' '+(F.kal<0?'MIN':'IND');SIG[3].short='Money';SIG[3].tiny='+'+(sp[1]-sp[0])+' pts '+(sp[1]>sp[0]?'IND':'MIN');
 const side=v=>Math.abs(v)<.06?'even':v<0?'MIN':'IND';
 const lean=SIG.map(x=>side(x.v)); const nMin=lean.filter(x=>x==='MIN').length, nInd=lean.filter(x=>x==='IND').length;
 const NAME={'Pinnacle move':"Pinnacle's move",'Sharp accounts':'sharp accounts','Big Kalshi tickets':'big Kalshi tickets','Money against bets':'the money split'};
+const READ_SHORT=nMin&&nInd?'Mixed':nMin?'Leaning MIN':nInd?'Leaning IND':'Quiet';
 const READ=nMin&&nInd?`<b>Mixed.</b> ${SIG.filter(x=>side(x.v)==='MIN').map(x=>NAME[x.k]).join(' and ')} lean MIN; ${SIG.filter(x=>side(x.v)==='IND').map(x=>NAME[x.k]).join(' and ')} lean IND. No clear sharp side.`:nMin?`<b>Leaning MIN.</b> The signals point the same way.`:nInd?`<b>Leaning IND.</b> The signals point the same way.`:'<b>Quiet.</b> Nothing stands out.';
-let M='spread',all=false;
+let M='spread',all=false,open_=false;
+const mini=v=>{const w=Math.abs(v)*50;return `<span class="mini"><u class="${v>0?'r':''}" style="${v<0?`right:50%;width:${w}%`:`left:50%;width:${w}%`}"></u></span>`};
 function render(){
  const rail=v=>{const w=Math.abs(v)*50;return `<div class="rail"><u class="${v>0?'r':''}" style="${v<0?`right:50%;width:${w}%`:`left:50%;width:${w}%`}"></u></div>`};
  const spark=()=>{const W=420,H=96,t0=P[0][0],t1=P[P.length-1][0],ys=P.map(x=>x[1]),lo=Math.min(...ys)-.5,hi=Math.max(...ys)+.5;const X=t=>8+(t-t0)/(t1-t0)*(W-16),Y=v=>10+(hi-v)/(hi-lo)*(H-26);
@@ -89,28 +100,26 @@ function render(){
  document.getElementById('card').innerHTML=`
  <div class="head"><div class="tm"><img src="${LOGO.MIN}" alt=""><span>MIN <small>Timberwolves</small></span></div><span class="at">@</span><div class="tm"><img src="${LOGO.IND}" alt=""><span>IND <small>Pacers</small></span></div>
   <span class="chip">${ETd(D.tip)} ${ET(D.tip)} ET</span><span class="chip warn">Preseason: no Vault line</span><span class="asof">Odds as of ${Math.max(1,Math.round((D.now-cons[10])/60))} min ago</span></div>
- <div class="sig"><h2>Who is on which side</h2><p class="d">The sharp-money signals for this game on one rail. Left is MIN, right is IND; longer means stronger.</p>
-  <div class="ends"><div></div><div><span>MIN</span><span>IND</span></div><div></div></div>
-  <div class="tug">${SIG.map(x=>`<div class="tr"><div class="nm"><b>${x.k}</b><small>${x.s}</small></div>${rail(x.v)}<div class="who">${x.txt}</div></div>`).join('')}</div>
-  <div class="read">${READ}</div><p class="fine">Context, not a bet. In our tests, copying sharp money after the fact lost money; each signal's record is on Sharp Price.</p></div>
+ <div class="sr"><span class="vd" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${READ_SHORT}</span>
+  ${SIG.map(x=>`<span class="sp" title="${x.s}: ${x.txt}"><b>${x.short}</b>${mini(x.v)}<span>${x.tiny}</span></span>`).join('')}
+  <button class="linkbtn tog" id="sd" type="button" aria-expanded="${open_}">Details<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+ ${open_?`<div class="sdet"><div><div class="lab">Pinnacle's IND spread today</div>${spark()}<p class="fine">Dashed line is where it started (${f1(p0[1])}). Pinnacle is the sharp book: its line is the benchmark.</p></div>
+  <div><div class="lab">Polymarket winner market, 24 h net</div><div class="fl">${fr}</div><p class="fine">Kalshi tickets of $500 and up: ${usd(F.kalVol)} traded.</p></div>
+  <div><div class="lab">Largest sharp tickets</div>${tk||'<p class="empty">None yet.</p>'}<div class="lab">Priced better than Pinnacle</div><p class="empty">None right now.</p><p class="fine">Context, not a bet: copying sharp money after the fact lost money in our tests. Each signal is graded on Sharp Price.</p></div></div>`:''}
  <div class="tiles">
   <div class="tile"><div class="k">Spread</div><div class="v">IND ${f1(pinSp)}<small>Pinnacle</small></div><div class="mv">Books opened <b>IND ${f1(open[1])}</b> · Pinnacle started the day at <b>${f1(p0[1])}</b></div><div class="src"><span>Kalshi <b>${f1(D.kalshi.spread)}</b></span><span>Books <b>${f1(cons[1])}</b></span></div></div>
   <div class="tile"><div class="k">Total</div><div class="v">${pinTot.toFixed(1)}<small>Pinnacle</small></div><div class="mv">Books opened <b>${open[6]}</b> · Pinnacle started at <b>${p0[3].toFixed(1)}</b></div><div class="src"><span>Kalshi <b>${D.kalshi.total}</b></span><span>Polymarket <b>${D.poly.total}</b></span><span>Over <b>${Math.round(D.poly.over*100)}%</b></span></div></div>
   <div class="tile"><div class="k">IND win chance</div><div class="v">${Math.round(pinWin*1000)/10}%<small>Pinnacle, no vig</small></div><div class="mv">Started the day at <b>${Math.round(p0[2]*1000)/10}%</b></div><div class="src"><span>Kalshi <b>${Math.round(D.kalshi.win*100)}%</b></span><span>Polymarket <b>${Math.round(D.poly.win*100)}%</b></span></div></div>
  </div>
- ${stale.length?`<div class="spot"><i></i><div><p><b>${stale.length === 1 ? 'One book is' : stale.length + ' books are'} behind the market.</b> ${stale.map(b=>`${b.n} (IND ${f1(b.s.l)}, total ${b.t.l})`).join(' and ')} ${stale.length === 1 ? 'has' : 'have'} not moved with the other books: consensus is IND ${f1(cons[1])} and ${cons[6]}, last updated ${Math.round((cons[10]-Math.min(...stale.map(b=>b.ts)))/60)} minutes earlier at the slowest.</p></div></div>`:''}
- <div class="cols">
+ ${stale.length?`<div class="spot"><i></i><div><p><b>${stale.map(b=>b.n).join(' and ')}</b> ${stale.length === 1 ? 'is' : 'are'} behind the market (${stale.map(b=>`IND ${f1(b.s.l)}, total ${b.t.l}`).join(' and ')} against IND ${f1(cons[1])} and ${cons[6]}), updated up to ${Math.round((cons[10]-Math.min(...stale.map(b=>b.ts)))/60)} minutes earlier.</p></div></div>`:''}
+ <div class="cols" style="grid-template-columns:1fr">
   <div class="sec"><div class="bar"><div><h2>Book board</h2><p class="d">Best price per side is highlighted. Open and Consensus are pinned; books sorted best first.</p></div>
    <div class="seg" role="group" aria-label="Market"><button type="button" data-m="spread" aria-pressed="${M==='spread'}">Spread</button><button type="button" data-m="total" aria-pressed="${M==='total'}">Total</button><button type="button" data-m="ml" aria-pressed="${M==='ml'}">Moneyline</button></div></div>
    <table>${bd.html}</table><div class="more"><button class="linkbtn" id="mb" type="button">${all?'Show fewer books':`Show all ${bd.n} books`}</button></div></div>
-  <div class="sec"><h2>Sharp detail</h2><p class="d">Pinnacle is the sharp book: its line is the benchmark.</p>
-   <div class="pinbox">${spark()}<div class="cap">Pinnacle's IND spread today. Dashed line is where it started (${f1(p0[1])}).</div></div>
-   <div class="lab">Polymarket winner market, 24 h net</div><div class="fl">${fr}</div>
-   <div class="lab">Largest sharp tickets</div>${tk||'<p class="empty">None yet.</p>'}
-   <div class="lab">Books priced better than Pinnacle's fair</div><p class="empty">None right now. Every book is at or worse than Pinnacle's price.</p></div>
  </div>`;
  document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{M=b.dataset.m;render();}));
  document.getElementById('mb').addEventListener('click',()=>{all=!all;render();});
+ document.getElementById('sd').addEventListener('click',()=>{open_=!open_;render();});
 }
 render();
 </script></body></html>
