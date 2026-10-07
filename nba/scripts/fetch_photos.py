@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
 OUT = os.path.join(DATA, 'photos.json')
-ROSTER_N = 10
+ROSTER_N = 40   # everyone on a roster: the Minutes Lab lets you bring any player into the rotation
 HEAD_W, HEAD_H = 96, 70            # everyone in the top ROSTER_N
 HQ_N, HQ_W, HQ_H = 4, 192, 140    # each team's top HQ_N get a sharper copy (the big header, retina lists)
 HEAD = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/{}.png&w=%d&h=%d'

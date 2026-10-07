@@ -104,11 +104,11 @@ const Stepper = ({ r, v, setV, set, big }) => (
   </div>
 );
 // Counting stats. PRA is the headline with a bar showing how it splits into points, rebounds and assists; the three parts sit under it
-// in their bar colours, and the small stats (3PM, STL, BLK) are chips. Each stat carries a coloured change pill. Bench rows lay the same pieces out on one line.
+// in their bar colours, and the small stats (3PM, STL, BLK) sit below. Only PRA carries the change against the projection, so the block stays quiet. Bench rows lay the same pieces out on one line.
 const Dlt = ({ d }) => Math.abs(d) < .05 ? null : <i className={'ml-d ' + (d > 0 ? 'pos' : 'neg')}>{d > 0 ? '▲' : '▼'}{fm(Math.abs(d))}</i>;
 const StatGrid = ({ r, row }) => { const S = r.stats, pra = Math.max(.01, S.pts.v + S.reb.v + S.ast.v);
-  const part = (k, l) => <div className={'ml-p ' + k}><small><u />{l}</small><b>{fm(S[k].v)}</b><Dlt d={S[k].d} /></div>;
-  const chip = (k, l) => <span className="ml-c" key={k} title={S[k].lo != null ? `Typical range ${S[k].lo} to ${S[k].hi}` : undefined}>{l}<b>{fm(S[k].v)}</b><Dlt d={S[k].d} /></span>;
+  const part = (k, l) => <div className={'ml-p ' + k}><small><u />{l}</small><b>{fm(S[k].v)}</b></div>;
+  const chip = (k, l) => <span className="ml-c" key={k} title={S[k].lo != null ? `Typical range ${S[k].lo} to ${S[k].hi}` : undefined}>{l}<b>{fm(S[k].v)}</b></span>;
   return (
     <div className={'ml-sg' + (row ? ' row' : '')}>
       <div className="ml-pra"><div className="ml-prah"><small>PRA</small><b>{fm(S.pra.v)}</b><Dlt d={S.pra.d} /></div>
