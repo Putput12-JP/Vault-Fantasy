@@ -1094,6 +1094,25 @@ table.nt.sx-tk{min-width:420px}
 .ml-q{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.ml-q button{border:1px solid var(--border);background:transparent;color:var(--fg);border-radius:10px;padding:5px 0;font:600 13px var(--font-mono);cursor:pointer;display:grid;gap:0;transition:background .15s,transform var(--dur-release,.4s) var(--ease-spring,ease-out)}.ml-q button small{font:500 10px var(--font-sans);color:var(--fg3)}.ml-q button:hover{background:var(--border)}.ml-q button:active{transform:scale(.94);transition:transform 80ms ease-out}.ml-q button.on{background:var(--fg);color:var(--bg,#111)}.ml-q button.on small{color:inherit;opacity:.7}
 .ml-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;border-top:1px solid var(--border);padding-top:10px}.ml-stats>div{display:grid;gap:1px;text-align:center;min-width:0}.ml-stats small{font:600 9.5px var(--font-mono);letter-spacing:.06em;color:var(--fg3)}.ml-stats b{font:600 16px var(--font-mono);letter-spacing:-.03em}.ml-stats .pra b{color:var(--fg)}.ml-stats i{font:500 10.5px var(--font-mono);font-style:normal;min-height:13px}
 .ml-more{border:1px dashed var(--border2);background:transparent;color:var(--fg2);border-radius:14px;padding:12px 16px;font:600 13px var(--font-sans);cursor:pointer;text-align:left;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.ml-more span{font-weight:400;color:var(--fg3);font-size:12px}.ml-more:hover{background:var(--raised)}
+/* Minutes Lab V2 (depth chart): five starter cards, bench rows */
+.ml-starters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.ml-sc{position:relative;border:1px solid var(--border);border-radius:18px;padding:0 12px 12px;display:grid;gap:8px;text-align:center;justify-items:center;min-width:0;background:linear-gradient(180deg,color-mix(in srgb,var(--ml-c,#888) 14%,transparent),var(--raised) 62%);transition:border-color .2s}
+.ml-sc.ml-ed,.ml-br.ml-ed{border-color:color-mix(in srgb,var(--c-blue,#7fb4ec) 55%,var(--border))}.ml-sc.ml-out,.ml-br.ml-out{opacity:.65}
+.ml-pos{position:absolute;top:10px;left:12px;font:600 10px var(--font-mono);letter-spacing:.08em;color:var(--fg3)}.ml-ph{height:78px;display:flex;align-items:flex-end;margin:0 -12px}
+.ml-nm{font-size:14px;font-weight:600;letter-spacing:-.01em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ml-bdg.c{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.ml-row{display:flex;align-items:center;justify-content:center;gap:6px}.ml-num{width:84px;border:0;background:transparent;color:var(--fg);font:600 15px var(--font-mono);letter-spacing:-.03em;text-align:center;padding:0;outline:none;border-radius:8px;-moz-appearance:textfield}.ml-num::-webkit-outer-spin-button,.ml-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}.ml-num:focus-visible{box-shadow:0 0 0 2px var(--c-blue,#7fb4ec)}.ml-num.big{width:76px;font-size:32px;letter-spacing:-.05em}
+.ml-rowbig{gap:4px}.ml-row .ml-step{width:36px;height:36px;font-size:19px;border-radius:10px}
+.ml-ln{font-size:11.5px;color:var(--fg3);line-height:1.35}.ml-ln b{font-family:var(--font-mono);font-weight:600}.ml-ft{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;font-size:12px;color:var(--fg3);margin-top:2px}.ml-ft b{font-family:var(--font-mono)}
+.ml-bench{display:grid;gap:8px}.ml-br{display:grid;grid-template-columns:54px minmax(0,1fr) auto auto auto;gap:12px;align-items:center;padding:6px 12px 0 8px;border:1px solid transparent;border-radius:14px;background:var(--raised);overflow:hidden}.ml-br>.ml-row,.ml-br>button,.ml-br>.ml-bd{margin-bottom:6px}.ml-br .ml-bi{padding-bottom:6px;min-width:0}.ml-br .ml-bi b{font-size:14px;font-weight:600}.ml-bd{font-size:12px;min-width:84px;text-align:right}.ml-bd b{font-family:var(--font-mono)}
+
+.ml-sg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px 4px;width:100%;border-top:1px solid var(--border);padding-top:8px}
+.ml-sg>div{display:grid;gap:0;text-align:center;padding:3px 0;border-radius:8px;min-width:0}.ml-sg small{font:600 9.5px var(--font-mono);letter-spacing:.07em;color:var(--fg3)}.ml-sg b{font:600 16px var(--font-mono);letter-spacing:-.03em;color:var(--fg)}.ml-sg i{font:500 10.5px var(--font-mono);font-style:normal;min-height:13px;color:var(--fg3)}
+.ml-sg .pra{background:color-mix(in srgb,var(--fg) 7%,transparent)}.ml-sg .pra b{font-size:17px}
+.ml-sg.row{grid-template-columns:repeat(7,minmax(40px,1fr));border-top:0;padding-top:4px;max-width:420px}.ml-sg.row b{font-size:14px}
+.ml-br .ml-outb,.ml-ft .ml-outb{align-self:center;margin-top:0}
+@media(max-width:1100px){.ml-starters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.ml-sg.row{grid-template-columns:repeat(4,minmax(0,1fr));max-width:none}.ml-br .ml-bi{grid-column:1/-1}.ml-br .ml-bi .ml-sg{margin-top:2px}
+.ml-starters{grid-template-columns:repeat(2,minmax(0,1fr))}.ml-br{grid-template-columns:54px minmax(0,1fr) auto}.ml-br>.ml-bd,.ml-br>.ml-outb{display:none}.ml-br .ml-row{grid-column:1/-1;justify-content:flex-end;margin-bottom:8px}.ml-br .ml-bi{grid-column:2}}
 @media(max-width:640px){.ml-hero{padding:16px 14px;border-radius:16px}.ml-kp{grid-template-columns:1fr 1fr}.ml-kp>div:last-child{grid-column:1/-1}.ml-grid{grid-template-columns:minmax(0,1fr)}.ml-bn{font-size:26px}}
 @media(prefers-reduced-motion:reduce){.ml-bar i,.ml-step,.ml-q button,.ml-outb,.ml-fit{transition:none}}
 .sl-grid.lv{display:flex;flex-direction:column;gap:16px}
@@ -1907,9 +1926,9 @@ function render(){
     !p.slotted ? {t: 'No depth slot'} : null
   ].filter(Boolean);
   const rowOf = p => { const mu = pr[p.id];
-    return {id: p.id, name: p.name, ini: initials(p.name), src: phSrc(p.id), fit: phFit(p.id), min: m[p.id], base: p.min0, last: last(p.name), out: isOut(p, m), badges: badges(p),
+    return {id: p.id, name: p.name, pos: p.pos, ini: initials(p.name), src: phSrc(p.id), fit: phFit(p.id), min: m[p.id], base: p.min0, last: last(p.name), out: isOut(p, m), badges: badges(p),
       meta: `${p.pos}${p.rank ? ` · depth ${p.rank}` : ''} · ${p.gp ? fmt(p.last_mpg) + ' mpg last season' : 'no NBA minutes last season'}`,
-      stats: {pts: stat(mu.pts,b0[p.id].pts,'pts'), reb: stat(mu.reb,b0[p.id].reb,'reb'), ast: stat(mu.ast,b0[p.id].ast,'ast'), '3pm': stat(mu['3pm'],b0[p.id]['3pm'],'3pm'), pra: stat(mu.pra,b0[p.id].pra,'pra')},
+      stats: {pts: stat(mu.pts,b0[p.id].pts,'pts'), reb: stat(mu.reb,b0[p.id].reb,'reb'), ast: stat(mu.ast,b0[p.id].ast,'ast'), '3pm': stat(mu['3pm'],b0[p.id]['3pm'],'3pm'), pra: stat(mu.pra,b0[p.id].pra,'pra'), stl: stat(mu.stl,b0[p.id].stl,'stl'), blk: stat(mu.blk,b0[p.id].blk,'blk')},
       sb: mu.stl + mu.blk}; };
 
   // movers + log

@@ -85,46 +85,62 @@ function Kpi({ k }) {
 }
 
 
-// Quick-set chips: the minutes a role usually plays. One tap sets the number, so nobody has to drag a slider to a spot.
-const QUICK = [[12, 'Bench'], [22, 'Role'], [30, 'Starter'], [36, 'Star']];
 const STAT_KEYS = ['pts', 'reb', 'ast', '3pm', 'pra'];
 const STAT_LAB = { pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM', pra: 'PRA' };
 const fm = x => (Math.round(x * 10) / 10).toFixed(1);
 
-// One player: photo, big minutes number with +/- steppers, slider, quick chips and the projected line. Edits locally while
-// dragging and commits once (debounced), so the page recomputes once per edit and "Recent changes" gets one line.
-function PlayerCard({ r, onSetMin, onOut }) {
+// Shared by the starter cards and bench rows: edits locally while typing/stepping, commits once (debounced) so the page recomputes once per edit.
+function useMin(r, onSetMin) {
   const [v, setV] = useState(r.min); const t = useRef(0);
   useEffect(() => { setV(r.min); }, [r.min, r.id]);
-  const commit = val => { clearTimeout(t.current); t.current = setTimeout(() => onSetMin(r.id, val), 220); };
-  const set = val => { val = Math.max(0, Math.min(48, Math.round(+val * 2) / 2)); if (isNaN(val)) return; setV(val); commit(val); };
-  const d = v - r.base, changed = Math.abs(d) >= .05;
+  const set = val => { val = Math.max(0, Math.min(48, Math.round(+val * 2) / 2)); if (isNaN(val)) return; setV(val); clearTimeout(t.current); t.current = setTimeout(() => onSetMin(r.id, val), 220); };
+  return [v, setV, set];
+}
+const Stepper = ({ r, v, setV, set, big }) => (
+  <div className={'ml-row' + (big ? ' ml-rowbig' : '')}>
+    <button type="button" className="ml-step" onClick={() => set(v - 1)} aria-label={`${r.name}: one minute less`} disabled={v <= 0}>−</button>
+    <input type="number" min="0" max="48" step="0.5" className={big ? 'ml-num big' : 'ml-num'} value={fm(v)} aria-label={`${r.name} minutes`} onChange={e => setV(+e.target.value)} onBlur={e => set(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }} />
+    <button type="button" className="ml-step" onClick={() => set(v + 1)} aria-label={`${r.name}: one minute more`} disabled={v >= 48}>+</button>
+  </div>
+);
+// Every counting stat as a labelled cell with its change under it. Starter cards use 4 columns (PRA first-class), bench rows one line of 7.
+const SG_KEYS = ['pts', 'reb', 'ast', 'pra', '3pm', 'stl', 'blk'];
+const SG_LAB = { pts: 'PTS', reb: 'REB', ast: 'AST', pra: 'PRA', '3pm': '3PM', stl: 'STL', blk: 'BLK' };
+const StatGrid = ({ r, row }) => (
+  <div className={'ml-sg' + (row ? ' row' : '')}>{(row ? ['pts', 'reb', 'ast', '3pm', 'stl', 'blk', 'pra'] : SG_KEYS).map(k => { const s = r.stats[k]; if (!s) return null; const dd = Math.abs(s.d) >= .05;
+    return <div key={k} className={k === 'pra' ? 'pra' : ''} title={s.lo != null ? `Typical range ${s.lo} to ${s.hi}` : undefined}><small>{SG_LAB[k]}</small><b>{fm(s.v)}</b><i className={dd ? (s.d > 0 ? 'pos' : 'neg') : ''}>{dd ? (s.d > 0 ? '+' : '') + fm(s.d) : ' '}</i></div>; })}</div>
+);
+
+// The five projected starters: big cards, like a lineup card.
+function StarterCard({ r, onSetMin, onOut }) {
+  const [v, setV, set] = useMin(r, onSetMin); const d = v - r.base, changed = Math.abs(d) >= .05;
   return (
-    <article className={'ml-card' + (changed ? ' ml-ed' : '') + (r.out ? ' ml-out' : '')}>
-      <div className="ml-top">
-        <Cut ini={r.ini} src={r.src} fit={r.fit} h={76} w={88} />
-        <div className="ml-id">
-          <b>{r.name}</b>
-          <span className="ml-meta">{r.meta}</span>
-          <span className="ml-bdg">{r.badges.map((b, i) => <Badge key={i} variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge>)}</span>
-        </div>
+    <article className={'ml-sc' + (changed ? ' ml-ed' : '') + (r.out ? ' ml-out' : '')}>
+      <span className="ml-pos">{r.pos}</span>
+      <div className="ml-ph"><Cut ini={r.ini} src={r.src} fit={r.fit} h={78} w={92} /></div>
+      <b className="ml-nm">{r.name}</b>
+      {r.badges.length > 0 && <span className="ml-bdg c">{r.badges.slice(0, 2).map((b, i) => <Badge key={i} variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0 }}>{b.t}</Badge>)}</span>}
+      <Stepper r={r} v={v} setV={setV} set={set} big />
+      <StatGrid r={r} />
+      <div className="ml-ft">
+        <span>{changed ? <><b className={d > 0 ? 'pos' : 'neg'}>{d > 0 ? '+' : ''}{fm(d)} min</b> <button type="button" className="ml-reset" onClick={() => set(r.base)}>Reset</button></> : <span className="ml-same">Projection {fm(r.base)}</span>}</span>
         <button type="button" className={'ml-outb' + (r.out ? ' on' : '')} aria-pressed={r.out} onClick={() => onOut(r.id)} title={r.out ? 'Put him back in the rotation' : 'Mark him out: his minutes go to teammates'}>{r.out ? 'OUT' : 'Mark out'}</button>
       </div>
-      <div className="ml-min">
-        <button type="button" className="ml-step" onClick={() => set(v - 1)} aria-label={`${r.name}: one minute less`} disabled={v <= 0}>−</button>
-        <label className="ml-big">
-          <input type="number" min="0" max="48" step="0.5" value={fm(v)} aria-label={`${r.name} minutes`} onChange={e => setV(+e.target.value)} onBlur={e => set(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }} />
-          <small>min</small>
-        </label>
-        <button type="button" className="ml-step" onClick={() => set(v + 1)} aria-label={`${r.name}: one minute more`} disabled={v >= 48}>+</button>
-      </div>
-      <div className="ml-sub"><span>Projection {fm(r.base)}</span>{changed ? <b className={d > 0 ? 'pos' : 'neg'}>{d > 0 ? '+' : ''}{fm(d)}</b> : <span className="ml-same">unchanged</span>}
-        {changed && <button type="button" className="ml-reset" onClick={() => set(r.base)}>Reset</button>}</div>
-      <input type="range" className="ml-range" min="0" max="48" step="0.5" value={v} style={{ '--p': (v / 48 * 100) + '%', '--b': (r.base / 48 * 100) + '%' }} aria-label={`${r.name} minutes`} onChange={e => set(e.target.value)} />
-      <div className="ml-q">{QUICK.map(([m, l]) => <button key={m} type="button" className={Math.abs(v - m) < .01 ? 'on' : ''} onClick={() => set(m)}>{m}<small>{l}</small></button>)}</div>
-      <div className="ml-stats">{STAT_KEYS.map(k => { const s = r.stats[k]; const dd = Math.abs(s.d) >= .05;
-        return <div key={k} className={k === 'pra' ? 'pra' : ''} title={s.lo != null ? `Typical range ${s.lo} to ${s.hi}` : undefined}><small>{STAT_LAB[k]}</small><b>{fm(s.v)}</b>{dd ? <i className={s.d > 0 ? 'pos' : 'neg'}>{s.d > 0 ? '+' : ''}{fm(s.d)}</i> : <i> </i>}</div>; })}</div>
     </article>
+  );
+}
+
+// Everyone after the starters: one slim row each.
+function BenchRow({ r, onSetMin, onOut }) {
+  const [v, setV, set] = useMin(r, onSetMin); const d = v - r.base, changed = Math.abs(d) >= .05;
+  return (
+    <div className={'ml-br' + (changed ? ' ml-ed' : '') + (r.out ? ' ml-out' : '')}>
+      <Cut ini={r.ini} src={r.src} fit={r.fit} h={46} w={54} />
+      <div className="ml-bi"><b>{r.name}</b>{r.badges.slice(0, 1).map((b, i) => <Badge key={i} variant={b.bad ? 'danger' : b.warn ? 'warning' : b.solid ? 'accent' : 'default'} style={{ textTransform: 'none', letterSpacing: 0, marginLeft: 6 }}>{b.t}</Badge>)}<StatGrid r={r} row /></div>
+      <span className="ml-bd">{changed ? <><b className={d > 0 ? 'pos' : 'neg'}>{d > 0 ? '+' : ''}{fm(d)}</b> <button type="button" className="ml-reset" onClick={() => set(r.base)}>Reset</button></> : null}</span>
+      <button type="button" className={'ml-outb' + (r.out ? ' on' : '')} aria-pressed={r.out} onClick={() => onOut(r.id)} title="Mark him out">{r.out ? 'OUT' : 'Out'}</button>
+      <Stepper r={r} v={v} setV={setV} set={set} />
+    </div>
   );
 }
 
@@ -139,7 +155,7 @@ function Budget({ rows, total, onFit }) {
         <span className={'ml-bs ' + (ok ? 'ok' : diff > 0 ? 'hi' : 'lo')}>{ok ? 'Balanced' : diff > 0 ? `${fm(diff)} over 240` : `${fm(-diff)} left to hand out`}</span>
       </div>
       <div className="ml-bar" role="img" aria-label={`${fm(total)} of 240 minutes assigned`}>
-        {live.map((r, i) => { const w = r.min / span * 100; return <i key={r.id} title={`${r.name} ${fm(r.min)}`} style={{ width: w + '%', '--a': Math.max(.28, 1 - i * .075) }}>{w >= 10 ? <span>{r.last}</span> : null}</i>; })}
+        {live.map((r, i) => { const w = r.min / span * 100; return <i key={r.id} title={`${r.name} ${fm(r.min)}`} style={{ width: w + '%', '--a': Math.max(.28, 1 - i * .075) }}>{w >= 13 ? <span>{r.last}</span> : null}</i>; })}
         <u style={{ left: mk + '%' }} aria-hidden="true"><em>240</em></u>
       </div>
       {!ok && <button type="button" className="ml-fit" onClick={onFit}>{diff > 0 ? 'Trim to 240' : 'Fill to 240'}</button>}
@@ -154,7 +170,6 @@ function LabView(p) {
   const total = p.rows.reduce((a, r) => a + r.min, 0);
   const K = Object.fromEntries(p.kpis.map(k => [k.label, k]));
   const pts = K['Team points per 240 min'], top = K['Top scorer'], chg = K['Players changed'];
-  const card = r => <PlayerCard key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} />;
   return (
     <Stack gap={16}>
       <section className="ml-hero" style={{ '--ml-c': p.wash || 'var(--accent2, #7fb4ec)' }}>
@@ -172,10 +187,11 @@ function LabView(p) {
           <div><small>Players changed</small><b>{chg.val}</b><i>{chg.hint}</i></div>
         </div>
       </section>
-      <div className="ml-grid">{act.map(card)}</div>
+      <div className="ml-starters">{act.slice(0, 5).map(r => <StarterCard key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} />)}</div>
+      {act.length > 5 && <><Mono>Bench</Mono><div className="ml-bench">{act.slice(5).map(r => <BenchRow key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} />)}</div></>}
       {rest.length > 0 && <>
         <button type="button" className="ml-more" aria-expanded={more} onClick={() => setMore(!more)}>{more ? 'Hide' : 'Show'} {rest.length} players outside the rotation<span>give a player minutes to bring him in</span></button>
-        {more && <div className="ml-grid">{rest.map(card)}</div>}
+        {more && <div className="ml-bench">{rest.map(r => <BenchRow key={r.id} r={r} onSetMin={p.onSetMin} onOut={p.onOut} />)}</div>}
       </>}
       <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 16 }}>
         <Card padding={20}>
