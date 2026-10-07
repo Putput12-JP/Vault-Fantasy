@@ -197,7 +197,10 @@ def test():
         sys.exit('refusing to run: the freeze check failed')
     P, m1, blob = load_frozen()
     seasons = B2.WARM + [2023, 2024, 2025, 2026, 2027]
-    allr = rows(seasons, 2027)
+    try:
+        allr = rows(seasons, 2027)
+    except FileNotFoundError as e:
+        sys.exit(f'no 2026-27 box scores yet ({e.filename}); run nba/scripts/fetch_hoopr.py after games have been played')
     allr.sort(key=lambda r: r['g'])
     gids = sorted({r['g'] for r in allr if not r['po']})
     if len(gids) < N_TEST_GAMES:
