@@ -2966,7 +2966,7 @@ function renderProps(){
       <td><span class="gate ${b.g === 'go' ? 'go' : b.g === 'watch' ? 'watch' : ''}">${GATE_LABEL[b.g]}</span></td>`
       : `<td class="l"><span class="muted">no price</span></td><td></td><td></td><td></td>`;
     return `<tr class="prow${open ? ' open' : ''}" data-k="${key}" tabindex="0" aria-expanded="${open}">
-      <td class="l"><div class="pwho"><b>${esc(r.name)}${favP.has(String(r.e.p)) ? '<span class="yours">Yours</span>' : ''}</b><small>${esc(r.team)}${g ? ` · ${gname(g)} · ${clock(g.tip)}` : ''}${flags ? ' · ' + flags : ''}</small></div></td>
+      <td class="l cutc"><div class="pl">${cutImg(r.e.p, r.name, 52)}<div class="pwho"><b>${esc(r.name)}${favP.has(String(r.e.p)) ? '<span class="yours">Yours</span>' : ''}</b><small>${esc(r.team)}${g ? ` · ${gname(g)} · ${clock(g.tip)}` : ''}${flags ? ' · ' + flags : ''}</small></div></div></td>
       <td><span class="stat">${SLABEL[r.e.s]}</span></td>
       <td class="num">${r.min == null ? '<span class="muted">none</span>' : fmt(r.min)}</td>
       <td class="pct">${r.mu == null ? '<span class="muted">none</span>' : fmt(r.mu)}<small>${rg ? `${fmt(rg[0],0)} to ${fmt(rg[1],0)}` : '&nbsp;'}</small></td>
