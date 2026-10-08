@@ -1030,7 +1030,7 @@ table.nt .bt-best{color:var(--fg);font-weight:600}
 /* Sharp Price */
 .nt-tw.sx-cap{overflow-y:auto;overscroll-behavior:contain}.nt-tw.sx-cap #xfeed thead th{position:sticky;top:0;z-index:1;background:var(--surface);box-shadow:0 1px 0 var(--border)}
 .np-b{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;align-items:start}@media(max-width:820px){.np-b{grid-template-columns:minmax(0,1fr)}}
-.np-b>.pp-slip{margin:0}.np-s{display:grid;gap:8px}.np-l{margin:0 0 2px;font:600 10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.np-l span{text-transform:none;letter-spacing:0;font-family:var(--font-sans);font-weight:400;margin-left:6px}
+.np-b>.pp-slip{margin:0}.pp-rule{margin:8px 0 0}.pp-read .pp-rule{margin:0 0 12px}.np-s{display:grid;gap:8px}.np-l{margin:0 0 2px;font:600 10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.np-l span{text-transform:none;letter-spacing:0;font-family:var(--font-sans);font-weight:400;margin-left:6px}
 .np-r{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;border-radius:12px;background:var(--raised)}.np-r small{display:block;color:var(--fg3);font-size:12px}.np-r .pos{font-family:var(--font-mono);font-weight:600}
 .sx-note{margin:8px 0 0;font-size:12px;color:var(--fg3)}
 table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
@@ -3803,7 +3803,7 @@ function renderPickemNight(){
   el.innerHTML = `<div class="card-h"><div><h2>Pick'em of the night</h2><p>${pair ? 'The best 2-pick on tonight\'s board: two teammates\' stats that tend to hit together.' : singles.length ? 'No 2-pick clears the bar yet. Here are the biggest single leans.' : 'Nothing worth a look yet.'}</p></div>
       <button class="linkbtn" type="button" data-go="pairs">All pairs</button></div>
     <div class="card-b np-b">${empty ? `<p class="muted">Pick'em lines post closer to tip, and preseason and new-roster props are held back, so there is no pick to show yet.</p>`
-      : `${pair ? ppSlip(pair, true) : ''}${singles.length ? `<div class="np-s"><p class="np-l">Biggest single leans <span>model only, no market price to check them</span></p>${singles.map(r => `<div class="np-r"><span class="pl">${avSm(r.e.p, r.name)}<div><b>${esc(r.name)}</b><small>${esc(r.team)} · ${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line} ${esc(PV_NOUN[r.e.s] || r.e.s)}</small></div></span><span class="pos">${ec(r.pkBest.edge)}</span></div>`).join('')}</div>` : ''}`}</div>`;
+      : `${pair ? `${ppSlip(pair, true)}<p class="pp-note warn pp-rule">Some apps make you pick two players on different teams. These two are teammates, so check your app lets you combine them.</p>` : ''}${singles.length ? `<div class="np-s"><p class="np-l">Biggest single leans <span>model only, no market price to check them</span></p>${singles.map(r => `<div class="np-r"><span class="pl">${avSm(r.e.p, r.name)}<div><b>${esc(r.name)}</b><small>${esc(r.team)} · ${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line} ${esc(PV_NOUN[r.e.s] || r.e.s)}</small></div></span><span class="pos">${ec(r.pkBest.edge)}</span></div>`).join('')}</div>` : ''}`}</div>`;
 }
 $('npick').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) goView(b.dataset.go); });
 function renderTonight(){
@@ -5868,6 +5868,7 @@ function renderPairs(){
   const near = (PKC.near || [])[0];
   $('pp-root').innerHTML = `
     <section class="card pp-read">
+      <p class="pp-note warn pp-rule"><b>Check your app's rules first.</b> Some pick'em apps make you pick two players on different teams. Every pair that passed our test is two teammates, so those pairs can only be played where the app allows same-team picks. The opposing-team combinations we tested did not pass.</p>
       <p class="big">Two kinds of teammate picks hit together more often than their prices say.</p>
       <p>Pick'em apps pay the same multiple on any 2-pick entry, as if the picks had nothing to do with each other. A player's <b>assists</b> and his teammate's <b>points</b> or <b>3-pointers</b> do: the passes become the shots, so when one goes over the other tends to as well, and when one goes under, so does the other. Pair them the same way, both More or both Less, and the entry wins more often than the app pays for.</p>
       <p>The lift is modest: about <b>4%</b> on a 2-pick. At ${pp.pay}x it lowers the bar each pick has to clear from <b>${pc(Math.sqrt(ppBE()), 1)}</b> to about <b>${pc(need, 1)}</b>. Pairing helps good picks; it does not rescue bad ones. Picks from different games are unrelated, so every pair here is two teammates.</p>
