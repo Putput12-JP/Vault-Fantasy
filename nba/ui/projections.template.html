@@ -1029,6 +1029,9 @@ table.nt .bt-best{color:var(--fg);font-weight:600}
 @media (max-width:600px){ .bt-entry{grid-template-columns:minmax(0,1fr);gap:6px} .bt-when{flex-direction:row;gap:10px} .bt-bar{grid-template-columns:minmax(0,1fr) auto} .bt-bar i{grid-column:1/-1;order:3} .bt-bar small{order:4;margin-top:0} }
 /* Sharp Price */
 .nt-tw.sx-cap{overflow-y:auto;overscroll-behavior:contain}.nt-tw.sx-cap #xfeed thead th{position:sticky;top:0;z-index:1;background:var(--surface);box-shadow:0 1px 0 var(--border)}
+.np-b{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;align-items:start}@media(max-width:820px){.np-b{grid-template-columns:minmax(0,1fr)}}
+.np-b>.pp-slip{margin:0}.np-s{display:grid;gap:8px}.np-l{margin:0 0 2px;font:600 10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.np-l span{text-transform:none;letter-spacing:0;font-family:var(--font-sans);font-weight:400;margin-left:6px}
+.np-r{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;border-radius:12px;background:var(--raised)}.np-r small{display:block;color:var(--fg3);font-size:12px}.np-r .pos{font-family:var(--font-mono);font-weight:600}
 .sx-note{margin:8px 0 0;font-size:12px;color:var(--fg3)}
 table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
 .sx-type{display:inline-flex;align-items:center;height:19px;padding:0 7px;margin-right:4px;border-radius:var(--r-pill);border:1px solid var(--border2);font-size:10.5px;font-family:var(--font-mono);color:var(--fg2);white-space:nowrap;vertical-align:1px}
@@ -1526,6 +1529,7 @@ th{font-weight:500}
     <footer id="wfoot" hidden></footer>
     <main id="v-tonight" hidden>
       <div class="banner" id="nbanner" hidden></div>
+      <section class="card np" id="npick" hidden></section>
       <section class="card tbar"><div class="tfilters" id="ngames"></div></section>
       <div class="kpis" id="nkpis"></div>
       <div class="nt-teams" id="nteams"></div>
@@ -3641,8 +3645,27 @@ function marketMinutes(B, g, team, pid, min, cache){
   }
   return null;
 }
+// Pick'em of the night: the best 2-pick (the one pick'em edge that passed its pre-registered test: teammates' stats that move together)
+// and the three biggest single leans. Singles are the model alone with no market price to check them, so they are labelled leans.
+// Held props (preseason, new rosters) are never shown here.
+function renderPickemNight(){
+  const el = $('npick');
+  if (!PKC || !Object.keys(PP_FAM).length || PS.mode === 'example'){ el.hidden = true; return; }
+  const now = Date.now() / 1000, rows = pvRows().rows.filter(r => r.game && r.game.tip > now && !r.hold);
+  const pair = ppPairs(rows).find(x => x.v !== 'pass');
+  const seen = new Set(), singles = rows.filter(r => r.pkBest && r.pkBest.edge > 0).sort((a, b) => b.pkBest.edge - a.pkBest.edge)
+    .filter(r => !seen.has(r.e.p) && seen.add(r.e.p)).slice(0, 3);
+  el.hidden = false;
+  const empty = !pair && !singles.length;
+  el.innerHTML = `<div class="card-h"><div><h2>Pick'em of the night</h2><p>${pair ? 'The best 2-pick on tonight\'s board: two teammates\' stats that tend to hit together.' : singles.length ? 'No 2-pick clears the bar yet. Here are the biggest single leans.' : 'Nothing worth a look yet.'}</p></div>
+      <button class="linkbtn" type="button" data-go="pairs">All pairs</button></div>
+    <div class="card-b np-b">${empty ? `<p class="muted">Pick'em lines post closer to tip, and preseason and new-roster props are held back, so there is no pick to show yet.</p>`
+      : `${pair ? ppSlip(pair, true) : ''}${singles.length ? `<div class="np-s"><p class="np-l">Biggest single leans <span>model only, no market price to check them</span></p>${singles.map(r => `<div class="np-r"><span class="pl">${avSm(r.e.p, r.name)}<div><b>${esc(r.name)}</b><small>${esc(r.team)} · ${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line} ${esc(PV_NOUN[r.e.s] || r.e.s)}</small></div></span><span class="pos">${ec(r.pkBest.edge)}</span></div>`).join('')}</div>` : ''}`}</div>`;
+}
+$('npick').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) goView(b.dataset.go); });
 function renderTonight(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
+  renderPickemNight();
   const B = PS.board, games = [...(B.games || [])].sort((a, b) => a.tip - b.tip);
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
