@@ -27,7 +27,11 @@ separately and never counted. The recorder polls every 10 minutes, so this tests
 - Primary: ROI per bet of `news` bets, and the closing-line value against Pinnacle's close (mean CLV, clustered by game).
 - Secondary: the difference between the two groups (news minus model-only).
 
-**GO** when, after at least 150 settled `news` bets over at least 40 games: ROI > 0 at z >= 2.4, mean CLV > 0 at z >= 2,
+**Amendment, 2026-10-08 (before any regular-season data exists):** the ledger's cube stores one row per day, stat, venue, book,
+side and edge type, not per game, so test 1 uses the **day** as the unit instead of the game, and its sample floor is 25
+days (not 40 games). Daily results are a coarser unit, so this is the stricter reading of z.
+
+**GO** when, after at least 150 settled `news` bets over at least 25 days: ROI > 0 at z >= 2.4, mean CLV > 0 at z >= 2,
 and both halves of the sample are positive. **WATCH** at z >= 1.65 on ROI with CLV > 0. First look: 2026-11-23.
 
 ---
