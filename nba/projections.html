@@ -1165,7 +1165,7 @@ table.nt.sx-tk{min-width:420px}
 @media(prefers-reduced-motion:reduce){.ml-bar i,.ml-step,.ml-q button,.ml-outb,.ml-fit{transition:none}}
 /* Slate V2: starting fives, who is out, defense by position */
 .sv-card{container:svc / inline-size;padding:18px 20px;gap:14px}
-.sv-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px) minmax(0,1fr);gap:14px;align-items:start}
+.sv-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px) minmax(0,1fr);gap:14px;align-items:stretch}
 .sv-mid{display:flex;flex-direction:column;gap:14px;min-width:0;order:0}
 .sv-tls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .sv-tl{display:flex;flex-direction:column;gap:2px;padding:9px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
@@ -1182,15 +1182,15 @@ table.nt.sx-tk{min-width:420px}
 .mp{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:36px;padding:3px 4px;border-radius:7px;background:var(--raised);font-size:12px;font-weight:600;color:var(--fg2);font-variant-numeric:tabular-nums;line-height:1.15}
 .mp i{font-style:normal;font-size:9.5px;font-weight:500;letter-spacing:.05em;color:var(--fg3)}
 .mp.soft{background:rgba(74,222,128,.14);color:var(--up)}.mp.tough{background:rgba(248,113,113,.14);color:var(--down)}
-.sv-out{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-top:6px;padding-top:9px;border-top:1px solid var(--border);font-size:12px}.sv-ol{font-size:11px;color:var(--fg3);margin-right:2px}
+.sv-out{margin-bottom:12px;display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-top:6px;padding-top:9px;border-top:1px solid var(--border);font-size:12px}.sv-ol{font-size:11px;color:var(--fg3);margin-right:2px}
 .sv-mid h4{margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
 .sv-nt p{display:flex;gap:8px;align-items:center;margin:0;padding:6px 0;border-top:1px solid var(--border);font-size:12.5px;line-height:1.35;color:var(--fg2)}.sv-nt p:first-of-type{border-top:0}
 .sv-nt p>i{font-style:normal;font-size:10px;width:10px;flex:none}.sv-nt p.soft>i{color:var(--up)}.sv-nt p.tough>i{color:var(--down)}
 .sv-nt p>span{display:block;min-width:0}.sv-nt p>span .cutbox{display:inline-block;vertical-align:middle;margin-right:6px}.sv-nt p b{color:var(--fg);font-weight:600}.sv-nt small{color:var(--fg3)}
-.sv-t{width:100%;min-width:0;border-collapse:collapse;font-variant-numeric:tabular-nums}.sv-t th{font-size:11px;font-weight:600;color:var(--fg3);text-align:right;padding:0 0 5px 8px;border-bottom:0}.sv-t th.l,.sv-t td.l{text-align:left}
-.sv-t td{padding:5px 0 5px 8px;border-bottom:0;border-top:1px solid var(--border);text-align:right;font-size:12px;color:var(--fg2)}.sv-t td.l{color:var(--fg2)}.sv-t td b{display:block;font-weight:600;color:var(--fg)}
-.sv-t .mp{display:inline-flex;flex-direction:row;min-width:0;padding:0 5px;font-size:10px;font-weight:500;margin-top:1px}
-@container svc (max-width:1240px){.sv-body{grid-template-columns:repeat(2,minmax(0,1fr))}.sv-mid{grid-column:1 / -1;order:3;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.sv-tls,.sv-rd{grid-column:1 / -1}}
+.sv-df{margin-top:auto;padding-top:10px;border-top:1px solid var(--border)}.sv-df h4{margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.sv-dr{display:grid;grid-template-columns:minmax(0,1fr) auto 92px;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--border);font-size:12px;color:var(--fg2);font-variant-numeric:tabular-nums}.sv-df h4+.sv-dr{border-top:0}
+.sv-dr b{font-weight:600;color:var(--fg);text-align:right}.sv-dr .mp{flex-direction:row;justify-content:center;min-width:0;padding:1px 6px;font-size:10.5px;font-weight:500}
+@container svc (max-width:1240px){.sv-body{grid-template-columns:repeat(2,minmax(0,1fr))}.sv-mid{grid-column:1 / -1;order:3}}
 @container svc (max-width:640px){.sv-body{grid-template-columns:minmax(0,1fr)}.sv-mid{display:flex}}
 @container svs (max-width:325px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}}
 .sl-grid.lv{display:flex;flex-direction:column;gap:16px}
@@ -4677,6 +4677,14 @@ function slateFive(team, g, B, st){
   const five = [...listed, ...rest.slice(0, 5 - listed.length)];
   return {five, tag: conf.length >= 5 ? 'Confirmed' : listed.length ? 'Expected' : 'Projected', note: conf.length >= 5 ? 'NBA.com lineup' : listed.length ? 'NBA.com lists part of the five' : 'depth chart: no official lineup yet'};
 }
+function svDef(t){                                          // one team's defense: the model's rank, then what it gives up per game
+  const G = MS && MS.game, rk = (o2, k) => Object.keys(o2).sort((a, b) => o2[b] - o2[a]).indexOf(k) + 1;
+  const pl = r => `<span class="mp ${r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : ''}">${r[1] <= 15 ? ordn(r[1]) + ' most' : ordn(31 - r[1]) + ' fewest'}</span>`;
+  const row = (l, v, pill, tip) => `<div class="sv-dr" title="${esc(tip || '')}"><span>${l}</span><b>${v}</b>${pill}</div>`;
+  const rows = [G && G.D && G.D[t] != null ? row('Defense (Vault)', sgn(G.D[t]), `<span class="mp">${ordn(rk(G.D, t))} best</span>`, 'Points held below the league base, from the game model') : '',
+    ...(MU && MU.teams[t] ? [['pts', 'Points allowed'], ['reb', 'Rebounds allowed'], ['ast', 'Assists allowed'], ['3pm', 'Threes allowed'], ['tpa', 'Three attempts allowed']].map(([k, l]) => { const r = MU.teams[t].all[k]; return r ? row(l, fmt(r[0], 1), pl(r), `${l} per game, ${MU.season} regular season`) : ''; }) : [])].join('');
+  return rows ? `<div class="sv-df"><h4>${t} defense, per game${MU ? ` · ${MU.season}` : ''}</h4>${rows}</div>` : '';
+}
 function svSide(team, opp, g, B, st){
   const F = slateFive(team, g, B, st), T = D.teams[team];
   if (!F) return {html: `<div class="sv-side"><h3>${team}</h3><p class="muted">No roster loaded.</p></div>`, notes: []};
@@ -4694,7 +4702,7 @@ function svSide(team, opp, g, B, st){
   const chips = hurt.slice(0, 6).map(x => `<span class="badge ${/^(Out|Inactive|Doubtful)/.test(x.v) ? 'bad' : 'warn'}" title="${esc(x.p.name)} projects ${fmt(x.p.min0, 0)} minutes when healthy">${esc(last(x.p.name))} · ${esc(x.v)} · ${fmt(x.p.min0, 0)}m</span>`).join('');
   const html = `<div class="sv-side"><div class="sv-sh"><h3>${lgImg(team, 20)}${team} <small>vs ${opp} defense</small></h3><span class="sv-tag ${F.tag.toLowerCase()}" title="${esc(F.note)}">${F.tag} five</span></div>
     ${rows}
-    <div class="sv-out">${chips ? `<span class="sv-ol">Out or doubtful${lost >= 8 ? ` · ${fmt(lost, 0)} min` : ''}</span>${chips}${hurt.length > 6 ? `<span class="muted">+${hurt.length - 6} more</span>` : ''}` : '<span class="muted">No rotation player listed out.</span>'}</div></div>`;
+    <div class="sv-out">${chips ? `<span class="sv-ol">Out or doubtful${lost >= 8 ? ` · ${fmt(lost, 0)} min` : ''}</span>${chips}${hurt.length > 6 ? `<span class="muted">+${hurt.length - 6} more</span>` : ''}` : '<span class="muted">No rotation player listed out.</span>'}</div>${svDef(opp)}</div>`;
   return {html, notes, hurt};
 }
 function slateCard(g, B, status){
@@ -4709,17 +4717,9 @@ function slateCard(g, B, status){
   const mkt = M ? [M.spread != null ? tl('Spread', spTxt(g, M.spread)) : '', M.total != null ? tl('Total', fmt(M.total)) : '', M.win != null ? tl(`${g.home} win`, pc(M.win)) : ''].join('') : '<span class="muted">No book has posted yet</span>';
   const notes = [...A.notes, ...H.notes].sort((a, b) => a.x - b.x || (b.soft - a.soft)).slice(0, 5);
   const nh = notes.length ? `<div class="sv-nt"><h4>Matchups to know</h4>${notes.map(n => `<p class="${n.soft ? 'soft' : 'tough'}"><i>${n.soft ? '▲' : '▼'}</i><span>${cutImg(n.p.id, n.p.name, 22)}<b>${esc(n.p.name)}</b> <small>${n.p.slot.toUpperCase()}</small> ${esc(muWords(n.opp, n.p.slot.toUpperCase(), n.s, n.r))}</span></p>`).join('')}</div>` : '';
-  // team context: the model's rating ranks, then what each defense gives up per game (all positions)
-  const G = MS && MS.game, rk = (o2, k) => Object.keys(o2).sort((a, b) => o2[b] - o2[a]).indexOf(k) + 1;
-  const allw = (t, s) => { const r = MU && MU.teams[t] && MU.teams[t].all[s]; return r ? `<b>${fmt(r[0], 1)}</b><span class="mp ${r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : ''}">${r[1] <= 15 ? ordn(r[1]) + ' most' : ordn(31 - r[1]) + ' fewest'}</span>` : ''; };
-  const trow = (lab, f, tip) => `<tr><td class="l" title="${esc(tip || '')}">${lab}</td><td>${f(g.away)}</td><td>${f(g.home)}</td></tr>`;
-  const rows = [G && G.O && G.D ? trow('Offense (Vault)', t => `<b>${sgn(G.O[t] || 0)}</b><span class="mp">${ordn(rk(G.O, t))}</span>`, 'Points scored above the league base, from the game model') : '',
-    G && G.D ? trow('Defense (Vault)', t => `<b>${sgn(G.D[t] || 0)}</b><span class="mp">${ordn(rk(G.D, t))}</span>`, 'Points held below the league base, from the game model. 1st is best') : '',
-    ...[['pts', 'Points allowed'], ['reb', 'Rebounds allowed'], ['ast', 'Assists allowed'], ['3pm', 'Threes allowed'], ['tpa', 'Three attempts allowed']].map(([s, l]) => MU ? trow(l, t => allw(t, s), `${l} per game, ${MU.season} regular season`) : '')].join('');
-  const ctx = rows ? `<div class="sv-tm"><h4>Team defense, per game${MU ? ` · ${MU.season}` : ''}</h4><table class="sv-t"><thead><tr><th class="l"></th><th>${g.away}</th><th>${g.home}</th></tr></thead><tbody>${rows}</tbody></table></div>` : '';
   return `<article class="card sl-card sv-card" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
-    <div class="sv-body">${A.html}<div class="sv-mid"><div class="sv-tls">${mkt}</div>${read ? `<p class="sv-rd">${esc(read)} · <button class="linkbtn" type="button" data-golines="1">every book</button></p>` : `<p class="sv-rd"><button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></p>`}${nh}${ctx}</div>${H.html}</div></article>`;
+    <div class="sv-body">${A.html}<div class="sv-mid"><div class="sv-tls">${mkt}</div>${read ? `<p class="sv-rd">${esc(read)} · <button class="linkbtn" type="button" data-golines="1">every book</button></p>` : `<p class="sv-rd"><button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></p>`}${nh}</div>${H.html}</div></article>`;
 }
 const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
 function renderSlate(){
