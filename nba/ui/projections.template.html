@@ -720,6 +720,8 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .yours{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:9999px;font-size:10.5px;font-weight:600;background:color-mix(in srgb,var(--c-blue) 16%,transparent);color:var(--c-blue);margin-left:6px;vertical-align:1px}
 .favchip{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px 0 8px;border-radius:9999px;border:1px solid color-mix(in srgb,var(--fav,var(--border2)) 45%,var(--border2));background:color-mix(in srgb,var(--fav,transparent) 10%,var(--surface));font-size:12.5px;color:var(--fg);cursor:pointer;white-space:nowrap;transition:border-color .15s ease,background-color .15s ease,transform .16s ease-out;flex:none}
 .favchip:hover{border-color:var(--fav,var(--fg3))}.favchip:active{transform:scale(.97)}.favchip b{font-weight:600;font-family:var(--font-mono);letter-spacing:.02em}.favchip .txt{color:var(--fg2)}
+.favmore{display:flex;align-items:center;gap:8px;flex:none}.favmore:empty{display:none}.favchip.sm{height:30px;padding:0 11px 0 8px;font-size:12px;background:var(--surface)}.favchip.sm .txt{color:var(--fg2)}.favmore [hidden]{display:none}
+@media (max-width:1180px){.favmore{display:none}}
 @media (max-width:900px){ .favchip .txt{display:none}.favchip{padding:0 10px 0 8px} }
 .pro-hero{overflow:hidden}.pro-streak{margin-left:auto;display:grid;gap:8px;justify-items:end;flex:none}.pro-sn{display:flex;align-items:baseline;gap:8px;color:var(--fav,var(--warn))}.pro-sn svg{align-self:center}.pro-sn b{font-family:var(--font-mono);font-size:30px;font-weight:600;letter-spacing:-.04em;color:var(--fg);line-height:1}.pro-sn span{font-size:12.5px;color:var(--fg2)}
 .pro-dots{display:flex;gap:4px}.pro-dots i{width:9px;height:9px;border-radius:3px;background:var(--raised);display:block}.pro-dots i[data-on="true"]{background:var(--fav,var(--up))}.pro-dots i[data-today]{outline:1.5px solid var(--fg3);outline-offset:1.5px}.pro-streak small{color:var(--fg3);font-size:12px}
@@ -1388,7 +1390,7 @@ th{font-weight:500}
         </button>
         <div class="list" id="teamlist" role="listbox" aria-label="Team" tabindex="-1" hidden></div>
       </div>
-      <button class="favchip" id="favchip" type="button" hidden></button>
+      <button class="favchip" id="favchip" type="button" hidden></button><span class="favmore" id="favmore"></span>
       <div class="mode" id="mode" hidden></div>
       <button class="iconbtn themebtn" id="themebtn" type="button" aria-label="Switch to light mode" title="Light mode"></button>
       <button class="btn" id="refresh" type="button" hidden title="Start the recorder now and reload the board when it lands">Refresh</button>
@@ -4172,7 +4174,25 @@ function renderChip(){
   const opp = g.home === T ? g.away : g.home, when = g.tip < now ? `started ${clock(g.tip)}` : `${etDay(g.tip) === etDay(now) ? 'today' : etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}`;
   el.innerHTML = `${L}<b>${T}</b><span class="txt">${g.home === T ? 'vs' : 'at'} ${opp} · ${when}</span>`;
   el.title = `${D.teams[T] ? D.teams[T].name : T} ${g.home === T ? 'vs' : 'at'} ${D.teams[opp] ? D.teams[opp].name : opp}, ${etFmt(g.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(g.tip)} ET. Open it in Tonight.`;
+  favMore(T, g);
 }
+// The two games after it, when the header has room: each is dropped, last first, while the title or the bar would be squeezed.
+function favMore(T, first){
+  const box = $('favmore'); if (!box) return;
+  let B = {}; try { B = pickBoard().board || {}; } catch (e) { /* board not ready */ }
+  const now = Date.now() / 1000, gs = [...(B.games || []), ...(B.opening || [])].filter(x => (x.home === T || x.away === T) && x.tip > now - 3 * 3600 && x !== first && (!first || x.id !== first.id)).sort((a, b) => a.tip - b.tip).slice(0, 2);
+  box.innerHTML = gs.map(x => { const o = x.home === T ? x.away : x.home; return `<button class="favchip sm" type="button" data-g="${x.id}" title="${esc((D.teams[T] || {}).name || T)} ${x.home === T ? 'vs' : 'at'} ${esc((D.teams[o] || {}).name || o)}, ${etFmt(x.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(x.tip)} ET. Open it in Tonight.">${lgImg(o, 16)}<span class="txt">${x.home === T ? 'vs' : 'at'} ${o} · ${etDay(x.tip) === etDay(now) ? 'today' : etFmt(x.tip, {weekday: 'short'})} ${clock(x.tip)}</span></button>`; }).join('');
+  favFit();
+}
+function favFit(){
+  const box = $('favmore'), bar = document.querySelector('.bar'); if (!box || !bar) return;
+  const kids = [...box.children]; kids.forEach(k => k.hidden = false);
+  const tight = () => { const t = $('tsub'), h = $('tname'); return bar.scrollWidth > bar.clientWidth + 1 || (t && t.scrollWidth > t.clientWidth + 1) || (h && h.scrollWidth > h.clientWidth + 1); };
+  for (let i = kids.length - 1; i >= 0 && tight(); i--) kids[i].hidden = true;
+}
+$('favmore').addEventListener('click', e => { const b = e.target.closest('[data-g]'); if (b){ nt.game = b.dataset.g; goView('tonight'); } });
+addEventListener('resize', favFit);
+new MutationObserver(favFit).observe($('tsub'), {childList: true, characterData: true, subtree: true});
 $('favchip').addEventListener('click', () => { const id = $('favchip').dataset.g; if (id){ nt.game = id; goView('tonight'); } else goView('profile'); });
 setInterval(renderChip, 60000);
 
