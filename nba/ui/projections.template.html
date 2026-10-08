@@ -1632,6 +1632,10 @@ th{font-weight:500}
       </div>
       <section class="card"><div class="card-h"><div><h2>Prop model</h2><p>Each version against the price it would bet into, same rows for every model.</p></div></div><div class="card-b" id="btprop"></div></section>
       <section class="card"><div class="card-h"><div><h2>Consensus engine</h2><p>One venue's prices moved to another venue's line, blended with the model.</p></div></div><div class="card-b" id="btcons"></div></section>
+      <section class="card" id="btpendc" hidden>
+        <div class="card-h"><div><h2>Waiting on this season's games</h2><p>Tests whose rules are already frozen. Each one runs once on games it has never seen, and the verdict follows the rule.</p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt" id="btpend"></table></div></div>
+      </section>
       <section class="card">
         <div class="card-h"><div><h2>Decision log</h2><p>Every test, newest first: the question, the rule written before it ran, the result and what shipped.</p></div>
           <div class="filters"><div class="seg" id="btarea" role="group" aria-label="Area"></div></div></div>
@@ -4736,6 +4740,10 @@ function renderLab(){
       return `<tr><td class="l"><b>Kalshi ${s.stat.toUpperCase()} ${s.side}</b></td><td class="l">${esc(s.engine)}</td><td class="l">${pill(s.gate === 'GO' ? 'ok' : 'warn', s.gate)}</td><td>${(s.n || 0).toLocaleString()}</td><td>${s.games || ''}</td>
         <td class="${s.roi > 0 ? 'pos' : 'neg'}">${s.roi != null ? (s.roi >= 0 ? '+' : '') + (s.roi * 100).toFixed(1) + '%' : ''}</td><td>${s.z != null ? fmt(s.z, 2) : ''}</td>
         <td class="l">${!lv ? '<span class="muted">Track Record not loaded</span>' : lv.settled ? `${lv.w}-${lv.l}${lv.p ? '-' + lv.p : ''} · <span class="${lv.u >= 0 ? 'pos' : 'neg'}">${lv.u >= 0 ? '+' : ''}${(lv.u / lv.settled * 100).toFixed(1)}%</span> <small>${lv.settled} settled</small>` : lv.bets ? `${lv.bets} open` : '<span class="muted">No bets yet</span>'}</td></tr>`; }).join('')}</tbody>`;
+  // tests with frozen rules that are waiting for this season's games
+  $('btpendc').hidden = !(BT.pending && BT.pending.length);
+  $('btpend').innerHTML = `<thead><tr><th class="l">Test</th><th class="l">Rule</th><th class="l">First look</th><th class="l">Status</th><th class="l"></th></tr></thead><tbody>
+    ${(BT.pending || []).map(x => `<tr><td class="l"><b>${esc(x.name)}</b><small>${esc(x.area)}</small></td><td class="l sx-txt" style="min-width:240px;max-width:380px">${esc(x.rule)}</td><td class="l num" style="white-space:nowrap">${esc(x.due)}</td><td class="l">${pill('warn', esc(x.status))}</td><td class="l"><a href="${btDoc(x.doc)}" target="_blank" rel="noopener">Rules</a></td></tr>`).join('')}</tbody>`;
   // decision log
   const areas = [...new Set(L.map(e => e.area))];
   if (bf.area !== 'all' && !areas.includes(bf.area)) bf.area = 'all';

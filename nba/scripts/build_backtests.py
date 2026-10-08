@@ -125,6 +125,8 @@ def main():
     def ship_of(x):
         return (x or {}).get('ship') or 'v2'
     k3 = lambda d, c, s: (((d or {}).get('kalshi_bias') or {}).get(s, {}).get(c) or {}).get('blend/NO') or {}
+    xs = (load('prop_model_extra.json') or {}).get('espn_2026')
+    nl = load('news_lag_test.json') or {}
     log = [
         {'id': 'game', 'area': 'Game model', 'when': (gm or {}).get('generated'), 'doc': 'game-model.md',
          'q': 'Do team ratings, home court, back-to-backs and the injury report beat the spread?',
@@ -225,6 +227,46 @@ def main():
                     f"(z {ss['T']['early']['z']}), whole season {ss['T']['season']['diff']:+.2f} (z {ss['T']['season']['z']}); it does fix the week-1 lean (model minus close "
                     f"{ss['T']['week1_close_bias']['current']['model_minus_close']:+.1f} to {ss['T']['week1_close_bias']['T']['model_minus_close']:+.1f}).") if ss else '',
          'verdict': 'NO-GO', 'shipped': "Neither. The Slate labels the Vault line as last season's rosters for 4 weeks, names who joined and left, and leaves out the Vault total"},
+        {'id': 'pickem_corr', 'area': "Pick'em", 'when': '2026-10-01', 'doc': 'pickem-correlation-results.md',
+         'q': "Do two teammates' stats hit together more often than a pick'em app's flat payout assumes?",
+         'rule': "Families of pairs found on 2024-25, tested on the untouched 2025-26: a family passes only if it holds in the same direction with strong evidence on the test season and at closing prices. Written before any result.",
+         'result': "Two families passed: teammates' points with assists (both hit about 4% more often than independent, z +5.1) and teammates' assists with 3-pointers (about 4%, z +4.2). Every other combination failed, including every pairing of opponents.",
+         'verdict': 'GO', 'shipped': "Pick'em Pairs page and Pick'em of the night, for those two families only"},
+        {'id': 'copula_a', 'area': 'Game simulation', 'when': '2026-10-06', 'doc': 'copula-fit-results.md',
+         'q': "Can a joint model of how players' stats move together (a copula) beat treating every prop as independent?",
+         'rule': "Gain over independence at z >= 2 on the 2025-26 test season, and the calibration slope's 95% interval must contain 1 and exclude 0.",
+         'result': "The gain was large (z +5.4) but the slope was 0.36 (interval -0.07 to 0.78): the market's habit of pricing overs too high contaminated the fit, so the check failed. Fixed in the next step.",
+         'verdict': 'NO-GO', 'shipped': 'Nothing; led to step A2'},
+        {'id': 'copula_a2', 'area': 'Game simulation', 'when': '2026-10-06', 'doc': 'copula-freeze.md',
+         'q': 'With the over bias removed first, does the frozen joint model hold on games it has never seen?',
+         'rule': "Fit on 2024-25 and 2025-26, frozen before 2026-27 exists. First look at 150 regular-season games: GO needs z >= 2.4 and an agreement slope whose interval contains 1 and excludes 0.",
+         'result': "Frozen: 918 games, 23,753 legs, the in-sample over-bias check passed (every stat within 0.5 points after the shift). Waiting for the 2026-27 holdout.",
+         'verdict': 'Frozen', 'shipped': 'Game Simulation stays independent until this passes'},
+        {'id': 'script_b', 'area': 'Game simulation', 'when': '2026-10-07', 'doc': 'game-script-minutes-results.md',
+         'q': "Does tying simulated minutes to the game's score make them behave like real ones (blowouts sit starters)?",
+         'rule': "Starters' 80% coverage within 76-84%, mean rank 0.50 +/- 0.02, and the model's togetherness of minute swings inside the observed 95% interval.",
+         'result': "Coverage was fine (83.1%) but starters' minutes moved together only +0.10 against +0.19 observed, and the mean rank was 0.520.",
+         'verdict': 'NO-GO', 'shipped': 'Nothing; led to B2'},
+        {'id': 'script_b2', 'area': 'Game simulation', 'when': '2026-10-07', 'doc': 'game-script-minutes-b2-results.md',
+         'q': 'Adding overtime and a shared team minutes shock: is that enough?',
+         'rule': 'The same checks as B, plus overtime share within 1.5 points.',
+         'result': "Starters with starters and starters with bench now passed, and overtime matched (5.3% simulated vs 5.0% observed). Bench with bench came in at +0.165 against +0.214 observed, one miss.",
+         'verdict': 'NO-GO', 'shipped': 'Nothing; led to B3'},
+        {'id': 'script_b3', 'area': 'Game simulation', 'when': '2026-10-07', 'doc': 'game-script-minutes-b3-results.md',
+         'q': 'With a clamp calibration for the bench floor, does the minutes model pass on a season it was not tuned on?',
+         'rule': "All four B2 checks on 200 regular-season 2026-27 games, with the model frozen first.",
+         'result': "Frozen. On the development seasons every check passed (a sanity check, not the test). The real test waits for 200 games.",
+         'verdict': 'Frozen', 'shipped': 'Nothing until the holdout passes'},
+        {'id': 'extra_markets', 'area': 'Prop model', 'when': '2026-10-07', 'doc': 'prop-model-extra.md',
+         'q': 'Can the same minutes-times-rate model price steals, blocks, turnovers, steals plus blocks, field goals, free throws, 3-point attempts, offensive and defensive rebounds and fouls?',
+         'rule': "Written before anyone bets on them: no prior season of main-line prices to calibrate or blend on, no book history for most, none on Kalshi, so every one of these is NO-GO. Steals and blocks are scored on ESPN's 2025-26 closing lines.",
+         'result': (f"Steals: the model's Brier score {xs['stl']['brier_model']} against the book's {xs['stl']['brier_market']} on {xs['stl']['n_rows']} lines (level). Blocks: {xs['blk']['brier_model']} against {xs['blk']['brier_market']} on {xs['blk']['n_rows']} lines (behind the book). The others have no prices to score against.") if xs else '',
+         'verdict': 'NO-GO', 'shipped': 'The markets are priced and shown on the Props Table, labelled untested, never a gated bet'},
+        {'id': 'alt_tails', 'area': 'Edges', 'when': '2026-10-07', 'doc': 'alt-tails-results.md',
+         'q': "Are alternate-line overs priced with a favourite-longshot shape, so some price bucket of them makes money?",
+         'rule': "Bet the over at every ESPN alternate rung. Choose buckets on 2024-25 (1,000+ bets, return above zero, z >= 1.5), then judge them on 2025-26 (z >= 2.4, both halves positive).",
+         'result': "Every bucket lost money on 2024-25, from about -50% on long shots to about -9% on heavy favourites, so none was chosen. The 2025-26 pre-tip data is too thin to judge anything.",
+         'verdict': 'NO-GO', 'shipped': 'Nothing'},
     ]
     for e in log:
         e['when'] = (e['when'] or '')[:10]
@@ -265,8 +307,21 @@ def main():
         dont.append(['Buying overs (YES) on Kalshi', 'The mirror image of the bets that pass: YES is overpriced in every stat, so buying it loses unless our model finds a rare exception.', 'Kalshi, 2025-26'])
     dont.append(['Copying sharp bettors late', 'Accounts with a winning record do beat the closing price, but copying their side 30 minutes to 2 hours later lost money.', '31k Polymarket trades'])
     dont.append(['Following the biggest tickets', 'Size is not skill: even $100k+ tickets lost to the closing price on average.', 'Polymarket tape'])
+    nb = ((nl.get('news') or {}).get('bets')) or 0
+    pending = [
+        {'name': 'Joint model of players\' stats (copula A2)', 'area': 'Game simulation', 'due': '2026-11-09', 'doc': 'copula-fit-a2.md',
+         'rule': 'First look at 150 regular-season games: z >= 2.4 and an agreement slope whose interval contains 1 and excludes 0.', 'status': 'Frozen, waiting for 150 games'},
+        {'name': 'Game-script minutes (B3)', 'area': 'Game simulation', 'due': '2026-11-16', 'doc': 'game-script-minutes-b3.md',
+         'rule': 'All four B2 checks on 200 regular-season games with the model frozen.', 'status': 'Frozen, waiting for 200 games'},
+        {'name': 'Minutes model v3 shadow review', 'area': 'Minutes', 'due': '2026-11-20', 'doc': 'minutes-v3-pricing.md',
+         'rule': 'One month of live v3 shadow minutes against v2, then the pre-registered pricing rule can be re-run.', 'status': 'Shadow running'},
+        {'name': 'News lag', 'area': 'Edges', 'due': '2026-11-23', 'doc': 'edge-tests-r2.md',
+         'rule': 'Bets placed while a price is older than injury or lineup news: 150 settled bets over 25 days, ROI z >= 2.4, closing-line value z >= 2, both halves positive.', 'status': f'{nb} of 150 settled bets so far'},
+        {'name': "Pick'em lines against Pinnacle", 'area': "Pick'em", 'due': '2026-11-23', 'doc': 'edge-tests-r2.md',
+         'rule': "Pick the side with fair chance at least 3 points above the flex break-even: 150 picks over 40 games, hit rate above 54.25% at z >= 2.4, both halves above.", 'status': 'Rule frozen; Pinnacle props not posting in preseason'},
+    ]
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'doc': DOC,
-           'signals': signals, 'log': log, 'finder': finder, 'myth': myth, 'dont': dont, 'game': game, 'minutes': minutes, 'usage': usage, 'props': props, 'consensus': consensus,
+           'signals': signals, 'log': log, 'pending': pending, 'finder': finder, 'myth': myth, 'dont': dont, 'game': game, 'minutes': minutes, 'usage': usage, 'props': props, 'consensus': consensus,
            'test': {'seasons': 'fit 2024-25, test 2025-26', 'player_games': (pf or {}).get('n_test'), 'games': (game or {}).get('games')}}
     json.dump(out, open(OUT, 'w'), separators=(',', ':'))
     print(f"backtests: {len(log)} tests, {len(signals)} GO / WATCH signals -> {os.path.relpath(OUT)} ({os.path.getsize(OUT) // 1000} KB)")
