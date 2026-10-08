@@ -793,7 +793,7 @@ def write_board(root, day, slate):
             ledger.close_log(root, board, slate.now)
         except Exception:
             traceback.print_exc(limit=2)
-        print(f"  board      {len(board['props'])} player-stat markets, unmapped {board['unmapped']}", flush=True)
+        print(f"  board      {len(board['props'])} player-stat markets, unmapped {board['unmapped']}" + (f", labels not mapped {board['skipped']}" if board.get('skipped') else ''), flush=True)
         return board
     except Exception:
         traceback.print_exc(limit=2)

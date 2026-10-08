@@ -130,6 +130,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
                 nicks[nick(g[side + '_name'])] = g[side]
     by_id = {str(g['id']): g for g in games}
     props, players, unmapped = {}, {}, defaultdict(int)
+    skipped = defaultdict(lambda: defaultdict(int))      # venue -> label we did not map -> count: so a feed that names a stat differently is visible, not silent
     qk = defaultdict(list)          # (team, game id) -> [(venue, source, key)]: every prop quote, for the Injury Wire
     pkeys = {'kalshi': {}, 'pinnacle': {}, 'polymarket': {}}   # source key -> [pid, stat, ...]: Sharp Price's per-prop signals
 
@@ -148,6 +149,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
         m = meta.get('kalshi', {}).get(k)
         stat = KAL_STAT.get((m or {}).get('series'))
         if not stat:
+            if m and str(m.get('series', '')).startswith('KXNBA') and not str(m.get('series', '')).startswith(('KXNBAGAME', 'KXNBASPREAD', 'KXNBATOTAL', 'KXNBATEAM')):
+                skipped['kalshi'][m.get('series')] += 1
             continue
         g = next((gkey[(d, TEAM.get(h, h))] for d, a, h in parse_event(m['event']) or [] if (d, TEAM.get(h, h)) in gkey), None)
         pid = g and R.find((m.get('sub') or m.get('title') or '').split(':')[0], (g['away'], g['home']))
@@ -183,6 +186,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
         for mk in prop_markets({'props': rows}):
             pid = mk['athlete_id']
             if mk['market'] not in PRICED:
+                skipped['espn'][mk['market']] += 1
                 continue
             if not g or pid not in R.info or mk['kind'] != 'main':
                 unmapped['espn'] += mk['kind'] == 'main'
@@ -206,6 +210,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
         home = next((n for a, n in m.get('teams') or [] if a == 'home'), None)
         g = gkey.get((dt.datetime.fromtimestamp(m['start'], ET).date().isoformat(), nicks.get(nick(home))))
         stat = mt and pin_stat(mt.group(2))
+        if mt and not stat:
+            skipped['pinnacle'][mt.group(2)] += 1
         pid = g and stat and R.find(mt.group(1), (g['away'], g['home']))
         if not pid:
             unmapped['pinnacle'] += 1
@@ -222,6 +228,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
         m = meta.get('polymarket', {}).get(k) or {}
         stat = PM_STAT.get(m.get('type')) or extra_stat(m.get('type'))
         if not stat or m.get('line') is None:
+            if m.get('type') and m.get('line') is not None and not stat and 'player' in str(m.get('type')):
+                skipped['polymarket'][m.get('type')] += 1
             continue
         p = (m.get('event') or '').split('-')              # nba-<away>-<home>-YYYY-MM-DD
         tm = [TEAM.get(x.upper(), x.upper()) for x in p[1:3]] if len(p) >= 6 else []
@@ -248,6 +256,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     for k, v in (last.get('prizepicks') or {}).items():
         m = meta.get('prizepicks', {}).get(k) or {}
         stat = PP_STAT.get(m.get('stat')) or extra_stat(m.get('stat'))
+        if not stat and m.get('stat'):
+            skipped['prizepicks'][m.get('stat')] += 1
         if not stat or m.get('odds') != 'standard' or v[0] is None:
             continue
         g = team_game(m.get('team'), m.get('start'))
@@ -261,6 +271,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     for k, v in (last.get('underdog') or {}).items():
         m = meta.get('underdog', {}).get(k) or {}
         stat = UD_STAT.get(m.get('stat')) or extra_stat(m.get('stat'))
+        if not stat and m.get('stat'):
+            skipped['underdog'][m.get('stat')] += 1
         if not stat or v[0] is None:
             continue
         g = team_game(m.get('team'), m.get('start'))
@@ -274,6 +286,8 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     for k, v in (last.get('sleeper') or {}).items():
         m = meta.get('sleeper', {}).get(k) or {}
         stat = SL_STAT.get(m.get('stat')) or extra_stat(m.get('stat'))
+        if not stat and m.get('stat'):
+            skipped['sleeper'][m.get('stat')] += 1
         if not stat or v[0] is None:
             continue
         g = team_game(m.get('team'))
@@ -333,6 +347,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
             'games': [dict({k: g.get(k) for k in ('id', 'day', 'tip', 'away', 'home', 'season_type', 'away_name', 'home_name')}, **glines.get(str(g['id']), {}), mk=gm.get(str(g['id'])))
                                 for g in games],
             'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped),
+            'skipped': {v: dict(sorted(c.items(), key=lambda kv: -kv[1])[:12]) for v, c in skipped.items() if c},
             '_pkeys': pkeys}                    # internal: Sharp Price joins per-prop signals on it; dropped before the board is written
 
 
