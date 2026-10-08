@@ -1164,35 +1164,35 @@ table.nt.sx-tk{min-width:420px}
 @media(max-width:640px){.ml-hero{padding:16px 14px;border-radius:16px}.ml-kp{grid-template-columns:1fr 1fr}.ml-kp>div:last-child{grid-column:1/-1}.ml-grid{grid-template-columns:minmax(0,1fr)}.ml-bn{font-size:26px}}
 @media(prefers-reduced-motion:reduce){.ml-bar i,.ml-step,.ml-q button,.ml-outb,.ml-fit{transition:none}}
 /* Slate V2: starting fives, who is out, defense by position */
-.sv-card{container:svc / inline-size}
-.sv-mk{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:2px 0 0;font-size:12.5px;color:var(--fg2)}
-.sv-mk b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
-.sv-rd{color:var(--fg2)}.sv-mk .linkbtn{margin-left:auto}
-.sv-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.sv-side{container:svs / inline-size;display:flex;flex-direction:column;gap:2px;min-width:0;padding:12px 14px 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface2)}
-.sv-sh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+.sv-card{container:svc / inline-size;padding:18px 20px;gap:14px}
+.sv-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px) minmax(0,1fr);gap:14px;align-items:start}
+.sv-mid{display:flex;flex-direction:column;gap:14px;min-width:0;order:0}
+.sv-tls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sv-tl{display:flex;flex-direction:column;gap:2px;padding:9px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
+.sv-tl small{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg3)}.sv-tl b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.sv-rd{margin:-6px 0 0;font-size:12px;color:var(--fg2)}
+.sv-side{container:svs / inline-size;display:flex;flex-direction:column;min-width:0;padding:12px 14px 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface2)}
+.sv-sh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px}
 .sv-sh h3{margin:0;display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600}.sv-sh h3 small{font-weight:400;color:var(--fg3);font-size:12px}
 .sv-tag{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--fg3);white-space:nowrap}.sv-tag.confirmed{color:var(--up)}.sv-tag.expected{color:var(--warn)}
-.sv-ph{display:grid;grid-template-columns:44px 1fr;font-size:10.5px;color:var(--fg3);padding-bottom:2px}.sv-ph span:last-child{text-align:right}
-.sv-p{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--border)}
+.sv-p{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--border)}
 .sv-n{min-width:0;display:flex;flex-direction:column;gap:1px}.sv-n b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sv-n small{font-size:11.5px;color:var(--fg3);font-variant-numeric:tabular-nums}
 .sv-q{font-style:normal;margin-left:6px;font-size:10px;font-weight:700;color:var(--warn);border:1px solid rgba(251,191,36,.45);border-radius:4px;padding:0 4px}
 .sv-mp{display:flex;gap:4px;justify-content:flex-end}
-@container svs (max-width:350px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}.sv-ph{display:none}}
-.mp{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:40px;padding:3px 5px;border-radius:7px;background:var(--raised);font-size:12px;font-weight:600;color:var(--fg2);font-variant-numeric:tabular-nums;line-height:1.15}
+.mp{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:36px;padding:3px 4px;border-radius:7px;background:var(--raised);font-size:12px;font-weight:600;color:var(--fg2);font-variant-numeric:tabular-nums;line-height:1.15}
 .mp i{font-style:normal;font-size:9.5px;font-weight:500;letter-spacing:.05em;color:var(--fg3)}
 .mp.soft{background:rgba(74,222,128,.14);color:var(--up)}.mp.tough{background:rgba(248,113,113,.14);color:var(--down)}
-.sv-t .mp{flex-direction:row;min-width:0;margin-left:8px;padding:1px 7px;font-size:11px;font-weight:500}
-.sv-out{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-top:8px;padding-top:9px;border-top:1px solid var(--border);font-size:12px}.sv-ol{font-size:11px;color:var(--fg3);margin-right:2px}
-.sv-ft{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
-.sv-nt,.sv-tm{min-width:0}.sv-tm{max-width:560px}.sv-ft h4{margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
-.sv-nt p{display:flex;gap:9px;align-items:center;margin:0;padding:6px 0;border-top:1px solid var(--border);font-size:12.5px;color:var(--fg2)}.sv-nt p:first-of-type{border-top:0}
-.sv-nt p>i{font-style:normal;font-size:10px;width:12px;flex:none}.sv-nt p.soft>i{color:var(--up)}.sv-nt p.tough>i{color:var(--down)}
-.sv-nt p>span{display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;min-width:0}.sv-nt p b{color:var(--fg);font-weight:600}.sv-nt small{color:var(--fg3)}
-.sv-t td,.sv-t th{padding:5px 8px;font-size:12px}.sv-t td b{font-weight:600;color:var(--fg)}
-@container svc (max-width:900px){.sv-ft{grid-template-columns:minmax(0,1fr)}}
-@container svc (max-width:640px){.sv-cols{grid-template-columns:minmax(0,1fr)}.sv-mk .linkbtn{margin-left:0}}
-@container svc (max-width:480px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}.sv-ph{display:none}.sv-side{padding:10px 12px}}
+.sv-out{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-top:6px;padding-top:9px;border-top:1px solid var(--border);font-size:12px}.sv-ol{font-size:11px;color:var(--fg3);margin-right:2px}
+.sv-mid h4{margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.sv-nt p{display:flex;gap:8px;align-items:center;margin:0;padding:6px 0;border-top:1px solid var(--border);font-size:12.5px;line-height:1.35;color:var(--fg2)}.sv-nt p:first-of-type{border-top:0}
+.sv-nt p>i{font-style:normal;font-size:10px;width:10px;flex:none}.sv-nt p.soft>i{color:var(--up)}.sv-nt p.tough>i{color:var(--down)}
+.sv-nt p>span{display:block;min-width:0}.sv-nt p>span .cutbox{display:inline-block;vertical-align:middle;margin-right:6px}.sv-nt p b{color:var(--fg);font-weight:600}.sv-nt small{color:var(--fg3)}
+.sv-t{width:100%;min-width:0;border-collapse:collapse;font-variant-numeric:tabular-nums}.sv-t th{font-size:11px;font-weight:600;color:var(--fg3);text-align:right;padding:0 0 5px 8px;border-bottom:0}.sv-t th.l,.sv-t td.l{text-align:left}
+.sv-t td{padding:5px 0 5px 8px;border-bottom:0;border-top:1px solid var(--border);text-align:right;font-size:12px;color:var(--fg2)}.sv-t td.l{color:var(--fg2)}.sv-t td b{display:block;font-weight:600;color:var(--fg)}
+.sv-t .mp{display:inline-flex;flex-direction:row;min-width:0;padding:0 5px;font-size:10px;font-weight:500;margin-top:1px}
+@container svc (max-width:1240px){.sv-body{grid-template-columns:repeat(2,minmax(0,1fr))}.sv-mid{grid-column:1 / -1;order:3;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.sv-tls,.sv-rd{grid-column:1 / -1}}
+@container svc (max-width:640px){.sv-body{grid-template-columns:minmax(0,1fr)}.sv-mid{display:flex}}
+@container svs (max-width:325px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}}
 .sl-grid.lv{display:flex;flex-direction:column;gap:16px}
 .lv-card{padding:0;gap:0;overflow:hidden}.lv-card>.sl-h{padding:10px 16px;border-bottom:1px solid var(--border)}
 .lv-asof{color:var(--fg3);font-family:var(--font-sans)}
@@ -4692,8 +4692,8 @@ function svSide(team, opp, g, B, st){
   const hurt = sts.map(([pid, v]) => ({p: T.players.find(x => x.id === +pid), v})).filter(x => x.p && ids.has(x.p.id) && x.p.min0 >= 8).sort((a, b) => b.p.min0 - a.p.min0);
   const lost = hurt.filter(x => /^(Out|Inactive)/.test(x.v)).reduce((a, x) => a + x.p.min0, 0);
   const chips = hurt.slice(0, 6).map(x => `<span class="badge ${/^(Out|Inactive|Doubtful)/.test(x.v) ? 'bad' : 'warn'}" title="${esc(x.p.name)} projects ${fmt(x.p.min0, 0)} minutes when healthy">${esc(last(x.p.name))} · ${esc(x.v)} · ${fmt(x.p.min0, 0)}m</span>`).join('');
-  const html = `<div class="sv-side"><div class="sv-sh"><h3>${lgImg(team, 20)}${team} <small>${esc((D.teams[team] || {}).name || '')}</small></h3><span class="sv-tag ${F.tag.toLowerCase()}" title="${esc(F.note)}">${F.tag} five</span></div>
-    <div class="sv-ph"><span></span><span>vs ${opp} defense: rank among 30, 1st gives up the most</span></div>${rows}
+  const html = `<div class="sv-side"><div class="sv-sh"><h3>${lgImg(team, 20)}${team} <small>vs ${opp} defense</small></h3><span class="sv-tag ${F.tag.toLowerCase()}" title="${esc(F.note)}">${F.tag} five</span></div>
+    ${rows}
     <div class="sv-out">${chips ? `<span class="sv-ol">Out or doubtful${lost >= 8 ? ` · ${fmt(lost, 0)} min` : ''}</span>${chips}${hurt.length > 6 ? `<span class="muted">+${hurt.length - 6} more</span>` : ''}` : '<span class="muted">No rotation player listed out.</span>'}</div></div>`;
   return {html, notes, hurt};
 }
@@ -4705,7 +4705,8 @@ function slateCard(g, B, status){
   const read = SG.length < 2 ? '' : nA && nH ? 'Sharp read: mixed' : nA ? `Sharp read: leaning ${g.away}` : nH ? `Sharp read: leaning ${g.home}` : '';
   const badges = [g.opening ? '<span class="badge" title="Posted early. Props, edges and alerts start when the game is 3 days out">Early lines</span>' : '', pre ? '<span class="badge warn">Preseason</span>' : '',
     V && V.ba ? `<span class="badge warn" title="Played within 30 hours">${g.away} back-to-back</span>` : '', V && V.bh ? `<span class="badge warn" title="Played within 30 hours">${g.home} back-to-back</span>` : ''].join('');
-  const mkt = M ? [M.spread != null ? `<span>Spread <b>${spTxt(g, M.spread)}</b></span>` : '', M.total != null ? `<span>Total <b>${fmt(M.total)}</b></span>` : '', M.win != null ? `<span>${g.home} win <b>${pc(M.win)}</b></span>` : ''].join('') : '<span class="muted">No book has posted yet</span>';
+  const tl = (k, v) => `<div class="sv-tl"><small>${k}</small><b>${v}</b></div>`;
+  const mkt = M ? [M.spread != null ? tl('Spread', spTxt(g, M.spread)) : '', M.total != null ? tl('Total', fmt(M.total)) : '', M.win != null ? tl(`${g.home} win`, pc(M.win)) : ''].join('') : '<span class="muted">No book has posted yet</span>';
   const notes = [...A.notes, ...H.notes].sort((a, b) => a.x - b.x || (b.soft - a.soft)).slice(0, 5);
   const nh = notes.length ? `<div class="sv-nt"><h4>Matchups to know</h4>${notes.map(n => `<p class="${n.soft ? 'soft' : 'tough'}"><i>${n.soft ? '▲' : '▼'}</i><span>${cutImg(n.p.id, n.p.name, 22)}<b>${esc(n.p.name)}</b> <small>${n.p.slot.toUpperCase()}</small> ${esc(muWords(n.opp, n.p.slot.toUpperCase(), n.s, n.r))}</span></p>`).join('')}</div>` : '';
   // team context: the model's rating ranks, then what each defense gives up per game (all positions)
@@ -4715,12 +4716,10 @@ function slateCard(g, B, status){
   const rows = [G && G.O && G.D ? trow('Offense (Vault)', t => `<b>${sgn(G.O[t] || 0)}</b><span class="mp">${ordn(rk(G.O, t))}</span>`, 'Points scored above the league base, from the game model') : '',
     G && G.D ? trow('Defense (Vault)', t => `<b>${sgn(G.D[t] || 0)}</b><span class="mp">${ordn(rk(G.D, t))}</span>`, 'Points held below the league base, from the game model. 1st is best') : '',
     ...[['pts', 'Points allowed'], ['reb', 'Rebounds allowed'], ['ast', 'Assists allowed'], ['3pm', 'Threes allowed'], ['tpa', 'Three attempts allowed']].map(([s, l]) => MU ? trow(l, t => allw(t, s), `${l} per game, ${MU.season} regular season`) : '')].join('');
-  const ctx = rows ? `<div class="sv-tm"><h4>Team defense, per game${MU ? ` · ${MU.season}` : ''}</h4><div class="nt-tw"><table class="nt sv-t"><thead><tr><th class="l"></th><th>${g.away}</th><th>${g.home}</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : '';
+  const ctx = rows ? `<div class="sv-tm"><h4>Team defense, per game${MU ? ` · ${MU.season}` : ''}</h4><table class="sv-t"><thead><tr><th class="l"></th><th>${g.away}</th><th>${g.home}</th></tr></thead><tbody>${rows}</tbody></table></div>` : '';
   return `<article class="card sl-card sv-card" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
-    <div class="sv-mk">${mkt}${read ? `<span class="sv-rd">${esc(read)}</span>` : ''}<button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></div>
-    <div class="sv-cols">${A.html}${H.html}</div>
-    <div class="sv-ft">${nh}${ctx}</div></article>`;
+    <div class="sv-body">${A.html}<div class="sv-mid"><div class="sv-tls">${mkt}</div>${read ? `<p class="sv-rd">${esc(read)} · <button class="linkbtn" type="button" data-golines="1">every book</button></p>` : `<p class="sv-rd"><button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></p>`}${nh}${ctx}</div>${H.html}</div></article>`;
 }
 const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
 function renderSlate(){
