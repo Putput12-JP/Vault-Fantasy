@@ -1194,6 +1194,8 @@ table.nt.sx-tk{min-width:420px}
 @container svc (max-width:640px){.sv-body{grid-template-columns:minmax(0,1fr)}.sv-mid{display:flex}}
 @container svs (max-width:325px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}}
 .sl-grid.lv{display:flex;flex-direction:column;gap:16px}
+.lv-card{container:lvc / inline-size}.lv-l,.lv-r{min-width:0}.lv-l{display:flex;flex-direction:column}.lv-l>.lv-tiles{border-bottom:1px solid var(--border)}
+@container lvc (min-width:900px){.lv-cols{display:grid;grid-template-columns:300px minmax(0,1fr)}.lv-l{border-right:1px solid var(--border)}.lv-tiles{grid-template-columns:minmax(0,1fr)}.lv-tile{border-left:0;border-top:1px solid var(--border);padding:12px 16px}.lv-tile:first-child{border-top:0}.lv-l>.lv-tiles{border-bottom:0}.lv-vault{border-top:1px solid var(--border);border-bottom:0}.lv-r>.lv-spot{margin-top:12px}.lv-board{padding-top:12px}}
 .lv-card{padding:0;gap:0;overflow:hidden}.lv-card>.sl-h{padding:10px 16px;border-bottom:1px solid var(--border)}
 .lv-asof{color:var(--fg3);font-family:var(--font-sans)}
 .lv-sr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:7px 16px;border-bottom:1px solid var(--border)}.lv-vd{font-weight:600;font-size:13px;margin-right:4px;white-space:nowrap}
@@ -4505,7 +4507,7 @@ function lineCard(g, B, status){
     ${rows.length > 4 ? `<div class="lv-more"><button class="linkbtn" type="button" data-lall="${gid}">${showAll ? 'Show fewer books' : `Show all ${rows.length} books`}</button></div>` : ''}</div>` : '';
   return `<article class="card sl-card lv-card" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
-    ${sharpRow}${slate ? `<div class="lv-sl">${SP.tbl}${SP.why}${SP.moves}${SP.inj}</div>` : tiles + vault}${spot}${board}</article>`;
+    ${sharpRow}<div class="lv-cols"><div class="lv-l">${slate ? `<div class="lv-sl">${SP.tbl}${SP.why}${SP.moves}${SP.inj}</div>` : tiles + vault}</div><div class="lv-r">${spot}${board}</div></div></article>`;
 }
 function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el) el.outerHTML = lineCard(g, B, statusFromBoard(B)); }
 $('sgames').addEventListener('click', e => {
