@@ -1163,6 +1163,36 @@ table.nt.sx-tk{min-width:420px}
 .ml-starters{grid-template-columns:repeat(2,minmax(0,1fr))}.ml-br{grid-template-columns:54px minmax(0,1fr) auto}.ml-br>.ml-bd,.ml-br>.ml-outb{display:none}.ml-br>.ml-pb{grid-column:3}.ml-br .ml-row{grid-column:1/-1;justify-content:flex-end;margin-bottom:8px}.ml-br .ml-bi{grid-column:2}}
 @media(max-width:640px){.ml-hero{padding:16px 14px;border-radius:16px}.ml-kp{grid-template-columns:1fr 1fr}.ml-kp>div:last-child{grid-column:1/-1}.ml-grid{grid-template-columns:minmax(0,1fr)}.ml-bn{font-size:26px}}
 @media(prefers-reduced-motion:reduce){.ml-bar i,.ml-step,.ml-q button,.ml-outb,.ml-fit{transition:none}}
+/* Slate V2: starting fives, who is out, defense by position */
+.sv-card{container:svc / inline-size}
+.sv-mk{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:2px 0 0;font-size:12.5px;color:var(--fg2)}
+.sv-mk b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.sv-rd{color:var(--fg2)}.sv-mk .linkbtn{margin-left:auto}
+.sv-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.sv-side{container:svs / inline-size;display:flex;flex-direction:column;gap:2px;min-width:0;padding:12px 14px 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface2)}
+.sv-sh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+.sv-sh h3{margin:0;display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600}.sv-sh h3 small{font-weight:400;color:var(--fg3);font-size:12px}
+.sv-tag{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--fg3);white-space:nowrap}.sv-tag.confirmed{color:var(--up)}.sv-tag.expected{color:var(--warn)}
+.sv-ph{display:grid;grid-template-columns:44px 1fr;font-size:10.5px;color:var(--fg3);padding-bottom:2px}.sv-ph span:last-child{text-align:right}
+.sv-p{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--border)}
+.sv-n{min-width:0;display:flex;flex-direction:column;gap:1px}.sv-n b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sv-n small{font-size:11.5px;color:var(--fg3);font-variant-numeric:tabular-nums}
+.sv-q{font-style:normal;margin-left:6px;font-size:10px;font-weight:700;color:var(--warn);border:1px solid rgba(251,191,36,.45);border-radius:4px;padding:0 4px}
+.sv-mp{display:flex;gap:4px;justify-content:flex-end}
+@container svs (max-width:350px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}.sv-ph{display:none}}
+.mp{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:40px;padding:3px 5px;border-radius:7px;background:var(--raised);font-size:12px;font-weight:600;color:var(--fg2);font-variant-numeric:tabular-nums;line-height:1.15}
+.mp i{font-style:normal;font-size:9.5px;font-weight:500;letter-spacing:.05em;color:var(--fg3)}
+.mp.soft{background:rgba(74,222,128,.14);color:var(--up)}.mp.tough{background:rgba(248,113,113,.14);color:var(--down)}
+.sv-t .mp{flex-direction:row;min-width:0;margin-left:8px;padding:1px 7px;font-size:11px;font-weight:500}
+.sv-out{display:flex;flex-wrap:wrap;align-items:center;gap:5px 6px;margin-top:8px;padding-top:9px;border-top:1px solid var(--border);font-size:12px}.sv-ol{font-size:11px;color:var(--fg3);margin-right:2px}
+.sv-ft{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
+.sv-nt,.sv-tm{min-width:0}.sv-tm{max-width:560px}.sv-ft h4{margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.sv-nt p{display:flex;gap:9px;align-items:center;margin:0;padding:6px 0;border-top:1px solid var(--border);font-size:12.5px;color:var(--fg2)}.sv-nt p:first-of-type{border-top:0}
+.sv-nt p>i{font-style:normal;font-size:10px;width:12px;flex:none}.sv-nt p.soft>i{color:var(--up)}.sv-nt p.tough>i{color:var(--down)}
+.sv-nt p>span{display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;min-width:0}.sv-nt p b{color:var(--fg);font-weight:600}.sv-nt small{color:var(--fg3)}
+.sv-t td,.sv-t th{padding:5px 8px;font-size:12px}.sv-t td b{font-weight:600;color:var(--fg)}
+@container svc (max-width:900px){.sv-ft{grid-template-columns:minmax(0,1fr)}}
+@container svc (max-width:640px){.sv-cols{grid-template-columns:minmax(0,1fr)}.sv-mk .linkbtn{margin-left:0}}
+@container svc (max-width:480px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}.sv-ph{display:none}.sv-side{padding:10px 12px}}
 .sl-grid.lv{display:flex;flex-direction:column;gap:16px}
 .lv-card{padding:0;gap:0;overflow:hidden}.lv-card>.sl-h{padding:10px 16px;border-bottom:1px solid var(--border)}
 .lv-asof{color:var(--fg3);font-family:var(--font-sans)}
@@ -1696,6 +1726,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 // because the published artifact blocks external images. Everyone else gets ESPN's image URL, which loads on the website; where
 // it is blocked the image is dropped and the initials stay.
 const PH = /*PHOTOS*/null;
+const MU = /*MATCHUPS*/null;                       // defense by position (build_matchups.py)
 const phSrc = id => (PH && PH.heads[id]) || `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=96&h=70`;
 const phImg = id => id == null ? '' : `<img class="ph" src="${phSrc(id)}" alt="" loading="lazy" onerror="this.remove()">`;
 const phBig = id => `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=192&h=140`;     // sharper copy for the big header (the website; the artifact keeps the embedded one)
@@ -2195,7 +2226,7 @@ function show(v){
   }
   if (v === 'slate' || v === 'lines'){
     $('tname').textContent = v === 'lines' ? 'Game Lines' : 'Slate';
-    $('tsub').textContent = v === 'lines' ? 'EVERY BOOK · KALSHI · POLYMARKET · VAULT LINE AS CONTEXT' : 'VAULT LINE · MARKET · INJURIES · REST · SPLITS';
+    $('tsub').textContent = v === 'lines' ? 'EVERY BOOK · KALSHI · POLYMARKET · VAULT LINE AS CONTEXT' : 'STARTING FIVES · WHO IS OUT · HOW EACH DEFENSE GUARDS EACH POSITION';
     renderSlate();
     if (!boardTried) loadBoard();
     return;
@@ -4478,10 +4509,80 @@ function lineCard(g, B, status){
 }
 function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el) el.outerHTML = lineCard(g, B, statusFromBoard(B)); }
 $('sgames').addEventListener('click', e => {
+  if (e.target.closest('[data-golines]')){ goView('lines'); return; }
   const m = e.target.closest('[data-lm]'), a = e.target.closest('[data-lall]'), d = e.target.closest('[data-lsd]');
   if (m){ sv.mk[m.dataset.g] = m.dataset.lm; lvRefresh(m.dataset.g); }
   else if (a){ sv.all[a.dataset.lall] = !sv.all[a.dataset.lall]; lvRefresh(a.dataset.lall); }
   else if (d){ sv.sd[d.dataset.lsd] = !sv.sd[d.dataset.lsd]; lvRefresh(d.dataset.lsd); } });
+
+// ── Slate V2 card: who starts, who is out, and how each defense treats the position the starter plays (build_matchups.py, last regular season).
+const ordn = n => { const v = n % 100, a = ['th', 'st', 'nd', 'rd']; return n + (a[(v - 20) % 10] || a[v] || a[0]); };
+const SLOTW = {PG: 'point guards', SG: 'shooting guards', SF: 'small forwards', PF: 'power forwards', C: 'centers'};
+const MUS = [['pts', 'PTS', 'points'], ['reb', 'REB', 'rebounds'], ['ast', 'AST', 'assists'], ['3pm', '3PM', 'threes']];
+const svMin = {};                                            // per render: game id|team -> model minutes
+function muGet(def, slot, s){ const t = MU && MU.teams[def]; return t && slot && t.pos[slot] ? t.pos[slot][s] : null; }
+function muWords(def, slot, s, r){                           // "DAL gives up the 5th most points to point guards"
+  const w = (MUS.find(x => x[0] === s) || [])[2] || s, most = r[1] <= 15;
+  return `${def} gives up the ${ordn(most ? r[1] : 31 - r[1])} ${most ? 'most' : 'fewest'} ${w} to ${SLOTW[slot] || slot} (${r[0]} a game)`;
+}
+function muPill(def, slot, s){
+  const r = muGet(def, slot, s); if (!r) return '';
+  const lab = (MUS.find(x => x[0] === s) || [])[1], cls = r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : '';
+  return `<span class="mp ${cls}" title="${esc(muWords(def, slot, s, r))}. Last season, rank 1 gives up the most."><i>${lab}</i>${ordn(r[1])}</span>`;
+}
+function slateFive(team, g, B, st){
+  const T = D.teams[team]; if (!T) return null;
+  const P = B.players || {}, flag = p => P[p.id] ? P[p.id][3] : null, out = p => /^(Out|Inactive)/.test(st[p.id] || '');
+  const conf = T.players.filter(p => flag(p) === 'S'), exp = T.players.filter(p => flag(p) === 's').sort((a, b) => b.min0 - a.min0), listed = [...conf, ...exp].slice(0, 5);
+  const rest = T.players.filter(p => !listed.includes(p) && !['b', 'B', 'X'].includes(flag(p)) && !out(p)).sort((a, b) => ((a.rank === 1 && a.slotted ? 0 : 1) - (b.rank === 1 && b.slotted ? 0 : 1)) || b.min0 - a.min0);
+  const five = [...listed, ...rest.slice(0, 5 - listed.length)];
+  return {five, tag: conf.length >= 5 ? 'Confirmed' : listed.length ? 'Expected' : 'Projected', note: conf.length >= 5 ? 'NBA.com lineup' : listed.length ? 'NBA.com lists part of the five' : 'depth chart: no official lineup yet'};
+}
+function svSide(team, opp, g, B, st){
+  const F = slateFive(team, g, B, st), T = D.teams[team];
+  if (!F) return {html: `<div class="sv-side"><h3>${team}</h3><p class="muted">No roster loaded.</p></div>`, notes: []};
+  const key = g.id + '|' + team, gm = svMin[key] || (svMin[key] = (() => { try { return gameMinutes(team, g, svMin) || {}; } catch (e) { return {}; } })());
+  const notes = [];
+  const rows = F.five.map(p => {
+    const m = g.season_type >= 2 && gm[p.id] ? gm[p.id].min : p.min0, flags = st[p.id] && !/^(Out|Inactive)/.test(st[p.id]) ? `<em class="sv-q" title="${esc(st[p.id])}">${esc(st[p.id].slice(0, 1))}</em>` : '';
+    const SL = p.slot ? p.slot.toUpperCase() : null;
+    for (const [s] of MUS){ const r = muGet(opp, SL, s); if (r && (r[1] <= 5 || r[1] >= 26)) notes.push({p, team, opp, s, r, soft: r[1] <= 5, x: Math.min(r[1], 31 - r[1])}); }
+    return `<div class="sv-p">${cutImg(p.id, p.name, 38)}<div class="sv-n"><b>${esc(p.name)}${flags}</b><small>${SL || esc(p.pos)} · ${fmt(m, 0)} min</small></div><div class="sv-mp">${MUS.map(([s]) => muPill(opp, SL, s)).join('')}</div></div>`;
+  }).join('');
+  const sts = Object.entries(st).filter(([pid, v]) => /^(Out|Inactive|Doubtful|Questionable)/.test(v)), ids = new Set(T.players.map(p => p.id));
+  const hurt = sts.map(([pid, v]) => ({p: T.players.find(x => x.id === +pid), v})).filter(x => x.p && ids.has(x.p.id) && x.p.min0 >= 8).sort((a, b) => b.p.min0 - a.p.min0);
+  const lost = hurt.filter(x => /^(Out|Inactive)/.test(x.v)).reduce((a, x) => a + x.p.min0, 0);
+  const chips = hurt.slice(0, 6).map(x => `<span class="badge ${/^(Out|Inactive|Doubtful)/.test(x.v) ? 'bad' : 'warn'}" title="${esc(x.p.name)} projects ${fmt(x.p.min0, 0)} minutes when healthy">${esc(last(x.p.name))} · ${esc(x.v)} · ${fmt(x.p.min0, 0)}m</span>`).join('');
+  const html = `<div class="sv-side"><div class="sv-sh"><h3>${lgImg(team, 20)}${team} <small>${esc((D.teams[team] || {}).name || '')}</small></h3><span class="sv-tag ${F.tag.toLowerCase()}" title="${esc(F.note)}">${F.tag} five</span></div>
+    <div class="sv-ph"><span></span><span>vs ${opp} defense: rank among 30, 1st gives up the most</span></div>${rows}
+    <div class="sv-out">${chips ? `<span class="sv-ol">Out or doubtful${lost >= 8 ? ` · ${fmt(lost, 0)} min` : ''}</span>${chips}${hurt.length > 6 ? `<span class="muted">+${hurt.length - 6} more</span>` : ''}` : '<span class="muted">No rotation player listed out.</span>'}</div></div>`;
+  return {html, notes, hurt};
+}
+function slateCard(g, B, status){
+  const gid = String(g.id), mk = g.mk || {}, M = marketLine(mk), V = vaultLine(g, B, status), o = B.sharp && B.sharp.games && B.sharp.games[gid], pre = g.season_type === 1;
+  const tn = t => (D.teams[t] && D.teams[t].name) || t, early = isEarly(g, B);
+  const A = svSide(g.away, g.home, g, B, status), H = svSide(g.home, g.away, g, B, status);
+  const SG = lvSignals(g, mk, o), sd = v => Math.abs(v) < .06 ? 0 : v < 0 ? -1 : 1, nA = SG.filter(x => sd(x.v) < 0).length, nH = SG.filter(x => sd(x.v) > 0).length;
+  const read = SG.length < 2 ? '' : nA && nH ? 'Sharp read: mixed' : nA ? `Sharp read: leaning ${g.away}` : nH ? `Sharp read: leaning ${g.home}` : '';
+  const badges = [g.opening ? '<span class="badge" title="Posted early. Props, edges and alerts start when the game is 3 days out">Early lines</span>' : '', pre ? '<span class="badge warn">Preseason</span>' : '',
+    V && V.ba ? `<span class="badge warn" title="Played within 30 hours">${g.away} back-to-back</span>` : '', V && V.bh ? `<span class="badge warn" title="Played within 30 hours">${g.home} back-to-back</span>` : ''].join('');
+  const mkt = M ? [M.spread != null ? `<span>Spread <b>${spTxt(g, M.spread)}</b></span>` : '', M.total != null ? `<span>Total <b>${fmt(M.total)}</b></span>` : '', M.win != null ? `<span>${g.home} win <b>${pc(M.win)}</b></span>` : ''].join('') : '<span class="muted">No book has posted yet</span>';
+  const notes = [...A.notes, ...H.notes].sort((a, b) => a.x - b.x || (b.soft - a.soft)).slice(0, 5);
+  const nh = notes.length ? `<div class="sv-nt"><h4>Matchups to know</h4>${notes.map(n => `<p class="${n.soft ? 'soft' : 'tough'}"><i>${n.soft ? '▲' : '▼'}</i><span>${cutImg(n.p.id, n.p.name, 22)}<b>${esc(n.p.name)}</b> <small>${n.p.slot.toUpperCase()}</small> ${esc(muWords(n.opp, n.p.slot.toUpperCase(), n.s, n.r))}</span></p>`).join('')}</div>` : '';
+  // team context: the model's rating ranks, then what each defense gives up per game (all positions)
+  const G = MS && MS.game, rk = (o2, k) => Object.keys(o2).sort((a, b) => o2[b] - o2[a]).indexOf(k) + 1;
+  const allw = (t, s) => { const r = MU && MU.teams[t] && MU.teams[t].all[s]; return r ? `<b>${fmt(r[0], 1)}</b><span class="mp ${r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : ''}">${r[1] <= 15 ? ordn(r[1]) + ' most' : ordn(31 - r[1]) + ' fewest'}</span>` : ''; };
+  const trow = (lab, f, tip) => `<tr><td class="l" title="${esc(tip || '')}">${lab}</td><td>${f(g.away)}</td><td>${f(g.home)}</td></tr>`;
+  const rows = [G && G.O && G.D ? trow('Offense (Vault)', t => `<b>${sgn(G.O[t] || 0)}</b><span class="mp">${ordn(rk(G.O, t))}</span>`, 'Points scored above the league base, from the game model') : '',
+    G && G.D ? trow('Defense (Vault)', t => `<b>${sgn(G.D[t] || 0)}</b><span class="mp">${ordn(rk(G.D, t))}</span>`, 'Points held below the league base, from the game model. 1st is best') : '',
+    ...[['pts', 'Points allowed'], ['reb', 'Rebounds allowed'], ['ast', 'Assists allowed'], ['3pm', 'Threes allowed'], ['tpa', 'Three attempts allowed']].map(([s, l]) => MU ? trow(l, t => allw(t, s), `${l} per game, ${MU.season} regular season`) : '')].join('');
+  const ctx = rows ? `<div class="sv-tm"><h4>Team defense, per game${MU ? ` · ${MU.season}` : ''}</h4><div class="nt-tw"><table class="nt sv-t"><thead><tr><th class="l"></th><th>${g.away}</th><th>${g.home}</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : '';
+  return `<article class="card sl-card sv-card" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
+    <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
+    <div class="sv-mk">${mkt}${read ? `<span class="sv-rd">${esc(read)}</span>` : ''}<button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></div>
+    <div class="sv-cols">${A.html}${H.html}</div>
+    <div class="sv-ft">${nh}${ctx}</div></article>`;
+}
 const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
 function renderSlate(){
   const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, lines = view === 'lines';
@@ -4509,14 +4610,30 @@ function renderSlate(){
     return {g, team: w === H ? g.home : g.away, n: w.length, of: SG.length, names: w.map(x => x.k), str: w.reduce((m, x) => m + Math.abs(x.v), 0)}; })
     .filter(Boolean).sort((a, b) => b.n - a.n || b.str - a.str)[0];
   const SPK = {spread: g => `${g.home} spread`, total: () => 'Over', moneyline: g => `${g.home} moneyline`};
-  $('skpis').innerHTML = !G.length ? '' :
+  const svk = () => {
+    const sides = G.flatMap(g => [g.away, g.home].map(t => svSide(t, t === g.away ? g.home : g.away, g, B, status)));
+    const out = sides.flatMap(x => (x.hurt || []).filter(h => /^(Out|Inactive)/.test(h.v) && h.p.min0 >= 15)), best = sides.flatMap(x => x.notes).filter(n => n.soft).sort((a, b) => a.x - b.x || b.p.min0 - a.p.min0)[0];
+    const confd = G.filter(g => [g.away, g.home].every(t => (slateFive(t, g, B, status) || {}).tag === 'Confirmed')).length;
+    return kpi('Games', ICON.clock, `${G.length}`, `${reg ? `${reg} regular season` : ''}${reg && G.length - reg ? ' · ' : ''}${G.length - reg ? `${G.length - reg} preseason` : ''}${confd ? ` · ${confd} with confirmed lineups` : ''}`) +
+      kpi('Rotation players out', ICON.star, `${out.length}`, out.length ? out.sort((a, b) => b.p.min0 - a.p.min0).slice(0, 3).map(h => `${esc(last(h.p.name))} (${(Object.keys(D.teams).find(t => D.teams[t].players.includes(h.p)) || '')})`).join(', ') + (out.length > 3 ? ` and ${out.length - 3} more` : '') : 'Nobody with 15+ projected minutes') +
+      kpi('Softest matchup', ICON.pts, best ? esc(last(best.p.name)) : 'None stands out', best ? `${best.p.slot.toUpperCase()} vs ${best.opp}: ${esc(muWords(best.opp, best.p.slot.toUpperCase(), best.s, best.r))}. Context, not a bet` : 'No starter faces a top-5 soft spot') +
+      kpi('Back-to-backs', ICON.edit, `${b2b.length}`, b2b.length ? `${b2b.join(', ')} · ${MS.game.P.B2B} pts each in the Vault line` : 'Nobody on the second night');
+  };
+  $('skpis').innerHTML = !G.length ? '' : !lines ? svk() :
     kpi('Games', ICON.clock, `${G.length}`, `${reg ? `${reg} regular season` : ''}${reg && G.length - reg ? ' · ' : ''}${G.length - reg ? `${G.length - reg} preseason` : ''}`) +
     kpi('Biggest Vault gap', ICON.pts, top ? `${fmt(Math.abs(top.d))} pts` : 'n/a', top ? `${top.g.away} @ ${top.g.home}: Vault leans ${top.d < 0 ? top.g.home : top.g.away}. Context, not a bet` : reg ? 'Needs a posted spread' : 'No Vault line in preseason') +
     kpi('Strongest sharp lean', ICON.star, lean ? lean.team : 'No clear lean', lean ? `${lean.n} of ${lean.of} sharp signals point to ${lean.team} in ${lean.g.away} @ ${lean.g.home}: ${lean.names.join(', ')}.${lean.n < lean.of ? ` ${lean.of - lean.n} stayed quiet or disagree.` : ''} Context, not a bet.` : 'Needs two sharp signals to agree. Splits and sharp trades fill in closer to tip.') +
     kpi('Back-to-backs', ICON.edit, `${b2b.length}`, b2b.length ? `${b2b.join(', ')} · ${MS.game.P.B2B} pts each in the Vault line` : 'Nobody on the second night');
   $('sgames').classList.add('lv');
-  $('sgames').innerHTML = G.map(g => lineCard(g, B, status)).join('');
+  for (const k in svMin) delete svMin[k];
+  $('sgames').innerHTML = G.map(g => lines ? lineCard(g, B, status) : slateCard(g, B, status)).join('');
   renderSlateRatings();
+  if (!lines){
+    const per = MU && MU.persistence || {};
+    $('sfoot').innerHTML = `<div><b>Starting fives.</b> Confirmed means NBA.com has posted the lineup; Expected means it lists part of the five; Projected is the depth chart until lineups post. Minutes are the Minutes Lab's game-day numbers. Out and doubtful come from the official injury report and the books' news.</div>
+      <div><b>Defense by position.</b> Each pill is how many points, rebounds, assists and threes a team gave up per game to players at that depth-chart position, ranked 1 to 30 (1st gives up the most; green is a soft spot, red a tough one). It is last season's regular season (${MU ? MU.season : 'n/a'}) until this season has enough games, and players with no depth slot are left out. <b>Context, not an edge.</b> Splitting last season in half, a team's rank in one half barely predicted the other (rank correlation ${per.pts != null ? per.pts : 'n/a'} for points, ${per.reb != null ? per.reb : 'n/a'} for rebounds, ${per.ast != null ? per.ast : 'n/a'} for assists, ${per['3pm'] != null ? per['3pm'] : 'n/a'} for threes), and the books already know these ranks.</div>`;
+    return;
+  }
   $('sfoot').innerHTML = `
     <div><b>The Vault line</b> is the game model: each team's rating (points better than an average team on a neutral floor, updated after every game and carried into a new season at the rate the backtest chose), ${MS && MS.game ? fmt(MS.game.hfa) : ''} points of home court, ${MS && MS.game ? MS.game.P.B2B : ''} points off a team on the second night of a back-to-back, and the injury report: each listed player's game score above replacement times how often players with that status actually sat (Questionable ${MS && MS.game ? pc(MS.game.p_out.Questionable) : ''}, Doubtful ${MS && MS.game ? pc(MS.game.p_out.Doubtful) : ''}), for players who played in the last ${MS && MS.game ? MS.game.P.ROT_DAYS : 21} days. Win % is a normal curve around the margin, sigma ${MS && MS.game ? fmt(MS.game.sd_margin) : ''} points, as backtested.</div>
     <div><b>Context, not an edge.</b> Tested on 2,641 games of 2024-25 and 2025-26, the model adds nothing the closing spread has not priced (t = 1.23), and at prices you could actually trade (Kalshi at 1pm) its moneyline lost after fees. A big gap means the market knows something the model does not, more often than the reverse. Nothing here is logged to the shadow ledger.</div>
@@ -4524,7 +4641,7 @@ function renderSlate(){
 }
 function renderSlateRatings(){
   const G = MS && MS.game;
-  if (!G){ $('sratings').hidden = true; return; }
+  if (!G || view !== 'lines'){ $('sratings').hidden = true; return; }
   const ts = Object.keys(G.R).sort((a, b) => G.R[b] - G.R[a]);
   const rk = (o, k) => Object.keys(o).sort((a, b) => o[b] - o[a]).indexOf(k) + 1;
   $('sratings').hidden = false;

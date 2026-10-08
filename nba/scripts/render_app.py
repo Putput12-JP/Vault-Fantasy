@@ -157,6 +157,7 @@ def render():
                .replace('/*BACKTESTS*/null', json.dumps(load('backtests.json'), separators=(',', ':')))
                .replace('/*PICKEM*/null', json.dumps(pickem(), separators=(',', ':')))
                .replace('/*CONTROL*/null', json.dumps(control(), separators=(',', ':')))
+               .replace('/*MATCHUPS*/null', json.dumps(load('matchups.json'), separators=(',', ':')))
                .replace('/*PHOTOS*/null', json.dumps(load('photos.json'), separators=(',', ':'))))
     out = os.path.join(HERE, '..', 'projections.html')
     open(out, 'w').write(html)

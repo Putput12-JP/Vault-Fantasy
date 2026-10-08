@@ -185,7 +185,7 @@ def main():
             pos = group(p['pos'])
             rate = r['rate'] if r else pos_prior[pos]
             players.append({'id': p['id'], 'name': p['name'], 'pos': p['pos'], 'grp': pos,
-                            'rank': p['best_rank'], 'slotted': p['slotted'], 'rookie': p['rookie'], 'moved': p['moved'],
+                            'rank': p['best_rank'], 'slot': min(p['depth'], key=lambda x: x['rank'])['pos'] if p['depth'] else None, 'slotted': p['slotted'], 'rookie': p['rookie'], 'moved': p['moved'],
                             'last_team': p['last_team'], 'last_mpg': p['last_mpg'], 'gp': p['last_gp'],
                             'draft': p['draft']['pick'] if p['draft'] else None,
                             'injury': p['injury'][0] if p['injury'] else None,
