@@ -1635,6 +1635,10 @@ th{font-weight:500}
       </div>
       <section class="card"><div class="card-h"><div><h2>Prop model</h2><p>Each version against the price it would bet into, same rows for every model.</p></div></div><div class="card-b" id="btprop"></div></section>
       <section class="card"><div class="card-h"><div><h2>Consensus engine</h2><p>One venue's prices moved to another venue's line, blended with the model.</p></div></div><div class="card-b" id="btcons"></div></section>
+      <section class="card" id="btextc" hidden>
+        <div class="card-h"><div><h2>Extra markets</h2><p>Steals, blocks, turnovers and the rest: priced by the same minutes-times-rate model, never a gated bet until a test passes.</p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt" id="btext"></table></div></div>
+      </section>
       <section class="card" id="btpendc" hidden>
         <div class="card-h"><div><h2>Waiting on this season's games</h2><p>Tests whose rules are already frozen. Each one runs once on games it has never seen, and the verdict follows the rule.</p></div></div>
         <div class="card-b"><div class="nt-tw"><table class="nt" id="btpend"></table></div></div>
@@ -4752,6 +4756,10 @@ function renderLab(){
       return `<tr><td class="l"><b>Kalshi ${s.stat.toUpperCase()} ${s.side}</b></td><td class="l">${esc(s.engine)}</td><td class="l">${pill(s.gate === 'GO' ? 'ok' : 'warn', s.gate)}</td><td>${(s.n || 0).toLocaleString()}</td><td>${s.games || ''}</td>
         <td class="${s.roi > 0 ? 'pos' : 'neg'}">${s.roi != null ? (s.roi >= 0 ? '+' : '') + (s.roi * 100).toFixed(1) + '%' : ''}</td><td>${s.z != null ? fmt(s.z, 2) : ''}</td>
         <td class="l">${!lv ? '<span class="muted">Track Record not loaded</span>' : lv.settled ? `${lv.w}-${lv.l}${lv.p ? '-' + lv.p : ''} · <span class="${lv.u >= 0 ? 'pos' : 'neg'}">${lv.u >= 0 ? '+' : ''}${(lv.u / lv.settled * 100).toFixed(1)}%</span> <small>${lv.settled} settled</small>` : lv.bets ? `${lv.bets} open` : '<span class="muted">No bets yet</span>'}</td></tr>`; }).join('')}</tbody>`;
+  // the extra markets: how the projection did, and how the book compared where there is a book to compare to
+  $('btextc').hidden = !(BT.extra && BT.extra.length);
+  $('btext').innerHTML = `<thead><tr><th class="l">Market</th><th>Avg per player-game</th><th title="Mean absolute miss of the projection, 2025-26">Projection miss</th><th title="Brier score of the model's over chance at the line a book would post (lower is better), against always guessing the base rate">Self-check</th><th title="Brier score on ESPN's 2025-26 closing lines: model against the book">Vs the book</th><th class="l">Verdict</th><th class="l">What is next</th></tr></thead><tbody>
+    ${(BT.extra || []).map(x => `<tr><td class="l"><b>${esc(x.name)}</b></td><td>${x.mean_actual}</td><td>${x.mae}</td><td>${x.self ? `${x.self.brier_model} <small class="muted">vs ${x.self.brier_base}</small>` : ''}</td><td>${x.espn ? `${x.espn.brier_model} <small class="${x.espn.brier_model <= x.espn.brier_market ? 'pos' : 'neg'}">vs ${x.espn.brier_market}</small><small class="muted">${x.espn.n_rows} lines</small>` : '<span class="muted">no prices</span>'}</td><td class="l">${pill('bad', esc(x.verdict))}</td><td class="l sx-txt" style="min-width:200px;max-width:320px">${esc(x.next)}</td></tr>`).join('')}</tbody>`;
   // tests with frozen rules that are waiting for this season's games
   $('btpendc').hidden = !(BT.pending && BT.pending.length);
   $('btpend').innerHTML = `<thead><tr><th class="l">Test</th><th class="l">Rule</th><th class="l">First look</th><th class="l">Status</th><th class="l"></th></tr></thead><tbody>

@@ -332,6 +332,19 @@ def main():
         dont.append(['Buying overs (YES) on Kalshi', 'The mirror image of the bets that pass: YES is overpriced in every stat, so buying it loses unless our model finds a rare exception.', 'Kalshi, 2025-26'])
     dont.append(['Copying sharp bettors late', 'Accounts with a winning record do beat the closing price, but copying their side 30 minutes to 2 hours later lost money.', '31k Polymarket trades'])
     dont.append(['Following the biggest tickets', 'Size is not skill: even $100k+ tickets lost to the closing price on average.', 'Polymarket tape'])
+    ex = load('prop_model_extra.json') or {}
+    NAMES = {'stl': 'Steals', 'blk': 'Blocks', 'tov': 'Turnovers', 'sb': 'Steals + blocks', 'fgm': 'Field goals made', 'fga': 'Field goals attempted', 'ftm': 'Free throws made',
+             'fta': 'Free throws attempted', 'tpa': '3-pointers attempted', 'oreb': 'Offensive rebounds', 'dreb': 'Defensive rebounds', 'pf': 'Personal fouls'}
+    extra = []
+    for m, nm in NAMES.items():
+        a_, c_, e_ = (ex.get('accuracy') or {}).get(m), (ex.get('selfcheck') or {}).get(m), (ex.get('espn_2026') or {}).get(m)
+        if not a_:
+            continue
+        extra.append({'m': m, 'name': nm, 'mae': a_['mae'], 'mean_actual': a_['mean_actual'], 'n': a_['n'],
+                      'self': {'brier_model': c_['brier_model'], 'brier_base': c_['brier_base_rate']} if c_ else None,
+                      'espn': {k: e_[k] for k in ('n_rows', 'brier_model', 'brier_market', 'logloss_model', 'logloss_market')} if e_ else None,
+                      'verdict': (ex.get('verdict') or {}).get(m, 'NO-GO'),
+                      'next': 'Scored against ESPN closing lines already; more main lines accumulate from opening night' if e_ else 'No price history: lines are collected from opening night, then a first test'})
     nb = ((nl.get('news') or {}).get('bets')) or 0
     pending = [
         {'name': 'Joint model of players\' stats (copula A2)', 'area': 'Game simulation', 'due': '2026-11-09', 'doc': 'copula-fit-a2.md',
@@ -346,7 +359,7 @@ def main():
          'rule': "Pick the side with fair chance at least 3 points above the flex break-even: 150 picks over 40 games, hit rate above 54.25% at z >= 2.4, both halves above.", 'status': 'Rule frozen; Pinnacle props not posting in preseason'},
     ]
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'doc': DOC,
-           'signals': signals, 'log': log, 'pending': pending, 'finder': finder, 'myth': myth, 'dont': dont, 'game': game, 'minutes': minutes, 'usage': usage, 'props': props, 'consensus': consensus,
+           'signals': signals, 'log': log, 'pending': pending, 'extra': extra, 'finder': finder, 'myth': myth, 'dont': dont, 'game': game, 'minutes': minutes, 'usage': usage, 'props': props, 'consensus': consensus,
            'test': {'seasons': 'fit 2024-25, test 2025-26', 'player_games': (pf or {}).get('n_test'), 'games': (game or {}).get('games')}}
     json.dump(out, open(OUT, 'w'), separators=(',', ':'))
     print(f"backtests: {len(log)} tests, {len(signals)} GO / WATCH signals -> {os.path.relpath(OUT)} ({os.path.getsize(OUT) // 1000} KB)")
