@@ -656,9 +656,11 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 @media (max-width:600px){ .pv-dh,.pv-sec{padding:16px} .pv-wf .wr{grid-template-columns:120px minmax(0,1fr) 52px} .pv-mins{grid-template-columns:minmax(0,1fr) auto} .pv-mins .pv-mbar{grid-column:1/-1;order:3} .pv-sg{grid-template-columns:minmax(0,1fr);gap:4px} .pv-sk{justify-self:start} .pv-row2 .pfind{flex:1 1 140px} }
 /* Pick'em Pairs: teammate pairs from the correlation test, drawn as entry slips */
 .pp-wrap{display:grid;gap:var(--gap);min-width:0}
-.pp-read{padding:18px 22px;display:grid;gap:8px}
+.pp-read{padding:14px 20px;display:grid;gap:6px}
 .pp-read p{margin:0;font-size:13.5px;color:var(--fg2);max-width:84ch}
 .pp-read p b{color:var(--fg);font-weight:600}
+.pp-rules{margin-top:2px}.pp-rules summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--warn);width:max-content}.pp-rules[open] summary{margin-bottom:6px}.pp-rules p{margin:0 0 6px;font-size:12.5px}
+#pp-diff{width:16px;height:16px;margin:0;accent-color:var(--fg)}
 .pp-read .big{font-size:17px;color:var(--fg);font-weight:600;letter-spacing:-.01em}
 .pp-tests{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap)}
 .pp-tst{padding:16px 18px;display:grid;gap:4px;align-content:start}
@@ -5878,11 +5880,12 @@ function renderPairs(){
   const near = (PKC.near || [])[0];
   $('pp-root').innerHTML = `
     <section class="card pp-read">
-      <p class="pp-note warn pp-rule"><b>Check your app's rules first.</b> Some pick'em apps make you pick two players on different teams. Every pair that passed our test is two teammates, so those pairs can only be played where the app allows same-team picks. The opposing-team combinations we tested did not pass.</p>
-      <p class="pp-note pp-rule">Picks in different games work too, but they are independent: nothing boosts the pair, so at 3x each pick needs 57.7%. Bigger entries ask less per pick (power payouts of 3x, 5x, 10x, 20x and 37.5x need 57.7%, 58.5%, 56.2%, 54.9% and 54.5%). On near-even lines the model's picks hit about 52 to 53% in a 2-pick, short of every one of those bars, so unrelated picks have no tested edge. What would change that is a line the app has moved off the sharp price (tested from Nov 23).</p>
       <p class="big">Two kinds of teammate picks hit together more often than their prices say.</p>
-      <p>Pick'em apps pay the same multiple on any 2-pick entry, as if the picks had nothing to do with each other. A player's <b>assists</b> and his teammate's <b>points</b> or <b>3-pointers</b> do: the passes become the shots, so when one goes over the other tends to as well, and when one goes under, so does the other. Pair them the same way, both More or both Less, and the entry wins more often than the app pays for.</p>
-      <p>The lift is modest: about <b>4%</b> on a 2-pick. At ${pp.pay}x it lowers the bar each pick has to clear from <b>${pc(Math.sqrt(ppBE()), 1)}</b> to about <b>${pc(need, 1)}</b>. Pairing helps good picks; it does not rescue bad ones. Picks from different games are unrelated, so every pair here is two teammates.</p>
+      <p>A player's <b>assists</b> with his teammate's <b>points</b> or <b>3-pointers</b>: the passes become the shots. Pair them the same way (both More or both Less) and a 2-pick wins about <b>4%</b> more often than the app pays for, which lowers the bar per pick at ${pp.pay}x from <b>${pc(Math.sqrt(ppBE()), 1)}</b> to about <b>${pc(need, 1)}</b>. It helps good picks; it does not rescue bad ones.</p>
+      <details class="pp-rules"><summary>Check your app's rules first</summary>
+        <p>Some apps make you pick players on different teams. Every pair that passed is two teammates, so they can only be played where the app allows same-team picks; the opposing-team combinations did not pass.</p>
+        <p>Picks in different games are independent, so nothing boosts the pair. Bigger entries ask less per pick (power payouts of 3x, 5x, 10x, 20x and 37.5x need 57.7%, 58.5%, 56.2%, 54.9% and 54.5%), but on near-even lines the model's picks hit only 52 to 53% in a 2-pick. What would change that is a line the app has moved off the sharp price (tested from Nov 23).</p>
+      </details>
     </section>
     <div class="pp-tests">${Object.values(PP_FAM).map(F => `<section class="card pp-tst">${pill('ok', 'Passed a pre-registered test')}<b>${F.a === 'ast' || F.b === 'ast' ? (F.a === 'pts' || F.b === 'pts' ? 'Points with assists' : 'Assists with 3-pointers') : esc(F.family)}</b>
         <span class="big">+${pc(F.c / .25, 1)}</span><span>more often both hit on a 2-pick: teammates, both More or both Less</span>
