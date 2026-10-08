@@ -40,3 +40,18 @@ Sizes k = 2, 3, 4, 5, 6.
   the break-even for its size, which is the number that says how far from profitable it is.
 - Also reported, not decided on: how many points of line shading (the app's line off the sharp line, in stat units, by stat) a pick
   needs to reach each size's break-even, from the fitted variance at a typical player's mean.
+
+---
+
+## Run 1 result and amendment (2026-10-08, written before run 2)
+
+**Run 1 (rules above, frozen) was NO-GO.** The fit season selected S3 at size 6 (the market-favourite baseline), which the rule
+says can only mean NO-GO. Run 1 also exposed a flaw in the rule as written: it allowed legs at any price between 12% and 88%, so
+the "favourite side" strategy picked legs priced at 80% and above. A pick'em app does not offer those: it posts a line near the
+median, so every pick is close to a coin flip before any edge. Those legs hit far above anything achievable (73-79% on 2024-25 opening
+prices, which are also the least reliable rows) and cannot be played. The run-1 table is kept as the record and is not used.
+
+**Amendment, run 2:** legs are restricted to lines a pick'em app could post: the book's no-vig chance of the over between **45% and 55%**.
+Everything else is unchanged: the fit and test seasons, the three rankings, sizes 2 to 6, up to 3 entries per size per day,
+selection on 2024-25, the verdict thresholds, and S3 can still only produce NO-GO. S3 is now "the side the market likes a little
+more" and works as a baseline. One run, no further changes.
