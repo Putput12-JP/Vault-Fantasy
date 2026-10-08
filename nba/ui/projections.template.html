@@ -4414,18 +4414,18 @@ function lineCard(g, B, status){
   const spot = behind.length ? `<div class="lv-spot"><i></i><p><b>${behind.map(b => esc(b.n)).join(' and ')}</b> ${behind.length === 1 ? 'is' : 'are'} behind the market (${behind.map(b => `${b.s ? `${g.home} ${lvF1(b.s.l)}` : ''}${b.s && b.t ? ', ' : ''}${b.t ? `total ${b.t.l}` : ''}`).join(' and ')} against ${cons.s ? `${g.home} ${lvF1(cons.s.l)}` : ''}${cons.s && cons.t ? ' and ' : ''}${cons.t ? cons.t.l : ''}), updated up to ${Math.round((cons.ts - Math.min(...behind.map(b => b.ts))) / 60)} minutes earlier.</p></div>` : '';
   // book board
   const rows = books.filter(b => !b.pin && (mkt === 'm' ? (b.m.h != null || b.m.a != null) : mkt === 's' ? b.s : b.t));
-  const best = [0, 1].map(s => Math.max(...rows.map(b => lvScore(b, mkt, s))));
-  const sorted = [...rows].sort((a, b) => (lvScore(b, mkt, 0) + lvScore(b, mkt, 1)) - (lvScore(a, mkt, 0) + lvScore(a, mkt, 1))), shown = showAll ? sorted : sorted.slice(0, 4);
+  const fresh = rows.filter(b => !behind.includes(b)), best = [0, 1].map(s => Math.max(...(fresh.length ? fresh : rows).map(b => lvScore(b, mkt, s))));   // a book behind the market is never "best price": its number is stale, not good
+  const sorted = [...rows].sort((a, b) => (behind.includes(a) - behind.includes(b)) || (lvScore(b, mkt, 0) + lvScore(b, mkt, 1)) - (lvScore(a, mkt, 0) + lvScore(a, mkt, 1))), shown = showAll ? sorted : sorted.slice(0, 4);
   const cell = (b, s, pin) => { let inner;
     if (mkt === 'm'){ const v = s ? b.m.a : b.m.h; inner = v == null ? '<span class="muted">-</span>' : `<b>${lvPx(v)}</b>`; }
     else if (mkt === 's'){ if (!b.s) inner = '<span class="muted">-</span>'; else { const l = s ? -b.s.l : b.s.l; inner = `<span class="lv-c"><b>${s ? g.away : g.home} ${lvF1(l)}</b><small>${lvPx(s ? b.s.a : b.s.h)}</small></span>`; } }
     else { if (!b.t) inner = '<span class="muted">-</span>'; else inner = `<span class="lv-c"><b>${s ? 'U' : 'O'} ${b.t.l}</b><small>${lvPx(s ? b.t.u : b.t.o)}</small></span>`; }
-    return `<td><span class="${!pin && lvScore(b, mkt, s) === best[s] && rows.length > 1 ? 'lv-best' : ''}">${inner}</span></td>`; };
+    return `<td><span class="${!pin && !behind.includes(b) && lvScore(b, mkt, s) === best[s] && rows.length > 1 ? 'lv-best' : ''}">${inner}</span></td>`; };
   const tr = (b, pin) => { let vs = '';
     if (mkt !== 'm' && !pin && cons){ const d = mkt === 's' ? (b.s && cons.s ? b.s.l - cons.s.l : null) : (b.t && cons.t ? b.t.l - cons.t.l : null); if (d != null) vs = d === 0 ? '<span class="muted">in line</span>' : `<span class="${Math.abs(d) >= 1 ? 'neg' : ''}">${d > 0 ? '+' : ''}${d.toFixed(1)} pts</span>`; }
     return `<tr class="${pin ? 'lv-pin' : ''}"><td class="l">${esc(b.n)}${behind.includes(b) ? '<span class="lv-stale">behind</span>' : ''}</td>${cell(b, 0, pin)}${cell(b, 1, pin)}${mkt === 'm' ? '' : `<td>${vs}</td>`}</tr>`; };
   const hd = mkt === 'm' ? [g.home, g.away] : mkt === 's' ? [`${g.home} spread`, `${g.away} spread`, 'vs consensus'] : ['Over', 'Under', 'vs consensus'];
-  const board = books.length ? `<div class="lv-board"><div class="lv-bh"><div><h3>Book board</h3><p>The best price on each side is highlighted. Open and Consensus are pinned; books are sorted best first.</p></div>
+  const board = books.length ? `<div class="lv-board"><div class="lv-bh"><div><h3>Book board</h3><p>The best price on each side is highlighted (books behind the market are never picked). Open and Consensus are pinned; books are sorted best first.</p></div>
       <div class="seg" role="group" aria-label="Market">${[['s', 'Spread'], ['t', 'Total'], ['m', 'Moneyline']].map(([k, l]) => `<button type="button" data-lm="${k}" data-g="${gid}" aria-pressed="${mkt === k}">${l}</button>`).join('')}</div></div>
     <div class="nt-tw"><table class="nt lv-t"><thead><tr><th class="l">Book</th>${hd.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${books.filter(b => b.pin).map(b => tr(b, true)).join('')}${shown.map(b => tr(b, false)).join('')}</tbody></table></div>
     ${rows.length > 4 ? `<div class="lv-more"><button class="linkbtn" type="button" data-lall="${gid}">${showAll ? 'Show fewer books' : `Show all ${rows.length} books`}</button></div>` : ''}</div>` : '';
