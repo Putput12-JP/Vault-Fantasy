@@ -43,7 +43,7 @@ export function Sidebar({ pages, view, season, pvCount, onGo, collapsed, onToggl
           {brand && brand.logo ? <img src={brand.logo} alt="" width="36" height="36" style={{ display: 'block', objectFit: 'contain' }} />
             : <span style={{ width: 36, height: 36, borderRadius: tokens.radius.sm, background: pal.text, color: pal.bg, ...tokens.type.xs, fontWeight: tokens.weight.bold, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>NBA</span>}
         </button>
-        <div className="sb-brandtxt" style={{ minWidth: 0, flex: 1 }}><Text size="md" weight="semibold">Vault NBA</Text><div><Mono>{season}</Mono></div></div>
+        <div className="sb-brandtxt" style={{ minWidth: 0, flex: 1 }}><Text size="md" weight="semibold">Vault NBA</Text></div>
         <button type="button" className="sb-tog" onClick={onToggle} aria-label={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'} aria-expanded={!collapsed} data-tip={collapsed ? 'Expand' : 'Collapse'} title="Collapse or expand ( [ )">{chev}</button>
       </div>
       <nav aria-label="Pages">
