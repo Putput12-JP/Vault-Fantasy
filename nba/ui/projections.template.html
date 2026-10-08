@@ -1029,7 +1029,8 @@ table.nt .bt-best{color:var(--fg);font-weight:600}
 @media (max-width:600px){ .bt-entry{grid-template-columns:minmax(0,1fr);gap:6px} .bt-when{flex-direction:row;gap:10px} .bt-bar{grid-template-columns:minmax(0,1fr) auto} .bt-bar i{grid-column:1/-1;order:3} .bt-bar small{order:4;margin-top:0} }
 /* Sharp Price */
 .nt-tw.sx-cap{overflow-y:auto;overscroll-behavior:contain}.nt-tw.sx-cap #xfeed thead th{position:sticky;top:0;z-index:1;background:var(--surface);box-shadow:0 1px 0 var(--border)}
-.np-b{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;align-items:start}@media(max-width:820px){.np-b{grid-template-columns:minmax(0,1fr)}}
+.np-b{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:center}.np-lead{display:flex;align-items:flex-end;gap:16px;padding:0 4px;min-width:0}.np-w{display:grid;gap:3px;min-width:0;align-self:center;padding:10px 0}.np-w b{font-size:18px;letter-spacing:-.02em}.np-pk{font-size:15px;font-weight:600}.np-w small{color:var(--fg3);font-size:12px}.np-pill{display:inline-flex}.np-e{margin-left:auto;display:grid;justify-items:end;gap:1px;align-self:center;text-align:right}.np-e b{font:600 28px var(--font-mono);letter-spacing:-.04em}.np-e small{color:var(--fg3);font-size:11.5px}
+@media(max-width:820px){.np-lead{flex-wrap:wrap}.np-e{margin-left:0;justify-items:start;text-align:left}}@media(max-width:820px){.np-b{grid-template-columns:minmax(0,1fr)}}
 .np-b>.pp-slip{margin:0}.pp-rule{margin:8px 0 0}.pp-read .pp-rule{margin:0 0 12px}.np-s{display:grid;gap:8px}.np-l{margin:0 0 2px;font:600 10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.np-l span{text-transform:none;letter-spacing:0;font-family:var(--font-sans);font-weight:400;margin-left:6px}
 .np-r{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;border-radius:12px;background:var(--raised)}.np-r small{display:block;color:var(--fg3);font-size:12px}.np-r .pos{font-family:var(--font-mono);font-weight:600}
 .sx-note{margin:8px 0 0;font-size:12px;color:var(--fg3)}
@@ -1529,7 +1530,7 @@ th{font-weight:500}
     <footer id="wfoot" hidden></footer>
     <main id="v-tonight" hidden>
       <div class="banner" id="nbanner" hidden></div>
-      <section class="card np" id="npick" hidden></section>
+      <section class="card np" id="nprop" hidden></section>
       <section class="card tbar"><div class="tfilters" id="ngames"></div></section>
       <div class="kpis" id="nkpis"></div>
       <div class="nt-teams" id="nteams"></div>
@@ -3649,27 +3650,36 @@ function marketMinutes(B, g, team, pid, min, cache){
   }
   return null;
 }
-// Pick'em of the night: the best 2-pick (the one pick'em edge that passed its pre-registered test: teammates' stats that move together)
-// and the three biggest single leans. Singles are the model alone with no market price to check them, so they are labelled leans.
-// Held props (preseason, new rosters) are never shown here.
-function renderPickemNight(){
-  const el = $('npick');
-  if (!PKC || !Object.keys(PP_FAM).length || PS.mode === 'example'){ el.hidden = true; return; }
-  const now = Date.now() / 1000, rows = pvRows().rows.filter(r => r.game && r.game.tip > now && !r.hold);
-  const pair = pp.diff ? null : ppPairs(rows).find(x => x.v !== 'pass');
-  const seen = new Set(), singles = rows.filter(r => r.pkBest && r.pkBest.edge > 0).sort((a, b) => b.pkBest.edge - a.pkBest.edge)
-    .filter(r => !seen.has(r.e.p) && seen.add(r.e.p)).slice(0, 3);
+// Prop of the night: the one best prop on tonight's board, honestly ranked. A bet that passed its backtest beats a watch, a watch beats a
+// lean (a real price with an edge the backtest has not confirmed), and a lean beats a pick'em line (the model alone, no market price to check it).
+// Held props (preseason, new rosters) are never shown, and neither are games that have tipped.
+function renderPropNight(){
+  const el = $('nprop');
+  if (PS.mode === 'example'){ el.hidden = true; return; }
+  const now = Date.now() / 1000, rows = pvRows().rows.filter(r => r.game && r.game.tip > now && !r.hold), seen = new Set(), items = [];
+  for (const r of rows){
+    const b = r.best;
+    if (b && b.edge >= EDGE_MIN) items.push({r, tier: b.g === 'go' ? 0 : b.g === 'watch' ? 1 : 2, c: b, edge: b.edge, pick: pvBetName(b), where: b.venue === 'kalshi' ? 'Kalshi' : b.bk, price: pvPrice(b)});
+    else if (r.pkBest && r.pkBest.edge > 0) items.push({r, tier: 3, c: r.pkBest, edge: r.pkBest.edge, pick: `${r.pkBest.side} ${r.pkBest.line}`, where: PKN[r.pkBest.bk] || r.pkBest.bk, price: pvPrice(r.pkBest)});
+  }
+  items.sort((a, b) => a.tier - b.tier || b.edge - a.edge);
+  const top = items.filter(x => !seen.has(x.r.e.p) && seen.add(x.r.e.p)).slice(0, 3), [lead, ...more] = top;
+  const TIER = [['BET', 'ok', 'The strongest bet on tonight\'s board that passed its backtest.'], ['WATCH', 'warn', 'The strongest watch-list prop: it passed part of its backtest.'],
+    ['LEAN', 'idle', 'No bet passes its backtest tonight. This is the biggest edge on a real price, which the backtest has not confirmed.'],
+    ['PICK\'EM LEAN', 'idle', 'No priced bet clears the bar. This is the biggest pick\'em lean: the model alone, with no market price to check it.']];
   el.hidden = false;
-  const empty = !pair && !singles.length;
-  el.innerHTML = `<div class="card-h"><div><h2>Pick'em of the night</h2><p>${pair ? 'The best 2-pick on tonight\'s board: two teammates\' stats that tend to hit together.' : singles.length ? (pp.diff ? 'Your app needs different teams, and no different-team pairing passed our test. Here are the biggest single leans.' : 'No 2-pick clears the bar yet. Here are the biggest single leans.') : 'Nothing worth a look yet.'}</p></div>
-      <button class="linkbtn" type="button" data-go="pairs">All pairs</button></div>
-    <div class="card-b np-b">${empty ? `<p class="muted">Pick'em lines post closer to tip, and preseason and new-roster props are held back, so there is no pick to show yet.</p>`
-      : `${pair ? `${ppSlip(pair, true)}<p class="pp-note warn pp-rule">Some apps make you pick two players on different teams. These two are teammates, so check your app lets you combine them.</p>` : ''}${singles.length ? `<div class="np-s"><p class="np-l">Biggest single leans <span>model only, no market price to check them</span></p>${singles.map(r => `<div class="np-r"><span class="pl">${avSm(r.e.p, r.name)}<div><b>${esc(r.name)}</b><small>${esc(r.team)} · ${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line} ${esc(PV_NOUN[r.e.s] || r.e.s)}</small></div></span><span class="pos">${ec(r.pkBest.edge)}</span></div>`).join('')}</div>` : ''}`}</div>`;
+  if (!lead){ el.innerHTML = `<div class="card-h"><div><h2>Prop of the night</h2><p>Nothing worth a look yet.</p></div></div><div class="card-b"><p class="muted">Lines post closer to tip, and preseason and new-roster props are held back, so there is no prop to show yet.</p></div>`; return; }
+  const r = lead.r, T = TIER[lead.tier], g = r.game, opp = r.team === g.home ? g.away : g.home;
+  el.innerHTML = `<div class="card-h"><div><h2>Prop of the night</h2><p>${T[2]}</p></div><button class="linkbtn" type="button" data-prop="${esc(r.name)}">Open in Player Props</button></div>
+    <div class="card-b np-b"><div class="np-lead">${cutImg(r.e.p, r.name, 72)}
+      <div class="np-w"><span class="np-pill">${pill(T[1], T[0])}</span><b>${esc(r.name)}</b><span class="np-pk">${esc(lead.pick)} ${esc(PV_NOUN[r.e.s] || r.e.s)}</span><small>${esc(r.team)} ${g.home === r.team ? 'vs' : 'at'} ${esc(opp)} · ${clock(g.tip)} ET · ${esc(lead.where)} ${esc(lead.price)} · proj ${fmt(r.mu)}</small></div>
+      <div class="np-e"><small>Edge</small><b class="pos">${ec(lead.edge)}</b><small>fair ${pc(lead.c.fair, 0)}</small></div></div>
+      ${more.length ? `<div class="np-s"><p class="np-l">Next best</p>${more.map(x => `<div class="np-r"><span class="pl">${avSm(x.r.e.p, x.r.name)}<div><b>${esc(x.r.name)}</b><small>${esc(x.where)} ${esc(x.pick)} ${esc(PV_NOUN[x.r.e.s] || x.r.e.s)} · ${esc(TIER[x.tier][0].toLowerCase())}</small></div></span><span class="pos">${ec(x.edge)}</span></div>`).join('')}</div>` : ''}</div>`;
 }
-$('npick').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) goView(b.dataset.go); });
+$('nprop').addEventListener('click', e => { const b = e.target.closest('[data-prop]'); if (b) labProps(b.dataset.prop); });
 function renderTonight(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
-  renderPickemNight();
+  renderPropNight();
   const B = PS.board, games = [...(B.games || [])].sort((a, b) => a.tip - b.tip);
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
