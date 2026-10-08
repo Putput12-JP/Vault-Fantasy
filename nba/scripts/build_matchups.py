@@ -19,6 +19,7 @@ DATA = os.path.join(HERE, '..', 'data')
 POS = ['PG', 'SG', 'SF', 'PF', 'C']
 STATS = ['pts', 'reb', 'ast', '3pm', 'pra', 'stl', 'blk', 'tov']
 TEAM_STATS = ['pts', 'reb', 'ast', '3pm', 'tpa', 'tov']
+MIN_GAMES = 15
 FAKE = {'STARS', 'WORLD', 'STRIPES'}
 
 
@@ -48,12 +49,18 @@ def build():
         for p in t['players']:
             if p['depth']:
                 pos[str(p['id'])] = min(p['depth'], key=lambda x: x['rank'])['pos'].upper()
-    season = max(r[1] for rows in g['players'].values() for r in rows) - 1       # rows carry the season's end year (2026 = 2025-26)
-    games = defaultdict(set)                                    # team -> days it played
+    # rows carry the season's end year (2026 = 2025-26). The newest season is used once every team has MIN_GAMES of it, else the one before.
+    per = defaultdict(lambda: defaultdict(set))                 # season -> team -> days played
     for rows in g['players'].values():
         for r in rows:
             if not r[c.index('playoff')] and T[r[c.index('opp')]] not in FAKE:
-                games[T[r[c.index('opp')]]].add(r[0])
+                per[r[1]][T[r[c.index('opp')]]].add(r[0])
+    newest = max(per)
+    ready = len(per[newest]) >= 30 and min(len(v) for v in per[newest].values()) >= MIN_GAMES
+    use = newest if ready or len(per) == 1 else sorted(per)[-2]
+    season = use - 1
+    g['players'] = {k: [r for r in rows if r[1] == use] for k, rows in g['players'].items()}
+    games = per[use]
     days = sorted({x for v in games.values() for x in v})
     mid = days[len(days) // 2]
     def table(lo, hi):
