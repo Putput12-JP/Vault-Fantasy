@@ -133,6 +133,13 @@ def main():
         cp = sum(wi * f['test']['c'] for wi, f in zip(w, opp)) / sum(w)
         pk_diff = (f"{len(opp)} opposing-team families, {sum(1 for f in opp if f['candidate'])} candidates, {sum(1 for f in opp if f['pass'])} passes. The largest lift on 2025-26 was "
                    f"{max(f['test']['lift'] for f in opp) - 1:+.1%} (bar: 4%); pooled over all of them it is {cp / .25:+.1%}. With no lift, each pick would need 57.7% at a 3x payout.")
+    pe_ = load('pickem_entries.json')
+    pk_ent = ''
+    if pe_:
+        c = pe_['cells']
+        pk_ent = (f"On near-even lines the model's picks hit {c['S1/2']['test']['leg_hit']:.1%} each in a 2-pick (it needs 57.7% at 3x) and {c['S1/6']['test']['leg_hit']:.1%} in a 6-pick (it needs 54.7%). "
+                  f"Every cell lost money on 2025-26. Bigger entries ask less per pick, but the picks were not better than a coin flip. A pick would need its line shifted off fair by about "
+                  f"{pe_['shading']['pts']['2']} points (points, 2-pick) or {pe_['shading']['pts']['6']} (6-pick).")
     xs = (load('prop_model_extra.json') or {}).get('espn_2026')
     nl = load('news_lag_test.json') or {}
     log = [
@@ -275,6 +282,11 @@ def main():
          'rule': "A re-read of the same pre-registered test, no new threshold: an opposing-team family passes with 2,000+ pairs, z >= 3 on 2024-25, then the same sign at z >= 2 and a lift of at least 4% on 2025-26.",
          'result': pk_diff,
          'verdict': 'NO-GO', 'shipped': "A switch on Pick'em Pairs and Pick'em of the night for apps that need different teams: it shows no pairs and says why"},
+        {'id': 'pickem_entries', 'area': "Pick'em", 'when': '2026-10-08', 'doc': 'pickem-entries-results.md',
+         'q': "Pick'em entries can mix players from different games. Built from independent picks, which entry size and which way of choosing the picks would have been profitable?",
+         'rule': "Daily entries of 2 to 6 picks, one pick per player and game, three ways to rank the picks (model, model minus market, market). The best cell on 2024-25 is judged on 2025-26: ROI above zero at z >= 2.4 with 100+ entries and both halves positive. Run 1 allowed unrealistic lines (80% favourites), so a second run kept only lines near even money (45-55%), written down before it ran.",
+         'result': pk_ent,
+         'verdict': 'NO-GO', 'shipped': "Nothing; Pick'em Pairs says what each entry size needs per pick"},
         {'id': 'alt_tails', 'area': 'Edges', 'when': '2026-10-07', 'doc': 'alt-tails-results.md',
          'q': "Are alternate-line overs priced with a favourite-longshot shape, so some price bucket of them makes money?",
          'rule': "Bet the over at every ESPN alternate rung. Choose buckets on 2024-25 (1,000+ bets, return above zero, z >= 1.5), then judge them on 2025-26 (z >= 2.4, both halves positive).",
