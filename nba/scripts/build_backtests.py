@@ -125,6 +125,14 @@ def main():
     def ship_of(x):
         return (x or {}).get('ship') or 'v2'
     k3 = lambda d, c, s: (((d or {}).get('kalshi_bias') or {}).get(s, {}).get(c) or {}).get('blend/NO') or {}
+    pc_ = load('pickem_corr.json')
+    pk_diff = ''
+    if pc_:
+        opp = [f for f in pc_['families'] if f['family'].startswith('Opponents')]
+        w = [1 / f['test']['se'] ** 2 for f in opp]
+        cp = sum(wi * f['test']['c'] for wi, f in zip(w, opp)) / sum(w)
+        pk_diff = (f"{len(opp)} opposing-team families, {sum(1 for f in opp if f['candidate'])} candidates, {sum(1 for f in opp if f['pass'])} passes. The largest lift on 2025-26 was "
+                   f"{max(f['test']['lift'] for f in opp) - 1:+.1%} (bar: 4%); pooled over all of them it is {cp / .25:+.1%}. With no lift, each pick would need 57.7% at a 3x payout.")
     xs = (load('prop_model_extra.json') or {}).get('espn_2026')
     nl = load('news_lag_test.json') or {}
     log = [
@@ -262,6 +270,11 @@ def main():
          'rule': "Written before anyone bets on them: no prior season of main-line prices to calibrate or blend on, no book history for most, none on Kalshi, so every one of these is NO-GO. Steals and blocks are scored on ESPN's 2025-26 closing lines.",
          'result': (f"Steals: the model's Brier score {xs['stl']['brier_model']} against the book's {xs['stl']['brier_market']} on {xs['stl']['n_rows']} lines (level). Blocks: {xs['blk']['brier_model']} against {xs['blk']['brier_market']} on {xs['blk']['n_rows']} lines (behind the book). The others have no prices to score against.") if xs else '',
          'verdict': 'NO-GO', 'shipped': 'The markets are priced and shown on the Props Table, labelled untested, never a gated bet'},
+        {'id': 'pickem_diff', 'area': "Pick'em", 'when': '2026-10-08', 'doc': 'pickem-different-teams.md',
+         'q': "Some pick'em apps only let you combine players on different teams. Is there a pairing like that worth playing?",
+         'rule': "A re-read of the same pre-registered test, no new threshold: an opposing-team family passes with 2,000+ pairs, z >= 3 on 2024-25, then the same sign at z >= 2 and a lift of at least 4% on 2025-26.",
+         'result': pk_diff,
+         'verdict': 'NO-GO', 'shipped': "A switch on Pick'em Pairs and Pick'em of the night for apps that need different teams: it shows no pairs and says why"},
         {'id': 'alt_tails', 'area': 'Edges', 'when': '2026-10-07', 'doc': 'alt-tails-results.md',
          'q': "Are alternate-line overs priced with a favourite-longshot shape, so some price bucket of them makes money?",
          'rule': "Bet the over at every ESPN alternate rung. Choose buckets on 2024-25 (1,000+ bets, return above zero, z >= 1.5), then judge them on 2025-26 (z >= 2.4, both halves positive).",

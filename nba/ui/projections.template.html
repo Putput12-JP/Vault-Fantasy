@@ -3656,12 +3656,12 @@ function renderPickemNight(){
   const el = $('npick');
   if (!PKC || !Object.keys(PP_FAM).length || PS.mode === 'example'){ el.hidden = true; return; }
   const now = Date.now() / 1000, rows = pvRows().rows.filter(r => r.game && r.game.tip > now && !r.hold);
-  const pair = ppPairs(rows).find(x => x.v !== 'pass');
+  const pair = pp.diff ? null : ppPairs(rows).find(x => x.v !== 'pass');
   const seen = new Set(), singles = rows.filter(r => r.pkBest && r.pkBest.edge > 0).sort((a, b) => b.pkBest.edge - a.pkBest.edge)
     .filter(r => !seen.has(r.e.p) && seen.add(r.e.p)).slice(0, 3);
   el.hidden = false;
   const empty = !pair && !singles.length;
-  el.innerHTML = `<div class="card-h"><div><h2>Pick'em of the night</h2><p>${pair ? 'The best 2-pick on tonight\'s board: two teammates\' stats that tend to hit together.' : singles.length ? 'No 2-pick clears the bar yet. Here are the biggest single leans.' : 'Nothing worth a look yet.'}</p></div>
+  el.innerHTML = `<div class="card-h"><div><h2>Pick'em of the night</h2><p>${pair ? 'The best 2-pick on tonight\'s board: two teammates\' stats that tend to hit together.' : singles.length ? (pp.diff ? 'Your app needs different teams, and no different-team pairing passed our test. Here are the biggest single leans.' : 'No 2-pick clears the bar yet. Here are the biggest single leans.') : 'Nothing worth a look yet.'}</p></div>
       <button class="linkbtn" type="button" data-go="pairs">All pairs</button></div>
     <div class="card-b np-b">${empty ? `<p class="muted">Pick'em lines post closer to tip, and preseason and new-roster props are held back, so there is no pick to show yet.</p>`
       : `${pair ? `${ppSlip(pair, true)}<p class="pp-note warn pp-rule">Some apps make you pick two players on different teams. These two are teammates, so check your app lets you combine them.</p>` : ''}${singles.length ? `<div class="np-s"><p class="np-l">Biggest single leans <span>model only, no market price to check them</span></p>${singles.map(r => `<div class="np-r"><span class="pl">${avSm(r.e.p, r.name)}<div><b>${esc(r.name)}</b><small>${esc(r.team)} · ${esc(PKN[r.pkBest.bk] || r.pkBest.bk)} ${r.pkBest.side} ${r.pkBest.line} ${esc(PV_NOUN[r.e.s] || r.e.s)}</small></div></span><span class="pos">${ec(r.pkBest.edge)}</span></div>`).join('')}</div>` : ''}`}</div>`;
@@ -5658,7 +5658,7 @@ const PP_STATS = ['pts', 'ast', '3pm'];
 const PP_SHORT = {pts: 'Points', ast: 'Assists', '3pm': '3-PT Made'};
 const ppKey = (a, b) => [a, b].sort((x, y) => PP_STATS.indexOf(x) - PP_STATS.indexOf(y)).join('|');
 const PP_FAM = Object.fromEntries(((PKC && PKC.pass) || []).filter(f => f.rel === 'team').map(f => [ppKey(f.a, f.b), f]));
-let pp = {all: false, game: 'all', logK: null, pay: +(store.get('nba-pickem-pay') || 3)};
+let pp = {all: false, game: 'all', logK: null, pay: +(store.get('nba-pickem-pay') || 3), diff: store.get('nba-pickem-diff') === '1'};   // diff: the app only lets you combine players on different teams
 const ppBE = () => 1 / pp.pay;
 
 function ppLegs(rows){
@@ -5721,7 +5721,7 @@ function renderPairs(){
   const games = PS.board.games || [];
   if (pp.game !== 'all' && !games.some(g => String(g.id) === pp.game)) pp.game = 'all';
   const all = ppPairs(rows).filter(x => pp.game === 'all' || String(x.A.r.e.g) === pp.game), play = all.filter(x => x.v !== 'pass');
-  const show = pp.all ? all : play.length ? play : all.slice(0, 8);
+  const show = pp.diff ? [] : pp.all ? all : play.length ? play : all.slice(0, 8);
   const anyApp = all.some(x => x.A.app), anyStand = all.some(x => !x.A.app);
   const F1 = PP_FAM['pts|ast'] || Object.values(PP_FAM)[0], need = Math.sqrt(ppBE() - F1.c);
   const cnt = {}; for (const x of play) for (const L of [x.A, x.B]){ const k = `${L.r.name} ${x.side === 'over' ? 'More' : 'Less'} ${L.line} ${PV_NOUN[L.r.e.s]}`; cnt[k] = (cnt[k] || 0) + 1; }
@@ -5741,12 +5741,14 @@ function renderPairs(){
         <small>${near ? `${esc(near.family)} tend to split (one More, one Less) but by only ${pc(-near.c / .25, 1)}, under the 4% bar. ` : ''}Opponents' stats, rebounds and the other ${PKC.n_families - Object.keys(PP_FAM).length - (near ? 1 : 0)} combinations showed nothing that held up.</small></section></div>
     <section class="card">
       <div class="pp-tools"><h2>Pairs on the board</h2><span class="pv-grow"></span>
+        <label class="pp-pay" title="Some apps only let you combine players on different teams. Every pair that passed our test is two teammates."><input id="pp-diff" type="checkbox"${pp.diff ? ' checked' : ''}> My app needs different teams</label>
         <label class="pp-pay">Your app pays <input id="pp-pay" type="number" min="1.5" max="10" step="0.25" value="${pp.pay}" aria-label="2-pick payout multiple">x on a 2-pick</label>
         <div class="seg" id="pp-seg"><button type="button" data-pa="0" aria-pressed="${!pp.all}">Worth a look (${play.length})</button><button type="button" data-pa="1" aria-pressed="${pp.all}">All pairs (${all.length})</button></div></div>
       <div class="pp-strip" id="pp-strip"${games.length > 1 ? '' : ' hidden'}></div>
       ${anyStand ? `<p class="pp-note">${anyApp ? 'Some props have no pick\'em line yet; those pairs' : 'No pick\'em lines are posted yet, so these pairs'} use the sportsbook line nearest even money as a stand-in. On game days PrizePicks, Underdog and Sleeper post their own lines and pairs use them, both picks from the same app.</p>` : ''}
       ${top && top[1] >= 2 ? `<p class="pp-note warn">These pairs share picks: ${esc(top[0])} is in ${top[1]} of them. Playing several is mostly one bet on that pick, so they tend to win or lose together.</p>` : ''}
-      ${!play.length && all.length ? '<p class="pp-note">No pair clears the payout at these prices; showing the closest.</p>' : ''}
+      ${pp.diff ? `<p class="pp-note warn"><b>No pairing to show.</b> Every pair that passed our test is two teammates, and the 15 opposing-team combinations did not pass: the largest lift was 2.1% against the 4% bar, and 0.4% pooled. Two players on different teams hit about as independently as two games do, so each pick would need ${pc(Math.sqrt(1 / pp.pay), 1)} on its own at ${pp.pay}x.</p>` : ''}
+      ${!play.length && all.length && !pp.diff ? '<p class="pp-note">No pair clears the payout at these prices; showing the closest.</p>' : ''}
       <div class="pp-slips">${show.map(x => ppSlip(x)).join('') || `<p class="pp-empty">${rows.length ? 'No teammate pairs on this board yet: they need points, assists or 3-pointer lines for two teammates.' : 'No player props listed yet. Kalshi and the books list them the morning of a game.'}</p>`}</div>
     </section>`;
   if (games.length > 1) gameStripMount($('pp-strip'), gameStrip(games, pp.game, {all: true}));
@@ -5783,6 +5785,7 @@ $('pp-root').addEventListener('click', e => {
   if (t.closest('[data-ppcancel]')){ pp.logK = null; renderPairs(); }
 });
 $('pp-root').addEventListener('change', e => {
+  if (e.target.id === 'pp-diff'){ pp.diff = e.target.checked; store.set('nba-pickem-diff', pp.diff ? '1' : '0'); renderPairs(); return; }
   if (e.target.id === 'pp-pay'){ const v = +e.target.value; if (v >= 1.5 && v <= 10){ pp.pay = v; store.set('nba-pickem-pay', v); renderPairs(); } }
 });
 $('pp-root').addEventListener('submit', e => {
