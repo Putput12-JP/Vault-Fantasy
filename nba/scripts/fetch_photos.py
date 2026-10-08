@@ -68,6 +68,9 @@ def get(url):
     return body if code == b'200' and body[:4] == b'\x89PNG' else None
 
 
+import png_shrink
+
+
 def uri(png):
     return 'data:image/png;base64,' + base64.b64encode(png).decode()
 
@@ -105,23 +108,19 @@ def main():
     heads = {k: v for k, v in old.get('heads', {}).items() if k in want}
     logos = dict(old.get('logos', {}))
     todo = [k for k in want if k not in heads]
+    new_fit = {}
     with ThreadPoolExecutor(8) as ex:
         for k, png in zip(todo, ex.map(lambda k: get(HEAD.format(k) % ((HQ_W, HQ_H) if k in hq else (HEAD_W, HEAD_H))), todo)):
             if png:
-                heads[k] = uri(png)
+                new_fit[k] = alpha_bbox(png)                 # measured on the original RGBA, before it becomes a palette PNG
+                heads[k] = uri(png_shrink.shrink(png))      # palette PNG, about 55-75% smaller, same picture at this size
     miss = [t for t in proj['teams'] if t not in logos]
     for t in miss:
         png = get(LOGO.format(t.lower()))
         if png:
             logos[t] = uri(png)
-    fit = {}
-    for k, v in heads.items():
-        try:
-            f = alpha_bbox(base64.b64decode(v.split(',', 1)[1]))
-        except Exception:
-            f = None
-        if f:
-            fit[k] = f
+    fit = {k: v for k, v in (old.get('fit') or {}).items() if k in heads}      # kept: palette PNGs cannot be re-measured
+    fit.update({k: v for k, v in new_fit.items() if v and k in heads})
     json.dump({'spec': SPEC, 'lspec': LOGO_PX, 'heads': heads, 'hq': sorted(k for k in hq if k in heads), 'fit': fit, 'logos': logos, 'colors': team_colors()}, open(OUT, 'w'), separators=(',', ':'), sort_keys=True)
     print(f"photos: {len(heads)} headshots ({len(todo)} fetched, {len([k for k in todo if k not in heads])} without a photo), "
           f"{len(logos)} logos ({len(miss)} fetched) -> data/photos.json {os.path.getsize(OUT) // 1024} KB")
