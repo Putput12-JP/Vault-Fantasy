@@ -23,6 +23,7 @@ BUDGET = int(os.environ.get('NOVIG_BUDGET', '220'))     # requests per poll
 PACE_S = 0.35                                          # gap between requests (~3/s)
 TAPE_MIN = 25                                          # dollars; smaller executions are noise
 TAPE_KEEP = 300
+SIG_MIN = 250                                          # dollars; a ticket this size is saved to the day's tape for Sharp Price
 AHEAD_H = 48
 CLOSE = 0.03                                           # depth counts orders within 3 cents of the best price
 TIGHT = 0.10                                           # a quote wider than this says nothing about the fair price
@@ -88,6 +89,26 @@ def nick(s):
 
 def dollars(price, qty):
     return float(price) * qty / 100.0
+
+
+def game_side(g, kind, on, strike):
+    """A ticket on a game market -> the Sharp Price convention: m ('ml' | 'sp' | 'tot'), side ('home' | 'away' | 'over' |
+    'under') and line (the HOME handicap for a spread, the number for a total). {} for anything else (props, 1H markets)."""
+    if kind == 'TOTAL':
+        return {'m': 'tot', 'side': 'over' if on.lower().startswith('over') else 'under', 'line': strike}
+    team = on.split(' ')[0]
+    if team not in (g['home'], g['away']):
+        return {}
+    side = 'home' if team == g['home'] else 'away'
+    if kind == 'MONEY':
+        return {'m': 'ml', 'side': side, 'line': None}
+    if kind == 'SPREAD':
+        try:
+            n = float(on.split(' ')[1])
+        except (IndexError, ValueError):
+            return {}
+        return {'m': 'sp', 'side': side, 'line': n if side == 'home' else -n}
+    return {}
 
 
 def read_book(mk, book):
@@ -170,7 +191,7 @@ def poll(games, root, now, roster_find=None):
         used[0] += 1
         return get(path)
 
-    out = {'asof': int(now), 'games': {}, 'props': {}, 'tape': [], 'budget': BUDGET}
+    out = {'asof': int(now), 'games': {}, 'props': {}, 'tape': [], 'fresh': [], 'budget': BUDGET}
     queue = []                                            # (priority, game, market): lines first, then rotating props
     meta = {}
     for g in soon:
@@ -227,9 +248,13 @@ def poll(games, root, now, roster_find=None):
             mk_usd += usd
             mk_n += 1
             if usd >= TAPE_MIN:
-                st.tape.append({'t': t['ts'] // 1000, 'g': gid, 'm': mid_, 'kd': kind, 'k': r['k'], 'd': mk.get('description'),
-                                'o': outcome_idx.get(t['outcomeId']), 'on': team_name(mk['outcomes'][outcome_idx.get(t['outcomeId'], 0)]['name']),
-                                'px': float(t['price']), 'usd': round(usd, 2), 'id': t['tradeId'][:18]})
+                on = team_name(mk['outcomes'][outcome_idx.get(t['outcomeId'], 0)]['name'])
+                row = {'t': t['ts'] // 1000, 'g': gid, 'm': mid_, 'kd': kind, 'k': r['k'], 'd': mk.get('description'),
+                       'o': outcome_idx.get(t['outcomeId']), 'on': on, 'px': float(t['price']), 'usd': round(usd, 2), 'id': t['tradeId'][:18]}
+                row.update(game_side(g, kind, on, r['k']))
+                st.tape.append(row)
+                if usd >= SIG_MIN and 'side' in row:
+                    out['fresh'].append(row)
         st.cur[mid_] = newest
         st.vol[mid_] = round(st.vol.get(mid_, 0) + mk_usd, 2)
         r['vol'] = st.vol[mid_]

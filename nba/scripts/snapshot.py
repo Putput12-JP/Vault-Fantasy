@@ -771,16 +771,19 @@ def write_board(root, day, slate):
         proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
         board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE, pm_depth=PM_DEPTH, when=day.when,
                       wire=(day.hist, day.log, day.t0))
-        try:                                            # Sharp Price: Pinnacle history, tapes, signals (sharp.py)
-            import sharp
-            from prop_board import TEAM as BTEAM
-            board['sharp'] = sharp.build(board, day, root, slate.now, BTEAM, parse_event, kal_vol=KAL_VOL)
-        except Exception:
-            traceback.print_exc(limit=2)
         try:                                            # Novig exchange: public order books + trade tape (novig.py)
             import novig
             from prop_board import Roster
             board['novig'] = novig.poll([g for g in slate.games if g['pre']], root, slate.now, Roster(proj).find)
+            day.append('tape.jsonl', [{'t': x['t'], 's': 'nov', 'g': x['g'], 'm': x['m'], 'side': x['side'], 'line': x['line'], 'usd': round(x['usd']),
+                                       'px': x['px'], 'id': 'nov:' + x['id']} for x in board['novig'].get('fresh') or []])
+            board['novig'].pop('fresh', None)             # saved to the tape; not needed on the page
+        except Exception:
+            traceback.print_exc(limit=2)
+        try:                                            # Sharp Price: Pinnacle history, tapes, signals (sharp.py)
+            import sharp
+            from prop_board import TEAM as BTEAM
+            board['sharp'] = sharp.build(board, day, root, slate.now, BTEAM, parse_event, kal_vol=KAL_VOL)
         except Exception:
             traceback.print_exc(limit=2)
         board.pop('_pkeys', None)

@@ -1042,7 +1042,7 @@ table.sx-feed td.sx-txt{white-space:normal;min-width:320px;line-height:1.45}
 .sx-type{display:inline-flex;align-items:center;height:19px;padding:0 7px;margin-right:4px;border-radius:var(--r-pill);border:1px solid var(--border2);font-size:10.5px;font-family:var(--font-mono);color:var(--fg2);white-space:nowrap;vertical-align:1px}
 .sx-type.t-steam,.sx-type.t-behind{color:var(--fg);border-color:var(--fg3)}
 .sx-type.t-sharp,.sx-type.t-cross{color:var(--up);border-color:rgba(74,222,128,.35)}
-.sx-type.t-whale{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.sx-type.t-whale,.sx-type.t-novig{color:var(--warn);border-color:rgba(251,191,36,.4)}
 /* Props Table toolbar: the stat chips are one scrolling line, then search, the gates switch and the sort sit on a second line */
 #pv-full > .card > .card-h{flex-direction:column;align-items:stretch;gap:14px}
 #pv-full .card-h .filters{display:grid;grid-template-columns:minmax(180px,260px) auto 1fr auto;gap:12px 16px;align-items:center}
@@ -4850,7 +4850,7 @@ $('sgames').addEventListener('toggle', e => { const d = e.target.closest('detail
 // against Pinnacle's last pre-tip price; the study says copying sharp money late does not pay, so none of this is a
 // bet until its type beats the close over 50+ graded signals.
 let xf = {type: 'all', game: 'all'};
-const XTYPE = {steam: 'Pinnacle move', behind: 'Behind Pinnacle', sharp: 'Sharp accounts', cross: 'Sharp net $25k+', whale: 'Big ticket', split: 'Money vs bets'};
+const XTYPE = {steam: 'Pinnacle move', behind: 'Behind Pinnacle', sharp: 'Sharp accounts', cross: 'Sharp net $25k+', whale: 'Big ticket', novig: 'Novig money', split: 'Money vs bets'};
 const XMK = {ml: 'moneyline', sp: 'spread', tot: 'total'};
 function pDevig(a, b){
   const x = amP(a), y = amP(b); if (!x || !y) return null;
@@ -4887,6 +4887,7 @@ function xText(a, g){
   if (a.type === 'sharp') return `${a.accts > 1 ? a.accts + ' sharp accounts' : 'Sharp account ' + esc(a.who || 'unnamed')} put ${usdK(a.usd)} on ${S} at ${Math.round(a.px * 100)}¢${a.rec ? ` <span class="muted">(${a.rec[3].toUpperCase()} record: ${a.rec[0]} trades, ${a.rec[1] >= 0 ? '+' : ''}${(a.rec[1] * 100).toFixed(1)}% vs close)</span>` : ''}`;
   if (a.type === 'cross') return `Sharp accounts' 24-hour net on ${S} reached ${usdK(a.usd)} (${a.n} ${a.n === 1 ? 'trade' : 'trades'}; ${Math.abs(a.crowd) < 1000 ? 'everyone else about even' : `everyone else ${usdK(a.crowd)} ${(a.crowd > 0) === (a.side === 'home') ? 'with them' : 'against them'}`})`;
   if (a.type === 'whale') return `${usdK(a.usd)} ticket on ${S} at ${Math.round(a.px * 100)}¢ (${esc(a.venue)}${a.cls === 'sharp' ? ', sharp account' : a.cls === 'dull' ? ', usually-losing account' : ''})`;
+  if (a.type === 'novig') return `${usdK(a.usd)} on ${S} at ${Math.round(a.px * 100)}¢ on Novig${a.n > 1 ? ` (${a.n} tickets in 30 minutes)` : ''}`;
   if (a.type === 'split') return `${a.money}% of the money but ${a.bets}% of bets on ${S}${a.moved > 0 ? ', and Pinnacle has moved their way' : ''}`;
   return '';
 }

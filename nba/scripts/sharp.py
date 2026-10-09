@@ -40,6 +40,7 @@ REPO_DATA = os.path.join(HERE, '..', '..', 'data')            # pm_wallets_*.jso
 STEAM = {'sp': 1.0, 'tot': 1.5, 'ml': 0.03}                  # NBA thresholds from the watch (points, win-prob points)
 STEAM_WIN, GAP_MAX, STEAM_COOL = 30 * 60, 25 * 60, 3 * 3600
 WHALE, SHARP_MIN, CROSS_AT = 10000, 1000, 25000
+NOV_MIN = 1000                                                # dollars on one side of one Novig market in 30 minutes; a first guess, graded as type 'novig'
 BEHIND_MIN, BEHIND_ALERT, BEHIND_MAX = 0.02, 0.03, 0.25
 SPLIT_GAP, SPLIT_MAX_T = 20, 50
 TAPE_MIN = {'pm': 100, 'kal': 500}                            # dollars; smaller trades are noise and bloat the file
@@ -430,7 +431,7 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
             g = next((x for x in games if x['day'] == d and x['home'] == team.get(h, h)), None)
             if g:
                 kal_game[k] = (str(g['id']), 'home' if tcode == g['home'] else 'away')
-    tape = defaultdict(list)
+    tape, nov_seen = defaultdict(list), set()
     for r in _tape_rows(day_dirs(root, now, 1)):
         if r['s'] == 'pm' and r['k'] in pm_game:
             gid, mk, side_of, line = pm_game[r['k']]
@@ -438,6 +439,11 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
                 cls = 'sharp' if r.get('w') in W['sharp'] else 'dull' if r.get('w') in W['dull'] else None
                 tape[gid].append({'t': r['t'], 'v': 'Polymarket', 'm': mk, 'side': side_of(r['o']), 'usd': r['usd'], 'px': r['px'],
                                   'line': line, 'cls': cls, 'who': r.get('who'), 'w': r.get('w'), 'id': r['id']})
+        elif r['s'] == 'nov' and r['g'] in tips and r['id'] not in nov_seen:
+            nov_seen.add(r['id'])
+            if r['t'] < tips[r['g']]:
+                tape[r['g']].append({'t': r['t'], 'v': 'Novig', 'm': r['m'], 'side': r['side'], 'usd': r['usd'], 'px': r['px'],
+                                     'line': r.get('line'), 'cls': None, 'id': r['id']})
         elif r['s'] == 'kal' and r['k'] in kal_game:
             gid, side = kal_game[r['k']]
             if r['t'] < tips[gid]:
@@ -495,7 +501,8 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
         mlpm = [x for x in T if x['v'] == 'Polymarket' and x['m'] == 'ml' and x['t'] > day_ago]
         flow = {'sharp': net([x for x in mlpm if x['cls'] == 'sharp']), 'sharpN': sum(x['cls'] == 'sharp' for x in mlpm),
                 'dull': net([x for x in mlpm if x['cls'] == 'dull']), 'all': net(mlpm), 'vol': sum(x['usd'] for x in mlpm),
-                'kal': net([x for x in T if x['v'] == 'Kalshi' and x['t'] > day_ago]), 'kalVol': sum(x['usd'] for x in T if x['v'] == 'Kalshi' and x['t'] > day_ago)}
+                'kal': net([x for x in T if x['v'] == 'Kalshi' and x['t'] > day_ago]), 'kalVol': sum(x['usd'] for x in T if x['v'] == 'Kalshi' and x['t'] > day_ago),
+                'nov': net([x for x in T if x['v'] == 'Novig' and x['m'] == 'ml' and x['t'] > day_ago]), 'novVol': sum(x['usd'] for x in T if x['v'] == 'Novig' and x['t'] > day_ago)}
         # sharp: sharp accounts' trades on one side within a 30-minute bucket
         groups = defaultdict(list)
         for x in T:
@@ -513,6 +520,22 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
             f = fair_snap(sn, m, side, hl, lad if t >= (cur[0] if cur else 0) else None)
             alerts.append(dict(base, t=t, type='sharp', m=m, side=side, line=hl, usd=usd, n=len(xs), accts=len({x['w'] for x in xs}),
                                px=top['px'], who=top['who'], rec=W['rec'].get(top['w']), fair=r3(f), id=f"{gid}:sharp:{m}:{side}:{b}"))
+        # novig: real money on one side of one Novig market within a 30-minute bucket (anonymous, so no account class)
+        ng = defaultdict(list)
+        for x in T:
+            if x['v'] == 'Novig':
+                ng[(x['m'], x['side'], x['line'], x['t'] // 1800)].append(x)
+        for (m, side, line, b), xs in ng.items():
+            usd = sum(x['usd'] for x in xs)
+            if usd < NOV_MIN:
+                continue
+            t = max(x['t'] for x in xs)
+            top = max(xs, key=lambda x: x['usd'])
+            sn = snap_at(S, t)
+            hl = (line if side == 'home' else -line) if m == 'sp' and line is not None else line
+            f = fair_snap(sn, m, side, hl, lad if t >= (cur[0] if cur else 0) else None)
+            alerts.append(dict(base, t=t, type='novig', m=m, side=side, line=hl, usd=usd, n=len(xs), px=top['px'], venue='Novig',
+                               fair=r3(f), id=f"{gid}:novig:{m}:{side}:{line}:{b}"))
         # cross: sharp 24h net on the winner reached CROSS_AT (one per side)
         if abs(flow['sharp']) >= CROSS_AT:
             side = 'home' if flow['sharp'] > 0 else 'away'
@@ -520,7 +543,7 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
                                crowd=flow['all'] - flow['sharp'], fair=r3(fair(lad, 'ml', side)), id=f"{gid}:cross:{side}"))
         # whale
         for x in T:
-            if x['usd'] >= WHALE:
+            if x['usd'] >= WHALE and x['v'] != 'Novig':
                 sn = snap_at(S, x['t'])
                 hl = (x['line'] if x['side'] == 'home' else -x['line']) if x['m'] == 'sp' and x['line'] is not None else x['line']
                 alerts.append(dict(base, t=x['t'], type='whale', m=x['m'], side=x['side'], line=hl, usd=x['usd'], px=x['px'], venue=x['v'],
