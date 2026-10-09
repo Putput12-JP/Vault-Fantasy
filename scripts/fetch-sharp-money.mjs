@@ -497,7 +497,11 @@ async function novig(sk, cfg, games, S) {
   const N = 'https://api.novig.com/v3/public/catalog', J = u => getJSON(u, {}, 5);   // Novig's public throttle is unpublished: ride out 429s with longer backoff
   const evs = ((await J(`${N}/events?league=${cfg.nov}&limit=500`).catch(() => null)) || {}).items || [];
   const t = now(), out = new Map();
-  await pool(evs, 2, async ev => { try {
+  // Soonest games first inside a time box: a 50-game college slate spent ~170s here and was the slowest part of every refresh.
+  // Games past the box keep their cursors, so the next run picks their trades up where this one stopped.
+  const stop = Date.now() + (ARG.quick ? 20 : 70) * 1000, soonest = evs.slice().sort((a, b) => a.startsTs - b.startsTs);
+  await pool(soonest, 2, async ev => { try {
+    if (Date.now() > stop) return;
     const m = /^(.+?) @ (.+)$/.exec(ev.description || ''); if (!m) return;
     const hit = matchGame(games, m[1], m[2], ev.startsTs / 1000); if (!hit) return;
     const all = (await J(`${N}/markets?event=${ev.eventId}&marketType=MONEY,SPREAD,TOTAL&limit=300`)).items || [];
@@ -908,7 +912,9 @@ async function pollOnce() {
   // with no record in this sport borrows its sharp label from another sport.
   const OWN = Object.fromEntries(Object.entries(SPORTS).map(([sk, c]) => [sk, loadWallets(c.wallets)]));
   const allSharp = [...new Set(Object.values(OWN).flatMap(o => [...o.sharp]))];
-  await walletPoll(S, allSharp).catch(e => { status.accounts = 'error: ' + e.message; });
+  const T0 = Date.now(), lap = (st, k, p) => p.finally(() => { (st.ms ||= {})[k] = Math.round((Date.now() - T0) / 1000); });   // seconds since poll start, per source: what a Refresh click is actually waiting on
+  if (ARG.quick && now() - (S.lastWallet || 0) < 15 * 60) { status.accounts = 'skipped (quick)'; } else S.lastWallet = now();
+  if (status.accounts == null) await lap(status, 'accounts', walletPoll(S, allSharp).catch(e => { status.accounts = 'error: ' + e.message; }));
   for (const [sk, cfg] of Object.entries(SPORTS)) {
     const st = status[sk] = {};
     const own = OWN[sk], W = { sharp: new Set(own.sharp), dull: new Set(own.dull), rec: { ...own.rec }, n: own.n, generated: own.generated };
@@ -922,10 +928,10 @@ async function pollOnce() {
     try { games = await actionGames(sk, cfg); st.action = games.length; } catch (e) { st.action = 'error: ' + e.message; }
     if (!games.length) { st.games = 0; await finals(sk, cfg, S).catch(() => {}); continue; }
     const [P, PM, K, NV] = await Promise.all([
-      pinnacle(cfg, games).catch(e => { st.pinnacle = 'error: ' + e.message; return new Map(); }),
-      polymarket(sk, cfg, games, S, W).catch(e => { st.polymarket = 'error: ' + e.message; return new Map(); }),
-      kalshi(sk, cfg, games, S).catch(e => { st.kalshi = 'error: ' + e.message; return new Map(); }),
-      novig(sk, cfg, games, S).catch(e => { st.novig = 'error: ' + e.message; return new Map(); }),
+      lap(st, 'pinnacle', pinnacle(cfg, games).catch(e => { st.pinnacle = 'error: ' + e.message; return new Map(); })),
+      lap(st, 'polymarket', polymarket(sk, cfg, games, S, W).catch(e => { st.polymarket = 'error: ' + e.message; return new Map(); })),
+      lap(st, 'kalshi', kalshi(sk, cfg, games, S).catch(e => { st.kalshi = 'error: ' + e.message; return new Map(); })),
+      lap(st, 'novig', novig(sk, cfg, games, S).catch(e => { st.novig = 'error: ' + e.message; return new Map(); })),
     ]);
     st.pinnacle ??= P.size; st.polymarket ??= PM.size; st.kalshi ??= K.size; st.novig ??= NV.size; st.games = games.length;
     const KP = await kalshiProps(sk, games, K).catch(e => { st.kalshiProps = 'error: ' + e.message; return new Map(); });

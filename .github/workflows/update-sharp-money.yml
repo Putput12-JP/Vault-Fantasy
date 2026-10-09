@@ -61,10 +61,15 @@ jobs:
       - name: Poll Novig props
         if: steps.gate.outputs.go == '1'
         continue-on-error: true
-        run: node scripts/fetch-novig-props.mjs --out=sharp-out/novig_props.json --budget=200
+        # A Refresh click dispatches with force=true: keep that run short (25s of props), the scheduled runs do the long sweep.
+        run: |
+          B=200; [ "${{ github.event.inputs.force }}" = "true" ] && B=25
+          node scripts/fetch-novig-props.mjs --out=sharp-out/novig_props.json --budget=$B
       - name: Poll sources
         if: steps.gate.outputs.go == '1'
-        run: node scripts/fetch-sharp-money.mjs --dir=sharp-out
+        run: |
+          Q=""; [ "${{ github.event.inputs.force }}" = "true" ] && Q="--quick"
+          node scripts/fetch-sharp-money.mjs --dir=sharp-out $Q
       - name: Publish to sharp-data
         if: steps.gate.outputs.go == '1'
         run: |
