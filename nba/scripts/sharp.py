@@ -31,7 +31,7 @@ alert's number minus the fair when it fired (for behind: the price's EV at the c
 The study's verdict stands until this season says otherwise: sharp accounts beat the close but copying them 30+ minutes
 later does not, so these are context until a type earns it (50+ graded, CLV 2 SE above zero).
 """
-import datetime as dt, glob, json, math, os
+import datetime as dt, glob, json, math, os, time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
@@ -236,8 +236,35 @@ def poll_tapes(root, day, slate, now, curl, parse_event, team):
                 out.append({'t': ts, 's': 'kal', 'k': k, 'y': 1 if yes else 0, 'usd': round(px * n), 'px': round(px, 4), 'id': x.get('trade_id')})
         return out
 
+    errs = []
+
+    def safe(job):                                      # one dead market must not discard every other market's rows
+        try:
+            return fetch(job)
+        except Exception as e:
+            errs.append(str(e))
+            return []
+
+    def kal_lane(js):                                   # Kalshi 429s a parallel burst: one lane, paced, backing off on 429
+        out = []
+        for j in js:
+            for wait in (0, 2, 5, 10):
+                time.sleep(wait or 0.25)
+                try:
+                    out += fetch(j)
+                    break
+                except Exception as e:
+                    if '429' not in str(e) or wait == 10:
+                        errs.append(str(e))
+                        break
+        return out
+
+    pm_jobs = [j for j in jobs if j[0] != 'kal']
     with ThreadPoolExecutor(6) as ex:
-        got = [r for rows in ex.map(fetch, jobs) for r in rows]
+        kal = ex.submit(kal_lane, [j for j in jobs if j[0] == 'kal'])
+        got = [r for rows in ex.map(safe, pm_jobs) for r in rows] + kal.result()
+    if errs and len(errs) == len(jobs):                 # only an all-markets outage is a failure; partial gaps heal next tick
+        raise RuntimeError(f'{len(errs)}/{len(jobs)} tape markets failed: {errs[0][:150]}')
     new = sorted((r for r in got if r['id'] not in seen), key=lambda r: r['t'])
     day.append('tape.jsonl', new)
     return len(jobs), len(new)

@@ -1,0 +1,34 @@
+# Recorder watchdog. Every 30 min, checks the nba-data poll log; if any source has failed its last 6 polls in a
+# row, opens (or updates) one GitHub issue labelled `data-failure` with the error and where to look, and closes it
+# once the source recovers. Label an issue `auto-fix` (or let the optional job below do it) to hand it to Claude.
+name: Watch recorder health
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '*/30 * * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Find failing sources
+        run: python3 scripts/watch_recorder_health.py --out watch.md
+      - name: Open, update or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh label create data-failure --color d73a4a --description "A data source is failing" 2>/dev/null || true
+          n=$(gh issue list --label data-failure --state open --json number --jq '.[0].number // empty')
+          if [ -s watch.md ]; then
+            if [ -n "$n" ]; then gh issue edit "$n" --body-file watch.md
+            else gh issue create --title "Recorder: a data source is failing" --label data-failure --body-file watch.md; fi
+          elif [ -n "$n" ]; then
+            gh issue close "$n" --comment "Recovered: every source is polling again."
+          fi
