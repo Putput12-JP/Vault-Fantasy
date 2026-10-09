@@ -58,7 +58,7 @@ export function trackPlays({ board, feed, games, ledger, stats, nowS, shift }) {
   L.legs ||= {};
   const season = String(feed?.season || ''), week = feed?.week;
   const stale = board?.sources?.stale || {};
-  const anyStale = stale.books || stale.kalshi || stale.novig;
+  const freshFor = r => r.fairSrc === 'Pinnacle' ? !stale.pinnacle : !stale.kalshi;   // the fair price a close or a leg is measured against must itself be fresh
 
   // 1. log new calls and refresh the close on open ones
   const rowByKey = new Map(), rowByPid = new Map();
@@ -66,7 +66,7 @@ export function trackPlays({ board, feed, games, ledger, stats, nowS, shift }) {
   for (const r of board?.rows || []) {
     for (const side of ['over', 'under']) rowByKey.set(keyOf(season, week, r.pid, r.mkt, r.line, side), { r, side });
   }
-  if (!anyStale) for (const r of board?.rows || []) {
+  for (const r of board?.rows || []) {
     for (const c of [r.call, r.alt]) {                              // a same-line call and/or a moved-line (converted) call
       if (!c || c.stale || c.ev < (c.shifted ? 0.05 : MIN_EV) || c.depth === 0) continue;
       const start = gameStart(games, r.team);
@@ -82,7 +82,7 @@ export function trackPlays({ board, feed, games, ledger, stats, nowS, shift }) {
     }
   }
   // pick'em legs: no price, so the test is calibration. Log each fresh leg once with the win chance we gave it.
-  if (!anyStale) for (const g of board?.legs || []) {
+  if (!stale.pinnacle) for (const g of board?.legs || []) {
     if (g.p < 0.56) continue;
     const start = gameStart(games, g.team); if (!start || start <= nowS) continue;
     const k = [season, week, g.pid, g.mkt, g.book, g.line, g.side].join('|');
@@ -98,7 +98,7 @@ export function trackPlays({ board, feed, games, ledger, stats, nowS, shift }) {
         const fo = shiftFair(shift, P.mkt, hit.r.fair, hit.r.line, P.line);
         f = fo == null ? null : P.side === 'over' ? fo : 1 - fo;
       }
-      if (f != null && !anyStale) { P.closeFair = f; P.closeAt = nowS; }
+      if (f != null && hit && freshFor(hit.r)) { P.closeFair = f; P.closeAt = nowS; }
     }
     if (P.closeFair != null) P.clv = +(P.closeFair / P.called.p - 1).toFixed(4);
   }

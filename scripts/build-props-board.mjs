@@ -37,7 +37,11 @@ const MIN_EV = 0.02;        // below this a "+EV" is inside the noise of a devig
 const MIN_GAP = 0.03;       // 3 points of probability between venues on one side
 const TIGHT_SPR = 0.06;     // exchange spread (prob points) at which its ask also says where the market is, not just what is for sale
 const MIN_DEPTH = 100;      // $ resting at an exchange before its price counts as takeable
-const STALE_S = 3 * 3600, STALE_BOOKS_S = 90 * 60;   // the book feed refreshes about hourly: 90 min means a run was skipped, and book lines move a lot in that time
+// How old each input may be before a call built on it is held back. Every one of these is refreshed inside the Cloudflare-driven Sharp Money
+// run (Pinnacle + pick'em apps + Kalshi + Novig each poll), so 30 min means a run or a source failed. US books (DK/FD/...) only come from the
+// ParlayAPI feed, which is slower, so they get a longer leash.
+const FRESH_S = 30 * 60, FRESH_US_S = 90 * 60;
+const OWNED = new Set(['Pinnacle', 'PrizePicks', 'Underdog Fantasy', 'Sleeper']);   // pulled directly each run
 const MOVED_GAP = 0.07;     // a deep, tight exchange this far (probability points) from the fair price at the SAME line has priced a line move the reference has not seen   // fair/price older than this and a "+EV" is probably just the line having moved
 const BIG_EV = 0.10;        // an edge this large against Pinnacle is far likelier a data problem than a gift: flag it
 const DFS = new Set(['Underdog Fantasy', 'Sleeper', 'PrizePicks', 'Fliff', 'Pick6 (DraftKings)']);   // priced lopsided on purpose: a gap against them is their juice, not a market disagreement
@@ -67,7 +71,9 @@ const SHIFT_MIN_EV = 0.05;   // a converted price carries model error the same-l
 export function buildPropsBoard({ feed, kalshi, novig, shift }) {
   const rows = [], legs = [], src = { pinnacle: 0, kalshi: 0, novig: 0, players: 0 };
   const nowS = Date.now() / 1000, age = g => g ? nowS - Date.parse(g) / 1000 : Infinity;
-  const feedStale = age(feed?.generated) > STALE_BOOKS_S, kalStale = age(kalshi?.generated) > STALE_S, novStale = age(novig?.generated) > STALE_S;
+  const pinAsof = feed?.vegas_meta?.props_pp_generated || feed?.generated;     // Pinnacle + PrizePicks / Underdog / Sleeper, pulled directly
+  const pinStale = age(pinAsof) > FRESH_S, usStale = age(feed?.generated) > FRESH_US_S, kalStale = age(kalshi?.generated) > FRESH_S, novStale = age(novig?.generated) > FRESH_S;
+  const feedStale = pinStale;   // kept for the legs / alt checks below: the reference those use is Pinnacle's
   const K = kalshi?.markets || {}, NV = novig?.markets || {};
   for (const [pid, p] of Object.entries(feed?.vegas_player_props || {})) {
     const nk = nkey(p.name);
@@ -84,7 +90,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       }
       const nv = (NV[mkt]?.[nk] || []).find(r => r.k === ref);
       if (nv && (nv.oa != null || nv.ua != null)) {
-        venues.push({ src: 'Novig', kind: 'exchange', mid: nv.mid, spr: nv.spr, depth: nv.depth, age: nv.t,
+        venues.push({ src: 'Novig', kind: 'exchange', mid: nv.mid, spr: nv.spr, depth: nv.depth, age: nowS - nv.t,
           over: nv.oa != null ? { p: nv.oa, am: toAm(nv.oa), depth: nv.depth } : null, under: nv.ua != null ? { p: nv.ua, am: toAm(nv.ua), depth: nv.depth } : null });
         src.novig++;
       }
@@ -110,7 +116,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
         if (Math.abs(d) >= MOVED_GAP && (!moved || Math.abs(d) > Math.abs(moved.d))) moved = { src: v.src, mid: +v.mid.toFixed(3), d: +d.toFixed(3), toward: d > 0 ? 'over' : 'under' };
       }
       // Pick'em legs: a PrizePicks / Underdog / Sleeper line has no price, so its value is the win chance of the better side.
-      if (fair != null && !moved) {
+      if (fair != null && !moved && !(fairSrc === 'Pinnacle' && pinStale)) {
         const seen = new Set();
         for (const q of qs) {
           if (!PICKEM.has(q.book) || seen.has(q.book)) continue; seen.add(q.book);
@@ -136,9 +142,10 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
         }
         if (alt) {
           const why = ['a different line than Pinnacle, so the price is converted'];
-          if (feedStale) why.push('book prices are old');
-          if (novStale && alt.src === 'Novig') why.push('Novig prices are old');
-          alt.check = why; alt.stale = feedStale || (novStale && alt.src === 'Novig'); alt.big = alt.ev >= BIG_EV; alt.stake = stakePct(alt.evAdj, alt.p);
+          if (pinStale) why.push("Pinnacle's line is old");
+          if (usStale && alt.kind === 'book') why.push('book prices are old');
+          if (novStale && alt.src === 'Novig') why.push('Novig price is old');
+          alt.check = why; alt.stale = pinStale || (usStale && alt.kind === 'book') || (novStale && alt.src === 'Novig'); alt.big = alt.ev >= BIG_EV; alt.stake = stakePct(alt.evAdj, alt.p);
         }
       }
       if (venues.length < 2 && !alt) continue;   // nothing to compare
@@ -150,7 +157,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
         const vs = venues.filter(v => v[side]?.p != null).map(v => {
           const x = v[side];
           const thin = v.kind === 'exchange' && ((v.src === 'Novig' && (x.depth ?? 0) < MIN_DEPTH) || (v.src === 'Kalshi' && !v.liquid));
-          return { src: v.src, kind: v.kind, spr: v.spr ?? null, p: +x.p.toFixed(4), am: x.am, ev: pf == null || v.src === fairSrc ? null : +(pf / x.p - 1).toFixed(4), depth: x.depth ?? null, oi: x.oi ?? null, thin };
+          return { src: v.src, kind: v.kind, age: v.age ?? null, spr: v.spr ?? null, p: +x.p.toFixed(4), am: x.am, ev: pf == null || v.src === fairSrc ? null : +(pf / x.p - 1).toFixed(4), depth: x.depth ?? null, oi: x.oi ?? null, thin };
         });
         const takeable = vs.filter(v => !v.thin);
         const best = takeable.length ? takeable.reduce((a, b) => a.p <= b.p ? a : b) : null;
@@ -161,17 +168,18 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       let call = null;
       if (!moved) for (const side of ['over', 'under']) for (const v of sides[side].venues) {
         if (v.thin || v.ev == null || v.ev < MIN_EV || v.src === fairSrc) continue;
-        if (!call || v.ev > call.ev) call = { side, src: v.src, kind: v.kind, am: v.am, p: v.p, ev: v.ev, depth: v.depth };
+        if (!call || v.ev > call.ev) call = { side, src: v.src, kind: v.kind, am: v.am, p: v.p, ev: v.ev, depth: v.depth, age: v.age ?? null };
       }
       if (call) {
         // verify flags: say WHY a call should be checked before it is bet
         const why = [];
-        if (feedStale && (fairSrc === 'Pinnacle' || call.kind === 'book')) why.push('book prices are old');
+        if (pinStale && (fairSrc === 'Pinnacle' || OWNED.has(call.src))) why.push(fairSrc === 'Pinnacle' ? "Pinnacle's line is old" : 'book prices are old');
+        if (usStale && call.kind === 'book' && !OWNED.has(call.src)) why.push(`${call.src} prices are old`);
         if (kalStale && (fairSrc === 'Kalshi' || call.src === 'Kalshi')) why.push('Kalshi prices are old');
-        if (novStale && call.src === 'Novig') why.push('Novig prices are old');
+        if (call.src === 'Novig' && (novStale || (call.age ?? 0) > FRESH_S)) why.push('Novig price is old');
         if (call.ev >= BIG_EV) why.push('edge this big is usually a moved line');
         call.check = why;
-        call.stale = why.some(w => /are old|is old/.test(w) || /old$/.test(w));   // an edge against an old price: never tracked
+        call.stale = why.some(w => /\bold\b/.test(w) && !/^edge/.test(w));   // an edge against an old price: never tracked
         call.big = call.ev >= BIG_EV;
         call.evAdj = +realisticEv(call.ev).toFixed(4);
         call.stake = stakePct(call.evAdj, call.p);
@@ -202,5 +210,5 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
   const top = r => Math.max(r.call?.evAdj ?? -1, r.alt?.evAdj ?? -1);
   rows.sort((a, b) => top(b) - top(a) || Math.abs(b.diff?.d ?? 0) - Math.abs(a.diff?.d ?? 0));
   legs.sort((a, b) => b.p - a.p);
-  return { asof: Math.floor(Date.now() / 1000), sources: { ...src, stale: { books: feedStale, kalshi: kalStale, novig: novStale }, novigAsof: novig?.generated || null, kalshiAsof: kalshi?.generated || null, feedAsof: feed?.generated || null }, season: feed?.season ?? null, week: feed?.week ?? null, rows: rows.slice(0, 500), legs: legs.slice(0, 400) };
+  return { asof: Math.floor(Date.now() / 1000), sources: { ...src, stale: { pinnacle: pinStale, books: usStale, kalshi: kalStale, novig: novStale }, fresh: { pinnacle: FRESH_S, books: FRESH_US_S, kalshi: FRESH_S, novig: FRESH_S }, pinnacleAsof: pinAsof || null, novigAsof: novig?.generated || null, kalshiAsof: kalshi?.generated || null, feedAsof: feed?.generated || null }, season: feed?.season ?? null, week: feed?.week ?? null, rows: rows.slice(0, 500), legs: legs.slice(0, 400) };
 }

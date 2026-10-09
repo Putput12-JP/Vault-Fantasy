@@ -46,7 +46,7 @@ const N = 'https://api.novig.com/v3/public/catalog';
 const PACE_MS = 300;             // ~3 req/s; 4 parallel streams were throttled to 3 of 15 games in the Sharp Money poller
 const CLOSE = 0.03;              // depth counts orders within 3 cents of the best
 const TIGHT = 0.10;              // a quote wider than this says nothing about the price
-const MAX_AGE = 60 * 60;         // a row older than this is dropped from the output
+const MAX_AGE = 45 * 60;         // a row older than this is dropped from the output (the board stops trusting a row at 30 min)
 const AHEAD_DAYS = 6;
 const STRIKES = 2;               // strikes per (player, stat), nearest the market line
 const log = (...a) => console.log('[novig-props]', ...a);

@@ -57,6 +57,16 @@ jobs:
             git show FETCH_HEAD:novig_props.json > sharp-out/novig_props.json || true
             git show FETCH_HEAD:prop_plays.json > sharp-out/prop_plays.json || true
           fi
+      # The book feed (PrizePicks / Underdog / Sleeper / Pinnacle props) and the Kalshi prop fairs normally come from update-props.yml,
+      # which rides GitHub's own cron and has been landing 4-7 hours apart. A +EV call against a Pinnacle line that old is a phantom
+      # (the line has moved), so pull both here, on the Cloudflare-driven cadence. ~10s, keyless, never blocks the poll.
+      - name: Refresh book lines + Kalshi props
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          cp data/lineup-feed.json sharp-out/lineup-feed.json
+          node scripts/fetch-pickem-props.mjs --feed=sharp-out/lineup-feed.json || true
+          node scripts/fetch-kalshi-props.mjs --out=sharp-out/kalshi_props.json || true
       # Novig player-prop order books (keyless). Time-boxed and oldest-read-first, so a
       # big slate is covered over a few runs; rows older than an hour drop out.
       - name: Poll Novig props
