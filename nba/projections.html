@@ -236,6 +236,14 @@ table.nt{width:100%;min-width:640px;border-collapse:collapse;font-size:13px}
 table.nt th{font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:8px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
 table.nt td{padding:8px 8px;border-bottom:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:middle}
 table.nt th.l,table.nt td.l{text-align:left}
+#btpend{table-layout:fixed;min-width:760px}
+#btpend td{white-space:normal;vertical-align:top;padding:12px 10px;line-height:1.45}
+#btpend th{padding:8px 10px}
+#btpend td.sx-txt{color:var(--fg2);min-width:0!important;max-width:none!important}
+#btpend td b{display:block;font-weight:600}#btpend td small{display:block;color:var(--fg3);margin-top:2px}
+#btpend .pill{height:auto;min-height:22px;padding:3px 9px;white-space:normal;line-height:1.3;align-items:flex-start}
+#btpend .pill::before{margin-top:5px;flex:none}
+#btpend td.num{white-space:nowrap;color:var(--fg2)}
 table.nt td.l b{display:block;font-weight:500}
 table.nt td small{display:block;font-size:11.5px;color:var(--fg3);font-weight:400}
 table.nt tr.off td{color:var(--fg3)}
@@ -1170,7 +1178,7 @@ table.nt.sx-tk{min-width:420px}
 .sv-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px) minmax(0,1fr);gap:14px;align-items:stretch}
 .sv-mid{display:flex;flex-direction:column;gap:14px;min-width:0;order:0}
 .sv-tls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.sv-tl{display:flex;flex-direction:column;gap:2px;padding:9px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
+.sv-tl{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;padding:9px 10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
 .sv-tl small{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg3)}.sv-tl b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
 .sv-rd{margin:-6px 0 0;font-size:12px;color:var(--fg2)}
 .sv-side{container:svs / inline-size;display:flex;flex-direction:column;min-width:0;padding:12px 14px 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface2)}
@@ -5074,8 +5082,8 @@ function renderLab(){
     ${(BT.extra || []).map(x => `<tr><td class="l"><b>${esc(x.name)}</b></td><td>${x.mean_actual}</td><td>${x.mae}</td><td>${x.self ? `${x.self.brier_model} <small class="muted">vs ${x.self.brier_base}</small>` : ''}</td><td>${x.espn ? `${x.espn.brier_model} <small class="${x.espn.brier_model <= x.espn.brier_market ? 'pos' : 'neg'}">vs ${x.espn.brier_market}</small><small class="muted">${x.espn.n_rows} lines</small>` : '<span class="muted">no prices</span>'}</td><td class="l">${pill('bad', esc(x.verdict))}</td><td class="l sx-txt" style="min-width:200px;max-width:320px">${esc(x.next)}</td></tr>`).join('')}</tbody>`;
   // tests with frozen rules that are waiting for this season's games
   $('btpendc').hidden = !(BT.pending && BT.pending.length);
-  $('btpend').innerHTML = `<thead><tr><th class="l">Test</th><th class="l">Rule</th><th class="l">First look</th><th class="l">Status</th><th class="l"></th></tr></thead><tbody>
-    ${(BT.pending || []).map(x => `<tr><td class="l"><b>${esc(x.name)}</b><small>${esc(x.area)}</small></td><td class="l sx-txt" style="min-width:240px;max-width:380px">${esc(x.rule)}</td><td class="l num" style="white-space:nowrap">${esc(x.due)}</td><td class="l">${pill('warn', esc(x.status))}</td><td class="l"><a href="${btDoc(x.doc)}" target="_blank" rel="noopener">Rules</a></td></tr>`).join('')}</tbody>`;
+  $('btpend').innerHTML = `<colgroup><col style="width:21%"><col style="width:36%"><col style="width:11%"><col style="width:22%"><col style="width:10%"></colgroup><thead><tr><th class="l">Test</th><th class="l">Rule</th><th class="l">First look</th><th class="l">Status</th><th class="l"></th></tr></thead><tbody>
+    ${(BT.pending || []).map(x => `<tr><td class="l"><b>${esc(x.name)}</b><small>${esc(x.area)}</small></td><td class="l sx-txt">${esc(x.rule)}</td><td class="l num" style="white-space:nowrap">${esc(x.due)}</td><td class="l">${pill('warn', esc(x.status))}</td><td class="l"><a href="${btDoc(x.doc)}" target="_blank" rel="noopener">Rules</a></td></tr>`).join('')}</tbody>`;
   // decision log
   const areas = [...new Set(L.map(e => e.area))];
   if (bf.area !== 'all' && !areas.includes(bf.area)) bf.area = 'all';
