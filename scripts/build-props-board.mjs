@@ -37,7 +37,8 @@ const MIN_EV = 0.02;        // below this a "+EV" is inside the noise of a devig
 const MIN_GAP = 0.03;       // 3 points of probability between venues on one side
 const TIGHT_SPR = 0.06;     // exchange spread (prob points) at which its ask also says where the market is, not just what is for sale
 const MIN_DEPTH = 100;      // $ resting at an exchange before its price counts as takeable
-const STALE_S = 3 * 3600;   // fair/price older than this and a "+EV" is probably just the line having moved
+const STALE_S = 3 * 3600, STALE_BOOKS_S = 90 * 60;   // the book feed refreshes about hourly: 90 min means a run was skipped, and book lines move a lot in that time
+const MOVED_GAP = 0.07;     // a deep, tight exchange this far (probability points) from the fair price at the SAME line has priced a line move the reference has not seen   // fair/price older than this and a "+EV" is probably just the line having moved
 const BIG_EV = 0.10;        // an edge this large against Pinnacle is far likelier a data problem than a gift: flag it
 const DFS = new Set(['Underdog Fantasy', 'Sleeper', 'PrizePicks', 'Fliff', 'Pick6 (DraftKings)']);   // priced lopsided on purpose: a gap against them is their juice, not a market disagreement
 const KAL_SPR = 0.04, KAL_OI = 100;   // what makes a Kalshi strike liquid enough to anchor on
@@ -66,7 +67,7 @@ const SHIFT_MIN_EV = 0.05;   // a converted price carries model error the same-l
 export function buildPropsBoard({ feed, kalshi, novig, shift }) {
   const rows = [], legs = [], src = { pinnacle: 0, kalshi: 0, novig: 0, players: 0 };
   const nowS = Date.now() / 1000, age = g => g ? nowS - Date.parse(g) / 1000 : Infinity;
-  const feedStale = age(feed?.generated) > STALE_S, kalStale = age(kalshi?.generated) > STALE_S, novStale = age(novig?.generated) > STALE_S;
+  const feedStale = age(feed?.generated) > STALE_BOOKS_S, kalStale = age(kalshi?.generated) > STALE_S, novStale = age(novig?.generated) > STALE_S;
   const K = kalshi?.markets || {}, NV = novig?.markets || {};
   for (const [pid, p] of Object.entries(feed?.vegas_player_props || {})) {
     const nk = nkey(p.name);
@@ -98,8 +99,18 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       if (pin) { fair = powFair(impl(pin.over), impl(pin.under)); fairSrc = 'Pinnacle'; src.pinnacle++; }
       else { const kv = venues.find(v => v.src === 'Kalshi' && v.liquid); if (kv) { fair = kv.mid; fairSrc = 'Kalshi'; } }
 
+      // Has the market moved on without our reference? A deep, tight exchange far from the fair price at the same number is pricing
+      // a line move the (hourly) book snapshot has not caught: the "edge" is the reference being out of date, not the exchange being cheap.
+      // This is how a stale 31.5 turned into a +11% play when the line had already gone to 34.5.
+      let moved = null;
+      if (fair != null && fairSrc === 'Pinnacle') for (const v of venues) {
+        if (v.kind !== 'exchange' || v.mid == null || (v.spr ?? 1) > TIGHT_SPR) continue;
+        if (v.src === 'Novig' ? (v.depth ?? 0) < MIN_DEPTH : !v.liquid) continue;
+        const d = v.mid - fair;
+        if (Math.abs(d) >= MOVED_GAP && (!moved || Math.abs(d) > Math.abs(moved.d))) moved = { src: v.src, mid: +v.mid.toFixed(3), d: +d.toFixed(3), toward: d > 0 ? 'over' : 'under' };
+      }
       // Pick'em legs: a PrizePicks / Underdog / Sleeper line has no price, so its value is the win chance of the better side.
-      if (fair != null) {
+      if (fair != null && !moved) {
         const seen = new Set();
         for (const q of qs) {
           if (!PICKEM.has(q.book) || seen.has(q.book)) continue; seen.add(q.book);
@@ -111,7 +122,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       }
       // Moved-line plays: a book or exchange strike at a DIFFERENT number than the fair line, priced by converting the fair price to it.
       let alt = null;
-      if (fair != null) {
+      if (fair != null && !moved) {
         const cand = [];
         for (const q of qs) if (q.line !== ref && q.over != null && q.under != null && !PICKEM.has(q.book) && q.book !== 'Pinnacle') cand.push({ src: q.book, kind: 'book', line: q.line, po: impl(q.over), pu: impl(q.under), ao: q.over, au: q.under });
         for (const r of NV[mkt]?.[nk] || []) if (r.k !== ref && (r.depth ?? 0) >= MIN_DEPTH) cand.push({ src: 'Novig', kind: 'exchange', line: r.k, po: r.oa, pu: r.ua, ao: r.oa != null ? toAm(r.oa) : null, au: r.ua != null ? toAm(r.ua) : null, depth: r.depth });
@@ -148,7 +159,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       }
       // the headline call: the side + venue with the most EV that is takeable and not the fair source itself
       let call = null;
-      for (const side of ['over', 'under']) for (const v of sides[side].venues) {
+      if (!moved) for (const side of ['over', 'under']) for (const v of sides[side].venues) {
         if (v.thin || v.ev == null || v.ev < MIN_EV || v.src === fairSrc) continue;
         if (!call || v.ev > call.ev) call = { side, src: v.src, kind: v.kind, am: v.am, p: v.p, ev: v.ev, depth: v.depth };
       }
@@ -178,12 +189,13 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
           if (Math.abs(d) >= MIN_GAP && (!diff || Math.abs(d) > Math.abs(diff.d))) diff = { side, d: +d.toFixed(4), cheap: d > 0 ? e.src : o.src, rich: d > 0 ? o.src : e.src, cheapAm: d > 0 ? e.am : o.am, richAm: d > 0 ? o.am : e.am, fairBased: op !== o.p };
         }
       }
-      if (!call && !diff && !alt) continue;
+      if (!call && !diff && !alt && !moved) continue;
+      if (moved) src.moved = (src.moved || 0) + 1;
       src.players++;
       rows.push({
         pid, name: p.name, team: p.team, pos: p.pos, mkt, label: LABEL[mkt], line: ref,
         fair: fair == null ? null : +fair.toFixed(4), fairSrc,
-        over: sides.over, under: sides.under, call, diff, alt,
+        over: sides.over, under: sides.under, call, diff, alt, moved,
       });
     }
   }
