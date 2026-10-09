@@ -793,6 +793,31 @@ NOVIG = {}      # this poll's Novig board (poll() fills it, write_board() attach
 BOARD = os.path.join(os.environ.get('RUNNER_TEMP') or os.path.join(os.path.dirname(__file__), '..', 'raw'), 'nba_board.json')
 
 
+def src_ok(day_dir, tail=600):
+    """{source: {'ok': last poll that answered (unix s), 'try': last poll at all}} from today's polls.jsonl. The recorder only writes a price row
+    when it CHANGES, so a quote's own time cannot tell "unchanged for hours" from "the source stopped answering": this can. The page and the
+    ledger hold any prop whose quotes come from a source that has not answered in STALE_SRC_S (pricing.source_hold)."""
+    out = {}
+    try:
+        with open(os.path.join(day_dir, 'polls.jsonl')) as f:
+            lines = f.readlines()[-tail:]
+    except OSError:
+        return out
+    for line in lines:
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        s_, t = r.get('src'), r.get('t')
+        if not s_ or not t:
+            continue
+        o = out.setdefault(s_, {})
+        o['try'] = max(o.get('try', 0), t)
+        if r.get('ok'):
+            o['ok'] = max(o.get('ok', 0), t)
+    return out
+
+
 def write_board(root, day, slate):
     """Props board for the page (prop_board.py). Kept off nba-data: it is derived, and changes every poll."""
     try:
@@ -801,6 +826,7 @@ def write_board(root, day, slate):
         board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE, pm_depth=PM_DEPTH, when=day.when,
                       wire=(day.hist, day.log, day.t0))
         board['novig'] = NOVIG.get('board')              # polled as a source in poll() so Data Health sees it
+        board['src_ok'] = src_ok(day.dir)                # when each source last ANSWERED: a row's own time only says when its price last changed
         try:                                            # Sharp Price: Pinnacle history, tapes, signals (sharp.py)
             import sharp
             from prop_board import TEAM as BTEAM

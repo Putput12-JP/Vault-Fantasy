@@ -2854,11 +2854,30 @@ function rosterHold(team, g, cache, src){
   }
   return cache[key] || (src === 'lab' ? {why: 'player'} : null);
 }
-const holdTxt = (h, r) => h.why === 'preseason'
+const SRC_NAME = {kalshi: 'Kalshi', espn: 'ESPN / DraftKings', pinnacle: 'Pinnacle', action: 'Action Network books', polymarket: 'Polymarket', prizepicks: 'PrizePicks', underdog: 'Underdog', sleeper: 'Sleeper'};
+const holdTxt = (h, r) => h.why === 'source'
+  ? `A price behind this prop is old: ${Object.entries(h.srcs).map(([s, m]) => `${SRC_NAME[s] || s} last answered ${m} minutes ago`).join(', ')}. A price compared against a source that has stopped updating is usually just a line that moved.`
+  : h.why === 'preseason'
   ? `This is a preseason game. Starters rest and rotations are a guess, and the model was never tested on preseason games: on the first preseason night it had a starter at 42 minutes who played 17.`
   : h.why === 'team'
   ? `The minutes model can't see ${esc(r.tm || r.team)}'s rotation yet (${h.n < HOLD_MIN_PLAYERS ? `only ${h.n} players it can project` : `it has someone at ${fmt(h.top, 0)} minutes`}), usually because of new arrivals. Teams like that ran 2 to 4 minutes too high per player in the backtest.`
   : `${esc(r.name)} hasn't played for ${esc(r.tm || r.team)} yet, so his minutes are the Minutes Lab's estimate, which the backtest never scored.`;
+// Source guard (pricing.source_hold, same rule). A quote's own time says when its price last CHANGED; the recorder writes nothing for an
+// unchanged price, so an old quote is either current or from a source that stopped answering. board.src_ok has each source's last answered poll.
+const STALE_SRC_S = 30 * 60;
+const SRC_OF = {Pinnacle: 'pinnacle', DraftKings: 'espn', 'ESPN BET': 'espn', FanDuel: 'action', BetMGM: 'action', BetRivers: 'action', bet365: 'action',
+  Kalshi: 'kalshi', Polymarket: 'polymarket', PrizePicks: 'prizepicks', Underdog: 'underdog', Sleeper: 'sleeper'};
+function sourceHold(e){
+  const B = PS.board, ok = B && B.src_ok, now = B && B.t;
+  if (PS.mode === 'example' || !ok || !now) return null;
+  const names = [...(e.books || []).map(x => x[0]), ...((e.kal || []).length ? ['Kalshi'] : []), ...(e.pk || []).map(x => x[0])], stale = {};
+  for (const n of names){
+    const s = SRC_OF[n], last = s && ok[s] ? ok[s].ok : null;
+    if (last != null && now - last > STALE_SRC_S) stale[s] = Math.floor((now - last) / 60);
+  }
+  return Object.keys(stale).length ? {why: 'source', srcs: stale} : null;
+}
+const holdLabel = h => h.why === 'preseason' ? 'On hold: preseason' : h.why === 'source' ? 'On hold: a price source is behind' : 'On hold: roster changed';
 function priceRow(e, cache){
   const P = PS.board.players[e.p] || [String(e.p), '', null];
   const gm = (PS.board.games || []).find(x => String(x.id) === String(e.g));
@@ -2916,7 +2935,7 @@ function priceRow(e, cache){
   r.passing = gated.some(c => c.g === 'go');
   // A pick'em line far from the projection is usually a different minutes situation (a preseason rest night, a mismapped market), so it gets no edge: same 40% rule the Best Bets use.
   r.pkBest = [...r.pkc].filter(c => r.mu > 0 && Math.abs(c.line - r.mu) / r.mu <= .40).sort((a, b) => b.edge - a.edge)[0] || null;   // the pick'em side with the most edge: shown (and sorted on) when a row has no priced bet, never a gated best bet
-  r.hold = mm ? rosterHold(r.tm, gm, cache, r.src) : null;
+  r.hold = (mm ? rosterHold(r.tm, gm, cache, r.src) : null) || sourceHold(e);
   return r;
 }
 
@@ -5339,7 +5358,7 @@ function renderPropsV2(){
   HK.mount($('pv-list'), 'PropsList', {sel: pv.sel,
     items: L.map(r => { const b = r.best, sh = r.sharp;
       return {key: key(r), name: r.name, ini: initials(r.name), src: phSrc(r.e.p), fit: phFit(r.e.p), stat: PV_SL[r.e.s] || r.e.s, proj: fmt(r.mu), verdict: r.verdict,
-        where: r.hold ? (r.hold.why === 'preseason' ? 'On hold: preseason' : 'On hold: roster changed') : r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`,
+        where: r.hold ? holdLabel(r.hold) : r.verdict === 'pass' ? (r.line != null ? `Line ${r.line}` : '') : `${pvBetShort(b)} · ${pvPrice(b)}`,
         edge: r.verdict !== 'pass' ? `+${pc(b.edge, 1)}` : null,
         shp: sh.vs ? {t: sh.vs, strong: true} : sh.lean && sh.lean !== 'split' && sh.sig.some(x => x.type !== 'p_mkt') ? {t: sh.lean} : null,
         watch: !!pvW[key(r)], fav: favP.has(String(r.e.p)), logged: pvBets.some(x => x.k === key(r))}; }),
@@ -5566,8 +5585,8 @@ function pvDetail(r){
     verdictOf = () => ({kind: 'lean', title: `${pvBetShort(b)} at ${pvPrice(b)}`, pill: {t: t[1], cls: t[0] === 'tracking' ? 'warn' : 'idle'},
       html: `${plainTxt()}.</p>
       <p>The price looks <b>+${pc(b.edge, 1)}</b> off our fair ${pc(b.fair, 1)}, but this kind of edge ${b.g === 'watch' ? 'made money last season without being conclusive' : 'has no record yet'}. Worth a look, not a stake.</p>`});
-  } else if (r.hold) verdictOf = () => ({kind: 'pass', title: r.hold.why === 'preseason' ? 'On hold: preseason' : 'On hold: roster changed', pill: {t: 'No call', cls: 'idle'},
-      html: `<p>${holdTxt(r.hold, r)} So no Bet or Lean, and it stays out of Edges, Pick'em Pairs and the Track Record${r.hold.why === 'preseason' ? ' (preseason is logged apart, as a rehearsal)' : ` until ${r.hold.why === 'team' ? 'the new players have a game with the team' : 'he plays a game for them'}`}.</p>
+  } else if (r.hold) verdictOf = () => ({kind: 'pass', title: holdLabel(r.hold), pill: {t: 'No call', cls: 'idle'},
+      html: `<p>${holdTxt(r.hold, r)} So no Bet or Lean, and it stays out of Edges, Pick'em Pairs and the Track Record${r.hold.why === 'preseason' ? ' (preseason is logged apart, as a rehearsal)' : ` until ${r.hold.why === 'source' ? 'that source answers again' : r.hold.why === 'team' ? 'the new players have a game with the team' : 'he plays a game for them'}`}.</p>
       <p>${b ? `For reference, the best price is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)} against our number.` : 'No prices to compare yet.'}</p>`});
   else verdictOf = () => ({kind: 'pass', title: 'No price is 3% better than fair', pill: null,
       html: `<p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p>`});

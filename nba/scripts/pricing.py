@@ -490,6 +490,28 @@ NEWS_S = 3 * 3600       # an injury / lineup change this recent, newer than the 
 STALE_S = 15 * 60       # another venue changed its price this long after this one: "stale"
 
 
+STALE_SRC_S = 30 * 60   # a source that has not answered a poll in this long: props quoted from it are held (same rule as the page's sourceHold)
+SRC_OF = {'Pinnacle': 'pinnacle', 'DraftKings': 'espn', 'ESPN BET': 'espn', 'FanDuel': 'action', 'BetMGM': 'action', 'BetRivers': 'action', 'bet365': 'action',
+          'Kalshi': 'kalshi', 'Polymarket': 'polymarket', 'PrizePicks': 'prizepicks', 'Underdog': 'underdog', 'Sleeper': 'sleeper'}
+
+
+def source_hold(e, board):
+    """None, or {'why': 'source', 'srcs': {source: minutes since it last answered}}: a prop whose price comes from a source that stopped
+    answering is held (priced and shown, never an edge or a shadow bet), exactly like a roster hold. A last-change time cannot say this: the
+    recorder writes a row only when a price changes, so an old quote can be current or abandoned. Unknown status is not a hold."""
+    ok, now = (board or {}).get('src_ok'), (board or {}).get('t')
+    if not ok or not now:
+        return None
+    names = [r[0] for r in e.get('books', [])] + (['Kalshi'] if e.get('kal') else []) + [r[0] for r in e.get('pk', [])]
+    stale = {}
+    for n in names:
+        s = SRC_OF.get(n)
+        last = (ok.get(s) or {}).get('ok') if s else None
+        if last is not None and now - last > STALE_SRC_S:
+            stale[s] = int((now - last) // 60)
+    return {'why': 'source', 'srcs': stale} if stale else None
+
+
 def edge_types(c, others_t, news_t, now):
     """Why a candidate is an edge, strongest first: news, stale, ladder (Kalshi consensus), gap (other venues'
     consensus), model. The page's edgeTypes() is the same rule."""
@@ -531,7 +553,7 @@ def price_board(board, pricer=None):
             times = [(row[0], row[6]) for row in e.get('books', []) if len(row) > 6 and row[6]] + \
                     [('Kalshi', rung[6]) for rung in e.get('kal', []) if len(rung) > 6 and rung[6]] + \
                     [(row[0], row[5]) for row in e.get('pk', []) if len(row) > 5 and row[5]]
-            hold = pricer.roster_hold(r['team'], g, status, cache, r.get('src'))
+            hold = pricer.roster_hold(r['team'], g, status, cache, r.get('src')) or source_hold(e, board)
             for c in r['cands']:
                 c['types'] = edge_types(c, [t for v, t in times if v != c['bk']], news.get(r['team'], []), board.get('t'))
                 rows.append(dict(c, p=e['p'], s=e['s'], gid=str(e['g']), mu=r['mu'], min=r['min'], team=r['team'], hold=hold))
