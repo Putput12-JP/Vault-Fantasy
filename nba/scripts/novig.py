@@ -291,6 +291,35 @@ def poll(games, root, now, roster_find=None):
     return out
 
 
+def quotes(out, games):
+    """board['novig'] -> (rows, meta) for Day.record('novig', ...): one key per game market, the HOME / OVER side's
+    [bid, ask, depth to the nearest $250], so a price change is a row and a depth wobble is not. Keys carry the strike,
+    so a main line that moves is a new key. This is the price history the Backtest Lab needs to test Novig as a fair price."""
+    by_id = {str(g['id']): g for g in games}
+    rows, meta = {}, {}
+    for gid, g in (out.get('games') or {}).items():
+        gm = by_id.get(gid)
+        if not gm:
+            continue
+        for kind, x in (('ml', g.get('ml')), ('sp', g.get('main_spread')), ('tot', g.get('main_total'))):
+            if not x or not x.get('o'):
+                continue
+            first = x['o'][0]
+            lead = first.lower().startswith('over') if kind == 'tot' else first.split(' ')[0] == gm['home']
+            i = 0 if lead else 1                                   # the home / over outcome
+            line = x['k'] if kind == 'tot' else None
+            if kind == 'sp':
+                try:
+                    n = float(first.split(' ')[1])
+                    line = n if lead else -n                       # the home handicap
+                except (IndexError, ValueError):
+                    continue
+            key = f"{gid}|{kind}" + (f"|{line}" if line is not None else '')
+            rows[key] = [x['bid'][i], x['ask'][i], int(round(x['depth'] / 250.0)) * 250]
+            meta[key] = {'g': gid, 'm': kind, 'line': line, 'mid': x['id']}
+    return rows, meta
+
+
 if __name__ == '__main__':
     now = time.time()
     ev = pages('/catalog/events?league=NBA&status=OPEN_PREGAME&limit=50')

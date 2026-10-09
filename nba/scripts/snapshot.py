@@ -778,6 +778,8 @@ def write_board(root, day, slate):
             day.append('tape.jsonl', [{'t': x['t'], 's': 'nov', 'g': x['g'], 'm': x['m'], 'side': x['side'], 'line': x['line'], 'usd': round(x['usd']),
                                        'px': x['px'], 'id': 'nov:' + x['id']} for x in board['novig'].get('fresh') or []])
             board['novig'].pop('fresh', None)             # saved to the tape; not needed on the page
+            nrows, nmeta = novig.quotes(board['novig'], [g for g in slate.games if g['pre']])
+            day.record('novig', slate.now, nrows, nmeta)    # price history for the Backtest Lab (change-only, like every venue)
         except Exception:
             traceback.print_exc(limit=2)
         try:                                            # Sharp Price: Pinnacle history, tapes, signals (sharp.py)

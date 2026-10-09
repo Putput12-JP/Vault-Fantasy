@@ -357,6 +357,7 @@ def main():
          'rule': 'Bets placed while a price is older than injury or lineup news: 150 settled bets over 25 days, ROI z >= 2.4, closing-line value z >= 2, both halves positive.', 'status': f'{nb} of 150 settled bets so far'},
         {'name': "Pick'em lines against Pinnacle", 'area': "Pick'em", 'due': '2026-11-23', 'doc': 'edge-tests-r2.md',
          'rule': "Pick the side with fair chance at least 3 points above the flex break-even: 150 picks over 40 games, hit rate above 54.25% at z >= 2.4, both halves above.", 'status': 'Rule frozen; Pinnacle props not posting in preseason'},
+        {'name': 'Novig money against the close', 'area': 'Edges', 'due': '2026-12-01', 'doc': 'novig-money.md', 'rule': 'First look at 100 graded regular-season Novig money alerts ($1,000+ on one side of one market in 30 minutes): mean closing-line value against Pinnacle above zero at t >= 2, and positive in both halves.', 'status': 'Frozen, waiting for 100 alerts'}
     ]
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'doc': DOC,
            'signals': signals, 'log': log, 'pending': pending, 'extra': extra, 'finder': finder, 'myth': myth, 'dont': dont, 'game': game, 'minutes': minutes, 'usage': usage, 'props': props, 'consensus': consensus,
