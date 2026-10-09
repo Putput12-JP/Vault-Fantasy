@@ -30,10 +30,11 @@ for v in H.values():
     p = S.get(v["name"]); w = next((x for x in (p or {}).get("weeks", []) if x["wk"] == v["week"]), None)
     if not w: continue
     val = sum(float(w.get(k) or 0) for k in COL[v["market"]])
+    done_sides = set()   # ONE entry per (prop, side): the first pregame snapshot that qualifies
     for s in sm[:-1]:
         f = fair(s["over"], s["under"])
         for side, best, pf in (("over", s.get("bestOver"), f), ("under", s.get("bestUnder"), 1 - f)):
-            if best is None: continue
+            if best is None or side in done_sides: continue
             ev = pf / prob(best) - 1
             if ev < MIN_EV: continue
             win = val > s["line"] if side == "over" else val < s["line"]
@@ -44,9 +45,8 @@ for v in H.values():
             if close["line"] == s["line"]:
                 cf = fair(close["over"], close["under"]); cf = cf if side == "over" else 1 - cf
                 clv = cf / prob(best) - 1
+            done_sides.add(side)
             rows.append(dict(mkt=v["market"], wk=v["week"], side=side, ev=ev, win=win and not push, push=push, u=u, clv=clv, price=best))
-            break   # first qualifying sample per (prop, side)... one entry per prop-side; see below
-        # allow both sides to qualify independently
 def summarize(xs, lab):
     d = [x for x in xs if not x["push"]]
     if not d: print(f"{lab:28} n=0"); return
