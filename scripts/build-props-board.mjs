@@ -96,9 +96,15 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       }
       const kl = (K[mkt]?.[nk] || []).find(r => r.k === ref);
       if (kl && kl.fair != null) {
+        // Kalshi quotes Yes/No in cents. "Over k" is the Yes side of the "(k+0.5)+" contract; "Under" is buying No on it.
+        // Older files carry only the midpoint and spread, so the bid / ask is rebuilt from those (same cents, to the cent).
         const h = Math.min(kl.spr ?? 0.04, 0.2) / 2;
+        const ya = kl.ya ?? Math.min(0.99, kl.fair + h), yb = kl.yb ?? Math.max(0.01, kl.fair - h);
+        const c = x => Math.round(x * 100);
+        const contract = `${Math.ceil(kl.k)}+`;
         venues.push({ src: 'Kalshi', kind: 'exchange', mid: kl.fair, spr: kl.spr, oi: kl.oi, liquid: kl.spr <= KAL_SPR && kl.oi >= KAL_OI,
-          over: { p: Math.min(0.99, kl.fair + h), am: toAm(Math.min(0.99, kl.fair + h)), oi: kl.oi }, under: { p: Math.min(0.99, 1 - kl.fair + h), am: toAm(Math.min(0.99, 1 - kl.fair + h)), oi: kl.oi } });
+          over: { p: Math.min(0.99, ya), am: toAm(Math.min(0.99, ya)), oi: kl.oi, cents: c(ya), bidc: c(yb), contract, side: 'Yes' },
+          under: { p: Math.min(0.99, 1 - yb), am: toAm(Math.min(0.99, 1 - yb)), oi: kl.oi, cents: c(1 - yb), bidc: c(1 - ya), contract, side: 'No' } });
         src.kalshi++;
       }
       let fair = null, fairSrc = null;
@@ -157,7 +163,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
         const vs = venues.filter(v => v[side]?.p != null).map(v => {
           const x = v[side];
           const thin = v.kind === 'exchange' && ((v.src === 'Novig' && (x.depth ?? 0) < MIN_DEPTH) || (v.src === 'Kalshi' && !v.liquid));
-          return { src: v.src, kind: v.kind, age: v.age ?? null, spr: v.spr ?? null, p: +x.p.toFixed(4), am: x.am, ev: pf == null || v.src === fairSrc ? null : +(pf / x.p - 1).toFixed(4), depth: x.depth ?? null, oi: x.oi ?? null, thin };
+          return { src: v.src, kind: v.kind, age: v.age ?? null, spr: v.spr ?? null, p: +x.p.toFixed(4), am: x.am, ev: pf == null || v.src === fairSrc ? null : +(pf / x.p - 1).toFixed(4), depth: x.depth ?? null, oi: x.oi ?? null, cents: x.cents ?? null, bidc: x.bidc ?? null, contract: x.contract ?? null, kside: x.side ?? null, thin };
         });
         const takeable = vs.filter(v => !v.thin);
         const best = takeable.length ? takeable.reduce((a, b) => a.p <= b.p ? a : b) : null;
@@ -168,7 +174,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       let call = null;
       if (!moved) for (const side of ['over', 'under']) for (const v of sides[side].venues) {
         if (v.thin || v.ev == null || v.ev < MIN_EV || v.src === fairSrc) continue;
-        if (!call || v.ev > call.ev) call = { side, src: v.src, kind: v.kind, am: v.am, p: v.p, ev: v.ev, depth: v.depth, age: v.age ?? null };
+        if (!call || v.ev > call.ev) call = { side, src: v.src, kind: v.kind, am: v.am, p: v.p, ev: v.ev, depth: v.depth, age: v.age ?? null, cents: v.cents ?? null };
       }
       if (call) {
         // verify flags: say WHY a call should be checked before it is bet

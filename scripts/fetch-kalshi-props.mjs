@@ -79,7 +79,7 @@ function yesQuote(m) {
   const nb = num(m.no_bid_dollars);
   const ya = nb != null ? 1 - nb : null;
   if (yb == null || ya == null) return null;
-  return { fair: (yb + ya) / 2, spread: Math.abs(ya - yb) };
+  return { fair: (yb + ya) / 2, spread: Math.abs(ya - yb), yb, ya };
 }
 
 // Follow the cursor to collect all open events (with nested markets) for a series.
@@ -122,6 +122,8 @@ async function fetchSeries(series) {
         fair: +q.fair.toFixed(4),
         oi: fp(m.open_interest_fp != null ? m.open_interest_fp : m.open_interest),
         spr: +q.spread.toFixed(3),
+        yb: +q.yb.toFixed(3), ya: +q.ya.toFixed(3),     // the real Yes bid / Yes ask in dollars (= cents / 100), so the page can show what Kalshi itself shows
+        tk: m.ticker || null,
       };
       (bucket[key] = bucket[key] || []).push(row);
       kept++; nk++;
