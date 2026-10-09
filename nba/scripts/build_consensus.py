@@ -92,6 +92,7 @@ def verdict(s):
     return 'GO' if s['games'] >= 50 and (s['z'] or 0) >= 2 else 'WATCH'
 
 
+BETLOG, CUR = [], {}     # every second-half bet at the edge threshold: (test, stat, fair label, side, edge, cost, return, game), for the edge calibration
 SHIP = ('consensus', 'consensus + model')                      # the pre-registered fairs; the rest are baselines
 BASELINES = (('price only', ['price']), ('price + model', ['price', 'model']))
 
@@ -128,6 +129,7 @@ def evaluate(rows, name, bet_fn, fair_keys=(('consensus', ['cons']), ('consensus
     out['bets'] = {}
     for label, keys in fair_keys:
         b = [float(x) for x in blends[label]]
+        CUR['label'] = label
         sides = defaultdict(list)
         for r in test:
             for side, ret in bet_fn(r, bprob(b, r, keys)):
@@ -163,9 +165,11 @@ def main():
         if fair - k - kalshi_fee(k) >= EDGE:
             c = k + kalshi_fee(k)
             out.append(('YES', (1 - c) / c if r['y'] else -1.0))
+            BETLOG.append((CUR.get('test'), CUR.get('stat'), CUR.get('label'), 'YES', fair - k - kalshi_fee(k), c, out[-1][1], r['gid']))
         if (1 - fair) - (1 - k) - kalshi_fee(1 - k) >= EDGE:
             c = 1 - k + kalshi_fee(1 - k)
             out.append(('NO', (1 - c) / c if not r['y'] else -1.0))
+            BETLOG.append((CUR.get('test'), CUR.get('stat'), CUR.get('label'), 'NO', (1 - fair) - (1 - k) - kalshi_fee(1 - k), c, out[-1][1], r['gid']))
         return out
 
     def book_bets(r, fair):
@@ -173,8 +177,10 @@ def main():
         po, pu = am_prob(r['over_px']), am_prob(r['under_px'])
         if fair - po >= EDGE:
             out.append(('Over', am_payout(r['over_px']) if r['y'] else -1.0))
+            BETLOG.append((CUR.get('test'), CUR.get('stat'), CUR.get('label'), 'Over', fair - po, po, out[-1][1], r['gid']))
         if (1 - fair) - pu >= EDGE:
             out.append(('Under', am_payout(r['under_px']) if not r['y'] else -1.0))
+            BETLOG.append((CUR.get('test'), CUR.get('stat'), CUR.get('label'), 'Under', (1 - fair) - pu, pu, out[-1][1], r['gid']))
         return out
 
     for m in KAL_MKTS:
@@ -191,7 +197,7 @@ def main():
                 rows.append({'price': x['k'], 'cons': CE.p_over(m, mu, x['L'], V, ex), 'model': model(r0, m, x['L']), 'y': x['yes'],
                              'tip': x['tip'], 'gid': x['gid'], 'dist': abs(x['L'] - b['L'])})
         print(f'{m}: books -> Kalshi {len(rows):,} rungs', flush=True)
-        res['tests'].setdefault('books_to_kalshi', {})[m] = evaluate(rows, 'books_to_kalshi', kalshi_bets) if len(rows) >= 400 else {'n': len(rows)}
+        CUR.update(test='books_to_kalshi', stat=m); res['tests'].setdefault('books_to_kalshi', {})[m] = evaluate(rows, 'books_to_kalshi', kalshi_bets) if len(rows) >= 400 else {'n': len(rows)}
 
         # Kalshi ladder -> books
         rows = []
@@ -206,7 +212,7 @@ def main():
                          'tip': tip.get(int(b['gid']), 0), 'gid': b['gid'], 'dist': min(abs(x['L'] - b['L']) for x in lad),
                          'over_px': b['over_px'], 'under_px': b['under_px']})
         print(f'{m}: Kalshi -> books {len(rows):,} lines', flush=True)
-        res['tests'].setdefault('kalshi_to_books', {})[m] = evaluate(rows, 'kalshi_to_books', book_bets) if len(rows) >= 200 else {'n': len(rows)}
+        CUR.update(test='kalshi_to_books', stat=m); res['tests'].setdefault('kalshi_to_books', {})[m] = evaluate(rows, 'kalshi_to_books', book_bets) if len(rows) >= 200 else {'n': len(rows)}
 
         # Kalshi ladder, each rung from the others
         rows = []
@@ -221,11 +227,12 @@ def main():
                 rows.append({'price': x['k'], 'cons': CE.p_over(m, mu, x['L'], V, ex), 'model': model(r0, m, x['L']), 'y': x['yes'],
                              'tip': x['tip'], 'gid': x['gid'], 'dist': min(abs(z['L'] - x['L']) for j, z in enumerate(lad) if j != i)})
         print(f'{m}: Kalshi ladder leave-one-out {len(rows):,} rungs', flush=True)
-        res['tests'].setdefault('kalshi_ladder', {})[m] = evaluate(rows, 'kalshi_ladder', kalshi_bets) if len(rows) >= 400 else {'n': len(rows)}
+        CUR.update(test='kalshi_ladder', stat=m); res['tests'].setdefault('kalshi_ladder', {})[m] = evaluate(rows, 'kalshi_ladder', kalshi_bets) if len(rows) >= 400 else {'n': len(rows)}
 
     res['verdicts'] = {t: {m: {lab: {side: verdict(s) for side, s in sides.items()} for lab, sides in (d.get('bets') or {}).items() if lab in SHIP}
                            for m, d in ms.items()} for t, ms in res['tests'].items()}
     json.dump(res, open(OUT_JSON, 'w'), indent=1)
+    json.dump({'cols': ['test', 'stat', 'fair', 'side', 'edge', 'cost', 'ret', 'gid'], 'rows': BETLOG}, open(os.path.join(DATA, 'consensus_bets.json'), 'w'), separators=(',', ':'))
     write_md(res)
     print(open(OUT_MD).read())
 

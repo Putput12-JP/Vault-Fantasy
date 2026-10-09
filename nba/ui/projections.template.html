@@ -320,6 +320,7 @@ table.nt-days .l{text-align:left}
 .ev-who small,.ev-ven small{display:block;font-size:12px;color:var(--fg3)}
 .ev-ven b{display:block;font-weight:500;font-size:13px}
 .ev-ev{font-family:var(--font-mono);font-weight:600;color:var(--up);text-align:right;font-size:14px}
+.ev-ev small{display:block;font-weight:400;font-size:11.5px;color:var(--fg3)}
 .ev-stk{text-align:right;font-family:var(--font-mono);font-size:13px}
 .ev-stk small{display:block;font-family:var(--font-sans);font-size:11.5px;color:var(--fg3)}
 .ev-chev{width:16px;height:16px;color:var(--fg3);transition:transform .2s var(--ease-out,ease-out)}
@@ -1626,7 +1627,7 @@ th{font-weight:500}
         </div>
         <aside class="ev-rail">
           <section class="card"><h2>Which edges are working</h2><p>Each edge type's record this season, every market. Click one to filter.</p><div id="etypes"></div></section>
-          <section class="card"><h2>Stake</h2><p>Only Proven and Backtest GO plays are sized. Saved in this browser.</p>
+          <section class="card"><h2>Stake</h2><p>Only Proven and Backtest GO plays are sized, on the realistic edge (a promised edge has paid less than promised). Saved in this browser.</p>
             <div class="ev-stake"><label class="bankroll" for="ebank">Bankroll $<input class="pfind" id="ebank" type="number" min="0" step="100" inputmode="decimal"></label>
             <div class="seg" id="ekelly" role="group" aria-label="Kelly fraction"></div><div class="seg" id="ecap" role="group" aria-label="Largest stake per play"></div></div></section>
           <section class="card"><h2>How to read a row</h2><div class="ev-legend" id="elegend"></div></section>
@@ -3448,10 +3449,22 @@ const famOf = c => c.venue === 'kalshi' ? 'kalshi' : c.venue === 'pickem' ? 'pic
 const FAM_LABEL = {kalshi: 'Kalshi', book: 'Sportsbooks', polymarket: 'Polymarket', pickem: "Pick'em"};
 const sideKey = c => c.side === 'Over' || c.side === 'YES' ? 'over' : 'under';
 function sideCost(c){ return c.venue === 'kalshi' ? c.price + kFee(c.price) : c.venue === 'pickem' && c.price == null ? PK_BE : amP(c.price); }
-function kellyF(p){ return p.costP != null && p.costP < 1 ? Math.max(0, (p.fairP - p.costP) / (1 - p.costP)) : 0; }
+// Realistic edge: what a promised edge has actually paid. Backtest of 7,345 second-half bets at 3%+ edge (scripts/build_consensus.py ->
+// data/consensus_bets.json, consensus + model fair): promised edge does not keep rising with realized edge. A promised 8 points paid about 4;
+// a promised 12 about 5. Points are [promised, realized] bucket means in probability points; linear between them, flat past the last. The
+// uncertainty is wide (about +/-3 points a bucket), so this is a haircut, not a precise forecast. Stakes are sized on it.
+const REAL_EDGE = [[.035, .027], [.045, .031], [.059, .034], [.083, .038], [.119, .054], [.219, .074]];
+function realEdge(e){
+  if (!(e > 0)) return e;
+  const R = REAL_EDGE;
+  if (e <= R[0][0]) return e * R[0][1] / R[0][0];
+  for (let i = 1; i < R.length; i++) if (e <= R[i][0]) return R[i - 1][1] + (R[i][1] - R[i - 1][1]) * (e - R[i - 1][0]) / (R[i][0] - R[i - 1][0]);
+  return R[R.length - 1][1];
+}
+function kellyF(p){ return p.costP != null && p.costP < 1 ? Math.max(0, (p.edgeR ?? realEdge(p.fairP - p.costP)) / (1 - p.costP)) : 0; }
 function growth(p){
-  const k = p.costP, f = Math.min(ecfg.cap, ecfg.kf * kellyF(p));
-  return f > 0 ? p.fairP * Math.log(1 + f * (1 - k) / k) + (1 - p.fairP) * Math.log(1 - f) : 0;
+  const k = p.costP, f = Math.min(ecfg.cap, ecfg.kf * kellyF(p)), q = k + (p.edgeR ?? realEdge(p.fairP - k));
+  return f > 0 ? q * Math.log(1 + f * (1 - k) / k) + (1 - q) * Math.log(1 - f) : 0;
 }
 function tierOf(p){
   const gs = [];
@@ -3485,6 +3498,7 @@ function edgePlays(B, noEdits){
       if (!types.length) continue;
       const useGap = c.gap != null && c.gap >= EDGE_MIN && (c.edge < EDGE_MIN || c.gap >= c.edge);
       const p = {...c, r, types, g0: games[String(e.g)], fairP: useGap ? c.cfair : c.fair, costP: c.cost ?? sideCost(c), edgeP: useGap ? c.gap : c.edge};
+      p.edgeR = realEdge(p.edgeP);
       const k = `${e.p}|${e.s}|${sideKey(c)}`;
       (groups[k] = groups[k] || []).push(p);
     }
@@ -3592,7 +3606,7 @@ function renderEdges(){
     const av = fillUSD(p);                                                    // never past what the order book holds
     if (av != null && p.stake > av){ p.stake = av; p.capped = av; }
     if (p.venue === 'kalshi'){ p.n = Math.floor(p.stake / p.costP); if (p.size != null) p.n = Math.min(p.n, Math.floor(p.size)); p.stake = p.n * p.costP; }
-    p.ev = p.stake * p.edgeP / p.costP;
+    p.ev = p.stake * p.edgeR / p.costP;
   }
 
   $('ebanner').hidden = pick.mode !== 'example';
@@ -3632,7 +3646,7 @@ function renderEdges(){
         <div class="ev-who"><b>${esc(p.r.name)}</b><span class="ev-bet">${betLabel(p)}</span><small>${esc(p.r.team)}${withGame && p.g0 ? ` · ${p.g0.away} @ ${p.g0.home}` : ''}${p.r.lu === 'S' ? ' · Starting' : ''}${p.r.inj ? ` · ${esc(p.r.inj)}` : ''}</small></div>
         <div class="ev-ven"><b>${esc(p.bk)} <span class="num">${priceLabel(p)}</span></b><small>${p.also.length ? `also ${p.also.slice(0, 2).map(a => `${esc(a.bk)}${a.venue === 'kalshi' ? ' ' + (a.line + .5) + '+' : ''} ${ec(a.edgeP)}`).join(', ')}` : p.t ? `moved ${tAt(p.t)}` : ''}</small></div>
         ${evGauge(p)}
-        <div class="ev-ev">${ec(p.edgeP)}</div>
+        <div class="ev-ev">${ec(p.edgeP)}<small title="What a promised edge this size has actually paid in the backtest. Stakes are sized on this number.">realistic ${ec(p.edgeR)}</small></div>
         <div class="ev-why">${p.types.map(t => `<span class="ev-chip ${t}">${ETYPES[t]}</span>`).join('')}</div>
         <div class="ev-conf">${pill(p.tier, TIER[p.tier])}</div>
         <div class="ev-stk"${p.capped != null ? ` title="Capped: the order book only holds about $${Math.round(p.capped).toLocaleString()} at this price"` : ''}>${p.stake != null ? `$${p.stake.toFixed(0)}${p.scaled ? '*' : ''}<small>${p.capped != null ? 'all the book holds' : p.n != null ? p.n + ' contracts' : 'shadow'}</small>` : '<small>not sized</small>'}</div>
