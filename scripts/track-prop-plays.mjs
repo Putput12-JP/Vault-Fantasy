@@ -19,7 +19,7 @@
    (the Action loads it from the sharp-data branch and publishes it back).
    ════════════════════════════════════════════════════════════════════════ */
 import { readFileSync, existsSync } from 'node:fs';
-import { nkey } from './build-props-board.mjs';
+import { nkey, shiftFair } from './build-props-board.mjs';
 
 // market -> nflverse weekly columns (same table as settle_bets.py COL; combos sum)
 const COL = {
@@ -53,34 +53,51 @@ function actualOf(stats, name, week, mkt) {
   return { has: true, val: cols.reduce((s, c) => s + (+w[c] || 0), 0) };
 }
 
-export function trackPlays({ board, feed, games, ledger, stats, nowS }) {
+export function trackPlays({ board, feed, games, ledger, stats, nowS, shift }) {
   const L = ledger && ledger.plays ? ledger : { plays: {} };
+  L.legs ||= {};
   const season = String(feed?.season || ''), week = feed?.week;
   const stale = board?.sources?.stale || {};
   const anyStale = stale.books || stale.kalshi || stale.novig;
 
   // 1. log new calls and refresh the close on open ones
-  const rowByKey = new Map();
+  const rowByKey = new Map(), rowByPid = new Map();
+  for (const r of board?.rows || []) rowByPid.set(r.pid + '|' + r.mkt, { r });
   for (const r of board?.rows || []) {
     for (const side of ['over', 'under']) rowByKey.set(keyOf(season, week, r.pid, r.mkt, r.line, side), { r, side });
   }
   if (!anyStale) for (const r of board?.rows || []) {
-    const c = r.call; if (!c || c.stale || c.ev < MIN_EV || c.depth === 0) continue;
-    const start = gameStart(games, r.team);
-    if (!start || start <= nowS) continue;                         // pregame only, and only if we can see the game
-    const k = keyOf(season, week, r.pid, r.mkt, r.line, c.side);
-    if (L.plays[k]) continue;
-    L.plays[k] = {
-      id: k, season, week, pid: r.pid, name: r.name, team: r.team, pos: r.pos, mkt: r.mkt, label: r.label, line: r.line, side: c.side,
-      start, firstSeen: nowS, called: { src: c.src, kind: c.kind, am: c.am, p: c.p, ev: c.ev, depth: c.depth ?? null, fair: r[c.side].fair, fairSrc: r.fairSrc },
-      big: !!c.big, status: 'open',
-    };
+    for (const c of [r.call, r.alt]) {                              // a same-line call and/or a moved-line (converted) call
+      if (!c || c.stale || c.ev < (c.shifted ? 0.05 : MIN_EV) || c.depth === 0) continue;
+      const start = gameStart(games, r.team);
+      if (!start || start <= nowS) continue;                         // pregame only, and only if we can see the game
+      const line = c.shifted ? c.line : r.line;
+      const k = keyOf(season, week, r.pid, r.mkt, line, c.side);
+      if (L.plays[k]) continue;
+      L.plays[k] = {
+        id: k, season, week, pid: r.pid, name: r.name, team: r.team, pos: r.pos, mkt: r.mkt, label: r.label, line, side: c.side,
+        start, firstSeen: nowS, called: { src: c.src, kind: c.kind, am: c.am, p: c.p, ev: c.ev, evAdj: c.evAdj ?? null, depth: c.depth ?? null, fair: c.shifted ? c.fairAtLine : r[c.side].fair, fairSrc: r.fairSrc },
+        big: !!c.big, shifted: !!c.shifted, refLine: r.line, status: 'open',
+      };
+    }
+  }
+  // pick'em legs: no price, so the test is calibration. Log each fresh leg once with the win chance we gave it.
+  if (!anyStale) for (const g of board?.legs || []) {
+    if (g.p < 0.56) continue;
+    const start = gameStart(games, g.team); if (!start || start <= nowS) continue;
+    const k = [season, week, g.pid, g.mkt, g.book, g.line, g.side].join('|');
+    if (L.legs[k]) continue;
+    L.legs[k] = { id: k, season, week, pid: g.pid, name: g.name, team: g.team, mkt: g.mkt, label: g.label, book: g.book, line: g.line, side: g.side, p: g.p, shifted: g.shifted, start, firstSeen: nowS, status: 'open' };
   }
   for (const P of Object.values(L.plays)) {
     if (P.status !== 'open' && P.closeFair != null) continue;
     if (nowS < P.start) {
-      const hit = rowByKey.get(keyOf(P.season, P.week, P.pid, P.mkt, P.line, P.side));
-      const f = hit?.r[P.side]?.fair;
+      const hit = P.shifted ? rowByPid.get(P.pid + '|' + P.mkt) : rowByKey.get(keyOf(P.season, P.week, P.pid, P.mkt, P.line, P.side));
+      let f = hit?.r[P.side]?.fair;
+      if (P.shifted && hit?.r.fair != null) {            // convert the current fair over-price at the board's line to the play's line
+        const fo = shiftFair(shift, P.mkt, hit.r.fair, hit.r.line, P.line);
+        f = fo == null ? null : P.side === 'over' ? fo : 1 - fo;
+      }
       if (f != null && !anyStale) { P.closeFair = f; P.closeAt = nowS; }
     }
     if (P.closeFair != null) P.clv = +(P.closeFair / P.called.p - 1).toFixed(4);
@@ -97,6 +114,13 @@ export function trackPlays({ board, feed, games, ledger, stats, nowS }) {
     P.status = push ? 'push' : win ? 'won' : 'lost';
     P.units = push ? 0 : win ? +(dec(P.called.p) - 1).toFixed(3) : -1;
     P.settledAt = nowS;
+  }
+  for (const G of Object.values(L.legs)) {
+    if (G.status !== 'open' || nowS < G.start + 3 * 3600) continue;
+    const a = actualOf(stats, G.name, G.week, G.mkt);
+    if (!a.has) { if (nowS > G.start + VOID_AFTER) G.status = 'void'; continue; }
+    G.actual = a.val;
+    G.status = a.val === G.line ? 'push' : (G.side === 'over' ? a.val > G.line : a.val < G.line) ? 'won' : 'lost';
   }
   return L;
 }
@@ -117,7 +141,13 @@ export function recordOf(L) {
   const by = f => { const m = {}; for (const x of all) (m[f(x)] ||= []).push(x); return Object.fromEntries(Object.entries(m).map(([k, v]) => [k, agg(v)])); };
   return {
     all: agg(all), clean: agg(all.filter(x => !x.big)), big: agg(all.filter(x => x.big)),
-    byVenue: by(x => x.called.kind === 'exchange' ? x.called.src : 'US books'), byMarket: by(x => x.label), bySide: by(x => x.side),
+    legs: (() => {
+      const gs = Object.values(L.legs || {}), done = gs.filter(x => x.status === 'won' || x.status === 'lost');
+      const bucket = (lo, hi) => { const xs = done.filter(x => x.p >= lo && x.p < hi); return { lo, hi, n: xs.length, hit: xs.length ? +(xs.filter(x => x.status === 'won').length / xs.length).toFixed(4) : null, pred: xs.length ? +(xs.reduce((s, x) => s + x.p, 0) / xs.length).toFixed(4) : null }; };
+      return { n: gs.length, open: gs.filter(x => x.status === 'open').length, graded: done.length, buckets: [bucket(0.54, 0.58), bucket(0.58, 0.62), bucket(0.62, 0.7), bucket(0.7, 1)],
+        shifted: { n: done.filter(x => x.shifted).length, hit: done.filter(x => x.shifted).length ? +(done.filter(x => x.shifted && x.status === 'won').length / done.filter(x => x.shifted).length).toFixed(4) : null, pred: done.filter(x => x.shifted).length ? +(done.filter(x => x.shifted).reduce((s, x) => s + x.p, 0) / done.filter(x => x.shifted).length).toFixed(4) : null } };
+    })(),
+    byVenue: by(x => (x.shifted ? 'Different line: ' : '') + (x.called.kind === 'exchange' ? x.called.src : 'US books')), byMarket: by(x => x.label), bySide: by(x => x.side),
     recent: all.sort((a, b) => b.firstSeen - a.firstSeen).slice(0, 80).map(x => ({ ...x })),
   };
 }

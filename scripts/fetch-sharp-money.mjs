@@ -958,10 +958,11 @@ async function pollOnce() {
     const rj = f => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
     const nv = rj(resolve(DIR, 'novig_props.json')) || rj(resolve(ROOT, 'data', 'novig_props.json'));
     const feed = rj(resolve(ROOT, 'data', 'lineup-feed.json'));
-    P.props = buildPropsBoard({ feed, kalshi: rj(resolve(ROOT, 'data', 'kalshi_props.json')), novig: nv });
+    const shift = rj(resolve(ROOT, 'data', 'prop_line_shift.json'));
+    P.props = buildPropsBoard({ feed, kalshi: rj(resolve(ROOT, 'data', 'kalshi_props.json')), novig: nv, shift });
     // Track every fresh +EV call: logged at first sighting, closing price + box-score settlement later.
     const lf = resolve(DIR, 'prop_plays.json');
-    const ledger = trackPlays({ board: P.props, feed, games: P.games, ledger: loadLedger(lf), stats: rj(resolve(ROOT, 'data', `nflverse_stats_${feed?.season}.json`)), nowS: now() });
+    const ledger = trackPlays({ board: P.props, feed, games: P.games, ledger: loadLedger(lf), stats: rj(resolve(ROOT, 'data', `nflverse_stats_${feed?.season}.json`)), nowS: now(), shift });
     writeFileSync(lf, JSON.stringify(ledger));
     P.propRecord = recordOf(ledger);
   } catch (e) { log('props board failed', e.message); }

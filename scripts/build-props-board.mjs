@@ -42,8 +42,29 @@ const BIG_EV = 0.10;        // an edge this large against Pinnacle is far likeli
 const DFS = new Set(['Underdog Fantasy', 'Sleeper', 'PrizePicks', 'Fliff', 'Pick6 (DraftKings)']);   // priced lopsided on purpose: a gap against them is their juice, not a market disagreement
 const KAL_SPR = 0.04, KAL_OI = 100;   // what makes a Kalshi strike liquid enough to anchor on
 
-export function buildPropsBoard({ feed, kalshi, novig }) {
-  const rows = [], src = { pinnacle: 0, kalshi: 0, novig: 0, players: 0 };
+// ── line conversion: P(over L') from a fair price at L (scripts/backtest_prop_line_shift.py) ──
+// logit P(over L') = logit(P(over L)) + (L - L') / s,  s = c * L^b per market. Out of sample on 2025 moved lines it beat
+// both the open price and the unshifted close. Beyond MAX_SHIFT of the line it is extrapolation, so it returns null.
+const MAX_SHIFT = 0.25;
+const lgt = p => Math.log(p / (1 - p)), sgm = x => 1 / (1 + Math.exp(-x));
+export function shiftFair(shift, mkt, pOver, from, to) {
+  if (pOver == null || from == null || to == null) return null;
+  if (from === to) return pOver;
+  const m = shift?.[mkt]; if (!m || !(from > 0) || Math.abs(to - from) / from > MAX_SHIFT) return null;
+  const s = m.c * from ** m.b;
+  return Math.min(0.97, Math.max(0.03, sgm(lgt(Math.min(0.995, Math.max(0.005, pOver))) + (from - to) / s)));
+}
+// The backtest showed edges of 10%+ pay well under what they promise (promised +16%, paid +10%), while 3-10% paid about what
+// they promised. So the edge shown as "realistic" is flat to 8% and then keeps only a third of the excess.
+export const realisticEv = ev => ev <= 0.08 ? ev : 0.08 + 0.35 * (ev - 0.08);
+// Eighth-Kelly on the realistic edge, capped at 1.5% of bankroll: the realistic edge is itself an estimate (backtest +10.4% was +/-5.2%),
+// so full or even quarter Kelly would size to a number we are not sure of. f = edge * p / (1 - p) for a price of implied probability p.
+export const stakePct = (evAdj, p) => evAdj > 0 && p > 0 && p < 1 ? Math.min(1.5, +(12.5 * evAdj * p / (1 - p)).toFixed(2)) : 0;
+const PICKEM = new Set(['PrizePicks', 'Underdog Fantasy', 'Sleeper']);
+const SHIFT_MIN_EV = 0.05;   // a converted price carries model error the same-line price does not, so it needs a bigger edge
+
+export function buildPropsBoard({ feed, kalshi, novig, shift }) {
+  const rows = [], legs = [], src = { pinnacle: 0, kalshi: 0, novig: 0, players: 0 };
   const nowS = Date.now() / 1000, age = g => g ? nowS - Date.parse(g) / 1000 : Infinity;
   const feedStale = age(feed?.generated) > STALE_S, kalStale = age(kalshi?.generated) > STALE_S, novStale = age(novig?.generated) > STALE_S;
   const K = kalshi?.markets || {}, NV = novig?.markets || {};
@@ -73,11 +94,43 @@ export function buildPropsBoard({ feed, kalshi, novig }) {
           over: { p: Math.min(0.99, kl.fair + h), am: toAm(Math.min(0.99, kl.fair + h)), oi: kl.oi }, under: { p: Math.min(0.99, 1 - kl.fair + h), am: toAm(Math.min(0.99, 1 - kl.fair + h)), oi: kl.oi } });
         src.kalshi++;
       }
-      if (venues.length < 2) continue;   // nothing to compare
-
       let fair = null, fairSrc = null;
       if (pin) { fair = powFair(impl(pin.over), impl(pin.under)); fairSrc = 'Pinnacle'; src.pinnacle++; }
       else { const kv = venues.find(v => v.src === 'Kalshi' && v.liquid); if (kv) { fair = kv.mid; fairSrc = 'Kalshi'; } }
+
+      // Pick'em legs: a PrizePicks / Underdog / Sleeper line has no price, so its value is the win chance of the better side.
+      if (fair != null) {
+        const seen = new Set();
+        for (const q of qs) {
+          if (!PICKEM.has(q.book) || seen.has(q.book)) continue; seen.add(q.book);
+          const po = shiftFair(shift, mkt, fair, ref, q.line); if (po == null) continue;
+          const side = po >= 0.5 ? 'over' : 'under', pw = side === 'over' ? po : 1 - po;
+          if (pw < 0.54) continue;
+          legs.push({ pid, name: p.name, team: p.team, pos: p.pos, mkt, label: LABEL[mkt], book: q.book, line: q.line, side, p: +pw.toFixed(4), refLine: ref, shifted: q.line !== ref, fairSrc });
+        }
+      }
+      // Moved-line plays: a book or exchange strike at a DIFFERENT number than the fair line, priced by converting the fair price to it.
+      let alt = null;
+      if (fair != null) {
+        const cand = [];
+        for (const q of qs) if (q.line !== ref && q.over != null && q.under != null && !PICKEM.has(q.book) && q.book !== 'Pinnacle') cand.push({ src: q.book, kind: 'book', line: q.line, po: impl(q.over), pu: impl(q.under), ao: q.over, au: q.under });
+        for (const r of NV[mkt]?.[nk] || []) if (r.k !== ref && (r.depth ?? 0) >= MIN_DEPTH) cand.push({ src: 'Novig', kind: 'exchange', line: r.k, po: r.oa, pu: r.ua, ao: r.oa != null ? toAm(r.oa) : null, au: r.ua != null ? toAm(r.ua) : null, depth: r.depth });
+        for (const c of cand) {
+          const fo = shiftFair(shift, mkt, fair, ref, c.line); if (fo == null) continue;
+          for (const [side, pp, am, pf] of [['over', c.po, c.ao, fo], ['under', c.pu, c.au, 1 - fo]]) {
+            if (pp == null || pp <= 0 || pp >= 1) continue;
+            const ev = pf / pp - 1;
+            if (ev >= SHIFT_MIN_EV && (!alt || ev > alt.ev)) alt = { side, src: c.src, kind: c.kind, line: c.line, am, p: +pp.toFixed(4), ev: +ev.toFixed(4), evAdj: +(realisticEv(ev) * 0.8).toFixed(4), depth: c.depth ?? null, shifted: true, refLine: ref, fairAtLine: +pf.toFixed(4) };
+          }
+        }
+        if (alt) {
+          const why = ['a different line than Pinnacle, so the price is converted'];
+          if (feedStale) why.push('book prices are old');
+          if (novStale && alt.src === 'Novig') why.push('Novig prices are old');
+          alt.check = why; alt.stale = feedStale || (novStale && alt.src === 'Novig'); alt.big = alt.ev >= BIG_EV; alt.stake = stakePct(alt.evAdj, alt.p);
+        }
+      }
+      if (venues.length < 2 && !alt) continue;   // nothing to compare
 
       // per side: every venue's price, EV vs fair, and the spread of prices between venues
       const sides = {};
@@ -109,6 +162,8 @@ export function buildPropsBoard({ feed, kalshi, novig }) {
         call.check = why;
         call.stale = why.some(w => /are old|is old/.test(w) || /old$/.test(w));   // an edge against an old price: never tracked
         call.big = call.ev >= BIG_EV;
+        call.evAdj = +realisticEv(call.ev).toFixed(4);
+        call.stake = stakePct(call.evAdj, call.p);
       }
       // exchange price differs from the field: any exchange vs any other venue by MIN_GAP on one side
       let diff = null;
@@ -123,15 +178,17 @@ export function buildPropsBoard({ feed, kalshi, novig }) {
           if (Math.abs(d) >= MIN_GAP && (!diff || Math.abs(d) > Math.abs(diff.d))) diff = { side, d: +d.toFixed(4), cheap: d > 0 ? e.src : o.src, rich: d > 0 ? o.src : e.src, cheapAm: d > 0 ? e.am : o.am, richAm: d > 0 ? o.am : e.am, fairBased: op !== o.p };
         }
       }
-      if (!call && !diff) continue;
+      if (!call && !diff && !alt) continue;
       src.players++;
       rows.push({
         pid, name: p.name, team: p.team, pos: p.pos, mkt, label: LABEL[mkt], line: ref,
         fair: fair == null ? null : +fair.toFixed(4), fairSrc,
-        over: sides.over, under: sides.under, call, diff,
+        over: sides.over, under: sides.under, call, diff, alt,
       });
     }
   }
-  rows.sort((a, b) => (b.call?.ev ?? -1) - (a.call?.ev ?? -1) || Math.abs(b.diff?.d ?? 0) - Math.abs(a.diff?.d ?? 0));
-  return { asof: Math.floor(Date.now() / 1000), sources: { ...src, stale: { books: feedStale, kalshi: kalStale, novig: novStale }, novigAsof: novig?.generated || null, kalshiAsof: kalshi?.generated || null, feedAsof: feed?.generated || null }, rows: rows.slice(0, 500) };
+  const top = r => Math.max(r.call?.evAdj ?? -1, r.alt?.evAdj ?? -1);
+  rows.sort((a, b) => top(b) - top(a) || Math.abs(b.diff?.d ?? 0) - Math.abs(a.diff?.d ?? 0));
+  legs.sort((a, b) => b.p - a.p);
+  return { asof: Math.floor(Date.now() / 1000), sources: { ...src, stale: { books: feedStale, kalshi: kalStale, novig: novStale }, novigAsof: novig?.generated || null, kalshiAsof: kalshi?.generated || null, feedAsof: feed?.generated || null }, season: feed?.season ?? null, week: feed?.week ?? null, rows: rows.slice(0, 500), legs: legs.slice(0, 400) };
 }
