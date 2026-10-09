@@ -24,7 +24,7 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       # Busy windows (Central): Mon/Thu 5-11pm, Sat 10am-11pm, Sun 8am-8pm every
       # 10 min; other days 9am-11pm every 30 min. Quiet hours are skipped.
@@ -54,7 +54,14 @@ jobs:
           if git ls-remote --exit-code --heads origin sharp-data >/dev/null 2>&1; then
             git fetch --depth=1 origin sharp-data
             git show FETCH_HEAD:state.json > sharp-out/state.json || true
+            git show FETCH_HEAD:novig_props.json > sharp-out/novig_props.json || true
           fi
+      # Novig player-prop order books (keyless). Time-boxed and oldest-read-first, so a
+      # big slate is covered over a few runs; rows older than an hour drop out.
+      - name: Poll Novig props
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: node scripts/fetch-novig-props.mjs --out=sharp-out/novig_props.json --budget=200
       - name: Poll sources
         if: steps.gate.outputs.go == '1'
         run: node scripts/fetch-sharp-money.mjs --dir=sharp-out
@@ -67,5 +74,6 @@ jobs:
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
           git add data.json state.json
+          if [ -f novig_props.json ]; then git add novig_props.json; fi
           git commit -q -m "sharp money: $(date -u +%FT%TZ) [skip ci]"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" sharp-data

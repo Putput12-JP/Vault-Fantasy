@@ -36,6 +36,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from '
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { buildPropsBoard } from './build-props-board.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -945,6 +946,12 @@ async function pollOnce() {
   saveState(S);
   const P = payload(S, all, { ...walletInfo }, status);
   // `sig` changes only when something a viewer would see changes.
+  // Props page: Pinnacle / books / Kalshi / Novig at the same line. Optional, never blocks the poll.
+  try {
+    const rj = f => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
+    const nv = rj(resolve(DIR, 'novig_props.json')) || rj(resolve(ROOT, 'data', 'novig_props.json'));
+    P.props = buildPropsBoard({ feed: rj(resolve(ROOT, 'data', 'lineup-feed.json')), kalshi: rj(resolve(ROOT, 'data', 'kalshi_props.json')), novig: nv });
+  } catch (e) { log('props board failed', e.message); }
   P.sig = createHash('sha1').update(String(P.alerts.length) + ':' + (P.alerts[0]?.id || '') + ':' + all.map(g => (S.games[g.key]?.pin || []).length + '/' + (S.games[g.key]?.split || []).length).join(',')).digest('hex').slice(0, 12);
   writeFileSync(OUT, JSON.stringify(P));
   writeFileSync(resolve(DIR, 'new_alerts.json'), JSON.stringify(fresh));
