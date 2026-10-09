@@ -91,7 +91,9 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       const nv = (NV[mkt]?.[nk] || []).find(r => r.k === ref);
       if (nv && (nv.oa != null || nv.ua != null)) {
         venues.push({ src: 'Novig', kind: 'exchange', mid: nv.mid, spr: nv.spr, depth: nv.depth, age: nowS - nv.t,
-          over: nv.oa != null ? { p: nv.oa, am: toAm(nv.oa), depth: nv.depth } : null, under: nv.ua != null ? { p: nv.ua, am: toAm(nv.ua), depth: nv.depth } : null });
+          // Novig quotes in cents too: buying Over costs its ask and sells at its bid; the Under side is the mirror image.
+          over: nv.oa != null ? { p: nv.oa, am: toAm(nv.oa), depth: nv.depth, cents: Math.round(nv.oa * 100), bidc: nv.ob != null ? Math.round(nv.ob * 100) : null } : null,
+          under: nv.ua != null ? { p: nv.ua, am: toAm(nv.ua), depth: nv.depth, cents: Math.round(nv.ua * 100), bidc: nv.ub != null ? Math.round(nv.ub * 100) : null } : null });
         src.novig++;
       }
       const kl = (K[mkt]?.[nk] || []).find(r => r.k === ref);
@@ -143,7 +145,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
           for (const [side, pp, am, pf] of [['over', c.po, c.ao, fo], ['under', c.pu, c.au, 1 - fo]]) {
             if (pp == null || pp <= 0 || pp >= 1) continue;
             const ev = pf / pp - 1;
-            if (ev >= SHIFT_MIN_EV && (!alt || ev > alt.ev)) alt = { side, src: c.src, kind: c.kind, line: c.line, am, p: +pp.toFixed(4), ev: +ev.toFixed(4), evAdj: +(realisticEv(ev) * 0.8).toFixed(4), depth: c.depth ?? null, shifted: true, refLine: ref, fairAtLine: +pf.toFixed(4) };
+            if (ev >= SHIFT_MIN_EV && (!alt || ev > alt.ev)) alt = { side, src: c.src, kind: c.kind, line: c.line, am, cents: c.kind === 'exchange' ? Math.round(pp * 100) : null, p: +pp.toFixed(4), ev: +ev.toFixed(4), evAdj: +(realisticEv(ev) * 0.8).toFixed(4), depth: c.depth ?? null, shifted: true, refLine: ref, fairAtLine: +pf.toFixed(4) };
           }
         }
         if (alt) {
