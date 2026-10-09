@@ -27,7 +27,7 @@ AHEAD_H = 48
 CLOSE = 0.03                                           # depth counts orders within 3 cents of the best price
 TIGHT = 0.10                                           # a quote wider than this says nothing about the fair price
 
-STAT = {'POINTS': 'pts', 'REBOUNDS': 'reb', 'ASSISTS': 'ast', 'THREE_POINTERS_MADE': 'fg3m',
+STAT = {'POINTS': 'pts', 'REBOUNDS': 'reb', 'ASSISTS': 'ast', 'THREE_POINTERS_MADE': '3pm',
         'POINTS_REBOUNDS_ASSISTS': 'pra', 'POINTS_REBOUNDS': 'pr', 'POINTS_ASSISTS': 'pa',
         'REBOUNDS_ASSISTS': 'ra', 'STEALS': 'stl', 'BLOCKS': 'blk'}
 

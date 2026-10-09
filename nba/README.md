@@ -42,6 +42,16 @@ build_player_projections, build_gamelogs, build_model_state, prop_board, build_d
 `nba/raw/tables` and stay manual; the job keeps the archive-derived pieces (example board, archive counts) as they
 were.
 
+## Novig exchange flow
+
+`scripts/novig.py`: public, keyless reads of Novig's order books and trade tape (docs.novig.com, cached ~5 s at the edge).
+`snapshot.py` runs it on every poll and attaches `board['novig']`: per game the moneyline / main spread / main total
+(bid, ask, depth, resting dollars, new trades), per player prop a ladder, and a tape of tickets of $25 and up.
+One contract pays 1 cent, so dollars = price x qty / 100. State (trade cursors, the rolling tape) lives in
+`nba-data/novig/state.json`. A poll is budgeted (`NOVIG_BUDGET`, default 220 requests) and honours `Retry-After`; props
+rotate across polls. Smoke test: `python3 nba/scripts/novig.py`. The signed client (`scripts/novig_client.py`) is only
+needed for account endpoints, not for any of this.
+
 ## Live snapshots (week 4, from 2026-09-30)
 
 `scripts/snapshot.py` records every venue's pre-tip price (Kalshi, ESPN/DraftKings, Pinnacle, Action Network's

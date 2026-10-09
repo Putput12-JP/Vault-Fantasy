@@ -493,37 +493,53 @@ async function kalshi(sk, cfg, games, S) {
 // Novig is a peer-to-peer exchange with a public, keyless, edge-cached read API (docs.novig.com).
 // One contract pays 1 cent, so dollars = price * qty / 100. Trades are anonymous, like Kalshi's.
 async function novig(sk, cfg, games, S) {
-  const N = 'https://api.novig.com/v3/public/catalog';
-  const evs = ((await getJSON(`${N}/events?league=${cfg.nov}&limit=500`).catch(() => null)) || {}).items || [];
+  const N = 'https://api.novig.com/v3/public/catalog', J = u => getJSON(u, {}, 5);   // Novig's public throttle is unpublished: ride out 429s with longer backoff
+  const evs = ((await J(`${N}/events?league=${cfg.nov}&limit=500`).catch(() => null)) || {}).items || [];
   const t = now(), out = new Map();
-  for (const ev of evs) { try {
-    const m = /^(.+?) @ (.+)$/.exec(ev.description || ''); if (!m) continue;
-    const hit = matchGame(games, m[1], m[2], ev.startsTs / 1000); if (!hit) continue;
-    const mk = ((await getJSON(`${N}/markets?event=${ev.eventId}&marketType=MONEY&limit=5`)).items || [])[0]; if (!mk || mk.outcomes?.length !== 2) continue;
-    const side = Object.fromEntries(mk.outcomes.map(o => [o.outcomeId, teamSide(hit.g, o.name)]));
-    const book = await getJSON(`${N}/markets/${mk.marketId}/book`);
-    const best = {}, depth = {}; let rest = 0;
-    for (const o of mk.outcomes) {
-      const L = book.orders?.[o.outcomeId] || [];
-      best[side[o.outcomeId]] = L.length ? Math.max(...L.map(x => +x.price)) : null;
-      for (const x of L) rest += +x.price * x.qty / 100;
+  await pool(evs, 2, async ev => { try {
+    const m = /^(.+?) @ (.+)$/.exec(ev.description || ''); if (!m) return;
+    const hit = matchGame(games, m[1], m[2], ev.startsTs / 1000); if (!hit) return;
+    const all = (await J(`${N}/markets?event=${ev.eventId}&marketType=MONEY,SPREAD,TOTAL&limit=300`)).items || [];
+    const open = all.filter(x => x.status === 'OPEN' && x.outcomes?.length === 2);
+    const cs = hit.g.consensus?.sp?.line, ct = hit.g.consensus?.tot?.line;       // the main lines: Novig markets whose strike matches the market consensus
+    const homeHcap = x => { const first = teamSide(hit.g, x.outcomes[0].name.split(' ')[0]); return first === 'home' ? +x.strike : -x.strike; };
+    const pick = { ml: open.find(x => x.marketType === 'MONEY'),
+      sp: cs != null ? open.find(x => x.marketType === 'SPREAD' && Math.abs(homeHcap(x) - cs) < 0.01) : null,
+      tot: ct != null ? open.find(x => x.marketType === 'TOTAL' && Math.abs(+x.strike - ct) < 0.01) : null };
+    if (!pick.ml) return;
+    const G = S.games[hit.g.key] ||= {}, tape = G.nov ||= [], info = { id: ev.eventId, rest: 0, vol: 0 };
+    for (const [m, mk] of Object.entries(pick)) {
+      if (!mk) continue;
+      const [o0, o1] = mk.outcomes;
+      const sideOf = o => m === 'tot' ? (/^over/i.test(o.name) ? 'over' : 'under') : teamSide(hit.g, o.name.split(' ')[0]);
+      const side = { [o0.outcomeId]: sideOf(o0), [o1.outcomeId]: sideOf(o1) };
+      const book = await J(`${N}/markets/${mk.marketId}/book`);
+      const best = {}; let rest = 0, depth = {};
+      for (const o of mk.outcomes) {
+        const L = book.orders?.[o.outcomeId] || [];
+        best[side[o.outcomeId]] = L.length ? Math.max(...L.map(x => +x.price)) : null;
+        for (const x of L) rest += +x.price * x.qty / 100;
+      }
+      for (const o of mk.outcomes) depth[side[o.outcomeId]] = Math.round((book.orders?.[o.outcomeId] || []).filter(x => best[side[o.outcomeId]] - +x.price <= 0.03 + 1e-9).reduce((a, x) => a + +x.price * x.qty / 100, 0));
+      const A = m === 'tot' ? 'over' : 'home', B = m === 'tot' ? 'under' : 'away';
+      const bid = best[A], ask = best[B] != null ? 1 - best[B] : null;
+      const cur = S.cursors['n:' + mk.marketId] || t - DAY; let newest = cur, vol = 0;
+      const r = await J(`${N}/markets/${mk.marketId}/trades?limit=500`);
+      for (const x of r.items || []) {
+        const ts = Math.floor(x.ts / 1000); if (ts <= cur) continue; newest = Math.max(newest, ts);
+        const usd = +x.price * x.qty / 100; vol += usd; if (usd < 25) continue;
+        tape.push({ ts, m, side: side[x.outcomeId], usd: Math.round(usd), px: r3(+x.price), line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, id: x.tradeId.slice(0, 18) });
+      }
+      S.cursors['n:' + mk.marketId] = newest;
+      info[m] = { line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, bid: bid != null ? r3(bid) : null, ask: ask != null ? r3(ask) : null,
+        mid: bid != null && ask != null && ask - bid <= 0.10 ? r3((bid + ask) / 2) : null, depth, rest: Math.round(rest), vol: Math.round(vol) };
+      info.rest += Math.round(rest); info.vol += Math.round(vol);
     }
-    const near = (id) => (book.orders?.[id] || []).filter(x => best[side[id]] - +x.price <= 0.03 + 1e-9).reduce((a, x) => a + +x.price * x.qty / 100, 0);
-    for (const o of mk.outcomes) depth[side[o.outcomeId]] = Math.round(near(o.outcomeId));
-    const bid = best.home, ask = best.away != null ? 1 - best.away : null;     // home outcome: bid, and 1 - the away bid
-    const cur = S.cursors['n:' + mk.marketId] || t - DAY; let newest = cur, vol = 0;
-    const G = S.games[hit.g.key] ||= {}, tape = G.nov ||= [];
-    const r = await getJSON(`${N}/markets/${mk.marketId}/trades?limit=500`);
-    for (const x of r.items || []) {
-      const ts = Math.floor(x.ts / 1000); if (ts <= cur) continue; newest = Math.max(newest, ts);
-      const usd = +x.price * x.qty / 100; vol += usd; if (usd < 25) continue;
-      tape.push({ ts, m: 'ml', side: side[x.outcomeId], usd: Math.round(usd), px: r3(+x.price), id: x.tradeId.slice(0, 18) });
-    }
-    S.cursors['n:' + mk.marketId] = newest;
     G.nov = tape.filter(x => x.ts > t - 3 * DAY);
-    out.set(hit.g, { id: ev.eventId, bid: bid != null ? r3(bid) : null, ask: ask != null ? r3(ask) : null, mid: bid != null && ask != null && ask - bid <= 0.10 ? r3((bid + ask) / 2) : null,
-      depth, rest: Math.round(rest), vol: Math.round(vol) });
-  } catch (e) { /* one event with no MONEY market or a bad read must not drop the sport */ } }
+    const tot = { rest: info.rest, vol: info.vol };
+    Object.assign(info, info.ml, tot);   // the winner market's quote stays at the top level; rest and vol add up all three
+    out.set(hit.g, info);
+  } catch (e) { /* one event with no MONEY market or a bad read must not drop the sport */ } });
   return out;
 }
 

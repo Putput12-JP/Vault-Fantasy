@@ -27,7 +27,7 @@
 }
 *{box-sizing:border-box}
 html,body{background:var(--bg);color:var(--fg)}
-body{font-family:var(--font-sans);font-size:14px;line-height:1.5}
+body{font-family:var(--font-sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 button,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
@@ -3455,7 +3455,7 @@ function renderTrack(){
     const a = trAgg(MX.filter(r => (st === 'all' || r.stat === st) && r.venue === v && r.side === sd)), g = st === 'all' ? 'no-go' : gateOf(st, v, sd);
     const on = tf.stat === st && tf.venue === v && tf.side === sd;
     const main = a.settled ? tRoi(clockRoi(a)) : a.bets ? '<span class="muted">open</span>' : '<span class="muted">none</span>';
-    return `<td class="cell num ${g === 'no-go' ? '' : g}${on ? ' on' : ''}" data-st="${st}" data-v="${v}" data-sd="${sd}" title="${st === 'all' ? 'All stats' : SLABEL[st]} ${sideWord(v, sd)} · ${VLABEL[v]}${g !== 'no-go' ? ' · ' + GATE_LABEL[g] : ''}">${main}<small>${a.settled ? `${a.w}-${a.l}${a.p ? '-' + a.p : ''} · ${clockUnits(a) >= 0 ? '+' : ''}${clockUnits(a).toFixed(1)}u` : a.bets ? `${a.bets} open` : '0 bets'}</small></td>`;
+    return `<td class="cell num ${g === 'no-go' ? '' : g}${on ? ' on' : ''}" tabindex="0" role="button" aria-pressed="${on}" data-st="${st}" data-v="${v}" data-sd="${sd}" title="${st === 'all' ? 'All stats' : SLABEL[st]} ${sideWord(v, sd)} · ${VLABEL[v]}${g !== 'no-go' ? ' · ' + GATE_LABEL[g] : ''}">${main}<small>${a.settled ? `${a.w}-${a.l}${a.p ? '-' + a.p : ''} · ${clockUnits(a) >= 0 ? '+' : ''}${clockUnits(a).toFixed(1)}u` : a.bets ? `${a.bets} open` : '0 bets'}</small></td>`;
   };
   $('tmx').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th>${cols.map(([v, sd, l]) => `<th scope="col">${sideWord(v, sd)}<small>${l}</small></th>`).join('')}</tr></thead><tbody>
     ${MSTATS.map(st => `<tr><td class="l"><b style="font-weight:500">${SLABEL[st]}</b></td>${cols.map(([v, sd]) => cell(st, v, sd)).join('')}</tr>`).join('')}
@@ -3470,7 +3470,7 @@ function renderTrack(){
     if (!order) items.sort((x, y) => y.a.bets - x.a.bets);
     const mx = Math.max(.05, ...items.map(x => Math.abs(clockRoi(x.a) || 0)));
     return `<div class="tbreak"><h3>${title}</h3>${items.length ? `<table><thead><tr><th class="l"></th><th>Bets</th><th>W-L-P</th><th>ROI</th><th>CLV</th></tr></thead>${items.map(({k, a}) => { const r = clockRoi(a);
-      return `<tr data-f="${key}" data-v="${esc(k)}" class="${tf[key] === k ? 'on' : ''}"><td class="l">${tf[key] === k ? '<b>' : ''}${labelOf(k)}${tf[key] === k ? '</b>' : ''}</td><td>${a.bets}</td><td>${a.settled ? `${a.w}-${a.l}${a.p ? '-' + a.p : ''}` : ''}</td>
+      return `<tr data-f="${key}" data-v="${esc(k)}" tabindex="0" role="button" aria-pressed="${tf[key] === k}" class="${tf[key] === k ? 'on' : ''}"><td class="l">${tf[key] === k ? '<b>' : ''}${labelOf(k)}${tf[key] === k ? '</b>' : ''}</td><td>${a.bets}</td><td>${a.settled ? `${a.w}-${a.l}${a.p ? '-' + a.p : ''}` : ''}</td>
         <td>${r != null ? `<span class="rbar" style="width:${Math.round(Math.abs(r) / mx * 48)}px;background:${r >= 0 ? 'var(--up)' : 'var(--down)'}"></span>` : ''}${tRoi(r)}</td><td>${tClv(a.clv)}</td></tr>`; }).join('')}</table>` : '<p class="empty">No bets.</p>'}</div>`;
   };
   $('tbreaks').innerHTML =
@@ -3542,6 +3542,13 @@ function renderTrackChart(sel){
 $('tfilters').addEventListener('click', e => { const b = e.target.closest('.seg[data-f] button'); if (b){ tf[b.parentElement.dataset.f] = b.dataset.v; tf.limit = 150; renderTrack(); } });
 $('tfilters').addEventListener('change', e => { const f = e.target.dataset.f; if (f){ tf[f] = e.target.value; tf.limit = 150; renderTrack(); } });
 $('treset').addEventListener('click', () => { Object.assign(tf, TF0); renderTrack(); });
+// Matrix cells and breakdown rows are click targets; make them keyboard-operable and keep focus across the re-render.
+[['tmx', 'td.cell', c => `td.cell[data-st="${c.dataset.st}"][data-v="${c.dataset.v}"][data-sd="${c.dataset.sd}"]`],
+ ['tbreaks', 'tr[data-f]', r => `tr[data-f="${r.dataset.f}"][data-v="${r.dataset.v}"]`]].forEach(([id, sel, key]) => $(id).addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const t = e.target.closest(sel); if (!t || t !== e.target) return;
+  e.preventDefault(); const q = key(t); t.click(); try { $(id).querySelector(q)?.focus(); } catch {}
+}));
 $('tmx').addEventListener('click', e => { const c = e.target.closest('td.cell'); if (!c) return;
   const same = tf.stat === c.dataset.st && tf.venue === c.dataset.v && tf.side === c.dataset.sd;
   Object.assign(tf, same ? {stat: 'all', venue: 'all', side: 'all'} : {stat: c.dataset.st, venue: c.dataset.v, side: c.dataset.sd}); tf.limit = 150; renderTrack(); });
@@ -5484,6 +5491,17 @@ function pvSharpText(x, r){
   if (x.type === 'p_kal') return `$${x.usd.toLocaleString()} traded on Kalshi ${pvK(x.line)} in one poll; YES ${Math.round(x.from * 100)}¢ to ${Math.round(x.to * 100)}¢`;
   return `Venues moving the same way: ${esc(x.txt)}`;
 }
+function pvNovig(r){                                                         // Novig's ladder for this prop (novig.py): only rungs with real money resting
+  const N = PS.live && PS.live.novig && PS.live.novig.props && PS.live.novig.props[`${r.e.p}|${r.e.s}`]; if (!N) return '';
+  const ref = r.line != null ? r.line : r.e.books && r.e.books[0] ? r.e.books[0][1] : null;
+  const rows = N.lad.filter(x => x.rest > 0).sort((a, b) => Math.abs(a.k - (ref ?? a.k)) - Math.abs(b.k - (ref ?? b.k))).slice(0, 4).sort((a, b) => a.k - b.k);
+  const T = ((PS.live.novig.tape) || []).filter(t => N.lad.some(x => x.id === t.m) && t.usd >= 25).slice(0, 4);
+  if (!rows.length && !T.length) return '';
+  const px = v => v == null ? '-' : Math.round(v * 100) + '¢';
+  const line = x => `<div class="pv-sg"><span class="pv-sk p_mkt">Over ${x.k}</span><div><p>${x.mid != null ? `Over ${px(x.bid[0])} bid / ${px(x.ask[0])} ask (${pc(x.mid, 0)})` : `One-sided: Over bid ${px(x.bid[0])}, Under bid ${px(x.bid[1])}`}</p><small>${usdK(x.rest)} resting${x.tr ? ` · ${x.tr} new trades` : ''}</small></div></div>`;
+  const tk = t => `<div class="pv-sg"><span class="pv-sk p_kal">Ticket</span><div><p>${esc(t.on)} at ${px(t.px)}: ${usdK(t.usd)}</p><small>${clock(t.t)} ET</small></div></div>`;
+  return `<div class="pv-shead none"><b>Novig exchange</b><span>Real money resting on the book, anonymous. Props here are thin: a one-sided book is not a price.</span></div>${rows.map(line).join('')}${T.map(tk).join('')}`;
+}
 function pvSharpSec(r){
   const S = r.sharp, tip = r.game ? r.game.tip : null;
   const head = !S.sig.length ? ['none', 'No sharp signal on this prop'] : S.vs === 'with' ? ['with', 'Sharp money is with this bet']
@@ -5493,6 +5511,7 @@ function pvSharpSec(r){
   return `<section class="card pv-sec"><div class="pv-sh"><h3>Sharp money</h3><p>Where informed money went on this prop: Pinnacle's moves, Polymarket accounts with a winning record against the close, heavy money on a Kalshi rung, and venues moving together.</p></div>
     <div class="pv-shead ${head[0]}"><b>${head[1]}</b>${S.vs === 'against' ? '<span>Worth a second look before betting: sharp accounts beat the closing price on average.</span>' : S.vs === 'with' ? '<span>Agreement adds comfort, not edge: by the time you see it, the price has usually moved.</span>' : ''}</div>
     ${rows || '<p class="muted pv-none">No Pinnacle move, sharp-account trade, heavy Kalshi money or market-wide move on this prop.</p>'}
+    ${pvNovig(r)}
     <p class="pv-note">Context, not a bet. Copying sharp money 30+ minutes later lost money in our study. Prop signals use thresholds that have not been backtested yet; each one is graded on the Sharp Price page.</p></section>`;
 }
 function pvWaterfall(r){
