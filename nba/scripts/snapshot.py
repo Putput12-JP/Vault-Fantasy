@@ -777,6 +777,12 @@ def write_board(root, day, slate):
             board['sharp'] = sharp.build(board, day, root, slate.now, BTEAM, parse_event, kal_vol=KAL_VOL)
         except Exception:
             traceback.print_exc(limit=2)
+        try:                                            # Novig exchange: public order books + trade tape (novig.py)
+            import novig
+            from prop_board import Roster
+            board['novig'] = novig.poll([g for g in slate.games if g['pre']], root, slate.now, Roster(proj).find)
+        except Exception:
+            traceback.print_exc(limit=2)
         board.pop('_pkeys', None)
         try:                                            # one-time opening pass: early lines, Slate / Game Lines only
             from prop_board import opening
@@ -866,7 +872,7 @@ def push_board(root):
 def commit(root):
     push_board(root)
     git = ['git', '-C', root]
-    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('track.json', 'results', 'bets', 'season_types.json') if os.path.exists(os.path.join(root, p))], check=True)
+    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('novig', 'track.json', 'results', 'bets', 'season_types.json') if os.path.exists(os.path.join(root, p))], check=True)
     if subprocess.run(git + ['diff', '--cached', '--quiet']).returncode == 0:
         return
     stamp = dt.datetime.now(ET).strftime('%Y-%m-%d %H:%M ET')

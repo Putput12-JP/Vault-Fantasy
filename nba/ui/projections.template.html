@@ -4456,13 +4456,28 @@ function lvScore(b, mkt, side){                                              // 
   return b.t ? (side ? b.t.l * 1000 + lvPr(b.t.u) : -b.t.l * 1000 + lvPr(b.t.o)) : -1e9;
 }
 function lvMini(v){ const w = Math.abs(v) * 50; return `<span class="lv-mini"><u class="${v > 0 ? 'h' : ''}" style="${v < 0 ? `right:50%;width:${w}%` : `left:50%;width:${w}%`}"></u></span>`; }
-function lvSignals(g, mk, o){                                               // each signal in [-1, 1]: negative leans the away team, positive the home team
+// Novig exchange (novig.py): peer-to-peer, so its price is a matched price and its depth is real money. Outcomes are team codes ("LAL", "LAL -10.5") or Over / Under.
+const nvTeam = (g, name) => { const t = String(name || '').split(/\s+/)[0]; return t === g.home ? 'h' : t === g.away ? 'a' : null; };
+function nvLine(g, x){                                                       // a market read from the home side: {mid, bid, ask, line}
+  if (!x || x.mid == null) return null;
+  const side = nvTeam(g, (x.o || [])[0]), home = side === 'h' ? 0 : side === 'a' ? 1 : null; if (home == null) return null;
+  const num = parseFloat(String((x.o[0] || '').split(/\s+/)[1]));
+  return {win: home === 0 ? x.mid : 1 - x.mid, bid: x.bid[home], ask: x.ask[home], line: isNaN(num) ? null : (home === 0 ? num : -num), depth: x.depth, rest: x.rest};
+}
+function nvFlow(g, B){                                                       // net dollars toward the home team on moneyline and spread tickets, last 24 h
+  const T = ((B.novig && B.novig.tape) || []).filter(t => String(t.g) === String(g.id) && t.t > Date.now() / 1000 - 86400);
+  let net = 0, side = 0, tot = 0;
+  for (const t of T){ tot += t.usd; if (t.kd === 'MONEY' || t.kd === 'SPREAD'){ const k = nvTeam(g, t.on); if (k){ net += k === 'h' ? t.usd : -t.usd; side += t.usd; } } }
+  return {net, side, tot, n: T.length, T};
+}
+function lvSignals(g, mk, o, nf){                                               // each signal in [-1, 1]: negative leans the away team, positive the home team
   const out = [], F = o && o.flow, P = o && (o.pin || []).filter(p => p[1] != null);
   if (P && P.length >= 2){ const a = P[0], z = P[P.length - 1], mx = P.reduce((m, x) => x[1] > m[1] ? x : m, a), mn = P.reduce((m, x) => x[1] < m[1] ? x : m, a);
     out.push({k: 'Pinnacle', v: Math.max(-1, Math.min(1, (a[1] - z[1]) / 3)), tiny: z[1] === a[1] ? 'no move' : `${Math.abs(z[1] - a[1]).toFixed(1)} to ${z[1] < a[1] ? g.home : g.away}`,
       tip: `Pinnacle's ${g.home} spread: ${lvF1(a[1])} at ${clock(a[0])} ET to ${lvF1(z[1])} now${mx[1] > a[1] + 1 ? `, after a high of ${lvF1(mx[1])}` : mn[1] < a[1] - 1 ? `, after a low of ${lvF1(mn[1])}` : ''}`}); }
   if (F && (F.sharpN || F.vol)) out.push({k: 'Sharp accts', v: Math.max(-1, Math.min(1, (F.sharp || 0) / 5000)), tiny: `${usdK(F.sharp || 0)} ${(F.sharp || 0) < 0 ? g.away : g.home}`, tip: `Polymarket sharp accounts, last 24 hours, net: ${usdK(F.sharp || 0)} on ${(F.sharp || 0) < 0 ? g.away : g.home} over ${F.sharpN || 0} trades`});
   if (F && F.kalVol) out.push({k: 'Kalshi big', v: Math.max(-1, Math.min(1, (F.kal || 0) / 10000)), tiny: `${usdK(F.kal || 0)} ${(F.kal || 0) < 0 ? g.away : g.home}`, tip: `Kalshi tickets of $500 and up: ${usdK(F.kalVol)} traded, net ${usdK(F.kal || 0)} on ${(F.kal || 0) < 0 ? g.away : g.home}`});
+  if (nf && nf.side >= 100) out.push({k: 'Novig', v: Math.max(-1, Math.min(1, nf.net / 5000)), tiny: `${usdK(Math.abs(nf.net))} ${nf.net < 0 ? g.away : g.home}`, tip: `Novig exchange tickets of $25 and up on the winner and spread markets, last 24 hours: ${usdK(nf.side)} traded, net ${usdK(Math.abs(nf.net))} on ${nf.net < 0 ? g.away : g.home}`});
   const sp = mk.splits && mk.splits.spread; if (sp && (sp[0] || sp[1])) out.push({k: 'Money', v: Math.max(-1, Math.min(1, (sp[1] - sp[0]) / 12)), tiny: `${sp[1] - sp[0] >= 0 ? '+' : ''}${sp[1] - sp[0]} pts ${sp[1] >= sp[0] ? g.home : g.away}`, tip: `${g.home} spread: ${sp[0]}% of bets and ${sp[1]}% of the money`});
   return out;
 }
@@ -4476,7 +4491,8 @@ function lineCard(g, B, status){
     V && V.ba ? `<span class="badge warn" title="Played within 30 hours">${g.away} back-to-back</span>` : '', V && V.bh ? `<span class="badge warn" title="Played within 30 hours">${g.home} back-to-back</span>` : ''].join('');
   const asof = cons && cons.ts ? `Odds as of ${Math.max(1, Math.round((now - cons.ts) / 60))} min ago` : '';
   // sharp read
-  const SIG = lvSignals(g, mk, o), side = v => Math.abs(v) < .06 ? 0 : v < 0 ? -1 : 1, L = SIG.map(x => side(x.v)), nA = L.filter(x => x < 0).length, nH = L.filter(x => x > 0).length;
+  const NV = B.novig && B.novig.games && B.novig.games[gid], nf = NV ? nvFlow(g, B) : null, nvM = NV ? nvLine(g, NV.ml) : null, nvS = NV ? nvLine(g, NV.main_spread) : null, nvT = NV && NV.main_total && NV.main_total.mid != null ? NV.main_total : null;
+  const SIG = lvSignals(g, mk, o, nf), side = v => Math.abs(v) < .06 ? 0 : v < 0 ? -1 : 1, L = SIG.map(x => side(x.v)), nA = L.filter(x => x < 0).length, nH = L.filter(x => x > 0).length;
   const verdict = SIG.length < 2 ? 'Early' : nA && nH ? 'Mixed' : nA ? `Leaning ${g.away}` : nH ? `Leaning ${g.home}` : 'Quiet';
   const drawer = () => {
     const F = o.flow || {}, mx = Math.max(1, ...[F.sharp, F.dull, F.all].map(x => Math.abs(x || 0)), 2500);
@@ -4490,17 +4506,25 @@ function lineCard(g, B, status){
         <p class="lv-lab">Bets against money</p>${spl.length ? spl.map(([k, [b, m]]) => `<div class="lv-fr"><span>${SPK[k] || k}</span><span class="num">${b}% bets</span><span class="num">${m}% money${Math.abs(m - b) >= 6 ? ` <b class="lv-hi">${m > b ? '+' : ''}${m - b}</b>` : ''}</span></div>`).join('') : '<p class="muted">Splits post closer to tip.</p>'}</div>
       <div><p class="lv-lab">Largest sharp tickets</p>${tk || '<p class="muted">None yet.</p>'}<p class="lv-fine">Context, not a bet: in our tests, copying sharp money after the fact lost money. Each signal is graded on Sharp Price.</p></div></div>`;
   };
+  const nvDrawer = () => {
+    const q = (l, x) => x && x.mid != null ? `<div class="lv-fr"><span>${l}</span><span class="num">${Math.round(x.bid * 100)}¢ / ${Math.round(x.ask * 100)}¢</span><span class="num">${usdK(x.depth)} deep</span></div>` : '';
+    const qs = [nvM && q(`${g.home} to win`, {...nvM, mid: 1}), nvS && q(`${g.home} ${lvF1(nvS.line)}`, {...nvS, mid: 1}), nvT && `<div class="lv-fr"><span>Total ${nvT.k}</span><span class="num">Over ${Math.round(nvT.bid[0] * 100)}¢ / ${Math.round(nvT.ask[0] * 100)}¢</span><span class="num">${usdK(nvT.depth)} deep</span></div>`].filter(Boolean).join('');
+    const tk = nf.T.slice().sort((a, b) => b.t - a.t).slice(0, 5).map(x => `<div class="lv-tk"><span class="num">${clock(x.t)}</span><span><b>${esc(x.on)}</b> ${x.kd === 'MONEY' ? 'to win' : x.kd === 'SPREAD' ? 'spread' : x.kd === 'TOTAL' ? 'total' : esc(String(x.d || '').replace(/\s[\d.]+\s.*$/, ''))} at ${Math.round(x.px * 100)}¢</span><span class="num">${usdK(x.usd)}</span></div>`).join('');
+    return `<div class="lv-sd"><div><p class="lv-lab">Novig book: bid / ask</p>${qs || '<p class="muted">No two-sided quote yet.</p>'}<p class="lv-fine">Each price is a probability. Depth is real money resting within 3¢ of the best price.</p></div>
+      <div><p class="lv-lab">Novig liquidity, ${NV.n} markets</p><div class="lv-fl"><div class="lv-fr"><span>Resting orders</span><span class="num">${usdK(NV.rest)}</span></div><div class="lv-fr"><span>Within 3¢ of best</span><span class="num">${usdK(NV.depth)}</span></div><div class="lv-fr"><span>New trades</span><span class="num">${NV.tr} · ${usdK(NV.usd)}</span></div></div></div>
+      <div><p class="lv-lab">Novig tickets of $25 and up</p>${tk || '<p class="muted">None yet.</p>'}<p class="lv-fine">Anonymous, like Kalshi. A ticket shows size and side, not who. Context, not a bet.</p></div></div>`;
+  };
   const sharpRow = SIG.length ? `<div class="lv-sr"><span class="lv-vd" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span>${SIG.map(x => `<span class="lv-sp" title="${esc(x.tip)}"><b>${x.k}</b>${lvMini(x.v)}<span>${esc(x.tiny)}</span></span>`).join('')}
-      ${o ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</div>${sdOpen && o ? drawer() : ''}` : '';
+      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</div>${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}` : '';
   // tiles
   const spVal = c ? `${g.home} ${lvF1(c[1])}` : M && M.spread != null ? spTxt(g, M.spread) : 'n/a', toVal = c && c[3] != null ? c[3].toFixed(1) : M && M.total != null ? fmt(M.total) : 'n/a', wnVal = c && c[5] != null ? pc(c[5], 1) : M && M.win != null ? pc(M.win, 1) : 'n/a';
   const from = c ? 'Pinnacle' : M && M.spFrom || '';
   const opened = mk.open && (mk.open.spread != null || mk.open.total != null) ? `Opened ${[spTxt(g, mk.open.spread), mk.open.total != null ? fmt(mk.open.total) : ''].filter(Boolean).join(' · ')}` : '';
   const tile = (k, v, sub, h, pills) => `<div class="lv-tile"><div class="lv-k">${k}</div><div class="lv-v">${v}${sub ? `<small>${sub}</small>` : ''}</div><div class="lv-mv">${h}</div><div class="lv-src">${pills}</div></div>`;
   const pill = (n, v) => v == null || v === '' ? '' : `<span>${n} <b>${v}</b></span>`;
-  const tiles = M || c ? `<div class="lv-tiles">${tile('Spread', spVal, from, opened, pill('Kalshi', K.spread != null ? spTxt(g, K.spread) : '') + pill('Books', M && M.spread != null ? spTxt(g, M.spread) : ''))}
-    ${tile('Total', toVal, from, p0 && c && p0[3] != null ? `Pinnacle started at <b>${p0[3].toFixed(1)}</b>` : opened ? `Books opened ${mk.open.total != null ? fmt(mk.open.total) : ''}` : '', pill('Kalshi', K.total != null ? fmt(K.total) : '') + pill('Polymarket', PM.total != null ? fmt(PM.total) : '') + pill('Over', PM.over != null ? pc(PM.over) : ''))}
-    ${tile(`${g.home} win`, wnVal, c ? 'no vig' : '', p0 && c && p0[5] != null ? `Started the day at <b>${pc(p0[5], 1)}</b>` : '', pill('Kalshi', K.win != null ? pc(K.win) : '') + pill('Polymarket', PM.win != null ? pc(PM.win) : ''))}</div>` : '<p class="muted lv-none">No book has posted yet.</p>';
+  const tiles = M || c ? `<div class="lv-tiles">${tile('Spread', spVal, from, opened, pill('Kalshi', K.spread != null ? spTxt(g, K.spread) : '') + pill('Novig', nvS && nvS.line != null ? `${g.home} ${lvF1(nvS.line)}` : '') + pill('Books', M && M.spread != null ? spTxt(g, M.spread) : ''))}
+    ${tile('Total', toVal, from, p0 && c && p0[3] != null ? `Pinnacle started at <b>${p0[3].toFixed(1)}</b>` : opened ? `Books opened ${mk.open.total != null ? fmt(mk.open.total) : ''}` : '', pill('Kalshi', K.total != null ? fmt(K.total) : '') + pill('Novig', nvT ? String(nvT.k) : '') + pill('Polymarket', PM.total != null ? fmt(PM.total) : '') + pill('Over', PM.over != null ? pc(PM.over) : ''))}
+    ${tile(`${g.home} win`, wnVal, c ? 'no vig' : '', p0 && c && p0[5] != null ? `Started the day at <b>${pc(p0[5], 1)}</b>` : '', pill('Kalshi', K.win != null ? pc(K.win) : '') + pill('Novig', nvM ? pc(nvM.win) : '') + pill('Polymarket', PM.win != null ? pc(PM.win) : ''))}</div>` : '<p class="muted lv-none">No book has posted yet.</p>';
   // Vault line (regular season)
   const dS = V && M && M.spread != null ? V.spread - M.spread : null, dT = V && M && M.total != null && !noT ? V.total - M.total : null, dW = V && M && M.win != null ? V.win - M.win : null;
   const vault = V ? `<div class="lv-vault"><b>Vault</b><span>${spTxt(g, V.spread)}</span><span>${noT ? '<span class="muted" title="Left out for the first weeks of a season: it ran about 4 points under the close">total later</span>' : fmt(V.total)}</span><span>${g.home} ${pc(V.win)}</span>

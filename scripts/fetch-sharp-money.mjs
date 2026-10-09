@@ -51,11 +51,11 @@ const now = () => Math.floor(Date.now() / 1000);
 // Per-sport wiring and thresholds. `steam` = Pinnacle move inside ~30 min
 // that fires an alert (points for spread/total, win-prob points for ML).
 const SPORTS = {
-  nfl: { name: 'NFL', an: 'nfl', pinSport: 15, pinLeague: 889, pm: 12185, kal: 'KXNFLGAME', espn: 'football/nfl', ahead: 7,
+  nfl: { name: 'NFL', an: 'nfl', pinSport: 15, pinLeague: 889, pm: 12185, kal: 'KXNFLGAME', nov: 'NFL', espn: 'football/nfl', ahead: 7,
          steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets.json', sigBig: 25000, crossAt: 25000 },
-  cfb: { name: 'College Football', an: 'ncaaf', pinSport: 15, pinLeague: 880, pm: 12756, kal: 'KXNCAAFGAME', espn: 'football/college-football', ahead: 5,
+  cfb: { name: 'College Football', an: 'ncaaf', pinSport: 15, pinLeague: 880, pm: 12756, kal: 'KXNCAAFGAME', nov: 'NCAAF', espn: 'football/college-football', ahead: 5,
          steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, wallets: 'pm_wallets_cfb.json', sigBig: 25000, crossAt: 5000 },
-  nba: { name: 'NBA', an: 'nba', pinSport: 4, pinLeague: 487, pm: 10345, kal: 'KXNBAGAME', espn: 'basketball/nba', ahead: 3,
+  nba: { name: 'NBA', an: 'nba', pinSport: 4, pinLeague: 487, pm: 10345, kal: 'KXNBAGAME', nov: 'NBA', espn: 'basketball/nba', ahead: 3,
          steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets_nba.json', sigBig: 25000, crossAt: 25000 },
 };
 const WREC = {};
@@ -489,6 +489,44 @@ async function kalshi(sk, cfg, games, S) {
   return out;
 }
 
+// ── 4a. Novig: the exchange's winner market, book depth and big tickets ──
+// Novig is a peer-to-peer exchange with a public, keyless, edge-cached read API (docs.novig.com).
+// One contract pays 1 cent, so dollars = price * qty / 100. Trades are anonymous, like Kalshi's.
+async function novig(sk, cfg, games, S) {
+  const N = 'https://api.novig.com/v3/public/catalog';
+  const evs = ((await getJSON(`${N}/events?league=${cfg.nov}&limit=500`).catch(() => null)) || {}).items || [];
+  const t = now(), out = new Map();
+  for (const ev of evs) { try {
+    const m = /^(.+?) @ (.+)$/.exec(ev.description || ''); if (!m) continue;
+    const hit = matchGame(games, m[1], m[2], ev.startsTs / 1000); if (!hit) continue;
+    const mk = ((await getJSON(`${N}/markets?event=${ev.eventId}&marketType=MONEY&limit=5`)).items || [])[0]; if (!mk || mk.outcomes?.length !== 2) continue;
+    const side = Object.fromEntries(mk.outcomes.map(o => [o.outcomeId, teamSide(hit.g, o.name)]));
+    const book = await getJSON(`${N}/markets/${mk.marketId}/book`);
+    const best = {}, depth = {}; let rest = 0;
+    for (const o of mk.outcomes) {
+      const L = book.orders?.[o.outcomeId] || [];
+      best[side[o.outcomeId]] = L.length ? Math.max(...L.map(x => +x.price)) : null;
+      for (const x of L) rest += +x.price * x.qty / 100;
+    }
+    const near = (id) => (book.orders?.[id] || []).filter(x => best[side[id]] - +x.price <= 0.03 + 1e-9).reduce((a, x) => a + +x.price * x.qty / 100, 0);
+    for (const o of mk.outcomes) depth[side[o.outcomeId]] = Math.round(near(o.outcomeId));
+    const bid = best.home, ask = best.away != null ? 1 - best.away : null;     // home outcome: bid, and 1 - the away bid
+    const cur = S.cursors['n:' + mk.marketId] || t - DAY; let newest = cur, vol = 0;
+    const G = S.games[hit.g.key] ||= {}, tape = G.nov ||= [];
+    const r = await getJSON(`${N}/markets/${mk.marketId}/trades?limit=500`);
+    for (const x of r.items || []) {
+      const ts = Math.floor(x.ts / 1000); if (ts <= cur) continue; newest = Math.max(newest, ts);
+      const usd = +x.price * x.qty / 100; vol += usd; if (usd < 25) continue;
+      tape.push({ ts, m: 'ml', side: side[x.outcomeId], usd: Math.round(usd), px: r3(+x.price), id: x.tradeId.slice(0, 18) });
+    }
+    S.cursors['n:' + mk.marketId] = newest;
+    G.nov = tape.filter(x => x.ts > t - 3 * DAY);
+    out.set(hit.g, { id: ev.eventId, bid: bid != null ? r3(bid) : null, ask: ask != null ? r3(ask) : null, mid: bid != null && ask != null && ask - bid <= 0.10 ? r3((bid + ask) / 2) : null,
+      depth, rest: Math.round(rest), vol: Math.round(vol) });
+  } catch (e) { /* one event with no MONEY market or a bad read must not drop the sport */ } }
+  return out;
+}
+
 // ── 5. ESPN finals (for the alert record) ───────────────────────────────
 async function finals(sk, cfg, S) {
   const t = now(), need = Object.values(S.games).filter(G => G.meta?.sport === sk && !G.final && G.meta.start < t - 3 * H && G.meta.start > t - 5 * DAY);
@@ -686,7 +724,7 @@ function analyse(sk, cfg, g, P, pmInfo, kInfo, S, W) {
       px: top.px, who: top.who, rec: W.rec[top.w] || null, fair: r3(fairNow(P, { m, side, hline: cur?.sp, line: cur?.tot })), hline: cur?.sp, line: m === 'tot' ? cur?.tot : m === 'sp' ? (side === 'home' ? cur?.sp : cur?.sp != null ? -cur.sp : null) : null,
       text: `${accts.length > 1 ? accts.length + ' sharp accounts' : 'Sharp account ' + (top.who || top.w.slice(0, 8))} put $${usd.toLocaleString()} on ${m === 'ml' ? nameSide(g, m, side) + ' to win' : nameSide(g, m, side) + (m === 'tot' ? ' (total)' : ' (spread)')} at ${Math.round(top.px * 100)}¢` });
   }
-  const whales = [...pmNew.map(x => ({ ...x, src: 'Polymarket' })), ...(G.kal || []).filter(x => x.ts > (G._kSeen || 0)).map(x => ({ ...x, src: 'Kalshi' }))].filter(x => x.usd >= cfg.whale);
+  const whales = [...pmNew.map(x => ({ ...x, src: 'Polymarket' })), ...(G.kal || []).filter(x => x.ts > (G._kSeen || 0)).map(x => ({ ...x, src: 'Kalshi' })), ...(G.nov || []).filter(x => x.ts > (G._nSeen || 0)).map(x => ({ ...x, src: 'Novig' }))].filter(x => x.usd >= cfg.whale);
   for (const x of whales) {
     pushAlert(S, { ...base, ts: x.ts, type: 'whale', m: x.m, side: x.side, usd: x.usd, px: x.px, src: x.src, cls: x.cls || null, who: x.who || null,
       fair: r3(fairNow(P, { m: x.m, side: x.side, hline: cur?.sp, line: cur?.tot })), hline: cur?.sp, line: x.m === 'tot' ? cur?.tot : x.m === 'sp' ? (x.side === 'home' ? cur?.sp : cur?.sp != null ? -cur.sp : null) : null,
@@ -696,6 +734,7 @@ function analyse(sk, cfg, g, P, pmInfo, kInfo, S, W) {
   if (G.pm?.length) G._pmSeen = Math.max(...G.pm.map(x => x.ts));
   for (const x of G.pm || []) delete x.late;
   if (G.kal?.length) G._kSeen = Math.max(...G.kal.map(x => x.ts));
+  if (G.nov?.length) G._nSeen = Math.max(...G.nov.map(x => x.ts));
 
   // (e) Money vs tickets: big-bettor side (money % well above tickets %)
   // with the line moving their way since open (reverse line move when the
@@ -767,8 +806,9 @@ function payload(S, byGame, W, status) {
       sharp: tapeSum(G.pm, t - DAY, x => x.cls === 'sharp'), dull: tapeSum(G.pm, t - DAY, x => x.cls === 'dull'),
       sharp2h: tapeSum(G.pm, t - 2 * H, x => x.cls === 'sharp'),
       kalBig: tapeSum(G.kal, t - DAY, x => x.usd >= 1000),
+      novBig: tapeSum(G.nov, t - DAY, x => x.usd >= 1000), novAll: tapeSum(G.nov, t - DAY),
     };
-    const tickets = [...(G.pm || []).filter(x => x.usd >= 1000 || x.cls === 'sharp').map(x => ({ ...x, src: 'PM' })), ...(G.kal || []).filter(x => x.usd >= 2000).map(x => ({ ...x, src: 'Kalshi' }))]
+    const tickets = [...(G.pm || []).filter(x => x.usd >= 1000 || x.cls === 'sharp').map(x => ({ ...x, src: 'PM' })), ...(G.kal || []).filter(x => x.usd >= 2000).map(x => ({ ...x, src: 'Kalshi' })), ...(G.nov || []).filter(x => x.usd >= 1000).map(x => ({ ...x, src: 'Novig' }))]
       .filter(x => x.ts > t - 2 * DAY).sort((a, b) => b.ts - a.ts).slice(0, 40)
       .map(({ w, id, ...x }) => ({ ...x, w: w ? w.slice(0, 6) + '…' + w.slice(-4) : null, rec: w && WREC[g.sport]?.[w] ? WREC[g.sport][w] : null }));
     // Per-account rollup over the same 24h as flow.sharp, so the game page's money bar adds up
@@ -780,6 +820,7 @@ function payload(S, byGame, W, status) {
       a.usd += x.usd; a.n++; a.last = Math.max(a.last, x.ts);
     }
     for (const [k, v] of Object.entries(flow.kalBig)) { const [m, side] = k.split(':'); A['kal|' + k] = { w: null, who: 'Kalshi big tickets', cls: null, m, side, usd: v, n: (G.kal || []).filter(x => x.ts >= t - DAY && x.usd >= 1000 && x.m === m && x.side === side).length, last: 0, src: 'Kalshi' }; }
+    for (const [k, v] of Object.entries(flow.novBig)) { const [m, side] = k.split(':'); A['nov|' + k] = { w: null, who: 'Novig big tickets', cls: null, m, side, usd: v, n: (G.nov || []).filter(x => x.ts >= t - DAY && x.usd >= 1000 && x.m === m && x.side === side).length, last: 0, src: 'Novig' }; }
     const rolled = Object.values(A).sort((a, b) => b.usd - a.usd);
     const accts = [...rolled.filter(a => a.cls === 'sharp'), ...rolled.filter(a => a.cls !== 'sharp' && a.usd >= 1000).slice(0, 16)]
       .map(({ w, ...a }) => ({ ...a, usd: Math.round(a.usd), w: w ? w.slice(0, 6) + '…' + w.slice(-4) : null, rec: w && WREC[g.sport]?.[w] ? WREC[g.sport][w] : null }));
@@ -792,7 +833,7 @@ function payload(S, byGame, W, status) {
       pinHist: (G.pin || []).map(s => [s.ts, s.ml ?? null, s.sp ?? null, s.spP ?? null, s.tot ?? null, s.oP ?? null]),
       splitHist: G.split || [],
       pm: pm ? { slug: pm.slug, vol: pm.vol, vol24: pm.vol24, px: Object.fromEntries(Object.entries(pm.mk).filter(([, v]) => v).map(([k, v]) => [k, { line: v.line, outs: v.outs, px: v.px, vol: Math.round(v.vol) }])) } : null,
-      kal: K || null, flow, tickets, behind: G.behind || [], final: G.final || null,
+      kal: K || null, nov: g._nov || null, flow, tickets, behind: G.behind || [], final: G.final || null,
     });
   }
   games.sort((a, b) => a.start - b.start);
@@ -863,16 +904,17 @@ async function pollOnce() {
     let games = [];
     try { games = await actionGames(sk, cfg); st.action = games.length; } catch (e) { st.action = 'error: ' + e.message; }
     if (!games.length) { st.games = 0; await finals(sk, cfg, S).catch(() => {}); continue; }
-    const [P, PM, K] = await Promise.all([
+    const [P, PM, K, NV] = await Promise.all([
       pinnacle(cfg, games).catch(e => { st.pinnacle = 'error: ' + e.message; return new Map(); }),
       polymarket(sk, cfg, games, S, W).catch(e => { st.polymarket = 'error: ' + e.message; return new Map(); }),
       kalshi(sk, cfg, games, S).catch(e => { st.kalshi = 'error: ' + e.message; return new Map(); }),
+      novig(sk, cfg, games, S).catch(e => { st.novig = 'error: ' + e.message; return new Map(); }),
     ]);
-    st.pinnacle ??= P.size; st.polymarket ??= PM.size; st.kalshi ??= K.size; st.games = games.length;
+    st.pinnacle ??= P.size; st.polymarket ??= PM.size; st.kalshi ??= K.size; st.novig ??= NV.size; st.games = games.length;
     const KP = await kalshiProps(sk, games, K).catch(e => { st.kalshiProps = 'error: ' + e.message; return new Map(); });
     for (const g of games) g._kp = KP.get(g) || null;
     for (const g of games) {
-      g._P = P.get(g) || null; g._pm = PM.get(g) || null; g._k = K.get(g) || null;
+      g._P = P.get(g) || null; g._pm = PM.get(g) || null; g._k = K.get(g) || null; g._nov = NV.get(g) || null;
       analyse(sk, cfg, g, g._P, g._pm, g._k, S, W);
       all.push(g);
     }
