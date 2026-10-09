@@ -1471,7 +1471,7 @@ th{font-weight:500}
           <div><h2>Upcoming games</h2><p>Markets recorded per venue for every game in the next 3 days: game lines, then player props.</p></div>
         </div>
         <div class="card-b"><div class="tablewrap"><table class="ht">
-          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Game</th><th scope="col">Kalshi</th><th scope="col">ESPN</th><th scope="col">Pinnacle</th><th scope="col">Action</th><th scope="col">Polymarket</th><th scope="col">Injury report</th><th scope="col">Lineups</th><th scope="col">Pick'em</th></tr></thead>
+          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Game</th><th scope="col">Kalshi</th><th scope="col">ESPN</th><th scope="col">Pinnacle</th><th scope="col">Action</th><th scope="col">Polymarket</th><th scope="col">Novig</th><th scope="col">Injury report</th><th scope="col">Lineups</th><th scope="col">Pick'em</th></tr></thead>
           <tbody id="hgames"></tbody>
         </table></div></div>
       </section>
@@ -2305,6 +2305,7 @@ const SRC = [
   ['pinnacle', 'Pinnacle', 'Lines, player props and bet limits'],
   ['action', 'Action Network', 'Seven books, plus bets % and money %'],
   ['polymarket', 'Polymarket', 'Game markets and player props, bid and ask'],
+  ['novig', 'Novig', 'Exchange order books and tickets: winner, spread, total, props'],
   ['injuries', 'Injury report', 'Official NBA report, posted every 15 min'],
   ['lineups', 'Starting lineups', 'NBA.com starters, Expected then Confirmed'],
   ['prizepicks', 'PrizePicks', "Pick'em lines (standard, demon, goblin)"],
@@ -2314,7 +2315,7 @@ const SRC = [
   ['tape', 'Trade tapes', 'Polymarket trades by account, Kalshi big tickets (Sharp Price)'],
 ];
 const PICKEM = [['prizepicks', 'PP'], ['underdog', 'UD'], ['sleeper', 'SL']];
-const VENUES = ['kalshi', 'espn', 'pinnacle', 'action', 'polymarket'];
+const VENUES = ['kalshi', 'espn', 'pinnacle', 'action', 'polymarket', 'novig'];
 let HS = H0 ? {status: H0.recorder.status, polls: H0.recorder.polls || [], live: false, at: Date.parse(H0.built) / 1000} : null;
 let liveTried = false, liveTimer = null;
 const TZ = 'America/New_York';
@@ -2431,8 +2432,10 @@ function renderHealth(){
       note = `<span class="note err">${esc(p.err || 'Error')} · failing since ${stamp(since)}</span>`;
     } else if (k === 'injuries'){
       note = `<span class="note">${p?.report === 'no games' ? 'No report posts without games in the next 36 hours' : reportTime(p?.report) ? `Latest: ${reportTime(p.report)} ET report` : 'No report in the last 2 hours'}</span>`;
+    } else if (k === 'novig' && p && p.n){
+      note = `<span class="note">${p.props || 0} props matched · ${p.used} of ${p.budget} requests${p.warn ? ` · ${esc(p.warn)}` : ''}</span>`;
     } else if (p && !p.n){
-      note = `<span class="note">${k === 'kalshi' ? 'Kalshi lists props the morning of a game' : k === 'lineups' ? 'Posted for games in the next 36 hours' : k === 'underdog' || k === 'sleeper' ? 'No NBA lines listed yet' : k === 'ledger' ? `No 3%+ edges within 24 hours of tip${p.bets ? ` · ${p.bets} bets in the record` : ''}` : 'Nothing listed for games in the next 3 days'}</span>`;
+      note = `<span class="note">${k === 'novig' ? 'Novig lists a game only close to tip' : k === 'kalshi' ? 'Kalshi lists props the morning of a game' : k === 'lineups' ? 'Posted for games in the next 36 hours' : k === 'underdog' || k === 'sleeper' ? 'No NBA lines listed yet' : k === 'ledger' ? `No 3%+ edges within 24 hours of tip${p.bets ? ` · ${p.bets} bets in the record` : ''}` : 'Nothing listed for games in the next 3 days'}</span>`;
     }
     const n = k === 'injuries' ? (injCount ? `${injCount} players` : '') : p?.n != null ? p.n.toLocaleString() : '';
     return `<tr><td class="l src"><b>${name}</b><small>${what}</small></td><td class="l">${pill(c, label)}</td>
@@ -2458,10 +2461,10 @@ function renderHealth(){
     const pkN = PICKEM.filter(([k]) => g.cov[k]);
     const pke = pkN.length ? `<td class="cov">${pkN.reduce((a, [k]) => a + g.cov[k][1], 0).toLocaleString()}<small>${pkN.map(([k, s]) => `${s} ${g.cov[k][1]}`).join(' · ')}</small></td>` : `<td class="cov none">none</td>`;
     const lin = lu ? `<td class="cov">${lu[0]} of 2<small>${lu[0] === 2 ? 'confirmed' : lu[0] ? 'confirmed, 1 expected' : 'expected'}</small></td>` : `<td class="cov none">none</td>`;
-    const sep = g.day !== lastDay ? `<tr class="sep"><td colspan="10">${etFmt(g.tip, {weekday: 'long', month: 'long', day: 'numeric'})}</td></tr>` : '';
+    const sep = g.day !== lastDay ? `<tr class="sep"><td colspan="11">${etFmt(g.tip, {weekday: 'long', month: 'long', day: 'numeric'})}</td></tr>` : '';
     lastDay = g.day;
     return `${sep}<tr><td class="l num">${clock(g.tip)}</td><td class="l"><b>${g.away} @ ${g.home}</b>${g.season_type === 1 ? ' <span class="badge">Preseason</span>' : ''}</td>${VENUES.map(cell).join('')}${inj}${lin}${pke}</tr>`;
-  }).join('') : `<tr><td class="l" colspan="10"><p class="empty">No games in the next 3 days. Preseason starts October 3; opening night is October 20.</p></td></tr>`;
+  }).join('') : `<tr><td class="l" colspan="11"><p class="empty">No games in the next 3 days. Preseason starts October 3; opening night is October 20.</p></td></tr>`;
 
   // model inputs (static files: judged against the real clock)
   const now = Date.now() / 1000;
@@ -3350,7 +3353,7 @@ function renderTrack(){
       <td class="num">${x.settled ? tRoi(x.roi) : ''}</td><td class="num">${x.settled ? tRoi(x.roi_close) : ''}</td><td class="num">${tClv(x.clv)}</td>
       <td class="num">${bt.roi != null ? `${tRoi(bt.roi)} <span class="muted">(${bt.n.toLocaleString()}, z ${bt.z})</span>` : ''}</td>
       <td class="l">${liveVerdict(x, bt)}</td></tr>`;
-  }).join('') : `<tr><td class="l" colspan="10"><p class="empty">No gated signals in this build.</p></td></tr>`;
+  }).join('') : `<tr><td class="l" colspan="11"><p class="empty">No gated signals in this build.</p></td></tr>`;
 
   renderTrackChart(sel);
 

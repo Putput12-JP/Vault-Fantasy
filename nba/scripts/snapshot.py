@@ -665,6 +665,32 @@ def poll(root):
     rec['s'] = round(time.time() - t0, 1)
     polls.append(rec)
     print(f"  tape       {'ok ' if rec['ok'] else 'ERR'} markets={rec.get('n', '-')} new={rec.get('chg', '-')} {rec['s']}s {rec.get('err', '')}", flush=True)
+    t0 = time.time()                                    # Novig exchange: public order books + trade tape (novig.py)
+    rec = {'t': int(t0), 'src': 'novig', 'ok': True}
+    NOVIG.clear()
+    try:
+        import novig
+        from prop_board import Roster
+        pre = [g for g in slate.games if g['pre']]
+        proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
+        nb = novig.poll(pre, root, slate.now, Roster(proj).find)
+        day.append('tape.jsonl', [{'t': x['t'], 's': 'nov', 'g': x['g'], 'm': x['m'], 'side': x['side'], 'line': x['line'], 'usd': round(x['usd']),
+                                   'px': x['px'], 'id': 'nov:' + x['id']} for x in nb.pop('fresh', None) or []])
+        nrows, nmeta = novig.quotes(nb, pre)
+        rec['n'] = len(nrows)                           # game lines priced (winner, main spread, main total, per game)
+        rec['chg'] = day.record('novig', slate.now, nrows, nmeta)
+        rec['props'] = len(nb['props'])
+        rec['used'], rec['budget'] = nb['used'], nb['budget']
+        if pre and not nb['games']:
+            rec['warn'] = 'no game matched a Novig event'
+        metas['novig'] = {**nmeta, **{k: {'g': str(v['g']), 'm': 'prop'} for k, v in nb['props'].items()}}
+        NOVIG['board'] = nb
+    except Exception as e:
+        rec.update(ok=False, err=str(e)[:200])
+        traceback.print_exc(limit=1)
+    rec['s'] = round(time.time() - t0, 1)
+    polls.append(rec)
+    print(f"  novig      {'ok ' if rec['ok'] else 'ERR'} lines={rec.get('n', '-')} chg={rec.get('chg', '-')} props={rec.get('props', '-')} used={rec.get('used', '-')}/{rec.get('budget', '-')} {rec['s']}s {rec.get('err', '') or rec.get('warn', '')}", flush=True)
     day.append('polls.jsonl', polls)
     write_status(root, day, slate, polls, metas)
     board = write_board(root, day, slate)
@@ -711,6 +737,8 @@ def coverage(slate, day, metas):
         p = (m.get('event') or '').split('-')          # nba-<away>-<home>-YYYY-MM-DD
         if len(p) >= 6:
             add('polymarket', ('-'.join(p[3:6]), code_nick(p[2])), (m.get('type') or 'moneyline') not in PM_GAME_TYPES)
+    for k, m in (metas.get('novig') or {}).items():
+        add('novig', by_id.get(m['g']) or by_id.get(int(m['g']) if str(m['g']).isdigit() else m['g']), m.get('m') == 'prop')
     for k in day.last.get('injuries', {}):             # report rows persist between reports, so read current state
         gd, team, _ = k.split('|', 2)
         try:
@@ -761,6 +789,7 @@ def write_status(root, day, slate, polls, metas):
         json.dump(status, f, separators=(',', ':'))
 
 
+NOVIG = {}      # this poll's Novig board (poll() fills it, write_board() attaches it to the page's board)
 BOARD = os.path.join(os.environ.get('RUNNER_TEMP') or os.path.join(os.path.dirname(__file__), '..', 'raw'), 'nba_board.json')
 
 
@@ -771,17 +800,7 @@ def write_board(root, day, slate):
         proj = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'data', 'player_projections.json')))
         board = build([g for g in slate.games if g['pre']], day.last, day.meta, day.first, proj, slate.now, sizes=KAL_SIZE, pm_depth=PM_DEPTH, when=day.when,
                       wire=(day.hist, day.log, day.t0))
-        try:                                            # Novig exchange: public order books + trade tape (novig.py)
-            import novig
-            from prop_board import Roster
-            board['novig'] = novig.poll([g for g in slate.games if g['pre']], root, slate.now, Roster(proj).find)
-            day.append('tape.jsonl', [{'t': x['t'], 's': 'nov', 'g': x['g'], 'm': x['m'], 'side': x['side'], 'line': x['line'], 'usd': round(x['usd']),
-                                       'px': x['px'], 'id': 'nov:' + x['id']} for x in board['novig'].get('fresh') or []])
-            board['novig'].pop('fresh', None)             # saved to the tape; not needed on the page
-            nrows, nmeta = novig.quotes(board['novig'], [g for g in slate.games if g['pre']])
-            day.record('novig', slate.now, nrows, nmeta)    # price history for the Backtest Lab (change-only, like every venue)
-        except Exception:
-            traceback.print_exc(limit=2)
+        board['novig'] = NOVIG.get('board')              # polled as a source in poll() so Data Health sees it
         try:                                            # Sharp Price: Pinnacle history, tapes, signals (sharp.py)
             import sharp
             from prop_board import TEAM as BTEAM
