@@ -6,6 +6,23 @@
 const ORIGINS = ['https://vaultfantasy.com', 'https://www.vaultfantasy.com', 'http://localhost:8000', 'http://127.0.0.1:8000'];
 const COOLDOWN_S = 60;
 
+// The US books (DraftKings, FanDuel, ...) only come from the ParlayAPI job (update-lineup.yml), which costs credits per run.
+// A Refresh click starts it too, but never twice inside LINEUP_COOLDOWN_S, so clicking can not drain the credit budget.
+const LINEUP_COOLDOWN_S = 45 * 60;
+async function maybeLineup(env) {
+  if (!env.LINEUP_WORKFLOW) return 'off';
+  const gh = { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'vault-sharp-refresh' };
+  try {
+    const r = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${env.LINEUP_WORKFLOW}/runs?per_page=1`, { headers: gh });
+    if (r.ok) {
+      const last = (await r.json()).workflow_runs?.[0];
+      if (last && (Date.now() - Date.parse(last.created_at)) / 1000 < LINEUP_COOLDOWN_S) return 'recent';
+    }
+    const d = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${env.LINEUP_WORKFLOW}/dispatches`, { method: 'POST', headers: gh, body: JSON.stringify({ ref: env.REF }) });
+    return d.status === 204 ? 'started' : 'error';
+  } catch { return 'error'; }
+}
+
 async function dispatch(env, force) {
   const r = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${env.WORKFLOW}/dispatches`, {
     method: 'POST',
@@ -50,6 +67,7 @@ export default {
     }
     const r = await dispatch(env, true);
     if (r.ok) await cache.put(key, new Response('1', { headers: { 'Cache-Control': `max-age=${COOLDOWN_S}`, 'X-Left': String(COOLDOWN_S) } }));
-    return new Response(JSON.stringify({ ok: r.ok, status: r.status }), { status: r.ok ? 202 : 502, headers: h });
+    const lineup = r.ok ? await maybeLineup(env) : 'skipped';
+    return new Response(JSON.stringify({ ok: r.ok, status: r.status, lineup }), { status: r.ok ? 202 : 502, headers: h });
   },
 };

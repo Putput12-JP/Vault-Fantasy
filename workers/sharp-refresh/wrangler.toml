@@ -10,5 +10,7 @@ crons = ["*/10 * * * *"]
 [vars]
 REPO = "Putput12-JP/Vault-Fantasy"
 WORKFLOW = "update-sharp-money.yml"
+# Also started (at most once per 45 min) by a Refresh click, for the US-books prices. Remove this line to turn that off.
+LINEUP_WORKFLOW = "update-lineup.yml"
 REF = "main"
 # GITHUB_TOKEN is a secret: `wrangler secret put GITHUB_TOKEN`

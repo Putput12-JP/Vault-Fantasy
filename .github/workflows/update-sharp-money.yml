@@ -72,9 +72,9 @@ jobs:
       - name: Poll Novig props
         if: steps.gate.outputs.go == '1'
         continue-on-error: true
-        # A Refresh click dispatches with force=true: keep that run short (25s of props), the scheduled runs do the long sweep.
+        # A Refresh click dispatches with force=true: keep that run short (45s of props, hot props first), the scheduled runs do the long sweep.
         run: |
-          B=200; [ "${{ github.event.inputs.force }}" = "true" ] && B=25
+          B=200; [ "${{ github.event.inputs.force }}" = "true" ] && B=45
           node scripts/fetch-novig-props.mjs --out=sharp-out/novig_props.json --budget=$B
       - name: Poll sources
         if: steps.gate.outputs.go == '1'

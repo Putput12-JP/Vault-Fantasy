@@ -63,6 +63,7 @@ const MKT = {
 
 // Same normalisation as fetch-kalshi-props / build_best_bets, plus generational suffixes so
 // "Marvin Harrison Jr." joins "Marvin Harrison".
+const prob = a => a < 0 ? -a / (-a + 100) : 100 / (a + 100);
 const nkey = s => String(s || '').toLowerCase().replace(/\b(jr|sr|ii|iii|iv|v)\b\.?/g, '').replace(/[^a-z]/g, '');
 
 let last = 0, pauseUntil = 0;
@@ -112,7 +113,7 @@ async function main() {
   const t0 = Date.now();
   const feed = JSON.parse(readFileSync(FEED, 'utf8'));
   // (nkey, vaultKey) -> the market's reference line, from the lineup feed
-  const want = new Map();
+  const want = new Map(), pinFair = new Map();   // pinFair: P(over) no-vig at Pinnacle's line, to spot which Novig props are worth refreshing first
   for (const p of Object.values(feed.vegas_player_props || {})) {
     for (const [m, l] of Object.entries(p.lines || {})) {
       const qs = (l.quotes || []).filter(q => q.line != null);
@@ -122,6 +123,7 @@ async function main() {
       if (!pin && qs.length < 3) continue;            // nothing sharp to compare against: not worth a book call
       if (/^(long_|fg_|kick_|sacks|tackles)/.test(m)) continue;
       want.set(nkey(p.name) + '|' + m, ref);
+      if (pin) { const po = prob(pin.over), pu = prob(pin.under); pinFair.set(nkey(p.name) + '|' + m, po / (po + pu)); }
     }
   }
   log('wanted', want.size, 'player-stat pairs');
@@ -129,7 +131,15 @@ async function main() {
   let prev = {};
   if (existsSync(OUT)) { try { prev = JSON.parse(readFileSync(OUT, 'utf8')).markets || {}; } catch { /* fresh start */ } }
   const lastRead = new Map();   // marketId -> t of the previous read
-  for (const byP of Object.values(prev)) for (const rows of Object.values(byP)) for (const r of rows) if (r.id) lastRead.set(r.id, r.t || 0);
+  const hot = new Set();        // marketIds that last showed a gap or an edge at Pinnacle's own line: these are the ones the Props page is showing
+  for (const [vk, byP] of Object.entries(prev)) for (const [nk, rows] of Object.entries(byP)) for (const r of rows) {
+    if (!r.id) continue;
+    lastRead.set(r.id, r.t || 0);
+    const f = pinFair.get(nk + '|' + vk);
+    if (f == null || r.k !== want.get(nk + '|' + vk)) continue;
+    const evO = r.oa ? f / r.oa - 1 : -1, evU = r.ua ? (1 - f) / r.ua - 1 : -1;
+    if ((r.mid != null && Math.abs(r.mid - f) >= 0.025) || evO >= 0.02 || evU >= 0.02) hot.add(r.id);
+  }
 
   const evs = (await pages('/events?league=NFL&limit=200')).filter(e => / @ /.test(e.description || '') && /^OPEN/.test(e.status) && e.startsTs < Date.now() + AHEAD_DAYS * 864e5);
   log('events', evs.length);
@@ -151,7 +161,10 @@ async function main() {
     }
   }
   // oldest read first, so a time-boxed run still rotates through everything
-  queue.sort((a, b) => (lastRead.get(a.mk.marketId) || 0) - (lastRead.get(b.mk.marketId) || 0) || a.start - b.start);
+  // order: (1) props that were showing a gap or edge last read, (2) the main line over alt strikes, (3) oldest read first
+  const rank = q => [hot.has(q.mk.marketId) ? 0 : 1, q.k === want.get(q.nk + '|' + q.vk) ? 0 : 1];
+  queue.sort((a, b) => { const ra = rank(a), rb = rank(b); return ra[0] - rb[0] || ra[1] - rb[1] || (lastRead.get(a.mk.marketId) || 0) - (lastRead.get(b.mk.marketId) || 0) || a.start - b.start; });
+  log('hot (last showed a gap or edge):', [...hot].length);
   log('markets to read', queue.length, 'budget', BUDGET_MS / 1000 + 's');
 
   const now = Math.floor(Date.now() / 1000);
