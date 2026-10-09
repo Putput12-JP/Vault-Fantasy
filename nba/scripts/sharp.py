@@ -153,6 +153,8 @@ def poll_tapes(root, day, slate, now, curl, parse_event, team):
     seen, cur = set(), {}
     for r in _tape_rows(dirs):
         seen.add(r['id'])
+        if r.get('s') == 'nov':                          # Novig tickets (snapshot.py) have no market key; novig.py keeps its own cursor
+            continue
         cur[r['k']] = max(cur.get(r['k'], 0), r['t'])
     tips = {(g['day'], team.get(g['home'], g['home'])): g['tip'] for g in slate.games if g['pre']}
     tips.update({(g['day'], g['home']): g['tip'] for g in slate.games if g['pre']})
