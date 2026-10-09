@@ -107,6 +107,8 @@ export function buildPropsBoard({ feed, kalshi, novig }) {
         if (novStale && call.src === 'Novig') why.push('Novig prices are old');
         if (call.ev >= BIG_EV) why.push('edge this big is usually a moved line');
         call.check = why;
+        call.stale = why.some(w => /are old|is old/.test(w) || /old$/.test(w));   // an edge against an old price: never tracked
+        call.big = call.ev >= BIG_EV;
       }
       // exchange price differs from the field: any exchange vs any other venue by MIN_GAP on one side
       let diff = null;

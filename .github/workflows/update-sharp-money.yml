@@ -55,6 +55,7 @@ jobs:
             git fetch --depth=1 origin sharp-data
             git show FETCH_HEAD:state.json > sharp-out/state.json || true
             git show FETCH_HEAD:novig_props.json > sharp-out/novig_props.json || true
+            git show FETCH_HEAD:prop_plays.json > sharp-out/prop_plays.json || true
           fi
       # Novig player-prop order books (keyless). Time-boxed and oldest-read-first, so a
       # big slate is covered over a few runs; rows older than an hour drop out.
@@ -80,5 +81,6 @@ jobs:
           git config user.email "vault-bot@users.noreply.github.com"
           git add data.json state.json
           if [ -f novig_props.json ]; then git add novig_props.json; fi
+          if [ -f prop_plays.json ]; then git add prop_plays.json; fi
           git commit -q -m "sharp money: $(date -u +%FT%TZ) [skip ci]"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" sharp-data

@@ -37,6 +37,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { buildPropsBoard } from './build-props-board.mjs';
+import { trackPlays, recordOf, loadLedger } from './track-prop-plays.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -956,7 +957,13 @@ async function pollOnce() {
   try {
     const rj = f => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
     const nv = rj(resolve(DIR, 'novig_props.json')) || rj(resolve(ROOT, 'data', 'novig_props.json'));
-    P.props = buildPropsBoard({ feed: rj(resolve(ROOT, 'data', 'lineup-feed.json')), kalshi: rj(resolve(ROOT, 'data', 'kalshi_props.json')), novig: nv });
+    const feed = rj(resolve(ROOT, 'data', 'lineup-feed.json'));
+    P.props = buildPropsBoard({ feed, kalshi: rj(resolve(ROOT, 'data', 'kalshi_props.json')), novig: nv });
+    // Track every fresh +EV call: logged at first sighting, closing price + box-score settlement later.
+    const lf = resolve(DIR, 'prop_plays.json');
+    const ledger = trackPlays({ board: P.props, feed, games: P.games, ledger: loadLedger(lf), stats: rj(resolve(ROOT, 'data', `nflverse_stats_${feed?.season}.json`)), nowS: now() });
+    writeFileSync(lf, JSON.stringify(ledger));
+    P.propRecord = recordOf(ledger);
   } catch (e) { log('props board failed', e.message); }
   P.sig = createHash('sha1').update(String(P.alerts.length) + ':' + (P.alerts[0]?.id || '') + ':' + all.map(g => (S.games[g.key]?.pin || []).length + '/' + (S.games[g.key]?.split || []).length).join(',')).digest('hex').slice(0, 12);
   writeFileSync(OUT, JSON.stringify(P));
