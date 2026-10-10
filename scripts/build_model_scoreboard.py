@@ -539,6 +539,19 @@ def _sig_block(rows):
     var = sum(q * (1 - q) for _, q in rows)
     return {"n": n, "won": won, "said": round(said, 2), "verdict": _sig_verdict(n, won, said, var)}
 
+def _newest(rows):
+    return sorted(rows, key=lambda r: r.get("commence") or "", reverse=True)
+
+def _prop_row(e, actual, side, y, k, b, v, said, basis):
+    """One graded prop signal: what every source said when it fired, and what happened.
+    side = 1 means the OVER side was the signal's side."""
+    r, f = e.get("last") or {}, e.get("first") or {}
+    return {"name": e.get("name"), "team": e.get("team"), "opp": e.get("opp"), "pos": e.get("pos"),
+            "market": e.get("market"), "line": e.get("line"), "commence": e.get("commence"),
+            "pick": "Over" if side else "Under", "kalshi": k, "books": b, "vault": v, "nBooks": r.get("nBooks"),
+            "price": round(said, 3), "price_basis": basis, "first_ts": f.get("ts"), "last_ts": r.get("ts"),
+            "actual": actual, "won": 1 if y == side else 0}
+
 def score_signals(br):
     """Signals logged live and graded here (plan follow-up, 2026-09-29), all
     context until one says GO:
@@ -558,6 +571,7 @@ def score_signals(br):
     try: SL = (json.load(open(os.path.join(DATA, "signal_log.json"))).get("props") or {}).values()
     except Exception: SL = []
     kb, vk, ll = [], [], [0, 0.0, 0.0]
+    kbr, vkr = [], []
     for e in SL:
         a = act.get((str(e.get("season")), str(e.get("week")), str(e.get("pid")), e.get("market")))
         r, L = e.get("last") or {}, e.get("line")
@@ -570,12 +584,15 @@ def score_signals(br):
             if abs(k - b) >= KB_GAP:
                 side = 1 if k > b else 0
                 kb.append((1 if y == side else 0, b if side else 1 - b))
+                kbr.append(_prop_row(e, a, side, y, k, b, v, b if side else 1 - b, "books"))
         if v is not None and abs(v - k) >= VK_GAP:
             side = 1 if k > v else 0            # Kalshi's side vs Vault's
             vk.append((1 if y == side else 0, k if side else 1 - k))
+            vkr.append(_prop_row(e, a, side, y, k, b, v, k if side else 1 - k, "kalshi"))
     out["kalshi_vs_books"] = {**_sig_block(kb), "all_lines": {"n": ll[0],
-        "logloss_kalshi": round(ll[1] / ll[0], 4) if ll[0] else None, "logloss_books": round(ll[2] / ll[0], 4) if ll[0] else None}}
-    vb = _sig_block(vk); vb["note"] = "won = Kalshi's side; said = Kalshi's own price"
+        "logloss_kalshi": round(ll[1] / ll[0], 4) if ll[0] else None, "logloss_books": round(ll[2] / ll[0], 4) if ll[0] else None},
+        "rows": _newest(kbr)}
+    vb = _sig_block(vk); vb["rows"] = _newest(vkr); vb["note"] = "won = Kalshi's side; said = Kalshi's own price"
     out["vault_vs_kalshi"] = vb
     # Polymarket sharp accounts vs the crowd
     res = {}
@@ -584,7 +601,7 @@ def score_signals(br):
         res[(str(g.get("season")), g.get("away"), g.get("home"))] = (g["home_score"], g["away_score"])
     try: PS = (json.load(open(os.path.join(DATA, "pm_signal_log.json"))).get("games") or {}).values()
     except Exception: PS = []
-    allr, dis, agree = [], [], []
+    allr, dis, agree, pmr = [], [], [], []
     for e in PS:
         sc = res.get((str(e.get("commence", ""))[:4], e.get("away"), e.get("home")))
         r = e.get("last") or {}
@@ -593,9 +610,21 @@ def score_signals(br):
         q = r["home_p"] if home else 1 - r["home_p"]
         allr.append((won, q))
         c = r.get("crowd")
+        rel = "none"
         if c is not None and abs(c) >= SIG_BIG:
             (dis if (c > 0) != home else agree).append((won, q))
-    out["pm_sharp"] = {"all": _sig_block(allr), "crowd_disagrees": _sig_block(dis), "crowd_agrees": _sig_block(agree)}
+            rel = "disagrees" if (c > 0) != home else "agrees"
+        f = e.get("first") or {}
+        pmr.append({"away": e.get("away"), "home": e.get("home"), "commence": e.get("commence"),
+                    "pick": e.get("home") if home else e.get("away"), "side": "home" if home else "away",
+                    "sharp_usd": round(abs(r["sharp"])), "sharp_n": r.get("sharpN"),
+                    "crowd_usd": None if c is None else round(c * (1 if home else -1)),
+                    "crowd": rel, "price": round(q, 3),
+                    "first_ts": f.get("ts"), "first_price": None if f.get("home_p") is None else round(f["home_p"] if home else 1 - f["home_p"], 3),
+                    "last_ts": r.get("ts"), "score": f"{e.get('away')} {sc[1]:g}, {e.get('home')} {sc[0]:g}",
+                    "won": won, "src": e.get("src")})
+    out["pm_sharp"] = {"all": _sig_block(allr), "crowd_disagrees": _sig_block(dis), "crowd_agrees": _sig_block(agree),
+                       "rows": _newest(pmr)}
     # withheld (teammate starter out): ledger leans + would-be plays
     wr = [p for p in br.get("props") or [] if p.get("withheld") and p.get("won_close") is not None]
     try: held = ((json.load(open(os.path.join(DATA, "best_bets_record.json"))).get("held") or {}).get("summary"))
