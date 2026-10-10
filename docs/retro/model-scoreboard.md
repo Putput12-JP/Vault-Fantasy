@@ -94,9 +94,9 @@ props   DraftKings  n=  7  toward   3 / away   0  net share toward +0.43 ±0.34
 _Logged live before kickoff, graded here. Context only until a row says GO (50+ bets and the side winning 2+ standard errors more often than its price said)._
 
 ```
-Kalshi vs books (5+ pts apart)     n= 13  side won   8, price said    6.1  -> tracking (13 of 50)
-  all Kalshi-priced lines: n=258  log-loss Kalshi 0.6903  books 0.6946
-Vault vs Kalshi (10+ pts, Kalshi)  n=184  side won  79, price said   94.8  -> no edge yet (z -2.3)
+Kalshi vs books (5+ pts apart)     n= 11  side won   6, price said    5.1  -> tracking (11 of 50)
+  all Kalshi-priced lines: n=120  log-loss Kalshi 0.6975  books 0.6979
+Vault vs Kalshi (10+ pts, Kalshi)  n= 77  side won  36, price said   41.2  -> no edge yet (z -1.2)
 PM sharp $25k+ (all)               n= 20  side won  17, price said   10.3  -> tracking (20 of 50)
 PM sharp vs crowd disagree         n=  5  side won   4, price said    1.8  -> tracking (5 of 50)
 PM sharp with crowd                n= 11  side won   9, price said    6.2  -> tracking (11 of 50)
