@@ -38,3 +38,23 @@ Record the outcome in `docs/game-simulation-results.md`, NO-GO included.
 ## Known limit at build time
 
 Scorers projected under about 3 points are flagged Off by the marginal check: the prop model's normal for points puts mass below zero there, which a non-negative integer draw cannot match. The page shows the flag.
+
+## Revisions and the live record (2026-10-10, before any real-game result)
+
+- **Default environment is now the market line,** not the players' own sum. Reason: the game model adds nothing over the close
+  (docs/game-model.md), and in the first preseason game the players' own sum put the total 8 points above the market. The own sum stays as
+  a check on our minutes and rates, and the page says so when it is more than 4 points from the market. The win chance is labelled context,
+  not an edge. This changes what the page shows, not the engine or any rule above.
+- **The test now runs live, game by game.** `sim_record.py` saves each game's simulated ranges (both environments) in the 4 hours before tip; the
+  ledger scores them against the box score 3 hours after tip, into `track.json` (`sim_days`; preseason kept apart). The Track Record page shows
+  every game: predicted margin and total range against the actual, the home win chance, how many players landed inside their 80% range, and
+  the biggest player misses. `build_game_simulation_test.py` applies the calibration rules above to that record and writes
+  `docs/game-simulation-results.md`; it states a verdict only at 150 regular-season games.
+- **Scoring detail:** the record stores nine deciles per quantity. "Inside the 80% range" uses a mid-rank position from them (a tie counts half),
+  which is fairer than a raw inside test on count stats. Fixed here, before any result.
+- **Python engine:** `sim_engine.py` is the page's engine ported line for line. `check_sim_parity.py` proves it: inputs (who plays, minutes, play
+  chances, stat means and variance terms) match the page exactly; simulated results agree within Monte Carlo error on three seeds (the 3,000-game
+  calibration pilot adds an independent ~1% error to each engine's points, allowed for in the comparison).
+- **Not yet recorded: the joint-odds half of the test** (teammate pick'em pairs, simulated both-hit rate against the observed one). The record does
+  not save pair probabilities yet, so the simulation stays a view and may not price a pair. Adding it is the next step.
+

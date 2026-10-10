@@ -96,6 +96,10 @@ main{display:flex;flex-direction:column;gap:24px;padding:24px}
 .card-h p{margin:2px 0 0;color:var(--fg2);font-size:13px}
 .card-b{padding:16px var(--pad) var(--pad)}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
+table.tsim td{white-space:nowrap}
+table.tsim td.sub{font-size:11.5px;color:var(--fg3);padding-top:0;border-top:0;text-align:left;white-space:normal}
+table.tsim td small{display:block;color:var(--fg3);font-size:11.5px}
+#tsimcard .kpis{margin-bottom:var(--gap)}
 .kpi .card-h{align-items:center}
 .kpi .card-h h2{font-size:13px;font-weight:500;color:var(--fg2)}
 .kpi .card-h svg{width:18px;height:18px;color:var(--fg3)}
@@ -1528,6 +1532,17 @@ th{font-weight:500}
           <thead><tr><th class="l" scope="col">Signal</th><th class="l" scope="col">Gate</th><th scope="col">Bets</th><th scope="col">W-L-P</th><th scope="col">Units</th><th scope="col" title="ROI per unit at the first price that showed a 3% edge">ROI at entry</th><th scope="col" title="The same bets at the last price before tip, the backtest's clock">ROI at close</th><th scope="col" title="Same side's price at close minus at entry, fee included. Positive means the market moved our way.">CLV</th><th scope="col" title="2025-26 out of sample: ROI (bets, z)">Backtest</th><th class="l" scope="col">Live verdict</th></tr></thead>
           <tbody id="tsig"></tbody>
         </table></div></div>
+      </section>
+
+      <section class="card" id="tsimcard">
+        <div class="card-h">
+          <div><h2>Game simulations</h2><p id="tsimsub">How the simulation did, game by game. Not affected by the filters above.</p></div>
+          <div class="filters" id="tsimenv"></div>
+        </div>
+        <div class="card-b"><div class="kpis" id="tsimk"></div>
+          <div class="tablewrap"><table class="ht tsim" id="tsim"></table></div>
+          <div class="more" id="tsimmore" hidden></div>
+          <p class="hint" id="tsimnote"></p></div>
       </section>
 
       <section class="card">
@@ -3409,6 +3424,7 @@ function renderTrack(){
     : `<tr><td class="l" colspan="11"><p class="empty">${bets.length ? 'No bets match these filters.' : 'No shadow bets logged yet.'}</p></td></tr>`;
   $('tmore').hidden = B.length <= tf.limit;
   $('tmore').innerHTML = `<button class="btn" id="tmorebtn" type="button">Show all ${B.length.toLocaleString()}</button>`;
+  renderSimRecord();
 
   $('tfoot').innerHTML = `
     <div><b>What is logged:</b> every price the Props page shows at ${Math.round(((d && d.edge_min) || EDGE_MIN) * 100)}%+ edge, on every venue: Kalshi rungs, sportsbooks, Polymarket and pick'em apps (same projection, minutes with Outs applied, calibration, blend and fees, computed by <code>scripts/pricing.py</code>), for games within 24 hours, from the first recorder poll it reached that edge. Each rung is its own bet, as in the backtest.</div>
@@ -3416,6 +3432,63 @@ function renderTrack(){
     <div><b>Live verdicts</b> need ${MIN_LIVE} settled bets. A gated signal is called proven when its live ROI is 2.13 standard errors above zero (and its closing-line value is not negative); real stakes grow earlier, with the evidence (see What Works). Ungated markets are tracked the same way, so a market that keeps winning here is a candidate for its own backtest.</div>`;
 }
 
+// ── Game simulations, game by game (sim_record.py → track.json sim_days) ──────────────────────────────────────────
+// The recorder saves the simulation's pre-tip ranges (market line and players' own sum); the ledger scores them against the box score. u is where
+// the actual landed in the simulated distribution (0.05 = below the 10th percentile, 0.95 = above the 90th), so a calibrated simulation puts 80%
+// of games at 0.1 < u < 0.9. Test written before the season in docs/game-simulation.md: 80% +/- 4 points for totals and margins, +/- 5 for player
+// points, rebounds and assists, once 150 regular-season games are scored.
+const simRec = {env: 'market', limit: 15};
+const SIMT = {n: 150, tm: [.76, .84], pl: [.75, .85]}, SIMS = ['pts', 'reb', 'ast', '3pm'];
+const simIn = u => u > .1 && u < .9;
+function simGames(){
+  const d = TR && TR.data, days = d && d.sim_days ? Object.values(d.sim_days).flat() : [];
+  return days.sort((a, b) => b.tip - a.tip);
+}
+function renderSimRecord(){
+  const d = TR && TR.data, G = simGames(), e = simRec.env, pre = d && d.preseason && d.preseason.sim_days ? Object.values(d.preseason.sim_days).flat().length : 0;
+  $('tsimenv').innerHTML = `<div class="seg" data-f="simenv" role="group">${[['market', 'Market line'], ['players', "Players' own sum"]].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${e === v}">${l}</button>`).join('')}</div>`;
+  const R = G.filter(g => g.env[e]);
+  if (!R.length){
+    $('tsimk').innerHTML = '';
+    $('tsim').innerHTML = `<tbody><tr><td class="l" colspan="9"><p class="empty">No simulations scored yet. The recorder saves each game's simulated ranges in the 4 hours before tip and the ledger scores them against the box score 3 hours after tip, from opening night.${pre ? ` ${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart as a rehearsal.` : ''}</p></td></tr></tbody>`;
+    $('tsimmore').hidden = true; $('tsimnote').textContent = ''; return;
+  }
+  const n = R.length, cnt = f => R.filter(f).length, share = k => cnt(g => simIn(g.env[e][k])) / n;
+  const tIn = share('ut'), mIn = share('um'), tLo = cnt(g => g.env[e].ut <= .1) / n, tHi = cnt(g => g.env[e].ut >= .9) / n, mLo = cnt(g => g.env[e].um <= .1) / n, mHi = cnt(g => g.env[e].um >= .9) / n;
+  const ps = Object.fromEntries(SIMS.map(s => [s, R.reduce((a, g) => a.map((v, i) => v + g.env[e].ps[s][i]), [0, 0, 0, 0, 0])]));
+  const plIn = s => ps[s][0] ? ps[s][1] / ps[s][0] : null;
+  const plAll = ['pts', 'reb', 'ast'].reduce((a, s) => a + ps[s][0], 0) ? ['pts', 'reb', 'ast'].reduce((a, s) => a + ps[s][1], 0) / ['pts', 'reb', 'ast'].reduce((a, s) => a + ps[s][0], 0) : null;
+  const brier = R.reduce((a, g) => a + (g.env[e].pw - g.env[e].hw) ** 2, 0) / n;
+  const verdict = (x, [lo, hi], lowN = n < SIMT.n) => x == null ? '' : lowN ? 'collecting' : x < lo ? 'too narrow' : x > hi ? 'too wide' : 'on target';
+  const tag = (x, band) => { const v = verdict(x, band); return v === 'collecting' ? '' : ` · <b class="${v === 'on target' ? 'pos' : 'neg'}">${v}</b>`; };
+  const lean = (lo, hi, what) => lo > hi + .05 ? `${what} often land below the range (simulation runs high)` : hi > lo + .05 ? `${what} often land above the range (simulation runs low)` : `${what} miss both ways about evenly`;
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  $('tsimk').innerHTML =
+    kpi('Games scored', ICON.clock, n.toLocaleString(), n < SIMT.n ? `${n} of ${SIMT.n} before the test can be called` : 'enough to call the test') +
+    kpi('Totals in range', ICON.pts, pc(tIn, 0), `target 76% to 84%${tag(tIn, SIMT.tm)} · ${lean(tLo, tHi, 'totals')}`) +
+    kpi('Margins in range', ICON.edit, pc(mIn, 0), `target 76% to 84%${tag(mIn, SIMT.tm)} · ${lean(mLo, mHi, 'margins')}`) +
+    kpi('Player stats in range', ICON.star, plAll == null ? 'none yet' : pc(plAll, 0),
+      `target 75% to 85%${tag(plAll, SIMT.pl)} · ${['pts', 'reb', 'ast', '3pm'].map(s => plIn(s) == null ? '' : `${SLABEL[s]} ${pc(plIn(s), 0)}`).filter(Boolean).join(' · ')} (3PM has no target)`);
+  const mark = (u, a) => `<b class="${simIn(u) ? 'pos' : 'neg'}">${a}</b>`;
+  const dayFmt = t => etFmt(t, {month: 'short', day: 'numeric'});
+  const rows = R.slice(0, simRec.limit).map(g => { const x = g.env[e];
+    const pl = SIMS.map(s => x.ps[s][0] ? `${SLABEL[s]} ${x.ps[s][1]}/${x.ps[s][0]}` : '').filter(Boolean).join(' · ');
+    const miss = x.miss.slice(0, 3).map(m => `${esc(m[0])} ${SLABEL[m[2]]} ${m[3]} to ${m[5]}, actual ${m[6]}`).join(' · ');
+    return `<tr><td class="l num">${dayFmt(g.tip)}</td><td class="l"><b>${esc(g.matchup)}</b><small>final ${g.score[0]}-${g.score[1]}</small></td>
+      <td class="num">${x.m[1] > 0 ? 'H' : 'A'} ${Math.abs(x.m[1]).toFixed(1)}<small>${x.m[0]} to ${x.m[2]}</small></td><td class="num">${mark(x.um, `${x.am > 0 ? 'H' : 'A'} ${Math.abs(x.am)}`)}</td>
+      <td class="num">${x.t[1].toFixed(1)}<small>${x.t[0]} to ${x.t[2]}</small></td><td class="num">${mark(x.ut, x.at)}</td>
+      <td class="num">${pc(x.pw, 0)}<small>${x.hw ? 'home won' : 'away won'}</small></td><td class="l num">${pl}</td></tr>
+      ${miss ? `<tr><td class="sub" colspan="8">Biggest player misses: ${miss}</td></tr>` : ''}`; }).join('');
+  $('tsim').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Game</th><th scope="col" title="Simulated middle margin and the 10th to 90th percentile. H = home by, A = away by">Margin (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated middle total and the 10th to 90th percentile">Total (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated home win chance">Home win</th><th class="l" scope="col" title="Players whose real stat landed inside the simulated 80% range, of those who played">Players in range</th></tr></thead><tbody>${rows}</tbody>`;
+  $('tsimmore').hidden = R.length <= simRec.limit;
+  $('tsimmore').innerHTML = `<button class="btn" id="tsimmorebtn" type="button">Show all ${R.length.toLocaleString()}</button>`;
+  $('tsimsub').textContent = `${n.toLocaleString()} ${n === 1 ? 'game' : 'games'} scored, newest first. Green means the real number landed inside the simulated 80% range. Not affected by the filters above.`;
+  $('tsimnote').textContent = `Home win Brier ${brier.toFixed(3)} (a coin flip is 0.250; lower is better). With the market line selected, totals and margins are centred on the market by construction, so they test the simulation's spread, not its forecast; the players' own sum tests our forecast. ${pre ? `${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart and counted nowhere.` : ''}`;
+}
+$('tsimcard').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-v]'); if (b){ simRec.env = b.dataset.v; renderSimRecord(); return; }
+  if (ev.target.closest('#tsimmorebtn')){ simRec.limit = 1e6; renderSimRecord(); }
+});
 function renderTrackChart(sel){
   const days = {};
   for (const r of sel){ const d = days[r.day] = days[r.day] || {u: 0, w: 0, l: 0, p: 0};
