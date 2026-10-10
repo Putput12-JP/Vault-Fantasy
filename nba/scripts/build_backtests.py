@@ -416,6 +416,8 @@ def main():
         {'name': 'Novig money against the close', 'area': 'Edges', 'due': '2026-12-01', 'doc': 'novig-money.md', 'rule': 'First look at 100 graded regular-season Novig money alerts ($1,000+ on one side of one market in 30 minutes): mean closing-line value against Pinnacle above zero at t >= 2, and positive in both halves.', 'status': 'Frozen, waiting for 100 alerts'}
     ]
     pending += [
+        {'name': 'Novig paper trading (simulated resting orders)', 'area': 'Execution', 'due': '2026-12-01', 'doc': 'novig-paper-trading.md',
+         'rule': 'First look at 100 filled orders under the conservative (thru) fill assumption: return above zero at z >= 2 clustered by game day, with Novig\'s real fee confirmed and the results recomputed. Nothing is placed on Novig.', 'status': 'Simulating from opening night; shown on Track Record'},
         {'name': 'Game Simulation calibration (live, game by game)', 'area': 'Game simulation', 'due': '2026-11-16', 'doc': 'game-simulation.md',
          'rule': 'After 150 scored regular-season games: the real total and margin land inside the simulated 80% range 80% +/- 4 points of games; player points, rebounds and assists 80% +/- 5. Scored on the market line and on the players\' own sum. Joint odds: different-team pairs must agree with independence (the owner\'s apps cannot pair teammates); teammate pairs must also beat independence.', 'status': 'Recording from opening night; shown game by game on Track Record'},
         {'name': 'Real Kalshi buy/sell gap', 'area': 'Execution', 'due': '2026-11-03', 'doc': 'update-plan.md',

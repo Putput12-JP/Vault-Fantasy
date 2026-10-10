@@ -1549,6 +1549,14 @@ th{font-weight:500}
           <div class="tablewrap"><table class="ht tsim" id="tsimj"></table></div></div>
       </section>
 
+      <section class="card" id="tnvcard">
+        <div class="card-h"><div><h2>Novig paper trading</h2><p id="tnvsub">Simulated orders only: nothing is placed on Novig. Not affected by the filters above.</p></div></div>
+        <div class="card-b"><div class="kpis" id="tnvk"></div>
+          <div class="tablewrap"><table class="ht tsim" id="tnv"></table></div>
+          <div class="more" id="tnvmore" hidden></div>
+          <p class="hint" id="tnvnote"></p></div>
+      </section>
+
       <section class="card">
         <div class="card-h">
           <div><h2>Units over time</h2><p id="tchsub">Cumulative units for the current selection, 1 unit per bet, by game day.</p></div>
@@ -3429,6 +3437,7 @@ function renderTrack(){
   $('tmore').hidden = B.length <= tf.limit;
   $('tmore').innerHTML = `<button class="btn" id="tmorebtn" type="button">Show all ${B.length.toLocaleString()}</button>`;
   renderSimRecord();
+  renderNovigPaper();
 
   $('tfoot').innerHTML = `
     <div><b>What is logged:</b> every price the Props page shows at ${Math.round(((d && d.edge_min) || EDGE_MIN) * 100)}%+ edge, on every venue: Kalshi rungs, sportsbooks, Polymarket and pick'em apps (same projection, minutes with Outs applied, calibration, blend and fees, computed by <code>scripts/pricing.py</code>), for games within 24 hours, from the first recorder poll it reached that edge. Each rung is its own bet, as in the backtest.</div>
@@ -3466,6 +3475,46 @@ function simJoint(G, c){
   const verdict = !enough ? 'collecting' : opp ? (Math.abs(zb) < 2 ? 'OK' : 'NO-GO') : (Math.abs(zb) < 2 && zg >= 2 ? 'GO' : 'NO-GO');
   return {games: rows.length, pairs: n, obs: sum(1), sim: sum(2), ind: sum(3), zb, zg, verdict};
 }
+// ── Novig paper trading (novig_paper.py → track.json novig_days) ───────────────────────────────────────────────────
+// A simulator: resting orders at our price on Novig's prop books, filled only when the public tape shows the market trading at or through us, settled
+// from the box score. Fill assumptions are kept apart (touch / thru) and never mixed. Fee is a placeholder until Novig's schedule is confirmed.
+const nvRec = {limit: 15};
+function nvAt(o, price, fee){                         // net and gross return per $1 staked if the order filled at `price`
+  const won = o.side === 'Over' ? o.actual > o.line : o.actual < o.line, gross = won ? (1 - price) / price : -1;
+  return won ? gross * (1 - fee) : gross;
+}
+function renderNovigPaper(){
+  const d = TR && TR.data, cfg = d && d.novig_cfg || {fee: .02, edge: .03, stake: 5}, fee = cfg.fee ?? .02;
+  const all = (d && d.novig_days ? Object.values(d.novig_days).flat() : []).sort((a, b) => b.tip - a.tip), O = all.filter(o => !o.void);
+  const pre = d && d.preseason && d.preseason.novig_days ? Object.values(d.preseason.novig_days).flat().length : 0;
+  if (!O.length){
+    $('tnvk').innerHTML = '';
+    $('tnv').innerHTML = `<tbody><tr><td class="l" colspan="9"><p class="empty">No paper orders settled yet. The recorder places a simulated resting order whenever our fair chance beats a Novig prop price by ${Math.round((cfg.edge ?? .03) * 100)}% after the placeholder fee, and settles it from the box score.${pre ? ` ${pre} preseason ${pre === 1 ? 'order is' : 'orders are'} scored apart.` : ''}</p></td></tr></tbody>`;
+    $('tnvmore').hidden = true; $('tnvnote').textContent = ''; return;
+  }
+  const mk = O.filter(o => o.kind === 'maker'), tk = O.filter(o => o.kind === 'taker'), stake = o => o.stake;
+  const sum = (xs, f) => xs.reduce((a, o) => a + f(o), 0), ret = (xs, f) => xs.length ? sum(xs, o => f(o) * o.stake) / sum(xs, stake) : null;
+  const tF = mk.filter(o => o.touch), hF = mk.filter(o => o.thru), nT = mk.filter(o => !o.touch);
+  const lim = o => nvAt(o, o.limit, fee), fmtR = r => r == null ? 'none' : (r >= 0 ? '+' : '') + (r * 100).toFixed(1) + '%', cls = r => r == null ? 'muted' : r >= 0 ? 'pos' : 'neg';
+  const rT = ret(tF, lim), rH = ret(hF, lim), rN = ret(nT, lim), rAsk = ret(O.filter(o => o.ask > 0 && o.ask < 1), o => nvAt(o, o.ask, fee));
+  const few = n => n < 100 ? ` · ${n} of 100 filled orders before it means anything` : '';
+  const kpi = (label, icon, val, hint, c) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val ${c || ''}">${val}</p><p class="hint">${hint}</p></div></section>`;
+  $('tnvk').innerHTML =
+    kpi('Orders placed', ICON.clock, O.length.toLocaleString(), `${mk.length} resting (maker), ${tk.length} at the ask (taker)`) +
+    kpi('Maker fills', ICON.pts, mk.length ? `${pc(tF.length / mk.length, 0)} · ${pc(hF.length / mk.length, 0)}` : 'none', `touch · thru: the tape shows only executions of $25 and up, so fills are undercounted`) +
+    kpi('Return, filled orders', ICON.edit, `${fmtR(rT)} · ${fmtR(rH)}`, `per $ staked at our price, after a placeholder ${Math.round(fee * 100)}% fee (touch · thru)${few(tF.length)}`, cls(rT)) +
+    kpi('Did not fill', ICON.star, fmtR(rN), `what the orders that never filled would have earned at our price. Far below the filled return means the fills were the bad ones (adverse selection)`, cls(rN));
+  const rows = O.slice(0, nvRec.limit).map(o => { const f = o.touch ? (o.thru ? 'thru' : 'touch') : o.kind === 'taker' ? 'ask' : 'no fill', pn = o.touch ? o.touch[0] : null;
+    return `<tr><td class="l num">${etFmt(o.tip, {month: 'short', day: 'numeric'})}</td><td class="l"><b>${esc(o.player)}</b><small>${esc(o.matchup)}</small></td><td class="l"><b>${SLABEL[o.stat] || o.stat} ${o.side} ${o.line}</b></td>
+      <td class="num">${o.kind}<small>limit ${Math.round(o.limit * 100)}c · ask ${o.ask != null ? Math.round(o.ask * 100) + 'c' : 'none'}</small></td><td class="num">${pc(o.fair, 0)}<small>edge ${(o.edge * 100).toFixed(1)}</small></td>
+      <td class="num">${o.actual}</td><td class="l">${f === 'no fill' ? '<span class="muted">no fill</span>' : pill(f === 'thru' ? 'ok' : 'idle', f)}</td><td class="num">${pn == null ? '' : `<b class="${pn >= 0 ? 'pos' : 'neg'}">${pn >= 0 ? '+' : '-'}$${Math.abs(pn).toFixed(2)}</b>`}</td></tr>`; }).join('');
+  $('tnv').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Player</th><th class="l" scope="col">Order</th><th scope="col">Kind</th><th scope="col" title="Our fair chance and the edge over the break-even price">Fair</th><th scope="col">Actual</th><th class="l" scope="col" title="touch: a trade at our price or better. thru: a trade at least 1 cent better, so we were not just queued at the back">Fill</th><th scope="col" title="Net of the placeholder fee, if filled">$ at ${'$' + cfg.stake} stake</th></tr></thead><tbody>${rows}</tbody>`;
+  $('tnvmore').hidden = O.length <= nvRec.limit;
+  $('tnvmore').innerHTML = `<button class="btn" id="tnvmorebtn" type="button">Show all ${O.length.toLocaleString()}</button>`;
+  $('tnvsub').textContent = `${O.length.toLocaleString()} settled paper orders, newest first. Simulated: nothing is placed on Novig. Not affected by the filters above.`;
+  $('tnvnote').textContent = `Taking the ask at placement would have returned ${fmtR(rAsk)} per $ on all ${O.length} orders. Paper results only: Novig has no price history, its fee is a placeholder (${Math.round(fee * 100)}% of winnings) until confirmed, and a real order needs its own pre-registered rule first.${pre ? ` ${pre} preseason ${pre === 1 ? 'order is' : 'orders are'} scored apart and counted nowhere.` : ''}`;
+}
+$('tnvcard').addEventListener('click', ev => { if (ev.target.closest('#tnvmorebtn')){ nvRec.limit = 1e6; renderNovigPaper(); } });
 function renderSimRecord(){
   const d = TR && TR.data, G = simGames(), e = simRec.env, pre = d && d.preseason && d.preseason.sim_days ? Object.values(d.preseason.sim_days).flat().length : 0;
   $('tsimenv').innerHTML = `<div class="seg" data-f="simenv" role="group">${[['market', 'Market line'], ['players', "Players' own sum"]].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${e === v}">${l}</button>`).join('')}</div>`;
