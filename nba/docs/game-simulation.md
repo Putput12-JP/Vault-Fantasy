@@ -55,10 +55,16 @@ Scorers projected under about 3 points are flagged Off by the marginal check: th
 - **Python engine:** `sim_engine.py` is the page's engine ported line for line. `check_sim_parity.py` proves it: inputs (who plays, minutes, play
   chances, stat means and variance terms) match the page exactly; simulated results agree within Monte Carlo error on three seeds (the 3,000-game
   calibration pilot adds an independent ~1% error to each engine's points, allowed for in the comparison).
-- **Joint odds are recorded too (added 2026-10-10, before any result).** In the last 90 minutes before tip the record saves, for teammate pairs among
-  each team's six most-minutes players, the simulated chance both legs go over, both go under, and each leg alone, for the two pick'em combinations
-  that passed (one player's points with a teammate's assists; one player's assists with a teammate's 3-pointers), given both play. Lines are the
-  simulation's own medians (x.5). Scoring, fixed now: over teammate pairs where both played, (1) bias, observed both-hit rate minus simulated, must be
-  inside 2 standard errors; (2) the simulation's Brier score must beat the independent product's with z >= 2; errors clustered by game; over/over and
-  under/under pooled; at least 150 games and 2,000 pairs. A combination that passes both is GO and only then may a pair price use the simulation.
+- **Joint odds are recorded too (added 2026-10-10, revised the same day, before any result).** Pick'em apps that only allow different-team picks
+  cannot pair teammates, and opposing players are close to independent (docs/pickem-different-teams.md), so the main test is **different teams**:
+  in the last 90 minutes before tip the record saves, for pairs among each team's five most-minutes players, the simulated chance both legs go over,
+  both go under, and each alone, given both play (points with points, rebounds with rebounds, one player's points with the other's assists, one
+  player's assists with the other's 3-pointers). Teammate pairs (the two combinations that passed: points with assists, assists with 3-pointers) are
+  recorded second, for apps that allow same-team picks. Lines are the simulation's own medians (x.5). Scoring, fixed now, over pairs where both
+  played, over/over and under/under pooled, errors clustered by game, at least 150 games and 2,000 pairs:
+  - **Different teams:** observed both-hit rate minus simulated must be within 2 standard errors. OK means the simulation agrees opposing players are
+    about independent; NO-GO means it invents dependence (the risk is the shared game total) and its different-team joint odds must not be used.
+  - **Teammates:** the same bias bar, and the simulation's Brier score must beat the independent product's with z >= 2. Only then may a teammate pair
+    price use the simulation.
+  A first look at two preseason games (not a test): the simulation claims 0.05 to 0.3 points of lift for opposing pairs and 0.2 to 0.7 for teammates.
   `build_game_simulation_test.py` computes this and Track Record shows it.

@@ -13,9 +13,13 @@ docs/game-simulation.md (calibration: how often did the real total, margin and p
                             players  the players' own sum (the model's own game forecast, our check on it)
                           game row   gid|env        [mean margin, mean total, 9 margin deciles, 9 total deciles, home win chance]
                           player row gid|env|pid    [plays chance, minutes, then 9 deciles each for pts, reb, ast, 3pm, over the games he plays]
-                          joint row  gid|env|j|a|b|c  [line a, line b, games both play, both over, both under, a over, b over] for teammate pairs (the
-                                    two pick'em combinations that passed, docs/pickem-correlation-results.md): c = pa (a's points with b's assists) or
-                                    a3 (a's assists with b's 3-pointers); lines are the simulation's own medians (x.5); chances are given both play.
+                          joint row  gid|env|j|a|b|c  [line a, line b, games both play, both over, both under, a over, b over], given both play, on the
+                                    simulation's own median half-lines. Two kinds of pair (meta 'rel'):
+                                      o  OPPONENTS (different teams): pa, a3, pp (points with points), rr (rebounds with rebounds). The main test: pick'em
+                                         apps that only allow different teams, where real pairs are close to independent (docs/pickem-different-teams.md)
+                                         and the risk is the simulation inventing dependence through the shared game total.
+                                      t  TEAMMATES: pa (a's points with b's assists), a3 (a's assists with b's 3-pointers), the two combinations that passed
+                                         (docs/pickem-correlation-results.md); only useful for apps that allow same-team picks.
                                     Recorded for one environment per game, the market line when there is one.
   record(...)          -> per tip day: each game's last pre-tip record against the final box score (called by ledger.settle).
 
@@ -34,8 +38,10 @@ ENVS = ('market', 'players')
 STATS = ['pts', 'reb', 'ast', '3pm']
 DECILES = [.1, .2, .3, .4, .5, .6, .7, .8, .9]
 MIN_PLAY = .5                       # players recorded: a better than even chance of playing ...
-JOINT = {'pa': ('pts', 'ast'), 'a3': ('ast', '3pm')}
-JOINT_TOP = 6                       # pairs among each team's six most-minutes recorded players
+JOINT = {'pa': ('pts', 'ast'), 'a3': ('ast', '3pm'), 'pp': ('pts', 'pts'), 'rr': ('reb', 'reb')}
+JOINT_TEAM = ('pa', 'a3')           # combinations recorded for teammates
+JOINT_OPP = ('pa', 'a3', 'pp', 'rr')   # and for opponents; pp and rr are symmetric so one orientation is enough
+JOINT_TOP = 5                       # pairs among each team's five most-minutes recorded players
 JOINT_WINDOW_H = 1.5                # joint rows only in the last 90 minutes before tip (lineups settled; keeps the record small)
 MIN_BOTH = 300                      # simulated games in which both play, below which a pair is not recorded
 STAT_BOX = {'pts': 'points', 'reb': 'rebounds', 'ast': 'assists', '3pm': 'threePointFieldGoalsMade'}
@@ -112,25 +118,37 @@ def log(board, now):
 
 
 def _joint(res, game, rows, meta, base, g):
-    """Teammate-pair probabilities for the joint-odds test (see the docstring). Both over, both under, and each leg over, all given both play."""
+    """Pair probabilities for the joint-odds test (see the docstring): teammates and opponents, both over, both under, each leg over, given both play."""
+    top = []
     for t, tm in enumerate(game.teams):
-        top = sorted([(j, r) for j, r in enumerate(tm['rows']) if r['pPlay'] >= MIN_PLAY and r['min'] >= MIN_MIN], key=lambda x: -x[1]['min'])[:JOINT_TOP]
-        o = res['teams'][t]
-        for ja, ra in top:
-            for jb, rb in top:
-                if ja == jb:
-                    continue
-                both = o['on'][ja] & o['on'][jb]
-                nb = int(both.sum())
-                if nb < MIN_BOTH:
-                    continue
-                for c, (sa, sb) in JOINT.items():
-                    A, B = o[sa][ja], o[sb][jb]
-                    la, lb = float(np.floor(np.median(A[o['on'][ja]])) + .5), float(np.floor(np.median(B[o['on'][jb]])) + .5)
-                    ao, bo = A[both] > la, B[both] > lb
-                    k = f"{g['id']}|{base['env']}|j|{ra['pid']}|{rb['pid']}|{c}"
-                    rows[k] = [la, lb, nb, round(float((ao & bo).mean()), 4), round(float((~ao & ~bo).mean()), 4), round(float(ao.mean()), 4), round(float(bo.mean()), 4)]
-                    meta[k] = {**base, 'kind': 'joint', 'a': ra['pid'], 'b': rb['pid'], 'c': c}
+        top.append(sorted([(j, r) for j, r in enumerate(tm['rows']) if r['pPlay'] >= MIN_PLAY and r['min'] >= MIN_MIN], key=lambda x: -x[1]['min'])[:JOINT_TOP])
+
+    def pair(ta, ja, ra, tb, jb, rb, c, rel):
+        oa, ob = res['teams'][ta], res['teams'][tb]
+        sa, sb = JOINT[c]
+        both = oa['on'][ja] & ob['on'][jb]
+        nb = int(both.sum())
+        if nb < MIN_BOTH:
+            return
+        A, B = oa[sa][ja], ob[sb][jb]
+        la, lb = float(np.floor(np.median(A[oa['on'][ja]])) + .5), float(np.floor(np.median(B[ob['on'][jb]])) + .5)
+        ao, bo = A[both] > la, B[both] > lb
+        k = f"{g['id']}|{base['env']}|j|{ra['pid']}|{rb['pid']}|{c}"
+        rows[k] = [la, lb, nb, round(float((ao & bo).mean()), 4), round(float((~ao & ~bo).mean()), 4), round(float(ao.mean()), 4), round(float(bo.mean()), 4)]
+        meta[k] = {**base, 'kind': 'joint', 'rel': rel, 'a': ra['pid'], 'b': rb['pid'], 'c': c}
+
+    for t in (0, 1):                                                       # teammates, ordered pairs
+        for ja, ra in top[t]:
+            for jb, rb in top[t]:
+                if ja != jb:
+                    for c in JOINT_TEAM:
+                        pair(t, ja, ra, t, jb, rb, c, 't')
+    for ja, ra in top[0]:                                                  # opponents: team 0's player is a, team 1's is b ...
+        for jb, rb in top[1]:
+            for c in JOINT_OPP:
+                pair(0, ja, ra, 1, jb, rb, c, 'o')
+                if c in ('pa', 'a3'):                                      # ... and the mirror for the asymmetric combinations
+                    pair(1, jb, rb, 0, ja, ra, c, 'o')
 
 
 def pit(qs, y):
@@ -204,13 +222,14 @@ def record(root, now, prev, rescan_days, games, L):
             jt = {}
             for row, m in e['joint']:
                 sa, sb = JOINT[m['c']]
+                ck = f"{m.get('rel', 't')}:{m['c']}"            # t = teammates, o = opponents (rows written before 'rel' existed were teammates)
                 A, B = bx.get(int(m['a'])), bx.get(int(m['b']))
                 if not A or not B:
                     continue
                 ya, yb = A.get(STAT_BOX[sa], 0), B.get(STAT_BOX[sb], 0)
                 la, lb, nb, p_oo, p_uu, pa, pb = row
                 for side, obs, sim, ind in (('o', float(ya > la and yb > lb), p_oo, pa * pb), ('u', float(ya < la and yb < lb), p_uu, (1 - pa) * (1 - pb))):
-                    v = jt.setdefault(m['c'], {}).setdefault(side, [0, 0.0, 0.0, 0.0, 0.0, 0.0])
+                    v = jt.setdefault(ck, {}).setdefault(side, [0, 0.0, 0.0, 0.0, 0.0, 0.0])
                     v[0] += 1; v[1] += obs; v[2] += sim; v[3] += ind; v[4] += (obs - sim) ** 2; v[5] += (obs - ind) ** 2
             if jt:
                 entry['jt'] = {'env': env, 'c': {c: {sd: [v[0]] + [round(x, 4) for x in v[1:]] for sd, v in by.items()} for c, by in jt.items()}}

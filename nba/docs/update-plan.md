@@ -114,7 +114,7 @@ read** (it has not been). Pre-registered terms:
 
 Ordered by value per effort; each needs no new model.
 
-1. **Pick'em of the night + weekly recap** (roadmap #5). Pick'em correlation is already a GO; this is what a player opens the app for.
+1. **Pick'em of the night + weekly recap** (singles first: the owner's apps only allow different-team picks, where pairs are two independent picks, so a two-pick adds nothing; teammate pairs stay behind the app switch) (roadmap #5). Pick'em correlation is already a GO; this is what a player opens the app for.
 2. **Game Lines in-season** (roadmap #4): Vault-line gap row and "best price" skipping stale books. The page is already the strongest.
 3. **Price and edge beside each Minutes Lab projection.** Turns a minutes judgement into a bet in seconds (differentiation #6). Nobody else ships it.
 4. **Injury re-pricer alerts** from 1.3: push or on-page when a status change reprices teammates beyond the cost line.
@@ -128,7 +128,7 @@ Ordered by value per effort; each needs no new model.
 
 Built: market-line default and "players' own sum" gap warning; win chance labelled context; Python engine (`sim_engine.py`) proven equal to the page
 (`check_sim_parity.py`); a per-game live record (`sim_record.py`) shown on Track Record; the calibration test scored from that record
-(`build_game_simulation_test.py`). Teammate-pair probabilities are recorded too, so the joint-odds half of the test runs live. Still to do: scenario switches (if X sits, blowout, overtime) and a per-player ladder view after the copula (Nov 9) and minutes-shock (Nov 16) tests report.
+(`build_game_simulation_test.py`). Joint odds are recorded for different-team pairs (the main test, since the owner's apps cannot pair teammates) and teammate pairs, so the second half of the test runs live. Still to do: scenario switches (if X sits, blowout, overtime) and a per-player ladder view after the copula (Nov 9) and minutes-shock (Nov 16) tests report.
 
 ### Phase 3: design consolidation (parallel with Phase 2)
 
