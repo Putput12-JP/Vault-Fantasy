@@ -549,7 +549,7 @@ def _prop_row(e, actual, side, y, k, b, v, said, basis):
     return {"name": e.get("name"), "team": e.get("team"), "opp": e.get("opp"), "pos": e.get("pos"),
             "market": e.get("market"), "line": e.get("line"), "commence": e.get("commence"),
             "pick": "Over" if side else "Under", "kalshi": k, "books": b, "vault": v, "nBooks": r.get("nBooks"),
-            "price": round(said, 3), "price_basis": basis, "first_ts": f.get("ts"), "last_ts": r.get("ts"),
+            "price": round(said, 3), "price_basis": basis, "interp": bool(r.get("interp")), "first_ts": f.get("ts"), "last_ts": r.get("ts"),
             "actual": actual, "won": 1 if y == side else 0}
 
 def score_signals(br):
