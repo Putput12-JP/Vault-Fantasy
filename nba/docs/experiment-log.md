@@ -117,3 +117,61 @@ Read: the 3-pointer NO edge keeps its ROI up to a 3-cent half-spread (fewer bets
 gone by 2 cents. Points NO therefore needs a half-spread under about 1 cent, which thin rungs (median 105 contracts per 30 minutes)
 rarely offer. Once regular-season props list, measure the real half-spread per stat from the recorder's bid and ask before
 trusting either cell; this section's table is the bar to compare it against.
+
+## 8. Tier 2 trading gate (DRAFT 2026-10-10, not in force until the owner signs below)
+
+Written before the live ledger has been read (the file header still holds: no one has looked at `track.json` or `bets/`). It replaces
+the "300 live bets and 50 game days" promotion rule in section 3 **for real-money sizing only**. Section 3 still governs the page's
+"Proven" label. Context and tiers: `docs/update-plan.md` Phase 1.5. Numbers below are computed from `data/consensus_bets.json`
+(consensus + model, 3PM NO, 2,022 bets over 277 games, `kalshi_ladder` plus `books_to_kalshi`), game-clustered like `calibrate_edge.py`.
+
+### 8.1 What the data can and cannot prove
+
+Backtest ROI on this cell is +16.6% per bet (z 3.5, game-clustered). The game-clustered SE is about **0.79 / sqrt(games)** per unit
+risked. Games needed for z >= 2.13 at a true ROI of:
+
+| True ROI | Games |
+|---|---|
+| 15% | ~130 |
+| 10% | ~285 |
+| 7% | ~580 |
+| 5% | ~1,140 |
+| 3% | ~3,170 |
+
+About half of all games produce a 3PM NO entry bet (277 games in the backtest's second half), so a season is roughly 600 such games.
+A fixed "prove it first" bar therefore cannot open at a realistic edge this season. Group-sequential test with looks at 150, 300 and 450
+games, one-sided alpha 0.05/3 (boundaries z 3.76, 2.66, 2.17, simulated): chance of passing by game 450 is **21% at a true 5% ROI, 39% at
+7%, 69% at 10%, 97% at 15%**, and 1.5% at 0%. That is a sound test and a slow one.
+
+### 8.2 Rule: size on the evidence, do not wait for a verdict
+
+Real-size stake for a cell is **quarter Kelly on the posterior-mean ROI**, after every game day, so size grows as evidence accumulates
+and falls if it does not.
+
+- **Prior (judgement, fixed here):** true ROI ~ Normal(mean 5%, sd 5%). About 30% of the backtest's 16.6%, consistent with the calibration
+  table (promised edges keep about half) and the 68-cell multiplicity. The sd lets the data move it.
+- **Data:** shadow-ledger entry-price bets for the cell, ROI per unit risked after fees, game-clustered SE = 0.79 / sqrt(games).
+- **Posterior:** normal-normal update. Examples (observed ROI -> posterior mean, P(ROI > 0)): at 150 games, 5% -> 5.0%, 90%; 10% -> 6.9%,
+  96%; 15% -> 8.7%, 99%. At 300 games, 5% -> 5.0%, 93%; 10% -> 7.7%, 99%. At 150 games, 0% observed -> 3.1% posterior, 79%.
+- **Conditions to trade above Tier 1 size** (all required): at least 100 games on the cell; **observed** ROI after fees > 0 (the prior must
+  not carry a flat or losing cell); P(ROI > 0) >= 0.90; mean CLV against the close not negative; cell not demoted.
+- **Caps:** 1% of bankroll per order, 3% per game, daily loss stop, and no more than 2x the previous week's average order size in any week
+  (so a lucky run cannot jump the size).
+- **Demote (stop real size, back to Tier 1):** observed ROI < 0 with z <= -1 after 150 games, or P(ROI > 0) falls below 0.80.
+- **Frozen cells:** 3PM NO (consensus + model) first. Points NO needs a measured half-spread under about 1 cent before it trades at all.
+  Anything else follows section 3's "pre-register first" rule.
+- **"Proven" label unchanged:** the page's Proven badge still needs section 3 (or the group-sequential bound in 8.1 at games 150, 300,
+  450). Sizing on the posterior is not a claim of proof.
+
+### 8.3 Why this is acceptable
+
+Decision-wise, a modest stake on a plausible 5% edge has positive expected value even when it is not proven, and the posterior shrinks
+it toward zero size if the live record disagrees. The costs are a prior chosen by judgement and no formal false-positive guarantee on the
+trading decision. Both are disclosed here, and the demote rule and the loss budget bound the damage.
+
+### 8.4 Owner sign-off
+
+- Prior (mean 5%, sd 5%), the 100-game minimum, P(ROI > 0) >= 0.90 and the weekly size ramp are **proposals**. Replace any before signing.
+- Signed by: ____________  Date: ____________  (until signed, Tier 2 stays closed and Tier 1 micro-stakes run as in the plan)
+- After signing, any edit is dated with its reason, and a result read after the edit is exploratory (see section 3).
+

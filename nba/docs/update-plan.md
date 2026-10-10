@@ -107,7 +107,7 @@ read** (it has not been). Pre-registered terms:
 | 1.5.2 Paper-mode order engine on the three frozen cells | Logs the order it would place and the price it would get, beside the later real fill if any |
 | 1.5.3 Risk layer and kill switch with tests | Unit tests for every halt rule; dry-run proves the halts fire |
 | 1.5.4 Tier 1 micro-stakes live | Owner confirms budget and size and approves the first live day; halts verified live |
-| 1.5.5 Tier 2 gate written into `experiment-log.md` | Dated entry made before the ledger is read; owner sets the stopping boundary |
+| 1.5.5 Tier 2 gate written into `experiment-log.md` | Draft is in `experiment-log.md` section 8 (posterior-sized, not a pass/fail bar); owner signs or edits it before the ledger is read |
 | 1.5.6 Tier 2 real size | Gate passed; owner approves the first day |
 
 ### Phase 2: features that turn edge into a decision (Nov)
@@ -159,4 +159,4 @@ Each needs its own pre-registered row in `experiment-log.md` and its own 300 bet
 ## 5. Open questions
 
 1. Tier 2 bankroll, and whether Kalshi's automated-trading terms are confirmed OK for the account. (Blocks 1.5.4 onward.)
-2. Tier 2 stopping boundary and minimum games for the sequential gate (owner sets; or Claude proposes one to react to).
+2. Sign `experiment-log.md` section 8.4: prior (mean 5%, sd 5%), 100-game minimum, P(ROI > 0) >= 0.90, weekly size ramp. Edit any of them first.
