@@ -44,7 +44,7 @@
 'use strict';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -75,6 +75,7 @@ const PAIR_PAYOUT = 3;               // standard 2-pick payout; break-even 1/3
 const PAIR_MIN_EV = Number(ARG.pairminev ?? 0.05);   // joint * payout - 1 (--pairminev=-1 lists every pair, for testing)
 const PAIR_TOP = 3;
 const PAIR_APPS = ['PrizePicks', 'Underdog Fantasy', 'Underdog', 'Sleeper'];
+export function setSeasons(s) { SEASONS = s; }   // scripts/prop-model-probe.mjs rolls the log window the same way main() does
 let   SEASONS = [2024, 2025];                 // log window [prev, cur] — reset from feed.season in main() so it rolls to [cur-1, cur] once the new season's nflverse logs land (mirrors the client's ebVaultSeasons)
 const BE_REF = 0.524;                         // standard -110 book break-even (entry-agnostic bar)
 const MIN_GAMES = 8;                          // enough log to trust the projection
@@ -221,7 +222,7 @@ function scriptMultOf(gs, mk, spread) {
   if (fam === 'pass_td') { const d = gs.td_damp == null ? 0.5 : gs.td_damp; raw = 1 + d * (raw - 1); }
   return clamp(raw, lo, hi);
 }
-function buildMatchupCtx(feed) {
+export function buildMatchupCtx(feed) {
   const dvp = feed.dvp || {}, leagueFpa = {};
   for (const pos of ['QB', 'RB', 'WR', 'TE']) {
     let s = 0, n = 0;
@@ -252,7 +253,7 @@ function windMultOf(wx, team, mk) {
   const g = wx[({ LAR: 'LA', WSH: 'WAS', LVR: 'LV', JAC: 'JAX' }[team] || team)];
   return num(g && g.mult && g.mult[mk]) ?? 1;
 }
-function matchupAdjFor(ctx, p, mk) {
+export function matchupAdjFor(ctx, p, mk) {
   let oppMult = 1, envMult = 1;
   if (p.opp && p.pos) {
     const c = ctx.dvp[p.opp] && ctx.dvp[p.opp][p.pos], avg = ctx.leagueFpa[p.pos];
@@ -320,7 +321,7 @@ function marketKeyOf(m) { const k = Object.keys(m.prior)[0] || ''; return k.incl
 // what stops the hero and the board disagreeing on a role-changed player, e.g. a
 // rookie RB1 still carrying his committee-back reception history.
 let _roleParams;
-function loadRoleParams() {
+export function loadRoleParams() {
   if (_roleParams === undefined) {
     try { _roleParams = JSON.parse(readFileSync(resolve(ROOT, 'data/role_volume.json'), 'utf8')); }
     catch { _roleParams = null; }
@@ -396,7 +397,7 @@ function calibrate(calib, p) {
   for (let i = 0; i < calib.length - 1; i++) { const [x0, y0] = calib[i], [x1, y1] = calib[i + 1]; if (p >= x0 && p <= x1) { const t = x1 === x0 ? 0 : (p - x0) / (x1 - x0); return y0 + t * (y1 - y0); } }
   return p;
 }
-function fairProbOver(PM, name, marketKey, line, role, adj) {
+export function fairProbOver(PM, name, marketKey, line, role, adj) {
   const m = PM.markets[marketKey]; if (!m) return null;
   const minPrior = (PM.meta && PM.meta.min_prior) || 3;
   const weeks = weeksFor(name); if (!weeks.length) return null;
@@ -503,7 +504,7 @@ const MKT_LABEL = {
    Returns a Set of corroborated player ids. */
 const ROLE_VOL_MK = { RB: 'rush_yd', WR: 'rec_yd', TE: 'rec_yd' };   // QB excluded
 const ROLE_PROJREL = 0.20;   // |proj − line| / line that makes an unconfirmed role suspect
-function roleCorrobSet(feed) {
+export function roleCorrobSet(feed) {
   const props = feed.vegas_player_props || {}, depth = feed.vegas_depth || {};
   const byTeam = {};
   for (const id in props) {
@@ -1150,7 +1151,10 @@ function gameLeans(feed) {
 }
 
 /* ── main ──────────────────────────────────────────────────────────────── */
+// Runs only when executed directly: scripts/prop-model-probe.mjs imports this file for the model, and must not trigger a scoring run.
+const IS_MAIN = !!process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
 (async () => {
+  if (!IS_MAIN) return;
   try {
     if (!existsSync(FEED)) { log('feed not found:', FEED); process.exit(0); }
     const feed = JSON.parse(readFileSync(FEED, 'utf8'));

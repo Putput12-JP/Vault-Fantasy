@@ -53,7 +53,17 @@ function actualOf(stats, name, week, mkt) {
   return { has: true, val: cols.reduce((s, c) => s + (+w[c] || 0), 0) };
 }
 
-export function trackPlays({ board, feed, games, ledger, stats, nowS, shift }) {
+// What the Vault prop model said about the side we called, banked beside the price so the model can be scored later as a tilt on the market
+// (scripts/fit_prop_offset.py). d is the model-minus-fair gap in logit space on the called side. Log only; nothing reads it for a decision yet.
+const lgt = p => Math.log(Math.min(0.995, Math.max(0.005, p)) / (1 - Math.min(0.995, Math.max(0.005, p))));
+function modelBlock(probe, r, c, line, fair) {
+  const m = probe ? probe(r.pid, r.mkt, line) : null;
+  if (!m || m.over == null) return null;
+  const p = c.side === 'over' ? m.over : 1 - m.over;
+  return { proj: m.proj, p: +p.toFixed(4), d: fair != null ? +(lgt(p) - lgt(fair)).toFixed(4) : null, games: m.games, roleMult: m.roleMult ?? null };
+}
+
+export function trackPlays({ board, feed, games, ledger, stats, nowS, shift, probe }) {
   const L = ledger && ledger.plays ? ledger : { plays: {} };
   L.legs ||= {};
   const season = String(feed?.season || ''), week = feed?.week;
@@ -79,6 +89,8 @@ export function trackPlays({ board, feed, games, ledger, stats, nowS, shift }) {
         start, firstSeen: nowS, called: { src: c.src, kind: c.kind, am: c.am, p: c.p, ev: c.ev, evAdj: c.evAdj ?? null, depth: c.depth ?? null, fair: c.shifted ? c.fairAtLine : r[c.side].fair, fairSrc: r.fairSrc },
         big: !!c.big, shifted: !!c.shifted, refLine: r.line, status: 'open',
       };
+      const mb = modelBlock(probe, r, c, line, L.plays[k].called.fair);
+      if (mb) L.plays[k].model = mb;
     }
   }
   // pick'em legs: no price, so the test is calibration. Log each fresh leg once with the win chance we gave it.

@@ -38,6 +38,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { buildPropsBoard } from './build-props-board.mjs';
 import { trackPlays, recordOf, loadLedger } from './track-prop-plays.mjs';
+import { makeModelProbe } from './prop-model-probe.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -965,7 +966,7 @@ async function pollOnce() {
     P.props = buildPropsBoard({ feed, kalshi: kal, novig: nv, shift });
     // Track every fresh +EV call: logged at first sighting, closing price + box-score settlement later.
     const lf = resolve(DIR, 'prop_plays.json');
-    const ledger = trackPlays({ board: P.props, feed, games: P.games, ledger: loadLedger(lf), stats: rj(resolve(ROOT, 'data', `nflverse_stats_${feed?.season}.json`)), nowS: now(), shift });
+    const ledger = trackPlays({ board: P.props, feed, games: P.games, ledger: loadLedger(lf), stats: rj(resolve(ROOT, 'data', `nflverse_stats_${feed?.season}.json`)), nowS: now(), shift, probe: makeModelProbe(feed) });
     writeFileSync(lf, JSON.stringify(ledger));
     P.propRecord = recordOf(ledger);
   } catch (e) { log('props board failed', e.message); }
