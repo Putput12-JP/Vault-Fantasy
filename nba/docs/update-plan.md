@@ -8,8 +8,8 @@ preseason board of Oct 9). The live ledger was **not** read, per the experiment-
 
 1. **Audience:** the owner, plus advanced NBA stat people with betting interest. Stat-forward and depth-friendly, not a casual-bettor
    app. Advanced pages stay reachable and are not hidden; consolidation groups them, it does not bury them.
-2. **Real-money execution on Kalshi: yes.** Becomes Phase 1.5 below, behind hard risk rules. No signal trades real money until it passes
-   its pre-registered gate (see "Execution rules").
+2. **Real-money execution on Kalshi: yes.** Becomes Phase 1.5 below, in tiers: paper from opening night, micro-stakes live once the
+   spread is measured and the risk layer is tested, real size only after a pre-registered sequential gate.
 3. **Accent colour: keep as is.** Closed; removed from open items.
 
 ## 1. Where we stand
@@ -52,7 +52,8 @@ z >= 2.13, CLV not negative).
 | 0.2 Map ESPN milestone ladders as a ladder source if books send only those | Otherwise no two-way book prices | Props page shows book rows on opening night |
 | 0.3 **Opening-night state for every page** (D2) | First weeks have no record. Show "Record starts Oct 20, N bets so far" with progress bars to 300 bets / 50 days, not zeros | Track Record, Edges, Tonight have a designed pre-record state |
 | 0.4 Write the maker-fill replay's accept rule in `experiment-log.md` **before** running it | Pre-registration is how this project stays honest | Rule committed before the replay runs |
-| 0.5 Freeze the live-ledger look schedule (monthly monitor, decisions only at the bet count) | Prevents peeking | Already in experiment-log section 3; add calendar reminder |
+| 0.5 Write the Tier 2 gate (sequential test, game-clustered) into `experiment-log.md` before the ledger is first read | The first read of the ledger fixes what counts as pre-registered | Dated entry committed; owner sets the stopping boundary |
+| 0.6 Freeze the live-ledger look schedule (monthly monitor, decisions only at the bet count) | Prevents peeking | Already in experiment-log section 3; add calendar reminder |
 
 ### Phase 1: measure the edge's real cost (Oct 20 to mid-Nov)
 
@@ -68,27 +69,46 @@ z >= 2.13, CLV not negative).
 No authenticated Kalshi client exists in the repo today: every Kalshi script is a read-only fetch (`novig_client.py` is the only signed
 client, for Novig). So this is new code with new risk.
 
-**Execution rules (fixed now, before any order exists):**
-- **Gate:** only a cell that passed the experiment-log promotion rule (300 live bets, 50 game days, ROI > 0 after fees, z >= 2.13, CLV not
-  negative) may trade real money. Today that is zero cells. Until then the order path runs in **paper mode** (logs the order it would
-  place, at the price it would get) and its record is the evidence.
-- **Size:** quarter Kelly on the *realistic* edge (the calibrated one), hard cap of 1% of the Kalshi bankroll per order and 3% per game,
-  and a daily loss stop. Start at a fixed small dollar amount for the first 50 live orders.
+**Why tiers.** The old rule (300 live bets and 50 game days before any real money) is a floor for *detecting* an edge, not a reason to
+wait: at a realistic +3% to +5% ROI, z >= 2.13 needs roughly 1,800 to 5,000 bets (about 450 at +10%). Shadow bets accumulate for free from
+opening night, so no game is wasted. But paper cannot measure fills, resting-order adverse selection or the real spread, and those are
+exactly what real orders teach. So real money enters in two steps, and the big gate guards only the second.
+
+| Tier | What trades | Size | Starts when | Purpose |
+|---|---|---|---|---|
+| **0. Paper** | Every 3%+ candidate, shadow only | $0 | Opening night (already running) | Detection evidence; the cube is the record |
+| **1. Micro-stakes live** | The three frozen cells only (3PM NO two variants, points NO) | **$1-$5 per order, total loss budget $200-$500** (owner to confirm both) | After 1.1 (spread measured) and 1.5.3 (risk layer tested) | Execution data: fill rate, maker adverse selection, real spread. **Not promotion evidence.** Promotion is still judged on the shadow ledger's entry price |
+| **2. Real size** | A cell that passes the gate below | Quarter Kelly on the *realistic* edge, cap 1% of bankroll per order and 3% per game, daily loss stop | Gate passed and owner approves the first day | Make money |
+
+**Tier 2 gate (replaces "300 bets and 50 days").** Written into `experiment-log.md`, with date and reason, **before the live ledger is first
+read** (it has not been). Pre-registered terms:
+- A **sequential test** per frozen cell on the shadow entry price, so a strong edge can stop early and a weak one cannot be mistaken for
+  luck. The backtest (e.g. 3PM NO, ~1,500 consensus bets) is the **prior**, shrunk hard because the 2025-26 season was reused many times.
+- The unit of independence is the **game**, not the bet or the day: bets in one game are correlated, so z and the minimum sample are
+  computed with game-clustered errors (as `calibrate_edge.py` already does).
+- Floors that stay: ROI > 0 after fees, mean CLV against the close not negative, and the demote rule (below).
+- The exact stopping boundary and the minimum number of games are set in the log by the owner. Until then Tier 2 stays closed.
+
+**Execution rules (apply to Tiers 1 and 2):**
 - **Kill switch:** one flag stops all orders. Auto-halt if live ROI after 150 orders is below 0 with z <= -1 (the demote rule), if the
-  recorder's Kalshi source has not answered in 30 minutes, or if a fill price is worse than the quote by more than the model's cost.
+  recorder's Kalshi source has not answered in 30 minutes, if a fill price is worse than the quote by more than the model's cost, or when
+  the Tier 1 loss budget is spent.
 - **Orders:** resting limit orders at our fair price (maker) first; crossing the spread (taker) only if 1.2 shows the edge survives the
   fee. Check Kalshi's current fee schedule and API terms before sizing.
-- **Secrets:** API key and private key live in GitHub Actions secrets or a local env file, never in the repo, the page or the data branches.
-  The page never holds a key; execution runs server-side only.
+- **Secrets:** API key and private key live in GitHub Actions secrets or a local env file, never in the repo, the page, the data branches
+  or this chat. The page never holds a key; execution runs server-side only.
+- **Who trades:** the order script, under these rules. Claude writes and tests the code and does not hold keys or place orders.
 - **Compliance:** confirm Kalshi's rules on automated trading for the account and any state or tax implications. That check is the owner's.
 - **Reconcile:** every order, fill and cancel is logged beside the shadow ledger so live fills are scored on the same cube.
 
 | Item | Done when |
 |---|---|
 | 1.5.1 Authenticated read-only client (balance, positions, fills) | Fills reconcile to the ledger with no orders placed |
-| 1.5.2 Paper-mode order engine on the three frozen cells | 50 paper orders logged with the quoted price and the later real fill, if any |
+| 1.5.2 Paper-mode order engine on the three frozen cells | Logs the order it would place and the price it would get, beside the later real fill if any |
 | 1.5.3 Risk layer and kill switch with tests | Unit tests for every halt rule; dry-run proves the halts fire |
-| 1.5.4 First live orders at fixed small size, only on a gated cell | Gate passed first; owner approves the first live day |
+| 1.5.4 Tier 1 micro-stakes live | Owner confirms budget and size and approves the first live day; halts verified live |
+| 1.5.5 Tier 2 gate written into `experiment-log.md` | Dated entry made before the ledger is read; owner sets the stopping boundary |
+| 1.5.6 Tier 2 real size | Gate passed; owner approves the first day |
 
 ### Phase 2: features that turn edge into a decision (Nov)
 
@@ -138,5 +158,6 @@ Each needs its own pre-registered row in `experiment-log.md` and its own 300 bet
 
 ## 5. Open questions
 
-1. Kalshi account: bankroll available for live trading, and is the account and its automated-trading terms confirmed OK? (Blocks 1.5.4 only.)
+1. Tier 1 numbers: confirm the micro-stakes loss budget ($200-$500 proposed) and per-order size ($1-$5 proposed). These are placeholders.
+   Also the Kalshi bankroll for Tier 2, and whether the account's automated-trading terms are confirmed OK. (Blocks 1.5.4 onward.)
 2. Is the 3-pointer NO cell the first live candidate, since points NO needs a sub-1-cent half-spread? (Revisit after 1.1.)
