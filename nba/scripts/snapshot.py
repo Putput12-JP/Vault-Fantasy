@@ -899,6 +899,14 @@ def shadow(root, day, board, now, polls):
             mrows, mmeta = ledger.minutes_log(board, now)      # the Minutes Lab's record
             rec['minutes'] = len(mrows)
             day.record('minutes', now, mrows, mmeta)
+            try:                                                # the Game Simulation's pre-tip ranges (sim_record.py); never stops the ledger
+                import sim_record
+                srows, smeta = sim_record.log(board, now)
+                rec['sim'] = len(srows)
+                day.record('sim', now, srows, smeta)
+            except Exception as e:
+                rec['sim_err'] = str(e)[:120]
+                traceback.print_exc(limit=2)
         rec['bets'] = ledger.settle(root, now)
     except Exception as e:
         rec.update(ok=False, err=str(e)[:200])

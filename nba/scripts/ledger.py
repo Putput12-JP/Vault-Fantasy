@@ -578,10 +578,18 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     n = sum(r[CUBE_COLS.index('bets')] for r in cube)
     minutes_days = minutes_record(root, now, track.get('minutes_days'), rescan_days, games=season)
     wire_days = wire_record(root, now, track.get('wire_days'), rescan_days, games=season)
+    me = sys.modules[__name__]
+    try:                                          # how the Game Simulation did, game by game (sim_record.py); a failure here never stops settling
+        import sim_record as SR
+        sim_days = SR.record(root, now, track.get('sim_days'), rescan_days, season, me)
+        sim_pre = SR.record(root, now, (track.get('preseason') or {}).get('sim_days'), rescan_days, lambda g: not season(g), me)
+    except Exception as e:
+        print('sim record failed:', e, flush=True)
+        sim_days, sim_pre = track.get('sim_days'), (track.get('preseason') or {}).get('sim_days')
     pre = {'n': sum(r[CUBE_COLS.index('bets')] for r in pcube), 'cube': pcube,
            'minutes_days': minutes_record(root, now, P0.get('minutes_days'), rescan_days, games=lambda g: not season(g)),
            'wire_days': wire_record(root, now, P0.get('wire_days'), rescan_days, games=lambda g: not season(g)),
-           'signals': P0.get('signals')}
+           'signals': P0.get('signals'), 'sim_days': sim_pre}
     try:                                          # closing prices + box lines for users' own bet logs
         closes_record(root, now, rescan_days)
     except Exception as e:
@@ -594,7 +602,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     except Exception as e:
         print('signals grading failed:', e, flush=True)
         signals = track.get('signals')
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'sim_days': sim_days, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre}
     with open(tpath, 'w') as f:

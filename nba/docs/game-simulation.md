@@ -38,3 +38,27 @@ Record the outcome in `docs/game-simulation-results.md`, NO-GO included.
 ## Known limit at build time
 
 Scorers projected under about 3 points are flagged Off by the marginal check: the prop model's normal for points puts mass below zero there, which a non-negative integer draw cannot match. The page shows the flag.
+
+## Revisions and the live record (2026-10-10, before any real-game result)
+
+- **Default environment is now the market line,** not the players' own sum. Reason: the game model adds nothing over the close
+  (docs/game-model.md), and in the first preseason game the players' own sum put the total 8 points above the market. The own sum stays as
+  a check on our minutes and rates, and the page says so when it is more than 4 points from the market. The win chance is labelled context,
+  not an edge. This changes what the page shows, not the engine or any rule above.
+- **The test now runs live, game by game.** `sim_record.py` saves each game's simulated ranges (both environments) in the 4 hours before tip; the
+  ledger scores them against the box score 3 hours after tip, into `track.json` (`sim_days`; preseason kept apart). The Track Record page shows
+  every game: predicted margin and total range against the actual, the home win chance, how many players landed inside their 80% range, and
+  the biggest player misses. `build_game_simulation_test.py` applies the calibration rules above to that record and writes
+  `docs/game-simulation-results.md`; it states a verdict only at 150 regular-season games.
+- **Scoring detail:** the record stores nine deciles per quantity. "Inside the 80% range" uses a mid-rank position from them (a tie counts half),
+  which is fairer than a raw inside test on count stats. Fixed here, before any result.
+- **Python engine:** `sim_engine.py` is the page's engine ported line for line. `check_sim_parity.py` proves it: inputs (who plays, minutes, play
+  chances, stat means and variance terms) match the page exactly; simulated results agree within Monte Carlo error on three seeds (the 3,000-game
+  calibration pilot adds an independent ~1% error to each engine's points, allowed for in the comparison).
+- **Joint odds are recorded too (added 2026-10-10, before any result).** In the last 90 minutes before tip the record saves, for teammate pairs among
+  each team's six most-minutes players, the simulated chance both legs go over, both go under, and each leg alone, for the two pick'em combinations
+  that passed (one player's points with a teammate's assists; one player's assists with a teammate's 3-pointers), given both play. Lines are the
+  simulation's own medians (x.5). Scoring, fixed now: over teammate pairs where both played, (1) bias, observed both-hit rate minus simulated, must be
+  inside 2 standard errors; (2) the simulation's Brier score must beat the independent product's with z >= 2; errors clustered by game; over/over and
+  under/under pooled; at least 150 games and 2,000 pairs. A combination that passes both is GO and only then may a pair price use the simulation.
+  `build_game_simulation_test.py` computes this and Track Record shows it.

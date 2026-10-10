@@ -31,6 +31,8 @@ python3 nba/scripts/build_starters.py                           # lineup feed ac
 python3 nba/scripts/fetch_depth_charts.py                       # CURRENT depth charts -> data/depth_charts.json (~15 s, run daily)
 python3 nba/scripts/build_data_health.py                        # Data Health snapshot (reads origin/nba-data) + re-render the app page
 python3 nba/scripts/prop_board.py                               # Player Props snapshot (origin/nba-live) + example board + re-render
+python3 nba/scripts/check_sim_parity.py [--seed=N]               # proof the Python simulation engine (sim_engine.py) plays the game as the page does (~30 s)
+python3 nba/scripts/build_game_simulation_test.py                # the Game Simulation's live calibration test from track.json's sim_days -> docs/game-simulation-results.md
 python3 nba/scripts/build_gamelogs.py                           # per-player game logs for hit rates + game-log chart (rerun after fetch_hoopr in season)
 ```
 
