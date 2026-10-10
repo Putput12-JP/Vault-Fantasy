@@ -5323,6 +5323,22 @@ function wkSlice(){
   const key = fs.test === 'kalshi_to_books' ? (fs.side === 'no' ? 'Under' : 'Over') : (fs.side === 'no' ? 'NO' : 'YES');
   return by[key] ? {r: by[key]} : {missing: 'No bets on this side.'};
 }
+// Edge Finder V2. (1) Every slice you open is counted, in this browser, and the luck odds count them with the ~68 ideas already tried.
+// (2) Every slice shows the plain baseline it has to beat (the price alone with the overs bias corrected, or the consensus alone). (3) A side slice
+// splits into two chronological halves of the test period: judge it on the first, then check the second (each check is counted too).
+const FS_KEY = 'vault-finder-seen', FS_CONF = 'vault-finder-confirms';
+const fsLoad = k => { try { return new Set(JSON.parse(localStorage.getItem(k) || '[]')); } catch (e) { return new Set(); } };
+const fsSave = (k, set) => { try { localStorage.setItem(k, JSON.stringify([...set])); } catch (e) {} };
+const fsSeen = fsLoad(FS_KEY), fsConf = fsLoad(FS_CONF);
+function fsBaselines(){          // [{label, r: [n, games, win, roi, z]}] for the current slice, or []
+  const B = BT.finder.base || {}, sd = fs.side === 'any' ? ['NO', 'YES'] : [fs.side.toUpperCase()];
+  if (fs.method === 'model'){
+    if (fs.venue !== 'kalshi') return [];
+    return sd.map(x => ({label: `${x === 'NO' ? 'Every NO' : 'Every YES'}, price alone (the overs bias corrected)`, r: ((B.model || {})[fs.stat] || {})[x]})).filter(x => x.r);
+  }
+  const by = ((B.cons || {})[fs.test] || {})[fs.stat] || {}, key = fs.test === 'kalshi_to_books' ? (fs.side === 'no' ? 'Under' : 'Over') : (fs.side === 'no' ? 'NO' : 'YES');
+  return by[key] ? [{label: 'The consensus alone, no model', r: by[key]}] : [];
+}
 function renderFinder(){
   const M = BT.finder.model;
   if (fs.method === 'cons' && fs.side === 'any') fs.side = 'no';          // consensus is tested per side: never pool them
@@ -5340,7 +5356,12 @@ function renderFinder(){
   let res;
   if (missing) res = `<h3 class="muted">Not in the backtest</h3><p class="say">${missing}</p>`;
   else {
-    const [n, games, win, roi, z] = r, C = wkConf(z ?? 0, games);
+    const [n, games, win, roi, z] = r;
+    const sliceKey = [fs.method, fs.venue, fs.test, fs.stat, fs.side, fs.edge].join('|');
+    if (!fsSeen.has(sliceKey)){ fsSeen.add(sliceKey); fsSave(FS_KEY, fsSeen); }
+    const tried = BT.trials + fsSeen.size + fsConf.size, C = wkConf(z ?? 0, games, tried);
+    const bases = fsBaselines(), halves = fs.method === 'model' && fs.venue === 'kalshi' && fs.edge === '0.03' && fs.side !== 'any' ? ((BT.finder.halves || {})[fs.stat] || {})[fs.side.toUpperCase()] : null;
+    const confKey = sliceKey + '|2nd', revealed = fsConf.has(confKey);
     const steady = fs.method === 'model' && fs.side === 'any' ? ['0.02', '0.03', '0.05', '0.08'].filter(t => ((M[fs.venue][fs.stat] || {})[t] || [])[4] >= 2).length >= 3 : null;
     const head = C.lvl >= 4 && roi > 0 && steady === false ? ['Real but fragile', 'warnt'] : C.lvl >= 4 && roi > 0 ? ['Looks real', 'pos'] : C.lvl >= 2 && roi > 0 ? ['Promising', 'warnt'] : games < 50 ? ["Can't tell yet", 'muted'] : roi <= 0 ? ["Doesn't work", 'neg'] : ['Probably luck', 'muted'];
     const where = fs.method === 'model' ? (fs.venue === 'kalshi' ? 'Kalshi' : 'sportsbooks') : (tb ? 'sportsbooks' : 'Kalshi');
@@ -5351,13 +5372,18 @@ function renderFinder(){
         <div><small>Bets</small><b>${n.toLocaleString()}</b><span>in ${games} games${win != null ? ` · won ${Math.round(win * 100)}%` : ''}</span></div>
         <div><small>Room to trade</small><b>~${BT.liquidity.median_contracts_30m}</b><span>contracts per price in the last 30 minutes (Kalshi)</span></div></div>
       ${wkMeter(C)}
+      ${bases.length ? `<div class="wk-row"><div class="wk-lbl"><b>What would a plain bet have made?</b>The baseline this slice has to beat</div><div class="wk-ways"${bases.length === 1 ? ' style="grid-template-columns:1fr"' : ''}>${bases.map(b => `<div><b>${b.label}</b>${per100(b.r[3])} per $100 · ${b.r[0].toLocaleString()} bets${bases.length === 1 ? `<br><span class="${roi - b.r[3] > 0 ? 'pos' : 'neg'}">${roi - b.r[3] >= 0 ? 'This slice adds' : 'This slice gives up'} ${per100(Math.abs(roi - b.r[3])).slice(1)} per $100</span>` : ''}</div>`).join('')}</div></div>` : fs.venue === 'books' && fs.method === 'model' ? '<div class="wk-row"><div class="wk-lbl"><b>Baseline</b></div><p class="muted">No plain baseline for sportsbooks in this build.</p></div>' : ''}
+      ${halves ? `<div class="wk-row"><div class="wk-lbl"><b>Explore, then confirm</b>The test period split in two by date</div><div>
+        <div class="wk-steps"><div class="wk-step ${halves[0][2] >= 1 ? 'good' : ''}"><small>First half · ${halves[0][4].slice(5)} to ${halves[0][5].slice(5)}</small><b>${per100(halves[0][1])}</b><small>${halves[0][0].toLocaleString()} bets · z ${halves[0][2] >= 0 ? '+' : ''}${halves[0][2]}</small></div>
+          ${revealed ? `<div class="wk-step ${halves[1][1] > 0 ? 'good' : ''}"><small>Second half · ${halves[1][4].slice(5)} to ${halves[1][5].slice(5)}</small><b>${per100(halves[1][1])}</b><small>${halves[1][0].toLocaleString()} bets · z ${halves[1][2] >= 0 ? '+' : ''}${halves[1][2]}</small></div>` : `<div class="wk-step"><small>Second half</small><b>hidden</b><small><button type="button" class="btn" data-confirm="${esc(confKey)}">Check it</button></small></div>`}</div>
+        <div class="wk-verdict">${revealed ? `<span class="ic ${halves[1][1] > 0 && halves[0][1] > 0 ? 'y' : 'n'}">${halves[1][1] > 0 && halves[0][1] > 0 ? '✓' : '!'}</span>${halves[1][1] > 0 && halves[0][1] > 0 ? 'Positive in both halves. Checking counted as one more look in the luck odds above.' : 'Did not hold in both halves: treat it as luck until live bets say otherwise.'}` : 'Pick a slice because of its first half, then check the second. Each check counts as one more look in the luck odds.'}</div></div></div>` : fs.method === 'model' && fs.venue === 'kalshi' && fs.side !== 'any' ? '<div class="wk-row"><div class="wk-lbl"><b>Explore, then confirm</b></div><p class="muted">The split needs the 3% edge cut; pick 3%.</p></div>' : ''}
       ${mt ? `<div class="wk-steps">${['0.02', '0.03', '0.05', '0.08'].filter(t => mt[t]).map(t => `<div class="wk-step ${mt[t][4] >= 2 ? 'good' : ''}${t === fs.edge ? ' cur' : ''}"><small>${Math.round(t * 100)}%+ edge</small><b>${per100(mt[t][3])}</b><small>${mt[t][1]} games</small></div>`).join('')}</div>` : ''}
       <ul class="wk-checks">
         <li><span>${games >= 50 ? '✅' : '⬜'}</span>At least 50 games (${games})</li>
-        <li><span>${(z ?? 0) >= 2 ? '✅' : '⬜'}</span>Rare enough to look real for a single idea (1 in 40 or rarer). A slice you chose is not counted against the other ideas</li>
+        <li><span>${C.lvl >= 4 ? '✅' : '⬜'}</span>Still rare enough after counting every idea and slice tried (1 in 20 or rarer)</li>
         ${steady != null ? `<li><span>${steady ? '✅' : '⬜'}</span>Pays at most edge sizes, not just one</li>` : ''}
         <li><span>⬜</span>Holds up live this season <span class="muted">(${MIN_LIVE}+ settled bets)</span></li></ul>
-      <div class="wk-warn"><b>Careful with slices.</b> There are about 100 combinations here; a few will look good by luck alone. Treat anything you find as an idea, and only trust it when every box above is ticked.</div>`;
+      <div class="wk-warn"><b>Careful with slices.</b> You have opened ${fsSeen.size} different ${fsSeen.size === 1 ? 'slice' : 'slices'} in this browser${fsConf.size ? ` and checked ${fsConf.size} second ${fsConf.size === 1 ? 'half' : 'halves'}` : ''}. With the ~${BT.trials} ideas already tried, the luck odds above count ${tried} chances to get lucky. About 100 combinations exist here; a few will look good by luck alone. Treat anything you find as an idea, and only trust it when every box above is ticked.</div>`;
   }
   $('wk-finder').innerHTML = `<p class="wk-lede">Slice last season's out-of-sample bets any way you like and see how that slice did. <b>Use it to find ideas, not to bet them</b>: an idea counts once it also holds up live.</p>
     <div class="card wk-finder"><div class="wk-ctl">${ctl}</div><div class="wk-res">${res}</div></div>`;
@@ -5403,6 +5429,8 @@ $('v-backtests').addEventListener('click', e => {
     else if (k in fs){ fs[k] = b.dataset.v; renderFinder(); }
     return;
   }
+  const c = e.target.closest('button[data-confirm]');
+  if (c){ fsConf.add(c.dataset.confirm); fsSave(FS_CONF, fsConf); renderFinder(); return; }          // revealing the second half is a look: it counts
   const g = e.target.closest('[data-edges]');
   if (g){ ef.venue = g.dataset.edges; ef.tier = 'all'; ef.type = 'all'; history.replaceState(null, '', '#edges'); show('edges'); window.scrollTo(0, 0); }
 });

@@ -337,6 +337,37 @@ def main():
             for sd, b in ((d.get('bets') or {}).get('consensus + model') or {}).items():
                 if b.get('n'):
                     finder['cons'].setdefault(test, {}).setdefault(m, {})[sd] = [b['n'], b['games'], None, b['roi'], b['z']]
+    # Edge Finder V2: the plain baselines a slice has to beat, and each side slice's two time halves (explore on the first, confirm on the second)
+    finder['base'] = {'model': {}, 'cons': {}}
+    for m, by in ((p2 or {}).get('kalshi_bias') or {}).items():
+        for sd in ('YES', 'NO'):
+            b = by.get('v2', {}).get(f'price_only/{sd}') or {}
+            if b.get('n'):
+                finder['base']['model'].setdefault(m, {})[sd] = [b['n'], b['games'], None, b['roi'], b['z']]   # the price alone, with the known overs bias corrected
+    for test, by in ((cb or {}).get('tests') or {}).items():
+        for m, d in by.items():
+            for sd, b in ((d.get('bets') or {}).get('consensus') or {}).items():
+                if b.get('n'):
+                    finder['base']['cons'].setdefault(test, {}).setdefault(m, {})[sd] = [b['n'], b['games'], None, b['roi'], b['z']]   # the consensus alone, no model
+    finder['halves'] = {}
+    for m, by in ((p2 or {}).get('kalshi_bias') or {}).items():
+        for sd in ('YES', 'NO'):
+            D = sorted(((by.get('v2', {}).get(f'blend/{sd}') or {}).get('daily')) or [])
+            if len(D) < 20:
+                continue
+            tot, cum, cut = sum(x[1] + x[2] for x in D), 0, 0
+            for i, x in enumerate(D):
+                cum += x[1] + x[2]
+                if cum >= tot / 2:
+                    cut = i + 1
+                    break
+            def half(rows):
+                n, u = sum(x[1] + x[2] for x in rows), sum(x[3] for x in rows)
+                r = u / n if n else 0
+                e = [x[3] - r * (x[1] + x[2]) for x in rows]
+                se = (len(rows) / (len(rows) - 1) * sum(v * v for v in e)) ** .5 / n if n and len(rows) > 1 else 0   # clustered by game day
+                return [n, round(r, 4), round(r / se, 2) if se else 0, len(rows), rows[0][0], rows[-1][0]]
+            finder['halves'].setdefault(m, {})[sd] = [half(D[:cut]), half(D[cut:])]
     myth = None
     if hr:
         pick = lambda k: {'cal': hr['sets'][k]['calibration'], 'hot': hr['sets'][k]['rules']['L10 over (hit 8+ of 10)'],
