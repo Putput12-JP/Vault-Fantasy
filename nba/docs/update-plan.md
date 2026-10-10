@@ -77,7 +77,7 @@ exactly what real orders teach. So real money enters in two steps, and the big g
 | Tier | What trades | Size | Starts when | Purpose |
 |---|---|---|---|---|
 | **0. Paper** | Every 3%+ candidate, shadow only | $0 | Opening night (already running) | Detection evidence; the cube is the record |
-| **1. Micro-stakes live** | The three frozen cells only (3PM NO two variants, points NO) | **$1-$5 per order, total loss budget $200-$500** (owner to confirm both) | After 1.1 (spread measured) and 1.5.3 (risk layer tested) | Execution data: fill rate, maker adverse selection, real spread. **Not promotion evidence.** Promotion is still judged on the shadow ledger's entry price |
+| **1. Micro-stakes live** | **3PM NO first** (owner's most confident cell); points NO added only if 1.1 shows a half-spread under ~1c; v2-blend variant is shadow only | **$1-$5 per order, total loss budget $200** (owner confirmed 2026-10-10) | After 1.1 (spread measured) and 1.5.3 (risk layer tested) | Execution data: fill rate, maker adverse selection, real spread. **Not promotion evidence.** Promotion is still judged on the shadow ledger's entry price |
 | **2. Real size** | A cell that passes the gate below | Quarter Kelly on the *realistic* edge, cap 1% of bankroll per order and 3% per game, daily loss stop | Gate passed and owner approves the first day | Make money |
 
 **Tier 2 gate (replaces "300 bets and 50 days").** Written into `experiment-log.md`, with date and reason, **before the live ledger is first
@@ -158,6 +158,5 @@ Each needs its own pre-registered row in `experiment-log.md` and its own 300 bet
 
 ## 5. Open questions
 
-1. Tier 1 numbers: confirm the micro-stakes loss budget ($200-$500 proposed) and per-order size ($1-$5 proposed). These are placeholders.
-   Also the Kalshi bankroll for Tier 2, and whether the account's automated-trading terms are confirmed OK. (Blocks 1.5.4 onward.)
-2. Is the 3-pointer NO cell the first live candidate, since points NO needs a sub-1-cent half-spread? (Revisit after 1.1.)
+1. Tier 2 bankroll, and whether Kalshi's automated-trading terms are confirmed OK for the account. (Blocks 1.5.4 onward.)
+2. Tier 2 stopping boundary and minimum games for the sequential gate (owner sets; or Claude proposes one to react to).
