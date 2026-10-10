@@ -10,16 +10,13 @@ Rules (written before any result, unchanged here):
   - Both environments are scored. The market line env centres totals and margins on the market, so it tests the simulation's spread; the
     players' own sum env tests our own forecast. The test is judged on each separately.
   - "Inside" is the mid-rank rule in sim_record.py (u between 0.1 and 0.9), fairer than a raw inside test on count stats.
-Joint odds (the second half of the pre-registered test), fixed here before any result. For each of the two pick'em combinations that passed
-(points with assists, assists with 3-pointers; teammates, over/over and under/under pooled), over teammate pairs where both played, using the
-simulation's own half-lines (sim_record.py):
-  - bias: observed both-hit rate minus the simulated rate; the simulation is calibrated if |z| < 2
-  - information: Brier score of the simulated chance against Brier of the independent product of the two legs; the simulation adds something
-    if it is lower with z >= 2
-  z uses errors clustered by game (a game's pairs share players). GO for a combination needs both, at least 150 games and 2,000 pairs.
-  Only a GO combination may let a pair price use the simulation.
-
-  python3 nba/scripts/build_game_simulation_test.py [--track path/to/track.json]
+Joint odds (the second half of the pre-registered test), fixed before any result. Over pairs where both played, using the simulation's own
+half-lines (sim_record.py), over/over and under/under pooled, errors clustered by game, at least 150 games and 2,000 pairs:
+  DIFFERENT TEAMS (the main test: pick'em apps that only allow different teams; real opposing players are close to independent,
+  docs/pickem-different-teams.md). The simulation must agree: observed both-hit rate minus simulated within 2 standard errors. Verdict OK or
+  NO-GO. NO-GO means it invents dependence (the risk is the shared game total) and its different-team joint odds must not be used.
+  TEAMMATES (apps that allow same-team picks; the two combinations that passed): bias inside 2 standard errors AND the simulation's Brier score
+  beats the independent product's with z >= 2. GO lets a teammate pair price use the simulation.
 """
 import json, math, os, sys
 
@@ -33,10 +30,15 @@ def judge(x, lo, hi, n):
     return 'collecting' if n < MIN_GAMES else 'pass' if lo <= x <= hi else 'fail'
 
 
+JOINT_SETS = [('o:pp', 'Different teams: points with points'), ('o:rr', 'Different teams: rebounds with rebounds'),
+              ('o:pa', "Different teams: one player's points with the other's assists"), ('o:a3', "Different teams: one player's assists with the other's 3-pointers"),
+              ('t:pa', "Teammates: one player's points with another's assists"), ('t:a3', "Teammates: one player's assists with another's 3-pointers")]
+
+
 def joint(games):
-    """Per combination: observed, simulated and independent both-hit rates and the two z scores, clustered by game."""
+    """Per set: observed, simulated and independent both-hit rates and the two z scores, clustered by game."""
     out = {}
-    for c in ('pa', 'a3'):
+    for c, _ in JOINT_SETS:
         G = []
         for g in games:
             v = ((g.get('jt') or {}).get('c') or {}).get(c)
@@ -53,7 +55,11 @@ def joint(games):
             return r, math.sqrt(len(G) / (len(G) - 1) * sum(x * x for x in e)) / n
         bias, se_b = ratio([z[1] - z[2] for z in G]); imp, se_i = ratio([z[5] - z[4] for z in G])
         zb, zi = bias / se_b if se_b else 0, imp / se_i if se_i else 0
-        verdict = 'collecting' if len(G) < MIN_GAMES or n < 2000 else 'GO' if abs(zb) < 2 and zi >= 2 else 'NO-GO'
+        enough = len(G) >= MIN_GAMES and n >= 2000
+        if c.startswith('o:'):
+            verdict = 'collecting' if not enough else 'OK' if abs(zb) < 2 else 'NO-GO'
+        else:
+            verdict = 'collecting' if not enough else 'GO' if abs(zb) < 2 and zi >= 2 else 'NO-GO'
         out[c] = {'games': len(G), 'pairs': n, 'observed': round(sum(z[1] for z in G) / n, 4), 'simulated': round(sum(z[2] for z in G) / n, 4),
                   'independent': round(sum(z[3] for z in G) / n, 4), 'bias': round(bias, 4), 'z_bias': round(zb, 2),
                   'brier_gain': round(imp, 5), 'z_gain': round(zi, 2), 'verdict': verdict}
@@ -101,15 +107,16 @@ def main():
                f"- Player points, rebounds, assists inside: {v['players_pooled_pts_reb_ast']:.1%} of {sum(v['player_games'][s] for s in STATS[:3]):,} player-stats; target 75% to 85%: **{v['verdict']['players']}**",
                '- By stat: ' + ', '.join(f"{s} {v['players_in'][s]:.1%}" for s in STATS if v['players_in'][s] is not None) + ' (3pm has no target)',
                f"- Home win Brier {v['home_win_brier']} (a coin flip is 0.25). Players expected to play {v['plays_expected_vs_actual'][0]}, did {v['plays_expected_vs_actual'][1]}.", '']
-    NAMES = {'pa': "Teammates: one player's points with another's assists", 'a3': "Teammates: one player's assists with another's 3-pointers"}
-    md += ['## Joint odds (teammate pairs, over/over and under/under pooled)', '']
+    NAMES = dict(JOINT_SETS)
+    md += ['## Joint odds (pairs where both played, over/over and under/under pooled)', '']
     for c, v in out['joint'].items():
         if 'observed' not in v:
             md.append(f"- {NAMES[c]}: {v.get('pairs', 0)} pairs in {v.get('games', 0)} games, nothing to score yet")
         else:
+            extra = f"Brier gain over independence {v['brier_gain']:+.5f}, z {v['z_gain']:+.1f} (needs >= 2 for teammates)" if c.startswith('t:') else 'different teams: independence is expected, so only the bias counts'
             md.append(f"- {NAMES[c]}: {v['pairs']:,} pairs in {v['games']} games. Both hit: observed {v['observed']:.1%}, simulated {v['simulated']:.1%}, independent {v['independent']:.1%}. "
-                      f"Bias z {v['z_bias']:+.1f} (needs |z| < 2); Brier gain over independence {v['brier_gain']:+.5f}, z {v['z_gain']:+.1f} (needs >= 2): **{v['verdict']}**")
-    md += ['', 'Until a combination is GO, the simulation prices nothing for it.', '',
+                      f"Bias z {v['z_bias']:+.1f} (needs |z| < 2); {extra}: **{v['verdict']}**")
+    md += ['', 'Until a set is GO (teammates) or OK (different teams), the simulation prices nothing for it.', '',
            f"## Verdict: calibration {'GO' if out['go'] else 'not called yet' if len(games) < MIN_GAMES else 'NO-GO'}; joint odds " + ', '.join(f"{c} {v}" for c, v in out['go_joint'].items()), '']
     open(os.path.join(DOCS, 'game-simulation-results.md'), 'w').write('\n'.join(md))
     print(f"game simulation test: {len(games)} games scored; verdict {'GO' if out['go'] else 'collecting' if len(games) < MIN_GAMES else 'NO-GO'}")

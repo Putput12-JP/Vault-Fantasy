@@ -386,7 +386,7 @@ def main():
     ]
     pending += [
         {'name': 'Game Simulation calibration (live, game by game)', 'area': 'Game simulation', 'due': '2026-11-16', 'doc': 'game-simulation.md',
-         'rule': 'After 150 scored regular-season games: the real total and margin land inside the simulated 80% range 80% +/- 4 points of games; player points, rebounds and assists 80% +/- 5. Scored on the market line and on the players\' own sum. The joint-odds half is not recorded yet.', 'status': 'Recording from opening night; shown game by game on Track Record'},
+         'rule': 'After 150 scored regular-season games: the real total and margin land inside the simulated 80% range 80% +/- 4 points of games; player points, rebounds and assists 80% +/- 5. Scored on the market line and on the players\' own sum. Joint odds: different-team pairs must agree with independence (the owner\'s apps cannot pair teammates); teammate pairs must also beat independence.', 'status': 'Recording from opening night; shown game by game on Track Record'},
         {'name': 'Real Kalshi buy/sell gap', 'area': 'Execution', 'due': '2026-11-03', 'doc': 'update-plan.md',
          'rule': 'Median and 90th-percentile half-spread by stat from the recorder\'s bid and ask, compared with the audit table above: 3-pointer NO holds to 3 cents, points NO needs under about 1 cent.', 'status': 'Needs regular-season Kalshi books (none in preseason)'},
         {'name': 'Resting-order (maker) fill replay', 'area': 'Execution', 'due': '2026-11-10', 'doc': 'update-plan.md',

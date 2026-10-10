@@ -3451,7 +3451,10 @@ function simGames(){
 // Joint odds (docs/game-simulation.md): for the two pick'em combinations that passed, how often both legs hit against what the simulation and an
 // independent guess said, over teammate pairs where both played. Errors are clustered by game. GO needs the simulation calibrated (|z| < 2) and
 // better than independence (Brier gain z >= 2) over 150+ games and 2,000+ pairs.
-const SIMJ = {pa: "One player's points with a teammate's assists", a3: "One player's assists with a teammate's 3-pointers"};
+// Different teams is the main test: pick'em apps that only allow different teams, where real opposing players are close to independent
+// (docs/pickem-different-teams.md). The simulation passes (OK) by agreeing. Teammates only matter for apps that allow same-team picks and must also beat independence.
+const SIMJ = {'o:pp': 'Different teams: points with points', 'o:rr': 'Different teams: rebounds with rebounds', 'o:pa': "Different teams: one player's points with the other's assists",
+  'o:a3': "Different teams: one player's assists with the other's 3-pointers", 't:pa': "Teammates: one player's points with another's assists", 't:a3': "Teammates: one player's assists with another's 3-pointers"};
 function simJoint(G, c){
   const rows = G.map(g => { const v = g.jt && g.jt.c && g.jt.c[c]; return v ? [0, 1, 2, 3, 4, 5].map(i => Object.values(v).reduce((a, x) => a + x[i], 0)) : null; }).filter(Boolean);
   const n = rows.reduce((a, z) => a + z[0], 0);
@@ -3459,7 +3462,8 @@ function simJoint(G, c){
   const ratio = f => { const r = rows.reduce((a, z) => a + f(z), 0) / n, ss = rows.reduce((a, z) => a + (f(z) - r * z[0]) ** 2, 0); return [r, Math.sqrt(rows.length / (rows.length - 1) * ss) / n]; };
   const [bias, sb] = ratio(z => z[1] - z[2]), [gain, sg] = ratio(z => z[5] - z[4]), zb = sb ? bias / sb : 0, zg = sg ? gain / sg : 0;
   const sum = i => rows.reduce((a, z) => a + z[i], 0) / n;
-  const verdict = rows.length < SIMT.n || n < 2000 ? 'collecting' : Math.abs(zb) < 2 && zg >= 2 ? 'GO' : 'NO-GO';
+  const opp = c.startsWith('o:'), enough = rows.length >= SIMT.n && n >= 2000;
+  const verdict = !enough ? 'collecting' : opp ? (Math.abs(zb) < 2 ? 'OK' : 'NO-GO') : (Math.abs(zb) < 2 && zg >= 2 ? 'GO' : 'NO-GO');
   return {games: rows.length, pairs: n, obs: sum(1), sim: sum(2), ind: sum(3), zb, zg, verdict};
 }
 function renderSimRecord(){
@@ -3499,11 +3503,11 @@ function renderSimRecord(){
       ${miss ? `<tr><td class="sub" colspan="8">Biggest player misses: ${miss}</td></tr>` : ''}`; }).join('');
   $('tsim').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Game</th><th scope="col" title="Simulated middle margin and the 10th to 90th percentile. H = home by, A = away by">Margin (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated middle total and the 10th to 90th percentile">Total (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated home win chance">Home win</th><th class="l" scope="col" title="Players whose real stat landed inside the simulated 80% range, of those who played">Players in range</th></tr></thead><tbody>${rows}</tbody>`;
   const J = Object.keys(SIMJ).map(c => [c, simJoint(G, c)]);
-  $('tsimjsub').textContent = 'Pairs are on the simulation\'s own half-lines, over/over and under/under together. Until a combination is GO, the simulation prices nothing for it.';
-  $('tsimj').innerHTML = `<thead><tr><th class="l" scope="col">Combination</th><th scope="col">Pairs</th><th scope="col" title="Both legs hit">Observed</th><th scope="col">Simulated</th><th scope="col">Independent</th><th scope="col" title="Observed minus simulated, in standard errors. Needs under 2 either way">Bias z</th><th scope="col" title="Does the simulation beat the independent guess? Needs 2 or more">Beats independent z</th><th class="l" scope="col">Status</th></tr></thead><tbody>${J.map(([c, v]) => v.obs == null
+  $('tsimjsub').textContent = 'Different teams first: apps that only allow different-team picks, where real opposing players are close to independent, so the simulation passes (OK) by agreeing. Teammate pairs only matter for apps that allow same-team picks and must also beat an independent guess (GO). Pairs use the simulation\'s own half-lines, over/over and under/under together.';
+  $('tsimj').innerHTML = `<thead><tr><th class="l" scope="col">Combination</th><th scope="col">Pairs</th><th scope="col" title="Both legs hit">Observed</th><th scope="col">Simulated</th><th scope="col">Independent</th><th scope="col" title="Observed minus simulated, in standard errors. Needs under 2 either way">Bias z</th><th scope="col" title="Teammates only: does the simulation beat the independent guess? Needs 2 or more">Beats independent z</th><th class="l" scope="col">Status</th></tr></thead><tbody>${J.map(([c, v]) => v.obs == null
     ? `<tr><td class="l">${SIMJ[c]}</td><td class="num">${(v.pairs || 0).toLocaleString()}</td><td class="num" colspan="5"><span class="muted">nothing to score yet</span></td><td class="l"><span class="muted">collecting</span></td></tr>`
     : `<tr><td class="l">${SIMJ[c]}<small>${v.games} games</small></td><td class="num">${v.pairs.toLocaleString()}</td><td class="num">${pc(v.obs, 1)}</td><td class="num">${pc(v.sim, 1)}</td><td class="num">${pc(v.ind, 1)}</td>
-      <td class="num">${v.zb >= 0 ? '+' : ''}${v.zb.toFixed(1)}</td><td class="num">${v.zg >= 0 ? '+' : ''}${v.zg.toFixed(1)}</td><td class="l">${v.verdict === 'GO' ? pill('ok', 'GO') : v.verdict === 'NO-GO' ? pill('bad', 'NO-GO') : '<span class="muted">collecting</span>'}</td></tr>`).join('')}</tbody>`;
+      <td class="num">${v.zb >= 0 ? '+' : ''}${v.zb.toFixed(1)}</td><td class="num">${c.startsWith('o:') ? '<span class="muted">n/a</span>' : (v.zg >= 0 ? '+' : '') + v.zg.toFixed(1)}</td><td class="l">${v.verdict === 'GO' || v.verdict === 'OK' ? pill('ok', v.verdict) : v.verdict === 'NO-GO' ? pill('bad', 'NO-GO') : '<span class="muted">collecting</span>'}</td></tr>`).join('')}</tbody>`;
   $('tsimmore').hidden = R.length <= simRec.limit;
   $('tsimmore').innerHTML = `<button class="btn" id="tsimmorebtn" type="button">Show all ${R.length.toLocaleString()}</button>`;
   $('tsimsub').textContent = `${n.toLocaleString()} ${n === 1 ? 'game' : 'games'} scored, newest first. Green means the real number landed inside the simulated 80% range. Not affected by the filters above.`;
@@ -4179,6 +4183,7 @@ function renderSim(){
       <div class="card-b"><div class="gs-legs">${legHtml(sim.a, 'a')}${legHtml(sim.b, 'b')}</div>
       <div class="gs-out"><div><small>Leg 1</small><b>${pc(A.p, 1)}</b></div><div><small>Leg 2</small><b>${pc(Bh.p, 1)}</b></div><div><small>If independent</small><b>${pc(ind, 1)}</b></div><div><small>Both, in the simulation</small><b>${pc(pb, 1)}</b></div>
         <div><small>Together vs apart</small><b class="${lift != null && lift > 1.02 ? 'pos' : lift != null && lift < .98 ? 'neg' : ''}">${lift != null ? fmt(lift, 2) + 'x' : 'n/a'}</b></div></div>
+      ${!same && all.find(x => x.r.pid === sim.a.pid).k !== all.find(x => x.r.pid === sim.b.pid).k ? `<p class="pv-note"><b>Different teams.</b> Real opposing players are close to independent (0 of 15 opposing-team combinations passed our test, docs/pickem-different-teams.md), and pick'em apps that only allow different teams cannot pair teammates at all. A lift above 1.00x here is the simulation's own: do not bet it. Track Record scores this against real games.</p>` : ''}
       <p class="pv-note">${same ? 'Both legs are the same player, so this shows how one stat moves with another.' : 'Above 1.00x the two tend to hit together; below 1.00x they work against each other. The simulation ties teammates through the team score, so teammates\' points compete while a fast game lifts everyone. It has not been tested against real results yet (docs/game-simulation.md), so use it to look, not to price a bet.'}</p></div>`;
   } else $('gsjoint').innerHTML = '';
 
