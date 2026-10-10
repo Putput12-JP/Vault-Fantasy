@@ -576,6 +576,7 @@ def score_signals(br):
         a = act.get((str(e.get("season")), str(e.get("week")), str(e.get("pid")), e.get("market")))
         r, L = e.get("last") or {}, e.get("line")
         if a is None or L is None or abs(a - L) < 1e-9 or r.get("kalshi") is None: continue
+        if r.get("interp"): continue       # Kalshi lists no contract at this number: its price here is an estimate, not a bet you can take, so it is not scored
         y = 1 if a > L else 0
         k, b, v = r["kalshi"], r.get("books"), r.get("vault")
         if b is not None:
