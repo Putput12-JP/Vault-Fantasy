@@ -4035,10 +4035,12 @@ $('nwhatif').addEventListener('click', e => { if (e.target.id === 'nreset'){ del
 // Plays one game 10,000 times. A margin and a total are drawn around the chosen environment; every player's raw stats come
 // from the prop model's own distributions; each team's points are then tied to its simulated score (so teammates trade
 // shots and a fast game lifts everyone). A view, not a bet source: nothing here produces a Bet, Lean, Edge or shadow bet.
-const sim = {game: null, env: 'players', seed: 1, a: null, b: null, res: null, key: ''};
+const sim = {game: null, env: 'market', pick: null, seed: 1, a: null, b: null, res: null, key: ''};
 const SIM_N = 10000, SIM_STATS = ['pts', 'reb', 'ast', '3pm'], SIM_LBL = {pts: 'Pts', reb: 'Reb', ast: 'Ast', '3pm': '3PM', pra: 'PRA'};
-const SIM_ENV = [['players', "Players' own sum", 'Each team scores what its simulated players add up to on average, so every player keeps the prop model\'s numbers.'],
-  ['market', 'Market line', "The game's spread and total from the books; players shift to fit."], ['vault', 'Vault line', "The game model's spread and total (regular season only); players shift to fit."]];
+// Market line is the default: markets price game totals and margins better than we do (our game model adds nothing over the close, docs/game-model.md), so the
+// simulated game should start from them. Players' own sum stays as a check on our minutes and rates; a big gap from the market usually means those are off.
+const SIM_ENV = [['market', 'Market line', "The game's spread and total from the books; players shift to fit. The default."], ['vault', 'Vault line', "The game model's spread and total (regular season only); players shift to fit."],
+  ['players', "Players' own sum (check)", 'Each team scores what its simulated players add up to on average, so every player keeps the prop model\'s numbers. Use it to check our minutes and rates against the market, not to forecast the game.']];
 function simRng(seed){ let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function simNorm(R){ let u = 0; while (!u) u = R(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * R()); }
 function simGamma(R, k){                          // Marsaglia and Tsang
@@ -4164,7 +4166,7 @@ function renderSim(){
 
   const T = simInputs(g, B, pick), eH = T[1].rows.reduce((a, r) => a + r.mu.pts * r.pPlay, 0), eA = T[0].rows.reduce((a, r) => a + r.mu.pts * r.pPlay, 0);
   const V = vaultLine(g, B, status), M = marketLine(g.mk), avail = {players: true, market: !!(M && M.spread != null && M.total != null), vault: !!V};
-  if (!avail[sim.env]) sim.env = 'players';
+  sim.env = sim.pick && avail[sim.pick] ? sim.pick : avail.market ? 'market' : 'players';   // your pick wins; otherwise the market line, else the players' own sum
   const mean = sim.env === 'market' ? {m: -M.spread, t: M.total} : sim.env === 'vault' ? {m: -V.spread, t: V.total} : {m: eH - eA, t: eH + eA};
   $('gsenv').innerHTML = SIM_ENV.map(([k, l, tip]) => `<button type="button" data-e="${k}" aria-pressed="${sim.env === k}" ${avail[k] ? '' : 'disabled'} title="${avail[k] ? esc(tip) : k === 'vault' ? 'The Vault line starts with the regular season' : 'No spread and total from the books yet'}">${l}</button>`).join('');
 
@@ -4176,14 +4178,15 @@ function renderSim(){
     ? "<b>Preseason game.</b><span>Starters rest and rotations are a guess, and the minutes model was never tested on preseason games. Read this as a rehearsal of the page, not a forecast.</span>"
     : `<b>${esc(T.find(t => t.hold).team)}'s rotation is not trusted yet.</b><span>The minutes model can't see its rotation (new arrivals), so its simulated players are shown but should not be relied on.</span>`) : '';
   const norm = T.filter(t => t.f !== 1).map(t => `${t.team} minutes scaled from ${fmt(t.sumMin, 0)} to 240`);
-  $('gsbanner').hidden = !holdNote && !norm.length;
-  if (holdNote || norm.length){ $('gsbanner').innerHTML = holdNote || ''; if (norm.length) $('gsbanner').innerHTML += `<span>${norm.join('; ')}.</span>`; }
+  const ownT = eH + eA, gap = M && M.total != null ? ownT - M.total : null, gapNote = gap != null && Math.abs(gap) > 4 ? `<span>Players' own sum puts the total at ${fmt(ownT, 0)}, ${fmt(Math.abs(gap), 0)} points ${gap > 0 ? 'above' : 'below'} the market's ${M.total}. A gap that size usually means our minutes or rates are off, not that the market is wrong${sim.env === 'players' ? '; you are viewing that sum now' : ''}.</span>` : '';
+  $('gsbanner').hidden = !holdNote && !norm.length && !gapNote;
+  if (holdNote || norm.length || gapNote){ $('gsbanner').innerHTML = holdNote || ''; if (norm.length) $('gsbanner').innerHTML += `<span>${norm.join('; ')}.</span>`; $('gsbanner').innerHTML += gapNote; }
 
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
   const mk = (a, p) => simQ(a, p), rng = a => `${fmt(mk(a, .1), 0)} to ${fmt(mk(a, .9), 0)}`;
   const mlTxt = M && M.total != null ? `market total ${M.total}` : 'no market total yet';
   $('gskpis').innerHTML =
-    kpi(`${g.home} win`, ICON.star, pc(homeWin, 1), `${g.away} ${pc(1 - homeWin, 1)} · ${M && M.win != null ? `market ${pc(M.win, 1)}` : 'no market price yet'}`) +
+    kpi(`${g.home} win`, ICON.star, pc(homeWin, 1), `${g.away} ${pc(1 - homeWin, 1)} · ${M && M.win != null ? `market ${pc(M.win, 1)}` : 'no market price yet'} · context, not an edge`) +
     kpi('Typical score', ICON.pts, `${fmt(mk(sa, .5), 0)}-${fmt(mk(sh, .5), 0)}`, `${g.away} ${fmt(mk(sa, .5), 0)}, ${g.home} ${fmt(mk(sh, .5), 0)} (middle of 10,000 games)`) +
     kpi('Margin', ICON.clock, mk(ms, .5) >= 0 ? `${g.home} by ${fmt(mk(ms, .5), 1)}` : `${g.away} by ${fmt(-mk(ms, .5), 1)}`, `80% of games: ${fmt(mk(ms, .1), 0)} to ${fmt(mk(ms, .9), 0)} · ${M && M.spread != null ? `market ${g.home} ${M.spread > 0 ? '+' : ''}${M.spread}` : 'no market spread yet'}`) +
     kpi('Total', ICON.edit, fmt(mk(ts, .5), 1), `80% of games: ${rng(ts)} · ${mlTxt}`);
@@ -4224,10 +4227,10 @@ function renderSim(){
   const checks = simChecks(res, T, sim.env === 'players');
   $('gschecks').innerHTML = `<div class="card-h"><div><h2>Does the simulation match its inputs</h2><p>Checked on every run, against the rules written before the build.</p></div></div><div class="card-b"><div class="gs-checks">${checks.map(([ok, name, txt]) => `<div><span class="pill ${ok == null ? 'idle' : ok ? 'ok' : 'warn'}">${ok == null ? 'n/a' : ok ? 'Pass' : 'Off'}</span><div><b>${name}</b><small>${txt}</small></div></div>`).join('')}</div></div>`;
   $('gsfoot').innerHTML = `<div><b>How it plays a game.</b> It draws a margin and a total around the environment you pick, then each player's points, rebounds, assists and 3-pointers from the prop model's own distributions (his minutes times his rate, with your what-ifs and who is questionable), and ties each team's points to its simulated score. Teammates' points therefore trade off, and a fast game lifts everyone.</div>
-    <div><b>What it is not.</b> A view, not a bet source: it never makes a Bet, Lean or Edge. It has not been scored against real games yet; the test is written in docs/game-simulation.md and runs after opening night.</div>`;
+    <div><b>What it is not.</b> A view, not a bet source: it never makes a Bet, Lean or Edge. Its win chance and score are context. Our tests found no edge in game winners, and with the market line selected they restate the market. A gap between the sim and the market is not a bet. It has not been scored against real games yet; the test is written in docs/game-simulation.md and runs after opening night.</div>`;
 }
 $('gsgames').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (b){ sim.game = b.dataset.g; renderSim(); } });
-$('gsenv').addEventListener('click', e => { const b = e.target.closest('button[data-e]'); if (b && !b.disabled){ sim.env = b.dataset.e; renderSim(); } });
+$('gsenv').addEventListener('click', e => { const b = e.target.closest('button[data-e]'); if (b && !b.disabled){ sim.pick = b.dataset.e; renderSim(); } });
 $('gsrun').addEventListener('click', () => { sim.seed++; renderSim(); });
 $('gsjoint').addEventListener('change', e => { const f = e.target.dataset.f, L = e.target.closest('[data-leg]'); if (!f || !L) return;
   const t = sim[L.dataset.leg]; t[f] = f === 'pid' || f === 'line' ? +e.target.value : e.target.value; if (f === 'pid' || f === 'stat') delete t.line; renderSim(); });
