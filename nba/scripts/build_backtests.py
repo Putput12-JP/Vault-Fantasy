@@ -60,13 +60,16 @@ def main():
             b = p2['kalshi_bias'].get(m, {}).get('v2', {}).get(f'blend/{sd}') or {}
             signals.append({'engine': 'Prop model v2 + Kalshi price', 'venue': 'Kalshi', 'stat': m, 'side': sd, 'gate': v.split()[0],
                             'n': b.get('n'), 'games': b.get('games'), 'roi': b.get('roi'), 'z': b.get('z'), 'key': f'{m}|kalshi|{sd}', 'doc': 'prop-model-v2.md',
+                            'base': (lambda q: {'roi': q.get('roi'), 'n': q.get('n'), 'z': q.get('z')})(p2['kalshi_bias'].get(m, {}).get('v2', {}).get(f'price_only/{sd}') or {}),
                             'daily': b.get('daily')})          # [ET day, wins, losses, units] per game day of the test half
     for m, by in ((cb or {}).get('verdicts', {}).get('kalshi_ladder') or {}).items():
         for sd, v in (by.get('consensus + model') or {}).items():
             if v in ('GO', 'WATCH'):
                 b = cb['tests']['kalshi_ladder'][m]['bets']['consensus + model'].get(sd) or {}
                 signals.append({'engine': 'Consensus ladder + model', 'venue': 'Kalshi', 'stat': m, 'side': sd, 'gate': v,
-                                'n': b.get('n'), 'games': b.get('games'), 'roi': b.get('roi'), 'z': b.get('z'), 'key': f'{m}|kalshi|{sd}', 'doc': 'consensus-engine.md'})
+                                'n': b.get('n'), 'games': b.get('games'), 'roi': b.get('roi'), 'z': b.get('z'), 'key': f'{m}|kalshi|{sd}', 'doc': 'consensus-engine.md',
+                                # the no-model twin of this engine: the consensus alone, which is what the model has to beat here
+                                'base': (lambda q: {'roi': q.get('roi'), 'n': q.get('n'), 'z': q.get('z')})((cb['tests']['kalshi_ladder'][m]['bets'].get('consensus') or {}).get(sd) or {})})
     signals.sort(key=lambda s: ({'GO': 0, 'WATCH': 1}[s['gate']], -(s['z'] or 0)))
 
     # ── per-area detail ──
