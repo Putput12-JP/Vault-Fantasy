@@ -876,6 +876,30 @@ function snapPicks(S, games) {
   }
   for (const [k, p] of Object.entries(S.picks)) if (p.start < t - 60 * DAY) delete S.picks[k];
 }
+
+// ── Pinnacle lead, every sport ───────────────────────────────────────────
+// Does Pinnacle lead the recreational books? The NFL scoreboard (data/game_line_history.json)
+// only covers NFL, so this logs the same test for every sport this poller sees. Per game and
+// market (spread / total), the FIRST read 3h+ before kickoff where Pinnacle's line sits half a
+// point or more off the median of the rec books, and the rec median on the last read before
+// kickoff. The page grades it: did the rec books move toward Pinnacle?
+function snapLead(S, games) {
+  const t = now(); S.lead ||= {};
+  for (const e of games) {
+    if (e.start <= t || !e.pin || !e.soft) continue;
+    for (const m of ['sp', 'tot']) {
+      const pl = e.pin[m]?.line; if (pl == null) continue;
+      const ls = Object.values(e.soft).map(v => v[m]?.line).filter(x => x != null).sort((a, b) => a - b);
+      if (ls.length < 2) continue;
+      const med = ls[Math.floor(ls.length / 2)];
+      const L = (S.lead[`${e.key}|${m}`] ||= { game: e.key, sport: e.sport, m, start: e.start });
+      L.start = e.start;
+      if (!L.first && Math.abs(pl - med) >= 0.5 && e.start - t >= 3 * H) L.first = { ts: t, b: pl, r: med };
+      if (L.first) L.close = { ts: t, r: med };
+    }
+  }
+  for (const [k, L] of Object.entries(S.lead)) if (L.start < t - 60 * DAY) delete S.lead[k];
+}
 function gradePicks(S) {
   for (const p of Object.values(S.picks || {})) {
     const G = S.games[p.game]; if (!G?.final || p.result != null || p.start > now()) continue;
@@ -1027,6 +1051,7 @@ async function pollOnce() {
   const fresh = S._new; delete S._new;
   const P = payload(S, all, { ...walletInfo }, status);
   snapPicks(S, P.games); gradePicks(S); P.picks = Object.values(S.picks);
+  snapLead(S, P.games); P.lead = Object.values(S.lead).filter(x => x.first);
   saveState(S);
   // `sig` changes only when something a viewer would see changes.
   // Props page: Pinnacle / books / Kalshi / Novig at the same line. Optional, never blocks the poll.
