@@ -118,7 +118,7 @@ gone by 2 cents. Points NO therefore needs a half-spread under about 1 cent, whi
 rarely offer. Once regular-season props list, measure the real half-spread per stat from the recorder's bid and ask before
 trusting either cell; this section's table is the bar to compare it against.
 
-## 8. Tier 2 trading gate (DRAFT 2026-10-10, not in force until the owner signs below)
+## 8. Tier 2 trading gate (SIGNED 2026-10-10, in force)
 
 Written before the live ledger has been read (the file header still holds: no one has looked at `track.json` or `bets/`). It replaces
 the "300 live bets and 50 game days" promotion rule in section 3 **for real-money sizing only**. Section 3 still governs the page's
@@ -172,6 +172,7 @@ trading decision. Both are disclosed here, and the demote rule and the loss budg
 ### 8.4 Owner sign-off
 
 - Prior (mean 5%, sd 5%), the 100-game minimum, P(ROI > 0) >= 0.90 and the weekly size ramp are **proposals**. Replace any before signing.
-- Signed by: ____________  Date: ____________  (until signed, Tier 2 stays closed and Tier 1 micro-stakes run as in the plan)
+- **Signed by the owner, 2026-10-10, by chat message ("I accept"), as drafted:** prior mean 5% / sd 5%, 100-game minimum, P(ROI > 0) >= 0.90,
+  weekly size ramp 2x. The stricter option offered (3% prior, 150 games, 95%) was not chosen. The live ledger had not been read at signing.
 - After signing, any edit is dated with its reason, and a result read after the edit is exploratory (see section 3).
 
