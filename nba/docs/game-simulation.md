@@ -55,6 +55,10 @@ Scorers projected under about 3 points are flagged Off by the marginal check: th
 - **Python engine:** `sim_engine.py` is the page's engine ported line for line. `check_sim_parity.py` proves it: inputs (who plays, minutes, play
   chances, stat means and variance terms) match the page exactly; simulated results agree within Monte Carlo error on three seeds (the 3,000-game
   calibration pilot adds an independent ~1% error to each engine's points, allowed for in the comparison).
-- **Not yet recorded: the joint-odds half of the test** (teammate pick'em pairs, simulated both-hit rate against the observed one). The record does
-  not save pair probabilities yet, so the simulation stays a view and may not price a pair. Adding it is the next step.
-
+- **Joint odds are recorded too (added 2026-10-10, before any result).** In the last 90 minutes before tip the record saves, for teammate pairs among
+  each team's six most-minutes players, the simulated chance both legs go over, both go under, and each leg alone, for the two pick'em combinations
+  that passed (one player's points with a teammate's assists; one player's assists with a teammate's 3-pointers), given both play. Lines are the
+  simulation's own medians (x.5). Scoring, fixed now: over teammate pairs where both played, (1) bias, observed both-hit rate minus simulated, must be
+  inside 2 standard errors; (2) the simulation's Brier score must beat the independent product's with z >= 2; errors clustered by game; over/over and
+  under/under pooled; at least 150 games and 2,000 pairs. A combination that passes both is GO and only then may a pair price use the simulation.
+  `build_game_simulation_test.py` computes this and Track Record shows it.

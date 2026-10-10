@@ -13,6 +13,10 @@ docs/game-simulation.md (calibration: how often did the real total, margin and p
                             players  the players' own sum (the model's own game forecast, our check on it)
                           game row   gid|env        [mean margin, mean total, 9 margin deciles, 9 total deciles, home win chance]
                           player row gid|env|pid    [plays chance, minutes, then 9 deciles each for pts, reb, ast, 3pm, over the games he plays]
+                          joint row  gid|env|j|a|b|c  [line a, line b, games both play, both over, both under, a over, b over] for teammate pairs (the
+                                    two pick'em combinations that passed, docs/pickem-correlation-results.md): c = pa (a's points with b's assists) or
+                                    a3 (a's assists with b's 3-pointers); lines are the simulation's own medians (x.5); chances are given both play.
+                                    Recorded for one environment per game, the market line when there is one.
   record(...)          -> per tip day: each game's last pre-tip record against the final box score (called by ledger.settle).
 
 Scoring uses a mid-rank PIT from the deciles: u is where the actual value sits in the simulated distribution (0.05 = below the 10th
@@ -30,6 +34,11 @@ ENVS = ('market', 'players')
 STATS = ['pts', 'reb', 'ast', '3pm']
 DECILES = [.1, .2, .3, .4, .5, .6, .7, .8, .9]
 MIN_PLAY = .5                       # players recorded: a better than even chance of playing ...
+JOINT = {'pa': ('pts', 'ast'), 'a3': ('ast', '3pm')}
+JOINT_TOP = 6                       # pairs among each team's six most-minutes recorded players
+JOINT_WINDOW_H = 1.5                # joint rows only in the last 90 minutes before tip (lineups settled; keeps the record small)
+MIN_BOTH = 300                      # simulated games in which both play, below which a pair is not recorded
+STAT_BOX = {'pts': 'points', 'reb': 'rebounds', 'ast': 'assists', '3pm': 'threePointFieldGoalsMade'}
 MIN_MIN = 8                         # ... and at least this many projected minutes
 SL_BOOKS = ['Pinnacle', 'Consensus', 'DraftKings', 'FanDuel', 'BetMGM', 'ESPN BET', 'bet365', 'BetRivers']   # the page's order for the market line
 
@@ -95,9 +104,33 @@ def log(board, now):
                         kp = f"{g['id']}|{env}|{r['pid']}"
                         rows[kp] = [round(r['pPlay'], 3), round(r['min'], 1)] + qs
                         meta[kp] = {**base, 'kind': 'player', 'pid': r['pid'], 'player': r['name'], 'team': tm['team']}
+                if env == ('market' if ml else 'players') and g['tip'] <= now + JOINT_WINDOW_H * 3600:
+                    _joint(res, game, rows, meta, base, g)
         except Exception as e:                           # one game's failure never stops the recorder
             print(f"  sim {g.get('id')}: {type(e).__name__}: {str(e)[:120]}", flush=True)
     return rows, meta
+
+
+def _joint(res, game, rows, meta, base, g):
+    """Teammate-pair probabilities for the joint-odds test (see the docstring). Both over, both under, and each leg over, all given both play."""
+    for t, tm in enumerate(game.teams):
+        top = sorted([(j, r) for j, r in enumerate(tm['rows']) if r['pPlay'] >= MIN_PLAY and r['min'] >= MIN_MIN], key=lambda x: -x[1]['min'])[:JOINT_TOP]
+        o = res['teams'][t]
+        for ja, ra in top:
+            for jb, rb in top:
+                if ja == jb:
+                    continue
+                both = o['on'][ja] & o['on'][jb]
+                nb = int(both.sum())
+                if nb < MIN_BOTH:
+                    continue
+                for c, (sa, sb) in JOINT.items():
+                    A, B = o[sa][ja], o[sb][jb]
+                    la, lb = float(np.floor(np.median(A[o['on'][ja]])) + .5), float(np.floor(np.median(B[o['on'][jb]])) + .5)
+                    ao, bo = A[both] > la, B[both] > lb
+                    k = f"{g['id']}|{base['env']}|j|{ra['pid']}|{rb['pid']}|{c}"
+                    rows[k] = [la, lb, nb, round(float((ao & bo).mean()), 4), round(float((~ao & ~bo).mean()), 4), round(float(ao.mean()), 4), round(float(bo.mean()), 4)]
+                    meta[k] = {**base, 'kind': 'joint', 'a': ra['pid'], 'b': rb['pid'], 'c': c}
 
 
 def pit(qs, y):
@@ -122,9 +155,11 @@ def record(root, now, prev, rescan_days, games, L):
         pre = [v for t, v in sorted(x['series']) if v is not None and m and t < m['tip']]
         if not m or not pre or now < m['tip'] + L.SETTLE_AFTER_S or (games and not games(str(m['game']))):
             continue
-        e = G.setdefault(m['game'], {}).setdefault(m['env'], {'meta': m, 'game': None, 'players': {}})
+        e = G.setdefault(m['game'], {}).setdefault(m['env'], {'meta': m, 'game': None, 'players': {}, 'joint': []})
         if m['kind'] == 'game':
             e['game'], e['meta'] = pre[-1], m
+        elif m['kind'] == 'joint':
+            e['joint'].append((pre[-1], m))
         else:
             e['players'][m['pid']] = (pre[-1], m)
     per_day = {}
@@ -153,7 +188,7 @@ def record(root, now, prev, rescan_days, games, L):
                     dnp += 1
                     continue
                 for i, s in enumerate(STATS):
-                    y = sum(st.get(c, 0) for c in {'pts': ['points'], 'reb': ['rebounds'], 'ast': ['assists'], '3pm': ['threePointFieldGoalsMade']}[s])
+                    y = st.get(STAT_BOX[s], 0)
                     qs = row[2 + i]
                     u = pit(qs, y)
                     p = per[s]
@@ -165,6 +200,20 @@ def record(root, now, prev, rescan_days, games, L):
                                  'ps': {s: [p[0], int(p[1]), int(p[2]), int(p[3]), round(p[4], 2)] for s, p in per.items()},
                                  'n': len(e['players']), 'dnp': dnp, 'exp': round(expect, 1),
                                  'miss': [[r[1], r[2], r[3], r[4], r[5], r[6], r[7]] for r in miss[:5]]}
+        for env, e in envs.items():                          # joint odds: pairs where both played, summed per game (so the test can cluster by game)
+            jt = {}
+            for row, m in e['joint']:
+                sa, sb = JOINT[m['c']]
+                A, B = bx.get(int(m['a'])), bx.get(int(m['b']))
+                if not A or not B:
+                    continue
+                ya, yb = A.get(STAT_BOX[sa], 0), B.get(STAT_BOX[sb], 0)
+                la, lb, nb, p_oo, p_uu, pa, pb = row
+                for side, obs, sim, ind in (('o', float(ya > la and yb > lb), p_oo, pa * pb), ('u', float(ya < la and yb < lb), p_uu, (1 - pa) * (1 - pb))):
+                    v = jt.setdefault(m['c'], {}).setdefault(side, [0, 0.0, 0.0, 0.0, 0.0, 0.0])
+                    v[0] += 1; v[1] += obs; v[2] += sim; v[3] += ind; v[4] += (obs - sim) ** 2; v[5] += (obs - ind) ** 2
+            if jt:
+                entry['jt'] = {'env': env, 'c': {c: {sd: [v[0]] + [round(x, 4) for x in v[1:]] for sd, v in by.items()} for c, by in jt.items()}}
         if entry['env']:
             per_day.setdefault(L.tip_day(entry['tip']), []).append(entry)
     for d, gs in per_day.items():

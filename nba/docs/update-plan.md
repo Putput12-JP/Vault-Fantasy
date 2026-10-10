@@ -128,8 +128,7 @@ Ordered by value per effort; each needs no new model.
 
 Built: market-line default and "players' own sum" gap warning; win chance labelled context; Python engine (`sim_engine.py`) proven equal to the page
 (`check_sim_parity.py`); a per-game live record (`sim_record.py`) shown on Track Record; the calibration test scored from that record
-(`build_game_simulation_test.py`). Still to do: record teammate-pair probabilities so the joint-odds half of the pre-registered test can run;
-scenario switches (if X sits, blowout, overtime) and a per-player ladder view after the copula (Nov 9) and minutes-shock (Nov 16) tests report.
+(`build_game_simulation_test.py`). Teammate-pair probabilities are recorded too, so the joint-odds half of the test runs live. Still to do: scenario switches (if X sits, blowout, overtime) and a per-player ladder view after the copula (Nov 9) and minutes-shock (Nov 16) tests report.
 
 ### Phase 3: design consolidation (parallel with Phase 2)
 

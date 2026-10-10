@@ -10,8 +10,14 @@ Rules (written before any result, unchanged here):
   - Both environments are scored. The market line env centres totals and margins on the market, so it tests the simulation's spread; the
     players' own sum env tests our own forecast. The test is judged on each separately.
   - "Inside" is the mid-rank rule in sim_record.py (u between 0.1 and 0.9), fairer than a raw inside test on count stats.
-NOT yet recorded, so not yet tested: the joint-odds half of the pre-registered test (teammate pick'em pairs, simulated both-hit rate vs observed).
-sim_record.py does not save pair probabilities yet; until it does, the simulation stays a view and may not price a pair.
+Joint odds (the second half of the pre-registered test), fixed here before any result. For each of the two pick'em combinations that passed
+(points with assists, assists with 3-pointers; teammates, over/over and under/under pooled), over teammate pairs where both played, using the
+simulation's own half-lines (sim_record.py):
+  - bias: observed both-hit rate minus the simulated rate; the simulation is calibrated if |z| < 2
+  - information: Brier score of the simulated chance against Brier of the independent product of the two legs; the simulation adds something
+    if it is lower with z >= 2
+  z uses errors clustered by game (a game's pairs share players). GO for a combination needs both, at least 150 games and 2,000 pairs.
+  Only a GO combination may let a pair price use the simulation.
 
   python3 nba/scripts/build_game_simulation_test.py [--track path/to/track.json]
 """
@@ -27,11 +33,38 @@ def judge(x, lo, hi, n):
     return 'collecting' if n < MIN_GAMES else 'pass' if lo <= x <= hi else 'fail'
 
 
+def joint(games):
+    """Per combination: observed, simulated and independent both-hit rates and the two z scores, clustered by game."""
+    out = {}
+    for c in ('pa', 'a3'):
+        G = []
+        for g in games:
+            v = ((g.get('jt') or {}).get('c') or {}).get(c)
+            if v:
+                z = [sum(v[sd][i] for sd in v) for i in range(6)]            # n, obs, sim, ind, brier sim, brier ind (over/over and under/under pooled)
+                G.append(z)
+        n = sum(z[0] for z in G)
+        if len(G) < 2 or not n:
+            out[c] = {'games': len(G), 'pairs': n}
+            continue
+        def ratio(vals):                                                    # mean per pair and its game-clustered standard error
+            r = sum(vals) / n
+            e = [v - r * z[0] for v, z in zip(vals, G)]
+            return r, math.sqrt(len(G) / (len(G) - 1) * sum(x * x for x in e)) / n
+        bias, se_b = ratio([z[1] - z[2] for z in G]); imp, se_i = ratio([z[5] - z[4] for z in G])
+        zb, zi = bias / se_b if se_b else 0, imp / se_i if se_i else 0
+        verdict = 'collecting' if len(G) < MIN_GAMES or n < 2000 else 'GO' if abs(zb) < 2 and zi >= 2 else 'NO-GO'
+        out[c] = {'games': len(G), 'pairs': n, 'observed': round(sum(z[1] for z in G) / n, 4), 'simulated': round(sum(z[2] for z in G) / n, 4),
+                  'independent': round(sum(z[3] for z in G) / n, 4), 'bias': round(bias, 4), 'z_bias': round(zb, 2),
+                  'brier_gain': round(imp, 5), 'z_gain': round(zi, 2), 'verdict': verdict}
+    return out
+
+
 def main():
     path = sys.argv[sys.argv.index('--track') + 1] if '--track' in sys.argv else os.path.join(DATA, 'track.json')
     t = json.load(open(path)) if os.path.exists(path) else {}
     games = sorted([g for d in (t.get('sim_days') or {}).values() for g in d], key=lambda g: g['tip'])
-    out = {'generated': t.get('t'), 'min_games': MIN_GAMES, 'envs': {}, 'joint': 'not recorded yet'}
+    out = {'generated': t.get('t'), 'min_games': MIN_GAMES, 'envs': {}, 'joint': joint(games)}
     for env in ('market', 'players'):
         R = [g for g in games if env in g['env']]
         n = len(R)
@@ -54,6 +87,7 @@ def main():
             'plays_expected_vs_actual': [round(sum(x['exp'] for x in e), 1), sum(x['n'] - x['dnp'] for x in e)],
             'verdict': {'totals': judge(tot, .76, .84, n), 'margins': judge(mar, .76, .84, n), 'players': judge(pooled, .75, .85, n)},
             'se_totals': round(se(tot, n), 3)}
+    out['go_joint'] = {c: v.get('verdict', 'collecting') for c, v in out['joint'].items()}
     out['go'] = all(v.get('verdict', {}).get(k) == 'pass' for v in out['envs'].values() if v.get('games') for k in ('totals', 'margins', 'players')) and any(v.get('games', 0) >= MIN_GAMES for v in out['envs'].values())
     json.dump(out, open(os.path.join(DATA, 'game_simulation_test.json'), 'w'), separators=(',', ':'))
     md = ['# Game Simulation: live calibration result', '', f'Rules: docs/game-simulation.md. Source: the live record (sim_record.py) in track.json. Games scored: {len(games)} (the test is called at {MIN_GAMES}).', '']
@@ -67,8 +101,16 @@ def main():
                f"- Player points, rebounds, assists inside: {v['players_pooled_pts_reb_ast']:.1%} of {sum(v['player_games'][s] for s in STATS[:3]):,} player-stats; target 75% to 85%: **{v['verdict']['players']}**",
                '- By stat: ' + ', '.join(f"{s} {v['players_in'][s]:.1%}" for s in STATS if v['players_in'][s] is not None) + ' (3pm has no target)',
                f"- Home win Brier {v['home_win_brier']} (a coin flip is 0.25). Players expected to play {v['plays_expected_vs_actual'][0]}, did {v['plays_expected_vs_actual'][1]}.", '']
-    md += ['## Joint odds', '', 'Not recorded yet, so not tested. Until it is, the simulation is a view and prices nothing.', '',
-           f"## Verdict: {'GO on calibration (joint odds still untested)' if out['go'] else 'not called yet' if len(games) < MIN_GAMES else 'NO-GO on calibration'}", '']
+    NAMES = {'pa': "Teammates: one player's points with another's assists", 'a3': "Teammates: one player's assists with another's 3-pointers"}
+    md += ['## Joint odds (teammate pairs, over/over and under/under pooled)', '']
+    for c, v in out['joint'].items():
+        if 'observed' not in v:
+            md.append(f"- {NAMES[c]}: {v.get('pairs', 0)} pairs in {v.get('games', 0)} games, nothing to score yet")
+        else:
+            md.append(f"- {NAMES[c]}: {v['pairs']:,} pairs in {v['games']} games. Both hit: observed {v['observed']:.1%}, simulated {v['simulated']:.1%}, independent {v['independent']:.1%}. "
+                      f"Bias z {v['z_bias']:+.1f} (needs |z| < 2); Brier gain over independence {v['brier_gain']:+.5f}, z {v['z_gain']:+.1f} (needs >= 2): **{v['verdict']}**")
+    md += ['', 'Until a combination is GO, the simulation prices nothing for it.', '',
+           f"## Verdict: calibration {'GO' if out['go'] else 'not called yet' if len(games) < MIN_GAMES else 'NO-GO'}; joint odds " + ', '.join(f"{c} {v}" for c, v in out['go_joint'].items()), '']
     open(os.path.join(DOCS, 'game-simulation-results.md'), 'w').write('\n'.join(md))
     print(f"game simulation test: {len(games)} games scored; verdict {'GO' if out['go'] else 'collecting' if len(games) < MIN_GAMES else 'NO-GO'}")
 

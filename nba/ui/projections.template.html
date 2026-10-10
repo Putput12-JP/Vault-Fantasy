@@ -97,6 +97,7 @@ main{display:flex;flex-direction:column;gap:24px;padding:24px}
 .card-b{padding:16px var(--pad) var(--pad)}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
 table.tsim td{white-space:nowrap}
+.sim-h{margin:18px 0 2px;font-size:14px;font-weight:600}
 table.tsim td.sub{font-size:11.5px;color:var(--fg3);padding-top:0;border-top:0;text-align:left;white-space:normal}
 table.tsim td small{display:block;color:var(--fg3);font-size:11.5px}
 #tsimcard .kpis{margin-bottom:var(--gap)}
@@ -1542,7 +1543,10 @@ th{font-weight:500}
         <div class="card-b"><div class="kpis" id="tsimk"></div>
           <div class="tablewrap"><table class="ht tsim" id="tsim"></table></div>
           <div class="more" id="tsimmore" hidden></div>
-          <p class="hint" id="tsimnote"></p></div>
+          <p class="hint" id="tsimnote"></p>
+          <h3 class="sim-h">Joint odds: teammate pairs</h3>
+          <p class="hint" id="tsimjsub"></p>
+          <div class="tablewrap"><table class="ht tsim" id="tsimj"></table></div></div>
       </section>
 
       <section class="card">
@@ -3444,6 +3448,20 @@ function simGames(){
   const d = TR && TR.data, days = d && d.sim_days ? Object.values(d.sim_days).flat() : [];
   return days.sort((a, b) => b.tip - a.tip);
 }
+// Joint odds (docs/game-simulation.md): for the two pick'em combinations that passed, how often both legs hit against what the simulation and an
+// independent guess said, over teammate pairs where both played. Errors are clustered by game. GO needs the simulation calibrated (|z| < 2) and
+// better than independence (Brier gain z >= 2) over 150+ games and 2,000+ pairs.
+const SIMJ = {pa: "One player's points with a teammate's assists", a3: "One player's assists with a teammate's 3-pointers"};
+function simJoint(G, c){
+  const rows = G.map(g => { const v = g.jt && g.jt.c && g.jt.c[c]; return v ? [0, 1, 2, 3, 4, 5].map(i => Object.values(v).reduce((a, x) => a + x[i], 0)) : null; }).filter(Boolean);
+  const n = rows.reduce((a, z) => a + z[0], 0);
+  if (rows.length < 2 || !n) return {games: rows.length, pairs: n};
+  const ratio = f => { const r = rows.reduce((a, z) => a + f(z), 0) / n, ss = rows.reduce((a, z) => a + (f(z) - r * z[0]) ** 2, 0); return [r, Math.sqrt(rows.length / (rows.length - 1) * ss) / n]; };
+  const [bias, sb] = ratio(z => z[1] - z[2]), [gain, sg] = ratio(z => z[5] - z[4]), zb = sb ? bias / sb : 0, zg = sg ? gain / sg : 0;
+  const sum = i => rows.reduce((a, z) => a + z[i], 0) / n;
+  const verdict = rows.length < SIMT.n || n < 2000 ? 'collecting' : Math.abs(zb) < 2 && zg >= 2 ? 'GO' : 'NO-GO';
+  return {games: rows.length, pairs: n, obs: sum(1), sim: sum(2), ind: sum(3), zb, zg, verdict};
+}
 function renderSimRecord(){
   const d = TR && TR.data, G = simGames(), e = simRec.env, pre = d && d.preseason && d.preseason.sim_days ? Object.values(d.preseason.sim_days).flat().length : 0;
   $('tsimenv').innerHTML = `<div class="seg" data-f="simenv" role="group">${[['market', 'Market line'], ['players', "Players' own sum"]].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${e === v}">${l}</button>`).join('')}</div>`;
@@ -3451,7 +3469,7 @@ function renderSimRecord(){
   if (!R.length){
     $('tsimk').innerHTML = '';
     $('tsim').innerHTML = `<tbody><tr><td class="l" colspan="9"><p class="empty">No simulations scored yet. The recorder saves each game's simulated ranges in the 4 hours before tip and the ledger scores them against the box score 3 hours after tip, from opening night.${pre ? ` ${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart as a rehearsal.` : ''}</p></td></tr></tbody>`;
-    $('tsimmore').hidden = true; $('tsimnote').textContent = ''; return;
+    $('tsimmore').hidden = true; $('tsimnote').textContent = ''; $('tsimj').innerHTML = ''; $('tsimjsub').textContent = ''; return;
   }
   const n = R.length, cnt = f => R.filter(f).length, share = k => cnt(g => simIn(g.env[e][k])) / n;
   const tIn = share('ut'), mIn = share('um'), tLo = cnt(g => g.env[e].ut <= .1) / n, tHi = cnt(g => g.env[e].ut >= .9) / n, mLo = cnt(g => g.env[e].um <= .1) / n, mHi = cnt(g => g.env[e].um >= .9) / n;
@@ -3480,6 +3498,12 @@ function renderSimRecord(){
       <td class="num">${pc(x.pw, 0)}<small>${x.hw ? 'home won' : 'away won'}</small></td><td class="l num">${pl}</td></tr>
       ${miss ? `<tr><td class="sub" colspan="8">Biggest player misses: ${miss}</td></tr>` : ''}`; }).join('');
   $('tsim').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Game</th><th scope="col" title="Simulated middle margin and the 10th to 90th percentile. H = home by, A = away by">Margin (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated middle total and the 10th to 90th percentile">Total (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated home win chance">Home win</th><th class="l" scope="col" title="Players whose real stat landed inside the simulated 80% range, of those who played">Players in range</th></tr></thead><tbody>${rows}</tbody>`;
+  const J = Object.keys(SIMJ).map(c => [c, simJoint(G, c)]);
+  $('tsimjsub').textContent = 'Pairs are on the simulation\'s own half-lines, over/over and under/under together. Until a combination is GO, the simulation prices nothing for it.';
+  $('tsimj').innerHTML = `<thead><tr><th class="l" scope="col">Combination</th><th scope="col">Pairs</th><th scope="col" title="Both legs hit">Observed</th><th scope="col">Simulated</th><th scope="col">Independent</th><th scope="col" title="Observed minus simulated, in standard errors. Needs under 2 either way">Bias z</th><th scope="col" title="Does the simulation beat the independent guess? Needs 2 or more">Beats independent z</th><th class="l" scope="col">Status</th></tr></thead><tbody>${J.map(([c, v]) => v.obs == null
+    ? `<tr><td class="l">${SIMJ[c]}</td><td class="num">${(v.pairs || 0).toLocaleString()}</td><td class="num" colspan="5"><span class="muted">nothing to score yet</span></td><td class="l"><span class="muted">collecting</span></td></tr>`
+    : `<tr><td class="l">${SIMJ[c]}<small>${v.games} games</small></td><td class="num">${v.pairs.toLocaleString()}</td><td class="num">${pc(v.obs, 1)}</td><td class="num">${pc(v.sim, 1)}</td><td class="num">${pc(v.ind, 1)}</td>
+      <td class="num">${v.zb >= 0 ? '+' : ''}${v.zb.toFixed(1)}</td><td class="num">${v.zg >= 0 ? '+' : ''}${v.zg.toFixed(1)}</td><td class="l">${v.verdict === 'GO' ? pill('ok', 'GO') : v.verdict === 'NO-GO' ? pill('bad', 'NO-GO') : '<span class="muted">collecting</span>'}</td></tr>`).join('')}</tbody>`;
   $('tsimmore').hidden = R.length <= simRec.limit;
   $('tsimmore').innerHTML = `<button class="btn" id="tsimmorebtn" type="button">Show all ${R.length.toLocaleString()}</button>`;
   $('tsimsub').textContent = `${n.toLocaleString()} ${n === 1 ? 'game' : 'games'} scored, newest first. Green means the real number landed inside the simulated 80% range. Not affected by the filters above.`;
