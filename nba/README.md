@@ -54,6 +54,10 @@ One contract pays 1 cent, so dollars = price x qty / 100. State (trade cursors, 
 rotate across polls. Smoke test: `python3 nba/scripts/novig.py`. The signed client (`scripts/novig_client.py`) is only
 needed for account endpoints, not for any of this.
 
+**Paper trading on Novig** (`scripts/novig_paper.py`, rules in [docs/novig-paper-trading.md](docs/novig-paper-trading.md)): after each poll the recorder places *simulated*
+resting orders on Novig's prop books where our fair chance beats the price, fills them from the public trade tape (`touch` and `thru` kept apart), and settles them from the
+box score into `track.json` (`novig_days`). No order is ever sent to Novig and no key is used. Shown on Track Record. Smoke test: `python3 nba/scripts/novig_paper.py`.
+
 ## Live snapshots (week 4, from 2026-09-30)
 
 `scripts/snapshot.py` records every venue's pre-tip price (Kalshi, ESPN/DraftKings, Pinnacle, Action Network's

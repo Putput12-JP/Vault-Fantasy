@@ -130,6 +130,12 @@ Built: market-line default and "players' own sum" gap warning; win chance labell
 (`check_sim_parity.py`); a per-game live record (`sim_record.py`) shown on Track Record; the calibration test scored from that record
 (`build_game_simulation_test.py`). Joint odds are recorded for different-team pairs (the main test, since the owner's apps cannot pair teammates) and teammate pairs, so the second half of the test runs live. Still to do: scenario switches (if X sits, blowout, overtime) and a per-player ladder view after the copula (Nov 9) and minutes-shock (Nov 16) tests report.
 
+### Novig (added 2026-10-10)
+
+Built: paper trading, a simulator with no Novig key and no orders (`novig_paper.py`; rules in `novig-paper-trading.md`, pre-registered in `experiment-log.md` section 9),
+shown on Track Record. Next: Novig's own paper host to learn the order API and fee (needs Novig's docs, blocked from the cloud environment), then micro-stakes only after the
+paper rule is met and the owner approves. The Edge Finder gets Novig as a live-record-only option once there are enough paper orders.
+
 ### Phase 3: design consolidation (parallel with Phase 2)
 
 | Item | Detail |

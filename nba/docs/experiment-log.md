@@ -176,3 +176,11 @@ trading decision. Both are disclosed here, and the demote rule and the loss budg
   weekly size ramp 2x. The stricter option offered (3% prior, 150 games, 95%) was not chosen. The live ledger had not been read at signing.
 - After signing, any edit is dated with its reason, and a result read after the edit is exploratory (see section 3).
 
+## 9. Novig paper trading (pre-registered 2026-10-10)
+
+A new venue with no history, so under section 3 it earns no live credit until it has its own rule. The rule, the simulator's settings and its limits are in
+`docs/novig-paper-trading.md`, written before the first paper order and before any Novig result was read. Summary: simulated resting orders at our price on Novig player
+props (3% edge after a placeholder 2% fee, $5 stake), filled only from the public tape (`touch` and `thru` kept apart), settled from the box score. First look at **100
+filled orders under `thru`**: return above zero at z >= 2 clustered by game day, with Novig's real fee confirmed and the results recomputed. Nothing else on Novig
+(takers, game markets, other stats) is credited. No real order exists or is authorised by this section.
+

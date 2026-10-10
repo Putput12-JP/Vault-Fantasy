@@ -907,6 +907,14 @@ def shadow(root, day, board, now, polls):
             except Exception as e:
                 rec['sim_err'] = str(e)[:120]
                 traceback.print_exc(limit=2)
+            try:                                                # Novig paper trading (novig_paper.py): a simulator, no order is ever placed; never stops the ledger
+                import novig_paper
+                nrows, nmeta = novig_paper.log(day, board, now)
+                rec['novig_paper'] = len(nrows)
+                day.record('novig_paper', now, nrows, nmeta)
+            except Exception as e:
+                rec['novig_paper_err'] = str(e)[:120]
+                traceback.print_exc(limit=2)
         rec['bets'] = ledger.settle(root, now)
     except Exception as e:
         rec.update(ok=False, err=str(e)[:200])
