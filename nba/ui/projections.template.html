@@ -3224,7 +3224,8 @@ let TR = TR0 ? {data: TR0, live: false} : null, trackTried = false, trackTimer =
 const TF0 = {venue: 'all', stat: 'all', side: 'all', gate: 'all', ebin: 'all', etype: 'all', book: 'all', day: 'all', clock: 'entry'};
 const ETYPE = {model: 'Model edge', gap: 'Consensus edge', both: 'Both'};
 let tf = {...TF0, status: 'all', limit: 150};
-const MIN_LIVE = 50;                // settled bets before a live verdict (the backtest gate's 50-game floor)
+const MIN_LIVE = 300;               // settled bets before a live 'proven' verdict (experiment-log.md section 3)
+const LIVE_Z = 2.13;                // one-sided 0.05 split across the 3 frozen cells
 const GATE_ORDER = {go: 0, watch: 1, 'no-go': 2};
 const VENUES_T = [['kalshi', 'Kalshi'], ['book', 'Sportsbooks'], ['polymarket', 'Polymarket'], ['pickem', "Pick'em"]];
 const VLABEL = Object.fromEntries(VENUES_T);
@@ -3412,7 +3413,7 @@ function renderTrack(){
   $('tfoot').innerHTML = `
     <div><b>What is logged:</b> every price the Props page shows at ${Math.round(((d && d.edge_min) || EDGE_MIN) * 100)}%+ edge, on every venue: Kalshi rungs, sportsbooks, Polymarket and pick'em apps (same projection, minutes with Outs applied, calibration, blend and fees, computed by <code>scripts/pricing.py</code>), for games within 24 hours, from the first recorder poll it reached that edge. Each rung is its own bet, as in the backtest.</div>
     <div><b>How it settles:</b> 1 unit per bet. A win returns (1 − cost) ÷ cost, where cost is the price in probability with fees in: Kalshi's taker fee, the book's odds, Polymarket's fee, the pick'em app's own price, or the ${pc((d && d.pk_be) || PK_BE, 1)} flex break-even for flat lines. A whole-number line landed exactly is a push; a player who did not play is void. CLV is the same side's close price minus its entry price.</div>
-    <div><b>Live verdicts</b> need ${MIN_LIVE} settled bets. A gated signal holds up when its live ROI is 2 standard errors above zero. Ungated markets are tracked the same way, so a market that keeps winning here is a candidate for its own backtest.</div>`;
+    <div><b>Live verdicts</b> need ${MIN_LIVE} settled bets. A gated signal is called proven when its live ROI is 2.13 standard errors above zero (and its closing-line value is not negative); real stakes grow earlier, with the evidence (see What Works). Ungated markets are tracked the same way, so a market that keeps winning here is a candidate for its own backtest.</div>`;
 }
 
 function renderTrackChart(sel){
@@ -3452,7 +3453,7 @@ $('tmore').addEventListener('click', e => { if (e.target.id === 'tmorebtn'){ tf.
 // Every 3%+ edge on the board, on every venue, with why it exists and how far to trust it. Same prices as Player
 // Props (priceRow, plus the consensus engine and edge types that scripts/pricing.py mirrors for the shadow ledger).
 // One row per player, stat and side: the same bet on several venues or ladder rungs is one play, its best price
-// sized (best expected log growth), the others listed. Tiers: Proven = backtest GO and 50+ live bets at z >= 2;
+// sized (best expected log growth), the others listed. Tiers: Proven = backtest GO and MIN_LIVE (300) live bets at z >= 2.13;
 // Backtest GO = gate passed, live record still collecting (sized, shadow); Tracking = WATCH or positive live;
 // Untested = the rest. Only Proven and Backtest GO get a stake.
 const ECFG_DEF = {bank: 1000, kf: .25, cap: .02};
@@ -3491,13 +3492,13 @@ function tierOf(p){
   if (p.types.includes('ladder') || p.types.includes('gap')) gs.push(p.gap_g);
   const gate = gs.includes('go') ? 'go' : gs.includes('watch') ? 'watch' : 'no-go';
   const live = signalAgg(p.r.e.s, famOf(p), sideKey(p));
-  if (gate === 'go') return {tier: live.settled >= MIN_LIVE && live.z != null && live.z >= 2 ? 'proven' : 'backtested', gate, live};
+  if (gate === 'go') return {tier: live.settled >= MIN_LIVE && live.z != null && live.z >= LIVE_Z ? 'proven' : 'backtested', gate, live};
   if (gate === 'watch' || (live.settled >= 20 && live.roi > 0)) return {tier: 'tracking', gate, live};
   return {tier: 'untested', gate, live};
 }
 function liveStatus(key){      // kept for callers that ask by signal key
   const [st, ve, sd] = key.split('|'), x = signalAgg(st, ve, sd === 'YES' || sd === 'Over' ? 'over' : 'under');
-  return {ready: x.settled >= MIN_LIVE && x.z != null && x.z >= 2, x};
+  return {ready: x.settled >= MIN_LIVE && x.z != null && x.z >= LIVE_Z, x};
 }
 const tAt = t => t ? clock(t) : '';
 const betLabel = p => `${SLABEL[p.r.e.s]} ${p.venue === 'kalshi' ? `${p.side} ${p.line + .5}+` : `${p.side} ${p.line}`}`;
@@ -3686,7 +3687,7 @@ function renderEdges(){
   const trows = tc ? d.types.map(r => Object.fromEntries(Object.entries(tc).map(([k, i]) => [k, r[i]]))) : [];
   const recs = Object.keys(ETYPES).map(k => ({k, a: trAgg(trows.filter(r => r.type === k))}));
   const mx = Math.max(.05, ...recs.map(x => Math.abs(x.a.roi || 0)));
-  $('etypes').innerHTML = recs.map(({k, a}) => { const st = a.settled >= MIN_LIVE && a.z >= 2 ? 'proven' : a.settled >= MIN_LIVE && a.roi > 0 ? 'tracking' : a.settled >= MIN_LIVE ? 'untested' : 'untested';
+  $('etypes').innerHTML = recs.map(({k, a}) => { const st = a.settled >= MIN_LIVE && a.z >= LIVE_Z ? 'proven' : a.settled >= MIN_LIVE && a.roi > 0 ? 'tracking' : a.settled >= MIN_LIVE ? 'untested' : 'untested';
     const lab = a.settled < MIN_LIVE ? `Collecting ${a.settled}/${MIN_LIVE}` : st === 'proven' ? 'Holding up' : a.roi > 0 ? 'Positive' : 'Losing';
     return `<button type="button" class="ev-type" data-type="${k}" aria-pressed="${ef.type === k}"><span class="nm"><span class="ev-chip ${k}">${ETYPES[k]}</span><span class="pill ${st}" style="height:18px;font-size:10.5px">${lab}</span></span>
       <span class="roi ${a.roi > 0 ? 'pos' : a.roi < 0 ? 'neg' : ''}">${a.settled ? (a.roi > 0 ? '+' : '') + (a.roi * 100).toFixed(1) + '%' : ''}</span>
@@ -3696,7 +3697,7 @@ function renderEdges(){
   $('ekelly').innerHTML = [[.125, '⅛ Kelly'], [.25, '¼ Kelly'], [.5, '½ Kelly']].map(([v, l]) => `<button type="button" data-k="${v}" aria-pressed="${ecfg.kf === v}">${l}</button>`).join('');
   $('ecap').innerHTML = [.01, .02, .03].map(v => `<button type="button" data-c="${v}" aria-pressed="${ecfg.cap === v}">${v * 100}% max</button>`).join('');
   $('elegend').innerHTML = `
-    <div>${pill('proven', 'Proven')}<span>Passed its 2025-26 gate and 50+ live bets hold up at 2 standard errors. Sized.</span></div>
+    <div>${pill('proven', 'Proven')}<span>Passed its 2025-26 gate and ${MIN_LIVE}+ live bets hold up at 2.13 standard errors. Sized.</span></div>
     <div>${pill('backtested', 'Backtest GO')}<span>Passed its gate; the live record is still collecting. Sized as a shadow bet.</span></div>
     <div>${pill('tracking', 'Tracking')}<span>On watch, or winning live but not proven. Not sized.</span></div>
     <div>${pill('untested', 'Untested')}<span>No gate, too few live bets. Not sized.</span></div>
@@ -5029,7 +5030,7 @@ function renderLab(){
     ${Object.entries(CS).flatMap(([t, rows]) => rows.map((r, i) => `<tr><td class="l">${i ? '' : `<b>${TN[t] || t}</b>`}</td><td class="l">${r[0].toUpperCase()} ${r[1]}</td><td class="l">${pill(r[2] === 'GO' ? 'ok' : r[2] === 'WATCH' ? 'warn' : 'bad', r[2])}</td><td>${(r[3] || 0).toLocaleString()}</td><td>${r[4] || ''}</td><td class="${r[5] > 0 ? 'pos' : 'neg'}">${r[5] != null ? (r[5] >= 0 ? '+' : '') + (r[5] * 100).toFixed(1) + '%' : ''}</td><td>${r[6] != null ? fmt(r[6], 2) : ''}</td></tr>`)).join('')}</tbody></table></div>
     <p class="bt-cap">Consensus + model, second half of 2025-26, 3%+ edge after fees. Small samples (under 50 games) cannot reach GO however good they look.</p>`;
   $('btfoot').innerHTML = `
-    <div><b>Walk-forward.</b> Every model is fit on earlier seasons and scored on games it never saw: the prop models fit on 2024-25 and tested on 2025-26; the game and minutes models tuned on 2022-23 and 2023-24 and tested on both later seasons. Injury news is the official report as it stood at bet time, never who actually sat. Prices are what you could have taken: Kalshi's 30-minute pre-tip trades, the last sportsbook line before tip.</div>
+    <div><b>Walk-forward.</b> Every model is fit on earlier seasons and scored on later games (2025-26 has been re-used across many tests, so the live ledger is the clean test): the prop models fit on 2024-25 and tested on 2025-26; the game and minutes models tuned on 2022-23 and 2023-24 and tested on both later seasons. Injury news is the official report as it stood at bet time, never who actually sat. Prices are what you could have taken: Kalshi's 30-minute pre-tip trades, the last sportsbook line before tip.</div>
     <div><b>Rules come first.</b> Each test's ship rule is written before it runs and the verdict follows the rule, including when a newer model is more accurate but loses a passing signal (${n(/^Kept/)} of these kept the incumbent that way). GO = out-of-sample ROI above zero by 2+ standard errors over 50+ games; WATCH = positive but short of that.</div>
     <div><b>Live checks the backtest.</b> GO signals are logged as shadow bets from opening night (Track Record); a signal is only trusted with money when this season's results agree with the backtest.</div>`;
 }
@@ -5051,9 +5052,19 @@ const WK_PAGES = {works: ['What Works', 'BETS THAT PASSED · IN DOLLARS · WHAT 
 const money = x => (x < 0 ? '-' : '+') + '$' + Math.abs(x).toLocaleString(undefined, {maximumFractionDigits: 0});
 const per100 = roi => roi == null ? '' : (roi < 0 ? '-' : '+') + '$' + Math.abs(roi * 100).toFixed(2);
 const oneIn = z => { const p = 1 - Phi(z); if (p >= .5) return null; const n = 1 / p; return n >= 1000 ? Math.round(n / 100) * 100 : n >= 100 ? Math.round(n / 10) * 10 : Math.round(n); };
-function wkConf(z, games){
+// tried = how many ideas were tested on this season (BT.trials). A record that looks 1-in-540 for one idea is far likelier by luck when it is the
+// best of ~68, so the level and the words use the adjusted odds, with the single-idea odds beside them. tried is omitted for a slice you chose.
+const oneInP = p => p >= .5 ? null : (n => n >= 1000 ? Math.round(n / 100) * 100 : n >= 100 ? Math.round(n / 10) * 10 : Math.round(n))(1 / p);
+function wkConf(z, games, tried){
   if (games < 50) return {lvl: 0, cls: 'low', word: 'Too few games', say: `only ${games} games: too few to tell luck from skill`};
-  const n = oneIn(z);
+  const n = oneIn(z), t = tried || 1, pa = Math.min(1, (1 - Phi(z)) * t), na = oneInP(pa);
+  if (z >= 1 && t > 1){
+    const base = `about 1 in ${n} if it were the only idea tried; ${na ? `after counting the ~${t} ideas we tried, about 1 in ${na}` : `after counting the ~${t} ideas we tried, it could easily be luck`}`;
+    if (pa <= .01) return {lvl: 5, cls: '', word: 'Strong', say: base};
+    if (pa <= .05) return {lvl: 4, cls: '', word: 'Solid', say: base};
+    if (pa <= .25) return {lvl: 3, cls: 'mid', word: 'Likely, not proven', say: base};
+    return {lvl: 2, cls: 'mid', word: 'Plausible', say: base};
+  }
   if (z >= 3) return {lvl: 5, cls: '', word: 'Strong', say: `about a 1 in ${n.toLocaleString()} chance a record this good is luck`};
   if (z >= 2) return {lvl: 4, cls: '', word: 'Solid', say: `about a 1 in ${n} chance a record this good is luck`};
   if (z >= 1) return {lvl: 2, cls: 'mid', word: 'Promising', say: `a 1 in ${n} chance it is luck: not rare enough to call real`};
@@ -5067,13 +5078,32 @@ function wkLive(stat, side){
   const C = TR && TR.data && TR.data.cube_cols, rows = (TR && TR.data && TR.data.cube) || [];
   if (!C) return null;
   const ix = k => C.indexOf(k);
-  let w = 0, l = 0, p = 0, u = 0, uq = 0, bets = 0;
+  let w = 0, l = 0, p = 0, u = 0, uq = 0, bets = 0, cs = 0, cn = 0;
   for (const r of rows){
     if (r[ix('stat')] !== stat || r[ix('venue')] !== 'kalshi' || String(r[ix('side')]).toUpperCase() !== side) continue;
-    bets += r[ix('bets')]; w += r[ix('w')]; l += r[ix('l')]; p += r[ix('p')]; u += r[ix('units')]; uq += r[ix('units_sq')] || 0;
+    bets += r[ix('bets')]; w += r[ix('w')]; l += r[ix('l')]; p += r[ix('p')]; u += r[ix('units')]; uq += r[ix('units_sq')] || 0; cs += r[ix('clv_sum')] || 0; cn += r[ix('clv_n')] || 0;
   }
   const n = w + l + p, m = n ? u / n : null, sd = n > 1 ? Math.sqrt(Math.max(uq / n - m * m, 0)) : null;
-  return {bets, settled: n, w, l, p, roi: m, z: sd ? m / (sd / Math.sqrt(n)) : null};
+  return {bets, settled: n, w, l, p, roi: m, z: sd ? m / (sd / Math.sqrt(n)) : null, clv: cn ? cs / cn : null, clvN: cn};
+}
+// The signed sizing rule (experiment-log.md section 8): a cautious prior on the true return, updated with the live shadow bets. The cube has no game
+// ids, so games are estimated from bets using last season's bets per game for this cell (an approximation, labelled as one).
+function wkPosterior(lv, bpg){
+  const G = BT.gate;
+  if (!lv || !lv.settled || !bpg) return null;
+  const games = lv.settled / bpg, se = G.k / Math.sqrt(games), pp = 1 / (G.prior_sd * G.prior_sd), dp = 1 / (se * se);
+  const mean = (G.prior_mean * pp + lv.roi * dp) / (pp + dp), sd = Math.sqrt(1 / (pp + dp));
+  return {games, mean, sd, pPos: Phi(mean / sd)};
+}
+function wkStake(lv, post){        // which size the evidence allows today, with the reason for each missing condition
+  const G = BT.gate;
+  if (!lv || !post) return {tier: 'Paper only', why: ['live bets have not started (opening night, October 20)'], ok: false};
+  const why = [];
+  if (post.games < G.min_games) why.push(`about ${Math.round(post.games)} of ${G.min_games} games`);
+  if (!(lv.roi > 0)) why.push('live return is not above zero yet');
+  if (post.pPos < G.p_min) why.push(`${Math.round(post.pPos * 100)}% sure it is above zero (need ${Math.round(G.p_min * 100)}%)`);
+  if (lv.clv != null && lv.clv < 0) why.push('closing-line value is negative');
+  return why.length ? {tier: `Micro-stakes only ($${G.micro_per_order[0]}-$${G.micro_per_order[1]} a bet)`, why, ok: false} : {tier: 'Bigger stakes allowed (quarter Kelly on that estimate, capped)', why: [], ok: true};
 }
 // Last season's results for a GO signal, day by day (build_prop_model_v2.py exports each Kalshi signal's out-of-sample
 // bets as [ET day, wins, losses, units]): running profit at $10 a bet, and profit by month. Chart kit.
@@ -5092,7 +5122,7 @@ function wkCharts(main, key){
   const cols = ckCols(`wk-months-${key}`, {vals: months.map(m => ({label: m.label, v: Math.round(m.v)})), aria: 'Profit by month at $10 a bet',
     head: i => { const m = months[i]; return {k: `[month] ${m.label}`, v: money(Math.round(m.v)), cls: m.v >= 0 ? 'pos' : 'neg', right: [[`${m.w}-${m.l}`], [`${(m.w + m.l).toLocaleString()} bets`, 'sub']]}; }});
   const up = months.filter(m => m.v > 0).length;
-  return `<div class="wk-chart"><div class="hd"><span>Profit at $10 a bet, ${span} (the half it was tested on)</span></div>${curve}</div>
+  return `<div class="wk-chart"><div class="hd"><span>Profit at $10 a bet, ${span} (the half it was tested on; assumes every bet filled at the 30-minute price)</span></div>${curve}</div>
     <div class="wk-chart"><div class="hd"><span>Profit by month: ${up} of ${months.length} up</span></div>${cols}</div>`;
 }
 
@@ -5106,8 +5136,8 @@ function renderBacktests(){
   else if (wk.tab === 'finder') renderFinder();
   else renderLab();
   $('btfoot').innerHTML = wk.tab === 'lab' ? $('btfoot').innerHTML : `
-    <div><b>How these were tested.</b> Each model was fit on earlier seasons and scored on 2025-26 games it never saw, using only what was known before tip: the official injury report as it stood, and Kalshi's prices in the 30 minutes before tip. Returns are after Kalshi's taker fee.</div>
-    <div><b>Why "1 in N" matters.</b> We tested many ideas. Test 40 and about one will look 1-in-40 lucky by chance, which is why a bet that passed also has to get stronger when the model is more sure, and hold up live (${MIN_LIVE}+ settled bets) before it is called proven.</div>`;
+    <div><b>How these were tested.</b> Each model was fit on earlier seasons and scored on 2025-26. That season has been looked at many times while the models were built, so live results are the clean test. Only what was known before tip is used: the official injury report as it stood, and Kalshi's prices in the 30 minutes before tip. Returns are after Kalshi's taker fee.</div>
+    <div><b>Why "1 in N" matters.</b> We tested many ideas (about ${BT.trials} market cells on this season). Test 40 and about one will look 1-in-40 lucky by chance, so the page shows the odds both ways: as if it were the only idea, and after counting all of them. A bet that passed also has to get stronger when the model is more sure, and hold up live (${MIN_LIVE}+ settled bets) before it is called proven.</div>`;
 }
 
 function renderWorks(){
@@ -5116,20 +5146,24 @@ function renderWorks(){
   for (const s of sig.filter(s => s.gate === 'GO')) (go[`${s.stat}|${s.side}`] = go[`${s.stat}|${s.side}`] || []).push(s);
   const cards = Object.entries(go).sort((a, b) => Math.max(...b[1].map(s => s.z)) - Math.max(...a[1].map(s => s.z))).map(([k, ss], ci) => {
     const [stat, side] = k.split('|'), main = ss.find(s => s.engine.startsWith('Prop')) || ss[0], other = ss.find(s => s !== main);
-    const C = wkConf(main.z, main.games), mt = (F.model.kalshi || {})[stat] || {};
+    const C = wkConf(main.z, main.games, BT.trials), mt = (F.model.kalshi || {})[stat] || {}, caut = ss.map(x => x.caution).find(Boolean), spr = (BT.spread || {})[k];
     const steps = ['0.02', '0.03', '0.05', '0.08'].filter(t => mt[t]).map(t => ({t, r: mt[t]}));
     const steady = steps.filter(x => x.r[4] >= 2).length >= 3;
-    const lv = wkLive(stat, side), proven = lv && lv.settled >= MIN_LIVE && lv.z != null && lv.z >= 2;
+    const lv = wkLive(stat, side), proven = lv && lv.settled >= MIN_LIVE && lv.z != null && lv.z >= LIVE_Z, bpg = main.n / main.games, post = wkPosterior(lv, bpg), stake = wkStake(lv, post);
     const word = WK_STAT[stat], sideW = side === 'NO' ? 'NO' : 'YES';
     return `<article class="card wk-bet">
       <div class="wk-bet-h"><div><h3>Kalshi ${word}: bet ${sideW}</h3><p>When Kalshi's price on a ${word === '3-pointers' ? '3-pointer' : word} over is too ${side === 'NO' ? 'high' : 'low'}, take the ${sideW} side.</p></div>
-        <span class="wk-tag ${proven ? 'proven' : 'passed'}">${proven ? 'PROVEN LIVE' : 'PASSED THE BACKTEST'}</span></div>
+        <span class="wk-tag ${proven ? 'proven' : caut ? 'watch' : 'passed'}">${proven ? 'PROVEN LIVE' : caut ? 'PASSED, USE CAUTION' : 'PASSED THE BACKTEST'}</span></div>
+      ${caut ? `<div class="wk-warn"><b>Use caution.</b> ${esc(caut)}</div>` : ''}
       ${WK_WHY[stat] ? `<p class="wk-why">${WK_WHY[stat]}</p>` : ''}
       <div class="wk-big">
         <div><small>Return per $100 bet</small><b class="pos">${per100(main.roi)}</b><span>after Kalshi's fee</span></div>
         <div><small>Last season</small><b>${main.n.toLocaleString()}</b><span>bets in ${main.games} games</span></div>
-        <div><small>At $10 a bet</small><b class="pos">${money(main.n * 10 * main.roi)}</b><span>over the season, before liquidity limits</span></div>
+        <div><small>Room to trade</small><b>~${BT.liquidity.median_contracts_30m}</b><span>contracts per price in the 30 minutes before tip. Betting size here is unproven</span></div>
       </div>
+      ${spr ? `<div class="wk-row"><div class="wk-lbl"><b>What if you get a worse price?</b>Return if Kalshi's buy/sell gap costs more than we assumed (consensus method)</div>
+        <div><div class="wk-steps">${spr.map(([h, roi, z, n]) => `<div class="wk-step ${z >= 2 ? 'good' : ''}"><small>${h ? h + '¢ worse' : 'as tested'}</small><b>${per100(roi)}</b><small>${n.toLocaleString()} bets</small></div>`).join('')}</div>
+        <div class="wk-verdict"><span class="ic ${spr[2][1] > 0 ? 'y' : 'n'}">${spr[2][1] > 0 ? '✓' : '!'}</span>${spr[2][1] > 0 ? 'Still pays at 2 cents worse, on fewer bets. We have not measured the real gap yet; that starts on opening night.' : 'Gone by 2 cents worse. We have not measured the real gap yet, so treat this one as unproven.'}</div></div></div>` : ''}
       <div class="wk-row"><div class="wk-lbl"><b>Is it luck?</b>Confidence</div>${wkMeter(C)}</div>
       ${steps.length ? `<div class="wk-row"><div class="wk-lbl"><b>Does it get stronger when the model is more sure?</b>Return by edge size, every bet on this stat</div>
         <div><div class="wk-steps">${steps.map(x => `<div class="wk-step ${x.r[4] >= 2 ? 'good' : ''}"><small>${Math.round(x.t * 100)}%+ edge</small><b>${per100(x.r[3])}</b><small>${x.r[1]} games</small></div>`).join('')}</div>
@@ -5139,27 +5173,32 @@ function renderWorks(){
       <div class="wk-charts">
         ${wkCharts(main, `${stat}-${side}`)}
       </div>
-      <div class="wk-row"><div class="wk-lbl"><b>This season</b>Live shadow bets</div>
+      <div class="wk-row"><div class="wk-lbl"><b>This season</b>Live shadow bets, and the size they allow</div>
         <div class="wk-live"><div class="wk-track"><u style="width:${lv ? Math.min(100, lv.settled / MIN_LIVE * 100) : 0}%"></u></div>
-          <p>${!lv ? 'Track Record has not loaded yet.' : lv.settled ? `<b>${lv.settled} of ${MIN_LIVE} settled</b> · ${lv.w}-${lv.l}${lv.p ? '-' + lv.p : ''} · <span class="${lv.roi >= 0 ? 'pos' : 'neg'}">${per100(lv.roi)} per $100</span>${proven ? ' · holding up' : ''}` : `<b>0 of ${MIN_LIVE} settled.</b> Shadow bets start on opening night, October 20; it is called proven once ${MIN_LIVE} live bets agree with last season.`}</p></div></div>
+          <p>${!lv ? 'Track Record has not loaded yet.' : lv.settled ? `<b>${lv.settled}${lv.settled < MIN_LIVE ? ' of ' + MIN_LIVE : ''} settled</b> · ${lv.w}-${lv.l}${lv.p ? '-' + lv.p : ''} · <span class="${lv.roi >= 0 ? 'pos' : 'neg'}">${per100(lv.roi)} per $100</span>${proven ? ' · holding up' : ''}` : `<b>0 of ${MIN_LIVE} settled.</b> Shadow bets start on opening night, October 20; it is called proven once ${MIN_LIVE} live bets agree with last season.`}</p>
+          ${post && lv.settled ? `<p class="muted">Best guess of the true return now: <b>${per100(post.mean)}</b> per $100 (starts from a cautious ${Math.round(BT.gate.prior_mean * 100)}% and moves with live results); ${Math.round(post.pPos * 100)}% sure it is above zero. About ${Math.round(post.games)} games so far (estimated from bets).</p>` : ''}
+          <p><b>Size the evidence allows:</b> ${stake.tier}${stake.why.length ? `<br><span class="muted">Not yet: ${stake.why.join('; ')}.</span>` : ''}</p></div></div>
       <div class="wk-cta"><button class="btn primary" type="button" data-edges="kalshi">Find tonight's Kalshi bets</button><span class="muted">Opens Edges on Kalshi</span></div>
     </article>`;
   }).join('');
   const seen = new Set(Object.keys(go)), watch = [];
   for (const s of sig.filter(s => s.gate === 'WATCH').sort((a, b) => (b.games >= 50) - (a.games >= 50) || b.z - a.z)){ const k = `${s.stat}|${s.side}`; if (!seen.has(k)){ seen.add(k); watch.push(s); } }
   $('wk-works').innerHTML = `
-    <p class="wk-lede">We tested every idea on a season of games <b>the model never saw while it was being built</b>, at prices you could actually have taken. ${['No', 'One', 'Two', 'Three', 'Four', 'Five'][Object.keys(go).length] || Object.keys(go).length} ${Object.keys(go).length === 1 ? 'bet' : 'bets'} made money convincingly. Everything below is in plain numbers: what it returned, how sure we are it is not luck, and how it is doing this season.</p>
+    <p class="wk-lede">We fit every model on earlier seasons and tested it on 2025-26, at prices you could have taken. <b>We have looked at that season many times</b> (about ${BT.trials} market cells), so a good result there is a lead, not proof. ${['No', 'One', 'Two', 'Three', 'Four', 'Five'][Object.keys(go).length] || Object.keys(go).length} ${Object.keys(go).length === 1 ? 'bet' : 'bets'} passed our backtest rule; how likely each is to be real is on its card. Live results from opening night are the real test.</p>
     <div class="card wk-how">
       <div><b>Return per $100</b><p>What you would have kept, on average, for every $100 bet, after fees. +$5 is a big edge in sports betting.</p></div>
-      <div><b>Confidence</b><p>How likely a record this good is pure luck. We call it real at about 1 in 40 or rarer, over at least 50 games.</p></div>
-      <div><b>This season</b><p>Past results can fade. Every bet that passed is tracked live from opening night and is only called proven once it holds up again.</p></div>
+      <div><b>Confidence</b><p>How likely a record this good is pure luck, counting how many ideas we tried. A result that looks 1 in 540 for one idea is about 1 in 8 when it is the best of ~${BT.trials}.</p></div>
+      <div><b>This season</b><p>Past results can fade. Every bet that passed is tracked live from opening night. Real money starts at $1-$5 a bet and grows only as live results agree; "proven" needs ${MIN_LIVE} settled bets.</p></div>
+    </div>
+    <div class="card wk-how" style="grid-template-columns:1fr">
+      <div><b>How long would it take to prove?</b><p>The smaller the true edge, the more games it takes to tell it from luck. At a true return per $100 of ${BT.gate.games_needed.map(([r, g]) => `<b>$${Math.round(r * 100)}</b> it takes about ${g.toLocaleString()} games`).join(', ')}. A season has roughly 600 games with a 3-pointer NO bet. If the true return is $5, a test that ends at game 450 passes only about ${Math.round(BT.gate.power450.find(x => x[0] === 0.05)[1] * 100)}% of the time (${Math.round(BT.gate.power450.find(x => x[0] === 0.10)[1] * 100)}% at $10). That is why stakes grow with the evidence instead of waiting for a verdict.</p></div>
     </div>
     <h2 class="wk-sec">Bets that passed</h2>${cards}
     <h2 class="wk-sec">Promising, not proven yet</h2>
     <p class="wk-lede sm">Made money last season, but not convincingly enough to call real. Tracked live; any of them can be promoted.</p>
-    <div class="card wk-list">${watch.map(s => { const C = wkConf(s.z, s.games);
+    <div class="card wk-list">${watch.map(s => { const C = wkConf(s.z, s.games, BT.trials), tiny = s.games < 50;
       return `<div class="wk-li"><div><h4>Kalshi ${WK_STAT[s.stat]}: bet ${s.side}</h4><p>Found by: ${s.engine.startsWith('Prop') ? 'our model + the price' : "every other venue's price"}.</p></div>
-        <div class="wk-nums"><b class="${s.roi >= 0 ? 'pos' : 'neg'}">${per100(s.roi)}</b> per $100 · ${s.n.toLocaleString()} bets · ${s.games} games</div>
+        <div class="wk-nums">${tiny ? `<b class="muted">Too few bets to say</b> · ${s.n.toLocaleString()} bets · ${s.games} games` : `<b class="${s.roi >= 0 ? 'pos' : 'neg'}">${per100(s.roi)}</b> per $100 · ${s.n.toLocaleString()} bets · ${s.games} games`}</div>
         <span class="wk-tag ${C.lvl >= 2 ? 'watch' : 'no'}" title="${esc(C.say)}">${C.word}</span></div>`; }).join('')}</div>`;
 }
 
@@ -5202,15 +5241,15 @@ function renderFinder(){
     const where = fs.method === 'model' ? (fs.venue === 'kalshi' ? 'Kalshi' : 'sportsbooks') : (tb ? 'sportsbooks' : 'Kalshi');
     const sideW = fs.side === 'any' ? '' : fs.side === 'no' ? ' NO / under' : ' YES / over';
     const mt = fs.method === 'model' && fs.side === 'any' ? M[fs.venue][fs.stat] : null;
-    res = `<div><h3 class="${head[1]}">${head[0]}</h3><p class="say">${WK_STAT[fs.stat][0].toUpperCase() + WK_STAT[fs.stat].slice(1)}${sideW} on ${where}, ${fs.method === 'model' ? `edge ${Math.round(fs.edge * 100)}%+` : 'consensus edge 3%+'}, last season, games the model never saw.</p></div>
-      <div class="wk-big"><div><small>Return per $100</small><b class="${roi >= 0 ? 'pos' : 'neg'}">${per100(roi)}</b><span>after fees</span></div>
+    res = `<div><h3 class="${head[1]}">${head[0]}</h3><p class="say">${WK_STAT[fs.stat][0].toUpperCase() + WK_STAT[fs.stat].slice(1)}${sideW} on ${where}, ${fs.method === 'model' ? `edge ${Math.round(fs.edge * 100)}%+` : 'consensus edge 3%+'}, last season (a season we have looked at many times).</p></div>
+      <div class="wk-big"><div><small>Return per $100</small><b class="${games >= 50 ? (roi >= 0 ? 'pos' : 'neg') : 'muted'}">${games >= 50 ? per100(roi) : 'Too few'}</b><span>${games >= 50 ? 'after fees' : 'bets to say'}</span></div>
         <div><small>Bets</small><b>${n.toLocaleString()}</b><span>in ${games} games${win != null ? ` · won ${Math.round(win * 100)}%` : ''}</span></div>
-        <div><small>At $10 a bet</small><b class="${roi >= 0 ? 'pos' : 'neg'}">${money(n * 10 * roi)}</b><span>over the season</span></div></div>
+        <div><small>Room to trade</small><b>~${BT.liquidity.median_contracts_30m}</b><span>contracts per price in the last 30 minutes (Kalshi)</span></div></div>
       ${wkMeter(C)}
       ${mt ? `<div class="wk-steps">${['0.02', '0.03', '0.05', '0.08'].filter(t => mt[t]).map(t => `<div class="wk-step ${mt[t][4] >= 2 ? 'good' : ''}${t === fs.edge ? ' cur' : ''}"><small>${Math.round(t * 100)}%+ edge</small><b>${per100(mt[t][3])}</b><small>${mt[t][1]} games</small></div>`).join('')}</div>` : ''}
       <ul class="wk-checks">
         <li><span>${games >= 50 ? '✅' : '⬜'}</span>At least 50 games (${games})</li>
-        <li><span>${(z ?? 0) >= 2 ? '✅' : '⬜'}</span>Rare enough to call real: 1 in 40 or rarer</li>
+        <li><span>${(z ?? 0) >= 2 ? '✅' : '⬜'}</span>Rare enough to look real for a single idea (1 in 40 or rarer). A slice you chose is not counted against the other ideas</li>
         ${steady != null ? `<li><span>${steady ? '✅' : '⬜'}</span>Pays at most edge sizes, not just one</li>` : ''}
         <li><span>⬜</span>Holds up live this season <span class="muted">(${MIN_LIVE}+ settled bets)</span></li></ul>
       <div class="wk-warn"><b>Careful with slices.</b> There are about 100 combinations here; a few will look good by luck alone. Treat anything you find as an idea, and only trust it when every box above is ticked.</div>`;
