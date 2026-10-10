@@ -4,6 +4,14 @@ Supersedes the ordering in [roadmap.md](roadmap.md); keeps its feature list. Bas
 edge-calibration, experiment-log, leakage audit) and a look at the running page (`nba/projections.html`, desktop 1440 and phone 390,
 preseason board of Oct 9). The live ledger was **not** read, per the experiment-log rule. Opening night is about **Oct 20**.
 
+## Decisions (owner, 2026-10-10)
+
+1. **Audience:** the owner, plus advanced NBA stat people with betting interest. Stat-forward and depth-friendly, not a casual-bettor
+   app. Advanced pages stay reachable and are not hidden; consolidation groups them, it does not bury them.
+2. **Real-money execution on Kalshi: yes.** Becomes Phase 1.5 below, behind hard risk rules. No signal trades real money until it passes
+   its pre-registered gate (see "Execution rules").
+3. **Accent colour: keep as is.** Closed; removed from open items.
+
 ## 1. Where we stand
 
 **Model vs market: not top tier on accuracy, and our docs say so.**
@@ -55,6 +63,33 @@ z >= 2.13, CLV not negative).
 | 1.3 **News-reaction clock** (differentiation #3): minutes from injury or lineup status change to each venue moving | The biggest measured mispricing was a price that had not caught up. This needs only data the recorder already writes | Per-venue lag distribution and the edge available inside the window |
 | 1.4 Ledger health: realized vs promised edge, live, using `calibrate_edge.py` buckets | The calibration table came from a backtest; live is the test | Live table beside the backtest table |
 
+### Phase 1.5: real-money Kalshi execution (starts only after 1.1 and 1.2)
+
+No authenticated Kalshi client exists in the repo today: every Kalshi script is a read-only fetch (`novig_client.py` is the only signed
+client, for Novig). So this is new code with new risk.
+
+**Execution rules (fixed now, before any order exists):**
+- **Gate:** only a cell that passed the experiment-log promotion rule (300 live bets, 50 game days, ROI > 0 after fees, z >= 2.13, CLV not
+  negative) may trade real money. Today that is zero cells. Until then the order path runs in **paper mode** (logs the order it would
+  place, at the price it would get) and its record is the evidence.
+- **Size:** quarter Kelly on the *realistic* edge (the calibrated one), hard cap of 1% of the Kalshi bankroll per order and 3% per game,
+  and a daily loss stop. Start at a fixed small dollar amount for the first 50 live orders.
+- **Kill switch:** one flag stops all orders. Auto-halt if live ROI after 150 orders is below 0 with z <= -1 (the demote rule), if the
+  recorder's Kalshi source has not answered in 30 minutes, or if a fill price is worse than the quote by more than the model's cost.
+- **Orders:** resting limit orders at our fair price (maker) first; crossing the spread (taker) only if 1.2 shows the edge survives the
+  fee. Check Kalshi's current fee schedule and API terms before sizing.
+- **Secrets:** API key and private key live in GitHub Actions secrets or a local env file, never in the repo, the page or the data branches.
+  The page never holds a key; execution runs server-side only.
+- **Compliance:** confirm Kalshi's rules on automated trading for the account and any state or tax implications. That check is the owner's.
+- **Reconcile:** every order, fill and cancel is logged beside the shadow ledger so live fills are scored on the same cube.
+
+| Item | Done when |
+|---|---|
+| 1.5.1 Authenticated read-only client (balance, positions, fills) | Fills reconcile to the ledger with no orders placed |
+| 1.5.2 Paper-mode order engine on the three frozen cells | 50 paper orders logged with the quoted price and the later real fill, if any |
+| 1.5.3 Risk layer and kill switch with tests | Unit tests for every halt rule; dry-run proves the halts fire |
+| 1.5.4 First live orders at fixed small size, only on a gated cell | Gate passed first; owner approves the first live day |
+
 ### Phase 2: features that turn edge into a decision (Nov)
 
 Ordered by value per effort; each needs no new model.
@@ -64,15 +99,18 @@ Ordered by value per effort; each needs no new model.
 3. **Price and edge beside each Minutes Lab projection.** Turns a minutes judgement into a bet in seconds (differentiation #6). Nobody else ships it.
 4. **Injury re-pricer alerts** from 1.3: push or on-page when a status change reprices teammates beyond the cost line.
 5. **Double and triple doubles** (roadmap #6): needs a real price feed; do not show a number without one.
-6. **Profile badges** (roadmap #8): lowest priority, retention only.
+6. **Analyst depth for the advanced audience (new):** surface what the models already compute rather than building new ones. A
+   per-player minutes and usage-cascade explainer ("who absorbs the minutes and shots when X sits"), per-stat rate and half-life views
+   (`rates_v3`), rolling form and opponent-by-position tables, and export of any table to CSV. Each is a view over existing data.
+7. **Profile badges** (roadmap #8): lowest priority; drop if the audience does not use them.
 
 ### Phase 3: design consolidation (parallel with Phase 2)
 
 | Item | Detail |
 |---|---|
-| 3.1 **Collapse 19 destinations to ~8** (D1) | Proposal, to validate with a card sort before building: **Tonight** (Slate + Injury Wire + Minutes Lab as tabs), **Props** (Player Props + Props Table as a view toggle; Edge Finder as a filter), **Game Lines** (+ Game Simulation), **Edges** (Edges + Sharp Price), **Pick'em**, **My Bets + Track Record** (one "Record"), **Models** (What Works + Backtest Lab + Control Room + Data Health, advanced), **Profile**. Keep old hashes redirecting; `viewOf()` already routes by hash. |
-| 3.2 **One answer per prop** | Collapse v1/v2/v3 and shadow variants behind a "Model details" disclosure. Default view = fair, edge, realistic edge, stake, gate chip. |
-| 3.3 **Move methodology under a disclosure** (D3) | Empty list should say what is missing and when it fills, not teach the model. |
+| 3.1 **Group 19 destinations into ~8, without hiding depth** (D1) | Audience is advanced users, so nothing analytical is removed; the goal is that the *first* screen answers "what is mispriced tonight" and the rest is one click deeper. Proposal, to validate with a card sort before building: **Tonight** (Slate + Injury Wire + Minutes Lab as tabs), **Props** (Player Props + Props Table as a view toggle; Edge Finder as a filter), **Game Lines** (+ Game Simulation), **Edges** (Edges + Sharp Price), **Pick'em**, **My Bets + Track Record** (one "Record"), **Models** (What Works + Backtest Lab + Control Room + Data Health, advanced), **Profile**. Keep old hashes redirecting; `viewOf()` already routes by hash. |
+| 3.2 **One answer per prop, full workings one click away** | Default view = fair, edge, realistic edge, stake, gate chip. For this audience the "Model details" panel stays open-able on every row and shows every term (as the Props page already does), including v2 vs the v3 shadow. |
+| 3.3 **Methodology to a docs page, not under an empty list** (D3) | Empty list says what is missing and when it fills; the methodology moves to a linked "How it works" page this audience will read. |
 | 3.4 **Mobile header** (D4) | One 48px bar: title, status dot, refresh. Fold the subtitle and theme toggle into the menu. Collapse Props filters to chips plus one "Filters" sheet. |
 | 3.5 **Weight** (D7) | Test on a throttled mobile profile. If load is slow, lazy-load Backtest Lab and Control Room data and keep headshots as shipped palette PNGs. |
 | 3.6 **Use the app's motion and segmented-control primitives** | New tabs/filter strips use `.vseg` and the `RAILS` pill; no new CSS (see CLAUDE.md). |
@@ -98,8 +136,7 @@ Each needs its own pre-registered row in `experiment-log.md` and its own 300 bet
 - Do not add another model variant. Three exist that are not shipped (v3, v3_full, minutes v3); the problem is not model quality.
 - Do not read the live ledger for new patterns and propose them; the experiment log says that earns no credit.
 
-## 5. Open questions for the owner
+## 5. Open questions
 
-1. Is the audience bettors (edge-first) or fantasy players (projections and what-ifs first)? It decides how aggressively Phase 3.1 hides advanced pages.
-2. Appetite for real-money execution (maker orders on Kalshi), or stay a shadow ledger plus information product?
-3. Accent colour is still undecided (orange, lime or cyan, per roadmap).
+1. Kalshi account: bankroll available for live trading, and is the account and its automated-trading terms confirmed OK? (Blocks 1.5.4 only.)
+2. Is the 3-pointer NO cell the first live candidate, since points NO needs a sub-1-cent half-spread? (Revisit after 1.1.)
