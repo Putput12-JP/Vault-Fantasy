@@ -7,7 +7,7 @@ on the NFL tape) carry their numbers here with the doc they come from.
 
   python3 nba/scripts/build_backtests.py      -> data/backtests.json (render_app inlines it as /*BACKTESTS*/)
 """
-import datetime as dt, json, os
+import math, datetime as dt, json, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
@@ -44,6 +44,20 @@ def hr_text(hr):
             f"(correlation {S['kalshi2026']['persistence']['corr']}).")
 
 
+# ── honesty constants (docs: nba/docs/experiment-log.md sections 2, 7, 8; nba/docs/update-plan.md) ──
+TRIALS = 68   # market cells with 50+ bets across the v2 and consensus backtests on 2025-26 (experiment-log.md section 2; an upper bound, variants overlap)
+# audit_spread.py (experiment-log.md section 7): consensus + model, Kalshi ladder, second half; [extra half-spread in cents, ROI per bet, z, bets]
+SPREAD = {'3pm|NO': [[0, .157, 2.80, 1548], [1, .170, 2.41, 1109], [2, .150, 1.86, 794], [3, .148, 1.15, 527]],
+          'pts|NO': [[0, .089, 2.38, 1834], [1, .039, 1.68, 1105], [2, -.025, .22, 614], [3, -.110, -1.70, 331]]}
+CAUTION = {'pts|kalshi|NO': 'Passed the backtest, but not trusted yet: after counting the ideas we tried, the odds it is luck are about 1 in 2, and its profit is gone if the buy/sell gap is 2 cents wider than we assumed (experiment-log.md).'}
+LIQUIDITY = {'median_contracts_30m': 105, 'share_under_1000': 0.86}   # per Kalshi rung in the last 30 minutes before tip (experiment-log.md section 5)
+# Tier 2 sizing gate, signed by the owner 2026-10-10 (experiment-log.md section 8): stake grows with the evidence, it does not wait for a verdict
+GATE = {'prior_mean': 0.05, 'prior_sd': 0.05, 'k': 0.793, 'min_games': 100, 'p_min': 0.90, 'micro_per_order': [1, 5], 'micro_budget': 200,
+        'games_needed': [[roi, math.ceil((2.13 * 0.793 / roi) ** 2)] for roi in (0.15, 0.10, 0.07, 0.05, 0.03)],
+        # chance a group-sequential test (looks at 150/300/450 games, one-sided alpha 0.05/3) passes by game 450, by true ROI (simulated, experiment-log.md section 8.1)
+        'power450': [[0.0, 0.015], [0.03, 0.09], [0.05, 0.21], [0.07, 0.39], [0.10, 0.69], [0.15, 0.97]]}
+
+
 def main():
     gm, mm, m3, uc = load('game_model.json'), load('minutes_model.json'), load('minutes_model_v3.json'), load('usage_cascade.json')
     p1, p2, p3, pf = load('prop_model.json'), load('prop_model_v2.json'), load('prop_model_v3.json'), load('prop_model_v3_full.json')
@@ -71,6 +85,14 @@ def main():
                                 # the no-model twin of this engine: the consensus alone, which is what the model has to beat here
                                 'base': (lambda q: {'roi': q.get('roi'), 'n': q.get('n'), 'z': q.get('z')})((cb['tests']['kalshi_ladder'][m]['bets'].get('consensus') or {}).get(sd) or {})})
     signals.sort(key=lambda s: ({'GO': 0, 'WATCH': 1}[s['gate']], -(s['z'] or 0)))
+    # Honest luck odds. A z of 2.9 is 1 in ~540 for ONE idea; we tried about TRIALS market cells on 2025-26, so the odds that the best of
+    # them looks this good by luck are TRIALS times worse (Bonferroni; experiment-log.md section 2 uses Holm, which agrees closely).
+    for s in signals:
+        if s['z'] is not None:
+            s['p_raw'] = 0.5 * math.erfc(s['z'] / math.sqrt(2))
+            s['p_adj'] = min(1.0, s['p_raw'] * TRIALS)
+        if s['key'] in CAUTION:
+            s['caution'] = CAUTION[s['key']]
 
     # ── per-area detail ──
     game = None
@@ -362,8 +384,15 @@ def main():
          'rule': "Pick the side with fair chance at least 3 points above the flex break-even: 150 picks over 40 games, hit rate above 54.25% at z >= 2.4, both halves above.", 'status': 'Rule frozen; Pinnacle props not posting in preseason'},
         {'name': 'Novig money against the close', 'area': 'Edges', 'due': '2026-12-01', 'doc': 'novig-money.md', 'rule': 'First look at 100 graded regular-season Novig money alerts ($1,000+ on one side of one market in 30 minutes): mean closing-line value against Pinnacle above zero at t >= 2, and positive in both halves.', 'status': 'Frozen, waiting for 100 alerts'}
     ]
+    pending += [
+        {'name': 'Real Kalshi buy/sell gap', 'area': 'Execution', 'due': '2026-11-03', 'doc': 'update-plan.md',
+         'rule': 'Median and 90th-percentile half-spread by stat from the recorder\'s bid and ask, compared with the audit table above: 3-pointer NO holds to 3 cents, points NO needs under about 1 cent.', 'status': 'Needs regular-season Kalshi books (none in preseason)'},
+        {'name': 'Resting-order (maker) fill replay', 'area': 'Execution', 'due': '2026-11-10', 'doc': 'update-plan.md',
+         'rule': 'Replay the trade tape: would a resting NO at our fair price have filled, at what size, and did the fills that happened lose more than the ones that did not? Accept rule written in the experiment log before it runs.', 'status': 'Rule not yet written'},
+        {'name': 'News reaction clock', 'area': 'Edges', 'due': '2026-11-17', 'doc': 'update-plan.md',
+         'rule': 'Minutes from an injury or lineup status change to each venue moving, and the edge available inside that window.', 'status': 'Recorder is logging the data'}]
     out = {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'doc': DOC,
-           'signals': signals, 'log': log, 'pending': pending, 'extra': extra, 'finder': finder, 'myth': myth, 'dont': dont, 'game': game, 'minutes': minutes, 'usage': usage, 'props': props, 'consensus': consensus,
+           'signals': signals, 'trials': TRIALS, 'spread': SPREAD, 'liquidity': LIQUIDITY, 'gate': GATE, 'log': log, 'pending': pending, 'extra': extra, 'finder': finder, 'myth': myth, 'dont': dont, 'game': game, 'minutes': minutes, 'usage': usage, 'props': props, 'consensus': consensus,
            'test': {'seasons': 'fit 2024-25, test 2025-26', 'player_games': (pf or {}).get('n_test'), 'games': (game or {}).get('games')}}
     json.dump(out, open(OUT, 'w'), separators=(',', ':'))
     print(f"backtests: {len(log)} tests, {len(signals)} GO / WATCH signals -> {os.path.relpath(OUT)} ({os.path.getsize(OUT) // 1000} KB)")
