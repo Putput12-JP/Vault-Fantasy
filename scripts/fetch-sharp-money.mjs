@@ -813,6 +813,80 @@ function grade(S) {
   }
 }
 
+
+// ── picks: what the Top Reads card showed ─────────────────────────────────
+// The card's "N of 4 agree" is computed live from the game's current prices
+// and money. The old record counted only the alerts that had fired, so a card
+// that read 3 of 4 could be logged as 2 (a slow line drift fires no alert) or
+// padded by a stale alert at a different number. This ports the card's own
+// rule (page: Rf) so the record counts exactly the signals the card showed.
+// Per game, market and side we keep the PEAK read before kickoff (most
+// signals; later reads at the same count roll forward), grade it on the final
+// score, and ship it as `picks`. The page uses picks wherever a game has them
+// and falls back to alerts for games from before this existed.
+const KINDS = ['line', 'money', 'sharp', 'behind'];
+const pdev = (a, b) => {
+  const f = l => l < 0 ? -l / (-l + 100) : 100 / (l + 100), o = f(a), i = f(b);
+  let s = .5, r = 3;
+  for (let k = 0; k < 40; k++) { const d = (s + r) / 2; o ** d + i ** d > 1 ? s = d : r = d; }
+  return o ** ((s + r) / 2) / (o ** ((s + r) / 2) + i ** ((s + r) / 2));
+};
+const gShort = (e, side) => e[side].short || e[side].abbr;
+function cardSignals(e, m) {
+  const out = { line: null, money: null, sharp: null, behind: null };
+  const [i, s] = m === 'tot' ? ['over', 'under'] : ['away', 'home'];
+  const hl = e.pin?.[m]?.line ?? e.consensus?.[m]?.line ?? null;
+  const n = e.pin, o = e.open;
+  if (n && o) {
+    if (m === 'sp' && n.sp && o.sp) {
+      const d = o.sp.line - n.sp.line;
+      if (Math.abs(d) >= .5) out.line = { side: d > 0 ? 'home' : 'away', txt: `${gShort(e, 'home')} ${o.sp.line > 0 ? '+' : ''}${o.sp.line} → ${n.sp.line > 0 ? '+' : ''}${n.sp.line}` };
+    }
+    if (m === 'tot' && n.tot && o.tot) {
+      const d = n.tot.line - o.tot.line;
+      if (Math.abs(d) >= 1) out.line = { side: d > 0 ? 'over' : 'under', txt: `${o.tot.line} → ${n.tot.line}` };
+    }
+    if (m === 'ml' && n.ml && o.ml && o.ml.home && o.ml.away) {
+      const v = pdev(o.ml.home, o.ml.away), y = pdev(n.ml.home, n.ml.away), d = y - v;
+      if (Math.abs(d) >= .03) out.line = { side: d > 0 ? 'home' : 'away', txt: `${gShort(e, 'home')} ${Math.round(v * 100)}% → ${Math.round(y * 100)}%` };
+    }
+  }
+  const sp = e.splits?.[m];
+  if (sp) for (const p of [i, s]) { const h = sp[p]; if (h && h.m != null && h.t <= 50 && h.m - h.t >= 10) out.money = { side: p, txt: `${h.m}% of the money on ${h.t}% of bets` }; }
+  const c = (e.flow?.sharp?.[m + ':' + i] || 0) - (e.flow?.sharp?.[m + ':' + s] || 0);
+  if (Math.abs(c) >= 1e3) out.sharp = { side: c > 0 ? i : s, txt: `$${Math.round(Math.abs(c)).toLocaleString('en-US')} net from sharp accounts` };
+  const b = (e.behind || []).find(x => x.m === m);
+  if (b) out.behind = { side: b.side, txt: `${b.book} ${b.price > 0 ? '+' : ''}${b.price}, ${(b.ev * 100).toFixed(1)}% over Pinnacle's fair` };
+  return { out, hl };
+}
+function snapPicks(S, games) {
+  const t = now(); S.picks ||= {};
+  for (const e of games) {
+    if (e.start <= t) continue;
+    for (const m of ['sp', 'tot', 'ml']) {
+      const { out, hl } = cardSignals(e, m), by = {};
+      for (const k of KINDS) if (out[k]) (by[out[k].side] ||= []).push(k);
+      for (const [side, kinds] of Object.entries(by)) {
+        const key = `${e.key}|${m}|${side}`, old = S.picks[key];
+        if (old && old.kinds.length > kinds.length) continue;           // keep the peak
+        S.picks[key] = { game: e.key, gameLbl: `${e.away.abbr || e.away.short} @ ${e.home.abbr || e.home.short}`, sport: e.sport, start: e.start, m, side,
+          hline: m === 'sp' ? hl : null, line: m === 'tot' ? hl : null, kinds, sig: Object.fromEntries(kinds.map(k => [k, out[k].txt])), ts: t, result: old?.result ?? null };
+      }
+    }
+  }
+  for (const [k, p] of Object.entries(S.picks)) if (p.start < t - 60 * DAY) delete S.picks[k];
+}
+function gradePicks(S) {
+  for (const p of Object.values(S.picks || {})) {
+    const G = S.games[p.game]; if (!G?.final || p.result != null || p.start > now()) continue;
+    const { home, away } = G.final; let v;
+    if (p.m === 'ml') v = home === away ? 0 : (home > away) === (p.side === 'home') ? 1 : -1;
+    else if (p.m === 'sp' && p.hline != null) { const d = home + p.hline - away, r = p.side === 'home' ? d : -d; v = r > 0 ? 1 : r < 0 ? -1 : 0; }
+    else if (p.m === 'tot' && p.line != null) { const d = home + away - p.line, r = p.side === 'over' ? d : -d; v = r > 0 ? 1 : r < 0 ? -1 : 0; }
+    if (v != null) p.result = v;
+  }
+}
+
 // ── build the page payload ──────────────────────────────────────────────
 function payload(S, byGame, W, status) {
   const t = now();
@@ -951,8 +1025,9 @@ async function pollOnce() {
   for (const [k, G] of Object.entries(S.games)) if (G.meta && G.meta.start < t - 7 * DAY) delete S.games[k];
   S.alerts = S.alerts.filter(a => a.ts > t - 60 * DAY);
   const fresh = S._new; delete S._new;
-  saveState(S);
   const P = payload(S, all, { ...walletInfo }, status);
+  snapPicks(S, P.games); gradePicks(S); P.picks = Object.values(S.picks);
+  saveState(S);
   // `sig` changes only when something a viewer would see changes.
   // Props page: Pinnacle / books / Kalshi / Novig at the same line. Optional, never blocks the poll.
   try {
