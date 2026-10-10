@@ -64,7 +64,7 @@ z >= 2.13, CLV not negative).
 | 1.3 **News-reaction clock** (differentiation #3): minutes from injury or lineup status change to each venue moving | The biggest measured mispricing was a price that had not caught up. This needs only data the recorder already writes | Per-venue lag distribution and the edge available inside the window |
 | 1.4 Ledger health: realized vs promised edge, live, using `calibrate_edge.py` buckets | The calibration table came from a backtest; live is the test | Live table beside the backtest table |
 
-### Phase 1.5: real-money Kalshi execution (starts only after 1.1 and 1.2)
+### Phase 1.5: real-money Kalshi execution (Tier 1 starts after 1.1 and 1.5.3)
 
 No authenticated Kalshi client exists in the repo today: every Kalshi script is a read-only fetch (`novig_client.py` is the only signed
 client, for Novig). So this is new code with new risk.
