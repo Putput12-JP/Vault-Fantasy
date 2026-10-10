@@ -22,7 +22,14 @@
 #      far the model disagrees with the market (does a big disagreement mean the
 #      model is onto something, or that the model is wrong?)
 #
-#  Usage: python3 scripts/fit_prop_offset.py [--min-n=60] [--json=path]
+#  --plays[=path]  score the LIVE Sharp Money play ledger instead (prop_plays.json
+#      from the sharp-data branch; default: git show origin/sharp-data:prop_plays.json).
+#      Each play carries model.d, the model's logit gap to the Pinnacle/Kalshi fair
+#      on the called side. Reports, by d bucket (model confirms / neutral / disagrees):
+#      how far the fair price moved to the close, settled units at the called price,
+#      and (once n allows) c fit on settled outcomes with the fair price as offset.
+#
+#  Usage: python3 scripts/fit_prop_offset.py [--min-n=60] [--json=path] [--plays[=path]]
 # ════════════════════════════════════════════════════════════════════════════
 import json, math, os, sys
 from collections import defaultdict
@@ -110,7 +117,61 @@ def report(name, rows):
             "wf": {"n": n, "ll_market": lm, "ll_offset": lo, "z": z}}
 
 
+def load_plays(path):
+    import subprocess
+    if path is True:
+        raw = subprocess.run(["git", "-C", os.path.join(HERE, ".."), "show", "origin/sharp-data:prop_plays.json"],
+                             capture_output=True, text=True, check=True).stdout
+    else:
+        raw = open(path).read()
+    d = json.loads(raw)
+    return list((d.get("plays") or d).values())
+
+
+def mean_se(v):
+    n = len(v)
+    if n < 2: return (v[0] if v else None), None
+    mu = sum(v) / n
+    return mu, math.sqrt(sum((x - mu) ** 2 for x in v) / (n - 1) / n)
+
+
+def plays_report(path):
+    P = load_plays(path)
+    withm = [p for p in P if p.get("model") and p["model"].get("d") is not None]
+    print(f"{len(P)} logged plays, {len(withm)} carry a model block "
+          f"({sum(p.get('status') in ('won', 'lost') for p in withm)} settled, "
+          f"{sum(p.get('closeFair') is not None for p in withm)} with a close)")
+    if not withm:
+        print("no plays logged since the model block shipped yet: nothing to score"); return {}
+    out = {}
+    print("\nBy how the model sees the called side (d = model logit minus fair logit):")
+    print("  bucket            n   fair->close (pts)        settled  W-L    units/bet")
+    for name, lo, hi in (("model disagrees", -9, -0.10), ("neutral", -0.10, 0.10), ("model confirms", 0.10, 0.30), ("strong confirm", 0.30, 9)):
+        xs = [p for p in withm if lo <= p["model"]["d"] < hi]
+        mv = [(p["closeFair"] - p["called"]["fair"]) * 100 for p in xs if p.get("closeFair") is not None and p["called"].get("fair") is not None]
+        st = [p for p in xs if p.get("status") in ("won", "lost")]
+        mu, se = mean_se(mv)
+        units = sum(p.get("units", 0) for p in st)
+        w = sum(p["status"] == "won" for p in st)
+        mtxt = "   -   " if mu is None else f"{mu:+.2f}" + (f" (se {se:.2f})" if se is not None else "")
+        print(f"  {name:15} {len(xs):4}   {mtxt:22} {len(st):6}  {w}-{len(st) - w}  {units / len(st) if st else float('nan'):+.3f}")
+        out[name] = {"n": len(xs), "move_pts": mu, "se": se, "settled": len(st), "units": round(units, 3)}
+    st = [p for p in withm if p.get("status") in ("won", "lost") and p["called"].get("fair") is not None]
+    if len(st) >= MIN_N:
+        rows = [{"y": 1.0 if p["status"] == "won" else 0.0, "off": lg(p["called"]["fair"]), "d": p["model"]["d"]} for p in st]
+        c, se = fit_c(rows)
+        print(f"\nc fit on {len(st)} settled plays, fair price as offset: c = {c:+.3f} (se {se:.3f})")
+        out["c_live"] = {"c": c, "se": se, "n": len(st)}
+    else:
+        print(f"\nc on settled outcomes needs {MIN_N}+ settled plays with a model block (have {len(st)}); the move column is the early read")
+    return out
+
+
 def main():
+    if ARG.get("plays"):
+        res = plays_report(ARG["plays"])
+        if ARG.get("json"): json.dump(res, open(ARG["json"], "w"), indent=1)
+        return
     rows = load()
     by = defaultdict(list)
     for r in rows: by[r["m"]].append(r)
