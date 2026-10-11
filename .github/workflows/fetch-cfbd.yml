@@ -1,0 +1,31 @@
+# Pulls CollegeFootballData inputs (talent, returning production, transfer portal, recruiting, public ratings) into data/cfbd/
+# for the CFB model's v2 preseason prior. Needs the repo secret CFBD_API_KEY. Manual: run it when a season starts or the model needs a refresh.
+name: Fetch CFBD data
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Fetch
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: python3 scripts/fetch_cfbd.py
+      - name: Commit
+        run: |
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git add data/cfbd
+          git diff --cached --quiet && { echo "No changes."; exit 0; }
+          git commit -m "cfbd: refresh model inputs [skip ci]"
+          git pull --rebase -q origin main
+          git push
