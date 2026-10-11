@@ -169,8 +169,10 @@ EWMA, so per-player minutes volatility is worth very little either way. Not purs
 - Live differences from the backtest, stated so nobody is surprised: absences come from the injury report, not from who sat; the
   margin is the market spread, not the game model's; there is no team-total rescale (the backtest scored it raw); a just-traded
   player is scored on his old team's history, as in the backtest.
-- Not wired: the Tonight table has no GBM column. The page prices in JavaScript and would need a JS copy of the tree scorer and
-  a parity test; not worth building before the shadow earns it.
+- The Tonight table has a **GBM** column next to v3 (shadow, never priced). The page runs a JavaScript twin of the scorer
+  (`ui/minutes_gbm.js`, inlined by `render_app.py`); `check_minutes_gbm_js_parity.py` shows it equals the Python scorer to 0.0
+  minutes on 483 players across 30 team-games (with players ruled out and spreads of -12 to +7.5 and none). Loaded in Chromium: no
+  console errors, the column renders with values at desktop and phone width.
 
 **11. Without the price archive: what stands in for it (2026-10-11).** Kalshi, ESPN, NBA.com and Polymarket are all blocked from the
 build sandbox, and the `nba-data` branch only holds preseason snapshots (no regular-season prop prices before Oct 20), so the Kalshi

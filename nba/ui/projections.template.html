@@ -1735,6 +1735,8 @@ const PB = /*BOARD*/null;       // props board: {live, example} (prop_board.py)
 const BT = /*BACKTESTS*/null;   // every test, its rule, result and verdict (build_backtests.py)
 const CTL = /*CONTROL*/null;       // Control Room: frozen models, dated tests, past verdicts (render_app.control)
 const TR0 = /*TRACK*/null;      // shadow ledger summary + recent bets (ledger.py via build_data_health.py)
+const GBM_MODEL = /*GBMMODEL*/null;   // minutes GBM trees (data/minutes_gbm.json), shadow only
+/*MINUTES_GBM_JS*/
 const MS = /*STATE*/null;       // prop model v2 state: team defense / pace / scoring, player shooting / minutes swing (build_model_state.py)
 const EAST = ['ATL','BOS','BKN','CHA','CHI','CLE','DET','IND','MIA','MIL','NY','ORL','PHI','TOR','WSH'];
 const NB = D.rebalance.same / D.rebalance.other;  // same-position teammates absorb this many times more (minutes model)
@@ -2806,6 +2808,15 @@ function gameMinutesV3(team, g, cache){
   const tot = Object.values(pm).reduce((x, y) => x + y, 0);
   if (tot > 0 && Object.keys(pm).length >= 7){ const f = (starters ? M3.team_min_starters : M3.team_min) / tot; for (const a in pm) pm[a] = Math.min(48, pm[a] * f); }
   cache[key] = {pm, starters: !!starters};
+  return cache[key];
+}
+function gameMinutesGbm(team, g, cache){
+  const key = `gmg|${team}|${g.id}`;
+  if (cache[key]) return cache[key];
+  const state = MS && (PS.mode === 'example' ? MS.example : MS.live);
+  if (!state || !state.gbm || !GBM_MODEL){ cache[key] = {}; return cache[key]; }
+  if (!cache.__status) cache.__status = statusFromBoard(PS.board);
+  cache[key] = gbmMinutes(GBM_MODEL, state.gbm, team, g, cache.__status, (D.teams[team] ? D.teams[team].players : []).map(p => p.id));
   return cache[key];
 }
 function muFor(pid, stat, cache, g, bteam){
@@ -3939,12 +3950,12 @@ function renderTonight(){
   const cache = {}, status = statusFromBoard(B), P = B.players || {};
   const edits = tonightEdits[gid] || {};
   const teams = [g.away, g.home].map(team => {
-    const model = gameMinutes(team, g, cache), v3m = gameMinutesV3(team, g, cache), rows = [];
+    const model = gameMinutes(team, g, cache), v3m = gameMinutesV3(team, g, cache), gbm = gameMinutesGbm(team, g, cache), rows = [];
     for (const [a, G] of Object.entries(model)){
       const pid = +a, mu = {};
       for (const s of ['pts', 'reb', 'ast', '3pm']){ const m = muFor(pid, s, cache, g, team); mu[s] = m ? m.mu : null; }
       const sd = G.sdm || 6;
-      rows.push({pid, name: nameOf(B, pid), min: G.min, lo: Math.max(0, G.min - 1.2816 * sd), hi: Math.min(48, G.min + 1.2816 * sd), parts: G.parts, mine: G.mine, v3: v3m.pm[pid],
+      rows.push({pid, name: nameOf(B, pid), min: G.min, lo: Math.max(0, G.min - 1.2816 * sd), hi: Math.min(48, G.min + 1.2816 * sd), parts: G.parts, mine: G.mine, v3: v3m.pm[pid], gb: gbm[pid],
                  st: status[pid], lu: P[pid] ? P[pid][3] : null, stT: P[pid] ? P[pid][4] : null, luT: P[pid] ? P[pid][5] : null, mu, mkt: marketMinutes(B, g, team, pid, G.min, cache), src: 'model'});
     }
     const seen = new Set(rows.map(r => r.pid));
@@ -3983,12 +3994,13 @@ function renderTonight(){
   const stTxt = r => [LINEUP[r.lu] || '', r.st ? `<span class="${/out|inactive/i.test(r.st) ? 'neg' : 'warnt'}">${esc(r.st)}${r.stT ? ' ' + clock(r.stT) : ''}</span>` : '', r.src === 'lab' ? '<span class="muted" title="No games yet for this team: the Minutes Lab estimate">Lab estimate</span>' : ''].filter(Boolean).join(' · ');
   $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
       <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.total, 0)} minutes projected across ${T.rows.filter(r => !r.off).length} players · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div></div>
-      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
-      ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
+      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Shadow: gradient-boosted minutes model. Logged next to v2 and v3, never priced. Uses the same injury statuses; the market spread stands in for the game model's margin.">GBM</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
+      ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
         : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
         <td><span class="nt-min"><input type="number" min="0" max="48" step="0.5" data-pid="${r.pid}" value="${fmt(r.min)}" class="${r.mine ? 'mine' : ''}" aria-label="Minutes for ${esc(r.name)}" ${r.src === 'lab' ? 'disabled title="Edit this team in the Minutes Lab"' : ''}></span>${r.lo != null ? `<small>${fmt(r.lo, 0)} to ${fmt(r.hi, 0)}</small>` : ''}</td>
         <td class="l"><div class="nt-parts">${r.mine ? '<span class="nt-p" style="color:var(--warn)">your minutes</span>' : r.parts ? `<span class="nt-p">avg ${fmt(r.parts.base)}</span>${chip(r.parts.vac, 'teammates out')}${chip(r.parts.blow, 'blowout risk')}${chip(r.parts.b2b, 'back-to-back')}${chip(r.parts.other + r.parts.rescale, 'team fit')}` : ''}</div></td>
         <td>${r.v3 != null ? `<span class="muted">${fmt(r.v3)}</span><small>${r.v3 - r.min >= 0 ? '+' : ''}${fmt(r.v3 - r.min)}</small>` : ''}</td>
+        <td>${r.gb != null ? `<span class="muted">${fmt(r.gb)}</span><small>${r.gb - r.min >= 0 ? '+' : ''}${fmt(r.gb - r.min)}</small>` : ''}</td>
         <td>${r.mkt ? `<span class="nt-mkt ${Math.abs(r.mkt.min - r.min) >= MKT_FLAG ? 'flag' : ''}" title="Market ${SLABEL[r.mkt.stat]} mean ${fmt(r.mkt.mean)} vs our ${fmt(r.mkt.ours)}">${fmt(r.mkt.min)}</span><small>${r.mkt.min - r.min >= 0 ? '+' : ''}${fmt(r.mkt.min - r.min)}</small>` : '<span class="muted">none</span>'}</td>
         ${['pts', 'reb', 'ast', '3pm'].map(s => `<td>${r.mu[s] != null ? fmt(r.mu[s]) : ''}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div></section>`).join('');
