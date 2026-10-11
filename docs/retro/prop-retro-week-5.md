@@ -14,31 +14,31 @@ The closing line is the sharpest number the market posts, so it is our stand-in 
 
 ```
 rec            n= 101    55-46 54.5% | CLV 59.4% | MAE   1.5 bias -0.28 | edge -0.021
-rec_yd         n= 100    53-47 53.0% | CLV 57.0% | MAE  21.8 bias -2.68 | edge -0.005
+rec_yd         n= 100    53-47 53.0% | CLV 57.0% | MAE  21.8 bias -2.67 | edge -0.005
 rush_yd        n=  46    23-23 50.0% | CLV 41.3% | MAE  19.4 bias +2.79 | edge +0.018
 rush_att       n=  44    20-24 45.5% | CLV 54.5% | MAE   3.5 bias +0.47 | edge +0.001
 rush_rec_yd    n=  26    15-11 57.7% | CLV 38.5% | MAE  26.9 bias +4.08 | edge   -  
 pass_td        n=  18     14-4 77.8% | CLV 55.6% | MAE   0.8 bias -0.05 | edge +0.038
 pass_int       n=  18     11-7 61.1% | CLV 44.4% | MAE   0.8 bias +0.09 | edge   -  
-pass_yd        n=  18     10-8 55.6% | CLV 44.4% | MAE  64.2 bias -6.00 | edge -0.087
+pass_yd        n=  18     10-8 55.6% | CLV 44.4% | MAE  64.3 bias -5.95 | edge -0.087
 pass_cmp       n=  17     5-12 29.4% | CLV 41.2% | MAE   3.6 bias -1.39 | edge -0.081
-pass_rush_yd   n=  15      7-8 46.7% | CLV 53.3% | MAE  68.4 bias -7.81 | edge   -  
+pass_rush_yd   n=  15      7-8 46.7% | CLV 53.3% | MAE  68.5 bias -7.74 | edge   -  
 pass_att       n=  15      9-6 60.0% | CLV 66.7% | MAE   5.9 bias -1.74 | edge +0.001
 ```
 
 ## By position
 
 ```
-QB     n= 133    70-63 52.6% | CLV 49.6% | MAE  19.5 bias -2.01 | edge -0.017
+QB     n= 133    70-63 52.6% | CLV 49.6% | MAE  19.5 bias -1.99 | edge -0.017
 RB     n= 130    71-59 54.6% | CLV 51.5% | MAE  14.0 bias +1.49 | edge +0.016
-WR     n=  99    50-49 50.5% | CLV 61.6% | MAE  15.2 bias -3.01 | edge -0.030
+WR     n=  99    50-49 50.5% | CLV 61.6% | MAE  15.2 bias -3.00 | edge -0.030
 TE     n=  56    31-25 55.4% | CLV 48.2% | MAE   9.3 bias +1.01 | edge +0.000
 ```
 
 ## Over vs under
 
 ```
-over   n= 238  123-115 51.7% | CLV 50.8% | MAE  17.4 bias -1.37 | edge +0.010
+over   n= 238  123-115 51.7% | CLV 50.8% | MAE  17.4 bias -1.35 | edge +0.010
 under  n= 180    99-81 55.0% | CLV 55.6% | MAE  12.8 bias +0.06 | edge -0.034
 ```
 
