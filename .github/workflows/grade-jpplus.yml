@@ -1,0 +1,54 @@
+# Grades the outside college-football model JP+ (jpplusratings.com) against real results and the
+# real closing line. Picks are copied into data/jpplus_picks.json by hand each week; this job fills
+# in final scores, ESPN's closing spread, and closing-line value, then writes data/jpplus_graded.json
+# for the Sharp Money page. Free and keyless: ESPN data from the sportsdataverse-data releases.
+name: Grade JP+ picks
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'data/jpplus_picks.json'
+      - 'scripts/grade_jpplus_picks.py'
+  schedule:
+    # Saturdays and Sundays during the season (late games finish after midnight UTC), plus Mondays.
+    - cron: '25 13 * 9-12,1 0,1,6'
+    - cron: '40 3 * 9-12,1 0,1,6'
+
+concurrency:
+  group: grade-jpplus
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  grade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install pandas pyarrow
+      - name: Grade
+        run: python3 scripts/grade_jpplus_picks.py
+      - name: Commit if changed
+        run: |
+          # `generated` changes every run; only commit when a pick's result or line actually moved
+          git fetch -q origin main
+          if git show origin/main:data/jpplus_graded.json > /tmp/prev.json 2>/dev/null && python3 - <<'PY'
+          import json,sys
+          a=json.load(open('/tmp/prev.json')); b=json.load(open('data/jpplus_graded.json'))
+          sys.exit(0 if (a.get('picks')==b.get('picks') and a.get('summary')==b.get('summary')) else 1)
+          PY
+          then
+            echo "No grading changes."
+          else
+            git config user.name  "vault-bot"
+            git config user.email "vault-bot@users.noreply.github.com"
+            git add data/jpplus_graded.json
+            git commit -m "jp+: grade picks [skip ci]"
+            git pull --rebase -q origin main
+            git push
+          fi
