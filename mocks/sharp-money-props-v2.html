@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sharp Money — Props v2 (concept)</title>
+<style>
+  :root{
+    --bg:#0e0f13;--s1:#16171c;--s2:#1c1e24;--s3:#23252c;--s4:#2c2f38;
+    --bd:rgba(255,255,255,.08);--fg:#f3f4f7;--fg2:#c9cdd6;--mut:#7e8493;
+    --acc:#8fb4e0;--good:#5fe09a;--bad:#ff5a6e;--warn:#f5c842;
+    --qb:#ff6680;--rb:#3dcc7a;--wr:#7bd0ff;--te:#f5c842;
+    --sans:system-ui,-apple-system,'Segoe UI',sans-serif;--mono:ui-monospace,'SF Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;scrollbar-width:none}*::-webkit-scrollbar{display:none}
+  body{background:var(--bg);color:var(--fg);font:13px/1.45 var(--sans);min-height:100vh}
+  .k{font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+  .mono{font-family:var(--mono)}.g{color:var(--good)}.r{color:var(--bad)}.m{color:var(--mut)}
+  .app{display:grid;grid-template-columns:56px minmax(0,1fr);min-height:100vh}
+  .rail{border-right:1px solid var(--bd);padding:16px 8px;display:flex;flex-direction:column;gap:10px;align-items:center}
+  .rail i{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--mut);font-style:normal;font-size:15px}
+  .rail i.on{background:var(--s3);color:var(--fg)}
+  .logo{width:32px;height:32px;border-radius:8px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font:800 11px var(--mono);margin-bottom:8px}
+  header{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:700}
+  .chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);font:600 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg2)}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--good)}.dot.o{background:var(--bad)}
+  .seg{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:3px}
+  .seg b{font-weight:600;font-size:12px;padding:5px 12px;border-radius:999px;color:var(--mut);cursor:pointer}
+  .seg b.on{background:var(--fg);color:var(--bg)}
+  .sp{flex:1}
+  /* tracker strip */
+  .trk{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--bd);border-bottom:1px solid var(--bd)}
+  .trk>div{background:var(--bg);padding:12px 16px}
+  .trk .v{font:700 20px var(--mono);margin:2px 0}.trk .d{font-size:11px;color:var(--mut)}
+  .meter{height:3px;background:var(--s3);border-radius:2px;margin-top:8px}.meter i{display:block;height:100%;background:var(--good);border-radius:2px}
+  .work{display:grid;grid-template-columns:minmax(420px,480px) minmax(0,1fr) 380px;height:calc(100vh - 53px - 100px)}
+  .pane{overflow:auto;border-right:1px solid var(--bd)}.pane:last-child{border-right:0}
+  .ph{position:sticky;top:0;z-index:2;background:var(--bg);padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;gap:10px}
+  .ph .row1{display:flex;align-items:center;gap:10px}
+  input{background:var(--s2);border:1px solid var(--bd);border-radius:999px;color:var(--fg);padding:6px 12px;font:12px var(--sans);width:150px;outline:none}
+  .pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pl{padding:4px 11px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);font-size:11px;font-weight:600;color:var(--mut);cursor:pointer}
+  .pl.on{background:var(--fg);color:var(--bg)}
+  /* photos */
+  .ph-av{position:relative;flex:none;border-radius:50%;overflow:hidden;background:var(--s3);display:grid;place-items:center;font:800 13px var(--mono);color:var(--bg)}
+  .ph-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 12%}
+  .QB{background:var(--qb)}.RB{background:var(--rb)}.WR{background:var(--wr)}.TE{background:var(--te)}
+  .ring{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--c)}
+  /* list rows */
+  .row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bd);cursor:pointer}
+  .row:hover{background:var(--s1)}.row.on{background:var(--s2);box-shadow:inset 3px 0 var(--acc)}
+  .row .n{font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center}
+  .row .s{color:var(--mut);font-size:11px;margin-top:1px}
+  .row .pick{font:600 12px var(--mono);color:var(--fg2);margin-top:4px}
+  .row .e{text-align:right}.row .e b{font:800 17px var(--mono);color:var(--warn);display:block}
+  .st{display:inline-block;font:700 9px var(--mono);letter-spacing:.08em;padding:2px 6px;border-radius:5px;margin-top:4px}
+  .st.open{background:var(--s3);color:var(--fg2)}.st.up{background:rgba(95,224,154,.14);color:var(--good)}.st.dn{background:rgba(255,90,110,.14);color:var(--bad)}.st.old{background:rgba(245,200,66,.14);color:var(--warn)}
+  .star{cursor:pointer;color:var(--mut);font-size:15px;line-height:1}.star.on{color:var(--warn)}
+  /* centre */
+  .center{padding:22px 26px;display:grid;gap:16px;align-content:start}
+  .hd{display:flex;gap:18px;align-items:center}
+  .hd h2{font-size:26px;font-weight:800;line-height:1.1}
+  .hd .sub{color:var(--mut);margin-top:3px}
+  .hd .big{margin-left:auto;text-align:right}.hd .big b{display:block;font:800 30px var(--mono);color:var(--warn)}
+  .play{font:700 20px var(--sans)}
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:16px}
+  .card h4{margin-bottom:12px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  /* price ladder */
+  .lad{display:grid;grid-template-columns:120px 1fr 74px 64px;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--bd)}
+  .lad:first-of-type{border-top:0}
+  .lad .nm{font-weight:600;font-size:12px}.lad .nm small{display:block;color:var(--mut);font-weight:500;font-size:10px}
+  .track{position:relative;height:6px;background:var(--s3);border-radius:3px}
+  .track .fill{position:absolute;left:0;top:0;height:100%;border-radius:3px;background:var(--acc)}
+  .track .fair{position:absolute;top:-4px;width:2px;height:14px;background:var(--fg)}
+  .lad .px{font:700 12px var(--mono);text-align:right}.lad .ev{font:700 11px var(--mono);text-align:right}
+  .lad.me{background:rgba(143,180,224,.07);border-radius:8px;padding-left:8px;padding-right:8px;margin:0 -8px}
+  /* tracking timeline */
+  .tl{display:grid;grid-template-columns:repeat(5,1fr);position:relative;margin-top:4px}
+  .tl::before{content:'';position:absolute;left:10%;right:10%;top:9px;height:2px;background:var(--s4)}
+  .tl>div{position:relative;text-align:center;font-size:11px;color:var(--mut)}
+  .tl i{display:block;width:12px;height:12px;border-radius:50%;background:var(--s4);margin:3px auto 8px;border:2px solid var(--s1);position:relative;z-index:1}
+  .tl .done i{background:var(--acc)}.tl .now i{background:var(--warn);box-shadow:0 0 0 4px rgba(245,200,66,.18)}
+  .tl b{display:block;color:var(--fg);font:700 12px var(--mono);margin-top:2px}
+  .tl .lab{color:var(--fg2);font-weight:600}
+  .clvbox{display:flex;gap:24px;margin-top:16px;padding-top:14px;border-top:1px solid var(--bd)}
+  .clvbox div b{display:block;font:800 18px var(--mono)}
+  /* right rail */
+  .tabs{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:3px}
+  .tabs b{font-size:11px;font-weight:600;padding:4px 11px;border-radius:999px;color:var(--mut);cursor:pointer}.tabs b.on{background:var(--fg);color:var(--bg)}
+  .tk{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--bd)}
+  .tk .n{font-weight:700}.tk .s{font-size:11px;color:var(--mut)}
+  .tk .r2{text-align:right;font:700 12px var(--mono)}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font:700 9px var(--mono);letter-spacing:.08em;color:var(--mut);text-transform:uppercase;padding:8px 10px}
+  td{padding:8px 10px;border-top:1px solid var(--bd);font:500 11px var(--mono)}
+  td:first-child{font-family:var(--sans);font-weight:600;font-size:12px}
+  .sec{padding:12px 16px 4px}
+  .bucket{display:grid;grid-template-columns:70px 1fr 56px;gap:10px;align-items:center;padding:8px 16px;font-size:11px}
+  .note{position:fixed;right:16px;bottom:12px;font:600 10px var(--mono);color:var(--mut);background:var(--s2);border:1px solid var(--bd);padding:6px 10px;border-radius:8px;z-index:9}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail"><div class="logo">SM</div><i>▦</i><i>◎</i><i class="on">☺</i><i>★</i><i>⚗</i></nav>
+  <div>
+    <header>
+      <h1>Props</h1><span class="chip"><span class="dot"></span>Updated 7m ago</span>
+      <span class="chip"><span class="dot"></span>Pinnacle 12m</span><span class="chip"><span class="dot"></span>Kalshi 12m</span><span class="chip"><span class="dot"></span>Novig 9m</span><span class="chip"><span class="dot o"></span>US books 3h 44m</span>
+      <span class="sp"></span>
+      <div class="seg"><b class="on">Plays</b><b>Pick'em</b><b>Price gaps</b><b>Sharp bought</b><b>Tracker</b></div>
+    </header>
+
+    <!-- Tracking strip: every play is followed from call to close to result -->
+    <section class="trk" id="trk"></section>
+
+    <section class="work">
+      <div class="pane">
+        <div class="ph"><div class="row1"><span class="k">+EV plays</span><span class="sp"></span><input id="q" placeholder="Find a player"></div>
+          <div class="pills" id="pills"></div></div>
+        <div id="list"></div></div>
+      <div class="pane center" id="center"></div>
+      <div class="pane">
+        <div class="ph"><div class="row1"><span class="k">Tracker</span><span class="sp"></span><div class="tabs" id="tabs"><b class="on" data-t="mine">Mine</b><b data-t="rec">Record</b><b data-t="cal">Calibration</b></div></div></div>
+        <div id="right"></div></div>
+    </section>
+  </div>
+</div>
+<div class="note">CONCEPT · real 10/11 prop data · photos load from Sleeper's CDN (initials show if blocked)</div>
+<script>
+const DATA={"asof": 1791754532, "plays": [{"pid": "11637", "name": "Keon Coleman", "team": "BUF", "pos": "WR", "label": "Receptions", "line": 3.5, "side": "over", "src": "Kalshi", "am": 163, "p": 0.38, "ev": 0.0615, "evAdj": 0.0615, "stake": 0.47, "stale": false, "check": [], "fair": 0.4034, "fairSrc": "Pinnacle", "ven": [{"src": "Pinnacle", "am": 130, "ev": null, "kind": "book"}, {"src": "Parx Casino", "am": 138, "ev": -0.04, "kind": "book"}, {"src": "Novig", "am": 150, "ev": 0.0084, "kind": "exchange"}, {"src": "Kalshi", "am": 163, "ev": 0.0615, "kind": "exchange"}], "first": 1791659802, "start": 1791850500, "closeFair": 0.4034, "clv": 0.0344, "status": "open"}, {"pid": "7083", "name": "Tyler Huntley", "team": "BAL", "pos": "QB", "label": "Passing TDs", "line": 1.5, "side": "over", "src": "Novig", "am": 217, "p": 0.315, "ev": 0.0583, "evAdj": 0.0583, "stake": 0.34, "stale": false, "check": [], "fair": 0.3334, "fairSrc": "Pinnacle", "ven": [{"src": "BetRivers", "am": 185, "ev": -0.0499, "kind": "book"}, {"src": "Parx Casino", "am": 185, "ev": -0.0499, "kind": "book"}, {"src": "Underdog Fantasy", "am": 179, "ev": -0.0699, "kind": "book"}, {"src": "Sleeper", "am": 157, "ev": -0.1432, "kind": "book"}, {"src": "Pinnacle", "am": 177, "ev": null, "kind": "book"}, {"src": "Novig", "am": 217, "ev": 0.0583, "kind": "exchange"}], "first": 1791728145, "start": 1791764400, "closeFair": 0.3334, "clv": 0.0755, "status": "open"}, {"pid": "3202", "name": "Austin Hooper", "team": "ATL", "pos": "TE", "label": "Receptions", "line": 0.5, "side": "over", "src": "Novig", "am": -167, "p": 0.625, "ev": 0.0515, "evAdj": 0.0515, "stake": 1.07, "stale": false, "check": [], "fair": 0.6572, "fairSrc": "Pinnacle", "ven": [{"src": "Sleeper", "am": -270, "ev": -0.0994, "kind": "book"}, {"src": "Underdog Fantasy", "am": -205, "ev": -0.0222, "kind": "book"}, {"src": "Pinnacle", "am": -210, "ev": null, "kind": "book"}, {"src": "Novig", "am": -167, "ev": 0.0515, "kind": "exchange"}, {"src": "Kalshi", "am": -186, "ev": 0.0111, "kind": "exchange"}], "first": 1791752132, "start": 1791764400, "closeFair": 0.6572, "clv": 0.0189, "status": "open"}, {"pid": "3271", "name": "Tyler Higbee", "team": "LAR", "pos": "TE", "label": "Receptions", "line": 2.5, "side": "under", "src": "Underdog Fantasy", "am": 108, "p": 0.4808, "ev": 0.0495, "evAdj": 0.0495, "stake": 0.57, "stale": false, "check": [], "fair": 0.4954, "fairSrc": "Pinnacle", "ven": [{"src": "Pinnacle", "am": -114, "ev": null, "kind": "book"}, {"src": "Parx Casino", "am": -104, "ev": -0.0103, "kind": "book"}, {"src": "Underdog Fantasy", "am": 108, "ev": 0.0495, "kind": "book"}, {"src": "Sleeper", "am": -118, "ev": -0.0678, "kind": "book"}, {"src": "Novig", "am": 104, "ev": 0.0297, "kind": "exchange"}, {"src": "Kalshi", "am": -100, "ev": 0.0092, "kind": "exchange"}], "first": 1791674192, "start": 1791850500, "closeFair": 0.5046, "clv": 0.0495, "status": "open"}, {"pid": "7083", "name": "Tyler Huntley", "team": "BAL", "pos": "QB", "label": "Interceptions", "line": 0.5, "side": "over", "src": "Kalshi", "am": 122, "p": 0.45, "ev": 0.0469, "evAdj": 0.0469, "stake": 0.48, "stale": false, "check": [], "fair": 0.4711, "fairSrc": "Pinnacle", "ven": [{"src": "Underdog Fantasy", "am": 109, "ev": -0.0154, "kind": "book"}, {"src": "Sleeper", "am": -108, "ev": -0.0927, "kind": "book"}, {"src": "Pinnacle", "am": 102, "ev": null, "kind": "book"}, {"src": "Novig", "am": 113, "ev": 0.0023, "kind": "exchange"}, {"src": "Kalshi", "am": 122, "ev": 0.0469, "kind": "exchange"}], "first": 1791753331, "start": 1791764400, "closeFair": 0.4711, "clv": 0.0469, "status": "open"}, {"pid": "4984", "name": "Josh Allen", "team": "BUF", "pos": "QB", "label": "Rush attempts", "line": 7.5, "side": "over", "src": "Novig", "am": -104, "p": 0.51, "ev": 0.0408, "evAdj": 0.0408, "stake": 0.53, "stale": false, "check": [], "fair": 0.5308, "fairSrc": "Pinnacle", "ven": [{"src": "Pinnacle", "am": -126, "ev": null, "kind": "book"}, {"src": "Underdog Fantasy", "am": -120, "ev": -0.0268, "kind": "book"}, {"src": "Novig", "am": -104, "ev": 0.0408, "kind": "exchange"}, {"src": "Kalshi", "am": -104, "ev": 0.0408, "kind": "exchange"}], "first": 1791724528, "start": 1791850500, "closeFair": 0.5308, "clv": 0.0408, "status": "open"}, {"pid": "4984", "name": "Josh Allen", "team": "BUF", "pos": "QB", "label": "Passing TDs", "line": 1.5, "side": "under", "src": "Novig", "am": 104, "p": 0.49, "ev": 0.0344, "evAdj": 0.0344, "stake": 0.41, "stale": false, "check": [], "fair": 0.4931, "fairSrc": "Pinnacle", "ven": [{"src": "Parx Casino", "am": -122, "ev": -0.0777, "kind": "book"}, {"src": "BetMGM", "am": -115, "ev": -0.0524, "kind": "book"}, {"src": "Underdog Fantasy", "am": -108, "ev": -0.0238, "kind": "book"}, {"src": "Sleeper", "am": -127, "ev": -0.094, "kind": "book"}, {"src": "Pinnacle", "am": -115, "ev": null, "kind": "book"}, {"src": "Novig", "am": 104, "ev": 0.0344, "kind": "exchange"}], "first": 1791585413, "start": 1791850500, "closeFair": 0.5069, "clv": 0.0452, "status": "open"}, {"pid": "3202", "name": "Austin Hooper", "team": "ATL", "pos": "TE", "label": "Receiving yards", "line": 7.5, "side": "over", "src": "Novig", "am": 117, "p": 0.46, "ev": 0.0341, "evAdj": 0.0341, "stake": 0.36, "stale": false, "check": [], "fair": 0.4757, "fairSrc": "Pinnacle", "ven": [{"src": "Pinnacle", "am": -100, "ev": null, "kind": "book"}, {"src": "Novig", "am": 117, "ev": 0.0341, "kind": "exchange"}], "first": 1791750339, "start": 1791764400, "closeFair": 0.4757, "clv": 0.0341, "status": "open"}, {"pid": "7571", "name": "Rashod Bateman", "team": "BAL", "pos": "WR", "label": "Receptions", "line": 1.5, "side": "over", "src": "Kalshi", "am": -122, "p": 0.55, "ev": 0.0333, "evAdj": 0.0333, "stake": 0.51, "stale": false, "check": [], "fair": 0.5683, "fairSrc": "Pinnacle", "ven": [{"src": "Pinnacle", "am": -144, "ev": null, "kind": "book"}, {"src": "Parx Casino", "am": -159, "ev": -0.0743, "kind": "book"}, {"src": "BetMGM", "am": -155, "ev": -0.0651, "kind": "book"}, {"src": "Sleeper", "am": -164, "ev": -0.0852, "kind": "book"}, {"src": "Underdog Fantasy", "am": -143, "ev": -0.0343, "kind": "book"}, {"src": "Novig", "am": -130, "ev": 0.0058, "kind": "exchange"}, {"src": "Kalshi", "am": -122, "ev": 0.0333, "kind": "exchange"}], "first": 1791607007, "start": 1791764400, "closeFair": 0.5683, "clv": 0.0524, "status": "open"}, {"pid": "11627", "name": "Troy Franklin", "team": "DEN", "pos": "WR", "label": "Receptions", "line": 1.5, "side": "over", "src": "Fanatics", "am": -110, "p": 0.5238, "ev": 0.8995, "evAdj": 0.3668, "stake": 1.5, "stale": true, "check": ["Fanatics prices are old", "edge this big is usually a moved line"], "fair": 0.995, "fairSrc": "Kalshi", "ven": [{"src": "Parx Casino", "am": -118, "ev": 0.8382, "kind": "book"}, {"src": "BetMGM", "am": -135, "ev": 0.732, "kind": "book"}, {"src": "Fanatics", "am": -110, "ev": 0.8995, "kind": "book"}, {"src": "bet365", "am": -125, "ev": 0.791, "kind": "book"}, {"src": "Caesars", "am": -121, "ev": 0.8173, "kind": "book"}, {"src": "Kalshi", "am": -9900, "ev": null, "kind": "exchange"}], "first": null, "start": null, "closeFair": null, "clv": null, "status": "open"}, {"pid": "12489", "name": "RJ Harvey", "team": "DEN", "pos": "RB", "label": "Receptions", "line": 3.5, "side": "under", "src": "BetMGM", "am": 120, "p": 0.4545, "ev": 0.837, "evAdj": 0.3449, "stake": 1.5, "stale": true, "check": ["BetMGM prices are old", "edge this big is usually a moved line"], "fair": 0.165, "fairSrc": "Kalshi", "ven": [{"src": "BetMGM", "am": 120, "ev": 0.837, "kind": "book"}, {"src": "Novig", "am": -9900, "ev": -0.1566, "kind": "exchange"}, {"src": "Kalshi", "am": -525, "ev": null, "kind": "exchange"}], "first": null, "start": null, "closeFair": null, "clv": null, "status": "open"}, {"pid": "4217", "name": "George Kittle", "team": "SF", "pos": "TE", "label": "Receptions", "line": 4.5, "side": "under", "src": "bet365", "am": 100, "p": 0.5, "ev": 0.65, "evAdj": 0.2795, "stake": 1.5, "stale": true, "check": ["bet365 prices are old", "edge this big is usually a moved line"], "fair": 0.175, "fairSrc": "Kalshi", "ven": [{"src": "Parx Casino", "am": -113, "ev": 0.5551, "kind": "book"}, {"src": "BetMGM", "am": -105, "ev": 0.6107, "kind": "book"}, {"src": "Fanatics", "am": -135, "ev": 0.4361, "kind": "book"}, {"src": "bet365", "am": 100, "ev": 0.65, "kind": "book"}, {"src": "Caesars", "am": -121, "ev": 0.5068, "kind": "book"}, {"src": "Novig", "am": -1900, "ev": -0.1316, "kind": "exchange"}, {"src": "Kalshi", "am": -488, "ev": null, "kind": "exchange"}], "first": null, "start": null, "closeFair": null, "clv": null, "status": "open"}, {"pid": "12493", "name": "Oronde Gadsden", "team": "LAC", "pos": "TE", "label": "Receptions", "line": 3.5, "side": "under", "src": "bet365", "am": -105, "p": 0.5122, "ev": 0.6205, "evAdj": 0.2692, "stake": 1.5, "stale": true, "check": ["bet365 prices are old", "edge this big is usually a moved line"], "fair": 0.17, "fairSrc": "Kalshi", "ven": [{"src": "Parx Casino", "am": -130, "ev": 0.4685, "kind": "book"}, {"src": "BetMGM", "am": -125, "ev": 0.494, "kind": "book"}, {"src": "Fanatics", "am": -125, "ev": 0.494, "kind": "book"}, {"src": "bet365", "am": -105, "ev": 0.6205, "kind": "book"}, {"src": "Caesars", "am": -117, "ev": 0.5394, "kind": "book"}, {"src": "Novig", "am": -1718, "ev": -0.1217, "kind": "exchange"}, {"src": "Kalshi", "am": -525, "ev": null, "kind": "exchange"}], "first": 1791725038, "start": 1791749100, "closeFair": 0.4977, "clv": -0.0783, "status": "open"}], "rec": {"all": {"n": 520, "open": 520, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 520, "clv": 0.0303, "clvPos": 425}, "clean": {"n": 500, "open": 500, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 500, "clv": 0.0279, "clvPos": 409}, "big": {"n": 20, "open": 20, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 20, "clv": 0.0908, "clvPos": 16}, "byVenue": {"Kalshi": {"n": 89, "open": 89, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 89, "clv": 0.0276, "clvPos": 73}, "Novig": {"n": 267, "open": 267, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 267, "clv": 0.0236, "clvPos": 219}, "Different line: Novig": {"n": 28, "open": 28, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 28, "clv": 0.0484, "clvPos": 22}, "US books": {"n": 92, "open": 92, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 92, "clv": 0.0346, "clvPos": 73}, "Different line: US books": {"n": 44, "open": 44, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 44, "clv": 0.0563, "clvPos": 38}}, "byMarket": {"Rush attempts": {"n": 44, "open": 44, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 44, "clv": 0.0238, "clvPos": 37}, "Receptions": {"n": 178, "open": 178, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 178, "clv": 0.0244, "clvPos": 134}, "Completions": {"n": 19, "open": 19, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 19, "clv": 0.0269, "clvPos": 15}, "Pass attempts": {"n": 19, "open": 19, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 19, "clv": 0.0373, "clvPos": 17}, "Passing TDs": {"n": 19, "open": 19, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 19, "clv": 0.0099, "clvPos": 12}, "Passing yards": {"n": 14, "open": 14, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 14, "clv": 0.0421, "clvPos": 14}, "Receiving yards": {"n": 146, "open": 146, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 146, "clv": 0.0381, "clvPos": 125}, "Rushing yards": {"n": 61, "open": 61, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 61, "clv": 0.0366, "clvPos": 54}, "Interceptions": {"n": 20, "open": 20, "w": 0, "l": 0, "p": 0, "void": 0, "units": 0, "roi": null, "clvN": 20, "clv": 0.0292, "clvPos": 17}}, "legs": {"n": 445, "open": 445, "graded": 0, "buckets": [{"lo": 0.54, "hi": 0.58, "n": 0, "hit": null, "pred": null}, {"lo": 0.58, "hi": 0.62, "n": 0, "hit": null, "pred": null}, {"lo": 0.62, "hi": 0.7, "n": 0, "hit": null, "pred": null}, {"lo": 0.7, "hi": 1, "n": 0, "hit": null, "pred": null}], "shifted": {"n": 0, "hit": null, "pred": null}}}, "week": 5};
+const P=DATA.plays,REC=DATA.rec;
+const AM=a=>a>0?'+'+a:''+a,PCT=(x,d=1)=>x==null?'–':(x*100).toFixed(d)+'%',SG=(x,d=1)=>x==null?'–':(x>0?'+':'')+(x*100).toFixed(d)+'%';
+const ago=ts=>{const m=Math.round((Date.now()/1000-ts)/60);return m<60?m+'m':m<1440?Math.floor(m/60)+'h':Math.floor(m/1440)+'d'};
+const T=ts=>ts?new Date(ts*1000).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'}):'–';
+const POSC={QB:'var(--qb)',RB:'var(--rb)',WR:'var(--wr)',TE:'var(--te)'};
+function av(p,s){const ini=p.name.split(' ').map(x=>x[0]).slice(0,2).join('');
+ return `<span class="ph-av ${p.pos} ring" style="width:${s}px;height:${s}px;--c:${POSC[p.pos]||'var(--mut)'};font-size:${s*.3}px">${ini}<img alt="" src="https://sleepercdn.com/content/nfl/players/thumb/${p.pid}.jpg" onerror="this.remove()"></span>`}
+const mine=new Set([P[0].pid+P[0].label,P[2].pid+P[2].label,P[5].pid+P[5].label]);
+let sel=0,flt='All',tab='mine',qs='';
+const MK={All:null,Receiving:/Receptions|Receiving/,Rushing:/Rush/,Passing:/Pass|Compl/,Combo:/\+/};
+// ---- tracker strip
+const A=REC.all;
+document.getElementById('trk').innerHTML=[
+ ['Called this week',A.n,`${A.open} open · ${A.n-A.open} graded`,null],
+ ['Record','–',`0-0 so far · games start Sun`,null],
+ ['Avg closing-line value',SG(A.clv),'price at the call vs the close',A.clv>0?100:0],
+ ['Beat the close',`${A.clvPos} of ${A.clvN}`,PCT(A.clvPos/A.clvN,0)+' of plays',A.clvPos/A.clvN*100],
+ ['Big plays',REC.big.n,'CLV '+SG(REC.big.clv)+' · '+REC.big.clvPos+' beat close',REC.big.clvPos/REC.big.clvN*100],
+ ['Tracking (starred)',mine.size,'live status in the Mine tab',null]
+].map(([t,v,d,m])=>`<div><div class="k">${t}</div><div class="v">${v}</div><div class="d">${d}</div>${m!=null?`<div class="meter"><i style="width:${m}%"></i></div>`:''}</div>`).join('');
+// ---- filters
+document.getElementById('pills').innerHTML=Object.keys(MK).map(k=>`<span class="pl ${k===flt?'on':''}" data-k="${k}">${k}</span>`).join('');
+document.getElementById('pills').onclick=e=>{const b=e.target.closest('.pl');if(b){flt=b.dataset.k;document.querySelectorAll('.pl').forEach(x=>x.classList.toggle('on',x===b));drawList()}};
+document.getElementById('q').oninput=e=>{qs=e.target.value.toLowerCase();drawList()};
+function status(p){ if(p.clv!=null)return p.clv>0?`<span class="st up">CLOSED · ${SG(p.clv)} CLV</span>`:`<span class="st dn">CLOSED · ${SG(p.clv)} CLV</span>`;
+ return p.stale?`<span class="st old">OLD PRICE</span>`:`<span class="st open">OPEN · ${T(p.start)}</span>`}
+function drawList(){
+ const L=P.map((p,i)=>({p,i})).filter(({p})=>(!MK[flt]||MK[flt].test(p.label))&&(!qs||p.name.toLowerCase().includes(qs)));
+ document.getElementById('list').innerHTML=L.map(({p,i})=>`<div class="row ${i===sel?'on':''}" data-i="${i}">${av(p,44)}
+  <div><div class="n">${p.name} <span class="star ${mine.has(p.pid+p.label)?'on':''}" data-s="${i}">${mine.has(p.pid+p.label)?'★':'☆'}</span></div><div class="s">${p.team} · ${p.pos}</div>
+   <div class="pick">${p.side==='over'?'Over':'Under'} ${p.line} ${p.label.toLowerCase()} · ${p.src} ${AM(p.am)}</div></div>
+  <div class="e"><b>${SG(p.evAdj)}</b><span class="m" style="font-size:10px">edge</span><br>${status(p)}</div></div>`).join('')||'<div style="padding:20px" class="m">No plays match.</div>'}
+document.getElementById('list').onclick=e=>{const s=e.target.closest('.star');if(s){const p=P[+s.dataset.s],k=p.pid+p.label;mine.has(k)?mine.delete(k):mine.add(k);drawList();drawRight();return}
+ const r=e.target.closest('.row');if(r){sel=+r.dataset.i;drawList();drawCenter()}};
+// ---- centre: the play, the price ladder, the tracking timeline
+function spark(p){}
+function drawCenter(){const p=P[sel],now=Date.now()/1000;
+ const vs=[...p.ven].sort((a,b)=>(b.ev??-9)-(a.ev??-9)).slice(0,7);
+ const lo=Math.min(p.fair,...vs.map(v=>amP(v.am)))-.03,hi=Math.max(p.fair,...vs.map(v=>amP(v.am)))+.03;
+ const pos=x=>((x-lo)/(hi-lo)*100).toFixed(1);
+ function amP(a){return a>0?100/(a+100):-a/(-a+100)}
+ const callEdge=p.evAdj,closed=p.clv!=null,steps=[['First seen',T(p.first||now-86400*2),'done',ago(p.first||now-86400*2)+' ago'],['Called',SG(callEdge)+' edge','done',p.src+' '+AM(p.am)],closed?['Line closed','fair '+PCT(p.closeFair),'done','CLV '+SG(p.clv)]:['Now',p.stale?'old price':'live','now','edge '+SG(p.ev)],['Kickoff',T(p.start),closed?'done':'',closed?'started':'not yet'],['Result','–',closed?'now':'','pending']];
+ document.getElementById('center').innerHTML=`
+  <div class="hd">${av(p,76)}<div><h2>${p.name}</h2><div class="sub">${p.team} · ${p.pos} · Week ${DATA.week}</div></div>
+   <div class="big"><div class="k">Edge (realistic)</div><b>${SG(p.evAdj)}</b><span class="m">stake ${p.stake}% of bankroll</span></div></div>
+  <div class="play">${p.side==='over'?'Over':'Under'} ${p.line} ${p.label.toLowerCase()} <span class="m" style="font-weight:500;font-size:14px">at</span> ${p.src} <span class="mono">${AM(p.am)}</span> ${p.stale?'<span class="st old" style="font-size:10px">OLD PRICE</span>':''}</div>
+  ${p.check.length?`<div class="card" style="border-color:rgba(245,200,66,.35)"><div class="k" style="color:var(--warn);margin-bottom:6px">Second look</div>${p.check.map(c=>`<div style="color:var(--fg2)">• ${c}</div>`).join('')}</div>`:''}
+  <div class="card"><h4 class="k">Tracking this play</h4><div class="tl">${steps.map(s=>`<div class="${s[2]}"><span class="lab">${s[0]}</span><i></i><b>${s[1]}</b>${s[3]}</div>`).join('')}</div>
+   <div class="clvbox"><div><span class="k">Price when called</span><b>${PCT(p.p)}</b></div><div><span class="k">Fair now (${p.fairSrc})</span><b>${PCT(p.fair)}</b></div>
+    <div><span class="k">Closing fair</span><b>${p.closeFair!=null?PCT(p.closeFair):'at kickoff'}</b></div><div><span class="k">CLV</span><b class="${p.clv>0?'g':p.clv<0?'r':'m'}">${p.clv!=null?SG(p.clv):'pending'}</b></div></div></div>
+  <div class="card"><h4 class="k">Price ladder · same side, same line <span style="float:right;color:var(--fg)">│ fair ${PCT(p.fair)}</span></h4>
+   ${vs.map(v=>{const me=v.src===p.src;return `<div class="lad ${me?'me':''}"><div class="nm">${v.src}<small>${v.kind==='exchange'?'exchange':'US book'}</small></div>
+    <div class="track"><div class="fill" style="width:${pos(amP(v.am))}%"></div><div class="fair" style="left:${pos(p.fair)}%"></div></div><div class="px">${AM(v.am)}</div><div class="ev ${v.ev>0?'g':v.ev<0?'r':'m'}">${v.ev!=null?SG(v.ev):'fair'}</div></div>`}).join('')}
+   <div class="m" style="font-size:11px;margin-top:8px">Bar = implied win chance at that price. White tick = Pinnacle's no-vig fair. Cheaper than the tick is +EV.</div></div>`}
+// ---- right rail
+const right=document.getElementById('right');
+function drawRight(){
+ if(tab==='mine'){const L=P.filter(p=>mine.has(p.pid+p.label));
+  right.innerHTML=(L.length?L.map(p=>`<div class="tk">${av(p,36)}<div><div class="n">${p.name}</div><div class="s">${p.side==='over'?'O':'U'} ${p.line} ${p.label} · ${p.src} ${AM(p.am)}</div></div><div class="r2 ${p.clv>0?'g':p.clv<0?'r':''}">${p.clv!=null?SG(p.clv):'open'}<div class="s">${p.clv!=null?'CLV':T(p.start)}</div></div></div>`).join(''):'<div class="sec m">Star a play to follow it from call to close to result.</div>')+
+  `<div class="sec m" style="font-size:11px;padding-bottom:14px">Starred plays keep their called price, so you see CLV the moment the line closes and the result when the game ends.</div>`}
+ else if(tab==='rec'){
+  const t=(title,o)=>`<div class="sec"><span class="k">${title}</span></div><table><thead><tr><th></th><th>Plays</th><th>CLV</th><th>Beat close</th></tr></thead><tbody>${Object.entries(o).sort((a,b)=>b[1].n-a[1].n).slice(0,8).map(([k,v])=>`<tr><td>${k}</td><td>${v.n}</td><td class="${v.clv>0?'g':'r'}">${SG(v.clv)}</td><td>${PCT(v.clvPos/v.clvN,0)}</td></tr>`).join('')}</tbody></table>`;
+  right.innerHTML=t('By venue',REC.byVenue)+t('By stat',REC.byMarket)}
+ else{const b=REC.legs.buckets;right.innerHTML=`<div class="sec"><span class="k">Does the win % hold up?</span></div><div class="sec m" style="font-size:11px">${REC.legs.graded} of ${REC.legs.n} legs graded so far. Bars fill in as games finish: predicted win chance vs how often it hit.</div>`+
+  b.map(x=>`<div class="bucket"><span class="mono">${Math.round(x.lo*100)}–${Math.round(x.hi*100)}%</span><div class="track"><div class="fill" style="width:${x.hit==null?0:x.hit*100}%"></div></div><span class="mono m">${x.n?x.hit==null?'–':PCT(x.hit,0):'–'}</span></div>`).join('')}}
+document.getElementById('tabs').onclick=e=>{const b=e.target.closest('b');if(!b)return;document.querySelectorAll('#tabs b').forEach(x=>x.classList.toggle('on',x===b));tab=b.dataset.t;drawRight()};
+drawList();drawCenter();drawRight();
+</script>
+</body>
+</html>
