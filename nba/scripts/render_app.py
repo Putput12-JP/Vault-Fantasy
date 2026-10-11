@@ -148,6 +148,7 @@ def render():
     # Halaska UI bundle (ui/halaska/dist.js, built by `node build.mjs` there); the page degrades to no kit if it is absent
     tpl = tpl.replace('<script>/*HALASKA*/</script>', '<script>' + (open(hk).read() if os.path.exists(hk) else 'window.HK = null;') + '</script>')
     gj = os.path.join(HERE, '..', 'ui', 'minutes_gbm.js')
+    tpl = tpl.replace('/*VAULT_APPEARANCE*/', open(os.path.join(HERE, '..', '..', 'src', 'vault-appearance.js')).read().replace('</script', '<\\/script'))
     tpl = tpl.replace('/*MINUTES_GBM_JS*/', open(gj).read().replace('</script', '<\\/script'))
     html = (tpl.replace('/*DATA*/null', json.dumps(projections(), separators=(',', ':')))
                .replace('/*HEALTH*/null', json.dumps(load('data_health.json'), separators=(',', ':')))

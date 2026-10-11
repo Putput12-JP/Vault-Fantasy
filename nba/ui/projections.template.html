@@ -2,6 +2,23 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vault NBA</title>
 <script>try{var __t=JSON.parse(localStorage.getItem("nba-theme"));if(__t==="light"||__t==="dark")document.documentElement.dataset.theme=__t;if(localStorage.getItem("nba-side")==="1")document.documentElement.dataset.side="1"}catch(e){}</script>
+<script>/*VAULT_APPEARANCE*/</script>
+<script>
+/* Appearance adapter: the shared panel (src/vault-appearance.js) decides; this paints Vault NBA's own tokens. */
+VaultAppearance.init({
+  legacy: function(){ try{ return JSON.parse(localStorage.getItem("nba-theme")); }catch(e){} },
+  apply: function(S, c){
+    var r = document.documentElement;
+    if (r.dataset.theme !== c.resolved){ if (!matchMedia("(prefers-reduced-motion: reduce)").matches){ r.classList.add("theme-fade"); setTimeout(function(){ r.classList.remove("theme-fade"); }, 220); } r.dataset.theme = c.resolved; }
+    try{ localStorage.setItem("nba-theme", JSON.stringify(c.resolved)); }catch(e){}
+    var surf = ["--bg","--surface","--surface2","--raised","--btn","--btn-h","--chip","--chip-h","--ctl","--pop","--nav-on","--seg-on"], all = surf.concat(["--primary","--on-primary","--primary-hover"]);
+    all.forEach(function(p){ r.style.removeProperty(p); });
+    var cs = getComputedStyle(r);
+    if (c.tint > 0) surf.forEach(function(p){ var v = cs.getPropertyValue(p).trim(), m = v && c.mix(v); if (m && m !== v) r.style.setProperty(p, m); });
+    if (c.accent){ r.style.setProperty("--primary", c.accent); r.style.setProperty("--on-primary", c.ink); r.style.setProperty("--primary-hover", "color-mix(in srgb," + c.accent + " 86%,var(--fg))"); }
+  }
+});
+</script>
 <meta name="description" content="Vault NBA: player props and game lines priced by our own model, what passed the backtest, sharp money, and your own bet record.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1334,6 +1351,12 @@ th{font-weight:500}
 }
 :root[data-theme="light"] body::after{display:none}
 :root[data-theme="light"] .ev-chip.model{color:var(--fg)}
+/* ── Appearance panel (src/vault-appearance.js): High contrast is a dark variant with stronger edges and text; Compact tightens rows and gaps. ── */
+:root[data-contrast="high"]{--fg:#ffffff;--fg2:#e6e8ed;--fg3:#c7cbd3;--border:#8b909b;--border2:#c7cbd3;--up:#6ff0a0;--down:#ff9a9a;--warn:#ffd36b}
+:root[data-contrast="high"] :focus-visible{outline-width:3px}
+:root[data-density="compact"]{--pad:16px;--gap:10px}
+:root[data-density="compact"] td{padding-top:5px;padding-bottom:5px}
+:root[data-density="compact"] th{padding-top:6px;padding-bottom:6px}
 /* Sidebar rail, raised active page, breadcrumb, engraved edge (patterns from jubayer910/Admin-panel, in our own look) */
 .title{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;align-items:baseline;flex:0 1 auto;min-width:0}.title p{grid-column:1/-1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crumb{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.crumb:not(:empty)::after{content:" /";opacity:.6}
@@ -1406,7 +1429,7 @@ th{font-weight:500}
       </div>
       <button class="favchip" id="favchip" type="button" hidden></button><span class="favmore" id="favmore"></span>
       <div class="mode" id="mode" hidden></div>
-      <button class="iconbtn themebtn" id="themebtn" type="button" aria-label="Switch to light mode" title="Light mode"></button>
+      <button class="iconbtn themebtn" id="themebtn" type="button" aria-label="Appearance" title="Appearance"></button>
       <button class="btn" id="refresh" type="button" hidden title="Start the recorder now and reload the board when it lands">Refresh</button>
       <div class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -1824,9 +1847,9 @@ document.addEventListener('keydown', e => { const t = e.target.closest && e.targ
 // when they mount, so HK.setTheme re-renders them; everything else is CSS variables and follows on its own.
 const THEME_ICON = '<svg class="tm" viewBox="0 0 24 24" aria-hidden="true"><mask id="tm-m"><rect width="24" height="24" fill="#fff"/><circle class="tm-cut" cx="24" cy="0" r="7" fill="#000"/></mask><circle class="tm-core" cx="12" cy="12" r="5" fill="currentColor" mask="url(#tm-m)"/><g class="tm-rays" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></g></svg>';
 const themeNow = () => document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-function paintThemeBtn(){ const b = $('themebtn'), light = themeNow() === 'light'; if (!b.firstChild) b.innerHTML = THEME_ICON; b.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode'); b.title = light ? 'Dark mode' : 'Light mode'; }
-function setTheme(t){ const root = document.documentElement, calm = matchMedia('(prefers-reduced-motion: reduce)').matches; if (!calm){ root.classList.add('theme-fade'); setTimeout(() => root.classList.remove('theme-fade'), 220); } root.dataset.theme = t; store.set('nba-theme', t); paintThemeBtn(); if (window.HK && HK.setTheme) HK.setTheme(); }
-$('themebtn').addEventListener('click', () => setTheme(themeNow() === 'light' ? 'dark' : 'light'));
+function paintThemeBtn(){ const b = $('themebtn'), light = themeNow() === 'light'; if (!b.firstChild) b.innerHTML = THEME_ICON; b.setAttribute('aria-label', 'Appearance'); b.title = 'Appearance'; }
+$('themebtn').addEventListener('click', () => VaultAppearance.open());
+window.addEventListener('vault-appearance', () => { paintThemeBtn(); if (window.HK && HK.setTheme) HK.setTheme(); });
 paintThemeBtn();
 
 // "Since you last looked": what changed on the Player Props board since this browser last opened it (new Bets and Leans, ones that went away, newly out
@@ -4377,9 +4400,8 @@ function renderProfile(){
   const bd = proBadges();
   $('probadges').innerHTML = `<div class="card-h"><div><h2>Trophy case</h2><p>${bd.filter(b => b[2]).length} of ${bd.length} earned. All of it stays in this browser.</p></div></div><div class="card-b"><div class="pro-bd">${bd.map(([n, h, on]) => `<div class="pro-b" data-on="${on}"><i aria-hidden="true">${on ? '&#10003;' : ''}</i><div><b>${n}</b><small>${h}</small></div></div>`).join('')}</div></div>`;
   // preferences
-  const light = themeNow() === 'light';
   $('proprefs').innerHTML = `<div class="card-h"><div><h2>Preferences</h2><p>Saved in this browser.</p></div></div><div class="card-b pro-pr">
-    <div><span class="muted">Look</span><div class="seg" role="group" aria-label="Theme"><button type="button" data-pth="dark" aria-pressed="${!light}">Dark</button><button type="button" data-pth="light" aria-pressed="${light}">Light</button></div></div>
+    <div><span class="muted">Look</span><div class="seg" role="group" aria-label="Appearance"><button type="button" data-pth-open="1">Appearance…</button></div></div>
     <div><span class="muted">Sidebar</span><div class="seg" role="group" aria-label="Sidebar"><button type="button" data-psb="0" aria-pressed="${!sideOn()}">Wide</button><button type="button" data-psb="1" aria-pressed="${sideOn()}">Icons only</button></div></div>
     <div><span class="muted">Profile</span><button class="btn" type="button" id="proreset">${proReset ? 'Click again to erase it' : 'Reset profile'}</button></div></div>`;
   $('profoot').innerHTML = '<div><b>Where this lives.</b> Your profile is saved in this browser only (nothing is sent anywhere), so it will not follow you to another device.</div>';
@@ -4453,7 +4475,7 @@ $('v-profile').addEventListener('click', e => {
   else if (t.dataset.prm){ PRO.players = PRO.players.filter(x => String(x) !== t.dataset.prm); proChanged(); }
   else if (t.dataset.pprops){ const ev = PV_PRESETS.find(p => /every/i.test(p[1])) || PV_PRESETS[PV_PRESETS.length - 1]; pv.q = t.dataset.pprops; pv.preset = ev[0]; pv.game = 'all'; pv.stat = 'all'; goView('props'); }
   else if (t.dataset.pgo){ if (t.dataset.pgo === 'tonight') nt.game = t.dataset.g; else sim.game = t.dataset.g; goView(t.dataset.pgo); }
-  else if (t.dataset.pth){ setTheme(t.dataset.pth); renderProfile(); }
+  else if (t.dataset.pthOpen){ VaultAppearance.open(); }
   else if (t.dataset.psb){ if ((t.dataset.psb === '1') !== sideOn()) toggleSide(); renderProfile(); }
   else if (t.id === 'proreset'){ if (!proReset){ proReset = true; renderProfile(); setTimeout(() => { if (proReset){ proReset = false; if (view === 'profile') renderProfile(); } }, 4000); }
     else { proReset = false; Object.assign(PRO, {name: '', team: null, players: [], since: proDay(), visits: [proDay()]}); proChanged(); } } });
