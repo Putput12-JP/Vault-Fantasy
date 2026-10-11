@@ -44,8 +44,32 @@ const cors = origin => ({
   Vary: 'Origin',
 });
 
+// Kalshi-vs-books gap alerts: a light job (~1 min) dispatched every 2 min, only while NFL lines are moving. Same windows as the
+// Sharp Money gate (Central): Mon/Thu 5-11pm, Sat 10am-11pm, Sun 8am-8pm. Outside them there is nothing worth alerting on.
+const KB_CRON = '*/2 * * * *';
+function nflBusyNow() {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric', hourCycle: 'h23' })
+    .formatToParts(new Date()).map(x => [x.type, x.value]));
+  const h = +p.hour;
+  return p.weekday === 'Mon' || p.weekday === 'Thu' ? h >= 17 : p.weekday === 'Sat' ? h >= 10 : p.weekday === 'Sun' ? h >= 8 && h <= 19 : false;
+}
+async function dispatchKb(env) {
+  const r = await fetch(`https://api.github.com/repos/${env.REPO}/actions/workflows/${env.KB_WORKFLOW}/dispatches`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'vault-sharp-refresh' },
+    body: JSON.stringify({ ref: env.REF }),
+  });
+  return { ok: r.status === 204, status: r.status };
+}
+
 export default {
   async scheduled(event, env, ctx) {
+    if (event.cron === KB_CRON) {
+      if (!env.KB_WORKFLOW || !nflBusyNow()) return;
+      const k = await dispatchKb(env);
+      if (!k.ok) console.error('kb dispatch failed', k.status);
+      return;
+    }
     const r = await dispatch(env, false);
     if (!r.ok) console.error('dispatch failed', r.status);
   },

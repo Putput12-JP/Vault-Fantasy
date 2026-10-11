@@ -5,7 +5,7 @@ compatibility_date = "2026-09-01"
 # Every 10 minutes, UTC. The workflow's own gate decides whether a run is worth doing
 # (busy windows every 10 min, otherwise every 30 min, nothing overnight).
 [triggers]
-crons = ["*/10 * * * *"]
+crons = ["*/10 * * * *", "*/2 * * * *"]
 
 [vars]
 REPO = "Putput12-JP/Vault-Fantasy"
@@ -13,4 +13,6 @@ WORKFLOW = "update-sharp-money.yml"
 # Also started (at most once per 45 min) by a Refresh click, for the US-books prices. Remove this line to turn that off.
 LINEUP_WORKFLOW = "update-lineup.yml"
 REF = "main"
+# Kalshi-vs-books gap alerts: dispatched every 2 min in the NFL busy windows (the */2 cron above). Remove this line to turn it off.
+KB_WORKFLOW = "update-kb-gaps.yml"
 # GITHUB_TOKEN is a secret: `wrangler secret put GITHUB_TOKEN`
