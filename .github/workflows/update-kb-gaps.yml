@@ -1,0 +1,51 @@
+# Kalshi vs books gap alerts, on their own fast clock. The full Sharp Money run takes ~3 min (most of it the Novig sweep), so it
+# cannot go faster than every ~10 min. This job only needs Kalshi + Pinnacle/pick'em prices, so it runs in about a minute and the
+# Cloudflare worker (workers/sharp-refresh) dispatches it every 2 min inside the NFL busy windows.
+# It publishes to its OWN branch (kb-data). Do not share sharp-data: that branch is force-pushed as one commit by update-sharp-money.yml,
+# so two writers would delete each other's files.
+name: Update Kalshi vs books gaps
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: kb-gaps
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  gaps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - name: Load previous state
+        run: |
+          mkdir -p kb-out
+          if git ls-remote --exit-code --heads origin kb-data >/dev/null 2>&1; then
+            git fetch --depth=1 origin kb-data
+            git show FETCH_HEAD:kb_state.json > kb-out/kb_state.json || true
+          fi
+      # Same two pulls the Sharp Money job makes (keyless). US-book prices come from the committed feed (update-lineup.yml, credit-limited).
+      - name: Refresh Pinnacle / pick'em lines + Kalshi props
+        run: |
+          cp data/lineup-feed.json kb-out/lineup-feed.json
+          node scripts/fetch-pickem-props.mjs --feed=kb-out/lineup-feed.json || true
+          node scripts/fetch-kalshi-props.mjs --out=kb-out/kalshi_props.json || true
+      - name: Find gaps, post new ones to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: node scripts/kalshi-book-gaps.mjs --dir=kb-out
+      - name: Publish to kb-data
+        run: |
+          cd kb-out
+          git init -q -b kb-data
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git add kb_gaps.json kb_state.json
+          git commit -q -m "kb gaps: $(date -u +%FT%TZ) [skip ci]"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" kb-data

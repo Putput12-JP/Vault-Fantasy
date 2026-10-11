@@ -1,0 +1,23 @@
+# One-off check that the DISCORD_WEBHOOK_URL secret works from GitHub's runners.
+# Run from the Actions tab (Run workflow).
+name: Discord webhook test
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - name: Post test message
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: node scripts/notify-discord.mjs --test
