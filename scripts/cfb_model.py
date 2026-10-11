@@ -83,7 +83,7 @@ def grade(entry, g26):
     margin = (x.homeFinalScore - x.awayFinalScore) * (1 if home else -1)
     close = None if pd.isna(x.homeTeamSpread) else (-x.homeTeamSpread if home else x.homeTeamSpread)
     res = 'W' if margin + entry['entry'] > 0 else 'L' if margin + entry['entry'] < 0 else 'P'
-    return dict(result=res, margin=int(margin), espn_close=close, clv=None if close is None else round(entry['entry'] - close, 1))
+    return dict(result=res, hs=int(x.homeFinalScore), as_=int(x.awayFinalScore), margin=int(margin), espn_close=close, clv=None if close is None else round(entry['entry'] - close, 1))
 
 
 def cmd_update(a):
@@ -109,28 +109,43 @@ def cmd_update(a):
     through = int(done.week.max()) if len(done) else 0
     name2id = {v[0]: k for k, v in names.items()}
 
-    # the slate: upcoming FBS games the Sharp Money feed lists, with their lines
+    # the slate: upcoming FBS games the Sharp Money feed lists, with their lines. --since adds games that
+    # already kicked off (a one-time backfill): they are projected with ratings fit only on EARLIER weeks and
+    # entered at the opening line, and flagged so the page can say they were logged after the fact.
+    gidx = {(int(r.homeTeamId), int(r.awayTeamId)): r for r in gm.drop_duplicates('game_id').itertuples()}
+    cache = {}
+    def rated_before(wk):
+        if wk not in cache:
+            Tw = tg[tg.game_id.isin(done[done.week < wk].game_id) & tg.pos_team_id.isin(F) & tg.def_pos_team_id.isin(F)]
+            cache[wk] = st.fit(Tw, *prior)
+        return cache[wk]
     slate, un = [], 0
     if a.sharp and os.path.exists(a.sharp):
         feed = json.load(open(a.sharp)); now = feed['ts']
         for g in feed['games']:
-            if g['sport'] != 'cfb' or g['start'] <= now: continue
+            if g['sport'] != 'cfb': continue
+            started = g['start'] <= now
+            if started and not (a.since and g['start'] >= a.since): continue
             h, aw = name2id.get(g['home']['name']), name2id.get(g['away']['name'])
             line = ((g.get('pin') or {}).get('sp') or {}).get('line')
             if line is None: line = ((g.get('consensus') or {}).get('sp') or {}).get('line')
-            if h is None or aw is None or h not in F or aw not in F or line is None:
-                un += 1; continue
             oline = ((g.get('open') or {}).get('sp') or {}).get('line')
-            pred = K * (P(h) - P(aw)) + HFA
+            if started: line = oline          # in-game lines are live, so a backfilled game uses its opening line
+            gr_ = gidx.get((h, aw)) if h is not None else None
+            if h is None or aw is None or h not in F or aw not in F or line is None or gr_ is None:
+                un += 1; continue
+            wk = int(gr_.week); neutral = bool(gr_.neutral_site == True)
+            ra_w, rb_w = rated_before(wk)
+            Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
+            pred = K * (Pw(h) - Pw(aw)) + (0.0 if neutral else HFA)
             mkt = -line
-            wk = through + 1 if through else 1
             edge = pred - mkt
             pick = None
             if abs(edge) >= PICK_EDGE and wk >= PICK_MIN_WEEK:
                 side = 'home' if edge > 0 else 'away'
                 pick = dict(side=side, team=g['home' if side == 'home' else 'away']['short'], line=line if side == 'home' else -line)
-            slate.append(dict(key=g['key'], kick=g['start'], home=g['home']['short'], away=g['away']['short'], home_id=h, away_id=aw, week=wk,
-                              model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None if oline is None else round(-oline, 1),
+            slate.append(dict(key=g['key'], kick=g['start'], home=g['home']['short'], away=g['away']['short'], home_id=h, away_id=aw, week=wk, neutral=neutral,
+                              backfill=started, model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None if oline is None else round(-oline, 1),
                               edge=round(edge, 1), pick=pick))
         slate.sort(key=lambda x: (x['kick'], -abs(x['edge'])))
     else: now = int(pd.Timestamp.now('UTC').timestamp())
@@ -142,10 +157,10 @@ def cmd_update(a):
         except Exception: log = []
     have = {e['key'] for e in log}
     for s in slate:
-        if s['pick'] and s['key'] not in have and s['kick'] > now:
+        if s['pick'] and s['key'] not in have and (s['kick'] > now or s['backfill']):
             log.append(dict(key=s['key'], week=s['week'], kick=s['kick'], home=s['home'], away=s['away'], home_id=s['home_id'], away_id=s['away_id'],
                             side=s['pick']['side'], team=s['pick']['team'], entry=s['pick']['line'], model_margin=s['model_margin'],
-                            market_margin=s['market_margin'], edge=s['edge'], logged=int(now)))
+                            market_margin=s['market_margin'], edge=s['edge'], logged=int(now), backfill=s['backfill'], neutral=s['neutral']))
     g26 = gm.drop_duplicates('game_id')
     for e in log:
         if 'result' not in e: e.update(grade(e, g26))
@@ -163,6 +178,7 @@ def cmd_update(a):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'update']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
+    ap.add_argument('--since', type=int, help='one-time backfill: also project games that kicked off at or after this unix time, entered at the opening line')
     ap.add_argument('--sharp', help='path to the Sharp Money data.json (sharp-data branch)'); a = ap.parse_args()
     {'priors': cmd_priors, 'update': cmd_update}[a.cmd](a)
 
