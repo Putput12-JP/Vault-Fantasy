@@ -203,6 +203,55 @@ def settle(entry, g26, fin):
     return dict(result=res, hs=int(sc[0]), as_=int(sc[1]), margin=int(margin), espn_close=None, clv=None, settled_by='feed')
 
 
+LINES26 = os.path.join(ROOT, 'data', 'cfbd', 'lines_2026.json')
+
+
+def open_check(g26, F, rated_before, K, HFA):
+    """The same model, graded against the OPENING line instead of the close.
+
+    Backtest 2022-2025 (docs/retro/cfb-efficiency-replication.md): 5+ point disagreements with the opening spread covered 57.5% (435-321),
+    against 51.5% when measured against the close. That is an edge in a number we may not be able to bet, so this is a record, not a pick list:
+    every FBS-vs-FBS game from PICK_MIN_WEEK on is re-projected with ratings fit only on EARLIER weeks (so nothing sees its own game), compared
+    with the first spread a book posted (CollegeFootballData spreadOpen: DraftKings, then Bovada, then any), and graded when it ends.
+    Nothing is tuned here: the 5-point threshold is the one already used for the pick log. Returns None until the lines file exists."""
+    if not os.path.exists(LINES26): return None
+    rows = {}
+    for r in json.load(open(LINES26)):
+        if r.get('so') is None or r.get('id') is None: continue
+        rk = {'DraftKings': 0, 'Bovada': 1}.get(r['p'], 2)
+        if r['id'] not in rows or rk < rows[r['id']][0]: rows[r['id']] = (rk, r)
+    games, fbs_games = [], 0
+    for x in g26.itertuples():
+        h, aw = int(x.homeTeamId), int(x.awayTeamId)
+        if h not in F or aw not in F or int(x.week) < PICK_MIN_WEEK: continue
+        fbs_games += 1
+        hit = rows.get(int(x.game_id))
+        if not hit: continue
+        ln = hit[1]; ra_w, rb_w = rated_before(int(x.week)); Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
+        pred = K * (Pw(h) - Pw(aw)) + (0.0 if x.neutral_site == True else HFA)
+        omargin = -float(ln['so']); edge = pred - omargin; home = edge > 0
+        side_open = float(ln['so']) if home else -float(ln['so'])
+        close = None if ln.get('sp') is None else (float(ln['sp']) if home else -float(ln['sp']))
+        g = dict(id=int(x.game_id), week=int(x.week), home_id=h, away_id=aw, provider=ln['p'], side='home' if home else 'away', model_margin=round(pred, 1),
+                 open_margin=round(omargin, 1), edge=round(edge, 1), entry=round(side_open, 1), close=close, clv=None if close is None else round(side_open - close, 1))
+        if bool(x.status_type_completed):
+            m = (x.homeFinalScore - x.awayFinalScore) * (1 if home else -1)
+            g.update(margin=int(m), result='W' if m + side_open > 0 else 'L' if m + side_open < 0 else 'P')
+        games.append(g)
+    def rec(sel):
+        w = sum(g.get('result') == 'W' for g in sel); l = sum(g.get('result') == 'L' for g in sel); n = w + l
+        return dict(won=w, lost=l, pct=round(w / n, 3) if n else None, z=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None)
+    out = dict(source='CollegeFootballData spreadOpen, DraftKings first, then Bovada', min_week=PICK_MIN_WEEK, fbs_games=fbs_games, with_open=len(games),
+               backtest=dict(seasons='2022-2025', vs_open=[435, 321], vs_close=[368, 346], note='5+ point disagreements, weeks 4+, model tuned on 2022-23 only'),
+               by_threshold={str(t): rec([g for g in games if abs(g['edge']) >= t]) for t in (3, 5, 7)},
+               by_week={str(w): rec([g for g in games if g['week'] == w and abs(g['edge']) >= PICK_EDGE]) for w in sorted({g['week'] for g in games})})
+    picks = [g for g in games if abs(g['edge']) >= PICK_EDGE]
+    clvs = [g['clv'] for g in picks if g.get('clv') is not None and 'result' in g]
+    out.update(picks=len(picks), pending=sum('result' not in g for g in picks), clv_n=len(clvs), clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None,
+               clv_pos=round(sum(c > 0 for c in clvs) / len(clvs), 3) if clvs else None, games=sorted(picks, key=lambda g: (-g['week'], -abs(g['edge']))))
+    return out
+
+
 def cmd_update(a):
     d = a.dir; os.makedirs(d, exist_ok=True)
     for f in (f'pbp_2026.parquet', 'sched_2026.parquet'):       # always fresh in season
@@ -431,9 +480,10 @@ def cmd_update(a):
               dict(label='Locked picks with Sharp Money against them', note='Cards only on the other team.', all=_fs([e for e in fp if _link(e) == 'against']), keys=[e['key'] for e in fp if _link(e) == 'against']),
               dict(label='Locked picks, Sharp Money split or quiet', note='Cards on both teams, or no card at all.', all=_fs([e for e in fp if _link(e) in ('split', 'none', 'nocard')]), keys=[e['key'] for e in fp if _link(e) in ('split', 'none', 'nocard')])])
     final_summary.pop('mins')
+    open_chk = open_check(g26, F, rated_before, K, HFA)
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 

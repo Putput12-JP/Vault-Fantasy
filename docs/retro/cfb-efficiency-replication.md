@@ -95,3 +95,25 @@ and the weight the model's disagreement gets when predicting the final margin FE
 than v1's on the pick count and no better where it matters, the miss. It is not an edge, so nothing ships as a pick, and the
 CFB Model page keeps its Ignore it label and its v1 ratings. Talent is the one input that carries weight in the defense fit
 (0.06-0.09), returning production and portal movement are close to zero.
+
+## Opening lines (2026-10-11): the edge is in the early number
+
+CollegeFootballData's `/lines` endpoint carries `spreadOpen` per book (DraftKings, Bovada; older years also Caesars, William Hill, ESPN Bet), and coverage is
+good from 2024 (about 80% of games have an open that differs from the close). `scripts/fetch_cfbd_lines.py` stores it in `data/cfbd/lines_<year>.json`.
+Re-running the walk-forward model (same ratings, same tuning on 2022-23 only) and grading its 5+ point disagreements against the OPEN instead of the close,
+on the 2,937 of 3,653 games that have both (weeks 4+):
+
+| | vs open | vs close |
+|---|---|---|
+| 2022-23 (tune) | 224-165 (57.6%) | 190-168 (53.1%) |
+| 2024-25 (test) | 211-156 (57.5%) | 178-178 (50.0%) |
+| All | 435-321 (57.5%), 2.8 SE above break-even | 368-346 (51.5%) |
+
+Every season was above 54% against the open. Edge 7+: 59.8% vs open, 54.0% vs close. The model's average miss is still worse than the market's
+(12.5 vs 12.28 open, 11.95 close), so the model is not more accurate than the market; it is early. That fits JP+'s 2026 picks beating the close by about 1.5
+points: the edge is in the number posted before the market corrects it. Open lines carry small limits and move fast, so this is a record, not a price we know we could
+bet. Caveats: only games that had an open on file; the open's posting time is unknown.
+
+Forward check: `open_check()` in `scripts/cfb_model.py` re-projects every 2026 FBS game from week 4 on and grades it against the open (nothing tuned; the same 5-point
+threshold), and the CFB Model tab shows the record. The first 57 picks (weeks 4-6) went 30-26 (53.6%), +1.3 points of closing-line value: too small to say anything.
+`.github/workflows/update-cfbd-lines.yml` refreshes the lines once a day and never loses a stored open.
