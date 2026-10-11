@@ -62,3 +62,13 @@ No variant is shipped. Stopped here on purpose: more variants would be fishing. 
 ## Where it lives in the app
 
 The method is shown, unflattered, on the Sharp Money **CFB Model** tab: power ratings, the projected slate against the market line, the backtest by season, and a pick log (`data/cfb_model.json`, refreshed by `.github/workflows/update-cfb-model.yml` from `scripts/cfb_model.py`). Every pick 5+ points from the market in week 4 or later is logged once, before kickoff, and graded against real scores and ESPN's close. The tab is labeled Ignore it until it clears 50 graded picks and 2 standard errors above break-even, the same bar as every other signal. The frozen preseason ratings (`data/cfb_model_priors.json`) are rebuilt once a year with `python3 scripts/cfb_model.py priors`, and `FBS_ADDITIONS` in the script is updated for teams that move up.
+
+## v2 step 1: blending with the market (2026-10-11)
+
+Regressing the final margin on the ESPN closing spread and on (model - spread), weeks 4+, 2022-2025: the model's disagreement
+gets a weight of 0.07 on the tuning seasons (2022-23) and 0.13 on the test seasons (2024-25). Using w = 0.10 the blended line's
+mean miss was 11.89 vs the market's 11.88 on 2024-25 (12.10 vs 12.11 on 2022-23): no measurable gain. So the blended line is
+the market, and the model alone is not an edge. The page shows the blended line anyway so nobody mistakes the model line for
+a price, and adds a pre-game "market check" from Sharp Money (line move toward our side, money share above ticket share,
+sharp-account flow). That check has no history, so it is tracked forward only and read after the sample builds. Games already
+in progress get no check, because their lines and money are live.

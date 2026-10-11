@@ -33,6 +33,35 @@ BREAKEVEN = 110 / 210
 FBS_ADDITIONS = {16}      # teams new to FBS this season (ESPN ids), added each offseason: 2026 = Sacramento State
 
 
+BLEND_W = 0.10           # weight on the model's disagreement in the blended line: fit on 2022-2025 closing lines (0.07 tuned, 0.13 on the test seasons). It cuts the market's miss by 0.01 pts, i.e. nothing
+
+
+def market_check(g, side):
+    """does the market, as the Sharp Money feed sees it, point the same way as our side? +1 agrees, -1 disagrees, 0 quiet. Three independent reads."""
+    sg = 1 if side == 'home' else -1
+    out = {}
+    op = ((g.get('open') or {}).get('sp') or {}).get('line')
+    now = (((g.get('pin') or {}).get('sp') or {}).get('line'))
+    if now is None: now = ((g.get('consensus') or {}).get('sp') or {}).get('line')
+    if op is not None and now is not None:        # line is the home spread, + = underdog; a falling number means the home side got stronger
+        toward = (op - now) * sg
+        out['move'] = dict(v=1 if toward >= 0.5 else -1 if toward <= -0.5 else 0, pts=round(toward, 1))
+    sp = ((g.get('splits') or {}).get('sp') or {})
+    if sp.get('home') and sp.get('away'):         # money share minus ticket share on our side: money heavier than tickets means bigger bets are on it
+        mine, t, m = ('home' if side == 'home' else 'away'), None, None
+        t, m = sp[mine].get('t'), sp[mine].get('m')
+        if t is not None and m is not None:
+            d = m - t
+            out['money'] = dict(v=1 if d >= 5 else -1 if d <= -5 else 0, pts=d)
+    fl = ((g.get('flow') or {}).get('sharp') or {})
+    if fl:
+        net = (fl.get('sp:home', 0) - fl.get('sp:away', 0) + fl.get('ml:home', 0) - fl.get('ml:away', 0)) * sg
+        out['sharp'] = dict(v=1 if net >= 5000 else -1 if net <= -5000 else 0, usd=int(net))
+    vs = [x['v'] for x in out.values()]
+    out['agree'] = sum(v > 0 for v in vs); out['disagree'] = sum(v < 0 for v in vs); out['reads'] = len(vs)
+    return out
+
+
 def team_names(d, years):
     out = {}
     for y in years:
@@ -151,7 +180,8 @@ def cmd_update(a):
             if abs(edge) >= PICK_EDGE and wk >= PICK_MIN_WEEK:
                 side = 'home' if edge > 0 else 'away'
                 pick = dict(side=side, team=g['home' if side == 'home' else 'away']['short'], line=line if side == 'home' else -line)
-            slate.append(dict(key=g['key'], kick=g['start'], home=g['home']['short'], away=g['away']['short'], home_id=h, away_id=aw, week=wk, neutral=neutral,
+            mc = None if started else market_check(g, 'home' if edge > 0 else 'away')    # in-game lines and money are live, not a read on the pre-game market
+            slate.append(dict(key=g['key'], mkt_check=mc, kick=g['start'], home=g['home']['short'], away=g['away']['short'], home_id=h, away_id=aw, week=wk, neutral=neutral,
                               backfill=started, model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None if oline is None else round(-oline, 1),
                               edge=round(edge, 1), pick=pick))
         if a.since:       # one-time backfill: games that kicked off since then but are not in the feed (it only lists a window), at ESPN's own line
@@ -173,6 +203,7 @@ def cmd_update(a):
                     pick = dict(side=side, team=nm(h if side == 'home' else aw), line=-mkt if side == 'home' else mkt)
                 slate.append(dict(key=f'espn:{r.game_id}', kick=int(k), home=nm(h), away=nm(aw), home_id=h, away_id=aw, week=int(r.week), neutral=neutral, backfill=True,
                                   line_src='espn', model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None, edge=round(edge, 1), pick=pick))
+        for x_ in slate: x_['blend_margin'] = round(x_['market_margin'] + BLEND_W * x_['edge'], 1)
         slate.sort(key=lambda x: (x['kick'], -abs(x['edge'])))
     else: now = int(pd.Timestamp.now('UTC').timestamp())
 
@@ -197,7 +228,10 @@ def cmd_update(a):
     bidx = {b['key']: b for b in board}
     for s_ in slate:
         old = bidx.get(s_['key'])
-        if old and (old['kick'] <= now or old.get('backfill')): continue
+        if old and (old['kick'] <= now or old.get('backfill')):
+            for k_ in ('mkt_check', 'blend_margin'):      # added after the first sight: fill in, never change the frozen projection
+                if k_ not in old and k_ in s_: old[k_] = s_[k_]
+            continue
         side = 'home' if s_['edge'] > 0 else 'away'
         ent = dict(s_, side=side, team=s_['home'] if side == 'home' else s_['away'],
                    entry=round(-s_['market_margin'] if side == 'home' else s_['market_margin'], 1), logged=int(now),
