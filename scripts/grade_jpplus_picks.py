@@ -33,6 +33,24 @@ def fetch(url, dest):
     return dest
 
 
+def close_stats(rows):
+    """The same final picks, graded against ESPN's closing spread instead of JP+'s entry (opening) number, and split into underdogs (+ handicap)
+    and favourites. entry/espn_close are the TEAM's handicap (+ = underdog); a team covers when margin + handicap > 0."""
+    def tally(rs, key):
+        w = l = p = 0
+        for r in rs:
+            v = r['margin'] + r[key]
+            if v > 0: w += 1
+            elif v < 0: l += 1
+            else: p += 1
+        return w, l, p
+    fin = [r for r in rows if r.get('status') == 'final' and r.get('margin') is not None and r.get('espn_close') is not None]
+    if not fin: return None
+    dogs = [r for r in fin if r['entry'] > 0]
+    (w, l, p), (dw, dl, dp), (ow, ol, op) = tally(fin, 'espn_close'), tally(dogs, 'espn_close'), tally(dogs, 'entry')
+    return dict(n=len(fin), w=w, l=l, p=p, dog_n=len(dogs), dog_w=dw, dog_l=dl, dog_p=dp, dog_open_w=ow, dog_open_l=ol, dog_open_p=op)
+
+
 def main():
     doc = json.load(open(PICKS))
     season = doc['season']
@@ -92,7 +110,8 @@ def main():
                    clv_neg=round(sum(c < 0 for c in clvs) / len(clvs), 3) if clvs else None,
                    checked_vs_jp=len(chk), disagreements_vs_jp=sum(not r['agrees_with_jp'] for r in chk),
                    mean_gap_to_jp_close=round(sum(close_gap) / len(close_gap), 2) if close_gap else None,
-                   picks=len(out), not_final=sum(r.get('status') != 'final' for r in out))
+                   picks=len(out), not_final=sum(r.get('status') != 'final' for r in out),
+                   close=close_stats(out))
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=season, source=doc.get('source'), summary=summary, picks=out),
               open(OUT, 'w'), indent=1)
     print(json.dumps(summary, indent=1))

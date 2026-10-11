@@ -12,6 +12,7 @@ on:
     paths:
       - 'scripts/cfb_model.py'
       - 'scripts/cfb_efficiency_study.py'
+      - 'scripts/cfb_open_ledger.py'
       - 'data/cfb_model_priors.json'
   schedule:
     - cron: '17 */3 * 9,10,11,12,1 *'
@@ -56,6 +57,30 @@ jobs:
             git config user.email "vault-bot@users.noreply.github.com"
             git add data/cfb_model.json
             git commit -m "cfb model: refresh ratings, slate and pick log [skip ci]"
+            git pull --rebase -q origin main
+            git push
+          fi
+      # Opening-line ledger: freezes each listed game's opening spread, rolls the pre-kickoff line forward, settles from the feed's final score.
+      # Tests whether underdogs cover at the OPENING number in general (JP+'s edge is all in that number). Own step and commit so it can never
+      # block or be blocked by the model refresh above. Needs ~100 settled games before the summary is a reading.
+      - name: Update the opening-line ledger
+        continue-on-error: true
+        run: |
+          python3 scripts/cfb_open_ledger.py --sharp /tmp/sharp.json
+          git fetch -q origin main
+          if git show origin/main:data/cfb_open_lines.json > /tmp/prev_open.json 2>/dev/null && python3 - <<'PY'
+          import json,sys
+          a=json.load(open('/tmp/prev_open.json')); b=json.load(open('data/cfb_open_lines.json'))
+          a.pop('generated',None); b.pop('generated',None)
+          sys.exit(0 if a==b else 1)
+          PY
+          then
+            echo "No ledger changes."
+          else
+            git config user.name  "vault-bot"
+            git config user.email "vault-bot@users.noreply.github.com"
+            git add data/cfb_open_lines.json
+            git commit -m "cfb: opening-line ledger [skip ci]"
             git pull --rebase -q origin main
             git push
           fi
