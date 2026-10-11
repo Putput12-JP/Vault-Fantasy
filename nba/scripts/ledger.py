@@ -227,10 +227,11 @@ def minutes_log(board, now):
         for team in (g['away'], g['home']):
             five = fives.get(team)
             v3 = pr.game_minutes_v3(team, g, status, cache, starters=five)       # shadow, never priced
+            gb = pr.game_minutes_gbm(team, g, status, cache)                     # shadow (gradient-boosted minutes), never priced
             for pid, G in pr.game_minutes(team, g, status, cache).items():
                 k = f"{g['id']}|{pid}"
                 rows[k] = [round(G['min'], 2), round((pr.state['players'].get(str(pid)) or {}).get('ms', [0])[0], 2),
-                           round(v3[pid], 2) if pid in v3 else None, 1 if five else 0]
+                           round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None]
                 meta[k] = {'game': str(g['id']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': pid,
                            'player': names.get(pid, str(pid)), 'team': team}
     return rows, meta
@@ -315,13 +316,19 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
                 reason = f"foul trouble ({int(st['fouls'])} fouls)"
         v3 = pre[-1][2] if len(pre[-1]) > 2 else None
         per_day[tip_day(m['tip'])].append([m['player'], m['team'], m['matchup'], round(pre[-1][0], 1), round(actual, 1), reason,
-                                           round(v3, 1) if v3 is not None else None, pre[-1][3] if len(pre[-1]) > 3 else 0])
+                                           round(v3, 1) if v3 is not None else None, pre[-1][3] if len(pre[-1]) > 3 else 0,
+                                           round(pre[-1][4], 1) if len(pre[-1]) > 4 and pre[-1][4] is not None else None])
     for d, rows in per_day.items():
         played = [r for r in rows if r[5] != 'did not play']
         err = [r[3] - r[4] for r in played]
         both = [r for r in played if r[6] is not None]                 # the shadow: v3 on the same players
         e2, e3 = [r[3] - r[4] for r in both], [r[6] - r[4] for r in both]
+        gbs = [r for r in played if len(r) > 8 and r[8] is not None]       # the GBM shadow, with v2 on the same players
+        eg, e2g = [r[8] - r[4] for r in gbs], [r[3] - r[4] for r in gbs]
         days[d] = {'n': len(played), 'dnp': len(rows) - len(played),
+                   'gbm': {'n': len(gbs), 'mae_v2': round(sum(abs(e) for e in e2g) / len(e2g), 3) if e2g else None,
+                           'mae_gbm': round(sum(abs(e) for e in eg) / len(eg), 3) if eg else None,
+                           'miss8_v2': sum(abs(e) >= 8 for e in e2g), 'miss8_gbm': sum(abs(e) >= 8 for e in eg)},
                    'mae': round(sum(abs(e) for e in err) / len(err), 2) if err else None,
                    'bias': round(sum(err) / len(err), 2) if err else None,
                    'miss8': sum(abs(e) >= 8 for e in err),

@@ -12,6 +12,7 @@ minutes, same-position players NB times more). The page does this for any team t
 """
 import json, math, os, re, sys
 import consensus as CE
+import minutes_gbm as MG
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, '..', 'data')
@@ -235,6 +236,39 @@ class Pricer:
         if tot > 0 and len(pm) >= 7:
             f = (M3['team_min_starters'] if starters else M3['team_min']) / tot
             pm = {a: min(48.0, v * f) for a, v in pm.items()}
+        cache[key] = pm
+        return pm
+
+    # ── shadow: minutes GBM (docs/reverse-engineering-targets.md items 8-10), logged next to v2 and v3, never priced ───
+    def game_minutes_gbm(self, team, g, status, cache):
+        """{pid: minutes} from the gradient-boosted minutes model (scripts/minutes_gbm.py) on the state the daily job exports.
+        Out = report status Out / Doubtful / Inactive, as v3 treats them. Margin is the market spread (home spread, negative =
+        home favoured), where the backtest used the game model's margin. No team-total rescale: the backtest scored it raw."""
+        GB = (self.state or {}).get('gbm')
+        if not GB or not MG.load_model():
+            return {}
+        key = ('gmg', team, str(g['id']))
+        if key in cache:
+            return cache[key]
+        if not hasattr(self, '_gbm_pl'):
+            self._gbm_pl = {int(a): MG.from_export(r) for a, r in GB['players'].items()}
+        pl, tip = self._gbm_pl, g['tip']
+        out_ids = {a for a, stt in status.items() if stt in ('Out', 'Doubtful', 'Inactive')}
+        rot = MG.rotation(pl, team, tip)
+        out = {a for a in rot if a in out_ids}
+        ctx = MG.team_context(GB['team_tips'].get(team, []), tip)
+        sp = g.get('blow_spread3', g.get('spread'))
+        margin = -sp if sp is not None else None
+        roster = {x['id'] for x in self.D['teams'].get(team, {}).get('players', [])}
+        roster |= {a for a, p in pl.items() if p['team'] == team and p['last'] >= tip - 30 * 86400}
+        cand = self.cand_override.get((team, str(g['id'])))
+        pm = {}
+        for a in (cand if cand is not None else sorted(roster)):
+            p = pl.get(a)
+            if not p or a in out_ids or p['n'] < 5:          # a player who just changed team is kept, as the backtest kept him
+                continue
+            x = MG.features(p, a, rot, out, tip, ctx, 1 if team == g['home'] else 0, margin, p['pos'])
+            pm[a] = max(0.0, min(48.0, MG.predict(x)))
         cache[key] = pm
         return pm
 

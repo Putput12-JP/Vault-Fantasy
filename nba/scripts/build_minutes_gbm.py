@@ -25,6 +25,7 @@ import numpy as np, pandas as pd
 sys.path.insert(0, os.path.dirname(__file__))
 import nba_common as C
 import build_minutes_model as MM
+import minutes_gbm as MG
 
 SEASONS = [2022, 2023, 2024, 2025, 2026]
 TRAIN, TEST = (2023, 2024, 2025), 2026
@@ -37,71 +38,50 @@ OUT_MD = os.path.join(C.HERE, '..', 'docs', 'minutes-gbm.md')
 
 
 def build_rows(box, margins):
-    pl = {}                                                   # aid -> state
-    team_games = defaultdict(deque)                           # team -> recent tip times
+    """One row per player-game (features from minutes_gbm.py, the same code live pricing runs), plus evaluation-only columns."""
+    pl, side = {}, {}                                         # aid -> minutes_gbm state; aid -> {rt, sq} evaluation-only state
+    team_tips = defaultdict(list)
     rows = []
     for g in C.games(SEASONS):
         recs = box.get(g['game_id'], [])
         if not recs:
             continue
-        tip = g['tip']
+        tip = g['tip'].timestamp()
         played_ids = {r['athlete_id'] for r in recs if r['played']}
         mg = margins.get(g['game_id'])
         for team, home in ((g['home'], 1), (g['away'], 0)):
-            lim = tip - dt.timedelta(days=ROT_DAYS)
-            rot = {a: p for a, p in pl.items() if p['team'] == team and p['ew'][1] >= ROT_MIN and p['last'] >= lim}
-            out = {a for a in rot if a not in played_ids}
-            tg = team_games[team]
-            last_team = tg[-1] if tg else None
-            b2b = 1.0 if last_team and (tip - last_team) < dt.timedelta(hours=30) else 0.0
-            g7 = sum(1 for t in tg if tip - t < dt.timedelta(days=7))
-            rest = min(10.0, (tip - last_team).total_seconds() / 86400) if last_team else 5.0
+            rot = MG.rotation(pl, team, tip)
+            out = {a for a in rot if a not in played_ids}                 # ORACLE absences
+            ctx = MG.team_context(team_tips[team], tip)
             for r in recs:
                 if r['team'] != team or not r['played'] or r['athlete_id'] not in pl:
                     continue
                 p = pl[r['athlete_id']]
                 if p['n'] < 5:
                     continue
-                grp = MM.group(r['pos'])
-                vs = sum(q['ew'][1] for a, q in rot.items() if a in out and a != r['athlete_id'] and q['pos'] == grp)
-                vo = sum(q['ew'][1] for a, q in rot.items() if a in out and a != r['athlete_id'] and q['pos'] != grp)
-                last5 = list(p['h'])
-                days_off = min(60.0, (tip - p['last']).total_seconds() / 86400)
-                rows.append(dict(
-                    season=g['season'], gid=g['game_id'], aid=r['athlete_id'], y=r['minutes'],
-                    ew1=p['ew'][0], ew2=p['ew'][1], ew3=p['ew'][2], last=p['lastm'], m5=float(np.mean(last5)),
-                    sd5=float(np.std(last5)), sdm_ewma=math.sqrt(p['sq']), st=p['st'], was_start=p['last_start'], n=min(p['n'], 200),
-                    rest=rest, b2b=b2b, g7=g7, home=home, days_off=days_off, vs=vs, vo=vo,
-                    absm=abs(mg) if mg is not None else 6.0, sgnm=(mg if home else -mg) if mg is not None else 0.0,
-                    pos_g=1.0 if grp == 'G' else 0.0, pos_c=1.0 if grp == 'C' else 0.0, n_out=len(out),
-                    **{f'rt_{k}': p['rt'][k] for k in STATS}, **{f'act_{k}': r[STATCOL[k]] for k in STATS}))
-        # update state after the game
+                x = MG.features(p, r['athlete_id'], rot, out, tip, ctx, home, mg, p['pos'])      # last known position, all live has
+                sd = side[r['athlete_id']]
+                rows.append(dict(zip(MG.COLS, x), season=g['season'], gid=g['game_id'], aid=r['athlete_id'], y=r['minutes'],
+                                 sdm_ewma=math.sqrt(sd['sq']),
+                                 **{f'rt_{k}': sd['rt'][k] for k in STATS}, **{f'act_{k}': r[STATCOL[k]] for k in STATS}))
         for r in recs:
             if not r['played']:
                 continue
             a = r['athlete_id']
             p = pl.get(a)
             if p is None:
-                pl[a] = {'ew': [r['minutes']] * 3, 'n': 1, 'team': r['team'], 'last': tip, 'pos': MM.group(r['pos']),
-                         'st': 1.0 if r['starter'] else 0.0, 'lastm': r['minutes'], 'last_start': 1.0 if r['starter'] else 0.0,
-                         'h': deque([r['minutes']], maxlen=5), 'sq': 36.0,
-                         'rt': {k: r[STATCOL[k]] / max(r['minutes'], 1.0) for k in STATS}}
+                pl[a] = MG.new_player(r['minutes'], r['starter'], r['team'], tip, MM.group(r['pos']))
+                side[a] = {'sq': 36.0, 'rt': {k: r[STATCOL[k]] / max(r['minutes'], 1.0) for k in STATS}}
             else:
-                k = max(0.0, 0)
-                p['sq'] += 0.1 * ((r['minutes'] - p['ew'][1]) ** 2 - p['sq'])
-                p['ew'] = [e + max(al, 1 / (p['n'] + 1)) * (r['minutes'] - e) for e, al in zip(p['ew'], ALPHAS)]
-                p['st'] += max(0.2, 1 / (p['n'] + 1)) * ((1.0 if r['starter'] else 0.0) - p['st'])
-                p['lastm'], p['last_start'] = r['minutes'], 1.0 if r['starter'] else 0.0
-                p['h'].append(r['minutes'])
+                sd = side[a]
+                sd['sq'] += 0.1 * ((r['minutes'] - p['ew'][1]) ** 2 - sd['sq'])
                 w = min(1.0, r['minutes'] / 20.0)
                 for k in STATS:
-                    p['rt'][k] += max(RATE_A, 1 / (p['n'] + 9)) * w * (r[STATCOL[k]] / max(r['minutes'], 1.0) - p['rt'][k])
-                p['n'] += 1
-                p['team'], p['last'], p['pos'] = r['team'], tip, MM.group(r['pos'])
+                    sd['rt'][k] += max(RATE_A, 1 / (p['n'] + 9)) * w * (r[STATCOL[k]] / max(r['minutes'], 1.0) - sd['rt'][k])
+                MG.update_player(p, r['minutes'], r['starter'], r['team'], tip, MM.group(r['pos']))
         for t in (g['home'], g['away']):
-            team_games[t].append(tip)
-            while len(team_games[t]) > 12:
-                team_games[t].popleft()
+            team_tips[t].append(tip)
+            del team_tips[t][:-12]
     return pd.DataFrame(rows)
 
 

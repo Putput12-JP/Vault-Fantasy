@@ -24,6 +24,17 @@ python3 nba/scripts/build_rates_v3.py                           # per-stat memor
 python3 nba/scripts/build_prop_model_v3_full.py                 # v3 candidate (B + C, with and without A's shape) vs v2 (~4 min)
 python3 nba/scripts/pricing.py --check                          # the Props page's pricing in Python (the ledger uses it); prints example rows
 python3 nba/scripts/check_minutes_parity.py [--games 40]         # proof live pricing projects players exactly as the backtest did (~40 s)
+python3 nba/scripts/build_minutes_gbm.py                         # minutes GBM vs linear on two holdouts, oracle absences (needs: pip install lightgbm pandas) (~25 s)
+python3 nba/scripts/build_minutes_spread.py                      # per-player minutes error size vs the EWMA volatility (FAIL, kept for the record) (~25 s)
+python3 nba/scripts/export_minutes_gbm.py                        # refit the shipped GBM, write data/minutes_gbm.json, prove a pure-Python scorer matches (~30 s)
+python3 nba/scripts/check_minutes_gbm_parity.py [--games 40]     # proof live pricing's GBM minutes equal the backtest's (~60 s)
+python3 nba/scripts/build_pbp_stints.py CSV... --out raw/stints_X.csv   # lineup stints from nba_data play-by-play (docs/reverse-engineering-targets.md)
+python3 nba/scripts/build_rapm.py --fit 2023 2024 --test 2025    # ridge RAPM from stints (no gain over box scores)
+python3 nba/scripts/build_garbage_time.py                        # play-by-play garbage time vs the pregame gap (no gain)
+python3 nba/scripts/build_pbp_minutes_test.py                    # garbage time stripped from recent minutes (no gain)
+python3 nba/scripts/build_kalman_rates.py                        # Kalman vs plain EWMA rates
+python3 nba/scripts/build_kalman_rates_v4.py                     # Kalman volume rates vs rates v3 (tiny gain)
+python3 nba/scripts/build_kalman_pct_v4.py                       # Kalman percentages + paired significance (percentages fail)
 python3 nba/scripts/build_minutes_v3_pricing.py                # pre-registered: v2 pricing with minutes v3 (+ confirmed starters) vs v2 (~5 min)
 python3 nba/scripts/build_consensus.py                          # consensus fair engine backtest: books <-> Kalshi, ladder leave-one-out (~3 min)
 python3 nba/scripts/fetch_lineups.py [--backfill]               # NBA.com starting lineups: today -> data/lineups_today.json, or two seasons -> raw
@@ -39,7 +50,7 @@ python3 nba/scripts/build_gamelogs.py                           # per-player gam
 ## Daily refresh (GitHub Actions)
 
 `.github/workflows/nba-daily.yml`, 7:23 AM ET: fetch_hoopr (last three seasons + this one), fetch_depth_charts,
-build_player_projections, build_gamelogs, build_model_state, prop_board, build_data_health, then commits
+build_player_projections, build_gamelogs, build_model_state (now also exports the minutes GBM's player state, `live.gbm`), prop_board, build_data_health, then commits
 `nba/data/` and `nba/projections.html` to main. Refits (build_prop_model_v2.py) need the local price archive in
 `nba/raw/tables` and stay manual; the job keeps the archive-derived pieces (example board, archive counts) as they
 were.

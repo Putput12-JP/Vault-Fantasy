@@ -26,6 +26,9 @@ from each doc's own words; "not stated" means the doc does not say.
 | Copula step A2 | copula-fit-a2.md, copula-freeze.md | yes, and moved to the **2026-27 holdout** | frozen, waiting |
 | Consensus engine | consensus-engine.md | not stated | 3 Kalshi GO cells |
 | Lean search (11 trials) | lean_trials_nba.json | yes (all trials logged, bar rises with trials) | all 11 rejected |
+| Public-data sweep: RAPM, PBP garbage time, Kalman rates (volume, percentages) | reverse-engineering-targets.md items 2-7 | pass bars written in each script before running (one amendment, disclosed) | RAPM NO-GO; garbage time NO-GO; Kalman volume tiny (<= 0.3% RMSE), percentages NO-GO |
+| Minutes GBM vs linear (two holdouts: 2024-25, 2025-26) | minutes-gbm.md | yes (bar in the script header) | PASS on accuracy, oracle absences; shadow only |
+| Minutes spread model | minutes-spread.md | yes | FAIL (+0.75% / +0.80% CRPS vs a 1% bar) |
 
 So the NBA side is in better shape than the NFL side: most later tests were pre-registered, and the copula test already uses
 a season nobody has looked at. The gaps are the early model builds (game, minutes, prop v1/v2) with no written accept rule,
@@ -184,3 +187,23 @@ props (3% edge after a placeholder 2% fee, $5 stake), filled only from the publi
 filled orders under `thru`**: return above zero at z >= 2 clustered by game day, with Novig's real fee confirmed and the results recomputed. Nothing else on Novig
 (takers, game markets, other stats) is credited. No real order exists or is authorised by this section.
 
+
+## 8. Minutes GBM shadow (2026-10-11), fixed before the live ledger is read
+
+What was run: a LightGBM minutes model (`nba/scripts/build_minutes_gbm.py`, `minutes_gbm.py`) tested on 2024-25 and 2025-26 against a
+linear stand-in for the shipped features: 6.001 vs 6.311 RMSE and 6.030 vs 6.369, paired t above 20 on both. Those two seasons were
+used; the 300-tree size was chosen from a five-size sweep scored on 2025-26, so treat that number as slightly optimistic.
+
+Why the backtest gain is not the evidence: it used **oracle absences** (who actually sat) and only players who played, which is
+the weakness section 6 found in the minutes v3 backtest (absolute error 5.00 not 4.65 once non-dressed candidates take minutes).
+Live, the GBM sees report-status absences and as-of rosters, so expect a smaller gain than the table shows. Also, the
+backtest's expected margin came from the game model while live uses the market spread.
+
+Live ledger rule for the GBM shadow (logged next to v2 and v3 in `track.json` `minutes_days[*].gbm`, never priced):
+- **Promote to a pricing candidate** only with at least 3,000 settled player-games over at least 20 game days, a lower
+  average miss than v2 on the same players, a lower 8+ minute miss count, and a day-level paired t of the MAE difference of at
+  least 3.
+- Promotion to a pricing candidate is not promotion to pricing. It still needs its own pre-registered Kalshi-edge test, because
+  minutes v3 and rates v3 were more accurate than v2 and did not move the edge.
+- Same looks rule as section 3: monthly monitoring, decision only when the sample size is met, using the first time it is met.
+- If this section is edited after the ledger has been read, record the date and reason here and the result is exploratory.

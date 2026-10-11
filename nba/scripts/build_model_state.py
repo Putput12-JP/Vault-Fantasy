@@ -21,6 +21,7 @@ import build_prop_model_v2 as V2
 import build_prop_model as V1
 import build_minutes_model_v3 as M3
 import build_game_model as GM
+import minutes_gbm as MG
 from build_prop_model import BASE
 
 DATA = os.path.join(C.HERE, '..', 'data')
@@ -118,6 +119,7 @@ def main():
     ms, ctx, rt = MM.State(json.load(open(MM.OUT_JSON))['alpha']), V2.Context(), {}
     mv3 = json.load(open(os.path.join(DATA, 'minutes_model_v3.json')))
     m3 = M3.State(mv3['alpha'], mv3['a_new'], mv3['new_n'])
+    gbw = MG.Walk()
     prior = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0]))
     example, last_day, n = None, None, 0
     for g in C.games(seasons):
@@ -129,10 +131,13 @@ def main():
             example['asof'] = g['tip_et'].strftime('%Y-%m-%d')
         V2.update_after(g, rows, rt, prior, ms, ctx)
         m3.update(g, rows)
+        gbw.update(g, rows, MM.group)
         names.update({r['athlete_id']: r['name'] for r in rows if r.get('name')})
         last_day, n = g['tip_et'].strftime('%Y-%m-%d'), n + 1
     live = export(ctx, rt, ms, keep, cur, asof=max(ms.team_last.values()) if ms.team_last else None, m3=m3)
     live['asof'] = last_day
+    # minutes GBM shadow (scripts/minutes_gbm.py): per-player and per-team state its features read; the trees are data/minutes_gbm.json
+    live['gbm'] = gbw.export(max(ms.team_last.values()).timestamp()) if ms.team_last else None
     game = game_state(box, seasons, cur, roster={x['id']: t for t, T in proj['teams'].items() for x in T['players']}, names=names)
     mm = json.load(open(MM.OUT_JSON))
     casc = json.load(open(os.path.join(DATA, 'usage_cascade.json')))['stats']

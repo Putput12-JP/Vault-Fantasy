@@ -4019,6 +4019,8 @@ function renderTonightRecord(){
   const v3d = days.map(([, x]) => x.v3).filter(v => v && v.n), n3 = v3d.reduce((a, v) => a + v.n, 0);
   const w = k => v3d.reduce((a, v) => a + (v[k] || 0) * v.n, 0) / Math.max(1, n3);
   const s3 = v3d.reduce((a, v) => a + (v.starters || 0), 0), b8 = k => v3d.reduce((a, v) => a + (v[k] || 0), 0);
+  const gbd = days.map(([, x]) => x.gbm).filter(v => v && v.n), ng = gbd.reduce((a, v) => a + v.n, 0);
+  const wg = k => gbd.reduce((a, v) => a + (v[k] || 0) * v.n, 0) / Math.max(1, ng), g8 = k => gbd.reduce((a, v) => a + (v[k] || 0), 0);
   const dl = x => new Date(x + 'T12:00').toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'});
   $('nrecord').innerHTML = `<div class="nt-rec">
     <div class="row3"><div class="stat"><span class="k">Last night (${dl(d0)})</span><span class="v">${x0.mae != null ? fmt(x0.mae, 2) : 'n/a'} min</span><small class="muted">average miss, ${x0.n} players</small></div>
@@ -4026,6 +4028,7 @@ function renderTonightRecord(){
       <div class="stat"><span class="k">Missed by 8+</span><span class="v">${n ? pc(m8 / n) : 'n/a'}</span><small class="muted">backtest 18.5%</small></div>
       <div class="stat"><span class="k">Projected, did not play</span><span class="v">${dnp}</span><small class="muted">not in the averages; books void these</small></div></div>
     ${n3 ? `<p style="margin:0;font-size:13px;color:var(--fg2)"><b style="font-weight:500;color:var(--fg)">Shadow, minutes v3:</b> average miss <span class="num ${w('mae_v3') < w('mae_v2') ? 'pos' : 'neg'}">${fmt(w('mae_v3'), 2)}</span> against v2's <span class="num">${fmt(w('mae_v2'), 2)}</span> on the same ${n3.toLocaleString()} players; 8+ misses ${b8('miss8_v3')} vs ${b8('miss8_v2')}${s3 ? `; ${s3} of them priced with the confirmed starting five` : ''}. Never priced: the pre-registered test kept v2.</p>` : ''}
+    ${ng ? `<p style="margin:0;font-size:13px;color:var(--fg2)"><b style="font-weight:500;color:var(--fg)">Shadow, gradient-boosted minutes:</b> average miss <span class="num ${wg('mae_gbm') < wg('mae_v2') ? 'pos' : 'neg'}">${fmt(wg('mae_gbm'), 2)}</span> against v2's <span class="num">${fmt(wg('mae_v2'), 2)}</span> on the same ${ng.toLocaleString()} players; 8+ misses ${g8('miss8_gbm')} vs ${g8('miss8_v2')}. Never priced: it is waiting for its live test.</p>` : ''}
     <div class="two"><div class="nt-tw"><table class="nt-days"><thead><tr><th class="l">Day</th><th>Players</th><th>Avg miss</th><th>Bias</th><th>8+ misses</th><th>DNP</th><th title="Shadow minutes v3, same players">v3 miss</th></tr></thead><tbody>
       ${days.slice(0, 10).map(([dd, x]) => `<tr><td class="l">${dl(dd)}</td><td>${x.n}</td><td>${x.mae != null ? fmt(x.mae, 2) : ''}</td><td>${x.bias != null ? (x.bias > 0 ? '+' : '') + fmt(x.bias, 2) : ''}</td><td>${x.miss8}</td><td>${x.dnp}</td><td>${x.v3 && x.v3.mae_v3 != null ? fmt(x.v3.mae_v3, 2) : ''}</td></tr>`).join('')}</tbody></table></div>
     <div class="nt-tw"><table class="nt-days"><thead><tr><th class="l">Biggest misses, ${dl(d0)}</th><th>Proj</th><th title="Shadow minutes v3">v3</th><th>Actual</th><th class="l">Why</th></tr></thead><tbody>

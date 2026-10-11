@@ -26,6 +26,10 @@ starting five once NBA.com posts it), the recorder logs it, and the Lab's record
 Consensus fair engine ([consensus-engine.md](consensus-engine.md)): Kalshi rungs priced from the rest of their ladder
 plus the model pass GO on points NO and 3PM NO (beating the current blend on the same rungs); live pricing and the
 shadow ledger now carry a consensus edge for every venue.
+Public-data sweep and minutes GBM (2026-10-11, [reverse-engineering-targets.md](reverse-engineering-targets.md)): play-by-play RAPM,
+play-by-play garbage time and Kalman percentages add nothing; Kalman volume rates are real but tiny. A LightGBM minutes model beats
+the linear stand-in by about 5% RMSE on two holdouts (oracle absences). It runs as a live **shadow** next to v2 and v3 (ledger
+`minutes_days[*].gbm`, never priced); accept rule in [experiment-log.md](experiment-log.md) section 8.
 Recorder venues (2026-09-30): Kalshi, ESPN/DraftKings, Pinnacle, Action Network (7 books), Polymarket (game
 markets + player props, fee included on the page), PrizePicks, Underdog, Sleeper, the injury report and NBA.com
 lineups. Pick'em lines show on the Props page but never rank as a best bet (flat payouts) and have no gate yet.

@@ -130,8 +130,8 @@ position, teammates' vacated minutes, game-model margin), absences taken from wh
 
 | Holdout | Linear (shipped-style) RMSE | Richer linear | LightGBM | Gain | t |
 |---|---|---|---|---|---|
-| train 2022-25, test 2025-26 | 6.311 | 6.215 | 6.001 | +4.92% | +20.6 |
-| train 2022-24, test 2024-25 | 6.369 | 6.248 | 6.030 | +5.31% | +21.3 |
+| train 2022-25, test 2025-26 | 6.311 | 6.215 | 5.999 | +4.94% | +20.5 |
+| train 2022-24, test 2024-25 | 6.369 | 6.248 | 6.031 | +5.30% | +21.2 |
 
 - About two thirds of the gain is nonlinearity, not new information: LightGBM beats the *richer* linear model by 3.5% on both
   holdouts. Most of its signal comes from the three EWMA speeds together (ew2 46%, ew3 32%, ew1 9% of split gain), so the model is
@@ -156,13 +156,21 @@ one per-player number (an EWMA of squared misses). A LightGBM on the squared mis
 and 79.4%), but the pre-set bar was 1%, so it fails. Even a single constant sd is within 0.2-0.3% of the per-player
 EWMA, so per-player minutes volatility is worth very little either way. Not pursued.
 
-**10. Shadow-model export.** `export_minutes_gbm.py` writes `data/minutes_gbm.json` (300 trees, 8,700 nodes, 260 KB) and a pure-Python
-scorer that matches LightGBM to 1.4e-11 on 3,000 rows, so the cron jobs need no lightgbm. What is still missing to run it live:
-the model's inputs are three EWMAs of minutes (0.1, 0.2, 0.4), last-game minutes, last-5 mean and std, a starter-rate EWMA, last
-game's role, games played, rest days, games in the last 7 days, days since the player's last game, vacated minutes by position
-group, expected margin (absolute and signed) and the count of rotation players out. `model_state.json` stores only part of that,
-so the live state needs those fields added before the shadow can run. The fit includes 2025-26, so it cannot be used to
-evaluate itself.
+**10. Shadow model wired in (2026-10-11).** The GBM now runs live as a shadow, never priced:
+- `scripts/minutes_gbm.py` is the single definition of the state, the features and the scorer (stdlib only). The training walk
+  (`build_minutes_gbm.py`), the daily job (`build_model_state.py` writes `live.gbm`) and pricing (`Pricer.game_minutes_gbm`) all
+  call it. `data/minutes_gbm.json` (300 trees, 260 KB) matches LightGBM to 1.4e-11.
+- `ledger.py` logs the GBM minutes as a fifth value on every minutes row, and each settled day gets a `gbm` block (average miss
+  and 8+ misses for v2 and the GBM on the same players). The Tonight page's Track Record prints a one-line comparison.
+- `check_minutes_gbm_parity.py`: live pricing and the backtest agree to 0.00000 minutes on 833 player-games (39 games). Two bugs
+  were found and fixed by it: the exported EWMAs were rounded to 4 decimals, which flipped split thresholds and moved projections by
+  up to 0.9 minutes, and the training walk used the position on tonight's box row where live only has the last known one
+  (accuracy numbers above are from after that fix and moved by at most 0.02%).
+- Live differences from the backtest, stated so nobody is surprised: absences come from the injury report, not from who sat; the
+  margin is the market spread, not the game model's; there is no team-total rescale (the backtest scored it raw); a just-traded
+  player is scored on his old team's history, as in the backtest.
+- Not wired: the Tonight table has no GBM column. The page prices in JavaScript and would need a JS copy of the tree scorer and
+  a parity test; not worth building before the shadow earns it.
 
 ## Not done
 

@@ -3,6 +3,7 @@
 Updated 2026-10-08. Ordered by what protects the most first.
 
 ## Done this round
+- Public-data sweep (2026-10-11): `docs/reverse-engineering-targets.md`. RAPM, play-by-play garbage time and Kalman percentages: no gain. Kalman volume rates: real but under 0.3% RMSE. Minutes GBM: about 5% lower minutes RMSE in the backtest (oracle absences), now a **live shadow** logged next to v2 and v3 (`minutes_gbm.py`, `data/minutes_gbm.json`, `check_minutes_gbm_parity.py` proves live equals backtest). Accept rule: `docs/experiment-log.md` section 8.
 - Page size 13.6MB to 7.1MB (headshots as palette PNGs, `scripts/png_shrink.py`), so the 16MB artifact limit is no longer close.
 - Opening-night tooling: `scripts/check_board.py` (one-screen board health) and a "labels not mapped" record on every board, so a
   stat a venue names differently shows up instead of vanishing. The opening-night check task (Oct 21) now runs both.
@@ -24,7 +25,7 @@ Updated 2026-10-08. Ordered by what protects the most first.
 8. **Profile badges.** More streak and "Locked in" style badges for logged bets.
 
 ## Tests already scheduled (nothing to do until then)
-- Nov 9: copula A2 first look. Nov 16: minutes B3 holdout. Nov 20: v3 minutes shadow review.
+- Nov 9: copula A2 first look. Nov 16: minutes B3 holdout. Nov 20: v3 minutes shadow review (and a first look at the GBM shadow: monitoring only, the promotion rule needs 3,000 player-games and 20 game days).
 - Nov 23: edge tests round 2, tests 1 and 2 (`docs/edge-tests-r2.md`). Test 3 (alt-line tails) is done: NO-GO.
 
 ## Housekeeping
