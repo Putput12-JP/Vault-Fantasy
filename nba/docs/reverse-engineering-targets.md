@@ -121,6 +121,34 @@ to. **Verdict: a wash. Not wired into pricing; kept as a candidate (`data/rates_
   is not in this sandbox. Rates v3 and minutes v3 were both more accurate than v2 and did not move the edge, so the
   default expectation is that this will not either.
 
+## Round 2: attacking minutes directly
+
+**8. Gradient-boosted minutes (LightGBM) vs the linear model: PASS on both holdouts** (`build_minutes_gbm.py`, full tables in
+`docs/minutes-gbm.md`). Minutes is the biggest error term in every prop, so this is where accuracy is. Same pre-tip features for
+every model (three EWMAs of minutes, last game, last-5 mean/std, starter rate, rest, back-to-back, games in 7 days, home,
+position, teammates' vacated minutes, game-model margin), absences taken from who actually sat.
+
+| Holdout | Linear (shipped-style) RMSE | Richer linear | LightGBM | Gain | t |
+|---|---|---|---|---|---|
+| train 2022-25, test 2025-26 | 6.311 | 6.215 | 6.001 | +4.92% | +20.6 |
+| train 2022-24, test 2024-25 | 6.369 | 6.248 | 6.030 | +5.31% | +21.3 |
+
+- About two thirds of the gain is nonlinearity, not new information: LightGBM beats the *richer* linear model by 3.5% on both
+  holdouts. Most of its signal comes from the three EWMA speeds together (ew2 46%, ew3 32%, ew1 9% of split gain), so the model is
+  mainly learning how to blend slow and fast recent-minutes signals depending on context.
+- Misses of 8+ minutes drop from 18.3% to 16.4%.
+- **It barely moves the stat projections:** points RMSE 6.024 to 5.985 (0.65%), rebounds 2.510 to 2.496, assists 1.827 to 1.820,
+  3PM 1.245 to 1.243. Stat noise given minutes dominates. A 5% minutes gain is worth roughly a 0.6% gain on points.
+- A small version ships: 300 trees x 15 leaves (8,700 nodes) loses 0.1% RMSE vs 600 x 31 (36,600 nodes). That size exports as a
+  JSON file of a couple hundred KB and can be scored in plain Python/JS like the rest of the pricing code. Caveat: that size sweep was
+  scored on the 2025-26 holdout, so pick the size on 2024-25 before shipping.
+
+**Caveats that matter before shipping.** (a) The linear baseline is a stand-in built from the shipped feature list, not the actual v3
+code, and this sandbox has no injury reports, so the comparison uses oracle absences. v3 scores 6.065 with the real report and
+5.907 knowing starters; the table above is not comparable to those. (b) The shipped model is judged on Kalshi edge, not RMSE, and
+accuracy gains in minutes v3, rates v3 and starters did not move the edge. That test needs the price archive, which is not here.
+(c) The GBM must be re-scored with injury-report absences, where vacated-minutes inputs are noisier.
+
 ## Not done
 
 - DARKO patent text: the USPTO host is not reachable from the build sandbox. Read it from a machine with access.
