@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sharp Money — Board v2 (concept)</title>
+<style>
+  :root{
+    --bg:#0e0f13;--s1:#16171c;--s2:#1c1e24;--s3:#23252c;--s4:#2c2f38;
+    --bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.14);
+    --fg:#f3f4f7;--fg2:#c9cdd6;--mut:#7e8493;
+    --acc:#8fb4e0;--good:#5fe09a;--bad:#ff5a6e;--warn:#f5c842;
+    --sans:system-ui,-apple-system,'Segoe UI',sans-serif;--mono:ui-monospace,'SF Mono',Menlo,monospace;
+    --ease-out:cubic-bezier(.22,1,.36,1);
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--fg);font:13px/1.45 var(--sans);min-height:100vh}
+  .k{font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+  .mono{font-family:var(--mono)}
+  .app{display:grid;grid-template-columns:56px minmax(0,1fr);min-height:100vh}
+  /* icon rail — sidebar starts collapsed in v2: width goes to the board */
+  .rail{border-right:1px solid var(--bd);padding:16px 8px;display:flex;flex-direction:column;gap:10px;align-items:center}
+  .rail i{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--mut);font-style:normal;font-size:15px}
+  .rail i.on{background:var(--s3);color:var(--fg)}
+  .logo{width:32px;height:32px;border-radius:8px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font:800 11px var(--mono);margin-bottom:8px}
+  header{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:700}
+  .chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);font:600 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg2)}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--warn)}
+  .seg{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:3px}
+  .seg b{font-weight:600;font-size:12px;padding:5px 12px;border-radius:999px;color:var(--mut)}
+  .seg b.on{background:var(--fg);color:var(--bg)}
+  .sp{flex:1}
+  /* scoreboard strip: the record, one line per signal, always visible */
+  .score{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--bd);border-bottom:1px solid var(--bd)}
+  .score>div{background:var(--bg);padding:12px 16px}
+  .score .v{font:700 20px var(--mono);margin:2px 0}
+  .score .d{font-size:11px;color:var(--mut)}
+  .bar{height:3px;background:var(--s3);border-radius:2px;margin-top:8px}
+  .bar i{display:block;height:100%;background:var(--warn);border-radius:2px}
+  .tag{font:700 9px var(--mono);letter-spacing:.1em;padding:2px 6px;border-radius:5px;float:right}
+  .tag.w{background:rgba(245,200,66,.14);color:var(--warn)}.tag.i{background:rgba(255,90,110,.14);color:var(--bad)}
+  /* three-pane workspace */
+  .work{display:grid;grid-template-columns:minmax(380px,430px) minmax(0,1fr) 330px;height:calc(100vh - 53px - 82px)}
+  .pane{overflow:auto;border-right:1px solid var(--bd)}
+  .pane:last-child{border-right:0}
+  .ph{position:sticky;top:0;z-index:2;background:var(--bg);padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;gap:10px;align-items:center}
+  /* left: ranked ladder */
+  .row{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .12s}
+  .row:hover{background:var(--s1)}
+  .row.on{background:var(--s2);box-shadow:inset 2px 0 var(--acc)}
+  .score-ring{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--mono);background:conic-gradient(var(--acc) calc(var(--p)*1%),var(--s3) 0)}
+  .score-ring span{width:32px;height:32px;border-radius:50%;background:var(--bg);display:grid;place-items:center}
+  .pick{font-weight:700;font-size:14px}
+  .sub{color:var(--mut);font-size:11px;margin-top:1px}
+  .sigs{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+  .sg{font:600 10px var(--mono);padding:2px 7px;border-radius:5px;background:var(--s3);color:var(--fg2)}
+  .sg.sh{background:rgba(255,184,77,.14);color:#ffb84d}.sg.lm{background:rgba(143,180,224,.14);color:var(--acc)}.sg.bk{background:rgba(95,224,154,.12);color:var(--good)}
+  .right{text-align:right}.right .t{font:600 11px var(--mono);color:var(--mut)}.right .u{font:700 13px var(--mono);margin-top:2px}
+  /* centre: game detail, two-column inside */
+  .detail{padding:20px 24px}
+  .gh{display:flex;align-items:flex-start;gap:16px;margin-bottom:18px}
+  .gh h2{font-size:22px;font-weight:800}
+  .verdict{margin-left:auto;text-align:right}
+  .verdict .big{font:800 26px var(--mono);color:var(--warn)}
+  .cols{display:grid;gap:20px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  td{white-space:nowrap}
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:16px}
+  .card h3{margin-bottom:12px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font:700 10px var(--mono);letter-spacing:.08em;color:var(--mut);text-transform:uppercase;padding:0 8px 8px}
+  td{padding:9px 8px;border-top:1px solid var(--bd);font:500 12px var(--mono)}
+  td.s{font-family:var(--sans);font-weight:600}
+  .pb{display:grid;grid-template-columns:1fr 30px;gap:6px;align-items:center;margin:2px 0}
+  .pb i{display:block;height:4px;border-radius:2px;background:var(--s4)}
+  .pb i b{display:block;height:100%;border-radius:2px;background:var(--acc)}
+  .pb i b.m{background:var(--warn)}
+  .pb em{font:500 10px var(--mono);font-style:normal;color:var(--mut)}
+  .g{color:var(--good)}.r{color:var(--bad)}
+  svg{display:block;width:100%}
+  .legend{display:flex;gap:14px;margin-top:8px;font-size:10px;color:var(--mut)}
+  .legend span::before{content:'';display:inline-block;width:8px;height:2px;margin-right:5px;vertical-align:middle;background:var(--c)}
+  .acct{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--bd)}
+  .acct:first-of-type{border-top:0}
+  /* right: live feed + grading */
+  .ev{padding:11px 16px;border-bottom:1px solid var(--bd);display:flex;gap:8px;align-items:baseline}
+  .ev .tx{flex:1;min-width:0}
+  .ev .when{font:600 10px var(--mono);color:var(--mut);margin-right:6px}
+  .ev b{font-weight:700}
+  .pill{font:700 9px var(--mono);letter-spacing:.08em;padding:2px 6px;border-radius:5px;margin-right:6px}
+  .pill.buy{background:rgba(95,224,154,.14);color:var(--good)}.pill.ev{background:rgba(143,180,224,.14);color:var(--acc)}.pill.fl{background:rgba(255,90,110,.14);color:var(--bad)}
+  .note{position:fixed;right:16px;bottom:12px;font:600 10px var(--mono);color:var(--mut);background:var(--s2);border:1px solid var(--bd);padding:6px 10px;border-radius:8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail"><div class="logo">SM</div><i class="on">▦</i><i>◎</i><i>☺</i><i>★</i><i>⚗</i></nav>
+  <div>
+    <header>
+      <h1>Board</h1><span class="chip"><span class="dot"></span>Updated 3m ago</span>
+      <span class="sp"></span>
+      <div class="seg"><b class="on">All 63</b><b>NFL 5</b><b>CFB 39</b><b>NBA 19</b></div>
+      <span class="chip">Refresh</span>
+    </header>
+
+    <!-- 1. The record, always on screen -->
+    <section class="score" id="score"></section>
+
+    <section class="work">
+      <!-- 2. Ranked ladder: every game, strongest agreement first -->
+      <div class="pane">
+        <div class="ph"><span class="k">Where the sharp side is</span><span class="sp"></span><span class="k">Sort: agreement</span></div>
+        <div id="ladder"></div>
+      </div>
+
+      <!-- 3. Detail for the selected game: what used to be a card you had to scroll inside -->
+      <div class="pane detail" id="detail"></div>
+
+      <!-- 4. Live tape + grading -->
+      <div class="pane">
+        <div class="ph"><span class="k">Live tape</span><span class="sp"></span><span class="chip" style="font-size:9px">NFL</span></div>
+        <div id="tape"></div>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="note">CONCEPT · static sample data from the 10/11 board</div>
+
+<script>
+const SCORE=[
+ ['Pinnacle spread lead','19 of 26','moved toward Pinnacle, avg +0.50',29,'w'],
+ ['Pinnacle totals lead','9 of 12','moved toward Pinnacle, avg +0.44',13,'w'],
+ ['Polymarket sharps','18 of 22','won; priced for ~11',22,'w'],
+ ['Kalshi vs books','6 of 12','won; priced for 6',12,'w'],
+ ['Vault vs Kalshi','59 of 128','won; priced for 68',100,'i'],
+ ['+EV at a book','25 of 41','+17.1% flat return',82,'w'],
+ ['JP+ spreads','45 of 74','69% beat the close',100,'w']];
+document.getElementById('score').innerHTML=SCORE.map(([t,v,d,p,k])=>
+ `<div><span class="tag ${k}">${k==='i'?'IGNORE':'WATCH'}</span><div class="k">${t}</div><div class="v">${v}</div><div class="d">${d}</div><div class="bar"><i style="width:${p}%"></i></div></div>`).join('');
+
+const G=[
+ {id:'bal',sport:'NFL',t:'Mon 12:20 AM',g:'BAL @ ATL',pick:'Falcons −3.5',m:'Spread',n:3,p:86,sig:[['sh','$5.9k sharp'],['lm','+4.5 → −3.5'],['bk','BetRivers +105']],net:'$9.4k',
+  lines:[['Spread','Ravens','−4.5','+3.5 −116',52,55,'$3.5k sharp','$25k big'],['','Falcons','+4.5','−3.5 +105',48,45,'$9.4k sharp','$14k big'],
+         ['Total','Over','48.5','43 −117',78,75,'$86k sharp','$124k big'],['','Under','48.5','43 +104',22,25,'$84k sharp','$101k big'],
+         ['Moneyline','Ravens','−198','+153 38%',38,33,'$3.0k sharp','$24k big'],['','Falcons','+164','−171 62%',62,67,'$18k big','$327 losing accts']],
+  path:[-4.5,-4.5,-4,-4,-3.5,-3.5,-3,-3.5,-3.5,-3.5],accts:[['Careful-Gazebo','+1.5% vs close · 125 bets','$3.1k'],['Esteemed-Cloves','+0.8% vs close · 31 bets','$2.8k']]},
+ {id:'mtsu',sport:'CFB',t:'Tue 11:00 PM',g:'DEL @ MTSU',pick:'Delaware ML',m:'Moneyline',n:2,p:71,sig:[['lm','52% → 44%'],['sh','62% money / 29% bets']],net:'$2.1k',lines:null},
+ {id:'txst',sport:'CFB',t:'Fri 12:00 AM',g:'CSU @ TXST',pick:'Over 68.5',m:'Total',n:2,p:66,sig:[['sh','$2.1k sharp'],['lm','63.5 → 68.5']],net:'$2.1k',lines:null},
+ {id:'pur',sport:'CFB',t:'Sat 12:00 AM',g:'WASH @ PUR',pick:'Purdue ML',m:'Moneyline',n:2,p:62,sig:[['lm','53% → 60%'],['sh','48% money / 20% bets']],net:'—',lines:null},
+ {id:'iu',sport:'CFB',t:'Sat 4:00 PM',g:'OSU @ IU',pick:'Over 51.5',m:'Total',n:2,p:58,sig:[['lm','48.5 → 51.5'],['sh','61% money / 49% bets']],net:'—',lines:null},
+ {id:'ksu',sport:'CFB',t:'Sat 4:00 PM',g:'KU @ KSU',pick:'Kansas ML',m:'Moneyline',n:2,p:55,sig:[['lm','73% → 69%'],['sh','88% money / 3% bets']],net:'—',lines:null},
+ {id:'bc',sport:'CFB',t:'Sat 4:00 PM',g:'PITT @ BC',pick:'Boston Col ML',m:'Moneyline',n:2,p:49,sig:[['lm','29% → 33%']],net:'—',lines:null},
+ {id:'duke',sport:'CFB',t:'Sat 7:30 PM',g:'UNC @ DUKE',pick:'UNC ML',m:'Moneyline',n:2,p:44,sig:[['lm','67% → 62%']],net:'—',lines:null}];
+const TAPE=[['36m','buy','Careful-Gazebo','Commanders to win','$999','48¢'],['37m','buy','Grown-Difference-Burnout','Giants to win','$4.8k','62¢'],
+ ['41m','ev','BetRivers','Michigan St +10.5 −114','5.6% EV',''],['52m','buy','Esteemed-Cloves','Giants +spread','$12k','—'],
+ ['1h','fl','Line flip','BAL @ ATL sharp side → ATL','',''],['1h','buy','Substantial-Service','Seahawks to win','$153k','59¢']];
+const ladder=document.getElementById('ladder');
+ladder.innerHTML=G.map(x=>`<div class="row" data-id="${x.id}"><div class="score-ring" style="--p:${x.p}"><span>${x.n}</span></div>
+ <div><div class="pick">${x.pick} <span class="sub">· ${x.m}</span></div><div class="sub">${x.sport} · ${x.g} · ${x.t}</div><div class="sigs">${x.sig.map(([c,s])=>`<span class="sg ${c}">${s}</span>`).join('')}</div></div>
+ <div class="right"><div class="t">sharp net</div><div class="u">${x.net}</div></div></div>`).join('');
+document.getElementById('tape').innerHTML=TAPE.map(([w,k,a,b,c])=>
+ `<div class="ev"><span class="when">${w}</span><span class="pill ${k}">${k==='buy'?'BUY':k==='ev'?'+EV':'FLIP'}</span><span class="tx"><b>${a}</b> <span class="sub">${b}</span></span>${c?`<span class="mono">${c}</span>`:''}</div>`).join('');
+
+function spark(a){const w=420,h=110,mn=Math.min(...a)-.5,mx=Math.max(...a)+.5;
+ const pts=a.map((v,i)=>[i/(a.length-1)*w,h-(v-mn)/(mx-mn)*h]);
+ return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="height:110px"><polyline fill="none" stroke="#8fb4e0" stroke-width="2" points="${pts.map(p=>p.join(',')).join(' ')}"/>
+ ${pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2" fill="#8fb4e0"/>`).join('')}</svg>`}
+function show(id){
+  document.querySelectorAll('.row').forEach(r=>r.classList.toggle('on',r.dataset.id===id));
+  const x=G.find(g=>g.id===id),L=x.lines;
+  document.getElementById('detail').innerHTML=`
+   <div class="gh"><div><div class="k">${x.sport} · ${x.t}</div><h2>${x.g.replace(' @ ',' <span style="color:var(--mut);font-weight:500">@</span> ')}</h2>
+     <div class="sub" style="margin-top:4px">${x.n} independent signals agree · ${x.m}</div></div>
+     <div class="verdict"><div class="k">Sharp side</div><div class="big">${x.pick}</div></div></div>
+   ${L?`<div class="cols"><div class="card"><h3 class="k">Every line</h3><table><thead><tr><th>Market</th><th>Side</th><th>Open</th><th>Pinnacle</th><th style="width:150px">Bets / money</th><th>Exchange (24h)</th></tr></thead><tbody>
+     ${L.map(r=>`<tr><td>${r[0]}</td><td class="s">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td>
+       <td><div class="pb"><i><b style="width:${r[4]}%"></b></i><em>${r[4]}%</em></div><div class="pb"><i><b class="m" style="width:${r[5]}%"></b></i><em>${r[5]}%</em></div></td>
+       <td><span class="g">${r[6].includes('sharp')?r[6]:''}</span>${r[6].includes('sharp')?'<br>':r[6]+'<br>'}${r[7].includes('losing')?`<span class="r">${r[7]}</span>`:r[7]}</td></tr>`).join('')}</tbody></table></div>
+     <div class="two">
+       <div class="card"><h3 class="k">Pinnacle spread · since open</h3>${spark(x.path)}<div class="legend"><span style="--c:#8fb4e0">ATL line</span><span style="--c:#7e8493">open −4.5</span></div></div>
+       <div class="card"><h3 class="k">Sharp accounts on this game</h3>${x.accts.map(a=>`<div class="acct"><div><b>${a[0]}</b><div class="sub">${a[1]}</div></div><div class="mono g">${a[2]}</div></div>`).join('')}</div>
+     </div></div>`
+   :`<div class="card"><div class="sub">Same layout as above: lines table left, line history and accounts right. Select Ravens @ Falcons for the full sample.</div></div>`}`;
+}
+ladder.addEventListener('click',e=>{const r=e.target.closest('.row');if(r)show(r.dataset.id)});
+show('bal');
+</script>
+</body>
+</html>
