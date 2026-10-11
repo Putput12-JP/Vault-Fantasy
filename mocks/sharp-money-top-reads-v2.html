@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sharp Money — Top Reads v2 (concept)</title>
+<style>
+  :root{
+    --bg:#0e0f13;--s1:#16171c;--s2:#1c1e24;--s3:#23252c;--s4:#2c2f38;
+    --bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.14);
+    --fg:#f3f4f7;--fg2:#c9cdd6;--mut:#7e8493;
+    --acc:#8fb4e0;--good:#5fe09a;--bad:#ff5a6e;--warn:#f5c842;
+    --sans:system-ui,-apple-system,'Segoe UI',sans-serif;--mono:ui-monospace,'SF Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;scrollbar-width:none}
+  *::-webkit-scrollbar{display:none}
+  body{background:var(--bg);color:var(--fg);font:13px/1.45 var(--sans);min-height:100vh}
+  .k{font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+  .mono{font-family:var(--mono)}
+  .app{display:grid;grid-template-columns:56px minmax(0,1fr);min-height:100vh}
+  .rail{border-right:1px solid var(--bd);padding:16px 8px;display:flex;flex-direction:column;gap:10px;align-items:center}
+  .rail i{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--mut);font-style:normal;font-size:15px}
+  .rail i.on{background:var(--s3);color:var(--fg)}
+  .logo{width:32px;height:32px;border-radius:8px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font:800 11px var(--mono);margin-bottom:8px}
+  header{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:700}
+  .chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);font:600 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg2)}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--warn)}
+  .seg{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:3px}
+  .seg b{font-weight:600;font-size:12px;padding:5px 12px;border-radius:999px;color:var(--mut);cursor:pointer}
+  .seg b.on{background:var(--fg);color:var(--bg)}
+  .sp{flex:1}
+  /* "when signals agree" — the whole record collapses to one strip */
+  .agree{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--bd);border-bottom:1px solid var(--bd)}
+  .agree>div{background:var(--bg);padding:12px 16px}
+  .agree .v{font:700 20px var(--mono);margin:2px 0}
+  .agree .d{font-size:11px;color:var(--mut)}
+  .agree .c{font-size:11px;color:var(--good);margin-top:2px}
+  .dots{display:inline-flex;gap:3px;vertical-align:middle}
+  .dots i{width:7px;height:7px;border-radius:50%;background:var(--s4)}
+  .dots i.f{background:var(--acc)}
+  .work{display:grid;grid-template-columns:minmax(360px,420px) minmax(0,1fr) 380px;height:calc(100vh - 53px - 82px)}
+  .pane{overflow:auto;border-right:1px solid var(--bd)}
+  .pane:last-child{border-right:0}
+  .ph{position:sticky;top:0;z-index:2;background:var(--bg);padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;gap:10px;align-items:center}
+  /* left: ranked reads */
+  .row{padding:13px 16px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .12s}
+  .row:hover{background:var(--s1)}
+  .row.on{background:var(--s2);box-shadow:inset 3px 0 var(--acc)}
+  .row .t{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .pick{font-weight:700;font-size:14px}
+  .sub{color:var(--mut);font-size:11px;margin-top:2px}
+  .clock{height:3px;background:var(--s3);border-radius:2px;margin-top:9px;overflow:hidden}
+  .clock i{display:block;height:100%;border-radius:2px;background:var(--warn)}
+  .clock.low i{background:var(--bad)}
+  .clk{display:flex;justify-content:space-between;margin-top:4px;font:500 10px var(--mono);color:var(--mut)}
+  /* centre: selected read */
+  .detail{padding:20px 24px;display:grid;gap:16px;align-content:start}
+  .gh{display:flex;gap:16px;align-items:flex-start}
+  .gh h2{font-size:22px;font-weight:800;margin:4px 0 2px}
+  .verdict{margin-left:auto;text-align:right}
+  .verdict .big{font:800 26px var(--mono);color:var(--warn)}
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:16px}
+  .two{display:grid;grid-template-columns:1fr;gap:16px}
+  .sig .x{white-space:nowrap}.hist{white-space:nowrap;flex-wrap:wrap}.tile span{display:block}
+  .sig{display:grid;grid-template-columns:130px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--bd)}
+  .sig:first-of-type{border-top:0}
+  .sig .n{color:var(--fg2);font-weight:600}
+  .sig .x{font:500 12px var(--mono)}
+  .sig .x.none{color:var(--mut);font-family:var(--sans)}
+  .pill{font:700 9px var(--mono);letter-spacing:.08em;padding:2px 7px;border-radius:5px}
+  .pill.y{background:rgba(95,224,154,.14);color:var(--good)}.pill.n{background:var(--s3);color:var(--mut)}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .tile{background:var(--s2);border-radius:10px;padding:10px 12px}
+  .tile b{display:block;font:700 18px var(--mono)}
+  .tile span{font-size:11px;color:var(--mut)}
+  .edge{margin-top:14px}
+  .edge .bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+  .edge .bar i{display:block;height:100%;background:var(--warn)}
+  .edge .l{display:flex;justify-content:space-between;margin-top:6px;font:500 11px var(--mono);color:var(--mut)}
+  .hist{display:flex;gap:18px;font-size:12px;color:var(--fg2);margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)}
+  .hist b{font:700 13px var(--mono);color:var(--fg)}
+  /* right: does it work */
+  .tabs{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:3px}
+  .tabs b{font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;color:var(--mut);cursor:pointer}
+  .tabs b.on{background:var(--fg);color:var(--bg)}
+  .sc{padding:13px 16px;border-bottom:1px solid var(--bd);cursor:pointer}
+  .sc:hover{background:var(--s1)}
+  .sc .h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .sc .nm{font-weight:700}
+  .sc .rec{font:700 15px var(--mono);margin:3px 0 2px}
+  .sc .desc{font-size:11px;color:var(--mut)}
+  .sc .more{display:none;margin-top:8px;font-size:11px;color:var(--fg2);line-height:1.5}
+  .sc.open .more{display:block}
+  .sc .more b{color:var(--fg)}
+  .tag{font:700 9px var(--mono);letter-spacing:.1em;padding:2px 6px;border-radius:5px}
+  .tag.w{background:rgba(245,200,66,.14);color:var(--warn)}.tag.i{background:rgba(255,90,110,.14);color:var(--bad)}
+  .bar2{height:3px;background:var(--s3);border-radius:2px;margin-top:8px}
+  .bar2 i{display:block;height:100%;background:var(--acc);border-radius:2px}
+  table{width:100%;border-collapse:collapse}
+  th{font:700 9px var(--mono);letter-spacing:.08em;color:var(--mut);text-transform:uppercase;padding:8px 6px;text-align:center}
+  td{padding:7px 6px;border-top:1px solid var(--bd);font:500 11px var(--mono);text-align:center}
+  td.l{text-align:left}
+  .d1{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--acc)}
+  .d0{color:var(--s4)}
+  .g{color:var(--good)}.r{color:var(--bad)}
+  .note{position:fixed;right:16px;bottom:12px;font:600 10px var(--mono);color:var(--mut);background:var(--s2);border:1px solid var(--bd);padding:6px 10px;border-radius:8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail"><div class="logo">SM</div><i>▦</i><i>◎</i><i>☺</i><i class="on">★</i><i>⚗</i></nav>
+  <div>
+    <header>
+      <h1>Top Reads</h1><span class="chip"><span class="dot"></span>Updated 3m ago</span>
+      <span class="sp"></span>
+      <div class="seg"><b class="on">All</b><b>NFL</b><b>CFB</b><b>NBA</b></div>
+      <div class="seg"><b class="on">Still gettable</b><b>Include expired</b></div>
+    </header>
+
+    <!-- 1. "Record when signals agree" becomes a one-line strip -->
+    <section class="agree" id="agree"></section>
+
+    <section class="work">
+      <!-- 2. Ranked reads, each with its clock -->
+      <div class="pane"><div class="ph"><span class="k">Top reads right now</span><span class="sp"></span><span class="k">Most agree first</span></div><div id="reads"></div></div>
+      <!-- 3. The selected read: signals + price check side by side -->
+      <div class="pane detail" id="detail"></div>
+      <!-- 4. Does it work: scorecards or combinations -->
+      <div class="pane"><div class="ph"><span class="k">Does it work?</span><span class="sp"></span><div class="tabs" id="tabs"><b class="on" data-t="sc">Signals</b><b data-t="combo">Combinations</b></div></div><div id="right"></div></div>
+    </section>
+  </div>
+</div>
+<div class="note">CONCEPT · static sample data from the 10/11 page</div>
+
+<script>
+const AGREE=[['1 of 4 agree','31-23','57% won, 54 graded','beat close 4 of 11 · +0.8 pts',1],['2 of 4 agree','36-33','52% won, 69 graded','beat close 34 of 55 · +0.5 pts',2],
+ ['3 of 4 agree','7-6','54% won, 13 graded','beat close 7 of 10 · +0.5 pts',3],['4 of 4 agree','none yet','no graded picks','no price data',4],['No clear side','72-75','149 graded','other side had as many signals',0]];
+document.getElementById('agree').innerHTML=AGREE.map(([t,v,d,c,n])=>`<div><div class="k">${n?`<span class="dots">${[1,2,3,4].map(i=>`<i class="${i<=n?'f':''}"></i>`).join('')}</span> `:''}${t}</div><div class="v">${v}</div><div class="d">${d}</div><div class="c">${c}</div></div>`).join('');
+
+const R=[
+ {id:1,n:2,g:'BAL @ ATL',lg:'NFL',t:'Mon 12:20 AM',pick:'Falcons −3.5',m:'Spread',left:62,age:'8m',
+  sig:[['Pinnacle line','+4.5 → −3.5, toward Falcons',1],['Money vs bets','tickets 48% · money 45%',0],['Sharp accounts','$5.9k on Falcons',1],['+EV at a book','nothing yet',0]],
+  tiles:[['−3.5 +105','Pinnacle price'],['BetRivers +105','Best US book'],['48%','Fair win chance']],edge:'+0.6 pts of edge vs the fair price',hist:['17-12','over 29 graded games']},
+ {id:2,n:2,g:'DEL @ MTSU',lg:'CFB',t:'Tue 11:00 PM',pick:'Delaware ML',m:'Moneyline',left:48,age:'12m',
+  sig:[['Pinnacle line','52% → 44% on Middle Tenn',1],['Money vs bets','61% money / 28% bets',1],['Sharp accounts','nothing yet',0],['+EV at a book','nothing yet',0]],
+  tiles:[['+118','Pinnacle price'],['—','No US book at this number'],['45%','Fair win chance']],edge:'+0.4 pts of edge vs the fair price',hist:['26-17','over 43 graded games']},
+ {id:3,n:2,g:'CSU @ TXST',lg:'CFB',t:'Fri 12:00 AM',pick:'Over 68.5',m:'Total',left:35,age:'22m',
+  sig:[['Pinnacle line','63.5 → 68.5',1],['Money vs bets','nothing yet',0],['Sharp accounts','$2.1k on the Over',1],['+EV at a book','nothing yet',0]],
+  tiles:[['−110','Pinnacle price'],['—','No US book at this number'],['50%','Fair win chance']],edge:'Gap closed, no US book is behind',hist:['17-12','over 29 graded games']},
+ {id:4,n:1,g:'GT @ VT',lg:'CFB',t:'Sat 7:30 PM',pick:'Over 55',m:'Total',left:10,age:'20m',low:1,
+  sig:[['Pinnacle line','53.5 → 55',1],['Money vs bets','nothing yet',0],['Sharp accounts','nothing yet',0],['+EV at a book','nothing yet',0]],
+  tiles:[['−115','Pinnacle price'],['—','No US book at this number'],['51%','Fair win chance']],edge:'Gap closed, no US book is behind',hist:['17-12','over 29 graded games']},
+ {id:5,n:1,g:'OSU @ IU',lg:'CFB',t:'Sat 4:00 PM',pick:'Over 51.5',m:'Total',left:44,age:'15m',
+  sig:[['Pinnacle line','48.5 → 51.5',1],['Money vs bets','61% money / 49% bets',0],['Sharp accounts','nothing yet',0],['+EV at a book','nothing yet',0]],
+  tiles:[['−110','Pinnacle price'],['DraftKings 51.5 −105','Best US book'],['50%','Fair win chance']],edge:'+0.3 pts of edge vs the fair price',hist:['17-12','over 29 graded games']},
+ {id:6,n:1,g:'KU @ KSU',lg:'CFB',t:'Sat 4:00 PM',pick:'Kansas ML',m:'Moneyline',left:30,age:'18m',
+  sig:[['Pinnacle line','73% → 68%',1],['Money vs bets','88% money / 3% bets',0],['Sharp accounts','nothing yet',0],['+EV at a book','nothing yet',0]],
+  tiles:[['−225','Pinnacle price'],['—','No US book at this number'],['68%','Fair win chance']],edge:'Gap closed, no US book is behind',hist:['17-12','over 29 graded games']}];
+const SC=[['Pinnacle lead','WATCH','spreads 19 of 26 · totals 9 of 12','Pinnacle 0.5+ pts off the other books: bet Pinnacle’s way',58,'w','Pinnacle’s line sits half a point or more off the recreational books, 3+ hours before kickoff. Bet the number the slower books haven’t moved to yet.'],
+ ['Polymarket sharps','WATCH','18 of 22','Sharp accounts $25k+ net on a side',44,'w','Accounts with a record of beating the close hold $25k or more net on one side of a game. Bet that side on the moneyline at or near what they paid.'],
+ ['Kalshi vs books','WATCH','6 of 12','Kalshi 5+ pts off the books on a prop',24,'w','Kalshi lists a contract at the same number as the books and its over/under price is 5 or more points away from the books’ no-vig median.'],
+ ['+EV at a book','WATCH','26 of 42','A book beats Pinnacle’s fair price',84,'w','A US book is posting a better price than Pinnacle’s no-vig fair price on the same bet and number. Bet it while the price lasts.'],
+ ['JP+ spread picks','WATCH','45 of 74','JP+ lists a college spread',100,'w','College football ratings model lists a spread pick. Only the number JP+ lists counts; a late bet gets a worse price than the record is built on.'],
+ ['Vault vs Kalshi','IGNORE','60 of 134','Vault 10+ pts off Kalshi on a prop',100,'i','Vault’s number is 10 or more points away from Kalshi on a prop. Do not bet it on its own: it has won less often than its price says.']];
+const COMBO=[[1,1,1,0,'2-4','33%','+0.4','only 6'],[1,0,1,1,'3-1','75%','+0.6','only 4'],[1,0,1,0,'26-17','60%','+0.4','43 games'],[1,1,0,0,'2-7','22%','+1.2','only 9'],[0,1,1,0,'4-4','50%','+0.2','only 8'],
+ [1,0,0,1,'2-4','33%','−0.5','only 6'],[1,0,0,0,'17-12','59%','+1.8','29 games'],[0,0,1,0,'11-9','55%','+0.7','20 games'],[0,1,0,0,'3-2','60%','—','only 5']];
+
+const reads=document.getElementById('reads');
+reads.innerHTML=R.map(x=>`<div class="row" data-id="${x.id}"><div class="t"><span class="pick">${x.pick} <span class="sub">· ${x.m}</span></span><span class="dots">${[1,2,3,4].map(i=>`<i class="${i<=x.n?'f':''}"></i>`).join('')}</span></div>
+ <div class="sub">${x.lg} · ${x.g} · ${x.t}</div><div class="clock ${x.low?'low':''}"><i style="width:${x.left}%"></i></div><div class="clk"><span>${x.low?'about 10m of edge left':'edge window open'}</span><span>signal ${x.age} old</span></div></div>`).join('');
+function show(id){
+  document.querySelectorAll('.row').forEach(r=>r.classList.toggle('on',+r.dataset.id===id));
+  const x=R.find(r=>r.id===id);
+  document.getElementById('detail').innerHTML=`
+   <div class="gh"><div><div class="k">${x.lg} · ${x.t}</div><h2>${x.g.replace(' @ ',' <span style="color:var(--mut);font-weight:500">@</span> ')}</h2>
+     <div class="sub"><span class="dots">${[1,2,3,4].map(i=>`<i class="${i<=x.n?'f':''}"></i>`).join('')}</span> ${x.n} of 4 signals agree · ${x.m}</div></div>
+     <div class="verdict"><div class="k">The read</div><div class="big">${x.pick}</div></div></div>
+   <div class="two">
+     <div class="card"><div class="k" style="margin-bottom:6px">Signals</div>
+       ${x.sig.map(s=>`<div class="sig"><span class="n">${s[0]}</span><span class="x ${/nothing/.test(s[1])?'none':''}">${s[1]}</span><span class="pill ${s[2]?'y':'n'}">${s[2]?'AGREES':'—'}</span></div>`).join('')}
+       <div class="hist"><span>These same signals so far</span><b>${x.hist[0]}</b><span>${x.hist[1]}</span></div></div>
+     <div class="card"><div class="k" style="margin-bottom:10px">Price check</div>
+       <div class="tiles">${x.tiles.map(t=>`<div class="tile"><b>${t[0]}</b><span>${t[1]}</span></div>`).join('')}</div>
+       <div class="edge"><div class="bar"><i style="width:${x.left}%"></i></div><div class="l"><span>${x.edge}</span><span>signal ${x.age} old</span></div></div></div>
+   </div>
+   <div class="card"><div class="k" style="margin-bottom:8px">Open next</div><div class="sub">Full game page · every line, sharp accounts and line history for ${x.g}.</div></div>`;
+}
+reads.addEventListener('click',e=>{const r=e.target.closest('.row');if(r)show(+r.dataset.id)});
+show(1);
+
+const right=document.getElementById('right');
+function drawSc(){right.innerHTML=SC.map((s,i)=>`<div class="sc" data-i="${i}"><div class="h"><span class="nm">${s[0]}</span><span class="tag ${s[5]}">${s[1]} IT</span></div>
+ <div class="rec">${s[2]}</div><div class="desc">${s[3]}</div><div class="bar2"><i style="width:${s[4]}%"></i></div><div class="more"><b>Look for:</b> ${s[6]}</div></div>`).join('')}
+function drawCombo(){right.innerHTML=`<div style="padding:12px 16px 4px" class="sub">Every mix of signals, graded. Rows under 10 games are a log, not a verdict.</div>
+ <table><thead><tr><th>Line</th><th>Money</th><th>Sharp</th><th>+EV</th><th>Rec</th><th>Won</th><th>Close</th></tr></thead><tbody>
+ ${COMBO.map(r=>`<tr>${r.slice(0,4).map(v=>`<td>${v?'<span class="d1"></span>':'<span class="d0">–</span>'}</td>`).join('')}<td><b>${r[4]}</b></td><td>${r[5]}</td><td class="${r[6].startsWith('−')?'r':r[6]==='—'?'':'g'}">${r[6]}</td></tr>`).join('')}</tbody></table>`}
+drawSc();
+right.addEventListener('click',e=>{const c=e.target.closest('.sc');if(c)c.classList.toggle('open')});
+document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.closest('b');if(!b)return;
+  document.querySelectorAll('#tabs b').forEach(x=>x.classList.toggle('on',x===b));b.dataset.t==='sc'?drawSc():drawCombo()});
+</script>
+</body>
+</html>
