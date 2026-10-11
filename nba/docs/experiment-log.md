@@ -207,3 +207,8 @@ Live ledger rule for the GBM shadow (logged next to v2 and v3 in `track.json` `m
   minutes v3 and rates v3 were more accurate than v2 and did not move the edge.
 - Same looks rule as section 3: monthly monitoring, decision only when the sample size is met, using the first time it is met.
 - If this section is edited after the ledger has been read, record the date and reason here and the result is exploratory.
+
+Added 2026-10-11 (before the ledger was read): with no price archive available, a market-free check was run
+(`nba/docs/minutes-gbm-ladder.md`). It found the GBM improves rung log loss on points, rebounds and assists (+0.4% to +0.8%) and
+not on 3PM. That is a reason to expect little from the GBM on the 3PM NO cell, recorded here so a later positive 3PM result is read
+as surprising. It does not replace the live rule above.

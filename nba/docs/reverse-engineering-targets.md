@@ -172,6 +172,22 @@ EWMA, so per-player minutes volatility is worth very little either way. Not purs
 - Not wired: the Tonight table has no GBM column. The page prices in JavaScript and would need a JS copy of the tree scorer and
   a parity test; not worth building before the shadow earns it.
 
+**11. Without the price archive: what stands in for it (2026-10-11).** Kalshi, ESPN, NBA.com and Polymarket are all blocked from the
+build sandbox, and the `nba-data` branch only holds preseason snapshots (no regular-season prop prices before Oct 20), so the Kalshi
+edge test cannot run here or yet anywhere. Two substitutes, each answering a narrower question:
+- **Did I break v2 or the v3 shadow?** `check_pricing_regression.py` dumps a checkout's example-board pricing (640 candidates) and its
+  v2 minutes, v3 minutes and v3-with-starters for a synthetic game for every team, then compares two checkouts. Pre-change commit
+  vs now: all four outputs **identical**. (It does not replace `check_minutes_parity.py`, which proves backtest == live for v2/v3.)
+- **Do the minutes gains survive into probabilities?** `build_minutes_gbm_ladder.py` (tables in `docs/minutes-gbm-ladder.md`) turns each
+  model's minutes into rung probabilities (points 10-35, rebounds 3-12, assists 2-10, 3PM 1-5) and scores log loss. GBM vs linear:
+  points +0.61% / +0.73%, rebounds +0.79% / +0.69%, assists +0.60% / +0.42% (t 4.2 to 6.2 on all, both seasons), **3PM -0.06% / +0.06%
+  (t -0.7 / +0.7: nothing)**. Perfect minutes would improve log loss about 14% on points, and the GBM closes only 4-7% of that gap.
+  3PM is the stat behind the strongest Kalshi cell (3PM NO), so a minutes upgrade should not be expected to move that edge; points
+  NO (WATCH) is the only GO/WATCH cell where there is any gain to hope for, and it is below 1% of log loss before the market's own
+  minutes knowledge is netted out.
+The real edge test therefore waits for the live ledger: the recorder keeps timestamped prices from Oct 20, and section 8 of
+`experiment-log.md` already fixes the rule.
+
 ## Not done
 
 - DARKO patent text: the USPTO host is not reachable from the build sandbox. Read it from a machine with access.
