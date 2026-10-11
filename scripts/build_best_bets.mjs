@@ -125,7 +125,7 @@ const CARD_DEFAULT_ON = ['rec_yd|under|WR/TE'];
 // the biggest model-vs-line disagreements (the least trustworthy bets). A best
 // bet must be corroborated by ≥1 TRUE sportsbook at the scored line.
 const DFS_BOOKS = new Set(['prizepicks', 'underdog fantasy', 'underdog', 'sleeper']);
-const isRealBook = b => !!b && !DFS_BOOKS.has(String(b).toLowerCase());
+export const isRealBook = b => !!b && !DFS_BOOKS.has(String(b).toLowerCase());
 // Gate 1 — model-vs-market disagreement cap on volume-yardage markets. When the
 // projection strays past this fraction of a corroborated line, the model and
 // the market are describing different situations — a stale-usage projection on
@@ -553,7 +553,7 @@ const _probit = p => { p = Math.min(Math.max(p, 1e-3), 1 - 1e-3);   // Acklam in
   const q = p - 0.5, r = q * q;
   return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1); };
 const _ncdf = z => { const t = 1 / (1 + 0.2316419 * Math.abs(z)); const dd = 0.3989423 * Math.exp(-z * z / 2); const p = dd * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - p : p; };
-function sharpFairFor(KP, name, mk, line) {
+export function sharpFairFor(KP, name, mk, line) {
   if (!KP) return null;
   const ladder = (KP.markets[mk] || {})[nkey(name)];
   if (!ladder || !ladder.length || line == null) return null;
@@ -968,7 +968,7 @@ function jointOver(pa, pb, rho) {
   return normCdf(h) * normCdf(k) + s * rho / 2;
 }
 // Power de-vig (mirror of build_model_scoreboard.devig_power).
-function devigPower(ao, au) {
+export function devigPower(ao, au) {
   const po = americanToProb(ao), pu = americanToProb(au);
   if (!(po > 0) || !(pu > 0)) return null;
   if (po + pu <= 1) return po / (po + pu);

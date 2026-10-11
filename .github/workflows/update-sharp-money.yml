@@ -56,6 +56,7 @@ jobs:
             git show FETCH_HEAD:state.json > sharp-out/state.json || true
             git show FETCH_HEAD:novig_props.json > sharp-out/novig_props.json || true
             git show FETCH_HEAD:prop_plays.json > sharp-out/prop_plays.json || true
+            git show FETCH_HEAD:kb_state.json > sharp-out/kb_state.json || true
           fi
       # The book feed (PrizePicks / Underdog / Sleeper / Pinnacle props) and the Kalshi prop fairs normally come from update-props.yml,
       # which rides GitHub's own cron and has been landing 4-7 hours apart. A +EV call against a Pinnacle line that old is a phantom
@@ -81,6 +82,14 @@ jobs:
         run: |
           Q=""; [ "${{ github.event.inputs.force }}" = "true" ] && Q="--quick"
           node scripts/fetch-sharp-money.mjs --dir=sharp-out $Q
+      # Kalshi vs books gaps (same 5-point same-number rule the page grades): runs on the prices this job just pulled and posts NEW gaps to Discord.
+      # Holds (posts nothing) if any input is stale. Never fails the run.
+      - name: Kalshi vs books gap alerts
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: node scripts/kalshi-book-gaps.mjs --dir=sharp-out
       - name: Publish to sharp-data
         if: steps.gate.outputs.go == '1'
         run: |
@@ -92,5 +101,7 @@ jobs:
           git add data.json state.json
           if [ -f novig_props.json ]; then git add novig_props.json; fi
           if [ -f prop_plays.json ]; then git add prop_plays.json; fi
+          if [ -f kb_gaps.json ]; then git add kb_gaps.json; fi
+          if [ -f kb_state.json ]; then git add kb_state.json; fi
           git commit -q -m "sharp money: $(date -u +%FT%TZ) [skip ci]"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" sharp-data
