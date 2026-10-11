@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sharp Money — Game v2 (concept)</title>
+<style>
+  :root{
+    --bg:#0e0f13;--s1:#16171c;--s2:#1c1e24;--s3:#23252c;--s4:#2c2f38;
+    --bd:rgba(255,255,255,.08);--fg:#f3f4f7;--fg2:#c9cdd6;--mut:#7e8493;
+    --acc:#8fb4e0;--good:#5fe09a;--bad:#ff5a6e;--warn:#f5c842;
+    --sans:system-ui,-apple-system,'Segoe UI',sans-serif;--mono:ui-monospace,'SF Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;scrollbar-width:none}*::-webkit-scrollbar{display:none}
+  body{background:var(--bg);color:var(--fg);font:13px/1.45 var(--sans);min-height:100vh}
+  .k{font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+  .mono{font-family:var(--mono)}.g{color:var(--good)}.r{color:var(--bad)}
+  .app{display:grid;grid-template-columns:56px minmax(0,1fr);min-height:100vh}
+  .rail{border-right:1px solid var(--bd);padding:16px 8px;display:flex;flex-direction:column;gap:10px;align-items:center}
+  .rail i{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--mut);font-style:normal;font-size:15px}
+  .rail i.on{background:var(--s3);color:var(--fg)}
+  .logo{width:32px;height:32px;border-radius:8px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font:800 11px var(--mono);margin-bottom:8px}
+  header{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px;font-weight:700}
+  .chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);font:600 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg2)}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--good)}
+  .sp{flex:1}
+  .dots{display:inline-flex;gap:3px}.dots i{width:7px;height:7px;border-radius:50%;background:var(--s4)}.dots i.f{background:var(--acc)}
+  /* hero: the game + its three markets in one band */
+  .hero{display:grid;grid-template-columns:minmax(300px,420px) repeat(3,minmax(0,1fr));gap:1px;background:var(--bd);border-bottom:1px solid var(--bd)}
+  .hero>div{background:var(--bg);padding:14px 18px}
+  .hero h2{font-size:22px;font-weight:800;margin:3px 0 2px}
+  .hero .sub{color:var(--mut);font-size:11px}
+  .mk{cursor:pointer;transition:background .12s}.mk:hover{background:var(--s1)}
+  .mk.on{background:var(--s2);box-shadow:inset 0 -3px var(--acc)}
+  .mk .v{font:800 18px var(--mono);margin:4px 0 2px}
+  .mk .v.q{color:var(--mut);font-weight:600}
+  .tag{font:700 9px var(--mono);letter-spacing:.08em;padding:2px 7px;border-radius:5px;float:right}
+  .tag.y{background:rgba(245,200,66,.14);color:var(--warn)}.tag.n{background:rgba(255,90,110,.14);color:var(--bad)}
+  .work{display:grid;grid-template-columns:300px minmax(0,1fr) 380px;height:calc(100vh - 53px - 100px)}
+  .pane{overflow:auto;border-right:1px solid var(--bd)}.pane:last-child{border-right:0}
+  .ph{position:sticky;top:0;z-index:2;background:var(--bg);padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;gap:10px;align-items:center}
+  /* left: the slate, so switching games never leaves the page */
+  .gm{padding:12px 16px;border-bottom:1px solid var(--bd);cursor:pointer}
+  .gm:hover{background:var(--s1)}.gm.on{background:var(--s2);box-shadow:inset 3px 0 var(--acc)}
+  .gm b{display:block;font-size:13px}.gm span{font-size:11px;color:var(--mut)}
+  .gm .t{display:flex;justify-content:space-between}
+  /* centre */
+  .center{padding:20px 24px;display:grid;gap:16px;align-content:start}
+  .big{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+  .big h3{font-size:30px;font-weight:800}
+  .big .pr{font:600 14px var(--mono);color:var(--fg2);margin-top:4px}
+  .big .net{text-align:right}.big .net b{font:800 26px var(--mono);color:var(--acc)}
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:16px}
+  .card h4{margin-bottom:10px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font:700 10px var(--mono);letter-spacing:.08em;color:var(--mut);text-transform:uppercase;padding:0 8px 8px}
+  td{padding:8px;border-top:1px solid var(--bd);font:500 12px var(--mono);white-space:nowrap}
+  td.s{font-family:var(--sans);font-weight:600}
+  tr.hl td{background:rgba(143,180,224,.06)}
+  .pb{display:grid;grid-template-columns:1fr 30px;gap:6px;align-items:center;margin:2px 0}
+  .pb i{display:block;height:4px;border-radius:2px;background:var(--s4)}.pb i b{display:block;height:100%;border-radius:2px;background:var(--acc)}.pb i b.m{background:var(--warn)}
+  .pb em{font:500 10px var(--mono);font-style:normal;color:var(--mut)}
+  .split{height:26px;border-radius:6px;overflow:hidden;display:flex;margin:8px 0 6px}
+  .split i{display:block;height:100%}
+  .split .a{background:#3b6a9a}.split .h{background:repeating-linear-gradient(135deg,#3b6a9a 0 2px,transparent 2px 5px)}
+  .lg{display:flex;justify-content:space-between;font-size:11px;color:var(--mut)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .mrow{display:grid;grid-template-columns:150px 1fr 110px;gap:10px;align-items:center;padding:6px 0;font-size:12px;color:var(--fg2)}
+  .mrow .bar{height:4px;background:var(--s3);border-radius:2px;position:relative}
+  .mrow .bar i{position:absolute;left:0;top:0;height:100%;background:var(--acc);border-radius:2px}
+  .mrow .n{font:600 11px var(--mono);text-align:right}
+  .tabs{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:3px;margin-left:auto}
+  .tabs b{font-size:11px;font-weight:600;padding:4px 11px;border-radius:999px;color:var(--mut);cursor:pointer}
+  .tabs b.on{background:var(--fg);color:var(--bg)}
+  .books{display:flex;flex-wrap:wrap;gap:8px}
+  .bk{padding:6px 12px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);font:600 12px var(--mono)}
+  .bk small{font:700 9px var(--mono);color:var(--mut);margin-right:6px}
+  .bk.hot{border-color:var(--acc)}
+  /* right: tabbed rail */
+  .ev{padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;gap:10px;align-items:baseline}
+  .ev .w{font:600 10px var(--mono);color:var(--mut);min-width:34px}
+  .pill{font:700 9px var(--mono);letter-spacing:.08em;padding:2px 6px;border-radius:5px;margin-right:6px}
+  .pill.s{background:rgba(255,184,77,.14);color:#ffb84d}.pill.b{background:var(--s3);color:var(--fg2)}
+  .ac{padding:12px 16px;border-bottom:1px solid var(--bd)}
+  .ac .t{display:flex;justify-content:space-between}
+  .ac .sub{color:var(--mut);font-size:11px}
+  .mini{display:inline-block;margin:6px 5px 0 0;padding:2px 7px;border-radius:5px;background:rgba(143,180,224,.12);color:var(--acc);font:600 10px var(--mono)}
+  .note{position:fixed;right:16px;bottom:12px;font:600 10px var(--mono);color:var(--mut);background:var(--s2);border:1px solid var(--bd);padding:6px 10px;border-radius:8px}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail"><div class="logo">SM</div><i>▦</i><i class="on">◎</i><i>☺</i><i>★</i><i>⚗</i></nav>
+  <div>
+    <header><h1>Game</h1><span class="chip"><span class="dot"></span>Updated 9m ago</span><span class="sp"></span><span class="chip">Refresh</span></header>
+
+    <!-- hero: teams + the three markets are the market switcher -->
+    <section class="hero" id="hero"></section>
+
+    <section class="work">
+      <div class="pane"><div class="ph"><span class="k">Slate</span></div><div id="slate"></div></div>
+      <div class="pane center" id="center"></div>
+      <div class="pane"><div class="ph"><span class="k">This game</span><div class="tabs" id="tabs"><b class="on" data-t="alerts">Alerts</b><b data-t="accts">Accounts</b><b data-t="props">Props</b><b data-t="vault">Vault</b></div></div><div id="right"></div></div>
+    </section>
+  </div>
+</div>
+<div class="note">CONCEPT · static sample data from the 10/11 board</div>
+<script>
+const GAMES=[['BAL @ ATL','NFL · Mon 12:20 AM',1],['CSU @ TXST','CFB · Fri 12:00 AM'],['DEL @ MTSU','CFB · Tue 11:00 PM'],['OSU @ IU','CFB · Sat 4:00 PM'],['WASH @ PUR','CFB · Sat 12:00 AM'],['KU @ KSU','CFB · Sat 4:00 PM'],['PITT @ BC','CFB · Sat 4:00 PM'],['UNC @ DUKE','CFB · Sat 7:30 PM']];
+const MK={
+ sp:{name:'Spread',verdict:'Falcons −3.5',tag:'2 signals agree',ok:1,sub:'Sharp $5.9k Falcons · Big $18k Ravens',head:'Falcons −3.5',price:'+102 (50%) · −2.0pp vs fair · best price 365',net:'$5.9k',netl:'sharp net on this side, 24h',
+   a:9.4,h:3.5,al:'$9.4k on Falcons · 73%',hl:'Ravens $3.5k'},
+ tot:{name:'Total',verdict:'No clear side',tag:'Mixed',ok:0,sub:'Sharp $2.3k Over · Big $23k Over',head:'No clear side',price:'Sharp accounts are on both sides ($86k Over, $84k Under)',net:'$2.3k',netl:'sharp net, Over, 24h',a:86,h:84,al:'$86k Over · 51%',hl:'Under $84k'},
+ ml:{name:'Moneyline',verdict:'No clear side',tag:'Mixed',ok:0,sub:'Sharp $4.1k Ravens · Big $18k Falcons',head:'No clear side',price:'Crowd 62% on Falcons, line moved with them: a public move',net:'$4.1k',netl:'sharp net, Ravens, 24h',a:4.1,h:0,al:'$4.1k on Ravens · 100%',hl:'Falcons $0'}};
+const LINES=[['Spread','Ravens','−4.5','+3.5 −116',52,55,'$3.5k sharp','$33k big',0],['','Falcons','+4.5','−3.5 +105',48,45,'$9.4k sharp','$15k big',1],
+ ['Total','Over','48.5','43 −117',78,75,'$86k sharp','$125k big',0],['','Under','48.5','43 +104',22,25,'$84k sharp','$101k big',0],
+ ['Moneyline','Ravens','−198','+153 38%',38,33,'$4.1k sharp','$36k big',0],['','Falcons','+164','−171 62%',62,67,'$53k big','$965 losing',0]];
+const MONEY=[['Sharp accounts, 24h',72,'$9.4k · $3.5k'],['Sharp, last 2h',70,'$99 · $36'],['Big money, both exchanges',33,'$15k · $33k'],['Polymarket, everyone',72,'$9.4k · $3.5k'],['US books: tickets',48,'48% · 52%'],['US books: money',45,'45% · 55%']];
+const ALERTS=[['17m','b','BIG TICKET','$24,219 ticket on Falcons to win at 62¢ (Kalshi)'],['1h','s','SHARP','Positive-Console put $1,747 on Ravens to win at 38¢'],['3h','s','SHARP','2 sharp accounts put $6,855 on Under (total) at 48¢'],['3h','s','SHARP','3 sharp accounts put $12,372 on Under (total) at 49¢'],['3h','s','SHARP','Esteemed-Cloves put $50,461 on Over (total) at 51¢'],['3h','b','BIG TICKET','$47,126 ticket on Over at 51¢ (Polymarket, sharp account)'],['9h','s','SHARP','Powerless-Savannah put $9,283 on Falcons (spread) at 73¢']];
+const ACCTS=[['Powerless-Savannah','$83k','+1.1% vs close · 54 bets · last 3h','hedging total',['Under 43 $65k','Falcons −3.5 $9.3k','Over 43 $8.4k']],['Esteemed-Cloves','$50k','+0.8% vs close · 31 bets · last 3h',null,['Over 43 $50k']],['Dual-Criticism','$31k','+3.7% vs close · 21 bets · last 1h',null,['Over 43 $27k','Ravens +3.5 $3.5k']],['Fake-Bitter','$11k','+0.8% vs close · 363 bets',null,['Under 43 $11k','Falcons −3.5 $99']],['Positive-Console','$4.1k','+3.5% vs close · 14 bets',null,['Ravens ML $4.1k']]];
+const PROPS=[['Derrick Henry anytime TD','Kalshi at 55¢ · 3 lines','$145k'],['Bijan Robinson anytime TD','Kalshi at 65¢ · 3 lines','$88k'],['Bijan Robinson 90+ rushing yards','Kalshi at 49¢ · 13 lines','$56k'],['Derrick Henry 25+ receiving yards','Kalshi at 10¢ · 3 lines','$50k'],['Jahan Dotson anytime TD','Kalshi at 14¢ · 2 lines','$45k']];
+const hero=document.getElementById('hero'),center=document.getElementById('center'),right=document.getElementById('right');
+let cur='sp',tab='alerts',ctab='line';
+function drawHero(){hero.innerHTML=`<div><div class="k">NFL · Mon 12:20 AM · kicks off in 2h 44m</div><h2>BAL <span style="color:var(--mut);font-weight:500">@</span> ATL</h2><div class="sub"><span class="dots">${[1,1,0,0].map(f=>`<i class="${f?'f':''}"></i>`).join('')}</span> 2 signals agree · sharp side: Falcons −3.5</div></div>`+
+ Object.entries(MK).map(([k,m])=>`<div class="mk ${k===cur?'on':''}" data-k="${k}"><span class="tag ${m.ok?'y':'n'}">${m.tag.toUpperCase()}</span><div class="k">${m.name}</div><div class="v ${m.ok?'':'q'}">${m.verdict}</div><div class="sub">${m.sub}</div></div>`).join('')}
+function spark(){const a=[-4.5,-4.5,-4,-4,-3.5,-3.5,-3,-3.5,-3.5,-3.5],w=420,h=120,mn=-5,mx=-2.5,pts=a.map((v,i)=>[i/(a.length-1)*w,h-(v-mn)/(mx-mn)*h]);
+ return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:120px;display:block"><polyline fill="none" stroke="#8fb4e0" stroke-width="2" points="${pts.map(p=>p.join(',')).join(' ')}"/></svg>`}
+function bars(){const v=[-6,8,-3,12,-9,4,-14,20,-5,9,-2,6];return `<svg viewBox="0 0 420 120" preserveAspectRatio="none" style="width:100%;height:120px;display:block"><line x1="0" x2="420" y1="60" y2="60" stroke="rgba(255,255,255,.12)"/>${v.map((x,i)=>`<rect x="${i*35+6}" width="22" y="${x>0?60-x*2.6:60}" height="${Math.abs(x)*2.6}" fill="${x>0?'#8fb4e0':'#7e8493'}"/>`).join('')}</svg>`}
+function drawCenter(){const m=MK[cur],tot=m.a+m.h;
+ center.innerHTML=`
+  <div class="big"><div><div class="k">Selected market · ${m.name}</div><h3>${m.head}</h3><div class="pr">${m.price}</div></div><div class="net"><b>${m.net}</b><div class="sub" style="color:var(--mut);font-size:11px">${m.netl}</div></div></div>
+  <div class="card"><h4 class="k">Every line</h4><table><thead><tr><th>Market</th><th>Side</th><th>Open</th><th>Pinnacle now</th><th style="width:150px">Bets / money</th><th>Exchange (24h)</th></tr></thead><tbody>
+   ${LINES.map(r=>`<tr class="${r[8]?'hl':''}"><td>${r[0]}</td><td class="s">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td><div class="pb"><i><b style="width:${r[4]}%"></b></i><em>${r[4]}%</em></div><div class="pb"><i><b class="m" style="width:${r[5]}%"></b></i><em>${r[5]}%</em></div></td><td><span class="g">${r[6].includes('sharp')?r[6]:''}</span>${r[6].includes('sharp')?'<br>':r[6]+'<br>'}${r[7].includes('losing')?`<span class="r">${r[7]}</span>`:r[7]}</td></tr>`).join('')}</tbody></table></div>
+  <div class="two">
+   <div class="card"><h4 class="k">Sharp accounts · this side</h4><div class="split"><i class="a" style="width:${m.a/tot*100||100}%"></i><i class="h" style="width:${m.h/tot*100}%"></i></div><div class="lg"><span><b style="color:var(--fg)">${m.al}</b></span><span>${m.hl}</span></div>
+    <div style="margin-top:12px">${MONEY.map(r=>`<div class="mrow"><span>${r[0]}</span><div class="bar"><i style="width:${r[1]}%"></i></div><span class="n">${r[2]}</span></div>`).join('')}</div></div>
+   <div style="display:grid;gap:16px;align-content:start">
+    <div class="card"><div style="display:flex;align-items:center;margin-bottom:10px"><h4 class="k" style="margin:0">Falcons spread at Pinnacle</h4><div class="tabs" id="ctabs"><b class="${ctab==='line'?'on':''}" data-c="line">Line</b><b class="${ctab==='money'?'on':''}" data-c="money">Money in</b></div></div>${ctab==='line'?spark():bars()}<div class="lg" style="margin-top:6px"><span>${ctab==='line'?'Tue 2:01 PM':'36h ago'}</span><span>now</span></div></div>
+    <div class="card"><h4 class="k">Price by book · Falcons −3.5</h4><div class="books"><span class="bk"><small>NOV</small>+111</span><span class="bk"><small>PIN</small>+105</span><span class="bk hot"><small>365</small>+102</span><span class="bk"><small>FD</small>−100</span><span class="bk"><small>BR</small>−104</span></div><div class="sub" style="margin-top:10px;color:var(--mut);font-size:11px">1 beat fair · fair +110 (47.5% no-vig)</div></div>
+   </div></div>`;
+ document.getElementById('ctabs').onclick=e=>{const b=e.target.closest('b');if(b){ctab=b.dataset.c;drawCenter()}}}
+function drawRight(){
+ right.innerHTML=tab==='alerts'?ALERTS.map(a=>`<div class="ev"><span class="w">${a[0]}</span><span><span class="pill ${a[1]}">${a[2]}</span>${a[3]}</span></div>`).join('')
+ :tab==='accts'?ACCTS.map(a=>`<div class="ac"><div class="t"><b>${a[0]}</b><b class="mono">${a[1]}</b></div><div class="sub">${a[2]}${a[3]?` · <span style="color:#ffb84d">${a[3]}</span>`:''}</div>${a[4].map(x=>`<span class="mini">${x}</span>`).join('')}</div>`).join('')
+ :tab==='props'?PROPS.map(a=>`<div class="ac"><div class="t"><b>${a[0]}</b><b class="mono">${a[2]}</b></div><div class="sub">${a[1]}</div></div>`).join('')
+ :`<div class="ac"><div class="k" style="margin-bottom:8px">Vault line vs the market</div><div class="two"><div><div class="sub">Spread</div><b class="mono" style="font-size:18px">ATL +2.7</b><div class="sub">market ATL −3.5</div></div><div><div class="sub">Total</div><b class="mono" style="font-size:18px">47.6</b><div class="sub">market 43</div></div></div><div class="sub" style="margin-top:12px">BAL #6 power · #20 ATL<br>BAL #7 offense · #18 ATL<br>BAL #14 defense · #20 ATL<br>Projected score BAL 25, ATL 22.6.</div></div>`}
+drawHero();drawCenter();drawRight();
+document.getElementById('slate').innerHTML=GAMES.map(g=>`<div class="gm ${g[2]?'on':''}"><div class="t"><b>${g[0]}</b></div><span>${g[1]}</span></div>`).join('');
+hero.onclick=e=>{const m=e.target.closest('.mk');if(m){cur=m.dataset.k;drawHero();drawCenter()}};
+document.getElementById('tabs').onclick=e=>{const b=e.target.closest('b');if(!b)return;document.querySelectorAll('#tabs b').forEach(x=>x.classList.toggle('on',x===b));tab=b.dataset.t;drawRight()};
+</script>
+</body>
+</html>
