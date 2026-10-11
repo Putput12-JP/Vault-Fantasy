@@ -238,13 +238,33 @@ def open_check(g26, F, rated_before, K, HFA):
             m = (x.homeFinalScore - x.awayFinalScore) * (1 if home else -1)
             g.update(margin=int(m), result='W' if m + side_open > 0 else 'L' if m + side_open < 0 else 'P')
         games.append(g)
+    # Games not played yet: this is where the early number is still usable. The lines feed has no neutral-site flag and no kickoff time, so home field is
+    # assumed (flagged) and the page orders by week. `toward` is how far the line has already moved toward the model's side since the open: when it is
+    # positive, some of the edge is gone.
+    sid = {}
+    tp = os.path.join(ROOT, 'data', 'cfbd', 'teams_fbs_2026.json')
+    if os.path.exists(tp): sid = {t['school']: int(t['id']) for t in json.load(open(tp))}
+    done_ids = {int(x.game_id) for x in g26.itertuples()}
+    nowk = int(g26[g26.status_type_completed == True].week.max() or 0) if len(g26) else 0      # opens for weeks further out are placeholders: only the next slate
+    for gid, (rk, ln) in rows.items():
+        if int(gid) in done_ids or ln.get('hs') is not None or int(ln.get('wk') or 0) < PICK_MIN_WEEK or int(ln['wk']) > nowk + 1: continue
+        h, aw = sid.get(ln.get('home')), sid.get(ln.get('away'))
+        if h is None or aw is None or h not in F or aw not in F: continue
+        wk = int(ln['wk']); ra_w, rb_w = rated_before(wk); Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
+        pred = K * (Pw(h) - Pw(aw)) + HFA
+        omargin = -float(ln['so']); edge = pred - omargin; home = edge > 0
+        cur = None if ln.get('sp') is None else -float(ln['sp'])
+        games.append(dict(id=int(gid), week=wk, home_id=h, away_id=aw, home=ln['home'], away=ln['away'], provider=ln['p'], side='home' if home else 'away',
+                          model_margin=round(pred, 1), open_margin=round(omargin, 1), edge=round(edge, 1), entry=round(float(ln['so']) if home else -float(ln['so']), 1),
+                          close=None if cur is None else round(-cur if home else cur, 1), clv=None if cur is None else round((float(ln['so']) - float(ln['sp'])) if home else (float(ln['sp']) - float(ln['so'])), 1),
+                          toward=None if cur is None else round((cur - omargin) * (1 if home else -1), 1), neutral_assumed=True, upcoming=True))
     def rec(sel):
         w = sum(g.get('result') == 'W' for g in sel); l = sum(g.get('result') == 'L' for g in sel); n = w + l
         return dict(won=w, lost=l, pct=round(w / n, 3) if n else None, z=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None)
     out = dict(source='CollegeFootballData spreadOpen, DraftKings first, then Bovada', min_week=PICK_MIN_WEEK, fbs_games=fbs_games, with_open=len(games),
                backtest=dict(seasons='2022-2025', vs_open=[435, 321], vs_close=[368, 346], note='5+ point disagreements, weeks 4+, model tuned on 2022-23 only'),
                by_threshold={str(t): rec([g for g in games if abs(g['edge']) >= t]) for t in (3, 5, 7)},
-               by_week={str(w): rec([g for g in games if g['week'] == w and abs(g['edge']) >= PICK_EDGE]) for w in sorted({g['week'] for g in games})})
+               by_week={str(w): rec([g for g in games if g['week'] == w and abs(g['edge']) >= PICK_EDGE]) for w in sorted({g['week'] for g in games if 'result' in g})})
     picks = [g for g in games if abs(g['edge']) >= PICK_EDGE]
     clvs = [g['clv'] for g in picks if g.get('clv') is not None and 'result' in g]
     out.update(picks=len(picks), pending=sum('result' not in g for g in picks), clv_n=len(clvs), clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None,

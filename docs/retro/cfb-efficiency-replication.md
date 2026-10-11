@@ -117,3 +117,19 @@ bet. Caveats: only games that had an open on file; the open's posting time is un
 Forward check: `open_check()` in `scripts/cfb_model.py` re-projects every 2026 FBS game from week 4 on and grades it against the open (nothing tuned; the same 5-point
 threshold), and the CFB Model tab shows the record. The first 57 picks (weeks 4-6) went 30-26 (53.6%), +1.3 points of closing-line value: too small to say anything.
 `.github/workflows/update-cfbd-lines.yml` refreshes the lines once a day and never loses a stored open.
+
+### Is the opening-line edge real? Four checks (2026-10-11, no tuning)
+
+Same 2,368 games (weeks 4+, 2022-2025). Nothing here was tuned; these are readings of the one fixed model.
+
+- **It predicts where the line goes.** Regressing the move from open to close on (model minus open): slope 0.135, t = 13.9 (0.06 on 2022-23, 0.21 on 2024-25). On 5+ point
+  picks the line moved toward our side 54% of the time, away 28%, flat 17%, by 1.1 points on average. A model that only fit noise would not lead the market like this.
+- **It is not one corner.** Over the open, 5+ point picks: home side 56.9%, away side 58.1%; picked side an underdog 58.3%, a favorite 54.8%; weeks 4-6 57.2%,
+  7-9 55.4%, 10+ 59.2%; every season above 54%.
+- **Bigger gaps do better.** 54.3% at 5-6 points, 54.7% at 6-8, 58.8% at 8-10, 65.2% at 10+. (A reading, not a new threshold: the pick line stays at 5.)
+- **It decays but does not vanish.** The weight on (model minus line) in predicting the margin is 0.35 against the open (t = 5.3) and 0.20 against the close (t = 2.9).
+  When the line moved toward us the pick won 62.1% against the open; when it moved away, 50.5%.
+
+What this means: the model carries real information the market only absorbs over the week, so it is an early-line model. It is worth something while the number has not moved.
+The CFB Model tab now lists next week's games the model is 5+ points off the open on, with where the line is now and how far it has already moved toward the model.
+Still unproven in 2026 (30-26 on the first 56 graded) and still not bettable by assumption: we do not know when each open posted or what limit it carried.
