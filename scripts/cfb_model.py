@@ -276,7 +276,7 @@ def cmd_update(a):
                 except Exception: pass
             for r in gm.drop_duplicates('game_id').itertuples():
                 k = kick_of.get(r.game_id)
-                if k is None or k < a.since or k > now or (int(r.homeTeamId), int(r.awayTeamId)) in have_ids: continue
+                if k is None or k < a.since or k > now or (a.until and k >= a.until) or (int(r.homeTeamId), int(r.awayTeamId)) in have_ids: continue
                 h, aw = int(r.homeTeamId), int(r.awayTeamId)
                 if h not in F or aw not in F or pd.isna(r.homeTeamSpread): continue
                 ra_w, rb_w = rated_before(int(r.week)); Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
@@ -425,6 +425,7 @@ def cmd_update(a):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'priors-v2', 'update']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
     ap.add_argument('--since', type=int, help='one-time backfill: also project games that kicked off at or after this unix time, entered at the opening line')
+    ap.add_argument('--until', type=int, help='with --since: stop the backfill before this unix time')
     ap.add_argument('--sharp', help='path to the Sharp Money data.json (sharp-data branch)'); a = ap.parse_args()
     {'priors': cmd_priors, 'priors-v2': cmd_priors_v2, 'update': cmd_update}[a.cmd](a)
 
