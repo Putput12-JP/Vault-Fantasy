@@ -119,6 +119,13 @@ def cmd_update(a):
             Tw = tg[tg.game_id.isin(done[done.week < wk].game_id) & tg.pos_team_id.isin(F) & tg.def_pos_team_id.isin(F)]
             cache[wk] = st.fit(Tw, *prior)
         return cache[wk]
+    school2id = {}
+    for t, v in names.items():
+        if len(v) > 2 and v[2]: school2id.setdefault(v[2], t)
+    def find_id(nm):          # the feed says "Hawai'i Warriors", ESPN says "Hawai'i Rainbow Warriors": fall back to the school name
+        if nm in name2id: return name2id[nm]
+        best = [sc for sc in school2id if nm.startswith(sc + ' ')]
+        return school2id[max(best, key=len)] if best else None
     slate, un = [], 0
     if a.sharp and os.path.exists(a.sharp):
         feed = json.load(open(a.sharp)); now = feed['ts']
@@ -126,15 +133,15 @@ def cmd_update(a):
             if g['sport'] != 'cfb': continue
             started = g['start'] <= now
             if started and not (a.since and g['start'] >= a.since): continue
-            h, aw = name2id.get(g['home']['name']), name2id.get(g['away']['name'])
+            h, aw = find_id(g['home']['name']), find_id(g['away']['name'])
             line = ((g.get('pin') or {}).get('sp') or {}).get('line')
             if line is None: line = ((g.get('consensus') or {}).get('sp') or {}).get('line')
             oline = ((g.get('open') or {}).get('sp') or {}).get('line')
             if started: line = oline          # in-game lines are live, so a backfilled game uses its opening line
             gr_ = gidx.get((h, aw)) if h is not None else None
-            if h is None or aw is None or h not in F or aw not in F or line is None or gr_ is None:
+            if h is None or aw is None or h not in F or aw not in F or line is None:
                 un += 1; continue
-            wk = int(gr_.week); neutral = bool(gr_.neutral_site == True)
+            wk = int(gr_.week) if gr_ is not None else through; neutral = bool(gr_ is not None and gr_.neutral_site == True)
             ra_w, rb_w = rated_before(wk)
             Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
             pred = K * (Pw(h) - Pw(aw)) + (0.0 if neutral else HFA)
