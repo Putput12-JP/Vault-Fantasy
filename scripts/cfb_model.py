@@ -29,6 +29,7 @@ BACKTEST = os.path.join(DATA, 'cfb_model_backtest.json')
 PRIORS_V2 = os.path.join(DATA, 'cfb_model_priors_v2.json')
 OUT = os.path.join(DATA, 'cfb_model.json')
 PICK_EDGE = 5.0          # disagree with the market by at least this many points
+LOCK_SECS = 3600         # the final lock: the state an hour before kickoff (or the last run before it, when none fell in that hour)
 PICK_MIN_WEEK = 4        # the first month is dominated by the prior, which has no talent or portal information
 BREAKEVEN = 110 / 210
 FBS_ADDITIONS = {16}      # teams new to FBS this season (ESPN ids), added each offseason: 2026 = Sacramento State
@@ -336,8 +337,16 @@ def cmd_update(a):
         for e in board:                   # signals keep firing until kickoff, so an upcoming game's cards are re-read every run; they freeze when the game starts
             if e['kick'] > now: e.pop('cards', None)
         attach_cards(board, feed_cards_)
+        for e in board:                   # the final lock: what the model says an hour before kickoff, Sharp Money cards included
+            if e.get('backfill') or 'final' in e: continue
+            if 0 < e['kick'] - now <= LOCK_SECS or e['kick'] <= now:
+                at = int(now) if e['kick'] > now else e.get('logged', int(now))      # a game that started before any run fell in its last hour keeps the last pre-kickoff state
+                e['final'] = dict(side=e['side'], team=e['team'], entry=e['entry'], edge=e['edge'], is_pick=bool(e['is_pick']), at=at, mins_before=max(0, round((e['kick'] - at) / 60)),
+                                  cards=e.get('cards'), line_src=e.get('line_src'), home_id=e['home_id'], away_id=e['away_id'])
     for e in board:
         if 'result' not in e: e.update(grade(e, g26))
+        fl = e.get('final')
+        if fl and 'result' not in fl: fl.update(grade(fl, g26))
         v = e.get('v2')
         if v and 'result' not in v: v.update(grade(dict(v, home_id=e['home_id'], away_id=e['away_id']), g26))
     board.sort(key=lambda x: -x['kick'])
@@ -389,9 +398,27 @@ def cmd_update(a):
     cards_table = [dict(label=l, note=n_, all=_cs([e for e in withc if f(e)]), feed=_cs([e for e in withc if f(e) and feed_only(e)]), keys=[e['key'] for e in withc if f(e)]) for l, n_, f in rows_def]
     base = dict(label='Every game the model projected', note='The baseline: the model\'s side in every finished game, picks and leans, whatever Sharp Money did.', all=_cs(gg), feed=_cs([e for e in gg if feed_only(e)]), keys=[e['key'] for e in gg])
     cards_summary = dict(graded=len(gg), with_cards=len(withc), table=[base] + cards_table)
+    logkeys = {x['key']: x for x in log}
+    fg = [e for e in board if e.get('final') and e['final'].get('result') in ('W', 'L')]
+    def _fs(sel, get=lambda e: e['final']['result']):
+        w = sum(get(e) == 'W' for e in sel); return [w, sum(get(e) in ('W', 'L') for e in sel) - w]
+    def _link(e):
+        c = e['final'].get('cards')
+        if c is None: return 'nocard'
+        m, o = c[e['final']['side']], c['away' if e['final']['side'] == 'home' else 'home']
+        return 'with' if m and not o else 'against' if o and not m else 'split' if m and o else 'none'
+    fp = [e for e in fg if e['final']['is_pick']]
+    final_summary = dict(locked=sum(1 for e in board if e.get('final')), graded=len(fg), mins=[e['final']['mins_before'] for e in board if e.get('final')][:0],
+        rows=[dict(label='Still a pick when locked', note='A first-sight pick that was still 5+ points from the market an hour before kickoff, graded at the locked line.', all=_fs([e for e in fp if e['key'] in logkeys]), keys=[e['key'] for e in fp if e['key'] in logkeys]),
+              dict(label='Dropped under 5 points by the lock', note='Logged as a pick, but the gap closed before kickoff. Graded at the first-sight line, as in the official record.', all=_fs([logkeys[e['key']] for e in fg if e['key'] in logkeys and not e['final']['is_pick']], lambda x: x['result']), keys=[e['key'] for e in fg if e['key'] in logkeys and not e['final']['is_pick']]),
+              dict(label='Became a pick in the last hour', note='Under 5 points when first seen, 5+ at the lock.', all=_fs([e for e in fp if e['key'] not in logkeys]), keys=[e['key'] for e in fp if e['key'] not in logkeys]),
+              dict(label='Locked picks with Sharp Money on their side', note='At the lock the model is 5+ points off and a card is on its team and none on the other.', all=_fs([e for e in fp if _link(e) == 'with']), keys=[e['key'] for e in fp if _link(e) == 'with']),
+              dict(label='Locked picks with Sharp Money against them', note='Cards only on the other team.', all=_fs([e for e in fp if _link(e) == 'against']), keys=[e['key'] for e in fp if _link(e) == 'against']),
+              dict(label='Locked picks, Sharp Money split or quiet', note='Cards on both teams, or no card at all.', all=_fs([e for e in fp if _link(e) in ('split', 'none', 'nocard')]), keys=[e['key'] for e in fp if _link(e) in ('split', 'none', 'nocard')])])
+    final_summary.pop('mins')
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 
