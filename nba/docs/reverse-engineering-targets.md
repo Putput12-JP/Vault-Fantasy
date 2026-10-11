@@ -99,6 +99,28 @@ first grid hit its edges) moved nothing, so the ceiling is about 0.1-0.3%. I did
 errors. Rates v3 and minutes v3 both beat v2 on accuracy and still did not move the Kalshi edge, so I would not expect this
 to. **Verdict: a wash. Not wired into pricing; kept as a candidate (`data/rates_v4_candidate.json`).**
 
+**7. Kalman on the shooting percentages, plus paired significance** (`build_kalman_pct_v4.py`; details in
+`docs/rates-v4-kalman-pct.md`). Four models scored on the same 28,071 player-games:
+
+| stat | v3 RMSE | Kalman volume | t | Kalman percentages | t |
+|---|---|---|---|---|---|
+| points | 4.9937 | 4.9870 (+0.14%) | +4.17 | 4.9945 (-0.01%) | -0.51 |
+| rebounds | 2.1126 | 2.1108 (+0.08%) | +2.76 | unchanged | n/a |
+| assists | 1.6735 | 1.6684 (+0.30%) | +5.83 | unchanged | n/a |
+| 3PM | 1.1451 | 1.1450 (+0.01%) | +0.35 | 1.1452 (-0.00%) | -0.21 |
+
+- **Kalman percentages: FAIL.** No gain on either stat they touch. v3's decayed makes plus prior attempts already
+  extracts what there is in shooting percentages, which are mostly noise at game level.
+- **Kalman volume: the gain is real but small.** Significant on points, rebounds and assists (t = 4.2, 2.8, 5.8), not on 3PM,
+  and no larger than 0.3% RMSE. This revises item 6 from "a wash" to "statistically real, practically tiny".
+- Combining both is no better than volume alone.
+- Rule amendment, stated openly: the first run crashed because the percentage model leaves rebounds and assists identical to v3
+  by construction. I changed its pass rule (better on both affected stats, none worse, t >= 2 on one) before reading any
+  result. It fails either way.
+- Not tested: whether a 0.1-0.3% rate improvement moves the Kalshi edge. That needs the price archive (`raw/tables`), which
+  is not in this sandbox. Rates v3 and minutes v3 were both more accurate than v2 and did not move the edge, so the
+  default expectation is that this will not either.
+
 ## Not done
 
 - DARKO patent text: the USPTO host is not reachable from the build sandbox. Read it from a machine with access.
