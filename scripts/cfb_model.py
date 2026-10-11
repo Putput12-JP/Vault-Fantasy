@@ -63,6 +63,31 @@ def market_check(g, side):
     return out
 
 
+def feed_cards(feed):
+    """the signals each Sharp Money card showed on the spread, snapshotted before kickoff and kept after (feed['picks']): {game key: {'home': [kinds], 'away': [kinds], 'lbl', 'start'}}"""
+    out = {}
+    for p in feed.get('picks') or []:
+        if p.get('sport') != 'cfb' or p.get('m') != 'sp': continue
+        o = out.setdefault(p['game'], {'home': [], 'away': [], 'lbl': p['gameLbl'], 'start': p['start']})
+        o[p['side']] = sorted(set(o[p['side']]) | set(p['kinds']))
+    return out
+
+
+def _subseq(ab, name):
+    import re
+    n = re.sub('[^A-Z]', '', name.upper()); i = 0
+    for ch in n:
+        if i < len(ab) and ch == ab[i]: i += 1
+    return i == len(ab)
+
+
+def cards_for(cards, key, home, away, kick):
+    import re
+    if key in cards: return cards[key]
+    hit = [c for c in cards.values() if abs(c['start'] - kick) <= 1800 and _subseq(re.sub('[^A-Z]', '', c['lbl'].split('@')[0].upper()), away) and _subseq(re.sub('[^A-Z]', '', c['lbl'].split('@')[1].upper()), home)]
+    return hit[0] if len(hit) == 1 else None
+
+
 def team_names(d, years):
     out = {}
     for y in years:
@@ -235,6 +260,10 @@ def cmd_update(a):
                 pred2 = K * (P2(x_['home_id']) - P2(x_['away_id'])) + (0.0 if x_['neutral'] else HFA); e2 = pred2 - x_['market_margin']; sd2 = 'home' if e2 > 0 else 'away'
                 x_['v2'] = dict(model_margin=round(pred2, 1), edge=round(e2, 1), side=sd2, team=x_['home'] if sd2 == 'home' else x_['away'],
                                 entry=round(-x_['market_margin'] if sd2 == 'home' else x_['market_margin'], 1), is_pick=bool(abs(e2) >= PICK_EDGE and x_['week'] >= PICK_MIN_WEEK), line_src=x_.get('line_src'))
+        cards = feed_cards(feed)
+        for x_ in slate:
+            c_ = cards_for(cards, x_['key'], x_['home'], x_['away'], x_['kick'])
+            if c_: x_['cards'] = {'home': c_['home'], 'away': c_['away']}
         for x_ in slate: x_['blend_margin'] = round(x_['market_margin'] + BLEND_W * x_['edge'], 1)
         slate.sort(key=lambda x: (x['kick'], -abs(x['edge'])))
     else: now = int(pd.Timestamp.now('UTC').timestamp())
@@ -261,7 +290,7 @@ def cmd_update(a):
     for s_ in slate:
         old = bidx.get(s_['key'])
         if old and (old['kick'] <= now or old.get('backfill')):
-            for k_ in ('mkt_check', 'blend_margin', 'v2'):      # added after the first sight: fill in, never change the frozen projection
+            for k_ in ('mkt_check', 'blend_margin', 'v2', 'cards'):      # added after the first sight: fill in, never change the frozen projection
                 if k_ not in old and k_ in s_: old[k_] = s_[k_]
             continue
         side = 'home' if s_['edge'] > 0 else 'away'
@@ -300,9 +329,21 @@ def cmd_update(a):
     v2_summary = dict(games=len(board), graded=len(gb),
                       v1_all=_rec([e['result'] for e in gb if e.get('result')]), v2_all=_rec([e['v2']['result'] for e in gb]),
                       v1_picks=_rec([e['result'] for e in gb if e.get('is_pick') and e.get('result')]), v2_picks=_rec([e['v2']['result'] for e in gb if e['v2']['is_pick']])) if prior2 else None
+    def _cs(sel):
+        w = sum(e['result'] == 'W' for e in sel); return [w, len(sel) - w]
+    gg = [e for e in board if e.get('result') in ('W', 'L')]
+    def _side(e, o=False):
+        c = e.get('cards'); return [] if not c else c['away' if (e['side'] == 'home') == o else 'home' if o else e['side']]
+    withc = [e for e in gg if e.get('cards') is not None]
+    cards_summary = dict(graded=len(gg), with_cards=len(withc),
+                         ours=_cs([e for e in withc if e['cards'][e['side']] and not e['cards']['away' if e['side'] == 'home' else 'home']]),
+                         against=_cs([e for e in withc if e['cards']['away' if e['side'] == 'home' else 'home'] and not e['cards'][e['side']]]),
+                         both=_cs([e for e in withc if e['cards'][e['side']] and e['cards']['away' if e['side'] == 'home' else 'home']]),
+                         none=_cs([e for e in withc if not e['cards']['home'] and not e['cards']['away']]),
+                         line_ours=_cs([e for e in withc if 'line' in e['cards'][e['side']]]), sharp_ours=_cs([e for e in withc if 'sharp' in e['cards'][e['side']]]))
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 
