@@ -1,0 +1,59 @@
+# Vault's college football model (an experiment, see docs/retro/cfb-efficiency-replication.md): refits
+# opponent-adjusted ratings on the season's games, projects the games the Sharp Money feed lists, logs
+# any pick 5+ points from the market once (before kickoff), and grades finished picks against real
+# scores and ESPN's closing spread. Writes data/cfb_model.json for the CFB Model page.
+# Free and keyless: ESPN data from the sportsdataverse-data releases. Frozen preseason ratings live in
+# data/cfb_model_priors.json (rebuild once a year: python3 scripts/cfb_model.py priors).
+name: Update CFB model
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'scripts/cfb_model.py'
+      - 'scripts/cfb_efficiency_study.py'
+      - 'data/cfb_model_priors.json'
+  schedule:
+    - cron: '17 */3 * 9,10,11,12,1 *'
+
+concurrency:
+  group: cfb-model
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install pandas numpy scipy scikit-learn pyarrow
+      - name: Load the Sharp Money feed
+        run: |
+          git fetch --depth=1 origin sharp-data
+          git show FETCH_HEAD:data.json > /tmp/sharp.json
+      - name: Update the model
+        run: python3 scripts/cfb_model.py update --sharp /tmp/sharp.json
+      - name: Commit if changed
+        run: |
+          git fetch -q origin main
+          if git show origin/main:data/cfb_model.json > /tmp/prev.json 2>/dev/null && python3 - <<'PY'
+          import json,sys
+          a=json.load(open('/tmp/prev.json')); b=json.load(open('data/cfb_model.json'))
+          for k in ('generated','backtest'): a.pop(k,None); b.pop(k,None)
+          sys.exit(0 if a==b else 1)
+          PY
+          then
+            echo "No model changes."
+          else
+            git config user.name  "vault-bot"
+            git config user.email "vault-bot@users.noreply.github.com"
+            git add data/cfb_model.json
+            git commit -m "cfb model: refresh ratings, slate and pick log [skip ci]"
+            git pull --rebase -q origin main
+            git push
+          fi

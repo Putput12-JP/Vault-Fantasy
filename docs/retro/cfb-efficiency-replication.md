@@ -58,3 +58,7 @@ Passing and rushing efficiency separately, success rate, explosiveness, pace, a 
 - Best 2022-23 variants (52-54% at 5+ and 7+ points) fell back to 47-51% on 2024-25: the usual sign of fitting noise.
 
 No variant is shipped. Stopped here on purpose: more variants would be fishing. What is still missing is the information the market has before kickoff that play-by-play does not carry: preseason talent and returning production, transfer movement, and opening-line history. Those come from CollegeFootballData (its API host is blocked in the build environment as of 2026-10-11).
+
+## Where it lives in the app
+
+The method is shown, unflattered, on the Sharp Money **CFB Model** tab: power ratings, the projected slate against the market line, the backtest by season, and a pick log (`data/cfb_model.json`, refreshed by `.github/workflows/update-cfb-model.yml` from `scripts/cfb_model.py`). Every pick 5+ points from the market in week 4 or later is logged once, before kickoff, and graded against real scores and ESPN's close. The tab is labeled Ignore it until it clears 50 graded picks and 2 standard errors above break-even, the same bar as every other signal. The frozen preseason ratings (`data/cfb_model_priors.json`) are rebuilt once a year with `python3 scripts/cfb_model.py priors`, and `FBS_ADDITIONS` in the script is updated for teams that move up.

@@ -40,9 +40,9 @@ def fetch(url, dest):
     return dest
 
 
-def load(d):
+def load(d, years=None):
     tgs, gms = [], []
-    for y in YEARS:
+    for y in (years or YEARS):
         p = pd.read_parquet(fetch(f'{REL}/espn_cfb_pbp/play_by_play_{y}.parquet', f'{d}/pbp_{y}.parquet'), columns=COLS)
         p = p[p.seasonType == 2]
         sch = pd.read_parquet(fetch(f'{REL}/espn_cfb_schedules/cfb_schedule_{y}.parquet', f'{d}/sched_{y}.parquet'), columns=['game_id', 'neutral_site'])
@@ -59,17 +59,17 @@ def load(d):
     return tg, gm
 
 
-def fbs_sets(gm, d):
+def fbs_sets(gm, d, years=None, min_games=5):
     t = pd.read_csv(fetch(TEAMS, f'{d}/teams.csv'), encoding='latin-1')
     seed = set(t[t.conference.notna()].team_id.astype(int)); out = {}
-    for y in YEARS:                      # FBS = plays 5+ games against FBS (catches teams that moved up since the 2021 file)
+    for y in (years or YEARS):                      # FBS = plays 5+ games against FBS (catches teams that moved up since the 2021 file)
         g = gm[gm.season == y]; cur = set(seed)
         for _ in range(3):
             cnt = {}
             for h, a in zip(g.homeTeamId, g.awayTeamId):
                 if a in cur: cnt[h] = cnt.get(h, 0) + 1
                 if h in cur: cnt[a] = cnt.get(a, 0) + 1
-            cur = {k for k, v in cnt.items() if v >= 5}
+            cur = {k for k, v in cnt.items() if v >= min_games}
         out[y] = cur
     return out
 
@@ -86,9 +86,10 @@ def fit(obs, pa, pb):
     return a, b
 
 
-def walk_forward(tg, gm, fbs):
+def walk_forward(tg, gm, fbs, years=None, finals=None):
+    """finals (a dict, optional) is filled with {season: (offense, defense)} ratings after the last game of that season"""
     prior = ({}, {}); out = []
-    for y in YEARS:
+    for y in (years or YEARS):
         F = fbs[y]
         T = tg[(tg.season == y) & tg.pos_team_id.isin(F) & tg.def_pos_team_id.isin(F)]
         G = gm[(gm.season == y) & gm.homeTeamId.isin(F) & gm.awayTeamId.isin(F) & (gm.status_type_completed == True)]
@@ -100,6 +101,7 @@ def walk_forward(tg, gm, fbs):
                 P = lambda t: cur[0].get(t, 0.0) - cur[1].get(t, 0.0)
                 hf = 0 if r.neutral_site == True else 1
                 out.append((y, w, r.homeFinalScore - r.awayFinalScore, r.homeTeamSpread, K * (P(r.homeTeamId) - P(r.awayTeamId)) + HFA * hf))
+        if finals is not None: finals[y] = cur
         prior = ({t: S * v for t, v in cur[0].items()}, {t: S * v for t, v in cur[1].items()})
     return pd.DataFrame(out, columns=['season', 'week', 'hm', 'mkt', 'pred'])
 
