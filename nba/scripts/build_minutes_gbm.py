@@ -70,7 +70,7 @@ def build_rows(box, margins):
                 rows.append(dict(
                     season=g['season'], gid=g['game_id'], aid=r['athlete_id'], y=r['minutes'],
                     ew1=p['ew'][0], ew2=p['ew'][1], ew3=p['ew'][2], last=p['lastm'], m5=float(np.mean(last5)),
-                    sd5=float(np.std(last5)), st=p['st'], was_start=p['last_start'], n=min(p['n'], 200),
+                    sd5=float(np.std(last5)), sdm_ewma=math.sqrt(p['sq']), st=p['st'], was_start=p['last_start'], n=min(p['n'], 200),
                     rest=rest, b2b=b2b, g7=g7, home=home, days_off=days_off, vs=vs, vo=vo,
                     absm=abs(mg) if mg is not None else 6.0, sgnm=(mg if home else -mg) if mg is not None else 0.0,
                     pos_g=1.0 if grp == 'G' else 0.0, pos_c=1.0 if grp == 'C' else 0.0, n_out=len(out),
@@ -84,10 +84,11 @@ def build_rows(box, margins):
             if p is None:
                 pl[a] = {'ew': [r['minutes']] * 3, 'n': 1, 'team': r['team'], 'last': tip, 'pos': MM.group(r['pos']),
                          'st': 1.0 if r['starter'] else 0.0, 'lastm': r['minutes'], 'last_start': 1.0 if r['starter'] else 0.0,
-                         'h': deque([r['minutes']], maxlen=5),
+                         'h': deque([r['minutes']], maxlen=5), 'sq': 36.0,
                          'rt': {k: r[STATCOL[k]] / max(r['minutes'], 1.0) for k in STATS}}
             else:
                 k = max(0.0, 0)
+                p['sq'] += 0.1 * ((r['minutes'] - p['ew'][1]) ** 2 - p['sq'])
                 p['ew'] = [e + max(al, 1 / (p['n'] + 1)) * (r['minutes'] - e) for e, al in zip(p['ew'], ALPHAS)]
                 p['st'] += max(0.2, 1 / (p['n'] + 1)) * ((1.0 if r['starter'] else 0.0) - p['st'])
                 p['lastm'], p['last_start'] = r['minutes'], 1.0 if r['starter'] else 0.0

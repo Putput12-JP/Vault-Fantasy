@@ -149,6 +149,21 @@ code, and this sandbox has no injury reports, so the comparison uses oracle abse
 accuracy gains in minutes v3, rates v3 and starters did not move the edge. That test needs the price archive, which is not here.
 (c) The GBM must be re-scored with injury-report absences, where vacated-minutes inputs are noisier.
 
+**9. Per-player minutes spread: statistically real, below my bar (FAIL).** `build_minutes_spread.py` (tables in
+`docs/minutes-spread.md`) models how wrong the minutes forecast will be for each player tonight. Pricing today widens each prop by
+one per-player number (an EWMA of squared misses). A LightGBM on the squared miss scores a better Gaussian CRPS on both holdouts
+(3.292 vs 3.317, then 3.304 vs 3.331: +0.75% and +0.80%, t = 13.6 and 13.8) and has better-calibrated 80% intervals (82.4% vs 79.8%
+and 79.4%), but the pre-set bar was 1%, so it fails. Even a single constant sd is within 0.2-0.3% of the per-player
+EWMA, so per-player minutes volatility is worth very little either way. Not pursued.
+
+**10. Shadow-model export.** `export_minutes_gbm.py` writes `data/minutes_gbm.json` (300 trees, 8,700 nodes, 260 KB) and a pure-Python
+scorer that matches LightGBM to 1.4e-11 on 3,000 rows, so the cron jobs need no lightgbm. What is still missing to run it live:
+the model's inputs are three EWMAs of minutes (0.1, 0.2, 0.4), last-game minutes, last-5 mean and std, a starter-rate EWMA, last
+game's role, games played, rest days, games in the last 7 days, days since the player's last game, vacated minutes by position
+group, expected margin (absolute and signed) and the count of rotation players out. `model_state.json` stores only part of that,
+so the live state needs those fields added before the shadow can run. The fit includes 2025-26, so it cannot be used to
+evaluate itself.
+
 ## Not done
 
 - DARKO patent text: the USPTO host is not reachable from the build sandbox. Read it from a machine with access.
