@@ -86,11 +86,12 @@ def fit(obs, pa, pb):
     return a, b
 
 
-def walk_forward(tg, gm, fbs, years=None, finals=None):
+def walk_forward(tg, gm, fbs, years=None, finals=None, prior_fn=None):
     """finals (a dict, optional) is filled with {season: (offense, defense)} ratings after the last game of that season"""
     prior = ({}, {}); out = []
     for y in (years or YEARS):
         F = fbs[y]
+        if prior_fn: prior = prior_fn(y, prior)      # v2: a regression-built preseason prior instead of last season x S
         T = tg[(tg.season == y) & tg.pos_team_id.isin(F) & tg.def_pos_team_id.isin(F)]
         G = gm[(gm.season == y) & gm.homeTeamId.isin(F) & gm.awayTeamId.isin(F) & (gm.status_type_completed == True)]
         cur = prior

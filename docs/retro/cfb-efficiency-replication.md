@@ -72,3 +72,26 @@ the market, and the model alone is not an edge. The page shows the blended line 
 a price, and adds a pre-game "market check" from Sharp Money (line move toward our side, money share above ticket share,
 sharp-account flow). That check has no history, so it is tracked forward only and read after the sample builds. Games already
 in progress get no check, because their lines and money are live.
+
+## v2 step 2: a regression-built preseason prior (2026-10-11)
+
+`scripts/cfb_v2_prior_study.py`. Inputs, all known before kickoff of the season they predict, from CollegeFootballData
+(`data/cfbd/`, pulled by the Fetch CFBD data workflow): 247 team talent, returning production (% of PPA, % of passing PPA),
+four classes of recruiting points, net transfer-portal movement (stars in minus stars out), plus last season's final offense
+and defense ratings. A ridge regression predicts each team's end-of-season offense and defense rating from them; each
+season's prior is fit only on EARLIER seasons (2022 opens flat). Everything else is v1. Feature set fixed before the run;
+2024-2025 read once.
+
+| 5+ pt disagreements, weeks 4+ | v1 (last season x 0.85) | v2 (regression prior) |
+|---|---|---|
+| 2023 (tune, one season to learn from) | 84-89 | 108-108 |
+| 2024 | 85-88 | 92-81 |
+| 2025 | 79-93 | 97-89 |
+| Test 2024-25 | 164-181 (47.5%) | 189-170 (52.6%) |
+
+Reading it honestly: 52.6% is 0.2 points above the 52.4% break-even, and 189 wins is about 1 win above what break-even
+predicts on 359 picks (a tenth of a standard error). The model's average miss did not move (12.50 vs 12.52 points, market 11.88),
+and the weight the model's disagreement gets when predicting the final margin FELL from 0.13 to 0.07. The prior is better
+than v1's on the pick count and no better where it matters, the miss. It is not an edge, so nothing ships as a pick, and the
+CFB Model page keeps its Ignore it label and its v1 ratings. Talent is the one input that carries weight in the defense fit
+(0.06-0.09), returning production and portal movement are close to zero.
