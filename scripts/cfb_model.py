@@ -373,21 +373,21 @@ def cmd_update(a):
     opp = lambda e: 'away' if e['side'] == 'home' else 'home'
     mine = lambda e: e['cards'][e['side']]; other = lambda e: e['cards'][opp(e)]
     rows_def = [
-        ('Any Sharp Money card on the model\'s side only', lambda e: mine(e) and not other(e)),
-        ('Any card on the other side only', lambda e: other(e) and not mine(e)),
-        ('Cards on both sides', lambda e: mine(e) and other(e)),
-        ('Line move on the model\'s side', lambda e: 'line' in mine(e)),
-        ('Line move on the other side', lambda e: 'line' in other(e)),
-        ('Sharp accounts on the model\'s side', lambda e: 'sharp' in mine(e)),
-        ('Sharp accounts on the other side', lambda e: 'sharp' in other(e)),
-        ('Money vs bets on the model\'s side', lambda e: 'money' in mine(e)),
-        ('Two or more signals on the model\'s side', lambda e: len(mine(e)) >= 2),
-        ('5+ point picks with a card on their side', lambda e: e['is_pick'] and mine(e)),
-        ('5+ point picks with no card on their side', lambda e: e['is_pick'] and not mine(e)),
+        ('Sharp Money is on the same side as the model', 'A line-move, sharp-account, money or books-behind card showed on the model\'s team and none on the other team.', lambda e: mine(e) and not other(e)),
+        ('Sharp Money is on the other side', 'Cards showed only on the team the model is against.', lambda e: other(e) and not mine(e)),
+        ('Sharp Money is on both sides', 'Cards showed on both teams, so the signals disagree.', lambda e: mine(e) and other(e)),
+        ('The line moved toward the model\'s team', 'The Pinnacle number shortened for the model\'s side before kickoff.', lambda e: 'line' in mine(e)),
+        ('The line moved away from the model\'s team', 'The Pinnacle number moved toward the other team.', lambda e: 'line' in other(e)),
+        ('Sharp accounts bet the model\'s team', 'Accounts with a proven record put real money on the model\'s side.', lambda e: 'sharp' in mine(e)),
+        ('Sharp accounts bet the other team', 'Those accounts went the other way.', lambda e: 'sharp' in other(e)),
+        ('Bigger money than bets on the model\'s team', 'A larger share of the dollars than of the tickets, which points to larger bettors.', lambda e: 'money' in mine(e)),
+        ('Two or more signals back the model', 'More than one kind of card on the model\'s team.', lambda e: len(mine(e)) >= 2),
+        ('Model picks (5+ points) that Sharp Money backs', 'The model is 5+ points from the market and a card is on its side.', lambda e: e['is_pick'] and mine(e)),
+        ('Model picks (5+ points) with no Sharp Money behind them', 'The model is 5+ points from the market and no card is on its side.', lambda e: e['is_pick'] and not mine(e)),
     ]
     feed_only = lambda e: e['key'].startswith('cfb:')           # entered at a feed line before or at kickoff, not at ESPN's after-the-game line
-    cards_table = [dict(label=l, all=_cs([e for e in withc if f(e)]), feed=_cs([e for e in withc if f(e) and feed_only(e)]), keys=[e['key'] for e in withc if f(e)]) for l, f in rows_def]
-    base = dict(label='Every game the model projected', all=_cs(gg), feed=_cs([e for e in gg if feed_only(e)]), keys=[e['key'] for e in gg])
+    cards_table = [dict(label=l, note=n_, all=_cs([e for e in withc if f(e)]), feed=_cs([e for e in withc if f(e) and feed_only(e)]), keys=[e['key'] for e in withc if f(e)]) for l, n_, f in rows_def]
+    base = dict(label='Every game the model projected', note='The baseline: the model\'s side in every finished game, picks and leans, whatever Sharp Money did.', all=_cs(gg), feed=_cs([e for e in gg if feed_only(e)]), keys=[e['key'] for e in gg])
     cards_summary = dict(graded=len(gg), with_cards=len(withc), table=[base] + cards_table)
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
