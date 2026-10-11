@@ -48,3 +48,13 @@ Season by season (weeks 4+, 5+ pt edges): 2022 101-90, 2023 84-89, 2024 85-88, 2
 - Preseason priors from CollegeFootballData (team talent composite, returning production, transfer portal, SP+ as a benchmark) to fix weeks 1-3.
 - Opening-line history, to grade against the number JP+ uses rather than the close.
 - JP+'s shadow record for vetoed games and a calibration table for its cover probabilities.
+
+## Second round (2026-10-11): everything reasonable we could add from the same data
+
+Passing and rushing efficiency separately, success rate, explosiveness, pace, a two-season prior, recency weighting, and week-bucketed stage-2 weights: 16 combinations, each tuned on 2022-23 and then read once on 2024-25 (weeks 4+).
+
+- Slope of (margin minus line) on (model minus line): 0.01 to 0.10, never above t = 1.3.
+- 5+ point disagreements on the untouched 2024-25 test: 47.4% to 50.1% ATS in every variant (break-even 52.4%).
+- Best 2022-23 variants (52-54% at 5+ and 7+ points) fell back to 47-51% on 2024-25: the usual sign of fitting noise.
+
+No variant is shipped. Stopped here on purpose: more variants would be fishing. What is still missing is the information the market has before kickoff that play-by-play does not carry: preseason talent and returning production, transfer movement, and opening-line history. Those come from CollegeFootballData (its API host is blocked in the build environment as of 2026-10-11).
