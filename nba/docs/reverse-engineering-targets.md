@@ -76,6 +76,29 @@ Consistent sign on all five stats, but small. The baseline here is a plain EWMA,
 adds position priors and separate percentage handling), so this does **not** show a gain over v3. Next step if wanted:
 swap the Kalman state into `build_rates_v3.py` and rerun the Kalshi edge backtest under the pre-registered rules.
 
+## Follow-up (same day)
+
+**5. Does play-by-play help the minutes model? No, on the one idea tested.** `build_pbp_minutes_test.py` strips garbage time
+out of recent minutes (an EWMA of competitive minutes and one of garbage minutes, against one EWMA of total minutes) and
+predicts next-game minutes, trained on 2022-24 and tested on 2024-25, players with 10+ prior games. RMSE 6.804 with
+and without the split, a 0.00% gain, so it fails the 1% rule. Together with the RAPM and pregame-garbage-time results
+above, play-by-play has not moved the minutes forecast. What it has not tried: in-game signals the model cannot see
+before tip (foul trouble, first-sub timing), which would matter for live repricing rather than the pregame number.
+
+**6. Kalman volume rates vs rates v3** (`build_kalman_rates_v4.py`, same harness and seasons as v3, given true minutes):
+
+| stat | RMSE v3 | RMSE v4 | gain |
+|---|---|---|---|
+| points | 4.9937 | 4.9870 | +0.13% |
+| rebounds | 2.1126 | 2.1108 | +0.09% |
+| assists | 1.6735 | 1.6684 | +0.30% |
+| 3PM | 1.1451 | 1.1450 | +0.01% |
+
+It passes the pre-registered rule (better on 4 of 4, none worse), but the gains are tiny, and widening the tuning grid (the
+first grid hit its edges) moved nothing, so the ceiling is about 0.1-0.3%. I did not run a significance test on the paired
+errors. Rates v3 and minutes v3 both beat v2 on accuracy and still did not move the Kalshi edge, so I would not expect this
+to. **Verdict: a wash. Not wired into pricing; kept as a candidate (`data/rates_v4_candidate.json`).**
+
 ## Not done
 
 - DARKO patent text: the USPTO host is not reachable from the build sandbox. Read it from a machine with access.
