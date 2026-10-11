@@ -1,6 +1,7 @@
-# Kalshi vs books gap alerts, on their own fast clock. The full Sharp Money run takes ~3 min (most of it the Novig sweep), so it
-# cannot go faster than every ~10 min. This job only needs Kalshi + Pinnacle/pick'em prices, so it runs in about a minute and the
-# Cloudflare worker (workers/sharp-refresh) dispatches it every 2 min inside the NFL busy windows.
+# Kalshi vs books gap alerts, on their own fast clock. One run LOOPS: every ~2 min for ~9 min it pulls Kalshi + Pinnacle/pick'em prices,
+# checks for new gaps and posts them to Discord. The Sharp Money job (every 10 min, via the Cloudflare worker) starts the next run, so
+# coverage is continuous and does not depend on any extra Cloudflare cron. (The worker's own */2 dispatch still works as a bonus; the
+# concurrency group below queues it behind a running loop.)
 # It publishes to its OWN branch (kb-data). Do not share sharp-data: that branch is force-pushed as one commit by update-sharp-money.yml,
 # so two writers would delete each other's files.
 name: Update Kalshi vs books gaps
@@ -17,35 +18,54 @@ permissions:
 jobs:
   gaps:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 15
     steps:
+      # NFL busy windows (Central), same as the Sharp Money gate: Mon/Thu 5pm-midnight, Sat 10am-midnight, Sun 8am-8pm.
+      - name: Gate
+        id: gate
+        run: |
+          export TZ=America/Chicago
+          d=$(date +%u); h=$(date +%-H); go=0
+          case "$d" in
+            1|4) [ "$h" -ge 17 ] && go=1 ;;
+            6)   [ "$h" -ge 10 ] && go=1 ;;
+            7)   [ "$h" -ge 8 ] && [ "$h" -le 19 ] && go=1 ;;
+          esac
+          echo "go=$go" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v5
+        if: steps.gate.outputs.go == '1'
       - uses: actions/setup-node@v5
+        if: steps.gate.outputs.go == '1'
         with:
           node-version: 20
       - name: Load previous state
+        if: steps.gate.outputs.go == '1'
         run: |
           mkdir -p kb-out
           if git ls-remote --exit-code --heads origin kb-data >/dev/null 2>&1; then
             git fetch --depth=1 origin kb-data
             git show FETCH_HEAD:kb_state.json > kb-out/kb_state.json || true
           fi
-      # Same two pulls the Sharp Money job makes (keyless). US-book prices come from the committed feed (update-lineup.yml, credit-limited).
-      - name: Refresh Pinnacle / pick'em lines + Kalshi props
-        run: |
-          cp data/lineup-feed.json kb-out/lineup-feed.json
-          node scripts/fetch-pickem-props.mjs --feed=kb-out/lineup-feed.json || true
-          node scripts/fetch-kalshi-props.mjs --out=kb-out/kalshi_props.json || true
-      - name: Find gaps, post new ones to Discord
+      # Loop for ~9 min. Each pass: the same two keyless pulls the Sharp Money job makes (US-book prices come from the committed feed,
+      # which update-lineup.yml refreshes; credit-limited), then the gap check, then publish. State carries between passes in kb-out.
+      - name: Loop gap checks
+        if: steps.gate.outputs.go == '1'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: node scripts/kalshi-book-gaps.mjs --dir=kb-out
-      - name: Publish to kb-data
         run: |
-          cd kb-out
-          git init -q -b kb-data
-          git config user.name  "vault-bot"
-          git config user.email "vault-bot@users.noreply.github.com"
-          git add kb_gaps.json kb_state.json
-          git commit -q -m "kb gaps: $(date -u +%FT%TZ) [skip ci]"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" kb-data
+          busy() { export TZ=America/Chicago; d=$(date +%u); h=$(date +%-H)
+            case "$d" in 1|4) [ "$h" -ge 17 ];; 6) [ "$h" -ge 10 ];; 7) [ "$h" -ge 8 ] && [ "$h" -le 19 ];; *) return 1;; esac; }
+          end=$(( $(date +%s) + 540 ))
+          while true; do
+            cp data/lineup-feed.json kb-out/lineup-feed.json
+            node scripts/fetch-pickem-props.mjs --feed=kb-out/lineup-feed.json || true
+            node scripts/fetch-kalshi-props.mjs --out=kb-out/kalshi_props.json || true
+            node scripts/kalshi-book-gaps.mjs --dir=kb-out || true
+            ( cd kb-out && rm -rf .git && git init -q -b kb-data \
+              && git config user.name "vault-bot" && git config user.email "vault-bot@users.noreply.github.com" \
+              && git add kb_gaps.json kb_state.json && git commit -q -m "kb gaps: $(date -u +%FT%TZ) [skip ci]" \
+              && git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" kb-data ) || echo "publish failed (continuing)"
+            [ $(( $(date +%s) + 115 )) -gt "$end" ] && break
+            busy || break
+            sleep 110
+          done
