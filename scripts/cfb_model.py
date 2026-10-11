@@ -332,7 +332,10 @@ def cmd_update(a):
         else: board.append(ent); bidx[s_['key']] = ent
     seen = {(b['home_id'], b['away_id']) for b in board if not b['key'].startswith('espn:')}
     board[:] = [b for b in board if not (b['key'].startswith('espn:') and (b['home_id'], b['away_id']) in seen)]      # a game the feed also had: keep the feed's entry
-    if a.sharp and os.path.exists(a.sharp): attach_cards(board, feed_cards_)
+    if a.sharp and os.path.exists(a.sharp):
+        for e in board:                   # signals keep firing until kickoff, so an upcoming game's cards are re-read every run; they freeze when the game starts
+            if e['kick'] > now: e.pop('cards', None)
+        attach_cards(board, feed_cards_)
     for e in board:
         if 'result' not in e: e.update(grade(e, g26))
         v = e.get('v2')
