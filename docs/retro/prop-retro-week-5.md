@@ -1,56 +1,57 @@
 # Player-prop retro — week 5
 
-_468 graded props (468 with a projection to score)._
+_566 graded props (566 with a projection to score)._
 
 ## Headline
 
-- **Record:** 244-224 (52.1%) vs 52.4% break-even → below break-even
-- **CLV beat-rate:** 53.0% — how often we land on the right side of the closing line
-- **Model vs market log-loss:** 0.6939 vs 0.6868 → **market prices probability better** by 0.0071
+- **Record:** 293-273 (51.8%) vs 52.4% break-even → below break-even
+- **CLV beat-rate:** 53.7% — how often we land on the right side of the closing line
+- **Model vs market log-loss:** 0.6952 vs 0.6864 → **market prices probability better** by 0.0088
 
 The closing line is the sharpest number the market posts, so it is our stand-in for "industry tools." Beating it on CLV = real side-selection edge; a worse log-loss = our confidence numbers are still less calibrated than consensus.
 
 ## By market
 
 ```
-rec            n= 113    59-54 52.2% | CLV 59.3% | MAE   1.5 bias -0.38 | edge -0.025
-rec_yd         n= 111    58-53 52.3% | CLV 57.7% | MAE  21.5 bias -3.56 | edge -0.001
-rush_yd        n=  52    26-26 50.0% | CLV 40.4% | MAE  20.0 bias +1.34 | edge +0.021
-rush_att       n=  50    25-25 50.0% | CLV 54.0% | MAE   3.2 bias +0.45 | edge +0.018
-rush_rec_yd    n=  30    15-15 50.0% | CLV 36.7% | MAE  26.4 bias +4.55 | edge   -  
-pass_td        n=  20     15-5 75.0% | CLV 60.0% | MAE   0.8 bias -0.08 | edge +0.050
-pass_int       n=  20     12-8 60.0% | CLV 45.0% | MAE   0.8 bias +0.14 | edge   -  
-pass_yd        n=  20     11-9 55.0% | CLV 45.0% | MAE  65.4 bias -12.98 | edge -0.109
-pass_cmp       n=  18     5-13 27.8% | CLV 44.4% | MAE   4.2 bias -2.17 | edge -0.092
-pass_rush_yd   n=  17      8-9 47.1% | CLV 52.9% | MAE  73.4 bias -19.90 | edge   -  
-pass_att       n=  17     10-7 58.8% | CLV 64.7% | MAE   6.9 bias -2.76 | edge -0.004
+rec            n= 135    75-60 55.6% | CLV 56.3% | MAE   1.5 bias -0.28 | edge -0.013
+rec_yd         n= 133    70-63 52.6% | CLV 60.2% | MAE  21.3 bias -2.29 | edge -0.004
+rush_yd        n=  64    31-33 48.4% | CLV 43.8% | MAE  20.3 bias +1.72 | edge +0.014
+rush_att       n=  60    29-31 48.3% | CLV 55.0% | MAE   3.2 bias +0.37 | edge -0.007
+rush_rec_yd    n=  37    16-21 43.2% | CLV 45.9% | MAE  28.3 bias +5.84 | edge   -  
+pass_td        n=  24     18-6 75.0% | CLV 58.3% | MAE   0.8 bias -0.11 | edge +0.061
+pass_int       n=  24    13-11 54.2% | CLV 45.8% | MAE   0.7 bias +0.13 | edge   -  
+pass_yd        n=  24    12-12 50.0% | CLV 50.0% | MAE  65.4 bias -5.24 | edge -0.109
+pass_cmp       n=  22     7-15 31.8% | CLV 50.0% | MAE   4.4 bias -1.42 | edge -0.076
+pass_rush_yd   n=  21     9-12 42.9% | CLV 52.4% | MAE  71.3 bias -10.85 | edge   -  
+pass_att       n=  21     13-8 61.9% | CLV 52.4% | MAE   6.9 bias -2.02 | edge -0.005
+rush_td        n=   1      0-1  0.0% | CLV  0.0% | MAE   0.7 bias -0.66 | edge -0.551
 ```
 
 ## By position
 
 ```
-QB     n= 148    79-69 53.4% | CLV 50.7% | MAE  20.8 bias -5.04 | edge -0.011
-RB     n= 148    77-71 52.0% | CLV 50.7% | MAE  13.7 bias +1.72 | edge +0.016
-WR     n= 110    53-57 48.2% | CLV 61.8% | MAE  14.5 bias -3.15 | edge -0.033
-TE     n=  62    35-27 56.5% | CLV 48.4% | MAE  10.1 bias -0.87 | edge +0.003
+RB     n= 185    96-89 51.9% | CLV 51.9% | MAE  14.0 bias +2.28 | edge +0.001
+QB     n= 179    93-86 52.0% | CLV 52.0% | MAE  20.7 bias -2.87 | edge -0.009
+WR     n= 130    63-67 48.5% | CLV 62.3% | MAE  14.2 bias -1.43 | edge -0.026
+TE     n=  72    41-31 56.9% | CLV 47.2% | MAE  10.9 bias -1.98 | edge +0.005
 ```
 
 ## Over vs under
 
 ```
-over   n= 265  137-128 51.7% | CLV 49.4% | MAE  17.8 bias -2.41 | edge +0.017
-under  n= 203   107-96 52.7% | CLV 57.6% | MAE  12.8 bias -1.24 | edge -0.037
+over   n= 318  160-158 50.3% | CLV 52.2% | MAE  18.2 bias -0.51 | edge +0.011
+under  n= 248  133-115 53.6% | CLV 55.6% | MAE  12.7 bias -1.04 | edge -0.033
 ```
 
 ## Calibration (model P(over) → realized)
 
 ```
       bucket    n   pred  actual
-0.50-0.55     95  0.528   0.558
-0.55-0.60    117  0.576   0.513
-0.60-0.65     62  0.624   0.532  << overconfident
-0.65-0.70     23  0.669   0.652
-0.70-0.80     18  0.746   0.556  << overconfident
+0.50-0.55    120  0.527   0.567
+0.55-0.60    136  0.577   0.544
+0.60-0.65     76  0.622   0.513  << overconfident
+0.65-0.70     29  0.669   0.621
+0.70-0.80     22  0.742   0.545  << overconfident
 0.80-1.01      3  0.818   1.000
 ```
 
@@ -58,15 +59,13 @@ under  n= 203   107-96 52.7% | CLV 57.6% | MAE  12.8 bias -1.24 | edge -0.037
 
 Ranked by demonstrated edge (sample-shrunk log-loss + CLV, collapsed when the two disagree), so a lucky small-sample market can't top it.
 
-- **Best market: pass_td** — 15-5 (75.0%), CLV 60.0%, log-loss edge +0.050, projection MAE 0.8.
-- **Best position: RB** — 77-71 (52.0%), CLV 50.7%, log-loss edge +0.016, projection MAE 13.7.
+- **Best market: pass_td** — 18-6 (75.0%), CLV 58.3%, log-loss edge +0.061, projection MAE 0.8.
+- **Best position: RB** — 96-89 (51.9%), CLV 51.9%, log-loss edge +0.001, projection MAE 14.0.
 
 ## Flags
 
 - **[vs-market]** pass_yd: market prices it better (log-loss +0.109 worse) — defer / blend toward the line
-- **[bias]** pass_cmp: UNDER-projects by 2.2 (18 props, MAE 4.2) — systematic, not noise
-- **[vs-market]** pass_cmp: market prices it better (log-loss +0.092 worse) — defer / blend toward the line
-- **[bias]** pass_att: UNDER-projects by 2.8 (17 props, MAE 6.9) — systematic, not noise
+- **[vs-market]** pass_cmp: market prices it better (log-loss +0.076 worse) — defer / blend toward the line
 - **[grades]** grade ladder is non-monotonic vs win% — the letter grade is not separating winners from losers this slice
 
 ---
