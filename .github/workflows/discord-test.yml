@@ -1,11 +1,9 @@
 # One-off check that the DISCORD_WEBHOOK_URL secret works from GitHub's runners.
-# Run from the Actions tab (Run workflow), or it fires on a push that edits this file.
+# Run from the Actions tab (Run workflow).
 name: Discord webhook test
 
 on:
   workflow_dispatch: {}
-  push:
-    paths: ['.github/workflows/discord-test.yml', 'scripts/notify-discord.mjs']
 
 permissions:
   contents: read
