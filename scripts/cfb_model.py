@@ -383,8 +383,8 @@ def cmd_update(a):
         ('5+ point picks with no card on their side', lambda e: e['is_pick'] and not mine(e)),
     ]
     feed_only = lambda e: e['key'].startswith('cfb:')           # entered at a feed line before or at kickoff, not at ESPN's after-the-game line
-    cards_table = [dict(label=l, all=_cs([e for e in withc if f(e)]), feed=_cs([e for e in withc if f(e) and feed_only(e)])) for l, f in rows_def]
-    base = dict(label='Every game the model projected', all=_cs(gg), feed=_cs([e for e in gg if feed_only(e)]))
+    cards_table = [dict(label=l, all=_cs([e for e in withc if f(e)]), feed=_cs([e for e in withc if f(e) and feed_only(e)]), keys=[e['key'] for e in withc if f(e)]) for l, f in rows_def]
+    base = dict(label='Every game the model projected', all=_cs(gg), feed=_cs([e for e in gg if feed_only(e)]), keys=[e['key'] for e in gg])
     cards_summary = dict(graded=len(gg), with_cards=len(withc), table=[base] + cards_table)
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
