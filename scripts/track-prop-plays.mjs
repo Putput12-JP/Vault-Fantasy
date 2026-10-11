@@ -12,7 +12,7 @@
               When the game starts it freezes: that is the closing price.
      CLV      closeFair / calledPrice - 1. Positive = the price beat the close. This is
               the fast read: it accrues without waiting for results.
-     settle   from data/nflverse_stats_<season>.json box scores. Flat 1 unit at the
+     settle   from data/nflverse_stats_<season>.json box scores (ESPN's overlay fills weeks nflverse lacks). Flat 1 unit at the
               called price. A player with no box-score row 36h after kickoff is void.
 
    The ledger is append/merge keyed, carried between runs in <dir>/prop_plays.json
@@ -45,12 +45,36 @@ function gameStart(games, team) {
   return null;
 }
 
+const _nidx = new WeakMap();
 function actualOf(stats, name, week, mkt) {
-  const p = stats?.[name]; if (!p) return { has: false };
+  let p = stats?.[name];
+  if (!p && stats) {                                   // board and box-score names differ in suffixes ("Aaron Jones" vs "Aaron Jones Sr.")
+    let ix = _nidx.get(stats);
+    if (!ix) { ix = new Map(); for (const k of Object.keys(stats)) ix.set(nkey(k), k); _nidx.set(stats, ix); }
+    const k = ix.get(nkey(name)); if (k) p = stats[k];
+  }
+  if (!p) return { has: false };
   const w = (p.weeks || []).find(x => x.wk === week);
   if (!w) return { has: false };
   const cols = COL[mkt]; if (!cols) return { has: false };
   return { has: true, val: cols.reduce((s, c) => s + (+w[c] || 0), 0) };
+}
+
+// nflverse box scores publish hours-to-a-day after a game; data/espn_player_stats_<season>.json carries ESPN's the minutes it ends
+// (settle_bets.py overlays it the same way). Fill any week nflverse does not have yet; nflverse always wins on conflict.
+export function overlayEspn(stats, espn) {
+  if (!espn) return stats;
+  const out = stats ? { ...stats } : {};
+  const by = new Map(Object.keys(out).map(k => [nkey(k), k]));
+  for (const [name, rec] of Object.entries(espn)) {
+    if (!rec || !Array.isArray(rec.weeks)) continue;
+    const tgt = by.get(nkey(name)) || name;
+    const cur = out[tgt] ? { ...out[tgt], weeks: [...(out[tgt].weeks || [])] } : { name, weeks: [] };
+    for (const w of rec.weeks) if (w && w.wk != null && !cur.weeks.some(x => x.wk === w.wk)) cur.weeks.push(w);
+    out[tgt] = cur;
+    by.set(nkey(tgt), tgt);
+  }
+  return out;
 }
 
 // What the Vault prop model said about the side we called, banked beside the price so the model can be scored later as a tilt on the market
