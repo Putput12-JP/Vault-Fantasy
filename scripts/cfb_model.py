@@ -169,6 +169,25 @@ def cmd_update(a):
                             side=s['pick']['side'], team=s['pick']['team'], entry=s['pick']['line'], model_margin=s['model_margin'],
                             market_margin=s['market_margin'], edge=s['edge'], logged=int(now), backfill=s['backfill'], neutral=s['neutral']))
     g26 = gm.drop_duplicates('game_id')
+    # the board: every game the model projected, picks or not, kept after kickoff so the page can show the whole slate and how the
+    # model's lean did. Projections freeze once a game has started (or was added after the fact).
+    board = []
+    if os.path.exists(OUT):
+        try: board = json.load(open(OUT)).get('board', [])
+        except Exception: board = []
+    bidx = {b['key']: b for b in board}
+    for s_ in slate:
+        old = bidx.get(s_['key'])
+        if old and (old['kick'] <= now or old.get('backfill')): continue
+        side = 'home' if s_['edge'] > 0 else 'away'
+        ent = dict(s_, side=side, team=s_['home'] if side == 'home' else s_['away'],
+                   entry=round(-s_['market_margin'] if side == 'home' else s_['market_margin'], 1), logged=int(now),
+                   is_pick=bool(s_['pick']))
+        if old: bidx[s_['key']].update(ent)
+        else: board.append(ent); bidx[s_['key']] = ent
+    for e in board:
+        if 'result' not in e: e.update(grade(e, g26))
+    board.sort(key=lambda x: -x['kick'])
     for e in log:
         if 'result' not in e: e.update(grade(e, g26))
     gr = [e for e in log if e.get('result') in ('W', 'L', 'P')]
@@ -179,7 +198,7 @@ def cmd_update(a):
                    clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None, clv_pos=round(sum(c > 0 for c in clvs) / len(clvs), 3) if clvs else None)
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, log=log, log_summary=summary), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, log=log, log_summary=summary), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 
