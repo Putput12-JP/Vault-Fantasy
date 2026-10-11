@@ -88,6 +88,37 @@ def cards_for(cards, key, home, away, kick):
     return hit[0] if len(hit) == 1 else None
 
 
+def attach_cards(board, cards):
+    """give every board game the Sharp Money spread cards it showed before kickoff. Exact on the feed's own key; otherwise by kickoff window and
+    the abbreviation test, then a one-to-one pairing of whatever is left at the same kickoff (abbreviations like TEX @ OU defeat a letter test)"""
+    import re
+    ab = lambda x: re.sub('[^A-Z]', '', x.upper())
+    used = set()
+    for e in board:
+        if e['key'] in cards: e['cards'] = {'home': cards[e['key']]['home'], 'away': cards[e['key']]['away']}; used.add(e['key'])
+    for e in board:
+        if e.get('cards') is not None: continue
+        c = [(k, v) for k, v in cards.items() if k not in used and abs(v['start'] - e['kick']) <= 1800
+             and _subseq(ab(v['lbl'].split('@')[0]), e['away']) and _subseq(ab(v['lbl'].split('@')[1]), e['home'])]
+        if len(c) == 1: e['cards'] = {'home': c[0][1]['home'], 'away': c[0][1]['away']}; used.add(c[0][0])
+    def lcs(x, y):
+        m = [[0] * (len(y) + 1) for _ in range(len(x) + 1)]
+        for i in range(len(x)):
+            for j in range(len(y)): m[i + 1][j + 1] = m[i][j] + 1 if x[i] == y[j] else max(m[i][j + 1], m[i + 1][j])
+        return m[-1][-1]
+    def sc(a_, name):
+        n = ab(name); return lcs(a_, n) / max(len(a_), 1) + (1.0 if a_[:1] == n[:1] else 0.0)
+    pairs = []
+    for e in board:
+        if e.get('cards') is not None: continue
+        for k, v in cards.items():
+            if k in used or abs(v['start'] - e['kick']) > 1800: continue
+            pairs.append((sc(ab(v['lbl'].split('@')[0]), e['away']) + sc(ab(v['lbl'].split('@')[1]), e['home']), id(e), e, k, v))
+    for score, _, e, k, v in sorted(pairs, key=lambda x: -x[0]):
+        if score < 2.6 or e.get('cards') is not None or k in used: continue          # both sides must look right (max 4)
+        e['cards'] = {'home': v['home'], 'away': v['away']}; used.add(k)
+
+
 def team_names(d, years):
     out = {}
     for y in years:
@@ -239,6 +270,9 @@ def cmd_update(a):
             sc = pd.read_parquet(st.fetch(f'{st.REL}/espn_cfb_schedules/cfb_schedule_2026.parquet', f'{d}/sched_2026.parquet'), columns=['game_id', 'game_date'])
             sc['kick'] = pd.to_datetime(sc.game_date, utc=True).map(lambda t: int(t.timestamp()))
             kick_of = dict(zip(sc.game_id, sc.kick)); have_ids = {(x['home_id'], x['away_id']) for x in slate}
+            if os.path.exists(OUT):
+                try: have_ids |= {(b['home_id'], b['away_id']) for b in json.load(open(OUT)).get('board', []) if not b['key'].startswith('espn:')}
+                except Exception: pass
             for r in gm.drop_duplicates('game_id').itertuples():
                 k = kick_of.get(r.game_id)
                 if k is None or k < a.since or k > now or (int(r.homeTeamId), int(r.awayTeamId)) in have_ids: continue
@@ -260,10 +294,7 @@ def cmd_update(a):
                 pred2 = K * (P2(x_['home_id']) - P2(x_['away_id'])) + (0.0 if x_['neutral'] else HFA); e2 = pred2 - x_['market_margin']; sd2 = 'home' if e2 > 0 else 'away'
                 x_['v2'] = dict(model_margin=round(pred2, 1), edge=round(e2, 1), side=sd2, team=x_['home'] if sd2 == 'home' else x_['away'],
                                 entry=round(-x_['market_margin'] if sd2 == 'home' else x_['market_margin'], 1), is_pick=bool(abs(e2) >= PICK_EDGE and x_['week'] >= PICK_MIN_WEEK), line_src=x_.get('line_src'))
-        cards = feed_cards(feed)
-        for x_ in slate:
-            c_ = cards_for(cards, x_['key'], x_['home'], x_['away'], x_['kick'])
-            if c_: x_['cards'] = {'home': c_['home'], 'away': c_['away']}
+        feed_cards_ = feed_cards(feed)
         for x_ in slate: x_['blend_margin'] = round(x_['market_margin'] + BLEND_W * x_['edge'], 1)
         slate.sort(key=lambda x: (x['kick'], -abs(x['edge'])))
     else: now = int(pd.Timestamp.now('UTC').timestamp())
@@ -299,6 +330,9 @@ def cmd_update(a):
                    is_pick=bool(s_['pick']))
         if old: bidx[s_['key']].update(ent)
         else: board.append(ent); bidx[s_['key']] = ent
+    seen = {(b['home_id'], b['away_id']) for b in board if not b['key'].startswith('espn:')}
+    board[:] = [b for b in board if not (b['key'].startswith('espn:') and (b['home_id'], b['away_id']) in seen)]      # a game the feed also had: keep the feed's entry
+    if a.sharp and os.path.exists(a.sharp): attach_cards(board, feed_cards_)
     for e in board:
         if 'result' not in e: e.update(grade(e, g26))
         v = e.get('v2')
