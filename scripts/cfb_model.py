@@ -83,7 +83,7 @@ def grade(entry, g26):
     margin = (x.homeFinalScore - x.awayFinalScore) * (1 if home else -1)
     close = None if pd.isna(x.homeTeamSpread) else (-x.homeTeamSpread if home else x.homeTeamSpread)
     res = 'W' if margin + entry['entry'] > 0 else 'L' if margin + entry['entry'] < 0 else 'P'
-    return dict(result=res, hs=int(x.homeFinalScore), as_=int(x.awayFinalScore), margin=int(margin), espn_close=close, clv=None if close is None else round(entry['entry'] - close, 1))
+    return dict(result=res, hs=int(x.homeFinalScore), as_=int(x.awayFinalScore), margin=int(margin), espn_close=close, clv=None if close is None or entry.get('line_src') == 'espn' else round(entry['entry'] - close, 1))
 
 
 def cmd_update(a):
@@ -154,6 +154,25 @@ def cmd_update(a):
             slate.append(dict(key=g['key'], kick=g['start'], home=g['home']['short'], away=g['away']['short'], home_id=h, away_id=aw, week=wk, neutral=neutral,
                               backfill=started, model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None if oline is None else round(-oline, 1),
                               edge=round(edge, 1), pick=pick))
+        if a.since:       # one-time backfill: games that kicked off since then but are not in the feed (it only lists a window), at ESPN's own line
+            sc = pd.read_parquet(st.fetch(f'{st.REL}/espn_cfb_schedules/cfb_schedule_2026.parquet', f'{d}/sched_2026.parquet'), columns=['game_id', 'game_date'])
+            sc['kick'] = pd.to_datetime(sc.game_date, utc=True).map(lambda t: int(t.timestamp()))
+            kick_of = dict(zip(sc.game_id, sc.kick)); have_ids = {(x['home_id'], x['away_id']) for x in slate}
+            for r in gm.drop_duplicates('game_id').itertuples():
+                k = kick_of.get(r.game_id)
+                if k is None or k < a.since or k > now or (int(r.homeTeamId), int(r.awayTeamId)) in have_ids: continue
+                h, aw = int(r.homeTeamId), int(r.awayTeamId)
+                if h not in F or aw not in F or pd.isna(r.homeTeamSpread): continue
+                ra_w, rb_w = rated_before(int(r.week)); Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
+                neutral = bool(r.neutral_site == True)
+                pred = K * (Pw(h) - Pw(aw)) + (0.0 if neutral else HFA); mkt = float(r.homeTeamSpread); edge = pred - mkt
+                nm = lambda t: (names.get(t, [str(t)]) + ['', ''])[2] or names[t][0]
+                pick = None
+                if abs(edge) >= PICK_EDGE and int(r.week) >= PICK_MIN_WEEK:
+                    side = 'home' if edge > 0 else 'away'
+                    pick = dict(side=side, team=nm(h if side == 'home' else aw), line=-mkt if side == 'home' else mkt)
+                slate.append(dict(key=f'espn:{r.game_id}', kick=int(k), home=nm(h), away=nm(aw), home_id=h, away_id=aw, week=int(r.week), neutral=neutral, backfill=True,
+                                  line_src='espn', model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None, edge=round(edge, 1), pick=pick))
         slate.sort(key=lambda x: (x['kick'], -abs(x['edge'])))
     else: now = int(pd.Timestamp.now('UTC').timestamp())
 
@@ -167,7 +186,7 @@ def cmd_update(a):
         if s['pick'] and s['key'] not in have and (s['kick'] > now or s['backfill']):
             log.append(dict(key=s['key'], week=s['week'], kick=s['kick'], home=s['home'], away=s['away'], home_id=s['home_id'], away_id=s['away_id'],
                             side=s['pick']['side'], team=s['pick']['team'], entry=s['pick']['line'], model_margin=s['model_margin'],
-                            market_margin=s['market_margin'], edge=s['edge'], logged=int(now), backfill=s['backfill'], neutral=s['neutral']))
+                            market_margin=s['market_margin'], edge=s['edge'], logged=int(now), backfill=s['backfill'], neutral=s['neutral'], line_src=s.get('line_src')))
     g26 = gm.drop_duplicates('game_id')
     # the board: every game the model projected, picks or not, kept after kickoff so the page can show the whole slate and how the
     # model's lean did. Projections freeze once a game has started (or was added after the fact).
@@ -196,9 +215,20 @@ def cmd_update(a):
     summary = dict(picks=len(log), graded=n, won=w, lost=l, pushed=len(gr) - n, expected=round(n * BREAKEVEN, 2),
                    z=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None,
                    clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None, clv_pos=round(sum(c > 0 for c in clvs) / len(clvs), 3) if clvs else None)
+    # context for the page: how the same model (every game, side = whichever way it leans) did vs ESPN's line in the earlier weeks of this season
+    earlier = [0, 0]; first = min([b['week'] for b in board], default=None)
+    if first:
+        for wk in range(PICK_MIN_WEEK - 1, first):
+            ra_w, rb_w = rated_before(wk)
+            for r in g26[(g26.week == wk) & (g26.status_type_completed == True)].itertuples():
+                h, aw = int(r.homeTeamId), int(r.awayTeamId)
+                if h not in F or aw not in F or pd.isna(r.homeTeamSpread): continue
+                pred = K * ((ra_w.get(h, 0) - rb_w.get(h, 0)) - (ra_w.get(aw, 0) - rb_w.get(aw, 0))) + (0.0 if r.neutral_site == True else HFA)
+                c = (1 if pred - r.homeTeamSpread > 0 else -1) * ((r.homeFinalScore - r.awayFinalScore) - r.homeTeamSpread)
+                earlier[0 if c > 0 else 1] += c != 0 and 1 or 0
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, log=log, log_summary=summary), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 
