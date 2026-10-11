@@ -366,15 +366,26 @@ def cmd_update(a):
     def _cs(sel):
         w = sum(e['result'] == 'W' for e in sel); return [w, len(sel) - w]
     gg = [e for e in board if e.get('result') in ('W', 'L')]
-    def _side(e, o=False):
-        c = e.get('cards'); return [] if not c else c['away' if (e['side'] == 'home') == o else 'home' if o else e['side']]
     withc = [e for e in gg if e.get('cards') is not None]
-    cards_summary = dict(graded=len(gg), with_cards=len(withc),
-                         ours=_cs([e for e in withc if e['cards'][e['side']] and not e['cards']['away' if e['side'] == 'home' else 'home']]),
-                         against=_cs([e for e in withc if e['cards']['away' if e['side'] == 'home' else 'home'] and not e['cards'][e['side']]]),
-                         both=_cs([e for e in withc if e['cards'][e['side']] and e['cards']['away' if e['side'] == 'home' else 'home']]),
-                         none=_cs([e for e in withc if not e['cards']['home'] and not e['cards']['away']]),
-                         line_ours=_cs([e for e in withc if 'line' in e['cards'][e['side']]]), sharp_ours=_cs([e for e in withc if 'sharp' in e['cards'][e['side']]]))
+    opp = lambda e: 'away' if e['side'] == 'home' else 'home'
+    mine = lambda e: e['cards'][e['side']]; other = lambda e: e['cards'][opp(e)]
+    rows_def = [
+        ('Any Sharp Money card on the model\'s side only', lambda e: mine(e) and not other(e)),
+        ('Any card on the other side only', lambda e: other(e) and not mine(e)),
+        ('Cards on both sides', lambda e: mine(e) and other(e)),
+        ('Line move on the model\'s side', lambda e: 'line' in mine(e)),
+        ('Line move on the other side', lambda e: 'line' in other(e)),
+        ('Sharp accounts on the model\'s side', lambda e: 'sharp' in mine(e)),
+        ('Sharp accounts on the other side', lambda e: 'sharp' in other(e)),
+        ('Money vs bets on the model\'s side', lambda e: 'money' in mine(e)),
+        ('Two or more signals on the model\'s side', lambda e: len(mine(e)) >= 2),
+        ('5+ point picks with a card on their side', lambda e: e['is_pick'] and mine(e)),
+        ('5+ point picks with no card on their side', lambda e: e['is_pick'] and not mine(e)),
+    ]
+    feed_only = lambda e: e['key'].startswith('cfb:')           # entered at a feed line before or at kickoff, not at ESPN's after-the-game line
+    cards_table = [dict(label=l, all=_cs([e for e in withc if f(e)]), feed=_cs([e for e in withc if f(e) and feed_only(e)])) for l, f in rows_def]
+    base = dict(label='Every game the model projected', all=_cs(gg), feed=_cs([e for e in gg if feed_only(e)]))
+    cards_summary = dict(graded=len(gg), with_cards=len(withc), table=[base] + cards_table)
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
                    unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary), open(OUT, 'w'))
