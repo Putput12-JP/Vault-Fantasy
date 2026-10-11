@@ -28,7 +28,7 @@ def get(path, year, key):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--years', default='2021-2026'); a = ap.parse_args()
-    key = os.environ.get('CFBD_API_KEY')
+    key = (os.environ.get('CFBD_API_KEY') or '').strip()      # a pasted secret often carries a trailing newline
     if not key: sys.exit('CFBD_API_KEY is not set')
     y0, y1 = (int(x) for x in a.years.split('-')); os.makedirs(OUT, exist_ok=True); manifest = {}
     for name, path in ENDPOINTS.items():
@@ -39,7 +39,7 @@ def main():
                 json.dump(d, open(os.path.join(OUT, f), 'w'), separators=(',', ':'))
                 manifest[f] = len(d) if hasattr(d, '__len__') else 1
             except Exception as e:
-                manifest[f] = f'ERROR {getattr(e, "code", "")} {e}'[:120]
+                manifest[f] = f'ERROR {type(e).__name__} {getattr(e, "code", "")}'      # never the message: it can echo the request headers, key included
             time.sleep(0.3)
     json.dump(manifest, open(os.path.join(OUT, 'manifest.json'), 'w'), indent=1, sort_keys=True)
     print(json.dumps(manifest, indent=1, sort_keys=True))
