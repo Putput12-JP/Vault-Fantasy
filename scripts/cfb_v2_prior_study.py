@@ -46,6 +46,7 @@ def features(y, prev, teams):
     return df
 
 
+LAM = 10.0
 FEATS = ['prev_o', 'prev_d', 'talent', 'rec', 'ret_ppa', 'ret_pass', 'portal_net']
 
 
@@ -62,7 +63,6 @@ def main():
     for y in range(2022, 2026):
         prev = finals[y - 1]; tab[y] = features(y, prev, fbs[y])
         tab[y]['t_o'] = tab[y].team.map(lambda t: finals[y][0].get(t, 0.0)); tab[y]['t_d'] = tab[y].team.map(lambda t: finals[y][1].get(t, 0.0))
-    LAM = 10.0
     coefs = {}
 
     def prior_fn(y, _):

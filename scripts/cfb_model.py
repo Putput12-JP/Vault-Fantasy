@@ -26,6 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, 'data')
 PRIORS = os.path.join(DATA, 'cfb_model_priors.json')
 BACKTEST = os.path.join(DATA, 'cfb_model_backtest.json')
+PRIORS_V2 = os.path.join(DATA, 'cfb_model_priors_v2.json')
 OUT = os.path.join(DATA, 'cfb_model.json')
 PICK_EDGE = 5.0          # disagree with the market by at least this many points
 PICK_MIN_WEEK = 4        # the first month is dominated by the prior, which has no talent or portal information
@@ -104,6 +105,24 @@ def cmd_priors(a):
     print(json.dumps(json.load(open(BACKTEST))['combined']))
 
 
+def cmd_priors_v2(a):
+    """v2 preseason prior for 2026 (see docs/retro/cfb-efficiency-replication.md, step 2): a ridge regression on talent, returning production,
+    recruiting and portal movement, fit on the 2022-2025 seasons. Run once per offseason after the Fetch CFBD data workflow."""
+    import cfb_v2_prior_study as v2
+    d = a.dir; os.makedirs(d, exist_ok=True)
+    tg, gm = st.load(d); fbs = st.fbs_sets(gm, d); finals = {}
+    st.walk_forward(tg, gm, fbs, finals=finals)
+    tabs = []
+    for y in range(2022, 2026):
+        t = v2.features(y, finals[y - 1], fbs[y]); t['t_o'] = t.team.map(lambda x: finals[y][0].get(x, 0.0)); t['t_d'] = t.team.map(lambda x: finals[y][1].get(x, 0.0)); tabs.append(t)
+    tr = pd.concat(tabs); bo, bd = v2.ridge(tr[v2.FEATS].values, tr.t_o.values, v2.LAM), v2.ridge(tr[v2.FEATS].values, tr.t_d.values, v2.LAM)
+    F = set(int(t) for t in fbs[2025]) | FBS_ADDITIONS
+    cur = v2.features(2026, finals[2025], F); Xc = np.c_[np.ones(len(cur)), cur[v2.FEATS].values]
+    json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), trained_on='2022-2025', lam=v2.LAM, feats=v2.FEATS, coef_off=[round(float(x), 4) for x in bo], coef_def=[round(float(x), 4) for x in bd],
+                   a={str(t): round(float(v), 5) for t, v in zip(cur.team, Xc @ bo)}, b={str(t): round(float(v), 5) for t, v in zip(cur.team, Xc @ bd)}), open(PRIORS_V2, 'w'))
+    print('v2 prior written for', len(cur), 'teams')
+
+
 def grade(entry, g26):
     """grade one logged pick against a finished 2026 game; returns dict of result fields"""
     m = g26[(g26.homeTeamId == entry['home_id']) & (g26.awayTeamId == entry['away_id'])]
@@ -142,7 +161,14 @@ def cmd_update(a):
     # already kicked off (a one-time backfill): they are projected with ratings fit only on EARLIER weeks and
     # entered at the opening line, and flagged so the page can say they were logged after the fact.
     gidx = {(int(r.homeTeamId), int(r.awayTeamId)): r for r in gm.drop_duplicates('game_id').itertuples()}
-    cache = {}
+    p2 = json.load(open(PRIORS_V2)) if os.path.exists(PRIORS_V2) else None
+    prior2 = ({int(t): v for t, v in p2['a'].items()}, {int(t): v for t, v in p2['b'].items()}) if p2 else None
+    cache, cache2 = {}, {}
+    def rated_before2(wk):
+        if wk not in cache2:
+            Tw = tg[tg.game_id.isin(done[done.week < wk].game_id) & tg.pos_team_id.isin(F) & tg.def_pos_team_id.isin(F)]
+            cache2[wk] = st.fit(Tw, *prior2)
+        return cache2[wk]
     def rated_before(wk):
         if wk not in cache:
             Tw = tg[tg.game_id.isin(done[done.week < wk].game_id) & tg.pos_team_id.isin(F) & tg.def_pos_team_id.isin(F)]
@@ -203,6 +229,12 @@ def cmd_update(a):
                     pick = dict(side=side, team=nm(h if side == 'home' else aw), line=-mkt if side == 'home' else mkt)
                 slate.append(dict(key=f'espn:{r.game_id}', kick=int(k), home=nm(h), away=nm(aw), home_id=h, away_id=aw, week=int(r.week), neutral=neutral, backfill=True,
                                   line_src='espn', model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None, edge=round(edge, 1), pick=pick))
+        if prior2:      # shadow model: same games and lines, v2 prior. Tracked and graded, never shown as picks
+            for x_ in slate:
+                ra2, rb2 = rated_before2(x_['week']); P2 = lambda t: ra2.get(t, 0.0) - rb2.get(t, 0.0)
+                pred2 = K * (P2(x_['home_id']) - P2(x_['away_id'])) + (0.0 if x_['neutral'] else HFA); e2 = pred2 - x_['market_margin']; sd2 = 'home' if e2 > 0 else 'away'
+                x_['v2'] = dict(model_margin=round(pred2, 1), edge=round(e2, 1), side=sd2, team=x_['home'] if sd2 == 'home' else x_['away'],
+                                entry=round(-x_['market_margin'] if sd2 == 'home' else x_['market_margin'], 1), is_pick=bool(abs(e2) >= PICK_EDGE and x_['week'] >= PICK_MIN_WEEK), line_src=x_.get('line_src'))
         for x_ in slate: x_['blend_margin'] = round(x_['market_margin'] + BLEND_W * x_['edge'], 1)
         slate.sort(key=lambda x: (x['kick'], -abs(x['edge'])))
     else: now = int(pd.Timestamp.now('UTC').timestamp())
@@ -229,7 +261,7 @@ def cmd_update(a):
     for s_ in slate:
         old = bidx.get(s_['key'])
         if old and (old['kick'] <= now or old.get('backfill')):
-            for k_ in ('mkt_check', 'blend_margin'):      # added after the first sight: fill in, never change the frozen projection
+            for k_ in ('mkt_check', 'blend_margin', 'v2'):      # added after the first sight: fill in, never change the frozen projection
                 if k_ not in old and k_ in s_: old[k_] = s_[k_]
             continue
         side = 'home' if s_['edge'] > 0 else 'away'
@@ -240,6 +272,8 @@ def cmd_update(a):
         else: board.append(ent); bidx[s_['key']] = ent
     for e in board:
         if 'result' not in e: e.update(grade(e, g26))
+        v = e.get('v2')
+        if v and 'result' not in v: v.update(grade(dict(v, home_id=e['home_id'], away_id=e['away_id']), g26))
     board.sort(key=lambda x: -x['kick'])
     for e in log:
         if 'result' not in e: e.update(grade(e, g26))
@@ -260,17 +294,23 @@ def cmd_update(a):
                 pred = K * ((ra_w.get(h, 0) - rb_w.get(h, 0)) - (ra_w.get(aw, 0) - rb_w.get(aw, 0))) + (0.0 if r.neutral_site == True else HFA)
                 c = (1 if pred - r.homeTeamSpread > 0 else -1) * ((r.homeFinalScore - r.awayFinalScore) - r.homeTeamSpread)
                 earlier[0 if c > 0 else 1] += c != 0 and 1 or 0
+    def _rec(rows):
+        w = sum(r == 'W' for r in rows); l = sum(r == 'L' for r in rows); return [w, l]
+    gb = [e for e in board if e.get('v2') and e['v2'].get('result') in ('W', 'L')]
+    v2_summary = dict(games=len(board), graded=len(gb),
+                      v1_all=_rec([e['result'] for e in gb if e.get('result')]), v2_all=_rec([e['v2']['result'] for e in gb]),
+                      v1_picks=_rec([e['result'] for e in gb if e.get('is_pick') and e.get('result')]), v2_picks=_rec([e['v2']['result'] for e in gb if e['v2']['is_pick']])) if prior2 else None
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'update']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
+    ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'priors-v2', 'update']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
     ap.add_argument('--since', type=int, help='one-time backfill: also project games that kicked off at or after this unix time, entered at the opening line')
     ap.add_argument('--sharp', help='path to the Sharp Money data.json (sharp-data branch)'); a = ap.parse_args()
-    {'priors': cmd_priors, 'update': cmd_update}[a.cmd](a)
+    {'priors': cmd_priors, 'priors-v2': cmd_priors_v2, 'update': cmd_update}[a.cmd](a)
 
 
 if __name__ == '__main__':
