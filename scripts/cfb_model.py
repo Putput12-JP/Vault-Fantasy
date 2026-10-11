@@ -191,6 +191,18 @@ def grade(entry, g26):
     return dict(result=res, hs=int(x.homeFinalScore), as_=int(x.awayFinalScore), margin=int(margin), espn_close=close, clv=None if close is None or entry.get('line_src') == 'espn' else round(entry['entry'] - close, 1))
 
 
+def settle(entry, g26, fin):
+    """grade from ESPN's finished game when the play-by-play release has it (also gives closing-line value); until then use the final score the Sharp Money feed
+    carries, so a game settles as soon as it ends. The feed-settled result is replaced by the ESPN one when that catches up."""
+    r = grade(entry, g26)
+    if r: return r
+    sc = fin.get(entry.get('key')) if fin else None
+    if not sc: return {}
+    home = entry['side'] == 'home'; margin = (sc[0] - sc[1]) * (1 if home else -1)
+    res = 'W' if margin + entry['entry'] > 0 else 'L' if margin + entry['entry'] < 0 else 'P'
+    return dict(result=res, hs=int(sc[0]), as_=int(sc[1]), margin=int(margin), espn_close=None, clv=None, settled_by='feed')
+
+
 def cmd_update(a):
     d = a.dir; os.makedirs(d, exist_ok=True)
     for f in (f'pbp_2026.parquet', 'sched_2026.parquet'):       # always fresh in season
@@ -238,9 +250,11 @@ def cmd_update(a):
         if nm in name2id: return name2id[nm]
         best = [sc for sc in school2id if nm.startswith(sc + ' ')]
         return school2id[max(best, key=len)] if best else None
+    fin = {}
     slate, un = [], 0
     if a.sharp and os.path.exists(a.sharp):
         feed = json.load(open(a.sharp)); now = feed['ts']
+        fin = {g['key']: (g['final']['home'], g['final']['away']) for g in feed['games'] if g.get('final') and g['final'].get('home') is not None}
         for g in feed['games']:
             if g['sport'] != 'cfb': continue
             started = g['start'] <= now
@@ -343,15 +357,16 @@ def cmd_update(a):
                 at = int(now) if e['kick'] > now else e.get('logged', int(now))      # a game that started before any run fell in its last hour keeps the last pre-kickoff state
                 e['final'] = dict(side=e['side'], team=e['team'], entry=e['entry'], edge=e['edge'], is_pick=bool(e['is_pick']), at=at, mins_before=max(0, round((e['kick'] - at) / 60)),
                                   cards=e.get('cards'), line_src=e.get('line_src'), home_id=e['home_id'], away_id=e['away_id'])
+    def _settle(x, key, ids=None):
+        if 'result' in x and x.get('settled_by') != 'feed': return           # settled by ESPN's game: final. A feed-settled one is upgraded when ESPN catches up
+        r = settle(dict(x, key=key, **(ids or {})), g26, fin)
+        if r: x.pop('settled_by', None); x.update(r)
     for e in board:
-        if 'result' not in e: e.update(grade(e, g26))
-        fl = e.get('final')
-        if fl and 'result' not in fl: fl.update(grade(fl, g26))
-        v = e.get('v2')
-        if v and 'result' not in v: v.update(grade(dict(v, home_id=e['home_id'], away_id=e['away_id']), g26))
+        _settle(e, e['key'])
+        if e.get('final'): _settle(e['final'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
+        if e.get('v2'): _settle(e['v2'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
     board.sort(key=lambda x: -x['kick'])
-    for e in log:
-        if 'result' not in e: e.update(grade(e, g26))
+    for e in log: _settle(e, e['key'])
     gr = [e for e in log if e.get('result') in ('W', 'L', 'P')]
     w = sum(e['result'] == 'W' for e in gr); l = sum(e['result'] == 'L' for e in gr); n = w + l
     clvs = [e['clv'] for e in gr if e.get('clv') is not None]
