@@ -357,7 +357,7 @@ def cmd_update(a):
     clvs = [e['clv'] for e in gr if e.get('clv') is not None]
     summary = dict(picks=len(log), graded=n, won=w, lost=l, pushed=len(gr) - n, expected=round(n * BREAKEVEN, 2),
                    z=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None,
-                   clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None, clv_pos=round(sum(c > 0 for c in clvs) / len(clvs), 3) if clvs else None)
+                   clv_n=len(clvs), clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None, clv_pos=round(sum(c > 0 for c in clvs) / len(clvs), 3) if clvs else None)
     # context for the page: how the same model (every game, side = whichever way it leans) did vs ESPN's line in the earlier weeks of this season
     earlier = [0, 0]; first = min([b['week'] for b in board], default=None)
     if first:
