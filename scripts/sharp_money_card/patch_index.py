@@ -45,7 +45,9 @@ s = _re.sub(r'(hh\(|\(0,a\.jsx\)\()Ua,\{c:(\w+)\.(away|home)\.color\}\)', _mini,
 dot2 = '(0,a.jsx)("i",{style:{width:8,height:8,borderRadius:"50%",background:c[R].color||s.textTertiary,display:"inline-block"}})'
 if dot2 in s: s = s.replace(dot2, '(0,a.jsx)(VscMini,{g:c,side:R})')
 cfb = 'h(M,{size:"md",weight:"semibold"},S.away.abbr," @ ",S.home.abbr)'
-if cfb in s: s = s.replace(cfb, 'h(M,{size:"md",weight:"semibold"},h(VscMini,{g:S,side:"away",size:18}),S.away.abbr," @ ",h(VscMini,{g:S,side:"home",size:18}),S.home.abbr)')
+if cfb in s: s = s.replace(cfb, 'h(M,{size:"md",weight:"semibold"},U.createElement(VscMini,{g:S,side:"away",size:18}),S.away.abbr," @ ",U.createElement(VscMini,{g:S,side:"home",size:18}),S.home.abbr)')
+# the same row exists in two components that alias createElement differently (h / hh), so never rely on the alias
+s = s.replace('h(VscMini,{g:S,', 'U.createElement(VscMini,{g:S,').replace('UU.createElement', 'U.createElement')
 row = 'x.away+" @ "+x.home),h("div",null,h(T,{size:"xs"},"Wk "'
 if row in s: s = s.replace(row, '[h(VscId,{key:"a",id:x.away_id}),x.away," @ ",h(VscId,{key:"h",id:x.home_id}),x.home]),h("div",null,h(T,{size:"xs"},"Wk "')
 hdr = 'weight:z.weight.bold}},x.away+" @ "+x.home),badge(x)'
