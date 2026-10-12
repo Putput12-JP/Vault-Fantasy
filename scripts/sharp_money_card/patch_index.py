@@ -32,5 +32,8 @@ else:
     hs = s.rindex('cur?h("div",{style:{display:"grid",gap:16}},', 0, k) + len('cur?h("div",{style:{display:"grid",gap:16}},')
     assert 'curRow.n+" independent signals agree' in s[hs:k]
     s = s[:hs] + '\n   ' + s[k:]
+# 4. the Board slate: team logo instead of the colour dot
+dot = 'h("i",{style:{width:8,height:8,borderRadius:"50%",background:c[R].color||n.textTertiary,display:"inline-block"}})'
+if dot in s: s = s.replace(dot, 'h(VscMini,{g:c,side:R})')
 open(IDX, 'w', encoding='utf-8').write(s)
 print('patched', os.path.getsize(IDX) // 1024, 'KB')

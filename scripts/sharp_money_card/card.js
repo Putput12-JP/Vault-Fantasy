@@ -179,6 +179,12 @@ function VscLogo({ g, side }) {
   if (!url || bad) return h('div', { className: 'mono', style: { background: t.color || '#3a3a44' } }, String(t.abbr || '?').slice(0, 4));
   return h('img', { className: 'lg', crossOrigin: 'anonymous', src: url, alt: t.name, onError: function () { setBad(true); } });
 }
+// Small logo for list rows (the Board slate). Falls back to the old team-colour dot when there is no logo or it fails to load.
+function VscMini({ g, side }) {
+  var h = U.createElement, st = U.useState(false), bad = st[0], setBad = st[1], url = vscLogoUrl(g, side), t = g[side];
+  if (!url || bad) return h('i', { style: { width: 8, height: 8, borderRadius: '50%', background: t.color || '#666', display: 'inline-block', margin: '0 7px' } });
+  return h('img', { src: url, alt: '', width: 22, height: 22, loading: 'lazy', onError: function () { setBad(true); }, style: { width: 22, height: 22, objectFit: 'contain', flex: 'none' } });
+}
 var vscAm = function (n) { return n == null ? '' : (n > 0 ? '+' : '') + n; };
 var vscL = function (n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); };
 var vscUsd = function (n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? '$' + (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : '$' + Math.round(n); };
