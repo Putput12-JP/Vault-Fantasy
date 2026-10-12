@@ -191,6 +191,15 @@ function VscId({ id, size }) {
   if (!id || bad) return null;
   return h('img', { src: 'https://a.espncdn.com/i/teamlogos/ncaa/500/' + id + '.png', alt: '', width: z, height: z, loading: 'lazy', onError: function () { setBad(true); }, style: { width: z, height: z, objectFit: 'contain', verticalAlign: 'middle', margin: '0 5px 0 0' } });
 }
+// "BUF @ LA" with a small logo before each side; plain text when the game object is not on hand.
+function VscPair({ g, lbl, size, sport }) {
+  var h = U.createElement, parts = String(lbl || '').split(' @ ');
+  if (parts.length !== 2) return lbl;
+  // Finished games drop out of the game list, but NFL and NBA logos only need the abbreviation in the label.
+  if (!g && (sport === 'nfl' || sport === 'nba')) g = { sport: sport, away: { abbr: parts[0] }, home: { abbr: parts[1] } };
+  if (!g) return lbl;
+  return h(U.Fragment, null, h(VscMini, { g: g, side: 'away', size: size || 16 }), parts[0], ' @ ', h(VscMini, { g: g, side: 'home', size: size || 16 }), parts[1]);
+}
 var vscAm = function (n) { return n == null ? '' : (n > 0 ? '+' : '') + n; };
 var vscL = function (n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); };
 var vscUsd = function (n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? '$' + (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : '$' + Math.round(n); };

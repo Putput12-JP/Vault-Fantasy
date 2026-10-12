@@ -50,5 +50,8 @@ row = 'x.away+" @ "+x.home),h("div",null,h(T,{size:"xs"},"Wk "'
 if row in s: s = s.replace(row, '[h(VscId,{key:"a",id:x.away_id}),x.away," @ ",h(VscId,{key:"h",id:x.home_id}),x.home]),h("div",null,h(T,{size:"xs"},"Wk "')
 hdr = 'weight:z.weight.bold}},x.away+" @ "+x.home),badge(x)'
 if hdr in s: s = s.replace(hdr, 'weight:z.weight.bold,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},h(VscId,{id:x.away_id,size:30}),x.away,h("span",{style:{color:n.textTertiary,fontWeight:z.weight.regular}},"@"),h(VscId,{id:x.home_id,size:30}),x.home),badge(x)')
+feed = '(0,a.jsx)(Ga,{onClick:()=>s(p.game),bold:!0,children:p.gameLbl})'
+s = s.replace('VscPair,{g:i[p.game],lbl:p.gameLbl})', 'VscPair,{g:i[p.game],lbl:p.gameLbl,sport:p.sport})')
+if feed in s: s = s.replace(feed, '(0,a.jsx)(Ga,{onClick:()=>s(p.game),bold:!0,children:(0,a.jsx)(VscPair,{g:i[p.game],lbl:p.gameLbl,sport:p.sport})})')
 open(IDX, 'w', encoding='utf-8').write(s)
 print('patched', os.path.getsize(IDX) // 1024, 'KB')
