@@ -2,7 +2,7 @@
    inserted by patch_index.py. Runs in the bundle's scope: U = React, Il = readGame, Et = no-vig win prob. */
 var VSC_CSS = `
 .vsc{--bg:#0b0b0d;--line:rgba(255,255,255,.08);--ink:#f4f4f6;--mute:#8b8b95;--dim:#5d5d66;--a:#4f8cff;--b:#f2b84b;--over:#2fe08a;--under:#8c7bff;--sharp:#46e08c;--loss:#ff6b6b;--amber:#f2b84b;
-  position:relative;overflow:hidden;border-radius:24px;background:var(--bg);color:var(--ink);border:1px solid var(--line);max-width:720px;margin:0 auto;width:100%;container-type:inline-size;
+  position:relative;overflow:hidden;border-radius:24px;background:var(--bg);color:var(--ink);border:1px solid var(--line);max-width:none;margin:0;width:100%;container-type:inline-size;
   font:500 15px/1.35 Inter,-apple-system,"SF Pro Display",system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-align:left}
 .vsc *{box-sizing:border-box;margin:0}
 .vsc .glow{position:absolute;inset:0 0 auto 0;height:400px;pointer-events:none;background:radial-gradient(300px 200px at 50% 40%,rgba(47,224,138,.18),transparent 70%),radial-gradient(260px 190px at 0% 0%,rgba(79,140,255,.22),transparent 70%),radial-gradient(260px 190px at 100% 0%,rgba(242,184,75,.18),transparent 70%)}
@@ -27,10 +27,10 @@ var VSC_CSS = `
 .vsc .eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--sharp);box-shadow:0 0 10px var(--sharp)}
 .vsc .eyebrow.q{color:var(--mute)} .vsc .eyebrow.q i{background:var(--dim);box-shadow:none}
 .vsc .pick{font-size:60px;line-height:1.02;font-weight:800;letter-spacing:-.04em;margin-top:8px}
-.vsc .pick span{font-size:.5em;letter-spacing:-.02em;opacity:.9;margin-left:8px}
+.vsc .pick span{font-size:inherit;letter-spacing:inherit;margin-left:.22em}
 .vsc .pick.sm{font-size:44px}
 .vsc .why{font-size:12px;color:var(--mute);margin-top:6px}
-.vsc .proof{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;text-align:left}
+.vsc .proof{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;text-align:left}
 .vsc .pf{padding:10px 11px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid var(--line)}
 .vsc .pf.on{border-color:rgba(70,224,140,.35)}
 .vsc .pf em{display:flex;align-items:center;gap:6px;font-style:normal;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
@@ -79,33 +79,33 @@ var VSC_CSS = `
 .vsc .brand{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;padding:0 4px}
 .vsc .brand b{font-size:13px;letter-spacing:.14em;font-weight:800}
 .vsc .brand span{font-size:11px;color:var(--dim)}
-.vsc .top{display:grid;grid-template-columns:1fr auto 1fr;grid-template-areas:"away at home" "verdict verdict verdict";align-items:center;gap:10px}
-.vsc .top>.tm{grid-area:away}.vsc .top>.tm.r{grid-area:home}.vsc .top>.at{grid-area:at}.vsc .top>.verdict{grid-area:verdict}
+.vsc .top{display:grid;grid-template-columns:1fr auto 1fr;grid-template-areas:"away at home" "verdict verdict verdict" "proof proof proof";align-items:center;gap:10px}
+.vsc .top>.tm{grid-area:away}.vsc .top>.tm.r{grid-area:home}.vsc .top>.at{grid-area:at}.vsc .top>.verdict{grid-area:verdict}.vsc .top>.proof{grid-area:proof}
 .vsc .wh,.vsc .ab{display:none}
 @container (min-width:640px){
   .vsc{border-radius:20px}
   .vsc .in{padding:14px 16px 12px}
-  .vsc .top{grid-template-columns:150px minmax(0,1fr) 150px;grid-template-areas:"away verdict home";gap:12px}
+  .vsc .top{grid-template-columns:150px minmax(0,1fr) 150px;grid-template-areas:"away verdict home" "proof proof proof";gap:12px;align-items:start}
   .vsc .at{display:none}.vsc .wh{display:inline}
-  .vsc .tm{flex-direction:column;align-items:flex-start;gap:6px}.vsc .tm.r{flex-direction:column;align-items:flex-end}
+  .vsc .tm{flex-direction:column;align-items:flex-start;gap:6px}.vsc .tm.r{flex-direction:column;align-items:flex-end}.vsc .tm>div{margin:0}
   .vsc .tm b{font-size:15px}
   .vsc .lg,.vsc .mono{width:52px;height:52px}
   .vsc .verdict{margin:0}
   .vsc .pick{font-size:44px;margin-top:4px}.vsc .pick.sm{font-size:34px}
   .vsc .why{margin-top:4px}
-  .vsc .proof{margin-top:12px;gap:8px}
+  .vsc .proof{margin-top:0;gap:10px}
   .vsc .pf{padding:8px 10px;border-radius:12px}.vsc .pf em{margin-bottom:3px}.vsc .pf strong{font-size:15px}.vsc .pf small{margin-top:1px}
   .vsc .sec{margin:12px 4px 6px}
   .vsc .mkts{gap:8px}
-  .vsc .mk{display:grid;grid-template-columns:124px minmax(0,1fr) 206px;grid-template-areas:"mh body ex" "mv body ex" "note note note";column-gap:14px;row-gap:2px;align-items:center;padding:10px 12px;border-radius:16px}
-  .vsc .mh{grid-area:mh;flex-direction:column;align-items:flex-start;margin:0;gap:5px}.vsc .mh h4{font-size:13px}
+  .vsc .mk{display:grid;grid-template-columns:150px minmax(0,1fr) 214px;grid-template-areas:"mh body ex" "mv body ex" "note note note";column-gap:14px;row-gap:2px;align-items:center;padding:10px 12px;border-radius:16px}
+  .vsc .mh{grid-area:mh;flex-direction:column;align-items:flex-start;margin:0;gap:5px}.vsc .mh h4{font-size:13px}.vsc .mh .pill{white-space:normal;line-height:1.25;max-width:100%}
   .vsc .move{grid-area:mv;margin:0;padding:0;border:0;flex-direction:column;align-items:flex-start;gap:0;font-size:11px}
   .vsc .move .d{margin-left:0;text-align:left}
-  .vsc .body{grid-area:body;grid-template-columns:62px minmax(0,1fr) 62px;gap:10px}
+  .vsc .body{grid-area:body;grid-template-columns:58px minmax(0,1fr) 58px;gap:10px}
   .vsc .px .ln{font-size:19px}.vsc .px .pr{font-size:11px}
   .vsc .mid .nums{margin-bottom:4px}.vsc .mid .nums b{font-size:16px}.vsc .track{height:10px}.vsc .tick{top:-3px;bottom:-3px}.vsc .bets{margin-top:5px;font-size:10.5px}
   .vsc .ex{grid-area:ex;grid-template-columns:1fr;gap:4px;margin:0}
-  .vsc .chips,.vsc .chips.r{justify-content:flex-start;flex-wrap:nowrap;gap:4px}
+  .vsc .chips,.vsc .chips.r{justify-content:flex-start;flex-wrap:wrap;gap:4px}
   .vsc .chip{font-size:10.5px;padding:2px 6px}
   .vsc .ab{display:inline-block;flex:none;width:30px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--dim);align-self:center}
   .vsc .note{grid-area:note;margin-top:8px;padding:6px 10px;font-size:11px}
@@ -116,7 +116,7 @@ var VSC_CSS = `
 @container (min-width:400px) and (max-width:639px){
   .vsc.fit{border-radius:18px}
   .vsc.fit .in{padding:10px 12px 8px}
-  .vsc.fit .top{grid-template-columns:76px minmax(0,1fr) 76px;grid-template-areas:"away verdict home";gap:8px;align-items:start}
+  .vsc.fit .top{grid-template-columns:76px minmax(0,1fr) 76px;grid-template-areas:"away verdict home" "proof proof proof";gap:8px;align-items:start}
   .vsc.fit .at{display:none}.vsc.fit .wh{display:inline}
   .vsc.fit .tm,.vsc.fit .tm.r{flex-direction:column;gap:4px;text-align:center;align-items:center}
   .vsc.fit .tm b{font-size:12px}.vsc.fit .tm small{display:none}
@@ -125,7 +125,7 @@ var VSC_CSS = `
   .vsc.fit .eyebrow{font-size:10px}
   .vsc.fit .pick{font-size:34px;margin-top:2px}.vsc.fit .pick.sm{font-size:26px}
   .vsc.fit .why{font-size:11px;margin-top:2px}
-  .vsc.fit .proof{margin-top:8px;gap:6px}
+  .vsc.fit .proof{margin-top:0;gap:6px}
   .vsc.fit .pf{padding:6px 8px;border-radius:10px}.vsc.fit .pf em{font-size:9px;margin-bottom:2px}.vsc.fit .pf strong{font-size:14px}.vsc.fit .pf small{display:none}
   .vsc.fit .sec{display:none}
   .vsc.fit .mkts{gap:6px;margin-top:8px}
@@ -256,7 +256,7 @@ function vscMk(g, m) {
 function VaultEveryLine({ g, row }) {
   var h = U.createElement, mk = vscMarkets(g), kinds = row ? row.why.map(function (w) { return w.k; }) : [], hm = row && mk.find(function (x) { return x.m === row.m; });
   var when = new Date(g.start * 1000).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
-  var hero, proof = null;
+  var hero, proof = null, proofEl = null;
   if (row && hm) {
     var s = row.side, isA = s === hm.A, other = isA ? hm.B : hm.A, parts = String(row.pick).split(' '), last = parts[parts.length - 1], hasSub = parts.length > 1 && /^([+\-−]?\d|ML$)/.test(last);
     var word = hasSub ? parts.slice(0, -1).join(' ') : row.pick, sub = hasSub ? last.replace('-', '−') : null;
@@ -269,8 +269,9 @@ function VaultEveryLine({ g, row }) {
       { k: 'Exchange', on: kinds.indexOf('sharp') >= 0, v: sh ? vscUsd(sh) + ' sharp' : 'No sharp $', s: shO ? 'vs ' + vscUsd(shO) + ' on ' + vscName(g, hm.m, other) : 'none on ' + vscName(g, hm.m, other) }];
     hero = h('div', { className: 'verdict' }, h('div', { className: 'eyebrow' }, h('i'), 'Sharp side'),
       h('div', { className: 'pick' + (word.length > 12 ? ' sm' : ''), style: { color: col } }, word, sub ? h('span', null, sub) : null),
-      h('div', { className: 'why' }, row.n + ' independent signals agree · ' + hm.name),
-      h('div', { className: 'proof' }, proof.map(function (p) { return h('div', { key: p.k, className: 'pf' + (p.on ? ' on' : '') }, h('em', null, h('i'), p.k), h('strong', null, p.v), h('small', null, p.s)); })));
+      h('div', { className: 'why' }, row.n + ' independent signals agree · ' + hm.name, h('span', { className: 'wh' }, ' · ' + (VSC_SPORT[g.sport] || '') + ' ' + when)),
+      );
+    proofEl = h('div', { className: 'proof' }, proof.map(function (p) { return h('div', { key: p.k, className: 'pf' + (p.on ? ' on' : '') }, h('em', null, h('i'), p.k), h('strong', null, p.v), h('small', null, p.s)); }));
   } else {
     hero = h('div', { className: 'verdict' }, h('div', { className: 'eyebrow q' }, h('i'), 'No sharp side yet'), h('div', { className: 'why', style: { marginTop: 10 } }, 'No market has two independent signals agreeing right now.', h('span', { className: 'wh' }, ' \u00B7 ' + (VSC_SPORT[g.sport] || '') + ' ' + when)));
   }
@@ -282,7 +283,7 @@ function VaultEveryLine({ g, row }) {
         h('div', { className: 'tm' }, h(VscLogo, { g: g, side: 'away', key: g.key + 'a' }), h('div', null, h('b', null, g.away.short || g.away.name), h('small', null, 'Away'))),
         h('div', { className: 'at' }, h('b', null, '@'), VSC_SPORT[g.sport] || '', h('br'), when),
         h('div', { className: 'tm r' }, h(VscLogo, { g: g, side: 'home', key: g.key + 'h' }), h('div', null, h('b', null, g.home.short || g.home.name), h('small', null, 'Home'))),
-        hero),
+        hero, proofEl),
       mk.length ? h('div', { className: 'sec' }, h('span', null, 'Every line, ranked by signal'), h('span', null, h('i'), '= share of bets')) : null,
       h('div', { className: 'mkts' }, mk.map(function (m) { return vscMk(g, m); })),
       h('div', { className: 'brand' }, h('b', null, 'VAULT FANTASY'), h('span', null, 'Pinnacle + exchanges, last 24h · vaultfantasy.com'))));
