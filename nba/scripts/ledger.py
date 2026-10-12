@@ -45,7 +45,8 @@ import pricing as PX
 from nba_common import et
 
 TRACK_H = 24                 # only games tipping within this many hours are logged
-SETTLE_AFTER_S = 3 * 3600    # a game is checked for a final score this long after tip
+SETTLE_AFTER_S = 3 * 3600    # a game is checked for a final score this long after tip (an overtime or a delay is just not final yet: retried every poll)
+MIN_BOX_MINUTES = 300        # a box with fewer player minutes than this is not a finished game's (see box())
 SUMMARY = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={}'
 try:
     import novig_paper as _NPC
@@ -124,6 +125,11 @@ def box(root, gid):
                         except ValueError:
                             pass
                 out[aid] = v
+    # ESPN can flip a game to completed a little before its box score is filled in. Caching that would be permanent (the file
+    # is never re-read) and every player would settle as 'did not play': void. A real game has 400+ player minutes (480 regulation,
+    # 530 with an overtime); anything under MIN_BOX_MINUTES is treated as not final yet and tried again on the next poll.
+    if sum((v or {}).get('minutes', 0) for v in out.values()) < MIN_BOX_MINUTES:
+        return None
     os.makedirs(os.path.dirname(path), exist_ok=True)
     json.dump(out, open(path, 'w'), separators=(',', ':'))
     try:                                          # final score and starters, for the Minutes Lab's record
