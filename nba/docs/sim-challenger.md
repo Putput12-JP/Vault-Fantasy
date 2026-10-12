@@ -51,3 +51,19 @@ The first run gave sim10k its own isotonic fit and showed a gap from v2 of about
 expected noise with zero bias, so the simulator is right; the gap was a second calibration fit on noisy simulated probabilities.
 sim10k and sim50 now reuse v2's calibration, so the only thing that differs from v2 is how the probability is made. sam50 keeps its own
 (its mean and spread differ). The pass bars are unchanged.
+
+## Live record (added 2026-10-12, before opening night, before any live result)
+
+`nba/scripts/prop_sim_record.py` records, for every priced pts / reb / ast / 3pm prop in the 3 hours before tip, the probability of the over three
+ways at the main line: the minutes model (closed form, calibrated), the same distribution played 10,000 times, and played 50 times (one fixed draw per
+prop, smoothed). The ledger settles them from the box score into `track.json` (`psim_days`; preseason kept apart). Track Record shows it under
+"Props: minutes model vs simulations".
+
+Rules, fixed now:
+- **Scored:** log loss and Brier on the last pre-tip row of each prop. Void when the player does not play or the stat lands on the line. Props held by the
+  roster or source holds are not recorded.
+- **Call:** a simulation is better or worse than the minutes model only when its paired log-loss difference clears 2 standard errors, clustered by game,
+  and only after 300 scored props (the page says "collecting" before that). Same bars as the backtest.
+- **Expected:** 10,000 games equals the minutes model; 50 games worse. A result that disagrees (50 games better) is a WATCH, not an adoption: it needs
+  the same result on a second month, per docs/experiment-log.md section 3.
+- **Not a bet source.** Nothing here changes a price, a Bet, a Lean or an Edge.

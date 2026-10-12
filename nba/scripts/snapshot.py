@@ -907,6 +907,14 @@ def shadow(root, day, board, now, polls):
             except Exception as e:
                 rec['sim_err'] = str(e)[:120]
                 traceback.print_exc(limit=2)
+            try:                                                # single-prop simulations vs the minutes model (prop_sim_record.py); never stops the ledger
+                import prop_sim_record
+                prows, pmeta = prop_sim_record.log(board, now)
+                rec['psim'] = len(prows)
+                day.record('psim', now, prows, pmeta)
+            except Exception as e:
+                rec['psim_err'] = str(e)[:120]
+                traceback.print_exc(limit=2)
             try:                                                # Novig paper trading (novig_paper.py): a simulator, no order is ever placed; never stops the ledger
                 import novig_paper
                 nrows, nmeta = novig_paper.log(day, board, now)

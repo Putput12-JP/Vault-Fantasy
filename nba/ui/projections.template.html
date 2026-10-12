@@ -1608,7 +1608,10 @@ th{font-weight:500}
           <h3 class="sim-h">Last season, every prop scored</h3>
           <div class="tablewrap"><table class="ht tsim" id="tps"></table></div>
           <p class="hint" id="tpsnote"></p>
-          <h3 class="sim-h">This season, live</h3>
+          <h3 class="sim-h">This season, live head to head</h3>
+          <p class="hint" id="tpshsub"></p>
+          <div class="tablewrap"><table class="ht tsim" id="tpsh"></table></div>
+          <h3 class="sim-h">This season, shadow bets and the Game Simulation</h3>
           <div class="tablewrap"><table class="ht tsim" id="tpsl"></table></div>
           <p class="hint" id="tpslnote"></p></div>
       </section>
@@ -3679,7 +3682,21 @@ function renderPropSimRecord(){
   $('tps').innerHTML = `<thead><tr><th class="l" scope="col">Source</th><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col" title="The market price alone">Price</th><th scope="col" title="Prop model v2: projected minutes x per-minute rate">Minutes model</th><th scope="col">10,000 games</th><th scope="col">50 games</th><th scope="col" title="A plain mean and Normal draws, 50 games, calibrated">Plain 50</th></tr></thead><tbody>${
     Object.entries(S).flatMap(([src, per]) => Object.entries(per).map(([m, o]) => `<tr><td class="l">${SL[src] || esc(src)}</td><td class="l">${PS_LBL[m] || m}</td><td class="num">${o.n.toLocaleString()}</td><td class="num">${o.logloss_market}</td>${['v2', 'sim10k', 'sim50', 'sam50'].map(k => cellTd(o, k)).join('')}</tr>`)).join('')}</tbody>`;
   $('tpsnote').textContent = 'Log loss, lower is better, 2025-26 props with fit on 2024-25. Under each simulation is its difference from the minutes model; worse or better only when it clears 2 standard errors. Rules: nba/docs/sim-challenger.md.';
-  // live: shadow bets on the minutes model (Kalshi) beside the Game Simulation's player ranges
+  // live head to head (prop_sim_record.py → track.json psim_days): the same props scored three ways before tip, settled from the box score
+  const PD = TR && TR.data && TR.data.psim_days ? Object.values(TR.data.psim_days).flat() : [], MINP = 300;
+  const agg = stat => { const gs = PD.map(g => stat === 'all' ? Object.values(g.s).reduce((a, v) => a.map((x, i) => x + v[i]), new Array(12).fill(0)) : g.s[stat]).filter(v => v && v[0]);
+    const N = gs.reduce((a, v) => a + v[0], 0); if (!N) return null;
+    const mean = i => gs.reduce((a, v) => a + v[i], 0) / N, d = k => { const m = gs.reduce((a, v) => a + v[k] - v[1], 0) / N, ss = gs.reduce((a, v) => a + (v[k] - v[1] - m * v[0]) ** 2, 0); return [m, Math.sqrt(ss) / N]; };
+    const Nm = gs.reduce((a, v) => a + v[7], 0);
+    return {N, games: gs.length, ex: mean(1), b10: mean(2), b50: mean(3), d10: d(2), d50: d(3), Nm, mk: Nm ? gs.reduce((a, v) => a + v[8], 0) / Nm : null, exm: Nm ? gs.reduce((a, v) => a + v[9], 0) / Nm : null}; };
+  const hhCell = (ll, [d, se]) => { const z = se ? d / se : 0; return `${ll.toFixed(4)}<small class="${z >= 2 ? 'neg' : z <= -2 ? 'pos' : ''}">${psSg(d, 4)}${z >= 2 ? ' worse' : z <= -2 ? ' better' : ''}</small>`; };
+  const HR = [...SIMS, 'all'].map(s => [s, agg(s)]), tot = (HR.find(x => x[0] === 'all') || [])[1];
+  $('tpshsub').textContent = tot ? `${tot.N.toLocaleString()} props from ${tot.games} games scored${tot.N < MINP ? `: ${MINP - tot.N} more before it can be called` : ''}. Log loss, lower is better, each simulation next to the minutes model on the same props.` : 'The recorder saves each prop\'s probability three ways in the 3 hours before tip, and the ledger scores them against the box score after the game. Starts on opening night, October 20.';
+  $('tpsh').innerHTML = !tot ? `<tbody><tr><td class="l" colspan="7"><p class="empty">No props scored yet. Preseason games are kept apart from this record.</p></td></tr></tbody>` :
+    `<thead><tr><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col" title="On the props that have a price">Price</th><th scope="col" title="Prop model: projected minutes x rate, closed form">Minutes model</th><th scope="col">10,000 games</th><th scope="col">50 games</th><th scope="col">Verdict</th></tr></thead><tbody>${
+      HR.filter(x => x[1]).map(([s, a]) => { const z = a.d50[1] ? a.d50[0] / a.d50[1] : 0, v = a.N < MINP ? pill('idle', 'collecting') : z >= 2 ? pill('warn', '50 worse') : z <= -2 ? pill('ok', '50 better') : pill('idle', 'no clear gap');
+        return `<tr><td class="l"><b>${s === 'all' ? 'All stats' : PS_LBL[s]}</b></td><td class="num">${a.N.toLocaleString()}<small>${a.Nm.toLocaleString()} priced</small></td><td class="num">${a.mk == null ? '' : `${a.mk.toFixed(4)}<small>minutes model ${a.exm.toFixed(4)} on the same</small>`}</td><td class="num"><b>${a.ex.toFixed(4)}</b></td><td class="num">${hhCell(a.b10, a.d10)}</td><td class="num">${hhCell(a.b50, a.d50)}</td><td>${v}</td></tr>`; }).join('')}</tbody>`;
+  // shadow bets on the minutes model (Kalshi) beside the Game Simulation's player ranges
   const G = simGames().filter(g => g.env && g.env.market), live = {};
   for (const s of SIMS){
     const a = wkLive(s, 'YES'), b = wkLive(s, 'NO'), n = (a ? a.settled : 0) + (b ? b.settled : 0), w = (a ? a.w : 0) + (b ? b.w : 0), l = (a ? a.l : 0) + (b ? b.l : 0), roi = n ? ((a ? a.roi * a.settled : 0) + (b ? b.roi * b.settled : 0)) / n : null;
@@ -3688,7 +3705,7 @@ function renderPropSimRecord(){
   }
   $('tpsl').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th><th scope="col" title="Settled Kalshi shadow bets priced by the minutes model, both sides">Minutes model bets</th><th scope="col">Record</th><th scope="col" title="Return per unit at the first 3% price">ROI</th><th scope="col" title="Simulated players whose actual stat landed inside the simulation's 10th to 90th percentile range">Simulation in range</th></tr></thead><tbody>${
     SIMS.map(s => { const x = live[s]; return `<tr><td class="l">${PS_LBL[s]}</td><td class="num">${x.n || 'none yet'}</td><td class="num">${x.n ? `${x.w}-${x.l}` : ''}</td><td class="num">${x.roi == null ? '' : `<b class="${x.roi >= 0 ? 'pos' : 'neg'}">${(x.roi >= 0 ? '+' : '') + (x.roi * 100).toFixed(1)}%</b>`}</td><td class="num">${x.ps[0] ? `${pc(x.ps[1] / x.ps[0], 0)}<small>${x.ps[1]} of ${x.ps[0]} players, target 75% to 85%</small>` : 'none yet'}</td></tr>`; }).join('')}</tbody>`;
-  $('tpslnote').textContent = 'Both start on opening night (October 20). Bets and simulated ranges are scored from the box score. The last column is the Game Simulation (market-line environment), which is the same engine as 10,000 games. A like-for-like live score of single-prop simulations against the minutes model is not recorded yet; the backtest above is the head-to-head until it is.';
+  $('tpslnote').textContent = 'Both start on opening night (October 20). Bets and simulated ranges are scored from the box score. The last column is the Game Simulation (market-line environment), which is the same engine as 10,000 games. The like-for-like score of single-prop simulations against the minutes model is the head-to-head table above.';
 }
 $('tpscard').addEventListener('click', ev => { if (ev.target.closest('#tpsopen')) goView('propsim'); });
 $('tsimcard').addEventListener('click', ev => {
