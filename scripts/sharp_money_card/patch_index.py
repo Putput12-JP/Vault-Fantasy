@@ -35,5 +35,20 @@ else:
 # 4. the Board slate: team logo instead of the colour dot
 dot = 'h("i",{style:{width:8,height:8,borderRadius:"50%",background:c[R].color||n.textTertiary,display:"inline-block"}})'
 if dot in s: s = s.replace(dot, 'h(VscMini,{g:c,side:R})')
+# 5. every other place that shows a team: Game page header + picker, Top Reads cards, the other slate list, CFB model list
+import re as _re
+def _mini(m):
+    call, v, side = m.group(1), m.group(2), m.group(3)
+    size = 28 if call == 'hh(' else (22 if v == 'e' else 24)
+    return '%sVscMini,{g:%s,side:"%s",size:%d})' % (call, v, side, size)
+s = _re.sub(r'(hh\(|\(0,a\.jsx\)\()Ua,\{c:(\w+)\.(away|home)\.color\}\)', _mini, s)
+dot2 = '(0,a.jsx)("i",{style:{width:8,height:8,borderRadius:"50%",background:c[R].color||s.textTertiary,display:"inline-block"}})'
+if dot2 in s: s = s.replace(dot2, '(0,a.jsx)(VscMini,{g:c,side:R})')
+cfb = 'h(M,{size:"md",weight:"semibold"},S.away.abbr," @ ",S.home.abbr)'
+if cfb in s: s = s.replace(cfb, 'h(M,{size:"md",weight:"semibold"},h(VscMini,{g:S,side:"away",size:18}),S.away.abbr," @ ",h(VscMini,{g:S,side:"home",size:18}),S.home.abbr)')
+row = 'x.away+" @ "+x.home),h("div",null,h(T,{size:"xs"},"Wk "'
+if row in s: s = s.replace(row, '[h(VscId,{key:"a",id:x.away_id}),x.away," @ ",h(VscId,{key:"h",id:x.home_id}),x.home]),h("div",null,h(T,{size:"xs"},"Wk "')
+hdr = 'weight:z.weight.bold}},x.away+" @ "+x.home),badge(x)'
+if hdr in s: s = s.replace(hdr, 'weight:z.weight.bold,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},h(VscId,{id:x.away_id,size:30}),x.away,h("span",{style:{color:n.textTertiary,fontWeight:z.weight.regular}},"@"),h(VscId,{id:x.home_id,size:30}),x.home),badge(x)')
 open(IDX, 'w', encoding='utf-8').write(s)
 print('patched', os.path.getsize(IDX) // 1024, 'KB')

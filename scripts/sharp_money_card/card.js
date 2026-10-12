@@ -180,10 +180,16 @@ function VscLogo({ g, side }) {
   return h('img', { className: 'lg', crossOrigin: 'anonymous', src: url, alt: t.name, onError: function () { setBad(true); } });
 }
 // Small logo for list rows (the Board slate). Falls back to the old team-colour dot when there is no logo or it fails to load.
-function VscMini({ g, side }) {
-  var h = U.createElement, st = U.useState(false), bad = st[0], setBad = st[1], url = vscLogoUrl(g, side), t = g[side];
-  if (!url || bad) return h('i', { style: { width: 8, height: 8, borderRadius: '50%', background: t.color || '#666', display: 'inline-block', margin: '0 7px' } });
-  return h('img', { src: url, alt: '', width: 22, height: 22, loading: 'lazy', onError: function () { setBad(true); }, style: { width: 22, height: 22, objectFit: 'contain', flex: 'none' } });
+function VscMini({ g, side, size }) {
+  var h = U.createElement, st = U.useState(false), bad = st[0], setBad = st[1], url = vscLogoUrl(g, side), t = g[side], z = size || 22;
+  if (!url || bad) return h('i', { style: { width: 8, height: 8, borderRadius: '50%', background: t.color || '#666', display: 'inline-block', margin: '0 ' + Math.round((z - 8) / 2) + 'px', verticalAlign: 'middle' } });
+  return h('img', { src: url, alt: '', width: z, height: z, loading: 'lazy', onError: function () { setBad(true); }, style: { width: z, height: z, objectFit: 'contain', flex: 'none', verticalAlign: 'middle', marginRight: z > 20 ? 0 : 5 } });
+}
+// CFB model rows carry ESPN team ids directly, so no name lookup is needed.
+function VscId({ id, size }) {
+  var h = U.createElement, st = U.useState(false), bad = st[0], setBad = st[1], z = size || 18;
+  if (!id || bad) return null;
+  return h('img', { src: 'https://a.espncdn.com/i/teamlogos/ncaa/500/' + id + '.png', alt: '', width: z, height: z, loading: 'lazy', onError: function () { setBad(true); }, style: { width: z, height: z, objectFit: 'contain', verticalAlign: 'middle', margin: '0 5px 0 0' } });
 }
 var vscAm = function (n) { return n == null ? '' : (n > 0 ? '+' : '') + n; };
 var vscL = function (n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); };
