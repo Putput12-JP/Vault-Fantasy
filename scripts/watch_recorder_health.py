@@ -4,6 +4,7 @@ recent MIN_FAILS polls ALL failed. Writes the report to --out as markdown (empty
 turns that into a GitHub issue. A single bad poll never trips it: only a source that keeps failing does."""
 import json, subprocess, sys, datetime as dt
 
+LINEUPS_FROM_UTC = 11   # see main(): the lineups feed 403s until about 10:00 UTC
 MIN_FAILS = 6          # ~1.5h at the 15 min cadence, 30 min inside 3h of a tip
 
 
@@ -21,6 +22,11 @@ def main():
     by = {}
     for p in sorted(polls, key=lambda p: p['t']):
         by.setdefault(p['src'], []).append(p)
+    # NBA.com's lineup file does not exist until about 6am ET: the feed answers 403 every night, which is "not posted yet",
+    # not an outage (it opened a data-failure issue on three nights running). Only count lineups polls from 11:00 UTC on.
+    by['lineups'] = [r for r in by.get('lineups', []) if dt.datetime.fromtimestamp(r['t'], dt.timezone.utc).hour >= LINEUPS_FROM_UTC] if 'lineups' in by else []
+    if not by['lineups']:
+        del by['lineups']
     bad = []
     for src, rows in by.items():
         tail = rows[-MIN_FAILS:]
