@@ -200,6 +200,105 @@ function VscPair({ g, lbl, size, sport }) {
   if (!g) return lbl;
   return h(U.Fragment, null, h(VscMini, { g: g, side: 'away', size: size || 16 }), parts[0], ' @ ', h(VscMini, { g: g, side: 'home', size: size || 16 }), parts[1]);
 }
+
+var VCP_CSS = `
+.vcp{--bg:#0b0b0d;--line:rgba(255,255,255,.08);--ink:#f4f4f6;--mute:#8b8b95;--dim:#5d5d66;--pick:#46e08c;--amber:#f2b84b;--loss:#ff6b6b;
+  position:relative;overflow:hidden;border-radius:22px;background:var(--bg);color:var(--ink);border:1px solid var(--line);width:100%;container-type:inline-size;
+  font:500 15px/1.35 Inter,-apple-system,"SF Pro Display",system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-align:left}
+.vcp *{box-sizing:border-box;margin:0}
+.vcp .glow{position:absolute;inset:0 0 auto 0;height:320px;pointer-events:none;background:radial-gradient(300px 190px at 50% 30%,rgba(70,224,140,.16),transparent 70%),radial-gradient(240px 170px at 0% 0%,rgba(79,140,255,.14),transparent 70%),radial-gradient(240px 170px at 100% 0%,rgba(242,184,75,.12),transparent 70%)}
+.vcp .glow.lean{background:radial-gradient(260px 170px at 0% 0%,rgba(79,140,255,.12),transparent 70%),radial-gradient(260px 170px at 100% 0%,rgba(242,184,75,.1),transparent 70%)}
+.vcp .in{position:relative;padding:16px 18px 12px}
+.vcp .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vcp .teams{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;min-width:0;flex-wrap:wrap}
+.vcp .teams img{width:36px;height:36px;object-fit:contain;flex:none}
+.vcp .teams i{font-style:normal;color:var(--dim);font-weight:500}
+.vcp .meta{font-size:12px;color:var(--mute);margin-top:4px}
+.vcp .back{all:unset;cursor:pointer;font-size:12px;color:var(--mute);padding:4px 0}
+.vcp .pill{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;padding:4px 9px;border-radius:99px;white-space:nowrap}
+.vcp .pill.g{color:#06130c;background:var(--pick)}.vcp .pill.l{color:var(--amber);background:rgba(242,184,75,.13);border:1px solid rgba(242,184,75,.3)}.vcp .pill.w{color:#06130c;background:var(--pick)}.vcp .pill.x{color:#2a0a0a;background:var(--loss)}.vcp .pill.d{color:var(--mute);background:rgba(255,255,255,.08)}
+.vcp .big{margin:14px 0 4px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.vcp .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pick);display:inline-flex;align-items:center;gap:7px}
+.vcp .eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--pick);box-shadow:0 0 10px var(--pick)}
+.vcp .eyebrow.lean{color:var(--amber)}.vcp .eyebrow.lean i{background:var(--amber);box-shadow:none}
+.vcp .p{font-size:46px;font-weight:800;letter-spacing:-.04em;line-height:1.02;color:var(--pick)}
+.vcp .p.lean{color:#d9d9e0;opacity:.85}
+.vcp .e{text-align:right;flex:none}
+.vcp .e small{display:block;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.vcp .e strong{display:block;font-size:46px;font-weight:800;letter-spacing:-.04em;line-height:1.02;color:var(--pick);font-variant-numeric:tabular-nums}
+.vcp .e strong.lean{color:var(--amber)}
+.vcp .note{font-size:12.5px;color:var(--mute);margin-bottom:12px}
+.vcp .res{font-size:12.5px;color:var(--ink);margin:-6px 0 12px;font-weight:600}
+.vcp .ruler{position:relative;margin:0 38px;height:128px}
+.vcp .axis{position:absolute;left:0;right:0;top:62px;height:3px;border-radius:3px;background:rgba(255,255,255,.12)}
+.vcp .win{position:absolute;top:54px;height:19px;border-radius:6px;background:linear-gradient(90deg,rgba(70,224,140,.35),rgba(70,224,140,.12));border:1px solid rgba(70,224,140,.5)}
+.vcp .pin{position:absolute;top:0;transform:translateX(-50%);text-align:center;width:90px}
+.vcp .pin b{display:block;font-size:12.5px;white-space:nowrap}
+.vcp .pin small,.vcp .under small{display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcp .pin::after{content:"";display:block;width:2px;height:20px;background:currentColor;margin:3px auto 0;opacity:.8}
+.vcp .dot{position:absolute;top:58px;width:11px;height:11px;border-radius:50%;transform:translateX(-50%);border:2px solid var(--bg)}
+.vcp .under{position:absolute;top:80px;transform:translateX(-50%);text-align:center;width:96px}
+.vcp .under b{display:block;font-size:12.5px;white-space:nowrap}
+.vcp .scale{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--dim)}
+.vcp .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.vcp .row div{padding:9px 12px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid var(--line);min-width:0}
+.vcp .row em{display:block;font-style:normal;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.vcp .row strong{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.vcp .row small{display:block;font-size:11px;color:var(--mute);margin-top:1px}
+.vcp .brand{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:0 2px;min-height:30px}
+.vcp .brand b{font-size:13px;letter-spacing:.14em;font-weight:800}
+.vcp .brand span{font-size:11px;color:var(--dim);margin-right:96px}
+.vcp .shr{position:absolute;right:18px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:600 12px/1 Inter,system-ui,sans-serif;padding:7px 12px;border-radius:99px;cursor:pointer;transition:transform 500ms cubic-bezier(.34,1.56,.64,1),background .15s}
+.vcp .shr:hover{background:rgba(255,255,255,.13)}.vcp .shr:active{transform:scale(.94);transition:transform 80ms ease-out}.vcp .shr[disabled]{opacity:.6;cursor:progress}
+@container (max-width:520px){.vcp .p,.vcp .e strong{font-size:32px}.vcp .row{grid-template-columns:1fr}.vcp .ruler{margin:0 30px}.vcp .brand span{display:none}.vcp .scale span:nth-child(2){display:none}}
+`;
+// New pill, ruler and stat row for a CFB model game. Margins in the model data are the HOME side's; the ruler plots the AWAY side's
+// margin of victory so "model" and "market" read as two points on one line, and the green is the gap between them (the edge).
+function VaultCfbPick(P) {
+  var h = U.createElement, x = P.x, lean = x.is_pick === false, home = x.side === 'home', mine = home ? x.home : x.away, other = home ? x.away : x.home;
+  var A = function (m) { return m == null ? null : -m; };
+  var pts = { market: A(x.market_margin), model: A(x.model_margin), open: A(x.open_margin), blend: A(x.blend_margin) };
+  var vals = [pts.market, pts.model, pts.open, pts.blend].filter(function (v) { return v != null; });
+  var lo = Math.min.apply(null, vals) - 1.5, hi = Math.max.apply(null, vals) + 1.5, pc = function (v) { return ((v - lo) / (hi - lo) * 100).toFixed(2) + '%'; };
+  var by = function (v) { return (v >= 0 ? x.away : x.home) + ' by'; };
+  var pin = function (key, lbl, tone, above) {
+    var v = pts[key]; if (v == null) return null;
+    return [above ? h('div', { key: key + 'p', className: 'pin', style: { left: pc(v), color: tone } }, h('b', null, lbl + ' ' + Math.abs(v).toFixed(1).replace(/\.0$/, '')), h('small', null, by(v)))
+      : h('div', { key: key + 'u', className: 'under', style: { left: pc(v), color: tone } }, h('b', null, lbl + ' ' + Math.abs(v).toFixed(1).replace(/\.0$/, '')), h('small', null, by(v))),
+      h('div', { key: key + 'd', className: 'dot', style: { left: pc(v), background: tone === 'var(--ink)' ? '#fff' : tone } })];
+  };
+  var win = pts.market != null && pts.model != null ? h('div', { className: 'win', style: { left: pc(Math.min(pts.market, pts.model)), width: (Math.abs(pts.market - pts.model) / (hi - lo) * 100).toFixed(2) + '%' } }) : null;
+  var line = x.entry, margin = (home ? x.model_margin : -x.model_margin), winner = margin >= 0 ? mine : other;
+  var cover = line > 0 ? mine + ' covers unless ' + other + ' wins by more than ' + Math.abs(line).toFixed(1).replace(/\.0$/, '') : mine + ' covers if it wins by more than ' + Math.abs(line).toFixed(1).replace(/\.0$/, '');
+  var note = cover + '. The model has ' + winner + ' by ' + Math.abs(margin).toFixed(1).replace(/\.0$/, '') + (lean ? ', which is under the 5-point bar, so this is a lean we track, not a pick.' : ', and the green is the edge.');
+  var c = P.c, mk = P.mk, sharp = null;
+  if (c) { if (c[x.side].length) sharp = ['With us', P.fm(c[x.side]), 'var(--pick)']; else if (c[P.opp].length) sharp = ['Against', P.fm(c[P.opp]), 'var(--loss)']; }
+  sharp = sharp || ['None', 'no Sharp Money card', 'var(--dim)'];
+  var mv = mk && mk.move ? (mk.move.v > 0 ? Math.abs(mk.move.pts).toFixed(1) + ' toward the pick' : mk.move.v < 0 ? Math.abs(mk.move.pts).toFixed(1) + ' away from the pick' : 'no move') : 'no move data';
+  var res = x.result, live = !res && P.live, pill = res === 'W' ? ['w', 'Won'] : res === 'L' ? ['x', 'Lost'] : res === 'P' ? ['d', 'Push'] : live ? ['d', 'Live'] : lean ? ['l', 'Lean'] : ['g', 'Pick'];
+  var pk = P.pk, id = 'vcp-card';
+  return h('div', { id: id, className: 'vcp' }, h('style', null, VCP_CSS), h('div', { className: 'glow' + (lean ? ' lean' : '') }),
+    h('div', { className: 'in' },
+      h('div', { className: 'top' },
+        h('div', { style: { minWidth: 0 } }, P.back ? h('button', { type: 'button', className: 'back', onClick: P.back, 'data-html2canvas-ignore': 'true' }, '← Games') : null,
+          h('div', { className: 'teams' }, h(VscId, { id: x.away_id, size: 36 }), x.away, h('i', null, '@'), x.home, h(VscId, { id: x.home_id, size: 36 })),
+          h('div', { className: 'meta' }, 'Week ' + x.week + ' · ' + P.dt + (x.hs != null ? ' · Final ' + x.as_ + '-' + x.hs : ''))),
+        h('span', { className: 'pill ' + pill[0] }, pill[1])),
+      h('div', { className: 'big' },
+        h('div', null, h('span', { className: 'eyebrow' + (lean ? ' lean' : '') }, h('i'), lean ? 'Model lean' : 'Take'), h('div', { className: 'p' + (lean ? ' lean' : '') }, x.team + ' ' + P.sn(x.entry))),
+        h('div', { className: 'e' }, h('small', null, 'Edge'), h('strong', { className: lean ? 'lean' : '' }, Math.abs(x.edge).toFixed(1)))),
+      h('div', { className: 'note' }, note),
+      P.result ? h('div', { className: 'res' }, P.result) : null,
+      h('div', { className: 'ruler' }, h('div', { className: 'axis' }), win, pin('model', 'Model', 'var(--pick)', true), pin('market', 'Market', 'var(--ink)', true), pin('blend', 'Blend', 'var(--amber)', false), pin('open', 'Open', 'var(--mute)', false)),
+      h('div', { className: 'scale' }, h('span', null, x.home + ' stronger'), h('span', null, x.away + ' margin of victory'), h('span', null, x.away + ' stronger')),
+      h('div', { className: 'row' },
+        h('div', null, h('em', null, 'Sharp money'), h('strong', { style: { color: sharp[2] } }, sharp[0]), h('small', null, sharp[1])),
+        h('div', null, h('em', null, 'Line move'), h('strong', null, P.hl(x.open_margin) + ' → ' + P.hl(x.market_margin)), h('small', null, mv)),
+        h('div', null, h('em', null, 'Live picks'), h('strong', null, pk ? pk.w + '-' + pk.l : '–'), h('small', null, pk && pk.p != null ? (pk.p * 100).toFixed(1) + '% this season' : 'no picks graded'))),
+      h('div', { className: 'brand' }, h('b', null, 'VAULT FANTASY'), h('span', null, 'CFB model · vaultfantasy.com')),
+      h('button', { type: 'button', className: 'shr', 'data-html2canvas-ignore': 'true', onClick: function (e) { vscShareCard(e.currentTarget, id, 'vault-cfb-' + String(x.away).toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + String(x.home).toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.png', x.away + ' @ ' + x.home + ' CFB model'); } },
+        h('svg', { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 002 2h10a2 2 0 002-2v-5' })), 'Share')));
+}
 var vscAm = function (n) { return n == null ? '' : (n > 0 ? '+' : '') + n; };
 var vscL = function (n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); };
 var vscUsd = function (n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? '$' + (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : '$' + Math.round(n); };
@@ -258,20 +357,22 @@ function vscToast(msg) {
 }
 // Renders the card at a fixed 560px (so the shared image is the same shape on every screen) and hands it to the share sheet,
 // the clipboard, or a download, in that order. Guarded by dataset.busy because disabled alone leaves a double-click window.
-function vscShare(btn, g) {
+function vscShareCard(btn, id, name, title) {
   if (btn.dataset.busy) return; btn.dataset.busy = '1'; btn.disabled = true;
-  var name = 'vault-sharp-money-' + String(g.away.abbr).toLowerCase() + '-' + String(g.home.abbr).toLowerCase() + '.png';
   vscH2C().then(function (h2c) {
-    return h2c(document.getElementById('vsc-card'), { scale: 3, backgroundColor: '#0b0b0d', useCORS: true, windowWidth: 1000,
-      onclone: function (doc) { var el = doc.getElementById('vsc-card'); el.className = 'vsc'; el.style.width = '560px'; el.style.maxWidth = 'none'; el.style.margin = '0'; } });
+    return h2c(document.getElementById(id), { scale: 3, backgroundColor: '#0b0b0d', useCORS: true, windowWidth: 1000,
+      onclone: function (doc) { var el = doc.getElementById(id); el.className = el.className.replace(/\bfit\b/, '').trim(); el.style.width = '560px'; el.style.maxWidth = 'none'; el.style.margin = '0'; } });
   }).then(function (c) { return new Promise(function (r) { c.toBlob(r, 'image/png'); }); }).then(function (blob) {
     var file = new File([blob], name, { type: 'image/png' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: g.away.abbr + ' @ ' + g.home.abbr + ' sharp money' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: title });
     return navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () { vscToast('Copied image. Paste it anywhere'); }, function () {
       var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); vscToast('Saved PNG');
     });
   }).catch(function (e) { if (!e || e.name !== 'AbortError') vscToast('Could not render the image'); })
     .then(function () { delete btn.dataset.busy; btn.disabled = false; });
+}
+function vscShare(btn, g) {
+  vscShareCard(btn, 'vsc-card', 'vault-sharp-money-' + String(g.away.abbr).toLowerCase() + '-' + String(g.home.abbr).toLowerCase() + '.png', g.away.abbr + ' @ ' + g.home.abbr + ' sharp money');
 }
 
 function vscMk(g, m) {

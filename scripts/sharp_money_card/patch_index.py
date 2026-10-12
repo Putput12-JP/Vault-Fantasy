@@ -55,5 +55,29 @@ if hdr in s: s = s.replace(hdr, 'weight:z.weight.bold,display:"flex",alignItems:
 feed = '(0,a.jsx)(Ga,{onClick:()=>s(p.game),bold:!0,children:p.gameLbl})'
 s = s.replace('VscPair,{g:i[p.game],lbl:p.gameLbl})', 'VscPair,{g:i[p.game],lbl:p.gameLbl,sport:p.sport})')
 if feed in s: s = s.replace(feed, '(0,a.jsx)(Ga,{onClick:()=>s(p.game),bold:!0,children:(0,a.jsx)(VscPair,{g:i[p.game],lbl:p.gameLbl,sport:p.sport})})')
+
+# 6. CFB Model page: the option B pick card replaces the plain header; every v2 (shadow) line on the page is removed
+def _cut(s, start, end, keep_end=False, after=0):
+    i = s.find(start)
+    if i < 0: return s
+    j = s.index(end, i + len(start))
+    return s[:i] + s[(j if keep_end else j + len(end)):]
+a = 'head=h("div",{style:{padding:NW?"14px":"16px 20px",borderBottom:`1px solid ${n.border}`,display:"grid",gap:10}},'
+if a in s:
+    s = _cut(s, a, ',\n  center=h("div",null,', keep_end=True)
+    s = s.replace(',\n  center=h("div",null,', ',\n  center=h("div",null,', 1) if False else s
+    i = s.index(',\n  center=h("div",null,')
+    s = s[:i] + 'head=h(VaultCfbPick,{key:x.key,x:x,c:c,mk:mk,opp:opp,fm:fm,hl:hl,sn:Sn,dt:cfDt(x.kick),live:x.kick<now,pk:pk,back:NW?()=>setMv("list"):null,result:cover!=null?"Result: "+(cover>0?"covered":cover<0?"missed":"pushed")+" by "+Math.abs(cover).toFixed(1)+(x.clv==null?"":", "+te(x.clv)+" points against the closing line")+".":""})' + s[i:]
+w = 'h("div",{style:{position:NW?"static":"sticky",top:0,zIndex:2,background:n.bg}},head),center)'
+if w in s: s = s.replace(w, 'h("div",{style:{padding:NW?10:14}},head),center)')
+# v2 (shadow) removals
+s = s.replace('x.v2?gapRow("v2 (shadow)",x.v2.model_margin,"not shown as a pick"):null,', '')
+if '\n   x.v2?h("div",{style:{padding:"14px 20px"}}' in s:
+    i = s.index('\n   x.v2?h("div",{style:{padding:"14px 20px"}}'); j = s.index(':null);\n  detail=', i)
+    s = s[:i].rstrip(',') + s[j + len(':null'):]
+s = _cut(s, 'x.v2?(0,a.jsx)("div",{style:{padding:"6px 12px",borderTop:`1px solid ${n.borderSubtle}`},children:(0,a.jsx)(T,{size:"xs",children:`v2 (shadow):', '})}):null,')
+s = _cut(s, 'd.v2_summary?h("div",{style:{padding:14,borderBottom:`1px solid ${n.borderSubtle}`,display:"grid",gap:4}},h(T,{size:"xs",mono:!0,style:lab},"Model v2 (shadow)")', '")):null,')
+while 'd.v2_summary?(0,a.jsxs)(T,{size:"sm",children:[(0,a.jsx)("b",{children:"Model v2, tracked in the shadows: "})' in s:
+    s = _cut(s, 'd.v2_summary?(0,a.jsxs)(T,{size:"sm",children:[(0,a.jsx)("b",{children:"Model v2, tracked in the shadows: "})', 'otherwise.`]}):null,')
 open(IDX, 'w', encoding='utf-8').write(s)
 print('patched', os.path.getsize(IDX) // 1024, 'KB')
