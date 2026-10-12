@@ -619,7 +619,7 @@ var VCP_CSS = `
 .vcp .pin{position:absolute;top:0;transform:translateX(-50%);text-align:center;width:90px}
 .vcp .pin b{display:block;font-size:12.5px;white-space:nowrap}
 .vcp .pin small,.vcp .under small{display:block;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vcp .pin::after{content:"";display:block;width:2px;height:20px;background:currentColor;margin:3px auto 0;opacity:.8}
+.vcp .stem{position:absolute;width:2px;transform:translateX(-1px);opacity:.75;border-radius:1px}
 .vcp .dot{position:absolute;top:58px;width:11px;height:11px;border-radius:50%;transform:translateX(-50%);border:2px solid var(--bg)}
 .vcp .under{position:absolute;top:80px;transform:translateX(-50%);text-align:center;width:96px}
 .vcp .under b{display:block;font-size:12.5px;white-space:nowrap}
@@ -645,13 +645,34 @@ function VaultCfbPick(P) {
   var vals = [pts.market, pts.model, pts.open, pts.blend].filter(function (v) { return v != null; });
   var lo = Math.min.apply(null, vals) - 1.5, hi = Math.max.apply(null, vals) + 1.5, pc = function (v) { return ((v - lo) / (hi - lo) * 100).toFixed(2) + '%'; };
   var by = function (v) { return (v >= 0 ? x.away : x.home) + ' by'; };
-  var pin = function (key, lbl, tone, above) {
-    var v = pts[key]; if (v == null) return null;
-    return [above ? h('div', { key: key + 'p', className: 'pin', style: { left: pc(v), color: tone } }, h('b', null, lbl + ' ' + Math.abs(v).toFixed(1).replace(/\.0$/, '')), h('small', null, by(v)))
-      : h('div', { key: key + 'u', className: 'under', style: { left: pc(v), color: tone } }, h('b', null, lbl + ' ' + Math.abs(v).toFixed(1).replace(/\.0$/, '')), h('small', null, by(v))),
-      h('div', { key: key + 'd', className: 'dot', style: { left: pc(v), background: tone === 'var(--ink)' ? '#fff' : tone } })];
-  };
-  var win = pts.market != null && pts.model != null ? h('div', { className: 'win', style: { left: pc(Math.min(pts.market, pts.model)), width: (Math.abs(pts.market - pts.model) / (hi - lo) * 100).toFixed(2) + '%' } }) : null;
+  // Labels share one line when they are far enough apart; ones that would touch drop to a second tier with a connector.
+  var fmtV = function (v) { return Math.abs(v).toFixed(1).replace(/\.0$/, ''); };
+  var items = [['model', 'Model', 'var(--pick)', 1], ['market', 'Market', 'var(--ink)', 1], ['blend', 'Blend', 'var(--amber)', 0], ['open', 'Open', 'var(--mute)', 0]]
+    .map(function (d) { return { key: d[0], lbl: d[1], tone: d[2], up: d[3], v: pts[d[0]] }; }).filter(function (d) { return d.v != null; });
+  var lanes = { 1: 1, 0: 1 };
+  [1, 0].forEach(function (side) {
+    var last = [];
+    items.filter(function (d) { return d.up === side; }).sort(function (a, b) { return a.v - b.v; }).forEach(function (d) {
+      var pcn = (d.v - lo) / (hi - lo) * 100, l = 0;
+      while (last[l] != null && pcn - last[l] < 17) l++;
+      last[l] = pcn; d.lane = l; lanes[side] = Math.max(lanes[side], l + 1);
+    });
+  });
+  var AX = 62 + (lanes[1] > 1 ? 38 : 0), RH = AX + 18 + lanes[0] * 38 + 6, parts = [];
+  items.forEach(function (d) {
+    var left = pc(d.v), lbl = [h('b', { key: 'b' }, d.lbl + ' ' + fmtV(d.v)), h('small', { key: 's' }, by(d.v))];
+    if (d.up) {
+      var top = (lanes[1] - 1 - d.lane) * 38;
+      parts.push(h('div', { key: d.key + 'p', className: 'pin', style: { left: left, top: top, color: d.tone } }, lbl));
+      parts.push(h('i', { key: d.key + 'st', className: 'stem', style: { left: left, top: top + 36, height: AX - top - 36, background: d.tone } }));
+    } else {
+      var utop = AX + 18 + d.lane * 38;
+      parts.push(h('div', { key: d.key + 'u', className: 'under', style: { left: left, top: utop, color: d.tone } }, lbl));
+      if (d.lane > 0) parts.push(h('i', { key: d.key + 'st', className: 'stem', style: { left: left, top: AX + 4, height: utop - AX - 4, background: d.tone } }));
+    }
+    parts.push(h('div', { key: d.key + 'd', className: 'dot', style: { left: left, top: AX - 4, background: d.tone === 'var(--ink)' ? '#fff' : d.tone } }));
+  });
+  var win = pts.market != null && pts.model != null ? h('div', { className: 'win', style: { top: AX - 8, left: pc(Math.min(pts.market, pts.model)), width: (Math.abs(pts.market - pts.model) / (hi - lo) * 100).toFixed(2) + '%' } }) : null;
   var line = x.entry, margin = (home ? x.model_margin : -x.model_margin), winner = margin >= 0 ? mine : other;
   var cover = line > 0 ? mine + ' covers unless ' + other + ' wins by more than ' + Math.abs(line).toFixed(1).replace(/\.0$/, '') : mine + ' covers if it wins by more than ' + Math.abs(line).toFixed(1).replace(/\.0$/, '');
   var note = cover + '. The model has ' + winner + ' by ' + Math.abs(margin).toFixed(1).replace(/\.0$/, '') + (lean ? ', which is under the 5-point bar, so this is a lean we track, not a pick.' : ', and the green is the edge.');
@@ -673,7 +694,7 @@ function VaultCfbPick(P) {
         h('div', { className: 'e' }, h('small', null, 'Edge'), h('strong', { className: lean ? 'lean' : '' }, Math.abs(x.edge).toFixed(1)))),
       h('div', { className: 'note' }, note),
       P.result ? h('div', { className: 'res' }, P.result) : null,
-      h('div', { className: 'ruler' }, h('div', { className: 'axis' }), win, pin('model', 'Model', 'var(--pick)', true), pin('market', 'Market', 'var(--ink)', true), pin('blend', 'Blend', 'var(--amber)', false), pin('open', 'Open', 'var(--mute)', false)),
+      h('div', { className: 'ruler', style: { height: RH } }, h('div', { className: 'axis', style: { top: AX } }), win, parts),
       h('div', { className: 'scale' }, h('span', null, x.home + ' stronger'), h('span', null, x.away + ' margin of victory'), h('span', null, x.away + ' stronger')),
       h('div', { className: 'row' },
         h('div', null, h('em', null, 'Sharp money'), h('strong', { style: { color: sharp[2] } }, sharp[0]), h('small', null, sharp[1])),
