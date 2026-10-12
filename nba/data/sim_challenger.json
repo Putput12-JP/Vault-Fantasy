@@ -1,0 +1,671 @@
+{
+ "generated": "2026-10-12T18:18Z",
+ "seed": 20261020,
+ "variants": [
+  "v2",
+  "sim10k",
+  "sim50",
+  "sam50",
+  "sam50_shown"
+ ],
+ "sources": {
+  "espn_close": {
+   "pts": {
+    "n": 884,
+    "logloss_market": 0.692,
+    "v2": {
+     "logloss": 0.6967,
+     "brier": 0.2514,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0,
+     "blend_t": 1.24,
+     "flip_vs_v2": 0.0,
+     "rms_gap_vs_v2": 0.0,
+     "mc_noise_expected": null
+    },
+    "sim10k": {
+     "logloss": 0.697,
+     "brier": 0.2516,
+     "dll_vs_v2": 0.0003,
+     "dll_se": 0.0004,
+     "blend_t": 1.16,
+     "flip_vs_v2": 0.0204,
+     "rms_gap_vs_v2": 0.0033,
+     "mc_noise_expected": 0.005
+    },
+    "sim50": {
+     "logloss": 0.6999,
+     "brier": 0.253,
+     "dll_vs_v2": 0.0032,
+     "dll_se": 0.0042,
+     "blend_t": 1.57,
+     "flip_vs_v2": 0.1833,
+     "rms_gap_vs_v2": 0.0486,
+     "mc_noise_expected": 0.0701
+    },
+    "sam50": {
+     "logloss": 0.7033,
+     "brier": 0.2547,
+     "dll_vs_v2": 0.0066,
+     "dll_se": 0.0054,
+     "blend_t": 0.79,
+     "flip_vs_v2": 0.2195,
+     "rms_gap_vs_v2": 0.0523,
+     "mc_noise_expected": 0.0701
+    },
+    "sam50_shown": {
+     "logloss": 0.7273,
+     "brier": 0.2651,
+     "dll_vs_v2": 0.0307,
+     "dll_se": 0.0098,
+     "blend_t": 1.08,
+     "flip_vs_v2": 0.1957,
+     "rms_gap_vs_v2": 0.0957,
+     "mc_noise_expected": 0.0701
+    }
+   },
+   "reb": {
+    "n": 901,
+    "logloss_market": 0.6937,
+    "v2": {
+     "logloss": 0.6955,
+     "brier": 0.2511,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0,
+     "blend_t": 2.4,
+     "flip_vs_v2": 0.0,
+     "rms_gap_vs_v2": 0.0,
+     "mc_noise_expected": null
+    },
+    "sim10k": {
+     "logloss": 0.6955,
+     "brier": 0.2511,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0005,
+     "blend_t": 2.4,
+     "flip_vs_v2": 0.0178,
+     "rms_gap_vs_v2": 0.0041,
+     "mc_noise_expected": 0.0049
+    },
+    "sim50": {
+     "logloss": 0.7046,
+     "brier": 0.2554,
+     "dll_vs_v2": 0.009,
+     "dll_se": 0.007,
+     "blend_t": 1.51,
+     "flip_vs_v2": 0.1743,
+     "rms_gap_vs_v2": 0.0565,
+     "mc_noise_expected": 0.0693
+    },
+    "sam50": {
+     "logloss": 0.701,
+     "brier": 0.2533,
+     "dll_vs_v2": 0.0055,
+     "dll_se": 0.0063,
+     "blend_t": 1.88,
+     "flip_vs_v2": 0.1953,
+     "rms_gap_vs_v2": 0.0645,
+     "mc_noise_expected": 0.0693
+    },
+    "sam50_shown": {
+     "logloss": 0.7216,
+     "brier": 0.2619,
+     "dll_vs_v2": 0.0261,
+     "dll_se": 0.01,
+     "blend_t": 1.21,
+     "flip_vs_v2": 0.2941,
+     "rms_gap_vs_v2": 0.0993,
+     "mc_noise_expected": 0.0693
+    }
+   },
+   "ast": {
+    "n": 811,
+    "logloss_market": 0.6783,
+    "v2": {
+     "logloss": 0.6813,
+     "brier": 0.2441,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0,
+     "blend_t": 1.15,
+     "flip_vs_v2": 0.0,
+     "rms_gap_vs_v2": 0.0,
+     "mc_noise_expected": null
+    },
+    "sim10k": {
+     "logloss": 0.6815,
+     "brier": 0.2442,
+     "dll_vs_v2": 0.0002,
+     "dll_se": 0.0006,
+     "blend_t": 1.11,
+     "flip_vs_v2": 0.0234,
+     "rms_gap_vs_v2": 0.0042,
+     "mc_noise_expected": 0.0049
+    },
+    "sim50": {
+     "logloss": 0.6926,
+     "brier": 0.2492,
+     "dll_vs_v2": 0.0114,
+     "dll_se": 0.0072,
+     "blend_t": 0.47,
+     "flip_vs_v2": 0.1924,
+     "rms_gap_vs_v2": 0.0557,
+     "mc_noise_expected": 0.0695
+    },
+    "sam50": {
+     "logloss": 0.6885,
+     "brier": 0.2474,
+     "dll_vs_v2": 0.0073,
+     "dll_se": 0.0077,
+     "blend_t": 0.97,
+     "flip_vs_v2": 0.2589,
+     "rms_gap_vs_v2": 0.0655,
+     "mc_noise_expected": 0.0695
+    },
+    "sam50_shown": {
+     "logloss": 0.714,
+     "brier": 0.2584,
+     "dll_vs_v2": 0.0327,
+     "dll_se": 0.0106,
+     "blend_t": 0.92,
+     "flip_vs_v2": 0.3354,
+     "rms_gap_vs_v2": 0.1102,
+     "mc_noise_expected": 0.0695
+    }
+   },
+   "3pm": {
+    "n": 776,
+    "logloss_market": 0.6715,
+    "v2": {
+     "logloss": 0.6778,
+     "brier": 0.2424,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0,
+     "blend_t": 0.18,
+     "flip_vs_v2": 0.0,
+     "rms_gap_vs_v2": 0.0,
+     "mc_noise_expected": null
+    },
+    "sim10k": {
+     "logloss": 0.6781,
+     "brier": 0.2426,
+     "dll_vs_v2": 0.0003,
+     "dll_se": 0.0005,
+     "blend_t": 0.11,
+     "flip_vs_v2": 0.0142,
+     "rms_gap_vs_v2": 0.004,
+     "mc_noise_expected": 0.0049
+    },
+    "sim50": {
+     "logloss": 0.6811,
+     "brier": 0.244,
+     "dll_vs_v2": 0.0033,
+     "dll_se": 0.0061,
+     "blend_t": 0.58,
+     "flip_vs_v2": 0.2165,
+     "rms_gap_vs_v2": 0.0516,
+     "mc_noise_expected": 0.0694
+    },
+    "sam50": {
+     "logloss": 0.6841,
+     "brier": 0.2456,
+     "dll_vs_v2": 0.0063,
+     "dll_se": 0.0062,
+     "blend_t": 0.49,
+     "flip_vs_v2": 0.25,
+     "rms_gap_vs_v2": 0.0639,
+     "mc_noise_expected": 0.0694
+    },
+    "sam50_shown": {
+     "logloss": 0.6947,
+     "brier": 0.2502,
+     "dll_vs_v2": 0.0169,
+     "dll_se": 0.0122,
+     "blend_t": 0.93,
+     "flip_vs_v2": 0.3595,
+     "rms_gap_vs_v2": 0.0999,
+     "mc_noise_expected": 0.0694
+    }
+   }
+  },
+  "kalshi": {
+   "pts": {
+    "n": 18803,
+    "logloss_market": 0.5291,
+    "v2": {
+     "logloss": 0.5543,
+     "brier": 0.1867,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0,
+     "blend_t": 3.78,
+     "flip_vs_v2": 0.0,
+     "rms_gap_vs_v2": 0.0,
+     "mc_noise_expected": null
+    },
+    "sim10k": {
+     "logloss": 0.5543,
+     "brier": 0.1867,
+     "dll_vs_v2": -0.0,
+     "dll_se": 0.0001,
+     "blend_t": 3.79,
+     "flip_vs_v2": 0.0108,
+     "rms_gap_vs_v2": 0.0042,
+     "mc_noise_expected": 0.0045
+    },
+    "sim50": {
+     "logloss": 0.561,
+     "brier": 0.1894,
+     "dll_vs_v2": 0.0067,
+     "dll_se": 0.0011,
+     "blend_t": 3.07,
+     "flip_vs_v2": 0.1411,
+     "rms_gap_vs_v2": 0.0535,
+     "mc_noise_expected": 0.0637
+    },
+    "sam50": {
+     "logloss": 0.5649,
+     "brier": 0.1907,
+     "dll_vs_v2": 0.0106,
+     "dll_se": 0.0014,
+     "blend_t": 2.31,
+     "flip_vs_v2": 0.1493,
+     "rms_gap_vs_v2": 0.0598,
+     "mc_noise_expected": 0.0637
+    },
+    "sam50_shown": {
+     "logloss": 0.5757,
+     "brier": 0.1878,
+     "dll_vs_v2": 0.0214,
+     "dll_se": 0.0053,
+     "blend_t": 2.65,
+     "flip_vs_v2": 0.3134,
+     "rms_gap_vs_v2": 0.0971,
+     "mc_noise_expected": 0.0637
+    }
+   },
+   "reb": {
+    "n": 14087,
+    "logloss_market": 0.5618,
+    "v2": {
+     "logloss": 0.575,
+     "brier": 0.1963,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0,
+     "blend_t": 5.39,
+     "flip_vs_v2": 0.0,
+     "rms_gap_vs_v2": 0.0,
+     "mc_noise_expected": null
+    },
+    "sim10k": {
+     "logloss": 0.575,
+     "brier": 0.1963,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0001,
+     "blend_t": 5.41,
+     "flip_vs_v2": 0.0133,
+     "rms_gap_vs_v2": 0.0041,
+     "mc_noise_expected": 0.0045
+    },
+    "sim50": {
+     "logloss": 0.5818,
+     "brier": 0.1986,
+     "dll_vs_v2": 0.0068,
+     "dll_se": 0.0016,
+     "blend_t": 4.61,
+     "flip_vs_v2": 0.1662,
+     "rms_gap_vs_v2": 0.055,
+     "mc_noise_expected": 0.0641
+    },
+    "sam50": {
+     "logloss": 0.5866,
+     "brier": 0.2005,
+     "dll_vs_v2": 0.0116,
+     "dll_se": 0.0018,
+     "blend_t": 3.59,
+     "flip_vs_v2": 0.1741,
+     "rms_gap_vs_v2": 0.0637,
+     "mc_noise_expected": 0.0641
+    },
+    "sam50_shown": {
+     "logloss": 0.594,
+     "brier": 0.1997,
+     "dll_vs_v2": 0.0191,
+     "dll_se": 0.0044,
+     "blend_t": 3.65,
+     "flip_vs_v2": 0.2954,
+     "rms_gap_vs_v2": 0.0866,
+     "mc_noise_expected": 0.0641
+    }
+   },
+   "ast": {
+    "n": 10726,
+    "logloss_market": 0.5405,
+    "v2": {
+     "logloss": 0.5482,
+     "brier": 0.1856,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0,
+     "blend_t": 6.98,
+     "flip_vs_v2": 0.0,
+     "rms_gap_vs_v2": 0.0,
+     "mc_noise_expected": null
+    },
+    "sim10k": {
+     "logloss": 0.5482,
+     "brier": 0.1856,
+     "dll_vs_v2": -0.0,
+     "dll_se": 0.0001,
+     "blend_t": 7.0,
+     "flip_vs_v2": 0.0136,
+     "rms_gap_vs_v2": 0.004,
+     "mc_noise_expected": 0.0044
+    },
+    "sim50": {
+     "logloss": 0.5556,
+     "brier": 0.1882,
+     "dll_vs_v2": 0.0074,
+     "dll_se": 0.0016,
+     "blend_t": 5.9,
+     "flip_vs_v2": 0.1866,
+     "rms_gap_vs_v2": 0.0544,
+     "mc_noise_expected": 0.0622
+    },
+    "sam50": {
+     "logloss": 0.5636,
+     "brier": 0.1913,
+     "dll_vs_v2": 0.0154,
+     "dll_se": 0.0027,
+     "blend_t": 3.81,
+     "flip_vs_v2": 0.2131,
+     "rms_gap_vs_v2": 0.0707,
+     "mc_noise_expected": 0.0622
+    },
+    "sam50_shown": {
+     "logloss": 0.5845,
+     "brier": 0.1919,
+     "dll_vs_v2": 0.0363,
+     "dll_se": 0.0072,
+     "blend_t": 3.57,
+     "flip_vs_v2": 0.3071,
+     "rms_gap_vs_v2": 0.0892,
+     "mc_noise_expected": 0.0622
+    }
+   },
+   "3pm": {
+    "n": 10791,
+    "logloss_market": 0.5283,
+    "v2": {
+     "logloss": 0.5294,
+     "brier": 0.1768,
+     "dll_vs_v2": 0.0,
+     "dll_se": 0.0,
+     "blend_t": 6.75,
+     "flip_vs_v2": 0.0,
+     "rms_gap_vs_v2": 0.0,
+     "mc_noise_expected": null
+    },
+    "sim10k": {
+     "logloss": 0.5295,
+     "brier": 0.1768,
+     "dll_vs_v2": 0.0001,
+     "dll_se": 0.0001,
+     "blend_t": 6.7,
+     "flip_vs_v2": 0.0182,
+     "rms_gap_vs_v2": 0.0041,
+     "mc_noise_expected": 0.0044
+    },
+    "sim50": {
+     "logloss": 0.5384,
+     "brier": 0.1801,
+     "dll_vs_v2": 0.009,
+     "dll_se": 0.0016,
+     "blend_t": 4.46,
+     "flip_vs_v2": 0.2007,
+     "rms_gap_vs_v2": 0.0545,
+     "mc_noise_expected": 0.062
+    },
+    "sam50": {
+     "logloss": 0.5437,
+     "brier": 0.1821,
+     "dll_vs_v2": 0.0143,
+     "dll_se": 0.0022,
+     "blend_t": 5.31,
+     "flip_vs_v2": 0.2027,
+     "rms_gap_vs_v2": 0.0675,
+     "mc_noise_expected": 0.062
+    },
+    "sam50_shown": {
+     "logloss": 0.5557,
+     "brier": 0.1814,
+     "dll_vs_v2": 0.0263,
+     "dll_se": 0.0061,
+     "blend_t": 4.81,
+     "flip_vs_v2": 0.3399,
+     "rms_gap_vs_v2": 0.0897,
+     "mc_noise_expected": 0.062
+    }
+   }
+  }
+ },
+ "verdict": {
+  "sim10k": {
+   "better": 0,
+   "same": 8,
+   "worse": 0,
+   "cells": [
+    [
+     "espn_close",
+     "pts",
+     "SAME",
+     0.7
+    ],
+    [
+     "espn_close",
+     "reb",
+     "SAME",
+     0.0
+    ],
+    [
+     "espn_close",
+     "ast",
+     "SAME",
+     0.3
+    ],
+    [
+     "espn_close",
+     "3pm",
+     "SAME",
+     0.6
+    ],
+    [
+     "kalshi",
+     "pts",
+     "SAME",
+     -0.0
+    ],
+    [
+     "kalshi",
+     "reb",
+     "SAME",
+     0.0
+    ],
+    [
+     "kalshi",
+     "ast",
+     "SAME",
+     -0.0
+    ],
+    [
+     "kalshi",
+     "3pm",
+     "SAME",
+     1.0
+    ]
+   ]
+  },
+  "sim50": {
+   "better": 0,
+   "same": 4,
+   "worse": 4,
+   "cells": [
+    [
+     "espn_close",
+     "pts",
+     "SAME",
+     0.8
+    ],
+    [
+     "espn_close",
+     "reb",
+     "SAME",
+     1.3
+    ],
+    [
+     "espn_close",
+     "ast",
+     "SAME",
+     1.6
+    ],
+    [
+     "espn_close",
+     "3pm",
+     "SAME",
+     0.5
+    ],
+    [
+     "kalshi",
+     "pts",
+     "WORSE",
+     6.1
+    ],
+    [
+     "kalshi",
+     "reb",
+     "WORSE",
+     4.2
+    ],
+    [
+     "kalshi",
+     "ast",
+     "WORSE",
+     4.6
+    ],
+    [
+     "kalshi",
+     "3pm",
+     "WORSE",
+     5.6
+    ]
+   ]
+  },
+  "sam50": {
+   "better": 0,
+   "same": 4,
+   "worse": 4,
+   "cells": [
+    [
+     "espn_close",
+     "pts",
+     "SAME",
+     1.2
+    ],
+    [
+     "espn_close",
+     "reb",
+     "SAME",
+     0.9
+    ],
+    [
+     "espn_close",
+     "ast",
+     "SAME",
+     0.9
+    ],
+    [
+     "espn_close",
+     "3pm",
+     "SAME",
+     1.0
+    ],
+    [
+     "kalshi",
+     "pts",
+     "WORSE",
+     7.6
+    ],
+    [
+     "kalshi",
+     "reb",
+     "WORSE",
+     6.4
+    ],
+    [
+     "kalshi",
+     "ast",
+     "WORSE",
+     5.7
+    ],
+    [
+     "kalshi",
+     "3pm",
+     "WORSE",
+     6.5
+    ]
+   ]
+  },
+  "sam50_shown": {
+   "better": 0,
+   "same": 1,
+   "worse": 7,
+   "cells": [
+    [
+     "espn_close",
+     "pts",
+     "WORSE",
+     3.1
+    ],
+    [
+     "espn_close",
+     "reb",
+     "WORSE",
+     2.6
+    ],
+    [
+     "espn_close",
+     "ast",
+     "WORSE",
+     3.1
+    ],
+    [
+     "espn_close",
+     "3pm",
+     "SAME",
+     1.4
+    ],
+    [
+     "kalshi",
+     "pts",
+     "WORSE",
+     4.0
+    ],
+    [
+     "kalshi",
+     "reb",
+     "WORSE",
+     4.3
+    ],
+    [
+     "kalshi",
+     "ast",
+     "WORSE",
+     5.0
+    ],
+    [
+     "kalshi",
+     "3pm",
+     "WORSE",
+     4.3
+    ]
+   ]
+  }
+ }
+}

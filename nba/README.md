@@ -35,6 +35,7 @@ python3 nba/scripts/build_pbp_stints.py CSV... --out raw/stints_X.csv   # lineup
 python3 nba/scripts/build_rapm.py --fit 2023 2024 --test 2025    # ridge RAPM from stints (no gain over box scores)
 python3 nba/scripts/build_garbage_time.py                        # play-by-play garbage time vs the pregame gap (no gain)
 python3 nba/scripts/build_pbp_minutes_test.py                    # garbage time stripped from recent minutes (no gain)
+python3 nba/scripts/build_sim_challenger.py                 # 10,000- and 50-draw sims vs the exact prop probability (needs nba/.venv: numpy); feeds the Props Simulation page
 python3 nba/scripts/build_kalman_rates.py                        # Kalman vs plain EWMA rates
 python3 nba/scripts/build_kalman_rates_v4.py                     # Kalman volume rates vs rates v3 (tiny gain)
 python3 nba/scripts/build_kalman_pct_v4.py                       # Kalman percentages + paired significance (percentages fail)
