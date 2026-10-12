@@ -3998,7 +3998,10 @@ function renderTonight(){
       rows.push({pid: p.id, name: p.name, min: m.min, st: status[p.id], mu, src: 'lab'});
     }
     rows.sort((a, b) => (a.off ? 1 : 0) - (b.off ? 1 : 0) || b.min - a.min);
-    return {team, rows, total: rows.filter(r => !r.off).reduce((x, r) => x + r.min, 0), v3s: v3m.starters};
+    const known = rows.filter(r => !r.off && r.src !== 'lab'), lab = rows.filter(r => !r.off && r.src === 'lab');
+    return {team, rows, total: rows.filter(r => !r.off).reduce((x, r) => x + r.min, 0), v3s: v3m.starters,
+            known: known.reduce((x, r) => x + r.min, 0), nKnown: known.length, nLab: lab.length, labMin: lab.reduce((x, r) => x + r.min, 0),
+            stretch: cache[`stretch|gm|${team}|${g.id}|${cache.__noEdits ? 0 : 1}`] || 1, hold: rosterHold(team, g, cache, null)};
   });
 
   // KPIs
@@ -4018,7 +4021,7 @@ function renderTonight(){
   const chip = (v, lab) => Math.abs(v) >= .3 ? `<span class="nt-p ${v > 0 ? 'up' : 'dn'}">${v > 0 ? '+' : ''}${fmt(v)} ${lab}</span>` : '';
   const stTxt = r => [LINEUP[r.lu] || '', r.st ? `<span class="${/out|inactive/i.test(r.st) ? 'neg' : 'warnt'}">${esc(r.st)}${r.stT ? ' ' + clock(r.stT) : ''}</span>` : '', r.src === 'lab' ? '<span class="muted" title="No games yet for this team: the Minutes Lab estimate">Lab estimate</span>' : ''].filter(Boolean).join(' · ');
   $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
-      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.total, 0)} minutes projected across ${T.rows.filter(r => !r.off).length} players · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div></div>
+      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game` : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
       <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Shadow: gradient-boosted minutes model. Logged next to v2 and v3, never priced. Uses the same injury statuses; the market spread stands in for the game model's margin.">GBM</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
       ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
         : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
