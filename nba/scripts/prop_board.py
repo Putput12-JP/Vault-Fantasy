@@ -91,6 +91,13 @@ def nick(name):
     return name.split()[-1].lower() if name else None
 
 
+def squash(name):
+    """A team's full name with spaces dropped, lower-cased: 'Boston Celtics' and the injury report's 'BostonCeltics' agree.
+    The injury and lineup joins scope a player to tonight's teams with this; nick() (last word) never equalled the report's
+    squashed form, so that scoping never matched. nick() stays as it was: the market-name joins depend on it."""
+    return ''.join(name.split()).lower() if name else None
+
+
 class Roster:
     """Our player ids by name, scoped to a team when we know it (two players can share a name key)."""
 
@@ -100,6 +107,15 @@ class Roster:
             for p in t['players']:
                 self.by_key[name_key(p['name'])].append((p['id'], team))
                 self.info[p['id']] = (p['name'], team)
+        # Sources disagree on order for some names (the injury report has "Yang,Hansen" where ESPN lists "Yang Hansen"
+        # and the reverse): index the reversed order too, only where no real name already owns that key.
+        for team, t in proj['teams'].items():
+            for p in t['players']:
+                w = p['name'].split()
+                if len(w) == 2:
+                    k = name_key(' '.join(reversed(w)))
+                    if k not in self.by_key:
+                        self.by_key[k].append((p['id'], team))
 
     def find(self, name, teams=()):
         c = self.by_key.get(name_key(name), [])
@@ -304,7 +320,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     inj, news = {}, []
     for k, v in (last.get('injuries') or {}).items():
         _, team, player = k.split('|', 2)
-        pid = R.find(player, [g[s] for g in games for s in ('away', 'home') if nick(team) == nick(g.get(s + '_name'))])
+        pid = R.find(player, [g[s] for g in games for s in ('away', 'home') if squash(team) == squash(g.get(s + '_name'))])
         if pid:
             inj[pid] = (v[0], W('injuries', k))
             news.append([W('injuries', k), pid, R.info[pid][0], R.info[pid][1], 'inj', v[0]])
@@ -567,7 +583,7 @@ def injury_wire(wire, qk, R, games, nicks):
         if t <= t0.get('injuries', 0):
             continue                                       # the day's first report is the starting state
         _, team_name, player = k.split('|', 2)
-        pid = R.find(player, [g[s] for g in games for s in ('away', 'home') if nick(team_name) == nick(g.get(s + '_name'))])
+        pid = R.find(player, [g[s] for g in games for s in ('away', 'home') if squash(team_name) == squash(g.get(s + '_name'))])
         b, a = (before or [None])[0], (after or [None])[0]
         if not pid or b == a or R.info[pid][1] not in teams:
             continue
