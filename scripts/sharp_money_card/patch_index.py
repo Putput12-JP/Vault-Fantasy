@@ -79,5 +79,20 @@ s = _cut(s, 'x.v2?(0,a.jsx)("div",{style:{padding:"6px 12px",borderTop:`1px soli
 s = _cut(s, 'd.v2_summary?h("div",{style:{padding:14,borderBottom:`1px solid ${n.borderSubtle}`,display:"grid",gap:4}},h(T,{size:"xs",mono:!0,style:lab},"Model v2 (shadow)")', '")):null,')
 while 'd.v2_summary?(0,a.jsxs)(T,{size:"sm",children:[(0,a.jsx)("b",{children:"Model v2, tracked in the shadows: "})' in s:
     s = _cut(s, 'd.v2_summary?(0,a.jsxs)(T,{size:"sm",children:[(0,a.jsx)("b",{children:"Model v2, tracked in the shadows: "})', 'otherwise.`]}):null,')
+
+# 7. CFB Model "Is it working": one-line rows, and a clicked row also lists today's open games in that situation
+old_row = s[s.index('h("div",{key:i0,role:withFeed?"button":void 0'):s.index('}),\n rtab=rt==="record"')] if 'h("div",{key:i0,role:withFeed?"button":void 0' in s else None
+if old_row and 'minmax(0,1fr) auto auto' not in old_row:
+    new_row = ('h("div",{key:i0,role:withFeed?"button":void 0,tabIndex:withFeed?0:void 0,onClick:withFeed?()=>{setSelR(selR===i0?null:i0);NW&&setMv("list");setView("all")}:void 0,'
+      'style:{display:"grid",gridTemplateColumns:"minmax(0,1fr) auto auto",gap:"0 14px",alignItems:"center",padding:"11px 0",borderTop:`1px solid ${n.borderSubtle}`,cursor:withFeed?"pointer":void 0,background:withFeed&&selR===i0?n.bgSubtle:"transparent"}},'
+      'h("div",{style:{minWidth:0}},h(M,{size:"sm",weight:"semibold"},r.label),h("div",null,h(T,{size:"xs"},r.note)),op?h("div",null,h(T,{size:"xs",style:{color:n.accent}},op+" open now")):null),'
+      'h(M,{size:"sm",mono:!0,style:{whiteSpace:"nowrap",textAlign:"right"}},w0+"-"+l0+(nn?" \\u00B7 "+Math.round(w0/nn*100)+"%":"")),'
+      'h("div",{style:{minWidth:86,display:"flex",justifyContent:"flex-end"}},sk?h(oe,{variant:ST[sk].v,style:{whiteSpace:"nowrap"}},ST[sk].l):null))')
+    s = s.replace(old_row, new_row, 1)
+    s = s.replace('w0>=ex?"watch":"ignore";return h("div",{key:i0,role:withFeed', 'w0>=ex?"watch":"ignore",op=withFeed?B.filter(q=>VscCfOpen(r.label,q)).length:0;return h("div",{key:i0,role:withFeed', 1)
+s = s.replace('list=B.filter(x=>CfRow?CfRow.keys.includes(x.key):', 'list=B.filter(x=>CfRow?(CfRow.keys.includes(x.key)||VscCfOpen(CfRow.label,x)):', 1)
+s = s.replace('CfAll=CfB.filter(x=>CfRow?CfRow.keys.includes(x.key):', 'CfAll=CfB.filter(x=>CfRow?(CfRow.keys.includes(x.key)||VscCfOpen(CfRow.label,x)):', 1)
+s = s.replace('CfRow.label+" \u00b7 "+CfRow.keys.length+" game"+(CfRow.keys.length===1?"":"s")+" \u00d7"', 'CfRow.label+" \u00b7 "+B.filter(q=>CfRow.keys.includes(q.key)||VscCfOpen(CfRow.label,q)).length+" games \u00d7"')
+s = s.replace('CfRow.label+" · "+CfRow.keys.length+" game"+(CfRow.keys.length===1?"":"s")+" ×"', 'CfRow.label+" · "+B.filter(q=>CfRow.keys.includes(q.key)||VscCfOpen(CfRow.label,q)).length+" games ×"')
 open(IDX, 'w', encoding='utf-8').write(s)
 print('patched', os.path.getsize(IDX) // 1024, 'KB')

@@ -320,6 +320,27 @@ function VaultCfbPick(P) {
       h('button', { type: 'button', className: 'shr', 'data-html2canvas-ignore': 'true', onClick: function (e) { vscShareCard(e.currentTarget, id, 'vault-cfb-' + String(x.away).toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + String(x.home).toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.png', x.away + ' @ ' + x.home + ' CFB model'); } },
         h('svg', { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 002 2h10a2 2 0 002-2v-5' })), 'Share')));
 }
+// Which UNFINISHED CFB model games sit in a "Is it working" situation right now. The record counts finished games only (the data lists
+// their keys); this lets a clicked row also show today's open games in the same situation. Rules reproduce the data's own keys for finished games.
+function VscCfOpen(label, x) {
+  if (x.result) return false;
+  var c = x.cards, opp = x.side === 'home' ? 'away' : 'home', S = c ? c[x.side] : [], O = c ? c[opp] : [], mv = ((x.mkt_check || {}).move || {}).v || 0, pick = x.is_pick !== false;
+  switch (label) {
+    case 'Every game the model projected': return true;
+    case 'Sharp Money is on the same side as the model': return !!c && S.length > 0 && O.length === 0;
+    case 'Sharp Money is on the other side': return !!c && O.length > 0 && S.length === 0;
+    case 'Sharp Money is on both sides': return !!c && S.length > 0 && O.length > 0;
+    case "The line moved toward the model's team": return mv > 0;
+    case "The line moved away from the model's team": return mv < 0;
+    case "Sharp accounts bet the model's team": return !!c && S.indexOf('sharp') >= 0;
+    case 'Sharp accounts bet the other team': return !!c && O.indexOf('sharp') >= 0;
+    case "Bigger money than bets on the model's team": return !!c && S.indexOf('money') >= 0;
+    case 'Two or more signals back the model': return !!c && S.length >= 2;
+    case 'Model picks (5+ points) that Sharp Money backs': return pick && !!c && S.length > 0;
+    case 'Model picks (5+ points) with no Sharp Money behind them': return pick && !!c && S.length === 0;
+  }
+  return false;
+}
 var vscAm = function (n) { return n == null ? '' : (n > 0 ? '+' : '') + n; };
 var vscL = function (n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); };
 var vscUsd = function (n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? '$' + (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : '$' + Math.round(n); };
