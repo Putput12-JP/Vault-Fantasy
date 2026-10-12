@@ -3124,7 +3124,8 @@ function gameMinutes(team, g, cache){
     parts[a] = {base: m, vac: t[0] + t[1] + t[2] + t[3], blow: t[4] + t[5], b2b: t[6] + t[7], other: t[8], pre: pm[a]};
   }
   const tot = Object.values(pm).reduce((a, b) => a + b, 0);
-  if (tot > 0 && Object.keys(pm).length >= 7){ const f = M.team_min / tot; for (const a in pm) pm[a] = Math.min(48, pm[a] * f); }
+  cache[`stretch|${key}`] = 1;
+  if (tot > 0 && Object.keys(pm).length >= 7){ const f = M.team_min / tot; cache[`stretch|${key}`] = f; for (const a in pm) pm[a] = Math.min(48, pm[a] * f); }
   for (const a of cand) parts[a].rescale = pm[a] - parts[a].pre;
   // what-if: your minutes for tonight, the change moved to teammates by the Lab's rule (in proportion to minutes,
   // same position NB x more). Only this page and your browser see it; the shadow ledger never does.
@@ -3267,7 +3268,7 @@ const LINEUP = {
 // with no minutes history on his current team (moved in, or a rookie) is priced from the Lab's estimate, which the
 // backtest never scored. Those props stay priced and shown, but are never a Bet / Lean, an edge, a pick'em leg or a
 // shadow bet. A team you edited in the Minutes Lab uses your minutes, so it is never held.
-const HOLD_MIN_PLAYERS = 8, HOLD_MAX_MIN = 44;
+const HOLD_MIN_PLAYERS = 8, HOLD_MAX_MIN = 44, HOLD_MAX_STRETCH = 1.15;
 function rosterHold(team, g, cache, src){
   if (PS.mode === 'example' || !team || !g || !(MS && MS.minutes)) return null;
   if (edits[team] && Object.keys(edits[team]).length) return null;
@@ -3275,7 +3276,8 @@ function rosterHold(team, g, cache, src){
   const key = `hold|${team}|${g.id}|${cache.__noEdits ? 0 : 1}`;
   if (!(key in cache)){
     const gm = Object.values(gameMinutes(team, g, cache)), top = Math.max(0, ...gm.map(v => v.min));
-    cache[key] = gm.length < HOLD_MIN_PLAYERS || top >= HOLD_MAX_MIN ? {why: 'team', n: gm.length, top} : null;
+    const stretch = cache[`stretch|gm|${team}|${g.id}|${cache.__noEdits ? 0 : 1}`] || 1;
+    cache[key] = gm.length < HOLD_MIN_PLAYERS || top >= HOLD_MAX_MIN || stretch >= HOLD_MAX_STRETCH ? {why: 'team', n: gm.length, top, stretch} : null;
   }
   return cache[key] || (src === 'lab' ? {why: 'player'} : null);
 }
@@ -3285,7 +3287,7 @@ const holdTxt = (h, r) => h.why === 'source'
   : h.why === 'preseason'
   ? `This is a preseason game. Starters rest and rotations are a guess, and the model was never tested on preseason games: on the first preseason night it had a starter at 42 minutes who played 17.`
   : h.why === 'team'
-  ? `The minutes model can't see ${esc(r.tm || r.team)}'s rotation yet (${h.n < HOLD_MIN_PLAYERS ? `only ${h.n} players it can project` : `it has someone at ${fmt(h.top, 0)} minutes`}), usually because of new arrivals. Teams like that ran 2 to 4 minutes too high per player in the backtest.`
+  ? `The minutes model can't see ${esc(r.tm || r.team)}'s rotation yet (${h.n < HOLD_MIN_PLAYERS ? `only ${h.n} players it can project` : h.top >= HOLD_MAX_MIN ? `it has someone at ${fmt(h.top, 0)} minutes` : `it had to stretch the players it knows by ${Math.round((h.stretch - 1) * 100)}% to fill the game`}), usually because of new arrivals. Teams like that ran 2 to 4 minutes too high per player in the backtest.`
   : `${esc(r.name)} hasn't played for ${esc(r.tm || r.team)} yet, so his minutes are the Minutes Lab's estimate, which the backtest never scored.`;
 // Source guard (pricing.source_hold, same rule). A quote's own time says when its price last CHANGED; the recorder writes nothing for an
 // unchanged price, so an old quote is either current or from a source that stopped answering. board.src_ok has each source's last answered poll.
@@ -3510,7 +3512,7 @@ function renderProps(){
   const gos = Object.entries(PR.verdict).filter(([, v]) => /^GO/.test(v)).map(([k, v]) => `Kalshi ${SLABEL[k]} ${v.replace(/^GO \(|\)$/g, '')}`);
   const watch = Object.entries(PR.verdict).filter(([, v]) => /^WATCH/.test(v)).map(([k, v]) => `${SLABEL[k]} ${v.replace(/^WATCH \(|\)$/g, '')}`);
   $('pfoot').innerHTML = `
-    <div><b>Projection</b> is prop model ${PR.model}: tonight's minutes from the minutes model (recent minutes, teammates out, blowout risk from the spread, back-to-backs, the team total), exactly as the backtest ran it, × the model's per-minute rates, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread. A team you edit in the Minutes Lab uses your minutes instead, and a player with no games yet for his current team (a trade, a rookie) uses the Lab's estimate. <b>On hold</b>: that player, and every player on a team the minutes model projects with fewer than ${HOLD_MIN_PLAYERS} players or with anyone at ${HOLD_MAX_MIN}+ minutes (in the backtest those teams ran 2 to 4 minutes too high), is priced and shown but never a Bet or Lean, an edge, a pick'em leg or a Track Record bet, until the new players have a game with the team.</div>
+    <div><b>Projection</b> is prop model ${PR.model}: tonight's minutes from the minutes model (recent minutes, teammates out, blowout risk from the spread, back-to-backs, the team total), exactly as the backtest ran it, × the model's per-minute rates, then adjusted for the opponent's defense against his position, the market's game total, his shooting volume, season-to-date form, home and road, and back-to-backs. Each adjustment's weight was fit on 2024-25 and tested on 2025-26 against the minutes-only model; open a row to see every term. His own minutes swing widens or narrows the spread. A team you edit in the Minutes Lab uses your minutes instead, and a player with no games yet for his current team (a trade, a rookie) uses the Lab's estimate. <b>On hold</b>: that player, and every player on a team the minutes model projects with fewer than ${HOLD_MIN_PLAYERS} players or with anyone at ${HOLD_MAX_MIN}+ minutes or a rescale of ${Math.round((HOLD_MAX_STRETCH - 1) * 100)}%+ (in the backtest those teams ran 2 to 4 minutes too high), is priced and shown but never a Bet or Lean, an edge, a pick'em leg or a Track Record bet, until the new players have a game with the team.</div>
     <div><b>Model</b> is the chance of going over, calibrated on 2024-25 lines. <b>Fair</b> blends the market price with the model; the market carries most of the weight. <b>Edge</b> is the fair chance minus the break-even chance of the price you would pay: the Kalshi ask plus the taker fee, or the book's price with its vig.</div>
     <div><b>The extra markets</b> (steals, blocks, turnovers, steals + blocks, field goals and free throws made and attempted, 3-pointers attempted, offensive and defensive rebounds, personal fouls) are priced by the same projection (minutes × per-minute rate, no usage cascade) with a count distribution fit on 2023-25. They are <b>not backtested like the rest</b>: ESPN's steals and blocks main lines only start in 2025-26, nothing else has book history, and Kalshi lists none. On 2025-26 closing lines the model matched the book on steals (Brier ${PR.extra ? PR.extra.espn_2026.stl.brier_model : ''} vs ${PR.extra ? PR.extra.espn_2026.stl.brier_market : ''}) and trailed it on blocks (${PR.extra ? PR.extra.espn_2026.blk.brier_model : ''} vs ${PR.extra ? PR.extra.espn_2026.blk.brier_market : ''}). So Fair leans on the book's price (70%) and these are always NO-GO: shown for the lines and the lean, never a gated bet.</div>
     <div><b>Gates</b> (2025-26 backtest, blend vs the price-only baseline): GO ${gos.join(', ') || 'none'}; WATCH ${watch.join(', ') || 'none'}; sportsbook props NO-GO. Nothing is bet for real until a signal passes on this season's games. Players listed Out on the injury report or Inactive on NBA.com get 0 minutes and their teammates are repriced automatically, unless you have edited that team in the Minutes Lab. Questionable and Doubtful players keep their minutes.</div>`;

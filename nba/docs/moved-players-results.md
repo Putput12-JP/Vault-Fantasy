@@ -40,3 +40,12 @@ and 2025-26), and any player with no minutes history on his current team (priced
 never scored by the backtest). Held props are priced and shown, but never a Bet / Lean, an Edges play, a pick'em leg
 or a shadow bet. This changes no projection. On the 2026-27 opener it holds PHI, LAL, MIA, DET, BOS and POR, plus each
 moved player and rookie, until they play a game for their team.
+
+## Addendum 2026-10-12: stretch rule
+
+The 44-minute test missed teams like MIN (Edwards at 42.8, base average 34.6) because the rescale to the team total
+stretched the 12 players the model knows by 1.18x to cover nine arrivals it cannot see. Backtest 2025-26, by the stretch
+factor `team_min / sum of projected minutes`: starters (36+ projected) run 1.4 high at 0.95-1.05, 3.1 at 1.05-1.15,
+5.3 at 1.15-1.25, 9.1 at 1.25-1.4 and 13.1 at 1.4+; a stretch of 1.15 or more is 7% of team-games. The guard now also
+holds a team at `HOLD_MAX_STRETCH = 1.15` (`pricing.roster_hold`, the page's `rosterHold`). No projection changes
+(`check_minutes_parity.py`: minutes difference 0). On a regular-season opener it holds 14 teams until their new players play.

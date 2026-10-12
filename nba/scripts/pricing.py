@@ -142,8 +142,10 @@ class Pricer:
             x = [vs, vo, vs * share, vo * share, blow if starter else 0.0, 0.0 if starter else blow, b2b, b2b * share, 1.0]
             pm[a] = max(0.0, min(48.0, m + sum(b * v for b, v in zip(M['beta'], x))))
         tot = sum(pm.values())
+        cache[('stretch', team, str(g['id']))] = 1.0
         if tot > 0 and len(pm) >= 7:
             f = M['team_min'] / tot
+            cache[('stretch', team, str(g['id']))] = f
             pm = {a: min(48.0, v * f) for a, v in pm.items()}
         present = [S(a)['r'] for a in cand]
         res = {}
@@ -165,14 +167,17 @@ class Pricer:
         return res
 
     # ── roster guard (docs/moved-players-results.md) ───────────────────────────────────────────────────────
-    HOLD_MIN_PLAYERS, HOLD_MAX_MIN = 8, 44.0
+    HOLD_MIN_PLAYERS, HOLD_MAX_MIN, HOLD_MAX_STRETCH = 8, 44.0, 1.15
 
     def roster_hold(self, team, g, status, cache, src=None):
         """None, or why a prop is held: priced and shown, but never a Bet / Lean, an edge, a pick'em leg or a shadow bet.
         The page's rosterHold is the same rule. Measured in the backtest (2022-24 and 2025-26, see
         docs/moved-players-results.md): with 7 or fewer players projected, or anyone projected at 44+ minutes, the
         team's minutes run 2 to 4 too high.
-          team    the minutes model projects fewer than HOLD_MIN_PLAYERS of the team's players, or someone at HOLD_MAX_MIN+
+          team    the minutes model projects fewer than HOLD_MIN_PLAYERS of the team's players, or someone at HOLD_MAX_MIN+, or the
+                    rescale to team_min stretched everyone by HOLD_MAX_STRETCH or more (the model is missing a big share of the
+                    rotation: new arrivals with no history here). Backtest 2025-26: stretch 1.15+ puts starters 5.3 minutes
+                    high (9.1 at 1.25+, 13.1 at 1.4+); it hits 7% of team-games.
           player  src 'lab': no minutes history with his current team (moved in, or a rookie), so his minutes come from
                   the Minutes Lab's estimate, which the backtest never scored. Clears after his first game for the team.
           preseason  every preseason game: the model was never tested there (starters rest, rotations are random).
@@ -185,7 +190,9 @@ class Pricer:
         if key not in cache:
             gm = self.game_minutes(team, g, status, cache)
             top = max((v['min'] for v in gm.values()), default=0.0)
-            cache[key] = {'why': 'team', 'n': len(gm), 'top': round(top, 1)} if len(gm) < self.HOLD_MIN_PLAYERS or top >= self.HOLD_MAX_MIN else None
+            st = cache.get(('stretch', team, str(g['id'])), 1.0)
+            cache[key] = {'why': 'team', 'n': len(gm), 'top': round(top, 1), 'stretch': round(st, 2)} \
+                if len(gm) < self.HOLD_MIN_PLAYERS or top >= self.HOLD_MAX_MIN or st >= self.HOLD_MAX_STRETCH else None
         if cache[key]:
             return cache[key]
         return {'why': 'player'} if src == 'lab' else None
