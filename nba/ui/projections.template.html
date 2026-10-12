@@ -784,6 +784,8 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .ps-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
 .ps-pc{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:10px;padding:14px 16px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface)}
 .ps-pc:hover{border-color:var(--fg3)}.ps-pc[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}.ps-pc:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.ps-who{display:flex;align-items:flex-end;gap:12px;min-height:56px}.ps-who>div{padding-bottom:6px;min-width:0}.ps-who b,.ps-who h2{display:block;font-size:15px;font-weight:600;margin:0}.ps-who small{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--fg3)}.ps-who small i{width:8px;height:8px;border-radius:50%}
+.ps-who.big h2{font-size:20px}.ps-who.big{min-height:76px}
 .ps-pn{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600}.ps-pn i{width:9px;height:9px;border-radius:50%;flex:none}.ps-pn small{font-family:var(--font-mono);font-size:11px;color:var(--fg3);font-weight:400}
 .ps-ps{display:flex;gap:14px;font-family:var(--font-mono);font-size:12.5px;color:var(--fg3)}.ps-ps b{color:var(--fg);font-weight:600}
 .ps-pf{display:flex;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid var(--border);font-family:var(--font-mono);font-size:12.5px;color:var(--fg3)}
@@ -2358,7 +2360,7 @@ function show(v){
   }
   if (v === 'propsim'){
     $('tname').textContent = 'Props Simulation';
-    $('tsub').textContent = 'PICK A PLAYER · SEE THE PROP · 50 SIMULATED GAMES · TRACK RECORD';
+    $('tsub').textContent = 'PICK A PLAYER · SEE THE PROP · TRACK RECORD';
     renderPropSim();
     if (!boardTried) loadBoard();
     return;
@@ -4338,11 +4340,9 @@ $('gsjoint').addEventListener('change', e => { const f = e.target.dataset.f, L =
 // ── Props Simulation (docs/sim-challenger.md) ───────────────────────────────────────────────────────
 // Pick a player, see the line, the model's number and the probability, then 50 simulated games drawn from the same model next to the
 // exact answer, the player's last 5 games, and how the simulation scored on last season's prices. A view, not a bet source.
-const ps2 = {game: null, pid: null, stat: 'pts', side: null, line: null, seed: 1, ln: ''};
+const ps2 = {game: null, pid: null, stat: 'pts', side: null, line: null};
 const PS_LBL = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers'}, PS_ABB = {pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM'};
 const PS_PER_TEAM = 4;
-function psDraw(R, stat, mu, sd, v){ return stat === 'pts' ? Math.round(mu + sd * simNorm(R)) : simCount(R, mu, v); }
-function psShare(R, stat, mu, sd, v, line, N){ let k = 0; for (let i = 0; i < N; i++) if (psDraw(R, stat, mu, sd, v) > line) k++; return k / N; }
 // the main line for one prop: sportsbooks first (the line most books agree on, with the over chance in the price, vig removed), else the
 // pick'em apps (Underdog prices both sides; PrizePicks is a flat line with no price to read a chance from)
 function psMarket(B, pid, s, gid){
@@ -4386,7 +4386,7 @@ function renderPropSim(){
       const priced = i.mktLean != null, gap = priced ? i.pLean - i.mktLean : i.pLean - .5;
       if (!top || (priced && !top.priced) || (priced === top.priced && gap > top.gap)) top = {r, s, i, gap, priced}; }
     const cardHtml = ({r, i}) => { const col = teamWash(r.team) || 'var(--fg3)';
-      return `<button type="button" class="ps-pc" data-pl="${r.pid}" aria-pressed="${r.pid === ps2.pid}"><div class="ps-pn"><i style="background:${col}"></i>${esc(r.name)}<small>${r.team}</small></div>
+      return `<button type="button" class="ps-pc" data-pl="${r.pid}" aria-pressed="${r.pid === ps2.pid}"><div class="ps-who">${cutImg(r.pid, r.name, 56)}<div><b>${esc(r.name)}</b><small><i style="background:${col}"></i>${r.team}</small></div></div>
         <div class="ps-ps">${['pts', 'reb', 'ast'].map(s => `<span>${PS_ABB[s]} <b>${fmt(r.mu[s], 1)}</b></span>`).join('')}</div>
         <div class="ps-pf"><span>${i.line != null ? 'o/u ' + i.line : 'no line yet'}</span>${i.line != null ? `<span class="${i.lean === 'over' ? 'pos' : 'neg'}">${psSg(i.edge)} · ${Math.round(i.pLean * 100)}% ${i.lean === 'over' ? 'o' : 'u'}</span>` : '<span>model only</span>'}</div></button>`; };
     $('pscards').innerHTML = `<div class="card-h"><div><h2>${g.away} at ${g.home}</h2><p>${etFmt(g.tip, {weekday: 'long', month: 'short', day: 'numeric'})}, ${clock(g.tip)} ET</p></div></div>
@@ -4397,27 +4397,15 @@ function renderPropSim(){
     if (sel){
       const mkLine = psMarket(B, sel.pid, stat, gid), L = ps2.line != null ? ps2.line : mkLine ? mkLine.line : Math.floor(sel.mu[stat]) + .5, i = psInfo(sel, stat, L, gid, B);
       const side = ps2.side || i.lean, pSide = side === 'over' ? i.pOver : 1 - i.pOver, edge = side === 'over' ? i.edge : -i.edge;
-      // the games are drawn from the model's own distribution, centre nudged so its chance of the over equals the calibrated number shown above
-      let a0 = i.mu - 4 * i.sd, b0 = i.mu + 4 * i.sd;
-      for (let n = 0; n < 40; n++){ const m = (a0 + b0) / 2; if (pOverRaw(stat, Math.max(.01, m), L, i.ex) < i.pOver) a0 = m; else b0 = m; }
-      const dm = Math.max(.01, (a0 + b0) / 2), dv = simVar(stat, dm, i.ex), dsd = Math.sqrt(dv);
-      const R = simRng(ps2.seed * 104729 + sel.pid % 9973 + stat.length * 31), dots = Array.from({length: 50}, () => psDraw(R, stat, dm, dsd, dv)), k50 = dots.filter(x => x > L).length;
-      const rolls = Array.from({length: 300}, (_, n) => psShare(simRng(1000 + n + ps2.seed * 977), stat, dm, dsd, dv, L, 50)).sort((a, b) => a - b), q = p => rolls[Math.min(rolls.length - 1, Math.floor(p * rolls.length))];
-      const lo = Math.max(0, Math.floor(dm - 3 * dsd)), hi = Math.ceil(dm + 3 * dsd), W = 520, X0 = 10, X1 = W - 10, X = x => X0 + (Math.max(lo, Math.min(hi, x)) - lo) / Math.max(1, hi - lo) * (X1 - X0);
-      const jr = simRng(ps2.seed + 31), strip = dots.map(x => `<circle cx="${X(x).toFixed(1)}" cy="${(14 + jr() * 44).toFixed(1)}" r="4.5" fill="${x > L ? 'var(--up)' : 'var(--down)'}" opacity=".9"/>`).join('');
-      const svg = `<svg class="ps-svg" viewBox="0 0 ${W} 92" role="img" aria-label="50 simulated games: ${k50} over ${L}, ${50 - k50} under"><rect x="0" y="4" width="${W}" height="64" rx="8" fill="var(--border)" opacity=".35"/><line x1="${X(L).toFixed(1)}" x2="${X(L).toFixed(1)}" y1="4" y2="68" stroke="var(--fg2)" stroke-width="1.5"/>${strip}<text x="${X0}" y="86">${lo}</text><text x="${X(L).toFixed(1)}" y="86" text-anchor="middle" style="fill:var(--fg)">line ${L}</text><text x="${X1}" y="86" text-anchor="end">${hi}</text></svg>`;
       const cutoff = Math.floor(Date.parse(g.day + 'T00:00Z') / 864e5), last = ((GL && GL.players[sel.pid]) || []).filter(x => x[0] < cutoff).slice(0, 5);
       const chips = last.length ? `<div class="ps-lbl ps-sec">Last ${last.length} games · newest first</div><div class="ps-chips">${last.map(x => { const v = gval(x, stat); return `<div class="${v > L ? 'o' : 'u'}"><b>${v}</b><small>${v > L ? 'OVER' : 'UNDER'}</small></div>`; }).join('')}</div>` : '';
       const mkTxt = mkLine && mkLine.line === L ? (mkLine.pOver != null ? `The price (${mkLine.src}) implies ${Math.round((side === 'over' ? mkLine.pOver : 1 - mkLine.pOver) * 100)}% ${side}.` : `Line from ${mkLine.src}, a flat line with no price to read.`) : mkLine ? `${mkLine.src} has ${mkLine.line}, not ${L}.` : 'No line on this prop yet.';
-      $('psprop').innerHTML = `<div class="card-h"><div><h2 class="ps-pn"><i style="background:${teamWash(sel.team) || 'var(--fg3)'}"></i>${esc(sel.name)}<small>${sel.team}</small></h2><p>The prop being simulated: <b>${PS_LBL[stat]}, ${side} ${L}</b>${mkLine && mkLine.line === L ? ` (${esc(mkLine.src)}'s line)` : ' (your line)'}.</p></div><span class="ps-lbl">Prop view</span></div>
+      $('psprop').innerHTML = `<div class="card-h"><div><div class="ps-who big">${cutImg(sel.pid, sel.name, 76)}<div><h2>${esc(sel.name)}</h2><small><i style="background:${teamWash(sel.team) || 'var(--fg3)'}"></i>${sel.team}</small></div></div><p style="margin-top:8px">The prop being simulated: <b>${PS_LBL[stat]}, ${side} ${L}</b>${mkLine && mkLine.line === L ? ` (${esc(mkLine.src)}'s line)` : ' (your line)'}.</p></div><span class="ps-lbl">Prop view</span></div>
         <div class="card-b"><div class="ps-tabs">${SIM_STATS.map(s => { const x = psInfo(sel, s, null, gid, B); return `<button type="button" data-st="${s}" aria-pressed="${s === stat}">${PS_ABB[s]}${x.line != null ? `<small>${psSg(x.edge)}</small>` : ''}</button>`; }).join('')}</div>
         <div class="ps-side"><button type="button" data-sd="over" aria-pressed="${side === 'over'}">OVER ${L}</button><button type="button" data-sd="under" aria-pressed="${side === 'under'}">UNDER ${L}</button></div>
         <div class="ps-mv"><div class="m">MODEL <b>${fmt(i.mu, 1)}</b> vs LINE <b>${L}</b></div><div class="e"><b class="${edge >= 0 ? 'pos' : 'neg'}">${psSg(edge)}</b><small>EDGE</small></div></div>
         <div class="ps-bar"><i><s style="width:${(pSide * 100).toFixed(0)}%;background:${side === 'over' ? 'var(--up)' : 'var(--down)'}"></s></i><b>${Math.round(pSide * 100)}% ${side}</b></div>
-        <p class="ps-note">That ${Math.round(pSide * 100)}% is the exact model. ${mkTxt} <label>Different line? <input class="ps-ln" data-f="line" type="number" step="0.5" min="0" value="${ps2.line != null ? ps2.line : ''}" placeholder="${L}" aria-label="Your line"></label></p>
-        <div class="ps-sec" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="ps-lbl">50 simulated games · <span style="color:var(--up)">● over</span> · <span style="color:var(--down)">● under</span></span><button class="btn" id="psroll" type="button">Draw 50 again</button></div>
-        ${svg}
-        <p class="ps-note"><b>${k50} of 50 games went over</b> (${Math.round(k50 / 50 * 100)}%). Draw again and it moves: across 300 draws of 50 games it landed anywhere from ${Math.round(q(0) * 100)}% to ${Math.round(q(1) * 100)}% for the same prop. The exact model has no such noise, which is why the percentage above comes from it and the dots are only the picture.</p>
+        <p class="ps-note">The ${Math.round(pSide * 100)}% is the model's chance this prop goes ${side}. ${mkTxt} <label>Different line? <input class="ps-ln" data-f="line" type="number" step="0.5" min="0" value="${ps2.line != null ? ps2.line : ''}" placeholder="${L}" aria-label="Your line"></label></p>
         ${chips}</div>`;
     } else $('psprop').innerHTML = '';
   } else { $('pscards').innerHTML = ''; $('psprop').innerHTML = ''; $('psgames').innerHTML = ''; }
@@ -4435,23 +4423,22 @@ function renderPropSim(){
       ${['sim10k', 'sim50'].map(k => { const y = row(src, k); const d = y.x.dll_vs_v2, z = y.x.dll_se ? d / y.x.dll_se : 0; return `<div><small>${NM[k]}</small><b>${y.x.logloss}</b><span class="${z >= 2 ? 'neg' : ''}">${psSg(d, 4)} vs exact${z >= 2 ? ', worse' : ''}</span></div>`; }).join('')}</div>
       <p class="ps-note">The price alone scored ${e.o.logloss_market}. The 50-game simulation was ${verdict(src)}; it called the wrong side of the price ${Math.round(row(src, 'sim50').x.flip_vs_v2 * 100)}% of the time compared with the exact model.</p></div>`; };
     let live = null; try { const a = wkLive(stat, 'YES'), b = wkLive(stat, 'NO'); if (a || b) live = {settled: (a ? a.settled : 0) + (b ? b.settled : 0), w: (a ? a.w : 0) + (b ? b.w : 0), l: (a ? a.l : 0) + (b ? b.l : 0)}; } catch (x) {}
-    $('pstrack').innerHTML = `<div class="card-h"><div><h2>Track record: ${PS_LBL[stat]} props</h2><p>How the simulation did against what really happened, last season. The 50 dots above are a picture of the exact model; this is how the picture scored.</p></div><button class="btn" id="psrec" type="button">Open Track Record</button></div>
+    $('pstrack').innerHTML = `<div class="card-h"><div><h2>Track record: ${PS_LBL[stat]} props</h2><p>How playing the model out, 10,000 or 50 games at a time, scored against what really happened last season.</p></div><button class="btn" id="psrec" type="button">Open Track Record</button></div>
       <div class="card-b">${block('kalshi')}${block('espn_close')}
       <div class="ps-sec"><div class="ps-lbl">This season, live</div><p class="ps-note">${live && live.settled ? `${live.w}-${live.l} on ${live.settled} settled shadow bets on ${PS_LBL[stat].toLowerCase()} props (Kalshi). Every 3%+ edge is logged and settled on the Track Record page.` : 'Starts on opening night, October 20. Every 3%+ edge is logged as a shadow bet and settled from the box score on the Track Record page.'}</p></div>
       <p class="ps-note">Bottom line: the 10,000-game simulation lands on the exact answer, and 50 games adds noise and nothing else. So the number you should read is the exact one. The rules were written before the run (nba/docs/sim-challenger.md).</p></div>`;
   }
-  $('psfoot').innerHTML = `<div><b>What this is.</b> The player cards show the prop model's projection for tonight's game and the books' line. The prop view plays one prop 50 times, the way a "50 simulated games" page does, so you can see why the exact probability is the better number: 50 games carries about 7 points of random error.</div>
+  $('psfoot').innerHTML = `<div><b>What this is.</b> The player cards show the prop model's projection for tonight's game and the line. The prop view gives the model's chance of the over or under, next to his last 5 games. The track record shows why that exact chance is the number to read: playing it out 50 games at a time adds about 7 points of random error.</div>
     <div><b>Biggest gap</b> is the prop where the model's chance differs most from the price (<b>Strongest lean</b> when only flat pick'em lines are up, which carry no price). It is where to look, not a bet: the model alone has not beaten the market prices. Bets are sized on the Player Props page and settled on Track Record.</div>
     <div><b>Where simulation does help.</b> Two legs that share minutes and game flow (the Game Simulation page and the frozen dependence model, tested from opening night). Nothing here makes a Bet, Lean or Edge.</div>`;
 }
 $('v-propsim').addEventListener('click', e => {
-  const t = e.target, b = t.closest('button[data-g], button[data-pl], button[data-st], button[data-sd], button[data-top], #psroll, #psrec'); if (!b) return;
+  const t = e.target, b = t.closest('button[data-g], button[data-pl], button[data-st], button[data-sd], button[data-top], #psrec'); if (!b) return;
   if (b.dataset.g){ ps2.game = b.dataset.g; ps2.pid = null; }
   else if (b.dataset.pl){ ps2.pid = +b.dataset.pl; ps2.side = null; ps2.line = null; }
   else if (b.dataset.st){ ps2.stat = b.dataset.st; ps2.side = null; ps2.line = null; }
   else if (b.dataset.sd) ps2.side = b.dataset.sd;
   else if (b.dataset.top){ const [pid, s] = b.dataset.top.split('|'); ps2.pid = +pid; ps2.stat = s; ps2.side = null; ps2.line = null; }
-  else if (b.id === 'psroll') ps2.seed++;
   else if (b.id === 'psrec'){ goView('track'); return; }
   renderPropSim();
   if (b.dataset.pl || b.dataset.top){ const el = $('psprop'); if (el && el.scrollIntoView) el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
