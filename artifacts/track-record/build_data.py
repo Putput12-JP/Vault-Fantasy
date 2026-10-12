@@ -29,7 +29,9 @@ props = [[p['week'], p['name'], p['team'], p['pos'], p['opp'], p['market'], p['s
           # Vault team-total lean (2026-09-26 fade-the-lean shadow)
           p.get('vault_team_lean'),
           # per-book prices (2026-09-26): +EV-by-book filter on the Track Record
-          p.get('books_open'), p.get('books_close'), p.get('books_open_src')] for p in d['props']]
+          p.get('books_open'), p.get('books_close'), p.get('books_open_src'),
+          # anchored grades (2026-10-12): the market-anchored side, its grade, result and win prob
+          p.get('grade_anchor'), p.get('anchor_side'), p.get('won_anchor'), r(p.get('p_anchor'))] for p in d['props']]
 # Best Bets rows (2026-09-27): every play that reached the live Best Bets top-N
 # plus every locked-card play, graded at the line + price it POSTED with
 # (settle_bets.py -> best_bets_record.json). Same column layout as props, plus
@@ -60,6 +62,7 @@ for k, c in plays.items():
                    L.get('close_over'), L.get('close_under'), L.get('open_over'), L.get('open_under'), c.get('grade'),
                    None, None, None, None, None, L.get('vault_team_lean'),
                    L.get('books_open'), L.get('books_close'), L.get('books_open_src'),
+                   None, None, None, None,
                    'card' if k in card_keys else 'bb', c.get('price'), c.get('book')])
 games = [{k: (r(v) if isinstance(v, float) else v) for k, v in g.items()
           if k not in ('kind', 'season', 'p_home', 'y_home', 'vault_winhome')}
@@ -68,7 +71,7 @@ mk = {k: {'bias': r(v.get('proj_bias'), 2), 'mae': r(v.get('proj_mae'), 2),
           'll_model': r(v.get('model_logloss')), 'll_mkt': r(v.get('market_logloss'))}
       for k, v in es['markets'].items()}
 json.dump({'generated': d['generated'], 'built': int(time.time()), 'meta': d['meta'],
-           'pcols': 'week,name,team,pos,opp,market,side,line,proj,actual,push,won,clv,beat,pm,pk,grade,hn,ph,sh,wh,co,cu,oo,ou,gpx,gb,gmk,ga,gma,wa,vtl,bo,bc,bs'.split(','),
+           'pcols': 'week,name,team,pos,opp,market,side,line,proj,actual,push,won,clv,beat,pm,pk,grade,hn,ph,sh,wh,co,cu,oo,ou,gpx,gb,gmk,ga,gma,wa,vtl,bo,bc,bs,gan,sn,wn,pn'.split(','),
            'props': props, 'games': games, 'mk': mk, 'bb': bbrows}, open(OUT, 'w'), separators=(',', ':'))
 wk = max((p[0] for p in props), default=None)
 print(f"data.json: {len(props)} props, {len(games)} games, through week {wk}, generated {d['generated']}")

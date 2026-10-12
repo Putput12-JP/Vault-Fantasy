@@ -28,10 +28,10 @@ const ACCENT = '#8fb4e0';
 const MK = { rec: 'Receptions', rec_yd: 'Rec Yds', rush_yd: 'Rush Yds', rush_att: 'Rush Att', rush_rec_yd: 'Rush+Rec Yds', pass_int: 'Pass INT', pass_td: 'Pass TD', pass_yd: 'Pass Yds', pass_cmp: 'Completions', pass_att: 'Pass Att', rush_td: 'Rush TD', pass_rush_yd: 'Pass+Rush Yds' };
 const BE = 110 / 210;
 let D, P = [], G = [], PA = [], PB = [];
-const DEFAULTS = { bb: 'all', week: 'all', grade: 'all', side: 'all', pos: 'all', mkt: 'all', res: 'all', px: 'flat', gm: 'px', ev: 'all', books: [], grp: 'none', q: '', sort: 'week', dir: -1, page: 0, drill: null };
+const DEFAULTS = { bb: 'all', week: 'all', grade: 'all', side: 'all', pos: 'all', mkt: 'all', res: 'all', px: 'flat', gm: 'anchor', ev: 'all', books: [], grp: 'none', q: '', sort: 'week', dir: -1, page: 0, drill: null };
 let st = DEFAULTS;
-const loadSaved = () => { try { const s = JSON.parse(localStorage.getItem('vtr-filters') || 'null'); const o = { ...DEFAULTS, ...(s || {}), page: 0, q: '' }; if (!Array.isArray(o.books)) o.books = []; return o; } catch (e) { return { ...DEFAULTS }; } };
-const save = s => { try { localStorage.setItem('vtr-filters', JSON.stringify({ bb: s.bb, week: s.week, grade: s.grade, side: s.side, pos: s.pos, mkt: s.mkt, px: s.px, gm: s.gm, ev: s.ev, books: s.books, grp: s.grp })); } catch (e) {} };
+const loadSaved = () => { try { const s = JSON.parse(localStorage.getItem('vtr-filters-v2') || 'null'); const o = { ...DEFAULTS, ...(s || {}), page: 0, q: '' }; if (!Array.isArray(o.books)) o.books = []; return o; } catch (e) { return { ...DEFAULTS }; } };
+const save = s => { try { localStorage.setItem('vtr-filters-v2', JSON.stringify({ bb: s.bb, week: s.week, grade: s.grade, side: s.side, pos: s.pos, mkt: s.mkt, px: s.px, gm: s.gm, ev: s.ev, books: s.books, grp: s.grp })); } catch (e) {} };
 
 const fmtU = u => (u >= 0 ? '+' : '−') + Math.abs(u).toFixed(1) + 'u';
 const fmtP = (x, d = 1) => x == null || isNaN(x) ? '—' : (x * 100).toFixed(d) + '%';
@@ -615,7 +615,7 @@ function FilterBar({ s, upd, weeks, mkts, BOOKS, resetAll, hasFilters }) {
   const weekOpts = ['All', ...weeks.map(x => 'Wk ' + x)];
   const bbMap = { all: 'All picks', bb: 'Best Bets', card: "Vault's Plays" };
   const setBB = v => { const bb = Object.keys(bbMap).find(k => bbMap[k] === v); const p = { bb, page: 0 }; if (bb !== 'all' && s.px === 'flat') p.px = 'posted'; else if (bb === 'all' && s.px === 'posted') p.px = 'flat'; upd(p); };
-  const pxName = { flat: '−110', close: 'Closing', bet: '+EV book', posted: 'Posted' }[s.px] + ' · ' + { px: 'Live grades', boost: 'Old 50% pull', mkt: 'Shadow grades', flat: 'Old 55%' }[s.gm];
+  const pxName = { flat: '−110', close: 'Closing', bet: '+EV book', posted: 'Posted' }[s.px] + ' · ' + { anchor: 'Anchored grades', px: 'Unanchored grades', boost: 'Old 50% pull', mkt: 'Shadow grades', flat: 'Old 55%' }[s.gm];
   const booksTxt = s.books.length ? s.books[0] + (s.books.length > 1 ? ' +' + (s.books.length - 1) : '') : '';
   return (
     <div style={{ position: 'sticky', top: 0, zIndex: 20, background: `linear-gradient(${pal.bg} 85%, transparent)`, padding: '8px 0 12px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
@@ -628,7 +628,7 @@ function FilterBar({ s, upd, weeks, mkts, BOOKS, resetAll, hasFilters }) {
               { id: 'bet', title: '+EV book price', description: 'Best opening price among the selected books' }, { id: 'posted', title: 'Posted price', description: 'The price shown when the pick was posted' }]} /></div>
             <Text size="xs" weight="semibold" color={pal.textSecondary} style={{ letterSpacing: '0.06em', textTransform: 'uppercase' }}>Grade model</Text>
             <div style={{ marginTop: 8 }}><Choicebox theme={THEME} value={s.gm} onChange={v => upd({ gm: v, page: 0 })} options={[
-              { id: 'px', title: 'Live', description: 'Grades as the board shows them today' }, { id: 'boost', title: 'Old: 50% pull', description: 'Previous rule, half-way toward the market' },
+              { id: 'anchor', title: 'Live: market-anchored', description: 'Grades as the board shows them since Oct 12 (Weeks 1-2 use the unanchored grade)' }, { id: 'px', title: 'Unanchored', description: 'The board before Oct 12' }, { id: 'boost', title: 'Old: 50% pull', description: 'Previous rule, half-way toward the market' },
               { id: 'mkt', title: 'Shadow: market', description: 'Market-anchored grade, tracked only' }, { id: 'flat', title: 'Old: fixed 55%', description: 'Original flat 55% bar' }]} /></div>
           </div>
         </Popover>
@@ -708,7 +708,7 @@ function App() {
   const prep = useMemo(() => {
     if (!data) return null;
     D = data; const c = data.pcols;
-    const mkRow = (a, cols) => { const o = {}; cols.forEach((k, i) => o[k] = a[i]); o.g55 = o.grade; o.res = o.push ? 'P' : o.won === 1 ? 'W' : o.won === 0 ? 'L' : null; o.edge = (o.pm != null && o.pk != null) ? o.pm - o.pk : null; return o; };
+    const mkRow = (a, cols) => { const o = {}; cols.forEach((k, i) => o[k] = a[i]); o.g55 = o.grade; o.side0 = o.side; o.pm0 = o.pm; o.res = o.push ? 'P' : o.won === 1 ? 'W' : o.won === 0 ? 'L' : null; o.res0 = o.res; o.edge = (o.pm != null && o.pk != null) ? o.pm - o.pk : null; return o; };
     PA = data.props.map(a => mkRow(a, c)).filter(r => r.res);
     PB = (data.bb || []).map(a => mkRow(a, c.concat(['bb', 'bpx', 'bbk']))).filter(r => r.res);
     G = data.games.map(g => Object.assign({}, g, { beat: g.beat_close, res: g.push ? 'P' : g.won_close === 1 ? 'W' : g.won_close === 0 ? 'L' : null })).filter(g => g.res);
@@ -740,8 +740,10 @@ function App() {
   // render() from the vanilla page: derive picks + grades from the current filters
   st = s;
   P = s.bb === 'card' ? PB.filter(r => r.bb === 'card') : s.bb === 'bb' ? PB : PA;
+  // Anchored grades: the pick is the market-anchored side (it can differ from the unanchored lean), scored on its own result. Weeks 1-2 predate the anchor weights and Best Bets plays keep the grade they posted with, so both fall back to the unanchored grade.
+  P.forEach(r => { const an = s.gm === 'anchor' && r.bb === undefined && r.gan != null && r.sn && r.wn != null; r.side = an ? r.sn : r.side0; r.res = an ? (r.wn === 1 ? 'W' : 'L') : r.res0; r.pm = an && r.pn != null ? r.pn : r.pm0; });
   P.forEach(r => { r._ev = evInfo(r); });
-  P.forEach(r => { r.grade = s.gm === 'px' ? (r.gpx || null) : s.gm === 'boost' ? (r.gb !== undefined && r.gb !== null ? r.gb : r.gpx || null) : s.gm === 'mkt' ? (r.gmk || null) : r.g55; });
+  P.forEach(r => { r.grade = s.gm === 'anchor' ? (r.bb === undefined && r.week >= 3 ? (r.side === r.sn && r.wn != null ? (r.gan || null) : null) : (r.gpx || null)) : s.gm === 'px' ? (r.gpx || null) : s.gm === 'boost' ? (r.gb !== undefined && r.gb !== null ? r.gb : r.gpx || null) : s.gm === 'mkt' ? (r.gmk || null) : r.g55; });
   const R = rows();
   const evCt = R.filter(r => r._ev && r._ev.ev > 0 && (r.res === 'W' || r.res === 'L')).length;
   const counts = { ev: evCt, mk: uniq(R.map(r => r.market)).length, gm: G.length, pk: R.length > 999 ? (R.length / 1000).toFixed(1) + 'k' : R.length };
@@ -775,7 +777,7 @@ function App() {
 
         <div id="s-grades" style={{ scrollMarginTop: 72 }}>
           <Two>
-            <Panel dark icon="cal" title="Grade ladder" sub={s.gm === 'px' ? 'Each pick judged against its own opening price, like the Betting tab' : 'Old grades: every pick judged against a flat 55%'}><Ladder R={rows('grade')} /></Panel>
+            <Panel dark icon="cal" title="Grade ladder" sub={s.gm === 'px' || s.gm === 'anchor' ? 'Each pick judged against its own opening price, like the Betting tab' : 'Old grades: every pick judged against a flat 55%'}><Ladder R={rows('grade')} /></Panel>
             <Panel icon="pie" title="Where the picks go" sub="Share of settled picks by market, with win rate"><Bubbles R={R} /></Panel>
           </Two>
         </div>

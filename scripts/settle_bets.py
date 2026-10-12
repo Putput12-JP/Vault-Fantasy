@@ -675,6 +675,7 @@ def settle_props(season_filter=None):
             "p_model": p_model_side, "p_market": p_mkt_side, "games": g_in,
             "grade_n": round(g_shrink, 2), "grade": grade, "grade_raw": grade_raw,
             "model_from": model_from,
+            "graded_at": opn.get("ts") or r.get("firstSeen"),   # first-seen time, so grade_anchor can honour WEAK_MK start dates
             "hist_n": hist_n, "p_hist": p_hist, "side_hist": side_h, "won_hist": won_hist,
             # Closing consensus PRICES at line_close (both sides), so units can be
             # scored at the real juice instead of a flat -110. None unless the
@@ -1650,7 +1651,7 @@ def anchor_shadow(prop_picks):
                     else (1.0 if (act > lc) == (sd == "over") else 0.0)
                 p.update({"w_anchor": round(w, 3), "p_anchor_over": round(po, 4), "anchor_side": sd,
                           "p_anchor": round(ps, 4), "ev_anchor": round(ev, 4),
-                          "grade_anchor": grade_letter(ps, be), "won_anchor": won})
+                          "grade_anchor": weak_cap(grade_letter(ps, be), p["market"], _parse_ts(p.get("graded_at"))), "won_anchor": won})
         full = [(p["market"], x[0], x[1], x[2]) for p in rows
                 for x in [inp[id(p)]] if x is not None and x[0] is not None]
         Wf = _anchor_weights(full)

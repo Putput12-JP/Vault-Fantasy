@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-12T14:00', tag:'Improved', title:'Track Record uses the new prop grades',
+    items:[
+      'The Track Record now scores props with the new sportsbook-weighted grades from Week 3 on. Weeks 1 and 2 keep their original grades.',
+      'You can still switch back to the old grades from the grade menu on the full Track Record page.'
+    ]
+  },
+  {
     ts:'2026-10-12T12:00', tag:'Improved', title:'Prop grades lean harder on the sportsbook line',
     items:[
       'Prop grades now weigh the sportsbooks\u2019 price more, using a weight we re-measure every week on settled results. Expect fewer sky-high A grades on thin edges.',
@@ -45622,14 +45629,22 @@ window.VaultMarketProj = (function () {
     return { kind: 'line', v: +((over ? x.line_close - p.line : p.line - x.line_close)).toFixed(1), close: x.line_close };
   }
   function _pkVault(ledger) {
-    return ((ledger && ledger.props) || []).map(p => ({
-      name: p.name, pos: p.pos, market: p.market, marketLabel: _mkLabel(p.market),
-      side: p.side, grade: p.grade, line: p.line_close != null ? p.line_close : p.line_open,
-      week: p.week, season: p.season, actual: p.actual, team: p.team, opp: p.opp,
-      res: p.push ? 'P' : (p.won_close === 1 ? 'W' : p.won_close === 0 ? 'L' : null),
-      pm: p.p_model, oo: p.open_over, ou: p.open_under, bo: p.books_open || null,
-      pc: p.side === 'under' ? p.close_under : p.side === 'over' ? p.close_over : null,   // closing price of the graded side
-    }));
+    // Anchored grades (default since Oct 12): from Week 3 the pick is the side the
+    // market-anchored grade picked, scored on its own result. Weeks 1-2 predate the
+    // anchor weights and keep the unanchored grade; a Week 3+ prop the anchor
+    // could not price is left ungraded rather than shown under the old rule.
+    return ((ledger && ledger.props) || []).map(p => {
+      const an = p.week >= 3 && p.grade_anchor != null && p.anchor_side && p.won_anchor != null && !p.push;
+      const side = an ? p.anchor_side : p.side;
+      return {
+        name: p.name, pos: p.pos, market: p.market, marketLabel: _mkLabel(p.market),
+        side, grade: p.week >= 3 ? (an ? p.grade_anchor : null) : p.grade, line: p.line_close != null ? p.line_close : p.line_open,
+        week: p.week, season: p.season, actual: p.actual, team: p.team, opp: p.opp,
+        res: p.push ? 'P' : an ? (p.won_anchor === 1 ? 'W' : 'L') : (p.won_close === 1 ? 'W' : p.won_close === 0 ? 'L' : null),
+        pm: an && p.p_anchor != null ? p.p_anchor : p.p_model, oo: p.open_over, ou: p.open_under, bo: p.books_open || null,
+        pc: side === 'under' ? p.close_under : side === 'over' ? p.close_over : null,   // closing price of the graded side
+      };
+    });
   }
 
   // Record + break-even units, then the four splits the record breaks down by.

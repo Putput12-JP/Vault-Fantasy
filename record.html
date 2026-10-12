@@ -178,7 +178,19 @@ footer{margin-top:40px;font-size:12px;color:var(--muted)}
   ]).then(function (res) {
     var L = res[0], S = res[1];
     if (!L || !L.props) throw new Error('no ledger');
-    var props = L.props.filter(function (p) { return p.won_close != null || p.push; });
+    // Anchored grades (default since Oct 12): from Week 3 a pick is the side the
+    // market-anchored grade chose, scored on its own result. Weeks 1-2 predate the
+    // anchor weights and keep the original grade; a Week 3+ prop the anchor could
+    // not price is left ungraded.
+    var props = L.props.map(function (p) {
+      if (!(p.week >= 3)) return p;
+      var q = Object.assign({}, p);
+      if (p.grade_anchor != null && p.anchor_side && p.won_anchor != null && !p.push) {
+        q.grade = p.grade_anchor; q.side = p.anchor_side; q.won_close = p.won_anchor;
+        if (p.anchor_side !== p.side) q.beat_close = null;
+      } else q.grade = null;
+      return q;
+    }).filter(function (p) { return p.won_close != null || p.push; });
     var ab = props.filter(function (p) { return p.grade === 'A' || p.grade === 'B'; });
     var all = agg(props), top = agg(ab);
     var gen = L.generated ? new Date(L.generated) : null;
