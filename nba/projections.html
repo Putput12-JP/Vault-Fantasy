@@ -968,6 +968,7 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .ps-svg{display:block;width:100%;height:auto;margin-top:8px}.ps-svg text{font-size:11px;fill:var(--fg3);font-family:var(--font-mono)}
 .ps-chips{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:8px}.ps-chips div{display:grid;justify-items:center;padding:12px 4px;border-radius:var(--r-ctl);font-family:var(--font-mono)}.ps-chips b{font-size:20px}.ps-chips small{font-size:10px;letter-spacing:.06em;opacity:.85}
 .ps-chips .o{background:color-mix(in srgb,var(--up) 22%,transparent);color:var(--up)}.ps-chips .u{background:color-mix(in srgb,var(--down) 22%,transparent);color:var(--down)}
+.ps-key{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;margin:6px 2px 0;font-family:var(--font-mono);font-size:11px;color:var(--fg3)}.ps-key i{display:inline-block;width:0;height:0;border:5px solid transparent;border-top:0;border-bottom:9px solid var(--chart-3);margin-right:6px;vertical-align:-1px}.ps-key span:first-child{color:var(--fg2)}
 .ps-note{margin:12px 0 0;font-size:13px;color:var(--fg2);line-height:1.5}.ps-sec{margin-top:20px}
 .ps-rec{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}.ps-rec>div{display:grid;gap:3px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-ctl)}
 .ps-rec small{font-size:11.5px;color:var(--fg3)}.ps-rec b{font-family:var(--font-mono);font-size:22px;font-weight:600}.ps-rec span{font-size:12px;color:var(--fg2)}.ps-rec .ex{background:color-mix(in srgb,var(--up) 8%,transparent);border-color:color-mix(in srgb,var(--up) 35%,var(--border))}
@@ -1763,6 +1764,18 @@ th{font-weight:500}
           <h3 class="sim-h">Joint odds: teammate pairs</h3>
           <p class="hint" id="tsimjsub"></p>
           <div class="tablewrap"><table class="ht tsim" id="tsimj"></table></div></div>
+      </section>
+
+      <section class="card" id="tpscard">
+        <div class="card-h"><div><h2>Props: minutes model vs simulations</h2><p id="tpssub">The prop model (projected minutes times per-minute rate, as priced on Player Props) against playing it out 10,000 and 50 games at a time. Not affected by the filters above.</p></div>
+          <button class="btn" id="tpsopen" type="button">Open Props Simulation</button></div>
+        <div class="card-b"><div class="kpis" id="tpsk"></div>
+          <h3 class="sim-h">Last season, every prop scored</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tps"></table></div>
+          <p class="hint" id="tpsnote"></p>
+          <h3 class="sim-h">This season, live</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tpsl"></table></div>
+          <p class="hint" id="tpslnote"></p></div>
       </section>
 
       <section class="card" id="tnvcard">
@@ -3884,6 +3897,7 @@ function renderTrack(){
   $('tmore').hidden = B.length <= tf.limit;
   $('tmore').innerHTML = `<button class="btn" id="tmorebtn" type="button">Show all ${B.length.toLocaleString()}</button>`;
   renderSimRecord();
+  renderPropSimRecord();
   renderNovigPaper();
 
   $('tfoot').innerHTML = `
@@ -4009,6 +4023,38 @@ function renderSimRecord(){
   $('tsimsub').textContent = `${n.toLocaleString()} ${n === 1 ? 'game' : 'games'} scored, newest first. Green means the real number landed inside the simulated 80% range. Not affected by the filters above.`;
   $('tsimnote').textContent = `Home win Brier ${brier.toFixed(3)} (a coin flip is 0.250; lower is better). With the market line selected, totals and margins are centred on the market by construction, so they test the simulation's spread, not its forecast; the players' own sum tests our forecast. ${pre ? `${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart and counted nowhere.` : ''}`;
 }
+// ── Props: minutes model vs simulations (nba/scripts/build_sim_challenger.py → data/sim_challenger.json; live from the ledger and sim_days) ───────
+// Backtest: the same props and prices scored four ways. "Minutes model" is the prop model the Player Props page prices (v2, closed form). The
+// simulations play that same model out 10,000 and 50 games at a time ("plain 50" is a simple rate-times-minutes version with Normal draws).
+// Live: the model's settled shadow bets next to how often the Game Simulation's player ranges held. A like-for-like live score of single-prop
+// simulations is not recorded yet, and the card says so.
+function renderPropSimRecord(){
+  const S = SIMCH && SIMCH.sources;
+  if (!S){ $('tpsk').innerHTML = ''; $('tps').innerHTML = '<tbody><tr><td class="l"><p class="empty">The backtest has not been built yet (nba/scripts/build_sim_challenger.py).</p></td></tr></tbody>'; $('tpsl').innerHTML = ''; return; }
+  const cells = Object.values(S).flatMap(o => Object.values(o)), nC = cells.length, V = SIMCH.verdict, SL = {kalshi: 'Kalshi prices', espn_close: 'Sportsbook closing lines'};
+  const kal = Object.values(S.kalshi || {}), avg = f => cells.reduce((a, c) => a + f(c), 0) / (cells.length || 1);
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  $('tpsk').innerHTML =
+    kpi('Minutes model', ICON.star, 'The bar', 'Closed form. The bar to beat.') +
+    kpi('10,000-game sim', ICON.pts, `${V.sim10k.same} of ${nC} same`, 'Matches the minutes model.') +
+    kpi('50-game sim', ICON.clock, `${V.sim50.worse} of ${nC} worse`, `${V.sim50.better} better · +${kal.length ? (kal.reduce((a, c) => a + c.sim50.dll_vs_v2, 0) / kal.length).toFixed(4) : 'n/a'} log loss`) +
+    kpi('Wrong side', ICON.edit, pc(avg(c => c.sim50.flip_vs_v2)), '50 games vs minutes model, side of price.');
+  const cellTd = (o, k) => { const x = o[k], d = x.dll_vs_v2, z = x.dll_se ? d / x.dll_se : 0; return k === 'v2' ? `<td><b>${x.logloss}</b></td>` : `<td>${x.logloss}<small class="${z >= 2 ? 'neg' : z <= -2 ? 'pos' : ''}">${psSg(d, 4)}${z >= 2 ? ' worse' : z <= -2 ? ' better' : ''}</small></td>`; };
+  $('tps').innerHTML = `<thead><tr><th class="l" scope="col">Source</th><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col" title="The market price alone">Price</th><th scope="col" title="Prop model v2: projected minutes x per-minute rate">Minutes model</th><th scope="col">10,000 games</th><th scope="col">50 games</th><th scope="col" title="A plain mean and Normal draws, 50 games, calibrated">Plain 50</th></tr></thead><tbody>${
+    Object.entries(S).flatMap(([src, per]) => Object.entries(per).map(([m, o]) => `<tr><td class="l">${SL[src] || esc(src)}</td><td class="l">${PS_LBL[m] || m}</td><td class="num">${o.n.toLocaleString()}</td><td class="num">${o.logloss_market}</td>${['v2', 'sim10k', 'sim50', 'sam50'].map(k => cellTd(o, k)).join('')}</tr>`)).join('')}</tbody>`;
+  $('tpsnote').textContent = 'Log loss, lower is better, 2025-26 props with fit on 2024-25. Under each simulation is its difference from the minutes model; worse or better only when it clears 2 standard errors. Rules: nba/docs/sim-challenger.md.';
+  // live: shadow bets on the minutes model (Kalshi) beside the Game Simulation's player ranges
+  const G = simGames().filter(g => g.env && g.env.market), live = {};
+  for (const s of SIMS){
+    const a = wkLive(s, 'YES'), b = wkLive(s, 'NO'), n = (a ? a.settled : 0) + (b ? b.settled : 0), w = (a ? a.w : 0) + (b ? b.w : 0), l = (a ? a.l : 0) + (b ? b.l : 0), roi = n ? ((a ? a.roi * a.settled : 0) + (b ? b.roi * b.settled : 0)) / n : null;
+    const ps = G.reduce((r, g) => g.env.market.ps[s] ? [r[0] + g.env.market.ps[s][0], r[1] + g.env.market.ps[s][1]] : r, [0, 0]);
+    live[s] = {n, w, l, roi, ps};
+  }
+  $('tpsl').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th><th scope="col" title="Settled Kalshi shadow bets priced by the minutes model, both sides">Minutes model bets</th><th scope="col">Record</th><th scope="col" title="Return per unit at the first 3% price">ROI</th><th scope="col" title="Simulated players whose actual stat landed inside the simulation's 10th to 90th percentile range">Simulation in range</th></tr></thead><tbody>${
+    SIMS.map(s => { const x = live[s]; return `<tr><td class="l">${PS_LBL[s]}</td><td class="num">${x.n || 'none yet'}</td><td class="num">${x.n ? `${x.w}-${x.l}` : ''}</td><td class="num">${x.roi == null ? '' : `<b class="${x.roi >= 0 ? 'pos' : 'neg'}">${(x.roi >= 0 ? '+' : '') + (x.roi * 100).toFixed(1)}%</b>`}</td><td class="num">${x.ps[0] ? `${pc(x.ps[1] / x.ps[0], 0)}<small>${x.ps[1]} of ${x.ps[0]} players, target 75% to 85%</small>` : 'none yet'}</td></tr>`; }).join('')}</tbody>`;
+  $('tpslnote').textContent = 'Both start on opening night (October 20). Bets and simulated ranges are scored from the box score. The last column is the Game Simulation (market-line environment), which is the same engine as 10,000 games. A like-for-like live score of single-prop simulations against the minutes model is not recorded yet; the backtest above is the head-to-head until it is.';
+}
+$('tpscard').addEventListener('click', ev => { if (ev.target.closest('#tpsopen')) goView('propsim'); });
 $('tsimcard').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-v]'); if (b){ simRec.env = b.dataset.v; renderSimRecord(); return; }
   if (ev.target.closest('#tsimmorebtn')){ simRec.limit = 1e6; renderSimRecord(); }
@@ -4727,6 +4773,32 @@ function psInfo(r, s, line, gid, B){
   const pOver = cal(s, pOverRaw(s, mu, L, ex)), lean = pOver >= .5 ? 'over' : 'under';
   return {mu, ex, v, sd: Math.sqrt(v), mk, line: L, pOver, lean, pLean: Math.max(pOver, 1 - pOver), edge: mu - L, mktLean: mk && mk.line === L && mk.pOver != null ? (lean === 'over' ? mk.pOver : 1 - mk.pOver) : null};
 }
+// the model's range of outcomes for one prop as a smooth curve: shaded green past the line (over) and red short of it (under), with the line and
+// the model's projection marked. The curve's centre is nudged so its over chance equals the calibrated number the page shows.
+function psCurve(stat, mu, ex, L, pOver){
+  let a0 = mu - 5 * Math.sqrt(simVar(stat, mu, ex)), b0 = mu + 5 * Math.sqrt(simVar(stat, mu, ex));
+  for (let n = 0; n < 40; n++){ const m = (a0 + b0) / 2; if (pOverRaw(stat, Math.max(.01, m), L, ex) < pOver) a0 = m; else b0 = m; }
+  const dm = Math.max(.01, (a0 + b0) / 2), dv = simVar(stat, dm, ex), sd = Math.sqrt(dv), count = COUNT.has(stat);
+  const lo = Math.max(0, Math.floor(dm - 3.4 * sd)), hi = Math.ceil(dm + 3.4 * sd), W = 520, H = 150, X0 = 8, X1 = W - 8, Y0 = 26, Y1 = 124, X = x => X0 + (x - lo) / Math.max(1, hi - lo) * (X1 - X0);
+  const dens = x => count ? Math.max(0, nbSf(Math.max(-1, Math.round(x) - 1), dm, dv) - nbSf(Math.round(x), dm, dv)) : Math.exp(-.5 * ((x - dm) / sd) ** 2) / (sd * 2.5066);
+  const xs = []; const steps = Math.min(90, Math.max(24, (hi - lo) * 4)); for (let k = 0; k <= steps; k++) xs.push(lo + (hi - lo) * k / steps);
+  const ys = xs.map(dens), mx = Math.max(...ys, 1e-9), pts = xs.map((x, k) => [X(x), Y1 - ys[k] / mx * (Y1 - Y0)]);
+  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let k = 0; k < pts.length - 1; k++){ const p0 = pts[Math.max(0, k - 1)], p1 = pts[k], p2 = pts[k + 1], p3 = pts[Math.min(pts.length - 1, k + 2)];
+    d += ` C${(p1[0] + (p2[0] - p0[0]) / 6).toFixed(1)} ${(p1[1] + (p2[1] - p0[1]) / 6).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) / 6).toFixed(1)} ${(p2[1] - (p3[1] - p1[1]) / 6).toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`; }
+  const area = `${d} L${X1} ${Y1} L${X0} ${Y1} Z`, xl = X(Math.max(lo, Math.min(hi, L))), xm = X(Math.max(lo, Math.min(hi, mu))), uid = 'pc' + stat;
+  return `<svg class="ps-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Range of outcomes: ${Math.round((1 - pOver) * 100)}% under ${L}, ${Math.round(pOver * 100)}% over">
+    <defs><clipPath id="${uid}u"><rect x="0" y="0" width="${xl.toFixed(1)}" height="${H}"/></clipPath><clipPath id="${uid}o"><rect x="${xl.toFixed(1)}" y="0" width="${(W - xl).toFixed(1)}" height="${H}"/></clipPath>
+      <linearGradient id="${uid}gu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--down)" stop-opacity=".75"/><stop offset="1" stop-color="var(--down)" stop-opacity=".12"/></linearGradient>
+      <linearGradient id="${uid}go" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--up)" stop-opacity=".75"/><stop offset="1" stop-color="var(--up)" stop-opacity=".12"/></linearGradient></defs>
+    <path d="${area}" fill="url(#${uid}gu)" clip-path="url(#${uid}u)"/><path d="${area}" fill="url(#${uid}go)" clip-path="url(#${uid}o)"/>
+    <path d="${d}" fill="none" stroke="var(--fg2)" stroke-width="1.5" opacity=".7"/><line x1="${X0}" x2="${X1}" y1="${Y1}" y2="${Y1}" stroke="var(--border)"/>
+    <line x1="${xl.toFixed(1)}" x2="${xl.toFixed(1)}" y1="14" y2="${Y1}" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <path d="M${xm.toFixed(1)} ${Y1 - 1} l-5 -9 h10 z" fill="var(--chart-3)"/>
+    <text x="${Math.max(X0 + 2, xl - 8).toFixed(1)}" y="12" text-anchor="end" style="fill:var(--down);font-size:12px;font-weight:600">UNDER ${Math.round((1 - pOver) * 100)}%</text><text x="${Math.min(X1 - 2, xl + 8).toFixed(1)}" y="12" style="fill:var(--up);font-size:12px;font-weight:600">OVER ${Math.round(pOver * 100)}%</text>
+    <text x="${X0}" y="144">${lo}</text><text x="${xl.toFixed(1)}" y="144" text-anchor="middle" style="fill:var(--fg)">line ${L}</text><text x="${X1}" y="144" text-anchor="end">${hi}</text></svg>
+    <p class="ps-key"><span><i></i>Model ${fmt(mu, 1)}</span><span>How likely each result is, from the model</span></p>`;
+}
 const psSg = (x, d = 1) => (x >= 0 ? '+' : '') + x.toFixed(d);
 function renderPropSim(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
@@ -4770,6 +4842,7 @@ function renderPropSim(){
         <div class="ps-mv"><div class="m">MODEL <b>${fmt(i.mu, 1)}</b> vs LINE <b>${L}</b></div><div class="e"><b class="${edge >= 0 ? 'pos' : 'neg'}">${psSg(edge)}</b><small>EDGE</small></div></div>
         <div class="ps-bar"><i><s style="width:${(pSide * 100).toFixed(0)}%;background:${side === 'over' ? 'var(--up)' : 'var(--down)'}"></s></i><b>${Math.round(pSide * 100)}% ${side}</b></div>
         <p class="ps-note">The ${Math.round(pSide * 100)}% is the model's chance this prop goes ${side}. ${mkTxt} <label>Different line? <input class="ps-ln" data-f="line" type="number" step="0.5" min="0" value="${ps2.line != null ? ps2.line : ''}" placeholder="${L}" aria-label="Your line"></label></p>
+        <div class="ps-lbl ps-sec">Range of outcomes · ${PS_LBL[stat].toLowerCase()}</div>${psCurve(stat, i.mu, i.ex, L, i.pOver)}
         ${chips}</div>`;
     } else $('psprop').innerHTML = '';
   } else { $('pscards').innerHTML = ''; $('psprop').innerHTML = ''; $('psgames').innerHTML = ''; }
