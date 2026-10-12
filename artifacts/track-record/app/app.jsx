@@ -66,7 +66,7 @@ function agg(rows, payout) {
   const bc = s.filter(r => r.beat != null);
   return { n, W, L: n - W, P: rows.filter(r => r.res === 'P').length, wr: n ? W / n : null, units, roi: n ? units / n : null, beat: bc.length ? bc.filter(r => r.beat === 1).length / bc.length : null };
 }
-const base = (r, skip) => (skip === 'week' || st.week === 'all' || r.week == st.week) && (skip === 'grade' || st.grade === 'all' || r.grade === st.grade) && (skip === 'side' || st.side === 'all' || r.side === st.side) && (skip === 'pos' || st.pos === 'all' || r.pos === st.pos) && (skip === 'mkt' || st.mkt === 'all' || r.market === st.mkt) && (skip === 'ev' || evOk(r));
+const base = (r, skip) => (skip === 'week' || st.week === 'all' || r.week == st.week) && (skip === 'grade' || st.grade === 'all' || (st.grade === 'AB' ? (r.grade === 'A' || r.grade === 'B') : r.grade === st.grade)) && (skip === 'side' || st.side === 'all' || r.side === st.side) && (skip === 'pos' || st.pos === 'all' || r.pos === st.pos) && (skip === 'mkt' || st.mkt === 'all' || r.market === st.mkt) && (skip === 'ev' || evOk(r));
 const evOk = r => st.ev === 'pos' ? !!(r._ev && r._ev.ev > 0) : st.ev === 'neg' ? !!(r._ev && r._ev.ev <= 0) : (!st.books.length || !!r._ev);
 const rows = skip => P.filter(r => base(r, skip));
 const drillOk = r => {
@@ -635,7 +635,7 @@ function FilterBar({ s, upd, weeks, mkts, BOOKS, resetAll, hasFilters }) {
       </span>
       <div style={{ maxWidth: '100%', overflowX: 'auto' }}><SegmentedControl theme={THEME} options={Object.values(bbMap)} value={bbMap[s.bb]} onChange={setBB} /></div>
       <div style={{ maxWidth: '100%', overflowX: 'auto' }}><SegmentedControl theme={THEME} options={weekOpts} value={s.week === 'all' ? 'All' : 'Wk ' + s.week} onChange={v => upd({ week: v === 'All' ? 'all' : v.slice(3), page: 0 })} /></div>
-      <FilterChip label="Grade" value={s.grade} set={s.grade !== 'all'} options={[['all', 'All grades'], ...['A', 'B', 'C', 'D', 'F'].map(g => [g, g])]} onPick={v => upd({ grade: v, page: 0 })} />
+      <FilterChip label="Grade" value={s.grade} set={s.grade !== 'all'} options={[['all', 'All grades'], ['AB', 'A + B'], ...['A', 'B', 'C', 'D', 'F'].map(g => [g, g])]} onPick={v => upd({ grade: v, page: 0 })} />
       <FilterChip label="Side" value={s.side} set={s.side !== 'all'} options={[['all', 'Both sides'], ['over', 'Over'], ['under', 'Under']]} onPick={v => upd({ side: v, page: 0 })} />
       <FilterChip label="Position" value={s.pos} set={s.pos !== 'all'} options={[['all', 'All positions'], ...['QB', 'RB', 'WR', 'TE'].map(g => [g, g])]} onPick={v => upd({ pos: v, page: 0 })} />
       <FilterChip label="Market" value={s.mkt} set={s.mkt !== 'all'} options={[['all', 'All markets'], ...mkts.map(m => [m, MK[m] || m])]} onPick={v => upd({ mkt: v, page: 0 })} />
