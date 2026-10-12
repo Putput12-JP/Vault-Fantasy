@@ -492,8 +492,8 @@ var VSC_CSS = `
   .vsc .chips{justify-content:flex-start;flex-wrap:wrap;gap:4px}.vsc .chips.r{justify-content:flex-end}
   .vsc .chip{font-size:12px;padding:3px 9px}
   .vsc .note{grid-area:note;margin-top:8px;padding:6px 10px;font-size:11px}
-  .vsc .brand{margin-top:6px;padding-right:96px}
-  .vsc .bar{position:absolute;right:16px;bottom:8px;margin:0;z-index:2}
+  .vsc .brand{margin-top:6px;padding-right:96px;min-height:29px}
+  .vsc .bar{position:absolute;right:16px;bottom:4px;margin:0;z-index:2}.vsc .in{padding-bottom:4px}
   .vsc .share{padding:6px 11px}
 }
 @container (min-width:400px) and (max-width:639px){
@@ -521,8 +521,8 @@ var VSC_CSS = `
   .vsc.fit .ex{grid-area:ex;margin:0;gap:6px}
   .vsc.fit .chips{flex-wrap:nowrap;overflow:hidden;gap:4px}.vsc.fit .chip{font-size:10px;padding:2px 6px}
   .vsc.fit .note{grid-area:auto;margin-top:6px;padding:5px 8px;font-size:10.5px}
-  .vsc.fit .brand{margin-top:6px;padding-right:84px}.vsc.fit .brand span{display:none}
-  .vsc.fit .bar{position:absolute;right:12px;bottom:5px;margin:0;z-index:2}
+  .vsc.fit .brand{margin-top:6px;padding-right:84px;min-height:28px}.vsc.fit .in{padding-bottom:4px}.vsc.fit .brand span{display:none}
+  .vsc.fit .bar{position:absolute;right:12px;bottom:3px;margin:0;z-index:2}
   .vsc.fit .share{padding:5px 10px;font-size:11px}
 }
 @media (max-height:1140px){@container (min-width:640px){
@@ -530,7 +530,7 @@ var VSC_CSS = `
   .vsc .pick{font-size:36px}.vsc .pick.sm{font-size:28px}.vsc .why{font-size:12px;margin-top:2px}
   .vsc .pf{padding:6px 10px}.vsc .pf strong{font-size:16px}.vsc .pf small{display:none}
   .vsc .sec{display:none}
-  .vsc .mk{padding:5px 16px;row-gap:2px}.vsc .mkts{gap:6px;margin-top:8px}.vsc .top{gap:6px 12px}.vsc .in{padding:10px 16px 8px}.vsc .brand{margin-top:4px}.vsc .proof{margin-top:2px}.vsc .px .pr{display:none}
+  .vsc .mk{padding:5px 16px;row-gap:2px}.vsc .mkts{gap:6px;margin-top:8px}.vsc .top{gap:6px 12px}.vsc .in{padding:10px 16px 4px}.vsc .brand{margin-top:4px}.vsc .proof{margin-top:2px}.vsc .px .pr{display:none}
   .vsc .px .ln{font-size:21px}.vsc .px .pr{font-size:11px}.vsc .mid .nums{margin-bottom:3px}.vsc .mid .nums b{font-size:19px}.vsc .track{height:15px}.vsc .tick{top:-4px;bottom:-4px}.vsc .bets{margin-top:5px;font-size:11px}
   .vsc .chip{font-size:11px;padding:2px 8px}
 }}
