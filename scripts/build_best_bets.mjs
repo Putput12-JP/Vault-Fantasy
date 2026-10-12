@@ -777,7 +777,7 @@ function scoreProps(feed, PM, KP) {
             book: bs.book, price: bs.price, ev: round(ev * 100, 1), prob: round(g.padj, 3), grade: eff, proj: v.proj, held: lineHeld });
           continue;
         }
-        if (DUMP) dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, market: mk, marketLabel: MKT_LABEL[mk] || mk,
+        dump.push({ id, name: p.name, team: p.team, pos: p.pos, opp: p.opp, market: mk, marketLabel: MKT_LABEL[mk] || mk,
           line, side, prob: round(g.padj, 3), over: round(v.over, 3), proj: v.proj, book: bs.book, price: bs.price,
           ev: ev != null ? round(ev * 100, 1) : null, grade: eff, books: trust.books,
           kalshi: sharp ? sharp.over : null, kalshiInterp: !!(sharp && sharp.interp),
@@ -828,7 +828,19 @@ function scoreProps(feed, PM, KP) {
   // not one player's whole card. (Full ranked pool is still counted.)
   const seenPlayer = new Set(), list = [];
   for (const c of cands) { if (seenPlayer.has(c.id)) continue; seenPlayer.add(c.id); list.push(c); if (list.length >= TOP) break; }
-  return { list, pool: cands, dump, heldCands, heldIds, strictCands, signals, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
+  // Every A/B the model grades, whether or not it cleared the Best Bets gates (`status` says
+  // which gate stopped it). One row per player + stat: the most confident line. Feeds the
+  // Sharp Money "Vault A/B" tab. Grades here already carry the weak-market / sharp / role caps.
+  const abBest = new Map();
+  for (const r of dump) {
+    if ((r.grade !== 'A' && r.grade !== 'B') || r.status === 'out' || r.status === 'withheld') continue;
+    const k = r.id + '|' + r.market, cur = abBest.get(k);
+    if (!cur || (r.prob ?? 0) > (cur.prob ?? 0)) abBest.set(k, r);
+  }
+  const ab = [...abBest.values()].sort((x, y) => (x.grade < y.grade ? -1 : x.grade > y.grade ? 1 : 0) || (y.prob ?? 0) - (x.prob ?? 0))
+    .map(r => ({ id: r.id, name: r.name, team: r.team || null, pos: r.pos || null, opp: r.opp || null, market: r.market, line: r.line, side: r.side,
+      grade: r.grade, prob: r.prob, proj: r.proj, ev: r.ev, book: r.book, price: r.price, books: r.books, status: r.status }));
+  return { list, pool: cands, ab, dump, heldCands, heldIds, strictCands, signals, scored, gated, preskip, offslate, benchskip, roleskip, projskip, dfsskip, countskip, sharpskip, weakskip, rechold, total: cands.length };
 }
 
 function loadCardRules() {
@@ -1216,6 +1228,7 @@ const IS_MAIN = !!process.argv[1] && import.meta.url === pathToFileURL(resolve(p
       season: feed.season || null, week: feed.week || null,
       be_ref: BE_REF, be_mode: 'price',
       props: props.list,
+      ab: props.ab,   // every A/B prop the model grades, with the gate (if any) that kept it off the Best Bets list
       // The locked weekly card (data/best_bets_card.json): every play that has
       // posted this week, frozen at the line + price it posted with. This is
       // what the hero shows; `props` above is the live top-N that feeds it.

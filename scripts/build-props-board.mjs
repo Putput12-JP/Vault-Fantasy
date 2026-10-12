@@ -75,6 +75,10 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
   const pinStale = age(pinAsof) > FRESH_S, usStale = age(feed?.generated) > FRESH_US_S, kalStale = age(kalshi?.generated) > FRESH_S, novStale = age(novig?.generated) > FRESH_S;
   const feedStale = pinStale;   // kept for the legs / alt checks below: the reference those use is Pinnacle's
   const K = kalshi?.markets || {}, NV = novig?.markets || {};
+  // Every A/B the Vault model grades (build_best_bets.mjs -> feed.best_bets.ab). Each gets a board row even with no price edge,
+  // so the Vault A/B tab can show where else the same prop is priced.
+  const AB = new Map();
+  for (const x of feed?.best_bets?.ab || []) AB.set(String(x.id) + '|' + x.market, x);
   for (const [pid, p] of Object.entries(feed?.vegas_player_props || {})) {
     const nk = nkey(p.name);
     for (const [mkt, l] of Object.entries(p.lines || {})) {
@@ -205,13 +209,15 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
           if (Math.abs(d) >= MIN_GAP && (!diff || Math.abs(d) > Math.abs(diff.d))) diff = { side, d: +d.toFixed(4), cheap: d > 0 ? e.src : o.src, rich: d > 0 ? o.src : e.src, cheapAm: d > 0 ? e.am : o.am, richAm: d > 0 ? o.am : e.am, fairBased: op !== o.p };
         }
       }
-      if (!call && !diff && !alt && !moved) continue;
+      const vault = AB.get(String(pid) + '|' + mkt) || null;
+      if (!call && !diff && !alt && !moved && !vault) continue;
       if (moved) src.moved = (src.moved || 0) + 1;
       src.players++;
       rows.push({
         pid, name: p.name, team: p.team, pos: p.pos, mkt, label: LABEL[mkt], line: ref,
         fair: fair == null ? null : +fair.toFixed(4), fairSrc,
         over: sides.over, under: sides.under, call, diff, alt, moved,
+        vault: vault ? { side: vault.side, line: vault.line, grade: vault.grade, prob: vault.prob, proj: vault.proj, ev: vault.ev, book: vault.book, price: vault.price, books: vault.books, status: vault.status } : null,
       });
     }
   }
