@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sharp Money — Accounts v2 (concept)</title>
+<style>
+  :root{--bg:#0e0f13;--s1:#16171c;--s2:#1c1e24;--s3:#23252c;--bd:rgba(255,255,255,.08);--fg:#f3f4f7;--fg2:#c9cdd6;--mut:#7e8493;
+    --good:#5fe09a;--bad:#ff5a6e;--warn:#f5c842;--acc:#8fb4e0;--sans:system-ui,-apple-system,'Segoe UI',sans-serif;--mono:ui-monospace,'SF Mono',Menlo,monospace}
+  *{box-sizing:border-box;margin:0;scrollbar-width:none}*::-webkit-scrollbar{display:none}
+  body{background:var(--bg);color:var(--fg);font:13px/1.45 var(--sans)}
+  .k{font:700 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+  .mono{font-family:var(--mono)}.g{color:var(--good)}.r{color:var(--bad)}.m{color:var(--mut)}.w{color:var(--warn)}
+  header{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--bd)}
+  header h1{font-size:16px}header .sub{font:10px var(--mono);letter-spacing:.1em;color:var(--mut);text-transform:uppercase}
+  .sp{flex:1}
+  .seg{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:3px}
+  .seg b{font-weight:600;font-size:12px;padding:5px 13px;border-radius:999px;color:var(--mut)}.seg b.on{background:var(--fg);color:var(--bg)}
+  /* answer strip: the 4 questions a follower asks */
+  .ans{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--bd);border-bottom:1px solid var(--bd)}
+  .ans>div{background:var(--bg);padding:12px 18px}.ans .v{font:700 20px var(--mono);margin:2px 0}.ans .d{font-size:11px;color:var(--mut)}
+  .work{display:grid;grid-template-columns:440px minmax(0,1fr) 340px;height:calc(100vh - 53px - 94px);min-height:640px}
+  .pane{overflow:auto;border-right:1px solid var(--bd)}.pane:last-child{border-right:0}
+  .ph{position:sticky;top:0;z-index:2;background:var(--bg);padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;gap:8px}
+  .f{display:flex;gap:6px;flex-wrap:wrap}
+  .dd{padding:5px 11px;border-radius:8px;background:var(--s2);border:1px solid var(--bd);font-size:11px;font-weight:600;color:var(--fg2)}
+  .dd:after{content:" ▾";color:var(--mut)}
+  .row{display:grid;grid-template-columns:34px minmax(0,1fr) 62px 66px 62px 28px;gap:10px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--bd)}
+  .row.sel{background:var(--s2);box-shadow:inset 3px 0 0 var(--fg)}
+  .av{width:34px;height:34px;border-radius:50%;background:var(--s3);display:grid;place-items:center;font:700 11px var(--mono);color:var(--fg2)}
+  .nm b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vd{font-size:11px;font-weight:600}
+  .vd.g{color:var(--good)}.vd.w{color:var(--warn)}.vd.m{color:var(--mut)}
+  .mt{display:grid;gap:1px;text-align:right}.mt b{font-size:12px}.mt .k{font-size:8px}
+  .cf{display:grid;grid-template-columns:repeat(2,5px);gap:2px}.cf i{width:5px;height:5px;border-radius:1px;background:var(--s3)}.cf i.f{background:var(--fg2)}
+  .grp{padding:7px 16px;background:var(--s1);border-bottom:1px solid var(--bd);display:flex;justify-content:space-between}
+  /* center */
+  .hero{padding:18px 22px;border-bottom:1px solid var(--bd);display:grid;gap:10px}
+  .hero h2{font-size:22px}.hero .say{font-size:14px;color:var(--fg2);max-width:760px}
+  .btn{padding:6px 14px;border-radius:999px;background:var(--fg);color:var(--bg);font-weight:700;font-size:12px}
+  .btn.o{background:var(--s2);color:var(--fg);border:1px solid var(--bd)}
+  .tabs{display:flex;gap:18px;padding:0 22px;border-bottom:1px solid var(--bd)}.tabs b{padding:10px 0;font-size:12px;color:var(--mut)}.tabs b.on{color:var(--fg);box-shadow:0 2px 0 var(--fg)}
+  .gm{padding:12px 22px 4px;display:flex;justify-content:space-between;align-items:baseline}
+  .gm h3{font-size:13px}
+  .bet{display:grid;grid-template-columns:minmax(0,1fr) 150px 130px 110px;gap:14px;align-items:center;padding:10px 22px;border-bottom:1px solid var(--bd)}
+  .bet .pick b{font-size:13px}.bet .pick div{font-size:11px;color:var(--mut)}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;font:700 10px var(--mono);background:var(--s3);color:var(--fg2)}
+  .tag.big{background:rgba(245,200,66,.14);color:var(--warn)}.tag.sm{background:rgba(126,132,147,.18);color:var(--mut)}
+  .tag.go{background:rgba(95,224,154,.14);color:var(--good)}.tag.late{background:rgba(255,90,110,.14);color:var(--bad)}
+  .bar{height:5px;border-radius:3px;background:var(--s3);overflow:hidden}.bar i{display:block;height:100%;background:var(--fg2)}
+  .agree{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 22px;border-bottom:1px solid var(--bd)}
+  .card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:12px 14px}
+  /* right */
+  .rc{padding:14px 16px;border-bottom:1px solid var(--bd);display:grid;gap:8px}
+  .rc .big{font:700 22px var(--mono)}.rc p{font-size:11px;color:var(--mut)}
+  .chk{display:grid;gap:5px}.chk div{display:flex;gap:8px;font-size:12px;color:var(--fg2)}
+  .row3{display:grid;grid-template-columns:1fr 38px 40px 52px;gap:6px;font-size:11px;align-items:center}
+  svg{display:block;width:100%}
+  .note{margin:0;padding:10px 22px;background:var(--s1);font-size:11px;color:var(--mut);border-bottom:1px solid var(--bd)}
+  @media (max-width:1300px){.work{grid-template-columns:400px minmax(0,1fr)}.work .pane:last-child{display:none}}
+</style></head><body>
+<header><div><div class="sub">Sharp Money /</div><h1>Accounts</h1></div><div class="sp"></div>
+  <div class="seg"><b class="on">Shortlist 12</b><b>All 32</b><b>Following 0</b></div></header>
+
+<div class="ans">
+  <div><div class="k">Who to follow</div><div class="v g">12</div><div class="d">beat the close and are not losing</div></div>
+  <div><div class="k">Holding right now</div><div class="v">$1.9M</div><div class="d">across 41 open bets on the shortlist</div></div>
+  <div><div class="k">Agreeing today</div><div class="v w">3 games</div><div class="d">2+ shortlist accounts on the same side</div></div>
+  <div><div class="k">Fresh buys (last hour)</div><div class="v">9</div><div class="d">price has not moved yet on 6 of them</div></div>
+</div>
+
+<div class="work">
+<div class="pane">
+  <div class="ph"><div class="f"><span class="dd">Sharp and winning</span><span class="dd">All sports</span><span class="dd">Sort: most trustworthy</span></div>
+    <div class="m" style="font-size:11px">Squares show how much history backs the label. Four squares means hundreds of bets over weeks; one means a few days.</div></div>
+  <div class="grp"><span class="k">Worth following</span><span class="k">12 · sharp and winning, plus sharp with results still unclear</span></div>
+<div class="row sel"><div class="av">SW</div><div class="nm"><b>Dual-Criticism</b><span class="vd g">Sharp and winning</span></div>
+<div class="mt"><span class="k">Beats close</span><b class="mono">+3.7%</b></div>
+<div class="mt"><span class="k">Profit</span><b class="mono g">+$34k</b></div>
+<div class="mt"><span class="k">Open</span><b class="mono">$89k</b></div>
+<div class="cf" title="21 bets · 5 games"><i class="f"></i><i class="f"></i><i class=""></i><i class=""></i></div></div>
+<div class="row"><div class="av">HC</div><div class="nm"><b>Hateful-Chord</b><span class="vd g">Sharp and winning</span></div>
+<div class="mt"><span class="k">Beats close</span><b class="mono">+2.9%</b></div>
+<div class="mt"><span class="k">Profit</span><b class="mono g">+$297k</b></div>
+<div class="mt"><span class="k">Open</span><b class="mono">$41k</b></div>
+<div class="cf" title="391 bets · 87 games"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></div></div>
+<div class="row"><div class="av">SC</div><div class="nm"><b>Scornful-West</b><span class="vd m">Sharp, results unclear</span></div>
+<div class="mt"><span class="k">Beats close</span><b class="mono">+1.1%</b></div>
+<div class="mt"><span class="k">Profit</span><b class="mono m">—</b></div>
+<div class="mt"><span class="k">Open</span><b class="mono">$92k</b></div>
+<div class="cf" title="469 bets · 69 games"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></div></div>
+<div class="row"><div class="av">FB</div><div class="nm"><b>Fake-Bitter</b><span class="vd m">Sharp, results unclear</span></div>
+<div class="mt"><span class="k">Beats close</span><b class="mono">+0.8%</b></div>
+<div class="mt"><span class="k">Profit</span><b class="mono m">—</b></div>
+<div class="mt"><span class="k">Open</span><b class="mono">$18k</b></div>
+<div class="cf" title="363 bets · 110 games"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></div></div>
+  <div class="grp"><span class="k">Sharp but losing</span><span class="k">14 · skill, no profit yet</span></div>
+<div class="row"><div class="av">HN</div><div class="nm"><b>Heavenly-Numismatist</b><span class="vd w">Sharp but losing</span></div>
+<div class="mt"><span class="k">Beats close</span><b class="mono">+3.7%</b></div>
+<div class="mt"><span class="k">Profit</span><b class="mono r">−$732k</b></div>
+<div class="mt"><span class="k">Open</span><b class="mono">$504k</b></div>
+<div class="cf" title="52 bets · 28 games"><i class="f"></i><i class="f"></i><i class="f"></i><i class=""></i></div></div>
+<div class="row"><div class="av">GD</div><div class="nm"><b>Grown-Difference-Burnout</b><span class="vd w">Sharp but losing</span></div>
+<div class="mt"><span class="k">Beats close</span><b class="mono">+4.4%</b></div>
+<div class="mt"><span class="k">Profit</span><b class="mono r">−$115k</b></div>
+<div class="mt"><span class="k">Open</span><b class="mono">$342k</b></div>
+<div class="cf" title="14 bets · 5 games"><i class="f"></i><i class=""></i><i class=""></i><i class=""></i></div></div>
+<div class="row"><div class="av">BS</div><div class="nm"><b>Blushing-Salsa</b><span class="vd w">Sharp but losing</span></div>
+<div class="mt"><span class="k">Beats close</span><b class="mono">+1.1%</b></div>
+<div class="mt"><span class="k">Profit</span><b class="mono r">−$1.3M</b></div>
+<div class="mt"><span class="k">Open</span><b class="mono">$61k</b></div>
+<div class="cf" title="31 bets · 16 games"><i class="f"></i><i class="f"></i><i class="f"></i><i class=""></i></div></div>
+<div class="row"><div class="av">OB</div><div class="nm"><b>Odd-Beggar</b><span class="vd w">Sharp but losing</span></div>
+<div class="mt"><span class="k">Beats close</span><b class="mono">+1.9%</b></div>
+<div class="mt"><span class="k">Profit</span><b class="mono r">−$359k</b></div>
+<div class="mt"><span class="k">Open</span><b class="mono">$30k</b></div>
+<div class="cf" title="13 bets · 6 games"><i class="f"></i><i class=""></i><i class=""></i><i class=""></i></div></div>
+  <div class="grp"><span class="k">Not enough history · Not sharp</span><span class="k">6</span></div>
+</div>
+
+<div class="pane">
+  <div class="hero">
+    <div style="display:flex;gap:12px;align-items:center"><h2>Dual-Criticism</h2><span class="vd g" style="font-weight:700">Sharp and winning</span><div class="sp"></div><span class="btn o">Polymarket</span><span class="btn">★ Follow</span></div>
+    <div class="say">Gets a better price than the closing line (+3.7% over 21 bets) and is up $34k on 90 markets. <b>Only 5 games so far, so treat this as early.</b> Mostly spreads on college football. Usually bets $166; today holds 8 bets ($89k).</div>
+  </div>
+  <div class="tabs"><b class="on">Open bets · 8</b><b>Where they agree · 2</b><b>Settled history · 90</b></div>
+  <div class="note">Sorted by how unusual the bet is for them. “Price now” is the market today against what they paid, so you can see if the number is still there.</div>
+
+  <div class="gm"><h3>Ravens @ Falcons <span class="m">· today 1:00 PM</span></h3><span class="k">2 bets</span></div>
+  <div class="bet"><div class="pick"><b>Falcons +3.5</b><div>$11k at risk · pays $17.7k</div></div><div><span class="tag big">3.4x bigger than normal</span><div class="bar" style="margin-top:5px"><i style="width:84%"></i></div></div><div class="mono" style="font-size:12px">paid 63¢ → now 63.5¢<div class="m" style="font-size:11px">+0.5¢ for them</div></div><div><span class="tag go">Still there</span></div></div>
+  <div class="bet"><div class="pick"><b>Over 44.5</b><div>$3.1k at risk · pays $6.6k</div></div><div><span class="tag">about a normal size</span><div class="bar" style="margin-top:5px"><i style="width:30%"></i></div></div><div class="mono" style="font-size:12px">paid 48¢ → now 48.5¢<div class="m" style="font-size:11px">+0.5¢ for them</div></div><div><span class="tag go">Still there</span></div></div>
+
+  <div class="gm"><h3>Hurricanes @ Flyers <span class="m">· live</span></h3><span class="k">1 bet</span></div>
+  <div class="bet"><div class="pick"><b>Flyers moneyline</b><div>$38 at risk · small probe</div></div><div><span class="tag sm">0.2x, smaller than normal</span><div class="bar" style="margin-top:5px"><i style="width:6%"></i></div></div><div class="mono" style="font-size:12px">paid 35¢ → now 22¢<div class="m r" style="font-size:11px">−13¢ against them</div></div><div><span class="tag late">Game underway</span></div></div>
+
+  <div class="gm"><h3>Hedged <span class="m">· both sides of one game</span></h3><span class="k">not a conviction</span></div>
+  <div class="bet"><div class="pick"><b>Magic and Cavaliers</b><div>$2.8k and $4.1k</div></div><div><span class="tag">hedge</span></div><div class="m mono" style="font-size:12px">net −$1.3k if Magic wins</div><div></div></div>
+</div>
+
+<div class="pane">
+  <div class="rc"><span class="k">Should I trust this account?</span>
+    <div class="chk"><div><span class="g">✔</span> Beats the closing price (t 4.5)</div><div><span class="g">✔</span> Profitable so far (+1% ROI)</div><div><span class="w">!</span> Only 5 games of history</div><div><span class="m">–</span> Bigger bets: too few to read</div></div></div>
+  <div class="rc"><span class="k">Profit over time</span>
+    <svg viewBox="0 0 300 70"><polyline fill="none" stroke="#5fe09a" stroke-width="2" points="0,52 30,48 60,55 90,40 120,44 150,30 180,34 210,22 240,26 270,14 300,12"/><line x1="0" y1="60" x2="300" y2="60" stroke="rgba(255,255,255,.1)"/></svg>
+    <p>Last 90 markets · 46% won · +1% ROI. Wins are rare but pay well, so low win rate is normal here.</p></div>
+  <div class="rc"><span class="k">Does size matter for them?</span>
+    <div class="row3 k"><span>Size</span><span>Bets</span><span>Won</span><span>ROI</span></div>
+    <div class="row3"><span>Smaller</span><span class="mono">34</span><span class="mono">38%</span><span class="mono g">+9%</span></div>
+    <div class="row3"><span>Normal</span><span class="mono">31</span><span class="mono">45%</span><span class="mono g">+2%</span></div>
+    <div class="row3"><span>Bigger 1.5x+</span><span class="mono">25</span><span class="mono">56%</span><span class="mono r">−6%</span></div>
+    <p>Across all accounts, bigger bets win more often (58% vs 51%) but make no more money.</p></div>
+  <div class="rc"><span class="k">How they bet</span>
+    <div class="row3"><span>Favorites</span><span></span><span></span><span class="mono">28%</span></div>
+    <div class="bar"><i style="width:28%"></i></div>
+    <div class="row3"><span>Spreads</span><span></span><span></span><span class="mono">72%</span></div>
+    <div class="bar"><i style="width:72%"></i></div>
+    <p>Mostly underdogs on spreads, average price 30¢.</p></div>
+</div>
+</div>
+</body></html>
