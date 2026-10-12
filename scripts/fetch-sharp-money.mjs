@@ -294,7 +294,7 @@ async function walletPoll(S, wallets) {
     // account look like a 90% winner, so this is rebuilt from the account's own
     // cash flow instead: per market, sells + redemptions - buys + what it still holds.
     // Markets still in play are skipped; only markets we saw from their first trade count.
-    if (A.trades[0] && A.trades[0].ts > t - 7 * DAY && (!A.stats || t - A.stats.ts > 6 * H)) {
+    if (A.trades[0] && A.trades[0].ts > t - 7 * DAY && (!A.stats || !A.stats.hist || t - A.stats.ts > 6 * H)) {
       const act = [];
       for (let p = 0; p < 10; p++) {
         const r = await getJSON(`https://data-api.polymarket.com/activity?user=${w}&limit=500&offset=${p * 500}&sortBy=TIMESTAMP&sortDirection=DESC`);
@@ -314,7 +314,9 @@ async function walletPoll(S, wallets) {
       const SPORTY = /^(nfl|cfb|nba|cbb|ncaaf|mlb|nhl|wnba)-/;
       const agg = xs => { let n = 0, wn = 0, buy = 0, sell = 0, pnl = 0; for (const [, c] of xs) { n++; buy += c.buy; sell += c.sell; pnl += c.pnl; if (c.pnl > 0) wn++; } return n >= 5 && buy > 0 ? { n, win: r3(wn / n), roi: r3(pnl / buy), pnl: Math.round(pnl), vol: Math.round(buy), flip: r3(sell / buy) } : null; };
       const done = Object.entries(C).filter(([id, c]) => !live.has(id) && c.first > t0 + DAY && c.buy > 0).map(([id, c]) => [id, { ...c, pnl: c.cash + (held[id] || 0) }]);
-      A.stats = { ts: t, days: Math.round((t - t0) / DAY), capped: act.length >= 5000, all: agg(done), sp: agg(done.filter(([, c]) => SPORTY.test(c.slug || ''))) };
+      // per-market stake and result, newest first, so the Accounts page can ask "do their bigger-than-usual bets win more?" ([first trade ts, total bought $, P&L $])
+      const hist = done.filter(([, c]) => SPORTY.test(c.slug || '')).sort((a, b) => b[1].first - a[1].first).slice(0, 250).map(([, c]) => [c.first, Math.round(c.buy), Math.round(c.pnl)]);
+      A.stats = { ts: t, days: Math.round((t - t0) / DAY), capped: act.length >= 5000, all: agg(done), sp: agg(done.filter(([, c]) => SPORTY.test(c.slug || ''))), hist };
     }
   });
   for (const [w, A] of Object.entries(S.acct)) if (!A.trades.length && !A.pos.length && A.cur < t - 14 * DAY) delete S.acct[w];
@@ -997,7 +999,7 @@ function payload(S, byGame, W, status) {
     const rec = recs.sort((a, b) => b.n - a.n)[0] || null;
     const b24 = A.trades.filter(x => x.ts > t - DAY && x.side === 'BUY');
     return { w, who: A.who, rec, last: A.trades[0]?.ts || 0, n7: A.trades.length, buy24: b24.reduce((s, x) => s + x.usd, 0), n24: b24.length,
-      trades: A.trades.slice(0, 25).map(({ ts, side, usd, px, title, slug, out }) => ({ ts, side, usd, px, title, slug, out })), pos: A.pos.map(({ ev, ...x }) => x), posVal: A.pos.reduce((s, x) => s + x.val, 0), stats: A.stats ? { all: A.stats.all, sp: A.stats.sp, days: A.stats.days, capped: A.stats.capped } : null };
+      trades: A.trades.slice(0, 25).map(({ ts, side, usd, px, title, slug, out }) => ({ ts, side, usd, px, title, slug, out })), pos: A.pos.map(({ ev, ...x }) => x), posVal: A.pos.reduce((s, x) => s + x.val, 0), stats: A.stats ? { all: A.stats.all, sp: A.stats.sp, days: A.stats.days, capped: A.stats.capped, hist: A.stats.hist } : null };
   }).filter(a => a.last > t - 7 * DAY || a.pos.length).sort((a, b) => b.buy24 - a.buy24 || b.last - a.last).slice(0, 80);
   return { generated: new Date().toISOString(), ts: t, status, wallets: W, games, alerts, accounts, sigRec, sigBig: Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sigBig])) };
 }
