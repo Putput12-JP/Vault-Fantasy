@@ -741,9 +741,10 @@ function App() {
   st = s;
   P = s.bb === 'card' ? PB.filter(r => r.bb === 'card') : s.bb === 'bb' ? PB : PA;
   // Anchored grades: the pick is the market-anchored side (it can differ from the unanchored lean), scored on its own result. Weeks 1-2 predate the anchor weights and Best Bets plays keep the grade they posted with, so both fall back to the unanchored grade.
-  P.forEach(r => { const an = s.gm === 'anchor' && r.bb === undefined && r.gan != null && r.sn && r.wn != null; r.side = an ? r.sn : r.side0; r.res = an ? (r.wn === 1 ? 'W' : 'L') : r.res0; r.pm = an && r.pn != null ? r.pn : r.pm0; });
+  const hasAnchor = data.pcols.includes('gan');   // a data.json built before Oct 12 has no anchored columns: show the unanchored grades rather than an empty record
+  P.forEach(r => { const an = hasAnchor && s.gm === 'anchor' && r.bb === undefined && r.gan != null && r.sn && r.wn != null; r.side = an ? r.sn : r.side0; r.res = an ? (r.wn === 1 ? 'W' : 'L') : r.res0; r.pm = an && r.pn != null ? r.pn : r.pm0; });
   P.forEach(r => { r._ev = evInfo(r); });
-  P.forEach(r => { r.grade = s.gm === 'anchor' ? (r.bb === undefined && r.week >= 3 ? (r.side === r.sn && r.wn != null ? (r.gan || null) : null) : (r.gpx || null)) : s.gm === 'px' ? (r.gpx || null) : s.gm === 'boost' ? (r.gb !== undefined && r.gb !== null ? r.gb : r.gpx || null) : s.gm === 'mkt' ? (r.gmk || null) : r.g55; });
+  P.forEach(r => { r.grade = s.gm === 'anchor' && hasAnchor ? (r.bb === undefined && r.week >= 3 ? (r.side === r.sn && r.wn != null ? (r.gan || null) : null) : (r.gpx || null)) : s.gm === 'px' ? (r.gpx || null) : s.gm === 'boost' ? (r.gb !== undefined && r.gb !== null ? r.gb : r.gpx || null) : s.gm === 'mkt' ? (r.gmk || null) : r.g55; });
   const R = rows();
   const evCt = R.filter(r => r._ev && r._ev.ev > 0 && (r.res === 'W' || r.res === 'L')).length;
   const counts = { ev: evCt, mk: uniq(R.map(r => r.market)).length, gm: G.length, pk: R.length > 999 ? (R.length / 1000).toFixed(1) + 'k' : R.length };
