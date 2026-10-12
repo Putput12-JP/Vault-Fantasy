@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-12T12:00', tag:'Improved', title:'Prop grades lean harder on the sportsbook line',
+    items:[
+      'Prop grades now weigh the sportsbooks\u2019 price more, using a weight we re-measure every week on settled results. Expect fewer sky-high A grades on thin edges.',
+      'Rush attempts props are now capped at a C grade, like passing yards: they have not beaten the line this season.'
+    ]
+  },
+  {
     ts:'2026-10-11T20:00', tag:'Improved', title:'CFB Model shows the early number for next week',
     items:[
       'New list on the CFB Model tab: next week\u2019s games where our number is 5+ points off the opening spread.',
@@ -41757,6 +41764,15 @@ window.VaultPropModel = (function () {
   // cold cache / missing file makes the role anchor a silent no-op (fall back to
   // the pure autoregressive projection).
   let _role = null;
+  // Walk-forward market-anchor weights (settle_bets.py -> prop_anchor_weights.json).
+  // w = how much of Vault's logit deviation from the vig-free market survives.
+  // Null until it lands: the cold-cache fallback is the model's own blend_w.
+  const ANCHOR_URL = `${BASE}/prop_anchor_weights.json`;
+  let _anch = null;
+  function anchorWeights() {
+    if (!_anch) _anch = fetch(ANCHOR_URL).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    return _anch;
+  }
   function roleParams() {
     if (!_role) _role = fetch(ROLE_URL).then(r => (r.ok ? r.json() : null)).catch(() => null);
     return _role;
@@ -41933,7 +41949,11 @@ window.VaultPropModel = (function () {
               : dist === 'hurdle_lognormal' ? hurdleOver(m, proj, L)
               : rawOver(proj, sd, L, count);
     const cal0 = clamp(shrinkProb(clamp(calibrate(m.calib, raw), 0.01, 0.99), m.shrink), 0.01, 0.99);
-    const cal = blendToward(cal0, num(opts.marketProbOver), m.blend_w);   // #3: toward the vig-free market where measured
+    const AW = await anchorWeights();
+    const wA = AW && AW.markets ? ((AW.markets[marketKey] || {}).w ?? AW.pooled) : null;
+    // Anchored grades: the walk-forward weight replaces the static blend_w (same
+    // logit blend; the weight is refit weekly on settled lines).
+    const cal = blendToward(cal0, num(opts.marketProbOver), typeof wA === 'number' ? wA : m.blend_w);
     return { proj: round(proj, 2), sd: round(sd, 2), over: round(cal, 4), under: round(1 - cal, 4),
              fairProb: round(cal, 4), raw: round(raw, 4), n: m.n, r2: m.r2, games: weeks.length,
              role: role && role.applied ? { mult: round(role.applied.mult, 2), from: role.applied.from, to: role.applied.to } : null };
@@ -46853,7 +46873,7 @@ window.VaultMarketProj = (function () {
   // walk-forward against the no-vig market, the model's opinion earns 0 weight on
   // all three QB volume markets, and A/B pass-attempt picks went 9-14. Keep this
   // list identical to build_best_bets.mjs WEAK_MK and settle_bets.py WEAK_MK.
-  const WEAK_MK = { pass_yd: 1, pass_cmp: 1, pass_int: 1, rush_rec_yd: 1, pass_att: 1 };
+  const WEAK_MK = { pass_yd: 1, pass_cmp: 1, pass_int: 1, rush_rec_yd: 1, pass_att: 1, rush_att: 1 };
   // Projection-vs-line blowout, as a standalone flag: purely |proj − line|/line,
   // so it does NOT depend on which side leads or the sign of the market-side EV.
   // That matters for VAULT-LED rows — the cache scores edgeCaution on the MARKET

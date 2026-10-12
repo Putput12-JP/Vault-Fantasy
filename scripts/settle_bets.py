@@ -157,6 +157,8 @@ WEAK_MK = {
     # Week 4 retro: the model carries no information beyond the market on pass
     # attempts (walk-forward weight 0.00) and A/B pass-attempt picks went 9-14.
     "pass_att": "2026-10-05T21:08:00Z",
+    # Week 5 retro: rush-attempt leans went 30-39 (-11.9u) across all grades.
+    "rush_att": "2026-10-12T11:40:00Z",
 }
 
 def weak_cap(letter, market, ts):

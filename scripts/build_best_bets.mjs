@@ -156,7 +156,7 @@ const COUNT_MK = new Set(['pass_att', 'pass_cmp', 'rush_att', 'rec']);
 // the moment it clears break-even on fresh weeks.
 // pass_att joined after the Week 4 retro: the model earns 0 weight against the
 // no-vig market on all three QB volume markets (docs/retro/week-4-deep-dive.md).
-const WEAK_MK = new Set(['pass_yd', 'pass_cmp', 'pass_int', 'rush_rec_yd', 'pass_att']);
+const WEAK_MK = new Set(['pass_yd', 'pass_cmp', 'pass_int', 'rush_rec_yd', 'pass_att', 'rush_att']);
 const LOW_COUNT_LINE = 3.5;   // where the Under is still a plus-money longshot
 const ABS_COUNT_GAP = 0.5;    // half a count below the line flips the side w/o moving the ratio much
 // Gate 3 — sharp-anchor agreement. Kalshi is a real-money exchange; its two-
@@ -431,6 +431,24 @@ export function fairProbOver(PM, name, marketKey, line, role, adj) {
   return { proj: round(proj, 2), logProj: round(logProj, 2), roleMult: roleMult ? round(roleMult, 2) : null, over: round(cal, 4), under: round(1 - cal, 4), games: weeks.length };
 }
 
+
+// Anchored grades: pull Vault's P(over) toward the books' median no-vig P(over)
+// by the walk-forward weight in data/prop_anchor_weights.json (settle_bets.py),
+// the same logit blend as the board (prop-model.js). No file / no devig-able
+// book at this line => the unanchored probability, unchanged.
+let ANCHOR_W = null;
+export function setAnchorWeights(w) { ANCHOR_W = w; }
+function anchorToMarket(v, mk, lq) {
+  if (!v || !ANCHOR_W || v.over == null) return v;
+  const w = ((ANCHOR_W.markets || {})[mk] || {}).w ?? ANCHOR_W.pooled;
+  const qs = lq.map(q => devigPower(q.over, q.under)).filter(x => x != null).sort((a, b) => a - b);
+  if (typeof w !== 'number' || !qs.length) return v;
+  const qm = qs.length % 2 ? qs[qs.length >> 1] : (qs[qs.length / 2 - 1] + qs[qs.length / 2]) / 2;
+  const lg = p => { p = clamp(p, 1e-6, 1 - 1e-6); return Math.log(p / (1 - p)); };
+  const a = lg(qm), over = clamp(1 / (1 + Math.exp(-(a + w * (lg(v.over) - a)))), 0.01, 0.99);
+  return { ...v, over: round(over, 4), under: round(1 - over, 4), unanchoredOver: v.over };
+}
+
 /* ── grade / trust / pricing (mirror index.html) ───────────────────────── */
 function vaultGrade(over, under, n) {
   if (over == null || under == null) return null;
@@ -672,7 +690,7 @@ function scoreProps(feed, PM, KP) {
       for (const q of priced) { const L = num(q.line); if (L == null) continue; if (!byLine.has(L)) byLine.set(L, []); byLine.get(L).push(q); }
       for (const [line, lq] of byLine) {
         if (lq.length < 2) continue;                       // need ≥2 books AT this exact line
-        const v = fairProbOver(PM, p.name, mk, line, role, matchupAdjFor(ctx, p, mk));
+        const v = anchorToMarket(fairProbOver(PM, p.name, mk, line, role, matchupAdjFor(ctx, p, mk)), mk, lq);
         if (!v || v.games < MIN_GAMES) continue;
         scored++;
         const g = vaultGrade(v.over, v.under, v.games);
@@ -1164,6 +1182,7 @@ const IS_MAIN = !!process.argv[1] && import.meta.url === pathToFileURL(resolve(p
     // but the hero starts blending in current-season form the moment logs land.
     { const cur = Number(feed.season); if (cur >= 2024) SEASONS = [cur - 1, cur]; }
     const PM = JSON.parse(readFileSync(resolve(ROOT, 'data/prop_model.json'), 'utf8'));
+    try { setAnchorWeights(JSON.parse(readFileSync(resolve(ROOT, 'data/prop_anchor_weights.json'), 'utf8'))); } catch { log('no prop_anchor_weights.json — grades unanchored'); }
     if (!PM.markets) { log('prop_model.json has no markets — skipping'); process.exit(0); }
 
     const KP = loadKalshiProps();   // sharp anchor — null-safe, no-ops if the file isn't there yet

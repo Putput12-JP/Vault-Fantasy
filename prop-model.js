@@ -33,6 +33,15 @@ window.VaultPropModel = (function () {
   // Role-volume prior (scripts/build_role_volume.py). Null until it lands → the
   // role anchor is a silent no-op (falls back to the pure autoregressive proj).
   let _role = null;
+  // Walk-forward market-anchor weights (settle_bets.py -> prop_anchor_weights.json).
+  // w = how much of Vault's logit deviation from the vig-free market survives.
+  // Null until it lands: the cold-cache fallback is the model's own blend_w.
+  const ANCHOR_URL = `${BASE}/prop_anchor_weights.json`;
+  let _anch = null;
+  function anchorWeights() {
+    if (!_anch) _anch = fetch(ANCHOR_URL).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    return _anch;
+  }
   function roleParams() {
     if (!_role) _role = fetch(ROLE_URL).then(r => (r.ok ? r.json() : null)).catch(() => null);
     return _role;
@@ -284,7 +293,11 @@ window.VaultPropModel = (function () {
               : dist === 'hurdle_lognormal' ? hurdleOver(m, proj, L)
               : rawOver(proj, sd, L, count);
     const cal0 = clamp(shrinkProb(clamp(calibrate(m.calib, raw), 0.01, 0.99), m.shrink), 0.01, 0.99);
-    const cal = blendToward(cal0, num(opts.marketProbOver), m.blend_w);   // #3: toward the vig-free market where measured
+    const AW = await anchorWeights();
+    const wA = AW && AW.markets ? ((AW.markets[marketKey] || {}).w ?? AW.pooled) : null;
+    // Anchored grades: the walk-forward weight replaces the static blend_w (same
+    // logit blend; the weight is refit weekly on settled lines).
+    const cal = blendToward(cal0, num(opts.marketProbOver), typeof wA === 'number' ? wA : m.blend_w);
     return { proj: round(proj, 2), sd: round(sd, 2), over: round(cal, 4), under: round(1 - cal, 4),
              fairProb: round(cal, 4), raw: round(raw, 4), n: m.n, r2: m.r2, games: weeks.length,
              role: role && role.applied ? { mult: round(role.applied.mult, 2), from: role.applied.from, to: role.applied.to } : null };
