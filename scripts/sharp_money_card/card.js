@@ -97,14 +97,14 @@ var VSC_CSS = `
   .vsc .pf{padding:9px 13px;border-radius:14px}.vsc .pf em{margin-bottom:5px;font-size:10.5px}.vsc .pf strong{font-size:19px}.vsc .pf small{font-size:12px}.vsc .pf small{margin-top:1px}
   .vsc .sec{margin:8px 4px 5px}
   .vsc .mkts{gap:7px}
-  .vsc .mk{display:grid;grid-template-columns:150px minmax(0,1fr);grid-template-areas:"mh body" "mv ex" "note note";column-gap:18px;row-gap:4px;align-items:center;padding:10px 16px;border-radius:18px}
-  .vsc .mh{grid-area:mh;flex-direction:column;align-items:flex-start;margin:0;gap:5px}.vsc .mh h4{font-size:16px}.vsc .mh .pill{white-space:normal;line-height:1.25;max-width:100%}
-  .vsc .move{grid-area:mv;margin:0;padding:0;border:0;flex-direction:column;align-items:flex-start;gap:0;font-size:12px}
-  .vsc .move .d{margin-left:0;text-align:left}
-  .vsc .body{grid-area:body;grid-template-columns:64px minmax(0,1fr) 64px;gap:16px}
+  .vsc .mk{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"mh mv" "body body" "ex ex" "note note";row-gap:8px;align-items:center;padding:10px 16px;border-radius:18px}
+  .vsc .mh{grid-area:mh;margin:0;gap:10px;justify-content:flex-start}.vsc .mh h4{font-size:16px}
+  .vsc .move{grid-area:mv;margin:0;padding:0;border:0;justify-content:flex-end;font-size:12px;gap:6px}
+  .vsc .move .d{margin-left:0;text-align:right}
+  .vsc .body{grid-area:body;grid-template-columns:84px minmax(0,1fr) 84px;gap:20px}
   .vsc .px .ln{font-size:24px}.vsc .px .pr{font-size:12px}
-  .vsc .mid .nums{margin-bottom:4px}.vsc .mid .nums b{font-size:21px}.vsc .track{height:14px}.vsc .tick{top:-4px;bottom:-4px}.vsc .bets{margin-top:7px;font-size:12px}
-  .vsc .ex{grid-area:ex;grid-template-columns:1fr 1fr;gap:12px;margin:0;align-self:start}
+  .vsc .mid .nums{margin-bottom:4px}.vsc .mid .nums b{font-size:21px}.vsc .track{height:18px}.vsc .tick{top:-5px;bottom:-5px;width:3px}.vsc .bets{margin-top:7px;font-size:12px}
+  .vsc .ex{grid-area:ex;grid-template-columns:1fr 1fr;gap:12px;margin:0}
   .vsc .chips{justify-content:flex-start;flex-wrap:wrap;gap:4px}.vsc .chips.r{justify-content:flex-end}
   .vsc .chip{font-size:12px;padding:3px 9px}
   .vsc .note{grid-area:note;margin-top:8px;padding:6px 10px;font-size:11px}
@@ -141,22 +141,20 @@ var VSC_CSS = `
   .vsc.fit .bar{position:absolute;right:12px;bottom:5px;margin:0;z-index:2}
   .vsc.fit .share{padding:5px 10px;font-size:11px}
 }
-.vsc.fit{display:flex;flex-direction:column;min-height:max(470px,calc(min(100vh - 290px,920px) - 42px))}
+.vsc.fit{display:flex;flex-direction:column;min-height:max(470px,calc(min(100vh - 230px,920px) - 42px))}
 .vsc.fit .in{flex:1;display:flex;flex-direction:column}
 .vsc.fit .mkts{flex:1}
 .vsc.fit .mk{flex:1}
-@media (max-height:920px){@container (min-width:640px){
+@media (max-height:1140px){@container (min-width:640px){
   .vsc .lg,.vsc .mono{width:44px;height:44px}
-  .vsc .pick{font-size:38px}.vsc .pick.sm{font-size:30px}.vsc .why{font-size:12px}
-  .vsc .pf{padding:7px 10px}.vsc .pf strong{font-size:16px}.vsc .pf small{display:none}
+  .vsc .pick{font-size:36px}.vsc .pick.sm{font-size:28px}.vsc .why{font-size:12px;margin-top:2px}
+  .vsc .pf{padding:6px 10px}.vsc .pf strong{font-size:16px}.vsc .pf small{display:none}
   .vsc .sec{display:none}
-  .vsc .mk{grid-template-columns:150px minmax(0,1fr) 214px;grid-template-areas:"mh body ex" "mv body ex" "note note note";column-gap:14px;row-gap:2px;padding:8px 14px}
-  .vsc .ex{grid-template-columns:1fr;gap:4px;align-self:center}
-  .vsc .chips.r{justify-content:flex-start}
-  .vsc .ab{display:inline-block;flex:none;width:30px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--dim);align-self:center}
-  .vsc .px .ln{font-size:20px}.vsc .mid .nums b{font-size:17px}.vsc .track{height:11px}.vsc .mh h4{font-size:14px}.vsc .chip{font-size:11px;padding:2px 7px}
-  .vsc .body{grid-template-columns:58px minmax(0,1fr) 58px;gap:10px}
+  .vsc .mk{padding:6px 16px;row-gap:3px}.vsc .mkts{gap:5px}.vsc .top{gap:6px 12px}.vsc .in{padding:10px 16px 8px}.vsc .brand{margin-top:4px}.vsc .proof{margin-top:2px}.vsc .px .pr{display:none}
+  .vsc .px .ln{font-size:21px}.vsc .px .pr{font-size:11px}.vsc .mid .nums{margin-bottom:3px}.vsc .mid .nums b{font-size:19px}.vsc .track{height:15px}.vsc .tick{top:-4px;bottom:-4px}.vsc .bets{margin-top:5px;font-size:11px}
+  .vsc .chip{font-size:11px;padding:2px 8px}
 }}
+.vsc .body.nol{grid-template-columns:minmax(0,1fr)!important}.vsc .body.nol>.px{display:none}
 @container (max-width:399px){.vsc .pick{font-size:46px}.vsc .pick.sm{font-size:34px}.vsc .body{gap:8px}.vsc .px .ln{font-size:19px}.vsc .px .pr{font-size:11px;max-width:64px}.vsc .px.r .pr{margin-left:auto}.vsc .mid .nums span{display:none}.vsc .mid .nums b{font-size:17px}.vsc .proof{grid-template-columns:1fr}.vsc .lg,.vsc .mono{width:44px;height:44px}.vsc .tm b{font-size:15px}.vsc .brand span{display:none}}
 `;
 var VSC_CFB = /*vsc-cfb*/{}/*end-vsc-cfb*/;
@@ -256,7 +254,7 @@ function vscMk(g, m) {
   var mv = m.move, hasMoney = m.money != null, moneyA = hasMoney ? m.money : m.bets;
   return h('div', { className: 'mk' + (m.hot ? ' hot' : ''), key: m.m },
     h('div', { className: 'mh' }, h('h4', null, m.name), h('span', { className: 'pill ' + m.pill[0] }, m.pill[1])),
-    h('div', { className: 'body' },
+    h('div', { className: 'body' + (m.la === '\u2013' && m.lb === '\u2013' ? ' nol' : '') },
       h('div', { className: 'px' }, h('div', { className: 'ln' }, m.la), h('div', { className: 'pr' }, m.pa)),
       moneyA == null ? h('div', { className: 'nosp' }, 'No US book split yet') : h('div', { className: 'mid' },
         h('div', { className: 'nums' }, h('b', { style: { color: m.cA } }, moneyA + '%'), h('span', null, hasMoney ? 'Money' : 'Bets'), h('b', { style: { color: m.cB } }, (100 - moneyA) + '%')),
