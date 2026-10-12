@@ -85,7 +85,7 @@ total   FanDuel     n= 13  toward   9 / away   2  avg move toward +0.19 pts ±0.
         -> too few games (13 of 50)
 props   Pinnacle    n= 61  toward  26 / away   6  net share toward +0.33 ±0.12
 props   FanDuel     n= 18  toward   8 / away   3  net share toward +0.28 ±0.23
-props   DraftKings  n= 17  toward   8 / away   1  net share toward +0.41 ±0.22
+props   DraftKings  n= 18  toward   8 / away   1  net share toward +0.39 ±0.22
         -> too few props (61 of 100)
 ```
 
