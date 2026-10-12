@@ -167,7 +167,7 @@ class Pricer:
         return res
 
     # ── roster guard (docs/moved-players-results.md) ───────────────────────────────────────────────────────
-    HOLD_MIN_PLAYERS, HOLD_MAX_MIN, HOLD_MAX_STRETCH = 8, 44.0, 1.15
+    HOLD_MIN_PLAYERS, HOLD_MAX_MIN, HOLD_MAX_STRETCH = 8, 44.0, 1.10
 
     def roster_hold(self, team, g, status, cache, src=None):
         """None, or why a prop is held: priced and shown, but never a Bet / Lean, an edge, a pick'em leg or a shadow bet.
@@ -176,8 +176,8 @@ class Pricer:
         team's minutes run 2 to 4 too high.
           team    the minutes model projects fewer than HOLD_MIN_PLAYERS of the team's players, or someone at HOLD_MAX_MIN+, or the
                     rescale to team_min stretched everyone by HOLD_MAX_STRETCH or more (the model is missing a big share of the
-                    rotation: new arrivals with no history here). Backtest 2025-26: stretch 1.15+ puts starters 5.3 minutes
-                    high (9.1 at 1.25+, 13.1 at 1.4+); it hits 7% of team-games.
+                    rotation: new arrivals with no history here). Backtest 2025-26: starters (34+ projected) run 2.7
+                    minutes high at stretch 1.10-1.12, 3.4 at 1.12-1.15, 4.9 at 1.15-1.25, 9.3 at 1.25+; 1.10 holds 19% of team-games.
           player  src 'lab': no minutes history with his current team (moved in, or a rookie), so his minutes come from
                   the Minutes Lab's estimate, which the backtest never scored. Clears after his first game for the team.
           preseason  every preseason game: the model was never tested there (starters rest, rotations are random).

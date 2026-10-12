@@ -3268,7 +3268,7 @@ const LINEUP = {
 // with no minutes history on his current team (moved in, or a rookie) is priced from the Lab's estimate, which the
 // backtest never scored. Those props stay priced and shown, but are never a Bet / Lean, an edge, a pick'em leg or a
 // shadow bet. A team you edited in the Minutes Lab uses your minutes, so it is never held.
-const HOLD_MIN_PLAYERS = 8, HOLD_MAX_MIN = 44, HOLD_MAX_STRETCH = 1.15;
+const HOLD_MIN_PLAYERS = 8, HOLD_MAX_MIN = 44, HOLD_MAX_STRETCH = 1.10;
 function rosterHold(team, g, cache, src){
   if (PS.mode === 'example' || !team || !g || !(MS && MS.minutes)) return null;
   if (edits[team] && Object.keys(edits[team]).length) return null;
