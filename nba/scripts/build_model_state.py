@@ -137,7 +137,7 @@ def main():
     live = export(ctx, rt, ms, keep, cur, asof=max(ms.team_last.values()) if ms.team_last else None, m3=m3)
     live['asof'] = last_day
     # minutes GBM shadow (scripts/minutes_gbm.py): per-player and per-team state its features read; the trees are data/minutes_gbm.json
-    live['gbm'] = gbw.export(max(ms.team_last.values()).timestamp()) if ms.team_last else None
+    live['gbm'] = gbw.export(max(ms.team_last.values()).timestamp(), keep=keep) if ms.team_last else None
     game = game_state(box, seasons, cur, roster={x['id']: t for t, T in proj['teams'].items() for x in T['players']}, names=names)
     mm = json.load(open(MM.OUT_JSON))
     casc = json.load(open(os.path.join(DATA, 'usage_cascade.json')))['stats']

@@ -129,7 +129,7 @@ class Walk:
             tips.append(tip)
             del tips[:-12]
 
-    def export(self, asof, keep_days=300):          # offseason: everyone's last game is months old, and the state must carry over
-        lim = asof - keep_days * DAY
-        return {'players': {str(a): export_player(p) for a, p in self.pl.items() if p['last'] >= lim},
+    def export(self, asof, keep_days=300, keep=()):  # offseason: everyone's last game is months old, and the state must carry over
+        lim = asof - keep_days * DAY                 # keep: current roster ids, never dropped (a star who missed a whole season is still on it)
+        return {'players': {str(a): export_player(p) for a, p in self.pl.items() if p['last'] >= lim or a in keep},
                 'team_tips': {t: [int(x) for x in v] for t, v in self.team_tips.items()}}
