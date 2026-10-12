@@ -141,20 +141,24 @@ var VSC_CSS = `
   .vsc.fit .bar{position:absolute;right:12px;bottom:5px;margin:0;z-index:2}
   .vsc.fit .share{padding:5px 10px;font-size:11px}
 }
-.vsc.fit{display:flex;flex-direction:column;min-height:max(470px,calc(min(100vh - 230px,920px) - 42px))}
-.vsc.fit .in{flex:1;display:flex;flex-direction:column}
-.vsc.fit .mkts{flex:1}
-.vsc.fit .mk{flex:1}
 @media (max-height:1140px){@container (min-width:640px){
   .vsc .lg,.vsc .mono{width:44px;height:44px}
   .vsc .pick{font-size:36px}.vsc .pick.sm{font-size:28px}.vsc .why{font-size:12px;margin-top:2px}
   .vsc .pf{padding:6px 10px}.vsc .pf strong{font-size:16px}.vsc .pf small{display:none}
   .vsc .sec{display:none}
-  .vsc .mk{padding:6px 16px;row-gap:3px}.vsc .mkts{gap:5px}.vsc .top{gap:6px 12px}.vsc .in{padding:10px 16px 8px}.vsc .brand{margin-top:4px}.vsc .proof{margin-top:2px}.vsc .px .pr{display:none}
+  .vsc .mk{padding:5px 16px;row-gap:2px}.vsc .mkts{gap:6px;margin-top:8px}.vsc .top{gap:6px 12px}.vsc .in{padding:10px 16px 8px}.vsc .brand{margin-top:4px}.vsc .proof{margin-top:2px}.vsc .px .pr{display:none}
   .vsc .px .ln{font-size:21px}.vsc .px .pr{font-size:11px}.vsc .mid .nums{margin-bottom:3px}.vsc .mid .nums b{font-size:19px}.vsc .track{height:15px}.vsc .tick{top:-4px;bottom:-4px}.vsc .bets{margin-top:5px;font-size:11px}
   .vsc .chip{font-size:11px;padding:2px 8px}
 }}
 .vsc .body.nol{grid-template-columns:minmax(0,1fr)!important}.vsc .body.nol>.px{display:none}
+@media (min-height:961px) and (max-height:1140px){@container (min-width:640px){
+  .vsc .lg,.vsc .mono{width:52px;height:52px}
+  .vsc .pick{font-size:42px}.vsc .pick.sm{font-size:32px}
+  .vsc .pf{padding:9px 12px}.vsc .pf strong{font-size:18px}.vsc .pf small{display:block}
+  .vsc .mk{padding:10px 16px;row-gap:6px}.vsc .mkts{gap:9px;margin-top:12px}
+  .vsc .track{height:18px}.vsc .tick{top:-5px;bottom:-5px}.vsc .px .ln{font-size:23px}.vsc .px .pr{display:block}
+  .vsc .mid .nums b{font-size:21px}.vsc .bets{font-size:12px;margin-top:6px}.vsc .chip{font-size:12px;padding:3px 9px}
+}}
 @container (max-width:399px){.vsc .pick{font-size:46px}.vsc .pick.sm{font-size:34px}.vsc .body{gap:8px}.vsc .px .ln{font-size:19px}.vsc .px .pr{font-size:11px;max-width:64px}.vsc .px.r .pr{margin-left:auto}.vsc .mid .nums span{display:none}.vsc .mid .nums b{font-size:17px}.vsc .proof{grid-template-columns:1fr}.vsc .lg,.vsc .mono{width:44px;height:44px}.vsc .tm b{font-size:15px}.vsc .brand span{display:none}}
 `;
 var VSC_CFB = /*vsc-cfb*/{}/*end-vsc-cfb*/;
