@@ -341,6 +341,106 @@ function VscCfOpen(label, x) {
   }
   return false;
 }
+
+var VRD_CSS = `
+.vrd{--bg:#0b0b0d;--line:rgba(255,255,255,.08);--ink:#f4f4f6;--mute:#8b8b95;--dim:#5d5d66;--pick:#46e08c;--amber:#f2b84b;--loss:#ff6b6b;--blue:#4f8cff;
+  position:relative;overflow:hidden;border-radius:22px;background:var(--bg);color:var(--ink);border:1px solid var(--line);width:100%;container-type:inline-size;
+  font:500 15px/1.35 Inter,-apple-system,"SF Pro Display",system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-align:left}
+.vrd.closed .in{opacity:.78}
+.vrd *{box-sizing:border-box;margin:0}
+.vrd .glow{position:absolute;inset:0 0 auto 0;height:320px;pointer-events:none;background:radial-gradient(300px 190px at 50% 30%,rgba(70,224,140,.14),transparent 70%),radial-gradient(240px 170px at 0% 0%,rgba(79,140,255,.16),transparent 70%),radial-gradient(240px 170px at 100% 0%,rgba(242,184,75,.13),transparent 70%)}
+.vrd .in{position:relative;padding:14px 18px 12px}
+.vrd .bar{display:flex;justify-content:flex-end;margin-bottom:4px}
+.vrd .shr{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:600 12px/1 Inter,system-ui,sans-serif;padding:7px 12px;border-radius:99px;cursor:pointer;transition:transform 500ms cubic-bezier(.34,1.56,.64,1),background .15s}
+.vrd .shr:hover{background:rgba(255,255,255,.13)}.vrd .shr:active{transform:scale(.94);transition:transform 80ms ease-out}.vrd .shr[disabled]{opacity:.6;cursor:progress}
+.vrd .hd{display:grid;grid-template-columns:1fr minmax(0,auto) 1fr;gap:10px;align-items:start}
+.vrd .tm{display:flex;flex-direction:column;gap:6px;min-width:0}.vrd .tm.r{align-items:flex-end;text-align:right}
+.vrd .tm b{font-size:15px;font-weight:700}.vrd .tm small{font-size:11px;color:var(--mute);display:block}
+.vrd .lg{width:52px;height:52px;object-fit:contain}
+.vrd .mono{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-weight:800;font-size:14px;color:#fff}
+.vrd .mid{text-align:center;min-width:0}
+.vrd .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pick);display:inline-flex;align-items:center;gap:7px}
+.vrd .eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--pick);box-shadow:0 0 10px var(--pick)}
+.vrd .pickline{font-size:48px;line-height:1.02;font-weight:800;letter-spacing:-.04em;margin-top:8px}
+.vrd .pickline.sm{font-size:36px}
+.vrd .why{font-size:12.5px;color:var(--mute);margin-top:8px}
+.vrd .pill{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;padding:4px 9px;border-radius:99px;white-space:nowrap}
+.vrd .pill.w{color:#06130c;background:var(--pick)}.vrd .pill.x{color:#2a0a0a;background:var(--loss)}.vrd .pill.d{color:var(--mute);background:rgba(255,255,255,.08)}.vrd .pill.o{color:#2a0a0a;background:var(--loss)}.vrd .pill.g{color:#06130c;background:var(--pick)}
+.vrd .sig{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.vrd .s{padding:10px 8px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line);text-align:center;min-height:92px;min-width:0}
+.vrd .s.on{border-color:rgba(70,224,140,.38);background:linear-gradient(180deg,rgba(70,224,140,.08),rgba(255,255,255,.02))}
+.vrd .s.bad{border-color:rgba(255,107,107,.4);background:linear-gradient(180deg,rgba(255,107,107,.08),rgba(255,255,255,.02))}
+.vrd .s em{display:block;font-style:normal;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.vrd .s.on em{color:var(--pick)}.vrd .s.bad em{color:var(--loss)}
+.vrd .s strong{display:block;font-size:18px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.vrd .s small{display:block;font-size:11px;color:var(--mute);margin-top:3px}
+.vrd .s.off strong{color:var(--dim);font-size:14px;font-weight:600}
+.vrd .price{margin-top:10px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));padding:12px 14px}
+.vrd .price .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.vrd .price em{display:block;font-style:normal;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.vrd .price strong{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}.vrd .price strong.n{color:var(--dim);font-size:16px}
+.vrd .price small{display:block;font-size:11px;color:var(--mute);margin-top:1px}
+.vrd .st{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--mute);flex-wrap:wrap}
+.vrd .timer{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:8px}
+.vrd .timer i{display:block;height:100%;border-radius:99px}
+.vrd .tl{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--mute);margin-top:6px;flex-wrap:wrap}
+.vrd .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:0 2px}
+.vrd .foot b{font-size:13px;letter-spacing:.14em;font-weight:800}.vrd .foot span{font-size:11px;color:var(--dim)}
+.vrd .open{all:unset;cursor:pointer;font-size:12px;color:var(--ink);text-decoration:underline;text-decoration-color:rgba(255,255,255,.25);text-underline-offset:3px}
+@container (max-width:560px){.vrd .pickline{font-size:34px}.vrd .pickline.sm{font-size:27px}.vrd .sig{grid-template-columns:repeat(2,1fr)}.vrd .price .row{grid-template-columns:1fr}.vrd .foot span{display:none}}
+`;
+// Top Reads card, poster layout. Pf computes everything (read, price check, edge window) and hands it over; this only draws it.
+function VaultReadCard(P) {
+  var h = U.createElement, g = P.g, l = P.l, d = P.out, id = 'vrd-' + String(g.key).replace(/[^a-z0-9]+/g, '-');
+  var parts = String(P.pick).split(' '), last = parts[parts.length - 1], hasSub = parts.length > 1 && /^([+\-\u2212]?\d|ML$)/.test(last);
+  var word = hasSub ? parts.slice(0, -1).join(' ') : P.pick, sub = hasSub ? last.replace('-', '\u2212') : null;
+  var col = P.m === 'tot' ? (l === 'over' ? 'var(--pick)' : 'var(--under,#8c7bff)') : (l === 'away' ? 'var(--blue)' : 'var(--amber)');
+  var sideNm = function (s) { return s === 'over' ? 'the Over' : s === 'under' ? 'the Under' : (g[s].short || g[s].abbr); };
+  var tile = function (key, lbl) {
+    var x = d[key];
+    if (!x) return h('div', { key: key, className: 's off' }, h('em', null, lbl), h('strong', null, 'nothing yet'));
+    var txt = String(x.txt), v = txt, small = '', ok = x.side === l;
+    if (key === 'money') { var mm = /(\d+)% of the money on (\d+)% of bets/.exec(txt); if (mm) { v = mm[1] + '% / ' + mm[2] + '%'; small = 'of money / of bets'; } }
+    else if (key === 'sharp') { var sm = /^(\S+) net/.exec(txt); if (sm) { v = sm[1]; small = 'net on ' + sideNm(x.side); } }
+    else if (key === 'behind') { var ci = txt.indexOf(','); if (ci > 0) { v = txt.slice(0, ci); small = txt.slice(ci + 1).trim(); } }
+    else if (key === 'line') { small = 'line move'; }
+    return h('div', { key: key, className: 's ' + (ok ? 'on' : 'bad') }, h('em', null, lbl + (ok ? '' : ' (opposes)')), h('strong', null, v), small ? h('small', null, small) : null);
+  };
+  var w = P.fair, best = P.best, behind = P.behind, left = P.left, pct = P.pct, tcol = pct > 50 ? 'var(--pick)' : pct > 20 ? 'var(--amber)' : 'var(--loss)';
+  var res = P.res, pill = res === 1 ? ['w', 'Won'] : res === -1 ? ['x', 'Lost'] : res === 0 ? ['d', 'Push'] : null;
+  var cm = P.cm, n = cm && cm.x ? cm.x.w + cm.x.l + cm.x.p : 0;
+  var rec = cm ? (n > 0 ? cm.x.w + '-' + cm.x.l + (cm.x.p ? '-' + cm.x.p : '') + ' on these signals' + (n < 10 ? ', too few to trust' : '') : 'no graded games on these signals yet') : '';
+  var Logo = function (side) { return h(VscLogoOrMono, { g: g, side: side }); };
+  return h('div', { id: id, className: 'vrd' + (left === 0 ? ' closed' : '') }, h('style', null, VRD_CSS), h('div', { className: 'glow' }),
+    h('div', { className: 'in' },
+      h('div', { className: 'bar', 'data-html2canvas-ignore': 'true' }, h('button', { type: 'button', className: 'shr', onClick: function (e) { vscShareCard(e.currentTarget, id, 'vault-sharp-read-' + String(g.away.abbr).toLowerCase() + '-' + String(g.home.abbr).toLowerCase() + '.png', g.away.abbr + ' @ ' + g.home.abbr + ' sharp read'); } },
+        h('svg', { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M12 15V3M7 8l5-5 5 5M5 14v5a2 2 0 002 2h10a2 2 0 002-2v-5' })), 'Share')),
+      h('div', { className: 'hd' },
+        h('div', { className: 'tm' }, Logo('away'), h('div', null, h('b', null, g.away.short || g.away.abbr), h('small', null, 'Away'))),
+        h('div', { className: 'mid' }, h('span', { className: 'eyebrow' }, h('i'), 'Sharp read'),
+          h('div', { className: 'pickline' + (word.length > 12 ? ' sm' : ''), style: { color: col } }, word, sub ? h('span', { style: { marginLeft: '.22em' } }, sub) : null),
+          h('div', { className: 'why' }, P.agree + ' of 4 signals agree \u00B7 ' + P.mkt + (P.final ? ' \u00B7 final ' + g.away.abbr + ' ' + g.final.away + ', ' + g.home.abbr + ' ' + g.final.home : ''),
+            P.oppose ? ' ' : null, P.oppose ? h('span', { className: 'pill o' }, P.oppose + ' opposes') : null, pill ? ' ' : null, pill ? h('span', { className: 'pill ' + pill[0] }, pill[1]) : null)),
+        h('div', { className: 'tm r' }, Logo('home'), h('div', null, h('b', null, g.home.short || g.home.abbr), h('small', null, 'Home \u00B7 ' + P.when)))),
+      h('div', { className: 'sig' }, P.sigs.map(function (x) { return tile(x[0], x[1]); })),
+      h('div', { className: 'price' },
+        h('div', { className: 'row' },
+          h('div', null, h('em', null, 'Pinnacle price'), P.pin != null ? h('strong', null, P.q(P.pin)) : h('strong', { className: 'n' }, 'none yet')),
+          h('div', null, h('em', null, 'Best US book'), best ? h('strong', { style: behind ? { color: 'var(--pick)' } : null }, P.q(best.price)) : h('strong', { className: 'n' }, 'none'), h('small', null, best ? best.src : 'No US book at this number')),
+          h('div', null, h('em', null, 'Fair win chance'), w != null ? h('strong', null, P.bt(w)) : h('strong', { className: 'n' }, 'none yet'), w != null && P.fairAm != null ? h('small', null, P.q(P.fairAm)) : null)),
+        h('div', { className: 'st' }, h('span', { className: 'pill ' + (behind ? 'g' : 'd') }, behind ? 'Still gettable: ' + (behind.ev * 100).toFixed(1) + '% over fair at ' + behind.book : 'Gap closed, no US book is behind'),
+          h('span', null, P.age == null ? 'No timestamped sharp bet yet' : 'latest signal ' + Math.round(P.age) + 'm old')),
+        h('div', { className: 'timer' }, h('i', { style: { width: pct + '%', background: tcol } })),
+        h('div', { className: 'tl' }, h('span', null, P.age == null ? '' : left > 0 ? 'about ' + Math.round(left) + 'm of edge window left' : 'Edge window closed'), h('span', null, rec))),
+      h('div', { className: 'foot' }, h('b', null, 'VAULT FANTASY'), h('span', null, 'Sharp Money \u00B7 vaultfantasy.com'),
+        h('button', { type: 'button', className: 'open', 'data-html2canvas-ignore': 'true', onClick: P.open }, 'Open full game page'))));
+}
+// Team logo for the poster cards, falling back to a team-colour monogram.
+function VscLogoOrMono(P) {
+  var h = U.createElement, g = P.g, t = g[P.side], st = U.useState(false), bad = st[0], setBad = st[1], url = vscLogoUrl(g, P.side);
+  if (!url || bad) return h('div', { className: 'mono', style: { background: t.color || '#3a3a44' } }, String(t.abbr || '?').slice(0, 4));
+  return h('img', { className: 'lg', crossOrigin: 'anonymous', src: url, alt: t.name, onError: function () { setBad(true); } });
+}
 var vscAm = function (n) { return n == null ? '' : (n > 0 ? '+' : '') + n; };
 var vscL = function (n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); };
 var vscUsd = function (n) { return n >= 1e6 ? '$' + (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? '$' + (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : '$' + Math.round(n); };
@@ -403,7 +503,7 @@ function vscShareCard(btn, id, name, title) {
   if (btn.dataset.busy) return; btn.dataset.busy = '1'; btn.disabled = true;
   vscH2C().then(function (h2c) {
     return h2c(document.getElementById(id), { scale: 3, backgroundColor: '#0b0b0d', useCORS: true, windowWidth: 1000,
-      onclone: function (doc) { var el = doc.getElementById(id); el.className = el.className.replace(/\bfit\b/, '').trim(); el.style.width = '560px'; el.style.maxWidth = 'none'; el.style.margin = '0'; } });
+      onclone: function (doc) { var el = doc.getElementById(id); el.className = el.className.replace(/\b(fit|closed)\b/g, '').replace(/\s+/g, ' ').trim(); el.style.width = '560px'; el.style.maxWidth = 'none'; el.style.margin = '0'; } });
   }).then(function (c) { return new Promise(function (r) { c.toBlob(r, 'image/png'); }); }).then(function (blob) {
     var file = new File([blob], name, { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: title });

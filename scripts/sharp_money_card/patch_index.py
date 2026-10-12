@@ -94,5 +94,13 @@ s = s.replace('list=B.filter(x=>CfRow?CfRow.keys.includes(x.key):', 'list=B.filt
 s = s.replace('CfAll=CfB.filter(x=>CfRow?CfRow.keys.includes(x.key):', 'CfAll=CfB.filter(x=>CfRow?(CfRow.keys.includes(x.key)||VscCfOpen(CfRow.label,x)):', 1)
 s = s.replace('CfRow.label+" \u00b7 "+CfRow.keys.length+" game"+(CfRow.keys.length===1?"":"s")+" \u00d7"', 'CfRow.label+" \u00b7 "+B.filter(q=>CfRow.keys.includes(q.key)||VscCfOpen(CfRow.label,q)).length+" games \u00d7"')
 s = s.replace('CfRow.label+" · "+CfRow.keys.length+" game"+(CfRow.keys.length===1?"":"s")+" ×"', 'CfRow.label+" · "+B.filter(q=>CfRow.keys.includes(q.key)||VscCfOpen(CfRow.label,q)).length+" games ×"')
+
+# 8. Top Reads: Pf keeps all its maths (read, price check, edge window) and hands the numbers to the poster card
+if 'return(0,a.jsxs)(K,{padding:0,style:{opacity:C===0?.62:1},children:[' in s:
+    i = s.index('return(0,a.jsxs)(K,{padding:0,style:{opacity:C===0?.62:1},children:[')
+    j = s.index('var Xp=null,Yp=', i)
+    call = ('return(0,a.jsx)(VaultReadCard,{g:e,l:l,m:r,out:d,sigs:h,pick:p,agree:t.agree,oppose:t.oppose,mkt:st[r],when:fi(e.start),final:!!e.final,'
+            'pin:m?.[l],best:y,fair:w,fairAm:R,behind:f,left:C,age:u,pct:b,cm:cm,res:i,q:q,bt:bt,open:()=>o(e.key)})}')
+    s = s[:i] + call + s[j:]
 open(IDX, 'w', encoding='utf-8').write(s)
 print('patched', os.path.getsize(IDX) // 1024, 'KB')
