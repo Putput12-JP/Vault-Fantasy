@@ -66,6 +66,27 @@ class Regrade(unittest.TestCase):
         self.assertEqual((base['all'], base['before'], base['n'], base['feed']), ([1, 1], [2, 0], 2, [1, 1]))
 
 
+class Minors(unittest.TestCase):
+    def test_epoch_zoneless_is_utc(self):
+        self.assertEqual(cm._epoch('1970-01-01T00:15:00'), 900)
+        self.assertEqual(cm._epoch('1970-01-01T00:15:00Z'), 900)
+        self.assertEqual(cm._epoch('1970-01-01T00:15:00+00:00'), 900)
+        self.assertEqual(cm._epoch('1969-12-31T19:15:00-05:00'), 900)
+        self.assertIsNone(cm._epoch(None)); self.assertIsNone(cm._epoch('not a time'))
+
+    def test_capture_missing_kick_is_skipped(self):
+        r = dict(key='cfb:9', side='home', market_margin=3.0)
+        self.assertFalse(cm.capture_line(r, 900)); self.assertNotIn('line_captured', r)
+        r['kick'] = None; self.assertFalse(cm.capture_line(r, 900)); self.assertNotIn('line_captured', r)
+
+    def test_capture_board_skips_games_not_in_slate(self):
+        a = dict(key='cfb:1', kick=1000, side='home', market_margin=3.0)
+        b = dict(key='cfb:2', kick=1000, side='home', market_margin=5.0, line_captured=-4.0, line_captured_at='1970-01-01T00:13:20Z')
+        self.assertEqual(cm.capture_board([a, b], [dict(key='cfb:1')], 900), 1)
+        self.assertEqual(a['line_captured'], -3.0)
+        self.assertEqual((b['line_captured'], b['line_captured_at']), (-4.0, '1970-01-01T00:13:20Z'))
+
+
 class Capture(unittest.TestCase):
     def mk(self, kick=1000, **kw):
         return dict(key='cfb:9', kick=kick, side='home', market_margin=3.0, logged=1, entry=-3.0, espn_close=-4.5, margin=3, result='W', **kw)

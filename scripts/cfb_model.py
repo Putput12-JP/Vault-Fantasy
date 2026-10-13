@@ -255,17 +255,29 @@ def _iso_utc(ts):
 
 
 def _epoch(iso):
-    try: return int(datetime.datetime.fromisoformat(str(iso).replace('Z', '+00:00')).timestamp())
+    """ISO time -> epoch seconds. A timestamp with no zone is read as UTC (every stamp this file writes is UTC), never as the box's local time."""
+    try: t = datetime.datetime.fromisoformat(str(iso).replace('Z', '+00:00'))
     except (TypeError, ValueError): return None
+    if t.tzinfo is None: t = t.replace(tzinfo=datetime.timezone.utc)
+    return int(t.timestamp())
 
 
 def capture_line(row, now):
     """Stamp the row's current market line (its own side, same sign as entry) and the run time while the game has not kicked off. Once now >= kick the stamp
     is never touched again, so line_captured_at < kick always holds for a real pre-kick capture. Returns True when it stamped."""
-    if now >= row['kick'] or row.get('market_margin') is None or row.get('side') not in ('home', 'away'): return False
+    kick = row.get('kick')
+    if not isinstance(kick, (int, float)) or isinstance(kick, bool): return False      # no kick time: cannot prove the line is pre-kick, so never stamp
+    if now >= kick or row.get('market_margin') is None or row.get('side') not in ('home', 'away'): return False
     row['line_captured'] = round(-row['market_margin'] if row['side'] == 'home' else row['market_margin'], 1)
     row['line_captured_at'] = _iso_utc(now)
     return True
+
+
+def capture_board(board, slate, now):
+    """capture_line for every board row whose game is in THIS run's slate. A row missing from the slate keeps its old stamp: its market_margin was not
+    refreshed this run, so stamping it would record a stale line at a new time. Returns how many rows were stamped."""
+    in_slate = {s_['key'] for s_ in slate}
+    return sum(capture_line(e, now) for e in board if e.get('key') in in_slate)
 
 
 def tile_fields(board):
@@ -508,7 +520,8 @@ def cmd_update(a):
             gr_ = gidx.get((h, aw)) if h is not None else None
             if h is None or aw is None or h not in F or aw not in F or line is None:
                 un += 1; continue
-            wk = int(gr_.week) if gr_ is not None else through; neutral = bool(gr_ is not None and gr_.neutral_site == True)
+            wk = int(gr_.week) if gr_ is not None else through + 1      # an unplayed game is not in the play-by-play: it is the NEXT week's, not the last finished week's
+            neutral = bool(gr_ is not None and gr_.neutral_site == True)
             ra_w, rb_w = rated_before(wk)
             Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
             pred = K * (Pw(h) - Pw(aw)) + (0.0 if neutral else HFA)
@@ -560,6 +573,15 @@ def cmd_update(a):
     if os.path.exists(OUT):
         try: log = json.load(open(OUT)).get('log', [])
         except Exception: log = []
+    sl_ = {s['key']: s for s in slate}
+    for e in log:       # a pick logged before kickoff under the wrong week was projected with ratings missing the last finished week: re-derive it from the slate, or drop it if it is no longer a pick
+        s_ = sl_.get(e['key'])
+        if s_ and e['kick'] > now and 'result' not in e and not e.get('backfill') and e['week'] != s_['week']:
+            e['_redo'] = True
+            if s_['pick']:
+                e.update(week=s_['week'], side=s_['pick']['side'], team=s_['pick']['team'], entry=s_['pick']['line'], model_margin=s_['model_margin'],
+                         market_margin=s_['market_margin'], edge=s_['edge'], neutral=s_['neutral'], line_src=s_.get('line_src'))
+    log = [e for e in log if not (e.pop('_redo', False) and not sl_[e['key']]['pick'])]
     have = {e['key'] for e in log}
     for s in slate:
         if s['pick'] and s['key'] not in have and (s['kick'] > now or s['backfill']):
@@ -601,7 +623,7 @@ def cmd_update(a):
         if co_ is not None and not b['key'].startswith('espn:') or co_ is not None and b.get('open_margin') is None: b['open_margin'] = round(-co_, 1)
     seen = {(b['home_id'], b['away_id']) for b in board if not b['key'].startswith('espn:')}
     board[:] = [b for b in board if not (b['key'].startswith('espn:') and (b['home_id'], b['away_id']) in seen)]      # a game the feed also had: keep the feed's entry
-    for e in board: capture_line(e, now)      # the last takeable pre-kick line, with its time, for grading the tile
+    capture_board(board, slate, now)      # the last takeable pre-kick line, with its time, for grading the tile
     if a.sharp and os.path.exists(a.sharp):
         for e in board:                   # signals keep firing until kickoff, so an upcoming game's cards are re-read every run; they freeze when the game starts
             if e['kick'] > now: e.pop('cards', None)

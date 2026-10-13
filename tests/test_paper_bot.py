@@ -804,7 +804,11 @@ def _cfb_quote(ticker, sub, ask):
 
 
 def _book(updated, tickers, status='open'):
-    return {'updated': updated, 'trades': [{'ticker': t, 'status': status} for t in tickers]}
+    led = empty(1000)
+    led['updated'] = updated
+    led['trades'] = [{'id': f'{t}:1', 'ticker': t, 'status': status, 'ts': '2026-10-13T12:00:00Z', 'stake': 0}
+                     for t in tickers]
+    return led
 
 
 class LedgerBaseTests(unittest.TestCase):
@@ -812,18 +816,29 @@ class LedgerBaseTests(unittest.TestCase):
         published = _book('2026-10-13T12:00:00Z', ['A'])
         recovered = _book('2026-10-13T16:00:00Z', ['A', 'B'])
         chosen = choose_base_ledger(published, recovered)
-        self.assertIs(chosen, recovered)
         self.assertEqual(sorted(held_tickers(chosen)), ['A', 'B'])
 
-    def test_stale_or_incomplete_recovery_stays_on_the_published_book(self):
+    def test_a_stale_or_incomplete_recovery_never_drops_a_row(self):
         published = _book('2026-10-13T16:00:00Z', ['A', 'B'])
         older = _book('2026-10-13T12:00:00Z', ['A', 'B', 'C'])
         missing = _book('2026-10-13T17:00:00Z', ['B'])
-        self.assertIs(choose_base_ledger(published, older), published)
-        self.assertIs(choose_base_ledger(published, missing), published)
+        self.assertEqual(sorted(held_tickers(choose_base_ledger(published, older))), ['A', 'B', 'C'])
+        self.assertEqual(sorted(held_tickers(choose_base_ledger(published, missing))), ['A', 'B'])
         self.assertIs(choose_base_ledger(published, None), published)
         self.assertIs(choose_base_ledger(None, missing), missing)
         self.assertIsNone(choose_base_ledger(None, None))
+
+
+class PendingRows(unittest.TestCase):
+    def test_won_none_is_pending_only_on_book_rows(self):
+        from scripts.paper_bot.ledger import _is_pending
+        base = {'status': 'settled', 'won': None}
+        self.assertTrue(_is_pending({**base, 'book': 'novig', 'source': 'cfb_jp_novig'}))
+        self.assertTrue(_is_pending({**base, 'source': 'cfb_jp_novig'}))
+        self.assertTrue(_is_pending({'status': 'settled', 'won': True, 'book': 'novig', 'remainder_pending': True}))
+        self.assertFalse(_is_pending({**base, 'source': 'cfb_ml'}))
+        self.assertFalse(_is_pending({'status': 'settled', 'won': None, 'source': 'cfb_ml', 'remainder_pending': True}))
+        self.assertFalse(_is_pending({'status': 'open', 'won': None, 'book': 'novig'}))
 
 
 if __name__ == '__main__':
