@@ -450,19 +450,29 @@ def score_sharp_lead():
     from datetime import datetime, timezone
     ts = lambda x: datetime.fromisoformat(x.replace("Z", "+00:00")).timestamp()
     now = datetime.now(timezone.utc).timestamp()
-    seen, rows = set(), {}
+    # The same game sits under several week tags (lookahead weeks carry it too),
+    # each with its own lead record. Pool them per game: `first` = earliest
+    # divergence, `close` = latest roll. Taking the first record seen graded the
+    # lookahead copy, whose close was ~10 days stale, and the 6h filter then
+    # dropped every game from Oct 2 on (counts froze at 29 / 13).
+    pool = {}
     for rec in H.values():
         c, L = rec.get("commence"), rec.get("lead")
-        if not c or not L: continue
-        k = (rec.get("away"), rec.get("home"), c)
-        if k in seen or ts(c) > now: continue          # one per game; played games only
-        seen.add(k)
+        if not c or not L or ts(c) > now: continue          # played games only
+        P = pool.setdefault((rec.get("away"), rec.get("home"), c), {})
         for mk, books in L.items():
             for b, x in books.items():
+                cur = P.setdefault((mk, b), {})
                 f, cl = x.get("first"), x.get("close")
-                if not f or not cl or ts(c) - ts(cl["ts"]) > 6 * 3600: continue
-                sgn = 1 if f["b"] > f["r"] else -1
-                rows.setdefault((mk, b), []).append(sgn * (cl["r"] - f["r"]))
+                if f and (not cur.get("first") or ts(f["ts"]) < ts(cur["first"]["ts"])): cur["first"] = f
+                if cl and (not cur.get("close") or ts(cl["ts"]) > ts(cur["close"]["ts"])): cur["close"] = cl
+    rows = {}
+    for (_a, _h, c), P in pool.items():
+        for (mk, b), x in P.items():
+            f, cl = x.get("first"), x.get("close")
+            if not f or not cl or ts(c) - ts(cl["ts"]) > 6 * 3600: continue
+            sgn = 1 if f["b"] > f["r"] else -1
+            rows.setdefault((mk, b), []).append(sgn * (cl["r"] - f["r"]))
     out = {}
     for (mk, b), mv in sorted(rows.items()):
         n = len(mv); m = sum(mv) / n
