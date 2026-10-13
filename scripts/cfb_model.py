@@ -17,7 +17,7 @@ closing spread. It earns a Trust it only by clearing the same bar as every other
 
 Needs pandas, numpy, scipy, scikit-learn, pyarrow. Handicap convention: a team's spread, + = underdog.
 """
-import argparse, json, math, os, sys, tempfile
+import argparse, datetime, json, math, os, sys, tempfile
 import numpy as np, pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cfb_efficiency_study as st
@@ -250,16 +250,37 @@ def _cp_bisect(w, n, alpha=0.05):
     return [round(lo, 3), round(hi, 3)]
 
 
+def _iso_utc(ts):
+    return datetime.datetime.fromtimestamp(int(ts), datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def _epoch(iso):
+    try: return int(datetime.datetime.fromisoformat(str(iso).replace('Z', '+00:00')).timestamp())
+    except (TypeError, ValueError): return None
+
+
+def capture_line(row, now):
+    """Stamp the row's current market line (its own side, same sign as entry) and the run time while the game has not kicked off. Once now >= kick the stamp
+    is never touched again, so line_captured_at < kick always holds for a real pre-kick capture. Returns True when it stamped."""
+    if now >= row['kick'] or row.get('market_margin') is None or row.get('side') not in ('home', 'away'): return False
+    row['line_captured'] = round(-row['market_margin'] if row['side'] == 'home' else row['market_margin'], 1)
+    row['line_captured_at'] = _iso_utc(now)
+    return True
+
+
 def tile_fields(board):
     """Grade the Sharp Money tile at ONE takeable price: the last line before kickoff. Adds tile_line, tile_result ('W'/'L'/'P') and tile_line_src to every
     settled row and touches nothing else (result, entry and the pick cards stay as they were). An 'espn:' row is already at ESPN's line, which is the close.
-    A 'cfb:' row logged at or after kickoff is a feed backfill whose entry is the OPEN (look-ahead), so it is regraded at espn_close (same sign as entry:
+    A row with line_captured stamped before kick is graded at that line ('captured_prekick', takes precedence). A 'cfb:' row logged at or after kickoff is a feed backfill whose entry is the OPEN (look-ahead), so it is regraded at espn_close (same sign as entry:
     the line on the row's own side). A 'cfb:' row logged before kickoff keeps entry, the last pre-kick board line. No stored close means no tile grade."""
     for e in board:
         for k in ('tile_line', 'tile_result', 'tile_line_src'): e.pop(k, None)
         if e.get('result') not in ('W', 'L', 'P') or e.get('margin') is None: continue
-        if e['key'].startswith('cfb:') and e['logged'] >= e['kick']:
-            line, src = e.get('espn_close'), 'espn_close'
+        cap_at = _epoch(e.get('line_captured_at'))
+        if e.get('line_captured') is not None and cap_at is not None and cap_at < e['kick']:
+            line, src = e['line_captured'], 'captured_prekick'
+        elif e['key'].startswith('cfb:') and e['logged'] >= e['kick']:
+            line, src = e.get('espn_close'), 'close_no_ts'      # the book's closing spread (the DraftKings close), no capture timestamp
         else: line, src = e['entry'], 'entry'
         if line is None: continue
         e['tile_line'] = line; e['tile_line_src'] = src
@@ -580,6 +601,7 @@ def cmd_update(a):
         if co_ is not None and not b['key'].startswith('espn:') or co_ is not None and b.get('open_margin') is None: b['open_margin'] = round(-co_, 1)
     seen = {(b['home_id'], b['away_id']) for b in board if not b['key'].startswith('espn:')}
     board[:] = [b for b in board if not (b['key'].startswith('espn:') and (b['home_id'], b['away_id']) in seen)]      # a game the feed also had: keep the feed's entry
+    for e in board: capture_line(e, now)      # the last takeable pre-kick line, with its time, for grading the tile
     if a.sharp and os.path.exists(a.sharp):
         for e in board:                   # signals keep firing until kickoff, so an upcoming game's cards are re-read every run; they freeze when the game starts
             if e['kick'] > now: e.pop('cards', None)

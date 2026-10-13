@@ -41,12 +41,12 @@ class Regrade(unittest.TestCase):
     def test_feed_backfill_regraded_at_close(self):
         # entry (the open) says W by 1, the close line is -3.5 so the same margin loses
         r, = self.grade(row('cfb:1', 200, 100, -2.0, -3.5, 3, 'W'))
-        self.assertEqual((r['tile_line'], r['tile_line_src'], r['tile_result']), (-3.5, 'espn_close', 'L'))
+        self.assertEqual((r['tile_line'], r['tile_line_src'], r['tile_result']), (-3.5, 'close_no_ts', 'L'))
         self.assertEqual((r['result'], r['entry']), ('W', -2.0))       # what the pick cards read is untouched
 
     def test_logged_at_kick_counts_as_backfill(self):
         r, = self.grade(row('cfb:1', 100, 100, 1.0, -1.0, 0, 'W'))
-        self.assertEqual((r['tile_line_src'], r['tile_result']), ('espn_close', 'L'))
+        self.assertEqual((r['tile_line_src'], r['tile_result']), ('close_no_ts', 'L'))
 
     def test_live_row_keeps_entry(self):
         r, = self.grade(row('cfb:2', 50, 100, -2.0, -3.5, 3, 'W'))
@@ -64,6 +64,38 @@ class Regrade(unittest.TestCase):
         b = [row('cfb:1', 200, 100, -2.0, -3.5, 3, 'W'), row('cfb:2', 50, 100, -2.0, -3.5, 3, 'W')]
         base = cm.tile_cards_summary(b)['table'][0]
         self.assertEqual((base['all'], base['before'], base['n'], base['feed']), ([1, 1], [2, 0], 2, [1, 1]))
+
+
+class Capture(unittest.TestCase):
+    def mk(self, kick=1000, **kw):
+        return dict(key='cfb:9', kick=kick, side='home', market_margin=3.0, logged=1, entry=-3.0, espn_close=-4.5, margin=3, result='W', **kw)
+
+    def test_capture_set_before_kick(self):
+        r = self.mk(); self.assertTrue(cm.capture_line(r, 900))
+        self.assertEqual((r['line_captured'], r['line_captured_at']), (-3.0, '1970-01-01T00:15:00Z'))
+
+    def test_away_side_sign_matches_entry(self):
+        r = self.mk(); r['side'] = 'away'; cm.capture_line(r, 900); self.assertEqual(r['line_captured'], 3.0)
+
+    def test_updated_on_later_prekick_run(self):
+        r = self.mk(); cm.capture_line(r, 800); r['market_margin'] = 3.5; cm.capture_line(r, 900)
+        self.assertEqual((r['line_captured'], r['line_captured_at']), (-3.5, '1970-01-01T00:15:00Z'))
+
+    def test_never_overwritten_at_or_after_kick(self):
+        r = self.mk(); cm.capture_line(r, 900); before = dict(r); r['market_margin'] = 9.0
+        self.assertFalse(cm.capture_line(r, 1000)); self.assertFalse(cm.capture_line(r, 1500))
+        self.assertEqual((r['line_captured'], r['line_captured_at']), (before['line_captured'], before['line_captured_at']))
+
+    def test_grading_uses_captured_line(self):
+        r2 = self.mk(); r2['market_margin'] = 2.0; cm.capture_line(r2, 900); r2['entry'] = -1.0; r2['logged'] = 2000
+        b = [r2]; cm.tile_fields(b)
+        self.assertEqual((r2['tile_line'], r2['tile_line_src'], r2['tile_result']), (-2.0, 'captured_prekick', 'W'))
+        self.assertEqual((r2['entry'], r2['result']), (-1.0, 'W'))
+
+    def test_capture_at_or_after_kick_ignored(self):
+        for at in ('1970-01-01T00:16:40Z', '1970-01-01T00:20:00Z'):
+            r = self.mk(line_captured=-1.0, line_captured_at=at); r['logged'] = 2000; b = [r]; cm.tile_fields(b)
+            self.assertEqual((r['tile_line'], r['tile_line_src']), (-4.5, 'close_no_ts'))
 
 
 if __name__ == '__main__':
