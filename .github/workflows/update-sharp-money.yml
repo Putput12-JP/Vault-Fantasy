@@ -98,8 +98,9 @@ jobs:
           git init -q -b sharp-data
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
-          git add data.json state.json
+          git add data.json state.json summary.json alerts.json accounts.json props.json reads.json
           if [ -f novig_props.json ]; then git add novig_props.json; fi
           if [ -f prop_plays.json ]; then git add prop_plays.json; fi
+          if compgen -G "g/*.json" > /dev/null; then git add g/*.json; fi
           git commit -q -m "sharp money: $(date -u +%FT%TZ) [skip ci]"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" sharp-data
