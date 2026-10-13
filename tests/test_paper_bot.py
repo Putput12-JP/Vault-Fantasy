@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from scripts.paper_bot.config import load, max_edge_of, max_gap_of, source_cfg
+from scripts.paper_bot.config import cap_warnings, load, max_edge_of, max_gap_of, source_cfg
 from scripts.paper_bot.engine import Engine
 from scripts.paper_bot.fees import cost_cents, taker_fee
 from scripts.paper_bot.kelly import contracts_for, full_kelly
@@ -609,7 +609,21 @@ class QaFixTests(unittest.TestCase):
         finally:
             os.remove(path)
         self.assertEqual(source_cfg(cfg, 'nba_total')['max_edge'], 0.15)
-        self.assertTrue(any('not above min_edge' in w for w in cfg['config_warnings']))
+        self.assertTrue(any('<= min_edge' in w for w in cfg['config_warnings']))
+
+    def test_new1_source_min_edge_above_max_edge_gets_headroom(self):
+        base = {'min_edge': 0.08, 'min_price': 0.05, 'max_price': 0.95, 'max_spread': 0.10, 'max_edge': 0.15,
+                'sources': {'nba_total': {'enabled': True, 'min_edge': 0.2}}}
+        sc = source_cfg(base, 'nba_total')
+        self.assertEqual((sc['min_edge'], sc['max_edge']), (0.2, 0.25))
+        warnings = cap_warnings(base)
+        self.assertEqual(len(warnings), 1)
+        self.assertIn('max_edge 0.15 <= min_edge 0.2 for source nba_total, using 0.25', warnings[0])
+        q = {'ticker': 'T', 'yes_bid': 0.28, 'yes_ask': 0.30, 'no_bid': 0.70, 'no_ask': 0.72,
+             'yes_ask_size': 100, 'no_ask_size': 100}
+        capped = []
+        self.assertIsNotNone(_best_side(q, 0.52, dict(GATES, **sc), capped))
+        self.assertEqual(capped, [])
 
     def test_bug3_null_and_zero_still_disable(self):
         for off in (None, 0):

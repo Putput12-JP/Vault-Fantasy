@@ -81,8 +81,11 @@ def _cap_value(cfg, key):
     return float(v), None
 
 
-def resolve_caps(cfg, min_edge=None):
-    """(max_edge, max_gap, warnings) for one config view, falling back to defaults on invalid values."""
+def resolve_caps(cfg, min_edge=None, label=None):
+    """(max_edge, max_gap, warnings) for one config view, falling back to defaults on invalid values.
+
+    A max_edge at or below min_edge would block every trade, so it becomes max(default, min_edge + 0.05).
+    """
     warnings = []
     max_edge, bad = _cap_value(cfg, 'max_edge')
     if bad:
@@ -94,8 +97,10 @@ def resolve_caps(cfg, min_edge=None):
         min_edge = cfg.get('min_edge', DEFAULTS['min_edge'])
     if (max_edge is not None and isinstance(min_edge, (int, float)) and not isinstance(min_edge, bool)
             and math.isfinite(min_edge) and max_edge <= min_edge):
-        warnings.append(f'max_edge={max_edge} is not above min_edge={min_edge}, using {DEFAULTS["max_edge"]}')
-        max_edge = float(DEFAULTS['max_edge'])
+        used = round(max(float(DEFAULTS['max_edge']), min_edge + 0.05), 10)
+        where = f' for source {label}' if label else ''
+        warnings.append(f'max_edge {max_edge} <= min_edge {min_edge}{where}, using {used}')
+        max_edge = used
     return max_edge, gap, warnings
 
 
@@ -118,7 +123,7 @@ def cap_warnings(cfg):
         sc = sc or {}
         if 'max_edge' not in sc and 'max_model_market_gap' not in sc and 'min_edge' not in sc:
             continue
-        for w in resolve_caps({**cfg, **sc})[2]:
+        for w in resolve_caps({**cfg, **sc}, label=name)[2]:
             if ('config: ' + w) not in out:
                 out.append(f'config ({name}): ' + w)
     return out
