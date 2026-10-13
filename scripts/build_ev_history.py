@@ -14,12 +14,40 @@ Usage:
     (walks every commit that touched data.json on the ref, oldest first, then the ref tip)
 """
 import argparse
-import datetime
 import json
 import os
-import shutil
+import re
 import subprocess
 import sys
+
+
+_NUM = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?")
+
+
+def _js_num(n):
+    """String(n) for a finite float, as JavaScript prints it (1e+21, 1e-7, -0 -> 0)."""
+    if n == 0:
+        return "0"
+    sign = "-" if n < 0 else ""
+    mant, _, exp = repr(abs(n)).partition("e")
+    whole, _, frac = mant.partition(".")
+    if frac == "0":
+        frac = ""
+    digits = (whole + frac).lstrip("0")
+    # decimal point position relative to the start of digits
+    pt = len(whole) + int(exp or 0) - (len(whole + frac) - len((whole + frac).lstrip("0")))
+    digits = digits.rstrip("0") or "0"
+    k = len(digits)
+    if k <= pt <= 21:
+        out = digits + "0" * (pt - k)
+    elif 0 < pt <= 21:
+        out = digits[:pt] + "." + digits[pt:]
+    elif -6 < pt <= 0:
+        out = "0." + "0" * -pt + digits
+    else:
+        e = pt - 1
+        out = digits[0] + ("." + digits[1:] if k > 1 else "") + "e" + ("+" if e >= 0 else "-") + str(abs(e))
+    return sign + out
 
 
 def line_key(x):
@@ -27,14 +55,22 @@ def line_key(x):
     if x is None or x == "":
         return ""
     if isinstance(x, bool):
+        return "true" if x else "false"
+    n = None
+    if isinstance(x, (int, float)):
+        try:
+            n = float(x)
+        except OverflowError:
+            n = float("inf")
+    elif isinstance(x, str) and x.strip() != "" and _NUM.fullmatch(x.strip()):
+        n = float(x.strip())
+    if n is None:
         return str(x)
-    try:
-        n = float(x)
-    except (TypeError, ValueError):
-        return str(x)
-    if n != n or n in (float("inf"), float("-inf")):
-        return str(x)
-    return str(int(n)) if n == int(n) else repr(n)
+    if n != n:
+        return "NaN"
+    if n in (float("inf"), float("-inf")):
+        return "Infinity" if n > 0 else "-Infinity"
+    return _js_num(n)
 
 
 def key_of(a):
@@ -67,26 +103,34 @@ def ev_rows(alerts):
 
 
 def load_history(path):
+    """Missing file: start fresh. Broken JSON or wrong shape: ::error:: and exit, file untouched."""
     if not (path and os.path.exists(path)):
         return {}
     try:
         with open(path) as f:
             h = json.load(f)
-        if not isinstance(h, dict) or not isinstance(h.get("entries"), list):
-            raise ValueError("expected an object with an entries list")
-        rows = h["entries"]
-        if not all(isinstance(e, dict) and "key" in e for e in rows):
-            raise ValueError("entries must be objects with a key")
     except (ValueError, OSError) as e:
-        bad = "%s.bad-%s" % (path, datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
-        shutil.copy2(path, bad)
-        print("::warning::ev history %s is unreadable (%s); copied to %s, starting fresh" % (path, e, bad))
-        return {}
+        print("::error::ev history %s is unreadable (%s); left untouched" % (path, e))
+        sys.exit(1)
+    if not isinstance(h, dict) or not isinstance(h.get("entries"), list):
+        print("::error::ev history %s has the wrong shape (expected an object with an entries list); left untouched" % path)
+        sys.exit(1)
     entries = {}
-    for e in rows:
-        if all(k in e for k in ("game", "m", "side")):
+    skipped = 0
+    for e in h["entries"]:
+        if not isinstance(e, dict):
+            skipped += 1
+            continue
+        if "key" not in e:
+            if not all(k in e for k in ("game", "m", "side", "line")):
+                skipped += 1
+                continue
+            e["key"] = key_of(e)
+        elif all(k in e for k in ("game", "m", "side")):
             e["key"] = key_of(e)
         entries.setdefault(e["key"], e)
+    if skipped:
+        print("::warning::ev history %s: skipped %d unrepairable entries" % (path, skipped))
     return entries
 
 
