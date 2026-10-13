@@ -1125,7 +1125,8 @@ function snapLead(S, games) {
 }
 function gradePicks(S) {
   const t = now();
-  for (const p of Object.values(S.picks || {})) {
+  // sharpContext rows left the bet ledger but stay graded: a play dropped while still pending must keep getting its raw result
+  for (const p of [...Object.values(S.picks || {}), ...Object.values(S.sharpContext || {})]) {
     const G = S.games[p.game]; if (!G || p.start > t) continue;
     if (p.close == null && G.ladder && p.fair != null) {
       const P = { ml: G.ladder.ml, spL: G.ladder.sp, totL: G.ladder.tot };
@@ -1387,6 +1388,11 @@ function selftestPicks() {
   if (M.picks['b|ml|home'] || !M.sharpContext['b|ml|home'] || !M.sharpContext['b|ml|home'].dropped) throw new Error('sharp-only pick still in the bet ledger');
   migrateLedger(M);
   if (M.picks['a|sp|home'].kindsLegacy.join() !== 'sharp,line' || M.picks['a|sp|home'].kinds.join() !== 'line') throw new Error('second migrate rewrote history');
+  M.sharpContext['p|ml|home'] = { game: 'p', m: 'ml', side: 'home', start: 1, kinds: ['sharp'], dropped: true, result: null };
+  M.games = { p: { final: { home: 3, away: 1 } } };
+  gradePicks(M);
+  if (M.sharpContext['p|ml|home'].result !== 1) throw new Error('a dropped pending play must still be graded');
+  delete M.sharpContext['p|ml|home'];
   const led = assembleLedger(Object.values(M.picks), M.alerts, Object.values(M.sharpContext));
   if (led.slices.overall.now.n !== 0) throw new Error('conflict counted in the bet record ' + JSON.stringify(led.slices.overall.now));
   if (led.dropped !== 1 || led.sharp.w !== 1 || led.sharp.l !== 1) throw new Error('sharp context ' + JSON.stringify({ dropped: led.dropped, sharp: led.sharp }));
@@ -1394,6 +1400,40 @@ function selftestPicks() {
 }
 if (ARG.selftest) {
   selftestPicks();
+  process.exit(0);
+}
+if (ARG['audit-dropped']) {
+  // Proof that the plays removed from the bet record are still stored with their raw result. Reads a state.json, migrates a copy, and compares.
+  const S = JSON.parse(readFileSync(ARG['audit-dropped'], 'utf8'));
+  const before = JSON.parse(JSON.stringify(S.picks || {})), ctxBefore = JSON.parse(JSON.stringify(S.sharpContext || {}));
+  const pend = (S.alerts || []).length;
+  migrateLedger(S);
+  const lost = [], changed = [], pendingAfter = [];
+  const dropKeys = Object.entries(before).filter(([k, p]) => !(p.kinds || []).some(x => BET_SET.has(x))).map(([k]) => k);
+  const by = { sport: {}, m: {} };
+  for (const k of dropKeys) {
+    const o = before[k], n = S.sharpContext[k];
+    if (!n || !n.dropped) { lost.push(k); continue; }
+    if (n.result !== o.result || n.start !== o.start || n.side !== o.side || n.m !== o.m || n.hline !== o.hline || n.line !== o.line) changed.push(k);
+    const g = (by.sport[o.sport] ||= { n: 0, graded: 0, w: 0, l: 0, p: 0 });
+    g.n++; if (o.result != null) { g.graded++; if (o.result > 0) g.w++; else if (o.result < 0) g.l++; else g.p++; }
+    const mm = (by.m[o.m] ||= { n: 0, graded: 0 }); mm.n++; if (o.result != null) mm.graded++;
+  }
+  for (const k of Object.keys(ctxBefore)) if (!S.sharpContext[k]) lost.push('ctx:' + k);
+  const rawGraded = Object.values(before).filter(p => p.result != null).length;
+  const keptGraded = Object.values(S.picks).filter(p => p.result != null).length + Object.values(S.sharpContext).filter(p => p.result != null).length;
+  const pendDrop = dropKeys.filter(k => before[k].result == null);
+  const t0 = pendDrop.filter(k => S.sharpContext[k].result != null).length;
+  gradePicks(S);
+  const newlyGraded = pendDrop.filter(k => S.sharpContext[k].result != null).length - t0;
+  const finalNoResult = pendDrop.filter(k => S.sharpContext[k].result == null && S.games[S.sharpContext[k].game] && S.games[S.sharpContext[k].game].final).length;
+  console.log(JSON.stringify({
+    picksBefore: Object.keys(before).length, picksAfter: Object.keys(S.picks).length, contextAfter: Object.keys(S.sharpContext).length,
+    dropped: dropKeys.length, droppedGraded: dropKeys.length - pendDrop.length, droppedPending: pendDrop.length,
+    droppedWins: dropKeys.filter(k => before[k].result > 0).length, droppedLosses: dropKeys.filter(k => before[k].result < 0).length, droppedPushes: dropKeys.filter(k => before[k].result === 0).length,
+    missing: lost.length, resultsChanged: changed.length, rawGradedBefore: rawGraded, gradedStoredAfter: keptGraded,
+    pendingGradedByFix: newlyGraded, pendingStillUngradedWithFinal: finalNoResult, bySport: by.sport, byMarket: by.m, alertsInState: pend,
+  }, null, 2));
   process.exit(0);
 }
 if (ARG.ledger) {
