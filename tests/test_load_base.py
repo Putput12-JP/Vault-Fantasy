@@ -118,6 +118,25 @@ class Cli(unittest.TestCase):
                 self.assertEqual(len(warnings), 1)
                 self.assertIn(f'Skipped recovered ledger {os.path.join(rec, name)}:', warnings[0])
 
+    def test_cli_counts_unreadable_recovered_files_as_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rec = os.path.join(tmp, 'ledgers')
+            os.makedirs(rec)
+            pub, out = os.path.join(tmp, 'published.json'), os.path.join(tmp, 'out', 'ledger.json')
+            self.write(pub, ledger('2026-10-20T12:00:00Z', row('P1')))
+            self.write(os.path.join(rec, '100.json'), ledger('2026-10-20T13:00:00Z', row('P1'), row('K1')))
+            self.write(os.path.join(rec, 'truncated.json'), '{"trades": [tru')
+            self.write(os.path.join(rec, 'shape.json'), {'trades': [5, None], 'strategies': 'x', 'equity': [1, 2]})
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                code = load_base.main(['--published', pub, '--recovered-dir', rec, '--out', out])
+            self.assertEqual(code, 0)
+            summary = [l for l in buf.getvalue().splitlines() if l.startswith('ledger sources:')]
+            self.assertEqual(len(summary), 1)
+            self.assertIn('recovered=1 skipped=2 ', summary[0])
+            with open(out) as f:
+                self.assertEqual(tickers(json.load(f)), ['K1', 'P1'])
+
     def test_cli_skips_a_ledger_shaped_recovered_file_with_bad_contents(self):
         good = ledger('2026-10-20T13:00:00Z', row('P1'), row('K1'))
         normal = ledger('2026-10-20T14:00:00Z', row('P1'), row('B1'))

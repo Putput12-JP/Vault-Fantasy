@@ -31,13 +31,14 @@ def main(argv=None):
     except (NotALedger, ValueError) as e:
         print(f'load_base: {e}', file=sys.stderr)
         return 2
-    recovered, labels = [], []
+    recovered, labels, unread = [], [], []
     for p in paths:
         try:
             r = read(p)
         except Exception as e:
             reason = ' '.join(str(e).split())
             print(f'::warning title=Paper bot ledger::Skipped recovered ledger {p}: {reason}')
+            unread.append(p)
             continue
         if r is not None:
             recovered.append(r)
@@ -56,7 +57,7 @@ def main(argv=None):
         print('no published or recovered ledger; the bot will start a new book')
         return 0
     merged = len(recovered) - len(skipped)
-    print(f"ledger sources: published={'yes' if published else 'no'} recovered={merged} skipped={len(skipped)} "
+    print(f"ledger sources: published={'yes' if published else 'no'} recovered={merged} skipped={len(unread) + len(skipped)} "
           f"trades={len(base['trades'])} held={len(held_tickers(base))}")
     if merged:
         print('::notice title=Paper bot ledger::Merged ledgers earlier runs failed to publish, so those tickers stay held.')
