@@ -82,6 +82,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
+          set -o pipefail
           mkdir -p paper-out
           if git ls-remote --exit-code --heads origin paper-data >/dev/null 2>&1; then
             git fetch --depth=1 origin paper-data
@@ -89,18 +90,23 @@ jobs:
           fi
           # The previous run uploads this before the push. If that push failed,
           # the artifact is the only copy of the new trades. One query for the
-          # newest unexpired paper-bot-ledger artifact on main, then one
-          # download. The artifact payload has no workflow id, so the run id
-          # must also belong to paper-bot.yml. A miss uses the published ledger.
+          # newest unexpired paper-bot-ledger artifact, then one download.
+          # The artifact payload has no workflow id, so the run id must also
+          # belong to a paper-bot.yml run on main from the last 14 days.
+          # A miss uses the published ledger.
+          sanitize() {
+            python3 -c 'import pathlib,sys; s=pathlib.Path(sys.argv[1]).read_bytes().decode("utf-8","replace"); s=s.replace("::","").replace("%","%25").replace("\r","%0D").replace("\n","%0A"); sys.stdout.write(s)' "$1"
+          }
           mkdir -p paper-restore
           meta=""
+          since=$(date -u -d '14 days ago' +%Y-%m-%d)
           if ! gh api --paginate \
-            "repos/${REPO}/actions/workflows/paper-bot.yml/runs?branch=main&per_page=100" \
+            "repos/${REPO}/actions/workflows/paper-bot.yml/runs?branch=main&per_page=100&created=%3E%3D${since}" \
             --jq '.workflow_runs[].id' > paper-restore/run-ids.txt; then
             echo "::warning title=Paper bot ledger::Could not list paper bot runs. Using the published ledger."
           elif ! meta=$(gh api --paginate \
             "repos/${REPO}/actions/artifacts?name=paper-bot-ledger&per_page=100" \
-            --jq '.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main") | "\(.created_at) \(.workflow_run.id)"' \
+            --jq '.artifacts[] | select(.expired == false) | "\(.created_at) \(.workflow_run.id)"' \
             | while IFS=' ' read -r created rid; do
                 if [ -n "$rid" ] && grep -qxF "$rid" paper-restore/run-ids.txt; then
                   printf '%s %s\n' "$created" "$rid"
@@ -112,6 +118,7 @@ jobs:
           elif [ -z "$meta" ]; then
             echo "::warning title=Paper bot ledger::No unexpired ledger artifact from this workflow on main. Using the published ledger."
           fi
+          rm -f paper-restore/run-ids.txt
           if [ -n "$meta" ]; then
             rm -rf paper-restore/out
             mkdir -p paper-restore/out
@@ -124,7 +131,7 @@ jobs:
                 echo "::warning title=Paper bot ledger::Ledger artifact from run ${meta} had no ledger.json. Using the published ledger."
               fi
             else
-              detail=$(tr '\n' ' ' < paper-restore/download.err)
+              detail=$(sanitize paper-restore/download.err)
               echo "::warning title=Paper bot ledger::Could not download the ledger artifact from run ${meta}. Using the published ledger. ${detail}"
             fi
           fi
