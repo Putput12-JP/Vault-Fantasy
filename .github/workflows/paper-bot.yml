@@ -97,6 +97,7 @@ jobs:
           python3 tests/test_paper_bot.py
           python3 tests/test_cfb_jp_novig.py
           python3 tests/test_merge_ledger.py
+          python3 tests/test_load_base.py
       - name: Load the paper ledger
         if: steps.gate.outputs.go == '1'
         env:
@@ -109,16 +110,18 @@ jobs:
             git fetch --depth=1 origin paper-data
             git show FETCH_HEAD:ledger.json > paper-out/published.json
           fi
-          # The previous run uploads this before the push. If that push failed,
-          # the artifact is the only copy of the new trades. One query for the
-          # newest unexpired paper-bot-ledger artifact, then one download.
-          # The artifact payload has no workflow id, so the run id must also
+          # Each run uploads its ledger before the push. If that push failed,
+          # the artifact is the only copy of the new trades, and a snapshot run
+          # that started earlier can upload a newer artifact without them. So
+          # take the newest 10 unexpired paper-bot-ledger artifacts and merge
+          # them all with the published ledger by trade id.
+          # The artifact payload has no workflow id, so each run id must also
           # belong to a paper-bot.yml run on main from the last 14 days.
           # A miss uses the published ledger.
           sanitize() {
             python3 -c 'import pathlib,sys; s=pathlib.Path(sys.argv[1]).read_bytes().decode("utf-8","replace"); s=s.replace("::","").replace("%","%25").replace("\r","%0D").replace("\n","%0A"); sys.stdout.write(s)' "$1"
           }
-          mkdir -p paper-restore
+          mkdir -p paper-restore/ledgers
           meta=""
           since=$(date -u -d '14 days ago' +%Y-%m-%d)
           if ! gh api --paginate \
@@ -133,57 +136,31 @@ jobs:
                   printf '%s %s\n' "$created" "$rid"
                 fi
               done \
-            | sort | tail -n1 | cut -d" " -f2); then
+            | sort | tail -n10 | cut -d" " -f2); then
             echo "::warning title=Paper bot ledger::Could not list ledger artifacts. Using the published ledger."
             meta=""
           elif [ -z "$meta" ]; then
             echo "::warning title=Paper bot ledger::No unexpired ledger artifact from this workflow on main. Using the published ledger."
           fi
           rm -f paper-restore/run-ids.txt
-          if [ -n "$meta" ]; then
-            rm -rf paper-restore/out
-            mkdir -p paper-restore/out
-            if gh run download "$meta" --repo "$REPO" --name paper-bot-ledger --dir paper-restore/out 2>paper-restore/download.err; then
-              found=$(find paper-restore/out -name ledger.json -type f -print -quit)
+          for rid in $meta; do
+            dir="paper-restore/out-${rid}"
+            rm -rf "$dir"
+            mkdir -p "$dir"
+            if gh run download "$rid" --repo "$REPO" --name paper-bot-ledger --dir "$dir" 2>paper-restore/download.err; then
+              found=$(find "$dir" -name ledger.json -type f -print -quit)
               if [ -n "$found" ]; then
-                cp "$found" paper-out/recovered.json
-                echo "recovered ledger from run ${meta}"
+                cp "$found" "paper-restore/ledgers/${rid}.json"
+                echo "recovered ledger from run ${rid}"
               else
-                echo "::warning title=Paper bot ledger::Ledger artifact from run ${meta} had no ledger.json. Using the published ledger."
+                echo "::warning title=Paper bot ledger::Ledger artifact from run ${rid} had no ledger.json. Skipping it."
               fi
             else
               detail=$(sanitize paper-restore/download.err)
-              echo "::warning title=Paper bot ledger::Could not download the ledger artifact from run ${meta}. Using the published ledger. ${detail}"
+              echo "::warning title=Paper bot ledger::Could not download the ledger artifact from run ${rid}. Skipping it. ${detail}"
             fi
-          fi
-          python3 - << 'PY'
-          import json, os, sys
-          sys.path.insert(0, '.')
-          from scripts.paper_bot.ledger import choose_base_ledger, held_tickers
-
-          def load(path):
-              if not os.path.isfile(path) or os.path.getsize(path) == 0:
-                  return None
-              with open(path) as f:
-                  data = json.load(f)
-              if not isinstance(data, dict) or not isinstance(data.get('trades'), list):
-                  raise SystemExit(f'{path} is not a paper-bot ledger')
-              return data
-
-          published = load('paper-out/published.json')
-          recovered = load('paper-out/recovered.json')
-          chosen = choose_base_ledger(published, recovered)
-          if chosen is None:
-              print('no published or recovered ledger; the bot will start a new book')
-          else:
-              source = 'recovered' if chosen is recovered else 'published'
-              print(f'ledger source={source} held={len(held_tickers(chosen))}')
-              if source == 'recovered':
-                  print('::notice title=Paper bot ledger::Starting from the ledger a previous run failed to publish, so those tickers stay held.')
-              with open('paper-out/ledger.json', 'w') as f:
-                  json.dump(chosen, f)
-                  f.write('\n')
-          PY
+          done
+          python3 -m scripts.paper_bot.load_base --published paper-out/published.json --recovered-dir paper-restore/ledgers --out paper-out/ledger.json
       - name: Run the paper bot
         if: steps.gate.outputs.go == '1'
         env:
