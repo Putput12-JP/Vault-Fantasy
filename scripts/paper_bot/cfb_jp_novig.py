@@ -421,6 +421,9 @@ def apply_exit(trade, game):
     n, price = int(trade['contracts']), float(trade['price'])
     bid = snap['bid']
     size = snap['bid_size']
+    # Only the best bid and the size within 2 cents are stored, not the levels, so the whole filled size is
+    # priced at the best bid. Contracts that really sit up to 2 cents below it fill worse, so the exit can be
+    # overstated by up to 2 cents per contract.
     filled = 0 if size is None or not math.isfinite(size) else min(n, int(math.floor(max(size, 0.0) + 1e-9)))
     rem = n - filled
     part_pc = round(bid - price, 5)
@@ -802,6 +805,7 @@ class CfbJpNovig:
             'id': f'{ticker}:{int(now.timestamp())}', 'ts': iso(now), 'status': 'open', 'source': STRATEGY,
             'strategy': STRATEGY, 'book': BOOK, 'ticker': ticker, 'event': gs['key'],
             'title': f"{gs['team']} {nv['hcap']:+g}", 'game': gs['game'], 'side': 'yes', 'strike': nv['hcap'],
+            'strike_distance': nv.get('strike_distance'),
             'model_prob': None, 'edge': gs['edge'], 'edge_bucket': gs['edge_bucket'],
             'counts_toward_pass': gs['counts_toward_pass'],
             'yes_bid': q['bid'], 'yes_ask': q['ask'], 'price': price, 'fee_per': 0.0, 'fee_total': 0.0,
@@ -836,6 +840,8 @@ class CfbJpNovig:
         ledger = ctx['ledger']
         trade_cap = MAX_STAKE_FRACTION * float(ledger.get('bankroll_start') or 1000)
         today = et_day(ctx['now'])
+        # The day cap counts void rows too, including no_exit_bid voids, so a trade that never exited still
+        # uses up that day's room. That is conservative: it can only shrink later entries, never grow them.
         spent = sum(float(t.get('stake') or 0) for t in ledger['trades']
                     if t.get('source') == STRATEGY and t.get('status') in ('open', 'settled', 'void')
                     and et_day(t['ts']) == today)
@@ -966,7 +972,7 @@ class CfbJpNovig:
             out.append({
                 'key': gs['key'], 'game': gs['game'], 'week': gs.get('week'), 'kick': gs['kick'], 'team': gs['team'],
                 'edge': gs['edge'], 'edge_bucket': gs['edge_bucket'], 'counts_toward_pass': gs['counts_toward_pass'],
-                'open_hcap': gs['open_hcap'], 'strike': nv['hcap'], 'state': gs['state'], 'trade_id': gs['trade_id'],
+                'open_hcap': gs['open_hcap'], 'strike': nv['hcap'], 'strike_distance': nv.get('strike_distance'), 'state': gs['state'], 'trade_id': gs['trade_id'],
                 'novig_listed_ts': nv['listed_ts'], 'novig_first_seen_ts': nv['first_seen_ts'],
                 'kalshi_listed_ts': k['listed_ts'], 'kalshi_first_seen_ts': k['first_seen_ts'],
                 'kalshi_ticker': k['ticker'], 'kalshi_side': k['side'],

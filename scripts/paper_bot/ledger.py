@@ -131,26 +131,31 @@ def held_tickers(ledger):
     return out
 
 
-def choose_base_ledger(published, recovered):
-    """Ledger a run should start from.
+def build_base_ledger(published, recovered):
+    """Ledger a run should start from: published merged with every recovered ledger.
 
-    published is the paper-data copy, or None. recovered is the ledger the
-    previous run wrote before its publish, or None.
-
-    A failed publish leaves new trades only in recovered. Use that file when
-    it is strictly newer and still holds every ticker the published ledger
-    holds, so the next run cannot open them again. A recovered file that is
-    older, or that dropped a published ticker, is ignored.
+    published is the paper-data copy or None. recovered is a list of ledgers that earlier runs wrote
+    before their publish (None entries are skipped). A failed publish leaves new trades only in that
+    run's artifact, and a snapshot run that started earlier can upload a newer artifact without them,
+    so no single artifact is trusted alone: the union by trade id is taken, the more advanced row wins,
+    and held_tickers of the result covers every ticker any source held. None when every input is None.
     """
-    if recovered is None:
-        return published
-    if published is None:
-        return recovered
-    if (recovered.get('updated') or '') <= (published.get('updated') or ''):
-        return published
-    if not held_tickers(published) <= held_tickers(recovered):
-        return published
-    return recovered
+    from .merge_ledger import merge_ledgers      # lazy: merge_ledger imports cfb_jp_novig, which imports this module
+    found = [led for led in [published] + list(recovered or []) if led is not None]
+    if not found:
+        return None
+    base = found[0]
+    for led in found[1:]:
+        base = merge_ledgers(led, base)
+    return base
+
+
+def choose_base_ledger(published, recovered):
+    """Ledger a run should start from, given the published copy and the one recovered ledger (either may be None).
+
+    Merges rather than picks, see build_base_ledger.
+    """
+    return build_base_ledger(published, [recovered])
 
 
 def day_pnl(ledger, now):
@@ -187,7 +192,9 @@ def record_equity(ledger, now):
 
 def _is_pending(t):
     """A settled row whose result is not decided yet: a partly exited cfb_jp_novig trade waiting on its remainder."""
-    return t.get('status') == 'settled' and (bool(t.get('remainder_pending')) or t.get('won') is None)
+    if t.get('status') != 'settled' or not (t.get('book') or t.get('source') == 'cfb_jp_novig'):
+        return False    # only the book rows (book='novig', cfb_jp_novig) wait on a remainder; a Kalshi row with won None is a data gap
+    return bool(t.get('remainder_pending')) or t.get('won') is None
 
 
 def _group_rows(trades):

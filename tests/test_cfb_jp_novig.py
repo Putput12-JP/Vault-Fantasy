@@ -550,6 +550,17 @@ class StrikeLabel(unittest.TestCase):
             (t,) = trades_of(led)
             self.assertEqual((t['strike'], t['detail']['strike_distance']), (6.5, 9.0))
 
+    def test_strike_distance_is_on_the_trade_row_and_in_the_watchlist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, nv = make(tmp, board=[board_game(model_margin=-8.2, open_margin=-15.5)],
+                             novig=FakeNovig(strikes=(4.5, 5.5, 6.5)))
+            led = ledger_with()
+            strat.run(led, NOW, None)
+            (t,) = trades_of(led)
+            self.assertEqual(t['strike_distance'], 9.0)
+            (w,) = led['strategies'][S.STRATEGY]['watch']
+            self.assertEqual(w['strike_distance'], 9.0)
+
 
 class PassBar(unittest.TestCase):
     def rows(self, pcs, edge=5.0, status='settled'):
