@@ -250,7 +250,7 @@ var VCP_CSS = `
 .vcp .brand span{font-size:11px;color:var(--dim);margin-right:96px}
 .vcp .shr{position:absolute;right:18px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:600 12px/1 Inter,system-ui,sans-serif;padding:7px 12px;border-radius:99px;cursor:pointer;transition:transform 500ms cubic-bezier(.34,1.56,.64,1),background .15s}
 .vcp .shr:hover{background:rgba(255,255,255,.13)}.vcp .shr:active{transform:scale(.94);transition:transform 80ms ease-out}.vcp .shr[disabled]{opacity:.6;cursor:progress}
-@container (max-width:520px){.vcp .p,.vcp .e strong{font-size:32px}.vcp .row{grid-template-columns:1fr}.vcp .ruler{margin:0 30px}.vcp .brand span{display:none}.vcp .scale span:nth-child(2){display:none}}
+@container (max-width:520px){.vcp .pin,.vcp .under{width:76px}.vcp .pin b,.vcp .under b{font-size:11.5px}.vcp .p,.vcp .e strong{font-size:32px}.vcp .row{grid-template-columns:1fr}.vcp .ruler{margin:0 30px}.vcp .brand span{display:none}.vcp .scale span:nth-child(2){display:none}}
 `;
 // New pill, ruler and stat row for a CFB model game. Margins in the model data are the HOME side's; the ruler plots the AWAY side's
 // margin of victory so "model" and "market" read as two points on one line, and the green is the gap between them (the edge).
@@ -265,12 +265,12 @@ function VaultCfbPick(P) {
   var fmtV = function (v) { return Math.abs(v).toFixed(1).replace(/\.0$/, ''); };
   var items = [['model', 'Model', 'var(--pick)', 1], ['market', 'Market', 'var(--ink)', 1], ['blend', 'Blend', 'var(--amber)', 0], ['open', 'Open', 'var(--mute)', 0]]
     .map(function (d) { return { key: d[0], lbl: d[1], tone: d[2], up: d[3], v: pts[d[0]] }; }).filter(function (d) { return d.v != null; });
-  var lanes = { 1: 1, 0: 1 };
+  var lanes = { 1: 1, 0: 1 }, GAP = (typeof innerWidth !== 'undefined' && innerWidth < 560) ? 30 : 17;   // a phone ruler is ~250px wide, so a label needs a bigger share of it
   [1, 0].forEach(function (side) {
     var last = [];
     items.filter(function (d) { return d.up === side; }).sort(function (a, b) { return a.v - b.v; }).forEach(function (d) {
       var pcn = (d.v - lo) / (hi - lo) * 100, l = 0;
-      while (last[l] != null && pcn - last[l] < 17) l++;
+      while (last[l] != null && pcn - last[l] < GAP) l++;
       last[l] = pcn; d.lane = l; lanes[side] = Math.max(lanes[side], l + 1);
     });
   });
@@ -387,7 +387,7 @@ var VRD_CSS = `
 .vrd .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:0 2px}
 .vrd .foot b{font-size:13px;letter-spacing:.14em;font-weight:800}.vrd .foot span{font-size:11px;color:var(--dim)}
 .vrd .open{all:unset;cursor:pointer;font-size:12px;color:var(--ink);text-decoration:underline;text-decoration-color:rgba(255,255,255,.25);text-underline-offset:3px}
-@container (max-width:560px){.vrd .pickline{font-size:34px}.vrd .pickline.sm{font-size:27px}.vrd .sig{grid-template-columns:repeat(2,1fr)}.vrd .price .row{grid-template-columns:1fr}.vrd .foot span{display:none}}
+@container (max-width:560px){.vrd .hd{grid-template-columns:1fr 1fr}.vrd .hd .mid{grid-column:1/-1;grid-row:2;min-width:0;overflow-wrap:anywhere}.vrd .pickline{font-size:34px}.vrd .pickline.sm{font-size:27px}.vrd .sig{grid-template-columns:repeat(2,1fr)}.vrd .price .row{grid-template-columns:1fr}.vrd .foot span{display:none}}
 `;
 // Top Reads card, poster layout. Pf computes everything (read, price check, edge window) and hands it over; this only draws it.
 function VaultReadCard(P) {
