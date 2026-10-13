@@ -13,9 +13,16 @@ Rules, fixed in advance (the backtest and its limits: /workspace/cfb-backtests/R
              KXNCAAFSPREAD market, with the first-listed time of each venue.
   entry      paper-buy at the ask on the first snapshot that has an ask with at least 4 contracts within
              2 cents of it; size is 25% of the contracts offered within 2 cents of the best ask, rounded
-             down. entry_delay_min records how long after the first snapshot that was.
+             down, then capped at 5% of the bankroll per trade and $150 per ET day of entry for this
+             strategy. uncapped_contracts and uncapped_stake keep the pre-cap size.
+             entry_delay_min records how long after the first snapshot that was.
   exit       paper-sell at the last bid on a snapshot taken before kick (exit_gap_min is how long before).
-             No bid on any pre-kick snapshot means no exit: the row is void and not in the pass-bar sample.
+             Only the bid size stored on that snapshot (contracts within 2 cents of the bid) can fill; the
+             rest is held to settlement. exit_fill_frac records the share sold. Only the best bid and the
+             size within 2 cents are stored, not the levels, so the fill is priced at the best bid.
+             A partial row has its exit P&L now and its blended P&L (exit part plus hold part) once graded;
+             it joins the pass-bar sample only when blended. No bid on any pre-kick snapshot means no exit:
+             the row is void and not in the pass-bar sample.
   hold       the same entry held to the final score is tracked as hold_pnl, graded after the game.
   fees       Novig pregame fee is 0. P&L is in dollars per $1-payout contract (Novig quantity / 100).
   pass bar   mean profit per contract (exit bid minus entry ask) > 0, z >= 2, over 60+ trades at 5+ edges.
@@ -33,7 +40,7 @@ import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from .ledger import iso
+from .ledger import et_day, iso
 from .novig_public import NovigPublic, outcome_quote, parse_outcome, uuid7_ms
 from .quotes import side_bid, side_price, side_size
 from .signals.cfb_ml import _abbr_of, _finite, _label_matches, _rating_index, _side_names
@@ -48,6 +55,8 @@ KALSHI_SERIES = 'KXNCAAFSPREAD'
 MIN_WEEK = 8
 EDGE_LOG, EDGE_PASS, EDGE_HIGH = 3.0, 5.0, 7.0
 SIZE_FRACTION = 0.25
+MAX_STAKE_FRACTION = 0.05        # of the bankroll, per trade ($50 on $1000)
+MAX_STAKE_PER_DAY = 150.0        # this strategy, by ET date of entry
 MIN_DEPTH_CONTRACTS = 4          # 25% of this is one contract
 SNAP_EVERY_S = 30 * 60
 SNAP_DUE_S = 25 * 60             # a 30-minute cron that fires a little early still snapshots
@@ -74,8 +83,8 @@ def jp_edge(game):
     mm, om = _finite(game.get('model_margin')), _finite(game.get('open_margin'))
     if mm is None or om is None:
         return None
-    e = round(mm - om, 1)
-    if e == 0:
+    e = mm - om                     # unrounded: bucket_of carries the float tolerance, rounding here could lift 4.96 to 5
+    if abs(e) < 1e-9:
         return None
     return abs(e), ('home' if e > 0 else 'away')
 
@@ -139,7 +148,7 @@ def triggers(board, now_ts):
         edge, side = je
         out.append({
             'key': g.get('key') or f"{g['away']}@{g['home']}:{int(kick)}",
-            'game': g, 'kick': kick, 'edge': edge, 'bucket': bucket_of(edge), 'side': side,
+            'game': g, 'kick': kick, 'edge': round(edge, 6), 'bucket': bucket_of(edge), 'side': side,
             'team': g['home'] if side == 'home' else g['away'],
             'open_hcap': open_handicap(g, side),
         })
@@ -276,6 +285,10 @@ def kalshi_find(markets, game, ratings, hcap, team_side):
     A team wins by over K points is that team at -K. JP+'s team at -K is YES on its own market. JP+'s team at +K
     is NO on the OTHER team's "wins by over K". quote is None while the event is listed but that strike is not.
     Returns None when no event matches the game.
+
+    Pushes: Novig refunds the price when the margin lands exactly on an integer strike. Kalshi has no push:
+    "wins by over K" is NO at exactly K, so YES loses and NO wins in full. At an integer strike the two venues
+    are not the same bet, so push_mismatch is True and the quote is a price reference only, never a like for like.
     """
     kick = float(game['kick'])
     kd = datetime.fromtimestamp(kick, ET).date()
@@ -311,7 +324,7 @@ def kalshi_find(markets, game, ratings, hcap, team_side):
     opens = [t for t in (_iso_ts(q.get('open_time')) for q in rows) if t is not None]
     listed = min(opens) if opens else None
     if hcap == 0:
-        return {'event': event, 'listed_ts': listed, 'quote': None, 'side': None, 'floor': None}
+        return {'event': event, 'listed_ts': listed, 'quote': None, 'side': None, 'floor': None, 'push_mismatch': True}
     want_side = team_side if hcap < 0 else ('away' if team_side == 'home' else 'home')
     side = 'yes' if hcap < 0 else 'no'
     floor = abs(hcap)
@@ -324,7 +337,8 @@ def kalshi_find(markets, game, ratings, hcap, team_side):
         if _label_matches(m.group(1), names, abbr):
             quote = q
             break
-    return {'event': event, 'listed_ts': listed, 'quote': quote, 'side': side, 'floor': floor}
+    return {'event': event, 'listed_ts': listed, 'quote': quote, 'side': side, 'floor': floor,
+            'push_mismatch': abs(floor - round(floor)) < 1e-9}
 
 
 # ---- snapshots, sizing, exit, grading, pass bar -------------------------------------------------------
@@ -345,6 +359,31 @@ def parse_snap(s):
     return {'ts': int(parts[0]), 'bid': f(parts[1]), 'ask': f(parts[2]), 'ask_size': f(parts[3]), 'bid_size': f(parts[4])}
 
 
+def try_parse_snap(s):
+    """parse_snap, or None for a malformed stored snapshot (e.g. 'bad,snap')."""
+    try:
+        p = parse_snap(s)
+    except (TypeError, ValueError):
+        return None
+    if any(isinstance(v, float) and not math.isfinite(v) for v in p.values()):
+        return None
+    return p
+
+
+def valid_snaps(snaps, notes=None, label=''):
+    """Parsed snapshots in stored order. A malformed one is skipped, with one note per call when notes is given."""
+    out, bad = [], []
+    for s in snaps or []:
+        p = try_parse_snap(s)
+        if p is None:
+            bad.append(s)
+        else:
+            out.append(p)
+    if bad and notes is not None:
+        notes.append(f"{label}: skipped {len(bad)} malformed snapshot(s), first {str(bad[0])[:40]!r}")
+    return out
+
+
 def size_contracts(depth):
     """25% of the contracts offered within 2 cents of the best ask, rounded down. 0 when there is no depth."""
     try:
@@ -359,8 +398,7 @@ def size_contracts(depth):
 def last_pre_kick_bid(snaps, kick_ts):
     """The last parsed snapshot before kick that has a bid, or None."""
     best = None
-    for s in snaps or []:
-        p = parse_snap(s)
+    for p in valid_snaps(snaps):
         if p['ts'] < kick_ts and p['bid'] is not None and (best is None or p['ts'] > best['ts']):
             best = p
     return best
@@ -381,17 +419,32 @@ def apply_exit(trade, game):
         trade['exit_pnl_pc'] = None
         return True
     n, price = int(trade['contracts']), float(trade['price'])
-    pc = round(snap['bid'] - price, 5)
+    bid = snap['bid']
+    size = snap['bid_size']
+    filled = 0 if size is None or not math.isfinite(size) else min(n, int(math.floor(max(size, 0.0) + 1e-9)))
+    rem = n - filled
+    part_pc = round(bid - price, 5)
     mid = None if snap['ask'] is None else round((snap['bid'] + snap['ask']) / 2, 4)
+    exit_pnl = round(filled * part_pc, 4)
     trade.update({
-        'status': 'settled', 'result': 'exit', 'exit_ts': iso(datetime.fromtimestamp(snap['ts'], timezone.utc)),
-        'exit_bid': snap['bid'], 'exit_bid_size': snap['bid_size'],
+        'status': 'settled', 'result': 'exit' if filled else 'hold',
+        'exit_ts': iso(datetime.fromtimestamp(snap['ts'], timezone.utc)),
+        'exit_bid': bid, 'exit_bid_size': size,
         'exit_gap_min': round((kick - snap['ts']) / 60.0, 1),
         'settled_ts': iso(datetime.fromtimestamp(snap['ts'], timezone.utc)),
-        'payout': round(n * snap['bid'], 4), 'exit_pnl_pc': pc, 'pnl': round(n * pc, 4), 'won': pc > 0,
+        'exit_filled_contracts': filled, 'exit_remainder_contracts': rem,
+        'exit_fill_frac': round(filled / n, 4) if n else 0.0,
+        'exit_part_pnl_pc': part_pc, 'exit_part_pnl': exit_pnl,
         'close_mid': mid, 'clv': None if mid is None else round(mid - price, 4),
-        'mark_value': round(n * snap['bid'], 4),
     })
+    if rem == 0:
+        trade.update({'payout': round(n * bid, 4), 'exit_pnl_pc': part_pc, 'pnl': round(n * part_pc, 4), 'won': part_pc > 0,
+                      'mark_value': round(n * bid, 4), 'remainder_pending': False})
+    else:
+        # The unfilled remainder rides to settlement. Until it is graded the row carries only the realized exit
+        # part and no per-contract result, so it stays out of the pass-bar sample; grade_hold blends the two.
+        trade.update({'payout': round(filled * bid, 4), 'exit_pnl_pc': None, 'pnl': exit_pnl, 'won': None,
+                      'mark_value': round(rem * bid, 4), 'remainder_pending': True})
     return True
 
 
@@ -408,6 +461,14 @@ def grade_hold(trade, home_score, away_score):
     else:
         res, pay = 'push', price
     pc = round(pay - price, 5)
+    filled = trade.get('exit_filled_contracts')
+    if filled is not None and trade.get('status') == 'settled' and filled < n:
+        # blend: the exit part at the exit bid, the remainder at settlement (a push refunds the price)
+        bid = float(trade['exit_bid'])
+        pnl = round(filled * (bid - price) + (n - filled) * (pay - price), 4)
+        trade.update({'payout': round(filled * bid + (n - filled) * pay, 4), 'pnl': pnl, 'exit_pnl_pc': round(pnl / n, 5),
+                      'won': pnl > 0, 'mark_value': 0.0, 'remainder_pending': False,
+                      'remainder_result': res})
     trade.update({'hold_status': 'graded', 'hold_result': res, 'hold_pnl_pc': pc, 'hold_pnl': round(n * pc, 4),
                   'hold_payout': round(n * pay, 4), 'final_score': {'home': home_score, 'away': away_score},
                   'hold_margin_vs_strike': round(cover, 2)})
@@ -445,13 +506,24 @@ def _edge_of(t):
     return float(t.get('edge') or 0)
 
 
+_RANK = {'3+': 1, '5+': 2, '7+': 3}
+
+
+def in_slice(t, label, thr):
+    """A row is in a slice by the bucket it was logged in (set from the unrounded edge); the edge value is the fallback."""
+    rank = _RANK.get(t.get('edge_bucket'))
+    if rank is not None:
+        return rank >= _RANK[label]
+    return _edge_of(t) >= thr - 1e-9
+
+
 def build_progress(trades, prev=None):
     """Pass-bar progress and the 3+/5+/7+ slices from the strategy's ledger rows."""
     rows = [t for t in trades if t.get('source') == STRATEGY]
     entered = [t for t in rows if t.get('status') in ('open', 'settled', 'void')]
     slices = {}
     for label, thr in SLICES:
-        sel = [t for t in entered if _edge_of(t) >= thr - 1e-9]
+        sel = [t for t in entered if in_slice(t, label, thr)]
         ex = [t['exit_pnl_pc'] for t in sel if t.get('status') == 'settled' and t.get('exit_pnl_pc') is not None]
         hold = [t['hold_pnl_pc'] for t in sel if t.get('hold_status') == 'graded']
         slices[label] = {
@@ -659,7 +731,7 @@ class CfbJpNovig:
                           'strike_distance': round(abs(pick['hcap'] - c['open_hcap']), 2),
                           'listed_ts': int(min(listed) / 1000) if listed else None,
                           'first_seen_ts': int(now_ts), 'snaps': []},
-                'kalshi': {'event': None, 'ticker': None, 'side': None, 'floor': None, 'listed_ts': None,
+                'kalshi': {'event': None, 'ticker': None, 'side': None, 'floor': None, 'listed_ts': None, 'push_mismatch': False,
                            'first_seen_ts': None, 'snaps': []},
             }
             st['games'][c['key']] = gs
@@ -673,8 +745,12 @@ class CfbJpNovig:
         for gs in ctx['st']['games'].values():
             if gs['state'] not in ('watching', 'entered') or gs['kick'] <= now_ts:
                 continue
-            last = (gs['novig'].get('snaps') or [None])[-1]
-            if last is not None and now_ts - parse_snap(last)['ts'] < SNAP_DUE_S:
+            try:
+                snaps = valid_snaps(gs['novig'].get('snaps'), ctx['notes'], gs['key'])
+            except Exception as e:
+                ctx['notes'].append(f"{gs.get('key')}: snapshots unreadable: {str(e)[:100]}")
+                continue
+            if snaps and now_ts - max(p['ts'] for p in snaps) < SNAP_DUE_S:
                 continue
             due.append(gs)
         tickers = [g['kalshi']['ticker'] for g in due if g['kalshi'].get('ticker')]
@@ -684,7 +760,10 @@ class CfbJpNovig:
             except Exception as e:
                 ctx['notes'].append('Kalshi quotes failed: ' + str(e)[:120])
         for gs in due:
-            self._snap_game(ctx, gs, stats)
+            try:
+                self._snap_game(ctx, gs, stats)
+            except Exception as e:
+                ctx['notes'].append(f"{gs.get('key')}: snapshot failed: {str(e)[:100]}")
 
     def _snap_game(self, ctx, gs, stats):
         now_ts = int(ctx['now_ts'])
@@ -706,12 +785,18 @@ class CfbJpNovig:
     def _try_entry(self, ctx, gs, q, stats):
         if gs['state'] != 'watching' or q['ask'] is None:
             return
-        n = size_contracts(q['ask_size'])
-        if q['ask_size'] is None or q['ask_size'] < MIN_DEPTH_CONTRACTS or n < 1:
+        uncapped = size_contracts(q['ask_size'])
+        if q['ask_size'] is None or q['ask_size'] < MIN_DEPTH_CONTRACTS or uncapped < 1:
             return
         nv, now = gs['novig'], ctx['now']
         price = float(q['ask'])
-        first = parse_snap(nv['snaps'][0])
+        n, capped_by = self._capped(ctx, uncapped, price)
+        if n < 1:
+            if capped_by:
+                ctx['notes'].append(f"{gs['key']}: no entry, {capped_by} leaves no room")
+            return
+        firsts = valid_snaps(nv['snaps'], ctx['notes'], gs['key'])
+        first = firsts[0] if firsts else {'ts': int(now.timestamp())}
         ticker = f"novig:{nv['market_id']}:{nv['outcome_id']}"
         row = {
             'id': f'{ticker}:{int(now.timestamp())}', 'ts': iso(now), 'status': 'open', 'source': STRATEGY,
@@ -721,12 +806,14 @@ class CfbJpNovig:
             'counts_toward_pass': gs['counts_toward_pass'],
             'yes_bid': q['bid'], 'yes_ask': q['ask'], 'price': price, 'fee_per': 0.0, 'fee_total': 0.0,
             'contracts': n, 'stake': round(n * price, 4), 'ask_size': round(q['ask_size'], 2),
+            'uncapped_contracts': uncapped, 'uncapped_stake': round(uncapped * price, 4), 'capped_by': capped_by,
             'bankroll_before': None,
             'detail': {
                 'venue': 'novig', 'edge_unit': 'pts', 'jp_side': gs['side'], 'team': gs['team'], 'week': gs['week'],
                 'kick': gs['kick'], 'model_margin': gs['model_margin'], 'open_margin': gs['open_margin'],
                 'open_hcap': gs['open_hcap'], 'strike_distance': nv['strike_distance'],
-                'size_rule': f'{SIZE_FRACTION:.0%} of contracts within 2 cents of the best ask, rounded down',
+                'size_rule': (f'{SIZE_FRACTION:.0%} of contracts within 2 cents of the best ask, rounded down, '
+                              f'capped at {MAX_STAKE_FRACTION:.0%} of bankroll per trade and ${MAX_STAKE_PER_DAY:.0f} per ET day'),
                 'depth_contracts': round(q['ask_size'], 2),
                 'entry_delay_min': round((now.timestamp() - first['ts']) / 60.0, 1),
                 'novig_listed_ts': nv['listed_ts'], 'first_seen_ts': nv['first_seen_ts'],
@@ -741,6 +828,24 @@ class CfbJpNovig:
         gs['trade_id'] = row['id']
         gs['entry_ts'] = int(now.timestamp())
         stats['entered'] += 1
+
+    def _capped(self, ctx, uncapped, price):
+        """(contracts, which cap bound or None): the 25% size held to 5% of bankroll per trade and $150 per ET day."""
+        if price <= 0:
+            return uncapped, None
+        ledger = ctx['ledger']
+        trade_cap = MAX_STAKE_FRACTION * float(ledger.get('bankroll_start') or 1000)
+        today = et_day(ctx['now'])
+        spent = sum(float(t.get('stake') or 0) for t in ledger['trades']
+                    if t.get('source') == STRATEGY and t.get('status') in ('open', 'settled', 'void')
+                    and et_day(t['ts']) == today)
+        day_room = max(0.0, MAX_STAKE_PER_DAY - spent)
+        by_trade = int(math.floor(trade_cap / price + 1e-9))
+        by_day = int(math.floor(day_room / price + 1e-9))
+        n = min(uncapped, by_trade, by_day)
+        if n >= uncapped:
+            return uncapped, None
+        return n, ('day cap' if by_day < by_trade else 'trade cap')
 
     def _mark_open(self, ledger, gs, q):
         if gs['state'] != 'entered':
@@ -777,6 +882,7 @@ class CfbJpNovig:
             if found['quote'] is None:
                 return
             k['ticker'], k['side'], k['floor'] = found['quote']['ticker'], found['side'], found['floor']
+            k['push_mismatch'] = bool(found.get('push_mismatch'))
             quote = found['quote']
         else:
             quote = (ctx.get('kt') or {}).get(k['ticker'])
@@ -796,7 +902,11 @@ class CfbJpNovig:
                 gs['state'] = 'watching'
                 continue
             if t.get('status') == 'open':
-                apply_exit(t, gs)
+                try:
+                    apply_exit(t, gs)
+                except Exception as e:      # leave the row open and retry next run rather than lose the others
+                    ctx['notes'].append(f"{gs.get('key')}: exit failed: {str(e)[:100]}")
+                    continue
                 stats['exited'] += 1
             gs['state'] = 'exited'
 
@@ -838,16 +948,21 @@ class CfbJpNovig:
         entry_ts = gs.get('entry_ts')
         for v in ('novig', 'kalshi'):
             snaps = gs[v].get('snaps') or []
-            gs[v]['snaps'] = [s for i, s in enumerate(snaps)
-                              if i == 0 or parse_snap(s)['ts'] >= keep_from or parse_snap(s)['ts'] == entry_ts]
+            kept = []
+            for i, s in enumerate(snaps):
+                p = try_parse_snap(s)
+                if i == 0 or p is None or p['ts'] >= keep_from or p['ts'] == entry_ts:   # unreadable ones are kept, not destroyed
+                    kept.append(s)
+            gs[v]['snaps'] = kept
 
     def _watch(self, st):
         """Compact per-game rows for the dashboard (no snapshot history)."""
         out = []
         for gs in st['games'].values():
             nv, k = gs['novig'], gs['kalshi']
-            last_n = parse_snap(nv['snaps'][-1]) if nv.get('snaps') else None
-            last_k = parse_snap(k['snaps'][-1]) if k.get('snaps') else None
+            ln, lk = valid_snaps(nv.get('snaps')), valid_snaps(k.get('snaps'))
+            last_n = ln[-1] if ln else None
+            last_k = lk[-1] if lk else None
             out.append({
                 'key': gs['key'], 'game': gs['game'], 'week': gs.get('week'), 'kick': gs['kick'], 'team': gs['team'],
                 'edge': gs['edge'], 'edge_bucket': gs['edge_bucket'], 'counts_toward_pass': gs['counts_toward_pass'],

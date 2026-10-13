@@ -47,8 +47,11 @@ class Engine:
         quotes = self._quotes_for_open()
         settled = self._settle(quotes)
         self._mark(quotes)
-        self._run_strategies()
         halt, why = self._halted()
+        if halt:
+            self.notes.append('strategies paused: ' + why)
+        else:
+            self._run_strategies()
         opened = vetoed = skipped = 0
         if halt:
             self.notes.append(why)
@@ -108,7 +111,11 @@ class Engine:
         It does not touch the Kalshi book, the equity curve or the run log, so frequent runs cannot
         crowd out the scheduled runs' history.
         """
-        self._run_strategies()
+        halt, why = self._halted()
+        if halt:
+            self.notes.append('strategies paused: ' + why)
+        else:
+            self._run_strategies()
         self.ledger['config'] = _public_config(self.cfg)
         self.ledger['updated'] = iso(self.now)
         self.ledger['live_orders'] = False

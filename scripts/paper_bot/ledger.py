@@ -118,9 +118,14 @@ def spent_buckets(ledger, now, ticker, event):
 
 
 def held_tickers(ledger):
-    """Tickers we already acted on. A veto sticks; an error row does not."""
+    """Kalshi tickers we already acted on. A veto sticks; an error row does not.
+
+    novig: tickers belong to a separate paper book and never block a Kalshi proposal.
+    """
     out = set()
     for t in ledger['trades']:
+        if str(t.get('ticker') or '').startswith('novig:'):
+            continue
         if t.get('status') in ('open', 'settled', 'void', 'vetoed'):
             out.add(t.get('ticker'))
     return out

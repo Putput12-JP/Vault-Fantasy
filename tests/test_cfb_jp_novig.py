@@ -264,8 +264,9 @@ class FullLifecycle(unittest.TestCase):
         self.assertEqual(gs['edge_bucket'], '7+')
         self.assertEqual(gs['code_src'], 'name')
         (t,) = trades_of(self.led)
-        self.assertEqual((t['price'], t['contracts'], t['strike'], t['status']), (0.42, 200, 6.5, 'open'))
-        self.assertAlmostEqual(t['stake'], 84.0)
+        self.assertEqual((t['price'], t['contracts'], t['strike'], t['status']), (0.42, 119, 6.5, 'open'))      # 25% of 800 is 200, held to $50 (5% of $1000)
+        self.assertAlmostEqual(t['stake'], 49.98)
+        self.assertEqual((t['uncapped_contracts'], t['uncapped_stake']), (200, 84.0))
         self.assertEqual(t['fee_total'], 0.0)
         self.assertTrue(t['counts_toward_pass'])
         self.assertEqual((t['source'], t['strategy'], t['book']), ('cfb_jp_novig', 'cfb_jp_novig', 'novig'))
@@ -309,8 +310,9 @@ class FullLifecycle(unittest.TestCase):
         (t,) = trades_of(self.led)
         self.assertEqual((t['status'], t['exit_bid'], t['exit_gap_min']), ('settled', 0.47, 40.0))
         self.assertAlmostEqual(t['exit_pnl_pc'], 0.05)
-        self.assertAlmostEqual(t['pnl'], 10.0)                          # 200 contracts * 5 cents
-        self.assertAlmostEqual(t['payout'], 94.0)
+        self.assertAlmostEqual(t['pnl'], 5.95)                          # 119 contracts * 5 cents
+        self.assertAlmostEqual(t['payout'], 55.93)
+        self.assertEqual(t['exit_fill_frac'], 1.0)
         self.assertTrue(t['won'])
         self.assertAlmostEqual(t['clv'], round((0.47 + 0.48) / 2 - 0.42, 4))
         self.assertEqual(t['hold_status'], 'pending')
@@ -321,7 +323,7 @@ class FullLifecycle(unittest.TestCase):
         (t,) = trades_of(self.led)
         self.assertEqual((t['hold_status'], t['hold_result']), ('graded', 'win'))
         self.assertAlmostEqual(t['hold_pnl_pc'], 0.58)
-        self.assertAlmostEqual(t['hold_pnl'], 116.0)
+        self.assertAlmostEqual(t['hold_pnl'], 69.02)
         self.assertEqual(self.game()['state'], 'graded')
 
     def test_no_pre_kick_bid_means_no_exit_but_hold_still_grades(self):
@@ -407,11 +409,131 @@ class ExitRules(unittest.TestCase):
         self.assertEqual(t['exit_bid'], 0.40)
 
     def test_a_loss_is_a_loss(self):
-        g = self.gs([(900, 0.30, 0.34, 500, 50)])
+        g = self.gs([(900, 0.30, 0.34, 500, 500)])
         t = self.row()
         S.apply_exit(t, g)
         self.assertAlmostEqual(t['pnl'], -12.0)
         self.assertFalse(t['won'])
+
+
+class PartialExit(unittest.TestCase):
+    def gs(self, bid_size):
+        return {'kick': 1000, 'novig': {'snaps': [S.snap_str(900, 0.50, 0.52, 500, bid_size)]}}
+
+    def row(self, side='home', hcap=6.5):
+        return {'price': 0.40, 'contracts': 100, 'stake': 40.0, 'strike': hcap, 'detail': {'jp_side': side}}
+
+    def test_fills_only_the_bid_size_and_the_rest_is_held(self):
+        t = self.row()
+        S.apply_exit(t, self.gs(30))
+        self.assertEqual((t['exit_filled_contracts'], t['exit_remainder_contracts'], t['exit_fill_frac']), (30, 70, 0.3))
+        self.assertAlmostEqual(t['pnl'], 3.0)             # only the exit part is realized so far
+        self.assertAlmostEqual(t['payout'], 15.0)
+        self.assertIsNone(t['exit_pnl_pc'])               # not a pass-bar result until the remainder is graded
+        self.assertTrue(t['remainder_pending'])
+
+    def test_blended_pnl_and_payout_once_graded_win_loss_push(self):
+        for hs, as_, res, pay_rem in ((20, 24, 'win', 70.0), (20, 40, 'loss', 0.0), (20, 26.5, 'push', 28.0)):
+            t = self.row()
+            S.apply_exit(t, self.gs(30))
+            S.grade_hold(t, hs, as_)
+            self.assertEqual(t['remainder_result'], res)
+            self.assertAlmostEqual(t['payout'], 15.0 + pay_rem)
+            self.assertAlmostEqual(t['pnl'], t['payout'] - 40.0)
+            self.assertAlmostEqual(t['exit_pnl_pc'], round(t['pnl'] / 100, 5))
+            self.assertFalse(t['remainder_pending'])
+
+    def test_bid_larger_than_the_position_fills_everything(self):
+        t = self.row()
+        S.apply_exit(t, self.gs(900))
+        self.assertEqual((t['exit_fill_frac'], t['exit_remainder_contracts']), (1.0, 0))
+        self.assertAlmostEqual(t['pnl'], 10.0)
+        S.grade_hold(t, 0, 50)                             # grading must not touch a fully exited row's blend
+        self.assertAlmostEqual(t['pnl'], 10.0)
+
+    def test_no_stored_bid_size_means_no_fill(self):
+        t = self.row()
+        g = {'kick': 1000, 'novig': {'snaps': ['900,0.5,0.52,500,']}}
+        S.apply_exit(t, g)
+        self.assertEqual((t['exit_filled_contracts'], t['exit_fill_frac']), (0, 0.0))
+        S.grade_hold(t, 20, 40)
+        self.assertAlmostEqual(t['pnl'], -40.0)
+
+    def test_partial_rows_stay_out_of_the_pass_bar_until_graded(self):
+        t = self.row()
+        t.update({'source': S.STRATEGY, 'edge': 5.0, 'edge_bucket': '5+'})
+        S.apply_exit(t, self.gs(30))
+        self.assertEqual(S.build_progress([t])['pass_bar']['n'], 0)
+        S.grade_hold(t, 20, 24)
+        self.assertEqual(S.build_progress([t])['pass_bar']['n'], 1)
+
+
+class SizingCaps(unittest.TestCase):
+    def go(self, led, when, depth_qty=40000):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, nv = make(tmp)
+            for k in (5.5, 6.5):
+                nv.books[nv.mid(k)] = book(k, unm_bids=((0.58, depth_qty),))
+            strat.run(led, when, None)
+        return trades_of(led)
+
+    def test_trade_cap_is_5_percent_of_bankroll_and_uncapped_is_logged(self):
+        (t,) = self.go(ledger_with(), NOW)
+        self.assertEqual((t['uncapped_contracts'], t['contracts'], t['capped_by']), (100, 100, None))   # 25% of 400
+        (t,) = self.go(ledger_with(), NOW, depth_qty=400000)
+        self.assertEqual((t['uncapped_contracts'], t['contracts'], t['capped_by']), (1000, 119, 'trade cap'))
+        self.assertLessEqual(t['stake'], 50.0)
+        self.assertAlmostEqual(t['uncapped_stake'], 420.0)
+
+    def test_day_cap_counts_this_strategys_stakes_by_et_date_of_entry(self):
+        led = ledger_with()
+        led['trades'].append({'source': S.STRATEGY, 'status': 'open', 'stake': 120.0, 'ts': '2026-10-20T12:00:00Z'})
+        led['trades'].append({'source': S.STRATEGY, 'status': 'open', 'stake': 90.0, 'ts': '2026-10-19T12:00:00Z'})   # another ET day
+        led['trades'].append({'source': 'other', 'status': 'open', 'stake': 90.0, 'ts': '2026-10-20T12:00:00Z'})
+        t = self.go(led, NOW, depth_qty=400000)[-1]
+        self.assertEqual((t['contracts'], t['capped_by']), (71, 'day cap'))     # $30 left / 0.42
+        self.assertLessEqual(t['stake'], 30.0)
+
+    def test_day_cap_uses_the_et_date_not_utc(self):
+        led = ledger_with()
+        led['trades'].append({'source': S.STRATEGY, 'status': 'open', 'stake': 150.0, 'ts': '2026-10-20T23:30:00Z'})   # 19:30 ET Oct 20
+        late = datetime(2026, 10, 21, 2, 0, tzinfo=UTC)                                  # 22:00 ET Oct 20: same ET day
+        self.assertEqual(len(self.go(led, late)), 1)                                      # only the seeded row, no new entry
+        fresh = datetime(2026, 10, 21, 5, 0, tzinfo=UTC)                                  # 01:00 ET Oct 21: new day
+        self.assertEqual(len(self.go(led, fresh)), 2)
+
+
+class StrikeLabel(unittest.TestCase):
+    """Hawaii +15.5 vs +6.5: Hawaii is the home underdog at -(-15.5), so the open is +15.5 for them."""
+
+    def test_home_underdog_label_and_strike_are_the_open_handicap(self):
+        g = board_game(model_margin=-8.2, open_margin=-15.5)
+        (c,) = S.triggers([g], NOW.timestamp())
+        self.assertEqual((c['side'], c['open_hcap']), ('home', 15.5))
+        ladder = S.spread_ladder([spread_market(k) for k in (6.5, 7.5, 14.5, 15.5, 16.5)])
+        pick = S.choose_strike(ladder, 'HAW', c['open_hcap'])
+        self.assertEqual(pick['hcap'], 15.5)
+        self.assertEqual(pick['outcome_id'], f'{HAW_OUT}-15.5')
+
+    def test_the_trade_is_titled_from_the_strike_it_actually_trades(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, nv = make(tmp, board=[board_game(model_margin=-8.2, open_margin=-15.5)],
+                             novig=FakeNovig(strikes=(6.5, 7.5, 14.5, 15.5, 16.5)))
+            led = ledger_with()
+            strat.run(led, NOW, None)
+            (t,) = trades_of(led)
+            self.assertEqual((t['title'], t['strike'], t['detail']['open_hcap']), ('Hawaii +15.5', 15.5, 15.5))
+            self.assertTrue(t['ticker'].endswith(f'{HAW_OUT}-15.5'))
+
+    def test_a_ladder_missing_the_open_strike_trades_the_nearest_and_records_the_distance(self):
+        # strikes only up to 6.5 are listed: the nearest to +15.5 is +6.5, 9 points off. The distance is stored.
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, nv = make(tmp, board=[board_game(model_margin=-8.2, open_margin=-15.5)],
+                             novig=FakeNovig(strikes=(4.5, 5.5, 6.5)))
+            led = ledger_with()
+            strat.run(led, NOW, None)
+            (t,) = trades_of(led)
+            self.assertEqual((t['strike'], t['detail']['strike_distance']), (6.5, 9.0))
 
 
 class PassBar(unittest.TestCase):
@@ -476,6 +598,77 @@ class PassBar(unittest.TestCase):
         self.assertIn('n=3', out['monitor']['note'])
         again = S.build_progress(self.rows([0.01, 0.03, 0.09]), out)
         self.assertFalse(again['monitor']['improving'])
+
+
+class EdgeThresholds(unittest.TestCase):
+    def test_compare_before_rounding(self):
+        # 4.96 points rounds to 5.0 but has not reached 5
+        e, _ = S.jp_edge({'model_margin': 4.96, 'open_margin': 0.0})
+        self.assertLess(e, 5.0)
+        self.assertEqual(S.bucket_of(e), '3+')
+        e, _ = S.jp_edge({'model_margin': 2.96, 'open_margin': -2.04})
+        self.assertEqual(S.bucket_of(e), '5+')           # exactly 5.0 up to float noise
+        e, _ = S.jp_edge({'model_margin': 2.99, 'open_margin': -0.0})
+        self.assertIsNone(S.bucket_of(e))                # 2.99 is not 3
+        e, _ = S.jp_edge({'model_margin': 6.97, 'open_margin': 0.0})
+        self.assertEqual(S.bucket_of(e), '5+')
+        self.assertIsNone(S.jp_edge({'model_margin': 1.0, 'open_margin': 1.0}))
+
+    def test_slices_follow_the_logged_bucket(self):
+        t = {'source': S.STRATEGY, 'status': 'open', 'edge': 5.0, 'edge_bucket': '3+'}   # 4.96 stored as 5.0
+        self.assertEqual(S.build_progress([t])['slices']['5+']['entered'], 0)
+        self.assertEqual(S.build_progress([t])['slices']['3+']['entered'], 1)
+
+
+class KalshiPushes(unittest.TestCase):
+    def find(self, floor, team_side='home'):
+        game = {'home': 'Hawaii', 'away': 'New Mexico', 'kick': KICK.timestamp(), 'home_id': 62, 'away_id': 167}
+        rows = [kalshi_row('New Mexico', 6.5, 0.5, 0.53), kalshi_row('New Mexico', 7.0, 0.5, 0.53),
+                kalshi_row('Hawaii', 7.0, 0.1, 0.14)]
+        return S.kalshi_find(rows, game, S._rating_index(ratings()), floor, team_side)
+
+    def test_integer_strike_is_flagged_as_not_the_same_bet(self):
+        # Novig refunds at exactly 7. Kalshi NO on "wins by over 7" wins at exactly 7, and YES loses.
+        no = self.find(7.0)
+        self.assertEqual((no['side'], no['floor'], no['push_mismatch']), ('no', 7.0, True))
+        yes = self.find(-7.0)
+        self.assertEqual((yes['side'], yes['push_mismatch']), ('yes', True))
+
+    def test_half_point_strike_is_like_for_like(self):
+        self.assertFalse(self.find(6.5)['push_mismatch'])
+
+    def test_pick_em_has_no_kalshi_equivalent(self):
+        self.assertTrue(self.find(0.0)['push_mismatch'])
+        self.assertIsNone(self.find(0.0)['quote'])
+
+
+class MalformedSnapshots(unittest.TestCase):
+    def test_bad_snapshot_is_skipped_with_a_note_and_the_run_continues(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, nv = make(tmp)
+            led = ledger_with()
+            strat.run(led, NOW, None)
+            gs = led['strategies'][S.STRATEGY]['games']['cfb:1']
+            gs['novig']['snaps'].insert(0, 'bad,snap')
+            gs['kalshi']['snaps'].append('also,bad')
+            note = strat.run(led, NOW + timedelta(minutes=30), None)
+            self.assertIn('malformed snapshot', note)
+            self.assertEqual(len(trades_of(led)), 1)
+            self.assertEqual(len(gs['novig']['snaps']), 3)      # new one added, nothing deleted
+            self.assertEqual(led['strategies'][S.STRATEGY]['watch'][0]['novig_snaps'], 3)
+
+    def test_exit_ignores_a_malformed_snapshot(self):
+        t = {'price': 0.42, 'contracts': 10, 'stake': 4.2}
+        g = {'kick': 1000, 'novig': {'snaps': ['bad,snap', S.snap_str(900, 0.45, 0.5, 100, 100)]}}
+        S.apply_exit(t, g)
+        self.assertEqual(t['exit_bid'], 0.45)
+
+    def test_prune_keeps_unreadable_rows(self):
+        gs = {'kick': 10_000_000, 'entry_ts': None,
+              'novig': {'snaps': [S.snap_str(1, 0.4, 0.5, 9, 9), 'bad,snap']}, 'kalshi': {'snaps': []}}
+        CfbJp = S.CfbJpNovig({}, '.')
+        CfbJp._prune(gs)
+        self.assertIn('bad,snap', gs['novig']['snaps'])
 
 
 class Guards(unittest.TestCase):
@@ -568,6 +761,32 @@ class EngineWiring(unittest.TestCase):
             self.assertEqual(led['equity'], [])
             self.assertEqual(led['runs'], [])
             self.assertEqual(len(trades_of(led)), 1)
+
+    def test_kill_switch_stops_strategies_on_both_paths(self):
+        for only in (False, True):
+            with tempfile.TemporaryDirectory() as tmp:
+                strat, _ = make(tmp)
+                cfg = load(None)
+                cfg['kill_switch'] = True
+                led = ledger_with()
+                eng = Engine(cfg, led, [], FakeKalshi(), None, now=NOW, strategies=[strat])
+                run = eng.run_strategies_only() if only else eng.run()
+                self.assertEqual(trades_of(led), [])
+                self.assertNotIn('strategies', led)
+                self.assertTrue(any('kill switch' in n for n in run['notes']))
+
+    def test_strategies_run_when_not_halted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, _ = make(tmp)
+            eng, led = self.engine(tmp, strat)
+            eng.run_strategies_only()
+            self.assertEqual(len(trades_of(led)), 1)
+
+    def test_novig_rows_do_not_block_kalshi_tickers(self):
+        from scripts.paper_bot.ledger import held_tickers
+        led = ledger_with()
+        led['trades'] += [{'status': 'open', 'ticker': 'novig:m:o'}, {'status': 'open', 'ticker': 'KXNBA-1'}]
+        self.assertEqual(held_tickers(led), {'KXNBA-1'})
 
     def test_config_toggle(self):
         cfg = load(None)
