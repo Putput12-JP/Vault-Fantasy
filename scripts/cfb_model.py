@@ -244,6 +244,10 @@ def open_check(g26, F, rated_before, K, HFA):
         if r.get('so') is None or r.get('id') is None: continue
         rk = {'DraftKings': 0, 'Bovada': 1}.get(r['p'], 2)
         if r['id'] not in rows or rk < rows[r['id']][0]: rows[r['id']] = (rk, r)
+    ep = os.path.join(ROOT, 'data', 'cfbd', 'espn_opens_2026.json')       # ESPN's recorded open wins (scripts/fetch_espn_opens.py); same ids as CFBD
+    if os.path.exists(ep):
+        for r in json.load(open(ep)):
+            if r['id'] in rows and r.get('so') is not None: rows[r['id']] = (rows[r['id']][0], dict(rows[r['id']][1], so=r['so'], p='ESPN'))
     games, fbs_games = [], 0
     for x in g26.itertuples():
         h, aw = int(x.homeTeamId), int(x.awayTeamId)
