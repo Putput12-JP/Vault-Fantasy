@@ -119,6 +119,28 @@ def held_tickers(ledger):
     return out
 
 
+def choose_base_ledger(published, recovered):
+    """Ledger a run should start from.
+
+    published is the paper-data copy, or None. recovered is the ledger the
+    previous run wrote before its publish, or None.
+
+    A failed publish leaves new trades only in recovered. Use that file when
+    it is strictly newer and still holds every ticker the published ledger
+    holds, so the next run cannot open them again. A recovered file that is
+    older, or that dropped a published ticker, is ignored.
+    """
+    if recovered is None:
+        return published
+    if published is None:
+        return recovered
+    if (recovered.get('updated') or '') <= (published.get('updated') or ''):
+        return published
+    if not held_tickers(published) <= held_tickers(recovered):
+        return published
+    return recovered
+
+
 def day_pnl(ledger, now):
     """Today's realized P&L, plus the mark-to-market of positions opened today."""
     day = et_day(now)
