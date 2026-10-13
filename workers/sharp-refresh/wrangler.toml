@@ -7,6 +7,20 @@ compatibility_date = "2026-09-01"
 [triggers]
 crons = ["*/10 * * * *", "*/2 * * * *"]
 
+# Refresh button. TURNSTILE_SITEKEY is public. The secret is not a var:
+#   wrangler secret put TURNSTILE_SECRET
+# Create the widget for vaultfantasy.com and www.vaultfantasy.com, then set the site key here.
+# Leave it unset and POST stays fail-closed (503 once the secret or the Gate binding is missing).
+# TURNSTILE_SITEKEY = ""
+
+[[durable_objects.bindings]]
+name = "GATE"
+class_name = "Gate"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["Gate"]
+
 [vars]
 REPO = "Putput12-JP/Vault-Fantasy"
 WORKFLOW = "update-sharp-money.yml"

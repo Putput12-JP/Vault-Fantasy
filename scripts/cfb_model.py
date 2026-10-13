@@ -179,10 +179,17 @@ def cmd_priors(a):
         seasons[str(y)] = dict(games=len(x), model_miss=round(float(np.abs(x.hm - x.pred).mean()), 2), market_miss=round(float(np.abs(x.hm - x.mkt).mean()), 2),
                                picks_wk4=rec(xl, PICK_EDGE), picks_all=rec(x, PICK_EDGE), picks3_wk4=rec(xl, 3), picks7_wk4=rec(xl, 7))
     allw = r[r.week >= PICK_MIN_WEEK]
-    json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), method='walk-forward, ESPN spread as the market line, FBS vs FBS regular season',
-                   tuned_on='2022-2023', test='2024-2025', pick_edge=PICK_EDGE, min_week=PICK_MIN_WEEK, seasons=seasons,
-                   combined=dict(picks_wk4=rec(allw, PICK_EDGE), picks3_wk4=rec(allw, 3), picks7_wk4=rec(allw, 7))),
-              open(BACKTEST, 'w'), indent=1)
+    # opening_lines is the 2022-2025 open-vs-close record from the retro note. This rewrite
+    # recomputes the walk-forward close record only, so keep that key if it is already on the file.
+    opening_lines = None
+    if os.path.exists(BACKTEST):
+        try: opening_lines = json.load(open(BACKTEST)).get('opening_lines')
+        except Exception: opening_lines = None
+    back = dict(generated=pd.Timestamp.now('UTC').isoformat(), method='walk-forward, ESPN spread as the market line, FBS vs FBS regular season',
+                tuned_on='2022-2023', test='2024-2025', pick_edge=PICK_EDGE, min_week=PICK_MIN_WEEK, seasons=seasons,
+                combined=dict(picks_wk4=rec(allw, PICK_EDGE), picks3_wk4=rec(allw, 3), picks7_wk4=rec(allw, 7)))
+    if opening_lines: back['opening_lines'] = opening_lines
+    json.dump(back, open(BACKTEST, 'w'), indent=1)
     print(json.dumps(json.load(open(BACKTEST))['combined']))
 
 
@@ -248,13 +255,14 @@ def open_check(g26, F, rated_before, K, HFA):
     if os.path.exists(ep):
         for r in json.load(open(ep)):
             if r['id'] in rows and r.get('so') is not None: rows[r['id']] = (rows[r['id']][0], dict(rows[r['id']][1], so=r['so'], p='ESPN'))
-    games, fbs_games = [], 0
+    games, fbs_games, with_open = [], 0, 0
     for x in g26.itertuples():
         h, aw = int(x.homeTeamId), int(x.awayTeamId)
         if h not in F or aw not in F or int(x.week) < PICK_MIN_WEEK: continue
         fbs_games += 1
         hit = rows.get(int(x.game_id))
         if not hit: continue
+        with_open += 1
         ln = hit[1]; ra_w, rb_w = rated_before(int(x.week)); Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
         pred = K * (Pw(h) - Pw(aw)) + (0.0 if x.neutral_site == True else HFA)
         omargin = -float(ln['so']); edge = pred - omargin; home = edge > 0
@@ -274,6 +282,7 @@ def open_check(g26, F, rated_before, K, HFA):
     if os.path.exists(tp): sid = {t['school']: int(t['id']) for t in json.load(open(tp))}
     done_ids = {int(x.game_id) for x in g26.itertuples()}
     nowk = int(g26[g26.status_type_completed == True].week.max() or 0) if len(g26) else 0      # opens for weeks further out are placeholders: only the next slate
+    upcoming_n = 0
     for gid, (rk, ln) in rows.items():
         if int(gid) in done_ids or ln.get('hs') is not None or int(ln.get('wk') or 0) < PICK_MIN_WEEK or int(ln['wk']) > nowk + 1: continue
         h, aw = sid.get(ln.get('home')), sid.get(ln.get('away'))
@@ -286,11 +295,21 @@ def open_check(g26, F, rated_before, K, HFA):
                           model_margin=round(pred, 1), open_margin=round(omargin, 1), edge=round(edge, 1), entry=round(float(ln['so']) if home else -float(ln['so']), 1),
                           close=None if cur is None else round(-cur if home else cur, 1), clv=None if cur is None else round((float(ln['so']) - float(ln['sp'])) if home else (float(ln['sp']) - float(ln['so'])), 1),
                           toward=None if cur is None else round((cur - omargin) * (1 if home else -1), 1), neutral_assumed=True, upcoming=True))
+        upcoming_n += 1
     def rec(sel):
         w = sum(g.get('result') == 'W' for g in sel); l = sum(g.get('result') == 'L' for g in sel); n = w + l
         return dict(won=w, lost=l, pct=round(w / n, 3) if n else None, z=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None)
-    out = dict(source='ESPN recorded open (DraftKings), else CollegeFootballData spreadOpen', min_week=PICK_MIN_WEEK, fbs_games=fbs_games, with_open=len(games),
-               backtest=dict(seasons='2022-2025', vs_open=[435, 321], vs_close=[368, 346], note='5+ point disagreements, weeks 4+, model tuned on 2022-23 only'),
+    opening = {}
+    if os.path.exists(BACKTEST):
+        try: opening = json.load(open(BACKTEST)).get('opening_lines') or {}
+        except Exception: opening = {}
+    vs_open, vs_close = opening.get('vs_open'), opening.get('vs_close')
+    backtest = None
+    if isinstance(vs_open, list) and isinstance(vs_close, list) and len(vs_open) == 2 and len(vs_close) == 2:
+        backtest = dict(seasons=opening.get('seasons') or '2022-2025', vs_open=vs_open, vs_close=vs_close,
+                        note=opening.get('note') or '5+ point disagreements, weeks 4+, from data/cfb_model_backtest.json opening_lines')
+    out = dict(source='ESPN recorded open (DraftKings), else CollegeFootballData spreadOpen', min_week=PICK_MIN_WEEK, fbs_games=fbs_games, with_open=with_open, upcoming=upcoming_n,
+               backtest=backtest,
                by_threshold={str(t): rec([g for g in games if abs(g['edge']) >= t]) for t in (3, 5, 7)},
                by_week={str(w): rec([g for g in games if g['week'] == w and abs(g['edge']) >= PICK_EDGE]) for w in sorted({g['week'] for g in games if 'result' in g})})
     picks = [g for g in games if abs(g['edge']) >= PICK_EDGE]
@@ -358,9 +377,18 @@ def cmd_update(a):
             started = g['start'] <= now
             if started and not (a.since and g['start'] >= a.since): continue
             h, aw = find_id(g['home']['name']), find_id(g['away']['name'])
-            line = ((g.get('pin') or {}).get('sp') or {}).get('line')
-            if line is None: line = ((g.get('consensus') or {}).get('sp') or {}).get('line')
+            pin_sp = (g.get('pin') or {}).get('sp') or {}
+            con_sp = (g.get('consensus') or {}).get('sp') or {}
+            line = pin_sp.get('line')
+            seen_src, seen_book = (None, None)
+            if line is not None: seen_src, seen_book = 'pinnacle', pin_sp
+            else:
+                line = con_sp.get('line')
+                if line is not None: seen_src, seen_book = 'consensus', con_sp
             oline = ((g.get('open') or {}).get('sp') or {}).get('line')
+            # The bettable open is the number on the board the moment this game is still pre-kickoff.
+            # A game already started is a backfill and does not get one.
+            seen = None if started or seen_book is None else dict(src=seen_src, line=line, book=seen_book)
             co = copens.get((h, aw))
             if co is not None: oline = co      # the books' first posted number, not the feed's later window-start open
             if started: line = oline          # in-game lines are live, so a backfilled game uses its opening line
@@ -379,7 +407,7 @@ def cmd_update(a):
                 pick = dict(side=side, team=g['home' if side == 'home' else 'away']['short'], line=line if side == 'home' else -line)
             mc = None if started else market_check(g, 'home' if edge > 0 else 'away', oline)    # in-game lines and money are live, not a read on the pre-game market
             slate.append(dict(key=g['key'], mkt_check=mc, kick=g['start'], home=g['home']['short'], away=g['away']['short'], home_id=h, away_id=aw, week=wk, neutral=neutral,
-                              backfill=started, model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None if oline is None else round(-oline, 1),
+                              backfill=started, seen=seen, model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None if oline is None else round(-oline, 1),
                               edge=round(edge, 1), pick=pick))
         if a.since:       # one-time backfill: games that kicked off since then but are not in the feed (it only lists a window), at ESPN's own line
             sc = pd.read_parquet(st.fetch(f'{st.REL}/espn_cfb_schedules/cfb_schedule_2026.parquet', f'{d}/sched_2026.parquet'), columns=['game_id', 'game_date'])
@@ -443,8 +471,16 @@ def cmd_update(a):
         ent = dict(s_, side=side, team=s_['home'] if side == 'home' else s_['away'],
                    entry=round(-s_['market_margin'] if side == 'home' else s_['market_margin'], 1), logged=int(now),
                    is_pick=bool(s_['pick']))
-        if old: bidx[s_['key']].update(ent)
-        else: board.append(ent); bidx[s_['key']] = ent
+        seen = ent.pop('seen', None)
+        if old: bidx[s_['key']].update(ent)     # an existing row keeps the bettable open it was stamped with; a missing one is not backfilled
+        else:
+            if seen and not s_.get('backfill') and seen.get('line') is not None:
+                book = seen.get('book') or {}
+                px = book.get(side)
+                price = px if isinstance(px, (int, float)) and not isinstance(px, bool) and abs(px) >= 100 else None
+                ent['bettable_open'] = dict(line=seen['line'], price=price, ts=int(now), src=seen['src'], model_margin=s_['model_margin'],
+                                            edge=s_['edge'], side=side, entry=ent['entry'])
+            board.append(ent); bidx[s_['key']] = ent
     # games already played were frozen with whatever open the feed had; restate them from the books' first posted number (display only, the projection stays frozen)
     copens_all = cfbd_opens(played=True)
     for b in board:
@@ -470,6 +506,10 @@ def cmd_update(a):
         _settle(e, e['key'])
         if e.get('final'): _settle(e['final'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
         if e.get('v2'): _settle(e['v2'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
+        bo = e.get('bettable_open')
+        if bo and 'result' not in bo:
+            r = settle(dict(bo, key=e['key'], home_id=e['home_id'], away_id=e['away_id']), g26, fin)
+            if r: bo.update({k: r[k] for k in ('result', 'espn_close', 'clv', 'margin', 'hs', 'as_') if k in r})
     board.sort(key=lambda x: -x['kick'])
     for e in log: _settle(e, e['key'])
     gr = [e for e in log if e.get('result') in ('W', 'L', 'P')]
@@ -537,9 +577,16 @@ def cmd_update(a):
               dict(label='Locked picks, Sharp Money split or quiet', note='Cards on both teams, or no card at all.', all=_fs([e for e in fp if _link(e) in ('split', 'none', 'nocard')]), keys=[e['key'] for e in fp if _link(e) in ('split', 'none', 'nocard')])])
     final_summary.pop('mins')
     open_chk = open_check(g26, F, rated_before, K, HFA)
+    bos = [e['bettable_open'] for e in board if e.get('bettable_open')]
+    bg = [b for b in bos if b.get('result') in ('W', 'L')]
+    bclv = [b['clv'] for b in bos if b.get('clv') is not None and b.get('result') in ('W', 'L', 'P')]
+    bettable_summary = dict(stamped=len(bos), graded=len(bg), won=sum(b['result'] == 'W' for b in bg), lost=sum(b['result'] == 'L' for b in bg),
+                            clv_n=len(bclv), clv_mean=round(sum(bclv) / len(bclv), 2) if bclv else None,
+                            note='Stamped the first time the model sees a game, at the line on the board then. Games already on the board are not backfilled, and a line that moved later is not written back onto them.')
+    for s_ in slate: s_.pop('seen', None)     # the live slate does not need the book row the stamp was copied from
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk, bettable_open=bettable_summary), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 

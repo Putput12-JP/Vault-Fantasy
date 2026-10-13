@@ -250,7 +250,7 @@ var VCP_CSS = `
 .vcp .brand span{font-size:11px;color:var(--dim);margin-right:96px}
 .vcp .shr{position:absolute;right:18px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:600 12px/1 Inter,system-ui,sans-serif;padding:7px 12px;border-radius:99px;cursor:pointer;transition:transform 500ms cubic-bezier(.34,1.56,.64,1),background .15s}
 .vcp .shr:hover{background:rgba(255,255,255,.13)}.vcp .shr:active{transform:scale(.94);transition:transform 80ms ease-out}.vcp .shr[disabled]{opacity:.6;cursor:progress}
-@container (max-width:520px){.vcp .p,.vcp .e strong{font-size:32px}.vcp .row{grid-template-columns:1fr}.vcp .ruler{margin:0 30px}.vcp .brand span{display:none}.vcp .scale span:nth-child(2){display:none}}
+@container (max-width:520px){.vcp .pin,.vcp .under{width:76px}.vcp .pin b,.vcp .under b{font-size:11.5px}.vcp .p,.vcp .e strong{font-size:32px}.vcp .row{grid-template-columns:1fr}.vcp .ruler{margin:0 30px}.vcp .brand span{display:none}.vcp .scale span:nth-child(2){display:none}}
 `;
 // New pill, ruler and stat row for a CFB model game. Margins in the model data are the HOME side's; the ruler plots the AWAY side's
 // margin of victory so "model" and "market" read as two points on one line, and the green is the gap between them (the edge).
@@ -265,12 +265,12 @@ function VaultCfbPick(P) {
   var fmtV = function (v) { return Math.abs(v).toFixed(1).replace(/\.0$/, ''); };
   var items = [['model', 'Model', 'var(--pick)', 1], ['market', 'Market', 'var(--ink)', 1], ['blend', 'Blend', 'var(--amber)', 0], ['open', 'Open', 'var(--mute)', 0]]
     .map(function (d) { return { key: d[0], lbl: d[1], tone: d[2], up: d[3], v: pts[d[0]] }; }).filter(function (d) { return d.v != null; });
-  var lanes = { 1: 1, 0: 1 };
+  var lanes = { 1: 1, 0: 1 }, GAP = (typeof innerWidth !== 'undefined' && innerWidth < 560) ? 30 : 17;   // a phone ruler is ~250px wide, so a label needs a bigger share of it
   [1, 0].forEach(function (side) {
     var last = [];
     items.filter(function (d) { return d.up === side; }).sort(function (a, b) { return a.v - b.v; }).forEach(function (d) {
       var pcn = (d.v - lo) / (hi - lo) * 100, l = 0;
-      while (last[l] != null && pcn - last[l] < 17) l++;
+      while (last[l] != null && pcn - last[l] < GAP) l++;
       last[l] = pcn; d.lane = l; lanes[side] = Math.max(lanes[side], l + 1);
     });
   });
@@ -387,7 +387,7 @@ var VRD_CSS = `
 .vrd .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;padding:0 2px}
 .vrd .foot b{font-size:13px;letter-spacing:.14em;font-weight:800}.vrd .foot span{font-size:11px;color:var(--dim)}
 .vrd .open{all:unset;cursor:pointer;font-size:12px;color:var(--ink);text-decoration:underline;text-decoration-color:rgba(255,255,255,.25);text-underline-offset:3px}
-@container (max-width:560px){.vrd .pickline{font-size:34px}.vrd .pickline.sm{font-size:27px}.vrd .sig{grid-template-columns:repeat(2,1fr)}.vrd .price .row{grid-template-columns:1fr}.vrd .foot span{display:none}}
+@container (max-width:560px){.vrd .hd{grid-template-columns:1fr 1fr}.vrd .hd .mid{grid-column:1/-1;grid-row:2;min-width:0;overflow-wrap:anywhere}.vrd .pickline{font-size:34px}.vrd .pickline.sm{font-size:27px}.vrd .sig{grid-template-columns:repeat(2,1fr)}.vrd .price .row{grid-template-columns:1fr}.vrd .foot span{display:none}}
 `;
 // Top Reads card, poster layout. Pf computes everything (read, price check, edge window) and hands it over; this only draws it.
 function VaultReadCard(P) {
@@ -401,10 +401,10 @@ function VaultReadCard(P) {
     if (!x) return h('div', { key: key, className: 's off' }, h('em', null, lbl), h('strong', null, 'nothing yet'));
     var txt = String(x.txt), v = txt, small = '', ok = x.side === l;
     if (key === 'money') { var mm = /(\d+)% of the money on (\d+)% of bets/.exec(txt); if (mm) { v = mm[1] + '% / ' + mm[2] + '%'; small = 'of money / of bets'; } }
-    else if (key === 'sharp') { var sm = /^(\S+) net/.exec(txt); if (sm) { v = sm[1]; small = 'net on ' + sideNm(x.side); } }
+    else if (key === 'sharp') { var sm = /^(\S+) net/.exec(txt); if (sm) { v = sm[1]; small = 'context, not a bet'; } }
     else if (key === 'behind') { var ci = txt.indexOf(','); if (ci > 0) { v = txt.slice(0, ci); small = txt.slice(ci + 1).trim(); } }
     else if (key === 'line') { small = 'line move'; }
-    return h('div', { key: key, className: 's ' + (ok ? 'on' : 'bad') }, h('em', null, lbl + (ok ? '' : ' (opposes)')), h('strong', null, v), small ? h('small', null, small) : null);
+    return h('div', { key: key, className: 's' + (key === 'sharp' ? '' : (ok ? ' on' : ' bad')) }, h('em', null, lbl + (key === 'sharp' || ok ? '' : ' (opposes)')), h('strong', null, v), small ? h('small', null, small) : null);
   };
   var w = P.fair, best = P.best, behind = P.behind, left = P.left, pct = P.pct, tcol = pct > 50 ? 'var(--pick)' : pct > 20 ? 'var(--amber)' : 'var(--loss)';
   var res = P.res, pill = res === 1 ? ['w', 'Won'] : res === -1 ? ['x', 'Lost'] : res === 0 ? ['d', 'Push'] : null;
@@ -419,7 +419,7 @@ function VaultReadCard(P) {
         h('div', { className: 'tm' }, Logo('away'), h('div', null, h('b', null, g.away.short || g.away.abbr), h('small', null, 'Away'))),
         h('div', { className: 'mid' }, h('span', { className: 'eyebrow' }, h('i'), 'Sharp read'),
           h('div', { className: 'pickline' + (word.length > 12 ? ' sm' : ''), style: { color: col } }, word, sub ? h('span', { style: { marginLeft: '.22em' } }, sub) : null),
-          h('div', { className: 'why' }, P.agree + ' of 4 signals agree \u00B7 ' + P.mkt + (P.final ? ' \u00B7 final ' + g.away.abbr + ' ' + g.final.away + ', ' + g.home.abbr + ' ' + g.final.home : ''),
+          h('div', { className: 'why' }, P.agree + ' of 3 bet signals agree \u00B7 ' + P.mkt + (d.sharp && d.sharp.side === l ? ' \u00B7 sharp money is context, not a bet' : '') + (P.final ? ' \u00B7 final ' + g.away.abbr + ' ' + g.final.away + ', ' + g.home.abbr + ' ' + g.final.home : ''),
             P.oppose ? ' ' : null, P.oppose ? h('span', { className: 'pill o' }, P.oppose + ' opposes') : null, pill ? ' ' : null, pill ? h('span', { className: 'pill ' + pill[0] }, pill[1]) : null)),
         h('div', { className: 'tm r' }, Logo('home'), h('div', null, h('b', null, g.home.short || g.home.abbr), h('small', null, 'Home \u00B7 ' + P.when)))),
       h('div', { className: 'sig' }, P.sigs.map(function (x) { return tile(x[0], x[1]); })),
@@ -547,7 +547,7 @@ function VaultEveryLine({ g, row }) {
     proof = [
       { k: 'Line move', on: kinds.indexOf('line') >= 0, v: mv ? mv.open + ' → ' + mv.now : 'No line', s: mv ? (moved ? (mv.side === s ? 'toward ' + vscName(g, hm.m, s) : 'toward ' + vscName(g, hm.m, mv.side)) : 'no real move') : '' },
       { k: 'Money vs bets', on: kinds.indexOf('money') >= 0, v: mMoney != null && mBets != null ? mMoney + '% / ' + mBets + '%' : '–', s: mMoney != null && mBets != null ? (mMoney - mBets >= 0 ? 'money ' + (mMoney - mBets) + ' pts ahead of bets' : 'bets ' + (mBets - mMoney) + ' pts ahead of money') : 'no US book split' },
-      { k: 'Exchange', on: kinds.indexOf('sharp') >= 0, v: sh ? vscUsd(sh) + ' sharp' : 'No sharp $', s: shO ? 'vs ' + vscUsd(shO) + ' on ' + vscName(g, hm.m, other) : 'none on ' + vscName(g, hm.m, other) }];
+      { k: 'Exchange', on: false, v: sh ? vscUsd(sh) + ' sharp' : 'No sharp $', s: (shO ? 'vs ' + vscUsd(shO) + ' on ' + vscName(g, hm.m, other) : 'none on ' + vscName(g, hm.m, other)) + ' · context, not a bet' }];
     hero = h('div', { className: 'verdict' }, h('div', { className: 'eyebrow' }, h('i'), 'Sharp side'),
       h('div', { className: 'pick' + (word.length > 12 ? ' sm' : ''), style: { color: col } }, word, sub ? h('span', null, sub) : null),
       h('div', { className: 'why' }, row.n + ' independent signals agree · ' + hm.name, h('span', { className: 'wh' }, ' · ' + (VSC_SPORT[g.sport] || '') + ' ' + when)),
