@@ -3,6 +3,7 @@
 Cash is recomputed from the trades on every run, so a crashed write cannot
 leave the bankroll ahead of the fills.
 """
+import copy
 import json
 import os
 from datetime import datetime, timezone
@@ -28,6 +29,11 @@ def et_day(stamp):
 
 def et_month(stamp):
     return et_day(stamp)[:7]
+
+
+def in_cash_book(t):
+    """False for rows of a separate paper book (book='novig'). They never touch cash, caps, the loss stop or equity."""
+    return not t.get('book')
 
 
 def empty(bankroll):
@@ -75,6 +81,8 @@ def save(path, ledger):
 def recompute_cash(ledger):
     cash = float(ledger['bankroll_start'])
     for t in ledger['trades']:
+        if not in_cash_book(t):
+            continue
         st = t.get('status')
         if st in ('open', 'settled', 'void'):
             cash -= float(t.get('stake') or 0)
@@ -89,7 +97,7 @@ def recompute_cash(ledger):
 def _stake_on(trades, day=None, market=None, event=None):
     total = 0.0
     for t in trades:
-        if t.get('status') not in ('open', 'settled', 'void'):
+        if t.get('status') not in ('open', 'settled', 'void') or not in_cash_book(t):
             continue
         if day is not None and et_day(t['ts']) != day:
             continue
@@ -111,34 +119,108 @@ def spent_buckets(ledger, now, ticker, event):
 
 
 def held_tickers(ledger):
-    """Tickers we already acted on. A veto sticks; an error row does not."""
+    """Kalshi tickers we already acted on. A veto sticks; an error row does not.
+
+    novig: tickers belong to a separate paper book and never block a Kalshi proposal.
+    """
     out = set()
     for t in ledger['trades']:
+        if str(t.get('ticker') or '').startswith('novig:'):
+            continue
         if t.get('status') in ('open', 'settled', 'void', 'vetoed'):
             out.add(t.get('ticker'))
     return out
 
 
-def choose_base_ledger(published, recovered):
-    """Ledger a run should start from.
+def _number(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
 
-    published is the paper-data copy, or None. recovered is the ledger the
-    previous run wrote before its publish, or None.
 
-    A failed publish leaves new trades only in recovered. Use that file when
-    it is strictly newer and still holds every ticker the published ledger
-    holds, so the next run cannot open them again. A recovered file that is
-    older, or that dropped a published ticker, is ignored.
+def validate_ledger(led):
+    """Raise ValueError unless led is something the bot can start from. Works on a copy, led is not modified.
+
+    Checks what the bot reads at startup: bankroll_start, updated, strategies, config, equity, runs, and
+    every trade a dict with a numeric (or absent) stake and payout. Then runs held_tickers, recompute_cash
+    and summarize on the copy, so a ledger that would crash them is refused here, not mid-run.
     """
-    if recovered is None:
-        return published
-    if published is None:
-        return recovered
-    if (recovered.get('updated') or '') <= (published.get('updated') or ''):
-        return published
-    if not held_tickers(published) <= held_tickers(recovered):
-        return published
-    return recovered
+    try:
+        if not isinstance(led, dict) or not isinstance(led.get('trades'), list):
+            raise ValueError('not a paper-bot ledger')
+        if not _number(led.get('bankroll_start')):
+            raise ValueError('bankroll_start is missing or not a number')
+        if led.get('updated') is not None and not isinstance(led['updated'], str):
+            raise ValueError('updated is not a string')
+        strategies = led.get('strategies')
+        if strategies is not None and (not isinstance(strategies, dict)
+                                       or not all(isinstance(s, dict) for s in strategies.values())):
+            raise ValueError('strategies is not a dict of dicts')
+        if led.get('config') is not None and not isinstance(led['config'], dict):
+            raise ValueError('config is not a dict')
+        for key in ('equity', 'runs'):
+            if led.get(key) is not None and not isinstance(led[key], list):
+                raise ValueError(f'{key} is not a list')
+        for i, t in enumerate(led['trades']):
+            if not isinstance(t, dict):
+                raise ValueError(f'trade {i} is not a dict')
+            for k in ('stake', 'payout'):
+                if t.get(k) is not None and not _number(t[k]):
+                    raise ValueError(f'trade {i} has a non-numeric {k}')
+        probe = copy.deepcopy(led)
+        held_tickers(probe)
+        recompute_cash(probe)
+        summarize(probe)
+    except ValueError:
+        raise
+    except Exception as e:
+        raise ValueError(f'{type(e).__name__}: {e}')
+
+
+def _warn_skipped(label, reason):
+    print(f'::warning title=Paper bot ledger::Skipped recovered ledger {label}: {" ".join(str(reason).split())}')
+
+
+def build_base_ledger(published, recovered, labels=None, on_skip=_warn_skipped):
+    """Ledger a run should start from: published merged with every recovered ledger.
+
+    published is the paper-data copy or None. recovered is a list of ledgers that earlier runs wrote
+    before their publish (None entries are skipped); labels names them for the warning (default their
+    position). A failed publish leaves new trades only in that run's artifact, and a snapshot run that
+    started earlier can upload a newer artifact without them, so no single artifact is trusted alone: the
+    union by trade id is taken, the more advanced row wins, and held_tickers of the result covers every
+    ticker any source held. None when every input is None.
+
+    Each recovered ledger is merged on its own: it is validated, merged, and the merged result validated.
+    Any failure skips that ledger (on_skip(label, reason)) and keeps the previous result, so a bad
+    artifact can never become the base. The published ledger is validated alone and a failure there
+    raises ValueError. Inputs are not modified.
+    """
+    from .merge_ledger import merge_ledgers      # lazy: merge_ledger imports cfb_jp_novig, which imports this module
+    base = None
+    if published is not None:
+        validate_ledger(published)
+        base = published      # merge_ledgers copies, so a merged result never aliases it
+    labels = list(labels) if labels is not None else []
+    for i, led in enumerate(recovered or []):
+        if led is None:
+            continue
+        label = labels[i] if i < len(labels) else f'#{i}'
+        try:
+            validate_ledger(led)
+            cand = led if base is None else merge_ledgers(led, base)      # a lone ledger is the base as is
+            validate_ledger(cand)
+        except Exception as e:
+            on_skip(label, e if isinstance(e, ValueError) else f'{type(e).__name__}: {e}')
+            continue
+        base = cand
+    return base
+
+
+def choose_base_ledger(published, recovered):
+    """Ledger a run should start from, given the published copy and the one recovered ledger (either may be None).
+
+    Merges rather than picks, see build_base_ledger.
+    """
+    return build_base_ledger(published, [recovered])
 
 
 def day_pnl(ledger, now):
@@ -146,6 +228,8 @@ def day_pnl(ledger, now):
     day = et_day(now)
     pnl = 0.0
     for t in ledger['trades']:
+        if not in_cash_book(t):
+            continue
         if t.get('status') == 'settled' and t.get('settled_ts') and et_day(t['settled_ts']) == day:
             pnl += float(t.get('pnl') or 0)
         elif t.get('status') == 'open' and et_day(t['ts']) == day:
@@ -155,7 +239,7 @@ def day_pnl(ledger, now):
 
 def open_mark(ledger):
     return round(sum(float(t.get('mark_value') if t.get('mark_value') is not None else t.get('stake') or 0)
-                     for t in ledger['trades'] if t.get('status') == 'open'), 2)
+                     for t in ledger['trades'] if t.get('status') == 'open' and in_cash_book(t)), 2)
 
 
 def record_equity(ledger, now):
@@ -171,13 +255,23 @@ def record_equity(ledger, now):
     return point
 
 
+def _is_pending(t):
+    """A settled row whose result is not decided yet: a partly exited cfb_jp_novig trade waiting on its remainder."""
+    if t.get('status') != 'settled' or not (t.get('book') or t.get('source') == 'cfb_jp_novig'):
+        return False    # only the book rows (book='novig', cfb_jp_novig) wait on a remainder; a Kalshi row with won None is a data gap
+    return bool(t.get('remainder_pending')) or t.get('won') is None
+
+
 def _group_rows(trades):
     stake = pnl = 0.0
-    w = l = n = 0
+    w = l = n = pend = 0
     clv = []
     brier_n = brier_s = 0.0
     for t in trades:
         if t.get('status') != 'settled':
+            continue
+        if _is_pending(t):
+            pend += 1       # not a loss: it joins settled/wins/losses/stake/pnl once it is graded
             continue
         n += 1
         stake += float(t.get('stake') or 0)
@@ -197,6 +291,7 @@ def _group_rows(trades):
         'settled': n,
         'wins': w,
         'losses': l,
+        'pending': pend,
         'stake': round(stake, 2),
         'pnl': round(pnl, 2),
         'roi': (round(pnl / stake, 4) if stake else None),
@@ -207,9 +302,10 @@ def _group_rows(trades):
 
 
 def summarize(ledger):
-    trades = ledger['trades']
+    all_trades = ledger['trades']
+    trades = [t for t in all_trades if in_cash_book(t)]     # the Kalshi book; other books report under by_source and strategies
     by = {}
-    for t in trades:
+    for t in all_trades:
         by.setdefault(t.get('source') or 'unknown', []).append(t)
     sources = {name: _group_rows(rows) for name, rows in sorted(by.items())}
     for name, rows in by.items():
@@ -243,7 +339,10 @@ def summarize(ledger):
     overall['void'] = sum(1 for t in trades if t.get('status') == 'void')
     overall['vetoed'] = sum(1 for t in trades if t.get('status') == 'vetoed')
     fees = round(sum(float(t.get('fee_total') or 0) for t in trades if t.get('status') in ('open', 'settled', 'void')), 2)
+    strategies = {name: dict(s['progress']) for name, s in sorted((ledger.get('strategies') or {}).items())
+                  if isinstance(s, dict) and s.get('progress')}
     ledger['summary'] = {
+        'strategies': strategies,
         'overall': overall,
         'by_source': sources,
         'months': months,

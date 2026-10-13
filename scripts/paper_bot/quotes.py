@@ -55,6 +55,7 @@ def parse_market(raw):
         'result': result,
         'settlement_value': raw.get('settlement_value_dollars'),
         'close_time': raw.get('close_time'),
+        'open_time': raw.get('open_time'),
         'volume': _f(raw.get('volume_fp')) or 0.0,
     }
 
