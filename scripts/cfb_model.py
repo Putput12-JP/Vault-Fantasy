@@ -222,6 +222,98 @@ def grade(entry, g26):
     return dict(result=res, hs=int(x.homeFinalScore), as_=int(x.awayFinalScore), margin=int(margin), espn_close=close, clv=None if close is None or entry.get('line_src') == 'espn' else round(entry['entry'] - close, 1))
 
 
+def clopper_pearson(w, n, alpha=0.05):
+    """Exact two-sided (1 - alpha) interval for w wins in n decided games (pushes already excluded). None when n is 0."""
+    if n <= 0: return None
+    try:
+        from scipy.stats import beta
+        lo = 0.0 if w == 0 else float(beta.ppf(alpha / 2, w, n - w + 1))
+        hi = 1.0 if w == n else float(beta.ppf(1 - alpha / 2, w + 1, n - w))
+        return [round(lo, 3), round(hi, 3)]
+    except ImportError:
+        pass
+    return _cp_bisect(w, n, alpha)
+
+
+def _cp_bisect(w, n, alpha=0.05):
+    """The same interval without scipy: bisection on the binomial CDF."""
+    def cdf(k, p): return sum(math.comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(k + 1))      # P(X <= k)
+    def root(f, rising):
+        a_, b_ = 0.0, 1.0
+        for _ in range(60):
+            m = (a_ + b_) / 2
+            if (f(m) > 0) == rising: b_ = m
+            else: a_ = m
+        return (a_ + b_) / 2
+    lo = 0.0 if w == 0 else root(lambda p: (1 - cdf(w - 1, p)) - alpha / 2, True)      # P(X >= w) = alpha/2, rises with p
+    hi = 1.0 if w == n else root(lambda p: cdf(w, p) - alpha / 2, False)               # P(X <= w) = alpha/2, falls with p
+    return [round(lo, 3), round(hi, 3)]
+
+
+def tile_fields(board):
+    """Grade the Sharp Money tile at ONE takeable price: the last line before kickoff. Adds tile_line, tile_result ('W'/'L'/'P') and tile_line_src to every
+    settled row and touches nothing else (result, entry and the pick cards stay as they were). An 'espn:' row is already at ESPN's line, which is the close.
+    A 'cfb:' row logged at or after kickoff is a feed backfill whose entry is the OPEN (look-ahead), so it is regraded at espn_close (same sign as entry:
+    the line on the row's own side). A 'cfb:' row logged before kickoff keeps entry, the last pre-kick board line. No stored close means no tile grade."""
+    for e in board:
+        for k in ('tile_line', 'tile_result', 'tile_line_src'): e.pop(k, None)
+        if e.get('result') not in ('W', 'L', 'P') or e.get('margin') is None: continue
+        if e['key'].startswith('cfb:') and e['logged'] >= e['kick']:
+            line, src = e.get('espn_close'), 'espn_close'
+        else: line, src = e['entry'], 'entry'
+        if line is None: continue
+        e['tile_line'] = line; e['tile_line_src'] = src
+        e['tile_result'] = 'W' if e['margin'] + line > 0 else 'L' if e['margin'] + line < 0 else 'P'
+
+
+def tile_cards_summary(board):
+    """The Sharp Money vs the model tile, built from tile_result. Each table row keeps all/feed as [w, l] and adds n, ci (95% Clopper-Pearson) and
+    before (the old record, graded at entry); the feed column's are feed_n, feed_ci, feed_before."""
+    tile_fields(board)
+    def _cs(sel):
+        w = sum(e['tile_result'] == 'W' for e in sel); return [w, sum(e['tile_result'] in ('W', 'L') for e in sel) - w]
+    def _old(sel):
+        w = sum(e['result'] == 'W' for e in sel); return [w, sum(e['result'] in ('W', 'L') for e in sel) - w]
+    gg = [e for e in board if e.get('tile_result') in ('W', 'L')]
+    old_gg = [e for e in board if e.get('result') in ('W', 'L')]
+    withc = [e for e in gg if e.get('cards') is not None]
+    old_withc = [e for e in old_gg if e.get('cards') is not None]
+    opp = lambda e: 'away' if e['side'] == 'home' else 'home'
+    mine = lambda e: e['cards'][e['side']]; other = lambda e: e['cards'][opp(e)]
+    rows_def = [
+        ('Sharp Money is on the same side as the model', 'A line-move, sharp-account, money or books-behind card showed on the model\'s team and none on the other team.', lambda e: mine(e) and not other(e)),
+        ('Sharp Money is on the other side', 'Cards showed only on the team the model is against.', lambda e: other(e) and not mine(e)),
+        ('Sharp Money is on both sides', 'Cards showed on both teams, so the signals disagree.', lambda e: mine(e) and other(e)),
+        ('The line moved toward the model\'s team', 'The Pinnacle number shortened for the model\'s side before kickoff.', lambda e: 'line' in mine(e)),
+        ('The line moved away from the model\'s team', 'The Pinnacle number moved toward the other team.', lambda e: 'line' in other(e)),
+        ('Sharp accounts bet the model\'s team', 'Accounts with a proven record put real money on the model\'s side.', lambda e: 'sharp' in mine(e)),
+        ('Sharp accounts bet the other team', 'Those accounts went the other way.', lambda e: 'sharp' in other(e)),
+        ('Bigger money than bets on the model\'s team', 'A larger share of the dollars than of the tickets, which points to larger bettors.', lambda e: 'money' in mine(e)),
+        ('Two or more signals back the model', 'More than one kind of card on the model\'s team.', lambda e: len(mine(e)) >= 2),
+        ('Model picks (5+ points) that Sharp Money backs', 'The model is 5+ points from the market and a card is on its side.', lambda e: e['is_pick'] and mine(e)),
+        ('Model picks (5+ points) with no Sharp Money behind them', 'The model is 5+ points from the market and no card is on its side.', lambda e: e['is_pick'] and not mine(e)),
+    ]
+    feed_only = lambda e: e['key'].startswith('cfb:')           # entered at a feed line, not at ESPN's line
+    def _stats(label, note, sel, osel):
+        fs, ofs = [e for e in sel if feed_only(e)], [e for e in osel if feed_only(e)]
+        al, fe = _cs(sel), _cs(fs)
+        return dict(label=label, note=note, all=al, n=sum(al), ci=clopper_pearson(al[0], sum(al)), before=_old(osel),
+                    feed=fe, feed_n=sum(fe), feed_ci=clopper_pearson(fe[0], sum(fe)), feed_before=_old(ofs), keys=[e['key'] for e in sel])
+    cards_table = [_stats(l, n_, [e for e in withc if f(e)], [e for e in old_withc if f(e)]) for l, n_, f in rows_def]
+    base = _stats('Every game the model projected', 'The baseline: the model\'s side in every finished game, picks and leans, whatever Sharp Money did.', gg, old_gg)
+    return dict(graded=len(gg), with_cards=len(withc), table=[base] + cards_table)
+
+
+def rebuild_tile(path=None):
+    """Recompute the tile fields and cards_summary from the board already in data/cfb_model.json and rewrite it in place, every other key untouched.
+    Offline: python3 -c "import sys; sys.path.insert(0, 'scripts'); import cfb_model; cfb_model.rebuild_tile()" """
+    path = path or OUT
+    d = json.load(open(path))
+    d['cards_summary'] = tile_cards_summary(d['board'])
+    json.dump(d, open(path, 'w'))
+    return d['cards_summary']
+
+
 def settle(entry, g26, fin):
     """grade from ESPN's finished game when the play-by-play release has it (also gives closing-line value); until then use the final score the Sharp Money feed
     carries, so a game settles as soon as it ends. The feed-settled result is replaced by the ESPN one when that catches up."""
@@ -535,29 +627,7 @@ def cmd_update(a):
     v2_summary = dict(games=len(board), graded=len(gb),
                       v1_all=_rec([e['result'] for e in gb if e.get('result')]), v2_all=_rec([e['v2']['result'] for e in gb]),
                       v1_picks=_rec([e['result'] for e in gb if e.get('is_pick') and e.get('result')]), v2_picks=_rec([e['v2']['result'] for e in gb if e['v2']['is_pick']])) if prior2 else None
-    def _cs(sel):
-        w = sum(e['result'] == 'W' for e in sel); return [w, len(sel) - w]
-    gg = [e for e in board if e.get('result') in ('W', 'L')]
-    withc = [e for e in gg if e.get('cards') is not None]
-    opp = lambda e: 'away' if e['side'] == 'home' else 'home'
-    mine = lambda e: e['cards'][e['side']]; other = lambda e: e['cards'][opp(e)]
-    rows_def = [
-        ('Sharp Money is on the same side as the model', 'A line-move, sharp-account, money or books-behind card showed on the model\'s team and none on the other team.', lambda e: mine(e) and not other(e)),
-        ('Sharp Money is on the other side', 'Cards showed only on the team the model is against.', lambda e: other(e) and not mine(e)),
-        ('Sharp Money is on both sides', 'Cards showed on both teams, so the signals disagree.', lambda e: mine(e) and other(e)),
-        ('The line moved toward the model\'s team', 'The Pinnacle number shortened for the model\'s side before kickoff.', lambda e: 'line' in mine(e)),
-        ('The line moved away from the model\'s team', 'The Pinnacle number moved toward the other team.', lambda e: 'line' in other(e)),
-        ('Sharp accounts bet the model\'s team', 'Accounts with a proven record put real money on the model\'s side.', lambda e: 'sharp' in mine(e)),
-        ('Sharp accounts bet the other team', 'Those accounts went the other way.', lambda e: 'sharp' in other(e)),
-        ('Bigger money than bets on the model\'s team', 'A larger share of the dollars than of the tickets, which points to larger bettors.', lambda e: 'money' in mine(e)),
-        ('Two or more signals back the model', 'More than one kind of card on the model\'s team.', lambda e: len(mine(e)) >= 2),
-        ('Model picks (5+ points) that Sharp Money backs', 'The model is 5+ points from the market and a card is on its side.', lambda e: e['is_pick'] and mine(e)),
-        ('Model picks (5+ points) with no Sharp Money behind them', 'The model is 5+ points from the market and no card is on its side.', lambda e: e['is_pick'] and not mine(e)),
-    ]
-    feed_only = lambda e: e['key'].startswith('cfb:')           # entered at a feed line before or at kickoff, not at ESPN's after-the-game line
-    cards_table = [dict(label=l, note=n_, all=_cs([e for e in withc if f(e)]), feed=_cs([e for e in withc if f(e) and feed_only(e)]), keys=[e['key'] for e in withc if f(e)]) for l, n_, f in rows_def]
-    base = dict(label='Every game the model projected', note='The baseline: the model\'s side in every finished game, picks and leans, whatever Sharp Money did.', all=_cs(gg), feed=_cs([e for e in gg if feed_only(e)]), keys=[e['key'] for e in gg])
-    cards_summary = dict(graded=len(gg), with_cards=len(withc), table=[base] + cards_table)
+    cards_summary = tile_cards_summary(board)
     logkeys = {x['key']: x for x in log}
     fg = [e for e in board if e.get('final') and e['final'].get('result') in ('W', 'L')]
     def _fs(sel, get=lambda e: e['final']['result']):

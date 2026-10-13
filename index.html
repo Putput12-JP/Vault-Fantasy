@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-13T15:00', tag:'Improved', title:'CFB model: honest records with sample sizes',
+    items:[
+      'Every Sharp Money vs the model row now shows how many games it is based on and a 95% range for the true win rate, so a small sample looks small.',
+      'Every row is graded at the last line before kickoff. Games the feed picked up late are no longer graded at the opening number.',
+      'The two line move rows now count the same games the record does, so tapping a row matches its number.',
+    ]
+  },
+  {
     ts:'2026-10-13T13:32', tag:'Improved', title:'Sharp Money: sharp accounts are context, +EV record is all-time',
     items:[
       'Polymarket sharps now carry a Context tag instead of a trust label. They are background on a game, not a reason to bet.',
