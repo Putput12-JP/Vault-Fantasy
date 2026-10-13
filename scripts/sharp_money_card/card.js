@@ -401,10 +401,10 @@ function VaultReadCard(P) {
     if (!x) return h('div', { key: key, className: 's off' }, h('em', null, lbl), h('strong', null, 'nothing yet'));
     var txt = String(x.txt), v = txt, small = '', ok = x.side === l;
     if (key === 'money') { var mm = /(\d+)% of the money on (\d+)% of bets/.exec(txt); if (mm) { v = mm[1] + '% / ' + mm[2] + '%'; small = 'of money / of bets'; } }
-    else if (key === 'sharp') { var sm = /^(\S+) net/.exec(txt); if (sm) { v = sm[1]; small = 'net on ' + sideNm(x.side); } }
+    else if (key === 'sharp') { var sm = /^(\S+) net/.exec(txt); if (sm) { v = sm[1]; small = 'context, not a bet'; } }
     else if (key === 'behind') { var ci = txt.indexOf(','); if (ci > 0) { v = txt.slice(0, ci); small = txt.slice(ci + 1).trim(); } }
     else if (key === 'line') { small = 'line move'; }
-    return h('div', { key: key, className: 's ' + (ok ? 'on' : 'bad') }, h('em', null, lbl + (ok ? '' : ' (opposes)')), h('strong', null, v), small ? h('small', null, small) : null);
+    return h('div', { key: key, className: 's' + (key === 'sharp' ? '' : (ok ? ' on' : ' bad')) }, h('em', null, lbl + (key === 'sharp' || ok ? '' : ' (opposes)')), h('strong', null, v), small ? h('small', null, small) : null);
   };
   var w = P.fair, best = P.best, behind = P.behind, left = P.left, pct = P.pct, tcol = pct > 50 ? 'var(--pick)' : pct > 20 ? 'var(--amber)' : 'var(--loss)';
   var res = P.res, pill = res === 1 ? ['w', 'Won'] : res === -1 ? ['x', 'Lost'] : res === 0 ? ['d', 'Push'] : null;
@@ -419,7 +419,7 @@ function VaultReadCard(P) {
         h('div', { className: 'tm' }, Logo('away'), h('div', null, h('b', null, g.away.short || g.away.abbr), h('small', null, 'Away'))),
         h('div', { className: 'mid' }, h('span', { className: 'eyebrow' }, h('i'), 'Sharp read'),
           h('div', { className: 'pickline' + (word.length > 12 ? ' sm' : ''), style: { color: col } }, word, sub ? h('span', { style: { marginLeft: '.22em' } }, sub) : null),
-          h('div', { className: 'why' }, P.agree + ' of 4 signals agree \u00B7 ' + P.mkt + (P.final ? ' \u00B7 final ' + g.away.abbr + ' ' + g.final.away + ', ' + g.home.abbr + ' ' + g.final.home : ''),
+          h('div', { className: 'why' }, P.agree + ' of 3 bet signals agree \u00B7 ' + P.mkt + (d.sharp && d.sharp.side === l ? ' \u00B7 sharp money is context, not a bet' : '') + (P.final ? ' \u00B7 final ' + g.away.abbr + ' ' + g.final.away + ', ' + g.home.abbr + ' ' + g.final.home : ''),
             P.oppose ? ' ' : null, P.oppose ? h('span', { className: 'pill o' }, P.oppose + ' opposes') : null, pill ? ' ' : null, pill ? h('span', { className: 'pill ' + pill[0] }, pill[1]) : null)),
         h('div', { className: 'tm r' }, Logo('home'), h('div', null, h('b', null, g.home.short || g.home.abbr), h('small', null, 'Home \u00B7 ' + P.when)))),
       h('div', { className: 'sig' }, P.sigs.map(function (x) { return tile(x[0], x[1]); })),
@@ -547,7 +547,7 @@ function VaultEveryLine({ g, row }) {
     proof = [
       { k: 'Line move', on: kinds.indexOf('line') >= 0, v: mv ? mv.open + ' → ' + mv.now : 'No line', s: mv ? (moved ? (mv.side === s ? 'toward ' + vscName(g, hm.m, s) : 'toward ' + vscName(g, hm.m, mv.side)) : 'no real move') : '' },
       { k: 'Money vs bets', on: kinds.indexOf('money') >= 0, v: mMoney != null && mBets != null ? mMoney + '% / ' + mBets + '%' : '–', s: mMoney != null && mBets != null ? (mMoney - mBets >= 0 ? 'money ' + (mMoney - mBets) + ' pts ahead of bets' : 'bets ' + (mBets - mMoney) + ' pts ahead of money') : 'no US book split' },
-      { k: 'Exchange', on: kinds.indexOf('sharp') >= 0, v: sh ? vscUsd(sh) + ' sharp' : 'No sharp $', s: shO ? 'vs ' + vscUsd(shO) + ' on ' + vscName(g, hm.m, other) : 'none on ' + vscName(g, hm.m, other) }];
+      { k: 'Exchange', on: false, v: sh ? vscUsd(sh) + ' sharp' : 'No sharp $', s: (shO ? 'vs ' + vscUsd(shO) + ' on ' + vscName(g, hm.m, other) : 'none on ' + vscName(g, hm.m, other)) + ' · context, not a bet' }];
     hero = h('div', { className: 'verdict' }, h('div', { className: 'eyebrow' }, h('i'), 'Sharp side'),
       h('div', { className: 'pick' + (word.length > 12 ? ' sm' : ''), style: { color: col } }, word, sub ? h('span', null, sub) : null),
       h('div', { className: 'why' }, row.n + ' independent signals agree · ' + hm.name, h('span', { className: 'wh' }, ' · ' + (VSC_SPORT[g.sport] || '') + ' ' + when)),

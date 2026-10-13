@@ -55,11 +55,11 @@ const now = () => Math.floor(Date.now() / 1000);
 // that fires an alert (points for spread/total, win-prob points for ML).
 const SPORTS = {
   nfl: { name: 'NFL', an: 'nfl', pinSport: 15, pinLeague: 889, pm: 12185, kal: 'KXNFLGAME', nov: 'NFL', espn: 'football/nfl', ahead: 7,
-         steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets.json', sigBig: 25000, crossAt: 25000 },
+         steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, sharpCard: 5000, wallets: 'pm_wallets.json', sigBig: 25000, crossAt: 25000 },
   cfb: { name: 'College Football', an: 'ncaaf', pinSport: 15, pinLeague: 880, pm: 12756, kal: 'KXNCAAFGAME', nov: 'NCAAF', espn: 'football/college-football', ahead: 5,
-         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, wallets: 'pm_wallets_cfb.json', sigBig: 25000, crossAt: 5000 },
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, sharpCard: 2500, wallets: 'pm_wallets_cfb.json', sigBig: 25000, crossAt: 5000 },
   nba: { name: 'NBA', an: 'nba', pinSport: 4, pinLeague: 487, pm: 10345, kal: 'KXNBAGAME', nov: 'NBA', espn: 'basketball/nba', ahead: 3,
-         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets_nba.json', sigBig: 25000, crossAt: 25000 },
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, sharpCard: 5000, wallets: 'pm_wallets_nba.json', sigBig: 25000, crossAt: 25000 },
 };
 const WREC = {};
 const PROP_MIN_VOL = 300, PROP_MAX = 25;   // prop markets read per game (by Polymarket volume)
@@ -820,16 +820,21 @@ function grade(S) {
 
 
 // ── picks: what the Top Reads card showed ─────────────────────────────────
-// The card's "N of 4 agree" is computed live from the game's current prices
-// and money. The old record counted only the alerts that had fired, so a card
-// that read 3 of 4 could be logged as 2 (a slow line drift fires no alert) or
-// padded by a stale alert at a different number. This ports the card's own
-// rule (page: Rf) so the record counts exactly the signals the card showed.
-// Per game, market and side we keep the PEAK read before kickoff (most
-// signals; later reads at the same count roll forward), grade it on the final
-// score, and ship it as `picks`. The page uses picks wherever a game has them
-// and falls back to alerts for games from before this existed.
-const KINDS = ['line', 'money', 'sharp', 'behind'];
+// The card's agreement is computed live from the game's current prices and
+// money. Bet signals are the line move, the money/tickets split, and a book
+// still behind Pinnacle. Sharp-account money is context only: copying it at
+// this poll speed has no edge, and a $1k net was one minimum trade. The card
+// threshold is sharpCard on the sport ($5k NFL/NBA, $2.5k CFB).
+//
+// Each pick freezes the first time it is seen: price, fair prob, and time.
+// Later polls do not replace it with a stronger read. Old rows that were
+// kept at their peak stay readable; the first new run just stops overwriting
+// them and does not pretend today's price was the entry. Graded picks carry
+// result (1 / -1 / 0, as before), units (profit per 1 risked at the frozen
+// American price) and clv (closing fair prob minus the frozen fair prob).
+// A game/market with a pick on both sides is a conflict on both rows.
+const BET_KINDS = ['line', 'money', 'behind'];
+const SHARP_CARD = Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sharpCard]));
 const pdev = (a, b) => {
   const f = l => l < 0 ? -l / (-l + 100) : 100 / (l + 100), o = f(a), i = f(b);
   let s = .5, r = 3;
@@ -859,26 +864,50 @@ function cardSignals(e, m) {
   const sp = e.splits?.[m];
   if (sp) for (const p of [i, s]) { const h = sp[p]; if (h && h.m != null && h.t <= 50 && h.m - h.t >= 10) out.money = { side: p, txt: `${h.m}% of the money on ${h.t}% of bets` }; }
   const c = (e.flow?.sharp?.[m + ':' + i] || 0) - (e.flow?.sharp?.[m + ':' + s] || 0);
-  if (Math.abs(c) >= 1e3) out.sharp = { side: c > 0 ? i : s, txt: `$${Math.round(Math.abs(c)).toLocaleString('en-US')} net from sharp accounts` };
+  const sharpAt = SHARP_CARD[e.sport] || 5000;
+  if (Math.abs(c) >= sharpAt) out.sharp = { side: c > 0 ? i : s, context: true, txt: `$${Math.round(Math.abs(c)).toLocaleString('en-US')} net from sharp accounts` };
   const b = (e.behind || []).find(x => x.m === m);
   if (b) out.behind = { side: b.side, txt: `${b.book} ${b.price > 0 ? '+' : ''}${b.price}, ${(b.ev * 100).toFixed(1)}% over Pinnacle's fair` };
   return { out, hl };
 }
+function entryQuote(e, m, side) {
+  const row = e.pin?.[m] || e.consensus?.[m];
+  if (!row) return { price: null, fair: null };
+  const price = row[side] ?? null;
+  let fair = null;
+  if (m === 'tot') { const o = devig(row.over, row.under); fair = o == null ? null : side === 'over' ? o : 1 - o; }
+  else { const h = devig(row.home, row.away); fair = h == null ? null : side === 'home' ? h : 1 - h; }
+  return { price, fair: fair == null ? null : r3(fair) };
+}
+function flagConflicts(picks) {
+  const by = {};
+  for (const p of Object.values(picks)) (by[`${p.game}|${p.m}`] ||= new Set()).add(p.side);
+  for (const p of Object.values(picks)) {
+    const sides = by[`${p.game}|${p.m}`];
+    if (sides && sides.size > 1) { p.conflict = true; p.conflictSides = [...sides]; }
+    else { delete p.conflict; delete p.conflictSides; }
+  }
+}
 function snapPicks(S, games) {
   const t = now(); S.picks ||= {};
+  for (const p of Object.values(S.picks)) p.frozen = true;   // a stored row is the first sight we still have
   for (const e of games) {
     if (e.start <= t) continue;
     for (const m of ['sp', 'tot', 'ml']) {
       const { out, hl } = cardSignals(e, m), by = {};
-      for (const k of KINDS) if (out[k]) (by[out[k].side] ||= []).push(k);
+      for (const k of BET_KINDS) if (out[k]) (by[out[k].side] ||= []).push(k);
       for (const [side, kinds] of Object.entries(by)) {
         const key = `${e.key}|${m}|${side}`, old = S.picks[key];
-        if (old && old.kinds.length > kinds.length) continue;           // keep the peak
+        if (old) { old.frozen = true; continue; }          // first sight stands, including legacy peak rows
+        const q = entryQuote(e, m, side);
         S.picks[key] = { game: e.key, gameLbl: `${e.away.abbr || e.away.short} @ ${e.home.abbr || e.home.short}`, sport: e.sport, start: e.start, m, side,
-          hline: m === 'sp' ? hl : null, line: m === 'tot' ? hl : null, kinds, sig: Object.fromEntries(kinds.map(k => [k, out[k].txt])), ts: t, result: old?.result ?? null };
+          hline: m === 'sp' ? hl : null, line: m === 'tot' ? hl : null, kinds, sig: Object.fromEntries(kinds.map(k => [k, out[k].txt])),
+          ts: t, price: q.price, fair: q.fair, frozen: true,
+          context: out.sharp && out.sharp.side === side ? out.sharp.txt : null, result: null };
       }
     }
   }
+  flagConflicts(S.picks);
   for (const [k, p] of Object.entries(S.picks)) if (p.start < t - 60 * DAY) delete S.picks[k];
 }
 
@@ -906,13 +935,22 @@ function snapLead(S, games) {
   for (const [k, L] of Object.entries(S.lead)) if (L.start < t - 60 * DAY) delete S.lead[k];
 }
 function gradePicks(S) {
+  const t = now();
   for (const p of Object.values(S.picks || {})) {
-    const G = S.games[p.game]; if (!G?.final || p.result != null || p.start > now()) continue;
+    const G = S.games[p.game]; if (!G || p.start > t) continue;
+    if (p.close == null && G.ladder && p.fair != null) {
+      const P = { ml: G.ladder.ml, spL: G.ladder.sp, totL: G.ladder.tot };
+      const f = fairNow(P, p);
+      if (f != null) { p.close = r3(f); p.clv = r3(f - p.fair); }
+    }
+    if (!G.final || p.result != null) continue;
     const { home, away } = G.final; let v;
     if (p.m === 'ml') v = home === away ? 0 : (home > away) === (p.side === 'home') ? 1 : -1;
     else if (p.m === 'sp' && p.hline != null) { const d = home + p.hline - away, r = p.side === 'home' ? d : -d; v = r > 0 ? 1 : r < 0 ? -1 : 0; }
     else if (p.m === 'tot' && p.line != null) { const d = home + away - p.line, r = p.side === 'over' ? d : -d; v = r > 0 ? 1 : r < 0 ? -1 : 0; }
-    if (v != null) p.result = v;
+    if (v == null) continue;
+    p.result = v;
+    p.units = v === 0 ? 0 : p.price == null ? null : v > 0 ? r3(payout(p.price)) : -1;
   }
 }
 
@@ -1083,6 +1121,46 @@ async function pollOnce() {
   return fresh;
 }
 
+function selftestPicks() {
+  const t0 = now();
+  const e = {
+    key: 'nfl:1', sport: 'nfl', start: t0 + 3600,
+    away: { abbr: 'A', short: 'Away' }, home: { abbr: 'H', short: 'Home' },
+    pin: { sp: { line: -3, home: -110, away: -110 }, ml: { home: -150, away: 130 } },
+    open: { sp: { line: -1.5, home: -110, away: -110 }, ml: { home: -150, away: 130 } },
+    splits: { sp: { home: { t: 40, m: 55 }, away: { t: 60, m: 45 } } },
+    flow: { sharp: { 'sp:home': 8000, 'sp:away': 500, 'ml:home': 1200 } },
+    behind: [],
+  };
+  const S = { picks: {}, games: {} };
+  snapPicks(S, [e]);
+  const p = S.picks['nfl:1|sp|home'];
+  if (!p || p.kinds.includes('sharp') || p.kinds.length !== 2) throw new Error('bet signals only: ' + JSON.stringify(p));
+  if (p.price !== -110 || p.fair == null || !p.frozen) throw new Error('missing entry quote ' + JSON.stringify(p));
+  if (S.picks['nfl:1|ml|home']) throw new Error('a $1.2k sharp net must not create a pick');
+  const ts = p.ts, kinds = p.kinds.slice();
+  e.behind = [{ m: 'sp', side: 'home', book: 'DraftKings', price: -105, ev: 0.04 }];
+  snapPicks(S, [e]);
+  if (S.picks['nfl:1|sp|home'].ts !== ts || S.picks['nfl:1|sp|home'].kinds.join() !== kinds.join()) throw new Error('pick was overwritten');
+  S.picks['nfl:1|sp|away'] = { game: 'nfl:1', m: 'sp', side: 'away', start: e.start, kinds: ['line'], result: null };
+  flagConflicts(S.picks);
+  if (!S.picks['nfl:1|sp|home'].conflict || !S.picks['nfl:1|sp|away'].conflict) throw new Error('both sides should conflict');
+  const g = S.picks['nfl:1|sp|home'];
+  g.start = t0 - 10; g.fair = 0.5; g.hline = -3;
+  S.games['nfl:1'] = { final: { home: 24, away: 17 }, ladder: { ml: { home: -160, away: 140 }, sp: { '-3': [-120, 100] }, tot: {} } };
+  gradePicks(S);
+  if (g.result !== 1 || !(g.units > 0.9 && g.units < 0.92) || typeof g.clv !== 'number') throw new Error('grade ' + JSON.stringify({ result: g.result, units: g.units, clv: g.clv }));
+  // legacy peak row: freeze, do not stamp a new price over the missing one
+  S.picks['nfl:9|ml|away'] = { game: 'nfl:9', m: 'ml', side: 'away', start: t0 + 100, kinds: ['sharp', 'line'], ts: 1, result: null };
+  snapPicks(S, [{ ...e, key: 'nfl:9', start: t0 + 100 }]);
+  const leg = S.picks['nfl:9|ml|away'];
+  if (!leg.frozen || leg.price != null || leg.kinds[0] !== 'sharp') throw new Error('legacy row changed ' + JSON.stringify(leg));
+  console.log('fetch-sharp-money pick selftest ok');
+}
+if (ARG.selftest) {
+  selftestPicks();
+  process.exit(0);
+}
 if (ARG.loop) {
   const every = Math.max(30, +ARG.loop || 120) * 1000;
   for (;;) { try { await pollOnce(); } catch (e) { log('poll failed', e.message); } await new Promise(s => setTimeout(s, every)); }
