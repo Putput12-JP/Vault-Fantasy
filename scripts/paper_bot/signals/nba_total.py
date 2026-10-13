@@ -23,6 +23,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+from ..config import max_edge_of
 from ..quotes import market_tradable, side_price, side_size
 
 ET = ZoneInfo('America/New_York')
@@ -260,8 +261,7 @@ def proposals_from(state, games, markets, cfg, now, sigma, sigma_from):
 
 def _best_side(q, p_yes, cfg, capped=None):
     min_edge = float(cfg['min_edge'])
-    max_edge = cfg.get('max_edge', 0.15)
-    max_edge = float(max_edge) if max_edge else None
+    max_edge = max_edge_of(cfg)
     lo, hi = float(cfg['min_price']), float(cfg['max_price'])
     cands = []
     for side, prob in (('yes', p_yes), ('no', 1 - p_yes)):
@@ -271,6 +271,8 @@ def _best_side(q, p_yes, cfg, capped=None):
         if side_size(q, side) < 1:
             continue
         edge = prob - ask
+        if not math.isfinite(edge):
+            continue
         if max_edge is not None and edge > max_edge:
             if capped is not None:
                 capped.append(q.get('ticker'))

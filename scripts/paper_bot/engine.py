@@ -4,6 +4,7 @@ The only broker this process uses is the fill written into the ledger. It does
 not import the live broker, and it will not run when paper_only is false.
 """
 import argparse
+import math
 from datetime import datetime, timezone
 
 from .config import load
@@ -34,6 +35,8 @@ class Engine:
         self.notes = []
 
     def run(self):
+        for w in self.cfg.get('config_warnings') or []:
+            self.notes.append('warning: ' + w)
         recompute_cash(self.ledger)
         tagged = tag_pre_fix_trades(self.ledger)
         if tagged:
@@ -166,8 +169,10 @@ class Engine:
 
     def _open(self, p):
         price = float(p['price'])
-        fee = taker_fee(price)
         prob = float(p['model_prob'])
+        if not (math.isfinite(price) and math.isfinite(prob) and math.isfinite(float(p.get('edge') or 0))):
+            return 'non-finite signal'
+        fee = taker_fee(price)
         if prob <= price + fee:
             return 'no edge after fees'
         decision = self.llm.review(p) if self.llm is not None else None

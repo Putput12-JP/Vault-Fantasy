@@ -3,6 +3,7 @@
 A contract bought at cost c (price + fee, in dollars) pays 1 if it wins.
 Full Kelly fraction of bankroll is (q - c) / (1 - c) when q > c, else 0.
 """
+import math
 
 
 def full_kelly(prob, cost):
@@ -20,6 +21,11 @@ def contracts_for(bankroll, prob, price, fee, caps, spent):
           max_stake_per_day, max_stake_per_market, max_stake_per_event
     spent: day, market, event — dollars already committed in those buckets
     """
+    try:
+        if not all(math.isfinite(float(x)) for x in (bankroll, prob, price, fee)):
+            return 0, 'non-finite input'
+    except (TypeError, ValueError):
+        return 0, 'non-finite input'
     cost = float(price) + float(fee)
     if cost <= 0 or cost >= 1:
         return 0, 'price'
@@ -35,6 +41,8 @@ def contracts_for(bankroll, prob, price, fee, caps, spent):
         float(caps['max_stake_per_event']) - float(spent.get('event') or 0),
     )
     stake = min(stake, room)
+    if not math.isfinite(stake):
+        return 0, 'non-finite input'
     if stake <= 0:
         return 0, 'cap'
     cents = int(round(cost * 100))
