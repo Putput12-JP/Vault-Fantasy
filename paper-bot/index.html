@@ -55,6 +55,16 @@
   .tick { position:absolute; top:-3px; width:2px; height:14px; background:var(--text); }
   .notes { margin:0; padding-left:18px; color:var(--text2); }
   .notes li { margin:4px 0; }
+  .tag { display:inline-block; padding:2px 8px; border:1px solid var(--accent2); border-radius:var(--radius-pill); font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent2); vertical-align:middle; margin-left:8px; }
+  .sec-head { display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:12px; }
+  .sec-head h2 { margin:0; }
+  .sub-h { margin:18px 0 8px; }
+  .prog { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin:12px 0; }
+  .prog .stat { background:var(--s2); }
+  .status-pill { display:inline-block; padding:2px 10px; border-radius:var(--radius-pill); border:1px solid var(--border2); font-family:var(--font-mono); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+  .status-pill.pass { color:var(--value); border-color:var(--value); }
+  .status-pill.fail { color:var(--reach); border-color:var(--reach); }
+  .mon { margin:10px 0 0; padding:8px 12px; border-left:3px solid var(--accent2); background:var(--s2); border-radius:var(--radius-sm); }
   footer { margin-top:28px; color:var(--muted); font-size:13px; }
 </style>
 </head>
@@ -102,6 +112,12 @@
       <div class="scroll" id="cal"></div>
     </section>
 
+    <section class="v-card pad" id="strategy" hidden>
+      <div class="sec-head"><h2 class="t-h2">CFB JP+ Novig</h2><span class="tag">Separate strategy</span></div>
+      <p class="t-secondary" style="margin:0 0 4px">JP+ edges against the sportsbook open, paper-traded on Novig's spread ladder. These rows are not in the bankroll, P&amp;L, ROI or record above. Prices are per contract after the spread, with no fees.</p>
+      <div id="st-body"></div>
+    </section>
+
     <section class="v-card pad">
       <h2 class="t-h2">Open</h2>
       <div class="scroll" id="open"></div>
@@ -131,7 +147,7 @@
     'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/paper-data/ledger.json',
     'ledger.json'
   ];
-  var SOURCE_NAME = { nba_total: 'NBA totals', cfb_ml: 'CFB moneylines' };
+  var SOURCE_NAME = { nba_total: 'NBA totals', cfb_ml: 'CFB moneylines', cfb_jp_novig: 'CFB JP+ Novig' };
 
   function el(tag, cls) {
     var n = document.createElement(tag);
@@ -186,10 +202,14 @@
     return 30;
   }
 
+  // Rows of a separate paper book (book:'novig') never enter the Kalshi bankroll, P&L, ROI or record.
+  function cashBook(trades) { return (trades || []).filter(function (t) { return !t.book; }); }
+  function bookRows(trades) { return (trades || []).filter(function (t) { return t.book === 'novig' || t.source === 'cfb_jp_novig'; }); }
+
   function monthPnl(ledger) {
     var key = etMonth(new Date());
     var pnl = 0, n = 0;
-    (ledger.trades || []).forEach(function (t) {
+    cashBook(ledger.trades).forEach(function (t) {
       if (t.status !== 'settled' || !t.settled_ts) return;
       if (etMonth(new Date(t.settled_ts)) !== key) return;
       pnl += Number(t.pnl || 0);
@@ -202,7 +222,7 @@
     var cash = num(ledger.cash);
     if (cash == null) cash = num(ledger.bankroll_start) || 0;
     var mark = 0;
-    (ledger.trades || []).forEach(function (t) {
+    cashBook(ledger.trades).forEach(function (t) {
       if (t.status !== 'open') return;
       mark += Number(t.mark_value != null ? t.mark_value : t.stake || 0);
     });
@@ -263,7 +283,7 @@
   function render() {
     document.getElementById('app').hidden = false;
     var book = equityNow(ledger);
-    var trades = ledger.trades || [];
+    var trades = cashBook(ledger.trades);
     var settled = trades.filter(function (t) { return t.status === 'settled'; });
     var wins = settled.filter(function (t) { return t.won; }).length;
     var losses = settled.length - wins;
@@ -300,6 +320,7 @@
     renderSources(trades);
     renderCal(trades);
     renderTrades(trades);
+    renderStrategy(ledger);
     renderNotes(ledger);
     var updated = ledger.updated ? ('Ledger ' + when(ledger.updated) + ' ET.') : 'Ledger has not been written by a run yet.';
     document.getElementById('status').textContent = updated + ' Paper only.';
@@ -427,6 +448,133 @@
     });
     if (!vetoRows.length) vetoHost.appendChild(text('p', 'No vetoes.', 'empty'));
     else vetoHost.appendChild(table(['When', 'Source', 'Game', 'Reason'], vetoRows, {}));
+  }
+
+  // ---- CFB JP+ Novig strategy (own book, own accounting) ----
+  function secs(n) { n = num(n); return n == null ? null : new Date(n * 1000).toISOString(); }
+  function cents(n) {
+    n = num(n);
+    if (n == null) return '-';
+    var sign = n > 0 ? '+' : n < 0 ? '−' : '';
+    return sign + Math.abs(n * 100).toFixed(1) + '¢';
+  }
+  function centsNode(n) { n = num(n); return { text: cents(n), cls: n > 0 ? 'up' : n < 0 ? 'dn' : '' }; }
+  function fix(n, d) { n = num(n); return n == null ? '-' : n.toFixed(d); }
+  function listed(v, seen) {
+    var a = secs(v);
+    if (a) return when(a);
+    var b = secs(seen);
+    return b ? 'seen ' + when(b) : 'Not listed';
+  }
+  function section(title) {
+    return text('h3', title, 't-label sub-h');
+  }
+
+  function renderStrategy(ledger) {
+    var host = document.getElementById('strategy');
+    var body = document.getElementById('st-body');
+    body.textContent = '';
+    var st = (ledger.strategies && ledger.strategies.cfb_jp_novig) || null;
+    var prog = (st && st.progress) || (ledger.summary && ledger.summary.strategies && ledger.summary.strategies.cfb_jp_novig) || null;
+    var rows = bookRows(ledger.trades);
+    var watch = (st && Array.isArray(st.watch)) ? st.watch : [];
+    if (!st && !prog && !rows.length) { host.hidden = true; return; }
+    host.hidden = false;
+
+    var pb = (prog && prog.pass_bar) || null;
+    if (!pb) {
+      body.appendChild(text('p', 'Pass-bar progress has not been written by a run yet.', 'empty'));
+    } else {
+      var needed = num(pb.n_needed) || 60;
+      var n = num(pb.n) || 0;
+      var grid = el('div', 'prog');
+      var status = String(pb.status || 'collecting');
+      var cells = [
+        ['Progress', n + ' / ' + needed, null],
+        ['Mean after spread', cents(pb.mean), num(pb.mean)],
+        ['z vs ' + fix(pb.z_needed != null ? pb.z_needed : 2, 0), pb.z == null ? '-' : fix(pb.z, 2), null],
+        ['Status', status, null]
+      ];
+      cells.forEach(function (c) {
+        var card = el('div', 'v-card stat');
+        card.appendChild(text('div', c[0], 't-label'));
+        var v = text('div', c[1], 'v');
+        if (c[0] === 'Status') {
+          v.textContent = '';
+          v.appendChild(text('span', status, 'status-pill ' + (status === 'pass' ? 'pass' : status === 'fail' ? 'fail' : '')));
+        }
+        if (c[2] > 0) v.classList.add('up');
+        if (c[2] < 0) v.classList.add('dn');
+        card.appendChild(v);
+        grid.appendChild(card);
+      });
+      body.appendChild(grid);
+      var bar = el('div', 'bar');
+      var fill = el('i');
+      fill.style.width = Math.max(0, Math.min(100, n / needed * 100)) + '%';
+      bar.appendChild(fill);
+      body.appendChild(bar);
+      var rule = text('p', (pb.rule || 'mean profit per contract after spread above 0, z of 2 or more, over 60 or more trades at 5+ point edges').replace(/^./, function (c) { return c.toUpperCase(); }) + '.' +
+        ' ' + (pb.to_go != null ? pb.to_go + ' more graded trades needed.' : ''), 't-secondary');
+      rule.style.margin = '8px 0 0';
+      body.appendChild(rule);
+      var mon = prog.monitor;
+      if (mon && mon.improving) {
+        body.appendChild(text('div', 'Monitor closely: ' + (mon.note || ('5+ record improved, n=' + mon.n)), 'mon t-secondary'));
+      }
+    }
+
+    // slices
+    var sl = (prog && prog.slices) || null;
+    body.appendChild(section('Edge slices'));
+    if (!sl) {
+      body.appendChild(text('p', 'No slices yet.', 'empty'));
+    } else {
+      var sRows = [];
+      ['3+', '5+', '7+'].forEach(function (k) {
+        var s = sl[k];
+        if (!s) return;
+        ['exit', 'hold'].forEach(function (kind) {
+          var m = s[kind] || {};
+          sRows.push([k + (k === '5+' ? ' (counts)' : ''), kind === 'exit' ? 'Exit' : 'Hold', String(m.n || 0), centsNode(m.mean), m.z == null ? '-' : fix(m.z, 2), String(s.entered || 0), String(s.open || 0)]);
+        });
+      });
+      var t = sRows.length ? table(['Edge', 'Basis', 'Graded', 'Mean / contract', 'z', 'Entered', 'Open'], sRows, {2:1,3:1,4:1,5:1,6:1}) : null;
+      if (t) { var w = el('div', 'scroll'); w.appendChild(t); body.appendChild(w); }
+      else body.appendChild(text('p', 'No slices yet.', 'empty'));
+      body.appendChild(text('p', 'Exit sells into the last bid before kick. Hold keeps the contract to the final score. Only 5+ counts toward the pass bar.', 't-secondary'));
+    }
+
+    // watchlist
+    body.appendChild(section('Watchlist'));
+    if (!watch.length) {
+      body.appendChild(text('p', 'No games on the watchlist.', 'empty'));
+    } else {
+      var wRows = watch.map(function (g) {
+        return [g.game || g.key, when(secs(g.kick)), (g.edge_bucket || '') + (g.edge != null ? ' (' + fix(g.edge, 1) + ')' : ''),
+          g.strike != null ? (g.team ? g.team + ' ' : '') + (num(g.strike) > 0 ? '+' : '') + g.strike : '-',
+          g.state || '-', listed(g.novig_listed_ts, g.novig_first_seen_ts), listed(g.kalshi_listed_ts, g.kalshi_first_seen_ts)];
+      });
+      var wt = el('div', 'scroll');
+      wt.appendChild(table(['Game', 'Kick', 'Edge', 'Strike', 'State', 'Novig first listed', 'Kalshi first listed'], wRows, {2:1}));
+      body.appendChild(wt);
+    }
+
+    // graded trades (every entered row, kept forever)
+    body.appendChild(section('Graded trades'));
+    var graded = rows.filter(function (t) { return t.status === 'settled' || t.status === 'void' || t.hold_status === 'graded'; });
+    if (!graded.length) {
+      body.appendChild(text('p', 'No graded trades yet.', 'empty'));
+    } else {
+      var gRows = graded.slice().reverse().map(function (t) {
+        var res = t.status === 'void' ? 'Void' : t.status === 'open' ? 'Open' : 'Exited';
+        return [when(t.ts), t.game || t.title || t.ticker, t.title || '-', t.edge_bucket || '-', cents(num(t.price)), num(t.exit_bid) == null ? '-' : cents(num(t.exit_bid)),
+          res, centsNode(num(t.exit_pnl_pc)), t.hold_status === 'graded' ? centsNode(num(t.hold_pnl_pc)) : (t.hold_status || '-')];
+      });
+      var gt = el('div', 'scroll');
+      gt.appendChild(table(['Entered', 'Game', 'Pick', 'Edge', 'Ask', 'Exit bid', 'Result', 'Exit / contract', 'Hold / contract'], gRows, {4:1,5:1,7:1,8:1}));
+      body.appendChild(gt);
+    }
   }
 
   function renderNotes(ledger) {

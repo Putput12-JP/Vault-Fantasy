@@ -30,6 +30,11 @@ def et_month(stamp):
     return et_day(stamp)[:7]
 
 
+def in_cash_book(t):
+    """False for rows of a separate paper book (book='novig'). They never touch cash, caps, the loss stop or equity."""
+    return not t.get('book')
+
+
 def empty(bankroll):
     return {
         'version': 1,
@@ -75,6 +80,8 @@ def save(path, ledger):
 def recompute_cash(ledger):
     cash = float(ledger['bankroll_start'])
     for t in ledger['trades']:
+        if not in_cash_book(t):
+            continue
         st = t.get('status')
         if st in ('open', 'settled', 'void'):
             cash -= float(t.get('stake') or 0)
@@ -89,7 +96,7 @@ def recompute_cash(ledger):
 def _stake_on(trades, day=None, market=None, event=None):
     total = 0.0
     for t in trades:
-        if t.get('status') not in ('open', 'settled', 'void'):
+        if t.get('status') not in ('open', 'settled', 'void') or not in_cash_book(t):
             continue
         if day is not None and et_day(t['ts']) != day:
             continue
@@ -146,6 +153,8 @@ def day_pnl(ledger, now):
     day = et_day(now)
     pnl = 0.0
     for t in ledger['trades']:
+        if not in_cash_book(t):
+            continue
         if t.get('status') == 'settled' and t.get('settled_ts') and et_day(t['settled_ts']) == day:
             pnl += float(t.get('pnl') or 0)
         elif t.get('status') == 'open' and et_day(t['ts']) == day:
@@ -155,7 +164,7 @@ def day_pnl(ledger, now):
 
 def open_mark(ledger):
     return round(sum(float(t.get('mark_value') if t.get('mark_value') is not None else t.get('stake') or 0)
-                     for t in ledger['trades'] if t.get('status') == 'open'), 2)
+                     for t in ledger['trades'] if t.get('status') == 'open' and in_cash_book(t)), 2)
 
 
 def record_equity(ledger, now):
@@ -207,9 +216,10 @@ def _group_rows(trades):
 
 
 def summarize(ledger):
-    trades = ledger['trades']
+    all_trades = ledger['trades']
+    trades = [t for t in all_trades if in_cash_book(t)]     # the Kalshi book; other books report under by_source and strategies
     by = {}
-    for t in trades:
+    for t in all_trades:
         by.setdefault(t.get('source') or 'unknown', []).append(t)
     sources = {name: _group_rows(rows) for name, rows in sorted(by.items())}
     for name, rows in by.items():
@@ -243,7 +253,10 @@ def summarize(ledger):
     overall['void'] = sum(1 for t in trades if t.get('status') == 'void')
     overall['vetoed'] = sum(1 for t in trades if t.get('status') == 'vetoed')
     fees = round(sum(float(t.get('fee_total') or 0) for t in trades if t.get('status') in ('open', 'settled', 'void')), 2)
+    strategies = {name: dict(s['progress']) for name, s in sorted((ledger.get('strategies') or {}).items())
+                  if isinstance(s, dict) and s.get('progress')}
     ledger['summary'] = {
+        'strategies': strategies,
         'overall': overall,
         'by_source': sources,
         'months': months,

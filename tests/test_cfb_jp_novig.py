@@ -1,0 +1,589 @@
+"""cfb_jp_novig strategy contracts. No network: Novig and Kalshi are fakes, the model file is a fixture.
+
+Run from the repo root: python3 -m pytest tests/test_cfb_jp_novig.py   (or python3 tests/test_cfb_jp_novig.py)
+"""
+import copy
+import json
+import math
+import os
+import sys
+import tempfile
+import unittest
+from datetime import datetime, timedelta, timezone
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+
+from scripts.paper_bot import cfb_jp_novig as S
+from scripts.paper_bot.config import load
+from scripts.paper_bot.engine import Engine
+from scripts.paper_bot.ledger import empty, recompute_cash, summarize
+from scripts.paper_bot.novig_public import NovigPublic, outcome_quote, parse_outcome, uuid7_ms
+from scripts.paper_bot.quotes import parse_market
+
+UTC = timezone.utc
+NOW = datetime(2026, 10, 20, 12, 0, tzinfo=UTC)
+KICK = NOW + timedelta(days=3)
+HAW_OUT, UNM_OUT = 'out-haw', 'out-unm'
+
+
+def uuid7(ms):
+    h = f'{ms:012x}'
+    return f'{h[:8]}-{h[8:]}-7000-8000-000000000000'
+
+
+def ratings():
+    return [{'id': 62, 'team': 'Hawaii', 'abbr': 'HAW'}, {'id': 167, 'team': 'New Mexico', 'abbr': 'NMEX'}]
+
+
+def board_game(**kw):
+    g = {'key': 'cfb:1', 'kick': KICK.timestamp(), 'home': 'Hawaii', 'away': 'New Mexico', 'home_id': 62, 'away_id': 167,
+         'week': 8, 'model_margin': 3.0, 'open_margin': -6.0}   # home +6 at the open, JP+ has home by 3: a 9 point edge
+    g.update(kw)
+    return g
+
+
+def write_model(root, board):
+    os.makedirs(os.path.join(root, 'data'), exist_ok=True)
+    with open(os.path.join(root, 'data', 'cfb_model.json'), 'w') as f:
+        json.dump({'board': board, 'ratings': ratings()}, f)
+
+
+def spread_market(strike, mid=None, status='OPEN', codes=('HAW', 'UNM'), created_ms=1_790_000_000_000):
+    """Strike k: HAW +k / UNM -k, the market id a UUIDv7 stamped at created_ms."""
+    mid = mid or uuid7(created_ms)
+    return {'marketId': mid, 'marketType': 'SPREAD', 'status': status, 'strike': str(strike),
+            'outcomes': [{'outcomeId': f'{HAW_OUT}-{strike}', 'name': f'{codes[0]} {strike:+g}'},
+                         {'outcomeId': f'{UNM_OUT}-{strike}', 'name': f'{codes[1]} {-strike:+g}'}]}
+
+
+def book(strike, haw_bids=((0.40, 20000),), unm_bids=((0.58, 40000), (0.57, 40000), (0.50, 100000))):
+    return {'orders': {f'{HAW_OUT}-{strike}': [{'price': str(p), 'qty': q} for p, q in haw_bids],
+                       f'{UNM_OUT}-{strike}': [{'price': str(p), 'qty': q} for p, q in unm_bids]}}
+
+
+class FakeNovig:
+    def __init__(self, strikes=(4.5, 5.5, 6.5, 7.5), codes=('HAW', 'UNM'), fail=False):
+        self.fail = fail
+        self.used = 0
+        self.errors = 0
+        self.markets_by_strike = {k: spread_market(k, codes=codes, created_ms=1_790_000_000_000 + int(k * 1000))
+                                  for k in strikes}
+        self.books = {m['marketId']: book(k) for k, m in self.markets_by_strike.items()}
+        self.event = {'eventId': 'ev1', 'description': 'New Mexico @ Hawaii', 'startsTs': int(KICK.timestamp() * 1000)}
+
+    def mid(self, strike):
+        return self.markets_by_strike[strike]['marketId']
+
+    def events(self):
+        if self.fail:
+            return []
+        return [self.event]
+
+    def markets(self, event_id):
+        return [] if self.fail else list(self.markets_by_strike.values())
+
+    def book(self, market_id):
+        return None if self.fail else copy.deepcopy(self.books.get(market_id))
+
+
+class FakeKalshi:
+    def __init__(self, rows=None, fail=False):
+        self.rows = rows or []
+        self.fail = fail
+
+    def markets(self, series, status='open', limit_pages=20):
+        if self.fail:
+            raise RuntimeError('kalshi down')
+        return list(self.rows)
+
+    def markets_by_ticker(self, tickers):
+        if self.fail:
+            raise RuntimeError('kalshi down')
+        return {r['ticker']: r for r in self.rows if r['ticker'] in tickers}
+
+
+def kalshi_row(team, floor, bid, ask, event='KXNCAAFSPREAD-26OCT23NMEXHAW', opened='2026-10-19T16:00:00Z'):
+    return parse_market({'ticker': f'{event}-{team[:4].upper()}{int(floor)}', 'event_ticker': event,
+                         'yes_sub_title': f'{team} wins by over {floor} points', 'floor_strike': floor,
+                         'yes_bid_dollars': str(bid), 'yes_ask_dollars': str(ask), 'yes_ask_size_fp': '150.00',
+                         'yes_bid_size_fp': '90.00', 'open_time': opened, 'status': 'active'})
+
+
+def make(tmp, board=None, novig=None):
+    root = tmp
+    write_model(root, board if board is not None else [board_game()])
+    novig = novig or FakeNovig()
+    return S.CfbJpNovig({}, root, novig=novig), novig
+
+
+def ledger_with(strategy=None):
+    return empty(1000)
+
+
+def trades_of(ledger):
+    return [t for t in ledger['trades'] if t['source'] == S.STRATEGY]
+
+
+class TriggerBuckets(unittest.TestCase):
+    def test_edge_is_model_minus_open_in_points(self):
+        self.assertEqual(S.jp_edge(board_game()), (9.0, 'home'))
+        self.assertEqual(S.jp_edge(board_game(model_margin=-8.0, open_margin=-1.0)), (7.0, 'away'))
+        self.assertIsNone(S.jp_edge(board_game(open_margin=None)))
+        self.assertIsNone(S.jp_edge(board_game(model_margin=-6.0)))
+
+    def test_buckets_are_the_highest_threshold_reached(self):
+        for edge, want in ((2.9, None), (3.0, '3+'), (4.9, '3+'), (5.0, '5+'), (6.9, '5+'), (7.0, '7+'), (12.0, '7+')):
+            self.assertEqual(S.bucket_of(edge), want, edge)
+
+    def test_triggers_log_3_plus_but_only_5_plus_counts(self):
+        now = NOW.timestamp()
+        board = [board_game(key='a', model_margin=-6 + 3.0), board_game(key='b', model_margin=-6 + 5.0),
+                 board_game(key='c', model_margin=-6 + 7.0), board_game(key='d', model_margin=-6 + 2.9)]
+        got = {t['key']: t['bucket'] for t in S.triggers(board, now)}
+        self.assertEqual(got, {'a': '3+', 'b': '5+', 'c': '7+'})
+
+    def test_upcoming_only(self):
+        self.assertEqual(S.triggers([board_game(kick=NOW.timestamp() - 60)], NOW.timestamp()), [])
+
+    def test_open_handicap_is_for_the_jp_side(self):
+        t = S.triggers([board_game()], NOW.timestamp())[0]
+        self.assertEqual((t['side'], t['team'], t['open_hcap']), ('home', 'Hawaii', 6.0))
+        t = S.triggers([board_game(model_margin=-20.0)], NOW.timestamp())[0]
+        self.assertEqual((t['side'], t['team'], t['open_hcap']), ('away', 'New Mexico', -6.0))
+
+
+class WeekFilter(unittest.TestCase):
+    def test_week_8_and_later(self):
+        self.assertFalse(S.week_ok(board_game(week=7)))
+        self.assertTrue(S.week_ok(board_game(week=8)))
+        self.assertTrue(S.week_ok(board_game(week=14)))
+
+    def test_bowls_pass_even_with_a_reset_week_number(self):
+        dec = datetime(2026, 12, 22, 20, 0, tzinfo=UTC).timestamp()
+        self.assertTrue(S.week_ok(board_game(week=1, kick=dec)))
+        self.assertTrue(S.week_ok(board_game(week=1, kick=dec, season_type='postseason')))
+        jan = datetime(2027, 1, 9, 20, 0, tzinfo=UTC).timestamp()
+        self.assertTrue(S.week_ok(board_game(week=2, kick=jan)))
+
+    def test_early_season_is_out(self):
+        sept = datetime(2026, 9, 12, 20, 0, tzinfo=UTC).timestamp()
+        self.assertFalse(S.week_ok(board_game(week=3, kick=sept)))
+        self.assertEqual(S.triggers([board_game(week=6)], NOW.timestamp()), [])
+
+
+class StrikeChoice(unittest.TestCase):
+    def ladder(self, strikes, codes=('HAW', 'UNM')):
+        return S.spread_ladder([spread_market(k, codes=codes) for k in strikes])
+
+    def test_nearest_to_the_open_on_the_jp_side(self):
+        pick = S.choose_strike(self.ladder([3.5, 5.5, 8.5, 12.5]), 'HAW', 6.0)
+        self.assertEqual(pick['hcap'], 5.5)
+        self.assertEqual(pick['outcome_id'], f'{HAW_OUT}-5.5')
+        self.assertEqual(pick['other_id'], f'{UNM_OUT}-5.5')
+
+    def test_tie_goes_to_more_points_for_the_jp_team(self):
+        self.assertEqual(S.choose_strike(self.ladder([5.5, 6.5]), 'HAW', 6.0)['hcap'], 6.5)
+
+    def test_the_other_team_is_the_negative_side_of_the_same_ladder(self):
+        pick = S.choose_strike(self.ladder([5.5, 6.5, 7.5]), 'UNM', -6.0)
+        self.assertEqual(pick['hcap'], -5.5)     # -5.5 and -6.5 tie at 0.5; -5.5 is more points for UNM
+        self.assertEqual(pick['outcome_id'], f'{UNM_OUT}-5.5')
+
+    def test_closed_markets_and_other_types_are_ignored(self):
+        mk = [spread_market(6.0, status='SUSPENDED'), spread_market(9.5)]
+        mk.append(dict(spread_market(6.0), marketType='TOTAL'))
+        self.assertEqual(S.choose_strike(S.spread_ladder(mk), 'HAW', 6.0)['hcap'], 9.5)
+
+    def test_codes_map_by_abbreviation_or_name_then_elimination(self):
+        g = board_game()
+        sides, how = S.code_sides(g, S.__dict__['_rating_index'](ratings()), self.ladder([5.5]), -6.0)
+        self.assertEqual(sides, {'HAW': 'home', 'UNM': 'away'})
+        self.assertEqual(how, 'name')
+
+    def test_codes_fall_back_to_the_favourite_when_names_do_not_help(self):
+        g = board_game(home='Zeta', away='Omega', home_id=None, away_id=None)
+        ladder = S.spread_ladder([spread_market(k, codes=('QQQ', 'XXX')) for k in (5.5, 6.5)])
+        sides, how = S.code_sides(g, {}, ladder, -6.0)     # open: home is the 6 point dog, so the dog code (+) is home
+        self.assertEqual((sides, how), ({'QQQ': 'home', 'XXX': 'away'}, 'sign'))
+        sides, how = S.code_sides(g, {}, ladder, -1.0)     # too close to read from the sign
+        self.assertIsNone(sides)
+
+
+class Sizing(unittest.TestCase):
+    def test_quarter_of_the_depth_rounded_down(self):
+        self.assertEqual(S.size_contracts(800), 200)
+        self.assertEqual(S.size_contracts(10), 2)
+        self.assertEqual(S.size_contracts(7), 1)
+        self.assertEqual(S.size_contracts(3), 0)
+        self.assertEqual(S.size_contracts(None), 0)
+        self.assertEqual(S.size_contracts(float('nan')), 0)
+
+    def test_depth_counts_two_cents_from_the_best_ask_in_dollar_contracts(self):
+        q = outcome_quote(book(6.5), f'{HAW_OUT}-6.5', f'{UNM_OUT}-6.5')
+        self.assertAlmostEqual(q['ask'], 0.42)
+        self.assertAlmostEqual(q['bid'], 0.40)
+        self.assertAlmostEqual(q['ask_size'], 800.0)      # 0.58 and 0.57 count; 0.50 is 8 cents away. qty 100 = $1
+        self.assertAlmostEqual(q['bid_size'], 200.0)
+
+    def test_empty_sides_are_none_not_zero(self):
+        q = outcome_quote(book(6.5, haw_bids=(), unm_bids=()), f'{HAW_OUT}-6.5', f'{UNM_OUT}-6.5')
+        self.assertEqual(q, {'bid': None, 'ask': None, 'bid_size': None, 'ask_size': None})
+
+    def test_a_thin_ask_does_not_enter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, nv = make(tmp)
+            nv.books[nv.mid(6.5)] = book(6.5, unm_bids=((0.58, 300),))      # 3 contracts offered
+            nv.books[nv.mid(5.5)] = nv.books[nv.mid(6.5)]
+            led = ledger_with()
+            strat.run(led, NOW, FakeKalshi())
+            self.assertEqual(trades_of(led), [])
+            gs = led['strategies'][S.STRATEGY]['games']['cfb:1']
+            self.assertEqual(gs['state'], 'watching')
+            self.assertEqual(len(gs['novig']['snaps']), 1)
+
+
+class FullLifecycle(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.strat, self.nv = make(self.tmp.name)
+        self.led = ledger_with()
+        self.kalshi = FakeKalshi([kalshi_row('New Mexico', 6.5, 0.50, 0.53), kalshi_row('Hawaii', 3.5, 0.10, 0.14)])
+
+    def run_at(self, when, **kw):
+        return self.strat.run(self.led, when, self.kalshi, **kw)
+
+    def game(self):
+        return self.led['strategies'][S.STRATEGY]['games']['cfb:1']
+
+    def test_listing_picks_the_strike_snapshots_and_enters_at_the_ask(self):
+        self.run_at(NOW)
+        gs = self.game()
+        self.assertEqual(gs['novig']['hcap'], 6.5)
+        self.assertEqual(gs['edge_bucket'], '7+')
+        self.assertEqual(gs['code_src'], 'name')
+        (t,) = trades_of(self.led)
+        self.assertEqual((t['price'], t['contracts'], t['strike'], t['status']), (0.42, 200, 6.5, 'open'))
+        self.assertAlmostEqual(t['stake'], 84.0)
+        self.assertEqual(t['fee_total'], 0.0)
+        self.assertTrue(t['counts_toward_pass'])
+        self.assertEqual((t['source'], t['strategy'], t['book']), ('cfb_jp_novig', 'cfb_jp_novig', 'novig'))
+        self.assertEqual(t['detail']['entry_delay_min'], 0.0)
+        self.assertEqual(S.parse_snap(gs['novig']['snaps'][0]),
+                         {'ts': int(NOW.timestamp()), 'bid': 0.4, 'ask': 0.42, 'ask_size': 800.0, 'bid_size': 200.0})
+
+    def test_first_listed_times_per_venue(self):
+        self.run_at(NOW)
+        gs = self.game()
+        self.assertEqual(gs['novig']['listed_ts'], 1_790_000_004)          # earliest spread market on the ladder, UUIDv7 time
+        self.assertEqual(gs['novig']['first_seen_ts'], int(NOW.timestamp()))
+        self.assertEqual(gs['kalshi']['listed_ts'], datetime(2026, 10, 19, 16, 0, tzinfo=UTC).timestamp())
+        self.assertEqual(gs['kalshi']['first_seen_ts'], int(NOW.timestamp()))
+
+    def test_kalshi_is_the_equivalent_market_and_side(self):
+        # JP+ is Hawaii +6.5, which is NO on "New Mexico wins by over 6.5"
+        self.run_at(NOW)
+        k = self.game()['kalshi']
+        self.assertEqual((k['side'], k['floor']), ('no', 6.5))
+        self.assertTrue(k['ticker'].startswith('KXNCAAFSPREAD-26OCT23NMEXHAW-') and k['ticker'].endswith('6'))
+        s = S.parse_snap(k['snaps'][0])
+        self.assertAlmostEqual(s['bid'], 0.47)
+        self.assertAlmostEqual(s['ask'], 0.50)
+
+    def test_snapshots_wait_for_the_30_minute_clock(self):
+        self.run_at(NOW)
+        self.run_at(NOW + timedelta(minutes=10))
+        self.assertEqual(len(self.game()['novig']['snaps']), 1)
+        self.run_at(NOW + timedelta(minutes=26))
+        self.assertEqual(len(self.game()['novig']['snaps']), 2)
+        self.assertEqual(len(self.game()['kalshi']['snaps']), 2)
+
+    def test_exit_is_the_last_bid_before_kick_and_hold_is_graded(self):
+        self.run_at(NOW)
+        self.nv.books[self.nv.mid(6.5)] = book(6.5, haw_bids=((0.47, 30000),), unm_bids=((0.52, 40000),))
+        self.run_at(KICK - timedelta(minutes=40))
+        self.nv.books[self.nv.mid(6.5)] = book(6.5, haw_bids=((0.60, 30000),), unm_bids=((0.39, 40000),))
+        self.run_at(KICK + timedelta(minutes=5))                       # after kick: a book that must NOT be used
+        self.assertEqual(len(self.game()['novig']['snaps']), 2)
+        (t,) = trades_of(self.led)
+        self.assertEqual((t['status'], t['exit_bid'], t['exit_gap_min']), ('settled', 0.47, 40.0))
+        self.assertAlmostEqual(t['exit_pnl_pc'], 0.05)
+        self.assertAlmostEqual(t['pnl'], 10.0)                          # 200 contracts * 5 cents
+        self.assertAlmostEqual(t['payout'], 94.0)
+        self.assertTrue(t['won'])
+        self.assertAlmostEqual(t['clv'], round((0.47 + 0.48) / 2 - 0.42, 4))
+        self.assertEqual(t['hold_status'], 'pending')
+
+        board = [board_game(result='L', hs=20, as_=24)]                 # Hawaii loses by 4, +6.5 covers
+        write_model(self.tmp.name, board)
+        self.run_at(KICK + timedelta(hours=5))
+        (t,) = trades_of(self.led)
+        self.assertEqual((t['hold_status'], t['hold_result']), ('graded', 'win'))
+        self.assertAlmostEqual(t['hold_pnl_pc'], 0.58)
+        self.assertAlmostEqual(t['hold_pnl'], 116.0)
+        self.assertEqual(self.game()['state'], 'graded')
+
+    def test_no_pre_kick_bid_means_no_exit_but_hold_still_grades(self):
+        nv = self.nv
+        for k in (5.5, 6.5):
+            nv.books[nv.mid(k)] = book(k, haw_bids=(), unm_bids=((0.58, 40000), (0.57, 40000)))
+        self.run_at(NOW)
+        write_model(self.tmp.name, [board_game(result='W', hs=40, as_=10)])
+        self.run_at(KICK + timedelta(hours=4))
+        (t,) = trades_of(self.led)
+        self.assertEqual((t['status'], t['void_reason'], t['pnl']), ('void', 'no_exit_bid', 0.0))
+        self.assertIsNone(t['exit_pnl_pc'])
+        self.assertEqual(t['hold_result'], 'win')
+        pb = self.led['strategies'][S.STRATEGY]['progress']
+        self.assertEqual(pb['pass_bar']['n'], 0)
+        self.assertEqual(pb['counts']['no_exit_bid'], 1)
+        self.assertEqual(pb['slices']['5+']['hold']['n'], 1)
+
+    def test_history_is_kept_when_games_are_graded(self):
+        self.run_at(NOW)
+        for m in range(30, 360, 30):
+            self.run_at(NOW + timedelta(minutes=m))
+        before = len(self.game()['novig']['snaps'])
+        write_model(self.tmp.name, [board_game(result='L', hs=0, as_=30)])
+        self.run_at(KICK + timedelta(hours=5))
+        self.assertLessEqual(len(self.game()['novig']['snaps']), before)
+        self.assertEqual(len(trades_of(self.led)), 1)
+        self.assertEqual(S.parse_snap(self.game()['novig']['snaps'][0])['ts'], int(NOW.timestamp()))
+
+    def test_a_game_is_tracked_once(self):
+        self.run_at(NOW)
+        self.run_at(NOW + timedelta(minutes=30))
+        self.assertEqual(len(trades_of(self.led)), 1)
+
+
+class GradingMath(unittest.TestCase):
+    def trade(self, side, hcap, price=0.40, n=10):
+        return {'strike': hcap, 'price': price, 'contracts': n, 'detail': {'jp_side': side}}
+
+    def test_home_cover_loss_and_push(self):
+        t = self.trade('home', 6.5)
+        S.grade_hold(t, 20, 24)                  # lose by 4, +6.5 wins
+        self.assertEqual((t['hold_result'], t['hold_pnl_pc']), ('win', 0.6))
+        t = self.trade('home', -6.5)
+        S.grade_hold(t, 20, 24)
+        self.assertEqual((t['hold_result'], t['hold_pnl_pc'], t['hold_pnl']), ('loss', -0.4, -4.0))
+        t = self.trade('home', -7.0)
+        S.grade_hold(t, 27, 20)                  # won by exactly 7: refund
+        self.assertEqual((t['hold_result'], t['hold_pnl_pc']), ('push', 0.0))
+
+    def test_away_side_flips_the_margin(self):
+        t = self.trade('away', -3.5)
+        S.grade_hold(t, 10, 21)                  # away wins by 11
+        self.assertEqual(t['hold_result'], 'win')
+        t = self.trade('away', 3.5)
+        S.grade_hold(t, 31, 20)                  # away loses by 11
+        self.assertEqual(t['hold_result'], 'loss')
+
+    def test_board_result_needs_a_graded_row(self):
+        self.assertIsNone(S.board_result(board_game()))
+        self.assertEqual(S.board_result(board_game(result='W', hs=3, as_=1)), (3.0, 1.0))
+        self.assertIsNone(S.board_result(board_game(result='W', hs=3)))
+
+
+class ExitRules(unittest.TestCase):
+    def gs(self, snaps):
+        return {'kick': 1000, 'novig': {'snaps': [S.snap_str(*s) for s in snaps]}}
+
+    def row(self):
+        return {'price': 0.42, 'contracts': 100, 'stake': 42.0}
+
+    def test_last_bid_strictly_before_kick(self):
+        g = self.gs([(100, 0.40, 0.42, 800, 200), (900, 0.45, 0.48, 500, 120), (1000, 0.55, 0.57, 500, 100), (1100, 0.9, 0.95, 5, 5)])
+        t = self.row()
+        S.apply_exit(t, g)
+        self.assertEqual((t['exit_bid'], t['exit_gap_min']), (0.45, round(100 / 60, 1)))
+        self.assertAlmostEqual(t['pnl'], 3.0)
+
+    def test_skips_snapshots_with_no_bid(self):
+        g = self.gs([(100, 0.40, 0.42, 800, 200), (900, None, 0.48, 500, None)])
+        t = self.row()
+        S.apply_exit(t, g)
+        self.assertEqual(t['exit_bid'], 0.40)
+
+    def test_a_loss_is_a_loss(self):
+        g = self.gs([(900, 0.30, 0.34, 500, 50)])
+        t = self.row()
+        S.apply_exit(t, g)
+        self.assertAlmostEqual(t['pnl'], -12.0)
+        self.assertFalse(t['won'])
+
+
+class PassBar(unittest.TestCase):
+    def rows(self, pcs, edge=5.0, status='settled'):
+        return [{'source': S.STRATEGY, 'status': status, 'edge': edge, 'exit_pnl_pc': v, 'hold_status': 'pending'} for v in pcs]
+
+    def test_mean_and_z(self):
+        m = S.mean_z([0.02, 0.04, 0.06])
+        self.assertAlmostEqual(m['mean'], 0.04)
+        self.assertAlmostEqual(m['sd'], 0.02)
+        self.assertAlmostEqual(m['z'], round(0.04 / (0.02 / math.sqrt(3)), 3))
+        self.assertIsNone(S.mean_z([0.1])['z'])
+        self.assertIsNone(S.mean_z([0.1, 0.1, 0.1])['z'])       # no spread: z is undefined, not infinite
+        self.assertEqual(S.mean_z([])['n'], 0)
+
+    def test_progress_counts_only_5_plus_exits(self):
+        rows = self.rows([0.05, 0.03] * 5) + self.rows([0.5] * 4, edge=3.5) + self.rows([0.2] * 2, edge=8.0, status='open')
+        pb = S.build_progress(rows)['pass_bar']
+        self.assertEqual((pb['n'], pb['n_needed'], pb['to_go'], pb['status']), (10, 60, 50, 'collecting'))
+        self.assertAlmostEqual(pb['mean'], 0.04)
+
+    def test_slices_are_cumulative(self):
+        rows = self.rows([0.01] * 3, edge=3.5) + self.rows([0.01] * 2, edge=5.5) + self.rows([0.01], edge=7.5)
+        sl = S.build_progress(rows)['slices']
+        self.assertEqual((sl['3+']['exit']['n'], sl['5+']['exit']['n'], sl['7+']['exit']['n']), (6, 3, 1))
+
+    def test_status_needs_60_trades_positive_mean_and_z_2(self):
+        good = [0.06, 0.02] * 30
+        self.assertEqual(S.pass_status(S.mean_z(good[:59])), 'collecting')
+        self.assertEqual(S.pass_status(S.mean_z(good)), 'pass')
+        self.assertEqual(S.pass_status(S.mean_z([0.01, -0.01] * 30)), 'fail')          # mean 0
+        self.assertEqual(S.pass_status(S.mean_z([-0.02, -0.04] * 30)), 'fail')         # negative
+        noisy = [0.30, -0.26] * 30                                                   # mean +0.02 but z far under 2
+        self.assertGreater(S.mean_z(noisy)['mean'], 0)
+        self.assertLess(S.mean_z(noisy)['z'], 2)
+        self.assertEqual(S.pass_status(S.mean_z(noisy)), 'fail')
+
+    def test_exactly_at_the_z_bar_passes(self):
+        vals = [0.05 + (0.01 if i % 2 else -0.01) for i in range(60)]
+        stats = S.mean_z(vals)
+        self.assertGreaterEqual(stats['z'], 2.0)
+        self.assertEqual(S.pass_status(stats), 'pass')
+
+    def test_void_rows_are_not_in_the_sample_and_are_counted(self):
+        rows = self.rows([0.05] * 3)
+        rows.append({'source': S.STRATEGY, 'status': 'void', 'void_reason': 'no_exit_bid', 'edge': 6.0, 'exit_pnl_pc': None,
+                     'hold_status': 'graded', 'hold_pnl_pc': 0.5})
+        out = S.build_progress(rows)
+        self.assertEqual(out['pass_bar']['n'], 3)
+        self.assertEqual(out['counts']['no_exit_bid'], 1)
+        self.assertEqual(out['slices']['5+']['hold']['n'], 1)
+
+    def test_other_sources_are_ignored(self):
+        rows = self.rows([0.05] * 3) + [{'source': 'cfb_ml', 'status': 'settled', 'edge': 9.0, 'exit_pnl_pc': 1.0}]
+        self.assertEqual(S.build_progress(rows)['pass_bar']['n'], 3)
+
+    def test_improving_record_is_flagged_with_its_sample_size(self):
+        prev = S.build_progress(self.rows([0.01, 0.03]))
+        out = S.build_progress(self.rows([0.01, 0.03, 0.09]), prev)
+        self.assertTrue(out['monitor']['improving'])
+        self.assertEqual(out['monitor']['n'], 3)
+        self.assertIn('n=3', out['monitor']['note'])
+        again = S.build_progress(self.rows([0.01, 0.03, 0.09]), out)
+        self.assertFalse(again['monitor']['improving'])
+
+
+class Guards(unittest.TestCase):
+    def test_novig_outage_is_a_note_not_a_crash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, nv = make(tmp, novig=FakeNovig(fail=True))
+            led = ledger_with()
+            note = strat.run(led, NOW, FakeKalshi())
+            self.assertIn('Novig events unavailable', note)
+            self.assertEqual(trades_of(led), [])
+
+    def test_real_client_returns_empty_on_errors(self):
+        class Boom:
+            def pages(self, *a, **k):
+                raise OSError('curl missing')
+
+            def get(self, *a, **k):
+                raise OSError('curl missing')
+        c = NovigPublic(module=Boom())
+        self.assertEqual(c.events(), [])
+        self.assertEqual(c.markets('x'), [])
+        self.assertIsNone(c.book('x'))
+        self.assertEqual(c.errors, 3)
+
+    def test_request_budget_caps_a_run(self):
+        class Ok:
+            def get(self, *a, **k):
+                return {'orders': {}}
+        c = NovigPublic(module=Ok(), budget=2)
+        self.assertEqual([c.book('a') is not None, c.book('b') is not None, c.book('c') is not None], [True, True, False])
+
+    def test_kalshi_failure_does_not_stop_novig_tracking(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, nv = make(tmp)
+            led = ledger_with()
+            strat.run(led, NOW, FakeKalshi(fail=True))
+            self.assertEqual(len(trades_of(led)), 1)
+            self.assertEqual(led['strategies'][S.STRATEGY]['games']['cfb:1']['kalshi']['snaps'], [])
+
+    def test_unreadable_model_is_a_note(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat = S.CfbJpNovig({}, tmp, novig=FakeNovig())
+            self.assertIn('missing', strat.run(ledger_with(), NOW, None))
+
+    def test_uuid7_time_and_parse_outcome(self):
+        self.assertEqual(uuid7_ms(uuid7(1_790_000_123_456)), 1_790_000_123_456)
+        self.assertIsNone(uuid7_ms('nope'))
+        self.assertEqual(parse_outcome('UNM -8.5'), ('UNM', -8.5))
+        self.assertEqual(parse_outcome('HAW +8.5'), ('HAW', 8.5))
+        self.assertIsNone(parse_outcome('Over 55.5'))
+
+
+class EngineWiring(unittest.TestCase):
+    def engine(self, tmp, strat):
+        cfg = load(None)
+        led = ledger_with()
+        return Engine(cfg, led, [], FakeKalshi(), None, now=NOW, strategies=[strat]), led
+
+    def test_novig_book_stays_out_of_cash_caps_and_equity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, _ = make(tmp)
+            eng, led = self.engine(tmp, strat)
+            run = eng.run()
+            self.assertEqual(len(trades_of(led)), 1)
+            self.assertEqual(led['cash'], 1000.0)
+            self.assertEqual(run['equity'], 1000.0)
+            self.assertEqual(recompute_cash(led), 1000.0)
+            self.assertEqual(led['summary']['overall']['open'], 0)
+            self.assertEqual(led['summary']['by_source'][S.STRATEGY]['open'], 1)
+            self.assertEqual(led['summary']['strategies'][S.STRATEGY]['pass_bar']['status'], 'collecting')
+            self.assertEqual(led['strategies'][S.STRATEGY]['progress']['pass_bar']['n_needed'], 60)
+
+    def test_a_crashing_strategy_cannot_stop_the_bot(self):
+        class Bad:
+            name = 'bad'
+
+            def run(self, *a):
+                raise ValueError('boom')
+        with tempfile.TemporaryDirectory() as tmp:
+            eng, led = self.engine(tmp, Bad())
+            run = eng.run()
+            self.assertTrue(any('bad failed' in n for n in run['notes']))
+            self.assertEqual(led['cash'], 1000.0)
+
+    def test_only_mode_leaves_equity_and_runs_alone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            strat, _ = make(tmp)
+            eng, led = self.engine(tmp, strat)
+            eng.run_strategies_only()
+            self.assertEqual(led['equity'], [])
+            self.assertEqual(led['runs'], [])
+            self.assertEqual(len(trades_of(led)), 1)
+
+    def test_config_toggle(self):
+        cfg = load(None)
+        self.assertIsNotNone(S.build(cfg, '.'))
+        cfg['sources']['cfb_jp_novig']['enabled'] = False
+        self.assertIsNone(S.build(cfg, '.'))
+
+    def test_existing_kalshi_rows_still_count(self):
+        led = ledger_with()
+        led['trades'].append({'status': 'open', 'stake': 25.0, 'ticker': 'K', 'ts': '2026-10-20T12:00:00Z', 'mark_value': 25.0})
+        led['trades'].append({'status': 'open', 'stake': 80.0, 'ticker': 'novig:x', 'book': 'novig', 'source': S.STRATEGY,
+                              'ts': '2026-10-20T12:00:00Z'})
+        self.assertEqual(recompute_cash(led), 975.0)
+        summarize(led)
+        self.assertEqual(led['summary']['overall']['open'], 1)
+
+
+if __name__ == '__main__':
+    unittest.main()
