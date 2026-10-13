@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0e0f13">
+<title>Paper bot — Vault</title>
+<link href="../fonts/fonts.css" rel="stylesheet">
+<link href="../vault-ds.css?v=20260728d-vseg" rel="stylesheet">
+<script>
+(function () {
+  var theme = 'onyx';
+  try { theme = localStorage.getItem('snapdraft-theme') || 'onyx'; } catch (e) {}
+  if (theme === 'medium') theme = 'dark';
+  document.documentElement.setAttribute('data-theme', theme === 'dark' ? '' : theme);
+})();
+</script>
+<style>
+  body { margin:0; background:var(--bg); color:var(--text); font-family:var(--font-sans); }
+  a { color:var(--accent2); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .wrap { max-width:1080px; margin:0 auto; padding:28px 20px 72px; }
+  header { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:22px; }
+  .flag {
+    display:inline-block; margin-bottom:8px; padding:3px 8px;
+    border:1px solid var(--border2); border-radius:var(--radius-pill);
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted);
+  }
+  .sub { color:var(--muted); max-width:62ch; margin:6px 0 0; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin:18px 0; }
+  .stat { padding:14px 16px; }
+  .stat .v { font-family:var(--font-mono); font-size:22px; font-weight:700; letter-spacing:-.03em; margin-top:6px; }
+  .up { color:var(--value); }
+  .dn { color:var(--reach); }
+  section { margin-top:22px; }
+  .pad { padding:16px 18px; }
+  h2 { margin:0 0 12px; }
+  .row { display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap; }
+  label { display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:12px; letter-spacing:.06em; text-transform:uppercase; font-family:var(--font-mono); }
+  input[type="number"] {
+    background:var(--s2); color:var(--text); border:1px solid var(--border2);
+    border-radius:var(--radius-sm); padding:8px 10px; font-family:var(--font-mono); font-size:16px; width:120px;
+  }
+  .pay { font-size:18px; font-weight:700; letter-spacing:-.02em; }
+  .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th { color:var(--muted); font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; }
+  td.num, th.num { text-align:right; font-family:var(--font-mono); }
+  .empty { color:var(--muted); margin:0; }
+  svg.curve { width:100%; height:auto; display:block; }
+  .bar { position:relative; height:8px; background:var(--s3); border-radius:var(--radius-pill); min-width:80px; }
+  .bar > i { display:block; height:100%; background:var(--accent2); border-radius:inherit; }
+  .tick { position:absolute; top:-3px; width:2px; height:14px; background:var(--text); }
+  .notes { margin:0; padding-left:18px; color:var(--text2); }
+  .notes li { margin:4px 0; }
+  footer { margin-top:28px; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="flag">Paper only</div>
+      <h1 class="t-h1" style="margin:0">Paper bot</h1>
+      <p class="sub">Vault's models, simulated on Kalshi's live ask. No order is sent. The book is here to see whether the edge covers its cost.</p>
+    </div>
+    <a href="/">Vault</a>
+  </header>
+
+  <div id="status" class="t-secondary">Loading the ledger…</div>
+  <div id="app" hidden>
+    <div class="stats" id="stats"></div>
+
+    <section class="v-card pad">
+      <h2 class="t-h2">Does it pay for itself?</h2>
+      <div class="row">
+        <label>Monthly cost, $
+          <input id="cost" type="number" min="0" step="1" inputmode="decimal">
+        </label>
+        <div>
+          <div class="pay" id="pay-line"></div>
+          <p class="t-secondary" id="pay-sub" style="margin:6px 0 0"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="v-card pad">
+      <h2 class="t-h2">Bankroll</h2>
+      <div id="curve"></div>
+    </section>
+
+    <section class="v-card pad">
+      <h2 class="t-h2">By signal</h2>
+      <div class="scroll" id="by-source"></div>
+    </section>
+
+    <section class="v-card pad">
+      <h2 class="t-h2">Calibration</h2>
+      <p class="t-secondary" style="margin:0 0 12px">Each bar is how often that probability bucket won. The tick is the probability the model quoted.</p>
+      <div class="scroll" id="cal"></div>
+    </section>
+
+    <section class="v-card pad">
+      <h2 class="t-h2">Open</h2>
+      <div class="scroll" id="open"></div>
+    </section>
+
+    <section class="v-card pad">
+      <h2 class="t-h2">Settled</h2>
+      <div class="scroll" id="settled"></div>
+    </section>
+
+    <section class="v-card pad">
+      <h2 class="t-h2">Vetoes</h2>
+      <div class="scroll" id="vetoes"></div>
+    </section>
+
+    <section class="v-card pad">
+      <h2 class="t-h2">Last run</h2>
+      <ul class="notes" id="notes"></ul>
+    </section>
+  </div>
+  <footer>Fills are paper. Live order placement is not implemented.</footer>
+</div>
+<script>
+(function () {
+  var COST_KEY = 'paper-bot-cost';
+  var LEDGER_URLS = [
+    'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/paper-data/ledger.json',
+    'ledger.json'
+  ];
+  var SOURCE_NAME = { nba_total: 'NBA totals', cfb_ml: 'CFB moneylines' };
+
+  function el(tag, cls) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    return n;
+  }
+  function text(tag, value, cls) {
+    var n = el(tag, cls);
+    n.textContent = value == null ? '' : String(value);
+    return n;
+  }
+  function money(n) {
+    if (n == null || isNaN(n)) return '—';
+    var sign = n < 0 ? '−' : '';
+    return sign + '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function pct(n) {
+    if (n == null || isNaN(n)) return '—';
+    return (n * 100).toFixed(1) + '%';
+  }
+  function pts(n) {
+    if (n == null || isNaN(n)) return '—';
+    var sign = n > 0 ? '+' : n < 0 ? '−' : '';
+    return sign + Math.abs(n * 100).toFixed(1);
+  }
+  function when(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    }).format(d);
+  }
+  function etMonth(d) {
+    var parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York', year: 'numeric', month: '2-digit'
+    }).formatToParts(d);
+    var y = '', m = '';
+    parts.forEach(function (p) { if (p.type === 'year') y = p.value; if (p.type === 'month') m = p.value; });
+    return y + '-' + m;
+  }
+  function sourceName(s) { return SOURCE_NAME[s] || s || '—'; }
+  function num(n) { return n == null || isNaN(Number(n)) ? null : Number(n); }
+
+  function savedCost(ledger) {
+    try {
+      var raw = localStorage.getItem(COST_KEY);
+      if (raw != null && raw !== '' && !isNaN(parseFloat(raw))) return parseFloat(raw);
+    } catch (e) {}
+    var cfg = (ledger && ledger.config) || {};
+    if (cfg.monthly_cost_target != null && !isNaN(parseFloat(cfg.monthly_cost_target))) return parseFloat(cfg.monthly_cost_target);
+    return 30;
+  }
+
+  function monthPnl(ledger) {
+    var key = etMonth(new Date());
+    var pnl = 0, n = 0;
+    (ledger.trades || []).forEach(function (t) {
+      if (t.status !== 'settled' || !t.settled_ts) return;
+      if (etMonth(new Date(t.settled_ts)) !== key) return;
+      pnl += Number(t.pnl || 0);
+      n += 1;
+    });
+    return { key: key, pnl: pnl, n: n };
+  }
+
+  function equityNow(ledger) {
+    var cash = num(ledger.cash);
+    if (cash == null) cash = num(ledger.bankroll_start) || 0;
+    var mark = 0;
+    (ledger.trades || []).forEach(function (t) {
+      if (t.status !== 'open') return;
+      mark += Number(t.mark_value != null ? t.mark_value : t.stake || 0);
+    });
+    var last = (ledger.equity || []).length ? ledger.equity[ledger.equity.length - 1] : null;
+    return {
+      cash: cash,
+      equity: last && last.equity != null ? Number(last.equity) : cash + mark,
+      mark: mark
+    };
+  }
+
+  function table(headers, rows, numeric) {
+    if (!rows.length) return null;
+    var t = el('table');
+    var thead = el('thead');
+    var hr = el('tr');
+    headers.forEach(function (h, i) {
+      hr.appendChild(text('th', h, numeric[i] ? 'num' : ''));
+    });
+    thead.appendChild(hr);
+    t.appendChild(thead);
+    var tb = el('tbody');
+    rows.forEach(function (row) {
+      var tr = el('tr');
+      row.forEach(function (cell, i) {
+        var value = cell, extra = '';
+        if (cell && typeof cell === 'object') { value = cell.text; extra = cell.cls || ''; }
+        var td = text('td', value, (numeric[i] ? 'num' : '') + (extra ? ' ' + extra : ''));
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    return t;
+  }
+
+  function signed(n, asMoney) {
+    var node = { text: asMoney ? money(n) : String(n), cls: n > 0 ? 'up' : n < 0 ? 'dn' : '' };
+    return node;
+  }
+
+  var ledger = null;
+
+  function renderCost() {
+    var target = parseFloat(document.getElementById('cost').value);
+    if (isNaN(target)) target = 30;
+    var m = monthPnl(ledger);
+    var gap = m.pnl - target;
+    var line = document.getElementById('pay-line');
+    line.textContent = money(m.pnl) + ' settled in ' + m.key + '  ·  cost ' + money(target);
+    line.className = 'pay ' + (gap > 0 ? 'up' : gap < 0 ? 'dn' : '');
+    var sub = document.getElementById('pay-sub');
+    var gapText = (gap >= 0 ? 'Ahead of' : 'Behind') + ' this month\'s cost by ' + money(Math.abs(gap)) + '.';
+    if (m.n === 0) gapText = 'Nothing has settled in ' + m.key + ' yet. ' + gapText;
+    sub.textContent = gapText + ' ' + m.n + (m.n === 1 ? ' settled trade.' : ' settled trades.');
+  }
+
+  function render() {
+    document.getElementById('app').hidden = false;
+    var book = equityNow(ledger);
+    var trades = ledger.trades || [];
+    var settled = trades.filter(function (t) { return t.status === 'settled'; });
+    var wins = settled.filter(function (t) { return t.won; }).length;
+    var losses = settled.length - wins;
+    var pnl = settled.reduce(function (s, t) { return s + Number(t.pnl || 0); }, 0);
+    var stake = settled.reduce(function (s, t) { return s + Number(t.stake || 0); }, 0);
+    var clvs = settled.filter(function (t) { return t.clv != null; }).map(function (t) { return Number(t.clv); });
+    var clv = clvs.length ? clvs.reduce(function (s, n) { return s + n; }, 0) / clvs.length : null;
+    var openStake = trades.filter(function (t) { return t.status === 'open'; }).reduce(function (s, t) { return s + Number(t.stake || 0); }, 0);
+
+    var stats = document.getElementById('stats');
+    stats.textContent = '';
+    [
+      ['Bankroll', money(book.equity)],
+      ['Cash', money(book.cash)],
+      ['Open risk', money(openStake)],
+      ['Settled P&L', money(pnl), pnl],
+      ['ROI', stake ? pct(pnl / stake) : '—', pnl],
+      ['Record', settled.length ? (wins + '–' + losses) : '—'],
+      ['Closing line', clv == null ? '—' : pts(clv) + '¢', clv]
+    ].forEach(function (row) {
+      var card = el('div', 'v-card stat');
+      card.appendChild(text('div', row[0], 't-label'));
+      var v = text('div', row[1], 'v');
+      if (row[2] > 0) v.classList.add('up');
+      if (row[2] < 0) v.classList.add('dn');
+      card.appendChild(v);
+      stats.appendChild(card);
+    });
+
+    var input = document.getElementById('cost');
+    if (document.activeElement !== input) input.value = String(savedCost(ledger));
+    renderCost();
+    drawCurve(ledger);
+    renderSources(trades);
+    renderCal(trades);
+    renderTrades(trades);
+    renderNotes(ledger);
+    var updated = ledger.updated ? ('Ledger ' + when(ledger.updated) + ' ET.') : 'Ledger has not been written by a run yet.';
+    document.getElementById('status').textContent = updated + ' Paper only.';
+  }
+
+  function drawCurve(ledger) {
+    var host = document.getElementById('curve');
+    host.textContent = '';
+    var ptsEq = (ledger.equity || []).filter(function (p) { return p && p.equity != null; });
+    if (!ptsEq.length) {
+      host.appendChild(text('p', 'The curve starts after the first scheduled run.', 'empty'));
+      return;
+    }
+    var w = 640, h = 220, pad = 28;
+    var vals = ptsEq.map(function (p) { return Number(p.equity); });
+    var start = num(ledger.bankroll_start);
+    if (start != null) vals.push(start);
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    if (lo === hi) { lo -= 1; hi += 1; }
+    var span = hi - lo;
+    function x(i) { return pad + (ptsEq.length === 1 ? (w - pad * 2) / 2 : i * (w - pad * 2) / (ptsEq.length - 1)); }
+    function y(v) { return pad + (hi - v) * (h - pad * 2) / span; }
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.setAttribute('class', 'curve');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Bankroll from ' + money(ptsEq[0].equity) + ' to ' + money(ptsEq[ptsEq.length - 1].equity));
+    function line(x1, y1, x2, y2, color) {
+      var n = document.createElementNS(svg.namespaceURI, 'line');
+      n.setAttribute('x1', x1); n.setAttribute('y1', y1); n.setAttribute('x2', x2); n.setAttribute('y2', y2);
+      n.setAttribute('stroke', color); n.setAttribute('stroke-width', '1');
+      svg.appendChild(n);
+    }
+    if (start != null) line(pad, y(start), w - pad, y(start), 'var(--border3)');
+    var d = ptsEq.map(function (p, i) { return x(i) + ',' + y(Number(p.equity)); }).join(' ');
+    var poly = document.createElementNS(svg.namespaceURI, 'polyline');
+    poly.setAttribute('fill', 'none');
+    poly.setAttribute('stroke', 'var(--accent2)');
+    poly.setAttribute('stroke-width', '2');
+    poly.setAttribute('points', d);
+    svg.appendChild(poly);
+    host.appendChild(svg);
+    var cap = text('p', money(ptsEq[ptsEq.length - 1].equity) + ' now. The hairline is the starting bankroll.', 't-secondary');
+    cap.style.margin = '8px 0 0';
+    host.appendChild(cap);
+  }
+
+  function renderSources(trades) {
+    var host = document.getElementById('by-source');
+    host.textContent = '';
+    var by = {};
+    trades.forEach(function (t) {
+      var k = t.source || 'unknown';
+      if (!by[k]) by[k] = [];
+      by[k].push(t);
+    });
+    var keys = Object.keys(by).sort();
+    if (!keys.length) { host.appendChild(text('p', 'No signals have been logged.', 'empty')); return; }
+    var rows = keys.map(function (k) {
+      var rowsK = by[k];
+      var s = rowsK.filter(function (t) { return t.status === 'settled'; });
+      var pnl = s.reduce(function (a, t) { return a + Number(t.pnl || 0); }, 0);
+      var stake = s.reduce(function (a, t) { return a + Number(t.stake || 0); }, 0);
+      var w = s.filter(function (t) { return t.won; }).length;
+      var openN = rowsK.filter(function (t) { return t.status === 'open'; }).length;
+      var vetoN = rowsK.filter(function (t) { return t.status === 'vetoed'; }).length;
+      return [sourceName(k), String(s.length), w + '–' + (s.length - w), signed(pnl, true), stake ? pct(pnl / stake) : '—', String(openN), String(vetoN)];
+    });
+    host.appendChild(table(['Source', 'Settled', 'Record', 'P&L', 'ROI', 'Open', 'Vetoed'], rows, {3:1, 4:1}));
+  }
+
+  function renderCal(trades) {
+    var host = document.getElementById('cal');
+    host.textContent = '';
+    var settled = trades.filter(function (t) { return t.status === 'settled' && t.model_prob != null; });
+    if (!settled.length) { host.appendChild(text('p', 'Calibration starts once trades settle.', 'empty')); return; }
+    for (var i = 0; i < 10; i++) {
+      var lo = i / 10, hi = (i + 1) / 10;
+      var bucket = settled.filter(function (t) {
+        var p = Number(t.model_prob);
+        return (p >= lo && p < hi) || (i === 9 && p === 1);
+      });
+      if (!bucket.length) continue;
+      var hit = bucket.filter(function (t) { return t.won; }).length / bucket.length;
+      var pred = bucket.reduce(function (s, t) { return s + Number(t.model_prob); }, 0) / bucket.length;
+      var row = el('div');
+      row.style.cssText = 'display:grid;grid-template-columns:72px 1fr 150px;gap:10px;align-items:center;margin:8px 0';
+      row.appendChild(text('div', Math.round(lo * 100) + '–' + Math.round(hi * 100) + '%', 't-label'));
+      var bar = el('div', 'bar');
+      var fill = el('i');
+      fill.style.width = Math.max(0, Math.min(100, hit * 100)) + '%';
+      bar.appendChild(fill);
+      var tick = el('div', 'tick');
+      tick.style.left = Math.max(0, Math.min(100, pred * 100)) + '%';
+      bar.appendChild(tick);
+      row.appendChild(bar);
+      row.appendChild(text('div', Math.round(hit * 100) + '% won, said ' + Math.round(pred * 100) + '% (' + bucket.length + ')', 't-secondary'));
+      host.appendChild(row);
+    }
+  }
+
+  function renderTrades(trades) {
+    var openHost = document.getElementById('open');
+    var setHost = document.getElementById('settled');
+    var vetoHost = document.getElementById('vetoes');
+    openHost.textContent = ''; setHost.textContent = ''; vetoHost.textContent = '';
+    var openRows = trades.filter(function (t) { return t.status === 'open'; }).map(function (t) {
+      return [when(t.ts), sourceName(t.source), t.game || t.title || t.ticker, (t.side || '').toUpperCase(),
+        pct(num(t.price)), pct(num(t.model_prob)), pts(num(t.edge)), String(t.contracts), money(num(t.stake)), money(num(t.mark_value))];
+    });
+    if (!openRows.length) openHost.appendChild(text('p', 'No open paper positions.', 'empty'));
+    else openHost.appendChild(table(['When', 'Source', 'Game', 'Side', 'Ask', 'Model', 'Edge', 'Qty', 'Stake', 'Mark'], openRows, {4:1,5:1,6:1,7:1,8:1,9:1}));
+
+    var setRows = trades.filter(function (t) { return t.status === 'settled' || t.status === 'void'; }).slice().reverse().map(function (t) {
+      var result = t.status === 'void' ? 'Void' : (t.won ? 'Won' : 'Lost');
+      return [when(t.settled_ts || t.ts), sourceName(t.source), t.game || t.title || t.ticker, (t.side || '').toUpperCase(),
+        pct(num(t.price)), result, t.status === 'void' ? money(0) : signed(num(t.pnl), true), pts(num(t.clv))];
+    });
+    if (!setRows.length) setHost.appendChild(text('p', 'Nothing has settled.', 'empty'));
+    else setHost.appendChild(table(['When', 'Source', 'Game', 'Side', 'Ask', 'Result', 'P&L', 'CLV'], setRows, {4:1,6:1,7:1}));
+
+    var vetoRows = trades.filter(function (t) { return t.status === 'vetoed'; }).slice().reverse().map(function (t) {
+      var reason = (t.llm && t.llm.reason) || '—';
+      return [when(t.ts), sourceName(t.source), t.game || t.title || t.ticker, reason];
+    });
+    if (!vetoRows.length) vetoHost.appendChild(text('p', 'No vetoes.', 'empty'));
+    else vetoHost.appendChild(table(['When', 'Source', 'Game', 'Reason'], vetoRows, {}));
+  }
+
+  function renderNotes(ledger) {
+    var host = document.getElementById('notes');
+    host.textContent = '';
+    var runs = ledger.runs || [];
+    var last = runs.length ? runs[runs.length - 1] : null;
+    if (!last) {
+      var li = el('li');
+      li.textContent = 'No run yet. The schedule writes the ledger to the paper-data branch.';
+      host.appendChild(li);
+      return;
+    }
+    var head = el('li');
+    head.textContent = when(last.ts) + ' ET — opened ' + (last.opened || 0) + ', settled ' + (last.settled || 0) + ', vetoed ' + (last.vetoed || 0) + '.';
+    host.appendChild(head);
+    if (last.halt) { var h = el('li'); h.textContent = last.halt; host.appendChild(h); }
+    (last.notes || []).forEach(function (n) { var li = el('li'); li.textContent = n; host.appendChild(li); });
+  }
+
+  document.getElementById('cost').addEventListener('input', function () {
+    var v = parseFloat(this.value);
+    if (isNaN(v) || v < 0) return;
+    try { localStorage.setItem(COST_KEY, String(v)); } catch (e) {}
+    if (ledger) renderCost();
+  });
+
+  function load(i) {
+    if (i >= LEDGER_URLS.length) {
+      document.getElementById('status').textContent = 'Could not load a ledger.';
+      return;
+    }
+    fetch(LEDGER_URLS[i], { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    }).then(function (data) {
+      if (!data || !Array.isArray(data.trades)) throw new Error('shape');
+      ledger = data;
+      render();
+    }).catch(function () { load(i + 1); });
+  }
+  load(0);
+})();
+</script>
+</body>
+</html>
