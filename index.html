@@ -13473,12 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
-    ts:'2026-10-13T16:30', tag:'New', title:'CFB Model now has a JP+ total for every game',
+    ts:'2026-10-13T17:10', tag:'New', title:'CFB Model now has a JP+ total for every game',
     items:[
-      'Each game from week 4 on now shows our projected total next to the market total, with an over or under side.',
-      'Totals that sit 3+ or 5+ points from the opening total are flagged. A new Totals list on the CFB Model tab shows them all.',
-      'The Is it working tab has a new totals record: wins, losses and pushes against the opening total, plus how we did against the closing total.',
-      'Games graded after the fact are labelled separately from totals logged before kickoff, with the backtest beside them. Spread picks are unchanged.'
+      'Each game from week 4 on now shows our projected total next to the Bovada opening total, with an over or under side. DraftKings is shown beside it for reference only.',
+      'Totals that sit 3+ or 5+ points from the Bovada opening total are flagged. A new Totals list on the CFB Model tab shows them all.',
+      'Our scoring level now comes from this season’s games so far, so the totals track how this year is actually playing.',
+      'The Is it working tab has a new totals record against the Bovada opening total, plus how we did against the closing total. It is marked Unproven until we have 150 live graded 3+ picks.',
+      'Games rebuilt after the fact are labelled as rebuilt history, separate from totals logged before kickoff, with the 2023-25 backtest beside them. Spread picks are unchanged.'
     ]
   },
   {

@@ -44,8 +44,10 @@ TOTALS_PRIORS = os.path.join(DATA, 'cfb_model_totals_priors.json')
 TOT_B0, TOT_B1, TOT_B2 = -10.12, 0.797, 0.150
 TOT_ALPHA = 5.0           # ridge strength for points and plays (the EPA ridge uses st.ALPHA = 300; counts are on a different scale)
 TOT_EDGES = (3, 5)        # flag thresholds, points from the market total
-TOT_BACKTEST = dict(seasons='2023-2025', n3=698, open3=[383, 310], clv3=0.43, clv3_z=5.48, n5=279, open5=[162, 115], clv5=0.72, clv5_z=5.13,
-                    note='Bovada total, weeks 4+, model fit on 2022 only (cfb-backtests RESULTS.md section 5)')
+TOT_VERSION = 2           # 1 = prior-years league level, DraftKings open; 2 = in-season league level, Bovada open. Frozen rows of an older version are rebuilt once
+TOT_PROVEN_TARGET = 150   # live (not backfilled) graded 3+ picks before the totals record counts as proven
+TOT_BACKTEST = dict(seasons='2023-2025', n3=742, open3=[395, 344], clv3=0.818, clv3_z=11.07, under3=0.704, n5=289, open5=[162, 125], clv5=1.112, clv5_z=8.74, under5=0.765,
+                    note='Bovada open total, weeks 4+, in-season league level, model fit on 2022 only')  # scripts/cfb_totals_backtest.py
 
 
 BLEND_W = 0.10           # weight on the model's disagreement in the blended line: fit on 2022-2025 closing lines (0.07 tuned, 0.13 on the test seasons). It cuts the market's miss by 0.01 pts, i.e. nothing
@@ -373,6 +375,14 @@ def totals_fit(obs, col, pa, pb, center):
     return a, b
 
 
+def totals_center(T, wk, fallback):
+    """the league level for week `wk`: mean points and plays per team-game over the season's finished FBS-vs-FBS team-games of EARLIER weeks.
+    With no such team-game yet, the prior-years mean (`fallback`) stands in. Returns {'pts', 'pace'}."""
+    tr = T[T.week < wk]
+    if not len(tr): return dict(fallback)
+    return dict(pts=float(tr['pts'].mean()), pace=float(tr['nplays'].mean()))
+
+
 def totals_project(cur, cen, h, aw):
     """(home pts, away pts, combined plays, model total) for home team h vs away team aw from fitted ratings cur = {'pts': (a, b), 'pace': (a, b)}.
     A team's expected value is the league level + its offense + the opponent's defense (no home term, as in the backtest)."""
@@ -382,28 +392,30 @@ def totals_project(cur, cen, h, aw):
 
 
 def totals_walk_forward(tt, gm, fbs, years, prior=None, cen_fn=None, finals=None):
-    """projected points, plays and total for every finished FBS game of `years`, each fit only on EARLIER weeks, last season x S as the prior.
+    """projected points, plays and total for every finished FBS game of `years`, each fit only on EARLIER weeks, last season x S as the prior, around
+    that week's in-season league level (totals_center; the prior-years mean only before any game of the season is final).
     Used to freeze the priors and to check this code against the backtest. Returns a DataFrame."""
     prior = prior or {k: ({}, {}) for k in ('pts', 'pace')}; out = []
     for y in years:
         F = fbs[y]; T = tt[(tt.season == y) & tt.pos_team_id.isin(F) & tt.def_pos_team_id.isin(F)]
-        cen = {k: float(tt[tt.season < y][k].mean()) if (tt.season < y).any() else float(T[k].mean()) for k in ('pts', 'nplays')}; cen = dict(pts=cen['pts'], pace=cen['nplays'])
+        pc = {k: float(tt[tt.season < y][k].mean()) if (tt.season < y).any() else float(T[k].mean()) for k in ('pts', 'nplays')}; pc = dict(pts=pc['pts'], pace=pc['nplays'])      # prior-years level: only the fallback
         G = gm[(gm.season == y) & gm.homeTeamId.isin(F) & gm.awayTeamId.isin(F) & (gm.status_type_completed == True)]
         cur = prior
         for w in range(1, 17):
-            tr = T[T.week < w]
+            tr = T[T.week < w]; cen = totals_center(T, w, pc)
             cur = {k: totals_fit(tr, c, *prior[k], cen[k]) if len(tr) >= 30 else prior[k] for k, c in (('pts', 'pts'), ('pace', 'nplays'))}
             for r in G[G.week == w].itertuples():
                 ph, pa_, pl, tot = totals_project(cur, cen, r.homeTeamId, r.awayTeamId)
                 out.append(dict(season=y, week=w, game_id=int(r.game_id), pts_h=ph, pts_a=pa_, plays=pl, model_total=tot, total=r.homeFinalScore + r.awayFinalScore))
-        if finals is not None: finals[y] = (cur, cen)
+        if finals is not None: finals[y] = (cur, pc)
         prior = {k: ({t: st.S * v for t, v in cur[k][0].items()}, {t: st.S * v for t, v in cur[k][1].items()}) for k in cur}
     return pd.DataFrame(out)
 
 
 def cmd_priors_totals(a):
     """once per offseason, after `priors`: walk-forward 2021-2025 for points and plays, writes the frozen preseason totals ratings
-    (data/cfb_model_totals_priors.json) that the 2026 weeks start from. Needs the same cached play-by-play as `priors`."""
+    (data/cfb_model_totals_priors.json) that the 2026 weeks start from. Each week of the walk is centred on its in-season league level (totals_center);
+    the stored `center` (every team-game 2021-2025) is only the 2026 fallback until a game of the season is final. Needs the same cached play-by-play as `priors`."""
     d = a.dir; os.makedirs(d, exist_ok=True)
     tt, gm = totals_load(d, st.YEARS); fbs = st.fbs_sets(gm, d); finals = {}
     res = totals_walk_forward(tt, gm, fbs, st.YEARS, finals=finals)
@@ -417,9 +429,10 @@ def cmd_priors_totals(a):
 
 
 def market_totals(sid):
-    """game id -> the stored total market from the lines files, no network: {open, open_src, close, close_src, wk, home, away, hs, as_}.
-    The open is ESPN's recorded DraftKings open, else CFBD's overUnderOpen (DraftKings, then Bovada, then any). The close is the same book's last stored
-    total (`ou`), so open and close are always one book. A number that is not stored stays None; nothing is filled in."""
+    """game id -> the stored total market from the lines files, no network: {open, open_src, close, close_src, dk_open, dk_open_src, dk_close, wk, home, away, hs, as_, ...}.
+    The primary book is Bovada: open = CFBD overUnderOpen, close = Bovada's last stored total (`ou`). DraftKings is kept beside it as a secondary book:
+    ESPN's recorded DraftKings open, else CFBD's DraftKings open, with the DraftKings last stored total as its close. A number that is not stored stays
+    None, nothing is filled in; a game with no stored Bovada open has open None (no graded pick) and may still carry the DraftKings numbers."""
     if not os.path.exists(LINES26): return {}
     by = {}
     for r in json.load(open(LINES26)):
@@ -427,19 +440,18 @@ def market_totals(sid):
     esp = {}
     ep = os.path.join(ROOT, 'data', 'cfbd', 'espn_opens_2026.json')
     if os.path.exists(ep): esp = {r['id']: r for r in json.load(open(ep)) if r.get('ouo') is not None}
-    order = {'DraftKings': 0, 'Bovada': 1}
+    f = lambda v: None if v is None else float(v)
     out = {}
     for gid, rows in by.items():
-        rows = sorted(rows, key=lambda r: order.get(r['p'], 2)); r0 = rows[0]
-        src = None
-        if gid in esp: op, src = float(esp[gid]['ouo']), 'DraftKings'; base = next((r for r in rows if r['p'] == 'DraftKings'), None)
-        else:
-            base = next((r for r in rows if r.get('ouo') is not None), None)
-            if base is not None: op, src = float(base['ouo']), base['p']
-        if src is None: continue
-        if base is None or base.get('ou') is None: base = next((r for r in rows if r['p'] == src and r.get('ou') is not None), None)
-        cl = None if base is None or base.get('ou') is None else float(base['ou'])
-        out[int(gid)] = dict(open=op, open_src=src, close=cl, close_src=src if cl is not None else None, wk=int(r0.get('wk') or 0), home=r0.get('home'), away=r0.get('away'),
+        r0 = rows[0]
+        bv = next((r for r in rows if r['p'] == 'Bovada' and r.get('ouo') is not None), None)
+        dk = next((r for r in rows if r['p'] == 'DraftKings'), None)
+        dk_open, dk_src = (float(esp[gid]['ouo']), 'ESPN') if gid in esp else (f(dk.get('ouo')) if dk else None, 'DraftKings')
+        if bv is None and dk_open is None: continue
+        dk_close = f(dk.get('ou')) if dk else None
+        out[int(gid)] = dict(open=f(bv['ouo']) if bv else None, open_src='Bovada' if bv else None, close=f(bv.get('ou')) if bv else None, close_src='Bovada' if bv and bv.get('ou') is not None else None,
+                             dk_open=dk_open, dk_open_src=dk_src if dk_open is not None else None, dk_close=dk_close,
+                             wk=int(r0.get('wk') or 0), home=r0.get('home'), away=r0.get('away'),
                              hs=r0.get('hs'), as_=r0.get('as_'), home_id=sid.get(r0.get('home')), away_id=sid.get(r0.get('away')))
     return out
 
@@ -459,64 +471,90 @@ def _totals_rec(rows):
 
 
 def totals_summary(rows):
+    """records over the picks only: a row with no Bovada open (secondary-only, DraftKings numbers alone) is never counted"""
+    rows = [r for r in rows if r.get('edge') is not None]
     pick = lambda t, rs: [r for r in rs if abs(r['edge']) >= t]
     live = [r for r in rows if not r.get('backfill')]
+    live3 = sum(r.get('result') in ('W', 'L', 'P') for r in pick(TOT_EDGES[0], live))
     return dict(by_edge={str(t): _totals_rec(pick(t, rows)) for t in TOT_EDGES}, live_by_edge={str(t): _totals_rec(pick(t, live)) for t in TOT_EDGES},
-                by_week={str(w): _totals_rec(pick(TOT_EDGES[0], [r for r in rows if r['week'] == w])) for w in sorted({r['week'] for r in rows if r.get('result')})})
+                by_week={str(w): _totals_rec(pick(TOT_EDGES[0], [r for r in rows if r['week'] == w])) for w in sorted({r['week'] for r in rows if r.get('result')})},
+                proven_target=TOT_PROVEN_TARGET, live_graded_3plus=live3, status='unproven' if live3 < TOT_PROVEN_TARGET else 'sample_reached')
+
+
+def _flag(e):
+    return None if e is None else '5+' if abs(e) >= 5 else '3+' if abs(e) >= 3 else None
+
+
+def _grade_total(tot, open_, close, total):
+    """(side, result, clv) of the model total `tot` against a stored open: the side is the sign of the edge, the result is the final total against the open,
+    CLV is how far the close moved toward that side"""
+    edge = round(tot - open_, 2); sg = 1 if edge > 0 else -1
+    res = 'W' if (total - open_) * sg > 0 else 'L' if (total - open_) * sg < 0 else 'P'
+    return ('over' if edge > 0 else 'under'), res, None if close is None else round((close - open_) * sg, 1)
 
 
 def totals_update(d, g26, F, names, sid, prev, feed_totals, now):
-    """the totals board and record. For every FBS game from week 4 with a stored open total: project it with ratings fit on EARLIER weeks only, compare
-    with the open, flag 3+ and 5+ (over/under), grade against the open when the game ends, and record the close and the closing-line value.
-    A graded row is frozen and kept forever; an ungraded one is re-projected each run (its inputs are the completed earlier weeks). A row first
+    """the totals board and record. For every FBS game from week 4 with a stored Bovada open total: project it with ratings fit on EARLIER weeks only, around
+    that week's in-season league level, compare with the Bovada open, flag 3+ and 5+ (over/under), grade against the open when the game ends, and record the
+    Bovada close and the closing-line value. DraftKings (ESPN's recorded open, else CFBD's) rides along as dk_open / dk_close / dk_edge / dk_result / dk_clv;
+    a game with no stored Bovada open has no pick and is kept as a secondary-only row that no record counts.
+    A graded row of the current TOT_VERSION is frozen and kept forever; an older one is rebuilt once from the stored numbers (and is backfill, since its pick
+    was not logged before the game under this model); an ungraded one is re-projected each run (its inputs are the completed earlier weeks). A row first
     written after its game already ended is flagged backfill, as the spread pick log does. Returns None when the totals priors file is missing."""
     if not os.path.exists(TOTALS_PRIORS): return None
     pri = json.load(open(TOTALS_PRIORS))
     prior = {k: ({int(t): st.S * v for t, v in pri[k]['a'].items()}, {int(t): st.S * v for t, v in pri[k]['b'].items()}) for k in ('pts', 'pace')}
-    cen = dict(pts=pri['center']['pts'], pace=pri['center']['pace'])
+    fallback = dict(pts=pri['center']['pts'], pace=pri['center']['pace'])      # prior-years level: used only before any game of the season is final
     tt, gm = totals_load(d, [2026]); done = gm[gm.status_type_completed == True]
     T = tt[tt.game_id.isin(done.game_id) & tt.pos_team_id.isin(F) & tt.def_pos_team_id.isin(F)]
     cache = {}
     def rated_before(wk):
+        """(ratings, league level) as of week wk, from the finished games of earlier weeks only"""
         if wk not in cache:
-            Tw = T[T.week < wk]
-            cache[wk] = {k: totals_fit(Tw, c, *prior[k], cen[k]) if len(Tw) >= 30 else prior[k] for k, c in (('pts', 'pts'), ('pace', 'nplays'))}
+            Tw = T[T.week < wk]; cen = totals_center(T, wk, fallback)
+            cache[wk] = ({k: totals_fit(Tw, c, *prior[k], cen[k]) if len(Tw) >= 30 else prior[k] for k, c in (('pts', 'pts'), ('pace', 'nplays'))}, cen)
         return cache[wk]
     gby = {int(r.game_id): r for r in g26.itertuples()}
     old = {int(r['game_id']): r for r in ((prev or {}).get('rows') or [])}
     nm = lambda t: (names.get(t, [str(t)]) + ['', ''])[2] or names.get(t, [str(t)])[0]
     rows = []
     for gid, ln in market_totals(sid).items():
-        o = old.get(gid)
-        if o and o.get('result'): rows.append(o); continue                          # graded: frozen
+        o = old.get(gid); cur_ver = bool(o) and o.get('totals_version') == TOT_VERSION
+        if cur_ver and (o.get('result') or o.get('dk_result')): rows.append(o); continue                  # graded under this version: frozen
         x = gby.get(gid)
         h = int(x.homeTeamId) if x is not None else ln['home_id']; aw = int(x.awayTeamId) if x is not None else ln['away_id']
         wk = int(x.week) if x is not None else ln['wk']
         if h is None or aw is None or h not in F or aw not in F or wk < PICK_MIN_WEEK: continue
         if x is None and wk > (int(done.week.max()) if len(done) else 0) + 1: continue      # opens for weeks further out are placeholders: only the next slate
-        ph, pa_, pl, tot = totals_project(rated_before(wk), cen, h, aw)
-        tot = round(tot, 2); edge = round(tot - ln['open'], 2)      # side, flag and grade all come from the stored 2-decimal numbers, so they recompute exactly
+        cur, cen = rated_before(wk)
+        ph, pa_, pl, tot = totals_project(cur, cen, h, aw)
+        tot = round(tot, 2)       # side, flag and grade all come from the stored 2-decimal numbers, so they recompute exactly
         final = None
         if x is not None and bool(x.status_type_completed): final = (int(x.homeFinalScore), int(x.awayFinalScore))
         elif ln['hs'] is not None and ln['as_'] is not None: final = (int(ln['hs']), int(ln['as_']))      # the lines feed has the score before the play-by-play release does
-        side = 'over' if edge > 0 else 'under'
+        edge = None if ln['open'] is None else round(tot - ln['open'], 2)
         row = dict(game_id=gid, week=wk, home_id=h, away_id=aw, home=nm(h), away=nm(aw), model_pts_home=round(ph, 2), model_pts_away=round(pa_, 2), model_plays=round(pl, 2),
-                   model_total=tot, open=ln['open'], open_src=ln['open_src'], edge=edge, side=side,
-                   flag='5+' if abs(edge) >= 5 else '3+' if abs(edge) >= 3 else None, backfill=bool(o.get('backfill')) if o else final is not None,
-                   upcoming=final is None)
+                   model_total=tot, league_pts=round(cen['pts'], 3), league_plays=round(cen['pace'], 3), open=ln['open'], open_src=ln['open_src'], edge=edge,
+                   side=None if edge is None else 'over' if edge > 0 else 'under', flag=_flag(edge),
+                   backfill=bool(o.get('backfill')) if cur_ver else final is not None, upcoming=final is None, totals_version=TOT_VERSION)
+        if ln['dk_open'] is not None:
+            dke = round(tot - ln['dk_open'], 2); row.update(dk_open=ln['dk_open'], dk_open_src=ln['dk_open_src'], dk_edge=dke, dk_side='over' if dke > 0 else 'under')
         if final is None:
             cur_ = (feed_totals or {}).get((h, aw))                                             # what the market shows now: Pinnacle total, else consensus
-            if cur_ is not None: row.update(now=cur_['line'], now_src=cur_['src'], edge_now=round(tot - cur_['line'], 2), flag_now='5+' if abs(round(tot - cur_['line'], 2)) >= 5 else '3+' if abs(round(tot - cur_['line'], 2)) >= 3 else None)
-            elif ln['close'] is not None: row.update(now=ln['close'], now_src=ln['close_src'], edge_now=round(tot - ln['close'], 2), flag_now='5+' if abs(round(tot - ln['close'], 2)) >= 5 else '3+' if abs(round(tot - ln['close'], 2)) >= 3 else None)
+            if edge is None: pass
+            elif cur_ is not None: row.update(now=cur_['line'], now_src=cur_['src'], edge_now=round(tot - cur_['line'], 2), flag_now=_flag(round(tot - cur_['line'], 2)))
+            elif ln['close'] is not None: row.update(now=ln['close'], now_src=ln['close_src'], edge_now=round(tot - ln['close'], 2), flag_now=_flag(round(tot - ln['close'], 2)))
         else:
-            total = final[0] + final[1]; sg = 1 if edge > 0 else -1
-            res = 'W' if (total - ln['open']) * sg > 0 else 'L' if (total - ln['open']) * sg < 0 else 'P'
-            row.update(result=res, hs=final[0], as_=final[1], total=total, close=ln['close'], close_src=ln['close_src'],
-                       clv=None if ln['close'] is None else round((ln['close'] - ln['open']) * sg, 1))
+            total = final[0] + final[1]
+            row.update(hs=final[0], as_=final[1], total=total, close=ln['close'], close_src=ln['close_src'])
+            if edge is not None: _, row['result'], row['clv'] = _grade_total(tot, ln['open'], ln['close'], total)
+            if ln['dk_open'] is not None:
+                row['dk_close'] = ln['dk_close']; _, row['dk_result'], row['dk_clv'] = _grade_total(tot, ln['dk_open'], ln['dk_close'], total)
         rows.append(row)
-    rows.sort(key=lambda r: (-r['week'], -abs(r['edge'])))
-    return dict(source='ESPN recorded DraftKings open total, else CollegeFootballData overUnderOpen (DraftKings, then Bovada); close is the same book\'s last stored total',
-                formula=dict(intercept=TOT_B0, points=TOT_B1, plays=TOT_B2, alpha=TOT_ALPHA, S=st.S), min_week=PICK_MIN_WEEK, edges=list(TOT_EDGES), through_week=int(done.week.max()) if len(done) else 0,
+    rows.sort(key=lambda r: (-r['week'], -abs(r['edge'] if r.get('edge') is not None else r.get('dk_edge', 0))))
+    return dict(source="Bovada open total (CollegeFootballData overUnderOpen); close is Bovada's last stored total. DraftKings (ESPN recorded open, else CFBD) is the secondary book",
+                formula=dict(intercept=TOT_B0, points=TOT_B1, plays=TOT_B2, alpha=TOT_ALPHA, S=st.S, league_level='in-season mean of finished FBS team-games, prior-years mean until one is final'),
+                version=TOT_VERSION, min_week=PICK_MIN_WEEK, edges=list(TOT_EDGES), through_week=int(done.week.max()) if len(done) else 0,
                 backtest=TOT_BACKTEST, summary=totals_summary(rows), rows=rows)
 
 
