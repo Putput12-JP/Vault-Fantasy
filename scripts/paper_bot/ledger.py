@@ -185,13 +185,21 @@ def record_equity(ledger, now):
     return point
 
 
+def _is_pending(t):
+    """A settled row whose result is not decided yet: a partly exited cfb_jp_novig trade waiting on its remainder."""
+    return t.get('status') == 'settled' and (bool(t.get('remainder_pending')) or t.get('won') is None)
+
+
 def _group_rows(trades):
     stake = pnl = 0.0
-    w = l = n = 0
+    w = l = n = pend = 0
     clv = []
     brier_n = brier_s = 0.0
     for t in trades:
         if t.get('status') != 'settled':
+            continue
+        if _is_pending(t):
+            pend += 1       # not a loss: it joins settled/wins/losses/stake/pnl once it is graded
             continue
         n += 1
         stake += float(t.get('stake') or 0)
@@ -211,6 +219,7 @@ def _group_rows(trades):
         'settled': n,
         'wins': w,
         'losses': l,
+        'pending': pend,
         'stake': round(stake, 2),
         'pnl': round(pnl, 2),
         'roi': (round(pnl / stake, 4) if stake else None),

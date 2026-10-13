@@ -443,6 +443,21 @@ class PartialExit(unittest.TestCase):
             self.assertAlmostEqual(t['exit_pnl_pc'], round(t['pnl'] / 100, 5))
             self.assertFalse(t['remainder_pending'])
 
+    def test_partly_exited_row_counts_as_pending_not_a_loss_in_by_source(self):
+        t = self.row()
+        t['source'] = S.STRATEGY
+        S.apply_exit(t, self.gs(30))
+        self.assertTrue(t['remainder_pending'])
+        self.assertIsNone(t['won'])
+        led = empty(1000)
+        led['trades'] = [t]
+        grp = summarize(led)['by_source'][S.STRATEGY]
+        self.assertEqual((grp['pending'], grp['settled'], grp['wins'], grp['losses']), (1, 0, 0, 0))
+        self.assertEqual((grp['stake'], grp['pnl'], grp['roi'], grp['brier']), (0.0, 0.0, None, None))
+        S.grade_hold(t, 20, 40)         # remainder loses: now a graded loss
+        grp = summarize(led)['by_source'][S.STRATEGY]
+        self.assertEqual((grp['pending'], grp['settled'], grp['wins'], grp['losses']), (0, 1, 0, 1))
+
     def test_bid_larger_than_the_position_fills_everything(self):
         t = self.row()
         S.apply_exit(t, self.gs(900))
