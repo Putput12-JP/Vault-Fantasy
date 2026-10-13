@@ -126,7 +126,8 @@ def pick(rows, key, th):
 def money(sel):
     """One-contract ROI, profit per contract, equal-stake ROI, game-clustered z."""
     if not sel:
-        return {'n': 0, 'games': 0, 'roi': None, 'profit_per_contract': None, 'equal_stake_roi': None, 'z': None}
+        return {'n': 0, 'games': 0, 'roi': None, 'profit_per_contract': None,
+                'equal_stake_roi': None, 'roi_per_game': None, 'z': None}
     cost = ret = 0.0
     rets = []
     per = defaultdict(list)
@@ -147,6 +148,7 @@ def money(sel):
             'roi': (ret - cost) / cost if cost else None,
             'profit_per_contract': (ret - cost) / len(sel),
             'equal_stake_roi': statistics.mean(rets),
+            'roi_per_game': statistics.mean(gm) if gm else None,
             'z': z}
 
 
@@ -319,7 +321,19 @@ def write_md(res):
           f"| Strikes / games | {A['published_check']['n']} / {A['published_check']['games']} | 11447 / 1301 |",
           f"| Brier model / 1pm / pre-tip | {A['published_check']['brier_model']:.4f} / {A['published_check']['brier_kalshi']:.4f} / {A['published_check']['brier_pre']:.4f} | 0.2188 / 0.2150 / 0.2108 |",
           f"| 8%+ strikes, games, ROI | {A['published_check']['n8']}, {A['published_check']['g8']}, {fmt_pct(A['published_check']['roi8'])} | 3987, 817, +1.9% |",
+          '',
+          'The September half table is a different column. Its +19.3% and +8.1% are ROI per game (each game\'s mean',
+          'return on stake, then the mean across games), which is the mean inside the z above, not profit divided by',
+          'dollars. On this tape the model\'s ROI per game at 8% is '
+          f"{fmt_pct(A['halves']['model']['h1'].get('roi_per_game'))} then {fmt_pct(A['halves']['model']['h2'].get('roi_per_game'))}, "
+          f"z {fmt_z(A['halves']['model']['h1'].get('z'))} then {fmt_z(A['halves']['model']['h2'].get('z'))}. "
+          'The decision uses the one-contract ROI, the column that was about +2%.',
           '']
+    gap = A.get('price_only_max_gap')
+    if gap is not None:
+        L += [f"Price-only's largest gap versus the 1pm price on the second half is {gap:.3f}. "
+              'Where that is under 0.08, the 8% and 12% price-only rows are empty and the GO test treats that baseline as ROI 0.',
+              '']
     return '\n'.join(L)
 
 
@@ -376,6 +390,7 @@ def main():
     hA = half_block(common, 'anchor')
     hM = half_block(common, 'model')
     hP = half_block(priced, 'price_only')
+    price_gap = max((abs(r['price_only'] - r['k_am']) for r in priced[half:]), default=None)
     verdict, why = judge(hA['full'], hA['h1'], hA['h2'], hP['h2'], hM['h2'], hA['yes_h2'], hA['no_h2'])
 
     # drift
@@ -410,6 +425,7 @@ def main():
                    'model': {k: v for k, v in hM.items() if k not in ('h1_rows', 'h2_rows')},
                    'price_only': {k: v for k, v in hP.items() if k not in ('h1_rows', 'h2_rows')}},
         'price_coef': coef,
+        'price_only_max_gap': price_gap,
         'drift': drift,
         'published_check': {
             'n': len(rows), 'games': len({r['gid'] for r in rows}),
