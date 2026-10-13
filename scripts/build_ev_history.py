@@ -14,6 +14,7 @@ Usage:
     (walks every commit that touched data.json on the ref, oldest first, then the ref tip)
 """
 import argparse
+import datetime
 import json
 import os
 import re
@@ -21,7 +22,26 @@ import subprocess
 import sys
 
 
-_NUM = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?")
+# Number(string) in JS: ASCII digits only, 0x/0b/0o integers take no sign, trimmed by JS whitespace (not str.strip()).
+_NUM = re.compile(r"[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?", re.ASCII)
+_RADIX = re.compile(r"0(?:[xX]([0-9a-fA-F]+)|[bB]([01]+)|[oO]([0-7]+))", re.ASCII)
+_JS_WS = "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+
+
+def _js_number(s):
+    """Number(s) for a string, or None for NaN. Empty after trimming is the caller's job (evLn never gets there)."""
+    t = s.strip(_JS_WS)
+    m = _RADIX.fullmatch(t)
+    if m:
+        for grp, base in ((m.group(1), 16), (m.group(2), 2), (m.group(3), 8)):
+            if grp is not None:
+                try:
+                    return float(int(grp, base))
+                except OverflowError:
+                    return float("inf")
+    if _NUM.fullmatch(t):
+        return float(t)
+    return None
 
 
 def _js_num(n):
@@ -62,8 +82,10 @@ def line_key(x):
             n = float(x)
         except OverflowError:
             n = float("inf")
-    elif isinstance(x, str) and x.strip() != "" and _NUM.fullmatch(x.strip()):
-        n = float(x.strip())
+    elif isinstance(x, str) and x.strip(_JS_WS) != "":
+        n = _js_number(x)
+        if n is not None and (n != n or n in (float("inf"), float("-inf"))):
+            n = None  # JS: not finite, so evLn falls back to String(x), the raw text
     if n is None:
         return str(x)
     if n != n:
@@ -102,19 +124,21 @@ def ev_rows(alerts):
     return out
 
 
+class BrokenFile(Exception):
+    pass
+
+
 def load_history(path):
-    """Missing file: start fresh. Broken JSON or wrong shape: ::error:: and exit, file untouched."""
+    """Missing file: start fresh. Broken JSON or wrong shape: BrokenFile, file untouched."""
     if not (path and os.path.exists(path)):
         return {}
     try:
         with open(path) as f:
             h = json.load(f)
     except (ValueError, OSError) as e:
-        print("::error::ev history %s is unreadable (%s); left untouched" % (path, e))
-        sys.exit(1)
+        raise BrokenFile("ev history %s is unreadable (%s)" % (path, e))
     if not isinstance(h, dict) or not isinstance(h.get("entries"), list):
-        print("::error::ev history %s has the wrong shape (expected an object with an entries list); left untouched" % path)
-        sys.exit(1)
+        raise BrokenFile("ev history %s has the wrong shape (expected an object with an entries list)" % path)
     entries = {}
     skipped = 0
     for e in h["entries"]:
@@ -122,7 +146,7 @@ def load_history(path):
             skipped += 1
             continue
         if "key" not in e:
-            if not all(k in e for k in ("game", "m", "side", "line")):
+            if not all(k in e for k in ("game", "m", "side")):
                 skipped += 1
                 continue
             e["key"] = key_of(e)
@@ -152,6 +176,31 @@ def write_history(entries, out):
     os.replace(tmp, out)
 
 
+def pending_paths(history):
+    """Sidecars next to the history file: ev_alert_history.pending.json and ev_alert_history.pending.<ts>.json."""
+    d = os.path.dirname(os.path.abspath(history))
+    stem = os.path.splitext(os.path.basename(history))[0]
+    return [os.path.join(d, n) for n in sorted(os.listdir(d))
+            if n.startswith(stem + ".pending") and n.endswith(".json")]
+
+
+def write_pending(history, rows):
+    """Park graded rows beside a broken history file. Merges into an existing healthy pending file,
+    else a timestamped one when the pending file is itself broken. Returns the path written."""
+    d = os.path.dirname(os.path.abspath(history))
+    stem = os.path.splitext(os.path.basename(history))[0]
+    path = os.path.join(d, stem + ".pending.json")
+    try:
+        entries = load_history(path)
+    except BrokenFile:
+        path = os.path.join(d, "%s.pending.%s.json" % (stem, datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")))
+        entries = {}
+    for r in rows:
+        entries.setdefault(r["key"], r)
+    write_history(entries, path)
+    return path
+
+
 def git(repo, *args):
     return subprocess.run(["git", "-C", repo, *args], check=True, capture_output=True).stdout
 
@@ -165,8 +214,14 @@ def main():
     p.add_argument("--repo", default=".")
     a = p.parse_args()
     out = a.out or a.history
-    entries = load_history(a.history)
-    before = len(entries)
+    try:
+        entries = load_history(a.history)
+    except BrokenFile as e:
+        entries = None
+        broken = e
+    # With a broken history, graded rows still get collected, into a fresh map that goes to the pending sidecar.
+    before = len(entries) if entries is not None else 0
+    work = entries if entries is not None else {}
     scanned = 0
     if a.git_ref:
         shas = git(a.repo, "log", "--format=%H", a.git_ref, "--", "data.json").decode().split()
@@ -176,7 +231,7 @@ def main():
             except Exception as e:
                 print("skip %s: %s" % (sha[:8], e), file=sys.stderr)
                 continue
-            merge(entries, d.get("alerts") or [])
+            merge(work, d.get("alerts") or [])
             scanned += 1
     for path in a.data:
         try:
@@ -185,10 +240,28 @@ def main():
         except Exception as e:
             print("skip %s: %s" % (path, e), file=sys.stderr)
             continue
-        merge(entries, d.get("alerts") or [])
+        merge(work, d.get("alerts") or [])
         scanned += 1
+    if entries is None:
+        saved = "no new graded rows to save"
+        if work:
+            saved = "%d graded rows saved to %s" % (len(work), os.path.basename(write_pending(a.history, list(work.values()))))
+        print("::error::%s; left untouched. %s" % (broken, saved))
+        sys.exit(1)
+    # Healthy run: fold in any rows parked by an earlier broken run, then drop those files.
+    pend = pending_paths(a.history)
+    folded = []
+    for pp in pend:
+        try:
+            for k, row in load_history(pp).items():
+                entries.setdefault(k, row)
+            folded.append(pp)
+        except BrokenFile as e:
+            print("::warning::%s; kept for manual repair" % e)
     write_history(entries, out)
-    print("scanned %d, history %d -> %d" % (scanned, before, len(entries)))
+    for pp in folded:
+        os.remove(pp)
+    print("scanned %d, history %d -> %d (merged %d pending files)" % (scanned, before, len(entries), len(folded)))
 
 
 if __name__ == "__main__":
