@@ -47,7 +47,7 @@ def run(d, lines_dir):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--dir', required=True); ap.add_argument('--lines', required=True); ap.add_argument('--json'); a = ap.parse_args()
     res, x = run(a.dir, a.lines)
-    r3, r5 = record(x, 3), record(x, 5)
+    t3, t5 = cm.TOT_EDGES; r3, r5 = record(x, t3), record(x, t5)
     out = dict(seasons='2023-2025', n3=r3['n'], open3=r3['open'], clv3=r3['clv'], clv3_z=r3['clv_z'], under3=r3['under_share'],
                n5=r5['n'], open5=r5['open'], clv5=r5['clv'], clv5_z=r5['clv_z'], under5=r5['under_share'], games=int(len(x)),
                mae_open=round(float((x.total - x.op).abs().mean()), 3), mae_model=round(float((x.total - x.model_total).abs().mean()), 3),

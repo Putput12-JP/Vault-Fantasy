@@ -43,8 +43,8 @@ TOTALS_PRIORS = os.path.join(DATA, 'cfb_model_totals_priors.json')
 # (backtest: cfb-backtests/improve/wf.py + ev.py, RESULTS.md "5) Totals model"). Points and plays are walk-forward opponent-adjusted ridges, see totals_* below.
 TOT_B0, TOT_B1, TOT_B2 = -10.12, 0.797, 0.150
 TOT_ALPHA = 5.0           # ridge strength for points and plays (the EPA ridge uses st.ALPHA = 300; counts are on a different scale)
-TOT_EDGES = (3, 5)        # flag thresholds, points from the market total
-TOT_VERSION = 2           # 1 = prior-years league level, DraftKings open; 2 = in-season league level, Bovada open. Frozen rows of an older version are rebuilt once
+TOT_EDGES = (3, 5)        # the one source for the totals flag thresholds (ascending), points from the market total: flags, summary, backtest and the page (data.edges) all read it
+TOT_VERSION = 3           # 1 = prior-years league level, DraftKings open; 2 = in-season league level, Bovada open; 3 = flags, side and grade from the unrounded edge (edge_raw). Frozen rows of an older version are rebuilt once
 TOT_PROVEN_TARGET = 150   # live (not backfilled) graded 3+ picks before the totals record counts as proven
 TOT_BACKTEST = dict(seasons='2023-2025', n3=742, open3=[395, 344], clv3=0.818, clv3_z=11.07, under3=0.704, n5=289, open5=[162, 125], clv5=1.112, clv5_z=8.74, under5=0.765,
                     note='Bovada open total, weeks 4+, in-season league level, model fit on 2022 only')  # scripts/cfb_totals_backtest.py
@@ -473,7 +473,7 @@ def _totals_rec(rows):
 def totals_summary(rows):
     """records over the picks only: a row with no Bovada open (secondary-only, DraftKings numbers alone) is never counted"""
     rows = [r for r in rows if r.get('edge') is not None]
-    pick = lambda t, rs: [r for r in rs if abs(r['edge']) >= t]
+    pick = lambda t, rs: [r for r in rs if abs(_edge_raw(r)) >= t]
     live = [r for r in rows if not r.get('backfill')]
     live3 = sum(r.get('result') in ('W', 'L', 'P') for r in pick(TOT_EDGES[0], live))
     return dict(by_edge={str(t): _totals_rec(pick(t, rows)) for t in TOT_EDGES}, live_by_edge={str(t): _totals_rec(pick(t, live)) for t in TOT_EDGES},
@@ -481,14 +481,22 @@ def totals_summary(rows):
                 proven_target=TOT_PROVEN_TARGET, live_graded_3plus=live3, status='unproven' if live3 < TOT_PROVEN_TARGET else 'sample_reached')
 
 
+def _edge_raw(r):
+    """the unrounded model total minus the open: every flag, side and grade comes from this; `edge` is the 2-decimal display copy"""
+    return r['edge_raw'] if r.get('edge_raw') is not None else r['edge']
+
+
 def _flag(e):
-    return None if e is None else '5+' if abs(e) >= 5 else '3+' if abs(e) >= 3 else None
+    """the highest TOT_EDGES threshold the unrounded edge reaches, as '3+' / '5+'"""
+    if e is None: return None
+    hit = [t for t in TOT_EDGES if abs(e) >= t]
+    return f'{max(hit)}+' if hit else None
 
 
 def _grade_total(tot, open_, close, total):
     """(side, result, clv) of the model total `tot` against a stored open: the side is the sign of the edge, the result is the final total against the open,
     CLV is how far the close moved toward that side"""
-    edge = round(tot - open_, 2); sg = 1 if edge > 0 else -1
+    edge = tot - open_; sg = 1 if edge > 0 else -1      # tot is the unrounded model total
     res = 'W' if (total - open_) * sg > 0 else 'L' if (total - open_) * sg < 0 else 'P'
     return ('over' if edge > 0 else 'under'), res, None if close is None else round((close - open_) * sg, 1)
 
@@ -528,30 +536,30 @@ def totals_update(d, g26, F, names, sid, prev, feed_totals, now):
         if x is None and wk > (int(done.week.max()) if len(done) else 0) + 1: continue      # opens for weeks further out are placeholders: only the next slate
         cur, cen = rated_before(wk)
         ph, pa_, pl, tot = totals_project(cur, cen, h, aw)
-        tot = round(tot, 2)       # side, flag and grade all come from the stored 2-decimal numbers, so they recompute exactly
+        raw = tot; tot = round(tot, 2)       # side, flag and grade come from the UNROUNDED total (stored as edge_raw); the 2-decimal numbers are display only
         final = None
         if x is not None and bool(x.status_type_completed): final = (int(x.homeFinalScore), int(x.awayFinalScore))
         elif ln['hs'] is not None and ln['as_'] is not None: final = (int(ln['hs']), int(ln['as_']))      # the lines feed has the score before the play-by-play release does
-        edge = None if ln['open'] is None else round(tot - ln['open'], 2)
+        edge_raw = None if ln['open'] is None else raw - ln['open']; edge = None if edge_raw is None else round(edge_raw, 2)
         row = dict(game_id=gid, week=wk, home_id=h, away_id=aw, home=nm(h), away=nm(aw), model_pts_home=round(ph, 2), model_pts_away=round(pa_, 2), model_plays=round(pl, 2),
-                   model_total=tot, league_pts=round(cen['pts'], 3), league_plays=round(cen['pace'], 3), open=ln['open'], open_src=ln['open_src'], edge=edge,
-                   side=None if edge is None else 'over' if edge > 0 else 'under', flag=_flag(edge),
+                   model_total=tot, league_pts=round(cen['pts'], 3), league_plays=round(cen['pace'], 3), open=ln['open'], open_src=ln['open_src'], edge=edge, edge_raw=edge_raw,
+                   side=None if edge_raw is None else 'over' if edge_raw > 0 else 'under', flag=_flag(edge_raw),
                    backfill=bool(o.get('backfill')) if cur_ver else final is not None, upcoming=final is None, totals_version=TOT_VERSION)
         if ln['dk_open'] is not None:
-            dke = round(tot - ln['dk_open'], 2); row.update(dk_open=ln['dk_open'], dk_open_src=ln['dk_open_src'], dk_edge=dke, dk_side='over' if dke > 0 else 'under')
+            dke = raw - ln['dk_open']; row.update(dk_open=ln['dk_open'], dk_open_src=ln['dk_open_src'], dk_edge=round(dke, 2), dk_edge_raw=dke, dk_side='over' if dke > 0 else 'under')
         if final is None:
             cur_ = (feed_totals or {}).get((h, aw))                                             # what the market shows now: Pinnacle total, else consensus
             if edge is None: pass
-            elif cur_ is not None: row.update(now=cur_['line'], now_src=cur_['src'], edge_now=round(tot - cur_['line'], 2), flag_now=_flag(round(tot - cur_['line'], 2)))
-            elif ln['close'] is not None: row.update(now=ln['close'], now_src=ln['close_src'], edge_now=round(tot - ln['close'], 2), flag_now=_flag(round(tot - ln['close'], 2)))
+            elif cur_ is not None: row.update(now=cur_['line'], now_src=cur_['src'], edge_now=round(raw - cur_['line'], 2), flag_now=_flag(raw - cur_['line']))
+            elif ln['close'] is not None: row.update(now=ln['close'], now_src=ln['close_src'], edge_now=round(raw - ln['close'], 2), flag_now=_flag(raw - ln['close']))
         else:
             total = final[0] + final[1]
             row.update(hs=final[0], as_=final[1], total=total, close=ln['close'], close_src=ln['close_src'])
-            if edge is not None: _, row['result'], row['clv'] = _grade_total(tot, ln['open'], ln['close'], total)
+            if edge is not None: _, row['result'], row['clv'] = _grade_total(raw, ln['open'], ln['close'], total)
             if ln['dk_open'] is not None:
-                row['dk_close'] = ln['dk_close']; _, row['dk_result'], row['dk_clv'] = _grade_total(tot, ln['dk_open'], ln['dk_close'], total)
+                row['dk_close'] = ln['dk_close']; _, row['dk_result'], row['dk_clv'] = _grade_total(raw, ln['dk_open'], ln['dk_close'], total)
         rows.append(row)
-    rows.sort(key=lambda r: (-r['week'], -abs(r['edge'] if r.get('edge') is not None else r.get('dk_edge', 0))))
+    rows.sort(key=lambda r: (-r['week'], -abs(_edge_raw(r) if r.get('edge') is not None else r.get('dk_edge', 0))))
     return dict(source="Bovada open total (CollegeFootballData overUnderOpen); close is Bovada's last stored total. DraftKings (ESPN recorded open, else CFBD) is the secondary book",
                 formula=dict(intercept=TOT_B0, points=TOT_B1, plays=TOT_B2, alpha=TOT_ALPHA, S=st.S, league_level='in-season mean of finished FBS team-games, prior-years mean until one is final'),
                 version=TOT_VERSION, min_week=PICK_MIN_WEEK, edges=list(TOT_EDGES), through_week=int(done.week.max()) if len(done) else 0,

@@ -124,6 +124,18 @@ class Update(unittest.TestCase):
         self.assertAlmostEqual(r['model_total'], round(self.model, 2)); self.assertEqual(r['edge'], round(round(self.model, 2) - 61.5, 2))
         self.assertTrue(r['backfill']); self.assertEqual(r['totals_version'], cm.TOT_VERSION)
 
+    def test_flag_and_grade_use_the_unrounded_edge(self):
+        # model 58.5044 vs open 61.5: edge -2.9956 displays as -3.0 but is NOT a 3+ pick
+        self.assertIsNone(cm._flag(-2.9956)); self.assertEqual((cm._flag(-3.0), cm._flag(4.99), cm._flag(-5.0)), ('3+', '3+', '5+'))
+        self.assertEqual(cm._grade_total(58.5044, 61.5, 60.0, 50)[0], 'under')
+        self.lines([self.bv(ou=60.0, ouo=61.5)]); saved = cm.totals_project
+        cm.totals_project = lambda *a: (30.0, 28.5044, 130.0, 58.5044)
+        try: r = self.run_update()['rows'][0]; s = self.run_update()['summary']['by_edge']
+        finally: cm.totals_project = saved
+        self.assertEqual((r['edge'], r['flag']), (-3.0, None)); self.assertAlmostEqual(r['edge_raw'], -2.9956, 6)
+        self.assertEqual(s['3']['n'], 0)
+        self.assertEqual(cm.totals_summary([dict(week=5, edge=-3.0, edge_raw=-2.9956, result='W', clv=1.0)])['by_edge']['3']['n'], 0)
+
     def test_over_loses_and_push_is_a_push(self):
         self.lines([self.bv(ou=50.0, ouo=50.0)])
         r = self.run_update()['rows'][0]
@@ -206,30 +218,30 @@ class StoredData(unittest.TestCase):
             self.assertTrue(need <= set(r), r); self.assertGreaterEqual(r['week'], 4); self.assertEqual(r['totals_version'], cm.TOT_VERSION)
             if r['open'] is None: self.assertIsNone(r['edge']); self.assertIsNone(r['side']); self.assertIsNone(r['flag']); continue      # secondary-only row: no pick
             self.assertEqual(r['open_src'], 'Bovada')
-            self.assertIn(r['side'], ('over', 'under')); self.assertEqual(r['flag'], '5+' if abs(r['edge']) >= 5 else '3+' if abs(r['edge']) >= 3 else None)
+            self.assertIn(r['side'], ('over', 'under')); self.assertEqual(r['flag'], cm._flag(r['edge_raw'])); self.assertEqual(r['edge'], round(r['edge_raw'], 2))
             if not r['upcoming']: self.assertIn(r['result'], ('W', 'L', 'P')); self.assertEqual(r['total'], r['hs'] + r['as_'])
 
     def test_result_and_clv_recompute_from_stored_numbers(self):
         for r in self.picks:
             if r['upcoming']: continue
-            sg = 1 if r['edge'] > 0 else -1; d = (r['total'] - r['open']) * sg
+            sg = 1 if r['edge_raw'] > 0 else -1; d = (r['total'] - r['open']) * sg
             self.assertEqual(r['result'], 'W' if d > 0 else 'L' if d < 0 else 'P')
             self.assertEqual(r['clv'], None if r['close'] is None else round((r['close'] - r['open']) * sg, 1))
 
     def test_draftkings_secondary_recomputes_from_stored_numbers(self):
         for r in self.t['rows']:
             if r.get('dk_open') is None: continue
-            self.assertEqual(r['dk_edge'], round(r['model_total'] - r['dk_open'], 2))
+            self.assertEqual(r['dk_edge'], round(r['dk_edge_raw'], 2))
             if r['upcoming']: continue
-            sg = 1 if r['dk_edge'] > 0 else -1; d = (r['total'] - r['dk_open']) * sg
+            sg = 1 if r['dk_edge_raw'] > 0 else -1; d = (r['total'] - r['dk_open']) * sg
             self.assertEqual(r['dk_result'], 'W' if d > 0 else 'L' if d < 0 else 'P')
             self.assertEqual(r['dk_clv'], None if r.get('dk_close') is None else round((r['dk_close'] - r['dk_open']) * sg, 1))
 
     def test_summary_matches_rows(self):
         for k in ('3', '5'):
-            sel = [r for r in self.picks if abs(r['edge']) >= int(k)]
+            sel = [r for r in self.picks if abs(r['edge_raw']) >= int(k)]
             self.assertEqual(self.t['summary']['by_edge'][k], cm._totals_rec(sel))
-        s = self.t['summary']; live3 = sum(1 for r in self.picks if not r['backfill'] and abs(r['edge']) >= 3 and r.get('result'))
+        s = self.t['summary']; live3 = sum(1 for r in self.picks if not r['backfill'] and abs(r['edge_raw']) >= 3 and r.get('result'))
         self.assertEqual((s['proven_target'], s['live_graded_3plus']), (cm.TOT_PROVEN_TARGET, live3)); self.assertEqual(s['status'], 'unproven' if live3 < 150 else 'sample_reached')
 
     def test_backtest_is_the_computed_one(self):
