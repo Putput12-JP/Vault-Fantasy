@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       dry:
-        description: 'Scan and settle, but do not publish the ledger'
+        description: 'Scan and settle, but do not write or publish the ledger'
         type: boolean
         default: false
   schedule:
@@ -30,6 +30,7 @@ concurrency:
   cancel-in-progress: false
 permissions:
   contents: write
+  actions: write   # save the ledger artifact before publish, and read it back
 
 jobs:
   paper:
@@ -41,9 +42,13 @@ jobs:
         run: |
           export TZ=America/New_York
           # GitHub often starts scheduled runs late. Accept 0 to 55 minutes
-          # after each ET target. 55 stays under 60 so the backup DST cron
-          # (exactly 60 minutes off) cannot double-run the same slot.
-          now=$((10#$(date +%H) * 60 + 10#$(date +%M)))
+          # after each ET target. In EST a backup cron delayed 60 to 115
+          # minutes can still pass this gate. Concurrency, held_tickers, and
+          # the daily cap limit the damage.
+          # One date call, so the hour, minute, and log line cannot disagree.
+          read -r D H M < <(date '+%F %H %M')
+          stamp="$D $H:$M"
+          now=$((10#$H * 60 + 10#$M))
           go=0
           slot=""
           for t in 0820 1220 1750 2320; do
@@ -56,9 +61,9 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then go=1; slot=manual; fi
           echo "go=$go" >> "$GITHUB_OUTPUT"
           if [ "$go" = "1" ]; then
-            echo "ET $(date '+%F %H:%M') go=1 slot=$slot"
+            echo "ET $stamp go=1 slot=$slot"
           else
-            echo "::notice title=Paper bot skipped::ET $(date '+%F %H:%M') is outside every run window (0 to 55 min after 08:20, 12:20, 17:50, 23:20 ET). This is expected for the backup DST cron entry."
+            echo "::notice title=Paper bot skipped::ET $stamp is outside every run window (0 to 55 min after 08:20, 12:20, 17:50, 23:20 ET). This is expected for a late start or backup DST cron."
           fi
       - uses: actions/checkout@v5
         if: steps.gate.outputs.go == '1'
@@ -73,18 +78,83 @@ jobs:
           python3 tests/test_paper_bot.py
       - name: Load the paper ledger
         if: steps.gate.outputs.go == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
           mkdir -p paper-out
           if git ls-remote --exit-code --heads origin paper-data >/dev/null 2>&1; then
             git fetch --depth=1 origin paper-data
-            git show FETCH_HEAD:ledger.json > paper-out/ledger.json
+            git show FETCH_HEAD:ledger.json > paper-out/published.json
           fi
+          # The previous run uploads this before the push. If that push failed,
+          # the artifact is the only copy of the new trades. Run list is newest
+          # first, so the first hit is the latest ledger we tried to publish.
+          mkdir -p paper-restore
+          gh run list --workflow paper-bot.yml --repo "$REPO" --limit 40 --json databaseId \
+            --jq '.[].databaseId' > paper-restore/runs.txt
+          while IFS= read -r rid; do
+            [ -n "$rid" ] || continue
+            rm -rf paper-restore/out
+            mkdir -p paper-restore/out
+            if gh run download "$rid" --repo "$REPO" --name paper-bot-ledger --dir paper-restore/out >/dev/null 2>&1; then
+              found=$(find paper-restore/out -name ledger.json -type f -print -quit)
+              if [ -n "$found" ]; then
+                cp "$found" paper-out/recovered.json
+                echo "recovered ledger from run ${rid}"
+                break
+              fi
+            fi
+          done < paper-restore/runs.txt
+          python3 - << 'PY'
+          import json, os, sys
+          sys.path.insert(0, '.')
+          from scripts.paper_bot.ledger import choose_base_ledger, held_tickers
+
+          def load(path):
+              if not os.path.isfile(path) or os.path.getsize(path) == 0:
+                  return None
+              with open(path) as f:
+                  data = json.load(f)
+              if not isinstance(data, dict) or not isinstance(data.get('trades'), list):
+                  raise SystemExit(f'{path} is not a paper-bot ledger')
+              return data
+
+          published = load('paper-out/published.json')
+          recovered = load('paper-out/recovered.json')
+          chosen = choose_base_ledger(published, recovered)
+          if chosen is None:
+              print('no published or recovered ledger; the bot will start a new book')
+          else:
+              source = 'recovered' if chosen is recovered else 'published'
+              print(f'ledger source={source} held={len(held_tickers(chosen))}')
+              if source == 'recovered':
+                  print('::notice title=Paper bot ledger::Starting from the ledger a previous run failed to publish, so those tickers stay held.')
+              with open('paper-out/ledger.json', 'w') as f:
+                  json.dump(chosen, f)
+                  f.write('\n')
+          PY
       - name: Run the paper bot
         if: steps.gate.outputs.go == '1'
         env:
           PAPER_BOT_LLM_API_KEY: ${{ secrets.PAPER_BOT_LLM_API_KEY }}
           PAPER_BOT_KILL: ${{ vars.PAPER_BOT_KILL }}
-        run: python3 -m scripts.paper_bot --ledger paper-out/ledger.json --config paper-bot/config.json
+          PAPER_BOT_DRY: ${{ github.event.inputs.dry }}
+        run: |
+          args=(python3 -m scripts.paper_bot --ledger paper-out/ledger.json --config paper-bot/config.json)
+          if [ "$PAPER_BOT_DRY" = "true" ]; then
+            args+=(--dry)
+          fi
+          "${args[@]}"
+      - name: Save the ledger before publish
+        if: steps.gate.outputs.go == '1' && github.event.inputs.dry != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: paper-bot-ledger
+          path: paper-out/ledger.json
+          retention-days: 14
+          if-no-files-found: error
+          overwrite: true
       - name: Publish to paper-data
         if: steps.gate.outputs.go == '1' && github.event.inputs.dry != 'true'
         run: |
