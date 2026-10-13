@@ -20,7 +20,9 @@ from scripts.paper_bot.config import cap_warnings, load, max_edge_of, max_gap_of
 from scripts.paper_bot.engine import Engine
 from scripts.paper_bot.fees import cost_cents, taker_fee
 from scripts.paper_bot.kelly import contracts_for, full_kelly
-from scripts.paper_bot.ledger import empty, et_day, recompute_cash, summarize, tag_pre_fix_trades
+from scripts.paper_bot.ledger import (
+    choose_base_ledger, empty, et_day, held_tickers, recompute_cash, summarize, tag_pre_fix_trades,
+)
 from scripts.paper_bot.live import LIVE_ORDERS_IMPLEMENTED, KalshiSigner, LiveBroker, LiveTradingDisabled
 from scripts.paper_bot.llm_filter import LlmFilter
 from scripts.paper_bot.quotes import market_tradable, parse_market, settlement_of
@@ -799,6 +801,29 @@ def _cfb_quote(ticker, sub, ask):
         'no_bid': round(1 - ask, 4), 'no_ask': round(1 - (ask - 0.02), 4),
         'yes_ask_size': 100, 'no_ask_size': 100, 'status': 'active', 'result': '',
     }
+
+
+def _book(updated, tickers, status='open'):
+    return {'updated': updated, 'trades': [{'ticker': t, 'status': status} for t in tickers]}
+
+
+class LedgerBaseTests(unittest.TestCase):
+    def test_failed_publish_keeps_a_newer_superset(self):
+        published = _book('2026-10-13T12:00:00Z', ['A'])
+        recovered = _book('2026-10-13T16:00:00Z', ['A', 'B'])
+        chosen = choose_base_ledger(published, recovered)
+        self.assertIs(chosen, recovered)
+        self.assertEqual(sorted(held_tickers(chosen)), ['A', 'B'])
+
+    def test_stale_or_incomplete_recovery_stays_on_the_published_book(self):
+        published = _book('2026-10-13T16:00:00Z', ['A', 'B'])
+        older = _book('2026-10-13T12:00:00Z', ['A', 'B', 'C'])
+        missing = _book('2026-10-13T17:00:00Z', ['B'])
+        self.assertIs(choose_base_ledger(published, older), published)
+        self.assertIs(choose_base_ledger(published, missing), published)
+        self.assertIs(choose_base_ledger(published, None), published)
+        self.assertIs(choose_base_ledger(None, missing), missing)
+        self.assertIsNone(choose_base_ledger(None, None))
 
 
 if __name__ == '__main__':

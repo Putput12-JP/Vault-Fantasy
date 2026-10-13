@@ -14,15 +14,31 @@ Usage:
     (walks every commit that touched data.json on the ref, oldest first, then the ref tip)
 """
 import argparse
+import datetime
 import json
 import os
+import shutil
 import subprocess
 import sys
 
 
+def line_key(x):
+    """Canonical line text: 3, 3.0 and "3.0" all give "3". Mirrors evLn() in sharp-money/index.html."""
+    if x is None or x == "":
+        return ""
+    if isinstance(x, bool):
+        return str(x)
+    try:
+        n = float(x)
+    except (TypeError, ValueError):
+        return str(x)
+    if n != n or n in (float("inf"), float("-inf")):
+        return str(x)
+    return str(int(n)) if n == int(n) else repr(n)
+
+
 def key_of(a):
-    line = a.get("line")
-    return "%s|%s|%s|%s" % (a.get("game"), a.get("m"), a.get("side"), "" if line is None else line)
+    return "%s|%s|%s|%s" % (a.get("game"), a.get("m"), a.get("side"), line_key(a.get("line")))
 
 
 def ev_rows(alerts):
@@ -51,11 +67,27 @@ def ev_rows(alerts):
 
 
 def load_history(path):
-    if path and os.path.exists(path):
+    if not (path and os.path.exists(path)):
+        return {}
+    try:
         with open(path) as f:
             h = json.load(f)
-        return {e["key"]: e for e in h.get("entries", [])}
-    return {}
+        if not isinstance(h, dict) or not isinstance(h.get("entries"), list):
+            raise ValueError("expected an object with an entries list")
+        rows = h["entries"]
+        if not all(isinstance(e, dict) and "key" in e for e in rows):
+            raise ValueError("entries must be objects with a key")
+    except (ValueError, OSError) as e:
+        bad = "%s.bad-%s" % (path, datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
+        shutil.copy2(path, bad)
+        print("::warning::ev history %s is unreadable (%s); copied to %s, starting fresh" % (path, e, bad))
+        return {}
+    entries = {}
+    for e in rows:
+        if all(k in e for k in ("game", "m", "side")):
+            e["key"] = key_of(e)
+        entries.setdefault(e["key"], e)
+    return entries
 
 
 def merge(entries, alerts):
