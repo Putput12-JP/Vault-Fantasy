@@ -39,7 +39,7 @@ jobs:
             6)   [ "$h" -ge 10 ] && [ "$h" -le 23 ] && go=1 ;;
             7)   [ "$h" -ge 8 ]  && [ "$h" -le 20 ] && go=1 ;;
           esac
-          if [ "$go" = 0 ] && [ "$h" -ge 9 ] && [ "$h" -le 23 ] && [ "$m" -lt 10 -o "$m" -ge 30 -a "$m" -lt 40 ]; then go=1; fi
+          if [ "$go" = 0 ] && [ "$h" -ge 9 ] && [ "$h" -le 23 ] && { [ "$m" -lt 10 ] || { [ "$m" -ge 30 ] && [ "$m" -lt 40 ]; }; }; then go=1; fi
           [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.force }}" != "false" ] && go=1
           echo "go=$go" >> "$GITHUB_OUTPUT"
       # Keep the Kalshi-vs-books gap loop (update-kb-gaps.yml) running: each loop run lasts ~9 min and this fires every 10, so the next
