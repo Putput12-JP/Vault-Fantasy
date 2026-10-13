@@ -888,6 +888,195 @@ function flagConflicts(picks) {
     else { delete p.conflict; delete p.conflictSides; }
   }
 }
+
+// Bet signals are the line, the money/tickets split, and a book behind
+// Pinnacle. Sharp-account money is context: it is removed from the agree
+// count, and a pick that was only sharp is taken out of the bet ledger.
+// kindsLegacy keeps the old set so the previous record can sit beside the
+// new one. Prices and CLV are copied from a stored alert when that alert
+// already has them. Nothing here is estimated.
+const BET_SET = new Set(BET_KINDS);
+const sideKey = r => `${r.game}|${r.m}|${r.side}`;
+function firstStored(alerts, field, ok = () => true) {
+  const xs = (alerts || []).filter(a => typeof a[field] === 'number' && Number.isFinite(a[field]) && ok(a));
+  if (!xs.length) return null;
+  xs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return xs[0][field];
+}
+function fillQuote(p, alerts) {
+  if (p.price == null) {
+    const price = firstStored(alerts, 'price', a => Math.abs(a.price) >= 100);
+    if (price != null) p.price = price;
+  }
+  if (p.fair == null) {
+    const fair = firstStored(alerts, 'fair', a => a.fair > 0 && a.fair < 1);
+    if (fair != null) p.fair = r3(fair);
+  }
+  if (p.clv == null) {
+    const clv = firstStored(alerts, 'clv');
+    if (clv != null) p.clv = r3(clv);
+    else {
+      const row = (alerts || []).filter(a => typeof a.fair === 'number' && typeof a.close === 'number').sort((a, b) => (a.ts || 0) - (b.ts || 0))[0];
+      if (row) p.clv = r3(row.close - row.fair);
+    }
+  }
+  if (p.result != null && p.units == null && typeof p.price === 'number') {
+    p.units = p.result === 0 ? 0 : p.result > 0 ? r3(payout(p.price)) : -1;
+  }
+}
+function migrateLedger(S) {
+  S.picks ||= {};
+  S.sharpContext ||= {};
+  const by = {};
+  for (const a of S.alerts || []) if (a && a.game && a.m && a.side) (by[sideKey(a)] ||= []).push(a);
+  for (const [k, p] of Object.entries(S.picks)) {
+    if (!Array.isArray(p.kindsLegacy)) p.kindsLegacy = (p.kinds || []).slice();
+    const next = p.kindsLegacy.filter(x => BET_SET.has(x));
+    const hadSharp = p.kindsLegacy.includes('sharp');
+    if (hadSharp && p.sig && p.sig.sharp && !p.context) p.context = p.sig.sharp;
+    if (!next.length) {
+      const row = { ...p, kinds: p.kindsLegacy.slice(), dropped: true, reason: 'sharp-only' };
+      fillQuote(row, by[k] || []);
+      S.sharpContext[k] = row;
+      delete S.picks[k];
+      continue;
+    }
+    p.kinds = next;
+    p.sharpContext = hadSharp || undefined;
+    if (p.sig && typeof p.sig === 'object') p.sig = Object.fromEntries(next.filter(kk => p.sig[kk]).map(kk => [kk, p.sig[kk]]));
+    fillQuote(p, by[k] || []);
+  }
+  flagConflicts(S.picks);
+  S.ledgerV = 3;
+}
+const EF_KIND = { steam: 'line', split: 'money', sharp: 'sharp', cross: 'sharp', behind: 'behind' };
+const OPP_SIDE = { home: 'away', away: 'home', over: 'under', under: 'over' };
+function quoteOf(row, alerts) {
+  const als = alerts || [];
+  let price = typeof row.price === 'number' ? row.price : null;
+  if (price == null) price = firstStored(als, 'price', a => Math.abs(a.price) >= 100);
+  let clv = typeof row.clv === 'number' ? row.clv : null;
+  if (clv == null) {
+    clv = firstStored(als, 'clv');
+    if (clv == null) {
+      const both = als.filter(a => typeof a.fair === 'number' && typeof a.close === 'number').sort((a, b) => (a.ts || 0) - (b.ts || 0))[0];
+      if (both) clv = r3(both.close - both.fair);
+    }
+  }
+  const res = row.result != null ? row.result : null;
+  let units = typeof row.units === 'number' ? row.units : null;
+  if (units == null && price != null && res != null) units = res === 0 ? 0 : res > 0 ? r3(payout(price)) : -1;
+  return { price, clv, units };
+}
+function packRec(rows) {
+  let w = 0, l = 0, p = 0, units = 0, unitsN = 0, clv = 0, clvN = 0, beat = 0;
+  for (const r of rows) {
+    const v = r.res > 0 ? 1 : r.res < 0 ? -1 : 0;
+    if (v > 0) w++; else if (v < 0) l++; else p++;
+    if (typeof r.units === 'number') { units += r.units; unitsN++; }
+    if (r.clvs && r.clvs.length) {
+      const c = r.clvs.reduce((a, b) => a + b, 0) / r.clvs.length;
+      clv += c; clvN++; if (c > 0) beat++;
+    }
+  }
+  return { n: rows.length, w, l, p, units: unitsN ? r3(units) : null, unitsN, clv: clvN ? r3(clv / clvN) : null, clvN, beat };
+}
+// The record the page shows. `legacy` counts sharp as a signal (the old
+// rule, including "the other side had as many"). `rows` is the bet record:
+// sharp removed, sharp-only picks gone, both sides flagged and held out of
+// the agree buckets. Sharp context is every row that had sharp money.
+function assembleLedger(picks, alerts, sharpContext) {
+  const aq = {};
+  for (const a of alerts || []) if (a && a.m && a.side) (aq[sideKey(a)] ||= []).push(a);
+  const grouped = new Map();
+  for (const r of alerts || []) {
+    const kind = EF_KIND[r.type];
+    if (!kind || !r.m || !r.side) continue;
+    const d = sideKey(r);
+    let c = grouped.get(d);
+    if (!c) {
+      c = { game: r.game, gameLbl: r.gameLbl, start: r.start, sport: r.sport, m: r.m, side: r.side, kinds: new Set(), res: 0, graded: false, hline: r.hline ?? null, line: r.line ?? null, alerts: [] };
+      grouped.set(d, c);
+    }
+    c.kinds.add(kind); c.alerts.push(r);
+    if (r.result != null) { c.graded = true; c.res += r.result; }
+    if (r.hline != null) c.hline = r.hline;
+    if (r.line != null) c.line = r.line;
+  }
+  const src = [...(picks || [])];
+  for (const r of sharpContext || []) {
+    if (!r || !r.dropped) continue;
+    if (src.some(p => p.game === r.game && p.m === r.m && p.side === r.side)) continue;
+    src.push(r);
+  }
+  const gamesWithPick = new Set(src.map(r => r.game));
+  const n = [...grouped.values()].filter(r => !gamesWithPick.has(r.game));
+  for (const r of src) {
+    const u = grouped.get(sideKey(r));
+    const kinds = new Set(r.kindsLegacy || r.kinds || []);
+    const q = quoteOf(r, [...(aq[sideKey(r)] || []), ...((u && u.alerts) || [])]);
+    const res = r.result != null ? r.result : (u && u.graded ? (u.res > 0 ? 1 : u.res < 0 ? -1 : 0) : null);
+    n.push({
+      game: r.game, gameLbl: r.gameLbl, start: r.start, sport: r.sport, m: r.m, side: r.side,
+      kinds, res: res == null ? 0 : res, graded: res != null, hline: r.hline ?? (u && u.hline) ?? null, line: r.line ?? (u && u.line) ?? null,
+      clvs: q.clv == null ? [] : [q.clv], units: q.units, price: q.price, from: 'pick',
+    });
+  }
+  const bySide = new Map();
+  for (const r of n) {
+    const k = sideKey(r), prev = bySide.get(k);
+    if (!prev || r.kinds.size > prev.kinds.size) bySide.set(k, r);
+  }
+  const legacy = [...bySide.values()];
+  for (const r of legacy) {
+    const o = bySide.get(`${r.game}|${r.m}|${OPP_SIDE[r.side]}`);
+    r.contested = !!(o && o.kinds.size >= r.kinds.size);
+  }
+  const rows = [];
+  for (const r of legacy) {
+    const kinds = new Set([...r.kinds].filter(k => BET_SET.has(k)));
+    if (!kinds.size) continue;
+    rows.push({ ...r, kinds, legacyN: r.kinds.size, hadSharp: r.kinds.has('sharp'), clvs: r.clvs });
+  }
+  const both = {};
+  for (const r of rows) (both[`${r.game}|${r.m}`] ||= new Set()).add(r.side);
+  for (const r of rows) {
+    r.conflict = both[`${r.game}|${r.m}`].size > 1;
+    r.contested = r.conflict;
+  }
+  const dropped = legacy.filter(r => ![...r.kinds].some(k => BET_SET.has(k)));
+  const regraded = rows.filter(r => r.legacyN !== r.kinds.size);
+  const conflicts = rows.filter(r => r.conflict);
+  const sharpRows = legacy.filter(r => r.kinds.has('sharp'));
+  const was = {};
+  for (const k of [1, 2, 3, 4]) was[k] = packRec(legacy.filter(r => r.graded && !r.contested && r.kinds.size === k));
+  const nowB = {};
+  for (const k of [1, 2, 3]) nowB[k] = packRec(rows.filter(r => r.graded && !r.contested && r.kinds.size === k));
+  const slice = (list, pred) => packRec(list.filter(r => r.graded && pred(r)));
+  const slices = {};
+  const add = (name, predOld, predNew) => {
+    slices[name] = { old: slice(legacy, r => !r.contested && predOld(r)), now: slice(rows, r => !r.contested && predNew(r)) };
+  };
+  add('overall', () => true, () => true);
+  for (const sp of ['nfl', 'cfb', 'nba']) add(sp, r => r.sport === sp, r => r.sport === sp);
+  for (const m of ['sp', 'ml', 'tot']) add(m, r => r.m === m, r => r.m === m);
+  for (const k of [1, 2, 3]) add(k + ' agree', r => r.kinds.size === k, r => r.kinds.size === k);
+  const better = [];
+  for (const [name, s] of Object.entries(slices)) {
+    const od = s.old.w + s.old.l, nd = s.now.w + s.now.l;
+    if (!od || !nd) continue;
+    const or = s.old.w / od, nr = s.now.w / nd;
+    if (nr > or + 1e-9) better.push({ name, old: `${s.old.w}-${s.old.l}${s.old.p ? '-' + s.old.p : ''}`, now: `${s.now.w}-${s.now.l}${s.now.p ? '-' + s.now.p : ''}`, oldN: s.old.n, nowN: s.now.n, decisions: nd });
+  }
+  const ex = rows => rows.slice(0, 6).map(r => ({ game: r.gameLbl, sport: r.sport, m: r.m, side: r.side, kinds: [...r.kinds].sort(), result: r.graded ? (r.res > 0 ? 1 : r.res < 0 ? -1 : 0) : null }));
+  return {
+    rows, legacy, was, now: nowB, slices, better,
+    dropped: dropped.length, droppedGraded: dropped.filter(r => r.graded).length, droppedEx: ex(dropped),
+    regraded: regraded.length, regradedGraded: regraded.filter(r => r.graded).length, regradedEx: ex(regraded),
+    conflicts: conflicts.length, conflictPairs: Math.floor(conflicts.length / 2), conflictsGraded: conflicts.filter(r => r.graded).length, conflictEx: ex(conflicts),
+    sharp: { ...packRec(sharpRows.filter(r => r.graded)), priced: sharpRows.filter(r => r.graded && typeof r.price === 'number').length },
+  };
+}
 function snapPicks(S, games) {
   const t = now(); S.picks ||= {};
   for (const p of Object.values(S.picks)) p.frozen = true;   // a stored row is the first sight we still have
@@ -1045,10 +1234,33 @@ function payload(S, byGame, W, status) {
   return { generated: new Date().toISOString(), ts: t, status, wallets: W, games, alerts, accounts, sigRec, sigBig: Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sigBig])) };
 }
 
+function writeSplit(dir, P) {
+  const heavy = ['splitHist', 'tickets', 'pinHist', 'flowH', 'props', 'kprops', 'soft'];
+  const games = (P.games || []).map(g => { const slim = { ...g }; for (const k of heavy) delete slim[k]; return slim; });
+  const summary = {
+    generated: P.generated, ts: P.ts, status: P.status, wallets: P.wallets, sig: P.sig, sigBig: P.sigBig,
+    games, picks: P.picks, lead: P.lead, sigRec: P.sigRec, ledger: P.ledger, sharpContext: P.sharpContext, split: true,
+    alerts: [], accounts: [],
+  };
+  writeFileSync(resolve(dir, 'summary.json'), JSON.stringify(summary));
+  writeFileSync(resolve(dir, 'alerts.json'), JSON.stringify({ ts: P.ts, alerts: P.alerts || [] }));
+  writeFileSync(resolve(dir, 'accounts.json'), JSON.stringify({ ts: P.ts, accounts: P.accounts || [] }));
+  writeFileSync(resolve(dir, 'props.json'), JSON.stringify({ ts: P.ts, props: P.props || null, propRecord: P.propRecord || null }));
+  writeFileSync(resolve(dir, 'reads.json'), JSON.stringify({ ts: P.ts, picks: P.picks || [], lead: P.lead || [], sigRec: P.sigRec || [], ledger: P.ledger || null }));
+  const gdir = resolve(dir, 'g');
+  mkdirSync(gdir, { recursive: true });
+  for (const g of P.games || []) {
+    const extra = { key: g.key, ts: P.ts };
+    for (const k of heavy) if (g[k] != null) extra[k] = g[k];
+    writeFileSync(resolve(gdir, g.key.replace(/[^a-zA-Z0-9]+/g, '_') + '.json'), JSON.stringify(extra));
+  }
+}
+
 // ── main ────────────────────────────────────────────────────────────────
 async function pollOnce() {
   mkdirSync(DIR, { recursive: true });
   const S = loadState(); S.born ||= now(); S._new = []; S.prevPoll = S.lastPoll || 0; S.lastPoll = now();
+  migrateLedger(S); saveState(S);
   const status = {}, all = [], walletInfo = {};
   // Accounts are scored per sport, but skill travels: NFL-sharp accounts beat
   // the CFB close by +2.2%/trade (194 trades, t 7, 2026 season). So an account
@@ -1093,7 +1305,13 @@ async function pollOnce() {
   S.alerts = S.alerts.filter(a => a.ts > t - 60 * DAY);
   const fresh = S._new; delete S._new;
   const P = payload(S, all, { ...walletInfo }, status);
-  snapPicks(S, P.games); gradePicks(S); P.picks = Object.values(S.picks);
+  migrateLedger(S);
+  snapPicks(S, P.games); gradePicks(S); migrateLedger(S);
+  P.picks = Object.values(S.picks);
+  P.sharpContext = Object.values(S.sharpContext || {}).filter(r => r.dropped).map(({ sig, ...r }) => r);
+  const led = assembleLedger(P.picks, P.alerts, P.sharpContext);
+  const { rows, legacy, ...pub } = led;
+  P.ledger = pub;
   snapLead(S, P.games); P.lead = Object.values(S.lead).filter(x => x.first);
   saveState(S);
   // `sig` changes only when something a viewer would see changes.
@@ -1115,6 +1333,7 @@ async function pollOnce() {
   } catch (e) { log('props board failed', e.message); }
   P.sig = createHash('sha1').update(String(P.alerts.length) + ':' + (P.alerts[0]?.id || '') + ':' + all.map(g => (S.games[g.key]?.pin || []).length + '/' + (S.games[g.key]?.split || []).length).join(',')).digest('hex').slice(0, 12);
   writeFileSync(OUT, JSON.stringify(P));
+  writeSplit(DIR, P);
   writeFileSync(resolve(DIR, 'new_alerts.json'), JSON.stringify(fresh));
   log(new Date().toISOString(), JSON.stringify(status), `${fresh.length} new alerts`);
   for (const a of fresh.slice(0, 12)) log('  +', a.sport, a.type, a.gameLbl, '·', a.text);
@@ -1155,10 +1374,33 @@ function selftestPicks() {
   snapPicks(S, [{ ...e, key: 'nfl:9', start: t0 + 100 }]);
   const leg = S.picks['nfl:9|ml|away'];
   if (!leg.frozen || leg.price != null || leg.kinds[0] !== 'sharp') throw new Error('legacy row changed ' + JSON.stringify(leg));
+  const M = { picks: {
+    'a|sp|home': { game: 'a', m: 'sp', side: 'home', sport: 'nfl', gameLbl: 'A @ B', kinds: ['sharp', 'line'], result: 1, sig: { sharp: 'ctx', line: 'moved' } },
+    'a|sp|away': { game: 'a', m: 'sp', side: 'away', sport: 'nfl', gameLbl: 'A @ B', kinds: ['money'], result: -1 },
+    'b|ml|home': { game: 'b', m: 'ml', side: 'home', sport: 'cfb', gameLbl: 'C @ D', kinds: ['sharp'], result: -1 },
+  }, alerts: [{ game: 'a', m: 'sp', side: 'home', type: 'behind', price: -110, fair: 0.5, close: 0.55, clv: 0.05, ts: 1, result: 1 }], sharpContext: {} };
+  migrateLedger(M);
+  const home = M.picks['a|sp|home'];
+  if (!home || home.kinds.join() !== 'line' || home.kindsLegacy.join() !== 'sharp,line') throw new Error('sharp not stripped ' + JSON.stringify(home));
+  if (home.price !== -110 || !(home.units > 0.9 && home.units < 0.92) || home.clv !== 0.05) throw new Error('quote not copied ' + JSON.stringify(home));
+  if (!home.conflict || !M.picks['a|sp|away'].conflict) throw new Error('both sides not flagged');
+  if (M.picks['b|ml|home'] || !M.sharpContext['b|ml|home'] || !M.sharpContext['b|ml|home'].dropped) throw new Error('sharp-only pick still in the bet ledger');
+  migrateLedger(M);
+  if (M.picks['a|sp|home'].kindsLegacy.join() !== 'sharp,line' || M.picks['a|sp|home'].kinds.join() !== 'line') throw new Error('second migrate rewrote history');
+  const led = assembleLedger(Object.values(M.picks), M.alerts, Object.values(M.sharpContext));
+  if (led.slices.overall.now.n !== 0) throw new Error('conflict counted in the bet record ' + JSON.stringify(led.slices.overall.now));
+  if (led.dropped !== 1 || led.sharp.w !== 1 || led.sharp.l !== 1) throw new Error('sharp context ' + JSON.stringify({ dropped: led.dropped, sharp: led.sharp }));
   console.log('fetch-sharp-money pick selftest ok');
 }
 if (ARG.selftest) {
   selftestPicks();
+  process.exit(0);
+}
+if (ARG.ledger) {
+  const j = JSON.parse(readFileSync(ARG.ledger, 'utf8'));
+  const led = assembleLedger(j.picks || [], j.alerts || [], j.sharpContext || []);
+  const { rows, legacy, ...pub } = led;
+  console.log(JSON.stringify(pub, null, 2));
   process.exit(0);
 }
 if (ARG.loop) {
