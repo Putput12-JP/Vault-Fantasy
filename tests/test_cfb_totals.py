@@ -9,6 +9,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'scripts'))
 import cfb_model as cm
 
+LO, HI = (str(t) for t in cm.TOT_EDGES[:1] + cm.TOT_EDGES[-1:])      # the lowest and highest threshold keys: every key and label below comes from TOT_EDGES
+FLAG_HI = f'{HI}+'
+
 
 class Formula(unittest.TestCase):
     def test_constants_are_the_2022_fit(self):
@@ -67,16 +70,16 @@ class Formula(unittest.TestCase):
     def test_summary_record_and_clv(self):
         rows = [dict(edge=4, result='W', clv=1.0), dict(edge=-6, result='L', clv=-0.5), dict(edge=3.5, result='P', clv=0.0), dict(edge=5, result=None), dict(edge=1, result='W', clv=2.0)]
         s = cm.totals_summary([dict(r, week=5) for r in rows])['by_edge']
-        self.assertEqual((s['3']['won'], s['3']['lost'], s['3']['pushed'], s['3']['pending'], s['3']['n']), (1, 1, 1, 1, 4))
-        self.assertEqual(s['3']['pct'], 0.5); self.assertEqual(s['3']['clv_n'], 3); self.assertAlmostEqual(s['3']['clv_mean'], 0.167, 3)
-        self.assertEqual((s['5']['n'], s['5']['graded'], s['5']['lost']), (2, 1, 1))     # edges 5 and -6, with 5 not yet played
+        self.assertEqual((s[LO]['won'], s[LO]['lost'], s[LO]['pushed'], s[LO]['pending'], s[LO]['n']), (1, 1, 1, 1, 4))
+        self.assertEqual(s[LO]['pct'], 0.5); self.assertEqual(s[LO]['clv_n'], 3); self.assertAlmostEqual(s[LO]['clv_mean'], 0.167, 3)
+        self.assertEqual((s[HI]['n'], s[HI]['graded'], s[HI]['lost']), (2, 1, 1))     # edges 5 and -6, with 5 not yet played
 
-    def test_unproven_until_150_live_graded_3plus_and_secondary_rows_never_count(self):
+    def test_unproven_until_150_live_graded_and_secondary_rows_never_count(self):
         pick = lambda i, **k: dict(dict(week=5, edge=4.0, result='W', clv=1.0, backfill=False), **k)
         s = cm.totals_summary([pick(i) for i in range(149)] + [dict(pick(0), backfill=True), dict(pick(0), edge=1.0), dict(week=5, edge=None, result=None, dk_edge=6.0, dk_result='W', backfill=False)])
-        self.assertEqual((s['proven_target'], s['live_graded_3plus'], s['status']), (150, 149, 'unproven'))      # backfill, sub-3 and secondary-only rows are not live 3+ picks
-        s = cm.totals_summary([pick(i) for i in range(150)]); self.assertEqual((s['live_graded_3plus'], s['status']), (150, 'sample_reached'))
-        self.assertEqual(cm.totals_summary([pick(i, backfill=True) for i in range(3)])['live_graded_3plus'], 0)
+        self.assertEqual((s['proven_target'], s['live_graded'], s['status']), (150, 149, 'unproven'))      # backfill, sub-3 and secondary-only rows are not live 3+ picks
+        s = cm.totals_summary([pick(i) for i in range(150)]); self.assertEqual((s['live_graded'], s['status']), (150, 'sample_reached'))
+        self.assertEqual(cm.totals_summary([pick(i, backfill=True) for i in range(3)])['live_graded'], 0)
 
 
 class Update(unittest.TestCase):
@@ -119,22 +122,22 @@ class Update(unittest.TestCase):
         # open 61.5: model 54.6 is 6.9 under it (5+); the game ends 50 total so the under wins; the close fell to 58, so CLV for an under is +3.5
         self.lines([self.bv()])
         r = self.run_update()['rows'][0]
-        self.assertEqual((r['side'], r['flag'], r['result'], r['total']), ('under', '5+', 'W', 50))
+        self.assertEqual((r['side'], r['flag'], r['result'], r['total']), ('under', FLAG_HI, 'W', 50))
         self.assertEqual((r['open'], r['open_src'], r['close'], r['clv']), (61.5, 'Bovada', 58.0, 3.5))
         self.assertAlmostEqual(r['model_total'], round(self.model, 2)); self.assertEqual(r['edge'], round(round(self.model, 2) - 61.5, 2))
         self.assertTrue(r['backfill']); self.assertEqual(r['totals_version'], cm.TOT_VERSION)
 
     def test_flag_and_grade_use_the_unrounded_edge(self):
         # model 58.5044 vs open 61.5: edge -2.9956 displays as -3.0 but is NOT a 3+ pick
-        self.assertIsNone(cm._flag(-2.9956)); self.assertEqual((cm._flag(-3.0), cm._flag(4.99), cm._flag(-5.0)), ('3+', '3+', '5+'))
+        self.assertIsNone(cm._flag(-2.9956)); self.assertEqual((cm._flag(-cm.TOT_EDGES[0]), cm._flag(cm.TOT_EDGES[-1] - 0.01), cm._flag(-cm.TOT_EDGES[-1])), (f'{LO}+', f'{LO}+', FLAG_HI))
         self.assertEqual(cm._grade_total(58.5044, 61.5, 60.0, 50)[0], 'under')
         self.lines([self.bv(ou=60.0, ouo=61.5)]); saved = cm.totals_project
         cm.totals_project = lambda *a: (30.0, 28.5044, 130.0, 58.5044)
         try: r = self.run_update()['rows'][0]; s = self.run_update()['summary']['by_edge']
         finally: cm.totals_project = saved
         self.assertEqual((r['edge'], r['flag']), (-3.0, None)); self.assertAlmostEqual(r['edge_raw'], -2.9956, 6)
-        self.assertEqual(s['3']['n'], 0)
-        self.assertEqual(cm.totals_summary([dict(week=5, edge=-3.0, edge_raw=-2.9956, result='W', clv=1.0)])['by_edge']['3']['n'], 0)
+        self.assertEqual(s[LO]['n'], 0)
+        self.assertEqual(cm.totals_summary([dict(week=5, edge=-3.0, edge_raw=-2.9956, result='W', clv=1.0)])['by_edge'][LO]['n'], 0)
 
     def test_over_loses_and_push_is_a_push(self):
         self.lines([self.bv(ou=50.0, ouo=50.0)])
@@ -159,7 +162,7 @@ class Update(unittest.TestCase):
         out = self.run_update(); r = out['rows'][0]
         self.assertIsNone(r['open']); self.assertIsNone(r['edge']); self.assertIsNone(r['side']); self.assertIsNone(r['flag']); self.assertNotIn('result', r)
         self.assertEqual((r['dk_open'], r['dk_result'], r['dk_clv']), (61.5, 'W', 3.5))
-        self.assertEqual(out['summary']['by_edge']['3']['n'], 0); self.assertEqual(out['summary']['live_graded_3plus'], 0)       # never in the record
+        self.assertEqual(out['summary']['by_edge'][LO]['n'], 0); self.assertEqual(out['summary']['live_graded'], 0)       # never in the record
         self.lines([self.bv(ou=58.0, ouo=None), self.dk()])                             # a Bovada row with no stored open is no open either
         self.assertIsNone(self.run_update()['rows'][0]['open'])
 
@@ -187,7 +190,7 @@ class Update(unittest.TestCase):
 
     def test_a_v1_graded_row_is_rebuilt_once_then_frozen(self):
         self.lines([self.bv(ou=58.0, ouo=61.5), self.dk(ou=59.0, ouo=60.0)])
-        v1 = dict(game_id=100, week=5, open=40.0, open_src='DraftKings', edge=14.0, side='over', flag='5+', result='L', close=41.0, clv=1.0, backfill=False, upcoming=False)
+        v1 = dict(game_id=100, week=5, open=40.0, open_src='DraftKings', edge=14.0, side='over', flag=FLAG_HI, result='L', close=41.0, clv=1.0, backfill=False, upcoming=False)
         r = self.run_update(dict(rows=[v1]))['rows'][0]
         self.assertEqual((r['totals_version'], r['open'], r['open_src'], r['result']), (cm.TOT_VERSION, 61.5, 'Bovada', 'W'))
         self.assertTrue(r['backfill'])                                                  # the v2 pick was not logged before the game, so it is not a live pick
@@ -200,8 +203,32 @@ class Update(unittest.TestCase):
         # weeks before 4 never appear; the upcoming one needs the next-slate rule (no games done yet, week 1 only), so none show: no placeholders
         self.assertEqual(self.run_update()['rows'], [])
 
-    def test_missing_priors_file_means_no_totals(self):
-        os.remove(cm.TOTALS_PRIORS); self.assertIsNone(self.run_update())
+    def test_missing_priors_file_keeps_the_previous_record_marked_stale(self):
+        self.lines([self.bv()]); prev = self.run_update(); self.assertEqual(len(prev['rows']), 1); self.assertNotIn('stale', prev)
+        os.remove(cm.TOTALS_PRIORS)
+        out = self.run_update(prev=prev)
+        self.assertTrue(out['stale']); self.assertTrue(out['stale_reason']); self.assertEqual(out['rows'], prev['rows']); self.assertEqual(out['summary'], prev['summary'])
+        self.assertIsNone(self.run_update())        # nothing to keep: still None
+
+    def test_graded_rows_survive_when_the_stored_lines_are_dropped(self):
+        n = 6; self.g26 = pd.DataFrame([dict(game_id=100 + i, week=5, homeTeamId=1, awayTeamId=2, homeFinalScore=30, awayFinalScore=20, status_type_completed=True) for i in range(n)])
+        self.lines([self.bv(gid=100 + i) for i in range(n)]); prev = self.run_update()
+        graded = [r for r in prev['rows'] if r.get('result')]; self.assertEqual(len(graded), n)
+        self.lines([self.bv(gid=100)])          # five of the six games lose their stored lines
+        out = self.run_update(prev=prev); kept = {r['game_id'] for r in out['rows'] if r.get('result')}
+        print('graded rows before / after dropping lines:', len(graded), '/', len(kept))
+        self.assertEqual(kept, {r['game_id'] for r in graded}); self.assertEqual(out['summary']['by_edge'][HI]['graded'], prev['summary']['by_edge'][HI]['graded'])
+        self.lines([]); self.assertEqual(len(self.run_update(prev=prev)['rows']), n)      # no lines at all
+
+    def test_row_week_follows_the_board_and_board_rows_get_a_game_id(self):
+        self.g26 = self.g26.iloc[0:0]; self.season_games(28, 67, weeks=(4, 5))
+        self.lines([self.bv(gid=300, wk=6, hs=None, as_=None, ou=57.0, ouo=61.5)])       # the lines file says week 6, the board labels this slate week 5
+        board = [dict(key='feed-x', home_id=1, away_id=2, week=5, kick=1)]
+        cm.attach_game_ids(board, self.g26.iloc[0:0], cm.market_totals(self.sid))         # not in the schedule yet: matched on the stored lines
+        self.assertEqual(board[0]['game_id'], 300)
+        r = cm.totals_update('unused', self.g26, self.F, self.names, self.sid, None, None, 0, board)['rows'][0]
+        self.assertEqual((r['game_id'], r['week'], r['upcoming']), (300, 5, True))
+        self.assertEqual(cm.totals_update('unused', self.g26, self.F, self.names, self.sid, None, None, 0)['rows'][0]['week'], 6)
 
 
 class StoredData(unittest.TestCase):
@@ -238,14 +265,22 @@ class StoredData(unittest.TestCase):
             self.assertEqual(r['dk_clv'], None if r.get('dk_close') is None else round((r['dk_close'] - r['dk_open']) * sg, 1))
 
     def test_summary_matches_rows(self):
-        for k in ('3', '5'):
+        for k in map(str, cm.TOT_EDGES):
             sel = [r for r in self.picks if abs(r['edge_raw']) >= int(k)]
             self.assertEqual(self.t['summary']['by_edge'][k], cm._totals_rec(sel))
-        s = self.t['summary']; live3 = sum(1 for r in self.picks if not r['backfill'] and abs(r['edge_raw']) >= 3 and r.get('result'))
-        self.assertEqual((s['proven_target'], s['live_graded_3plus']), (cm.TOT_PROVEN_TARGET, live3)); self.assertEqual(s['status'], 'unproven' if live3 < 150 else 'sample_reached')
+        s = self.t['summary']; live3 = sum(1 for r in self.picks if not r['backfill'] and abs(r['edge_raw']) >= cm.TOT_EDGES[0] and r.get('result'))
+        self.assertEqual((s['proven_target'], s['live_graded']), (cm.TOT_PROVEN_TARGET, live3)); self.assertEqual(s['status'], 'unproven' if live3 < 150 else 'sample_reached')
 
     def test_backtest_is_the_computed_one(self):
         self.assertEqual(self.t['backtest'], cm.TOT_BACKTEST)
+        self.assertEqual(list(cm.TOT_BACKTEST['by_edge']), [str(t) for t in cm.TOT_EDGES]); self.assertEqual(self.t['edges'], list(cm.TOT_EDGES))
+
+    def test_board_and_totals_join_on_game_id_and_weeks_agree(self):
+        d = json.load(open(os.path.join(ROOT, 'data', 'cfb_model.json'))); ids = {r['game_id']: r for r in self.t['rows']}
+        self.assertTrue(all(b.get('game_id') is not None for b in d['board']))
+        for b in d['board']:
+            r = ids.get(b['game_id'])
+            if r: self.assertEqual(r['week'], b['week'], b['key'])
 
 
 if __name__ == '__main__':

@@ -47,12 +47,11 @@ def run(d, lines_dir):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--dir', required=True); ap.add_argument('--lines', required=True); ap.add_argument('--json'); a = ap.parse_args()
     res, x = run(a.dir, a.lines)
-    t3, t5 = cm.TOT_EDGES; r3, r5 = record(x, t3), record(x, t5)
-    out = dict(seasons='2023-2025', n3=r3['n'], open3=r3['open'], clv3=r3['clv'], clv3_z=r3['clv_z'], under3=r3['under_share'],
-               n5=r5['n'], open5=r5['open'], clv5=r5['clv'], clv5_z=r5['clv_z'], under5=r5['under_share'], games=int(len(x)),
+    recs = {str(t): record(x, t) for t in cm.TOT_EDGES}
+    out = dict(seasons='2023-2025', by_edge={k: dict(n=r['n'], open=r['open'], clv=r['clv'], clv_z=r['clv_z'], under=r['under_share']) for k, r in recs.items()}, games=int(len(x)),
                mae_open=round(float((x.total - x.op).abs().mean()), 3), mae_model=round(float((x.total - x.model_total).abs().mean()), 3),
                note='Bovada open total, weeks 4+, in-season league level, model fit on 2022 only (scripts/cfb_totals_backtest.py)')
-    print(json.dumps(dict(summary=out, edge3=r3, edge5=r5), indent=1))
+    print(json.dumps(dict(summary=out, by_edge=recs), indent=1))
     if a.json: json.dump(out, open(a.json, 'w'), indent=1)
     return res, x
 

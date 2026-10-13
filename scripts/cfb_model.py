@@ -45,8 +45,8 @@ TOT_B0, TOT_B1, TOT_B2 = -10.12, 0.797, 0.150
 TOT_ALPHA = 5.0           # ridge strength for points and plays (the EPA ridge uses st.ALPHA = 300; counts are on a different scale)
 TOT_EDGES = (3, 5)        # the one source for the totals flag thresholds (ascending), points from the market total: flags, summary, backtest and the page (data.edges) all read it
 TOT_VERSION = 3           # 1 = prior-years league level, DraftKings open; 2 = in-season league level, Bovada open; 3 = flags, side and grade from the unrounded edge (edge_raw). Frozen rows of an older version are rebuilt once
-TOT_PROVEN_TARGET = 150   # live (not backfilled) graded 3+ picks before the totals record counts as proven
-TOT_BACKTEST = dict(seasons='2023-2025', n3=742, open3=[395, 344], clv3=0.818, clv3_z=11.07, under3=0.704, n5=289, open5=[162, 125], clv5=1.112, clv5_z=8.74, under5=0.765,
+TOT_PROVEN_TARGET = 150   # live (not backfilled) graded picks at the lowest TOT_EDGES threshold before the totals record counts as proven
+TOT_BACKTEST = dict(seasons='2023-2025', by_edge={'3': dict(n=742, open=[395, 344], clv=0.818, clv_z=11.07, under=0.704), '5': dict(n=289, open=[162, 125], clv=1.112, clv_z=8.74, under=0.765)},   # keyed by the TOT_EDGES thresholds
                     note='Bovada open total, weeks 4+, in-season league level, model fit on 2022 only')  # scripts/cfb_totals_backtest.py
 
 
@@ -475,10 +475,10 @@ def totals_summary(rows):
     rows = [r for r in rows if r.get('edge') is not None]
     pick = lambda t, rs: [r for r in rs if abs(_edge_raw(r)) >= t]
     live = [r for r in rows if not r.get('backfill')]
-    live3 = sum(r.get('result') in ('W', 'L', 'P') for r in pick(TOT_EDGES[0], live))
+    live_graded = sum(r.get('result') in ('W', 'L', 'P') for r in pick(TOT_EDGES[0], live))
     return dict(by_edge={str(t): _totals_rec(pick(t, rows)) for t in TOT_EDGES}, live_by_edge={str(t): _totals_rec(pick(t, live)) for t in TOT_EDGES},
                 by_week={str(w): _totals_rec(pick(TOT_EDGES[0], [r for r in rows if r['week'] == w])) for w in sorted({r['week'] for r in rows if r.get('result')})},
-                proven_target=TOT_PROVEN_TARGET, live_graded_3plus=live3, status='unproven' if live3 < TOT_PROVEN_TARGET else 'sample_reached')
+                proven_target=TOT_PROVEN_TARGET, proven_edge=TOT_EDGES[0], live_graded=live_graded, status='unproven' if live_graded < TOT_PROVEN_TARGET else 'sample_reached')
 
 
 def _edge_raw(r):
@@ -487,7 +487,7 @@ def _edge_raw(r):
 
 
 def _flag(e):
-    """the highest TOT_EDGES threshold the unrounded edge reaches, as '3+' / '5+'"""
+    """the highest TOT_EDGES threshold the unrounded edge reaches, as '<threshold>+'"""
     if e is None: return None
     hit = [t for t in TOT_EDGES if abs(e) >= t]
     return f'{max(hit)}+' if hit else None
@@ -501,15 +501,34 @@ def _grade_total(tot, open_, close, total):
     return ('over' if edge > 0 else 'under'), res, None if close is None else round((close - open_) * sg, 1)
 
 
-def totals_update(d, g26, F, names, sid, prev, feed_totals, now):
+def attach_game_ids(board, g26, mk):
+    """give every spread board row the ESPN game id the totals rows are keyed on (additive: nothing else on the row changes). A game the schedule has is matched on
+    home, away and week; one it does not (not yet in the play-by-play release) on the stored lines file, the unplayed game of that pair, else the one nearest the board week"""
+    pair = {(int(r.homeTeamId), int(r.awayTeamId), int(r.week)): int(r.game_id) for r in g26.itertuples()}      # the board takes a played game's week from the schedule
+    lines = {}
+    for gid, l in mk.items(): lines.setdefault((l['home_id'], l['away_id']), []).append((gid, l))
+    for b in board:
+        if b.get('game_id') is not None: continue
+        if str(b.get('key', '')).startswith('espn:'): b['game_id'] = int(b['key'][5:]); continue
+        k = (b['home_id'], b['away_id'])
+        if k + (b['week'],) in pair: b['game_id'] = pair[k + (b['week'],)]; continue
+        c = lines.get(k)
+        if c: b['game_id'] = min(c, key=lambda t: (t[1].get('hs') is not None, abs(t[1]['wk'] - b['week'])))[0]
+
+
+def totals_update(d, g26, F, names, sid, prev, feed_totals, now, board=None):
     """the totals board and record. For every FBS game from week 4 with a stored Bovada open total: project it with ratings fit on EARLIER weeks only, around
-    that week's in-season league level, compare with the Bovada open, flag 3+ and 5+ (over/under), grade against the open when the game ends, and record the
+    that week's in-season league level, compare with the Bovada open, flag each TOT_EDGES threshold (over/under), grade against the open when the game ends, and record the
     Bovada close and the closing-line value. DraftKings (ESPN's recorded open, else CFBD's) rides along as dk_open / dk_close / dk_edge / dk_result / dk_clv;
     a game with no stored Bovada open has no pick and is kept as a secondary-only row that no record counts.
     A graded row of the current TOT_VERSION is frozen and kept forever; an older one is rebuilt once from the stored numbers (and is backfill, since its pick
     was not logged before the game under this model); an ungraded one is re-projected each run (its inputs are the completed earlier weeks). A row first
-    written after its game already ended is flagged backfill, as the spread pick log does. Returns None when the totals priors file is missing."""
-    if not os.path.exists(TOTALS_PRIORS): return None
+    written after its game already ended is flagged backfill, as the spread pick log does. A graded row is kept even when its stored lines are gone (never
+    dropped for want of a line). `board` (the spread board rows) gives each game the week the board labels it with. When the totals priors file is missing the
+    previous totals block is kept and marked stale, or None when there is none."""
+    if not os.path.exists(TOTALS_PRIORS):
+        if not prev: return None
+        return dict(prev, stale=True, stale_reason='totals priors file missing, rows and record are from the last good run')
     pri = json.load(open(TOTALS_PRIORS))
     prior = {k: ({int(t): st.S * v for t, v in pri[k]['a'].items()}, {int(t): st.S * v for t, v in pri[k]['b'].items()}) for k in ('pts', 'pace')}
     fallback = dict(pts=pri['center']['pts'], pace=pri['center']['pace'])      # prior-years level: used only before any game of the season is final
@@ -525,8 +544,10 @@ def totals_update(d, g26, F, names, sid, prev, feed_totals, now):
     gby = {int(r.game_id): r for r in g26.itertuples()}
     old = {int(r['game_id']): r for r in ((prev or {}).get('rows') or [])}
     nm = lambda t: (names.get(t, [str(t)]) + ['', ''])[2] or names.get(t, [str(t)])[0]
-    rows = []
-    for gid, ln in market_totals(sid).items():
+    bwk = {int(b['game_id']): int(b['week']) for b in (board or []) if b.get('game_id') is not None and b.get('week') is not None}     # the board's week label per game
+    mk = market_totals(sid)
+    rows = [o for gid, o in old.items() if gid not in mk and (o.get('result') or o.get('dk_result'))]          # graded rows whose stored lines are gone: kept as they are
+    for gid, ln in mk.items():
         o = old.get(gid); cur_ver = bool(o) and o.get('totals_version') == TOT_VERSION
         if cur_ver and (o.get('result') or o.get('dk_result')): rows.append(o); continue                  # graded under this version: frozen
         x = gby.get(gid)
@@ -541,7 +562,7 @@ def totals_update(d, g26, F, names, sid, prev, feed_totals, now):
         if x is not None and bool(x.status_type_completed): final = (int(x.homeFinalScore), int(x.awayFinalScore))
         elif ln['hs'] is not None and ln['as_'] is not None: final = (int(ln['hs']), int(ln['as_']))      # the lines feed has the score before the play-by-play release does
         edge_raw = None if ln['open'] is None else raw - ln['open']; edge = None if edge_raw is None else round(edge_raw, 2)
-        row = dict(game_id=gid, week=wk, home_id=h, away_id=aw, home=nm(h), away=nm(aw), model_pts_home=round(ph, 2), model_pts_away=round(pa_, 2), model_plays=round(pl, 2),
+        row = dict(game_id=gid, week=bwk.get(gid, wk), home_id=h, away_id=aw, home=nm(h), away=nm(aw), model_pts_home=round(ph, 2), model_pts_away=round(pa_, 2), model_plays=round(pl, 2),
                    model_total=tot, league_pts=round(cen['pts'], 3), league_plays=round(cen['pace'], 3), open=ln['open'], open_src=ln['open_src'], edge=edge, edge_raw=edge_raw,
                    side=None if edge_raw is None else 'over' if edge_raw > 0 else 'under', flag=_flag(edge_raw),
                    backfill=bool(o.get('backfill')) if cur_ver else final is not None, upcoming=final is None, totals_version=TOT_VERSION)
@@ -847,7 +868,8 @@ def cmd_update(a):
                 if h_ is not None and a_ is not None and ln_ is not None: feed_totals[(h_, a_)] = dict(line=ln_, src=src); break
     try:
         sid_ = {t['school']: int(t['id']) for t in json.load(open(os.path.join(ROOT, 'data', 'cfbd', 'teams_fbs_2026.json')))}
-        totals = totals_update(d, g26, F, names, sid_, prev_totals, feed_totals, now)
+        attach_game_ids(board, g26, market_totals(sid_))
+        totals = totals_update(d, g26, F, names, sid_, prev_totals, feed_totals, now, board)
     except Exception as e:
         print('totals skipped:', type(e).__name__, e, file=sys.stderr); totals = prev_totals
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
