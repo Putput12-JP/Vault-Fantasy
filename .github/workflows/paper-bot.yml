@@ -1,6 +1,8 @@
-# Paper Kalshi bot. Reads public market data, simulates fills, and force-pushes
-# ONE commit on the `paper-data` branch (same pattern as sharp-data). The page
-# at /paper-bot/ reads ledger.json from that branch. This workflow never places
+# Paper Kalshi bot. Reads public market data, simulates fills, and publishes
+# ledger.json to the `paper-data` branch. The publish fetches the branch, merges
+# this run's ledger into what is there (scripts/paper_bot/merge_ledger.py), and
+# pushes a normal commit with retries. It never force-pushes, so two runs cannot
+# overwrite each other. The page at /paper-bot/ reads ledger.json from that branch. This workflow never places
 # an order. paper_only is locked in scripts/paper_bot/config.py.
 name: Paper Kalshi bot
 
@@ -32,7 +34,11 @@ on:
     - cron: '*/30 * * * *'
 
 concurrency:
-  group: paper-bot
+  # The */30 snapshot runs get their own group. In a shared group GitHub keeps one
+  # pending run, so a snapshot queued behind a running Kalshi job would replace a
+  # queued Kalshi run and cancel it. cancel-in-progress stays false, so nothing
+  # already running is stopped.
+  group: ${{ github.event_name == 'schedule' && github.event.schedule == '*/30 * * * *' && 'paper-bot-snap' || 'paper-bot' }}
   cancel-in-progress: false
 permissions:
   contents: write
@@ -90,6 +96,7 @@ jobs:
           pip install cryptography
           python3 tests/test_paper_bot.py
           python3 tests/test_cfb_jp_novig.py
+          python3 tests/test_merge_ledger.py
       - name: Load the paper ledger
         if: steps.gate.outputs.go == '1'
         env:
@@ -205,12 +212,46 @@ jobs:
       - name: Publish to paper-data
         if: steps.gate.outputs.go == '1' && github.event.inputs.dry != 'true'
         run: |
+          # Merge into the branch as it is now, then push a normal commit. A push
+          # that loses a race refetches, re-merges and tries again. No force push.
+          url="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
           mkdir -p paper-publish
-          cp paper-out/ledger.json paper-publish/ledger.json
-          cd paper-publish || exit 1
-          git init -q -b paper-data
-          git config user.name  "vault-bot"
-          git config user.email "vault-bot@users.noreply.github.com"
-          git add ledger.json
-          git commit -q -m "paper bot: $(date -u +%FT%TZ) [skip ci]"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" paper-data
+          git -C paper-publish init -q -b paper-data
+          git -C paper-publish config user.name  "vault-bot"
+          git -C paper-publish config user.email "vault-bot@users.noreply.github.com"
+          pushed=0
+          for attempt in 1 2 3 4 5; do
+            rc=0
+            git ls-remote --exit-code --heads "$url" paper-data >/dev/null 2>&1 || rc=$?
+            if [ "$rc" = "0" ]; then
+              if ! git -C paper-publish fetch -q --depth=1 "$url" paper-data; then
+                echo "attempt $attempt: fetch failed"
+                sleep $((attempt * 3))
+                continue
+              fi
+              git -C paper-publish reset -q --hard FETCH_HEAD
+            elif [ "$rc" != "2" ]; then
+              echo "attempt $attempt: could not reach the remote (ls-remote exit $rc)"
+              sleep $((attempt * 3))
+              continue
+            fi
+            # Local ledger on top of the remote copy (a missing remote file is fine).
+            # A remote ledger that is not a ledger is an error, not an empty book.
+            if ! python3 -m scripts.paper_bot.merge_ledger paper-out/ledger.json paper-publish/ledger.json paper-publish/ledger.json; then
+              echo "::error title=Paper bot publish::The ledger merge failed. Nothing was pushed. The paper-bot-ledger artifact holds this run's ledger."
+              exit 1
+            fi
+            git -C paper-publish add ledger.json
+            git -C paper-publish commit -q -m "paper bot: $(date -u +%FT%TZ) [skip ci]"
+            if git -C paper-publish push -q "$url" paper-data; then
+              pushed=1
+              echo "published on attempt $attempt"
+              break
+            fi
+            echo "attempt $attempt: push rejected, refetching and merging again"
+            sleep $((attempt * 3))
+          done
+          if [ "$pushed" != "1" ]; then
+            echo "::error title=Paper bot publish::Could not push to paper-data after 5 attempts. The paper-bot-ledger artifact holds this run's ledger and the next run starts from it."
+            exit 1
+          fi
