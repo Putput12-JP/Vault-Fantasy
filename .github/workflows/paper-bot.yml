@@ -1,0 +1,90 @@
+# Paper Kalshi bot. Reads public market data, simulates fills, and force-pushes
+# ONE commit on the `paper-data` branch (same pattern as sharp-data). The page
+# at /paper-bot/ reads ledger.json from that branch. This workflow never places
+# an order. paper_only is locked in scripts/paper_bot/config.py.
+name: Paper Kalshi bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: 'Scan and settle, but do not publish the ledger'
+        type: boolean
+        default: false
+  schedule:
+    # GitHub cron is UTC. Each ET clock time is listed twice so daylight time
+    # and standard time both hit it. The gate below keeps the other one quiet.
+    # 08:20 ET morning settle, 12:20 ET (before the 1pm NBA bet clock),
+    # 17:50 ET evening, 23:20 ET late settle.
+    - cron: '20 12 * * *'
+    - cron: '20 13 * * *'
+    - cron: '20 16 * * *'
+    - cron: '20 17 * * *'
+    - cron: '50 21 * * *'
+    - cron: '50 22 * * *'
+    - cron: '20 3 * * *'
+    - cron: '20 4 * * *'
+
+concurrency:
+  group: paper-bot
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Gate to the ET clock
+        id: gate
+        run: |
+          export TZ=America/New_York
+          hm=$(date +%H%M)
+          go=0
+          case "$hm" in
+            081[5-9]|082[0-9]|083[0-5]) go=1 ;;
+            121[5-9]|122[0-9]|123[0-5]) go=1 ;;
+            174[5-9]|175[0-9]|176[0-5]) go=1 ;;
+            231[5-9]|232[0-9]|233[0-5]) go=1 ;;
+          esac
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then go=1; fi
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+          echo "ET $(date +%F\ %H:%M) go=$go"
+      - uses: actions/checkout@v5
+        if: steps.gate.outputs.go == '1'
+      - uses: actions/setup-python@v6
+        if: steps.gate.outputs.go == '1'
+        with:
+          python-version: '3.12'
+      - name: Test
+        if: steps.gate.outputs.go == '1'
+        run: |
+          pip install cryptography
+          python3 tests/test_paper_bot.py
+      - name: Load the paper ledger
+        if: steps.gate.outputs.go == '1'
+        run: |
+          mkdir -p paper-out
+          if git ls-remote --exit-code --heads origin paper-data >/dev/null 2>&1; then
+            git fetch --depth=1 origin paper-data
+            git show FETCH_HEAD:ledger.json > paper-out/ledger.json
+          fi
+      - name: Run the paper bot
+        if: steps.gate.outputs.go == '1'
+        env:
+          PAPER_BOT_LLM_API_KEY: ${{ secrets.PAPER_BOT_LLM_API_KEY }}
+          PAPER_BOT_KILL: ${{ vars.PAPER_BOT_KILL }}
+        run: python3 -m scripts.paper_bot --ledger paper-out/ledger.json --config paper-bot/config.json
+      - name: Publish to paper-data
+        if: steps.gate.outputs.go == '1' && github.event.inputs.dry != 'true'
+        run: |
+          mkdir -p paper-publish
+          cp paper-out/ledger.json paper-publish/ledger.json
+          cd paper-publish
+          git init -q -b paper-data
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git add ledger.json
+          git commit -q -m "paper bot: $(date -u +%FT%TZ) [skip ci]"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" paper-data

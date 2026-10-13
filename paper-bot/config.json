@@ -1,0 +1,28 @@
+{
+  "paper_only": true,
+  "kill_switch": false,
+  "bankroll_start": 1000,
+  "kelly_fraction": 0.25,
+  "min_edge": 0.08,
+  "min_price": 0.05,
+  "max_price": 0.95,
+  "max_spread": 0.10,
+  "max_stake_per_trade": 25,
+  "max_fraction_per_trade": 0.02,
+  "max_stake_per_day": 100,
+  "max_stake_per_market": 25,
+  "max_stake_per_event": 50,
+  "daily_loss_stop": 50,
+  "monthly_cost_target": 30,
+  "sources": {
+    "nba_total": {"enabled": true},
+    "cfb_ml": {"enabled": true}
+  },
+  "llm_filter": {
+    "enabled": false,
+    "env_key": "PAPER_BOT_LLM_API_KEY",
+    "url": "https://api.openai.com/v1/chat/completions",
+    "model": "gpt-4o-mini",
+    "max_calls": 20
+  }
+}

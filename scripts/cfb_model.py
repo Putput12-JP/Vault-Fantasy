@@ -38,11 +38,35 @@ FBS_ADDITIONS = {16}      # teams new to FBS this season (ESPN ids), added each 
 BLEND_W = 0.10           # weight on the model's disagreement in the blended line: fit on 2022-2025 closing lines (0.07 tuned, 0.13 on the test seasons). It cuts the market's miss by 0.01 pts, i.e. nothing
 
 
-def market_check(g, side):
+def cfbd_opens(played=False):
+    """(home_id, away_id) -> first posted home spread (+ = home underdog) from CollegeFootballData, ESPN's recorded open, else a CFBD book that recorded a move first, then DraftKings, Bovada, any.
+    The feed's own 'open' (Action Network book 30) only starts once the game enters its window, so it can sit well inside the true opener:
+    ND @ BYU showed -10 there while the books opened -11 to -12.5. Returns {} until the lines file exists."""
+    lp, tp = os.path.join(ROOT, 'data', 'cfbd', 'lines_2026.json'), os.path.join(ROOT, 'data', 'cfbd', 'teams_fbs_2026.json')
+    if not (os.path.exists(lp) and os.path.exists(tp)): return {}
+    sid = {t['school']: int(t['id']) for t in json.load(open(tp))}
+    best = {}
+    for r in json.load(open(lp)):
+        h, aw = sid.get(r.get('home')), sid.get(r.get('away'))
+        if h is None or aw is None or r.get('so') is None or (r.get('hs') is not None and not played): continue
+        # a row whose open equals its current line may be a snapshot, not a real opener (DK showed 10/10 for ND @ BYU while its total fell 54.5 -> 47.5),
+        # so a book that recorded a move outranks one that did not
+        rk = (0 if r.get('sp') is not None and r['sp'] != r['so'] else 1, {'DraftKings': 0, 'Bovada': 1}.get(r['p'], 2))
+        if (h, aw) not in best or rk < best[(h, aw)][0]: best[(h, aw)] = (rk, float(r['so']))
+    out = {k: v[1] for k, v in best.items()}
+    ep = os.path.join(ROOT, 'data', 'cfbd', 'espn_opens_2026.json')      # ESPN records the open as its own field (scripts/fetch_espn_opens.py): it wins over CFBD
+    if os.path.exists(ep):
+        for r in json.load(open(ep)):
+            h, aw = sid.get(r.get('home')), sid.get(r.get('away'))
+            if h is not None and aw is not None and r.get('so') is not None and (played or (h, aw) in out): out[(h, aw)] = float(r['so'])
+    return out
+
+
+def market_check(g, side, op=None):
     """does the market, as the Sharp Money feed sees it, point the same way as our side? +1 agrees, -1 disagrees, 0 quiet. Three independent reads."""
     sg = 1 if side == 'home' else -1
     out = {}
-    op = ((g.get('open') or {}).get('sp') or {}).get('line')
+    if op is None: op = ((g.get('open') or {}).get('sp') or {}).get('line')
     now = (((g.get('pin') or {}).get('sp') or {}).get('line'))
     if now is None: now = ((g.get('consensus') or {}).get('sp') or {}).get('line')
     if op is not None and now is not None:        # line is the home spread, + = underdog; a falling number means the home side got stronger
@@ -227,6 +251,10 @@ def open_check(g26, F, rated_before, K, HFA):
         if r.get('so') is None or r.get('id') is None: continue
         rk = {'DraftKings': 0, 'Bovada': 1}.get(r['p'], 2)
         if r['id'] not in rows or rk < rows[r['id']][0]: rows[r['id']] = (rk, r)
+    ep = os.path.join(ROOT, 'data', 'cfbd', 'espn_opens_2026.json')       # ESPN's recorded open wins (scripts/fetch_espn_opens.py); same ids as CFBD
+    if os.path.exists(ep):
+        for r in json.load(open(ep)):
+            if r['id'] in rows and r.get('so') is not None: rows[r['id']] = (rows[r['id']][0], dict(rows[r['id']][1], so=r['so'], p='ESPN'))
     games, fbs_games, with_open = [], 0, 0
     for x in g26.itertuples():
         h, aw = int(x.homeTeamId), int(x.awayTeamId)
@@ -280,7 +308,7 @@ def open_check(g26, F, rated_before, K, HFA):
     if isinstance(vs_open, list) and isinstance(vs_close, list) and len(vs_open) == 2 and len(vs_close) == 2:
         backtest = dict(seasons=opening.get('seasons') or '2022-2025', vs_open=vs_open, vs_close=vs_close,
                         note=opening.get('note') or '5+ point disagreements, weeks 4+, from data/cfb_model_backtest.json opening_lines')
-    out = dict(source='CollegeFootballData spreadOpen, DraftKings first, then Bovada', min_week=PICK_MIN_WEEK, fbs_games=fbs_games, with_open=with_open, upcoming=upcoming_n,
+    out = dict(source='ESPN recorded open (DraftKings), else CollegeFootballData spreadOpen', min_week=PICK_MIN_WEEK, fbs_games=fbs_games, with_open=with_open, upcoming=upcoming_n,
                backtest=backtest,
                by_threshold={str(t): rec([g for g in games if abs(g['edge']) >= t]) for t in (3, 5, 7)},
                by_week={str(w): rec([g for g in games if g['week'] == w and abs(g['edge']) >= PICK_EDGE]) for w in sorted({g['week'] for g in games if 'result' in g})})
@@ -339,6 +367,7 @@ def cmd_update(a):
         best = [sc for sc in school2id if nm.startswith(sc + ' ')]
         return school2id[max(best, key=len)] if best else None
     fin = {}
+    copens = cfbd_opens()
     slate, un = [], 0
     if a.sharp and os.path.exists(a.sharp):
         feed = json.load(open(a.sharp)); now = feed['ts']
@@ -360,6 +389,8 @@ def cmd_update(a):
             # The bettable open is the number on the board the moment this game is still pre-kickoff.
             # A game already started is a backfill and does not get one.
             seen = None if started or seen_book is None else dict(src=seen_src, line=line, book=seen_book)
+            co = copens.get((h, aw))
+            if co is not None: oline = co      # the books' first posted number, not the feed's later window-start open
             if started: line = oline          # in-game lines are live, so a backfilled game uses its opening line
             gr_ = gidx.get((h, aw)) if h is not None else None
             if h is None or aw is None or h not in F or aw not in F or line is None:
@@ -374,7 +405,7 @@ def cmd_update(a):
             if abs(edge) >= PICK_EDGE and wk >= PICK_MIN_WEEK:
                 side = 'home' if edge > 0 else 'away'
                 pick = dict(side=side, team=g['home' if side == 'home' else 'away']['short'], line=line if side == 'home' else -line)
-            mc = None if started else market_check(g, 'home' if edge > 0 else 'away')    # in-game lines and money are live, not a read on the pre-game market
+            mc = None if started else market_check(g, 'home' if edge > 0 else 'away', oline)    # in-game lines and money are live, not a read on the pre-game market
             slate.append(dict(key=g['key'], mkt_check=mc, kick=g['start'], home=g['home']['short'], away=g['away']['short'], home_id=h, away_id=aw, week=wk, neutral=neutral,
                               backfill=started, seen=seen, model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None if oline is None else round(-oline, 1),
                               edge=round(edge, 1), pick=pick))
@@ -450,6 +481,11 @@ def cmd_update(a):
                 ent['bettable_open'] = dict(line=seen['line'], price=price, ts=int(now), src=seen['src'], model_margin=s_['model_margin'],
                                             edge=s_['edge'], side=side, entry=ent['entry'])
             board.append(ent); bidx[s_['key']] = ent
+    # games already played were frozen with whatever open the feed had; restate them from the books' first posted number (display only, the projection stays frozen)
+    copens_all = cfbd_opens(played=True)
+    for b in board:
+        co_ = copens_all.get((b['home_id'], b['away_id']))
+        if co_ is not None and not b['key'].startswith('espn:') or co_ is not None and b.get('open_margin') is None: b['open_margin'] = round(-co_, 1)
     seen = {(b['home_id'], b['away_id']) for b in board if not b['key'].startswith('espn:')}
     board[:] = [b for b in board if not (b['key'].startswith('espn:') and (b['home_id'], b['away_id']) in seen)]      # a game the feed also had: keep the feed's entry
     if a.sharp and os.path.exists(a.sharp):
