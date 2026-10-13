@@ -1,4 +1,4 @@
-import contextlib, io, json, os, subprocess, sys, tempfile, unittest
+import contextlib, io, json, os, re, subprocess, sys, tempfile, time, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -87,12 +87,12 @@ def graded(i):
 class Pending(unittest.TestCase):
     SCRIPT = os.path.join(ROOT, "scripts", "build_ev_history.py")
 
-    def cli(self, d, *rows):
+    def cli(self, d, *rows, env=None):
         data = os.path.join(d, "data.json")
         with open(data, "w") as f:
             json.dump({"alerts": list(rows)}, f)
         return subprocess.run([sys.executable, "-I", self.SCRIPT, "--history", os.path.join(d, "h.json"),
-                               "--data", data], capture_output=True, text=True)
+                               "--data", data], capture_output=True, text=True, env=env)
 
     def test_broken_history_parks_rows_then_next_run_merges(self):
         with tempfile.TemporaryDirectory() as d:
@@ -103,6 +103,7 @@ class Pending(unittest.TestCase):
             r = self.cli(d, graded(1), graded(2))
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("::error::", r.stdout)
+            self.assertIn("2 graded rows saved to h.pending.json (2 pending total)", r.stdout)
             with open(h, "rb") as f:
                 self.assertEqual(f.read(), raw)
             pend = os.path.join(d, "h.pending.json")
@@ -111,6 +112,7 @@ class Pending(unittest.TestCase):
             # a second broken run merges into the same pending file, deduped by key
             r = self.cli(d, graded(2), graded(3))
             self.assertNotEqual(r.returncode, 0)
+            self.assertIn("2 graded rows saved to h.pending.json (3 pending total)", r.stdout)
             with open(pend) as f:
                 self.assertEqual(len(json.load(f)["entries"]), 3)
             # repair the history; the next healthy run folds pending in and removes it
@@ -135,6 +137,59 @@ class Pending(unittest.TestCase):
             self.assertEqual(len(stamped), 1, names)
             with open(os.path.join(d, "h.pending.json")) as f:
                 self.assertEqual(f.read(), "also nope")
+
+    def test_unreadable_pending_on_a_healthy_run_is_kept_and_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            h = os.path.join(d, "h.json")
+            with open(h, "w") as f:
+                json.dump({"entries": [entry(9)]}, f)
+            good = os.path.join(d, "h.pending.20200101T000000000000Z.json")
+            with open(good, "w") as f:
+                json.dump({"version": 1, "count": 1, "entries": [entry(8)]}, f)
+            bad = os.path.join(d, "h.pending.json")
+            with open(bad, "w") as f:
+                f.write("not json")
+            r = self.cli(d, graded(1))
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("::error::", r.stdout)
+            self.assertIn("kept for manual repair", r.stdout)
+            with open(bad) as f:
+                self.assertEqual(f.read(), "not json")
+            self.assertFalse(os.path.exists(good))
+            with open(h) as f:
+                keys = {e["key"] for e in json.load(f)["entries"]}
+            self.assertEqual(keys, {entry(9)["key"], entry(8)["key"], "p1|ml|home|"})
+
+    def test_timestamped_pending_name_has_microseconds_and_run_id(self):
+        def once(env):
+            with tempfile.TemporaryDirectory() as d:
+                with open(os.path.join(d, "h.json"), "w") as f:
+                    f.write("nope")
+                with open(os.path.join(d, "h.pending.json"), "w") as f:
+                    f.write("also nope")
+                r = self.cli(d, graded(1), env=env)
+                self.assertNotEqual(r.returncode, 0)
+                stamped = [n for n in os.listdir(d) if n.startswith("h.pending.") and n != "h.pending.json"]
+                self.assertEqual(len(stamped), 1, stamped)
+                return stamped[0]
+
+        bare = os.environ.copy()
+        bare.pop("GITHUB_RUN_ID", None)
+        self.assertRegex(once(bare), r"^h\.pending\.\d{8}T\d{6}\d{6}Z\.json$")
+        with_run = os.environ.copy()
+        with_run["GITHUB_RUN_ID"] = "4242"
+        self.assertRegex(once(with_run), r"^h\.pending\.\d{8}T\d{6}\d{6}Z\.4242\.json$")
+        # Two broken runs must not share a sidecar name.
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "h.json"), "w") as f:
+                f.write("nope")
+            with open(os.path.join(d, "h.pending.json"), "w") as f:
+                f.write("also nope")
+            self.cli(d, graded(1), env=with_run)
+            time.sleep(0.02)
+            self.cli(d, graded(2), env=with_run)
+            stamped = [n for n in os.listdir(d) if re.match(r"h\.pending\.\d{8}T\d{6}\d{6}Z\.4242\.json$", n)]
+            self.assertEqual(len(stamped), 2, os.listdir(d))
 
 
 class LineKey(unittest.TestCase):

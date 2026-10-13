@@ -193,7 +193,12 @@ def write_pending(history, rows):
     try:
         entries = load_history(path)
     except BrokenFile:
-        path = os.path.join(d, "%s.pending.%s.json" % (stem, datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")))
+        # Microseconds, and the Actions run id when set, so two runs in the same second do not share a name.
+        stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        run_id = os.environ.get("GITHUB_RUN_ID")
+        if run_id:
+            stamp = "%s.%s" % (stamp, run_id)
+        path = os.path.join(d, "%s.pending.%s.json" % (stem, stamp))
         entries = {}
     for r in rows:
         entries.setdefault(r["key"], r)
@@ -245,23 +250,30 @@ def main():
     if entries is None:
         saved = "no new graded rows to save"
         if work:
-            saved = "%d graded rows saved to %s" % (len(work), os.path.basename(write_pending(a.history, list(work.values()))))
+            dest = write_pending(a.history, list(work.values()))
+            total = len(load_history(dest))
+            saved = "%d graded rows saved to %s (%d pending total)" % (len(work), os.path.basename(dest), total)
         print("::error::%s; left untouched. %s" % (broken, saved))
         sys.exit(1)
     # Healthy run: fold in any rows parked by an earlier broken run, then drop those files.
+    # A pending file that still cannot be read is kept, and the run goes red while it exists.
     pend = pending_paths(a.history)
     folded = []
+    kept = []
     for pp in pend:
         try:
             for k, row in load_history(pp).items():
                 entries.setdefault(k, row)
             folded.append(pp)
         except BrokenFile as e:
-            print("::warning::%s; kept for manual repair" % e)
+            kept.append(pp)
+            print("::error::%s; kept for manual repair" % e)
     write_history(entries, out)
     for pp in folded:
         os.remove(pp)
     print("scanned %d, history %d -> %d (merged %d pending files)" % (scanned, before, len(entries), len(folded)))
+    if kept:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -107,7 +107,7 @@ jobs:
       - name: Publish to sharp-data
         if: steps.gate.outputs.go == '1'
         run: |
-          cd sharp-out
+          cd sharp-out || exit 1
           rm -f new_alerts.json
           git init -q -b sharp-data
           git config user.name  "vault-bot"
