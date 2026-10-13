@@ -38,7 +38,7 @@ FBS_ADDITIONS = {16}      # teams new to FBS this season (ESPN ids), added each 
 BLEND_W = 0.10           # weight on the model's disagreement in the blended line: fit on 2022-2025 closing lines (0.07 tuned, 0.13 on the test seasons). It cuts the market's miss by 0.01 pts, i.e. nothing
 
 
-def cfbd_opens():
+def cfbd_opens(played=False):
     """(home_id, away_id) -> first posted home spread (+ = home underdog) from CollegeFootballData, a book that recorded a move first, then DraftKings, Bovada, any.
     The feed's own 'open' (Action Network book 30) only starts once the game enters its window, so it can sit well inside the true opener:
     ND @ BYU showed -10 there while the books opened -11 to -12.5. Returns {} until the lines file exists."""
@@ -48,7 +48,7 @@ def cfbd_opens():
     best = {}
     for r in json.load(open(lp)):
         h, aw = sid.get(r.get('home')), sid.get(r.get('away'))
-        if h is None or aw is None or r.get('so') is None or r.get('hs') is not None: continue
+        if h is None or aw is None or r.get('so') is None or (r.get('hs') is not None and not played): continue
         # a row whose open equals its current line may be a snapshot, not a real opener (DK showed 10/10 for ND @ BYU while its total fell 54.5 -> 47.5),
         # so a book that recorded a move outranks one that did not
         rk = (0 if r.get('sp') is not None and r['sp'] != r['so'] else 1, {'DraftKings': 0, 'Bovada': 1}.get(r['p'], 2))
@@ -435,6 +435,11 @@ def cmd_update(a):
                    is_pick=bool(s_['pick']))
         if old: bidx[s_['key']].update(ent)
         else: board.append(ent); bidx[s_['key']] = ent
+    # games already played were frozen with whatever open the feed had; restate them from the books' first posted number (display only, the projection stays frozen)
+    copens_all = cfbd_opens(played=True)
+    for b in board:
+        co_ = copens_all.get((b['home_id'], b['away_id']))
+        if co_ is not None and not b['key'].startswith('espn:') or co_ is not None and b.get('open_margin') is None: b['open_margin'] = round(-co_, 1)
     seen = {(b['home_id'], b['away_id']) for b in board if not b['key'].startswith('espn:')}
     board[:] = [b for b in board if not (b['key'].startswith('espn:') and (b['home_id'], b['away_id']) in seen)]      # a game the feed also had: keep the feed's entry
     if a.sharp and os.path.exists(a.sharp):
