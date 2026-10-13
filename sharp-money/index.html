@@ -785,7 +785,7 @@ var VRD_CSS = `
 .vrd .s.bad{border-color:rgba(255,107,107,.4);background:linear-gradient(180deg,rgba(255,107,107,.08),rgba(255,255,255,.02))}
 .vrd .s em{display:block;font-style:normal;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
 .vrd .s.on em{color:var(--pick)}.vrd .s.bad em{color:var(--loss)}
-.vrd .s strong{display:block;font-size:18px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.vrd .s strong{display:block;font-size:18px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
 .vrd .s small{display:block;font-size:11px;color:var(--mute);margin-top:3px}
 .vrd .s.off strong{color:var(--dim);font-size:14px;font-weight:600}
 .vrd .price{margin-top:10px;border-radius:18px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));padding:12px 14px}
@@ -803,6 +803,13 @@ var VRD_CSS = `
 @container (max-width:500px){.vrd .hd{grid-template-columns:1fr 1fr}.vrd .hd .mid{grid-column:1/-1;grid-row:2;min-width:0;overflow-wrap:anywhere}.vrd .pickline{font-size:34px}.vrd .pickline.sm{font-size:27px}.vrd .sig{grid-template-columns:repeat(2,1fr)}.vrd .price .row{grid-template-columns:1fr}.vrd .foot span{display:none}}
 `;
 // Top Reads card, poster layout. Pf computes everything (read, price check, edge window) and hands it over; this only draws it.
+// Keeps a tile's headline on one row: shrinks the type until it fits the tile (never wraps, never clips).
+function vrdFit(el) {
+  if (!el) return;
+  el.style.fontSize = '';
+  var sz = 18;
+  while (el.scrollWidth > el.clientWidth + 1 && sz > 9) { sz -= 0.5; el.style.fontSize = sz + 'px'; }
+}
 function VaultReadCard(P) {
   var h = U.createElement, g = P.g, l = P.l, d = P.out, id = 'vrd-' + String(g.key).replace(/[^a-z0-9]+/g, '-');
   var parts = String(P.pick).split(' '), last = parts[parts.length - 1], hasSub = parts.length > 1 && /^([+\-\u2212]?\d|ML$)/.test(last);
@@ -817,7 +824,7 @@ function VaultReadCard(P) {
     else if (key === 'sharp') { var sm = /^(\S+) net/.exec(txt); if (sm) { v = sm[1]; small = 'context, not a bet'; } }
     else if (key === 'behind') { var ci = txt.indexOf(','); if (ci > 0) { v = txt.slice(0, ci); small = txt.slice(ci + 1).trim(); } }
     else if (key === 'line') { small = 'line move'; }
-    return h('div', { key: key, className: 's' + (key === 'sharp' ? '' : (ok ? ' on' : ' bad')) }, h('em', null, lbl + (key === 'sharp' || ok ? '' : ' (opposes)')), h('strong', null, v), small ? h('small', null, small) : null);
+    return h('div', { key: key, className: 's' + (key === 'sharp' ? '' : (ok ? ' on' : ' bad')) }, h('em', null, lbl + (key === 'sharp' || ok ? '' : ' (opposes)')), h('strong', { ref: function (el) { vrdFit(el); } }, v), small ? h('small', null, small) : null);
   };
   var w = P.fair, best = P.best, behind = P.behind, left = P.left, pct = P.pct, tcol = pct > 50 ? 'var(--pick)' : pct > 20 ? 'var(--amber)' : 'var(--loss)';
   var res = P.res, pill = res === 1 ? ['w', 'Won'] : res === -1 ? ['x', 'Lost'] : res === 0 ? ['d', 'Push'] : null;
