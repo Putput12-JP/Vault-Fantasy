@@ -2,6 +2,8 @@
 
 Run from the repo root: python3 tests/test_load_base.py
 """
+import contextlib
+import io
 import json
 import os
 import sys
@@ -92,10 +94,29 @@ class Cli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             rec = os.path.join(tmp, 'ledgers')
             os.makedirs(rec)
-            out = os.path.join(tmp, 'ledger.json')
-            self.write(os.path.join(rec, '1.json'), {'hello': 'world'})
-            self.assertEqual(load_base.main(['--recovered-dir', rec, '--out', out]), 2)
+            pub, out = os.path.join(tmp, 'published.json'), os.path.join(tmp, 'ledger.json')
+            self.write(pub, {'hello': 'world'})
+            self.assertEqual(load_base.main(['--published', pub, '--recovered-dir', rec, '--out', out]), 2)
             self.assertFalse(os.path.exists(out))
+
+    def test_cli_skips_a_bad_recovered_file_with_a_warning(self):
+        for name, bad in (('truncated.json', '{"trades": [tru'), ('notledger.json', '{"x":1}')):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                rec = os.path.join(tmp, 'ledgers')
+                os.makedirs(rec)
+                pub, out = os.path.join(tmp, 'published.json'), os.path.join(tmp, 'out', 'ledger.json')
+                self.write(pub, ledger('2026-10-20T12:00:00Z', row('P1')))
+                self.write(os.path.join(rec, '100.json'), ledger('2026-10-20T13:00:00Z', row('P1'), row('K1')))
+                self.write(os.path.join(rec, name), bad)
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    code = load_base.main(['--published', pub, '--recovered-dir', rec, '--out', out])
+                self.assertEqual(code, 0)
+                with open(out) as f:
+                    self.assertEqual(tickers(json.load(f)), ['K1', 'P1'])
+                warnings = [l for l in buf.getvalue().splitlines() if l.startswith('::warning title=Paper bot ledger::')]
+                self.assertEqual(len(warnings), 1)
+                self.assertIn(f'Skipped recovered ledger {os.path.join(rec, name)}:', warnings[0])
 
     def test_cli_with_nothing_writes_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:

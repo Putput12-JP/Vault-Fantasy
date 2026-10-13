@@ -5,7 +5,9 @@
 FILE for --published is the paper-data ledger; a missing or empty file counts as none. Every *.json in
 --recovered-dir is a ledger an earlier run wrote before its publish. They are merged with the published
 ledger by trade id (see merge_ledger), so rows that only one failed-publish artifact holds survive.
-Exit 0 on success (nothing is written when there is no ledger at all), 2 when a file is not a ledger.
+A recovered file that is invalid JSON or not a ledger is skipped with a ::warning line on stdout, so one bad
+artifact cannot block the run. Exit 0 on success (nothing is written when there is no ledger at all), 2 only
+when the published ledger is unreadable or not a ledger.
 """
 import argparse
 import glob
@@ -25,7 +27,20 @@ def main(argv=None):
     paths = sorted(glob.glob(os.path.join(args.recovered_dir, '*.json'))) if args.recovered_dir else []
     try:
         published = read(args.published)
-        recovered = [r for r in (read(p) for p in paths) if r is not None]
+    except (NotALedger, ValueError) as e:
+        print(f'load_base: {e}', file=sys.stderr)
+        return 2
+    recovered = []
+    for p in paths:
+        try:
+            r = read(p)
+        except (NotALedger, ValueError) as e:
+            reason = ' '.join(str(e).split())
+            print(f'::warning title=Paper bot ledger::Skipped recovered ledger {p}: {reason}')
+            continue
+        if r is not None:
+            recovered.append(r)
+    try:
         base = build_base_ledger(published, recovered)
     except NotALedger as e:
         print(f'load_base: {e}', file=sys.stderr)

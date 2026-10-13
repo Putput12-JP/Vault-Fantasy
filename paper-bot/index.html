@@ -553,10 +553,11 @@
       var wRows = watch.map(function (g) {
         return [g.game || g.key, when(secs(g.kick)), (g.edge_bucket || '') + (g.edge != null ? ' (' + fix(g.edge, 1) + ')' : ''),
           g.strike != null ? (g.team ? g.team + ' ' : '') + (num(g.strike) > 0 ? '+' : '') + g.strike : '-',
+          g.strike_distance != null ? fix(g.strike_distance, 1) : '-',
           g.state || '-', listed(g.novig_listed_ts, g.novig_first_seen_ts), listed(g.kalshi_listed_ts, g.kalshi_first_seen_ts)];
       });
       var wt = el('div', 'scroll');
-      wt.appendChild(table(['Game', 'Kick', 'Edge', 'Strike', 'State', 'Novig first listed', 'Kalshi first listed'], wRows, {2:1}));
+      wt.appendChild(table(['Game', 'Kick', 'Edge', 'Strike', 'Strike distance', 'State', 'Novig first listed', 'Kalshi first listed'], wRows, {2:1,4:1}));
       body.appendChild(wt);
     }
 
