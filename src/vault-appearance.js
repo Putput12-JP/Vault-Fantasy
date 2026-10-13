@@ -62,7 +62,7 @@ var CSS = '#va-root{position:fixed;inset:0;z-index:2147483000;display:none;align
 + '.va-sec{background:var(--c);border-radius:16px;padding:16px 16px 14px}.va-sec h3{margin:0;font-size:14px;font-weight:600}.va-sec .d{margin:2px 0 12px;color:var(--t2);font-size:13px}'
 + '.va-hr{height:1px;background:var(--bd);margin:14px 0}'
 + '.va-row{display:flex;align-items:center;gap:16px}.va-row>div:first-child{flex:1;min-width:0}.va-row .d{margin:2px 0 0}'
-+ '.va-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:520px){.va-grid{grid-template-columns:repeat(2,1fr)}}'
++ '.va-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:520px){.va-grid{grid-template-columns:repeat(2,1fr)}.va-row{flex-wrap:wrap;gap:10px 12px}.va-row>div:first-child{flex:1 1 100%}.va-rng{flex:1 1 0;width:auto;max-width:none;min-width:0}}'
 + '.va-opt{all:unset;box-sizing:border-box;display:block;cursor:pointer;text-align:left}.va-opt .pv{display:block;aspect-ratio:1.45;border-radius:12px;border:1.5px solid var(--bd);overflow:hidden;position:relative}'
 + '.va-opt[aria-pressed=true] .pv{border:2px solid var(--t)}.va-opt .nm{display:block;margin:7px 2px 0;font-size:13px;color:var(--t2)}.va-opt[aria-pressed=true] .nm{color:var(--t);font-weight:500}'
 + '.va-opt:focus-visible,.va-sw:focus-visible,.va-x:focus-visible,.va-btn:focus-visible{outline:2px solid var(--t);outline-offset:2px}'
