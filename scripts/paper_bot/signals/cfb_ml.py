@@ -5,7 +5,10 @@ source turns that margin into a win probability with the same Normal conversion
 the NBA Kalshi backtest uses:
 
     sigma = (games-weighted test-season model_miss) * sqrt(pi/2)
-    P(home wins) = Phi(model_margin / sigma)
+    P(home wins) = Phi(priced_margin / sigma)
+
+priced_margin is the game's blend_margin, falling back to the v1 model_margin when
+the blend is missing.
 
 model_miss and which seasons are the test seasons are read from
 data/cfb_model.json's backtest block. Nothing here is a Kalshi result. The
@@ -175,13 +178,25 @@ def proposals_from(model, markets, cfg, now):
         by_event.setdefault(q['event'], []).append(q)
     out = []
     unmatched = 0
+    capped = gapped = 0
+    max_gap = cfg.get('max_model_market_gap', 7)
+    max_gap = float(max_gap) if max_gap else None
+    max_edge = cfg.get('max_edge', 0.15)
+    max_edge = float(max_edge) if max_edge else None
     for event, rows in by_event.items():
         hit = match_board(event, rows, upcoming, ratings, now)
         if not hit:
             unmatched += 1
             continue
         game, home_m, away_m = hit
-        p_home = phi(float(game['model_margin']) / sigma)
+        blend = game.get('blend_margin')
+        priced = float(blend if blend is not None else game['model_margin'])
+        market = game.get('market_margin')
+        market = float(market) if market is not None else None
+        if max_gap is not None and market is not None and abs(priced - market) > max_gap:
+            gapped += 1
+            continue
+        p_home = phi(priced / sigma)
         best = None
         for side_name, q, prob in (('home', home_m, p_home), ('away', away_m, 1 - p_home)):
             if not market_tradable(q, cfg):
@@ -192,6 +207,9 @@ def proposals_from(model, markets, cfg, now):
             if side_size(q, 'yes') < 1:
                 continue
             edge = prob - ask
+            if max_edge is not None and edge > max_edge:
+                capped += 1
+                continue
             if edge < float(cfg['min_edge']):
                 continue
             cand = (edge, side_name, q, prob, ask)
@@ -218,9 +236,12 @@ def proposals_from(model, markets, cfg, now):
             'ask_size': side_size(q, 'yes'),
             'detail': {
                 'model_margin': game.get('model_margin'),
+                'priced_margin': priced,
+                'market_margin': market,
+                'priced_from': 'blend_margin' if blend is not None else 'model_margin',
                 'sigma': prov.get('sigma'),
                 'sigma_from': prov,
-                'formula': 'P(home) = Phi(model_margin / sigma)',
+                'formula': 'P(home) = Phi(priced_margin / sigma)',
                 'week': game.get('week'),
                 'side_team': game.get('home') if side_name == 'home' else game.get('away'),
                 'home': game.get('home'),
@@ -229,7 +250,12 @@ def proposals_from(model, markets, cfg, now):
                 'note': 'Margin model translated to a moneyline. No Kalshi backtest is claimed for this.',
             },
         })
-    return out, f'cfb moneyline: {len(upcoming)} projected games, {len(out)} signals, {unmatched} events unmatched, min week {min_week}'
+    note = f'cfb moneyline: {len(upcoming)} projected games, {len(out)} signals, {unmatched} events unmatched, min week {min_week}'
+    if capped:
+        note += f', {capped} skipped over the max edge cap'
+    if gapped:
+        note += f', {gapped} skipped over the model/market gap cap'
+    return out, note
 
 
 class CfbMoneylineSource:

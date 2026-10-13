@@ -231,3 +231,23 @@ def summarize(ledger):
         'open_mark': open_mark(ledger),
     }
     return ledger['summary']
+
+
+PRE_FIX_TAG = 'pre_fix_raw_v1_margin'
+PRE_FIX_DAY = '2026-10-13'
+
+
+def tag_pre_fix_trades(ledger):
+    """Tag CFB trades opened on 2026-10-13 that priced off the raw v1 margin. Idempotent, never removes a trade."""
+    n = 0
+    for t in ledger.get('trades', []):
+        if t.get('source') != 'cfb_ml' or not t.get('ts') or et_day(t['ts']) != PRE_FIX_DAY:
+            continue
+        d = t.get('detail') or {}
+        if 'priced_margin' in d or d.get('model_margin') is None:
+            continue
+        tags = t.setdefault('tags', [])
+        if PRE_FIX_TAG not in tags:
+            tags.append(PRE_FIX_TAG)
+            n += 1
+    return n

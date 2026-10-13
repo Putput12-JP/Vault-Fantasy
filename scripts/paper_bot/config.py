@@ -9,6 +9,8 @@ DEFAULTS = {
     'bankroll_start': 1000,
     'kelly_fraction': 0.25,
     'min_edge': 0.08,
+    'max_edge': 0.15,
+    'max_model_market_gap': 7,
     'min_price': 0.05,
     'max_price': 0.95,
     'max_spread': 0.10,
@@ -58,12 +60,26 @@ def load(path=None):
     return cfg
 
 
+def max_edge_of(cfg):
+    """Edge above this is treated as a model or quote error, not a find. None or 0 turns it off."""
+    v = cfg.get('max_edge', DEFAULTS['max_edge'])
+    return float(v) if v else None
+
+
+def max_gap_of(cfg):
+    """CFB only: |priced margin - market margin| above this many points is skipped. None or 0 turns it off."""
+    v = cfg.get('max_model_market_gap', DEFAULTS['max_model_market_gap'])
+    return float(v) if v else None
+
+
 def source_cfg(cfg, name):
     """Global gates, with a source block able to raise min_edge or disable itself."""
     sc = dict((cfg.get('sources') or {}).get(name) or {})
     out = {
         'enabled': bool(sc.get('enabled', True)),
         'min_edge': float(sc.get('min_edge', cfg['min_edge'])),
+        'max_edge': max_edge_of({**cfg, **sc}),
+        'max_model_market_gap': max_gap_of({**cfg, **sc}),
         'min_price': float(cfg['min_price']),
         'max_price': float(cfg['max_price']),
         'max_spread': float(cfg['max_spread']),

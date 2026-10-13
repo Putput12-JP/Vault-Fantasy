@@ -11,7 +11,7 @@ from .fees import cost_cents, taker_fee
 from .kalshi_public import KalshiPublic
 from .kelly import contracts_for
 from .ledger import (
-    day_pnl, held_tickers, iso, load as load_ledger, open_mark,
+    day_pnl, held_tickers, tag_pre_fix_trades, iso, load as load_ledger, open_mark,
     recompute_cash, record_equity, save, spent_buckets, summarize,
 )
 from .llm_filter import LlmFilter
@@ -35,6 +35,9 @@ class Engine:
 
     def run(self):
         recompute_cash(self.ledger)
+        tagged = tag_pre_fix_trades(self.ledger)
+        if tagged:
+            self.notes.append(f'tagged {tagged} pre-fix CFB trades pre_fix_raw_v1_margin')
         quotes = self._quotes_for_open()
         settled = self._settle(quotes)
         self._mark(quotes)
@@ -233,7 +236,7 @@ def _row(p, now, status, contracts, stake, fee, prob, llm, bankroll):
 
 def _public_config(cfg):
     keep = ('paper_only', 'kill_switch', 'bankroll_start', 'kelly_fraction', 'min_edge',
-            'min_price', 'max_price', 'max_spread', 'max_stake_per_trade', 'max_fraction_per_trade',
+            'max_edge', 'max_model_market_gap', 'min_price', 'max_price', 'max_spread', 'max_stake_per_trade', 'max_fraction_per_trade',
             'max_stake_per_day', 'max_stake_per_market', 'max_stake_per_event', 'daily_loss_stop',
             'monthly_cost_target')
     out = {k: cfg.get(k) for k in keep}
