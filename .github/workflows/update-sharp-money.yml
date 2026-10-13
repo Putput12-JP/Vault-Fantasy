@@ -65,6 +65,7 @@ jobs:
             git show FETCH_HEAD:state.json > sharp-out/state.json || true
             git show FETCH_HEAD:novig_props.json > sharp-out/novig_props.json || true
             git show FETCH_HEAD:prop_plays.json > sharp-out/prop_plays.json || true
+            git show FETCH_HEAD:ev_alert_history.json > sharp-out/ev_alert_history.json || rm -f sharp-out/ev_alert_history.json
           fi
       # The book feed (PrizePicks / Underdog / Sleeper / Pinnacle props) and the Kalshi prop fairs normally come from update-props.yml,
       # which rides GitHub's own cron and has been landing 4-7 hours apart. A +EV call against a Pinnacle line that old is a phantom
@@ -90,6 +91,13 @@ jobs:
         run: |
           Q=""; [ "${{ github.event.inputs.force }}" = "true" ] && Q="--quick"
           node scripts/fetch-sharp-money.mjs --dir=sharp-out $Q
+      # Permanent graded +EV log. data.json keeps only the newest 1500 alerts, so graded ones age out; this file never drops an entry.
+      # Published next to data.json. Never blocks the publish: on failure the previous file is carried forward untouched.
+      - name: Append graded +EV alerts to history
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          python3 scripts/build_ev_history.py --history sharp-out/ev_alert_history.json --data sharp-out/data.json
       - name: Publish to sharp-data
         if: steps.gate.outputs.go == '1'
         run: |
@@ -101,6 +109,7 @@ jobs:
           git add data.json state.json summary.json alerts.json accounts.json props.json reads.json
           if [ -f novig_props.json ]; then git add novig_props.json; fi
           if [ -f prop_plays.json ]; then git add prop_plays.json; fi
+          if [ -f ev_alert_history.json ]; then git add ev_alert_history.json; fi
           if compgen -G "g/*.json" > /dev/null; then git add g/*.json; fi
           git commit -q -m "sharp money: $(date -u +%FT%TZ) [skip ci]"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" sharp-data
