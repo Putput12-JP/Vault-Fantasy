@@ -20,10 +20,14 @@ Doubtful / Questionable / Probable at their running measured play rates). The
 ratings learn from what actually happened (who really sat), which is not a
 leak: an update only ever happens after its game.
 
-Tuning (2021-22 warm-up, 2022-23 + 2023-24 fit) uses who actually sat, since
-there are no archived injury reports for those seasons. Test seasons 2024-25
-and 2025-26 are then scored with the injury report as of the bet time, against
-the real ESPN open and close lines.
+Tuning (2021-22 warm-up, 2022-23 + 2023-24 fit) uses who actually sat.
+K, REP, ALPHA and CT are searched on the widened GRID below (they had pinned
+to the edge of the old one). Pass c_on_report to score the C axis on the 1pm
+injury report instead, when those seasons' reports are actually on disk
+(docs/game-model-experiments.md). Test seasons 2024-25 and 2025-26 are scored
+with the injury report as of the bet time, against the real ESPN lines.
+`main` overwrites data/game_model.json. The retune experiment does not call
+`main` unless its ship rule passes.
 
   python3 nba/scripts/build_game_model.py            # tune + test + write
   python3 nba/scripts/build_game_model.py --no-tune  # reuse params in data/game_model.json
@@ -234,36 +238,87 @@ def mae(xs):
     return statistics.mean(abs(x) for x in xs) if xs else float('nan')
 
 
-def tune(box):
-    """Coordinate descent on margin + total MAE over the tune seasons (oracle availability)."""
-    P = dict(DEFAULT)
-    if os.path.exists(OUT_JSON):
-        P.update(json.load(open(OUT_JSON)).get('params', {}))
-
-    def score(P):
-        _, recs = run(P, WARM + TUNE, box, record_from=TUNE[0])
-        return (mae([r['oracle'][0] - r['actual_margin'] for r in recs]),
-                mae([r['oracle'][1] - r['actual_total'] for r in recs]))
-
-    grid = {'K': [0.04, 0.05, 0.06, 0.07, 0.08], 'CARRY': [0.4, 0.5, 0.6, 0.7, 0.8],
+# The shipped fit sat on the low/high end of K, REP, ALPHA and CT. OLD_GRID is that
+# search; GRID is the widened one (docs/game-model-experiments.md). The other axes
+# were interior and are unchanged. Two sweeps, same as the original tuner.
+OLD_GRID = {'K': [0.04, 0.05, 0.06, 0.07, 0.08], 'CARRY': [0.4, 0.5, 0.6, 0.7, 0.8],
             'C': [0.0, 0.5, 0.75, 1.0, 1.25, 1.5], 'REP': [0.2, 0.25, 0.3, 0.35, 0.4],
             'B2B': [0.0, 1.0, 1.5, 2.0, 2.5, 3.0], 'KP': [0.03, 0.04, 0.05, 0.06, 0.07],
             'CT': [0.0, 0.4, 0.8, 1.2, 1.6], 'ALPHA': [0.06, 0.09, 0.12, 0.16]}
-    target = {'K': 0, 'CARRY': 0, 'C': 0, 'REP': 0, 'B2B': 0, 'ALPHA': 0, 'KP': 1, 'CT': 1}
+GRID = {'K': [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08],
+        'CARRY': [0.4, 0.5, 0.6, 0.7, 0.8],
+        'C': [0.0, 0.5, 0.75, 1.0, 1.25, 1.5],
+        'REP': [0.2, 0.25, 0.3, 0.35, 0.4, 0.5, 0.6, 0.8],
+        'B2B': [0.0, 1.0, 1.5, 2.0, 2.5, 3.0],
+        'KP': [0.03, 0.04, 0.05, 0.06, 0.07],
+        'CT': [-0.8, -0.4, -0.2, 0.0, 0.2, 0.4, 0.8],
+        'ALPHA': [0.02, 0.03, 0.04, 0.06, 0.09, 0.12, 0.16]}
+TARGET = {'K': 0, 'CARRY': 0, 'C': 0, 'REP': 0, 'B2B': 0, 'ALPHA': 0, 'KP': 1, 'CT': 1}
+
+
+def on_edge(params, grid):
+    """Names of params sitting on an endpoint of `grid`."""
+    hit = []
+    for k, vals in grid.items():
+        if k in params and (abs(params[k] - vals[0]) < 1e-9 or abs(params[k] - vals[-1]) < 1e-9):
+            hit.append(k)
+    return hit
+
+
+def tune(box, grid=None, c_on_report=False, inj=None, start=None, trace=None):
+    """Coordinate descent on the tune seasons. Margin params minimize margin MAE,
+    total params minimize total MAE, both with who actually sat.
+
+    c_on_report: the C axis instead minimizes 1pm-report margin MAE, and only on
+    tune games whose date has a report at or before 1pm ET. Every other axis stays
+    on the oracle objective. Test seasons are never walked."""
+    grid = grid or GRID
+    P = dict(DEFAULT)
+    if start is not None:
+        P.update(start)
+    elif os.path.exists(OUT_JSON):
+        P.update(json.load(open(OUT_JSON)).get('params', {}))
+    covered = set()
+    if c_on_report and inj is not None:
+        for (day, _), reps in inj.snap.items():
+            if any(t <= day + 'T13:00' for t in reps):
+                covered.add(day)
+    cache = {}
+
+    def score(Q):
+        key = tuple(sorted((k, Q[k]) for k in Q))
+        if key in cache:
+            return cache[key]
+        _, recs = run(Q, WARM + TUNE, box, inj=inj if c_on_report else None, record_from=TUNE[0])
+        margin = mae([r['oracle'][0] - r['actual_margin'] for r in recs])
+        total = mae([r['oracle'][1] - r['actual_total'] for r in recs])
+        report = None
+        if c_on_report:
+            sub = [r for r in recs if r['g']['tip_et'].strftime('%Y-%m-%d') in covered and 'am' in r]
+            report = mae([r['am'][0] - r['actual_margin'] for r in sub])
+        cache[key] = (margin, total, report, len(recs))
+        return cache[key]
+
+    def obj(s, k):
+        return s[2] if (k == 'C' and c_on_report) else s[TARGET[k]]
+
     best = score(P)
-    print('start', P, [round(x, 3) for x in best], flush=True)
+    print('start', {k: P[k] for k in grid}, [round(x, 3) if isinstance(x, float) else x for x in best[:3]], flush=True)
     for sweep in range(2):
         for k, vals in grid.items():
-            i = target[k]
             for v in vals:
                 if v == P[k]:
                     continue
-                Q = dict(P, **{k: v})
-                s = score(Q)
-                if s[i] < best[i] - 1e-4:
-                    P, best = Q, s
-            print(f'  sweep {sweep} {k}={P[k]}  margin MAE {best[0]:.3f}  total MAE {best[1]:.3f}', flush=True)
-    return P, best
+                s = score(dict(P, **{k: v}))
+                if obj(s, k) < obj(best, k) - 1e-4:
+                    P, best = dict(P, **{k: v}), s
+            step = {'sweep': sweep, 'param': k, 'value': P[k],
+                    'margin_mae': best[0], 'total_mae': best[1], 'report_margin_mae': best[2]}
+            if trace is not None:
+                trace.append(step)
+            extra = f'  report margin MAE {best[2]:.3f}' if best[2] is not None else ''
+            print(f'  sweep {sweep} {k}={P[k]}  margin MAE {best[0]:.3f}  total MAE {best[1]:.3f}{extra}', flush=True)
+    return P, (best[0], best[1])
 
 
 # ── evaluation vs real lines ───────────────────────────────────────────────
