@@ -30,7 +30,7 @@ concurrency:
   cancel-in-progress: false
 permissions:
   contents: write
-  actions: write   # save the ledger artifact before publish, and read it back
+  actions: read    # list and download the previous run's ledger artifact
 
 jobs:
   paper:
@@ -65,9 +65,9 @@ jobs:
           else
             echo "::notice title=Paper bot skipped::ET $stamp is outside every run window (0 to 55 min after 08:20, 12:20, 17:50, 23:20 ET). This is expected for a late start or backup DST cron."
           fi
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.gate.outputs.go == '1'
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: steps.gate.outputs.go == '1'
         with:
           python-version: '3.12'
@@ -88,24 +88,32 @@ jobs:
             git show FETCH_HEAD:ledger.json > paper-out/published.json
           fi
           # The previous run uploads this before the push. If that push failed,
-          # the artifact is the only copy of the new trades. Run list is newest
-          # first, so the first hit is the latest ledger we tried to publish.
+          # the artifact is the only copy of the new trades. One query for the
+          # newest paper-bot-ledger artifact, then one download. A miss uses
+          # the published ledger.
           mkdir -p paper-restore
-          gh run list --workflow paper-bot.yml --repo "$REPO" --limit 40 --json databaseId \
-            --jq '.[].databaseId' > paper-restore/runs.txt
-          while IFS= read -r rid; do
-            [ -n "$rid" ] || continue
+          meta=""
+          if ! meta=$(gh api --paginate --slurp \
+            "repos/${REPO}/actions/artifacts?name=paper-bot-ledger&per_page=100" \
+            --jq '[.[] | .artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .workflow_run.id'); then
+            echo "::warning title=Paper bot ledger::Could not list ledger artifacts. Using the published ledger."
+            meta=""
+          fi
+          if [ -n "$meta" ] && [ "$meta" != "null" ]; then
             rm -rf paper-restore/out
             mkdir -p paper-restore/out
-            if gh run download "$rid" --repo "$REPO" --name paper-bot-ledger --dir paper-restore/out >/dev/null 2>&1; then
+            if gh run download "$meta" --repo "$REPO" --name paper-bot-ledger --dir paper-restore/out; then
               found=$(find paper-restore/out -name ledger.json -type f -print -quit)
               if [ -n "$found" ]; then
                 cp "$found" paper-out/recovered.json
-                echo "recovered ledger from run ${rid}"
-                break
+                echo "recovered ledger from run ${meta}"
+              else
+                echo "::warning title=Paper bot ledger::Ledger artifact from run ${meta} had no ledger.json. Using the published ledger."
               fi
+            else
+              echo "::warning title=Paper bot ledger::Could not download the ledger artifact from run ${meta}. Using the published ledger."
             fi
-          done < paper-restore/runs.txt
+          fi
           python3 - << 'PY'
           import json, os, sys
           sys.path.insert(0, '.')
@@ -160,7 +168,7 @@ jobs:
         run: |
           mkdir -p paper-publish
           cp paper-out/ledger.json paper-publish/ledger.json
-          cd paper-publish
+          cd paper-publish || exit 1
           git init -q -b paper-data
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
