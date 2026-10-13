@@ -7,11 +7,6 @@ compatibility_date = "2026-09-01"
 [triggers]
 crons = ["*/10 * * * *", "*/2 * * * *"]
 
-# Refresh button. TURNSTILE_SITEKEY is public. The secret is not a var:
-#   wrangler secret put TURNSTILE_SECRET
-# The site key is set under [vars] below (widget covers vaultfantasy.com and www.vaultfantasy.com).
-# POST stays fail-closed (503) until the secret and the Gate binding both exist.
-
 [[durable_objects.bindings]]
 name = "GATE"
 class_name = "Gate"
@@ -26,7 +21,11 @@ WORKFLOW = "update-sharp-money.yml"
 # Also started (at most once per 45 min) by a Refresh click, for the US-books prices. Remove this line to turn that off.
 LINEUP_WORKFLOW = "update-lineup.yml"
 REF = "main"
-# Public Turnstile site key for the Refresh button (served by GET /sitekey).
+# Refresh button. TURNSTILE_SITEKEY is public (served by GET /sitekey).
+# Widget covers vaultfantasy.com and www.vaultfantasy.com.
+# Set the secret before or together with deploy:
+#   wrangler secret put TURNSTILE_SECRET
+# POST stays fail-closed (503) until TURNSTILE_SECRET is set.
 TURNSTILE_SITEKEY = "0x4AAAAAAFVz_fytDiRKCiAo"
 # Kalshi-vs-books gap alerts: dispatched every 2 min in the NFL busy windows (the */2 cron above). Remove this line to turn it off.
 KB_WORKFLOW = "update-kb-gaps.yml"

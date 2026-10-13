@@ -103,7 +103,9 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
     if (req.method === 'GET' && url.pathname === '/sitekey') {
       if (origin && !ORIGINS.includes(origin)) return new Response(JSON.stringify({ ok: false, error: 'origin' }), { status: 403, headers: h });
-      return new Response(JSON.stringify({ sitekey: env.TURNSTILE_SITEKEY || null }), { headers: h });
+      return new Response(JSON.stringify({ sitekey: env.TURNSTILE_SITEKEY || null }), {
+        headers: { ...h, 'Cache-Control': 'public, max-age=300' },
+      });
     }
     if (req.method !== 'POST') return new Response(JSON.stringify({ ok: true, service: 'sharp-refresh' }), { headers: h });
     if (!ORIGINS.includes(origin)) return new Response(JSON.stringify({ ok: false, error: 'origin' }), { status: 403, headers: h });
