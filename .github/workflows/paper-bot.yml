@@ -24,6 +24,12 @@ on:
     - cron: '50 22 * * *'
     - cron: '20 3 * * *'
     - cron: '20 4 * * *'
+    # cfb_jp_novig snapshot pass, every 30 minutes. It runs only that strategy
+    # (--only), so the Kalshi book keeps the four slots above and nothing else.
+    # GitHub cron is best effort and can run late or skip a tick. Each snapshot
+    # carries its real timestamp, and the exit row records how long before kick
+    # its last bid was taken.
+    - cron: '*/30 * * * *'
 
 concurrency:
   group: paper-bot
@@ -51,15 +57,22 @@ jobs:
           now=$((10#$H * 60 + 10#$M))
           go=0
           slot=""
+          snap=0
+          # The 30-minute cron is the snapshot pass, never a full run.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "*/30 * * * *" ]; then
+            snap=1
+          fi
           for t in 0820 1220 1750 2320; do
             tm=$((10#${t:0:2} * 60 + 10#${t:2:2}))
             d=$((now - tm))
             # The 23:20 window runs past midnight.
             if [ "$d" -lt 0 ]; then d=$((d + 1440)); fi
-            if [ "$d" -ge 0 ] && [ "$d" -le 55 ]; then go=1; slot=$t; fi
+            if [ "$snap" = "0" ] && [ "$d" -ge 0 ] && [ "$d" -le 55 ]; then go=1; slot=$t; fi
           done
+          if [ "$snap" = "1" ]; then go=1; slot=snap; fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then go=1; slot=manual; fi
           echo "go=$go" >> "$GITHUB_OUTPUT"
+          echo "slot=$slot" >> "$GITHUB_OUTPUT"
           if [ "$go" = "1" ]; then
             echo "ET $stamp go=1 slot=$slot"
           else
@@ -76,6 +89,7 @@ jobs:
         run: |
           pip install cryptography
           python3 tests/test_paper_bot.py
+          python3 tests/test_cfb_jp_novig.py
       - name: Load the paper ledger
         if: steps.gate.outputs.go == '1'
         env:
@@ -169,8 +183,12 @@ jobs:
           PAPER_BOT_LLM_API_KEY: ${{ secrets.PAPER_BOT_LLM_API_KEY }}
           PAPER_BOT_KILL: ${{ vars.PAPER_BOT_KILL }}
           PAPER_BOT_DRY: ${{ github.event.inputs.dry }}
+          PAPER_BOT_SLOT: ${{ steps.gate.outputs.slot }}
         run: |
           args=(python3 -m scripts.paper_bot --ledger paper-out/ledger.json --config paper-bot/config.json)
+          if [ "$PAPER_BOT_SLOT" = "snap" ]; then
+            args+=(--only cfb_jp_novig)
+          fi
           if [ "$PAPER_BOT_DRY" = "true" ]; then
             args+=(--dry)
           fi
