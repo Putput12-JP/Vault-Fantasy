@@ -40,17 +40,26 @@ jobs:
         id: gate
         run: |
           export TZ=America/New_York
-          hm=$(date +%H%M)
+          # GitHub often starts scheduled runs late. Accept 0 to 55 minutes
+          # after each ET target. 55 stays under 60 so the backup DST cron
+          # (exactly 60 minutes off) cannot double-run the same slot.
+          now=$((10#$(date +%H) * 60 + 10#$(date +%M)))
           go=0
-          case "$hm" in
-            081[5-9]|082[0-9]|083[0-5]) go=1 ;;
-            121[5-9]|122[0-9]|123[0-5]) go=1 ;;
-            174[5-9]|175[0-9]|176[0-5]) go=1 ;;
-            231[5-9]|232[0-9]|233[0-5]) go=1 ;;
-          esac
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then go=1; fi
+          slot=""
+          for t in 0820 1220 1750 2320; do
+            tm=$((10#${t:0:2} * 60 + 10#${t:2:2}))
+            d=$((now - tm))
+            # The 23:20 window runs past midnight.
+            if [ "$d" -lt 0 ]; then d=$((d + 1440)); fi
+            if [ "$d" -ge 0 ] && [ "$d" -le 55 ]; then go=1; slot=$t; fi
+          done
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then go=1; slot=manual; fi
           echo "go=$go" >> "$GITHUB_OUTPUT"
-          echo "ET $(date +%F\ %H:%M) go=$go"
+          if [ "$go" = "1" ]; then
+            echo "ET $(date '+%F %H:%M') go=1 slot=$slot"
+          else
+            echo "::notice title=Paper bot skipped::ET $(date '+%F %H:%M') is outside every run window (0 to 55 min after 08:20, 12:20, 17:50, 23:20 ET). This is expected for the backup DST cron entry."
+          fi
       - uses: actions/checkout@v5
         if: steps.gate.outputs.go == '1'
       - uses: actions/setup-python@v6
