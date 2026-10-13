@@ -289,7 +289,7 @@ def open_check(g26, F, rated_before, K, HFA):
     def rec(sel):
         w = sum(g.get('result') == 'W' for g in sel); l = sum(g.get('result') == 'L' for g in sel); n = w + l
         return dict(won=w, lost=l, pct=round(w / n, 3) if n else None, z=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None)
-    out = dict(source='CollegeFootballData spreadOpen, DraftKings first, then Bovada', min_week=PICK_MIN_WEEK, fbs_games=fbs_games, with_open=len(games),
+    out = dict(source='ESPN recorded open (DraftKings), else CollegeFootballData spreadOpen', min_week=PICK_MIN_WEEK, fbs_games=fbs_games, with_open=len(games),
                backtest=dict(seasons='2022-2025', vs_open=[435, 321], vs_close=[368, 346], note='5+ point disagreements, weeks 4+, model tuned on 2022-23 only'),
                by_threshold={str(t): rec([g for g in games if abs(g['edge']) >= t]) for t in (3, 5, 7)},
                by_week={str(w): rec([g for g in games if g['week'] == w and abs(g['edge']) >= PICK_EDGE]) for w in sorted({g['week'] for g in games if 'result' in g})})
