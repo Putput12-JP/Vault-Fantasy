@@ -89,20 +89,33 @@ jobs:
           fi
           # The previous run uploads this before the push. If that push failed,
           # the artifact is the only copy of the new trades. One query for the
-          # newest paper-bot-ledger artifact, then one download. A miss uses
-          # the published ledger.
+          # newest unexpired paper-bot-ledger artifact on main, then one
+          # download. The artifact payload has no workflow id, so the run id
+          # must also belong to paper-bot.yml. A miss uses the published ledger.
           mkdir -p paper-restore
           meta=""
-          if ! meta=$(gh api --paginate --slurp \
+          if ! gh api --paginate \
+            "repos/${REPO}/actions/workflows/paper-bot.yml/runs?branch=main&per_page=100" \
+            --jq '.workflow_runs[].id' > paper-restore/run-ids.txt; then
+            echo "::warning title=Paper bot ledger::Could not list paper bot runs. Using the published ledger."
+          elif ! meta=$(gh api --paginate \
             "repos/${REPO}/actions/artifacts?name=paper-bot-ledger&per_page=100" \
-            --jq '[.[] | .artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .workflow_run.id'); then
+            --jq '.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main") | "\(.created_at) \(.workflow_run.id)"' \
+            | while IFS=' ' read -r created rid; do
+                if [ -n "$rid" ] && grep -qxF "$rid" paper-restore/run-ids.txt; then
+                  printf '%s %s\n' "$created" "$rid"
+                fi
+              done \
+            | sort | tail -n1 | cut -d" " -f2); then
             echo "::warning title=Paper bot ledger::Could not list ledger artifacts. Using the published ledger."
             meta=""
+          elif [ -z "$meta" ]; then
+            echo "::warning title=Paper bot ledger::No unexpired ledger artifact from this workflow on main. Using the published ledger."
           fi
-          if [ -n "$meta" ] && [ "$meta" != "null" ]; then
+          if [ -n "$meta" ]; then
             rm -rf paper-restore/out
             mkdir -p paper-restore/out
-            if gh run download "$meta" --repo "$REPO" --name paper-bot-ledger --dir paper-restore/out; then
+            if gh run download "$meta" --repo "$REPO" --name paper-bot-ledger --dir paper-restore/out 2>paper-restore/download.err; then
               found=$(find paper-restore/out -name ledger.json -type f -print -quit)
               if [ -n "$found" ]; then
                 cp "$found" paper-out/recovered.json
@@ -111,7 +124,8 @@ jobs:
                 echo "::warning title=Paper bot ledger::Ledger artifact from run ${meta} had no ledger.json. Using the published ledger."
               fi
             else
-              echo "::warning title=Paper bot ledger::Could not download the ledger artifact from run ${meta}. Using the published ledger."
+              detail=$(tr '\n' ' ' < paper-restore/download.err)
+              echo "::warning title=Paper bot ledger::Could not download the ledger artifact from run ${meta}. Using the published ledger. ${detail}"
             fi
           fi
           python3 - << 'PY'
