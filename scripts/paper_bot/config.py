@@ -25,6 +25,7 @@ DEFAULTS = {
     'sources': {
         'nba_total': {'enabled': True},
         'cfb_ml': {'enabled': True},
+        'cfb_jp_novig': {'enabled': True},   # a Novig strategy, not a Kalshi source: see cfb_jp_novig.py
     },
     'llm_filter': {
         'enabled': False,

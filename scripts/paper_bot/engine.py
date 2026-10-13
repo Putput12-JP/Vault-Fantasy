@@ -7,8 +7,10 @@ import argparse
 import math
 from datetime import datetime, timezone
 
+from . import cfb_jp_novig
 from .config import load
 from .fees import cost_cents, taker_fee
+from .http_json import get_json
 from .kalshi_public import KalshiPublic
 from .kelly import contracts_for
 from .ledger import (
@@ -25,7 +27,7 @@ def log(msg):
 
 
 class Engine:
-    def __init__(self, cfg, ledger, sources, kalshi, llm, now=None):
+    def __init__(self, cfg, ledger, sources, kalshi, llm, now=None, strategies=None):
         self.cfg = cfg
         self.ledger = ledger
         self.sources = sources
@@ -33,6 +35,7 @@ class Engine:
         self.llm = llm
         self.now = now or datetime.now(timezone.utc)
         self.notes = []
+        self.strategies = strategies or []
 
     def run(self):
         for w in self.cfg.get('config_warnings') or []:
@@ -45,6 +48,10 @@ class Engine:
         settled = self._settle(quotes)
         self._mark(quotes)
         halt, why = self._halted()
+        if halt:
+            self.notes.append('strategies paused: ' + why)
+        else:
+            self._run_strategies()
         opened = vetoed = skipped = 0
         if halt:
             self.notes.append(why)
@@ -88,8 +95,37 @@ class Engine:
         summarize(self.ledger)
         return run
 
+    def _run_strategies(self):
+        """Separate paper books (own rows, own accounting). A failure is a run note, never a crash."""
+        for s in self.strategies:
+            try:
+                note = s.run(self.ledger, self.now, self.kalshi)
+            except Exception as e:
+                note = f'{getattr(s, "name", "strategy")} failed: {str(e)[:180]}'
+            if note:
+                self.notes.append(note)
+
+    def run_strategies_only(self):
+        """The 30-minute pass: snapshots, entries, exits and grading for the strategies, nothing else.
+
+        It does not touch the Kalshi book, the equity curve or the run log, so frequent runs cannot
+        crowd out the scheduled runs' history.
+        """
+        halt, why = self._halted()
+        if halt:
+            self.notes.append('strategies paused: ' + why)
+        else:
+            self._run_strategies()
+        self.ledger['config'] = _public_config(self.cfg)
+        self.ledger['updated'] = iso(self.now)
+        self.ledger['live_orders'] = False
+        self.ledger['paper_only'] = True
+        summarize(self.ledger)
+        return {'ts': iso(self.now), 'notes': self.notes}
+
     def _quotes_for_open(self):
-        tickers = [t['ticker'] for t in self.ledger['trades'] if t.get('status') == 'open' and t.get('ticker')]
+        tickers = [t['ticker'] for t in self.ledger['trades']
+                   if t.get('status') == 'open' and t.get('ticker') and not t.get('book')]
         if not tickers:
             return {}
         try:
@@ -101,7 +137,7 @@ class Engine:
     def _settle(self, quotes):
         n = 0
         for t in self.ledger['trades']:
-            if t.get('status') != 'open':
+            if t.get('status') != 'open' or t.get('book'):
                 continue
             q = quotes.get(t['ticker'])
             if not q:
@@ -130,7 +166,7 @@ class Engine:
     def _mark(self, quotes):
         stamp = iso(self.now)
         for t in self.ledger['trades']:
-            if t.get('status') != 'open':
+            if t.get('status') != 'open' or t.get('book'):
                 continue
             q = quotes.get(t['ticker'])
             if not q:
@@ -246,7 +282,8 @@ def _public_config(cfg):
             'monthly_cost_target')
     out = {k: cfg.get(k) for k in keep}
     out['sources'] = {name: {'enabled': bool((sc or {}).get('enabled', True)),
-                             'min_edge': (sc or {}).get('min_edge', cfg.get('min_edge'))}
+                             'min_edge': (None if name == cfb_jp_novig.STRATEGY
+                                          else (sc or {}).get('min_edge', cfg.get('min_edge')))}
                       for name, sc in (cfg.get('sources') or {}).items()}
     llm = cfg.get('llm_filter') or {}
     out['llm_filter'] = {'enabled': bool(llm.get('enabled')), 'model': llm.get('model')}
@@ -259,13 +296,27 @@ def main(argv=None):
     ap.add_argument('--ledger', default='paper-out/ledger.json')
     ap.add_argument('--config', default='paper-bot/config.json')
     ap.add_argument('--root', default='.')
+    ap.add_argument('--only', choices=[cfb_jp_novig.STRATEGY], help='run just this strategy (the 30-minute snapshot pass)')
     ap.add_argument('--dry', action='store_true', help='run the scan, print the summary, do not write the ledger')
     args = ap.parse_args(argv)
     cfg = load(args.config)
     ledger = load_ledger(args.ledger, cfg['bankroll_start'])
     sources = load_sources(cfg, args.root)
     llm = LlmFilter(cfg)
-    engine = Engine(cfg, ledger, sources, KalshiPublic(), llm)
+    strategies = [s for s in (cfb_jp_novig.build(cfg, args.root, get=get_json),) if s is not None]
+    if args.only:
+        strategies = [s for s in strategies if s.name == args.only]
+        engine = Engine(cfg, ledger, [], KalshiPublic(), None, strategies=strategies)
+        run = engine.run_strategies_only()
+        for note in run['notes']:
+            log(note)
+        if args.dry:
+            log('dry run: ledger not written')
+        else:
+            save(args.ledger, ledger)
+            log('wrote ' + args.ledger)
+        return 0
+    engine = Engine(cfg, ledger, sources, KalshiPublic(), llm, strategies=strategies)
     run = engine.run()
     log(f"opened {run['opened']}  settled {run['settled']}  vetoed {run['vetoed']}  "
         f"cash ${run['cash']:.2f}  equity ${run['equity']:.2f}")
