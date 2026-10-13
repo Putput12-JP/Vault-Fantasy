@@ -39,7 +39,7 @@ BLEND_W = 0.10           # weight on the model's disagreement in the blended lin
 
 
 def cfbd_opens(played=False):
-    """(home_id, away_id) -> first posted home spread (+ = home underdog) from CollegeFootballData, a book that recorded a move first, then DraftKings, Bovada, any.
+    """(home_id, away_id) -> first posted home spread (+ = home underdog) from CollegeFootballData, ESPN's recorded open, else a CFBD book that recorded a move first, then DraftKings, Bovada, any.
     The feed's own 'open' (Action Network book 30) only starts once the game enters its window, so it can sit well inside the true opener:
     ND @ BYU showed -10 there while the books opened -11 to -12.5. Returns {} until the lines file exists."""
     lp, tp = os.path.join(ROOT, 'data', 'cfbd', 'lines_2026.json'), os.path.join(ROOT, 'data', 'cfbd', 'teams_fbs_2026.json')
@@ -53,7 +53,13 @@ def cfbd_opens(played=False):
         # so a book that recorded a move outranks one that did not
         rk = (0 if r.get('sp') is not None and r['sp'] != r['so'] else 1, {'DraftKings': 0, 'Bovada': 1}.get(r['p'], 2))
         if (h, aw) not in best or rk < best[(h, aw)][0]: best[(h, aw)] = (rk, float(r['so']))
-    return {k: v[1] for k, v in best.items()}
+    out = {k: v[1] for k, v in best.items()}
+    ep = os.path.join(ROOT, 'data', 'cfbd', 'espn_opens_2026.json')      # ESPN records the open as its own field (scripts/fetch_espn_opens.py): it wins over CFBD
+    if os.path.exists(ep):
+        for r in json.load(open(ep)):
+            h, aw = sid.get(r.get('home')), sid.get(r.get('away'))
+            if h is not None and aw is not None and r.get('so') is not None and (played or (h, aw) in out): out[(h, aw)] = float(r['so'])
+    return out
 
 
 def market_check(g, side, op=None):

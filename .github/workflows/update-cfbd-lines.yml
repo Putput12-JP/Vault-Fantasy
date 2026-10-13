@@ -28,11 +28,13 @@ jobs:
         run: |
           S=$(date -u -d '-60 days' +%Y)      # January still belongs to the season that started in the fall
           python3 scripts/fetch_cfbd_lines.py --years "$S-$S"
+      - name: Fetch ESPN opens
+        run: python3 scripts/fetch_espn_opens.py --year "$(date -u -d '-60 days' +%Y)"
       - name: Commit if changed
         run: |
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
-          git add data/cfbd/lines_*.json
+          git add data/cfbd/lines_*.json data/cfbd/espn_opens_*.json
           git diff --cached --quiet && { echo "No changes."; exit 0; }
           git commit -m "cfbd: refresh betting lines [skip ci]"
           git pull --rebase -q origin main
