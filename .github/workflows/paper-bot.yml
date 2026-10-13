@@ -42,7 +42,7 @@ concurrency:
   cancel-in-progress: false
 permissions:
   contents: write
-  actions: read    # list and download the previous run's ledger artifact
+  actions: read    # list and download the newest 10 ledger artifacts, merged with the published ledger
 
 jobs:
   paper:
