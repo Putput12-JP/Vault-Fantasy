@@ -1030,7 +1030,7 @@ return(0,a.jsxs)("div",{style:{marginTop:EM?0:8,display:EM?"flex":void 0,flexDir
  views=[["picks","Picks"],["sharp","Sharp-backed"],["up","Upcoming"],["all","All games"],["done","Completed"]],
  oppOf=x=>x.side==="home"?"away":"home",
  sharpSt=x=>{let c=x.cards;if(!c||x.result)return null;let a1=c[x.side].length,b1=c[oppOf(x)].length;return a1&&!b1?"with":b1&&!a1?"against":a1&&b1?"split":null},
- list=B.filter(x=>CfRow?(CfRow.keys.includes(x.key)||VscCfOpen(CfRow.label,x)):(view==="picks"?x.is_pick!==!1:view==="done"?!!x.result:view==="up"?!x.result&&x.kick>now:view==="sharp"?sharpSt(x)==="with":!0)&&(wkf==="All weeks"||x.week===+wkf.slice(5))).sort((x,y)=>y.kick-x.kick||(y.is_pick===!1?0:1)-(x.is_pick===!1?0:1)||Math.abs(y.edge)-Math.abs(x.edge)),
+ list=B.filter(x=>CfRow?(CfRow.keys.includes(x.key)||VscCfOpen(CfRow.label,x)):(view==="picks"?x.is_pick!==!1:view==="done"?!!x.result:view==="up"?!x.result&&x.kick>now:view==="sharp"?sharpSt(x)==="with":!0)&&(wkf==="All weeks"||x.week===+wkf.slice(5))).sort((x,y)=>(wkf==='All weeks'?(x.result?1:0)-(y.result?1:0)||(x.result?y.kick-x.kick:x.kick-y.kick):y.kick-x.kick)||(y.is_pick===!1?0:1)-(x.is_pick===!1?0:1)||Math.abs(y.edge)-Math.abs(x.edge)),
  cur=list.find(x=>x.key===selK)||list[0],
  pane=NW?{border:`1px solid ${n.border}`,borderRadius:z.radius.md,overflow:"hidden",background:n.bg}:{border:`1px solid ${n.border}`,borderRadius:z.radius.md,overflow:"auto",height:"min(calc(100vh - 360px), 900px)",minHeight:560,background:n.bg},
  sticky={position:NW?"static":"sticky",top:0,zIndex:2,background:n.bg,padding:"12px 14px",borderBottom:`1px solid ${n.border}`},
