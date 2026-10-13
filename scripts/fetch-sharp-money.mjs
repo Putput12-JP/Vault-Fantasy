@@ -155,10 +155,13 @@ function loadWallets(file) {
   try {
     const j = JSON.parse(readFileSync(resolve(ROOT, 'data', file), 'utf8'));
     const rec = {};
+    const sport = file.includes('_cfb') ? 'cfb' : file.includes('_nba') ? 'nba' : 'nfl';
     for (const w of [...(j.sharp || []), ...(j.dull || [])]) {
+      const pub = j.stats?.[w];
+      if (pub && pub.n != null) { rec[w] = { n: pub.n, games: pub.games ?? pub.n, trades: pub.trades ?? null, clv: r3(pub.clv), t: pub.t, sport }; continue; }
       const a = j.wallets?.[w]; if (!a) continue;
       const [n, s, ss, gms] = a, m = s / n, sd = Math.sqrt(Math.max(ss / n - m * m, 0));
-      rec[w] = { n, games: gms, clv: r3(m), t: sd ? +(m / (sd / Math.sqrt(n))).toFixed(1) : 0, sport: file.includes('_cfb') ? 'cfb' : file.includes('_nba') ? 'nba' : 'nfl' };
+      rec[w] = { n, games: gms, clv: r3(m), t: sd ? +(m / (sd / Math.sqrt(n))).toFixed(1) : 0, sport };
     }
     return { sharp: new Set(j.sharp || []), dull: new Set(j.dull || []), rec, n: Object.keys(j.wallets || {}).length, generated: j.generated };
   } catch (e) { return { sharp: new Set(), dull: new Set(), rec: {}, n: 0, generated: null }; }
