@@ -3,6 +3,7 @@
 Cash is recomputed from the trades on every run, so a crashed write cannot
 leave the bankroll ahead of the fills.
 """
+import copy
 import json
 import os
 from datetime import datetime, timezone
@@ -131,22 +132,86 @@ def held_tickers(ledger):
     return out
 
 
-def build_base_ledger(published, recovered):
+def _number(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def validate_ledger(led):
+    """Raise ValueError unless led is something the bot can start from. Works on a copy, led is not modified.
+
+    Checks what the bot reads at startup: bankroll_start, updated, strategies, config, equity, runs, and
+    every trade a dict with a numeric (or absent) stake and payout. Then runs held_tickers, recompute_cash
+    and summarize on the copy, so a ledger that would crash them is refused here, not mid-run.
+    """
+    try:
+        if not isinstance(led, dict) or not isinstance(led.get('trades'), list):
+            raise ValueError('not a paper-bot ledger')
+        if not _number(led.get('bankroll_start')):
+            raise ValueError('bankroll_start is missing or not a number')
+        if led.get('updated') is not None and not isinstance(led['updated'], str):
+            raise ValueError('updated is not a string')
+        strategies = led.get('strategies')
+        if strategies is not None and (not isinstance(strategies, dict)
+                                       or not all(isinstance(s, dict) for s in strategies.values())):
+            raise ValueError('strategies is not a dict of dicts')
+        if led.get('config') is not None and not isinstance(led['config'], dict):
+            raise ValueError('config is not a dict')
+        for key in ('equity', 'runs'):
+            if led.get(key) is not None and not isinstance(led[key], list):
+                raise ValueError(f'{key} is not a list')
+        for i, t in enumerate(led['trades']):
+            if not isinstance(t, dict):
+                raise ValueError(f'trade {i} is not a dict')
+            for k in ('stake', 'payout'):
+                if t.get(k) is not None and not _number(t[k]):
+                    raise ValueError(f'trade {i} has a non-numeric {k}')
+        probe = copy.deepcopy(led)
+        held_tickers(probe)
+        recompute_cash(probe)
+        summarize(probe)
+    except ValueError:
+        raise
+    except Exception as e:
+        raise ValueError(f'{type(e).__name__}: {e}')
+
+
+def _warn_skipped(label, reason):
+    print(f'::warning title=Paper bot ledger::Skipped recovered ledger {label}: {" ".join(str(reason).split())}')
+
+
+def build_base_ledger(published, recovered, labels=None, on_skip=_warn_skipped):
     """Ledger a run should start from: published merged with every recovered ledger.
 
     published is the paper-data copy or None. recovered is a list of ledgers that earlier runs wrote
-    before their publish (None entries are skipped). A failed publish leaves new trades only in that
-    run's artifact, and a snapshot run that started earlier can upload a newer artifact without them,
-    so no single artifact is trusted alone: the union by trade id is taken, the more advanced row wins,
-    and held_tickers of the result covers every ticker any source held. None when every input is None.
+    before their publish (None entries are skipped); labels names them for the warning (default their
+    position). A failed publish leaves new trades only in that run's artifact, and a snapshot run that
+    started earlier can upload a newer artifact without them, so no single artifact is trusted alone: the
+    union by trade id is taken, the more advanced row wins, and held_tickers of the result covers every
+    ticker any source held. None when every input is None.
+
+    Each recovered ledger is merged on its own: it is validated, merged, and the merged result validated.
+    Any failure skips that ledger (on_skip(label, reason)) and keeps the previous result, so a bad
+    artifact can never become the base. The published ledger is validated alone and a failure there
+    raises ValueError. Inputs are not modified.
     """
     from .merge_ledger import merge_ledgers      # lazy: merge_ledger imports cfb_jp_novig, which imports this module
-    found = [led for led in [published] + list(recovered or []) if led is not None]
-    if not found:
-        return None
-    base = found[0]
-    for led in found[1:]:
-        base = merge_ledgers(led, base)
+    base = None
+    if published is not None:
+        validate_ledger(published)
+        base = published      # merge_ledgers copies, so a merged result never aliases it
+    labels = list(labels) if labels is not None else []
+    for i, led in enumerate(recovered or []):
+        if led is None:
+            continue
+        label = labels[i] if i < len(labels) else f'#{i}'
+        try:
+            validate_ledger(led)
+            cand = led if base is None else merge_ledgers(led, base)      # a lone ledger is the base as is
+            validate_ledger(cand)
+        except Exception as e:
+            on_skip(label, e if isinstance(e, ValueError) else f'{type(e).__name__}: {e}')
+            continue
+        base = cand
     return base
 
 

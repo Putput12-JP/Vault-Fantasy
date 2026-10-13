@@ -118,6 +118,54 @@ class Cli(unittest.TestCase):
                 self.assertEqual(len(warnings), 1)
                 self.assertIn(f'Skipped recovered ledger {os.path.join(rec, name)}:', warnings[0])
 
+    def test_cli_skips_a_ledger_shaped_recovered_file_with_bad_contents(self):
+        good = ledger('2026-10-20T13:00:00Z', row('P1'), row('K1'))
+        normal = ledger('2026-10-20T14:00:00Z', row('P1'), row('B1'))
+        bad_cases = {
+            'a.json': {'trades': [5, None, {'id': 'w', 'status': [1]}], 'strategies': 'x', 'equity': [1, 2]},
+            'b.json': dict(normal, strategies='x'),
+            'c.json': ledger('2026-10-20T15:00:00Z', row('P1'), row('C1', stake='abc')),
+            'd.json': {'trades': [], 'updated': 5},
+        }
+        for name, bad in bad_cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                rec = os.path.join(tmp, 'ledgers')
+                os.makedirs(rec)
+                pub, out = os.path.join(tmp, 'published.json'), os.path.join(tmp, 'out', 'ledger.json')
+                self.write(pub, ledger('2026-10-20T12:00:00Z', row('P1')))
+                self.write(os.path.join(rec, '100.json'), good)
+                self.write(os.path.join(rec, name), bad)
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    code = load_base.main(['--published', pub, '--recovered-dir', rec, '--out', out])
+                self.assertEqual(code, 0)
+                with open(out) as f:
+                    self.assertEqual(tickers(json.load(f)), ['K1', 'P1'])
+                warnings = [l for l in buf.getvalue().splitlines() if l.startswith('::warning title=Paper bot ledger::')]
+                self.assertEqual(len(warnings), 1)
+                self.assertIn(f'Skipped recovered ledger {os.path.join(rec, name)}:', warnings[0])
+
+    def test_a_bad_newer_ledger_is_not_the_base_and_inputs_are_untouched(self):
+        pub = ledger('2026-10-20T12:00:00Z', row('P1'))
+        bad = {'trades': [], 'updated': 5}
+        good = ledger('2026-10-20T13:00:00Z', row('P1'), row('K1'))
+        before = json.dumps([pub, bad, good], sort_keys=True)
+        skipped = []
+        base = build_base_ledger(pub, [bad, good], on_skip=lambda label, why: skipped.append(label))
+        self.assertEqual(tickers(base), ['K1', 'P1'])
+        self.assertEqual(skipped, ['#0'])
+        self.assertEqual(json.dumps([pub, bad, good], sort_keys=True), before)
+
+    def test_a_bad_published_ledger_is_fatal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rec = os.path.join(tmp, 'ledgers')
+            os.makedirs(rec)
+            pub, out = os.path.join(tmp, 'published.json'), os.path.join(tmp, 'ledger.json')
+            self.write(pub, {'trades': [], 'strategies': 'x'})
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(load_base.main(['--published', pub, '--recovered-dir', rec, '--out', out]), 2)
+            self.assertFalse(os.path.exists(out))
+
     def test_cli_with_nothing_writes_nothing(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = os.path.join(tmp, 'ledger.json')
