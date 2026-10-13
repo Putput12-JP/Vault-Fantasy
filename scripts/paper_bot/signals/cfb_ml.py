@@ -5,7 +5,10 @@ source turns that margin into a win probability with the same Normal conversion
 the NBA Kalshi backtest uses:
 
     sigma = (games-weighted test-season model_miss) * sqrt(pi/2)
-    P(home wins) = Phi(model_margin / sigma)
+    P(home wins) = Phi(priced_margin / sigma)
+
+priced_margin is the game's blend_margin, falling back to the v1 model_margin when
+the blend is missing.
 
 model_miss and which seasons are the test seasons are read from
 data/cfb_model.json's backtest block. Nothing here is a Kalshi result. The
@@ -24,6 +27,7 @@ import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
+from ..config import max_edge_of, max_gap_of
 from ..quotes import market_tradable, side_price, side_size
 from .nba_total import MONTHS, phi, ticker_date
 
@@ -64,6 +68,15 @@ def sigma_from_backtest(bt):
         'test': bt.get('test'),
         'seasons': used,
     }
+
+
+def _finite(x):
+    """x as a float, or None when it is missing or not a finite number."""
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
 
 
 def _tokens(name):
@@ -109,19 +122,22 @@ def _side_names(game, side, ratings):
     rating = ratings.get(int(rid)) if rid is not None and int(rid) in ratings else None
     if rating:
         names.append(rating.get('team') or '')
-        if rating.get('abbr'):
-            names.append(rating['abbr'])
     return [n for n in names if n], rating
 
 
-def _label_matches(label, names):
+def _abbr_of(game, side, ratings):
+    rid = game.get('home_id' if side == 'home' else 'away_id')
+    rating = ratings.get(int(rid)) if rid is not None and int(rid) in ratings else None
+    return (rating or {}).get('abbr') or ''
+
+
+def _label_matches(label, names, abbr=''):
     lab = str(label or '').strip()
     for n in names:
         if team_match(lab, n):
             return True
-        if lab.upper() == str(n).upper() and 2 <= len(lab) <= 5:
-            return True
-    return False
+    # An abbreviation only matches itself. As a prefix it would let 'MISS' (Ole Miss) claim 'Missouri'.
+    return bool(abbr) and 2 <= len(lab) <= 5 and lab.upper() == str(abbr).upper()
 
 
 def match_board(event, markets, board, ratings, now):
@@ -142,11 +158,14 @@ def match_board(event, markets, board, ratings, now):
             continue
         home_names, _ = _side_names(g, 'home', ratings)
         away_names, _ = _side_names(g, 'away', ratings)
+        home_abbr, away_abbr = _abbr_of(g, 'home', ratings), _abbr_of(g, 'away', ratings)
         home_m = away_m = None
         for m, lab in labels:
-            if _label_matches(lab, home_names) and not _label_matches(lab, away_names):
+            is_home = _label_matches(lab, home_names, home_abbr)
+            is_away = _label_matches(lab, away_names, away_abbr)
+            if is_home and not is_away:
                 home_m = m
-            elif _label_matches(lab, away_names) and not _label_matches(lab, home_names):
+            elif is_away and not is_home:
                 away_m = m
         if home_m and away_m and home_m is not away_m:
             exact = kd == day
@@ -175,13 +194,36 @@ def proposals_from(model, markets, cfg, now):
         by_event.setdefault(q['event'], []).append(q)
     out = []
     unmatched = 0
+    capped = gapped = bad_margin = bad_market = 0
+    max_gap = max_gap_of(cfg)
+    max_edge = max_edge_of(cfg)
     for event, rows in by_event.items():
         hit = match_board(event, rows, upcoming, ratings, now)
         if not hit:
             unmatched += 1
             continue
         game, home_m, away_m = hit
-        p_home = phi(float(game['model_margin']) / sigma)
+        blend = game.get('blend_margin')
+        priced = _finite(blend)
+        priced_from = 'blend_margin'
+        if priced is None:
+            priced = _finite(game.get('model_margin'))
+            priced_from = 'model_margin'
+        if priced is None:
+            bad_margin += 1
+            continue
+        market = _finite(game.get('market_margin'))
+        if max_gap is not None and game.get('market_margin') is not None:
+            if market is None:
+                bad_market += 1
+                continue
+            if abs(priced - market) > max_gap:
+                gapped += 1
+                continue
+        p_home = phi(priced / sigma)
+        if not math.isfinite(p_home):
+            bad_margin += 1
+            continue
         best = None
         for side_name, q, prob in (('home', home_m, p_home), ('away', away_m, 1 - p_home)):
             if not market_tradable(q, cfg):
@@ -192,6 +234,11 @@ def proposals_from(model, markets, cfg, now):
             if side_size(q, 'yes') < 1:
                 continue
             edge = prob - ask
+            if not math.isfinite(edge):
+                continue
+            if max_edge is not None and edge > max_edge:
+                capped += 1
+                continue
             if edge < float(cfg['min_edge']):
                 continue
             cand = (edge, side_name, q, prob, ask)
@@ -217,10 +264,13 @@ def proposals_from(model, markets, cfg, now):
             'price': ask,
             'ask_size': side_size(q, 'yes'),
             'detail': {
-                'model_margin': game.get('model_margin'),
+                'model_margin': _finite(game.get('model_margin')),
+                'priced_margin': priced,
+                'market_margin': market,
+                'priced_from': priced_from,
                 'sigma': prov.get('sigma'),
                 'sigma_from': prov,
-                'formula': 'P(home) = Phi(model_margin / sigma)',
+                'formula': 'P(home) = Phi(priced_margin / sigma)',
                 'week': game.get('week'),
                 'side_team': game.get('home') if side_name == 'home' else game.get('away'),
                 'home': game.get('home'),
@@ -229,7 +279,16 @@ def proposals_from(model, markets, cfg, now):
                 'note': 'Margin model translated to a moneyline. No Kalshi backtest is claimed for this.',
             },
         })
-    return out, f'cfb moneyline: {len(upcoming)} projected games, {len(out)} signals, {unmatched} events unmatched, min week {min_week}'
+    note = f'cfb moneyline: {len(upcoming)} projected games, {len(out)} signals, {unmatched} events unmatched, min week {min_week}'
+    if capped:
+        note += f', {capped} skipped over the max edge cap'
+    if gapped:
+        note += f', {gapped} skipped over the model/market gap cap'
+    if bad_margin:
+        note += f', {bad_margin} skipped, bad margin'
+    if bad_market:
+        note += f', {bad_market} skipped, bad market margin'
+    return out, note
 
 
 class CfbMoneylineSource:
