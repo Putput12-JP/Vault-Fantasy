@@ -395,7 +395,8 @@ def cmd_update(a):
             gr_ = gidx.get((h, aw)) if h is not None else None
             if h is None or aw is None or h not in F or aw not in F or line is None:
                 un += 1; continue
-            wk = int(gr_.week) if gr_ is not None else through; neutral = bool(gr_ is not None and gr_.neutral_site == True)
+            wk = int(gr_.week) if gr_ is not None else through + 1      # an unplayed game is not in the play-by-play: it is the NEXT week's, not the last finished week's
+            neutral = bool(gr_ is not None and gr_.neutral_site == True)
             ra_w, rb_w = rated_before(wk)
             Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
             pred = K * (Pw(h) - Pw(aw)) + (0.0 if neutral else HFA)
@@ -447,6 +448,15 @@ def cmd_update(a):
     if os.path.exists(OUT):
         try: log = json.load(open(OUT)).get('log', [])
         except Exception: log = []
+    sl_ = {s['key']: s for s in slate}
+    for e in log:       # a pick logged before kickoff under the wrong week was projected with ratings missing the last finished week: re-derive it from the slate, or drop it if it is no longer a pick
+        s_ = sl_.get(e['key'])
+        if s_ and e['kick'] > now and 'result' not in e and not e.get('backfill') and e['week'] != s_['week']:
+            e['_redo'] = True
+            if s_['pick']:
+                e.update(week=s_['week'], side=s_['pick']['side'], team=s_['pick']['team'], entry=s_['pick']['line'], model_margin=s_['model_margin'],
+                         market_margin=s_['market_margin'], edge=s_['edge'], neutral=s_['neutral'], line_src=s_.get('line_src'))
+    log = [e for e in log if not (e.pop('_redo', False) and not sl_[e['key']]['pick'])]
     have = {e['key'] for e in log}
     for s in slate:
         if s['pick'] and s['key'] not in have and (s['kick'] > now or s['backfill']):
