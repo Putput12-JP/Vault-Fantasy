@@ -725,8 +725,8 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .cutph{position:absolute;bottom:0;height:calc(var(--h) * var(--sc,1));width:calc(var(--h) * var(--sc,1) * 1.3714);max-width:none;left:calc(var(--h) * .55 - var(--cx,.5) * var(--h) * var(--sc,1) * 1.3714)}
 table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.cutc .pl>div{align-self:center;padding:6px 0}
 .pl{display:flex;align-items:center;gap:10px}.pl>div{min-width:0}.pp-av.sm{width:32px;height:32px;border-width:1px;font-size:10px;flex:none}.tm{display:inline-flex;align-items:center;gap:6px}
-.gstrip{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;flex:1;min-width:0;padding:2px 2px 6px;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
-.gday{display:flex;gap:6px;flex:none;padding-right:10px;margin-right:2px;border-right:1px solid var(--border);scroll-snap-align:start}
+.gstrip{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;flex:1;min-width:0;padding:2px 2px 6px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.gday{display:flex;gap:6px;flex:none;padding-right:10px;margin-right:2px;border-right:1px solid var(--border)}
 .gday:last-child{border-right:0;padding-right:2px}
 .gdl{display:grid;align-content:center;justify-items:start;width:38px;font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);letter-spacing:.04em;line-height:1.35}
 .gdl b{font-weight:600;color:var(--fg2);text-transform:uppercase}
@@ -740,9 +740,6 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .gtile em{font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums}
 .gtile[aria-pressed="true"] em{color:var(--fg2)}
 .gtile.gall{width:84px;align-content:center;justify-items:start}
-.gtile.gall{position:sticky;left:2px;z-index:2;background-color:var(--surface);box-shadow:8px 0 8px -4px var(--surface)}
-.gtile.gall[aria-pressed="true"]{background-color:var(--raised)}
-.gstrip{scroll-padding-left:94px}
 .gtile.gall b{font-size:13px;font-weight:600}.gtile.gall small{font-size:11px;color:var(--fg3)}
 .gdot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
 @media (prefers-reduced-motion:reduce){ .pv-toast,.pv-toast.on{transition:none} .gtile{transition:none} .gtile:active{transform:none} }
