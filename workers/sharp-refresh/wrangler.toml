@@ -9,9 +9,8 @@ crons = ["*/10 * * * *", "*/2 * * * *"]
 
 # Refresh button. TURNSTILE_SITEKEY is public. The secret is not a var:
 #   wrangler secret put TURNSTILE_SECRET
-# Create the widget for vaultfantasy.com and www.vaultfantasy.com, then set the site key here.
-# Leave it unset and POST stays fail-closed (503 once the secret or the Gate binding is missing).
-# TURNSTILE_SITEKEY = ""
+# The site key is set under [vars] below (widget covers vaultfantasy.com and www.vaultfantasy.com).
+# POST stays fail-closed (503) until the secret and the Gate binding both exist.
 
 [[durable_objects.bindings]]
 name = "GATE"
@@ -27,6 +26,8 @@ WORKFLOW = "update-sharp-money.yml"
 # Also started (at most once per 45 min) by a Refresh click, for the US-books prices. Remove this line to turn that off.
 LINEUP_WORKFLOW = "update-lineup.yml"
 REF = "main"
+# Public Turnstile site key for the Refresh button (served by GET /sitekey).
+TURNSTILE_SITEKEY = "0x4AAAAAAFVz_fytDiRKCiAo"
 # Kalshi-vs-books gap alerts: dispatched every 2 min in the NFL busy windows (the */2 cron above). Remove this line to turn it off.
 KB_WORKFLOW = "update-kb-gaps.yml"
 # GITHUB_TOKEN is a secret: `wrangler secret put GITHUB_TOKEN`
