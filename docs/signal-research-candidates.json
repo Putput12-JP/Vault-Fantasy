@@ -1,0 +1,224 @@
+{
+ "line_move_from_open": {
+  "note": "first logged Pinnacle number to the last snapshot 3h+ before kickoff, move >= 1 point, follow the move at the post-move number. Open = first number we logged, not the true open.",
+  "all": {
+   "train": {
+    "n": 45,
+    "fair_n": 18,
+    "w": 26,
+    "l": 19,
+    "p": 0,
+    "win": 0.578,
+    "vs_fair": 0.169,
+    "z_vs_fair": 1.435,
+    "roi_stored_px": null,
+    "roi_n": 0,
+    "clv": 0.056,
+    "clv_n": 45,
+    "z_vs_50": 1.043
+   },
+   "held_out": {
+    "n": 32,
+    "fair_n": 13,
+    "w": 16,
+    "l": 15,
+    "p": 1,
+    "win": 0.516,
+    "vs_fair": 0.042,
+    "z_vs_fair": 0.301,
+    "roi_stored_px": null,
+    "roi_n": 0,
+    "clv": -0.031,
+    "clv_n": 32,
+    "z_vs_50": 0.18
+   },
+   "verdict": "LEAVE OUT",
+   "reasons": [
+    "held-out decisions 31 < 100",
+    "excess over fair not significant (z 0.301)",
+    "mean closing-line value is not positive"
+   ]
+  },
+  "spread_only": {
+   "train": {
+    "n": 18,
+    "fair_n": 18,
+    "w": 12,
+    "l": 6,
+    "p": 0,
+    "win": 0.667,
+    "vs_fair": 0.169,
+    "z_vs_fair": 1.435,
+    "roi_stored_px": null,
+    "roi_n": 0,
+    "clv": 0.111,
+    "clv_n": 18,
+    "z_vs_50": 1.414
+   },
+   "held_out": {
+    "n": 13,
+    "fair_n": 13,
+    "w": 7,
+    "l": 6,
+    "p": 0,
+    "win": 0.538,
+    "vs_fair": 0.042,
+    "z_vs_fair": 0.301,
+    "roi_stored_px": null,
+    "roi_n": 0,
+    "clv": -0.115,
+    "clv_n": 13,
+    "z_vs_50": 0.277
+   },
+   "verdict": "LEAVE OUT",
+   "reasons": [
+    "held-out decisions 13 < 100",
+    "excess over fair not significant (z 0.301)",
+    "mean closing-line value is not positive"
+   ]
+  }
+ },
+ "cfb_open_edge": {
+  "note": "this season, model 5+ point edge vs the first spread, graded vs the open. No stored price, so the only test is win rate against the usual -110 break-even (52.38%, an assumption) plus stored CLV in points.",
+  "train": {
+   "n": 23,
+   "fair_n": 0,
+   "w": 11,
+   "l": 12,
+   "p": 0,
+   "win": 0.478,
+   "vs_fair": null,
+   "z_vs_fair": null,
+   "roi_stored_px": null,
+   "roi_n": 0,
+   "clv": 1.957,
+   "clv_n": 23,
+   "z_vs_50": -0.209
+  },
+  "held_out": {
+   "n": 34,
+   "fair_n": 0,
+   "w": 20,
+   "l": 14,
+   "p": 0,
+   "win": 0.588,
+   "vs_fair": null,
+   "z_vs_fair": null,
+   "roi_stored_px": null,
+   "roi_n": 0,
+   "clv": 1.132,
+   "clv_n": 34,
+   "z_vs_50": 1.029
+  },
+  "breakeven": 0.5238,
+  "historical_backtest": {
+   "vs_open": [
+    435,
+    321
+   ],
+   "vs_close": [
+    368,
+    346
+   ],
+   "caveat": "2022-2025 combined; the model was tuned on 2022-2023, so the 2022-2023 share of this record is in-sample and cannot be split out from the stored totals."
+  },
+  "z_vs_breakeven": 0.75,
+  "verdict": "LEAVE OUT",
+  "reasons": [
+   "held-out decisions 34 < 100",
+   "win rate not significantly above break-even (z 0.75)",
+   "the open is the number books post with small limits, so it is not reliably bettable"
+  ]
+ },
+ "injury_rest_news": {
+  "players": 713,
+  "has_timestamps": false,
+  "verdict": "NOT TESTABLE",
+  "reasons": [
+   "data/nflverse_injuries.json is a single current snapshot (status and designation only). With no history of when a status changed, an injury signal cannot be placed before a line move or a result.",
+   "no schedule-rest table is stored either"
+  ]
+ },
+ "polymarket_cheaper_than_pinnacle": {
+  "note": "ML only. Polymarket volume-weighted price on a side, trades 3h to 24h before kickoff (3+ trades), at least 2 points under the Pinnacle fair probability from the last snapshot at or before the last such trade. ROI uses that stored exchange price before fees.",
+  "train": {
+   "n": 3,
+   "fair_n": 3,
+   "w": 1,
+   "l": 2,
+   "p": 0,
+   "win": 0.333,
+   "vs_fair": -0.183,
+   "z_vs_fair": -0.636,
+   "roi_stored_px": -0.307,
+   "roi_n": 3,
+   "clv": null,
+   "clv_n": 0,
+   "z_vs_50": -0.577
+  },
+  "held_out": {
+   "n": 0,
+   "fair_n": 0,
+   "w": 0,
+   "l": 0,
+   "p": 0,
+   "win": null,
+   "vs_fair": null,
+   "z_vs_fair": null,
+   "roi_stored_px": null,
+   "roi_n": 0,
+   "clv": null,
+   "clv_n": 0,
+   "z_vs_50": null
+  },
+  "verdict": "LEAVE OUT",
+  "reasons": [
+   "held-out decisions 0 < 100",
+   "does not beat the logged fair probability"
+  ]
+ },
+ "kalshi_vs_model": {
+  "verdict": "NOT TESTABLE",
+  "reasons": [
+   "Kalshi game prices in the stored ledger are trade tapes only, not a price history joined to the model for finished games. The kb-data branch (Kalshi vs books gap loop) was not examined here.",
+   "data/pm_vs_books.json (the stored Polymarket-vs-books study) reports lead=false"
+  ],
+  "pm_vs_books_stored": {
+   "lead": false,
+   "bets": {
+    "0.03": {
+     "n": 28,
+     "games": 14,
+     "w": 18,
+     "l": 10,
+     "roi": -0.03731682702168854,
+     "clv": 0.030950017217221227
+    },
+    "0.02": {
+     "n": 103,
+     "games": 36,
+     "w": 64,
+     "l": 39,
+     "roi": -0.10153806721131252,
+     "clv": 0.000876823862264957
+    },
+    "0.04": {
+     "n": 10,
+     "games": 9,
+     "w": 8,
+     "l": 2,
+     "roi": 0.223893380376787,
+     "clv": 0.09069180279482132
+    },
+    "0.05": {
+     "n": 5,
+     "games": 4,
+     "w": 3,
+     "l": 2,
+     "roi": 0.049999999999999954,
+     "clv": 0.1867954995599363
+    }
+   }
+  }
+ }
+}
