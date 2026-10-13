@@ -740,7 +740,9 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 .gtile em{font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums}
 .gtile[aria-pressed="true"] em{color:var(--fg2)}
 .gtile.gall{width:84px;align-content:center;justify-items:start}
-.gtile.gall{position:sticky;left:2px;z-index:2;box-shadow:8px 0 8px -4px var(--surface)}
+.gtile.gall{position:sticky;left:2px;z-index:2;background-color:var(--surface);box-shadow:8px 0 8px -4px var(--surface)}
+.gtile.gall[aria-pressed="true"]{background-color:var(--raised)}
+.gstrip{scroll-padding-left:94px}
 .gtile.gall b{font-size:13px;font-weight:600}.gtile.gall small{font-size:11px;color:var(--fg3)}
 .gdot{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
 @media (prefers-reduced-motion:reduce){ .pv-toast,.pv-toast.on{transition:none} .gtile{transition:none} .gtile:active{transform:none} }
@@ -1893,7 +1895,7 @@ function gameStripMount(el, html){                 // keeps the scroll position 
   el.innerHTML = html;
   const st = el.querySelector('.gstrip'), on = st.querySelector('.gtile[aria-pressed="true"]');
   st.scrollLeft = left;
-  if (on){ const a = on.offsetLeft, b = a + on.offsetWidth; if (a < st.scrollLeft || b > st.scrollLeft + st.clientWidth) st.scrollLeft = a - (st.clientWidth - on.offsetWidth) / 2; if (hadFocus) on.focus({preventScroll: true}); }
+  if (on && !on.classList.contains('gall')){ const a = on.offsetLeft, b = a + on.offsetWidth; if (a < st.scrollLeft || b > st.scrollLeft + st.clientWidth) st.scrollLeft = a - (st.clientWidth - on.offsetWidth) / 2; if (hadFocus) on.focus({preventScroll: true}); }
 }
 document.addEventListener('keydown', e => { const t = e.target.closest && e.target.closest('.gtile'); if (!t || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
   const all = [...t.closest('.gstrip').querySelectorAll('.gtile')], n = all[all.indexOf(t) + (e.key === 'ArrowRight' ? 1 : -1)]; if (n){ e.preventDefault(); n.click(); } });
