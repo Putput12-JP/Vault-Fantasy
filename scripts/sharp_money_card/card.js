@@ -241,7 +241,7 @@ var VCP_CSS = `
 .vcp .under b{display:block;font-size:12.5px;white-space:nowrap}
 .vcp .scale{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--dim)}
 .vcp .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
-.vcp .row div{padding:9px 12px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid var(--line);min-width:0}
+.vcp .row div{padding:9px 12px;text-align:center;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid var(--line);min-width:0}
 .vcp .row em{display:block;font-style:normal;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
 .vcp .row strong{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
 .vcp .row small{display:block;font-size:11px;color:var(--mute);margin-top:1px}
