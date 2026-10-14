@@ -1608,7 +1608,7 @@ th{font-weight:500}
    in place of the hamburger drawer, KPI tiles as one swipe strip, game cards collapsed to the lines with the book board behind a tap,
    and 44px hit areas. Layout only: no model, number or tracking change. Lives after every other block so it wins the cascade. */
 .tabbar{display:none}
-.lv-bk{display:none}
+.lv-bk,.lv-pm{display:none}
 @media (max-width:820px){
   body{margin:0}
   .lv-card .lv-asof{display:none}
@@ -1641,16 +1641,22 @@ th{font-weight:500}
   /* KPI tiles: one swipe strip instead of a stack */
   .kpis{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none}
   .kpis::-webkit-scrollbar,#estrip::-webkit-scrollbar,#etool::-webkit-scrollbar{display:none}
-  .kpis>.kpi{flex:0 0 200px;scroll-snap-align:start;min-width:0}
-  .kpis{align-items:stretch}
+  .kpis>.kpi{flex:0 0 auto;width:max-content;min-width:150px;max-width:270px;scroll-snap-align:start;min-width:0}
+  .kpis{align-items:flex-start;padding-left:16px!important;padding-right:16px!important;scroll-padding-left:16px}
+  .kpis>.kpi{height:auto!important;min-height:0!important}
+  .kpis>.kpi .card-b{min-height:0!important;flex:none}
   .kpis>.kpi .hint,#skpis .kpi .hint{display:block;overflow:visible;white-space:normal;text-overflow:clip;-webkit-line-clamp:unset}
   .kpis>.kpi .card-b{height:auto;overflow:visible}
   .kpis>.kpi .card-h{padding:12px 14px 0}.kpis>.kpi .card-b{padding:2px 14px 12px}
   #estrip{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity}
-  #estrip>div{flex:0 0 150px;padding:12px 14px;scroll-snap-align:start}
+  #estrip>div{align-content:start;flex:0 0 150px;padding:12px 14px;scroll-snap-align:start}
   #estrip>div:nth-child(2){flex-basis:190px}
   #etool{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:8px}
   #etool>*{flex:none}
+  #etool .seg{max-width:none;overflow:visible}
+  #etool .tfilters{overflow:visible;max-width:none}
+  .tfilters>*,.tfilters .seg,.filters .seg{flex:none}
+  main small,main p,main td,main li{overflow-wrap:anywhere}
   /* Teams: slicer and search share a row; the rotation hero keeps the 240-minute total and drops the prose */
   .ml-hero{padding:14px!important;gap:10px}
   .ml-act{flex-wrap:nowrap!important;gap:8px}.ml-act>*{min-width:0}
@@ -1685,8 +1691,20 @@ th{font-weight:500}
   /* game cards: lines first, book board behind a tap */
   .lv-card .lv-sr .lv-sp{display:none}
   .lv-card .lv-sr{padding:6px 12px;flex-wrap:nowrap}.lv-card .lv-vd{width:auto;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;margin:0}
-  .lv-card .lv-vault,.lv-card .lv-r{display:none}
-  .lv-card.bk .lv-r{display:block}
+  .lv-card{gap:0!important;padding:0!important}
+  .lv-card .sl-meta{flex-direction:row-reverse;justify-content:flex-end}
+  .lv-card .lv-cols{display:none}
+  .lv-card.bk .lv-cols{display:block}
+  .lv-card>.sl-h{padding:12px 16px 6px;border:0}
+  .lv-card .sl-teams{display:none}
+  .lv-card .sl-meta{gap:8px}
+  .lv-pm{display:block;padding:2px 16px 10px}
+  .lv-ph,.lv-pt{display:grid;grid-template-columns:minmax(0,1fr) 66px 92px 44px;gap:6px;align-items:center}
+  .lv-ph span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);text-align:right}
+  .lv-pt{padding:4px 0}
+  .lv-tm{display:flex;align-items:center;gap:10px;min-width:0}.lv-tm b{font-size:17px;font-weight:650}.lv-tm small{display:none}
+  .lv-pt .n{background:var(--raised);border-radius:10px;padding:9px 8px;text-align:center;font-family:var(--font-mono);font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .lv-pt .n.w{background:none;color:var(--fg2);font-weight:500;padding-right:0;text-align:right}
   .lv-bk{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:44px;border:0;border-top:1px solid var(--border);background:none;color:var(--fg2);font-size:13px;cursor:pointer}
   .lv-bk svg{transition:transform .2s var(--ease-out,ease-out)}.lv-card.bk .lv-bk svg{transform:rotate(180deg)}
   /* bottom tab bar */
@@ -5518,9 +5536,14 @@ function lineCard(g, B, status){
       <div class="seg" role="group" aria-label="Market">${[['s', 'Spread'], ['t', 'Total'], ['m', 'Moneyline']].map(([k, l]) => `<button type="button" data-lm="${k}" data-g="${gid}" aria-pressed="${mkt === k}">${l}</button>`).join('')}</div></div>
     <div class="nt-tw"><table class="nt lv-t"><thead><tr><th class="l">Book</th>${hd.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${books.filter(b => b.pin).map(b => tr(b, true)).join('')}${shown.map(b => tr(b, false)).join('')}</tbody></table></div>
     ${rows.length > 4 ? `<div class="lv-more"><button class="linkbtn" type="button" data-lall="${gid}">${showAll ? 'Show fewer books' : `Show all ${rows.length} books`}</button></div>` : ''}</div>` : '';
+  // phone card: two team rows with spread, total and win (same sources as the tiles below; hidden above 820px)
+  const hsP = c ? c[1] : M && M.spread != null ? M.spread : null, ttP = c && c[3] != null ? c[3] : M && M.total != null ? M.total : null, hwP = c && c[5] != null ? c[5] : M && M.win != null ? M.win : null;
+  const spC = v => v == null ? '-' : Math.abs(v) < .05 ? 'PK' : lvF1(v), pm = hsP != null || ttP != null || hwP != null ? `<div class="lv-pm"><div class="lv-ph"><span></span><span>Spread</span><span>Total</span><span>Win</span></div>
+    <div class="lv-pt"><span class="lv-tm">${lgImg(g.away, 28)}<b>${g.away}</b><small>${esc(tn(g.away))}</small></span><span class="n">${spC(hsP == null ? null : -hsP)}</span><span class="n">${ttP != null ? 'O ' + fmt(ttP) : '-'}</span><span class="n w">${hwP != null ? pc(1 - hwP) : '-'}</span></div>
+    <div class="lv-pt"><span class="lv-tm">${lgImg(g.home, 28)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></span><span class="n">${spC(hsP)}</span><span class="n">${ttP != null ? 'U ' + fmt(ttP) : '-'}</span><span class="n w">${hwP != null ? pc(hwP) : '-'}</span></div></div>` : '';
   return `<article class="card sl-card lv-card${sv.bk[gid] ? ' bk' : ''}" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
-    ${sharpRow}<div class="lv-cols"><div class="lv-l">${slate ? `<div class="lv-sl">${SP.tbl}${SP.why}${SP.moves}${SP.inj}</div>` : tiles + vault}</div><div class="lv-r">${spot}${board}</div></div>${books.length ? `<button class="lv-bk" type="button" data-lbk="${gid}" aria-expanded="${!!sv.bk[gid]}">${sv.bk[gid] ? 'Hide' : 'Show'} book board<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</article>`;
+    ${pm}${sharpRow}<div class="lv-cols"><div class="lv-l">${slate ? `<div class="lv-sl">${SP.tbl}${SP.why}${SP.moves}${SP.inj}</div>` : tiles + vault}</div><div class="lv-r">${spot}${board}</div></div>${books.length || slate ? `<button class="lv-bk" type="button" data-lbk="${gid}" aria-expanded="${!!sv.bk[gid]}">${sv.bk[gid] ? 'Hide' : 'Show'} ${slate ? 'matchup' : 'book board'}<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</article>`;
 }
 function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el) el.outerHTML = lineCard(g, B, statusFromBoard(B)); }
 $('sgames').addEventListener('click', e => {
