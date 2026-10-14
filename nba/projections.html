@@ -1620,7 +1620,8 @@ th{font-weight:500}
   .mode{order:3;flex:1 1 100%;margin:0;min-height:0;font-size:12.5px;color:var(--fg3);white-space:nowrap;overflow:hidden;gap:8px;padding-right:96px}
   .mode>span{overflow:hidden;text-overflow:ellipsis}
   .mode .pill{display:none}
-  .mode .btn,#refresh{position:absolute;top:calc(env(safe-area-inset-top,0px) + 6px);right:64px;width:40px;height:40px;padding:0;border-radius:99px;font-size:0;line-height:0;display:inline-grid;place-items:center;min-width:0}
+  .mode .btn,#refresh{position:absolute;top:calc(env(safe-area-inset-top,0px) + 6px);right:64px;width:44px;height:44px;padding:0;border-radius:99px;font-size:0;line-height:0;display:inline-flex;align-items:center;justify-content:center;min-width:0}
+  .mode .btn::after,#refresh::after{display:none}
   .mode .btn::before,#refresh::before{content:"";width:18px;height:18px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5'/%3E%3C/svg%3E") center/contain no-repeat}
   .slicer{order:4;flex:1 1 100%}
   .slicer>button{height:44px}
@@ -1657,7 +1658,6 @@ th{font-weight:500}
   .ml-modet{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .ml-bnote{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0}
   .ml-kp{grid-template-columns:repeat(3,minmax(0,1fr))!important}.ml-kp>div:last-child{grid-column:auto!important}
-  .ml-sc .ml-ph{height:56px;overflow:hidden}.ml-sc .ml-ph img{height:56px;object-fit:cover;object-position:top}
   /* explainer and empty-state cards: one tight line */
   #nprop .card-h{padding:12px 16px 0}#nprop .card-b{padding:4px 16px 12px}
   /* controls: 44px hit areas without growing the strip */
@@ -1666,7 +1666,7 @@ th{font-weight:500}
   .pfind,.sel{min-height:44px}
   #pv-tools button,.ml-step,.ml-sc button,.ml-act button,.ml-mode button,.pv-star,.pv-ghost{position:relative}
   #pv-tools button::after,.ml-sc button::after,.ml-act button::after,.ml-mode button::after,.pv-star::after,.pv-ghost::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
-  .ml-step{width:44px!important;height:44px!important}
+  .ml-step::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
   input.ml-num,.nt-min input,.minctl input[type=number]{min-height:44px}
   #pv-tools,#pv-tools>div,#pv-tools>div>div{min-width:0;max-width:100%}
   #pv-tools>div{padding:10px 12px!important}
