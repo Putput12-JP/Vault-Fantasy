@@ -1,0 +1,324 @@
+<!doctype html>
+<meta charset="utf-8"><title>Vault Sharp Money</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="Where large, tracked money sits on NFL, college football and NBA games. Context only, not a bet signal.">
+<link rel="icon" href="/vault-favicon-shield-dark.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--line:rgba(255,255,255,.09);--ink:#fff;--mut:#98989f;--dim:#636366;
+--acc:#6c9cff;--good:#32d583;--bad:#ff6b6b;--warn:#f5b84a;--ease-spring:cubic-bezier(.34,1.56,.64,1)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.35 -apple-system,"SF Pro Text",Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.cond{font-family:"Barlow Condensed","SF Pro Rounded",Geist,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.title{font-size:34px;font-weight:700;letter-spacing:-.02em;margin:10px 16px 2px}
+.ctx{color:var(--mut);margin:0 16px 12px;font-size:13px}
+.chips{display:flex;gap:6px;margin:0 16px 14px;overflow-x:auto;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{all:unset;cursor:pointer;padding:7px 14px;border-radius:99px;font-weight:600;font-size:14px;color:var(--mut);white-space:nowrap;transition:transform .5s var(--ease-spring),color .15s}
+.chip.on{background:#fff;color:#000}.chip:active{transform:scale(.94);transition:transform 80ms ease-out}
+.chip small{font-weight:500;opacity:.7;margin-left:4px}
+.sec{color:var(--mut);font-size:13px;font-weight:600;margin:18px 20px 8px;display:flex;justify-content:space-between;align-items:center}
+.sec a{color:var(--acc);font-weight:600;cursor:pointer}
+.sub{color:var(--dim);font-size:12px;margin:-4px 20px 10px}
+.card{background:var(--card);border-radius:24px;margin:0 16px 12px;padding:14px 16px;transition:transform .5s var(--ease-spring)}
+.tap{cursor:pointer}.tap:active{transform:scale(.975);transition:transform 80ms ease-out}
+.gtop{display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:13px;margin-bottom:8px;gap:8px}
+.tr{display:flex;align-items:center;gap:12px;padding:4px 0}
+.logo{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;flex:none;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+.logo.sm{width:28px;height:28px;font-size:9px}.logo.lg{width:66px;height:66px;font-size:19px}
+.tn{flex:1;font-weight:600;font-size:17px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.num{font-size:28px;font-weight:600;min-width:64px;text-align:right}
+.badge{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:1px 8px;white-space:nowrap;display:inline-block}
+.badge.live{color:#fff;background:#d4351c;border-color:transparent;font-weight:700}
+.badge.good{color:var(--good);border-color:rgba(50,213,131,.35)}.badge.bad{color:var(--bad);border-color:rgba(255,107,107,.35)}.badge.warn{color:var(--warn);border-color:rgba(245,184,74,.35)}.badge.acc{color:var(--acc);border-color:rgba(108,156,255,.35)}
+.fl{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.fll{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-bottom:6px}
+.fbar{display:flex;height:8px;border-radius:8px;overflow:hidden;gap:2px;background:#2a2a2d}.fbar i{display:block;height:100%}
+.fnum{display:flex;justify-content:space-between;margin-top:5px;font-size:15px;font-weight:600}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.hs{display:flex;gap:10px;overflow-x:auto;padding:0 16px 4px;scrollbar-width:none}.hs::-webkit-scrollbar{display:none}
+.hc{flex:none;width:200px;margin:0;padding:12px 14px}
+.hc .tn{font-size:15px}.hc .big{font-size:26px;font-weight:600}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.row:first-child{border-top:0}
+.row .grow{flex:1;min-width:0}.row b{font-weight:600}.row .m{color:var(--mut);font-size:13px}
+.amt{font-size:24px;font-weight:600;text-align:right}.amt small{display:block;color:var(--mut);font-size:11px;font-family:-apple-system,Geist,sans-serif}
+.btn{all:unset;cursor:pointer;display:block;text-align:center;margin:8px 16px 14px;padding:11px;border-radius:14px;background:var(--card);color:var(--acc);font-weight:600}
+.btn:active{transform:scale(.97)}
+/* game page */
+.hero{position:relative;padding:calc(env(safe-area-inset-top) + 10px) 16px 22px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;background:var(--hg);opacity:.9}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.15),#000 96%)}
+.hero>*{position:relative;z-index:1}
+.back{color:#fff;font-size:15px;opacity:.9;margin:6px 0 12px;cursor:pointer;display:inline-block;padding:4px 0}
+.matchup{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;text-align:center}
+.matchup .logo{margin:0 auto 6px}.matchup .tn{font-size:16px;flex:none}
+.when{text-align:center;color:rgba(255,255,255,.75);font-size:13px;margin-top:10px}
+.platter{background:rgba(44,44,46,.72);backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);border-radius:24px;margin:0 16px 12px;padding:14px 16px}
+.ph{font-size:13px;font-weight:600;color:var(--mut);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:11px;color:var(--dim);font-weight:600;text-align:right;padding:0 0 6px;letter-spacing:.04em;text-transform:uppercase}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{padding:6px 0;text-align:right;font-size:21px;border-top:1px solid var(--line)}
+.tbl td:first-child{font-family:-apple-system,Geist,sans-serif;font-size:14px;font-weight:600}
+.tbl td small{display:block;font-family:-apple-system,Geist,sans-serif;font-size:11px;color:var(--mut);line-height:1.1}
+.kv{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-top:1px solid var(--line)}.kv:first-of-type{border-top:0}
+.kv span{color:var(--mut);font-size:14px}.kv em{font-style:normal;font-size:22px;font-weight:600}
+.foot{color:var(--dim);font-size:12px;margin:6px 2px 0}
+.mk{display:grid;grid-template-columns:58px 1fr;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.mk:first-of-type{border-top:0}.mk b{font-size:13px;color:var(--mut);font-weight:600}
+.alert{display:grid;grid-template-columns:5px 1fr auto;gap:12px;align-items:center}
+.alert .sw{align-self:stretch;border-radius:5px}.alert .t{font-weight:600;font-size:15px}.alert .x{color:var(--mut);font-size:13px;margin-top:2px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(20,20,22,.82);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;justify-content:space-around;z-index:6;border-top:1px solid var(--line)}
+.tabbar button{all:unset;cursor:pointer;text-align:center;font-size:11px;font-weight:600;color:var(--mut);padding:4px 8px;min-width:56px;transition:transform .5s var(--ease-spring)}
+.tabbar button svg{display:block;margin:0 auto 3px;width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabbar button.on{color:#fff}.tabbar button:active{transform:scale(.9);transition:transform 80ms ease-out}
+.empty{color:var(--mut);text-align:center;padding:26px 20px;font-size:14px}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+.tl{display:block;width:100%;height:64px}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--mut);margin-top:6px}.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.pb{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:9px 0;border-top:1px solid var(--line)}.pb:first-of-type{border-top:0}
+.pb .a{font-weight:600}.pb .b{text-align:right;font-size:20px;font-weight:600}.pb .c{color:var(--mut);font-size:12px;grid-column:1/3}
+
+.app{max-width:560px;margin:0 auto;min-height:100dvh;position:relative;background:var(--bg)}
+#scr{padding-bottom:110px}
+.title{margin-top:calc(env(safe-area-inset-top) + 18px)}
+.tabbar{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:560px;right:auto}
+.tab-hide{display:none}
+.skel{background:linear-gradient(90deg,#1c1c1e 25%,#2a2a2d 50%,#1c1c1e 75%);background-size:200% 100%;animation:sk 1.3s linear infinite;border-radius:24px;margin:0 16px 12px;height:150px}
+@keyframes sk{to{background-position:-200% 0}}
+.badge.dot::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px}
+a.btn{text-decoration:none}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tap:focus-visible{outline-offset:-2px;border-radius:24px}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<div class="app"><main id="scr" aria-live="polite"></main><nav class="tabbar" id="tabs" aria-label="Sharp Money sections"></nav></div>
+<script>
+let D=null,REF=0,G=[],GM={},ACC=[],SB=null,loadErr=false;
+const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
+const RAW='https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/';
+const SRC=LOCAL&&!LIVE?'/.claude/sharp-money/data.json':RAW+'sharp-data/data.json';
+const SBSRC=LOCAL&&!LIVE?'/data/model_scoreboard.json':RAW+'main/data/model_scoreboard.json';
+const $=id=>document.getElementById(id), esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CT={timeZone:'America/Chicago'};
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const lift=(h,a)=>{h=h&&h[0]==='#'&&h.length===7?h:'#6b7280';return `rgb(${hex(h).map(v=>Math.round(v+(255-v)*a))})`};
+const money=n=>n==null?'-':n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1e4?'$'+Math.round(n/1e3)+'k':n>=1e3?'$'+(n/1e3).toFixed(1)+'k':'$'+Math.round(n);
+const sgn=(n,dp=1)=>n==null?'-':(n>0?'+':n<0?'-':'')+Math.abs(n).toFixed(dp);
+const fl=n=>n==null?'-':(n>0?'+':n<0?'-':'')+Math.abs(n);
+const am=n=>n==null?'-':(n>0?'+':'')+n;
+const cents=p=>p==null?'-':Math.round(p*100)+'¢';
+const when=ts=>new Date(ts*1000).toLocaleString('en-US',{...CT,weekday:'short',hour:'numeric',minute:'2-digit'}).replace(',','')+' CT';
+const day=ts=>new Date(ts*1000).toLocaleString('en-US',{...CT,weekday:'long',month:'short',day:'numeric'});
+const ago=ts=>{const m=Math.max(1,Math.round((REF-ts)/60));return m<60?m+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'};
+const SPORT={all:'All',nfl:'NFL',cfb:'CFB',nba:'NBA'};
+const TYPES={steam:['Pinnacle move','acc',"Pinnacle, the book that takes the biggest limits and moves first, shifted a line past the sport's threshold within about 30 minutes. This is the market reacting to real money."],
+ behind:['Book behind','good',"A US book (DraftKings, FanDuel, BetMGM, BetRivers, bet365) still hangs a price that is +EV against Pinnacle's fair price at the same number. Priced from Pinnacle's own alternate ladder, so it only counts when the book is genuinely behind."],
+ sharp:['Sharp accounts','warn','Polymarket accounts whose past $1k+ bets beat the closing price (t-stat 2+, 10+ bets, 5+ games) just bought. Their edge fades within about 30 minutes, so the age matters.'],
+ whale:['Big ticket','',"A single large ticket on Polymarket or Kalshi. Size alone is not skill: $100k+ tickets lose to the close on average. Shown for context."],
+ cross:['Sharp net crossed','acc',"The combined net money from Polymarket sharp accounts on one team's moneyline just reached the line: $25k for NFL and NBA, $5k for college football. Fires once per game, and again if the sharp side flips."],
+ split:['Money vs bets','','At the US books, a side has 20+ points more of the money than of the bets, while most bets are on the other side. Fewer, bigger bettors on one side.']};
+const MK={sp:'Spread',ml:'Money',tot:'Total'};
+const logo=(t,c='')=>`<div class="logo ${c}" style="background:${t.color||'#444'}">${esc(t.abbr)}</div>`;
+const ini=n=>`<div class="logo sm" style="background:#3a3a3e">${esc(String(n).split(' ').map(w=>w[0]).join('').slice(0,2))}</div>`;
+const sidesOf=m=>m==='tot'?['over','under']:['away','home'];
+const flow=(g,m,s,k='sharp')=>((g.flow||{})[k]||{})[m+':'+s]||0;
+const bar=(g,m,k='sharp')=>{const [a,b]=sidesOf(m),A=flow(g,m,a,k),H=flow(g,m,b,k),T=A+H||1,
+ ca=m==='tot'?'#a8a8b0':lift(g.away.color,.35),ch=m==='tot'?'#6c9cff':lift(g.home.color,.35);
+ return {A,H,html:`<div class="fbar"><i style="width:${A/T*100}%;background:${ca}"></i><i style="width:${H/T*100}%;background:${ch}"></i></div><div class="fnum cond"><span>${money(A)}</span><span>${money(H)}</span></div>`}};
+const pinSp=g=>g.pin&&g.pin.sp?g.pin.sp.line:(g.consensus&&g.consensus.sp?g.consensus.sp.line:null);
+const heat=g=>D.alerts.filter(a=>a.game===g.key&&a.ts>REF-86400).length;
+const live=g=>g.status==='inprogress';
+const upcoming=()=>G.filter(g=>g.start>REF-4*3600).sort((a,b)=>a.start-b.start);
+const st={sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30};
+const ICON={board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',accounts:'<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c0-3.3 2.7-5 6-5s6 1.7 6 5M15 15c3 0 6 1 6 4"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
+$('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${k[0].toUpperCase()+k.slice(1)}</button>`).join('');
+const chips=(items,cur,key)=>`<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
+const head=(t,s)=>`<div class="title">${t}</div><p class="ctx">${s}</p>`;
+const snap=()=>{const a=REF-D.ts,k=a>3*3600?'bad':a>20*60?'warn':'good';return `<span class="badge dot ${k}">${a<90?'Updated just now':'Updated '+ago(D.ts).replace(' ago','')+' ago'}</span>`};
+
+function gameCard(g){
+ const P=g.pin,O=g.open,sl=pinSp(g),n=heat(g),b=bar(g,'sp');
+ const mv=O&&O.sp&&P&&P.sp&&Math.abs(O.sp.line-P.sp.line)>=.5?`<span class="badge acc">${g.home.abbr} ${fl(O.sp.line)} to ${fl(P.sp.line)}</span>`:'';
+ const tot=P&&P.tot?`<span class="badge">O/U ${P.tot.line}</span>`:'';
+ return `<div class="card tap" data-go="game/${esc(g.key)}"><div class="gtop"><span>${when(g.start)} ${live(g)?'<span class="badge live">LIVE</span>':''}</span><span>${SPORT[g.sport]}</span></div>
+ <div class="tr">${logo(g.away)}<div class="tn">${esc(g.away.short)}</div><div class="num cond">${sl==null?'-':fl(-sl)}</div></div>
+ <div class="tr">${logo(g.home)}<div class="tn">${esc(g.home.short)}</div><div class="num cond">${sl==null?'-':fl(sl)}</div></div>
+ <div class="fl"><div class="fll"><span>Sharp money on the spread</span><span class="badge">context</span></div>${b.html}</div>
+ <div class="tags">${tot}${mv}${n?`<span class="badge">${n} alert${n>1?'s':''} today</span>`:''}${(g.behind||[]).length?`<span class="badge good">+EV at ${esc(g.behind[0].book)}</span>`:''}${!P?'<span class="badge">no Pinnacle line yet</span>':''}</div></div>`;
+}
+function board(){
+ const up=upcoming(),cnt={all:up.length,nfl:0,cfb:0,nba:0};up.forEach(g=>cnt[g.sport]++);
+ const L=up.filter(g=>st.sport==='all'||g.sport===st.sport);
+ let h=head('Sharp Money','Where large, tracked money sits. Context only, not a bet signal. '+snap())+
+ chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport');
+ // hot
+ const hot=L.slice().sort((a,b)=>heat(b)-heat(a)||Object.values(b.flow.sharp||{}).reduce((s,x)=>s+x,0)-Object.values(a.flow.sharp||{}).reduce((s,x)=>s+x,0)).slice(0,6);
+ h+=`<div class="sec"><span>Hot right now</span><span class="badge">alerts in the last 24h</span></div><div class="hs">`+hot.map(g=>{const n=heat(g),b=bar(g,'ml'),z=b.A+b.H<1000;
+  return `<div class="card hc tap" data-go="game/${esc(g.key)}"><div class="gtop"><span>${when(g.start)}</span><span>${SPORT[g.sport]}</span></div>
+  <div class="tr">${logo(g.away,'sm')}<div class="tn">${esc(g.away.abbr)}</div><span class="big cond">${z?"-":money(b.A)}</span></div>
+  <div class="tr">${logo(g.home,'sm')}<div class="tn">${esc(g.home.abbr)}</div><span class="big cond">${z?"-":money(b.H)}</span></div>
+  <div class="fl" style="margin-top:6px;padding-top:8px"><div class="fll"><span>${z?"No sharp money yet":"Sharp $ on the moneyline"}</span></div>${z?"":b.html.split('<div class="fnum')[0]}<div class="fll" style="margin:6px 0 0"><span>${n} alert${n===1?'':'s'}</span><span>context</span></div></div></div>`}).join('')+`</div>`;
+ // sharp net
+ const net=L.map(g=>{const b=bar(g,st.netm);return {g,b,t:b.A+b.H}}).filter(x=>x.t>=1000).sort((a,b)=>b.t-a.t).slice(0,7);
+ h+=`<div class="sec"><span>Sharp net</span><span class="badge">Polymarket sharp accounts</span></div>`+chips([['ml','Money'],['sp','Spread'],['tot','Total']],st.netm,'netm')+
+ `<div class="card">`+(net.length?net.map(({g,b})=>{const [sa,sb]=sidesOf(st.netm),lab=st.netm==='tot'?['Over','Under']:[g.away.abbr,g.home.abbr];
+  return `<div class="tap" data-go="game/${esc(g.key)}" style="padding:8px 0;border-top:1px solid var(--line)"><div class="fll"><span><b style="color:#fff">${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> ${when(g.start)}</span><span>${lab[0]} / ${lab[1]}</span></div>${b.html}</div>`}).join(''):'<div class="empty">No sharp money on this market yet.</div>')+`</div>`;
+ // slate
+ h+=`<div class="sec"><span>The slate</span><span>${L.length} games</span></div>`;
+ let last='';L.slice(0,st.slate).forEach(g=>{const dd=day(g.start);if(dd!==last){h+=`<div class="sec" style="margin-top:8px"><span>${dd}</span></div>`;last=dd}h+=gameCard(g)});
+ if(!L.length)h+='<div class="empty">Nothing on the board for this league.</div>';
+ if(L.length>st.slate)h+=`<button class="btn" data-more="slate">Show ${Math.min(10,L.length-st.slate)} more of ${L.length-st.slate} left</button>`;
+ return h;
+}
+function tline(g,m,s){const r=g.flowH&&g.flowH.rows[m+':'+s];if(!r)return '<div class="empty" style="padding:14px">No flow history stored for this side.</div>';
+ const n=r.sharp.length,mx=Math.max(1,...r.sharp.map((v,i)=>v+r.other[i])),w=360,h=64,bw=w/n;
+ let s2='';for(let i=0;i<n;i++){const a=r.other[i]/mx*h,b=r.sharp[i]/mx*h;s2+=`<rect x="${i*bw+.5}" y="${h-a-b}" width="${bw-1}" height="${b}" fill="#6c9cff"/><rect x="${i*bw+.5}" y="${h-a}" width="${bw-1}" height="${a}" fill="#555a63"/>`}
+ return `<svg class="tl" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${s2}</svg><div class="legend"><span><i style="background:#6c9cff"></i>Sharp accounts</span><span><i style="background:#555a63"></i>Everyone else</span><span style="margin-left:auto">${new Date(g.flowH.t0*1000).toLocaleString('en-US',{...CT,weekday:'short'})} to ${new Date(g.flowH.t1*1000).toLocaleString('en-US',{...CT,weekday:'short',hour:'numeric'})}</span></div>`}
+function gamePage(key){
+ const g=GM[key];if(!g)return head('Game','Not found');
+ const c=g.consensus||{},o=g.open||{},p=g.pin||{},m=st.gm;
+ let h=`<div class="hero" style="--hg:linear-gradient(120deg,${g.away.color||'#333'} 0%,${g.away.color||'#333'} 38%,${g.home.color||'#333'} 62%,${g.home.color||'#333'} 100%)">
+ <div class="back" data-back role="button" tabindex="0">&lsaquo; Sharp Money</div>
+ <div class="matchup"><div>${logo(g.away,'lg')}<div class="tn">${esc(g.away.short)}</div></div><div class="cond" style="font-size:48px;font-weight:700">@</div><div>${logo(g.home,'lg')}<div class="tn">${esc(g.home.short)}</div></div></div>
+ <div class="when">${when(g.start)} ${live(g)?'<span class="badge live">LIVE</span>':''} ${g.final?'<span class="badge">Final</span>':''}</div></div>`;
+ // lines
+ const row=(l,a,b,cc)=>`<tr><td>${l}</td><td>${a}</td><td>${b}</td><td>${cc}</td></tr>`;
+ h+=`<div class="platter"><div class="ph"><span>Lines</span><span>${esc(g.away.abbr)} / ${esc(g.home.abbr)}</span></div><table class="tbl cond"><tr><th></th><th>Open</th><th>Consensus</th><th>Pinnacle</th></tr>
+ ${row('Spread',o.sp?fl(-o.sp.line):'-',c.sp?fl(-c.sp.line):'-',p.sp?fl(-p.sp.line):'-')}
+ ${row('Total',o.tot?o.tot.line:'-',c.tot?c.tot.line:'-',p.tot?p.tot.line:'-')}
+ ${row('Money '+esc(g.away.abbr),o.ml?am(o.ml.away):'-',c.ml?am(c.ml.away):'-',p.ml?am(p.ml.away):'-')}
+ ${row('Money '+esc(g.home.abbr),o.ml?am(o.ml.home):'-',c.ml?am(c.ml.home):'-',p.ml?am(p.ml.home):'-')}</table>
+ ${p.lim?`<div class="foot">Pinnacle limits: money ${money(p.lim.ml)}, spread ${money(p.lim.sp)}, total ${money(p.lim.tot)}</div>`:''}</div>`;
+ // sharp money
+ const sharpTot=['sp','ml','tot'].reduce((t,k)=>{const b=bar(g,k);return t+b.A+b.H},0);
+ h+=`<div class="platter"><div class="ph"><span>Sharp money</span><span class="badge">context only</span></div>${sharpTot<1?'<div class="empty" style="padding:12px">No tracked sharp money on this game yet.</div>':(['sp','ml','tot']).map(k=>{const b=bar(g,k);return `<div class="mk"><b>${MK[k]}</b><div>${b.html}</div></div>`}).join('')}
+ <div class="foot">${esc(g.away.abbr)} left, ${esc(g.home.abbr)} right. Total: Over left (gray), Under right (blue).</div></div>`;
+ const oth=['sp','ml','tot'].some(k=>flow(g,k,sidesOf(k)[0],'dull')+flow(g,k,sidesOf(k)[1],'dull')>0);
+ if(oth)h+=`<div class="platter"><div class="ph"><span>Everyone else on Polymarket</span><span class="badge">context only</span></div>${['sp','ml','tot'].map(k=>{const b=bar(g,k,'dull');return `<div class="mk"><b>${MK[k]}</b><div>${b.html}</div></div>`}).join('')}</div>`;
+ // tickets vs money
+ if(g.splits&&['sp','ml','tot'].some(k=>g.splits[k]&&g.splits[k][sidesOf(k)[0]]&&g.splits[k][sidesOf(k)[1]]))h+=`<div class="platter"><div class="ph"><span>Bets vs money at US books</span><span>${g.bets?g.bets.toLocaleString()+' bets':''}</span></div>${['sp','ml','tot'].map(k=>{const s=g.splits[k];if(!s)return '';const [a,b]=sidesOf(k),A=s[a],B=s[b];if(!A||!B)return '';const lab=k==='tot'?['Over','Under']:[g.away.abbr,g.home.abbr];
+  return `<div class="mk"><b>${MK[k]}</b><div><div class="fll"><span>Bets ${A.t}% / ${B.t}%</span><span>${lab[0]} / ${lab[1]}</span></div><div class="fbar"><i style="width:${A.t}%;background:#8e8e93"></i><i style="width:${B.t}%;background:#5e5e63"></i></div><div class="fll" style="margin-top:6px"><span>Money ${A.m}% / ${B.m}%</span><span></span></div><div class="fbar"><i style="width:${A.m}%;background:#6c9cff"></i><i style="width:${B.m}%;background:#3c5fae"></i></div></div></div>`}).join('')}</div>`;
+ // timeline
+ h+=`<div class="platter"><div class="ph"><span>When the money came in</span><span class="badge">context only</span></div>${chips([['sp','Spread'],['ml','Money'],['tot','Total']],st.tlm,'tlm').replace('margin:0 16px 14px','')}
+ <div class="chips" style="margin:0 0 10px">${(st.tlm==='tot'?[['over','Over'],['under','Under']]:[['away',g.away.abbr],['home',g.home.abbr]]).map(([v,l])=>`<button class="chip ${((st.tlm==='tot'&&['over','under'].includes(st.tls)||st.tlm!=='tot'&&['away','home'].includes(st.tls))?st.tls:(st.tlm==='tot'?'over':'home'))===v?'on':''}" data-set="tls" data-v="${v}">${esc(l)}</button>`).join('')}</div>
+ ${tline(g,st.tlm,(st.tlm==='tot'&&['over','under'].includes(st.tls)||st.tlm!=='tot'&&['away','home'].includes(st.tls))?st.tls:(st.tlm==='tot'?'over':'home'))}</div>`;
+ // books
+ const books=Object.entries(g.soft||{});
+ if(books.length)h+=`<div class="platter"><div class="ph"><span>Prices at US books</span><span>${esc(g.away.abbr)} / ${esc(g.home.abbr)}</span></div><table class="tbl cond"><tr><th></th><th>Spread</th><th>Total</th><th>Money</th></tr>${books.map(([bk,x])=>`<tr><td>${esc(bk)}</td><td>${x.sp?`${fl(-x.sp.line)}<small>${am(x.sp.away)}</small>`:'-'}</td><td>${x.tot?`${x.tot.line}<small>${am(x.tot.over)}</small>`:'-'}</td><td>${x.ml?`${am(x.ml.away)}<small>${am(x.ml.home)}</small>`:'-'}</td></tr>`).join('')}</table><div class="foot">Away side first. Small number is the price (spread, Over) or the home moneyline.</div></div>`;
+ // prediction markets
+ const pm=g.pm&&g.pm.px,k=g.kal,nv=g.nov;
+ if(pm||k||nv)h+=`<div class="platter"><div class="ph"><span>Prediction markets</span></div>
+ ${k&&k.px?`<div class="kv"><span>Kalshi win price, ${esc(g.away.abbr)}</span><em class="cond">${cents(k.px.away)}</em></div><div class="kv"><span>Kalshi win price, ${esc(g.home.abbr)}</span><em class="cond">${cents(k.px.home)}</em></div><div class="kv"><span>Kalshi volume, total</span><em class="cond">${money(k.vol)}</em></div><div class="kv"><span>Kalshi volume, last 24h</span><em class="cond">${money(k.vol24)}</em></div>`:''}
+ ${pm&&pm.ml?`<div class="kv"><span>Polymarket ${esc((pm.ml.outs||[])[0]||'')}</span><em class="cond">${cents((pm.ml.px||[])[0])}</em></div><div class="kv"><span>Polymarket ${esc((pm.ml.outs||[])[1]||'')}</span><em class="cond">${cents((pm.ml.px||[])[1])}</em></div><div class="kv"><span>Polymarket volume</span><em class="cond">${money(g.pm.vol)}</em></div>`:''}
+ ${nv&&nv.ml?`<div class="kv"><span>Novig money, bid / ask</span><em class="cond">${cents(nv.ml.bid)} / ${cents(nv.ml.ask)}</em></div>${nv.ml.depth?`<div class="kv"><span>Novig depth, ${esc(g.away.abbr)} / ${esc(g.home.abbr)}</span><em class="cond">${money(nv.ml.depth.away)} / ${money(nv.ml.depth.home)}</em></div>`:''}`:''}</div>`;
+ // tickets
+ if((g.tickets||[]).length)h+=`<div class="platter"><div class="ph"><span>Big tickets</span><span class="badge">context only</span></div>${g.tickets.slice(0,6).map(t=>`<div class="row"><div class="grow"><b>${esc(t.src||'')}</b><div class="m">${MK[t.m]||t.m}, ${t.side==='home'?esc(g.home.abbr):t.side==='away'?esc(g.away.abbr):esc(t.side)} at ${cents(t.px)}${t.line!=null?' ('+t.line+')':''} · ${ago(t.ts)}</div></div><div class="amt cond">${money(t.usd)}</div></div>`).join('')}</div>`;
+ // accounts
+ if((g.accts||[]).length)h+=`<div class="platter"><div class="ph"><span>Sharp accounts on this game</span><span class="badge">context only</span></div>${g.accts.slice(0,6).map(a=>`<div class="row"><div class="grow"><b>${esc(a.who)}</b><div class="m">${MK[a.m]||a.m}, ${a.side==='home'?esc(g.home.abbr):a.side==='away'?esc(g.away.abbr):esc(a.side)}${a.rec?` · t ${a.rec.t}, ${a.rec.n} bets`:''}</div></div><div class="amt cond">${money(a.usd)}<small>${a.cls||''}</small></div></div>`).join('')}</div>`;
+ // props
+ if((g.props||[]).length)h+=`<div class="platter"><div class="ph"><span>Player props, Polymarket</span><span>${g.props.length}</span></div>${g.props.slice(0,6).map(r=>`<div class="pb"><div class="a">${esc(r.player)}</div><div class="b cond">${(r.px||[]).map(cents).join(' / ')}</div><div class="c">${esc(r.stat)}${r.line!=null?' '+r.line:''} · ${(r.outs||[]).join(' / ')} · ${(r.usd||[]).map(money).join(' / ')}</div></div>`).join('')}</div>`;
+ if((g.kprops||[]).length)h+=`<div class="platter"><div class="ph"><span>Player props, Kalshi</span><span>${g.kprops.length}</span></div>${g.kprops.slice(0,5).map(r=>`<div class="pb"><div class="a">${esc(r.player)}</div><div class="b cond">${r.top?cents(r.top.px):'-'}</div><div class="c">${esc(r.stat)} · ${r.top?r.top.k+'+ at the busiest rung · ':''}${money(r.vol24)} traded in 24h · ${r.rungs} rungs</div></div>`).join('')}</div>`;
+ // alerts
+ const al=D.alerts.filter(a=>a.game===g.key).slice(0,6);
+ if(al.length)h+=`<div class="platter"><div class="ph"><span>Alerts on this game</span><span>${D.alerts.filter(a=>a.game===g.key).length}</span></div>${al.map(a=>`<div class="row"><div class="grow"><b>${TYPES[a.type][0]}</b><div class="m">${esc(a.text)} · ${ago(a.ts)}</div></div>${a.usd?`<div class="amt cond">${money(a.usd)}</div>`:''}</div>`).join('')}</div>`;
+ // vault
+ if(g.model){const mo=g.model;h+=`<div class="platter"><div class="ph"><span>Vault line</span><span class="badge">context only</span></div><div class="kv"><span>${esc(g.home.abbr)} margin</span><em class="cond">${sgn(mo.margin)}</em></div><div class="kv"><span>Total</span><em class="cond">${mo.total}</em></div><div class="kv"><span>${esc(g.home.abbr)} win chance</span><em class="cond">${Math.round(mo.homeWin*100)}%</em></div><div class="foot">Our own number, shown beside the market. See the scoreboard on the Record tab for how it has done against Kalshi.</div></div>`}
+ return h;
+}
+function props(){
+ let h=head('Props','Player markets from Polymarket and Kalshi across the slate. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']],st.pr,'pr');
+ const up=upcoming();let rows=[];
+ up.forEach(g=>{((st.pr==='pm'?g.props:g.kprops)||[]).forEach(r=>rows.push({g,r}))});
+ if(st.pr==='pm')rows.sort((a,b)=>(b.r.usd||[]).reduce((s,x)=>s+x,0)-(a.r.usd||[]).reduce((s,x)=>s+x,0));else rows.sort((a,b)=>b.r.vol24-a.r.vol24);
+ h+=`<div class="sec"><span>${st.pr==='pm'?'Most money':'Most traded in 24h'}</span><span>${rows.length} props</span></div><div class="card">`;
+ rows.slice(0,st.props).forEach(({g,r})=>{
+  h+=st.pr==='pm'?`<div class="row tap" data-go="game/${esc(g.key)}">${ini(r.player)}<div class="grow"><b>${esc(r.player)}</b><div class="m">${esc(r.stat)}${r.line!=null?' '+r.line:''} · ${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</div><div class="fbar" style="margin-top:6px"><i style="width:${(r.usd[0]/((r.usd[0]+r.usd[1])||1))*100}%;background:#6c9cff"></i><i style="flex:1;background:#4a4a4f"></i></div></div><div class="amt cond">${(r.px||[]).map(cents).join(' / ')}<small>${(r.outs||[]).join(' / ')}</small></div></div>`
+  :`<div class="row tap" data-go="game/${esc(g.key)}">${ini(r.player)}<div class="grow"><b>${esc(r.player)}</b><div class="m">${esc(r.stat)} · ${esc(g.away.abbr)} @ ${esc(g.home.abbr)} · ${r.rungs} rungs</div></div><div class="amt cond">${money(r.vol24)}<small>${r.top?r.top.k+'+ at '+cents(r.top.px):'24h'}</small></div></div>`});
+ h+=`</div>`;
+ if(rows.length>st.props)h+=`<button class="btn" data-more="props">Show more (${rows.length-st.props} left)</button>`;
+ h+=`<div class="card"><div class="ph"><span>More prop tools</span></div><div class="m" style="color:var(--mut);font-size:13px">The +EV plays, price gaps, pick'em, Vault grades and the prop record are still on the classic page.</div><a class="btn" href="../" style="margin:10px 0 0">Open the classic page</a></div>`;
+ return h;
+}
+function accounts(){
+ let h=head('Accounts','Polymarket accounts we score against the closing price. Context only.');
+ h+=`<div class="sec"><span>Scored wallets</span></div><div class="hs">${['nfl','cfb','nba'].map(k=>{const w=D.wallets[k];return `<div class="card hc"><div class="gtop"><span>${SPORT[k]}</span><span>${w.scored.toLocaleString()} scored</span></div><div class="big cond" style="font-size:30px;font-weight:600">${w.sharp}</div><div class="m" style="color:var(--mut);font-size:12px">sharp · ${w.borrowed} borrowed · ${w.dull} dull</div></div>`}).join('')}</div>`;
+ h+=`<div class="sec"><span>Sharpest accounts</span><span>by t-stat</span></div><div class="card">`+ACC.map((a,i)=>`<div class="row tap" data-go="acct/${i}"><div class="grow"><b>${esc(a.who)}</b><div class="m">t ${a.rec.t} · ${sgn(a.rec.clv*100)} pts vs close · ${a.rec.n} bets, ${a.rec.games} games · ${SPORT[a.rec.sport]||''}</div></div><div class="amt cond">${money(a.buy24)}<small>bought, 24h</small></div></div>`).join('')+`</div>`;
+ return h;
+}
+function acct(i){
+ const a=ACC[i];if(!a)return head('Account','Not found');const s=a.stats&&a.stats.all,sp=a.stats&&a.stats.sp;
+ let h=`<div class="back" data-back role="button" tabindex="0" style="margin:calc(env(safe-area-inset-top) + 10px) 16px 6px">&lsaquo; Accounts</div><div class="title" style="margin-top:0">${esc(a.who)}</div><p class="ctx">Last seen ${ago(a.last)} · scored in ${SPORT[a.rec.sport]||''} · context only</p>`;
+ h+=`<div class="platter"><div class="ph"><span>Record vs the close</span></div><div class="kv"><span>t-stat</span><em class="cond">${a.rec.t}</em></div><div class="kv"><span>Avg gain vs close</span><em class="cond">${sgn(a.rec.clv*100)} pts</em></div><div class="kv"><span>Bets scored</span><em class="cond">${a.rec.n} in ${a.rec.games} games</em></div></div>`;
+ if(s)h+=`<div class="platter"><div class="ph"><span>Results${a.stats.days?`, last ${a.stats.days} days`:''}</span>${a.stats.capped?'<span class="badge">capped sample</span>':''}</div><div class="kv"><span>Bets</span><em class="cond">${s.n}</em></div><div class="kv"><span>Won</span><em class="cond">${Math.round(s.win*100)}%</em></div><div class="kv"><span>ROI</span><em class="cond ${s.roi>=0?'pos':'neg'}">${sgn(s.roi*100,0)}%</em></div><div class="kv"><span>Profit and loss</span><em class="cond ${s.pnl>=0?'pos':'neg'}">${s.pnl<0?'-':''}${money(Math.abs(s.pnl))}</em></div><div class="kv"><span>Volume</span><em class="cond">${money(s.vol)}</em></div></div>`;
+ h+=`<div class="platter"><div class="ph"><span>Open positions</span><span>${money(a.posVal)}</span></div>${a.pos.map(p=>`<div class="row"><div class="grow"><b>${esc(p.out)}</b><div class="m">${esc(p.title)} · avg ${cents(p.avg)}, now ${cents(p.cur)}</div></div><div class="amt cond">${money(p.val)}<small class="${p.pnl>=0?'pos':'neg'}">${p.pnl<0?'-':'+'}${money(Math.abs(p.pnl))}</small></div></div>`).join('')}</div>`;
+ h+=`<div class="platter"><div class="ph"><span>Recent trades</span></div>${a.trades.map(t=>`<div class="row"><div class="grow"><b>${t.side} ${esc(t.out)}</b><div class="m">${esc(t.title)} · ${cents(t.px)} · ${ago(t.ts)}</div></div><div class="amt cond">${money(t.usd)}</div></div>`).join('')}</div>`;
+ return h;
+}
+function alertCard(a){
+ const g=GM[a.game],col=g?(a.side==='home'?g.home.color:a.side==='away'?g.away.color:'#8e8e93'):'#8e8e93',t=TYPES[a.type];
+ const res=a.result==null?'':`<span class="badge ${a.result>0?'good':a.result<0?'bad':''}">${a.result>0?'Won':a.result<0?'Lost':'Push'}</span>`;
+ const clv=typeof a.clv==='number'?`<span class="badge ${a.clv>0?'good':a.clv<0?'bad':''}">${a.type==='behind'?sgn(a.clv*100,1)+'% EV':sgn(a.clv*100,2)+' pts vs close'}</span>`:'';
+ return `<div class="card alert press tap" ${g?`data-go="game/${esc(g.key)}"`:''}><div class="sw" style="background:${lift(col,.2)}"></div><div><div class="t">${esc(a.gameLbl)}</div><div class="x">${esc(a.text)}</div><div class="tags" style="margin-top:6px"><span class="badge ${t[1]}">${t[0]}</span>${res}${clv}<span class="badge">${ago(a.ts)}</span></div></div><div class="amt cond">${a.usd?money(a.usd):''}</div></div>`;
+}
+function alerts(){
+ const A=D.alerts.filter(a=>st.asport==='all'||a.sport===st.asport),cnt={all:A.length};Object.keys(TYPES).forEach(k=>cnt[k]=A.filter(a=>a.type===k).length);
+ const L=A.filter(a=>st.atype==='all'||a.type===st.atype);
+ let h=head('Alerts','Large tracked bets and market moves, newest first. Not a bet signal.')+chips(Object.keys(SPORT).map(k=>[k,SPORT[k]]),st.asport,'asport')+chips([['all','All',cnt.all],...Object.keys(TYPES).map(k=>[k,TYPES[k][0],cnt[k]])],st.atype,'atype');
+ h+=L.slice(0,st.alertsN).map(alertCard).join('');
+ if(!L.length)h+='<div class="empty">No alerts of this type.</div>';
+ if(L.length>st.alertsN)h+=`<button class="btn" data-more="alertsN">Show more (${L.length-st.alertsN} left)</button>`;
+ return h;
+}
+function record(){
+ const A=D.alerts.filter(a=>st.rsport==='all'||a.sport===st.rsport);
+ let h=head('Record','Every alert graded against Pinnacle’s closing price.')+chips(Object.keys(SPORT).map(k=>[k,SPORT[k]]),st.rsport,'rsport');
+ h+=`<div class="sec"><span>Does following work?</span></div><div class="hs" style="flex-wrap:wrap;overflow:visible;padding:0 16px">`;
+ h+=Object.keys(TYPES).map(k=>{const xs=A.filter(a=>a.type===k&&typeof a.clv==='number'),res=A.filter(a=>a.type===k&&a.result!=null),n=xs.length,avg=n?xs.reduce((s,a)=>s+a.clv,0)/n:null,beat=n?xs.filter(a=>a.clv>0).length/n:null,w=res.filter(a=>a.result>0).length,l=res.filter(a=>a.result<0).length,p=res.length-w-l,tot=A.filter(a=>a.type===k).length;
+  return `<div class="card" style="width:calc(50% - 6px);margin:0 0 12px;padding:12px 14px"><span class="badge ${TYPES[k][1]}">${TYPES[k][0]}</span><div class="cond" style="font-size:34px;font-weight:600;margin:8px 0 0" ><span class="${avg==null?'':avg>0?'pos':'neg'}">${avg==null?'-':(k==='behind'?sgn(avg*100)+'%':sgn(avg*100,2))}</span></div><div class="m" style="color:var(--mut);font-size:11px;margin-bottom:8px">${avg==null?'graded after kickoff':k==='behind'?'avg EV at the close':'avg win-prob points vs close'}</div>
+  <div class="kv" style="padding:4px 0"><span style="font-size:12px">Alerts</span><b>${tot}</b></div><div class="kv" style="padding:4px 0"><span style="font-size:12px">Graded</span><b>${n}</b></div><div class="kv" style="padding:4px 0"><span style="font-size:12px">Beat close</span><b>${beat==null?'-':Math.round(beat*100)+'%'}</b></div><div class="kv" style="padding:4px 0"><span style="font-size:12px">Record</span><b>${res.length?w+'-'+l+(p?'-'+p:''):'-'}</b></div></div>`}).join('')+`</div>`;
+ const SC=scoreCards();
+ h+=`<div class="sec"><span>Model scoreboard</span><span class="badge">small samples</span></div>`+(SC.length?'':'<div class="empty">The scoreboard could not be loaded.</div>')+SC.map(s=>`<div class="card"><div class="gtop"><span>${s[0]}</span><span class="badge ${s[5]?'bad':'warn'}">${s[5]?'no edge':'tracking'}</span></div><div class="cond" style="font-size:36px;font-weight:600">${s[1]}</div><div class="m" style="color:var(--mut);font-size:13px">${s[2]}</div><div class="fbar" style="margin-top:10px"><i style="width:${Math.min(100,s[3]/s[4]*100)}%;background:#6c9cff"></i></div><div class="fll" style="margin:5px 0 0"><span>${s[3]} of ${s[4]} to count</span><span>${esc(s[6]||'')}</span></div></div>`).join('');
+ h+=`<div class="sec"><span>What each alert means</span></div>`+Object.keys(TYPES).map(k=>`<div class="card"><span class="badge ${TYPES[k][1]}">${TYPES[k][0]}</span><div style="color:var(--mut);font-size:13px;margin-top:8px">${esc(TYPES[k][2])}</div></div>`).join('');
+ h+=`<div class="card"><b>How to read the grades</b><div style="color:var(--mut);font-size:13px;margin-top:6px">Closing line value is the standard test for a bet: did the market end up agreeing with you? An alert type that keeps beating the close is adding information. One that does not is shown for context only.</div></div>`;
+ const S=D.status||{nfl:{},cfb:{},nba:{}};h+=`<div class="sec"><span>Where the data comes from</span><span>${snap().replace(/<[^>]+>/g,'')}</span></div><div class="card">${['nfl','cfb','nba'].map(k=>`<div class="kv"><span>${SPORT[k]}</span><em class="cond" style="font-size:16px">${S[k].games} games · Pinnacle ${S[k].pinnacle} · Polymarket ${S[k].polymarket} · Kalshi ${S[k].kalshi} · Novig ${S[k].novig}</em></div>`).join('')}</div>`;
+ return h;
+}
+let inApp=false;
+function skeleton(){return '<div class="title">Sharp Money</div><p class="ctx">Loading the latest numbers</p>'+'<div class="skel"></div>'.repeat(3)}
+function route(){
+ const r=(location.hash||'#board').slice(1),sc=$('scr');let html,tab;
+ if(!D){sc.innerHTML=loadErr?'<div class="title">Sharp Money</div><div class="card"><b>Could not load the data</b><div style="color:var(--mut);font-size:13px;margin-top:6px">The data file did not load. Check your connection and try again.</div><button class="btn" data-retry style="margin:10px 0 0">Try again</button></div>':skeleton();return}
+ if(r.startsWith('game/')){html=gamePage(decodeURIComponent(r.slice(5)));tab='board'}
+ else if(r.startsWith('acct/')){html=acct(+r.slice(5));tab='accounts'}
+ else{tab=r;html=({board,props,accounts,alerts,record}[r]||board)()}
+ sc.innerHTML=html;
+ sc.querySelectorAll('[data-go]').forEach(x=>{x.tabIndex=0;x.setAttribute('role','button')});
+ document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+}
+function rerender(){const y=scrollY;route();window.scrollTo(0,y)}
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-go],[data-back]')){e.preventDefault();e.target.click()}});
+document.addEventListener('click',e=>{
+ if(e.target.closest('[data-retry]')){loadErr=false;load();route();return}
+ const t=e.target.closest('[data-t]');if(t&&t.closest('#tabs')){location.hash=t.dataset.t;window.scrollTo(0,0);return}
+ const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
+ const m=e.target.closest('[data-more]');if(m){const k=m.dataset.more;st[k]+=k==='slate'?10:14;rerender();return}
+ if(e.target.closest('[data-back]')){if(inApp)history.back();else location.hash='board';return}
+ const g=e.target.closest('[data-go]');if(g){inApp=true;location.hash=g.dataset.go;window.scrollTo(0,0)}
+});
+function scoreCards(){
+ if(!SB)return [];
+ const out=[],sl=SB.sharp_lead||{},sg=SB.signals||{};
+ const lead=(t,x,need,unit)=>{const p=x&&x.Pinnacle;if(!p)return;out.push([t,p.toward+' of '+(p.toward+p.away),'moved toward Pinnacle ('+p.away+' went away), average '+sgn(p.mean_move,2)+' '+unit,p.n,need,0,x.verdict])};
+ lead('Pinnacle spread lead',sl.sp,50,'pts');lead('Pinnacle totals lead',sl.to,50,'pts');lead('Pinnacle props lead',sl.props,100,'pts');
+ const ps=sg.pm_sharp&&sg.pm_sharp.all;if(ps)out.push(['Polymarket sharp accounts',ps.won+' of '+ps.n,'won, when '+ps.said.toFixed(1)+' were priced in. '+(sg.pm_sharp.crowd_disagrees?sg.pm_sharp.crowd_disagrees.won+' of '+sg.pm_sharp.crowd_disagrees.n+' when the crowd disagreed':''),ps.n,50,0,ps.verdict]);
+ const kb=sg.kalshi_vs_books;if(kb)out.push(['Kalshi vs books (props)',kb.won+' of '+kb.n,'Kalshi side won, priced for '+kb.said.toFixed(1),kb.n,50,0,kb.verdict]);
+ const vk=sg.vault_vs_kalshi;if(vk)out.push(['Vault line vs Kalshi',vk.won+' of '+vk.n,'won, priced for '+vk.said.toFixed(1)+'. '+(vk.verdict||''),vk.n,50,/no edge/.test(vk.verdict||'')?1:0,vk.verdict]);
+ return out}
+function apply(d){D=d;REF=Date.now()/1000;G=d.games||[];GM=Object.fromEntries(G.map(g=>[g.key,g]));
+ ACC=(d.accounts||[]).filter(a=>a.rec).sort((a,b)=>b.rec.t-a.rec.t).slice(0,14);loadErr=false}
+function load(){return fetch(SRC,{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{if(!D||d.ts>=D.ts){apply(d);rerender()}}).catch(()=>{if(!D){loadErr=true;route()}})}
+fetch(SBSRC,{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{SB=j;if(D)rerender()}).catch(()=>{});
+addEventListener('hashchange',()=>{route();window.scrollTo(0,0)});
+route();load();setInterval(load,120000);
+</script>
