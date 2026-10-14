@@ -1,0 +1,87 @@
+<!doctype html>
+<meta charset="utf-8"><title>Vault NBA phone layout, mock v1</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+/* Standalone mock. Tokens are inlined from sharp-money/new/index.html (dark). Data: real values read from the live NBA board
+   (Wed 10/14 preseason slate, board of 11:46 AM ET) and the Knicks Minutes Lab. Nothing here is invented. */
+:root{color-scheme:dark;--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--line:rgba(255,255,255,.09);--ink:#fff;--mut:#98989f;--dim:#636366;--acc:#6c9cff;--good:#32d583;--bad:#ff6b6b;--warn:#f5b84a;--ease-spring:cubic-bezier(.34,1.56,.64,1)}
+*{box-sizing:border-box}
+body{margin:0;background:#111;color:var(--ink);font:15px/1.35 -apple-system,"SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:24px 16px 48px}
+h1{font-size:18px;margin:0 0 4px}.note{color:var(--mut);font-size:13px;max-width:980px;margin:0 0 20px}
+.stage{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cap{color:var(--mut);font-size:12px;margin:0 0 8px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.phone{width:402px;height:874px;border-radius:44px;background:var(--bg);position:relative;overflow:hidden;border:1px solid #2a2a2d;flex:none}
+.sb{height:54px}
+.scr{position:absolute;top:54px;bottom:0;left:0;right:0;overflow-y:auto;padding-bottom:104px;scrollbar-width:none}.scr::-webkit-scrollbar{display:none}
+.trow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 16px 2px}
+.title{font-size:28px;font-weight:700;letter-spacing:-.02em;margin:0;line-height:1.15}
+.ctx{color:var(--mut);margin:0 16px 8px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rf{all:unset;box-sizing:border-box;min-width:36px;height:36px;border-radius:99px;background:var(--card);display:inline-flex;align-items:center;justify-content:center;color:var(--ink)}
+.rf svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chips{display:flex;gap:6px;margin:0 16px 8px;overflow-x:auto;scrollbar-width:none;align-items:center}.chips::-webkit-scrollbar{display:none}
+.chip{all:unset;padding:6px 13px;border-radius:99px;font-weight:600;font-size:14px;color:var(--mut);white-space:nowrap;flex:none;position:relative}
+.chip::after{content:"";position:absolute;inset:-4px 0}
+.chip.on{background:#fff;color:#000}.chip small{font-weight:500;opacity:.7;margin-left:4px}
+.card{background:var(--card);border-radius:24px;margin:0 16px 10px;padding:14px 16px}
+.gtop{display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:13px;margin-bottom:6px;gap:8px}
+.tr{display:flex;align-items:center;gap:12px;padding:3px 0}
+.logo{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:11px;color:#fff;flex:none;position:relative;overflow:hidden;background:#3a3a3e}
+.logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:13%;background:#26262a;border-radius:50%}
+.tn{flex:1;font-weight:600;font-size:16px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nums{display:flex;gap:6px}
+.nums b{min-width:62px;text-align:right;font-weight:600;font-size:16px;font-variant-numeric:tabular-nums}
+.nums b.mut{color:var(--mut);font-weight:500}
+.hdr{display:flex;gap:6px;justify-content:flex-end;color:var(--dim);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin:-2px 0 2px}
+.hdr span{min-width:62px;text-align:right}
+.badge{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:1px 8px;white-space:nowrap;display:inline-block}
+.badge.warn{color:var(--warn);border-color:rgba(245,184,74,.35)}
+.ctxline{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;color:var(--mut)}
+.sec{color:var(--mut);font-size:13px;font-weight:600;margin:12px 20px 8px;display:flex;justify-content:space-between}
+.prow{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}.prow:first-child{border-top:0}
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;background:#3a3a3e}
+.pn{font-weight:600;font-size:16px}.pm{color:var(--mut);font-size:12.5px;margin-top:1px}
+.proj{text-align:right}.proj b{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;display:block;line-height:1.1}.proj small{color:var(--mut);font-size:11px}
+.empty{display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:14px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;padding:10px 12px 28px;background:rgba(20,20,22,.82);backdrop-filter:blur(24px);display:flex;justify-content:space-around;border-top:1px solid var(--line)}
+.tabbar button{all:unset;text-align:center;font-size:11px;font-weight:600;color:var(--mut);flex:1;padding:4px 0;min-height:44px}
+.tabbar button svg{display:block;margin:0 auto 3px;width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabbar button.on{color:#fff}
+.big{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.minbar{display:flex;height:8px;gap:2px;border-radius:8px;overflow:hidden;background:#2a2a2d;margin:8px 0 4px}.minbar i{display:block;height:100%;background:var(--acc)}
+.two{display:flex;justify-content:space-between;align-items:baseline}
+.btnp{all:unset;padding:7px 14px;border-radius:99px;background:var(--card2);font-weight:600;font-size:13px;position:relative}
+.btnp::after{content:"";position:absolute;inset:-6px 0}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px;text-align:center}.stat div{background:#2a2a2d;border-radius:12px;padding:6px 0}.stat b{display:block;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}.stat small{color:var(--mut);font-size:10.5px}
+</style>
+<h1>Vault NBA on a phone: layout mock v1</h1>
+<p class="note">Same dark tokens and Apple Sports card style as the new Sharp Money page. A 56px header (title, one-line caption, refresh beside the title), one filter row, a bottom tab bar in place of the hamburger drawer, and real rows on the first screen. All numbers are stored values from the live board (Wed 10/14 preseason slate) and the Knicks Minutes Lab. Every prop is on a preseason hold, which is the page's own state today, so no bets and no edges are shown as plays. Sharp money appears as context only. Scroll inside each phone.</p>
+<div class="stage" id="stage"></div>
+<script>
+const D={asof:'11:46 AM ET',
+games:[{a:'BKN',h:'MIA',t:'7:30 PM',sp:-7.5,tot:232.5,mlA:'-310',mlH:'+250'},{a:'CHA',h:'BOS',t:'7:30 PM',sp:-7.5,tot:226.5,mlA:'-300',mlH:'-430'},{a:'PHX',h:'SA',t:'8:00 PM',sp:-8.5,tot:224.5,mlA:'-320',mlH:'+260'},{a:'NO',h:'DAL',t:'8:00 PM',sp:-1.5,tot:230.5,mlA:'-110',mlH:'-110'},{a:'CHI',h:'MIL',t:'8:00 PM',sp:1.5,tot:231.5,mlA:'+110',mlH:'-130'},{a:'DET',h:'MIN',t:'8:00 PM',sp:-3.5,tot:227.5,mlA:'-163',mlH:'-120',ctx:'Sharp context: 3 of 4 signals point to MIN (Pinnacle, Kalshi big, Money). Not a bet.'},{a:'DEN',h:'LAC',t:'10:30 PM',sp:2.5,tot:225.5,mlA:'+120',mlH:'-330'}],
+props:[['Michael Porter Jr.','BKN','PTS',22.5,'17.5 PP · 18.5 UD',31],['Michael Porter Jr.','BKN','PRA',31.6,'25.5 PP · 25.5 UD',31],['Giannis Antetokounmpo','MIA','PTS',24.0,'20 PP · 20.5 UD',25],['Giannis Antetokounmpo','MIA','REB',8.5,'6.5 UD · 6.5 SL',25],['Klay Thompson','MIA','PTS',11.7,'9.5 PP · 10.5 UD',20],['Egor Demin','BKN','3PM',2.1,'1.5 PP · 1.5 UD',26],['Mikel Brown Jr.','BKN','PTS',8.7,'12.5 PP · 12.5 UD',18]],
+ny:[['Jalen Brunson',42.7,44.0,32.8,4.2,7.0],['OG Anunoby',38.1,30.5,22.0,6.5,2.0],['Mikal Bridges',36.7,22.6,15.1,4.0,3.5],['Josh Hart',34.9,26.7,12.0,9.5,5.2],['Karl-Anthony Towns',31.8,31.8,16.4,10.9,4.5]]};
+const TAB={g:['Games','<path d="M4 7h16M4 12h16M4 17h10"/>'],p:['Props','<circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/>'],e:['Edges','<path d="M4 16l5-5 4 4 7-8"/>'],t:['Teams','<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M17 11a3 3 0 100-6M21 20c0-2.6-1.5-4.6-4-5.5"/>'],m:['More','<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>']};
+const logo=a=>`<span class="logo">${a}<img alt="" src="https://a.espncdn.com/i/teamlogos/nba/500/${a.toLowerCase()}.png" onerror="this.remove()"></span>`;
+const ini=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('');
+const sg=n=>(n>0?'+':'')+n;
+const bar=on=>`<nav class="tabbar">${Object.entries(TAB).map(([k,v])=>`<button class="${k===on?'on':''}"><svg viewBox="0 0 24 24">${v[1]}</svg>${v[0]}</button>`).join('')}</nav>`;
+const head=(t,c)=>`<div class="trow"><h2 class="title">${t}</h2><button class="rf" aria-label="Refresh"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 11-2.6-5.9M20 4v5h-5"/></svg></button></div><p class="ctx">${c}</p>`;
+const chips=(a,on)=>`<div class="chips">${a.map((x,i)=>`<button class="chip ${i===on?'on':''}">${x}</button>`).join('')}</div>`;
+const games=()=>head('Games','Wed 10/14 · 7 preseason · odds '+D.asof)+chips(['Wed 14<small>7</small>','Thu 15<small>2</small>','Fri 16<small>12</small>','Tue 20<small>3</small>'].map(x=>x),0)+
+`<div style="display:flex;justify-content:flex-end;margin:0 32px 0"><div class="hdr"><span>Spread</span><span>Total</span></div></div>`+
+D.games.map(g=>`<div class="card"><div class="gtop"><span>${g.t} ET</span><span class="badge warn">Preseason</span></div>
+<div class="tr">${logo(g.a)}<span class="tn">${g.a}</span><span class="nums"><b>${sg(-g.sp)}</b><b>O ${g.tot}</b></span></div>
+<div class="tr">${logo(g.h)}<span class="tn">${g.h}</span><span class="nums"><b>${sg(g.sp)}</b><b>U ${g.tot}</b></span></div>${g.ctx?`<div class="ctxline">${g.ctx}</div>`:''}</div>`).join('');
+const props=()=>head('Props','225 props · pick\'em 150 · all on preseason hold')+chips(['Pick\'em 150','Watching 0','Bets 0','Everything 225'],0)+chips(['All','PTS','REB','AST','PRA','3PM','BLK'],0)+chips(['All games','BKN @ MIA','CHA @ BOS','PHX @ SA','NO @ DAL'],1)+
+`<div class="card">${D.props.map(p=>`<div class="prow"><span class="av">${ini(p[0])}</span><div><div class="pn">${p[0]}</div><div class="pm">${p[1]} · ${p[2]} · ${p[4]}</div></div><div class="proj"><b>${p[3]}</b><small>Vault proj · ${p[5]} min</small></div></div>`).join('')}</div>`;
+const edges=()=>head('Edges','21 games · next tip 7:30 PM ET')+
+`<div class="card"><div class="empty"><span>0 edges at 3%+ · 0 sized · $0</span><span class="badge warn">Preseason hold</span></div></div>`+chips(['All types','News lag','Stale line','Ladder gap','Price gap','Model lean'],0)+chips(['Any status','Proven','Backtest GO','Tracking','Untested'],0)+
+`<div class="card"><div class="empty"><span>Nothing to price yet. Edges appear here when the hold lifts.</span></div></div>
+<div class="sec"><span>News, last 3 h</span><span>0</span></div>`;
+const teams=()=>head('Knicks','NY · tonight\'s game TOR @ NY')+chips(['Tonight\'s game','Season start'],0)+
+`<div class="card"><div class="two"><span class="big">264.9<small style="font-size:13px;color:var(--mut);font-weight:500"> of 240 min</small></span><span class="badge warn">24.9 over</span></div><div class="minbar">${D.ny.map(p=>`<i style="width:${p[1]/2.65}%;opacity:${.55+p[1]/110}"></i>`).join('')}</div><div class="two" style="margin-top:8px"><span class="pm" style="color:var(--mut);font-size:12.5px">Every player who might play is counted.</span><button class="btnp">Trim to 240</button></div></div>`+
+`<div class="card">${D.ny.map(p=>`<div style="padding:10px 0;border-top:1px solid var(--line)" class="${p===D.ny[0]?'f':''}"><div class="two"><span class="pn">${p[0]}</span><span class="pm">${p[1]} min</span></div><div class="stat"><div><b>${p[2]}</b><small>PRA</small></div><div><b>${p[3]}</b><small>PTS</small></div><div><b>${p[4]}</b><small>REB</small></div><div><b>${p[5]}</b><small>AST</small></div></div></div>`).join('').replace('border-top:1px solid var(--line)','border-top:0')}</div>`;
+const S=[['Games',games,'g'],['Props',props,'p'],['Edges',edges,'e'],['Teams',teams,'t']];
+document.getElementById('stage').innerHTML=S.map(s=>`<div><p class="cap">${s[0]}</p><div class="phone"><div class="sb"></div><div class="scr">${s[1]()}</div>${bar(s[2])}</div></div>`).join('');
+</script>
