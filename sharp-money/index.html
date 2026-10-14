@@ -665,14 +665,13 @@ var VCP_CSS = `
 .vcp .shr{position:absolute;right:18px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:600 12px/1 Inter,system-ui,sans-serif;padding:7px 12px;border-radius:99px;cursor:pointer;transition:transform 500ms cubic-bezier(.34,1.56,.64,1),background .15s}
 .vcp .shr:hover{background:rgba(255,255,255,.13)}.vcp .shr:active{transform:scale(.94);transition:transform 80ms ease-out}.vcp .shr[disabled]{opacity:.6;cursor:progress}
 @container (max-width:520px){.vcp .pin,.vcp .under{width:76px}.vcp .pin b,.vcp .under b{font-size:11.5px}.vcp .p,.vcp .e strong{font-size:32px}.vcp .row{grid-template-columns:1fr}.vcp .ruler{margin:0 30px}.vcp .brand span{display:none}.vcp .scale span:nth-child(2){display:none}}
-.vcp .top{position:relative;justify-content:center;text-align:center;padding:0 64px}
-.vcp .top .pill{position:absolute;right:0;top:0}
-.vcp .top .back{position:absolute;left:0;top:0}
-.vcp .teams{justify-content:center}
-.vcp .big{flex-direction:column;align-items:center;text-align:center;gap:6px}
+.vcp .top{align-items:flex-start}
+.vcp .chips{display:flex;gap:8px;align-items:center;flex:none}
+.vcp .chip{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;padding:4px 10px;border-radius:99px;border:1px solid rgba(70,224,140,.45);color:var(--pick);white-space:nowrap}
+.vcp .chip.lean{border-color:rgba(242,184,75,.4);color:var(--amber)}
+.vcp .chip b{font-size:12px;margin-left:4px}
+.vcp .big{display:block;text-align:center;margin:12px 0 6px}
 .vcp .big>div:first-child{display:flex;flex-direction:column;align-items:center;gap:4px}
-.vcp .big{position:relative}
-.vcp .e{position:absolute;right:0;bottom:0;text-align:right}
 .vcp .note,.vcp .res{text-align:center}
 `;
 // New pill, ruler and stat row for a CFB model game. Margins in the model data are the HOME side's; the ruler plots the AWAY side's
@@ -727,10 +726,10 @@ function VaultCfbPick(P) {
         h('div', { style: { minWidth: 0 } }, P.back ? h('button', { type: 'button', className: 'back', onClick: P.back, 'data-html2canvas-ignore': 'true' }, '← Games') : null,
           h('div', { className: 'teams' }, h(VscId, { id: x.away_id, size: 36, sp: P.sport }), x.away, h('i', null, '@'), x.home, h(VscId, { id: x.home_id, size: 36, sp: P.sport })),
           h('div', { className: 'meta' }, 'Week ' + x.week + ' · ' + P.dt + (x.hs != null ? ' · Final ' + x.as_ + '-' + x.hs : ''))),
-        h('span', { className: 'pill ' + pill[0] }, pill[1])),
+        h('div', { className: 'chips' }, h('span', { className: 'chip' + (lean ? ' lean' : '') }, 'Edge ', h('b', null, Math.abs(x.edge).toFixed(1))), h('span', { className: 'pill ' + pill[0] }, pill[1]))),
       h('div', { className: 'big' },
         h('div', null, h('span', { className: 'eyebrow' + (lean ? ' lean' : '') }, h('i'), lean ? 'Model lean' : 'Take'), h('div', { className: 'p' + (lean ? ' lean' : '') }, x.team + ' ' + P.sn(x.entry))),
-        h('div', { className: 'e' }, h('small', null, 'Edge'), h('strong', { className: lean ? 'lean' : '' }, Math.abs(x.edge).toFixed(1)))),
+        ),
       h('div', { className: 'note' }, note),
       P.result ? h('div', { className: 'res' }, P.result) : null,
       h('div', { className: 'ruler', style: { height: RH } }, h('div', { className: 'axis', style: { top: AX } }), win, parts),
