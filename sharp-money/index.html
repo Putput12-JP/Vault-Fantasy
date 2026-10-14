@@ -665,6 +665,16 @@ var VCP_CSS = `
 .vcp .shr{position:absolute;right:18px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:600 12px/1 Inter,system-ui,sans-serif;padding:7px 12px;border-radius:99px;cursor:pointer;transition:transform 500ms cubic-bezier(.34,1.56,.64,1),background .15s}
 .vcp .shr:hover{background:rgba(255,255,255,.13)}.vcp .shr:active{transform:scale(.94);transition:transform 80ms ease-out}.vcp .shr[disabled]{opacity:.6;cursor:progress}
 @container (max-width:520px){.vcp .pin,.vcp .under{width:76px}.vcp .pin b,.vcp .under b{font-size:11.5px}.vcp .p,.vcp .e strong{font-size:32px}.vcp .row{grid-template-columns:1fr}.vcp .ruler{margin:0 30px}.vcp .brand span{display:none}.vcp .scale span:nth-child(2){display:none}}
+.vcp .top{position:relative;justify-content:center;text-align:center;padding:0 64px}
+.vcp .top .pill{position:absolute;right:0;top:0}
+.vcp .top .back{position:absolute;left:0;top:0}
+.vcp .teams{justify-content:center}
+.vcp .big{flex-direction:column;align-items:center;text-align:center;gap:6px}
+.vcp .big>div:first-child{display:flex;flex-direction:column;align-items:center;gap:4px}
+.vcp .e{display:flex;align-items:baseline;gap:8px;text-align:center}
+.vcp .e small{display:inline}
+.vcp .e strong{display:inline;font-size:28px}
+.vcp .note,.vcp .res{text-align:center}
 `;
 // New pill, ruler and stat row for a CFB model game. Margins in the model data are the HOME side's; the ruler plots the AWAY side's
 // margin of victory so "model" and "market" read as two points on one line, and the green is the gap between them (the edge).
@@ -1250,8 +1260,8 @@ tiles=[...p.map(y=>{let w=y.w+y.l;return{k:y.n,t:y.n+" of 3 agree",dots:y.n,v:w|
 return h("div",{ref:secRef,style:{marginTop:20}},
  h("div",{style:{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",marginBottom:14}},h(ve,{options:["All","NFL","CFB","NBA"],value:o,onChange:i}),h(ve,{options:["Still gettable","Include expired"],value:s,onChange:r})),
  h("div",{className:NT?"sm-nosb":void 0,style:NT?{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginBottom:14}:{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginBottom:14}},tiles.map(y=>{let on=y.k&&sel===y.k;return h("div",{key:y.t,role:y.k?"button":void 0,tabIndex:y.k?0:void 0,"aria-pressed":y.k?on:void 0,title:y.k?"Show the completed games":void 0,onClick:()=>y.k&&setSel(on?null:y.k),style:{cursor:y.k?"pointer":"default",borderRadius:z.radius.lg,outline:on?`2px solid ${n.accent}`:"none",outlineOffset:-1}},
-  h(K,{padding:12},h("div",{style:{display:"flex",alignItems:"center",gap:8}},y.dots?dots(y.dots,7):null,h(T,{size:"xs",mono:!0,style:lab},y.t)),
-   h("div",{style:{...z.type.xl,fontWeight:z.weight.semibold,fontFamily:z.font.mono,margin:"4px 0 2px"}},y.v),h(T,{size:"xs"},y.d),
+  h(K,{padding:12,style:{containerType:"inline-size",textAlign:"center"}},h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8}},y.dots?dots(y.dots,7):null,h(T,{size:"xs",mono:!0,style:lab},y.t)),
+   h("div",{style:{...z.type.xl,fontSize:"clamp(20px,12.75cqw,72px)",lineHeight:1.1,whiteSpace:"nowrap",fontWeight:z.weight.semibold,fontFamily:z.font.mono,margin:"4px 0 2px"}},y.v),h(T,{size:"xs"},y.d),
    h("div",{style:{marginTop:2}},h(se,{tone:y.ok==null?"muted":y.ok?"ok":"bad",size:"sm"},y.c))))})),
 
  h("div",{style:{display:"grid",gridTemplateColumns:NT?"minmax(0,1fr)":"minmax(240px,300px) minmax(600px,1fr) minmax(240px,300px)",gap:16,alignItems:"stretch"}},
