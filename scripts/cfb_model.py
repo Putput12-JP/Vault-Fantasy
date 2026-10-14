@@ -10,6 +10,9 @@ closing spread. It earns a Trust it only by clearing the same bar as every other
   python3 scripts/cfb_model.py priors   # once per offseason: walk-forward 2021-2025, writes the frozen
                                         #   preseason ratings (data/cfb_model_priors.json) and the backtest
                                         #   summary (data/cfb_model_backtest.json)
+  python3 scripts/cfb_model.py priors-totals
+                                        # once per offseason after `priors`: frozen preseason points and plays ratings
+                                        #   (data/cfb_model_totals_priors.json) for the totals line
   python3 scripts/cfb_model.py update --sharp data.json
                                         # in season: refit on 2026 games, project the slate that the
                                         #   Sharp Money feed lists, log new picks, grade finished ones,
@@ -33,6 +36,18 @@ LOCK_SECS = 3600         # the final lock: the state an hour before kickoff (or 
 PICK_MIN_WEEK = 4        # the first month is dominated by the prior, which has no talent or portal information
 BREAKEVEN = 110 / 210
 FBS_ADDITIONS = {16}      # teams new to FBS this season (ESPN ids), added each offseason: 2026 = Sacramento State
+
+
+TOTALS_PRIORS = os.path.join(DATA, 'cfb_model_totals_priors.json')
+# Totals line: total = TOT_B0 + TOT_B1 x (projected home pts + projected away pts) + TOT_B2 x (projected combined plays), fit once on 2022 and never refit
+# (backtest: cfb-backtests/improve/wf.py + ev.py, RESULTS.md "5) Totals model"). Points and plays are walk-forward opponent-adjusted ridges, see totals_* below.
+TOT_B0, TOT_B1, TOT_B2 = -10.12, 0.797, 0.150
+TOT_ALPHA = 5.0           # ridge strength for points and plays (the EPA ridge uses st.ALPHA = 300; counts are on a different scale)
+TOT_EDGES = (3, 5)        # the one source for the totals flag thresholds (ascending), points from the market total: flags, summary, backtest and the page (data.edges) all read it
+TOT_VERSION = 3           # 1 = prior-years league level, DraftKings open; 2 = in-season league level, Bovada open; 3 = flags, side and grade from the unrounded edge (edge_raw). Frozen rows of an older version are rebuilt once
+TOT_PROVEN_TARGET = 150   # live (not backfilled) graded picks at the lowest TOT_EDGES threshold before the totals record counts as proven
+TOT_BACKTEST = dict(seasons='2023-2025', by_edge={'3': dict(n=742, open=[395, 344], clv=0.818, clv_z=11.07, under=0.704), '5': dict(n=289, open=[162, 125], clv=1.112, clv_z=8.74, under=0.765)},   # keyed by the TOT_EDGES thresholds
+                    note='Bovada open total, weeks 4+, in-season league level, model fit on 2022 only')  # scripts/cfb_totals_backtest.py
 
 
 BLEND_W = 0.10           # weight on the model's disagreement in the blended line: fit on 2022-2025 closing lines (0.07 tuned, 0.13 on the test seasons). It cuts the market's miss by 0.01 pts, i.e. nothing
@@ -444,6 +459,259 @@ def open_check(g26, F, rated_before, K, HFA):
     return out
 
 
+# ---------------------------------------------------------------------------------------------------------------------------------
+# Totals line. Separate from the spread: nothing below is read by, or changes, a spread number.
+# ---------------------------------------------------------------------------------------------------------------------------------
+def totals_load(d, years):
+    """one row per team per game with what that team scored (pts) and how many scrimmage plays it ran (nplays). Same rows as the EPA ratings use
+    (a team-game exists when it had a non-garbage play); plays are every scrimmage snap that was not a no-play, kneels included, so it is pace and not efficiency."""
+    tgs, gms = [], []
+    for y in years:
+        p = pd.read_parquet(st.fetch(f'{st.REL}/espn_cfb_pbp/play_by_play_{y}.parquet', f'{d}/pbp_{y}.parquet'), columns=st.COLS)
+        p = p[p.seasonType == 2]
+        sch = pd.read_parquet(st.fetch(f'{st.REL}/espn_cfb_schedules/cfb_schedule_{y}.parquet', f'{d}/sched_{y}.parquet'), columns=['game_id', 'neutral_site'])
+        g = p.drop_duplicates('game_id')[['season', 'week', 'game_id', 'homeTeamId', 'awayTeamId', 'homeFinalScore', 'awayFinalScore', 'status_type_completed']].merge(sch, on='game_id', how='left')
+        pace = p[p.scrimmage_play & ~p.penalty_no_play].groupby(['game_id', 'pos_team_id']).size().rename('nplays').reset_index()
+        s_ = p[p.scrimmage_play & ~p.kneel_down & ~p.penalty_no_play]
+        s_ = s_[s_.pos_score_diff_start.abs() <= s_.period.map(st.GARBAGE).fillna(22)]
+        a = s_.groupby(['game_id', 'pos_team_id', 'def_pos_team_id']).size().rename('k').reset_index().drop(columns='k')
+        a = a.merge(pace, on=['game_id', 'pos_team_id'], how='left'); a['season'] = y; tgs.append(a); gms.append(g)
+    tt, gm = pd.concat(tgs), pd.concat(gms)
+    tt = tt.merge(gm[['game_id', 'week', 'homeTeamId', 'awayTeamId', 'neutral_site', 'homeFinalScore', 'awayFinalScore']], on='game_id')
+    tt['home_off'] = np.where(tt.neutral_site == True, 0, np.where(tt.pos_team_id == tt.homeTeamId, 1, -1))
+    tt['pts'] = np.where(tt.pos_team_id == tt.homeTeamId, tt.homeFinalScore, tt.awayFinalScore).astype(float)
+    return tt, gm
+
+
+def totals_fit(obs, col, pa, pb, center):
+    """ridge of `col` (points or plays) on offense + defense team effects and home field, around `center` plus the prior. Returns (offense, defense) dicts.
+    Same construction as st.fit but unweighted (every team-game counts once) and TOT_ALPHA; the intercept is dropped, `center` is the league level."""
+    from sklearn.linear_model import Ridge
+    import scipy.sparse as sp
+    obs = obs.dropna(subset=[col])
+    if len(obs) < 30: return dict(pa), dict(pb)
+    teams = sorted(set(obs.pos_team_id) | set(obs.def_pos_team_id)); ix = {t: i for i, t in enumerate(teams)}; n = len(teams); r = np.arange(len(obs))
+    X = sp.csr_matrix((np.r_[np.ones(len(obs)), np.ones(len(obs)), obs.home_off.values * 10.0],
+                       (np.r_[r, r, r], np.r_[obs.pos_team_id.map(ix).values, n + obs.def_pos_team_id.map(ix).values, np.full(len(obs), 2 * n)])), shape=(len(obs), 2 * n + 1))
+    base = center + obs.pos_team_id.map(lambda t: pa.get(t, 0.0)).values + obs.def_pos_team_id.map(lambda t: pb.get(t, 0.0)).values
+    m = Ridge(alpha=TOT_ALPHA).fit(X, obs[col].values - base, sample_weight=np.ones(len(obs)))
+    a, b = dict(pa), dict(pb)
+    for t, i in ix.items(): a[t] = pa.get(t, 0.0) + m.coef_[i]; b[t] = pb.get(t, 0.0) + m.coef_[n + i]
+    return a, b
+
+
+def totals_center(T, wk, fallback):
+    """the league level for week `wk`: mean points and plays per team-game over the season's finished FBS-vs-FBS team-games of EARLIER weeks.
+    With no such team-game yet, the prior-years mean (`fallback`) stands in. Returns {'pts', 'pace'}."""
+    tr = T[T.week < wk]
+    if not len(tr): return dict(fallback)
+    return dict(pts=float(tr['pts'].mean()), pace=float(tr['nplays'].mean()))
+
+
+def totals_project(cur, cen, h, aw):
+    """(home pts, away pts, combined plays, model total) for home team h vs away team aw from fitted ratings cur = {'pts': (a, b), 'pace': (a, b)}.
+    A team's expected value is the league level + its offense + the opponent's defense (no home term, as in the backtest)."""
+    O = lambda k, t, o: cen[k] + cur[k][0].get(t, 0.0) + cur[k][1].get(o, 0.0)
+    ph, pa_, pl = O('pts', h, aw), O('pts', aw, h), O('pace', h, aw) + O('pace', aw, h)
+    return ph, pa_, pl, TOT_B0 + TOT_B1 * (ph + pa_) + TOT_B2 * pl
+
+
+def totals_walk_forward(tt, gm, fbs, years, prior=None, cen_fn=None, finals=None):
+    """projected points, plays and total for every finished FBS game of `years`, each fit only on EARLIER weeks, last season x S as the prior, around
+    that week's in-season league level (totals_center; the prior-years mean only before any game of the season is final).
+    Used to freeze the priors and to check this code against the backtest. Returns a DataFrame."""
+    prior = prior or {k: ({}, {}) for k in ('pts', 'pace')}; out = []
+    for y in years:
+        F = fbs[y]; T = tt[(tt.season == y) & tt.pos_team_id.isin(F) & tt.def_pos_team_id.isin(F)]
+        pc = {k: float(tt[tt.season < y][k].mean()) if (tt.season < y).any() else float(T[k].mean()) for k in ('pts', 'nplays')}; pc = dict(pts=pc['pts'], pace=pc['nplays'])      # prior-years level: only the fallback
+        G = gm[(gm.season == y) & gm.homeTeamId.isin(F) & gm.awayTeamId.isin(F) & (gm.status_type_completed == True)]
+        cur = prior
+        for w in range(1, 17):
+            tr = T[T.week < w]; cen = totals_center(T, w, pc)
+            cur = {k: totals_fit(tr, c, *prior[k], cen[k]) if len(tr) >= 30 else prior[k] for k, c in (('pts', 'pts'), ('pace', 'nplays'))}
+            for r in G[G.week == w].itertuples():
+                ph, pa_, pl, tot = totals_project(cur, cen, r.homeTeamId, r.awayTeamId)
+                out.append(dict(season=y, week=w, game_id=int(r.game_id), pts_h=ph, pts_a=pa_, plays=pl, model_total=tot, total=r.homeFinalScore + r.awayFinalScore))
+        if finals is not None: finals[y] = (cur, pc)
+        prior = {k: ({t: st.S * v for t, v in cur[k][0].items()}, {t: st.S * v for t, v in cur[k][1].items()}) for k in cur}
+    return pd.DataFrame(out)
+
+
+def cmd_priors_totals(a):
+    """once per offseason, after `priors`: walk-forward 2021-2025 for points and plays, writes the frozen preseason totals ratings
+    (data/cfb_model_totals_priors.json) that the 2026 weeks start from. Each week of the walk is centred on its in-season league level (totals_center);
+    the stored `center` (every team-game 2021-2025) is only the 2026 fallback until a game of the season is final. Needs the same cached play-by-play as `priors`."""
+    d = a.dir; os.makedirs(d, exist_ok=True)
+    tt, gm = totals_load(d, st.YEARS); fbs = st.fbs_sets(gm, d); finals = {}
+    res = totals_walk_forward(tt, gm, fbs, st.YEARS, finals=finals)
+    cur, _ = finals[2025]; cen_next = dict(pts=float(tt.pts.mean()), pace=float(tt.nplays.mean()))      # the 2026 league level: every team-game 2021-2025
+    json.dump(dict(through=2025, S=st.S, alpha=TOT_ALPHA, generated=pd.Timestamp.now('UTC').isoformat(), center=cen_next,
+                   pts=dict(a={str(t): round(float(v), 5) for t, v in cur['pts'][0].items() if t in fbs[2025]}, b={str(t): round(float(v), 5) for t, v in cur['pts'][1].items() if t in fbs[2025]}),
+                   pace=dict(a={str(t): round(float(v), 5) for t, v in cur['pace'][0].items() if t in fbs[2025]}, b={str(t): round(float(v), 5) for t, v in cur['pace'][1].items() if t in fbs[2025]})),
+              open(TOTALS_PRIORS, 'w'))
+    r = res[(res.season >= 2023) & (res.week >= PICK_MIN_WEEK)]
+    print('totals priors written;', len(res), 'games walked, model miss weeks 4+ 2023-2025:', round(float((r.total - r.model_total).abs().mean()), 3))
+
+
+def market_totals(sid):
+    """game id -> the stored total market from the lines files, no network: {open, open_src, close, close_src, dk_open, dk_open_src, dk_close, wk, home, away, hs, as_, ...}.
+    The primary book is Bovada: open = CFBD overUnderOpen, close = Bovada's last stored total (`ou`). DraftKings is kept beside it as a secondary book:
+    ESPN's recorded DraftKings open, else CFBD's DraftKings open, with the DraftKings last stored total as its close. A number that is not stored stays
+    None, nothing is filled in; a game with no stored Bovada open has open None (no graded pick) and may still carry the DraftKings numbers."""
+    if not os.path.exists(LINES26): return {}
+    by = {}
+    for r in json.load(open(LINES26)):
+        if r.get('id') is not None: by.setdefault(r['id'], []).append(r)
+    esp = {}
+    ep = os.path.join(ROOT, 'data', 'cfbd', 'espn_opens_2026.json')
+    if os.path.exists(ep): esp = {r['id']: r for r in json.load(open(ep)) if r.get('ouo') is not None}
+    f = lambda v: None if v is None else float(v)
+    out = {}
+    for gid, rows in by.items():
+        r0 = rows[0]
+        bv = next((r for r in rows if r['p'] == 'Bovada' and r.get('ouo') is not None), None)
+        dk = next((r for r in rows if r['p'] == 'DraftKings'), None)
+        dk_open, dk_src = (float(esp[gid]['ouo']), 'ESPN') if gid in esp else (f(dk.get('ouo')) if dk else None, 'DraftKings')
+        if bv is None and dk_open is None: continue
+        dk_close = f(dk.get('ou')) if dk else None
+        out[int(gid)] = dict(open=f(bv['ouo']) if bv else None, open_src='Bovada' if bv else None, close=f(bv.get('ou')) if bv else None, close_src='Bovada' if bv and bv.get('ou') is not None else None,
+                             dk_open=dk_open, dk_open_src=dk_src if dk_open is not None else None, dk_close=dk_close,
+                             wk=int(r0.get('wk') or 0), home=r0.get('home'), away=r0.get('away'),
+                             hs=r0.get('hs'), as_=r0.get('as_'), home_id=sid.get(r0.get('home')), away_id=sid.get(r0.get('away')))
+    return out
+
+
+def _totals_rec(rows):
+    """W-L-P of the over/under side against the open, the closing-line value (points toward our side) and their z scores"""
+    g = [r for r in rows if r.get('result') in ('W', 'L', 'P')]
+    w = sum(r['result'] == 'W' for r in g); l = sum(r['result'] == 'L' for r in g); n = w + l
+    clv = [r['clv'] for r in g if r.get('clv') is not None]
+    sd = float(np.std(clv, ddof=1)) if len(clv) > 1 else 0.0
+    return dict(n=len(rows), graded=len(g), won=w, lost=l, pushed=len(g) - n, pending=len(rows) - len(g),
+                pct=round(w / n, 4) if n else None,
+                z=round((w / n - 0.5) / math.sqrt(0.25 / n), 2) if n else None,                       # vs a coin flip, as the backtest reports it
+                z_be=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None,   # vs the -110 break-even
+                clv_n=len(clv), clv_mean=round(sum(clv) / len(clv), 3) if clv else None, clv_pos=round(sum(c > 0 for c in clv) / len(clv), 3) if clv else None,
+                clv_z=round(float(np.mean(clv)) / (sd / math.sqrt(len(clv))), 2) if len(clv) > 2 and sd > 0 else None)
+
+
+def totals_summary(rows):
+    """records over the picks only: a row with no Bovada open (secondary-only, DraftKings numbers alone) is never counted"""
+    rows = [r for r in rows if r.get('edge') is not None]
+    pick = lambda t, rs: [r for r in rs if abs(_edge_raw(r)) >= t]
+    live = [r for r in rows if not r.get('backfill')]
+    live_graded = sum(r.get('result') in ('W', 'L', 'P') for r in pick(TOT_EDGES[0], live))
+    return dict(by_edge={str(t): _totals_rec(pick(t, rows)) for t in TOT_EDGES}, live_by_edge={str(t): _totals_rec(pick(t, live)) for t in TOT_EDGES},
+                by_week={str(w): _totals_rec(pick(TOT_EDGES[0], [r for r in rows if r['week'] == w])) for w in sorted({r['week'] for r in rows if r.get('result')})},
+                proven_target=TOT_PROVEN_TARGET, proven_edge=TOT_EDGES[0], live_graded=live_graded, status='unproven' if live_graded < TOT_PROVEN_TARGET else 'sample_reached')
+
+
+def _edge_raw(r):
+    """the unrounded model total minus the open: every flag, side and grade comes from this; `edge` is the 2-decimal display copy"""
+    return r['edge_raw'] if r.get('edge_raw') is not None else r['edge']
+
+
+def _flag(e):
+    """the highest TOT_EDGES threshold the unrounded edge reaches, as '<threshold>+'"""
+    if e is None: return None
+    hit = [t for t in TOT_EDGES if abs(e) >= t]
+    return f'{max(hit)}+' if hit else None
+
+
+def _grade_total(tot, open_, close, total):
+    """(side, result, clv) of the model total `tot` against a stored open: the side is the sign of the edge, the result is the final total against the open,
+    CLV is how far the close moved toward that side"""
+    edge = tot - open_; sg = 1 if edge > 0 else -1      # tot is the unrounded model total
+    res = 'W' if (total - open_) * sg > 0 else 'L' if (total - open_) * sg < 0 else 'P'
+    return ('over' if edge > 0 else 'under'), res, None if close is None else round((close - open_) * sg, 1)
+
+
+def attach_game_ids(board, g26, mk):
+    """give every spread board row the ESPN game id the totals rows are keyed on (additive: nothing else on the row changes). A game the schedule has is matched on
+    home, away and week; one it does not (not yet in the play-by-play release) on the stored lines file, the unplayed game of that pair, else the one nearest the board week"""
+    pair = {(int(r.homeTeamId), int(r.awayTeamId), int(r.week)): int(r.game_id) for r in g26.itertuples()}      # the board takes a played game's week from the schedule
+    lines = {}
+    for gid, l in mk.items(): lines.setdefault((l['home_id'], l['away_id']), []).append((gid, l))
+    for b in board:
+        if b.get('game_id') is not None: continue
+        if str(b.get('key', '')).startswith('espn:'): b['game_id'] = int(b['key'][5:]); continue
+        k = (b['home_id'], b['away_id'])
+        if k + (b['week'],) in pair: b['game_id'] = pair[k + (b['week'],)]; continue
+        c = lines.get(k)
+        if c: b['game_id'] = min(c, key=lambda t: (t[1].get('hs') is not None, abs(t[1]['wk'] - b['week'])))[0]
+
+
+def totals_update(d, g26, F, names, sid, prev, feed_totals, now, board=None):
+    """the totals board and record. For every FBS game from week 4 with a stored Bovada open total: project it with ratings fit on EARLIER weeks only, around
+    that week's in-season league level, compare with the Bovada open, flag each TOT_EDGES threshold (over/under), grade against the open when the game ends, and record the
+    Bovada close and the closing-line value. DraftKings (ESPN's recorded open, else CFBD's) rides along as dk_open / dk_close / dk_edge / dk_result / dk_clv;
+    a game with no stored Bovada open has no pick and is kept as a secondary-only row that no record counts.
+    A graded row of the current TOT_VERSION is frozen and kept forever; an older one is rebuilt once from the stored numbers (and is backfill, since its pick
+    was not logged before the game under this model); an ungraded one is re-projected each run (its inputs are the completed earlier weeks). A row first
+    written after its game already ended is flagged backfill, as the spread pick log does. A graded row is kept even when its stored lines are gone (never
+    dropped for want of a line). `board` (the spread board rows) gives each game the week the board labels it with. When the totals priors file is missing the
+    previous totals block is kept and marked stale, or None when there is none."""
+    if not os.path.exists(TOTALS_PRIORS):
+        if not prev: return None
+        return dict(prev, stale=True, stale_reason='totals priors file missing, rows and record are from the last good run')
+    pri = json.load(open(TOTALS_PRIORS))
+    prior = {k: ({int(t): st.S * v for t, v in pri[k]['a'].items()}, {int(t): st.S * v for t, v in pri[k]['b'].items()}) for k in ('pts', 'pace')}
+    fallback = dict(pts=pri['center']['pts'], pace=pri['center']['pace'])      # prior-years level: used only before any game of the season is final
+    tt, gm = totals_load(d, [2026]); done = gm[gm.status_type_completed == True]
+    T = tt[tt.game_id.isin(done.game_id) & tt.pos_team_id.isin(F) & tt.def_pos_team_id.isin(F)]
+    cache = {}
+    def rated_before(wk):
+        """(ratings, league level) as of week wk, from the finished games of earlier weeks only"""
+        if wk not in cache:
+            Tw = T[T.week < wk]; cen = totals_center(T, wk, fallback)
+            cache[wk] = ({k: totals_fit(Tw, c, *prior[k], cen[k]) if len(Tw) >= 30 else prior[k] for k, c in (('pts', 'pts'), ('pace', 'nplays'))}, cen)
+        return cache[wk]
+    gby = {int(r.game_id): r for r in g26.itertuples()}
+    old = {int(r['game_id']): r for r in ((prev or {}).get('rows') or [])}
+    nm = lambda t: (names.get(t, [str(t)]) + ['', ''])[2] or names.get(t, [str(t)])[0]
+    bwk = {int(b['game_id']): int(b['week']) for b in (board or []) if b.get('game_id') is not None and b.get('week') is not None}     # the board's week label per game
+    mk = market_totals(sid)
+    rows = [o for gid, o in old.items() if gid not in mk and (o.get('result') or o.get('dk_result'))]          # graded rows whose stored lines are gone: kept as they are
+    for gid, ln in mk.items():
+        o = old.get(gid); cur_ver = bool(o) and o.get('totals_version') == TOT_VERSION
+        if cur_ver and (o.get('result') or o.get('dk_result')): rows.append(o); continue                  # graded under this version: frozen
+        x = gby.get(gid)
+        h = int(x.homeTeamId) if x is not None else ln['home_id']; aw = int(x.awayTeamId) if x is not None else ln['away_id']
+        wk = int(x.week) if x is not None else ln['wk']
+        if h is None or aw is None or h not in F or aw not in F or wk < PICK_MIN_WEEK: continue
+        if x is None and wk > (int(done.week.max()) if len(done) else 0) + 1: continue      # opens for weeks further out are placeholders: only the next slate
+        cur, cen = rated_before(wk)
+        ph, pa_, pl, tot = totals_project(cur, cen, h, aw)
+        raw = tot; tot = round(tot, 2)       # side, flag and grade come from the UNROUNDED total (stored as edge_raw); the 2-decimal numbers are display only
+        final = None
+        if x is not None and bool(x.status_type_completed): final = (int(x.homeFinalScore), int(x.awayFinalScore))
+        elif ln['hs'] is not None and ln['as_'] is not None: final = (int(ln['hs']), int(ln['as_']))      # the lines feed has the score before the play-by-play release does
+        edge_raw = None if ln['open'] is None else raw - ln['open']; edge = None if edge_raw is None else round(edge_raw, 2)
+        row = dict(game_id=gid, week=bwk.get(gid, wk), home_id=h, away_id=aw, home=nm(h), away=nm(aw), model_pts_home=round(ph, 2), model_pts_away=round(pa_, 2), model_plays=round(pl, 2),
+                   model_total=tot, league_pts=round(cen['pts'], 3), league_plays=round(cen['pace'], 3), open=ln['open'], open_src=ln['open_src'], edge=edge, edge_raw=edge_raw,
+                   side=None if edge_raw is None else 'over' if edge_raw > 0 else 'under', flag=_flag(edge_raw),
+                   backfill=bool(o.get('backfill')) if cur_ver else final is not None, upcoming=final is None, totals_version=TOT_VERSION)
+        if ln['dk_open'] is not None:
+            dke = raw - ln['dk_open']; row.update(dk_open=ln['dk_open'], dk_open_src=ln['dk_open_src'], dk_edge=round(dke, 2), dk_edge_raw=dke, dk_side='over' if dke > 0 else 'under')
+        if final is None:
+            cur_ = (feed_totals or {}).get((h, aw))                                             # what the market shows now: Pinnacle total, else consensus
+            if edge is None: pass
+            elif cur_ is not None: row.update(now=cur_['line'], now_src=cur_['src'], edge_now=round(raw - cur_['line'], 2), flag_now=_flag(raw - cur_['line']))
+            elif ln['close'] is not None: row.update(now=ln['close'], now_src=ln['close_src'], edge_now=round(raw - ln['close'], 2), flag_now=_flag(raw - ln['close']))
+        else:
+            total = final[0] + final[1]
+            row.update(hs=final[0], as_=final[1], total=total, close=ln['close'], close_src=ln['close_src'])
+            if edge is not None: _, row['result'], row['clv'] = _grade_total(raw, ln['open'], ln['close'], total)
+            if ln['dk_open'] is not None:
+                row['dk_close'] = ln['dk_close']; _, row['dk_result'], row['dk_clv'] = _grade_total(raw, ln['dk_open'], ln['dk_close'], total)
+        rows.append(row)
+    rows.sort(key=lambda r: (-r['week'], -abs(_edge_raw(r) if r.get('edge') is not None else r.get('dk_edge', 0))))
+    return dict(source="Bovada open total (CollegeFootballData overUnderOpen); close is Bovada's last stored total. DraftKings (ESPN recorded open, else CFBD) is the secondary book",
+                formula=dict(intercept=TOT_B0, points=TOT_B1, plays=TOT_B2, alpha=TOT_ALPHA, S=st.S, league_level='in-season mean of finished FBS team-games, prior-years mean until one is final'),
+                version=TOT_VERSION, min_week=PICK_MIN_WEEK, edges=list(TOT_EDGES), through_week=int(done.week.max()) if len(done) else 0,
+                backtest=TOT_BACKTEST, summary=totals_summary(rows), rows=rows)
+
+
 def cmd_update(a):
     d = a.dir; os.makedirs(d, exist_ok=True)
     for f in (f'pbp_2026.parquet', 'sched_2026.parquet'):       # always fresh in season
@@ -699,17 +967,36 @@ def cmd_update(a):
                             note='Stamped the first time the model sees a game, at the line on the board then. Games already on the board are not backfilled, and a line that moved later is not written back onto them.')
     for s_ in slate: s_.pop('seen', None)     # the live slate does not need the book row the stamp was copied from
     backtest = json.load(open(BACKTEST)) if os.path.exists(BACKTEST) else None
+    # totals line (separate from everything above; a failure here must not take the spread board down, and keeps the stored record as it was)
+    prev_totals = None
+    if os.path.exists(OUT):
+        try: prev_totals = json.load(open(OUT)).get('totals')
+        except Exception: prev_totals = None
+    feed_totals = {}
+    if a.sharp and os.path.exists(a.sharp):
+        for g in feed['games']:
+            if g['sport'] != 'cfb' or g['start'] <= now: continue
+            h_, a_ = find_id(g['home']['name']), find_id(g['away']['name'])
+            for src, blk in (('pinnacle', g.get('pin')), ('consensus', g.get('consensus'))):
+                ln_ = ((blk or {}).get('tot') or {}).get('line')
+                if h_ is not None and a_ is not None and ln_ is not None: feed_totals[(h_, a_)] = dict(line=ln_, src=src); break
+    try:
+        sid_ = {t['school']: int(t['id']) for t in json.load(open(os.path.join(ROOT, 'data', 'cfbd', 'teams_fbs_2026.json')))}
+        attach_game_ids(board, g26, market_totals(sid_))
+        totals = totals_update(d, g26, F, names, sid_, prev_totals, feed_totals, now, board)
+    except Exception as e:
+        print('totals skipped:', type(e).__name__, e, file=sys.stderr); totals = prev_totals
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk, bettable_open=bettable_summary), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk, bettable_open=bettable_summary, totals=totals), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'priors-v2', 'update']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
+    ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'priors-v2', 'priors-totals', 'update']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
     ap.add_argument('--since', type=int, help='one-time backfill: also project games that kicked off at or after this unix time, entered at the opening line')
     ap.add_argument('--until', type=int, help='with --since: stop the backfill before this unix time')
     ap.add_argument('--sharp', help='path to the Sharp Money data.json (sharp-data branch)'); a = ap.parse_args()
-    {'priors': cmd_priors, 'priors-v2': cmd_priors_v2, 'update': cmd_update}[a.cmd](a)
+    {'priors': cmd_priors, 'priors-v2': cmd_priors_v2, 'priors-totals': cmd_priors_totals, 'update': cmd_update}[a.cmd](a)
 
 
 if __name__ == '__main__':
