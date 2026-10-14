@@ -5,6 +5,7 @@ name: CFB scoreboard
 on:
   workflow_dispatch: {}
   push:
+    branches: [main]
     paths:
       - 'scripts/cfb_scoreboard.py'
   schedule:
