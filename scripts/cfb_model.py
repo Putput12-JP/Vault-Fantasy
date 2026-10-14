@@ -864,6 +864,14 @@ def cmd_update(a):
     if a.sharp and os.path.exists(a.sharp):
         feed = json.load(open(a.sharp)); now = feed['ts']
         fin = {g['key']: (g['final']['home'], g['final']['away']) for g in feed['games'] if g.get('final') and g['final'].get('home') is not None}
+        # A game with no play-by-play yet takes its week from the calendar (weeks run Monday to Sunday, Central time), anchored on the games
+        # already played, which have a schedule week. "Last finished week + 1" was wrong the moment a Tuesday game finished: the rest of that week became the next one.
+        mon_idx = lambda t: ((int(t) - 21600) // 86400 + 3) // 7
+        wkoff = {}
+        for b_ in store.get('board', []):       # games already played carry their schedule week; their kickoff pins the calendar
+            if int(b_['kick']) <= now and not b_.get('backfill'):
+                o_ = int(b_['week']) - mon_idx(b_['kick']); wkoff[o_] = wkoff.get(o_, 0) + 1
+        week_off = max(wkoff, key=wkoff.get) if wkoff else None
         for g in feed['games']:
             if g['sport'] != 'cfb': continue
             started = g['start'] <= now
@@ -887,7 +895,7 @@ def cmd_update(a):
             gr_ = gidx.get((h, aw)) if h is not None else None
             if h is None or aw is None or h not in F or aw not in F or line is None:
                 un += 1; continue
-            wk = int(gr_.week) if gr_ is not None else through + 1      # an unplayed game is not in the play-by-play: it is the NEXT week's, not the last finished week's
+            wk = int(gr_.week) if gr_ is not None else (mon_idx(g['start']) + week_off if week_off is not None else through + 1)      # an unplayed game is not in the play-by-play: it is the NEXT week's, not the last finished week's
             neutral = bool(gr_ is not None and gr_.neutral_site == True)
             pred = proj(wk, h, aw, neutral)
             mkt = -line
