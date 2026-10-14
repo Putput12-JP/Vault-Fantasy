@@ -65,6 +65,9 @@ jobs:
             git show FETCH_HEAD:state.json > sharp-out/state.json || true
             git show FETCH_HEAD:novig_props.json > sharp-out/novig_props.json || true
             git show FETCH_HEAD:prop_plays.json > sharp-out/prop_plays.json || true
+            # The tape is the only copy of the close history: if it exists on the branch it must load (a failed read fails the job
+            # instead of starting an empty tape that would then be published over it).
+            if git cat-file -e FETCH_HEAD:prop_close_tape.json 2>/dev/null; then git show FETCH_HEAD:prop_close_tape.json > sharp-out/prop_close_tape.json; fi
             git show FETCH_HEAD:ev_alert_history.json > sharp-out/ev_alert_history.json || rm -f sharp-out/ev_alert_history.json
             # Rows parked by a run that found the history file broken; build_ev_history.py folds them in and deletes them.
             for p in $(git ls-tree --name-only FETCH_HEAD | grep -E '^ev_alert_history\.pending.*\.json$' || true); do
@@ -91,6 +94,15 @@ jobs:
         run: |
           B=200; [ "${{ github.event.inputs.force }}" = "true" ] && B=45
           node scripts/fetch-novig-props.mjs --out=sharp-out/novig_props.json --budget=$B
+      # Prop close tape: every book's last read before kickoff (Pinnacle, FanDuel, DraftKings, ..., Kalshi, Novig), so each
+      # book's close can be scored on its own (scripts/compare_prop_closes.py). Reads the three files fetched above, no new
+      # calls. continue-on-error: a failure here never blocks the poll. A tape that exists but does not parse stops the step
+      # without overwriting it, and the old file is republished unchanged.
+      - name: Record prop closes
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          python3 scripts/build_prop_close_tape.py --feed=sharp-out/lineup-feed.json --kalshi=sharp-out/kalshi_props.json --novig=sharp-out/novig_props.json --tape=sharp-out/prop_close_tape.json
       - name: Poll sources
         if: steps.gate.outputs.go == '1'
         run: |
@@ -115,6 +127,7 @@ jobs:
           git add data.json state.json summary.json alerts.json accounts.json props.json reads.json
           if [ -f novig_props.json ]; then git add novig_props.json; fi
           if [ -f prop_plays.json ]; then git add prop_plays.json; fi
+          if [ -f prop_close_tape.json ]; then git add prop_close_tape.json; fi
           if [ -f ev_alert_history.json ]; then git add ev_alert_history.json; fi
           # The publish dir is rebuilt as one fresh commit, so a pending file merged this run (deleted from sharp-out) simply drops off the branch.
           if compgen -G "ev_alert_history.pending*.json" > /dev/null; then git add ev_alert_history.pending*.json; fi
