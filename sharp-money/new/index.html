@@ -68,7 +68,7 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .alert{display:grid;grid-template-columns:5px 1fr auto;gap:12px;align-items:center}
 .alert .sw{align-self:stretch;border-radius:5px}.alert .t{font-weight:600;font-size:15px}.alert .x{color:var(--mut);font-size:13px;margin-top:2px}
 .tabbar{position:absolute;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(20,20,22,.82);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;justify-content:space-around;z-index:6;border-top:1px solid var(--line)}
-.tabbar button{all:unset;cursor:pointer;text-align:center;font-size:11px;font-weight:600;color:var(--mut);padding:4px 8px;min-width:56px;transition:transform .5s var(--ease-spring)}
+.tabbar button{all:unset;cursor:pointer;text-align:center;font-size:11px;font-weight:600;color:var(--mut);padding:4px 0;flex:1;min-width:0;transition:transform .5s var(--ease-spring)}
 .tabbar button svg{display:block;margin:0 auto 3px;width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabbar button.on{color:#fff}.tabbar button:active{transform:scale(.9);transition:transform 80ms ease-out}
 .empty{color:var(--mut);text-align:center;padding:26px 20px;font-size:14px}
@@ -83,13 +83,30 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .title{margin-top:calc(env(safe-area-inset-top) + 18px)}
 .tabbar{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:560px;right:auto}
 .tab-hide{display:none}
+.trow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:calc(env(safe-area-inset-top) + 18px) 16px 2px}.trow .title{margin:0}
+.rf{all:unset;box-sizing:border-box;cursor:pointer;min-width:40px;height:40px;border-radius:99px;background:var(--card);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-size:13px;font-weight:600;color:#fff;white-space:nowrap;margin-top:6px;transition:transform .5s var(--ease-spring)}
+.rf svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rf:active{transform:scale(.92);transition:transform 80ms ease-out}.rf[disabled]{opacity:.85;cursor:progress}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mt{width:290px;flex:none;margin:0;padding:12px 14px}.mt .foot{margin-top:4px}
+.mrows{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin:8px 0}.mrows div{text-align:center}.mrows small{display:block;color:var(--mut);font-size:11px;white-space:nowrap}.mrows b{display:block;font-size:26px;font-weight:600}.mrows span{font-size:12px}
+.mrw{display:flex;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}.mrw:first-child{border-top:0}.mrw .grow{flex:1;min-width:0}.mrw .m{color:var(--mut);font-size:13px;margin-top:2px}.mrw b{font-weight:600}
+.wkh{padding:8px 0 6px;color:var(--dim);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.sel{appearance:none;-webkit-appearance:none;background:var(--card);color:#fff;border:1px solid var(--line);border-radius:99px;padding:7px 16px;font:600 14px -apple-system,Geist,sans-serif}
+.rulr{position:relative;height:46px;margin:12px 8px 4px}.rulr .axis{position:absolute;left:0;right:0;top:20px;height:3px;border-radius:3px;background:rgba(255,255,255,.14)}
+.rulr .win{position:absolute;top:13px;height:17px;border-radius:6px;background:rgba(70,224,140,.22);border:1px solid rgba(70,224,140,.55)}
+.rulr .dot{position:absolute;top:16px;width:11px;height:11px;border-radius:50%;transform:translateX(-50%);border:2px solid #000;display:block}
+.brr{position:relative;height:6px;border-radius:3px;background:#2a2a2d}.brr i{display:block;height:100%;border-radius:3px}.brr u{position:absolute;top:-2px;width:2px;height:10px;background:#fff;opacity:.5;text-decoration:none}
+.qin{width:100%;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:#101012;color:#fff;font:inherit;box-sizing:border-box}
+.pos{color:var(--good)}.neg{color:var(--bad)}
 .skel{background:linear-gradient(90deg,#1c1c1e 25%,#2a2a2d 50%,#1c1c1e 75%);background-size:200% 100%;animation:sk 1.3s linear infinite;border-radius:24px;margin:0 16px 12px;height:150px}
 @keyframes sk{to{background-position:-200% 0}}
 .badge.dot::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px}
 a.btn{text-decoration:none}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .tap:focus-visible{outline-offset:-2px;border-radius:24px}
-@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}.spin{animation-duration:2s}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <div class="app"><main id="scr" aria-live="polite"></main><nav class="tabbar" id="tabs" aria-label="Sharp Money sections"></nav></div>
@@ -130,11 +147,11 @@ const pinSp=g=>g.pin&&g.pin.sp?g.pin.sp.line:(g.consensus&&g.consensus.sp?g.cons
 const heat=g=>D.alerts.filter(a=>a.game===g.key&&a.ts>REF-86400).length;
 const live=g=>g.status==='inprogress';
 const upcoming=()=>G.filter(g=>g.start>REF-4*3600).sort((a,b)=>a.start-b.start);
-const st={sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30};
-const ICON={board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',accounts:'<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c0-3.3 2.7-5 6-5s6 1.7 6 5M15 15c3 0 6 1 6 4"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
+const st={msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30};
+const ICON={board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',accounts:'<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c0-3.3 2.7-5 6-5s6 1.7 6 5M15 15c3 0 6 1 6 4"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
 $('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${k[0].toUpperCase()+k.slice(1)}</button>`).join('');
 const chips=(items,cur,key)=>`<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
-const head=(t,s)=>`<div class="title">${t}</div><p class="ctx">${s}</p>`;
+const head=(t,s)=>`<div class="trow"><div class="title">${t}</div><button class="rf" data-refresh aria-label="Refresh the data"${rfState==='busy'?' disabled':''}>${rfHtml()}</button></div><p class="ctx">${s}</p>`;
 const snap=()=>{const a=REF-D.ts,k=a>3*3600?'bad':a>20*60?'warn':'good';return `<span class="badge dot ${k}">${a<90?'Updated just now':'Updated '+ago(D.ts).replace(' ago','')+' ago'}</span>`};
 
 function gameCard(g){
@@ -285,23 +302,314 @@ function record(){
  return h;
 }
 let inApp=false;
+/* ===== Refresh: same flow as the classic page (Turnstile check, 60 s cooldown, then poll for newer data) ===== */
+const RFURL='https://sharp-refresh.vaultfantasy.workers.dev';
+let rfState='idle',rfSec=0;
+const RFICON='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/></svg>';
+function rfHtml(){return rfState==='busy'?`<span class="spin"></span>${Math.floor(rfSec/60)}:${String(rfSec%60).padStart(2,'0')}`:rfState==='cool'?'Just refreshed':rfState==='fail'?'Try again':RFICON}
+function paintRf(){document.querySelectorAll('.rf').forEach(b=>{b.innerHTML=rfHtml();b.disabled=rfState==='busy'})}
+function turnstileToken(sitekey){
+ return new Promise((res,rej)=>{
+  const timer=setTimeout(()=>rej(new Error('turnstile')),20000);
+  const go=()=>{let el=document.getElementById('sm-turnstile');
+   if(!el){el=document.createElement('div');el.id='sm-turnstile';el.style.cssText='position:fixed;right:16px;bottom:96px;z-index:80';document.body.appendChild(el)}
+   if(el.dataset.wid){try{window.turnstile.remove(el.dataset.wid)}catch(e){}}
+   el.replaceChildren();
+   el.dataset.wid=window.turnstile.render(el,{sitekey,callback:t=>{clearTimeout(timer);res(t)},'error-callback':()=>{clearTimeout(timer);rej(new Error('turnstile'))},'timeout-callback':()=>{clearTimeout(timer);rej(new Error('turnstile'))}})};
+  if(window.turnstile)go();else{const s=document.createElement('script');s.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';s.async=true;s.onload=go;s.onerror=()=>{clearTimeout(timer);rej(new Error('turnstile'))};document.head.appendChild(s)}
+ });
+}
+async function refresh(){
+ if(rfState==='busy')return;
+ rfState='busy';rfSec=0;paintRf();
+ const clk=setInterval(()=>{rfSec++;paintRf()},1000);
+ try{
+  let token=null,sk=null;
+  try{sk=await fetch(RFURL+'/sitekey',{cache:'no-store'}).then(r=>r.ok?r.json():null)}catch(e){sk=null}
+  if(sk&&sk.sitekey)token=await turnstileToken(sk.sitekey);
+  const r=await fetch(RFURL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(token?{token}:{})});
+  if(r.status===429){await load(true);rfState='cool';setTimeout(()=>{rfState='idle';paintRf()},8000);return}
+  if(!r.ok)throw new Error(r.status);
+  const was=D?D.ts:0;
+  for(let i=0;i<20;i++){await new Promise(x=>setTimeout(x,i<4?15000:8000));const j=await load(true);if(j&&j.ts>was)break}
+  rfState='idle';
+ }catch(e){rfState='fail';setTimeout(()=>{rfState='idle';paintRf()},6000)}
+ finally{clearInterval(clk);const w=document.getElementById('sm-turnstile');if(w)w.remove();paintRf();['nfl','cfb','sb'].forEach(k=>{if(MD[k])loadModel(k,true)})}
+}
+/* ===== Models: NFL model, CFB model, CFB vs JP+ ===== */
+const MURL=n=>(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+n+'.json';
+const MD={nfl:null,cfb:null,sb:null,err:{}};
+const MFILES={nfl:'nfl_model',cfb:'cfb_model',sb:'cfb_scoreboard'};
+function loadModel(k,force){
+ if(MD[k]&&!force)return;
+ fetch(MURL(MFILES[k])+'?t='+Math.floor(Date.now()/60000),{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json()})
+  .then(j=>{MD[k]=j;MD.err[k]=false;if(onModels())rerender()}).catch(()=>{MD.err[k]=true;if(onModels())rerender()});
+}
+const onModels=()=>{const r=(location.hash||'#board').slice(1);return r==='models'||r.startsWith('pick/')};
+const BE=110/210;
+const ETD=ts=>new Date(ts*1000).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/New_York',timeZoneName:'short'});
+const ETK=ts=>new Date(ts*1000).toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit',timeZone:'America/New_York'});
+const ETS=ts=>new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'America/New_York'});
+const mF1=v=>v==null?'-':(Math.round(v*10)/10).toFixed(1);
+const mSn=e=>(e>0?'+':'')+e;
+const mTe=(e,t=1)=>(e>0?'+':'')+e.toFixed(t);
+const mHl=m=>m==null?'-':mSn(Math.round(-m*10)/10);
+const mRec=r=>{const g=r.filter(x=>x.result==='W'||x.result==='L'),w=g.filter(x=>x.result==='W').length;return{w,l:g.length-w,n:g.length,p:g.length?w/g.length:null}};
+const mPct=x=>x[0]+x[1]?Math.round(x[0]/(x[0]+x[1])*1e3)/10+'%':'-';
+const mCi=(n,ci)=>n==null?'':'n '+n+(ci?' · 95% CI '+Math.round(ci[0]*100)+'-'+Math.round(ci[1]*100)+'%':'');
+const tcol=p=>p==null?'':p>=BE?'pos':'neg';
+const STL={trust:['Trust it','good'],watch:['Watch it','warn'],ignore:['Ignore it','bad']};
+const NFLMAP={LA:'lar',WAS:'wsh',JAC:'jax'};
+const mlogo=(sp,id,z=18)=>{if(!id)return '';const u=sp==='nfl'?'https://a.espncdn.com/i/teamlogos/nfl/500/'+(NFLMAP[id]||String(id).toLowerCase())+'.png':'https://a.espncdn.com/i/teamlogos/ncaa/500/'+id+'.png';
+ return `<img src="${u}" alt="" width="${z}" height="${z}" loading="lazy" onerror="this.remove()" style="width:${z}px;height:${z}px;object-fit:contain;vertical-align:middle;margin-right:6px">`};
+const KN={line:'line move',sharp:'sharp accounts',money:'money vs bets',behind:'books behind'};
+const fm=l=>l.map(k=>KN[k]||k).join(', ');
+// Which unfinished games sit in a "Does Sharp Money help" situation right now (mirrors the data's own keys for finished games).
+function cfOpen(label,x){
+ if(x.result)return false;
+ const c=x.cards,opp=x.side==='home'?'away':'home',S=c?c[x.side]:[],O=c?c[opp]:[],mv=((x.mkt_check||{}).move||{}).v||0,pick=x.is_pick!==false;
+ switch(label){
+  case 'Every game the model projected':return true;
+  case 'Sharp Money is on the same side as the model':return !!c&&S.length>0&&O.length===0;
+  case 'Sharp Money is on the other side':return !!c&&O.length>0&&S.length===0;
+  case 'Sharp Money is on both sides':return !!c&&S.length>0&&O.length>0;
+  case "The line moved toward the model's team":return mv>0;
+  case "The line moved away from the model's team":return mv<0;
+  case "Sharp accounts bet the model's team":return !!c&&S.indexOf('sharp')>=0;
+  case 'Sharp accounts bet the other team':return !!c&&O.indexOf('sharp')>=0;
+  case "Bigger money than bets on the model's team":return !!c&&S.indexOf('money')>=0;
+  case 'Two or more signals back the model':return !!c&&S.length>=2;
+  case 'Model picks (5+ points) that Sharp Money backs':return pick&&!!c&&S.length>0;
+  case 'Model picks (5+ points) with no Sharp Money behind them':return pick&&!!c&&S.length===0;
+ }
+ return false;
+}
+const sharpSt=x=>{const c=x.cards;if(!c||x.result)return null;const opp=x.side==='home'?'away':'home',a=c[x.side].length,b=c[opp].length;return a&&!b?'with':b&&!a?'against':a&&b?'split':null};
+const mUpd=ts=>new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/New_York',timeZoneName:'short'});
+const wkIdx=k=>Math.floor((Math.floor((k-18e3)/86400)-5)/7);
+
+function mctx(sp,d){
+ const NF=sp==='nfl',PE=NF?d.params.pick_edge:5,B=d.board||d.log,bt=d.backtest,ls=d.log_summary||{graded:0,picks:0,won:0,lost:0,expected:0,z:0};
+ const bc=bt?bt.combined.picks_wk4:[0,0],bw=bc[0],bl=bc[1],bpp=bw+bl?bw/(bw+bl):0;
+ const stat=ls.graded>=50?(ls.z>=2?'trust':ls.won>=ls.expected?'watch':'ignore'):(bpp<BE?'ignore':'watch');
+ const tot=d.totals&&Array.isArray(d.totals.rows)&&d.totals.rows.length?d.totals:null,totEd=(tot&&tot.edges)||[3,5],totTop=totEd[totEd.length-1]+'+';
+ const tmap=new Map();(tot?tot.rows:[]).forEach(r=>{if(!r)return;if(r.game_id!=null)tmap.set('id|'+r.game_id,r);const k='pair|'+r.home_id+'|'+r.away_id;(tmap.get(k)||tmap.set(k,[]).get(k)).push(r)});
+ const totOf=x=>{if(!tot||!x)return null;const r0=x.game_id!=null?tmap.get('id|'+x.game_id):null;if(r0)return r0;const c0=tmap.get('pair|'+x.home_id+'|'+x.away_id)||[];return c0.find(r=>r.week===x.week)||(c0.length===1?c0[0]:null)};
+ return {sp,d,NF,PE,B,bt,ls,bc,bw,bl,bpp,stat,tot,totEd,totTop,totOf,pk:mRec(d.log),all:mRec(B),oc:d.open_check,unp:!!(tot&&tot.summary&&tot.summary.status==='unproven')};
+}
+const totSub=r=>'JP+ total '+mF1(r.model_total)+(r.open==null?' · no Bovada open':' vs Bovada open '+mF1(r.open))+(r.flag?' · '+r.flag+' '+r.side:'');
+
+function modelStatus(c){const s=STL[c.stat];
+ return `<div class="card"><div class="tags" style="margin:0 0 8px"><span class="badge ${s[1]}">${s[0]}</span></div><b>Not proven. Do not bet these picks yet.</b><div class="foot" style="margin-top:6px">Break-even against the spread is 52.4%. Updated ${ETD(Date.parse(c.d.generated)/1e3)}.</div></div>`}
+function multi(l,rows,sub){return `<div class="card mt"><div class="gtop"><span>${l}</span></div><div class="mrows">${rows.map(([n,r])=>`<div><small>${n}</small><b class="cond ${tcol(r.p)}">${r.w}-${r.l}</b><span class="${tcol(r.p)}">${r.p==null?'-':Math.round(r.p*100)+'%'}</span></div>`).join('')}</div><div class="foot">${sub}</div></div>`}
+function tile(l,v,sub){return `<div class="card mt"><div class="gtop"><span>${l}</span></div><div class="cond" style="font-size:34px;font-weight:600">${v}</div><div class="foot">${sub}</div></div>`}
+function mkRec(w,l){return{w,l,p:w+l?w/(w+l):null}}
+function modelTiles(c){
+ const {d,B,PE,NF,bt,pk,all,oc}=c,gr=B.filter(x=>x.result==='W'||x.result==='L'||x.result==='P');
+ const lwk=gr.map(x=>wkIdx(x.kick)).filter(w=>w<wkIdx(REF)).reduce((a,b)=>Math.max(a,b),-1e9);
+ const lwRows=lwk>-1e9?gr.filter(x=>wkIdx(x.kick)===lwk):[],twRows=B.filter(x=>wkIdx(x.kick)===wkIdx(REF)),twG=twRows.filter(x=>x.result==='W'||x.result==='L'||x.result==='P');
+ const rng=rs=>{if(!rs.length)return '';const lo=ETS(Math.min(...rs.map(x=>x.kick))),hi=ETS(Math.max(...rs.map(x=>x.kick)));return lo===hi?lo:lo+' to '+hi};
+ const P=x=>x.is_pick!==false,L=x=>x.is_pick===false;
+ const seL=mRec(B.filter(L)),liveP=mRec(d.log.filter(x=>!x.backfill)),bfP=mRec(d.log.filter(x=>x.backfill));
+ const o5=oc&&oc.by_threshold?oc.by_threshold['5']:null;
+ let t=[];
+ t.push(twRows.length?multi('This week',[['Picks ('+PE+'+ pts)',mRec(twG.filter(P))],['Leans',mRec(twG.filter(L))],['All',mRec(twG)]],rng(twRows)+' · '+twG.length+' of '+twRows.length+' games graded'+(twG.length<twRows.length?', '+(twRows.length-twG.length)+' to go':'')):tile('This week','-','no games on the board yet'));
+ t.push(lwRows.length?multi('Last week',[['Picks ('+PE+'+ pts)',mRec(lwRows.filter(P))],['Leans',mRec(lwRows.filter(L))],['All',mRec(lwRows)]],rng(lwRows)+' · '+lwRows.length+' games graded, break-even 52.4%'):tile('Last week','-','no finished week yet'));
+ t.push(multi('This season',[['Picks ('+PE+'+ pts)',pk],['Leans',seL],['All',all]],'Picks logged before kickoff '+liveP.w+'-'+liveP.l+'; graded after the fact '+bfP.w+'-'+bfP.l+'.'));
+ const yrs=bt&&bt.seasons?Object.keys(bt.seasons):[];
+ t.push(NF&&bt&&bt.combined?multi('Backtest vs the close',[[PE+'+ pts',mkRec(c.bw,c.bl)],['All',mkRec(bt.combined.picks_all[0],bt.combined.picks_all[1])]],bt.n+' games, '+yrs[0]+' to '+yrs[yrs.length-1]+', each predicted before it was played')
+  :o5&&oc&&oc.backtest?multi('Against the early number',[['This season',mkRec(o5.won,o5.lost)],['Backtest 22-25',mkRec(oc.backtest.vs_open[0],oc.backtest.vs_open[1])]],'5+ pt picks vs the opening line. Against the close the backtest is '+mPct(oc.backtest.vs_close)+'.')
+  :tile('Against the early number','-','not enough yet'));
+ return `<div class="hs" style="margin-bottom:12px">${t.join('')}</div>`;
+}
+function mRow(c,x){
+ const sp=c.sp,lean=x.is_pick===false,t=c.totOf(x),sh=sharpSt(x);
+ return `<div class="mrw tap" data-go="pick/${sp}/${esc(x.key)}" style="opacity:${lean&&!x.result?.8:1}"><div class="grow"><b>${mlogo(sp,x.away_id,16)}${esc(x.away)} @ ${mlogo(sp,x.home_id,16)}${esc(x.home)}</b>
+ <div class="m">Wk ${x.week} · ${ETK(x.kick)}${x.hs!=null?' · '+x.as_+'-'+x.hs:''}</div>
+ ${sh?`<div class="m ${sh==='with'?'pos':sh==='against'?'neg':''}">Sharp money ${sh==='with'?'with us':sh==='against'?'against':'split'}</div>`:''}${t?`<div class="m cond">${totSub(t)}</div>`:''}</div>
+ <div class="amt cond" style="font-size:20px">${esc(x.team)} ${mSn(x.entry)}<small>${x.result?(x.result==='W'?'WON':x.result==='L'?'LOST':'PUSH'):(lean?'lean ':'edge ')+Math.abs(x.edge).toFixed(1)}</small></div></div>`;
+}
+function totRowHtml(c,r){
+ return `<div class="mrw" style="opacity:${r.flag||r.result?1:.7};cursor:default"><div class="grow"><b>${esc(r.away)} @ ${esc(r.home)}</b><div class="m cond">Wk ${r.week} · JP+ ${mF1(r.model_total)} · Bovada open ${mF1(r.open)}${r.now!=null&&r.upcoming?' · now '+mF1(r.now):''}${r.dk_open!=null?' · DK '+mF1(r.dk_open):''}</div>
+ ${r.result?`<div class="m cond">final ${r.total}${r.close!=null?' · Bovada closed '+mF1(r.close):''}${r.clv!=null?' · '+mTe(r.clv)+' vs close':''}${r.backfill?' · rebuilt history, not live':''}</div>`:''}</div>
+ <div class="amt cond" style="font-size:20px">${r.open==null?'-':(r.side==='over'?'Over ':'Under ')+mF1(r.open)}<small>${r.open==null?'no Bovada open':r.result?(r.result==='W'?'WON':r.result==='L'?'LOST':'PUSH'):r.flag?r.flag+' '+String(r.side||'').toUpperCase():'no edge'}${r.flag&&c.unp?' · unproven':''}</small></div></div>`;
+}
+function modelGames(c){
+ const {d,B,tot,PE,NF}=c,now=REF;
+ const views=[['picks','Picks'],['sharp','Sharp-backed'],['up','Upcoming'],['all','All games'],['done','Completed'],...(tot?[['totals','Totals']]:[])];
+ const wks=[...new Set(B.map(x=>x.week))].sort((a,b)=>b-a),wopts=['All weeks',...wks.map(w=>'Week '+w)];
+ const view=views.some(v=>v[0]===st.mview)?st.mview:'picks',wkf=wopts.includes(st.mwk)?st.mwk:'All weeks';
+ const CfRow=st.msel!=null&&d.cards_summary&&d.cards_summary.table?d.cards_summary.table[st.msel]:null;
+ let h=chips(views.map(v=>[v[0],v[1]]),CfRow?'':view,'mview')+`<div class="chips" style="margin-top:-6px"><select class="sel" data-sel="mwk" aria-label="Week">${wopts.map(o=>`<option ${o===wkf?'selected':''}>${o}</option>`).join('')}</select></div>`;
+ if(view==='totals'&&tot&&!CfRow){
+  const rows=tot.rows.filter(r=>wkf==='All weeks'||r.week===+wkf.slice(5)).sort((a,b)=>b.week-a.week||(b.upcoming?1:0)-(a.upcoming?1:0)||Math.abs(b.edge)-Math.abs(a.edge));
+  h+=`<div class="sub">JP+ total is flagged when it sits ${c.totEd.map(e=>e+'+').join(' or ')} points from the Bovada opening total, week 4 or later. Wins, losses and closing-line value are all vs the Bovada open; DraftKings (DK) is shown for reference and never counts.${tot.stale?' Stale: totals are from the last good run.':''}${c.unp?' Unproven: '+tot.summary.live_graded+' of '+tot.summary.proven_target+' live graded '+c.totEd[0]+'+ picks.':''}</div>`;
+  h+=`<div class="card">${rows.length?rows.map(r=>totRowHtml(c,r)).join(''):'<div class="empty">No totals for this week yet.</div>'}</div>`;
+  return h;
+ }
+ const list=B.filter(x=>(CfRow?((CfRow.keys||[]).includes(x.key)||cfOpen(CfRow.label,x)):(view==='picks'?x.is_pick!==false:view==='done'?!!x.result:view==='up'?!x.result&&x.kick>now:view==='sharp'?sharpSt(x)==='with':true))&&(wkf==='All weeks'||x.week===+wkf.slice(5)))
+  .sort((a,b)=>(wkf==='All weeks'?(a.result?1:0)-(b.result?1:0)||(a.result?b.kick-a.kick:a.kick-b.kick):b.kick-a.kick)||(b.is_pick===false?0:1)-(a.is_pick===false?0:1)||Math.abs(b.edge)-Math.abs(a.edge));
+ h+=CfRow?`<div class="chips"><button class="chip on" data-sit="-1">${esc(CfRow.label)} · ${list.length} games ×</button></div>`:`<div class="sub">A pick needs the model ${PE}+ points off the market${NF?'':', week 4 or later'}. Leans are shown dimmed.</div>`;
+ let last=null,body='';
+ list.forEach(x=>{if(wkf==='All weeks'&&x.week!==last){last=x.week;body+=`<div class="wkh">Week ${x.week}</div>`}body+=mRow(c,x)});
+ h+=`<div class="card">${list.length?body:'<div class="empty">No games match this filter right now. Lines usually post Sunday and Monday.</div>'}</div>`;
+ return h;
+}
+function barRow(l,r,sub){return `<div style="margin:10px 0"><div class="fll" style="margin:0 0 4px"><span style="color:#fff">${l}</span><b class="cond">${r.w}-${r.l}${r.p==null?'':' · '+(r.p*100).toFixed(1)+'%'}</b></div><div class="brr"><i style="width:${Math.round((r.p||0)*100)}%;background:${r.p==null?'#3a3a3e':r.p>=BE?'var(--good)':'var(--bad)'}"></i><u style="left:${BE*100}%"></u></div><div class="foot" style="margin:3px 0 0">${sub}</div></div>`}
+function sitRows(c,rs,withFeed){
+ return rs.map((r,i)=>{const w=r.all[0],l=r.all[1],n=w+l,ex=n*BE,z=n?(w-ex)/Math.sqrt(n*BE*(1-BE)):0,sk=n===0?null:n>=50&&z>=2?'trust':w>=ex?'watch':'ignore',op=withFeed?c.B.filter(q=>cfOpen(r.label,q)).length:0;
+  return `<div class="mrw ${withFeed?'tap':''}" ${withFeed?`data-sit="${i}" role="button" tabindex="0"`:'style="cursor:default"'}><div class="grow"><b>${esc(r.label)}</b><div class="m">${esc(r.note||'')}</div>${withFeed&&r.n!=null?`<div class="m">${mCi(r.n,r.ci)}</div>`:''}${op?`<div class="m" style="color:var(--acc)">${op} open now</div>`:''}</div>
+  <div class="amt cond" style="font-size:22px">${w}-${l}<small>${n?Math.round(w/n*100)+'% win':'no games yet'}</small>${sk?`<small><span class="badge ${STL[sk][1]}">${STL[sk][0]}</span></small>`:''}</div></div>`}).join('');
+}
+function totStat(rs){const g=rs.filter(r=>r.result==='W'||r.result==='L'||r.result==='P'),w=g.filter(r=>r.result==='W').length,l=g.filter(r=>r.result==='L').length,p=g.length-w-l,c0=g.map(r=>r.clv).filter(v=>typeof v==='number'),cm=c0.length?c0.reduce((a,b)=>a+b,0)/c0.length:null,sd=c0.length>1?Math.sqrt(c0.reduce((a,b)=>a+(b-cm)*(b-cm),0)/(c0.length-1)):0;
+ return {n:rs.length,graded:g.length,won:w,lost:l,pushed:p,pending:rs.length-g.length,pct:w+l?w/(w+l):null,clv_n:c0.length,clv_mean:cm==null?null:Math.round(cm*1e3)/1e3,clv_z:c0.length>2&&sd>0?Math.round(cm/(sd/Math.sqrt(c0.length))*100)/100:null}}
+function modelRecord(c){
+ const {d,NF,PE,bt,ls,pk,all,oc,tot,bw,bl,bpp}=c;
+ let h=`<div class="platter"><div class="ph"><span>Is it working?</span></div><div class="foot" style="margin:0 0 6px;color:var(--mut);font-size:13px">${ls.graded?'On '+ls.graded+' graded picks the model is '+ls.won+'-'+ls.lost+'; '+ls.expected.toFixed(0)+' wins is what a coin flip against the vig gives. That is '+(Math.abs(ls.z)<2?'within luck: it proves nothing either way.':ls.z>0?'better than luck.':'worse than luck.'):'No picks graded yet.'}</div>
+ ${barRow('Live picks ('+PE+'+ pts)',pk,'the vertical tick is break-even, 52.4%')}${barRow('Every projection',all,'picks and leans')}
+ ${bt?barRow(NF?'Backtest '+Object.keys(bt.seasons)[0]+'-'+Object.keys(bt.seasons).slice(-1)[0].slice(2):'Backtest 2022-25',{w:bw,l:bl,p:bpp},NF?PE+'+ point picks vs the close':'weeks 4+, 5+ point picks vs the close'):''}
+ ${oc&&oc.backtest?barRow('Against the opening line',{w:oc.backtest.vs_open[0],l:oc.backtest.vs_open[1],p:oc.backtest.vs_open[0]/(oc.backtest.vs_open[0]+oc.backtest.vs_open[1])},'2022-25. Against the close it was '+mPct(oc.backtest.vs_close)+', so the edge sits in the early number.'):''}</div>`;
+ if(!NF){const bo=d.bettable_open;h+=`<div class="foot" style="margin:0 20px 12px">${bo&&bo.stamped?'Bettable open, the line first seen: '+(bo.graded?bo.won+'-'+bo.lost+' on '+bo.graded+' graded'+(bo.clv_n?', '+bo.clv_mean+' points of closing-line value on '+bo.clv_n:''):'none graded yet of '+bo.stamped+' stamped')+'. Games already on the board were not given a backfilled line.':'The bettable-open record starts the next time the model first sees a game. Games already on the board are not backfilled.'}</div>`}
+ if(tot&&tot.summary){
+  h+=`<div class="platter"><div class="ph"><span>JP+ totals, over/under vs the Bovada open</span>${c.unp?'<span class="badge warn">UNPROVEN</span>':''}</div>${c.unp?`<div class="foot" style="margin:0 0 8px">${tot.summary.live_graded} of ${tot.summary.proven_target} live graded ${c.totEd[0]}+ picks</div>`:''}`;
+  c.totEd.forEach(e=>{const k=String(e),sm=tot.summary,al=sm.by_edge&&sm.by_edge[k],lv=sm.live_by_edge&&sm.live_by_edge[k],bf=totStat(tot.rows.filter(r=>r.backfill&&r.edge!=null&&Math.abs(r.edge_raw!=null?r.edge_raw:r.edge)>=+k)),bk=tot.backtest;
+   const rw=(lb,sub,rec,pc,col,clv)=>`<div class="kv" style="align-items:center"><span style="color:#fff"><b>${lb}</b><br><small style="color:var(--mut)">${sub}</small></span><em class="cond ${col}" style="text-align:right">${rec}${pc?' · '+pc:''}<br><small style="font-family:-apple-system,Geist,sans-serif;font-size:11px;color:var(--mut);font-weight:400">${clv}</small></em></div>`;
+   const rc=(lb,r,sub)=>{const col=r.pct==null?'':r.pct>=BE?'pos':'neg';return r.graded?rw(lb,sub,r.won+'-'+r.lost+'-'+r.pushed,r.pct==null?'':(r.pct*100).toFixed(1)+'%',col,r.clv_n?'CLV '+mTe(r.clv_mean)+' pts'+(r.clv_z==null?'':' · z '+r.clv_z)+' · n '+r.clv_n+(r.pending?' · '+r.pending+' pending':''):r.pending?r.pending+' pending':'no closes yet'):rw(lb,sub,'None graded yet','','',r.pending?r.pending+' pending':'no closes yet')};
+   const showAll=al&&!(lv&&!lv.graded&&bf.n&&al.won===bf.won&&al.lost===bf.lost);
+   h+=`<div style="margin-top:10px"><div class="fll" style="margin:0"><span style="color:#fff;font-weight:600">${e}+ point edges</span><span>${al?al.n+' flagged'+(al.pending?' · '+al.pending+' pending':''):''}</span></div>${showAll?rc('All graded',al,'live and rebuilt, W-L-P vs open'):''}${lv?rc('Live',lv,'logged before kickoff'+(lv.pending&&lv.graded?', '+lv.pending+' pending':'')):''}${bf.n?rc('Rebuilt history',bf,'graded after the fact, not live'):''}${bk&&bk.by_edge&&bk.by_edge[k]?rw('Backtest '+bk.seasons,'vs Bovada open, model fit on 2022 only',bk.by_edge[k].open[0]+'-'+bk.by_edge[k].open[1],mPct(bk.by_edge[k].open),'','CLV '+mTe(bk.by_edge[k].clv)+' pts · z '+bk.by_edge[k].clv_z):''}</div>`});
+  h+=`<div class="foot">Break-even is 52.4%. CLV is points of closing-line value toward our side, Bovada open to Bovada close. DraftKings is never counted. Backfill is rebuilt history, graded after the fact from stored numbers, so only the Live line is a true before-kickoff record, and these picks stay unproven until it reaches ${tot.summary.proven_target} graded ${c.totEd[0]}+ picks.</div></div>`;
+ }
+ if(bt&&bt.seasons)h+=`<div class="platter"><div class="ph"><span>By season</span></div><table class="tbl cond"><tr><th>Year</th><th>Model miss</th><th>Market miss</th><th>Picks</th></tr>${Object.entries(bt.seasons).map(([y,s])=>`<tr><td>${y}</td><td>${s.model_miss.toFixed(1)}</td><td>${s.market_miss.toFixed(1)}</td><td>${s.picks_wk4[0]}-${s.picks_wk4[1]}</td></tr>`).join('')}</table><div class="foot">Miss is how many points the line was off on average. Lower is better; the market is still ahead.</div></div>`;
+ if(d.cards_summary&&d.cards_summary.table)h+=`<div class="platter"><div class="ph"><span>Does Sharp Money help?</span><span class="badge">tap a row</span></div>${sitRows(c,d.cards_summary.table,true)}<div class="foot">The record is how the model's side did when a Sharp Money card showed, graded at the last line before kickoff. The n and 95% CI under each row show how wide the range is on a small sample. Trust needs 50+ games well above 52.4%; Watch is at or above it on a small sample; Ignore is below. Sharp accounts are context only and never count toward an agree total.</div></div>`;
+ if(d.final_summary&&d.final_summary.locked)h+=`<div class="platter"><div class="ph"><span>Final lock vs first sight</span></div>${sitRows(c,d.final_summary.rows,false)}</div>`;
+ const ou=(oc&&oc.games?oc.games.filter(g=>g.upcoming):[]);
+ if(ou.length)h+=`<div class="platter"><div class="ph"><span>The early number, still open</span></div>${ou.map(g=>{const tm=g.side==='home'?g.home:g.away;return `<div class="row"><div class="grow"><b>${esc(tm)} ${mSn(g.entry)}</b><div class="m">${esc(g.away)} at ${esc(g.home)} · week ${g.week} · ${Math.abs(g.edge).toFixed(1)} pts off the open, now ${g.close==null?'-':mSn(g.close)}</div></div></div>`}).join('')}</div>`;
+ return h;
+}
+function ratingsList(c){
+ const ql=(st.mq||'').trim().toLowerCase(),r0=c.d.ratings.filter(x=>!ql||x.team.toLowerCase().includes(ql)||x.abbr.toLowerCase()===ql),sh=ql||st.mallR?r0:r0.slice(0,25);
+ return `<table class="tbl cond"><tr><th>#</th><th style="text-align:left">Team</th><th>Overall</th><th>Off</th><th>Def</th></tr>${sh.map(x=>`<tr><td>${x.rank}</td><td style="text-align:left;font-family:-apple-system,Geist,sans-serif;font-size:14px;font-weight:600">${esc(x.team)}</td><td>${mTe(x.overall)}</td><td>${mTe(x.off)}</td><td>${mTe(x.def)}</td></tr>`).join('')}</table>${!ql&&r0.length>25?`<button class="btn" data-toggle="mallR" style="margin:8px 0 0">${st.mallR?'Show the top 25':'Show all '+r0.length}</button>`:''}`;
+}
+function modelRatings(c){return `<div class="platter"><div class="foot" style="margin:0 0 10px;color:var(--mut)">Points per game against an average ${c.NF?'NFL team':'FBS team'}, through week ${c.d.through_week} (${c.d.games_rated} games). Higher is better on all three.</div><input class="qin" type="search" data-q placeholder="Find a team" value="${esc(st.mq||'')}" aria-label="Find a team"><div id="rlist" style="margin-top:8px">${ratingsList(c)}</div></div>`}
+function modelHow(c){
+ const {d,bt,ls,PE,bw,bl,NF}=c,s=STL[c.stat],p=(b,t)=>`<p style="margin:0 0 10px;font-size:14px;color:#d1d1d6"><b>${b}</b> ${t}</p>`;
+ const live=p('Live log:',ls.graded?`${ls.won}-${ls.lost}${ls.pushed?'-'+ls.pushed:''} on ${ls.graded} graded picks${ls.clv_mean==null||(ls.clv_n||0)<10?'':', '+mTe(ls.clv_mean)+' pts vs the close on average'}.`:`${ls.picks} pick${ls.picks===1?'':'s'} logged, none graded yet. Every pick is logged once, before kickoff, at the line we saw.`);
+ let body;
+ if(NF){
+  const gb=(d.game_model&&d.game_model.backtest)||null,be=bt&&bt.by_edge?bt.by_edge:null,yrs=bt&&bt.seasons?Object.keys(bt.seasons):[],bf=(d.board||[]).filter(x=>x.backfill).length,ci=cc=>cc?' (95% range '+Math.round(cc[0]*100)+'-'+Math.round(cc[1]*100)+'%)':'',rc=r=>r?r.record[0]+'-'+r.record[1]+' ('+mPct(r.record)+') on '+r.n+' games'+ci(r.ci):'';
+  body=p('What it is:','the Vault line from our NFL game model, the same one used on Game Markets. Every team has a power rating built from final scores and updated after each game, with last season carried over partly. It adds a home field number, no home field for neutral sites, and '+(d.params.qb_margin||0)+' points off a team that starts a backup quarterback. Ratings are points per game against an average team. Nothing here is new modelling, it is the same line shown next to the sharp money.')+
+  p('What the test says:',bt?`graded week by week on ${yrs[0]} to ${yrs[yrs.length-1]}, each game predicted before it was played and compared with the closing spread. Picks where the model and the market are ${PE}+ points apart went ${bw}-${bl} (${mPct([bw,bl])}). Break-even is 52.4%.`+(gb?` Its error on the final margin (root mean square) is ${gb.margin_rmse} points against the market's ${gb.market_margin_rmse}, so it matches the market and does not beat it.`:''):'No backtest file yet.')+
+  (be?p('Watch, do not trust:',`by size of the gap, 1.5+ points went ${rc(be['1.5'])}, 3+ went ${rc(be['3'])}, and 5+ went ${rc(be['5'])}. The 5+ slice is the only one above break-even and its range still includes a coin flip, so it is a slice to keep watching, not a result. It is tracked live from now on.`):'')+
+  p('Where the history came from:',`${bf} games already played this season were added after the fact. Each was projected from the ratings as they stood before it was played and entered at the closing spread, because that is the only line stored for those games. They are a baseline, not a live test, and they cannot say anything about beating the close. Games logged from here on are projected and entered before kickoff, at the line we saw, and an hour before kickoff the model gets a final lock.`)+
+  p('Sharp Money check:','the market check reads two things before kickoff: did the line move toward our side, and is the money share above the ticket share on it. Those are the only reads that count toward an agree total. Sharp accounts are shown next to them as context, not a bet signal, and they never count.');
+ }else{
+  const oc=d.open_check;
+  body=p('What it is:','opponent-adjusted efficiency ratings from ESPN play-by-play (success and EPA per play, garbage time removed), rebuilt every few hours. The starting point is a preseason rating built from team talent, returning production, recruiting, transfer movement and last season, so the first month leans on it. Special teams (punts, kickoffs, field goals) is rated separately and added in. Ratings are points per game against an average FBS team.')+
+  p('What the test says:',`graded week by week against ESPN's closing spread on 2022-2025, picks where the model disagrees with the market by ${bt?bt.pick_edge:5}+ points from week ${bt?bt.min_week:4} on went ${bw}-${bl} (${mPct([bw,bl])}). Break-even is 52.4%. It beats nothing yet, and a college model that does is the claim we are testing, not one we are making.`)+
+  p('Blended line and market check:','fit on 2022-2025, the best line to predict a game is the market plus about 10% of where we differ from it, and that only trims the market’s error by 0.01 points. So the blended line is almost the market, and it says the model alone is not the edge. The market check reads three things from Sharp Money before kickoff: did the line move toward our side, is the money share above the ticket share on it, and are sharp accounts on it. Only the line move and the money share count toward an agree total; sharp accounts are context. It is tracked from now on and has no history to test yet.')+
+  (oc&&oc.picks&&oc.backtest?p('Against the opening line:',`the same model, graded against the first spread a book posted instead of the close. On 2022-2025 its ${bt?bt.pick_edge:5}+ point picks went ${oc.backtest.vs_open[0]}-${oc.backtest.vs_open[1]} (${mPct(oc.backtest.vs_open)}) against the open and ${oc.backtest.vs_close[0]}-${oc.backtest.vs_close[1]} (${mPct(oc.backtest.vs_close)}) against the close, so whatever edge there is sits in the early number, which small limits and fast moves may make hard to bet. This season, from week ${oc.min_week}: ${oc.by_threshold['5'].won}-${oc.by_threshold['5'].lost} (${mPct([oc.by_threshold['5'].won,oc.by_threshold['5'].lost])}) on ${oc.picks} picks${oc.pending?', '+oc.pending+' still to play':''}${oc.clv_mean==null||(oc.clv_n||0)<10?'':', '+mTe(oc.clv_mean)+' pts vs the close on average'}. Nothing is tuned on it, and it stays a record, not a pick list.`):'');
+ }
+ return `<div class="platter"><div class="tags" style="margin:0 0 10px"><span class="badge ${s[1]}">${s[0]}</span></div><p style="margin:0 0 10px"><b>Not proven. Do not bet these picks yet.</b></p>${body}${live}</div>`;
+}
+function modelBody(sp){
+ const d=MD[sp];
+ if(!d)return MD.err[sp]?'<div class="card"><b>Could not load the model</b><div class="foot" style="margin-top:6px">The model file did not load. Check your connection and try again.</div><button class="btn" data-retrymodel style="margin:10px 0 0">Try again</button></div>':'<div class="skel"></div><div class="skel"></div>';
+ const c=mctx(sp,d),subs=[['games','Games'],['record','Record'],['ratings','Ratings'],['how','How it works']],sub=subs.some(s=>s[0]===st.msub)?st.msub:'games';
+ return modelStatus(c)+modelTiles(c)+chips(subs,sub,'msub')+(sub==='games'?modelGames(c):sub==='record'?modelRecord(c):sub==='ratings'?modelRatings(c):modelHow(c));
+}
+/* ---- CFB vs JP+ scoreboard ---- */
+function scoreboard(){
+ const d=MD.sb;
+ if(!d)return MD.err.sb?'<div class="card"><b>Could not load the scoreboard</b><button class="btn" data-retrymodel style="margin:10px 0 0">Try again</button></div>':'<div class="skel"></div><div class="skel"></div>';
+ const rec=r=>!r||!r.n?'-':r.w+'-'+r.l,pcx=r=>!r||r.pct==null?'':(r.pct*100).toFixed(1)+'%',cix=r=>r&&r.n&&r.ci&&r.ci[0]!=null?'95% range '+Math.round(r.ci[0]*100)+'-'+Math.round(r.ci[1]*100)+'%':'';
+ const sp=m=>m==null?'-':(m>0?'-':'+')+Math.abs(m).toFixed(1),fin=g=>g.actual>0?g.home+' by '+g.actual:g.actual<0?g.away+' by '+(-g.actual):'Tie';
+ const order=['jp','ours','v1','open'];
+ const tier=(title,hint,S,empty)=>{
+  if(!S.games)return `<div class="sec"><span>${title}</span></div><div class="sub">${hint}</div><div class="card"><div class="foot" style="margin:0">${empty}</div></div>`;
+  const M0=S.methods,op=M0.open&&M0.open.miss,best=Math.min(...order.map(k=>M0[k]&&M0[k].miss!=null?M0[k].miss:1e9)),lbest=Math.max(...['jp','ours','v1'].map(k=>M0[k]&&M0[k].lean&&M0[k].lean.pct!=null?M0[k].lean.pct:-1));
+  return `<div class="sec"><span>${title}</span><span>${S.games} games</span></div><div class="sub">${hint}</div>`+order.map(k=>{const m=M0[k];if(!m)return '';const df=op!=null&&m.miss!=null&&k!=='open'?m.miss-op:null;
+   return `<div class="card"><div class="gtop"><b style="color:#fff;font-size:16px">${esc(m.label)}</b><span>${m.n} games</span></div>
+   <div class="kv"><span>Avg miss</span><em class="cond ${m.miss===best?'pos':''}">${m.miss==null?'-':m.miss.toFixed(2)}${df==null?'':`<small style="display:block;font-family:-apple-system,Geist,sans-serif;font-size:11px;color:var(--mut);font-weight:400;text-align:right">${(df<=0?'':'+')+df.toFixed(2)} vs the open line</small>`}</em></div>
+   ${k==='open'?'<div class="kv"><span>Role</span><em class="cond" style="font-size:16px">the benchmark</em></div>':`<div class="kv"><span>Leans vs the open</span><em class="cond">${rec(m.lean)}${m.lean&&m.lean.n?` <span class="${m.lean.pct>=BE?'pos':'neg'}" style="font-size:15px;${m.lean.pct===lbest?'font-weight:700':''}">${pcx(m.lean)}</span><small style="display:block;font-family:-apple-system,Geist,sans-serif;font-size:11px;color:var(--mut);font-weight:400;text-align:right">${cix(m.lean)}</small>`:''}</em></div>
+   <div class="kv"><span>3+ pts from the open</span><em class="cond">${rec(m.edge3)}${m.edge3&&m.edge3.n?` <span style="font-size:13px;color:var(--mut)">${pcx(m.edge3)}</span>`:''}</em></div>
+   <div class="kv"><span>5+ pts from the open</span><em class="cond">${rec(m.edge5)}${m.edge5&&m.edge5.n?` <span style="font-size:13px;color:var(--mut)">${pcx(m.edge5)}</span>`:''}</em></div>`}</div>`}).join('');
+ };
+ const G=(d.games||[]).slice(0,40);
+ return `<div class="card"><b>UPDATED ${mUpd(d.generated).toUpperCase()}</b><div class="foot" style="margin:6px 0 0">Our model against JP+ and the opening line, on the same finished games, weeks ${d.min_week} and later. A lean is a method's side of the opening line, and the record is how often that side covered. Average miss is how many points the method is off the final margin, lower is better, and the opening line is the bar to beat. 3+ and 5+ keep only the games where the method is at least that many points from the open.</div></div>`+
+ tier('Verified before kickoff','JP+ number recorded by our job before the game started, so it cannot change afterward',d.verified,'No finished games yet. Our job records JP+ every two hours, and every 30 minutes on game days. '+d.jp_verified+' games are recorded so far and the first ones finish this weekend.')+
+ tier('As published','JP+ as its site shows it now. We cannot prove these were posted before kickoff, so treat the JP+ rows as unverified',d.published,'No games yet.')+
+ `<div class="foot" style="margin:0 20px 8px">Our numbers are the model's projection when the game kicked off. Games before week 7 were re-run with the current model after the fact, so our record there is flattered. From week 7 on every pick is made before kickoff.</div>`+
+ `<div class="sec"><span>Game by game</span></div><div class="sub">Newest first. Spreads are the home team's, negative means the home team is favored.</div><div class="card">`+
+ (G.length?G.map(g=>`<div class="mrw" style="cursor:default"><div class="grow"><b>${esc(g.away)} at ${esc(g.home)}</b><div class="m">week ${g.week} · ${fin(g)}</div></div><div class="cond" style="display:grid;grid-template-columns:repeat(4,auto);gap:2px 12px;text-align:right;font-size:17px"><small style="color:var(--dim);font-size:10px;font-family:-apple-system,Geist,sans-serif">OPEN</small><small style="color:var(--dim);font-size:10px;font-family:-apple-system,Geist,sans-serif">OURS</small><small style="color:var(--dim);font-size:10px;font-family:-apple-system,Geist,sans-serif">PREV</small><small style="color:var(--dim);font-size:10px;font-family:-apple-system,Geist,sans-serif">JP+${g.jp_verified?' ✓':''}</small><span>${sp(g.open)}</span><span>${sp(g.ours)}</span><span>${sp(g.v1)}</span><span>${sp(g.jp)}</span></div></div>`).join(''):'<div class="empty">No finished games yet.</div>')+`</div>`;
+}
+function modelsPage(){
+ const t=st.msp==='nfl'||st.msp==='cfb'||st.msp==='sb'?st.msp:'nfl';
+ return head('Models','Our NFL and college football models against the market and the sharp money. Not proven, do not bet these picks yet.')+chips([['nfl','NFL'],['cfb','CFB'],['sb','CFB vs JP+']],t,'msp')+(t==='sb'?scoreboard():modelBody(t));
+}
+/* ---- one model game ---- */
+function pickPage(sp,key){
+ const d=MD[sp];
+ if(!d)return `<div class="back" data-back role="button" tabindex="0" style="margin:calc(env(safe-area-inset-top) + 10px) 16px 6px">&lsaquo; Models</div>`+(MD.err[sp]?'<div class="card"><b>Could not load the model</b></div>':'<div class="skel"></div>');
+ const c=mctx(sp,d),x=c.B.find(q=>q.key===key);
+ if(!x)return `<div class="back" data-back role="button" tabindex="0" style="margin:calc(env(safe-area-inset-top) + 10px) 16px 6px">&lsaquo; Models</div><div class="card"><b>Game not found</b><div class="foot" style="margin-top:6px">It may have dropped off the board.</div></div>`;
+ const NF=c.NF,lean=x.is_pick===false,home=x.side==='home',mine=home?x.home:x.away,other=home?x.away:x.home,PE=c.PE,cc=x.cards,opp=home?'away':'home',mk=x.mkt_check,t0=c.totOf(x);
+ const A=m=>m==null?null:-m,pts={model:A(x.model_margin),market:A(x.market_margin),blend:A(x.blend_margin),open:A(x.open_margin)};
+ const meta=[['model','Model','#46e08c'],['market','Market','#ffffff'],['blend','Blend','#f2b84b'],['open','Open','#8e8e93']].map(([k,l,col])=>({k,l,col,v:pts[k]})).filter(i=>i.v!=null);
+ const vals=meta.map(i=>i.v),lo=Math.min(...vals)-1.5,hi=Math.max(...vals)+1.5,pc=v=>((v-lo)/(hi-lo)*100).toFixed(2),by=v=>(v>=0?x.away:x.home)+' by '+Math.abs(v).toFixed(1);
+ const line=x.entry,margin=home?x.model_margin:-x.model_margin,winner=margin>=0?mine:other,fmt=v=>Math.abs(v).toFixed(1).replace(/\.0$/,'');
+ const cover=line>0?mine+' covers unless '+other+' wins by more than '+fmt(line):mine+' covers if it wins by more than '+fmt(line);
+ const note=cover+'. The model has '+winner+' by '+fmt(margin)+(lean?', which is under the '+PE+'-point bar, so this is a lean we track, not a pick.':', and the green is the edge.');
+ const res=x.result,live=!res&&x.kick<REF,pill=res==='W'?['good','Won']:res==='L'?['bad','Lost']:res==='P'?['','Push']:live?['','Live']:lean?['warn','Lean']:['good','Pick'];
+ const cov=x.margin==null?null:x.margin+x.entry,resTxt=cov!=null?'Result: '+(cov>0?'covered':cov<0?'missed':'pushed')+' by '+Math.abs(cov).toFixed(1)+(x.clv==null?'':', '+mTe(x.clv)+' points against the closing line')+'.':'';
+ let sharp=['None','no Sharp Money card','var(--mut)'];if(cc){if(cc[x.side].length)sharp=['With us',fm(cc[x.side]),'var(--good)'];else if(cc[opp].length)sharp=['Against',fm(cc[opp]),'var(--bad)']}
+ const mv=mk&&mk.move?(mk.move.v>0?Math.abs(mk.move.pts).toFixed(1)+' toward the pick':mk.move.v<0?Math.abs(mk.move.pts).toFixed(1)+' away from the pick':'no move'):'no move data';
+ const gap=m=>m==null?'':(Math.abs(m-x.market_margin)<.05?'same as market':Math.abs(m-x.market_margin).toFixed(1)+' pts more on '+(m>x.market_margin?x.home:x.away));
+ const gr=(l,m,s)=>m==null?'':`<div class="kv" style="gap:10px"><span style="width:76px;flex:none">${l}</span><em class="cond" style="font-size:19px;flex:none;white-space:nowrap">${esc(x.home)} ${mHl(m)}</em><span style="font-size:12px;text-align:right;flex:1">${s}</span></div>`;
+ let h=`<div class="hero" style="--hg:linear-gradient(120deg,${(GM[x.key]&&GM[x.key].away.color)||'#1f3a5f'} 0%,#101018 55%,${(GM[x.key]&&GM[x.key].home.color)||'#3a1f5f'} 100%)"><div class="back" data-back role="button" tabindex="0">&lsaquo; Models</div>
+ <div class="tags" style="margin:0 0 8px"><span class="badge ${pill[0]}">${pill[1]}</span><span class="badge">${NF?'NFL':'CFB'}</span></div>
+ <div style="font-size:20px;font-weight:700">${mlogo(sp,x.away_id,34)}${esc(x.away)} <span style="color:var(--dim);font-weight:500">@</span> ${mlogo(sp,x.home_id,34)}${esc(x.home)}</div>
+ <div class="when" style="text-align:left;margin-top:6px">Week ${x.week} · ${ETD(x.kick)}${x.hs!=null?' · Final '+x.as_+'-'+x.hs:''}</div></div>`;
+ h+=`<div class="platter"><div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px"><div><div class="badge ${lean?'warn':'good'}">${lean?'Model lean':'Take'}</div><div class="cond" style="font-size:44px;font-weight:700;line-height:1.05;color:${lean?'#d9d9e0':'#46e08c'};margin-top:6px">${esc(x.team)} ${mSn(x.entry)}</div></div><div style="text-align:right"><small style="color:var(--dim);text-transform:uppercase;letter-spacing:.09em;font-size:11px">Edge</small><div class="cond" style="font-size:44px;font-weight:700;line-height:1.05;color:${lean?'#f2b84b':'#46e08c'}">${Math.abs(x.edge).toFixed(1)}</div></div></div>
+ <div class="foot" style="margin:10px 0 0;color:var(--mut);font-size:13px">${note}</div>${resTxt?`<div style="margin-top:8px;font-weight:600;font-size:13px">${resTxt}</div>`:''}
+ <div class="rulr"><i class="axis"></i>${pts.market!=null&&pts.model!=null?`<i class="win" style="left:${pc(Math.min(pts.market,pts.model))}%;width:${(Math.abs(pts.market-pts.model)/(hi-lo)*100).toFixed(2)}%"></i>`:''}${meta.map(i=>`<i class="dot" style="left:${pc(i.v)}%;background:${i.col}"></i>`).join('')}</div>
+ <div class="fll" style="margin:0"><span>${esc(x.home)} stronger</span><span>${esc(x.away)} stronger</span></div>
+ <div class="tags">${meta.map(i=>`<span class="badge" style="border-color:${i.col};color:${i.col}">${i.l} ${by(i.v)}</span>`).join('')}</div></div>`;
+ h+=`<div class="platter"><div class="ph"><span>At a glance</span></div><div class="kv"><span>Sharp money</span><em class="cond" style="color:${sharp[2]}">${sharp[0]}<small style="display:block;font-family:-apple-system,Geist,sans-serif;font-size:11px;color:var(--mut);font-weight:400;text-align:right">${esc(sharp[1])}</small></em></div>
+ <div class="kv"><span>Line move</span><em class="cond">${mHl(x.open_margin)} to ${mHl(x.market_margin)}<small style="display:block;font-family:-apple-system,Geist,sans-serif;font-size:11px;color:var(--mut);font-weight:400;text-align:right">${mv}</small></em></div>
+ <div class="kv"><span>Live picks</span><em class="cond">${c.pk.n?c.pk.w+'-'+c.pk.l:'-'}<small style="display:block;font-family:-apple-system,Geist,sans-serif;font-size:11px;color:var(--mut);font-weight:400;text-align:right">${c.pk.p!=null?(c.pk.p*100).toFixed(1)+'% this season':'no picks graded'}</small></em></div></div>`;
+ h+=`<div class="platter"><div class="ph"><span>Lines compared</span></div>${gr('Open',x.open_margin,x.open_margin==null?'':gap(x.open_margin))}${gr('Market',x.market_margin,'the line we saw')}${gr('Model',x.model_margin,gap(x.model_margin))}${gr('Blended',x.blend_margin,'mostly the market')}
+ <div class="foot">Spreads are from the home team's side. ${NF?'Neutral-site games get no home field.'+(x.backup&&(x.backup.home||x.backup.away)?' The model takes '+(c.d.params.qb_margin||0)+' points off a team starting a backup quarterback ('+[x.backup.home?x.home:null,x.backup.away?x.away:null].filter(Boolean).join(' and ')+').':'')+(x.backfill?' This game was added after it was played, projected from the ratings as they stood before it and entered at the closing spread, so it cannot say anything about beating the close.':''):'Home field is assumed, so neutral-site games read about 5 points too kind to the home team.'}</div></div>`;
+ if(t0)h+=`<div class="platter"><div class="ph"><span>JP+ total</span></div>${[['JP+ total',mF1(t0.model_total),'home '+mF1(t0.model_pts_home)+', away '+mF1(t0.model_pts_away)],['Bovada open',mF1(t0.open),t0.dk_open!=null?'DK '+mF1(t0.dk_open):''],t0.now!=null&&t0.upcoming?['Now',mF1(t0.now),(t0.now_src||'')+(t0.flag_now?' · '+t0.flag_now+' edge':' · no edge now')]:null,t0.open==null?['Side','-','no Bovada open, no pick']:[t0.flag?'Side':'Lean',(t0.side==='over'?'Over ':'Under ')+mF1(t0.open),(t0.edge>0?'+':'')+mF1(t0.edge)+' pts vs Bovada'+(t0.flag?' · '+t0.flag+' edge'+(c.unp?' · unproven':''):' · under '+c.totEd[0]+' pts, no flag')],t0.result?['Result',t0.result==='W'?'Won':t0.result==='L'?'Lost':'Push','final '+t0.total+(t0.close!=null?', Bovada closed '+mF1(t0.close):'')+(t0.clv!=null?', '+mTe(t0.clv)+' vs close':'')]:null].filter(Boolean).map(([l,v,s])=>`<div class="kv" style="gap:10px"><span style="width:84px;flex:none">${l}</span><em class="cond" style="font-size:19px;flex:none;white-space:nowrap">${v}</em><span style="font-size:12px;text-align:right;flex:1">${esc(s)}</span></div>`).join('')}<div class="foot">${t0.backfill?'Rebuilt history: graded after the fact from stored Bovada numbers, not logged before kickoff.':'Logged before kickoff. Graded against the Bovada open; DraftKings never counts.'} Scoring level comes from this season's games so far.</div></div>`;
+ h+=`<div class="platter"><div class="ph"><span>Sharp Money check</span><span class="badge">context only</span></div>${cc?`${cc[x.side].length?`<div class="kv"><span class="pos">With us</span><em class="cond" style="font-size:16px">${esc(fm(cc[x.side]))}</em></div>`:''}${cc[opp].length?`<div class="kv"><span class="neg">Against</span><em class="cond" style="font-size:16px">${esc(fm(cc[opp]))}</em></div>`:''}${!cc[x.side].length&&!cc[opp].length?'<div class="foot" style="margin:0">No Sharp Money card on either side.</div>':''}`:'<div class="foot" style="margin:0">No card recorded.</div>'}
+ ${mk&&mk.move?`<div class="foot" style="color:var(--mut);font-size:13px">${mk.move.v>0?'The line moved '+Math.abs(mk.move.pts).toFixed(1)+' toward the pick.':mk.move.v<0?'The line moved '+Math.abs(mk.move.pts).toFixed(1)+' away from the pick.':'The line has not moved.'}</div>`:''}
+ ${mk&&mk.reads?`<div class="foot">${mk.reads} market read${mk.reads===1?'':'s'} (line move and money share): ${mk.agree} agree, ${mk.disagree} disagree. Sharp accounts never count.</div>`:''}</div>`;
+ if(x.final)h+=`<div class="platter"><div class="ph"><span>Final lock</span></div><div style="font-size:14px">Locked ${x.final.mins_before} min before kickoff: ${esc(x.final.team)} ${mSn(x.final.entry)}, edge ${Math.abs(x.final.edge).toFixed(1)}${x.final.is_pick?' · still a pick':' · no longer a pick'}${x.final.result?' · '+(x.final.result==='W'?'won':x.final.result==='L'?'lost':'push'):''}</div></div>`;
+ h+=`<div class="foot" style="margin:0 20px 16px">${x.line_src==='espn'?"Entered at ESPN's line, after the game":x.backfill?'Entered at the opening line, after kickoff':'Entered before kickoff'}.</div>`;
+ return h;
+}
+
 function skeleton(){return '<div class="title">Sharp Money</div><p class="ctx">Loading the latest numbers</p>'+'<div class="skel"></div>'.repeat(3)}
 function route(){
  const r=(location.hash||'#board').slice(1),sc=$('scr');let html,tab;
  if(!D){sc.innerHTML=loadErr?'<div class="title">Sharp Money</div><div class="card"><b>Could not load the data</b><div style="color:var(--mut);font-size:13px;margin-top:6px">The data file did not load. Check your connection and try again.</div><button class="btn" data-retry style="margin:10px 0 0">Try again</button></div>':skeleton();return}
  if(r.startsWith('game/')){html=gamePage(decodeURIComponent(r.slice(5)));tab='board'}
  else if(r.startsWith('acct/')){html=acct(+r.slice(5));tab='accounts'}
+ else if(r==='models'||r.startsWith('pick/')){['nfl','cfb','sb'].forEach(k=>loadModel(k));tab='models';if(r==='models')html=modelsPage();else{const q=r.split('/');html=pickPage(q[1],decodeURIComponent(q.slice(2).join('/')))}}
  else{tab=r;html=({board,props,accounts,alerts,record}[r]||board)()}
  sc.innerHTML=html;
  sc.querySelectorAll('[data-go]').forEach(x=>{x.tabIndex=0;x.setAttribute('role','button')});
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
 }
 function rerender(){const y=scrollY;route();window.scrollTo(0,y)}
-document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-go],[data-back]')){e.preventDefault();e.target.click()}});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-go],[data-back],[data-sit]')){e.preventDefault();e.target.click()}});
 document.addEventListener('click',e=>{
+ if(e.target.closest('[data-refresh]')){refresh();return}
+ const sit=e.target.closest('[data-sit]');if(sit){const v=+sit.dataset.sit;st.msel=v<0||st.msel===v?null:v;if(v>=0)st.msub='games';rerender();window.scrollTo(0,0);return}
+ const tg=e.target.closest('[data-toggle]');if(tg){st[tg.dataset.toggle]=!st[tg.dataset.toggle];rerender();return}
+ if(e.target.closest('[data-retrymodel]')){['nfl','cfb','sb'].forEach(k=>{if(!MD[k])loadModel(k)});return}
  if(e.target.closest('[data-retry]')){loadErr=false;load();route();return}
  const t=e.target.closest('[data-t]');if(t&&t.closest('#tabs')){location.hash=t.dataset.t;window.scrollTo(0,0);return}
- const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
+ const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='msp'){st.msub='games';st.mview='picks';st.mwk='All weeks';st.msel=null;st.mq='';st.mallR=false}if(s.dataset.set==='mview')st.msel=null;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
  const m=e.target.closest('[data-more]');if(m){const k=m.dataset.more;st[k]+=k==='slate'?10:14;rerender();return}
  if(e.target.closest('[data-back]')){if(inApp)history.back();else location.hash='board';return}
  const g=e.target.closest('[data-go]');if(g){inApp=true;location.hash=g.dataset.go;window.scrollTo(0,0)}
@@ -317,8 +625,13 @@ function scoreCards(){
  return out}
 function apply(d){D=d;REF=Date.now()/1000;G=d.games||[];GM=Object.fromEntries(G.map(g=>[g.key,g]));
  ACC=(d.accounts||[]).filter(a=>a.rec).sort((a,b)=>b.rec.t-a.rec.t).slice(0,14);loadErr=false}
-function load(){return fetch(SRC,{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{if(!D||d.ts>=D.ts){apply(d);rerender()}}).catch(()=>{if(!D){loadErr=true;route()}})}
+function load(fresh){
+ const plain=()=>fetch(SRC,{cache:'no-store'}),api=()=>fetch('https://api.github.com/repos/Putput12-JP/Vault-Fantasy/contents/data.json?ref=sharp-data',{cache:'no-store',headers:{Accept:'application/vnd.github.raw+json'}});
+ const go=fresh&&!LOCAL?api().then(r=>r.ok?r:plain()).catch(plain):plain();
+ return go.then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{if(!D||d.ts>=D.ts){apply(d);rerender()}return d}).catch(()=>{if(!D){loadErr=true;route()}return null})}
 fetch(SBSRC,{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{SB=j;if(D)rerender()}).catch(()=>{});
+document.addEventListener('change',e=>{const s=e.target.closest('[data-sel]');if(s){st[s.dataset.sel]=s.value;st.msel=null;rerender()}});
+document.addEventListener('input',e=>{if(e.target.matches('[data-q]')){st.mq=e.target.value;const sp=st.msp==='cfb'?'cfb':'nfl',el=document.getElementById('rlist');if(el&&MD[sp])el.innerHTML=ratingsList(mctx(sp,MD[sp]))}});
 addEventListener('hashchange',()=>{route();window.scrollTo(0,0)});
 route();load();setInterval(load,120000);
 </script>
