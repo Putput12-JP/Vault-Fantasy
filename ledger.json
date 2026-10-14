@@ -2,33 +2,33 @@
  "version": 1,
  "paper_only": true,
  "live_orders": false,
- "updated": "2026-10-13T21:52:45Z",
+ "updated": "2026-10-14T00:21:09Z",
  "bankroll_start": 1000.0,
  "cash": 900.08,
  "trades": [
   {
-   "id": "KXNCAAFGAME-26OCT16WASHPUR-WASH:1791901778",
+   "id": "KXNCAAFGAME-26OCT15GASOODU-ODU:1791901778",
    "ts": "2026-10-13T14:29:38Z",
    "status": "open",
    "source": "cfb_ml",
-   "ticker": "KXNCAAFGAME-26OCT16WASHPUR-WASH",
-   "event": "KXNCAAFGAME-26OCT16WASHPUR",
-   "title": "Washington wins",
-   "game": "Washington @ Purdue",
+   "ticker": "KXNCAAFGAME-26OCT15GASOODU-ODU",
+   "event": "KXNCAAFGAME-26OCT15GASOODU",
+   "title": "Old Dominion wins",
+   "game": "GA Southern @ Old Dominion",
    "side": "yes",
    "strike": null,
-   "model_prob": 0.7304,
-   "edge": 0.3404,
+   "model_prob": 0.5994,
+   "edge": 0.2094,
    "yes_bid": 0.38,
    "yes_ask": 0.39,
    "price": 0.39,
    "fee_per": 0.02,
-   "contracts": 29,
-   "stake": 11.89,
-   "ask_size": 29.0,
-   "bankroll_before": 1000.0,
+   "contracts": 48,
+   "stake": 19.68,
+   "ask_size": 2969.16,
+   "bankroll_before": 995.11,
    "detail": {
-    "model_margin": -10.0,
+    "model_margin": 4.1,
     "sigma": 16.2856,
     "sigma_from": {
      "mae": 12.994,
@@ -50,10 +50,10 @@
     },
     "formula": "P(home) = Phi(model_margin / sigma)",
     "week": 6,
-    "side_team": "Washington",
-    "home": "Purdue",
-    "away": "Washington",
-    "kick": 1792195200,
+    "side_team": "Old Dominion",
+    "home": "Old Dominion",
+    "away": "GA Southern",
+    "kick": 1792107000,
     "note": "Margin model translated to a moneyline. No Kalshi backtest is claimed for this."
    },
    "llm": {
@@ -66,85 +66,15 @@
    "result": null,
    "payout": null,
    "pnl": null,
-   "close_mid": 0.385,
+   "close_mid": 0.39,
    "clv": null,
-   "mark_value": 11.02,
+   "mark_value": 18.24,
    "won": null,
-   "fee_total": 0.58,
+   "fee_total": 0.96,
    "tags": [
     "pre_fix_raw_v1_margin"
    ],
-   "mark_ts": "2026-10-13T21:52:45Z"
-  },
-  {
-   "id": "KXNCAAFGAME-26OCT16OHIOSAC-SAC:1791901778",
-   "ts": "2026-10-13T14:29:38Z",
-   "status": "open",
-   "source": "cfb_ml",
-   "ticker": "KXNCAAFGAME-26OCT16OHIOSAC-SAC",
-   "event": "KXNCAAFGAME-26OCT16OHIOSAC",
-   "title": "Sacramento St. wins",
-   "game": "Ohio @ Sac State",
-   "side": "yes",
-   "strike": null,
-   "model_prob": 0.4125,
-   "edge": 0.2425,
-   "yes_bid": 0.16,
-   "yes_ask": 0.17,
-   "price": 0.17,
-   "fee_per": 0.01,
-   "contracts": 111,
-   "stake": 19.98,
-   "ask_size": 3941.0,
-   "bankroll_before": 999.13,
-   "detail": {
-    "model_margin": -3.6,
-    "sigma": 16.2856,
-    "sigma_from": {
-     "mae": 12.994,
-     "sigma": 16.2856,
-     "formula": "games-weighted model_miss * sqrt(pi/2)",
-     "test": "2024-2025",
-     "seasons": [
-      {
-       "season": "2024",
-       "model_miss": 13.36,
-       "games": 737
-      },
-      {
-       "season": "2025",
-       "model_miss": 12.64,
-       "games": 762
-      }
-     ]
-    },
-    "formula": "P(home) = Phi(model_margin / sigma)",
-    "week": 6,
-    "side_team": "Sac State",
-    "home": "Sac State",
-    "away": "Ohio",
-    "kick": 1792288800,
-    "note": "Margin model translated to a moneyline. No Kalshi backtest is claimed for this."
-   },
-   "llm": {
-    "enabled": false,
-    "veto": false,
-    "reason": "filter off",
-    "definitive": false
-   },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": 0.155,
-   "clv": null,
-   "mark_value": 16.65,
-   "won": null,
-   "fee_total": 1.11,
-   "tags": [
-    "pre_fix_raw_v1_margin"
-   ],
-   "mark_ts": "2026-10-13T21:52:45Z"
+   "mark_ts": "2026-10-14T00:21:09Z"
   },
   {
    "id": "KXNCAAFGAME-26OCT16ARSTUSM-USM:1791901778",
@@ -214,77 +144,7 @@
    "tags": [
     "pre_fix_raw_v1_margin"
    ],
-   "mark_ts": "2026-10-13T21:52:45Z"
-  },
-  {
-   "id": "KXNCAAFGAME-26OCT15GASOODU-ODU:1791901778",
-   "ts": "2026-10-13T14:29:38Z",
-   "status": "open",
-   "source": "cfb_ml",
-   "ticker": "KXNCAAFGAME-26OCT15GASOODU-ODU",
-   "event": "KXNCAAFGAME-26OCT15GASOODU",
-   "title": "Old Dominion wins",
-   "game": "GA Southern @ Old Dominion",
-   "side": "yes",
-   "strike": null,
-   "model_prob": 0.5994,
-   "edge": 0.2094,
-   "yes_bid": 0.38,
-   "yes_ask": 0.39,
-   "price": 0.39,
-   "fee_per": 0.02,
-   "contracts": 48,
-   "stake": 19.68,
-   "ask_size": 2969.16,
-   "bankroll_before": 995.11,
-   "detail": {
-    "model_margin": 4.1,
-    "sigma": 16.2856,
-    "sigma_from": {
-     "mae": 12.994,
-     "sigma": 16.2856,
-     "formula": "games-weighted model_miss * sqrt(pi/2)",
-     "test": "2024-2025",
-     "seasons": [
-      {
-       "season": "2024",
-       "model_miss": 13.36,
-       "games": 737
-      },
-      {
-       "season": "2025",
-       "model_miss": 12.64,
-       "games": 762
-      }
-     ]
-    },
-    "formula": "P(home) = Phi(model_margin / sigma)",
-    "week": 6,
-    "side_team": "Old Dominion",
-    "home": "Old Dominion",
-    "away": "GA Southern",
-    "kick": 1792107000,
-    "note": "Margin model translated to a moneyline. No Kalshi backtest is claimed for this."
-   },
-   "llm": {
-    "enabled": false,
-    "veto": false,
-    "reason": "filter off",
-    "definitive": false
-   },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
-   "close_mid": 0.39,
-   "clv": null,
-   "mark_value": 18.24,
-   "won": null,
-   "fee_total": 0.96,
-   "tags": [
-    "pre_fix_raw_v1_margin"
-   ],
-   "mark_ts": "2026-10-13T21:52:45Z"
+   "mark_ts": "2026-10-14T00:21:09Z"
   },
   {
    "id": "KXNCAAFGAME-26OCT16CINWVU-CIN:1791901778",
@@ -354,7 +214,147 @@
    "tags": [
     "pre_fix_raw_v1_margin"
    ],
-   "mark_ts": "2026-10-13T21:52:45Z"
+   "mark_ts": "2026-10-14T00:21:09Z"
+  },
+  {
+   "id": "KXNCAAFGAME-26OCT16OHIOSAC-SAC:1791901778",
+   "ts": "2026-10-13T14:29:38Z",
+   "status": "open",
+   "source": "cfb_ml",
+   "ticker": "KXNCAAFGAME-26OCT16OHIOSAC-SAC",
+   "event": "KXNCAAFGAME-26OCT16OHIOSAC",
+   "title": "Sacramento St. wins",
+   "game": "Ohio @ Sac State",
+   "side": "yes",
+   "strike": null,
+   "model_prob": 0.4125,
+   "edge": 0.2425,
+   "yes_bid": 0.16,
+   "yes_ask": 0.17,
+   "price": 0.17,
+   "fee_per": 0.01,
+   "contracts": 111,
+   "stake": 19.98,
+   "ask_size": 3941.0,
+   "bankroll_before": 999.13,
+   "detail": {
+    "model_margin": -3.6,
+    "sigma": 16.2856,
+    "sigma_from": {
+     "mae": 12.994,
+     "sigma": 16.2856,
+     "formula": "games-weighted model_miss * sqrt(pi/2)",
+     "test": "2024-2025",
+     "seasons": [
+      {
+       "season": "2024",
+       "model_miss": 13.36,
+       "games": 737
+      },
+      {
+       "season": "2025",
+       "model_miss": 12.64,
+       "games": 762
+      }
+     ]
+    },
+    "formula": "P(home) = Phi(model_margin / sigma)",
+    "week": 6,
+    "side_team": "Sac State",
+    "home": "Sac State",
+    "away": "Ohio",
+    "kick": 1792288800,
+    "note": "Margin model translated to a moneyline. No Kalshi backtest is claimed for this."
+   },
+   "llm": {
+    "enabled": false,
+    "veto": false,
+    "reason": "filter off",
+    "definitive": false
+   },
+   "settled_ts": null,
+   "result": null,
+   "payout": null,
+   "pnl": null,
+   "close_mid": 0.15,
+   "clv": null,
+   "mark_value": 15.54,
+   "won": null,
+   "fee_total": 1.11,
+   "tags": [
+    "pre_fix_raw_v1_margin"
+   ],
+   "mark_ts": "2026-10-14T00:21:09Z"
+  },
+  {
+   "id": "KXNCAAFGAME-26OCT16WASHPUR-WASH:1791901778",
+   "ts": "2026-10-13T14:29:38Z",
+   "status": "open",
+   "source": "cfb_ml",
+   "ticker": "KXNCAAFGAME-26OCT16WASHPUR-WASH",
+   "event": "KXNCAAFGAME-26OCT16WASHPUR",
+   "title": "Washington wins",
+   "game": "Washington @ Purdue",
+   "side": "yes",
+   "strike": null,
+   "model_prob": 0.7304,
+   "edge": 0.3404,
+   "yes_bid": 0.38,
+   "yes_ask": 0.39,
+   "price": 0.39,
+   "fee_per": 0.02,
+   "contracts": 29,
+   "stake": 11.89,
+   "ask_size": 29.0,
+   "bankroll_before": 1000.0,
+   "detail": {
+    "model_margin": -10.0,
+    "sigma": 16.2856,
+    "sigma_from": {
+     "mae": 12.994,
+     "sigma": 16.2856,
+     "formula": "games-weighted model_miss * sqrt(pi/2)",
+     "test": "2024-2025",
+     "seasons": [
+      {
+       "season": "2024",
+       "model_miss": 13.36,
+       "games": 737
+      },
+      {
+       "season": "2025",
+       "model_miss": 12.64,
+       "games": 762
+      }
+     ]
+    },
+    "formula": "P(home) = Phi(model_margin / sigma)",
+    "week": 6,
+    "side_team": "Washington",
+    "home": "Purdue",
+    "away": "Washington",
+    "kick": 1792195200,
+    "note": "Margin model translated to a moneyline. No Kalshi backtest is claimed for this."
+   },
+   "llm": {
+    "enabled": false,
+    "veto": false,
+    "reason": "filter off",
+    "definitive": false
+   },
+   "settled_ts": null,
+   "result": null,
+   "payout": null,
+   "pnl": null,
+   "close_mid": 0.385,
+   "clv": null,
+   "mark_value": 11.02,
+   "won": null,
+   "fee_total": 0.58,
+   "tags": [
+    "pre_fix_raw_v1_margin"
+   ],
+   "mark_ts": "2026-10-14T00:21:09Z"
   },
   {
    "id": "KXNCAAFGAME-26OCT17WSUORST-WSU:1791901778",
@@ -424,7 +424,7 @@
    "tags": [
     "pre_fix_raw_v1_margin"
    ],
-   "mark_ts": "2026-10-13T21:52:45Z"
+   "mark_ts": "2026-10-14T00:21:09Z"
   }
  ],
  "equity": [
@@ -437,6 +437,11 @@
    "ts": "2026-10-13T21:52:45Z",
    "cash": 900.08,
    "equity": 989.98
+  },
+  {
+   "ts": "2026-10-14T00:21:09Z",
+   "cash": 900.08,
+   "equity": 988.87
   }
  ],
  "runs": [
@@ -471,13 +476,121 @@
    ],
    "equity": 989.98,
    "cash": 900.08
+  },
+  {
+   "ts": "2026-10-14T00:21:09Z",
+   "settled": 0,
+   "opened": 0,
+   "vetoed": 0,
+   "skipped": 0,
+   "halt": null,
+   "notes": [
+    "cfb_jp_novig: 0 new games, 0 snapshots, 0 entered, 0 exited, 0 graded; pass bar 0/60 collecting",
+    "nba total: 0 eligible games; 0 signals; 84 quotes unmatched; skipped 14 preseason",
+    "cfb moneyline: 52 projected games, 0 signals, 174 events unmatched, min week 4",
+    "llm filter off"
+   ],
+   "equity": 988.87,
+   "cash": 900.08
   }
  ],
  "summary": {
+  "strategies": {
+   "cfb_jp_novig": {
+    "pass_bar": {
+     "n": 0,
+     "n_needed": 60,
+     "to_go": 60,
+     "mean": null,
+     "sd": null,
+     "se": null,
+     "z": null,
+     "z_needed": 2.0,
+     "status": "collecting",
+     "rule": "mean profit per contract after spread > 0, z >= 2, over 60+ trades at 5+ point edges"
+    },
+    "slices": {
+     "3+": {
+      "entered": 0,
+      "open": 0,
+      "no_exit_bid": 0,
+      "exit": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      },
+      "hold": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      }
+     },
+     "5+": {
+      "entered": 0,
+      "open": 0,
+      "no_exit_bid": 0,
+      "exit": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      },
+      "hold": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      }
+     },
+     "7+": {
+      "entered": 0,
+      "open": 0,
+      "no_exit_bid": 0,
+      "exit": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      },
+      "hold": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      }
+     }
+    },
+    "monitor": {
+     "improving": false,
+     "n": 0,
+     "prev_n": null,
+     "prev_mean": null,
+     "note": null
+    },
+    "counts": {
+     "entered": 0,
+     "open": 0,
+     "exited": 0,
+     "no_exit_bid": 0,
+     "stale_exits": 0,
+     "hold_graded": 0,
+     "hold_pending": 0
+    }
+   }
+  },
   "overall": {
    "settled": 0,
    "wins": 0,
    "losses": 0,
+   "pending": 0,
    "stake": 0.0,
    "pnl": 0.0,
    "roi": null,
@@ -493,6 +606,7 @@
     "settled": 0,
     "wins": 0,
     "losses": 0,
+    "pending": 0,
     "stake": 0.0,
     "pnl": 0.0,
     "roi": null,
@@ -578,7 +692,7 @@
   ],
   "fees": 5.34,
   "cash": 900.08,
-  "open_mark": 89.9
+  "open_mark": 88.79
  },
  "config": {
   "paper_only": true,
@@ -606,6 +720,10 @@
    "cfb_ml": {
     "enabled": true,
     "min_edge": 0.08
+   },
+   "cfb_jp_novig": {
+    "enabled": true,
+    "min_edge": null
    }
   },
   "llm_filter": {
@@ -613,5 +731,119 @@
    "model": "gpt-4o-mini"
   },
   "live_orders": false
+ },
+ "strategies": {
+  "cfb_jp_novig": {
+   "games": {},
+   "progress": {
+    "pass_bar": {
+     "n": 0,
+     "n_needed": 60,
+     "to_go": 60,
+     "mean": null,
+     "sd": null,
+     "se": null,
+     "z": null,
+     "z_needed": 2.0,
+     "status": "collecting",
+     "rule": "mean profit per contract after spread > 0, z >= 2, over 60+ trades at 5+ point edges"
+    },
+    "slices": {
+     "3+": {
+      "entered": 0,
+      "open": 0,
+      "no_exit_bid": 0,
+      "exit": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      },
+      "hold": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      }
+     },
+     "5+": {
+      "entered": 0,
+      "open": 0,
+      "no_exit_bid": 0,
+      "exit": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      },
+      "hold": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      }
+     },
+     "7+": {
+      "entered": 0,
+      "open": 0,
+      "no_exit_bid": 0,
+      "exit": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      },
+      "hold": {
+       "n": 0,
+       "mean": null,
+       "sd": null,
+       "se": null,
+       "z": null
+      }
+     }
+    },
+    "monitor": {
+     "improving": false,
+     "n": 0,
+     "prev_n": null,
+     "prev_mean": null,
+     "note": null
+    },
+    "counts": {
+     "entered": 0,
+     "open": 0,
+     "exited": 0,
+     "no_exit_bid": 0,
+     "stale_exits": 0,
+     "hold_graded": 0,
+     "hold_pending": 0
+    }
+   },
+   "watch": [],
+   "updated": "2026-10-14T00:21:09Z",
+   "version": 1,
+   "config": {
+    "min_week": 8,
+    "edge_log": 3.0,
+    "edge_pass": 5.0,
+    "size_fraction": 0.25,
+    "depth_band": 0.02,
+    "snapshot_minutes": 30,
+    "pass_n": 60,
+    "pass_z": 2.0,
+    "fees": 0
+   },
+   "last_run": {
+    "ts": "2026-10-14T00:21:09Z",
+    "notes": [],
+    "novig_requests": 0,
+    "novig_errors": 0
+   }
+  }
  }
 }
