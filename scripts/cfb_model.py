@@ -30,6 +30,8 @@ DATA = os.path.join(ROOT, 'data')
 PRIORS = os.path.join(DATA, 'cfb_model_priors.json')
 BACKTEST = os.path.join(DATA, 'cfb_model_backtest.json')
 PRIORS_V2 = os.path.join(DATA, 'cfb_model_priors_v2.json')
+ST_PRIOR = os.path.join(DATA, 'cfb_model_st_prior.json')       # frozen preseason special teams ratings + the fitted lambda / carry / weight (priors-st)
+MODEL_VERSION = 'v2st'      # v2 regression prior + special teams rating. A stored board and log carrying another stamp are restated once (restate_row / restate_log)
 OUT = os.path.join(DATA, 'cfb_model.json')
 PICK_EDGE = 5.0          # disagree with the market by at least this many points
 LOCK_SECS = 3600         # the final lock: the state an hour before kickoff (or the last run before it, when none fell in that hour)
@@ -226,6 +228,72 @@ def cmd_priors_v2(a):
     print('v2 prior written for', len(cur), 'teams')
 
 
+def st_obs(stg, done, F, wk):
+    """special teams observations from games finished before week wk: home_id, away_id, st_home (home side's special teams net EPA, in points)"""
+    g = done[(done.week < wk) & done.homeTeamId.isin(F) & done.awayTeamId.isin(F)][['game_id', 'homeTeamId', 'awayTeamId']]
+    o = g.merge(stg[['game_id', 'st_home']], on='game_id').rename(columns={'homeTeamId': 'home_id', 'awayTeamId': 'away_id'})
+    return o.dropna(subset=['st_home'])
+
+
+def cmd_priors_st(a):
+    """Frozen preseason special teams ratings for 2026: walk the ratings through 2022-2025 (ridge on the home side's special teams net EPA, last season's final x carry as the
+    prior) and keep the end of 2025. lambda / carry / weight come from scripts/cfb_v2_st_study.py (chosen on 2022-23 by the average miss only). Run once per offseason."""
+    import cfb_v2_st_study as sts
+    d = a.dir; os.makedirs(d, exist_ok=True)
+    tg, gm = st.load(d); fbs = st.fbs_sets(gm, d); years = [2022, 2023, 2024, 2025]
+    stg = sts.st_games(d, years); lam, carry, wt = sts.LAM, sts.CARRY, sts.WEIGHT
+    prior = {}
+    for y in years:
+        g = gm[(gm.season == y) & gm.homeTeamId.isin(fbs[y]) & gm.awayTeamId.isin(fbs[y]) & (gm.status_type_completed == True)][['game_id', 'homeTeamId', 'awayTeamId']]
+        o = g.merge(stg[['game_id', 'st_home']], on='game_id').rename(columns={'homeTeamId': 'home_id', 'awayTeamId': 'away_id'}).dropna(subset=['st_home'])
+        cur = sts.st_ratings(o, prior, lam); prior = {t: carry * v for t, v in cur.items()}
+    json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), trained_on='2022-2025', lam=lam, carry=carry, weight=wt, prior={str(t): round(float(v), 5) for t, v in prior.items()}), open(ST_PRIOR, 'w'))
+    print('special teams prior written for', len(prior), 'teams; lam', lam, 'carry', carry, 'weight', wt)
+
+
+def restate_row(b, proj):
+    """Re-project one board row with the current model, point-in-time (ratings from games before its week), at the market line the row already holds.
+    The old official margin is kept as b['v1'] (the shadow), the old v2-only shadow is dropped, and every result field is cleared so the row is graded again.
+    A side that flips also flips the sign of every own-side line on the row. Returns the row."""
+    if b.get('model_margin') is None or b.get('market_margin') is None: return b
+    old = dict(model_margin=b['model_margin'], edge=b['edge'], side=b['side'], team=b['team'], entry=b['entry'], is_pick=bool(b.get('is_pick')), line_src=b.get('line_src'))
+    b['v1'] = old; b.pop('v2', None)
+    mm = b['market_margin']; pred = proj(b['week'], b['home_id'], b['away_id'], bool(b.get('neutral')))
+    edge = pred - mm; side = 'home' if edge > 0 else 'away'
+    b.update(model_margin=round(pred, 1), edge=round(edge, 1), side=side, team=b['home'] if side == 'home' else b['away'], entry=round(-mm if side == 'home' else mm, 1),
+             is_pick=bool(abs(edge) >= PICK_EDGE and b['week'] >= PICK_MIN_WEEK))
+    b['pick'] = dict(side=side, team=b['team'], line=b['entry']) if b['is_pick'] else None
+    if side != old['side'] and b.get('line_captured') is not None: b['line_captured'] = round(-b['line_captured'], 1)
+    for k in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by', 'tile_line', 'tile_result', 'tile_line_src'): b.pop(k, None)
+    bo = b.get('bettable_open')
+    if bo:
+        bo.update(model_margin=b['model_margin'], edge=b['edge'], side=side, entry=round(bo['line'] if side == 'home' else -bo['line'], 1))
+        for k in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by'): bo.pop(k, None)
+    fn = b.get('final')
+    if fn:
+        fmm = -fn['entry'] if fn['side'] == 'home' else fn['entry']       # the market margin at the lock
+        fe = proj(b['week'], b['home_id'], b['away_id'], bool(b.get('neutral'))) - fmm; fs = 'home' if fe > 0 else 'away'
+        fn.update(side=fs, team=b['home'] if fs == 'home' else b['away'], entry=round(-fmm if fs == 'home' else fmm, 1), edge=round(fe, 1), is_pick=bool(abs(fe) >= PICK_EDGE and b['week'] >= PICK_MIN_WEEK))
+        for k in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by'): fn.pop(k, None)
+    return b
+
+
+def restate_log(board, log):
+    """The pick log under the current model: one entry per board row that is a pick now. An entry that was already logged on the same side keeps its logged time and flags;
+    a pick the old model did not make is a point-in-time reconstruction, so it is marked backfill (the page already says those were logged after the fact)."""
+    old = {e['key']: e for e in log}; out = []
+    for b in board:
+        if not b.get('is_pick'): continue
+        o = old.get(b['key'])
+        if o and o['side'] == b['side']: e = {k: o[k] for k in o if k not in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by')}
+        else: e = dict(key=b['key'], kick=b['kick'], home=b['home'], away=b['away'], home_id=b['home_id'], away_id=b['away_id'], logged=b['logged'], backfill=True, line_src=b.get('line_src'))
+        e.update(week=b['week'], side=b['side'], team=b['team'], entry=b['entry'] if not (o and o['side'] == b['side']) else o['entry'], model_margin=b['model_margin'],
+                 market_margin=b['market_margin'], edge=b['edge'], neutral=b.get('neutral', False), restated=True)
+        out.append(e)
+    out.sort(key=lambda e: e['kick'])
+    return out
+
+
 def grade(entry, g26):
     """grade one logged pick against a finished 2026 game; returns dict of result fields"""
     m = g26[(g26.homeTeamId == entry['home_id']) & (g26.awayTeamId == entry['away_id'])]
@@ -377,7 +445,7 @@ def settle(entry, g26, fin):
 LINES26 = os.path.join(ROOT, 'data', 'cfbd', 'lines_2026.json')
 
 
-def open_check(g26, F, rated_before, K, HFA):
+def open_check(g26, F, rated_before, K, HFA, proj=None):
     """The same model, graded against the OPENING line instead of the close.
 
     Backtest 2022-2025 (docs/retro/cfb-efficiency-replication.md): 5+ point disagreements with the opening spread covered 57.5% (435-321),
@@ -404,7 +472,7 @@ def open_check(g26, F, rated_before, K, HFA):
         if not hit: continue
         with_open += 1
         ln = hit[1]; ra_w, rb_w = rated_before(int(x.week)); Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
-        pred = K * (Pw(h) - Pw(aw)) + (0.0 if x.neutral_site == True else HFA)
+        pred = proj(int(x.week), h, aw, x.neutral_site == True) if proj else K * (Pw(h) - Pw(aw)) + (0.0 if x.neutral_site == True else HFA)
         omargin = -float(ln['so']); edge = pred - omargin; home = edge > 0
         side_open = float(ln['so']) if home else -float(ln['so'])
         close = None if ln.get('sp') is None else (float(ln['sp']) if home else -float(ln['sp']))
@@ -428,7 +496,7 @@ def open_check(g26, F, rated_before, K, HFA):
         h, aw = sid.get(ln.get('home')), sid.get(ln.get('away'))
         if h is None or aw is None or h not in F or aw not in F: continue
         wk = int(ln['wk']); ra_w, rb_w = rated_before(wk); Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
-        pred = K * (Pw(h) - Pw(aw)) + HFA
+        pred = proj(wk, h, aw, False) if proj else K * (Pw(h) - Pw(aw)) + HFA
         omargin = -float(ln['so']); edge = pred - omargin; home = edge > 0
         cur = None if ln.get('sp') is None else -float(ln['sp'])
         games.append(dict(id=int(gid), week=wk, home_id=h, away_id=aw, home=ln['home'], away=ln['away'], provider=ln['p'], side='home' if home else 'away',
@@ -722,14 +790,27 @@ def cmd_update(a):
     F = set(pri['fbs']) | FBS_ADDITIONS
     done = gm[(gm.status_type_completed == True)]
     T = tg[tg.game_id.isin(done.game_id) & tg.pos_team_id.isin(F) & tg.def_pos_team_id.isin(F)]
-    ra, rb = st.fit(T, *prior)
+    p2 = json.load(open(PRIORS_V2)) if os.path.exists(PRIORS_V2) else None
+    prior2 = ({int(t): v for t, v in p2['a'].items()}, {int(t): v for t, v in p2['b'].items()}) if p2 else None
+    stp = json.load(open(ST_PRIOR)) if os.path.exists(ST_PRIOR) else None
+    stg26 = None
+    if stp:
+        try:
+            import cfb_v2_st_study as sts
+            stg26 = sts.st_games(d, [2026]); st_prior = {int(t): v for t, v in stp['prior'].items()}
+        except Exception as e:
+            print('special teams skipped:', type(e).__name__, e, file=sys.stderr); stp = None
+    live = bool(prior2 and stp and stg26 is not None)       # the v2 prior and the special teams rating are both in place: the current model. Anything missing falls back to v1
+    ra, rb = st.fit(T, *(prior2 if live else prior))
     names = {int(t): list(v) for t, v in pri['names'].items()}; names.update(team_names(d, [2026]))
     played = {}
     for r in done.itertuples():
         for t in (r.homeTeamId, r.awayTeamId): played[t] = played.get(t, 0) + 1
     P = lambda t: ra.get(t, 0.0) - rb.get(t, 0.0)
-    ratings = sorted(({'id': int(t), 'team': names.get(t, [str(t), '', ''])[2] or names.get(t, [str(t)])[0], 'abbr': names.get(t, ['', ''])[1], 'overall': round(K * P(t), 1),
-                       'off': round(K * ra.get(t, 0.0), 1), 'def': round(-K * rb.get(t, 0.0), 1), 'games': played.get(t, 0)} for t in F if t in names),
+    rst_now = sts.st_ratings(st_obs(stg26, done, F, 99), st_prior, stp['lam']) if live else {}
+    SW = stp['weight'] if live else 0.0
+    ratings = sorted(({'id': int(t), 'team': names.get(t, [str(t), '', ''])[2] or names.get(t, [str(t)])[0], 'abbr': names.get(t, ['', ''])[1], 'overall': round(K * P(t) + SW * rst_now.get(t, 0.0), 1),
+                       'off': round(K * ra.get(t, 0.0), 1), 'def': round(-K * rb.get(t, 0.0), 1), 'st': round(SW * rst_now.get(t, 0.0), 1), 'games': played.get(t, 0)} for t in F if t in names),
                      key=lambda x: -x['overall'])
     for i, x in enumerate(ratings): x['rank'] = i + 1
     through = int(done.week.max()) if len(done) else 0
@@ -739,9 +820,7 @@ def cmd_update(a):
     # already kicked off (a one-time backfill): they are projected with ratings fit only on EARLIER weeks and
     # entered at the opening line, and flagged so the page can say they were logged after the fact.
     gidx = {(int(r.homeTeamId), int(r.awayTeamId)): r for r in gm.drop_duplicates('game_id').itertuples()}
-    p2 = json.load(open(PRIORS_V2)) if os.path.exists(PRIORS_V2) else None
-    prior2 = ({int(t): v for t, v in p2['a'].items()}, {int(t): v for t, v in p2['b'].items()}) if p2 else None
-    cache, cache2 = {}, {}
+    cache, cache2, cache_st = {}, {}, {}
     def rated_before2(wk):
         if wk not in cache2:
             Tw = tg[tg.game_id.isin(done[done.week < wk].game_id) & tg.pos_team_id.isin(F) & tg.def_pos_team_id.isin(F)]
@@ -752,6 +831,26 @@ def cmd_update(a):
             Tw = tg[tg.game_id.isin(done[done.week < wk].game_id) & tg.pos_team_id.isin(F) & tg.def_pos_team_id.isin(F)]
             cache[wk] = st.fit(Tw, *prior)
         return cache[wk]
+    def rated_st(wk):
+        if wk not in cache_st: cache_st[wk] = sts.st_ratings(st_obs(stg26, done, F, wk), st_prior, stp['lam'])
+        return cache_st[wk]
+    def proj(wk, h, aw, neutral):
+        """the current model's home margin for a game in week wk, from ratings fit on games before that week (v2 prior + special teams; v1 when either is missing)"""
+        ra_w, rb_w = rated_before2(wk) if live else rated_before(wk)
+        out = K * ((ra_w.get(h, 0.0) - rb_w.get(h, 0.0)) - (ra_w.get(aw, 0.0) - rb_w.get(aw, 0.0))) + (0.0 if neutral else HFA)
+        if live: rs_ = rated_st(wk); out += stp['weight'] * (rs_.get(h, 0.0) - rs_.get(aw, 0.0))
+        return out
+    def v1_proj(wk, h, aw, neutral):
+        ra_w, rb_w = rated_before(wk)
+        return K * ((ra_w.get(h, 0.0) - rb_w.get(h, 0.0)) - (ra_w.get(aw, 0.0) - rb_w.get(aw, 0.0))) + (0.0 if neutral else HFA)
+    store = {}      # what the last run stored; a board and log carrying another model stamp are restated once with the current model
+    if os.path.exists(OUT):
+        try: store = json.load(open(OUT))
+        except Exception: store = {}
+    restating = bool(live and store.get('board') and store.get('model_version') != MODEL_VERSION)
+    if restating:
+        for b_ in store['board']: restate_row(b_, proj)
+        store['log'] = restate_log(store['board'], store.get('log', []))
     school2id = {}
     for t, v in names.items():
         if len(v) > 2 and v[2]: school2id.setdefault(v[2], t)
@@ -790,9 +889,7 @@ def cmd_update(a):
                 un += 1; continue
             wk = int(gr_.week) if gr_ is not None else through + 1      # an unplayed game is not in the play-by-play: it is the NEXT week's, not the last finished week's
             neutral = bool(gr_ is not None and gr_.neutral_site == True)
-            ra_w, rb_w = rated_before(wk)
-            Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
-            pred = K * (Pw(h) - Pw(aw)) + (0.0 if neutral else HFA)
+            pred = proj(wk, h, aw, neutral)
             mkt = -line
             edge = pred - mkt
             pick = None
@@ -815,9 +912,8 @@ def cmd_update(a):
                 if k is None or k < a.since or k > now or (a.until and k >= a.until) or (int(r.homeTeamId), int(r.awayTeamId)) in have_ids: continue
                 h, aw = int(r.homeTeamId), int(r.awayTeamId)
                 if h not in F or aw not in F or pd.isna(r.homeTeamSpread): continue
-                ra_w, rb_w = rated_before(int(r.week)); Pw = lambda t: ra_w.get(t, 0.0) - rb_w.get(t, 0.0)
                 neutral = bool(r.neutral_site == True)
-                pred = K * (Pw(h) - Pw(aw)) + (0.0 if neutral else HFA); mkt = float(r.homeTeamSpread); edge = pred - mkt
+                pred = proj(int(r.week), h, aw, neutral); mkt = float(r.homeTeamSpread); edge = pred - mkt
                 nm = lambda t: (names.get(t, [str(t)]) + ['', ''])[2] or names[t][0]
                 pick = None
                 if abs(edge) >= PICK_EDGE and int(r.week) >= PICK_MIN_WEEK:
@@ -825,22 +921,18 @@ def cmd_update(a):
                     pick = dict(side=side, team=nm(h if side == 'home' else aw), line=-mkt if side == 'home' else mkt)
                 slate.append(dict(key=f'espn:{r.game_id}', kick=int(k), home=nm(h), away=nm(aw), home_id=h, away_id=aw, week=int(r.week), neutral=neutral, backfill=True,
                                   line_src='espn', model_margin=round(pred, 1), market_margin=round(mkt, 1), open_margin=None, edge=round(edge, 1), pick=pick))
-        if prior2:      # shadow model: same games and lines, v2 prior. Tracked and graded, never shown as picks
+        if live:      # shadow model: the previous official model (v1: last season's ratings x 0.85, no special teams) on the same games and lines. Tracked and graded, never shown as picks
             for x_ in slate:
-                ra2, rb2 = rated_before2(x_['week']); P2 = lambda t: ra2.get(t, 0.0) - rb2.get(t, 0.0)
-                pred2 = K * (P2(x_['home_id']) - P2(x_['away_id'])) + (0.0 if x_['neutral'] else HFA); e2 = pred2 - x_['market_margin']; sd2 = 'home' if e2 > 0 else 'away'
-                x_['v2'] = dict(model_margin=round(pred2, 1), edge=round(e2, 1), side=sd2, team=x_['home'] if sd2 == 'home' else x_['away'],
-                                entry=round(-x_['market_margin'] if sd2 == 'home' else x_['market_margin'], 1), is_pick=bool(abs(e2) >= PICK_EDGE and x_['week'] >= PICK_MIN_WEEK), line_src=x_.get('line_src'))
+                pred1 = v1_proj(x_['week'], x_['home_id'], x_['away_id'], x_['neutral']); e1 = pred1 - x_['market_margin']; sd1 = 'home' if e1 > 0 else 'away'
+                x_['v1'] = dict(model_margin=round(pred1, 1), edge=round(e1, 1), side=sd1, team=x_['home'] if sd1 == 'home' else x_['away'],
+                                entry=round(-x_['market_margin'] if sd1 == 'home' else x_['market_margin'], 1), is_pick=bool(abs(e1) >= PICK_EDGE and x_['week'] >= PICK_MIN_WEEK), line_src=x_.get('line_src'))
         feed_cards_ = feed_cards(feed)
         for x_ in slate: x_['blend_margin'] = round(x_['market_margin'] + BLEND_W * x_['edge'], 1)
         slate.sort(key=lambda x: (x['kick'], -abs(x['edge'])))
     else: now = int(pd.Timestamp.now('UTC').timestamp())
 
     # the pick log: every pick logged once, before kickoff, at the line we saw; graded when the game ends
-    log = []
-    if os.path.exists(OUT):
-        try: log = json.load(open(OUT)).get('log', [])
-        except Exception: log = []
+    log = store.get('log', [])
     sl_ = {s['key']: s for s in slate}
     for e in log:       # a pick logged before kickoff under the wrong week was projected with ratings missing the last finished week: re-derive it from the slate, or drop it if it is no longer a pick
         s_ = sl_.get(e['key'])
@@ -859,15 +951,12 @@ def cmd_update(a):
     g26 = gm.drop_duplicates('game_id')
     # the board: every game the model projected, picks or not, kept after kickoff so the page can show the whole slate and how the
     # model's lean did. Projections freeze once a game has started (or was added after the fact).
-    board = []
-    if os.path.exists(OUT):
-        try: board = json.load(open(OUT)).get('board', [])
-        except Exception: board = []
+    board = store.get('board', [])
     bidx = {b['key']: b for b in board}
     for s_ in slate:
         old = bidx.get(s_['key'])
         if old and (old['kick'] <= now or old.get('backfill')):
-            for k_ in ('mkt_check', 'blend_margin', 'v2', 'cards'):      # added after the first sight: fill in, never change the frozen projection
+            for k_ in ('mkt_check', 'blend_margin', 'v1', 'cards'):      # added after the first sight: fill in, never change the frozen projection
                 if k_ not in old and k_ in s_: old[k_] = s_[k_]
             continue
         side = 'home' if s_['edge'] > 0 else 'away'
@@ -909,7 +998,7 @@ def cmd_update(a):
     for e in board:
         _settle(e, e['key'])
         if e.get('final'): _settle(e['final'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
-        if e.get('v2'): _settle(e['v2'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
+        if e.get('v1'): _settle(e['v1'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
         bo = e.get('bettable_open')
         if bo and 'result' not in bo:
             r = settle(dict(bo, key=e['key'], home_id=e['home_id'], away_id=e['away_id']), g26, fin)
@@ -926,19 +1015,18 @@ def cmd_update(a):
     earlier = [0, 0]; first = min([b['week'] for b in board], default=None)
     if first:
         for wk in range(PICK_MIN_WEEK - 1, first):
-            ra_w, rb_w = rated_before(wk)
             for r in g26[(g26.week == wk) & (g26.status_type_completed == True)].itertuples():
                 h, aw = int(r.homeTeamId), int(r.awayTeamId)
                 if h not in F or aw not in F or pd.isna(r.homeTeamSpread): continue
-                pred = K * ((ra_w.get(h, 0) - rb_w.get(h, 0)) - (ra_w.get(aw, 0) - rb_w.get(aw, 0))) + (0.0 if r.neutral_site == True else HFA)
+                pred = proj(wk, h, aw, r.neutral_site == True)
                 c = (1 if pred - r.homeTeamSpread > 0 else -1) * ((r.homeFinalScore - r.awayFinalScore) - r.homeTeamSpread)
                 earlier[0 if c > 0 else 1] += c != 0 and 1 or 0
     def _rec(rows):
         w = sum(r == 'W' for r in rows); l = sum(r == 'L' for r in rows); return [w, l]
-    gb = [e for e in board if e.get('v2') and e['v2'].get('result') in ('W', 'L')]
-    v2_summary = dict(games=len(board), graded=len(gb),
-                      v1_all=_rec([e['result'] for e in gb if e.get('result')]), v2_all=_rec([e['v2']['result'] for e in gb]),
-                      v1_picks=_rec([e['result'] for e in gb if e.get('is_pick') and e.get('result')]), v2_picks=_rec([e['v2']['result'] for e in gb if e['v2']['is_pick']])) if prior2 else None
+    gb = [e for e in board if e.get('v1') and e['v1'].get('result') in ('W', 'L')]
+    v1_summary = dict(games=len(board), graded=len(gb),
+                      v2st_all=_rec([e['result'] for e in gb if e.get('result')]), v1_all=_rec([e['v1']['result'] for e in gb]),
+                      v2st_picks=_rec([e['result'] for e in gb if e.get('is_pick') and e.get('result')]), v1_picks=_rec([e['v1']['result'] for e in gb if e['v1']['is_pick']])) if live else None
     cards_summary = tile_cards_summary(board)
     logkeys = {x['key']: x for x in log}
     fg = [e for e in board if e.get('final') and e['final'].get('result') in ('W', 'L')]
@@ -958,7 +1046,7 @@ def cmd_update(a):
               dict(label='Locked picks with Sharp Money against them', note='Cards only on the other team.', all=_fs([e for e in fp if _link(e) == 'against']), keys=[e['key'] for e in fp if _link(e) == 'against']),
               dict(label='Locked picks, Sharp Money split or quiet', note='Cards on both teams, or no card at all.', all=_fs([e for e in fp if _link(e) in ('split', 'none', 'nocard')]), keys=[e['key'] for e in fp if _link(e) in ('split', 'none', 'nocard')])])
     final_summary.pop('mins')
-    open_chk = open_check(g26, F, rated_before, K, HFA)
+    open_chk = open_check(g26, F, rated_before, K, HFA, proj)
     bos = [e['bettable_open'] for e in board if e.get('bettable_open')]
     bg = [b for b in bos if b.get('result') in ('W', 'L')]
     bclv = [b['clv'] for b in bos if b.get('clv') is not None and b.get('result') in ('W', 'L', 'P')]
@@ -987,16 +1075,16 @@ def cmd_update(a):
     except Exception as e:
         print('totals skipped:', type(e).__name__, e, file=sys.stderr); totals = prev_totals
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v2_summary=v2_summary, cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk, bettable_open=bettable_summary, totals=totals), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v1_summary=v1_summary, model_version=MODEL_VERSION if live else 'v1', cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk, bettable_open=bettable_summary, totals=totals), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'priors-v2', 'priors-totals', 'update']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
+    ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'priors-v2', 'priors-st', 'priors-totals', 'update']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
     ap.add_argument('--since', type=int, help='one-time backfill: also project games that kicked off at or after this unix time, entered at the opening line')
     ap.add_argument('--until', type=int, help='with --since: stop the backfill before this unix time')
     ap.add_argument('--sharp', help='path to the Sharp Money data.json (sharp-data branch)'); a = ap.parse_args()
-    {'priors': cmd_priors, 'priors-v2': cmd_priors_v2, 'priors-totals': cmd_priors_totals, 'update': cmd_update}[a.cmd](a)
+    {'priors': cmd_priors, 'priors-v2': cmd_priors_v2, 'priors-st': cmd_priors_st, 'priors-totals': cmd_priors_totals, 'update': cmd_update}[a.cmd](a)
 
 
 if __name__ == '__main__':

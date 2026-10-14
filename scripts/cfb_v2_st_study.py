@@ -21,6 +21,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cfb_efficiency_study as st
 import cfb_v2_prior_study as v2
 
+# chosen on 2022-2023 by the average miss only (see main()); the live model uses these
+LAM, CARRY, WEIGHT = 5, 0.6, 1.0
+
 ST_COLS = ['season', 'game_id', 'week', 'seasonType', 'pos_team_id', 'def_pos_team_id', 'EPA', 'EPA_punt', 'EPA_kickoff', 'EPA_fg']
 
 

@@ -14,6 +14,9 @@ on:
       - 'scripts/cfb_model.py'
       - 'scripts/cfb_efficiency_study.py'
       - 'data/cfb_model_priors.json'
+      - 'data/cfb_model_priors_v2.json'
+      - 'data/cfb_model_st_prior.json'
+      - 'scripts/cfb_v2_st_study.py'
       - 'data/cfb_model_totals_priors.json'
   schedule:
     - cron: '17 */3 * 9,10,11,12,1 *'
