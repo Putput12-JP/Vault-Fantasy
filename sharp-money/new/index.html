@@ -172,16 +172,22 @@ function board(){
  chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport');
  // hot
  const hot=L.slice().sort((a,b)=>heat(b)-heat(a)||Object.values(b.flow.sharp||{}).reduce((s,x)=>s+x,0)-Object.values(a.flow.sharp||{}).reduce((s,x)=>s+x,0)).slice(0,6);
- h+=`<div class="sec"><span>Hot right now</span><span class="badge">alerts in the last 24h</span></div><div class="hs">`+hot.map(g=>{const n=heat(g),b=bar(g,'ml'),z=b.A+b.H<1000;
+ h+=`<div class="sec"><span>Hot right now</span><span class="badge">alerts in the last 24h</span></div><div class="hs">`+hot.map(g=>{const n=heat(g),b=bar(g,'ml'),z=b.A+b.H<1000,sl=pinSp(g);
   return `<div class="card hc tap" data-go="game/${esc(g.key)}"><div class="gtop"><span>${when(g.start)}</span><span>${SPORT[g.sport]}</span></div>
-  <div class="tr">${logo(g.away,'sm')}<div class="tn">${esc(g.away.abbr)}</div><span class="big cond">${z?"-":money(b.A)}</span></div>
-  <div class="tr">${logo(g.home,'sm')}<div class="tn">${esc(g.home.abbr)}</div><span class="big cond">${z?"-":money(b.H)}</span></div>
-  <div class="fl" style="margin-top:6px;padding-top:8px"><div class="fll"><span>${z?"No sharp money yet":"Sharp $ on the moneyline"}</span></div>${z?"":b.html.split('<div class="fnum')[0]}<div class="fll" style="margin:6px 0 0"><span>${n} alert${n===1?'':'s'}</span><span>context</span></div></div></div>`}).join('')+`</div>`;
- // sharp net
+  <div class="tr">${logo(g.away,'sm')}<div class="tn">${esc(g.away.abbr)}</div><span class="big cond">${z?(sl==null?"-":fl(-sl)):money(b.A)}</span></div>
+  <div class="tr">${logo(g.home,'sm')}<div class="tn">${esc(g.home.abbr)}</div><span class="big cond">${z?(sl==null?"-":fl(sl)):money(b.H)}</span></div>
+  <div class="fl" style="margin-top:6px;padding-top:8px"><div class="fll"><span>${z?"Spread":"Sharp $ on the moneyline"}</span></div>${z?"":b.html.split('<div class="fnum')[0]}<div class="fll" style="margin:6px 0 0"><span>${n} alert${n===1?'':'s'}</span><span>context</span></div></div></div>`}).join('')+`</div>`;
+ // sharp net: collapses to one line when there is nothing to show
+ const anyNet=['ml','sp','tot'].some(k=>L.some(g=>{const b=bar(g,k);return b.A+b.H>=1000}));
+ const has=k=>L.some(g=>{const b=bar(g,k);return b.A+b.H>=1000});
+ if(!st.netTouched&&!has(st.netm)){const f=['ml','sp','tot'].find(has);if(f)st.netm=f}
  const net=L.map(g=>{const b=bar(g,st.netm);return {g,b,t:b.A+b.H}}).filter(x=>x.t>=1000).sort((a,b)=>b.t-a.t).slice(0,7);
- h+=`<div class="sec"><span>Sharp net</span><span class="badge">Polymarket sharp accounts</span></div>`+chips([['ml','Money'],['sp','Spread'],['tot','Total']],st.netm,'netm')+
- `<div class="card">`+(net.length?net.map(({g,b})=>{const [sa,sb]=sidesOf(st.netm),lab=st.netm==='tot'?['Over','Under']:[g.away.abbr,g.home.abbr];
-  return `<div class="tap" data-go="game/${esc(g.key)}" style="padding:8px 0;border-top:1px solid var(--line)"><div class="fll"><span><b style="color:#fff">${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> ${when(g.start)}</span><span>${lab[0]} / ${lab[1]}</span></div>${b.html}</div>`}).join(''):'<div class="empty">No sharp money on this market yet.</div>')+`</div>`;
+ if(!anyNet)h+=`<div class="stline" style="margin-top:14px"><span class="dimr">No tracked sharp money on any market right now.</span></div>`;
+ else{
+  h+=`<div class="sec"><span>Sharp net</span><span class="badge">Polymarket sharp accounts</span></div>`+chips([['ml','Money'],['sp','Spread'],['tot','Total']],st.netm,'netm');
+  h+=net.length?`<div class="card">`+net.map(({g,b})=>{const lab=st.netm==='tot'?['Over','Under']:[g.away.abbr,g.home.abbr];
+   return `<div class="tap" data-go="game/${esc(g.key)}" style="padding:8px 0;border-top:1px solid var(--line)"><div class="fll"><span><b style="color:#fff">${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> ${when(g.start)}</span><span>${lab[0]} / ${lab[1]}</span></div>${b.html}</div>`}).join('')+`</div>`:`<div class="stline"><span class="dimr">No tracked sharp money on this market yet.</span></div>`;
+ }
  // slate
  h+=`<div class="sec"><span>The slate</span><span>${L.length} games</span></div>`;
  let last='';L.slice(0,st.slate).forEach(g=>{const dd=day(g.start);if(dd!==last){h+=`<div class="sec" style="margin-top:8px"><span>${dd}</span></div>`;last=dd}h+=gameCard(g)});
@@ -612,7 +618,7 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-retrymodel]')){['nfl','cfb','sb'].forEach(k=>{if(!MD[k])loadModel(k)});return}
  if(e.target.closest('[data-retry]')){loadErr=false;load();route();return}
  const t=e.target.closest('[data-t]');if(t&&t.closest('#tabs')){location.hash=t.dataset.t;window.scrollTo(0,0);return}
- const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='msp'){st.msub='games';st.mview='picks';st.mwk='All weeks';st.msel=null;st.mq='';st.mallR=false}if(s.dataset.set==='mview')st.msel=null;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
+ const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='msp'){st.msub='games';st.mview='picks';st.mwk='All weeks';st.msel=null;st.mq='';st.mallR=false}if(s.dataset.set==='mview')st.msel=null;if(s.dataset.set==='netm')st.netTouched=true;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
  const m=e.target.closest('[data-more]');if(m){const k=m.dataset.more;st[k]+=k==='slate'?10:14;rerender();return}
  if(e.target.closest('[data-back]')){if(inApp)history.back();else location.hash='board';return}
  const g=e.target.closest('[data-go]');if(g){inApp=true;location.hash=g.dataset.go;window.scrollTo(0,0)}
