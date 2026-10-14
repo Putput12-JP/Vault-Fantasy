@@ -24,7 +24,11 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .tap{cursor:pointer}.tap:active{transform:scale(.975);transition:transform 80ms ease-out}
 .gtop{display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:13px;margin-bottom:8px;gap:8px}
 .tr{display:flex;align-items:center;gap:12px;padding:4px 0}
-.logo{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;flex:none;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+.logo{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;color:#fff;flex:none;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);position:relative;overflow:hidden}
+.logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:13%;background:#26262a;border-radius:50%;box-sizing:border-box}
+.logo.ph img{padding:0;object-fit:cover}
+.logo.xs{width:20px;height:20px;font-size:7px;box-shadow:none;display:inline-grid;vertical-align:middle}.logo.xs img{padding:11%}.logo.xs.ph img{padding:0}
+.lgrow{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap}
 .logo.sm{width:28px;height:28px;font-size:9px}.logo.lg{width:66px;height:66px;font-size:19px}
 .tn{flex:1;font-weight:600;font-size:17px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .num{font-size:28px;font-weight:600;min-width:64px;text-align:right}
@@ -144,8 +148,26 @@ const TYPES={steam:['Pinnacle move','acc',"Pinnacle, the book that takes the big
  cross:['Sharp net crossed','acc',"The combined net money from Polymarket sharp accounts on one team's moneyline just reached the line: $25k for NFL and NBA, $5k for college football. Fires once per game, and again if the sharp side flips."],
  split:['Money vs bets','','At the US books, a side has 20+ points more of the money than of the bets, while most bets are on the other side. Fewer, bigger bettors on one side.']};
 const MK={sp:'Spread',ml:'Money',tot:'Total'};
-const logo=(t,c='')=>`<div class="logo ${c}" style="background:${t.color||'#444'}">${esc(t.abbr)}</div>`;
-const ini=n=>`<div class="logo sm" style="background:#3a3a3e">${esc(String(n).split(' ').map(w=>w[0]).join('').slice(0,2))}</div>`;
+/* Team logos: ESPN's CDN (NFL and NBA by abbreviation, college by ESPN id looked up from the team name). The colored badge with the abbreviation sits underneath and shows if an image fails. */
+const CFBL={},NFLM={LA:'lar',WAS:'wsh',JAC:'jax'},NBAM={NOP:'no',NYK:'ny',SAS:'sa',GSW:'gs',WAS:'wsh',UTA:'utah'};
+const vNorm=x=>String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function teamUrl(sp,t){const ab=String(t.abbr||'').toUpperCase(),b='https://a.espncdn.com/i/teamlogos/';
+ if(sp==='nfl')return b+'nfl/500/'+(NFLM[ab]||ab.toLowerCase())+'.png';
+ if(sp==='nba')return b+'nba/500/'+(NBAM[ab]||ab.toLowerCase())+'.png';
+ if(sp==='cfb'){const id=t.espnId||CFBL[vNorm(t.name)]||CFBL[vNorm(String(t.name||'').replace(/\([^)]*\)/g,''))];return id?b+'ncaa/500/'+id+'.png':null}
+ return null}
+const logo=(t,c='',sp)=>{const u=sp&&t?teamUrl(sp,t):null;return `<div class="logo ${c}" style="background:${(t&&t.color)||'#444'}"><span>${esc((t&&t.abbr)||'')}</span>${u?`<img src="${u}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>`};
+fetch(LOCAL&&!LIVE?'/scripts/sharp_money_card/cfb_logos.json':RAW+'main/scripts/sharp_money_card/cfb_logos.json').then(r=>r.ok?r.json():null).then(j=>{if(j){Object.assign(CFBL,j);if(typeof D!=='undefined'&&D)rerender()}}).catch(()=>{});
+/* Player headshots: NFL.com face crops from data/nflverse_stats.json (the same source the Vault app uses), matched by name. */
+const PH={map:null,on:false};
+const pKey=x=>String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z ]/g,'').replace(/\s+/g,' ').trim();
+const pKeyNS=x=>pKey(x).replace(/ (jr|sr|ii|iii|iv|v)$/,'');
+function loadHeadshots(){if(PH.on)return;PH.on=true;fetch(MURL('nflverse_stats')).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;const m={};for(const k in d){const h=d[k]&&d[k].headshot;if(h){m[pKey(k)]=h;m[pKeyNS(k)]=h}}PH.map=m;rerender()}).catch(()=>{})}
+const phUrl=(name,px)=>{if(!PH.map)return null;const h=PH.map[pKey(name)]||PH.map[pKeyNS(name)];return h?h.replace('/f_auto,q_auto/','/f_auto,q_auto,w_'+px*2+',h_'+px*2+',c_thumb,g_face/'):null};
+const ini=(n,c='sm')=>{const dm=/^([A-Z]{2,3}) .* D\/ST$/.exec(String(n||''));if(dm)return logo({abbr:/Chargers/.test(n)?'LAC':dm[1],color:'#3a3a3e'},c,'nfl');loadHeadshots();const u=phUrl(n,c==='xs'?24:48);return `<div class="logo ${c} ph" style="background:#3a3a3e"><span>${esc(String(n||'').split(' ').map(w=>w[0]).join('').slice(0,2))}</span>${u?`<img src="${u}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>`};
+const tpair=(g,c='xs')=>g?`${logo(g.away,c,g.sport)}${logo(g.home,c,g.sport)}`:'';
+// teams for a finished game that has dropped off the board: NFL and NBA only need the abbreviation
+const lblTeams=(sp,lbl,key)=>{if(GM[key])return GM[key];const q=String(lbl||'').split(' @ ');return (sp==='nfl'||sp==='nba')&&q.length===2?{sport:sp,away:{abbr:q[0]},home:{abbr:q[1]}}:null}
 const sidesOf=m=>m==='tot'?['over','under']:['away','home'];
 const flow=(g,m,s,k='sharp')=>((g.flow||{})[k]||{})[m+':'+s]||0;
 const bar=(g,m,k='sharp')=>{const [a,b]=sidesOf(m),A=flow(g,m,a,k),H=flow(g,m,b,k),T=A+H||1,
@@ -167,8 +189,8 @@ function gameCard(g){
  const mv=O&&O.sp&&P&&P.sp&&Math.abs(O.sp.line-P.sp.line)>=.5?`<span class="badge acc">${g.home.abbr} ${fl(O.sp.line)} to ${fl(P.sp.line)}</span>`:'';
  const tot=P&&P.tot?`<span class="badge">O/U ${P.tot.line}</span>`:'';
  return `<div class="card tap" data-go="game/${esc(g.key)}"><div class="gtop"><span>${when(g.start)} ${live(g)?'<span class="badge live">LIVE</span>':''}</span><span>${SPORT[g.sport]}</span></div>
- <div class="tr">${logo(g.away)}<div class="tn">${esc(g.away.short)}</div><div class="num cond">${sl==null?'-':fl(-sl)}</div></div>
- <div class="tr">${logo(g.home)}<div class="tn">${esc(g.home.short)}</div><div class="num cond">${sl==null?'-':fl(sl)}</div></div>
+ <div class="tr">${logo(g.away,'',g.sport)}<div class="tn">${esc(g.away.short)}</div><div class="num cond">${sl==null?'-':fl(-sl)}</div></div>
+ <div class="tr">${logo(g.home,'',g.sport)}<div class="tn">${esc(g.home.short)}</div><div class="num cond">${sl==null?'-':fl(sl)}</div></div>
  <div class="fl"><div class="fll"><span>Sharp money on the spread</span><span class="badge">context</span></div>${b.html}</div>
  <div class="tags">${tot}${mv}${n?`<span class="badge">${n} alert${n>1?'s':''} today</span>`:''}${(g.behind||[]).length?`<span class="badge good">+EV at ${esc(g.behind[0].book)}</span>`:''}${!P?'<span class="badge">no Pinnacle line yet</span>':''}</div></div>`;
 }
@@ -181,8 +203,8 @@ function board(){
  const hot=L.slice().sort((a,b)=>heat(b)-heat(a)||Object.values(b.flow.sharp||{}).reduce((s,x)=>s+x,0)-Object.values(a.flow.sharp||{}).reduce((s,x)=>s+x,0)).slice(0,6);
  h+=`<div class="sec"><span>Hot right now</span><span class="badge">alerts in the last 24h</span></div><div class="hs">`+hot.map(g=>{const n=heat(g),b=bar(g,'ml'),z=b.A+b.H<1000,sl=pinSp(g);
   return `<div class="card hc tap" data-go="game/${esc(g.key)}"><div class="gtop"><span>${when(g.start)}</span><span>${SPORT[g.sport]}</span></div>
-  <div class="tr">${logo(g.away,'sm')}<div class="tn">${esc(g.away.abbr)}</div><span class="big cond">${z?(sl==null?"-":fl(-sl)):money(b.A)}</span></div>
-  <div class="tr">${logo(g.home,'sm')}<div class="tn">${esc(g.home.abbr)}</div><span class="big cond">${z?(sl==null?"-":fl(sl)):money(b.H)}</span></div>
+  <div class="tr">${logo(g.away,'sm',g.sport)}<div class="tn">${esc(g.away.abbr)}</div><span class="big cond">${z?(sl==null?"-":fl(-sl)):money(b.A)}</span></div>
+  <div class="tr">${logo(g.home,'sm',g.sport)}<div class="tn">${esc(g.home.abbr)}</div><span class="big cond">${z?(sl==null?"-":fl(sl)):money(b.H)}</span></div>
   <div class="fl" style="margin-top:6px;padding-top:8px"><div class="fll"><span>${z?"Spread":"Sharp $ on the moneyline"}</span></div>${z?"":b.html.split('<div class="fnum')[0]}<div class="fll" style="margin:6px 0 0"><span>${n} alert${n===1?'':'s'}</span><span>context</span></div></div></div>`}).join('')+`</div>`;
  // sharp net: collapses to one line when there is nothing to show
  const anyNet=['ml','sp','tot'].some(k=>L.some(g=>{const b=bar(g,k);return b.A+b.H>=1000}));
@@ -193,7 +215,7 @@ function board(){
  else{
   h+=`<div class="sec"><span>Sharp net</span><span class="badge">Polymarket sharp accounts</span></div>`+chips([['ml','Money'],['sp','Spread'],['tot','Total']],st.netm,'netm');
   h+=net.length?`<div class="card">`+net.map(({g,b})=>{const lab=st.netm==='tot'?['Over','Under']:[g.away.abbr,g.home.abbr];
-   return `<div class="tap" data-go="game/${esc(g.key)}" style="padding:8px 0;border-top:1px solid var(--line)"><div class="fll"><span><b style="color:#fff">${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> ${when(g.start)}</span><span>${lab[0]} / ${lab[1]}</span></div>${b.html}</div>`}).join('')+`</div>`:`<div class="stline"><span class="dimr">No tracked sharp money on this market yet.</span></div>`;
+   return `<div class="tap" data-go="game/${esc(g.key)}" style="padding:8px 0;border-top:1px solid var(--line)"><div class="fll"><span class="lgrow">${tpair(g)}<b style="color:#fff">${esc(g.away.abbr)} @ ${esc(g.home.abbr)}</b> ${when(g.start)}</span><span>${lab[0]} / ${lab[1]}</span></div>${b.html}</div>`}).join('')+`</div>`:`<div class="stline"><span class="dimr">No tracked sharp money on this market yet.</span></div>`;
  }
  // slate
  h+=`<div class="sec"><span>The slate</span><span>${L.length} games</span></div>`;
@@ -211,7 +233,7 @@ function gamePage(key){
  const c=g.consensus||{},o=g.open||{},p=g.pin||{},m=st.gm;
  let h=`<div class="hero" style="--hg:linear-gradient(120deg,${g.away.color||'#333'} 0%,${g.away.color||'#333'} 38%,${g.home.color||'#333'} 62%,${g.home.color||'#333'} 100%)">
  <div class="back" data-back role="button" tabindex="0">&lsaquo; Sharp Money</div>
- <div class="matchup"><div>${logo(g.away,'lg')}<div class="tn">${esc(g.away.short)}</div></div><div class="cond" style="font-size:48px;font-weight:700">@</div><div>${logo(g.home,'lg')}<div class="tn">${esc(g.home.short)}</div></div></div>
+ <div class="matchup"><div>${logo(g.away,'lg',g.sport)}<div class="tn">${esc(g.away.short)}</div></div><div class="cond" style="font-size:48px;font-weight:700">@</div><div>${logo(g.home,'lg',g.sport)}<div class="tn">${esc(g.home.short)}</div></div></div>
  <div class="when">${when(g.start)} ${live(g)?'<span class="badge live">LIVE</span>':''} ${g.final?'<span class="badge">Final</span>':''}</div></div>`;
  // lines
  const row=(l,a,b,cc)=>`<tr><td>${l}</td><td>${a}</td><td>${b}</td><td>${cc}</td></tr>`;
@@ -248,8 +270,8 @@ function gamePage(key){
  // accounts
  if((g.accts||[]).length)h+=`<div class="platter"><div class="ph"><span>Sharp accounts on this game</span><span class="badge">context only</span></div>${g.accts.slice(0,6).map(a=>`<div class="row"><div class="grow"><b>${esc(a.who)}</b><div class="m">${MK[a.m]||a.m}, ${a.side==='home'?esc(g.home.abbr):a.side==='away'?esc(g.away.abbr):esc(a.side)}${a.rec?` · t ${a.rec.t}, ${a.rec.n} bets`:''}</div></div><div class="amt cond">${money(a.usd)}<small>${a.cls||''}</small></div></div>`).join('')}</div>`;
  // props
- if((g.props||[]).length)h+=`<div class="platter"><div class="ph"><span>Player props, Polymarket</span><span>${g.props.length}</span></div>${g.props.slice(0,6).map(r=>`<div class="pb"><div class="a">${esc(r.player)}</div><div class="b cond">${(r.px||[]).map(cents).join(' / ')}</div><div class="c">${esc(r.stat)}${r.line!=null?' '+r.line:''} · ${(r.outs||[]).join(' / ')} · ${(r.usd||[]).map(money).join(' / ')}</div></div>`).join('')}</div>`;
- if((g.kprops||[]).length)h+=`<div class="platter"><div class="ph"><span>Player props, Kalshi</span><span>${g.kprops.length}</span></div>${g.kprops.slice(0,5).map(r=>`<div class="pb"><div class="a">${esc(r.player)}</div><div class="b cond">${r.top?cents(r.top.px):'-'}</div><div class="c">${esc(r.stat)} · ${r.top?r.top.k+'+ at the busiest rung · ':''}${money(r.vol24)} traded in 24h · ${r.rungs} rungs</div></div>`).join('')}</div>`;
+ if((g.props||[]).length)h+=`<div class="platter"><div class="ph"><span>Player props, Polymarket</span><span>${g.props.length}</span></div>${g.props.slice(0,6).map(r=>`<div class="pb"><div class="a" style="display:flex;align-items:center;gap:8px">${ini(r.player,'xs')}${esc(r.player)}</div><div class="b cond">${(r.px||[]).map(cents).join(' / ')}</div><div class="c">${esc(r.stat)}${r.line!=null?' '+r.line:''} · ${(r.outs||[]).join(' / ')} · ${(r.usd||[]).map(money).join(' / ')}</div></div>`).join('')}</div>`;
+ if((g.kprops||[]).length)h+=`<div class="platter"><div class="ph"><span>Player props, Kalshi</span><span>${g.kprops.length}</span></div>${g.kprops.slice(0,5).map(r=>`<div class="pb"><div class="a" style="display:flex;align-items:center;gap:8px">${ini(r.player,'xs')}${esc(r.player)}</div><div class="b cond">${r.top?cents(r.top.px):'-'}</div><div class="c">${esc(r.stat)} · ${r.top?r.top.k+'+ at the busiest rung · ':''}${money(r.vol24)} traded in 24h · ${r.rungs} rungs</div></div>`).join('')}</div>`;
  // alerts
  const al=D.alerts.filter(a=>a.game===g.key).slice(0,6);
  if(al.length)h+=`<div class="platter"><div class="ph"><span>Alerts on this game</span><span>${D.alerts.filter(a=>a.game===g.key).length}</span></div>${al.map(a=>`<div class="row"><div class="grow"><b>${TYPES[a.type][0]}</b><div class="m">${esc(a.text)} · ${ago(a.ts)}</div></div>${a.usd?`<div class="amt cond">${money(a.usd)}</div>`:''}</div>`).join('')}</div>`;
@@ -258,6 +280,7 @@ function gamePage(key){
  return h;
 }
 function props(){
+ if(!st.prTouched&&!upcoming().some(g=>(g.props||[]).length)&&upcoming().some(g=>(g.kprops||[]).length))st.pr='ka';
  let h=head('Props','Polymarket and Kalshi. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']],st.pr,'pr');
  const up=upcoming();let rows=[];
  up.forEach(g=>{((st.pr==='pm'?g.props:g.kprops)||[]).forEach(r=>rows.push({g,r}))});
@@ -290,7 +313,7 @@ function alertCard(a){
  const g=GM[a.game],col=g?(a.side==='home'?g.home.color:a.side==='away'?g.away.color:'#8e8e93'):'#8e8e93',t=TYPES[a.type];
  const res=a.result==null?'':`<span class="badge ${a.result>0?'good':a.result<0?'bad':''}">${a.result>0?'Won':a.result<0?'Lost':'Push'}</span>`;
  const clv=typeof a.clv==='number'?`<span class="badge ${a.clv>0?'good':a.clv<0?'bad':''}">${a.type==='behind'?sgn(a.clv*100,1)+'% EV':sgn(a.clv*100,2)+' pts vs close'}</span>`:'';
- return `<div class="card alert press tap" ${g?`data-go="game/${esc(g.key)}"`:''}><div class="sw" style="background:${lift(col,.2)}"></div><div><div class="t">${esc(a.gameLbl)}</div><div class="x">${esc(a.text)}</div><div class="tags" style="margin-top:6px"><span class="badge ${t[1]}">${t[0]}</span>${res}${clv}<span class="badge">${ago(a.ts)}</span></div></div><div class="amt cond">${a.usd?money(a.usd):''}</div></div>`;
+ return `<div class="card alert press tap" ${g?`data-go="game/${esc(g.key)}"`:''}><div class="sw" style="background:${lift(col,.2)}"></div><div><div class="t" style="display:flex;align-items:center;gap:8px">${g&&(a.side==='home'||a.side==='away')?logo(g[a.side],'xs',g.sport):''}${esc(a.gameLbl)}</div><div class="x">${esc(a.text)}</div><div class="tags" style="margin-top:6px"><span class="badge ${t[1]}">${t[0]}</span>${res}${clv}<span class="badge">${ago(a.ts)}</span></div></div><div class="amt cond">${a.usd?money(a.usd):''}</div></div>`;
 }
 function alerts(){
  const A=D.alerts.filter(a=>st.asport==='all'||a.sport===st.asport),cnt={all:A.length};Object.keys(TYPES).forEach(k=>cnt[k]=A.filter(a=>a.type===k).length);
@@ -781,7 +804,7 @@ function lvProp(d,kind){
   const r=en.last||{},t=Date.parse(en.commence)/1e3;if(!(t>d)||r.kalshi==null||r.interp)continue;
   const k=r.kalshi,b=r.books,v=r.vault,ref=kind==='kb'?b:v,gap=ref==null?0:k-ref;if(Math.abs(gap)<(kind==='kb'?.05:.1))continue;
   const ov=gap>0,px=kind==='kb'?(ov?b:1-b):(ov?k:1-k),pr=x=>x==null?'-':Math.round(x*100)+'% over';
-  o.push({k:Math.abs(gap),y:{game:en.name,pick:(ov?'Over ':'Under ')+en.line+' '+propN(en.market),when:en.team+' vs '+en.opp+' · '+(en.commence?new Date(en.commence).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''),badges:`<span class="badge">${Math.round(Math.abs(gap)*100)} pts apart</span>`,rows:[['Kalshi',pr(k)],['Books',pr(b)+(r.nBooks?' ('+r.nBooks+' book'+(r.nBooks>1?'s':'')+')':'')],['Vault',pr(v)],...(kind==='kb'?[['Bet',(ov?'Over ':'Under ')+en.line+' '+propN(en.market)+' at a book, about '+cent(px)+' to win'],['Kalshi, same side',cent(ov?k:1-k)+' to win']]:[['Signal side',(ov?'Over':'Under')+', priced '+cent(px)+' by Kalshi']]),['Prices read',r.ts?hrsTxt((d-Date.parse(r.ts)/1e3)/3600)+' ago':'-'],['Kickoff','in '+hrsTxt((t-d)/3600)]]}});
+  o.push({k:Math.abs(gap),y:{av:ini(en.name,'xs'),game:en.name,pick:(ov?'Over ':'Under ')+en.line+' '+propN(en.market),when:en.team+' vs '+en.opp+' · '+(en.commence?new Date(en.commence).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''),badges:`<span class="badge">${Math.round(Math.abs(gap)*100)} pts apart</span>`,rows:[['Kalshi',pr(k)],['Books',pr(b)+(r.nBooks?' ('+r.nBooks+' book'+(r.nBooks>1?'s':'')+')':'')],['Vault',pr(v)],...(kind==='kb'?[['Bet',(ov?'Over ':'Under ')+en.line+' '+propN(en.market)+' at a book, about '+cent(px)+' to win'],['Kalshi, same side',cent(ov?k:1-k)+' to win']]:[['Signal side',(ov?'Over':'Under')+', priced '+cent(px)+' by Kalshi']]),['Prices read',r.ts?hrsTxt((d-Date.parse(r.ts)/1e3)/3600)+' ago':'-'],['Kickoff','in '+hrsTxt((t-d)/3600)]]}});
  }
  return o.sort((x,w)=>w.k-x.k).map(x=>x.y);
 }
@@ -796,12 +819,12 @@ function lvEv(d){
  }
  return o.sort((x,w)=>w.k-x.k).map(x=>x.y);
 }
-const lrRow=y=>`<div class="lrr ${y.key?'tap':''}" ${y.key?`data-go="game/${esc(y.key)}"`:''}><div class="gtop" style="margin:0 0 4px"><span><b style="color:#fff">${esc(y.game)}</b></span><span>${esc(y.when)}</span></div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="cond" style="font-size:22px;font-weight:600">${esc(y.pick)}</div><div>${y.badges||''}</div></div>${y.rows.map(([a,b])=>`<div class="kv" style="padding:3px 0;border-top:0"><span style="font-size:12.5px">${esc(a)}</span><em class="cond" style="font-size:14px;font-weight:500;text-align:right;max-width:62%">${esc(b)}</em></div>`).join('')}</div>`;
+const lrRow=y=>`<div class="lrr ${y.key?'tap':''}" ${y.key?`data-go="game/${esc(y.key)}"`:''}><div class="gtop" style="margin:0 0 4px"><span class="lgrow">${y.av?y.av:tpair(GM[y.key])}<b style="color:#fff">${esc(y.game)}</b></span><span>${esc(y.when)}</span></div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="cond" style="font-size:22px;font-weight:600">${esc(y.pick)}</div><div>${y.badges||''}</div></div>${y.rows.map(([a,b])=>`<div class="kv" style="padding:3px 0;border-top:0"><span style="font-size:12.5px">${esc(a)}</span><em class="cond" style="font-size:14px;font-weight:500;text-align:right;max-width:62%">${esc(b)}</em></div>`).join('')}</div>`;
 function pastRow(id,y){
  if(id==='pm')return `<div class="lrr"><div class="gtop" style="margin:0 0 4px"><span><b style="color:#fff">${esc(y.away)} @ ${esc(y.home)}</b> · ${esc(y.pick)} ML</span><span>${y.won?wlBadge(1):wlBadge(-1)}</span></div><div class="kv" style="padding:3px 0;border-top:0"><span style="font-size:12.5px">Sharp accounts</span><em class="cond" style="font-size:14px;font-weight:500">$${Math.round(y.sharp_usd||0).toLocaleString()} net${y.sharp_n?' from '+y.sharp_n:''}</em></div><div class="kv" style="padding:3px 0;border-top:0"><span style="font-size:12.5px">Crowd</span><em class="cond" style="font-size:14px;font-weight:500">${y.crowd_usd==null?'no read':'$'+Math.abs(Math.round(y.crowd_usd)).toLocaleString()+' '+(y.crowd_usd>=0?'with':'against')}${y.crowd&&y.crowd!=='none'?' · '+y.crowd:''}</em></div><div class="kv" style="padding:3px 0;border-top:0"><span style="font-size:12.5px">Price</span><em class="cond" style="font-size:14px;font-weight:500">${cent(y.price)} to win${y.first_price!=null&&Math.abs(y.first_price-y.price)>=.005?', first seen at '+cent(y.first_price):''}</em></div></div>`;
  if(id==='jp')return `<div class="lrr"><div class="gtop" style="margin:0 0 4px"><span><b style="color:#fff">${esc(y.team)} ${mSn(y.entry)}</b> ${y.home?'vs':'at'} ${esc(y.opp)} · wk ${y.week}</span><span>${y.clv!=null?`<span class="badge ${y.clv>0?'good':y.clv<0?'bad':''}">${mTe(y.clv)} pts vs close</span> `:''}${wlBadge(y.won?1:-1)}</span></div><div class="foot" style="margin:0">Entry ${mSn(y.entry)}, ESPN close ${y.espn_close==null?'n/a':mSn(y.espn_close)}. Game: ${y.margin>0?'won by '+y.margin:y.margin<0?'lost by '+(-y.margin):'tied'}.</div></div>`;
  if(id==='ev')return `<div class="lrr"><div class="gtop" style="margin:0 0 4px"><span><b style="color:#fff">${esc(y.gameLbl||'')}</b> · ${y.start?when(y.start):''}</span><span>${typeof y.clv==='number'?`<span class="badge ${y.clv>0?'good':'bad'}">${y.clv>0?'beat':'missed'} the close ${mTe(y.clv*100)} pts</span> `:''}${wlBadge(y.won?1:-1)}</span></div><div style="font-size:13px">${esc(y.text||'')}</div></div>`;
- return `<div class="lrr"><div class="gtop" style="margin:0 0 4px"><span><b style="color:#fff">${esc(y.name)}</b> · ${esc(y.team)} vs ${esc(y.opp)}</span><span>finished ${y.actual} ${wlBadge(y.won?1:-1)}</span></div><div class="cond" style="font-size:18px;font-weight:600">${esc(y.pick)} ${y.line} ${esc(propN(y.market))}</div><div class="foot" style="margin:2px 0 0">Kalshi ${y.kalshi==null?'-':Math.round(y.kalshi*100)+'% over'} · Books ${y.books==null?'-':Math.round(y.books*100)+'% over'} · Vault ${y.vault==null?'-':Math.round(y.vault*100)+'% over'}. Signal side ${esc(y.pick)}, priced at ${cent(y.price)} by ${y.price_basis==='books'?'the books':'Kalshi'}.</div></div>`;
+ return `<div class="lrr"><div class="gtop" style="margin:0 0 4px"><span class="lgrow">${ini(y.name,'xs')}<b style="color:#fff">${esc(y.name)}</b> · ${esc(y.team)} vs ${esc(y.opp)}</span><span>finished ${y.actual} ${wlBadge(y.won?1:-1)}</span></div><div class="cond" style="font-size:18px;font-weight:600">${esc(y.pick)} ${y.line} ${esc(propN(y.market))}</div><div class="foot" style="margin:2px 0 0">Kalshi ${y.kalshi==null?'-':Math.round(y.kalshi*100)+'% over'} · Books ${y.books==null?'-':Math.round(y.books*100)+'% over'} · Vault ${y.vault==null?'-':Math.round(y.vault*100)+'% over'}. Signal side ${esc(y.pick)}, priced at ${cent(y.price)} by ${y.price_basis==='books'?'the books':'Kalshi'}.</div></div>`;
 }
 function sigPanel(c,d){
  const sg=st.tsg,y=c.find(q=>q.id===sg);if(!y)return '';
@@ -834,7 +857,7 @@ function readCard(x,groups,d){
  const pin=g.pin&&g.pin[m],price=pin&&pin[side]!=null?pin[side]:null,oppP=pin&&pin[opp]!=null?pin[opp]:null,fair=price!=null&&oppP!=null?rDevig(price,oppP):null;
  let best=null;for(const [b,v] of Object.entries(g.soft||{})){const q=v[m];if(!q||q[side]==null)continue;if(m!=='ml'&&q.line!==r.hl)continue;if(!best||q[side]>best.price)best={src:b,price:q[side]}}
  const res=readResult(g,r,groups);
- return `<div class="card tap" data-go="game/${esc(g.key)}" style="${x.left?'':'opacity:.65'}"><div class="gtop"><span>${SPORT[g.sport]} · ${esc(rTn(g,'away'))} @ ${esc(rTn(g,'home'))} · ${MKU[m]} · ${when(g.start)}</span><span class="dots2">${[1,2,3].map(q=>`<i class="${q<=r.agree?'on':''}"></i>`).join('')}</span></div>
+ return `<div class="card tap" data-go="game/${esc(g.key)}" style="${x.left?'':'opacity:.65'}"><div class="gtop"><span class="lgrow">${SPORT[g.sport]} · ${logo(g.away,'xs',g.sport)}${esc(rTn(g,'away'))} @ ${logo(g.home,'xs',g.sport)}${esc(rTn(g,'home'))} · ${MKU[m]} · ${when(g.start)}</span><span class="dots2">${[1,2,3].map(q=>`<i class="${q<=r.agree?'on':''}"></i>`).join('')}</span></div>
  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="cond" style="font-size:30px;font-weight:700">${esc(pk)}</div>${res!=null?wlBadge(res):''}</div>
  <div class="sgls">${rows}${sh}</div>
  <div class="px3"><div><b class="cond">${price==null?'-':am(price)}</b><small>Pinnacle</small></div><div><b class="cond">${best?am(best.price):'-'}</b><small>${best?esc(SHB[best.src]||best.src):'best book'}</small></div><div><b class="cond">${fair==null?'-':cent(fair)}</b><small>no-vig fair</small></div></div>
@@ -842,7 +865,7 @@ function readCard(x,groups,d){
 }
 function settledRow(y){
  const R=y.clvs&&y.clvs.length?y.clvs[0]:null;
- return `<div class="mrw" style="cursor:default"><div class="grow"><b>${esc(y.gameLbl)}</b><div class="m">${SPORT[y.sport]||''} · ${esc(rLabel(y))} · ${MKU[y.m]||''} · ${y.kinds.size} agreed${y.conflict?' · both sides':''}</div></div><div class="amt cond" style="font-size:18px">${y.units!=null?(y.units>0?'+':'')+Number(y.units).toFixed(2)+'u':''}<small>${R!=null?(R>0?'+':'')+(R*100).toFixed(1)+'¢ CLV':''}</small></div>${wlBadge(ja(y))}</div>`;
+ return `<div class="mrw" style="cursor:default"><div class="grow"><b class="lgrow">${tpair(lblTeams(y.sport,y.gameLbl,y.game))}${esc(y.gameLbl)}</b><div class="m">${SPORT[y.sport]||''} · ${esc(rLabel(y))} · ${MKU[y.m]||''} · ${y.kinds.size} agreed${y.conflict?' · both sides':''}</div></div><div class="amt cond" style="font-size:18px">${y.units!=null?(y.units>0?'+':'')+Number(y.units).toFixed(2)+'u':''}<small>${R!=null?(R>0?'+':'')+(R*100).toFixed(1)+'¢ CLV':''}</small></div>${wlBadge(ja(y))}</div>`;
 }
 function topPage(){
  loadAux();
@@ -869,7 +892,7 @@ function topPage(){
  if(st.tsel){
   const Z={line:'Pinnacle line',money:'Money vs bets',sharp:'Sharp accounts (context)',behind:'+EV at a book'};
   h+=`<div class="sec"><span>Completed · ${st.tsel==='both'?'both sides':st.tsel+' of 3 agree'}</span><a data-tsel="${st.tsel}">Hide</a></div><div class="card">`+(selList.length?selList.slice(0,40).map(y=>{const R=y.clvs&&y.clvs.length?y.clvs.reduce((a,b)=>a+b,0)/y.clvs.length:null;
-   return `<div class="lrr" style="border-top:1px solid var(--line);padding:10px 0"><div class="gtop" style="margin:0 0 4px"><span><b style="color:#fff">${esc(y.gameLbl)}</b> · ${esc(rLabel(y))}</span><span>${R==null?'':`<span class="badge ${R>0?'good':'bad'}">${R>0?'beat':'missed'} the close ${mTe(R*100)}</span> `}${wlBadge(ja(y))}</span></div><div class="foot" style="margin:0">${SPORT[y.sport]||''} · ${when(y.start)}</div>${['line','money','sharp','behind'].flatMap(q=>['sp','ml','tot'].filter(W=>y.alerts.some(B=>B.k===q&&B.r.m===W)).map(W=>[q,W])).map(([q,W])=>{const B=y.alerts.filter(F=>F.k===q&&F.r.m===W).sort((F,X)=>(X.r.ts||0)-(F.r.ts||0)),F=B[0].r;return `<div class="kv" style="padding:3px 0;border-top:0;gap:8px"><span style="font-size:12.5px;flex:none">${Z[q]} · ${MKT[W]}</span><em class="cond" style="font-size:13px;font-weight:500;text-align:right">${esc(F.text||'')}${B.length>1?' +'+(B.length-1)+' more':''}</em></div>`}).join('')}</div>`}).join(''):'<div class="empty">No completed games with this many signals yet.</div>')+`</div>`;
+   return `<div class="lrr" style="border-top:1px solid var(--line);padding:10px 0"><div class="gtop" style="margin:0 0 4px"><span class="lgrow">${tpair(lblTeams(y.sport,y.gameLbl,y.game))}<b style="color:#fff">${esc(y.gameLbl)}</b> · ${esc(rLabel(y))}</span><span>${R==null?'':`<span class="badge ${R>0?'good':'bad'}">${R>0?'beat':'missed'} the close ${mTe(R*100)}</span> `}${wlBadge(ja(y))}</span></div><div class="foot" style="margin:0">${SPORT[y.sport]||''} · ${when(y.start)}</div>${['line','money','sharp','behind'].flatMap(q=>['sp','ml','tot'].filter(W=>y.alerts.some(B=>B.k===q&&B.r.m===W)).map(W=>[q,W])).map(([q,W])=>{const B=y.alerts.filter(F=>F.k===q&&F.r.m===W).sort((F,X)=>(X.r.ts||0)-(F.r.ts||0)),F=B[0].r;return `<div class="kv" style="padding:3px 0;border-top:0;gap:8px"><span style="font-size:12.5px;flex:none">${Z[q]} · ${MKT[W]}</span><em class="cond" style="font-size:13px;font-weight:500;text-align:right">${esc(F.text||'')}${B.length>1?' +'+(B.length-1)+' more':''}</em></div>`}).join('')}</div>`}).join(''):'<div class="empty">No completed games with this many signals yet.</div>')+`</div>`;
  }
  // combinations
  const SH={line:'Line',money:'Money',behind:'+EV'};
@@ -911,7 +934,7 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-retrymodel]')){['nfl','cfb','sb'].forEach(k=>{if(!MD[k])loadModel(k)});return}
  if(e.target.closest('[data-retry]')){loadErr=false;load();route();return}
  const t=e.target.closest('[data-t]');if(t&&t.closest('#tabs')){location.hash=t.dataset.t;window.scrollTo(0,0);return}
- const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='msp'){st.msub='games';st.mview='picks';st.mwk='All weeks';st.msel=null;st.mq='';st.mallR=false}if(s.dataset.set==='mview')st.msel=null;if(s.dataset.set==='netm')st.netTouched=true;if(s.dataset.set==='tsp')st.tsel=null;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
+ const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='msp'){st.msub='games';st.mview='picks';st.mwk='All weeks';st.msel=null;st.mq='';st.mallR=false}if(s.dataset.set==='mview')st.msel=null;if(s.dataset.set==='netm')st.netTouched=true;if(s.dataset.set==='pr')st.prTouched=true;if(s.dataset.set==='tsp')st.tsel=null;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
  const m=e.target.closest('[data-more]');if(m){const k=m.dataset.more;st[k]+=k==='slate'?10:14;rerender();return}
  if(e.target.closest('[data-back]')){if(inApp)history.back();else location.hash='board';return}
  const g=e.target.closest('[data-go]');if(g){inApp=true;location.hash=g.dataset.go;window.scrollTo(0,0)}
