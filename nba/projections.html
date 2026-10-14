@@ -1641,9 +1641,10 @@ th{font-weight:500}
   /* KPI tiles: one swipe strip instead of a stack */
   .kpis{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none}
   .kpis::-webkit-scrollbar,#estrip::-webkit-scrollbar,#etool::-webkit-scrollbar{display:none}
-  .kpis>.kpi{flex:0 0 172px;scroll-snap-align:start;min-width:0}
-  .kpis{align-items:flex-start}
-  .kpis>.kpi .hint{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+  .kpis>.kpi{flex:0 0 200px;scroll-snap-align:start;min-width:0}
+  .kpis{align-items:stretch}
+  .kpis>.kpi .hint,#skpis .kpi .hint{display:block;overflow:visible;white-space:normal;text-overflow:clip;-webkit-line-clamp:unset}
+  .kpis>.kpi .card-b{height:auto;overflow:visible}
   .kpis>.kpi .card-h{padding:12px 14px 0}.kpis>.kpi .card-b{padding:2px 14px 12px}
   #estrip{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity}
   #estrip>div{flex:0 0 150px;padding:12px 14px;scroll-snap-align:start}
