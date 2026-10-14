@@ -9,10 +9,12 @@ name: Update CFB model
 on:
   workflow_dispatch: {}
   push:
+    branches: [main]
     paths:
       - 'scripts/cfb_model.py'
       - 'scripts/cfb_efficiency_study.py'
       - 'data/cfb_model_priors.json'
+      - 'data/cfb_model_totals_priors.json'
   schedule:
     - cron: '17 */3 * 9,10,11,12,1 *'
     - cron: '12,42 16-23 * 9,10,11,12,1 6'   # Saturdays: every 30 minutes through game time so results post soon after the final
