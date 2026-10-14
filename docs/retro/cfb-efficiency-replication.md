@@ -133,3 +133,24 @@ Same 2,368 games (weeks 4+, 2022-2025). Nothing here was tuned; these are readin
 What this means: the model carries real information the market only absorbs over the week, so it is an early-line model. It is worth something while the number has not moved.
 The CFB Model tab now lists next week's games the model is 5+ points off the open on, with where the line is now and how far it has already moved toward the model.
 Still unproven in 2026 (30-26 on the first 56 graded) and still not bettable by assumption: we do not know when each open posted or what limit it carried.
+
+
+## Promotion (2026-10-13): v2 prior + a special teams rating
+
+`scripts/cfb_v2_st_study.py`. Special teams = net EPA on punts, kickoffs and field goals (play-by-play EPA_punt / EPA_kickoff / EPA_fg), one number per game
+from the home side, ridge-rated and centred on last season's final x 0.6, added to the margin at weight 1.0. lambda 5 / carry 0.6 / weight 1.0 were chosen on
+2022-23 by the average miss only; 2024-25 was read once. Grading against ESPN's recorded DraftKings open (2024-25 coverage 98%; 2022 none, 2023 about 40%) and the close.
+
+Untouched test, weeks 4+, 5+ point disagreements:
+
+| | miss | vs close | vs open |
+|---|---|---|---|
+| v1 (last season x 0.85) | 12.50 | 164-181 (47.5%) | 172-173 (49.9%) |
+| v2 prior | 12.52 | 189-170 (52.6%) | 193-163 (54.2%) |
+| v2 + special teams | 12.45 | 197-160 (55.2%) | 205-157 (56.6%) |
+
+The market misses by 11.88 (close) and 11.99 (open). 197-160 is about 1 standard error above break-even, short of the 2 the project asks for, and the v2 prior does not
+improve accuracy (the weight on the model's disagreement is 0.07 against v1's 0.13). Promoted anyway at the owner's request, with v1 kept as a graded shadow on every row.
+The ESPN open is a later number than CollegeFootballData's first-posted spread: v1 is 57.5% against that one (above) and 49.9% against this one.
+
+2026, weeks 4+ (170 games with an open): v1 31-26 (54.4%), v2 41-33, v2 + special teams 45-34 (57.0%) against the open; miss 12.94, 13.34, 13.22 against the open's 12.47.
