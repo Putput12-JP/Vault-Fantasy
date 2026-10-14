@@ -39,6 +39,7 @@ import { createHash } from 'node:crypto';
 import { buildPropsBoard } from './build-props-board.mjs';
 import { trackPlays, recordOf, loadLedger, overlayEspn } from './track-prop-plays.mjs';
 import { makeModelProbe } from './prop-model-probe.mjs';
+import { loadModelIndex, learnAbbrs, modelSideFor } from './sharp_model_side.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -1077,6 +1078,23 @@ function assembleLedger(picks, alerts, sharpContext) {
     sharp: { ...packRec(sharpRows.filter(r => r.graded)), priced: sharpRows.filter(r => r.graded && typeof r.price === 'number').length },
   };
 }
+// Our model's side on each read, stored on the pick so the record can say how it did when the model agreed. Stamped when the pick
+// is first seen (the model file is what the repo held then, `asof` says when it was built). Rows from before this existed are
+// filled once from the current model files and carry backfill:true, so they are never mistaken for a point-in-time read.
+// Model agreement is shown beside the bet signals. It is not a bet signal and never counts toward an agree total.
+let MODEL_IDX;
+function modelIdx() { if (MODEL_IDX === undefined) { try { MODEL_IDX = loadModelIndex(ROOT); } catch { MODEL_IDX = null; } } return MODEL_IDX; }
+function stampModel(S, games) {
+  const idx = modelIdx(); if (!idx) return;
+  learnAbbrs(idx, games);
+  const G = Object.fromEntries((games || []).map(g => [g.key, g])), t = now();
+  for (const p of Object.values(S.picks || {})) {
+    if (p.model) continue;
+    const ms = modelSideFor(idx, p, G[p.game]);
+    if (!ms) { if (p.model === undefined) p.model = null; continue; }
+    p.model = p.start > t && !(p.ts && p.ts < t - 3600) ? { ...ms, at: t } : { ...ms, at: t, backfill: true };
+  }
+}
 function snapPicks(S, games) {
   const t = now(); S.picks ||= {};
   for (const p of Object.values(S.picks)) p.frozen = true;   // a stored row is the first sight we still have
@@ -1097,6 +1115,7 @@ function snapPicks(S, games) {
     }
   }
   flagConflicts(S.picks);
+  stampModel(S, games);
   for (const [k, p] of Object.entries(S.picks)) if (p.start < t - 60 * DAY) delete S.picks[k];
 }
 
@@ -1396,6 +1415,16 @@ function selftestPicks() {
   const led = assembleLedger(Object.values(M.picks), M.alerts, Object.values(M.sharpContext));
   if (led.slices.overall.now.n !== 0) throw new Error('conflict counted in the bet record ' + JSON.stringify(led.slices.overall.now));
   if (led.dropped !== 1 || led.sharp.w !== 1 || led.sharp.l !== 1) throw new Error('sharp context ' + JSON.stringify({ dropped: led.dropped, sharp: led.sharp }));
+  // model side: stamped at first sight against the read's own line, never on a sharp-only row, backfill flagged on old rows
+  MODEL_IDX = { nfl: [{ key: 'nfl:1', home: 'H', away: 'A', kick: t0 + 3600, model_margin: 6 }], cfb: [], nba: null, logos: {}, tot: new Map(), abbr2id: {}, asof: { nfl: 'x' } };
+  const S2 = { picks: {}, games: {} };
+  snapPicks(S2, [e]);
+  const mp = S2.picks['nfl:1|sp|home'].model;
+  // home spread -3 and model margin +6: home covers by 3 on the model's number, which is a strong edge
+  if (!mp || mp.side !== 'home' || mp.edge !== 3 || !mp.strong || mp.backfill) throw new Error('model side not stamped ' + JSON.stringify(mp));
+  S2.picks['nfl:1|sp|home'].ts = t0 - 7200; delete S2.picks['nfl:1|sp|home'].model;
+  stampModel(S2, [e]);
+  if (!S2.picks['nfl:1|sp|home'].model.backfill) throw new Error('old row must be flagged backfill');
   console.log('fetch-sharp-money pick selftest ok');
 }
 if (ARG.selftest) {
