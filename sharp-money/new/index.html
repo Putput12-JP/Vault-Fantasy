@@ -11,13 +11,13 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.35 -apple-system,"SF Pro Text",Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .cond{font-family:"Barlow Condensed","SF Pro Rounded",Geist,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.01em}
-.title{font-size:34px;font-weight:700;letter-spacing:-.02em;margin:10px 16px 2px}
-.ctx{color:var(--mut);margin:0 16px 12px;font-size:13px}
-.chips{display:flex;gap:6px;margin:0 16px 14px;overflow-x:auto;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
-.chip{all:unset;cursor:pointer;padding:7px 14px;border-radius:99px;font-weight:600;font-size:14px;color:var(--mut);white-space:nowrap;transition:transform .5s var(--ease-spring),color .15s}
+.title{font-size:28px;font-weight:700;letter-spacing:-.02em;margin:10px 16px 2px;line-height:1.15}
+.ctx{color:var(--mut);margin:0 16px 8px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chips{display:flex;gap:6px;margin:0 16px 10px;align-items:center;overflow-x:auto;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{all:unset;cursor:pointer;padding:6px 13px;border-radius:99px;font-weight:600;font-size:14px;color:var(--mut);white-space:nowrap;flex:none;transition:transform .5s var(--ease-spring),color .15s}
 .chip.on{background:#fff;color:#000}.chip:active{transform:scale(.94);transition:transform 80ms ease-out}
 .chip small{font-weight:500;opacity:.7;margin-left:4px}
-.sec{color:var(--mut);font-size:13px;font-weight:600;margin:18px 20px 8px;display:flex;justify-content:space-between;align-items:center}
+.sec{color:var(--mut);font-size:13px;font-weight:600;margin:12px 20px 8px;display:flex;justify-content:space-between;align-items:center}
 .sec a{color:var(--acc);font-weight:600;cursor:pointer}
 .sub{color:var(--dim);font-size:12px;margin:-4px 20px 10px}
 .card{background:var(--card);border-radius:24px;margin:0 16px 12px;padding:14px 16px;transition:transform .5s var(--ease-spring)}
@@ -83,9 +83,10 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .title{margin-top:calc(env(safe-area-inset-top) + 18px)}
 .tabbar{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:560px;right:auto}
 .tab-hide{display:none}
-.trow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:calc(env(safe-area-inset-top) + 18px) 16px 2px}.trow .title{margin:0}
-.rf{all:unset;box-sizing:border-box;cursor:pointer;min-width:40px;height:40px;border-radius:99px;background:var(--card);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-size:13px;font-weight:600;color:#fff;white-space:nowrap;margin-top:6px;transition:transform .5s var(--ease-spring)}
-.rf svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.stline{display:flex;align-items:center;gap:8px;margin:0 16px 10px;font-size:13px;white-space:nowrap}.stline b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:600}.stline .dimr{color:var(--mut)}
+.trow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:calc(env(safe-area-inset-top) + 8px) 16px 2px}.trow .title{margin:0}
+.rf{all:unset;box-sizing:border-box;cursor:pointer;min-width:36px;height:36px;border-radius:99px;background:var(--card);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-size:13px;font-weight:600;color:#fff;white-space:nowrap;transition:transform .5s var(--ease-spring)}
+.rf svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .rf:active{transform:scale(.92);transition:transform 80ms ease-out}.rf[disabled]{opacity:.85;cursor:progress}
 .spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -93,7 +94,7 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .mrows{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin:8px 0}.mrows div{text-align:center}.mrows small{display:block;color:var(--mut);font-size:11px;white-space:nowrap}.mrows b{display:block;font-size:26px;font-weight:600}.mrows span{font-size:12px}
 .mrw{display:flex;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}.mrw:first-child{border-top:0}.mrw .grow{flex:1;min-width:0}.mrw .m{color:var(--mut);font-size:13px;margin-top:2px}.mrw b{font-weight:600}
 .wkh{padding:8px 0 6px;color:var(--dim);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.sel{appearance:none;-webkit-appearance:none;background:var(--card);color:#fff;border:1px solid var(--line);border-radius:99px;padding:7px 16px;font:600 14px -apple-system,Geist,sans-serif}
+.sel{flex:none;appearance:none;-webkit-appearance:none;background:var(--card);color:#fff;border:1px solid var(--line);border-radius:99px;padding:7px 16px;font:600 14px -apple-system,Geist,sans-serif}
 .rulr{position:relative;height:46px;margin:12px 8px 4px}.rulr .axis{position:absolute;left:0;right:0;top:20px;height:3px;border-radius:3px;background:rgba(255,255,255,.14)}
 .rulr .win{position:absolute;top:13px;height:17px;border-radius:6px;background:rgba(70,224,140,.22);border:1px solid rgba(70,224,140,.55)}
 .rulr .dot{position:absolute;top:16px;width:11px;height:11px;border-radius:50%;transform:translateX(-50%);border:2px solid #000;display:block}
@@ -151,7 +152,7 @@ const st={msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,mq:'',m
 const ICON={board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',accounts:'<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c0-3.3 2.7-5 6-5s6 1.7 6 5M15 15c3 0 6 1 6 4"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
 $('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${k[0].toUpperCase()+k.slice(1)}</button>`).join('');
 const chips=(items,cur,key)=>`<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
-const head=(t,s)=>`<div class="trow"><div class="title">${t}</div><button class="rf" data-refresh aria-label="Refresh the data"${rfState==='busy'?' disabled':''}>${rfHtml()}</button></div><p class="ctx">${s}</p>`;
+const head=(t,s)=>`<div class="trow"><div class="title">${t}</div><button class="rf" data-refresh aria-label="Refresh the data"${rfState==='busy'?' disabled':''}>${rfHtml()}</button></div>${s?`<p class="ctx">${s}</p>`:''}`;
 const snap=()=>{const a=REF-D.ts,k=a>3*3600?'bad':a>20*60?'warn':'good';return `<span class="badge dot ${k}">${a<90?'Updated just now':'Updated '+ago(D.ts).replace(' ago','')+' ago'}</span>`};
 
 function gameCard(g){
@@ -167,7 +168,7 @@ function gameCard(g){
 function board(){
  const up=upcoming(),cnt={all:up.length,nfl:0,cfb:0,nba:0};up.forEach(g=>cnt[g.sport]++);
  const L=up.filter(g=>st.sport==='all'||g.sport===st.sport);
- let h=head('Sharp Money','Where large, tracked money sits. Context only, not a bet signal. '+snap())+
+ let h=head('Sharp Money','Context only, not a bet signal. '+snap())+
  chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport');
  // hot
  const hot=L.slice().sort((a,b)=>heat(b)-heat(a)||Object.values(b.flow.sharp||{}).reduce((s,x)=>s+x,0)-Object.values(a.flow.sharp||{}).reduce((s,x)=>s+x,0)).slice(0,6);
@@ -244,7 +245,7 @@ function gamePage(key){
  return h;
 }
 function props(){
- let h=head('Props','Player markets from Polymarket and Kalshi across the slate. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']],st.pr,'pr');
+ let h=head('Props','Polymarket and Kalshi. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']],st.pr,'pr');
  const up=upcoming();let rows=[];
  up.forEach(g=>{((st.pr==='pm'?g.props:g.kprops)||[]).forEach(r=>rows.push({g,r}))});
  if(st.pr==='pm')rows.sort((a,b)=>(b.r.usd||[]).reduce((s,x)=>s+x,0)-(a.r.usd||[]).reduce((s,x)=>s+x,0));else rows.sort((a,b)=>b.r.vol24-a.r.vol24);
@@ -258,7 +259,7 @@ function props(){
  return h;
 }
 function accounts(){
- let h=head('Accounts','Polymarket accounts we score against the closing price. Context only.');
+ let h=head('Accounts','Scored against the closing price. Context only.');
  h+=`<div class="sec"><span>Scored wallets</span></div><div class="hs">${['nfl','cfb','nba'].map(k=>{const w=D.wallets[k];return `<div class="card hc"><div class="gtop"><span>${SPORT[k]}</span><span>${w.scored.toLocaleString()} scored</span></div><div class="big cond" style="font-size:30px;font-weight:600">${w.sharp}</div><div class="m" style="color:var(--mut);font-size:12px">sharp · ${w.borrowed} borrowed · ${w.dull} dull</div></div>`}).join('')}</div>`;
  h+=`<div class="sec"><span>Sharpest accounts</span><span>by t-stat</span></div><div class="card">`+ACC.map((a,i)=>`<div class="row tap" data-go="acct/${i}"><div class="grow"><b>${esc(a.who)}</b><div class="m">t ${a.rec.t} · ${sgn(a.rec.clv*100)} pts vs close · ${a.rec.n} bets, ${a.rec.games} games · ${SPORT[a.rec.sport]||''}</div></div><div class="amt cond">${money(a.buy24)}<small>bought, 24h</small></div></div>`).join('')+`</div>`;
  return h;
@@ -281,7 +282,7 @@ function alertCard(a){
 function alerts(){
  const A=D.alerts.filter(a=>st.asport==='all'||a.sport===st.asport),cnt={all:A.length};Object.keys(TYPES).forEach(k=>cnt[k]=A.filter(a=>a.type===k).length);
  const L=A.filter(a=>st.atype==='all'||a.type===st.atype);
- let h=head('Alerts','Large tracked bets and market moves, newest first. Not a bet signal.')+chips(Object.keys(SPORT).map(k=>[k,SPORT[k]]),st.asport,'asport')+chips([['all','All',cnt.all],...Object.keys(TYPES).map(k=>[k,TYPES[k][0],cnt[k]])],st.atype,'atype');
+ let h=head('Alerts','Newest first. Not a bet signal.')+chips(Object.keys(SPORT).map(k=>[k,SPORT[k]]),st.asport,'asport')+chips([['all','All',cnt.all],...Object.keys(TYPES).map(k=>[k,TYPES[k][0],cnt[k]])],st.atype,'atype');
  h+=L.slice(0,st.alertsN).map(alertCard).join('');
  if(!L.length)h+='<div class="empty">No alerts of this type.</div>';
  if(L.length>st.alertsN)h+=`<button class="btn" data-more="alertsN">Show more (${L.length-st.alertsN} left)</button>`;
@@ -289,7 +290,7 @@ function alerts(){
 }
 function record(){
  const A=D.alerts.filter(a=>st.rsport==='all'||a.sport===st.rsport);
- let h=head('Record','Every alert graded against Pinnacle’s closing price.')+chips(Object.keys(SPORT).map(k=>[k,SPORT[k]]),st.rsport,'rsport');
+ let h=head('Record','Graded against the closing price.')+chips(Object.keys(SPORT).map(k=>[k,SPORT[k]]),st.rsport,'rsport');
  h+=`<div class="sec"><span>Does following work?</span></div><div class="hs" style="flex-wrap:wrap;overflow:visible;padding:0 16px">`;
  h+=Object.keys(TYPES).map(k=>{const xs=A.filter(a=>a.type===k&&typeof a.clv==='number'),res=A.filter(a=>a.type===k&&a.result!=null),n=xs.length,avg=n?xs.reduce((s,a)=>s+a.clv,0)/n:null,beat=n?xs.filter(a=>a.clv>0).length/n:null,w=res.filter(a=>a.result>0).length,l=res.filter(a=>a.result<0).length,p=res.length-w-l,tot=A.filter(a=>a.type===k).length;
   return `<div class="card" style="width:calc(50% - 6px);margin:0 0 12px;padding:12px 14px"><span class="badge ${TYPES[k][1]}">${TYPES[k][0]}</span><div class="cond" style="font-size:34px;font-weight:600;margin:8px 0 0" ><span class="${avg==null?'':avg>0?'pos':'neg'}">${avg==null?'-':(k==='behind'?sgn(avg*100)+'%':sgn(avg*100,2))}</span></div><div class="m" style="color:var(--mut);font-size:11px;margin-bottom:8px">${avg==null?'graded after kickoff':k==='behind'?'avg EV at the close':'avg win-prob points vs close'}</div>
@@ -399,8 +400,8 @@ function mctx(sp,d){
 }
 const totSub=r=>'JP+ total '+mF1(r.model_total)+(r.open==null?' · no Bovada open':' vs Bovada open '+mF1(r.open))+(r.flag?' · '+r.flag+' '+r.side:'');
 
-function modelStatus(c){const s=STL[c.stat];
- return `<div class="card"><div class="tags" style="margin:0 0 8px"><span class="badge ${s[1]}">${s[0]}</span></div><b>Not proven. Do not bet these picks yet.</b><div class="foot" style="margin-top:6px">Break-even against the spread is 52.4%. Updated ${ETD(Date.parse(c.d.generated)/1e3)}.</div></div>`}
+function modelStatus(c){const s=STL[c.stat],pk=c.pk;
+ return `<div class="stline"><span class="badge ${s[1]}">${s[0]}</span><b>Not proven. Do not bet yet.</b><span class="dimr">Picks ${pk.w}-${pk.l}${pk.p!=null?' \u00b7 '+Math.round(pk.p*100)+'%':''}</span></div>`}
 function multi(l,rows,sub){return `<div class="card mt"><div class="gtop"><span>${l}</span></div><div class="mrows">${rows.map(([n,r])=>`<div><small>${n}</small><b class="cond ${tcol(r.p)}">${r.w}-${r.l}</b><span class="${tcol(r.p)}">${r.p==null?'-':Math.round(r.p*100)+'%'}</span></div>`).join('')}</div><div class="foot">${sub}</div></div>`}
 function tile(l,v,sub){return `<div class="card mt"><div class="gtop"><span>${l}</span></div><div class="cond" style="font-size:34px;font-weight:600">${v}</div><div class="foot">${sub}</div></div>`}
 function mkRec(w,l){return{w,l,p:w+l?w/(w+l):null}}
@@ -440,19 +441,20 @@ function modelGames(c){
  const wks=[...new Set(B.map(x=>x.week))].sort((a,b)=>b-a),wopts=['All weeks',...wks.map(w=>'Week '+w)];
  const view=views.some(v=>v[0]===st.mview)?st.mview:'picks',wkf=wopts.includes(st.mwk)?st.mwk:'All weeks';
  const CfRow=st.msel!=null&&d.cards_summary&&d.cards_summary.table?d.cards_summary.table[st.msel]:null;
- let h=chips(views.map(v=>[v[0],v[1]]),CfRow?'':view,'mview')+`<div class="chips" style="margin-top:-6px"><select class="sel" data-sel="mwk" aria-label="Week">${wopts.map(o=>`<option ${o===wkf?'selected':''}>${o}</option>`).join('')}</select></div>`;
+ let h=`<div class="chips"><select class="sel" data-sel="mwk" aria-label="Week">${wopts.map(o=>`<option ${o===wkf?'selected':''}>${o}</option>`).join('')}</select>${views.map(v=>`<button class="chip ${!CfRow&&view===v[0]?'on':''}" data-set="mview" data-v="${v[0]}">${v[1]}</button>`).join('')}</div>`;
  if(view==='totals'&&tot&&!CfRow){
   const rows=tot.rows.filter(r=>wkf==='All weeks'||r.week===+wkf.slice(5)).sort((a,b)=>b.week-a.week||(b.upcoming?1:0)-(a.upcoming?1:0)||Math.abs(b.edge)-Math.abs(a.edge));
-  h+=`<div class="sub">JP+ total is flagged when it sits ${c.totEd.map(e=>e+'+').join(' or ')} points from the Bovada opening total, week 4 or later. Wins, losses and closing-line value are all vs the Bovada open; DraftKings (DK) is shown for reference and never counts.${tot.stale?' Stale: totals are from the last good run.':''}${c.unp?' Unproven: '+tot.summary.live_graded+' of '+tot.summary.proven_target+' live graded '+c.totEd[0]+'+ picks.':''}</div>`;
   h+=`<div class="card">${rows.length?rows.map(r=>totRowHtml(c,r)).join(''):'<div class="empty">No totals for this week yet.</div>'}</div>`;
+  h+=`<div class="foot" style="margin:0 20px 16px">JP+ total is flagged when it sits ${c.totEd.map(e=>e+'+').join(' or ')} points from the Bovada opening total, week 4 or later. Wins, losses and closing-line value are all vs the Bovada open; DraftKings (DK) is shown for reference and never counts.${tot.stale?' Stale: totals are from the last good run.':''}${c.unp?' Unproven: '+tot.summary.live_graded+' of '+tot.summary.proven_target+' live graded '+c.totEd[0]+'+ picks.':''}</div>`;
   return h;
  }
  const list=B.filter(x=>(CfRow?((CfRow.keys||[]).includes(x.key)||cfOpen(CfRow.label,x)):(view==='picks'?x.is_pick!==false:view==='done'?!!x.result:view==='up'?!x.result&&x.kick>now:view==='sharp'?sharpSt(x)==='with':true))&&(wkf==='All weeks'||x.week===+wkf.slice(5)))
   .sort((a,b)=>(wkf==='All weeks'?(a.result?1:0)-(b.result?1:0)||(a.result?b.kick-a.kick:a.kick-b.kick):b.kick-a.kick)||(b.is_pick===false?0:1)-(a.is_pick===false?0:1)||Math.abs(b.edge)-Math.abs(a.edge));
- h+=CfRow?`<div class="chips"><button class="chip on" data-sit="-1">${esc(CfRow.label)} · ${list.length} games ×</button></div>`:`<div class="sub">A pick needs the model ${PE}+ points off the market${NF?'':', week 4 or later'}. Leans are shown dimmed.</div>`;
+ h+=CfRow?`<div class="chips"><button class="chip on" data-sit="-1">${esc(CfRow.label)} · ${list.length} games ×</button></div>`:'';
  let last=null,body='';
  list.forEach(x=>{if(wkf==='All weeks'&&x.week!==last){last=x.week;body+=`<div class="wkh">Week ${x.week}</div>`}body+=mRow(c,x)});
  h+=`<div class="card">${list.length?body:'<div class="empty">No games match this filter right now. Lines usually post Sunday and Monday.</div>'}</div>`;
+ h+=`<div class="foot" style="margin:0 20px 16px">A pick needs the model ${PE}+ points off the market${NF?'':', week 4 or later'}. Leans are shown dimmed.</div>`;
  return h;
 }
 function barRow(l,r,sub){return `<div style="margin:10px 0"><div class="fll" style="margin:0 0 4px"><span style="color:#fff">${l}</span><b class="cond">${r.w}-${r.l}${r.p==null?'':' · '+(r.p*100).toFixed(1)+'%'}</b></div><div class="brr"><i style="width:${Math.round((r.p||0)*100)}%;background:${r.p==null?'#3a3a3e':r.p>=BE?'var(--good)':'var(--bad)'}"></i><u style="left:${BE*100}%"></u></div><div class="foot" style="margin:3px 0 0">${sub}</div></div>`}
@@ -515,7 +517,7 @@ function modelBody(sp){
  const d=MD[sp];
  if(!d)return MD.err[sp]?'<div class="card"><b>Could not load the model</b><div class="foot" style="margin-top:6px">The model file did not load. Check your connection and try again.</div><button class="btn" data-retrymodel style="margin:10px 0 0">Try again</button></div>':'<div class="skel"></div><div class="skel"></div>';
  const c=mctx(sp,d),subs=[['games','Games'],['record','Record'],['ratings','Ratings'],['how','How it works']],sub=subs.some(s=>s[0]===st.msub)?st.msub:'games';
- return modelStatus(c)+modelTiles(c)+chips(subs,sub,'msub')+(sub==='games'?modelGames(c):sub==='record'?modelRecord(c):sub==='ratings'?modelRatings(c):modelHow(c));
+ return chips(subs,sub,'msub')+modelStatus(c)+(sub==='games'?modelGames(c):sub==='record'?modelTiles(c)+modelRecord(c):sub==='ratings'?modelRatings(c):modelHow(c));
 }
 /* ---- CFB vs JP+ scoreboard ---- */
 function scoreboard(){
@@ -535,16 +537,17 @@ function scoreboard(){
    <div class="kv"><span>5+ pts from the open</span><em class="cond">${rec(m.edge5)}${m.edge5&&m.edge5.n?` <span style="font-size:13px;color:var(--mut)">${pcx(m.edge5)}</span>`:''}</em></div>`}</div>`}).join('');
  };
  const G=(d.games||[]).slice(0,40);
- return `<div class="card"><b>UPDATED ${mUpd(d.generated).toUpperCase()}</b><div class="foot" style="margin:6px 0 0">Our model against JP+ and the opening line, on the same finished games, weeks ${d.min_week} and later. A lean is a method's side of the opening line, and the record is how often that side covered. Average miss is how many points the method is off the final margin, lower is better, and the opening line is the bar to beat. 3+ and 5+ keep only the games where the method is at least that many points from the open.</div></div>`+
+ return `<div class="stline"><b>Updated ${mUpd(d.generated)}</b><span class="dimr">weeks ${d.min_week}+</span></div>`+
  tier('Verified before kickoff','JP+ number recorded by our job before the game started, so it cannot change afterward',d.verified,'No finished games yet. Our job records JP+ every two hours, and every 30 minutes on game days. '+d.jp_verified+' games are recorded so far and the first ones finish this weekend.')+
  tier('As published','JP+ as its site shows it now. We cannot prove these were posted before kickoff, so treat the JP+ rows as unverified',d.published,'No games yet.')+
+ `<div class="card"><div class="ph"><span>How to read this</span></div><div class="foot" style="margin:0">Our model against JP+ and the opening line, on the same finished games, weeks ${d.min_week} and later. A lean is a method's side of the opening line, and the record is how often that side covered. Average miss is how many points the method is off the final margin, lower is better, and the opening line is the bar to beat. 3+ and 5+ keep only the games where the method is at least that many points from the open.</div></div>`+
  `<div class="foot" style="margin:0 20px 8px">Our numbers are the model's projection when the game kicked off. Games before week 7 were re-run with the current model after the fact, so our record there is flattered. From week 7 on every pick is made before kickoff.</div>`+
  `<div class="sec"><span>Game by game</span></div><div class="sub">Newest first. Spreads are the home team's, negative means the home team is favored.</div><div class="card">`+
  (G.length?G.map(g=>`<div class="mrw" style="cursor:default"><div class="grow"><b>${esc(g.away)} at ${esc(g.home)}</b><div class="m">week ${g.week} · ${fin(g)}</div></div><div class="cond" style="display:grid;grid-template-columns:repeat(4,auto);gap:2px 12px;text-align:right;font-size:17px"><small style="color:var(--dim);font-size:10px;font-family:-apple-system,Geist,sans-serif">OPEN</small><small style="color:var(--dim);font-size:10px;font-family:-apple-system,Geist,sans-serif">OURS</small><small style="color:var(--dim);font-size:10px;font-family:-apple-system,Geist,sans-serif">PREV</small><small style="color:var(--dim);font-size:10px;font-family:-apple-system,Geist,sans-serif">JP+${g.jp_verified?' ✓':''}</small><span>${sp(g.open)}</span><span>${sp(g.ours)}</span><span>${sp(g.v1)}</span><span>${sp(g.jp)}</span></div></div>`).join(''):'<div class="empty">No finished games yet.</div>')+`</div>`;
 }
 function modelsPage(){
  const t=st.msp==='nfl'||st.msp==='cfb'||st.msp==='sb'?st.msp:'nfl';
- return head('Models','Our NFL and college football models against the market and the sharp money. Not proven, do not bet these picks yet.')+chips([['nfl','NFL'],['cfb','CFB'],['sb','CFB vs JP+']],t,'msp')+(t==='sb'?scoreboard():modelBody(t));
+ return head('Models','')+chips([['nfl','NFL'],['cfb','CFB'],['sb','CFB vs JP+']],t,'msp')+(t==='sb'?scoreboard():modelBody(t));
 }
 /* ---- one model game ---- */
 function pickPage(sp,key){
