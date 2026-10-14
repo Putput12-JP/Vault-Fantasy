@@ -154,3 +154,22 @@ improve accuracy (the weight on the model's disagreement is 0.07 against v1's 0.
 The ESPN open is a later number than CollegeFootballData's first-posted spread: v1 is 57.5% against that one (above) and 49.9% against this one.
 
 2026, weeks 4+ (170 games with an open): v1 31-26 (54.4%), v2 41-33, v2 + special teams 45-34 (57.0%) against the open; miss 12.94, 13.34, 13.22 against the open's 12.47.
+
+## Team home field and a head-coach flag (2026-10-13): NO-GO, coach test blocked
+
+`scripts/cfb_hfa_study.py`. Against the current model (v2 prior + special teams), walk-forward 2022-25, weeks 4+. Ridge penalties chosen on 2022-23 by average miss only; 2024-25 read once.
+
+| | miss, tune | miss, test | 5+ vs close, test | 5+ vs open, test |
+|---|---|---|---|---|
+| current | 12.811 | 12.454 | 197-160 (55.2%) | 205-157 (56.6%) |
+| + league mean home field | 12.825 | 12.446 | 198-164 | 200-162 (55.2%) |
+| + conference home field | 12.800 | 12.474 | 195-171 | 191-171 (52.8%) |
+| + team home field (home games only) | 12.684 | 12.413 | 217-185 (54.0%) | 200-179 (52.8%) |
+| + team strength bias, no venue | 12.668 | 12.366 | 158-150 (51.3%) | 146-139 (51.2%) |
+| + strength bias + venue | 12.624 | 12.358 | 169-154 (52.3%) | 156-146 (51.7%) |
+
+- The team home-field gain is not home field. The home-games-only effects reach +/-9 points (Alabama +8.9, UMass -10.5), which is team-rating error, not venue. A strength bias applied at home and away (no venue term) does better (12.366), and adding a venue term on top moves the miss by only 0.008. Real venue advantage is close to nothing here.
+- Accuracy improves by 0.04 to 0.10 points of miss, but the pick records get worse (vs the open 56.6% -> 51 to 53%). The market already prices team strength, so correcting the model toward it shrinks the disagreements that were the edge. Not shipped.
+- Conference home field (the JP+ style grouping) does not help.
+- The league-wide residual is +1.09 points of home margin, but recalibrating to it changes the miss by 0.01.
+- Head coach: untested. ESPN's free coaches endpoint returns the current head coach for every season (Alabama 2023 comes back as DeBoer), so a new-coach flag built from it would be always zero. The test needs the CollegeFootballData /coaches feed through the Fetch CFBD data workflow.
