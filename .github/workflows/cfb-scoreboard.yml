@@ -1,0 +1,53 @@
+# CFB head-to-head scoreboard (scripts/cfb_scoreboard.py): records JP+'s spread for each game before kickoff (never after) and grades our model, the previous
+# model, JP+ and the opening line on the same finished games. Free and keyless: the JP+ games page, ESPN data from the sportsdataverse-data releases.
+name: CFB scoreboard
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/cfb_scoreboard.py'
+  schedule:
+    - cron: '23 */2 * 9,10,11,12,1 *'
+    - cron: '5,35 11-23 * 9,10,11,12,1 6'     # Saturdays: every 30 minutes, so a number is recorded close to kickoff
+    - cron: '5,35 0-5 * 9,10,11,12,1 0'
+
+concurrency:
+  group: cfb-scoreboard
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  board:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: pip install pandas numpy scipy scikit-learn pyarrow
+      - name: Scoreboard
+        run: python3 scripts/cfb_scoreboard.py
+      - name: Commit if changed
+        run: |
+          git fetch -q origin main
+          if git show origin/main:data/cfb_scoreboard.json > /tmp/prev.json 2>/dev/null && git show origin/main:data/jpplus_games.json > /tmp/prev_store.json 2>/dev/null && python3 - <<'PY'
+          import json,sys
+          a=json.load(open('/tmp/prev.json')); b=json.load(open('data/cfb_scoreboard.json'))
+          for k in ('generated',): a.pop(k,None); b.pop(k,None)
+          s=json.load(open('/tmp/prev_store.json'))==json.load(open('data/jpplus_games.json'))
+          sys.exit(0 if (a==b and s) else 1)
+          PY
+          then
+            echo "No scoreboard changes."
+          else
+            git config user.name  "vault-bot"
+            git config user.email "vault-bot@users.noreply.github.com"
+            git add data/cfb_scoreboard.json data/jpplus_games.json
+            git commit -m "cfb scoreboard: record JP+ before kickoff, regrade [skip ci]"
+            git pull --rebase -q origin main
+            git push
+          fi
