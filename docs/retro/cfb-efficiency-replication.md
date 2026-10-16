@@ -20,7 +20,7 @@ Season by season (weeks 4+, 5+ pt edges): 2022 101-90, 2023 84-89, 2024 85-88, 2
 - The model's error (12.5-13) is close to JP+'s own published 12.77, so it is a faithful rebuild of that kind of rating.
 - Its picks do not cover. In weeks 4+ it explains a sliver of the gap between the market and results (regression of margin-minus-line on model-minus-line: slope 0.08-0.13, t about 1-1.8), worth well under half a point on a 5-point disagreement.
 - Things tried on 2022-23 that did not help: success rate and explosiveness ratings, a points-scored rating (made it worse), per-week-bucket stage-2 weights, a market blend (no gain over the market alone).
-- **Caveats:** ESPN's spread is a closing line, harder to beat than the opening lines JP+ grades against. We do not have recruiting, transfer-portal or returning-production priors (they matter most in weeks 1-3). We do not have JP+'s sigma filter, its three vetoes, or its flags (none are published). The historical opening lines are not in these files.
+- **Caveats:** ESPN's spread is a closing line, harder to beat than the opening lines JP+ grades against. As of this run we did not have recruiting, transfer-portal or returning-production priors (they matter most in weeks 1-3); the v2 prior below adds them. We do not have JP+'s sigma filter, its three vetoes, or its flags (none are published). The historical opening lines are not in these files.
 
 ## 2. Grading JP+'s live 2026 picks independently: the record and the closing-line value are real
 
@@ -45,7 +45,7 @@ Season by season (weeks 4+, 5+ pt edges): 2022 101-90, 2023 84-89, 2024 85-88, 2
 
 ## What would change this
 
-- Preseason priors from CollegeFootballData (team talent composite, returning production, transfer portal, SP+ as a benchmark) to fix weeks 1-3.
+- Preseason priors from CollegeFootballData (team talent composite, returning production, transfer portal, SP+ as a benchmark) to fix weeks 1-3. (Done: see "v2 step 2" and "Promotion" below. Miss unchanged, 12.50 vs 12.52.)
 - Opening-line history, to grade against the number JP+ uses rather than the close.
 - JP+'s shadow record for vetoed games and a calibration table for its cover probabilities.
 
@@ -57,7 +57,7 @@ Passing and rushing efficiency separately, success rate, explosiveness, pace, a 
 - 5+ point disagreements on the untouched 2024-25 test: 47.4% to 50.1% ATS in every variant (break-even 52.4%).
 - Best 2022-23 variants (52-54% at 5+ and 7+ points) fell back to 47-51% on 2024-25: the usual sign of fitting noise.
 
-No variant is shipped. Stopped here on purpose: more variants would be fishing. What is still missing is the information the market has before kickoff that play-by-play does not carry: preseason talent and returning production, transfer movement, and opening-line history. Those come from CollegeFootballData (its API host is blocked in the build environment as of 2026-10-11).
+No variant is shipped. Stopped here on purpose: more variants would be fishing. What is still missing is the information the market has before kickoff that play-by-play does not carry: preseason talent and returning production, transfer movement, and opening-line history. Those come from CollegeFootballData (its API host was blocked in the build environment on 2026-10-11; the talent, returning-production and portal inputs were added later that day, see "v2 step 2").
 
 ## Where it lives in the app
 
