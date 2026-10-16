@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "generated": "2026-10-16T03:39:18.253731+00:00",
+  "generated": "2026-10-16T03:54:19.226502+00:00",
   "line_basis": "close",
   "latest_week": 6,
   "skipped": 517,
@@ -3467,30 +3467,6 @@
             }
           ]
         },
-        "pass_att": {
-          "n": 2,
-          "pred_avg": 53.2,
-          "actual_avg": 100.0,
-          "brier": 0.2213,
-          "logloss": 0.6352,
-          "ece": 46.8,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 1,
-              "pred": 48.4,
-              "actual": 100.0,
-              "gap": 51.6
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 1,
-              "pred": 58.0,
-              "actual": 100.0,
-              "gap": 42.0
-            }
-          ]
-        },
         "pass_yd": {
           "n": 2,
           "pred_avg": 63.9,
@@ -3529,6 +3505,30 @@
               "pred": 66.8,
               "actual": 100.0,
               "gap": 33.2
+            }
+          ]
+        },
+        "pass_att": {
+          "n": 2,
+          "pred_avg": 53.2,
+          "actual_avg": 100.0,
+          "brier": 0.2213,
+          "logloss": 0.6352,
+          "ece": 46.8,
+          "reliability": [
+            {
+              "bucket": "< 50%",
+              "n": 1,
+              "pred": 48.4,
+              "actual": 100.0,
+              "gap": 51.6
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 1,
+              "pred": 58.0,
+              "actual": 100.0,
+              "gap": 42.0
             }
           ]
         }
