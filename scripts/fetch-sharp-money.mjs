@@ -73,6 +73,20 @@ function vaultModel(g) {
   const rank = Object.fromEntries(['rate', 'off', 'def'].map(k => { const xs = Object.entries(GM.teams).sort((p, q) => q[1][k] - p[1][k]).map(e => e[0]); return [k, { home: xs.indexOf(g.home.abbr) + 1, away: xs.indexOf(g.away.abbr) + 1, n: xs.length }]; }));
   return { home: { pts: +ph.toFixed(1) }, away: { pts: +pa.toFixed(1) }, margin: +mg.toFixed(1), total: +(ph + pa).toFixed(1), homeWin: +phi(mg / GM.sd_margin).toFixed(3), rank };
 }
+// Stored model lines, so a Pinnacle-lead read can record whether the model agreed when it was first logged.
+const MODEL_BOARD = {}, MODEL_TOT = {};
+for (const f of ['nfl_model', 'cfb_model']) {
+  try {
+    const j = JSON.parse(readFileSync(resolve(ROOT, 'data', f + '.json'), 'utf8'));
+    for (const r of j.board || []) if (r.model_margin != null && !r.backfill) MODEL_BOARD[r.key] = r;
+    for (const r of j.totals?.rows || []) if (r.model_total != null) MODEL_TOT[r.game_id] = r.model_total;
+  } catch (e) {}
+}
+function modelLine(e) {
+  const b = MODEL_BOARD[e.key], v = vaultModel(e);
+  if (b) return { mm: b.model_margin, mt: MODEL_TOT[b.game_id] ?? v?.total ?? null };
+  return v ? { mm: v.margin, mt: v.total } : null;
+}
 // Hourly money on each side over the last 36h (or up to kickoff), sharp vs everyone else.
 function flowHours(G, start, t) {
   const t1 = Math.min(t, start), t0 = t1 - 36 * H, NB = 36, rows = {};
@@ -1136,7 +1150,7 @@ function snapLead(S, games) {
       const med = ls[Math.floor(ls.length / 2)];
       const L = (S.lead[`${e.key}|${m}`] ||= { game: e.key, sport: e.sport, m, start: e.start });
       L.start = e.start;
-      if (!L.first && Math.abs(pl - med) >= 0.5 && e.start - t >= 3 * H) L.first = { ts: t, b: pl, r: med };
+      if (!L.first && Math.abs(pl - med) >= 0.5 && e.start - t >= 3 * H) { const ml = modelLine(e); L.first = { ts: t, b: pl, r: med, ...(ml ? { mm: ml.mm, mt: ml.mt } : {}) }; }
       if (L.first) L.close = { ts: t, r: med };
     }
   }
