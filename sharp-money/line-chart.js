@@ -15,7 +15,8 @@
   ];
   var MARKETS = [['sp', 'Spread'], ['tot', 'Total'], ['ml', 'Money']];
   var WINDOWS = [['4h', 4 * 3600], ['12h', 12 * 3600], ['24h', 24 * 3600], ['All', 0]];
-  var tape = null, tapeP = null, states = {}, hosts = new WeakMap();
+  var REC = (LOCAL && !LIVE ? '/data/' : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/data/') + 'exchange_edge_record.json';
+  var rec = null, tape = null, tapeP = null, states = {}, hosts = new WeakMap();
 
   function monthKey(d) { return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
   function load() {
@@ -30,6 +31,8 @@
       var rows = [];
       txt.join('\n').split('\n').forEach(function (l) { if (l) { try { rows.push(JSON.parse(l)); } catch (e) {} } });
       tape = rows; return tape;
+    }).then(function () {
+      return fetch(REC + '?t=' + Math.floor(Date.now() / 300000), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { rec = j; return tape; });
     });
     return tapeP;
   }
@@ -115,6 +118,23 @@
     });
     return out;
   }
+
+  function recHtml() {
+    if (!rec || !rec.summary) return '';
+    var line = function (x, label) {
+      var o = '<div class="vlm-rr"><span>' + label + '</span><span>';
+      if (!x.graded) return o + (x.signals ? x.signals + ' seen, none graded yet' : 'none yet') + '</span></div>';
+      o += x.graded + ' graded';
+      if (x.same_line) o += ', beat the close ' + Math.round(x.beat_close * 100) + '%, avg ' + (x.mean_clv > 0 ? '+' : '') + x.mean_clv + ' pts' + (x.ci95 != null ? ' \u00B1' + x.ci95 : '');
+      if (x.line_moved) o += ', line moved ' + x.line_moved + ' (' + x.line_favoured + ' our way)';
+      return o + '</span></div>';
+    };
+    var pick = function (thr, tag) { return rec.summary.filter(function (x) { return x.thr === thr && x.tag === tag; })[0]; };
+    var o = '<div class="vlm-rec"><div class="vlm-eh">Record since Oct 17<span>graded on Pinnacle\u2019s close</span></div>';
+    [[1, 'EV 1%+'], [2, 'EV 2%+'], [4, 'EV 4%+']].forEach(function (a) { var x = pick(a[0], 'all'); if (x) o += line(x, a[1]); });
+    var st = pick(1, 'stale'); if (st) o += line(st, 'Pinnacle moved, Novig did not (EV 1%+)');
+    return o + '<div class="vlm-note">Each game side counts once, the first time it reached the EV. Beat the close means Pinnacle\u2019s last number before kickoff was better than the Novig price. \u00B1 is a 95% range, and a range that spans zero means this is still noise. Context only.</div></div>';
+  }
   function edgeHtml(g, d, w) {
     var rs = edgeRows(g, d, w); if (!rs.length) return '';
     var s1 = function (v) { return (v > 0 ? '+' : '') + v.toFixed(1); };
@@ -124,7 +144,7 @@
       o += '<div class="vlm-er"><div class="vlm-em"><b>' + r.m + '</b> ' + r.side + '</div><div class="vlm-ev ' + (r.ev > 0 ? 'pos' : 'neg') + '">' + s1(r.ev) + '% EV</div>' +
         '<div class="vlm-ed">Novig ' + r.price + ' (' + r.cents + '\u00A2) vs Pinnacle fair ' + r.fair.toFixed(1) + '%' + (mv ? '<br>' + mv : '') + '</div></div>';
     });
-    return o + '<div class="vlm-note">Fair is Pinnacle\u2019s price with the vig removed. Novig has no fee before kickoff. Spread and total only where Novig quotes Pinnacle\u2019s exact line.</div></div>';
+    return o + '<div class="vlm-note">Fair is Pinnacle\u2019s price with the vig removed. Novig has no fee before kickoff. Spread and total only where Novig quotes Pinnacle\u2019s exact line.</div>' + recHtml() + '</div>';
   }
 
   function svg(d, st, W) {
@@ -191,7 +211,7 @@
     '.vlm-ax{font-size:10.5px;fill:currentColor;opacity:.55;font-variant-numeric:tabular-nums}.vlm-cur{stroke:currentColor;opacity:.4;stroke-width:1}' +
     '.vlm-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.vlm-chip{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;font-weight:600;padding:6px 10px;min-height:32px;border-radius:999px;border:1.5px solid var(--c);background:transparent;color:inherit;cursor:pointer;font-variant-numeric:tabular-nums}' +
     '.vlm-chip.off{opacity:.4;border-style:dashed}.vlm-chip i{font-style:normal;opacity:.8;font-weight:500}.vlm-read{min-height:18px;margin-top:8px;font-size:12px;opacity:.75;font-variant-numeric:tabular-nums}' +
-    '.vlm-edge{margin-top:14px;padding-top:12px;border-top:1px solid rgba(127,127,127,.25)}.vlm-eh{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6;margin-bottom:8px}.vlm-er{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-top:1px solid rgba(127,127,127,.15)}.vlm-er:first-of-type{border-top:0}.vlm-em{font-size:13.5px}.vlm-ev{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}.vlm-ev.pos{color:#34c759}.vlm-ev.neg{opacity:.6}.vlm-ed{grid-column:1/-1;font-size:12px;opacity:.72;font-variant-numeric:tabular-nums;line-height:1.45}.vlm-empty{padding:18px 4px;font-size:13px;opacity:.65}.vlm-note{margin-top:8px;font-size:11.5px;opacity:.55}';
+    '.vlm-edge{margin-top:14px;padding-top:12px;border-top:1px solid rgba(127,127,127,.25)}.vlm-eh{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6;margin-bottom:8px}.vlm-er{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-top:1px solid rgba(127,127,127,.15)}.vlm-er:first-of-type{border-top:0}.vlm-em{font-size:13.5px}.vlm-ev{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}.vlm-ev.pos{color:#34c759}.vlm-ev.neg{opacity:.6}.vlm-ed{grid-column:1/-1;font-size:12px;opacity:.72;font-variant-numeric:tabular-nums;line-height:1.45}.vlm-rec{margin-top:12px;padding-top:10px;border-top:1px solid rgba(127,127,127,.15)}.vlm-rr{display:flex;justify-content:space-between;gap:12px;font-size:12px;padding:4px 0;font-variant-numeric:tabular-nums}.vlm-rr span:last-child{text-align:right;opacity:.8}.vlm-empty{padding:18px 4px;font-size:13px;opacity:.65}.vlm-note{margin-top:8px;font-size:11.5px;opacity:.55}';
   function css() { if (!document.getElementById('vlm-css')) { var s = document.createElement('style'); s.id = 'vlm-css'; s.textContent = CSS; document.head.appendChild(s); } }
 
   function html(g, st, d, W) {
