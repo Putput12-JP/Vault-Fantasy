@@ -166,7 +166,7 @@
       (q && q.kal != null ? '<div><small>Kalshi</small><b>' + cents(q.kal) + '</b></div>' : '') + (q && q.pm != null ? '<div><small>Polymarket</small><b>' + cents(q.pm) + '</b></div>' : '') + '</div>';
     if (q) o += '<div class="veb-ages">' + q.confirm + ' of ' + q.of + ' exchanges are at least a cent above Novig.' + (x.m === 'ml' ? '' : ' Kalshi has the winner market only.') + '</div>';
     o += '<div class="veb-ages">' + (x.pin_since ? 'Pinnacle last moved ' + dur(now - x.pin_since) + ' ago' : 'Pinnacle move time unknown') + ' · ' + (x.nov_since ? 'Novig unchanged for ' + dur(now - x.nov_since) : 'Novig quote age unknown yet') + (x.lim ? ' · Pinnacle limit ' + usd(x.lim) : '') + '</div>';
-    return o + '<div class="veb-chart" data-chart="' + esc(x.gk) + '"></div><button type="button" class="veb-open" data-gk="' + esc(x.gk) + '">Open the game page</button> <a class="veb-open" href="https://app.novig.us" target="_blank" rel="noopener">Open Novig</a><div class="veb-note" style="margin-top:6px">Open Novig goes to its app, not to this market.</div>';
+    return o + '<div class="veb-chart" data-chart="' + esc(x.gk) + '"></div><button type="button" class="veb-open" data-gk="' + esc(x.gk) + '">Open the game page</button> <a class="veb-open" href="https://novig.com" target="_blank" rel="noopener">Open Novig</a><div class="veb-note" style="margin-top:6px">Open Novig goes to novig.com, not to this market.</div>';
   }
   function panelHtml(x) {
     if (!x) return '<div class="veb-empty">Pick a row to see its detail.</div>';
