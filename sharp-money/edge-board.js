@@ -10,7 +10,7 @@
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), LIVE = /[?&]live\b/.test(location.search);
   var BASE = LOCAL && !LIVE ? '/data/' : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/data/';
   var SPORT = { nfl: 'NFL', cfb: 'CFB', nba: 'NBA' }, MK = { ml: 'Money', sp: 'Spread', tot: 'Total' }, GOAL = 50;   // 50 graded calls, the bar the other Sharp Money signals use
-  var st = { sport: 'all', m: 'all', sort: 'ev', pos: 1, open: null, sel: null }, data = null, dataP = null, dataAt = 0, ctx = { games: [], logo: null }, wide = false;
+  var st = { sport: 'all', m: 'all', sort: 'ev', pos: 1, open: null, sel: null, cf: null, cs: 'all' }, data = null, dataP = null, dataAt = 0, ctx = { games: [], logo: null }, wide = false;
 
   function get(n) {
     return fetch(BASE + n + '?t=' + Math.floor(Date.now() / 120000), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
@@ -58,26 +58,43 @@
     return o;
   }
   function summ(thr, tag) { var rec = data.rec; return pool(sports().map(function (sp) { return rec && rec.by_sport && rec.by_sport[sp] ? rec.by_sport[sp].summary.filter(function (x) { return x.thr === thr && x.tag === tag; })[0] : null; })); }
+  /* a click on a scorecard or record row sets st.cf, the calls list shows only the calls that fit; st.cs splits them open (not graded yet) and closed (graded) */
+  var BAND = { '1% to 2%': [1, 2], '2% to 4%': [2, 4], '4% and up': [4, 1e9] }, MKL = { Money: 'ml', Spread: 'sp', Total: 'tot' };
+  function cfTest(k) {
+    var a = String(k || '').split(':'), t = a[0], v = a.slice(1).join(':');
+    if (t === 'thr') return function (c) { return c.peak >= +v; };
+    if (t === 'stale') return function (c) { return v === '1' ? c.stale === true : c.stale === false; };
+    if (t === 'band') return function (c) { var b = BAND[v]; return !!b && c.ev >= b[0] && c.ev < b[1]; };
+    if (t === 'market') return function (c) { return c.m === MKL[v]; };
+    if (t === 'settled') return function (c) { return !!c.res; };
+    return null;
+  }
+  function cfLabel(k) {
+    var a = String(k || '').split(':'), t = a[0], v = a.slice(1).join(':');
+    return t === 'thr' ? 'Reached EV ' + v + '%+' : t === 'stale' ? (v === '1' ? 'Pinnacle moved, Novig did not' : 'No such move') : t === 'settled' ? 'Settled calls' : v;
+  }
   function callsAll() {
     var out = [], rec = data.rec; if (!rec || !rec.by_sport) return out;
     sports().forEach(function (sp) { ((rec.by_sport[sp] || {}).calls || []).forEach(function (c) { out.push(Object.assign({ sport: sp }, c)); }); });
     if (st.m !== 'all') out = out.filter(function (c) { return c.m === st.m; });
+    var f = cfTest(st.cf); if (f) out = out.filter(f);
+    if (st.cs === 'open') out = out.filter(function (c) { return !c.graded; }); else if (st.cs === 'closed') out = out.filter(function (c) { return c.graded; });
     return out.sort(function (a, b) { return b.t - a.t; });
   }
 
   /* ---------- scorecards ---------- */
-  function card(label, chip, big, sub, bar, foot, tone) {
-    return '<div class="veb-kpi"><div class="veb-kh"><span>' + label + '</span>' + (chip ? '<em class="' + (tone || '') + '">' + chip + '</em>' : '') + '</div><div class="veb-kn">' + big + '</div>' + (sub ? '<div class="veb-ks">' + sub + '</div>' : '') +
+  function card(label, chip, big, sub, bar, foot, tone, go) {
+    return '<div class="veb-kpi' + (go ? ' veb-click' : '') + '"' + (go ? ' role="button" tabindex="0" data-go="' + go + '"' : '') + '><div class="veb-kh"><span>' + label + '</span>' + (chip ? '<em class="' + (tone || '') + '">' + chip + '</em>' : '') + '</div><div class="veb-kn">' + big + '</div>' + (sub ? '<div class="veb-ks">' + sub + '</div>' : '') +
       (bar != null ? '<div class="veb-bar"><i style="width:' + Math.max(2, Math.min(100, bar * 100)) + '%"></i></div>' : '') + (foot ? '<div class="veb-kf">' + foot + '</div>' : '') + '</div>';
   }
   function kpiHtml() {
     var rows = liveAll().filter(function (x) { return st.sport === 'all' || x.sport === st.sport; }), up = rows.filter(function (x) { return x.ev > 0; }), best = up.slice().sort(function (a, b) { return b.ev - a.ev; })[0];
     var all = summ(1, 'all'), stale = summ(1, 'stale'), l = data.live || {}, now = Date.now() / 1000, seen = l.seen || {}, o = '';
-    o += card('+EV right now', 'LIVE', up.length + ' of ' + rows.length, best ? 'best ' + sg(best.ev) + '% ' + esc(best.label) + (best.m === 'ml' ? ' ML' : '') : 'nothing above zero', rows.length ? up.length / rows.length : 0, 'Novig against Pinnacle, no fee before kickoff');
-    o += card('Calls logged', 'TOO EARLY', all.signals, all.graded + ' graded, ' + (all.signals - all.graded) + ' open', Math.min(1, all.graded / GOAL), all.graded + ' of ' + GOAL + ' graded to call it', 'amber');
-    o += card('Beat the close', 'TOO EARLY', all.n_same ? Math.round(all.pos / all.n_same * 100) + '%' : 'none', all.n_same ? 'avg ' + sg(all.mean) + ' pts' + (all.ci != null ? ' ±' + all.ci.toFixed(1) : '') : 'no graded calls yet', all.n_same ? all.pos / all.n_same : 0, 'vs Pinnacle’s last number before kickoff', 'amber');
-    o += card('Units at 1u each', 'TOO EARLY', all.settled ? sg(all.units, 2) + 'u' : '0.00u', all.settled ? all.wins + '-' + (all.settled - all.wins) + ' settled' : 'no calls settled yet', Math.min(1, all.settled / GOAL), all.settled + ' of ' + GOAL + ' settled', 'amber');
-    o += card('Pinnacle moved, Novig did not', 'CONTEXT', rows.filter(function (x) { return x.stale; }).length, stale.graded ? stale.graded + ' graded, avg ' + (stale.mean != null ? sg(stale.mean) : 'n/a') + ' pts' : 'none graded yet', Math.min(1, stale.graded / GOAL), stale.graded + ' of ' + GOAL + ' graded to call it');
+    o += card('+EV right now', 'LIVE', up.length + ' of ' + rows.length, best ? 'best ' + sg(best.ev) + '% ' + esc(best.label) + (best.m === 'ml' ? ' ML' : '') : 'nothing above zero', rows.length ? up.length / rows.length : 0, 'Novig against Pinnacle, no fee before kickoff', null, 'live');
+    o += card('Calls logged', 'TOO EARLY', all.signals, all.graded + ' graded, ' + (all.signals - all.graded) + ' open', Math.min(1, all.graded / GOAL), all.graded + ' of ' + GOAL + ' graded to call it', 'amber', 'calls');
+    o += card('Beat the close', 'TOO EARLY', all.n_same ? Math.round(all.pos / all.n_same * 100) + '%' : 'none', all.n_same ? 'avg ' + sg(all.mean) + ' pts' + (all.ci != null ? ' ±' + all.ci.toFixed(1) : '') : 'no graded calls yet', all.n_same ? all.pos / all.n_same : 0, 'vs Pinnacle’s last number before kickoff', 'amber', 'closed');
+    o += card('Units at 1u each', 'TOO EARLY', all.settled ? sg(all.units, 2) + 'u' : '0.00u', all.settled ? all.wins + '-' + (all.settled - all.wins) + ' settled' : 'no calls settled yet', Math.min(1, all.settled / GOAL), all.settled + ' of ' + GOAL + ' settled', 'amber', 'settled');
+    o += card('Pinnacle moved, Novig did not', 'CONTEXT', rows.filter(function (x) { return x.stale; }).length, stale.graded ? stale.graded + ' graded, avg ' + (stale.mean != null ? sg(stale.mean) : 'n/a') + ' pts' : 'none graded yet', Math.min(1, stale.graded / GOAL), stale.graded + ' of ' + GOAL + ' graded to call it', null, 'stale');
     var src = ['Pinnacle', 'Novig', 'Kalshi', 'Polymarket', 'US books'].filter(function (k) { return seen[k] != null; }).map(function (k) { var a = now - seen[k]; return '<span class="veb-src ' + (a > 1800 ? 'bad' : 'ok') + '"><i></i>' + k + ' ' + (a < 90 ? 'now' : dur(a)) + '</span>'; }).join('');
     var age = l.generated ? now - Date.parse(l.generated) / 1000 : null, cov = l.coverage || {}, cv = ['nfl', 'cfb', 'nba'].filter(function (sp) { return cov[sp] && cov[sp].games; }).map(function (sp) { return SPORT[sp] + ' ' + (cov[sp].novig || 0) + '/' + cov[sp].games; }).join(' · ');
     o += '<div class="veb-kpi"><div class="veb-kh"><span>Sources</span><em class="' + (age > 1800 ? 'red' : 'green') + '">' + (age > 1800 ? 'EXPIRED' : 'FRESH') + '</em></div><div class="veb-srcs">' + src + '</div><div class="veb-kf">Novig quotes ' + cv + '. A game with no Novig quote has no row.</div></div>';
@@ -153,8 +170,8 @@
   function beatPct(x) { return x && x.n_same ? Math.round(x.pos / x.n_same * 100) : null; }
   function avgTxt(x) { return x && x.n_same ? 'avg ' + sg(x.mean) + ' pts' + (x.ci != null ? ' ±' + x.ci.toFixed(1) : '') : ''; }
   function wlTxt(x) { return x && x.settled ? x.wins + '-' + (x.settled - x.wins) + ' · ' + sg(x.units, 2) + 'u' : ''; }
-  function sumTile(x, label) {
-    var o = '<div class="veb-rt"><div class="veb-rl">' + label + '</div>';
+  function sumTile(x, label, cf) {
+    var o = '<div class="veb-rt veb-click" role="button" tabindex="0" data-cf="' + cf + '"><div class="veb-rl">' + label + '</div>';
     if (!x || !x.signals) return o + '<div class="veb-rn none">none yet</div></div>';
     if (!x.graded) return o + '<div class="veb-rn none">' + x.signals + '</div><div class="veb-rs">called, none graded yet</div></div>';
     var pct = beatPct(x), tone = sigTone(x);
@@ -168,16 +185,17 @@
   function recHtml() {
     var rec = data.rec; if (!rec || !rec.by_sport) return '<div class="veb-empty">The record file did not load.</div>';
     var o = '<div class="veb-card"><div class="veb-h"><span>Record</span><span>graded on Pinnacle’s close</span></div><div class="veb-rg">';
-    [[1, 'EV 1%+'], [2, 'EV 2%+'], [4, 'EV 4%+']].forEach(function (a) { o += sumTile(summ(a[0], 'all'), a[1]); });
-    o += sumTile(summ(1, 'stale'), 'Pinnacle moved, Novig did not') + '</div>';
+    [[1, 'EV 1%+'], [2, 'EV 2%+'], [4, 'EV 4%+']].forEach(function (a) { o += sumTile(summ(a[0], 'all'), a[1], 'thr:' + a[0]); });
+    o += sumTile(summ(1, 'stale'), 'Pinnacle moved, Novig did not', 'stale:1') + '</div>';
     o += '<details class="veb-how"><summary>How to read this</summary><div class="veb-note">A call is the first time a game side reached EV 1% or more. Beat the close means Pinnacle’s last number before kickoff was better than the Novig price at the call. ± is a 95% range; a number is only coloured once its range clears zero, otherwise it is still noise. Started ' + esc(rec.since) + '; nothing earlier was stored.</div></details></div>';
     return o + calibHtml(rec);
   }
-  function calibRow(l, p) {
-    if (!p.signals) return '<div class="veb-cr"><div class="veb-cl">' + esc(l) + '</div><div class="veb-cv none">none yet</div></div>';
-    if (!p.graded) return '<div class="veb-cr"><div class="veb-cl">' + esc(l) + '</div><div class="veb-cv none">' + p.signals + ' called</div></div>';
+  function calibRow(l, p, cf) {
+    var h = '<div class="veb-cr veb-click" role="button" tabindex="0" data-cf="' + cf + '">';
+    if (!p.signals) return h + '<div class="veb-cl">' + esc(l) + '</div><div class="veb-cv none">none yet</div></div>';
+    if (!p.graded) return h + '<div class="veb-cl">' + esc(l) + '</div><div class="veb-cv none">' + p.signals + ' called</div></div>';
     var pct = beatPct(p), tone = sigTone(p), sub = [p.n_same + ' graded', wlTxt(p)].filter(Boolean).join(' · ');
-    return '<div class="veb-cr"><div class="veb-cl">' + esc(l) + '<small>' + sub + '</small></div><div class="veb-cv ' + tone + '">' + (pct == null ? '–' : pct + '%') + '<small>' + avgTxt(p) + '</small></div>' +
+    return h + '<div class="veb-cl">' + esc(l) + '<small>' + sub + '</small></div><div class="veb-cv ' + tone + '">' + (pct == null ? '–' : pct + '%') + '<small>' + avgTxt(p) + '</small></div>' +
       (pct != null ? '<div class="veb-bar"><i class="' + tone + '" style="width:' + pct + '%"></i></div>' : '') + '</div>';
   }
   function calibHtml(rec) {
@@ -190,15 +208,16 @@
       labels.forEach(function (l) {
         var p = pool(sports().map(function (sp) { return ((rec.by_sport[sp].calib || []).filter(function (c) { return c.k === gr[0] && c.l === l; })[0]); }));
         any = any || p.signals > 0;
-        o += calibRow(l, p);
+        o += calibRow(l, p, gr[0] + ':' + (gr[0] === 'stale' ? (l === 'No such move' ? '0' : '1') : l));
       });
       o += '</div>';
     });
     return o + '<div class="veb-note">' + (any ? '' : 'Nothing to compare yet. ') + 'If bigger EV is real, the share and the average rise down the EV rows. While the ranges span zero the rows cannot be told apart, so none is coloured.</div></div>';
   }
   function callsHtml() {
-    var calls = callsAll(), o = '<div class="veb-card"><div class="veb-h"><span>Every call</span><span>' + calls.length + (calls.length >= 400 ? '+' : '') + '</span></div>';
-    if (!calls.length) return o + '<div class="veb-empty">No calls yet. They are logged as the recorder sees them.</div></div>';
+    var calls = callsAll(), o = '<div class="veb-card" id="veb-calls"><div class="veb-h"><span>Every call</span><span>' + calls.length + (calls.length >= 400 && !st.cf && st.cs === 'all' ? '+' : '') + '</span></div>' +
+      chips('cs', [['all', 'All'], ['open', 'Open'], ['closed', 'Closed']]) + (st.cf ? '<div class="veb-fil"><span>' + esc(cfLabel(st.cf)) + '</span><button type="button" data-clear="1" aria-label="Clear filter">Clear</button></div>' : '');
+    if (!calls.length) return o + '<div class="veb-empty">' + (st.cf || st.cs !== 'all' || st.m !== 'all' ? 'No calls fit that filter.' : 'No calls yet. They are logged as the recorder sees them.') + '</div></div>';
     calls.slice(0, 80).forEach(function (c) {
       var tm = String(c.game).split('@'), A = c.side === 'A', side = c.m === 'tot' ? (A ? 'Over' : 'Under') : (A ? tm[1] : tm[0]);
       var line = c.m === 'sp' ? ' ' + sg(A ? c.line : -c.line, 1).replace(/\.0$/, '') : c.m === 'tot' ? ' ' + c.line : '';
@@ -235,6 +254,7 @@
     '.veb-how{margin-top:8px}.veb-how summary{font-size:12px;opacity:.65;cursor:pointer;min-height:28px;display:flex;align-items:center}.veb-how .veb-note{margin-top:2px}' +
     '.veb-cg{border-radius:14px;background:rgba(127,127,127,.08);padding:2px 12px;margin:4px 0 6px}.veb-cr{display:grid;grid-template-columns:1fr auto;gap:0 12px;align-items:center;padding:8px 0 6px;border-top:1px solid rgba(127,127,127,.14)}.veb-cr:first-child{border-top:0}' +
     '.veb-cl{font-size:13.5px;font-weight:600}.veb-cl small,.veb-cv small{display:block;font-size:11px;font-weight:500;opacity:.6;margin-top:1px}.veb-cv{text-align:right;font-size:17px;font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.veb-cv small{font-family:-apple-system,system-ui,sans-serif}.veb-cv.none{font-size:12.5px;font-weight:500;opacity:.5;font-family:inherit}' +
+    '.veb-click{cursor:pointer}.veb-click:hover{background:rgba(127,127,127,.16)}.veb-click:focus-visible{outline:2px solid currentColor;outline-offset:2px}.veb-fil{display:flex;align-items:center;gap:8px;margin:8px 0 0;font-size:12px}.veb-fil span{padding:3px 9px;border-radius:99px;background:rgba(155,176,232,.22);font-weight:600}.veb-fil button{font:inherit;font-size:12px;background:none;border:0;color:inherit;opacity:.7;text-decoration:underline;cursor:pointer;min-height:28px}#veb-calls>.veb-seg{margin-top:6px}' +
     '.veb-card{padding:4px 2px 6px;margin:0 0 6px}.veb-gl{font-size:11px;font-weight:700;margin:9px 0 1px;opacity:.9}.veb-rr{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:5px 0}.veb-rr span:last-child{text-align:right;opacity:.85}.veb-note{margin-top:9px;font-size:11.5px;opacity:.55;line-height:1.5}.veb-empty{padding:18px 4px;font-size:13px;opacity:.65}.veb-call2{border-top:1px solid rgba(127,127,127,.15)}' +
     '@container (min-width:1100px){.veb-srcs{flex-wrap:wrap;overflow:visible;margin:10px 0 8px}.veb-kf{display:block}.veb-kn{font-size:25px}.veb-kpi{padding:13px 14px}.veb-kpis{grid-auto-flow:row;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;padding-bottom:6px}.veb-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.95fr);gap:14px;align-items:start}.veb-col{max-height:calc(100vh - 330px);min-height:520px;overflow-y:auto;padding:4px 8px 16px;border-radius:20px;background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.14);scrollbar-width:thin}.veb-col>.veb-h:first-child{margin-top:8px}}';
   function css() { if (!document.getElementById('veb-css')) { var s = document.createElement('style'); s.id = 'veb-css'; s.textContent = CSS; document.head.appendChild(s); } }
@@ -268,6 +288,15 @@
     if (!el.__veb) {
       el.__veb = 1;
       el.addEventListener('click', function (e) {
+        if (e.target.closest('[data-clear]')) { st.cf = null; st.cs = 'all'; render(el); return; }
+        var go = e.target.closest('[data-go],[data-cf]');
+        if (go) {
+          var g = go.getAttribute('data-go');
+          if (g === 'live') { st.pos = 1; render(el); var sl = el.querySelector('[data-c="slate"],.veb-list'); if (sl && sl.scrollIntoView) sl.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
+          if (g) { st.cf = g === 'stale' ? 'stale:1' : g === 'settled' ? 'settled' : null; st.cs = g === 'closed' ? 'closed' : g === 'settled' ? 'closed' : 'all'; }
+          else { st.cf = go.getAttribute('data-cf'); st.cs = 'all'; }
+          render(el); var cc = el.querySelector('#veb-calls'); if (cc && cc.scrollIntoView) cc.scrollIntoView({ block: 'start', behavior: 'smooth' }); return;
+        }
         var b = e.target.closest('.veb-seg button');
         if (b) { var k = b.parentNode.getAttribute('data-k'); st[k] = k === 'pos' ? +b.getAttribute('data-v') : b.getAttribute('data-v'); render(el); return; }
         var ob = e.target.closest('.veb-open'); if (ob) { open(ob.getAttribute('data-gk')); return; }
@@ -276,7 +305,7 @@
         var c = e.target.closest('.veb-call2'); if (c) open(c.getAttribute('data-gk'));
       });
       el.addEventListener('change', function (e) { if (e.target.hasAttribute('data-bank')) { try { localStorage.setItem('vault-edge-bankroll', String(Math.max(0, +e.target.value || 0))); } catch (x) {} render(el); } });
-      el.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && (e.target.classList.contains('veb-row') || e.target.classList.contains('veb-call2'))) { e.preventDefault(); e.target.click(); } });
+      el.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && (e.target.classList.contains('veb-row') || e.target.classList.contains('veb-call2') || e.target.classList.contains('veb-click'))) { e.preventDefault(); e.target.click(); } });
       if (window.ResizeObserver) { var last = el.clientWidth >= 1100; new ResizeObserver(function () { var w = el.clientWidth >= 1100; if (w !== last && data) { last = w; render(el); } }).observe(el); }
     }
     if (data) { render(el); if (Date.now() - dataAt > 120000) load().then(function () { render(el); }); }
