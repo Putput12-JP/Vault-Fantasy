@@ -121,3 +121,27 @@ YES hit rate 0.512 vs average price 0.513 (no gap = no overs bias here).
 |---|---|---|---|---|
 | 1st half | 1966, 503, +19.3%, 2.79 | 758, 204, +33.1%, 2.45 | 1208, 341, +24.8%, 2.59 | 5723, 749, +3.7%, 1.05 |
 | 2nd half | 2021, 314, +8.1%, 1.17 | 1449, 211, +13.3%, 1.51 | 572, 111, +0.1%, 0.01 | 5724, 553, -9.9%, -2.64 |
+
+## Follow-ups scored 2026-10-13
+
+Rules were committed before either run (`nba/docs/game-model-experiments.md`). Tables: `nba/docs/game-model-experiments-results.md`. The parameters on this page are unchanged.
+
+**Total-ladder anchor: NO-GO.** Each Kalshi total strike was priced from the DraftKings opening total, else ESPN BET, with a normal residual (sigma 18.09, fit on 2023-24 opens only; 2022-23 has no archived open). Bet when that probability disagrees with the 1pm price by 8%, one contract, after the taker fee. On the 11,429 strikes with an open: one-contract ROI +9.9% overall (z 3.92), +18.0% in the first half (z 4.13), −3.4% in the second (609 strikes, 162 games, z 0.57). The second half is not positive. The second-half NO side is −8.8%. A price-only recalibration fit on the first half never disagreed by 8% on the second (largest gap 0.054) and lost 11.8% at the 4% gap. The 1pm ladder's 50% strike averages +0.18 points from the open (MAE 2.04 on 1,293 games).
+
+This tape reproduces the ladder above: 11,437 strikes in 1,301 games (was 11,447), Brier 0.2189 / 0.2151 / 0.2109 (was 0.2188 / 0.2150 / 0.2108), 8% one-contract ROI +1.9% on 3,982 strikes (was +1.9% on 3,987). The half-table +19.3% then +8.1% is ROI per game; this run's model is +19.5% then +7.9%, z 2.82 then 1.15.
+
+Anchor Brier on the common set is 0.2139, against the shipped model 0.2188 and the 1pm price 0.2151. Monitor closely: the second half is 0.2106 against the price at 0.2107, so the probability gain is the full sample and it did not survive as a bet.
+
+**Widened retune: NOT SHIPPED.** K, REP, ALPHA and CT sat on the old grid edge. Both tune seasons have a 1pm-or-earlier report on 99.5% of game dates, so C was tuned on that report and stayed 0.5. The search moved K 0.04 to 0.03, CARRY 0.5 to 0.6 and CT 0.0 to 0.2. REP and ALPHA stayed put, and none of the four landed on an end of the widened grid.
+
+Test seasons, same games, shipped then candidate:
+
+| Metric | Shipped | Candidate | t |
+|---|---|---|---|
+| Spread MAE, 1pm report | 11.163 | 11.184 | −1.45 |
+| Total MAE | 14.839 | 14.811 | 1.51 |
+| Kalshi 1pm Brier, moneyline | 0.2056 | 0.2065 | −1.88 |
+| Kalshi 1pm Brier, spread ladder | 0.1907 | 0.1917 | −1.84 |
+| Kalshi 1pm Brier, total ladder | 0.2189 | 0.2182 | 1.97 |
+
+Total MAE and the total-ladder Brier improved. Monitor closely: neither reached 2 SE, and the spread, moneyline and spread ladder moved the other way. CT at 0.2 would make `scripts/paper_bot/signals/nba_total.py` stop trading NBA totals, because that bot does not read an injury report. The candidate was not written to `game_model.json`. The paper bot's ratings and sigma stay what they are today.

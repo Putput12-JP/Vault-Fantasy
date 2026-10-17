@@ -1,0 +1,321 @@
+{
+ "generated": "2026-10-13T14:34Z",
+ "anchor": {
+  "verdict": "NO-GO",
+  "why": "a time half is not positive",
+  "sigma": 18.088771,
+  "sigma_from": "tune opening-total MAE * sqrt(pi/2), seasons 2024",
+  "sigma_fit": {
+   "n": 1316,
+   "mae": 14.4328,
+   "bias": 0.1759,
+   "seasons": [
+    2024
+   ]
+  },
+  "coverage": {
+   "2023": {
+    "games": 1320,
+    "with_open": 0,
+    "frac": 0.0
+   },
+   "2024": {
+    "games": 1319,
+    "with_open": 1316,
+    "frac": 0.998
+   },
+   "2025": {
+    "games": 1321,
+    "with_open": 1321,
+    "frac": 1.0
+   },
+   "2026": {
+    "games": 1322,
+    "with_open": 1321,
+    "frac": 0.999
+   }
+  },
+  "n_common": 11429,
+  "games_common": 1300,
+  "n_all": 11437,
+  "games_all": 1301,
+  "brier": {
+   "all": {
+    "n": 11437,
+    "model": 0.218935,
+    "kalshi": 0.215113
+   },
+   "common": {
+    "n": 11429,
+    "model": 0.218819,
+    "kalshi": 0.215063,
+    "anchor": 0.213895
+   },
+   "common 1st half": {
+    "n": 5714,
+    "model": 0.22437,
+    "kalshi": 0.219416,
+    "anchor": 0.217147
+   },
+   "common 2nd half": {
+    "n": 5715,
+    "model": 0.213268,
+    "kalshi": 0.21071,
+    "anchor": 0.210645,
+    "price_only": 0.212742
+   }
+  },
+  "buckets": {
+   "anchor": {
+    "0.04": {
+     "n": 5042,
+     "games": 1072,
+     "roi": 0.035451,
+     "profit_per_contract": 0.014755,
+     "equal_stake_roi": 0.076106,
+     "roi_per_game": 0.156299,
+     "z": 3.628083
+    },
+    "0.08": {
+     "n": 1604,
+     "games": 496,
+     "roi": 0.099263,
+     "profit_per_contract": 0.039633,
+     "equal_stake_roi": 0.187714,
+     "roi_per_game": 0.337938,
+     "z": 3.922343
+    },
+    "0.12": {
+     "n": 483,
+     "games": 222,
+     "roi": 0.328343,
+     "profit_per_contract": 0.128965,
+     "equal_stake_roi": 0.507855,
+     "roi_per_game": 0.80263,
+     "z": 4.957992
+    }
+   },
+   "model": {
+    "0.04": {
+     "n": 7170,
+     "games": 1173,
+     "roi": 0.017318,
+     "profit_per_contract": 0.008117,
+     "equal_stake_roi": 0.051783,
+     "roi_per_game": 0.088345,
+     "z": 2.58834
+    },
+    "0.08": {
+     "n": 3976,
+     "games": 816,
+     "roi": 0.020238,
+     "profit_per_contract": 0.009075,
+     "equal_stake_roi": 0.070883,
+     "roi_per_game": 0.150491,
+     "z": 2.999263
+    },
+    "0.12": {
+     "n": 1934,
+     "games": 479,
+     "roi": 0.042331,
+     "profit_per_contract": 0.018143,
+     "equal_stake_roi": 0.106488,
+     "roi_per_game": 0.331225,
+     "z": 3.945602
+    }
+   }
+  },
+  "price_only_buckets": {
+   "0.04": {
+    "n": 2278,
+    "games": 552,
+    "roi": -0.117915,
+    "profit_per_contract": -0.034211,
+    "equal_stake_roi": -0.119869,
+    "roi_per_game": -0.137145,
+    "z": -2.301845
+   },
+   "0.08": {
+    "n": 0,
+    "games": 0,
+    "roi": null,
+    "profit_per_contract": null,
+    "equal_stake_roi": null,
+    "roi_per_game": null,
+    "z": null
+   },
+   "0.12": {
+    "n": 0,
+    "games": 0,
+    "roi": null,
+    "profit_per_contract": null,
+    "equal_stake_roi": null,
+    "roi_per_game": null,
+    "z": null
+   }
+  },
+  "halves": {
+   "anchor": {
+    "full": {
+     "n": 1604,
+     "games": 496,
+     "roi": 0.099263,
+     "profit_per_contract": 0.039633,
+     "equal_stake_roi": 0.187714,
+     "roi_per_game": 0.337938,
+     "z": 3.922343
+    },
+    "h1": {
+     "n": 995,
+     "games": 334,
+     "roi": 0.180345,
+     "profit_per_contract": 0.072172,
+     "equal_stake_roi": 0.31213,
+     "roi_per_game": 0.469085,
+     "z": 4.127756
+    },
+    "h2": {
+     "n": 609,
+     "games": 162,
+     "roi": -0.034018,
+     "profit_per_contract": -0.013531,
+     "equal_stake_roi": -0.015559,
+     "roi_per_game": 0.067547,
+     "z": 0.568237
+    },
+    "yes_h2": {
+     "n": 179,
+     "games": 62,
+     "roi": 0.092052,
+     "profit_per_contract": 0.037202,
+     "equal_stake_roi": 0.137433,
+     "roi_per_game": 0.329055,
+     "z": 1.374613
+    },
+    "no_h2": {
+     "n": 430,
+     "games": 105,
+     "roi": -0.087696,
+     "profit_per_contract": -0.03465,
+     "equal_stake_roi": -0.079247,
+     "roi_per_game": -0.058172,
+     "z": -0.431627
+    }
+   },
+   "model": {
+    "full": {
+     "n": 3976,
+     "games": 816,
+     "roi": 0.020238,
+     "profit_per_contract": 0.009075,
+     "equal_stake_roi": 0.070883,
+     "roi_per_game": 0.150491,
+     "z": 2.999263
+    },
+    "h1": {
+     "n": 1960,
+     "games": 502,
+     "roi": -0.011549,
+     "profit_per_contract": -0.005019,
+     "equal_stake_roi": 0.060534,
+     "roi_per_game": 0.195145,
+     "z": 2.818744
+    },
+    "h2": {
+     "n": 2016,
+     "games": 314,
+     "roi": 0.049321,
+     "profit_per_contract": 0.022778,
+     "equal_stake_roi": 0.080945,
+     "roi_per_game": 0.0791,
+     "z": 1.148402
+    },
+    "yes_h2": {
+     "n": 1444,
+     "games": 211,
+     "roi": 0.054737,
+     "profit_per_contract": 0.02584,
+     "equal_stake_roi": 0.090682,
+     "roi_per_game": 0.130585,
+     "z": 1.483749
+    },
+    "no_h2": {
+     "n": 572,
+     "games": 111,
+     "roi": 0.034516,
+     "profit_per_contract": 0.015049,
+     "equal_stake_roi": 0.056363,
+     "roi_per_game": 0.001494,
+     "z": 0.01319
+    }
+   },
+   "price_only": {
+    "full": {
+     "n": 0,
+     "games": 0,
+     "roi": null,
+     "profit_per_contract": null,
+     "equal_stake_roi": null,
+     "roi_per_game": null,
+     "z": null
+    },
+    "h1": {
+     "n": 0,
+     "games": 0,
+     "roi": null,
+     "profit_per_contract": null,
+     "equal_stake_roi": null,
+     "roi_per_game": null,
+     "z": null
+    },
+    "h2": {
+     "n": 0,
+     "games": 0,
+     "roi": null,
+     "profit_per_contract": null,
+     "equal_stake_roi": null,
+     "roi_per_game": null,
+     "z": null
+    },
+    "yes_h2": {
+     "n": 0,
+     "games": 0,
+     "roi": null,
+     "profit_per_contract": null,
+     "equal_stake_roi": null,
+     "roi_per_game": null,
+     "z": null
+    },
+    "no_h2": {
+     "n": 0,
+     "games": 0,
+     "roi": null,
+     "profit_per_contract": null,
+     "equal_stake_roi": null,
+     "roi_per_game": null,
+     "z": null
+    }
+   }
+  },
+  "price_coef": [
+   -0.110981,
+   0.857693
+  ],
+  "price_only_max_gap": 0.053987,
+  "drift": {
+   "n": 1293,
+   "mean": 0.177386,
+   "mae": 2.039535
+  },
+  "published_check": {
+   "n": 11437,
+   "games": 1301,
+   "brier_model": 0.218935,
+   "brier_kalshi": 0.215113,
+   "brier_pre": 0.210894,
+   "n8": 3982,
+   "g8": 817,
+   "roi8": 0.018798
+  }
+ }
+}

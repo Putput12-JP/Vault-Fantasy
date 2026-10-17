@@ -20,7 +20,9 @@ What the data is and is not (probed 2026-09-29, see docs/PLAN.md §3):
 ESPN rejects Python's urllib (403), so requests go through curl.
 
   python3 nba/scripts/backfill_espn_odds.py 2025 2026
+  python3 nba/scripts/backfill_espn_odds.py --lines-only 2023 2024 2025 2026
 Writes nba/raw/espn_odds/games_<season>.jsonl (resumable: done games are skipped).
+--lines-only skips player props. The default still pulls them.
 """
 import csv, json, os, re, subprocess, sys, concurrent.futures as cf
 
@@ -99,6 +101,9 @@ def props(url):
     return rows
 
 
+LINES_ONLY = False
+
+
 def fetch_game(g):
     gid = g['id']
     d = get(f'{CORE}/events/{gid}/competitions/{gid}/odds')
@@ -110,7 +115,9 @@ def fetch_game(g):
     for item in d.get('items', []):
         rec['lines'].append(game_lines(item))
         pb = (item.get('propBets') or {}).get('$ref')
-        if pb:
+        # Props are unused by the game-model experiments and are most of the runtime.
+        # Default stays the full pull. --lines-only skips them.
+        if pb and not LINES_ONLY:
             pid = rec['lines'][-1]['provider_id']
             for r in props(pb):
                 r['provider_id'] = pid
@@ -119,6 +126,8 @@ def fetch_game(g):
 
 
 def main(argv):
+    global LINES_ONLY
+    LINES_ONLY = '--lines-only' in argv
     seasons = [int(a) for a in argv if a.isdigit()] or [2025, 2026]
     out_dir = os.path.join(RAW, 'espn_odds')
     os.makedirs(out_dir, exist_ok=True)
