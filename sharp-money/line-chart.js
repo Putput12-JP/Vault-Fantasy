@@ -70,10 +70,61 @@
     var first = Infinity; out.forEach(function (s) { first = Math.min(first, s.pts[0][0]); });
     var span = st.w ? st.w : 0, tmin = span ? Math.max(tmax - span, Math.min(first, tmax)) : Math.min(first, tmax);
     if (!(tmax > tmin)) tmax = tmin + 1;
-    return { series: out, lim: lim, tmin: tmin, tmax: tmax, n: rows.length };
+    return { series: out, lim: lim, tmin: tmin, tmax: tmax, n: rows.length, rows: rows };
   }
   function valueAt(s, t, mk) { // step value held at time t, or null before the first sample
     var v = null; for (var i = 0; i < s.pts.length; i++) { if (s.pts[i][0] <= t) v = s.pts[i]; else break; } return v;
+  }
+
+
+  /* Exchange edge: Novig's price against Pinnacle's no-vig fair price, per market. EV = fair chance / price paid - 1, where the
+     price paid to buy a side is its ask (1 minus the best bid on the other side). Pregame Novig charges no fee. Every number is a
+     stored quote; a market with no Novig quote at Pinnacle's current line is left out rather than guessed. */
+  function pfn(a) { return a < 0 ? -a / (-a + 100) : 100 / (a + 100); }
+  function fairFirst(a, b) { var pa = pfn(a), pb = pfn(b); return pa / (pa + pb); }
+  function priceAm(p) { return p < 0.5 ? '+' + Math.round(100 * (1 - p) / p) : String(Math.round(-100 * p / (1 - p))); }
+  function pick(rows, book, field, t) {
+    var f = null;
+    for (var i = 0; i < rows.length; i++) { var r = rows[i]; if (r.book === book && r[field] != null && r.t <= t && (!f || r.t >= f.t)) f = r; }
+    return f;
+  }
+  function edgeRows(g, d, w) {
+    var rows = d.rows, now = Date.now() / 1000, tnow = now + 1, t0 = d.tmin, ha = g.home.abbr, aa = g.away.abbr;
+    var sg = function (v) { return (v > 0 ? '+' : '') + v; };
+    var spec = [
+      ['Money', 'ml', 'px', function (p) { return { fair: fairFirst(p.ml[1], p.ml[0]), line: null }; }, ha, aa],
+      ['Spread', 'sp', 'nsp', function (p) { return { fair: fairFirst(p.sp[1], p.sp[2]), line: p.sp[0] }; }, null, null],
+      ['Total', 'tot', 'ntot', function (p) { return { fair: fairFirst(p.tot[1], p.tot[2]), line: p.tot[0] }; }, 'Over', 'Under']
+    ], out = [];
+    spec.forEach(function (sp) {
+      var pr = pick(rows, 'Pinnacle', sp[1], tnow), nv = pick(rows, 'Novig', sp[2], tnow); if (!pr || !nv) return;
+      var P = sp[3](pr), q = sp[2] === 'px' ? nv.px : nv[sp[2]], bid = sp[2] === 'px' ? q[0] : q[1], ask = sp[2] === 'px' ? q[1] : q[2];
+      if (sp[2] !== 'px' && q[0] !== P.line) return;
+      var evA = P.fair / ask - 1, evB = (1 - P.fair) / (1 - bid) - 1, a = evA >= evB, side = a ? P.fair : 1 - P.fair;
+      var lbA = sp[1] === 'sp' ? ha + ' ' + sg(P.line) : sp[1] === 'tot' ? 'Over ' + P.line : sp[4], lbB = sp[1] === 'sp' ? aa + ' ' + sg(-P.line) : sp[1] === 'tot' ? 'Under ' + P.line : sp[5];
+      var cost = a ? ask : 1 - bid, row = { m: sp[0], side: a ? lbA : lbB, ev: (a ? evA : evB) * 100, price: priceAm(cost), cents: Math.round(cost * 1000) / 10, fair: side * 100, since: nv.t };
+      var pr0 = pick(rows, 'Pinnacle', sp[1], t0), nv0 = pick(rows, 'Novig', sp[2], t0);
+      if (pr0 && nv0) {
+        var P0 = sp[3](pr0), q0 = sp[2] === 'px' ? nv0.px : nv0[sp[2]];
+        if (P0.line === P.line && (sp[2] === 'px' || q0[0] === q[0])) {
+          var m1 = sp[2] === 'px' ? (q[0] + q[1]) / 2 : (q[1] + q[2]) / 2, m0 = sp[2] === 'px' ? (q0[0] + q0[1]) / 2 : (q0[1] + q0[2]) / 2;
+          row.pm = (a ? 1 : -1) * (P.fair - P0.fair) * 100; row.nm = (a ? 1 : -1) * (m1 - m0) * 100;
+        } else if (P0.line !== P.line) row.lineMove = P0.line + ' to ' + P.line;
+      }
+      out.push(row);
+    });
+    return out;
+  }
+  function edgeHtml(g, d, w) {
+    var rs = edgeRows(g, d, w); if (!rs.length) return '';
+    var s1 = function (v) { return (v > 0 ? '+' : '') + v.toFixed(1); };
+    var o = '<div class="vlm-edge"><div class="vlm-eh">Novig price vs Pinnacle fair<span>context only</span></div>';
+    rs.forEach(function (r) {
+      var mv = r.pm != null ? 'Pinnacle ' + s1(r.pm) + ' pts, Novig ' + s1(r.nm) + ' pts in this window' : r.lineMove ? 'Pinnacle line moved ' + r.lineMove : '';
+      o += '<div class="vlm-er"><div class="vlm-em"><b>' + r.m + '</b> ' + r.side + '</div><div class="vlm-ev ' + (r.ev > 0 ? 'pos' : 'neg') + '">' + s1(r.ev) + '% EV</div>' +
+        '<div class="vlm-ed">Novig ' + r.price + ' (' + r.cents + '\u00A2) vs Pinnacle fair ' + r.fair.toFixed(1) + '%' + (mv ? '<br>' + mv : '') + '</div></div>';
+    });
+    return o + '<div class="vlm-note">Fair is Pinnacle\u2019s price with the vig removed. Novig has no fee before kickoff. Spread and total only where Novig quotes Pinnacle\u2019s exact line.</div></div>';
   }
 
   function svg(d, st, W) {
@@ -140,7 +191,7 @@
     '.vlm-ax{font-size:10.5px;fill:currentColor;opacity:.55;font-variant-numeric:tabular-nums}.vlm-cur{stroke:currentColor;opacity:.4;stroke-width:1}' +
     '.vlm-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.vlm-chip{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;font-weight:600;padding:6px 10px;min-height:32px;border-radius:999px;border:1.5px solid var(--c);background:transparent;color:inherit;cursor:pointer;font-variant-numeric:tabular-nums}' +
     '.vlm-chip.off{opacity:.4;border-style:dashed}.vlm-chip i{font-style:normal;opacity:.8;font-weight:500}.vlm-read{min-height:18px;margin-top:8px;font-size:12px;opacity:.75;font-variant-numeric:tabular-nums}' +
-    '.vlm-empty{padding:18px 4px;font-size:13px;opacity:.65}.vlm-note{margin-top:8px;font-size:11.5px;opacity:.55}';
+    '.vlm-edge{margin-top:14px;padding-top:12px;border-top:1px solid rgba(127,127,127,.25)}.vlm-eh{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6;margin-bottom:8px}.vlm-er{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-top:1px solid rgba(127,127,127,.15)}.vlm-er:first-of-type{border-top:0}.vlm-em{font-size:13.5px}.vlm-ev{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}.vlm-ev.pos{color:#34c759}.vlm-ev.neg{opacity:.6}.vlm-ed{grid-column:1/-1;font-size:12px;opacity:.72;font-variant-numeric:tabular-nums;line-height:1.45}.vlm-empty{padding:18px 4px;font-size:13px;opacity:.65}.vlm-note{margin-top:8px;font-size:11.5px;opacity:.55}';
   function css() { if (!document.getElementById('vlm-css')) { var s = document.createElement('style'); s.id = 'vlm-css'; s.textContent = CSS; document.head.appendChild(s); } }
 
   function html(g, st, d, W) {
@@ -159,7 +210,7 @@
     }
     var homeAbbr = g.home && g.home.abbr;
     return o + '</div><div class="vlm-note">' + (mk === 'sp' ? homeAbbr + ' spread. ' : mk === 'ml' ? homeAbbr + ' win chance from each book’s moneyline, vig removed. Novig and Kalshi show the middle of their best bid and ask, when the two are within 10 points. ' : '') +
-      (d.lim ? 'The white line is the most Pinnacle will take on this market, on the right axis. ' : '') + 'Steps are when a book changed its line. Context only, not a bet signal.</div></div>';
+      (d.lim ? 'The white line is the most Pinnacle will take on this market, on the right axis. ' : '') + 'Steps are when a book changed its line. Context only, not a bet signal.</div>' + edgeHtml(g, d, st.w) + '</div>';
   }
 
   function render(el, g) {

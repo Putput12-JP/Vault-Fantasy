@@ -6,7 +6,8 @@ Feeds the declared re-test in docs/pm-vs-books-test.md (weeks 4-7): the lineup f
 day, too few to tell who moves first, so this records them every run of .github/workflows/nfl-book-tape.yml.
 Free, keyless sources only: Action Network's public scoreboard (DraftKings, FanDuel, BetMGM, BetRivers, bet365 and
 its consensus), Pinnacle's public guest API, and the Novig and Kalshi exchanges. The two exchanges quote a win chance
-rather than a price, so their rows carry "px": [home best bid, home best ask] (0 to 1) and no ml/sp/tot; the Sharp Money
+rather than a price, so their rows carry "px": [home best bid, home best ask] (0 to 1) and no ml/sp/tot; Novig rows also
+carry "nsp": [line, home bid, home ask] and "ntot": [line, over bid, over ask] at Pinnacle's main line; the Sharp Money
 line chart plots the mid on its Money tab, and only when the bid-ask gap is 10 points or less. Recording began 2026-10-17,
 because the exchange quotes were never stored before that, so there is no earlier history to backfill. The observation time is when this run fetched the line.
 
@@ -134,11 +135,25 @@ def kalshi(now, known):
     return rows
 
 
-def novig(now, known):
-    """Novig winner market per NFL game: home best bid, and the ask implied by the best bid on the away outcome."""
+def novig(now, known, pin):
+    """Novig per NFL game: home winner bid and ask, plus the spread and total at Pinnacle's main line when Novig lists one.
+    Row: px [home bid, home ask]; nsp [line, home bid, home ask]; ntot [line, over bid, over ask]. The ask is what buying that
+    side costs: 1 minus the best bid on the opposite outcome."""
     N = 'https://api.novig.com/v3/public/catalog'
     rows = []
-    for ev in (get(f'{N}/events?league=NFL&limit=500') or {}).get('items', []):
+
+    def quote(mk, own, other):
+        book = get(f"{N}/markets/{mk['marketId']}/book", tries=3)
+        if not book:
+            return None
+        best = {}
+        for o in mk['outcomes']:
+            px = [float(x['price']) for x in (book.get('orders') or {}).get(o['outcomeId'], [])]
+            best[o['outcomeId']] = max(px) if px else None
+        bo, bt = best.get(own), best.get(other)
+        return [round(bo, 3), round(1 - bt, 3)] if bo is not None and bt is not None and bo + bt < 1 else None
+
+    for ev in (get(f'{N}/events?league=NFL&limit=500', tries=3) or {}).get('items', []):
         mt = re.match(r'^(.+?) @ (.+)$', ev.get('description') or '')
         if not mt:
             continue
@@ -146,17 +161,35 @@ def novig(now, known):
         start = known.get((away, home))
         if not (away and home and start):
             continue
-        mk = next((m for m in (get(f"{N}/markets?event={ev['eventId']}&marketType=MONEY&limit=10") or {}).get('items', []) if m.get('status') == 'OPEN' and len(m.get('outcomes') or []) == 2), None)
-        book = mk and get(f"{N}/markets/{mk['marketId']}/book")
-        if not book:
+        ms = [m for m in (get(f"{N}/markets?event={ev['eventId']}&marketType=MONEY,SPREAD,TOTAL&limit=300", tries=3) or {}).get('items', [])
+              if m.get('status') == 'OPEN' and len(m.get('outcomes') or []) == 2]
+        ml = next((m for m in ms if m['marketType'] == 'MONEY'), None)
+        if not ml:
             continue
-        best = {}
-        for o in mk['outcomes']:
-            px = [float(x['price']) for x in (book.get('orders') or {}).get(o['outcomeId'], [])]
-            best[norm(o['name'])] = max(px) if px else None
-        bh, ba = best.get(home), best.get(away)
-        if bh is not None and ba is not None and bh + ba < 1:
-            rows.append({'src': 'nov', 'book': 'Novig', 'away': away, 'home': home, 'start': start, 'px': [round(bh, 3), round(1 - ba, 3)]})
+        id_of = {norm(o['name']): o['outcomeId'] for o in ml['outcomes']}
+        px = quote(ml, id_of.get(home), id_of.get(away))
+        if not px:
+            continue
+        row = {'src': 'nov', 'book': 'Novig', 'away': away, 'home': home, 'start': start, 'px': px}
+        spl, totl = pin.get((away, home), (None, None))
+        for m in ms:
+            if m['marketType'] == 'SPREAD' and spl is not None and 'nsp' not in row:
+                h = next((o for o in m['outcomes'] if norm(o['name'].split()[0]) == home), None)
+                a = next((o for o in m['outcomes'] if o is not h), None)
+                try:
+                    hl = float(h['name'].split()[-1])
+                except (TypeError, ValueError, AttributeError):
+                    continue
+                q = h and a and hl == spl and quote(m, h['outcomeId'], a['outcomeId'])
+                if q:
+                    row['nsp'] = [hl] + q
+            elif m['marketType'] == 'TOTAL' and totl is not None and 'ntot' not in row and float(m['strike']) == totl:
+                o = next((x for x in m['outcomes'] if x['name'].lower().startswith('over')), None)
+                u = next((x for x in m['outcomes'] if x is not o), None)
+                q = o and u and quote(m, o['outcomeId'], u['outcomeId'])
+                if q:
+                    row['ntot'] = [totl] + q
+        rows.append(row)
     return rows
 
 
@@ -168,9 +201,10 @@ def main():
     new = []
     books = action(now) + pinnacle(now)
     known = exch_match(books)
-    for r in books + kalshi(now, known) + novig(now, known):
+    pin = {(r['away'], r['home']): (r['sp'][0] if r['sp'] else None, r['tot'][0] if r['tot'] else None) for r in books if r['src'] == 'pin'}
+    for r in books + kalshi(now, known) + novig(now, known, pin):
         k = f"{r['src']}|{r['book']}|{r['away']}@{r['home']}|{r['start']}"
-        v = [r['ml'], r['sp'], r['tot']] if 'px' not in r else [None, None, None, r['px']]      # US books keep their 3-item state, so no old row is rewritten
+        v = [r['ml'], r['sp'], r['tot']] if 'px' not in r else [None, None, None, r['px'], r.get('nsp'), r.get('ntot')]      # US books keep their 3-item state, so no old row is rewritten
         if r['book'] == 'Pinnacle':
             v = v + [r['lim']]                                   # a limit change is a change, so it gets its own row
         if (v[:3] != [None, None, None] or 'px' in r) and last.get(k) != v:
