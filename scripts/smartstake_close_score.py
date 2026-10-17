@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Score the SmartStake NFL player-prop closes against what happened. LOCAL ONLY.
+"""Score the SmartStake player-prop closes against what happened, NFL and NBA. LOCAL ONLY.
 
-  python3 scripts/smartstake_nfl_score.py [--min-books 3] [--write]
+  python3 scripts/smartstake_close_score.py --league nfl|nba [--min-books 3] [--write]
 
-For every NFL player prop on the local tape (data/smartstake/nfl/*.jsonl.gz), this takes each book's LAST read before
+For every player prop on the local tape (data/smartstake/<league>/*.jsonl.gz), this takes each book's LAST read before
 kickoff, at one shared line (the line the most books priced two-way), and asks: what chance did you give the over?
-That chance is scored against the nflverse box score with log loss and Brier, the same scoring as
+That chance is scored against the box score (nflverse for NFL, ESPN for NBA) with log loss and Brier, the same scoring as
 scripts/compare_prop_closes.py (whose `single` and `pair` it reuses, bootstrap CI and the n-of-150 rule included).
 
 It answers three questions, each reported with its sample size:
@@ -34,13 +34,22 @@ from prop_close_lib import devig, log_loss, brier, nkey  # noqa: E402
 from compare_prop_closes import single, pair, MIN_N  # noqa: E402
 from smartstake_to_book_tape import abbr  # noqa: E402
 
-# SmartStake market -> settle_bets market (the nflverse column map lives in settle_bets.COL)
-MARKET = {
-    "receptions": "rec", "receiving_yards": "rec_yd", "rushing_yards": "rush_yd", "rushing_attempts": "rush_att",
-    "rushing_receiving_yards": "rush_rec_yd", "passing_yards": "pass_yd", "passing_attempts": "pass_att",
-    "passing_completions": "pass_cmp", "passing_touchdowns": "pass_td", "passing_rushing_yards": "pass_rush_yd",
+# SmartStake market -> our stat code (NFL codes are settle_bets markets, whose nflverse columns live in settle_bets.COL;
+# NBA codes are the Props page's stat codes, mapped to ESPN box columns in NBA_COL)
+MARKETS = {
+    "nfl": {"prefix": "football_player_", "map": {
+        "receptions": "rec", "receiving_yards": "rec_yd", "rushing_yards": "rush_yd", "rushing_attempts": "rush_att",
+        "rushing_receiving_yards": "rush_rec_yd", "passing_yards": "pass_yd", "passing_attempts": "pass_att",
+        "passing_completions": "pass_cmp", "passing_touchdowns": "pass_td", "passing_rushing_yards": "pass_rush_yd"}},
+    "nba": {"prefix": "basketball_player_", "map": {
+        "points": "pts", "rebounds": "reb", "assists": "ast", "made_threes": "3pm", "points_rebounds_assists": "pra",
+        "points_rebounds": "pr", "points_assists": "pa", "rebounds_assists": "ra", "steals": "stl", "blocks": "blk",
+        "steals_blocks": "sb", "turnovers": "tov"}},
 }
-PREFIX = "football_player_"
+NBA_COL = {"pts": ["points"], "reb": ["rebounds"], "ast": ["assists"], "3pm": ["threePointFieldGoalsMade"],
+           "pra": ["points", "rebounds", "assists"], "pr": ["points", "rebounds"], "pa": ["points", "assists"],
+           "ra": ["rebounds", "assists"], "stl": ["steals"], "blk": ["blocks"], "tov": ["turnovers"], "sb": ["steals", "blocks"]}
+ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/"
 SHARP = {"circa", "bookmaker", "novig", "prophetx"}
 LADDER = {"kalshi", "polymarket", "polymarket_us"}          # strikes, not a main line
 PICKEM = {"prizepicks", "underdog_dfs", "parlayplay"}
@@ -48,16 +57,16 @@ SS = os.path.join(ROOT, "data", "smartstake")
 MAX_ODDS = 500                                              # a main line sits near even; wider is a skewed ladder rung
 
 
-def scan(league="nfl"):
+def scan(league):
     """reads[(event, player, market)] = {"ko": ms, "name": str, "home": str, "books": {book: {line: reading}}, "pe": {app: line}}"""
-    reads = {}
+    reads, cfg = {}, MARKETS[league]
     for f in sorted(glob.glob(os.path.join(SS, league, "*.jsonl.gz"))):
         for raw in gzip.open(f, "rt", encoding="utf-8"):
             p = json.loads(raw)
             for q in p["quotes"]:
-                if not q.get("player_id") or q.get("live") or q.get("line") is None or not q["market_key"].startswith(PREFIX):
+                if not q.get("player_id") or q.get("live") or q.get("line") is None or not q["market_key"].startswith(cfg["prefix"]):
                     continue
-                mk = MARKET.get(q["market_key"][len(PREFIX):])
+                mk = cfg["map"].get(q["market_key"][len(cfg["prefix"]):])
                 if not mk or not q.get("participant") or q["side"] not in ("over", "under"):
                     continue
                 ko = int(datetime.fromisoformat(q["starts_at"].replace("Z", "+00:00")).timestamp() * 1000)
@@ -105,27 +114,103 @@ def kickoff_week(ko_ms, home_abbr, kickoffs):
     return None, None
 
 
+def _cached(name, url, final_only=None):
+    """Fetch ESPN JSON once and keep it under data/smartstake/espn/. A game's box is only cached once it is final."""
+    path = os.path.join(SS, "espn", name + ".json")
+    if os.path.exists(path):
+        return json.load(open(path))
+    import urllib.request
+    try:
+        d = json.load(urllib.request.urlopen(url, timeout=30))
+    except Exception:
+        return None
+    if final_only and not final_only(d):
+        return None
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    json.dump(d, open(path, "w"))
+    return d
+
+
+def nba_box(ko_ms, home, away):
+    """{nkey(player): {box column: value}} for the finished game, or None (not found or not final yet)."""
+    from zoneinfo import ZoneInfo
+    day = datetime.fromtimestamp(ko_ms / 1000, ZoneInfo("America/New_York")).strftime("%Y%m%d")
+    board = None
+    path = os.path.join(SS, "espn", f"board_{day}.json")
+    if os.path.exists(path):
+        board = json.load(open(path))
+    else:
+        import urllib.request
+        try:
+            board = json.load(urllib.request.urlopen(ESPN + f"scoreboard?dates={day}", timeout=30))
+        except Exception:
+            return None
+        done = all(e["status"]["type"]["completed"] for e in board.get("events", []))
+        if done and board.get("events"):                              # keep a day's scoreboard only once every game on it is final
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            json.dump(board, open(path, "w"))
+    ev = next((e for e in board.get("events", []) if {c["team"]["displayName"].lower() for c in e["competitions"][0]["competitors"]} == {home.lower(), away.lower()}), None)
+    if not ev or not ev["status"]["type"]["completed"]:
+        return None
+    d = _cached(f"box_{ev['id']}", ESPN + f"summary?event={ev['id']}", lambda x: x["header"]["competitions"][0]["status"]["type"]["completed"])
+    if not d:
+        return None
+    out = {}
+    for team in (d.get("boxscore") or {}).get("players", []):
+        for block in team.get("statistics", [])[:1]:
+            keys = block.get("keys") or []
+            for a in block.get("athletes", []):
+                if a.get("didNotPlay") or not a.get("stats"):
+                    continue
+                v = {}
+                for key, raw in zip(keys, a["stats"]):
+                    for part, name in zip(raw.split("-"), key.split("-")):
+                        try:
+                            v[name] = float(part)
+                        except ValueError:
+                            pass
+                out[nkey(a["athlete"]["displayName"])] = v
+    return out if sum(x.get("minutes", 0) for x in out.values()) >= 300 else None
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--league", choices=["nfl", "nba"], required=True)
     ap.add_argument("--min-books", type=int, default=3)
     ap.add_argument("--write", action="store_true")
-    ap.add_argument("--selftest-week", type=int, help="grade against this week's box score instead (code-path test only, results invalid)")
+    ap.add_argument("--selftest-week", type=int, help="NFL only: grade against this week's box score instead (code-path test, results invalid)")
     a = ap.parse_args()
-    import settle_bets
-    reads = scan()
-    kickoffs = settle_bets.load_kickoffs()
-    actuals = settle_bets.load_actuals(2026)
-    byname = {nkey(n): n for n in actuals}
+    lg = a.league
+    reads = scan(lg)
+    if lg == "nfl":
+        import settle_bets
+        kickoffs = settle_bets.load_kickoffs()
+        actuals = settle_bets.load_actuals(2026)
+        byname = {nkey(n): n for n in actuals}
+    boxes = {}
+
+    def actual_of(e, pk, mk):
+        if lg == "nfl":
+            season, week = kickoff_week(e["ko"], abbr("nfl", e["home"]), kickoffs)
+            wk, nm = a.selftest_week or week, byname.get(pk)
+            return (settle_bets.actual_for(actuals, nm, wk, mk) if (nm and wk) else None), bool(nm and wk)
+        key = (e["ko"], e["home"], e["away"])
+        if key not in boxes:
+            boxes[key] = nba_box(*key)
+        bx = boxes[key]
+        if bx is None:
+            return None, True                                         # game not final yet
+        row = bx.get(pk)
+        if row is None:
+            return None, False                                        # did not play or name not matched: void, never guessed
+        cols = NBA_COL[mk]
+        return (sum(row.get(c, 0.0) for c in cols) if all(c in row for c in cols) else None), True
 
     rs, pe_rows, waiting, nomatch, mb = [], [], 0, 0, defaultdict(list)
     for (ev, pk, mk), e in reads.items():
         line, bs = shared_line(e, a.min_books)
-        hm = abbr("nfl", e["home"])
-        season, week = kickoff_week(e["ko"], hm, kickoffs)
-        wk = a.selftest_week or week
-        nm = byname.get(pk)
-        actual = settle_bets.actual_for(actuals, nm, wk, mk) if (nm and wk) else None
-        if not nm or not wk:
+        actual, matched = actual_of(e, pk, mk)
+        if not matched:
             nomatch += 1
         for b, _, m in bs:
             if m:
@@ -153,7 +238,7 @@ def main():
 
     names = ["SS consensus", "SS sharp", "SS soft", "FanDuel", "DraftKings", "Circa", "Bookmaker", "Novig", "ProphetX", "Caesars", "Fanatics", "BetMGM", "BetRivers", "bet365"]
     res = {
-        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "selftest": bool(a.selftest_week),
+        "league": lg, "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "selftest": bool(a.selftest_week),
         "props_on_tape": len(reads), "graded": len(rs), "waiting_for_box_score": waiting, "no_player_or_week_match": nomatch,
         "min_n": MIN_N, "by_book": {b: single(rs, b) for b in names},
         "pairs": [pair(rs, x, y) for x, y in [("SS consensus", "FanDuel"), ("SS consensus", "DraftKings"), ("SS sharp", "SS soft")]],
@@ -171,7 +256,7 @@ def main():
     if a.selftest_week:
         print("SELFTEST: graded against week %d on purpose to exercise the code. These numbers are not results." % a.selftest_week)
     elif a.write:
-        with open(os.path.join(SS, "score_nfl.json"), "w") as f:
+        with open(os.path.join(SS, f"score_{lg}.json"), "w") as f:
             json.dump(res, f, indent=1)
 
 
