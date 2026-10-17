@@ -1446,6 +1446,8 @@ th{font-weight:500}
 .lv-bk,.lv-pm{display:none}
 @media (max-width:820px){
   body{margin:0}
+  /* the prop drawer's book table scrolls sideways on a phone: edge shadows appear only on the side that has more to scroll to */
+  .dpanel{background:linear-gradient(to right,var(--bg) 30%,transparent) left/28px 100% no-repeat local,linear-gradient(to left,var(--bg) 30%,transparent) right/28px 100% no-repeat local,radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.28),transparent) left/10px 100% no-repeat scroll,radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.28),transparent) right/10px 100% no-repeat scroll;background-color:var(--bg)}
   .lv-card .lv-asof{display:none}
   .bar{position:relative;top:auto;min-height:0;padding:calc(env(safe-area-inset-top,0px) + 8px) 16px 4px;gap:4px 8px;flex-wrap:wrap;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;background:none}
   #menu,.crumb,#tsub,#favchip,.favchip,.favmore{display:none!important}
@@ -2574,6 +2576,10 @@ let liveTried = false, liveTimer = null;
 const TZ = 'America/New_York';
 const etFmt = (t, o) => new Intl.DateTimeFormat('en-US', {timeZone: TZ, ...o}).format(new Date(t * 1000));
 const etDay = t => new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(t * 1000));
+// Empty-board copy follows the real date, so it stops talking about opening night once the season is on.
+const OPENING_NIGHT = '2026-10-20';
+const beforeOpening = () => etDay(Date.now() / 1000) < OPENING_NIGHT;
+const noGamesWhy = () => beforeOpening() ? 'Opening night is October 20.' : 'The next game lists here 3 days before tip.';
 const etHour = t => +new Intl.DateTimeFormat('en-US', {timeZone: TZ, hour: 'numeric', hourCycle: 'h23'}).format(new Date(t * 1000));
 const clock = t => etFmt(t, {hour: 'numeric', minute: '2-digit'});
 const stamp = t => etFmt(t, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
@@ -2717,7 +2723,7 @@ function renderHealth(){
     const sep = g.day !== lastDay ? `<tr class="sep"><td colspan="11">${etFmt(g.tip, {weekday: 'long', month: 'long', day: 'numeric'})}</td></tr>` : '';
     lastDay = g.day;
     return `${sep}<tr><td class="l num">${clock(g.tip)}</td><td class="l"><b>${g.away} @ ${g.home}</b>${g.season_type === 1 ? ' <span class="badge">Preseason</span>' : ''}</td>${VENUES.map(cell).join('')}${inj}${lin}${pke}</tr>`;
-  }).join('') : `<tr><td class="l" colspan="11"><p class="empty">No games in the next 3 days. Preseason starts October 3; opening night is October 20.</p></td></tr>`;
+  }).join('') : `<tr><td class="l" colspan="11"><p class="empty">No games in the next 3 days. ${noGamesWhy()}</p></td></tr>`;
 
   // model inputs (static files: judged against the real clock)
   const now = Date.now() / 1000;
@@ -3300,6 +3306,10 @@ function renderProps(){
   let shown = rows.filter(r => (gid === 'all' || String(r.e.g) === gid) && (pf.stat === 'all' || r.e.s === pf.stat)
     && (!q || r.name.toLowerCase().includes(q)) && (!pf.gated || r.passing));
   const tipOf = Object.fromEntries(games.map(g => [String(g.id), g.tip]));
+  // A game that has tipped can sit on the board for up to one poll; its pre-tip prices are not bettable, so hide them and say so.
+  const nowS = Date.now() / 1000, beforeTip = shown.length;
+  shown = shown.filter(r => !(tipOf[String(r.e.g)] <= nowS));
+  const tippedN = beforeTip - shown.length;
   shown.sort(pf.sort === 'edge' ? (a, b) => (!!b.best - !!a.best) || ((b.best ? b.best.edge : b.pkBest?.edge ?? -9) - (a.best ? a.best.edge : a.pkBest?.edge ?? -9))   // priced bets first, then pick'em-only rows by their pick'em edge
     : pf.sort === 'proj' ? (a, b) => (b.mu ?? -1) - (a.mu ?? -1)
     : (a, b) => (tipOf[a.e.g] - tipOf[b.e.g]) || a.name.localeCompare(b.name) || STATS.findIndex(x => x[0] === a.e.s) - STATS.findIndex(x => x[0] === b.e.s));
@@ -3358,7 +3368,7 @@ function renderProps(){
   }).join('') : `<tr><td class="l" colspan="14"><p class="empty">${rows.length ? 'No props match these filters.' : 'Nothing on the board yet.'}</p></td></tr>`;
   $('pmore').hidden = shown.length <= pf.limit;
   $('pmore').innerHTML = `<button class="btn" type="button" id="pmorebtn">Show all ${shown.length.toLocaleString()}</button>`;
-  $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props. Click a row for the Kalshi ladder and each book.`;
+  $('psub').textContent = `${shown.length.toLocaleString()} of ${rows.length.toLocaleString()} props${tippedN ? ` (${tippedN.toLocaleString()} hidden: the game has tipped)` : ''}. Click a row for the Kalshi ladder and each book.`;
 
   const vs = PR.verdict;
   const gos = Object.entries(PR.verdict).filter(([, v]) => /^GO/.test(v)).map(([k, v]) => `Kalshi ${SLABEL[k]} ${v.replace(/^GO \(|\)$/g, '')}`);
@@ -4228,7 +4238,7 @@ function renderTonight(){
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's final game</span>` : pill('idle', 'No games yet');
   $('nbanner').hidden = pick.mode !== 'example' && games.length > 0;
   $('nbanner').innerHTML = pick.mode === 'example' ? `<b>Example: last season's final game, as the model saw it that morning.</b><span>There was no injury report or lineup feed in this snapshot, so every rotation player is available and nothing is confirmed.</span>`
-    : '<b>No games on the board yet.</b><span>The board lists games within 3 days of tip; preseason starts October 3, opening night is October 20.</span>';
+    : `<b>No games on the board yet.</b><span>The board lists games within 3 days of tip. ${noGamesWhy()}</span>`;
   renderTonightRecord();
   if (!games.length){ $('ngames').innerHTML = $('nkpis').innerHTML = $('nteams').innerHTML = ''; $('nwhatif').hidden = true; return; }
   if (!games.some(g => String(g.id) === nt.game)) nt.game = String(games[0].id);
@@ -4475,7 +4485,7 @@ function renderSim(){
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's final game</span>` : pill('idle', 'No games yet');
   $('gsbanner').hidden = games.length > 0;
-  $('gsbanner').innerHTML = '<b>No games on the board yet.</b><span>The board lists games within 3 days of tip; preseason starts October 3, opening night is October 20.</span>';
+  $('gsbanner').innerHTML = `<b>No games on the board yet.</b><span>The board lists games within 3 days of tip. ${noGamesWhy()}</span>`;
   if (!games.length){ for (const k of ['gsgames', 'gsenv', 'gskpis', 'gscharts', 'gsteams', 'gsjoint', 'gschecks']) $(k).innerHTML = ''; return; }
   if (!games.some(g => String(g.id) === sim.game)) sim.game = String(games[0].id);
   const g = games.find(x => String(x.id) === sim.game), gid = String(g.id), status = statusFromBoard(B);
@@ -4897,7 +4907,7 @@ function renderWire(){
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No live board');
   $('wbanner').hidden = !!ev.length;
-  $('wbanner').innerHTML = pick.mode === 'example' || !B.wire ? `<b>The wire fills on game days.</b><span>It needs the recorder's live day: every injury report and lineup change after the first poll of the morning, and every price change since. The example game has neither. Preseason starts October 3.</span>`
+  $('wbanner').innerHTML = pick.mode === 'example' || !B.wire ? `<b>The wire fills on game days.</b><span>It needs the recorder's live day: every injury report and lineup change after the first poll of the morning, and every price change since. The example game has neither.</span>`
     : `<b>No changes yet today.</b><span>The injury report posts every 15 minutes on game days and NBA.com confirms lineups about 30 minutes before tip.</span>`;
   const now = B.t || Date.now() / 1000;
   // venue scoreboard over today's events
@@ -5290,7 +5300,7 @@ function renderSlate(){
   if (!days.includes(sv.day)) sv.day = days[0] || null;
   const G = games.filter(g => etDay(g.tip) === sv.day), status = statusFromBoard(B);
   $('sbanner').hidden = !!games.length;
-  $('sbanner').innerHTML = `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. Preseason starts October 3; opening night is October 20.</span>`;
+  $('sbanner').innerHTML = `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. ${noGamesWhy()}</span>`;
   $('sdays').innerHTML = days.length ? `<div class="seg" id="sday">${days.map(d => { const n = games.filter(g => etDay(g.tip) === d).length;
     return `<button type="button" data-d="${d}" aria-pressed="${d === sv.day}">${slDay(games.find(g => etDay(g.tip) === d).tip)} · ${n}</button>`; }).join('')}</div>` : '';
   $('sdays').parentElement.hidden = !days.length;
@@ -5463,7 +5473,7 @@ function renderSharp(){
     : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No games yet');
   const games = [...(B.games || [])].sort((a, b) => a.tip - b.tip), byId = Object.fromEntries(games.map(g => [String(g.id), g]));
   $('xbanner').hidden = !!(SH && games.length);
-  $('xbanner').innerHTML = !games.length ? `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. Preseason starts October 3; opening night is October 20.</span>`
+  $('xbanner').innerHTML = !games.length ? `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. ${noGamesWhy()}</span>`
     : `<b>Sharp Price needs the recorder's new board.</b><span>It fills on the next poll after this build ships.</span>`;
   const [gN, gS] = xRecord();
   if (!SH){ $('xkpis').innerHTML = $('xfeed').innerHTML = $('xgames').innerHTML = ''; $('xfilters').innerHTML = ''; $('xstripbar').hidden = true; xFoot(null); return; }
@@ -5697,7 +5707,7 @@ function wkPosterior(lv, bpg){
 }
 function wkStake(lv, post){        // which size the evidence allows today, with the reason for each missing condition
   const G = BT.gate;
-  if (!lv || !post) return {tier: 'Paper only', why: ['live bets have not started (opening night, October 20)'], ok: false};
+  if (!lv || !post) return {tier: 'Paper only', why: [beforeOpening() ? 'live bets have not started (opening night, October 20)' : 'no live bets have settled yet'], ok: false};
   const why = [];
   if (post.games < G.min_games) why.push(`about ${Math.round(post.games)} of ${G.min_games} games`);
   if (!(lv.roi > 0)) why.push('live return is not above zero yet');
