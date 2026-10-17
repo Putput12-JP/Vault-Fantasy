@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from smartstake_client import snapshot
+from smartstake_props import convert as convert_props
+from smartstake_to_book_tape import convert
 
 ROOT = Path(__file__).resolve().parent.parent / "data" / "smartstake"
 
@@ -23,7 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent / "data" / "smartstake"
 # Books worth keeping: exchanges and sharp-leaning prices, the big US books, and pick'em.
 # Pass --all-books to keep everything (the NFL board is about 22 MB per pass uncut).
 DEFAULT_BOOKS = {
-    "novig", "kalshi", "polymarket", "polymarket_us", "prophetx", "circa", "bet365",
+    "novig", "kalshi", "polymarket", "polymarket_us", "prophetx", "circa", "bookmaker", "bet365",
     "draftkings", "fanduel", "betmgm", "caesars", "fanatics", "betrivers",
     "prizepicks", "underdog_dfs", "parlayplay",
 }
@@ -59,6 +61,13 @@ def main():
                 record(lg, books)
             except Exception as e:
                 print(f"{lg}: pass failed: {e}", flush=True)
+        for lg in a.league:
+            if lg in ("nfl", "nba"):
+                try:
+                    convert(lg)   # refresh the local-only chart tape (Circa, Bookmaker)
+                    convert_props(lg)   # and the per-book prop lines the pages read with ?ss
+                except Exception as e:
+                    print(f"{lg}: book-tape export failed: {e}", flush=True)
         if a.once:
             return
         time.sleep(a.interval)

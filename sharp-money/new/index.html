@@ -290,9 +290,31 @@ function gamePage(key){
  return h;
 }
 function edge(){return head('Edge','Novig against Pinnacle, biggest +EV first. Context only.')+'<div style="padding:0 12px"><div data-edge-host></div></div>'}
+/* SmartStake books (Props > Books): LOCAL ONLY. Their API terms forbid publishing the data or showing it in the UI without
+   written permission, so this loads only on localhost with ?ss, from data/smartstake/ (gitignored, scripts/smartstake_props.py). */
+const SSON=LOCAL&&!LIVE&&/[?&]ss\b/.test(location.search),SSP={};
+function loadSS(){if(!SSON||SSP.on)return;SSP.on=true;['nfl','nba'].forEach(l=>fetch('/data/smartstake/props_'+l+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j){SSP[l]=j;if((location.hash||'').slice(1)==='props')rerender()}}).catch(()=>{}))}
+const SSAB={DraftKings:'DK',FanDuel:'FD',BetMGM:'MGM',Caesars:'CZR',Fanatics:'FAN',ParlayPlay:'PP',BetRivers:'BR',bet365:'365',Circa:'CIR',Bookmaker:'BKM',ProphetX:'PX',Novig:'NOV',Kalshi:'KAL',Polymarket:'POLY'};
+function ssBooks(){
+ let h=head('Props','Every book we record. Local view only. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi'],['bk','Books']],st.pr,'pr');
+ const rows=[],now=Date.now()/1000;
+ ['nfl','nba'].forEach(l=>((SSP[l]||{}).props||[]).forEach(p=>{if(p.start>now-3600&&p.books.length>=3)rows.push({l,p})}));
+ if(!rows.length)return h+`<div class="card"><div class="m" style="color:var(--mut);font-size:13px">${SSP.nfl||SSP.nba?'No props with three or more books right now.':'Loading the local SmartStake tape. Run scripts/smartstake_props.py if this stays empty.'}</div></div>`;
+ const gap=r=>{const ls=r.p.books.map(b=>b[1]);return Math.max(...ls)-Math.min(...ls)};
+ rows.sort((a,b)=>gap(b)-gap(a)||b.p.books.length-a.p.books.length);
+ h+=`<div class="sec"><span>Biggest line gaps between books</span><span>${rows.length} props</span></div><div class="card">`;
+ rows.slice(0,st.props).forEach(({l,p})=>{
+  const ls=p.books.map(b=>b[1]),lo=Math.min(...ls),hi=Math.max(...ls),g=upcoming().find(x=>x.sport===l&&x.away.abbr===p.away&&x.home.abbr===p.home);
+  const sg=n=>n>0?'+'+n:String(n);
+  h+=`<div class="row${g?' tap':''}" ${g?`data-go="game/${esc(g.key)}"`:''}>${ini(p.n)}<div class="grow"><b>${esc(p.n)}</b><div class="m">${esc(p.s)} · ${esc(p.away)} @ ${esc(p.home)} · ${p.books.length} books</div><div class="m" style="margin-top:4px">${p.books.map(b=>`${SSAB[b[0]]||esc(b[0])} ${b[1]} ${sg(b[2])}/${sg(b[3])}`).join(' · ')}</div></div><div class="amt cond">${lo===hi?lo:lo+' to '+hi}<small>${hi-lo>0?'gap '+(+(hi-lo).toFixed(1)):'same line'}</small></div></div>`});
+ h+=`</div>`;
+ if(rows.length>st.props)h+=`<button class="btn" data-more="props">Show more (${rows.length-st.props} left)</button>`;
+ return h;
+}
 function props(){
+ if(SSON){loadSS();if(st.pr==='bk')return ssBooks()}
  if(!st.prTouched&&!upcoming().some(g=>(g.props||[]).length)&&upcoming().some(g=>(g.kprops||[]).length))st.pr='ka';
- let h=head('Props','Polymarket and Kalshi. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']],st.pr,'pr');
+ let h=head('Props','Polymarket and Kalshi. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']].concat(SSON?[['bk','Books']]:[]),st.pr,'pr');
  const up=upcoming();let rows=[];
  up.forEach(g=>{((st.pr==='pm'?g.props:g.kprops)||[]).forEach(r=>rows.push({g,r}))});
  if(st.pr==='pm')rows.sort((a,b)=>(b.r.usd||[]).reduce((s,x)=>s+x,0)-(a.r.usd||[]).reduce((s,x)=>s+x,0));else rows.sort((a,b)=>b.r.vol24-a.r.vol24);

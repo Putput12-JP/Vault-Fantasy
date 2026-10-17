@@ -4,17 +4,20 @@
    one row per book per game, appended only when that book's line changes, so each series is a step line.
    Books on the tape: Pinnacle, DraftKings, FanDuel, BetMGM, BetRivers, bet365, Consensus and Open, plus the
    Novig and Kalshi exchanges (Money tab only: they quote a win chance, not a spread or total, and were first recorded 2026-10-17).
-   Not on the tape: Circa and Bookmaker. Nothing here is invented to fill those in. */
+   Circa and Bookmaker come from SmartStake and are LOCAL ONLY: their API terms forbid publishing the data or showing it in the UI
+   without written permission, so they load only on localhost with ?ss (from data/smartstake/book_tape/, gitignored, built by
+   scripts/smartstake_to_book_tape.py). In production they never load and the lines stay off the chart. Nothing here is invented. */
 (function () {
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), LIVE = /[?&]live\b/.test(location.search);
   var BASE = LOCAL && !LIVE ? '/data/book_tape/' : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/data/book_tape/';   // + <sport>/<YYYY-MM>.jsonl
   var ALIAS = { WSH: 'WAS', LA: 'LAR', JAC: 'JAX', LVR: 'LV', OAK: 'LV' };
   var BOOKS = [
     ['Pinnacle', '#ff5fa2', 1], ['DraftKings', '#5ec269', 1], ['FanDuel', '#4aa3ff', 1], ['BetMGM', '#d9a93f', 1],
-    ['Novig', '#ff9f43', 1], ['Kalshi', '#19d3f0', 1], ['BetRivers', '#b78cff', 0], ['bet365', '#38d6a0', 0], ['Consensus', '#c9ccd3', 0], ['Open', '#8e8e93', 1]
+    ['Novig', '#ff9f43', 1], ['Kalshi', '#19d3f0', 1], ['Circa', '#ef5b5b', 1], ['Bookmaker', '#a3e635', 0], ['BetRivers', '#b78cff', 0], ['bet365', '#38d6a0', 0], ['Consensus', '#c9ccd3', 0], ['Open', '#8e8e93', 1]
   ];
   var MARKETS = [['sp', 'Spread'], ['tot', 'Total'], ['ml', 'Money']];
   var WINDOWS = [['4h', 4 * 3600], ['12h', 12 * 3600], ['24h', 24 * 3600], ['All', 0]];
+  var SS = LOCAL && !LIVE && /[?&]ss\b/.test(location.search), SSBASE = '/data/smartstake/book_tape/';   // permission-gated, see the header
   var REC = (LOCAL && !LIVE ? '/data/' : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/data/') + 'exchange_edge_record.json';
   var rec = null, recP = null, tapes = {}, tapeP = {}, states = {}, hosts = new WeakMap();
 
@@ -28,9 +31,13 @@
         .then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
     };
     var recGet = recP || (recP = fetch(REC + '?t=' + Math.floor(Date.now() / 300000), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { rec = j; }));
-    tapeP[sport] = Promise.all([get(monthKey(prev)), get(monthKey(now)), get('backfill'), recGet]).then(function (x) {
+    var ssGet = function (k) {
+      if (!SS) return Promise.resolve('');
+      return fetch(SSBASE + sport + '/' + k + '.jsonl?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
+    };
+    tapeP[sport] = Promise.all([get(monthKey(prev)), get(monthKey(now)), get('backfill'), recGet, ssGet(monthKey(prev)), ssGet(monthKey(now))]).then(function (x) {
       var rows = [];
-      x.slice(0, 3).join('\n').split('\n').forEach(function (l) { if (l) { try { rows.push(JSON.parse(l)); } catch (e) {} } });
+      x.slice(0, 3).concat(x.slice(4)).join('\n').split('\n').forEach(function (l) { if (l) { try { rows.push(JSON.parse(l)); } catch (e) {} } });
       tapes[sport] = rows; return rows;
     });
     return tapeP[sport];

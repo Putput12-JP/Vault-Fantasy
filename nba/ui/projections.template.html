@@ -3206,11 +3206,34 @@ async function refreshNow(btn){
 }
 if (NBA_WORKER && onSite){ $('refresh').hidden = false; $('refresh').addEventListener('click', () => refreshNow()); }
 
+// SmartStake books (LOCAL ONLY). Their API terms forbid publishing the data or showing it in the UI without written permission,
+// so this runs only on localhost with ?ss, reading data/smartstake/props_nba.json (gitignored, scripts/smartstake_props.py).
+// It adds books the board does not already have to each prop's book list (Caesars, Fanatics, ParlayPlay, Circa, Bookmaker, ProphetX,
+// Novig). They show in the prop drawer's Sportsbooks table. Sportsbook props are NO-GO as signals, so this is context only.
+const SS_ON = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]ss\b/.test(location.search) && !/[?&]live\b/.test(location.search);
+async function ssMerge(b){
+  if (!SS_ON || !b || !b.props || !b.players) return;
+  const j = await fetch('/data/smartstake/props_nba.json?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!j) return;
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim();
+  const idx = new Map(j.props.map(p => [norm(p.n) + '|' + p.s, p]));
+  let n = 0;
+  for (const e of b.props){
+    const P = b.players[e.p], p = P && idx.get(norm(P[0]) + '|' + e.s);
+    if (!p) continue;
+    e.books = e.books || [];
+    const key = k => String(k).toLowerCase().replace(/[^a-z0-9]/g, ''), have = new Set(e.books.map(x => key(x[0])));   // the board spells it "Draft Kings"
+    for (const x of p.books){ if (!have.has(key(x[0]))){ e.books.push([x[0], x[1], x[2], x[3], x[4], x[5], x[7], null]); n++; } }
+  }
+  console.info('SmartStake: added ' + n + ' book lines (local, ?ss)');
+}
+
 async function loadBoard(){
   boardTried = true;
   if (!PB || !/^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
   try {
     const b = await fetch(NBA_WORKER ? `${NBA_WORKER}/board` : `https://raw.githubusercontent.com/${PB.repo}/${PB.branch}/board.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
+    await ssMerge(b);
     PS.live = b; PS.liveAt = Date.now() / 1000; PS.liveFetched = true;
     if (view === 'props' || view === 'mybets' || view === 'propboard') renderProps();
     if (view === 'edges') renderEdges();
