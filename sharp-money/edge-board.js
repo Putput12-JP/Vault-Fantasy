@@ -62,7 +62,7 @@
   /* did the bet itself hit: from the stored final score (away, home). Nothing is guessed when the score was not stored. */
   function hitLine(c, side, line) {
     if (!c.graded) return '';
-    if (!c.res || !c.final) return c.res ? '' : '<div class="veb-hit none">Final score not stored, so we cannot say if this bet won.</div>';
+    if (!c.res || !c.final) return c.res ? '' : '<div class="veb-hit none">' + (Date.now() / 1000 - c.start < 5 * 3600 ? 'Game under way or just finished, so the bet is not settled yet.' : 'Final score not stored, so we cannot say if this bet won.') + '</div>';
     var tm = String(c.game).split('@'), a = c.final[0], h = c.final[1], A = c.side === 'A', word = c.res === 'W' ? 'Won' : c.res === 'L' ? 'Lost' : 'Push', why = '';
     if (c.m === 'tot') why = 'Total was ' + (a + h) + ' against a line of ' + c.line;
     else if (c.m === 'sp') { var mg = (A ? 1 : -1) * (h + c.line - a); why = side.trim() + ' ' + (mg === 0 ? 'pushed' : mg > 0 ? 'covered by ' + mg.toFixed(1).replace(/\.0$/, '') : 'missed by ' + (-mg).toFixed(1).replace(/\.0$/, '')); }
@@ -230,7 +230,7 @@
     var keepCs = st.cs; st.cs = 'all'; var base = callsAll(); st.cs = keepCs;
     var cnt = { all: base.length, pending: 0, beat: 0, lost: 0 }; base.forEach(function (c) { cnt[outcome(c)]++; });
     var won = 0, lostB = 0, pushB = 0, unk = 0; base.forEach(function (c) { if (!c.graded) return; if (c.res === 'W') won++; else if (c.res === 'L') lostB++; else if (c.res === 'P') pushB++; else unk++; });
-    var bets = (won + lostB + pushB + unk) ? '<b>Did the bet hit?</b> ' + won + ' won, ' + lostB + ' lost' + (pushB ? ', ' + pushB + ' push' : '') + (unk ? ', ' + unk + ' without a stored final score' : '') + '. ' : '';
+    var bets = (won + lostB + pushB + unk) ? '<b>Did the bet hit?</b> ' + won + ' won, ' + lostB + ' lost' + (pushB ? ', ' + pushB + ' push' : '') + (unk ? ', ' + unk + ' not settled yet' : '') + '. ' : '';
     var calls = callsAll(), o = '<div class="veb-card" id="veb-calls"><div class="veb-h"><span>Every call</span><span>' + calls.length + (calls.length >= 400 && !st.cf && st.cs === 'all' ? '+' : '') + '</span></div><div class="veb-leg">' + bets + 'Pending: not graded yet. Beat the close: Pinnacle’s last number was better than the price at the call. Lost to the close: it was worse. Won or lost money is shown separately once the game settles.</div>' +
       chips('cs', [['all', 'All ' + cnt.all], ['pending', 'Pending ' + cnt.pending], ['beat', 'Beat ' + cnt.beat], ['lost', 'Lost ' + cnt.lost]]) + (st.cf ? '<div class="veb-fil"><span>' + esc(cfLabel(st.cf)) + '</span><button type="button" data-clear="1" aria-label="Clear filter">Clear</button></div>' : '');
     if (!calls.length) return o + '<div class="veb-empty">' + (st.cf || st.cs !== 'all' || st.m !== 'all' ? 'No calls fit that filter.' : 'No calls yet. They are logged as the recorder sees them.') + '</div></div>';
