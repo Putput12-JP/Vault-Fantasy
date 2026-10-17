@@ -289,7 +289,7 @@ function gamePage(key){
  if(g.model){const mo=g.model;h+=`<div class="platter"><div class="ph"><span>Vault line</span><span class="badge">context only</span></div><div class="kv"><span>${esc(g.home.abbr)} margin</span><em class="cond">${sgn(mo.margin)}</em></div><div class="kv"><span>Total</span><em class="cond">${mo.total}</em></div><div class="kv"><span>${esc(g.home.abbr)} win chance</span><em class="cond">${Math.round(mo.homeWin*100)}%</em></div><div class="foot">Our own number, shown beside the market. See the scoreboard on the Record tab for how it has done against Kalshi.</div></div>`}
  return h;
 }
-function edge(){return head('Edge','Novig against Pinnacle, biggest +EV first. Context only.')+'<div class="card" style="padding:14px 16px"><div data-edge-host></div></div>'}
+function edge(){return head('Edge','Novig against Pinnacle, biggest +EV first. Context only.')+'<div style="padding:0 12px"><div data-edge-host></div></div>'}
 function props(){
  if(!st.prTouched&&!upcoming().some(g=>(g.props||[]).length)&&upcoming().some(g=>(g.kprops||[]).length))st.pr='ka';
  let h=head('Props','Polymarket and Kalshi. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']],st.pr,'pr');
@@ -957,7 +957,7 @@ function route(){
  sc.innerHTML=html;
  sc.querySelectorAll('[data-go]').forEach(x=>{x.tabIndex=0;x.setAttribute('role','button')});
  if(window.VaultLineChart)VaultLineChart.scan(sc,k=>GM[k]);
- if(window.VaultEdgeBoard){const eh=sc.querySelector('[data-edge-host]');if(eh)VaultEdgeBoard.mount(eh)}
+ if(window.VaultEdgeBoard){const eh=sc.querySelector('[data-edge-host]');if(eh)VaultEdgeBoard.mount(eh,{games:G,logo:(g,side)=>teamUrl(g.sport,g[side])})}
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
 }
 function rerender(){const y=scrollY;route();window.scrollTo(0,y)}
