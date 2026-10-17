@@ -19,7 +19,9 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function when(t) { return new Date(t * 1000).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }); }
   function dur(sec) { var m = Math.round(sec / 60); return m < 1 ? 'under a minute' : m < 60 ? m + ' min' : Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' m' : ''); }
-  function sg(v, d) { return (v > 0 ? '+' : '') + v.toFixed(d == null ? 1 : d); }
+  function sg(v, d) { d = d == null ? 1 : d; var r = +v.toFixed(d); return (r > 0 ? '+' : '') + (r === 0 ? (0).toFixed(d) : r.toFixed(d)); }   // never "-0.0"
+  function am(p) { return p < 0.5 ? '+' + Math.round(100 * (1 - p) / p) : String(Math.round(-100 * p / (1 - p))); }   // chance -> American odds
+  function bank() { try { var b = +localStorage.getItem('vault-edge-bankroll'); return b > 0 ? b : 1000; } catch (e) { return 1000; } }
   function usd(v) { return '$' + (v >= 1000 ? +(v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k' : Math.round(v)); }
   function chips(key, items) {
     return '<div class="veb-seg" data-k="' + key + '">' + items.map(function (i) { return '<button type="button" data-v="' + i[0] + '" class="' + (String(st[key]) === String(i[0]) ? 'on' : '') + '">' + i[1] + '</button>'; }).join('') + '</div>';
@@ -105,8 +107,25 @@
   }
 
   /* ---------- the selected row (wide) / the drawer (narrow) ---------- */
+
+  /* Quarter Kelly: f = (fair - cost) / (1 - cost) of the bankroll, a quarter of it, never more than the room at +EV. The EV used is the one for the ladder size
+     that covers the stake. A tool for sizing, not advice. */
+  function stakeHtml(x) {
+    var b = bank(), p = x.fair, c = x.cost, k = (p - c) / (1 - c);
+    var o = '<div class="veb-stake"><label>Bankroll $<input type="number" min="0" step="100" value="' + b + '" data-bank aria-label="Bankroll in dollars"></label>';
+    if (!(k > 0)) return o + '<span>No bet: the price is not above the fair price.</span></div>';
+    var raw = b * k * 0.25, cap = x.fill && x.fill.ev_dollars != null ? x.fill.ev_dollars : null, stake = cap != null ? Math.min(raw, cap) : raw;
+    stake = stake >= 100 ? Math.round(stake / 10) * 10 : Math.round(stake);
+    var tier = x.fill ? (stake <= 100 ? x.fill['100'] : stake <= 500 ? x.fill['500'] : x.fill['1000']) : x.ev, thin = x.fill && tier == null;
+    var win = stake * (1 / c - 1), exp = thin ? null : stake * (tier == null ? x.ev : tier) / 100;
+    return o + '<span><b>Quarter Kelly: bet ' + usd(stake) + '</b> to win ' + usd(win) + (exp != null ? ', expect ' + (exp >= 0 ? '+' : '') + '$' + exp.toFixed(exp < 10 ? 2 : 0) : ', the book is too thin to price that size') + (cap != null && raw > cap ? ' (capped by the room at +EV)' : '') + '</span></div>';
+  }
   function detailInner(x) {
     var f = x.fill || {}, o = '', now = Date.now() / 1000;
+    var chg = function (l, v) { return v == null ? '' : '<div><small>' + l + '</small><b class="' + (v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : '') + '">' + sg(v) + '</b></div>'; };
+    var ch = chg('1H', x.pm1) + chg('4H', x.pm) + (x.po != null ? chg('vs open', x.po) : x.ol != null ? '<div><small>vs open</small><b>line was ' + x.ol + '</b></div>' : '');
+    if (ch) o += '<div class="veb-chg">' + ch + '<span>Pinnacle\u2019s fair chance for this side, in points</span></div>';
+    o += stakeHtml(x);
     o += '<div class="veb-lad">';
     if (x.fill) {
       [['100', '$100'], ['500', '$500'], ['1000', '$1k']].forEach(function (k) { o += '<div><small>EV at ' + k[1] + '</small><b class="' + (f[k[0]] == null ? '' : f[k[0]] > 0 ? 'pos' : 'neg') + '">' + (f[k[0]] == null ? 'too thin' : sg(f[k[0]]) + '%') + '</b></div>'; });
@@ -114,11 +133,11 @@
     } else o += '<div class="veb-note" style="grid-column:1/-1;margin:0">Order-book depth is not available for this row this run.</div>';
     o += '</div>';
     var q = x.second, cents = function (v) { return Math.round(v * 1000) / 10 + '¢'; };
-    o += '<div class="veb-cmp"><div><small>Pinnacle fair</small><b>' + (x.fair * 100).toFixed(1) + '%</b></div><div><small>Novig costs</small><b>' + cents(x.cost) + '</b></div>' +
+    o += '<div class="veb-cmp"><div><small>Pinnacle fair</small><b>' + am(x.fair) + ' <span>' + (x.fair * 100).toFixed(1) + '%</span></b></div><div><small>Novig costs</small><b>' + x.price + ' <span>' + (x.cost * 100).toFixed(1) + '%</span></b></div>' +
       (q && q.kal != null ? '<div><small>Kalshi</small><b>' + cents(q.kal) + '</b></div>' : '') + (q && q.pm != null ? '<div><small>Polymarket</small><b>' + cents(q.pm) + '</b></div>' : '') + '</div>';
     if (q) o += '<div class="veb-ages">' + q.confirm + ' of ' + q.of + ' exchanges are at least a cent above Novig.' + (x.m === 'ml' ? '' : ' Kalshi has the winner market only.') + '</div>';
     o += '<div class="veb-ages">' + (x.pin_since ? 'Pinnacle last moved ' + dur(now - x.pin_since) + ' ago' : 'Pinnacle move time unknown') + ' · ' + (x.nov_since ? 'Novig unchanged for ' + dur(now - x.nov_since) : 'Novig quote age unknown yet') + (x.lim ? ' · Pinnacle limit ' + usd(x.lim) : '') + '</div>';
-    return o + '<div class="veb-chart" data-chart="' + esc(x.gk) + '"></div><button type="button" class="veb-open" data-gk="' + esc(x.gk) + '">Open the game page</button>';
+    return o + '<div class="veb-chart" data-chart="' + esc(x.gk) + '"></div><button type="button" class="veb-open" data-gk="' + esc(x.gk) + '">Open the game page</button> <a class="veb-open" href="https://app.novig.us" target="_blank" rel="noopener">Open Novig</a><div class="veb-note" style="margin-top:6px">Open Novig goes to its app, not to this market.</div>';
   }
   function panelHtml(x) {
     if (!x) return '<div class="veb-empty">Pick a row to see its detail.</div>';
@@ -193,7 +212,7 @@
     '.veb-sub{margin-top:6px;font-size:12px;opacity:.78;line-height:1.55}.veb-stale{font-style:normal;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:999px;border:1px solid #ff9f43;color:#ff9f43;margin-right:4px}.veb-win{color:#34c759;font-weight:600}.veb-loss{color:#ff6b6b;font-weight:600}.veb-pend{opacity:.7}' +
     '.veb-drawer{padding:4px 10px 14px}.veb-hero{display:flex;align-items:center;gap:12px;margin:2px 0 12px}.veb-hero b{display:block;font-size:17px}.veb-hero small{opacity:.6;font-size:12px}.veb-call{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 10px}.veb-call b{font-size:22px;margin-right:8px}.veb-call .veb-px{font-size:18px}' +
     '.veb-lad,.veb-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin:0 0 10px}.veb-lad div,.veb-cmp div{padding:9px 11px;border-radius:12px;background:rgba(127,127,127,.1)}.veb-lad small,.veb-cmp small{display:block;font-size:10px;opacity:.6;letter-spacing:.05em;text-transform:uppercase}.veb-lad b,.veb-cmp b{font-size:16px}.veb-lad b.pos{color:#34c759}.veb-lad b.neg{opacity:.65}' +
-    '.veb-ages{font-size:12px;opacity:.75;margin:0 0 8px;line-height:1.5}.veb-chart{margin:8px 0 10px}.veb-open{font:inherit;font-size:12.5px;font-weight:600;padding:8px 12px;min-height:34px;border-radius:9px;border:1.5px solid currentColor;background:transparent;color:inherit;cursor:pointer;opacity:.85}' +
+    '.veb-chg{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:0 0 10px}.veb-chg div{padding:8px 12px;border-radius:12px;background:rgba(127,127,127,.1)}.veb-chg small{display:block;font-size:10px;opacity:.6;letter-spacing:.05em;text-transform:uppercase}.veb-chg b{font-size:15px}.veb-chg b.pos{color:#34c759}.veb-chg b.neg{color:#ff6b6b}.veb-chg>span{flex-basis:100%;font-size:11px;opacity:.5}.veb-cmp b span{font-size:11px;font-weight:500;opacity:.6;margin-left:2px}.veb-stake{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(127,127,127,.1);margin:0 0 10px;font-size:12.5px;line-height:1.5}.veb-stake label{display:inline-flex;align-items:center;gap:4px;font-weight:600;white-space:nowrap}.veb-stake input{width:84px;font:inherit;font-size:13px;padding:5px 7px;border-radius:7px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit}a.veb-open{display:inline-block;text-decoration:none}.veb-ages{font-size:12px;opacity:.75;margin:0 0 8px;line-height:1.5}.veb-chart{margin:8px 0 10px}.veb-open{font:inherit;font-size:12.5px;font-weight:600;padding:8px 12px;min-height:34px;border-radius:9px;border:1.5px solid currentColor;background:transparent;color:inherit;cursor:pointer;opacity:.85}' +
     '.veb-card{padding:4px 2px 6px;margin:0 0 6px}.veb-gl{font-size:11px;font-weight:700;margin:9px 0 1px;opacity:.9}.veb-rr{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:5px 0}.veb-rr span:last-child{text-align:right;opacity:.85}.veb-note{margin-top:9px;font-size:11.5px;opacity:.55;line-height:1.5}.veb-empty{padding:18px 4px;font-size:13px;opacity:.65}.veb-call2{border-top:1px solid rgba(127,127,127,.15)}' +
     '@container (min-width:1100px){.veb-srcs{flex-wrap:wrap;overflow:visible;margin:10px 0 8px}.veb-kf{display:block}.veb-kn{font-size:25px}.veb-kpi{padding:13px 14px}.veb-kpis{grid-auto-flow:row;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;padding-bottom:6px}.veb-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.95fr);gap:14px;align-items:start}.veb-col{max-height:calc(100vh - 330px);min-height:520px;overflow-y:auto;padding:4px 8px 16px;border-radius:20px;background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.14);scrollbar-width:thin}.veb-col>.veb-h:first-child{margin-top:8px}}';
   function css() { if (!document.getElementById('veb-css')) { var s = document.createElement('style'); s.id = 'veb-css'; s.textContent = CSS; document.head.appendChild(s); } }
@@ -234,6 +253,7 @@
         var r = e.target.closest('.veb-row'); if (r) { var key = r.getAttribute('data-key'); if (wide) st.sel = key; else st.open = st.open === key ? null : key; render(el); return; }
         var c = e.target.closest('.veb-call2'); if (c) open(c.getAttribute('data-gk'));
       });
+      el.addEventListener('change', function (e) { if (e.target.hasAttribute('data-bank')) { try { localStorage.setItem('vault-edge-bankroll', String(Math.max(0, +e.target.value || 0))); } catch (x) {} render(el); } });
       el.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && (e.target.classList.contains('veb-row') || e.target.classList.contains('veb-call2'))) { e.preventDefault(); e.target.click(); } });
       if (window.ResizeObserver) { var last = el.clientWidth >= 1100; new ResizeObserver(function () { var w = el.clientWidth >= 1100; if (w !== last && data) { last = w; render(el); } }).observe(el); }
     }
