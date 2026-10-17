@@ -148,38 +148,53 @@
   }
 
   /* ---------- the record ---------- */
-  function sumLine(x, label) {
-    var o = '<div class="veb-rr"><span>' + label + '</span><span>';
-    if (!x || !x.signals) return o + 'none yet</span></div>';
-    if (!x.graded) return o + x.signals + ' called, none graded yet</span></div>';
-    o += x.graded + ' graded';
-    if (x.n_same) o += ', beat the close ' + Math.round(x.pos / x.n_same * 100) + '%, avg ' + sg(x.mean) + ' pts' + (x.ci != null ? ' ±' + x.ci.toFixed(1) : '');
-    if (x.settled) o += ', ' + x.wins + '-' + (x.settled - x.wins) + ' ' + sg(x.units, 2) + 'u';
-    if (x.line_moved) o += ', line moved ' + x.line_moved + ' (' + x.line_favoured + ' our way)';
-    return o + '</span></div>';
+  /* a result is only coloured when its range clears zero; otherwise it is noise and stays neutral */
+  function sigTone(x) { return x && x.ci != null && x.n_same && Math.abs(x.mean) > x.ci ? (x.mean > 0 ? 'pos' : 'neg') : ''; }
+  function beatPct(x) { return x && x.n_same ? Math.round(x.pos / x.n_same * 100) : null; }
+  function avgTxt(x) { return x && x.n_same ? 'avg ' + sg(x.mean) + ' pts' + (x.ci != null ? ' ±' + x.ci.toFixed(1) : '') : ''; }
+  function wlTxt(x) { return x && x.settled ? x.wins + '-' + (x.settled - x.wins) + ' · ' + sg(x.units, 2) + 'u' : ''; }
+  function sumTile(x, label) {
+    var o = '<div class="veb-rt"><div class="veb-rl">' + label + '</div>';
+    if (!x || !x.signals) return o + '<div class="veb-rn none">none yet</div></div>';
+    if (!x.graded) return o + '<div class="veb-rn none">' + x.signals + '</div><div class="veb-rs">called, none graded yet</div></div>';
+    var pct = beatPct(x), tone = sigTone(x);
+    o += '<div class="veb-rn ' + tone + '">' + (pct == null ? '–' : pct + '%') + '<small>beat the close</small></div>';
+    if (pct != null) o += '<div class="veb-bar"><i class="' + tone + '" style="width:' + pct + '%"></i></div>';
+    o += '<div class="veb-chips"><span>' + x.graded + ' graded</span>' + (avgTxt(x) ? '<span class="' + tone + '">' + avgTxt(x) + '</span>' : '') +
+      (wlTxt(x) ? '<span>' + wlTxt(x) + '</span>' : '') + (x.line_moved ? '<span>line moved ' + x.line_moved + ', ' + x.line_favoured + ' our way</span>' : '') + '</div>';
+    if (x.graded < 30) o += '<div class="veb-small">small sample</div>';
+    return o + '</div>';
   }
   function recHtml() {
     var rec = data.rec; if (!rec || !rec.by_sport) return '<div class="veb-empty">The record file did not load.</div>';
-    var o = '<div class="veb-card"><div class="veb-h"><span>Record</span><span>graded on Pinnacle’s close</span></div>';
-    [[1, 'EV 1%+'], [2, 'EV 2%+'], [4, 'EV 4%+']].forEach(function (a) { o += sumLine(summ(a[0], 'all'), a[1]); });
-    o += sumLine(summ(1, 'stale'), 'Pinnacle moved, Novig did not');
-    o += '<div class="veb-note">A call is the first time a game side reached EV 1% or more. Beat the close means Pinnacle’s last number before kickoff was better than the Novig price at the call. ± is a 95% range; a range that spans zero is still noise. Started ' + esc(rec.since) + '; nothing earlier was stored.</div></div>';
+    var o = '<div class="veb-card"><div class="veb-h"><span>Record</span><span>graded on Pinnacle’s close</span></div><div class="veb-rg">';
+    [[1, 'EV 1%+'], [2, 'EV 2%+'], [4, 'EV 4%+']].forEach(function (a) { o += sumTile(summ(a[0], 'all'), a[1]); });
+    o += sumTile(summ(1, 'stale'), 'Pinnacle moved, Novig did not') + '</div>';
+    o += '<details class="veb-how"><summary>How to read this</summary><div class="veb-note">A call is the first time a game side reached EV 1% or more. Beat the close means Pinnacle’s last number before kickoff was better than the Novig price at the call. ± is a 95% range; a number is only coloured once its range clears zero, otherwise it is still noise. Started ' + esc(rec.since) + '; nothing earlier was stored.</div></details></div>';
     return o + calibHtml(rec);
   }
+  function calibRow(l, p) {
+    if (!p.signals) return '<div class="veb-cr"><div class="veb-cl">' + esc(l) + '</div><div class="veb-cv none">none yet</div></div>';
+    if (!p.graded) return '<div class="veb-cr"><div class="veb-cl">' + esc(l) + '</div><div class="veb-cv none">' + p.signals + ' called</div></div>';
+    var pct = beatPct(p), tone = sigTone(p), sub = [p.n_same + ' graded', wlTxt(p)].filter(Boolean).join(' · ');
+    return '<div class="veb-cr"><div class="veb-cl">' + esc(l) + '<small>' + sub + '</small></div><div class="veb-cv ' + tone + '">' + (pct == null ? '–' : pct + '%') + '<small>' + avgTxt(p) + '</small></div>' +
+      (pct != null ? '<div class="veb-bar"><i class="' + tone + '" style="width:' + pct + '%"></i></div>' : '') + '</div>';
+  }
   function calibHtml(rec) {
-    var groups = [['band', 'By EV at the call'], ['market', 'By market'], ['stale', 'By what moved']], o = '<div class="veb-card"><div class="veb-h"><span>Does bigger EV mean more?</span><span>vs the close</span></div>', any = false, sp0 = sports()[0];
+    var groups = [['band', 'By EV at the call'], ['market', 'By market'], ['stale', 'By what moved']], o = '<div class="veb-card"><div class="veb-h"><span>Does bigger EV mean more?</span><span>beat the close</span></div>', any = false, sp0 = sports()[0];
     groups.forEach(function (gr) {
       var labels = [];
       ((rec.by_sport[sp0] || {}).calib || []).forEach(function (c) { if (c.k === gr[0]) labels.push(c.l); });
       if (!labels.length) return;
-      o += '<div class="veb-gl">' + gr[1] + '</div>';
+      o += '<div class="veb-gl">' + gr[1] + '</div><div class="veb-cg">';
       labels.forEach(function (l) {
         var p = pool(sports().map(function (sp) { return ((rec.by_sport[sp].calib || []).filter(function (c) { return c.k === gr[0] && c.l === l; })[0]); }));
         any = any || p.signals > 0;
-        o += '<div class="veb-rr"><span>' + esc(l) + '</span><span>' + (!p.signals ? 'none yet' : !p.graded ? p.signals + ' called' : p.n_same + ' graded, beat ' + Math.round(p.pos / p.n_same * 100) + '%, avg ' + sg(p.mean) + (p.ci != null ? ' ±' + p.ci.toFixed(1) : '') + (p.settled ? ', ' + p.wins + '-' + (p.settled - p.wins) + ' ' + sg(p.units, 2) + 'u' : '')) + '</span></div>';
+        o += calibRow(l, p);
       });
+      o += '</div>';
     });
-    return o + '<div class="veb-note">' + (any ? '' : 'Nothing to compare yet. ') + 'If bigger EV is real, the average and the beat-the-close share rise down the EV rows. While the ranges span zero the rows cannot be told apart, so none is labelled.</div></div>';
+    return o + '<div class="veb-note">' + (any ? '' : 'Nothing to compare yet. ') + 'If bigger EV is real, the share and the average rise down the EV rows. While the ranges span zero the rows cannot be told apart, so none is coloured.</div></div>';
   }
   function callsHtml() {
     var calls = callsAll(), o = '<div class="veb-card"><div class="veb-h"><span>Every call</span><span>' + calls.length + (calls.length >= 400 ? '+' : '') + '</span></div>';
@@ -213,6 +228,13 @@
     '.veb-drawer{padding:4px 10px 14px}.veb-hero{display:flex;align-items:center;gap:12px;margin:2px 0 12px}.veb-hero b{display:block;font-size:17px}.veb-hero small{opacity:.6;font-size:12px}.veb-call{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 10px}.veb-call b{font-size:22px;margin-right:8px}.veb-call .veb-px{font-size:18px}' +
     '.veb-lad,.veb-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin:0 0 10px}.veb-lad div,.veb-cmp div{padding:9px 11px;border-radius:12px;background:rgba(127,127,127,.1)}.veb-lad small,.veb-cmp small{display:block;font-size:10px;opacity:.6;letter-spacing:.05em;text-transform:uppercase}.veb-lad b,.veb-cmp b{font-size:16px}.veb-lad b.pos{color:#34c759}.veb-lad b.neg{opacity:.65}' +
     '.veb-chg{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:0 0 10px}.veb-chg div{padding:8px 12px;border-radius:12px;background:rgba(127,127,127,.1)}.veb-chg small{display:block;font-size:10px;opacity:.6;letter-spacing:.05em;text-transform:uppercase}.veb-chg b{font-size:15px}.veb-chg b.pos{color:#34c759}.veb-chg b.neg{color:#ff6b6b}.veb-chg>span{flex-basis:100%;font-size:11px;opacity:.5}.veb-cmp b span{font-size:11px;font-weight:500;opacity:.6;margin-left:2px}.veb-stake{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(127,127,127,.1);margin:0 0 10px;font-size:12.5px;line-height:1.5}.veb-stake label{display:inline-flex;align-items:center;gap:4px;font-weight:600;white-space:nowrap}.veb-stake input{width:84px;font:inherit;font-size:13px;padding:5px 7px;border-radius:7px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit}a.veb-open{display:inline-block;text-decoration:none}.veb-ages{font-size:12px;opacity:.75;margin:0 0 8px;line-height:1.5}.veb-chart{margin:8px 0 10px}.veb-open{font:inherit;font-size:12.5px;font-weight:600;padding:8px 12px;min-height:34px;border-radius:9px;border:1.5px solid currentColor;background:transparent;color:inherit;cursor:pointer;opacity:.85}' +
+    '.veb-rg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:6px 0 2px}.veb-rt{padding:11px 12px;border-radius:16px;background:rgba(127,127,127,.1);border:1px solid rgba(127,127,127,.16);min-width:0}.veb-rl{font-size:11px;letter-spacing:.05em;text-transform:uppercase;opacity:.65;line-height:1.35;min-height:2.7em}' +
+    '.veb-rn{font-size:28px;font-weight:700;line-height:1.1;margin-top:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.veb-rn small{display:block;font-family:-apple-system,system-ui,sans-serif;font-size:11px;font-weight:500;opacity:.6;margin-top:2px}.veb-rn.none{font-size:15px;font-weight:600;opacity:.5}.veb-rn.pos,.veb-cv.pos,.veb-chips .pos{color:#34c759}.veb-rn.neg,.veb-cv.neg,.veb-chips .neg{color:#ff6b6b}' +
+    '.veb-bar{height:4px;border-radius:99px;background:rgba(127,127,127,.2);margin:7px 0 4px;overflow:hidden;grid-column:1/-1}.veb-rt .veb-bar{margin:8px 0 8px}.veb-bar i{display:block;height:100%;border-radius:99px;background:rgba(127,127,127,.65)}.veb-bar i.pos{background:#34c759}.veb-bar i.neg{background:#ff6b6b}' +
+    '.veb-chips{display:flex;flex-wrap:wrap;gap:4px}.veb-chips span{font-size:11px;padding:2px 7px;border-radius:99px;background:rgba(127,127,127,.14);white-space:nowrap}.veb-rs{font-size:12px;opacity:.6;margin-top:2px}.veb-small{font-size:10.5px;opacity:.5;margin-top:5px}' +
+    '.veb-how{margin-top:8px}.veb-how summary{font-size:12px;opacity:.65;cursor:pointer;min-height:28px;display:flex;align-items:center}.veb-how .veb-note{margin-top:2px}' +
+    '.veb-cg{border-radius:14px;background:rgba(127,127,127,.08);padding:2px 12px;margin:4px 0 6px}.veb-cr{display:grid;grid-template-columns:1fr auto;gap:0 12px;align-items:center;padding:8px 0 6px;border-top:1px solid rgba(127,127,127,.14)}.veb-cr:first-child{border-top:0}' +
+    '.veb-cl{font-size:13.5px;font-weight:600}.veb-cl small,.veb-cv small{display:block;font-size:11px;font-weight:500;opacity:.6;margin-top:1px}.veb-cv{text-align:right;font-size:17px;font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.veb-cv small{font-family:-apple-system,system-ui,sans-serif}.veb-cv.none{font-size:12.5px;font-weight:500;opacity:.5;font-family:inherit}' +
     '.veb-card{padding:4px 2px 6px;margin:0 0 6px}.veb-gl{font-size:11px;font-weight:700;margin:9px 0 1px;opacity:.9}.veb-rr{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:5px 0}.veb-rr span:last-child{text-align:right;opacity:.85}.veb-note{margin-top:9px;font-size:11.5px;opacity:.55;line-height:1.5}.veb-empty{padding:18px 4px;font-size:13px;opacity:.65}.veb-call2{border-top:1px solid rgba(127,127,127,.15)}' +
     '@container (min-width:1100px){.veb-srcs{flex-wrap:wrap;overflow:visible;margin:10px 0 8px}.veb-kf{display:block}.veb-kn{font-size:25px}.veb-kpi{padding:13px 14px}.veb-kpis{grid-auto-flow:row;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;padding-bottom:6px}.veb-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.95fr);gap:14px;align-items:start}.veb-col{max-height:calc(100vh - 330px);min-height:520px;overflow-y:auto;padding:4px 8px 16px;border-radius:20px;background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.14);scrollbar-width:thin}.veb-col>.veb-h:first-child{margin-top:8px}}';
   function css() { if (!document.getElementById('veb-css')) { var s = document.createElement('style'); s.id = 'veb-css'; s.textContent = CSS; document.head.appendChild(s); } }
