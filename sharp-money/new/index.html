@@ -250,8 +250,8 @@ function gamePage(key){
  ${row('Money '+esc(g.away.abbr),o.ml?am(o.ml.away):'-',c.ml?am(c.ml.away):'-',p.ml?am(p.ml.away):'-')}
  ${row('Money '+esc(g.home.abbr),o.ml?am(o.ml.home):'-',c.ml?am(c.ml.home):'-',p.ml?am(p.ml.home):'-')}</table>
  ${p.lim?`<div class="foot">Pinnacle limits: money ${money(p.lim.ml)}, spread ${money(p.lim.sp)}, total ${money(p.lim.tot)}</div>`:''}</div>`;
- // line movement, from the NFL book tape
- if(g.sport==='nfl')h+=`<div class="platter"><div class="ph"><span>Line movement</span><span class="badge">context only</span></div><div class="vlm-host" data-vlm-key="${esc(g.key)}"></div></div>`;
+ // line movement, from the book tape (NFL, college football, NBA)
+ if(/^(nfl|cfb|nba)$/.test(g.sport))h+=`<div class="platter"><div class="ph"><span>Line movement</span><span class="badge">context only</span></div><div class="vlm-host" data-vlm-key="${esc(g.key)}"></div></div>`;
  // sharp money
  const sharpTot=['sp','ml','tot'].reduce((t,k)=>{const b=bar(g,k);return t+b.A+b.H},0);
  h+=`<div class="platter"><div class="ph"><span>Sharp money</span><span class="badge">context only</span></div>${sharpTot<1?'<div class="empty" style="padding:12px">No tracked sharp money on this game yet.</div>':(['sp','ml','tot']).map(k=>{const b=bar(g,k);return `<div class="mk"><b>${MK[k]}</b><div>${b.html}</div></div>`}).join('')}
