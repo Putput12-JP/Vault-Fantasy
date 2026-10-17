@@ -197,6 +197,7 @@ def process(rows, now, sport, results):
             rr = find_result(results, sport, gid if isinstance(gid, str) else None, away, home, start)
             if rr:
                 e['res'] = settle(e, rr)
+                e['final'] = [rr['away'], rr['home']]     # stored final score, away then home, so the page can show why the call won or lost
                 e['units'] = round((1 / e['cost'] - 1) if e['res'] == 'W' else -1.0 if e['res'] == 'L' else 0.0, 3)
             if cline == e['line']:
                 e['clv'] = round((sfair - e['cost']) * 100, 2)
