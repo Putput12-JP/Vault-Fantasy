@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-17T19:30', tag:'Improved', title:'Edge page: second opinion, per-source freshness and a calibration check',
+    items:[
+      'Open a row on the Edge page and you now see what Kalshi and Polymarket say about the same side, next to Novig\'s price and Pinnacle\'s fair price, and how many of them sit at least a cent above Novig.',
+      'The line at the top now stamps Pinnacle, Novig, Kalshi, Polymarket and the US books on their own, and turns red if any one of them goes quiet for over 30 minutes.',
+      'A new calibration check asks whether bigger EV really beats the close more: results by EV size, by market and by whether Pinnacle moved while Novig did not. It stays unlabelled until the results can actually be told apart.'
+    ]
+  },
+  {
     ts:'2026-10-17T17:00', tag:'Improved', title:'Edge page: tap a row for the chart and how much you can really bet',
     items:[
       'Tap any row on the Edge page to open it in place: the line chart, how long Pinnacle and Novig have each sat on their number, and the EV if you bet $100, $500 or $1k after walking Novig\'s order book.',

@@ -34,10 +34,16 @@
   }
   function stripHtml() {
     var l = data.live; if (!l) return '';
-    var age = Date.now() / 1000 - Date.parse(l.generated) / 1000, cov = l.coverage || {}, bits = [];
+    var now = Date.now() / 1000, age = now - Date.parse(l.generated) / 1000, cov = l.coverage || {}, bits = [], seen = l.seen || {}, old = [], per = [];
     ['nfl', 'cfb', 'nba'].forEach(function (sp) { var c = cov[sp]; if (c && c.games) bits.push(SPORT[sp] + ' ' + (c.novig || 0) + '/' + c.games); });
-    var stale = age > 1800;
-    return '<details class="veb-strip' + (stale ? ' stale' : '') + '"><summary>' + (stale ? 'Prices are ' + dur(age) + ' old. Treat every EV as expired.' : 'Prices read ' + dur(age) + ' ago') + ' <span>\u00B7 ' + bits.join(' \u00B7 ') + '</span></summary><div>Pinnacle, Novig and Kalshi are read in the same run. The numbers are how many games Novig quotes. A game with no Novig quote has no row.</div></details>';
+    ['Pinnacle', 'Novig', 'Kalshi', 'Polymarket', 'US books'].forEach(function (k) {
+      if (seen[k] == null) return;
+      var a = now - seen[k];
+      per.push(k + ' ' + dur(a) + ' ago'); if (a > 1800) old.push(k + ' last seen ' + dur(a) + ' ago');
+    });
+    var stale = age > 1800 || old.length;
+    var head = age > 1800 ? 'Prices are ' + dur(age) + ' old. Treat every EV as expired.' : old.length ? old.join(', ') + '. Rows built on it may be expired.' : 'Prices read ' + dur(age) + ' ago';
+    return '<details class="veb-strip' + (stale ? ' stale' : '') + '"><summary>' + head + ' <span>\u00B7 ' + bits.join(' \u00B7 ') + '</span></summary><div>Each source is stamped on its own: ' + (per.join(', ') || 'not recorded yet') + '. The numbers are how many games Novig quotes. A game with no Novig quote has no row.</div></details>';
   }
   function drawerHtml(x) {
     var f = x.fill || {}, o = '<div class="veb-drawer"><div class="veb-lad">';
@@ -46,6 +52,12 @@
       o += '<div><small>Available at +EV</small><b>' + usd(f.ev_dollars) + '</b></div>';
     } else o += '<div class="veb-note" style="margin:0">Order-book depth is not available for this row yet.</div>';
     o += '</div><div class="veb-ages">' + (x.pin_since ? 'Pinnacle last moved ' + dur(Date.now() / 1000 - x.pin_since) + ' ago' : 'Pinnacle move time unknown') + ' \u00B7 ' + (x.nov_since ? 'Novig unchanged for ' + dur(Date.now() / 1000 - x.nov_since) : 'Novig quote age unknown yet') + (x.lim ? ' \u00B7 Pinnacle limit ' + usd(x.lim) : '') + '</div>';
+    if (x.second) {
+      var q = x.second, bt = [];
+      if (q.kal != null) bt.push('Kalshi ' + Math.round(q.kal * 1000) / 10 + '\u00A2');
+      if (q.pm != null) bt.push('Polymarket ' + Math.round(q.pm * 1000) / 10 + '\u00A2');
+      o += '<div class="veb-ages"><b>Second opinion</b> ' + bt.join(', ') + ' against Novig\u2019s ' + Math.round(x.cost * 1000) / 10 + '\u00A2 and Pinnacle\u2019s fair ' + (x.fair * 100).toFixed(1) + '%. ' + q.confirm + ' of ' + q.of + ' at least a cent above Novig.' + (x.m === 'ml' ? '' : ' Kalshi is winner market only.') + '</div>';
+    }
     o += '<div class="veb-chart" data-chart="' + esc(x.gk) + '"></div><button type="button" class="veb-open" data-gk="' + esc(x.gk) + '">Open the game page</button></div>';
     return o;
   }
@@ -59,6 +71,7 @@
       var bits = [], key = x.gk + '|' + x.m, op = st.open === key;
       if (x.pm != null) bits.push('Pinnacle ' + sg(x.pm) + ' pts in 4h');
       if (x.nm != null) bits.push('Novig ' + sg(x.nm) + ' pts');
+      if (x.second && x.second.of) bits.push(x.second.confirm + ' of ' + x.second.of + ' exchanges agree');
       if (x.fill && x.fill['500'] != null) bits.push('EV holds at $500'); else if (x.depth != null) bits.push(usd(x.depth) + ' deep');
       o += '<div class="veb-item' + (stale ? ' stale' : '') + (op ? ' open' : '') + '"><div class="veb-row" role="button" tabindex="0" aria-expanded="' + op + '" data-key="' + esc(key) + '"><div class="veb-top"><span>' + esc(x.away) + ' @ ' + esc(x.home) + '</span><span>' + SPORT[x.sport] + ' \u00B7 ' + when(x.start) + '</span></div>' +
         '<div class="veb-main"><div><b>' + MK[x.m] + '</b> ' + esc(x.label) + ' <span class="veb-px">' + esc(x.price) + '</span><small>fair ' + (x.fair * 100).toFixed(1) + '%</small></div><div class="veb-ev ' + (x.ev > 0 ? 'pos' : 'neg') + '">' + sg(x.ev) + '%<small>EV</small></div></div>' +
@@ -78,6 +91,29 @@
     if (x.median_dur != null) o += ', usually lasts ' + dur(x.median_dur);
     return o + '</span></div>';
   }
+  function pool(list) {
+    var o = { signals: 0, graded: 0, n_same: 0, sum_clv: 0, ss_clv: 0, pos: 0, settled: 0, wins: 0, units: 0, line_moved: 0 };
+    list.forEach(function (x) { if (!x) return; Object.keys(o).forEach(function (k) { o[k] += x[k] || 0; }); });
+    return o;
+  }
+  function calibHtml(rec, sports) {
+    var groups = [['band', 'By EV at the call'], ['market', 'By market'], ['stale', 'By what moved']], o = '<div class="veb-h"><span>Does bigger EV mean more?</span><span>vs Pinnacle\u2019s close</span></div><div class="veb-card">';
+    var any = false;
+    groups.forEach(function (gr) {
+      var labels = [];
+      (rec.by_sport[sports[0]].calib || []).forEach(function (c) { if (c.k === gr[0]) labels.push(c.l); });
+      if (!labels.length) return;
+      o += '<div class="veb-sp">' + gr[1] + '</div>';
+      labels.forEach(function (l) {
+        var p = pool(sports.map(function (sp) { return ((rec.by_sport[sp].calib || []).filter(function (c) { return c.k === gr[0] && c.l === l; })[0]); }));
+        var t = p.n_same ? p.sum_clv / p.n_same : null, ci = null;
+        if (p.n_same > 1) { var v = (p.ss_clv - p.n_same * t * t) / (p.n_same - 1); ci = 1.96 * Math.sqrt(Math.max(v, 0) / p.n_same); }
+        any = any || p.signals > 0;
+        o += '<div class="veb-rr"><span>' + esc(l) + '</span><span>' + (!p.signals ? 'none yet' : !p.graded ? p.signals + ' called, none graded' : p.n_same + ' graded, beat the close ' + Math.round(p.pos / p.n_same * 100) + '%, avg ' + sg(t) + ' pts' + (ci != null ? ' \u00B1' + ci.toFixed(1) : '') + (p.settled ? ', ' + p.wins + '-' + (p.settled - p.wins) + ' ' + sg(p.units, 2) + 'u' : '')) + '</span></div>';
+      });
+    });
+    return o + '<div class="veb-note">' + (any ? '' : 'Nothing to compare yet. ') + 'If bigger EV is real, the average and the beat-the-close share should rise down the EV rows. With few graded calls a range that spans zero means the rows cannot be told apart. No row is labelled until they can.</div></div>';
+  }
   function recHtml() {
     var rec = data.rec; if (!rec || !rec.by_sport) return '<div class="veb-h"><span>Record of calls</span></div><div class="veb-empty">The record file did not load.</div>';
     var sports = st.sport === 'all' ? ['nfl', 'cfb', 'nba'] : [st.sport];
@@ -88,6 +124,7 @@
       else { o += sumLine(pick(1, 'all'), 'EV 1%+') + sumLine(pick(2, 'all'), 'EV 2%+') + sumLine(pick(4, 'all'), 'EV 4%+') + sumLine(pick(1, 'stale'), 'Pinnacle moved, Novig did not (EV 1%+)'); }
     });
     o += '<div class="veb-note">A call is the first time a game side reached EV 1% or more. Beat the close means Pinnacle’s last number before kickoff was better than the Novig price at the call. ± is a 95% range; a range that spans zero is still noise. Started: ' + esc(rec.since) + '. Nothing before that was stored.</div></div>';
+    o += calibHtml(rec, sports);
     var calls = [];
     sports.forEach(function (sp) { ((rec.by_sport[sp] || {}).calls || []).forEach(function (c) { calls.push(Object.assign({ sport: sp }, c)); }); });
     if (st.m !== 'all') calls = calls.filter(function (c) { return c.m === st.m; });

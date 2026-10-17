@@ -237,6 +237,39 @@ def ladder_fills(Q, buy_ho, sfair):
     return out
 
 
+def second_opinion(g, m, line, a, cost, sfair):
+    """What Kalshi and Polymarket say about the side being bought, next to Novig's cost. Kalshi: the home contract's bid and ask mid (winner market only),
+    Polymarket: the market's last price (winner, spread and total, only at Pinnacle's exact line). A source counts as backing the row when its chance for the side
+    is at least one cent above Novig's cost. Nothing is guessed: a missing or loose quote leaves that source out."""
+    out = {}
+    kl = g.get('kal') or {}
+    if m == 'ml' and kl.get('bid') is not None and kl.get('ask') is not None and 0 < kl['bid'] <= kl['ask'] < 1 and kl['ask'] - kl['bid'] <= 0.10:
+        mid = (kl['bid'] + kl['ask']) / 2
+        out['kal'] = round(mid if a else 1 - mid, 3)
+    px = ((g.get('pm') or {}).get('px') or {}).get(m)
+    if px and px.get('px') and px.get('outs') and len(px['outs']) == 2:
+        hn, an = (g['home'].get('name') or '').lower(), (g['away'].get('name') or '').lower()
+        first = px['outs'][0].lower()
+        if m == 'tot':
+            if px.get('line') == line:
+                over = px['px'][0] if first.startswith('over') else px['px'][1]
+                out['pm'] = round(over if a else 1 - over, 3)
+        else:
+            f_home = first in hn and first not in an
+            f_away = first in an and first not in hn
+            if f_home or f_away:
+                p_home = px['px'][0] if f_home else px['px'][1]
+                if m == 'ml':
+                    out['pm'] = round(p_home if a else 1 - p_home, 3)
+                elif px.get('line') is not None and (px['line'] if f_home else -px['line']) == line:
+                    out['pm'] = round(p_home if a else 1 - p_home, 3)
+    if out:
+        out['pin'] = round(sfair, 4)
+        out['confirm'] = sum(1 for k in ('kal', 'pm') if k in out and out[k] >= cost + 0.0099)       # at least one Kalshi tick (1 cent) above Novig's price
+        out['of'] = sum(1 for k in ('kal', 'pm') if k in out)
+    return out or None
+
+
 def live_edges(games, now):
     """Novig's price against Pinnacle's no-vig fair, per game and market, from the current feed. Best side only.
     EV = fair / cost - 1 with cost = Novig's ask on that side (1 minus the best bid on the other), no fee before kickoff.
@@ -319,6 +352,9 @@ def live_edges(games, now):
                 row['depth'] = dp[kb if a else ka]       # dollars resting within 3 cents of the best price on the side a buyer would hit
             if pin.get('lim') and pin['lim'].get(pk):
                 row['lim'] = pin['lim'][pk]
+            so = second_opinion(g, m, line, a, cost, sfair)
+            if so:
+                row['second'] = so
             fills = ladder_fills(Q, a, sfair) if max(evA, evB) > 0 and budget[0] > 0 else None     # book reads only for rows above zero, capped per run
             budget[0] -= 1
             if fills:
@@ -341,6 +377,24 @@ def update_results(all_games):
             n += 1
     json.dump(res, open(fp, 'w'), separators=(',', ':'), sort_keys=True)
     print(f'results: {n} new finals, {len(res)} stored')
+
+
+def heartbeat(games, now, prev):
+    """Per source, the last time any game carried a quote from it. The page shows each source's own age, so a stopped feed does not hide behind a fresh one."""
+    seen = dict(prev or {})
+    def any_(f):
+        return any(f(g) for g in games)
+    seen_now = {
+        'Pinnacle': any_(lambda g: g.get('pin')),
+        'Novig': any_(lambda g: (g.get('nov') or {}).get('ml')),
+        'Kalshi': any_(lambda g: (g.get('kal') or {}).get('bid') is not None),
+        'Polymarket': any_(lambda g: ((g.get('pm') or {}).get('px') or {}).get('ml')),
+        'US books': any_(lambda g: g.get('soft')),
+    }
+    for k, v in seen_now.items():
+        if v:
+            seen[k] = now
+    return seen
 
 
 def main():
@@ -373,9 +427,15 @@ def main():
         total += len(new)
         print(f'{sp} tape: {len(new)} changed lines, {len(last)} tracked')
     rows = live_edges(allg, now)
+    prev_seen = {}
+    try:
+        prev_seen = json.load(open(os.path.join(ROOT, 'data', 'exchange_edge_live.json'))).get('seen') or {}
+    except (OSError, ValueError):
+        pass
+    seen = heartbeat(allg, now, prev_seen)
     st = feed.get('status') or {}
     cov = {sp: {'games': (st.get(sp) or {}).get('games'), 'novig': (st.get(sp) or {}).get('novig'), 'kalshi': (st.get(sp) or {}).get('kalshi'), 'pinnacle': (st.get(sp) or {}).get('pinnacle')} for sp in BF_SPORTS}
-    json.dump({'generated': dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(timespec='seconds'), 'feed': feed.get('generated'), 'coverage': cov, 'rows': rows},
+    json.dump({'generated': dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(timespec='seconds'), 'feed': feed.get('generated'), 'coverage': cov, 'seen': seen, 'rows': rows},
               open(os.path.join(ROOT, 'data', 'exchange_edge_live.json'), 'w'), separators=(',', ':'))
     print(f'live edges: {len(rows)} rows, {sum(1 for r in rows if r["ev"] > 0)} above zero')
     return total + backfill(allg, now)
