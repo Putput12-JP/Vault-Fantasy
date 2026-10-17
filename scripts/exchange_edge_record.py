@@ -81,7 +81,7 @@ def load(sport):
 def process(rows, now):
     games = defaultdict(list)
     for r in rows:
-        if r['book'] in ('Pinnacle', 'Novig'):
+        if r['book'] in ('Pinnacle', 'Novig') and not r.get('bf'):         # backfilled rows have no prices and are never graded
             games[r.get('gk') or (r['away'], r['home'], r['start'])].append(r)
     events = []
     for gid, rs in games.items():

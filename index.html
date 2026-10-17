@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-17T13:30', tag:'Improved', title:'Line movement chart now shows history from before we started recording',
+    items:[
+      'The chart now goes back several days for Pinnacle (spread, total and win chance), Kalshi and Novig, instead of starting from the first moment we recorded.',
+      'Novig and Kalshi show on the Money view, since they quote a win chance rather than a line. On the Spread and Total views there is now a button that jumps to them.',
+      'US sportsbooks (DraftKings, FanDuel, BetMGM, BetRivers, bet365) still start from when we began recording, because no free source keeps their history.'
+    ]
+  },
+  {
     ts:'2026-10-17T12:30', tag:'Improved', title:'Line movement chart now on college football and NBA games',
     items:[
       'The line movement chart, the Novig price against Pinnacle\'s fair price, and the running record now show on college football and NBA games too, not only the NFL.',
