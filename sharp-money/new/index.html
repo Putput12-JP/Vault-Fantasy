@@ -128,6 +128,7 @@ a.btn{text-decoration:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <div class="app"><main id="scr" aria-live="polite"></main><nav class="tabbar" id="tabs" aria-label="Sharp Money sections"></nav></div>
+<script src="../line-chart.js"></script>
 <script>
 let D=null,REF=0,G=[],GM={},ACC=[],SB=null,loadErr=false;
 const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
@@ -249,6 +250,8 @@ function gamePage(key){
  ${row('Money '+esc(g.away.abbr),o.ml?am(o.ml.away):'-',c.ml?am(c.ml.away):'-',p.ml?am(p.ml.away):'-')}
  ${row('Money '+esc(g.home.abbr),o.ml?am(o.ml.home):'-',c.ml?am(c.ml.home):'-',p.ml?am(p.ml.home):'-')}</table>
  ${p.lim?`<div class="foot">Pinnacle limits: money ${money(p.lim.ml)}, spread ${money(p.lim.sp)}, total ${money(p.lim.tot)}</div>`:''}</div>`;
+ // line movement, from the NFL book tape
+ if(g.sport==='nfl')h+=`<div class="platter"><div class="ph"><span>Line movement</span><span class="badge">context only</span></div><div class="vlm-host" data-vlm-key="${esc(g.key)}"></div></div>`;
  // sharp money
  const sharpTot=['sp','ml','tot'].reduce((t,k)=>{const b=bar(g,k);return t+b.A+b.H},0);
  h+=`<div class="platter"><div class="ph"><span>Sharp money</span><span class="badge">context only</span></div>${sharpTot<1?'<div class="empty" style="padding:12px">No tracked sharp money on this game yet.</div>':(['sp','ml','tot']).map(k=>{const b=bar(g,k);return `<div class="mk"><b>${MK[k]}</b><div>${b.html}</div></div>`}).join('')}
@@ -951,6 +954,7 @@ function route(){
  else{tab=r==='accounts'?'reads':r;html=({board,props,reads:topPage,accounts:topPage,alerts,record}[r]||board)()}
  sc.innerHTML=html;
  sc.querySelectorAll('[data-go]').forEach(x=>{x.tabIndex=0;x.setAttribute('role','button')});
+ if(window.VaultLineChart)VaultLineChart.scan(sc,k=>GM[k]);
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
 }
 function rerender(){const y=scrollY;route();window.scrollTo(0,y)}
