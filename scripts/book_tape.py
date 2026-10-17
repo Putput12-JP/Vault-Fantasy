@@ -76,18 +76,22 @@ def pinnacle(now):
         hc, ac = h and NICK.get(h['name'].split()[-1]), a and NICK.get(a['name'].split()[-1])
         start = int(dt.datetime.fromisoformat(m['startTime'].replace('Z', '+00:00')).timestamp())
         if hc and ac and start > now:
-            games[m['id']] = {'src': 'pin', 'book': 'Pinnacle', 'away': ac, 'home': hc, 'start': start, 'ml': None, 'sp': None, 'tot': None}
+            games[m['id']] = {'src': 'pin', 'book': 'Pinnacle', 'away': ac, 'home': hc, 'start': start, 'ml': None, 'sp': None, 'tot': None, 'lim': [None, None, None]}
     for x in mk:
         g = games.get(x.get('matchupId'))
         if not g or x.get('period') != 0 or x.get('isAlternate') or (x.get('status') and x['status'] != 'open'):
             continue
         pr = lambda d: next((p for p in x['prices'] if p.get('designation') == d), None)
+        lim = (x.get('limits') or [{}])[0].get('amount')          # max stake Pinnacle takes on this market
         if x['type'] == 'moneyline' and pr('home') and pr('away'):
             g['ml'] = [pr('away')['price'], pr('home')['price']]
+            g['lim'][0] = lim
         elif x['type'] == 'spread' and pr('home') and pr('away'):
             g['sp'] = [pr('home')['points'], pr('home')['price'], pr('away')['price']]
+            g['lim'][1] = lim
         elif x['type'] == 'total' and pr('over') and pr('under'):
             g['tot'] = [pr('over')['points'], pr('over')['price'], pr('under')['price']]
+            g['lim'][2] = lim
     return list(games.values())
 
 
@@ -166,7 +170,9 @@ def main():
     known = exch_match(books)
     for r in books + kalshi(now, known) + novig(now, known):
         k = f"{r['src']}|{r['book']}|{r['away']}@{r['home']}|{r['start']}"
-        v = [r['ml'], r['sp'], r['tot']] if 'px' not in r else [None, None, None, r['px']]      # sportsbook keys keep their 3-item state, so no old row is rewritten
+        v = [r['ml'], r['sp'], r['tot']] if 'px' not in r else [None, None, None, r['px']]      # US books keep their 3-item state, so no old row is rewritten
+        if r['book'] == 'Pinnacle':
+            v = v + [r['lim']]                                   # a limit change is a change, so it gets its own row
         if (v[:3] != [None, None, None] or 'px' in r) and last.get(k) != v:
             last[k] = v
             new.append({'t': now, **r})

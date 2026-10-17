@@ -50,6 +50,7 @@
     return r.ml && r.ml[0] != null && r.ml[1] != null ? dv(r.ml[0], r.ml[1]) * 100 : null;
   }
   function am(x) { return x > 0 ? '+' + x : String(x); }
+  function usd(v) { return '$' + (v >= 1000 ? +(v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k' : v); }
   function fmt(v, mk) { return mk === 'ml' ? v.toFixed(1) + '%' : (mk === 'sp' && v > 0 ? '+' : '') + v; }
 
   function build(g, st) {
@@ -62,17 +63,21 @@
       p.sort(function (x, y) { return x[0] - y[0]; });
       out.push({ book: b[0], color: b[1], pts: p, on: st.hide[b[0]] == null ? !!b[2] : !st.hide[b[0]] });
     });
+    var li = mk === 'ml' ? 0 : mk === 'sp' ? 1 : 2, lp = [];
+    rows.forEach(function (r) { if (r.book === 'Pinnacle' && r.lim && r.lim[li] != null) lp.push([r.t, r.lim[li], r]); });
+    lp.sort(function (x, y) { return x[0] - y[0]; });
+    var lim = lp.length ? { book: 'Pinnacle limits', color: 'currentColor', pts: lp, on: st.hide['Pinnacle limits'] == null ? true : !st.hide['Pinnacle limits'], lim: 1 } : null;
     var first = Infinity; out.forEach(function (s) { first = Math.min(first, s.pts[0][0]); });
     var span = st.w ? st.w : 0, tmin = span ? Math.max(tmax - span, Math.min(first, tmax)) : Math.min(first, tmax);
     if (!(tmax > tmin)) tmax = tmin + 1;
-    return { series: out, tmin: tmin, tmax: tmax, n: rows.length };
+    return { series: out, lim: lim, tmin: tmin, tmax: tmax, n: rows.length };
   }
   function valueAt(s, t, mk) { // step value held at time t, or null before the first sample
     var v = null; for (var i = 0; i < s.pts.length; i++) { if (s.pts[i][0] <= t) v = s.pts[i]; else break; } return v;
   }
 
   function svg(d, st, W) {
-    var H = W < 480 ? 220 : 250, L = 44, R = 12, T = 12, B = 26, vis = d.series.filter(function (s) { return s.on; });
+    var H = W < 480 ? 220 : 250, L = 44, R = d.lim && d.lim.on ? 40 : 12, T = 12, B = 26, vis = d.series.filter(function (s) { return s.on; });
     if (!vis.length) return '<div class="vlm-empty">Turn a book on to see its line.</div>';
     var lo = Infinity, hi = -Infinity;
     vis.forEach(function (s) {
@@ -84,6 +89,7 @@
     if (hi - lo < (st.m === 'ml' ? 4 : 2)) { var mid = (hi + lo) / 2, hf = st.m === 'ml' ? 2 : 1; lo = mid - hf; hi = mid + hf; }
     var step = st.m === 'ml' ? ([1, 2, 5, 10].filter(function (s) { return (hi - lo) / s <= 5; })[0] || 10) : ([0.5, 1, 2, 5].filter(function (s) { return (hi - lo) / s <= 5; })[0] || 5);
     lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    d.R = R;
     var X = function (t) { return L + (t - d.tmin) / (d.tmax - d.tmin) * (W - L - R); };
     var Y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
     var o = '<svg class="vlm-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Line movement by book">';
@@ -95,6 +101,20 @@
       var t = d.tmin + (d.tmax - d.tmin) * i / ticks, dt = new Date(t * 1000);
       var lab = (d.tmax - d.tmin) > 36 * 3600 ? dt.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }) + (W < 480 ? '' : ' ' + dt.toLocaleTimeString(undefined, { hour: 'numeric' })) : dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
       o += '<text x="' + X(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? 'start' : i === ticks ? 'end' : 'middle') + '" class="vlm-ax">' + lab + '</text>';
+    }
+    if (d.lim && d.lim.on) {
+      var lm = 0; d.lim.pts.forEach(function (p) { lm = Math.max(lm, p[1]); });
+      var lstep = [1000, 2000, 5000, 10000, 20000, 50000, 100000].filter(function (q) { return lm / q <= 4; })[0] || 100000, lhi = Math.ceil(lm * 1.05 / lstep) * lstep || lstep;
+      var YL = function (v) { return T + (lhi - v) / lhi * (H - T - B); };
+      [lhi, lhi / 2].forEach(function (v) { o += '<text x="' + (W - R + 5) + '" y="' + (YL(v) + 4).toFixed(1) + '" class="vlm-ax">' + usd(v) + '</text>'; });
+      var lv = valueAt(d.lim, d.tmin), lpts = lv ? [[d.tmin, lv[1]]] : [];
+      d.lim.pts.forEach(function (p) { if (p[0] > d.tmin && p[0] <= d.tmax) lpts.push([p[0], p[1]]); });
+      if (lpts.length) {
+        var lpath = 'M' + X(lpts[0][0]).toFixed(1) + ' ' + YL(lpts[0][1]).toFixed(1);
+        for (var q = 1; q < lpts.length; q++) lpath += 'H' + X(lpts[q][0]).toFixed(1) + 'V' + YL(lpts[q][1]).toFixed(1);
+        o += '<path d="' + lpath + 'H' + X(d.tmax).toFixed(1) + '" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".7"/>';
+        o += '<circle cx="' + X(d.tmax).toFixed(1) + '" cy="' + YL(lpts[lpts.length - 1][1]).toFixed(1) + '" r="2.6" fill="currentColor" opacity=".85"/>';
+      }
     }
     var order = vis.slice().sort(function (a, b) { return (a.book === 'Pinnacle') - (b.book === 'Pinnacle'); }); // Pinnacle drawn last, on top
     order.forEach(function (s) {
@@ -133,9 +153,13 @@
       var last = s.pts[s.pts.length - 1];
       o += '<button type="button" class="vlm-chip' + (s.on ? '' : ' off') + '" style="--c:' + s.color + '" data-b="' + s.book + '" aria-pressed="' + s.on + '">' + s.book + ' <i>' + fmt(+last[1].toFixed(mk === 'ml' ? 1 : 2), mk) + '</i></button>';
     });
+    if (d.lim) {
+      var ll = d.lim.pts[d.lim.pts.length - 1];
+      o += '<button type="button" class="vlm-chip' + (d.lim.on ? '' : ' off') + '" style="--c:currentColor" data-b="Pinnacle limits" aria-pressed="' + d.lim.on + '">Pinnacle limit <i>' + usd(ll[1]) + '</i></button>';
+    }
     var homeAbbr = g.home && g.home.abbr;
     return o + '</div><div class="vlm-note">' + (mk === 'sp' ? homeAbbr + ' spread. ' : mk === 'ml' ? homeAbbr + ' win chance from each book’s moneyline, vig removed. Novig and Kalshi show the middle of their best bid and ask, when the two are within 10 points. ' : '') +
-      'Steps are when a book changed its line. Context only, not a bet signal.</div></div>';
+      (d.lim ? 'The white line is the most Pinnacle will take on this market, on the right axis. ' : '') + 'Steps are when a book changed its line. Context only, not a bet signal.</div></div>';
   }
 
   function render(el, g) {
@@ -147,14 +171,15 @@
     var cur = sv.querySelector('.vlm-cur'), rd = el.querySelector('.vlm-read');
     var move = function (e) {
       var r = sv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W;
-      if (x < 44 || x > W - 12) return;
-      var t = d.tmin + (x - 44) / (W - 44 - 12) * (d.tmax - d.tmin);
+      if (x < 44 || x > W - d.R) return;
+      var t = d.tmin + (x - 44) / (W - 44 - d.R) * (d.tmax - d.tmin);
       cur.setAttribute('x1', x); cur.setAttribute('x2', x); cur.style.display = '';
       var dt = new Date(t * 1000), parts = [dt.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })];
       d.series.forEach(function (s) {
         if (!s.on || s.book === 'Open') return;
         var p = valueAt(s, t); if (p) parts.push(s.book + ' ' + (st.m === 'ml' ? fmtMl(p[2]) : fmt(p[1], st.m)));
       });
+      if (d.lim && d.lim.on) { var lq = valueAt(d.lim, t); if (lq) parts.push('Limit ' + usd(lq[1])); }
       rd.textContent = parts.join('  ·  ');
     };
     sv.addEventListener('pointermove', move); sv.addEventListener('pointerdown', move);
