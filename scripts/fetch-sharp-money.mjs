@@ -559,7 +559,7 @@ async function novig(sk, cfg, games, S) {
         tape.push({ ts, m, side: side[x.outcomeId], usd: Math.round(usd), px: r3(+x.price), line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, id: x.tradeId.slice(0, 18) });
       }
       S.cursors['n:' + mk.marketId] = newest;
-      info[m] = { ...(m === 'ml' ? { mk: mk.marketId, ho: Object.keys(side).find(k => side[k] === 'home') } : {}), line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, bid: bid != null ? r3(bid) : null, ask: ask != null ? r3(ask) : null,
+      info[m] = { mk: mk.marketId, ho: Object.keys(side).find(k => side[k] === (m === 'tot' ? 'over' : 'home')), line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, bid: bid != null ? r3(bid) : null, ask: ask != null ? r3(ask) : null,
         mid: bid != null && ask != null && ask - bid <= 0.10 ? r3((bid + ask) / 2) : null, depth, rest: Math.round(rest), vol: Math.round(vol) };
       info.rest += Math.round(rest); info.vol += Math.round(vol);
     }

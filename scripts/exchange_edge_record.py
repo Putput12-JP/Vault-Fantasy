@@ -29,6 +29,7 @@ from collections import defaultdict
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 TAPE = os.environ.get('EDGE_TAPE_DIR') or os.path.join(ROOT, 'data', 'book_tape')       # <TAPE>/<sport>/*.jsonl
 OUT = os.environ.get('EDGE_OUT') or os.path.join(ROOT, 'data', 'exchange_edge_record.json')
+ALIAS = {'WSH': 'WAS', 'LA': 'LAR', 'JAC': 'JAX', 'LVR': 'LV', 'OAK': 'LV'}
 THRS = (1.0, 2.0, 4.0)
 STALE_PIN, STALE_NOV, WINDOW = 0.01, 0.005, 4 * 3600
 MARKETS = (('ml', 'ml', 'px'), ('sp', 'sp', 'nsp'), ('tot', 'tot', 'ntot'))
@@ -74,6 +75,40 @@ def at(hist, t):
     return v
 
 
+def load_results():
+    fp = os.path.join(os.path.dirname(OUT), 'exchange_edge_results.json')
+    try:
+        return json.load(open(fp))
+    except (OSError, ValueError):
+        return {}
+
+
+def find_result(results, sport, gk, away, home, start):
+    if gk and gk in results:
+        return results[gk]
+    n = lambda x: ALIAS.get(x, x)
+    for r in results.values():
+        if r.get('sport') == sport and n(r.get('ah')) == n(away) and n(r.get('hh')) == n(home) and abs(r['start'] - start) < 6 * 3600:
+            return r
+    return None
+
+
+def settle(e, r):
+    """W / L / P for the side called, from the final score. Spread: home covers when home + line > away. Total: over when the sum beats the line."""
+    h, a = r['home'], r['away']
+    if e['m'] == 'ml':
+        home_won = None if h == a else h > a
+    elif e['m'] == 'sp':
+        v = h + e['line'] - a
+        home_won = None if v == 0 else v > 0
+    else:
+        v = h + a - e['line']
+        home_won = None if v == 0 else v > 0
+    if home_won is None:
+        return 'P'
+    return 'W' if home_won == (e['side'] == 'A') else 'L'
+
+
 def load(sport):
     rows = []
     for fp in sorted(glob.glob(os.path.join(TAPE, sport, '*.jsonl'))):
@@ -87,7 +122,7 @@ def load(sport):
     return rows
 
 
-def process(rows, now):
+def process(rows, now, sport, results):
     games = defaultdict(list)
     for r in rows:
         if r['book'] in ('Pinnacle', 'Novig') and not r.get('bf'):         # backfilled rows have no prices and are never graded
@@ -104,6 +139,7 @@ def process(rows, now):
                     hist[(r['book'], f)].append((r['t'], r[f]))
         fired = set()
         mine = []
+        series = defaultdict(list)                     # (market, side) -> [(t, ev)] while pregame
         for t in sorted({r['t'] for r in rs}):
             if t >= start - 300:
                 continue
@@ -117,6 +153,7 @@ def process(rows, now):
                     continue
                 for side, cost, sfair in (('A', ask, fair), ('B', 1 - bid, 1 - fair)):
                     ev = (sfair / cost - 1) * 100
+                    series[(m, side)].append((t, ev))
                     p0, n0 = at(hist[('Pinnacle', pf)], t - WINDOW), at(hist[('Novig', nf)], t - WINDOW)
                     stale = None
                     if p0 is not None and n0 is not None:
@@ -134,6 +171,12 @@ def process(rows, now):
                                          'cost': round(cost, 3), 'fair': round(sfair, 4), 'line': line, 'stale': stale})
         # grade against Pinnacle's last quote before kickoff
         for e in mine:
+            # how long the call lasted: from the first sight until the EV fell back under the threshold, or until kickoff
+            later = [(t, ev) for t, ev in series[(e['m'], e['side'])] if t >= e['t']]
+            e['peak'] = round(max(ev for _, ev in later), 2)
+            below = next((t for t, ev in later if ev < e['thr']), None)
+            e['dur'] = int((below if below is not None else min(start - 300, now)) - e['t'])
+            e['open'] = below is None and start > now
             e['graded'] = False
             if start >= now:
                 continue
@@ -144,6 +187,17 @@ def process(rows, now):
             cfair, cline = pin_fair_line(e['m'], close)
             e['graded'] = True
             sfair = cfair if e['side'] == 'A' else 1 - cfair
+            nf = next(n for m, p, n in MARKETS if m == e['m'])
+            nc = at(hist[('Novig', nf)], start - 300)
+            if nc is not None:
+                nl, nb, na = nov_quote(nf, nc)
+                if nl == cline or nl is None and e['m'] == 'ml':
+                    mid = (nb + na) / 2
+                    e['nclv'] = round(((mid if e['side'] == 'A' else 1 - mid) - e['cost']) * 100, 2)     # where Novig itself closed against the price at the call
+            rr = find_result(results, sport, gid if isinstance(gid, str) else None, away, home, start)
+            if rr:
+                e['res'] = settle(e, rr)
+                e['units'] = round((1 / e['cost'] - 1) if e['res'] == 'W' else -1.0 if e['res'] == 'L' else 0.0, 3)
             if cline == e['line']:
                 e['clv'] = round((sfair - e['cost']) * 100, 2)
             else:
@@ -160,8 +214,17 @@ def summarize(sel):
     gr = [x for x in sel if x.get('graded')]
     same = [x['clv'] for x in gr if 'clv' in x]
     lm = [x for x in gr if x.get('line_moved')]
+    st = [x for x in gr if 'res' in x]
     o = {'signals': sig, 'graded': len(gr), 'same_line': len(same), 'line_moved': len(lm), 'line_favoured': sum(1 for x in lm if x['line_favoured']),
          'pending': sig - len(gr)}
+    if st:
+        o['settled'] = len(st)
+        o['wins'] = sum(1 for x in st if x['res'] == 'W')
+        o['units'] = round(sum(x['units'] for x in st), 2)
+    durs = [x['dur'] for x in sel if x.get('dur') is not None]
+    if durs:
+        durs.sort()
+        o['median_dur'] = durs[len(durs) // 2]
     if same:
         mu = sum(same) / len(same)
         o['mean_clv'] = round(mu, 2)
@@ -175,8 +238,9 @@ def summarize(sel):
 def main():
     now = int(time.time())
     by = {}
+    results = load_results()
     for sport in ('nfl', 'cfb', 'nba'):
-        events = process(load(sport), now)
+        events = process(load(sport), now, sport, results)
         by[sport] = {'calls': sorted([e for e in events if e['thr'] == 1.0], key=lambda e: -e['t'])[:400], 'summary': [{'thr': thr, 'tag': tag, **summarize([e for e in events if e['thr'] == thr and (tag == 'all' or e['stale'] is True)])}
                                  for thr in THRS for tag in ('all', 'stale')],
                      'recent': sorted(events, key=lambda e: -e['t'])[:60]}
