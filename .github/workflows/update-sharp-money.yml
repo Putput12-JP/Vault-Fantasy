@@ -108,16 +108,18 @@ jobs:
         run: |
           Q=""; [ "${{ github.event.inputs.force }}" = "true" ] && Q="--quick"
           node scripts/fetch-sharp-money.mjs --dir=sharp-out $Q
-      # College football and NBA line tape (scripts/sharp_tape.py): every book's numbers, appended when they change, read from the
+      # College football and NBA line tape (scripts/sharp_tape.py), the live Novig-vs-Pinnacle edge list, and the edge record
+      # (scripts/exchange_edge_record.py, the only place it is written so two workflows never race on it): every book's numbers, appended when they change, read from the
       # data.json just built (teams are already matched there). Committed to main like the NFL tape. Never blocks the publish.
       - name: Record CFB and NBA line tape
         if: steps.gate.outputs.go == '1'
         continue-on-error: true
         run: |
           python3 scripts/sharp_tape.py --data sharp-out/data.json
+          python3 scripts/exchange_edge_record.py
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
-          git add data/book_tape/cfb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json
+          git add data/book_tape/cfb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json
           if git diff --staged --quiet; then echo "No line changes."; else
             git commit -q -m "data: CFB and NBA line tape [skip ci]"
             git pull --rebase --autostash origin main || true

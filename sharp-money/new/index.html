@@ -77,8 +77,8 @@ html,body{margin:0;height:100%;background:#0b0b0d;color:var(--ink);font:15px/1.3
 .mk{display:grid;grid-template-columns:58px 1fr;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.mk:first-of-type{border-top:0}.mk b{font-size:13px;color:var(--mut);font-weight:600}
 .alert{display:grid;grid-template-columns:5px 1fr auto;gap:12px;align-items:center}
 .alert .sw{align-self:stretch;border-radius:5px}.alert .t{font-weight:600;font-size:15px}.alert .x{color:var(--mut);font-size:13px;margin-top:2px}
-.tabbar{position:absolute;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(20,20,22,.82);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;justify-content:space-around;z-index:6;border-top:1px solid var(--line)}
-.tabbar button{all:unset;cursor:pointer;text-align:center;font-size:11px;font-weight:600;color:var(--mut);padding:4px 0;flex:1;min-width:0;transition:transform .5s var(--ease-spring)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;padding:10px 6px calc(10px + env(safe-area-inset-bottom));background:rgba(20,20,22,.82);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;justify-content:space-around;z-index:6;border-top:1px solid var(--line)}
+.tabbar button{all:unset;cursor:pointer;text-align:center;font-size:10.5px;font-weight:600;color:var(--mut);padding:4px 0;flex:1;min-width:0;white-space:nowrap;transition:transform .5s var(--ease-spring)}
 .tabbar button svg{display:block;margin:0 auto 3px;width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabbar button.on{color:#fff}.tabbar button:active{transform:scale(.9);transition:transform 80ms ease-out}
 .empty{color:var(--mut);text-align:center;padding:26px 20px;font-size:14px}
@@ -129,6 +129,7 @@ a.btn{text-decoration:none}
 </style>
 <div class="app"><main id="scr" aria-live="polite"></main><nav class="tabbar" id="tabs" aria-label="Sharp Money sections"></nav></div>
 <script src="../line-chart.js"></script>
+<script src="../edge-board.js"></script>
 <script>
 let D=null,REF=0,G=[],GM={},ACC=[],SB=null,loadErr=false;
 const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
@@ -185,7 +186,7 @@ const heat=g=>D.alerts.filter(a=>a.game===g.key&&a.ts>REF-86400).length;
 const live=g=>g.status==='inprogress';
 const upcoming=()=>G.filter(g=>g.start>REF-4*3600).sort((a,b)=>a.start-b.start);
 const st={tsp:'all',texp:false,tsel:null,tsg:null,tsgt:'Live now',tpin:'Spreads',tpmf:'All',msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,fsel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30};
-const ICON={board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
+const ICON={board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',edge:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
 $('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${({reads:'Top Reads'})[k]||k[0].toUpperCase()+k.slice(1)}</button>`).join('');
 const chips=(items,cur,key)=>`<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
 const head=(t,s)=>`<div class="trow"><div class="title">${t}</div><button class="rf" data-refresh aria-label="Refresh the data"${rfState==='busy'?' disabled':''}>${rfHtml()}</button></div>${s?`<p class="ctx">${s}</p>`:''}`;
@@ -288,6 +289,7 @@ function gamePage(key){
  if(g.model){const mo=g.model;h+=`<div class="platter"><div class="ph"><span>Vault line</span><span class="badge">context only</span></div><div class="kv"><span>${esc(g.home.abbr)} margin</span><em class="cond">${sgn(mo.margin)}</em></div><div class="kv"><span>Total</span><em class="cond">${mo.total}</em></div><div class="kv"><span>${esc(g.home.abbr)} win chance</span><em class="cond">${Math.round(mo.homeWin*100)}%</em></div><div class="foot">Our own number, shown beside the market. See the scoreboard on the Record tab for how it has done against Kalshi.</div></div>`}
  return h;
 }
+function edge(){return head('Edge','Novig against Pinnacle, biggest +EV first. Context only.')+'<div class="card" style="padding:14px 16px"><div data-edge-host></div></div>'}
 function props(){
  if(!st.prTouched&&!upcoming().some(g=>(g.props||[]).length)&&upcoming().some(g=>(g.kprops||[]).length))st.pr='ka';
  let h=head('Props','Polymarket and Kalshi. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']],st.pr,'pr');
@@ -951,10 +953,11 @@ function route(){
  if(r.startsWith('game/')){html=gamePage(decodeURIComponent(r.slice(5)));tab='board'}
  else if(r.startsWith('acct/')){html=acct(+r.slice(5));tab='reads'}
  else if(r==='models'||r.startsWith('pick/')){['nfl','cfb','sb'].forEach(k=>loadModel(k));tab='models';if(r==='models')html=modelsPage();else{const q=r.split('/');html=pickPage(q[1],decodeURIComponent(q.slice(2).join('/')))}}
- else{tab=r==='accounts'?'reads':r;html=({board,props,reads:topPage,accounts:topPage,alerts,record}[r]||board)()}
+ else{tab=r==='accounts'?'reads':r;html=({board,props,reads:topPage,accounts:topPage,alerts,record,edge}[r]||board)()}
  sc.innerHTML=html;
  sc.querySelectorAll('[data-go]').forEach(x=>{x.tabIndex=0;x.setAttribute('role','button')});
  if(window.VaultLineChart)VaultLineChart.scan(sc,k=>GM[k]);
+ if(window.VaultEdgeBoard){const eh=sc.querySelector('[data-edge-host]');if(eh)VaultEdgeBoard.mount(eh)}
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
 }
 function rerender(){const y=scrollY;route();window.scrollTo(0,y)}

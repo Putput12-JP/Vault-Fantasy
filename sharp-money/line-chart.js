@@ -43,9 +43,9 @@
     var a = ab(g.away && g.away.abbr), h = ab(g.home && g.home.abbr);
     return t.filter(function (r) { return r.away === a && r.home === h && Math.abs(r.start - g.start) < 6 * 3600; });
   }
-  function dv(a, b) { // de-vigged home win probability from the two stored moneylines
-    var p = function (m) { return m < 0 ? -m / (-m + 100) : 100 / (m + 100); }, pa = p(a), ph = p(b);
-    return ph / (pa + ph);
+  function dv(a, b) { // de-vigged home win probability from the two stored moneylines (away, home), power method
+    var p = function (m) { return m < 0 ? -m / (-m + 100) : 100 / (m + 100); };
+    return powFair(p(b), p(a));
   }
   function val(r, mk) {
     if (r.bf && !r.px) { var bv = mk === 'ml' ? (r.mlp != null ? r.mlp * 100 : null) : mk === 'sp' ? r.spl : r.totl; return bv == null ? null : bv; }   // backfilled Pinnacle: line or win chance only, no prices
@@ -86,7 +86,8 @@
      price paid to buy a side is its ask (1 minus the best bid on the other side). Pregame Novig charges no fee. Every number is a
      stored quote; a market with no Novig quote at Pinnacle's current line is left out rather than guessed. */
   function pfn(a) { return a < 0 ? -a / (-a + 100) : 100 / (a + 100); }
-  function fairFirst(a, b) { var pa = pfn(a), pb = pfn(b); return pa / (pa + pb); }
+  function powFair(x, y) { var lo = 0.5, hi = 3, k; for (var i = 0; i < 40; i++) { k = (lo + hi) / 2; if (Math.pow(x, k) + Math.pow(y, k) > 1) lo = k; else hi = k; } return Math.pow(x, (lo + hi) / 2); }   // power de-vig, same as devig() in fetch-sharp-money.mjs
+  function fairFirst(a, b) { return powFair(pfn(a), pfn(b)); }
   function priceAm(p) { return p < 0.5 ? '+' + Math.round(100 * (1 - p) / p) : String(Math.round(-100 * p / (1 - p))); }
   function pick(rows, book, field, t) {
     var f = null;

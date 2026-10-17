@@ -24,7 +24,7 @@ History before the first run is backfilled once per game, from what each source 
 Recording starts the first run after this lands. Earlier lines were never stored for these sports, so none are invented.
 Usage: python3 scripts/sharp_tape.py [--data path-or-url]
 """
-import datetime as dt, json, os, subprocess, sys, time
+import datetime as dt, glob, json, os, subprocess, sys, time
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 URL = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/sharp-data/data.json'
@@ -169,6 +169,116 @@ def backfill(games, now):
     return total
 
 
+def pfn(a):
+    return -a / (-a + 100) if a < 0 else 100 / (a + 100)
+
+
+def ff(a, b):
+    """Fair chance of the first side after removing the vig. Power method (x^k + y^k = 1), the same as devig() in
+    fetch-sharp-money.mjs, so a +900 longshot is not read as +700 fair."""
+    x, y = pfn(a), pfn(b)
+    lo, hi = 0.5, 3.0
+    for _ in range(40):
+        k = (lo + hi) / 2
+        if x ** k + y ** k > 1:
+            lo = k
+        else:
+            hi = k
+    return x ** ((lo + hi) / 2)
+
+
+def price_am(p):
+    return '+' + str(round(100 * (1 - p) / p)) if p < 0.5 else str(round(-100 * p / (1 - p)))
+
+
+def tape_rows(sp):
+    rows = []
+    for fp in sorted(glob.glob(os.path.join(ROOT, 'data', 'book_tape', sp, '*.jsonl'))):
+        if os.path.basename(fp).startswith('backfill'):
+            continue
+        for l in open(fp):
+            if '"Novig"' in l:
+                try:
+                    rows.append(json.loads(l))
+                except ValueError:
+                    pass
+    return rows
+
+
+def live_edges(games, now):
+    """Novig's price against Pinnacle's no-vig fair, per game and market, from the current feed. Best side only.
+    EV = fair / cost - 1 with cost = Novig's ask on that side (1 minus the best bid on the other), no fee before kickoff.
+    Spread and total need Novig to quote Pinnacle's exact line. pm / nm: how far Pinnacle's fair and Novig's mid for that side moved
+    over the last 4 hours (pinHist and the tape); stale = Pinnacle up 1.0+ pt while Novig moved under 0.5 pt (same rule as the record)."""
+    novtape = {}
+    for sp in BF_SPORTS:
+        for r in tape_rows(sp):
+            if r.get('gk') or sp == 'nfl':
+                novtape.setdefault(r.get('gk') or (r['away'], r['home']), []).append(r)
+    out = []
+    for g in games:
+        pin, nv = g.get('pin') or {}, g.get('nov') or {}
+        if not pin or not nv:
+            continue
+        hist = g.get('pinHist') or []
+        h4 = next((h for h in reversed(hist) if h[0] <= now - 4 * 3600), None)
+        nrows = sorted(novtape.get(g['key']) or novtape.get((g['away']['abbr'], g['home']['abbr'])) or [], key=lambda r: r['t'])
+        ab = g['away']['abbr']
+        hb = g['home']['abbr']
+        spec = (('ml', 'ml', 'px', None), ('sp', 'sp', 'nsp', 'line'), ('tot', 'tot', 'ntot', 'line'))
+        for m, pk, nk, _ in spec:
+            P, Q = pin.get(pk), nv.get(pk)
+            if not P or not Q or Q.get('bid') is None or Q.get('ask') is None or not 0 < Q['bid'] <= Q['ask'] < 1:
+                continue
+            if m == 'ml':
+                if P.get('home') is None or P.get('away') is None:
+                    continue
+                fair, line = ff(P['home'], P['away']), None
+            elif m == 'sp':
+                if P.get('line') is None or Q.get('line') != P['line'] or P.get('home') is None or P.get('away') is None:
+                    continue
+                fair, line = ff(P['home'], P['away']), P['line']
+            else:
+                if P.get('line') is None or Q.get('line') != P['line'] or P.get('over') is None or P.get('under') is None:
+                    continue
+                fair, line = ff(P['over'], P['under']), P['line']
+            bid, ask = Q['bid'], Q['ask']
+            evA, evB = fair / ask - 1, (1 - fair) / (1 - bid) - 1
+            a = evA >= evB
+            cost, sfair = (ask, fair) if a else (1 - bid, 1 - fair)
+            if m == 'ml':
+                label = hb if a else ab
+            elif m == 'sp':
+                label = f"{hb} {line:+g}" if a else f"{ab} {-line:+g}"
+            else:
+                label = f"Over {line:g}" if a else f"Under {line:g}"
+            row = {'gk': g['key'], 'sport': g['sport'], 'away': ab, 'home': hb, 'start': g['start'], 'm': m, 'label': label, 'line': line,
+                   'ev': round(max(evA, evB) * 100, 2), 'cost': round(cost, 3), 'price': price_am(cost), 'fair': round(sfair, 4), 'sg': 1 if a else -1}
+            if h4:
+                f4 = {'ml': h4[1], 'sp': h4[3] if h4[2] == line else None, 'tot': h4[5] if h4[4] == line else None}[m]
+                if f4 is not None:
+                    row['pm'] = round(row['sg'] * (fair - f4) * 100, 2)
+            old = None
+            for r in nrows:
+                if r['t'] <= now - 4 * 3600 and r.get(nk) is not None and (m == 'ml' or r[nk][0] == line):
+                    old = r[nk]
+            if old is not None:
+                o = old if m == 'ml' else old[1:]
+                row['nm'] = round(row['sg'] * (((bid + ask) / 2) - ((o[0] + o[1]) / 2)) * 100, 2)
+            if 'pm' in row and 'nm' in row:
+                row['stale'] = row['pm'] >= 1.0 and abs(row['nm']) < 0.5
+            dp = Q.get('depth') or {}
+            ka, kb = ('over', 'under') if m == 'tot' else ('home', 'away')
+            if dp.get(kb if a else ka) is not None:
+                row['depth'] = dp[kb if a else ka]       # dollars resting within 3 cents of the best price on the side a buyer would hit
+            if pin.get('lim') and pin['lim'].get(pk):
+                row['lim'] = pin['lim'][pk]
+            del row['sg']
+            out.append(row)
+    out.sort(key=lambda r: -r['ev'])
+    return out
+
+
 def main():
     src = sys.argv[sys.argv.index('--data') + 1] if '--data' in sys.argv else URL
     now = int(time.time())
@@ -196,6 +306,10 @@ def main():
         json.dump(last, open(lp, 'w'), separators=(',', ':'), sort_keys=True)
         total += len(new)
         print(f'{sp} tape: {len(new)} changed lines, {len(last)} tracked')
+    rows = live_edges(allg, now)
+    json.dump({'generated': dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(timespec='seconds'), 'rows': rows},
+              open(os.path.join(ROOT, 'data', 'exchange_edge_live.json'), 'w'), separators=(',', ':'))
+    print(f'live edges: {len(rows)} rows, {sum(1 for r in rows if r["ev"] > 0)} above zero')
     return total + backfill(allg, now)
 
 

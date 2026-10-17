@@ -1,7 +1,6 @@
 # NFL sportsbook tape: every book's moneyline, main spread and total, appended only when it changes
 # (scripts/book_tape.py -> data/book_tape/nfl/). Free, keyless: Action Network's scoreboard and Pinnacle's guest API.
-# Also replays the tape into data/exchange_edge_record.json (scripts/exchange_edge_record.py): Novig's price against Pinnacle's
-# fair, graded on Pinnacle's close. Feeds the declared Polymarket vs sportsbooks re-test (docs/pm-vs-books-test.md, weeks 4-7), which needs book
+# Feeds the declared Polymarket vs sportsbooks re-test (docs/pm-vs-books-test.md, weeks 4-7), which needs book
 # prices far more often than the lineup feed fetches them. GitHub may skip some scheduled runs; each run that
 # lands records whatever changed since the last one.
 name: NFL book tape
@@ -25,15 +24,12 @@ jobs:
       - uses: actions/checkout@v5
       - name: Record changed lines
         run: python3 scripts/book_tape.py
-      - name: Grade Novig edge signals
-        continue-on-error: true
-        run: python3 scripts/exchange_edge_record.py
       - name: Commit if changed
         run: |
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
           git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
-          git add data/book_tape/ data/exchange_edge_record.json
+          git add data/book_tape/
           if git diff --staged --quiet; then
             echo "No line changes."
           else
