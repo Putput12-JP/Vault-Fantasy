@@ -119,7 +119,7 @@ jobs:
           python3 scripts/exchange_edge_record.py
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
-          git add data/book_tape/cfb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json
+          git add data/book_tape/cfb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json data/exchange_edge_results.json
           if git diff --staged --quiet; then echo "No line changes."; else
             git commit -q -m "data: CFB and NBA line tape [skip ci]"
             git pull --rebase --autostash origin main || true

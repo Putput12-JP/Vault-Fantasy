@@ -30,6 +30,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 URL = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/sharp-data/data.json'
 SPORTS = ('cfb', 'nba')
 BF_SPORTS = ('nfl', 'cfb', 'nba')
+NFL_ALIAS = {'WSH': 'WAS', 'LA': 'LAR', 'JAC': 'JAX', 'LVR': 'LV', 'OAK': 'LV'}
 KAL = 'https://api.elections.kalshi.com/trade-api/v2'
 KSERIES = {'nfl': 'KXNFLGAME', 'cfb': 'KXNCAAFGAME', 'nba': 'KXNBAGAME'}
 NOV = 'https://api.novig.com/v3/public/catalog'
@@ -205,12 +206,44 @@ def tape_rows(sp):
     return rows
 
 
+def ladder_fills(Q, buy_ho, sfair):
+    """EV at $100, $500 and $1,000 and the dollars available at +EV, walking Novig's resting orders.
+    A resting bid at price p on one outcome lets a buyer take the other outcome at 1 - p; one contract pays $0.01, so an order of qty q costs
+    the taker (1 - p) * q / 100 dollars. buy_ho: the side bought is the home / over outcome. Needs the market id from the feed; None otherwise."""
+    mk, ho = Q.get('mk'), Q.get('ho')
+    if not mk or not ho:
+        return None
+    book = jget(f"{NOV}/markets/{mk}/book")
+    orders = (book or {}).get('orders')
+    if not orders or ho not in orders:
+        return None
+    other = next((k for k in orders if k != ho), None)
+    src = orders.get(other) if buy_ho else orders.get(ho)
+    if not src:
+        return None
+    lv = sorted(((1 - float(o['price']), o['qty']) for o in src), key=lambda x: x[0])      # (cost per contract as a chance, contracts), cheapest first
+    out = {}
+    for S in (100, 500, 1000):
+        left, paid, got = S, 0.0, 0.0
+        for c, q in lv:
+            take = min(q, left / (0.01 * c)) if c > 0 else 0
+            paid += take * 0.01 * c
+            got += take * 0.01
+            left -= take * 0.01 * c
+            if left <= 1e-9:
+                break
+        out[str(S)] = round((sfair / (paid / got) - 1) * 100, 2) if left <= 1e-6 and got else None     # None: the book is not deep enough for this size
+    out['ev_dollars'] = round(sum(q * 0.01 * c for c, q in lv if c < sfair))                       # dollars you can put on at a positive price
+    return out
+
+
 def live_edges(games, now):
     """Novig's price against Pinnacle's no-vig fair, per game and market, from the current feed. Best side only.
     EV = fair / cost - 1 with cost = Novig's ask on that side (1 minus the best bid on the other), no fee before kickoff.
     Spread and total need Novig to quote Pinnacle's exact line. pm / nm: how far Pinnacle's fair and Novig's mid for that side moved
     over the last 4 hours (pinHist and the tape); stale = Pinnacle up 1.0+ pt while Novig moved under 0.5 pt (same rule as the record)."""
     novtape = {}
+    budget = [40]
     for sp in BF_SPORTS:
         for r in tape_rows(sp):
             if r.get('gk') or sp == 'nfl':
@@ -222,7 +255,8 @@ def live_edges(games, now):
             continue
         hist = g.get('pinHist') or []
         h4 = next((h for h in reversed(hist) if h[0] <= now - 4 * 3600), None)
-        nrows = sorted(novtape.get(g['key']) or novtape.get((g['away']['abbr'], g['home']['abbr'])) or [], key=lambda r: r['t'])
+        nk2 = (NFL_ALIAS.get(g['away']['abbr'], g['away']['abbr']), NFL_ALIAS.get(g['home']['abbr'], g['home']['abbr']))        # the NFL tape uses book_tape.py's abbreviations
+        nrows = sorted(novtape.get(g['key']) or novtape.get(nk2) or [], key=lambda r: r['t'])
         ab = g['away']['abbr']
         hb = g['home']['abbr']
         spec = (('ml', 'ml', 'px', None), ('sp', 'sp', 'nsp', 'line'), ('tot', 'tot', 'ntot', 'line'))
@@ -265,6 +299,18 @@ def live_edges(games, now):
             if old is not None:
                 o = old if m == 'ml' else old[1:]
                 row['nm'] = round(row['sg'] * (((bid + ask) / 2) - ((o[0] + o[1]) / 2)) * 100, 2)
+            # how long each side has sat: Novig's quote since its last change on the tape, Pinnacle's last move from its own history
+            last_n = next((r for r in reversed(nrows) if r.get(nk) is not None), None)
+            if last_n:
+                cur = [bid, ask]
+                got = last_n[nk] if m == 'ml' else last_n[nk][1:]
+                if got == cur and (m == 'ml' or last_n[nk][0] == line):
+                    row['nov_since'] = last_n['t']
+            col = {'ml': (1,), 'sp': (2, 3), 'tot': (4, 5)}[m]
+            for i in range(len(hist) - 1, 0, -1):
+                if any(hist[i][c] != hist[i - 1][c] for c in col):
+                    row['pin_since'] = hist[i][0]
+                    break
             if 'pm' in row and 'nm' in row:
                 row['stale'] = row['pm'] >= 1.0 and abs(row['nm']) < 0.5
             dp = Q.get('depth') or {}
@@ -273,16 +319,36 @@ def live_edges(games, now):
                 row['depth'] = dp[kb if a else ka]       # dollars resting within 3 cents of the best price on the side a buyer would hit
             if pin.get('lim') and pin['lim'].get(pk):
                 row['lim'] = pin['lim'][pk]
+            fills = ladder_fills(Q, a, sfair) if max(evA, evB) > 0 and budget[0] > 0 else None     # book reads only for rows above zero, capped per run
+            budget[0] -= 1
+            if fills:
+                row['fill'] = fills
             del row['sg']
             out.append(row)
     out.sort(key=lambda r: -r['ev'])
     return out
 
 
+def update_results(all_games):
+    """Final scores for the settlement of calls: data/exchange_edge_results.json {gk: {home, away}}. Kept once seen, the feed drops finished games."""
+    fp = os.path.join(ROOT, 'data', 'exchange_edge_results.json')
+    res = json.load(open(fp)) if os.path.exists(fp) else {}
+    n = 0
+    for g in all_games:
+        f = g.get('final')
+        if f and f.get('home') is not None and f.get('away') is not None and g['key'] not in res:
+            res[g['key']] = {'home': f['home'], 'away': f['away'], 'sport': g['sport'], 'start': g['start'], 'ah': g['away']['abbr'], 'hh': g['home']['abbr']}
+            n += 1
+    json.dump(res, open(fp, 'w'), separators=(',', ':'), sort_keys=True)
+    print(f'results: {n} new finals, {len(res)} stored')
+
+
 def main():
     src = sys.argv[sys.argv.index('--data') + 1] if '--data' in sys.argv else URL
     now = int(time.time())
-    allg = [g for g in load(src).get('games', []) if g.get('sport') in BF_SPORTS and g.get('start', 0) > now and g.get('away') and g.get('home') and not g.get('final')]
+    feed = load(src)
+    update_results(feed.get('games', []))
+    allg = [g for g in feed.get('games', []) if g.get('sport') in BF_SPORTS and g.get('start', 0) > now and g.get('away') and g.get('home') and not g.get('final')]
     games = [g for g in allg if g['sport'] in SPORTS]
     total = 0
     for sp in SPORTS:
@@ -307,7 +373,9 @@ def main():
         total += len(new)
         print(f'{sp} tape: {len(new)} changed lines, {len(last)} tracked')
     rows = live_edges(allg, now)
-    json.dump({'generated': dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(timespec='seconds'), 'rows': rows},
+    st = feed.get('status') or {}
+    cov = {sp: {'games': (st.get(sp) or {}).get('games'), 'novig': (st.get(sp) or {}).get('novig'), 'kalshi': (st.get(sp) or {}).get('kalshi'), 'pinnacle': (st.get(sp) or {}).get('pinnacle')} for sp in BF_SPORTS}
+    json.dump({'generated': dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(timespec='seconds'), 'feed': feed.get('generated'), 'coverage': cov, 'rows': rows},
               open(os.path.join(ROOT, 'data', 'exchange_edge_live.json'), 'w'), separators=(',', ':'))
     print(f'live edges: {len(rows)} rows, {sum(1 for r in rows if r["ev"] > 0)} above zero')
     return total + backfill(allg, now)

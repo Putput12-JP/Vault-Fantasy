@@ -266,6 +266,7 @@
   function mount(el, g) {
     if (!el || !g || !/^(nfl|cfb|nba)$/.test(g.sport)) return;
     css(); hosts.set(el, g);
+    if (g.tab && !el.__vlmTab) { el.__vlmTab = 1; (states[g.key] || (states[g.key] = { m: 'sp', w: 24 * 3600, hide: {} })).m = g.tab; }   // the Edge page opens the chart on the market of the row
     if (!el.__vlm) {
       el.__vlm = 1;
       el.addEventListener('click', function (e) {
