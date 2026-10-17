@@ -58,7 +58,8 @@
     return o;
   }
   function summ(thr, tag) { var rec = data.rec; return pool(sports().map(function (sp) { return rec && rec.by_sport && rec.by_sport[sp] ? rec.by_sport[sp].summary.filter(function (x) { return x.thr === thr && x.tag === tag; })[0] : null; })); }
-  /* a click on a scorecard or record row sets st.cf, the calls list shows only the calls that fit; st.cs splits them open (not graded yet) and closed (graded) */
+  /* a click on a scorecard or record row sets st.cf, the calls list shows only the calls that fit; st.cs splits them by outcome: pending (not graded yet), beat the close, lost to the close */
+  function outcome(c) { return !c.graded ? 'pending' : (c.clv != null ? c.clv > 0 : !!c.line_favoured) ? 'beat' : 'lost'; }
   var BAND = { '1% to 2%': [1, 2], '2% to 4%': [2, 4], '4% and up': [4, 1e9] }, MKL = { Money: 'ml', Spread: 'sp', Total: 'tot' };
   function cfTest(k) {
     var a = String(k || '').split(':'), t = a[0], v = a.slice(1).join(':');
@@ -66,19 +67,20 @@
     if (t === 'stale') return function (c) { return v === '1' ? c.stale === true : c.stale === false; };
     if (t === 'band') return function (c) { var b = BAND[v]; return !!b && c.ev >= b[0] && c.ev < b[1]; };
     if (t === 'market') return function (c) { return c.m === MKL[v]; };
+    if (t === 'graded') return function (c) { return !!c.graded; };
     if (t === 'settled') return function (c) { return !!c.res; };
     return null;
   }
   function cfLabel(k) {
     var a = String(k || '').split(':'), t = a[0], v = a.slice(1).join(':');
-    return t === 'thr' ? 'Reached EV ' + v + '%+' : t === 'stale' ? (v === '1' ? 'Pinnacle moved, Novig did not' : 'No such move') : t === 'settled' ? 'Settled calls' : v;
+    return t === 'thr' ? 'Reached EV ' + v + '%+' : t === 'stale' ? (v === '1' ? 'Pinnacle moved, Novig did not' : 'No such move') : t === 'settled' ? 'Settled calls (won or lost money)' : t === 'graded' ? 'Graded calls' : v;
   }
   function callsAll() {
     var out = [], rec = data.rec; if (!rec || !rec.by_sport) return out;
     sports().forEach(function (sp) { ((rec.by_sport[sp] || {}).calls || []).forEach(function (c) { out.push(Object.assign({ sport: sp }, c)); }); });
     if (st.m !== 'all') out = out.filter(function (c) { return c.m === st.m; });
     var f = cfTest(st.cf); if (f) out = out.filter(f);
-    if (st.cs === 'open') out = out.filter(function (c) { return !c.graded; }); else if (st.cs === 'closed') out = out.filter(function (c) { return c.graded; });
+    if (st.cs !== 'all') out = out.filter(function (c) { return outcome(c) === st.cs; });
     return out.sort(function (a, b) { return b.t - a.t; });
   }
 
@@ -215,16 +217,21 @@
     return o + '<div class="veb-note">' + (any ? '' : 'Nothing to compare yet. ') + 'If bigger EV is real, the share and the average rise down the EV rows. While the ranges span zero the rows cannot be told apart, so none is coloured.</div></div>';
   }
   function callsHtml() {
-    var calls = callsAll(), o = '<div class="veb-card" id="veb-calls"><div class="veb-h"><span>Every call</span><span>' + calls.length + (calls.length >= 400 && !st.cf && st.cs === 'all' ? '+' : '') + '</span></div>' +
-      chips('cs', [['all', 'All'], ['open', 'Open'], ['closed', 'Closed']]) + (st.cf ? '<div class="veb-fil"><span>' + esc(cfLabel(st.cf)) + '</span><button type="button" data-clear="1" aria-label="Clear filter">Clear</button></div>' : '');
+    var keepCs = st.cs; st.cs = 'all'; var base = callsAll(); st.cs = keepCs;
+    var cnt = { all: base.length, pending: 0, beat: 0, lost: 0 }; base.forEach(function (c) { cnt[outcome(c)]++; });
+    var calls = callsAll(), o = '<div class="veb-card" id="veb-calls"><div class="veb-h"><span>Every call</span><span>' + calls.length + (calls.length >= 400 && !st.cf && st.cs === 'all' ? '+' : '') + '</span></div><div class="veb-leg">Pending: not graded yet. Beat the close: Pinnacle’s last number was better than the price at the call. Lost to the close: it was worse. Won or lost money is shown separately once the game settles.</div>' +
+      chips('cs', [['all', 'All ' + cnt.all], ['pending', 'Pending ' + cnt.pending], ['beat', 'Beat ' + cnt.beat], ['lost', 'Lost ' + cnt.lost]]) + (st.cf ? '<div class="veb-fil"><span>' + esc(cfLabel(st.cf)) + '</span><button type="button" data-clear="1" aria-label="Clear filter">Clear</button></div>' : '');
     if (!calls.length) return o + '<div class="veb-empty">' + (st.cf || st.cs !== 'all' || st.m !== 'all' ? 'No calls fit that filter.' : 'No calls yet. They are logged as the recorder sees them.') + '</div></div>';
     calls.slice(0, 80).forEach(function (c) {
       var tm = String(c.game).split('@'), A = c.side === 'A', side = c.m === 'tot' ? (A ? 'Over' : 'Under') : (A ? tm[1] : tm[0]);
       var line = c.m === 'sp' ? ' ' + sg(A ? c.line : -c.line, 1).replace(/\.0$/, '') : c.m === 'tot' ? ' ' + c.line : '';
-      var res = !c.graded ? '<span class="veb-pend">Pending</span>' : c.clv != null ? '<span class="' + (c.clv > 0 ? 'veb-win' : 'veb-loss') + '">' + (c.clv > 0 ? 'Beat the close ' : 'Close beat us ') + sg(c.clv) + ' pts</span>' : '<span class="' + (c.line_favoured ? 'veb-win' : 'veb-loss') + '">Line moved ' + (c.line_favoured ? 'our way' : 'against us') + '</span>';
-      var life = (c.dur != null ? (c.open ? 'open ' : 'lasted ') + dur(c.dur) + ', peak ' + sg(c.peak) + '%' : '') + (c.nclv != null ? ' · Novig closed ' + sg(c.nclv) + ' pts vs the call' : '') + (c.res ? ' · ' + (c.res === 'W' ? 'won' : c.res === 'L' ? 'lost' : 'push') + ' ' + sg(c.units, 2) + 'u' : '');
+      var oc = outcome(c), lineOnly = c.graded && c.clv == null;
+      var res = '<span class="veb-oc ' + oc + '">' + (oc === 'pending' ? 'Pending' : oc === 'beat' ? 'Beat the close' : 'Lost to the close') + '</span>' +
+        (c.graded ? '<span class="veb-od">' + (lineOnly ? 'line moved ' + (c.line_favoured ? 'our way' : 'against us') : sg(c.clv) + ' pts vs the close') + '</span>' : '') +
+        (c.res ? '<span class="veb-oc ' + (c.res === 'W' ? 'beat' : c.res === 'L' ? 'lost' : 'pending') + '">' + (c.res === 'W' ? 'Won' : c.res === 'L' ? 'Lost' : 'Push') + ' ' + sg(c.units, 2) + 'u</span>' : '');
+      var life = (c.dur != null ? (c.open ? 'EV still above 1% ' : 'EV stayed above 1% for ') + dur(c.dur) + ', peak ' + sg(c.peak) + '%' : '') + (c.nclv != null ? ' · Novig closed ' + sg(c.nclv) + ' pts vs the call' : '');
       o += '<div class="veb-call2" role="button" tabindex="0" data-gk="' + esc(c.gk || '') + '"><div class="veb-top"><span class="veb-teams">' + esc(String(c.game).replace('@', ' @ ')) + '</span><span class="veb-meta"><b class="veb-sp">' + SPORT[c.sport] + '</b>' + when(c.t) + '</span></div>' +
-        '<div class="veb-main"><div class="veb-pick"><span class="veb-mk">' + MK[c.m] + '</span> ' + esc(side) + line + (c.stale ? ' <i class="veb-stale">Pinnacle moved, Novig did not</i>' : '') + '<small>paid ' + Math.round(c.cost * 100) + '¢, fair ' + (c.fair * 100).toFixed(1) + '%</small></div><div class="veb-ev pos sm">' + sg(c.ev) + '%<small>at the call</small></div></div><div class="veb-sub">' + res + (life ? ' · ' + life : '') + '</div></div>';
+        '<div class="veb-main"><div class="veb-pick"><span class="veb-mk">' + MK[c.m] + '</span> ' + esc(side) + line + (c.stale ? ' <i class="veb-stale">Pinnacle moved, Novig did not</i>' : '') + '<small>paid ' + Math.round(c.cost * 100) + '¢, fair ' + (c.fair * 100).toFixed(1) + '%</small></div><div class="veb-ev pos sm">' + sg(c.ev) + '%<small>at the call</small></div></div><div class="veb-sub veb-res">' + res + '</div>' + (life ? '<div class="veb-life">' + life + '</div>' : '') + '</div>';
     });
     return o + '</div>';
   }
@@ -255,6 +262,7 @@
     '.veb-cg{border-radius:14px;background:rgba(127,127,127,.08);padding:2px 12px;margin:4px 0 6px}.veb-cr{display:grid;grid-template-columns:1fr auto;gap:0 12px;align-items:center;padding:8px 0 6px;border-top:1px solid rgba(127,127,127,.14)}.veb-cr:first-child{border-top:0}' +
     '.veb-cl{font-size:13.5px;font-weight:600}.veb-cl small,.veb-cv small{display:block;font-size:11px;font-weight:500;opacity:.6;margin-top:1px}.veb-cv{text-align:right;font-size:17px;font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.veb-cv small{font-family:-apple-system,system-ui,sans-serif}.veb-cv.none{font-size:12.5px;font-weight:500;opacity:.5;font-family:inherit}' +
     '.veb-click{cursor:pointer}.veb-click:hover{background:rgba(127,127,127,.16)}.veb-click:focus-visible{outline:2px solid currentColor;outline-offset:2px}.veb-fil{display:flex;align-items:center;gap:8px;margin:8px 0 0;font-size:12px}.veb-fil span{padding:3px 9px;border-radius:99px;background:rgba(155,176,232,.22);font-weight:600}.veb-fil button{font:inherit;font-size:12px;background:none;border:0;color:inherit;opacity:.7;text-decoration:underline;cursor:pointer;min-height:28px}#veb-calls>.veb-seg{margin-top:6px}' +
+    '.veb-leg{font-size:11.5px;opacity:.6;line-height:1.5;margin:6px 0 2px}.veb-res{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.veb-oc{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(127,127,127,.18)}.veb-oc.beat{background:rgba(52,199,89,.18);color:#34c759}.veb-oc.lost{background:rgba(255,107,107,.16);color:#ff6b6b}.veb-od{font-size:12px;opacity:.8}.veb-life{font-size:11.5px;opacity:.55;margin-top:4px;line-height:1.45}#veb-calls>.veb-seg{display:flex}#veb-calls>.veb-seg button{flex:1;padding-left:6px;padding-right:6px}' +
     '.veb-card{padding:4px 2px 6px;margin:0 0 6px}.veb-gl{font-size:11px;font-weight:700;margin:9px 0 1px;opacity:.9}.veb-rr{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:5px 0}.veb-rr span:last-child{text-align:right;opacity:.85}.veb-note{margin-top:9px;font-size:11.5px;opacity:.55;line-height:1.5}.veb-empty{padding:18px 4px;font-size:13px;opacity:.65}.veb-call2{border-top:1px solid rgba(127,127,127,.15)}' +
     '@container (min-width:1100px){.veb-srcs{flex-wrap:wrap;overflow:visible;margin:10px 0 8px}.veb-kf{display:block}.veb-kn{font-size:25px}.veb-kpi{padding:13px 14px}.veb-kpis{grid-auto-flow:row;grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;padding-bottom:6px}.veb-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.95fr);gap:14px;align-items:start}.veb-col{max-height:calc(100vh - 330px);min-height:520px;overflow-y:auto;padding:4px 8px 16px;border-radius:20px;background:rgba(127,127,127,.06);border:1px solid rgba(127,127,127,.14);scrollbar-width:thin}.veb-col>.veb-h:first-child{margin-top:8px}}';
   function css() { if (!document.getElementById('veb-css')) { var s = document.createElement('style'); s.id = 'veb-css'; s.textContent = CSS; document.head.appendChild(s); } }
@@ -293,7 +301,7 @@
         if (go) {
           var g = go.getAttribute('data-go');
           if (g === 'live') { st.pos = 1; render(el); var sl = el.querySelector('[data-c="slate"],.veb-list'); if (sl && sl.scrollIntoView) sl.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
-          if (g) { st.cf = g === 'stale' ? 'stale:1' : g === 'settled' ? 'settled' : null; st.cs = g === 'closed' ? 'closed' : g === 'settled' ? 'closed' : 'all'; }
+          if (g) { st.cf = g === 'stale' ? 'stale:1' : g === 'settled' ? 'settled' : g === 'closed' ? 'graded' : null; st.cs = 'all'; }
           else { st.cf = go.getAttribute('data-cf'); st.cs = 'all'; }
           render(el); var cc = el.querySelector('#veb-calls'); if (cc && cc.scrollIntoView) cc.scrollIntoView({ block: 'start', behavior: 'smooth' }); return;
         }
