@@ -388,7 +388,7 @@ function loadModel(k,force){
  fetch(MURL(MFILES[k])+'?t='+Math.floor(Date.now()/60000),{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json()})
   .then(j=>{MD[k]=j;MD.err[k]=false;if(onModels())rerender()}).catch(()=>{MD.err[k]=true;if(onModels())rerender()});
 }
-const onModels=()=>{const r=(location.hash||'#board').slice(1);return r==='models'||r.startsWith('pick/')};
+const onModels=()=>{const r=(location.hash||'#board').slice(1);return r==='models'||r==='reads'||r.startsWith('pick/')};
 const BE=110/210;
 const ETD=ts=>new Date(ts*1000).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/New_York',timeZoneName:'short'});
 const ETK=ts=>new Date(ts*1000).toLocaleString('en-US',{weekday:'short',hour:'numeric',minute:'2-digit',timeZone:'America/New_York'});
@@ -804,6 +804,10 @@ function lvPm(d){
  }
  return o.sort((x,w)=>w.k-x.k).map(x=>x.y);
 }
+const MDX={};
+function mdIdx(sp){const j=MD[sp];if(!j){if(sp==='nfl'||sp==='cfb')loadModel(sp);return null}if(MDX[sp]&&MDX[sp].g===j.generated)return MDX[sp].i;const i={},T={};for(const r of (j.totals&&j.totals.rows)||[])if(r.model_total!=null)T[r.game_id]=r.model_total;for(const r of j.board||[])if(r.model_margin!=null&&!r.backfill)i[r.key]={mg:r.model_margin,tt:T[r.game_id]!=null?T[r.game_id]:null};MDX[sp]={g:j.generated,i};return i}
+function mdOf(g){const x=(mdIdx(g.sport)||{})[g.key];if(x)return {mg:x.mg,tt:x.tt!=null?x.tt:g.model?g.model.total:null};return g.model?{mg:g.model.margin,tt:g.model.total}:null}
+function mdAg(m,mod,b,r){if(!mod)return null;const v=m==='tot'?mod.tt:mod.mg;if(v==null)return null;const x=m==='tot'?v-b:v+b;if(x===0)return null;return {ag:(x>0)===(m==='tot'?b>r:b<r),x:Math.abs(x),v}}
 function lvPin(d,m){
  const o=[];
  for(const g of G){
@@ -813,8 +817,8 @@ function lvPin(d,m){
   const hrs=(g.start-d)/3600;let pick,bb;
   if(m==='tot'){const ov=gap>0;bb=bk.reduce((x,w)=>(ov?w[1]<x[1]:w[1]>x[1])?w:x);pick=(ov?'Over ':'Under ')+bb[1]}
   else{const home=gap<0;bb=bk.reduce((x,w)=>(home?w[1]>x[1]:w[1]<x[1])?w:x);pick=home?rTn(g,'home')+' '+mSn(bb[1]):rTn(g,'away')+' '+mSn(-bb[1])}
-  const fl2=m==='tot'?e=>''+e:e=>rTn(g,'home')+' '+mSn(e);
-  o.push({k:Math.abs(gap),y:{key:g.key,game:rTn(g,'away')+' @ '+rTn(g,'home'),pick,when:when(g.start),badges:`<span class="badge ${hrs>=3?'good':''}">${hrs>=3?'counted (3h+ out)':'inside 3h, not counted'}</span>`,rows:[['Pinnacle',fl2(lp)],['Other books','median '+fl2(med)+'; best '+fl2(bb[1])+' at '+(SHB[bb[0]]||bb[0])],['Gap',Math.abs(gap).toFixed(1)+' pts'],['Opened',g.open&&g.open[m]?fl2(g.open[m].line):'-'],['Kickoff','in '+hrsTxt(hrs)]]}});
+  const fl2=m==='tot'?e=>''+e:e=>rTn(g,'home')+' '+mSn(e),mk=mdAg(m,mdOf(g),lp,med),mdTxt=!mk?(g.sport==='nba'?'No NBA model':'No model line for this game'):(m==='tot'?'Total '+mk.v:(mk.v>=0?rTn(g,'home'):rTn(g,'away'))+' by '+Math.abs(mk.v))+', '+mk.x.toFixed(1)+' pts '+(mk.ag?'toward':'against')+' the pick';
+  o.push({k:Math.abs(gap),y:{key:g.key,game:rTn(g,'away')+' @ '+rTn(g,'home'),pick,when:when(g.start),badges:(mk?`<span class="badge ${mk.ag?'good':'bad'}">${mk.ag?'model agrees':'model disagrees'}</span>`:'')+`<span class="badge ${hrs>=3?'good':''}">${hrs>=3?'counted (3h+ out)':'inside 3h, not counted'}</span>`,rows:[['Pinnacle',fl2(lp)],['Model',mdTxt],['Other books','median '+fl2(med)+'; best '+fl2(bb[1])+' at '+(SHB[bb[0]]||bb[0])],['Gap',Math.abs(gap).toFixed(1)+' pts'],['Opened',g.open&&g.open[m]?fl2(g.open[m].line):'-'],['Kickoff','in '+hrsTxt(hrs)]]}});
  }
  return o.sort((x,w)=>w.k-x.k).map(x=>x.y);
 }
