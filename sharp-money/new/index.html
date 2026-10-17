@@ -182,7 +182,7 @@ const pinSp=g=>g.pin&&g.pin.sp?g.pin.sp.line:(g.consensus&&g.consensus.sp?g.cons
 const heat=g=>D.alerts.filter(a=>a.game===g.key&&a.ts>REF-86400).length;
 const live=g=>g.status==='inprogress';
 const upcoming=()=>G.filter(g=>g.start>REF-4*3600).sort((a,b)=>a.start-b.start);
-const st={tsp:'all',texp:false,tsel:null,tsg:null,tsgt:'Live now',tpin:'Spreads',tpmf:'All',msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30};
+const st={tsp:'all',texp:false,tsel:null,tsg:null,tsgt:'Live now',tpin:'Spreads',tpmf:'All',msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,fsel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30};
 const ICON={board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
 $('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${({reads:'Top Reads'})[k]||k[0].toUpperCase()+k.slice(1)}</button>`).join('');
 const chips=(items,cur,key)=>`<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
@@ -464,10 +464,24 @@ function modelTiles(c){
   :tile('Against the early number','-','not enough yet'));
  return `<div class="hs" style="margin-bottom:12px">${t.join('')}</div>`;
 }
-function mRow(c,x){
+function fsOpen(label,x){
+ if(x.result||!(x.kick>REF))return false;
+ const f=x.final||x,logged=x.logged!=null,pick=f.is_pick!==false,cd=f.cards,sd=f.side||x.side,opp=sd==='home'?'away':'home',m=cd?cd[sd]:null,o=cd?cd[opp]:null;
+ if(label==='Still a pick when locked')return logged&&pick;
+ if(label.startsWith('Dropped under'))return logged&&!pick;
+ if(label==='Became a pick in the last hour')return !logged&&pick;
+ if(!pick)return false;
+ const lk=!cd?'nocard':m&&m.length&&!(o&&o.length)?'with':o&&o.length&&!(m&&m.length)?'against':m&&m.length&&o&&o.length?'split':'none';
+ if(label==='Locked picks with Sharp Money on their side')return lk==='with';
+ if(label==='Locked picks with Sharp Money against them')return lk==='against';
+ if(label.startsWith('Locked picks, Sharp Money split'))return lk==='split'||lk==='none'||lk==='nocard';
+ return false;
+}
+function lockTag(x){const s=x.kick-3600-REF;if(s<=0)return '<div class="m" style="color:var(--acc)">Locked: this is the final line</div>';const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return `<div class="m" style="color:var(--acc)">Locks in ${h>=24?Math.floor(h/24)+'d '+h%24+'h':(h?h+'h ':'')+m+'m'}, 1h before kickoff</div>`}
+function mRow(c,x,fs){
  const sp=c.sp,lean=x.is_pick===false,t=c.totOf(x),sh=sharpSt(x);
  return `<div class="mrw tap" data-go="pick/${sp}/${esc(x.key)}" style="opacity:${lean&&!x.result?.8:1}"><div class="grow"><b>${mlogo(sp,x.away_id,16)}${esc(x.away)} @ ${mlogo(sp,x.home_id,16)}${esc(x.home)}</b>
- <div class="m">Wk ${x.week} · ${ETK(x.kick)}${x.hs!=null?' · '+x.as_+'-'+x.hs:''}</div>
+ <div class="m">Wk ${x.week} · ${ETK(x.kick)}${x.hs!=null?' · '+x.as_+'-'+x.hs:''}</div>${fs?lockTag(x):''}
  ${sh?`<div class="m ${sh==='with'?'pos':sh==='against'?'neg':''}">Sharp money ${sh==='with'?'with us':sh==='against'?'against':'split'}</div>`:''}${t?`<div class="m cond">${totSub(t)}</div>`:''}</div>
  <div class="amt cond" style="font-size:20px">${esc(x.team)} ${mSn(x.entry)}<small>${x.result?(x.result==='W'?'WON':x.result==='L'?'LOST':'PUSH'):(lean?'lean ':'edge ')+Math.abs(x.edge).toFixed(1)}</small></div></div>`;
 }
@@ -481,27 +495,27 @@ function modelGames(c){
  const views=[['picks','Picks'],['sharp','Sharp-backed'],['up','Upcoming'],['all','All games'],['done','Completed'],...(tot?[['totals','Totals']]:[])];
  const wks=[...new Set(B.map(x=>x.week))].sort((a,b)=>b-a),wopts=['All weeks',...wks.map(w=>'Week '+w)];
  const view=views.some(v=>v[0]===st.mview)?st.mview:'picks',wkf=wopts.includes(st.mwk)?st.mwk:'All weeks';
- const CfRow=st.msel!=null&&d.cards_summary&&d.cards_summary.table?d.cards_summary.table[st.msel]:null;
- let h=`<div class="chips"><select class="sel" data-sel="mwk" aria-label="Week">${wopts.map(o=>`<option ${o===wkf?'selected':''}>${o}</option>`).join('')}</select>${views.map(v=>`<button class="chip ${!CfRow&&view===v[0]?'on':''}" data-set="mview" data-v="${v[0]}">${v[1]}</button>`).join('')}</div>`;
+ const CfRow=st.msel!=null&&d.cards_summary&&d.cards_summary.table?d.cards_summary.table[st.msel]:null,FsRow=st.fsel!=null&&d.final_summary&&d.final_summary.rows?d.final_summary.rows[st.fsel]:null;
+ let h=`<div class="chips"><select class="sel" data-sel="mwk" aria-label="Week">${wopts.map(o=>`<option ${o===wkf?'selected':''}>${o}</option>`).join('')}</select>${views.map(v=>`<button class="chip ${!CfRow&&!FsRow&&view===v[0]?'on':''}" data-set="mview" data-v="${v[0]}">${v[1]}</button>`).join('')}</div>`;
  if(view==='totals'&&tot&&!CfRow){
   const rows=tot.rows.filter(r=>wkf==='All weeks'||r.week===+wkf.slice(5)).sort((a,b)=>b.week-a.week||(b.upcoming?1:0)-(a.upcoming?1:0)||Math.abs(b.edge)-Math.abs(a.edge));
   h+=`<div class="card">${rows.length?rows.map(r=>totRowHtml(c,r)).join(''):'<div class="empty">No totals for this week yet.</div>'}</div>`;
   h+=`<div class="foot" style="margin:0 20px 16px">JP+ total is flagged when it sits ${c.totEd.map(e=>e+'+').join(' or ')} points from the Bovada opening total, week 4 or later. Wins, losses and closing-line value are all vs the Bovada open; DraftKings (DK) is shown for reference and never counts.${tot.stale?' Stale: totals are from the last good run.':''}${c.unp?' Unproven: '+tot.summary.live_graded+' of '+tot.summary.proven_target+' live graded '+c.totEd[0]+'+ picks.':''}</div>`;
   return h;
  }
- const list=B.filter(x=>(CfRow?((CfRow.keys||[]).includes(x.key)||cfOpen(CfRow.label,x)):(view==='picks'?x.is_pick!==false:view==='done'?!!x.result:view==='up'?!x.result&&x.kick>now:view==='sharp'?sharpSt(x)==='with':true))&&(wkf==='All weeks'||x.week===+wkf.slice(5)))
+ const list=B.filter(x=>(FsRow?fsOpen(FsRow.label,x):CfRow?((CfRow.keys||[]).includes(x.key)||cfOpen(CfRow.label,x)):(view==='picks'?x.is_pick!==false:view==='done'?!!x.result:view==='up'?!x.result&&x.kick>now:view==='sharp'?sharpSt(x)==='with':true))&&(wkf==='All weeks'||x.week===+wkf.slice(5)))
   .sort((a,b)=>(wkf==='All weeks'?(a.result?1:0)-(b.result?1:0)||(a.result?b.kick-a.kick:a.kick-b.kick):b.kick-a.kick)||(b.is_pick===false?0:1)-(a.is_pick===false?0:1)||Math.abs(b.edge)-Math.abs(a.edge));
- h+=CfRow?`<div class="chips"><button class="chip on" data-sit="-1">${esc(CfRow.label)} · ${list.length} games ×</button></div>`:'';
+ h+=CfRow?`<div class="chips"><button class="chip on" data-sit="-1">${esc(CfRow.label)} · ${list.length} games ×</button></div>`:FsRow?`<div class="chips"><button class="chip on" data-fs="-1">${esc(FsRow.label)} · ${list.length} open ×</button></div>`:'';
  let last=null,body='';
- list.forEach(x=>{if(wkf==='All weeks'&&x.week!==last){last=x.week;body+=`<div class="wkh">Week ${x.week}</div>`}body+=mRow(c,x)});
- h+=`<div class="card">${list.length?body:'<div class="empty">No games match this filter right now. Lines usually post Sunday and Monday.</div>'}</div>`;
+ list.forEach(x=>{if(wkf==='All weeks'&&x.week!==last){last=x.week;body+=`<div class="wkh">Week ${x.week}</div>`}body+=mRow(c,x,!!FsRow)});
+ h+=`<div class="card">${list.length?body:'<div class="empty">'+(FsRow?'No open games fit this row right now. Games lock one hour before kickoff.':'No games match this filter right now. Lines usually post Sunday and Monday.')+'</div>'}</div>`;
  h+=`<div class="foot" style="margin:0 20px 16px">A pick needs the model ${PE}+ points off the market${NF?'':', week 4 or later'}. Leans are shown dimmed.</div>`;
  return h;
 }
 function barRow(l,r,sub){return `<div style="margin:10px 0"><div class="fll" style="margin:0 0 4px"><span style="color:#fff">${l}</span><b class="cond">${r.w}-${r.l}${r.p==null?'':' · '+(r.p*100).toFixed(1)+'%'}</b></div><div class="brr"><i style="width:${Math.round((r.p||0)*100)}%;background:${r.p==null?'#3a3a3e':r.p>=BE?'var(--good)':'var(--bad)'}"></i><u style="left:${BE*100}%"></u></div><div class="foot" style="margin:3px 0 0">${sub}</div></div>`}
 function sitRows(c,rs,withFeed){
- return rs.map((r,i)=>{const w=r.all[0],l=r.all[1],n=w+l,ex=n*BE,z=n?(w-ex)/Math.sqrt(n*BE*(1-BE)):0,sk=n===0?null:n>=50&&z>=2?'trust':w>=ex?'watch':'ignore',op=withFeed?c.B.filter(q=>cfOpen(r.label,q)).length:0;
-  return `<div class="mrw ${withFeed?'tap':''}" ${withFeed?`data-sit="${i}" role="button" tabindex="0"`:'style="cursor:default"'}><div class="grow"><b>${esc(r.label)}</b><div class="m">${esc(r.note||'')}</div>${withFeed&&r.n!=null?`<div class="m">${mCi(r.n,r.ci)}</div>`:''}${op?`<div class="m" style="color:var(--acc)">${op} open now</div>`:''}</div>
+ return rs.map((r,i)=>{const w=r.all[0],l=r.all[1],n=w+l,ex=n*BE,z=n?(w-ex)/Math.sqrt(n*BE*(1-BE)):0,sk=n===0?null:n>=50&&z>=2?'trust':w>=ex?'watch':'ignore',op=withFeed?c.B.filter(q=>withFeed==='fs'?fsOpen(r.label,q):cfOpen(r.label,q)).length:0,att=withFeed==='fs'?'data-fs':'data-sit';
+  return `<div class="mrw ${withFeed?'tap':''}" ${withFeed?`${att}="${i}" role="button" tabindex="0"`:'style="cursor:default"'}><div class="grow"><b>${esc(r.label)}</b><div class="m">${esc(r.note||'')}</div>${withFeed&&r.n!=null?`<div class="m">${mCi(r.n,r.ci)}</div>`:''}${op?`<div class="m" style="color:var(--acc)">${op} open now${withFeed==='fs'?', locks 1h before kickoff':''}</div>`:''}</div>
   <div class="amt cond" style="font-size:22px">${w}-${l}<small>${n?Math.round(w/n*100)+'% win':'no games yet'}</small>${sk?`<small><span class="badge ${STL[sk][1]}">${STL[sk][0]}</span></small>`:''}</div></div>`}).join('');
 }
 function totStat(rs){const g=rs.filter(r=>r.result==='W'||r.result==='L'||r.result==='P'),w=g.filter(r=>r.result==='W').length,l=g.filter(r=>r.result==='L').length,p=g.length-w-l,c0=g.map(r=>r.clv).filter(v=>typeof v==='number'),cm=c0.length?c0.reduce((a,b)=>a+b,0)/c0.length:null,sd=c0.length>1?Math.sqrt(c0.reduce((a,b)=>a+(b-cm)*(b-cm),0)/(c0.length-1)):0;
@@ -524,7 +538,7 @@ function modelRecord(c){
  }
  if(bt&&bt.seasons)h+=`<div class="platter"><div class="ph"><span>By season</span></div><table class="tbl cond"><tr><th>Year</th><th>Model miss</th><th>Market miss</th><th>Picks</th></tr>${Object.entries(bt.seasons).map(([y,s])=>`<tr><td>${y}</td><td>${s.model_miss.toFixed(1)}</td><td>${s.market_miss.toFixed(1)}</td><td>${s.picks_wk4[0]}-${s.picks_wk4[1]}</td></tr>`).join('')}</table><div class="foot">Miss is how many points the line was off on average. Lower is better; the market is still ahead.</div></div>`;
  if(d.cards_summary&&d.cards_summary.table)h+=`<div class="platter"><div class="ph"><span>Does Sharp Money help?</span><span class="badge">tap a row</span></div>${sitRows(c,d.cards_summary.table,true)}<div class="foot">The record is how the model's side did when a Sharp Money card showed, graded at the last line before kickoff. The n and 95% CI under each row show how wide the range is on a small sample. Trust needs 50+ games well above 52.4%; Watch is at or above it on a small sample; Ignore is below. Sharp accounts are context only and never count toward an agree total.</div></div>`;
- if(d.final_summary&&d.final_summary.locked)h+=`<div class="platter"><div class="ph"><span>Final lock vs first sight</span></div>${sitRows(c,d.final_summary.rows,false)}</div>`;
+ if(d.final_summary&&d.final_summary.locked)h+=`<div class="platter"><div class="ph"><span>Final lock vs first sight</span><span class="badge">tap a row</span></div>${sitRows(c,d.final_summary.rows,'fs')}</div>`;
  const ou=(oc&&oc.games?oc.games.filter(g=>g.upcoming):[]);
  if(ou.length)h+=`<div class="platter"><div class="ph"><span>The early number, still open</span></div>${ou.map(g=>{const tm=g.side==='home'?g.home:g.away;return `<div class="row"><div class="grow"><b>${esc(tm)} ${mSn(g.entry)}</b><div class="m">${esc(g.away)} at ${esc(g.home)} · week ${g.week} · ${Math.abs(g.edge).toFixed(1)} pts off the open, now ${g.close==null?'-':mSn(g.close)}</div></div></div>`}).join('')}</div>`;
  return h;
@@ -935,17 +949,18 @@ function route(){
  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
 }
 function rerender(){const y=scrollY;route();window.scrollTo(0,y)}
-document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-go],[data-back],[data-sit]')){e.preventDefault();e.target.click()}});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-go],[data-back],[data-sit],[data-fs]')){e.preventDefault();e.target.click()}});
 document.addEventListener('click',e=>{
  if(e.target.closest('[data-refresh]')){refresh();return}
  const ts=e.target.closest('[data-tsel]');if(ts){const v=ts.dataset.tsel;st.tsel=String(st.tsel)===v?null:v;rerender();return}
  const tg2=e.target.closest('[data-tsg]');if(tg2){const id=tg2.dataset.tsg,open=st.tsg!==id;st.tsg=open?id:null;st.tsgt='Live now';st.tpmf='All';if(id==='pin-to')st.tpin='Totals';else if(id==='pin-sp')st.tpin='Spreads';rerender();if(open)setTimeout(()=>{const w=document.getElementById('sg-panel');if(w)w.scrollIntoView({behavior:'smooth',block:'start'})},60);return}
- const sit=e.target.closest('[data-sit]');if(sit){const v=+sit.dataset.sit;st.msel=v<0||st.msel===v?null:v;if(v>=0)st.msub='games';rerender();window.scrollTo(0,0);return}
+ const sit=e.target.closest('[data-sit]');if(sit){const v=+sit.dataset.sit;st.msel=v<0||st.msel===v?null:v;st.fsel=null;if(v>=0)st.msub='games';rerender();window.scrollTo(0,0);return}
+ const fsb=e.target.closest('[data-fs]');if(fsb){const v=+fsb.dataset.fs;st.fsel=v<0||st.fsel===v?null:v;st.msel=null;if(v>=0)st.msub='games';rerender();window.scrollTo(0,0);return}
  const tg=e.target.closest('[data-toggle]');if(tg){st[tg.dataset.toggle]=!st[tg.dataset.toggle];rerender();return}
  if(e.target.closest('[data-retrymodel]')){['nfl','cfb','sb'].forEach(k=>{if(!MD[k])loadModel(k)});return}
  if(e.target.closest('[data-retry]')){loadErr=false;load();route();return}
  const t=e.target.closest('[data-t]');if(t&&t.closest('#tabs')){location.hash=t.dataset.t;window.scrollTo(0,0);return}
- const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='msp'){st.msub='games';st.mview='picks';st.mwk='All weeks';st.msel=null;st.mq='';st.mallR=false}if(s.dataset.set==='mview')st.msel=null;if(s.dataset.set==='netm')st.netTouched=true;if(s.dataset.set==='pr')st.prTouched=true;if(s.dataset.set==='tsp')st.tsel=null;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
+ const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='msp'){st.msub='games';st.mview='picks';st.mwk='All weeks';st.msel=null;st.fsel=null;st.mq='';st.mallR=false}if(s.dataset.set==='mview'){st.msel=null;st.fsel=null}if(s.dataset.set==='netm')st.netTouched=true;if(s.dataset.set==='pr')st.prTouched=true;if(s.dataset.set==='tsp')st.tsel=null;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
  const m=e.target.closest('[data-more]');if(m){const k=m.dataset.more;st[k]+=k==='slate'?10:14;rerender();return}
  if(e.target.closest('[data-back]')){if(inApp)history.back();else location.hash='board';return}
  const g=e.target.closest('[data-go]');if(g){inApp=true;location.hash=g.dataset.go;window.scrollTo(0,0)}
@@ -966,7 +981,7 @@ function load(fresh){
  const go=fresh&&!LOCAL?api().then(r=>r.ok?r:plain()).catch(plain):plain();
  return go.then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{if(!D||d.ts>=D.ts){apply(d);rerender()}return d}).catch(()=>{if(!D){loadErr=true;route()}return null})}
 fetch(SBSRC,{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{SB=j;if(D)rerender()}).catch(()=>{});
-document.addEventListener('change',e=>{const s=e.target.closest('[data-sel]');if(s){st[s.dataset.sel]=s.value;st.msel=null;rerender()}});
+document.addEventListener('change',e=>{const s=e.target.closest('[data-sel]');if(s){st[s.dataset.sel]=s.value;st.msel=null;st.fsel=null;rerender()}});
 document.addEventListener('input',e=>{if(e.target.matches('[data-q]')){st.mq=e.target.value;const sp=st.msp==='cfb'?'cfb':'nfl',el=document.getElementById('rlist');if(el&&MD[sp])el.innerHTML=ratingsList(mctx(sp,MD[sp]))}});
 addEventListener('hashchange',()=>{route();window.scrollTo(0,0)});
 route();load();setInterval(load,120000);
