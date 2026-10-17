@@ -492,7 +492,7 @@ async function kalshi(sk, cfg, games, S) {
       const side = teamSide(hit.g, m.yes_sub_title);
       info.vol += +m.volume_fp || 0; info.vol24 += +m.volume_24h_fp || 0;
       info.px[side] = +m.last_price_dollars || null;
-      if (side === 'home') { info.bid = +m.yes_bid_dollars || null; info.ask = +m.yes_ask_dollars || null; }   // the line tape stores the quote, not only the last trade
+      if (side === 'home') { info.bid = +m.yes_bid_dollars || null; info.ask = +m.yes_ask_dollars || null; info.hm = m.ticker; }   // the line tape stores the quote, not only the last trade
       todo.push([hit.g, m.ticker, side]);
     }
     out.set(hit.g, info);
@@ -559,7 +559,7 @@ async function novig(sk, cfg, games, S) {
         tape.push({ ts, m, side: side[x.outcomeId], usd: Math.round(usd), px: r3(+x.price), line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, id: x.tradeId.slice(0, 18) });
       }
       S.cursors['n:' + mk.marketId] = newest;
-      info[m] = { line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, bid: bid != null ? r3(bid) : null, ask: ask != null ? r3(ask) : null,
+      info[m] = { ...(m === 'ml' ? { mk: mk.marketId, ho: Object.keys(side).find(k => side[k] === 'home') } : {}), line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, bid: bid != null ? r3(bid) : null, ask: ask != null ? r3(ask) : null,
         mid: bid != null && ask != null && ask - bid <= 0.10 ? r3((bid + ask) / 2) : null, depth, rest: Math.round(rest), vol: Math.round(vol) };
       info.rest += Math.round(rest); info.vol += Math.round(vol);
     }
