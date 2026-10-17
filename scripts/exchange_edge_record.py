@@ -227,6 +227,10 @@ def summarize(sel):
         o['median_dur'] = durs[len(durs) // 2]
     if same:
         mu = sum(same) / len(same)
+        o['n_same'] = len(same)
+        o['sum_clv'] = round(sum(same), 3)
+        o['ss_clv'] = round(sum(c * c for c in same), 3)
+        o['pos'] = sum(1 for c in same if c > 0)
         o['mean_clv'] = round(mu, 2)
         o['beat_close'] = round(sum(1 for c in same if c > 0) / len(same), 3)
         if len(same) > 1:
@@ -235,13 +239,30 @@ def summarize(sel):
     return o
 
 
+BANDS = (('1% to 2%', 1.0, 2.0), ('2% to 4%', 2.0, 4.0), ('4% and up', 4.0, 1e9))
+
+
+def calibration(events):
+    """Does a bigger EV at the call mean more? One call per game side (the 1% threshold event), split by the EV it showed at the call, by market and by the
+    stale tag. Same grading as the summary; mergeable fields (n_same, sum_clv, ss_clv, pos) let the page pool sports."""
+    calls = [e for e in events if e['thr'] == 1.0]
+    out = []
+    for label, lo, hi in BANDS:
+        out.append({'k': 'band', 'l': label, **summarize([e for e in calls if lo <= e['ev'] < hi])})
+    for m, label in (('ml', 'Money'), ('sp', 'Spread'), ('tot', 'Total')):
+        out.append({'k': 'market', 'l': label, **summarize([e for e in calls if e['m'] == m])})
+    out.append({'k': 'stale', 'l': 'Pinnacle moved, Novig did not', **summarize([e for e in calls if e['stale'] is True])})
+    out.append({'k': 'stale', 'l': 'No such move', **summarize([e for e in calls if e['stale'] is False])})
+    return out
+
+
 def main():
     now = int(time.time())
     by = {}
     results = load_results()
     for sport in ('nfl', 'cfb', 'nba'):
         events = process(load(sport), now, sport, results)
-        by[sport] = {'calls': sorted([e for e in events if e['thr'] == 1.0], key=lambda e: -e['t'])[:400], 'summary': [{'thr': thr, 'tag': tag, **summarize([e for e in events if e['thr'] == thr and (tag == 'all' or e['stale'] is True)])}
+        by[sport] = {'calib': calibration(events), 'calls': sorted([e for e in events if e['thr'] == 1.0], key=lambda e: -e['t'])[:400], 'summary': [{'thr': thr, 'tag': tag, **summarize([e for e in events if e['thr'] == thr and (tag == 'all' or e['stale'] is True)])}
                                  for thr in THRS for tag in ('all', 'stale')],
                      'recent': sorted(events, key=lambda e: -e['t'])[:60]}
         print(f"edge record {sport}: {len(events)} signals, {sum(1 for e in events if e.get('graded'))} graded")
