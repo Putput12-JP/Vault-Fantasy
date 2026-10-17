@@ -1,8 +1,9 @@
 /* Vault line movement chart. One module shared by the classic page and new/. Context only, never a bet signal.
    Reads the NFL book tape (data/book_tape/nfl/YYYY-MM.jsonl, written every 20 minutes by scripts/book_tape.py):
    one row per book per game, appended only when that book's line changes, so each series is a step line.
-   Books on the tape: Pinnacle, DraftKings, FanDuel, BetMGM, BetRivers, bet365, Consensus and Open.
-   Not on the tape: Circa, Bookmaker, Novig, Pinnacle limits. Nothing here is invented to fill those in. */
+   Books on the tape: Pinnacle, DraftKings, FanDuel, BetMGM, BetRivers, bet365, Consensus and Open, plus the
+   Novig and Kalshi exchanges (Money tab only: they quote a win chance, not a spread or total, and were first recorded 2026-10-17).
+   Not on the tape: Circa, Bookmaker, Pinnacle limits. Nothing here is invented to fill those in. */
 (function () {
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), LIVE = /[?&]live\b/.test(location.search);
   var RAW = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/data/book_tape/nfl/';
@@ -10,7 +11,7 @@
   var ALIAS = { WSH: 'WAS', LA: 'LAR', JAC: 'JAX', LVR: 'LV', OAK: 'LV' };
   var BOOKS = [
     ['Pinnacle', '#ff5fa2', 1], ['DraftKings', '#5ec269', 1], ['FanDuel', '#4aa3ff', 1], ['BetMGM', '#d9a93f', 1],
-    ['BetRivers', '#b78cff', 0], ['bet365', '#22c7a9', 0], ['Consensus', '#c9ccd3', 0], ['Open', '#8e8e93', 1]
+    ['Novig', '#ff9f43', 1], ['Kalshi', '#19d3f0', 1], ['BetRivers', '#b78cff', 0], ['bet365', '#38d6a0', 0], ['Consensus', '#c9ccd3', 0], ['Open', '#8e8e93', 1]
   ];
   var MARKETS = [['sp', 'Spread'], ['tot', 'Total'], ['ml', 'Money']];
   var WINDOWS = [['4h', 4 * 3600], ['12h', 12 * 3600], ['24h', 24 * 3600], ['All', 0]];
@@ -45,6 +46,7 @@
   function val(r, mk) {
     if (mk === 'sp') return r.sp && r.sp[0] != null ? r.sp[0] : null;
     if (mk === 'tot') return r.tot && r.tot[0] != null ? r.tot[0] : null;
+    if (r.px) return r.px[1] - r.px[0] <= 0.10 ? (r.px[0] + r.px[1]) / 2 * 100 : null;   // exchange: mid of the stored bid and ask, only when tight
     return r.ml && r.ml[0] != null && r.ml[1] != null ? dv(r.ml[0], r.ml[1]) * 100 : null;
   }
   function am(x) { return x > 0 ? '+' + x : String(x); }
@@ -132,7 +134,7 @@
       o += '<button type="button" class="vlm-chip' + (s.on ? '' : ' off') + '" style="--c:' + s.color + '" data-b="' + s.book + '" aria-pressed="' + s.on + '">' + s.book + ' <i>' + fmt(+last[1].toFixed(mk === 'ml' ? 1 : 2), mk) + '</i></button>';
     });
     var homeAbbr = g.home && g.home.abbr;
-    return o + '</div><div class="vlm-note">' + (mk === 'sp' ? homeAbbr + ' spread. ' : mk === 'ml' ? homeAbbr + ' win chance from each book’s moneyline, vig removed. ' : '') +
+    return o + '</div><div class="vlm-note">' + (mk === 'sp' ? homeAbbr + ' spread. ' : mk === 'ml' ? homeAbbr + ' win chance from each book’s moneyline, vig removed. Novig and Kalshi show the middle of their best bid and ask, when the two are within 10 points. ' : '') +
       'Steps are when a book changed its line. Context only, not a bet signal.</div></div>';
   }
 
@@ -158,7 +160,7 @@
     sv.addEventListener('pointermove', move); sv.addEventListener('pointerdown', move);
     sv.addEventListener('pointerleave', function () { cur.style.display = 'none'; rd.textContent = ''; });
   }
-  function fmtMl(r) { return r && r.ml ? am(r.ml[0]) + '/' + am(r.ml[1]) : ''; }
+  function fmtMl(r) { return r && r.px ? Math.round(r.px[0] * 100) + '-' + Math.round(r.px[1] * 100) + '\u00A2' : r && r.ml ? am(r.ml[0]) + '/' + am(r.ml[1]) : ''; }
 
   function mount(el, g) {
     if (!el || !g || g.sport !== 'nfl') return;
