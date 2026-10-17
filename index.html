@@ -13473,6 +13473,15 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-17T15:00', tag:'New', title:'Edge page: Novig against Pinnacle, biggest +EV first',
+    items:[
+      'A new Edge page in Sharp Money lists every NFL, college football and NBA game where Novig\'s price sits above Pinnacle\'s fair price, sorted by the biggest +EV, with how deep Novig\'s book is, how far Pinnacle moved in the last 4 hours, and a tag when Pinnacle moved and Novig did not.',
+      'Filter by sport and market, or sort by soonest kickoff or by how much Pinnacle moved. Tap a row to open the game.',
+      'Below it, a record of every call: the first time a game side reached +1% EV, and later whether Pinnacle\'s closing number beat the Novig price. It starts empty today and fills in as games kick off.',
+      'Fair prices now remove the vig the same way as the rest of Sharp Money, so long shots are no longer overstated.'
+    ]
+  },
+  {
     ts:'2026-10-17T13:30', tag:'Improved', title:'Line movement chart now shows history from before we started recording',
     items:[
       'The chart now goes back several days for Pinnacle (spread, total and win chance), Kalshi and Novig, instead of starting from the first moment we recorded.',

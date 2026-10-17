@@ -8,7 +8,7 @@ spread and total at Pinnacle's line), each appended when it changes. Novig quote
 no earlier history and none is invented.
 
 Definitions, fixed before any result was looked at (do not tune them to the output):
-  fair   Pinnacle's price with the vig removed (proportional), for the side
+  fair   Pinnacle's price with the vig removed (power method, as in fetch-sharp-money.mjs), for the side
   cost   what buying that side at Novig costs: its ask, which is 1 minus the best bid on the other outcome
   EV     fair / cost - 1, pregame, no exchange fee (Novig charges only when live)
   signal the first time a game's market side reaches EV >= 1%, >= 2%, >= 4% (each threshold counted once per game side)
@@ -39,8 +39,17 @@ def pfn(a):
 
 
 def ff(a, b):
-    pa, pb = pfn(a), pfn(b)
-    return pa / (pa + pb)
+    """Fair chance of the first side after removing the vig. Power method (x^k + y^k = 1), the same as devig() in
+    fetch-sharp-money.mjs, so a +900 longshot is not read as +700 fair."""
+    x, y = pfn(a), pfn(b)
+    lo, hi = 0.5, 3.0
+    for _ in range(40):
+        k = (lo + hi) / 2
+        if x ** k + y ** k > 1:
+            lo = k
+        else:
+            hi = k
+    return x ** ((lo + hi) / 2)
 
 
 def pin_fair_line(m, v):
@@ -121,7 +130,7 @@ def process(rows, now):
                     for thr in THRS:
                         if ev >= thr and (m, side, thr) not in fired:
                             fired.add((m, side, thr))
-                            mine.append({'game': label, 'start': start, 't': t, 'm': m, 'side': side, 'thr': thr, 'ev': round(ev, 2),
+                            mine.append({'gk': rs[0].get('gk'), 'game': label, 'start': start, 't': t, 'm': m, 'side': side, 'thr': thr, 'ev': round(ev, 2),
                                          'cost': round(cost, 3), 'fair': round(sfair, 4), 'line': line, 'stale': stale})
         # grade against Pinnacle's last quote before kickoff
         for e in mine:
@@ -168,7 +177,7 @@ def main():
     by = {}
     for sport in ('nfl', 'cfb', 'nba'):
         events = process(load(sport), now)
-        by[sport] = {'summary': [{'thr': thr, 'tag': tag, **summarize([e for e in events if e['thr'] == thr and (tag == 'all' or e['stale'] is True)])}
+        by[sport] = {'calls': sorted([e for e in events if e['thr'] == 1.0], key=lambda e: -e['t'])[:400], 'summary': [{'thr': thr, 'tag': tag, **summarize([e for e in events if e['thr'] == thr and (tag == 'all' or e['stale'] is True)])}
                                  for thr in THRS for tag in ('all', 'stale')],
                      'recent': sorted(events, key=lambda e: -e['t'])[:60]}
         print(f"edge record {sport}: {len(events)} signals, {sum(1 for e in events if e.get('graded'))} graded")
