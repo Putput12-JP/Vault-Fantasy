@@ -325,6 +325,27 @@ def live_edges(games, now):
                 f4 = {'ml': h4[1], 'sp': h4[3] if h4[2] == line else None, 'tot': h4[5] if h4[4] == line else None}[m]
                 if f4 is not None:
                     row['pm'] = round(row['sg'] * (fair - f4) * 100, 2)
+            # change over the last hour and against the opening number (the feed's Open book), for the same side
+            h1 = next((h for h in reversed(hist) if h[0] <= now - 3600), None)
+            if h1:
+                f1 = {'ml': h1[1], 'sp': h1[3] if h1[2] == line else None, 'tot': h1[5] if h1[4] == line else None}[m]
+                if f1 is not None:
+                    row['pm1'] = round(row['sg'] * (fair - f1) * 100, 2)
+            op = (g.get('open') or {}).get(m)
+            if op:
+                try:
+                    if m == 'ml':
+                        fo = ff(op['home'], op['away'])
+                    elif op.get('line') == line:
+                        fo = ff(op['home'], op['away']) if m == 'sp' else ff(op['over'], op['under'])
+                    else:
+                        fo = None
+                        if op.get('line') is not None:
+                            row['ol'] = op['line']
+                    if fo is not None:
+                        row['po'] = round(row['sg'] * (fair - fo) * 100, 2)
+                except (KeyError, TypeError):
+                    pass
             old = None
             for r in nrows:
                 if r['t'] <= now - 4 * 3600 and r.get(nk) is not None and (m == 'ml' or r[nk][0] == line):
