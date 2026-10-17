@@ -115,16 +115,21 @@ jobs:
         if: steps.gate.outputs.go == '1'
         continue-on-error: true
         run: |
-          python3 scripts/sharp_tape.py --data sharp-out/data.json
-          python3 scripts/exchange_edge_record.py
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
-          git add data/book_tape/cfb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json data/exchange_edge_results.json
-          if git diff --staged --quiet; then echo "No line changes."; else
+          # The tape files are append-only state, so two writers cannot be merged. On a rejected push, reset to the latest main and run the
+          # recorder again (it diffs against that fresh state), up to 3 times, instead of rebasing.
+          for i in 1 2 3; do
+            python3 scripts/sharp_tape.py --data sharp-out/data.json
+            python3 scripts/exchange_edge_record.py
+            git add data/book_tape/cfb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json data/exchange_edge_results.json
+            if git diff --staged --quiet; then echo "No line changes."; break; fi
             git commit -q -m "data: CFB and NBA line tape [skip ci]"
-            git pull --rebase --autostash origin main || true
-            git push origin HEAD:main
-          fi
+            if git push origin HEAD:main; then break; fi
+            echo "push rejected (try $i), resetting to the latest main"
+            git fetch -q origin main
+            git reset -q --hard origin/main
+          done
       # Permanent graded +EV log. data.json keeps only the newest 1500 alerts, so graded ones age out; this file never drops an entry.
       # Published next to data.json. Never blocks the publish: on failure the previous file is carried forward untouched.
       - name: Append graded +EV alerts to history
