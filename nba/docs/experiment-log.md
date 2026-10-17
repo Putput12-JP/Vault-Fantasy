@@ -30,6 +30,7 @@ from each doc's own words; "not stated" means the doc does not say.
 | Minutes GBM vs linear (two holdouts: 2024-25, 2025-26) | minutes-gbm.md | yes (bar in the script header) | PASS on accuracy, oracle absences; shadow only |
 | Minutes spread model | minutes-spread.md | yes | FAIL (+0.75% / +0.80% CRPS vs a 1% bar) |
 | Simulation challenger (10k and 50-draw sims vs analytic v2, single props) | sim-challenger.md | yes (one disclosed amendment after run 1: calibration) | sim10k = v2 (8/8 cells same); 50-draw sims same or worse (0 better); NO-GO as a probability engine |
+| SmartStake multi-book closes, Circa/Bookmaker lead, fitted book weights, ladder fits | docs/smartstake-experiment-log.md | yes (written 2026-10-17, no outcomes read) | not graded yet |
 
 So the NBA side is in better shape than the NFL side: most later tests were pre-registered, and the copula test already uses
 a season nobody has looked at. The gaps are the early model builds (game, minutes, prop v1/v2) with no written accept rule,
