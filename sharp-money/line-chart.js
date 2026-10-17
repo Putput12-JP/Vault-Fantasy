@@ -1,13 +1,13 @@
 /* Vault line movement chart. One module shared by the classic page and new/. Context only, never a bet signal.
-   Reads the NFL book tape (data/book_tape/nfl/YYYY-MM.jsonl, written every 20 minutes by scripts/book_tape.py):
+   Reads the book tape for the game's sport (data/book_tape/<nfl|cfb|nba>/YYYY-MM.jsonl; the NFL by scripts/book_tape.py every 20
+   minutes, college and NBA by scripts/sharp_tape.py each Sharp Money refresh):
    one row per book per game, appended only when that book's line changes, so each series is a step line.
    Books on the tape: Pinnacle, DraftKings, FanDuel, BetMGM, BetRivers, bet365, Consensus and Open, plus the
    Novig and Kalshi exchanges (Money tab only: they quote a win chance, not a spread or total, and were first recorded 2026-10-17).
-   Not on the tape: Circa, Bookmaker, Pinnacle limits. Nothing here is invented to fill those in. */
+   Not on the tape: Circa and Bookmaker. Nothing here is invented to fill those in. */
 (function () {
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), LIVE = /[?&]live\b/.test(location.search);
-  var RAW = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/data/book_tape/nfl/';
-  var BASE = LOCAL && !LIVE ? '/data/book_tape/nfl/' : RAW;
+  var BASE = LOCAL && !LIVE ? '/data/book_tape/' : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/data/book_tape/';   // + <sport>/<YYYY-MM>.jsonl
   var ALIAS = { WSH: 'WAS', LA: 'LAR', JAC: 'JAX', LVR: 'LV', OAK: 'LV' };
   var BOOKS = [
     ['Pinnacle', '#ff5fa2', 1], ['DraftKings', '#5ec269', 1], ['FanDuel', '#4aa3ff', 1], ['BetMGM', '#d9a93f', 1],
@@ -16,31 +16,32 @@
   var MARKETS = [['sp', 'Spread'], ['tot', 'Total'], ['ml', 'Money']];
   var WINDOWS = [['4h', 4 * 3600], ['12h', 12 * 3600], ['24h', 24 * 3600], ['All', 0]];
   var REC = (LOCAL && !LIVE ? '/data/' : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/data/') + 'exchange_edge_record.json';
-  var rec = null, tape = null, tapeP = null, states = {}, hosts = new WeakMap();
+  var rec = null, recP = null, tapes = {}, tapeP = {}, states = {}, hosts = new WeakMap();
 
   function monthKey(d) { return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
-  function load() {
-    if (tape) return Promise.resolve(tape);
-    if (tapeP) return tapeP;
+  function load(sport) {
+    if (tapes[sport]) return Promise.resolve(tapes[sport]);
+    if (tapeP[sport]) return tapeP[sport];
     var now = new Date(), prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
     var get = function (k) {
-      return fetch(BASE + k + '.jsonl?t=' + Math.floor(Date.now() / 300000), { cache: 'no-store' })
+      return fetch(BASE + sport + '/' + k + '.jsonl?t=' + Math.floor(Date.now() / 300000), { cache: 'no-store' })
         .then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
     };
-    tapeP = Promise.all([get(monthKey(prev)), get(monthKey(now))]).then(function (txt) {
+    var recGet = recP || (recP = fetch(REC + '?t=' + Math.floor(Date.now() / 300000), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { rec = j; }));
+    tapeP[sport] = Promise.all([get(monthKey(prev)), get(monthKey(now)), recGet]).then(function (x) {
       var rows = [];
-      txt.join('\n').split('\n').forEach(function (l) { if (l) { try { rows.push(JSON.parse(l)); } catch (e) {} } });
-      tape = rows; return tape;
-    }).then(function () {
-      return fetch(REC + '?t=' + Math.floor(Date.now() / 300000), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (j) { rec = j; return tape; });
+      x.slice(0, 2).join('\n').split('\n').forEach(function (l) { if (l) { try { rows.push(JSON.parse(l)); } catch (e) {} } });
+      tapes[sport] = rows; return rows;
     });
-    return tapeP;
+    return tapeP[sport];
   }
 
   function ab(x) { x = String(x || '').toUpperCase(); return ALIAS[x] || x; }
   function gameRows(g) {
+    var t = tapes[g.sport] || [];
+    if (g.sport !== 'nfl') return t.filter(function (r) { return r.gk === g.key; });   // college and NBA rows carry the feed's game key
     var a = ab(g.away && g.away.abbr), h = ab(g.home && g.home.abbr);
-    return (tape || []).filter(function (r) { return r.away === a && r.home === h && Math.abs(r.start - g.start) < 6 * 3600; });
+    return t.filter(function (r) { return r.away === a && r.home === h && Math.abs(r.start - g.start) < 6 * 3600; });
   }
   function dv(a, b) { // de-vigged home win probability from the two stored moneylines
     var p = function (m) { return m < 0 ? -m / (-m + 100) : 100 / (m + 100); }, pa = p(a), ph = p(b);
@@ -119,8 +120,9 @@
     return out;
   }
 
-  function recHtml() {
-    if (!rec || !rec.summary) return '';
+  function recHtml(sport) {
+    var rs = rec && (rec.by_sport ? rec.by_sport[sport] : sport === 'nfl' ? rec : null);
+    if (!rs || !rs.summary) return '';
     var line = function (x, label) {
       var o = '<div class="vlm-rr"><span>' + label + '</span><span>';
       if (!x.graded) return o + (x.signals ? x.signals + ' seen, none graded yet' : 'none yet') + '</span></div>';
@@ -129,7 +131,7 @@
       if (x.line_moved) o += ', line moved ' + x.line_moved + ' (' + x.line_favoured + ' our way)';
       return o + '</span></div>';
     };
-    var pick = function (thr, tag) { return rec.summary.filter(function (x) { return x.thr === thr && x.tag === tag; })[0]; };
+    var pick = function (thr, tag) { return rs.summary.filter(function (x) { return x.thr === thr && x.tag === tag; })[0]; };
     var o = '<div class="vlm-rec"><div class="vlm-eh">Record since Oct 17<span>graded on Pinnacle\u2019s close</span></div>';
     [[1, 'EV 1%+'], [2, 'EV 2%+'], [4, 'EV 4%+']].forEach(function (a) { var x = pick(a[0], 'all'); if (x) o += line(x, a[1]); });
     var st = pick(1, 'stale'); if (st) o += line(st, 'Pinnacle moved, Novig did not (EV 1%+)');
@@ -144,7 +146,7 @@
       o += '<div class="vlm-er"><div class="vlm-em"><b>' + r.m + '</b> ' + r.side + '</div><div class="vlm-ev ' + (r.ev > 0 ? 'pos' : 'neg') + '">' + s1(r.ev) + '% EV</div>' +
         '<div class="vlm-ed">Novig ' + r.price + ' (' + r.cents + '\u00A2) vs Pinnacle fair ' + r.fair.toFixed(1) + '%' + (mv ? '<br>' + mv : '') + '</div></div>';
     });
-    return o + '<div class="vlm-note">Fair is Pinnacle\u2019s price with the vig removed. Novig has no fee before kickoff. Spread and total only where Novig quotes Pinnacle\u2019s exact line.</div>' + recHtml() + '</div>';
+    return o + '<div class="vlm-note">Fair is Pinnacle\u2019s price with the vig removed. Novig has no fee before kickoff. Spread and total only where Novig quotes Pinnacle\u2019s exact line.</div>' + recHtml(g.sport) + '</div>';
   }
 
   function svg(d, st, W) {
@@ -259,7 +261,7 @@
   function fmtMl(r) { return r && r.px ? Math.round(r.px[0] * 100) + '-' + Math.round(r.px[1] * 100) + '\u00A2' : r && r.ml ? am(r.ml[0]) + '/' + am(r.ml[1]) : ''; }
 
   function mount(el, g) {
-    if (!el || !g || g.sport !== 'nfl') return;
+    if (!el || !g || !/^(nfl|cfb|nba)$/.test(g.sport)) return;
     css(); hosts.set(el, g);
     if (!el.__vlm) {
       el.__vlm = 1;
@@ -274,8 +276,8 @@
         render(el, gg);
       });
     }
-    if (tape) render(el, g);
-    else { el.innerHTML = '<div class="vlm-empty">Loading line history…</div>'; load().then(function () { if (hosts.get(el) === g) render(el, g); }); }
+    if (tapes[g.sport]) render(el, g);
+    else { el.innerHTML = '<div class="vlm-empty">Loading line history…</div>'; load(g.sport).then(function () { if (hosts.get(el) === g) render(el, g); }); }
   }
   function scan(root, lookup) {
     (root || document).querySelectorAll('[data-vlm-key]').forEach(function (el) { mount(el, lookup(el.getAttribute('data-vlm-key'))); });

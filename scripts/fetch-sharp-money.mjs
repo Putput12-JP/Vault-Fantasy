@@ -492,6 +492,7 @@ async function kalshi(sk, cfg, games, S) {
       const side = teamSide(hit.g, m.yes_sub_title);
       info.vol += +m.volume_fp || 0; info.vol24 += +m.volume_24h_fp || 0;
       info.px[side] = +m.last_price_dollars || null;
+      if (side === 'home') { info.bid = +m.yes_bid_dollars || null; info.ask = +m.yes_ask_dollars || null; }   // the line tape stores the quote, not only the last trade
       todo.push([hit.g, m.ticker, side]);
     }
     out.set(hit.g, info);
