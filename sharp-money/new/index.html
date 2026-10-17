@@ -290,9 +290,31 @@ function gamePage(key){
  return h;
 }
 function edge(){return head('Edge','Novig against Pinnacle, biggest +EV first. Context only.')+'<div style="padding:0 12px"><div data-edge-host></div></div>'}
+/* SmartStake books (Props > Books): LOCAL ONLY. Their API terms forbid publishing the data or showing it in the UI without
+   written permission, so this loads only on localhost with ?ss, from data/smartstake/ (gitignored, scripts/smartstake_props.py). */
+const SSON=LOCAL&&!LIVE&&/[?&]ss\b/.test(location.search),SSP={};
+function loadSS(){if(!SSON||SSP.on)return;SSP.on=true;['nfl','nba'].forEach(l=>fetch('/data/smartstake/props_'+l+'.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{if(j){SSP[l]=j;if((location.hash||'').slice(1)==='props')rerender()}}).catch(()=>{}))}
+const SSAB={DraftKings:'DK',FanDuel:'FD',BetMGM:'MGM',Caesars:'CZR',Fanatics:'FAN',ParlayPlay:'PP',BetRivers:'BR',bet365:'365',Circa:'CIR',Bookmaker:'BKM',ProphetX:'PX',Novig:'NOV',Kalshi:'KAL',Polymarket:'POLY'};
+function ssBooks(){
+ let h=head('Props','Every book we record. Local view only. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi'],['bk','Books']],st.pr,'pr');
+ const rows=[],now=Date.now()/1000;
+ ['nfl','nba'].forEach(l=>((SSP[l]||{}).props||[]).forEach(p=>{if(p.start>now-3600&&p.books.length>=3)rows.push({l,p})}));
+ if(!rows.length)return h+`<div class="card"><div class="m" style="color:var(--mut);font-size:13px">${SSP.nfl||SSP.nba?'No props with three or more books right now.':'Loading the local SmartStake tape. Run scripts/smartstake_props.py if this stays empty.'}</div></div>`;
+ const gap=r=>{const ls=r.p.books.map(b=>b[1]);return Math.max(...ls)-Math.min(...ls)};
+ rows.sort((a,b)=>gap(b)-gap(a)||b.p.books.length-a.p.books.length);
+ h+=`<div class="sec"><span>Biggest line gaps between books</span><span>${rows.length} props</span></div><div class="card">`;
+ rows.slice(0,st.props).forEach(({l,p})=>{
+  const ls=p.books.map(b=>b[1]),lo=Math.min(...ls),hi=Math.max(...ls),g=upcoming().find(x=>x.sport===l&&x.away.abbr===p.away&&x.home.abbr===p.home);
+  const sg=n=>n>0?'+'+n:String(n);
+  h+=`<div class="row${g?' tap':''}" ${g?`data-go="game/${esc(g.key)}"`:''}>${ini(p.n)}<div class="grow"><b>${esc(p.n)}</b><div class="m">${esc(p.s)} · ${esc(p.away)} @ ${esc(p.home)} · ${p.books.length} books</div><div class="m" style="margin-top:4px">${p.books.map(b=>`${SSAB[b[0]]||esc(b[0])} ${b[1]} ${sg(b[2])}/${sg(b[3])}`).join(' · ')}</div></div><div class="amt cond">${lo===hi?lo:lo+' to '+hi}<small>${hi-lo>0?'gap '+(+(hi-lo).toFixed(1)):'same line'}</small></div></div>`});
+ h+=`</div>`;
+ if(rows.length>st.props)h+=`<button class="btn" data-more="props">Show more (${rows.length-st.props} left)</button>`;
+ return h;
+}
 function props(){
+ if(SSON){loadSS();if(st.pr==='bk')return ssBooks()}
  if(!st.prTouched&&!upcoming().some(g=>(g.props||[]).length)&&upcoming().some(g=>(g.kprops||[]).length))st.pr='ka';
- let h=head('Props','Polymarket and Kalshi. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']],st.pr,'pr');
+ let h=head('Props','Polymarket and Kalshi. Context only.')+chips([['pm','Polymarket'],['ka','Kalshi']].concat(SSON?[['bk','Books']]:[]),st.pr,'pr');
  const up=upcoming();let rows=[];
  up.forEach(g=>{((st.pr==='pm'?g.props:g.kprops)||[]).forEach(r=>rows.push({g,r}))});
  if(st.pr==='pm')rows.sort((a,b)=>(b.r.usd||[]).reduce((s,x)=>s+x,0)-(a.r.usd||[]).reduce((s,x)=>s+x,0));else rows.sort((a,b)=>b.r.vol24-a.r.vol24);
@@ -905,8 +927,9 @@ function topPage(){
  const v=G.filter(g=>g.start>d-4*3600&&(sp==='all'||g.sport===sp)).map(g=>({g,r:readFor(g)})).filter(x=>x.r).map(x=>{const f=Math.max(0,...(alertTs[x.g.key]||[]),...(x.g.accts||[]).filter(a=>a.m===x.r.m&&a.side===x.r.side).map(a=>a.last||0));return {...x,left:f?Math.max(0,WIN-(d-f)/60):0}}).filter(x=>st.texp||x.left>0).sort((a,b)=>(b.r.agree-b.r.oppose)-(a.r.agree-a.r.oppose)||b.left-a.left).slice(0,12);
  // records
  const cgs=groups.filter(y=>y.graded&&!y.contested&&mf(y)),nc0=groups.filter(y=>y.graded&&y.contested&&mf(y)),ncw=nc0.filter(y=>ja(y)>0).length,ncl=nc0.filter(y=>ja(y)<0).length;
- const tiles=[1,2,3].map(n=>{const w=cgs.filter(y=>y.kinds.size===n),W=w.filter(y=>ja(y)>0).length,Lz=w.filter(y=>ja(y)<0).length,cl=w.filter(y=>y.clvs&&y.clvs.length).map(y=>y.clvs.reduce((a,b)=>a+b,0)/y.clvs.length);return {n,w:W,l:Lz,p:w.length-W-Lz,nc:cl.length,beat:cl.filter(u=>u>0).length,avg:cl.length?cl.reduce((a,b)=>a+b,0)/cl.length:null}});
+ const tiles=[1,2,3].map(n=>{const w=cgs.filter(y=>y.kinds.size===n),W=w.filter(y=>ja(y)>0).length,Lz=w.filter(y=>ja(y)<0).length,cl=w.filter(y=>y.clvs&&y.clvs.length).map(y=>y.clvs.reduce((a,b)=>a+b,0)/y.clvs.length);return {n,w:W,l:Lz,p:w.length-W-Lz,open:groups.filter(y=>!y.graded&&!y.contested&&mf(y)&&y.kinds.size===n).length,nc:cl.length,beat:cl.filter(u=>u>0).length,avg:cl.length?cl.reduce((a,b)=>a+b,0)/cl.length:null}});
  const cb=Object.values(cgs.reduce((x,y)=>{const k=[...y.kinds].sort().join('+'),r=x[k]||(x[k]={k,kinds:[...y.kinds],w:0,l:0,p:0,cl:[]}),q=ja(y);q>0?r.w++:q<0?r.l++:r.p++;if(y.clvs&&y.clvs.length)r.cl.push(y.clvs.reduce((a,b)=>a+b,0)/y.clvs.length);return x},Object.fromEntries([1,2,3,4,5,6,7].map(q=>{const ks=['line','money','behind'].filter((B,F)=>q>>F&1),k=[...ks].sort().join('+');return [k,{k,kinds:ks,w:0,l:0,p:0,cl:[]}]})))).sort((x,y)=>y.kinds.length-x.kinds.length||(y.w+y.l+y.p)-(x.w+x.l+x.p));
+ const pendList=st.tsel&&st.tsel!=='both'?groups.filter(y=>!y.graded&&mf(y)&&!y.contested&&y.kinds.size===+st.tsel).sort((a,b)=>a.start-b.start):[];
  const selList=st.tsel?groups.filter(y=>y.graded&&mf(y)&&(st.tsel==='both'?y.contested:!y.contested&&y.kinds.size===+st.tsel)).sort((a,b)=>b.start-a.start):[];
  const settled=cgs.slice().sort((a,b)=>b.start-a.start||b.kinds.size-a.kinds.size).slice(0,30);
  const cnt={all:0,nfl:0,cfb:0,nba:0};G.filter(g=>g.start>d-4*3600).forEach(g=>{cnt.all++;cnt[g.sport]++});
@@ -917,7 +940,7 @@ function topPage(){
  if(st.texp){h+=`<div class="sec"><span>Settled picks</span><span>last ${settled.length}</span></div><div class="card">${settled.length?settled.map(settledRow).join(''):'<div class="empty">No graded picks yet.</div>'}</div>`}
  // record when signals agree
  h+=`<div class="sec"><span>Record when signals agree${sp==='all'?'':' · '+SPORT[sp]}</span></div><div class="sub">Graded picks by how many signals agreed. Each market counts on its own. Small samples: a start, not a verdict. Tap a tile for the games.</div><div class="tiles2">`;
- h+=tiles.map(y=>{const w=y.w+y.l,R=w?Math.round(y.w/w*100):null,on=String(st.tsel)===String(y.n);return `<div class="card tap trt ${on?'picked':''}" data-tsel="${y.n}"><div class="gtop" style="margin:0 0 4px"><span>${y.n} of 3 agree</span><span class="dots2">${[1,2,3].map(q=>`<i class="${q<=y.n?'on':''}"></i>`).join('')}</span></div><div class="cond" style="font-size:30px;font-weight:600">${w||y.p?y.w+'-'+y.l+(y.p?'-'+y.p:''):'none yet'}</div><div class="foot" style="margin:2px 0 0">${w?R+'% won, '+w+' graded':'no graded picks'}</div><div class="foot" style="margin:4px 0 0;color:${y.avg==null?'var(--dim)':y.avg>0?'var(--good)':'var(--bad)'}">${y.avg==null?'no price data yet':'beat the close '+y.beat+' of '+y.nc+', avg '+mTe(y.avg*100)+' pts'}</div></div>`}).join('');
+ h+=tiles.map(y=>{const w=y.w+y.l,R=w?Math.round(y.w/w*100):null,on=String(st.tsel)===String(y.n);return `<div class="card tap trt ${on?'picked':''}" data-tsel="${y.n}"><div class="gtop" style="margin:0 0 4px"><span>${y.n} of 3 agree</span><span class="dots2">${[1,2,3].map(q=>`<i class="${q<=y.n?'on':''}"></i>`).join('')}</span></div><div class="cond" style="font-size:30px;font-weight:600">${w||y.p?y.w+'-'+y.l+(y.p?'-'+y.p:''):'none yet'}</div><div class="foot" style="margin:2px 0 0">${w?R+'% won, '+w+' graded':'no graded picks'}${y.open?' · '+y.open+' open':''}</div><div class="foot" style="margin:4px 0 0;color:${y.avg==null?'var(--dim)':y.avg>0?'var(--good)':'var(--bad)'}">${y.avg==null?'no price data yet':'beat the close '+y.beat+' of '+y.nc+', avg '+mTe(y.avg*100)+' pts'}</div></div>`}).join('');
  h+=`<div class="card tap trt ${st.tsel==='both'?'picked':''}" data-tsel="both" style="opacity:.9"><div class="gtop" style="margin:0 0 4px"><span>No clear side</span></div><div class="cond" style="font-size:30px;font-weight:600">${nc0.length?ncw+'-'+ncl:'none yet'}</div><div class="foot" style="margin:2px 0 0">${nc0.length} graded</div><div class="foot" style="margin:4px 0 0">The other side had as many signals, so the card made no call.</div></div></div>`;
  // model agreement: shown beside the bet signals, never counted in them
  {const wl=l=>{const w=l.filter(y=>ja(y)>0).length,Lz=l.filter(y=>ja(y)<0).length;return {w,l:Lz,n:w+Lz,p:l.length-w-Lz}},hm=cgs.filter(y=>y.model),ag=hm.filter(y=>y.model.side===y.side),dg=hm.filter(y=>y.model.side!==y.side),nm=cgs.length-hm.length,bf=hm.filter(y=>y.model.backfill).length;
@@ -926,6 +949,7 @@ function topPage(){
   h+=`<div class="sec"><span>When our model agrees${sp==='all'?'':' · '+SPORT[sp]}</span></div><div class="sub">The model's side on the same number the read uses. It is shown next to the bet signals and never counts toward the 3. Small samples: a start, not a verdict.</div><div class="card">`+row('Model agrees',ag,by('a')?' · '+by('a'):'')+row('Model disagrees',dg,by('d')?' · '+by('d'):'')+`<div class="foot" style="margin:6px 0 0">${nm?nm+' graded pick'+(nm===1?'':'s')+' had no model number (for example NFL totals). ':''}${bf?bf+' of '+hm.length+' were filled in from the current model after the fact, not logged at the time. ':''}Break-even is 52.4%.</div></div>`}
  if(st.tsel){
   const Z={line:'Pinnacle line',money:'Money vs bets',sharp:'Sharp accounts (context)',behind:'+EV at a book'};
+  if(st.tsel!=='both')h+=`<div class="sec"><span>Pending · ${st.tsel} of 3 agree</span><span>${pendList.length}</span></div><div class="sub">Open picks that count in this record once they are graded, whether or not you caught the signal.</div><div class="card">`+(pendList.length?pendList.map(y=>`<div class="mrw" style="cursor:default"><div class="grow"><b class="lgrow">${tpair(lblTeams(y.sport,y.gameLbl,y.game))}${esc(y.gameLbl)}</b><div class="m">${SPORT[y.sport]||''} · ${esc(rLabel(y))} · ${MKU[y.m]||''} · ${when(y.start)}</div></div><span class="badge">${y.start<d?'awaiting result':'open'}</span></div>`).join(''):'<div class="empty">Nothing open with this many signals.</div>')+`</div>`;
   h+=`<div class="sec"><span>Completed · ${st.tsel==='both'?'both sides':st.tsel+' of 3 agree'}</span><a data-tsel="${st.tsel}">Hide</a></div><div class="card">`+(selList.length?selList.slice(0,40).map(y=>{const R=y.clvs&&y.clvs.length?y.clvs.reduce((a,b)=>a+b,0)/y.clvs.length:null;
    return `<div class="lrr" style="border-top:1px solid var(--line);padding:10px 0"><div class="gtop" style="margin:0 0 4px"><span class="lgrow">${tpair(lblTeams(y.sport,y.gameLbl,y.game))}<b style="color:#fff">${esc(y.gameLbl)}</b> · ${esc(rLabel(y))}</span><span>${R==null?'':`<span class="badge ${R>0?'good':'bad'}">${R>0?'beat':'missed'} the close ${mTe(R*100)}</span> `}${wlBadge(ja(y))}</span></div><div class="foot" style="margin:0">${SPORT[y.sport]||''} · ${when(y.start)}</div>${['line','money','sharp','behind'].flatMap(q=>['sp','ml','tot'].filter(W=>y.alerts.some(B=>B.k===q&&B.r.m===W)).map(W=>[q,W])).map(([q,W])=>{const B=y.alerts.filter(F=>F.k===q&&F.r.m===W).sort((F,X)=>(X.r.ts||0)-(F.r.ts||0)),F=B[0].r;return `<div class="kv" style="padding:3px 0;border-top:0;gap:8px"><span style="font-size:12.5px;flex:none">${Z[q]} · ${MKT[W]}</span><em class="cond" style="font-size:13px;font-weight:500;text-align:right">${esc(F.text||'')}${B.length>1?' +'+(B.length-1)+' more':''}</em></div>`}).join('')}</div>`}).join(''):'<div class="empty">No completed games with this many signals yet.</div>')+`</div>`;
  }

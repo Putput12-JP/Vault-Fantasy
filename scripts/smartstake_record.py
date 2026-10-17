@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from smartstake_client import snapshot
+from smartstake_props import convert as convert_props
 from smartstake_to_book_tape import convert
 
 ROOT = Path(__file__).resolve().parent.parent / "data" / "smartstake"
@@ -64,6 +65,7 @@ def main():
             if lg in ("nfl", "nba"):
                 try:
                     convert(lg)   # refresh the local-only chart tape (Circa, Bookmaker)
+                    convert_props(lg)   # and the per-book prop lines the pages read with ?ss
                 except Exception as e:
                     print(f"{lg}: book-tape export failed: {e}", flush=True)
         if a.once:
