@@ -56,6 +56,13 @@ class Weeks(unittest.TestCase):
     def test_official_picks_counts_graded_results_only(self):
         o = sb.official_picks([dict(week=7, result='W'), dict(week=7, result='L'), dict(week=7, result='P'), dict(week=7, result=None), dict(week=6, result='W')])
         self.assertEqual(o['total'], dict(w=2, l=1, p=1, pct=round(2 / 3, 4))); self.assertEqual([x['week'] for x in o['weeks']], [7, 6])
+        self.assertNotIn('as_logged', o)
+
+    def test_as_logged_adds_the_dropped_picks_back(self):
+        log = [dict(week=7, result='W'), dict(week=7, result='L')]; dropped = [dict(week=7, result='L'), dict(week=6, result='L')]
+        o = sb.official_picks(log, dropped)
+        self.assertEqual((o['total']['w'], o['total']['l']), (1, 1)); al = o['as_logged']
+        self.assertEqual((al['total']['w'], al['total']['l']), (1, 3)); self.assertEqual([(x['week'], x['w'], x['l']) for x in al['weeks']], [(7, 1, 2), (6, 0, 1)])
 
 
 if __name__ == '__main__':
