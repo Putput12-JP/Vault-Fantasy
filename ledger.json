@@ -2,7 +2,7 @@
  "version": 1,
  "paper_only": true,
  "live_orders": false,
- "updated": "2026-10-18T13:30:49Z",
+ "updated": "2026-10-18T16:35:58Z",
  "bankroll_start": 1000.0,
  "cash": 929.08,
  "trades": [
@@ -79,7 +79,7 @@
   {
    "id": "KXNCAAFGAME-26OCT16ARSTUSM-USM:1791901778",
    "ts": "2026-10-13T14:29:38Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_ml",
    "ticker": "KXNCAAFGAME-26OCT16ARSTUSM-USM",
    "event": "KXNCAAFGAME-26OCT16ARSTUSM",
@@ -132,14 +132,14 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-10-18T16:35:58Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -19.8,
    "close_mid": 0.325,
-   "clv": null,
+   "clv": 0.015,
    "mark_value": 19.2,
-   "won": null,
+   "won": false,
    "fee_total": 1.2,
    "tags": [
     "pre_fix_raw_v1_margin"
@@ -149,7 +149,7 @@
   {
    "id": "KXNCAAFGAME-26OCT16CINWVU-CIN:1791901778",
    "ts": "2026-10-13T14:29:38Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_ml",
    "ticker": "KXNCAAFGAME-26OCT16CINWVU-CIN",
    "event": "KXNCAAFGAME-26OCT16CINWVU",
@@ -202,14 +202,14 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-10-18T16:35:58Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -19.6,
    "close_mid": 0.475,
-   "clv": null,
+   "clv": 0.005,
    "mark_value": 18.8,
-   "won": null,
+   "won": false,
    "fee_total": 0.8,
    "tags": [
     "pre_fix_raw_v1_margin"
@@ -219,7 +219,7 @@
   {
    "id": "KXNCAAFGAME-26OCT16OHIOSAC-SAC:1791901778",
    "ts": "2026-10-13T14:29:38Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_ml",
    "ticker": "KXNCAAFGAME-26OCT16OHIOSAC-SAC",
    "event": "KXNCAAFGAME-26OCT16OHIOSAC",
@@ -272,14 +272,14 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-10-18T16:35:58Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -19.98,
    "close_mid": 0.145,
-   "clv": null,
+   "clv": -0.025,
    "mark_value": 15.54,
-   "won": null,
+   "won": false,
    "fee_total": 1.11,
    "tags": [
     "pre_fix_raw_v1_margin"
@@ -359,7 +359,7 @@
   {
    "id": "KXNCAAFGAME-26OCT17WSUORST-WSU:1791901778",
    "ts": "2026-10-13T14:29:38Z",
-   "status": "open",
+   "status": "settled",
    "source": "cfb_ml",
    "ticker": "KXNCAAFGAME-26OCT17WSUORST-WSU",
    "event": "KXNCAAFGAME-26OCT17WSUORST",
@@ -412,14 +412,14 @@
     "reason": "filter off",
     "definitive": false
    },
-   "settled_ts": null,
-   "result": null,
-   "payout": null,
-   "pnl": null,
+   "settled_ts": "2026-10-18T16:35:58Z",
+   "result": "no",
+   "payout": 0.0,
+   "pnl": -8.97,
    "close_mid": 0.105,
-   "clv": null,
+   "clv": -0.015,
    "mark_value": 6.9,
-   "won": null,
+   "won": false,
    "fee_total": 0.69,
    "tags": [
     "pre_fix_raw_v1_margin"
@@ -477,6 +477,11 @@
    "ts": "2026-10-17T19:23:09Z",
    "cash": 929.08,
    "equity": 989.52
+  },
+  {
+   "ts": "2026-10-18T16:35:58Z",
+   "cash": 929.08,
+   "equity": 929.08
   }
  ],
  "runs": [
@@ -639,6 +644,20 @@
    ],
    "equity": 989.52,
    "cash": 929.08
+  },
+  {
+   "ts": "2026-10-18T16:35:58Z",
+   "settled": 4,
+   "opened": 0,
+   "vetoed": 0,
+   "skipped": 0,
+   "halt": "daily loss stop (-68.35 vs -50.00)",
+   "notes": [
+    "strategies paused: daily loss stop (-68.35 vs -50.00)",
+    "daily loss stop (-68.35 vs -50.00)"
+   ],
+   "equity": 929.08,
+   "cash": 929.08
   }
  ],
  "summary": {
@@ -734,41 +753,41 @@
    }
   },
   "overall": {
-   "settled": 2,
+   "settled": 6,
    "wins": 1,
-   "losses": 1,
+   "losses": 5,
    "pending": 0,
-   "stake": 31.57,
-   "pnl": -2.57,
-   "roi": -0.0814,
-   "clv_n": 2,
-   "clv_mean": 0.01,
-   "brier": 0.216,
-   "open": 4,
+   "stake": 99.92,
+   "pnl": -70.92,
+   "roi": -0.7098,
+   "clv_n": 6,
+   "clv_mean": -0.0,
+   "brier": 0.2377,
+   "open": 0,
    "void": 0,
    "vetoed": 0
   },
   "by_source": {
    "cfb_ml": {
-    "settled": 2,
+    "settled": 6,
     "wins": 1,
-    "losses": 1,
+    "losses": 5,
     "pending": 0,
-    "stake": 31.57,
-    "pnl": -2.57,
-    "roi": -0.0814,
-    "clv_n": 2,
-    "clv_mean": 0.01,
-    "brier": 0.216,
-    "open": 4,
+    "stake": 99.92,
+    "pnl": -70.92,
+    "roi": -0.7098,
+    "clv_n": 6,
+    "clv_mean": -0.0,
+    "brier": 0.2377,
+    "open": 0,
     "vetoed": 0
    }
   },
   "months": {
    "2026-10": {
-    "pnl": -2.57,
-    "stake": 31.57,
-    "n": 2
+    "pnl": -70.92,
+    "stake": 99.92,
+    "n": 6
    }
   },
   "calibration": [
@@ -796,30 +815,30 @@
    {
     "lo": 0.3,
     "hi": 0.4,
-    "n": 0,
-    "hit": null,
-    "pred": null
+    "n": 1,
+    "hit": 0.0,
+    "pred": 0.3095
    },
    {
     "lo": 0.4,
     "hi": 0.5,
-    "n": 0,
-    "hit": null,
-    "pred": null
+    "n": 1,
+    "hit": 0.0,
+    "pred": 0.4125
    },
    {
     "lo": 0.5,
     "hi": 0.6,
-    "n": 1,
+    "n": 2,
     "hit": 0.0,
-    "pred": 0.5994
+    "pred": 0.5607
    },
    {
     "lo": 0.6,
     "hi": 0.7,
-    "n": 0,
-    "hit": null,
-    "pred": null
+    "n": 1,
+    "hit": 0.0,
+    "pred": 0.6752
    },
    {
     "lo": 0.7,
@@ -845,7 +864,7 @@
   ],
   "fees": 5.34,
   "cash": 929.08,
-  "open_mark": 60.44
+  "open_mark": 0
  },
  "config": {
   "paper_only": true,
