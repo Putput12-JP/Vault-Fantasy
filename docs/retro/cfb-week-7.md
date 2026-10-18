@@ -83,14 +83,14 @@ The 2022-25 base rows now also replay the 2026 season to date week by week (`cfb
 | in-season move x1.2 and prior x1.2 (= K 84) | 12.733 | 12.316 | 12.593 | 256-215 (54.4%) / 189-165 (53.4%) / 41-39 (51.2%) | accuracy up, test picks worse |
 | K 90 / K 110 at matched count | | | | K 90 250-221 / 181-174 (51.0%) / 43-38; K 110 238-229 / 189-167 / 43-38 | not consistent |
 | z-scored edge rule | | | | 243-226 / 194-164 (54.2%) / 40-40 | no gain |
-| v1 and v2+ST both 3+ and averaging 5+ | | | | 185-155 (n 340) / 117-115 (50.4%) / 25-24 | worse on test |
+| v1 and v2+ST both 3+ and averaging 5+ | | | | 185-155 (n 349) / 117-115 (50.4%) / 25-24 | worse on test |
 | offense ridge strength x0.5 (offense reacts faster) | 12.752 | 12.333 | 12.574 | 249-220 (53.1%) / 187-167 (52.8%) / 44-36 (55.0%) | accuracy up, test picks worse |
 | defense ridge strength x2 or x4 | 12.867-13.009 | 12.651-12.932 | 12.821-12.871 | | worse on every read |
 | winsorise team-game EPA at 2.5 and 97.5 percent | 12.845 | 12.519 | 12.837 | 251-220 / 194-163 / 41-39 | no change |
 | shrink toward the prior (b fitted -0.275, i.e. extrapolate the move) | 12.794 | 12.318 | 12.600 | 235-209 (not matched) / 174-146 / 39-34 | accuracy up, test picks lower |
 | market-anchored number (close + 0.2 x prior gap + 0.25 x move) | 12.111 | 11.868 | 11.650 | 250-222 / 191-164 (53.8%) / 41-39 | equals the close by construction, no pick gain |
 
-Every candidate that improves accuracy past the 0.05 bar (SP+/FPI/Elo prior, wider K, faster offense, move scaling) moves the model toward the market and lowers the 2024-25 pick rate by 1 to 3 points. That is the same pattern as the K 90 retune, team home field, turnover luck and success-rate tests, now seen from five more directions. The two-pronged result: the model's accuracy can be raised by about 0.15 to 0.25 points with several changes, none of them closes the 1.2 point gap to the market, and none of them improves picks.
+Every candidate that improves accuracy past the 0.05 bar (SP+/FPI/Elo prior, wider K, faster offense, move scaling) moves the model toward the market and lowers the 2024-25 pick rate by 1 to 3 points. That is the same pattern as the K 90 retune, team home field, turnover luck and success-rate tests, now seen from five more directions. Net: several changes raise accuracy by 0.15 to 0.25 points, none closes the 1.2 point gap to the market, and none improves picks.
 
 ## What needs to change
 
