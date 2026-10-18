@@ -127,3 +127,33 @@ REA's `capture_browser_scenario` loaded https://www.jpplusratings.com/picks/spre
 3. Replace the raw 5-point rule with an EV rule at the opening price once the best-price grading in step 1 exists, then backtest it against the 5-point rule at matched pick counts.
 4. Keep the JP+ recording job running; four to six more weeks gives a fair head-to-head.
 
+## Round 4: JP+'s week 7 picks game by game, a defensive success rate flag, and the chalk-trap analog
+
+**Week 7 side by side** (JP+'s 25 production selections from the picks page, 17-8, against our board at the ESPN open):
+- On the 8 games where we also had a 5+ point pick, we agreed on the side in 6 and were on opposite sides in 2 (South Florida and Navy at UTSA, both won by JP+'s side). On the 6 shared sides we were 3-3 and so was JP+. On the 2 opposite games JP+ went 2-0 and we went 0-2.
+- On 15 more games JP+ made a pick and we had no 5+ point edge, and JP+ went 12-3 there. That is where the week was won: Texas Tech over Arizona State (JP+ edge 11.7, ours 0.7 the other way), Air Force over UNLV (11.4, ours 3.6 on the other side), Oregon State, Auburn, Florida State, Ball State, North Carolina. Two more JP+ picks (UTEP, UMass) are not on our board and both lost.
+- So the week-7 record gap is the accuracy gap again: JP+ was right in games where our projection sat close to the line, not in games where we both disagreed with the market.
+
+**Defensive success rate flag (JP+'s `DEF_SR_DOMINANT`).** JP+ does not publish the definition, so this tested a guess fixed in advance: the side our model picks has a top-10% (or top-20%) defensive success rate in FBS that week, from the same weekly opponent-adjusted ridge. `scripts/cfb_week7_defsr_study.py`, 5+ point picks, weeks 4+:
+
+| | flagged vs close | unflagged vs close | flagged vs open |
+|---|---|---|---|
+| top 10%, 2022-26 | 17-16 (51.5%, n=33) | 468-407 (53.5%) | 12-6 (n=19) |
+| top 20%, 2022-26 | 35-36 (49.3%, n=71) | 450-387 (53.8%) | 24-14 (n=39) |
+| top 20%, TEST 2024-25 | 14-13 | 183-147 | 16-9 |
+
+No edge against the close, where the sample is large enough to read. The open numbers look better but the 2022-23 opens are mostly missing, the samples are 19 and 39, and the flag we built may not be JP+'s. NO-GO as defined; JP+'s 6-3 stays a lead.
+
+**The chalk-trap analog.** JP+'s picks carry a `chalk_trap_vetoed` field (none of the 107 selections is vetoed, so vetoed games are removed upstream), and its selections on favorites are 11-2 against 51-35 on underdogs, so the veto is selective about which favorite picks survive. Our version is the simplest one: drop a 5+ point pick when the pick is the favorite. This is the watch item from round 1, now with 2026 added and a design reason behind it. `5+` picks on the favorite, weeks 4+:
+
+| | picks on the favorite | rule: drop them | base |
+|---|---|---|---|
+| vs close, tune 22-23 | 8-13 (38.1%) | 239-211 (53.1%) | 247-224 (52.4%) |
+| vs close, TEST 24-25 | 13-18 (41.9%) | 184-142 (56.4%) | 197-160 (55.2%) |
+| vs close, 2026 | 0-3 | 41-36 (53.2%) | 41-39 (51.2%) |
+| vs close, all 22-26 | 21-34 (38.2%, n=55) | 464-389 (54.4%) | 485-423 (53.4%) |
+| vs open, TEST 24-25 | 14-14 (50.0%) | 191-143 (57.2%) | 205-157 (56.6%) |
+| vs open, 2026 | 6-6 | 44-38 (53.7%) | 50-44 (53.2%) |
+
+By season against the close the favorite picks were 3-1, 5-12, 5-5, 8-13 and 0-3. Over 2022-26 they cover 38.2% against the close (binomial p 0.04 against break-even, Fisher p 0.025 against the underdog picks, n=55). The hit rate improves on tune, test and 2026 against the close and the pick count falls by 6%. It is not strong evidence: it was one of about a dozen pre-registered variants, so the p value does not survive a correction for that, and against the open the favorite picks are 22-26 (p 0.39). The rule changes which games are official picks, so shipping it must restate the pick log and the records (project rule) and touch every place `is_pick` is set in `cfb_model.py`. Not shipped in this PR; it needs a decision.
+
