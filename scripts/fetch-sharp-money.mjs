@@ -63,6 +63,7 @@ const SPORTS = {
          steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, sharpCard: 5000, wallets: 'pm_wallets_nba.json', sigBig: 25000, crossAt: 25000 },
 };
 const WREC = {};
+const WALL = {};   // every scored wallet, per sport: {w: {rec}}. Accounts page only; never feeds the sharp or dull labels.
 const PROP_MIN_VOL = 300, PROP_MAX = 25;   // prop markets read per game (by Polymarket volume)
 // Vault's own team ratings (scripts/build_game_model.py), NFL only. Context on the game page, never an edge.
 let GM = null; try { GM = JSON.parse(readFileSync(resolve(ROOT, 'data', 'game_model.json'), 'utf8')); } catch (e) {}
@@ -178,8 +179,15 @@ function loadWallets(file) {
       const [n, s, ss, gms] = a, m = s / n, sd = Math.sqrt(Math.max(ss / n - m * m, 0));
       rec[w] = { n, games: gms, clv: r3(m), t: sd ? +(m / (sd / Math.sqrt(n))).toFixed(1) : 0, sport };
     }
-    return { sharp: new Set(j.sharp || []), dull: new Set(j.dull || []), rec, n: Object.keys(j.wallets || {}).length, generated: j.generated };
-  } catch (e) { return { sharp: new Set(), dull: new Set(), rec: {}, n: 0, generated: null }; }
+    const all = {};
+    for (const [w, a] of Object.entries(j.wallets || {})) {
+      const pub = j.stats?.[w];
+      const [n, s, ss, gms] = a, m = s / n, sd = Math.sqrt(Math.max(ss / n - m * m, 0));
+      all[w] = { rec: pub && pub.n != null ? { n: pub.n, games: pub.games ?? pub.n, trades: pub.trades ?? null, clv: r3(pub.clv), t: pub.t, sport }
+        : { n, games: gms, clv: r3(m), t: sd ? +(m / (sd / Math.sqrt(n))).toFixed(1) : 0, sport } };
+    }
+    return { sharp: new Set(j.sharp || []), dull: new Set(j.dull || []), rec, all, n: Object.keys(j.wallets || {}).length, generated: j.generated };
+  } catch (e) { return { sharp: new Set(), dull: new Set(), rec: {}, all: {}, n: 0, generated: null }; }
 }
 
 // ── 1. Action Network: master game list, splits, open line, soft books ──
@@ -1262,8 +1270,11 @@ function payload(S, byGame, W, status) {
   const accounts = Object.entries(S.acct || {}).filter(([, A]) => A.trades.length || A.pos.length).map(([w, A]) => {
     const recs = Object.values(WREC).map(r => r[w]).filter(Boolean);
     const rec = recs.sort((a, b) => b.n - a.n)[0] || null;
+    // Record in every sport the wallet has been scored in (not only the sport where it earned a sharp or dull label).
+    const recSp = {};
+    for (const [sk, M] of Object.entries(WALL)) { const e = M?.[w]; if (e) recSp[sk] = e.rec; }
     const b24 = A.trades.filter(x => x.ts > t - DAY && x.side === 'BUY');
-    return { w, who: A.who, rec, last: A.trades[0]?.ts || 0, n7: A.trades.length, buy24: b24.reduce((s, x) => s + x.usd, 0), n24: b24.length,
+    return { w, who: A.who, rec, recSp, last: A.trades[0]?.ts || 0, n7: A.trades.length, buy24: b24.reduce((s, x) => s + x.usd, 0), n24: b24.length,
       trades: A.trades.slice(0, 25).map(({ ts, side, usd, px, title, slug, out }) => ({ ts, side, usd, px, title, slug, out })), pos: A.pos.map(({ ev, ...x }) => x), posVal: A.pos.reduce((s, x) => s + x.val, 0), stats: A.stats ? { all: A.stats.all, sp: A.stats.sp, days: A.stats.days, capped: A.stats.capped, hist: A.stats.hist } : null };
   }).filter(a => a.last > t - 7 * DAY || a.pos.length).sort((a, b) => b.buy24 - a.buy24 || b.last - a.last).slice(0, 80);
   return { generated: new Date().toISOString(), ts: t, status, wallets: W, games, alerts, accounts, sigRec, sigBig: Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sigBig])) };
@@ -1301,6 +1312,7 @@ async function pollOnce() {
   // the CFB close by +2.2%/trade (194 trades, t 7, 2026 season). So an account
   // with no record in this sport borrows its sharp label from another sport.
   const OWN = Object.fromEntries(Object.entries(SPORTS).map(([sk, c]) => [sk, loadWallets(c.wallets)]));
+  for (const [sk, o] of Object.entries(OWN)) WALL[sk] = o.all;
   const allSharp = [...new Set(Object.values(OWN).flatMap(o => [...o.sharp]))];
   const T0 = Date.now(), lap = (st, k, p) => p.finally(() => { (st.ms ||= {})[k] = Math.round((Date.now() - T0) / 1000); });   // seconds since poll start, per source: what a Refresh click is actually waiting on
   if (ARG.quick && now() - (S.lastWallet || 0) < 15 * 60) { status.accounts = 'skipped (quick)'; } else S.lastWallet = now();
