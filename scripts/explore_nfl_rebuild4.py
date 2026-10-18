@@ -22,6 +22,9 @@ def run(games, o):
     recent = defaultdict(list); season_starts = defaultdict(lambda: defaultdict(int)); gp = defaultdict(int)
     qv = {}                                   # per-QB rating (only when o['qbr'])
     hist = []                                 # (season, margin of non-neutral games) for the rolling HFA
+    qs, qn, team_q = defaultdict(float), defaultdict(int), {}       # QB value from passing EPA per start, and each team's recent-starter level
+    tpe = o.get('tpe') or {}
+    def qval(q): return qs[q] / (qn[q] + o.get('qk', 8)) if q else 0.0
     cur, preds = None, []
     for g in games:
         if g['season'] != cur:
@@ -43,6 +46,10 @@ def run(games, o):
             pm_rate = rate[g['ht']] - rate[g['at']] + hfa + qadj
         else:
             pm_rate = rate[g['ht']] - rate[g['at']] + hfa - o['qbm'] * (hb - ab)
+        if o.get('qbg'):
+            gh = (qval(g['hq']) - team_q.get(g['ht'], qval(g['hq']))) if g['hq'] else 0.0
+            ga = (qval(g['aq']) - team_q.get(g['at'], qval(g['aq']))) if g['aq'] else 0.0
+            pm_rate += o['qbg'] * (gh - ga)
         own, opp = (o['qbt'] + o['qbm']) / 2, (o['qbm'] - o['qbt']) / 2
         ph = M.BASE_PTS + off[g['ht']] - dff[g['at']] + hfa / 2 - own * hb + opp * ab
         pa = M.BASE_PTS + off[g['at']] - dff[g['ht']] - hfa / 2 - own * ab + opp * hb
@@ -54,9 +61,10 @@ def run(games, o):
                 recent[g[tk]] = (recent[g[tk]] + [g[qk]])[-M.QB_WINDOW:]
                 season_starts[(g['season'], g[tk])][g[qk]] += 1
         res = g['hs'] - g['as_']
-        preds.append(dict(pm=pm, result=res, spread=g['spread'], season=g['season'], ht=g['ht'], at=g['at'], week=g['week']))
+        preds.append(dict(pm=pm, pm_rate=pm_rate, result=res, spread=g['spread'], season=g['season'], ht=g['ht'], at=g['at'], week=g['week']))
         em = res - pm_rate
-        kh = o['K'] * (1 + o['kd'] / (1 + gp[g['ht']])); ka = o['K'] * (1 + o['kd'] / (1 + gp[g['at']]))
+        K_eff = o.get('k_late', o['K']) if g['week'] >= o.get('late_from', 13) else o['K']
+        kh = K_eff * (1 + o['kd'] / (1 + gp[g['ht']])); ka = K_eff * (1 + o['kd'] / (1 + gp[g['at']]))
         rate[g['ht']] += kh * em; rate[g['at']] -= ka * em
         if o['qbr']:
             if g['hq']: qv[g['hq']] = qv.get(g['hq'], -1.0) + o['KQ'] * em
@@ -64,10 +72,17 @@ def run(games, o):
         eh, ea = g['hs'] - ph, g['as_'] - pa
         off[g['ht']] += o['KS'] * (eh - o['ridge'] * off[g['ht']]); dff[g['at']] -= o['KS'] * (eh - o['ridge'] * dff[g['at']])
         off[g['at']] += o['KS'] * (ea - o['ridge'] * off[g['at']]); dff[g['ht']] -= o['KS'] * (ea - o['ridge'] * dff[g['ht']])
-        if o['mkt'] and g['spread'] is not None:
+        mk = o.get('mkt_late', o['mkt']) if g['week'] >= o.get('late_from', 13) else o['mkt']
+        if mk and g['spread'] is not None:
             ex = g['spread'] - pm_rate
-            rate[g['ht']] += o['mkt'] * ex; rate[g['at']] -= o['mkt'] * ex
+            rate[g['ht']] += mk * ex; rate[g['at']] -= mk * ex
         gp[g['ht']] += 1; gp[g['at']] += 1
+        if o.get('qbg'):
+            for tm, q in ((g['ht'], g['hq']), (g['at'], g['aq'])):
+                x = tpe.get((g['season'], g['week'], tm))
+                if q and x is not None:
+                    qs[q] += x; qn[q] += 1
+                    team_q[tm] = (1 - o.get('qa', 0.2)) * team_q.get(tm, qval(q)) + o.get('qa', 0.2) * qval(q)
         if not g['neutral']: hist.append((g['season'], res))
     return preds
 
