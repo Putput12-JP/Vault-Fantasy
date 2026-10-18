@@ -15,9 +15,11 @@ on:
   schedule:
     - cron: '3,13,23,33,43,53 * * * *'
 
+# A Refresh click (workflow_dispatch) cancels a scheduled sweep that is already running instead of waiting ~7 min behind it.
+# The next scheduled run redoes the long sweep. A scheduled run never cancels anything, it just queues.
 concurrency:
   group: sharp-money
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 permissions:
   contents: write
   actions: write   # start the Kalshi-vs-books gap loop
@@ -112,7 +114,8 @@ jobs:
       # (scripts/exchange_edge_record.py, the only place it is written so two workflows never race on it): every book's numbers, appended when they change, read from the
       # data.json just built (teams are already matched there). Committed to main like the NFL tape. Never blocks the publish.
       - name: Record CFB and NBA line tape
-        if: steps.gate.outputs.go == '1'
+        # Skipped on a Refresh click (append-only history, the next scheduled run catches up) to keep the click fast.
+        if: steps.gate.outputs.go == '1' && github.event.inputs.force != 'true'
         continue-on-error: true
         run: |
           git config user.name  "vault-bot"
