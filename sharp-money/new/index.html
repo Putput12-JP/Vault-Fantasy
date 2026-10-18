@@ -846,14 +846,14 @@ function mdAg(m,mod,b,r){if(!mod)return null;const v=m==='tot'?mod.tt:mod.mg;if(
 function lvPin(d,m){
  const o=[];
  for(const g of G){
-  if(g.sport!=='nfl'||!(g.start>d)||!(g.pin&&g.pin[m])||!g.soft)continue;   // the record is NFL only
+  if((st.sport!=='all'&&g.sport!==st.sport)||!(g.start>d)||!(g.pin&&g.pin[m])||!g.soft)continue;
   const bk=Object.entries(g.soft).filter(([b,v])=>v[m]&&v[m].line!=null).map(([b,v])=>[b,v[m].line]);if(bk.length<2)continue;
   const ls=bk.map(x=>x[1]).sort((x,w)=>x-w),med=ls[Math.floor(ls.length/2)],lp=g.pin[m].line,gap=lp-med;if(Math.abs(gap)<.5)continue;
   const hrs=(g.start-d)/3600;let pick,bb;
   if(m==='tot'){const ov=gap>0;bb=bk.reduce((x,w)=>(ov?w[1]<x[1]:w[1]>x[1])?w:x);pick=(ov?'Over ':'Under ')+bb[1]}
   else{const home=gap<0;bb=bk.reduce((x,w)=>(home?w[1]>x[1]:w[1]<x[1])?w:x);pick=home?rTn(g,'home')+' '+mSn(bb[1]):rTn(g,'away')+' '+mSn(-bb[1])}
   const fl2=m==='tot'?e=>''+e:e=>rTn(g,'home')+' '+mSn(e),mk=mdAg(m,mdOf(g),lp,med),mdTxt=!mk?(g.sport==='nba'?'No NBA model':'No model line for this game'):(m==='tot'?'Total '+mk.v:(mk.v>=0?rTn(g,'home'):rTn(g,'away'))+' by '+Math.abs(mk.v))+', '+mk.x.toFixed(1)+' pts '+(mk.ag?'toward':'against')+' the pick';
-  o.push({k:Math.abs(gap),y:{key:g.key,game:rTn(g,'away')+' @ '+rTn(g,'home'),pick,when:when(g.start),badges:(mk?`<span class="badge ${mk.ag?'good':'bad'}">${mk.ag?'model agrees':'model disagrees'}</span>`:'')+`<span class="badge ${hrs>=3?'good':''}">${hrs>=3?'counted (3h+ out)':'inside 3h, not counted'}</span>`,rows:[['Pinnacle',fl2(lp)],['Model',mdTxt],['Other books','median '+fl2(med)+'; best '+fl2(bb[1])+' at '+(SHB[bb[0]]||bb[0])],['Gap',Math.abs(gap).toFixed(1)+' pts'],['Opened',g.open&&g.open[m]?fl2(g.open[m].line):'-'],['Kickoff','in '+hrsTxt(hrs)]]}});
+  o.push({k:Math.abs(gap),y:{key:g.key,game:rTn(g,'away')+' @ '+rTn(g,'home'),pick,when:when(g.start),badges:(g.sport!=='nfl'?`<span class="badge">${g.sport==='cfb'?'College':'NBA'}, not in the NFL record</span>`:'')+(mk?`<span class="badge ${mk.ag?'good':'bad'}">${mk.ag?'model agrees':'model disagrees'}</span>`:'')+`<span class="badge ${hrs>=3?'good':''}">${hrs>=3?'counted (3h+ out)':'inside 3h, not counted'}</span>`,rows:[['Pinnacle',fl2(lp)],['Model',mdTxt],['Other books','median '+fl2(med)+'; best '+fl2(bb[1])+' at '+(SHB[bb[0]]||bb[0])],['Gap',Math.abs(gap).toFixed(1)+' pts'],['Opened',g.open&&g.open[m]?fl2(g.open[m].line):'-'],['Kickoff','in '+hrsTxt(hrs)]]}});
  }
  return o.sort((x,w)=>w.k-x.k).map(x=>x.y);
 }
