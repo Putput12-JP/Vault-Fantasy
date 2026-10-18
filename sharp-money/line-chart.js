@@ -63,12 +63,32 @@
   }
   function am(x) { return x > 0 ? '+' + x : String(x); }
   function usd(v) { return '$' + (v >= 1000 ? +(v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k' : v); }
+  /* Price view: a book's American price for ONE side at Pinnacle's current line, so a move from -138 to -157 at a fixed number is visible.
+     Prices cross the +100/-100 gap, so they are plotted on a continuous scale (a > 0 ? a - 100 : a + 100) and labelled back to American. */
+  function pToY(a) { return a > 0 ? a - 100 : a + 100; }
+  function yToP(v) { v = Math.round(v); return v === 0 ? 'EVEN' : v > 0 ? '+' + (v + 100) : String(v - 100); }
+  function pval(r, mk, side, ref) {
+    if (r.px || (r.bf && !r.px)) return null;   // exchanges and backfilled Pinnacle carry no American price
+    var a = null;
+    if (mk === 'ml') a = r.ml && r.ml[side] != null ? r.ml[side] : null;
+    else { var x = r[mk]; if (x && x[0] === ref && x[1 + side] != null) a = x[1 + side]; }
+    return a == null ? null : pToY(a);
+  }
+  function refLine(rows, mk) { // Pinnacle's latest stored line for the market
+    var f = null; rows.forEach(function (r) { if (r.book === 'Pinnacle' && !r.bf && r[mk] && r[mk][0] != null && (!f || r.t >= f.t)) f = r; });
+    return f ? f[mk][0] : null;
+  }
+  function sideNames(g, mk, ref) {
+    var h = g.home && g.home.abbr, a = g.away && g.away.abbr, sg = function (v) { return (v > 0 ? '+' : '') + v; };
+    return mk === 'ml' ? [a, h] : mk === 'sp' ? [h + ' ' + sg(ref), a + ' ' + sg(-ref)] : ['Over ' + ref, 'Under ' + ref];
+  }
+  function vlab(v, st) { return st.v === 'price' ? yToP(v) : fmt(+v.toFixed(st.m === 'ml' ? 1 : 2), st.m); }
   function fmt(v, mk) { return mk === 'ml' ? v.toFixed(1) + '%' : (mk === 'sp' && v > 0 ? '+' : '') + v; }
 
   function build(g, st) {
     var rows = gameRows(g), mk = st.m, now = Date.now() / 1000, tmax = Math.min(now, g.start);
-    var by = {};
-    rows.forEach(function (r) { var v = val(r, mk); if (v != null) (by[r.book] = by[r.book] || []).push([r.t, v, r]); });
+    var by = {}, pm = st.v === 'price', ref = pm && mk !== 'ml' ? refLine(rows, mk) : null, sd = st.s || 0;
+    rows.forEach(function (r) { var v = pm ? pval(r, mk, sd, ref) : val(r, mk); if (v != null) (by[r.book] = by[r.book] || []).push([r.t, v, r]); });
     var out = [];
     BOOKS.forEach(function (b) {
       var p = by[b[0]]; if (!p) return;
@@ -82,7 +102,7 @@
     var first = Infinity; out.forEach(function (s) { first = Math.min(first, s.pts[0][0]); });
     var span = st.w ? st.w : 0, tmin = span ? Math.max(tmax - span, Math.min(first, tmax)) : Math.min(first, tmax);
     if (!(tmax > tmin)) tmax = tmin + 1;
-    return { series: out, lim: lim, tmin: tmin, tmax: tmax, n: rows.length, rows: rows };
+    return { series: out, lim: lim, tmin: tmin, tmax: tmax, n: rows.length, rows: rows, ref: ref, pm: pm };
   }
   function valueAt(s, t, mk) { // step value held at time t, or null before the first sample
     var v = null; for (var i = 0; i < s.pts.length; i++) { if (s.pts[i][0] <= t) v = s.pts[i]; else break; } return v;
@@ -158,25 +178,42 @@
     return o + '<div class="vlm-note">Fair is Pinnacle\u2019s price with the vig removed. Novig has no fee before kickoff. Spread and total only where Novig quotes Pinnacle\u2019s exact line.</div>' + recHtml(g.sport) + '</div>';
   }
 
+  /* One plain sentence of what Pinnacle did to the selected side in the window, from stored rows only: price, de-vigged fair, limit. */
+  function moveHtml(g, st, d) {
+    var mk = st.m, sd = st.s || 0, nm = sideNames(g, mk, d.ref)[sd];
+    var pin = d.series.filter(function (s) { return s.book === 'Pinnacle'; })[0];
+    if (!pin) return '<div class="vlm-sum">No Pinnacle price stored at this line.</div>';
+    var a = valueAt(pin, d.tmin) || pin.pts[0], b = pin.pts[pin.pts.length - 1];
+    var raw = function (r) { return mk === 'ml' ? r.ml : r[mk].slice(1); }, ends = function (r) { var x = raw(r); return mk === 'ml' ? [x[0], x[1]] : [x[0], x[1]]; };
+    var fairOf = function (r) { var x = ends(r); return fairFirst(x[sd], x[1 - sd]) * 100; };
+    var pa = yToP(a[1]), pb = yToP(b[1]), o = '<div class="vlm-sum"><b>Pinnacle ' + nm + '</b> ' + (pa === pb ? 'held ' + pb : pa + ' to ' + pb);
+    try { var fa = fairOf(a[2]), fb = fairOf(b[2]); if (pa !== pb) o += ' (fair ' + fa.toFixed(1) + '% to ' + fb.toFixed(1) + '%)'; } catch (e) {}
+    if (d.lim && d.lim.pts.length) {
+      var la = valueAt(d.lim, d.tmin) || d.lim.pts[0], lb = d.lim.pts[d.lim.pts.length - 1];
+      o += la[1] === lb[1] ? '. Limit steady at ' + usd(lb[1]) : '. Limit ' + usd(la[1]) + ' to ' + usd(lb[1]);
+    }
+    return o + '. Only prices at ' + (mk === 'ml' ? 'the moneyline' : 'Pinnacle\u2019s current number (' + d.ref + ')') + ' are drawn.</div>';
+  }
+
   function svg(d, st, W) {
     var H = W < 480 ? 220 : 250, L = 44, R = d.lim && d.lim.on ? 40 : 12, T = 12, B = 26, vis = d.series.filter(function (s) { return s.on; });
     if (!vis.length) return '<div class="vlm-empty">Turn a book on to see its line.</div>';
-    var lo = Infinity, hi = -Infinity;
+    var lo = Infinity, hi = -Infinity, PR0 = st.v === 'price';
     vis.forEach(function (s) {
       s.pts.forEach(function (p) { if (p[0] >= d.tmin - 1) { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); } });
       var v0 = valueAt(s, d.tmin); if (v0) { lo = Math.min(lo, v0[1]); hi = Math.max(hi, v0[1]); }
     });
-    if (!isFinite(lo)) return '<div class="vlm-empty">No line changes in this window.</div>';
-    var pad = st.m === 'ml' ? 1 : 0.5; lo -= pad; hi += pad;
-    if (hi - lo < (st.m === 'ml' ? 4 : 2)) { var mid = (hi + lo) / 2, hf = st.m === 'ml' ? 2 : 1; lo = mid - hf; hi = mid + hf; }
-    var step = st.m === 'ml' ? ([1, 2, 5, 10].filter(function (s) { return (hi - lo) / s <= 5; })[0] || 10) : ([0.5, 1, 2, 5].filter(function (s) { return (hi - lo) / s <= 5; })[0] || 5);
+    if (!isFinite(lo)) return '<div class="vlm-empty">' + (PR0 ? 'No prices stored at this line in this window.' : 'No line changes in this window.') + '</div>';
+    var PR = st.v === 'price', pad = PR ? 2 : st.m === 'ml' ? 1 : 0.5; lo -= pad; hi += pad;
+    if (hi - lo < (PR ? 10 : st.m === 'ml' ? 4 : 2)) { var mid = (hi + lo) / 2, hf = PR ? 5 : st.m === 'ml' ? 2 : 1; lo = mid - hf; hi = mid + hf; }
+    var step = PR ? ([1, 2, 5, 10, 20, 50].filter(function (s) { return (hi - lo) / s <= 5; })[0] || 50) : st.m === 'ml' ? ([1, 2, 5, 10].filter(function (s) { return (hi - lo) / s <= 5; })[0] || 10) : ([0.5, 1, 2, 5].filter(function (s) { return (hi - lo) / s <= 5; })[0] || 5);
     lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
     d.R = R;
     var X = function (t) { return L + (t - d.tmin) / (d.tmax - d.tmin) * (W - L - R); };
     var Y = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
     var o = '<svg class="vlm-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Line movement by book">';
     for (var v = lo; v <= hi + 1e-9; v += step) {
-      o += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" class="vlm-grid"/><text x="' + (L - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" class="vlm-ax">' + fmt(+v.toFixed(2), st.m) + '</text>';
+      o += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" class="vlm-grid"/><text x="' + (L - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" class="vlm-ax">' + vlab(v, st) + '</text>';
     }
     var ticks = W < 480 ? 2 : 4;
     for (var i = 0; i <= ticks; i++) {
@@ -222,6 +259,7 @@
     '.vlm-ax{font-size:10.5px;fill:currentColor;opacity:.55;font-variant-numeric:tabular-nums}.vlm-cur{stroke:currentColor;opacity:.4;stroke-width:1}' +
     '.vlm-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.vlm-chip{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;font-weight:600;padding:6px 10px;min-height:32px;border-radius:999px;border:1.5px solid var(--c);background:transparent;color:inherit;cursor:pointer;font-variant-numeric:tabular-nums}' +
     '.vlm-chip.off{opacity:.4;border-style:dashed}.vlm-chip i{font-style:normal;opacity:.8;font-weight:500}.vlm-read{min-height:18px;margin-top:8px;font-size:12px;opacity:.75;font-variant-numeric:tabular-nums}' +
+    '.vlm-sum{font-size:13px;line-height:1.45;margin:0 0 10px;font-variant-numeric:tabular-nums}.vlm-sum b{font-weight:700}' +
     '.vlm-edge{margin-top:14px;padding-top:12px;border-top:1px solid rgba(127,127,127,.25)}.vlm-eh{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.6;margin-bottom:8px}.vlm-er{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-top:1px solid rgba(127,127,127,.15)}.vlm-er:first-of-type{border-top:0}.vlm-em{font-size:13.5px}.vlm-ev{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}.vlm-ev.pos{color:#34c759}.vlm-ev.neg{opacity:.6}.vlm-ed{grid-column:1/-1;font-size:12px;opacity:.72;font-variant-numeric:tabular-nums;line-height:1.45}.vlm-rec{margin-top:12px;padding-top:10px;border-top:1px solid rgba(127,127,127,.15)}.vlm-rr{display:flex;justify-content:space-between;gap:12px;font-size:12px;padding:4px 0;font-variant-numeric:tabular-nums}.vlm-rr span:last-child{text-align:right;opacity:.8}.vlm-hint{font:inherit;font-size:12px;font-weight:600;padding:6px 10px;margin:0 6px 6px 0;border-radius:999px;border:1.5px solid #ff9f43;background:transparent;color:inherit;cursor:pointer}.vlm-empty{padding:18px 4px;font-size:13px;opacity:.65}.vlm-note{margin-top:8px;font-size:11.5px;opacity:.55}';
   function css() { if (!document.getElementById('vlm-css')) { var s = document.createElement('style'); s.id = 'vlm-css'; s.textContent = CSS; document.head.appendChild(s); } }
 
@@ -230,10 +268,18 @@
     MARKETS.forEach(function (m) { o += '<button type="button" data-v="' + m[0] + '" class="' + (m[0] === mk ? 'on' : '') + '">' + m[1] + '</button>'; });
     o += '</div><div class="vlm-seg" data-vlm-k="w">';
     WINDOWS.forEach(function (w) { o += '<button type="button" data-v="' + w[1] + '" class="' + (w[1] === st.w ? 'on' : '') + '">' + w[0] + '</button>'; });
-    o += '</div></div>' + svg(d, st, W) + '<div class="vlm-read" aria-live="off"></div><div class="vlm-legend">';
+    o += '</div></div><div class="vlm-tabs"><div class="vlm-seg" data-vlm-k="v">';
+    [['line', 'Line'], ['price', 'Price']].forEach(function (m) { o += '<button type="button" data-v="' + m[0] + '" class="' + ((st.v || 'line') === m[0] ? 'on' : '') + '">' + m[1] + '</button>'; });
+    o += '</div>';
+    if (d.pm) {
+      o += '<div class="vlm-seg" data-vlm-k="s">';
+      sideNames(g, mk, d.ref).forEach(function (n, i) { o += '<button type="button" data-v="' + i + '" class="' + (i === (st.s || 0) ? 'on' : '') + '">' + n + '</button>'; });
+      o += '</div>';
+    }
+    o += '</div>' + (d.pm ? moveHtml(g, st, d) : '') + svg(d, st, W) + '<div class="vlm-read" aria-live="off"></div><div class="vlm-legend">';
     d.series.forEach(function (s) {
       var last = s.pts[s.pts.length - 1];
-      o += '<button type="button" class="vlm-chip' + (s.on ? '' : ' off') + '" style="--c:' + s.color + '" data-b="' + s.book + '" aria-pressed="' + s.on + '">' + s.book + ' <i>' + fmt(+last[1].toFixed(mk === 'ml' ? 1 : 2), mk) + '</i></button>';
+      o += '<button type="button" class="vlm-chip' + (s.on ? '' : ' off') + '" style="--c:' + s.color + '" data-b="' + s.book + '" aria-pressed="' + s.on + '">' + s.book + ' <i>' + vlab(last[1], st) + '</i></button>';
     });
     if (d.lim) {
       var ll = d.lim.pts[d.lim.pts.length - 1];
@@ -260,7 +306,7 @@
       var dt = new Date(t * 1000), parts = [dt.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })];
       d.series.forEach(function (s) {
         if (!s.on || s.book === 'Open') return;
-        var p = valueAt(s, t); if (p) parts.push(s.book + ' ' + (st.m === 'ml' ? fmtMl(p[2]) : fmt(p[1], st.m)));
+        var p = valueAt(s, t); if (p) parts.push(s.book + ' ' + (st.v === 'price' ? vlab(p[1], st) : st.m === 'ml' ? fmtMl(p[2]) : fmt(p[1], st.m)));
       });
       if (d.lim && d.lim.on) { var lq = valueAt(d.lim, t); if (lq) parts.push('Limit ' + usd(lq[1])); }
       rd.textContent = parts.join('  ·  ');
@@ -281,6 +327,8 @@
         var gg = hosts.get(el), st = states[gg.key]; if (!st) return;
         var seg = b.parentNode && b.parentNode.getAttribute('data-vlm-k');
         if (seg === 'm') st.m = b.getAttribute('data-v');
+        else if (seg === 'v') st.v = b.getAttribute('data-v');
+        else if (seg === 's') st.s = +b.getAttribute('data-v');
         else if (seg === 'w') st.w = +b.getAttribute('data-v');
         else if (b.hasAttribute('data-ml')) st.m = 'ml';
         else if (b.hasAttribute('data-b')) { var k = b.getAttribute('data-b'), on = !b.classList.contains('off'); st.hide[k] = on; }
