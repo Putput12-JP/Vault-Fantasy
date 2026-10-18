@@ -123,7 +123,8 @@ jobs:
             python3 scripts/sharp_tape.py --data sharp-out/data.json
             python3 scripts/backfill_edge_results.py || true      # final scores the live feed missed, from ESPN, before the record is rebuilt
             python3 scripts/exchange_edge_record.py
-            git add data/book_tape/cfb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json data/exchange_edge_results.json
+            python3 scripts/steam_record.py || true      # Pinnacle steam replay, context only
+            git add data/steam_record.json data/book_tape/cfb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json data/exchange_edge_results.json
             if git diff --staged --quiet; then echo "No line changes."; break; fi
             git commit -q -m "data: CFB and NBA line tape [skip ci]"
             if git push origin HEAD:main; then break; fi
