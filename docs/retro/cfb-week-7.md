@@ -172,3 +172,21 @@ The 3 to 5 band is below break-even in the tuning seasons, the test seasons (46.
 
 **Best-price grading.** Cannot be backtested. The only multi-book spread history is `data/book_tape/cfb` (BetMGM, DraftKings, FanDuel, BetRivers, bet365, Pinnacle, consensus), which starts 2026-10-03, covers 52 games and has a tape row for only 9 of our 81 logged picks. Grading old picks at a shopped price would need numbers we never stored, so none are invented. What can be built is forward capture: store the best retail-book line for the picked side on each new pick at the moment it is logged, and report the shopped record next to the entry-line record once there are enough picks. That is a model-code change and is tracked as a follow-up so it does not collide with #108.
 
+## Round 6: a market-implied prior (NO-GO)
+
+`scripts/cfb_week7_market_prior_study.py`. The market already prices talent, returning production and the portal, so the in-season EPA ridge was re-centred on ratings fitted from the market's own closing lines of games already played (ridge on the closing margins before each week, home field 2.5, carry 0.6 from last season's final market rating, split evenly between offense and defense so the prior alone reproduces the market rating). Pre-registered: LAM (5, 15, 40) chosen on 2022-23 by the miss of the market rating alone (5, which still misses by 12.63 against the close's 12.11), ridge strength ALPHA (300, 1000, 3000) chosen on 2022-23 by miss (1000). Picks are compared at the live rule's count, underdog side, largest edges. 2024-25 read once, 2026 weeks 4-7 extra.
+
+| | miss, tune | miss, test | miss, 2026 | 5+ at live count vs close (tune / TEST / 2026) | vs open (tune / TEST / 2026) |
+|---|---|---|---|---|---|
+| live (v2 + special teams) | 12.811 | 12.454 | 12.822 | 53.1% / 56.4% / 53.2% | 55.3% / 57.2% / 53.7% |
+| market rating alone | 12.674 | 13.160 | 13.019 | 54.1% / 50.6% / 48.7% | 54.1% / 52.4% / 54.2% |
+| market prior + EPA | 12.433 | 12.548 | 12.661 | 55.1% / 53.2% / 52.6% | 50.6% / 54.2% / 56.6% |
+| close | 12.109 | 11.883 | 11.641 | | |
+
+- **Accuracy:** the market prior beats the live model on the tuning seasons (12.433 against 12.811) and in 2026 (12.661 against 12.822) but is worse on the untouched test seasons (12.548 against 12.454). It does not clear the 0.05 bar on test and it does not close the gap to the market (0.5 to 0.7 points still behind the close).
+- **Picks:** at the live pick count it is worse on the test seasons against both lines (53.2% against 56.4% for the close, 54.2% against 57.2% for the open) and mixed elsewhere. The weight its edge gets against the close does rise (0.27 and 0.28 against 0.14 and 0.12), but its edges are narrower (standard deviation 5.1 against 6.7), and the extra reliability does not turn into more winning picks.
+- **Why it fails:** the market rating built only from games already played is a worse read than the closing line (12.63 to 13.89 against 12.11 for the three lambdas) because it has three games of evidence at week 4, and a worse prior is not rescued by adding EPA on top. The market's information at kickoff is not the same as a rating rebuilt from past lines.
+- **Verdict:** NO-GO. The earlier retros' pattern repeats: anything that moves the model toward the market buys accuracy on some seasons and loses picks on the test seasons. Nothing shipped.
+
+**What is left that is untested:** a prior that uses the market's own PRESEASON number (season win totals or the week 1 lines, which embed preseason belief) instead of a rebuilt rating. That needs data we do not store (preseason win totals), so it is a data collection task before it is a test.
+
