@@ -1089,10 +1089,10 @@ function CfbScoreboard({narrow:NW}){
  sp=m=>m==null?"–":(m>0?"-":"+")+Math.abs(m).toFixed(1),
  fin=g=>g.actual>0?g.home+" by "+g.actual:g.actual<0?g.away+" by "+(-g.actual):"Tie",
  upd=new Date(d.generated).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZone:"America/New_York",timeZoneName:"short"}),
- order=["jp","ours","v1","open"],
+ order=["jp","ours","v1","open","close"],bn=k=>k==="open"||k==="close",
  cell=(r,k)=>{let m=r.methods[k];return m},
  tier=(title,hint,S,empty)=>{
-  let M0=S.methods,op=M0.open&&M0.open.miss,best=Math.min(...order.map(k=>M0[k]&&M0[k].miss!=null?M0[k].miss:1e9)),
+  let M0=S.methods,op=M0.open&&M0.open.miss,best=Math.min(...order.filter(k=>k!=="close").map(k=>M0[k]&&M0[k].miss!=null?M0[k].miss:1e9)),
    lbest=Math.max(...["jp","ours","v1"].map(k=>M0[k]&&M0[k].lean&&M0[k].lean.pct!=null?M0[k].lean.pct:-1));
   return h(a.Fragment,null,
    h(je,{hint:hint},title),
@@ -1101,16 +1101,28 @@ function CfbScoreboard({narrow:NW}){
      let df=op!=null&&m.miss!=null&&k!=="open"?m.miss-op:null;
      return[h(M,{size:"sm",weight:"semibold"},m.label),String(m.n),
       h("div",null,h(M,{size:"sm",mono:!0,weight:m.miss===best?"semibold":void 0,style:{color:m.miss===best?n.success:void 0}},m.miss==null?"–":m.miss.toFixed(2)),df==null?null:h("div",null,h(T,{size:"xs"},(df<=0?"":"+")+df.toFixed(2)+" vs the open line"))),
-      k==="open"?h(T,{size:"sm"},"the benchmark"):h("div",null,h("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},h(M,{size:"sm",mono:!0},rec(m.lean)),m.lean&&m.lean.n?h(se,{tone:m.lean.pct>=be?"ok":"bad",size:"sm",weight:m.lean.pct===lbest?"semibold":void 0},pcx(m.lean)):null),m.lean&&m.lean.n?h("div",null,h(T,{size:"xs"},cix(m.lean))):null),
-      k==="open"?"":h("div",{style:{display:"flex",gap:8,alignItems:"baseline",flexWrap:"wrap"}},h(M,{size:"sm",mono:!0},rec(m.edge3)),m.edge3&&m.edge3.n?h(T,{size:"xs"},pcx(m.edge3)):null),
-      k==="open"?"":h("div",{style:{display:"flex",gap:8,alignItems:"baseline",flexWrap:"wrap"}},h(M,{size:"sm",mono:!0},rec(m.edge5)),m.edge5&&m.edge5.n?h(T,{size:"xs"},pcx(m.edge5)):null)]})})
+      bn(k)?h(T,{size:"sm"},"the benchmark"):h("div",null,h("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},h(M,{size:"sm",mono:!0},rec(m.lean)),m.lean&&m.lean.n?h(se,{tone:m.lean.pct>=be?"ok":"bad",size:"sm",weight:m.lean.pct===lbest?"semibold":void 0},pcx(m.lean)):null),m.lean&&m.lean.n?h("div",null,h(T,{size:"xs"},cix(m.lean))):null),
+      bn(k)?"":h("div",{style:{display:"flex",gap:8,alignItems:"baseline",flexWrap:"wrap"}},h(M,{size:"sm",mono:!0},rec(m.edge3)),m.edge3&&m.edge3.n?h(T,{size:"xs"},pcx(m.edge3)):null),
+      bn(k)?"":h("div",{style:{display:"flex",gap:8,alignItems:"baseline",flexWrap:"wrap"}},h(M,{size:"sm",mono:!0},rec(m.edge5)),m.edge5&&m.edge5.n?h(T,{size:"xs"},pcx(m.edge5)):null)]})})
    :h(K,{padding:16},h(T,{size:"sm"},empty)));
  },
+ PK=d.picks||{},pkw=nn=>(PK.weeks||[]).find(x=>x.week===nn),rw=x=>x?x.w+"-"+x.l+(x.p?"-"+x.p:""):"–",rpc=x=>x&&x.w+x.l?(x.w/(x.w+x.l)*100).toFixed(1)+"%":"",
+ wkRows=[].concat(...(d.weeks||[]).map(W=>{let MM=W.methods,pk=pkw(W.week),first=!0,
+  mk=(lab,k)=>{let m=MM[k];if(!m||!m.n)return null;let b=k==="open"||k==="close",wk=first?h(M,{size:"sm",weight:"semibold"},"Week "+W.week+" · "+W.games+" games"):"";first=!1;
+   return[wk,h(M,{size:"sm"},lab),b?"":h(M,{size:"sm",mono:!0},rec(m.lean)+" "+pcx(m.lean)),b?"":h(M,{size:"sm",mono:!0},rec(m.edge5)),h(M,{size:"sm",mono:!0},m.miss.toFixed(2))]};
+  return[mk("Our model","ours"),pk?["",h(M,{size:"sm"},"Our official picks"),h(M,{size:"sm",mono:!0},rw(pk)+" "+rpc(pk)),"",""]:null,mk("Previous model","v1"),mk("JP+","jp"),mk("Opening line","open"),mk("Closing line","close")].filter(Boolean)})),
+ R=d.jp_reported,fr=x=>x?x[0]+"-"+x[1]+(x[2]?"-"+x[2]:"")+" ("+(x[0]+x[1]?(x[0]/(x[0]+x[1])*100).toFixed(1):"–")+"%)":"–",
+ jpRows=R?[["All games","all"],["5+ disagreements","five"],["Selection engine","selection"]].map(r=>[h(M,{size:"sm",weight:"semibold"},r[0]),h(M,{size:"sm",mono:!0},fr(R.week[r[1]])),h(M,{size:"sm",mono:!0},R.ytd?fr(R.ytd[r[1]]):"–")]).concat(R.execution?[[h(M,{size:"sm",weight:"semibold"},"Closing-line value, JP+ picks"),h(M,{size:"sm",mono:!0},(R.execution.avg_point_clv>0?"+":"")+R.execution.avg_point_clv.toFixed(2)+" pts"),h(M,{size:"sm",mono:!0},Math.round(R.execution.positive_clv_share*100)+"% beat the close · "+R.execution.with_close+" picks")]]:[]).concat(d.clv&&d.clv.clv_n?[[h(M,{size:"sm",weight:"semibold"},"Closing-line value, our 5+ picks"),h(M,{size:"sm",mono:!0},(d.clv.clv_mean>0?"+":"")+d.clv.clv_mean.toFixed(2)+" pts"),h(M,{size:"sm",mono:!0},Math.round(d.clv.clv_pos*100)+"% beat the close · "+d.clv.clv_n+" picks")]]:[]).concat(R.mae?[[h(M,{size:"sm",weight:"semibold"},"Avg miss, "+R.mae.games+" games"),h(M,{size:"sm",mono:!0},"JP+ "+R.mae.jp.toFixed(2)),h(M,{size:"sm",mono:!0},"open "+R.mae.open.toFixed(2)+" · close "+R.mae.close.toFixed(2))]]:[]):[],
  G=(d.games||[]).slice(0,40);
  return h(a.Fragment,null,
   h(je,{hint:"our model against JP+ and the opening line, on the same finished games"},"CFB Scoreboard"),
   h("div",{style:{marginBottom:14}},h(M,{weight:"semibold"},"UPDATED "+upd.toUpperCase()),
    h("div",null,h(T,{size:"sm"},"Weeks "+d.min_week+" and later. A lean is a method's side of the opening line, and the record is how often that side covered. Average miss is how many points the method is off the final margin, lower is better, and the opening line is the bar to beat. 3+ and 5+ keep only the games where the method is at least that many points from the open."))),
+  wkRows.length?h(a.Fragment,null,h(je,{hint:"every finished game that week. Leans are the method's side of the open, 5+ keeps games 5 or more points from the open, miss is points off the final margin"},"Week by week"),
+   h(CfTbl,{head:["Week","Method","Leans vs the open","5+ pts","Avg miss"],cols:"minmax(170px,1.2fr) minmax(150px,1.1fr) minmax(170px,1.2fr) 100px 90px",minWidth:760,rows:wkRows}),h("div",{style:{height:16}})):null,
+  R?h(a.Fragment,null,h(je,{hint:R.source},"JP+ as it reports itself"),
+   h(CfTbl,{head:["JP+ record","Week "+R.asof_week,"Season"],cols:"minmax(180px,1.2fr) minmax(170px,1fr) minmax(210px,1.2fr)",minWidth:600,rows:jpRows}),
+   PK.total?h("div",{style:{marginTop:8}},h(T,{size:"xs"},"Our official picks, season: "+rw(PK.total)+" ("+rpc(PK.total)+"). The picks the model logged as plays, graded at the line each was made at: our version of the selection engine. Weeks before 7 were restated with the current model, so only week 7 on is a clean forward record.")):null,h("div",{style:{height:16}})):null,
   tier("Verified before kickoff","JP+ number recorded by our job before the game started, so it cannot change afterward",d.verified,"No finished games yet. Our job records JP+ every two hours, and every 30 minutes on game days. "+d.jp_verified+" games are recorded so far and the first ones finish this weekend."),
   h("div",{style:{height:16}}),
   tier("As published","JP+ as its site shows it now. We cannot prove these were posted before kickoff, so treat the JP+ rows as unverified",d.published,"No games yet."),

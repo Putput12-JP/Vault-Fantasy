@@ -42,7 +42,20 @@ class Records(unittest.TestCase):
 
     def test_summary_has_every_method(self):
         s = sb.summarize([dict(open=-7.0, actual=-14, ours=-12.0, v1=-6.0, jp=-8.0)])
-        self.assertEqual(set(s['methods']), {'ours', 'v1', 'jp', 'open'}); self.assertEqual(s['methods']['open']['miss'], 7.0)
+        self.assertEqual(set(s['methods']), {'ours', 'v1', 'jp', 'open', 'close'}); self.assertEqual(s['methods']['open']['miss'], 7.0)
+        self.assertEqual(s['methods']['close']['n'], 0)             # a game with no close is not counted, and the benchmark never gets a lean record
+        self.assertIsNone(s['methods']['close']['lean'])
+
+
+class Weeks(unittest.TestCase):
+    def test_by_week_splits_games_and_lists_newest_first(self):
+        rows = [dict(week=6, open=-7.0, actual=-14, ours=-12.0, v1=-6.0, jp=-8.0), dict(week=7, open=3.0, actual=0, ours=7.0, v1=1.0, jp=2.0), dict(week=7, open=0.0, actual=3, ours=-1.0, v1=1.0, jp=2.0)]
+        w = sb.by_week(rows)
+        self.assertEqual([x['week'] for x in w], [7, 6]); self.assertEqual([x['games'] for x in w], [2, 1])
+
+    def test_official_picks_counts_graded_results_only(self):
+        o = sb.official_picks([dict(week=7, result='W'), dict(week=7, result='L'), dict(week=7, result='P'), dict(week=7, result=None), dict(week=6, result='W')])
+        self.assertEqual(o['total'], dict(w=2, l=1, p=1, pct=round(2 / 3, 4))); self.assertEqual([x['week'] for x in o['weeks']], [7, 6])
 
 
 if __name__ == '__main__':
