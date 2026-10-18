@@ -38,6 +38,8 @@ LOCK_SECS = 3600         # the final lock: the state an hour before kickoff (or 
 PICK_MIN_WEEK = 4        # the first month is dominated by the prior, which has no talent or portal information
 PICK_RULE = 'nofav1'     # a stored board and log carrying another pick-rule stamp are re-picked once (repick_store). nofav1: a pick on the favorite is not an official pick
 BREAKEVEN = 110 / 210
+TAPE = os.path.join(DATA, 'book_tape', 'cfb', 'last.json')      # the latest quote per game and book (scripts/book_tape.py format), committed by the Sharp Money update
+RETAIL_BOOKS = ('DraftKings', 'FanDuel', 'BetMGM', 'BetRivers', 'bet365')      # the books a player can bet at, in the order that breaks a tie. Pinnacle, Consensus, Open and the exchanges are references, not a shop
 FBS_ADDITIONS = {16}      # teams new to FBS this season (ESPN ids), added each offseason: 2026 = Sacramento State
 
 
@@ -275,7 +277,7 @@ def restate_row(b, proj):
              is_pick=pick_ok(edge, b['week'], mm))
     b['pick'] = dict(side=side, team=b['team'], line=b['entry']) if b['is_pick'] else None
     if side != old['side'] and b.get('line_captured') is not None: b['line_captured'] = round(-b['line_captured'], 1)
-    for k in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by', 'tile_line', 'tile_result', 'tile_line_src'): b.pop(k, None)
+    for k in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by', 'tile_line', 'tile_result', 'tile_line_src', 'shop_result'): b.pop(k, None)
     bo = b.get('bettable_open')
     if bo:
         bo.update(model_margin=b['model_margin'], edge=b['edge'], side=side, entry=round(bo['line'] if side == 'home' else -bo['line'], 1))
@@ -296,7 +298,7 @@ def restate_log(board, log):
     for b in board:
         if not b.get('is_pick'): continue
         o = old.get(b['key'])
-        if o and o['side'] == b['side']: e = {k: o[k] for k in o if k not in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by')}
+        if o and o['side'] == b['side']: e = {k: o[k] for k in o if k not in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by', 'shop_result')}
         else: e = dict(key=b['key'], kick=b['kick'], home=b['home'], away=b['away'], home_id=b['home_id'], away_id=b['away_id'], logged=b['logged'], backfill=True, line_src=b.get('line_src'))
         e.update(week=b['week'], side=b['side'], team=b['team'], entry=b['entry'] if not (o and o['side'] == b['side']) else o['entry'], model_margin=b['model_margin'],
                  market_margin=b['market_margin'], edge=b['edge'], neutral=b.get('neutral', False), restated=True)
@@ -329,6 +331,43 @@ def repick_store(store):
     return dropped
 
 
+def shop_line(key, side, tape, at=None):
+    """The best retail spread for the picked side, from a tape snapshot (last.json: 'gk|Book' -> [unix time, [ml, sp, tot, ...]], sp = [home line, home price, away price]).
+    The tape's home line is negative when home is favoured (market_margin = -sp[0]), so the picked side's line in the pick log's own sign (entry) is sp[0] for home, -sp[0] for away,
+    and the best line is the largest one. A tie goes to the earlier book in RETAIL_BOOKS. at (unix) drops any quote seen after it, so a late snapshot cannot rewrite an earlier pick.
+    Returns dict(best_line, best_book, best_at, spread=[{book, line, price}]) or None when no retail book has a quote for the game (no tape row means null, never a guess)."""
+    if side not in ('home', 'away') or not tape: return None
+    rows = []
+    for bk in RETAIL_BOOKS:
+        v = tape.get(f'{key}|{bk}')
+        if not v or len(v) < 2 or not v[1] or len(v[1]) < 2: continue
+        t, sp = v[0], v[1][1]
+        if not sp or len(sp) < 3 or not isinstance(sp[0], (int, float)) or isinstance(sp[0], bool): continue
+        if not isinstance(t, (int, float)) or isinstance(t, bool) or (at is not None and t > at): continue
+        px = sp[1] if side == 'home' else sp[2]
+        rows.append(dict(book=bk, line=round(sp[0] if side == 'home' else -sp[0], 1), price=px if isinstance(px, (int, float)) and not isinstance(px, bool) else None, at=int(t)))
+    if not rows: return None
+    best = max(rows, key=lambda r: r['line'])        # max keeps the first of equal lines, i.e. the earliest book in RETAIL_BOOKS
+    return dict(best_line=best['line'], best_book=best['book'], best_at=best['at'], spread=[dict(book=r['book'], line=r['line'], price=r['price']) for r in rows])
+
+
+def stamp_shop(entry, tape, now):
+    """Write best_line, best_book, best_at (and shop_gain = best_line - entry) on a pick the first time it is logged. A stamp already there is never touched, so a later
+    tape row cannot move it. Returns True when it stamped."""
+    if entry.get('best_line') is not None or entry.get('backfill'): return False
+    sh = shop_line(entry['key'], entry['side'], tape, at=now)
+    if not sh: return False
+    entry.update(best_line=sh['best_line'], best_book=sh['best_book'], best_at=sh['best_at'], shop_gain=round(sh['best_line'] - entry['entry'], 1))
+    return True
+
+
+def shop_grade(e):
+    """Grade the shopped line the way the entry line is graded: the picked side's margin plus the line, above 0 a win. Needs a stamped best_line and a settled margin."""
+    if e.get('best_line') is None or e.get('margin') is None: return
+    m = e['margin'] + e['best_line']
+    e['shop_result'] = 'W' if m > 0 else 'L' if m < 0 else 'P'
+
+
 def log_summary_of(log):
     """the record of the pick log: picks, graded, won/lost/pushed, the z against break-even and the closing-line value"""
     gr = [e for e in log if e.get('result') in ('W', 'L', 'P')]
@@ -336,7 +375,19 @@ def log_summary_of(log):
     clvs = [e['clv'] for e in gr if e.get('clv') is not None]
     return dict(picks=len(log), graded=n, won=w, lost=l, pushed=len(gr) - n, expected=round(n * BREAKEVEN, 2),
                 z=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None,
-                clv_n=len(clvs), clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None, clv_pos=round(sum(c > 0 for c in clvs) / len(clvs), 3) if clvs else None)
+                clv_n=len(clvs), clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None, clv_pos=round(sum(c > 0 for c in clvs) / len(clvs), 3) if clvs else None,
+                shopped=shopped_summary_of(log))
+
+
+def shopped_summary_of(log):
+    """the same picks at the best retail line seen when each was logged: how many have one (n), graded, won-lost-pushed at that line, and the mean points gained over the entry line.
+    None until at least one pick carries a shop line. Old picks have none and stay out; nothing is estimated for them."""
+    sh = [e for e in log if e.get('best_line') is not None]
+    if not sh: return None
+    gr = [e for e in sh if e.get('shop_result') in ('W', 'L', 'P')]
+    w = sum(e['shop_result'] == 'W' for e in gr); l = sum(e['shop_result'] == 'L' for e in gr)
+    gains = [e['shop_gain'] for e in sh if e.get('shop_gain') is not None]
+    return dict(picks=len(log), n=len(sh), graded=w + l, won=w, lost=l, pushed=len(gr) - w - l, gain_mean=round(sum(gains) / len(gains), 2) if gains else None)
 
 
 def v1_summary_of(board):
@@ -1030,6 +1081,7 @@ def cmd_update(a):
     else: now = int(pd.Timestamp.now('UTC').timestamp())
 
     # the pick log: every pick logged once, before kickoff, at the line we saw; graded when the game ends
+    tape = json.load(open(TAPE)) if os.path.exists(TAPE) else {}
     log = store.get('log', [])
     sl_ = {s['key']: s for s in slate}
     for e in log:       # a pick logged before kickoff under the wrong week was projected with ratings missing the last finished week: re-derive it from the slate, or drop it if it is no longer a pick
@@ -1039,6 +1091,8 @@ def cmd_update(a):
             if s_['pick']:
                 e.update(week=s_['week'], side=s_['pick']['side'], team=s_['pick']['team'], entry=s_['pick']['line'], model_margin=s_['model_margin'],
                          market_margin=s_['market_margin'], edge=s_['edge'], neutral=s_['neutral'], line_src=s_.get('line_src'))
+                for k_ in ('best_line', 'best_book', 'best_at', 'shop_gain', 'shop_result'): e.pop(k_, None)      # the side may have flipped, so the old shop line belongs to the wrong team
+                stamp_shop(e, tape, now)
     log = [e for e in log if not (e.pop('_redo', False) and not sl_[e['key']]['pick'])]
     have = {e['key'] for e in log}
     for s in slate:
@@ -1046,6 +1100,7 @@ def cmd_update(a):
             log.append(dict(key=s['key'], week=s['week'], kick=s['kick'], home=s['home'], away=s['away'], home_id=s['home_id'], away_id=s['away_id'],
                             side=s['pick']['side'], team=s['pick']['team'], entry=s['pick']['line'], model_margin=s['model_margin'],
                             market_margin=s['market_margin'], edge=s['edge'], logged=int(now), backfill=s['backfill'], neutral=s['neutral'], line_src=s.get('line_src')))
+            stamp_shop(log[-1], tape, now)      # the best retail spread for this side at this moment, once; an old pick without one stays null
     g26 = gm.drop_duplicates('game_id')
     # the board: every game the model projected, picks or not, kept after kickoff so the page can show the whole slate and how the
     # model's lean did. Projections freeze once a game has started (or was added after the fact).
@@ -1071,6 +1126,10 @@ def cmd_update(a):
                 ent['bettable_open'] = dict(line=seen['line'], price=price, ts=int(now), src=seen['src'], model_margin=s_['model_margin'],
                                             edge=s_['edge'], side=side, entry=ent['entry'])
             board.append(ent); bidx[s_['key']] = ent
+    for e in log:       # the shop line goes on the board row too, once; a row that already carries one keeps it
+        b_ = bidx.get(e['key'])
+        if b_ and e.get('best_line') is not None and b_.get('best_line') is None:
+            b_.update({k_: e[k_] for k_ in ('best_line', 'best_book', 'best_at', 'shop_gain')})
     # games already played were frozen with whatever open the feed had; restate them from the books' first posted number (display only, the projection stays frozen)
     copens_all = cfbd_opens(played=True)
     for b in board:
@@ -1094,7 +1153,7 @@ def cmd_update(a):
         r = settle(dict(x, key=key, **(ids or {})), g26, fin)
         if r: x.pop('settled_by', None); x.update(r)
     for e in board:
-        _settle(e, e['key'])
+        _settle(e, e['key']); shop_grade(e)
         if e.get('final'): _settle(e['final'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
         if e.get('v1'): _settle(e['v1'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
         bo = e.get('bettable_open')
@@ -1102,7 +1161,7 @@ def cmd_update(a):
             r = settle(dict(bo, key=e['key'], home_id=e['home_id'], away_id=e['away_id']), g26, fin)
             if r: bo.update({k: r[k] for k in ('result', 'espn_close', 'clv', 'margin', 'hs', 'as_') if k in r})
     board.sort(key=lambda x: -x['kick'])
-    for e in log: _settle(e, e['key'])
+    for e in log: _settle(e, e['key']); shop_grade(e)
     summary = log_summary_of(log)
     # context for the page: how the same model (every game, side = whichever way it leans) did vs ESPN's line in the earlier weeks of this season
     earlier = [0, 0]; first = min([b['week'] for b in board], default=None)
