@@ -202,7 +202,8 @@ const feed = readJSON(FEED);
 if (!feed || !Array.isArray(feed.vegas_games)) { log('no vegas_games in feed — nothing to snapshot'); process.exit(0); }
 
 const season = feed.season ?? null, week = feed.week ?? null, seasonType = feed.season_type ?? null;
-const now = new Date().toISOString();
+const LEAD_ONLY = !!ARG['lead-only'];                  // replay mode: only roll the lead tracker, as of --now
+const now = (LEAD_ONLY && ARG.now) ? new Date(ARG.now).toISOString() : new Date().toISOString();
 
 const prev = readJSON(OUT) || {};
 const games = (prev.games && typeof prev.games === 'object') ? prev.games : {};   // carry ALL prior keys forward (retain finished)
@@ -215,6 +216,7 @@ for (const g of feed.vegas_games) {
   const key = [season, seasonType, week, g.away + '@' + g.home].join('|');
   const cur = snapshot(g, now);
   const rec = games[key];
+  if (LEAD_ONLY) { if (rec) { trackLead(rec, g, now); moved++; } continue; }
 
   if (!rec) {
     games[key] = {
@@ -281,6 +283,7 @@ log(`line news: ${Object.keys(NEWS).length} flagged` + (Object.keys(NEWS).length
 const payload = { generated: now, season, seasonType, week, keys: Object.keys(games).length, games };
 log(`${seen} live games · ${created} new keys · ${moved} moved · ${payload.keys} total banked`);
 if (DRY) { log('--dry: not written'); process.exit(0); }
+if (LEAD_ONLY) { writeFileSync(OUT, JSON.stringify({ ...prev, games })); log('lead-only: wrote ' + OUT); process.exit(0); }
 writeFileSync(OUT, JSON.stringify(payload));
 log('wrote ' + OUT);
 const NEWS_OUT = resolve(dirname(OUT), 'line_news.json');
