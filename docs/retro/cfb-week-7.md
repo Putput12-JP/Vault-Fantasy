@@ -62,10 +62,40 @@ A real model change: JP+ rates on success rate and explosiveness, ours on EPA pe
 
 Accuracy improves (0.12 on the untouched seasons, past the 0.05 bar) and the picks get worse, the same shape as the K 90 retune, team home field and turnover luck tests: anything that moves the model toward what the market already prices lowers the miss and shrinks the edge that made the picks. NO-GO for the pick rule. Success rate alone and explosiveness alone are both worse than the current model on their own (miss 12.87 and 15.45 on test).
 
+## Second round: finding the cause and testing real fixes
+
+The 2022-25 base rows now also replay the 2026 season to date week by week (`cfb_week7_base_rows.py`; the replay matches the live board, correlation 0.999, mean difference 0.11 points, and finds the same 59 week 7 games JP+ counts), so every candidate below has three reads: tune 2022-23, test 2024-25 read once, and 2026 weeks 4-7 as an extra out-of-sample season. Bar (from `cfb-retune.md`): average miss better by 0.05 and picks not worse on test and 2026. Picks are compared at the live rule's count (the largest |edge|) so a candidate cannot win by simply taking fewer picks.
+
+### Where the gap is
+- **It is an accuracy gap, and it is not new.** Weeks 4-7 miss minus the closing-line miss: 2022 +0.62, 2023 +0.64, 2024 +1.14, 2025 +1.25, 2026 +1.18. So 2026 is the model's usual self, not a collapse.
+- **JP+ is at market accuracy and we are not.** 2026, 212 games: ours minus close +1.19 points (paired t 3.4), JP+ minus close +0.24 (t 0.85), ours minus JP+ +0.95 (t 3.1, p 0.002).
+- **The pick-record gap is much weaker than the accuracy gap.** Games where exactly one of us picked the right side of the open: JP+ 38, ours 25 (p 0.13). Week 7's 7-11 against 9-5 is mostly the picks each model chose to make.
+- **Our picks are prior-led.** Split each margin into the preseason prior and the in-season move (live minus prior-only). Of our 80 2026 picks of 5+ points, the average prior sat 10.6 points from the line while the in-season move pointed 2.1 the other way; 69 were led by the prior and went 35-34, the 11 led by the in-season move went 4-7. In 2026 the final margin follows the in-season move (weight +0.28) and not the prior (weight -0.02), but on 2022-25 prior-led and in-season-led picks are about equally good, so this is a 2026 read at n=80, not a rule.
+- **The in-season update is too timid and the model is too narrow, but fixing either does not make better picks.** Final minus live regressed on the in-season move: +0.27 (2022-23), +0.38 (2024-25), +0.58 (2026).
+- 2026 is a mild chalk year: favorites of 10+ cover 50.6% against 43-50% in 2022-25, slope of (final minus close) on the line +0.12, about 2 standard errors above 2022. A wider model like JP+ gets some credit for that, so part of JP+'s week 7 may be regime.
+
+### Candidates tested (all pre-registered; chosen on 2022-23 by average miss only)
+
+| candidate | miss tune | miss test | miss 2026 | 5+ vs close at matched count: tune / TEST / 2026 | verdict |
+|---|---|---|---|---|---|
+| live (v2 + special teams, K 70) | 12.811 | 12.454 | 12.822 | 247-224 (52.4%) / 197-160 (55.2%) / 41-39 (51.2%) | |
+| + last season's SP+, FPI, Elo in the prior | 12.690 | 12.249 | 12.548 | 257-212 (54.8%) / 186-170 (52.2%) / 39-43 (47.6%) | accuracy up, test and 2026 picks worse |
+| in-season move x1.2 and prior x1.2 (= K 84) | 12.733 | 12.316 | 12.593 | 256-215 (54.4%) / 189-165 (53.4%) / 41-39 (51.2%) | accuracy up, test picks worse |
+| K 90 / K 110 at matched count | | | | K 90 250-221 / 181-174 (51.0%) / 43-38; K 110 238-229 / 189-167 / 43-38 | not consistent |
+| z-scored edge rule | | | | 243-226 / 194-164 (54.2%) / 40-40 | no gain |
+| v1 and v2+ST both 3+ and averaging 5+ | | | | 185-155 (n 340) / 117-115 (50.4%) / 25-24 | worse on test |
+| offense ridge strength x0.5 (offense reacts faster) | 12.752 | 12.333 | 12.574 | 249-220 (53.1%) / 187-167 (52.8%) / 44-36 (55.0%) | accuracy up, test picks worse |
+| defense ridge strength x2 or x4 | 12.867-13.009 | 12.651-12.932 | 12.821-12.871 | | worse on every read |
+| winsorise team-game EPA at 2.5 and 97.5 percent | 12.845 | 12.519 | 12.837 | 251-220 / 194-163 / 41-39 | no change |
+| shrink toward the prior (b fitted -0.275, i.e. extrapolate the move) | 12.794 | 12.318 | 12.600 | 235-209 (not matched) / 174-146 / 39-34 | accuracy up, test picks lower |
+| market-anchored number (close + 0.2 x prior gap + 0.25 x move) | 12.111 | 11.868 | 11.650 | 250-222 / 191-164 (53.8%) / 41-39 | equals the close by construction, no pick gain |
+
+Every candidate that improves accuracy past the 0.05 bar (SP+/FPI/Elo prior, wider K, faster offense, move scaling) moves the model toward the market and lowers the 2024-25 pick rate by 1 to 3 points. That is the same pattern as the K 90 retune, team home field, turnover luck and success-rate tests, now seen from five more directions. The two-pronged result: the model's accuracy can be raised by about 0.15 to 0.25 points with several changes, none of them closes the 1.2 point gap to the market, and none of them improves picks.
+
 ## What needs to change
 
-1. Nothing in the projection goes live on this evidence. Every candidate above either does not clear noise or buys accuracy at the cost of picks, and the earlier blend, K, home field and turnover studies say the same. A change with no backtest does not ship.
-2. The scoreboard now shows what this retro needed and could not see: week by week records, the closing line next to the opening line, our official picks next to JP+'s selection engine, and JP+'s own reported record. This ships in this PR.
-3. The model's real exposure is width. The honest next test is a pick rule that is invariant to how wide the model is (rank or z-score of the edge instead of 5 raw points), tested the same way. It was not run here because it needs a pre-registered design and the first rule would be tuned on the picks it is judged on.
-4. We cannot backtest JP+'s method on history: their pre-kickoff numbers only exist from the day our job started recording them (57 games, 52 in week 7). Four more weeks of recorded numbers is the earliest a fair head-to-head with a real sample is possible, so keep the job running.
-5. Watch, do not act: model picks on the favorite (n about 50 across all samples).
+1. **No projection or pick change ships on this evidence.** Everything above fails the bar on test or on 2026, or just reproduces the market. Shipping an accuracy-only change would fail the project's own rule that picks must not get worse.
+2. **The real problem is a 1.2 point accuracy gap to the market in weeks 4-7 that has not moved since 2024 and is not in the preseason prior, the ridge shape, K, the dispersion, or the success-rate and explosiveness ratings.** JP+ is at market accuracy with the same public data, so something JP+ uses that we do not (the likely candidates are position-level preseason inputs such as quarterback, injuries and transfers, and in-season roster news) is worth about one point of margin. We have no data on those in the build environment, so this is where to look.
+3. **The single most promising next experiment is a market-implied prior.** Fit team ratings from the closing lines of games already played (ridge on the spreads, same home field), use them as the center of the in-season ridge in place of the regression prior, and test whether the EPA evidence on top of it carries weight (the anchored test above says the model adds about nothing to the market on average, so this is a test of whether a market prior makes the model's own disagreements more reliable).
+4. **Measurement stays as shipped in this PR** (week by week, closing line, official picks, JP+ reported record). JP+ numbers recorded before kickoff now cover week 7 only (52 of 59 games), so a fair JP+ head-to-head needs four to six more weeks of the recording job.
+5. **Watch, do not act:** picks where the model is on the favorite (21-31 vs the close, 16-20 vs the open on 2022-25, 5-6 live, n about 50); 2026 picks being prior-led (69 of 80, 35-34).
