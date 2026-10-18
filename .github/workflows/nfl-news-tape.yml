@@ -1,0 +1,43 @@
+# Logs every NFL injury-status, QB depth-chart and QB-out change with its timestamp, the player's next game, and the line at that moment, into
+# data/nfl_news_tape.jsonl (append-only). Together with data/game_line_history.json (timestamped open, moves and close) it makes "does the market
+# price news before or after it lands" a pure join. One free Sleeper call per run, no API credits. See docs/nfl-news-tape.md.
+name: NFL news tape
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Hourly, not nightly: a nightly run stamps every change with the same hour, which makes timing untestable. Commits only when something changed.
+    - cron: '41 * * * *'
+
+concurrency:
+  group: nfl-news-tape
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  tape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Log status changes
+        run: python3 scripts/log_nfl_news_tape.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git add data/nfl_news_tape.jsonl data/nfl_news_state.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No news changes."
+          else
+            git commit -m "news: NFL injury and QB status tape [skip ci]"
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin ${GITHUB_REF_NAME} && git push && break
+              echo "push race, retrying ($i)…"; sleep 3
+            done
+          fi
