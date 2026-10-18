@@ -157,3 +157,18 @@ No edge against the close, where the sample is large enough to read. The open nu
 
 By season against the close the favorite picks were 3-1, 5-12, 5-5, 8-13 and 0-3. Over 2022-26 they cover 38.2% against the close (binomial p 0.04 against break-even, Fisher p 0.025 against the underdog picks, n=55). The hit rate improves on tune, test and 2026 against the close and the pick count falls by 6%. It is not strong evidence: it was one of about a dozen pre-registered variants, so the p value does not survive a correction for that, and against the open the favorite picks are 22-26 (p 0.39). The rule changes which games are official picks, so shipping it must restate the pick log and the records (project rule) and touch every place `is_pick` is set in `cfb_model.py`. Not shipped in this PR; it needs a decision.
 
+## Round 5: can we copy JP+'s lower edge threshold or its best-price grading?
+
+**Lower threshold (JP+ selects some picks at 2.9 to 5 points because its rule is expected value at the best price).** Our underdog-side picks by edge band, 2022-26, weeks 4+:
+
+| edge | vs close | vs open |
+|---|---|---|
+| 3 to 5 | 192-199 (49.1%, n=391) | 137-147 (48.2%, n=284) |
+| 5 to 7 | 173-147 (54.1%, n=320) | 129-99 (56.6%, n=228) |
+| 7 to 10 | 180-140 (56.2%, n=320) | 106-84 (55.8%, n=190) |
+| 10 and up | 111-102 (52.1%, n=213) | 47-36 (56.6%, n=83) |
+
+The 3 to 5 band is below break-even in the tuning seasons, the test seasons (46.5% vs close, n=187) and is only 51% live. The 5-point cutoff is doing real work for our model; JP+ can use a lower cutoff because its selection is priced, not because its edges are better. NO-GO: do not lower the threshold. Win rate does not rise past 7 points for us either, which matches what JP+ publishes for itself.
+
+**Best-price grading.** Cannot be backtested. The only multi-book spread history is `data/book_tape/cfb` (BetMGM, DraftKings, FanDuel, BetRivers, bet365, Pinnacle, consensus), which starts 2026-10-03, covers 52 games and has a tape row for only 9 of our 81 logged picks. Grading old picks at a shopped price would need numbers we never stored, so none are invented. What can be built is forward capture: store the best retail-book line for the picked side on each new pick at the moment it is logged, and report the shopped record next to the entry-line record once there are enough picks. That is a model-code change and is tracked as a follow-up so it does not collide with #108.
+
