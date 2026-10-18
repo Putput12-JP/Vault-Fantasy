@@ -1,6 +1,6 @@
 # Game-market retro — week 6
 
-_9 game calls settled (9 in-season-rated, 0 preseason-rated)._
+_14 game calls settled (15 in-season-rated, 0 preseason-rated)._
 
 ## Read this differently from props
 
@@ -8,31 +8,31 @@ Vault's game model is built to **hug the market** (it lands within ~0.4pt of the
 
 ## Headline
 
-- **Record (all):** 0-9 ( 0.0%) · **CLV beat-rate** 11.1%
-- **In-season-rated only:** 0-9 ( 0.0%) · CLV 11.1%
+- **Record (all):** 2-12 (14.3%) · **CLV beat-rate** 21.4%
+- **In-season-rated only:** 2-12 (14.3%) · CLV 21.4%
 
 ## By market (in-season-rated)
 
 ```
-Spread     n=  3     0-3  0.0% | CLV  0.0% | projMAE   6.3 bias -2.1
-Total      n=  3     0-3  0.0% | CLV  0.0% | projMAE  18.0 bias +2.8
-Moneyline  n=  3     0-3  0.0% | CLV 33.3% | ll m0.920 x0.873
+Spread     n=  4     0-4  0.0% | CLV  0.0% | projMAE   8.2 bias +2.0
+Total      n=  5     1-4 20.0% | CLV 20.0% | projMAE  11.3 bias +1.2
+Moneyline  n=  5     1-4 20.0% | CLV 40.0% | ll m0.866 x0.844
 ```
 - projMAE/bias: how far Vault's spread/total number lands from the actual margin/total (bias +high = Vault's number ran high). ll m/x: model vs vig-free-market log-loss on moneyline.
 
 ## By side (in-season-rated)
 
 ```
-Home   n=  2     0-2  0.0% | CLV  0.0%
+Home   n=  5     1-4 20.0% | CLV 20.0%
 Away   n=  4     0-4  0.0% | CLV 25.0%
-Over   n=  2     0-2  0.0% | CLV  0.0%
-Under  n=  1     0-1  0.0% | CLV  0.0%
+Over   n=  3     1-2 33.3% | CLV 33.3%
+Under  n=  2     0-2  0.0% | CLV  0.0%
 ```
 
 ## Sharpest / softest market (by CLV)
 
-- **Sharpest: Moneyline** — CLV 33.3%, 0-3 ( 0.0%)
-- **Softest: Total** — CLV  0.0%, 0-3 ( 0.0%)
+- **Sharpest: Moneyline** — CLV 40.0%, 1-4 (20.0%)
+- **Softest: Spread** — CLV  0.0%, 0-4 ( 0.0%)
 
 ## Flags
 
