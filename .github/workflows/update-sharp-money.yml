@@ -52,6 +52,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run update-kb-gaps.yml --ref main --repo "${{ github.repository }}"
+      # GitHub's own hourly cron for update-game-history.yml fires only every 3-5h, which left the Pinnacle-lead close line stale: the scorer drops a game
+      # whose last close is over 6h before kickoff, so settled Sunday games never reached the cards. Fire it from this 10-minute loop too.
+      - name: Roll game-line history
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run update-game-history.yml --ref main --repo "${{ github.repository }}"
       - uses: actions/checkout@v5
         if: steps.gate.outputs.go == '1'
       - uses: actions/setup-node@v5
