@@ -131,7 +131,7 @@ REA's `capture_browser_scenario` loaded https://www.jpplusratings.com/picks/spre
 
 **Week 7 side by side** (JP+'s 25 production selections from the picks page, 17-8, against our board at the ESPN open):
 - On the 8 games where we also had a 5+ point pick, we agreed on the side in 6 and were on opposite sides in 2 (South Florida and Navy at UTSA, both won by JP+'s side). On the 6 shared sides we were 3-3 and so was JP+. On the 2 opposite games JP+ went 2-0 and we went 0-2.
-- On 15 more games JP+ made a pick and we had no 5+ point edge, and JP+ went 12-3 there. That is where the week was won: Texas Tech over Arizona State (JP+ edge 11.7, ours 0.7 the other way), Air Force over UNLV (11.4, ours 3.6 on the other side), Oregon State, Auburn, Florida State, Ball State, North Carolina. Two more JP+ picks (UTEP, UMass) are not on our board and both lost.
+- On 15 more games JP+ made a pick and we had no 5+ point edge, and JP+ went 12-3 there. That is where the week was won: Texas Tech over Arizona State (JP+ edge 11.7, ours 0.7 the other way), Air Force over UNLV (11.4, ours 3.6 on the same side), Oregon State, Auburn, Florida State, Ball State, North Carolina. Two more JP+ picks (UTEP, UMass) are not on our board and both lost.
 - So the week-7 record gap is the accuracy gap again: JP+ was right in games where our projection sat close to the line, not in games where we both disagreed with the market.
 
 **Defensive success rate flag (JP+'s `DEF_SR_DOMINANT`).** JP+ does not publish the definition, so this tested a guess fixed in advance: the side our model picks has a top-10% (or top-20%) defensive success rate in FBS that week, from the same weekly opponent-adjusted ridge. `scripts/cfb_week7_defsr_study.py`, 5+ point picks, weeks 4+:
