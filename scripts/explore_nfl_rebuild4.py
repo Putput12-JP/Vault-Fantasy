@@ -13,7 +13,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build_game_model as M
 
 TUNE, VAL, TEST = (2010, 2019), (2020, 2022), (2023, 9999)
-LIVE = dict(K=0.065, KS=0.045, carry=0.72, ridge=0.05, qbm=2.5, qbt=1.25, wS=0.0, kd=0.0, hfa_roll=False, shrink=False, mkt=0.0, qbr=False, KQ=0.03)
+# mkt=0.15 is what data/game_model.json actually runs (market learning, fitted and gated). An earlier draft of this file used 0 and overstated every gain.
+LIVE = dict(K=0.065, KS=0.045, carry=0.72, ridge=0.05, qbm=2.5, qbt=1.25, wS=0.0, kd=0.0, hfa_roll=False, shrink=False, mkt=0.15, qbr=False, KQ=0.03)
 
 
 def run(games, o):
