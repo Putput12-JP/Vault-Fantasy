@@ -360,6 +360,19 @@ def live_edges(games, now):
                 got = last_n[nk] if m == 'ml' else last_n[nk][1:]
                 if got == cur and (m == 'ml' or last_n[nk][0] == line):
                     row['nov_since'] = last_n['t']
+            # Pinnacle's own price for this side at the same line, and its limit, over the last 24h of tape rows (stored values only):
+            # pp = [first, now] American price, lim0 = the earliest stored limit when it differs from the current one
+            prow = [r for r in nrows if r.get('book') == 'Pinnacle' and not r.get('bf') and r.get(pk) and r['t'] >= now - 24 * 3600]
+            pi = {'ml': (1, 0), 'sp': (1, 2), 'tot': (1, 2)}[m][0 if a else 1]
+            same = [r for r in prow if m == 'ml' or r[pk][0] == line]
+            if len(same) >= 2 and same[0][pk][pi] is not None and same[-1][pk][pi] is not None and same[0][pk][pi] != same[-1][pk][pi]:
+                row['pp'] = [same[0][pk][pi], same[-1][pk][pi]]
+                row['pp_t'] = same[0]['t']
+            li = {'ml': 0, 'sp': 1, 'tot': 2}[m]
+            lims = [(r['t'], r['lim'][li]) for r in prow if r.get('lim') and r['lim'][li]]
+            if len(lims) >= 2 and lims[0][1] != lims[-1][1]:
+                row['lim0'] = lims[0][1]
+                row['lim_t'] = lims[0][0]
             col = {'ml': (1,), 'sp': (2, 3), 'tot': (4, 5)}[m]
             for i in range(len(hist) - 1, 0, -1):
                 if any(hist[i][c] != hist[i - 1][c] for c in col):

@@ -10,7 +10,7 @@
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), LIVE = /[?&]live\b/.test(location.search);
   var BASE = LOCAL && !LIVE ? '/data/' : 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/data/';
   var SPORT = { nfl: 'NFL', cfb: 'CFB', nba: 'NBA' }, MK = { ml: 'Money', sp: 'Spread', tot: 'Total' }, GOAL = 50;   // 50 graded calls, the bar the other Sharp Money signals use
-  var st = { sport: 'all', m: 'all', sort: 'ev', pos: 1, open: null, sel: null, cf: null, cs: 'all' }, data = null, dataP = null, dataAt = 0, ctx = { games: [], logo: null }, wide = false;
+  var st = { sport: 'all', m: 'all', sort: 'ev', pos: 1, mv: 'all', open: null, sel: null, cf: null, cs: 'all' }, data = null, dataP = null, dataAt = 0, ctx = { games: [], logo: null }, wide = false;
 
   function get(n) {
     return fetch(BASE + n + '?t=' + Math.floor(Date.now() / 120000), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
@@ -39,12 +39,25 @@
   function pair(x, z) { return '<span class="veb-pair">' + logo(x, 'away', z) + logo(x, 'home', z) + '</span>'; }
 
   /* ---------- data selection ---------- */
+  /* Steam: Pinnacle's fair price for the side is up STEAM points over the last 4 hours at the same line (tier 2 of scripts/steam_record.py, which logged
+     no edge in the first sample, so this is shown as what happened, never as a pick). */
+  var STEAM = 2.0;
+  function steam(x) { return x.pm != null && x.pm >= STEAM; }
+  function amer(a) { return a > 0 ? '+' + a : String(a); }
+  function steamHtml(x) {
+    if (!steam(x)) return '';
+    var bits = [x.pp ? 'Pinnacle ' + amer(x.pp[0]) + ' to ' + amer(x.pp[1]) : 'Pinnacle ' + sg(x.pm) + ' pts in 4h'];
+    if (x.lim0 && x.lim && x.lim0 !== x.lim) bits.push('limit ' + usd(x.lim0) + ' to ' + usd(x.lim));
+    if (x.nm != null && Math.abs(x.nm) < 0.5) bits.push('Novig still ' + esc(x.price));
+    return '<i class="veb-steam" title="Context only, not a bet signal. The first sample showed no edge after a move like this.">Steam</i> <span class="veb-stx">' + bits.join(' \u00B7 ') + '</span> ';
+  }
   function liveAll() { var now = Date.now() / 1000; return ((data.live && data.live.rows) || []).filter(function (x) { return x.start > now; }); }
   function liveRows() {
     var r = liveAll();
     if (st.sport !== 'all') r = r.filter(function (x) { return x.sport === st.sport; });
     if (st.m !== 'all') r = r.filter(function (x) { return x.m === st.m; });
     if (st.pos) r = r.filter(function (x) { return x.ev > 0; });
+    if (st.mv === 'mv') r = r.filter(steam);
     r.sort(st.sort === 'soon' ? function (a, b) { return a.start - b.start; } : st.sort === 'pin' ? function (a, b) { return (b.pm || -99) - (a.pm || -99); } : function (a, b) { return b.ev - a.ev; });
     return r;
   }
@@ -116,8 +129,8 @@
   /* ---------- the slate ---------- */
   function rowHtml(x, maxEv, selected, op) {
     var bits = [];
-    if (x.pm != null) bits.push('Pinnacle ' + sg(x.pm) + ' pts in 4h');
-    if (x.nm != null) bits.push('Novig ' + sg(x.nm) + ' pts');
+    if (x.pm != null && !(steam(x) && !x.pp)) bits.push('Pinnacle ' + sg(x.pm) + ' pts in 4h');
+    if (x.nm != null && !(steam(x) && Math.abs(x.nm) < 0.5)) bits.push('Novig ' + sg(x.nm) + ' pts');
     if (x.second && x.second.of) bits.push(x.second.confirm + ' of ' + x.second.of + ' exchanges agree');
     if (x.fill && x.fill['500'] != null) bits.push('EV holds at $500'); else if (x.depth != null) bits.push(usd(x.depth) + ' deep');
     var key = x.gk + '|' + x.m, heat = Math.max(0.08, Math.min(1, x.ev / (maxEv || 1)));
@@ -125,7 +138,7 @@
       '<div class="veb-top">' + pair(x, 22) + '<span class="veb-teams">' + esc(x.away) + ' @ ' + esc(x.home) + '</span><span class="veb-meta"><b class="veb-sp">' + SPORT[x.sport] + '</b>' + when(x.start) + '</span></div>' +
       '<div class="veb-main"><div class="veb-pick"><span class="veb-mk">' + MK[x.m] + '</span> ' + esc(x.label) + ' <span class="veb-px">' + esc(x.price) + '</span><small>fair ' + (x.fair * 100).toFixed(1) + '%</small></div>' +
       '<div class="veb-ev ' + (x.ev > 0 ? 'pos' : 'neg') + '" style="--h:' + heat.toFixed(2) + '">' + sg(x.ev) + '%<small>EV</small></div></div>' +
-      (bits.length || x.stale ? '<div class="veb-sub">' + (x.stale ? '<i class="veb-stale">Pinnacle moved, Novig did not</i> ' : '') + bits.join(' · ') + '</div>' : '') + '</div>' + (op ? '<div class="veb-drawer">' + detailInner(x) + '</div>' : '') + '</div>';
+      (bits.length || x.stale || steam(x) ? '<div class="veb-sub">' + steamHtml(x) + (x.stale ? '<i class="veb-stale">Pinnacle moved, Novig did not</i> ' : '') + bits.join(' · ') + '</div>' : '') + '</div>' + (op ? '<div class="veb-drawer">' + detailInner(x) + '</div>' : '') + '</div>';
   }
   function slateHtml(rows) {
     if (!data.live) return '<div class="veb-empty">The live edge file did not load. Try again in a minute.</div>';
@@ -165,7 +178,7 @@
     o += '<div class="veb-cmp"><div><small>Pinnacle fair</small><b>' + am(x.fair) + ' <span>' + (x.fair * 100).toFixed(1) + '%</span></b></div><div><small>Novig costs</small><b>' + x.price + ' <span>' + (x.cost * 100).toFixed(1) + '%</span></b></div>' +
       (q && q.kal != null ? '<div><small>Kalshi</small><b>' + cents(q.kal) + '</b></div>' : '') + (q && q.pm != null ? '<div><small>Polymarket</small><b>' + cents(q.pm) + '</b></div>' : '') + '</div>';
     if (q) o += '<div class="veb-ages">' + q.confirm + ' of ' + q.of + ' exchanges are at least a cent above Novig.' + (x.m === 'ml' ? '' : ' Kalshi has the winner market only.') + '</div>';
-    o += '<div class="veb-ages">' + (x.pin_since ? 'Pinnacle last moved ' + dur(now - x.pin_since) + ' ago' : 'Pinnacle move time unknown') + ' · ' + (x.nov_since ? 'Novig unchanged for ' + dur(now - x.nov_since) : 'Novig quote age unknown yet') + (x.lim ? ' · Pinnacle limit ' + usd(x.lim) : '') + '</div>';
+    o += '<div class="veb-ages">' + (x.pin_since ? 'Pinnacle last moved ' + dur(now - x.pin_since) + ' ago' : 'Pinnacle move time unknown') + ' · ' + (x.nov_since ? 'Novig unchanged for ' + dur(now - x.nov_since) : 'Novig quote age unknown yet') + (x.lim ? ' · Pinnacle limit ' + (x.lim0 && x.lim0 !== x.lim ? usd(x.lim0) + ' to ' + usd(x.lim) : usd(x.lim)) : '') + '</div>';
     return o + '<div class="veb-chart" data-chart="' + esc(x.gk) + '"></div><button type="button" class="veb-open" data-gk="' + esc(x.gk) + '">Open the game page</button> <a class="veb-open" href="https://novig.com" target="_blank" rel="noopener">Open Novig</a><div class="veb-note" style="margin-top:6px">Open Novig goes to novig.com, not to this market.</div>';
   }
   function panelHtml(x) {
@@ -173,7 +186,7 @@
     var g = gameOf(x);
     return '<div class="veb-hero">' + pair(x, 40) + '<div><b>' + esc((g.away && (g.away.name || g.away.abbr)) || x.away) + ' @ ' + esc((g.home && (g.home.name || g.home.abbr)) || x.home) + '</b><small>' + SPORT[x.sport] + ' · ' + when(x.start) + '</small></div></div>' +
       '<div class="veb-call"><div><span class="veb-mk">' + MK[x.m] + '</span><b>' + esc(x.label) + '</b><span class="veb-px">' + esc(x.price) + '</span></div><div class="veb-ev big ' + (x.ev > 0 ? 'pos' : 'neg') + '">' + sg(x.ev) + '%<small>EV</small></div></div>' +
-      (x.stale ? '<div class="veb-sub"><i class="veb-stale">Pinnacle moved, Novig did not</i></div>' : '') + detailInner(x);
+      ((x.stale || steam(x)) ? '<div class="veb-sub">' + steamHtml(x) + (x.stale ? '<i class="veb-stale">Pinnacle moved, Novig did not</i>' : '') + '</div>' : '') + detailInner(x);
   }
 
   /* ---------- the record ---------- */
@@ -262,7 +275,7 @@
     '.veb-top{display:flex;align-items:center;gap:8px;font-size:12px}.veb-pair{display:inline-flex;align-items:center;gap:2px;flex:none}.veb-lg{object-fit:contain}.veb-dot{display:inline-block;border-radius:50%;opacity:.8;margin:0 2px}.veb-teams{font-weight:600;font-size:13px}.veb-meta{margin-left:auto;opacity:.6;white-space:nowrap}.veb-sp{font-weight:600;font-size:10px;letter-spacing:.06em;padding:2px 6px;border-radius:6px;background:rgba(127,127,127,.2);margin-right:7px;opacity:1}' +
     '.veb-main{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px}.veb-pick{font-size:14.5px}.veb-mk{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;opacity:.6;margin-right:6px}.veb-pick small{display:inline;margin-left:8px;font-size:12px;opacity:.55}.veb-px{font-weight:600;margin-left:4px}' +
     '.veb-ev{min-width:74px;text-align:right;font-size:19px;font-weight:700;padding:5px 9px;border-radius:10px}.veb-ev small{display:block;font-size:9.5px;font-weight:500;letter-spacing:.06em;opacity:.75}.veb-ev.pos{color:#34c759;background:rgba(52,199,89,calc(.06 + var(--h,.3) * .16))}.veb-ev.neg{opacity:.65}.veb-ev.big{font-size:30px;padding:8px 14px}.veb-ev.sm{font-size:15px;min-width:64px;padding:3px 7px}' +
-    '.veb-sub{margin-top:6px;font-size:12px;opacity:.78;line-height:1.55}.veb-stale{font-style:normal;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:999px;border:1px solid #ff9f43;color:#ff9f43;margin-right:4px}.veb-win{color:#34c759;font-weight:600}.veb-loss{color:#ff6b6b;font-weight:600}.veb-pend{opacity:.7}' +
+    '.veb-sub{margin-top:6px;font-size:12px;opacity:.78;line-height:1.55}.veb-stale{font-style:normal;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:999px;border:1px solid #ff9f43;color:#ff9f43;margin-right:4px}.veb-steam{font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:#ff5fa2;color:#1c1c1e;margin-right:6px}.veb-stx{font-weight:600;opacity:1;font-variant-numeric:tabular-nums}.veb-win{color:#34c759;font-weight:600}.veb-loss{color:#ff6b6b;font-weight:600}.veb-pend{opacity:.7}' +
     '.veb-drawer{padding:4px 10px 14px}.veb-hero{display:flex;align-items:center;gap:12px;margin:2px 0 12px}.veb-hero b{display:block;font-size:17px}.veb-hero small{opacity:.6;font-size:12px}.veb-call{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 10px}.veb-call b{font-size:22px;margin-right:8px}.veb-call .veb-px{font-size:18px}' +
     '.veb-lad,.veb-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin:0 0 10px}.veb-lad div,.veb-cmp div{padding:9px 11px;border-radius:12px;background:rgba(127,127,127,.1)}.veb-lad small,.veb-cmp small{display:block;font-size:10px;opacity:.6;letter-spacing:.05em;text-transform:uppercase}.veb-lad b,.veb-cmp b{font-size:16px}.veb-lad b.pos{color:#34c759}.veb-lad b.neg{opacity:.65}' +
     '.veb-chg{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:0 0 10px}.veb-chg div{padding:8px 12px;border-radius:12px;background:rgba(127,127,127,.1)}.veb-chg small{display:block;font-size:10px;opacity:.6;letter-spacing:.05em;text-transform:uppercase}.veb-chg b{font-size:15px}.veb-chg b.pos{color:#34c759}.veb-chg b.neg{color:#ff6b6b}.veb-chg>span{flex-basis:100%;font-size:11px;opacity:.5}.veb-cmp b span{font-size:11px;font-weight:500;opacity:.6;margin-left:2px}.veb-stake{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(127,127,127,.1);margin:0 0 10px;font-size:12.5px;line-height:1.5}.veb-stake label{display:inline-flex;align-items:center;gap:4px;font-weight:600;white-space:nowrap}.veb-stake input{width:84px;font:inherit;font-size:13px;padding:5px 7px;border-radius:7px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit}a.veb-open{display:inline-block;text-decoration:none}.veb-ages{font-size:12px;opacity:.75;margin:0 0 8px;line-height:1.5}.veb-chart{margin:8px 0 10px}.veb-open{font:inherit;font-size:12.5px;font-weight:600;padding:8px 12px;min-height:34px;border-radius:9px;border:1.5px solid currentColor;background:transparent;color:inherit;cursor:pointer;opacity:.85}' +
@@ -286,7 +299,7 @@
     var rows = liveRows(), keyOf = function (x) { return x.gk + '|' + x.m; };
     if (wide && !rows.some(function (x) { return keyOf(x) === st.sel; })) st.sel = rows[0] ? keyOf(rows[0]) : null;
     var sel = rows.filter(function (x) { return keyOf(x) === st.sel; })[0];
-    var bar = '<div class="veb-bar2">' + chips('sport', [['all', 'All'], ['nfl', 'NFL'], ['cfb', 'CFB'], ['nba', 'NBA']]) + chips('pos', [[1, '+EV only'], [0, 'All']]) + chips('m', [['all', 'All'], ['ml', 'Money'], ['sp', 'Spread'], ['tot', 'Total']]) + chips('sort', [['ev', 'Biggest +EV'], ['soon', 'Soonest'], ['pin', 'Pinnacle moved']]) + '</div>';
+    var bar = '<div class="veb-bar2">' + chips('sport', [['all', 'All'], ['nfl', 'NFL'], ['cfb', 'CFB'], ['nba', 'NBA']]) + chips('pos', [[1, '+EV only'], [0, 'All']]) + chips('mv', [['all', 'All moves'], ['mv', 'Pinnacle moving']]) + chips('m', [['all', 'All'], ['ml', 'Money'], ['sp', 'Spread'], ['tot', 'Total']]) + chips('sort', [['ev', 'Biggest +EV'], ['soon', 'Soonest'], ['pin', 'Pinnacle moved']]) + '</div>';
     var o = '<div class="veb"><div class="veb-kpis">' + kpiHtml() + '</div>' + bar;
     var slate = '<div class="veb-h"><span>Right now</span><span>' + rows.length + ' shown</span></div>' + slateHtml(rows);
     if (wide) o += '<div class="veb-grid"><div class="veb-col" data-c="slate">' + slate + '</div><div class="veb-col" data-c="detail"><div class="veb-h"><span>Selected</span><span></span></div>' + panelHtml(sel) + '</div><div class="veb-col" data-c="rec">' + recHtml() + callsHtml() + '</div></div>';
