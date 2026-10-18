@@ -23,7 +23,9 @@ JP_URL = 'https://www.jpplusratings.com/games/'
 STORE = os.path.join(ROOT, 'data', 'jpplus_games.json')
 OUT = os.path.join(ROOT, 'data', 'cfb_scoreboard.json')
 MIN_WEEK = 4
-METHODS = [('ours', 'Our model'), ('v1', 'Previous model'), ('jp', 'JP+'), ('open', 'Opening line')]
+METHODS = [('ours', 'Our model'), ('v1', 'Previous model'), ('jp', 'JP+'), ('open', 'Opening line'), ('close', 'Closing line')]
+BENCH = ('open', 'close')           # lines, not methods: they get an average miss and no lean record
+REPORTED = os.path.join(ROOT, 'data', 'jpplus_reported.json')
 
 
 def fetch_jp():
@@ -74,12 +76,28 @@ def record(rows, key, th):
     return dict(w=w, l=l, n=w + l, pct=round(w / (w + l), 4) if w + l else None, ci=[lo, hi])
 
 
+def by_week(rows):
+    """the scoreboard one week at a time (a week's games only), newest first"""
+    return [dict(week=w, **summarize([r for r in rows if r['week'] == w])) for w in sorted({r['week'] for r in rows}, reverse=True)]
+
+
+def official_picks(log):
+    """our official pick log (graded at the line each pick was made at), overall and by week: the analogue of JP+'s selection engine"""
+    out = {}
+    for e in log or []:
+        if e.get('result') not in ('W', 'L', 'P'): continue
+        w = out.setdefault(e['week'], dict(w=0, l=0, p=0)); w[e['result'].lower()] += 1
+    tot = dict(w=sum(v['w'] for v in out.values()), l=sum(v['l'] for v in out.values()), p=sum(v['p'] for v in out.values()))
+    for v in list(out.values()) + [tot]: v['pct'] = round(v['w'] / (v['w'] + v['l']), 4) if v['w'] + v['l'] else None
+    return dict(total=tot, weeks=[dict(week=w, **out[w]) for w in sorted(out, reverse=True)])
+
+
 def summarize(rows):
     out = dict(games=len(rows), methods={})
     for k, label in METHODS:
         have = [r for r in rows if r.get(k) is not None]
         out['methods'][k] = dict(label=label, n=len(have), miss=round(sum(abs(r[k] - r['actual']) for r in have) / len(have), 3) if have else None,
-                                 lean=record(have, k, 0.01) if k != 'open' else None, edge3=record(have, k, 3.0) if k != 'open' else None, edge5=record(have, k, 5.0) if k != 'open' else None)
+                                 lean=record(have, k, 0.01) if k not in BENCH else None, edge3=record(have, k, 3.0) if k not in BENCH else None, edge5=record(have, k, 5.0) if k not in BENCH else None)
     return out
 
 
@@ -100,7 +118,9 @@ def main():
                             columns=['game_id', 'week', 'home_id', 'away_id', 'home_score', 'away_score', 'status'])
     ids = {(int(r.home_id), int(r.away_id)): int(r.game_id) for r in sched.itertuples()}
     fin = {int(r.game_id): int(r.home_score) - int(r.away_score) for r in sched.itertuples() if pd.notna(r.home_score) and pd.notna(r.away_score) and 'final' in str(r.status).lower()}
-    board = json.load(open(cm.OUT)).get('board', []); copens = cm.cfbd_opens(played=True)
+    pbp = pd.read_parquet(cm.st.fetch(f'{cm.st.REL}/espn_cfb_pbp/play_by_play_2026.parquet', os.path.join(d, 'pbp_2026_sb.parquet')), columns=['game_id', 'homeTeamSpread'])
+    closes = {int(r.game_id): float(r.homeTeamSpread) for r in pbp.drop_duplicates('game_id').itertuples() if pd.notna(r.homeTeamSpread)}      # the ESPN close, as a home margin (+ = home favoured)
+    model = json.load(open(cm.OUT)); board = model.get('board', []); copens = cm.cfbd_opens(played=True)
     rows = []
     for b in board:
         if b.get('week', 0) < MIN_WEEK or b.get('model_margin') is None: continue
@@ -111,12 +131,14 @@ def main():
         if op is None: continue
         j = store.get(str(gid))
         rows.append(dict(game_id=gid, week=b['week'], home=b['home'], away=b['away'], kick=b['kick'], actual=fin[gid], open=round(-float(op), 1), ours=b['model_margin'],
-                         v1=(b.get('v1') or {}).get('model_margin'), jp=None if not j else round(-float(j['jp_spread']), 2), jp_verified=bool(j and j.get('verified'))))
+                         v1=(b.get('v1') or {}).get('model_margin'), jp=None if not j else round(-float(j['jp_spread']), 2), jp_verified=bool(j and j.get('verified')), close=closes.get(gid)))
     # JP+ spread is the home team's spread in the sportsbook convention (negative = home favoured), so the margin is its negation
     whole = [r for r in rows if r['jp'] is not None and r['v1'] is not None]
     ver = [r for r in whole if r['jp_verified']]
     out = dict(generated=pd.Timestamp.now('UTC').isoformat(), min_week=MIN_WEEK, jp_games_recorded=len(store), jp_verified=sum(1 for v in store.values() if v.get('verified')),
-               published=summarize(whole), verified=summarize(ver),
+               published=summarize(whole), verified=summarize(ver), weeks=by_week(whole), picks=official_picks(model.get('log')),
+               jp_reported=json.load(open(REPORTED)) if os.path.exists(REPORTED) else None,
+               clv={k: (model.get('open_check') or {}).get(k) for k in ('clv_n', 'clv_mean', 'clv_pos')},      # our 5+ picks entered at the ESPN open, against the close
                note='Verified: JP+ number recorded by this job before kickoff. Published: JP+ as its site shows it now, which cannot be shown to be pre-kickoff. Lean record: the method\'s side of the ESPN open covered.',
                games=sorted(rows, key=lambda r: -r['kick']))
     json.dump(out, open(OUT, 'w'))
