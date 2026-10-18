@@ -1545,20 +1545,20 @@ return h("div",{style:{marginTop:20}},
 function AcctCalc(u,t){let sportOk=sl=>{let c=Tp(sl);return t==="all"||c===t},med=xs=>{if(!xs.length)return null;let a1=[...xs].sort((x,y)=>x-y),m=a1.length>>1;return a1.length%2?a1[m]:(a1[m-1]+a1[m])/2};let tr=u.trades.filter(x=>sportOk(x.slug)),buys=tr.filter(x=>x.side==="BUY"),usd=buys.map(x=>x.usd),sx=Xa(u),rec=u.rec,kinds={ML:0,Spread:0,Total:0};
  buys.forEach(x=>{let k0=zp(x.title,x.out).kind||"";kinds[/Spread/.test(k0)?"Spread":/Total/.test(k0)?"Total":"ML"]++});
  let sharp=!!(rec&&rec.n>=10&&rec.games>=5&&rec.t>=2),loser=!!(rec&&rec.n>=10&&rec.games>=5&&rec.t<=-2),res=sx&&!sx.arb&&sx.n>=15?(sx.pnl>0&&sx.roi>0?"win":sx.pnl<0?"lose":"flat"):null,
- cls=sharp&&res==="win"?{k:"Sharp and winning",tone:"ok"}:sharp&&res==="lose"?{k:"Sharp but losing",tone:"warn"}:sharp?{k:"Sharp, results unclear",tone:"muted"}:loser?{k:"Usually loses",tone:"bad"}:res==="win"&&(!rec||rec.t<1)?{k:"Winning without an edge",tone:"muted"}:{k:"Not enough to tell",tone:"muted"},
+ cls=sharp&&res==="win"?{k:"Sharp and winning",tone:"ok"}:sharp&&res==="lose"?{k:"Sharp but losing",tone:"warn"}:sharp?{k:"Sharp, results unclear",tone:"muted"}:loser?{k:"Usually loses",tone:"bad"}:res==="win"&&(!rec||rec.t<1)?{k:"Winning without an edge",tone:"muted"}:{k:rec?"Unproven, "+rec.games+" game"+(rec.games===1?"":"s"):"Unproven, no record yet",tone:"muted"},
  day=buys.filter(x=>x.ts>Q()-86400).reduce((s0,x)=>s0+x.usd,0);
  return{u,tr,buys,sx,rec,cls,kinds,typical:med(usd),big:usd.length?Math.max(...usd):null,day,dayN:buys.filter(x=>x.ts>Q()-86400).length,fav:buys.length?buys.filter(x=>x.px>=.5).length/buys.length:null,avgPx:buys.length?buys.reduce((s0,x)=>s0+x.px,0)/buys.length:null,last:buys[0]||null}}
 function AcctPage({D:e,wallet:w,sport:t,narrow:NW}){return U.createElement("div",{style:{marginTop:20}},U.createElement(AcctHub,{D:e,wal:w,sport:t,narrow:NW}))}
 function AcctHub({D:e,wal,sport:t,narrow:NW}){
  let n=V(),h=U.createElement,
- [flt,setFlt]=U.useState(0),[so,setSo]=U.useState("Most trustworthy"),[tab,setTab]=U.useState("open"),[spt,setSpt]=U.useState("all"),
+ [flt,setFlt]=U.useState(1),[so,setSo]=U.useState("Most open money"),[tab,setTab]=U.useState("open"),[spt,setSpt]=U.useState("all"),
  [fw,setFw]=U.useState(()=>{let q0=_e.get("acctfollow",[]);return Array.isArray(q0)?q0:[]}),
  lab={textTransform:"uppercase",letterSpacing:"0.1em"},
  medv=xs=>{if(!xs.length)return null;let a1=[...xs].sort((q,r)=>q-r),m=a1.length>>1;return a1.length%2?a1[m]:(a1[m-1]+a1[m])/2},
  gOf=x=>x.cls.k==="Sharp and winning"||x.cls.k==="Sharp, results unclear"?"w":x.cls.k==="Sharp but losing"?"l":"o",
  conf=x=>{let g=x.rec?x.rec.games:0;return g>=60?4:g>=25?3:g>=10?2:g>=5?1:0},
  prof=(e.accounts||[]).map(u=>AcctCalc(u,t)).filter(x=>x.buys.length||x.rec||x.sx),
- fl0=["Worth following","All accounts","Sharp but losing","Not sharp or unclear","Following"],
+ fl0=["Proven sharp","All accounts","Sharp but losing","Unproven or not sharp","Following"],
  cnts=[prof.filter(x=>gOf(x)==="w").length,prof.length,prof.filter(x=>gOf(x)==="l").length,prof.filter(x=>gOf(x)==="o").length,prof.filter(x=>fw.includes(x.u.w)).length],
  fopts=fl0.map((l0,i0)=>l0+" ("+cnts[i0]+")"),
  sorts={"Most trustworthy":x=>x.rec?x.rec.t*Math.min(1,x.rec.games/30):-99,"Best P&L":x=>x.sx&&!x.sx.arb?x.sx.pnl:-1e12,"Most open money":x=>x.u.posVal||0,"Biggest today":x=>x.day,"Most active":x=>x.u.last||0},
@@ -1568,22 +1568,26 @@ function AcctHub({D:e,wal,sport:t,narrow:NW}){
  short=prof.filter(x=>gOf(x)==="w"),
  holdVal=short.reduce((s0,x)=>s0+liveP(x.u).reduce((s1,p0)=>s1+p0.val,0),0),holdN=short.reduce((s0,x)=>s0+liveP(x.u).length,0),
   pick=p0=>{let m0=zp(p0.title,p0.out);return Hp(p0.slug)+"|"+(m0.team||m0.tot||p0.out)},
- held=U.useMemo(()=>{let o0={};short.forEach(x=>liveP(x.u).forEach(p0=>{let k0=pick(p0);(o0[k0]||(o0[k0]=[])).push({x,p0})}));return o0},[e,t]),
+ held=U.useMemo(()=>{let o0={};prof.forEach(x=>liveP(x.u).forEach(p0=>{let k0=pick(p0);(o0[k0]||(o0[k0]=[])).push({x,p0})}));return o0},[e,t]),
  agreeG=new Set(Object.entries(held).filter(([k0,xs])=>new Set(xs.map(q0=>q0.x.u.w)).size>=2).map(([k0])=>k0.split("|")[0])).size,
+ allHold=prof.reduce((s0,x)=>s0+liveP(x.u).reduce((s1,p0)=>s1+p0.val,0),0),allHoldN=prof.reduce((s0,x)=>s0+liveP(x.u).length,0),
+ activeN=prof.filter(x=>x.dayN>0).length,
+ tape=prof.flatMap(x=>x.buys.filter(b=>b.ts>Q()-86400).map(b=>({b,x}))).sort((q,r)=>r.b.ts-q.b.ts),
+ topBuy=tape.reduce((m0,r)=>!m0||r.b.usd>m0.b.usd?r:m0,null),
  fresh=short.flatMap(x=>x.buys.filter(b=>b.ts>Q()-3600).map(b=>({b,x}))),
  freshStill=fresh.filter(({b,x})=>{let p0=(x.u.pos||[]).find(q0=>q0.slug===b.slug&&q0.out===b.out);return p0&&p0.cur-b.px<=.02}).length,
  pool=U.useMemo(()=>{let big={n:0,w:0,b:0,p:0},rest={n:0,w:0,b:0,p:0};(e.accounts||[]).forEach(u=>{let hs=(u.stats&&u.stats.hist)||[],st=hs.map(r=>r[1]).filter(v=>v>0);if(st.length<10)return;let nm=medv(st);hs.forEach(r=>{if(!(r[1]>0))return;let o0=r[1]/nm>=1.5?big:rest;o0.n++;o0.w+=r[2]>0?1:0;o0.b+=r[1];o0.p+=r[2]})});return{big,rest}},[e]),
- selU=wal?(e.accounts||[]).find(q0=>q0.w===wal):(NW?null:(vis[0]&&vis[0].u)||null),
+ selU=wal?(e.accounts||[]).find(q0=>q0.w===wal):null,
  go=w0=>{location.hash="accounts/"+w0},
  pane=NW?{border:`1px solid ${n.border}`,borderRadius:z.radius.md,overflow:"hidden",background:n.bg}:{border:`1px solid ${n.border}`,borderRadius:z.radius.md,overflow:"auto",height:"min(calc(100vh - 330px), 900px)",minHeight:560,background:n.bg},
  sticky={position:NW?"static":"sticky",top:0,zIndex:2,background:n.bg,padding:"12px 14px",borderBottom:`1px solid ${n.border}`},
  tile=(l0,v0,s0,c0)=>h(K,{key:l0,padding:14},h(T,{size:"xs",mono:!0,style:lab},l0),h("div",{style:{...z.type.xl,fontWeight:z.weight.semibold,fontFamily:z.font.mono,margin:"4px 0 2px",color:c0}},v0),h(T,{size:"xs"},s0)),
  ini=u=>(u.who||u.w.slice(0,2)).split("-").map(q0=>q0[0]).slice(0,2).join("").toUpperCase(),
  strip=h("div",{style:{display:"grid",gridTemplateColumns:NW?"1fr 1fr":"repeat(4,minmax(0,1fr))",gap:10,marginBottom:14}},
-  tile("Who to follow",String(short.length),"beat the close and are not losing",short.length?n.success:void 0),
-  tile("Holding right now",holdN?_(holdVal):"none",holdN+" open bets on the shortlist"),
-  tile("Agreeing today",agreeG+(agreeG===1?" game":" games"),"2+ shortlist accounts on the same side",agreeG?n.warning:void 0),
-  tile("Fresh buys, last hour",String(fresh.length),fresh.length?freshStill+" still near their price":"nothing in the last hour")),
+  tile("Open money",allHoldN?_(allHold):"none",allHoldN+" live bets across "+prof.filter(x=>liveP(x.u).length).length+" accounts"),
+  tile("Active today",activeN+" of "+prof.length,"accounts that bought in the last 24 hours"),
+  tile("Biggest buy, 24h",topBuy?_(topBuy.b.usd):"none",topBuy?(topBuy.x.u.who||topBuy.x.u.w.slice(0,8))+" on "+zp(topBuy.b.title,topBuy.b.out).label:"no buys in the last day"),
+  tile("Same side today",agreeG+(agreeG===1?" game":" games"),"2+ tracked accounts on one side. Context, not a signal",agreeG?n.warning:void 0)),
  row=x=>{let u=x.u,sx=x.sx&&!x.sx.arb?x.sx:null,on=selU&&selU.w===u.w,cf=conf(x),cols=NW?"32px minmax(0,1fr) 62px 26px":"34px minmax(0,1fr) 64px 76px 64px 26px";
   return h("button",{key:u.w,className:"sm-g",type:"button",onClick:()=>go(u.w),"aria-current":on?"true":void 0,style:{all:"unset",boxSizing:"border-box",cursor:"pointer",display:"grid",gridTemplateColumns:cols,gap:10,alignItems:"center",padding:"10px 14px",borderBottom:`1px solid ${n.borderSubtle}`,background:on?n.bgSubtle:"transparent",boxShadow:on?`inset 3px 0 0 ${n.text}`:"none",width:"100%"}},
    h("div",{style:{width:32,height:32,borderRadius:"50%",background:n.bgSubtle,display:"grid",placeItems:"center",...z.type.xs,fontFamily:z.font.mono,fontWeight:z.weight.bold}},ini(u)),
@@ -1593,7 +1597,7 @@ function AcctHub({D:e,wal,sport:t,narrow:NW}){
    NW?null:h("div",{className:"sm-r",style:{textAlign:"right"}},h("span",{style:{whiteSpace:"nowrap"}},h(Lp,null,"Open")),h(M,{size:"sm",mono:!0},u.posVal?_(u.posVal):"–")),
    h("div",{title:x.rec?x.rec.n+" bets, "+x.rec.games+" games":"no record",style:{display:"grid",gridTemplateColumns:"repeat(2,6px)",gap:2}},[0,1,2,3].map(i0=>h("i",{key:i0,style:{width:6,height:6,borderRadius:1,background:i0<cf?n.textSecondary:n.borderSubtle}}))))},
  grpHead=(l0,r0)=>h("div",{key:"g"+l0,style:{display:"flex",justifyContent:"space-between",padding:"6px 14px",background:n.bgSubtle,borderBottom:`1px solid ${n.borderSubtle}`}},h(T,{size:"xs",mono:!0,style:lab},l0),h(T,{size:"xs",mono:!0,style:lab},r0)),
- gnames={w:["Worth following","sharp, winning or not yet clear"],l:["Sharp but losing","skill, no profit yet"],o:["Not sharp or not enough history",""]},
+ gnames={w:["Proven sharp","beat the close, winning or not yet clear"],l:["Sharp but losing","skill, no profit yet"],o:["Unproven or not sharp","not enough history to say"]},
  listRows=[];
  ["w","l","o"].forEach(g0=>{let xs=vis.filter(x=>gOf(x)===g0);if(!xs.length)return;if(flt===1||flt===4)listRows.push(grpHead(gnames[g0][0],String(xs.length)));xs.forEach(x=>listRows.push(row(x)))});
  let feed=flt===4?prof.filter(x=>fw.includes(x.u.w)).flatMap(x=>x.buys.map(b=>({...b,a:x}))).filter(b=>b.ts>Q()-86400).sort((q,r)=>r.ts-q.ts).slice(0,6):[],
@@ -1602,7 +1606,7 @@ function AcctHub({D:e,wal,sport:t,narrow:NW}){
    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},h(bp,{size:"sm",options:fopts,value:fopts[flt],onChange:v0=>setFlt(Math.max(0,fopts.indexOf(v0)))}),h(bp,{size:"sm",options:Object.keys(sorts),value:so,onChange:setSo})),
    h(T,{size:"xs"},"The squares show how much history backs the label. Four means hundreds of bets over weeks; one means a few days.")),
   feed.length?h("div",{style:{padding:"10px 14px",borderBottom:`1px solid ${n.borderSubtle}`,display:"grid",gap:6}},h(T,{size:"xs",mono:!0,style:lab},"Latest buys from accounts you follow"),feed.map((b,i0)=>{let lb=zp(b.title,b.out);return h(M,{key:i0,size:"sm"},h("b",null,b.a.u.who||b.a.u.w.slice(0,8))+" bought ",h("b",null,lb.label)," "+_(b.usd)+" at "+Math.round(b.px*100)+"¢ ",h(T,{size:"xs"},qe(b.ts)+" ago"))})):null,
-  listRows.length?listRows:h("div",{style:{padding:20}},h(T,{size:"base"},flt===4?"Star an account to follow it.":"No accounts match this filter right now."))),
+  listRows.length?listRows:h("div",{style:{padding:20}},flt===4?h(T,{size:"base"},"Star an account to follow it."):flt===0?(cl=>h("div",null,h(T,{size:"base"},"No account clears the bar yet (10 bets, 5 games, t of 2 or more against the close)."),cl?h("div",{style:{marginTop:8}},h(T,{size:"sm"},"Closest: "+(cl.u.who||cl.u.w.slice(0,8))+", t "+cl.rec.t+" over "+cl.rec.n+" bets in "+cl.rec.games+" games.")):null,h("div",{style:{marginTop:12}},h(co,{variant:"secondary",size:"sm",onClick:()=>setFlt(1)},"See all accounts"))))(prof.filter(x=>x.rec).sort((q,r)=>r.rec.t-q.rec.t)[0]):h(T,{size:"base"},"No accounts match this filter right now."))),
  detail=null,trustPane=null;
  if(selU){
   let u=selU,x=AcctCalc(u,"all"),sr=fw.includes(u.w),sx=x.sx&&!x.sx.arb?x.sx:null,
@@ -1650,10 +1654,10 @@ function AcctHub({D:e,wal,sport:t,narrow:NW}){
      h("div",null,statusTag(p0)))}))
    ):h("div",{style:{padding:20}},h(T,{size:"base"},"No open bets right now."))),
   agreeRows=live.map(p0=>{let k0=pick(p0),hs=(held[k0]||[]).filter(q0=>q0.x.u.w!==u.w),opp=Object.entries(held).filter(([q0])=>q0.split("|")[0]===Hp(p0.slug)&&q0!==k0).flatMap(([q0,xs])=>xs).filter(q0=>q0.x.u.w!==u.w);return{p0,hs,opp}}).filter(r=>r.hs.length||r.opp.length).sort((q,r)=>r.hs.length-q.hs.length),
-  agreeTab=h("div",null,h("div",{style:{padding:"10px 14px 4px"}},h(T,{size:"xs"},"Their live bets that other shortlist accounts also hold. Several good accounts on one side is a stronger read than one.")),
+  agreeTab=h("div",null,h("div",{style:{padding:"10px 14px 4px"}},h(T,{size:"xs"},"Their live bets that other tracked accounts also hold. Context only: it shows where the money is, it is not a pick.")),
    agreeRows.length?agreeRows.map((r,i0)=>h("div",{key:i0,style:{padding:"10px 14px",borderBottom:`1px solid ${n.borderSubtle}`}},h(M,{size:"base"},h("b",null,r.p0.mk.label),h(T,{size:"base"}," · "+(bl(Hp(r.p0.slug))||r.p0.title))),
     r.hs.length?h("div",null,h(se,{tone:"ok",size:"xs"},"Also on this side: "),h(T,{size:"xs"},r.hs.map(q0=>(q0.x.u.who||q0.x.u.w.slice(0,8))+" "+_(q0.p0.val)).join(", "))):null,
-    r.opp.length?h("div",null,h(se,{tone:"bad",size:"xs"},"Against: "),h(T,{size:"xs"},r.opp.map(q0=>(q0.x.u.who||q0.x.u.w.slice(0,8))+" "+_(q0.p0.val)).join(", "))):null)):h("div",{style:{padding:20}},h(T,{size:"base"},"None of the other shortlist accounts hold the same game right now."))),
+    r.opp.length?h("div",null,h(se,{tone:"bad",size:"xs"},"Against: "),h(T,{size:"xs"},r.opp.map(q0=>(q0.x.u.who||q0.x.u.w.slice(0,8))+" "+_(q0.p0.val)).join(", "))):null)):h("div",{style:{padding:20}},h(T,{size:"base"},"None of the other tracked accounts hold the same game right now."))),
   hs0=[...hist].sort((q,r)=>r[0]-q[0]).slice(0,60),
   histTab=h("div",null,h("div",{style:{padding:"10px 14px 4px"}},h(T,{size:"xs"},hist.length?"Their last "+hist.length+" settled sports markets. Size is the total bought in one market; ROI is profit over what they put in.":"Their settled history loads on the next full data refresh.")),
    hs0.length?[h("div",{key:"h",style:{display:"grid",gridTemplateColumns:"70px 1fr 90px 90px",gap:8,padding:"6px 14px"}},["When","Size vs normal","Staked","Result"].map(q0=>h("span",{key:q0},h(Lp,null,q0)))),...hs0.map((r,i0)=>{let m0=normal?r[1]/normal:null;return h("div",{key:i0,style:{display:"grid",gridTemplateColumns:"70px 1fr 90px 90px",gap:8,padding:"7px 14px",borderTop:`1px solid ${n.borderSubtle}`,alignItems:"center"}},h(T,{size:"xs",mono:!0},qe(r[0])+" ago"),h(T,{size:"sm",mono:!0},m0!=null?m0.toFixed(1)+"x":"–"),h(M,{size:"sm",mono:!0},_(r[1])),h(se,{tone:r[2]>0?"ok":r[2]<0?"bad":"muted",size:"sm",mono:!0},(r[2]>0?"+":r[2]<0?"-":"")+_(Math.abs(r[2]))))})]:null),
@@ -1679,9 +1683,15 @@ function AcctHub({D:e,wal,sport:t,narrow:NW}){
   detail=h("div",{className:"sm-nosb",style:pane},h("div",{style:{position:NW?"static":"sticky",top:0,zIndex:2,background:n.bg}},hero,tabBar),centerBody);
   trustPane=h("div",{className:"sm-nosb",style:pane},trust)
  }
- let empty=h("div",{style:{...pane,padding:20}},h(T,{size:"base"},wal?"That account is not in the tracked list. It may have dropped off.":"Pick an account to see what it holds."),wal?h("div",{style:{marginTop:12}},h(co,{variant:"secondary",size:"sm",onClick:()=>{location.hash="accounts"}},"← All accounts")):null);
- if(NW)return h("div",null,wal?null:strip,wal?(selU?detail:empty):listPane);
- return h("div",null,strip,h("div",{style:{display:"grid",gridTemplateColumns:"minmax(380px,430px) minmax(0,1fr) 330px",gap:12,alignItems:"start"}},listPane,selU?detail:empty,selU?trustPane:h("div",null)))}
+ let tapeRows=tape.slice(0,60).map(({b:b0,x:x0},i0)=>{let lb=zp(b0.title,b0.out),p0=(x0.u.pos||[]).find(q0=>q0.slug===b0.slug&&q0.out===b0.out),d0=p0&&p0.cur>.01&&p0.cur<.99?(p0.cur-b0.px)*100:null,m0=x0.typical?b0.usd/x0.typical:null;
+  return h("button",{key:i0,className:"sm-g",type:"button",onClick:()=>go(x0.u.w),style:{all:"unset",boxSizing:"border-box",cursor:"pointer",display:"grid",gridTemplateColumns:NW?"minmax(0,1fr) auto":"minmax(0,1fr) 150px 130px 70px",gap:NW?4:14,alignItems:"center",padding:"10px 14px",borderBottom:`1px solid ${n.borderSubtle}`,width:"100%"}},
+   h("div",{style:{minWidth:0}},h(M,{size:"base"},h("b",null,x0.u.who||x0.u.w.slice(0,8))," bought ",h("b",null,lb.label),lb.ok?h(T,{size:"base"}," \u00B7 "+lb.kind):null),h("div",null,h(T,{size:"xs"},(bl(Hp(b0.slug))||b0.title)+" \u00B7 "),h(se,{tone:x0.cls.tone,size:"xs"},x0.cls.k))),
+   h("div",{style:{textAlign:NW?"right":"left"}},h(M,{size:"sm",mono:!0},_(b0.usd)+" at "+Math.round(b0.px*100)+"\u00A2"),m0!=null&&m0>=1.5?h("div",null,h(se,{tone:"warn",size:"xs"},m0.toFixed(1)+"x their usual")):null),
+   NW?null:h("div",null,d0!=null?h(se,{tone:d0>=-2?"ok":"bad",size:"xs",mono:!0},"now "+(d0>=0?"+":"-")+Math.abs(d0).toFixed(1)+"\u00A2 vs paid"):h(T,{size:"xs"},"not live")),
+   NW?null:h(T,{size:"xs",mono:!0},qe(b0.ts)+" ago"))}),
+ empty=h("div",{className:"sm-nosb",style:wal?{...pane,padding:20}:pane},wal?h(T,{size:"base"},"That account is not in the tracked list. It may have dropped off."):h("div",null,h("div",{style:{...sticky}},h("div",null,h(T,{size:"xs",mono:!0,style:lab},"Latest buys, last 24 hours")),h("div",null,h(T,{size:"xs"},"Every tracked account, newest first. Tap a buy to open the account. Sharp money is context, not a pick."))),tapeRows.length?tapeRows:h("div",{style:{padding:20}},h(T,{size:"base"},"No tracked account has bought in the last 24 hours."))),wal?h("div",{style:{marginTop:12}},h(co,{variant:"secondary",size:"sm",onClick:()=>{location.hash="accounts"}},"\u2190 All accounts")):null);
+ if(NW)return h("div",null,wal?null:strip,wal?(selU?detail:empty):h("div",null,listPane,h("div",{style:{marginTop:12}},empty)));
+ return h("div",null,strip,h("div",{style:{display:"grid",gridTemplateColumns:selU?"minmax(380px,430px) minmax(0,1fr) 330px":"minmax(380px,430px) minmax(0,1fr)",gap:12,alignItems:"start"}},listPane,selU?detail:empty,selU?trustPane:null))}
 function SmIco({d,size=18}){return U.createElement("svg",{width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":"true"},d)}
 var SmNav=[["Markets",[["Board","Where the sharp side is",U.createElement(U.Fragment,null,U.createElement("rect",{x:3,y:3,width:7,height:9,rx:1}),U.createElement("rect",{x:14,y:3,width:7,height:5,rx:1}),U.createElement("rect",{x:14,y:12,width:7,height:9,rx:1}),U.createElement("rect",{x:3,y:16,width:7,height:5,rx:1}))],["Game","One game, every signal",U.createElement(U.Fragment,null,U.createElement("circle",{cx:12,cy:12,r:10}),U.createElement("circle",{cx:12,cy:12,r:6}),U.createElement("circle",{cx:12,cy:12,r:2}))],["Props","Player prop money",U.createElement(U.Fragment,null,U.createElement("path",{d:"M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"}),U.createElement("circle",{cx:12,cy:7,r:4}))],["Accounts","Sharp accounts and their bets",U.createElement(U.Fragment,null,U.createElement("path",{d:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"}),U.createElement("circle",{cx:9,cy:7,r:4}),U.createElement("path",{d:"M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"}))]]],["Reads",[["Top Reads","Games ranked by agreeing signals",U.createElement("polygon",{points:"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"})],["NFL Model","The Vault line against the sharp money",U.createElement(U.Fragment,null,U.createElement("path",{d:"M4.5 19.5C2.5 11 8 4.5 19.5 4.5c2 8.5-3.5 15-15 15z"}),U.createElement("path",{d:"M9.5 14.5l5-5M11 9.5l1.5 1.5M13 11.5l1.5 1.5M8.5 12.5l1.5 1.5"}))],["CFB Model","Our model against the sharp money",U.createElement(U.Fragment,null,U.createElement("path",{d:"M22 9L12 4 2 9l10 5 10-5z"}),U.createElement("path",{d:"M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6"}))],["CFB Scoreboard","Our model against JP+",U.createElement(U.Fragment,null,U.createElement("path",{d:"M3 3v18h18"}),U.createElement("path",{d:"M7 15v3M12 9v9M17 5v13"}))],["Edge Board","Novig against Pinnacle, biggest +EV",U.createElement(U.Fragment,null,U.createElement("path",{d:"M3 17l6-6 4 4 8-8"}),U.createElement("path",{d:"M15 7h6v6"}))]]]];
 function SmSide({pg,go,collapsed,toggle,hidden}){let chev=(0,a.jsx)(SmIco,{size:16,d:(0,a.jsx)("path",{d:"m11 17-5-5 5-5M18 17l-5-5 5-5"})});return(0,a.jsxs)("aside",{className:"sm-side",id:"sm-side","aria-label":"Pages",inert:hidden?"":void 0,children:[(0,a.jsxs)("div",{className:"sm-head",children:[(0,a.jsx)("span",{className:"sm-mark","aria-hidden":"true",children:"SM"}),(0,a.jsxs)("div",{className:"sm-brandtxt",children:["Vault ",(0,a.jsx)("b",{children:"Sharp Money"})]}),(0,a.jsx)("button",{type:"button",className:"sm-tog",onClick:toggle,"aria-label":collapsed?"Expand the sidebar":"Collapse the sidebar","aria-expanded":!collapsed,"data-tip":collapsed?"Expand":"Collapse",title:collapsed?void 0:"Collapse ( [ )",children:chev})]}),(0,a.jsx)("nav",{"aria-label":"Pages",children:SmNav.map(([sec,items])=>(0,a.jsxs)("div",{className:"sm-sec",children:[(0,a.jsx)("div",{className:"sm-secl",children:sec}),items.map(([name,what,ico])=>{let on=name===pg;return(0,a.jsxs)("button",{type:"button",className:"sm-a","aria-current":on?"page":void 0,"aria-label":collapsed?name:void 0,"data-tip":name,title:collapsed?void 0:what,onClick:()=>go(name),children:[(0,a.jsx)(SmIco,{d:ico}),(0,a.jsx)("span",{className:"sm-l",children:name})]},name)})]},sec))})]})}
