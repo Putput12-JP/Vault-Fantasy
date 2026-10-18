@@ -162,12 +162,12 @@
     var win = stake * (1 / c - 1), exp = thin ? null : stake * (tier == null ? x.ev : tier) / 100;
     return o + '<span><b>Quarter Kelly: bet ' + usd(stake) + '</b> to win ' + usd(win) + (exp != null ? ', expect ' + (exp >= 0 ? '+' : '') + '$' + exp.toFixed(exp < 10 ? 2 : 0) : ', the book is too thin to price that size') + (cap != null && raw > cap ? ' (capped by the room at +EV)' : '') + '</span></div>';
   }
-  function detailInner(x) {
+  function detailInner(x, noStake) {
     var f = x.fill || {}, o = '', now = Date.now() / 1000;
     var chg = function (l, v) { return v == null ? '' : '<div><small>' + l + '</small><b class="' + (v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : '') + '">' + sg(v) + '</b></div>'; };
     var ch = chg('1H', x.pm1) + chg('4H', x.pm) + (x.po != null ? chg('vs open', x.po) : x.ol != null ? '<div><small>vs open</small><b>line was ' + x.ol + '</b></div>' : '');
     if (ch) o += '<div class="veb-chg">' + ch + '<span>Pinnacle\u2019s fair chance for this side, in points</span></div>';
-    o += stakeHtml(x);
+    if (!noStake) o += stakeHtml(x);
     o += '<div class="veb-lad">';
     if (x.fill) {
       [['100', '$100'], ['500', '$500'], ['1000', '$1k']].forEach(function (k) { o += '<div><small>EV at ' + k[1] + '</small><b class="' + (f[k[0]] == null ? '' : f[k[0]] > 0 ? 'pos' : 'neg') + '">' + (f[k[0]] == null ? 'too thin' : sg(f[k[0]]) + '%') + '</b></div>'; });
@@ -197,7 +197,7 @@
         tile('Pinnacle', x.pm != null ? sg(x.pm) + ' pts' : '–', '4h move', mvOn) +
         tile('Exchanges', q && q.of ? q.confirm + ' of ' + q.of : '–', 'agree', !!(q && q.confirm)) + '</div>' +
       ((x.stale || steam(x)) ? '<div class="veb-sub veb-sub2">' + steamHtml(x) + (x.stale ? '<i class="veb-stale">Pinnacle moved, Novig did not</i>' : '') + '</div>' : '') +
-      '<div class="veb-sec"><span>Detail</span><span>context only, not a bet signal</span></div>' + detailInner(x) + '</div></div>';
+      '<div class="veb-sec"><span>Detail</span><span>context only, not a bet signal</span></div>' + detailInner(x, true) + '</div></div>';
     return o;
   }
 
