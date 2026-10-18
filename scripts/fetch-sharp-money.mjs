@@ -286,6 +286,52 @@ function pinFair(P, mkt, side, line) {
 // a sharp account working a resting limit order, or betting a market we did not
 // match, never shows up. Reading each sharp wallet's own activity closes that,
 // and feeds the Sharp Accounts page (recent buys + current holdings).
+// ── per-account settled-market ledger ──────────────────────────────────
+// Polymarket's activity feed stops at ~5,500 rows per query, which for a busy account is
+// about four days. So history is walked in windows (`end=` is a real upper bound), kept as
+// per-market cash flow in state, and extended a window at a time on every refresh. Nothing
+// already counted is dropped until it is 150 days old.
+const SPORTY = /^(nfl|cfb|nba|cbb|ncaaf|mlb|nhl|wnba)-/;
+const LED_KEEP = 150 * DAY, LED_PAGE = 500, LED_PAGES = 11;
+const actId = x => `${(x.transactionHash || '').slice(0, 14)}:${String(x.asset || x.conditionId || '').slice(-8)}:${x.type}:${x.size ?? x.usdcSize}`;
+function ledAdd(L, x) {
+  if (x.type !== 'TRADE' && x.type !== 'REDEEM' && x.type !== 'MERGE' && x.type !== 'SPLIT') return;
+  const c = L.m[x.conditionId] ||= [x.timestamp, x.timestamp, 0, 0, 0, SPORTY.test(x.slug || '') ? 1 : 0];
+  c[0] = Math.min(c[0], x.timestamp); c[1] = Math.max(c[1], x.timestamp);
+  const u = +x.usdcSize || 0;
+  // MERGE hands back $1 per YES+NO pair and SPLIT spends it. A wallet that buys both sides and merges (a market maker) looks like it lost the whole stake if MERGE is ignored.
+  if (x.type === 'REDEEM' || x.type === 'MERGE') c[4] += u; else if (x.type === 'SPLIT') c[4] -= u; else if (x.side === 'BUY') c[2] += u; else c[3] += u;
+}
+// Fold a walk's rows into the ledger. `dir` is 'new' (newer than hi) or 'old' (older than lo); a row at exactly the edge timestamp counts only if not seen.
+function ledIngest(L, rows, dir) {
+  const edge = new Set(dir === 'new' ? L.edgeHi : L.edgeLo), at = dir === 'new' ? L.hi : L.lo;
+  const fresh = L.hi == null ? rows : rows.filter(x => dir === 'new' ? (x.timestamp > at || (x.timestamp === at && !edge.has(actId(x)))) : (x.timestamp < at || (x.timestamp === at && !edge.has(actId(x)))));
+  for (const x of fresh) ledAdd(L, x);
+  if (!fresh.length) return 0;
+  let mx = -Infinity, mn = Infinity; for (const x of fresh) { if (x.timestamp > mx) mx = x.timestamp; if (x.timestamp < mn) mn = x.timestamp; }
+  if (L.hi == null || mx > L.hi) { L.edgeHi = fresh.filter(x => x.timestamp === mx).map(actId); L.hi = mx; } else if (mx === L.hi) L.edgeHi = [...new Set([...L.edgeHi, ...fresh.filter(x => x.timestamp === mx).map(actId)])];
+  if (L.lo == null || mn < L.lo) { L.edgeLo = fresh.filter(x => x.timestamp === mn).map(actId); L.lo = mn; } else if (mn === L.lo) L.edgeLo = [...new Set([...L.edgeLo, ...fresh.filter(x => x.timestamp === mn).map(actId)])];
+  return fresh.length;
+}
+// Walk newest-first from `from` down to `stop`, one 5,500-row window at a time. Returns rows (deduped across windows), whether it reached `stop`, and whether the account has nothing older.
+async function actWalk(w, from, stop, maxWin) {
+  const rows = [], seen = new Set(); let end = from, reached = false, exhausted = false;
+  for (let win = 0; win < maxWin && !reached && !exhausted; win++) {
+    let oldest = null, full = true;
+    for (let p = 0; p < LED_PAGES; p++) {
+      let r; try { r = await getJSON(`https://data-api.polymarket.com/activity?user=${w}&limit=${LED_PAGE}&offset=${p * LED_PAGE}&end=${end}&sortBy=TIMESTAMP&sortDirection=DESC`); } catch (e) { if (/HTTP 400/.test(e.message)) break; throw e; }
+      if (!Array.isArray(r) || !r.length) { full = false; break; }
+      for (const x of r) { const id = x.timestamp + '|' + actId(x); if (!seen.has(id)) { seen.add(id); rows.push(x); } }
+      oldest = r[r.length - 1].timestamp;
+      if (r.length < LED_PAGE) { full = false; break; }
+    }
+    if (!full) { exhausted = true; break; }
+    if (oldest == null || oldest >= end) { exhausted = true; break; }
+    if (oldest <= stop) reached = true;
+    end = oldest;
+  }
+  return { rows, reached, exhausted };
+}
 let WT = [];                                                  // new sharp-wallet trades this poll
 async function walletPoll(S, wallets) {
   const t = now(); S.acct ||= {}; WT = [];
@@ -320,29 +366,32 @@ async function walletPoll(S, wallets) {
     // account look like a 90% winner, so this is rebuilt from the account's own
     // cash flow instead: per market, sells + redemptions - buys + what it still holds.
     // Markets still in play are skipped; only markets we saw from their first trade count.
-    if (A.trades[0] && A.trades[0].ts > t - 7 * DAY && (!A.stats || !A.stats.hist || t - A.stats.ts > 6 * H)) {
-      const act = [];
-      for (let p = 0; p < 10; p++) {
-        const r = await getJSON(`https://data-api.polymarket.com/activity?user=${w}&limit=500&offset=${p * 500}&sortBy=TIMESTAMP&sortDirection=DESC`);
-        if (!Array.isArray(r) || !r.length) break;
-        act.push(...r); if (r.length < 500) break;
+    if (A.trades[0] && A.trades[0].ts > t - 7 * DAY && (!A.stats || !A.stats.hist || ARG.backfill || t - A.stats.ts > 6 * H)) {
+      let L = A.led;
+      if (!L || L.hi == null) {                                   // built whole, then stored, so a failed walk never leaves a half ledger to double count
+        L = { m: {}, lo: null, hi: null, edgeHi: [], edgeLo: [], done: false };
+        const r = await actWalk(w, t, t - LED_KEEP, ARG.backfill ? 40 : 1);
+        ledIngest(L, r.rows, 'new'); L.done = r.exhausted; A.led = L;
+      } else {
+        const f = await actWalk(w, t, L.hi, 6);
+        if (!f.reached && !f.exhausted) { A.led = null; return; }      // a gap we cannot close: start the ledger over next refresh rather than count half a market
+        ledIngest(L, f.rows, 'new');
+        if (!L.done && L.lo > t - LED_KEEP) {
+          const o = await actWalk(w, L.lo, t - LED_KEEP, ARG.backfill ? 40 : 1);
+          ledIngest(L, o.rows, 'old'); if (o.exhausted) L.done = true;
+        }
       }
+      for (const [id, c] of Object.entries(L.m)) if (c[1] < t - LED_KEEP) delete L.m[id];
       const hp = await getJSON(`https://data-api.polymarket.com/positions?user=${w}&sizeThreshold=1&limit=500&sortBy=CURRENT&sortDirection=DESC`);
       const held = {}, live = new Set();
       for (const x of Array.isArray(hp) ? hp : []) { held[x.conditionId] = (held[x.conditionId] || 0) + x.currentValue; if (x.curPrice > 0.03 && x.curPrice < 0.97) live.add(x.conditionId); }
-      const t0 = act.length ? act[act.length - 1].timestamp : t, C = {};
-      for (const x of act) {
-        const c = C[x.conditionId] ||= { buy: 0, sell: 0, cash: 0, first: x.timestamp, slug: x.slug };
-        c.first = Math.min(c.first, x.timestamp);
-        if (x.type === 'TRADE') { if (x.side === 'BUY') { c.buy += x.usdcSize; c.cash -= x.usdcSize; } else { c.sell += x.usdcSize; c.cash += x.usdcSize; } }
-        else if (x.type === 'REDEEM') c.cash += x.usdcSize;
-      }
-      const SPORTY = /^(nfl|cfb|nba|cbb|ncaaf|mlb|nhl|wnba)-/;
+      const t0 = L.done ? 0 : L.lo, C = {};
+      for (const [id, m] of Object.entries(L.m)) C[id] = { buy: m[2], sell: m[3], cash: m[3] + m[4] - m[2], first: m[0], sp: !!m[5] };
       const agg = xs => { let n = 0, wn = 0, buy = 0, sell = 0, pnl = 0; for (const [, c] of xs) { n++; buy += c.buy; sell += c.sell; pnl += c.pnl; if (c.pnl > 0) wn++; } return n >= 5 && buy > 0 ? { n, win: r3(wn / n), roi: r3(pnl / buy), pnl: Math.round(pnl), vol: Math.round(buy), flip: r3(sell / buy) } : null; };
       const done = Object.entries(C).filter(([id, c]) => !live.has(id) && c.first > t0 + DAY && c.buy > 0).map(([id, c]) => [id, { ...c, pnl: c.cash + (held[id] || 0) }]);
       // per-market stake and result, newest first, so the Accounts page can ask "do their bigger-than-usual bets win more?" ([first trade ts, total bought $, P&L $])
-      const hist = done.filter(([, c]) => SPORTY.test(c.slug || '')).sort((a, b) => b[1].first - a[1].first).slice(0, 250).map(([, c]) => [c.first, Math.round(c.buy), Math.round(c.pnl)]);
-      A.stats = { ts: t, days: Math.round((t - t0) / DAY), capped: act.length >= 5000, all: agg(done), sp: agg(done.filter(([, c]) => SPORTY.test(c.slug || ''))), hist };
+      const hist = done.filter(([, c]) => c.sp).sort((a, b) => b[1].first - a[1].first).slice(0, 400).map(([, c]) => [c.first, Math.round(c.buy), Math.round(c.pnl)]);
+      A.stats = { ts: t, days: Math.round((t - (L.lo || t)) / DAY), capped: !L.done, all: agg(done), sp: agg(done.filter(([, c]) => c.sp)), hist };
     }
   });
   for (const [w, A] of Object.entries(S.acct)) if (!A.trades.length && !A.pos.length && A.cur < t - 14 * DAY) delete S.acct[w];
