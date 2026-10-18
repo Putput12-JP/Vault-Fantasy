@@ -45,11 +45,12 @@ class Restate(unittest.TestCase):
 
 class RestateLog(unittest.TestCase):
     def test_log_is_the_current_picks(self):
-        board = [cm.restate_row(row(key='cfb:1'), lambda *a: 12.0), cm.restate_row(row(key='cfb:2'), lambda *a: 4.0), cm.restate_row(row(key='cfb:3', logged=700), lambda *a: -9.0)]
+        board = [cm.restate_row(row(key='cfb:1', market_margin=-3.0, entry=3.0), lambda *a: 12.0), cm.restate_row(row(key='cfb:2'), lambda *a: 4.0), cm.restate_row(row(key='cfb:3', logged=700), lambda *a: -9.0),
+                 cm.restate_row(row(key='cfb:4'), lambda *a: 12.0)]      # cfb:4 is 9 points off but on the favorite: not a pick under the current rule
         log = [dict(key='cfb:1', week=6, kick=1000, home='Home U', away='Away U', home_id=1, away_id=2, side='home', team='Home U', entry=-3.0, logged=500, backfill=False, result='W', hs=1),
                dict(key='cfb:2', week=6, kick=1000, home='Home U', away='Away U', home_id=1, away_id=2, side='home', team='Home U', entry=-3.0, logged=500, backfill=False)]
         out = {e['key']: e for e in cm.restate_log(board, log)}
-        self.assertEqual(set(out), {'cfb:1', 'cfb:3'})                                       # cfb:2 is no longer a pick
+        self.assertEqual(set(out), {'cfb:1', 'cfb:3'})                                       # cfb:2 is under the bar, cfb:4 is a favorite pick
         self.assertEqual((out['cfb:1']['logged'], out['cfb:1']['backfill']), (500, False))    # same side: keeps its logged time and flag
         self.assertNotIn('result', out['cfb:1'])                                             # and is graded again
         self.assertTrue(out['cfb:3']['backfill']); self.assertEqual(out['cfb:3']['side'], 'away')   # new pick: a point-in-time reconstruction

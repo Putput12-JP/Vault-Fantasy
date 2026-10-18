@@ -81,8 +81,7 @@ def by_week(rows):
     return [dict(week=w, **summarize([r for r in rows if r['week'] == w])) for w in sorted({r['week'] for r in rows}, reverse=True)]
 
 
-def official_picks(log):
-    """our official pick log (graded at the line each pick was made at), overall and by week: the analogue of JP+'s selection engine"""
+def _tally(log):
     out = {}
     for e in log or []:
         if e.get('result') not in ('W', 'L', 'P'): continue
@@ -90,6 +89,14 @@ def official_picks(log):
     tot = dict(w=sum(v['w'] for v in out.values()), l=sum(v['l'] for v in out.values()), p=sum(v['p'] for v in out.values()))
     for v in list(out.values()) + [tot]: v['pct'] = round(v['w'] / (v['w'] + v['l']), 4) if v['w'] + v['l'] else None
     return dict(total=tot, weeks=[dict(week=w, **out[w]) for w in sorted(out, reverse=True)])
+
+
+def official_picks(log, dropped=None):
+    """our official pick log (graded at the line each pick was made at), overall and by week: the analogue of JP+'s selection engine.
+    `dropped` is the pick rule's list of picks it removed (cfb_model pick_rule.dropped); with it, `as_logged` is the record as it stood before the rule, rebuilt from the log plus those picks."""
+    out = _tally(log)
+    if dropped: out['as_logged'] = _tally(list(log or []) + [dict(week=d['week'], result=d.get('result')) for d in dropped])
+    return out
 
 
 def summarize(rows):
@@ -136,7 +143,7 @@ def main():
     whole = [r for r in rows if r['jp'] is not None and r['v1'] is not None]
     ver = [r for r in whole if r['jp_verified']]
     out = dict(generated=pd.Timestamp.now('UTC').isoformat(), min_week=MIN_WEEK, jp_games_recorded=len(store), jp_verified=sum(1 for v in store.values() if v.get('verified')),
-               published=summarize(whole), verified=summarize(ver), weeks=by_week(whole), picks=official_picks(model.get('log')),
+               published=summarize(whole), verified=summarize(ver), weeks=by_week(whole), picks=official_picks(model.get('log'), (model.get('pick_rule') or {}).get('dropped')),
                jp_reported=json.load(open(REPORTED)) if os.path.exists(REPORTED) else None,
                clv={k: (model.get('open_check') or {}).get(k) for k in ('clv_n', 'clv_mean', 'clv_pos')},      # our 5+ picks entered at the ESPN open, against the close
                note='Verified: JP+ number recorded by this job before kickoff. Published: JP+ as its site shows it now, which cannot be shown to be pre-kickoff. Lean record: the method\'s side of the ESPN open covered.',
