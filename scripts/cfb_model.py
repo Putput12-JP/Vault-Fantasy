@@ -36,6 +36,7 @@ OUT = os.path.join(DATA, 'cfb_model.json')
 PICK_EDGE = 5.0          # disagree with the market by at least this many points
 LOCK_SECS = 3600         # the final lock: the state an hour before kickoff (or the last run before it, when none fell in that hour)
 PICK_MIN_WEEK = 4        # the first month is dominated by the prior, which has no talent or portal information
+PICK_RULE = 'nofav1'     # a stored board and log carrying another pick-rule stamp are re-picked once (repick_store). nofav1: a pick on the favorite is not an official pick
 BREAKEVEN = 110 / 210
 FBS_ADDITIONS = {16}      # teams new to FBS this season (ESPN ids), added each offseason: 2026 = Sacramento State
 
@@ -251,6 +252,16 @@ def cmd_priors_st(a):
     print('special teams prior written for', len(prior), 'teams; lam', lam, 'carry', carry, 'weight', wt)
 
 
+def pick_ok(edge, week, mkt):
+    """The one pick rule. A game is an official pick when the model is PICK_EDGE or more points from the market, from PICK_MIN_WEEK on, and the model's side is NOT the favorite.
+    mkt is the market's home margin (+ = home favoured), edge = model margin minus mkt, so the model's side is home when edge > 0. A pick'em (mkt 0) has no favorite.
+    Why: 5+ point picks on the favorite covered 38.2% against the close over 2022-26 (21-34, n=55; underdog picks 54.4%), and JP+ vetoes the same kind of pick
+    (its chalk-trap veto). docs/retro/cfb-week-7.md, scripts/cfb_week7_study.py."""
+    if abs(edge) < PICK_EDGE or week < PICK_MIN_WEEK: return False
+    favourite = mkt != 0 and (edge > 0) == (mkt > 0)
+    return not favourite
+
+
 def restate_row(b, proj):
     """Re-project one board row with the current model, point-in-time (ratings from games before its week), at the market line the row already holds.
     The old official margin is kept as b['v1'] (the shadow), the old v2-only shadow is dropped, and every result field is cleared so the row is graded again.
@@ -261,7 +272,7 @@ def restate_row(b, proj):
     mm = b['market_margin']; pred = proj(b['week'], b['home_id'], b['away_id'], bool(b.get('neutral')))
     edge = pred - mm; side = 'home' if edge > 0 else 'away'
     b.update(model_margin=round(pred, 1), edge=round(edge, 1), side=side, team=b['home'] if side == 'home' else b['away'], entry=round(-mm if side == 'home' else mm, 1),
-             is_pick=bool(abs(edge) >= PICK_EDGE and b['week'] >= PICK_MIN_WEEK))
+             is_pick=pick_ok(edge, b['week'], mm))
     b['pick'] = dict(side=side, team=b['team'], line=b['entry']) if b['is_pick'] else None
     if side != old['side'] and b.get('line_captured') is not None: b['line_captured'] = round(-b['line_captured'], 1)
     for k in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by', 'tile_line', 'tile_result', 'tile_line_src'): b.pop(k, None)
@@ -273,7 +284,7 @@ def restate_row(b, proj):
     if fn:
         fmm = -fn['entry'] if fn['side'] == 'home' else fn['entry']       # the market margin at the lock
         fe = proj(b['week'], b['home_id'], b['away_id'], bool(b.get('neutral'))) - fmm; fs = 'home' if fe > 0 else 'away'
-        fn.update(side=fs, team=b['home'] if fs == 'home' else b['away'], entry=round(-fmm if fs == 'home' else fmm, 1), edge=round(fe, 1), is_pick=bool(abs(fe) >= PICK_EDGE and b['week'] >= PICK_MIN_WEEK))
+        fn.update(side=fs, team=b['home'] if fs == 'home' else b['away'], entry=round(-fmm if fs == 'home' else fmm, 1), edge=round(fe, 1), is_pick=pick_ok(fe, b['week'], fmm))
         for k in ('result', 'hs', 'as_', 'margin', 'espn_close', 'clv', 'settled_by'): fn.pop(k, None)
     return b
 
@@ -292,6 +303,84 @@ def restate_log(board, log):
         out.append(e)
     out.sort(key=lambda e: e['kick'])
     return out
+
+
+def repick_store(store):
+    """Apply the current pick rule to a stored board and log WITHOUT re-projecting anything: every number on a row (margin, edge, line, result) stays as it was logged, only
+    which rows are official picks changes. A pick the rule drops leaves the log (the official record) and stays on the board as a lean, still graded in the all-games record.
+    Returns the dropped log entries. Safe to run twice (the second run drops nothing)."""
+    dropped = []
+    for b in store.get('board', []):
+        if b.get('market_margin') is None or b.get('edge') is None: continue
+        ok = pick_ok(b['edge'], b['week'], b['market_margin'])
+        b['is_pick'] = ok; b['pick'] = dict(side=b['side'], team=b['team'], line=b['entry']) if ok else None
+        fn = b.get('final')
+        if fn: fn['is_pick'] = pick_ok(fn['edge'], b['week'], -fn['entry'] if fn['side'] == 'home' else fn['entry'])
+        v1 = b.get('v1')
+        if v1 and v1.get('edge') is not None: v1['is_pick'] = pick_ok(v1['edge'], b['week'], b['market_margin'])
+    keep = []
+    for e in store.get('log', []):
+        if pick_ok(e['edge'], e['week'], e['market_margin']): keep.append(e)
+        else: dropped.append(e)
+    store['log'] = keep
+    prev = store.get('pick_rule') or {}
+    store['pick_rule'] = dict(id=PICK_RULE, dropped=(prev.get('dropped') or []) + [dict(key=e['key'], week=e['week'], team=e['team'], entry=e['entry'], edge=e['edge'], result=e.get('result')) for e in dropped],
+                              note='Picks on the favorite are no longer official picks (5+ point picks on the favorite covered 38.2% against the close over 2022-26, n=55). They stay on the board as leans.')
+    return dropped
+
+
+def log_summary_of(log):
+    """the record of the pick log: picks, graded, won/lost/pushed, the z against break-even and the closing-line value"""
+    gr = [e for e in log if e.get('result') in ('W', 'L', 'P')]
+    w = sum(e['result'] == 'W' for e in gr); l = sum(e['result'] == 'L' for e in gr); n = w + l
+    clvs = [e['clv'] for e in gr if e.get('clv') is not None]
+    return dict(picks=len(log), graded=n, won=w, lost=l, pushed=len(gr) - n, expected=round(n * BREAKEVEN, 2),
+                z=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None,
+                clv_n=len(clvs), clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None, clv_pos=round(sum(c > 0 for c in clvs) / len(clvs), 3) if clvs else None)
+
+
+def v1_summary_of(board):
+    """the current model against the previous one (the graded shadow), all games and picks"""
+    gb = [e for e in board if e.get('v1') and e['v1'].get('result') in ('W', 'L')]
+    def _rec(rows):
+        w = sum(r == 'W' for r in rows); l = sum(r == 'L' for r in rows); return [w, l]
+    return dict(games=len(board), graded=len(gb),
+                v2st_all=_rec([e['result'] for e in gb if e.get('result')]), v1_all=_rec([e['v1']['result'] for e in gb]),
+                v2st_picks=_rec([e['result'] for e in gb if e.get('is_pick') and e.get('result')]), v1_picks=_rec([e['v1']['result'] for e in gb if e['v1']['is_pick']]))
+
+
+def final_summary_of(board, log):
+    """what the model said at the lock (an hour before kickoff), against the pick log; the Sharp Money cards at the lock are context, never a pick signal"""
+    logkeys = {x['key']: x for x in log}
+    fg = [e for e in board if e.get('final') and e['final'].get('result') in ('W', 'L')]
+    def _fs(sel, get=lambda e: e['final']['result']):
+        w = sum(get(e) == 'W' for e in sel); return [w, sum(get(e) in ('W', 'L') for e in sel) - w]
+    def _link(e):
+        c = e['final'].get('cards')
+        if c is None: return 'nocard'
+        m, o = c[e['final']['side']], c['away' if e['final']['side'] == 'home' else 'home']
+        return 'with' if m and not o else 'against' if o and not m else 'split' if m and o else 'none'
+    fp = [e for e in fg if e['final']['is_pick']]
+    return dict(locked=sum(1 for e in board if e.get('final')), graded=len(fg),
+        rows=[dict(label='Still a pick when locked', note='A first-sight pick that was still 5+ points from the market, and not the favorite, an hour before kickoff, graded at the locked line.', all=_fs([e for e in fp if e['key'] in logkeys]), keys=[e['key'] for e in fp if e['key'] in logkeys]),
+              dict(label='Dropped by the lock', note='Logged as a pick, but by the lock the gap had closed under 5 points or the pick had become the favorite. Graded at the first-sight line, as in the official record.', all=_fs([logkeys[e['key']] for e in fg if e['key'] in logkeys and not e['final']['is_pick']], lambda x: x['result']), keys=[e['key'] for e in fg if e['key'] in logkeys and not e['final']['is_pick']]),
+              dict(label='Became a pick in the last hour', note='Not a pick when first seen, a pick at the lock.', all=_fs([e for e in fp if e['key'] not in logkeys]), keys=[e['key'] for e in fp if e['key'] not in logkeys]),
+              dict(label='Locked picks with Sharp Money on their side', note='At the lock the model is 5+ points off and a card is on its team and none on the other.', all=_fs([e for e in fp if _link(e) == 'with']), keys=[e['key'] for e in fp if _link(e) == 'with']),
+              dict(label='Locked picks with Sharp Money against them', note='Cards only on the other team.', all=_fs([e for e in fp if _link(e) == 'against']), keys=[e['key'] for e in fp if _link(e) == 'against']),
+              dict(label='Locked picks, Sharp Money split or quiet', note='Cards on both teams, or no card at all.', all=_fs([e for e in fp if _link(e) in ('split', 'none', 'nocard')]), keys=[e['key'] for e in fp if _link(e) in ('split', 'none', 'nocard')])])
+
+
+def cmd_repick(a):
+    """Offline, no network: apply the pick rule to data/cfb_model.json in place and rebuild the summaries that depend on which rows are picks. python3 scripts/cfb_model.py repick"""
+    d = json.load(open(OUT))
+    if (d.get('pick_rule') or {}).get('id') == PICK_RULE: print('already on pick rule', PICK_RULE); return
+    before = dict(log=d.get('log_summary'), v1=d.get('v1_summary'), final=d.get('final_summary'), cards=d.get('cards_summary'))
+    dropped = repick_store(d)
+    d['log_summary'] = log_summary_of(d['log']); d['v1_summary'] = v1_summary_of(d['board']) if d.get('v1_summary') else d.get('v1_summary')
+    d['cards_summary'] = tile_cards_summary(d['board']); d['final_summary'] = final_summary_of(d['board'], d['log'])
+    json.dump(d, open(OUT, 'w'))
+    json.dump(dict(before=before, after=dict(log=d['log_summary'], v1=d['v1_summary'], final=d['final_summary'], cards=d['cards_summary']), dropped=d['pick_rule']['dropped']), open(os.path.join(tempfile.gettempdir(), 'cfb_repick_report.json'), 'w'))
+    print(json.dumps(dict(dropped=len(dropped), before_log=before['log'], after_log=d['log_summary'], before_v1=before['v1'], after_v1=d['v1_summary'])))
 
 
 def grade(entry, g26):
@@ -851,6 +940,7 @@ def cmd_update(a):
     if restating:
         for b_ in store['board']: restate_row(b_, proj)
         store['log'] = restate_log(store['board'], store.get('log', []))
+    if store.get('board') and (store.get('pick_rule') or {}).get('id') != PICK_RULE: repick_store(store)      # the pick rule changed: re-pick the stored board and log once, nothing re-projected
     school2id = {}
     for t, v in names.items():
         if len(v) > 2 and v[2]: school2id.setdefault(v[2], t)
@@ -901,7 +991,7 @@ def cmd_update(a):
             mkt = -line
             edge = pred - mkt
             pick = None
-            if abs(edge) >= PICK_EDGE and wk >= PICK_MIN_WEEK:
+            if pick_ok(edge, wk, mkt):
                 side = 'home' if edge > 0 else 'away'
                 pick = dict(side=side, team=g['home' if side == 'home' else 'away']['short'], line=line if side == 'home' else -line)
             mc = None if started else market_check(g, 'home' if edge > 0 else 'away', oline)    # in-game lines and money are live, not a read on the pre-game market
@@ -924,7 +1014,7 @@ def cmd_update(a):
                 pred = proj(int(r.week), h, aw, neutral); mkt = float(r.homeTeamSpread); edge = pred - mkt
                 nm = lambda t: (names.get(t, [str(t)]) + ['', ''])[2] or names[t][0]
                 pick = None
-                if abs(edge) >= PICK_EDGE and int(r.week) >= PICK_MIN_WEEK:
+                if pick_ok(edge, int(r.week), mkt):
                     side = 'home' if edge > 0 else 'away'
                     pick = dict(side=side, team=nm(h if side == 'home' else aw), line=-mkt if side == 'home' else mkt)
                 slate.append(dict(key=f'espn:{r.game_id}', kick=int(k), home=nm(h), away=nm(aw), home_id=h, away_id=aw, week=int(r.week), neutral=neutral, backfill=True,
@@ -933,7 +1023,7 @@ def cmd_update(a):
             for x_ in slate:
                 pred1 = v1_proj(x_['week'], x_['home_id'], x_['away_id'], x_['neutral']); e1 = pred1 - x_['market_margin']; sd1 = 'home' if e1 > 0 else 'away'
                 x_['v1'] = dict(model_margin=round(pred1, 1), edge=round(e1, 1), side=sd1, team=x_['home'] if sd1 == 'home' else x_['away'],
-                                entry=round(-x_['market_margin'] if sd1 == 'home' else x_['market_margin'], 1), is_pick=bool(abs(e1) >= PICK_EDGE and x_['week'] >= PICK_MIN_WEEK), line_src=x_.get('line_src'))
+                                entry=round(-x_['market_margin'] if sd1 == 'home' else x_['market_margin'], 1), is_pick=pick_ok(e1, x_['week'], x_['market_margin']), line_src=x_.get('line_src'))
         feed_cards_ = feed_cards(feed)
         for x_ in slate: x_['blend_margin'] = round(x_['market_margin'] + BLEND_W * x_['edge'], 1)
         slate.sort(key=lambda x: (x['kick'], -abs(x['edge'])))
@@ -1013,12 +1103,7 @@ def cmd_update(a):
             if r: bo.update({k: r[k] for k in ('result', 'espn_close', 'clv', 'margin', 'hs', 'as_') if k in r})
     board.sort(key=lambda x: -x['kick'])
     for e in log: _settle(e, e['key'])
-    gr = [e for e in log if e.get('result') in ('W', 'L', 'P')]
-    w = sum(e['result'] == 'W' for e in gr); l = sum(e['result'] == 'L' for e in gr); n = w + l
-    clvs = [e['clv'] for e in gr if e.get('clv') is not None]
-    summary = dict(picks=len(log), graded=n, won=w, lost=l, pushed=len(gr) - n, expected=round(n * BREAKEVEN, 2),
-                   z=round((w - n * BREAKEVEN) / math.sqrt(n * BREAKEVEN * (1 - BREAKEVEN)), 2) if n else None,
-                   clv_n=len(clvs), clv_mean=round(sum(clvs) / len(clvs), 2) if clvs else None, clv_pos=round(sum(c > 0 for c in clvs) / len(clvs), 3) if clvs else None)
+    summary = log_summary_of(log)
     # context for the page: how the same model (every game, side = whichever way it leans) did vs ESPN's line in the earlier weeks of this season
     earlier = [0, 0]; first = min([b['week'] for b in board], default=None)
     if first:
@@ -1029,31 +1114,9 @@ def cmd_update(a):
                 pred = proj(wk, h, aw, r.neutral_site == True)
                 c = (1 if pred - r.homeTeamSpread > 0 else -1) * ((r.homeFinalScore - r.awayFinalScore) - r.homeTeamSpread)
                 earlier[0 if c > 0 else 1] += c != 0 and 1 or 0
-    def _rec(rows):
-        w = sum(r == 'W' for r in rows); l = sum(r == 'L' for r in rows); return [w, l]
-    gb = [e for e in board if e.get('v1') and e['v1'].get('result') in ('W', 'L')]
-    v1_summary = dict(games=len(board), graded=len(gb),
-                      v2st_all=_rec([e['result'] for e in gb if e.get('result')]), v1_all=_rec([e['v1']['result'] for e in gb]),
-                      v2st_picks=_rec([e['result'] for e in gb if e.get('is_pick') and e.get('result')]), v1_picks=_rec([e['v1']['result'] for e in gb if e['v1']['is_pick']])) if live else None
+    v1_summary = v1_summary_of(board) if live else None
     cards_summary = tile_cards_summary(board)
-    logkeys = {x['key']: x for x in log}
-    fg = [e for e in board if e.get('final') and e['final'].get('result') in ('W', 'L')]
-    def _fs(sel, get=lambda e: e['final']['result']):
-        w = sum(get(e) == 'W' for e in sel); return [w, sum(get(e) in ('W', 'L') for e in sel) - w]
-    def _link(e):
-        c = e['final'].get('cards')
-        if c is None: return 'nocard'
-        m, o = c[e['final']['side']], c['away' if e['final']['side'] == 'home' else 'home']
-        return 'with' if m and not o else 'against' if o and not m else 'split' if m and o else 'none'
-    fp = [e for e in fg if e['final']['is_pick']]
-    final_summary = dict(locked=sum(1 for e in board if e.get('final')), graded=len(fg), mins=[e['final']['mins_before'] for e in board if e.get('final')][:0],
-        rows=[dict(label='Still a pick when locked', note='A first-sight pick that was still 5+ points from the market an hour before kickoff, graded at the locked line.', all=_fs([e for e in fp if e['key'] in logkeys]), keys=[e['key'] for e in fp if e['key'] in logkeys]),
-              dict(label='Dropped under 5 points by the lock', note='Logged as a pick, but the gap closed before kickoff. Graded at the first-sight line, as in the official record.', all=_fs([logkeys[e['key']] for e in fg if e['key'] in logkeys and not e['final']['is_pick']], lambda x: x['result']), keys=[e['key'] for e in fg if e['key'] in logkeys and not e['final']['is_pick']]),
-              dict(label='Became a pick in the last hour', note='Under 5 points when first seen, 5+ at the lock.', all=_fs([e for e in fp if e['key'] not in logkeys]), keys=[e['key'] for e in fp if e['key'] not in logkeys]),
-              dict(label='Locked picks with Sharp Money on their side', note='At the lock the model is 5+ points off and a card is on its team and none on the other.', all=_fs([e for e in fp if _link(e) == 'with']), keys=[e['key'] for e in fp if _link(e) == 'with']),
-              dict(label='Locked picks with Sharp Money against them', note='Cards only on the other team.', all=_fs([e for e in fp if _link(e) == 'against']), keys=[e['key'] for e in fp if _link(e) == 'against']),
-              dict(label='Locked picks, Sharp Money split or quiet', note='Cards on both teams, or no card at all.', all=_fs([e for e in fp if _link(e) in ('split', 'none', 'nocard')]), keys=[e['key'] for e in fp if _link(e) in ('split', 'none', 'nocard')])])
-    final_summary.pop('mins')
+    final_summary = final_summary_of(board, log)
     open_chk = open_check(g26, F, rated_before, K, HFA, proj)
     bos = [e['bettable_open'] for e in board if e.get('bettable_open')]
     bg = [b for b in bos if b.get('result') in ('W', 'L')]
@@ -1083,16 +1146,16 @@ def cmd_update(a):
     except Exception as e:
         print('totals skipped:', type(e).__name__, e, file=sys.stderr); totals = prev_totals
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v1_summary=v1_summary, model_version=MODEL_VERSION if live else 'v1', cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk, bettable_open=bettable_summary, totals=totals), open(OUT, 'w'))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v1_summary=v1_summary, model_version=MODEL_VERSION if live else 'v1', pick_rule=store.get('pick_rule') or dict(id=PICK_RULE, dropped=[]), cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk, bettable_open=bettable_summary, totals=totals), open(OUT, 'w'))
     print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'priors-v2', 'priors-st', 'priors-totals', 'update']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
+    ap = argparse.ArgumentParser(); ap.add_argument('cmd', choices=['priors', 'priors-v2', 'priors-st', 'priors-totals', 'update', 'repick']); ap.add_argument('--dir', default=os.path.join(tempfile.gettempdir(), 'cfbmodel'))
     ap.add_argument('--since', type=int, help='one-time backfill: also project games that kicked off at or after this unix time, entered at the opening line')
     ap.add_argument('--until', type=int, help='with --since: stop the backfill before this unix time')
     ap.add_argument('--sharp', help='path to the Sharp Money data.json (sharp-data branch)'); a = ap.parse_args()
-    {'priors': cmd_priors, 'priors-v2': cmd_priors_v2, 'priors-st': cmd_priors_st, 'priors-totals': cmd_priors_totals, 'update': cmd_update}[a.cmd](a)
+    {'priors': cmd_priors, 'priors-v2': cmd_priors_v2, 'priors-st': cmd_priors_st, 'priors-totals': cmd_priors_totals, 'update': cmd_update, 'repick': cmd_repick}[a.cmd](a)
 
 
 if __name__ == '__main__':
