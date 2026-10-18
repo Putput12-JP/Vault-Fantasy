@@ -846,7 +846,7 @@ function mdAg(m,mod,b,r){if(!mod)return null;const v=m==='tot'?mod.tt:mod.mg;if(
 function lvPin(d,m){
  const o=[];
  for(const g of G){
-  if(!(g.start>d)||!(g.pin&&g.pin[m])||!g.soft)continue;
+  if(g.sport!=='nfl'||!(g.start>d)||!(g.pin&&g.pin[m])||!g.soft)continue;   // the record is NFL only
   const bk=Object.entries(g.soft).filter(([b,v])=>v[m]&&v[m].line!=null).map(([b,v])=>[b,v[m].line]);if(bk.length<2)continue;
   const ls=bk.map(x=>x[1]).sort((x,w)=>x-w),med=ls[Math.floor(ls.length/2)],lp=g.pin[m].line,gap=lp-med;if(Math.abs(gap)<.5)continue;
   const hrs=(g.start-d)/3600;let pick,bb;
