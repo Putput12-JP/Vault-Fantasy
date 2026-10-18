@@ -138,6 +138,7 @@ def main():
     out = dict(generated=pd.Timestamp.now('UTC').isoformat(), min_week=MIN_WEEK, jp_games_recorded=len(store), jp_verified=sum(1 for v in store.values() if v.get('verified')),
                published=summarize(whole), verified=summarize(ver), weeks=by_week(whole), picks=official_picks(model.get('log')),
                jp_reported=json.load(open(REPORTED)) if os.path.exists(REPORTED) else None,
+               clv={k: (model.get('open_check') or {}).get(k) for k in ('clv_n', 'clv_mean', 'clv_pos')},      # our 5+ picks entered at the ESPN open, against the close
                note='Verified: JP+ number recorded by this job before kickoff. Published: JP+ as its site shows it now, which cannot be shown to be pre-kickoff. Lean record: the method\'s side of the ESPN open covered.',
                games=sorted(rows, key=lambda r: -r['kick']))
     json.dump(out, open(OUT, 'w'))
