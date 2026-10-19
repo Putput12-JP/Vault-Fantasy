@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-19T17:30', tag:'Improved', title:'NBA Data Health: shot data freshness',
+    items:[
+      'The NBA Data Health page now lists the shot data behind the Slate (where each player shoots and where each defense gives shots up) with the date it runs through.',
+      'If the game results move ahead of that date by more than a couple of days, the row turns stale so a stuck feed is easy to spot. In the offseason it stays current.'
+    ]
+  },
+  {
     ts:'2026-10-19T14:30', tag:'Improved', title:'NBA Slate: fast-break shots',
     items:[
       'Each team\'s defense card now shows how many fast-break shots it gives up (a shot within 5 seconds of a steal or a defensive rebound), ranked 1st to 30th.',
