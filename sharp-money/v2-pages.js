@@ -337,5 +337,11 @@
       parts.length ? h('div', { style: { display: 'grid', gap: 14 } }, parts.concat(sp ? [h(k.T, { key: 'kn', size: 'sm' }, 'Spread: ' + sp)] : [])) : h(k.K, { padding: 16 }, h(k.T, { size: 'sm' }, 'No book history for this game yet. The tape records a book only when its number changes, from the first run after it appears.')));
   }
 
-  window.VaultV2 = { Plays: Plays, Signals: Signals, Record: Record, GameTells: GameTells, stat: stat, rules: rules };
+  /* The data layer and the scoring, for the phone layout (sharp-money/new/), which draws its own HTML from them. */
+  var core = {
+    STORE: STORE, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
+    ensure: function () { if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll(); return STORE.ts > 0; },
+    subscribe: function (fn) { STORE.subs.add(fn); return function () { STORE.subs.delete(fn); }; }
+  };
+  window.VaultV2 = { Plays: Plays, Signals: Signals, Record: Record, GameTells: GameTells, stat: stat, rules: rules, core: core };
 })();
