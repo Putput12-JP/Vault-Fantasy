@@ -13473,6 +13473,13 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-20T00:30', tag:'Fixed', title:'NBA Slate: starters show again',
+    items:[
+      'Fixed a bug where the starter rows on the NBA Slate showed the word "undefined" next to each player instead of how the defense guards his position.',
+      'The Slate is back to how it was before the Matchups page: the extra "best shot fits" line and the Open Matchups link on each game card are gone. Matchups stays its own page under Research.'
+    ]
+  },
+  {
     ts:'2026-10-19T23:00', tag:'Improved', title:'NBA Matchups: the bench too',
     items:[
       'The Matchups page now shows the top nine players on each team by projected minutes: the five starters, then the next four off the bench. Pick any of them to see the court, his shot map and the read.',
