@@ -35,6 +35,6 @@ jobs:
         with:
           node-version: 20
       - name: Gates, page parity and ledger
-        run: node --test tests/v2_gates.test.mjs tests/v2_ledger.test.mjs
+        run: node --test tests/v2_gates.test.mjs tests/v2_ledger.test.mjs tests/v2_tiers.test.mjs
       - name: Prop close regrade and ledger snapshot guard
         run: python3 -m unittest tests.test_sharp_v2_data tests.test_sharp_v2_forward

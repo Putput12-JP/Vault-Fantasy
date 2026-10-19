@@ -80,6 +80,7 @@ jobs:
             if git cat-file -e FETCH_HEAD:prop_close_tape.json 2>/dev/null; then git show FETCH_HEAD:prop_close_tape.json > sharp-out/prop_close_tape.json; fi
             # The V2 play ledger is append-only history with one copy here: if it exists on the branch it must load (a failed read fails the job).
             if git cat-file -e FETCH_HEAD:v2_plays.json 2>/dev/null; then git show FETCH_HEAD:v2_plays.json > sharp-out/v2_plays.json; fi
+            for f in v2_watch.json v2_passed.json; do if git cat-file -e FETCH_HEAD:$f 2>/dev/null; then git show FETCH_HEAD:$f > sharp-out/$f; fi; done
             git show FETCH_HEAD:ev_alert_history.json > sharp-out/ev_alert_history.json || rm -f sharp-out/ev_alert_history.json
             # Rows parked by a run that found the history file broken; build_ev_history.py folds them in and deletes them.
             for p in $(git ls-tree --name-only FETCH_HEAD | grep -E '^ev_alert_history\.pending.*\.json$' || true); do
@@ -169,6 +170,8 @@ jobs:
         continue-on-error: true
         run: |
           node scripts/track-v2-plays.mjs --dir=sharp-out
+          node scripts/track-v2-plays.mjs --dir=sharp-out --tier=watch
+          node scripts/track-v2-plays.mjs --dir=sharp-out --tier=pass
       # Permanent graded +EV log. data.json keeps only the newest 1500 alerts, so graded ones age out; this file never drops an entry.
       # Published next to data.json. Never blocks the publish: on failure the previous file is carried forward untouched.
       - name: Append graded +EV alerts to history
@@ -191,6 +194,8 @@ jobs:
           if [ -f prop_close_tape.json ]; then git add prop_close_tape.json; fi
           if [ -f ev_alert_history.json ]; then git add ev_alert_history.json; fi
           if [ -f v2_plays.json ]; then git add v2_plays.json; fi
+          if [ -f v2_watch.json ]; then git add v2_watch.json; fi
+          if [ -f v2_passed.json ]; then git add v2_passed.json; fi
           # The publish dir is rebuilt as one fresh commit, so a pending file merged this run (deleted from sharp-out) simply drops off the branch.
           if compgen -G "ev_alert_history.pending*.json" > /dev/null; then git add ev_alert_history.pending*.json; fi
           if compgen -G "g/*.json" > /dev/null; then git add g/*.json; fi

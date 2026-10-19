@@ -1008,7 +1008,7 @@ function v2Plays(){
  const B=v2built(),F=c.STORE.files,cnt={all:0,nfl:0,cfb:0,nba:0};
  B.cand.filter(x=>x.tier==='play').forEach(x=>{cnt.all++;cnt[x.sport]++});
  const L=t=>B.cand.filter(x=>x.tier===t&&(st.sport==='all'||x.sport===st.sport));
- let h=head(title,sub)+v2nav('plays')+`<div style="margin:0 16px 12px">${c.recordHtml(F,V2PAL)}</div>`+chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport')+chips([['play','Plays',L('play').length],['watch','Watch',L('watch').length],['pass','Passed',L('pass').length]],st.ptier,'ptier');
+ let h=head(title,sub)+v2nav('plays')+`<div style="margin:0 16px 12px">${c.recordHtml(F,V2PAL,st.ptier)}</div>`+chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport')+chips([['play','Plays',L('play').length],['watch','Watch',L('watch').length],['pass','Passed',L('pass').length]],st.ptier,'ptier');
  const list=L(st.ptier);
  if(st.ptier==='pass')h+=`<div class="card">${list.length?list.map(x=>`<div class="row"${x.gk?` data-go="game/${esc(x.gk)}" style="cursor:pointer"`:''}><div class="grow"><b>${esc(x.title)}</b><div class="m">${esc(x.price.book)} ${am(x.price.am)} · ${esc(x.reasons[0])}</div></div><div class="m" style="text-align:right">${SPORT[x.sport]}</div></div>`).join(''):'<div class="empty">Nothing passed over.</div>'}</div>`;
  else h+=list.length?list.map(x=>v2card(x,F)).join(''):`<div class="card empty"><b>${st.ptier==='play'?'Nothing clears every gate right now.':'Nothing on watch.'}</b><div style="margin-top:4px">${st.ptier==='play'?'That is the honest answer. Watch has prices with one reference only; Passed shows what failed a gate and why.':'Prices that beat one reference but have no second price to confirm them.'}</div></div>`;
