@@ -49,6 +49,8 @@ python3 nba/scripts/prop_board.py                               # Player Props s
 python3 nba/scripts/check_sim_parity.py [--seed=N]               # proof the Python simulation engine (sim_engine.py) plays the game as the page does (~30 s)
 python3 nba/scripts/build_game_simulation_test.py                # the Game Simulation's live calibration test from track.json's sim_days -> docs/game-simulation-results.md
 python3 nba/scripts/build_gamelogs.py                           # per-player game logs for hit rates + game-log chart (rerun after fetch_hoopr in season)
+python3 nba/scripts/fetch_hoopr.py --pbp 2026                      # ESPN play-by-play for one season (~290 MB, once; not in the daily job)
+python3 nba/scripts/build_diet_defense.py                        # shot diet by zone vs zone defense for the Slate page; stdlib; docs/courtai-teardown.md
 ```
 
 ## Daily refresh (GitHub Actions)
