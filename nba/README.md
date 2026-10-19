@@ -65,8 +65,9 @@ were.
 `snapshot.py` runs it on every poll and attaches `board['novig']`: per game the moneyline / main spread / main total
 (bid, ask, depth, resting dollars, new trades), per player prop a ladder, and a tape of tickets of $25 and up.
 One contract pays 1 cent, so dollars = price x qty / 100. State (trade cursors, the rolling tape) lives in
-`nba-data/novig/state.json`. A poll is budgeted (`NOVIG_BUDGET`, default 220 requests, for the game lines; `NOVIG_PROP_BUDGET`, default 80, for player props, kept apart because the lines alone use all of the first) and honours `Retry-After`; props
-rotate across polls. Smoke test: `python3 nba/scripts/novig.py`. The signed client (`scripts/novig_client.py`) is only
+`nba-data/novig/state.json`. A poll is budgeted (`NOVIG_BUDGET`, default 220 requests, for the game lines; `NOVIG_PROP_BUDGET`, default 80, for player props, kept apart because the lines alone use all of the first) and honours `Retry-After`. Game lines rotate by whole game
+(moneyline plus every spread and total strike, oldest read first); a game not reached keeps its last complete read with its age (`age`, `fresh`, `asof` per game), and `main_spread` / `main_total` only ever come from a complete
+ladder ([docs/novig-rotation.md](docs/novig-rotation.md)). Props rotate across polls. Smoke test: `python3 nba/scripts/novig.py`. The signed client (`scripts/novig_client.py`) is only
 needed for account endpoints, not for any of this.
 
 **Paper trading on Novig** (`scripts/novig_paper.py`, rules in [docs/novig-paper-trading.md](docs/novig-paper-trading.md)): after each poll the recorder places *simulated*
