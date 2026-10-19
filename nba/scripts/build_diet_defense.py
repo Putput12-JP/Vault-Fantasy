@@ -45,6 +45,9 @@ TRANS = [('trans', 'Transition')]
 ASSISTS = [('rim', 'At rim'), ('smid', 'Short mid'), ('lmid', 'Long mid'), ('c3', 'Corner 3'), ('arc3', 'Arc 3')]
 CATS = [('zone', ZONES), ('kind', KINDS), ('ast', ASSISTS), ('trans', TRANS)]
 TRANS_SECS = 5
+GRID = 13                           # shot map cells: 4 ft squares, x 0 to 52 ft (the court is 50 wide), y from 5 ft behind the hoop to 47 ft out
+CELL_FT = 4.0
+B62 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 HOOP_Y = 83.5                       # far hoop in the feed's y (the near hoop is y = 0); shots past half court are mirrored
 MIN_FGA_PLAYER = 50                 # players below this are left out of the file
 THIN_FGA = 200                      # display flag only: shares from fewer attempts than this are shaky (never a model input)
@@ -64,6 +67,20 @@ def zone(x, y, three):
     if abs(dx) <= 8.0 and y <= 13.75:
         return 'paint', d
     return 'mid', d
+
+
+def cell(x, y):
+    ix = min(GRID - 1, max(0, int(x // CELL_FT)))
+    iy = min(GRID - 1, max(0, int((y + 5.0) // CELL_FT)))
+    return iy * GRID + ix
+
+
+def pack(cells):
+    """A shot map as {'m': busiest cell, 's': one base-62 character per cell scaled to it}. Counts are blended (floats), so round after scaling."""
+    m = max(cells) if cells else 0
+    if m <= 0:
+        return None
+    return {'m': round(m, 1), 's': ''.join(B62[min(61, int(round(c / m * 61)))] for c in cells)}
 
 
 def kind(t):
@@ -176,7 +193,7 @@ def read(path):
             z, d = zone(x, y, r['points_attempted'] == '3')
             ast = r['athlete_id_2'] if r['scoring_play'] == 'true' and r['athlete_id_2'] and ' assists)' in r['text'] else ''
             shots.append((r['game_date'], g, r['athlete_id_1'], r['athlete_name_1'], abbr[tm], abbr[opp], z, kind(r['type_text']),
-                          assist_loc(z, d) if ast else None, ast, r['athlete_name_2'] if ast else '', tr))
+                          assist_loc(z, d) if ast else None, ast, r['athlete_name_2'] if ast else '', tr, x, (HOOP_Y - y) if y > HOOP_Y / 2 else y))
     return shots, maxp, season
 
 
@@ -187,9 +204,9 @@ def aggregate(shots, maxp):
     mins = {g: 48 + 5 * max(0, p - 4) for g, p in maxp.items()}
     allow = defaultdict(lambda: defaultdict(float))                      # (team, half or None) -> (cat, key) -> attempts per 48, summed over games
     gms = defaultdict(set)                                               # (team, half or None) -> games the defense played
-    pl = defaultdict(lambda: {'n': 0, 'a': 0, 'tr': 0, 'htr': [0, 0], 'zone': defaultdict(int), 'kind': defaultdict(int), 'ast': defaultdict(int), 'team': '', 'name': '',
+    pl = defaultdict(lambda: {'n': 0, 'a': 0, 'tr': 0, 'htr': [0, 0], 'grid': [0] * (GRID * GRID), 'zone': defaultdict(int), 'kind': defaultdict(int), 'ast': defaultdict(int), 'team': '', 'name': '',
                               'half': [defaultdict(int), defaultdict(int)], 'hn': [0, 0], 'day': ''})
-    for (day, g, pid, name, team, opp, z, k, al, aid, aname, tr) in shots:
+    for (day, g, pid, name, team, opp, z, k, al, aid, aname, tr, sx, sy) in shots:
         h = 0 if day < mid else 1
         w = 48.0 / mins[g]
         for half in (None, h):
@@ -212,6 +229,7 @@ def aggregate(shots, maxp):
         if tr:
             p['tr'] += 1
             p['htr'][h] += 1
+        p['grid'][cell(sx, sy)] += 1
         if day >= p['day']:
             p['team'], p['name'], p['day'] = team, name, day
         if al:
@@ -305,7 +323,8 @@ def build(raw):
         e = {'name': ref['name'], 'team': ref['team'], 'fga': round(n), 'ast': round((c['a'] if c else 0) + (ka * o['a'] if o else 0)), 'thin': n < THIN_FGA,
              'zone': {k: round(((c['zone'][k] if c else 0) + (kf * o['zone'][k] if o else 0)) / n, 3) for k, _ in ZONES},
              'kind': {k: round(((c['kind'][k] if c else 0) + (kf * o['kind'][k] if o else 0)) / n, 3) for k, _ in KINDS},
-             'trans': round(((c['tr'] if c else 0) + (kf * o['tr'] if o else 0)) / n, 3)}
+             'trans': round(((c['tr'] if c else 0) + (kf * o['tr'] if o else 0)) / n, 3),
+             'map': pack([(c['grid'][i] if c else 0) + (kf * o['grid'][i] if o else 0) for i in range(GRID * GRID)])}
         a_n = (c['a'] if c else 0) + (ka * o['a'] if o else 0)
         if a_n:
             e['ast_share'] = {k: round(((c['ast'][k] if c else 0) + (ka * o['ast'][k] if o else 0)) / a_n, 3) for k, _ in ASSISTS}

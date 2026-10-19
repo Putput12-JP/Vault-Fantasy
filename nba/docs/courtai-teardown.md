@@ -118,6 +118,10 @@ Both pass the 0.36 cut, so Transition is shown: a team-card row and a Fast chip 
 
 Three page options were mocked with tonight's real data (`nba/mocks/courtai/`): a player board, defense sheets and a game court. The game court was chosen and built as the **Matchups** page (`#matchups`, under Research). The Slate went back to one line per game card with the two best shot fits and a link in.
 
+## Matchups V2 (2026-10-19)
+
+The page was rebuilt: a real half-court (hardwood, team-painted lane, logo at midcourt), the selected starter's actual shot map as light (4-foot squares from play-by-play coordinates, now stored per player in `diet_defense.json` as `map`), ambient shots that leave from his real spots, a ladder of his shot mix against all 30 defenses, and generated plain-English reads (verdict, story, four stat-style takeaways, a lineup read). Still context only: the diet test result is unchanged.
+
 ## Open questions (unknown, not assumed)
 
 - **Remaining play types.** Need a Synergy-like feed. None found free and reachable. A paid feed or the NBA's own tracking access is the only route.
