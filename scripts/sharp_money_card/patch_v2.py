@@ -10,6 +10,8 @@ live in sharp-money/v2-pages.js and the rules in sharp-money/v2/gates.js, both l
   4. the shell: hash routes #plays, #signals, #record, the page title and tip, the sport filter in the top bar for Plays and Record, the page width,
      and the three pages themselves; the Game page gets the V2 "Plays on this game" and "Who is behind" sections underneath
   5. the phone redirect to new/ lets V2 hashes through, so a phone opening #plays gets the V2 pages
+  6. the old Props page's CLV tiles show the exchange close
+  7. Plays is the landing page; Board has its own hash (#board)
 
 Re-run it after any change to index.html from another branch (it is how a merge conflict with an edit elsewhere in that file is resolved: take their file, run this).
 """
@@ -79,6 +81,12 @@ sub('["Beat the close",A0.clvN?`${A0.clvPos} of ${A0.clvN}`:"–",A0.clvN?Math.r
     '["Beat the close",A0.clvXN?`${A0.clvXPos} of ${A0.clvXN}`:A0.clvN?`${A0.clvPos} of ${A0.clvN}`:"–",A0.clvXN?Math.round(A0.clvXPos/A0.clvXN*100)+"% of plays (exchange close)":A0.clvN?Math.round(A0.clvPos/A0.clvN*100)+"% of plays (old close)":"no closes yet",A0.clvXN?A0.clvXPos/A0.clvXN*100:A0.clvN?A0.clvPos/A0.clvN*100:null],', 'props beat-the-close tile')
 sub('["Big plays",bg.n||0,bg.clvN?`CLV ${sg(bg.clv)} · ${bg.clvPos} beat close`:"no closes yet",bg.clvN?bg.clvPos/bg.clvN*100:null],',
     '["Big plays",bg.n||0,bg.clvXN?`CLV ${sg(bg.clvX)} · ${bg.clvXPos} of ${bg.clvXN} beat the exchange close`:bg.clvN?`CLV ${sg(bg.clv)} · ${bg.clvPos} beat close (old close)`:"no closes yet",bg.clvXN?bg.clvXPos/bg.clvXN*100:bg.clvN?bg.clvPos/bg.clvN*100:null],', 'props big plays tile')
+
+# 7. Plays is the landing page (the bare URL, or a hash this page does not know). Board keeps its place in the sidebar and gets its own hash, #board.
+sub('window.__GAME&&!location.hash?{page:"game",key:window.__GAME}:{page:"board",key:null}',
+    'window.__GAME&&!location.hash?{page:"game",key:window.__GAME}:location.hash==="#board"?{page:"board",key:null}:{page:"plays",key:null}', 'landing page')
+sub('P=()=>{history.pushState(null,"",location.pathname+location.search),x({page:"board",key:null})}',
+    'P=()=>{history.pushState(null,"",location.pathname+location.search+"#board"),x({page:"board",key:null})}', 'Board hash')
 
 open(IDX, 'w', encoding='utf-8').write(s)
 print('done,', n_changes, 'change(s)')
