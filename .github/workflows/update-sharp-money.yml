@@ -78,6 +78,8 @@ jobs:
             # The tape is the only copy of the close history: if it exists on the branch it must load (a failed read fails the job
             # instead of starting an empty tape that would then be published over it).
             if git cat-file -e FETCH_HEAD:prop_close_tape.json 2>/dev/null; then git show FETCH_HEAD:prop_close_tape.json > sharp-out/prop_close_tape.json; fi
+            # The V2 play ledger is append-only history with one copy here: if it exists on the branch it must load (a failed read fails the job).
+            if git cat-file -e FETCH_HEAD:v2_plays.json 2>/dev/null; then git show FETCH_HEAD:v2_plays.json > sharp-out/v2_plays.json; fi
             git show FETCH_HEAD:ev_alert_history.json > sharp-out/ev_alert_history.json || rm -f sharp-out/ev_alert_history.json
             # Rows parked by a run that found the history file broken; build_ev_history.py folds them in and deletes them.
             for p in $(git ls-tree --name-only FETCH_HEAD | grep -E '^ev_alert_history\.pending.*\.json$' || true); do
@@ -158,6 +160,15 @@ jobs:
             git fetch -q origin main
             git reset -q --hard origin/main
           done
+      # Sharp Money V2 forward log: every Play the V2 page shows is written once at first sight (price, book, both reference fair prices, edge, time),
+      # frozen, then settled from the same box scores and final scores the other ledgers use and graded against the exchange close. The gate rules are
+      # sharp-money/v2/gates.js, the same file the page runs. Runs after the line tape step so data/exchange_edge_live.json is this run's. Never blocks
+      # the publish: a ledger that exists but does not parse stops the step without being replaced, and the old file is published unchanged.
+      - name: Log and settle V2 plays
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          node scripts/track-v2-plays.mjs --dir=sharp-out
       # Permanent graded +EV log. data.json keeps only the newest 1500 alerts, so graded ones age out; this file never drops an entry.
       # Published next to data.json. Never blocks the publish: on failure the previous file is carried forward untouched.
       - name: Append graded +EV alerts to history
@@ -179,6 +190,7 @@ jobs:
           if [ -f prop_plays.json ]; then git add prop_plays.json; fi
           if [ -f prop_close_tape.json ]; then git add prop_close_tape.json; fi
           if [ -f ev_alert_history.json ]; then git add ev_alert_history.json; fi
+          if [ -f v2_plays.json ]; then git add v2_plays.json; fi
           # The publish dir is rebuilt as one fresh commit, so a pending file merged this run (deleted from sharp-out) simply drops off the branch.
           if compgen -G "ev_alert_history.pending*.json" > /dev/null; then git add ev_alert_history.pending*.json; fi
           if compgen -G "g/*.json" > /dev/null; then git add g/*.json; fi

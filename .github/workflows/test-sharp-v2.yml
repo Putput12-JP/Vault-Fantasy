@@ -1,0 +1,40 @@
+name: Test Sharp Money V2
+
+# Guards the V2 rules. The page and the ledger script run the same gates (sharp-money/v2/gates.js); tests/v2_gates.test.mjs runs the real page and the
+# module on stored data and fails if they disagree. tests/v2_ledger.test.mjs covers log-once-and-freeze, settlement and CLV. The Python tests cover the
+# independent prop close and the ledger snapshot guard.
+
+on:
+  pull_request:
+    paths:
+      - 'sharp-money/v2/**'
+      - 'scripts/track-v2-plays.mjs'
+      - 'scripts/track-prop-plays.mjs'
+      - 'scripts/snapshot_sharp_ledgers.py'
+      - 'scripts/regrade_prop_clv.py'
+      - 'tests/v2_*'
+      - 'tests/test_sharp_v2_*'
+      - 'tests/fixtures/sharp_v2/**'
+      - '.github/workflows/test-sharp-v2.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: test-sharp-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - name: Gates, page parity and ledger
+        run: node --test tests/v2_gates.test.mjs tests/v2_ledger.test.mjs
+      - name: Prop close regrade and ledger snapshot guard
+        run: python3 -m unittest tests.test_sharp_v2_data tests.test_sharp_v2_forward
