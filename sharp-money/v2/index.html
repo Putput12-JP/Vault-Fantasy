@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sharp Money V2</title>
+<meta name="description" content="Plays that still beat the market, checked against two independent prices, with the measured record next to every number.">
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--card2:#eef0f3;--line:#d9dde3;--txt:#14161a;--mut:#5a6270;--dim:#8a919d;--acc:#1f5fd6;--good:#13803f;--warn:#a45a00;--bad:#c4302b;--chip:#e6e9ee;--good-bg:rgba(19,128,63,.1);--warn-bg:rgba(164,90,0,.1);--bad-bg:rgba(196,48,43,.1);--acc-bg:rgba(31,95,214,.1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0c0e;--card:#16181c;--card2:#1e2126;--line:#2a2e35;--txt:#f2f3f5;--mut:#a3a9b4;--dim:#767d89;--acc:#6c9cff;--good:#46e08c;--warn:#ffb84d;--bad:#ff6b66;--chip:#23272d;--good-bg:rgba(70,224,140,.12);--warn-bg:rgba(255,184,77,.12);--bad-bg:rgba(255,107,102,.12);--acc-bg:rgba(108,156,255,.14)}}
+:root[data-theme="dark"]{--bg:#0b0c0e;--card:#16181c;--card2:#1e2126;--line:#2a2e35;--txt:#f2f3f5;--mut:#a3a9b4;--dim:#767d89;--acc:#6c9cff;--good:#46e08c;--warn:#ffb84d;--bad:#ff6b66;--chip:#23272d;--good-bg:rgba(70,224,140,.12);--warn-bg:rgba(255,184,77,.12);--bad-bg:rgba(255,107,102,.12);--acc-bg:rgba(108,156,255,.14)}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+.num,.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.wrap{max-width:880px;margin:0 auto;padding:0 16px calc(48px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.hd{max-width:880px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 10px) 16px 0;display:flex;align-items:center;gap:10px;justify-content:space-between}
+.hd h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
+.hd h1 small{font-weight:600;color:var(--mut);font-size:12px;margin-left:6px;letter-spacing:.04em}
+.tabs{max-width:880px;margin:0 auto;padding:8px 16px 0;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs a{flex:none;padding:8px 14px 10px;color:var(--mut);font-weight:600;font-size:14px;border-bottom:2px solid transparent;text-decoration:none}
+.tabs a.on{color:var(--txt);border-color:var(--acc)}
+.btn{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:99px;background:var(--chip);color:var(--txt);font-weight:600;font-size:13px;white-space:nowrap;transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.btn:active{transform:scale(.94);transition:transform 80ms ease-out}.btn:focus-visible,.chip:focus-visible,.tabs a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--mut);white-space:nowrap}
+.badge.good{background:var(--good-bg);color:var(--good)}.badge.warn{background:var(--warn-bg);color:var(--warn)}.badge.bad{background:var(--bad-bg);color:var(--bad)}.badge.acc{background:var(--acc-bg);color:var(--acc)}
+.badge.dot::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 4px}
+.chip{all:unset;box-sizing:border-box;cursor:pointer;padding:6px 12px;border-radius:99px;background:var(--chip);color:var(--mut);font-weight:600;font-size:13px}
+.chip.on{background:var(--txt);color:var(--bg)}.chip small{margin-left:6px;opacity:.7;font-weight:600}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 8px;color:var(--mut);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.sub{color:var(--mut);font-size:13px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:0 0 10px}
+.card.tap{cursor:pointer}.card.tap:hover{border-color:var(--dim)}
+.gtop{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 8px;color:var(--mut);font-size:12.5px;font-weight:600;margin-bottom:4px}
+.card h3{margin:2px 0 2px;font-size:19px;line-height:1.2;letter-spacing:-.01em}
+.px{color:var(--mut);font-size:14px}.px b{color:var(--txt)}
+.refs{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:12px 0 8px}
+.ref{background:var(--card2);border-radius:12px;padding:8px 10px}.ref small{display:block;color:var(--mut);font-size:11.5px;font-weight:600}.ref b{font-size:17px}.ref span{font-size:13px;font-weight:600}
+.pos{color:var(--good)}.neg{color:var(--bad)}.mut{color:var(--mut)}
+.worst{display:flex;justify-content:space-between;align-items:center;font-weight:600;padding-top:8px;border-top:1px solid var(--line)}
+.worst b{font-size:18px}
+.why{margin:8px 0 0;color:var(--mut);font-size:13.5px}
+ul.cx{margin:8px 0 0;padding:0 0 0 18px;color:var(--warn);font-size:13px}ul.cx li{margin:2px 0}
+.rec{margin-top:8px;font-size:12.5px;color:var(--mut)}
+.pass{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.pass:first-child{border-top:0}
+.pass b{font-weight:600}.pass .r{color:var(--mut);font-size:13px;margin-top:2px}
+.empty{padding:18px 4px;color:var(--mut)}
+.empty b{display:block;color:var(--txt);font-size:16px;margin-bottom:4px}
+details.how{margin:12px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px}
+details.how summary{cursor:pointer;font-weight:600}details.how ol,details.how ul{color:var(--mut);font-size:13.5px;padding-left:20px}details.how li{margin:4px 0}
+table.t{width:100%;border-collapse:collapse;font-size:13.5px}
+table.t th{color:var(--mut);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;text-align:right;padding:6px 6px;border-bottom:1px solid var(--line)}
+table.t th:first-child,table.t td:first-child{text-align:left}
+table.t td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.big{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.back{display:inline-block;margin:14px 0 4px;font-weight:600;font-size:14px}
+.hero{display:flex;align-items:center;justify-content:center;gap:18px;padding:18px 0 6px;font-size:22px;font-weight:700}
+.hero small{display:block;text-align:center;color:var(--mut);font-size:13px;font-weight:600;margin-top:2px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}.kv:first-of-type{border-top:0}.kv span{color:var(--mut)}
+.skel{height:150px;border-radius:16px;margin:0 0 10px;background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:sk 1.3s linear infinite}@keyframes sk{to{background-position:-200% 0}}
+.sp{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--txt);animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}.sp{animation-duration:2s}.btn{transition:none}}
+@media (max-width:520px){.tabs a{padding:8px 9px 10px;font-size:13.5px}.card h3{font-size:18px}.big{font-size:24px}.hd h1 small{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd"><h1>Sharp Money<small>V2</small></h1><div style="display:flex;gap:8px;align-items:center"><span id="snap"></span><button class="btn" id="rf" aria-label="Refresh the data">Refresh</button></div></div>
+  <nav class="tabs" id="tabs" aria-label="Sections"><a href="#plays" data-t="plays">Plays</a><a href="#board" data-t="board">Board</a><a href="#props" data-t="props">Props</a><a href="#models" data-t="models">Models</a><a href="#signals" data-t="signals">Signals</a><a href="#record" data-t="record">Record</a></nav>
+</header>
+<main class="wrap" id="scr" aria-live="polite"></main>
+<script src="gates.js?v=1"></script>
+<script>
+/* Sharp Money V2. One plain page, no build step. Sharp-account money is context only: it never ranks a play and never counts toward an agree total.
+   Evidence behind every gate: docs/retro/sharp-v2-evidence.md (PR 133) and docs/retro/sharp-v2-data.md (PR 134). */
+const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
+const RAW='https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/';
+const SRC={data:RAW+'sharp-data/data.json',props:RAW+'sharp-data/props.json',tape:RAW+'sharp-data/prop_close_tape.json',
+ edge:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'exchange_edge_live.json',edgeRec:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'exchange_edge_record.json',keys:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'nfl_key_numbers.json',
+ lag:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'lead_lag.json',age:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'book_age.json',
+ sb:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'model_scoreboard.json',plays:(LOCAL&&!LIVE?'/data/':RAW+'sharp-data/')+'v2_plays.json',rg:(LOCAL&&!LIVE?'/docs/':RAW+'main/docs/')+'prop-clv-regrade.json'};
+
+/* Gates, price math and the Play / Watch / Passed judge live in gates.js, the one copy shared with the headless ledger (scripts/track-v2-plays.mjs). */
+const {GATES,US,EXCH,MKT,pct,spct,sgn,imp,devig,bookP,sideP,mean}=V2Gates;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CT={timeZone:'America/Chicago'};
+const am=n=>n==null?'-':(n>0?'+':'')+n;
+const when=ts=>new Date(ts*1000).toLocaleString('en-US',{...CT,weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).replace(/,/g,'')+' CT';
+const ago=(t,now)=>{const m=Math.max(1,Math.round((now-t)/60));return m<60?m+'m':m<1440?Math.round(m/60)+'h':Math.round(m/1440)+'d'};
+const SPORT={all:'All',nfl:'NFL',cfb:'CFB',nba:'NBA'};
+
+const fairAm=p=>p==null?'-':p>=0.5?String(Math.round(-100*p/(1-p))):'+'+Math.round(100*(1-p)/p);
+
+/* ---- state ---- */
+let D=null,P=null,T=null,E=null,ER=null,K=null,LG=null,AG=null,SB=null,RG=null,PL=null,NOW=0,LOADED=false,ERR=false,CAND=[],ALL=[];
+const st={sport:'all',tier:'play',pm:'all',slate:20};
+
+async function get(u){try{const r=await fetch(u+(u.includes('?')?'&':'?')+'t='+Math.floor(Date.now()/120000),{cache:'no-store'});return r.ok?await r.json():null}catch(e){return null}}
+async function load(){
+  const [d,p,t,e,er,k,lg,ag,sb,rg,pl]=await Promise.all([get(SRC.data),get(SRC.props),get(SRC.tape),get(SRC.edge),get(SRC.edgeRec),get(SRC.keys),get(SRC.lag),get(SRC.age),get(SRC.sb),get(SRC.rg),get(SRC.plays)]);
+  if(!d){ERR=!D;return route()}
+  D=d;P=p;T=t;E=e;ER=er;K=k;LG=lg;AG=ag;SB=sb;RG=rg;PL=pl;NOW=Date.now()/1000;LOADED=true;ERR=false;build();route();
+}
+
+/* ---- candidates: gates.js decides, this page only shows ---- */
+function build(){const r=V2Gates.build({D,P,T,E,now:NOW});ALL=r.all;CAND=r.cand}
+
+/* ---- views ---- */
+const Q=n=>CAND.filter(c=>c.tier===n&&(st.sport==='all'||c.sport===st.sport));
+function snap(){if(!D)return '';const a=NOW-D.ts,k=a>3*3600?'bad':a>20*60?'warn':'good';return `<span class="badge dot ${k}">${a<90?'Updated just now':'Updated '+ago(D.ts,NOW)+' ago'}</span>`}
+function skeleton(){return '<div class="skel"></div>'.repeat(3)}
+function chips(items,cur,key){return `<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small class="num">${n}</small>`:''}</button>`).join('')}</div>`}
+function refBox(r){const e=r.edge;return `<div class="ref"><small>${esc(r.n)} fair</small><b class="num">${pct(r.p)}</b> <span class="num ${e>=GATES.MIN_EDGE?'pos':e<0?'neg':'mut'}">${spct(e)}</span></div>`}
+function recLine(c){const r=c.rec;if(!r||!(r.w+r.l))return '';return `<div class="rec">${esc(c.market)} on this board so far: ${r.w}-${r.l}, ROI ${spct(r.roi)} (${r.w+r.l} settled).${r.clvXN?' Against the exchange close: '+spct(r.clvX)+' ('+r.clvXN+' calls).':''}</div>`}
+function playCard(c){
+  const tag=c.tier==='play'?'<span class="badge good">Play</span>':c.tier==='watch'?'<span class="badge warn">Watch</span>':'<span class="badge">Passed</span>';
+  const go=c.gk?` data-go="game/${esc(c.gk)}"`:'';
+  return `<div class="card ${c.gk?'tap':''}"${go}><div class="gtop"><span>${SPORT[c.sport]} · ${c.start?when(c.start):'time n/a'} · ${esc(c.sub)}</span>${tag}</div>
+  <h3>${esc(c.title)}</h3><div class="px">at <b>${esc(c.price.book)}</b> <b class="num">${am(c.price.am)}</b> <span class="num">(costs ${pct(c.price.p)})</span></div>
+  ${c.refs.length?`<div class="refs">${c.refs.map(refBox).join('')}</div>`:''}
+  ${c.worst!=null&&c.refs.length>1?`<div class="worst"><span>Worst-case edge</span><b class="num ${c.worst>=GATES.MIN_EDGE?'pos':'mut'}">${spct(c.worst)}</b></div>`:''}
+  <p class="why">${c.reasons.map(esc).join(' ')}</p>
+  ${c.cautions.length?`<ul class="cx">${c.cautions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}${recLine(c)}${bookLine(c)}</div>`;
+}
+function passRow(c){return `<div class="pass"${c.gk?` data-go="game/${esc(c.gk)}" style="cursor:pointer"`:''}><div><b>${esc(c.title)}</b> <span class="mut">at ${esc(c.price.book)} ${am(c.price.am)}</span><div class="r">${esc(c.reasons[0])}</div></div><div class="mut num" style="text-align:right;white-space:nowrap">${SPORT[c.sport]}<br>${c.start?when(c.start).split(' ').slice(0,3).join(' '):''}</div></div>`}
+
+function how(){return `<details class="how"><summary>How a play qualifies</summary><ol>
+ <li>The price is at a US sportsbook (not a pick’em app, and not the exchange used as the check).</li>
+ <li>Two independent fair prices exist: Pinnacle, and the exchange (Kalshi and Novig where they list the exact line). A moneyline play can use Kalshi and Novig; a prop needs both.</li>
+ <li>The price beats <b>both</b> by ${pct(GATES.MIN_EDGE,0)} or more, and the two fair prices sit within ${GATES.AGREE*100} points of each other.</li>
+ <li>The edge is not over ${pct(GATES.BIG_EDGE,0)}: calls that big have lost money (21-32, ROI -15%).</li>
+ <li>Both sides of the same market are not flagged at once.</li></ol>
+ <p class="sub">Ranked by the <b>worst-case</b> edge, not the best one. A play is a better price than the market, not a prediction: the stored record is 8 days old and no signal has cleared the 100-decision bar. Sharp-account money is context only. <a href="https://github.com/Putput12-JP/Vault-Fantasy/pull/133">Evidence</a> · <a href="https://github.com/Putput12-JP/Vault-Fantasy/pull/134">Independent close</a></p></details>`}
+
+function plays(){
+  const cnt={all:0,nfl:0,cfb:0,nba:0};CAND.filter(c=>c.tier==='play').forEach(c=>{cnt.all++;cnt[c.sport]++});
+  const nP=Q('play').length,nW=Q('watch').length,nX=Q('pass').length;
+  let h=`<div class="sec"><span>Plays</span><span class="num">${snapDate()}</span></div>`;
+  h+=chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport');
+  h+=chips([['play','Plays',nP],['watch','Watch',nW],['pass','Passed',nX]],st.tier,'tier');
+  const list=Q(st.tier);
+  if(st.tier==='play'){
+    h+=list.length?list.map(playCard).join(''):`<div class="card empty"><b>Nothing clears every gate right now.</b>That is the honest answer. ${nW?nW+' price'+(nW===1?' has':'s have')+' one reference only (Watch). ':''}${nX?nX+' looked good against one price but failed a gate (Passed).':''}</div>`;
+  }else if(st.tier==='watch'){
+    h+=`<p class="sub">Beats one reference but has no second price to confirm it. Do not treat as a play.</p>`+(list.length?list.map(playCard).join(''):'<div class="card empty"><b>Nothing on watch.</b></div>');
+  }else{
+    h+=`<p class="sub">These looked like edges on one price and failed a gate. The reason is the point.</p><div class="card">${list.length?list.map(passRow).join(''):'<div class="empty"><b>Nothing passed over.</b></div>'}</div>`;
+  }
+  h+=how();
+  return h;
+}
+const snapDate=()=>D?new Date(D.ts*1000).toLocaleString('en-US',{...CT,hour:'numeric',minute:'2-digit'})+' CT':'';
+
+/* Props: every board row with both references, plus how each market has actually done */
+function props(){
+  if(!P||!P.props)return '<div class="card empty"><b>The prop board did not load.</b></div>';
+  const rec=P.propRecord||{},bm=rec.byMarket||{},all=rec.all||{};
+  const mk=['all',...Object.keys(bm)];
+  let h=`<div class="sec"><span>Props</span><span class="num">${P.props.rows.length} on the board</span></div>`;
+  const hasX=all.clvXN>0;
+  h+=`<div class="card"><div class="gtop"><span>Every prop call so far, flat 1 unit</span><span class="badge ${all.roi<0?'bad':'good'}">${all.n||0} calls</span></div>
+   <div class="grid2"><div><div class="big num ${all.roi<0?'neg':'pos'}">${spct(all.roi)}</div><div class="sub">ROI, ${all.w}-${all.l} (${pct(all.w/((all.w+all.l)||1))})</div></div>
+   <div><div class="big num">${hasX?spct(all.clvX):spct(all.clv)}</div><div class="sub">${hasX?'against the exchange close ('+all.clvXN+' calls). Was '+spct(all.clv)+' before, but that close came from the same price that raised the call.':'CLV on the old close. That close comes from the same price that raised the call, so it repeats the edge the call claimed. The independent figure arrives with the next data update.'}</div></div></div></div>`;
+  h+=chips(mk.map(m=>[m,m==='all'?'All markets':m,m==='all'?null:(bm[m].w+bm[m].l)]),st.pm,'pm');
+  const rows=ALL.filter(c=>c.kind==='prop'&&(st.pm==='all'||c.market===st.pm)).sort((a,b)=>(b.worst==null?-9:b.worst)-(a.worst==null?-9:a.worst));
+  const shown=rows.slice(0,60);
+  h+=`<p class="sub">Rows are ordered by worst-case edge. The board’s own EV is not used: its 10 to 15% bucket went 17-28.</p>`;
+  h+=shown.length?`<div class="card scroll"><table class="t"><tr><th>Prop</th><th>Best US price</th><th>Pinnacle</th><th>Exchange</th><th>Worst</th><th></th></tr>${shown.map(c=>{const pin=c.refs.find(r=>r.n==='Pinnacle'),ex=c.refs.find(r=>r.n==='Exchange');
+    return `<tr><td>${esc(c.title)}<div class="mut" style="font-size:12px">${esc(c.sub)} · ${c.start?when(c.start):''}</div></td><td class="num">${esc(c.price.book)} ${am(c.price.am)}</td><td class="num ${pin&&pin.edge>=GATES.MIN_EDGE?'pos':'mut'}">${pin?spct(pin.edge):'-'}</td><td class="num ${ex&&ex.edge>=GATES.MIN_EDGE?'pos':'mut'}">${ex?spct(ex.edge):'-'}</td><td class="num">${c.worst==null||c.refs.length<2?'-':spct(c.worst)}</td><td><span class="badge ${c.tier==='play'?'good':c.tier==='watch'?'warn':''}">${c.tier==='play'?'Play':c.tier==='watch'?'Watch':c.tier==='pass'?'Pass':'No edge'}</span></td></tr>`}).join('')}</table></div>`:'<div class="card empty"><b>No prop with a usable price right now.</b>The board lists only players whose game has not started.</div>';
+  h+=`<div class="sec"><span>How each market has done</span><span>settled calls</span></div><div class="card scroll"><table class="t"><tr><th>Market</th><th>W-L</th><th>ROI</th><th>CLV (exchange close)</th></tr>${Object.entries(bm).sort((a,b)=>(b[1].w+b[1].l)-(a[1].w+a[1].l)).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v.w}-${v.l}</td><td class="num ${v.roi<0?'neg':'pos'}">${spct(v.roi)}</td><td class="num">${v.clvXN?spct(v.clvX)+' <span class="mut">('+v.clvXN+')</span>':'<span class="mut">pending</span>'}</td></tr>`).join('')}</table></div>
+  <p class="sub">Small samples: a market with under 100 settled calls is a flag, not a verdict.</p>`;
+  return h;
+}
+
+/* Signals: the scorecard. A signal is only called "Trust" when it beats the price it was taken at over 100+ games. */
+function stat(rows){
+  const g=rows.filter(r=>r.result===1||r.result===-1),w=g.filter(r=>r.result===1).length,n=g.length;
+  const f=g.filter(r=>r.fair!=null);const ex=f.length?f.filter(r=>r.result===1).length/f.length-mean(f.map(r=>r.fair)):null;
+  const v=f.reduce((s,r)=>s+r.fair*(1-r.fair),0),z=f.length&&v>0?(f.filter(r=>r.result===1).length-f.reduce((s,r)=>s+r.fair,0))/Math.sqrt(v):null;
+  const c=rows.filter(r=>r.clv!=null).map(r=>r.clv);
+  const u=rows.filter(r=>r.units!=null).map(r=>r.units).sort((a,b)=>b-a);
+  const verdict=n<30?['Too few','']:(n>=100&&z!=null&&z>=1.64&&mean(c)>0)?['Trust','good']:(ex!=null&&ex<=0)?['Ignore','bad']:['Watch','warn'];
+  return {n,w,l:n-w,win:n?w/n:null,ex,z,clv:c.length?mean(c):null,clvN:c.length,fn:f.length,units:u.length?u.reduce((s,x)=>s+x,0):null,uN:u.length,unitsNoTop5:u.length?u.reduce((s,x)=>s+x,0)-u.slice(0,5).filter(x=>x>0).reduce((s,x)=>s+x,0):null,verdict};
+}
+function sigCard(name,desc,s){
+  return `<div class="card"><div class="gtop"><span>${esc(name)}</span><span class="badge ${s.verdict[1]}">${s.verdict[0]}</span></div>
+  <div class="big num">${s.n?s.w+'-'+s.l:'none graded'}</div>
+  <div class="sub">${s.n?pct(s.win)+' won'+(s.ex!=null?'. On the '+s.fn+' picks that logged the market’s fair price, '+(s.ex>=0?'+':'')+(s.ex*100).toFixed(1)+' pts against the chance those prices implied.':''):''}</div>
+  <div class="kv"><span>Closing-line value</span><b class="num ${s.clv==null?'':s.clv>0?'pos':'neg'}">${s.clv==null?'-':spct(s.clv)} <small class="mut">(${s.clvN})</small></b></div>
+  ${s.units!=null?`<div class="kv"><span>Units at stored price</span><b class="num">${sgn(+s.units.toFixed(1))}u <small class="mut">(${s.uN} priced; ${sgn(+s.unitsNoTop5.toFixed(1))}u without the 5 biggest wins)</small></b></div>`:''}
+  <div class="sub" style="margin-top:6px">${esc(desc)}</div></div>`;
+}
+function rules(){
+  const pk=(D.picks||[]).filter(p=>p.result===1||p.result===-1||p.result===0);
+  const kind=k=>pk.filter(p=>p.kinds&&p.kinds.length===1&&p.kinds[0]===k);
+  const cards=[
+   ['Pinnacle line move','The line moved toward this side. Only picks where this was the one signal.',stat(kind('line'))],
+   ['Money vs bets','More of the money than the bets is on this side. Only picks where this was the one signal.',stat(kind('money'))],
+   ['+EV at a book','A US book still hangs a price Pinnacle says is good. Only picks where this was the one signal.',stat(kind('behind'))],
+   ['Two signals agree','The headline of the old Top Reads. It went worse than one signal on its own.',stat(pk.filter(p=>p.kinds&&p.kinds.length===2))],
+   ['Three signals agree','Too few games to say anything.',stat(pk.filter(p=>p.kinds&&p.kinds.length===3))],
+   ['Both sides flagged','The same market flagged on both sides. No play is made from these.',stat(pk.filter(p=>p.conflict))]];
+  const ctx=stat((D.sharpContext||[]).filter(p=>p.result===1||p.result===-1||p.result===0));
+  return {pk,cards,ctx};
+}
+function signals(){
+  if(!D)return '';
+  const {pk,cards,ctx}=rules();
+  let h=`<div class="sec"><span>Signals</span><span class="num">${pk.length} graded picks</span></div>
+  <p class="sub">What each signal has actually done, measured against the price it was taken at. Trust needs 100+ games, a win rate clearly above that price (z of 1.64+) and positive closing-line value. Nothing has reached it.</p>
+  <div class="grid2">${cards.map(c=>sigCard(c[0],c[1],c[2])).join('')}</div>`;
+  h+=`<div class="sec"><span>Prop board calls</span></div>`;
+  const rec=(P&&P.propRecord&&P.propRecord.all)||null;
+  if(rec){const hasX=rec.clvXN>0;h+=`<div class="card"><div class="gtop"><span>All prop calls, flat 1 unit</span><span class="badge ${rec.roi<0?'bad':'warn'}">${rec.roi<0?'Losing':'Watch'}</span></div><div class="big num">${rec.w}-${rec.l}</div><div class="sub">ROI ${spct(rec.roi)} on ${rec.w+rec.l} settled</div>
+   <div class="kv"><span>CLV on the old close (same price that raised the call)</span><b class="num">${spct(rec.clv)}</b></div>
+   <div class="kv"><span>CLV against the exchange close</span><b class="num">${hasX?spct(rec.clvX)+' <small class="mut">('+rec.clvXN+')</small>':'<span class="mut">arrives with the next data update</span>'}</b></div></div>`}
+  const er=ER&&ER.summary;
+  if(er)h+=`<div class="sec"><span>Novig under Pinnacle</span></div><div class="card"><div class="gtop"><span>Exchange price below fair, since ${esc(ER.since||'')}</span><span class="badge">${er.graded} graded</span></div><div class="big num">${er.wins}-${er.graded-er.wins}</div><div class="sub">Closing-line value ${er.mean_clv==null?'-':spct(er.mean_clv/100,2)} on ${er.n_same} same-line calls; beat the close ${er.beat_close==null?'-':pct(er.beat_close,0)}.</div></div>`;
+  h+=`<div class="sec"><span>Context only</span></div>${sigCard('Sharp accounts (Polymarket)','Accounts whose past $1k+ bets beat the close. Held out, they did not beat it: 113-122 (48.1%). Shown for context. Never ranks a play and never counts toward an agree total.',ctx)}`;
+  return h;
+}
+
+/* Game read */
+function keyNote(line){
+  /* Spreads only: 3 and 7 are real key numbers. Total points have no stable key numbers (the shares are flat within noise), so none is shown. */
+  if(!K||!K.recent||line==null)return '';const dist=K.recent.margin,thr=.04,m=Math.abs(line),lo=Math.floor(m),hi=Math.ceil(m);
+  if(Math.abs(m-Math.round(m))<1e-9){const s=dist[String(Math.round(m))];return s>=thr?`Sits on ${Math.round(m)}: ${pct(s)} of NFL games end on exactly this margin, so it can push.`:''}
+  const a=dist[String(lo)],b=dist[String(hi)],n=[];if(a>=thr)n.push(`${lo} (${pct(a)})`);if(b>=thr)n.push(`${hi} (${pct(b)})`);
+  return n.length?`A half point either way crosses ${n.join(' or ')}: that share of NFL games ends on that margin.`:'';
+}
+function gamePage(key){
+  const g=(D.games||[]).find(x=>x.key===key);
+  if(!g)return `<a class="back" href="#plays">‹ Plays</a><div class="card empty"><b>Game not found.</b>It may have finished and dropped off the board.</div>`;
+  const p=g.pin,o=g.open,c=g.consensus;
+  const fa={ml:p&&p.ml?devig(p.ml.away,p.ml.home):null,sp:p&&p.sp?devig(p.sp.away,p.sp.home):null,tot:p&&p.tot?devig(p.tot.over,p.tot.under):null};   // chance of away / away covers / over
+  const cs=CAND.filter(x=>x.gk===key);
+  const best=(m,side)=>{let b=null;for(const [bk,v] of Object.entries(g.soft||{})){const q=v[m];if(!q||q[side]==null)continue;if(m!=='ml'&&p&&p[m]&&q.line!==p[m].line)continue;const pp=imp(q[side]);if(pp!=null&&(!b||pp<b.p))b={book:bk,am:q[side],p:pp}}return b};
+  const rowsFor=(m,sides,fair)=>sides.map((s,i)=>{const f=fair==null?null:(i===0?fair:1-fair),b=best(m,s[0]);const e=f!=null&&b?f/b.p-1:null;
+    return `<tr><td>${MKT[m]} ${esc(s[1])}</td><td class="num">${f==null?'-':pct(f)}</td><td class="num">${f==null?'-':fairAm(f)}</td><td class="num">${b?esc(b.book)+' '+am(b.am):'-'}</td><td class="num ${e!=null&&e>0?'pos':'mut'}">${e==null?'-':spct(e)}</td></tr>`}).join('');
+  const dn=g.model?`<div class="kv"><span>Vault line (context, no model-only plays)</span><b class="num">${esc(g.home.abbr)} ${g.model.margin>0?'-':'+'}${Math.abs(g.model.margin).toFixed(1)}, total ${g.model.total}</b></div>`:'';
+  const pl=cs.filter(x=>x.tier==='play'),ot=cs.filter(x=>x.tier!=='play');
+  let read;
+  if(pl.length)read=`${pl.length} price${pl.length===1?'':'s'} on this game clear${pl.length===1?'s':''} every gate: ${pl.map(x=>x.title+' at '+x.price.book+' '+am(x.price.am)).join('; ')}.`;
+  else if(ot.length)read=`Nothing clears every gate. ${ot.length} price${ot.length===1?' was':'s were'} looked at and held back (see the reasons below).`;
+  else read=p?'No price here beats Pinnacle by enough to look at.':'No Pinnacle line yet, so there is no fair price to compare against.';
+  const lines=['sp','tot','ml'].map(m=>{const f=x=>x&&x[m]?m==='ml'?am(x[m].away)+' / '+am(x[m].home):m==='sp'?sgn(-x[m].line)+' / '+sgn(x[m].line):String(x[m].line):'-';return `<tr><td>${MKT[m]}</td><td class="num">${f(o)}</td><td class="num">${f(c)}</td><td class="num">${f(p)}</td></tr>`}).join('');
+  let h=`<a class="back" href="#plays">‹ Plays</a><div class="hero"><div>${esc(g.away.short||g.away.name)}<small>${esc(g.away.abbr)}</small></div><span class="mut">@</span><div>${esc(g.home.short||g.home.name)}<small>${esc(g.home.abbr)}</small></div></div><div class="sub" style="text-align:center">${SPORT[g.sport]} · ${when(g.start)}</div>
+  <div class="card"><div class="gtop"><span>Read</span><span class="badge ${pl.length?'good':''}">${pl.length?'Plays':'No play'}</span></div><p style="margin:4px 0 0;font-size:16px">${esc(read)}</p></div>`;
+  h+=`<div class="sec"><span>Fair price against the best US price</span><span>one reference: Pinnacle</span></div><div class="card scroll"><table class="t"><tr><th>Side</th><th>Fair</th><th>Fair price</th><th>Best US price</th><th>Edge</th></tr>
+   ${rowsFor('ml',[['away',g.away.abbr],['home',g.home.abbr]],fa.ml)}${p&&p.sp?rowsFor('sp',[['away',g.away.abbr+' '+sgn(-p.sp.line)],['home',g.home.abbr+' '+sgn(p.sp.line)]],fa.sp):''}${p&&p.tot?rowsFor('tot',[['over','Over '+p.tot.line],['under','Under '+p.tot.line]],fa.tot):''}</table></div>
+   <p class="sub">An edge on one reference is a Watch. The exchange check is on the Plays page.</p>`;
+  h+=`<div class="sec"><span>Where the numbers moved</span><span>${g.sport==='nfl'?'away / home':''}</span></div><div class="card scroll"><table class="t"><tr><th></th><th>Open</th><th>Consensus</th><th>Pinnacle</th></tr>${lines}</table>
+   ${g.sport==='nfl'&&p&&p.sp?`<div class="sub" style="margin-top:8px">${esc(keyNote(p.sp.line)||'No common margin within a half point of this spread.')}</div>`:''}</div>`;
+  const ex=[];if(g.nov&&g.nov.ml&&g.nov.ml.mid!=null)ex.push(['Novig',g.nov.ml.mid]);if(g.kal&&g.kal.bid!=null&&g.kal.ask!=null)ex.push(['Kalshi',(g.kal.bid+g.kal.ask)/2]);
+  if(ex.length||dn)h+=`<div class="sec"><span>Other prices</span></div><div class="card">${ex.map(([n,v])=>`<div class="kv"><span>${n} chance, ${esc(g.home.abbr)} wins</span><b class="num">${pct(v)}</b></div>`).join('')}${dn}</div>`;
+  h+=tellsCard(g);
+  if(cs.length)h+=`<div class="sec"><span>Plays and passes on this game</span><span>${cs.length}</span></div>`+cs.map(playCard).join('');
+  h+=`<p class="sub"><a href="../new/#game/${esc(key)}">Open the full game page (line chart, money flow, sharp accounts, context only)</a></p>`;
+  return h;
+}
+
+
+/* ---- tells: lead-lag clock and stale-quote age (data/lead_lag.json and data/book_age.json, built by scripts/build_lead_lag.py from the book tape) ---- */
+const tnow=()=>Date.now()/1000;
+const dur=sec=>{const m=Math.round(sec/60);return m<1?'under a minute':m<60?m+' min':m<1440?Math.round(m/60)+' h':Math.round(m/1440)+' d'};
+const ageOf=(gk,m)=>AG&&AG.games&&AG.games[gk]&&AG.games[gk][m]||null;
+function clockLine(sport,m){
+  const d=LG&&LG.by_sport&&LG.by_sport[sport]&&LG.by_sport[sport][m],u=d&&d.by_book&&d.by_book['US books (all five)'],mk=MKT[m].toLowerCase();
+  if(!u||u.n<15)return `Not enough ${SPORT[sport]} ${mk} moves in the tape yet to time how fast books follow Pinnacle${d?' ('+d.events+' so far)':''}.`;
+  const med=u.median_min!=null?', after a median '+dur(u.median_min*60):'';
+  return `${d.events} Pinnacle ${mk} moves so far in ${SPORT[sport]}, ${u.n} book-moves checked. The US books never followed before kickoff in ${pct(u.pct_not_followed,0)}, had already moved in ${pct(u.pct_led,0)}, and followed in ${pct(u.followed/u.n,0)}${med}. Only ${pct(u.pct_followed_within_60,0)} followed within an hour.${d.events<50?' Small sample.':''}`;
+}
+function bookLine(c){
+  if(c.kind!=='book'||!c.gk)return '';const a=ageOf(c.gk,c.m),x=a&&a.books&&a.books[c.price.book];if(!x||!x.changed)return '';
+  const n=tnow();return `<div class="rec">${esc(c.price.book)} last changed this number ${dur(n-x.changed)} ago.${a.pin_moved?' Pinnacle’s number last moved '+dur(n-a.pin_moved)+' ago.':''}</div>`;
+}
+function tellsCard(g){
+  const parts=[];
+  for(const m of ['sp','tot','ml']){
+    const a=ageOf(g.key,m);if(!a)continue;
+    const fmt=v=>m==='sp'?esc(g.home.abbr)+' '+sgn(v):m==='tot'?String(v):pct(v)+' '+esc(g.home.abbr);
+    const rows=Object.entries(a.books||{}).map(([b,x])=>{
+      const behind=!x.same&&a.pin_moved&&x.changed&&x.changed<=a.pin_moved;
+      return `<tr><td>${esc(b)}</td><td class="num">${fmt(x.v)}</td><td class="num">${x.changed?dur(tnow()-x.changed)+' ago':'-'}</td><td>${x.same?'<span class="badge good">Same as Pinnacle</span>':behind?'<span class="badge warn">Behind: not changed since Pinnacle moved</span>':'<span class="badge">Differs</span>'}</td></tr>`}).join('');
+    parts.push(`<div class="kv"><span>${MKT[m]}: Pinnacle ${fmt(a.pin)}</span><b class="num">${a.pin_moved?'moved '+dur(tnow()-a.pin_moved)+' ago':''}</b></div>
+      <div class="scroll"><table class="t"><tr><th>Book</th><th>Now</th><th>Last changed</th><th></th></tr>${rows}</table></div><p class="sub" style="margin-top:6px">${esc(clockLine(g.sport,m))}</p>`);
+  }
+  if(!parts.length)return `<div class="sec"><span>Who is behind</span></div><div class="card"><div class="sub" style="margin:0">No book history for this game yet. The tape records a book only when its number changes, from the first run after it appears.</div></div>`;
+  return `<div class="sec"><span>Who is behind</span><span>from the book tape</span></div><div class="card">${parts.join('')}</div>`;
+}
+
+/* ---- Board: the slate, games with something to look at first ---- */
+function board(){
+  const up=(D.games||[]).filter(g=>g.start>NOW);const cnt={all:up.length,nfl:0,cfb:0,nba:0};up.forEach(g=>cnt[g.sport]++);
+  const L=up.filter(g=>st.sport==='all'||g.sport===st.sport);
+  const tally=g=>{const cs=ALL.filter(c=>c.gk===g.key&&c.tier!=='none');return {play:cs.filter(c=>c.tier==='play').length,watch:cs.filter(c=>c.tier==='watch').length}};
+  L.forEach(g=>g._t=tally(g));
+  L.sort((a,b)=>(b._t.play-a._t.play)||(b._t.watch-a._t.watch)||a.start-b.start);
+  let h=`<div class="sec"><span>Board</span><span class="num">${L.length} game${L.length===1?'':'s'}</span></div>`+chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport');
+  h+=`<p class="sub">Games with a play first, then watch, then by kickoff. A game with no badge has no price worth a look.</p>`;
+  const shown=L.slice(0,st.slate);
+  h+=shown.map(g=>{const p=g.pin,a=ageOf(g.key,'sp')||ageOf(g.key,'tot'),mv=a&&a.pin_moved&&tnow()-a.pin_moved<3*3600;
+    const ln=p?[p.sp?esc(g.home.abbr)+' '+sgn(p.sp.line):'',p.tot?'O/U '+p.tot.line:'',p.ml?'ML '+am(p.ml.away)+' / '+am(p.ml.home):''].filter(Boolean).join(' · '):'No Pinnacle line yet';
+    return `<div class="card tap" data-go="game/${esc(g.key)}"><div class="gtop"><span>${SPORT[g.sport]} · ${when(g.start)}</span><span style="display:flex;gap:6px">${mv?`<span class="badge acc">Pinnacle moved ${dur(tnow()-a.pin_moved)} ago</span>`:''}${g._t.play?`<span class="badge good">${g._t.play} play${g._t.play>1?'s':''}</span>`:''}${g._t.watch?`<span class="badge warn">${g._t.watch} watch</span>`:''}</span></div>
+    <h3>${esc(g.away.short||g.away.abbr)} @ ${esc(g.home.short||g.home.abbr)}</h3><div class="px num">${ln}</div></div>`}).join('')||'<div class="card empty"><b>Nothing on the board for this league.</b></div>';
+  if(L.length>st.slate)h+=`<button class="btn" data-more="1">Show more (${L.length-st.slate} left)</button>`;
+  return h;
+}
+
+/* ---- Models: the Vault line beside the market. Context only: it has not beaten the close ---- */
+function models(){
+  const gm=SB&&SB.games&&SB.games.games,pr=SB&&SB.props&&SB.props.all;
+  let h=`<div class="sec"><span>Models</span><span>${SB?'scored against the closing price':''}</span></div>
+  <p class="sub">The Vault model is shown beside the market and never makes a play on its own. Its record against the closing price decides how much a gap means.</p><div class="grid2">`;
+  const sk=(x,lab)=>x&&x.close?`<div class="card"><div class="gtop"><span>${lab}</span><span class="badge ${x.close.skill<0&&x.close.z<=-1.64?'bad':'warn'}">${x.close.skill<0?(x.close.z<=-1.64?'Worse than the market':'Level (within noise)'):'Ahead (not significant)'}</span></div>
+    <div class="big num ${x.close.skill<0?'neg':'pos'}">${spct(x.close.skill)}</div><div class="sub">log-loss skill against the market close on ${x.close.n} (z ${x.close.z}). Negative means the market was closer to what happened.</div>
+    ${x.bets?`<div class="kv"><span>Bets at the close, flat 1u</span><b class="num">${x.bets.win_close==null?'-':pct(x.bets.win_close)+' won, '+spct(x.bets.roi_close)+' ROI'} <small class="mut">(${x.bets.n_close})</small></b></div>`:''}</div>`:'';
+  h+=sk(gm,'Games: Vault line vs the close')+sk(pr,'Player props: Vault projection vs the close')+`</div>`;
+  if(!SB)h+='<div class="card empty"><b>The model scoreboard did not load.</b></div>';
+  const rows=(D.games||[]).filter(g=>g.start>NOW&&g.model&&g.pin&&g.pin.sp&&(st.sport==='all'||g.sport===st.sport)).map(g=>{
+    const mk=-g.pin.sp.line,mm=g.model.margin,gap=mm-mk;return {g,mk,mm,gap,tg:g.pin.tot?g.model.total-g.pin.tot.line:null}}).sort((a,b)=>Math.abs(b.gap)-Math.abs(a.gap));
+  h+=`<div class="sec"><span>Vault line against Pinnacle</span><span>${rows.length} game${rows.length===1?'':'s'}</span></div>`+chips(Object.keys(SPORT).map(k=>[k,SPORT[k]]),st.sport,'sport');
+  h+=rows.length?`<div class="card scroll"><table class="t"><tr><th>Game</th><th>Market (home)</th><th>Vault (home)</th><th>Gap</th><th>Total gap</th></tr>${rows.slice(0,40).map(r=>`<tr data-go="game/${esc(r.g.key)}" style="cursor:pointer"><td>${esc(r.g.away.abbr)} @ ${esc(r.g.home.abbr)}<div class="mut" style="font-size:12px">${SPORT[r.g.sport]} · ${when(r.g.start)}</div></td><td class="num">${sgn(-r.mk)}</td><td class="num">${sgn(+(-r.mm).toFixed(1))}</td><td class="num">${r.gap>0?'+':''}${r.gap.toFixed(1)}</td><td class="num">${r.tg==null?'-':(r.tg>0?'+':'')+r.tg.toFixed(1)}</td></tr>`).join('')}</table></div><p class="sub">Gap is points toward the home side. A big gap is a prompt to look, not a bet: the model has not beaten the close.</p>`:'<div class="card empty"><b>No game has both a model line and a Pinnacle spread right now.</b></div>';
+  return h;
+}
+
+/* ---- V2's own record: the forward log (scripts/track-v2-plays.mjs writes it, sharp-data/v2_plays.json). Each Play is written once at first sight and frozen. ---- */
+const PLAY_STATE={won:['Won','good'],lost:['Lost','bad'],push:['Push',''],void:['Void',''],open:['Open','acc']};
+function v2Rows(){return Object.values((PL&&PL.plays)||{}).map(p=>({p,result:p.status==='won'?1:p.status==='lost'?-1:p.status==='push'?0:null,fair:p.first&&p.first.fairMean,clv:p.clv==null?null:p.clv,units:p.status==='won'||p.status==='lost'||p.status==='push'?p.units:null}))}
+function v2Card(name,desc,rows){
+  const s=stat(rows),cnt=k=>rows.filter(r=>r.p.status===k).length,wins=rows.filter(r=>r.units>0).map(r=>r.units).sort((a,b)=>b-a).slice(0,5);
+  const roi=s.n&&s.units!=null?s.units/s.n:null,roiX=s.n>wins.length&&s.units!=null?(s.units-wins.reduce((a,b)=>a+b,0))/(s.n-wins.length):null;
+  const claimed=rows.filter(r=>r.p.first&&r.p.first.worst!=null).map(r=>r.p.first.worst);
+  const sgnu=x=>sgn(+x.toFixed(1))+'u';
+  return `<div class="card"><div class="gtop"><span>${esc(name)} <span class="mut">· ${rows.length} logged</span></span><span class="badge ${s.verdict[1]}">${s.verdict[0]}</span></div>
+  <div class="big num">${s.n?s.w+'-'+s.l:'none graded'}</div><div class="sub">${s.n?pct(s.win)+' won of '+s.n+' settled':rows.length+' logged, none settled yet'}${cnt('push')?', '+cnt('push')+' push':''}${cnt('void')?', '+cnt('void')+' void':''}${cnt('open')?', '+cnt('open')+' open':''}</div>
+  <div class="kv"><span>ROI, flat 1 unit</span><b class="num ${roi==null?'':roi<0?'neg':'pos'}">${roi==null?'-':spct(roi)} <small class="mut">(${s.n} settled)</small></b></div>
+  <div class="kv"><span>ROI without top ${wins.length||5} wins</span><b class="num ${roiX==null?'':roiX<0?'neg':'pos'}">${roiX==null?'-':spct(roiX)} <small class="mut">(${s.n-wins.length} left)</small></b></div>
+  <div class="kv"><span>Units</span><b class="num">${s.units==null?'-':sgnu(s.units)} <small class="mut">(${s.n} settled)</small></b></div>
+  <div class="kv"><span>Units without top ${wins.length||5} wins</span><b class="num">${s.units==null?'-':sgnu(s.units-wins.reduce((a,b)=>a+b,0))} <small class="mut">(${s.n-wins.length} left)</small></b></div>
+  <div class="kv"><span>CLV vs exchange close</span><b class="num ${s.clv==null?'':s.clv>0?'pos':'neg'}">${s.clv==null?'-':spct(s.clv)} <small class="mut">(${s.clvN} with a close)</small></b></div>
+  <div class="kv"><span>Edge claimed at first sight</span><b class="num">${claimed.length?spct(mean(claimed)):'-'} <small class="mut">(${claimed.length})</small></b></div>
+  ${s.ex!=null?`<div class="kv"><span>Won rate vs references</span><b class="num ${s.ex>0?'pos':'neg'}">${(s.ex>=0?'+':'')+(s.ex*100).toFixed(1)} pts <small class="mut">(${s.fn})</small></b></div>`:''}
+  <div class="sub" style="margin-top:6px">${esc(desc)}</div></div>`;
+}
+function v2Recent(rows){
+  const list=rows.slice().sort((a,b)=>b.p.firstSeen-a.p.firstSeen).slice(0,30);
+  return `<div class="sec"><span>Latest plays</span><span>${list.length} of ${rows.length}</span></div><div class="card">${list.map(r=>{const p=r.p,f=p.first,st=PLAY_STATE[p.status]||['',''],px=f.price,rf=(f.refs||[]).map(x=>esc(x.n)+' '+spct(x.edge)).join(', ');
+    return `<div class="pass"><div><b>${esc(f.title)}</b> <span class="mut">at ${esc(px.book)} ${am(px.am)}</span><div class="r">${esc(f.sub||'')} · first seen ${when(p.firstSeen)} · ${rf}</div>${p.close?`<div class="r">Exchange close ${pct(p.close.p)} (${esc(p.close.src)}), CLV ${spct(p.clv)}</div>`:''}</div>
+    <div style="text-align:right;white-space:nowrap"><span class="badge ${st[1]}">${st[0]}</span>${p.units!=null&&p.status!=='open'&&p.status!=='void'?`<div class="num ${p.units>0?'pos':p.units<0?'neg':'mut'}" style="margin-top:4px">${sgn(+p.units.toFixed(2))}u</div>`:''}</div></div>`}).join('')}</div>`;
+}
+function v2Section(){
+  let h=`<div class="sec"><span>V2 plays</span><span>forward log</span></div>`;
+  if(!PL||!PL.plays)return h+`<div class="card"><div class="gtop"><span>Forward log</span><span class="badge warn">Not started</span></div><div class="sub" style="margin:0">The log of V2 plays has not been published yet. Every Play on the Plays page will be written here once, at first sight, with the price and both reference prices it showed, then frozen and graded. Until it has 100 settled plays, treat a play as a better price, not a proven edge.</div></div>`;
+  const rows=v2Rows();
+  if(!rows.length)return h+`<div class="card empty"><b>No play logged yet.</b>The log is running. A play is written the first time one clears every gate before kickoff.</div>`;
+  const since=Math.min(...rows.map(r=>r.p.firstSeen));
+  h+=`<p class="sub">${rows.length} play${rows.length===1?'':'s'} logged since ${new Date(since*1000).toLocaleDateString('en-US',{...CT,month:'short',day:'numeric'})}. Each is written once at first sight, then frozen.</p>
+  <details class="how"><summary>How this is counted</summary><ul><li>A play is logged the first time it clears every gate before kickoff, at the price, book and both reference prices it showed. Nothing is edited afterwards.</li><li>Flat 1 unit at the stored price. Props settle from the box score, games from the final score. A push is 0 units and not counted in W-L.</li><li>CLV is the exchange close over the stored price. The exchange did not raise the call, so it is a check, not a repeat of the call. Plays with no exchange read at the same line before kickoff have no CLV and are left out of it.</li><li>Edge claimed is the smaller of the two reference edges at first sight. Won rate vs references is the win rate minus the chance the two references gave on average.</li><li>The five biggest wins are removed from the sample for the without-top-5 figures, so one longshot cannot carry a record.</li><li>Trust needs 100+ settled plays, a win rate clearly above the references (z of 1.64+) and positive CLV. Under 30 settled is Too few. Sharp-account money is context only and is never counted here.</li></ul></details>`;
+  h+=v2Card('All V2 plays','Props and games together.',rows)+v2Card('Props','Player props, settled from the box score.',rows.filter(r=>r.p.kind==='prop'))+v2Card('Games','Moneyline, spread and total, settled from the final score.',rows.filter(r=>r.p.kind!=='prop'));
+  return h+v2Recent(rows);
+}
+
+/* ---- Record: every rule on one page, with what each can and cannot say ---- */
+function record(){
+  if(!D)return '';const {cards,ctx}=rules(),all=cards.concat([['Sharp accounts (context only)','Never ranks a play.',ctx]]);
+  let h=v2Section()+`<div class="sec"><span>Earlier signals</span><span>every rule, graded</span></div><p class="sub">One table, same scoring everywhere: win rate, the gap to the price it was taken at, closing-line value, and units at the stored price with and without the 5 biggest wins. A rule needs 100+ games to be called.</p>
+  <div class="card scroll"><table class="t"><tr><th>Rule</th><th>W-L</th><th>Won</th><th>CLV</th><th>Units</th><th></th></tr>${all.map(([n,,s])=>`<tr><td>${esc(n)}</td><td class="num">${s.n?s.w+'-'+s.l:'-'}</td><td class="num">${s.n?pct(s.win,0):'-'}</td><td class="num ${s.clv==null?'':s.clv>0?'pos':'neg'}">${s.clv==null?'-':spct(s.clv)}</td><td class="num">${s.units==null?'-':sgn(+s.units.toFixed(1))+'u<div class="mut" style="font-size:11.5px">'+sgn(+s.unitsNoTop5.toFixed(1))+'u without top 5</div>'}</td><td><span class="badge ${s.verdict[1]}">${s.verdict[0]}</span></td></tr>`).join('')}</table></div>`;
+  const rec=P&&P.propRecord&&P.propRecord.all;
+  if(rec)h+=`<div class="card"><div class="gtop"><span>Prop board calls</span><span class="badge bad">${rec.roi<0?'Losing':'Watch'}</span></div><div class="big num">${rec.w}-${rec.l}</div><div class="sub">ROI ${spct(rec.roi)} at flat 1 unit on ${rec.w+rec.l} settled.</div>
+   <div class="kv"><span>CLV on the old close (the price that raised the call)</span><b class="num">${spct(rec.clv)}</b></div><div class="kv"><span>CLV against the exchange close</span><b class="num">${rec.clvXN>0?spct(rec.clvX)+' <small class="mut">('+rec.clvXN+')</small>':'<span class="mut">arrives with the next data update</span>'}</b></div></div>`;
+  const rb=RG&&RG.roi_by_exchange_clv;
+  if(rb){const row=(k,l)=>{const x=rb[k];return x&&x.n?`<tr><td>${l}</td><td class="num">${x.n}</td><td class="num">${pct(x.hit)}</td><td class="num ${x.roi<0?'neg':'pos'}">${spct(x.roi)}</td></tr>`:''};
+   h+=`<div class="sec"><span>Does beating the independent close go with winning?</span><span>prop calls</span></div><div class="card scroll"><table class="t"><tr><th>Calls that</th><th>Calls</th><th>Hit</th><th>ROI</th></tr>${row('beat_exchange_close','beat the exchange close')}${row('missed_exchange_close','missed it')}${row('beat_exchange_by_2pts','beat it by more than 2%')}${row('beat_both_exchange_and_pinnacle','beat both exchange and Pinnacle closes')}${row('beat_neither','beat neither')}</table></div>
+   <p class="sub">Hindsight check on the close, not a rule usable at call time. Beating the close goes with winning more, but even the best slice has not earned its price. Standard error on 165 calls is about 7 points of ROI.</p>`}
+  return h;
+}
+
+/* ---- router ---- */
+function route(){
+  const r=(location.hash||'#plays').slice(1),sc=$('scr');let html,tab='plays';
+  $('snap').innerHTML=snap();
+  if(!LOADED){sc.innerHTML=ERR?'<div class="card"><b>Could not load the data.</b><div class="sub">Check your connection and refresh.</div></div>':skeleton();return setTabs(tab)}
+  if(r.startsWith('game/')){html=gamePage(decodeURIComponent(r.slice(5)))}
+  else if(r==='board'){html=board();tab='board'}
+  else if(r==='props'){html=props();tab='props'}
+  else if(r==='models'){html=models();tab='models'}
+  else if(r==='record'){html=record();tab='record'}
+  else if(r==='signals'){html=signals();tab='signals'}
+  else html=plays();
+  sc.innerHTML=html;setTabs(tab);
+}
+function setTabs(tab){document.querySelectorAll('#tabs a[data-t]').forEach(a=>a.classList.toggle('on',a.dataset.t===tab))}
+const rerender=()=>{const y=scrollY;route();window.scrollTo(0,y)};
+document.addEventListener('click',e=>{
+  const s=e.target.closest('[data-set]');if(s){st[s.dataset.set==='sport'?'sport':s.dataset.set==='tier'?'tier':'pm']=s.dataset.v;return rerender()}
+  if(e.target.closest('[data-more]')){st.slate+=20;return rerender()}
+  const g=e.target.closest('[data-go]');if(g&&!e.target.closest('a')){location.hash='#'+g.dataset.go;window.scrollTo(0,0)}
+});
+$('rf').addEventListener('click',async()=>{const b=$('rf');if(b.dataset.busy)return;b.dataset.busy='1';b.innerHTML='<span class="sp"></span>Refreshing';await load();b.textContent='Refresh';delete b.dataset.busy});
+addEventListener('hashchange',()=>{route();window.scrollTo(0,0)});
+route();load();setInterval(load,120000);
+</script>
+</body>
+</html>

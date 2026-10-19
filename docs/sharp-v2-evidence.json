@@ -1,0 +1,4938 @@
+{
+ "generated_from": {
+  "picks": 760,
+  "prop_calls": 1323,
+  "data_ts": 1792369471
+ },
+ "top_reads": {
+  "n_graded": 560,
+  "overall": {
+   "all": {
+    "n": 560,
+    "fair_n": 442,
+    "w": 283,
+    "l": 273,
+    "p": 4,
+    "win": 0.509,
+    "vs_fair": 0.019,
+    "z_vs_fair": 0.817,
+    "roi_stored_px": 0.116,
+    "roi_n": 214,
+    "clv": -0.009,
+    "clv_n": 421,
+    "z_vs_50": 0.424
+   },
+   "train": {
+    "n": 290,
+    "fair_n": 223,
+    "w": 150,
+    "l": 137,
+    "p": 3,
+    "win": 0.523,
+    "vs_fair": 0.034,
+    "z_vs_fair": 1.054,
+    "roi_stored_px": 0.152,
+    "roi_n": 103,
+    "clv": -0.011,
+    "clv_n": 206,
+    "z_vs_50": 0.767
+   },
+   "held_out": {
+    "n": 270,
+    "fair_n": 219,
+    "w": 133,
+    "l": 136,
+    "p": 1,
+    "win": 0.494,
+    "vs_fair": 0.003,
+    "z_vs_fair": 0.089,
+    "roi_stored_px": 0.084,
+    "roi_n": 111,
+    "clv": -0.006,
+    "clv_n": 215,
+    "z_vs_50": -0.183
+   },
+   "verdict": "LEAVE OUT",
+   "reasons": [
+    "excess over fair not significant (z 0.089)",
+    "mean closing-line value is not positive"
+   ]
+  },
+  "by_signal_count": {
+   "1": {
+    "all": {
+     "n": 460,
+     "fair_n": 354,
+     "w": 237,
+     "l": 220,
+     "p": 3,
+     "win": 0.519,
+     "vs_fair": 0.032,
+     "z_vs_fair": 1.243,
+     "roi_stored_px": 0.134,
+     "roi_n": 171,
+     "clv": -0.008,
+     "clv_n": 334,
+     "z_vs_50": 0.795
+    },
+    "train": {
+     "n": 276,
+     "fair_n": 206,
+     "w": 145,
+     "l": 129,
+     "p": 2,
+     "win": 0.529,
+     "vs_fair": 0.042,
+     "z_vs_fair": 1.244,
+     "roi_stored_px": 0.167,
+     "roi_n": 94,
+     "clv": -0.012,
+     "clv_n": 187,
+     "z_vs_50": 0.967
+    },
+    "held_out": {
+     "n": 184,
+     "fair_n": 148,
+     "w": 92,
+     "l": 91,
+     "p": 1,
+     "win": 0.503,
+     "vs_fair": 0.017,
+     "z_vs_fair": 0.447,
+     "roi_stored_px": 0.093,
+     "roi_n": 77,
+     "clv": -0.002,
+     "clv_n": 147,
+     "z_vs_50": 0.074
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "excess over fair not significant (z 0.447)",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "2": {
+    "all": {
+     "n": 94,
+     "fair_n": 82,
+     "w": 42,
+     "l": 51,
+     "p": 1,
+     "win": 0.452,
+     "vs_fair": -0.05,
+     "z_vs_fair": -0.927,
+     "roi_stored_px": -0.001,
+     "roi_n": 37,
+     "clv": -0.013,
+     "clv_n": 81,
+     "z_vs_50": -0.933
+    },
+    "train": {
+     "n": 47,
+     "fair_n": 44,
+     "w": 19,
+     "l": 27,
+     "p": 1,
+     "win": 0.413,
+     "vs_fair": -0.071,
+     "z_vs_fair": -0.945,
+     "roi_stored_px": -0.143,
+     "roi_n": 21,
+     "clv": -0.016,
+     "clv_n": 44,
+     "z_vs_50": -1.18
+    },
+    "held_out": {
+     "n": 47,
+     "fair_n": 38,
+     "w": 23,
+     "l": 24,
+     "p": 0,
+     "win": 0.489,
+     "vs_fair": -0.027,
+     "z_vs_fair": -0.342,
+     "roi_stored_px": 0.185,
+     "roi_n": 16,
+     "clv": -0.01,
+     "clv_n": 37,
+     "z_vs_50": -0.146
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 47 < 100",
+     "does not beat the logged fair probability",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "3": {
+    "all": {
+     "n": 6,
+     "fair_n": 6,
+     "w": 4,
+     "l": 2,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.201,
+     "z_vs_fair": 1.019,
+     "roi_stored_px": 0.346,
+     "roi_n": 6,
+     "clv": -0.003,
+     "clv_n": 6,
+     "z_vs_50": 0.816
+    },
+    "train": {
+     "n": 3,
+     "fair_n": 3,
+     "w": 2,
+     "l": 1,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.264,
+     "z_vs_fair": 0.974,
+     "roi_stored_px": 0.42,
+     "roi_n": 3,
+     "clv": -0.001,
+     "clv_n": 3,
+     "z_vs_50": 0.577
+    },
+    "held_out": {
+     "n": 3,
+     "fair_n": 3,
+     "w": 2,
+     "l": 1,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.139,
+     "z_vs_fair": 0.482,
+     "roi_stored_px": 0.273,
+     "roi_n": 3,
+     "clv": -0.004,
+     "clv_n": 3,
+     "z_vs_50": 0.577
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 3 < 100",
+     "excess over fair not significant (z 0.482)",
+     "mean closing-line value is not positive"
+    ]
+   }
+  },
+  "by_kinds": {
+   "behind": {
+    "all": {
+     "n": 79,
+     "fair_n": 67,
+     "w": 35,
+     "l": 43,
+     "p": 1,
+     "win": 0.449,
+     "vs_fair": -0.059,
+     "z_vs_fair": -0.97,
+     "roi_stored_px": -0.079,
+     "roi_n": 57,
+     "clv": -0.017,
+     "clv_n": 67,
+     "z_vs_50": -0.906
+    },
+    "train": {
+     "n": 45,
+     "fair_n": 36,
+     "w": 21,
+     "l": 23,
+     "p": 1,
+     "win": 0.477,
+     "vs_fair": -0.04,
+     "z_vs_fair": -0.485,
+     "roi_stored_px": -0.0,
+     "roi_n": 28,
+     "clv": -0.018,
+     "clv_n": 36,
+     "z_vs_50": -0.302
+    },
+    "held_out": {
+     "n": 34,
+     "fair_n": 31,
+     "w": 14,
+     "l": 20,
+     "p": 0,
+     "win": 0.412,
+     "vs_fair": -0.08,
+     "z_vs_fair": -0.903,
+     "roi_stored_px": -0.156,
+     "roi_n": 29,
+     "clv": -0.016,
+     "clv_n": 31,
+     "z_vs_50": -1.029
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 34 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "behind+line": {
+    "all": {
+     "n": 41,
+     "fair_n": 36,
+     "w": 23,
+     "l": 17,
+     "p": 1,
+     "win": 0.575,
+     "vs_fair": 0.026,
+     "z_vs_fair": 0.31,
+     "roi_stored_px": 0.205,
+     "roi_n": 25,
+     "clv": -0.02,
+     "clv_n": 35,
+     "z_vs_50": 0.949
+    },
+    "train": {
+     "n": 23,
+     "fair_n": 19,
+     "w": 13,
+     "l": 9,
+     "p": 1,
+     "win": 0.591,
+     "vs_fair": 0.043,
+     "z_vs_fair": 0.379,
+     "roi_stored_px": 0.184,
+     "roi_n": 14,
+     "clv": -0.015,
+     "clv_n": 18,
+     "z_vs_50": 0.853
+    },
+    "held_out": {
+     "n": 18,
+     "fair_n": 17,
+     "w": 10,
+     "l": 8,
+     "p": 0,
+     "win": 0.556,
+     "vs_fair": 0.006,
+     "z_vs_fair": 0.052,
+     "roi_stored_px": 0.231,
+     "roi_n": 11,
+     "clv": -0.025,
+     "clv_n": 17,
+     "z_vs_50": 0.471
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 18 < 100",
+     "excess over fair not significant (z 0.052)",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "behind+line+money": {
+    "all": {
+     "n": 6,
+     "fair_n": 6,
+     "w": 4,
+     "l": 2,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.201,
+     "z_vs_fair": 1.019,
+     "roi_stored_px": 0.346,
+     "roi_n": 6,
+     "clv": -0.003,
+     "clv_n": 6,
+     "z_vs_50": 0.816
+    },
+    "train": {
+     "n": 3,
+     "fair_n": 3,
+     "w": 2,
+     "l": 1,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.264,
+     "z_vs_fair": 0.974,
+     "roi_stored_px": 0.42,
+     "roi_n": 3,
+     "clv": -0.001,
+     "clv_n": 3,
+     "z_vs_50": 0.577
+    },
+    "held_out": {
+     "n": 3,
+     "fair_n": 3,
+     "w": 2,
+     "l": 1,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.139,
+     "z_vs_fair": 0.482,
+     "roi_stored_px": 0.273,
+     "roi_n": 3,
+     "clv": -0.004,
+     "clv_n": 3,
+     "z_vs_50": 0.577
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 3 < 100",
+     "excess over fair not significant (z 0.482)",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "behind+money": {
+    "all": {
+     "n": 6,
+     "fair_n": 5,
+     "w": 1,
+     "l": 5,
+     "p": 0,
+     "win": 0.167,
+     "vs_fair": -0.212,
+     "z_vs_fair": -0.98,
+     "roi_stored_px": 0.033,
+     "roi_n": 3,
+     "clv": -0.012,
+     "clv_n": 5,
+     "z_vs_50": -1.633
+    },
+    "train": {
+     "n": 3,
+     "fair_n": 3,
+     "w": 1,
+     "l": 2,
+     "p": 0,
+     "win": 0.333,
+     "vs_fair": -0.055,
+     "z_vs_fair": -0.2,
+     "roi_stored_px": 0.55,
+     "roi_n": 2,
+     "clv": 0.006,
+     "clv_n": 3,
+     "z_vs_50": -0.577
+    },
+    "held_out": {
+     "n": 3,
+     "fair_n": 2,
+     "w": 0,
+     "l": 3,
+     "p": 0,
+     "win": 0.0,
+     "vs_fair": -0.448,
+     "z_vs_fair": -1.277,
+     "roi_stored_px": -1.0,
+     "roi_n": 1,
+     "clv": -0.038,
+     "clv_n": 2,
+     "z_vs_50": -1.732
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 3 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "line": {
+    "all": {
+     "n": 252,
+     "fair_n": 191,
+     "w": 148,
+     "l": 102,
+     "p": 2,
+     "win": 0.592,
+     "vs_fair": 0.056,
+     "z_vs_fair": 1.603,
+     "roi_stored_px": 0.162,
+     "roi_n": 61,
+     "clv": -0.007,
+     "clv_n": 191,
+     "z_vs_50": 2.909
+    },
+    "train": {
+     "n": 151,
+     "fair_n": 121,
+     "w": 87,
+     "l": 63,
+     "p": 1,
+     "win": 0.58,
+     "vs_fair": 0.045,
+     "z_vs_fair": 1.022,
+     "roi_stored_px": 0.147,
+     "roi_n": 38,
+     "clv": -0.009,
+     "clv_n": 121,
+     "z_vs_50": 1.96
+    },
+    "held_out": {
+     "n": 101,
+     "fair_n": 70,
+     "w": 61,
+     "l": 39,
+     "p": 1,
+     "win": 0.61,
+     "vs_fair": 0.075,
+     "z_vs_fair": 1.309,
+     "roi_stored_px": 0.186,
+     "roi_n": 23,
+     "clv": -0.003,
+     "clv_n": 70,
+     "z_vs_50": 2.2
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "excess over fair not significant (z 1.309)",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "line+money": {
+    "all": {
+     "n": 47,
+     "fair_n": 41,
+     "w": 18,
+     "l": 29,
+     "p": 0,
+     "win": 0.383,
+     "vs_fair": -0.098,
+     "z_vs_fair": -1.275,
+     "roi_stored_px": -0.583,
+     "roi_n": 9,
+     "clv": -0.007,
+     "clv_n": 41,
+     "z_vs_50": -1.605
+    },
+    "train": {
+     "n": 26,
+     "fair_n": 25,
+     "w": 9,
+     "l": 17,
+     "p": 0,
+     "win": 0.346,
+     "vs_fair": -0.138,
+     "z_vs_fair": -1.386,
+     "roi_stored_px": -0.765,
+     "roi_n": 8,
+     "clv": -0.02,
+     "clv_n": 25,
+     "z_vs_50": -1.569
+    },
+    "held_out": {
+     "n": 21,
+     "fair_n": 16,
+     "w": 9,
+     "l": 12,
+     "p": 0,
+     "win": 0.429,
+     "vs_fair": -0.035,
+     "z_vs_fair": -0.293,
+     "roi_stored_px": 0.877,
+     "roi_n": 1,
+     "clv": 0.012,
+     "clv_n": 16,
+     "z_vs_50": -0.655
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 21 < 100",
+     "does not beat the logged fair probability"
+    ]
+   },
+   "money": {
+    "all": {
+     "n": 129,
+     "fair_n": 96,
+     "w": 54,
+     "l": 75,
+     "p": 0,
+     "win": 0.419,
+     "vs_fair": 0.046,
+     "z_vs_fair": 0.982,
+     "roi_stored_px": 0.331,
+     "roi_n": 53,
+     "clv": -0.001,
+     "clv_n": 76,
+     "z_vs_50": -1.849
+    },
+    "train": {
+     "n": 76,
+     "fair_n": 45,
+     "w": 36,
+     "l": 40,
+     "p": 0,
+     "win": 0.474,
+     "vs_fair": 0.097,
+     "z_vs_fair": 1.375,
+     "roi_stored_px": 0.363,
+     "roi_n": 28,
+     "clv": -0.012,
+     "clv_n": 27,
+     "z_vs_50": -0.459
+    },
+    "held_out": {
+     "n": 53,
+     "fair_n": 51,
+     "w": 18,
+     "l": 35,
+     "p": 0,
+     "win": 0.34,
+     "vs_fair": 0.001,
+     "z_vs_fair": 0.014,
+     "roi_stored_px": 0.295,
+     "roi_n": 25,
+     "clv": 0.004,
+     "clv_n": 49,
+     "z_vs_50": -2.335
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 53 < 100",
+     "excess over fair not significant (z 0.014)"
+    ]
+   }
+  },
+  "by_conflict": {
+   "both sides flagged": {
+    "all": {
+     "n": 276,
+     "fair_n": 227,
+     "w": 135,
+     "l": 138,
+     "p": 3,
+     "win": 0.495,
+     "vs_fair": -0.013,
+     "z_vs_fair": -0.398,
+     "roi_stored_px": 0.048,
+     "roi_n": 126,
+     "clv": -0.014,
+     "clv_n": 226,
+     "z_vs_50": -0.182
+    },
+    "train": {
+     "n": 158,
+     "fair_n": 131,
+     "w": 77,
+     "l": 79,
+     "p": 2,
+     "win": 0.494,
+     "vs_fair": -0.009,
+     "z_vs_fair": -0.222,
+     "roi_stored_px": 0.094,
+     "roi_n": 71,
+     "clv": -0.017,
+     "clv_n": 130,
+     "z_vs_50": -0.16
+    },
+    "held_out": {
+     "n": 118,
+     "fair_n": 96,
+     "w": 58,
+     "l": 59,
+     "p": 1,
+     "win": 0.496,
+     "vs_fair": -0.018,
+     "z_vs_fair": -0.353,
+     "roi_stored_px": -0.011,
+     "roi_n": 55,
+     "clv": -0.01,
+     "clv_n": 96,
+     "z_vs_50": -0.092
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "one side": {
+    "all": {
+     "n": 284,
+     "fair_n": 215,
+     "w": 148,
+     "l": 135,
+     "p": 1,
+     "win": 0.523,
+     "vs_fair": 0.052,
+     "z_vs_fair": 1.598,
+     "roi_stored_px": 0.214,
+     "roi_n": 88,
+     "clv": -0.002,
+     "clv_n": 195,
+     "z_vs_50": 0.773
+    },
+    "train": {
+     "n": 170,
+     "fair_n": 118,
+     "w": 90,
+     "l": 79,
+     "p": 1,
+     "win": 0.533,
+     "vs_fair": 0.038,
+     "z_vs_fair": 0.845,
+     "roi_stored_px": 0.001,
+     "roi_n": 44,
+     "clv": -0.01,
+     "clv_n": 113,
+     "z_vs_50": 0.846
+    },
+    "held_out": {
+     "n": 114,
+     "fair_n": 97,
+     "w": 58,
+     "l": 56,
+     "p": 0,
+     "win": 0.509,
+     "vs_fair": 0.069,
+     "z_vs_fair": 1.467,
+     "roi_stored_px": 0.428,
+     "roi_n": 44,
+     "clv": 0.008,
+     "clv_n": 82,
+     "z_vs_50": 0.187
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "excess over fair not significant (z 1.467)"
+    ]
+   }
+  },
+  "by_sport": {
+   "cfb": {
+    "all": {
+     "n": 419,
+     "fair_n": 335,
+     "w": 203,
+     "l": 213,
+     "p": 3,
+     "win": 0.488,
+     "vs_fair": -0.016,
+     "z_vs_fair": -0.615,
+     "roi_stored_px": 0.069,
+     "roi_n": 174,
+     "clv": -0.012,
+     "clv_n": 331,
+     "z_vs_50": -0.49
+    },
+    "train": {
+     "n": 249,
+     "fair_n": 198,
+     "w": 125,
+     "l": 122,
+     "p": 2,
+     "win": 0.506,
+     "vs_fair": -0.013,
+     "z_vs_fair": -0.379,
+     "roi_stored_px": 0.067,
+     "roi_n": 101,
+     "clv": -0.014,
+     "clv_n": 195,
+     "z_vs_50": 0.191
+    },
+    "held_out": {
+     "n": 170,
+     "fair_n": 137,
+     "w": 78,
+     "l": 91,
+     "p": 1,
+     "win": 0.462,
+     "vs_fair": -0.021,
+     "z_vs_fair": -0.509,
+     "roi_stored_px": 0.072,
+     "roi_n": 73,
+     "clv": -0.008,
+     "clv_n": 136,
+     "z_vs_50": -1.0
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "nba": {
+    "all": {
+     "n": 44,
+     "fair_n": 18,
+     "w": 23,
+     "l": 21,
+     "p": 0,
+     "win": 0.523,
+     "vs_fair": 0.271,
+     "z_vs_fair": 2.427,
+     "roi_stored_px": 0.517,
+     "roi_n": 18,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": 0.302
+    },
+    "train": {
+     "n": 26,
+     "fair_n": 0,
+     "w": 11,
+     "l": 15,
+     "p": 0,
+     "win": 0.423,
+     "vs_fair": null,
+     "z_vs_fair": null,
+     "roi_stored_px": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": -0.784
+    },
+    "held_out": {
+     "n": 18,
+     "fair_n": 18,
+     "w": 12,
+     "l": 6,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.271,
+     "z_vs_fair": 2.427,
+     "roi_stored_px": 0.517,
+     "roi_n": 18,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": 1.414
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 18 < 100"
+    ]
+   },
+   "nfl": {
+    "all": {
+     "n": 97,
+     "fair_n": 89,
+     "w": 57,
+     "l": 39,
+     "p": 1,
+     "win": 0.594,
+     "vs_fair": 0.099,
+     "z_vs_fair": 1.912,
+     "roi_stored_px": 0.161,
+     "roi_n": 22,
+     "clv": 0.003,
+     "clv_n": 90,
+     "z_vs_50": 1.837
+    },
+    "train": {
+     "n": 53,
+     "fair_n": 51,
+     "w": 30,
+     "l": 22,
+     "p": 1,
+     "win": 0.577,
+     "vs_fair": 0.077,
+     "z_vs_fair": 1.118,
+     "roi_stored_px": 0.147,
+     "roi_n": 8,
+     "clv": -0.005,
+     "clv_n": 52,
+     "z_vs_50": 1.109
+    },
+    "held_out": {
+     "n": 44,
+     "fair_n": 38,
+     "w": 27,
+     "l": 17,
+     "p": 0,
+     "win": 0.614,
+     "vs_fair": 0.128,
+     "z_vs_fair": 1.637,
+     "roi_stored_px": 0.169,
+     "roi_n": 14,
+     "clv": 0.013,
+     "clv_n": 38,
+     "z_vs_50": 1.508
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 44 < 100",
+     "excess over fair not significant (z 1.637)"
+    ]
+   }
+  },
+  "by_market": {
+   "ml": {
+    "all": {
+     "n": 193,
+     "fair_n": 164,
+     "w": 96,
+     "l": 96,
+     "p": 1,
+     "win": 0.5,
+     "vs_fair": 0.055,
+     "z_vs_fair": 1.552,
+     "roi_stored_px": 0.378,
+     "roi_n": 68,
+     "clv": 0.001,
+     "clv_n": 150,
+     "z_vs_50": 0.0
+    },
+    "train": {
+     "n": 115,
+     "fair_n": 87,
+     "w": 61,
+     "l": 53,
+     "p": 1,
+     "win": 0.535,
+     "vs_fair": 0.074,
+     "z_vs_fair": 1.482,
+     "roi_stored_px": 0.215,
+     "roi_n": 45,
+     "clv": -0.002,
+     "clv_n": 74,
+     "z_vs_50": 0.749
+    },
+    "held_out": {
+     "n": 78,
+     "fair_n": 77,
+     "w": 35,
+     "l": 43,
+     "p": 0,
+     "win": 0.449,
+     "vs_fair": 0.033,
+     "z_vs_fair": 0.665,
+     "roi_stored_px": 0.699,
+     "roi_n": 23,
+     "clv": 0.004,
+     "clv_n": 76,
+     "z_vs_50": -0.906
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 78 < 100",
+     "excess over fair not significant (z 0.665)"
+    ]
+   },
+   "sp": {
+    "all": {
+     "n": 192,
+     "fair_n": 158,
+     "w": 97,
+     "l": 92,
+     "p": 3,
+     "win": 0.513,
+     "vs_fair": 0.003,
+     "z_vs_fair": 0.074,
+     "roi_stored_px": 0.124,
+     "roi_n": 80,
+     "clv": -0.009,
+     "clv_n": 155,
+     "z_vs_50": 0.364
+    },
+    "train": {
+     "n": 115,
+     "fair_n": 94,
+     "w": 59,
+     "l": 54,
+     "p": 2,
+     "win": 0.522,
+     "vs_fair": 0.021,
+     "z_vs_fair": 0.413,
+     "roi_stored_px": 0.25,
+     "roi_n": 43,
+     "clv": -0.01,
+     "clv_n": 91,
+     "z_vs_50": 0.47
+    },
+    "held_out": {
+     "n": 77,
+     "fair_n": 64,
+     "w": 38,
+     "l": 38,
+     "p": 1,
+     "win": 0.5,
+     "vs_fair": -0.024,
+     "z_vs_fair": -0.385,
+     "roi_stored_px": -0.023,
+     "roi_n": 37,
+     "clv": -0.007,
+     "clv_n": 64,
+     "z_vs_50": 0.0
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 76 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "tot": {
+    "all": {
+     "n": 175,
+     "fair_n": 120,
+     "w": 90,
+     "l": 85,
+     "p": 0,
+     "win": 0.514,
+     "vs_fair": -0.01,
+     "z_vs_fair": -0.212,
+     "roi_stored_px": -0.162,
+     "roi_n": 66,
+     "clv": -0.02,
+     "clv_n": 116,
+     "z_vs_50": 0.378
+    },
+    "train": {
+     "n": 104,
+     "fair_n": 75,
+     "w": 53,
+     "l": 51,
+     "p": 0,
+     "win": 0.51,
+     "vs_fair": -0.016,
+     "z_vs_fair": -0.271,
+     "roi_stored_px": -0.151,
+     "roi_n": 38,
+     "clv": -0.026,
+     "clv_n": 71,
+     "z_vs_50": 0.196
+    },
+    "held_out": {
+     "n": 71,
+     "fair_n": 45,
+     "w": 37,
+     "l": 34,
+     "p": 0,
+     "win": 0.521,
+     "vs_fair": 0.0,
+     "z_vs_fair": 0.003,
+     "roi_stored_px": -0.178,
+     "roi_n": 28,
+     "clv": -0.012,
+     "clv_n": 45,
+     "z_vs_50": 0.356
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 71 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive",
+     "mean closing-line value is not positive"
+    ]
+   }
+  },
+  "by_sport_market": {
+   "cfb:ml": {
+    "all": {
+     "n": 124,
+     "fair_n": 115,
+     "w": 57,
+     "l": 67,
+     "p": 0,
+     "win": 0.46,
+     "vs_fair": 0.008,
+     "z_vs_fair": 0.196,
+     "roi_stored_px": 0.307,
+     "roi_n": 43,
+     "clv": 0.001,
+     "clv_n": 115,
+     "z_vs_50": -0.898
+    },
+    "train": {
+     "n": 63,
+     "fair_n": 55,
+     "w": 32,
+     "l": 31,
+     "p": 0,
+     "win": 0.508,
+     "vs_fair": 0.02,
+     "z_vs_fair": 0.32,
+     "roi_stored_px": 0.103,
+     "roi_n": 26,
+     "clv": -0.001,
+     "clv_n": 55,
+     "z_vs_50": 0.126
+    },
+    "held_out": {
+     "n": 61,
+     "fair_n": 60,
+     "w": 25,
+     "l": 36,
+     "p": 0,
+     "win": 0.41,
+     "vs_fair": -0.003,
+     "z_vs_fair": -0.049,
+     "roi_stored_px": 0.62,
+     "roi_n": 17,
+     "clv": 0.003,
+     "clv_n": 60,
+     "z_vs_50": -1.408
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 61 < 100",
+     "does not beat the logged fair probability"
+    ]
+   },
+   "cfb:sp": {
+    "all": {
+     "n": 151,
+     "fair_n": 123,
+     "w": 75,
+     "l": 73,
+     "p": 3,
+     "win": 0.507,
+     "vs_fair": -0.023,
+     "z_vs_fair": -0.518,
+     "roi_stored_px": 0.131,
+     "roi_n": 71,
+     "clv": -0.013,
+     "clv_n": 122,
+     "z_vs_50": 0.164
+    },
+    "train": {
+     "n": 89,
+     "fair_n": 74,
+     "w": 47,
+     "l": 40,
+     "p": 2,
+     "win": 0.54,
+     "vs_fair": 0.015,
+     "z_vs_fair": 0.255,
+     "roi_stored_px": 0.23,
+     "roi_n": 39,
+     "clv": -0.013,
+     "clv_n": 73,
+     "z_vs_50": 0.75
+    },
+    "held_out": {
+     "n": 62,
+     "fair_n": 49,
+     "w": 28,
+     "l": 33,
+     "p": 1,
+     "win": 0.459,
+     "vs_fair": -0.081,
+     "z_vs_fair": -1.134,
+     "roi_stored_px": 0.012,
+     "roi_n": 32,
+     "clv": -0.015,
+     "clv_n": 49,
+     "z_vs_50": -0.64
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 61 < 100",
+     "does not beat the logged fair probability",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "cfb:tot": {
+    "all": {
+     "n": 144,
+     "fair_n": 97,
+     "w": 71,
+     "l": 73,
+     "p": 0,
+     "win": 0.493,
+     "vs_fair": -0.036,
+     "z_vs_fair": -0.708,
+     "roi_stored_px": -0.174,
+     "roi_n": 60,
+     "clv": -0.025,
+     "clv_n": 94,
+     "z_vs_50": -0.167
+    },
+    "train": {
+     "n": 86,
+     "fair_n": 59,
+     "w": 42,
+     "l": 44,
+     "p": 0,
+     "win": 0.488,
+     "vs_fair": -0.052,
+     "z_vs_fair": -0.8,
+     "roi_stored_px": -0.156,
+     "roi_n": 36,
+     "clv": -0.03,
+     "clv_n": 56,
+     "z_vs_50": -0.216
+    },
+    "held_out": {
+     "n": 58,
+     "fair_n": 38,
+     "w": 29,
+     "l": 29,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.011,
+     "z_vs_fair": -0.134,
+     "roi_stored_px": -0.202,
+     "roi_n": 24,
+     "clv": -0.016,
+     "clv_n": 38,
+     "z_vs_50": 0.0
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 58 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "nba:ml": {
+    "all": {
+     "n": 34,
+     "fair_n": 15,
+     "w": 19,
+     "l": 15,
+     "p": 0,
+     "win": 0.559,
+     "vs_fair": 0.292,
+     "z_vs_fair": 2.415,
+     "roi_stored_px": 0.567,
+     "roi_n": 15,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": 0.686
+    },
+    "train": {
+     "n": 20,
+     "fair_n": 1,
+     "w": 9,
+     "l": 11,
+     "p": 0,
+     "win": 0.45,
+     "vs_fair": -0.254,
+     "z_vs_fair": -0.584,
+     "roi_stored_px": -1.0,
+     "roi_n": 1,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": -0.447
+    },
+    "held_out": {
+     "n": 14,
+     "fair_n": 14,
+     "w": 10,
+     "l": 4,
+     "p": 0,
+     "win": 0.714,
+     "vs_fair": 0.331,
+     "z_vs_fair": 2.631,
+     "roi_stored_px": 0.678,
+     "roi_n": 14,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": 1.604
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 14 < 100"
+    ]
+   },
+   "nba:sp": {
+    "all": {
+     "n": 8,
+     "fair_n": 2,
+     "w": 3,
+     "l": 5,
+     "p": 0,
+     "win": 0.375,
+     "vs_fair": 0.497,
+     "z_vs_fair": 1.406,
+     "roi_stored_px": 0.901,
+     "roi_n": 2,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": -0.707
+    },
+    "train": {
+     "n": 4,
+     "fair_n": 0,
+     "w": 1,
+     "l": 3,
+     "p": 0,
+     "win": 0.25,
+     "vs_fair": null,
+     "z_vs_fair": null,
+     "roi_stored_px": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": -1.0
+    },
+    "held_out": {
+     "n": 4,
+     "fair_n": 2,
+     "w": 2,
+     "l": 2,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": 0.497,
+     "z_vs_fair": 1.406,
+     "roi_stored_px": 0.901,
+     "roi_n": 2,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": 0.0
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 4 < 100",
+     "excess over fair not significant (z 1.406)"
+    ]
+   },
+   "nba:tot": {
+    "all": {
+     "n": 2,
+     "fair_n": 1,
+     "w": 1,
+     "l": 1,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.496,
+     "z_vs_fair": -0.992,
+     "roi_stored_px": -1.0,
+     "roi_n": 1,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": 0.0
+    },
+    "train": {
+     "n": 2,
+     "fair_n": 1,
+     "w": 1,
+     "l": 1,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.496,
+     "z_vs_fair": -0.992,
+     "roi_stored_px": -1.0,
+     "roi_n": 1,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": 0.0
+    },
+    "held_out": {
+     "n": 0,
+     "fair_n": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "vs_fair": null,
+     "z_vs_fair": null,
+     "roi_stored_px": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": null
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 0 < 100",
+     "does not beat the logged fair probability"
+    ]
+   },
+   "nfl:ml": {
+    "all": {
+     "n": 35,
+     "fair_n": 34,
+     "w": 20,
+     "l": 14,
+     "p": 1,
+     "win": 0.588,
+     "vs_fair": 0.108,
+     "z_vs_fair": 1.335,
+     "roi_stored_px": 0.401,
+     "roi_n": 10,
+     "clv": 0.002,
+     "clv_n": 35,
+     "z_vs_50": 1.029
+    },
+    "train": {
+     "n": 21,
+     "fair_n": 20,
+     "w": 12,
+     "l": 8,
+     "p": 1,
+     "win": 0.6,
+     "vs_fair": 0.081,
+     "z_vs_fair": 0.758,
+     "roi_stored_px": 0.261,
+     "roi_n": 6,
+     "clv": -0.005,
+     "clv_n": 21,
+     "z_vs_50": 0.894
+    },
+    "held_out": {
+     "n": 14,
+     "fair_n": 14,
+     "w": 8,
+     "l": 6,
+     "p": 0,
+     "win": 0.571,
+     "vs_fair": 0.145,
+     "z_vs_fair": 1.191,
+     "roi_stored_px": 0.613,
+     "roi_n": 4,
+     "clv": 0.013,
+     "clv_n": 14,
+     "z_vs_50": 0.535
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 14 < 100",
+     "excess over fair not significant (z 1.191)"
+    ]
+   },
+   "nfl:sp": {
+    "all": {
+     "n": 33,
+     "fair_n": 33,
+     "w": 19,
+     "l": 14,
+     "p": 0,
+     "win": 0.576,
+     "vs_fair": 0.071,
+     "z_vs_fair": 0.814,
+     "roi_stored_px": -0.175,
+     "roi_n": 7,
+     "clv": 0.007,
+     "clv_n": 33,
+     "z_vs_50": 0.87
+    },
+    "train": {
+     "n": 18,
+     "fair_n": 18,
+     "w": 9,
+     "l": 9,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.005,
+     "z_vs_fair": -0.042,
+     "roi_stored_px": 0.0,
+     "roi_n": 2,
+     "clv": 0.0,
+     "clv_n": 18,
+     "z_vs_50": 0.0
+    },
+    "held_out": {
+     "n": 15,
+     "fair_n": 15,
+     "w": 10,
+     "l": 5,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.162,
+     "z_vs_fair": 1.253,
+     "roi_stored_px": -0.245,
+     "roi_n": 5,
+     "clv": 0.016,
+     "clv_n": 15,
+     "z_vs_50": 1.291
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 15 < 100",
+     "excess over fair not significant (z 1.253)",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "nfl:tot": {
+    "all": {
+     "n": 29,
+     "fair_n": 22,
+     "w": 18,
+     "l": 11,
+     "p": 0,
+     "win": 0.621,
+     "vs_fair": 0.128,
+     "z_vs_fair": 1.202,
+     "roi_stored_px": 0.151,
+     "roi_n": 5,
+     "clv": -0.003,
+     "clv_n": 22,
+     "z_vs_50": 1.3
+    },
+    "train": {
+     "n": 16,
+     "fair_n": 15,
+     "w": 10,
+     "l": 6,
+     "p": 0,
+     "win": 0.625,
+     "vs_fair": 0.159,
+     "z_vs_fair": 1.236,
+     "roi_stored_px": 0.885,
+     "roi_n": 1,
+     "clv": -0.008,
+     "clv_n": 15,
+     "z_vs_50": 1.0
+    },
+    "held_out": {
+     "n": 13,
+     "fair_n": 7,
+     "w": 8,
+     "l": 5,
+     "p": 0,
+     "win": 0.615,
+     "vs_fair": 0.061,
+     "z_vs_fair": 0.322,
+     "roi_stored_px": -0.032,
+     "roi_n": 4,
+     "clv": 0.009,
+     "clv_n": 7,
+     "z_vs_50": 0.832
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 13 < 100",
+     "excess over fair not significant (z 0.322)",
+     "ROI at the stored price is not positive"
+    ]
+   }
+  },
+  "units_concentration": {
+   "graded": 560,
+   "priced": 217,
+   "total_units": 24.924,
+   "top1_win_units": 7.21,
+   "top5_win_units": 18.42,
+   "units_without_top5": 6.504,
+   "units_without_top10": -3.586,
+   "priced_by_kind": {
+    "behind": [
+     58,
+     79
+    ],
+    "behind+line": [
+     26,
+     41
+    ],
+    "behind+line+money": [
+     6,
+     6
+    ],
+    "behind+money": [
+     3,
+     6
+    ],
+    "line": [
+     62,
+     252
+    ],
+    "line+money": [
+     9,
+     47
+    ],
+    "money": [
+     53,
+     129
+    ]
+   }
+  },
+  "sharp_only_context": {
+   "all": {
+    "n": 97,
+    "fair_n": 56,
+    "w": 48,
+    "l": 48,
+    "p": 1,
+    "win": 0.5,
+    "vs_fair": -0.054,
+    "z_vs_fair": -0.844,
+    "roi_stored_px": -0.227,
+    "roi_n": 20,
+    "clv": -0.01,
+    "clv_n": 57,
+    "z_vs_50": 0.0
+   },
+   "train": {
+    "n": 53,
+    "fair_n": 32,
+    "w": 28,
+    "l": 25,
+    "p": 0,
+    "win": 0.528,
+    "vs_fair": -0.035,
+    "z_vs_fair": -0.411,
+    "roi_stored_px": 0.026,
+    "roi_n": 13,
+    "clv": -0.014,
+    "clv_n": 32,
+    "z_vs_50": 0.412
+   },
+   "held_out": {
+    "n": 44,
+    "fair_n": 24,
+    "w": 20,
+    "l": 23,
+    "p": 1,
+    "win": 0.465,
+    "vs_fair": -0.08,
+    "z_vs_fair": -0.811,
+    "roi_stored_px": -0.697,
+    "roi_n": 7,
+    "clv": -0.005,
+    "clv_n": 25,
+    "z_vs_50": -0.457
+   },
+   "verdict": "LEAVE OUT",
+   "reasons": [
+    "held-out decisions 43 < 100",
+    "does not beat the logged fair probability",
+    "ROI at the stored price is not positive",
+    "mean closing-line value is not positive"
+   ]
+  },
+  "without_contradictions": {
+   "all": {
+    "n": 284,
+    "fair_n": 215,
+    "w": 148,
+    "l": 135,
+    "p": 1,
+    "win": 0.523,
+    "vs_fair": 0.052,
+    "z_vs_fair": 1.598,
+    "roi_stored_px": 0.214,
+    "roi_n": 88,
+    "clv": -0.002,
+    "clv_n": 195,
+    "z_vs_50": 0.773
+   },
+   "train": {
+    "n": 170,
+    "fair_n": 118,
+    "w": 90,
+    "l": 79,
+    "p": 1,
+    "win": 0.533,
+    "vs_fair": 0.038,
+    "z_vs_fair": 0.845,
+    "roi_stored_px": 0.001,
+    "roi_n": 44,
+    "clv": -0.01,
+    "clv_n": 113,
+    "z_vs_50": 0.846
+   },
+   "held_out": {
+    "n": 114,
+    "fair_n": 97,
+    "w": 58,
+    "l": 56,
+    "p": 0,
+    "win": 0.509,
+    "vs_fair": 0.069,
+    "z_vs_fair": 1.467,
+    "roi_stored_px": 0.428,
+    "roi_n": 44,
+    "clv": 0.008,
+    "clv_n": 82,
+    "z_vs_50": 0.187
+   },
+   "verdict": "LEAVE OUT",
+   "reasons": [
+    "excess over fair not significant (z 1.467)"
+   ]
+  }
+ },
+ "props": {
+  "n_graded": 1184,
+  "overall": {
+   "all": {
+    "n": 1184,
+    "fair_n": 1184,
+    "w": 549,
+    "l": 635,
+    "p": 0,
+    "win": 0.464,
+    "vs_fair": -0.055,
+    "z_vs_fair": -3.82,
+    "roi_stored_px": -0.064,
+    "roi_n": 1184,
+    "clv": 0.028,
+    "clv_n": 1184,
+    "z_vs_50": -2.499
+   },
+   "train": {
+    "n": 663,
+    "fair_n": 663,
+    "w": 327,
+    "l": 336,
+    "p": 0,
+    "win": 0.493,
+    "vs_fair": -0.026,
+    "z_vs_fair": -1.361,
+    "roi_stored_px": -0.007,
+    "roi_n": 663,
+    "clv": 0.028,
+    "clv_n": 663,
+    "z_vs_50": -0.35
+   },
+   "held_out": {
+    "n": 521,
+    "fair_n": 521,
+    "w": 222,
+    "l": 299,
+    "p": 0,
+    "win": 0.426,
+    "vs_fair": -0.092,
+    "z_vs_fair": -4.221,
+    "roi_stored_px": -0.136,
+    "roi_n": 521,
+    "clv": 0.027,
+    "clv_n": 521,
+    "z_vs_50": -3.373
+   },
+   "verdict": "LEAVE OUT",
+   "reasons": [
+    "does not beat the logged fair probability",
+    "ROI at the stored price is not positive"
+   ]
+  },
+  "by_displayed_ev": {
+   "10-15%": {
+    "all": {
+     "n": 45,
+     "fair_n": 45,
+     "w": 17,
+     "l": 28,
+     "p": 0,
+     "win": 0.378,
+     "vs_fair": -0.165,
+     "z_vs_fair": -2.229,
+     "roi_stored_px": -0.24,
+     "roi_n": 45,
+     "clv": 0.065,
+     "clv_n": 45,
+     "z_vs_50": -1.64
+    },
+    "train": {
+     "n": 21,
+     "fair_n": 21,
+     "w": 9,
+     "l": 12,
+     "p": 0,
+     "win": 0.429,
+     "vs_fair": -0.115,
+     "z_vs_fair": -1.061,
+     "roi_stored_px": -0.107,
+     "roi_n": 21,
+     "clv": 0.07,
+     "clv_n": 21,
+     "z_vs_50": -0.655
+    },
+    "held_out": {
+     "n": 24,
+     "fair_n": 24,
+     "w": 8,
+     "l": 16,
+     "p": 0,
+     "win": 0.333,
+     "vs_fair": -0.208,
+     "z_vs_fair": -2.06,
+     "roi_stored_px": -0.357,
+     "roi_n": 24,
+     "clv": 0.06,
+     "clv_n": 24,
+     "z_vs_50": -1.633
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 24 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "15%+": {
+    "all": {
+     "n": 8,
+     "fair_n": 8,
+     "w": 4,
+     "l": 4,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.009,
+     "z_vs_fair": -0.053,
+     "roi_stored_px": 0.359,
+     "roi_n": 8,
+     "clv": 0.237,
+     "clv_n": 8,
+     "z_vs_50": 0.0
+    },
+    "train": {
+     "n": 4,
+     "fair_n": 4,
+     "w": 2,
+     "l": 2,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.02,
+     "z_vs_fair": -0.081,
+     "roi_stored_px": 0.2,
+     "roi_n": 4,
+     "clv": 0.268,
+     "clv_n": 4,
+     "z_vs_50": 0.0
+    },
+    "held_out": {
+     "n": 4,
+     "fair_n": 4,
+     "w": 2,
+     "l": 2,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": 0.002,
+     "z_vs_fair": 0.007,
+     "roi_stored_px": 0.518,
+     "roi_n": 4,
+     "clv": 0.206,
+     "clv_n": 4,
+     "z_vs_50": 0.0
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 4 < 100",
+     "excess over fair not significant (z 0.007)"
+    ]
+   },
+   "5-10%": {
+    "all": {
+     "n": 392,
+     "fair_n": 392,
+     "w": 195,
+     "l": 197,
+     "p": 0,
+     "win": 0.497,
+     "vs_fair": -0.029,
+     "z_vs_fair": -1.161,
+     "roi_stored_px": 0.003,
+     "roi_n": 392,
+     "clv": 0.032,
+     "clv_n": 392,
+     "z_vs_50": -0.101
+    },
+    "train": {
+     "n": 230,
+     "fair_n": 230,
+     "w": 117,
+     "l": 113,
+     "p": 0,
+     "win": 0.509,
+     "vs_fair": -0.02,
+     "z_vs_fair": -0.609,
+     "roi_stored_px": 0.017,
+     "roi_n": 230,
+     "clv": 0.034,
+     "clv_n": 230,
+     "z_vs_50": 0.264
+    },
+    "held_out": {
+     "n": 162,
+     "fair_n": 162,
+     "w": 78,
+     "l": 84,
+     "p": 0,
+     "win": 0.481,
+     "vs_fair": -0.042,
+     "z_vs_fair": -1.078,
+     "roi_stored_px": -0.018,
+     "roi_n": 162,
+     "clv": 0.03,
+     "clv_n": 162,
+     "z_vs_50": -0.471
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "<5%": {
+    "all": {
+     "n": 739,
+     "fair_n": 739,
+     "w": 333,
+     "l": 406,
+     "p": 0,
+     "win": 0.451,
+     "vs_fair": -0.063,
+     "z_vs_fair": -3.434,
+     "roi_stored_px": -0.093,
+     "roi_n": 739,
+     "clv": 0.021,
+     "clv_n": 739,
+     "z_vs_50": -2.685
+    },
+    "train": {
+     "n": 427,
+     "fair_n": 427,
+     "w": 212,
+     "l": 215,
+     "p": 0,
+     "win": 0.496,
+     "vs_fair": -0.017,
+     "z_vs_fair": -0.713,
+     "roi_stored_px": 0.002,
+     "roi_n": 427,
+     "clv": 0.021,
+     "clv_n": 427,
+     "z_vs_50": -0.145
+    },
+    "held_out": {
+     "n": 312,
+     "fair_n": 312,
+     "w": 121,
+     "l": 191,
+     "p": 0,
+     "win": 0.388,
+     "vs_fair": -0.125,
+     "z_vs_fair": -4.45,
+     "roi_stored_px": -0.223,
+     "roi_n": 312,
+     "clv": 0.021,
+     "clv_n": 312,
+     "z_vs_50": -3.963
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   }
+  },
+  "by_hours_before_kickoff": {
+   "12-48h": {
+    "all": {
+     "n": 510,
+     "fair_n": 510,
+     "w": 241,
+     "l": 269,
+     "p": 0,
+     "win": 0.473,
+     "vs_fair": -0.05,
+     "z_vs_fair": -2.292,
+     "roi_stored_px": -0.064,
+     "roi_n": 510,
+     "clv": 0.023,
+     "clv_n": 510,
+     "z_vs_50": -1.24
+    },
+    "train": {
+     "n": 301,
+     "fair_n": 301,
+     "w": 140,
+     "l": 161,
+     "p": 0,
+     "win": 0.465,
+     "vs_fair": -0.057,
+     "z_vs_fair": -2.004,
+     "roi_stored_px": -0.08,
+     "roi_n": 301,
+     "clv": 0.024,
+     "clv_n": 301,
+     "z_vs_50": -1.21
+    },
+    "held_out": {
+     "n": 209,
+     "fair_n": 209,
+     "w": 101,
+     "l": 108,
+     "p": 0,
+     "win": 0.483,
+     "vs_fair": -0.04,
+     "z_vs_fair": -1.175,
+     "roi_stored_px": -0.039,
+     "roi_n": 209,
+     "clv": 0.023,
+     "clv_n": 209,
+     "z_vs_50": -0.484
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "2-12h": {
+    "all": {
+     "n": 239,
+     "fair_n": 239,
+     "w": 121,
+     "l": 118,
+     "p": 0,
+     "win": 0.506,
+     "vs_fair": -0.007,
+     "z_vs_fair": -0.21,
+     "roi_stored_px": 0.039,
+     "roi_n": 239,
+     "clv": 0.032,
+     "clv_n": 239,
+     "z_vs_50": 0.194
+    },
+    "train": {
+     "n": 137,
+     "fair_n": 137,
+     "w": 67,
+     "l": 70,
+     "p": 0,
+     "win": 0.489,
+     "vs_fair": -0.027,
+     "z_vs_fair": -0.633,
+     "roi_stored_px": -0.003,
+     "roi_n": 137,
+     "clv": 0.033,
+     "clv_n": 137,
+     "z_vs_50": -0.256
+    },
+    "held_out": {
+     "n": 102,
+     "fair_n": 102,
+     "w": 54,
+     "l": 48,
+     "p": 0,
+     "win": 0.529,
+     "vs_fair": 0.02,
+     "z_vs_fair": 0.412,
+     "roi_stored_px": 0.095,
+     "roi_n": 102,
+     "clv": 0.03,
+     "clv_n": 102,
+     "z_vs_50": 0.594
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "excess over fair not significant (z 0.412)"
+    ]
+   },
+   "48h+": {
+    "all": {
+     "n": 269,
+     "fair_n": 269,
+     "w": 110,
+     "l": 159,
+     "p": 0,
+     "win": 0.409,
+     "vs_fair": -0.109,
+     "z_vs_fair": -3.608,
+     "roi_stored_px": -0.163,
+     "roi_n": 269,
+     "clv": 0.023,
+     "clv_n": 269,
+     "z_vs_50": -2.988
+    },
+    "train": {
+     "n": 81,
+     "fair_n": 81,
+     "w": 44,
+     "l": 37,
+     "p": 0,
+     "win": 0.543,
+     "vs_fair": 0.018,
+     "z_vs_fair": 0.324,
+     "roi_stored_px": 0.095,
+     "roi_n": 81,
+     "clv": 0.027,
+     "clv_n": 81,
+     "z_vs_50": 0.778
+    },
+    "held_out": {
+     "n": 188,
+     "fair_n": 188,
+     "w": 66,
+     "l": 122,
+     "p": 0,
+     "win": 0.351,
+     "vs_fair": -0.164,
+     "z_vs_fair": -4.526,
+     "roi_stored_px": -0.274,
+     "roi_n": 188,
+     "clv": 0.021,
+     "clv_n": 188,
+     "z_vs_50": -4.084
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "<2h": {
+    "all": {
+     "n": 166,
+     "fair_n": 166,
+     "w": 77,
+     "l": 89,
+     "p": 0,
+     "win": 0.464,
+     "vs_fair": -0.052,
+     "z_vs_fair": -1.339,
+     "roi_stored_px": -0.054,
+     "roi_n": 166,
+     "clv": 0.043,
+     "clv_n": 166,
+     "z_vs_50": -0.931
+    },
+    "train": {
+     "n": 87,
+     "fair_n": 87,
+     "w": 45,
+     "l": 42,
+     "p": 0,
+     "win": 0.517,
+     "vs_fair": -0.001,
+     "z_vs_fair": -0.015,
+     "roi_stored_px": 0.053,
+     "roi_n": 87,
+     "clv": 0.04,
+     "clv_n": 87,
+     "z_vs_50": 0.322
+    },
+    "held_out": {
+     "n": 79,
+     "fair_n": 79,
+     "w": 32,
+     "l": 47,
+     "p": 0,
+     "win": 0.405,
+     "vs_fair": -0.108,
+     "z_vs_fair": -1.928,
+     "roi_stored_px": -0.171,
+     "roi_n": 79,
+     "clv": 0.046,
+     "clv_n": 79,
+     "z_vs_50": -1.688
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 79 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   }
+  },
+  "by_price_kind": {
+   "book": {
+    "all": {
+     "n": 317,
+     "fair_n": 317,
+     "w": 159,
+     "l": 158,
+     "p": 0,
+     "win": 0.502,
+     "vs_fair": -0.039,
+     "z_vs_fair": -1.405,
+     "roi_stored_px": -0.016,
+     "roi_n": 317,
+     "clv": 0.042,
+     "clv_n": 317,
+     "z_vs_50": 0.056
+    },
+    "train": {
+     "n": 186,
+     "fair_n": 186,
+     "w": 90,
+     "l": 96,
+     "p": 0,
+     "win": 0.484,
+     "vs_fair": -0.059,
+     "z_vs_fair": -1.637,
+     "roi_stored_px": -0.052,
+     "roi_n": 186,
+     "clv": 0.043,
+     "clv_n": 186,
+     "z_vs_50": -0.44
+    },
+    "held_out": {
+     "n": 131,
+     "fair_n": 131,
+     "w": 69,
+     "l": 62,
+     "p": 0,
+     "win": 0.527,
+     "vs_fair": -0.01,
+     "z_vs_fair": -0.237,
+     "roi_stored_px": 0.034,
+     "roi_n": 131,
+     "clv": 0.041,
+     "clv_n": 131,
+     "z_vs_50": 0.612
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability"
+    ]
+   },
+   "exchange": {
+    "all": {
+     "n": 867,
+     "fair_n": 867,
+     "w": 390,
+     "l": 477,
+     "p": 0,
+     "win": 0.45,
+     "vs_fair": -0.061,
+     "z_vs_fair": -3.613,
+     "roi_stored_px": -0.082,
+     "roi_n": 867,
+     "clv": 0.023,
+     "clv_n": 867,
+     "z_vs_50": -2.955
+    },
+    "train": {
+     "n": 496,
+     "fair_n": 496,
+     "w": 246,
+     "l": 250,
+     "p": 0,
+     "win": 0.496,
+     "vs_fair": -0.016,
+     "z_vs_fair": -0.704,
+     "roi_stored_px": 0.009,
+     "roi_n": 496,
+     "clv": 0.024,
+     "clv_n": 496,
+     "z_vs_50": -0.18
+    },
+    "held_out": {
+     "n": 371,
+     "fair_n": 371,
+     "w": 144,
+     "l": 227,
+     "p": 0,
+     "win": 0.388,
+     "vs_fair": -0.122,
+     "z_vs_fair": -4.706,
+     "roi_stored_px": -0.202,
+     "roi_n": 371,
+     "clv": 0.02,
+     "clv_n": 371,
+     "z_vs_50": -4.309
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   }
+  },
+  "by_fair_source": {
+   "Kalshi": {
+    "all": {
+     "n": 36,
+     "fair_n": 36,
+     "w": 20,
+     "l": 16,
+     "p": 0,
+     "win": 0.556,
+     "vs_fair": 0.016,
+     "z_vs_fair": 0.198,
+     "roi_stored_px": 0.099,
+     "roi_n": 36,
+     "clv": 0.03,
+     "clv_n": 36,
+     "z_vs_50": 0.667
+    },
+    "train": {
+     "n": 21,
+     "fair_n": 21,
+     "w": 11,
+     "l": 10,
+     "p": 0,
+     "win": 0.524,
+     "vs_fair": -0.019,
+     "z_vs_fair": -0.179,
+     "roi_stored_px": -0.007,
+     "roi_n": 21,
+     "clv": 0.011,
+     "clv_n": 21,
+     "z_vs_50": 0.218
+    },
+    "held_out": {
+     "n": 15,
+     "fair_n": 15,
+     "w": 9,
+     "l": 6,
+     "p": 0,
+     "win": 0.6,
+     "vs_fair": 0.066,
+     "z_vs_fair": 0.517,
+     "roi_stored_px": 0.249,
+     "roi_n": 15,
+     "clv": 0.057,
+     "clv_n": 15,
+     "z_vs_50": 0.775
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 15 < 100",
+     "excess over fair not significant (z 0.517)"
+    ]
+   },
+   "Pinnacle": {
+    "all": {
+     "n": 1148,
+     "fair_n": 1148,
+     "w": 529,
+     "l": 619,
+     "p": 0,
+     "win": 0.461,
+     "vs_fair": -0.057,
+     "z_vs_fair": -3.914,
+     "roi_stored_px": -0.069,
+     "roi_n": 1148,
+     "clv": 0.028,
+     "clv_n": 1148,
+     "z_vs_50": -2.656
+    },
+    "train": {
+     "n": 639,
+     "fair_n": 639,
+     "w": 315,
+     "l": 324,
+     "p": 0,
+     "win": 0.493,
+     "vs_fair": -0.026,
+     "z_vs_fair": -1.307,
+     "roi_stored_px": -0.007,
+     "roi_n": 639,
+     "clv": 0.028,
+     "clv_n": 639,
+     "z_vs_50": -0.356
+    },
+    "held_out": {
+     "n": 509,
+     "fair_n": 509,
+     "w": 214,
+     "l": 295,
+     "p": 0,
+     "win": 0.42,
+     "vs_fair": -0.097,
+     "z_vs_fair": -4.412,
+     "roi_stored_px": -0.148,
+     "roi_n": 509,
+     "clv": 0.027,
+     "clv_n": 509,
+     "z_vs_50": -3.59
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   }
+  },
+  "by_called_source": {
+   "BetMGM": {
+    "all": {
+     "n": 23,
+     "fair_n": 23,
+     "w": 6,
+     "l": 17,
+     "p": 0,
+     "win": 0.261,
+     "vs_fair": -0.292,
+     "z_vs_fair": -2.835,
+     "roi_stored_px": -0.501,
+     "roi_n": 23,
+     "clv": 0.036,
+     "clv_n": 23,
+     "z_vs_50": -2.294
+    },
+    "train": {
+     "n": 12,
+     "fair_n": 12,
+     "w": 1,
+     "l": 11,
+     "p": 0,
+     "win": 0.083,
+     "vs_fair": -0.459,
+     "z_vs_fair": -3.231,
+     "roi_stored_px": -0.841,
+     "roi_n": 12,
+     "clv": 0.039,
+     "clv_n": 12,
+     "z_vs_50": -2.887
+    },
+    "held_out": {
+     "n": 11,
+     "fair_n": 11,
+     "w": 5,
+     "l": 6,
+     "p": 0,
+     "win": 0.455,
+     "vs_fair": -0.109,
+     "z_vs_fair": -0.73,
+     "roi_stored_px": -0.13,
+     "roi_n": 11,
+     "clv": 0.031,
+     "clv_n": 11,
+     "z_vs_50": -0.302
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 11 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "BetRivers": {
+    "all": {
+     "n": 11,
+     "fair_n": 11,
+     "w": 9,
+     "l": 2,
+     "p": 0,
+     "win": 0.818,
+     "vs_fair": 0.243,
+     "z_vs_fair": 1.632,
+     "roi_stored_px": 0.539,
+     "roi_n": 11,
+     "clv": 0.036,
+     "clv_n": 11,
+     "z_vs_50": 2.111
+    },
+    "train": {
+     "n": 6,
+     "fair_n": 6,
+     "w": 4,
+     "l": 2,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.095,
+     "z_vs_fair": 0.471,
+     "roi_stored_px": 0.265,
+     "roi_n": 6,
+     "clv": 0.077,
+     "clv_n": 6,
+     "z_vs_50": 0.816
+    },
+    "held_out": {
+     "n": 5,
+     "fair_n": 5,
+     "w": 5,
+     "l": 0,
+     "p": 0,
+     "win": 1.0,
+     "vs_fair": 0.42,
+     "z_vs_fair": 1.905,
+     "roi_stored_px": 0.868,
+     "roi_n": 5,
+     "clv": -0.012,
+     "clv_n": 5,
+     "z_vs_50": 2.236
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 5 < 100",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "Caesars": {
+    "all": {
+     "n": 7,
+     "fair_n": 7,
+     "w": 3,
+     "l": 4,
+     "p": 0,
+     "win": 0.429,
+     "vs_fair": -0.103,
+     "z_vs_fair": -0.545,
+     "roi_stored_px": -0.16,
+     "roi_n": 7,
+     "clv": 0.064,
+     "clv_n": 7,
+     "z_vs_50": -0.378
+    },
+    "train": {
+     "n": 3,
+     "fair_n": 3,
+     "w": 0,
+     "l": 3,
+     "p": 0,
+     "win": 0.0,
+     "vs_fair": -0.516,
+     "z_vs_fair": -1.796,
+     "roi_stored_px": -1.0,
+     "roi_n": 3,
+     "clv": 0.052,
+     "clv_n": 3,
+     "z_vs_50": -1.732
+    },
+    "held_out": {
+     "n": 4,
+     "fair_n": 4,
+     "w": 3,
+     "l": 1,
+     "p": 0,
+     "win": 0.75,
+     "vs_fair": 0.208,
+     "z_vs_fair": 0.834,
+     "roi_stored_px": 0.471,
+     "roi_n": 4,
+     "clv": 0.073,
+     "clv_n": 4,
+     "z_vs_50": 1.0
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 4 < 100",
+     "excess over fair not significant (z 0.834)"
+    ]
+   },
+   "DraftKings": {
+    "all": {
+     "n": 13,
+     "fair_n": 13,
+     "w": 8,
+     "l": 5,
+     "p": 0,
+     "win": 0.615,
+     "vs_fair": 0.058,
+     "z_vs_fair": 0.422,
+     "roi_stored_px": 0.208,
+     "roi_n": 13,
+     "clv": 0.065,
+     "clv_n": 13,
+     "z_vs_50": 0.832
+    },
+    "train": {
+     "n": 3,
+     "fair_n": 3,
+     "w": 2,
+     "l": 1,
+     "p": 0,
+     "win": 0.667,
+     "vs_fair": 0.096,
+     "z_vs_fair": 0.335,
+     "roi_stored_px": 0.251,
+     "roi_n": 3,
+     "clv": 0.011,
+     "clv_n": 3,
+     "z_vs_50": 0.577
+    },
+    "held_out": {
+     "n": 10,
+     "fair_n": 10,
+     "w": 6,
+     "l": 4,
+     "p": 0,
+     "win": 0.6,
+     "vs_fair": 0.047,
+     "z_vs_fair": 0.297,
+     "roi_stored_px": 0.195,
+     "roi_n": 10,
+     "clv": 0.081,
+     "clv_n": 10,
+     "z_vs_50": 0.632
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 10 < 100",
+     "excess over fair not significant (z 0.297)"
+    ]
+   },
+   "FanDuel": {
+    "all": {
+     "n": 9,
+     "fair_n": 9,
+     "w": 5,
+     "l": 4,
+     "p": 0,
+     "win": 0.556,
+     "vs_fair": -0.009,
+     "z_vs_fair": -0.052,
+     "roi_stored_px": 0.053,
+     "roi_n": 9,
+     "clv": 0.049,
+     "clv_n": 9,
+     "z_vs_50": 0.333
+    },
+    "train": {
+     "n": 5,
+     "fair_n": 5,
+     "w": 3,
+     "l": 2,
+     "p": 0,
+     "win": 0.6,
+     "vs_fair": 0.048,
+     "z_vs_fair": 0.215,
+     "roi_stored_px": 0.143,
+     "roi_n": 5,
+     "clv": 0.033,
+     "clv_n": 5,
+     "z_vs_50": 0.447
+    },
+    "held_out": {
+     "n": 4,
+     "fair_n": 4,
+     "w": 2,
+     "l": 2,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.079,
+     "z_vs_fair": -0.321,
+     "roi_stored_px": -0.059,
+     "roi_n": 4,
+     "clv": 0.07,
+     "clv_n": 4,
+     "z_vs_50": 0.0
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 4 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Fanatics": {
+    "all": {
+     "n": 6,
+     "fair_n": 6,
+     "w": 3,
+     "l": 3,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.092,
+     "z_vs_fair": -0.461,
+     "roi_stored_px": -0.139,
+     "roi_n": 6,
+     "clv": -0.018,
+     "clv_n": 6,
+     "z_vs_50": 0.0
+    },
+    "train": {
+     "n": 3,
+     "fair_n": 3,
+     "w": 3,
+     "l": 0,
+     "p": 0,
+     "win": 1.0,
+     "vs_fair": 0.391,
+     "z_vs_fair": 1.39,
+     "roi_stored_px": 0.722,
+     "roi_n": 3,
+     "clv": -0.008,
+     "clv_n": 3,
+     "z_vs_50": 1.732
+    },
+    "held_out": {
+     "n": 3,
+     "fair_n": 3,
+     "w": 0,
+     "l": 3,
+     "p": 0,
+     "win": 0.0,
+     "vs_fair": -0.575,
+     "z_vs_fair": -2.039,
+     "roi_stored_px": -1.0,
+     "roi_n": 3,
+     "clv": -0.027,
+     "clv_n": 3,
+     "z_vs_50": -1.732
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 3 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "Fliff": {
+    "all": {
+     "n": 1,
+     "fair_n": 1,
+     "w": 0,
+     "l": 1,
+     "p": 0,
+     "win": 0.0,
+     "vs_fair": -0.587,
+     "z_vs_fair": -1.191,
+     "roi_stored_px": -1.0,
+     "roi_n": 1,
+     "clv": 0.034,
+     "clv_n": 1,
+     "z_vs_50": -1.0
+    },
+    "train": {
+     "n": 1,
+     "fair_n": 1,
+     "w": 0,
+     "l": 1,
+     "p": 0,
+     "win": 0.0,
+     "vs_fair": -0.587,
+     "z_vs_fair": -1.191,
+     "roi_stored_px": -1.0,
+     "roi_n": 1,
+     "clv": 0.034,
+     "clv_n": 1,
+     "z_vs_50": -1.0
+    },
+    "held_out": {
+     "n": 0,
+     "fair_n": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "vs_fair": null,
+     "z_vs_fair": null,
+     "roi_stored_px": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": null
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 0 < 100",
+     "does not beat the logged fair probability"
+    ]
+   },
+   "Kalshi": {
+    "all": {
+     "n": 172,
+     "fair_n": 172,
+     "w": 76,
+     "l": 96,
+     "p": 0,
+     "win": 0.442,
+     "vs_fair": -0.065,
+     "z_vs_fair": -1.711,
+     "roi_stored_px": -0.089,
+     "roi_n": 172,
+     "clv": 0.021,
+     "clv_n": 172,
+     "z_vs_50": -1.525
+    },
+    "train": {
+     "n": 95,
+     "fair_n": 95,
+     "w": 47,
+     "l": 48,
+     "p": 0,
+     "win": 0.495,
+     "vs_fair": -0.014,
+     "z_vs_fair": -0.265,
+     "roi_stored_px": 0.01,
+     "roi_n": 95,
+     "clv": 0.027,
+     "clv_n": 95,
+     "z_vs_50": -0.103
+    },
+    "held_out": {
+     "n": 77,
+     "fair_n": 77,
+     "w": 29,
+     "l": 48,
+     "p": 0,
+     "win": 0.377,
+     "vs_fair": -0.128,
+     "z_vs_fair": -2.262,
+     "roi_stored_px": -0.21,
+     "roi_n": 77,
+     "clv": 0.015,
+     "clv_n": 77,
+     "z_vs_50": -2.165
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 77 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Novig": {
+    "all": {
+     "n": 696,
+     "fair_n": 696,
+     "w": 314,
+     "l": 382,
+     "p": 0,
+     "win": 0.451,
+     "vs_fair": -0.061,
+     "z_vs_fair": -3.225,
+     "roi_stored_px": -0.081,
+     "roi_n": 696,
+     "clv": 0.023,
+     "clv_n": 696,
+     "z_vs_50": -2.578
+    },
+    "train": {
+     "n": 414,
+     "fair_n": 414,
+     "w": 208,
+     "l": 206,
+     "p": 0,
+     "win": 0.502,
+     "vs_fair": -0.012,
+     "z_vs_fair": -0.477,
+     "roi_stored_px": 0.019,
+     "roi_n": 414,
+     "clv": 0.023,
+     "clv_n": 414,
+     "z_vs_50": 0.098
+    },
+    "held_out": {
+     "n": 282,
+     "fair_n": 282,
+     "w": 106,
+     "l": 176,
+     "p": 0,
+     "win": 0.376,
+     "vs_fair": -0.133,
+     "z_vs_fair": -4.486,
+     "roi_stored_px": -0.228,
+     "roi_n": 282,
+     "clv": 0.022,
+     "clv_n": 282,
+     "z_vs_50": -4.168
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Parx Casino": {
+    "all": {
+     "n": 73,
+     "fair_n": 73,
+     "w": 40,
+     "l": 33,
+     "p": 0,
+     "win": 0.548,
+     "vs_fair": -0.004,
+     "z_vs_fair": -0.078,
+     "roi_stored_px": 0.074,
+     "roi_n": 73,
+     "clv": 0.051,
+     "clv_n": 73,
+     "z_vs_50": 0.819
+    },
+    "train": {
+     "n": 39,
+     "fair_n": 39,
+     "w": 21,
+     "l": 18,
+     "p": 0,
+     "win": 0.538,
+     "vs_fair": -0.016,
+     "z_vs_fair": -0.196,
+     "roi_stored_px": 0.063,
+     "roi_n": 39,
+     "clv": 0.051,
+     "clv_n": 39,
+     "z_vs_50": 0.48
+    },
+    "held_out": {
+     "n": 34,
+     "fair_n": 34,
+     "w": 19,
+     "l": 15,
+     "p": 0,
+     "win": 0.559,
+     "vs_fair": 0.008,
+     "z_vs_fair": 0.096,
+     "roi_stored_px": 0.088,
+     "roi_n": 34,
+     "clv": 0.05,
+     "clv_n": 34,
+     "z_vs_50": 0.686
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 34 < 100",
+     "excess over fair not significant (z 0.096)"
+    ]
+   },
+   "PrizePicks": {
+    "all": {
+     "n": 2,
+     "fair_n": 2,
+     "w": 0,
+     "l": 2,
+     "p": 0,
+     "win": 0.0,
+     "vs_fair": -0.516,
+     "z_vs_fair": -1.459,
+     "roi_stored_px": -1.0,
+     "roi_n": 2,
+     "clv": 0.002,
+     "clv_n": 2,
+     "z_vs_50": -1.414
+    },
+    "train": {
+     "n": 2,
+     "fair_n": 2,
+     "w": 0,
+     "l": 2,
+     "p": 0,
+     "win": 0.0,
+     "vs_fair": -0.516,
+     "z_vs_fair": -1.459,
+     "roi_stored_px": -1.0,
+     "roi_n": 2,
+     "clv": 0.002,
+     "clv_n": 2,
+     "z_vs_50": -1.414
+    },
+    "held_out": {
+     "n": 0,
+     "fair_n": 0,
+     "w": 0,
+     "l": 0,
+     "p": 0,
+     "win": null,
+     "vs_fair": null,
+     "z_vs_fair": null,
+     "roi_stored_px": null,
+     "roi_n": 0,
+     "clv": null,
+     "clv_n": 0,
+     "z_vs_50": null
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 0 < 100",
+     "does not beat the logged fair probability"
+    ]
+   },
+   "Underdog Fantasy": {
+    "all": {
+     "n": 106,
+     "fair_n": 106,
+     "w": 51,
+     "l": 55,
+     "p": 0,
+     "win": 0.481,
+     "vs_fair": -0.032,
+     "z_vs_fair": -0.659,
+     "roi_stored_px": -0.021,
+     "roi_n": 106,
+     "clv": 0.03,
+     "clv_n": 106,
+     "z_vs_50": -0.389
+    },
+    "train": {
+     "n": 55,
+     "fair_n": 55,
+     "w": 28,
+     "l": 27,
+     "p": 0,
+     "win": 0.509,
+     "vs_fair": -0.003,
+     "z_vs_fair": -0.04,
+     "roi_stored_px": 0.05,
+     "roi_n": 55,
+     "clv": 0.034,
+     "clv_n": 55,
+     "z_vs_50": 0.135
+    },
+    "held_out": {
+     "n": 51,
+     "fair_n": 51,
+     "w": 23,
+     "l": 28,
+     "p": 0,
+     "win": 0.451,
+     "vs_fair": -0.063,
+     "z_vs_fair": -0.91,
+     "roi_stored_px": -0.097,
+     "roi_n": 51,
+     "clv": 0.026,
+     "clv_n": 51,
+     "z_vs_50": -0.7
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 51 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "bet365": {
+    "all": {
+     "n": 65,
+     "fair_n": 65,
+     "w": 34,
+     "l": 31,
+     "p": 0,
+     "win": 0.523,
+     "vs_fair": -0.029,
+     "z_vs_fair": -0.471,
+     "roi_stored_px": -0.001,
+     "roi_n": 65,
+     "clv": 0.054,
+     "clv_n": 65,
+     "z_vs_50": 0.372
+    },
+    "train": {
+     "n": 39,
+     "fair_n": 39,
+     "w": 18,
+     "l": 21,
+     "p": 0,
+     "win": 0.462,
+     "vs_fair": -0.092,
+     "z_vs_fair": -1.162,
+     "roi_stored_px": -0.137,
+     "roi_n": 39,
+     "clv": 0.054,
+     "clv_n": 39,
+     "z_vs_50": -0.48
+    },
+    "held_out": {
+     "n": 26,
+     "fair_n": 26,
+     "w": 16,
+     "l": 10,
+     "p": 0,
+     "win": 0.615,
+     "vs_fair": 0.065,
+     "z_vs_fair": 0.673,
+     "roi_stored_px": 0.202,
+     "roi_n": 26,
+     "clv": 0.054,
+     "clv_n": 26,
+     "z_vs_50": 1.177
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 26 < 100",
+     "excess over fair not significant (z 0.673)"
+    ]
+   }
+  },
+  "by_market": {
+   "Completions": {
+    "all": {
+     "n": 44,
+     "fair_n": 44,
+     "w": 20,
+     "l": 24,
+     "p": 0,
+     "win": 0.455,
+     "vs_fair": -0.067,
+     "z_vs_fair": -0.895,
+     "roi_stored_px": -0.085,
+     "roi_n": 44,
+     "clv": 0.022,
+     "clv_n": 44,
+     "z_vs_50": -0.603
+    },
+    "train": {
+     "n": 26,
+     "fair_n": 26,
+     "w": 12,
+     "l": 14,
+     "p": 0,
+     "win": 0.462,
+     "vs_fair": -0.063,
+     "z_vs_fair": -0.643,
+     "roi_stored_px": -0.076,
+     "roi_n": 26,
+     "clv": 0.02,
+     "clv_n": 26,
+     "z_vs_50": -0.392
+    },
+    "held_out": {
+     "n": 18,
+     "fair_n": 18,
+     "w": 8,
+     "l": 10,
+     "p": 0,
+     "win": 0.444,
+     "vs_fair": -0.074,
+     "z_vs_fair": -0.627,
+     "roi_stored_px": -0.098,
+     "roi_n": 18,
+     "clv": 0.024,
+     "clv_n": 18,
+     "z_vs_50": -0.471
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 18 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Interceptions": {
+    "all": {
+     "n": 41,
+     "fair_n": 41,
+     "w": 16,
+     "l": 25,
+     "p": 0,
+     "win": 0.39,
+     "vs_fair": -0.128,
+     "z_vs_fair": -1.648,
+     "roi_stored_px": -0.238,
+     "roi_n": 41,
+     "clv": 0.03,
+     "clv_n": 41,
+     "z_vs_50": -1.406
+    },
+    "train": {
+     "n": 24,
+     "fair_n": 24,
+     "w": 10,
+     "l": 14,
+     "p": 0,
+     "win": 0.417,
+     "vs_fair": -0.101,
+     "z_vs_fair": -0.991,
+     "roi_stored_px": -0.169,
+     "roi_n": 24,
+     "clv": 0.028,
+     "clv_n": 24,
+     "z_vs_50": -0.816
+    },
+    "held_out": {
+     "n": 17,
+     "fair_n": 17,
+     "w": 6,
+     "l": 11,
+     "p": 0,
+     "win": 0.353,
+     "vs_fair": -0.166,
+     "z_vs_fair": -1.382,
+     "roi_stored_px": -0.335,
+     "roi_n": 17,
+     "clv": 0.032,
+     "clv_n": 17,
+     "z_vs_50": -1.213
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 17 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Pass attempts": {
+    "all": {
+     "n": 45,
+     "fair_n": 45,
+     "w": 19,
+     "l": 26,
+     "p": 0,
+     "win": 0.422,
+     "vs_fair": -0.085,
+     "z_vs_fair": -1.148,
+     "roi_stored_px": -0.116,
+     "roi_n": 45,
+     "clv": 0.038,
+     "clv_n": 45,
+     "z_vs_50": -1.043
+    },
+    "train": {
+     "n": 27,
+     "fair_n": 27,
+     "w": 13,
+     "l": 14,
+     "p": 0,
+     "win": 0.481,
+     "vs_fair": -0.026,
+     "z_vs_fair": -0.275,
+     "roi_stored_px": 0.015,
+     "roi_n": 27,
+     "clv": 0.041,
+     "clv_n": 27,
+     "z_vs_50": -0.192
+    },
+    "held_out": {
+     "n": 18,
+     "fair_n": 18,
+     "w": 6,
+     "l": 12,
+     "p": 0,
+     "win": 0.333,
+     "vs_fair": -0.174,
+     "z_vs_fair": -1.477,
+     "roi_stored_px": -0.312,
+     "roi_n": 18,
+     "clv": 0.034,
+     "clv_n": 18,
+     "z_vs_50": -1.414
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 18 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Passing TDs": {
+    "all": {
+     "n": 42,
+     "fair_n": 42,
+     "w": 20,
+     "l": 22,
+     "p": 0,
+     "win": 0.476,
+     "vs_fair": -0.048,
+     "z_vs_fair": -0.638,
+     "roi_stored_px": -0.086,
+     "roi_n": 42,
+     "clv": 0.011,
+     "clv_n": 42,
+     "z_vs_50": -0.309
+    },
+    "train": {
+     "n": 25,
+     "fair_n": 25,
+     "w": 13,
+     "l": 12,
+     "p": 0,
+     "win": 0.52,
+     "vs_fair": -0.011,
+     "z_vs_fair": -0.116,
+     "roi_stored_px": -0.02,
+     "roi_n": 25,
+     "clv": 0.008,
+     "clv_n": 25,
+     "z_vs_50": 0.2
+    },
+    "held_out": {
+     "n": 17,
+     "fair_n": 17,
+     "w": 7,
+     "l": 10,
+     "p": 0,
+     "win": 0.412,
+     "vs_fair": -0.102,
+     "z_vs_fair": -0.859,
+     "roi_stored_px": -0.182,
+     "roi_n": 17,
+     "clv": 0.015,
+     "clv_n": 17,
+     "z_vs_50": -0.728
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 17 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Passing yards": {
+    "all": {
+     "n": 39,
+     "fair_n": 39,
+     "w": 17,
+     "l": 22,
+     "p": 0,
+     "win": 0.436,
+     "vs_fair": -0.075,
+     "z_vs_fair": -0.938,
+     "roi_stored_px": -0.111,
+     "roi_n": 39,
+     "clv": 0.03,
+     "clv_n": 39,
+     "z_vs_50": -0.801
+    },
+    "train": {
+     "n": 16,
+     "fair_n": 16,
+     "w": 9,
+     "l": 7,
+     "p": 0,
+     "win": 0.562,
+     "vs_fair": 0.045,
+     "z_vs_fair": 0.364,
+     "roi_stored_px": 0.141,
+     "roi_n": 16,
+     "clv": 0.045,
+     "clv_n": 16,
+     "z_vs_50": 0.5
+    },
+    "held_out": {
+     "n": 23,
+     "fair_n": 23,
+     "w": 8,
+     "l": 15,
+     "p": 0,
+     "win": 0.348,
+     "vs_fair": -0.159,
+     "z_vs_fair": -1.523,
+     "roi_stored_px": -0.286,
+     "roi_n": 23,
+     "clv": 0.02,
+     "clv_n": 23,
+     "z_vs_50": -1.46
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 23 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Receiving yards": {
+    "all": {
+     "n": 362,
+     "fair_n": 362,
+     "w": 165,
+     "l": 197,
+     "p": 0,
+     "win": 0.456,
+     "vs_fair": -0.071,
+     "z_vs_fair": -2.73,
+     "roi_stored_px": -0.092,
+     "roi_n": 362,
+     "clv": 0.033,
+     "clv_n": 362,
+     "z_vs_50": -1.682
+    },
+    "train": {
+     "n": 214,
+     "fair_n": 214,
+     "w": 98,
+     "l": 116,
+     "p": 0,
+     "win": 0.458,
+     "vs_fair": -0.07,
+     "z_vs_fair": -2.058,
+     "roi_stored_px": -0.089,
+     "roi_n": 214,
+     "clv": 0.032,
+     "clv_n": 214,
+     "z_vs_50": -1.23
+    },
+    "held_out": {
+     "n": 148,
+     "fair_n": 148,
+     "w": 67,
+     "l": 81,
+     "p": 0,
+     "win": 0.453,
+     "vs_fair": -0.074,
+     "z_vs_fair": -1.795,
+     "roi_stored_px": -0.095,
+     "roi_n": 148,
+     "clv": 0.034,
+     "clv_n": 148,
+     "z_vs_50": -1.151
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Receptions": {
+    "all": {
+     "n": 373,
+     "fair_n": 373,
+     "w": 186,
+     "l": 187,
+     "p": 0,
+     "win": 0.499,
+     "vs_fair": -0.019,
+     "z_vs_fair": -0.759,
+     "roi_stored_px": 0.016,
+     "roi_n": 373,
+     "clv": 0.021,
+     "clv_n": 373,
+     "z_vs_50": -0.052
+    },
+    "train": {
+     "n": 213,
+     "fair_n": 213,
+     "w": 113,
+     "l": 100,
+     "p": 0,
+     "win": 0.531,
+     "vs_fair": 0.011,
+     "z_vs_fair": 0.317,
+     "roi_stored_px": 0.074,
+     "roi_n": 213,
+     "clv": 0.025,
+     "clv_n": 213,
+     "z_vs_50": 0.891
+    },
+    "held_out": {
+     "n": 160,
+     "fair_n": 160,
+     "w": 73,
+     "l": 87,
+     "p": 0,
+     "win": 0.456,
+     "vs_fair": -0.06,
+     "z_vs_fair": -1.524,
+     "roi_stored_px": -0.06,
+     "roi_n": 160,
+     "clv": 0.017,
+     "clv_n": 160,
+     "z_vs_50": -1.107
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Rush attempts": {
+    "all": {
+     "n": 106,
+     "fair_n": 106,
+     "w": 49,
+     "l": 57,
+     "p": 0,
+     "win": 0.462,
+     "vs_fair": -0.049,
+     "z_vs_fair": -1.005,
+     "roi_stored_px": -0.063,
+     "roi_n": 106,
+     "clv": 0.024,
+     "clv_n": 106,
+     "z_vs_50": -0.777
+    },
+    "train": {
+     "n": 50,
+     "fair_n": 50,
+     "w": 23,
+     "l": 27,
+     "p": 0,
+     "win": 0.46,
+     "vs_fair": -0.051,
+     "z_vs_fair": -0.723,
+     "roi_stored_px": -0.073,
+     "roi_n": 50,
+     "clv": 0.021,
+     "clv_n": 50,
+     "z_vs_50": -0.566
+    },
+    "held_out": {
+     "n": 56,
+     "fair_n": 56,
+     "w": 26,
+     "l": 30,
+     "p": 0,
+     "win": 0.464,
+     "vs_fair": -0.047,
+     "z_vs_fair": -0.699,
+     "roi_stored_px": -0.055,
+     "roi_n": 56,
+     "clv": 0.026,
+     "clv_n": 56,
+     "z_vs_50": -0.535
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 56 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Rushing yards": {
+    "all": {
+     "n": 132,
+     "fair_n": 132,
+     "w": 57,
+     "l": 75,
+     "p": 0,
+     "win": 0.432,
+     "vs_fair": -0.076,
+     "z_vs_fair": -1.752,
+     "roi_stored_px": -0.116,
+     "roi_n": 132,
+     "clv": 0.038,
+     "clv_n": 132,
+     "z_vs_50": -1.567
+    },
+    "train": {
+     "n": 77,
+     "fair_n": 77,
+     "w": 38,
+     "l": 39,
+     "p": 0,
+     "win": 0.494,
+     "vs_fair": -0.015,
+     "z_vs_fair": -0.265,
+     "roi_stored_px": 0.004,
+     "roi_n": 77,
+     "clv": 0.036,
+     "clv_n": 77,
+     "z_vs_50": -0.114
+    },
+    "held_out": {
+     "n": 55,
+     "fair_n": 55,
+     "w": 19,
+     "l": 36,
+     "p": 0,
+     "win": 0.345,
+     "vs_fair": -0.161,
+     "z_vs_fair": -2.396,
+     "roi_stored_px": -0.284,
+     "roi_n": 55,
+     "clv": 0.041,
+     "clv_n": 55,
+     "z_vs_50": -2.292
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 55 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   }
+  },
+  "by_market_side": {
+   "Completions over": {
+    "all": {
+     "n": 16,
+     "fair_n": 16,
+     "w": 9,
+     "l": 7,
+     "p": 0,
+     "win": 0.562,
+     "vs_fair": 0.044,
+     "z_vs_fair": 0.351,
+     "roi_stored_px": 0.118,
+     "roi_n": 16,
+     "clv": 0.034,
+     "clv_n": 16,
+     "z_vs_50": 0.5
+    },
+    "train": {
+     "n": 8,
+     "fair_n": 8,
+     "w": 5,
+     "l": 3,
+     "p": 0,
+     "win": 0.625,
+     "vs_fair": 0.098,
+     "z_vs_fair": 0.556,
+     "roi_stored_px": 0.248,
+     "roi_n": 8,
+     "clv": 0.038,
+     "clv_n": 8,
+     "z_vs_50": 0.707
+    },
+    "held_out": {
+     "n": 8,
+     "fair_n": 8,
+     "w": 4,
+     "l": 4,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.01,
+     "z_vs_fair": -0.059,
+     "roi_stored_px": -0.011,
+     "roi_n": 8,
+     "clv": 0.029,
+     "clv_n": 8,
+     "z_vs_50": 0.0
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 8 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Completions under": {
+    "all": {
+     "n": 28,
+     "fair_n": 28,
+     "w": 11,
+     "l": 17,
+     "p": 0,
+     "win": 0.393,
+     "vs_fair": -0.131,
+     "z_vs_fair": -1.388,
+     "roi_stored_px": -0.201,
+     "roi_n": 28,
+     "clv": 0.015,
+     "clv_n": 28,
+     "z_vs_50": -1.134
+    },
+    "train": {
+     "n": 15,
+     "fair_n": 15,
+     "w": 6,
+     "l": 9,
+     "p": 0,
+     "win": 0.4,
+     "vs_fair": -0.115,
+     "z_vs_fair": -0.894,
+     "roi_stored_px": -0.183,
+     "roi_n": 15,
+     "clv": 0.027,
+     "clv_n": 15,
+     "z_vs_50": -0.775
+    },
+    "held_out": {
+     "n": 13,
+     "fair_n": 13,
+     "w": 5,
+     "l": 8,
+     "p": 0,
+     "win": 0.385,
+     "vs_fair": -0.149,
+     "z_vs_fair": -1.078,
+     "roi_stored_px": -0.223,
+     "roi_n": 13,
+     "clv": 0.0,
+     "clv_n": 13,
+     "z_vs_50": -0.832
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 13 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive",
+     "mean closing-line value is not positive"
+    ]
+   },
+   "Interceptions over": {
+    "all": {
+     "n": 24,
+     "fair_n": 24,
+     "w": 9,
+     "l": 15,
+     "p": 0,
+     "win": 0.375,
+     "vs_fair": -0.144,
+     "z_vs_fair": -1.418,
+     "roi_stored_px": -0.278,
+     "roi_n": 24,
+     "clv": 0.03,
+     "clv_n": 24,
+     "z_vs_50": -1.225
+    },
+    "train": {
+     "n": 14,
+     "fair_n": 14,
+     "w": 4,
+     "l": 10,
+     "p": 0,
+     "win": 0.286,
+     "vs_fair": -0.232,
+     "z_vs_fair": -1.75,
+     "roi_stored_px": -0.439,
+     "roi_n": 14,
+     "clv": 0.025,
+     "clv_n": 14,
+     "z_vs_50": -1.604
+    },
+    "held_out": {
+     "n": 10,
+     "fair_n": 10,
+     "w": 5,
+     "l": 5,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.02,
+     "z_vs_fair": -0.126,
+     "roi_stored_px": -0.053,
+     "roi_n": 10,
+     "clv": 0.037,
+     "clv_n": 10,
+     "z_vs_50": 0.0
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 10 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Interceptions under": {
+    "all": {
+     "n": 17,
+     "fair_n": 17,
+     "w": 7,
+     "l": 10,
+     "p": 0,
+     "win": 0.412,
+     "vs_fair": -0.105,
+     "z_vs_fair": -0.874,
+     "roi_stored_px": -0.182,
+     "roi_n": 17,
+     "clv": 0.029,
+     "clv_n": 17,
+     "z_vs_50": -0.728
+    },
+    "train": {
+     "n": 10,
+     "fair_n": 10,
+     "w": 5,
+     "l": 5,
+     "p": 0,
+     "win": 0.5,
+     "vs_fair": -0.016,
+     "z_vs_fair": -0.101,
+     "roi_stored_px": 0.017,
+     "roi_n": 10,
+     "clv": 0.028,
+     "clv_n": 10,
+     "z_vs_50": 0.0
+    },
+    "held_out": {
+     "n": 7,
+     "fair_n": 7,
+     "w": 2,
+     "l": 5,
+     "p": 0,
+     "win": 0.286,
+     "vs_fair": -0.233,
+     "z_vs_fair": -1.248,
+     "roi_stored_px": -0.466,
+     "roi_n": 7,
+     "clv": 0.031,
+     "clv_n": 7,
+     "z_vs_50": -1.134
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 7 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Pass attempts over": {
+    "all": {
+     "n": 26,
+     "fair_n": 26,
+     "w": 11,
+     "l": 15,
+     "p": 0,
+     "win": 0.423,
+     "vs_fair": -0.073,
+     "z_vs_fair": -0.743,
+     "roi_stored_px": -0.1,
+     "roi_n": 26,
+     "clv": 0.027,
+     "clv_n": 26,
+     "z_vs_50": -0.784
+    },
+    "train": {
+     "n": 15,
+     "fair_n": 15,
+     "w": 7,
+     "l": 8,
+     "p": 0,
+     "win": 0.467,
+     "vs_fair": -0.024,
+     "z_vs_fair": -0.182,
+     "roi_stored_px": 0.004,
+     "roi_n": 15,
+     "clv": 0.024,
+     "clv_n": 15,
+     "z_vs_50": -0.258
+    },
+    "held_out": {
+     "n": 11,
+     "fair_n": 11,
+     "w": 4,
+     "l": 7,
+     "p": 0,
+     "win": 0.364,
+     "vs_fair": -0.14,
+     "z_vs_fair": -0.93,
+     "roi_stored_px": -0.242,
+     "roi_n": 11,
+     "clv": 0.032,
+     "clv_n": 11,
+     "z_vs_50": -0.905
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 11 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Pass attempts under": {
+    "all": {
+     "n": 19,
+     "fair_n": 19,
+     "w": 8,
+     "l": 11,
+     "p": 0,
+     "win": 0.421,
+     "vs_fair": -0.103,
+     "z_vs_fair": -0.898,
+     "roi_stored_px": -0.137,
+     "roi_n": 19,
+     "clv": 0.053,
+     "clv_n": 19,
+     "z_vs_50": -0.688
+    },
+    "train": {
+     "n": 11,
+     "fair_n": 11,
+     "w": 6,
+     "l": 5,
+     "p": 0,
+     "win": 0.545,
+     "vs_fair": 0.013,
+     "z_vs_fair": 0.085,
+     "roi_stored_px": 0.123,
+     "roi_n": 11,
+     "clv": 0.064,
+     "clv_n": 11,
+     "z_vs_50": 0.302
+    },
+    "held_out": {
+     "n": 8,
+     "fair_n": 8,
+     "w": 2,
+     "l": 6,
+     "p": 0,
+     "win": 0.25,
+     "vs_fair": -0.261,
+     "z_vs_fair": -1.48,
+     "roi_stored_px": -0.494,
+     "roi_n": 8,
+     "clv": 0.037,
+     "clv_n": 8,
+     "z_vs_50": -1.414
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 8 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Passing TDs over": {
+    "all": {
+     "n": 17,
+     "fair_n": 17,
+     "w": 9,
+     "l": 8,
+     "p": 0,
+     "win": 0.529,
+     "vs_fair": 0.072,
+     "z_vs_fair": 0.614,
+     "roi_stored_px": 0.155,
+     "roi_n": 17,
+     "clv": 0.026,
+     "clv_n": 17,
+     "z_vs_50": 0.243
+    },
+    "train": {
+     "n": 10,
+     "fair_n": 10,
+     "w": 6,
+     "l": 4,
+     "p": 0,
+     "win": 0.6,
+     "vs_fair": 0.158,
+     "z_vs_fair": 1.03,
+     "roi_stored_px": 0.357,
+     "roi_n": 10,
+     "clv": 0.031,
+     "clv_n": 10,
+     "z_vs_50": 0.632
+    },
+    "held_out": {
+     "n": 7,
+     "fair_n": 7,
+     "w": 3,
+     "l": 4,
+     "p": 0,
+     "win": 0.429,
+     "vs_fair": -0.05,
+     "z_vs_fair": -0.275,
+     "roi_stored_px": -0.134,
+     "roi_n": 7,
+     "clv": 0.019,
+     "clv_n": 7,
+     "z_vs_50": -0.378
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 7 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Passing TDs under": {
+    "all": {
+     "n": 25,
+     "fair_n": 25,
+     "w": 11,
+     "l": 14,
+     "p": 0,
+     "win": 0.44,
+     "vs_fair": -0.13,
+     "z_vs_fair": -1.329,
+     "roi_stored_px": -0.25,
+     "roi_n": 25,
+     "clv": 0.001,
+     "clv_n": 25,
+     "z_vs_50": -0.6
+    },
+    "train": {
+     "n": 12,
+     "fair_n": 12,
+     "w": 4,
+     "l": 8,
+     "p": 0,
+     "win": 0.333,
+     "vs_fair": -0.223,
+     "z_vs_fair": -1.576,
+     "roi_stored_px": -0.416,
+     "roi_n": 12,
+     "clv": -0.006,
+     "clv_n": 12,
+     "z_vs_50": -1.155
+    },
+    "held_out": {
+     "n": 13,
+     "fair_n": 13,
+     "w": 7,
+     "l": 6,
+     "p": 0,
+     "win": 0.538,
+     "vs_fair": -0.043,
+     "z_vs_fair": -0.32,
+     "roi_stored_px": -0.096,
+     "roi_n": 13,
+     "clv": 0.007,
+     "clv_n": 13,
+     "z_vs_50": 0.277
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 13 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Passing yards over": {
+    "all": {
+     "n": 24,
+     "fair_n": 24,
+     "w": 13,
+     "l": 11,
+     "p": 0,
+     "win": 0.542,
+     "vs_fair": 0.025,
+     "z_vs_fair": 0.248,
+     "roi_stored_px": 0.105,
+     "roi_n": 24,
+     "clv": 0.026,
+     "clv_n": 24,
+     "z_vs_50": 0.408
+    },
+    "train": {
+     "n": 11,
+     "fair_n": 11,
+     "w": 6,
+     "l": 5,
+     "p": 0,
+     "win": 0.545,
+     "vs_fair": 0.024,
+     "z_vs_fair": 0.158,
+     "roi_stored_px": 0.104,
+     "roi_n": 11,
+     "clv": 0.044,
+     "clv_n": 11,
+     "z_vs_50": 0.302
+    },
+    "held_out": {
+     "n": 13,
+     "fair_n": 13,
+     "w": 7,
+     "l": 6,
+     "p": 0,
+     "win": 0.538,
+     "vs_fair": 0.026,
+     "z_vs_fair": 0.191,
+     "roi_stored_px": 0.105,
+     "roi_n": 13,
+     "clv": 0.01,
+     "clv_n": 13,
+     "z_vs_50": 0.277
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 13 < 100",
+     "excess over fair not significant (z 0.191)"
+    ]
+   },
+   "Passing yards under": {
+    "all": {
+     "n": 15,
+     "fair_n": 15,
+     "w": 4,
+     "l": 11,
+     "p": 0,
+     "win": 0.267,
+     "vs_fair": -0.235,
+     "z_vs_fair": -1.823,
+     "roi_stored_px": -0.457,
+     "roi_n": 15,
+     "clv": 0.037,
+     "clv_n": 15,
+     "z_vs_50": -1.807
+    },
+    "train": {
+     "n": 5,
+     "fair_n": 5,
+     "w": 3,
+     "l": 2,
+     "p": 0,
+     "win": 0.6,
+     "vs_fair": 0.093,
+     "z_vs_fair": 0.415,
+     "roi_stored_px": 0.221,
+     "roi_n": 5,
+     "clv": 0.046,
+     "clv_n": 5,
+     "z_vs_50": 0.447
+    },
+    "held_out": {
+     "n": 10,
+     "fair_n": 10,
+     "w": 1,
+     "l": 9,
+     "p": 0,
+     "win": 0.1,
+     "vs_fair": -0.399,
+     "z_vs_fair": -2.527,
+     "roi_stored_px": -0.796,
+     "roi_n": 10,
+     "clv": 0.033,
+     "clv_n": 10,
+     "z_vs_50": -2.53
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 10 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Receiving yards over": {
+    "all": {
+     "n": 193,
+     "fair_n": 193,
+     "w": 91,
+     "l": 102,
+     "p": 0,
+     "win": 0.472,
+     "vs_fair": -0.05,
+     "z_vs_fair": -1.388,
+     "roi_stored_px": -0.049,
+     "roi_n": 193,
+     "clv": 0.034,
+     "clv_n": 193,
+     "z_vs_50": -0.792
+    },
+    "train": {
+     "n": 110,
+     "fair_n": 110,
+     "w": 53,
+     "l": 57,
+     "p": 0,
+     "win": 0.482,
+     "vs_fair": -0.038,
+     "z_vs_fair": -0.792,
+     "roi_stored_px": -0.03,
+     "roi_n": 110,
+     "clv": 0.036,
+     "clv_n": 110,
+     "z_vs_50": -0.381
+    },
+    "held_out": {
+     "n": 83,
+     "fair_n": 83,
+     "w": 38,
+     "l": 45,
+     "p": 0,
+     "win": 0.458,
+     "vs_fair": -0.066,
+     "z_vs_fair": -1.204,
+     "roi_stored_px": -0.075,
+     "roi_n": 83,
+     "clv": 0.031,
+     "clv_n": 83,
+     "z_vs_50": -0.768
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 83 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Receiving yards under": {
+    "all": {
+     "n": 169,
+     "fair_n": 169,
+     "w": 74,
+     "l": 95,
+     "p": 0,
+     "win": 0.438,
+     "vs_fair": -0.096,
+     "z_vs_fair": -2.515,
+     "roi_stored_px": -0.14,
+     "roi_n": 169,
+     "clv": 0.031,
+     "clv_n": 169,
+     "z_vs_50": -1.615
+    },
+    "train": {
+     "n": 93,
+     "fair_n": 93,
+     "w": 40,
+     "l": 53,
+     "p": 0,
+     "win": 0.43,
+     "vs_fair": -0.105,
+     "z_vs_fair": -2.033,
+     "roi_stored_px": -0.154,
+     "roi_n": 93,
+     "clv": 0.027,
+     "clv_n": 93,
+     "z_vs_50": -1.348
+    },
+    "held_out": {
+     "n": 76,
+     "fair_n": 76,
+     "w": 34,
+     "l": 42,
+     "p": 0,
+     "win": 0.447,
+     "vs_fair": -0.086,
+     "z_vs_fair": -1.501,
+     "roi_stored_px": -0.123,
+     "roi_n": 76,
+     "clv": 0.037,
+     "clv_n": 76,
+     "z_vs_50": -0.918
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 76 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Receptions over": {
+    "all": {
+     "n": 214,
+     "fair_n": 214,
+     "w": 104,
+     "l": 110,
+     "p": 0,
+     "win": 0.486,
+     "vs_fair": -0.022,
+     "z_vs_fair": -0.66,
+     "roi_stored_px": 0.014,
+     "roi_n": 214,
+     "clv": 0.018,
+     "clv_n": 214,
+     "z_vs_50": -0.41
+    },
+    "train": {
+     "n": 127,
+     "fair_n": 127,
+     "w": 65,
+     "l": 62,
+     "p": 0,
+     "win": 0.512,
+     "vs_fair": 0.002,
+     "z_vs_fair": 0.054,
+     "roi_stored_px": 0.053,
+     "roi_n": 127,
+     "clv": 0.016,
+     "clv_n": 127,
+     "z_vs_50": 0.266
+    },
+    "held_out": {
+     "n": 87,
+     "fair_n": 87,
+     "w": 39,
+     "l": 48,
+     "p": 0,
+     "win": 0.448,
+     "vs_fair": -0.058,
+     "z_vs_fair": -1.099,
+     "roi_stored_px": -0.043,
+     "roi_n": 87,
+     "clv": 0.021,
+     "clv_n": 87,
+     "z_vs_50": -0.965
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 87 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Receptions under": {
+    "all": {
+     "n": 159,
+     "fair_n": 159,
+     "w": 82,
+     "l": 77,
+     "p": 0,
+     "win": 0.516,
+     "vs_fair": -0.016,
+     "z_vs_fair": -0.398,
+     "roi_stored_px": 0.019,
+     "roi_n": 159,
+     "clv": 0.025,
+     "clv_n": 159,
+     "z_vs_50": 0.397
+    },
+    "train": {
+     "n": 92,
+     "fair_n": 92,
+     "w": 51,
+     "l": 41,
+     "p": 0,
+     "win": 0.554,
+     "vs_fair": 0.02,
+     "z_vs_fair": 0.393,
+     "roi_stored_px": 0.099,
+     "roi_n": 92,
+     "clv": 0.036,
+     "clv_n": 92,
+     "z_vs_50": 1.043
+    },
+    "held_out": {
+     "n": 67,
+     "fair_n": 67,
+     "w": 31,
+     "l": 36,
+     "p": 0,
+     "win": 0.463,
+     "vs_fair": -0.065,
+     "z_vs_fair": -1.074,
+     "roi_stored_px": -0.091,
+     "roi_n": 67,
+     "clv": 0.01,
+     "clv_n": 67,
+     "z_vs_50": -0.611
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 67 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Rush attempts over": {
+    "all": {
+     "n": 64,
+     "fair_n": 64,
+     "w": 27,
+     "l": 37,
+     "p": 0,
+     "win": 0.422,
+     "vs_fair": -0.083,
+     "z_vs_fair": -1.334,
+     "roi_stored_px": -0.134,
+     "roi_n": 64,
+     "clv": 0.015,
+     "clv_n": 64,
+     "z_vs_50": -1.25
+    },
+    "train": {
+     "n": 32,
+     "fair_n": 32,
+     "w": 14,
+     "l": 18,
+     "p": 0,
+     "win": 0.438,
+     "vs_fair": -0.068,
+     "z_vs_fair": -0.772,
+     "roi_stored_px": -0.103,
+     "roi_n": 32,
+     "clv": 0.017,
+     "clv_n": 32,
+     "z_vs_50": -0.707
+    },
+    "held_out": {
+     "n": 32,
+     "fair_n": 32,
+     "w": 13,
+     "l": 19,
+     "p": 0,
+     "win": 0.406,
+     "vs_fair": -0.098,
+     "z_vs_fair": -1.115,
+     "roi_stored_px": -0.165,
+     "roi_n": 32,
+     "clv": 0.013,
+     "clv_n": 32,
+     "z_vs_50": -1.061
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 32 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Rush attempts under": {
+    "all": {
+     "n": 42,
+     "fair_n": 42,
+     "w": 22,
+     "l": 20,
+     "p": 0,
+     "win": 0.524,
+     "vs_fair": 0.004,
+     "z_vs_fair": 0.051,
+     "roi_stored_px": 0.045,
+     "roi_n": 42,
+     "clv": 0.037,
+     "clv_n": 42,
+     "z_vs_50": 0.309
+    },
+    "train": {
+     "n": 25,
+     "fair_n": 25,
+     "w": 13,
+     "l": 12,
+     "p": 0,
+     "win": 0.52,
+     "vs_fair": -0.006,
+     "z_vs_fair": -0.064,
+     "roi_stored_px": 0.025,
+     "roi_n": 25,
+     "clv": 0.034,
+     "clv_n": 25,
+     "z_vs_50": 0.2
+    },
+    "held_out": {
+     "n": 17,
+     "fair_n": 17,
+     "w": 9,
+     "l": 8,
+     "p": 0,
+     "win": 0.529,
+     "vs_fair": 0.019,
+     "z_vs_fair": 0.157,
+     "roi_stored_px": 0.075,
+     "roi_n": 17,
+     "clv": 0.041,
+     "clv_n": 17,
+     "z_vs_50": 0.243
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 17 < 100",
+     "excess over fair not significant (z 0.157)"
+    ]
+   },
+   "Rushing yards over": {
+    "all": {
+     "n": 77,
+     "fair_n": 77,
+     "w": 26,
+     "l": 51,
+     "p": 0,
+     "win": 0.338,
+     "vs_fair": -0.164,
+     "z_vs_fair": -2.882,
+     "roi_stored_px": -0.304,
+     "roi_n": 77,
+     "clv": 0.042,
+     "clv_n": 77,
+     "z_vs_50": -2.849
+    },
+    "train": {
+     "n": 45,
+     "fair_n": 45,
+     "w": 19,
+     "l": 26,
+     "p": 0,
+     "win": 0.422,
+     "vs_fair": -0.076,
+     "z_vs_fair": -1.027,
+     "roi_stored_px": -0.129,
+     "roi_n": 45,
+     "clv": 0.04,
+     "clv_n": 45,
+     "z_vs_50": -1.043
+    },
+    "held_out": {
+     "n": 32,
+     "fair_n": 32,
+     "w": 7,
+     "l": 25,
+     "p": 0,
+     "win": 0.219,
+     "vs_fair": -0.287,
+     "z_vs_fair": -3.248,
+     "roi_stored_px": -0.551,
+     "roi_n": 32,
+     "clv": 0.044,
+     "clv_n": 32,
+     "z_vs_50": -3.182
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 32 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "Rushing yards under": {
+    "all": {
+     "n": 55,
+     "fair_n": 55,
+     "w": 31,
+     "l": 24,
+     "p": 0,
+     "win": 0.564,
+     "vs_fair": 0.047,
+     "z_vs_fair": 0.695,
+     "roi_stored_px": 0.147,
+     "roi_n": 55,
+     "clv": 0.034,
+     "clv_n": 55,
+     "z_vs_50": 0.944
+    },
+    "train": {
+     "n": 31,
+     "fair_n": 31,
+     "w": 18,
+     "l": 13,
+     "p": 0,
+     "win": 0.581,
+     "vs_fair": 0.062,
+     "z_vs_fair": 0.688,
+     "roi_stored_px": 0.179,
+     "roi_n": 31,
+     "clv": 0.031,
+     "clv_n": 31,
+     "z_vs_50": 0.898
+    },
+    "held_out": {
+     "n": 24,
+     "fair_n": 24,
+     "w": 13,
+     "l": 11,
+     "p": 0,
+     "win": 0.542,
+     "vs_fair": 0.028,
+     "z_vs_fair": 0.27,
+     "roi_stored_px": 0.104,
+     "roi_n": 24,
+     "clv": 0.036,
+     "clv_n": 24,
+     "z_vs_50": 0.408
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 24 < 100",
+     "excess over fair not significant (z 0.27)"
+    ]
+   }
+  },
+  "by_position": {
+   "QB": {
+    "all": {
+     "n": 259,
+     "fair_n": 259,
+     "w": 114,
+     "l": 145,
+     "p": 0,
+     "win": 0.44,
+     "vs_fair": -0.076,
+     "z_vs_fair": -2.47,
+     "roi_stored_px": -0.119,
+     "roi_n": 259,
+     "clv": 0.026,
+     "clv_n": 259,
+     "z_vs_50": -1.926
+    },
+    "train": {
+     "n": 149,
+     "fair_n": 149,
+     "w": 73,
+     "l": 76,
+     "p": 0,
+     "win": 0.49,
+     "vs_fair": -0.029,
+     "z_vs_fair": -0.722,
+     "roi_stored_px": -0.022,
+     "roi_n": 149,
+     "clv": 0.028,
+     "clv_n": 149,
+     "z_vs_50": -0.246
+    },
+    "held_out": {
+     "n": 110,
+     "fair_n": 110,
+     "w": 41,
+     "l": 69,
+     "p": 0,
+     "win": 0.373,
+     "vs_fair": -0.14,
+     "z_vs_fair": -2.948,
+     "roi_stored_px": -0.251,
+     "roi_n": 110,
+     "clv": 0.024,
+     "clv_n": 110,
+     "z_vs_50": -2.67
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "RB": {
+    "all": {
+     "n": 383,
+     "fair_n": 383,
+     "w": 179,
+     "l": 204,
+     "p": 0,
+     "win": 0.467,
+     "vs_fair": -0.05,
+     "z_vs_fair": -1.96,
+     "roi_stored_px": -0.053,
+     "roi_n": 383,
+     "clv": 0.028,
+     "clv_n": 383,
+     "z_vs_50": -1.277
+    },
+    "train": {
+     "n": 220,
+     "fair_n": 220,
+     "w": 108,
+     "l": 112,
+     "p": 0,
+     "win": 0.491,
+     "vs_fair": -0.027,
+     "z_vs_fair": -0.806,
+     "roi_stored_px": -0.006,
+     "roi_n": 220,
+     "clv": 0.027,
+     "clv_n": 220,
+     "z_vs_50": -0.27
+    },
+    "held_out": {
+     "n": 163,
+     "fair_n": 163,
+     "w": 71,
+     "l": 92,
+     "p": 0,
+     "win": 0.436,
+     "vs_fair": -0.081,
+     "z_vs_fair": -2.066,
+     "roi_stored_px": -0.117,
+     "roi_n": 163,
+     "clv": 0.029,
+     "clv_n": 163,
+     "z_vs_50": -1.645
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "TE": {
+    "all": {
+     "n": 187,
+     "fair_n": 187,
+     "w": 93,
+     "l": 94,
+     "p": 0,
+     "win": 0.497,
+     "vs_fair": -0.023,
+     "z_vs_fair": -0.633,
+     "roi_stored_px": 0.011,
+     "roi_n": 187,
+     "clv": 0.029,
+     "clv_n": 187,
+     "z_vs_50": -0.073
+    },
+    "train": {
+     "n": 100,
+     "fair_n": 100,
+     "w": 55,
+     "l": 45,
+     "p": 0,
+     "win": 0.55,
+     "vs_fair": 0.026,
+     "z_vs_fair": 0.526,
+     "roi_stored_px": 0.102,
+     "roi_n": 100,
+     "clv": 0.025,
+     "clv_n": 100,
+     "z_vs_50": 1.0
+    },
+    "held_out": {
+     "n": 87,
+     "fair_n": 87,
+     "w": 38,
+     "l": 49,
+     "p": 0,
+     "win": 0.437,
+     "vs_fair": -0.079,
+     "z_vs_fair": -1.491,
+     "roi_stored_px": -0.095,
+     "roi_n": 87,
+     "clv": 0.034,
+     "clv_n": 87,
+     "z_vs_50": -1.179
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 87 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "WR": {
+    "all": {
+     "n": 355,
+     "fair_n": 355,
+     "w": 163,
+     "l": 192,
+     "p": 0,
+     "win": 0.459,
+     "vs_fair": -0.062,
+     "z_vs_fair": -2.372,
+     "roi_stored_px": -0.075,
+     "roi_n": 355,
+     "clv": 0.028,
+     "clv_n": 355,
+     "z_vs_50": -1.539
+    },
+    "train": {
+     "n": 199,
+     "fair_n": 199,
+     "w": 95,
+     "l": 104,
+     "p": 0,
+     "win": 0.477,
+     "vs_fair": -0.042,
+     "z_vs_fair": -1.209,
+     "roi_stored_px": -0.039,
+     "roi_n": 199,
+     "clv": 0.032,
+     "clv_n": 199,
+     "z_vs_50": -0.638
+    },
+    "held_out": {
+     "n": 156,
+     "fair_n": 156,
+     "w": 68,
+     "l": 88,
+     "p": 0,
+     "win": 0.436,
+     "vs_fair": -0.088,
+     "z_vs_fair": -2.212,
+     "roi_stored_px": -0.12,
+     "roi_n": 156,
+     "clv": 0.022,
+     "clv_n": 156,
+     "z_vs_50": -1.601
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   }
+  },
+  "by_shifted_line": {
+   "moved line": {
+    "all": {
+     "n": 181,
+     "fair_n": 181,
+     "w": 93,
+     "l": 88,
+     "p": 0,
+     "win": 0.514,
+     "vs_fair": -0.046,
+     "z_vs_fair": -1.238,
+     "roi_stored_px": -0.019,
+     "roi_n": 181,
+     "clv": 0.044,
+     "clv_n": 181,
+     "z_vs_50": 0.372
+    },
+    "train": {
+     "n": 104,
+     "fair_n": 104,
+     "w": 54,
+     "l": 50,
+     "p": 0,
+     "win": 0.519,
+     "vs_fair": -0.042,
+     "z_vs_fair": -0.858,
+     "roi_stored_px": -0.013,
+     "roi_n": 104,
+     "clv": 0.042,
+     "clv_n": 104,
+     "z_vs_50": 0.392
+    },
+    "held_out": {
+     "n": 77,
+     "fair_n": 77,
+     "w": 39,
+     "l": 38,
+     "p": 0,
+     "win": 0.506,
+     "vs_fair": -0.051,
+     "z_vs_fair": -0.9,
+     "roi_stored_px": -0.026,
+     "roi_n": 77,
+     "clv": 0.047,
+     "clv_n": 77,
+     "z_vs_50": 0.114
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 77 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "same line": {
+    "all": {
+     "n": 1003,
+     "fair_n": 1003,
+     "w": 456,
+     "l": 547,
+     "p": 0,
+     "win": 0.455,
+     "vs_fair": -0.057,
+     "z_vs_fair": -3.624,
+     "roi_stored_px": -0.072,
+     "roi_n": 1003,
+     "clv": 0.025,
+     "clv_n": 1003,
+     "z_vs_50": -2.873
+    },
+    "train": {
+     "n": 601,
+     "fair_n": 601,
+     "w": 295,
+     "l": 306,
+     "p": 0,
+     "win": 0.491,
+     "vs_fair": -0.021,
+     "z_vs_fair": -1.05,
+     "roi_stored_px": 0.0,
+     "roi_n": 601,
+     "clv": 0.025,
+     "clv_n": 601,
+     "z_vs_50": -0.449
+    },
+    "held_out": {
+     "n": 402,
+     "fair_n": 402,
+     "w": 161,
+     "l": 241,
+     "p": 0,
+     "win": 0.4,
+     "vs_fair": -0.11,
+     "z_vs_fair": -4.439,
+     "roi_stored_px": -0.181,
+     "roi_n": 402,
+     "clv": 0.024,
+     "clv_n": 402,
+     "z_vs_50": -3.99
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   }
+  },
+  "by_big_edge": {
+   "big (10%+)": {
+    "all": {
+     "n": 53,
+     "fair_n": 53,
+     "w": 21,
+     "l": 32,
+     "p": 0,
+     "win": 0.396,
+     "vs_fair": -0.141,
+     "z_vs_fair": -2.075,
+     "roi_stored_px": -0.15,
+     "roi_n": 53,
+     "clv": 0.091,
+     "clv_n": 53,
+     "z_vs_50": -1.511
+    },
+    "train": {
+     "n": 25,
+     "fair_n": 25,
+     "w": 11,
+     "l": 14,
+     "p": 0,
+     "win": 0.44,
+     "vs_fair": -0.1,
+     "z_vs_fair": -1.004,
+     "roi_stored_px": -0.058,
+     "roi_n": 25,
+     "clv": 0.102,
+     "clv_n": 25,
+     "z_vs_50": -0.6
+    },
+    "held_out": {
+     "n": 28,
+     "fair_n": 28,
+     "w": 10,
+     "l": 18,
+     "p": 0,
+     "win": 0.357,
+     "vs_fair": -0.178,
+     "z_vs_fair": -1.906,
+     "roi_stored_px": -0.232,
+     "roi_n": 28,
+     "clv": 0.081,
+     "clv_n": 28,
+     "z_vs_50": -1.512
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "held-out decisions 28 < 100",
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   },
+   "normal": {
+    "all": {
+     "n": 1131,
+     "fair_n": 1131,
+     "w": 528,
+     "l": 603,
+     "p": 0,
+     "win": 0.467,
+     "vs_fair": -0.051,
+     "z_vs_fair": -3.46,
+     "roi_stored_px": -0.06,
+     "roi_n": 1131,
+     "clv": 0.025,
+     "clv_n": 1131,
+     "z_vs_50": -2.23
+    },
+    "train": {
+     "n": 638,
+     "fair_n": 638,
+     "w": 316,
+     "l": 322,
+     "p": 0,
+     "win": 0.495,
+     "vs_fair": -0.023,
+     "z_vs_fair": -1.189,
+     "roi_stored_px": -0.005,
+     "roi_n": 638,
+     "clv": 0.025,
+     "clv_n": 638,
+     "z_vs_50": -0.238
+    },
+    "held_out": {
+     "n": 493,
+     "fair_n": 493,
+     "w": 212,
+     "l": 281,
+     "p": 0,
+     "win": 0.43,
+     "vs_fair": -0.087,
+     "z_vs_fair": -3.886,
+     "roi_stored_px": -0.131,
+     "roi_n": 493,
+     "clv": 0.024,
+     "clv_n": 493,
+     "z_vs_50": -3.108
+    },
+    "verdict": "LEAVE OUT",
+    "reasons": [
+     "does not beat the logged fair probability",
+     "ROI at the stored price is not positive"
+    ]
+   }
+  }
+ },
+ "prop_clv_audit": {
+  "n": 1184,
+  "hit": 0.464,
+  "mean_price": 0.494,
+  "mean_fair_at_call": 0.519,
+  "mean_close_fair": 0.507,
+  "edge_claimed_at_call": 0.051,
+  "stored_clv": 0.028,
+  "fair_drift_prob_pts": -1.135,
+  "clv_minus_edge": -0.023,
+  "hit_minus_close_fair_pts": -4.379,
+  "z_hit_vs_close_fair": -3.035,
+  "brier_close_fair": 0.245,
+  "brier_price": 0.245,
+  "brier_coin": 0.25,
+  "share_clv_positive": 0.779,
+  "calibration": [
+   {
+    "close_fair_from": 0.2,
+    "n": 1,
+    "mean_close_fair": 0.218,
+    "hit": 0.0
+   },
+   {
+    "close_fair_from": 0.3,
+    "n": 12,
+    "mean_close_fair": 0.331,
+    "hit": 0.417
+   },
+   {
+    "close_fair_from": 0.35,
+    "n": 36,
+    "mean_close_fair": 0.378,
+    "hit": 0.417
+   },
+   {
+    "close_fair_from": 0.4,
+    "n": 108,
+    "mean_close_fair": 0.43,
+    "hit": 0.324
+   },
+   {
+    "close_fair_from": 0.45,
+    "n": 352,
+    "mean_close_fair": 0.48,
+    "hit": 0.418
+   },
+   {
+    "close_fair_from": 0.5,
+    "n": 420,
+    "mean_close_fair": 0.519,
+    "hit": 0.455
+   },
+   {
+    "close_fair_from": 0.55,
+    "n": 188,
+    "mean_close_fair": 0.571,
+    "hit": 0.617
+   },
+   {
+    "close_fair_from": 0.6,
+    "n": 55,
+    "mean_close_fair": 0.62,
+    "hit": 0.6
+   },
+   {
+    "close_fair_from": 0.65,
+    "n": 12,
+    "mean_close_fair": 0.67,
+    "hit": 0.583
+   }
+  ],
+  "reading": "Stored CLV is closeFair / price - 1 and closeFair is the same fair source that raised the call. If the fair does not move, CLV equals the edge the call claimed, so it cannot confirm that edge. The fair drifted against the calls, and the calls won less often than the close said they should."
+ }
+}

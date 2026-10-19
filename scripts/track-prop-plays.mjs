@@ -11,7 +11,9 @@
      close    while the game has not started, keep the latest no-vig fair for that side.
               When the game starts it freezes: that is the closing price.
      CLV      closeFair / calledPrice - 1. Positive = the price beat the close. This is
-              the fast read: it accrues without waiting for results.
+              the fast read: it accrues without waiting for results. NOTE: closeFair comes from the same fair source that
+              raised the call, so it repeats the call's own edge. clvX (scripts/regrade_prop_clv.py) is the same ratio against
+              the exchange close from the prop close tape, which did not raise the call. Read clvX, not clv, as confirmation.
      settle   from data/nflverse_stats_<season>.json box scores (ESPN's overlay fills weeks nflverse lacks). Flat 1 unit at the
               called price. A player with no box-score row 36h after kickoff is void.
 
@@ -46,7 +48,7 @@ function gameStart(games, team) {
 }
 
 const _nidx = new WeakMap();
-function actualOf(stats, name, week, mkt) {
+export function actualOf(stats, name, week, mkt) {
   let p = stats?.[name];
   if (!p && stats) {                                   // board and box-score names differ in suffixes ("Aaron Jones" vs "Aaron Jones Sr.")
     let ix = _nidx.get(stats);
@@ -167,11 +169,13 @@ export function recordOf(L) {
   const agg = xs => {
     const done = xs.filter(x => x.status === 'won' || x.status === 'lost');
     const cl = xs.filter(x => x.clv != null);
+    const cx = xs.filter(x => x.clvX != null);          // CLV against an exchange close that did not raise the call (scripts/regrade_prop_clv.py)
     return {
       n: xs.length, open: xs.filter(x => x.status === 'open').length, w: done.filter(x => x.status === 'won').length, l: done.filter(x => x.status === 'lost').length,
       p: xs.filter(x => x.status === 'push').length, void: xs.filter(x => x.status === 'void').length,
       units: +done.reduce((s, x) => s + x.units, 0).toFixed(2), roi: done.length ? +(done.reduce((s, x) => s + x.units, 0) / done.length).toFixed(4) : null,
       clvN: cl.length, clv: cl.length ? +(cl.reduce((s, x) => s + x.clv, 0) / cl.length).toFixed(4) : null, clvPos: cl.filter(x => x.clv > 0).length,
+      clvXN: cx.length, clvX: cx.length ? +(cx.reduce((s, x) => s + x.clvX, 0) / cx.length).toFixed(4) : null, clvXPos: cx.filter(x => x.clvX > 0).length,
     };
   };
   const by = f => { const m = {}; for (const x of all) (m[f(x)] ||= []).push(x); return Object.fromEntries(Object.entries(m).map(([k, v]) => [k, agg(v)])); };
