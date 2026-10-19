@@ -28,7 +28,10 @@ test('logs each play once, with the price, both references, edges and time', () 
     assert.equal(r.first.price.book, c.price.book);
     assert.equal(r.first.price.p, +c.price.p.toFixed(4));
     assert.equal(r.first.refs.length, c.refs.length);
-    assert.ok(r.first.refs.length >= 2 && r.first.refs.every(x => x.p > 0 && x.edge >= gates.GATES.MIN_EDGE - 1e-4), 'a play beat every reference');
+    const ex = r.first.refs.find(x => x.n === 'Exchange'), pn = r.first.refs.find(x => x.n === 'Pinnacle');
+    assert.ok(r.first.refs.length >= 2 && r.first.refs.every(x => x.p > 0), 'a play has two references');
+    if (r.kind === 'prop') assert.ok(ex && pn && ex.edge >= gates.GATES.MIN_EDGE - 1e-4 && pn.edge >= -1e-4, 'a prop play beats the exchange anchor and Pinnacle does not price it the other way');
+    else assert.ok(r.first.refs.every(x => x.edge >= gates.GATES.MIN_EDGE - 1e-4), 'a game play beat every reference');
     assert.ok(r.first.worst >= gates.GATES.MIN_EDGE - 1e-4 && r.first.worst <= gates.GATES.BIG_EDGE);
     assert.equal(r.kind === 'prop' ? r.prop.pid : r.game.gk, r.kind === 'prop' ? c.row.pid : c.gk);
   }

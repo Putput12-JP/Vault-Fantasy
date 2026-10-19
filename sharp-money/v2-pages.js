@@ -164,12 +164,12 @@
     return h('div', { style: { display: 'grid', gap: 14, marginTop: 20 } },
       h('div', { dangerouslySetInnerHTML: { __html: recordHtml(F, palOf(n), tier) } }),
       h('div', { style: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' } }, h(k.ve, { options: opts, value: cur, onChange: function (o) { setTier(o === opts[0] ? 'play' : o === opts[1] ? 'watch' : 'pass'); } }),
-        h(k.T, { size: 'sm' }, 'Ranked by the worst-case edge across two independent fair prices. Sport filter: top bar.')),
+        h(k.T, { size: 'sm' }, 'Props are ranked by the edge against the exchange (the anchor, with Pinnacle as the check); games by the worst case of both fair prices. Sport filter: top bar.')),
       body,
       Details(u, 'How a play qualifies', [
         h(k.T, { key: 1, size: 'sm' }, '1. The price is at a US sportsbook (not a pick’em app, and not the exchange used as the check).'),
-        h(k.T, { key: 2, size: 'sm' }, '2. Two independent fair prices exist: Pinnacle, and the exchange (Kalshi and Novig at the exact line). A moneyline play can use Kalshi and Novig; a prop needs both.'),
-        h(k.T, { key: 3, size: 'sm' }, '3. The price beats both by ' + pct(gates.MIN_EDGE, 0) + ' or more, and the two fair prices sit within ' + gates.AGREE * 100 + ' points of each other.'),
+        h(k.T, { key: 2, size: 'sm' }, '2. Two independent fair prices exist: the exchange (Kalshi and Novig at the exact line) and Pinnacle.'),
+        h(k.T, { key: 3, size: 'sm' }, '3. Props are anchored on the exchange: the price must beat the exchange by ' + pct(gates.MIN_EDGE, 0) + ' or more, Pinnacle must sit within ' + gates.AGREE * 100 + ' points and must not price it the other way. Games must beat both by ' + pct(gates.MIN_EDGE, 0) + '.'),
         h(k.T, { key: 4, size: 'sm' }, '4. The edge is not over ' + pct(gates.BIG_EDGE, 0) + ': calls that big have lost money (21-32, ROI -15%).'),
         h(k.T, { key: 5, size: 'sm' }, '5. Both sides of the same market are not flagged at once.'),
         h(k.T, { key: 6, size: 'sm' }, 'A play is a better price than the market, not a prediction. Sharp-account money is context only and never ranks a play.')]),
@@ -384,9 +384,9 @@
     return ['b', c.gk, c.m, c.side, c.title].join('|');
   }
   var mix = function (c, pc) { return 'color-mix(in srgb,' + c + ' ' + pc + '%,transparent)'; };
-  function priceBar(pal, cost, fairs) {
+  function priceBar(pal, cost, fairs, anchorFair) {
     var lo = Math.max(0, Math.min.apply(null, [cost].concat(fairs)) - 0.04), hi = Math.min(1, Math.max.apply(null, [cost].concat(fairs)) + 0.04), pos = function (x) { return ((x - lo) / (hi - lo) * 100).toFixed(1); };
-    var good = Math.min.apply(null, fairs), dots = fairs.map(function (f) { return '<i style="position:absolute;top:-3px;left:calc(' + pos(f) + '% - 7px);width:14px;height:14px;border-radius:50%;background:' + pal.good + ';border:2px solid ' + pal.bg + ';box-sizing:border-box"></i>'; }).join('');
+    var good = anchorFair != null ? anchorFair : Math.min.apply(null, fairs), dots = fairs.map(function (f) { return '<i style="position:absolute;top:-3px;left:calc(' + pos(f) + '% - 7px);width:14px;height:14px;border-radius:50%;background:' + pal.good + ';border:2px solid ' + pal.bg + ';box-sizing:border-box"></i>'; }).join('');
     return '<div style="margin-top:12px"><div style="position:relative;height:8px;border-radius:8px;background:' + pal.tile + '">' +
       (good > cost ? '<i style="position:absolute;top:0;bottom:0;left:' + pos(cost) + '%;width:' + (pos(good) - pos(cost)).toFixed(1) + '%;border-radius:8px;background:linear-gradient(90deg,' + mix(pal.good, 35) + ',' + pal.good + ')"></i>' : '') +
       '<i style="position:absolute;top:-4px;left:calc(' + pos(cost) + '% - 1.5px);width:3px;height:16px;border-radius:2px;background:' + pal.text + '"></i>' + dots + '</div>' +
@@ -413,8 +413,9 @@
     var tile = function (label, val, sub, ok, hl) {
       return '<div style="border:1px solid ' + (hl ? mix(pal.good, 55) : pal.line) + ';border-radius:14px;padding:9px 10px;min-width:0;text-align:center;background:' + (hl ? mix(pal.good, 8) : 'transparent') + '"><div style="font-size:10.5px;letter-spacing:.09em;color:' + (ok ? pal.good : pal.mut) + ';text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:' + (ok ? pal.good : pal.dim) + ';margin-right:5px;vertical-align:1px"></span>' + label + '</div><div style="font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums">' + val + '</div>' + (sub ? '<div style="font-size:12px;font-weight:600;color:' + (ok ? pal.good : pal.mut) + '">' + sub + '</div>' : '') + '</div>';
     };
-    var tiles = [tile('You pay', am(c.price.am), c.price.book + ' · ' + pct(c.price.p), false, false)].concat(c.refs.map(function (r) { return tile(ESC(r.n) + ' fair', pct(r.p), spct(r.edge), r.edge >= GT.MIN_EDGE, false); }));
-    if (c.refs.length > 1 && c.worst != null) tiles.push(tile('Worst case', spct(c.worst), 'edge', c.worst >= GT.MIN_EDGE, true));
+    var anchored = c.kind === 'prop' && c.refs.length > 1, refsShown = anchored ? c.refs.slice().sort(function (a, b) { return (a.n === 'Exchange' ? 0 : 1) - (b.n === 'Exchange' ? 0 : 1); }) : c.refs;
+    var tiles = [tile('You pay', am(c.price.am), c.price.book + ' · ' + pct(c.price.p), false, false)].concat(refsShown.map(function (r) { return tile(ESC(r.n) + (anchored ? (r.n === 'Exchange' ? ' fair · anchor' : ' fair · check') : ' fair'), pct(r.p), spct(r.edge), anchored && r.n === 'Pinnacle' ? r.edge >= 0 : r.edge >= GT.MIN_EDGE, false); }));
+    if (c.refs.length > 1 && c.worst != null) tiles.push(tile(anchored ? 'Edge vs exchange' : 'Worst case', spct(c.worst), anchored ? 'the anchor' : 'edge', c.worst >= GT.MIN_EDGE, true));
     var chips = [], chip = function (txt, col, bg) { chips.push('<span style="display:inline-block;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;color:' + col + ';background:' + bg + ';border:1px solid ' + mix(col, 30) + ';white-space:normal">' + ESC(txt) + '</span>'); };
     var L = F.plays && F.plays.plays && F.plays.plays[ledgerKey(c)];
     if (L) { var st = L.status; chip(st === 'open' ? 'Logged · open' : st === 'won' ? 'Won ' + (L.units > 0 ? '+' : '') + L.units.toFixed(2) + 'u' : st === 'lost' ? 'Lost ' + L.units.toFixed(2) + 'u' : st === 'push' ? 'Push' : 'Void', st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.acc, mix(st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.acc, 10)); }
@@ -423,7 +424,7 @@
       var a = F.age.games[c.gk][c.m], x = a && a.books && a.books[c.price.book]; if (x && x.changed) chip(c.price.book + ' unchanged ' + dur(tnow() - x.changed), pal.mut, 'transparent');
     }
     c.cautions.forEach(function (x) { chip(x, pal.warn, mix(pal.warn, 8)); });
-    var bar = c.refs.length ? priceBar(pal, c.price.p, c.refs.map(function (r) { return r.p; })) : '';
+    var bar = c.refs.length ? priceBar(pal, c.price.p, anchored ? refsShown.map(function (r) { return r.p; }) : c.refs.map(function (r) { return r.p; }), anchored ? refsShown[0].p : null) : '';
     var sub = c.kind === 'prop' ? c.sub + (away && home ? ' · ' + away.abbr + ' @ ' + home.abbr : '') : c.sub;
     return '<div style="position:relative;border-radius:22px;overflow:hidden;padding:14px 14px 14px;color:' + pal.text + ';border:1px solid ' + pal.line + ';background:linear-gradient(115deg,' + gA + ' 0%,transparent 42%,transparent 58%,' + gH + ' 100%)">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:' + pal.mut + '"><span style="color:' + tag[1] + ';font-weight:700"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + tag[1] + ';margin-right:6px;vertical-align:1px"></span>' + tag[0] + '</span><span>' + SPORT[sport] + ' · ' + (c.start ? when(c.start) : 'time n/a') + '</span></div>' +

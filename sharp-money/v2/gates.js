@@ -53,12 +53,23 @@
     /* c.refs: [{n,p}] fair chance of THIS side from each independent reference. Returns tier + reasons. */
     const rs = c.refs; c.refs.forEach(r => r.edge = r.p / c.price.p - 1);
     const edges = rs.map(r => r.edge); c.worst = edges.length ? Math.min(...edges) : null; c.best = edges.length ? Math.max(...edges) : null;
+    /* Props are anchored on the exchange (Kalshi and Novig), which prices props more sharply than Pinnacle: the exchange edge is the headline edge and what plays are
+       ranked by, and Pinnacle is the check (it must agree within AGREE and must not price the side the other way). Games keep the worst-case of both. */
+    const ex = rs.find(r => r.n === 'Exchange'), pn = rs.find(r => r.n === 'Pinnacle'), anchored = c.kind === 'prop' && ex && pn;
+    if (anchored) c.worst = ex.edge;
     const weak = c.best == null || c.best < GATES.MIN_EDGE;
     if (c.price.dfs) { c.tier = weak ? 'none' : 'pass'; c.reasons = ['Pick’em app price. It is a flat price, not a market, so it is not checked against fair.']; return c }
     if (c.price.exch) { c.tier = weak ? 'none' : 'pass'; c.reasons = ['The only price is at an exchange, the same market used as the check.']; return c }
     if (c.contradicted) { c.tier = weak ? 'none' : 'pass'; c.reasons = ['Both sides of this market look good against a reference. That is noise, not an edge.']; return c }
     if (rs.length < 2) { c.tier = (rs.length === 1 && c.best >= GATES.MIN_EDGE) ? 'watch' : 'none'; c.reasons = rs.length === 1 ? ['One reference only (' + rs[0].n + '). A play needs two independent prices to agree.'] : ['No fair price from Pinnacle or an exchange right now.']; return c }
     const gap = Math.abs(rs[0].p - rs[1].p);
+    if (anchored) {
+      if (gap > GATES.AGREE) { c.tier = 'pass'; c.reasons = ['Pinnacle and the exchange disagree by ' + (gap * 100).toFixed(1) + ' points, so neither is trusted.']; return c }
+      if (ex.edge < GATES.MIN_EDGE) { c.tier = c.best >= GATES.MIN_EDGE ? 'pass' : 'none'; c.reasons = ['Does not beat the exchange, the anchor, by ' + pct(GATES.MIN_EDGE, 0) + ' (Exchange ' + spct(ex.edge) + ', Pinnacle ' + spct(pn.edge) + ').']; return c }
+      if (pn.edge < 0) { c.tier = 'pass'; c.reasons = ['The exchange likes it (' + spct(ex.edge) + ') but Pinnacle prices it the other way (' + spct(pn.edge) + ').']; return c }
+      if (ex.edge > GATES.BIG_EDGE) { c.tier = 'pass'; c.reasons = ['An edge over ' + pct(GATES.BIG_EDGE, 0) + ' is usually a stale or moved line. Calls this size went 21-32 (ROI -15%) on 53 settled.']; return c }
+      c.tier = 'play'; c.reasons = ['The price beats the exchange, the anchor, by ' + spct(ex.edge) + '. Pinnacle agrees within ' + (GATES.AGREE * 100) + ' points and does not price it the other way.']; return c;
+    }
     if (gap > GATES.AGREE) { c.tier = 'pass'; c.reasons = ['Pinnacle and the exchange disagree by ' + (gap * 100).toFixed(1) + ' points, so neither is trusted.']; return c }
     if (c.worst < GATES.MIN_EDGE) { c.tier = c.best >= GATES.MIN_EDGE ? 'pass' : 'none'; c.reasons = ['Does not beat both references by ' + pct(GATES.MIN_EDGE, 0) + ' (' + rs.map(r => r.n + ' ' + spct(r.edge)).join(', ') + ').']; return c }
     if (c.worst > GATES.BIG_EDGE) { c.tier = 'pass'; c.reasons = ['An edge over ' + pct(GATES.BIG_EDGE, 0) + ' is usually a stale or moved line. Calls this size went 21-32 (ROI -15%) on 53 settled.']; return c }
