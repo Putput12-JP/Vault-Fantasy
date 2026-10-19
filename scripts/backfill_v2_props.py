@@ -39,7 +39,7 @@ def main():
         if fx is None:
             continue
         e1, e2 = c['fair'] / c['p'] - 1, fx / c['p'] - 1
-        if min(e1, e2) < MIN_EDGE or abs(c['fair'] - fx) > AGREE or max(e1, e2) > BIG_EDGE:
+        if min(e1, e2) < MIN_EDGE or abs(c['fair'] - fx) > AGREE or min(e1, e2) > BIG_EDGE:      # same tests as gates.js: the worst-case edge is the one capped
             continue
         pid = 'bfp|' + p['id']
         plays[pid] = dict(id=pid, kind='prop', sport='nfl', start=p['start'], firstSeen=p['firstSeen'], backfill=True, status=p['status'], units=p.get('units'),
