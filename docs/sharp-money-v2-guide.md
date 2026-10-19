@@ -7,10 +7,10 @@ Open **vaultfantasy.com/sharp-money**. On a computer you get a sidebar. On a pho
 Following where big money went is usually too late. By the time you see it, the price has moved. So V2 asks a different question: **is a sportsbook still offering a better price than the market says is fair?**
 
 It checks two independent "fair prices":
-- **Pinnacle**, the sharpest sportsbook.
-- **The exchange**, meaning Kalshi and Novig, where people trade against each other.
+- **The exchange**, meaning Kalshi and Novig, where people trade against each other. For props this is the **anchor**: exchanges price props more sharply than Pinnacle.
+- **Pinnacle**, the sharpest sportsbook. For props it is the check: it has to agree and must not price the bet the other way. For games both must be beaten.
 
-A price only counts when it beats **both**.
+A prop price counts when it beats the exchange by at least 2%. A game price counts when it beats both.
 
 ## Plays
 
@@ -23,8 +23,8 @@ At the top is the **V2 play record**: the count (W-L), units, ROI and CLV of eve
 
 Each play card shows team logos (or the player's photo for props), the pick in large type, and:
 - **You pay**: the price you can get, and at which book.
-- **Pinnacle fair** and **Exchange fair**: what each says the real chance is, and how much better your price is (the edge).
-- **Worst-case edge**: the smaller of the two edges. Plays are ranked by this, so the list is conservative.
+- **Exchange fair** and **Pinnacle fair**: what each says the real chance is, and how much better your price is (the edge). On props the exchange is marked "anchor" and Pinnacle "check".
+- **Edge vs exchange** (props) or **worst-case edge** (games, the smaller of the two edges). Plays are ranked by this.
 - **A price bar**: the white tick is what you pay, the green dots are the two fair prices. The green stretch between them is your edge.
 - **Logged**: a chip that shows whether the play is in the record and how it ended.
 - **Cautions** in yellow, for example "QB props have lost" or "this line is more than 48 hours out".

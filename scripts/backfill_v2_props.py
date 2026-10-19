@@ -6,9 +6,9 @@ moment. It keeps no exchange price from then. The only stored exchange price is 
 scripts/regrade_prop_clv.py). So the second fair price used here is a number nobody had when the price was taken. A price that beats the close tends to win more,
 so choosing plays this way flatters the result. Read it as an upper bound, not as what the live log will show.
 
-Selection (the V2 gates, with the exchange close standing in for the exchange read):
-  price at a US sportsbook (not a pick'em app, not an exchange); fair from Pinnacle; edge against Pinnacle's fair at first sight and against the exchange close
-  both at least 2%; the two fair prices within 4 points; the edge not over 10%.
+Selection (the V2 gates, props anchored on the exchange, with the exchange close standing in for the exchange read):
+  price at a US sportsbook (not a pick'em app, not an exchange); fair from Pinnacle; the edge against the exchange close at least 2% and not over 10%; Pinnacle within
+  4 points of the exchange and not pricing the side the other way.
 Result and units come from the ledger (flat 1 unit at the stored price). CLV is the exchange close over the stored price.
 
 usage: backfill_v2_props.py --date 2026-10-18 [--plays prop_plays.json] [--out data/v2_backfill.json]"""
@@ -70,19 +70,21 @@ def main():
             tier, why = 'watch', 'one reference only'
         elif abs(p['called']['fair'] - c['fx']) > AGREE:
             tier, why = 'pass', 'references disagree'
-        elif c['worst'] < MIN_EDGE:
-            tier, why = 'pass', 'does not beat both'
-        elif c['worst'] > BIG_EDGE:
+        elif c['e2'] < MIN_EDGE:
+            tier, why = 'pass', 'does not beat the exchange'
+        elif c['e1'] < 0:
+            tier, why = 'pass', 'Pinnacle prices it the other way'
+        elif c['e2'] > BIG_EDGE:
             tier, why = 'pass', 'edge over 10%'
         else:
-            tier, why = 'play', 'clears every gate'
+            tier, why = 'play', 'clears every gate (anchored on the exchange)'
         cc = p['called']
         refs = [dict(n='Pinnacle', p=r4(cc['fair']), edge=r4(c['e1']))] + ([dict(n='Exchange close', p=r4(c['fx']), edge=r4(c['e2']))] if c['fx'] is not None else [])
         pid = 'bfp|%s|%s' % (tier, p['id'])
         tiers[tier][pid] = dict(id=pid, kind='prop', sport='nfl', start=p['start'], firstSeen=p['firstSeen'], backfill=True, status=p['status'], units=p.get('units'),
                                 clv=p.get('clvX'), close=dict(p=r4(c['fx']), src='Kalshi+Novig close') if c['fx'] is not None else None,
                                 first=dict(title='%s %s %s %s' % (p['name'], 'Over' if p['side'] == 'over' else 'Under', p['line'], p['label']), sub=p['team'] + ' ' + p['pos'], market=p['label'],
-                                           price=dict(am=cc['am'], p=r4(cc['p']), book=src), refs=refs, worst=r4(c['worst']), best=r4(c['best']), why=why),
+                                           price=dict(am=cc['am'], p=r4(cc['p']), book=src), refs=refs, worst=r4(c['e2'] if c['e2'] is not None else c['worst']), best=r4(c['best']), why=why),
                                 hoursEarly=round((p['start'] - p['firstSeen']) / 3600, 1))
     games = None
     if a.games:

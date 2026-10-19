@@ -134,7 +134,7 @@ function passRow(c){return `<div class="pass"${c.gk?` data-go="game/${esc(c.gk)}
 function how(){return `<details class="how"><summary>How a play qualifies</summary><ol>
  <li>The price is at a US sportsbook (not a pick’em app, and not the exchange used as the check).</li>
  <li>Two independent fair prices exist: Pinnacle, and the exchange (Kalshi and Novig where they list the exact line). A moneyline play can use Kalshi and Novig; a prop needs both.</li>
- <li>The price beats <b>both</b> by ${pct(GATES.MIN_EDGE,0)} or more, and the two fair prices sit within ${GATES.AGREE*100} points of each other.</li>
+ <li>Props are anchored on the exchange: the price must beat the exchange by ${pct(GATES.MIN_EDGE,0)} or more, and Pinnacle must sit within ${GATES.AGREE*100} points and not price it the other way. Games must beat <b>both</b> by ${pct(GATES.MIN_EDGE,0)}.</li>
  <li>The edge is not over ${pct(GATES.BIG_EDGE,0)}: calls that big have lost money (21-32, ROI -15%).</li>
  <li>Both sides of the same market are not flagged at once.</li></ol>
  <p class="sub">Ranked by the <b>worst-case</b> edge, not the best one. A play is a better price than the market, not a prediction: the stored record is 8 days old and no signal has cleared the 100-decision bar. Sharp-account money is context only. <a href="https://github.com/Putput12-JP/Vault-Fantasy/pull/133">Evidence</a> · <a href="https://github.com/Putput12-JP/Vault-Fantasy/pull/134">Independent close</a></p></details>`}
