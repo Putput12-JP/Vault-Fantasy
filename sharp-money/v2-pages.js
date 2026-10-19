@@ -12,7 +12,7 @@
   var SRC = {
     props: RAW + 'sharp-data/props.json', tape: RAW + 'sharp-data/prop_close_tape.json', plays: RAW + 'sharp-data/v2_plays.json',
     edge: MAIN + 'data/exchange_edge_live.json', edgeRec: MAIN + 'data/exchange_edge_record.json', keys: MAIN + 'data/nfl_key_numbers.json',
-    lag: MAIN + 'data/lead_lag.json', age: MAIN + 'data/book_age.json', sb: MAIN + 'data/model_scoreboard.json', rg: MAIN + 'docs/prop-clv-regrade.json'
+    lag: MAIN + 'data/lead_lag.json', age: MAIN + 'data/book_age.json', sb: MAIN + 'data/model_scoreboard.json', backfill: MAIN + 'data/v2_backfill.json', rg: MAIN + 'docs/prop-clv-regrade.json'
   };
   var CT = { timeZone: 'America/Chicago' };
   var SPORT = { all: 'All', nfl: 'NFL', cfb: 'CFB', nba: 'NBA' };
@@ -43,11 +43,21 @@
     }, []);
     return STORE.files;
   }
+  /* Take a stance: one side per market. For each prop (player, stat, line) and each game market, keep the side with the better edge and drop the other, so a
+     bet never shows up as both Over and Under. Candidates on the favoured side stay (the same side can be priced at a book and at an exchange). */
+  function stance(list) {
+    var score = function (c) { return c.worst != null && c.refs.length > 1 ? c.worst : c.best != null ? c.best : -9; };
+    var key = function (c) { return c.kind === 'prop' ? 'p|' + c.row.pid + '|' + c.row.mkt + '|' + c.row.line : 'g|' + c.gk + '|' + c.m; };
+    var top = {};
+    list.forEach(function (c) { var k = key(c), v = score(c); if (!top[k] || v > top[k].v) top[k] = { v: v, side: c.side }; });
+    return list.filter(function (c) { return top[key(c)].side === c.side; });
+  }
   function useBuilt(D, F) {
     var U = kit().U;
     return U.useMemo(function () {
       if (!D || !G()) return { all: [], cand: [] };
-      return G().build({ D: D, P: F.props, T: F.tape, E: F.edge, now: Date.now() / 1000 });
+      var b = G().build({ D: D, P: F.props, T: F.tape, E: F.edge, now: Date.now() / 1000 });
+      return { all: stance(b.all), cand: stance(b.cand) };
     }, [D && D.ts, STORE.ts]);
   }
 
@@ -418,7 +428,27 @@
       (chips.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">' + chips.join('') + '</div>' : '') + '</div>';
   }
   /* The V2 record: count and units of every logged play, then the latest results. */
-  function recordHtml(F, pal) {
+  /* A flagged hindsight backfill of finished plays (data/v2_backfill.json). Shown by the record, never counted in it. */
+  function backfillHtml(F, pal) {
+    var B = F.backfill; if (!B || !B.plays) return '';
+    var rows = Object.keys(B.plays).map(function (k) { return B.plays[k]; }).sort(function (a, b) { return a.start - b.start; });
+    var done = rows.filter(function (p) { return p.status === 'won' || p.status === 'lost' || p.status === 'push'; }), w = done.filter(function (p) { return p.status === 'won'; }).length, l = done.filter(function (p) { return p.status === 'lost'; }).length;
+    var units = done.reduce(function (s2, p) { return s2 + (p.units || 0); }, 0), su = function (u) { var r = Math.round(u * 10) / 10 || 0; return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + 'u'; };
+    var early = rows.map(function (p) { return p.hoursEarly; }).filter(function (x) { return x != null; }).sort(function (a, b) { return a - b; }), med = early.length ? early[Math.floor(early.length / 2)] : null;
+    var big = function (label, val, sub, col) { return '<div style="border:1px solid ' + pal.line + ';border-radius:14px;padding:9px 11px;min-width:0"><div style="font-size:10.5px;letter-spacing:.09em;color:' + pal.mut + ';text-transform:uppercase">' + label + '</div><div style="font-size:22px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums;color:' + (col || pal.text) + '">' + val + '</div><div style="font-size:11.5px;color:' + pal.mut + '">' + sub + '</div></div>'; };
+    var list = rows.map(function (p) {
+      var f = p.first, st = p.status, col = st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.mut;
+      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid ' + pal.line + '"><div style="min-width:0"><div style="font-weight:600;font-size:13.5px">' + ESC(f.title) + '</div><div style="font-size:11.5px;color:' + pal.mut + '">' + ESC(f.price.book) + ' ' + am(f.price.am) + ' · Pinnacle ' + spct(f.refs[0].edge) + ' · exchange close ' + spct(f.refs[1].edge) + ' · seen ' + (p.hoursEarly != null ? Math.round(p.hoursEarly) + ' h early' : '') + '</div></div><div style="text-align:right;white-space:nowrap;font-weight:700;color:' + col + '">' + (st === 'won' ? 'Won' : st === 'lost' ? 'Lost' : st === 'push' ? 'Push' : 'Open') + (p.units != null && st !== 'open' ? '<div style="font-size:12px">' + su(p.units) + '</div>' : '') + '</div></div>';
+    }).join('');
+    var ml = B.moneyline_replay;
+    return '<div style="border:1px dashed ' + mix(pal.warn, 60) + ';border-radius:22px;padding:14px;color:' + pal.text + ';margin-top:12px;background:' + mix(pal.warn, 5) + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:' + pal.warn + '">Backfill · ' + ESC(B.date) + ' NFL props · hindsight</span><span style="font-size:11.5px;color:' + pal.warn + '">Not counted in the record above</span></div>' +
+      '<div style="font-size:12.5px;color:' + pal.mut + ';margin-top:6px">Rebuilt after the fact. The second fair price is the exchange <b>close</b>, which was not known when the price was taken, and the prices were first seen ' + (med != null ? 'about ' + Math.round(med) + ' hours' : 'days') + ' before kickoff. It reads better than live plays will. Treat it as an upper bound.' + (ml ? ' Moneylines were replayed from the book tape with no hindsight: ' + ml.games + ' games, ' + ml.plays + ' plays.' : '') + '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px">' + big('Record', w + '-' + l, done.length + ' settled · ' + (rows.length - done.length) + ' open') + big('Units', su(units), 'flat 1 unit, not counted', units > 0 ? pal.good : units < 0 ? pal.bad : null) + big('Plays', String(rows.length), (B.priced_at_a_us_book || 0) + ' at a US book of ' + (B.calls_that_day || 0) + ' calls') + '</div>' +
+      '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:' + pal.mut + '">Show the ' + rows.length + ' plays</summary>' + list + '</details></div>';
+  }
+  function recordHtml(F, pal) { return recordCore(F, pal) + backfillHtml(F, pal); }
+  function recordCore(F, pal) {
     var PL = F.plays, rows = v2Rows(PL), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), ws = wins.reduce(function (a, b) { return a + b; }, 0);
     var su = function (u) { var r = Math.round(u * 10) / 10 || 0; return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + 'u'; };
@@ -441,7 +471,7 @@
 
   /* The data layer and the scoring, for the phone layout (sharp-money/new/), which draws its own HTML from them. */
   var core = {
-    STORE: STORE, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
+    STORE: STORE, stance: stance, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
     ensure: function () { loadAssets(); if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll(); return STORE.ts > 0; },
     subscribe: function (fn) { STORE.subs.add(fn); return function () { STORE.subs.delete(fn); }; }
   };
