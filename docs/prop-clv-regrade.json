@@ -1,0 +1,349 @@
+{
+ "graded_with_tape": 495,
+ "min_n": 150,
+ "by_ref": {
+  "Pinnacle": {
+   "n": 382,
+   "log_loss": 0.6808,
+   "brier": 0.2439,
+   "mean_p_over": 0.4895,
+   "over_hit_rate": 0.4817
+  },
+  "Kalshi": {
+   "n": 298,
+   "log_loss": 0.6769,
+   "brier": 0.2419,
+   "mean_p_over": 0.4895,
+   "over_hit_rate": 0.4597
+  },
+  "Novig": {
+   "n": 410,
+   "log_loss": 0.6783,
+   "brier": 0.2426,
+   "mean_p_over": 0.4901,
+   "over_hit_rate": 0.4902
+  },
+  "Exchange": {
+   "n": 460,
+   "log_loss": 0.6763,
+   "brier": 0.2417,
+   "mean_p_over": 0.4884,
+   "over_hit_rate": 0.4848
+  },
+  "Books": {
+   "n": 261,
+   "log_loss": 0.6873,
+   "brier": 0.247,
+   "mean_p_over": 0.485,
+   "over_hit_rate": 0.5019
+  },
+  "Sharp3": {
+   "n": 462,
+   "log_loss": 0.677,
+   "brier": 0.242,
+   "mean_p_over": 0.4888,
+   "over_hit_rate": 0.4848
+  }
+ },
+ "clv_by_ref": {
+  "Pinnacle": {
+   "n": 382,
+   "clv": 0.0122,
+   "share_positive": 0.6387,
+   "mean_close_p": 0.4983,
+   "hit": 0.4529,
+   "hit_minus_close_pts": -4.5385,
+   "z_hit_vs_close": -1.7885,
+   "old_stored_clv_same_rows": 0.0172,
+   "price_beat_close_wins": 119,
+   "price_beat_close": 244
+  },
+  "Kalshi": {
+   "n": 298,
+   "clv": 0.0058,
+   "share_positive": 0.5134,
+   "mean_close_p": 0.4941,
+   "hit": 0.4262,
+   "hit_minus_close_pts": -6.7919,
+   "z_hit_vs_close": -2.3684,
+   "old_stored_clv_same_rows": 0.0198,
+   "price_beat_close_wins": 76,
+   "price_beat_close": 153
+  },
+  "Novig": {
+   "n": 410,
+   "clv": 0.0036,
+   "share_positive": 0.4927,
+   "mean_close_p": 0.4934,
+   "hit": 0.4537,
+   "hit_minus_close_pts": -3.9783,
+   "z_hit_vs_close": -1.6233,
+   "old_stored_clv_same_rows": 0.0196,
+   "price_beat_close_wins": 90,
+   "price_beat_close": 202
+  },
+  "Exchange": {
+   "n": 460,
+   "clv": 0.003,
+   "share_positive": 0.4891,
+   "mean_close_p": 0.4923,
+   "hit": 0.4413,
+   "hit_minus_close_pts": -5.0977,
+   "z_hit_vs_close": -2.2057,
+   "old_stored_clv_same_rows": 0.0204,
+   "price_beat_close_wins": 102,
+   "price_beat_close": 225
+  },
+  "Books": {
+   "n": 261,
+   "clv": 0.0076,
+   "share_positive": 0.5747,
+   "mean_close_p": 0.4984,
+   "hit": 0.4674,
+   "hit_minus_close_pts": -3.0925,
+   "z_hit_vs_close": -1.0081,
+   "old_stored_clv_same_rows": 0.0169,
+   "price_beat_close_wins": 72,
+   "price_beat_close": 150
+  },
+  "Sharp3": {
+   "n": 462,
+   "clv": 0.0057,
+   "share_positive": 0.5714,
+   "mean_close_p": 0.4937,
+   "hit": 0.4416,
+   "hit_minus_close_pts": -5.2185,
+   "z_hit_vs_close": -2.2629,
+   "old_stored_clv_same_rows": 0.0202,
+   "price_beat_close_wins": 124,
+   "price_beat_close": 264
+  }
+ },
+ "pairs": [
+  {
+   "a": "Exchange",
+   "b": "Pinnacle",
+   "n": 380,
+   "gap": -0.002,
+   "ci95": [
+    -0.0048,
+    0.0007
+   ],
+   "verdict": "no difference"
+  },
+  {
+   "a": "Exchange",
+   "b": "Books",
+   "n": 226,
+   "gap": 0.0019,
+   "ci95": [
+    -0.0059,
+    0.0092
+   ],
+   "verdict": "no difference"
+  },
+  {
+   "a": "Pinnacle",
+   "b": "Books",
+   "n": 212,
+   "gap": 0.0024,
+   "ci95": [
+    -0.005,
+    0.0101
+   ],
+   "verdict": "no difference"
+  },
+  {
+   "a": "Sharp3",
+   "b": "Pinnacle",
+   "n": 382,
+   "gap": -0.0012,
+   "ci95": [
+    -0.0029,
+    0.0005
+   ],
+   "verdict": "no difference"
+  },
+  {
+   "a": "Sharp3",
+   "b": "Exchange",
+   "n": 460,
+   "gap": 0.0007,
+   "ci95": [
+    -0.0003,
+    0.0016
+   ],
+   "verdict": "no difference"
+  },
+  {
+   "a": "Kalshi",
+   "b": "Pinnacle",
+   "n": 243,
+   "gap": 0.0002,
+   "ci95": [
+    -0.0032,
+    0.0035
+   ],
+   "verdict": "no difference"
+  },
+  {
+   "a": "Novig",
+   "b": "Pinnacle",
+   "n": 377,
+   "gap": -0.0027,
+   "ci95": [
+    -0.0057,
+    0.0003
+   ],
+   "verdict": "no difference"
+  }
+ ],
+ "pinnacle_called_vs_exchange_close": {
+  "n": 449,
+  "clv": 0.001,
+  "share_positive": 0.4855,
+  "mean_close_p": 0.491,
+  "hit": 0.4343,
+  "hit_minus_close_pts": -5.6666,
+  "z_hit_vs_close": -2.4219,
+  "old_stored_clv_same_rows": 0.0201,
+  "price_beat_close_wins": 96,
+  "price_beat_close": 218
+ },
+ "pinnacle_called_vs_books_close": {
+  "n": 256,
+  "clv": 0.0074,
+  "share_positive": 0.5703,
+  "mean_close_p": 0.4984,
+  "hit": 0.4609,
+  "hit_minus_close_pts": -3.7422,
+  "z_hit_vs_close": -1.2083,
+  "old_stored_clv_same_rows": 0.0162,
+  "price_beat_close_wins": 68,
+  "price_beat_close": 146
+ },
+ "pinnacle_called_both_closes": {
+  "n": 374,
+  "old_stored_clv": 0.0174,
+  "clv_vs_own_pinnacle_close": 0.0121,
+  "clv_vs_exchange_close": 0.004
+ },
+ "roi_by_exchange_clv": {
+  "beat_exchange_close": {
+   "n": 225,
+   "w": 102,
+   "roi": -0.0765,
+   "hit": 0.4533
+  },
+  "missed_exchange_close": {
+   "n": 235,
+   "w": 101,
+   "roi": -0.1333,
+   "hit": 0.4298
+  },
+  "beat_both_exchange_and_pinnacle": {
+   "n": 177,
+   "w": 83,
+   "roi": -0.0495,
+   "hit": 0.4689
+  },
+  "beat_neither": {
+   "n": 124,
+   "w": 51,
+   "roi": -0.1937,
+   "hit": 0.4113
+  },
+  "beat_exchange_by_2pts": {
+   "n": 165,
+   "w": 80,
+   "roi": -0.0149,
+   "hit": 0.4848
+  }
+ },
+ "exchange_clv_by_market_side": {
+  "Receiving yards over": {
+   "n": 61,
+   "clv": -0.0098,
+   "share_positive": 0.377,
+   "mean_close_p": 0.4876,
+   "hit": 0.4754,
+   "hit_minus_close_pts": -1.2148,
+   "z_hit_vs_close": -0.1902,
+   "old_stored_clv_same_rows": 0.0267,
+   "price_beat_close_wins": 12,
+   "price_beat_close": 23
+  },
+  "Receiving yards under": {
+   "n": 35,
+   "clv": -0.0065,
+   "share_positive": 0.4857,
+   "mean_close_p": 0.486,
+   "hit": 0.4,
+   "hit_minus_close_pts": -8.6014,
+   "z_hit_vs_close": -1.0197,
+   "old_stored_clv_same_rows": 0.011,
+   "price_beat_close_wins": 6,
+   "price_beat_close": 17
+  },
+  "Receptions over": {
+   "n": 99,
+   "clv": 0.0074,
+   "share_positive": 0.5556,
+   "mean_close_p": 0.4865,
+   "hit": 0.4545,
+   "hit_minus_close_pts": -3.1995,
+   "z_hit_vs_close": -0.6448,
+   "old_stored_clv_same_rows": 0.0132,
+   "price_beat_close_wins": 27,
+   "price_beat_close": 55
+  },
+  "Receptions under": {
+   "n": 85,
+   "clv": 0.0055,
+   "share_positive": 0.5412,
+   "mean_close_p": 0.5048,
+   "hit": 0.4588,
+   "hit_minus_close_pts": -4.5953,
+   "z_hit_vs_close": -0.8577,
+   "old_stored_clv_same_rows": 0.0145,
+   "price_beat_close_wins": 21,
+   "price_beat_close": 46
+  },
+  "Rush attempts over": {
+   "n": 29,
+   "clv": -0.0376,
+   "share_positive": 0.2759,
+   "mean_close_p": 0.467,
+   "hit": 0.4483,
+   "hit_minus_close_pts": -1.8741,
+   "z_hit_vs_close": -0.2041,
+   "old_stored_clv_same_rows": 0.0065,
+   "price_beat_close_wins": 6,
+   "price_beat_close": 8
+  },
+  "Rush attempts under": {
+   "n": 22,
+   "clv": 0.0496,
+   "share_positive": 0.7273,
+   "mean_close_p": 0.5196,
+   "hit": 0.5455,
+   "hit_minus_close_pts": 2.5841,
+   "z_hit_vs_close": 0.2444,
+   "old_stored_clv_same_rows": 0.0426,
+   "price_beat_close_wins": 8,
+   "price_beat_close": 16
+  },
+  "Rushing yards over": {
+   "n": 26,
+   "clv": 0.0104,
+   "share_positive": 0.4615,
+   "mean_close_p": 0.471,
+   "hit": 0.1923,
+   "hit_minus_close_pts": -27.8692,
+   "z_hit_vs_close": -2.8647,
+   "old_stored_clv_same_rows": 0.043,
+   "price_beat_close_wins": 0,
+   "price_beat_close": 12
+  }
+ }
+}
