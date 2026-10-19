@@ -82,8 +82,40 @@ Built: `scripts/build_diet_defense.py` writes `data/diet_defense.json` (2025-26 
 
 So the inputs are stable, far more than positional DvP. That says the measurement is real; it says nothing yet about whether it predicts a prop result beyond the line. Step 3 still has to test that.
 
+## Step 3 result (2026-10-19): the diet score does not beat the market
+
+Pre-registered in `scripts/build_diet_test.py` before the first run: [diet-test.md](diet-test.md). Fit 2024-25, test 2025-26, 27,797 identical player-games, plus a control column that uses a random other team's defense.
+
+- **Run 1 was void.** hoopR's 2023-24 ESPN play-by-play has coordinates for only 7 games, so the fit season had no usable prior, the column was all zeros, and "v2 stays" came out by construction. Fixed for the fit season only (no prior blend, all five zones, a defense counts after 15 games); the rule did not change. The saved first output is not a result.
+- **Run 2 (official):** the diet column is real in the fit season (coefficient on projected mean x score: points +0.458, t 5.1; assists +0.341, t 3.4; threes +0.240, t 2.1; rebounds +0.174, t 2.0; the control is about zero). Out of sample it does not help: points RMSE 5.926 vs 5.904 for v2, Kalshi ladder log loss worse on all four stats, blended-with-market log loss better on 2 of 4 (assists 0.52670 vs 0.52737, threes 0.50548 vs 0.50573, both inside noise). The rule needed 3 of 4 and a control that does not match it; the control also edged v2 by 0.00001 to 0.00010 on all four. **Rule failed. The score stays display-only.**
+- **Sensitivity ([diet-test-noprior.md](diet-test-noprior.md), not the registered run):** same definition in fit and test. Same answer: points RMSE 5.902 vs 5.904, blended log loss within 0.00005 of v2 on all four stats, v2 GO signals not all kept.
+- Reading: the shot mix explains something about a player's game (that is the fit-season t), and the market line already carries it. That matches what the Slate footnote says. Sizes are small: one standard deviation of the score (0.07) at the points coefficient is about 0.4 points on a 12-point projection.
+- Records that improved, for monitoring (not adopted): blended Kalshi log loss for assists (10,726 rows) and threes (10,791 rows) in run 2. Differences of 0.0007 and 0.0003; the control moves by a similar amount.
+
+## Step 5 result (2026-10-19): play types from free sources
+
+Checked each free source for the Synergy play types (isolation, pick and roll, spot up, handoff, off screen, post up, transition):
+
+| Source | Reachable | Has play types |
+|---|---|---|
+| `stats.nba.com` | No (timeout from this Mac and CI) | Yes, but unusable |
+| `cdn.nba.com` live JSON | No (403 Access Denied) | Fast-break and second-chance qualifiers, but unusable |
+| `data.nba.com` | Yes, but empty (`pd: []`) | n/a |
+| `api.pbpstats.com` | Yes | No. Zones, second chance, penalty, start-of-possession counts; no iso, P&R or transition type |
+| ESPN play-by-play (hoopR) | Yes | No labels, but event order and clocks |
+
+So **no free source carries Synergy play types.** One of them can be derived honestly from event order: **Transition**, a shot within 5 seconds of a steal or defensive rebound by the team that gained the ball (no inbounds after a made basket, no second chances). 5 s is the valley between the two humps in the histogram of seconds from a live-ball change to the shot; it is a timing proxy, not tracking data (21% of attempts vs a league fast-break share nearer 15%).
+
+| Check (2025-26, first half vs second half) | Value |
+|---|---|
+| Team rank of transition attempts allowed per 48 | 0.63 (4 s cut 0.64, 7 s cut 0.73) |
+| A player's own transition share | 0.65 (288 players with 100+ shots in each half) |
+| Face validity | IND, DAL, CHI, WSH allow the most; DET, HOU, LAL the fewest |
+
+Both pass the 0.36 cut, so Transition is shown: a team-card row and a Fast chip when the defense is in the top or bottom six. It is not in the SHOTS score (that stays zones only, as tested). Isolation, pick and roll, spot up, handoff, off screen and post up remain unavailable.
+
 ## Open questions (unknown, not assumed)
 
-- **Play types.** Need a Synergy-like feed. Not found free and reachable. Without it the "Cut", "Transition" and "Pick and roll" rows in CourtAI have no equivalent here.
+- **Remaining play types.** Need a Synergy-like feed. None found free and reachable. A paid feed or the NBA's own tracking access is the only route.
 - Their exact score formula, diet window (season vs last 15) and sigma definition. Would need a signed-in capture, which this teardown did not do.
 - Their terms of use. This note only reads the public page; do not copy their data or branding.

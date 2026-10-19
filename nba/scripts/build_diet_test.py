@@ -41,8 +41,9 @@ import build_prop_model_v3_full as F
 import build_diet_defense as DD
 from build_prop_model import BASE
 
-OUT_JSON = os.path.join(C.HERE, '..', 'data', 'diet_test.json')
-OUT_MD = os.path.join(C.HERE, '..', 'docs', 'diet-test.md')
+SENS = '--no-prior' in sys.argv      # sensitivity run, NOT the pre-registered one: the same definition in the fit and test seasons (no prior blend, all zones)
+OUT_JSON = os.path.join(C.HERE, '..', 'data', 'diet_test_noprior.json' if SENS else 'diet_test.json')
+OUT_MD = os.path.join(C.HERE, '..', 'docs', 'diet-test-noprior.md' if SENS else 'diet-test.md')
 ZK = [k for k, _ in DD.ZONES]
 SEASONS = [2024, 2025, 2026]                    # pbp seasons needed: 2024 is the prior for the 2024-25 fit season
 SEED = 7
@@ -149,7 +150,7 @@ def build_features(P, recs):
     out, cov = {}, defaultdict(lambda: [0, 0])
     rng = random.Random(SEED)
     for s in (2025, 2026):
-        prior = aggs[s - 1] if aggs[s - 1]['games'] >= DD.FULL_SEASON_GAMES else None      # run 1: 2023-24 has no coordinates
+        prior = aggs[s - 1] if aggs[s - 1]['games'] >= DD.FULL_SEASON_GAMES and not SENS else None      # run 1: 2023-24 has no coordinates
         weak = weak_zones(prior) if prior else set()
         score, meta, tables = season_feature(P[s]['shots'], P[s]['maxp'], prior, weak)
         print(f'season {s}: weak zones {sorted(weak) or "none"}', flush=True)
@@ -185,7 +186,7 @@ def with_feature(recs, feats, idx):
 HEAD = ['# Shot diet score vs v2: pre-registered test', '',
         'Generated {generated} by `nba/scripts/build_diet_test.py`. Fit on 2024-25, tested on 2025-26,',
         '{n_test:,} identical player-games and prices for every model.', '',
-        'Run 1 was void (no usable prior season for the fit year, so the column was zero); see the script docstring. This is run 2, same rule.', '',
+        'Run 1 was void (no usable prior season for the fit year, so the column was zero); see the script docstring. The pre-registered result is run 2 (diet-test.md); this file is the --no-prior SENSITIVITY run: the fit and test seasons share one definition (current season only, all five zones, a defense counts after 15 games).' if SENS else 'Run 1 was void (no usable prior season for the fit year, so the column was zero); see the script docstring. This is run 2, same rule.', '',
         '- **v2**: shipped. **v2d**: v2 plus one stacker column per stat, projected mean x the point-in-time shot diet score (zones that held up',
         '  from the prior season\'s first half to its second). **v2d_ctl**: the control, same column with a random other team\'s defense.', '',
         'Rule (fixed before running): the score becomes a pricing input only if v2d keeps every v2 GO at GO with ROI at least v2\'s, AND its',
