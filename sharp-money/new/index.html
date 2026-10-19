@@ -130,6 +130,8 @@ a.btn{text-decoration:none}
 <div class="app"><main id="scr" aria-live="polite"></main><nav class="tabbar" id="tabs" aria-label="Sharp Money sections"></nav></div>
 <script src="../line-chart.js"></script>
 <script src="../edge-board.js"></script>
+<script src="../v2/gates.js"></script>
+<script src="../v2-pages.js"></script>
 <script>
 let D=null,REF=0,G=[],GM={},ACC=[],SB=null,loadErr=false;
 const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
@@ -185,9 +187,9 @@ const pinSp=g=>g.pin&&g.pin.sp?g.pin.sp.line:(g.consensus&&g.consensus.sp?g.cons
 const heat=g=>D.alerts.filter(a=>a.game===g.key&&a.ts>REF-86400).length;
 const live=g=>g.status==='inprogress';
 const upcoming=()=>G.filter(g=>g.start>REF-4*3600).sort((a,b)=>a.start-b.start);
-const st={tsp:'all',texp:false,tsel:null,tsg:null,tsgt:'Live now',tpin:'Spreads',tpmf:'All',msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,fsel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30};
-const ICON={board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',edge:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
-$('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${({reads:'Top Reads'})[k]||k[0].toUpperCase()+k.slice(1)}</button>`).join('');
+const st={tsp:'all',texp:false,tsel:null,tsg:null,tsgt:'Live now',tpin:'Spreads',tpmf:'All',msp:'nfl',msub:'games',mview:'picks',mwk:'All weeks',msel:null,fsel:null,mq:'',mallR:false,sport:'all',netm:'ml',atype:'all',asport:'all',rsport:'all',gm:'sp',tlm:'sp',tls:'home',pr:'pm',slate:10,props:14,alertsN:30,ptier:'play',pprops:12};
+const ICON={plays:'<path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/>',board:'<path d="M4 6h16M4 12h16M4 18h10"/>',props:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/>',models:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',edge:'<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',reads:'<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.3 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',alerts:'<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',record:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'};
+$('tabs').innerHTML=Object.keys(ICON).map(k=>`<button data-t="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${({reads:'Reads'})[k]||k[0].toUpperCase()+k.slice(1)}</button>`).join('');
 const chips=(items,cur,key)=>`<div class="chips">${items.map(([v,l,n])=>`<button class="chip ${cur===v?'on':''}" data-set="${key}" data-v="${v}">${l}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
 const head=(t,s)=>`<div class="trow"><div class="title">${t}</div><button class="rf" data-refresh aria-label="Refresh the data"${rfState==='busy'?' disabled':''}>${rfHtml()}</button></div>${s?`<p class="ctx">${s}</p>`:''}`;
 const snap=()=>{const a=REF-D.ts,k=a>3*3600?'bad':a>20*60?'warn':'good';return `<span class="badge dot ${k}">${a<90?'Updated just now':'Updated '+ago(D.ts).replace(' ago','')+' ago'}</span>`};
@@ -988,11 +990,97 @@ function topPage(){
  return h;
 }
 
+
+/* ---- V2: Plays, Signals, Record. The rules are in ../v2/gates.js; the data layer and the scoring are in ../v2-pages.js (the same ones the desktop layout uses). ---- */
+const V2P={key:'',built:null};
+const v2c=()=>window.VaultV2&&window.V2Gates?VaultV2.core:null;
+const v2pct=(x,d=1)=>V2Gates.pct(x,d),v2spct=(x,d=1)=>V2Gates.spct(x,d);
+const v2nav=cur=>`<div class="chips">${[['plays','Plays'],['signals','Signals'],['vrecord','Play record']].map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-v2nav="${v}">${l}</button>`).join('')}</div>`;
+function v2built(){const c=v2c(),F=c.STORE.files,k=(D&&D.ts)+'|'+c.STORE.ts;if(V2P.key!==k){V2P.built=V2Gates.build({D,P:F.props,T:F.tape,E:F.edge,now:Date.now()/1000});V2P.key=k}return V2P.built}
+const v2wait=(t,s,cur)=>head(t,s)+v2nav(cur)+'<div class="skel"></div><div class="skel"></div>';
+function v2when(ts){return v2c().when(ts)}
+function v2card(c,F){
+ const GT=V2Gates.GATES,t=c.tier==='play'?['Play','good']:c.tier==='watch'?['Watch','warn']:['Passed',''];
+ const cells=c.refs.map(r=>`<div><b class="cond ${r.edge>=GT.MIN_EDGE?'pos':r.edge<0?'neg':''}">${v2spct(r.edge)}</b><small>${esc(r.n)} fair ${v2pct(r.p)}</small></div>`);
+ if(c.refs.length>1&&c.worst!=null)cells.push(`<div><b class="cond ${c.worst>=GT.MIN_EDGE?'pos':''}">${v2spct(c.worst)}</b><small>worst case</small></div>`);
+ let age='';if(c.kind==='book'&&c.gk&&F.age&&F.age.games&&F.age.games[c.gk]){const a=F.age.games[c.gk][c.m],x=a&&a.books&&a.books[c.price.book];if(x&&x.changed){const n=Date.now()/1000;age=`${esc(c.price.book)} last changed this number ${v2c().dur(n-x.changed)} ago.${a.pin_moved?' Pinnacle moved '+v2c().dur(n-a.pin_moved)+' ago.':''}`}}
+ const rec=c.rec&&c.rec.w+c.rec.l?`${esc(c.market)} on this board so far: ${c.rec.w}-${c.rec.l}, ROI ${v2spct(c.rec.roi)} (${c.rec.w+c.rec.l} settled).${c.rec.clvXN?' Against the exchange close: '+v2spct(c.rec.clvX)+' ('+c.rec.clvXN+').':''}`:'';
+ return `<div class="card ${c.gk?'tap':''}"${c.gk?` data-go="game/${esc(c.gk)}"`:''}><div class="gtop"><span>${SPORT[c.sport]} · ${c.start?v2when(c.start):'time n/a'}</span><span class="badge ${t[1]}">${t[0]}</span></div>
+ <div style="font-size:20px;font-weight:600;line-height:1.2">${esc(c.title)}</div><div style="color:var(--mut);font-size:13px;margin-top:2px">${esc(c.sub)} · at <b style="color:#fff">${esc(c.price.book)} ${am(c.price.am)}</b> (costs ${v2pct(c.price.p)})</div>
+ ${cells.length?`<div class="px3" style="grid-template-columns:repeat(${Math.min(cells.length,3)},1fr)">${cells.join('')}</div>`:''}
+ <div class="foot" style="margin:8px 0 0;color:var(--mut)">${esc(c.reasons.join(' '))}</div>
+ ${c.cautions.map(x=>`<div class="foot" style="margin:3px 0 0;color:var(--warn)">${esc(x)}</div>`).join('')}${rec?`<div class="foot">${rec}</div>`:''}${age?`<div class="foot">${age}</div>`:''}</div>`;
+}
+function v2Plays(){
+ const c=v2c(),title='Plays',sub='Prices that beat two independent fair prices. '+snap();
+ if(!c)return head(title,sub)+'<div class="card empty">The V2 rules did not load. Reload the page.</div>';
+ if(!c.ensure())return v2wait(title,sub,'plays');
+ const B=v2built(),F=c.STORE.files,cnt={all:0,nfl:0,cfb:0,nba:0};
+ B.cand.filter(x=>x.tier==='play').forEach(x=>{cnt.all++;cnt[x.sport]++});
+ const L=t=>B.cand.filter(x=>x.tier===t&&(st.sport==='all'||x.sport===st.sport));
+ let h=head(title,sub)+v2nav('plays')+chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport')+chips([['play','Plays',L('play').length],['watch','Watch',L('watch').length],['pass','Passed',L('pass').length]],st.ptier,'ptier');
+ const list=L(st.ptier);
+ if(st.ptier==='pass')h+=`<div class="card">${list.length?list.map(x=>`<div class="row"${x.gk?` data-go="game/${esc(x.gk)}" style="cursor:pointer"`:''}><div class="grow"><b>${esc(x.title)}</b><div class="m">${esc(x.price.book)} ${am(x.price.am)} · ${esc(x.reasons[0])}</div></div><div class="m" style="text-align:right">${SPORT[x.sport]}</div></div>`).join(''):'<div class="empty">Nothing passed over.</div>'}</div>`;
+ else h+=list.length?list.map(x=>v2card(x,F)).join(''):`<div class="card empty"><b>${st.ptier==='play'?'Nothing clears every gate right now.':'Nothing on watch.'}</b><div style="margin-top:4px">${st.ptier==='play'?'That is the honest answer. Watch has prices with one reference only; Passed shows what failed a gate and why.':'Prices that beat one reference but have no second price to confirm them.'}</div></div>`;
+ const props=B.all.filter(x=>x.kind==='prop'&&(st.sport==='all'||x.sport===st.sport)).sort((a,b)=>(b.worst==null?-9:b.worst)-(a.worst==null?-9:a.worst));
+ if(props.length){h+=`<div class="sec"><span>Prop prices</span><span>${props.length} on the board</span></div><div class="sub">Each prop against Pinnacle and the exchange. Ordered by worst-case edge.</div><div class="card">`+props.slice(0,st.pprops).map(x=>{const pin=x.refs.find(r=>r.n==='Pinnacle'),ex=x.refs.find(r=>r.n==='Exchange'),e=r=>r?`<span class="${r.edge>=V2Gates.GATES.MIN_EDGE?'pos':r.edge<0?'neg':''}">${v2spct(r.edge)}</span>`:'-';
+   return `<div class="row"><div class="grow"><b>${esc(x.title)}</b><div class="m">${esc(x.sub)} · ${esc(x.price.book)} ${am(x.price.am)} · Pinnacle ${e(pin)} · Exchange ${e(ex)}</div></div><span class="badge ${x.tier==='play'?'good':x.tier==='watch'?'warn':''}">${x.tier==='play'?'Play':x.tier==='watch'?'Watch':x.tier==='pass'?'Pass':'No edge'}</span></div>`}).join('')+'</div>';
+  if(props.length>st.pprops)h+=`<button class="btn" data-more="pprops">Show more (${props.length-st.pprops} left)</button>`}
+ h+=`<details class="card"><summary style="cursor:pointer;font-weight:600">How a play qualifies</summary><div class="foot" style="margin-top:8px;color:var(--mut)">1. The price is at a US sportsbook, not a pick'em app and not the exchange used as the check. 2. Pinnacle and the exchange (Kalshi and Novig at the exact line) both give a fair price. 3. The price beats both by ${v2pct(V2Gates.GATES.MIN_EDGE,0)} or more and they sit within ${V2Gates.GATES.AGREE*100} points of each other. 4. The edge is not over ${v2pct(V2Gates.GATES.BIG_EDGE,0)}: calls that big have lost (21-32, ROI -15%). 5. Both sides of a market are not flagged at once. A play is a better price, not a prediction. Sharp-account money is context only.</div></details>`;
+ return h;
+}
+const v2u=u=>{const r=Math.round(u*10)/10||0;return (r>0?'+':r<0?'-':'')+Math.abs(r).toFixed(1)+'u'};
+const V2TONE={Trust:'good',Watch:'warn',Ignore:'bad','Too few':''};
+function v2sig(name,desc,x){
+ const su=v2u;
+ return `<div class="card"><div class="gtop"><span>${esc(name)}</span><span class="badge ${V2TONE[x.verdict[0]]||''}">${x.verdict[0]}</span></div><div class="cond" style="font-size:30px;font-weight:600">${x.n?x.w+'-'+x.l:'none graded'}</div>
+ <div class="foot" style="margin:2px 0 6px;color:var(--mut)">${x.n?v2pct(x.win)+' won'+(x.ex!=null?'. On the '+x.fn+' picks that logged the market’s fair price, '+(x.ex>=0?'+':'')+(x.ex*100).toFixed(1)+' pts against the chance those prices implied.':''):''}</div>
+ <div class="kv"><span>Closing-line value</span><em style="font-size:16px" class="${x.clv==null?'':x.clv>0?'pos':'neg'}">${x.clv==null?'-':v2spct(x.clv)} <small style="font-size:11px;color:var(--mut)">(${x.clvN})</small></em></div>
+ ${x.units!=null?`<div class="kv"><span>Units</span><em style="font-size:16px">${su(x.units)} <small style="font-size:11px;color:var(--mut)">${su(x.unitsNoTop5)} without top 5 wins</small></em></div>`:''}<div class="foot">${esc(desc)}</div></div>`;
+}
+function v2Signals(){
+ const c=v2c(),title='Signals',sub='What each signal has actually done. '+snap();
+ if(!c)return head(title,sub)+'<div class="card empty">The V2 rules did not load. Reload the page.</div>';
+ c.ensure();const r=c.rules(D),F=c.STORE.files,rec=F.props&&F.props.propRecord&&F.props.propRecord.all;
+ let h=head(title,sub)+v2nav('signals')+`<div class="sub">Measured against the price each pick was taken at. Trust needs 100+ games, a win rate clearly above that price (z of 1.64+) and positive CLV. ${r.pk.length} graded picks. Nothing has reached Trust.</div>`+r.cards.map(x=>v2sig(x[0],x[1],x[2])).join('');
+ if(rec)h+=`<div class="sec"><span>Prop board calls</span></div><div class="card"><div class="cond" style="font-size:30px;font-weight:600">${rec.w}-${rec.l}</div><div class="foot" style="margin:2px 0 6px;color:var(--mut)">ROI ${v2spct(rec.roi)} at flat 1 unit on ${rec.w+rec.l} settled.</div>
+  <div class="kv"><span>CLV, old close (the price that raised the call)</span><em style="font-size:16px">${v2spct(rec.clv)}</em></div><div class="kv"><span>CLV, exchange close</span><em style="font-size:16px" class="${rec.clvXN>0?(rec.clvX>0?'pos':'neg'):''}">${rec.clvXN>0?v2spct(rec.clvX)+' ('+rec.clvXN+')':'next data update'}</em></div></div>`;
+ return h+`<div class="sec"><span>Context only</span></div>`+v2sig('Sharp accounts (Polymarket)','Held out, they did not beat the close: 113-122 (48.1%). Never ranks a play, never counts toward an agree total.',r.ctx);
+}
+function v2ledger(name,desc,rows){
+ const c=v2c(),x=c.stat(rows),cnt=k=>rows.filter(q=>q.p.status===k).length,wins=rows.filter(q=>q.units>0).map(q=>q.units).sort((a,b)=>b-a).slice(0,5),ws=wins.reduce((a,b)=>a+b,0);
+ const roi=x.n&&x.units!=null?x.units/x.n:null,roiX=x.n>wins.length&&x.units!=null?(x.units-ws)/(x.n-wins.length):null,su=v2u;
+ return `<div class="card"><div class="gtop"><span>${esc(name)} · ${rows.length} logged</span><span class="badge ${V2TONE[x.verdict[0]]||''}">${x.verdict[0]}</span></div><div class="cond" style="font-size:30px;font-weight:600">${x.n?x.w+'-'+x.l:'none graded'}</div>
+ <div class="foot" style="margin:2px 0 6px;color:var(--mut)">${x.n?v2pct(x.win)+' won of '+x.n+' settled':rows.length+' logged, none settled yet'}${cnt('push')?', '+cnt('push')+' push':''}${cnt('void')?', '+cnt('void')+' void':''}${cnt('open')?', '+cnt('open')+' open':''}</div>
+ <div class="kv"><span>ROI, flat 1 unit</span><em style="font-size:16px" class="${roi==null?'':roi<0?'neg':'pos'}">${roi==null?'-':v2spct(roi)}</em></div>
+ <div class="kv"><span>ROI without top ${wins.length||5} wins</span><em style="font-size:16px" class="${roiX==null?'':roiX<0?'neg':'pos'}">${roiX==null?'-':v2spct(roiX)}</em></div>
+ <div class="kv"><span>Units</span><em style="font-size:16px">${x.units==null?'-':su(x.units)}</em></div><div class="kv"><span>CLV vs exchange close</span><em style="font-size:16px" class="${x.clv==null?'':x.clv>0?'pos':'neg'}">${x.clv==null?'-':v2spct(x.clv)} <small style="font-size:11px;color:var(--mut)">(${x.clvN})</small></em></div><div class="foot">${esc(desc)}</div></div>`;
+}
+function v2Record(){
+ const c=v2c(),title='Play record',sub='Every rule and every V2 play, graded. '+snap();
+ if(!c)return head(title,sub)+'<div class="card empty">The V2 rules did not load. Reload the page.</div>';
+ if(!c.ensure())return v2wait(title,sub,'vrecord');
+ const F=c.STORE.files,PL=F.plays;let h=head(title,sub)+v2nav('vrecord')+`<div class="sec"><span>V2 plays</span><span>forward log</span></div>`;
+ if(!PL||!PL.plays)h+=`<div class="card"><div class="gtop"><span>Forward log</span><span class="badge warn">Not started</span></div><div class="foot" style="color:var(--mut)">Every play is written once at first sight, with the price and both reference prices it showed, then frozen and graded. Until it has 100 settled plays, treat a play as a better price, not a proven edge.</div></div>`;
+ else{const rows=c.v2Rows(PL);
+  if(!rows.length)h+=`<div class="card empty"><b>No play logged yet.</b><div style="margin-top:4px">A play is written the first time one clears every gate before kickoff.</div></div>`;
+  else h+=v2ledger('All V2 plays','Props and games together.',rows)+v2ledger('Props','Settled from the box score.',rows.filter(q=>q.p.kind==='prop'))+v2ledger('Games','Settled from the final score.',rows.filter(q=>q.p.kind!=='prop'))}
+ const r=c.rules(D),all=r.cards.concat([['Sharp accounts (context only)','',r.ctx]]);
+ h+=`<div class="sec"><span>Every rule, graded</span></div><div class="card">${all.map(([n,,x])=>`<div class="row"><div class="grow"><b>${esc(n)}</b><div class="m">${x.n?x.w+'-'+x.l+' · '+v2pct(x.win,0)+' won':'none graded'} · CLV ${x.clv==null?'-':v2spct(x.clv)}${x.units!=null?' · '+v2u(x.units)+' ('+v2u(x.unitsNoTop5)+' without top 5)':''}</div></div><span class="badge ${V2TONE[x.verdict[0]]||''}">${x.verdict[0]}</span></div>`).join('')}</div>`;
+ const rb=F.rg&&F.rg.roi_by_exchange_clv;
+ if(rb){const row=(k,l)=>{const x=rb[k];return x&&x.n?`<div class="row"><div class="grow"><b>${l}</b><div class="m">${x.n} calls · ${v2pct(x.hit)} hit</div></div><span class="${x.roi<0?'neg':'pos'}" style="font-weight:600">${v2spct(x.roi)}</span></div>`:''};
+  h+=`<div class="sec"><span>Beating the independent close</span><span>prop calls</span></div><div class="sub">A hindsight check, not a rule usable at call time. Even the best slice has not earned its price.</div><div class="card">${row('beat_exchange_close','Beat the exchange close')}${row('missed_exchange_close','Missed it')}${row('beat_exchange_by_2pts','Beat it by more than 2%')}${row('beat_both_exchange_and_pinnacle','Beat both exchange and Pinnacle')}${row('beat_neither','Beat neither')}</div>`}
+ const gm=F.sb&&F.sb.games&&F.sb.games.games,pr=F.sb&&F.sb.props&&F.sb.props.all;
+ if(gm||pr)h+=`<div class="sec"><span>Vault model vs the close</span></div><div class="card">${[[gm,'Games'],[pr,'Player props']].filter(x=>x[0]&&x[0].close).map(([x,l])=>`<div class="row"><div class="grow"><b>${l}</b><div class="m">log-loss skill ${v2spct(x.close.skill)} on ${x.close.n} (z ${x.close.z})${x.bets&&x.bets.win_close!=null?' · bets '+v2pct(x.bets.win_close)+' won, ROI '+v2spct(x.bets.roi_close):''}</div></div><span class="badge ${x.close.skill<0&&x.close.z<=-1.64?'bad':'warn'}">${x.close.skill<0?(x.close.z<=-1.64?'Worse':'Level'):'Ahead'}</span></div>`).join('')}</div><div class="sub">Negative means the market was closer to what happened. The model never makes a play on its own.</div>`;
+ return h;
+}
+
 function skeleton(){return '<div class="title">Sharp Money</div><p class="ctx">Loading the latest numbers</p>'+'<div class="skel"></div>'.repeat(3)}
 function route(){
- const r=(location.hash||'#board').slice(1),sc=$('scr');let html,tab;
+ const r=(location.hash||'#plays').slice(1),sc=$('scr');let html,tab;
  if(!D){sc.innerHTML=loadErr?'<div class="title">Sharp Money</div><div class="card"><b>Could not load the data</b><div style="color:var(--mut);font-size:13px;margin-top:6px">The data file did not load. Check your connection and try again.</div><button class="btn" data-retry style="margin:10px 0 0">Try again</button></div>':skeleton();return}
- if(r.startsWith('game/')){html=gamePage(decodeURIComponent(r.slice(5)));tab='board'}
+ if(r==='plays'||r==='signals'||r==='vrecord'){tab='plays';html=r==='plays'?v2Plays():r==='signals'?v2Signals():v2Record()}
+ else if(r.startsWith('game/')){html=gamePage(decodeURIComponent(r.slice(5)));tab='board'}
  else if(r.startsWith('acct/')){html=acct(+r.slice(5));tab='reads'}
  else if(r==='models'||r.startsWith('pick/')){['nfl','cfb','sb'].forEach(k=>loadModel(k));tab='models';if(r==='models')html=modelsPage();else{const q=r.split('/');html=pickPage(q[1],decodeURIComponent(q.slice(2).join('/')))}}
  else{tab=r==='accounts'?'reads':r;html=({board,props,reads:topPage,accounts:topPage,alerts,record,edge}[r]||board)()}
@@ -1013,6 +1101,7 @@ document.addEventListener('click',e=>{
  const tg=e.target.closest('[data-toggle]');if(tg){st[tg.dataset.toggle]=!st[tg.dataset.toggle];rerender();return}
  if(e.target.closest('[data-retrymodel]')){['nfl','cfb','sb'].forEach(k=>{if(!MD[k])loadModel(k)});return}
  if(e.target.closest('[data-retry]')){loadErr=false;load();route();return}
+ const vn=e.target.closest('[data-v2nav]');if(vn){location.hash=vn.dataset.v2nav;window.scrollTo(0,0);return}
  const t=e.target.closest('[data-t]');if(t&&t.closest('#tabs')){location.hash=t.dataset.t;window.scrollTo(0,0);return}
  const s=e.target.closest('[data-set]');if(s){st[s.dataset.set]=s.dataset.v;if(s.dataset.set==='msp'){st.msub='games';st.mview='picks';st.mwk='All weeks';st.msel=null;st.fsel=null;st.mq='';st.mallR=false}if(s.dataset.set==='mview'){st.msel=null;st.fsel=null}if(s.dataset.set==='netm')st.netTouched=true;if(s.dataset.set==='pr')st.prTouched=true;if(s.dataset.set==='tsp')st.tsel=null;if(s.dataset.set==='tlm')st.tls=s.dataset.v==='tot'?'over':'home';if(['sport','netm','atype','asport','rsport','pr'].includes(s.dataset.set)){st.slate=10;st.props=14;st.alertsN=30}rerender();return}
  const m=e.target.closest('[data-more]');if(m){const k=m.dataset.more;st[k]+=k==='slate'?10:14;rerender();return}
@@ -1039,4 +1128,5 @@ document.addEventListener('change',e=>{const s=e.target.closest('[data-sel]');if
 document.addEventListener('input',e=>{if(e.target.matches('[data-q]')){st.mq=e.target.value;const sp=st.msp==='cfb'?'cfb':'nfl',el=document.getElementById('rlist');if(el&&MD[sp])el.innerHTML=ratingsList(mctx(sp,MD[sp]))}});
 addEventListener('hashchange',()=>{route();window.scrollTo(0,0)});
 route();load();setInterval(load,120000);
+if(window.VaultV2)VaultV2.core.subscribe(()=>{if(D&&/^#(plays|signals|vrecord)/.test(location.hash||'#plays'))rerender()});
 </script>

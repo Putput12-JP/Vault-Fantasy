@@ -34,7 +34,6 @@ Board, Accounts, Top Reads and the model pages are unchanged. The landing page i
 
 ## Limits
 
-- Phones still go to `new/` (the Apple-style mobile layout) from the bare URL. A phone that opens `#plays`, `#signals` or `#record` stays on this page, which is responsive.
-  `new/` has no V2 pages: it is under PR #132, so it is not touched here.
+- Phones on the bare URL go to `new/` (the Apple-style layout). `new/` now has the V2 pages too: Plays is its first tab and landing page, with Signals and Play record one tap away, drawn from the same rules (`v2/gates.js`) and data layer (`v2-pages.js`) as the desktop layout.
 - The V2 forward log shows "Not started" until `v2_plays.json` is published on `sharp-data` (PR #137).
 - "Who is behind" needs `data/book_age.json`, which the Update Sharp Money workflow writes; until its first commit to `main` that block says so.
