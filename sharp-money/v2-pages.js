@@ -36,6 +36,7 @@
     U.useEffect(function () {
       var fn = function () { set(function (x) { return x + 1; }); };
       STORE.subs.add(fn);
+      loadAssets();
       if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll();
       var t = setInterval(function () { if (Date.now() - STORE.ts > 110000) fetchAll(); }, 30000);
       return function () { STORE.subs.delete(fn); clearInterval(t); };
@@ -117,29 +118,10 @@
 
   /* ---------- Plays ---------- */
   var TIER = { play: ['Plays', 'success'], watch: ['Watch', 'warning'], pass: ['Passed', 'default'] };
-  function PlayCard(u, c, openGame, F) {
-    var k = u.k, h = u.h, n = u.n, T = k.T, M = k.M, A = window.VaultV2 ? window.VaultV2.age : null;
-    var t = TIER[c.tier] || TIER.pass;
-    var edgeTone = function (e) { return e >= G().GATES.MIN_EDGE ? 'ok' : e < 0 ? 'bad' : 'muted'; };
-    var ageLine = null;
-    if (c.kind === 'book' && c.gk && F.age && F.age.games && F.age.games[c.gk]) {
-      var a = F.age.games[c.gk][c.m], x = a && a.books && a.books[c.price.book];
-      if (x && x.changed) ageLine = c.price.book + ' last changed this number ' + dur(tnow() - x.changed) + ' ago.' + (a.pin_moved ? ' Pinnacle’s number last moved ' + dur(tnow() - a.pin_moved) + ' ago.' : '');
-    }
-    var rec = c.rec && c.rec.w + c.rec.l ? c.market + ' on this board so far: ' + c.rec.w + '-' + c.rec.l + ', ROI ' + spct(c.rec.roi) + ' (' + (c.rec.w + c.rec.l) + ' settled).' + (c.rec.clvXN ? ' Against the exchange close: ' + spct(c.rec.clvX) + ' (' + c.rec.clvXN + ' calls).' : '') : null;
-    var go = c.gk && openGame ? function () { openGame(c.gk); } : undefined;
-    return k.U.createElement(k.K, { key: c.id, padding: 16, hover: !!go, onClick: go },
-      h('div', { style: { display: 'grid', gap: 10 } },
-        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
-          h(T, { size: 'xs', mono: true, style: u.lab }, SPORT[c.sport] + ' · ' + (c.start ? when(c.start) : 'time n/a') + ' · ' + c.sub), h(k.oe, { variant: t[1] }, t[0].replace(/s$/, ''))),
-        h(M, { size: 'lg', weight: 'semibold' }, c.title),
-        h('div', null, h(T, { size: 'base' }, 'at '), h(M, { size: 'base', weight: 'semibold' }, c.price.book + ' ' + am(c.price.am)), h(T, { size: 'base', mono: true }, '  (costs ' + pct(c.price.p) + ')')),
-        c.refs.length ? h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 8 } }, c.refs.map(function (r) { return u.tile(r.n + ' fair', pct(r.p), spct(r.edge), edgeTone(r.edge)); })) : null,
-        c.worst != null && c.refs.length > 1 ? h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 8, borderTop: '1px solid ' + n.borderSubtle } },
-          h(M, { size: 'sm', weight: 'medium' }, 'Worst-case edge'), h(k.se, { tone: edgeTone(c.worst), size: 'lg', mono: true, weight: 'semibold' }, spct(c.worst))) : null,
-        h(T, { size: 'sm' }, c.reasons.join(' ')),
-        c.cautions.length ? h('div', { style: { display: 'grid', gap: 3 } }, c.cautions.map(function (x, i) { return h(k.se, { key: i, tone: 'warn', size: 'sm' }, '• ' + x); })) : null,
-        rec ? h(T, { size: 'xs' }, rec) : null, ageLine ? h(T, { size: 'xs' }, ageLine) : null));
+  function palOf(n) { return { text: n.text, mut: n.textSecondary, dim: n.textTertiary, line: n.border, bg: n.bg, tile: n.bgSubtle, acc: n.accent, good: n.success, bad: n.danger, warn: n.warning }; }
+  function PlayCard(u, c, openGame, F, D) {
+    var k = u.k, h = u.h, go = c.gk && openGame ? function () { openGame(c.gk); } : undefined;
+    return h(k.K, { key: c.id, padding: 0, hover: !!go, onClick: go }, h('div', { dangerouslySetInnerHTML: { __html: cardHtml(c, F, palOf(u.n), D) } }));
   }
   function PassRow(u, c, openGame) {
     var h = u.h, k = u.k;
@@ -163,7 +145,7 @@
     if (tier === 'pass') body = items.length ? h(k.K, { padding: 0 }, items.map(function (c) { return PassRow(u, c, props.openGame); })) : h(k.K, { padding: 20 }, h(k.M, { size: 'md', weight: 'medium' }, 'Nothing passed over'));
     else if (!items.length) body = h(k.K, { padding: 20 }, h(k.M, { size: 'md', weight: 'medium' }, tier === 'play' ? 'Nothing clears every gate right now' : 'Nothing on watch'),
       h('div', { style: { marginTop: 4 } }, h(k.T, { size: 'base' }, tier === 'play' ? 'That is the honest answer.' + (nW ? ' ' + nW + ' price' + (nW === 1 ? ' has' : 's have') + ' one reference only (Watch).' : '') + (nX ? ' ' + nX + ' looked good against one price but failed a gate (Passed).' : '') : 'Prices that beat one reference but have no second price to confirm them.')));
-    else body = u.grid(380, items.map(function (c) { return PlayCard(u, c, props.openGame, F); }));
+    else body = u.grid(420, items.map(function (c) { return PlayCard(u, c, props.openGame, F, props.D); }));
     var propRows = built.all.filter(function (c) { return c.kind === 'prop' && inSport(c); }).sort(function (a, b) { return (b.worst == null ? -9 : b.worst) - (a.worst == null ? -9 : a.worst); });
     var cols = 'minmax(0,1fr) 150px 80px 80px 80px';
     var wide = !props.narrow;
@@ -176,6 +158,7 @@
     })).concat(propRows.length > nProps ? [h('div', { key: 'more', style: { padding: 12, borderTop: '1px solid ' + n.borderSubtle } }, h(k.co, { variant: 'secondary', size: 'sm', onClick: function () { setNProps(nProps + 20); } }, 'Show more (' + (propRows.length - nProps) + ' left)'))] : [])) : h(k.K, { padding: 20 }, h(k.T, { size: 'base' }, 'No prop with a usable price right now. The board lists only players whose game has not started.'));
     var gates = G().GATES;
     return h('div', { style: { display: 'grid', gap: 14, marginTop: 20 } },
+      h('div', { dangerouslySetInnerHTML: { __html: recordHtml(F, palOf(n)) } }),
       h('div', { style: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' } }, h(k.ve, { options: opts, value: cur, onChange: function (o) { setTier(o === opts[0] ? 'play' : o === opts[1] ? 'watch' : 'pass'); } }),
         h(k.T, { size: 'sm' }, 'Ranked by the worst-case edge across two independent fair prices. Sport filter: top bar.')),
       body,
@@ -337,10 +320,129 @@
       parts.length ? h('div', { style: { display: 'grid', gap: 14 } }, parts.concat(sp ? [h(k.T, { key: 'kn', size: 'sm' }, 'Spread: ' + sp)] : [])) : h(k.K, { padding: 16 }, h(k.T, { size: 'sm' }, 'No book history for this game yet. The tape records a book only when its number changes, from the first run after it appears.')));
   }
 
+
+  /* ---------- logos, headshots, the play card and the V2 record, as HTML strings (the desktop and phone layouts both draw them) ---------- */
+  var ASSETS = { cfb: null, heads: null, started: false };
+  var vN = function (x) { return String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+  var pKey = function (x) { return String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim(); };
+  var pKeyNS = function (x) { return pKey(x).replace(/ (jr|sr|ii|iii|iv|v)$/, ''); };
+  function loadAssets() {
+    if (ASSETS.started) return; ASSETS.started = true;
+    Promise.all([get(MAIN + 'scripts/sharp_money_card/cfb_logos.json'), get(MAIN + 'data/nflverse_stats.json')]).then(function (v) {
+      ASSETS.cfb = v[0] || {};
+      var m = {}, d = v[1] || {}; Object.keys(d).forEach(function (k) { var h = d[k] && d[k].headshot; if (h) { m[pKey(k)] = h; m[pKeyNS(k)] = h; } });
+      ASSETS.heads = m; STORE.subs.forEach(function (fn) { fn(); });
+    });
+  }
+  var NFLM = { LA: 'lar', WAS: 'wsh', JAC: 'jax' }, NBAM = { NOP: 'no', NYK: 'ny', SAS: 'sa', GSW: 'gs', WAS: 'wsh', UTA: 'utah' };
+  function teamUrl(sport, t) {
+    if (!t) return null; var ab = String(t.abbr || '').toUpperCase(), b = 'https://a.espncdn.com/i/teamlogos/';
+    if (sport === 'nfl') return b + 'nfl/500/' + (NFLM[ab] || ab.toLowerCase()) + '.png';
+    if (sport === 'nba') return b + 'nba/500/' + (NBAM[ab] || ab.toLowerCase()) + '.png';
+    if (sport === 'cfb') { var id = t.espnId || (ASSETS.cfb && (ASSETS.cfb[vN(t.name)] || ASSETS.cfb[vN(String(t.name || '').replace(/\([^)]*\)/g, ''))])); return id ? b + 'ncaa/500/' + id + '.png' : null; }
+    return null;
+  }
+  var ESC = function (x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  function bubble(size, bg, label, img, cover, ring) {
+    return '<span style="position:relative;display:inline-grid;place-items:center;width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:' + bg + ';color:#fff;font:700 ' + Math.round(size * 0.27) + 'px/1 system-ui,sans-serif;flex:none;overflow:hidden;' +
+      (ring ? 'box-shadow:0 0 0 2px ' + ring + ',0 0 20px ' + ring + ';' : 'box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);') + '"><span>' + ESC(label) + '</span>' +
+      (img ? '<img src="' + ESC(img) + '" alt="" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:' + (cover ? 'cover' : 'contain') + ';padding:' + (cover ? 0 : '12%') + ';background:#26262a;border-radius:50%;box-sizing:border-box">' : '') + '</span>';
+  }
+  function teamLogo(sport, t, size, ring) { return bubble(size, (t && t.color) || '#444', (t && t.abbr) || '', teamUrl(sport, t), false, ring); }
+  function headshot(name, size, ring) {
+    var h = ASSETS.heads && (ASSETS.heads[pKey(name)] || ASSETS.heads[pKeyNS(name)]);
+    if (h) h = h.replace('/f_auto,q_auto/', '/f_auto,q_auto,w_' + size * 2 + ',h_' + size * 2 + ',c_thumb,g_face/');
+    var ini = String(name || '').split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+    return bubble(size, '#3a3a3e', ini, h, true, ring);
+  }
+  var ALIASN = { WSH: 'WAS', LA: 'LAR', JAC: 'JAX', LVR: 'LV', OAK: 'LV' }, an = function (t) { return ALIASN[t] || t; };
+  function gameForTeam(D, team, start) {
+    var gs = (D && D.games) || []; for (var i = 0; i < gs.length; i++) { var g = gs[i]; if (g.sport === 'nfl' && (!start || g.start === start) && (an(g.away.abbr) === an(team) || an(g.home.abbr) === an(team))) return g; } return null;
+  }
+  function lift(hex, a) {
+    if (!hex || hex[0] !== '#' || hex.length !== 7) return null; var r = [1, 3, 5].map(function (i) { return parseInt(hex.slice(i, i + 2), 16); });
+    return 'rgb(' + r.map(function (v) { return Math.round(v + (255 - v) * a); }).join(',') + ')';
+  }
+  function ledgerKey(c) {
+    if (c.kind === 'prop') return ['p', c.start, c.row.pid, c.row.mkt, c.row.line, c.side].join('|');
+    if (c.kind === 'exch') return ['e', c.gk, c.m, c.side, c.edgeRow.line].join('|');
+    return ['b', c.gk, c.m, c.side, c.title].join('|');
+  }
+  var mix = function (c, pc) { return 'color-mix(in srgb,' + c + ' ' + pc + '%,transparent)'; };
+  function priceBar(pal, cost, fairs) {
+    var lo = Math.max(0, Math.min.apply(null, [cost].concat(fairs)) - 0.04), hi = Math.min(1, Math.max.apply(null, [cost].concat(fairs)) + 0.04), pos = function (x) { return ((x - lo) / (hi - lo) * 100).toFixed(1); };
+    var good = Math.min.apply(null, fairs), dots = fairs.map(function (f) { return '<i style="position:absolute;top:-3px;left:calc(' + pos(f) + '% - 7px);width:14px;height:14px;border-radius:50%;background:' + pal.good + ';border:2px solid ' + pal.bg + ';box-sizing:border-box"></i>'; }).join('');
+    return '<div style="margin-top:12px"><div style="position:relative;height:8px;border-radius:8px;background:' + pal.tile + '">' +
+      (good > cost ? '<i style="position:absolute;top:0;bottom:0;left:' + pos(cost) + '%;width:' + (pos(good) - pos(cost)).toFixed(1) + '%;border-radius:8px;background:linear-gradient(90deg,' + mix(pal.good, 35) + ',' + pal.good + ')"></i>' : '') +
+      '<i style="position:absolute;top:-4px;left:calc(' + pos(cost) + '% - 1.5px);width:3px;height:16px;border-radius:2px;background:' + pal.text + '"></i>' + dots + '</div>' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:11.5px;color:' + pal.mut + '"><span>You pay ' + pct(cost) + '</span><span>Fair ' + (fairs.length > 1 ? pct(Math.min.apply(null, fairs)) + ' to ' + pct(Math.max.apply(null, fairs)) : pct(fairs[0])) + '</span></div></div>';
+  }
+  /* The play card. pal: the layout's colours as CSS values (text, mut, dim, line, bg, tile, acc, good, bad, warn). */
+  function cardHtml(c, F, pal, D) {
+    var GT = G().GATES, g = c.game, sport = c.sport, tier = c.tier;
+    var tag = tier === 'play' ? ['PLAY', pal.good] : tier === 'watch' ? ['WATCH', pal.warn] : ['PASSED', pal.dim];
+    var picked = null, away = null, home = null, hero, titleCol = pal.text, ring;
+    if (c.kind === 'prop') {
+      var pg = gameForTeam(D, c.row.team, c.start); away = pg && pg.away; home = pg && pg.home;
+      var mine = pg ? (an(pg.away.abbr) === an(c.row.team) ? pg.away : pg.home) : { abbr: c.row.team, color: '#444' };
+      hero = [headshot(c.row.name, 64, mix(pal.good, 60)), teamLogo('nfl', mine, 52)];
+    } else if (g) {
+      away = g.away; home = g.home;
+      var t = c.title.toLowerCase(), hit = function (x) { return x && ((x.short && t.indexOf(String(x.short).toLowerCase()) >= 0) || (x.abbr && new RegExp('(^|[^a-z])' + String(x.abbr).toLowerCase() + '([^a-z]|$)').test(t)) || (x.name && t.indexOf(String(x.name).toLowerCase()) >= 0)); };
+      picked = hit(g.away) && !hit(g.home) ? g.away : hit(g.home) && !hit(g.away) ? g.home : null;
+      if (c.kind === 'book' && c.m !== 'tot') picked = c.side === 'home' ? g.home : g.away;
+      if (picked) titleCol = lift(picked.color, 0.4) || pal.text;
+      hero = [teamLogo(sport, g.away, 56, picked === g.away ? mix(pal.good, 70) : null), teamLogo(sport, g.home, 56, picked === g.home ? mix(pal.good, 70) : null)];
+    } else hero = ['', ''];
+    var gA = away && away.color ? mix(away.color, 28) : 'transparent', gH = home && home.color ? mix(home.color, 28) : 'transparent';
+    var tile = function (label, val, sub, ok, hl) {
+      return '<div style="border:1px solid ' + (hl ? mix(pal.good, 55) : pal.line) + ';border-radius:14px;padding:9px 10px;min-width:0;text-align:center;background:' + (hl ? mix(pal.good, 8) : 'transparent') + '"><div style="font-size:10.5px;letter-spacing:.09em;color:' + (ok ? pal.good : pal.mut) + ';text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:' + (ok ? pal.good : pal.dim) + ';margin-right:5px;vertical-align:1px"></span>' + label + '</div><div style="font-size:19px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums">' + val + '</div>' + (sub ? '<div style="font-size:12px;font-weight:600;color:' + (ok ? pal.good : pal.mut) + '">' + sub + '</div>' : '') + '</div>';
+    };
+    var tiles = [tile('You pay', am(c.price.am), c.price.book + ' · ' + pct(c.price.p), false, false)].concat(c.refs.map(function (r) { return tile(ESC(r.n) + ' fair', pct(r.p), spct(r.edge), r.edge >= GT.MIN_EDGE, false); }));
+    if (c.refs.length > 1 && c.worst != null) tiles.push(tile('Worst case', spct(c.worst), 'edge', c.worst >= GT.MIN_EDGE, true));
+    var chips = [], chip = function (txt, col, bg) { chips.push('<span style="display:inline-block;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;color:' + col + ';background:' + bg + ';border:1px solid ' + mix(col, 30) + ';white-space:normal">' + ESC(txt) + '</span>'); };
+    var L = F.plays && F.plays.plays && F.plays.plays[ledgerKey(c)];
+    if (L) { var st = L.status; chip(st === 'open' ? 'Logged · open' : st === 'won' ? 'Won ' + (L.units > 0 ? '+' : '') + L.units.toFixed(2) + 'u' : st === 'lost' ? 'Lost ' + L.units.toFixed(2) + 'u' : st === 'push' ? 'Push' : 'Void', st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.acc, mix(st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.acc, 10)); }
+    if (c.rec && c.rec.w + c.rec.l) chip(c.market + ' so far ' + c.rec.w + '-' + c.rec.l + ' · ROI ' + spct(c.rec.roi), pal.mut, 'transparent');
+    if (c.kind === 'book' && c.gk && F.age && F.age.games && F.age.games[c.gk]) {
+      var a = F.age.games[c.gk][c.m], x = a && a.books && a.books[c.price.book]; if (x && x.changed) chip(c.price.book + ' unchanged ' + dur(tnow() - x.changed), pal.mut, 'transparent');
+    }
+    c.cautions.forEach(function (x) { chip(x, pal.warn, mix(pal.warn, 8)); });
+    var bar = c.refs.length ? priceBar(pal, c.price.p, c.refs.map(function (r) { return r.p; })) : '';
+    var sub = c.kind === 'prop' ? c.sub + (away && home ? ' · ' + away.abbr + ' @ ' + home.abbr : '') : c.sub;
+    return '<div style="position:relative;border-radius:22px;overflow:hidden;padding:14px 14px 14px;color:' + pal.text + ';border:1px solid ' + pal.line + ';background:linear-gradient(115deg,' + gA + ' 0%,transparent 42%,transparent 58%,' + gH + ' 100%)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:' + pal.mut + '"><span style="color:' + tag[1] + ';font-weight:700"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + tag[1] + ';margin-right:6px;vertical-align:1px"></span>' + tag[0] + '</span><span>' + SPORT[sport] + ' · ' + (c.start ? when(c.start) : 'time n/a') + '</span></div>' +
+      '<div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin:12px 0 4px"><div>' + hero[0] + '</div><div style="text-align:center;min-width:0"><div style="font-size:clamp(20px,5.4vw,30px);font-weight:800;line-height:1.1;letter-spacing:-.01em;color:' + titleCol + '">' + ESC(c.title) + '</div><div style="font-size:12.5px;color:' + pal.mut + ';margin-top:4px">' + ESC(sub) + '</div></div><div>' + hero[1] + '</div></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(' + (tiles.length > 3 ? 128 : 100) + 'px,1fr));gap:8px;margin-top:12px">' + tiles.join('') + '</div>' + bar +
+      '<div style="font-size:12.5px;color:' + pal.mut + ';margin-top:10px">' + ESC(c.reasons.join(' ')) + '</div>' +
+      (chips.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">' + chips.join('') + '</div>' : '') + '</div>';
+  }
+  /* The V2 record: count and units of every logged play, then the latest results. */
+  function recordHtml(F, pal) {
+    var PL = F.plays, rows = v2Rows(PL), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
+    var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), ws = wins.reduce(function (a, b) { return a + b; }, 0);
+    var su = function (u) { var r = Math.round(u * 10) / 10 || 0; return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + 'u'; };
+    var roi = s.n && s.units != null ? s.units / s.n : null;
+    var big = function (label, val, sub, col) { return '<div style="border:1px solid ' + pal.line + ';border-radius:14px;padding:10px 12px;min-width:0"><div style="font-size:10.5px;letter-spacing:.09em;color:' + pal.mut + ';text-transform:uppercase">' + label + '</div><div style="font-size:26px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums;color:' + (col || pal.text) + '">' + val + '</div><div style="font-size:11.5px;color:' + pal.mut + '">' + sub + '</div></div>'; };
+    var started = rows.length ? new Date(Math.min.apply(null, rows.map(function (r) { return r.p.firstSeen; })) * 1000).toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric' }, CT)) : null;
+    var w = s.n ? s.w + '-' + s.l + (cnt('push') ? '-' + cnt('push') : '') : '0-0';
+    var tiles = [big('Record', w, s.n + ' settled · ' + cnt('open') + ' open' + (cnt('void') ? ' · ' + cnt('void') + ' void' : '')),
+      big('Units', s.units == null ? '+0.0u' : su(s.units), 'flat 1 unit at the price shown', s.units > 0 ? pal.good : s.units < 0 ? pal.bad : null),
+      big('ROI', roi == null ? '-' : spct(roi), s.n ? 'without top ' + (wins.length || 5) + ' wins ' + su((s.units || 0) - ws) : 'after the first result'),
+      big('CLV vs close', s.clv == null ? '-' : spct(s.clv), s.clvN + ' with an exchange close', s.clv > 0 ? pal.good : s.clv < 0 ? pal.bad : null)];
+    var recent = rows.filter(function (r) { return r.p.status !== 'open'; }).sort(function (a, b) { return b.p.start - a.p.start; }).slice(0, 8);
+    var list = recent.length ? '<div style="margin-top:10px">' + recent.map(function (r) {
+      var p = r.p, f = p.first || {}, st = p.status, col = st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.mut;
+      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid ' + pal.line + '"><div style="min-width:0"><div style="font-weight:600;font-size:14px">' + ESC(f.title) + '</div><div style="font-size:12px;color:' + pal.mut + '">' + ESC((f.price || {}).book) + ' ' + am((f.price || {}).am) + ' · ' + SPORT[p.sport] + (p.clv != null ? ' · CLV ' + spct(p.clv) : '') + '</div></div><div style="text-align:right;white-space:nowrap;font-weight:700;color:' + col + '">' + (st === 'won' ? 'Won' : st === 'lost' ? 'Lost' : st === 'push' ? 'Push' : 'Void') + (p.units != null && st !== 'void' ? '<div style="font-size:12px">' + su(p.units) + '</div>' : '') + '</div></div>';
+    }).join('') + '</div>' : '';
+    var note = !PL || !PL.plays ? 'Not started: the log has not been published yet.' : !rows.length ? 'The log is running. A play is written the first time one clears every gate.' : rows.length + ' play' + (rows.length === 1 ? '' : 's') + ' logged since ' + started + '. Each is saved once at first sight, then graded. ' + (s.n < 100 ? s.n + ' of 100 settled plays before it means much.' : '');
+    return '<div style="border:1px solid ' + pal.line + ';border-radius:22px;padding:14px;color:' + pal.text + '"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:' + pal.mut + '">V2 play record</span><span style="font-size:11.5px;color:' + pal.mut + '">' + ESC(note) + '</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px">' + tiles.join('') + '</div>' + list + '</div>';
+  }
+
   /* The data layer and the scoring, for the phone layout (sharp-money/new/), which draws its own HTML from them. */
   var core = {
-    STORE: STORE, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
-    ensure: function () { if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll(); return STORE.ts > 0; },
+    STORE: STORE, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
+    ensure: function () { loadAssets(); if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll(); return STORE.ts > 0; },
     subscribe: function (fn) { STORE.subs.add(fn); return function () { STORE.subs.delete(fn); }; }
   };
   window.VaultV2 = { Plays: Plays, Signals: Signals, Record: Record, GameTells: GameTells, stat: stat, rules: rules, core: core };

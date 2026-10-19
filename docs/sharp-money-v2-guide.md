@@ -19,10 +19,14 @@ Three lists:
 - **Watch**: beats one fair price but has no second price to confirm it. Do not treat it as a play.
 - **Passed**: looked good against one price, then failed a check. The reason is written on the row.
 
-Each play card shows:
-- **The price** you can get, and at which book.
+At the top is the **V2 play record**: the count (W-L), units, ROI and CLV of every play V2 has logged. Each play is saved once, the first time it appears, then graded when the game ends. It reads 0-0 until the first games finish, and it needs about 100 settled plays before it means much.
+
+Each play card shows team logos (or the player's photo for props), the pick in large type, and:
+- **You pay**: the price you can get, and at which book.
 - **Pinnacle fair** and **Exchange fair**: what each says the real chance is, and how much better your price is (the edge).
 - **Worst-case edge**: the smaller of the two edges. Plays are ranked by this, so the list is conservative.
+- **A price bar**: the white tick is what you pay, the green dots are the two fair prices. The green stretch between them is your edge.
+- **Logged**: a chip that shows whether the play is in the record and how it ended.
 - **Cautions** in yellow, for example "QB props have lost" or "this line is more than 48 hours out".
 - **How that market has done** so far, and how long the book has been behind Pinnacle.
 
