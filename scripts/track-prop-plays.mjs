@@ -48,7 +48,7 @@ function gameStart(games, team) {
 }
 
 const _nidx = new WeakMap();
-function actualOf(stats, name, week, mkt) {
+export function actualOf(stats, name, week, mkt) {
   let p = stats?.[name];
   if (!p && stats) {                                   // board and box-score names differ in suffixes ("Aaron Jones" vs "Aaron Jones Sr.")
     let ix = _nidx.get(stats);

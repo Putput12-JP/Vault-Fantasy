@@ -10,16 +10,20 @@ Ledgers:
   picks_ledger.json      the graded bet-signal picks and the dropped sharp-only reads, taken from data.json (keyed game|market|side)
   ev_alert_history.json  every graded +EV alert (keyed by key)
   prop_close_tape.json   every book's last read before kickoff (keyed season|pid|market|date)
+  v2_plays.json          every Sharp Money V2 play, written once at first sight and frozen (keyed by pick), then settled
 
 Guard (nothing is written if any check fails, exit code 2, and the previous snapshot stays as it was):
   - an id in the previous snapshot must still exist, except tape entries older than the tape's own 150-day prune
   - a settled play/pick (won, lost, push, void, or result 1/-1/0) must not go back to open
+  - a V2 play's first-sight record (`first`, `firstSeen`, `start`) must not change once written
 
 usage: snapshot_sharp_ledgers.py --src DIR_WITH_SHARP_DATA_FILES --dest CHECKOUT_OF_sharp-history [--today YYYY-MM-DD]"""
 import argparse, datetime as dt, json, os, sys
 
 TAPE_PRUNE_DAYS = 150
-LEDGERS = ('prop_plays.json', 'picks_ledger.json', 'ev_alert_history.json', 'prop_close_tape.json')
+FROZEN = ('first', 'firstSeen', 'start')      # what a V2 play looked like when it was first seen
+LEDGERS = ('prop_plays.json', 'picks_ledger.json', 'ev_alert_history.json', 'prop_close_tape.json', 'v2_plays.json')
+MAY_BE_EMPTY = ('v2_plays.json',)     # a forward log starts with no rows; the four older ledgers are never empty
 
 
 def load(path):
@@ -37,7 +41,7 @@ def pick_id(p):
 
 def ids_of(name, doc):
     """{id: settled?} for one ledger."""
-    if name == 'prop_plays.json':
+    if name in ('prop_plays.json', 'v2_plays.json'):
         return {k: v.get('status') in ('won', 'lost', 'push', 'void') for k, v in (doc.get('plays') or {}).items()}
     if name == 'picks_ledger.json':
         out = {}
@@ -71,6 +75,11 @@ def check(name, old, new, today):
     back = [k for k in a if a[k] and k in b and not b[k]]
     if back:
         bad.append(f'{name}: {len(back)} settled rows went back to open, e.g. {back[:3]}')
+    if name == 'v2_plays.json':
+        old_p, new_p = old.get('plays') or {}, new.get('plays') or {}
+        moved = [k for k in old_p if k in new_p and any(old_p[k].get(f) != new_p[k].get(f) for f in FROZEN)]
+        if moved:
+            bad.append(f'{name}: {len(moved)} plays changed their first-sight record, e.g. {moved[:3]}')
     return bad
 
 
@@ -87,7 +96,7 @@ def main():
             continue
         d = load(src)
         docs[n] = picks_ledger(d) if n == 'picks_ledger.json' else d
-        if not ids_of(n, docs[n]):
+        if not ids_of(n, docs[n]) and n not in MAY_BE_EMPTY:
             sys.exit(f'{n} is empty: refusing to snapshot an empty ledger')
     problems = []
     for n, new in docs.items():
