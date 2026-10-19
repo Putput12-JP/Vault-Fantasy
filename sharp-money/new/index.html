@@ -999,18 +999,8 @@ const v2nav=cur=>`<div class="chips">${[['plays','Plays'],['signals','Signals'],
 function v2built(){const c=v2c(),F=c.STORE.files,k=(D&&D.ts)+'|'+c.STORE.ts;if(V2P.key!==k){V2P.built=V2Gates.build({D,P:F.props,T:F.tape,E:F.edge,now:Date.now()/1000});V2P.key=k}return V2P.built}
 const v2wait=(t,s,cur)=>head(t,s)+v2nav(cur)+'<div class="skel"></div><div class="skel"></div>';
 function v2when(ts){return v2c().when(ts)}
-function v2card(c,F){
- const GT=V2Gates.GATES,t=c.tier==='play'?['Play','good']:c.tier==='watch'?['Watch','warn']:['Passed',''];
- const cells=c.refs.map(r=>`<div><b class="cond ${r.edge>=GT.MIN_EDGE?'pos':r.edge<0?'neg':''}">${v2spct(r.edge)}</b><small>${esc(r.n)} fair ${v2pct(r.p)}</small></div>`);
- if(c.refs.length>1&&c.worst!=null)cells.push(`<div><b class="cond ${c.worst>=GT.MIN_EDGE?'pos':''}">${v2spct(c.worst)}</b><small>worst case</small></div>`);
- let age='';if(c.kind==='book'&&c.gk&&F.age&&F.age.games&&F.age.games[c.gk]){const a=F.age.games[c.gk][c.m],x=a&&a.books&&a.books[c.price.book];if(x&&x.changed){const n=Date.now()/1000;age=`${esc(c.price.book)} last changed this number ${v2c().dur(n-x.changed)} ago.${a.pin_moved?' Pinnacle moved '+v2c().dur(n-a.pin_moved)+' ago.':''}`}}
- const rec=c.rec&&c.rec.w+c.rec.l?`${esc(c.market)} on this board so far: ${c.rec.w}-${c.rec.l}, ROI ${v2spct(c.rec.roi)} (${c.rec.w+c.rec.l} settled).${c.rec.clvXN?' Against the exchange close: '+v2spct(c.rec.clvX)+' ('+c.rec.clvXN+').':''}`:'';
- return `<div class="card ${c.gk?'tap':''}"${c.gk?` data-go="game/${esc(c.gk)}"`:''}><div class="gtop"><span>${SPORT[c.sport]} · ${c.start?v2when(c.start):'time n/a'}</span><span class="badge ${t[1]}">${t[0]}</span></div>
- <div style="font-size:20px;font-weight:600;line-height:1.2">${esc(c.title)}</div><div style="color:var(--mut);font-size:13px;margin-top:2px">${esc(c.sub)} · at <b style="color:#fff">${esc(c.price.book)} ${am(c.price.am)}</b> (costs ${v2pct(c.price.p)})</div>
- ${cells.length?`<div class="px3" style="grid-template-columns:repeat(${Math.min(cells.length,3)},1fr)">${cells.join('')}</div>`:''}
- <div class="foot" style="margin:8px 0 0;color:var(--mut)">${esc(c.reasons.join(' '))}</div>
- ${c.cautions.map(x=>`<div class="foot" style="margin:3px 0 0;color:var(--warn)">${esc(x)}</div>`).join('')}${rec?`<div class="foot">${rec}</div>`:''}${age?`<div class="foot">${age}</div>`:''}</div>`;
-}
+const V2PAL={text:'#fff',mut:'var(--mut)',dim:'var(--dim)',line:'var(--line)',bg:'#0b0b0d',tile:'rgba(255,255,255,.07)',acc:'var(--acc)',good:'var(--good)',bad:'var(--bad)',warn:'var(--warn)'};
+function v2card(c,F){return `<div class="${c.gk?'tap':''}" style="margin:0 16px 12px;border-radius:22px"${c.gk?` data-go="game/${esc(c.gk)}"`:''}>${v2c().cardHtml(c,F,V2PAL,D)}</div>`}
 function v2Plays(){
  const c=v2c(),title='Plays',sub='Prices that beat two independent fair prices. '+snap();
  if(!c)return head(title,sub)+'<div class="card empty">The V2 rules did not load. Reload the page.</div>';
@@ -1018,7 +1008,7 @@ function v2Plays(){
  const B=v2built(),F=c.STORE.files,cnt={all:0,nfl:0,cfb:0,nba:0};
  B.cand.filter(x=>x.tier==='play').forEach(x=>{cnt.all++;cnt[x.sport]++});
  const L=t=>B.cand.filter(x=>x.tier===t&&(st.sport==='all'||x.sport===st.sport));
- let h=head(title,sub)+v2nav('plays')+chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport')+chips([['play','Plays',L('play').length],['watch','Watch',L('watch').length],['pass','Passed',L('pass').length]],st.ptier,'ptier');
+ let h=head(title,sub)+v2nav('plays')+`<div style="margin:0 16px 12px">${c.recordHtml(F,V2PAL)}</div>`+chips(Object.keys(SPORT).map(k=>[k,SPORT[k],cnt[k]]),st.sport,'sport')+chips([['play','Plays',L('play').length],['watch','Watch',L('watch').length],['pass','Passed',L('pass').length]],st.ptier,'ptier');
  const list=L(st.ptier);
  if(st.ptier==='pass')h+=`<div class="card">${list.length?list.map(x=>`<div class="row"${x.gk?` data-go="game/${esc(x.gk)}" style="cursor:pointer"`:''}><div class="grow"><b>${esc(x.title)}</b><div class="m">${esc(x.price.book)} ${am(x.price.am)} · ${esc(x.reasons[0])}</div></div><div class="m" style="text-align:right">${SPORT[x.sport]}</div></div>`).join(''):'<div class="empty">Nothing passed over.</div>'}</div>`;
  else h+=list.length?list.map(x=>v2card(x,F)).join(''):`<div class="card empty"><b>${st.ptier==='play'?'Nothing clears every gate right now.':'Nothing on watch.'}</b><div style="margin-top:4px">${st.ptier==='play'?'That is the honest answer. Watch has prices with one reference only; Passed shows what failed a gate and why.':'Prices that beat one reference but have no second price to confirm them.'}</div></div>`;
