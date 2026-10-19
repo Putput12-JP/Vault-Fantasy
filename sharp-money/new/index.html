@@ -996,7 +996,7 @@ const V2P={key:'',built:null};
 const v2c=()=>window.VaultV2&&window.V2Gates?VaultV2.core:null;
 const v2pct=(x,d=1)=>V2Gates.pct(x,d),v2spct=(x,d=1)=>V2Gates.spct(x,d);
 const v2nav=cur=>`<div class="chips">${[['plays','Plays'],['signals','Signals'],['vrecord','Play record']].map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-v2nav="${v}">${l}</button>`).join('')}</div>`;
-function v2built(){const c=v2c(),F=c.STORE.files,k=(D&&D.ts)+'|'+c.STORE.ts;if(V2P.key!==k){V2P.built=V2Gates.build({D,P:F.props,T:F.tape,E:F.edge,now:Date.now()/1000});V2P.key=k}return V2P.built}
+function v2built(){const c=v2c(),F=c.STORE.files,k=(D&&D.ts)+'|'+c.STORE.ts;if(V2P.key!==k){const b=V2Gates.build({D,P:F.props,T:F.tape,E:F.edge,now:Date.now()/1000});V2P.built={all:c.stance(b.all),cand:c.stance(b.cand)};V2P.key=k}return V2P.built}
 const v2wait=(t,s,cur)=>head(t,s)+v2nav(cur)+'<div class="skel"></div><div class="skel"></div>';
 function v2when(ts){return v2c().when(ts)}
 const V2PAL={text:'#fff',mut:'var(--mut)',dim:'var(--dim)',line:'var(--line)',bg:'#0b0b0d',tile:'rgba(255,255,255,.07)',acc:'var(--acc)',good:'var(--good)',bad:'var(--bad)',warn:'var(--warn)'};
