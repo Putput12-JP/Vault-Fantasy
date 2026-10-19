@@ -1243,20 +1243,67 @@ table.nt.sx-tk{min-width:420px}
 .sv-q{font-style:normal;margin-left:6px;font-size:10px;font-weight:700;color:var(--warn);border:1px solid rgba(251,191,36,.45);border-radius:4px;padding:0 4px}
 .sv-mp{display:flex;gap:4px;justify-content:flex-end}
 .mu-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:1;min-width:0}
-.mu-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,1fr);gap:16px;align-items:start;margin-top:12px}
-.mu-cc{padding:16px 16px 12px}.mu-ch h2{margin:0;font-size:16px;font-weight:600}.mu-ch p{margin:2px 0 8px;color:var(--fg3);font-size:12.5px}
-.mu-court{display:block;width:100%;height:auto;max-height:560px}
-.mu-zt{font:600 13px var(--mono,ui-monospace,monospace);text-anchor:middle;fill:#e8e8e8}.mu-zs{font:400 10.5px var(--sans,inherit);text-anchor:middle;fill:#c9c9c9}
-.mu-zl{font:500 10px var(--mono,ui-monospace,monospace);letter-spacing:.06em;text-anchor:middle;fill:#9a9a9a;text-transform:uppercase}
-.mu-bub{fill:rgba(240,240,240,.92)}.mu-bt{font:700 13px var(--mono,ui-monospace,monospace);text-anchor:middle;fill:#1a1a1a;dominant-baseline:central}
-.mu-fast{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;margin-top:10px;border-radius:12px;background:var(--bg);border:1px solid var(--border);font-size:13px;color:var(--fg2)}
-.mu-det{padding:16px;margin-bottom:12px}.mu-dh{display:flex;justify-content:space-between;gap:12px;align-items:center}.mu-det h3{margin:0;font-size:15px;font-weight:600}.mu-det p{margin:4px 0 12px;color:var(--fg2);font-size:13px}
-.mu-sc{font-size:16px;font-weight:600}.mu-dh .mu-sc{font-size:20px}
-.mu-dl{display:grid;gap:6px}.mu-dl>div{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}
-.mu-dl .mp{flex-direction:row;gap:5px;min-width:64px}.mu-tr{height:8px;border-radius:4px;background:var(--bg);overflow:hidden}.mu-tr i{display:block;height:100%;background:#c4c4c4;border-radius:4px}
-.mu-pl{display:grid;gap:8px}.mu-pb{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);text-align:left;width:100%;color:inherit;cursor:pointer}
-.mu-pb[aria-pressed="true"]{border-color:var(--fg3);background:var(--raised)}.mu-pb b{display:block;font-weight:600}.mu-pb small{display:block;color:var(--fg3);font-size:12px}
-@media (max-width:900px){.mu-grid{grid-template-columns:minmax(0,1fr)}.mu-ctl{flex-wrap:nowrap;overflow-x:auto}.mu-ctl .seg{flex:none}}
+.mu-ctl .seg button img.lg{vertical-align:-3px;margin:0 3px 0 0}.mu-ctl .seg button img.lg+img.lg{margin-left:0}
+.mu2-live{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--fg2);font-size:12.5px;cursor:pointer;transition:color .15s,transform .12s}
+.mu2-live:active{transform:scale(.97)}.mu2-live i{width:8px;height:8px;border-radius:50%;background:var(--fg3);transition:background-color .15s,box-shadow .15s}
+.mu2-live[aria-pressed="true"]{color:var(--fg)}.mu2-live[aria-pressed="true"] i{background:#ff8a3d;box-shadow:0 0 0 3px rgba(255,138,61,.22)}
+.mu2-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,1fr);gap:16px;align-items:start;margin-top:12px}
+.mu2-stage{padding:0;overflow:hidden;background:#14110d;border-color:#2a241c;color:#f1ebdf;position:relative}
+.mu2-hud{position:absolute;left:0;right:0;top:0;z-index:2;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px 16px 26px;background:linear-gradient(#0d0b08 18%,rgba(13,11,8,0));pointer-events:none}
+.mu2-hud>*{pointer-events:auto}.mu2-def{display:flex;gap:10px;align-items:center}.mu2-def b{display:block;font-size:15px;font-weight:600}.mu2-def small{display:block;color:#a79f90;font-size:12px}
+.mu2-def img.lg{width:30px;height:30px}
+.mu2-vw{display:flex;gap:2px;padding:3px;border-radius:10px;background:rgba(255,255,255,.08);backdrop-filter:blur(6px)}
+.mu2-vw button{border:0;background:transparent;color:#bdb4a2;padding:6px 11px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;transition:background-color .15s,color .15s,transform .12s}
+.mu2-vw button:active{transform:scale(.96)}.mu2-vw button[aria-pressed="true"]{background:rgba(255,255,255,.16);color:#fff}
+.mu2-wrap{position:relative}.mu2-svg{display:block;width:100%;height:auto}
+.mu2-zone{transition:fill .35s ease;cursor:pointer;outline:none}.mu2-zone:hover{stroke:#fff;stroke-opacity:.5;stroke-width:2}.mu2-zone.on,.mu2-zone:focus-visible{stroke:#fff;stroke-opacity:.9;stroke-width:2.4}
+.mu2-heat{pointer-events:none}.mu2-dim{fill:#000;opacity:0;transition:opacity .35s}.mu2-svg[data-vw=player] .mu2-dim{opacity:.66}.mu2-svg[data-vw=both] .mu2-dim{opacity:.5}
+.mu2-hc{opacity:0;transform:scale(.4);transform-box:fill-box;transform-origin:center;transition:opacity .28s ease-out,transform .28s ease-out;transition-delay:var(--d,0ms)}
+.mu2-hc.in{opacity:var(--o,.8);transform:scale(1)}
+.mu2-wm{font:700 22px var(--sans,inherit);letter-spacing:.5em;fill:rgba(246,236,217,.26)}
+.mu2-pill{cursor:pointer}.mu2-pill rect{fill:rgba(12,10,8,.8);stroke:rgba(255,255,255,.28);stroke-width:1;transition:stroke .2s,fill .2s}
+.mu2-pill.soft rect{stroke:#4ade80;fill:rgba(10,34,20,.86)}.mu2-pill.tough rect{stroke:#f87171;fill:rgba(44,14,14,.86)}
+.mu2-pill .l1{font:600 11.5px var(--sans,inherit);fill:#fff;text-anchor:middle;letter-spacing:.02em}.mu2-pill .l2{font:500 10.5px var(--mono,ui-monospace,monospace);fill:#d8d0be;text-anchor:middle}
+.mu2-cs{cursor:pointer;font:600 10.5px var(--mono,ui-monospace,monospace);fill:#f1e9d8;text-anchor:middle;letter-spacing:.06em;paint-order:stroke;stroke:rgba(0,0,0,.55);stroke-width:3px}.mu2-cs.soft{fill:#86efac}.mu2-cs.tough{fill:#fca5a5}
+.mu2-ball{fill:#fff3d6;stroke:rgba(0,0,0,.4);stroke-width:.8;filter:drop-shadow(0 0 3px rgba(255,255,255,.7))}.mu2-ball.soft{fill:#bbf7d0}.mu2-ball.tough{fill:#fecaca}
+.mu2-rip{fill:none;stroke:#fff3d6;stroke-width:2;transform-box:fill-box;transform-origin:center}.mu2-rip.soft{stroke:#86efac}.mu2-rip.tough{stroke:#fca5a5}
+.mu2-stage.enter .mu2-lines path[pathLength]{stroke-dasharray:1;stroke-dashoffset:1;animation:mu2draw 1s cubic-bezier(.22,1,.36,1) forwards}
+.mu2-stage.enter .mu2-lines path:nth-child(2){animation-delay:.06s}.mu2-stage.enter .mu2-lines path:nth-child(3){animation-delay:.12s}.mu2-stage.enter .mu2-lines path:nth-child(4){animation-delay:.18s}
+.mu2-stage.enter .mu2-lines path:nth-child(5){animation-delay:.24s}.mu2-stage.enter .mu2-lines path:nth-child(7){animation-delay:.3s}.mu2-stage.enter .mu2-lines path:nth-child(8){animation-delay:.36s}
+@keyframes mu2draw{to{stroke-dashoffset:0}}
+.mu2-stage.enter .mu2-zone{animation:mu2zone .6s ease-out both}.mu2-stage.enter .mu2-zone[data-z="mid"]{animation-delay:.1s}.mu2-stage.enter .mu2-zone[data-z="paint"]{animation-delay:.18s}.mu2-stage.enter .mu2-zone[data-z="ra"]{animation-delay:.26s}.mu2-stage.enter .mu2-zone[data-z="c3"]{animation-delay:.14s}
+@keyframes mu2zone{from{opacity:0}}
+.mu2-zd{padding:10px 16px;background:#100d0a;border-top:1px solid #2a241c;font-size:12.5px;color:#d9d1c0;line-height:1.45}
+.mu2-zd b{font-size:13px;color:#fff;margin-right:8px}.mu2-zd p{margin:4px 0 0}.mu2-zd .mp{display:inline-flex;flex-direction:row;padding:2px 7px}
+.mu2-cap{margin:0;padding:10px 16px 12px;color:#a79f90;font-size:12px;line-height:1.45}
+.mu2-lad{padding:4px 16px 14px;border-top:1px solid #2a241c}
+.mu2-lh{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:10px 0 2px;font-size:13px}.mu2-lh b{color:#f1ebdf;font-weight:600}.mu2-lh span{color:#8d8576;font-size:11.5px;text-align:right}
+.mu2-ladder{width:100%;height:auto;display:block}.mu2-ladder .axis{stroke:#3a332a}.mu2-ladder .zero{stroke:#6b6253;stroke-dasharray:3 4}.mu2-ladder .ax{font:500 10px var(--mono,ui-monospace,monospace);fill:#8d8576}
+.mu2-ld image{opacity:.8;transition:opacity .15s}.mu2-ld:hover image,.mu2-ld.now image{opacity:1}.mu2-ld circle:not(.ring){fill:#3a332a}.mu2-ld .ring{fill:none;stroke:#ff8a3d;stroke-width:2}.mu2-ld .tn{font:600 11px var(--sans,inherit);fill:#ffb35c}
+.mu2-rail{display:grid;gap:12px;min-width:0}
+.mu2-pick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.mu2-pb{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:inherit;cursor:pointer;transition:border-color .15s,background-color .15s,transform .12s;min-width:0}
+.mu2-pb:active{transform:scale(.97)}.mu2-pb[aria-pressed="true"]{border-color:#ff8a3d;background:var(--raised)}
+.mu2-pb b{font-size:12px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mu2-pb span{font-size:11.5px;font-weight:600}
+.mu2-read{padding:16px}.mu2-read header{display:flex;gap:14px;align-items:center}.mu2-ph{flex:none}
+.mu2-rh h3{margin:4px 0 2px;font-size:16px;font-weight:600;letter-spacing:-.01em}.mu2-rh p{margin:0;font-size:12.5px;color:var(--fg2)}
+.mu2-vd{display:inline-block;padding:2px 8px;border-radius:7px;font:600 10.5px var(--mono,ui-monospace,monospace);letter-spacing:.04em;text-transform:uppercase;background:var(--raised);color:var(--fg2)}
+.mu2-vd.soft{background:rgba(74,222,128,.14);color:var(--up)}.mu2-vd.tough{background:rgba(248,113,113,.14);color:var(--down)}
+.mu2-story{margin:14px 0;font-size:14px;line-height:1.58;color:var(--fg)}
+.mu2-items{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.mu2-items li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;border-radius:12px;background:var(--bg);border:1px solid var(--border)}
+.mu2-items i{width:22px;height:22px;border-radius:7px;background:var(--raised);position:relative;margin-top:1px}
+.mu2-items .up i::after,.mu2-items .down i::after{content:"";position:absolute;left:5px;top:6px;border:6px solid transparent}
+.mu2-items .up i::after{border-bottom:8px solid var(--up);border-top:0}.mu2-items .down i::after{border-top:8px solid var(--down);border-bottom:0;top:7px}
+.mu2-items .flat i::after{content:"";position:absolute;left:5px;right:5px;top:10px;height:2px;border-radius:1px;background:var(--fg3)}
+.mu2-items b{display:block;font-size:13px;font-weight:600}.mu2-items span{display:block;color:var(--fg2);font-size:12.5px;line-height:1.45;margin-top:1px}
+.mu2-read footer{margin-top:12px;color:var(--fg3);font-size:11.5px;line-height:1.45}
+.rise>*{animation:mu2rise .26s ease-out both}@keyframes mu2rise{from{opacity:0;transform:translateY(6px)}}
+.mu2-lu{padding:14px 16px}.mu2-lu h4{margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.mu2-lu p{margin:0;font-size:13.5px;line-height:1.55}
+.mu2-lun{margin-top:10px;font-size:18px;font-weight:600}.mu2-lun span{display:block;font:400 11.5px/1.4 var(--sans,inherit);color:var(--fg3);letter-spacing:0}
+@media (max-width:980px){.mu2-grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.mu2-hud{position:static;padding:10px 12px;background:#14110d;align-items:center}.mu2-def small{display:none}.mu2-pill .l2{display:none}.mu2-pill .l1{font-size:17px}.mu2-cs{font-size:15px;stroke-width:4px}.mu-ctl{flex-wrap:nowrap;overflow-x:auto}.mu-ctl .seg,.mu2-live{flex:none}.mu2-vw button{padding:6px 9px}.mu2-pick{overflow-x:auto;grid-template-columns:repeat(5,minmax(66px,1fr))}}
+@media (prefers-reduced-motion:reduce){.mu2-stage.enter .mu2-lines path,.mu2-stage.enter .mu2-zone{animation:none!important;stroke-dashoffset:0!important}.mu2-hc,.mu2-zone,.mu2-pb,.mu2-live{transition:none}.rise>*{animation:none}}
 .mp{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:36px;padding:3px 4px;border-radius:7px;background:var(--raised);font-size:12px;font-weight:600;color:var(--fg2);font-variant-numeric:tabular-nums;line-height:1.15}
 .mp i{font-style:normal;font-size:9.5px;font-weight:500;letter-spacing:.05em;color:var(--fg3)}
 .mp.soft{background:rgba(74,222,128,.14);color:var(--up)}.mp.tough{background:rgba(248,113,113,.14);color:var(--down)}
@@ -5316,43 +5363,267 @@ function ddRead(pid, opp){                                   // score and the tw
   const weak = new Set(DD.persistence.weak), rows = Object.keys(DDZ).filter(k => !weak.has('zone.' + k) && tm.zone[k]).map(k => ({k, share: pl.zone[k], r: tm.zone[k], c: pl.zone[k] * tm.zone[k][2]}));
   return {thin: pl.thin, fga: pl.fga, score: rows.reduce((a, x) => a + x.c, 0), why: rows.sort((a, b) => Math.abs(b.c) - Math.abs(a.c)).slice(0, 2)};
 }
-// ── Matchups page: a half-court map per game. Zone color = shots the defense lets up there per 48 against the league; circles = the selected
-// starter's share of his own shots from each zone (build_diet_defense.py, ESPN play-by-play). Context, not a bet: tested against Kalshi and
-// sportsbook prices (docs/diet-test.md) and it adds nothing the market has not priced.
-const mu = {day: null, gid: null, side: 0, pi: 0, vw: 'both'};
+// ── Matchups V2: a real half-court (hardwood, team-painted lane, true NBA markings), his actual shot map as light on the floor, the defense's
+// soft and tough zones as color, shots that fly from where he really shoots, and plain-English reads. Data: build_diet_defense.py (ESPN
+// play-by-play, regular season). Context, not a bet: tested against Kalshi and sportsbook prices (docs/diet-test.md), no gain over the market.
+const mu = {day: null, gid: null, side: 0, pi: 0, vw: 'both', zone: null, lock: false, live: true};
 const muPct = x => (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1) + '%';
-const MUSPOT = {ra: [250, 432], paint: [250, 330], mid: [250, 222], ab3: [250, 130]};
-const muHeat = (r, a0) => { const k = r[1] <= 6 ? ['74,222,128', .14 + .34 * (7 - r[1]) / 6] : r[1] >= 25 ? ['248,113,113', .14 + .34 * (r[1] - 24) / 6] : ['70,70,70', .5]; return `rgba(${k[0]},${k[1].toFixed(2)})`; };
-function muCourt(def, P){
-  const o = DD.teams[def], showD = mu.vw !== 'player', showP = mu.vw !== 'defense' && P;
-  const fill = k => mu.vw === 'player' ? '#2e2e2e' : muHeat(o.zone[k]);
-  let s = `<rect x="0" y="0" width="500" height="470" rx="14" fill="#242424"/><rect x="0" y="0" width="500" height="470" rx="14" fill="${fill('ab3')}"/><rect x="0" y="328.5" width="30" height="141.5" fill="${fill('c3')}"/><rect x="470" y="328.5" width="30" height="141.5" fill="${fill('c3')}"/>
-    <path d="M30 470V328.5A237.5 237.5 0 0 1 470 328.5V470Z" fill="${fill('mid')}"/><rect x="170" y="280" width="160" height="190" fill="${fill('paint')}"/><path d="M210 418a40 40 0 0 1 80 0a40 40 0 0 1-80 0Z" fill="${fill('ra')}"/>
-    <g fill="none" stroke="rgba(255,255,255,.32)" stroke-width="2"><path d="M30 470V328.5A237.5 237.5 0 0 1 470 328.5V470"/><rect x="170" y="280" width="160" height="190"/><path d="M190 280a60 60 0 0 1 120 0"/><path d="M210 418a40 40 0 0 1 80 0"/><circle cx="250" cy="418" r="7.5"/><path d="M220 430h60"/><rect x="1" y="1" width="498" height="468" rx="14"/></g>`;
-  const bub = (v, x, y, r0) => `<circle class="mu-bub" cx="${x}" cy="${y}" r="${(r0 + Math.sqrt(v) * 22).toFixed(1)}"/><text class="mu-bt" x="${x}" y="${y}">${Math.round(v * 100)}</text>`;
-  for (const [k, [x, y]] of Object.entries(MUSPOT)){
-    const r = o.zone[k];
-    if (!showP) s += `<text class="mu-zl" x="${x}" y="${y - 18}">${DDZ[k][0]}</text><text class="mu-zt" x="${x}" y="${y}">${ordn(r[1])}</text><text class="mu-zs" x="${x}" y="${y + 14}">${fmt(r[0], 1)} per 48</text>`;
-    else {
-      s += `<text class="mu-zl" x="${x}" y="${y - 34}">${DDZ[k][0]}</text>${bub(P.zone[k], x, y, 6)}`;
-      if (showD) s += `<text class="mu-zt" x="${x}" y="${y + (k === 'ra' ? 30 : 36)}" style="font-size:11px">${ordn(r[1])} <tspan class="mu-zs" style="font-size:11px">${fmt(r[0], 1)}</tspan></text>`;
-    }
+const MUB62 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const MUNS = 'http://www.w3.org/2000/svg';
+const MUZONES = ['ab3', 'mid', 'paint', 'ra', 'c3'];
+const MUPHRASE = {ra: 'at the rim', paint: 'in the paint', mid: 'from mid-range', c3: 'from the corners', ab3: 'from above-the-break threes'};
+const MUNOUN = {ra: 'rim', paint: 'paint', mid: 'mid-range', c3: 'corner-three', ab3: 'above-the-break three'};
+const muReduced = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const muLum = h => { const n = parseInt(h.slice(1), 16); return (.299 * (n >> 16) + .587 * ((n >> 8) & 255) + .114 * (n & 255)) / 255; };
+function muTeamCol(t){                                       // the lane's paint: the team's primary unless it is near black or white
+  const c = (PH && PH.colors && PH.colors[t]) || ['#4a4a4a', '#9a9a9a'];
+  if (muLum(c[0]) >= .14 && muLum(c[0]) <= .88) return c[0];
+  return muLum(c[1]) >= .14 && muLum(c[1]) <= .88 ? c[1] : '#5a5a5a';
+}
+let muLgShare = null;
+function muLg(){ if (!muLgShare){ const z = DD.league.zone, t = Object.keys(DDZ).reduce((a, k) => a + z[k], 0); muLgShare = {}; for (const k in DDZ) muLgShare[k] = z[k] / t; } return muLgShare; }
+const muWeak = () => new Set(DD.persistence.weak);
+function muScore(P, t){ const tm = DD.teams[t], w = muWeak(); return Object.keys(DDZ).reduce((a, k) => a + (w.has('zone.' + k) || !tm.zone[k] ? 0 : P.zone[k] * tm.zone[k][2]), 0); }
+function muAnalyze(def, pid){
+  const P = DD.players[String(pid)], tm = DD.teams[def]; if (!P || !tm) return null;
+  const w = muWeak(), lg = muLg();
+  const rows = Object.keys(DDZ).map(k => { const r = tm.zone[k], off = w.has('zone.' + k); return {k, share: P.zone[k], lg: lg[k], r, vs: r[2], c: off ? 0 : P.zone[k] * r[2]}; });
+  const ladder = Object.keys(DD.teams).map(t => ({t, score: muScore(P, t)})).sort((a, b) => b.score - a.score);
+  const score = rows.reduce((a, x) => a + x.c, 0), rank = ladder.findIndex(x => x.t === def) + 1;
+  const by = f => [...rows].sort(f)[0], sum = ks => rows.filter(x => ks.includes(x.k)).reduce((a, x) => a + x.c, 0);
+  return {P, rows, ladder, score, rank, gain: by((a, b) => b.c - a.c), loss: by((a, b) => a.c - b.c), lean: by((a, b) => (b.share - b.lg) - (a.share - a.lg)),
+    interior: P.zone.ra + P.zone.paint, perim: P.zone.c3 + P.zone.ab3, three: sum(['c3', 'ab3']), inside: sum(['ra', 'paint'])};
+}
+const muVerdict = a => a.rank <= 6 ? ['soft', 'Top-6 matchup'] : a.rank >= 25 ? ['tough', 'Bottom-6 matchup'] : ['', 'Middle of the pack'];
+const muSoft = r => r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : '';
+const muRk = r => r[1] <= 15 ? ordn(r[1]) + ' most' : ordn(31 - r[1]) + ' fewest';
+function muGrid(P){                                           // his shot map smoothed 1-2-1 so 4-foot squares melt into a surface: 13 x 13 values, in shots
+  const N = 13, g = [];
+  for (let i = 0; i < N * N; i++) g.push(MUB62.indexOf(P.map.s[i]) / 61 * P.map.m);
+  const K = [1, 2, 1], out = [];
+  for (let iy = 0; iy < N; iy++) for (let ix = 0; ix < N; ix++){
+    let v = 0, w = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++){ const x = ix + dx, y = iy + dy; if (x < 0 || y < 0 || x >= N || y >= N) continue; const k = K[dx + 1] * K[dy + 1]; v += g[y * N + x] * k; w += k; }
+    out.push(v / w);
   }
-  for (const [x, rot] of [[15, -90], [485, 90]]){
-    const r = o.zone.c3;
-    s += `<text class="mu-zl" x="${x}" y="352" transform="rotate(${rot} ${x} 352)">Corner 3</text>`;
-    if (showD) s += `<text class="mu-zt" x="${x}" y="446" style="font-size:10px">${ordn(r[1])}</text>`;
-    if (showP) s += `<circle class="mu-bub" cx="${x}" cy="400" r="${(5 + Math.sqrt(P.zone.c3 / 2) * 22).toFixed(1)}"/>`;
+  return out;
+}
+function muCells(P){                                          // [{ix, iy, n}]: where his shots come from, for the flying balls
+  if (!P || !P.map) return [];
+  const g = muGrid(P), out = [];
+  g.forEach((n, i) => { if (n >= .5) out.push({ix: i % 13, iy: Math.floor(i / 13), n}); });
+  return out;
+}
+function muField(P){                                          // the same surface sampled at twice the density (bilinear), so no lattice shows
+  if (!P || !P.map) return [];
+  const g = muGrid(P), N = 13, out = [], at = (x, y) => g[Math.min(N - 1, Math.max(0, y)) * N + Math.min(N - 1, Math.max(0, x))];
+  for (let fy = 0; fy <= (N - 1) * 2; fy++) for (let fx = 0; fx <= (N - 1) * 2; fx++){
+    const x = fx / 2, y = fy / 2, x0 = Math.floor(x), y0 = Math.floor(y), tx = x - x0, ty = y - y0;
+    const n = at(x0, y0) * (1 - tx) * (1 - ty) + at(x0 + 1, y0) * tx * (1 - ty) + at(x0, y0 + 1) * (1 - tx) * ty + at(x0 + 1, y0 + 1) * tx * ty;
+    if (n >= .4) out.push({ix: x, iy: y, n});
+  }
+  return out;
+}
+const muCellPx = (ix, iy) => [(ix + .5) * 40, 417.5 - (-5 + (iy + .5) * 4) * 10];
+function muZoneAt(x, y){                                      // the zone a court point (px) sits in, same rules as the data
+  const dx = (x - 250) / 10, yf = (417.5 - y) / 10, d = Math.hypot(dx, yf);
+  if (Math.abs(dx) >= 22 && yf <= 8.5) return 'c3';
+  if (d >= 23.75) return 'ab3';
+  if (d <= 4) return 'ra';
+  return Math.abs(dx) <= 8 && yf <= 13.75 ? 'paint' : 'mid';
+}
+// ── the court ──────────────────────────────────────────────────────────────
+const MU_LANE = 'M170 280H330V470H170Z', MU_RA = 'M210 430V417.5A40 40 0 0 1 290 417.5V430Z', MU_IN = 'M30 470V328.5A237.5 237.5 0 0 1 470 328.5V470Z';
+const MU_ZPATH = {
+  ab3: `M0 0H500V470H0Z${MU_IN}M0 328.5H30V470H0Z M470 328.5H500V470H470Z`, mid: `${MU_IN}${MU_LANE}`, paint: `${MU_LANE}${MU_RA}`, ra: MU_RA,
+  c3: 'M0 328.5H30V470H0Z M470 328.5H500V470H470Z'};
+function muCourtBase(){
+  const hash = [300, 330, 360].map(y => `<path d="M162 ${y}H170M330 ${y}H338"/>`).join('') + '<path class="blk" d="M158 400H170M330 400H342"/>';
+  return `<defs>
+    <pattern id="mu2-wood" width="20" height="60" patternUnits="userSpaceOnUse"><rect width="10" height="60" fill="#b78a57"/><rect x="10" width="10" height="60" fill="#b18451"/>
+      <path d="M0 0V60M10 0V60" stroke="#7d5a33" stroke-opacity=".55" stroke-width=".7"/><path d="M0 22H10M10 44H20" stroke="#7d5a33" stroke-opacity=".3" stroke-width=".6"/></pattern>
+    <filter id="mu2-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9 .018" numOctaves="2" seed="7"/><feColorMatrix type="matrix" values="0 0 0 0 .32  0 0 0 0 .2  0 0 0 0 .08  0 0 0 .34 0"/></filter>
+    <radialGradient id="mu2-spot" cx="250" cy="372" r="360" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff1d6" stop-opacity=".26"/><stop offset=".55" stop-color="#fff1d6" stop-opacity=".05"/><stop offset="1" stop-color="#0b0907" stop-opacity=".62"/></radialGradient>
+    <linearGradient id="mu2-apron" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17130f"/><stop offset="1" stop-color="#0d0b08"/></linearGradient>
+    <clipPath id="mu2-clip"><rect x="0" y="0" width="500" height="470"/></clipPath>
+    <radialGradient id="mu2-rg"><stop offset="0" stop-color="#ffb35c" stop-opacity=".62"/><stop offset=".55" stop-color="#ff8a3d" stop-opacity=".34"/><stop offset="1" stop-color="#ff6a1f" stop-opacity="0"/></radialGradient>
+    <radialGradient id="mu2-rh"><stop offset="0" stop-color="#fff4cf" stop-opacity=".8"/><stop offset=".55" stop-color="#ffd58a" stop-opacity=".28"/><stop offset="1" stop-color="#ffc060" stop-opacity="0"/></radialGradient>
+    <filter id="mu2-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="11"/></filter>
+    <filter id="mu2-soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4.5"/></filter>
+  </defs>
+  <rect x="-30" y="-8" width="560" height="520" fill="url(#mu2-apron)"/>
+  <text class="mu2-wm" id="mu2-wm" x="250" y="496" text-anchor="middle"></text>
+  <g clip-path="url(#mu2-clip)"><rect width="500" height="470" fill="url(#mu2-wood)"/><rect width="500" height="470" filter="url(#mu2-grain)" opacity=".55"/>
+    <path id="mu2-paint" d="${MU_LANE}" fill="#666" fill-opacity=".8"/><path d="${MU_LANE}" fill="url(#mu2-spot)" opacity=".0"/>
+    <image id="mu2-logo" x="190" y="-62" width="120" height="120" opacity=".92" preserveAspectRatio="xMidYMid meet"/>
+    <rect width="500" height="470" fill="url(#mu2-spot)"/><rect class="mu2-dim" width="500" height="470"/></g>
+  <g class="mu2-zones" id="mu2-zones">${MUZONES.map(k => `<path class="mu2-zone" data-z="${k}" d="${MU_ZPATH[k]}" fill-rule="evenodd" tabindex="0" role="button"/>`).join('')}</g>
+  <g class="mu2-heat" id="mu2-heat" clip-path="url(#mu2-clip)"></g>
+  <g class="mu2-lines" fill="none" stroke="#f6ecd9" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
+    <path pathLength="1" d="M0 0V470H500V0"/><path pathLength="1" d="M0 0H500"/><path pathLength="1" d="M30 470V328.5A237.5 237.5 0 0 1 470 328.5V470"/>
+    <path pathLength="1" d="M170 470V280H330V470"/><path pathLength="1" d="M190 280A60 60 0 0 1 310 280"/><path d="M190 280A60 60 0 0 0 310 280" stroke-dasharray="7 6" class="dash"/>
+    <path pathLength="1" d="M210 430V417.5A40 40 0 0 1 290 417.5V430"/><path pathLength="1" d="M190 0A60 60 0 0 0 310 0"/><path pathLength="1" d="M230 0A20 20 0 0 0 270 0"/>
+    <g stroke-width="2" class="hash">${hash}</g></g>
+  <g class="mu2-hoop" pointer-events="none"><path d="M220 430H280" stroke="#e8e2d6" stroke-width="4.2" stroke-linecap="round"/><path d="M250 430V425" stroke="#c9c2b4" stroke-width="2"/>
+    <circle cx="250" cy="417.5" r="7.6" fill="none" stroke="#ff7a2f" stroke-width="2.8"/></g>
+  <g id="mu2-labels" class="mu2-labels"></g><g id="mu2-balls" pointer-events="none"></g>`;
+}
+function muPill(x, y, w, l1, l2, cls){
+  return `<g class="mu2-pill ${cls}" transform="translate(${x} ${y})"><rect x="${-w / 2}" y="-18" width="${w}" height="36" rx="10"/><text class="l1" y="-3">${l1}</text><text class="l2" y="11">${l2}</text></g>`;
+}
+function muLabels(def, P, a){
+  const o = DD.teams[def], vw = mu.vw, show = vw !== 'player', mine = vw !== 'defense' && P;
+  const txt = k => {
+    const r = o.zone[k], sh = mine ? Math.round(P.zone[k] * 100) + '%' : '';
+    if (vw === 'defense') return [DDZ[k][0], `${ordn(r[1])} · ${fmt(r[0], 1)}`];
+    if (vw === 'player') return [DDZ[k][0], `${sh} of shots`];
+    return [`${DDZ[k][0]} · ${sh}`, `${ordn(r[1])} · ${fmt(r[0], 1)}`];
+  };
+  const POS = {ab3: [250, 70, 132], mid: [108, 296, 108], paint: [250, 336, 112], ra: [250, 452, 132]};
+  let s = '';
+  for (const [k, [x, y, w]] of Object.entries(POS)){ const [l1, l2] = txt(k); s += muPill(x, y, w, l1, l2, vw === 'player' ? '' : muSoft(o.zone[k])).replace('<g class="mu2-pill', `<g data-z="${k}" class="mu2-pill`); }
+  for (const x of [15, 485]){
+    const r = o.zone.c3, sh = mine ? Math.round(P.zone.c3 * 100) + '%' : '';
+    const t = vw === 'defense' ? `CORNER 3 · ${ordn(r[1])}` : vw === 'player' ? `CORNER 3 · ${sh}` : `CORNER 3 · ${sh} · ${ordn(r[1])}`;
+    s += `<text data-z="c3" class="mu2-cs ${vw === 'player' ? '' : muSoft(r)}" transform="translate(${x} 400) rotate(${x < 250 ? -90 : 90})">${t}</text>`;
   }
   return s;
+}
+// ── his shot map as light ─────────────────────────────────────────────────
+function muDrawHeat(cells){
+  const g = $('mu2-heat'), svg = $('mu2-svg');
+  if (!cells.length){ g.innerHTML = ''; return; }
+  const vs = cells.map(c => c.n).sort((a, b) => a - b), mx = vs[Math.floor(vs.length * .9)] || vs[vs.length - 1], sorted = cells.filter(c => c.n / mx >= .2).sort((a, b) => a.n - b.n);   // scale to the 90th percentile so one rim cell cannot wash the rest out
+  const circ = (c, i, r, fill) => { const t = Math.min(1, Math.pow(c.n / mx, .95)), [x, y] = muCellPx(c.ix, c.iy);
+    return `<circle class="mu2-hc" cx="${x}" cy="${y}" r="${r}" fill="url(#${fill})" style="--o:${(.03 + .5 * t).toFixed(3)};--d:${Math.min(i, 280)}ms"/>`; };
+  g.innerHTML = `<g style="mix-blend-mode:screen">${sorted.map((c, i) => circ(c, i, 34, 'mu2-rg')).join('')}</g>`;
+  void svg.getBoundingClientRect();                           // flush, then let the glow rise (a reflow, not rAF: a non-painting tab must not strand it at 0)
+  g.querySelectorAll('.mu2-hc').forEach(e => e.classList.add('in'));
+}
+// ── shots in flight, from where he really shoots ──────────────────────────
+let muTimer = null;
+function muLaunch(){
+  const c = mu.cur; if (!c || !c.cells.length || mu.vw === 'defense' || !mu.live || muReduced() || document.hidden || $('v-matchups').hidden) return;
+  const g = $('mu2-balls'); if (!g || g.childNodes.length > 2) return;
+  const tot = c.cells.reduce((a, x) => a + x.n, 0); let r = Math.random() * tot, cell = c.cells[0];
+  for (const x of c.cells){ r -= x.n; if (r <= 0){ cell = x; break; } }
+  let [x0, y0] = muCellPx(cell.ix, cell.iy); x0 += (Math.random() - .5) * 34; y0 = Math.min(462, y0 + (Math.random() - .5) * 34);
+  const zk = muZoneAt(x0, y0), cls = c.soft[zk] || '', x1 = 250, y1 = 417.5, dist = Math.hypot(x1 - x0, y1 - y0), h = 30 + dist * .34;
+  const ball = document.createElementNS(MUNS, 'circle'); ball.setAttribute('r', 4.4); ball.setAttribute('class', 'mu2-ball ' + cls); g.appendChild(ball);
+  const kf = []; for (let i = 0; i <= 16; i++){ const t = i / 16; kf.push({offset: t, opacity: t < .07 ? t / .07 : 1, transform: `translate(${x0 + (x1 - x0) * t}px,${y0 + (y1 - y0) * t - h * 4 * t * (1 - t)}px) scale(${1 + 1.1 * Math.sin(Math.PI * t)})`}); }
+  const an = ball.animate(kf, {duration: 650 + dist * 1.6, easing: 'linear'});
+  an.onfinish = () => { ball.remove(); const rp = document.createElementNS(MUNS, 'circle'); rp.setAttribute('cx', x1); rp.setAttribute('cy', y1); rp.setAttribute('r', 8); rp.setAttribute('class', 'mu2-rip ' + cls); g.appendChild(rp);
+    rp.animate([{transform: 'scale(1)', opacity: .8}, {transform: 'scale(3.2)', opacity: 0}], {duration: 460, easing: 'ease-out'}).onfinish = () => rp.remove(); };
+}
+function muStartShots(){ clearInterval(muTimer); muTimer = setInterval(() => { if ($('v-matchups').hidden){ clearInterval(muTimer); muTimer = null; return; } muLaunch(); }, 720); }
+// ── numbers that count ────────────────────────────────────────────────────
+function muTween(el, to, fmtf){
+  const from = el._v == null ? to : el._v; el._v = to;
+  if (muReduced() || document.hidden || from === to){ el.textContent = fmtf(to); return; }
+  const t0 = performance.now(); const step = t => { const k = Math.min(1, (t - t0) / 420), e = 1 - Math.pow(1 - k, 3); el.textContent = fmtf(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); else el.textContent = fmtf(to); };
+  requestAnimationFrame(step);
+}
+// ── the ladder: his shot mix against every defense ───────────────────────
+function muLadder(a, def){
+  const L = a.ladder, lo = Math.min(...L.map(x => x.score)), hi = Math.max(...L.map(x => x.score)), pad = Math.max(.6, (hi - lo) * .06);
+  const X = s => 36 + (s - (lo - pad)) / ((hi + pad) - (lo - pad)) * 568, lanes = [];
+  const dots = [...L].reverse().map(x => { const px = X(x.score); let ln = 0; while (lanes[ln] != null && px - lanes[ln] < 25) ln++; lanes[ln] = px; return {...x, px, ln}; });
+  const zx = X(0), now = dots.find(d => d.t === def);
+  const img = d => { const big = d.t === def, sz = big ? 34 : 22, y = 84 - d.ln * 25 - sz / 2;
+    return `<g class="mu2-ld${big ? ' now' : ''}"><title>${esc(d.t)}: ${muPct(d.score)} for his shot mix</title>${PH && PH.logos && PH.logos[d.t] ? `<image href="${PH.logos[d.t]}" x="${d.px - sz / 2}" y="${y}" width="${sz}" height="${sz}"/>` : `<circle cx="${d.px}" cy="${y + sz / 2}" r="${sz / 2}"/>`}${big ? `<circle class="ring" cx="${d.px}" cy="${y + sz / 2}" r="${sz / 2 + 3}"/><text class="tn" x="${d.px}" y="${y - 7}" text-anchor="middle">Tonight ${muPct(d.score)}</text>` : ''}</g>`; };
+  return `<div class="mu2-lh"><b>Tonight against the other 29</b><span>His shot mix against every defense, softest on the right</span></div>
+    <svg viewBox="0 -12 640 124" class="mu2-ladder" role="img" aria-label="${esc(a.P.name)} shot mix against all 30 defenses"><line x1="${zx}" x2="${zx}" y1="8" y2="96" class="zero"/><line x1="24" x2="616" y1="96" y2="96" class="axis"/>
+      ${dots.map(img).join('')}<text x="24" y="109" class="ax">Toughest</text><text x="${zx}" y="109" text-anchor="middle" class="ax">Average defense</text><text x="616" y="109" text-anchor="end" class="ax">Softest</text></svg>`;
+}
+// ── the reads ───────────────────────────────────────────────────────────
+function muRead(def, a, p){
+  const L = last(p.name), v = muVerdict(a), P = a.P, lean = a.lean, lg = Math.round(lean.lg * 100), sh = Math.round(lean.share * 100);
+  const who = a.interior >= .55 ? `${L} does most of his work inside` : a.perim >= .55 ? `${L} is a perimeter shooter` : P.zone.mid >= .2 ? `${L} leans on the mid-range` : `${L} spreads his shots around`;
+  const s1 = lean.share - lean.lg >= .05 ? `${who}: ${sh}% of his shots come ${MUPHRASE[lean.k]}, against ${lg}% for the average player.` : `No single spot dominates ${L}'s shot mix. He tops out at ${sh}% ${MUPHRASE[lean.k]}, close to the ${lg}% of an average player.`;
+  let s2;
+  if (a.gain.c >= .5) s2 = `${def} is soft where he works: it gives up the ${muRk(a.gain.r)} ${MUNOUN[a.gain.k]} shots, ${Math.abs(a.gain.vs).toFixed(0)}% ${a.gain.vs >= 0 ? 'above' : 'below'} the league average, in a spot that is ${Math.round(a.gain.share * 100)}% of his shots.`;
+  else s2 = `${def} does not line up with a soft spot in his shot mix.`;
+  const s3 = a.loss.c <= -.5 ? `The pinch is ${MUNOUN[a.loss.k]} shots: ${def} gives up the ${muRk(a.loss.r)}, and ${Math.round(a.loss.share * 100)}% of his shots come from there.` : '';
+  const item = (dir, t, d) => `<li class="${dir}"><i></i><div><b>${t}</b><span>${d}</span></div></li>`;
+  const dirOf = x => x >= 1 ? 'up' : x <= -1 ? 'down' : 'flat';
+  const tr = DD.teams[def].trans && DD.teams[def].trans.trans, trOk = tr && !DD.persistence.weak.includes('trans.trans');
+  const lgT = DD.league.trans && DD.league.trans.trans ? DD.league.trans.trans / Object.keys(DDZ).reduce((q, k) => q + DD.league.zone[k], 0) : .21;
+  const items = [
+    item(dirOf(a.score), `Shot volume ${muPct(a.score)}`, a.score >= 1 ? `More looks than ${L} gets against a typical defense, given where he shoots.` : a.score <= -1 ? `Fewer looks than ${L} gets against a typical defense, given where he shoots.` : `About the same looks ${L} gets against a typical defense.`),
+    item(dirOf(a.three), a.three >= 1 ? 'More threes on offer' : a.three <= -1 ? 'Fewer threes on offer' : 'Threes about average', `${def} gives up the ${muRk(DD.teams[def].zone.ab3)} above-the-break threes and the ${muRk(DD.teams[def].zone.c3)} corner threes.`),
+    item(dirOf(a.inside), a.inside >= 1 ? 'Easier path inside' : a.inside <= -1 ? 'Harder path inside' : 'Inside about average', `${def} gives up the ${muRk(DD.teams[def].zone.ra)} rim shots and the ${muRk(DD.teams[def].zone.paint)} paint shots; ${Math.round(a.interior * 100)}% of his shots start there.`)];
+  if (trOk && P.trans != null){ const hi = P.trans >= lgT + .04, easy = tr[1] <= 8, hard = tr[1] >= 23;
+    items.push(item(hi && easy ? 'up' : hi && hard ? 'down' : 'flat', hi ? 'He runs the floor' : 'Half-court player', `${Math.round(P.trans * 100)}% of his shots come in transition; ${def} gives up the ${muRk(tr)} fast-break shots${hi && hard ? ', so expect fewer run-outs.' : hi && easy ? ', so expect more run-outs.' : '.'}`)); }
+  return `<article class="card mu2-read"><header><div class="mu2-ph">${cutImg(p.id, p.name, 62)}</div><div class="mu2-rh"><span class="mu2-vd ${v[0]}">${v[1]}</span><h3>${esc(p.name)} against ${esc(def)}</h3>
+    <p><span id="mu2-score" class="num ${a.score >= 1 ? 'up' : a.score <= -1 ? 'down' : ''}">${muPct(a.score)}</span> shots vs average for his mix, ${ordn(a.rank)} softest of 30</p></div></header>
+    <p class="mu2-story">${s1} ${s2} ${s3}</p><ul class="mu2-items">${items.join('')}</ul>
+    <footer>${P.thin ? `Thin sample: ${P.fga} shots. ` : `${P.fga} shots counted. `}Opportunity, not accuracy. Tested against betting prices: no edge, so read it as context.</footer></article>`;
+}
+function muLineup(def, atk, rows){
+  const ok = rows.filter(r => r.pl && !r.pl.thin); if (ok.length < 3) return '';
+  const wt = ok.reduce((q, r) => q + r.pl.fga, 0), sh = {}, c = {}, tm = DD.teams[def], lg = muLg(), w = muWeak();
+  for (const k in DDZ){ sh[k] = ok.reduce((q, r) => q + r.pl.zone[k] * r.pl.fga, 0) / wt; c[k] = w.has('zone.' + k) ? 0 : sh[k] * tm.zone[k][2]; }
+  const ks = Object.keys(DDZ), top = ks.sort((a, b) => (sh[b] - lg[b]) - (sh[a] - lg[a]))[0], best = [...ks].sort((a, b) => c[b] - c[a])[0], worst = [...ks].sort((a, b) => c[a] - c[b])[0];
+  const net = ks.reduce((q, k) => q + c[k], 0);
+  const parts = [`${atk}'s five take ${Math.round(sh[top] * 100)}% of their shots ${MUPHRASE[top]}, against ${Math.round(lg[top] * 100)}% for a typical lineup.`];
+  if (c[best] >= .4) parts.push(`${def} leaves the door open there and in ${MUNOUN[best]} shots (${ordn(tm.zone[best][1])}, ${Math.abs(tm.zone[best][2]).toFixed(0)}% ${tm.zone[best][2] >= 0 ? 'above' : 'below'} average).`);
+  if (c[worst] <= -.4 && worst !== best) parts.push(`The wall is ${MUNOUN[worst]} shots: ${def} gives up the ${muRk(tm.zone[worst])}, and ${Math.round(sh[worst] * 100)}% of the lineup's shots go there.`);
+  return `<article class="card mu2-lu"><h4>Lineup read</h4><p>${parts.join(' ')}</p><div class="num mu2-lun ${net >= 1 ? 'up' : net <= -1 ? 'down' : ''}">${muPct(net)}<span>starters combined, shots vs average</span></div></article>`;
+}
+// ── page ────────────────────────────────────────────────────────────────
+function muShell(){
+  return `<div class="mu2"><section class="card tbar"><div class="tfilters" id="mu2-ctl"></div></section><div class="mu2-grid">
+    <section class="card mu2-stage" id="mu2-stage"><div class="mu2-hud"><div class="mu2-def" id="mu2-def"></div><div class="mu2-vw" id="mu2-vw" role="group" aria-label="Court view"></div></div>
+      <div class="mu2-wrap"><svg id="mu2-svg" class="mu2-svg" viewBox="-30 -8 560 520" role="img" aria-label="NBA half court, shot zones colored by what the defense allows">${muCourtBase()}</svg><div class="mu2-zd" id="mu2-zd" aria-live="polite"></div></div>
+      <p class="mu2-cap" id="mu2-cap"></p><div class="mu2-lad" id="mu2-lad"></div></section>
+    <aside class="mu2-rail"><div class="mu2-pick" id="mu2-pick" role="group" aria-label="Starters"></div><div id="mu2-read"></div><div id="mu2-lineup"></div></aside></div></div>`;
+}
+function muZoneDetail(def, a, P, k){
+  const r = DD.teams[def].zone[k], sh = P ? Math.round(P.zone[k] * 100) : null, lg = Math.round(muLg()[k] * 100);
+  return `<b>${DDZ[k][0]}</b><span class="mp ${muSoft(r)}">${ordn(r[1])} of 30</span><p>${esc(def)} lets up ${fmt(r[0], 1)} shots a night here per 48 minutes (${r[2] >= 0 ? '+' : '−'}${Math.abs(r[2]).toFixed(0)}% vs league). ${sh != null ? `${sh}% of his shots come from here, against ${lg}% for the average player.` : ''}</p>`;
+}
+function muUpdate(root, ctx){
+  const {games, G, g, def, atk, rows, sel, a, B, status} = ctx, P = sel && sel.pl;
+  const seg = (attr, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" ${attr}="${esc(v)}" aria-pressed="${cur === v}">${l}</button>`).join('')}</div>`;
+  const days = [...new Set(games.map(x => etDay(x.tip)))];
+  $('mu2-ctl').innerHTML = `<div class="mu-ctl">${days.length > 1 ? seg('data-mud', days.map(d => [d, esc(slDay(games.find(x => etDay(x.tip) === d).tip))]), mu.day) : ''}${seg('data-mug', G.map(x => [String(x.id), `${lgImg(x.away, 16)}${esc(x.away)} @ ${lgImg(x.home, 16)}${esc(x.home)}`]), mu.gid)}${seg('data-mus', [['0', `${lgImg(g.home, 16)}${esc(g.home)} defense`], ['1', `${lgImg(g.away, 16)}${esc(g.away)} defense`]], String(mu.side))}
+    <button type="button" class="mu2-live" data-mul aria-pressed="${mu.live}"><i></i>Shots in motion</button></div>`;
+  $('mu2-vw').innerHTML = [['defense', 'Defense'], ['player', 'His shots'], ['both', 'Both']].map(([v, l]) => `<button type="button" data-muw="${v}" aria-pressed="${mu.vw === v}">${l}</button>`).join('');
+  const tm = DD.teams[def], col = muTeamCol(def), svg = $('mu2-svg');
+  $('mu2-def').innerHTML = `${lgImg(def, 30)}<div><b>${esc(def)} defense</b><small>${esc(g.away)} at ${esc(g.home)}, ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</small></div>`;
+  $('mu2-paint').setAttribute('fill', col);
+  const lg = PH && PH.logos && PH.logos[def]; const li = $('mu2-logo'); if (lg){ li.setAttribute('href', lg); li.style.display = ''; } else li.style.display = 'none';
+  $('mu2-wm').textContent = def;
+  svg.dataset.vw = mu.vw;
+  svg.querySelectorAll('.mu2-zone').forEach(p => {
+    const k = p.dataset.z, r = tm.zone[k];
+    const rgb = r[1] <= 6 ? '74,222,128' : r[1] >= 25 ? '248,113,113' : '0,0,0', al = mu.vw === 'player' ? 0 : r[1] <= 6 ? .14 + .2 * (7 - r[1]) / 6 : r[1] >= 25 ? .14 + .2 * (r[1] - 24) / 6 : 0;
+    p.style.fill = `rgba(${rgb},${al.toFixed(2)})`; p.setAttribute('aria-label', `${DDZ[k][0]}: ${esc(def)} ranks ${ordn(r[1])} of 30`);
+    p.classList.toggle('on', mu.zone === k);
+  });
+  $('mu2-labels').innerHTML = muLabels(def, P, a);
+  const cells = muCells(P);
+  const soft = {}; for (const k of Object.keys(DDZ)) soft[k] = muSoft(tm.zone[k]);
+  const key = (P ? sel.p.id : '') + '|' + mu.vw;
+  if (mu.drawn !== key){ mu.drawn = key; muDrawHeat(mu.vw === 'defense' ? [] : muField(P)); }
+  mu.cur = {cells, soft};
+  const zk = mu.zone || (a ? [...a.rows].sort((x, y) => Math.abs(y.c) - Math.abs(x.c))[0].k : 'ab3');
+  mu.ctx = {def, P};
+  $('mu2-zd').dataset.z = zk; $('mu2-zd').innerHTML = muZoneDetail(def, a, P, zk);
+  $('mu2-cap').textContent = P && mu.vw !== 'defense' ? `Glow is ${sel.p.name}'s shots by 4-foot square, ${DD.season} regular season (${P.fga} shots). Zone color is what ${def} allows per 48: green soft, red tough.` : `Zone color is what ${def} allows per 48 minutes against the league, ${DD.season} regular season: green soft, red tough, rank out of 30.`;
+  $('mu2-lad').innerHTML = a ? muLadder(a, def) : '';
+  $('mu2-pick').innerHTML = rows.map((x, i) => `<button type="button" class="mu2-pb" data-mup="${i}" aria-pressed="${i === mu.pi}" title="${esc(x.p.name)}">${cutImg(x.p.id, x.p.name, 46)}<b>${esc(last(x.p.name))}</b><span class="num ${x.a ? (x.a.score >= 1 ? 'up' : x.a.score <= -1 ? 'down' : '') : ''}">${x.a ? muPct(x.a.score) : 'n/a'}</span></button>`).join('');
+  const rd = $('mu2-read'); const was = rd.dataset.k, nowk = String(sel ? sel.p.id : '') + '|' + def;
+  rd.innerHTML = !sel ? '<article class="card mu2-read"><p class="muted">No lineup for this team yet.</p></article>' : !a ? `<article class="card mu2-read"><h3>${esc(sel.p.name)}</h3><p class="muted">No shot data yet: too few attempts on record.</p></article>` : muRead(def, a, sel.p);
+  rd.dataset.k = nowk; if (was !== nowk){ rd.classList.remove('rise'); void rd.offsetWidth; rd.classList.add('rise'); }
+  if (a){ const el = $('mu2-score'); if (el){ el._v = mu.lastScore != null && was && was.split('|')[0] !== String(sel.p.id) ? mu.lastScore : a.score; muTween(el, a.score, muPct); } mu.lastScore = a.score; }
+  $('mu2-lineup').innerHTML = muLineup(def, atk, rows);
 }
 function renderMatchups(){
   const root = $('v-matchups');
   if (!DD){ root.innerHTML = '<section class="card"><div class="card-b"><p class="muted">Shot data is not in this build.</p></div></section>'; $('mufoot').innerHTML = ''; return; }
   const pick = slateBoard(), B = pick.board, status = statusFromBoard(B), games = [...(B.games || []), ...(B.opening || [])].sort((a, b) => a.tip - b.tip);
-  if (!games.length){
-    root.innerHTML = `<div class="banner"><b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. ${noGamesWhy()}</span></div>`; $('mufoot').innerHTML = ''; return;
-  }
+  if (!games.length){ root.innerHTML = `<div class="banner"><b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. ${noGamesWhy()}</span></div>`; $('mufoot').innerHTML = ''; return; }
   const days = [...new Set(games.map(g => etDay(g.tip)))];
   if (mu.gid && games.some(g => String(g.id) === mu.gid)) mu.day = etDay(games.find(g => String(g.id) === mu.gid).tip);
   if (!days.includes(mu.day)) mu.day = days[0];
@@ -5361,35 +5632,33 @@ function renderMatchups(){
   const g = G.find(x => String(x.id) === mu.gid), def = mu.side === 0 ? g.home : g.away, atk = mu.side === 0 ? g.away : g.home;
   const F = slateFive(atk, g, B, status), five = F ? F.five : [];
   if (mu.pi >= five.length) mu.pi = 0;
-  const seg = (attr, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" ${attr}="${esc(v)}" aria-pressed="${cur === v}">${esc(l)}</button>`).join('')}</div>`;
-  const ctl = `<div class="mu-ctl">${days.length > 1 ? seg('data-mud', days.map(d => [d, slDay(games.find(x => etDay(x.tip) === d).tip)]), mu.day) : ''}${seg('data-mug', G.map(x => [String(x.id), `${x.away} @ ${x.home}`]), mu.gid)}${seg('data-mus', [['0', `${g.home} defense`], ['1', `${g.away} defense`]], String(mu.side))}${seg('data-muw', [['defense', 'Defense'], ['player', 'His shots'], ['both', 'Both']], mu.vw)}</div>`;
-  const rows = five.map(p => ({p, d: ddRead(p.id, def), pl: DD.players[String(p.id)]}));
-  const sel = rows[mu.pi], P = sel && sel.pl, tm = DD.teams[def], tr = tm.trans && tm.trans.trans;
-  const trOk = tr && !DD.persistence.weak.includes('trans.trans');
-  const cls = r => r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : '';
-  const scoreCls = d => d ? (d.score >= 1 ? 'up' : d.score <= -1 ? 'down' : '') : '';
-  const court = `<div class="card mu-cc"><div class="mu-ch"><div><h2>${esc(def)} defense</h2><p>${esc(g.away)} at ${esc(g.home)}, ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET. Shots allowed per 48 by zone, ${esc(DD.season)}.</p></div></div>
-    <svg class="mu-court" viewBox="0 70 500 400" role="img" aria-label="${esc(def)} defense by shot zone">${muCourt(def, mu.vw === 'defense' ? null : P)}</svg>
-    <div class="mu-fast"><span>${trOk ? `Fast break: ${esc(def)} allows ${fmt(tr[0], 1)} per 48 (${tr[1] <= 15 ? ordn(tr[1]) + ' most' : ordn(31 - tr[1]) + ' fewest'})` : 'Fast break not shown'}</span>${P && trOk ? `<span>${Math.round(P.trans * 100)}% of his shots are fast break</span>` : ''}</div></div>`;
-  const detail = !sel ? `<div class="card mu-det"><p class="muted">No lineup for ${esc(atk)} yet.</p></div>` : !P || !sel.d ? `<div class="card mu-det"><h3>${esc(sel.p.name)}</h3><p class="muted">No shot data yet (too few attempts on record).</p></div>` : `<div class="card mu-det"><div class="mu-dh"><h3>${esc(sel.p.name)} against ${esc(def)}</h3><span class="num mu-sc ${scoreCls(sel.d)}">${muPct(sel.d.score)}</span></div>
-    <p>${P.thin ? 'Thin sample, read with care.' : `${P.fga} shots counted.`} The number is how many more (+) or fewer (−) shots than average this defense gives up in the spots he shoots from.</p>
-    <div class="mu-dl">${Object.keys(DDZ).map(k => { const r = DD.teams[def].zone[k], sh = P.zone[k]; return `<div><span>${DDZ[k][0]}</span><span class="mu-tr"><i style="width:${Math.round(sh * 100)}%"></i></span><span class="mp ${cls(r)}">${Math.round(sh * 100)}% <b>${ordn(r[1])}</b></span></div>`; }).join('')}</div></div>`;
-  const list = rows.map((x, i) => `<button type="button" class="mu-pb" data-mup="${i}" aria-pressed="${i === mu.pi}">${cutImg(x.p.id, x.p.name, 38)}<div><b>${esc(x.p.name)}</b><small>${x.pl ? (x.pl.thin ? 'thin sample' : x.pl.fga + ' shots') : 'no shot data'}</small></div><span class="num mu-sc ${scoreCls(x.d)}">${x.d ? muPct(x.d.score) : ''}</span></button>`).join('');
-  root.innerHTML = `<section class="card tbar"><div class="tfilters">${ctl}</div></section><div class="mu-grid">${court}<div><div>${detail}</div><div class="mu-pl">${list}</div></div></div>`;
+  const rows = five.map(p => ({p, pl: DD.players[String(p.id)], a: muAnalyze(def, p.id)}));
+  if (!root.querySelector('.mu2')){ root.innerHTML = muShell(); mu.drawn = null; root.querySelector('.mu2-stage').classList.add('enter'); }
+  muUpdate(root, {games, G, g, def, atk, rows, sel: rows[mu.pi], a: rows[mu.pi] && rows[mu.pi].a, B, status});
   const wk = DD.persistence;
-  $('mufoot').innerHTML = `<div><b>How to read it.</b> Zone color is how many shots the defense lets up there per 48 minutes against the league average: green is a soft spot (it gives up the most), red a tough one. The white circles are the share of the selected starter's own shots from each zone. The number up top multiplies the two and adds them up. It counts <b>shot opportunity, not shot quality</b>. <b>Context, not a bet:</b> tested against Kalshi and sportsbook prices on 2025-26 (docs/diet-test.md), it added nothing the market had not already priced.</div>
-    <div><b>Where it comes from.</b> ${DD.games} regular-season games (${esc(DD.season)}, through ${esc(DD.through)}), ESPN play-by-play, shot positions by court coordinates. It refreshes each morning with the night before's games; early in a season last year's games are blended in, each team's weight on the new season being its games played out of 15. Splitting ${esc(wk.season)} in half, a team's rank held up at ${wk.team_rank['zone.ra']} for the rim, ${wk.team_rank['zone.paint']} paint, ${wk.team_rank['zone.mid']} mid-range, ${wk.team_rank['zone.c3']} corner threes and ${wk.team_rank['zone.ab3']} above-the-break threes, and a player's own mix held up at ${wk.player_share['zone.ra']} to ${wk.player_share['zone.ab3']}. A player under ${DD.thin.fga} shots reads as a thin sample.</div>
+  $('mufoot').innerHTML = `<div><b>How to read it.</b> The court is a real half-court: the lane is painted in the defending team's color and the logo sits at midcourt. Zone color is how many shots the defense lets up there per 48 minutes against the league average: green is a soft spot (it gives up the most), red a tough one, with the rank out of 30. The glow is the selected starter's own shots, by 4-foot square, from ESPN play-by-play coordinates. The SHOTS number multiplies each zone's share of his shots by how far the defense sits from average there and adds them up. It counts <b>shot opportunity, not shot quality</b>. <b>Context, not a bet:</b> tested against Kalshi and sportsbook prices on 2025-26 (docs/diet-test.md), it added nothing the market had not already priced.</div>
+    <div><b>Where it comes from.</b> ${DD.games} regular-season games (${esc(DD.season)}, through ${esc(DD.through)}), regular season only. It refreshes each morning with the night before's games; early in a season last year's games are blended in, each team's weight on the new season being its games played out of 15. Splitting ${esc(wk.season)} in half, a team's rank held up at ${wk.team_rank['zone.ra']} for the rim, ${wk.team_rank['zone.paint']} paint, ${wk.team_rank['zone.mid']} mid-range, ${wk.team_rank['zone.c3']} corner threes and ${wk.team_rank['zone.ab3']} above-the-break threes, and a player's own mix held up at ${wk.player_share['zone.ra']} to ${wk.player_share['zone.ab3']}. A player under ${DD.thin.fga} shots reads as a thin sample. The balls in flight are a picture: each one leaves from a spot weighted by where he really shoots, and none of them is a real shot.</div>
     <div><b>Fast break</b> is a shot within 5 seconds of a steal or a defensive rebound: a timing estimate from play-by-play, not tracking data (its rank held at ${wk.team_rank['trans.trans']} half to half). Pick and roll, isolation, spot up and the other play types are not here: this feed does not carry them.</div>`;
+  muStartShots();
 }
 $('v-matchups').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.mud !== undefined){ mu.day = b.dataset.mud; mu.gid = null; mu.pi = 0; }
-  else if (b.dataset.mug !== undefined){ mu.gid = b.dataset.mug; mu.pi = 0; }
-  else if (b.dataset.mus !== undefined){ mu.side = +b.dataset.mus; mu.pi = 0; }
+  const z = e.target.closest('.mu2-zone, .mu2-pill, .mu2-cs'), b = e.target.closest('button');
+  if (z && z.dataset.z && !b){ mu.lock = mu.zone === z.dataset.z ? !mu.lock : true; mu.zone = z.dataset.z; renderMatchups(); return; }
+  if (!b) return;
+  if (b.dataset.mud !== undefined){ mu.day = b.dataset.mud; mu.gid = null; mu.pi = 0; mu.zone = null; }
+  else if (b.dataset.mug !== undefined){ mu.gid = b.dataset.mug; mu.pi = 0; mu.zone = null; }
+  else if (b.dataset.mus !== undefined){ mu.side = +b.dataset.mus; mu.pi = 0; mu.zone = null; }
   else if (b.dataset.muw !== undefined){ mu.vw = b.dataset.muw; }
   else if (b.dataset.mup !== undefined){ mu.pi = +b.dataset.mup; }
+  else if (b.dataset.mul !== undefined){ mu.live = !mu.live; if (!mu.live) $('mu2-balls').innerHTML = ''; }
   else return;
   renderMatchups();
+});
+$('v-matchups').addEventListener('pointerover', e => {       // hover previews a zone without a re-render; a click locks it
+  const z = e.target.closest('.mu2-zone, .mu2-pill, .mu2-cs'); if (!z || !z.dataset.z || mu.lock || !mu.ctx) return;
+  const box = $('mu2-zd'); if (!box || box.dataset.z === z.dataset.z) return; box.dataset.z = z.dataset.z;
+  box.innerHTML = muZoneDetail(mu.ctx.def, null, mu.ctx.P, z.dataset.z);
+  document.querySelectorAll('.mu2-zone').forEach(n => n.classList.toggle('on', n.dataset.z === z.dataset.z));
 });
 function muLink(g, B, status){                              // the Slate's one line per game: the two best shot fits and a way in
   if (!DD) return '';
