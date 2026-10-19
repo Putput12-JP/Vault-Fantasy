@@ -114,6 +114,10 @@ So **no free source carries Synergy play types.** One of them can be derived hon
 
 Both pass the 0.36 cut, so Transition is shown: a team-card row and a Fast chip when the defense is in the top or bottom six. It is not in the SHOTS score (that stays zones only, as tested). Isolation, pick and roll, spot up, handoff, off screen and post up remain unavailable.
 
+## UI decision (2026-10-19)
+
+Three page options were mocked with tonight's real data (`nba/mocks/courtai/`): a player board, defense sheets and a game court. The game court was chosen and built as the **Matchups** page (`#matchups`, under Research). The Slate went back to one line per game card with the two best shot fits and a link in.
+
 ## Open questions (unknown, not assumed)
 
 - **Remaining play types.** Need a Synergy-like feed. None found free and reachable. A paid feed or the NBA's own tracking access is the only route.
