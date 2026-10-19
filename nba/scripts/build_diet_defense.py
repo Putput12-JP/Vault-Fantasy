@@ -3,9 +3,15 @@
 Shot diet and defense sheet for the Slate page: where each player's shots and assists come from, and how much of each every team
 allows. Context, not an edge (see docs/courtai-teardown.md and the persistence block this writes).
 
-  python3 nba/scripts/fetch_hoopr.py --pbp 2026      # ESPN play-by-play (~290 MB, once)
-  python3 nba/scripts/build_diet_defense.py [season]  # default: newest pbp file in raw/hoopr
+  python3 nba/scripts/fetch_hoopr.py --only-pbp 2026 2027   # ESPN play-by-play, ~290 MB a season (the daily job does this)
+  python3 nba/scripts/build_diet_defense.py [--raw DIR]      # reads every raw/hoopr/pbp_<season>.csv
 Writes nba/data/diet_defense.json
+
+Rolling: the daily job refetches the current season's file (hoopR rebuilds it overnight, so each morning it holds games through the night
+before) and keeps the last full season. Until the new season has enough games the two are blended, the way build_matchups.py does:
+  * a defense's rates weight the new season by games played / MIN_GAMES (15), all new from game 15 on;
+  * a player's shot counts take the prior season at a weight that falls linearly to zero as his new-season attempts reach THIN_FGA.
+Persistence (and so which zones are used) always comes from the last FULL season, split in half.
 
 Source is ESPN play-by-play through hoopR, because stats.nba.com is unreachable from here and from CI. That limits what exists:
   * Zones come from shot coordinates (feet, hoop at x=25, y=0, far end mirrored): restricted area <= 4 ft, paint non-RA inside the
@@ -100,17 +106,17 @@ def pearson(a, b):
     return None if va == 0 or vb == 0 else sum((x - ma) * (y - mb) for x, y in zip(a, b)) / math.sqrt(va * vb)
 
 
-def newest_file(season=None):
-    fs = sorted(glob.glob(os.path.join(RAW, 'pbp_*.csv')))
-    if season:
-        fs = [f for f in fs if f.endswith(f'pbp_{season}.csv')]
-    if not fs:
-        sys.exit('no raw/hoopr/pbp_<season>.csv: run nba/scripts/fetch_hoopr.py --pbp <season> first')
-    return fs[-1]
+
+FULL_SEASON_GAMES = 1230            # 30 teams x 82 games / 2: a season file with fewer regular-season games is still being played
+MIN_GAMES = 15                      # same blend rule as build_matchups.py
+
+
+def season_files(raw):
+    return sorted(glob.glob(os.path.join(raw, 'pbp_*.csv')))
 
 
 def read(path):
-    """-> shots [(date, game, shooter, name, shooter_team, opp_team, slices dict, assister)], periods per game, season label."""
+    """-> (shots, game_periods, season) for one pbp file. shots are regular-season two and three point attempts with a coordinate."""
     shots, maxp, abbr, season = [], defaultdict(int), {}, None
     with open(path, newline='') as fh:
         for r in csv.DictReader(fh):
@@ -137,22 +143,19 @@ def read(path):
                 continue
             opp = away if tm == home else home
             z, d = zone(x, y, r['points_attempted'] == '3')
-            made = r['scoring_play'] == 'true'
-            ast = r['athlete_id_2'] if made and r['athlete_id_2'] and ' assists)' in r['text'] else ''
+            ast = r['athlete_id_2'] if r['scoring_play'] == 'true' and r['athlete_id_2'] and ' assists)' in r['text'] else ''
             shots.append((r['game_date'], g, r['athlete_id_1'], r['athlete_name_1'], abbr[tm], abbr[opp], z, kind(r['type_text']),
                           assist_loc(z, d) if ast else None, ast, r['athlete_name_2'] if ast else ''))
     return shots, maxp, season
 
 
-def build(path):
-    shots, maxp, season = read(path)
+def aggregate(shots, maxp):
+    """One season -> per defense rates per 48 (whole season and each half), per player counts, game count, last date."""
     days = sorted({s[0] for s in shots})
     mid = days[len(days) // 2]
     mins = {g: 48 + 5 * max(0, p - 4) for g, p in maxp.items()}
-    games = defaultdict(set)                                             # team -> game ids
-    allow = defaultdict(lambda: defaultdict(float))                      # (team, half) -> (cat, key) -> attempts per 48 summed over games
-    allow_g = defaultdict(set)
-    ng = defaultdict(int)
+    allow = defaultdict(lambda: defaultdict(float))                      # (team, half or None) -> (cat, key) -> attempts per 48, summed over games
+    gms = defaultdict(set)                                               # (team, half or None) -> games the defense played
     pl = defaultdict(lambda: {'n': 0, 'a': 0, 'zone': defaultdict(int), 'kind': defaultdict(int), 'ast': defaultdict(int), 'team': '', 'name': '',
                               'half': [defaultdict(int), defaultdict(int)], 'hn': [0, 0], 'day': ''})
     for (day, g, pid, name, team, opp, z, k, al, aid, aname) in shots:
@@ -163,9 +166,9 @@ def build(path):
             tgt[('zone', z)] += w
             if k:
                 tgt[('kind', k)] += w
-        games[opp].add(g)
-        allow_g[(opp, h)].add(g)
-        games[team].add(g)
+            if al:
+                tgt[('ast', al)] += w
+            gms[(opp, half)].add(g)
         p = pl[pid]
         p['n'] += 1
         p['zone'][z] += 1
@@ -181,41 +184,60 @@ def build(path):
             q['ast'][al] += 1
             if not q['name']:
                 q['name'] = aname
-    # assists allowed per 48 (by the assisted shot's location), with the same per-game scaling
-    for (day, g, pid, name, team, opp, z, k, al, aid, aname) in shots:
-        if al:
-            h = 0 if day < mid else 1
-            w = 48.0 / mins[g]
-            allow[(opp, None)][('ast', al)] += w
-            allow[(opp, h)][('ast', al)] += w
-    teams = sorted(t for t in games if len(games[t]) >= MIN_TEAM_G)
-    # games played by a defense, for per-game rates, from the games its opponents shot in
-    dg = defaultdict(set)
-    for (day, g, pid, name, team, opp, *_r) in shots:
-        dg[opp].add(g)
-    def rate(t, half, cat, key):
-        n = len(dg[t]) if half is None else len(allow_g[(t, half)])
-        return allow[(t, half)][(cat, key)] / n if n else None
-    out_t, league = {t: {'g': len(dg[t]), 'zone': {}, 'kind': {}, 'ast': {}} for t in teams}, {'zone': {}, 'kind': {}, 'ast': {}}
+    return {'allow': allow, 'gms': {k: len(v) for k, v in gms.items()}, 'pl': pl, 'games': len({s[1] for s in shots}), 'through': days[-1]}
+
+
+def rate(A, t, half, cat, key):
+    n = A['gms'].get((t, half), 0)
+    return A['allow'][(t, half)][(cat, key)] / n if n else None
+
+
+def build(raw):
+    seasons = {}
+    for f in season_files(raw):
+        shots, maxp, season = read(f)
+        if shots:                                                        # an empty or not-yet-started season file is skipped
+            seasons[int(season)] = aggregate(shots, maxp)
+    if not seasons:
+        sys.exit('no usable raw/hoopr/pbp_<season>.csv: run nba/scripts/fetch_hoopr.py --only-pbp <season> first')
+    newest = max(seasons)
+    full = [s for s in seasons if seasons[s]['games'] >= FULL_SEASON_GAMES]
+    base = max(full) if full else newest                                 # persistence and the prior rates come from the last full season
+    cur = seasons[newest]
+    prior = seasons[base] if base != newest else None
+    A0 = seasons[base]
+    teams = sorted(t for (t, h) in A0['gms'] if h is None and A0['gms'][(t, None)] >= MIN_TEAM_G)
+    lab = lambda s: f'{s - 1}-{str(s)[2:]}'
+    # per-team weight on the new season
+    wt = {t: min(1.0, cur['gms'].get((t, None), 0) / MIN_GAMES) if prior else 1.0 for t in teams}
+    def blended(t, cat, key):
+        new, old = rate(cur, t, None, cat, key), rate(prior, t, None, cat, key) if prior else None
+        if prior is None:
+            return rate(A0, t, None, cat, key)
+        if new is None:
+            return old
+        return wt[t] * new + (1 - wt[t]) * old if old is not None else new
+    out_t = {t: {'g': (cur['gms'].get((t, None), 0) if prior else A0['gms'][(t, None)]), 'w': round(wt[t], 2), 'zone': {}, 'kind': {}, 'ast': {}} for t in teams}
+    league = {'zone': {}, 'kind': {}, 'ast': {}}
     for cat, sl in CATS:
         for key, _ in sl:
-            vals = {t: rate(t, None, cat, key) for t in teams}
+            vals = {t: blended(t, cat, key) for t in teams}
             mean = sum(vals.values()) / len(vals)
             league[cat][key] = round(mean, 2)
             for i, t in enumerate(sorted(teams, key=lambda t: -vals[t])):
                 out_t[t][cat][key] = [round(vals[t], 2), i + 1, round((vals[t] / mean - 1) * 100, 1)]
-    # persistence: first half of the season vs second half
-    pers = {'team_rank': {}, 'player_share': {}}
+    # persistence: first half of the last full season vs its second half
+    pers = {'season': lab(base), 'team_rank': {}, 'player_share': {}}
     for cat, sl in CATS:
         for key, _ in sl:
-            a = {t: rate(t, 0, cat, key) for t in teams}
-            b = {t: rate(t, 1, cat, key) for t in teams}
+            a = {t: rate(A0, t, 0, cat, key) for t in teams}
+            b = {t: rate(A0, t, 1, cat, key) for t in teams}
             a, b = {t: v for t, v in a.items() if v is not None}, {t: v for t, v in b.items() if v is not None}
             r = spearman(a, b)
             pers['team_rank'][f'{cat}.{key}'] = None if r is None else round(r, 2)
     for key, _ in ZONES:
         xs, ys = [], []
-        for p in pl.values():
+        for p in A0['pl'].values():
             if p['hn'][0] >= 100 and p['hn'][1] >= 100:
                 xs.append(p['half'][0][key] / p['hn'][0])
                 ys.append(p['half'][1][key] / p['hn'][1])
@@ -225,33 +247,42 @@ def build(path):
     # a slice whose team ranking does not carry from one half of the season to the other is noise, not a defense trait. The cut is the
     # two-sided 5% critical correlation for the 30 teams (t = 2.048 on 28 degrees of freedom), not a tuned number.
     n_t = len(teams)
-    tcrit = {28: 2.048}.get(n_t - 2, 2.048)
+    tcrit = 2.048
     pers['weak_below'] = round(tcrit / math.sqrt(n_t - 2 + tcrit ** 2), 2)
     pers['weak'] = sorted(k for k, v in pers['team_rank'].items() if v is None or v < pers['weak_below'])
+    # players: this season's counts plus the prior season's at a weight that falls to zero as the new-season attempts reach THIN_FGA / THIN_AST
     players = {}
-    for pid, p in pl.items():
-        if p['n'] < MIN_FGA_PLAYER or not p['team']:
+    for pid in set(cur['pl']) | (set(prior['pl']) if prior else set()):
+        c, o = cur['pl'].get(pid), prior['pl'].get(pid) if prior else None
+        kf = 0.0 if o is None else max(0.0, 1 - (c['n'] if c else 0) / THIN_FGA)
+        ka = 0.0 if o is None else max(0.0, 1 - (c['a'] if c else 0) / THIN_AST)
+        n = (c['n'] if c else 0) + (kf * o['n'] if o else 0)
+        if n < MIN_FGA_PLAYER or not (c or o):
             continue
-        e = {'name': p['name'], 'team': p['team'], 'fga': p['n'], 'ast': p['a'], 'thin': p['n'] < THIN_FGA,
-             'zone': {k: round(p['zone'][k] / p['n'], 3) for k, _ in ZONES},
-             'kind': {k: round(p['kind'][k] / p['n'], 3) for k, _ in KINDS}}
-        if p['a']:
-            e['ast_share'] = {k: round(p['ast'][k] / p['a'], 3) for k, _ in ASSISTS}
-            e['ast_thin'] = p['a'] < THIN_AST
+        ref = c if c and (not o or c['day'] >= o['day']) else o
+        e = {'name': ref['name'], 'team': ref['team'], 'fga': round(n), 'ast': round((c['a'] if c else 0) + (ka * o['a'] if o else 0)), 'thin': n < THIN_FGA,
+             'zone': {k: round(((c['zone'][k] if c else 0) + (kf * o['zone'][k] if o else 0)) / n, 3) for k, _ in ZONES},
+             'kind': {k: round(((c['kind'][k] if c else 0) + (kf * o['kind'][k] if o else 0)) / n, 3) for k, _ in KINDS}}
+        a_n = (c['a'] if c else 0) + (ka * o['a'] if o else 0)
+        if a_n:
+            e['ast_share'] = {k: round(((c['ast'][k] if c else 0) + (ka * o['ast'][k] if o else 0)) / a_n, 3) for k, _ in ASSISTS}
+            e['ast_thin'] = a_n < THIN_AST
         players[pid] = e
-    return {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'),
-            'season': f'{int(season) - 1}-{str(season)[2:]}', 'through': days[-1], 'games': len({s[1] for s in shots}),
-            'source': 'ESPN play-by-play (hoopR), regular season',
-            'cats': {c: [[k, lab] for k, lab in sl] for c, sl in CATS},
+    games = cur['games'] + (prior['games'] if prior else 0)
+    label = f'{lab(base)} blended with {lab(newest)}' if prior and min(wt.values()) < 1 else lab(newest)
+    return {'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'season': label, 'through': cur['through'],
+            'games': games, 'games_new': cur['games'] if prior else None, 'blend': round(sum(wt.values()) / len(wt), 2) if prior else 1.0,
+            'source': 'ESPN play-by-play (hoopR), regular season', 'cats': {c: [[k, lab_] for k, lab_ in sl] for c, sl in CATS},
             'thin': {'fga': THIN_FGA, 'ast': THIN_AST}, 'league': league, 'teams': out_t, 'players': players, 'persistence': pers,
             'coverage': 'No Synergy play types (transition, isolation, pick and roll, spot up, handoff, off screen, post up): the feed does not carry them. '
                         'Kinds are ESPN shot labels. Rate = opponent attempts per 48; rank 1 allows the most.'}
 
 
 if __name__ == '__main__':
-    out = build(newest_file(sys.argv[1] if len(sys.argv) > 1 else None))
+    raw = sys.argv[sys.argv.index('--raw') + 1] if '--raw' in sys.argv else RAW
+    out = build(raw)
     json.dump(out, open(os.path.join(DATA, 'diet_defense.json'), 'w'), separators=(',', ':'))
-    print('season', out['season'], 'through', out['through'], 'games', out['games'], 'teams', len(out['teams']), 'players', len(out['players']))
-    print('team rank persistence (first vs second half):', out['persistence']['team_rank'])
+    print('season', out['season'], 'through', out['through'], 'games', out['games'], 'blend', out['blend'], 'teams', len(out['teams']), 'players', len(out['players']))
+    print('team rank persistence (%s, first vs second half):' % out['persistence']['season'], out['persistence']['team_rank'])
     print('player share persistence:', out['persistence']['player_share'], 'n', out['persistence']['player_share_n'])
     print('league', out['league']['zone'])
