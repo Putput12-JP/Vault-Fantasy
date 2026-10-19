@@ -438,22 +438,7 @@
       (chips.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">' + chips.join('') + '</div>' : '') + '</div>';
   }
   /* The V2 record: count and units of every logged play, then the latest results. */
-  /* The settled plays backfilled from a finished slate (data/v2_backfill.json) are counted in the record. This lists them, with what they are, so they are never mistaken for live plays. */
-  function backfillHtml(F, pal) {
-    var B = F.backfill; if (!B || !B.plays) return '';
-    var rows = Object.keys(B.plays).map(function (k) { return B.plays[k]; }).filter(function (p) { return p.status === 'won' || p.status === 'lost' || p.status === 'push'; }).sort(function (a, b) { return a.start - b.start; });
-    if (!rows.length) return '';
-    var w = rows.filter(function (p) { return p.status === 'won'; }).length, l = rows.filter(function (p) { return p.status === 'lost'; }).length, units = rows.reduce(function (s2, p) { return s2 + (p.units || 0); }, 0);
-    var su = function (u) { var r = Math.round(u * 10) / 10 || 0; return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + 'u'; };
-    var early = rows.map(function (p) { return p.hoursEarly; }).filter(function (x) { return x != null; }).sort(function (a, b) { return a - b; }), med = early.length ? early[Math.floor(early.length / 2)] : null;
-    var list = rows.map(function (p) {
-      var f = p.first, st = p.status, col = st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.mut;
-      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid ' + pal.line + '"><div style="min-width:0"><div style="font-weight:600;font-size:13.5px">' + ESC(f.title) + '</div><div style="font-size:11.5px;color:' + pal.mut + '">' + ESC(f.price.book) + ' ' + am(f.price.am) + ' · Pinnacle ' + spct(f.refs[0].edge) + ' · exchange close ' + spct(f.refs[1].edge) + (p.hoursEarly != null ? ' · seen ' + Math.round(p.hoursEarly) + ' h early' : '') + '</div></div><div style="text-align:right;white-space:nowrap;font-weight:700;color:' + col + '">' + (st === 'won' ? 'Won' : st === 'lost' ? 'Lost' : 'Push') + '<div style="font-size:12px">' + su(p.units) + '</div></div></div>';
-    }).join('');
-    return '<details style="margin-top:10px;border:1px dashed ' + mix(pal.warn, 60) + ';border-radius:16px;padding:10px 14px;color:' + pal.text + ';background:' + mix(pal.warn, 5) + '"><summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:' + pal.warn + '">Backfilled plays counted above: ' + rows.length + ' from ' + ESC(B.date) + ' (' + w + '-' + l + ', ' + su(units) + ')</summary>' +
-      '<div style="font-size:12.5px;color:' + pal.mut + ';margin:6px 0">Added after the fact. The second fair price is the exchange <b>close</b>, which was not known when the price was taken, and the prices were first seen ' + (med != null ? 'about ' + Math.round(med) + ' hours' : 'days') + ' before kickoff. They read better than live plays will. Moneylines were replayed from the book tape with no hindsight' + (B.moneyline_replay ? ': ' + B.moneyline_replay.games + ' games, ' + B.moneyline_replay.plays + ' plays' : '') + '.</div>' + list + '</details>';
-  }
-  function recordHtml(F, pal) { return recordCore(F, pal) + backfillHtml(F, pal); }
+  function recordHtml(F, pal) { return recordCore(F, pal); }
   function recordCore(F, pal) {
     var PL = F.plays, rows = rowsAll(F), bfn = rows.filter(function (r) { return r.p.backfill; }).length, live = rows.filter(function (r) { return !r.p.backfill; }), ls = stat(live), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), ws = wins.reduce(function (a, b) { return a + b; }, 0);
@@ -467,10 +452,10 @@
       big('ROI', roi == null ? '-' : spct(roi), s.n ? 'without top ' + (wins.length || 5) + ' wins ' + su((s.units || 0) - ws) : 'after the first result'),
       big('CLV vs close', s.clv == null ? '-' : spct(s.clv), s.clvN + ' with an exchange close', s.clv > 0 ? pal.good : s.clv < 0 ? pal.bad : null)];
     var recent = rows.filter(function (r) { return r.p.status !== 'open'; }).sort(function (a, b) { return b.p.start - a.p.start; }).slice(0, 8);
-    var list = recent.length ? '<div style="margin-top:10px">' + recent.map(function (r) {
+    var list = recent.length ? '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:' + pal.mut + '">Latest results · ' + recent.length + ' of ' + rows.filter(function (r) { return r.p.status !== 'open'; }).length + ' settled</summary>' + recent.map(function (r) {
       var p = r.p, f = p.first || {}, st = p.status, col = st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.mut;
       return '<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid ' + pal.line + '"><div style="min-width:0"><div style="font-weight:600;font-size:14px">' + ESC(f.title) + '</div><div style="font-size:12px;color:' + pal.mut + '">' + ESC((f.price || {}).book) + ' ' + am((f.price || {}).am) + ' · ' + SPORT[p.sport] + (p.clv != null ? ' · CLV ' + spct(p.clv) : '') + (p.backfill ? ' · backfilled' : '') + '</div></div><div style="text-align:right;white-space:nowrap;font-weight:700;color:' + col + '">' + (st === 'won' ? 'Won' : st === 'lost' ? 'Lost' : st === 'push' ? 'Push' : 'Void') + (p.units != null && st !== 'void' ? '<div style="font-size:12px">' + su(p.units) + '</div>' : '') + '</div></div>';
-    }).join('') + '</div>' : '';
+    }).join('') + '</details>' : '';
     var note = !PL || !PL.plays ? 'Not started: the log has not been published yet.' : !rows.length ? 'The log is running. A play is written the first time one clears every gate.' : rows.length + ' play' + (rows.length === 1 ? '' : 's') + ' logged since ' + started + '. Each is saved once at first sight, then graded. ' + (s.n < 100 ? s.n + ' of 100 settled plays before it means much.' : '');
     var lsu = ls.units == null ? '+0.0u' : su(ls.units);
     if (bfn) note = (live.length ? live.length + ' live play' + (live.length === 1 ? '' : 's') + ' since ' + started + ' (' + (ls.n ? ls.w + '-' + ls.l + ', ' + lsu : '0 settled') + '), plus ' : '') + bfn + ' settled plays backfilled from the ' + ESC((F.backfill || {}).date || '') + ' slate. The backfilled ones were chosen with hindsight on the exchange close, so the totals read better than live play will.';
