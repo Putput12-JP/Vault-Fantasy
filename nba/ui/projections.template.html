@@ -1242,6 +1242,7 @@ table.nt.sx-tk{min-width:420px}
 .sv-n{min-width:0;display:flex;flex-direction:column;gap:1px}.sv-n b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sv-n small{font-size:11.5px;color:var(--fg3);font-variant-numeric:tabular-nums}
 .sv-q{font-style:normal;margin-left:6px;font-size:10px;font-weight:700;color:var(--warn);border:1px solid rgba(251,191,36,.45);border-radius:4px;padding:0 4px}
 .sv-mp{display:flex;gap:4px;justify-content:flex-end}
+.sv-dd{grid-column:2 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:4px}.sv-dd:empty{display:none}.sv-ddn{font-size:11px;color:var(--fg3)}
 .mp{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:36px;padding:3px 4px;border-radius:7px;background:var(--raised);font-size:12px;font-weight:600;color:var(--fg2);font-variant-numeric:tabular-nums;line-height:1.15}
 .mp i{font-style:normal;font-size:9.5px;font-weight:500;letter-spacing:.05em;color:var(--fg3)}
 .mp.soft{background:rgba(74,222,128,.14);color:var(--up)}.mp.tough{background:rgba(248,113,113,.14);color:var(--down)}
@@ -1255,7 +1256,7 @@ table.nt.sx-tk{min-width:420px}
 .sv-dr b{font-weight:600;color:var(--fg);text-align:right}.sv-dr .mp{flex-direction:row;justify-content:center;min-width:0;padding:1px 6px;font-size:10.5px;font-weight:500}
 @container svc (max-width:1240px){.sv-body{grid-template-columns:repeat(2,minmax(0,1fr))}.sv-mid{grid-column:1 / -1;order:3}}
 @container svc (max-width:640px){.sv-body{grid-template-columns:minmax(0,1fr)}.sv-mid{display:flex}}
-@container svs (max-width:325px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}}
+@container svs (max-width:325px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}.sv-dd{grid-column:1 / -1;padding-left:54px}}
 .sl-grid.lv{display:flex;flex-direction:column;gap:16px}
 .lv-card{container:lvc / inline-size}.lv-l,.lv-r{min-width:0}.lv-l{display:flex;flex-direction:column}.lv-l>.lv-tiles{border-bottom:1px solid var(--border)}
 @container lvc (min-width:900px){.lv-cols{display:grid;grid-template-columns:clamp(340px,24%,420px) minmax(0,1fr)}.lv-l{border-right:1px solid var(--border)}.lv-tiles{grid-template-columns:minmax(0,1fr)}.lv-tile{border-left:0;border-top:1px solid var(--border);padding:16px 20px}.lv-tile:first-child{border-top:0}.lv-l>.lv-tiles{border-bottom:0}.lv-vault{border-top:1px solid var(--border);border-bottom:0}.lv-r>.lv-spot{margin-top:12px}.lv-board{padding-top:12px}}
@@ -1970,6 +1971,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 // it is blocked the image is dropped and the initials stay.
 const PH = /*PHOTOS*/null;
 const MU = /*MATCHUPS*/null;                       // defense by position (build_matchups.py)
+const DD = /*DIETDEF*/null;                        // shot diet and zone defense (build_diet_defense.py)
 const phSrc = id => (PH && PH.heads[id]) || `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=96&h=70`;
 const phImg = id => id == null ? '' : `<img class="ph" src="${phSrc(id)}" alt="" loading="lazy" onerror="this.remove()">`;
 const phBig = id => `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${id}.png&w=192&h=140`;     // sharper copy for the big header (the website; the artifact keeps the embedded one)
@@ -5280,11 +5282,30 @@ function slateFive(team, g, B, st){
   const five = [...listed, ...rest.slice(0, 5 - listed.length)];
   return {five, tag: conf.length >= 5 ? 'Confirmed' : listed.length ? 'Expected' : 'Projected', note: conf.length >= 5 ? 'NBA.com lineup' : listed.length ? 'NBA.com lists part of the five' : 'depth chart: no official lineup yet'};
 }
+// ── Shot diet vs zone defense (build_diet_defense.py): the share of a player's shots from each zone against how many shots a defense lets up there.
+const DDZ = {ra: ['Rim', 'restricted-area'], paint: ['Paint', 'non-restricted paint'], mid: ['Mid', 'mid-range'], c3: ['Corner 3', 'corner three'], ab3: ['Arc 3', 'above-the-break three']};
+function ddWords(opp, key, r, share){                        // "BOS allows the 2nd most restricted-area attempts per 48 (24.1 vs 23.8 league). 34% of his shots come from there"
+  const most = r[1] <= 15, lg = DD.league.zone[key];
+  return `${opp} allows the ${ordn(most ? r[1] : 31 - r[1])} ${most ? 'most' : 'fewest'} ${DDZ[key][1]} attempts per 48 (${fmt(r[0], 1)} vs ${fmt(lg, 1)} league)${share != null ? `. ${Math.round(share * 100)}% of his shots come from there` : ''}`;
+}
+function ddRead(pid, opp){                                   // score and the two zones that drive it, or null (no file, unknown player or team)
+  const pl = DD && DD.players[String(pid)], tm = DD && DD.teams[opp]; if (!pl || !tm) return null;
+  const weak = new Set(DD.persistence.weak), rows = Object.keys(DDZ).filter(k => !weak.has('zone.' + k) && tm.zone[k]).map(k => ({k, share: pl.zone[k], r: tm.zone[k], c: pl.zone[k] * tm.zone[k][2]}));
+  return {thin: pl.thin, fga: pl.fga, score: rows.reduce((a, x) => a + x.c, 0), why: rows.sort((a, b) => Math.abs(b.c) - Math.abs(a.c)).slice(0, 2)};
+}
+function ddChips(pid, opp){
+  const d = ddRead(pid, opp); if (!d) return '';
+  if (d.thin) return `<span class="sv-ddn" title="${d.fga} shot attempts counted, under ${DD.thin.fga}: his shot mix is not settled enough to compare">thin shot sample</span>`;
+  const cls = r => r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : '';
+  return `<span class="mp ${d.score >= 1 ? 'soft' : d.score <= -1 ? 'tough' : ''}" title="Shot diet against ${esc(opp)}: each zone's share of his shots times how far above (+) or below (-) average ${esc(opp)} lets shots up there, summed. Opportunity, not shot quality. Context, not a bet."><i>SHOTS</i>${d.score >= 0 ? '+' : '−'}${Math.abs(d.score).toFixed(1)}%</span>` +
+    d.why.map(x => `<span class="mp ${cls(x.r)}" title="${esc(ddWords(opp, x.k, x.r, x.share))}"><i>${DDZ[x.k][0]} ${Math.round(x.share * 100)}%</i>${ordn(x.r[1])}</span>`).join('');
+}
 function svDef(t){                                          // one team's defense: the model's rank, then what it gives up per game
   const G = MS && MS.game, rk = (o2, k) => Object.keys(o2).sort((a, b) => o2[b] - o2[a]).indexOf(k) + 1;
   const pl = r => `<span class="mp ${r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : ''}">${r[1] <= 15 ? ordn(r[1]) + ' most' : ordn(31 - r[1]) + ' fewest'}</span>`;
   const row = (l, v, pill, tip) => `<div class="sv-dr" title="${esc(tip || '')}"><span>${l}</span><b>${v}</b>${pill}</div>`;
   const rows = [G && G.D && G.D[t] != null ? row('Defense (Vault)', sgn(G.D[t]), `<span class="mp">${ordn(rk(G.D, t))} best</span>`, 'Points held below the league base, from the game model') : '',
+    ...(DD && DD.teams[t] ? Object.keys(DDZ).filter(k => DD.teams[t].zone[k]).map(k => { const r = DD.teams[t].zone[k]; return row(`${DDZ[k][0]} shots allowed /48`, fmt(r[0], 1), pl(r), ddWords(t, k, r) + `. ${DD.season} regular season, ESPN play-by-play`); }) : []),
     ...(MU && MU.teams[t] ? [['pts', 'Points allowed'], ['reb', 'Rebounds allowed'], ['ast', 'Assists allowed'], ['3pm', 'Threes allowed'], ['tpa', 'Three attempts allowed']].map(([k, l]) => { const r = MU.teams[t].all[k]; return r ? row(l, fmt(r[0], 1), pl(r), `${l} per game, ${MU.season} regular season`) : ''; }) : [])].join('');
   return rows ? `<div class="sv-df"><h4>${t} defense, per game${MU ? ` · ${MU.season}` : ''}</h4>${rows}</div>` : '';
 }
@@ -5297,7 +5318,7 @@ function svSide(team, opp, g, B, st){
     const m = g.season_type >= 2 && gm[p.id] ? gm[p.id].min : p.min0, flags = st[p.id] && !/^(Out|Inactive)/.test(st[p.id]) ? `<em class="sv-q" title="${esc(st[p.id])}">${esc(st[p.id].slice(0, 1))}</em>` : '';
     const SL = p.slot ? p.slot.toUpperCase() : null;
     for (const [s] of MUS){ const r = muGet(opp, SL, s); if (r && (r[1] <= 5 || r[1] >= 26)) notes.push({p, team, opp, s, r, soft: r[1] <= 5, x: Math.min(r[1], 31 - r[1])}); }
-    return `<div class="sv-p">${cutImg(p.id, p.name, 38)}<div class="sv-n"><b>${esc(p.name)}${flags}</b><small>${SL || esc(p.pos)} · ${fmt(m, 0)} min</small></div><div class="sv-mp">${MUS.map(([s]) => muPill(opp, SL, s)).join('')}</div></div>`;
+    return `<div class="sv-p">${cutImg(p.id, p.name, 38)}<div class="sv-n"><b>${esc(p.name)}${flags}</b><small>${SL || esc(p.pos)} · ${fmt(m, 0)} min</small></div><div class="sv-mp">${MUS.map(([s]) => muPill(opp, SL, s)).join('')}</div>${DD ? `<div class="sv-dd">${ddChips(p.id, opp)}</div>` : ''}</div>`;
   }).join('');
   const sts = Object.entries(st).filter(([pid, v]) => /^(Out|Inactive|Doubtful|Questionable)/.test(v)), ids = new Set(T.players.map(p => p.id));
   const hurt = sts.map(([pid, v]) => ({p: T.players.find(x => x.id === +pid), v})).filter(x => x.p && ids.has(x.p.id) && x.p.min0 >= 8).sort((a, b) => b.p.min0 - a.p.min0);
@@ -5372,7 +5393,8 @@ function renderSlate(){
   if (!lines){
     const per = MU && MU.persistence || {};
     $('sfoot').innerHTML = `<div><b>Starting fives.</b> Confirmed means NBA.com has posted the lineup; Expected means it lists part of the five; Projected is the depth chart until lineups post. Minutes are the Minutes Lab's game-day numbers. Out and doubtful come from the official injury report and the books' news.</div>
-      <div><b>Defense by position.</b> Each pill is how many points, rebounds, assists and threes a team gave up per game to players at that depth-chart position, ranked 1 to 30 (1st gives up the most; green is a soft spot, red a tough one). It starts from last season's regular season and blends in this season's games as they are played (a team's weight on this season is its games played out of 15, then fully this season); right now: ${MU ? MU.season : 'n/a'}. Players with no depth slot are left out. <b>Context, not an edge.</b> Splitting last season in half, a team's rank in one half barely predicted the other (rank correlation ${per.pts != null ? per.pts : 'n/a'} for points, ${per.reb != null ? per.reb : 'n/a'} for rebounds, ${per.ast != null ? per.ast : 'n/a'} for assists, ${per['3pm'] != null ? per['3pm'] : 'n/a'} for threes), and the books already know these ranks.</div>`;
+      <div><b>Defense by position.</b> Each pill is how many points, rebounds, assists and threes a team gave up per game to players at that depth-chart position, ranked 1 to 30 (1st gives up the most; green is a soft spot, red a tough one). It starts from last season's regular season and blends in this season's games as they are played (a team's weight on this season is its games played out of 15, then fully this season); right now: ${MU ? MU.season : 'n/a'}. Players with no depth slot are left out. <b>Context, not an edge.</b> Splitting last season in half, a team's rank in one half barely predicted the other (rank correlation ${per.pts != null ? per.pts : 'n/a'} for points, ${per.reb != null ? per.reb : 'n/a'} for rebounds, ${per.ast != null ? per.ast : 'n/a'} for assists, ${per['3pm'] != null ? per['3pm'] : 'n/a'} for threes), and the books already know these ranks.</div>
+      ${DD ? `<div><b>Shot diet.</b> Under each starter: the share of his shots from each zone (rim, paint, mid-range, corner three, above-the-break three) against how many shots the other team lets up there per 48 minutes, ranked 1 to 30 (1st lets up the most). SHOTS is those two things multiplied and summed: how many more (+) or fewer (−) shots than average this defense gives up in the spots he shoots from. It counts <b>opportunity, not shot quality</b>, and it is not a bet: the books already know it. From ${DD.games} regular-season games (${DD.season}, through ${DD.through}), ESPN play-by-play, shot positions by court coordinates. It refreshes each morning with the night before's games; early in a season last year's games are blended in, each team's weight on the new season being its games played out of 15. Zones that did not hold from the first half of the season to the second (rank correlation under ${DD.persistence.weak_below}) are not used. Splitting ${DD.persistence.season} in half, a team's rank held up at ${DD.persistence.team_rank['zone.ra']} for the rim, ${DD.persistence.team_rank['zone.paint']} paint, ${DD.persistence.team_rank['zone.mid']} mid-range, ${DD.persistence.team_rank['zone.c3']} corner threes and ${DD.persistence.team_rank['zone.ab3']} above-the-break threes, and a player's own mix held up at ${DD.persistence.player_share['zone.ra']} to ${DD.persistence.player_share['zone.ab3']}. Pick and roll, isolation, transition and the other play types are not here: this feed does not carry them. A player under ${DD.thin.fga} shots shows "thin shot sample".</div>` : ''}`;
     return;
   }
   $('sfoot').innerHTML = `

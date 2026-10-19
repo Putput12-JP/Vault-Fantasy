@@ -11,6 +11,7 @@ Season label = the year the season ENDS (2026 = the 2025-26 season).
   python3 nba/scripts/fetch_hoopr.py                 # default seasons
   python3 nba/scripts/fetch_hoopr.py 2024 2025 2026  # explicit
   python3 nba/scripts/fetch_hoopr.py --pbp 2026      # also play-by-play (~280 MB/season)
+  python3 nba/scripts/fetch_hoopr.py --only-pbp 2026 2027   # play-by-play alone (the daily job's shot diet step)
 
 Writes nba/raw/hoopr/<kind>_<season>.csv (raw/ is gitignored).
 """
@@ -46,11 +47,12 @@ def download(tag, name, dest, force=False):
 
 
 def main(argv):
-    pbp = '--pbp' in argv
+    only_pbp = '--only-pbp' in argv
+    pbp = '--pbp' in argv or only_pbp
     force = '--force' in argv
     seasons = [int(a) for a in argv if a.isdigit()] or DEFAULT_SEASONS
     os.makedirs(OUT, exist_ok=True)
-    kinds = dict(KINDS)
+    kinds = {} if only_pbp else dict(KINDS)
     if pbp:
         kinds['pbp'] = PBP
     for s in seasons:

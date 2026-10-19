@@ -6,6 +6,8 @@
 #   build_player_projections  default minutes (follow this season's minutes once games are played) and rates
 #   build_gamelogs            per-player game logs: L5 / L10 / L20 / season / H2H hit rates
 #   build_model_state         prop model v2 inputs: defense by position, pace, scoring, shooting, minutes swing
+#   fetch_hoopr.py --only-pbp + build_diet_defense   shot diet by zone vs zone defense (this season's play-by-play, refetched each morning
+#                             so it holds the night before's games; last season's file is cached; early in a season the two are blended)
 #   prop_board, build_data_health   refresh the page's snapshots, then re-render nba/projections.html
 # Model REFITS (build_prop_model_v2.py) need the local price archive and stay manual.
 name: NBA daily refresh
@@ -38,6 +40,25 @@ jobs:
           CUR=$(( 10#$M >= 8 ? Y + 1 : Y ))        # season label = the year it ends
           python3 nba/scripts/fetch_hoopr.py $((CUR-3)) $((CUR-2)) $((CUR-1)) $CUR
 
+      - name: Season labels
+        id: season
+        run: |
+          Y=$(date -u +%Y); M=$(date -u +%m)
+          CUR=$(( 10#$M >= 8 ? Y + 1 : Y ))
+          echo "cur=$CUR" >> "$GITHUB_OUTPUT"
+          echo "prior=$((CUR-1))" >> "$GITHUB_OUTPUT"
+
+      - name: Cache last season's play-by-play (about 290 MB, never changes)
+        uses: actions/cache@v4
+        with:
+          path: nba/raw/hoopr/pbp_${{ steps.season.outputs.prior }}.csv
+          key: nba-pbp-${{ steps.season.outputs.prior }}
+
+      # A failure here must not block the box score refresh: the page keeps the last diet_defense.json and its "through" date shows how old it is.
+      - name: Play-by-play (this season fresh, last season from cache)
+        continue-on-error: true
+        run: python3 nba/scripts/fetch_hoopr.py --only-pbp ${{ steps.season.outputs.prior }} ${{ steps.season.outputs.cur }}
+
       - name: Rosters and depth charts
         run: python3 nba/scripts/fetch_depth_charts.py
 
@@ -46,6 +67,7 @@ jobs:
           python3 nba/scripts/build_player_projections.py
           python3 nba/scripts/build_gamelogs.py
           python3 nba/scripts/build_matchups.py
+          python3 nba/scripts/build_diet_defense.py || echo "diet/defense not rebuilt; keeping the last file"
           python3 nba/scripts/build_model_state.py
 
       - name: Player photos and team logos
