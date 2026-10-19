@@ -210,7 +210,18 @@
 
   /* ---------- Record ---------- */
   var PLAY_STATE = { won: ['Won', 'success'], lost: ['Lost', 'danger'], push: ['Push', 'default'], void: ['Void', 'default'], open: ['Open', 'accent'] };
-  function v2Rows(PL) { return Object.values((PL && PL.plays) || {}).map(function (p) { var set = p.status === 'won' || p.status === 'lost' || p.status === 'push'; return { p: p, result: p.status === 'won' ? 1 : p.status === 'lost' ? -1 : p.status === 'push' ? 0 : null, fair: p.first && p.first.fairMean, clv: p.clv == null ? null : p.clv, units: set ? p.units : null }; }); }
+  function rowOf(p) {
+    var set = p.status === 'won' || p.status === 'lost' || p.status === 'push', f = p.first || {};
+    var fair = f.fairMean != null ? f.fairMean : (f.refs && f.refs.length ? mean(f.refs.map(function (r) { return r.p; })) : null);
+    return { p: p, result: p.status === 'won' ? 1 : p.status === 'lost' ? -1 : p.status === 'push' ? 0 : null, fair: fair, clv: p.clv == null ? null : p.clv, units: set ? p.units : null };
+  }
+  function v2Rows(PL) { return Object.values((PL && PL.plays) || {}).map(rowOf); }
+  /* The official record: the live log plus the settled plays backfilled from a finished slate (data/v2_backfill.json). Backfilled rows carry p.backfill. */
+  function rowsAll(F) {
+    var rows = v2Rows(F.plays), B = F.backfill;
+    if (B && B.plays) Object.keys(B.plays).forEach(function (k) { var p = B.plays[k]; if (p.status === 'won' || p.status === 'lost' || p.status === 'push') rows.push(rowOf(p)); });
+    return rows;
+  }
   function LedgerCard(u, name, desc, rows) {
     var k = u.k, h = u.h, s = stat(rows), cnt = function (x) { return rows.filter(function (r) { return r.p.status === x; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), wsum = wins.reduce(function (a, b) { return a + b; }, 0);
@@ -229,10 +240,9 @@
       u.kv('Edge claimed at first sight', claimed.length ? spct(mean(claimed)) + ' (' + claimed.length + ')' : '-', 'muted'),
       h(k.T, { size: 'xs' }, desc)));
   }
-  function ForwardLog(u, PL) {
-    var k = u.k, h = u.h;
-    if (!PL || !PL.plays) return h(k.K, { padding: 16 }, h('div', { style: { display: 'grid', gap: 6 } }, h(k.oe, { variant: 'warning' }, 'Not started'), h(k.T, { size: 'sm' }, 'The log of V2 plays has not been published yet. Every play is written here once, at first sight, with the price and both reference prices it showed, then frozen and graded. Until it has 100 settled plays, treat a play as a better price, not a proven edge.')));
-    var rows = v2Rows(PL);
+  function ForwardLog(u, F) {
+    var k = u.k, h = u.h, PL = F.plays, rows = rowsAll(F);
+    if ((!PL || !PL.plays) && !rows.length) return h(k.K, { padding: 16 }, h('div', { style: { display: 'grid', gap: 6 } }, h(k.oe, { variant: 'warning' }, 'Not started'), h(k.T, { size: 'sm' }, 'The log of V2 plays has not been published yet. Every play is written here once, at first sight, with the price and both reference prices it showed, then frozen and graded. Until it has 100 settled plays, treat a play as a better price, not a proven edge.')));
     if (!rows.length) return h(k.K, { padding: 16 }, h(k.M, { size: 'md', weight: 'medium' }, 'No play logged yet'), h('div', null, h(k.T, { size: 'sm' }, 'The log is running. A play is written the first time one clears every gate before kickoff.')));
     var since = Math.min.apply(null, rows.map(function (r) { return r.p.firstSeen; }));
     var recent = rows.slice().sort(function (a, b) { return b.p.firstSeen - a.p.firstSeen; }).slice(0, 20);
@@ -281,7 +291,7 @@
     })));
     var rbRow = function (kk, l) { var x = rb && rb[kk]; return x && x.n ? u.row('minmax(0,1fr) 70px 70px 80px', [h(k.M, { key: 'a', size: 'sm' }, l), h(k.M, { key: 'b', size: 'sm', mono: true }, x.n), h(k.M, { key: 'c', size: 'sm', mono: true }, pct(x.hit)), h(k.se, { key: 'd', tone: x.roi < 0 ? 'bad' : 'ok', size: 'sm', mono: true }, spct(x.roi))].map(u.td), kk) : null; };
     return h('div', { style: { display: 'grid', gap: 14, marginTop: 20 } },
-      h(k.je, { hint: 'written once at first sight, then frozen and graded' }, 'V2 plays'), ForwardLog(u, F.plays),
+      h(k.je, { hint: 'written once at first sight, then frozen and graded' }, 'V2 plays'), ForwardLog(u, F),
       h(k.je, { hint: 'same scoring everywhere; 100+ games to be called' }, 'Every rule, graded'), rulesTable,
       rec ? h(k.K, { padding: 16 }, h('div', { style: { display: 'grid', gap: 6 } }, h('div', { style: { display: 'flex', justifyContent: 'space-between' } }, h(k.T, { size: 'xs', mono: true, style: u.lab }, 'Prop board calls'), h(k.oe, { variant: rec.roi < 0 ? 'danger' : 'warning' }, rec.roi < 0 ? 'Losing' : 'Watch')),
         h(k.M, { size: 'lg', mono: true, weight: 'semibold' }, rec.w + '-' + rec.l), h(k.T, { size: 'sm' }, 'ROI ' + spct(rec.roi) + ' at flat 1 unit on ' + (rec.w + rec.l) + ' settled.'),
@@ -428,50 +438,48 @@
       (chips.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">' + chips.join('') + '</div>' : '') + '</div>';
   }
   /* The V2 record: count and units of every logged play, then the latest results. */
-  /* A flagged hindsight backfill of finished plays (data/v2_backfill.json). Shown by the record, never counted in it. */
+  /* The settled plays backfilled from a finished slate (data/v2_backfill.json) are counted in the record. This lists them, with what they are, so they are never mistaken for live plays. */
   function backfillHtml(F, pal) {
     var B = F.backfill; if (!B || !B.plays) return '';
-    var rows = Object.keys(B.plays).map(function (k) { return B.plays[k]; }).sort(function (a, b) { return a.start - b.start; });
-    var done = rows.filter(function (p) { return p.status === 'won' || p.status === 'lost' || p.status === 'push'; }), w = done.filter(function (p) { return p.status === 'won'; }).length, l = done.filter(function (p) { return p.status === 'lost'; }).length;
-    var units = done.reduce(function (s2, p) { return s2 + (p.units || 0); }, 0), su = function (u) { var r = Math.round(u * 10) / 10 || 0; return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + 'u'; };
+    var rows = Object.keys(B.plays).map(function (k) { return B.plays[k]; }).filter(function (p) { return p.status === 'won' || p.status === 'lost' || p.status === 'push'; }).sort(function (a, b) { return a.start - b.start; });
+    if (!rows.length) return '';
+    var w = rows.filter(function (p) { return p.status === 'won'; }).length, l = rows.filter(function (p) { return p.status === 'lost'; }).length, units = rows.reduce(function (s2, p) { return s2 + (p.units || 0); }, 0);
+    var su = function (u) { var r = Math.round(u * 10) / 10 || 0; return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + 'u'; };
     var early = rows.map(function (p) { return p.hoursEarly; }).filter(function (x) { return x != null; }).sort(function (a, b) { return a - b; }), med = early.length ? early[Math.floor(early.length / 2)] : null;
-    var big = function (label, val, sub, col) { return '<div style="border:1px solid ' + pal.line + ';border-radius:14px;padding:9px 11px;min-width:0"><div style="font-size:10.5px;letter-spacing:.09em;color:' + pal.mut + ';text-transform:uppercase">' + label + '</div><div style="font-size:22px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums;color:' + (col || pal.text) + '">' + val + '</div><div style="font-size:11.5px;color:' + pal.mut + '">' + sub + '</div></div>'; };
     var list = rows.map(function (p) {
       var f = p.first, st = p.status, col = st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.mut;
-      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid ' + pal.line + '"><div style="min-width:0"><div style="font-weight:600;font-size:13.5px">' + ESC(f.title) + '</div><div style="font-size:11.5px;color:' + pal.mut + '">' + ESC(f.price.book) + ' ' + am(f.price.am) + ' · Pinnacle ' + spct(f.refs[0].edge) + ' · exchange close ' + spct(f.refs[1].edge) + ' · seen ' + (p.hoursEarly != null ? Math.round(p.hoursEarly) + ' h early' : '') + '</div></div><div style="text-align:right;white-space:nowrap;font-weight:700;color:' + col + '">' + (st === 'won' ? 'Won' : st === 'lost' ? 'Lost' : st === 'push' ? 'Push' : 'Open') + (p.units != null && st !== 'open' ? '<div style="font-size:12px">' + su(p.units) + '</div>' : '') + '</div></div>';
+      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid ' + pal.line + '"><div style="min-width:0"><div style="font-weight:600;font-size:13.5px">' + ESC(f.title) + '</div><div style="font-size:11.5px;color:' + pal.mut + '">' + ESC(f.price.book) + ' ' + am(f.price.am) + ' · Pinnacle ' + spct(f.refs[0].edge) + ' · exchange close ' + spct(f.refs[1].edge) + (p.hoursEarly != null ? ' · seen ' + Math.round(p.hoursEarly) + ' h early' : '') + '</div></div><div style="text-align:right;white-space:nowrap;font-weight:700;color:' + col + '">' + (st === 'won' ? 'Won' : st === 'lost' ? 'Lost' : 'Push') + '<div style="font-size:12px">' + su(p.units) + '</div></div></div>';
     }).join('');
-    var ml = B.moneyline_replay;
-    return '<div style="border:1px dashed ' + mix(pal.warn, 60) + ';border-radius:22px;padding:14px;color:' + pal.text + ';margin-top:12px;background:' + mix(pal.warn, 5) + '">' +
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:' + pal.warn + '">Backfill · ' + ESC(B.date) + ' NFL props · hindsight</span><span style="font-size:11.5px;color:' + pal.warn + '">Not counted in the record above</span></div>' +
-      '<div style="font-size:12.5px;color:' + pal.mut + ';margin-top:6px">Rebuilt after the fact. The second fair price is the exchange <b>close</b>, which was not known when the price was taken, and the prices were first seen ' + (med != null ? 'about ' + Math.round(med) + ' hours' : 'days') + ' before kickoff. It reads better than live plays will. Treat it as an upper bound.' + (ml ? ' Moneylines were replayed from the book tape with no hindsight: ' + ml.games + ' games, ' + ml.plays + ' plays.' : '') + '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px">' + big('Record', w + '-' + l, done.length + ' settled · ' + (rows.length - done.length) + ' open') + big('Units', su(units), 'flat 1 unit, not counted', units > 0 ? pal.good : units < 0 ? pal.bad : null) + big('Plays', String(rows.length), (B.priced_at_a_us_book || 0) + ' at a US book of ' + (B.calls_that_day || 0) + ' calls') + '</div>' +
-      '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:' + pal.mut + '">Show the ' + rows.length + ' plays</summary>' + list + '</details></div>';
+    return '<details style="margin-top:10px;border:1px dashed ' + mix(pal.warn, 60) + ';border-radius:16px;padding:10px 14px;color:' + pal.text + ';background:' + mix(pal.warn, 5) + '"><summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:' + pal.warn + '">Backfilled plays counted above: ' + rows.length + ' from ' + ESC(B.date) + ' (' + w + '-' + l + ', ' + su(units) + ')</summary>' +
+      '<div style="font-size:12.5px;color:' + pal.mut + ';margin:6px 0">Added after the fact. The second fair price is the exchange <b>close</b>, which was not known when the price was taken, and the prices were first seen ' + (med != null ? 'about ' + Math.round(med) + ' hours' : 'days') + ' before kickoff. They read better than live plays will. Moneylines were replayed from the book tape with no hindsight' + (B.moneyline_replay ? ': ' + B.moneyline_replay.games + ' games, ' + B.moneyline_replay.plays + ' plays' : '') + '.</div>' + list + '</details>';
   }
   function recordHtml(F, pal) { return recordCore(F, pal) + backfillHtml(F, pal); }
   function recordCore(F, pal) {
-    var PL = F.plays, rows = v2Rows(PL), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
+    var PL = F.plays, rows = rowsAll(F), bfn = rows.filter(function (r) { return r.p.backfill; }).length, live = rows.filter(function (r) { return !r.p.backfill; }), ls = stat(live), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), ws = wins.reduce(function (a, b) { return a + b; }, 0);
     var su = function (u) { var r = Math.round(u * 10) / 10 || 0; return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + 'u'; };
     var roi = s.n && s.units != null ? s.units / s.n : null;
     var big = function (label, val, sub, col) { return '<div style="border:1px solid ' + pal.line + ';border-radius:14px;padding:10px 12px;min-width:0"><div style="font-size:10.5px;letter-spacing:.09em;color:' + pal.mut + ';text-transform:uppercase">' + label + '</div><div style="font-size:26px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums;color:' + (col || pal.text) + '">' + val + '</div><div style="font-size:11.5px;color:' + pal.mut + '">' + sub + '</div></div>'; };
-    var started = rows.length ? new Date(Math.min.apply(null, rows.map(function (r) { return r.p.firstSeen; })) * 1000).toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric' }, CT)) : null;
+    var started = live.length ? new Date(Math.min.apply(null, live.map(function (r) { return r.p.firstSeen; })) * 1000).toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric' }, CT)) : null;
     var w = s.n ? s.w + '-' + s.l + (cnt('push') ? '-' + cnt('push') : '') : '0-0';
-    var tiles = [big('Record', w, s.n + ' settled · ' + cnt('open') + ' open' + (cnt('void') ? ' · ' + cnt('void') + ' void' : '')),
+    var tiles = [big('Record', w, s.n + ' settled' + (bfn ? ' (' + bfn + ' backfilled)' : '') + ' · ' + cnt('open') + ' open' + (cnt('void') ? ' · ' + cnt('void') + ' void' : '')),
       big('Units', s.units == null ? '+0.0u' : su(s.units), 'flat 1 unit at the price shown', s.units > 0 ? pal.good : s.units < 0 ? pal.bad : null),
       big('ROI', roi == null ? '-' : spct(roi), s.n ? 'without top ' + (wins.length || 5) + ' wins ' + su((s.units || 0) - ws) : 'after the first result'),
       big('CLV vs close', s.clv == null ? '-' : spct(s.clv), s.clvN + ' with an exchange close', s.clv > 0 ? pal.good : s.clv < 0 ? pal.bad : null)];
     var recent = rows.filter(function (r) { return r.p.status !== 'open'; }).sort(function (a, b) { return b.p.start - a.p.start; }).slice(0, 8);
     var list = recent.length ? '<div style="margin-top:10px">' + recent.map(function (r) {
       var p = r.p, f = p.first || {}, st = p.status, col = st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.mut;
-      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid ' + pal.line + '"><div style="min-width:0"><div style="font-weight:600;font-size:14px">' + ESC(f.title) + '</div><div style="font-size:12px;color:' + pal.mut + '">' + ESC((f.price || {}).book) + ' ' + am((f.price || {}).am) + ' · ' + SPORT[p.sport] + (p.clv != null ? ' · CLV ' + spct(p.clv) : '') + '</div></div><div style="text-align:right;white-space:nowrap;font-weight:700;color:' + col + '">' + (st === 'won' ? 'Won' : st === 'lost' ? 'Lost' : st === 'push' ? 'Push' : 'Void') + (p.units != null && st !== 'void' ? '<div style="font-size:12px">' + su(p.units) + '</div>' : '') + '</div></div>';
+      return '<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid ' + pal.line + '"><div style="min-width:0"><div style="font-weight:600;font-size:14px">' + ESC(f.title) + '</div><div style="font-size:12px;color:' + pal.mut + '">' + ESC((f.price || {}).book) + ' ' + am((f.price || {}).am) + ' · ' + SPORT[p.sport] + (p.clv != null ? ' · CLV ' + spct(p.clv) : '') + (p.backfill ? ' · backfilled' : '') + '</div></div><div style="text-align:right;white-space:nowrap;font-weight:700;color:' + col + '">' + (st === 'won' ? 'Won' : st === 'lost' ? 'Lost' : st === 'push' ? 'Push' : 'Void') + (p.units != null && st !== 'void' ? '<div style="font-size:12px">' + su(p.units) + '</div>' : '') + '</div></div>';
     }).join('') + '</div>' : '';
     var note = !PL || !PL.plays ? 'Not started: the log has not been published yet.' : !rows.length ? 'The log is running. A play is written the first time one clears every gate.' : rows.length + ' play' + (rows.length === 1 ? '' : 's') + ' logged since ' + started + '. Each is saved once at first sight, then graded. ' + (s.n < 100 ? s.n + ' of 100 settled plays before it means much.' : '');
+    var lsu = ls.units == null ? '+0.0u' : su(ls.units);
+    if (bfn) note = (live.length ? live.length + ' live play' + (live.length === 1 ? '' : 's') + ' since ' + started + ' (' + (ls.n ? ls.w + '-' + ls.l + ', ' + lsu : '0 settled') + '), plus ' : '') + bfn + ' settled plays backfilled from the ' + ESC((F.backfill || {}).date || '') + ' slate. The backfilled ones were chosen with hindsight on the exchange close, so the totals read better than live play will.';
     return '<div style="border:1px solid ' + pal.line + ';border-radius:22px;padding:14px;color:' + pal.text + '"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:' + pal.mut + '">V2 play record</span><span style="font-size:11.5px;color:' + pal.mut + '">' + ESC(note) + '</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px">' + tiles.join('') + '</div>' + list + '</div>';
   }
 
   /* The data layer and the scoring, for the phone layout (sharp-money/new/), which draws its own HTML from them. */
   var core = {
-    STORE: STORE, stance: stance, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
+    STORE: STORE, rowsAll: rowsAll, stance: stance, cardHtml: cardHtml, recordHtml: recordHtml, loadAssets: loadAssets, stat: stat, rules: rules, v2Rows: v2Rows, when: when, dur: dur, clockLine: clockLine, keyNote: keyNote,
     ensure: function () { loadAssets(); if (!STORE.ts || Date.now() - STORE.ts > 100000) fetchAll(); return STORE.ts > 0; },
     subscribe: function (fn) { STORE.subs.add(fn); return function () { STORE.subs.delete(fn); }; }
   };

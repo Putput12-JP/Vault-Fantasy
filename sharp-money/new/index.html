@@ -1051,8 +1051,9 @@ function v2Record(){
  if(!c)return head(title,sub)+'<div class="card empty">The V2 rules did not load. Reload the page.</div>';
  if(!c.ensure())return v2wait(title,sub,'vrecord');
  const F=c.STORE.files,PL=F.plays;let h=head(title,sub)+v2nav('vrecord')+`<div class="sec"><span>V2 plays</span><span>forward log</span></div>`;
- if(!PL||!PL.plays)h+=`<div class="card"><div class="gtop"><span>Forward log</span><span class="badge warn">Not started</span></div><div class="foot" style="color:var(--mut)">Every play is written once at first sight, with the price and both reference prices it showed, then frozen and graded. Until it has 100 settled plays, treat a play as a better price, not a proven edge.</div></div>`;
- else{const rows=c.v2Rows(PL);
+ const rowsA=c.rowsAll(F);
+ if((!PL||!PL.plays)&&!rowsA.length)h+=`<div class="card"><div class="gtop"><span>Forward log</span><span class="badge warn">Not started</span></div><div class="foot" style="color:var(--mut)">Every play is written once at first sight, with the price and both reference prices it showed, then frozen and graded. Until it has 100 settled plays, treat a play as a better price, not a proven edge.</div></div>`;
+ else{const rows=rowsA;
   if(!rows.length)h+=`<div class="card empty"><b>No play logged yet.</b><div style="margin-top:4px">A play is written the first time one clears every gate before kickoff.</div></div>`;
   else h+=v2ledger('All V2 plays','Props and games together.',rows)+v2ledger('Props','Settled from the box score.',rows.filter(q=>q.p.kind==='prop'))+v2ledger('Games','Settled from the final score.',rows.filter(q=>q.p.kind!=='prop'))}
  const r=c.rules(D),all=r.cards.concat([['Sharp accounts (context only)','',r.ctx]]);
