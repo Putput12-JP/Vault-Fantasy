@@ -1242,7 +1242,21 @@ table.nt.sx-tk{min-width:420px}
 .sv-n{min-width:0;display:flex;flex-direction:column;gap:1px}.sv-n b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sv-n small{font-size:11.5px;color:var(--fg3);font-variant-numeric:tabular-nums}
 .sv-q{font-style:normal;margin-left:6px;font-size:10px;font-weight:700;color:var(--warn);border:1px solid rgba(251,191,36,.45);border-radius:4px;padding:0 4px}
 .sv-mp{display:flex;gap:4px;justify-content:flex-end}
-.sv-dd{grid-column:2 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:4px}.sv-dd:empty{display:none}.sv-ddn{font-size:11px;color:var(--fg3)}
+.mu-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:1;min-width:0}
+.mu-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,1fr);gap:16px;align-items:start;margin-top:12px}
+.mu-cc{padding:16px 16px 12px}.mu-ch h2{margin:0;font-size:16px;font-weight:600}.mu-ch p{margin:2px 0 8px;color:var(--fg3);font-size:12.5px}
+.mu-court{display:block;width:100%;height:auto;max-height:560px}
+.mu-zt{font:600 13px var(--mono,ui-monospace,monospace);text-anchor:middle;fill:#e8e8e8}.mu-zs{font:400 10.5px var(--sans,inherit);text-anchor:middle;fill:#c9c9c9}
+.mu-zl{font:500 10px var(--mono,ui-monospace,monospace);letter-spacing:.06em;text-anchor:middle;fill:#9a9a9a;text-transform:uppercase}
+.mu-bub{fill:rgba(240,240,240,.92)}.mu-bt{font:700 13px var(--mono,ui-monospace,monospace);text-anchor:middle;fill:#1a1a1a;dominant-baseline:central}
+.mu-fast{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;margin-top:10px;border-radius:12px;background:var(--bg);border:1px solid var(--border);font-size:13px;color:var(--fg2)}
+.mu-det{padding:16px;margin-bottom:12px}.mu-dh{display:flex;justify-content:space-between;gap:12px;align-items:center}.mu-det h3{margin:0;font-size:15px;font-weight:600}.mu-det p{margin:4px 0 12px;color:var(--fg2);font-size:13px}
+.mu-sc{font-size:16px;font-weight:600}.mu-dh .mu-sc{font-size:20px}
+.mu-dl{display:grid;gap:6px}.mu-dl>div{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}
+.mu-dl .mp{flex-direction:row;gap:5px;min-width:64px}.mu-tr{height:8px;border-radius:4px;background:var(--bg);overflow:hidden}.mu-tr i{display:block;height:100%;background:#c4c4c4;border-radius:4px}
+.mu-pl{display:grid;gap:8px}.mu-pb{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);text-align:left;width:100%;color:inherit;cursor:pointer}
+.mu-pb[aria-pressed="true"]{border-color:var(--fg3);background:var(--raised)}.mu-pb b{display:block;font-weight:600}.mu-pb small{display:block;color:var(--fg3);font-size:12px}
+@media (max-width:900px){.mu-grid{grid-template-columns:minmax(0,1fr)}.mu-ctl{flex-wrap:nowrap;overflow-x:auto}.mu-ctl .seg{flex:none}}
 .mp{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:36px;padding:3px 4px;border-radius:7px;background:var(--raised);font-size:12px;font-weight:600;color:var(--fg2);font-variant-numeric:tabular-nums;line-height:1.15}
 .mp i{font-style:normal;font-size:9.5px;font-weight:500;letter-spacing:.05em;color:var(--fg3)}
 .mp.soft{background:rgba(74,222,128,.14);color:var(--up)}.mp.tough{background:rgba(248,113,113,.14);color:var(--down)}
@@ -1256,7 +1270,7 @@ table.nt.sx-tk{min-width:420px}
 .sv-dr b{font-weight:600;color:var(--fg);text-align:right}.sv-dr .mp{flex-direction:row;justify-content:center;min-width:0;padding:1px 6px;font-size:10.5px;font-weight:500}
 @container svc (max-width:1240px){.sv-body{grid-template-columns:repeat(2,minmax(0,1fr))}.sv-mid{grid-column:1 / -1;order:3}}
 @container svc (max-width:640px){.sv-body{grid-template-columns:minmax(0,1fr)}.sv-mid{display:flex}}
-@container svs (max-width:325px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}.sv-dd{grid-column:1 / -1;padding-left:54px}}
+@container svs (max-width:325px){.sv-p{grid-template-columns:44px minmax(0,1fr)}.sv-mp{grid-column:1 / -1;justify-content:flex-start;padding-left:54px}}
 .sl-grid.lv{display:flex;flex-direction:column;gap:16px}
 .lv-card{container:lvc / inline-size}.lv-l,.lv-r{min-width:0}.lv-l{display:flex;flex-direction:column}.lv-l>.lv-tiles{border-bottom:1px solid var(--border)}
 @container lvc (min-width:900px){.lv-cols{display:grid;grid-template-columns:clamp(340px,24%,420px) minmax(0,1fr)}.lv-l{border-right:1px solid var(--border)}.lv-tiles{grid-template-columns:minmax(0,1fr)}.lv-tile{border-left:0;border-top:1px solid var(--border);padding:16px 20px}.lv-tile:first-child{border-top:0}.lv-l>.lv-tiles{border-bottom:0}.lv-vault{border-top:1px solid var(--border);border-bottom:0}.lv-r>.lv-spot{margin-top:12px}.lv-board{padding-top:12px}}
@@ -1874,6 +1888,8 @@ th{font-weight:500}
       </section>
     </main>
     <footer id="sfoot" hidden></footer>
+    <main id="v-matchups" hidden></main>
+    <footer id="mufoot" hidden></footer>
     <main id="v-sharp" hidden>
       <div class="banner" id="xbanner" hidden></div>
       <div class="kpis" id="xkpis"></div>
@@ -1954,7 +1970,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
+const VIEWS = ['health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -2169,6 +2185,7 @@ const PAGES = [
     ['Minutes Lab', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), 'Projected minutes and stats per team; edit minutes and every stat reprices.', 'lab'],
     ['Tonight', SVG('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'), "Tonight's minutes for every game: the model's adjustments, what the market prices, your what-ifs and the Lab's record.", 'tonight'],
     ['Slate', SVG('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'), "Every game: the Vault line next to the market, injuries in points, back-to-backs, betting splits.", 'slate'],
+    ['Matchups', SVG('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/>'), "Where each defense gives shots up and where each starter takes his, on a half-court map for every game.", 'matchups'],
     ['Game Simulation', SVG('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/>'), 'Play a game 10,000 times: the score, every player\'s stat range and how often two legs hit together.', 'sim'],
     ['Props Simulation', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/><circle cx="6" cy="6" r="1.2"/><circle cx="15" cy="15" r="1.2"/>'), 'Simulate one prop 10,000 and 50 times against the exact probability, and see what 50 simulated games cost.', 'propsim'],
     ['Injury Wire', SVG('<path d="M12 3v18M3 12h18"/>'), 'Every injury report and lineup change as it posts, and how fast each venue repriced the props it should move.', 'wire'],
@@ -2342,7 +2359,7 @@ $('teamlist').addEventListener('keydown', e => {
 $('tabbar').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; const t = b.dataset.tab;
   if (t === 'more'){ $('app').classList.toggle('open'); return; }
   navGo(t); window.scrollTo(0, 0); });
-function paintTabs(){ const on = ['lines', 'props', 'edges', 'lab'].includes(view) ? view : (view === 'slate' ? 'lines' : (view === 'mybets' || view === 'propboard') ? 'props' : 'more');
+function paintTabs(){ const on = ['lines', 'props', 'edges', 'lab'].includes(view) ? view : (view === 'slate' || view === 'matchups' ? 'lines' : (view === 'mybets' || view === 'propboard') ? 'props' : 'more');
   document.querySelectorAll('#tabbar [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === on)); }
 function navGo(v){   // sidebar link
   $('app').classList.remove('open');
@@ -2440,6 +2457,7 @@ function show(v){
   $('v-profile').hidden = $('profoot').hidden = v !== 'profile';
   $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
   $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
+  $('v-matchups').hidden = $('mufoot').hidden = v !== 'matchups';
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
   $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
   $('v-backtests').hidden = $('btfoot').hidden = !['backtests', 'finder', 'btlab'].includes(v);
@@ -2476,6 +2494,13 @@ function show(v){
     renderSharp();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
+    return;
+  }
+  if (v === 'matchups'){
+    $('tname').textContent = 'Matchups';
+    $('tsub').textContent = 'WHERE EACH DEFENSE GIVES SHOTS UP · WHERE EACH STARTER TAKES HIS';
+    renderMatchups();
+    if (!boardTried) loadBoard();
     return;
   }
   if (v === 'slate' || v === 'lines'){
@@ -3288,6 +3313,7 @@ async function loadBoard(){
     renderChip();
     if (view === 'wire') renderWire();
     if (view === 'slate' || view === 'lines') renderSlate();
+    if (view === 'matchups') renderMatchups();
     if (view === 'sharp') renderSharp();
     if (view === 'pairs') renderPairs();
     pvBackground(); pvSettle();
@@ -5253,6 +5279,7 @@ function lineCard(g, B, status){
 function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el) el.outerHTML = lineCard(g, B, statusFromBoard(B)); }
 $('sgames').addEventListener('click', e => {
   if (e.target.closest('[data-golines]')){ goView('lines'); return; }
+  const gm = e.target.closest('[data-gomu]'); if (gm){ mu.gid = gm.dataset.gomu; mu.side = 0; mu.pi = 0; goView('matchups'); return; }
   const m = e.target.closest('[data-lm]'), a = e.target.closest('[data-lall]'), d = e.target.closest('[data-lsd]'), k = e.target.closest('[data-lbk]');
   if (k){ sv.bk[k.dataset.lbk] = !sv.bk[k.dataset.lbk]; lvRefresh(k.dataset.lbk); return; }
   if (m){ sv.mk[m.dataset.g] = m.dataset.lm; lvRefresh(m.dataset.g); }
@@ -5282,39 +5309,101 @@ function slateFive(team, g, B, st){
   const five = [...listed, ...rest.slice(0, 5 - listed.length)];
   return {five, tag: conf.length >= 5 ? 'Confirmed' : listed.length ? 'Expected' : 'Projected', note: conf.length >= 5 ? 'NBA.com lineup' : listed.length ? 'NBA.com lists part of the five' : 'depth chart: no official lineup yet'};
 }
-// ── Shot diet vs zone defense (build_diet_defense.py): the share of a player's shots from each zone against how many shots a defense lets up there.
+// ── Shot diet vs zone defense (build_diet_defense.py): the Matchups page below draws it; the Slate only links to it.
 const DDZ = {ra: ['Rim', 'restricted-area'], paint: ['Paint', 'non-restricted paint'], mid: ['Mid', 'mid-range'], c3: ['Corner 3', 'corner three'], ab3: ['Arc 3', 'above-the-break three']};
-function ddWords(opp, key, r, share){                        // "BOS allows the 2nd most restricted-area attempts per 48 (24.1 vs 23.8 league). 34% of his shots come from there"
-  const most = r[1] <= 15, lg = DD.league.zone[key];
-  return `${opp} allows the ${ordn(most ? r[1] : 31 - r[1])} ${most ? 'most' : 'fewest'} ${DDZ[key][1]} attempts per 48 (${fmt(r[0], 1)} vs ${fmt(lg, 1)} league)${share != null ? `. ${Math.round(share * 100)}% of his shots come from there` : ''}`;
-}
-function ddTrans(pid, opp){                                  // transition (a shot within 5 s of a steal or defensive rebound): his share and the defense's rank, or null
-  const pl = DD && DD.players[String(pid)], tm = DD && DD.teams[opp], r = tm && tm.trans && tm.trans.trans;
-  return pl && !pl.thin && pl.trans != null && r && !DD.persistence.weak.includes('trans.trans') ? {share: pl.trans, r} : null;
-}
-function ddTransWords(opp, r, share){
-  const most = r[1] <= 15;
-  return `${opp} allows the ${ordn(most ? r[1] : 31 - r[1])} ${most ? 'most' : 'fewest'} transition attempts per 48 (${fmt(r[0], 1)} vs ${fmt(DD.league.trans.trans, 1)} league)${share != null ? `. ${Math.round(share * 100)}% of his shots come in transition` : ''}. Transition here means a shot within 5 seconds of a steal or a defensive rebound`;
-}
 function ddRead(pid, opp){                                   // score and the two zones that drive it, or null (no file, unknown player or team)
   const pl = DD && DD.players[String(pid)], tm = DD && DD.teams[opp]; if (!pl || !tm) return null;
   const weak = new Set(DD.persistence.weak), rows = Object.keys(DDZ).filter(k => !weak.has('zone.' + k) && tm.zone[k]).map(k => ({k, share: pl.zone[k], r: tm.zone[k], c: pl.zone[k] * tm.zone[k][2]}));
   return {thin: pl.thin, fga: pl.fga, score: rows.reduce((a, x) => a + x.c, 0), why: rows.sort((a, b) => Math.abs(b.c) - Math.abs(a.c)).slice(0, 2)};
 }
-function ddChips(pid, opp){
-  const d = ddRead(pid, opp); if (!d) return '';
-  if (d.thin) return `<span class="sv-ddn" title="${d.fga} shot attempts counted, under ${DD.thin.fga}: his shot mix is not settled enough to compare">thin shot sample</span>`;
+// ── Matchups page: a half-court map per game. Zone color = shots the defense lets up there per 48 against the league; circles = the selected
+// starter's share of his own shots from each zone (build_diet_defense.py, ESPN play-by-play). Context, not a bet: tested against Kalshi and
+// sportsbook prices (docs/diet-test.md) and it adds nothing the market has not priced.
+const mu = {day: null, gid: null, side: 0, pi: 0, vw: 'both'};
+const muPct = x => (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1) + '%';
+const MUSPOT = {ra: [250, 432], paint: [250, 330], mid: [250, 222], ab3: [250, 130]};
+const muHeat = (r, a0) => { const k = r[1] <= 6 ? ['74,222,128', .14 + .34 * (7 - r[1]) / 6] : r[1] >= 25 ? ['248,113,113', .14 + .34 * (r[1] - 24) / 6] : ['70,70,70', .5]; return `rgba(${k[0]},${k[1].toFixed(2)})`; };
+function muCourt(def, P){
+  const o = DD.teams[def], showD = mu.vw !== 'player', showP = mu.vw !== 'defense' && P;
+  const fill = k => mu.vw === 'player' ? '#2e2e2e' : muHeat(o.zone[k]);
+  let s = `<rect x="0" y="0" width="500" height="470" rx="14" fill="#242424"/><rect x="0" y="0" width="500" height="470" rx="14" fill="${fill('ab3')}"/><rect x="0" y="328.5" width="30" height="141.5" fill="${fill('c3')}"/><rect x="470" y="328.5" width="30" height="141.5" fill="${fill('c3')}"/>
+    <path d="M30 470V328.5A237.5 237.5 0 0 1 470 328.5V470Z" fill="${fill('mid')}"/><rect x="170" y="280" width="160" height="190" fill="${fill('paint')}"/><path d="M210 418a40 40 0 0 1 80 0a40 40 0 0 1-80 0Z" fill="${fill('ra')}"/>
+    <g fill="none" stroke="rgba(255,255,255,.32)" stroke-width="2"><path d="M30 470V328.5A237.5 237.5 0 0 1 470 328.5V470"/><rect x="170" y="280" width="160" height="190"/><path d="M190 280a60 60 0 0 1 120 0"/><path d="M210 418a40 40 0 0 1 80 0"/><circle cx="250" cy="418" r="7.5"/><path d="M220 430h60"/><rect x="1" y="1" width="498" height="468" rx="14"/></g>`;
+  const bub = (v, x, y, r0) => `<circle class="mu-bub" cx="${x}" cy="${y}" r="${(r0 + Math.sqrt(v) * 22).toFixed(1)}"/><text class="mu-bt" x="${x}" y="${y}">${Math.round(v * 100)}</text>`;
+  for (const [k, [x, y]] of Object.entries(MUSPOT)){
+    const r = o.zone[k];
+    if (!showP) s += `<text class="mu-zl" x="${x}" y="${y - 18}">${DDZ[k][0]}</text><text class="mu-zt" x="${x}" y="${y}">${ordn(r[1])}</text><text class="mu-zs" x="${x}" y="${y + 14}">${fmt(r[0], 1)} per 48</text>`;
+    else {
+      s += `<text class="mu-zl" x="${x}" y="${y - 34}">${DDZ[k][0]}</text>${bub(P.zone[k], x, y, 6)}`;
+      if (showD) s += `<text class="mu-zt" x="${x}" y="${y + (k === 'ra' ? 30 : 36)}" style="font-size:11px">${ordn(r[1])} <tspan class="mu-zs" style="font-size:11px">${fmt(r[0], 1)}</tspan></text>`;
+    }
+  }
+  for (const [x, rot] of [[15, -90], [485, 90]]){
+    const r = o.zone.c3;
+    s += `<text class="mu-zl" x="${x}" y="352" transform="rotate(${rot} ${x} 352)">Corner 3</text>`;
+    if (showD) s += `<text class="mu-zt" x="${x}" y="446" style="font-size:10px">${ordn(r[1])}</text>`;
+    if (showP) s += `<circle class="mu-bub" cx="${x}" cy="400" r="${(5 + Math.sqrt(P.zone.c3 / 2) * 22).toFixed(1)}"/>`;
+  }
+  return s;
+}
+function renderMatchups(){
+  const root = $('v-matchups');
+  if (!DD){ root.innerHTML = '<section class="card"><div class="card-b"><p class="muted">Shot data is not in this build.</p></div></section>'; $('mufoot').innerHTML = ''; return; }
+  const pick = slateBoard(), B = pick.board, status = statusFromBoard(B), games = [...(B.games || []), ...(B.opening || [])].sort((a, b) => a.tip - b.tip);
+  if (!games.length){
+    root.innerHTML = `<div class="banner"><b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. ${noGamesWhy()}</span></div>`; $('mufoot').innerHTML = ''; return;
+  }
+  const days = [...new Set(games.map(g => etDay(g.tip)))];
+  if (mu.gid && games.some(g => String(g.id) === mu.gid)) mu.day = etDay(games.find(g => String(g.id) === mu.gid).tip);
+  if (!days.includes(mu.day)) mu.day = days[0];
+  const G = games.filter(g => etDay(g.tip) === mu.day);
+  if (!G.some(g => String(g.id) === mu.gid)) mu.gid = String(G[0].id);
+  const g = G.find(x => String(x.id) === mu.gid), def = mu.side === 0 ? g.home : g.away, atk = mu.side === 0 ? g.away : g.home;
+  const F = slateFive(atk, g, B, status), five = F ? F.five : [];
+  if (mu.pi >= five.length) mu.pi = 0;
+  const seg = (attr, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" ${attr}="${esc(v)}" aria-pressed="${cur === v}">${esc(l)}</button>`).join('')}</div>`;
+  const ctl = `<div class="mu-ctl">${days.length > 1 ? seg('data-mud', days.map(d => [d, slDay(games.find(x => etDay(x.tip) === d).tip)]), mu.day) : ''}${seg('data-mug', G.map(x => [String(x.id), `${x.away} @ ${x.home}`]), mu.gid)}${seg('data-mus', [['0', `${g.home} defense`], ['1', `${g.away} defense`]], String(mu.side))}${seg('data-muw', [['defense', 'Defense'], ['player', 'His shots'], ['both', 'Both']], mu.vw)}</div>`;
+  const rows = five.map(p => ({p, d: ddRead(p.id, def), pl: DD.players[String(p.id)]}));
+  const sel = rows[mu.pi], P = sel && sel.pl, tm = DD.teams[def], tr = tm.trans && tm.trans.trans;
+  const trOk = tr && !DD.persistence.weak.includes('trans.trans');
   const cls = r => r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : '';
-  return `<span class="mp ${d.score >= 1 ? 'soft' : d.score <= -1 ? 'tough' : ''}" title="Shot diet against ${esc(opp)}: each zone's share of his shots times how far above (+) or below (-) average ${esc(opp)} lets shots up there, summed. Opportunity, not shot quality. Context, not a bet."><i>SHOTS</i>${d.score >= 0 ? '+' : '−'}${Math.abs(d.score).toFixed(1)}%</span>` +
-    d.why.map(x => `<span class="mp ${cls(x.r)}" title="${esc(ddWords(opp, x.k, x.r, x.share))}"><i>${DDZ[x.k][0]} ${Math.round(x.share * 100)}%</i>${ordn(x.r[1])}</span>`).join('') +
-    (() => { const t = ddTrans(pid, opp); return t && (t.r[1] <= 6 || t.r[1] >= 25) ? `<span class="mp ${cls(t.r)}" title="${esc(ddTransWords(opp, t.r, t.share))}"><i>Fast ${Math.round(t.share * 100)}%</i>${ordn(t.r[1])}</span>` : ''; })();
+  const scoreCls = d => d ? (d.score >= 1 ? 'up' : d.score <= -1 ? 'down' : '') : '';
+  const court = `<div class="card mu-cc"><div class="mu-ch"><div><h2>${esc(def)} defense</h2><p>${esc(g.away)} at ${esc(g.home)}, ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET. Shots allowed per 48 by zone, ${esc(DD.season)}.</p></div></div>
+    <svg class="mu-court" viewBox="0 70 500 400" role="img" aria-label="${esc(def)} defense by shot zone">${muCourt(def, mu.vw === 'defense' ? null : P)}</svg>
+    <div class="mu-fast"><span>${trOk ? `Fast break: ${esc(def)} allows ${fmt(tr[0], 1)} per 48 (${tr[1] <= 15 ? ordn(tr[1]) + ' most' : ordn(31 - tr[1]) + ' fewest'})` : 'Fast break not shown'}</span>${P && trOk ? `<span>${Math.round(P.trans * 100)}% of his shots are fast break</span>` : ''}</div></div>`;
+  const detail = !sel ? `<div class="card mu-det"><p class="muted">No lineup for ${esc(atk)} yet.</p></div>` : !P || !sel.d ? `<div class="card mu-det"><h3>${esc(sel.p.name)}</h3><p class="muted">No shot data yet (too few attempts on record).</p></div>` : `<div class="card mu-det"><div class="mu-dh"><h3>${esc(sel.p.name)} against ${esc(def)}</h3><span class="num mu-sc ${scoreCls(sel.d)}">${muPct(sel.d.score)}</span></div>
+    <p>${P.thin ? 'Thin sample, read with care.' : `${P.fga} shots counted.`} The number is how many more (+) or fewer (−) shots than average this defense gives up in the spots he shoots from.</p>
+    <div class="mu-dl">${Object.keys(DDZ).map(k => { const r = DD.teams[def].zone[k], sh = P.zone[k]; return `<div><span>${DDZ[k][0]}</span><span class="mu-tr"><i style="width:${Math.round(sh * 100)}%"></i></span><span class="mp ${cls(r)}">${Math.round(sh * 100)}% <b>${ordn(r[1])}</b></span></div>`; }).join('')}</div></div>`;
+  const list = rows.map((x, i) => `<button type="button" class="mu-pb" data-mup="${i}" aria-pressed="${i === mu.pi}">${cutImg(x.p.id, x.p.name, 38)}<div><b>${esc(x.p.name)}</b><small>${x.pl ? (x.pl.thin ? 'thin sample' : x.pl.fga + ' shots') : 'no shot data'}</small></div><span class="num mu-sc ${scoreCls(x.d)}">${x.d ? muPct(x.d.score) : ''}</span></button>`).join('');
+  root.innerHTML = `<section class="card tbar"><div class="tfilters">${ctl}</div></section><div class="mu-grid">${court}<div><div>${detail}</div><div class="mu-pl">${list}</div></div></div>`;
+  const wk = DD.persistence;
+  $('mufoot').innerHTML = `<div><b>How to read it.</b> Zone color is how many shots the defense lets up there per 48 minutes against the league average: green is a soft spot (it gives up the most), red a tough one. The white circles are the share of the selected starter's own shots from each zone. The number up top multiplies the two and adds them up. It counts <b>shot opportunity, not shot quality</b>. <b>Context, not a bet:</b> tested against Kalshi and sportsbook prices on 2025-26 (docs/diet-test.md), it added nothing the market had not already priced.</div>
+    <div><b>Where it comes from.</b> ${DD.games} regular-season games (${esc(DD.season)}, through ${esc(DD.through)}), ESPN play-by-play, shot positions by court coordinates. It refreshes each morning with the night before's games; early in a season last year's games are blended in, each team's weight on the new season being its games played out of 15. Splitting ${esc(wk.season)} in half, a team's rank held up at ${wk.team_rank['zone.ra']} for the rim, ${wk.team_rank['zone.paint']} paint, ${wk.team_rank['zone.mid']} mid-range, ${wk.team_rank['zone.c3']} corner threes and ${wk.team_rank['zone.ab3']} above-the-break threes, and a player's own mix held up at ${wk.player_share['zone.ra']} to ${wk.player_share['zone.ab3']}. A player under ${DD.thin.fga} shots reads as a thin sample.</div>
+    <div><b>Fast break</b> is a shot within 5 seconds of a steal or a defensive rebound: a timing estimate from play-by-play, not tracking data (its rank held at ${wk.team_rank['trans.trans']} half to half). Pick and roll, isolation, spot up and the other play types are not here: this feed does not carry them.</div>`;
+}
+$('v-matchups').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.mud !== undefined){ mu.day = b.dataset.mud; mu.gid = null; mu.pi = 0; }
+  else if (b.dataset.mug !== undefined){ mu.gid = b.dataset.mug; mu.pi = 0; }
+  else if (b.dataset.mus !== undefined){ mu.side = +b.dataset.mus; mu.pi = 0; }
+  else if (b.dataset.muw !== undefined){ mu.vw = b.dataset.muw; }
+  else if (b.dataset.mup !== undefined){ mu.pi = +b.dataset.mup; }
+  else return;
+  renderMatchups();
+});
+function muLink(g, B, status){                              // the Slate's one line per game: the two best shot fits and a way in
+  if (!DD) return '';
+  const fits = [];
+  for (const [t, o] of [[g.away, g.home], [g.home, g.away]]){ const F = slateFive(t, g, B, status); if (!F) continue; for (const p of F.five){ const d = ddRead(p.id, o); if (d && !d.thin) fits.push({p, d}); } }
+  if (!fits.length) return '';
+  fits.sort((a, b) => b.d.score - a.d.score);
+  return `<p class="sv-rd">Best shot fits: ${fits.slice(0, 2).map(x => `<b>${esc(last(x.p.name))}</b> ${muPct(x.d.score)}`).join(', ')} · <button class="linkbtn" type="button" data-gomu="${g.id}">Open Matchups</button></p>`;
 }
 function svDef(t){                                          // one team's defense: the model's rank, then what it gives up per game
   const G = MS && MS.game, rk = (o2, k) => Object.keys(o2).sort((a, b) => o2[b] - o2[a]).indexOf(k) + 1;
   const pl = r => `<span class="mp ${r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : ''}">${r[1] <= 15 ? ordn(r[1]) + ' most' : ordn(31 - r[1]) + ' fewest'}</span>`;
   const row = (l, v, pill, tip) => `<div class="sv-dr" title="${esc(tip || '')}"><span>${l}</span><b>${v}</b>${pill}</div>`;
   const rows = [G && G.D && G.D[t] != null ? row('Defense (Vault)', sgn(G.D[t]), `<span class="mp">${ordn(rk(G.D, t))} best</span>`, 'Points held below the league base, from the game model') : '',
-    ...(DD && DD.teams[t] ? Object.keys(DDZ).filter(k => DD.teams[t].zone[k]).map(k => { const r = DD.teams[t].zone[k]; return row(`${DDZ[k][0]} shots allowed /48`, fmt(r[0], 1), pl(r), ddWords(t, k, r) + `. ${DD.season} regular season, ESPN play-by-play`); }).concat(DD.teams[t].trans && DD.teams[t].trans.trans && !DD.persistence.weak.includes('trans.trans') ? [row('Transition shots allowed /48', fmt(DD.teams[t].trans.trans[0], 1), pl(DD.teams[t].trans.trans), ddTransWords(t, DD.teams[t].trans.trans))] : []) : []),
     ...(MU && MU.teams[t] ? [['pts', 'Points allowed'], ['reb', 'Rebounds allowed'], ['ast', 'Assists allowed'], ['3pm', 'Threes allowed'], ['tpa', 'Three attempts allowed']].map(([k, l]) => { const r = MU.teams[t].all[k]; return r ? row(l, fmt(r[0], 1), pl(r), `${l} per game, ${MU.season} regular season`) : ''; }) : [])].join('');
   return rows ? `<div class="sv-df"><h4>${t} defense, per game${MU ? ` · ${MU.season}` : ''}</h4>${rows}</div>` : '';
 }
@@ -5327,7 +5416,7 @@ function svSide(team, opp, g, B, st){
     const m = g.season_type >= 2 && gm[p.id] ? gm[p.id].min : p.min0, flags = st[p.id] && !/^(Out|Inactive)/.test(st[p.id]) ? `<em class="sv-q" title="${esc(st[p.id])}">${esc(st[p.id].slice(0, 1))}</em>` : '';
     const SL = p.slot ? p.slot.toUpperCase() : null;
     for (const [s] of MUS){ const r = muGet(opp, SL, s); if (r && (r[1] <= 5 || r[1] >= 26)) notes.push({p, team, opp, s, r, soft: r[1] <= 5, x: Math.min(r[1], 31 - r[1])}); }
-    return `<div class="sv-p">${cutImg(p.id, p.name, 38)}<div class="sv-n"><b>${esc(p.name)}${flags}</b><small>${SL || esc(p.pos)} · ${fmt(m, 0)} min</small></div><div class="sv-mp">${MUS.map(([s]) => muPill(opp, SL, s)).join('')}</div>${DD ? `<div class="sv-dd">${ddChips(p.id, opp)}</div>` : ''}</div>`;
+    return `<div class="sv-p">${cutImg(p.id, p.name, 38)}<div class="sv-n"><b>${esc(p.name)}${flags}</b><small>${SL || esc(p.pos)} · ${fmt(m, 0)} min</small></div><div class="sv-mp">${MUS.map(([s]) => muPill(opp, SL, s)).join('')}</div></div>`;
   }).join('');
   const sts = Object.entries(st).filter(([pid, v]) => /^(Out|Inactive|Doubtful|Questionable)/.test(v)), ids = new Set(T.players.map(p => p.id));
   const hurt = sts.map(([pid, v]) => ({p: T.players.find(x => x.id === +pid), v})).filter(x => x.p && ids.has(x.p.id) && x.p.min0 >= 8).sort((a, b) => b.p.min0 - a.p.min0);
@@ -5352,7 +5441,7 @@ function slateCard(g, B, status){
   const nh = notes.length ? `<div class="sv-nt"><h4>Matchups to know</h4>${notes.map(n => `<p class="${n.soft ? 'soft' : 'tough'}"><i>${n.soft ? '▲' : '▼'}</i><span>${cutImg(n.p.id, n.p.name, 22)}<b>${esc(n.p.name)}</b> <small>${n.p.slot.toUpperCase()}</small> ${esc(muWords(n.opp, n.p.slot.toUpperCase(), n.s, n.r))}</span></p>`).join('')}</div>` : '';
   return `<article class="card sl-card sv-card" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
-    <div class="sv-body">${A.html}<div class="sv-mid"><div class="sv-tls">${mkt}</div>${read ? `<p class="sv-rd">${esc(read)} · <button class="linkbtn" type="button" data-golines="1">every book</button></p>` : `<p class="sv-rd"><button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></p>`}${nh}</div>${H.html}</div></article>`;
+    <div class="sv-body">${A.html}<div class="sv-mid"><div class="sv-tls">${mkt}</div>${read ? `<p class="sv-rd">${esc(read)} · <button class="linkbtn" type="button" data-golines="1">every book</button></p>` : `<p class="sv-rd"><button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></p>`}${nh}${muLink(g, B, status)}</div>${H.html}</div></article>`;
 }
 const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
 function renderSlate(){
@@ -5402,8 +5491,7 @@ function renderSlate(){
   if (!lines){
     const per = MU && MU.persistence || {};
     $('sfoot').innerHTML = `<div><b>Starting fives.</b> Confirmed means NBA.com has posted the lineup; Expected means it lists part of the five; Projected is the depth chart until lineups post. Minutes are the Minutes Lab's game-day numbers. Out and doubtful come from the official injury report and the books' news.</div>
-      <div><b>Defense by position.</b> Each pill is how many points, rebounds, assists and threes a team gave up per game to players at that depth-chart position, ranked 1 to 30 (1st gives up the most; green is a soft spot, red a tough one). It starts from last season's regular season and blends in this season's games as they are played (a team's weight on this season is its games played out of 15, then fully this season); right now: ${MU ? MU.season : 'n/a'}. Players with no depth slot are left out. <b>Context, not an edge.</b> Splitting last season in half, a team's rank in one half barely predicted the other (rank correlation ${per.pts != null ? per.pts : 'n/a'} for points, ${per.reb != null ? per.reb : 'n/a'} for rebounds, ${per.ast != null ? per.ast : 'n/a'} for assists, ${per['3pm'] != null ? per['3pm'] : 'n/a'} for threes), and the books already know these ranks.</div>
-      ${DD ? `<div><b>Shot diet.</b> Under each starter: the share of his shots from each zone (rim, paint, mid-range, corner three, above-the-break three) against how many shots the other team lets up there per 48 minutes, ranked 1 to 30 (1st lets up the most). SHOTS is those two things multiplied and summed: how many more (+) or fewer (−) shots than average this defense gives up in the spots he shoots from. It counts <b>opportunity, not shot quality</b>, and it is not a bet: the books already know it. From ${DD.games} regular-season games (${DD.season}, through ${DD.through}), ESPN play-by-play, shot positions by court coordinates. It refreshes each morning with the night before's games; early in a season last year's games are blended in, each team's weight on the new season being its games played out of 15. Zones that did not hold from the first half of the season to the second (rank correlation under ${DD.persistence.weak_below}) are not used. Splitting ${DD.persistence.season} in half, a team's rank held up at ${DD.persistence.team_rank['zone.ra']} for the rim, ${DD.persistence.team_rank['zone.paint']} paint, ${DD.persistence.team_rank['zone.mid']} mid-range, ${DD.persistence.team_rank['zone.c3']} corner threes and ${DD.persistence.team_rank['zone.ab3']} above-the-break threes, and a player's own mix held up at ${DD.persistence.player_share['zone.ra']} to ${DD.persistence.player_share['zone.ab3']}. A Fast chip appears when the defense is in the top or bottom six at giving up transition shots (taken within 5 seconds of a steal or defensive rebound; a timing proxy, not tracking data; its rank held at ${DD.persistence.team_rank['trans.trans']} half to half). Pick and roll, isolation, spot up and the other play types are not here: this feed does not carry them. A player under ${DD.thin.fga} shots shows "thin shot sample".</div>` : ''}`;
+      <div><b>Defense by position.</b> Each pill is how many points, rebounds, assists and threes a team gave up per game to players at that depth-chart position, ranked 1 to 30 (1st gives up the most; green is a soft spot, red a tough one). It starts from last season's regular season and blends in this season's games as they are played (a team's weight on this season is its games played out of 15, then fully this season); right now: ${MU ? MU.season : 'n/a'}. Players with no depth slot are left out. <b>Context, not an edge.</b> Splitting last season in half, a team's rank in one half barely predicted the other (rank correlation ${per.pts != null ? per.pts : 'n/a'} for points, ${per.reb != null ? per.reb : 'n/a'} for rebounds, ${per.ast != null ? per.ast : 'n/a'} for assists, ${per['3pm'] != null ? per['3pm'] : 'n/a'} for threes), and the books already know these ranks.</div>`;
     return;
   }
   $('sfoot').innerHTML = `
