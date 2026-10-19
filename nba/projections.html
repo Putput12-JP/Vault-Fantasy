@@ -1446,7 +1446,8 @@ table.nt.sx-tk{min-width:420px}
 .mu2-ladder{width:100%;height:auto;display:block}.mu2-ladder .axis{stroke:#3a332a}.mu2-ladder .zero{stroke:#6b6253;stroke-dasharray:3 4}.mu2-ladder .ax{font:500 10px var(--mono,ui-monospace,monospace);fill:#8d8576}
 .mu2-ld image{opacity:.8;transition:opacity .15s}.mu2-ld:hover image,.mu2-ld.now image{opacity:1}.mu2-ld circle:not(.ring){fill:#3a332a}.mu2-ld .ring{fill:none;stroke:#ff8a3d;stroke-width:2}.mu2-ld .tn{font:600 11px var(--sans,inherit);fill:#ffb35c}
 .mu2-rail{display:grid;gap:12px;min-width:0}
-.mu2-pick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.mu2-pg{display:grid;gap:6px}.mu2-gl{font:500 10.5px var(--mono,ui-monospace,monospace);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin:2px 2px 0}.mu2-pg .mu2-gl+.mu2-pick{margin-bottom:4px}
+.mu2-pick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.mu2-thin{font-size:10px;line-height:1.1;color:var(--fg3)}
 .mu2-pb{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:inherit;cursor:pointer;transition:border-color .15s,background-color .15s,transform .12s;min-width:0}
 .mu2-pb .cutbox{align-self:center}.mu2-pb:active{transform:scale(.97)}.mu2-pb[aria-pressed="true"]{border-color:#ff8a3d;background:var(--raised)}
 .mu2-pb b{font-size:12px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mu2-pb span{font-size:11.5px;font-weight:600}
@@ -2909,7 +2910,7 @@ function show(v){
   }
   if (v === 'matchups'){
     $('tname').textContent = 'Matchups';
-    $('tsub').textContent = 'WHERE EACH DEFENSE GIVES SHOTS UP · WHERE EACH STARTER TAKES HIS';
+    $('tsub').textContent = 'WHERE EACH DEFENSE GIVES SHOTS UP · WHERE EACH PLAYER TAKES HIS';
     renderMatchups();
     if (!boardTried) loadBoard();
     return;
@@ -5940,14 +5941,14 @@ function muShell(){
     <section class="card mu2-stage" id="mu2-stage"><div class="mu2-hud"><div class="mu2-def" id="mu2-def"></div><div class="mu2-vw" id="mu2-vw" role="group" aria-label="Court view"></div></div>
       <div class="mu2-wrap"><svg id="mu2-svg" class="mu2-svg" viewBox="-30 -8 560 520" role="img" aria-label="NBA half court, shot zones colored by what the defense allows">${muCourtBase()}</svg><div class="mu2-zd" id="mu2-zd" aria-live="polite"></div></div>
       <p class="mu2-cap" id="mu2-cap"></p><div class="mu2-lad" id="mu2-lad"></div></section>
-    <aside class="mu2-rail"><div class="mu2-pick" id="mu2-pick" role="group" aria-label="Starters"></div><div id="mu2-read"></div><div id="mu2-lineup"></div></aside></div></div>`;
+    <aside class="mu2-rail"><div class="mu2-pg" id="mu2-pick" role="group" aria-label="Starters and bench"></div><div id="mu2-read"></div><div id="mu2-lineup"></div></aside></div></div>`;
 }
 function muZoneDetail(def, a, P, k){
   const r = DD.teams[def].zone[k], sh = P ? Math.round(P.zone[k] * 100) : null, lg = Math.round(muLg()[k] * 100);
   return `<b>${DDZ[k][0]}</b><span class="mp ${muSoft(r)}">${ordn(r[1])} of 30</span><p>${esc(def)} lets up ${fmt(r[0], 1)} shots a night here per 48 minutes (${r[2] >= 0 ? '+' : '−'}${Math.abs(r[2]).toFixed(0)}% vs league). ${sh != null ? `${sh}% of his shots come from here, against ${lg}% for the average player.` : ''}</p>`;
 }
 function muUpdate(root, ctx){
-  const {games, G, g, def, atk, rows, sel, a, B, status} = ctx, P = sel && sel.pl;
+  const {games, G, g, def, atk, rows, ns, sel, a, B, status} = ctx, P = sel && sel.pl;
   const seg = (attr, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" ${attr}="${esc(v)}" aria-pressed="${cur === v}">${l}</button>`).join('')}</div>`;
   const days = [...new Set(games.map(x => etDay(x.tip)))];
   $('mu2-ctl').innerHTML = `<div class="mu-ctl">${days.length > 1 ? seg('data-mud', days.map(d => [d, esc(slDay(games.find(x => etDay(x.tip) === d).tip))]), mu.day) : ''}${seg('data-mug', G.map(x => [String(x.id), `${lgImg(x.away, 16)}${esc(x.away)} @ ${lgImg(x.home, 16)}${esc(x.home)}`]), mu.gid)}${seg('data-mus', [['0', `${lgImg(g.home, 16)}${esc(g.home)} defense`], ['1', `${lgImg(g.away, 16)}${esc(g.away)} defense`]], String(mu.side))}
@@ -5976,12 +5977,14 @@ function muUpdate(root, ctx){
   $('mu2-zd').dataset.z = zk; $('mu2-zd').innerHTML = muZoneDetail(def, a, P, zk);
   $('mu2-cap').textContent = P && mu.vw !== 'defense' ? `Glow is ${sel.p.name}'s shots by 4-foot square, ${DD.season} regular season (${P.fga} shots). Zone color is what ${def} allows per 48: green soft, red tough.` : `Zone color is what ${def} allows per 48 minutes against the league, ${DD.season} regular season: green soft, red tough, rank out of 30.`;
   $('mu2-lad').innerHTML = a ? muLadder(a, def) : '';
-  $('mu2-pick').innerHTML = rows.map((x, i) => `<button type="button" class="mu2-pb" data-mup="${i}" aria-pressed="${i === mu.pi}" title="${esc(x.p.name)}">${cutImg(x.p.id, x.p.name, 46)}<b>${esc(last(x.p.name))}</b><span class="num ${x.a ? (x.a.score >= 1 ? 'up' : x.a.score <= -1 ? 'down' : '') : ''}">${x.a ? muPct(x.a.score) : 'n/a'}</span></button>`).join('');
+  const card = (x, i) => `<button type="button" class="mu2-pb" data-mup="${i}" aria-pressed="${i === mu.pi}" title="${esc(x.p.name)}${x.pl && x.pl.thin ? ': thin sample' : ''}">${cutImg(x.p.id, x.p.name, 46)}<b>${esc(last(x.p.name))}</b><span class="num ${x.a ? (x.a.score >= 1 ? 'up' : x.a.score <= -1 ? 'down' : '') : ''}">${x.a ? muPct(x.a.score) : 'n/a'}</span>${x.pl && x.pl.thin ? '<small class="mu2-thin">thin sample</small>' : x.a ? '' : '<small class="mu2-thin">no shot data</small>'}</button>`;
+  const grp = (label, from, to) => to > from ? `<div class="mu2-gl">${label}</div><div class="mu2-pick">${rows.slice(from, to).map((x, i) => card(x, from + i)).join('')}</div>` : '';
+  $('mu2-pick').innerHTML = grp('Starters', 0, ns) + grp('Bench, by projected minutes', ns, rows.length);
   const rd = $('mu2-read'); const was = rd.dataset.k, nowk = String(sel ? sel.p.id : '') + '|' + def;
   rd.innerHTML = !sel ? '<article class="card mu2-read"><p class="muted">No lineup for this team yet.</p></article>' : !a ? `<article class="card mu2-read"><h3>${esc(sel.p.name)}</h3><p class="muted">No shot data yet: too few attempts on record.</p></article>` : muRead(def, a, sel.p);
   rd.dataset.k = nowk; if (was !== nowk){ rd.classList.remove('rise'); void rd.offsetWidth; rd.classList.add('rise'); }
   if (a){ const el = $('mu2-score'); if (el){ el._v = mu.lastScore != null && was && was.split('|')[0] !== String(sel.p.id) ? mu.lastScore : a.score; muTween(el, a.score, muPct); } mu.lastScore = a.score; }
-  $('mu2-lineup').innerHTML = muLineup(def, atk, rows);
+  $('mu2-lineup').innerHTML = muLineup(def, atk, rows.slice(0, ns));
 }
 function renderMatchups(){
   const root = $('v-matchups');
@@ -5994,11 +5997,14 @@ function renderMatchups(){
   const G = games.filter(g => etDay(g.tip) === mu.day);
   if (!G.some(g => String(g.id) === mu.gid)) mu.gid = String(G[0].id);
   const g = G.find(x => String(x.id) === mu.gid), def = mu.side === 0 ? g.home : g.away, atk = mu.side === 0 ? g.away : g.home;
-  const F = slateFive(atk, g, B, status), five = F ? F.five : [];
-  if (mu.pi >= five.length) mu.pi = 0;
-  const rows = five.map(p => ({p, pl: DD.players[String(p.id)], a: muAnalyze(def, p.id)}));
+  const F = slateFive(atk, g, B, status), five = F ? F.five : [], T = D.teams[atk];
+  // the top 9 by projected minutes: the five, then the next four the Minutes Lab expects to play (nobody listed Out)
+  const bench = T ? T.players.filter(p => !five.includes(p) && p.min0 > 0 && !/^(Out|Inactive)/.test(status[p.id] || '')).sort((a, b) => b.min0 - a.min0).slice(0, Math.max(0, 9 - five.length)) : [];
+  const roster = [...five, ...bench];
+  if (mu.pi >= roster.length) mu.pi = 0;
+  const rows = roster.map(p => ({p, pl: DD.players[String(p.id)], a: muAnalyze(def, p.id)}));
   if (!root.querySelector('.mu2')){ root.innerHTML = muShell(); mu.drawn = null; root.querySelector('.mu2-stage').classList.add('enter'); }
-  muUpdate(root, {games, G, g, def, atk, rows, sel: rows[mu.pi], a: rows[mu.pi] && rows[mu.pi].a, B, status});
+  muUpdate(root, {games, G, g, def, atk, rows, ns: five.length, sel: rows[mu.pi], a: rows[mu.pi] && rows[mu.pi].a, B, status});
   const wk = DD.persistence;
   $('mufoot').innerHTML = `<div><b>How to read it.</b> The court is a real half-court: the lane is painted in the defending team's color and the logo sits at midcourt. Zone color is how many shots the defense lets up there per 48 minutes against the league average: green is a soft spot (it gives up the most), red a tough one, with the rank out of 30. The glow is the selected starter's own shots, by 4-foot square, from ESPN play-by-play coordinates. The SHOTS number multiplies each zone's share of his shots by how far the defense sits from average there and adds them up. It counts <b>shot opportunity, not shot quality</b>. <b>Context, not a bet:</b> tested against Kalshi and sportsbook prices on 2025-26 (docs/diet-test.md), it added nothing the market had not already priced.</div>
     <div><b>Where it comes from.</b> ${DD.games} regular-season games (${esc(DD.season)}, through ${esc(DD.through)}), regular season only. It refreshes each morning with the night before's games; early in a season last year's games are blended in, each team's weight on the new season being its games played out of 15. Splitting ${esc(wk.season)} in half, a team's rank held up at ${wk.team_rank['zone.ra']} for the rim, ${wk.team_rank['zone.paint']} paint, ${wk.team_rank['zone.mid']} mid-range, ${wk.team_rank['zone.c3']} corner threes and ${wk.team_rank['zone.ab3']} above-the-break threes, and a player's own mix held up at ${wk.player_share['zone.ra']} to ${wk.player_share['zone.ab3']}. A player under ${DD.thin.fga} shots reads as a thin sample. The balls in flight are a picture: each one leaves from a spot weighted by where he really shoots, and none of them is a real shot.</div>
