@@ -10,6 +10,8 @@ on:
       - 'sharp-money/v2/**'
       - 'scripts/track-v2-plays.mjs'
       - 'scripts/track-prop-plays.mjs'
+      - 'scripts/build-props-board.mjs'
+      - 'tests/props_board.test.mjs'
       - 'scripts/snapshot_sharp_ledgers.py'
       - 'scripts/regrade_prop_clv.py'
       - 'tests/v2_*'
@@ -35,6 +37,6 @@ jobs:
         with:
           node-version: 20
       - name: Gates, page parity and ledger
-        run: node --test tests/v2_gates.test.mjs tests/v2_ledger.test.mjs tests/v2_tiers.test.mjs
+        run: node --test tests/v2_gates.test.mjs tests/v2_ledger.test.mjs tests/v2_tiers.test.mjs tests/props_board.test.mjs
       - name: Prop close regrade and ledger snapshot guard
         run: python3 -m unittest tests.test_sharp_v2_data tests.test_sharp_v2_forward

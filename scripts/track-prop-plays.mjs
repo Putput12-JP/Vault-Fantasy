@@ -188,6 +188,8 @@ export function recordOf(L) {
         shifted: { n: done.filter(x => x.shifted).length, hit: done.filter(x => x.shifted).length ? +(done.filter(x => x.shifted && x.status === 'won').length / done.filter(x => x.shifted).length).toFixed(4) : null, pred: done.filter(x => x.shifted).length ? +(done.filter(x => x.shifted).reduce((s, x) => s + x.p, 0) / done.filter(x => x.shifted).length).toFixed(4) : null } };
     })(),
     byVenue: by(x => (x.shifted ? 'Different line: ' : '') + (x.called.kind === 'exchange' ? x.called.src : 'US books')), byMarket: by(x => x.label), bySide: by(x => x.side),
+    // The fair price a call was measured against: 'Pinnacle' for every call logged before props were anchored on the exchange, then 'Novig', 'Kalshi' or 'Novig + Kalshi'.
+    byFair: by(x => /Novig|Kalshi/.test(x.called.fairSrc || '') ? 'Exchange anchor' : (x.called.fairSrc || 'Pinnacle')),
     recent: all.sort((a, b) => b.firstSeen - a.firstSeen).slice(0, 80).map(x => ({ ...x })),
   };
 }
