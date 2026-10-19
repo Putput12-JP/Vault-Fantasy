@@ -126,31 +126,55 @@ class Pricer:
                and v['ms'][4] >= tip - M['rot_days'] * 86400}
         roster = {x['id'] for x in self.D['teams'].get(team, {}).get('players', [])}
         roster |= {int(a) for a, v in P.items() if v.get('ms') and v['ms'][3] == team and v['ms'][4] >= tip - 30 * 86400}
-        cand = self.cand_override.get((team, str(g['id'])))
-        cand = [a for a in (cand if cand is not None else sorted(roster))
+        cand_given = self.cand_override.get((team, str(g['id'])))
+        cand = [a for a in (cand_given if cand_given is not None else sorted(roster))
                 if S(a).get('ms') and S(a)['ms'][3] == team and S(a).get('r') and a not in out]
         tl = (self.state.get('team_last') or {}).get(team)
         b2b = 1.0 if tl and tip - tl < 30 * 3600 else 0.0
         sp = g.get('blow_spread', g.get('spread'))       # tests pass the backtest's game-model margin here
         blow = max(0.0, abs(sp) - 6.0) if sp is not None else 0.0
-        pm = {}
-        for a in cand:
-            m, stt, pos = S(a)['ms'][:3]
-            vs = sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] == pos)
-            vo = sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] != pos)
-            share, starter = m / 48.0, stt >= 0.5
-            x = [vs, vo, vs * share, vo * share, blow if starter else 0.0, 0.0 if starter else blow, b2b, b2b * share, 1.0]
-            pm[a] = max(0.0, min(48.0, m + sum(b * v for b, v in zip(M['beta'], x))))
-        tot = sum(pm.values())
-        cache[('stretch', team, str(g['id']))] = 1.0
-        if tot > 0 and len(pm) >= 7:
-            f = M['team_min'] / tot
-            cache[('stretch', team, str(g['id']))] = f
-            pm = {a: min(48.0, v * f) for a, v in pm.items()}
-        present = [S(a)['r'] for a in cand]
+        info = {a: (S(a)['ms'][0], S(a)['ms'][1], S(a)['ms'][2], S(a)['r']) for a in cand}      # pid -> (minutes, starter prob, position, rates)
+
+        def project(ids):
+            pm = {}
+            for a in ids:
+                m, stt, pos, _ = info[a]
+                vs = sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] == pos)
+                vo = sum(q[0] * out.get(b, 0) for b, q in rot.items() if b != a and q[2] != pos)
+                share, starter = m / 48.0, stt >= 0.5
+                x = [vs, vo, vs * share, vo * share, blow if starter else 0.0, 0.0 if starter else blow, b2b, b2b * share, 1.0]
+                pm[a] = max(0.0, min(48.0, m + sum(b * v for b, v in zip(M['beta'], x))))
+            return pm
+
+        def rescale(pm):
+            tot = sum(pm.values())
+            if tot > 0 and len(pm) >= 7:
+                f = M['team_min'] / tot
+                return {a: min(48.0, v * f) for a, v in pm.items()}, f
+            return dict(pm), 1.0
+
+        pm, f = rescale(project(list(info)))              # the backtest's path: only players with minutes history on this team
+        cache[('stretch', team, str(g['id']))] = f
+        labs = set()
+        top = max(pm.values(), default=0.0)
+        if cand_given is None and not self.example and (len(pm) < self.HOLD_MIN_PLAYERS or top >= self.HOLD_MAX_MIN or f >= self.HOLD_MAX_STRETCH):
+            # The roster guard holds this team (roster_hold). Its minutes were spread over the few players the model knows, so the Lakers' four
+            # known players sat at 2.56x (Luka and Reaves at 48) while eleven arrivals had no minutes. Players with no history on this team
+            # (moved in, rookies) join with the Minutes Lab's estimate, flagged 'lab', and the whole rotation is rescaled together. Every prop
+            # of a held team is already never a Bet, Lean or edge, so this changes what is shown, not what is tracked; teams the guard lets
+            # through keep the backtest's path above, unchanged. The guard keeps its own reading (players known, top, stretch) below.
+            cache[('forced', team, str(g['id']))] = {'n': len(pm), 'top': round(top, 1), 'stretch': round(f, 2)}
+            start = {x.lower() for x in (self.D['teams'].get(team, {}).get('starters') or {}).values()}
+            for x in self.D['teams'].get(team, {}).get('players', []):
+                if x['id'] in info or x['id'] in out or not (x['min0'] > 0):
+                    continue
+                info[x['id']] = (x['min0'], 1.0 if x['name'].lower() in start else 0.0, x['grp'], (S(x['id']).get('r') or x['rate']))
+                labs.add(x['id'])
+            pm, _ = rescale(project(list(info)))
+        present = [info[a][3] for a in info]
         res = {}
-        for a in cand:
-            pos, rates, mu = S(a)['ms'][2], S(a)['r'], {}
+        for a in info:
+            pos, rates, mu = info[a][2], info[a][3], {}
             for st_ in ('pts', 'reb', 'ast', '3pm'):
                 rate, c = rates[st_], M['cascade'].get(st_)
                 if c and c['use']:
@@ -162,7 +186,7 @@ class Pricer:
                     mu[st_] = max(0.0, pm[a] * rate + pm[a] / 48.0 * (bb[0] * vs + bb[1] * vo + bb[2] * vs * rel + bb[3] * vo * rel))
                 else:
                     mu[st_] = max(0.0, pm[a] * rate)
-            res[a] = {'min': pm[a], 'rate': rates, 'pos': pos, 'mu': mu}
+            res[a] = {'min': pm[a], 'rate': rates, 'pos': pos, 'mu': mu, 'lab': a in labs, 'base': info[a][0], 'stt': info[a][1]}
         cache[key] = res
         return res
 
@@ -191,7 +215,9 @@ class Pricer:
             gm = self.game_minutes(team, g, status, cache)
             top = max((v['min'] for v in gm.values()), default=0.0)
             st = cache.get(('stretch', team, str(g['id'])), 1.0)
-            cache[key] = {'why': 'team', 'n': len(gm), 'top': round(top, 1), 'stretch': round(st, 2)} \
+            forced = cache.get(('forced', team, str(g['id'])))     # game_minutes folded arrivals in: the guard reads the numbers from before that
+            cache[key] = dict({'why': 'team'}, **forced) if forced else \
+                {'why': 'team', 'n': len(gm), 'top': round(top, 1), 'stretch': round(st, 2)} \
                 if len(gm) < self.HOLD_MIN_PLAYERS or top >= self.HOLD_MAX_MIN or st >= self.HOLD_MAX_STRETCH else None
         if cache[key]:
             return cache[key]
@@ -238,6 +264,14 @@ class Pricer:
             k = 0 if missed >= M3['return_missed'] else (since + 1 if since is not None else None)
             x = [vs, vo, vs * share, vo * share, blow if starter else 0.0, 0.0 if starter else blow, b2b, b2b * share,
                  role, m * (k == 0), m * (k in (1, 2)), m * (k in (3, 4, 5)), 1.0]
+            pm[a] = max(0.0, min(48.0, m + sum(b * v for b, v in zip(beta, x))))
+        for a, L in self.game_minutes(team, g, status, cache).items():      # a team game_minutes folded arrivals into: the shadow does too, or it stretches the known few
+            if not L.get('lab'):
+                continue
+            m, pos, share, starter = L['base'], L['pos'], L['base'] / 48.0, L['stt'] >= 0.5
+            vs = sum(q[0] * out.get(b, 0) for b, q in rot.items() if q[2] == pos)
+            vo = sum(q[0] * out.get(b, 0) for b, q in rot.items() if q[2] != pos)
+            x = [vs, vo, vs * share, vo * share, blow if starter else 0.0, 0.0 if starter else blow, b2b, b2b * share, 0.0, 0.0, 0.0, 0.0, 1.0]
             pm[a] = max(0.0, min(48.0, m + sum(b * v for b, v in zip(beta, x))))
         tot = sum(pm.values())
         if tot > 0 and len(pm) >= 7:
@@ -289,7 +323,7 @@ class Pricer:
             G = gm[pid]
             mn, x = G['min'], G['mu']
             p = dict(p or {'id': pid}, rate=G['rate'], grp=G['pos'])
-            src = 'model'
+            src = 'lab' if G.get('lab') else 'model'
         elif p is None:
             return None
         else:

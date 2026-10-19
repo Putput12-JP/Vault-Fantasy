@@ -3309,41 +3309,66 @@ function gameMinutes(team, g, cache){
   const cand = [...roster].sort((a, b) => a - b).filter(a => S(a).ms && S(a).ms[3] === team && S(a).r && !out[a]);
   const tl = (state.team_last || {})[team], b2b = tl && tip - tl < 30 * 3600 ? 1 : 0;
   const blow = g.spread != null ? Math.max(0, Math.abs(g.spread) - 6) : 0;
-  let pm = {};
-  const parts = {};
-  for (const a of cand){
-    const [m, stt, pos] = S(a).ms;
-    let vs = 0, vo = 0;
-    for (const [b, q] of Object.entries(rot)){ if (+b === a) continue; if (q[2] === pos) vs += q[0] * (out[+b] || 0); else vo += q[0] * (out[+b] || 0); }
-    const share = m / 48, starter = stt >= .5;
-    const x = [vs, vo, vs * share, vo * share, starter ? blow : 0, starter ? 0 : blow, b2b, b2b * share, 1];
-    pm[a] = Math.max(0, Math.min(48, m + M.beta.reduce((acc, b, i) => acc + b * x[i], 0)));
-    const t = M.beta.map((b, i) => b * x[i]);
-    parts[a] = {base: m, vac: t[0] + t[1] + t[2] + t[3], blow: t[4] + t[5], b2b: t[6] + t[7], other: t[8], pre: pm[a]};
+  // info[a] = [minutes, starter prob, position, rates]
+  const info = {}, labs = new Set(), parts = {};
+  for (const a of cand) info[a] = [S(a).ms[0], S(a).ms[1], S(a).ms[2], S(a).r];
+  const project = ids => {
+    const pm = {};
+    for (const a of ids){
+      const [m, stt, pos] = info[a];
+      let vs = 0, vo = 0;
+      for (const [b, q] of Object.entries(rot)){ if (+b === a) continue; if (q[2] === pos) vs += q[0] * (out[+b] || 0); else vo += q[0] * (out[+b] || 0); }
+      const share = m / 48, starter = stt >= .5;
+      const x = [vs, vo, vs * share, vo * share, starter ? blow : 0, starter ? 0 : blow, b2b, b2b * share, 1];
+      pm[a] = Math.max(0, Math.min(48, m + M.beta.reduce((acc, b, i) => acc + b * x[i], 0)));
+      const t = M.beta.map((b, i) => b * x[i]);
+      parts[a] = {base: m, vac: t[0] + t[1] + t[2] + t[3], blow: t[4] + t[5], b2b: t[6] + t[7], other: t[8], pre: pm[a]};
+    }
+    return pm;
+  };
+  const rescale = pm => {
+    const tot = Object.values(pm).reduce((a, b) => a + b, 0), n = Object.keys(pm).length;
+    if (!(tot > 0 && n >= 7)) return [pm, 1];
+    const f = M.team_min / tot, out2 = {}; for (const a in pm) out2[a] = Math.min(48, pm[a] * f);
+    return [out2, f];
+  };
+  let [pm, stretch] = rescale(project(Object.keys(info).map(Number)));   // the backtest's path: only players with minutes history on this team
+  cache[`stretch|${key}`] = stretch;
+  const top = Math.max(0, ...Object.values(pm));
+  if (PS.mode !== 'example' && (Object.keys(pm).length < HOLD_MIN_PLAYERS || top >= HOLD_MAX_MIN || stretch >= HOLD_MAX_STRETCH)){
+    // The roster guard holds this team (rosterHold; pricing.py game_minutes is the same rule). Its minutes were spread over the few players the model
+    // knows, so the Lakers' four known players sat at 2.56x (Luka and Reaves at 48) while eleven arrivals had no minutes. Players with no history on
+    // this team (moved in, rookies) join with the Minutes Lab's estimate, flagged lab, and the whole rotation is rescaled together. Every prop of a held
+    // team is already never a Bet, Lean or edge, so this changes what is shown, not what is tracked; teams the guard lets through keep the path above.
+    cache[`forced|${key}`] = {n: Object.keys(pm).length, top, stretch};
+    const start = new Set(Object.values((D.teams[team] && D.teams[team].starters) || {}).map(x => String(x).toLowerCase()));
+    for (const x of (D.teams[team] ? D.teams[team].players : [])){
+      if (info[x.id] || out[x.id] || !(x.min0 > 0)) continue;
+      info[x.id] = [x.min0, start.has(x.name.toLowerCase()) ? 1 : 0, x.grp, S(x.id).r || x.rate]; labs.add(x.id);
+    }
+    pm = rescale(project(Object.keys(info).map(Number)))[0];
   }
-  const tot = Object.values(pm).reduce((a, b) => a + b, 0);
-  cache[`stretch|${key}`] = 1;
-  if (tot > 0 && Object.keys(pm).length >= 7){ const f = M.team_min / tot; cache[`stretch|${key}`] = f; for (const a in pm) pm[a] = Math.min(48, pm[a] * f); }
-  for (const a of cand) parts[a].rescale = pm[a] - parts[a].pre;
+  const ids = Object.keys(info).map(Number);
+  for (const a of ids) parts[a].rescale = pm[a] - parts[a].pre;
   // what-if: your minutes for tonight, the change moved to teammates by the Lab's rule (in proportion to minutes,
   // same position NB x more). Only this page and your browser see it; the shadow ledger never does.
   const ed = cache.__noEdits ? {} : (tonightEdits[String(g.id)] || {}), mine = new Set();
   for (const [a0, val] of Object.entries(ed).sort((x, y) => +x[0] - +y[0])){
     const a = +a0; if (!(a in pm)) continue;
     let delta = pm[a] - val; pm[a] = Math.max(0, Math.min(48, +val)); mine.add(a);
-    const pos = S(a).ms[2];
+    const pos = info[a][2];
     for (let k = 0; k < 4 && Math.abs(delta) > .05; k++){
-      const pool = cand.filter(q => q !== a && !mine.has(q) && pm[q] > 0 && (delta > 0 ? pm[q] < 48 : true));
-      const w = pool.map(q => pm[q] * (S(q).ms[2] === pos ? NB : 1)), W = w.reduce((x, y) => x + y, 0);
+      const pool = ids.filter(q => q !== a && !mine.has(q) && pm[q] > 0 && (delta > 0 ? pm[q] < 48 : true));
+      const w = pool.map(q => pm[q] * (info[q][2] === pos ? NB : 1)), W = w.reduce((x, y) => x + y, 0);
       if (!W) break;
       let moved = 0;
       pool.forEach((q, i) => { const nv = Math.max(0, Math.min(48, pm[q] + delta * w[i] / W)); moved += nv - pm[q]; pm[q] = nv; });
       delta -= moved;
     }
   }
-  const present = cand.map(a => S(a).r), res = {};
-  for (const a of cand){
-    const pos = S(a).ms[2], rates = S(a).r, mu = {};
+  const present = ids.map(a => info[a][3]), res = {};
+  for (const a of ids){
+    const pos = info[a][2], rates = info[a][3], mu = {};
     for (const s of ['pts', 'reb', 'ast', '3pm', ...EXTRA_LIST]){
       const rate = rates[s]; if (rate == null) continue;   // steals / blocks / turnovers: no usage cascade, and no rate in last season's example state
       const c = M.cascade[s];
@@ -3354,7 +3379,7 @@ function gameMinutes(team, g, cache){
         mu[s] = Math.max(0, pm[a] * rate + pm[a] / 48 * (bb[0] * vs + bb[1] * vo + bb[2] * vs * rel + bb[3] * vo * rel));
       } else mu[s] = Math.max(0, pm[a] * rate);
     }
-    res[a] = {min: pm[a], rate: rates, pos, mu, base: S(a).ms[0], parts: parts[a], mine: mine.has(a), sdm: S(a).sdm};
+    res[a] = {min: pm[a], rate: rates, pos, mu, base: info[a][0], stt: info[a][1], parts: parts[a], mine: mine.has(a), sdm: S(a).sdm, lab: labs.has(a)};
   }
   cache[key] = res;
   return res;
@@ -3391,6 +3416,14 @@ function gameMinutesV3(team, g, cache){
     const x = [vs, vo, vs * share, vo * share, starter ? blow : 0, starter ? 0 : blow, b2b, b2b * share, role, k === 0 ? m : 0, (k === 1 || k === 2) ? m : 0, (k === 3 || k === 4 || k === 5) ? m : 0, 1];
     pm[a] = Math.max(0, Math.min(48, m + beta.reduce((acc, b, i) => acc + b * x[i], 0)));
   }
+  for (const [a, L] of Object.entries(gameMinutes(team, g, cache))){      // a team gameMinutes folded arrivals into: the shadow does too, or it stretches the known few
+    if (!L.lab) continue;
+    const m = L.base, pos = L.pos, share = m / 48, starter = L.stt >= .5;
+    let vs = 0, vo = 0;
+    for (const [b, q] of Object.entries(rot)){ if (q[2] === pos) vs += q[0] * (out[+b] || 0); else vo += q[0] * (out[+b] || 0); }
+    const x = [vs, vo, vs * share, vo * share, starter ? blow : 0, starter ? 0 : blow, b2b, b2b * share, 0, 0, 0, 0, 1];
+    pm[+a] = Math.max(0, Math.min(48, m + beta.reduce((acc, b, i) => acc + b * x[i], 0)));
+  }
   const tot = Object.values(pm).reduce((x, y) => x + y, 0);
   if (tot > 0 && Object.keys(pm).length >= 7){ const f = (starters ? M3.team_min_starters : M3.team_min) / tot; for (const a in pm) pm[a] = Math.min(48, pm[a] * f); }
   cache[key] = {pm, starters: !!starters};
@@ -3424,7 +3457,7 @@ function muFor(pid, stat, cache, g, bteam){
       }
       const sdm = state0 && state0.players[pid] ? state0.players[pid].sdm : 6;
       const rate = parts.reduce((a, s) => a + G.rate[s], 0);
-      return {mu, min: G.min, min0: G.base, team: team0, build, extra: (rate * sdm) ** 2, v2: !!(PR.stacker && state0), src: G.mine ? 'yours' : 'model'};
+      return {mu, min: G.min, min0: G.base, team: team0, build, extra: (rate * sdm) ** 2, v2: !!(PR.stacker && state0), src: G.mine ? 'yours' : G.lab ? 'lab' : 'model'};
     }
   }
   let pl = PIDX[pid]; if (!pl) return null;
@@ -3475,7 +3508,8 @@ function rosterHold(team, g, cache, src){
   if (!(key in cache)){
     const gm = Object.values(gameMinutes(team, g, cache)), top = Math.max(0, ...gm.map(v => v.min));
     const stretch = cache[`stretch|gm|${team}|${g.id}|${cache.__noEdits ? 0 : 1}`] || 1;
-    cache[key] = gm.length < HOLD_MIN_PLAYERS || top >= HOLD_MAX_MIN || stretch >= HOLD_MAX_STRETCH ? {why: 'team', n: gm.length, top, stretch} : null;
+    const forced = cache[`forced|gm|${team}|${g.id}|${cache.__noEdits ? 0 : 1}`];       // gameMinutes folded arrivals in: the guard reads the numbers from before that
+    cache[key] = forced ? {why: 'team', ...forced} : gm.length < HOLD_MIN_PLAYERS || top >= HOLD_MAX_MIN || stretch >= HOLD_MAX_STRETCH ? {why: 'team', n: gm.length, top, stretch} : null;
   }
   return cache[key] || (src === 'lab' ? {why: 'player'} : null);
 }
@@ -4618,7 +4652,7 @@ function renderTonight(){
       for (const s of ['pts', 'reb', 'ast', '3pm']){ const m = muFor(pid, s, cache, g, team); mu[s] = m ? m.mu : null; }
       const sd = G.sdm || 6;
       rows.push({pid, name: nameOf(B, pid), min: G.min, lo: Math.max(0, G.min - 1.2816 * sd), hi: Math.min(48, G.min + 1.2816 * sd), parts: G.parts, mine: G.mine, v3: v3m.pm[pid], gb: gbm[pid],
-                 st: status[pid], lu: P[pid] ? P[pid][3] : null, stT: P[pid] ? P[pid][4] : null, luT: P[pid] ? P[pid][5] : null, mu, mkt: marketMinutes(B, g, team, pid, G.min, cache), src: 'model'});
+                 st: status[pid], lu: P[pid] ? P[pid][3] : null, stT: P[pid] ? P[pid][4] : null, luT: P[pid] ? P[pid][5] : null, mu, mkt: marketMinutes(B, g, team, pid, G.min, cache), src: G.lab ? 'lab' : 'model'});
     }
     const seen = new Set(rows.map(r => r.pid));
     for (const [a, st] of Object.entries(status)){
@@ -4658,7 +4692,7 @@ function renderTonight(){
   const chip = (v, lab) => Math.abs(v) >= .3 ? `<span class="nt-p ${v > 0 ? 'up' : 'dn'}">${v > 0 ? '+' : ''}${fmt(v)} ${lab}</span>` : '';
   const stTxt = r => [LINEUP[r.lu] || '', r.st ? `<span class="${/out|inactive/i.test(r.st) ? 'neg' : 'warnt'}">${esc(r.st)}${r.stT ? ' ' + clock(r.stT) : ''}</span>` : '', r.src === 'lab' ? '<span class="muted" title="No games yet for this team: the Minutes Lab estimate">Lab estimate</span>' : ''].filter(Boolean).join(' · ');
   $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
-      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game` : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
+      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? (T.nLab ? ` · the model alone would stretch these players ${fmt(T.stretch, 2)}x, so the new players share the minutes` : ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game`) : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
       <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Shadow: gradient-boosted minutes model. Logged next to v2 and v3, never priced. Uses the same injury statuses; the market spread stands in for the game model's margin.">GBM</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
       ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
         : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
