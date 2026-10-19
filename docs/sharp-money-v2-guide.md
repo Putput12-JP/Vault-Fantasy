@@ -62,6 +62,8 @@ Open any game and scroll down for:
 
 ## Props page
 
+The prop board itself is now anchored on the exchange too. Its fair price is the average of Novig and Kalshi (only when each is fresh and tradeable), the +EV call is always a sportsbook price (an exchange price is never the call), and Pinnacle is the check: a call says so when Pinnacle prices it the other way or sits 4 or more points from the exchange. Without a usable exchange it falls back to Pinnacle as before. The old calls stay on the Pinnacle record; new ones are tagged by which fair price they used.
+
 The three CLV tiles now use the exchange close. The older +2.7% looked good but was measured against the same price that raised the call. Against the exchange close it is about +0.1%.
 
 ## How to use it

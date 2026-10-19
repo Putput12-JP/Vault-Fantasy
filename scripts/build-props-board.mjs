@@ -6,9 +6,11 @@
      Kalshi     data/kalshi_props.json  (mid + spread + open interest, no per-side asks)
      Novig      data/novig_props.json   (real bid/ask both sides, depth)
 
-   Fair price = Pinnacle's power-devigged price at its line. Without Pinnacle, a LIQUID
-   Kalshi strike (tight spread, real open interest) stands in; otherwise there is no fair
-   and the row can show price gaps but never a +EV call.
+   Fair price = the EXCHANGE (the mean of Novig's mid and Kalshi's mid at the line, each only when it is fresh and takeable: Novig tight with depth, Kalshi liquid).
+   Exchanges price props more sharply than Pinnacle (docs/retro: Novig closed nearer to results on 371 paired calls), so they are the anchor. Pinnacle is the check:
+   the row carries `pinFair`, and a call that Pinnacle prices the other way, or that sits 4+ points from it, says so in `check`. With no usable exchange the old
+   rule stands: Pinnacle's power-devigged price at its line, else a liquid Kalshi strike; otherwise there is no fair and the row can show price gaps but
+   never a +EV call. Exchange venues are never the call when the exchange is the anchor (their price against their own mid is just the spread).
 
    A side is only priced against fair at a venue quoting the same number. Different
    lines are different bets, so they are never compared.
@@ -113,9 +115,17 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
           under: { p: Math.min(0.99, 1 - yb), am: toAm(Math.min(0.99, 1 - yb)), oi: kl.oi, cents: c(1 - yb), bidc: c(1 - ya), contract, side: 'No' } });
         src.kalshi++;
       }
-      let fair = null, fairSrc = null;
-      if (pin) { fair = powFair(impl(pin.over), impl(pin.under)); fairSrc = 'Pinnacle'; src.pinnacle++; }
+      const pinFair = pin ? powFair(impl(pin.over), impl(pin.under)) : null;
+      if (pin) src.pinnacle++;
+      const exFair = [];
+      const nvv = venues.find(v => v.src === 'Novig'), klv = venues.find(v => v.src === 'Kalshi');
+      if (nvv && !novStale && nvv.mid != null && (nvv.spr ?? 1) <= TIGHT_SPR && (nvv.depth ?? 0) >= MIN_DEPTH) exFair.push(['Novig', nvv.mid]);
+      if (klv && !kalStale && klv.liquid && klv.mid != null) exFair.push(['Kalshi', klv.mid]);
+      let fair = null, fairSrc = null, fairFrom = null;
+      if (exFair.length) { fair = exFair.reduce((t, x) => t + x[1], 0) / exFair.length; fairFrom = exFair.map(x => x[0]); fairSrc = fairFrom.join(' + '); }
+      else if (pin) { fair = pinFair; fairSrc = 'Pinnacle'; }
       else { const kv = venues.find(v => v.src === 'Kalshi' && v.liquid); if (kv) { fair = kv.mid; fairSrc = 'Kalshi'; } }
+      const isFair = v => fairFrom ? v.kind === 'exchange' : v.src === fairSrc;     // the anchor itself is never the call
 
       // Has the market moved on without our reference? A deep, tight exchange far from the fair price at the same number is pricing
       // a line move the (hourly) book snapshot has not caught: the "edge" is the reference being out of date, not the exchange being cheap.
@@ -143,7 +153,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       if (fair != null && !moved) {
         const cand = [];
         for (const q of qs) if (q.line !== ref && q.over != null && q.under != null && !PICKEM.has(q.book) && q.book !== 'Pinnacle') cand.push({ src: q.book, kind: 'book', line: q.line, po: impl(q.over), pu: impl(q.under), ao: q.over, au: q.under });
-        for (const r of NV[mkt]?.[nk] || []) if (r.k !== ref && (r.depth ?? 0) >= MIN_DEPTH) cand.push({ src: 'Novig', kind: 'exchange', line: r.k, po: r.oa, pu: r.ua, ao: r.oa != null ? toAm(r.oa) : null, au: r.ua != null ? toAm(r.ua) : null, depth: r.depth });
+        if (!fairFrom) for (const r of NV[mkt]?.[nk] || []) if (r.k !== ref && (r.depth ?? 0) >= MIN_DEPTH) cand.push({ src: 'Novig', kind: 'exchange', line: r.k, po: r.oa, pu: r.ua, ao: r.oa != null ? toAm(r.oa) : null, au: r.ua != null ? toAm(r.ua) : null, depth: r.depth });
         for (const c of cand) {
           const fo = shiftFair(shift, mkt, fair, ref, c.line); if (fo == null) continue;
           for (const [side, pp, am, pf] of [['over', c.po, c.ao, fo], ['under', c.pu, c.au, 1 - fo]]) {
@@ -153,11 +163,11 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
           }
         }
         if (alt) {
-          const why = ['a different line than Pinnacle, so the price is converted'];
-          if (pinStale) why.push("Pinnacle's line is old");
+          const why = ['a different line than ' + (fairFrom ? 'the exchange' : 'Pinnacle') + ', so the price is converted'];
+          if (pinStale && !fairFrom) why.push("Pinnacle's line is old");
           if (usStale && alt.kind === 'book') why.push('book prices are old');
           if (novStale && alt.src === 'Novig') why.push('Novig price is old');
-          alt.check = why; alt.stale = pinStale || (usStale && alt.kind === 'book') || (novStale && alt.src === 'Novig'); alt.big = alt.ev >= BIG_EV; alt.stake = stakePct(alt.evAdj, alt.p);
+          alt.check = why; alt.stale = (pinStale && !fairFrom) || (usStale && alt.kind === 'book') || (novStale && alt.src === 'Novig'); alt.big = alt.ev >= BIG_EV; alt.stake = stakePct(alt.evAdj, alt.p);
         }
       }
       if (venues.length < 2 && !alt) continue;   // nothing to compare
@@ -169,7 +179,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
         const vs = venues.filter(v => v[side]?.p != null).map(v => {
           const x = v[side];
           const thin = v.kind === 'exchange' && ((v.src === 'Novig' && (x.depth ?? 0) < MIN_DEPTH) || (v.src === 'Kalshi' && !v.liquid));
-          return { src: v.src, kind: v.kind, age: v.age ?? null, spr: v.spr ?? null, p: +x.p.toFixed(4), am: x.am, ev: pf == null || v.src === fairSrc ? null : +(pf / x.p - 1).toFixed(4), depth: x.depth ?? null, oi: x.oi ?? null, cents: x.cents ?? null, bidc: x.bidc ?? null, contract: x.contract ?? null, kside: x.side ?? null, thin };
+          return { src: v.src, kind: v.kind, age: v.age ?? null, spr: v.spr ?? null, p: +x.p.toFixed(4), am: x.am, ev: pf == null || isFair(v) ? null : +(pf / x.p - 1).toFixed(4), depth: x.depth ?? null, oi: x.oi ?? null, cents: x.cents ?? null, bidc: x.bidc ?? null, contract: x.contract ?? null, kside: x.side ?? null, thin };
         });
         const takeable = vs.filter(v => !v.thin);
         const best = takeable.length ? takeable.reduce((a, b) => a.p <= b.p ? a : b) : null;
@@ -179,7 +189,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       // the headline call: the side + venue with the most EV that is takeable and not the fair source itself
       let call = null;
       if (!moved) for (const side of ['over', 'under']) for (const v of sides[side].venues) {
-        if (v.thin || v.ev == null || v.ev < MIN_EV || v.src === fairSrc) continue;
+        if (v.thin || v.ev == null || v.ev < MIN_EV || isFair(v)) continue;
         if (!call || v.ev > call.ev) call = { side, src: v.src, kind: v.kind, am: v.am, p: v.p, ev: v.ev, depth: v.depth, age: v.age ?? null, cents: v.cents ?? null };
       }
       if (call) {
@@ -189,6 +199,11 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
         if (usStale && call.kind === 'book' && !OWNED.has(call.src)) why.push(`${call.src} prices are old`);
         if (kalStale && (fairSrc === 'Kalshi' || call.src === 'Kalshi')) why.push('Kalshi prices are old');
         if (call.src === 'Novig' && (novStale || (call.age ?? 0) > FRESH_S)) why.push('Novig price is old');
+        if (fairFrom && pinFair != null) {          // Pinnacle is the check on an exchange-anchored call
+          const ps = call.side === 'over' ? pinFair : 1 - pinFair; call.pinEdge = +(ps / call.p - 1).toFixed(4);
+          if (call.pinEdge < 0) why.push('Pinnacle prices it the other way');
+          const gap = Math.abs(pinFair - fair); if (gap > 0.04) why.push(`Pinnacle is ${(gap * 100).toFixed(1)} points from the exchange`);
+        }
         if (call.ev >= BIG_EV) why.push('edge this big is usually a moved line');
         call.check = why;
         call.stale = why.some(w => /\bold\b/.test(w) && !/^edge/.test(w));   // an edge against an old price: never tracked
@@ -202,7 +217,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
         const ex = sides[side].venues.filter(v => v.kind === 'exchange' && !v.thin);
         for (const e of ex) for (const o of sides[side].venues) {
           if (o.src === e.src || o.thin || DFS.has(o.src)) continue;
-          const op = o.src === fairSrc && sides[side].fair != null ? sides[side].fair : o.p;   // the fair source's own price carries vig: compare its no-vig price
+          const op = isFair(o) && sides[side].fair != null ? sides[side].fair : o.p;   // the fair source's own price carries vig: compare its no-vig price
           const d = op - e.p;   // positive: the exchange is cheaper than the other venue
           // An exchange asking MORE than the field is usually just a wide book (nobody offering). Only trust that direction when the quote is tight.
           if (d < 0 && !(e.spr != null && e.spr <= TIGHT_SPR)) continue;
@@ -215,7 +230,7 @@ export function buildPropsBoard({ feed, kalshi, novig, shift }) {
       src.players++;
       rows.push({
         pid, name: p.name, team: p.team, pos: p.pos, mkt, label: LABEL[mkt], line: ref,
-        fair: fair == null ? null : +fair.toFixed(4), fairSrc,
+        fair: fair == null ? null : +fair.toFixed(4), fairSrc, fairFrom, pinFair: pinFair == null ? null : +pinFair.toFixed(4),
         over: sides.over, under: sides.under, call, diff, alt, moved,
         vault: vault ? { side: vault.side, line: vault.line, grade: vault.grade, prob: vault.prob, proj: vault.proj, ev: vault.ev, book: vault.book, price: vault.price, books: vault.books, status: vault.status } : null,
       });
