@@ -24,6 +24,12 @@ Otherwise the score stays a display-only fact on the Slate page. The result is r
   python3 nba/scripts/fetch_hoopr.py --only-pbp 2024 2025 2026   # raw/hoopr/pbp_<season>.csv (~290 MB each)
   python3 nba/scripts/build_diet_test.py
 Writes data/diet_test.json and docs/diet-test.md.
+
+RUN 1 WAS VOID, and the rule above did not change. hoopR's 2023-24 ESPN play-by-play carries coordinates for only 7 games (1,267 shots), so
+the 2024-25 FIT season had no usable prior: every zone read as weak, the column was all zeros, its coefficient was exactly 0, and v2d was
+v2 by construction (the saved first-run output said "v2 stays", which is not a result). Fix, applied to the fit season only: with no full
+prior season the weak-zone cut is skipped (all five zones) and a defense counts only after 15 games (before that its vs-league value is 0).
+The 2025-26 TEST season keeps the full definition (prior = 2024-25, which has coordinates for all 1,234 games).
 """
 import copy, json, os, random, statistics, sys
 from collections import defaultdict
@@ -93,11 +99,14 @@ def season_feature(shots, maxp, prior, weak):
             w = min(1.0, n / DD.MIN_GAMES) if prior else 1.0
             r = {}
             for k in ZK:
+                if not prior and n < DD.MIN_GAMES:                       # no prior season: too early to say anything about this defense
+                    r[k] = None
+                    continue
                 new = cur_allow[t][('zone', k)] / n if n else None
                 old = DD.rate(prior, t, None, 'zone', k) if prior else None
                 r[k] = new if old is None else old if new is None else w * new + (1 - w) * old
             rates[t] = r
-        mean = {k: statistics.mean(v[k] for v in rates.values() if v[k] is not None) for k in ZK}
+        mean = {k: statistics.mean([v[k] for v in rates.values() if v[k] is not None] or [0.0]) for k in ZK}
         return {t: {k: (r[k] / mean[k] - 1) if r[k] is not None and mean[k] else 0.0 for k in ZK} for t, r in rates.items()}
 
     shots_by_day = defaultdict(list)
@@ -108,7 +117,7 @@ def season_feature(shots, maxp, prior, weak):
         tables[day] = vs_table()                                          # snapshot BEFORE the day's shots
         # share vectors needed on this day are computed from the counters as they stand now
         day_snaps[day] = {pid: share(cur_pl.get(pid), prior_pl.get(pid)) for pid in set(list(cur_pl) + list(prior_pl))}
-        for (d_, g, pid, name, team, opp, z, k, al, aid, aname) in shots_by_day[day]:
+        for (d_, g, pid, name, team, opp, z, *_r) in shots_by_day[day]:
             w = 48.0 / mins[g]
             cur_allow[opp][('zone', z)] += w
             cur_g[opp].add(g)
@@ -140,8 +149,8 @@ def build_features(P, recs):
     out, cov = {}, defaultdict(lambda: [0, 0])
     rng = random.Random(SEED)
     for s in (2025, 2026):
-        prior = aggs[s - 1]
-        weak = weak_zones(prior)
+        prior = aggs[s - 1] if aggs[s - 1]['games'] >= DD.FULL_SEASON_GAMES else None      # run 1: 2023-24 has no coordinates
+        weak = weak_zones(prior) if prior else set()
         score, meta, tables = season_feature(P[s]['shots'], P[s]['maxp'], prior, weak)
         print(f'season {s}: weak zones {sorted(weak) or "none"}', flush=True)
         for r in recs:
@@ -176,6 +185,7 @@ def with_feature(recs, feats, idx):
 HEAD = ['# Shot diet score vs v2: pre-registered test', '',
         'Generated {generated} by `nba/scripts/build_diet_test.py`. Fit on 2024-25, tested on 2025-26,',
         '{n_test:,} identical player-games and prices for every model.', '',
+        'Run 1 was void (no usable prior season for the fit year, so the column was zero); see the script docstring. This is run 2, same rule.', '',
         '- **v2**: shipped. **v2d**: v2 plus one stacker column per stat, projected mean x the point-in-time shot diet score (zones that held up',
         '  from the prior season\'s first half to its second). **v2d_ctl**: the control, same column with a random other team\'s defense.', '',
         'Rule (fixed before running): the score becomes a pricing input only if v2d keeps every v2 GO at GO with ROI at least v2\'s, AND its',
