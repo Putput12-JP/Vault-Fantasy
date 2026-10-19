@@ -17,8 +17,12 @@ Source is ESPN play-by-play through hoopR, because stats.nba.com is unreachable 
   * Zones come from shot coordinates (feet, hoop at x=25, y=0, far end mirrored): restricted area <= 4 ft, paint non-RA inside the
     16 ft lane up to the free-throw line, corner 3 = a three taken at y <= 8.5 (the straight part of the line), above-break 3 = other
     threes, mid-range = all other twos. Validated on the data: threes start at 22.0 ft, twos end at 23.4 ft.
+  * Transition is derived from the event order: a shot taken within TRANS_SECS (5) of a defensive rebound or a steal, by the team that just
+    gained the ball (no inbound after a made basket, no second chance). 5 s is the valley in the histogram of seconds from a live-ball change
+    to the shot (two clear humps, 0 to 5 s and 10 to 20 s). It is a timing proxy, not a tracking-data fast break: 21% of attempts against a
+    league fast-break share nearer 15%. Cuts of 4 and 7 s rank teams almost the same.
   * "Kinds" come from ESPN's shot labels (Pullup / Step Back, Driving, Cutting, Putback / Tip, plain Jump Shot). They are NOT
-    Synergy play types. Transition, isolation, pick and roll, spot up, handoff, off screen and post up cannot be built from this feed.
+    Synergy play types. Isolation, pick and roll, spot up, handoff, off screen and post up cannot be built from this feed.
   * Assist location is the zone of the assisted made shot: at rim <= 4 ft, short mid (other twos <= 15 ft), long mid (twos > 15 ft),
     corner 3, arc 3.
 A player's diet is his share of his own attempts (assists) by slice. A team's defense is the opponents' attempts per 48 minutes by
@@ -37,8 +41,10 @@ DATA = os.path.join(HERE, '..', 'data')
 ZONES = [('ra', 'Restricted area'), ('paint', 'Paint (non-RA)'), ('mid', 'Mid-range'), ('c3', 'Corner 3'), ('ab3', 'Above-break 3')]
 KINDS = [('pullup', 'Pull-up / step-back'), ('driving', 'Driving / running'), ('cut', 'Cutting'), ('putback', 'Putback / tip'),
          ('jumper', 'Jump shot, untagged')]
+TRANS = [('trans', 'Transition')]
 ASSISTS = [('rim', 'At rim'), ('smid', 'Short mid'), ('lmid', 'Long mid'), ('c3', 'Corner 3'), ('arc3', 'Arc 3')]
-CATS = [('zone', ZONES), ('kind', KINDS), ('ast', ASSISTS)]
+CATS = [('zone', ZONES), ('kind', KINDS), ('ast', ASSISTS), ('trans', TRANS)]
+TRANS_SECS = 5
 HOOP_Y = 83.5                       # far hoop in the feed's y (the near hoop is y = 0); shots past half court are mirrored
 MIN_FGA_PLAYER = 50                 # players below this are left out of the file
 THIN_FGA = 200                      # display flag only: shares from fewer attempts than this are shaky (never a model input)
@@ -118,6 +124,7 @@ def season_files(raw):
 def read(path):
     """-> (shots, game_periods, season) for one pbp file. shots are regular-season two and three point attempts with a coordinate."""
     shots, maxp, abbr, season = [], defaultdict(int), {}, None
+    cur = poss = start = pk = None                                       # possession tracker, reset each game
     with open(path, newline='') as fh:
         for r in csv.DictReader(fh):
             if r['season_type'] != '2':
@@ -128,6 +135,30 @@ def read(path):
                 maxp[g] = max(maxp[g], int(r['period_number']))
             except ValueError:
                 pass
+            if g != cur:
+                cur, poss, start, pk = g, None, None, None
+            tm_, ty_ = r['team_id'], r['type_text']
+            try:
+                now = float(r['end_game_seconds_remaining'])
+            except ValueError:
+                now = None
+            othr = (r['away_team_id'] if tm_ == r['home_team_id'] else r['home_team_id']) if tm_ else None
+            tr = False
+            if r['shooting_play'] == 'true' and r['points_attempted'] in ('2', '3') and now is not None:
+                tr = pk == 'live' and poss == tm_ and start - now <= TRANS_SECS
+                if r['scoring_play'] == 'true':
+                    poss, start, pk = othr, now, 'inbound'
+                else:
+                    pk = 'shot'
+            elif now is not None and tm_:
+                if ty_ == 'Defensive Rebound':
+                    poss, start, pk = tm_, now, 'live'
+                elif ty_ == 'Offensive Rebound':
+                    poss, start, pk = tm_, now, 'second'
+                elif 'steals' in r['text']:
+                    poss, start, pk = othr, now, 'live'
+                elif 'Turnover' in ty_:
+                    poss, start, pk = othr, now, 'inbound'
             if r['shooting_play'] != 'true' or r['points_attempted'] not in ('2', '3') or not r['athlete_id_1']:
                 continue
             try:
@@ -145,7 +176,7 @@ def read(path):
             z, d = zone(x, y, r['points_attempted'] == '3')
             ast = r['athlete_id_2'] if r['scoring_play'] == 'true' and r['athlete_id_2'] and ' assists)' in r['text'] else ''
             shots.append((r['game_date'], g, r['athlete_id_1'], r['athlete_name_1'], abbr[tm], abbr[opp], z, kind(r['type_text']),
-                          assist_loc(z, d) if ast else None, ast, r['athlete_name_2'] if ast else ''))
+                          assist_loc(z, d) if ast else None, ast, r['athlete_name_2'] if ast else '', tr))
     return shots, maxp, season
 
 
@@ -156,9 +187,9 @@ def aggregate(shots, maxp):
     mins = {g: 48 + 5 * max(0, p - 4) for g, p in maxp.items()}
     allow = defaultdict(lambda: defaultdict(float))                      # (team, half or None) -> (cat, key) -> attempts per 48, summed over games
     gms = defaultdict(set)                                               # (team, half or None) -> games the defense played
-    pl = defaultdict(lambda: {'n': 0, 'a': 0, 'zone': defaultdict(int), 'kind': defaultdict(int), 'ast': defaultdict(int), 'team': '', 'name': '',
+    pl = defaultdict(lambda: {'n': 0, 'a': 0, 'tr': 0, 'htr': [0, 0], 'zone': defaultdict(int), 'kind': defaultdict(int), 'ast': defaultdict(int), 'team': '', 'name': '',
                               'half': [defaultdict(int), defaultdict(int)], 'hn': [0, 0], 'day': ''})
-    for (day, g, pid, name, team, opp, z, k, al, aid, aname) in shots:
+    for (day, g, pid, name, team, opp, z, k, al, aid, aname, tr) in shots:
         h = 0 if day < mid else 1
         w = 48.0 / mins[g]
         for half in (None, h):
@@ -168,6 +199,8 @@ def aggregate(shots, maxp):
                 tgt[('kind', k)] += w
             if al:
                 tgt[('ast', al)] += w
+            if tr:
+                tgt[('trans', 'trans')] += w
             gms[(opp, half)].add(g)
         p = pl[pid]
         p['n'] += 1
@@ -176,6 +209,9 @@ def aggregate(shots, maxp):
         p['hn'][h] += 1
         if k:
             p['kind'][k] += 1
+        if tr:
+            p['tr'] += 1
+            p['htr'][h] += 1
         if day >= p['day']:
             p['team'], p['name'], p['day'] = team, name, day
         if al:
@@ -217,8 +253,8 @@ def build(raw):
         if new is None:
             return old
         return wt[t] * new + (1 - wt[t]) * old if old is not None else new
-    out_t = {t: {'g': (cur['gms'].get((t, None), 0) if prior else A0['gms'][(t, None)]), 'w': round(wt[t], 2), 'zone': {}, 'kind': {}, 'ast': {}} for t in teams}
-    league = {'zone': {}, 'kind': {}, 'ast': {}}
+    out_t = {t: {'g': (cur['gms'].get((t, None), 0) if prior else A0['gms'][(t, None)]), 'w': round(wt[t], 2), 'zone': {}, 'kind': {}, 'ast': {}, 'trans': {}} for t in teams}
+    league = {'zone': {}, 'kind': {}, 'ast': {}, 'trans': {}}
     for cat, sl in CATS:
         for key, _ in sl:
             vals = {t: blended(t, cat, key) for t in teams}
@@ -243,6 +279,12 @@ def build(raw):
                 ys.append(p['half'][1][key] / p['hn'][1])
         r = pearson(xs, ys)
         pers['player_share'][f'zone.{key}'] = None if r is None else round(r, 2)
+    xs, ys = [], []
+    for p in A0['pl'].values():
+        if p['hn'][0] >= 100 and p['hn'][1] >= 100:
+            xs.append(p['htr'][0] / p['hn'][0])
+            ys.append(p['htr'][1] / p['hn'][1])
+    pers['player_share']['trans.trans'] = None if pearson(xs, ys) is None else round(pearson(xs, ys), 2)
     pers['player_share_n'] = len(xs)
     # a slice whose team ranking does not carry from one half of the season to the other is noise, not a defense trait. The cut is the
     # two-sided 5% critical correlation for the 30 teams (t = 2.048 on 28 degrees of freedom), not a tuned number.
@@ -262,7 +304,8 @@ def build(raw):
         ref = c if c and (not o or c['day'] >= o['day']) else o
         e = {'name': ref['name'], 'team': ref['team'], 'fga': round(n), 'ast': round((c['a'] if c else 0) + (ka * o['a'] if o else 0)), 'thin': n < THIN_FGA,
              'zone': {k: round(((c['zone'][k] if c else 0) + (kf * o['zone'][k] if o else 0)) / n, 3) for k, _ in ZONES},
-             'kind': {k: round(((c['kind'][k] if c else 0) + (kf * o['kind'][k] if o else 0)) / n, 3) for k, _ in KINDS}}
+             'kind': {k: round(((c['kind'][k] if c else 0) + (kf * o['kind'][k] if o else 0)) / n, 3) for k, _ in KINDS},
+             'trans': round(((c['tr'] if c else 0) + (kf * o['tr'] if o else 0)) / n, 3)}
         a_n = (c['a'] if c else 0) + (ka * o['a'] if o else 0)
         if a_n:
             e['ast_share'] = {k: round(((c['ast'][k] if c else 0) + (ka * o['ast'][k] if o else 0)) / a_n, 3) for k, _ in ASSISTS}
@@ -274,8 +317,8 @@ def build(raw):
             'games': games, 'games_new': cur['games'] if prior else None, 'blend': round(sum(wt.values()) / len(wt), 2) if prior else 1.0,
             'source': 'ESPN play-by-play (hoopR), regular season', 'cats': {c: [[k, lab_] for k, lab_ in sl] for c, sl in CATS},
             'thin': {'fga': THIN_FGA, 'ast': THIN_AST}, 'league': league, 'teams': out_t, 'players': players, 'persistence': pers,
-            'coverage': 'No Synergy play types (transition, isolation, pick and roll, spot up, handoff, off screen, post up): the feed does not carry them. '
-                        'Kinds are ESPN shot labels. Rate = opponent attempts per 48; rank 1 allows the most.'}
+            'coverage': 'No Synergy play types (isolation, pick and roll, spot up, handoff, off screen, post up): the feed does not carry them. '
+                        'Kinds are ESPN shot labels. Transition is a timing proxy (shot within 5 s of a steal or defensive rebound). Rate = opponent attempts per 48; rank 1 allows the most.'}
 
 
 if __name__ == '__main__':
