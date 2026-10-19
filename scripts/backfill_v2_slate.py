@@ -103,107 +103,135 @@ def judge(price, refs, contradicted=False):
     return 'play', worst, best, 'clears every gate'
 
 
+def markets_at(st):
+    """Per market the fair chance of each side from Pinnacle's stored prices, and every US book's price at the same number. sp: the home line must match."""
+    pin = st.get('Pinnacle')
+    out = {}
+    if not pin:
+        return out
+    if pin.get('ml'):
+        f = devig(pin['ml'][0], pin['ml'][1])
+        if f is not None:
+            out['ml'] = dict(line=None, fair={'away': f, 'home': 1 - f}, books=[(b, {'away': r['ml'][0], 'home': r['ml'][1]}) for b in US for r in [st.get(b)] if r and r.get('ml')])
+    if pin.get('sp'):
+        line, hp, ap = pin['sp']
+        f = devig(hp, ap)                                              # chance the home side covers
+        if f is not None:
+            out['sp'] = dict(line=line, fair={'home': f, 'away': 1 - f}, books=[(b, {'home': r['sp'][1], 'away': r['sp'][2]}) for b in US for r in [st.get(b)] if r and r.get('sp') and r['sp'][0] == line])
+    if pin.get('tot'):
+        line, ov, un = pin['tot']
+        f = devig(ov, un)
+        if f is not None:
+            out['tot'] = dict(line=line, fair={'over': f, 'under': 1 - f}, books=[(b, {'over': r['tot'][1], 'under': r['tot'][2]}) for b in US for r in [st.get(b)] if r and r.get('tot') and r['tot'][0] == line])
+    return out
+
+
+SIDES = {'ml': ('away', 'home'), 'sp': ('away', 'home'), 'tot': ('over', 'under')}
+
+
 def replay_game(key, rows, fin):
+    """Rows for every tier: the first moment each pick reaches Play, Watch or Passed (first sight in that tier stands), as the live tracker logs them."""
     away, home, start = key
     alive_ts = [r['t'] for r in rows]
-    logged, plays = set(), []
+    logged = {'play': set(), 'watch': set(), 'pass': set()}
+    out = {'play': [], 'watch': [], 'pass': []}
     for t in sorted({r['t'] for r in rows if r['t'] < start}):
         st = state_at(rows, t)
-        pin = st.get('Pinnacle')
-        if not pin or not pin.get('ml'):
-            continue
-        fair_away = devig(pin['ml'][0], pin['ml'][1])
-        if fair_away is None:
+        mk = markets_at(st)
+        if not mk:
             continue
         ex = [r for b, r in st.items() if b in ('Novig', 'Kalshi') and r.get('px') and t - r['t'] < 30 * 3600 and any(0 <= t - a <= ALIVE for a in alive_ts if a <= t)]
-        ex_home = {b: (r['px'][0] + r['px'][1]) / 2 for b, r in ((r['book'], r) for r in ex)}
-        fairs = {'away': fair_away, 'home': 1 - fair_away}
-        cands = {'away': [], 'home': []}
-        for side in ('away', 'home'):
-            i = 0 if side == 'away' else 1
-            for b in US:
-                r = st.get(b)
-                if r and r.get('ml') and imp(r['ml'][i]):
-                    cands[side].append(dict(kind='book', book=b, am=r['ml'][i], p=imp(r['ml'][i]), refs=None))
-            if ex_home:
-                mids = [m if side == 'home' else 1 - m for m in ex_home.values()]
-                for b in ('Novig',):
-                    r = st.get(b)
-                    if r and r.get('px') and 'Kalshi' in ex_home and b in ex_home:
-                        ask = r['px'][1] if side == 'home' else 1 - r['px'][0]
-                        kal = ex_home['Kalshi'] if side == 'home' else 1 - ex_home['Kalshi']
-                        am_ = int(round(-100 * ask / (1 - ask))) if ask >= 0.5 else int(round(100 * (1 - ask) / ask))
-                        cands[side].append(dict(kind='exch', book='Novig', am=am_, p=ask, refs=[('Pinnacle', fairs[side]), ('Kalshi', kal)]))
-                for c in cands[side]:
-                    if c['kind'] == 'book':
-                        c['refs'] = [('Pinnacle', fairs[side]), ('Exchange', mean(mids))]
-            else:
-                for c in cands[side]:
-                    c['refs'] = [('Pinnacle', fairs[side])]
-        for side in ('away', 'home'):
-            opp = 'home' if side == 'away' else 'away'
-            for kind in ('book', 'exch'):
-                pool = [c for c in cands[side] if c['kind'] == kind]
-                if not pool:
-                    continue
-                c = min(pool, key=lambda x: x['p'])                                 # the best price on this side
-                other = [x for x in cands[opp] if x['kind'] == kind]
-                contra = bool(other) and any(min(x['refs'][j][1] / min(o['p'] for o in other) - 1 for j in range(len(x['refs']))) >= MIN_EDGE for x in [min(other, key=lambda x: x['p'])])
-                tier, worst, best, why = judge(c['p'], [r[1] for r in c['refs']], contra)
-                pid = '|'.join([kind, away, home, str(start), side])
-                if tier == 'play' and pid not in logged:
-                    logged.add(pid)
+        ex_home = {r['book']: (r['px'][0] + r['px'][1]) / 2 for r in ex}
+        for m, info in mk.items():
+            a_side, b_side = SIDES[m]
+            cands = {a_side: [], b_side: []}
+            for side in (a_side, b_side):
+                for b, prices in info['books']:
+                    am_ = prices[side]
+                    if imp(am_):
+                        refs = [('Pinnacle', info['fair'][side])]
+                        if m == 'ml' and ex_home:
+                            mids = [mm if side == 'home' else 1 - mm for mm in ex_home.values()]
+                            refs.append(('Exchange', mean(mids)))
+                        cands[side].append(dict(kind='book', book=b, am=am_, p=imp(am_), refs=refs))
+                if m == 'ml' and 'Novig' in ex_home and 'Kalshi' in ex_home:
+                    r = st['Novig']
+                    ask = r['px'][1] if side == 'home' else 1 - r['px'][0]
+                    kal = ex_home['Kalshi'] if side == 'home' else 1 - ex_home['Kalshi']
+                    am_ = int(round(-100 * ask / (1 - ask))) if ask >= 0.5 else int(round(100 * (1 - ask) / ask))
+                    cands[side].append(dict(kind='exch', book='Novig', am=am_, p=ask, refs=[('Pinnacle', info['fair'][side]), ('Kalshi', kal)]))
+            for side in (a_side, b_side):
+                opp = b_side if side == a_side else a_side
+                for kind in ('book', 'exch'):
+                    pool = [c for c in cands[side] if c['kind'] == kind]
+                    if not pool:
+                        continue
+                    c = min(pool, key=lambda x: x['p'])
+                    other = [x for x in cands[opp] if x['kind'] == kind]
+                    contra = bool(other) and min(x_r[1] / min(o['p'] for o in other) - 1 for x_r in min(other, key=lambda x: x['p'])['refs']) >= MIN_EDGE
+                    tier, worst, best, why = judge(c['p'], [r[1] for r in c['refs']], contra)
+                    if tier == 'none':
+                        continue
+                    pid = '|'.join([kind, m, away, home, str(start), side])
+                    if pid in logged[tier]:
+                        continue
+                    logged[tier].add(pid)
                     team = away if side == 'away' else home
-                    plays.append(dict(id='bf|' + pid, kind=kind, sport='nfl', start=start, firstSeen=t, backfill=True,
-                                      first=dict(title=team + ' to win', sub=away + ' @ ' + home + ' (Money)', market='Money',
-                                                 price=dict(am=c['am'], p=r4(c['p']), book=c['book']),
-                                                 refs=[dict(n=n, p=r4(p), edge=r4(p / c['p'] - 1)) for n, p in c['refs']], worst=r4(worst), best=r4(best), fairMean=r4(mean([p for _, p in c['refs']])), cautions=[]),
-                                      game=dict(away=away, home=home, m='ml', side=side),
-                                      close=None, clv=None))
-    # result and the exchange close (the last stored Kalshi / Novig mid before kickoff)
+                    hl = info['line']
+                    title = team + ' to win' if m == 'ml' else (team + ' ' + ('%+g' % (hl if side == 'home' else -hl)) if m == 'sp' else ('Over ' if side == 'over' else 'Under ') + '%g' % hl)
+                    out[tier].append(dict(id='bf|%s|%s' % (tier, pid), kind=kind, sport='nfl', start=start, firstSeen=t, backfill=True,
+                                          first=dict(title=title, sub=away + ' @ ' + home + ' (' + {'ml': 'Money', 'sp': 'Spread', 'tot': 'Total'}[m] + ')', market={'ml': 'Money', 'sp': 'Spread', 'tot': 'Total'}[m],
+                                                     price=dict(am=c['am'], p=r4(c['p']), book=c['book']),
+                                                     refs=[dict(n=n, p=r4(p), edge=r4(p / c['p'] - 1)) for n, p in c['refs']], worst=r4(worst), best=r4(best), fairMean=r4(mean([p for _, p in c['refs']])), cautions=[], why=why),
+                                          game=dict(away=away, home=home, m=m, side=side, hline=hl if m == 'sp' else None, line=hl if m == 'tot' else None), close=None, clv=None))
+    # result and the exchange close (the last stored Kalshi / Novig mid before kickoff; moneyline only)
     last = state_at(rows, start - 1)
     mids = [(r['px'][0] + r['px'][1]) / 2 for b, r in last.items() if b in ('Novig', 'Kalshi') and r.get('px') and start - r['t'] < 30 * 3600]
-    for p in plays:
-        side = p['game']['side']
-        if mids:
-            cp = mean(mids) if side == 'home' else 1 - mean(mids)
-            p['close'] = dict(p=r4(cp), src='Kalshi+Novig stored mid', n=len(mids))
-            p['clv'] = r4(cp / p['first']['price']['p'] - 1)
-        res = fin.get((ALIAS.get(away, away), ALIAS.get(home, home))) or fin.get((away, home))
-        if res and res['state'] == 'post':
-            if res['home'] == res['away']:
-                p['status'], p['units'] = 'push', 0
+    res = fin.get((ALIAS.get(away, away), ALIAS.get(home, home))) or fin.get((away, home))
+    for tier in out:
+        for p in out[tier]:
+            g = p['game']
+            if mids and g['m'] == 'ml':
+                cp = mean(mids) if g['side'] == 'home' else 1 - mean(mids)
+                p['close'] = dict(p=r4(cp), src='Kalshi+Novig stored mid', n=len(mids))
+                p['clv'] = r4(cp / p['first']['price']['p'] - 1)
+            if res and res['state'] == 'post':
+                h, a_ = res['home'], res['away']
+                if g['m'] == 'ml':
+                    v = 0 if h == a_ else 1 if (h > a_) == (g['side'] == 'home') else -1
+                elif g['m'] == 'sp':
+                    d = h + g['hline'] - a_; r = d if g['side'] == 'home' else -d; v = 1 if r > 0 else -1 if r < 0 else 0
+                else:
+                    d = h + a_ - g['line']; r = d if g['side'] == 'over' else -d; v = 1 if r > 0 else -1 if r < 0 else 0
+                p['status'] = 'push' if v == 0 else 'won' if v > 0 else 'lost'
+                p['units'] = 0 if v == 0 else r4(1 / p['first']['price']['p'] - 1) if v > 0 else -1
+                p['final'] = dict(away=a_, home=h)
             else:
-                won = (res['home'] > res['away']) == (side == 'home')
-                p['status'] = 'won' if won else 'lost'
-                p['units'] = r4(1 / p['first']['price']['p'] - 1) if won else -1
-            p['final'] = dict(away=res['away'], home=res['home'])
-        else:
-            p['status'] = 'open'
-    return plays
+                p['status'] = 'open'
+    return out
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--date', required=True)
-    ap.add_argument('--out', default=os.path.join(ROOT, 'data', 'v2_backfill.json'))
+    ap.add_argument('--out', default=os.path.join(ROOT, 'data', 'v2_backfill_games.json'))
     a = ap.parse_args()
     games, fin = load(a.date), espn_finals(a.date)
-    plays, per = {}, []
+    tiers = {'play': {}, 'watch': {}, 'pass': {}}
+    per = []
     for key, rows in sorted(games.items(), key=lambda kv: kv[0][2]):
-        ps = replay_game(key, rows, fin)
-        per.append(dict(away=key[0], home=key[1], start=key[2], rows=len(rows), plays=len(ps)))
-        for p in ps:
-            plays[p['id']] = p
-    doc = dict(v=1, date=a.date, note='Replayed from data/book_tape with the V2 moneyline gates, using only what was stored at each moment. Not the live log: these plays were never shown. Props, spreads and totals are not replayed (see scripts/backfill_v2_slate.py).',
-               games=per, plays=plays)
+        got = replay_game(key, rows, fin)
+        per.append(dict(away=key[0], home=key[1], start=key[2], rows=len(rows), **{t: len(v) for t, v in got.items()}))
+        for t, ps in got.items():
+            for p in ps:
+                tiers[t][p['id']] = p
+    doc = dict(v=2, date=a.date, games=per, plays=tiers['play'], watch=tiers['watch'], passed=tiers['pass'])
     with open(a.out, 'w') as f:
         json.dump(doc, f, indent=1)
-    done = [p for p in plays.values() if p['status'] in ('won', 'lost', 'push')]
-    print(len(per), 'games,', len(plays), 'plays,', len(done), 'settled,', sum(1 for p in plays.values() if p['status'] == 'open'), 'open, units', round(sum(p['units'] for p in done), 2))
-    for p in sorted(plays.values(), key=lambda p: p['firstSeen']):
-        f = p['first']
-        print(dt.datetime.fromtimestamp(p['firstSeen'], CT).strftime('%a %H:%M'), p['kind'], f['title'], f['price']['book'], f['price']['am'], 'worst', f['worst'], p['status'], p.get('units'), 'clv', p.get('clv'))
+    for t in ('play', 'watch', 'pass'):
+        ps = list(tiers[t].values()); done = [p for p in ps if p['status'] in ('won', 'lost', 'push')]
+        w = sum(1 for p in done if p['status'] == 'won')
+        print(t, len(ps), 'rows;', len(done), 'settled', '%d-%d' % (w, len(done) - w), 'units', round(sum(p['units'] for p in done), 2), collections.Counter(p['game']['m'] for p in ps))
 
 
 if __name__ == '__main__':

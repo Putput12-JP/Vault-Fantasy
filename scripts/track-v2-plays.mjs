@@ -60,10 +60,10 @@ function gamePick(c) {
 }
 
 /* ---- log ---- */
-export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, week = null } = {}) {
+export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, week = null, tier = 'play' } = {}) {
   const added = [];
   for (const c of cands) {
-    if (c.tier !== 'play' || !c.start || c.start <= nowS) continue;
+    if (c.tier !== tier || !c.start || c.start <= nowS) continue;
     const id = ledgerKey(c);
     if (L.plays[id]) continue;
     const refs = c.refs.map(r => ({ n: r.n, p: r4(r.p), edge: r4(r.edge) }));
@@ -204,16 +204,19 @@ function readTape(dataDir, sport) {
   return rows;
 }
 
-export function run({ dir, dataDir, nowS }) {
+export const ledgerFile = tier => tier === 'play' ? 'v2_plays.json' : tier === 'watch' ? 'v2_watch.json' : 'v2_passed.json';
+
+export function run({ dir, dataDir, nowS, tier = 'play' }) {
   const D = rj(resolve(dir, 'data.json')), P = rj(resolve(dir, 'props.json')), T = rj(resolve(dir, 'prop_close_tape.json')), E = rj(resolve(dataDir, 'exchange_edge_live.json'));
   if (!D) throw new Error('no data.json in ' + dir);
-  const file = resolve(dir, 'v2_plays.json'), L = loadLedger(file);
+  const file = resolve(dir, ledgerFile(tier)), L = loadLedger(file);
   // An exchange list older than a reference may be is not a price (gates.js MAX_AGE); the page has no such check, so a play off a stale list is not logged.
   const eg = E && E.generated ? Date.parse(E.generated) / 1000 : null;
   const Eok = E && eg != null && nowS - eg <= GATES.MAX_AGE ? E : null;
-  const { cand } = gates.build({ D, P, T, E: Eok, now: nowS });
+  const built = gates.build({ D, P, T, E: Eok, now: nowS });
+  const cand = tier === 'play' ? built.cand : gates.stance(built.cand);        // Watch and Passed keep one side per market, so a bet is never logged as both Over and Under
   const season = P && P.props ? P.props.season : null, week = P && P.props ? P.props.week : null;
-  const added = logPlays(L, cand, nowS, { edgeGenerated: eg, season, week });
+  const added = logPlays(L, cand, nowS, { edgeGenerated: eg, season, week, tier });
   const seasons = [...new Set(Object.values(L.plays).filter(x => x.kind === 'prop').map(x => x.prop.season))];
   const stats = {};
   for (const s of seasons) stats[s] = overlayEspn(rj(resolve(dataDir, `nflverse_stats_${s}.json`)), rj(resolve(dataDir, `espn_player_stats_${s}.json`)));
@@ -228,7 +231,9 @@ export function run({ dir, dataDir, nowS }) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const arg = n => (process.argv.find(a => a.startsWith('--' + n + '=')) || '').split('=')[1];
   const dir = resolve(arg('dir') || 'sharp-out'), dataDir = resolve(arg('data') || resolve(ROOT, 'data')), nowS = +arg('now') || Math.floor(Date.now() / 1000);
-  const { L, added, out, skippedExch, file } = run({ dir, dataDir, nowS });
+  const tier = arg('tier') || 'play';
+  if (!['play', 'watch', 'pass'].includes(tier)) throw new Error('--tier must be play, watch or pass');
+  const { L, added, out, skippedExch, file } = run({ dir, dataDir, nowS, tier });
   L.updated = nowS;
   writeFileSync(file + '.tmp', JSON.stringify(L)); renameSync(file + '.tmp', file);
   const s = summary(L);

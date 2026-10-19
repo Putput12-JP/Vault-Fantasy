@@ -10,7 +10,7 @@
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), LIVE = /[?&]live\b/.test(location.search);
   var RAW = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/', MAIN = LOCAL && !LIVE ? '/' : RAW + 'main/';
   var SRC = {
-    props: RAW + 'sharp-data/props.json', tape: RAW + 'sharp-data/prop_close_tape.json', plays: RAW + 'sharp-data/v2_plays.json',
+    props: RAW + 'sharp-data/props.json', tape: RAW + 'sharp-data/prop_close_tape.json', plays: RAW + 'sharp-data/v2_plays.json', watchLive: RAW + 'sharp-data/v2_watch.json', passedLive: RAW + 'sharp-data/v2_passed.json',
     edge: MAIN + 'data/exchange_edge_live.json', edgeRec: MAIN + 'data/exchange_edge_record.json', keys: MAIN + 'data/nfl_key_numbers.json',
     lag: MAIN + 'data/lead_lag.json', age: MAIN + 'data/book_age.json', sb: MAIN + 'data/model_scoreboard.json', backfill: MAIN + 'data/v2_backfill.json', rg: MAIN + 'docs/prop-clv-regrade.json'
   };
@@ -45,13 +45,7 @@
   }
   /* Take a stance: one side per market. For each prop (player, stat, line) and each game market, keep the side with the better edge and drop the other, so a
      bet never shows up as both Over and Under. Candidates on the favoured side stay (the same side can be priced at a book and at an exchange). */
-  function stance(list) {
-    var score = function (c) { return c.worst != null && c.refs.length > 1 ? c.worst : c.best != null ? c.best : -9; };
-    var key = function (c) { return c.kind === 'prop' ? 'p|' + c.row.pid + '|' + c.row.mkt + '|' + c.row.line : 'g|' + c.gk + '|' + c.m; };
-    var top = {};
-    list.forEach(function (c) { var k = key(c), v = score(c); if (!top[k] || v > top[k].v) top[k] = { v: v, side: c.side }; });
-    return list.filter(function (c) { return top[key(c)].side === c.side; });
-  }
+  function stance(list) { return G().stance(list); }
   function useBuilt(D, F) {
     var U = kit().U;
     return U.useMemo(function () {
@@ -168,7 +162,7 @@
     })).concat(propRows.length > nProps ? [h('div', { key: 'more', style: { padding: 12, borderTop: '1px solid ' + n.borderSubtle } }, h(k.co, { variant: 'secondary', size: 'sm', onClick: function () { setNProps(nProps + 20); } }, 'Show more (' + (propRows.length - nProps) + ' left)'))] : [])) : h(k.K, { padding: 20 }, h(k.T, { size: 'base' }, 'No prop with a usable price right now. The board lists only players whose game has not started.'));
     var gates = G().GATES;
     return h('div', { style: { display: 'grid', gap: 14, marginTop: 20 } },
-      h('div', { dangerouslySetInnerHTML: { __html: recordHtml(F, palOf(n)) } }),
+      h('div', { dangerouslySetInnerHTML: { __html: recordHtml(F, palOf(n), tier) } }),
       h('div', { style: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' } }, h(k.ve, { options: opts, value: cur, onChange: function (o) { setTier(o === opts[0] ? 'play' : o === opts[1] ? 'watch' : 'pass'); } }),
         h(k.T, { size: 'sm' }, 'Ranked by the worst-case edge across two independent fair prices. Sport filter: top bar.')),
       body,
@@ -217,9 +211,10 @@
   }
   function v2Rows(PL) { return Object.values((PL && PL.plays) || {}).map(rowOf); }
   /* The official record: the live log plus the settled plays backfilled from a finished slate (data/v2_backfill.json). Backfilled rows carry p.backfill. */
-  function rowsAll(F) {
-    var rows = v2Rows(F.plays), B = F.backfill;
-    if (B && B.plays) Object.keys(B.plays).forEach(function (k) { var p = B.plays[k]; if (p.status === 'won' || p.status === 'lost' || p.status === 'push') rows.push(rowOf(p)); });
+  var TIERKEY = { play: ['plays', 'plays'], watch: ['watchLive', 'watch'], pass: ['passedLive', 'passed'] };
+  function rowsAll(F, tier) {
+    var k = TIERKEY[tier || 'play'], rows = v2Rows(F[k[0]]), B = F.backfill;
+    if (B && B[k[1]]) Object.keys(B[k[1]]).forEach(function (id) { var p = B[k[1]][id]; if (p.status === 'won' || p.status === 'lost' || p.status === 'push') rows.push(rowOf(p)); });
     return rows;
   }
   function LedgerCard(u, name, desc, rows) {
@@ -438,9 +433,11 @@
       (chips.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">' + chips.join('') + '</div>' : '') + '</div>';
   }
   /* The V2 record: count and units of every logged play, then the latest results. */
-  function recordHtml(F, pal) { return recordCore(F, pal); }
-  function recordCore(F, pal) {
-    var PL = F.plays, rows = rowsAll(F), bfn = rows.filter(function (r) { return r.p.backfill; }).length, live = rows.filter(function (r) { return !r.p.backfill; }), ls = stat(live), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
+  function recordHtml(F, pal, tier) { return recordCore(F, pal, tier || 'play'); }
+  var TIERNAME = { play: 'V2 play record', watch: 'Watch record', pass: 'Passed record' };
+  var TIERNOTE = { play: '', watch: 'Prices that beat one fair price but had no second price to confirm them. Not plays.', pass: 'Prices that looked good against one price and failed a gate, or were at an exchange or pick\u2019em app. If this record is losing, the gates are doing their job.' };
+  function recordCore(F, pal, tier) {
+    var PL = F[TIERKEY[tier][0]], rows = rowsAll(F, tier), bfn = rows.filter(function (r) { return r.p.backfill; }).length, live = rows.filter(function (r) { return !r.p.backfill; }), ls = stat(live), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), ws = wins.reduce(function (a, b) { return a + b; }, 0);
     var su = function (u) { var r = Math.round(u * 10) / 10 || 0; return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + 'u'; };
     var roi = s.n && s.units != null ? s.units / s.n : null;
@@ -456,10 +453,12 @@
       var p = r.p, f = p.first || {}, st = p.status, col = st === 'won' ? pal.good : st === 'lost' ? pal.bad : pal.mut;
       return '<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid ' + pal.line + '"><div style="min-width:0"><div style="font-weight:600;font-size:14px">' + ESC(f.title) + '</div><div style="font-size:12px;color:' + pal.mut + '">' + ESC((f.price || {}).book) + ' ' + am((f.price || {}).am) + ' · ' + SPORT[p.sport] + (p.clv != null ? ' · CLV ' + spct(p.clv) : '') + (p.backfill ? ' · backfilled' : '') + '</div></div><div style="text-align:right;white-space:nowrap;font-weight:700;color:' + col + '">' + (st === 'won' ? 'Won' : st === 'lost' ? 'Lost' : st === 'push' ? 'Push' : 'Void') + (p.units != null && st !== 'void' ? '<div style="font-size:12px">' + su(p.units) + '</div>' : '') + '</div></div>';
     }).join('') + '</details>' : '';
-    var note = !PL || !PL.plays ? 'Not started: the log has not been published yet.' : !rows.length ? 'The log is running. A play is written the first time one clears every gate.' : rows.length + ' play' + (rows.length === 1 ? '' : 's') + ' logged since ' + started + '. Each is saved once at first sight, then graded. ' + (s.n < 100 ? s.n + ' of 100 settled plays before it means much.' : '');
+    var noun = tier === 'play' ? 'play' : tier === 'watch' ? 'watch item' : 'passed item', live1 = live.length;
+    var note = !PL || !PL.plays ? (tier === 'play' ? 'Not started: the log has not been published yet.' : 'Live logging of this list starts with the next data update.') : !live1 ? 'The log is running. ' + (tier === 'play' ? 'A play is written the first time one clears every gate.' : 'An item is written the first time it lands in this list.') : live1 + ' live ' + noun + (live1 === 1 ? '' : 's') + ' logged since ' + started + '. Each is saved once at first sight, then graded. ' + (s.n < 100 ? s.n + ' of 100 settled before it means much.' : '');
+    note = (TIERNOTE[tier] ? TIERNOTE[tier] + ' ' : '') + note;
     var lsu = ls.units == null ? '+0.0u' : su(ls.units);
-    if (bfn) note = (live.length ? live.length + ' live play' + (live.length === 1 ? '' : 's') + ' since ' + started + ' (' + (ls.n ? ls.w + '-' + ls.l + ', ' + lsu : '0 settled') + '), plus ' : '') + bfn + ' settled plays backfilled from the ' + ESC((F.backfill || {}).date || '') + ' slate. The backfilled ones were chosen with hindsight on the exchange close, so the totals read better than live play will.';
-    return '<div style="border:1px solid ' + pal.line + ';border-radius:22px;padding:14px;color:' + pal.text + '"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:' + pal.mut + '">V2 play record</span><span style="font-size:11.5px;color:' + pal.mut + '">' + ESC(note) + '</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px">' + tiles.join('') + '</div>' + list + '</div>';
+    if (bfn) note = (TIERNOTE[tier] ? TIERNOTE[tier] + ' ' : '') + (live.length ? live.length + ' live ' + noun + (live.length === 1 ? '' : 's') + ' since ' + started + ' (' + (ls.n ? ls.w + '-' + ls.l + ', ' + lsu : '0 settled') + '), plus ' : 'No live ' + noun + 's settled yet, only ') + bfn + ' settled ' + noun + 's backfilled from the ' + ESC((F.backfill || {}).date || '') + ' slate. ' + (tier === 'play' ? 'The backfilled props were chosen with hindsight on the exchange close, so the totals read better than live play will.' : 'Rebuilt after the fact from stored prices.');
+    return '<div style="border:1px solid ' + pal.line + ';border-radius:22px;padding:14px;color:' + pal.text + '"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-size:11px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:' + pal.mut + '">' + TIERNAME[tier] + '</span><span style="font-size:11.5px;color:' + pal.mut + '">' + ESC(note) + '</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px">' + tiles.join('') + '</div>' + list + '</div>';
   }
 
   /* The data layer and the scoring, for the phone layout (sharp-money/new/), which draws its own HTML from them. */

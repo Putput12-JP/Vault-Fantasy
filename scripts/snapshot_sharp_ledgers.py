@@ -22,8 +22,9 @@ import argparse, datetime as dt, json, os, sys
 
 TAPE_PRUNE_DAYS = 150
 FROZEN = ('first', 'firstSeen', 'start')      # what a V2 play looked like when it was first seen
-LEDGERS = ('prop_plays.json', 'picks_ledger.json', 'ev_alert_history.json', 'prop_close_tape.json', 'v2_plays.json')
-MAY_BE_EMPTY = ('v2_plays.json',)     # a forward log starts with no rows; the four older ledgers are never empty
+V2 = ('v2_plays.json', 'v2_watch.json', 'v2_passed.json')
+LEDGERS = ('prop_plays.json', 'picks_ledger.json', 'ev_alert_history.json', 'prop_close_tape.json') + V2
+MAY_BE_EMPTY = V2     # a forward log starts with no rows; the four older ledgers are never empty
 
 
 def load(path):
@@ -41,7 +42,7 @@ def pick_id(p):
 
 def ids_of(name, doc):
     """{id: settled?} for one ledger."""
-    if name in ('prop_plays.json', 'v2_plays.json'):
+    if name == 'prop_plays.json' or name in V2:
         return {k: v.get('status') in ('won', 'lost', 'push', 'void') for k, v in (doc.get('plays') or {}).items()}
     if name == 'picks_ledger.json':
         out = {}
@@ -75,7 +76,7 @@ def check(name, old, new, today):
     back = [k for k in a if a[k] and k in b and not b[k]]
     if back:
         bad.append(f'{name}: {len(back)} settled rows went back to open, e.g. {back[:3]}')
-    if name == 'v2_plays.json':
+    if name in V2:
         old_p, new_p = old.get('plays') or {}, new.get('plays') or {}
         moved = [k for k in old_p if k in new_p and any(old_p[k].get(f) != new_p[k].get(f) for f in FROZEN)]
         if moved:

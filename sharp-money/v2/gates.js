@@ -138,5 +138,15 @@
     return { all, cand };
   }
 
-  return { GATES, US, EXCH, MKT, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, gameCands, build };
+  /* One side per market. For each prop (player, stat, line) and each game market keep the side with the better edge and drop the other, so a bet never
+     shows up as both Over and Under. Candidates on the favoured side stay (the same side can be priced at a book and at an exchange). */
+  function stance(list) {
+    const score = c => c.worst != null && c.refs.length > 1 ? c.worst : c.best != null ? c.best : -9;
+    const key = c => c.kind === 'prop' ? 'p|' + c.row.pid + '|' + c.row.mkt + '|' + c.row.line : 'g|' + c.gk + '|' + c.m;
+    const top = {};
+    list.forEach(c => { const k = key(c), v = score(c); if (!top[k] || v > top[k].v) top[k] = { v, side: c.side } });
+    return list.filter(c => top[key(c)].side === c.side);
+  }
+
+  return { GATES, US, EXCH, MKT, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, gameCands, build };
 });
