@@ -22,6 +22,10 @@ const SCEN = { base: [fx, ts + 60], j11: [jitter(fx, 11), ts + 60], j22: [jitter
 
 /* The one deliberate difference from the recorded page: the old code printed the line twice on an exchange spread or total ("ORL -2.5 -2.5",
    "Under 231.5 231.5") because the label already carries it. Map the old text to the fixed text, then everything else must match exactly. */
+/* The recorded page output holds floats from this machine's Math.pow. Another Node or V8 build can differ in the last digit or two (Node 20 on CI vs the
+   Node that recorded it), which says nothing about the rules. Compare numbers to 9 decimals; everything else, text and rendered pages, stays exact. */
+const r9 = v => JSON.parse(JSON.stringify(v, (k, x) => typeof x === 'number' && !Number.isInteger(x) ? +x.toFixed(9) : x));
+
 const oldTitle = c => c.kind !== 'exch' || c.m === 'ml' ? null : (r => c.side + ' ' + (c.m === 'sp' ? (r.line > 0 ? '+' : '') + r.line : r.line))(fx.edge.rows.find(x => x.gk === c.gk && x.m === c.m && x.label === c.side));
 function fixOld(snapshot) {
   const dup = snapshot.all.filter(c => oldTitle(c)).map(c => [oldTitle(c), c.side]);
@@ -33,7 +37,7 @@ function fixOld(snapshot) {
 for (const [name, [f, now]] of Object.entries(SCEN)) {
   test(`page output is unchanged by moving the gates into gates.js (${name})`, async () => {
     const page = await runPage({ html: HTML, fixtures: f, now, games: before._games }), old = fixOld(before[name]);
-    assert.deepEqual(page.all, old.all);
+    assert.deepEqual(r9(page.all), r9(old.all));
     for (const k of Object.keys(old.pages)) assert.equal(page.pages[k], old.pages[k], `rendered page ${k} changed`);
   });
   test(`the headless module decides exactly what the page decides (${name})`, async () => {
