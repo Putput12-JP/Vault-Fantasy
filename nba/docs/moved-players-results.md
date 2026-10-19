@@ -53,3 +53,12 @@ holds a team at `HOLD_MAX_STRETCH = 1.10` (`pricing.roster_hold`, the page's `ro
 Cutoff revised 1.15 to 1.10 after the opener dry run (a regular-season relabel of the 2026-10-12 board let NY at 1.1496 and SA at 1.14 through, with
 starters 3 to 4 minutes over their averages). Finer 2025-26 buckets, starters 34+ projected: 1.06-1.08 +2.0, 1.08-1.10 +2.6, 1.10-1.12 +2.8,
 1.12-1.15 +3.4, 1.15-1.25 +4.9, 1.25+ +9.3. Held share of team-games: 1.05 37%, 1.08 25%, 1.10 19%, 1.12 13%, 1.15 7%.
+
+## Addendum 2026-10-19: arrivals share the minutes on a held team
+
+On opening week 17 of 30 teams were held by the stretch rule, and the page showed the damage: the Lakers' four known players were
+stretched 2.57x to fill the game, so Luka Doncic and Austin Reaves sat at 48.0 minutes while eleven arrivals showed none. For a team the
+guard holds, `game_minutes` (and the page's `gameMinutes`, plus the v3 shadow) now adds the players with no history on the team at the
+Minutes Lab's estimate, flagged `lab`, and rescales the whole rotation together: Doncic 34.7, Reaves 38.1 (v2). The guard reads the
+players known, top minutes and stretch from before that, so the same teams are held; the 2,356 unheld rows and 482 player-held rows of
+the 2026-10-19 07:21 ET board price to the same numbers. A team the guard lets through is untouched.
