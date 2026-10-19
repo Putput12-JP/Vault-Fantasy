@@ -1407,6 +1407,46 @@ table.nt.sx-tk{min-width:420px}
 .sv-n{min-width:0;display:flex;flex-direction:column;gap:1px}.sv-n b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sv-n small{font-size:11.5px;color:var(--fg3);font-variant-numeric:tabular-nums}
 .sv-q{font-style:normal;margin-left:6px;font-size:10px;font-weight:700;color:var(--warn);border:1px solid rgba(251,191,36,.45);border-radius:4px;padding:0 4px}
 .sv-mp{display:flex;gap:4px;justify-content:flex-end}
+/* Game Lines scan list (mocks/lines/lines-c-scan.html): slim rows, open one for the tiles, sharp read and book board */
+.lw-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px}
+.lw-hd,.lw-b{display:grid;grid-template-columns:78px minmax(170px,1.25fr) 150px 112px 150px minmax(210px,1.5fr) 150px 22px;gap:16px;align-items:center}
+.lw-hd{padding:4px 18px;font:500 10.5px var(--mono,ui-monospace,monospace);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.lw{container:lw / inline-size;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color .15s}
+.lw:hover{border-color:var(--fg3)}.lw.open{border-color:var(--fg3)}
+.lw-b{width:100%;text-align:left;padding:14px 18px;background:transparent;border:0;color:inherit;cursor:pointer;transition:background-color .12s,transform .08s}
+.lw-b:hover{background:rgba(255,255,255,.025)}.lw-b:active{transform:scale(.995)}
+.lw-t{font:600 13px var(--mono,ui-monospace,monospace);color:var(--fg2)}.lw-t small{display:block;margin-top:2px;color:var(--fg3);font-weight:400;font-size:11px;font-family:inherit}
+.lw-mt{display:flex;align-items:center;gap:10px;font-size:17px}.lw-mt b{font-weight:700}.lw-mt i{font-style:normal;color:var(--fg3);font-size:13px}.lw-mt img.lg{width:28px;height:28px}
+.lw-bd{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.lw-v{font:700 19px var(--mono,ui-monospace,monospace);letter-spacing:-.02em;white-space:nowrap}.lw-v small{display:block;margin-top:3px;font-weight:500;font-size:11.5px;font-family:inherit;letter-spacing:0;color:var(--fg3)}.lw-v small b,.lw-mv{color:var(--warn);font-weight:600}
+.lw-split{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--bg);margin:2px 0 4px}.lw-split i{display:block;height:100%}
+.lw-wl{display:flex;justify-content:space-between;font:600 11px var(--mono,ui-monospace,monospace);color:var(--fg2)}
+.lw-bs{display:grid;gap:4px}.lw-bs span{display:flex;justify-content:space-between;gap:10px;padding:4px 9px;border-radius:9px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.26);font:600 12.5px var(--mono,ui-monospace,monospace);white-space:nowrap}.lw-bs span em{font-weight:500;font-size:11px;font-family:inherit;font-style:normal;color:var(--fg2)}
+.lw-sk{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.lw-vd{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12.5px;font-family:inherit;background:var(--raised);color:var(--fg)}.lw-vd.mix{background:rgba(251,191,36,.16);color:var(--warn)}.lw-vd.lean{background:rgba(255,255,255,.14)}
+.lw-pips{display:flex;gap:4px}.lw-pips i{display:block;width:26px;height:6px;border-radius:3px;background:rgba(255,255,255,.1);position:relative}.lw-pips i::after{content:"";position:absolute;left:50%;top:-1px;bottom:-1px;width:1px;background:var(--fg3)}.lw-pips b{position:absolute;top:0;bottom:0;border-radius:3px}
+.lw-chv{width:12px;height:12px;border-right:2px solid var(--fg3);border-bottom:2px solid var(--fg3);transform:rotate(45deg);transition:transform .18s}.lw.open .lw-chv{transform:rotate(225deg)}
+.lw-dt{display:none;padding:6px 18px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,.14)}.lw.open .lw-dt{display:block}
+.lw-meta{display:flex;justify-content:flex-end;color:var(--fg3);font-size:12px;min-height:6px;padding-top:4px}
+.lw-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:8px}
+.lw-tile{background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:16px;padding:14px 16px;min-width:0}
+.lw-tile h4{margin:0;display:flex;justify-content:space-between;font:500 10.5px var(--mono,ui-monospace,monospace);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
+.lw-big{margin:6px 0 2px;font:700 28px/1.1 var(--mono,ui-monospace,monospace);letter-spacing:-.02em}.lw-sub{color:var(--fg2);font-size:12.5px;min-height:34px}
+.lw-bl{margin-top:10px;font:500 10px var(--mono,ui-monospace,monospace);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
+.lw-bp{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin-top:6px;padding:7px 10px;border-radius:11px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.28)}
+.lw-bp span{font:700 11px var(--mono,ui-monospace,monospace);padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.1)}.lw-bp b{font:700 15px var(--mono,ui-monospace,monospace)}.lw-bp b i{font:500 12px var(--mono,ui-monospace,monospace);color:var(--up);margin-left:6px;font-style:normal}.lw-bp em{font-style:normal;color:var(--fg2);font-size:11.5px}
+.lw-tile .lw-split{margin:10px 0 2px}
+.lw-ex{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.lw-ex span{padding:3px 8px;border-radius:7px;background:var(--raised);font:500 11.5px var(--mono,ui-monospace,monospace);color:var(--fg2)}.lw-ex b{color:var(--fg);font-weight:600}
+.lw-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:12px;align-items:start}
+.lw-sh{padding:12px 14px;border-radius:14px;background:rgba(0,0,0,.2);border:1px solid var(--border);display:grid;gap:8px}
+.lw-vh{display:flex;flex-direction:column;gap:6px;align-items:flex-start}.lw-vh small{color:var(--fg3);font-size:11.5px}
+.lw-dvh,.lw-sg{display:grid;grid-template-columns:92px minmax(0,1fr) 112px;gap:12px;align-items:center}.lw-dvh{font:700 11px var(--mono,ui-monospace,monospace)}.lw-dvh>span:nth-child(2){display:flex;justify-content:space-between}
+.lw-sg{font-size:12.5px}.lw-sg>span:first-child{color:var(--fg2)}.lw-sg>span:last-child{text-align:right;color:var(--fg2);font-size:12px}
+.lw-bar{position:relative;height:12px;border-radius:6px;background:rgba(255,255,255,.06)}.lw-bar::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:var(--fg3);border-radius:2px}.lw-bar i{position:absolute;top:0;bottom:0;border-radius:6px}
+.lw-vl{display:grid;gap:10px;min-width:0}.lw .lv-board{margin-top:12px}
+@container lw (max-width:1020px){.lw-b{grid-template-columns:62px minmax(0,1fr) 22px;grid-template-areas:"t m c" "t s c" "t w c" "t b c" "t k c";gap:8px 12px}.lw-b>*:nth-child(1){grid-area:t}.lw-b>*:nth-child(2){grid-area:m}.lw-b>*:nth-child(3){grid-area:s}.lw-b>*:nth-child(4){display:none}.lw-b>*:nth-child(5){grid-area:w}.lw-b>*:nth-child(6){grid-area:b}.lw-b>*:nth-child(7){grid-area:k}.lw-b>*:nth-child(8){grid-area:c}.lw-tiles,.lw-two{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1280px){.lw-hd{display:none}}
+@media (prefers-reduced-motion:reduce){.lw,.lw-b,.lw-chv{transition:none}}
 .mu-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:1;min-width:0}
 .mu-ctl .seg button img.lg{vertical-align:-3px;margin:0 3px 0 0}.mu-ctl .seg button img.lg+img.lg{margin-left:0}
 .mu2-live{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--fg2);font-size:12.5px;cursor:pointer;transition:color .15s,transform .12s}
@@ -1425,10 +1465,10 @@ table.nt.sx-tk{min-width:420px}
 .mu2-heat{pointer-events:none}.mu2-dim{fill:#000;opacity:0;transition:opacity .35s}.mu2-svg[data-vw=player] .mu2-dim{opacity:.66}.mu2-svg[data-vw=both] .mu2-dim{opacity:.5}
 .mu2-hc{opacity:0;transform:scale(.4);transform-box:fill-box;transform-origin:center;transition:opacity .28s ease-out,transform .28s ease-out;transition-delay:var(--d,0ms)}
 .mu2-hc.in{opacity:var(--o,.8);transform:scale(1)}
-.mu2-wm{font:700 22px var(--sans,inherit);letter-spacing:.5em;fill:rgba(246,236,217,.26)}
+.mu2-wm{font-weight:700;font-size:22px;font-family:inherit;letter-spacing:.5em;fill:rgba(246,236,217,.26)}
 .mu2-pill{cursor:pointer}.mu2-pill rect{fill:rgba(12,10,8,.8);stroke:rgba(255,255,255,.28);stroke-width:1;transition:stroke .2s,fill .2s}
 .mu2-pill.soft rect{stroke:#4ade80;fill:rgba(10,34,20,.86)}.mu2-pill.tough rect{stroke:#f87171;fill:rgba(44,14,14,.86)}
-.mu2-pill .l1{font:600 11.5px var(--sans,inherit);fill:#fff;text-anchor:middle;letter-spacing:.02em}.mu2-pill .l2{font:500 10.5px var(--mono,ui-monospace,monospace);fill:#d8d0be;text-anchor:middle}
+.mu2-pill .l1{font-weight:600;font-size:11.5px;font-family:inherit;fill:#fff;text-anchor:middle;letter-spacing:.02em}.mu2-pill .l2{font:500 10.5px var(--mono,ui-monospace,monospace);fill:#d8d0be;text-anchor:middle}
 .mu2-cs{cursor:pointer;font:600 10.5px var(--mono,ui-monospace,monospace);fill:#f1e9d8;text-anchor:middle;letter-spacing:.06em;paint-order:stroke;stroke:rgba(0,0,0,.55);stroke-width:3px}.mu2-cs.soft{fill:#86efac}.mu2-cs.tough{fill:#fca5a5}
 .mu2-ball{fill:#fff3d6;stroke:rgba(0,0,0,.4);stroke-width:.8;filter:drop-shadow(0 0 3px rgba(255,255,255,.7))}.mu2-ball.soft{fill:#bbf7d0}.mu2-ball.tough{fill:#fecaca}
 .mu2-rip{fill:none;stroke:#fff3d6;stroke-width:2;transform-box:fill-box;transform-origin:center}.mu2-rip.soft{stroke:#86efac}.mu2-rip.tough{stroke:#fca5a5}
@@ -1444,7 +1484,7 @@ table.nt.sx-tk{min-width:420px}
 .mu2-lad{padding:4px 16px 14px;border-top:1px solid #2a241c}
 .mu2-lh{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:10px 0 2px;font-size:13px}.mu2-lh b{color:#f1ebdf;font-weight:600}.mu2-lh span{color:#8d8576;font-size:11.5px;text-align:right}
 .mu2-ladder{width:100%;height:auto;display:block}.mu2-ladder .axis{stroke:#3a332a}.mu2-ladder .zero{stroke:#6b6253;stroke-dasharray:3 4}.mu2-ladder .ax{font:500 10px var(--mono,ui-monospace,monospace);fill:#8d8576}
-.mu2-ld image{opacity:.8;transition:opacity .15s}.mu2-ld:hover image,.mu2-ld.now image{opacity:1}.mu2-ld circle:not(.ring){fill:#3a332a}.mu2-ld .ring{fill:none;stroke:#ff8a3d;stroke-width:2}.mu2-ld .tn{font:600 11px var(--sans,inherit);fill:#ffb35c}
+.mu2-ld image{opacity:.8;transition:opacity .15s}.mu2-ld:hover image,.mu2-ld.now image{opacity:1}.mu2-ld circle:not(.ring){fill:#3a332a}.mu2-ld .ring{fill:none;stroke:#ff8a3d;stroke-width:2}.mu2-ld .tn{font-weight:600;font-size:11px;font-family:inherit;fill:#ffb35c}
 .mu2-rail{display:grid;gap:12px;min-width:0}
 .mu2-pg{display:grid;gap:6px}.mu2-gl{font:500 10.5px var(--mono,ui-monospace,monospace);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin:2px 2px 0}.mu2-pg .mu2-gl+.mu2-pick{margin-bottom:4px}
 .mu2-pick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.mu2-thin{font-size:10px;line-height:1.1;color:var(--fg3)}
@@ -1466,7 +1506,7 @@ table.nt.sx-tk{min-width:420px}
 .mu2-read footer{margin-top:12px;color:var(--fg3);font-size:11.5px;line-height:1.45}
 .rise>*{animation:mu2rise .26s ease-out both}@keyframes mu2rise{from{opacity:0;transform:translateY(6px)}}
 .mu2-lu{padding:14px 16px}.mu2-lu h4{margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.mu2-lu p{margin:0;font-size:13.5px;line-height:1.55}
-.mu2-lun{margin-top:10px;font-size:18px;font-weight:600}.mu2-lun span{display:block;font:400 11.5px/1.4 var(--sans,inherit);color:var(--fg3);letter-spacing:0}
+.mu2-lun{margin-top:10px;font-size:18px;font-weight:600}.mu2-lun span{display:block;font-weight:400;font-size:11.5px;font-family:inherit;line-height:1.4;color:var(--fg3);letter-spacing:0}
 @media (max-width:980px){.mu2-grid{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:640px){.mu2-hud{position:static;padding:10px 12px;background:#14110d;align-items:center}.mu2-def small{display:none}.mu2-pill .l2{display:none}.mu2-pill .l1{font-size:17px}.mu2-cs{font-size:15px;stroke-width:4px}.mu-ctl{flex-wrap:nowrap;overflow-x:auto}.mu-ctl .seg,.mu2-live{flex:none}.mu2-vw button{padding:6px 9px}.mu2-pick{overflow-x:auto;grid-template-columns:repeat(5,minmax(66px,1fr))}}
 @media (prefers-reduced-motion:reduce){.mu2-stage.enter .mu2-lines path,.mu2-stage.enter .mu2-zone{animation:none!important;stroke-dashoffset:0!important}.mu2-hc,.mu2-zone,.mu2-pb,.mu2-live{transition:none}.rise>*{animation:none}}
@@ -5456,7 +5496,7 @@ $('wevents').addEventListener('click', e => { if (e.target.closest('[data-wedges
 // the injury report through each player's value above replacement, and back-to-backs, the same arithmetic the
 // backtest walked. It does not beat the closing line (docs/game-model.md), so a gap is a reason to look, never a bet.
 // "Game Lines" is the same page with every book's lines open.
-let sv = {day: null, open: {}, mk: {}, all: {}, sd: {}, bk: {}};
+let sv = {day: null, open: {}, mk: {}, all: {}, sd: {}, bk: {}, ro: {}, sort: 'time', roInit: false};
 const SL_BOOKS = ['Pinnacle', 'Consensus', 'DraftKings', 'FanDuel', 'BetMGM', 'ESPN BET', 'bet365', 'BetRivers'];
 function slateBoard(){
   const live = PS.live || (PB && PB.live);
@@ -5684,13 +5724,59 @@ function lineCard(g, B, status){
   const spC = v => v == null ? '-' : Math.abs(v) < .05 ? 'PK' : lvF1(v), pm = hsP != null || ttP != null || hwP != null ? `<div class="lv-pm"><div class="lv-ph"><span></span><span>Spread</span><span>Total</span><span>Win</span></div>
     <div class="lv-pt"><span class="lv-tm">${lgImg(g.away, 28)}<b>${g.away}</b><small>${esc(tn(g.away))}</small></span><span class="n">${spC(hsP == null ? null : -hsP)}</span><span class="n">${ttP != null ? 'O ' + fmt(ttP) : '-'}</span><span class="n w">${hwP != null ? pc(1 - hwP) : '-'}</span></div>
     <div class="lv-pt"><span class="lv-tm">${lgImg(g.home, 28)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></span><span class="n">${spC(hsP)}</span><span class="n">${ttP != null ? 'U ' + fmt(ttP) : '-'}</span><span class="n w">${hwP != null ? pc(hwP) : '-'}</span></div></div>` : '';
+  if (!slate){
+    // ── the scan-list row (mocks/lines/): one slim row per game; open it for the tiles, the sharp read, the Vault line and the book board
+    const ac = muTeamCol(g.away), hcl = muTeamCol(g.home), ro = !!sv.ro[gid];
+    const hs = c ? c[1] : M && M.spread != null ? M.spread : null, tt = c && c[3] != null ? c[3] : M && M.total != null ? M.total : null, hw = c && c[5] != null ? c[5] : M && M.win != null ? M.win : null;
+    const op = mk.open || {}, mvS = hs != null && op.spread != null ? hs - op.spread : 0, mvT = tt != null && op.total != null ? tt - op.total : 0;
+    const abbr = n => ({DraftKings: 'DK', FanDuel: 'FD', BetRivers: 'BR', BetMGM: 'MGM', bet365: '365', Caesars: 'CZR', ESPNBet: 'ESPN', Fanatics: 'FAN'})[n] || String(n).replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase();
+    const inMkt = (b, k) => k === 's' ? b.s : k === 't' ? b.t : (b.m.h != null || b.m.a != null);
+    const top = (k, s) => { let p = books.filter(b => !b.pin && !behind.includes(b) && inMkt(b, k)); if (!p.length) p = books.filter(b => !b.pin && inMkt(b, k)); return p.length ? p.reduce((a, b) => lvScore(b, k, s) > lvScore(a, k, s) ? b : a) : null; };
+    const bSa = top('s', 1), bSh = top('s', 0), bTo = top('t', 0), bTu = top('t', 1), bMa = top('m', 1), bMh = top('m', 0);
+    const bp = (tag, val, px, bk) => `<div class="lw-bp"><span>${esc(tag)}</span><b>${val}<i>${px}</i></b><em>${esc(abbr(bk))}</em></div>`;
+    const mvTxt = (v, hi, lo) => v ? `<b class="lw-mv">${Math.abs(v).toFixed(1)} toward ${v > 0 ? hi : lo}</b>` : 'unmoved';
+    const tS = `<div class="lw-tile"><h4><span>Spread</span><span>${esc(from)}</span></h4><div class="lw-big">${spVal}</div><div class="lw-sub">${op.spread != null ? `Opened ${esc(spTxt(g, op.spread))}, ${mvTxt(mvS, g.away, g.home)}` : esc(opened)}</div>
+      ${bSa && bSh ? `<div class="lw-bl">Best number</div>${bp(g.away, lvF1(-bSa.s.l), lvPx(bSa.s.a), bSa.n)}${bp(g.home, lvF1(bSh.s.l), lvPx(bSh.s.h), bSh.n)}` : ''}
+      <div class="lw-ex">${pill('Kalshi', K.spread != null ? spTxt(g, K.spread) : '')}${pill('Novig', nvS && nvS.line != null ? `${g.home} ${lvF1(nvS.line)}` : '')}${pill('Books', M && M.spread != null ? spTxt(g, M.spread) : '')}</div></div>`;
+    const tT = `<div class="lw-tile"><h4><span>Total</span><span>${esc(from)}</span></h4><div class="lw-big">${toVal}</div><div class="lw-sub">${p0 && c && p0[3] != null ? `Pinnacle started at <b>${p0[3].toFixed(1)}</b>, ${mvT ? `<b class="lw-mv">${mvT > 0 ? 'up' : 'down'} ${Math.abs(mvT).toFixed(1)}</b>` : 'unmoved'}` : op.total != null ? `Books opened ${fmt(op.total)}, ${mvT ? `<b class="lw-mv">${mvT > 0 ? 'up' : 'down'} ${Math.abs(mvT).toFixed(1)}</b>` : 'unmoved'}` : ''}</div>
+      ${bTo && bTu ? `<div class="lw-bl">Best number</div>${bp('O', bTo.t.l.toFixed(1), lvPx(bTo.t.o), bTo.n)}${bp('U', bTu.t.l.toFixed(1), lvPx(bTu.t.u), bTu.n)}` : ''}
+      <div class="lw-ex">${pill('Kalshi', K.total != null ? fmt(K.total) : '')}${pill('Novig', nvT ? String(nvT.k) : '')}${pill('Polymarket', PM.total != null ? fmt(PM.total) : '')}${pill('Over', PM.over != null ? pc(PM.over) : '')}</div></div>`;
+    const tW = `<div class="lw-tile"><h4><span>${esc(g.home)} win</span><span>${c ? 'no vig' : ''}</span></h4><div class="lw-big">${wnVal}</div><div class="lw-sub">${hw != null ? `${esc(g.away)} ${pc(1 - hw, 1)}` : ''}${p0 && c && p0[5] != null ? `, started the day at <b>${pc(p0[5], 1)}</b>` : ''}</div>
+      ${hw != null ? `<div class="lw-split"><i style="width:${(1 - hw) * 100}%;background:${ac}"></i><i style="width:${hw * 100}%;background:${hcl}"></i></div>` : ''}
+      ${bMa && bMh ? `<div class="lw-bl">Best price</div>${bp(g.away, lvPx(bMa.m.a), '', bMa.n)}${bp(g.home, lvPx(bMh.m.h), '', bMh.n)}` : ''}
+      <div class="lw-ex">${pill('Kalshi', K.win != null ? pc(K.win) : '')}${pill('Novig', nvM ? pc(nvM.win) : '')}${pill('Polymarket', PM.win != null ? pc(PM.win) : '')}</div></div>`;
+    const vcls = nA && nH ? 'mix' : nA || nH ? 'lean' : '';
+    const bars = SIG.map(x => { const w = Math.min(50, Math.abs(x.v) * 50); return `<div class="lw-sg" title="${esc(x.tip)}"><span>${esc(x.k)}</span><div class="lw-bar"><i style="${x.v < 0 ? 'right:50%' : 'left:50%'};width:${w}%;background:${x.v < 0 ? ac : hcl}"></i></div><span class="num">${esc(x.tiny)}</span></div>`; }).join('');
+    const sh = SIG.length ? `<section class="lw-sh"><div class="lw-vh"><span class="lw-vd ${vcls}" title="Context, not a bet. In our tests, copying sharp money after the fact lost money.">Sharp read: ${esc(verdict)}</span><small>${nA} toward ${esc(g.away)}, ${nH} toward ${esc(g.home)}. Context, not a bet.</small></div>
+      <div class="lw-dvh"><span></span><span><span style="color:${ac}">← ${esc(g.away)}</span><span style="color:${hcl}">${esc(g.home)} →</span></span><span></span></div>${bars}
+      ${o || NV ? `<button class="linkbtn lv-tog" type="button" data-lsd="${gid}" aria-expanded="${sdOpen}">Details<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}${sdOpen && o ? drawer() : ''}${sdOpen && NV && nf ? nvDrawer() : ''}</section>` : '';
+    const sumSpread = hs != null ? `${esc(spTxt(g, hs))}<small>${op.spread != null ? (mvS ? `<b>${Math.abs(mvS).toFixed(1)} to ${esc(mvS > 0 ? g.away : g.home)}</b>` : 'unmoved') : ''}</small>` : '<span class="muted">n/a</span>';
+    const sumTotal = tt != null ? `${fmt(tt)}<small>${op.total != null ? (mvT ? `<b>${mvT > 0 ? 'up' : 'down'} ${Math.abs(mvT).toFixed(1)}</b>` : 'unmoved') : ''}</small>` : '<span class="muted">n/a</span>';
+    const sumWin = hw != null ? `<div class="lw-split"><i style="width:${(1 - hw) * 100}%;background:${ac}"></i><i style="width:${hw * 100}%;background:${hcl}"></i></div><div class="lw-wl"><span>${esc(g.away)} ${Math.round((1 - hw) * 100)}</span><span>${Math.round(hw * 100)} ${esc(g.home)}</span></div>` : '<span class="muted">n/a</span>';
+    const sumBest = bSa && bSh ? `<span>${esc(g.away)} ${lvF1(-bSa.s.l)} ${lvPx(bSa.s.a)}<em>${esc(abbr(bSa.n))}</em></span><span>${esc(g.home)} ${lvF1(bSh.s.l)} ${lvPx(bSh.s.h)}<em>${esc(abbr(bSh.n))}</em></span>` : '<span class="muted">No book yet</span>';
+    const pips = SIG.map(x => `<i title="${esc(x.k)}: ${esc(x.tiny)}"><b style="${x.v < 0 ? 'right:50%' : 'left:50%'};width:${Math.min(50, Math.abs(x.v) * 50)}%;background:${x.v < 0 ? ac : hcl}"></b></i>`).join('');
+    return `<article class="lw${ro ? ' open' : ''}" id="sg-${gid}" style="--a:${ac};--h:${hcl}"><button class="lw-b" type="button" data-lrow="${gid}" aria-expanded="${ro}">
+      <div class="lw-t">${clock(g.tip)}<small>${etFmt(g.tip, {weekday: 'short'})} ET</small></div><div class="lw-m"><div class="lw-mt">${lgImg(g.away, 28)}<b>${esc(g.away)}</b><i>@</i>${lgImg(g.home, 28)}<b>${esc(g.home)}</b></div>${badges ? `<div class="lw-bd">${badges}</div>` : ''}</div>
+      <div class="lw-v">${sumSpread}</div><div class="lw-v">${sumTotal}</div><div class="lw-wn">${sumWin}</div><div class="lw-bs">${sumBest}</div>
+      <div class="lw-sk">${SIG.length ? `<span class="lw-vd ${vcls}">${esc(verdict)}</span><span class="lw-pips">${pips}</span>` : '<span class="muted">Early</span>'}</div><span class="lw-chv"></span></button>
+      <div class="lw-dt"><div class="lw-meta">${asof ? `<span>${asof}</span>` : ''}</div>${M || c ? `<div class="lw-tiles">${tS}${tT}${tW}</div>` : '<p class="muted lv-none">No book has posted yet.</p>'}
+        <div class="lw-two">${sh}<div class="lw-vl">${vault}${spot}</div></div>${board}</div></article>`;
+  }
   return `<article class="card sl-card lv-card${sv.bk[gid] ? ' bk' : ''}" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
     ${pm}${sharpRow}<div class="lv-cols"><div class="lv-l">${slate ? `<div class="lv-sl">${SP.tbl}${SP.why}${SP.moves}${SP.inj}</div>` : tiles + vault}</div><div class="lv-r">${spot}${board}</div></div>${books.length || slate ? `<button class="lv-bk" type="button" data-lbk="${gid}" aria-expanded="${!!sv.bk[gid]}">${sv.bk[gid] ? 'Hide' : 'Show'} ${slate ? 'matchup' : 'book board'}<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</article>`;
 }
+function lwMetric(g, B, how){                                   // sort keys for the Game Lines list
+  const mk = g.mk || {}, o = B.sharp && B.sharp.games && B.sharp.games[String(g.id)], P = o && (o.pin || []).filter(p => p[1] != null), c = P && P.length ? P[P.length - 1] : null, M = marketLine(mk), op = mk.open || {};
+  if (how === 'move'){ const hs = c ? c[1] : M && M.spread, tt = c && c[3] != null ? c[3] : M && M.total; return (hs != null && op.spread != null ? Math.abs(hs - op.spread) : 0) + (tt != null && op.total != null ? Math.abs(tt - op.total) / 4 : 0); }
+  const NV = B.novig && B.novig.games && B.novig.games[String(g.id)], nf = NV ? nvFlow(g, B) : null;
+  return Math.abs(lvSignals(g, mk, o, nf).reduce((a, x) => a + x.v, 0));
+}
+const lwHead = '<div class="lw-hd"><span>Tip</span><span>Game</span><span>Spread</span><span>Total</span><span>Win chance</span><span>Best spread prices</span><span>Sharp read</span><span></span></div>';
 function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el) el.outerHTML = lineCard(g, B, statusFromBoard(B)); }
 $('sgames').addEventListener('click', e => {
   if (e.target.closest('[data-golines]')){ goView('lines'); return; }
+  const rw = e.target.closest('[data-lrow]'); if (rw){ sv.ro[rw.dataset.lrow] = !sv.ro[rw.dataset.lrow]; lvRefresh(rw.dataset.lrow); return; }
   const m = e.target.closest('[data-lm]'), a = e.target.closest('[data-lall]'), d = e.target.closest('[data-lsd]'), k = e.target.closest('[data-lbk]');
   if (k){ sv.bk[k.dataset.lbk] = !sv.bk[k.dataset.lbk]; lvRefresh(k.dataset.lbk); return; }
   if (m){ sv.mk[m.dataset.g] = m.dataset.lm; lvRefresh(m.dataset.g); }
@@ -6085,7 +6171,7 @@ function renderSlate(){
   $('sbanner').hidden = !!games.length;
   $('sbanner').innerHTML = `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. ${noGamesWhy()}</span>`;
   $('sdays').innerHTML = days.length ? `<div class="seg" id="sday">${days.map(d => { const n = games.filter(g => etDay(g.tip) === d).length;
-    return `<button type="button" data-d="${d}" aria-pressed="${d === sv.day}">${slDay(games.find(g => etDay(g.tip) === d).tip)} · ${n}</button>`; }).join('')}</div>` : '';
+    return `<button type="button" data-d="${d}" aria-pressed="${d === sv.day}">${slDay(games.find(g => etDay(g.tip) === d).tip)} · ${n}</button>`; }).join('')}</div>${lines ? `<div class="seg" id="lsort" role="group" aria-label="Sort">${[['time', 'By time'], ['move', 'Biggest move'], ['lean', 'Sharp lean']].map(([k, l]) => `<button type="button" data-ls="${k}" aria-pressed="${sv.sort === k}">${l}</button>`).join('')}</div>` : ''}` : '';
   $('sdays').parentElement.hidden = !days.length;
   // KPIs over the chosen day
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
@@ -6116,7 +6202,10 @@ function renderSlate(){
     kpi('Back-to-backs', ICON.edit, `${b2b.length}`, b2b.length ? `${b2b.join(', ')} · ${MS.game.P.B2B} pts each in the Vault line` : 'Nobody on the second night');
   $('sgames').classList.add('lv');
   for (const k in svMin) delete svMin[k];
-  $('sgames').innerHTML = G.map(g => lines ? lineCard(g, B, status) : slateCard(g, B, status)).join('');
+  $('sgames').classList.toggle('lw-list', lines);
+  if (lines && !sv.roInit && G.length){ sv.roInit = true; if (innerWidth >= 1000) sv.ro[G[0].id] = true; }   // the first game opens on a wide screen; the rest stay slim
+  const GL = lines && sv.sort !== 'time' ? [...G].sort((a, b) => lwMetric(b, B, sv.sort) - lwMetric(a, B, sv.sort)) : G;
+  $('sgames').innerHTML = (lines ? lwHead : '') + GL.map(g => lines ? lineCard(g, B, status) : slateCard(g, B, status)).join('');
   renderSlateRatings();
   if (!lines){
     const per = MU && MU.persistence || {};
@@ -6139,7 +6228,7 @@ function renderSlateRatings(){
   $('srat').innerHTML = `<thead><tr><th class="l">#</th><th class="l">Team</th><th title="Points better than an average team on a neutral floor">Rating</th><th title="Points scored above the league base">Offense</th><th title="Points held below the league base">Defense</th></tr></thead><tbody>
     ${ts.map((t, i) => `<tr><td class="l muted">${i + 1}</td><td class="l"><b>${t}</b><small>${esc((D.teams[t] && D.teams[t].name) || t)}</small></td><td class="${G.R[t] >= 0 ? 'pos' : 'neg'}">${sgn(G.R[t])}</td><td>${sgn(G.O[t] || 0)} <span class="muted">${rk(G.O, t)}</span></td><td>${sgn(G.D[t] || 0)} <span class="muted">${rk(G.D, t)}</span></td></tr>`).join('')}</tbody>`;
 }
-$('sdays').addEventListener('click', e => { const b = e.target.closest('button[data-d]'); if (b){ sv.day = b.dataset.d; renderSlate(); } });
+$('sdays').addEventListener('click', e => { const b = e.target.closest('button[data-d]'), s2 = e.target.closest('button[data-ls]'); if (b){ sv.day = b.dataset.d; renderSlate(); } else if (s2){ sv.sort = s2.dataset.ls; renderSlate(); } });
 $('sgames').addEventListener('toggle', e => { const d = e.target.closest('details[data-g]'); if (d) sv.open[d.dataset.g] = d.open; }, true);
 
 // ── Sharp Price ───────────────────────────────────────────────────────────
