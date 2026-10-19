@@ -65,7 +65,7 @@ were.
 `snapshot.py` runs it on every poll and attaches `board['novig']`: per game the moneyline / main spread / main total
 (bid, ask, depth, resting dollars, new trades), per player prop a ladder, and a tape of tickets of $25 and up.
 One contract pays 1 cent, so dollars = price x qty / 100. State (trade cursors, the rolling tape) lives in
-`nba-data/novig/state.json`. A poll is budgeted (`NOVIG_BUDGET`, default 220 requests) and honours `Retry-After`; props
+`nba-data/novig/state.json`. A poll is budgeted (`NOVIG_BUDGET`, default 220 requests, for the game lines; `NOVIG_PROP_BUDGET`, default 80, for player props, kept apart because the lines alone use all of the first) and honours `Retry-After`; props
 rotate across polls. Smoke test: `python3 nba/scripts/novig.py`. The signed client (`scripts/novig_client.py`) is only
 needed for account endpoints, not for any of this.
 

@@ -19,7 +19,9 @@ honours Retry-After and a per-poll request budget; markets rotate so a big slate
 import json, os, re, subprocess, sys, time
 
 HOST = os.environ.get('NOVIG_PUBLIC_HOST', 'https://api.novig.com') + '/v3/public'
-BUDGET = int(os.environ.get('NOVIG_BUDGET', '220'))     # requests per poll
+BUDGET = int(os.environ.get('NOVIG_BUDGET', '220'))     # requests per poll for the game lines (moneyline, every spread and total strike, their trades)
+PROP_BUDGET = int(os.environ.get('NOVIG_PROP_BUDGET', '80'))   # requests per poll for player props, on top of BUDGET: the lines alone use all of BUDGET
+                                                       # (about 45 markets a game, a book and a trades call each), so props never got a request
 PACE_S = 0.35                                          # gap between requests (~3/s)
 TAPE_MIN = 25                                          # dollars; smaller executions are noise
 TAPE_KEEP = 300
@@ -185,10 +187,17 @@ def poll(games, root, now, roster_find=None):
     emap = match_events(soon, events)
     used = [0]
 
-    def b_get(path):
-        if used[0] >= BUDGET:
-            return None
-        used[0] += 1
+    pused = [0]                                           # prop requests: counted apart from the lines so a big slate of lines cannot starve them
+
+    def b_get(path, prop=False):
+        if prop:
+            if pused[0] >= PROP_BUDGET:
+                return None
+            pused[0] += 1
+        else:
+            if used[0] >= BUDGET:
+                return None
+            used[0] += 1
         return get(path)
 
     out = {'asof': int(now), 'games': {}, 'props': {}, 'tape': [], 'fresh': [], 'budget': BUDGET}
@@ -213,10 +222,13 @@ def poll(games, root, now, roster_find=None):
         k = st.rot % len(props)
         props = props[k:] + props[:k]
     for pri, g, mk, kind in lines + props:
-        if used[0] >= BUDGET:
-            break
+        isp = pri == 1
+        if (pused[0] >= PROP_BUDGET) if isp else (used[0] >= BUDGET):
+            if isp:
+                break                                     # the props are last in the queue
+            continue                                      # out of line budget: a prop can still be read
         gid = str(g['id'])
-        book = b_get(f"/catalog/markets/{mk['marketId']}/book")
+        book = b_get(f"/catalog/markets/{mk['marketId']}/book", isp)
         if not book:
             continue
         r = read_book(mk, book)
@@ -234,9 +246,12 @@ def poll(games, root, now, roster_find=None):
         changed = st.seq.get(mid_) != book.get('seq')      # an unchanged book has no new executions: skip the trades call
         st.seq[mid_] = book.get('seq')
         tr = None
-        if changed and used[0] < BUDGET:
+        if changed and (pused[0] < PROP_BUDGET if isp else used[0] < BUDGET):
             tr = get(f"/catalog/markets/{mid_}/trades?limit=100")
-            used[0] += 1
+            if isp:
+                pused[0] += 1
+            else:
+                used[0] += 1
         newest = since
         outcome_idx = {o['outcomeId']: i for i, o in enumerate(mk['outcomes'])}
         mk_usd = mk_n = 0
@@ -275,7 +290,7 @@ def poll(games, root, now, roster_find=None):
             if key:
                 p = out['props'].setdefault(key, {'p': pid, 's': STAT[kind], 'g': g['id'], 'lad': []})
                 p['lad'].append(r)
-    st.rot += max(1, used[0] // 2)
+    st.rot += max(1, pused[0] // 2)                       # the rotation walks the props only; the lines are read in full every poll
     for gid, gout in out['games'].items():                # the main line = the strike whose quote sits nearest 50%
         for k in ('spreads', 'totals'):
             xs = [x for x in gout[k] if x.get('mid') is not None]
@@ -286,7 +301,8 @@ def poll(games, root, now, roster_find=None):
         for k in ('spreads', 'totals'):                   # keep the page payload small: the ladder near the main line
             gout[k] = sorted(gout[k], key=lambda x: x['k'] if x['k'] is not None else 0)
     out['tape'] = sorted(st.tape, key=lambda x: -x['t'])[:60]
-    out['used'] = used[0]
+    out['used'] = used[0] + pused[0]
+    out['budget'] = BUDGET + PROP_BUDGET
     st.save(now)
     return out
 
