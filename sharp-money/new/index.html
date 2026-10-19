@@ -814,7 +814,14 @@ function sigCards(){
  if(SB&&SB.signals&&SB.sharp_lead){
   const g=SB.signals,sl=SB.sharp_lead,pm=g.pm_sharp,kb=g.kalshi_vs_books,vk=g.vault_vs_kalshi;
   const stt=(k,w,x)=>k==='go'?'trust':w>x?'watch':'ignore',Sk=v=>v.startsWith('GO')?'go':v.startsWith('no edge')?'bad':'tracking';
-  const pn=(t,r,id)=>{const x=sl[r].Pinnacle,k=sl[r].verdict.startsWith('GO')?'go':'tracking';return {t,id,sg:'pin',scope:'NFL scoreboard. College football and NBA are tracked in the table when you tap.',v:x.toward+' of '+(x.toward+x.away),d:'moved toward Pinnacle ('+x.away+' went away), average '+mTe(x.mean_move,2)+' pts',n:x.n,k,st:k==='go'?'trust':x.toward>x.away?'watch':'ignore'}};
+  const SPL={all:'all sports',nfl:'NFL',cfb:'college',nba:'NBA'},sps=st.sport==='all'?['cfb','nba']:st.sport==='nfl'?[]:[st.sport];
+  // Games from the every-sport poller log (data.lead), graded the same way as the NFL scoreboard: did the rec books move toward Pinnacle by kickoff?
+  const leadX=m=>{const t=Date.now()/1e3;let tw=0,aw=0,n=0,sm=0;for(const L of (D.lead||[])){if(L.m!==m||!sps.includes(L.sport)||!L.first||!L.close||L.start>t||L.start-L.close.ts>6*3600)continue;const mv=(L.first.b>L.first.r?1:-1)*(L.close.r-L.first.r);n++;sm+=mv;if(mv>.05)tw++;else if(mv<-.05)aw++}return {n,toward:tw,away:aw,sum:sm}};
+  const pn=(t,r,id)=>{
+   const b=sl[r].Pinnacle,ex=sps.length?leadX(r==='to'?'tot':r):{n:0,toward:0,away:0,sum:0},nfl=st.sport==='all'||st.sport==='nfl',oth=sps.length>0;
+   const x=nfl?{n:b.n+ex.n,toward:b.toward+ex.toward,away:b.away+ex.away,mean_move:(b.mean_move*b.n+ex.sum)/(b.n+ex.n||1)}:{n:ex.n,toward:ex.toward,away:ex.away,mean_move:ex.n?ex.sum/ex.n:0};
+   const k=!oth&&sl[r].verdict.startsWith('GO')?'go':'tracking';
+   return {t:t.replace('(NFL)','('+SPL[st.sport]+')'),id,sg:'pin',scope:oth?'No control book to compare against outside the NFL, so this cannot reach Trust. Games are logged from the Sharp Money poller.':'NFL scoreboard. Pick College or All sports above to include them.',v:x.toward+' of '+(x.toward+x.away),d:'moved toward Pinnacle ('+x.away+' went away), average '+mTe(x.mean_move,2)+' pts',n:x.n,k,st:k==='go'?'trust':x.toward>x.away?'watch':'ignore'}};
   out.push(pn('Pinnacle spread lead (NFL)','sp','pin-sp'),pn('Pinnacle totals lead (NFL)','to','pin-to'));out[0].both=out[1].both='spreads '+out[0].v+' \u00b7 totals '+out[1].v;
   const ctxs=(D.sharpContext||[]).filter(r=>r&&(r.result===1||r.result===-1)),cw=ctxs.filter(r=>r.result>0).length;
   out.push({t:'Polymarket sharps (NFL)',id:'pm',sg:'pm',scope:'NFL scoreboard. College football and NBA are tracked in the table when you tap.',v:pm.all.won+' of '+pm.all.n,d:"The sharps' side won; the prices said about "+Math.round(pm.all.said)+' should. When the crowd was on the other side: '+pm.crowd_disagrees.won+' of '+pm.crowd_disagrees.n+'.'+(ctxs.length?' Context track record, all sports: '+cw+' of '+ctxs.length+' won.':''),n:pm.all.n,k:Sk(pm.all.verdict),st:'ctx',ctx:ctxs.length?{w:cw,n:ctxs.length}:null,rows:pm.rows});
