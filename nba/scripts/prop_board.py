@@ -126,11 +126,19 @@ class Roster:
 
 
 def pin_stat(label):
-    label = (label or '').lower()
+    label = (label or '').lower().replace('&', '+')   # "Pts & Rebs & Asts" (regular season) reads like the "+" form below
     for pat, s in PIN_STAT:
         if re.search(pat, label):
             return s
     return None
+
+
+def pin_desc(desc):
+    """Pinnacle's player-prop special description -> (player, stat label), or None. Preseason carried "Jalen Brunson (Points)"; the
+    regular-season markets (first seen 2026-10-18) read "Jalen Brunson Total Points" / "... Total Pts & Rebs & Asts" / "... Total Threes Made"."""
+    d = (desc or '').strip()
+    m = re.match(r'^(.*?)\s*\((.*)\)\s*$', d) or re.match(r'^(.*?)\s+Total\s+(.+)$', d)
+    return m
 
 
 def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None, pm_depth=None):
@@ -222,7 +230,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
         if 'Over' not in sides or 'Under' not in sides:
             continue
         (ov, m, fo, ko), (uv, _, _, ku) = sides['Over'], sides['Under']
-        mt = re.match(r'^(.*?)\s*\((.*)\)\s*$', m.get('desc') or '')
+        mt = pin_desc(m.get('desc'))
         home = next((n for a, n in m.get('teams') or [] if a == 'home'), None)
         g = gkey.get((dt.datetime.fromtimestamp(m['start'], ET).date().isoformat(), nicks.get(nick(home))))
         stat = mt and pin_stat(mt.group(2))
