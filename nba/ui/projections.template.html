@@ -5327,7 +5327,6 @@ function lineCard(g, B, status){
 function lvRefresh(gid){ const pick = slateBoard(), B = pick.board, g = [...(B.games || []), ...(B.opening || [])].find(x => String(x.id) === gid), el = $('sg-' + gid); if (g && el) el.outerHTML = lineCard(g, B, statusFromBoard(B)); }
 $('sgames').addEventListener('click', e => {
   if (e.target.closest('[data-golines]')){ goView('lines'); return; }
-  const gm = e.target.closest('[data-gomu]'); if (gm){ mu.gid = gm.dataset.gomu; mu.side = 0; mu.pi = 0; goView('matchups'); return; }
   const m = e.target.closest('[data-lm]'), a = e.target.closest('[data-lall]'), d = e.target.closest('[data-lsd]'), k = e.target.closest('[data-lbk]');
   if (k){ sv.bk[k.dataset.lbk] = !sv.bk[k.dataset.lbk]; lvRefresh(k.dataset.lbk); return; }
   if (m){ sv.mk[m.dataset.g] = m.dataset.lm; lvRefresh(m.dataset.g); }
@@ -5469,7 +5468,7 @@ function muCourtBase(){
     <circle cx="250" cy="417.5" r="7.6" fill="none" stroke="#ff7a2f" stroke-width="2.8"/></g>
   <g id="mu2-labels" class="mu2-labels"></g><g id="mu2-balls" pointer-events="none"></g>`;
 }
-function muPill(x, y, w, l1, l2, cls){
+function muZonePill(x, y, w, l1, l2, cls){
   return `<g class="mu2-pill ${cls}" transform="translate(${x} ${y})"><rect x="${-w / 2}" y="-18" width="${w}" height="36" rx="10"/><text class="l1" y="-3">${l1}</text><text class="l2" y="11">${l2}</text></g>`;
 }
 function muLabels(def, P, a){
@@ -5482,7 +5481,7 @@ function muLabels(def, P, a){
   };
   const POS = {ab3: [250, 70, 132], mid: [108, 296, 108], paint: [250, 336, 112], ra: [250, 452, 132]};
   let s = '';
-  for (const [k, [x, y, w]] of Object.entries(POS)){ const [l1, l2] = txt(k); s += muPill(x, y, w, l1, l2, vw === 'player' ? '' : muSoft(o.zone[k])).replace('<g class="mu2-pill', `<g data-z="${k}" class="mu2-pill`); }
+  for (const [k, [x, y, w]] of Object.entries(POS)){ const [l1, l2] = txt(k); s += muZonePill(x, y, w, l1, l2, vw === 'player' ? '' : muSoft(o.zone[k])).replace('<g class="mu2-pill', `<g data-z="${k}" class="mu2-pill`); }
   for (const x of [15, 485]){
     const r = o.zone.c3, sh = mine ? Math.round(P.zone.c3 * 100) + '%' : '';
     const t = vw === 'defense' ? `CORNER 3 · ${ordn(r[1])}` : vw === 'player' ? `CORNER 3 · ${sh}` : `CORNER 3 · ${sh} · ${ordn(r[1])}`;
@@ -5666,14 +5665,6 @@ $('v-matchups').addEventListener('pointerover', e => {       // hover previews a
   box.innerHTML = muZoneDetail(mu.ctx.def, null, mu.ctx.P, z.dataset.z);
   document.querySelectorAll('.mu2-zone').forEach(n => n.classList.toggle('on', n.dataset.z === z.dataset.z));
 });
-function muLink(g, B, status){                              // the Slate's one line per game: the two best shot fits and a way in
-  if (!DD) return '';
-  const fits = [];
-  for (const [t, o] of [[g.away, g.home], [g.home, g.away]]){ const F = slateFive(t, g, B, status); if (!F) continue; for (const p of F.five){ const d = ddRead(p.id, o); if (d && !d.thin) fits.push({p, d}); } }
-  if (!fits.length) return '';
-  fits.sort((a, b) => b.d.score - a.d.score);
-  return `<p class="sv-rd">Best shot fits: ${fits.slice(0, 2).map(x => `<b>${esc(last(x.p.name))}</b> ${muPct(x.d.score)}`).join(', ')} · <button class="linkbtn" type="button" data-gomu="${g.id}">Open Matchups</button></p>`;
-}
 function svDef(t){                                          // one team's defense: the model's rank, then what it gives up per game
   const G = MS && MS.game, rk = (o2, k) => Object.keys(o2).sort((a, b) => o2[b] - o2[a]).indexOf(k) + 1;
   const pl = r => `<span class="mp ${r[1] <= 6 ? 'soft' : r[1] >= 25 ? 'tough' : ''}">${r[1] <= 15 ? ordn(r[1]) + ' most' : ordn(31 - r[1]) + ' fewest'}</span>`;
@@ -5716,7 +5707,7 @@ function slateCard(g, B, status){
   const nh = notes.length ? `<div class="sv-nt"><h4>Matchups to know</h4>${notes.map(n => `<p class="${n.soft ? 'soft' : 'tough'}"><i>${n.soft ? '▲' : '▼'}</i><span>${cutImg(n.p.id, n.p.name, 22)}<b>${esc(n.p.name)}</b> <small>${n.p.slot.toUpperCase()}</small> ${esc(muWords(n.opp, n.p.slot.toUpperCase(), n.s, n.r))}</span></p>`).join('')}</div>` : '';
   return `<article class="card sl-card sv-card" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
     <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
-    <div class="sv-body">${A.html}<div class="sv-mid"><div class="sv-tls">${mkt}</div>${read ? `<p class="sv-rd">${esc(read)} · <button class="linkbtn" type="button" data-golines="1">every book</button></p>` : `<p class="sv-rd"><button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></p>`}${nh}${muLink(g, B, status)}</div>${H.html}</div></article>`;
+    <div class="sv-body">${A.html}<div class="sv-mid"><div class="sv-tls">${mkt}</div>${read ? `<p class="sv-rd">${esc(read)} · <button class="linkbtn" type="button" data-golines="1">every book</button></p>` : `<p class="sv-rd"><button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></p>`}${nh}</div>${H.html}</div></article>`;
 }
 const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
 function renderSlate(){
