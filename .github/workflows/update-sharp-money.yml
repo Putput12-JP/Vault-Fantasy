@@ -113,11 +113,25 @@ jobs:
         continue-on-error: true
         run: |
           python3 scripts/build_prop_close_tape.py --feed=sharp-out/lineup-feed.json --kalshi=sharp-out/kalshi_props.json --novig=sharp-out/novig_props.json --tape=sharp-out/prop_close_tape.json
+      # Independent prop CLV: re-grade started calls against the exchange close from the tape (a close that did not raise the call) so the
+      # record's clvX is ready for this run's props.json. Pure file work, never blocks the poll.
+      - name: Independent prop closes
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          [ -f sharp-out/prop_plays.json ] && [ -f sharp-out/prop_close_tape.json ] && python3 scripts/regrade_prop_clv.py --plays=sharp-out/prop_plays.json --tape=sharp-out/prop_close_tape.json --write=sharp-out/prop_plays.json --no-report || true
       - name: Poll sources
         if: steps.gate.outputs.go == '1'
         run: |
           Q=""; [ "${{ github.event.inputs.force }}" = "true" ] && Q="--quick"
           node scripts/fetch-sharp-money.mjs --dir=sharp-out $Q
+      # Stamp the exchange / Pinnacle / books fair on calls first seen in this run (atCall), so a later test can ask what each reference said at the
+      # moment of the call. Same script, after the poll created the new calls. Never blocks the publish.
+      - name: Stamp references on new prop calls
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          [ -f sharp-out/prop_plays.json ] && [ -f sharp-out/prop_close_tape.json ] && python3 scripts/regrade_prop_clv.py --plays=sharp-out/prop_plays.json --tape=sharp-out/prop_close_tape.json --write=sharp-out/prop_plays.json --no-report || true
       # College football and NBA line tape (scripts/sharp_tape.py), the live Novig-vs-Pinnacle edge list, and the edge record
       # (scripts/exchange_edge_record.py, the only place it is written so two workflows never race on it): every book's numbers, appended when they change, read from the
       # data.json just built (teams are already matched there). Committed to main like the NFL tape. Never blocks the publish.
