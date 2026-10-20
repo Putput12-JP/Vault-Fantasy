@@ -30,6 +30,8 @@ A fourth, p_behind, is the game 'behind' signal for props: DraftKings at Pinnacl
 after Pinnacle has sat unchanged for 20 minutes. Pre-registered in docs/prop-behind-pinnacle.md; the page keeps it out of the lean.
 Steam's pass rule is whether Pinnacle keeps moving after the alert, counted per game (steam_move, scripts/steam_first_look.py,
 docs/steam-continuation.md); the CLV graded below drops the alerts whose number Pinnacle left, so it is context.
+Behind's pass rule is whether the soft price is still better than Pinnacle's close, counted per game (behind_close,
+scripts/behind_first_look.py, docs/behind-pinnacle.md).
 Every alert is graded (grade_signals, from ledger.settle) on closing-line value: Pinnacle's last pre-tip fair at the
 alert's number minus the fair when it fired (for behind: the price's EV at the closing fair), and on the final score.
 The study's verdict stands until this season says otherwise: sharp accounts beat the close but copying them 30+ minutes
@@ -625,6 +627,32 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
     return {'games': out, 'alerts': shown, 'props': dict(per_prop),
             'accounts': {'sharp': len(W['sharp']), 'nba_sharp': sum(1 for s in W['sharp'].values() if s == 'nba'), 'dull': len(W['dull']),
                          'scored': W['n'], 'generated': W['generated']}}
+
+
+# which way a number must move to make the side's chance rise (spreads and totals are both keyed by one number): home spread = the
+# home handicap higher, away = lower, over = the total lower, under = higher
+BEHIND_RISES = {'home': 1, 'away': -1, 'over': -1, 'under': 1}
+
+
+def behind_close(a, lad):
+    """A behind bet against Pinnacle's closing ladder (docs/behind-pinnacle.md): ('ev', EV of the bet's price at the closing fair) when
+    the ladder has the bet's number; else ('toward' | 'against', None) when the whole ladder lies on one side of the number (toward =
+    the bet's number was better than anything Pinnacle later offered); else ('unclassified', None)."""
+    if not lad:
+        return 'unclassified', None
+    f = fair(lad, a['m'], a['side'], a.get('line'))
+    if f is not None:
+        return 'ev', (f / (a['price'] + kal_fee(a['price'])) - 1 if a['venue'] == 'Kalshi' else f * (1 + payout(a['price'])) - 1)
+    nums = list((lad.get(a['m']) or {}).keys()) if a['m'] != 'ml' else []
+    if not nums or a.get('line') is None:
+        return 'unclassified', None
+    k = BEHIND_RISES[a['side']]
+    x = k * a['line']
+    if all(x > k * float(n) for n in nums):
+        return 'toward', None
+    if all(x < k * float(n) for n in nums):
+        return 'against', None
+    return 'unclassified', None
 
 
 def main_level(lad, m):
