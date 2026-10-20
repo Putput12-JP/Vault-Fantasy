@@ -13473,6 +13473,14 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-20T15:00', tag:'Improved', title:'Combo Check uses real alt-line prices',
+    items:[
+      'Combo Check no longer asks you to type a price. Every leg is an alt line that a book or exchange is actually posting, with its own price, and each combo is priced at one book.',
+      'A leg is compared with the same line at other books and exchanges, with the quoting book left out. A combo shows up only when it beats that by 3%, so most days the page says nothing beats the market.',
+      'Sportsbook alt prices are available on localhost for now. The public site shows exchange prices where a second venue quotes the same line.'
+    ]
+  },
+  {
     ts:'2026-10-20T13:00', tag:'Fixed', title:'Combo Check now shows real alt lines',
     items:[
       'The suggested combos used lines right at the main line. Every suggested leg is now an alt line, at least a point away from main, and the card shows the main line next to it.',
