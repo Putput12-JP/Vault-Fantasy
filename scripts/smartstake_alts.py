@@ -25,17 +25,18 @@ ROOT = Path(__file__).resolve().parent.parent
 SS = ROOT / "data" / "smartstake"
 
 
-def main():
+def build(max_ahead_h=None):
+    """The current alternate-line prices: (asof_ms, [prop dicts]). With max_ahead_h, only games that start within that many hours."""
     files = sorted(glob.glob(str(SS / "nba" / "*.jsonl.gz")))
     if not files:
-        print("no SmartStake NBA tape")
-        return
+        return None, []
     last = None
     for line in gzip.open(files[-1], "rt", encoding="utf-8"):
         last = line
     poll = json.loads(last)
     pre, stats = PREFIX["nba"], STAT["nba"]
-    props, n = {}, 0
+    props = {}
+    now = datetime.now().timestamp()
     for q in poll["quotes"]:
         if not q.get("alternate") or q.get("live") or q.get("line") is None or q.get("book") not in NAMES:
             continue
@@ -46,16 +47,25 @@ def main():
         if not st or not aa or not ha:
             continue
         start = int(datetime.fromisoformat(q["starts_at"].replace("Z", "+00:00")).timestamp())
+        if max_ahead_h is not None and not (now <= start <= now + max_ahead_h * 3600):
+            continue
         p = props.setdefault((q["event_id"], q["participant"], st), {"n": q["participant"], "s": st, "away": aa, "home": ha, "start": start, "by": {}})
         row = p["by"].setdefault((NAMES[q["book"]], q["line"]), [NAMES[q["book"]], q["line"], None, None])
         row[2 if q["side"] == "over" else 3] = q["odds"]
-        n += 1
     out = []
     for p in sorted(props.values(), key=lambda p: (p["start"], p["n"], p["s"])):
         out.append({"n": p["n"], "s": p["s"], "away": p["away"], "home": p["home"], "start": p["start"], "alts": sorted(p["by"].values(), key=lambda r: (r[0], r[1]))})
+    return poll.get("t"), out
+
+
+def main():
+    asof, out = build()
+    if asof is None:
+        print("no SmartStake NBA tape")
+        return
     path = SS / "props_nba_alts.json"
-    path.write_text(json.dumps({"asof": poll.get("t"), "props": out}, separators=(",", ":")))
-    print(f"{n} alternate quotes, {len(out)} props, {sum(len(p['alts']) for p in out)} book lines -> {path}")
+    path.write_text(json.dumps({"asof": asof, "props": out}, separators=(",", ":")))
+    print(f"{len(out)} props, {sum(len(p['alts']) for p in out)} book lines -> {path}")
 
 
 if __name__ == "__main__":

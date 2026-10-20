@@ -940,6 +940,9 @@ table.pl-t{width:100%;min-width:640px;border-collapse:collapse;font-size:12.5px;
 
 .cc-quotes{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 6px;font-size:12px}.cc-q{padding:2px 7px;border-radius:var(--r-pill);background:var(--raised);color:var(--fg2)}.cc-q b{font-weight:600;color:var(--fg)}.cc-q.ex{box-shadow:inset 0 0 0 1px var(--border2)}
 .cc-chip.real small{color:var(--fg)}
+
+.cc-unlock{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:6px;padding:10px 12px;border:1px solid var(--border2);border-radius:12px;background:var(--bg);font-size:13px}
+.cc-unlock input{height:30px;width:170px;padding:0 8px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--surface);color:var(--fg);font:inherit}
 .cc-note{margin:6px 0 0;font-size:12px;color:var(--fg3)}
 .cc-price{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:end;margin-top:10px}.cc-price label{display:grid;gap:3px;font-size:11px;color:var(--fg3)}
 .cc-price input{height:30px;width:92px;padding:0 8px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--bg);color:var(--fg);font:inherit;font-size:13px}
@@ -3863,10 +3866,36 @@ if (NBA_WORKER && onSite){ $('refresh').hidden = false; $('refresh').addEventLis
 // It adds books the board does not already have to each prop's book list (Caesars, Fanatics, ParlayPlay, Circa, Bookmaker, ProphetX,
 // Novig). They show in the prop drawer's Sportsbooks table. Sportsbook props are NO-GO as signals, so this is context only.
 const SS_ON = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]ss\b/.test(location.search) && !/[?&]live\b/.test(location.search);
+// Alternate-line prices from SmartStake are also published, ENCRYPTED, for Combo Check (scripts/smartstake_publish_alts.py -> branch nba-alts,
+// file alts.enc). SmartStake's terms ask for written permission to show their data, so the file is ciphertext: the page asks the owner for
+// the password once, keeps it in this browser, and decrypts here. See the header of the publish script.
+const SS_PUB = true;
+let ssAltsCache = null;
+async function ssDecrypt(b64, pw){
+  const raw = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
+  if (String.fromCharCode(...raw.slice(0, 8)) !== 'Salted__') throw new Error('format');
+  const salt = raw.slice(8, 16), km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = new Uint8Array(await crypto.subtle.deriveBits({name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256'}, km, 384));
+  const key = await crypto.subtle.importKey('raw', bits.slice(0, 32), 'AES-CBC', false, ['decrypt']);
+  return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name: 'AES-CBC', iv: bits.slice(32, 48)}, key, raw.slice(16))));
+}
+async function ssPublished(){
+  if (!SS_PUB || !onSite || !window.crypto || !crypto.subtle) return null;
+  const enc = await fetch(`https://raw.githubusercontent.com/${PB.repo}/nba-alts/alts.enc`, {cache: 'no-store'}).then(r => r.ok ? r.text() : null).catch(() => null);
+  if (!enc) { window.__altsState = 'none'; return null; }
+  const pw = store.get('nba-alts-pw');
+  if (!pw) { window.__altsState = 'locked'; return null; }
+  if (ssAltsCache && ssAltsCache.enc === enc && ssAltsCache.pw === pw) { window.__altsState = 'ok'; return ssAltsCache.data; }
+  try { const data = await ssDecrypt(enc, pw); ssAltsCache = {enc, pw, data}; window.__altsState = 'ok'; return data; }
+  catch (e) { window.__altsState = 'wrong'; return null; }
+}
 async function ssMerge(b){
-  if (!SS_ON || !b || !b.props || !b.players) return;
-  const j = await fetch('/data/smartstake/props_nba.json?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
-  const ja = await fetch('/data/smartstake/props_nba_alts.json?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);   // alternate-line prices per book, for Combo Check
+  if (!b || !b.props || !b.players || (!SS_ON && !SS_PUB)) return;
+  const j = SS_ON ? await fetch('/data/smartstake/props_nba.json?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null) : null;
+  const ja = SS_ON ? await fetch('/data/smartstake/props_nba_alts.json?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null)   // the local file first: fresher
+    : await ssPublished();                                                                                                                                   // alternate-line prices per book, for Combo Check
+  if (SS_ON) window.__altsState = ja ? 'ok' : 'none';
+  if (ja && ja.props) window.__ssAsof = ja.asof;
   if (!j && !ja) return;
   const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim();
   const idx = new Map(((j && j.props) || []).map(p => [norm(p.n) + '|' + p.s, p])), aidx = new Map(((ja && ja.props) || []).map(p => [norm(p.n) + '|' + p.s, p]));
@@ -8290,16 +8319,18 @@ function renderCombo(){
   const n = ccRows().length, S = cc.sug || (cc.sug = ccSuggest()), nAll = ccAll().length, nBooks = new Set(ccAll().filter(l => !l.q.exch).map(l => l.q.key)).size,
     nKal = ccRows().filter(r => (r.e.kal || []).length > 1).length, nNov = Object.values((PS.board.novig && PS.board.novig.props) || {}).filter(x => (x.lad || []).length > 1).length;
   const sec = (title, sub, items, tag) => `<section class="card"><div class="pp-tools"><h2>${title}</h2><span class="muted" style="font-size:12.5px">${sub}</span></div>
-    ${items.length ? `<div class="pp-slips">${items.map(P => ccCard(P, tag, '')).join('')}</div>` : `<p class="pp-empty">${!n ? 'No player props listed yet. The books and Kalshi list them the morning of a game.' : !nAll ? `No alt-line prices to compare yet${SS_ON ? '' : `: the public board has exchange ladders on ${nKal} props (Kalshi) and ${nNov} (Novig), and none of them has a second venue quoting the same line. Sportsbook alt ladders are local-only for now`}.` : 'Nothing beats the market by 3% at a posted price right now. That is the usual answer: books and exchanges price these lines close to fair.'}</p>`}</section>`;
+    ${items.length ? `<div class="pp-slips">${items.map(P => ccCard(P, tag, '')).join('')}</div>` : `<p class="pp-empty">${!n ? 'No player props listed yet. The books and Kalshi list them the morning of a game.' : !nAll ? `No alt-line prices to compare yet: the board has exchange ladders on ${nKal} props (Kalshi) and ${nNov} (Novig)${nBooks ? '' : ', no sportsbook alt ladders are loaded'}, and no line has two other venues quoting it.` : 'Nothing beats the market by 3% at a posted price right now. That is the usual answer: books and exchanges price these lines close to fair.'}</p>`}</section>`;
   $('cc-root').innerHTML = `
     <section class="card pp-read"><p class="big">Combo Check</p>
       <p>Alt-line combos priced from <b>real quotes</b>: every leg is an alt line (at least a point off the main line) that a book or exchange is posting right now, at its own price, between <b>-140 and +200</b>. Nothing to type in. A combo is priced at one sportsbook as the product of its leg prices and compared with the market's fair price, with the quoting book left out of the fair price. Legs can be any players on any teams; the pick'em apps' one-player-per-team rule does not apply here.</p>
-      <p>${SS_ON ? `Sportsbook alt prices on this page come from the local SmartStake tape (${nBooks} books posting alt lines).` : 'On the public site the alt prices come from exchanges (Kalshi, Novig, Polymarket) and any book line on the board. Sportsbook alt ladders (DraftKings, FanDuel and others) are in a licensed feed whose terms allow local use only until the provider agrees in writing to show them, so sportsbook parlays price here on localhost with ?ss for now.'} Everything is a Lean at most.</p></section>
+      <p>${nBooks ? `Sportsbook alt-line prices (${nBooks} books) via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>${window.__ssAsof ? `, as of ${clock(Math.floor(window.__ssAsof / 1000))} ET` : ''}, plus exchange prices from Kalshi, Novig and Polymarket.` : 'No sportsbook alt-line prices are loaded, so only exchange prices (Kalshi, Novig, Polymarket) and book lines on the board are used.'} Everything is a Lean at most.</p>
+      ${window.__altsState === 'locked' || window.__altsState === 'wrong' ? `<div class="cc-unlock"><b>Sportsbook alt prices are password protected.</b><input id="cc-pw" type="password" placeholder="Password" autocomplete="off" aria-label="Password"><button class="pv-ghost" type="button" data-ccunlock="1">Unlock</button><span class="${window.__altsState === 'wrong' ? 'neg' : 'muted'}">${window.__altsState === 'wrong' ? 'That password did not work.' : 'Entered once, kept in this browser.'}</span></div>` : ''}</section>
     ${sec('Teammate parlays on alt lines', 'Assists with a teammate\'s 3-pointers, or points with a teammate\'s assists, both over or both under (a pre-registered test, about +4% on a 2-leg bet at even money), priced at one book.', S.mates, 'Teammates, one book')}
     ${sec('Best alt prices across games', 'The two alt legs with the best price against the market at one book, from different games, so the product is the real payout.', S.cross, 'Different games, one book')}
     ${sec('Exchange alt prices that beat the market', 'Straight bets on Kalshi, Novig or Polymarket alt lines priced above the market elsewhere (exchanges do not take parlays). Fees in.', S.exch, 'Exchange, straight')}
     <section class="card pl-sec"><div class="pl-sh"><div><h2>Build your own</h2><p>Pick two to four players and set each leg's stat, side and line (half-point lines). Under each leg: every venue posting it, and an alt ladder with the best posted price per line. Every sportsbook that posts all your legs is priced.</p></div></div><div class="cc-build">${ccBuilderHtml()}</div></section>`;
-  $('ccfoot').innerHTML = `<div><b>How it is priced.</b> A leg's price is a venue's own quote for that exact line and side: a sportsbook's American price (vig in), a Kalshi rung's ask or 1 minus the bid plus Kalshi's fee, a Novig book ask (Novig's fee not included), a Polymarket price with its fee. A leg's fair chance is the consensus of every other venue's two-way line and the Kalshi ladder, moved to the leg's line through the model's distribution shape. Edge = fair chance x the price's decimal odds - 1. A parlay's chance is the legs multiplied plus a measured lift only for the two passed teammate pairings (covariance scaled to the legs' odds; for three or four legs a first-order estimate). Alt ladders at books are mostly over-only milestones, so most combos are overs.</div>
+  $('ccfoot').innerHTML = `<div><b>Sources.</b> Sportsbook alternate-line prices: <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Exchange prices: Kalshi, Novig and Polymarket public order books.</div>
+    <div><b>How it is priced.</b> A leg's price is a venue's own quote for that exact line and side: a sportsbook's American price (vig in), a Kalshi rung's ask or 1 minus the bid plus Kalshi's fee, a Novig book ask (Novig's fee not included), a Polymarket price with its fee. A leg's fair chance is the consensus of every other venue's two-way line and the Kalshi ladder, moved to the leg's line through the model's distribution shape. Edge = fair chance x the price's decimal odds - 1. A parlay's chance is the legs multiplied plus a measured lift only for the two passed teammate pairings (covariance scaled to the legs' odds; for three or four legs a first-order estimate). Alt ladders at books are mostly over-only milestones, so most combos are overs.</div>
     <div><b>Left out.</b> Two legs on one player (the NBA reportedly banned same-player under parlays; the dependence model for one player's stats is frozen and untested on 2026-27). Props with a roster hold, and players projected under 15 minutes.</div>`;
   document.querySelectorAll('#cc-root .cc-card').forEach(ccEval);
 }
@@ -8315,8 +8346,18 @@ $('cc-root').addEventListener('change', e => {
     if (k === 's'){ const r = ccRow(x.pid, x.s); if (r && r._mm != null) x.line = Math.max(.5, Math.floor(r._mm) + .5); }
     renderCombo(); }
 });
+async function ccUnlock(){
+  const pw = ($('cc-pw') || {}).value;
+  if (!pw) return;
+  store.set('nba-alts-pw', pw);
+  if (PS.live) await ssMerge(PS.live);
+  cc.rows = null; renderCombo();
+}
+$('cc-root').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'cc-pw') ccUnlock(); });
 $('cc-root').addEventListener('click', e => {
-  const t = e.target, cl = t.closest('[data-ccline]');
+  const t = e.target;
+  if (t.closest('[data-ccunlock]')){ ccUnlock(); return; }
+  const cl = t.closest('[data-ccline]');
   if (cl){ const [i, L] = cl.dataset.ccline.split('|'); if (cc.legs[+i]){ cc.legs[+i].line = +L; renderCombo(); } return; }
   const add = t.closest('[data-ccadd]');
   if (add){ const pid = +add.dataset.ccadd; if (cc.legs.length >= 4){ pvToast('Four legs at most.'); return; }

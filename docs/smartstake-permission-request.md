@@ -45,3 +45,10 @@ prices (for example DraftKings points 22.5+), which your API carries and no free
 Could you confirm in writing whether this is allowed, and on what terms? If a paid or partner tier would cover it, we are open to that too.
 
 Until you reply yes in writing, these prices stay local (the NBA page shows them only on localhost with ?ss).
+
+## Decision log
+
+- 2026-10-20: the owner decided to put SmartStake alternate-line prices on the NBA page's Combo Check without waiting for the reply, accepting that
+  SmartStake may end the license if it notices. The owner is the only user of the page. The page is public (public repo, public site), so the
+  prices are published only encrypted with a password (scripts/smartstake_publish_alts.py; branch `nba-alts`, file `alts.enc`) and the page
+  credits SmartStake. A reply from SmartStake would let us drop the password. The request above has still not been sent.
