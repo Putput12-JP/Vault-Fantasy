@@ -49,6 +49,8 @@ Until you reply yes in writing, these prices stay local (the NBA page shows them
 ## Decision log
 
 - 2026-10-20: the owner decided to put SmartStake alternate-line prices on the NBA page's Combo Check without waiting for the reply, accepting that
-  SmartStake may end the license if it notices. The owner is the only user of the page. The page is public (public repo, public site), so the
-  prices are published only encrypted with a password (scripts/smartstake_publish_alts.py; branch `nba-alts`, file `alts.enc`) and the page
-  credits SmartStake. A reply from SmartStake would let us drop the password. The request above has still not been sent.
+  SmartStake may end the license if it notices. The owner is the only user of the page. The page is public (public repo, open site), so the
+  prices are not published there: scripts/smartstake_publish_alts.py writes them to the owner's Firestore (`nbaAlts`), firestore.rules lets only
+  the owner's Google account read them, and the page uses the site's Google login and credits SmartStake. (A first version published them
+  encrypted to a GitHub branch behind a password; it was merged and never run, and is replaced.) A reply from SmartStake would let us show the
+  prices to everyone. The request above has still not been sent.

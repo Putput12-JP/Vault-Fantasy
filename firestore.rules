@@ -33,6 +33,18 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── NBA alternate-line prices (SmartStake) ──────────────────
+    // Licensed data. Written ONLY by the owner's local publisher through the
+    // Admin API (scripts/smartstake_publish_alts.py, a service account that
+    // bypasses these rules). Read ONLY by the owner's Google account on the
+    // NBA page's Combo Check. Nobody else, signed in or not.
+    match /nbaAlts/{docId} {
+      allow read: if request.auth != null
+                  && request.auth.token.email_verified == true
+                  && request.auth.token.email == 'jacob12putman@gmail.com';
+      allow write: if false;
+    }
+
     // ── Per-user data ───────────────────────────────────────────
     match /users/{uid} {
       function isOwner() {
