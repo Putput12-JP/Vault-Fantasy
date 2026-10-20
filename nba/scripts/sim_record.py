@@ -8,8 +8,9 @@ changes a price: it only measures whether the simulated ranges were honest. It i
 docs/game-simulation.md (calibration: how often did the real total, margin and player stats land inside the simulated 80% range).
 
   log(board, now)      -> (rows, meta) for Day.record('sim', ...), called by snapshot.py after each poll, for games within SIM_WINDOW_H of tip.
-                          Two environments per game, both recorded:
+                          Three environments per game, each recorded when it exists:
                             market   the game's spread and total from the books (the page's default)
+                            vault    the game model's spread and total (regular season only; sim_engine.vault_mean, the page's vaultLine)
                             players  the players' own sum (the model's own game forecast, our check on it)
                           game row   gid|env        [mean margin, mean total, 9 margin deciles, 9 total deciles, home win chance]
                           player row gid|env|pid    [plays chance, minutes, then 9 deciles each for pts, reb, ast, 3pm, over the games he plays]
@@ -34,7 +35,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 
 SIM_WINDOW_H = 4                    # a game is simulated from this many hours before tip: lineups and injuries have mostly settled
-ENVS = ('market', 'players')
+ENVS = ('market', 'vault', 'players')
 STATS = ['pts', 'reb', 'ast', '3pm']
 DECILES = [.1, .2, .3, .4, .5, .6, .7, .8, .9]
 MIN_PLAY = .5                       # players recorded: a better than even chance of playing ...
@@ -69,7 +70,7 @@ def _dec(a):
 
 
 def log(board, now):
-    """Rows and meta for every game tipping within SIM_WINDOW_H, in both environments."""
+    """Rows and meta for every game tipping within SIM_WINDOW_H, in every environment that exists for it."""
     rows, meta = {}, {}
     if not board or not board.get('games'):
         return rows, meta
@@ -89,6 +90,10 @@ def log(board, now):
                     if not ml:
                         continue
                     mean = SE.market_mean(ml)
+                elif env == 'vault':
+                    mean = SE.vault_mean(pr, g, board)
+                    if not mean:                         # preseason, or no game model state: the page disables the button too
+                        continue
                 else:
                     mean = SE.players_mean(game)
                 res = SE.run(pr, game, mean, seed)

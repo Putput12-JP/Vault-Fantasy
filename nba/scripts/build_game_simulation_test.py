@@ -7,8 +7,12 @@ the ledger scores them against the box score). Run it whenever; it states its ve
 Rules (written before any result, unchanged here):
   - totals and margins: the real value lands inside the simulated 80% range 80% +/- 4 points of games
   - player points, rebounds, assists: 80% +/- 5 points of player-games (3-pointers are reported, with no target)
-  - Both environments are scored. The market line env centres totals and margins on the market, so it tests the simulation's spread; the
-    players' own sum env tests our own forecast. The test is judged on each separately.
+  - Every environment is scored. The market line env centres totals and margins on the market, so it tests the simulation's spread; the
+    players' own sum env tests our own forecast; the Vault line env (added 2026-10-20, before any regular-season game was scored) centres on
+    the game model's line, regular season only. The test is judged on each separately. The Vault line is reported, never part of the GO call:
+    the call stays on the market line and the players' own sum exactly as first written.
+  - Head to head (added with the Vault line, descriptive, no verdict): on the games that have every environment, the average miss of each
+    environment's simulated middle margin and total against the real ones, and the market line's miss minus each other's, clustered by game.
   - "Inside" is the mid-rank rule in sim_record.py (u between 0.1 and 0.9), fairer than a raw inside test on count stats.
 Joint odds (the second half of the pre-registered test), fixed before any result. Over pairs where both played, using the simulation's own
 half-lines (sim_record.py), over/over and under/under pooled, errors clustered by game, at least 150 games and 2,000 pairs:
@@ -66,12 +70,38 @@ def joint(games):
     return out
 
 
+ENVS = ('market', 'vault', 'players')
+ENV_NAME = {'market': 'Market line', 'vault': 'Vault line', 'players': 'Players own sum'}
+GO_ENVS = ('market', 'players')     # the pre-registered call; the Vault line is reported beside it, never inside it
+
+
+def head_to_head(games):
+    """On games that have every environment: mean absolute miss of each environment's simulated middle (margin, total) against the real value,
+    and the paired difference in squared miss against the market line with its game-level standard error. Descriptive, no verdict."""
+    G = [g for g in games if all(e in g['env'] for e in ENVS)]
+    if not G:
+        return {'games': 0}
+    out = {'games': len(G)}
+    for e in ENVS:
+        x = [g['env'][e] for g in G]
+        out[e] = {'margin_mae': round(sum(abs(v['m'][1] - v['am']) for v in x) / len(G), 2), 'total_mae': round(sum(abs(v['t'][1] - v['at']) for v in x) / len(G), 2)}
+    for e in ENVS:
+        if e == 'market':
+            continue
+        for q, mk, ak in (('margin', 'm', 'am'), ('total', 't', 'at')):
+            d = [(g['env'][e][mk][1] - g['env'][e][ak]) ** 2 - (g['env']['market'][mk][1] - g['env']['market'][ak]) ** 2 for g in G]
+            m = sum(d) / len(d)
+            se = math.sqrt(sum((v - m) ** 2 for v in d) / (len(d) - 1) / len(d)) if len(d) > 1 else None
+            out[e][f'{q}_sq_vs_market'] = {'diff': round(m, 2), 'z': round(m / se, 2) if se else None}
+    return out
+
+
 def main():
     path = sys.argv[sys.argv.index('--track') + 1] if '--track' in sys.argv else os.path.join(DATA, 'track.json')
     t = json.load(open(path)) if os.path.exists(path) else {}
     games = sorted([g for d in (t.get('sim_days') or {}).values() for g in d], key=lambda g: g['tip'])
-    out = {'generated': t.get('t'), 'min_games': MIN_GAMES, 'envs': {}, 'joint': joint(games)}
-    for env in ('market', 'players'):
+    out = {'generated': t.get('t'), 'min_games': MIN_GAMES, 'envs': {}, 'joint': joint(games), 'head_to_head': head_to_head(games)}
+    for env in ENVS:
         R = [g for g in games if env in g['env']]
         n = len(R)
         if not n:
@@ -94,19 +124,30 @@ def main():
             'verdict': {'totals': judge(tot, .76, .84, n), 'margins': judge(mar, .76, .84, n), 'players': judge(pooled, .75, .85, n)},
             'se_totals': round(se(tot, n), 3)}
     out['go_joint'] = {c: v.get('verdict', 'collecting') for c, v in out['joint'].items()}
-    out['go'] = all(v.get('verdict', {}).get(k) == 'pass' for v in out['envs'].values() if v.get('games') for k in ('totals', 'margins', 'players')) and any(v.get('games', 0) >= MIN_GAMES for v in out['envs'].values())
+    out['go'] = all(v.get('verdict', {}).get(k) == 'pass' for e, v in out['envs'].items() if e in GO_ENVS and v.get('games') for k in ('totals', 'margins', 'players')) and any(out['envs'][e].get('games', 0) >= MIN_GAMES for e in GO_ENVS)
     json.dump(out, open(os.path.join(DATA, 'game_simulation_test.json'), 'w'), separators=(',', ':'))
     md = ['# Game Simulation: live calibration result', '', f'Rules: docs/game-simulation.md. Source: the live record (sim_record.py) in track.json. Games scored: {len(games)} (the test is called at {MIN_GAMES}).', '']
     for env, v in out['envs'].items():
         if not v.get('games'):
-            md += [f'## {env}: no games scored yet', '']
+            md += [f'## {ENV_NAME[env]}: no games scored yet', '']
             continue
-        md += [f"## {'Market line' if env == 'market' else 'Players own sum'}: {v['games']} games", '',
+        md += [f"## {ENV_NAME[env]}: {v['games']} games" + (' (reported, not part of the GO call)' if env not in GO_ENVS else ''), '',
                f"- Totals inside the 80% range: {v['totals_in']:.1%} (below {v['totals_below']:.1%}, above {v['totals_above']:.1%}); target 76% to 84%: **{v['verdict']['totals']}**",
                f"- Margins inside: {v['margins_in']:.1%} (below {v['margins_below']:.1%}, above {v['margins_above']:.1%}); target 76% to 84%: **{v['verdict']['margins']}**",
                f"- Player points, rebounds, assists inside: {v['players_pooled_pts_reb_ast']:.1%} of {sum(v['player_games'][s] for s in STATS[:3]):,} player-stats; target 75% to 85%: **{v['verdict']['players']}**",
                '- By stat: ' + ', '.join(f"{s} {v['players_in'][s]:.1%}" for s in STATS if v['players_in'][s] is not None) + ' (3pm has no target)',
                f"- Home win Brier {v['home_win_brier']} (a coin flip is 0.25). Players expected to play {v['plays_expected_vs_actual'][0]}, did {v['plays_expected_vs_actual'][1]}.", '']
+    h = out['head_to_head']
+    md += ['## Head to head (games that have every environment; descriptive, no verdict)', '']
+    if not h.get('games'):
+        md += ['Nothing to compare yet: no game has the market line, the Vault line and the players\' own sum together.', '']
+    else:
+        md += [f"{h['games']} games. Average miss of each simulated middle against the real result, in points:", '']
+        for e in ENVS:
+            x = h[e]
+            vs = '' if e == 'market' else '; squared miss minus the market line\'s: ' + ', '.join(f"{q} {x[q + '_sq_vs_market']['diff']:+.1f} (z {x[q + '_sq_vs_market']['z'] if x[q + '_sq_vs_market']['z'] is not None else 'n/a'})" for q in ('margin', 'total'))
+            md.append(f"- {ENV_NAME[e]}: margin {x['margin_mae']}, total {x['total_mae']}{vs}")
+        md.append('')
     NAMES = dict(JOINT_SETS)
     md += ['## Joint odds (pairs where both played, over/over and under/under pooled)', '']
     for c, v in out['joint'].items():

@@ -4576,11 +4576,11 @@ function renderNovigPaper(){
 $('tnvcard').addEventListener('click', ev => { if (ev.target.closest('#tnvmorebtn')){ nvRec.limit = 1e6; renderNovigPaper(); } });
 function renderSimRecord(){
   const d = TR && TR.data, G = simGames(), e = simRec.env, pre = d && d.preseason && d.preseason.sim_days ? Object.values(d.preseason.sim_days).flat().length : 0;
-  $('tsimenv').innerHTML = `<div class="seg" data-f="simenv" role="group">${[['market', 'Market line'], ['players', "Players' own sum"]].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${e === v}">${l}</button>`).join('')}</div>`;
+  $('tsimenv').innerHTML = `<div class="seg" data-f="simenv" role="group">${[['market', 'Market line'], ['vault', 'Vault line'], ['players', "Players' own sum"]].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${e === v}">${l}</button>`).join('')}</div>`;
   const R = G.filter(g => g.env[e]);
   if (!R.length){
     $('tsimk').innerHTML = '';
-    $('tsim').innerHTML = `<tbody><tr><td class="l" colspan="9"><p class="empty">No simulations scored yet. The recorder saves each game's simulated ranges in the 4 hours before tip and the ledger scores them against the box score 3 hours after tip, from opening night.${pre ? ` ${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart as a rehearsal.` : ''}</p></td></tr></tbody>`;
+    $('tsim').innerHTML = `<tbody><tr><td class="l" colspan="9"><p class="empty">No simulations scored yet. The recorder saves each game's simulated ranges in the 4 hours before tip and the ledger scores them against the box score 3 hours after tip, from opening night.${e === 'vault' ? ' The Vault line does not exist in preseason, so it has no rehearsal games; it starts with the first regular-season game.' : pre ? ` ${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart as a rehearsal.` : ''}</p></td></tr></tbody>`;
     $('tsimmore').hidden = true; $('tsimnote').textContent = ''; $('tsimj').innerHTML = ''; $('tsimjsub').textContent = ''; return;
   }
   const n = R.length, cnt = f => R.filter(f).length, share = k => cnt(g => simIn(g.env[e][k])) / n;
@@ -4619,7 +4619,7 @@ function renderSimRecord(){
   $('tsimmore').hidden = R.length <= simRec.limit;
   $('tsimmore').innerHTML = `<button class="btn" id="tsimmorebtn" type="button">Show all ${R.length.toLocaleString()}</button>`;
   $('tsimsub').textContent = `${n.toLocaleString()} ${n === 1 ? 'game' : 'games'} scored, newest first. Green means the real number landed inside the simulated 80% range. Not affected by the filters above.`;
-  $('tsimnote').textContent = `Home win Brier ${brier.toFixed(3)} (a coin flip is 0.250; lower is better). With the market line selected, totals and margins are centred on the market by construction, so they test the simulation's spread, not its forecast; the players' own sum tests our forecast. ${pre ? `${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart and counted nowhere.` : ''}`;
+  $('tsimnote').textContent = `Home win Brier ${brier.toFixed(3)} (a coin flip is 0.250; lower is better). With the market line selected, totals and margins are centred on the market by construction, so they test the simulation's spread, not its forecast; the Vault line centres them on the game model's line (regular season only, so it starts with the first regular-season game); the players' own sum tests our forecast. ${pre ? `${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart and counted nowhere.` : ''}`;
 }
 // ── Props: minutes model vs simulations (nba/scripts/build_sim_challenger.py → data/sim_challenger.json; live from the ledger and sim_days) ───────
 // Backtest: the same props and prices scored four ways. "Minutes model" is the prop model the Player Props page prices (v2, closed form). The
