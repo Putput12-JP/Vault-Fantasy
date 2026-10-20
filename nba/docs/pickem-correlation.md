@@ -51,3 +51,7 @@ the per-game sums of residual products.
   pick at the app's own line with our fair, as the Props page already does).
 - App rules: some apps block certain same-game combinations; the page would show only combinations the app allows.
 - Same-player pairs (points and assists of one player): most apps do not allow the same player twice in an entry.
+
+## Update 2026-10-20: not used by the page
+
+Pick'em apps do not let you pick two players on the same team, and every family that passed this test was a pair of teammates. The page (Pick'em of the Night) therefore builds slips with one player per team and multiplies the picks' chances, as different-team pairs showed no lift (largest 2.1% against the 4% bar, 0.4% pooled). The test and its numbers stand as a record; nothing in the UI reads `pickem_corr.json` any more.

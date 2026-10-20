@@ -851,7 +851,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pv-moves .mv b{color:var(--fg);font-weight:500}
 @media (max-width:1200px){ .pv-main{grid-template-columns:minmax(0,1fr)} .pv-list{position:static;max-height:420px} .pv-recent{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:600px){ .pv-dh,.pv-sec{padding:16px} .pv-wf .wr{grid-template-columns:120px minmax(0,1fr) 52px} .pv-mins{grid-template-columns:minmax(0,1fr) auto} .pv-mins .pv-mbar{grid-column:1/-1;order:3} .pv-sg{grid-template-columns:minmax(0,1fr);gap:4px} .pv-sk{justify-self:start} .pv-row2 .pfind{flex:1 1 140px} }
-/* Pick'em Pairs: teammate pairs from the correlation test, drawn as entry slips */
+/* Pick'em of the Night: entry slips, one player per team */
 .pp-wrap{display:grid;gap:var(--gap);min-width:0}
 .pp-read{padding:14px 20px;display:grid;gap:6px}
 .pp-read p{margin:0;font-size:13.5px;color:var(--fg2);max-width:84ch}
@@ -880,7 +880,9 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pp-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 10px}
 .pp-h b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.01em}
 .pp-h span:not(.pv-vp){font-size:11.5px;color:var(--fg3)}
-.pp-picks{display:grid;padding:0 10px}
+.pp-picks{display:grid;gap:8px;padding:0 10px}
+.pb-bar .pv-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.pb-bar .pv-logf{margin-top:8px}.pb-logh{margin:10px 0 0;font-size:13px}.pb-lg{white-space:nowrap}.pb-lg .pb-log{height:24px;padding:0 8px;font-size:11.5px;margin-left:4px}
+.pp-rule{padding:8px 12px;border-left:3px solid var(--warn);background:var(--surface2);border-radius:8px}
 .pp-pk{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 8px;border-radius:12px;background:var(--surface)}
 .pp-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:2px solid var(--border2);font-size:12px;font-weight:700;color:var(--fg2);position:relative;overflow:hidden}
 /* photos: a headshot covers the initials circle, cropped to the face; logos sit inline before a team code */
@@ -2028,7 +2030,7 @@ th{font-weight:500}
           <div class="tablewrap"><table class="ht tsim" id="tsim"></table></div>
           <div class="more" id="tsimmore" hidden></div>
           <p class="hint" id="tsimnote"></p>
-          <h3 class="sim-h">Joint odds: teammate pairs</h3>
+          <h3 class="sim-h">Joint odds: different teams, then teammates (for the simulation test only)</h3>
           <p class="hint" id="tsimjsub"></p>
           <div class="tablewrap"><table class="ht tsim" id="tsimj"></table></div></div>
       </section>
@@ -2694,7 +2696,7 @@ const PAGES = [
     ['What Works', SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'), 'Which bets passed the backtest, in dollars and plain-language confidence, and what does not work.', 'backtests'],
     ['Edge Finder', SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'), "Slice last season's tests by venue, stat and side and see what held up out of sample.", 'finder'],
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
-    ['Pick\'em Pairs', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'Teammate picks that hit together more often than their prices say, from a pre-registered test, drawn as 2-pick entry slips.', 'pairs'],
+    ['Pick\'em of the Night', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'The best pick\'em slip we can build tonight: one player per team, from PrizePicks, Underdog or Sleeper, with the honest odds that it pays.', 'pairs'],
     ['My Bets', SVG('<path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 8h6M9 12h6"/>'), 'The bets you placed: results, closing-line value and where your edge is coming from.', 'mybets'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
@@ -2976,8 +2978,8 @@ function show(v){
     return;
   }
   if (v === 'pairs'){
-    $('tname').textContent = "Pick'em Pairs";
-    $('tsub').textContent = 'TEAMMATES THAT HIT TOGETHER · PRE-REGISTERED TEST · 2-PICK ENTRIES';
+    $('tname').textContent = "Pick'em of the Night";
+    $('tsub').textContent = 'ONE PLAYER PER TEAM · BEST SLIP TONIGHT · THE ODDS IT PAYS';
     renderPairs();
     if (!boardTried) loadBoard();
     return;
@@ -3304,7 +3306,7 @@ const PKN = {prizepicks: 'PrizePicks', underdog: 'Underdog', sleeper: 'Sleeper'}
 const PK_BE = 0.5425;              // pick'em break-even per pick on standard 5- and 6-pick flex entries (flat-payout lines)
 let PS = {board: null, mode: 'none', at: null};
 let boardTried = false, boardTimer = null, showExample = false;
-let pf = {game: 'all', stat: 'all', sort: 'edge', q: '', gated: false, open: new Set(), limit: 120};
+let pf = {game: 'all', stat: 'all', sort: 'edge', q: '', gated: false, open: new Set(), limit: 120, rows: [], logKey: null, logIdx: null};
 
 const erf = x => { const t = 1 / (1 + 0.3275911 * Math.abs(x)); const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x); return x >= 0 ? y : -y; };
 const Phi = x => 0.5 * (1 + erf(x / Math.SQRT2));
@@ -3857,7 +3859,7 @@ function renderProps(){
   $('pstat').innerHTML = STATS.map(([k, l]) => `<button type="button" data-s="${k}" aria-pressed="${pf.stat === k}">${l}</button>`).join('');
 
   const cache = {};
-  const rows = (B.props || []).filter(e => PR.variance[e.s]).map(e => priceRow(e, cache));
+  const rows = (B.props || []).filter(e => PR.variance[e.s]).map(e => { const r = priceRow(e, cache); r.game = games.find(g => String(g.id) === String(e.g)); return r; });   // r.game: a logged bet needs the tip and day to settle
   const gid = pf.game, q = pf.q.trim().toLowerCase();
   let shown = rows.filter(r => (gid === 'all' || String(r.e.g) === gid) && (pf.stat === 'all' || r.e.s === pf.stat)
     && (!q || r.name.toLowerCase().includes(q)) && (!pf.gated || r.passing));
@@ -3889,6 +3891,7 @@ function renderProps(){
 
   // table: every value in its own centred column; flags (injury, edited minutes) live in the player's sub-line
   const P = shown.slice(0, pf.limit);
+  pf.rows = P;
   const cellPct = x => `<td class="pct">${x == null ? '<span class="muted">none</span>' : pc(x)}</td>`;
   const chev = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>`;
   $('phit').textContent = WLABEL[pwin];
@@ -4011,18 +4014,24 @@ function detailRow(r){
   const cents = x => x == null ? '' : Math.round(x * 100) + '¢';
   const ed = x => x == null ? '' : `<span class="${x > 0 ? 'pos' : 'neg'}">${ec(x)}</span>`;
   const wg = windowGames(r, pwin).gl;
-  const kal = r.kal.length ? `<table><thead><tr><th class="l">Rung</th><th>Bid</th><th>Ask</th><th title="Mid price change since the first poll today">Today</th><th title="Share of games in the selected window that reached the rung">${WLABEL[pwin]}</th><th>Model</th><th>Fair</th><th>YES edge</th><th>NO edge</th></tr></thead><tbody>${r.kal.map(k => {
+  // log or watch from this table: the same bets, watch list and settling as Player Props (pvBets, pvW)
+  const pbIdx = (venue, bk, line, side) => r.all.findIndex(c => (venue ? c.venue === venue : c.venue !== 'kalshi' && c.venue !== 'pickem') && c.bk === bk && c.line === line && c.side === side);
+  const lb = (i, label) => i < 0 ? '' : `<button class="pv-ghost pb-log" type="button" data-pblog="${i}" title="Log this bet in My Bets">${label}</button>`;
+  const pkey = pvKey(r), watching = !!pvW[pkey], nb = pvBets.filter(b => b.k === pkey).length, lc = pf.logKey === pkey && pf.logIdx != null ? r.all[pf.logIdx] : null;
+  const bar = `<div class="dpanel wide pb-bar"><div class="pv-acts"><button class="pv-star" type="button" data-pbstar="${esc(pkey)}" aria-pressed="${watching}">${watching ? '★ Watching' : '☆ Watch'}</button>${nb ? `<button class="pv-ghost" type="button" data-pbbets="1">${nb} bet${nb > 1 ? 's' : ''} logged</button>` : ''}<span class="muted">Log an over or an under from any row below. It settles after the game with your closing-line value.</span></div>
+    ${lc ? `<p class="pb-logh"><b>Logging ${esc(lc.bk)} ${lc.venue === 'kalshi' ? `${lc.side} ${lc.line + .5}+` : `${lc.side} ${lc.line}`}</b></p>${pvLogForm(r, lc)}` : ''}</div>`;
+  const kal = r.kal.length ? `<table><thead><tr><th class="l">Rung</th><th>Bid</th><th>Ask</th><th title="Mid price change since the first poll today">Today</th><th title="Share of games in the selected window that reached the rung">${WLABEL[pwin]}</th><th>Model</th><th>Fair</th><th>YES edge</th><th>NO edge</th><th>Log</th></tr></thead><tbody>${r.kal.map(k => {
     const h = hitRate(wg, r.e.s, k.line), mv = k.om != null && k.mid != null ? Math.round((k.mid - k.om) * 100) : null;
-    return `<tr class="${k === near ? 'near' : ''}"><td class="l">${k.line + .5}+</td><td>${cents(k.bid)}</td><td>${cents(k.ask)}</td><td>${mv ? `${mv > 0 ? '+' : ''}${mv}` : '<span class="muted">0</span>'}</td><td>${h.n ? pc(h.pct) : ''}</td><td>${pc(k.pm)}</td><td>${pc(k.fair)}</td><td>${ed(k.ey)}</td><td>${ed(k.en)}</td></tr>`;
+    return `<tr class="${k === near ? 'near' : ''}"><td class="l">${k.line + .5}+</td><td>${cents(k.bid)}</td><td>${cents(k.ask)}</td><td>${mv ? `${mv > 0 ? '+' : ''}${mv}` : '<span class="muted">0</span>'}</td><td>${h.n ? pc(h.pct) : ''}</td><td>${pc(k.pm)}</td><td>${pc(k.fair)}</td><td>${ed(k.ey)}</td><td>${ed(k.en)}</td><td class="pb-lg">${lb(pbIdx('kalshi', 'Kalshi', k.line, 'YES'), 'YES')}${lb(pbIdx('kalshi', 'Kalshi', k.line, 'NO'), 'NO')}</td></tr>`;
   }).join('')}</tbody></table>`
     : '<p class="empty">Not listed on Kalshi.</p>';
-  const books = r.books.length ? `<table><thead><tr><th class="l">Book</th><th>Open</th><th>Line</th><th>Over</th><th>Under</th><th>Market</th><th>Fair</th><th>Over edge</th><th>Under edge</th></tr></thead><tbody>${r.books.map(b => {
+  const books = r.books.length ? `<table><thead><tr><th class="l">Book</th><th>Open</th><th>Line</th><th>Over</th><th>Under</th><th>Market</th><th>Fair</th><th>Over edge</th><th>Under edge</th><th>Log</th></tr></thead><tbody>${r.books.map(b => {
     const po = amP(b.o), pu = amP(b.u);
-    return `<tr><td class="l">${esc(b.bk)}</td><td>${b.l0 ?? ''}</td><td>${b.line}</td><td>${b.o}</td><td>${b.u}</td><td>${pc(b.mkt)}</td><td>${pc(b.fair)}</td><td>${b.fair != null ? ed(b.fair - po) : ''}</td><td>${b.fair != null ? ed((1 - b.fair) - pu) : ''}</td></tr>`;
+    return `<tr><td class="l">${esc(b.bk)}</td><td>${b.l0 ?? ''}</td><td>${b.line}</td><td>${b.o}</td><td>${b.u}</td><td>${pc(b.mkt)}</td><td>${pc(b.fair)}</td><td>${b.fair != null ? ed(b.fair - po) : ''}</td><td>${b.fair != null ? ed((1 - b.fair) - pu) : ''}</td><td class="pb-lg">${lb(pbIdx(null, b.bk, b.line, 'Over'), 'Over')}${lb(pbIdx(null, b.bk, b.line, 'Under'), 'Under')}</td></tr>`;
   }).join('')}</tbody></table>` : '<p class="empty">No sportsbook line.</p>';
-  const pk = r.pk.length ? `<div class="dpanel wide"><h4>Pick'em apps<small>flat lines judged against the ${pc(PK_BE)} flex break-even</small></h4><table><thead><tr><th class="l">App</th><th>Open</th><th>Line</th><th>Over</th><th>Under</th><th>Model</th><th>Fair</th><th>Over edge</th><th>Under edge</th></tr></thead><tbody>${r.pk.map(k =>
-    `<tr><td class="l">${esc(k.app)}</td><td>${k.l0 ?? ''}</td><td>${k.line}</td><td>${k.o ?? '<span class="muted">flat</span>'}</td><td>${k.u ?? '<span class="muted">flat</span>'}</td><td>${pc(k.pm)}</td><td>${pc(k.fair)}</td><td>${ed(k.eo)}</td><td>${ed(k.eu)}</td></tr>`).join('')}</tbody></table>
-    <p class="empty" style="margin-top:10px">Not ranked as a best bet: flat payouts would win every price comparison. No backtest gate yet.</p></div>` : '';
+  const pk = r.pk.length ? `<div class="dpanel wide"><h4>Pick'em apps<small>flat lines judged against the ${pc(PK_BE)} flex break-even</small></h4><table><thead><tr><th class="l">App</th><th>Open</th><th>Line</th><th>Over</th><th>Under</th><th>Model</th><th>Fair</th><th>Over edge</th><th>Under edge</th><th>Log</th></tr></thead><tbody>${r.pk.map(k =>
+    `<tr><td class="l">${esc(k.app)}</td><td>${k.l0 ?? ''}</td><td>${k.line}</td><td>${k.o ?? '<span class="muted">flat</span>'}</td><td>${k.u ?? '<span class="muted">flat</span>'}</td><td>${pc(k.pm)}</td><td>${pc(k.fair)}</td><td>${ed(k.eo)}</td><td>${ed(k.eu)}</td><td class="pb-lg">${lb(pbIdx('pickem', k.app, k.line, 'Over'), 'More')}${lb(pbIdx('pickem', k.app, k.line, 'Under'), 'Less')}</td></tr>`).join('')}</tbody></table>
+    <p class="empty" style="margin-top:10px">Not ranked as a best bet: flat payouts would win every price comparison. No backtest gate yet. ${PP_RULE} <a href="#pairs" data-go="pairs">Pick'em of the Night</a></p></div>` : '';
   const team = PIDX[r.e.p]?.t;
   const B = r.build, g0 = (PS.board.games || []).find(x => String(x.id) === String(r.e.g));
   const build = B && r.min > 0 ? `<div class="dpanel glpanel"><h4>How the projection is built<small>${r.v2 ? `prop model v2, ${g0 && g0.total != null ? `game total ${g0.total} (${esc(g0.line_from || '')})` : 'no game line yet'}` : 'minutes × rate only'}</small></h4>
@@ -4030,7 +4039,7 @@ function detailRow(r){
         const v = B[k]; if (k !== 'base' && Math.abs(v) < .005) return '';
         return `<div class="bstep${k === 'base' ? ' base' : ''}"><span class="bl">${PART_LABEL[k]}</span><span class="bv ${k === 'base' ? '' : v > 0 ? 'pos' : 'neg'}">${k === 'base' ? fmt(v, 2) : (v > 0 ? '+' : '') + fmt(v, 2)}</span></div>`;
       }).join('')}<div class="bstep tot"><span class="bl">Projection</span><span class="bv">${fmt(r.mu, 2)}</span></div></div></div>` : '';
-  return `<tr class="detail"><td colspan="14">${build}
+  return `<tr class="detail"><td colspan="14">${bar}${build}
     <div class="dpanel glpanel"><h4>Game log<small>${SLABEL[r.e.s]} against the ${r.lineFrom || ''} line of ${r.line ?? 'none'} · pick a window</small></h4>${logChart(r)}</div>
     <div class="dgrid">
     <div class="dpanel"><h4>Kalshi ladder<small>YES pays if he reaches the rung; edge after fees</small></h4>${kal}</div>
@@ -4052,11 +4061,34 @@ $('pgated').addEventListener('change', e => { pf.gated = e.target.checked; rende
 $('pmore').addEventListener('click', e => { if (e.target.id === 'pmorebtn'){ pf.limit = 1e9; renderProps(); } });
 const toggleRow = tr => { const k = tr.dataset.k; pf.open.has(k) ? pf.open.delete(k) : pf.open.add(k); renderProps(); };
 $('prows').addEventListener('click', e => {
+  const t = e.target;
+  const lg = t.closest('[data-pblog]');
+  if (lg){
+    const pr = lg.closest('tr.detail')?.previousElementSibling, key = pr && pr.dataset.k, r = key && pf.rows.find(x => `${x.e.p}|${x.e.s}` === key);
+    pf.logKey = r ? pvKey(r) : null; pf.logIdx = r ? +lg.dataset.pblog : null; renderProps(); document.querySelector('#prows .pv-logf input[name="price"]')?.focus(); return;
+  }
+  if (t.closest('[data-logcancel]')){ pf.logKey = pf.logIdx = null; renderProps(); return; }
+  const sb = t.closest('[data-pbstar]');
+  if (sb){
+    const k = sb.dataset.pbstar, r = pf.rows.find(x => pvKey(x) === k);
+    if (r && !r.sharp) r.sharp = pvSharp(r);            // Player Props rows carry it; the snapshot a watch compares against reads it
+    if (pvW[k]) delete pvW[k]; else pvW[k] = {edge: true, line: true, sharp: true, news: true, tip: r && r.game ? r.game.tip : null, snap: r ? pvSnap(r, Date.now() / 1000) : null};
+    pvSave(); renderProps(); pvToast(pvW[k] ? 'Watching. Changes on this prop show under Alerts on Player Props.' : 'No longer watching.'); return;
+  }
+  if (t.closest('[data-pbbets]')){ goView('mybets'); return; }
   const wc = e.target.closest('[data-w]');
   if (wc){ pwin = wc.dataset.w; renderProps(); return; }
   const lab = e.target.closest('[data-lab]');
   if (lab){ history.replaceState(null, '', '#' + lab.dataset.lab.toLowerCase()); goTeam(lab.dataset.lab); return; }
   const tr = e.target.closest('tr.prow'); if (tr) toggleRow(tr);
+});
+$('prows').addEventListener('submit', e => {
+  e.preventDefault(); const f = e.target.closest('[data-logform]'); if (!f) return;
+  const r = pf.rows.find(x => pvKey(x) === pf.logKey), c = r && r.all[+f.dataset.logform];
+  const b = c && pvMkBet(r, c, f.price.value, +f.stake.value);
+  if (!b){ pvToast(c && c.venue === 'kalshi' ? 'Enter the price in cents, like 48, and a stake.' : 'Enter American odds, like -115 or +120, and a stake.'); return; }
+  pvBets.unshift(b); pf.logKey = pf.logIdx = null; pvSave(); renderProps(); pvSettle();
+  pvToast(b.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.');
 });
 $('prows').addEventListener('keydown', e => { const tr = e.target.closest('tr.prow'); if (tr && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); toggleRow(tr); } });
 
@@ -4371,7 +4403,7 @@ function renderSimRecord(){
       ${miss ? `<tr><td class="sub" colspan="8">Biggest player misses: ${miss}</td></tr>` : ''}`; }).join('');
   $('tsim').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Game</th><th scope="col" title="Simulated middle margin and the 10th to 90th percentile. H = home by, A = away by">Margin (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated middle total and the 10th to 90th percentile">Total (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated home win chance">Home win</th><th class="l" scope="col" title="Players whose real stat landed inside the simulated 80% range, of those who played">Players in range</th></tr></thead><tbody>${rows}</tbody>`;
   const J = Object.keys(SIMJ).map(c => [c, simJoint(G, c)]);
-  $('tsimjsub').textContent = 'Different teams first: apps that only allow different-team picks, where real opposing players are close to independent, so the simulation passes (OK) by agreeing. Teammate pairs only matter for apps that allow same-team picks and must also beat an independent guess (GO). Pairs use the simulation\'s own half-lines, over/over and under/under together.';
+  $('tsimjsub').textContent = 'Different teams first, because pick\'em apps do not let you pick two players on the same team: real opposing players are close to independent, so the simulation passes (OK) by agreeing. Teammate pairs are shown only to test the simulation itself; they cannot be entered in the apps. Pairs use the simulation\'s own half-lines, over/over and under/under together.';
   $('tsimj').innerHTML = `<thead><tr><th class="l" scope="col">Combination</th><th scope="col">Pairs</th><th scope="col" title="Both legs hit">Observed</th><th scope="col">Simulated</th><th scope="col">Independent</th><th scope="col" title="Observed minus simulated, in standard errors. Needs under 2 either way">Bias z</th><th scope="col" title="Teammates only: does the simulation beat the independent guess? Needs 2 or more">Beats independent z</th><th class="l" scope="col">Status</th></tr></thead><tbody>${J.map(([c, v]) => v.obs == null
     ? `<tr><td class="l">${SIMJ[c]}</td><td class="num">${(v.pairs || 0).toLocaleString()}</td><td class="num" colspan="5"><span class="muted">nothing to score yet</span></td><td class="l"><span class="muted">collecting</span></td></tr>`
     : `<tr><td class="l">${SIMJ[c]}<small>${v.games} games</small></td><td class="num">${v.pairs.toLocaleString()}</td><td class="num">${pc(v.obs, 1)}</td><td class="num">${pc(v.sim, 1)}</td><td class="num">${pc(v.ind, 1)}</td>
@@ -7227,7 +7259,7 @@ function pvDetail(r){
       html: `${plainTxt()}.</p>
       <p>The price looks <b>+${pc(b.edge, 1)}</b> off our fair ${pc(b.fair, 1)}, but this kind of edge ${b.g === 'watch' ? 'made money last season without being conclusive' : 'has no record yet'}. Worth a look, not a stake.</p>`});
   } else if (r.hold) verdictOf = () => ({kind: 'pass', title: holdLabel(r.hold), pill: {t: 'No call', cls: 'idle'},
-      html: `<p>${holdTxt(r.hold, r)} So no Bet or Lean, and it stays out of Edges, Pick'em Pairs and the Track Record${r.hold.why === 'preseason' ? ' (preseason is logged apart, as a rehearsal)' : ` until ${r.hold.why === 'source' ? 'that source answers again' : r.hold.why === 'team' ? 'the new players have a game with the team' : 'he plays a game for them'}`}.</p>
+      html: `<p>${holdTxt(r.hold, r)} So no Bet or Lean, and it stays out of Edges, Pick'em of the Night and the Track Record${r.hold.why === 'preseason' ? ' (preseason is logged apart, as a rehearsal)' : ` until ${r.hold.why === 'source' ? 'that source answers again' : r.hold.why === 'team' ? 'the new players have a game with the team' : 'he plays a game for them'}`}.</p>
       <p>${b ? `For reference, the best price is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)} against our number.` : 'No prices to compare yet.'}</p>`});
   else verdictOf = () => ({kind: 'pass', title: 'No price is 3% better than fair', pill: null,
       html: `<p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p>`});
@@ -7240,7 +7272,6 @@ function pvDetail(r){
         <span class="muted">${fmt(lo, 0)} to ${fmt(hi, 0)} likely${r.min0 ? ` · usual ${fmt(r.min0, 0)}` : ''}${r.src === 'yours' ? ' · your minutes' : ''}</span></div>`;
   HK.mount($('pv-detail'), 'PvDetail', {head, minsHtml, watchHtml: pvWatchUI(r), verdict: verdictOf(), sections: [
     {title: 'Ways to bet it', sub: "Every venue, line and side for this prop, the recommended bet first. Value is what a $100 bet makes on average if our chance is right; fees and vig are already in the price. Pass means the edge is under 3%: a small plus there is inside the model's margin of error.", html: pvWays(r)},
-    ...(ppFor(r) ? [{raw: ppFor(r)}] : []),
     ...(alsoFor(r) ? [{raw: alsoFor(r)}] : []),
     {raw: pvSharpSec(r)},
     {title: `Why our number is ${fmt(r.mu)}`, sub: 'From his usual game to tonight. Each step is a piece of the model; together they are exactly the projection.', html: pvWaterfall(r)},
@@ -7410,19 +7441,23 @@ async function pvSettle(){
   let changed = false;
   for (const b of pvBets){
     if (b.res || !b.tip) continue;
-    if (b.kind === 'pair'){                              // a 2-pick entry: both legs from one game's box score
-      let G = null;
-      if (!b.ex){
-        if (now < b.tip + 3 * 3600) continue;
-        if (live){
-          const c = pvCloses[b.day];
-          if (!c || (now - c.at > 600 && !(c.data && c.data.games && c.data.games[b.gid] && c.data.games[b.gid].box)))
-            pvCloses[b.day] = {at: now, data: await fetch(`https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/snapshots/${b.day}/closes.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null)};
-          G = pvCloses[b.day].data && pvCloses[b.day].data.games[b.gid];
+    if (b.kind === 'pair'){                              // a pick'em slip: each leg from its own game's box score
+      const bxs = []; let wait = false;
+      for (const l of b.legs){
+        const tip = l.tip || b.tip, day = l.day || b.day, gid = l.gid || b.gid;
+        let G = null;
+        if (!b.ex){
+          if (now < tip + 3 * 3600){ wait = true; break; }
+          if (live){
+            const c = pvCloses[day];
+            if (!c || (now - c.at > 600 && !(c.data && c.data.games && c.data.games[gid] && c.data.games[gid].box)))
+              pvCloses[day] = {at: now, data: await fetch(`https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/snapshots/${day}/closes.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null)};
+            G = pvCloses[day].data && pvCloses[day].data.games[gid];
+          }
         }
+        bxs.push(G && G.box ? (G.box[l.p] === undefined ? null : G.box[l.p]) : pvGlBox({p: l.p, day}));
       }
-      const bxs = b.legs.map(l => G && G.box ? (G.box[l.p] === undefined ? null : G.box[l.p]) : pvGlBox(l));
-      if (bxs.some(x => x === undefined)) continue;
+      if (wait || bxs.some(x => x === undefined)) continue;
       b.res = ppGrade(b, bxs); changed = true;
       continue;
     }
@@ -7502,14 +7537,14 @@ function pvRenderBets(){
     <section class="card"><div class="pv-bets">
       <div class="pv-bt h"><span>Bet</span><span>Price you got</span><span>Fair close</span><span>Closing-line value</span><span>Our call then</span><span>Result</span><span></span></div>
       ${S.map(({b}) => { const R = b.res;
-        if (b.kind === 'pair'){ const ml = b.side === 'Over' ? 'More' : 'Less';
+        if (b.kind === 'pair'){
           return `<div class="pv-bt">
-          <span class="b1"><b>${b.legs.map(l => `${esc(l.name)} ${ml} ${l.line} ${PV_NOUN[l.s]}`).join(' + ')}</b><small>Pick'em pair · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span>
+          <span class="b1"><b>${b.legs.map(l => `${esc(l.name)} ${(l.side || b.side) === 'Over' ? 'More' : 'Less'} ${l.line} ${PV_NOUN[l.s]}`).join(' + ')}</b><small>Pick'em ${b.legs.length}-pick · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span>
           <span><small class="k">Price</small>${esc(b.price)}<small>needs ${pc(b.cost, 1)}</small></span>
           <span><small class="k">Fair close</small><span class="muted">n/a</span><small>entries have no closing price</small></span>
           <span><small class="k">CLV</small><span class="muted">-</span></span>
-          <span><small class="k">Our call</small><span class="pv-vp ${b.call}" title="Both hit ${pc(b.fair, 1)} vs ${pc(b.cost, 1)} needed">${b.call.toUpperCase()}</span></span>
-          <span><small class="k">Result</small>${!R ? '<span class="muted">open</span>' : R.res === 'void' ? '<span class="muted">void, a player did not play</span>' : `<b class="${R.pl > 0 ? 'pos' : R.pl < 0 ? 'neg' : ''}">${R.res === 'won' ? 'Won' : R.res === 'lost' ? 'Lost' : 'Push'} ${pvMoney(R.pl)}</b><small>had ${R.ys.map(y => fmt(y, 0)).join(' and ')}</small>`}</span>
+          <span><small class="k">Our call</small><span class="pv-vp ${b.call}" title="All hit ${pc(b.fair, 1)} vs ${pc(b.cost, 1)} needed">${b.call.toUpperCase()}</span></span>
+          <span><small class="k">Result</small>${!R ? '<span class="muted">open</span>' : R.res === 'void' ? '<span class="muted">void, a player did not play</span>' : `<b class="${R.pl > 0 ? 'pos' : R.pl < 0 ? 'neg' : ''}">${R.res === 'won' ? 'Won' : R.res === 'lost' ? 'Lost' : 'Push'} ${pvMoney(R.pl)}</b><small>had ${R.ys.map(y => fmt(y, 0)).join(', ')}</small>`}</span>
           <span class="acts"><button class="pv-ghost" type="button" data-del="${esc(b.id)}" aria-label="Remove this entry">Remove</button></span></div>`; }
         return `<div class="pv-bt">
           <span class="b1">${avSm(b.p, b.name)}<span class="b1t"><b>${esc(b.name)} · ${esc(pvBetName(b))}</b><small>${PV_SL[b.s] || b.s} · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span></span>
@@ -7535,114 +7570,113 @@ function pvOpen(k){
   goView('props'); $('pv-detail').scrollIntoView({behavior: 'smooth', block: 'start'});
 }
 
-// ── Pick'em Pairs (docs/pickem-correlation.md, build_pickem_corr.py -> data/pickem_corr.json) ──
-// Only the families that passed the pre-registered test are used: a player's assists with a teammate's points or
-// 3-pointers, both over or both under. c = the covariance measured on the untouched test season, so the chance both
-// hit is our chance for each, multiplied, plus c. Picks come from the same app at that app's own line; before the apps
-// post, a sportsbook line near even money stands in (apps set lines near 50/50). The legs rest on our fair price,
-// which is untested on these lines, so a pair is a Lean at most until both legs are bet types that passed.
-const PKC = {"verdict":"GO","rules":{"min_pairs":2000,"z_explore":3.0,"z_test":2.0,"min_c":0.01},"n_families":30,"pass":[{"rel":"team","a":"ast","b":"3pm","family":"Teammates: assists with 3-pointers","c":0.01044,"z":4.15,"n":6817,"games":364,"z0":3.35,"zc":2.65},{"rel":"team","a":"pts","b":"ast","family":"Teammates: points with assists","c":0.01066,"z":5.1,"n":12096,"games":390,"z0":3.33,"zc":2.57}],"near":[{"rel":"team","a":"pts","b":"pts","family":"Teammates: points with points","c":-0.00615,"z":-2.54,"n":8478,"games":392,"z0":-4.05,"zc":-0.56}]};
-const PP_STATS = ['pts', 'ast', '3pm'];
-const PP_SHORT = {pts: 'Points', ast: 'Assists', '3pm': '3-PT Made'};
-const ppKey = (a, b) => [a, b].sort((x, y) => PP_STATS.indexOf(x) - PP_STATS.indexOf(y)).join('|');
-const PP_FAM = Object.fromEntries(((PKC && PKC.pass) || []).filter(f => f.rel === 'team').map(f => [ppKey(f.a, f.b), f]));
-let pp = {all: false, game: 'all', logK: null, pay: +(store.get('nba-pickem-pay') || 3), diff: store.get('nba-pickem-diff') === '1'};   // diff: the app only lets you combine players on different teams
-const ppBE = () => 1 / pp.pay;
+// ── Pick'em of the Night ──
+// Pick'em apps do not let you pick two players on the same team, so every slip here has one player per team and the page says
+// so in plain words. That also retires the teammate pairs (a player's assists with a teammate's points): they passed a
+// pre-registered test (docs/pickem-correlation.md) but cannot be entered in the apps, so nothing builds them any more.
+// Players on different teams hit about independently (the opposing-team combinations did not pass), so a slip's chance is
+// each pick's chance multiplied. Each chance is the Player Props fair price at the app's own line, untested on pick'em lines,
+// so a slip is a Lean at most, never a Bet.
+const PP_RULE = "Pick'em apps do not let you pick two players on the same team. Every slip here has one player per team.";
+const PKC = {"verdict":"GO","rules":{"min_pairs":2000,"z_explore":3.0,"z_test":2.0,"min_c":0.01},"n_families":30,"pass":[{"rel":"team","a":"ast","b":"3pm","family":"Teammates: assists with 3-pointers","c":0.01044,"z":4.15,"n":6817,"games":364,"z0":3.35,"zc":2.65},{"rel":"team","a":"pts","b":"ast","family":"Teammates: points with assists","c":0.01066,"z":5.1,"n":12096,"games":390,"z0":3.33,"zc":2.57}],"near":[{"rel":"team","a":"pts","b":"pts","family":"Teammates: points with points","c":-0.00615,"z":-2.54,"n":8478,"games":392,"z0":-4.05,"zc":-0.56}]};                  // filled by render_app.py; the page no longer reads it
+const PP_CORE = ['pts', 'reb', 'ast', '3pm', 'pra', 'pr', 'pa', 'ra'];
+const PP_SHORT = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-PT Made', pra: 'Pts+Rebs+Asts', pr: 'Pts+Rebs', pa: 'Pts+Asts', ra: 'Rebs+Asts'};
+const PP_PAYS = {2: 3, 3: 5, 4: 10, 5: 20, 6: 37.5};      // standard Power Play multiples; the box on the page takes what your entry shows
+const PP_APPS = ['PrizePicks', 'Underdog', 'Sleeper'];
+let pp = {n: +store.get('nba-pickem-n') || 3, app: 'best', logK: null, pays: {...PP_PAYS, ...(store.get('nba-pickem-pays') || {})}};
+if (!(pp.n >= 2 && pp.n <= 6)) pp.n = 3;
+const ppPay = () => pp.pays[pp.n] || PP_PAYS[pp.n];
 
+// Every pick'em line the board can price, on the side we like more. Out and Doubtful are held out; Questionable players are
+// listed but never put in a slip (the report is not final).
 function ppLegs(rows){
-  const legs = [];
+  const out = [];
   for (const r of rows){
-    if (!PP_STATS.includes(r.e.s) || !r.game || r.hold) continue;
-    const team = r.tm || r.team, app = (r.pk || []).filter(k => k.fair != null && k.line != null);
-    for (const k of app) legs.push({r, team, app: k.app, line: k.line, fo: k.fair, go: 'no-go', gu: 'no-go'});
-    if (!app.length){
-      const b = (r.books || []).filter(b => b.fair != null && b.mkt >= .4 && b.mkt <= .6).sort((x, y) => Math.abs(x.mkt - .5) - Math.abs(y.mkt - .5))[0];
-      if (b){
-        const g = side => (r.cands.find(c => c.venue === 'book' && c.bk === b.bk && c.line === b.line && c.side === side) || {}).g || 'no-go';
-        legs.push({r, team, app: null, bk: b.bk, line: b.line, fo: b.fair, go: g('Over'), gu: g('Under')});
-      }
+    if (!PP_CORE.includes(r.e.s) || !r.game || r.hold) continue;
+    const team = r.tm || r.team; if (!team) continue;
+    const inj = r.inj && /^(out|doubtful|questionable)/i.test(r.inj) ? r.inj : null;
+    if (inj && !/^questionable/i.test(inj)) continue;
+    for (const k of r.pk || []){
+      if (k.fair == null || k.line == null) continue;
+      // the chance is the market's (consensus of the other venues moved to this app's line); the model's own number is only a check.
+      // No other venue to anchor to means no number: the model alone shows phantom 90% picks on untested lines.
+      const co = (r.pkc || []).find(c => c.bk === k.app && c.line === k.line && c.side === 'Over');
+      if (!co || co.cons == null) continue;
+      if (r.mu > 0 && Math.abs(k.line - r.mu) / r.mu > .40) continue;          // same 40% rule as the Best Bets and r.pkBest: a line far from the projection is a different minutes situation or a mismapped market
+      const side = co.cons >= .5 ? 'over' : 'under', p = side === 'over' ? co.cons : 1 - co.cons, pm = side === 'over' ? k.fair : 1 - k.fair;
+      const px = side === 'over' ? k.o : k.u;                                   // Underdog and Sleeper price each side; the standard multiple only fits a line priced near even money
+      if (px != null){ const ip = amP(px); if (ip == null || ip < .44 || ip > .56) continue; }
+      out.push({r, team, app: k.app, line: k.line, side, p, pm, far: Math.abs(p - pm) >= .10 || p >= .65, q: !!inj, inj});
     }
   }
-  return legs;
+  return out;
 }
-function ppPairs(rows){
-  const L = ppLegs(rows), out = [];
-  for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++){
-    const A = L[i], B = L[j], F = PP_FAM[ppKey(A.r.e.s, B.r.e.s)];
-    if (!F || A.r.e.p === B.r.e.p || A.team !== B.team || String(A.r.e.g) !== String(B.r.e.g) || A.app !== B.app) continue;
-    for (const side of ['over', 'under']){
-      const fa = side === 'over' ? A.fo : 1 - A.fo, fb = side === 'over' ? B.fo : 1 - B.fo, ind = fa * fb, joint = ind + F.c, ev = pp.pay * joint - 1;
-      const gates = side === 'over' ? [A.go, B.go] : [A.gu, B.gu];
-      const v = ev >= EDGE_MIN ? (gates.every(g => g === 'go') ? 'bet' : 'lean') : 'pass';
-      const res = l => l.r.e.p != null && PS.mode === 'example' ? pvGlBox({p: l.r.e.p, day: l.r.game.day}) : undefined;
-      out.push({A, B, side, fa, fb, ind, joint, ev, v, F, ra: res(A), rb: res(B), k: `${pvKey(A.r)}|${A.line}+${pvKey(B.r)}|${B.line}+${side}+${A.app || 'book'}`});
-    }
-  }
-  return out.sort((a, b) => PV_VR[a.v] - PV_VR[b.v] || b.ev - a.ev);
+// The best n-pick slip from one app's legs: highest chances first, one player per team.
+function ppBuild(legs, n, pay){
+  const pool = legs.filter(l => !l.q).sort((a, b) => b.p - a.p), used = new Set(), pick = [];
+  for (const l of pool){ if (used.has(l.team)) continue; used.add(l.team); pick.push(l); if (pick.length === n) break; }
+  if (pick.length < n) return null;
+  const joint = pick.reduce((a, l) => a * l.p, 1), ev = pay * joint - 1;
+  return {legs: pick, n, pay, joint, ev, v: ev >= EDGE_MIN ? 'lean' : 'pass', app: pick[0].app,
+          k: pick.map(l => `${pvKey(l.r)}|${l.line}|${l.side}`).join('+') + '|' + pick[0].app};
 }
-function ppSlip(x, compact){
-  const g = x.A.r.game, opp = t => t === g.home ? g.away : g.home, ev10 = 10 * x.ev, need = Math.sqrt(Math.max(0, ppBE() - x.F.c));
-  const pick = (L, f, bx) => { const y = bx == null ? null : PV_BOXI[L.r.e.s].reduce((a, i) => a + bx[i], 0), hit = y == null ? null : x.side === 'over' ? y > L.line : y < L.line;
+function ppSlip(x){
+  const ev10 = 10 * x.ev, need = Math.pow(1 / x.pay, 1 / x.n);
+  const pick = L => { const g = L.r.game, opp = L.team === g.home ? g.away : g.home;
+    const bx = PS.mode === 'example' ? pvGlBox({p: L.r.e.p, day: g.day}) : undefined, y = bx == null ? null : PV_BOXI[L.r.e.s].reduce((a, i) => a + bx[i], 0), hit = y == null ? null : L.side === 'over' ? y > L.line : y < L.line;
     return `<div class="pp-pk"><span class="pp-av">${esc(initials(L.r.name))}${phImg(L.r.e.p)}</span>
-      <div class="pp-who"><b>${esc(L.r.name)}</b><span>${esc(L.team)} vs ${esc(opp(L.team))}</span><span class="ch">Our chance <b>${pc(f)}</b></span>${hit != null ? `<span class="res ${hit ? 'w' : 'l'}" title="What happened (example game only)">${hit ? '✓' : '✗'} had ${fmt(y, 0)}</span>` : ''}</div>
+      <div class="pp-who"><b>${esc(L.r.name)}</b><span>${esc(L.team)} vs ${esc(opp)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span><span class="ch">Market chance <b>${pc(L.p)}</b> · model ${pc(L.pm)}${L.far ? ' <span class="warnt" title="The model and the market are far apart, or the chance is very high for an app line. That usually means a stale line or news one side has not priced. Check the report before you trust it.">check news</span>' : ''}</span>${hit != null ? `<span class="res ${hit ? 'w' : 'l'}" title="What happened (example game only)">${hit ? '✓' : '✗'} had ${fmt(y, 0)}</span>` : ''}</div>
       <div class="pp-line"><b>${L.line}</b><span>${PP_SHORT[L.r.e.s]}</span></div>
-      <div class="pp-ml" aria-label="${x.side === 'over' ? 'More' : 'Less'}"><span class="${x.side === 'over' ? 'on' : ''}">▲ More</span><span class="${x.side === 'under' ? 'on' : ''}">▼ Less</span></div></div>`; };
-  const both = x.ra != null && x.rb != null ? [x.ra, x.rb].every((bx, i) => { const L = i ? x.B : x.A, y = PV_BOXI[L.r.e.s].reduce((a, j) => a + bx[j], 0); return x.side === 'over' ? y > L.line : y < L.line; }) : null;
+      <div class="pp-ml" aria-label="${L.side === 'over' ? 'More' : 'Less'}"><span class="${L.side === 'over' ? 'on' : ''}">▲ More</span><span class="${L.side === 'under' ? 'on' : ''}">▼ Less</span></div></div>`; };
   const logged = pvBets.some(b => b.k === x.k);
   return `<article class="pp-slip ${x.v}">
-    <header class="pp-h"><div><b>2-Pick Power Play</b><span>${x.A.app ? `${esc(x.A.app)} lines` : `${esc(x.A.bk)} line as a stand-in`} · pays ${pp.pay}x</span></div><span class="pv-vp ${x.v}">${x.v.toUpperCase()}</span></header>
-    <div class="pp-picks">${pick(x.A, x.fa, x.ra)}<div class="pp-link"><span>Hit together +${pc(x.F.c / .25, 1)}</span></div>${pick(x.B, x.fb, x.rb)}</div>
+    <header class="pp-h"><div><b>${x.n}-Pick Power Play</b><span>${esc(x.app)} lines · pays ${x.pay}x · one player per team</span></div><span class="pv-vp ${x.v}">${x.v.toUpperCase()}</span></header>
+    <div class="pp-picks">${x.legs.map(pick).join('')}</div>
     <div class="pp-tear" aria-hidden="true"></div>
     <footer class="pp-f">
-      <div class="pp-paybox"><div><small>Entry</small><b>$10</b></div><div><small>To win</small><b>$${(10 * pp.pay).toFixed(2)}</b></div></div>
-      <div class="pp-math"><div><small>Both hit</small><b>${pc(x.joint, 1)}</b><span>${pc(x.ind, 1)} if unrelated</span></div><div><small>Needs</small><b>${pc(ppBE(), 1)}</b><span>to break even</span></div><div><small>Average</small><b class="${x.ev >= 0 ? (x.v === 'pass' ? '' : 'pos') : 'neg'}">${ev10 >= 0 ? '+' : '-'}$${Math.abs(ev10).toFixed(2)}</b><span>per $10 entry</span></div></div>
-      ${compact ? '' : `<p>${x.v === 'pass' ? `Each pick needs about ${pc(need, 1)} for this pair to pay.` : x.v === 'bet' ? 'Proven pairing, and both picks are bet types that passed the backtest.' : 'Proven pairing; the two picks rest on our model, untested on these lines. Worth a look, not a stake.'}${both != null ? ` <span class="muted">Example game: ${both ? 'both hit' : 'did not both hit'}.</span>` : ''}</p>`}
-      ${compact ? '' : pp.logK === x.k ? `<form class="pp-logf" data-ppform="${esc(x.k)}"><label>Stake $<input name="stake" type="number" min="1" step="1" value="10"></label><label>Pays<input name="pay" type="number" min="1.5" max="10" step="0.25" value="${pp.pay}"></label><button class="go" type="submit">Save to My Bets</button><button class="pv-ghost" type="button" data-ppcancel="1">Cancel</button></form>`
+      <div class="pp-paybox"><div><small>Entry</small><b>$10</b></div><div><small>To win</small><b>$${(10 * x.pay).toFixed(2)}</b></div></div>
+      <div class="pp-math"><div><small>All hit</small><b>${pc(x.joint, 1)}</b><span>picks multiplied</span></div><div><small>Needs</small><b>${pc(1 / x.pay, 1)}</b><span>${pc(need, 1)} per pick</span></div><div><small>Average</small><b class="${x.ev >= 0 ? (x.v === 'pass' ? '' : 'pos') : 'neg'}">${ev10 >= 0 ? '+' : '-'}$${Math.abs(ev10).toFixed(2)}</b><span>per $10 entry</span></div></div>
+      <p>${x.v === 'pass' ? `At ${x.pay}x each pick needs ${pc(need, 1)} for this slip to pay. These do not clear it, so the honest call is to skip the slip.` : 'The chances are the market\'s, moved to the app\'s line: untested on pick\'em lines. Worth a look, not a stake.'}</p>
+      ${pp.logK === x.k ? `<form class="pp-logf" data-ppform="${esc(x.k)}"><label>Stake $<input name="stake" type="number" min="1" step="1" value="10"></label><label>Pays<input name="pay" type="number" min="1.5" max="100" step="0.25" value="${x.pay}"></label><button class="go" type="submit">Save to My Bets</button><button class="pv-ghost" type="button" data-ppcancel="1">Cancel</button></form>`
         : `<div class="pp-acts"><button class="pv-ghost" type="button" data-pplog="${esc(x.k)}">${logged ? 'Logged · log again' : 'Log entry'}</button></div>`}
     </footer></article>`;
+}
+function ppSlips(){
+  const rows = pv.rows || (pv.rows = pvRows().rows), legs = ppLegs(rows), pay = ppPay();
+  const by = Object.fromEntries(PP_APPS.map(a => [a, ppBuild(legs.filter(l => l.app === a), pp.n, pay)]));
+  const best = Object.values(by).filter(Boolean).sort((a, b) => b.ev - a.ev)[0] || null;
+  return {legs, by, best, shown: pp.app === 'best' ? best : by[pp.app]};
 }
 function renderPairs(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
-  if (!PKC || !Object.keys(PP_FAM).length){ $('pp-root').innerHTML = '<p class="pp-empty">The correlation test results are missing from this build (build_pickem_corr.py).</p>'; return; }
-  const rows = pv.rows = pvRows().rows;
-  const games = PS.board.games || [];
-  if (pp.game !== 'all' && !games.some(g => String(g.id) === pp.game)) pp.game = 'all';
-  const all = ppPairs(rows).filter(x => pp.game === 'all' || String(x.A.r.e.g) === pp.game), play = all.filter(x => x.v !== 'pass');
-  const show = pp.diff ? [] : pp.all ? all : play.length ? play : all.slice(0, 8);
-  const anyApp = all.some(x => x.A.app), anyStand = all.some(x => !x.A.app);
-  const F1 = PP_FAM['pts|ast'] || Object.values(PP_FAM)[0], need = Math.sqrt(ppBE() - F1.c);
-  const cnt = {}; for (const x of play) for (const L of [x.A, x.B]){ const k = `${L.r.name} ${x.side === 'over' ? 'More' : 'Less'} ${L.line} ${PV_NOUN[L.r.e.s]}`; cnt[k] = (cnt[k] || 0) + 1; }
-  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
-  const near = (PKC.near || [])[0];
+  const rows = pv.rows = pvRows().rows, S = ppSlips(), pay = ppPay(), need = Math.pow(1 / pay, 1 / pp.n);
+  const seen = new Set(), singles = [...S.legs].sort((a, b) => b.p - a.p).filter(l => { const k = l.r.e.p; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
+  const seg = (key, opts, cur) => `<div class="seg" data-pk="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`;
+  const others = Object.entries(S.by).filter(([a, s]) => s && S.shown && a !== S.shown.app).map(([a, s]) => `${a} ${s.ev >= 0 ? '+' : '-'}$${Math.abs(10 * s.ev).toFixed(2)}`).join(' · ');
   $('pp-root').innerHTML = `
     <section class="card pp-read">
-      <p class="big">Two kinds of teammate picks hit together more often than their prices say.</p>
-      <p>A player's <b>assists</b> with his teammate's <b>points</b> or <b>3-pointers</b>: the passes become the shots. Pair them the same way (both More or both Less) and a 2-pick wins about <b>4%</b> more often than the app pays for, which lowers the bar per pick at ${pp.pay}x from <b>${pc(Math.sqrt(ppBE()), 1)}</b> to about <b>${pc(need, 1)}</b>. It helps good picks; it does not rescue bad ones.</p>
-      <details class="pp-rules"><summary>Check your app's rules first</summary>
-        <p>Some apps make you pick players on different teams. Every pair that passed is two teammates, so they can only be played where the app allows same-team picks; the opposing-team combinations did not pass.</p>
-        <p>Picks in different games are independent, so nothing boosts the pair. Bigger entries ask less per pick (power payouts of 3x, 5x, 10x, 20x and 37.5x need 57.7%, 58.5%, 56.2%, 54.9% and 54.5%), but on near-even lines the model's picks hit only 52 to 53% in a 2-pick. What would change that is a line the app has moved off the sharp price (tested from Nov 23).</p>
-      </details>
+      <p class="big">Pick'em of the night</p>
+      <p class="pp-rule"><b>${PP_RULE}</b> A slip can have any number of games but never two players from one team.</p>
+      <p>The best slip we can build from tonight's PrizePicks, Underdog and Sleeper lines: the picks the market says are most likely first, each from a different team, all from one app. A ${pp.n}-pick at ${pay}x needs <b>${pc(need, 1)}</b> per pick. Only lines priced near even money count (Underdog and Sleeper price each side; a lopsided line pays a different multiple than the standard one). App lines sit near even money, so on most nights the honest answer is that no slip pays. Picks from different teams hit about independently, so the chances multiply.</p>
     </section>
-    <div class="pp-tests">${Object.values(PP_FAM).map(F => `<section class="card pp-tst">${pill('ok', 'Passed a pre-registered test')}<b>${F.a === 'ast' || F.b === 'ast' ? (F.a === 'pts' || F.b === 'pts' ? 'Points with assists' : 'Assists with 3-pointers') : esc(F.family)}</b>
-        <span class="big">+${pc(F.c / .25, 1)}</span><span>more often both hit on a 2-pick: teammates, both More or both Less</span>
-        <small>2025-26, a season it was never tuned on: ${F.n.toLocaleString()} pairs in ${F.games} games, ${F.z} standard errors from zero (counted by game). Found first in 2024-25 (${F.z0}); holds at closing prices (${F.zc}).</small></section>`).join('')}
-      <section class="card pp-tst">${pill('idle', 'Did not pass')}<b>Everything else</b><span class="big none">none</span><span>reliable enough to use</span>
-        <small>${near ? `${esc(near.family)} tend to split (one More, one Less) but by only ${pc(-near.c / .25, 1)}, under the 4% bar. ` : ''}Opponents' stats, rebounds and the other ${PKC.n_families - Object.keys(PP_FAM).length - (near ? 1 : 0)} combinations showed nothing that held up.</small></section></div>
     <section class="card">
-      <div class="pp-tools"><h2>Pairs on the board</h2><span class="pv-grow"></span>
-        <label class="pp-pay" title="Some apps only let you combine players on different teams. Every pair that passed our test is two teammates."><input id="pp-diff" type="checkbox"${pp.diff ? ' checked' : ''}> My app needs different teams</label>
-        <label class="pp-pay">Your app pays <input id="pp-pay" type="number" min="1.5" max="10" step="0.25" value="${pp.pay}" aria-label="2-pick payout multiple">x on a 2-pick</label>
-        <div class="seg" id="pp-seg"><button type="button" data-pa="0" aria-pressed="${!pp.all}">Worth a look (${play.length})</button><button type="button" data-pa="1" aria-pressed="${pp.all}">All pairs (${all.length})</button></div></div>
-      <div class="pp-strip" id="pp-strip"${games.length > 1 ? '' : ' hidden'}></div>
-      ${anyStand ? `<p class="pp-note">${anyApp ? 'Some props have no pick\'em line yet; those pairs' : 'No pick\'em lines are posted yet, so these pairs'} use the sportsbook line nearest even money as a stand-in. On game days PrizePicks, Underdog and Sleeper post their own lines and pairs use them, both picks from the same app.</p>` : ''}
-      ${top && top[1] >= 2 ? `<p class="pp-note warn">These pairs share picks: ${esc(top[0])} is in ${top[1]} of them. Playing several is mostly one bet on that pick, so they tend to win or lose together.</p>` : ''}
-      ${pp.diff ? `<p class="pp-note warn"><b>No pairing to show.</b> Every pair that passed our test is two teammates, and the 15 opposing-team combinations did not pass: the largest lift was 2.1% against the 4% bar, and 0.4% pooled. Two players on different teams hit about as independently as two games do, so each pick would need ${pc(Math.sqrt(1 / pp.pay), 1)} on its own at ${pp.pay}x.</p>` : ''}
-      ${!play.length && all.length && !pp.diff ? '<p class="pp-note">No pair clears the payout at these prices; showing the closest.</p>' : ''}
-      <div class="pp-slips">${show.map(x => ppSlip(x)).join('') || `<p class="pp-empty">${rows.length ? 'No teammate pairs on this board yet: they need points, assists or 3-pointer lines for two teammates.' : 'No player props listed yet. Kalshi and the books list them the morning of a game.'}</p>`}</div>
+      <div class="pp-tools"><h2>Tonight's slip</h2><span class="pv-grow"></span>
+        ${seg('n', [2, 3, 4, 5, 6].map(n => [n, n + ' picks']), pp.n)}
+        ${seg('app', [['best', 'Best app'], ...PP_APPS.map(a => [a, a])], pp.app)}
+        <label class="pp-pay" title="The payout your app shows for this many picks. Underdog and Sleeper entries can carry their own multipliers.">Pays <input id="pp-pay" type="number" min="1.5" max="100" step="0.25" value="${pay}" aria-label="${pp.n}-pick payout multiple">x on ${pp.n} picks</label></div>
+      ${S.shown ? `<div class="pp-slips">${ppSlip(S.shown)}</div>${others ? `<p class="pp-note">Same size on the other apps, average per $10: ${others}.</p>` : ''}`
+        : `<p class="pp-empty">${rows.length ? `No ${PP_APPS.includes(pp.app) ? pp.app + ' ' : ''}${pp.n}-pick slip yet: it needs ${pp.n} different teams with a priced pick'em line (points, rebounds, assists, 3-pointers or their combinations). The apps post on game day.` : 'No player props listed yet. The apps and books list them the morning of a game.'}</p>`}
+    </section>
+    <section class="card">
+      <div class="pp-tools"><h2>Best single picks tonight</h2><span class="pv-grow"></span><span class="muted" style="font-size:12.5px">The market's chance on the likelier side, at the app's own line. A ${pp.n}-pick at ${pay}x needs ${pc(need, 1)} each.</span></div>
+      <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Pick</th><th class="l">App</th><th>Line</th><th>Side</th><th>Market chance</th><th>Model</th><th>vs ${pc(need, 1)} needed</th><th class="l">Notes</th></tr></thead><tbody>
+      ${singles.length ? singles.map(l => { const g = l.r.game, d = l.p - need; return `<tr><td class="l"><b>${esc(l.r.name)}</b><small>${esc(l.team)} vs ${esc(l.team === g.home ? g.away : g.home)} · ${PP_SHORT[l.r.e.s]}</small></td><td class="l">${esc(l.app)}</td><td>${l.line}</td><td>${l.side === 'over' ? '▲ More' : '▼ Less'}</td><td>${pc(l.p, 1)}</td><td>${pc(l.pm, 1)}</td><td class="${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)} pts</td><td class="l"><small>${[l.q ? `<span class="warnt">${esc(l.inj)}: wait for the report</span>` : '', l.far ? 'check news: model and market far apart' : ''].filter(Boolean).join(' · ') || '&nbsp;'}</small></td></tr>`; }).join('')
+        : `<tr><td class="l" colspan="8"><p class="empty">${rows.length ? 'No pick\'em lines with a market to price against yet.' : 'No player props listed yet.'}</p></td></tr>`}
+      </tbody></table></div>
     </section>`;
-  if (games.length > 1) gameStripMount($('pp-strip'), gameStrip(games, pp.game, {all: true}));
-  $('ppfoot').innerHTML = `<div><b>How the pairs are priced.</b> Our chance for each pick is the same fair price as Player Props, at the app's own line. Both hit = our chance for one times the other, plus the covariance the test measured. Needs = 1 / the payout. Only teammates, only the two tested combinations, only 2-pick entries: apps do not allow the same player twice, and longer entries were not tested. Some Underdog and Sleeper picks carry their own multipliers; set the payout to what your entry shows.</div>`;
+  $('ppfoot').innerHTML = `<div><b>One player per team.</b> ${PP_RULE} Teammate pairs that once passed our correlation test (a player's assists with a teammate's points) are no longer shown, because the apps will not take them.</div>
+    <div><b>How a slip is priced.</b> Each pick's chance is the market's: the consensus of the other books and exchanges, moved to the app's own line through the model's distribution shape, on the likelier side. The model's own number sits beside it as a check, and a pick with no other venue to price against is left out (the model alone gave 90% picks on untested lines). All hit = the chances multiplied, because players on different teams hit about independently. Needs = 1 / the payout. Questionable players are listed but never put in a slip. The consensus is untested on pick\'em lines, so a slip is a Lean at most; the shadow ledger tracks every pick'em line on Track Record.</div>`;
 }
 // Pick'em markets the board carries for a player with no Vault number (prop_board.py ALSO_NAME): double-doubles and the
 // first-quarter lines. Prices are the apps' own; nothing here is a bet, an edge or logged.
@@ -7657,46 +7691,38 @@ function alsoFor(r){
   return `<section class="card pv-sec"><div class="pv-sh"><h3>More pick'em lines</h3><p>Double-doubles and first-quarter lines the apps post for him. Vault has no number for these yet, so there is no edge, no bet and nothing is logged. "Chance" is only what the app's price implies, vig included.</p></div>
     <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Market</th><th class="l">App</th><th>Line</th><th>Over</th><th>Under</th><th>Chance</th><th>Updated ET</th></tr></thead><tbody>${tr}</tbody></table></div></section>`;
 }
-function ppFor(r){
-  if (!PP_STATS.includes(r.e.s) || !Object.keys(PP_FAM).length) return '';
-  const P = ppPairs(pv.rows || []).filter(x => x.A.r === r || x.B.r === r).slice(0, 3);
-  return `<section class="card pv-sec"><div class="pv-sh"><h3>Pairs well with</h3><p>On a pick'em 2-pick, ${r.e.s === 'ast' ? 'his assists go with a teammate\'s points or 3-pointers' : `his ${PV_NOUN[r.e.s]} go with a teammate's assists`}: both More or both Less hit together about 4% more often than the prices say (a pre-registered test).</p></div>
-    <div class="pp-slips">${P.length ? P.map(x => ppSlip(x, true)).join('') : '<p class="muted pv-none">No teammate line near even money to pair with yet.</p>'}</div>
-    <div class="pp-acts"><a class="pv-ghost" href="#pairs" data-go="pairs" style="display:inline-flex;align-items:center;text-decoration:none">All Pick'em Pairs</a></div></section>`;
-}
 function ppMkBet(x, stake, pay){
   if (!(stake > 0) || !(pay >= 1.5)) return null;
-  const g = x.A.r.game, leg = L => ({p: L.r.e.p, s: L.r.e.s, gid: String(L.r.e.g), day: g.day, name: L.r.name, line: L.line, fair: +(x.side === 'over' ? L.fo : 1 - L.fo).toFixed(4)});
-  const ev = pay * x.joint - 1;
-  return {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind: 'pair', k: x.k, gid: String(x.A.r.e.g), day: g.day, tip: g.tip, m: `${g.away} @ ${g.home}`,
-          name: `${x.A.r.name} + ${x.B.r.name}`, venue: 'pickem', bk: x.A.app || `${x.A.bk} line`, side: x.side === 'over' ? 'Over' : 'Under', legs: [leg(x.A), leg(x.B)],
-          pay, price: `${pay}x`, cost: +(1 / pay).toFixed(4), stake: Math.round(stake * 100) / 100, t: Math.round(Date.now() / 1000), fair: +x.joint.toFixed(4), edge: +(x.joint - 1 / pay).toFixed(4),
-          call: ev >= EDGE_MIN ? x.v === 'bet' ? 'bet' : 'lean' : 'pass', ex: PS.mode === 'example', res: null};
+  const leg = L => { const g = L.r.game; return {p: L.r.e.p, s: L.r.e.s, gid: String(L.r.e.g), day: g.day, tip: g.tip, name: L.r.name, team: L.team, line: L.line, side: L.side === 'over' ? 'Over' : 'Under', fair: +L.p.toFixed(4)}; };
+  const legs = x.legs.map(leg), joint = x.joint, ev = pay * joint - 1, g0 = x.legs[0].r.game;
+  return {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind: 'pair', k: x.k, gid: legs[0].gid, day: g0.day, tip: Math.max(...legs.map(l => l.tip)), m: `${legs.length} picks, one player per team`,
+          name: legs.map(l => l.name).join(' + '), venue: 'pickem', bk: x.app, side: legs[0].side, legs,
+          pay, price: `${pay}x`, cost: +(1 / pay).toFixed(4), stake: Math.round(stake * 100) / 100, t: Math.round(Date.now() / 1000), fair: +joint.toFixed(4), edge: +(joint - 1 / pay).toFixed(4),
+          call: ev >= EDGE_MIN ? 'lean' : 'pass', ex: PS.mode === 'example', res: null};
 }
 function ppGrade(b, bxs){
   if (bxs.some(bx => bx === null)) return {res: 'void', y: null, ys: bxs.map(() => null), pl: 0};
-  const ys = b.legs.map((l, i) => PV_BOXI[l.s].reduce((a, j) => a + bxs[i][j], 0)), over = b.side === 'Over';
-  const r = b.legs.map((l, i) => ys[i] === l.line ? 'push' : (over ? ys[i] > l.line : ys[i] < l.line) ? 'won' : 'lost');
+  const ys = b.legs.map((l, i) => PV_BOXI[l.s].reduce((a, j) => a + bxs[i][j], 0));
+  const r = b.legs.map((l, i) => ys[i] === l.line ? 'push' : (((l.side || b.side) === 'Over') ? ys[i] > l.line : ys[i] < l.line) ? 'won' : 'lost');
   const res = r.includes('lost') ? 'lost' : r.includes('push') ? 'push' : 'won';
   return {res, ys, y: null, pl: res === 'won' ? +(b.stake * (b.pay - 1)).toFixed(2) : res === 'lost' ? -b.stake : 0};
 }
 $('pp-root').addEventListener('click', e => {
   const t = e.target;
-  const gt = t.closest('.gtile[data-g]'); if (gt){ pp.game = gt.dataset.g; renderPairs(); return; }
-  const a = t.closest('[data-pa]'); if (a){ pp.all = a.dataset.pa === '1'; renderPairs(); return; }
+  const s = t.closest('[data-pk] [data-v]');
+  if (s){ const key = s.parentElement.dataset.pk; if (key === 'n'){ pp.n = +s.dataset.v; store.set('nba-pickem-n', pp.n); } else pp.app = s.dataset.v; pp.logK = null; renderPairs(); return; }
   const l = t.closest('[data-pplog]'); if (l){ pp.logK = l.dataset.pplog; renderPairs(); document.querySelector('.pp-logf input')?.focus(); return; }
   if (t.closest('[data-ppcancel]')){ pp.logK = null; renderPairs(); }
 });
 $('pp-root').addEventListener('change', e => {
-  if (e.target.id === 'pp-diff'){ pp.diff = e.target.checked; store.set('nba-pickem-diff', pp.diff ? '1' : '0'); renderPairs(); return; }
-  if (e.target.id === 'pp-pay'){ const v = +e.target.value; if (v >= 1.5 && v <= 10){ pp.pay = v; store.set('nba-pickem-pay', v); renderPairs(); } }
+  if (e.target.id === 'pp-pay'){ const v = +e.target.value; if (v >= 1.5 && v <= 100){ pp.pays[pp.n] = v; store.set('nba-pickem-pays', pp.pays); renderPairs(); } }
 });
 $('pp-root').addEventListener('submit', e => {
   e.preventDefault(); const f = e.target.closest('[data-ppform]'); if (!f) return;
-  const x = ppPairs(pv.rows || []).find(x => x.k === f.dataset.ppform), b = x && ppMkBet(x, +f.stake.value, +f.pay.value);
+  const x = [...Object.values(ppSlips().by)].find(s => s && s.k === f.dataset.ppform), b = x && ppMkBet(x, +f.stake.value, +f.pay.value);
   if (!b){ pvToast('Enter a stake and the payout your entry shows.'); return; }
   pvBets.unshift(b); pp.logK = null; pvSave(); renderPairs(); pvSettle();
-  pvToast(b.ex ? 'Saved to My Bets. The example game is over, so it settles right away.' : 'Saved to My Bets. It settles after the game.');
+  pvToast(b.ex ? 'Saved to My Bets. The example game is over, so it settles right away.' : 'Saved to My Bets. It settles after the last game.');
 });
 function pvShow(){
   for (const t of ['v2', 'bets', 'full']) $('pv-' + t).hidden = pv.tab !== t;
