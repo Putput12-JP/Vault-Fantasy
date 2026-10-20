@@ -3866,50 +3866,62 @@ if (NBA_WORKER && onSite){ $('refresh').hidden = false; $('refresh').addEventLis
 // It adds books the board does not already have to each prop's book list (Caesars, Fanatics, ParlayPlay, Circa, Bookmaker, ProphetX,
 // Novig). They show in the prop drawer's Sportsbooks table. Sportsbook props are NO-GO as signals, so this is context only.
 const SS_ON = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]ss\b/.test(location.search) && !/[?&]live\b/.test(location.search);
-// Alternate-line prices from SmartStake are also published, ENCRYPTED, for Combo Check (scripts/smartstake_publish_alts.py -> branch nba-alts,
-// file alts.enc). SmartStake's terms ask for written permission to show their data, so the file is ciphertext: the page asks the owner for
-// the password once, keeps it in this browser, and decrypts here. See the header of the publish script.
+// Alternate-line prices from SmartStake, for Combo Check. Locally (?ss) they come from the tape file. On the site they come from the owner's
+// Firestore collection nbaAlts (scripts/smartstake_publish_alts.py), which firestore.rules lets only the owner's Google account read: the
+// page uses the same Google login as the rest of Vault (auth/vault-auth.js) and stays signed in. SmartStake's terms ask for written
+// permission to show their data to users, so nothing is public. See the header of the publish script.
 const SS_PUB = true;
-let ssAltsCache = null;
-async function ssDecrypt(b64, pw){
-  const raw = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
-  if (String.fromCharCode(...raw.slice(0, 8)) !== 'Salted__') throw new Error('format');
-  const salt = raw.slice(8, 16), km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
-  const bits = new Uint8Array(await crypto.subtle.deriveBits({name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256'}, km, 384));
-  const key = await crypto.subtle.importKey('raw', bits.slice(0, 32), 'AES-CBC', false, ['decrypt']);
-  return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name: 'AES-CBC', iv: bits.slice(32, 48)}, key, raw.slice(16))));
+let ssAuthLoad = null;
+function ssLoadAuth(){
+  if (ssAuthLoad) return ssAuthLoad;
+  const load = src => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => rej(new Error(src)); document.head.appendChild(el); });
+  return ssAuthLoad = load('../auth/firebase-config.js').then(() => load('../auth/vault-auth.js'))
+    .then(() => window.VaultAuth && window.VaultAuth.configured() ? window.VaultAuth.ready() : null).catch(() => null);
 }
 async function ssPublished(){
-  if (!SS_PUB || !onSite || !window.crypto || !crypto.subtle) return null;
-  const enc = await fetch(`https://raw.githubusercontent.com/${PB.repo}/nba-alts/alts.enc`, {cache: 'no-store'}).then(r => r.ok ? r.text() : null).catch(() => null);
-  if (!enc) { window.__altsState = 'none'; return null; }
-  const pw = store.get('nba-alts-pw');
-  if (!pw) { window.__altsState = 'locked'; return null; }
-  if (ssAltsCache && ssAltsCache.enc === enc && ssAltsCache.pw === pw) { window.__altsState = 'ok'; return ssAltsCache.data; }
-  try { const data = await ssDecrypt(enc, pw); ssAltsCache = {enc, pw, data}; window.__altsState = 'ok'; return data; }
-  catch (e) { window.__altsState = 'wrong'; return null; }
+  if (!SS_PUB || !onSite) return null;
+  const auth = await ssLoadAuth();
+  if (!auth){ window.__altsState = 'none'; return null; }
+  const user = await new Promise(res => { const off = auth.onAuthStateChanged(u => { off(); res(u); }); });
+  if (!user){ window.__altsState = 'signin'; return null; }
+  try {
+    const snap = await firebase.firestore().collection('nbaAlts').get(), props = []; let asof = 0;
+    snap.forEach(d => { const x = d.data(); asof = Math.max(asof, +x.asof || 0); try { props.push(...JSON.parse(x.json)); } catch (e) {} });
+    window.__altsState = 'ok'; return {props, asof};
+  } catch (e) {
+    window.__altsState = /permission|insufficient/i.test(String((e && (e.code || e.message)) || '')) ? 'denied' : 'none'; return null;
+  }
 }
-async function ssMerge(b){
-  if (!b || !b.props || !b.players || (!SS_ON && !SS_PUB)) return;
-  const j = SS_ON ? await fetch('/data/smartstake/props_nba.json?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null) : null;
-  const ja = SS_ON ? await fetch('/data/smartstake/props_nba_alts.json?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null)   // the local file first: fresher
-    : await ssPublished();                                                                                                                                   // alternate-line prices per book, for Combo Check
-  if (SS_ON) window.__altsState = ja ? 'ok' : 'none';
+const ssNorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim();
+function ssApply(b, j, ja){
   if (ja && ja.props) window.__ssAsof = ja.asof;
   if (!j && !ja) return;
-  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim();
-  const idx = new Map(((j && j.props) || []).map(p => [norm(p.n) + '|' + p.s, p])), aidx = new Map(((ja && ja.props) || []).map(p => [norm(p.n) + '|' + p.s, p]));
+  const idx = new Map(((j && j.props) || []).map(p => [ssNorm(p.n) + '|' + p.s, p])), aidx = new Map(((ja && ja.props) || []).map(p => [ssNorm(p.n) + '|' + p.s, p]));
   let n = 0, na = 0;
   for (const e of b.props){
-    const P = b.players[e.p], a = P && aidx.get(norm(P[0]) + '|' + e.s);
+    const P = b.players[e.p], a = P && aidx.get(ssNorm(P[0]) + '|' + e.s);
     if (a){ e.alts = a.alts; na += a.alts.length; }
-    const p = P && idx.get(norm(P[0]) + '|' + e.s);
+    const p = P && idx.get(ssNorm(P[0]) + '|' + e.s);
     if (!p) continue;
     e.books = e.books || [];
     const key = k => String(k).toLowerCase().replace(/[^a-z0-9]/g, ''), have = new Set(e.books.map(x => key(x[0])));   // the board spells it "Draft Kings"
     for (const x of p.books){ if (!have.has(key(x[0]))){ e.books.push([x[0], x[1], x[2], x[3], x[4], x[5], x[7], null]); n++; } }
   }
-  console.info('SmartStake: added ' + n + ' book lines and ' + na + ' alternate-line prices (local, ?ss)');
+  console.info('SmartStake: added ' + n + ' book lines and ' + na + ' alternate-line prices');
+}
+// Local (?ss): the files, awaited. On the site: the Google-protected Firestore copy, NOT awaited so the board never waits for the sign-in SDK.
+async function ssMerge(b){
+  if (!b || !b.props || !b.players || (!SS_ON && !SS_PUB)) return;
+  if (SS_ON){
+    const get = f => fetch('/data/smartstake/' + f + '?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
+    const [j, ja] = [await get('props_nba.json'), await get('props_nba_alts.json')];
+    window.__altsState = ja ? 'ok' : 'none'; ssApply(b, j, ja); return;
+  }
+  ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; if (view === 'combo') renderCombo(); });
+}
+async function ssSignIn(){
+  try { await window.VaultAuth.signInWithGoogle(); } catch (e) { window.__altsState = 'signin'; }
+  if (PS.live) await ssMerge(PS.live);
 }
 
 async function loadBoard(){
@@ -8324,7 +8336,7 @@ function renderCombo(){
     <section class="card pp-read"><p class="big">Combo Check</p>
       <p>Alt-line combos priced from <b>real quotes</b>: every leg is an alt line (at least a point off the main line) that a book or exchange is posting right now, at its own price, between <b>-140 and +200</b>. Nothing to type in. A combo is priced at one sportsbook as the product of its leg prices and compared with the market's fair price, with the quoting book left out of the fair price. Legs can be any players on any teams; the pick'em apps' one-player-per-team rule does not apply here.</p>
       <p>${nBooks ? `Sportsbook alt-line prices (${nBooks} books) via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>${window.__ssAsof ? `, as of ${clock(Math.floor(window.__ssAsof / 1000))} ET` : ''}, plus exchange prices from Kalshi, Novig and Polymarket.` : 'No sportsbook alt-line prices are loaded, so only exchange prices (Kalshi, Novig, Polymarket) and book lines on the board are used.'} Everything is a Lean at most.</p>
-      ${window.__altsState === 'locked' || window.__altsState === 'wrong' ? `<div class="cc-unlock"><b>Sportsbook alt prices are password protected.</b><input id="cc-pw" type="password" placeholder="Password" autocomplete="off" aria-label="Password"><button class="pv-ghost" type="button" data-ccunlock="1">Unlock</button><span class="${window.__altsState === 'wrong' ? 'neg' : 'muted'}">${window.__altsState === 'wrong' ? 'That password did not work.' : 'Entered once, kept in this browser.'}</span></div>` : ''}</section>
+      ${window.__altsState === 'signin' ? `<div class="cc-unlock"><b>Sportsbook alt prices are private.</b><button class="pv-ghost" type="button" data-ccsignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>` : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>Sportsbook alt prices are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-ccsignin="1">Use another account</button></div>` : ''}</section>
     ${sec('Teammate parlays on alt lines', 'Assists with a teammate\'s 3-pointers, or points with a teammate\'s assists, both over or both under (a pre-registered test, about +4% on a 2-leg bet at even money), priced at one book.', S.mates, 'Teammates, one book')}
     ${sec('Best alt prices across games', 'The two alt legs with the best price against the market at one book, from different games, so the product is the real payout.', S.cross, 'Different games, one book')}
     ${sec('Exchange alt prices that beat the market', 'Straight bets on Kalshi, Novig or Polymarket alt lines priced above the market elsewhere (exchanges do not take parlays). Fees in.', S.exch, 'Exchange, straight')}
@@ -8346,17 +8358,9 @@ $('cc-root').addEventListener('change', e => {
     if (k === 's'){ const r = ccRow(x.pid, x.s); if (r && r._mm != null) x.line = Math.max(.5, Math.floor(r._mm) + .5); }
     renderCombo(); }
 });
-async function ccUnlock(){
-  const pw = ($('cc-pw') || {}).value;
-  if (!pw) return;
-  store.set('nba-alts-pw', pw);
-  if (PS.live) await ssMerge(PS.live);
-  cc.rows = null; renderCombo();
-}
-$('cc-root').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'cc-pw') ccUnlock(); });
 $('cc-root').addEventListener('click', e => {
   const t = e.target;
-  if (t.closest('[data-ccunlock]')){ ccUnlock(); return; }
+  if (t.closest('[data-ccsignin]')){ ssSignIn(); return; }
   const cl = t.closest('[data-ccline]');
   if (cl){ const [i, L] = cl.dataset.ccline.split('|'); if (cc.legs[+i]){ cc.legs[+i].line = +L; renderCombo(); } return; }
   const add = t.closest('[data-ccadd]');
