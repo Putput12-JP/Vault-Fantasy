@@ -445,6 +445,8 @@ table.ht .src small{color:var(--fg3);font-size:12px}
 .seg button{height:28px;padding:0 10px;border:0;border-radius:6px;background:none;cursor:pointer;font-size:12.5px;color:var(--fg2);font-weight:500}
 .seg button:hover{color:var(--fg)}
 .seg button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary)}
+.labpre{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;font-size:12.5px;color:var(--fg2)}
+.labpre b{color:var(--fg);font-weight:600}
 .sel{height:34px;padding:0 30px 0 10px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center/14px;appearance:none;font-size:13px;color:var(--fg)}
 .pfind{height:34px;width:180px;padding:0 10px;border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--surface);outline:none;font-size:13px}
 .pfind::placeholder{color:var(--fg3)}
@@ -1813,7 +1815,7 @@ th{font-weight:500}
       </div>
     </header>
 
-    <main id="v-lab"><div id="lab-root"></div></main>
+    <main id="v-lab"><div id="lab-pre" class="labpre" hidden></div><div id="lab-root"></div></main>
     <footer id="foot"></footer>
 
     <main id="v-props" hidden>
@@ -2184,6 +2186,12 @@ const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
+// Preseason-informed early-season minutes (docs/minutes-lab-preseason.md). Off by default: the file's min0 is what the live ledger
+// and the Props default price from, so the toggle only changes what THIS viewer sees and prices. It swaps min0 once, here, so every
+// reader of min0 (Lab, Props, Slate) stays consistent.
+const PRE = D.preseason || null;
+const PRE_ON = !!(PRE && store.get('nml-pre') === 1);
+for (const t of Object.values(D.teams)) for (const p of t.players){ p.min0_std = p.min0; if (PRE_ON && p.min0_pre != null) p.min0 = p.min0_pre; }
 let edits = store.get('nml-edits') || {};
 let logs = store.get('nml-log') || {};
 let cur = store.get('nml-team');
@@ -2462,11 +2470,21 @@ function openList(open){
   if (open){ const o = $('opt-' + cur); o?.classList.add('kb'); o?.scrollIntoView({block:'nearest'}); $('teamlist').focus(); }
 }
 
+function renderLabPre(){
+  const el = $('lab-pre'); if (!el) return;
+  const live = !!PRE && Object.values(D.teams).some(t => t.players.some(p => p.pre && p.pre.w > 0));   // gone from game 11
+  el.hidden = !live; if (!live) return;
+  const n = D.teams[cur].players.filter(p => p.pre && Math.abs(p.min0_pre - p.min0_std) >= 1).length;
+  el.innerHTML = `<b>Early-season minutes</b><div class="seg" role="group" aria-label="Early-season minutes"><button aria-pressed="${!PRE_ON}" data-pre="0">Standard</button><button aria-pressed="${PRE_ON}" data-pre="1">With preseason</button></div>`
+    + `<span title="Uses first-half preseason minutes in the season-start projection, the game-day minutes and your Props prices on this page. It fades out over games 6 to 10 and is gone from game 11. Rookies and traded players are not adjusted.">${n ? `${n} ${cur} player${n === 1 ? '' : 's'} move 1+ min` : `No ${cur} player moves 1 min`} · gone by game 11</span>`;
+  el.onclick = ev => { const b = ev.target.closest('button[data-pre]'); if (b){ store.set('nml-pre', +b.dataset.pre); location.reload(); } };
+}
 function render(){
   if (view !== 'lab'){ show(view); return; }
   const T = D.teams[cur], m = labM(cur), pr = project(cur, m), bm = labBase(cur), bz = id => bm ? bm[id] : T.players.find(x => x.id === id).min0, b0 = bm ? project(cur, bm) : baseline(cur), lineup = labLineup(cur), liveSt = statusFromBoard(slateBoard().board);
   labSig = JSON.stringify(lineup && [lineup.ids, lineup.confirmed]);
   renderSlicer();
+  renderLabPre();
   $('tname').textContent = T.name;
   $('tsub').textContent = `${cur} · ${D.season} · SEASON START`;
 
@@ -2498,6 +2516,7 @@ function render(){
     p.draft ? {t: `Rookie · #${p.draft}`, solid: true} : p.rookie ? {t: 'Rookie'} : null,
     p.moved && p.last_team ? {t: `New · was ${p.last_team}`} : null,
     returningInfo(p.id, cur) ? {t: 'Returning: set his minutes', warn: true} : null,
+    p.pre && p.pre.w > 0 && Math.abs(p.min0_pre - p.min0_std) >= 1 ? {t: PRE_ON ? `Preseason 1H ${fmt(p.pre.h1)} min` : `With preseason: ${fmt(p.min0_pre, 0)} min`} : null,
     !p.slotted ? {t: 'No depth slot'} : null
   ].filter(Boolean);
   const rowOf = p => { const mu = pr[p.id];
@@ -3218,6 +3237,9 @@ function gameMinutes(team, g, cache){
   // info[a] = [minutes, starter prob, position, rates]
   const info = {}, labs = new Set(), parts = {};
   for (const a of cand) info[a] = [S(a).ms[0], S(a).ms[1], S(a).ms[2], S(a).r];
+  // With the preseason toggle on, shift the base by the same preseason adjustment the season-start projection carries (min0_pre - min0_std,
+  // already faded by games played). Viewer-only: the server's model state and the ledger's prices do not use it.
+  if (PRE_ON) for (const p of (D.teams[team] ? D.teams[team].players : [])) if (info[p.id] && p.pre && p.min0_pre != null) info[p.id][0] = Math.max(0, info[p.id][0] + (p.min0_pre - p.min0_std));
   const project = ids => {
     const pm = {};
     for (const a of ids){
