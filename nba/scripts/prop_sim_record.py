@@ -98,7 +98,7 @@ def log(board, now):
             P = (board.get('players') or {}).get(str(e['p'])) or (board.get('players') or {}).get(e['p'])
             team = P[1] if P else None
             m = pr.mu_for(int(e['p']), s, g, cache, outs, team, status)
-            if not m or not (m['min'] > 0) or pr.roster_hold(m['team'], g, status, cache, m.get('src')):
+            if not m or not (m['min'] > 0) or pr.roster_hold(m['team'], g, status, cache, m.get('src')) or pr.returning_hold(int(e['p']), m['team'], g):
                 continue
             mu, ex = m['mu'], m['extra']
             v0, v1, v2, v3 = pr.PR['variance'][s]

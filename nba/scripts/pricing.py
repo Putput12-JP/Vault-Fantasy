@@ -223,6 +223,22 @@ class Pricer:
             return cache[key]
         return {'why': 'player'} if src == 'lab' else None
 
+    RET_DAYS = 150
+
+    def returning_hold(self, pid, team, g):
+        """None, or {'why': 'returning', 'gap': days}: the player's last game was RET_DAYS or more before his team's last game (he has
+        missed about a season), so the minutes model cannot know his role or restriction. His props are priced and shown, never a Bet /
+        Lean, an edge, a pick'em leg or a shadow bet, until he plays a game (the next daily refresh). The page's returningHold is the same
+        rule; it also lifts when the user sets his minutes, which the ledger never does."""
+        if self.example or not self.state or not team or not g or g.get('season_type') == 1:
+            return None
+        p = (self.state.get('players') or {}).get(str(pid)) or {}
+        ms, tl = p.get('ms'), (self.state.get('team_last') or {}).get(team)
+        if not ms or not tl or ms[3] != team:
+            return None
+        gap = (tl - ms[4]) / 86400
+        return {'why': 'returning', 'gap': round(gap)} if gap >= self.RET_DAYS else None
+
     # ── shadow: minutes model v3 (docs/minutes-v3-pricing.md), logged next to v2, never priced ─────────────
     def game_minutes_v3(self, team, g, status, cache, starters=None):
         """{pid: minutes} from minutes model v3 on its own state, as build_prop_model_v2.walk(base='v3') ran it:
@@ -628,7 +644,7 @@ def price_board(board, pricer=None):
             times = [(row[0], row[6]) for row in e.get('books', []) if len(row) > 6 and row[6]] + \
                     [('Kalshi', rung[6]) for rung in e.get('kal', []) if len(rung) > 6 and rung[6]] + \
                     [(row[0], row[5]) for row in e.get('pk', []) if len(row) > 5 and row[5]]
-            hold = pricer.roster_hold(r['team'], g, status, cache, r.get('src')) or source_hold(e, board)
+            hold = pricer.roster_hold(r['team'], g, status, cache, r.get('src')) or source_hold(e, board) or pricer.returning_hold(e['p'], r['team'], g)
             for c in r['cands']:
                 c['types'] = edge_types(c, [t for v, t in times if v != c['bk']], news.get(r['team'], []), board.get('t'))
                 rows.append(dict(c, p=e['p'], s=e['s'], gid=str(e['g']), mu=r['mu'], min=r['min'], team=r['team'], hold=hold))
