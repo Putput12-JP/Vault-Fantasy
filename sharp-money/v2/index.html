@@ -80,7 +80,7 @@ table.t td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--line)}
    Evidence behind every gate: docs/retro/sharp-v2-evidence.md (PR 133) and docs/retro/sharp-v2-data.md (PR 134). */
 const LOCAL=/^(localhost|127\.0\.0\.1)$/.test(location.hostname),LIVE=/[?&]live\b/.test(location.search);
 const RAW='https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/';
-const SRC={data:RAW+'sharp-data/data.json',props:RAW+'sharp-data/props.json',tape:RAW+'sharp-data/prop_close_tape.json',
+const SRC={data:RAW+'sharp-data/data.json',props:RAW+'sharp-data/props.json',nba:RAW+'nba-live/board.json',tape:RAW+'sharp-data/prop_close_tape.json',
  edge:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'exchange_edge_live.json',edgeRec:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'exchange_edge_record.json',keys:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'nfl_key_numbers.json',
  lag:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'lead_lag.json',age:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'book_age.json',
  sb:(LOCAL&&!LIVE?'/data/':RAW+'main/data/')+'model_scoreboard.json',plays:(LOCAL&&!LIVE?'/data/':RAW+'sharp-data/')+'v2_plays.json',rg:(LOCAL&&!LIVE?'/docs/':RAW+'main/docs/')+'prop-clv-regrade.json'};
@@ -99,18 +99,18 @@ const SPORT={all:'All',nfl:'NFL',cfb:'CFB',nba:'NBA'};
 const fairAm=p=>p==null?'-':p>=0.5?String(Math.round(-100*p/(1-p))):'+'+Math.round(100*(1-p)/p);
 
 /* ---- state ---- */
-let D=null,P=null,T=null,E=null,ER=null,K=null,LG=null,AG=null,SB=null,RG=null,PL=null,NOW=0,LOADED=false,ERR=false,CAND=[],ALL=[];
+let D=null,P=null,N=null,T=null,E=null,ER=null,K=null,LG=null,AG=null,SB=null,RG=null,PL=null,NOW=0,LOADED=false,ERR=false,CAND=[],ALL=[];
 const st={sport:'all',tier:'play',pm:'all',slate:20};
 
 async function get(u){try{const r=await fetch(u+(u.includes('?')?'&':'?')+'t='+Math.floor(Date.now()/120000),{cache:'no-store'});return r.ok?await r.json():null}catch(e){return null}}
 async function load(){
-  const [d,p,t,e,er,k,lg,ag,sb,rg,pl]=await Promise.all([get(SRC.data),get(SRC.props),get(SRC.tape),get(SRC.edge),get(SRC.edgeRec),get(SRC.keys),get(SRC.lag),get(SRC.age),get(SRC.sb),get(SRC.rg),get(SRC.plays)]);
+  const [d,p,t,e,er,k,lg,ag,sb,rg,pl,nb]=await Promise.all([get(SRC.data),get(SRC.props),get(SRC.tape),get(SRC.edge),get(SRC.edgeRec),get(SRC.keys),get(SRC.lag),get(SRC.age),get(SRC.sb),get(SRC.rg),get(SRC.plays),get(SRC.nba)]);
   if(!d){ERR=!D;return route()}
-  D=d;P=p;T=t;E=e;ER=er;K=k;LG=lg;AG=ag;SB=sb;RG=rg;PL=pl;NOW=Date.now()/1000;LOADED=true;ERR=false;build();route();
+  D=d;P=p;N=nb;T=t;E=e;ER=er;K=k;LG=lg;AG=ag;SB=sb;RG=rg;PL=pl;NOW=Date.now()/1000;LOADED=true;ERR=false;build();route();
 }
 
 /* ---- candidates: gates.js decides, this page only shows ---- */
-function build(){const r=V2Gates.build({D,P,T,E,now:NOW});ALL=r.all;CAND=r.cand}
+function build(){const r=V2Gates.build({D,P,T,E,N,now:NOW});ALL=r.all;CAND=r.cand}
 
 /* ---- views ---- */
 const Q=n=>CAND.filter(c=>c.tier===n&&(st.sport==='all'||c.sport===st.sport));

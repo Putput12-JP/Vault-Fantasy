@@ -18,6 +18,10 @@
              and Novig moneyline mids; the Novig spread or total only at the exact line). The game tape stores a quote only when it changes, so the
              last row before kickoff stands as the close, provided the recorder wrote some row in the 2h before kickoff. A line that moved is
              never converted, the CLV is left empty. An exchange quote wider than 6 points is not a close.
+   NBA props (nba-live/board.json, read from <dir>/nba_board.json) are logged the same way. They settle from ESPN's box score (the same summary the NBA
+     ledger reads; a game that is not final, or whose box has under 300 player minutes, is not settled yet; a player with no minutes is void) and
+     their CLV is the exchange read at the exact line from the last run before tip, kept on the row as `lastRead` and frozen as the close when the
+     game starts. A read older than 3 hours, or at another line, is not a close.
    Sharp-account money is context only. It is not read here, does not rank a play and does not count toward an agree total.
 
    usage: node scripts/track-v2-plays.mjs --dir=sharp-out [--data=data] [--now=UNIX]
@@ -73,7 +77,9 @@ export function logPlays(L, cands, nowS, { edgeGenerated = null, season = null, 
       gates: { minEdge: GATES.MIN_EDGE, agree: GATES.AGREE, bigEdge: GATES.BIG_EDGE },
     };
     const row = { id, kind: c.kind, sport: c.sport, start: c.start, firstSeen: nowS, first, status: 'open' };
-    if (c.kind === 'prop') {
+    if (c.kind === 'prop' && c.sport === 'nba') {
+      row.prop = { season: 'nba', week: null, pid: c.row.pid, espnId: c.row.espnId, gid: c.row.game, name: c.row.name, team: c.row.team, pos: null, mkt: c.row.mkt, label: c.row.label, line: c.row.line, side: c.side };
+    } else if (c.kind === 'prop') {
       row.prop = { season: String(season), week, pid: c.row.pid, name: c.row.name, team: c.row.team, pos: c.row.pos, mkt: c.row.mkt, label: c.row.label, line: c.row.line, side: c.side };
     } else {
       const g = c.game || {};
@@ -134,24 +140,78 @@ export function gameClose(idx, play) {
   return { p: r4(side), src: got.map(x => x[0]).join('+'), n: got.length, t: Math.max(...got.map(x => x[2])) };
 }
 
+/* ---- NBA props: the box score, and the exchange read kept until tip ---- */
+const NBA_BOX = { pts: ['points'], reb: ['rebounds'], ast: ['assists'], '3pm': ['threePointFieldGoalsMade'], stl: ['steals'], blk: ['blocks'],
+  pra: ['points', 'rebounds', 'assists'], pr: ['points', 'rebounds'], pa: ['points', 'assists'], ra: ['rebounds', 'assists'] };
+export const MIN_BOX_MINUTES = 300;      // a real game has 400+ player minutes; ESPN can flip a game to completed before the box is filled in (the NBA ledger uses the same cut)
+export const NBA_SUMMARY = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=';
+/* ESPN summary -> { espnId: {points, rebounds, ..., minutes} | null (did not play) }, or null when the game is not final or the box is not filled in. */
+export function parseNbaBox(d) {
+  try { if (!d.header.competitions[0].status.type.completed) return null; } catch { return null; }
+  const out = {};
+  for (const team of (d.boxscore && d.boxscore.players) || []) for (const block of (team.statistics || []).slice(0, 1)) {
+    const keys = block.keys || [];
+    for (const a of block.athletes || []) {
+      const id = String(a.athlete.id);
+      if (a.didNotPlay || !a.stats || !a.stats.length) { out[id] = null; continue; }
+      const v = {};
+      keys.forEach((key, i) => { const raw = String(a.stats[i]).split('-'); key.split('-').forEach((name, j) => { const n = parseFloat(raw[j]); if (Number.isFinite(n)) v[name] = n; }); });
+      out[id] = v;
+    }
+  }
+  return Object.values(out).reduce((s, v) => s + ((v && v.minutes) || 0), 0) < MIN_BOX_MINUTES ? null : out;
+}
+export async function fetchNbaBoxes(L, nowS, fetchJson = async u => { const r = await fetch(u); return r.ok ? r.json() : null; }) {
+  const gids = [...new Set(Object.values(L.plays).filter(P => P.status === 'open' && P.kind === 'prop' && P.sport === 'nba' && nowS >= P.start + 3 * 3600).map(P => P.prop.gid))], boxes = {};
+  for (const g of gids) { try { const b = parseNbaBox(await fetchJson(NBA_SUMMARY + g)); if (b) boxes[g] = b; } catch { /* not final yet, or ESPN is down: tried again next run */ } }
+  return boxes;
+}
+export const nbaActual = (box, espnId, mkt) => {
+  const v = box && box[String(espnId)], ks = NBA_BOX[mkt];
+  return !v || !ks || ks.some(k => v[k] == null) ? null : ks.reduce((s, k) => s + v[k], 0);
+};
+/* Each run before tip keeps the exchange's read at the play's exact line on the row; the last one is the close once the game starts. */
+export function noteNbaReads(L, N, nowS) {
+  let n = 0;
+  for (const P of Object.values(L.plays)) {
+    if (P.status !== 'open' || P.kind !== 'prop' || P.sport !== 'nba' || nowS >= P.start) continue;
+    const r = gates.nbaExchangeNow({ N, now: nowS }, P.prop.espnId, P.prop.mkt, P.prop.line);
+    if (!r) continue;
+    P.lastRead = { p: r4(P.prop.side === 'over' ? r.over : 1 - r.over), src: r.src, n: r.n, t: nowS }; n++;
+  }
+  return n;
+}
+export function nbaClose(P) {
+  const r = P.lastRead;
+  return r && r.t < P.start && P.start - r.t <= CLOSE_AGE ? { p: r.p, src: r.src, n: r.n, t: r.t } : null;
+}
+
 /* ---- settle ---- */
 export const payout = p => 1 / p - 1;
 function finish(P, status, nowS) {
   P.status = status; P.settledAt = nowS; if (P.close == null) P.close = false;      // false = settled with no exchange close; it is not looked for again
   P.units = status === 'won' ? r3(payout(P.first.price.p)) : status === 'lost' ? -1 : 0;
 }
-export function settlePlays(L, { statsFor, finals, T, exch, nowS }) {
+export function settlePlays(L, { statsFor, finals, T, exch, nowS, nbaBoxes = {} }) {
   const out = { settled: 0, void: 0, closed: 0 };
   for (const P of Object.values(L.plays)) {
     if (P.status !== 'open' && P.close !== undefined) continue;
     if (nowS < P.start) continue;
     // close first: frozen the first time the exchange has a read, tried again each run until the play settles, then left as it is
     if (P.close == null && P.close !== false) {
-      const cl = P.kind === 'prop' ? propClose(T, P) : exch ? gameClose(exch(P.sport), P) : null;
+      const cl = P.kind === 'prop' ? (P.sport === 'nba' ? nbaClose(P) : propClose(T, P)) : exch ? gameClose(exch(P.sport), P) : null;
       if (cl) { P.close = cl; P.clv = r4(cl.p / P.first.price.p - 1); out.closed++; }
     }
     if (P.status !== 'open') continue;
-    if (P.kind === 'prop') {
+    if (P.kind === 'prop' && P.sport === 'nba') {
+      if (nowS < P.start + 3 * 3600) continue;
+      const box = nbaBoxes[P.prop.gid];
+      if (!box) { if (nowS > P.start + PROP_VOID_AFTER) { finish(P, 'void', nowS); out.void++; } continue; }
+      const a = nbaActual(box, P.prop.espnId, P.prop.mkt);
+      if (a == null) { finish(P, 'void', nowS); out.void++; continue; }          // did not play, or the stat is not in the box: the prop is void
+      P.actual = a;
+      finish(P, a === P.prop.line ? 'push' : (P.prop.side === 'over' ? a > P.prop.line : a < P.prop.line) ? 'won' : 'lost', nowS); out.settled++;
+    } else if (P.kind === 'prop') {
       if (nowS < P.start + 3 * 3600) continue;
       const a = actualOf(statsFor(P), P.prop.name, P.prop.week, P.prop.mkt);
       if (!a.has) { if (nowS > P.start + PROP_VOID_AFTER) { finish(P, 'void', nowS); out.void++; } continue; }
@@ -206,22 +266,23 @@ function readTape(dataDir, sport) {
 
 export const ledgerFile = tier => tier === 'play' ? 'v2_plays.json' : tier === 'watch' ? 'v2_watch.json' : 'v2_passed.json';
 
-export function run({ dir, dataDir, nowS, tier = 'play' }) {
-  const D = rj(resolve(dir, 'data.json')), P = rj(resolve(dir, 'props.json')), T = rj(resolve(dir, 'prop_close_tape.json')), E = rj(resolve(dataDir, 'exchange_edge_live.json'));
+export function run({ dir, dataDir, nowS, tier = 'play', nbaBoxes = {} }) {
+  const D = rj(resolve(dir, 'data.json')), P = rj(resolve(dir, 'props.json')), T = rj(resolve(dir, 'prop_close_tape.json')), E = rj(resolve(dataDir, 'exchange_edge_live.json')), N = rj(resolve(dir, 'nba_board.json'));
   if (!D) throw new Error('no data.json in ' + dir);
   const file = resolve(dir, ledgerFile(tier)), L = loadLedger(file);
   // An exchange list older than a reference may be is not a price (gates.js MAX_AGE); the page has no such check, so a play off a stale list is not logged.
   const eg = E && E.generated ? Date.parse(E.generated) / 1000 : null;
   const Eok = E && eg != null && nowS - eg <= GATES.MAX_AGE ? E : null;
-  const built = gates.build({ D, P, T, E: Eok, now: nowS });
+  const built = gates.build({ D, P, T, E: Eok, N, now: nowS });
   const cand = tier === 'play' ? built.cand : gates.stance(built.cand);        // Watch and Passed keep one side per market, so a bet is never logged as both Over and Under
   const season = P && P.props ? P.props.season : null, week = P && P.props ? P.props.week : null;
   const added = logPlays(L, cand, nowS, { edgeGenerated: eg, season, week, tier });
-  const seasons = [...new Set(Object.values(L.plays).filter(x => x.kind === 'prop').map(x => x.prop.season))];
+  const seasons = [...new Set(Object.values(L.plays).filter(x => x.kind === 'prop' && x.sport !== 'nba').map(x => x.prop.season))];
   const stats = {};
   for (const s of seasons) stats[s] = overlayEspn(rj(resolve(dataDir, `nflverse_stats_${s}.json`)), rj(resolve(dataDir, `espn_player_stats_${s}.json`)));
   const tapes = {}, results = rj(resolve(dataDir, 'exchange_edge_results.json'));
-  const out = settlePlays(L, {
+  if (N) noteNbaReads(L, N, nowS);
+  const out = settlePlays(L, { nbaBoxes,
     statsFor: P => stats[P.prop.season], finals: makeFinals(D, results), T, nowS,
     exch: sport => tapes[sport] ||= exchIndex(readTape(dataDir, sport)),
   });
@@ -233,7 +294,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   const dir = resolve(arg('dir') || 'sharp-out'), dataDir = resolve(arg('data') || resolve(ROOT, 'data')), nowS = +arg('now') || Math.floor(Date.now() / 1000);
   const tier = arg('tier') || 'play';
   if (!['play', 'watch', 'pass'].includes(tier)) throw new Error('--tier must be play, watch or pass');
-  const { L, added, out, skippedExch, file } = run({ dir, dataDir, nowS, tier });
+  const nbaBoxes = await fetchNbaBoxes(loadLedger(resolve(dir, ledgerFile(tier))), nowS);      // plays logged in an earlier run; one logged this run has not started
+  const { L, added, out, skippedExch, file } = run({ dir, dataDir, nowS, tier, nbaBoxes });
   L.updated = nowS;
   writeFileSync(file + '.tmp', JSON.stringify(L)); renameSync(file + '.tmp', file);
   const s = summary(L);

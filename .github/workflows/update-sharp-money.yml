@@ -169,6 +169,10 @@ jobs:
         if: steps.gate.outputs.go == '1'
         continue-on-error: true
         run: |
+          # NBA props: the live board the NBA app publishes on the nba-live branch (Kalshi and Novig ladders, DraftKings, Pinnacle). It is read here and not
+          # published. A failed fetch only means no NBA props this run; plays already logged keep their rows and settle from ESPN's box score.
+          rm -f sharp-out/nba_board.json
+          if git fetch -q --depth=1 origin nba-live:refs/remotes/origin/nba-live 2>/dev/null; then git show origin/nba-live:board.json > sharp-out/nba_board.json || rm -f sharp-out/nba_board.json; fi
           node scripts/track-v2-plays.mjs --dir=sharp-out
           node scripts/track-v2-plays.mjs --dir=sharp-out --tier=watch
           node scripts/track-v2-plays.mjs --dir=sharp-out --tier=pass
