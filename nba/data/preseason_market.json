@@ -1,0 +1,347 @@
+{
+ "coefs": {
+  "minutes_last": [
+   3.4734542507963466,
+   0.85849331368796
+  ],
+  "minutes_last_1h": [
+   -0.27266453871219143,
+   0.4817309555153986,
+   1.0268654644932445
+  ],
+  "rate_pts": {
+   "k": 640,
+   "b": 1.761519535396846
+  },
+  "rate_reb": {
+   "k": 10,
+   "b": 0.1450724783457531
+  },
+  "rate_ast": {
+   "k": 640,
+   "b": 2.1305948403240667
+  },
+  "rate_fg3a": {
+   "k": 10,
+   "b": 0.232213325617351
+  }
+ },
+ "rows_main_first15_vets": 6777,
+ "players": 203,
+ "results": {
+  "slope": {
+   "pts": {
+    "n": 1475,
+    "players": 196,
+    "slope": 0.3085962953765537,
+    "se": 0.16174735322502995,
+    "t": 1.907890850907595,
+    "mean_delta_abs": 0.9515754707119995,
+    "sd_delta": 1.1137804126148205
+   },
+   "reb": {
+    "n": 1520,
+    "players": 194,
+    "slope": 0.19316637428354777,
+    "se": 0.13817662462351157,
+    "t": 1.3979670932754813,
+    "mean_delta_abs": 0.37742982071131653,
+    "sd_delta": 0.4751580690688859
+   },
+   "ast": {
+    "n": 1334,
+    "players": 168,
+    "slope": 0.23783062680240896,
+    "se": 0.18382344652085714,
+    "t": 1.2937991932134947,
+    "mean_delta_abs": 0.2975062234852075,
+    "sd_delta": 0.3894868288130944
+   },
+   "3pm": {
+    "n": 1109,
+    "players": 157,
+    "slope": 0.24539516392562494,
+    "se": 0.2747842331806888,
+    "t": 0.8930467410197491,
+    "mean_delta_abs": 0.16050829724647897,
+    "sd_delta": 0.1915674481505418
+   },
+   "pra": {
+    "n": 1339,
+    "players": 181,
+    "slope": 0.1353395825833071,
+    "se": 0.15873054311294482,
+    "t": 0.8526373055184858,
+    "mean_delta_abs": 1.4331462223073343,
+    "sd_delta": 1.6635124555660288
+   },
+   "pooled": {
+    "n": 6777,
+    "players": 203,
+    "slope": 0.4378084885394674,
+    "se": 0.1277248912350546,
+    "t": 3.4277460274658598,
+    "mean_delta_abs": 0.6597501759224633,
+    "sd_delta": 0.9846986214339056
+   }
+  },
+  "pass_through": {
+   "g": 0.7690334324587823,
+   "se": 0.13019226572437767,
+   "t": 5.906905668934723
+  },
+  "split": {
+   "minutes_slope": 0.3453156184735626,
+   "minutes_se": 0.16645049597031056,
+   "rate_slope": 0.5741094238880967,
+   "rate_se": 0.2092079738897459,
+   "sd_minutes_part": 0.07099430358583037,
+   "sd_rate_part": 0.05857381852679154
+  },
+  "bet": {
+   "n_bets": 2261,
+   "n_decided": 2261,
+   "wins": 1185,
+   "hit": 0.5241043785935426,
+   "breakeven": 0.5238095238095238,
+   "z_vs_breakeven": 0.028072520776392638,
+   "roi_flat_110": 0.0005629045876723804,
+   "roi_labeled_px": 0.07080235810350158,
+   "cut_rel_delta": 0.08403477274949758,
+   "players": 165
+  },
+  "bet_by_market": {
+   "pts": {
+    "n": 460,
+    "hit": 0.5239130434782608
+   },
+   "reb": {
+    "n": 474,
+    "hit": 0.5189873417721519
+   },
+   "ast": {
+    "n": 514,
+    "hit": 0.5272373540856031
+   },
+   "3pm": {
+    "n": 417,
+    "hit": 0.5371702637889688
+   },
+   "pra": {
+    "n": 396,
+    "hit": 0.5126262626262627
+   }
+  },
+  "bet_by_side": {
+   "over": {
+    "n": 1749,
+    "hit": 0.5111492281303602
+   },
+   "under": {
+    "n": 512,
+    "hit": 0.568359375
+   }
+  },
+  "dose": {
+   "low": {
+    "n": 2259,
+    "hit": 0.49667994687915007
+   },
+   "mid": {
+    "n": 2260,
+    "hit": 0.5097345132743363
+   },
+   "high": {
+    "n": 2258,
+    "hit": 0.524800708591674
+   }
+  },
+  "dose_edge": {
+   "low": -0.1294820717131474,
+   "mid": 0.2831858407079646,
+   "high": 0.44596988485385297
+  },
+  "exploratory": {
+   "slope_with_mean_reversion_control": {
+    "slope": 0.8414410627386478,
+    "se": 0.16645188445297357,
+    "t": 5.055160928360496,
+    "control_slope": 0.5248569921188879,
+    "control_se": 0.05792986475797925
+   },
+   "baseline_all_rows": {
+    "n": 6777,
+    "over_hit": 0.4907776302198613,
+    "under_hit": 0.5092223697801387,
+    "pushes": 0
+   },
+   "baseline_by_market": {
+    "3pm": {
+     "n": 1109,
+     "under_hit": 0.5446348061316502
+    },
+    "ast": {
+     "n": 1334,
+     "under_hit": 0.5097451274362819
+    },
+    "pra": {
+     "n": 1339,
+     "under_hit": 0.48842419716206126
+    },
+    "pts": {
+     "n": 1475,
+     "under_hit": 0.5030508474576271
+    },
+    "reb": {
+     "n": 1520,
+     "under_hit": 0.5072368421052632
+    }
+   },
+   "under_bets_vs_market_under_baseline": {
+    "n": 512,
+    "hit": 0.568359375,
+    "baseline_same_mix": 0.5129095197070064
+   },
+   "over_bets_vs_market_over_baseline": {
+    "n": 1749,
+    "hit": 0.5111492281303602,
+    "baseline_same_mix": 0.49013054852273347
+   },
+   "bet_hit_cluster_se": 0.014782259756063681,
+   "slope_games_1_5": {
+    "n": 2709,
+    "slope": 0.4827939543023702,
+    "se": 0.19601330186955157,
+    "t": 2.463067300522663
+   },
+   "slope_games_6_15": {
+    "n": 4068,
+    "slope": 0.4053755057215455,
+    "se": 0.17114974744206418,
+    "t": 2.368542821594107
+   }
+  }
+ },
+ "top_rows": [
+  {
+   "name": "Derrick White",
+   "market": "ast",
+   "delta": 1.44,
+   "line_open": 2.5,
+   "actual": 4.0,
+   "side": 1.0
+  },
+  {
+   "name": "Oso Ighodaro",
+   "market": "reb",
+   "delta": 0.81,
+   "line_open": 1.5,
+   "actual": 5.0,
+   "side": 1.0
+  },
+  {
+   "name": "Payton Pritchard",
+   "market": "ast",
+   "delta": 0.77,
+   "line_open": 1.5,
+   "actual": 9.0,
+   "side": 1.0
+  },
+  {
+   "name": "Bub Carrington",
+   "market": "reb",
+   "delta": -0.76,
+   "line_open": 1.5,
+   "actual": 4.0,
+   "side": -1.0
+  },
+  {
+   "name": "Jock Landale",
+   "market": "reb",
+   "delta": 1.22,
+   "line_open": 2.5,
+   "actual": 5.0,
+   "side": 1.0
+  },
+  {
+   "name": "Gabe Vincent",
+   "market": "pts",
+   "delta": 3.11,
+   "line_open": 6.5,
+   "actual": 5.0,
+   "side": 1.0
+  },
+  {
+   "name": "Gabe Vincent",
+   "market": "pts",
+   "delta": 3.11,
+   "line_open": 6.5,
+   "actual": 3.0,
+   "side": 1.0
+  },
+  {
+   "name": "Javonte Green",
+   "market": "reb",
+   "delta": -1.08,
+   "line_open": 2.5,
+   "actual": 2.0,
+   "side": -1.0
+  },
+  {
+   "name": "Alperen Sengun",
+   "market": "ast",
+   "delta": 1.46,
+   "line_open": 3.5,
+   "actual": 6.0,
+   "side": 1.0
+  },
+  {
+   "name": "Gabe Vincent",
+   "market": "pts",
+   "delta": 3.11,
+   "line_open": 7.5,
+   "actual": 3.0,
+   "side": 1.0
+  },
+  {
+   "name": "Derrick White",
+   "market": "ast",
+   "delta": 1.44,
+   "line_open": 3.5,
+   "actual": 4.0,
+   "side": 1.0
+  },
+  {
+   "name": "Jalen Brunson",
+   "market": "3pm",
+   "delta": 0.6,
+   "line_open": 1.5,
+   "actual": 3.0,
+   "side": 1.0
+  },
+  {
+   "name": "Khris Middleton",
+   "market": "ast",
+   "delta": 0.91,
+   "line_open": 2.5,
+   "actual": 2.0,
+   "side": 1.0
+  },
+  {
+   "name": "Khris Middleton",
+   "market": "ast",
+   "delta": 0.91,
+   "line_open": 2.5,
+   "actual": 4.0,
+   "side": 1.0
+  },
+  {
+   "name": "Khris Middleton",
+   "market": "ast",
+   "delta": 0.91,
+   "line_open": 2.5,
+   "actual": 2.0,
+   "side": 1.0
+  }
+ ]
+}
