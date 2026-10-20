@@ -3547,7 +3547,7 @@ async function ssPublished(){
   if (!user){ window.__altsState = 'signin'; return null; }
   try {
     const snap = await firebase.firestore().collection('nbaAlts').get(), props = []; let asof = 0;
-    snap.forEach(d => { const x = d.data(); asof = Math.max(asof, +x.asof || 0); try { props.push(...JSON.parse(x.json)); } catch (e) {} });
+    snap.forEach(d => { const x = d.data(); if (d.id === '_record'){ try { window.__comboRecord = JSON.parse(x.json); } catch (e) {} return; } asof = Math.max(asof, +x.asof || 0); try { props.push(...JSON.parse(x.json)); } catch (e) {} });
     window.__altsState = 'ok'; return {props, asof};
   } catch (e) {
     window.__altsState = /permission|insufficient/i.test(String((e && (e.code || e.message)) || '')) ? 'denied' : 'none'; return null;
@@ -3576,7 +3576,7 @@ async function ssMerge(b){
   if (SS_ON){
     const get = f => fetch('/data/smartstake/' + f + '?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
     const [j, ja] = [await get('props_nba.json'), await get('props_nba_alts.json')];
-    window.__altsState = ja ? 'ok' : 'none'; ssApply(b, j, ja); return;
+    window.__altsState = ja ? 'ok' : 'none'; ssApply(b, j, ja); window.__comboRecord = await get('combo_record.json'); return;
   }
   ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; if (view === 'combo') renderCombo(); });
 }
@@ -8003,6 +8003,22 @@ function ccStraightHtml(list){
       ${rows.length > shown.length ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-ccmore="1">Show ${Math.min(25, rows.length - shown.length)} more</button></div>` : ''}`
       : `<p class="pp-empty">${list.length ? 'No alt bet clears that edge. Switch to Any +EV to see the small ones.' : 'No alt-line bets with a positive edge at a posted price right now. The usual answer: books and exchanges price these lines close to fair.'}</p>`}</section>`;
 }
+// The record of every call Combo Check made (scripts/combo_calls.py, on the owner's Mac): each call logged at the first poll it appeared,
+// followed to tip, graded flat 1 unit at that entry price. Sportsbook calls only; see the script header for how it differs from this page.
+function ccRecordHtml(){
+  const R = window.__comboRecord;
+  if (!R || !R.all) return `<section class="card"><div class="pp-tools"><h2>Combo Check record</h2></div><p class="pp-empty">${window.__altsState === 'ok' ? 'The record has not been written yet: it fills in after the next 5-minute refresh on the owner\'s Mac.' : 'The record is private, like the prices. Sign in with the owner\'s Google account to see it.'}</p></section>`;
+  const u = x => x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(2)}u`, pctf = (x, d = 1) => x == null ? '<span class="muted">none</span>' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`;
+  const a = R.all, wl = `${a.won}-${a.settled - a.won}${a.void ? `-${a.void}` : ''}`;
+  const kpi = (k, v, h) => `<div class="pl-c"><small>${k}</small><b>${v}</b><span>${h}</span></div>`;
+  const NAMEK = {straight: 'Straight alt bets', mates: 'Teammate parlays', cross: 'Different-game parlays'};
+  const row = (name, x) => `<tr><td class="l">${esc(name)}</td><td>${x.calls}</td><td>${x.settled}</td><td>${x.won}-${x.settled - x.won}</td><td class="${x.units >= 0 ? 'pos' : 'neg'}">${u(x.units)}</td><td>${pctf(x.roi)}</td><td>${pctf(x.clv)}<small>${x.clv_n} calls</small></td><td>${pctf(x.ev)}</td></tr>`;
+  const rec = (R.recent || []).slice(0, 15).map(c => `<tr><td class="l">${etFmt(c.first, {month: 'short', day: 'numeric'})} ${clock(c.first)}</td><td class="l">${esc(NAMEK[c.type] || c.type)} · ${esc(c.book)}</td><td class="l">${c.legs.map(l => `${esc(l.name)} ${l.side === 'over' ? 'o' : 'u'}${l.line} ${PP_SHORT[l.stat] || l.stat}`).join(' + ')}</td><td>${ccF(ccAm(1 / c.dec0))}</td><td>${pctf(c.ev0)}</td><td class="${c.res === 'won' ? 'pos' : c.res === 'lost' ? 'neg' : ''}">${c.res ? (c.res === 'void' ? 'void' : `${c.res} ${u(c.units)}`) : '<span class="muted">open</span>'}</td></tr>`).join('');
+  return `<section class="card"><div class="pp-tools"><h2>Combo Check record</h2><span class="muted" style="font-size:12.5px">Every call the page makes, logged the first time it appears at its entry price, followed to tip, graded 1 unit flat. Sportsbook calls only. Not proof of anything until 100+ settled calls and a positive closing-line value.</span></div>
+    <div class="pl-strip" style="grid-template-columns:repeat(6,minmax(0,1fr))">${kpi('Calls', a.calls, `${a.settled} settled`)}${kpi('Record', wl, 'won-lost-void')}${kpi('Units', `<span class="${a.units >= 0 ? 'pos' : 'neg'}">${u(a.units)}</span>`, '1 unit flat')}${kpi('ROI', pctf(a.roi), a.z != null ? `z ${a.z}` : 'too few settled')}${kpi('Closing-line value', pctf(a.clv), `${a.clv_n} calls`)}${kpi('Edge when called', pctf(a.ev), 'mean')}</div>
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Slice</th><th>Calls</th><th>Settled</th><th>W-L</th><th>Units</th><th>ROI</th><th>CLV</th><th>Edge</th></tr></thead><tbody>${Object.entries(R.type || {}).map(([k, x]) => row(NAMEK[k] || k, x)).join('')}${Object.entries(R.edge || {}).map(([k, x]) => row(`Edge ${k}`, x)).join('')}${Object.entries(R.book || {}).map(([k, x]) => row(k, x)).join('')}</tbody></table></div>
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">First seen</th><th class="l">Type</th><th class="l">Legs</th><th>Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${rec || '<tr><td class="l" colspan="6"><p class="empty">No calls yet.</p></td></tr>'}</tbody></table></div></section>`;
+}
 function renderCombo(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
@@ -8017,6 +8033,7 @@ function renderCombo(){
       <p>${nBooks ? `Sportsbook alt-line prices (${nBooks} books) via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>${window.__ssAsof ? (() => { const m = Math.max(0, Math.round((Date.now() - window.__ssAsof) / 60000)), age = m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; return m > 15 ? `, <span class="warnt" title="The refresh job on the owner's Mac publishes every 5 minutes; it may be off or asleep. Alt prices move, so check the book before betting.">as of ${clock(Math.floor(window.__ssAsof / 1000))} ET, ${age} old</span>` : `, as of ${clock(Math.floor(window.__ssAsof / 1000))} ET`; })() : ''}, plus exchange prices from Kalshi, Novig and Polymarket.` : 'No sportsbook alt-line prices are loaded, so only exchange prices (Kalshi, Novig, Polymarket) and book lines on the board are used.'} Everything is a Lean at most.</p>
       ${window.__altsState === 'signin' ? `<div class="cc-unlock"><b>Sportsbook alt prices are private.</b><button class="pv-ghost" type="button" data-ccsignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>` : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>Sportsbook alt prices are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-ccsignin="1">Use another account</button></div>` : ''}</section>
     ${ccStraightHtml(S.straight)}
+    ${ccRecordHtml()}
     ${sec('Teammate parlays on alt lines', 'Assists with a teammate\'s 3-pointers, or points with a teammate\'s assists, both over or both under (a pre-registered test, about +4% on a 2-leg bet at even money), priced at one book.', S.mates, 'Teammates, one book')}
     ${sec('Best alt prices across games', 'The two alt legs with the best price against the market at one book, from different games, so the product is the real payout.', S.cross, 'Different games, one book')}
 

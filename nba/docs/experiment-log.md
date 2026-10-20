@@ -233,3 +233,21 @@ Rule shipped (page `returningHold`, `pricing.returning_hold`, same rule): a play
 the page until the user sets his minutes in the Lab or on Tonight. On the 2026-10-19 state it holds 11 players: Irving, Niang, Beekman, VanVleet,
 Lyles, Simmons, Lillard, Haliburton, Kessler, Beal, Garcia. Not changed: the minutes model itself. **Open (option B):** a pre-registered test of
 "returning player confirmed as a starter gets his healthy-baseline minutes", which needs more returning-starter games than the data holds.
+
+
+## 11. Combo Check call record (fixed 2026-10-20, before any call has settled)
+
+Every call Combo Check makes is logged by `scripts/combo_calls.py` (local: the prices are SmartStake's), run inside the 5-minute publish job.
+- **Calls:** straight (alt bet at a sportsbook, priced -140 to +200, a point off main, edge 3%+), mates (teammate parlay from the two passed pairings, same
+  side, one book, edge 3%+, top 6), cross (a book's two best alt legs from different games, edge 3%+, top 4). Edge = fair chance x decimal odds - 1; fair
+  chance = median of OTHER venues quoting both sides of the SAME line (margin removed, 2+ venues); parlay chance = legs multiplied plus the measured lift.
+- **Entry** = the first poll a call appears; its price then is the bet. Calls that stop being shown stay in the record. **Close** = the last price seen
+  for the same legs at the same book before tip. **Grade** = flat 1 unit at the entry price from the ESPN box score; a player who did not play voids the call.
+- **Not in the record:** exchange straights (Kalshi, Polymarket, Novig) shown on the page: their fees are not in the tape. The page also sees Pinnacle, Kalshi
+  and Polymarket as fair-price sources, and the model's minutes and holds; the tracker uses the tape alone, recent minutes >= 15 and the returning-player hold.
+  So the record is "what this rule set called", not a replay of one browser session.
+- **Reading it:** monitoring only. No call type is called good or bad before **100 settled calls of that type** and a closing-line value that is positive
+  (mean entry price against close, 2 SE). Edges are measured against other books' prices, not against outcomes, so a positive edge with a negative CLV
+  means the other books moved toward this book, i.e. the edge was a stale line in the benchmark, not in this book.
+- Tested on real box scores with constructed calls (won / lost / under / PRA / two-leg / did-not-play void) and on the live tape (38 calls on the first
+  pass: 28 straight, 6 mates, 4 cross). No call has settled yet.

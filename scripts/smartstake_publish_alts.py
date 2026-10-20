@@ -99,20 +99,28 @@ def main(argv):
     if not SA.exists():
         sys.exit("No service account key at ~/.config/smartstake/firebase-sa.json. Nothing was published.")
     digest = hashlib.sha1(json.dumps(docs, sort_keys=True).encode()).hexdigest()
-    if LAST.exists() and LAST.read_text().strip() == digest:
-        print("unchanged, not written")
-        return
     token = access_token(json.loads(SA.read_text()))
-    for did, fields in docs.items():
-        rest(token, "PATCH", f"{COLL}/{did}", {"fields": fields})
-    have = rest(token, "GET", f"{COLL}?pageSize=300").get("documents", [])
-    for d in have:
-        did = d["name"].rsplit("/", 1)[-1]
-        if did not in docs:
+    if not (LAST.exists() and LAST.read_text().strip() == digest):
+        for did, fields in docs.items():
+            rest(token, "PATCH", f"{COLL}/{did}", {"fields": fields})
+        have = rest(token, "GET", f"{COLL}?pageSize=300").get("documents", [])
+        gone = [d["name"].rsplit("/", 1)[-1] for d in have if d["name"].rsplit("/", 1)[-1] not in docs and (off or not d["name"].rsplit("/", 1)[-1].startswith("_"))]
+        for did in gone:
             rest(token, "DELETE", f"{COLL}/{did}")
-    LAST.parent.mkdir(parents=True, exist_ok=True)
-    LAST.write_text(digest)
-    print(f"wrote {len(docs)} documents, removed {sum(1 for d in have if d['name'].rsplit('/', 1)[-1] not in docs)}")
+        LAST.parent.mkdir(parents=True, exist_ok=True)
+        LAST.write_text(digest)
+        print(f"wrote {len(docs)} documents, removed {len(gone)}")
+    else:
+        print("alts unchanged, not written")
+    if off:
+        return
+    try:                                                           # the Combo Check record: track the calls, settle, write the summary
+        import combo_calls
+        rec = combo_calls.run()
+        if rec:
+            rest(token, "PATCH", f"{COLL}/_record", {"fields": {"asof": {"integerValue": str(rec["asof"])}, "json": {"stringValue": json.dumps(rec, separators=(",", ":"))}}})
+    except Exception as e:                                         # never let the record break the prices
+        print("combo record failed:", repr(e))
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ PY=/opt/homebrew/bin/python3
 mkdir -p "$BIN/scripts" "$HOME/Library/Logs" "$HOME/Library/LaunchAgents"
 
 if [ "$1" = "publish" ]; then
-  for f in smartstake_publish_alts smartstake_alts smartstake_props smartstake_to_book_tape; do
+  for f in smartstake_publish_alts smartstake_alts combo_calls smartstake_props smartstake_to_book_tape; do
     cp "$REPO/scripts/$f.py" "$BIN/scripts/$f.py"
   done
   ln -sfn "$CHECKOUT/data" "$BIN/data"
