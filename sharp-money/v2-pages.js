@@ -10,7 +10,7 @@
   var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), LIVE = /[?&]live\b/.test(location.search);
   var RAW = 'https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/', MAIN = LOCAL && !LIVE ? '/' : RAW + 'main/';
   var SRC = {
-    props: RAW + 'sharp-data/props.json', tape: RAW + 'sharp-data/prop_close_tape.json', plays: RAW + 'sharp-data/v2_plays.json', watchLive: RAW + 'sharp-data/v2_watch.json', passedLive: RAW + 'sharp-data/v2_passed.json',
+    props: RAW + 'sharp-data/props.json', nba: RAW + 'nba-live/board.json', tape: RAW + 'sharp-data/prop_close_tape.json', plays: RAW + 'sharp-data/v2_plays.json', watchLive: RAW + 'sharp-data/v2_watch.json', passedLive: RAW + 'sharp-data/v2_passed.json',
     edge: MAIN + 'data/exchange_edge_live.json', edgeRec: MAIN + 'data/exchange_edge_record.json', keys: MAIN + 'data/nfl_key_numbers.json',
     lag: MAIN + 'data/lead_lag.json', age: MAIN + 'data/book_age.json', sb: MAIN + 'data/model_scoreboard.json', backfill: MAIN + 'data/v2_backfill.json', rg: MAIN + 'docs/prop-clv-regrade.json'
   };
@@ -50,7 +50,7 @@
     var U = kit().U;
     return U.useMemo(function () {
       if (!D || !G()) return { all: [], cand: [] };
-      var b = G().build({ D: D, P: F.props, T: F.tape, E: F.edge, now: Date.now() / 1000 });
+      var b = G().build({ D: D, P: F.props, T: F.tape, E: F.edge, N: F.nba, now: Date.now() / 1000 });
       return { all: stance(b.all), cand: stance(b.cand) };
     }, [D && D.ts, STORE.ts]);
   }
@@ -162,7 +162,7 @@
     })).concat(propRows.length > nProps ? [h('div', { key: 'more', style: { padding: 12, borderTop: '1px solid ' + n.borderSubtle } }, h(k.co, { variant: 'secondary', size: 'sm', onClick: function () { setNProps(nProps + 20); } }, 'Show more (' + (propRows.length - nProps) + ' left)'))] : [])) : h(k.K, { padding: 20 }, h(k.T, { size: 'base' }, 'No prop with a usable price right now. The board lists only players whose game has not started.'));
     var gates = G().GATES;
     return h('div', { style: { display: 'grid', gap: 14, marginTop: 20 } },
-      h('div', { dangerouslySetInnerHTML: { __html: recordHtml(F, palOf(n), tier) } }),
+      h('div', { dangerouslySetInnerHTML: { __html: recordHtml(F, palOf(n), tier, sport) } }),
       h('div', { style: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' } }, h(k.ve, { options: opts, value: cur, onChange: function (o) { setTier(o === opts[0] ? 'play' : o === opts[1] ? 'watch' : 'pass'); } }),
         h(k.T, { size: 'sm' }, 'Props are ranked by the edge against the exchange (the anchor, with Pinnacle as the check); games by the worst case of both fair prices. Sport filter: top bar.')),
       body,
@@ -172,6 +172,7 @@
         h(k.T, { key: 3, size: 'sm' }, '3. Props are anchored on the exchange: the price must beat the exchange by ' + pct(gates.MIN_EDGE, 0) + ' or more, Pinnacle must sit within ' + gates.AGREE * 100 + ' points and must not price it the other way. Games must beat both by ' + pct(gates.MIN_EDGE, 0) + '.'),
         h(k.T, { key: 4, size: 'sm' }, '4. The edge is not over ' + pct(gates.BIG_EDGE, 0) + ': calls that big have lost money (21-32, ROI -15%).'),
         h(k.T, { key: 5, size: 'sm' }, '5. Both sides of the same market are not flagged at once.'),
+        h(k.T, { key: 7, size: 'sm' }, 'NBA props use the same gates and the same references (DraftKings as the book price, Kalshi and Novig, Pinnacle). They have no settled record yet, so the gates are not tuned to NBA and each NBA prop says so. Pick the NBA filter to see its record on its own.'),
         h(k.T, { key: 6, size: 'sm' }, 'A play is a better price than the market, not a prediction. Sharp-account money is context only and never ranks a play.')]),
       h(k.je, { hint: 'Every prop on the board against both references' }, 'Prop prices'), table);
   }
@@ -398,9 +399,15 @@
     var tag = tier === 'play' ? ['PLAY', pal.good] : tier === 'watch' ? ['WATCH', pal.warn] : ['PASSED', pal.dim];
     var picked = null, away = null, home = null, hero, titleCol = pal.text, ring;
     if (c.kind === 'prop') {
-      var pg = gameForTeam(D, c.row.team, c.start); away = pg && pg.away; home = pg && pg.home;
-      var mine = pg ? (an(pg.away.abbr) === an(c.row.team) ? pg.away : pg.home) : { abbr: c.row.team, color: '#444' };
-      hero = [headshot(c.row.name, 64, mix(pal.good, 60)), teamLogo('nfl', mine, 52)];
+      if (sport === 'nba') {
+        /* the NBA live board names the game itself, and its player ids are ESPN's, so the photo comes straight from ESPN */
+        away = { abbr: c.matchup.away }; home = { abbr: c.matchup.home };
+        hero = [bubble(64, '#3a3a3e', String(c.row.name || '').split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase(), 'https://a.espncdn.com/i/headshots/nba/players/full/' + c.row.espnId + '.png', false, mix(pal.good, 60)), teamLogo('nba', { abbr: c.row.team }, 52)];
+      } else {
+        var pg = gameForTeam(D, c.row.team, c.start); away = pg && pg.away; home = pg && pg.home;
+        var mine = pg ? (an(pg.away.abbr) === an(c.row.team) ? pg.away : pg.home) : { abbr: c.row.team, color: '#444' };
+        hero = [headshot(c.row.name, 64, mix(pal.good, 60)), teamLogo('nfl', mine, 52)];
+      }
     } else if (g) {
       away = g.away; home = g.home;
       var t = c.title.toLowerCase(), hit = function (x) { return x && ((x.short && t.indexOf(String(x.short).toLowerCase()) >= 0) || (x.abbr && new RegExp('(^|[^a-z])' + String(x.abbr).toLowerCase() + '([^a-z]|$)').test(t)) || (x.name && t.indexOf(String(x.name).toLowerCase()) >= 0)); };
@@ -434,11 +441,11 @@
       (chips.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">' + chips.join('') + '</div>' : '') + '</div>';
   }
   /* The V2 record: count and units of every logged play, then the latest results. */
-  function recordHtml(F, pal, tier) { return recordCore(F, pal, tier || 'play'); }
+  function recordHtml(F, pal, tier, sport) { return recordCore(F, pal, tier || 'play', sport); }
   var TIERNAME = { play: 'V2 play record', watch: 'Watch record', pass: 'Passed record' };
   var TIERNOTE = { play: '', watch: 'Prices that beat one fair price but had no second price to confirm them. Not plays.', pass: 'Prices that looked good against one price and failed a gate, or were at an exchange or pick\u2019em app. If this record is losing, the gates are doing their job.' };
-  function recordCore(F, pal, tier) {
-    var PL = F[TIERKEY[tier][0]], rows = rowsAll(F, tier), bfn = rows.filter(function (r) { return r.p.backfill; }).length, live = rows.filter(function (r) { return !r.p.backfill; }), ls = stat(live), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
+  function recordCore(F, pal, tier, sport) {
+    var PL = F[TIERKEY[tier][0]], rows = rowsAll(F, tier).filter(function (r) { return !sport || sport === 'all' || r.p.sport === sport; }), bfn = rows.filter(function (r) { return r.p.backfill; }).length, live = rows.filter(function (r) { return !r.p.backfill; }), ls = stat(live), s = stat(rows), cnt = function (k) { return rows.filter(function (r) { return r.p.status === k; }).length; };
     var wins = rows.filter(function (r) { return r.units > 0; }).map(function (r) { return r.units; }).sort(function (a, b) { return b - a; }).slice(0, 5), ws = wins.reduce(function (a, b) { return a + b; }, 0);
     var su = function (u) { var r = Math.round(u * 10) / 10 || 0; return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r).toFixed(1) + 'u'; };
     var roi = s.n && s.units != null ? s.units / s.n : null;

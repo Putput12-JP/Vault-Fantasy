@@ -5,7 +5,7 @@
    Sharp-account money is context only: nothing in here reads it, ranks by it or counts it toward an agree total.
    Evidence behind every gate: docs/retro/sharp-v2-evidence.md (PR 133) and docs/retro/sharp-v2-data.md (PR 134).
 
-   Every function takes the loaded files in one object, X = { D: data.json, P: props.json, T: prop_close_tape.json, E: exchange_edge_live.json, now: unix seconds }. */
+   Every function takes the loaded files in one object, X = { D: data.json, P: props.json, T: prop_close_tape.json, E: exchange_edge_live.json, N: nba-live board.json (optional: no NBA props without it), now: unix seconds }. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.V2Gates = factory();
@@ -16,6 +16,7 @@
     AGREE: 0.04,         // Pinnacle and the exchange fair must sit within 4 probability points, else one of them is wrong
     BIG_EDGE: 0.10,      // 10%+ calls: 21-32, ROI -15.0% on 53 settled (evidence PR). Usually a stale or moved line
     MAX_AGE: 45 * 60,    // a reference read older than this is not a price
+    MAX_EXCH_SPREAD: 0.06, // an exchange quote wider than 6 points says where it is for sale, not where the market is (the same cut the ledger uses for a close)
     EARLY_H: 48,         // calls 48h+ out: 110-159, ROI -16.3% on 269 settled
     DFS: new Set(['Sleeper', 'Underdog', 'Underdog Fantasy', 'PrizePicks', 'Fliff', 'Dabble'])};
   const US = new Set(['Caesars', 'FanDuel', 'DraftKings', 'bet365', 'BetMGM', 'BetRivers', 'Fanatics', 'Parx Casino', 'Hard Rock', 'ESPN BET']);
@@ -106,6 +107,70 @@
     }
     return out;
   }
+
+  /* ---- NBA props: the same gates on the NBA live board (nba-live/board.json, built by nba/scripts/snapshot.py) ----
+     The board carries, per player and stat: Kalshi ladder rungs [line, bid, ask, open mid, ...], book rows [book, line, over, under, ...] (DraftKings from ESPN,
+     Pinnacle) and, under board.novig.props, the Novig ladder. Same shape of call as the NFL props: the price is a US book, the exchange (Kalshi and Novig at the
+     exact line) is the anchor and Pinnacle at the exact line is the check. Nothing is borrowed from NFL data, but the gates themselves are the NFL ones:
+     there is no settled NBA Plays record yet to tune them on, so every NBA prop carries that caution until there is. */
+  const NBA_STAT = { pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-Pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast', stl: 'Steals', blk: 'Blocks' };
+  const NBA_CAUTION = 'New: NBA props have no settled Plays record yet. The gates are the NFL ones, not tuned to NBA.';
+  const num = v => { const n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : null };
+  const sameLine = (a, b) => a != null && b != null && Math.abs(a - b) < 1e-9;
+  /* P(over) at one exact line from an exchange ladder, only from a two-sided quote tighter than MAX_EXCH_SPREAD. */
+  const mid = (bid, ask) => bid != null && ask != null && bid > 0 && ask > 0 && ask >= bid && ask - bid <= GATES.MAX_EXCH_SPREAD ? (bid + ask) / 2 : null;
+  function nbaFresh(N, NOW) {
+    const ok = k => N && N.src_ok && N.src_ok[k] && N.src_ok[k].ok != null && NOW - N.src_ok[k].ok <= GATES.MAX_AGE;
+    return { kalshi: ok('kalshi'), novig: !!(N && N.novig && N.novig.props && N.novig.asof != null && NOW - N.novig.asof <= GATES.MAX_AGE), pin: ok('pinnacle'), book: ok('espn') };
+  }
+  /* The exchange's P(over) for one player and stat at one exact line right now, or null: the ledger keeps the last of these before tip as the close. */
+  function nbaExchangeNow(X, pid, stat, line) {
+    const { N, now } = X, row = N && Array.isArray(N.props) && N.props.find(r => String(r.p) === String(pid) && r.s === stat);
+    if (!row) return null;
+    const got = [], f = nbaFresh(N, now);
+    if (f.kalshi) { const r = (row.kal || []).find(x => sameLine(x[0], line)); const m = r && mid(num(r[1]), num(r[2])); if (m != null) got.push(['Kalshi', m]) }
+    if (f.novig) { const e = N.novig.props[row.p + '|' + row.s], l = e && (e.lad || []).find(x => sameLine(x.k, line)); const m = l && l.bid && l.ask && mid(num(l.bid[0]), num(l.ask[0])); if (m != null) got.push(['Novig', m]) }
+    return got.length ? { over: mean(got.map(x => x[1])), src: got.map(x => x[0]).join('+'), n: got.length } : null;
+  }
+  function nbaExchange(N, row, line, fresh) {
+    const got = [];
+    if (fresh.kalshi) { const r = (row.kal || []).find(x => sameLine(x[0], line)); const m = r && mid(num(r[1]), num(r[2])); if (m != null) got.push(m) }
+    if (fresh.novig) { const e = N.novig.props[row.p + '|' + row.s], l = e && (e.lad || []).find(x => sameLine(x.k, line)); const m = l && l.bid && l.ask && mid(num(l.bid[0]), num(l.ask[0])); if (m != null) got.push(m) }
+    return got.length ? mean(got) : null;
+  }
+  function nbaPropCands(X) {
+    const { N, now: NOW } = X, out = [];
+    if (!N || !Array.isArray(N.props) || !N.games) return out;
+    /* each source answers on its own clock: a row's own time only says when its price last changed, so freshness comes from src_ok */
+    const fresh = nbaFresh(N, NOW);
+    if (!fresh.book || !(fresh.kalshi || fresh.novig)) return out;
+    const games = Object.fromEntries((N.games || []).map(g => [String(g.id), g])), outs = new Set((N.outs || []).map(o => String(o[0])));
+    for (const row of N.props) {
+      const g = games[String(row.g)], pl = (N.players || {})[String(row.p)];
+      if (!g || !pl || !NBA_STAT[row.s] || g.tip <= NOW || outs.has(String(row.p))) continue;
+      const books = (row.books || []).map(b => ({ src: b[0], line: num(b[1]), over: num(b[2]), under: num(b[3]) })).filter(b => b.line != null);
+      const pin = fresh.pin ? books.find(b => b.src === 'Pinnacle') : null, us = books.filter(b => US.has(b.src) && b.over != null && b.under != null);
+      for (const line of [...new Set(us.map(b => b.line))]) {
+        const ex = nbaExchange(N, row, line, fresh), pp = pin && sameLine(pin.line, line) ? devig(pin.over, pin.under) : null;
+        for (const side of ['over', 'under']) {
+          const v = us.filter(b => sameLine(b.line, line)).map(b => ({ b, p: imp(b[side]) })).filter(x => x.p != null).sort((a, b) => a.p - b.p)[0];
+          if (!v) continue;
+          const rl = [], pn = sideP(pp, side), xp = sideP(ex, side);
+          if (pn != null) rl.push({ n: 'Pinnacle', p: pn }); if (xp != null) rl.push({ n: 'Exchange', p: xp });
+          const cx = [NBA_CAUTION];
+          const bp = mean(us.filter(b => sameLine(b.line, line) && b.src !== v.b.src).map(b => sideP(devig(b.over, b.under), side)).filter(x => x != null));
+          if (bp != null && bp / v.p - 1 < 0) cx.push('The average of the other US books does not agree it is a good price.');
+          if (pl[2] && !/^(available|active|probable)$/i.test(pl[2])) cx.push('Listed ' + String(pl[2]).toLowerCase() + ' on the injury report.');
+          const label = NBA_STAT[row.s];
+          out.push({ id: 'n|' + row.p + '|' + row.s + '|' + line + '|' + side + '|' + g.tip, kind: 'prop', sport: 'nba', start: g.tip,
+            title: pl[0] + ' ' + (side === 'over' ? 'Over' : 'Under') + ' ' + line + ' ' + label, sub: pl[1],
+            price: { am: side === 'over' ? v.b.over : v.b.under, p: v.p, book: v.b.src, dfs: false, exch: false }, refs: rl, cautions: cx, market: label, rec: null,
+            row: { pid: 'nba:' + row.p, espnId: row.p, name: pl[0], team: pl[1], pos: null, mkt: row.s, label, line, game: String(row.g) }, matchup: { away: g.away, home: g.home }, side });
+        }
+      }
+    }
+    return out;
+  }
   function gameCands(X) {
     const { D, E, now: NOW } = X, out = []; if (!D) return out; const G = Object.fromEntries((D.games || []).map(g => [g.key, g]));
     /* a) Novig priced below Pinnacle fair (data/exchange_edge_live.json), with Kalshi and Polymarket as the second prices */
@@ -139,7 +204,7 @@
   }
   /* Every candidate with its tier, and the ones that are not 'none' ranked by worst-case edge. */
   function build(X) {
-    const all = [...propCands(X), ...gameCands(X)];
+    const all = [...propCands(X), ...nbaPropCands(X), ...gameCands(X)];
     /* contradictions: both sides of one market clearing any reference at once */
     const seen = {};
     all.forEach(c => { if (c.refs.some(r => r.p / c.price.p - 1 >= GATES.MIN_EDGE)) { const k = c.kind === 'prop' ? c.row.pid + '|' + c.row.mkt + '|' + c.row.line : c.gk + '|' + c.m; (seen[k] || (seen[k] = new Set())).add(c.side) } });
@@ -159,5 +224,5 @@
     return list.filter(c => top[key(c)].side === c.side);
   }
 
-  return { GATES, US, EXCH, MKT, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, gameCands, build };
+  return { GATES, US, EXCH, MKT, stance, pct, spct, sgn, imp, devig, bookP, sideP, mean, tapeIndex, refsAt, judge, propCands, nbaPropCands, nbaExchangeNow, gameCands, build };
 });

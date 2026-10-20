@@ -26,7 +26,7 @@ export function jitter(fx, seed, amt = 0.06) {
 }
 export function loadFixtures() { return { data: readFix('data.json'), props: readFix('props.json'), tape: readFix('prop_close_tape.json'), edge: readFix('exchange_edge_live.json') }; }
 
-const URLS = [['sharp-data/data.json', 'data'], ['sharp-data/props.json', 'props'], ['sharp-data/prop_close_tape.json', 'tape'], ['exchange_edge_live.json', 'edge'], ['sharp-data/v2_plays.json', 'plays']];
+const URLS = [['sharp-data/data.json', 'data'], ['sharp-data/props.json', 'props'], ['sharp-data/prop_close_tape.json', 'tape'], ['exchange_edge_live.json', 'edge'], ['sharp-data/v2_plays.json', 'plays'], ['nba-live/board.json', 'nba']];
 
 // Projection of one candidate: everything a rule decides, none of the bulky game/row objects.
 export const project = c => ({ id: c.id, kind: c.kind, sport: c.sport, start: c.start, gk: c.gk || null, m: c.m || null, side: c.side && typeof c.side === 'string' ? c.side : null, title: c.title, sub: c.sub,
