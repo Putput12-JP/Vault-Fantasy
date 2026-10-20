@@ -4,7 +4,7 @@ PAPER ONLY. Nothing here sends an order, and Novig is read through public endpoi
 Rules, fixed in advance (the backtest and its limits: /workspace/cfb-backtests/RESULTS.md, Update 4):
 
   trigger    JP+ model_margin vs the sportsbook open (open_margin) on the board in data/cfb_model.json,
-             CFB week 8+ and bowls. Edges of 3+, 5+ and 7+ points are all logged (edge_bucket is the
+             CFB week 7+ and bowls. Edges of 3+, 5+ and 7+ points are all logged (edge_bucket is the
              highest threshold reached, so the slices are cumulative); only 5+ counts toward the pass bar.
   strike     the first time the game's Novig spread ladder is seen, the strike whose handicap for JP+'s
              team is nearest the sportsbook open. A tie goes to the strike giving JP+'s team more points.
@@ -16,6 +16,9 @@ Rules, fixed in advance (the backtest and its limits: /workspace/cfb-backtests/R
              down, then capped at 5% of the bankroll per trade and $150 per ET day of entry for this
              strategy. uncapped_contracts and uncapped_stake keep the pre-cap size.
              entry_delay_min records how long after the first snapshot that was.
+             The ask is the live book at a run time strictly before kickoff. A game that has
+             already kicked off, or that already has a final score on the board, is not entered.
+             There is no backfill: a price the bot did not read before kickoff is never used.
   exit       paper-sell at the last bid on a snapshot taken before kick (exit_gap_min is how long before).
              Only the bid size stored on that snapshot (contracts within 2 cents of the bid) can fill; the
              rest is held to settlement. exit_fill_frac records the share sold. Only the best bid and the
@@ -52,7 +55,7 @@ STRATEGY = 'cfb_jp_novig'
 BOOK = 'novig'
 KALSHI_SERIES = 'KXNCAAFSPREAD'
 
-MIN_WEEK = 8
+MIN_WEEK = 7
 EDGE_LOG, EDGE_PASS, EDGE_HIGH = 3.0, 5.0, 7.0
 SIZE_FRACTION = 0.25
 MAX_STAKE_FRACTION = 0.05        # of the bankroll, per trade ($50 on $1000)
@@ -114,6 +117,46 @@ def is_bowl(game, kick_ts):
     return (d.month == 12 and d.day >= 14) or (d.month == 1 and d.day <= 20)
 
 
+def game_final(game):
+    """True when the board row already has a result or both final scores.
+
+    A push (result 'P') is final. Missing scores are not a final, and a live quote
+    after a final is the post-game price, which this bot must not paper-buy.
+    """
+    if not game:
+        return False
+    if game.get('result') not in (None, ''):
+        return True
+    return _finite(game.get('hs')) is not None and _finite(game.get('as_')) is not None
+
+
+def pre_kick(game, now_ts):
+    """True only when a quote taken at now_ts is still a pre-kick price.
+
+    Kickoff itself is too late (the inequality is strict). A final already on the
+    board is too late even if the kick stamp is still in the future.
+    """
+    try:
+        kick = float(game.get('kick'))
+        now = float(now_ts)
+    except (TypeError, ValueError):
+        return False
+    if now >= kick:
+        return False
+    if game_final(game):
+        return False
+    return True
+
+
+def row_for_kick_check(gs, board_row):
+    """Stored kick from the watched game, plus the board's result and scores."""
+    row = board_row or {}
+    kick = gs.get('kick')
+    if kick is None:
+        kick = row.get('kick')
+    return {'kick': kick, 'result': row.get('result'), 'hs': row.get('hs'), 'as_': row.get('as_')}
+
+
 def week_ok(game):
     try:
         kick = float(game.get('kick'))
@@ -133,14 +176,14 @@ def open_handicap(game, side):
 
 
 def triggers(board, now_ts):
-    """Upcoming board games that clear the week filter and a 3+ point edge, as dicts."""
+    """Board games still before kickoff, with no final on the row, that clear the week filter and a 3+ point edge."""
     out = []
     for g in board or []:
         try:
             kick = float(g.get('kick'))
         except (TypeError, ValueError):
             continue
-        if kick <= now_ts or not week_ok(g) or not g.get('home') or not g.get('away'):
+        if not pre_kick(g, now_ts) or not week_ok(g) or not g.get('home') or not g.get('away'):
             continue
         je = jp_edge(g)
         if je is None or bucket_of(je[0]) is None:
@@ -655,7 +698,7 @@ class CfbJpNovig:
         by_key = {g.get('key'): g for g in board}
         now_ts = now.timestamp()
         ctx = {'ledger': ledger, 'st': st, 'now': now, 'now_ts': now_ts, 'ratings': ratings, 'notes': notes,
-               'kalshi': kalshi, 'kq': None, 'kt': {}}
+               'kalshi': kalshi, 'kq': None, 'kt': {}, 'by_key': by_key}
 
         stats = {'new': 0, 'snaps': 0, 'entered': 0, 'exited': 0, 'graded': 0, 'unlisted': 0}
         try:
@@ -746,7 +789,8 @@ class CfbJpNovig:
         now_ts = ctx['now_ts']
         due = []
         for gs in ctx['st']['games'].values():
-            if gs['state'] not in ('watching', 'entered') or gs['kick'] <= now_ts:
+            row = (ctx.get('by_key') or {}).get(gs['key'])
+            if gs['state'] not in ('watching', 'entered') or not pre_kick(row_for_kick_check(gs, row), now_ts):
                 continue
             try:
                 snaps = valid_snaps(gs['novig'].get('snaps'), ctx['notes'], gs['key'])
@@ -770,6 +814,9 @@ class CfbJpNovig:
 
     def _snap_game(self, ctx, gs, stats):
         now_ts = int(ctx['now_ts'])
+        row = (ctx.get('by_key') or {}).get(gs['key'])
+        if not pre_kick(row_for_kick_check(gs, row), now_ts):
+            return
         nv = gs['novig']
         book = self.novig.book(nv['market_id'])
         if book is None:
@@ -787,6 +834,11 @@ class CfbJpNovig:
 
     def _try_entry(self, ctx, gs, q, stats):
         if gs['state'] != 'watching' or q['ask'] is None:
+            return
+        row = (ctx.get('by_key') or {}).get(gs['key'])
+        # The quote is the live book at now_ts. now_ts has to be before kickoff, and the
+        # board row must not already be final, or the ask is a post-game price.
+        if not pre_kick(row_for_kick_check(gs, row), ctx['now_ts']):
             return
         uncapped = size_contracts(q['ask_size'])
         if q['ask_size'] is None or q['ask_size'] < MIN_DEPTH_CONTRACTS or uncapped < 1:
