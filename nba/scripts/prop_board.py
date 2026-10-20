@@ -83,7 +83,16 @@ PP_STAT = {'Points': 'pts', 'Rebounds': 'reb', 'Assists': 'ast', '3-PT Made': '3
 UD_STAT = {'points': 'pts', 'rebounds': 'reb', 'assists': 'ast', 'three_points_made': '3pm', 'pts_rebs_asts': 'pra',
            'pts_rebs': 'pr', 'pts_asts': 'pa', 'rebs_asts': 'ra'}
 SL_STAT = {'points': 'pts', 'rebounds': 'reb', 'assists': 'ast', 'threes_made': '3pm', 'pts_reb_ast': 'pra',
-           'pts_reb': 'pr', 'pts_ast': 'pa', 'reb_ast': 'ra'}
+           'pts_reb': 'pr', 'pts_ast': 'pa', 'reb_ast': 'ra',
+           # what Sleeper sends on the NBA board (seen 2026-10-19: 406 lines were dropped under the names above)
+           'points_and_rebounds': 'pr', 'points_and_assists': 'pa', 'rebounds_and_assists': 'ra'}
+# Pick'em markets the board shows beside a player's props with no Vault number (no model prices them): board['also'][pid] =
+# [[code, app, line, over, under, game id, last change]]. Only labels seen in a live feed; PrizePicks standard lines only
+# (its demon lines pay a different multiplier that the feed does not carry).
+ALSO_NAME = {'dd': 'Double-double', 'td': 'Triple-double', 'q1pts': '1st-quarter points', 'q1reb': '1st-quarter rebounds', 'q1ast': '1st-quarter assists'}
+PP_ALSO = {'Double-Double': 'dd', 'Triple-Double': 'td'}
+UD_ALSO = {'triple_doubles': 'td', 'period_1_points': 'q1pts', 'period_1_rebounds': 'q1reb', 'period_1_assists': 'q1ast'}
+SL_ALSO = {'double_double': 'dd', 'first_qtr_points': 'q1pts', 'first_qtr_rebounds': 'q1reb', 'first_qtr_assists': 'q1ast'}
 TEAM = {'GSW': 'GS', 'NYK': 'NY', 'SAS': 'SA', 'NOP': 'NO', 'UTA': 'UTAH', 'WAS': 'WSH', 'PHO': 'PHX', 'BRK': 'BKN'}
 
 
@@ -162,6 +171,12 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
         name, team = R.info[pid]
         players[pid] = [name, team, None, None]
         return props.setdefault((pid, stat), {'p': pid, 's': stat, 'g': g['id'], 'kal': [], 'books': [], 'pk': []})
+
+    also = defaultdict(list)
+
+    def also_line(app, code, g, pid, line, over, under, t):
+        if g and pid and line is not None:
+            also[pid].append([code, app, line, over, under, g['id'], t])
 
     def team_game(team, start=None):
         """Tonight's game for a team (the one nearest `start` when a team has two on the slate)."""
@@ -280,6 +295,11 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     for k, v in (last.get('prizepicks') or {}).items():
         m = meta.get('prizepicks', {}).get(k) or {}
         stat = PP_STAT.get(m.get('stat')) or extra_stat(m.get('stat'))
+        if not stat and m.get('stat') in PP_ALSO:
+            if m.get('odds') == 'standard':
+                g = team_game(m.get('team'), m.get('start'))
+                also_line('PrizePicks', PP_ALSO[m['stat']], g, g and R.find(m.get('player'), [m.get('team')]), v[0], None, None, W('prizepicks', k))
+            continue
         if not stat and m.get('stat'):
             skipped['prizepicks'][m.get('stat')] += 1
         if not stat or m.get('odds') != 'standard' or v[0] is None:
@@ -295,6 +315,10 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     for k, v in (last.get('underdog') or {}).items():
         m = meta.get('underdog', {}).get(k) or {}
         stat = UD_STAT.get(m.get('stat')) or extra_stat(m.get('stat'))
+        if not stat and m.get('stat') in UD_ALSO:
+            g = team_game(m.get('team'), m.get('start'))
+            also_line('Underdog', UD_ALSO[m['stat']], g, g and R.find(m.get('player'), [m.get('team')]), v[0], v[1], v[2], W('underdog', k))
+            continue
         if not stat and m.get('stat'):
             skipped['underdog'][m.get('stat')] += 1
         if not stat or v[0] is None:
@@ -310,6 +334,12 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
     for k, v in (last.get('sleeper') or {}).items():
         m = meta.get('sleeper', {}).get(k) or {}
         stat = SL_STAT.get(m.get('stat')) or extra_stat(m.get('stat'))
+        if not stat and m.get('stat') in SL_ALSO:
+            g = team_game(m.get('team'))
+            espn = int(m['espn']) if str(m.get('espn') or '').isdigit() else None
+            also_line('Sleeper', SL_ALSO[m['stat']], g, espn if espn in R.info else g and R.find(m.get('player'), [m.get('team')]),
+                      v[0], dec_am(v[1]), dec_am(v[2]), W('sleeper', k))
+            continue
         if not stat and m.get('stat'):
             skipped['sleeper'][m.get('stat')] += 1
         if not stat or v[0] is None:
@@ -372,6 +402,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
                                 for g in games],
             'players': players, 'props': sorted(props.values(), key=lambda e: (e['g'], e['p'], e['s'])), 'unmapped': dict(unmapped),
             'skipped': {v: dict(sorted(c.items(), key=lambda kv: -kv[1])[:12]) for v, c in skipped.items() if c},
+            'also': {str(pid): sorted(rows, key=lambda r: (str(r[5]), r[0], r[1])) for pid, rows in also.items()},
             '_pkeys': pkeys}                    # internal: Sharp Price joins per-prop signals on it; dropped before the board is written
 
 

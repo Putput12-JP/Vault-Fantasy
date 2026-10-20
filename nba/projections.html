@@ -440,6 +440,7 @@ table.nt tr:last-child td{border-bottom:0}
 .nt-min input::-webkit-inner-spin-button,.nt-min input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .nt-min input.mine{border-color:rgba(251,191,36,.6);color:var(--warn)}
 .nt-parts{display:flex;flex-wrap:wrap;gap:3px;justify-content:flex-start;max-width:230px}
+.nt-rw{margin:4px 0 0;font-size:12px;color:var(--fg2)}.nt-rw b{color:var(--fg)}.nt-rw.open b{color:var(--warn)}
 .nt-p{display:inline-flex;height:19px;align-items:center;padding:0 6px;border-radius:5px;font-size:11px;background:var(--raised);color:var(--fg2);white-space:nowrap}
 .nt-p.up{color:var(--up);background:rgba(74,222,128,.1)} .nt-p.dn{color:var(--down);background:rgba(248,113,113,.1)}
 .nt-mkt.flag{color:var(--warn);font-weight:600}
@@ -4784,6 +4785,44 @@ function renderPropNight(){
       ${more.length ? `<div class="np-s"><p class="np-l">Next best</p>${more.map(x => `<div class="np-r"><span class="pl">${avSm(x.r.e.p, x.r.name)}<div><b>${esc(x.r.name)}</b><small>${esc(x.where)} ${esc(x.pick)} ${esc(PV_NOUN[x.r.e.s] || x.r.e.s)} · ${esc(TIER[x.tier][0].toLowerCase())}</small></div></span><span class="pos">${ec(x.edge)}</span></div>`).join('')}</div>` : ''}</div>`;
 }
 $('nprop').addEventListener('click', e => { const b = e.target.closest('[data-prop]'); if (b) labProps(b.dataset.prop); });
+// Report window. Reported rule (NBA memo, Dec 2025): on a game day every team resubmits its injury report between 11am and 1pm local,
+// or between 8 and 10am for a tip at 5pm or earlier, except on the second night of a back-to-back. Approximate: the times come from
+// press accounts of the memo, not the league's published rule, and a team's own zone and the arena's tip hour are assumed.
+const TEAM_TZ = {ATL: 'ET', BOS: 'ET', BKN: 'ET', CHA: 'ET', CLE: 'ET', DET: 'ET', IND: 'ET', MIA: 'ET', NY: 'ET', ORL: 'ET', PHI: 'ET', TOR: 'ET', WSH: 'ET',
+  CHI: 'CT', DAL: 'CT', HOU: 'CT', MEM: 'CT', MIL: 'CT', MIN: 'CT', NO: 'CT', OKC: 'CT', SA: 'CT', DEN: 'MT', UTAH: 'MT', PHX: 'AZ',
+  GS: 'PT', LAC: 'PT', LAL: 'PT', POR: 'PT', SAC: 'PT'};
+const TZ_ID = {ET: 'America/New_York', CT: 'America/Chicago', MT: 'America/Denver', AZ: 'America/Phoenix', PT: 'America/Los_Angeles'};
+function zoneParts(epoch, tz){
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric'}).formatToParts(new Date(epoch * 1000)).map(x => [x.type, x.value]));
+  return {y: +p.year, m: +p.month, d: +p.day, h: +p.hour, n: +p.minute};
+}
+function wallToEpoch(y, m, d, h, tz){            // wall-clock time in a zone -> epoch seconds (two passes settle the offset)
+  const want = Date.UTC(y, m - 1, d, h); let g = want;
+  for (let i = 0; i < 2; i++){ const z = zoneParts(g / 1000, tz); g += want - Date.UTC(z.y, z.m - 1, z.d, z.h, z.n); }
+  return g / 1000;
+}
+function reportWindow(team, g, state){
+  const zk = TEAM_TZ[team], home = TEAM_TZ[g.home];
+  if (!zk || !home) return null;
+  const tl = state && (state.team_last || {})[team];
+  if (tl && g.tip - tl < 30 * 3600) return {b2b: true};
+  const hp = zoneParts(g.tip, TZ_ID[home]), early = hp.h * 60 + hp.n <= 17 * 60;
+  const [a, z] = early ? [8, 10] : [11, 13], tz = TZ_ID[zk];
+  return {start: wallToEpoch(hp.y, hp.m, hp.d, a, tz), end: wallToEpoch(hp.y, hp.m, hp.d, z, tz), zone: zk, early, a, z};
+}
+function reportChip(team, g, state, B, nQuestionable){
+  const w = reportWindow(team, g, state); if (!w) return '';
+  const now = Date.now() / 1000, dur = s => { const m = Math.max(1, Math.round(s / 60)); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60 ? (m % 60) + 'm' : ''}`.trim() : `${m}m`; };
+  const hr = h => `${h > 12 ? h - 12 : h}${h >= 12 ? 'pm' : 'am'}`;
+  const tip = 'Teams resubmit the injury report in this window on a game day (reported NBA rule, Dec 2025; times are approximate). A status that is still Questionable before it closes can change.';
+  if (w.b2b) return `<p class="nt-rw" title="${tip}"><b>Report</b> second night of a back-to-back: no extra report required</p>`;
+  const when = `${hr(w.a)} to ${hr(w.z)} ${w.zone}`;
+  if (g.tip <= now) return '';
+  if (now < w.start) return `<p class="nt-rw" title="${tip}"><b>Report window</b> ${when}, opens in ${dur(w.start - now)}${nQuestionable ? ` · ${nQuestionable} questionable: wait for it before betting their props` : ''}</p>`;
+  if (now < w.end) return `<p class="nt-rw open" title="${tip}"><b>Report window open</b> ${when}, closes in ${dur(w.end - now)}${nQuestionable ? ` · ${nQuestionable} questionable still unresolved` : ''}</p>`;
+  const k = (B.news || []).filter(n => n[3] === team && n[4] === 'inj' && n[0] >= w.start).length;
+  return `<p class="nt-rw" title="${tip}"><b>Report window closed</b> ${when} · ${k} injury ${k === 1 ? 'change' : 'changes'} since it opened${nQuestionable ? ` · ${nQuestionable} still questionable` : ''}</p>`;
+}
 function renderTonight(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   renderPropNight();
@@ -4849,7 +4888,7 @@ function renderTonight(){
   const chip = (v, lab) => Math.abs(v) >= .3 ? `<span class="nt-p ${v > 0 ? 'up' : 'dn'}">${v > 0 ? '+' : ''}${fmt(v)} ${lab}</span>` : '';
   const stTxt = r => [LINEUP[r.lu] || '', r.st ? `<span class="${/out|inactive/i.test(r.st) ? 'neg' : 'warnt'}">${esc(r.st)}${r.stT ? ' ' + clock(r.stT) : ''}</span>` : '', r.src === 'lab' ? '<span class="muted" title="No games yet for this team: the Minutes Lab estimate">Lab estimate</span>' : ''].filter(Boolean).join(' · ');
   $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
-      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2><p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? (T.nLab ? ` · the model alone would stretch these players ${fmt(T.stretch, 2)}x, so the new players share the minutes` : ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game`) : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
+      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2>${pick.mode === 'example' ? '' : reportChip(T.team, g, MS && MS.live, B, T.rows.filter(r => !r.off && r.st === 'Questionable').length)}<p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? (T.nLab ? ` · the model alone would stretch these players ${fmt(T.stretch, 2)}x, so the new players share the minutes` : ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game`) : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
       <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Shadow: gradient-boosted minutes model. Logged next to v2 and v3, never priced. Uses the same injury statuses; the market spread stands in for the game model's margin.">GBM</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
       ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
         : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
@@ -7202,6 +7241,7 @@ function pvDetail(r){
   HK.mount($('pv-detail'), 'PvDetail', {head, minsHtml, watchHtml: pvWatchUI(r), verdict: verdictOf(), sections: [
     {title: 'Ways to bet it', sub: "Every venue, line and side for this prop, the recommended bet first. Value is what a $100 bet makes on average if our chance is right; fees and vig are already in the price. Pass means the edge is under 3%: a small plus there is inside the model's margin of error.", html: pvWays(r)},
     ...(ppFor(r) ? [{raw: ppFor(r)}] : []),
+    ...(alsoFor(r) ? [{raw: alsoFor(r)}] : []),
     {raw: pvSharpSec(r)},
     {title: `Why our number is ${fmt(r.mu)}`, sub: 'From his usual game to tonight. Each step is a piece of the model; together they are exactly the projection.', html: pvWaterfall(r)},
     {title: 'Recent games', sub: `Last 10 against tonight's line${r.line != null ? ` of ${r.line}` : ''}.`, html: pvRecent(r)},
@@ -7603,6 +7643,19 @@ function renderPairs(){
     </section>`;
   if (games.length > 1) gameStripMount($('pp-strip'), gameStrip(games, pp.game, {all: true}));
   $('ppfoot').innerHTML = `<div><b>How the pairs are priced.</b> Our chance for each pick is the same fair price as Player Props, at the app's own line. Both hit = our chance for one times the other, plus the covariance the test measured. Needs = 1 / the payout. Only teammates, only the two tested combinations, only 2-pick entries: apps do not allow the same player twice, and longer entries were not tested. Some Underdog and Sleeper picks carry their own multipliers; set the payout to what your entry shows.</div>`;
+}
+// Pick'em markets the board carries for a player with no Vault number (prop_board.py ALSO_NAME): double-doubles and the
+// first-quarter lines. Prices are the apps' own; nothing here is a bet, an edge or logged.
+const ALSO_NAME = {dd: 'Double-double', td: 'Triple-double', q1pts: '1st-quarter points', q1reb: '1st-quarter rebounds', q1ast: '1st-quarter assists'};
+function alsoFor(r){
+  const rows = ((PS.board.also || {})[r.e.p] || []).filter(x => String(x[5]) === String(r.e.g));
+  if (!rows.length) return '';
+  const tr = rows.map(([code, app, line, o, u, , t]) => {
+    const yes = code === 'dd' || code === 'td';
+    return `<tr><td class="l">${esc(ALSO_NAME[code] || code)}</td><td class="l">${esc(app)}</td><td>${yes ? 'Yes' : line}</td><td>${o ?? '<span class="muted">flat</span>'}</td><td>${yes && u == null ? '<span class="muted">none</span>' : (u ?? '<span class="muted">flat</span>')}</td><td>${o != null ? pc(amP(o)) : ''}</td><td>${t ? clock(t) : ''}</td></tr>`;
+  }).join('');
+  return `<section class="card pv-sec"><div class="pv-sh"><h3>More pick'em lines</h3><p>Double-doubles and first-quarter lines the apps post for him. Vault has no number for these yet, so there is no edge, no bet and nothing is logged. "Chance" is only what the app's price implies, vig included.</p></div>
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Market</th><th class="l">App</th><th>Line</th><th>Over</th><th>Under</th><th>Chance</th><th>Updated ET</th></tr></thead><tbody>${tr}</tbody></table></div></section>`;
 }
 function ppFor(r){
   if (!PP_STATS.includes(r.e.s) || !Object.keys(PP_FAM).length) return '';
