@@ -31,7 +31,8 @@ after Pinnacle has sat unchanged for 20 minutes. Pre-registered in docs/prop-beh
 Every alert is graded (grade_signals, from ledger.settle) on closing-line value: Pinnacle's last pre-tip fair at the
 alert's number minus the fair when it fired (for behind: the price's EV at the closing fair), and on the final score.
 The study's verdict stands until this season says otherwise: sharp accounts beat the close but copying them 30+ minutes
-later does not, so these are context until a type earns it (50+ graded, CLV 2 SE above zero).
+later does not, so these are context until a type earns it with a pass rule written down before its alerts were graded
+(docs/novig-money.md, docs/prop-behind-pinnacle.md); the page shows no verdict for a type without one.
 """
 import datetime as dt, glob, json, math, os, time
 from collections import defaultdict
