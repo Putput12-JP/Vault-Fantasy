@@ -756,6 +756,16 @@ table.pl-t{width:100%;min-width:640px;border-collapse:collapse;font-size:12.5px;
 .pp-h span:not(.pv-vp){font-size:11.5px;color:var(--fg3)}
 .pp-picks{display:grid;gap:8px;padding:0 10px}
 .pb-bar .pv-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.pb-bar .pv-logf{margin-top:8px}.pb-logh{margin:10px 0 0;font-size:13px}.pb-lg{white-space:nowrap}.pb-lg .pb-log{height:24px;padding:0 8px;font-size:11.5px;margin-left:4px}
+
+.cc-note{margin:6px 0 0;font-size:12px;color:var(--fg3)}
+.cc-price{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:end;margin-top:10px}.cc-price label{display:grid;gap:3px;font-size:11px;color:var(--fg3)}
+.cc-price input{height:30px;width:92px;padding:0 8px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--bg);color:var(--fg);font:inherit;font-size:13px}
+.cc-price [data-ccprice]{width:80px}.cc-price [data-ccstake]{width:64px}
+.cc-res{margin:8px 0 0;font-size:12.5px;color:var(--fg2)}.cc-res .pos{color:var(--up)}.cc-res .neg{color:var(--down)}
+.cc-build{display:grid;gap:10px;padding:0 16px 16px}
+.cc-leg{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--bg)}
+.cc-leg b{min-width:140px}.cc-leg select,.cc-leg input{height:30px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--surface);color:var(--fg);font:inherit;font-size:12.5px;padding:0 8px}.cc-leg input{width:76px}
+button.pl-hit{border:0;background:none;text-align:left;cursor:pointer;font:inherit;width:100%}
 .pp-rule{padding:8px 12px;border-left:3px solid var(--warn);background:var(--surface2);border-radius:8px}
 .pp-pk{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 8px;border-radius:12px;background:var(--surface)}
 .pp-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--raised);border:2px solid var(--border2);font-size:12px;font-weight:700;color:var(--fg2);position:relative;overflow:hidden}
@@ -2111,6 +2121,8 @@ th{font-weight:500}
     <footer id="btfoot" hidden></footer>
     <main id="v-pairs" hidden><div class="pp-wrap" id="pp-root"></div></main>
     <footer id="ppfoot" hidden></footer>
+    <main id="v-combo" hidden><div class="pp-wrap" id="cc-root"></div></main>
+    <footer id="ccfoot" hidden></footer>
     <main id="v-player" hidden><div class="pl-wrap" id="pl-root"></div></main>
     <footer id="plfoot" hidden></footer>
   </div>
@@ -2143,7 +2155,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
+const VIEWS = ['combo', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -2374,6 +2386,7 @@ const PAGES = [
     ['Edge Finder', SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'), "Slice last season's tests by venue, stat and side and see what held up out of sample.", 'finder'],
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
     ['Pick\'em of the Night', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'The best pick\'em slip we can build tonight: one player per team, from PrizePicks, Underdog or Sleeper, with the honest odds that it pays.', 'pairs'],
+    ['Combo Check', SVG('<rect x="3" y="6" width="8" height="12" rx="2"/><rect x="13" y="6" width="8" height="12" rx="2"/><path d="m5.5 12 1.8 1.8 3-3.6"/>'), 'Alt-line combos priced fairly: legs between -140 and +200 from any players, the fair odds, and the price to take. Type your book\'s price to see what it is worth.', 'combo'],
     ['My Bets', SVG('<path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 8h6M9 12h6"/>'), 'The bets you placed: results, closing-line value and where your edge is coming from.', 'mybets'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
@@ -2634,6 +2647,7 @@ function show(v){
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
   $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
   $('v-player').hidden = $('plfoot').hidden = v !== 'player';
+  $('v-combo').hidden = $('ccfoot').hidden = v !== 'combo';
   $('v-backtests').hidden = $('btfoot').hidden = !['backtests', 'finder', 'btlab'].includes(v);
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
@@ -2653,6 +2667,13 @@ function show(v){
     wk.tab = {backtests: 'works', finder: 'finder', btlab: 'lab'}[v];
     renderBacktests();
     if (!trackTried) loadTrack();
+    return;
+  }
+  if (v === 'combo'){
+    $('tname').textContent = 'Combo Check';
+    $('tsub').textContent = 'ALT-LINE COMBOS · FAIR ODDS · THE PRICE TO TAKE';
+    renderCombo();
+    if (!boardTried) loadBoard();
     return;
   }
   if (v === 'player'){
@@ -3498,6 +3519,7 @@ async function loadBoard(){
     if (view === 'sharp') renderSharp();
     if (view === 'pairs') renderPairs();
     if (view === 'player') renderPlayer();
+    if (view === 'combo') renderCombo();
     pvBackground(); pvSettle();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, (NBA_WORKER ? 60 : 5 * 60) * 1000);
   } catch (e) { /* keep the snapshot */ }
@@ -7231,7 +7253,7 @@ function pvRenderBets(){
       ${S.map(({b}) => { const R = b.res;
         if (b.kind === 'pair'){
           return `<div class="pv-bt">
-          <span class="b1"><b>${b.legs.map(l => `${esc(l.name)} ${(l.side || b.side) === 'Over' ? 'More' : 'Less'} ${l.line} ${PV_NOUN[l.s]}`).join(' + ')}</b><small>Pick'em ${b.legs.length}-pick · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span>
+          <span class="b1"><b>${b.legs.map(l => `${esc(l.name)} ${(l.side || b.side) === 'Over' ? 'More' : 'Less'} ${l.line} ${PV_NOUN[l.s]}`).join(' + ')}</b><small>${b.venue === 'pickem' ? `Pick'em ${b.legs.length}-pick` : `Combo, ${b.legs.length} legs`} · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span>
           <span><small class="k">Price</small>${esc(b.price)}<small>needs ${pc(b.cost, 1)}</small></span>
           <span><small class="k">Fair close</small><span class="muted">n/a</span><small>entries have no closing price</small></span>
           <span><small class="k">CLV</small><span class="muted">-</span></span>
@@ -7588,6 +7610,182 @@ $('pl-root').addEventListener('click', e => {
 $('pl-root').addEventListener('change', e => { if (e.target.id === 'pl-season'){ pl.season = +e.target.value; renderPlayer(); } });
 $('pl-root').addEventListener('input', e => { if (e.target.id === 'pl-q'){ pl.q = e.target.value; $('pl-hits').innerHTML = plSearchHtml(); } });
 $('pl-root').addEventListener('submit', e => pbSubmit(e, renderPlayer));
+// ── Combo Check (#combo) ──
+// Sportsbook combos (same-game or any games) built from alt lines. Legs can be any players on any teams, so the pick'em
+// apps' one-player-per-team rule does not apply here. A leg's chance is the market's at its own line (consensus of every
+// venue's two-way line and the Kalshi ladder, moved to that line through the model's shape): that is what makes any alt
+// line priceable even when no book posts it. Only teammate pairings that passed the pre-registered test (a player's
+// assists with a teammate's 3-pointers, a player's points with a teammate's assists) get a correlation lift; every other
+// pair is treated as independent. Same-player legs are left out (the NBA reportedly banned same-player under parlays, and
+// our same-player correlation is untested). Books price correlation themselves, so the page's job is the fair price and the
+// price to take, not a promise that a combo beats the book.
+const CC_LO = 1 / 3, CC_HI = 0.5833;                 // a leg priced between +200 and -140
+const CC_FAM = Object.fromEntries(((PKC && PKC.pass) || []).filter(f => f.rel === 'team').map(f => [[f.a, f.b].sort().join('|'), f]));
+let cc = {legs: [], q: '', book: store.get('nba-cc-book') || '', rows: null};
+const ccAm = p => p >= .5 ? Math.round(-100 * p / (1 - p)) : Math.round(100 * (1 - p) / p);
+const ccF = a => (a > 0 ? '+' : '') + a;
+const ccDec = am => am > 0 ? 1 + am / 100 : 1 + 100 / -am;
+const ccPM = (s, side) => side === 'over' ? s : 1 - s;
+function ccRows(){
+  if (cc.rows && cc.rows.t === PS.board.t && cc.rows.mode === PS.mode) return cc.rows.list;
+  const list = pvRows().rows.filter(r => PP_CORE.includes(r.e.s) && r.game && !r.hold && (r.tm || r.team));
+  for (const r of list){ const qs = quotesOf(r.e).map(([, L, p, w]) => [L, p, w]); r._mm = qs.length ? impliedMean(r.e.s, qs, r.extra) : null; }
+  cc.rows = {t: PS.board.t, mode: PS.mode, list};
+  return list;
+}
+const ccRow = (pid, s) => ccRows().find(r => +r.e.p === +pid && r.e.s === s);
+// one leg at one line: market chance and the model's chance for the side
+function ccLeg(r, side, line){
+  if (!r || r._mm == null) return null;
+  const over = pOverRaw(r.e.s, r._mm, line, r.extra), ov = r.mu > 0 && r.min > 0 ? cal(r.e.s, pOverRaw(r.e.s, r.mu, line, r.extra)) : null;
+  return {r, pid: +r.e.p, s: r.e.s, side, line, team: r.tm || r.team, game: r.game, name: r.name, pm: ccPM(over, side), pv: ov == null ? null : ccPM(ov, side)};
+}
+// the alt line whose market price is nearest even money and still inside the window (null if none)
+function ccBest(r, side){
+  if (!r || r._mm == null) return null;
+  let best = null;
+  for (let k = 0; k <= Math.ceil(r._mm * 2.2) + 6; k++){
+    const L = k + .5, l = ccLeg(r, side, L); if (!l || l.pm < CC_LO || l.pm > CC_HI) continue;
+    if (!best || Math.abs(l.pm - .5) < Math.abs(best.pm - .5)) best = l;
+  }
+  return best;
+}
+// chance all legs hit: product, plus the measured lift for passed teammate pairings (covariance scaled to the legs' own odds,
+// mirrored for opposite sides; first order for 3+ legs)
+function ccJoint(legs, key = 'pm'){
+  if (legs.some(l => l[key] == null)) return null;
+  const ind = legs.reduce((a, l) => a * l[key], 1); let adj = 0; const pairs = [];
+  for (let i = 0; i < legs.length; i++) for (let j = i + 1; j < legs.length; j++){
+    const A = legs[i], B = legs[j];
+    if (A.pid === B.pid || A.team !== B.team || String(A.r.e.g) !== String(B.r.e.g)) continue;
+    const F = CC_FAM[[A.s, B.s].sort().join('|')]; if (!F) continue;
+    const c = (A.side === B.side ? 1 : -1) * F.c * Math.sqrt(A[key] * (1 - A[key]) * B[key] * (1 - B[key])) / .25;
+    adj += c * legs.reduce((a, l, k) => k === i || k === j ? a : a * l[key], 1); pairs.push({A, B, c});
+  }
+  return {ind, joint: Math.min(.999, Math.max(.001, ind + adj)), pairs};
+}
+const ccKey = legs => 'combo|' + legs.map(l => `${l.pid}|${l.s}|${l.side}|${l.line}`).join('+');
+const ccCombos = {};
+
+function ccCard(legs, tag, note){
+  const key = ccKey(legs), M = ccJoint(legs, 'pm'), V = ccJoint(legs, 'pv');
+  ccCombos[key] = {legs, M, V};
+  const fair = ccAm(M.joint), lift = M.joint - M.ind, take = ccAm(Math.min(.97, M.joint / (1 + EDGE_MIN)));
+  const leg = l => { const g = l.game, opp = l.team === g.home ? g.away : g.home;
+    return `<div class="pp-pk"><span class="pp-av">${esc(initials(l.name))}${phImg(l.pid)}</span>
+      <div class="pp-who"><b><a class="plink" href="#player/${l.pid}">${esc(l.name)}</a></b><span>${esc(l.team)} vs ${esc(opp)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span><span class="ch">Fair ${ccF(ccAm(l.pm))} (${pc(l.pm)})${l.pv != null ? ` · model ${pc(l.pv)}` : ''}</span></div>
+      <div class="pp-line"><b>${l.line}</b><span>${PP_SHORT[l.s]}</span></div>
+      <div class="pp-ml" aria-label="${l.side === 'over' ? 'Over' : 'Under'}"><span class="${l.side === 'over' ? 'on' : ''}">Over</span><span class="${l.side === 'under' ? 'on' : ''}">Under</span></div></div>`; };
+  const same = M.pairs.map(p => `${esc(last(p.A.name))} and ${esc(last(p.B.name))} ${p.c > 0 ? 'tend to hit together' : 'tend to split'}`).join('; ');
+  return `<article class="pp-slip lean cc-card" data-cck="${esc(key)}">
+    <header class="pp-h"><div><b>${legs.length}-leg combo</b><span>${esc(tag)}</span></div><span class="pv-vp lean">LEAN</span></header>
+    <div class="pp-picks">${legs.map(leg).join('')}</div>
+    <div class="pp-tear" aria-hidden="true"></div>
+    <footer class="pp-f">
+      <div class="pp-math"><div><small>Fair odds</small><b>${ccF(fair)}</b><span>${pc(M.joint, 1)} to hit</span></div>
+        <div><small>If unrelated</small><b>${ccF(ccAm(M.ind))}</b><span>${lift >= .0005 ? `lift +${(lift * 100).toFixed(1)} pts` : lift <= -.0005 ? `drag ${(lift * 100).toFixed(1)} pts` : 'no measured link'}</span></div>
+        <div><small>Take it at</small><b>${ccF(take)}</b><span>or better (3% margin)</span></div></div>
+      ${V ? `<p class="cc-note">Our model alone puts it at ${pc(V.joint, 1)} (fair ${ccF(ccAm(V.joint))}). Sportsbook props have no proven model edge, so the market's number is the one to price against.</p>` : ''}
+      ${same ? `<p class="cc-note">${same}: a measured link from a pre-registered test.</p>` : ''}
+      ${note ? `<p class="cc-note">${note}</p>` : ''}
+      <div class="cc-price"><label>Book<input data-ccbook type="text" value="${esc(cc.book)}" placeholder="DraftKings" aria-label="Sportsbook"></label><label>Its price<input data-ccprice type="text" inputmode="text" placeholder="+300" aria-label="The combo price your book shows"></label><label>Stake $<input data-ccstake type="number" min="1" step="1" value="10"></label><button class="pv-ghost" type="button" data-cclog="${esc(key)}">Log combo</button></div>
+      <p class="cc-res" data-ccres></p>
+    </footer></article>`;
+}
+function ccEval(card){
+  const C = ccCombos[card.dataset.cck], out = card.querySelector('[data-ccres]'); if (!C) return null;
+  const raw = card.querySelector('[data-ccprice]').value.trim().replace('−', '-'), am = +raw, stake = +card.querySelector('[data-ccstake]').value;
+  if (!raw || !isFinite(am) || Math.abs(am) < 100){ out.innerHTML = '<span class="muted">Type the combo price your book shows, like +300, to see what it is worth.</span>'; return null; }
+  const dec = ccDec(am), ev = C.M.joint * dec - 1, s = stake > 0 ? stake : 10;
+  out.innerHTML = `At <b>${ccF(am)}</b> the average result is <b class="${ev >= EDGE_MIN ? 'pos' : ev < 0 ? 'neg' : ''}">${ev >= 0 ? '+' : '-'}$${Math.abs(ev * s).toFixed(2)}</b> on $${s.toFixed(0)} (${ev >= 0 ? '+' : ''}${(ev * 100).toFixed(1)}%) against the market's fair price. ${ev >= EDGE_MIN ? 'Worth a look: the book pays more than fair.' : ev >= 0 ? 'Inside the margin of error: pass or shop it.' : 'The book pays less than fair: pass.'}`;
+  return {am, dec, ev, s};
+}
+function ccMkBet(C, am, stake, book){
+  const legs = C.legs.map(l => ({p: l.pid, s: l.s, gid: String(l.r.e.g), day: l.game.day, tip: l.game.tip, name: l.name, team: l.team, line: l.line, side: l.side === 'over' ? 'Over' : 'Under', fair: +l.pm.toFixed(4)}));
+  const dec = ccDec(am), ev = C.M.joint * dec - 1;
+  return {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), kind: 'pair', k: ccKey(C.legs), gid: legs[0].gid, day: legs[0].day, tip: Math.max(...legs.map(l => l.tip)), m: `${legs.length}-leg combo`,
+          name: legs.map(l => l.name).join(' + '), venue: 'book', bk: book || 'Sportsbook', side: legs[0].side, legs, pay: +dec.toFixed(4), price: ccF(am), cost: +(1 / dec).toFixed(4),
+          stake: Math.round(stake * 100) / 100, t: Math.round(Date.now() / 1000), fair: +C.M.joint.toFixed(4), edge: +(C.M.joint - 1 / dec).toFixed(4), call: ev >= EDGE_MIN ? 'lean' : 'pass', ex: PS.mode === 'example', res: null};
+}
+
+function ccSuggest(){
+  const rows = ccRows().filter(r => r.min >= 15), out = {mates: []};
+  // 1) teammate pairings that passed the test, each leg at the alt line nearest even money, ranked by the lift
+  const byTeam = {};
+  for (const r of rows) (byTeam[`${r.e.g}|${r.tm || r.team}`] = byTeam[`${r.e.g}|${r.tm || r.team}`] || []).push(r);
+  const seen = {};
+  for (const T of Object.values(byTeam)) for (const A of T) for (const B of T){
+    if (+A.e.p >= +B.e.p || !CC_FAM[[A.e.s, B.e.s].sort().join('|')]) continue;
+    for (const side of ['over', 'under']){
+      const a = ccBest(A, side), b = ccBest(B, side); if (!a || !b) continue;
+      const M = ccJoint([a, b], 'pm'), lift = M.joint - M.ind;
+      if (lift > 0) out.mates.push({legs: [a, b], lift});
+    }
+  }
+  out.mates.sort((x, y) => y.lift - x.lift);
+  out.mates = out.mates.filter(c => { let ok = true; for (const l of c.legs){ seen[l.pid] = (seen[l.pid] || 0) + 1; if (seen[l.pid] > 2) ok = false; } return ok; }).slice(0, 8);
+  return out;
+}
+function ccBuilderHtml(){
+  const legs = cc.legs.map((x, i) => { const r = ccRow(x.pid, x.s), l = r && ccLeg(r, x.side, x.line); return {x, i, r, l}; });
+  const row = ({x, i, r, l}) => `<div class="cc-leg"><b>${esc((PIDX[x.pid] || {p: {name: 'Player'}}).p.name)}</b>
+    <select data-ccf="${i}|s" aria-label="Stat">${PP_CORE.map(s => `<option value="${s}"${s === x.s ? ' selected' : ''}>${PP_SHORT[s]}</option>`).join('')}</select>
+    <select data-ccf="${i}|side" aria-label="Over or under"><option value="over"${x.side === 'over' ? ' selected' : ''}>Over</option><option value="under"${x.side === 'under' ? ' selected' : ''}>Under</option></select>
+    <input data-ccf="${i}|line" type="number" step="1" value="${x.line}" aria-label="Line">
+    <span class="muted">${l ? `fair ${ccF(ccAm(l.pm))} (${pc(l.pm)})${l.pm < CC_LO - .001 || l.pm > CC_HI + .001 ? ' · outside +200 to -140' : ''}` : 'no lines on the board for this prop'}</span>
+    <button class="pv-ghost" type="button" data-ccdel="${i}">Remove</button></div>`;
+  const ok = legs.length >= 2 && legs.every(g => g.l), same = ok && new Set(legs.map(g => g.l.pid)).size < legs.length;
+  return `<div class="pl-search"><input id="cc-q" type="search" placeholder="Add a player to the combo" autocomplete="off" value="${esc(cc.q)}" aria-label="Add a player"><div id="cc-hits" class="pl-hits">${ccSearchHtml()}</div></div>
+    ${legs.map(row).join('')}
+    ${ok && !same && legs.length <= 4 ? `<div class="pp-slips">${ccCard(legs.map(g => g.l), 'Built by you', '')}</div>` : `<p class="pl-none">${legs.length < 2 ? 'Add two to four legs: any players, any teams, any games.' : same ? 'Two legs on one player are left out: the NBA reportedly banned same-player under parlays and our same-player correlation is untested.' : 'Every leg needs a line on the board.'}</p>`}`;
+}
+function ccSearchHtml(){
+  const q = cc.q.trim().toLowerCase(), f = q.length >= 2 ? ALL.filter(x => x.p.name.toLowerCase().includes(q)).slice(0, 8) : [];
+  return f.map(x => `<button type="button" class="pl-hit" data-ccadd="${x.p.id}"><span>${esc(x.p.name)}</span><small>${x.t}</small></button>`).join('') || (q.length >= 2 ? `<p class="pl-none">No rostered player matches "${esc(cc.q)}".</p>` : '');
+}
+function renderCombo(){
+  const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
+  for (const k of Object.keys(ccCombos)) delete ccCombos[k];
+  const n = ccRows().length, S = cc.sug && cc.sug.key === `${PS.board.t}|${PS.mode}` ? cc.sug.S : (cc.sug = {key: `${PS.board.t}|${PS.mode}`, S: ccSuggest()}).S;
+  const sec = (title, sub, items, tag, f) => `<section class="card"><div class="pp-tools"><h2>${title}</h2><span class="muted" style="font-size:12.5px">${sub}</span></div>
+    ${items.length ? `<div class="pp-slips">${items.map(c => ccCard(c.legs, tag, f(c))).join('')}</div>` : `<p class="pp-empty">${n ? 'Nothing qualifies on this board yet.' : 'No player props listed yet. The books and Kalshi list them the morning of a game.'}</p>`}</section>`;
+  $('cc-root').innerHTML = `
+    <section class="card pp-read"><p class="big">Combo Check</p>
+      <p>Alt-line combos priced fairly. Each leg sits between <b>-140 and +200</b> on the market's price, and legs can be any players on any teams: the pick'em apps' one-player-per-team rule does not apply to sportsbook combos. The page shows the fair odds, what a measured teammate link adds, and the price to take. <b>Type your book's combo price</b> to see what it is worth, then log it.</p>
+      <p>Books price correlation into their combos on their own, so a combo is only a play when the book pays more than the fair price below. Everything here is a Lean at most. Suggestions come only from the measured teammate links; we do not suggest combos from the model alone, because sportsbook props have no proven model edge.</p></section>
+    ${sec('Teammates who hit together', 'Assists with a teammate\'s 3-pointers, or points with a teammate\'s assists, both over or both under: a pre-registered test, about +4% on a 2-leg bet at even money.', S.mates, 'Teammates, measured link', () => '')}
+    <section class="card pl-sec"><div class="pl-sh"><div><h2>Build your own</h2><p>Pick two to four players and set each leg's stat, side and line (half-point lines). The fair odds update as you go.</p></div></div><div class="cc-build">${ccBuilderHtml()}</div></section>`;
+  $('ccfoot').innerHTML = `<div><b>How it is priced.</b> A leg's chance is the market's at that line: the consensus of every venue's two-way line and the Kalshi ladder, moved to the leg's line through the model's distribution shape, so an alt line no book posts still gets a fair price. The model's own number sits beside it. The combo's chance is the legs multiplied, plus a measured lift only for the two passed teammate pairings (covariance scaled to the legs' odds; for three or four legs this is a first-order estimate). Take-it-at is the fair price with a 3% margin.</div>
+    <div><b>Left out.</b> Two legs on one player (the NBA reportedly banned same-player under parlays; the dependence model for one player's stats is frozen and not yet tested on 2026-27). Props with a roster hold or fewer than 15 projected minutes in the suggestions.</div>`;
+  document.querySelectorAll('#cc-root .cc-card').forEach(ccEval);
+}
+
+$('cc-root').addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'cc-q'){ cc.q = t.value; $('cc-hits').innerHTML = ccSearchHtml(); return; }
+  if (t.matches('[data-ccprice],[data-ccstake]')){ const card = t.closest('.cc-card'); if (card) ccEval(card); }
+  if (t.matches('[data-ccbook]')){ cc.book = t.value; store.set('nba-cc-book', cc.book); }
+});
+$('cc-root').addEventListener('change', e => {
+  const t = e.target, f = t.dataset.ccf;
+  if (f){ const [i, k] = f.split('|'), x = cc.legs[+i]; if (!x) return;
+    if (k === 'line'){ const v = +t.value; x.line = isFinite(v) ? Math.max(.5, Math.floor(v) + .5) : x.line; } else x[k] = t.value;
+    if (k === 's'){ const r = ccRow(x.pid, x.s); if (r && r._mm != null) x.line = Math.max(.5, Math.floor(r._mm) + .5); }
+    renderCombo(); }
+});
+$('cc-root').addEventListener('click', e => {
+  const t = e.target, add = t.closest('[data-ccadd]');
+  if (add){ const pid = +add.dataset.ccadd; if (cc.legs.length >= 4){ pvToast('Four legs at most.'); return; }
+    const r = ccRow(pid, 'pts') || ccRows().find(x => +x.e.p === pid), s = r ? r.e.s : 'pts'; cc.legs.push({pid, s, side: 'over', line: r && r._mm != null ? Math.max(.5, Math.floor(r._mm) + .5) : 10.5}); cc.q = ''; renderCombo(); return; }
+  const del = t.closest('[data-ccdel]'); if (del){ cc.legs.splice(+del.dataset.ccdel, 1); renderCombo(); return; }
+  const lg = t.closest('[data-cclog]');
+  if (lg){ const card = lg.closest('.cc-card'), C = ccCombos[lg.dataset.cclog], v = ccEval(card);
+    if (!C || !v){ pvToast('Type the combo price your book shows, like +300, first.'); return; }
+    const b = ccMkBet(C, v.am, v.s, (card.querySelector('[data-ccbook]').value || '').trim());
+    pvBets.unshift(b); pvSave(); pvSettle(); pvToast(b.ex ? 'Saved to My Bets. The example game is over, so it settles right away.' : 'Saved to My Bets. It settles after the last game.'); }
+});
+
 function pvShow(){
   for (const t of ['v2', 'bets', 'full']) $('pv-' + t).hidden = pv.tab !== t;
   if (pv.tab !== 'v2') $('pv-alerts').hidden = true;
