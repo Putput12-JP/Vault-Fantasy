@@ -26,6 +26,8 @@ Per-prop signals (Player Props page, prop_signals): Pinnacle moving a player pro
 Polymarket prop, heavy money on a Kalshi rung (contracts traded between two polls with the price moving; Kalshi's
 tape cannot be filtered to props cheaply, so volume x price is the proxy). Their thresholds are NOT backtested: no
 prop sharp history existed. They are logged and graded like the rest and the page says so.
+A fourth, p_behind, is the game 'behind' signal for props: DraftKings at Pinnacle's own line, 3%+ better than its no-vig fair,
+after Pinnacle has sat unchanged for 20 minutes. Pre-registered in docs/prop-behind-pinnacle.md; the page keeps it out of the lean.
 Every alert is graded (grade_signals, from ledger.settle) on closing-line value: Pinnacle's last pre-tip fair at the
 alert's number minus the fair when it fired (for behind: the price's EV at the closing fair), and on the final score.
 The study's verdict stands until this season says otherwise: sharp accounts beat the close but copying them 30+ minutes
@@ -51,6 +53,9 @@ GRADE_AFTER_S = 3 * 3600
 # the same line within an hour; $500 of sharp-account money (props trade thinner than game lines); $2,000 traded on one
 # Kalshi rung between two polls with the price moving 3 cents
 P_LINE, P_PROB, P_WIN, P_SHARP, P_KAL_USD, P_KAL_MOVE = 1.0, 0.05, 3600, 500, 2000, 0.03
+# p_behind (docs/prop-behind-pinnacle.md, frozen before any alert): DraftKings at Pinnacle's line, 3%+ better than its no-vig fair,
+# Pinnacle unchanged for 20 minutes, both sources answered within 10; the 25% cap and the -300..+300 range are the game signal's
+PB_MIN, PB_MAX, PB_SETTLE_S, PB_FRESH_S, PB_BOOK = BEHIND_ALERT, BEHIND_MAX, 20 * 60, 10 * 60, 'DraftKings'
 try:
     from zoneinfo import ZoneInfo
     ET = ZoneInfo('America/New_York')
@@ -600,6 +605,7 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
     if pkeys:
         pin_props = pin_prop_series(dirs, pkeys.get('pinnacle') or {}, tips)
         alerts += prop_signals(by_id, pkeys, pin_props, polls, _tape_rows(day_dirs(root, now, 1)), W, day, now, kal_vol or {})
+        alerts += prop_behind(board, by_id, pin_props, now)
     # first sighting wins: an alert keeps the time and fair price of the poll that first saw it
     saved = load_signals(dirs)
     for a in alerts:
@@ -818,6 +824,43 @@ def prop_signals(by_id, pkeys, pin_props, polls, tape, W, day, now, kal_vol):
     return out
 
 
+def prop_behind(board, by_id, pin_props, now):
+    """-> p_behind alerts: DraftKings at Pinnacle's own line for a player prop, priced PB_MIN or more better than Pinnacle's
+    no-vig fair, with Pinnacle unchanged for PB_SETTLE_S. Rules and thresholds are frozen in docs/prop-behind-pinnacle.md."""
+    src = board.get('src_ok') or {}
+    for s_ in ('pinnacle', 'espn'):
+        ok = (src.get(s_) or {}).get('ok')
+        if not ok or now - ok > PB_FRESH_S:
+            return []
+    out = []
+    for e in board.get('props') or []:
+        gid, g = str(e['g']), by_id.get(str(e['g']))
+        if not g or now >= g['tip']:
+            continue
+        pin = next((b for b in e.get('books') or [] if b[0] == 'Pinnacle'), None)
+        soft = next((b for b in e.get('books') or [] if b[0] == PB_BOOK), None)
+        S = pin_props.get((e['p'], e['s'], gid))
+        if not pin or not soft or not S or pin[1] is None or soft[1] != pin[1]:
+            continue
+        last = S[-1]                                    # the settle test: Pinnacle's newest change is the one still showing, and it is old
+        if last[1] != pin[1] or last[2] is None or now - last[0] < PB_SETTLE_S:
+            continue
+        fo = devig(pin[2], pin[3])
+        if fo is None:
+            continue
+        for side, price, f in (('over', soft[2], fo), ('under', soft[3], 1 - fo)):
+            a = am(price)
+            if a is None or not -300 <= a <= 300:
+                continue
+            ev = f * (1 + payout(a)) - 1
+            if PB_MIN <= ev < PB_MAX:
+                out.append({'g': gid, 'pid': e['p'], 'stat': e['s'], 'type': 'p_behind', 't': now, 'side': side, 'line': pin[1],
+                            'venue': PB_BOOK, 'price': int(a), 'fair': r3(f), 'ev': r3(ev), 'lim': last[3],
+                            'hrs': round((g['tip'] - now) / 3600, 2), 'settled': round((now - last[0]) / 60),
+                            'id': f"{gid}:p_behind:{e['p']}:{e['s']}:{side}:{pin[1]}"})
+    return out
+
+
 # ── grading (ledger.settle) ──────────────────────────────────────────────────────────────────────
 def _lad(j):
     if not j:
@@ -831,11 +874,18 @@ def grade_prop(a, close_props, actual):
     c = (close_props or {}).get(f"{a['pid']}|{a['stat']}")
     if c and a.get('close') is None and c[0] == a.get('line') and c[1] is not None:
         a['close'] = r3(c[1] if a['side'] == 'over' else 1 - c[1])
-        if a.get('fair') is not None:
+        if a['type'] == 'p_behind':                       # the price's EV at Pinnacle's close, and how far its fair moved (docs/prop-behind-pinnacle.md)
+            a['clv'] = r3(a['close'] * (1 + payout(a['price'])) - 1)
+            a['drift'] = r3(a['close'] - a['fair'])
+        elif a.get('fair') is not None:
             a['clv'] = r3(a['close'] - a['fair'])
+    elif c and a['type'] == 'p_behind' and a.get('moved') is None and a.get('close') is None and c[0] != a.get('line') and a.get('line') is not None:
+        a['moved'] = 'toward' if (c[0] > a['line']) == (a['side'] == 'over') else 'against'   # no like-for-like close: only the direction is graded
     if actual is not None and a.get('result') is None and a.get('line') is not None:
         d = (actual - a['line']) * (1 if a['side'] == 'over' else -1)
         a['result'] = 1 if d > 0 else -1 if d < 0 else 0
+        if a['type'] == 'p_behind' and a.get('price') is not None:
+            a['units'] = r3(payout(a['price']) if d > 0 else -1 if d < 0 else 0)
 
 
 def pm_close_for(a):

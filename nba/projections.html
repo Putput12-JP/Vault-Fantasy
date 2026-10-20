@@ -791,7 +791,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pv-sg p{margin:0;font-size:13px}
 .pv-sg small{font-size:11.5px;color:var(--fg3)}
 .pv-sk{display:inline-flex;justify-content:center;height:22px;align-items:center;padding:0 8px;border-radius:var(--r-pill);font-size:11px;font-weight:500;border:1px solid var(--border2);color:var(--fg2);white-space:nowrap}
-.pv-sk.p_pin{color:var(--c-blue);border-color:rgba(147,197,253,.4)} .pv-sk.p_acct{color:var(--up);border-color:rgba(74,222,128,.35)} .pv-sk.p_kal{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.pv-sk.p_pin{color:var(--c-blue);border-color:rgba(147,197,253,.4)} .pv-sk.p_acct{color:var(--up);border-color:rgba(74,222,128,.35)} .pv-sk.p_kal{color:var(--warn);border-color:rgba(251,191,36,.4)} .pv-sk.p_behind{color:var(--fg);border-color:var(--border2);border-style:dashed}
 .pv-note,.pv-none{margin:0;font-size:12px;color:var(--fg3)}
 .pv-wf{display:grid;gap:5px}
 .pv-wf .wr{display:grid;grid-template-columns:170px minmax(0,1fr) 64px;gap:10px;align-items:center;font-size:12.5px;color:var(--fg2)}
@@ -6683,12 +6683,12 @@ function xRecord(){
     const x = T[t] = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     r.forEach((v, i) => x[i] += v);
   }
-  const XREC = {...XTYPE, p_pin: 'Prop: Pinnacle move', p_acct: 'Prop: sharp accounts', p_kal: 'Prop: heavy Kalshi money'};
+  const XREC = {...XTYPE, p_pin: 'Prop: Pinnacle move', p_acct: 'Prop: sharp accounts', p_kal: 'Prop: heavy Kalshi money', p_behind: 'Prop: DraftKings behind Pinnacle'};
   const rows = Object.keys(XREC).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null, pg = r[9] || 0, pm = pg ? r[10] / pg : null;
     const se = g > 1 ? Math.sqrt(Math.max(r[3] / g - m * m, 0) / g) : null, tt = se ? m / se : null, dec = r[5] + r[6] + r[7];
-    const st = g < 50 ? `<span class="muted">Tracking · ${g} of 50</span>` : tt >= 2 ? '<span class="pos">Beats the close</span>' : tt <= -2 ? '<span class="neg">Loses to the close</span>' : 'No edge yet';
+    const st = t === 'p_behind' ? `<span class="muted">${g < 100 ? `Tracking · ${g} of 100` : 'First look due (docs/prop-behind-pinnacle.md)'}</span>` : g < 50 ? `<span class="muted">Tracking · ${g} of 50</span>` : tt >= 2 ? '<span class="pos">Beats the close</span>' : tt <= -2 ? '<span class="neg">Loses to the close</span>' : 'No edge yet';
     return `<tr><td class="l"><b>${XREC[t]}</b></td><td>${r[0]}</td><td>${g}</td><td>${m != null ? `<span class="${m > 0 ? 'pos' : m < 0 ? 'neg' : ''}">${m >= 0 ? '+' : ''}${(m * 100).toFixed(2)}</span>${se ? ` <small>± ${(se * 100).toFixed(2)}</small>` : ''}` : ''}</td><td>${g ? pc(r[4] / g) : ''}</td><td>${pm != null ? `<span class="${pm > 0 ? 'pos' : pm < 0 ? 'neg' : ''}">${pm >= 0 ? '+' : ''}${(pm * 100).toFixed(2)}</span> <small>${pg}</small>` : '<span class="muted">-</span>'}</td><td>${dec ? `${r[5]}-${r[6]}${r[7] ? '-' + r[7] : ''}` : ''}</td><td>${dec ? `${pc(r[5] / Math.max(1, r[5] + r[6]))} <small>vs ${pc(r[8] / dec)}</small>` : ''}</td><td class="l">${st}</td></tr>`; });
-  $('xrecord').innerHTML = `<thead><tr><th class="l">Signal</th><th>Fired</th><th title="Games final, with Pinnacle's close at the signal's number">Graded</th><th title="Pinnacle's closing fair minus the fair when it fired, in probability points (behind: EV at the closing fair)">Avg CLV, pts</th><th>Beat the close</th><th title="The same CLV against Polymarket's price at tip, from the Pendulum Flow orderbook archive (about 6 hours after tip). NBA game lines only; props have too little Polymarket money">vs Polymarket close</th><th>W-L-P</th><th title="Win rate vs the fair probability when it fired">Won vs fair</th><th class="l">Status</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+  $('xrecord').innerHTML = `<thead><tr><th class="l">Signal</th><th>Fired</th><th title="Games final, with Pinnacle's close at the signal's number">Graded</th><th title="Pinnacle's closing fair minus the fair when it fired, in probability points (behind and DraftKings behind Pinnacle: EV at the closing fair; for the latter that is near the alert's own EV unless Pinnacle moved away, so its test is a share of the 3% bar, not zero)">Avg CLV, pts</th><th>Beat the close</th><th title="The same CLV against Polymarket's price at tip, from the Pendulum Flow orderbook archive (about 6 hours after tip). NBA game lines only; props have too little Polymarket money">vs Polymarket close</th><th>W-L-P</th><th title="Win rate vs the fair probability when it fired">Won vs fair</th><th class="l">Status</th></tr></thead><tbody>${rows.join('')}</tbody>`;
   return Object.values(T).reduce((a, r) => [a[0] + r[1], a[1] + r[2]], [0, 0]);
 }
 // The signal feed shows its newest 10 rows; the rest scroll inside the card (header stays put). The height comes from the 10th row, since rows wrap to different heights.
@@ -7211,7 +7211,8 @@ function pvRows(){
 }
 // sharp money on one prop: the recorder's signals plus 2+ venues moving the same way since open (one book alone is not)
 function pvSharp(r){
-  const sig = [...(((PS.board.sharp || {}).props || {})[`${r.e.p}|${r.e.s}`] || [])];
+  const all = [...(((PS.board.sharp || {}).props || {})[`${r.e.p}|${r.e.s}`] || [])];
+  const sig = all.filter(x => x.type !== 'p_behind'), pb = all.filter(x => x.type === 'p_behind');   // p_behind is a price check, tracked apart: never part of lean, with/against or any agree count
   let o = 0, u = 0; const mt = [];
   for (const b of r.books || []){
     if (b.l0 == null || b.line == null) continue;
@@ -7229,7 +7230,7 @@ function pvSharp(r){
   const lean = !sig.length ? null : no > nu ? 'over' : nu > no ? 'under' : 'split';
   const b = r.best && r.best.edge >= EDGE_MIN ? r.best : null;
   const vs = !b || !lean || lean === 'split' ? null : (lean === 'over') === pvOver(b) ? 'with' : 'against';
-  return {sig, lean, vs};
+  return {sig, lean, vs, pb};
 }
 const PV_PRESETS = [
   ['passed', 'Bets that passed', r => r.verdict === 'bet'],
@@ -7301,12 +7302,13 @@ function pvWays(r){
   return `${ref && ref !== top && pvRowV(top) !== 'pass' ? `<div class="pv-shop"><b>Shopping matters here.</b> The recommended bet is worth <b class="pos">${pvUsd(pvEV(top))}</b> per $100; the main line at ${esc(ref.bk)} (${esc(pvBetName(ref))}) is worth <b class="${pvEV(ref) >= 0 ? 'pos' : 'neg'}">${pvUsd(pvEV(ref))}</b>.</div>` : ''}
     <div class="pv-ways">${rows.map(tr).join('')}</div>${!open ? `<button class="pv-more" type="button" data-allways="1">Show all ${all.length} ways</button>` : ''}`;
 }
-const PV_SK = {p_pin: 'Pinnacle move', p_acct: 'Sharp accounts', p_kal: 'Heavy money', p_mkt: 'Market move'};
+const PV_SK = {p_pin: 'Pinnacle move', p_acct: 'Sharp accounts', p_kal: 'Heavy money', p_mkt: 'Market move', p_behind: 'Behind Pinnacle'};
 function pvSharpText(x, r){
   const s = r.e.s, side = x.side === 'over' ? 'over' : 'under';
   if (x.type === 'p_pin') return x.from[0] !== x.to[0] ? `Pinnacle moved the line ${x.from[0]} to ${x.to[0]}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`
     : `Pinnacle moved toward the ${side} at ${x.line}: over ${pc(x.from[1])} to ${pc(x.to[1])}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`;
   if (x.type === 'p_acct') return `${x.accts > 1 ? x.accts + ' sharp Polymarket accounts' : 'Sharp Polymarket account ' + esc(x.who || '')} bought ${side === 'over' ? 'Over' : 'Under'} ${x.line}: $${x.usd.toLocaleString()} at ${Math.round(x.px * 100)}¢${x.rec ? ` (${x.rec[3].toUpperCase()} record: ${x.rec[0]} trades, ${x.rec[1] >= 0 ? '+' : ''}${(x.rec[1] * 100).toFixed(1)}% vs the close)` : ''}`;
+  if (x.type === 'p_behind') return `${esc(x.venue)} has the ${side} ${x.line} at ${esc(String(x.price > 0 ? '+' + x.price : x.price))}; Pinnacle's fair price for it is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, with Pinnacle unchanged for ${x.settled} min`;
   if (x.type === 'p_kal') return `$${x.usd.toLocaleString()} traded on Kalshi ${pvK(x.line)} in one poll; YES ${Math.round(x.from * 100)}¢ to ${Math.round(x.to * 100)}¢`;
   return `Venues moving the same way: ${esc(x.txt)}`;
 }
@@ -7331,6 +7333,7 @@ function pvSharpSec(r){
     <div class="pv-shead ${head[0]}"><b>${head[1]}</b>${S.vs === 'against' ? '<span>Worth a second look before betting: sharp accounts beat the closing price on average.</span>' : S.vs === 'with' ? '<span>Agreement adds comfort, not edge: by the time you see it, the price has usually moved.</span>' : ''}</div>
     ${rows || '<p class="muted pv-none">No Pinnacle move, sharp-account trade, heavy Kalshi money or market-wide move on this prop.</p>'}
     ${pvNovig(r)}
+    ${(S.pb || []).map(x => `<div class="pv-sg"><span class="pv-sk ${x.type}">${PV_SK[x.type]}</span><div><p>${pvSharpText(x, r)}</p><small>${x.t ? `${clock(x.t)} ${TZL}${tip ? ` · ${Math.max(0, Math.round((tip - x.t) / 60))} min before tip` : ''}` : ''} · price check, tracked apart: not part of the lean above and not a bet until it passes its test</small></div></div>`).join('')}
     <p class="pv-note">Context, not a bet. Copying sharp money 30+ minutes later lost money in our study. Prop signals use thresholds that have not been backtested yet; each one is graded on the Sharp Price page.</p></section>`;
 }
 function pvWaterfall(r){
