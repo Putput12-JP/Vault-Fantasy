@@ -18,7 +18,7 @@ Updated 2026-10-08. Ordered by what protects the most first.
 
 ## Features, in order
 4. **Game Lines in the regular season.** A slim Vault-line row (the gap to the market) and "best price" that skips stale books.
-5. **Pick'em of the night** and a **weekly recap** (Tonight / Profile). Quick, and what a player opens the app for.
+5. **Pick'em of the night** (SHIPPED 2026-10-20 as the Pick'em page: one player per team, market-anchored chances, Lean at most) and a **weekly recap** (Tonight / Profile). Teammate pairs were retired: the apps do not allow two players on one team.
 6. **Double-doubles and triple-doubles.** The chance is a small calculation from the existing projections (P(at least two of five
    stats reach 10)). 2026-10-19: the lines now show beside each player's props (PrizePicks standard, Underdog, Sleeper, with the
    first-quarter lines) as display-only; still needs a model number and a pre-registered test before any edge or logging.
