@@ -961,8 +961,8 @@ def grade_alert(a, close, score):
         a['result'] = 1 if d > 0 else -1 if d < 0 else 0
 
 
-BEHIND_V = 2            # version of the 'behind' roll-up: one BET (its first alert), not one alert per book and price tick
-BEHIND_LEAD_DAYS = 3    # an alert can be saved up to 48 hours before its game; look this far before the rescan window so a bet's first alert is found
+SIGNALS_V = 3           # version of the roll-up: 2 = 'behind' per BET (not per alert), 3 = a day's totals always see every alert for its games
+SIGNAL_LEAD_DAYS = 5    # an alert is saved in the day folder of the poll that fired it, up to 3 days (seen) before its game: read this far before the rescan window
 
 
 def behind_firsts(alerts):
@@ -983,28 +983,30 @@ def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_
     """track.json 'signals': {'days': {tip day: {type: [n, graded, clv_sum, clv_sq, clv_pos, w, l, p, exp_sum]}},
     'recent': graded alerts, newest first}. Days outside the rescan window keep their totals. `games(gid)` -> False
     leaves a game's alerts out (ledger.py grades preseason apart from the season). 'behind' is rolled up per bet
-    (behind_firsts); a record saved under an older roll-up (no behind_v) has its behind totals rebuilt for every day, once."""
+    (behind_firsts). A day inside the window is re-summed from the alert files, and a game's alerts can sit in day folders
+    from before the window, so those folders are read too: reading only the window dropped them and shrank the edge day's totals.
+    A record saved under an older roll-up (signals_v not current) is rebuilt for every day from the alert files, once."""
     prev = prev or {}
     days, recent = {d: dict(by) for d, by in (prev.get('days') or {}).items()}, {a['id']: a for a in prev.get('recent') or []}
     today = dt.datetime.fromtimestamp(now, ET).date()
     since = (today - dt.timedelta(days=rescan_days)).isoformat()
-    lead = (today - dt.timedelta(days=rescan_days + BEHIND_LEAD_DAYS)).isoformat()
-    rebuild = prev.get('behind_v') != BEHIND_V
+    lead = (today - dt.timedelta(days=rescan_days + SIGNAL_LEAD_DAYS)).isoformat()
+    rebuild = prev.get('signals_v') != SIGNALS_V
+    if rebuild:                                         # every day is recomputed below
+        days = {}
     alerts = {}
     for d in sorted(glob.glob(os.path.join(root, 'snapshots', '20*'))):
-        early = os.path.basename(d) < since             # before the window: only behind alerts, to find each bet's first one
-        if (early and not rebuild and os.path.basename(d) < lead) or not os.path.exists(os.path.join(d, 'signals.json')):
+        if (os.path.basename(d) < lead and not rebuild) or not os.path.exists(os.path.join(d, 'signals.json')):
             continue
         try:
-            got = json.load(open(os.path.join(d, 'signals.json')))
+            alerts.update(json.load(open(os.path.join(d, 'signals.json'))))
         except ValueError:
-            continue
-        alerts.update({k: a for k, a in got.items() if not early or a['type'] == 'behind'})
+            pass
     if games:
         alerts = {k: a for k, a in alerts.items() if games(str(a['g']))}
     closes = {}
     for a in alerts.values():
-        if now < a['tip'] + GRADE_AFTER_S:
+        if now < a['tip'] + GRADE_AFTER_S or (a['tday'] < since and not rebuild):
             continue
         if a['tday'] not in closes:
             p = os.path.join(root, 'snapshots', a['tday'], 'pinclose.json')
@@ -1017,17 +1019,14 @@ def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_
             grade_prop(a, (c or {}).get('props'), stat_of(bx, a['pid'], a['stat']) if stat_of else None)
         else:
             grade_alert(a, _lad(c['lad']) if c and c.get('lad') else None, (box_meta(root, a['g']) or {}).get('score'))
-        if a['tday'] >= since:                          # older alerts are graded only to rebuild their day's behind totals
+        if a['tday'] >= since:                          # a rebuild grades older games too, for their day's totals only
             recent[a['id']] = a
     touched = defaultdict(lambda: defaultdict(lambda: [0, 0, 0.0, 0.0, 0, 0, 0, 0, 0.0, 0, 0.0, 0.0, 0]))
     firsts = behind_firsts(alerts.values())
-    if rebuild:                                         # the old behind totals counted alerts, not bets: drop them from every day, then refill
-        for by in days.values():
-            by.pop('behind', None)
     for a in alerts.values():
         if a['type'] == 'behind' and a['id'] not in firsts:
             continue
-        if a['tday'] < since and not (rebuild and a['type'] == 'behind'):
+        if a['tday'] < since and not rebuild:
             continue
         r = touched[a['tday']][a['type']]
         r[0] += 1
@@ -1046,7 +1045,7 @@ def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_
             r[12] += a['pm_clv'] > 0
     for d, by in touched.items():
         new = {t: [round(x, 4) if isinstance(x, float) else x for x in v] for t, v in by.items()}
-        days[d] = new if d >= since else {**days.get(d, {}), **new}
+        days[d] = new
     days = {d: by for d, by in days.items() if by}
     rec = sorted((a for a in recent.values() if a.get('clv') is not None or a.get('result') is not None), key=lambda a: -a['t'])[:keep]
-    return {'days': days, 'recent': rec, 'behind_v': BEHIND_V}
+    return {'days': days, 'recent': rec, 'signals_v': SIGNALS_V}
