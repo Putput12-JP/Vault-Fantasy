@@ -15,12 +15,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build_preseason_signals as B
 
 DECAY = os.path.join(B.DATA, 'preseason_decay.json')
+ROOKIE = os.path.join(B.DATA, 'rookie_minutes.json')        # build_rookie_minutes.py: fit, bucket means, schedule (docs/rookie-minutes-test.md)
 
 
 def main():
     live = int(sys.argv[1]) if len(sys.argv) > 1 else 2027
     d, pre, bad = B.build_table()
     dec = json.load(open(DECAY))
+    rk = json.load(open(ROOKIE))
+    assert rk['pass'], 'the rookie model did not pass its pre-registered rule: do not ship it'
     tr = d[(d.L_min >= 400) & (d.box_min >= 40) & (d.E_gp >= 10)]
     b = B.ols(tr[['L_mpg', 'mpg_1h']].values, tr.E_mpg.values)
     bL = B.ols(tr[['L_mpg']].values, tr.E_mpg.values)
@@ -42,6 +45,9 @@ def main():
                      'fit_rows': int(len(tr)), 'feats': ['last_mpg', 'h1_mpg']},
            'decay': {'K': dec['K_pre'], 'taper_from': 5, 'retire_at': dec['retire']['N_ret_games_played'],
                      'absence_games': 5},
+           'rookie': {'model': rk['fit_R1'], 'feats': ['bucket_mean', 'h1_mpg'], 'bucket_means': rk['bucket_means'],
+                      'decay': {'K': rk['K_rookie'], 'taper_from': rk['taper_from'], 'retire_at': rk['N_ret_materiality_0.10'],
+                                'absence_games': 5}, 'fit_rows': rk['n']},
            'eligibility': {'min_last_minutes': 400, 'min_preseason_minutes': 40},
            'games_excluded_team_games': int(len(bad)), 'players': players}
     with open(os.path.join(B.DATA, 'preseason_minutes.json'), 'w') as f:

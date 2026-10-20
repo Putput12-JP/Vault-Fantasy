@@ -88,8 +88,13 @@ amendment 12.
    shifts that base by (`min0_pre` - `min0`) on the page for opted-in viewers only. The server state and the ledger do not
    use it. Side effect: a lower modeled total can trip the existing roster guard (WSH did), which then fills newcomers
    from the Lab's numbers; props on a held team are never a Bet, Lean or edge for that viewer.
-7. **Rookies are not adjusted.** The preseason model was fit and tested on veterans only. Acuff's 18.5 first-half minutes
-   do not move his draft-bucket projection. A rookie fit (about 90 rookies over three preseasons) is the natural next test.
+7. **Rookies (added 2026-10-20 after `rookie-minutes-test.md` passed).** Drafted rookies with 40+ preseason minutes now get
+   `min0_pre` from their own fit (draft-bucket mean + first-half preseason mpg), K = 2, and a longer schedule: full weight
+   through game 20, linear fade over games 21 to 25, zero from game 26. Undrafted rookies and anyone under 40 preseason
+   minutes keep `min0`. Rookie holdout: the 2026-27 class (about 35 rookies with 5+ early games, so a smaller sample than the
+   veterans' 200): keep as an option if MAE is better than the draft-bucket number at all, promote only on a gain of 0.5+
+   minutes at z >= 2 (the bar the test used), remove if there is no gain. The rookie term is removed with everything else
+   after game 41 for the slowest team, unless promoted.
 
 ## Results (decay backtest, `build_preseason_decay.py`)
 
