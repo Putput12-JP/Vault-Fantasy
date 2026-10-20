@@ -214,3 +214,22 @@ Added 2026-10-11 (before the ledger was read): with no price archive available, 
 (`nba/docs/minutes-gbm-ladder.md`). It found the GBM improves rung log loss on points, rebounds and assists (+0.4% to +0.8%) and
 not on 3PM. That is a reason to expect little from the GBM on the 3PM NO cell, recorded here so a later positive 3PM result is read
 as surprising. It does not replace the live rule above.
+
+
+## 10. Returning-player hold (2026-10-20), a guard, not a model change
+
+Trigger: Haliburton (back from an Achilles tear, no games in 2025-26) was projected at 19.6 minutes for IND at NO, and the owner expects 30+ as the
+starting PG. Decomposition from the live state: base 26.0 (his recent-minutes average, dragged by his last two games, 23 and 7 minutes), minus 1.8
+(return from absence), minus 4.7 (the team rescale, everyone x0.81). His 2024-25 regular season was 33.6.
+
+Check on 2022-26 hoopR box scores (`player_box_*.csv`), run once, no rule written first, so exploratory: players returning after missing a full
+season (330+ days since their last game, 25+ prior games): 57 cases; the 13 with 26+ minutes a game before: those who started their first game back
+averaged 30.5 minutes (2 players), those who came off the bench 18.0 (11 players). Across the 8 players with 28+ before, the first game averaged 21.9
+and the first five 23.1, against a healthy mean of 32.7; both the healthy mean and the recent-minutes average missed the first game by about 11.5
+minutes. Tiny samples; the direction (starter status decides) matches the starters-feed result in section 6.
+
+Rule shipped (page `returningHold`, `pricing.returning_hold`, same rule): a player whose last game was 150+ days before his team's last game is held
+(priced and shown, never a Bet / Lean, an edge, a pick'em leg, a shadow bet, a Novig paper order or a prop-sim record) until he plays a game, or on
+the page until the user sets his minutes in the Lab or on Tonight. On the 2026-10-19 state it holds 11 players: Irving, Niang, Beekman, VanVleet,
+Lyles, Simmons, Lillard, Haliburton, Kessler, Beal, Garcia. Not changed: the minutes model itself. **Open (option B):** a pre-registered test of
+"returning player confirmed as a starter gets his healthy-baseline minutes", which needs more returning-starter games than the data holds.

@@ -104,7 +104,7 @@ def log(day, board, now, pricer=None):
         mm = pr.mu_for(N['p'], s, g, cache, outs, team, status)
         if not mm or not (mm['min'] > 0):
             continue
-        if pr.roster_hold(mm['team'], g, status, cache, mm.get('src')):          # new rosters and preseason rotations are never traded
+        if pr.roster_hold(mm['team'], g, status, cache, mm.get('src')) or pr.returning_hold(N['p'], mm['team'], g):          # new rosters, preseason rotations and players back from a long layoff are never traded
             continue
         bc = pr.PR['book'].get(s)
         if not bc:

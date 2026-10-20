@@ -2486,6 +2486,7 @@ function render(){
     (liveSt[p.id] || p.injury) ? {t: liveSt[p.id] || p.injury, bad: /out|inactive/i.test(liveSt[p.id] || p.injury), warn: !/out|inactive/i.test(liveSt[p.id] || p.injury)} : null,
     p.draft ? {t: `Rookie · #${p.draft}`, solid: true} : p.rookie ? {t: 'Rookie'} : null,
     p.moved && p.last_team ? {t: `New · was ${p.last_team}`} : null,
+    returningInfo(p.id, cur) ? {t: 'Returning: set his minutes', warn: true} : null,
     !p.slotted ? {t: 'No depth slot'} : null
   ].filter(Boolean);
   const rowOf = p => { const mu = pr[p.id];
@@ -3402,8 +3403,30 @@ function rosterHold(team, g, cache, src){
   }
   return cache[key] || (src === 'lab' ? {why: 'player'} : null);
 }
+// Returning-player guard (pricing.returning_hold, same rule). A player whose last game was RET_DAYS or more before his team's last game
+// has missed about a season. The minutes model has no way to know his role or restriction: his recent-minutes average is whatever the
+// injury left (Haliburton's last two games before his Achilles were 23 and 7 minutes), and the team rescale squeezes the rest. In 2022-26
+// box scores, players who missed a full season averaged 21.9 minutes in the first game back (starters of 26+ before: 30.5 when they
+// started, 18.0 off the bench). His props stay priced and shown, never a Bet / Lean, an edge, a pick'em leg or a shadow bet, until he
+// plays a game (the next daily refresh) or you set his minutes in the Lab or on Tonight.
+const RET_DAYS = 150;
+function returningInfo(pid, team){
+  const st = MS && MS.live; if (!st || PS.mode === 'example' || !team) return null;
+  const p = st.players && st.players[String(pid)], tl = st.team_last && st.team_last[team];
+  if (!p || !p.ms || !tl || p.ms[3] !== team) return null;
+  const gap = (tl - p.ms[4]) / 86400;
+  return gap >= RET_DAYS ? {gap: Math.round(gap), last: p.ms[4]} : null;
+}
+function returningHold(pid, team, g){
+  if (!g || g.season_type === 1) return null;
+  if (edits[team] && Object.keys(edits[team]).length) return null;
+  const te = tonightEdits[String(g.id)]; if (te && te[pid] != null) return null;
+  const x = returningInfo(pid, team); return x ? {why: 'returning', gap: x.gap} : null;
+}
 const SRC_NAME = {kalshi: 'Kalshi', espn: 'ESPN / DraftKings', pinnacle: 'Pinnacle', action: 'Action Network books', polymarket: 'Polymarket', prizepicks: 'PrizePicks', underdog: 'Underdog', sleeper: 'Sleeper'};
-const holdTxt = (h, r) => h.why === 'source'
+const holdTxt = (h, r) => h.why === 'returning'
+  ? `${esc(r.name)} has not played in ${h.gap} days of ${esc(r.tm || r.team)}'s schedule, a long injury layoff, so his minutes are a guess: the model sees a recent-minutes average the injury left behind and a team squeeze. Players who missed a full season averaged 22 minutes in their first game back, and 30 when they started. Set his minutes in the Minutes Lab or on Tonight to price his props yourself.`
+  : h.why === 'source'
   ? `A price behind this prop is old: ${Object.entries(h.srcs).map(([s, m]) => `${SRC_NAME[s] || s} last answered ${m} minutes ago`).join(', ')}. A price compared against a source that has stopped updating is usually just a line that moved.`
   : h.why === 'preseason'
   ? `This is a preseason game. Starters rest and rotations are a guess, and the model was never tested on preseason games: on the first preseason night it had a starter at 42 minutes who played 17.`
@@ -3425,7 +3448,7 @@ function sourceHold(e){
   }
   return Object.keys(stale).length ? {why: 'source', srcs: stale} : null;
 }
-const holdLabel = h => h.why === 'preseason' ? 'On hold: preseason' : h.why === 'source' ? 'On hold: a price source is behind' : 'On hold: roster changed';
+const holdLabel = h => h.why === 'preseason' ? 'On hold: preseason' : h.why === 'returning' ? 'On hold: returning from injury' : h.why === 'source' ? 'On hold: a price source is behind' : 'On hold: roster changed';
 function priceRow(e, cache){
   const P = PS.board.players[e.p] || [String(e.p), '', null];
   const gm = (PS.board.games || []).find(x => String(x.id) === String(e.g));
@@ -3483,7 +3506,7 @@ function priceRow(e, cache){
   r.passing = gated.some(c => c.g === 'go');
   // A pick'em line far from the projection is usually a different minutes situation (a preseason rest night, a mismapped market), so it gets no edge: same 40% rule the Best Bets use.
   r.pkBest = [...r.pkc].filter(c => r.mu > 0 && Math.abs(c.line - r.mu) / r.mu <= .40).sort((a, b) => b.edge - a.edge)[0] || null;   // the pick'em side with the most edge: shown (and sorted on) when a row has no priced bet, never a gated best bet
-  r.hold = (mm ? rosterHold(r.tm, gm, cache, r.src) : null) || sourceHold(e);
+  r.hold = (mm ? rosterHold(r.tm, gm, cache, r.src) : null) || sourceHold(e) || returningHold(e.p, r.tm || r.team, gm);
   return r;
 }
 
@@ -4658,7 +4681,7 @@ function renderTonight(){
       const pid = +a, mu = {};
       for (const s of ['pts', 'reb', 'ast', '3pm']){ const m = muFor(pid, s, cache, g, team); mu[s] = m ? m.mu : null; }
       const sd = G.sdm || 6;
-      rows.push({pid, name: nameOf(B, pid), min: G.min, lo: Math.max(0, G.min - 1.2816 * sd), hi: Math.min(48, G.min + 1.2816 * sd), parts: G.parts, mine: G.mine, v3: v3m.pm[pid], gb: gbm[pid],
+      rows.push({pid, ret: returningInfo(pid, team), name: nameOf(B, pid), min: G.min, lo: Math.max(0, G.min - 1.2816 * sd), hi: Math.min(48, G.min + 1.2816 * sd), parts: G.parts, mine: G.mine, v3: v3m.pm[pid], gb: gbm[pid],
                  st: status[pid], lu: P[pid] ? P[pid][3] : null, stT: P[pid] ? P[pid][4] : null, luT: P[pid] ? P[pid][5] : null, mu, mkt: marketMinutes(B, g, team, pid, G.min, cache), src: G.lab ? 'lab' : 'model'});
     }
     const seen = new Set(rows.map(r => r.pid));
@@ -4697,9 +4720,9 @@ function renderTonight(){
 
   // teams
   const chip = (v, lab) => Math.abs(v) >= .3 ? `<span class="nt-p ${v > 0 ? 'up' : 'dn'}">${v > 0 ? '+' : ''}${fmt(v)} ${lab}</span>` : '';
-  const stTxt = r => [LINEUP[r.lu] || '', r.st ? `<span class="${/out|inactive/i.test(r.st) ? 'neg' : 'warnt'}">${esc(r.st)}${r.stT ? ' ' + clock(r.stT) : ''}</span>` : '', r.src === 'lab' ? '<span class="muted" title="No games yet for this team: the Minutes Lab estimate">Lab estimate</span>' : ''].filter(Boolean).join(' · ');
+  const stTxt = r => [LINEUP[r.lu] || '', r.ret ? `<span class="warnt" title="Missed about a season (${r.ret.gap} days of his team's schedule). The model's minutes are a guess; type his minutes to price his props.">Returning: set his minutes</span>` : '', r.st ? `<span class="${/out|inactive/i.test(r.st) ? 'neg' : 'warnt'}">${esc(r.st)}${r.stT ? ' ' + clock(r.stT) : ''}</span>` : '', r.src === 'lab' ? '<span class="muted" title="No games yet for this team: the Minutes Lab estimate">Lab estimate</span>' : ''].filter(Boolean).join(' · ');
   $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
-      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2>${pick.mode === 'example' ? '' : reportChip(T.team, g, MS && MS.live, B, T.rows.filter(r => !r.off && r.st === 'Questionable').length)}<p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? (T.nLab ? ` · the model alone would stretch these players ${fmt(T.stretch, 2)}x, so the new players share the minutes` : ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game`) : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
+      <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2>${T.rows.some(r => r.ret) ? `<p class="nt-rw"><b>Returning after a long layoff</b> ${T.rows.filter(r => r.ret).map(r => esc(last(r.name))).join(', ')}: the model's minutes for them are a guess (players back from a missed season averaged 22 in the first game, 30 when starting). Type their minutes below; their props stay on hold until they play or you do.</p>` : ''}${pick.mode === 'example' ? '' : reportChip(T.team, g, MS && MS.live, B, T.rows.filter(r => !r.off && r.st === 'Questionable').length)}<p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? (T.nLab ? ` · the model alone would stretch these players ${fmt(T.stretch, 2)}x, so the new players share the minutes` : ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game`) : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
       <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Shadow: gradient-boosted minutes model. Logged next to v2 and v3, never priced. Uses the same injury statuses; the market spread stands in for the game model's margin.">GBM</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
       ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b><a class="plink" href="#player/${r.pid}">${esc(r.name)}</a></b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
         : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b><a class="plink" href="#player/${r.pid}">${esc(r.name)}</a></b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
@@ -7038,7 +7061,7 @@ function pvDetail(r){
       html: `${plainTxt()}.</p>
       <p>The price looks <b>+${pc(b.edge, 1)}</b> off our fair ${pc(b.fair, 1)}, but this kind of edge ${b.g === 'watch' ? 'made money last season without being conclusive' : 'has no record yet'}. Worth a look, not a stake.</p>`});
   } else if (r.hold) verdictOf = () => ({kind: 'pass', title: holdLabel(r.hold), pill: {t: 'No call', cls: 'idle'},
-      html: `<p>${holdTxt(r.hold, r)} So no Bet or Lean, and it stays out of Edges, Pick'em of the Night and the Track Record${r.hold.why === 'preseason' ? ' (preseason is logged apart, as a rehearsal)' : ` until ${r.hold.why === 'source' ? 'that source answers again' : r.hold.why === 'team' ? 'the new players have a game with the team' : 'he plays a game for them'}`}.</p>
+      html: `<p>${holdTxt(r.hold, r)} So no Bet or Lean, and it stays out of Edges, Pick'em of the Night and the Track Record${r.hold.why === 'preseason' ? ' (preseason is logged apart, as a rehearsal)' : ` until ${r.hold.why === 'returning' ? 'he plays a game or you set his minutes' : r.hold.why === 'source' ? 'that source answers again' : r.hold.why === 'team' ? 'the new players have a game with the team' : 'he plays a game for them'}`}.</p>
       <p>${b ? `For reference, the best price is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)} against our number.` : 'No prices to compare yet.'}</p>`});
   else verdictOf = () => ({kind: 'pass', title: 'No price is 3% better than fair', pill: null,
       html: `<p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p>`});
