@@ -1870,7 +1870,7 @@ th{font-weight:500}
 
       <section class="card">
         <div class="card-h">
-          <div><h2>Poll timeline</h2><p>Every poll in the last 48 hours, Eastern time. Gaps are time the recorder was not running.</p></div>
+          <div><h2>Poll timeline</h2><p>Every poll in the last 48 hours, Central time. Gaps are time the recorder was not running.</p></div>
         </div>
         <div class="card-b">
           <div class="chartwrap"><svg class="chart tl" id="htl" viewBox="0 0 760 196" role="img" aria-label="Polls per source over the last 48 hours"></svg></div>
@@ -1883,7 +1883,7 @@ th{font-weight:500}
           <div><h2>Upcoming games</h2><p>Markets recorded per venue for every game in the next 3 days: game lines, then player props.</p></div>
         </div>
         <div class="card-b"><div class="tablewrap"><table class="ht">
-          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Game</th><th scope="col">Kalshi</th><th scope="col">ESPN</th><th scope="col">Pinnacle</th><th scope="col">Action</th><th scope="col">Polymarket</th><th scope="col">Novig</th><th scope="col">Injury report</th><th scope="col">Lineups</th><th scope="col">Pick'em</th></tr></thead>
+          <thead><tr><th class="l" scope="col">Tip (CT)</th><th class="l" scope="col">Game</th><th scope="col">Kalshi</th><th scope="col">ESPN</th><th scope="col">Pinnacle</th><th scope="col">Action</th><th scope="col">Polymarket</th><th scope="col">Novig</th><th scope="col">Injury report</th><th scope="col">Lineups</th><th scope="col">Pick'em</th></tr></thead>
           <tbody id="hgames"></tbody>
         </table></div></div>
       </section>
@@ -1993,7 +1993,7 @@ th{font-weight:500}
           </div>
         </div>
         <div class="card-b"><div class="tablewrap"><table class="ht tb">
-          <thead><tr><th class="l" scope="col">Tip (ET)</th><th class="l" scope="col">Player</th><th class="l" scope="col">Bet</th><th class="l" scope="col">Gate</th><th scope="col" title="Price when the edge first reached 3%">Entry</th><th scope="col" title="Last price before tip">Close</th><th scope="col">Fair</th><th scope="col">Edge</th><th scope="col">Actual</th><th class="l" scope="col">Result</th><th scope="col">Units</th></tr></thead>
+          <thead><tr><th class="l" scope="col">Tip (CT)</th><th class="l" scope="col">Player</th><th class="l" scope="col">Bet</th><th class="l" scope="col">Gate</th><th scope="col" title="Price when the edge first reached 3%">Entry</th><th scope="col" title="Last price before tip">Close</th><th scope="col">Fair</th><th scope="col">Edge</th><th scope="col">Actual</th><th class="l" scope="col">Result</th><th scope="col">Units</th></tr></thead>
           <tbody id="tbets"></tbody>
         </table></div>
         <div class="more" id="tmore" hidden></div></div>
@@ -2220,9 +2220,9 @@ const cutImg = (pid, name, h = 52) => { const f = phFit(pid), sc = f ? Math.max(
 // tints the header edge (--fav). Defined early because the sidebar reads it.
 const PRO = Object.assign({name: '', team: null, players: [], since: null, visits: []}, store.get('nba-profile') || {});
 const proSave = () => store.set('nba-profile', PRO);
-const proDay = () => new Intl.DateTimeFormat('en-CA', {timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
+const proDay = () => new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date());
 { const d = proDay(); if (!PRO.since) PRO.since = d; if (!PRO.visits.includes(d)) PRO.visits = [...PRO.visits, d].slice(-90); proSave(); }
-// Streak: consecutive days (Eastern) you opened the app, counted back from today; the best one is kept even after old days drop out of the 90-day list.
+// Streak: consecutive days (Central) you opened the app, counted back from today; the best one is kept even after old days drop out of the 90-day list.
 const proPrev = day => new Date(Date.parse(day + 'T12:00:00Z') - 86400000).toISOString().slice(0, 10);
 function proStreak(visits, today){ const v = new Set(visits); let n = 0, d = today; while (v.has(d)){ n++; d = proPrev(d); } return n; }
 function proBest(visits){ const v = [...new Set(visits)].sort(); let best = 0, run = 0, prev = null; for (const d of v){ run = prev && proPrev(d) === prev ? run + 1 : 1; best = Math.max(best, run); prev = d; } return best; }
@@ -2243,7 +2243,7 @@ const onSite = /^(vaultfantasy\.com|.*\.github\.io|localhost|127\.0\.0\.1)$/.tes
 function gameStrip(games, sel, {all = false, mark = null} = {}){
   const days = [];
   for (const g of games){ const k = etDay(g.tip); let d = days[days.length - 1]; if (!d || d.k !== k){ d = {k, t: g.tip, g: []}; days.push(d); } d.g.push(g); }
-  const tile = g => { const m = mark && mark(g); return `<button type="button" class="gtile" data-g="${g.id}" aria-pressed="${String(g.id) === sel}" title="${g.away} at ${g.home}, ${etFmt(g.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(g.tip)} ET${m ? ', has changes' : ''}">
+  const tile = g => { const m = mark && mark(g); return `<button type="button" class="gtile" data-g="${g.id}" aria-pressed="${String(g.id) === sel}" title="${g.away} at ${g.home}, ${etFmt(g.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(g.tip)} ${TZL}${m ? ', has changes' : ''}">
     <span class="gr"><span class="gn">${lgImg(g.away, 16)}${g.away}</span><em>${clock(g.tip).replace(' ', '')}</em></span>
     <span class="gr"><span class="gn">${lgImg(g.home, 16)}${g.home}</span><em>${g.spread != null ? (g.spread > 0 ? '+' : '') + g.spread : ''}</em></span>${m ? '<i class="gdot" aria-hidden="true"></i>' : ''}${PRO.team && (g.away === PRO.team || g.home === PRO.team) ? '<i class="gfav" title="Your team" aria-hidden="true"></i>' : ''}</button>`; };
   return `<div class="gstrip" role="group" aria-label="Pick a game">${all ? `<button type="button" class="gtile gall" data-g="all" aria-pressed="${sel === 'all'}"><b>All</b><small>${games.length} ${games.length === 1 ? 'game' : 'games'}</small></button>` : ''}
@@ -2633,7 +2633,7 @@ function labLineup(team){
   // NBA.com sometimes lists only some of the five: fill the rest with the highest projected minutes who are not flagged bench, inactive or out
   const fill = T.players.filter(p => !listed.includes(p) && !['b', 'B', 'X'].includes(flag(p)) && !/^(Out|Inactive)/.test(st[p.id] || '')).sort((a, b) => b.min0 - a.min0).slice(0, 5 - have);
   const five = [...listed, ...fill];
-  return {ids: five.map(p => p.id), confirmed: conf.length >= 5, listed: have, label: `${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET`};
+  return {ids: five.map(p => p.id), confirmed: conf.length >= 5, listed: have, label: `${g.away} @ ${g.home} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}`};
 }
 function labProps(name){ const ev = PV_PRESETS.find(p => /every/i.test(p[1])) || PV_PRESETS[PV_PRESETS.length - 1]; pv.q = name; pv.preset = ev[0]; pv.game = 'all'; pv.stat = 'all'; goView('props'); }   // same hop the Profile's Props button makes
 function labReset(){ delete edits[cur]; delete logs[cur]; store.set('nml-edits', edits); store.set('nml-log', logs); render(); }
@@ -2838,9 +2838,11 @@ const PICKEM = [['prizepicks', 'PP'], ['underdog', 'UD'], ['sleeper', 'SL']];
 const VENUES = ['kalshi', 'espn', 'pinnacle', 'action', 'polymarket', 'novig'];
 let HS = H0 ? {status: H0.recorder.status, polls: H0.recorder.polls || [], live: false, at: Date.parse(H0.built) / 1000} : null;
 let liveTried = false, liveTimer = null;
-const TZ = 'America/New_York';
+// Every time on the page shows in Central (TZ, labelled TZL). Game days are different: the recorder, the ledger and the board all key a game day by
+// its ET date, so etDay stays on DAY_TZ. Only times a person reads move; the keys they match against do not.
+const TZ = 'America/Chicago', TZL = 'CT', DAY_TZ = 'America/New_York';
 const etFmt = (t, o) => new Intl.DateTimeFormat('en-US', {timeZone: TZ, ...o}).format(new Date(t * 1000));
-const etDay = t => new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(t * 1000));
+const etDay = t => new Intl.DateTimeFormat('en-CA', {timeZone: DAY_TZ, year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(t * 1000));
 // Empty-board copy follows the real date, so it stops talking about opening night once the season is on.
 const OPENING_NIGHT = '2026-10-20';
 const beforeOpening = () => etDay(Date.now() / 1000) < OPENING_NIGHT;
@@ -2896,8 +2898,11 @@ function srcState(p){
   return p.n ? ['ok', 'Healthy'] : ['idle', 'Nothing listed'];
 }
 const pollClass = p => !p.ok ? 'err' : p.src === 'injuries' ? (p.report && p.report !== 'no games' ? 'ok' : 'empty') : (p.n ? 'ok' : 'empty');
-function reportTime(name){
-  const m = /_(\d\d)_(\d\d)(AM|PM)$/.exec(name || ''); return m ? `${+m[1]}:${m[2]} ${m[3]}` : null;
+function reportTime(name){                       // the NBA names a report by its ET time (2026-10-20_05_30PM); show it in Central
+  const m = /^(\d{4})-(\d\d)-(\d\d)_(\d\d)_(\d\d)(AM|PM)$/.exec(name || '');
+  if (!m) return null;
+  const t = wallToEpoch(+m[1], +m[2], +m[3], +m[4] % 12 + (m[6] === 'PM' ? 12 : 0), DAY_TZ) + +m[5] * 60;
+  return clock(t);
 }
 
 function renderHealth(){
@@ -2909,11 +2914,11 @@ function renderHealth(){
   }
   const st = HS.status, ref = HS.live ? Date.now() / 1000 : HS.at;
   $('mode').innerHTML = HS.live
-    ? `${pill('ok', 'Live')}<span>Checked ${clock(HS.at)} ET</span><button class="btn" id="hrefresh" type="button">Refresh</button>`
-    : `${pill('idle', 'Snapshot')}<span>Built ${stamp(HS.at)} ET</span>`;
+    ? `${pill('ok', 'Live')}<span>Checked ${clock(HS.at)} ${TZL}</span><button class="btn" id="hrefresh" type="button">Refresh</button>`
+    : `${pill('idle', 'Snapshot')}<span>Built ${stamp(HS.at)} ${TZL}</span>`;
   $('hbanner').innerHTML = HS.live
     ? `<b>Live.</b><span>Read from the recorder on GitHub every 5 minutes. GitHub can serve files up to 5 minutes old.</span>`
-    : `<b>Snapshot from ${stamp(HS.at)} ET.</b><span>Statuses below are as of that time. The live version of this page: <a href="${LIVE_PAGE}" target="_blank" rel="noopener">vaultfantasy.com/nba/projections.html</a></span>`;
+    : `<b>Snapshot from ${stamp(HS.at)} ${TZL}.</b><span>Statuses below are as of that time. The live version of this page: <a href="${LIVE_PAGE}" target="_blank" rel="noopener">vaultfantasy.com/nba/projections.html</a></span>`;
   $('hrefresh')?.addEventListener('click', () => loadLive());
 
   const polls = HS.polls.filter(p => p.t <= ref + 60);
@@ -2938,7 +2943,7 @@ function renderHealth(){
       kpi('Recorder', I.rec, `<span class="${rc === 'ok' ? 'pos' : rc === 'bad' ? 'neg' : ''}">${rl}</span>`, `Last poll ${agoFrom(st.t, ref)} · ${rd}`) +
       kpi('Sources answering', I.src, `${okN} of ${SRC.length}`, bad.length ? `<span class="neg">${bad.join(', ')} failed</span>` : 'All answered on the last poll') +
       kpi('Poll success, 24h', I.ok, day24.length ? `${Math.round(okP / day24.length * 100)}%` : 'None', day24.length ? `${okP} of ${day24.length} source polls` : 'No polls in the last 24 hours') +
-      kpi('Games priced by 3+ venues', I.game, `${covered} of ${games.length}`, next ? `Next tip ${etFmt(next.tip, {weekday: 'short', month: 'short', day: 'numeric'})}, ${clock(next.tip)} ET` : 'No games in the next 3 days');
+      kpi('Games priced by 3+ venues', I.game, `${covered} of ${games.length}`, next ? `Next tip ${etFmt(next.tip, {weekday: 'short', month: 'short', day: 'numeric'})}, ${clock(next.tip)} ${TZL}` : 'No games in the next 3 days');
   } else {
     $('hkpis').innerHTML = kpi('Recorder', I.rec, 'No status yet', 'The first poll with status has not landed');
   }
@@ -2955,7 +2960,7 @@ function renderHealth(){
       for (const q of [...polls].filter(q => q.src === k).sort((a, b) => b.t - a.t)){ if (q.ok) break; since = q.t; }
       note = `<span class="note err">${esc(p.err || 'Error')} · failing since ${stamp(since)}</span>`;
     } else if (k === 'injuries'){
-      note = `<span class="note">${p?.report === 'no games' ? 'No report posts without games in the next 36 hours' : reportTime(p?.report) ? `Latest: ${reportTime(p.report)} ET report` : 'No report in the last 2 hours'}</span>`;
+      note = `<span class="note">${p?.report === 'no games' ? 'No report posts without games in the next 36 hours' : reportTime(p?.report) ? `Latest: ${reportTime(p.report)} ${TZL} report` : 'No report in the last 2 hours'}</span>`;
     } else if (k === 'novig' && p && p.n){
       note = `<span class="note">${p.props || 0} props matched · ${p.used} of ${p.budget} requests${p.warn ? ` · ${esc(p.warn)}` : ''}</span>`;
     } else if (p && !p.n){
@@ -2996,7 +3001,7 @@ function renderHealth(){
     const t = f.generated ? Date.parse(f.generated) / 1000 : null;
     const stale = !t || now - t > f.stale_days * 86400;
     return `<div class="irow"><b>${f.what}</b>${pill(stale ? 'warn' : 'ok', !t ? 'Missing' : stale ? 'Stale' : 'Fresh')}
-      <small>${t ? `Built ${stamp(t)} ET (${agoFrom(t, now)})` : 'Not built yet'} · stale after ${f.stale_days} days · rebuild with <code>${f.script}</code></small></div>`;
+      <small>${t ? `Built ${stamp(t)} ${TZL} (${agoFrom(t, now)})` : 'Not built yet'} · stale after ${f.stale_days} days · rebuild with <code>${f.script}</code></small></div>`;
   }).join('');
   $('harchive').innerHTML = H0.archive ? H0.archive.map(a => `<div class="irow"><b>${a.what}</b><span class="num">${a.rows.toLocaleString()}</span>
       <small>${a.unit} · ${a.seasons}${a.through ? ` · through ${new Date(a.through.length > 10 ? a.through : a.through + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}` : ''}</small></div>`).join('')
@@ -3004,12 +3009,12 @@ function renderHealth(){
 
   const S = st && st.storage;
   $('hfoot').innerHTML = `
-    <div><b>The recorder</b> runs on GitHub Actions: an hourly check, and on game days a loop from 9am ET to the last tip that polls every 15 minutes, every 5 within 3 hours of a tip. It saves a price only when it changes, and drops a game once it tips, so every row is a pre-game price with the time it was seen.</div>
+    <div><b>The recorder</b> runs on GitHub Actions: an hourly check, and on game days a loop from 8am CT to the last tip that polls every 15 minutes, every 5 within 3 hours of a tip. It saves a price only when it changes, and drops a game once it tips, so every row is a pre-game price with the time it was seen.</div>
     <div><b>Where it goes:</b> the <a href="https://github.com/${H0.repo}/tree/${H0.branch}" target="_blank" rel="noopener">${H0.branch}</a> branch, one folder per game day${S ? `. ${S.days} ${S.days === 1 ? 'day' : 'days'} recorded since ${S.first}, ${(S.bytes / 1e6).toFixed(1)} MB` : ''}.${st?.run ? ` <a href="${st.run}" target="_blank" rel="noopener">Latest run</a>.` : ''}</div>
-    <div><b>Model inputs</b> rebuild every morning at 7:23 ET (GitHub Actions, nba-daily.yml): box scores, depth charts, player projections, game logs, the model's minutes and rate state, then this page. Fitted models (prop model v2, minutes, consensus) are rebuilt only when a backtest is re-run.</div>`;
+    <div><b>Model inputs</b> rebuild every morning at 6:23 CT (GitHub Actions, nba-daily.yml): box scores, depth charts, player projections, game logs, the model's minutes and rate state, then this page. Fitted models (prop model v2, minutes, consensus) are rebuilt only when a backtest is re-run.</div>`;
 }
 
-// 48h poll timeline: one lane per source, one tick per poll. Hour grid every 6 hours, Eastern time.
+// 48h poll timeline: one lane per source, one tick per poll. Hour grid every 6 hours, Central time.
 function renderTimeline(polls, ref){
   const W = 760, L = 112, R = 12, T0 = 6, RH = 26, B = 24, H = T0 + SRC.length * RH + B, span = 48 * 3600, start = ref - span;
   const x = t => L + (t - start) / span * (W - L - R);
@@ -3023,7 +3028,7 @@ function renderTimeline(polls, ref){
     const y = T0 + i * RH;
     g += `<rect class="lane" x="${L}" y="${y + 4}" width="${W - L - R}" height="${RH - 8}" rx="4"/><text class="lab" x="0" y="${y + RH / 2 + 4}">${name}</text>`;
     for (const p of polls) if (p.src === k && p.t >= start)
-      g += `<rect class="${pollClass(p)}" x="${(x(p.t) - 1).toFixed(1)}" y="${y + 7}" width="2" height="${RH - 14}" rx="1"><title>${esc(name)} · ${stamp(p.t)} ET · ${p.ok ? (p.n != null ? p.n + ' markets' : p.report || 'ok') : esc(p.err || 'failed')}</title></rect>`;
+      g += `<rect class="${pollClass(p)}" x="${(x(p.t) - 1).toFixed(1)}" y="${y + 7}" width="2" height="${RH - 14}" rx="1"><title>${esc(name)} · ${stamp(p.t)} ${TZL} · ${p.ok ? (p.n != null ? p.n + ' markets' : p.report || 'ok') : esc(p.err || 'failed')}</title></rect>`;
   });
   g += `<line class="now" x1="${x(ref)}" x2="${x(ref)}" y1="${T0}" y2="${H - B}"/>`;
   const svg = $('htl'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = g;
@@ -3641,14 +3646,14 @@ function renderProps(){
   const gname = g => `${g.away} @ ${g.home}`;
 
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="prefresh" type="button">Refresh</button>`
-    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pill('idle', 'No props yet');
   $('prefresh')?.addEventListener('click', e => NBA_WORKER && onSite ? refreshNow(e.currentTarget) : loadBoard());
 
   const ex = B.games && B.games[0];
   if (pick.mode === 'example'){
     $('pbanner').hidden = false;
-    $('pbanner').innerHTML = `<b>Example board.</b><span>${liveN ? '' : `No player props are listed yet. Kalshi lists them the morning of a game${nextGame ? `; the next game is ${gname(nextGame)}, ${etFmt(nextGame.tip, {weekday: 'short', month: 'short', day: 'numeric'})} at ${clock(nextGame.tip)} ET` : ''}. `}This is ${ex ? `${gname(ex)} on ${etFmt(ex.tip, {month: 'long', day: 'numeric', year: 'numeric'})}, last season's final game,` : 'last season’s final game'} at its pre-tip prices, projected with only what was known that morning (each player's minutes, rates and the model's state before tip). Kalshi shows the last trade as both bid and ask.</span>${liveN ? '<button class="linkbtn" id="pex" type="button">Back to the live board</button>' : ''}`;
+    $('pbanner').innerHTML = `<b>Example board.</b><span>${liveN ? '' : `No player props are listed yet. Kalshi lists them the morning of a game${nextGame ? `; the next game is ${gname(nextGame)}, ${etFmt(nextGame.tip, {weekday: 'short', month: 'short', day: 'numeric'})} at ${clock(nextGame.tip)} ${TZL}` : ''}. `}This is ${ex ? `${gname(ex)} on ${etFmt(ex.tip, {month: 'long', day: 'numeric', year: 'numeric'})}, last season's final game,` : 'last season’s final game'} at its pre-tip prices, projected with only what was known that morning (each player's minutes, rates and the model's state before tip). Kalshi shows the last trade as both bid and ask.</span>${liveN ? '<button class="linkbtn" id="pex" type="button">Back to the live board</button>' : ''}`;
   } else if (pick.mode === 'empty'){
     $('pbanner').hidden = false;
     $('pbanner').innerHTML = `<b>No player props listed yet.</b><span>Kalshi lists them the morning of a game.</span>`;
@@ -3989,7 +3994,7 @@ function signalAgg(stat, venue, side){ return trAgg(cubeRows().filter(r => r.sta
 function renderTrack(){
   const d = TR && TR.data, all = cubeRows();
   $('mode').innerHTML = !d ? pill('idle', 'No ledger yet')
-    : TR.live ? `${pill('ok', 'Live')}<span>Checked ${clock(TR.at)} ET</span>` : `${pill('idle', 'Snapshot')}<span>Ledger as of ${stamp(d.t)} ET</span>`;
+    : TR.live ? `${pill('ok', 'Live')}<span>Checked ${clock(TR.at)} ${TZL}</span>` : `${pill('idle', 'Snapshot')}<span>Ledger as of ${stamp(d.t)} ${TZL}</span>`;
   const tot = trAgg(all);
   // preseason: logged and settled the same way as a rehearsal, kept out of every number on this page (ledger.py)
   const P = d && d.preseason && d.preseason.cube ? trAgg(d.preseason.cube.map(r => Object.fromEntries(d.cube_cols.map((c, i) => [c, r[i]])))) : null;
@@ -4080,7 +4085,7 @@ function renderTrack(){
   const bets = (d && d.bets) || [];
   const fam = b => b.venue === 'kalshi' ? 'kalshi' : b.venue === 'pickem' ? 'pickem' : b.book === 'Polymarket' ? 'polymarket' : 'book';
   const ebinOf = e => e < .05 ? '3-5%' : e < .08 ? '5-8%' : e < .12 ? '8-12%' : '12%+';
-  const dayOf = t => new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(t * 1000));
+  const dayOf = t => new Intl.DateTimeFormat('en-CA', {timeZone: DAY_TZ, year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(t * 1000));
   let B = bets.filter(b => trMatch({venue: fam(b), stat: b.stat, side: ['Over', 'YES'].includes(b.side) ? 'over' : 'under', gate: b.gate, ebin: ebinOf(b.edge), etype: b.etype || 'model', book: b.book, day: dayOf(b.tip)}));
   if (tf.status === 'open') B = B.filter(b => b.result === 'open');
   if (tf.status === 'settled') B = B.filter(b => b.result !== 'open');
@@ -4491,7 +4496,7 @@ function evCase(p, B){
       <thead><tr><th class="l">Venue</th><th class="l">Line</th><th>Price</th><th>Chance</th><th>Moved</th></tr></thead><tbody>
       ${rows.map(r => `<tr class="${r.bet ? 'isbet' : ''}"><td class="l">${esc(r.v)}</td><td class="l">${r.line}</td><td>${r.price ?? ''}</td><td>${r.p != null ? pc(r.p, 1) : '<span class="muted">flat</span>'}</td><td>${tAt(r.t)}</td></tr>`).join('')}
       ${p.cons != null ? `<tr><td class="l" colspan="3">Consensus<small>Other venues, Pinnacle weighted</small></td><td>${pc(p.cons, 1)}</td><td></td></tr>` : ''}</tbody></table></div></div>
-    <div class="ev-panel"><h3><span>What moved and when<small>Today, Eastern time</small></span></h3>
+    <div class="ev-panel"><h3><span>What moved and when<small>Today, Central time</small></span></h3>
       ${tl.length ? `<ul class="ev-tl">${tl.map(([t, txt, k]) => `<li class="${k}"><span class="t">${tAt(t)}</span><span>${txt}</span></li>`).join('')}</ul>` : '<p class="empty">No timestamps on this board.</p>'}</div>
     <div class="ev-panel"><h3>The record behind it ${pill(p.tier, TIER[p.tier])}</h3>
       <div style="font-size:12.5px;color:var(--fg2);margin-bottom:10px">${SLABEL[p.r.e.s]} ${sideKey(p) === 'over' ? 'over / YES' : 'under / NO'} on ${FAM_LABEL[famOf(p)]}, this season</div>
@@ -4507,7 +4512,7 @@ function renderEdges(){
   const B = PS.board, live = pick.live || PS.live || (PB && PB.live);
   const liveN = live && live.props ? live.props.length : 0;
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span><button class="btn" id="erefresh" type="button">Refresh</button>`
-    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pill('idle', 'No props yet');
   $('erefresh')?.addEventListener('click', e => NBA_WORKER && onSite ? refreshNow(e.currentTarget) : loadBoard());
   const games = B.games || [];
@@ -4535,7 +4540,7 @@ function renderEdges(){
   const recent = (B.news || []).filter(n => B.t - n[0] <= NEWS_S);
   const staked = sizedAll.reduce((a, p) => a + p.stake, 0), ev = sizedAll.reduce((a, p) => a + p.ev, 0);
   $('estrip').innerHTML = `
-    <div><span class="k">Slate</span><span class="v">${games.length} ${games.length === 1 ? 'game' : 'games'}</span><span class="h">${next ? `Next tip ${clock(next.tip)} ET` : 'No upcoming tip'}</span></div>
+    <div><span class="k">Slate</span><span class="v">${games.length} ${games.length === 1 ? 'game' : 'games'}</span><span class="h">${next ? `Next tip ${clock(next.tip)} ${TZL}` : 'No upcoming tip'}</span></div>
     <div><span class="k">Edges at ${pc(EDGE_MIN)}+</span><span class="v">${all.length}</span><span class="confs">${['proven', 'backtested', 'tracking', 'untested'].map(k => `<span class="pill ${k}">${cnt(k)} ${TIER[k]}</span>`).join('')}</span></div>
     <div><span class="k">Sized</span><span class="v">$${staked.toFixed(0)} <small>on ${sizedAll.length} plays</small></span><span class="h">${sizedAll.length ? `EV +$${ev.toFixed(2)} · $${ecfg.bank.toLocaleString()} bankroll` : 'Only Proven and Backtest GO plays'}</span></div>
     <div><span class="k">News, last 3 h</span><span class="v">${recent.length}</span><span class="h">${all.filter(p => p.types.includes('news')).length} news edges</span></div>`;
@@ -4574,7 +4579,7 @@ function renderEdges(){
     $('egames').innerHTML = P.length ? `<section class="card ev-game"><div class="ev-ghead"><h2>All games</h2><span class="meta">${ef.sort === 'edge' ? 'Biggest edge first' : 'Most trusted first'}</span><span class="count">${P.length} edges</span></div>${head}${P.map(p => row(p, true)).join('')}</section>` : empty;
   } else {
     const html = [...games].sort((a, b) => a.tip - b.tip).map(g => { const ge = P.filter(p => String(p.r.e.g) === String(g.id)); if (!ge.length) return '';
-      return `<section class="card ev-game"><div class="ev-ghead"><h2 style="display:inline-flex;align-items:center;gap:8px">${lgImg(g.away, 20)}${g.away} @ ${lgImg(g.home, 20)}${g.home}</h2><span class="meta">${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})} · ${clock(g.tip)} ET${g.total != null ? ` · total ${g.total}` : ''}${g.spread != null ? ` · ${g.home} ${g.spread > 0 ? '+' : ''}${g.spread}` : ''}</span><span class="count">${ge.length} ${ge.length === 1 ? 'edge' : 'edges'}</span></div>${head}${ge.map(p => row(p, false)).join('')}</section>`; }).join('');
+      return `<section class="card ev-game"><div class="ev-ghead"><h2 style="display:inline-flex;align-items:center;gap:8px">${lgImg(g.away, 20)}${g.away} @ ${lgImg(g.home, 20)}${g.home}</h2><span class="meta">${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})} · ${clock(g.tip)} ${TZL}${g.total != null ? ` · total ${g.total}` : ''}${g.spread != null ? ` · ${g.home} ${g.spread > 0 ? '+' : ''}${g.spread}` : ''}</span><span class="count">${ge.length} ${ge.length === 1 ? 'edge' : 'edges'}</span></div>${head}${ge.map(p => row(p, false)).join('')}</section>`; }).join('');
     $('egames').innerHTML = html || empty;
   }
 
@@ -4661,7 +4666,7 @@ function renderPropNight(){
   const r = lead.r, T = TIER[lead.tier], g = r.game, opp = r.team === g.home ? g.away : g.home;
   el.innerHTML = `<div class="card-h"><div><h2>Prop of the night</h2><p>${T[2]}</p></div><button class="linkbtn" type="button" data-prop="${esc(r.name)}">Open in Player Props</button></div>
     <div class="card-b np-b"><div class="np-lead">${cutImg(r.e.p, r.name, 72)}
-      <div class="np-w"><span class="np-pill">${pill(T[1], T[0])}</span><b>${esc(r.name)}</b><span class="np-pk">${esc(lead.pick)} ${esc(PV_NOUN[r.e.s] || r.e.s)}</span><small>${esc(r.team)} ${g.home === r.team ? 'vs' : 'at'} ${esc(opp)} · ${clock(g.tip)} ET · ${esc(lead.where)} ${esc(lead.price)} · proj ${fmt(r.mu)}</small></div>
+      <div class="np-w"><span class="np-pill">${pill(T[1], T[0])}</span><b>${esc(r.name)}</b><span class="np-pk">${esc(lead.pick)} ${esc(PV_NOUN[r.e.s] || r.e.s)}</span><small>${esc(r.team)} ${g.home === r.team ? 'vs' : 'at'} ${esc(opp)} · ${clock(g.tip)} ${TZL} · ${esc(lead.where)} ${esc(lead.price)} · proj ${fmt(r.mu)}</small></div>
       <div class="np-e"><small>Edge</small><b class="pos">${ec(lead.edge)}</b><small>fair ${pc(lead.c.fair, 0)}</small></div></div>
       ${more.length ? `<div class="np-s"><p class="np-l">Next best</p>${more.map(x => `<div class="np-r"><span class="pl">${avSm(x.r.e.p, x.r.name)}<div><b>${esc(x.r.name)}</b><small>${esc(x.where)} ${esc(x.pick)} ${esc(PV_NOUN[x.r.e.s] || x.r.e.s)} · ${esc(TIER[x.tier][0].toLowerCase())}</small></div></span><span class="pos">${ec(x.edge)}</span></div>`).join('')}</div>` : ''}</div>`;
 }
@@ -4694,10 +4699,10 @@ function reportWindow(team, g, state){
 function reportChip(team, g, state, B, nQuestionable){
   const w = reportWindow(team, g, state); if (!w) return '';
   const now = Date.now() / 1000, dur = s => { const m = Math.max(1, Math.round(s / 60)); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60 ? (m % 60) + 'm' : ''}`.trim() : `${m}m`; };
-  const hr = h => `${h > 12 ? h - 12 : h}${h >= 12 ? 'pm' : 'am'}`;
+  const hr = t => etFmt(t, {hour: 'numeric'}).replace(' ', '').toLowerCase();         // the window is in the team's own zone; show it in Central
   const tip = 'Teams resubmit the injury report in this window on a game day (reported NBA rule, Dec 2025; times are approximate). A status that is still Questionable before it closes can change.';
   if (w.b2b) return `<p class="nt-rw" title="${tip}"><b>Report</b> second night of a back-to-back: no extra report required</p>`;
-  const when = `${hr(w.a)} to ${hr(w.z)} ${w.zone}`;
+  const when = `${hr(w.start)} to ${hr(w.end)} ${TZL}`;
   if (g.tip <= now) return '';
   if (now < w.start) return `<p class="nt-rw" title="${tip}"><b>Report window</b> ${when}, opens in ${dur(w.start - now)}${nQuestionable ? ` · ${nQuestionable} questionable: wait for it before betting their props` : ''}</p>`;
   if (now < w.end) return `<p class="nt-rw open" title="${tip}"><b>Report window open</b> ${when}, closes in ${dur(w.end - now)}${nQuestionable ? ` · ${nQuestionable} questionable still unresolved` : ''}</p>`;
@@ -4709,7 +4714,7 @@ function renderTonight(){
   renderPropNight();
   const B = PS.board, games = [...(B.games || [])].sort((a, b) => a.tip - b.tip);
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
-    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's final game</span>` : pill('idle', 'No games yet');
   $('nbanner').hidden = pick.mode !== 'example' && games.length > 0;
   $('nbanner').innerHTML = pick.mode === 'example' ? `<b>Example: last season's final game, as the model saw it that morning.</b><span>There was no injury report or lineup feed in this snapshot, so every rotation player is available and nothing is confirmed.</span>`
@@ -4957,7 +4962,7 @@ function renderSim(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   const B = PS.board, games = [...(B.games || [])].sort((a, b) => a.tip - b.tip);
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now() / 1000) : ''}</span>`
-    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's final game</span>` : pill('idle', 'No games yet');
   $('gsbanner').hidden = games.length > 0;
   $('gsbanner').innerHTML = `<b>No games on the board yet.</b><span>The board lists games within 3 days of tip. ${noGamesWhy()}</span>`;
@@ -5095,7 +5100,7 @@ function renderPropSim(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   const B = PS.board || {}, games = [...(B.games || [])].sort((a, b) => a.tip - b.tip);
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now() / 1000) : ''}</span>`
-    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>`
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>`
     : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's final game</span>` : pill('idle', 'No games yet');
   $('psbanner').hidden = games.length > 0;
   $('psbanner').innerHTML = '<b>No games on the board yet.</b><span>Player cards need tonight\'s projections. The scorecard below does not.</span>';
@@ -5118,7 +5123,7 @@ function renderPropSim(){
         <div class="ps-ps"><span class="mn"><em>MIN</em><b>${fmt(r.min, 1)}</b></span>${['pts', 'reb', 'ast'].map(s => `<span><em>${PS_ABB[s]}</em><b>${fmt(r.mu[s], 1)}</b></span>`).join('')}</div>
         <div class="ps-pf">${i.line != null ? `<span>o/u ${i.line}</span><span class="${i.lean === 'over' ? 'pos' : 'neg'}">${psSg(i.edge)} · ${Math.round(i.pLean * 100)}% ${i.lean === 'over' ? 'o' : 'u'}</span>` : '<span>no line yet</span><span>model only</span>'}</div></button>`; };
     $('pstop').innerHTML = (top ? `<button type="button" class="ps-top" data-top="${top.r.pid}|${top.s}"><b class="tag">${top.priced ? 'BIGGEST GAP' : 'STRONGEST LEAN'}</b><span style="color:#e8edf5;font-size:15px">${esc(top.r.name)} <b>${top.i.lean.toUpperCase()} ${top.i.line} ${PS_ABB[top.s]}</b></span><span>model ${fmt(top.i.mu, 1)} · ${Math.round(top.i.pLean * 100)}%${top.priced ? ` vs ${Math.round(top.i.mktLean * 100)}% in the price` : ''}</span></button>` : '') + gapChip();
-    $('pscards').innerHTML = `<div class="card-h"><div><h2>${g.away} at ${g.home}</h2><p>${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})}, ${clock(g.tip)} ET</p></div><span class="ps-lbl">Tap a player</span></div>
+    $('pscards').innerHTML = `<div class="card-h"><div><h2>${g.away} at ${g.home}</h2><p>${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})}, ${clock(g.tip)} ${TZL}</p></div><span class="ps-lbl">Tap a player</span></div>
       <div class="card-b"><div class="ps-cards">${infos.map(cardHtml).join('')}</div></div>`;
 
     sel = shown.find(r => r.pid === ps2.pid);
@@ -5186,7 +5191,7 @@ $('v-propsim').addEventListener('change', e => { if (e.target.dataset.f !== 'lin
 // public Actions API (the repo is public) on the website; the published artifact cannot reach it and says so. "Run now" goes through the Worker.
 const CR = {runs: null, at: 0, err: null, busy: false};
 const CR_FLOWS = [['nba-snapshots.yml', 'prices', 'Price recorder', 'The Worker starts it every 10 minutes (GitHub\'s own hourly schedule is the backup); it polls every 5 minutes inside 3 hours of a tip.'],
-                  ['nba-daily.yml', 'daily', 'Daily refresh', 'Box scores, rosters, projections, model state and the page, at 7:23 AM ET; the Worker retries at 11 AM and 3 PM ET if it has not succeeded.']];
+                  ['nba-daily.yml', 'daily', 'Daily refresh', 'Box scores, rosters, projections, model state and the page, at 6:23 AM CT; the Worker retries at 10 AM and 2 PM CT if it has not succeeded.']];
 async function loadRuns(){
   if (!onSite || CR.busy) return;
   CR.busy = true;
@@ -5217,7 +5222,7 @@ function renderControl(){
     kpi('Daily refresh', ICON.star, ld ? agoFrom(ld.t, now) : (onSite ? '...' : 'n/a'), ld ? 'last success' : 'needs the website') +
     kpi('Next milestone', ICON.edit, next ? (daysTo(next.date) === 0 ? 'Today' : `${daysTo(next.date)} days`) : 'None', next ? esc(next.title) : 'All milestones passed');
   $('crjobs').innerHTML = `<thead><tr><th class="l">Job</th><th class="l">How it runs</th><th>Last run</th><th>Result</th><th></th></tr></thead><tbody>${CR_FLOWS.map(([f, what, name, how]) => { const r = crLast(what);
-    return `<tr><td class="l"><b>${name}</b><small>${f}</small></td><td class="l"><small style="white-space:normal;max-width:46ch">${how}</small></td><td class="num">${r ? `${agoFrom(r.t, now)}<small>${stamp(r.t)} ET</small>` : '<span class="muted">n/a</span>'}</td><td>${r ? crStatus(r) : ''}</td>
+    return `<tr><td class="l"><b>${name}</b><small>${f}</small></td><td class="l"><small style="white-space:normal;max-width:46ch">${how}</small></td><td class="num">${r ? `${agoFrom(r.t, now)}<small>${stamp(r.t)} ${TZL}</small>` : '<span class="muted">n/a</span>'}</td><td>${r ? crStatus(r) : ''}</td>
       <td>${onSite ? `<button class="btn" type="button" data-run="${what}">Run now</button>` : ''}</td></tr>`; }).join('')}</tbody>`;
   const runs = (CR.runs || []).slice(0, 12), EV = {schedule: 'GitHub schedule', workflow_dispatch: 'Worker or Run now'};
   $('crruns').innerHTML = CR.err ? `<p class="muted">Could not load run history (${esc(CR.err)}). GitHub allows 60 requests an hour per address; try again later.</p>`
@@ -5278,7 +5283,7 @@ function renderProfile(){
     const outs = Object.entries(St).filter(([pid, st]) => P[pid] && P[pid][1] === T && /^(Out|Doubtful|Questionable|Inactive)$/.test(st)).slice(0, 6);
     const rot = [...D.teams[T].players].sort((a, b) => (b.min0 || 0) - (a.min0 || 0)).slice(0, 6);
     $('proteam').innerHTML = `<div class="card-h"><div><h2 class="tm">${lgImg(T, 22)}${esc(D.teams[T].name)}</h2><p>${g ? `${g.home === T ? 'Home' : 'Away'} ${g.home === T ? 'vs' : 'at'} ${esc(D.teams[opp] ? D.teams[opp].name : opp)}` : 'No game on the board yet'}</p></div></div>
-      <div class="card-b">${g ? `<div class="pro-next"><div>${lgImg(opp, 30)}<div><b>${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})} · ${clock(g.tip)} ET</b><small>${g.spread != null ? `${esc(g.home)} ${g.spread > 0 ? '+' : ''}${g.spread}` : 'no spread yet'}${g.total != null ? ` · total ${g.total}` : ''}</small></div></div>
+      <div class="card-b">${g ? `<div class="pro-next"><div>${lgImg(opp, 30)}<div><b>${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})} · ${clock(g.tip)} ${TZL}</b><small>${g.spread != null ? `${esc(g.home)} ${g.spread > 0 ? '+' : ''}${g.spread}` : 'no spread yet'}${g.total != null ? ` · total ${g.total}` : ''}</small></div></div>
         <div class="pro-acts"><button class="btn" type="button" data-pgo="tonight" data-g="${g.id}">Open in Tonight</button><button class="btn" type="button" data-pgo="sim" data-g="${g.id}">Simulate it</button></div></div>` : '<p class="empty">The board lists games within three days of tip.</p>'}
         <h3 class="cr-h">Injury report</h3>${outs.length ? outs.map(([pid, st]) => `<div class="irow"><b>${esc(nameOf(B, +pid))}</b><span class="${/out|inactive/i.test(st) ? 'neg' : 'warnt'}">${esc(st)}</span></div>`).join('') : '<p class="muted">Nobody listed.</p>'}
         <h3 class="cr-h">Rotation, projected minutes</h3>${rot.map(p => `<div class="irow"><span class="pl">${avSm(p.id, p.name)}<b>${esc(p.name)}</b></span><span class="num">${fmt(p.min0 || 0, 0)}</span></div>`).join('')}</div>`;
@@ -5312,7 +5317,7 @@ function renderChip(){
   if (!g){ el.innerHTML = `${L}<b>${T}</b><span class="txt">no game soon</span>`; el.title = 'Open your profile'; return; }
   const opp = g.home === T ? g.away : g.home, when = g.tip < now ? `started ${clock(g.tip)}` : `${etDay(g.tip) === etDay(now) ? 'today' : etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)}`;
   el.innerHTML = `${L}<b>${T}</b><span class="txt">${g.home === T ? 'vs' : 'at'} ${opp} · ${when}</span>`;
-  el.title = `${D.teams[T] ? D.teams[T].name : T} ${g.home === T ? 'vs' : 'at'} ${D.teams[opp] ? D.teams[opp].name : opp}, ${etFmt(g.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(g.tip)} ET. Open it in Tonight.`;
+  el.title = `${D.teams[T] ? D.teams[T].name : T} ${g.home === T ? 'vs' : 'at'} ${D.teams[opp] ? D.teams[opp].name : opp}, ${etFmt(g.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(g.tip)} ${TZL}. Open it in Tonight.`;
   favMore(T, g);
 }
 // The two games after it, when the header has room: each is dropped, last first, while the title or the bar would be squeezed.
@@ -5320,7 +5325,7 @@ function favMore(T, first){
   const box = $('favmore'); if (!box) return;
   let B = {}; try { B = pickBoard().board || {}; } catch (e) { /* board not ready */ }
   const now = Date.now() / 1000, gs = [...(B.games || []), ...(B.opening || [])].filter(x => (x.home === T || x.away === T) && x.tip > now - 3 * 3600 && x !== first && (!first || x.id !== first.id)).sort((a, b) => a.tip - b.tip).slice(0, 2);
-  box.innerHTML = gs.map(x => { const o = x.home === T ? x.away : x.home; return `<button class="favchip sm" type="button" data-g="${x.id}" title="${esc((D.teams[T] || {}).name || T)} ${x.home === T ? 'vs' : 'at'} ${esc((D.teams[o] || {}).name || o)}, ${etFmt(x.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(x.tip)} ET. Open it in Tonight.">${lgImg(o, 16)}<span class="txt">${x.home === T ? 'vs' : 'at'} ${o} · ${etDay(x.tip) === etDay(now) ? 'today' : etFmt(x.tip, {weekday: 'short'})} ${clock(x.tip)}</span></button>`; }).join('');
+  box.innerHTML = gs.map(x => { const o = x.home === T ? x.away : x.home; return `<button class="favchip sm" type="button" data-g="${x.id}" title="${esc((D.teams[T] || {}).name || T)} ${x.home === T ? 'vs' : 'at'} ${esc((D.teams[o] || {}).name || o)}, ${etFmt(x.tip, {weekday: 'long', month: 'short', day: 'numeric'})} ${clock(x.tip)} ${TZL}. Open it in Tonight.">${lgImg(o, 16)}<span class="txt">${x.home === T ? 'vs' : 'at'} ${o} · ${etDay(x.tip) === etDay(now) ? 'today' : etFmt(x.tip, {weekday: 'short'})} ${clock(x.tip)}</span></button>`; }).join('');
   favFit();
 }
 function favFit(){
@@ -5388,7 +5393,7 @@ function renderWire(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
   const B = PS.board, ev = (B.wire || []).filter(e => e[7]);
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, Date.now()/1000) : ''}</span>`
-    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No live board');
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No live board');
   $('wbanner').hidden = !!ev.length;
   $('wbanner').innerHTML = pick.mode === 'example' || !B.wire ? `<b>The wire fills on game days.</b><span>It needs the recorder's live day: every injury report and lineup change after the first poll of the morning, and every price change since. The example game has neither.</span>`
     : `<b>No changes yet today.</b><span>The injury report posts every 15 minutes on game days and NBA.com confirms lineups about 30 minutes before tip.</span>`;
@@ -5426,7 +5431,7 @@ function renderWire(){
   $('wsub').textContent = `${E.length} ${E.length === 1 ? 'change' : 'changes'}, newest first. A venue chip shows its first move after the news; red means it has not moved yet.`;
   const chips = r => Object.entries(r).sort((a, b) => (a[1][3] ?? 1e9) - (b[1][3] ?? 1e9)).map(([v, [n, m, med, first]]) =>
     `<span class="${first == null ? 'none' : first <= 300 ? 'fast' : first > 900 ? 'slow' : ''}" title="${m} of ${n} quotes moved${med != null ? `, median ${lagTxt(med)}` : ''}">${esc(v)} ${first == null ? 'not yet' : lagTxt(first)}</span>`).join('');
-  $('wevents').innerHTML = `<thead><tr><th class="l">Seen (ET)</th><th class="l">Team</th><th class="l">Change</th><th class="l">How fast each venue moved</th><th title="Edges on this team the Edges page tags News lag">News edges</th></tr></thead><tbody>
+  $('wevents').innerHTML = `<thead><tr><th class="l">Seen (CT)</th><th class="l">Team</th><th class="l">Change</th><th class="l">How fast each venue moved</th><th title="Edges on this team the Edges page tags News lag">News edges</th></tr></thead><tbody>
     ${E.length ? E.map(e => { const ne = newsEdges.filter(p => p.r.tm === e[2]).length;
       return `<tr><td class="l num">${clock(e[0])}</td><td class="l"><span class="tm">${lgImg(e[2], 20)}<b>${esc(e[2])}</b></span></td>
         <td class="l"><div class="pl">${e[1] === 'five' ? lgImg(e[2], 32) : avSm(e[3], e[4])}<div><b>${e[1] === 'five' ? 'Starting five confirmed' : esc(e[4])}</b><small>${e[1] === 'five' ? esc(e[4]) : `${WKIND[e[1]]}: ${esc(e[5] || 'not listed')} to <span class="${/out|inactive/i.test(e[6] || '') ? 'neg' : ''}">${esc(e[6])}</span>`}</small></div></div></td>
@@ -5575,7 +5580,7 @@ function slateGame(g, B, status, openAll, parts){
   if (parts) return {tbl, why, moves: early ? movesHtml(g) : '', inj: injChips.length ? `<div class="sl-inj">${injChips.join('')}</div>` : ''};
   return `<article class="card sl-card" id="sg-${gid}"><header class="sl-h">
       <div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
-      <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
+      <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span></div></header>
     ${tbl}${why}${early ? movesHtml(g) : ''}${injChips.length ? `<div class="sl-inj">${injChips.join('')}</div>` : ''}${splitH}${lines}</article>`;
 }
 // ── Game Lines V2 card (mocks/game-lines-v2.html): headline numbers, one slim sharp-money row with a drawer, a stale-book callout and one book board with a market switch.
@@ -5613,7 +5618,7 @@ function lvSignals(g, mk, o, nf){                                               
   const out = [], F = o && o.flow, P = o && (o.pin || []).filter(p => p[1] != null);
   if (P && P.length >= 2){ const a = P[0], z = P[P.length - 1], mx = P.reduce((m, x) => x[1] > m[1] ? x : m, a), mn = P.reduce((m, x) => x[1] < m[1] ? x : m, a);
     out.push({k: 'Pinnacle', v: Math.max(-1, Math.min(1, (a[1] - z[1]) / 3)), tiny: z[1] === a[1] ? 'no move' : `${Math.abs(z[1] - a[1]).toFixed(1)} to ${z[1] < a[1] ? g.home : g.away}`,
-      tip: `Pinnacle's ${g.home} spread: ${lvF1(a[1])} at ${clock(a[0])} ET to ${lvF1(z[1])} now${mx[1] > a[1] + 1 ? `, after a high of ${lvF1(mx[1])}` : mn[1] < a[1] - 1 ? `, after a low of ${lvF1(mn[1])}` : ''}`}); }
+      tip: `Pinnacle's ${g.home} spread: ${lvF1(a[1])} at ${clock(a[0])} ${TZL} to ${lvF1(z[1])} now${mx[1] > a[1] + 1 ? `, after a high of ${lvF1(mx[1])}` : mn[1] < a[1] - 1 ? `, after a low of ${lvF1(mn[1])}` : ''}`}); }
   if (F && (F.sharpN || F.vol)) out.push({k: 'Sharp accts', v: Math.max(-1, Math.min(1, (F.sharp || 0) / 5000)), tiny: `${usdK(F.sharp || 0)} ${(F.sharp || 0) < 0 ? g.away : g.home}`, tip: `Polymarket sharp accounts, last 24 hours, net: ${usdK(F.sharp || 0)} on ${(F.sharp || 0) < 0 ? g.away : g.home} over ${F.sharpN || 0} trades`});
   if (F && F.kalVol) out.push({k: 'Kalshi big', v: Math.max(-1, Math.min(1, (F.kal || 0) / 10000)), tiny: `${usdK(F.kal || 0)} ${(F.kal || 0) < 0 ? g.away : g.home}`, tip: `Kalshi tickets of $500 and up: ${usdK(F.kalVol)} traded, net ${usdK(F.kal || 0)} on ${(F.kal || 0) < 0 ? g.away : g.home}`});
   if (nf && nf.side >= 100) out.push({k: 'Novig', v: Math.max(-1, Math.min(1, nf.net / 5000)), tiny: `${usdK(Math.abs(nf.net))} ${nf.net < 0 ? g.away : g.home}`, tip: `Novig exchange tickets of $25 and up on the winner and spread markets, last 24 hours: ${usdK(nf.side)} traded, net ${usdK(Math.abs(nf.net))} on ${nf.net < 0 ? g.away : g.home}`});
@@ -5725,14 +5730,14 @@ function lineCard(g, B, status){
     const sumBest = bSa && bSh ? `<span>${esc(g.away)} ${lvF1(-bSa.s.l)} ${lvPx(bSa.s.a)}<em>${esc(abbr(bSa.n))}</em></span><span>${esc(g.home)} ${lvF1(bSh.s.l)} ${lvPx(bSh.s.h)}<em>${esc(abbr(bSh.n))}</em></span>` : '<span class="muted">No book yet</span>';
     const pips = SIG.map(x => `<i title="${esc(x.k)}: ${esc(x.tiny)}"><b style="${x.v < 0 ? 'right:50%' : 'left:50%'};width:${Math.min(50, Math.abs(x.v) * 50)}%;background:${x.v < 0 ? ac : hcl}"></b></i>`).join('');
     return `<article class="lw${ro ? ' open' : ''}" id="sg-${gid}" style="--a:${ac};--h:${hcl}"><button class="lw-b" type="button" data-lrow="${gid}" aria-expanded="${ro}">
-      <div class="lw-t">${clock(g.tip)}<small>${etFmt(g.tip, {weekday: 'short'})} ET</small></div><div class="lw-m"><div class="lw-mt">${lgImg(g.away, 28)}<b>${esc(g.away)}</b><i>@</i>${lgImg(g.home, 28)}<b>${esc(g.home)}</b></div>${badges ? `<div class="lw-bd">${badges}</div>` : ''}</div>
+      <div class="lw-t">${clock(g.tip)}<small>${etFmt(g.tip, {weekday: 'short'})} ${TZL}</small></div><div class="lw-m"><div class="lw-mt">${lgImg(g.away, 28)}<b>${esc(g.away)}</b><i>@</i>${lgImg(g.home, 28)}<b>${esc(g.home)}</b></div>${badges ? `<div class="lw-bd">${badges}</div>` : ''}</div>
       <div class="lw-v">${sumSpread}</div><div class="lw-v">${sumTotal}</div><div class="lw-wn">${sumWin}</div><div class="lw-bs">${sumBest}</div>
       <div class="lw-sk">${SIG.length ? `<span class="lw-vd ${vcls}">${esc(verdict)}</span><span class="lw-pips">${pips}</span>` : '<span class="muted">Early</span>'}</div><span class="lw-chv"></span></button>
       <div class="lw-dt"><div class="lw-meta">${asof ? `<span>${asof}</span>` : ''}</div>${M || c ? `<div class="lw-tiles">${tS}${tT}${tW}</div>` : '<p class="muted lv-none">No book has posted yet.</p>'}
         <div class="lw-two">${sh}<div class="lw-vl">${vault}${spot}</div></div>${board}</div></article>`;
   }
   return `<article class="card sl-card lv-card${sv.bk[gid] ? ' bk' : ''}" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
-    <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
+    <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span>${asof ? `<span class="lv-asof">${asof}</span>` : ''}</div></header>
     ${pm}${sharpRow}<div class="lv-cols"><div class="lv-l">${slate ? `<div class="lv-sl">${SP.tbl}${SP.why}${SP.moves}${SP.inj}</div>` : tiles + vault}</div><div class="lv-r">${spot}${board}</div></div>${books.length || slate ? `<button class="lv-bk" type="button" data-lbk="${gid}" aria-expanded="${!!sv.bk[gid]}">${sv.bk[gid] ? 'Hide' : 'Show'} ${slate ? 'matchup' : 'book board'}<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : ''}</article>`;
 }
 function lwMetric(g, B, how){                                   // sort keys for the Game Lines list
@@ -6009,7 +6014,7 @@ function muUpdate(root, ctx){
     <button type="button" class="mu2-live" data-mul aria-pressed="${mu.live}"><i></i>Shots in motion</button></div>`;
   $('mu2-vw').innerHTML = [['defense', 'Defense'], ['player', 'His shots'], ['both', 'Both']].map(([v, l]) => `<button type="button" data-muw="${v}" aria-pressed="${mu.vw === v}">${l}</button>`).join('');
   const tm = DD.teams[def], col = muTeamCol(def), svg = $('mu2-svg');
-  $('mu2-def').innerHTML = `${lgImg(def, 30)}<div><b>${esc(def)} defense</b><small>${esc(g.away)} at ${esc(g.home)}, ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</small></div>`;
+  $('mu2-def').innerHTML = `${lgImg(def, 30)}<div><b>${esc(def)} defense</b><small>${esc(g.away)} at ${esc(g.home)}, ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</small></div>`;
   $('mu2-paint').setAttribute('fill', col);
   const lg = PH && PH.logos && PH.logos[def]; const li = $('mu2-logo'); if (lg){ li.setAttribute('href', lg); li.style.display = ''; } else li.style.display = 'none';
   $('mu2-wm').textContent = def;
@@ -6125,14 +6130,14 @@ function slateCard(g, B, status){
   const notes = [...A.notes, ...H.notes].sort((a, b) => a.x - b.x || (b.soft - a.soft)).slice(0, 5);
   const nh = notes.length ? `<div class="sv-nt"><h4>Matchups to know</h4>${notes.map(n => `<p class="${n.soft ? 'soft' : 'tough'}"><i>${n.soft ? '▲' : '▼'}</i><span>${cutImg(n.p.id, n.p.name, 22)}<b>${esc(n.p.name)}</b> <small>${n.p.slot.toUpperCase()}</small> ${esc(muWords(n.opp, n.p.slot.toUpperCase(), n.s, n.r))}</span></p>`).join('')}</div>` : '';
   return `<article class="card sl-card sv-card" id="sg-${gid}"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
-    <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
+    <div class="sl-meta">${badges}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span></div></header>
     <div class="sv-body">${A.html}<div class="sv-mid"><div class="sv-tls">${mkt}</div>${read ? `<p class="sv-rd">${esc(read)} · <button class="linkbtn" type="button" data-golines="1">every book</button></p>` : `<p class="sv-rd"><button class="linkbtn" type="button" data-golines="1">Every book and the sharp read</button></p>`}${nh}</div>${H.html}</div></article>`;
 }
 const sgn = x => `${x >= 0 ? '+' : ''}${fmt(x)}`;
 function renderSlate(){
   const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, lines = view === 'lines';
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
-    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No games yet');
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
   // one-time opening pass (snapshot.py OPENER_PASS_END): games past the 3-day board with lines already posted, here only
   const games = [...(B.games || []), ...(B.opening || [])].sort((a, b) => a.tip - b.tip), days = [...new Set(games.map(g => etDay(g.tip)))];
   if (!days.includes(sv.day)) sv.day = days[0] || null;
@@ -6272,7 +6277,7 @@ function xGame(g, o){
     if (f[3] != null && c[3] != null && f[3] !== c[3]) mv.push(`total ${fmt(f[3])} to ${fmt(c[3])}`);
     if (f[5] != null && c[5] != null && Math.abs(f[5] - c[5]) >= .01) mv.push(`${g.home} win ${pc(f[5])} to ${pc(c[5])}`);
   }
-  const moveH = c ? `<div class="sx-move">${xSpark(P, g.tip)}<p>${f && f !== c ? `Since ${stamp(f[0])} ET: ${mv.length ? mv.join(', ') : 'prices moved at the same numbers'}.` : 'No move recorded yet.'}${o.open ? '' : ''}</p></div>` : '';
+  const moveH = c ? `<div class="sx-move">${xSpark(P, g.tip)}<p>${f && f !== c ? `Since ${stamp(f[0])} ${TZL}: ${mv.length ? mv.join(', ') : 'prices moved at the same numbers'}.` : 'No move recorded yet.'}${o.open ? '' : ''}</p></div>` : '';
   const beh = (o.behind || []).map(b => `<span class="sx-chip ${b.ev >= .03 ? 'go' : ''}" title="Pinnacle's fair at the same number: ${pAm(b.fair)} (${pc(b.fair, 1)})">${esc(b.venue)} ${xSide(b, g)} ${b.venue === 'Kalshi' ? Math.round(b.price * 100) + '¢' : (b.price > 0 ? '+' : '') + b.price} · ${pc(b.ev, 1)}</span>`).join('');
   const F = o.flow || {}, team = v => v > 0 ? g.home : g.away;
   const fl = [['Sharp accounts', F.sharp, F.sharpN ? `${F.sharpN} ${F.sharpN === 1 ? 'trade' : 'trades'}` : ''], ['Usually losing', F.dull, ''], ['Everyone', F.all, F.vol ? `${usdK(F.vol)} traded` : '']];
@@ -6281,7 +6286,7 @@ function xGame(g, o){
       ${F.kalVol ? `<p class="sx-lab">Kalshi tickets $500+: ${usdK(F.kalVol)}, net ${F.kal ? `${usdK(F.kal)} on ${team(F.kal)}` : 'even'}</p>` : ''}</div>` : '';
   const tk = (o.tickets || []).slice().reverse().slice(0, 5).map(x => `<tr><td class="l muted">${clock(x[0])}</td><td class="l">${esc(x[1])}</td><td class="l">${xSide({m: x[2], side: x[3], line: x[8]}, g)}</td><td>${usdK(x[4])}</td><td>${Math.round(x[5] * 100)}¢</td><td class="l">${x[6] === 'sharp' ? '<span class="badge">sharp</span>' : x[6] === 'dull' ? '<span class="badge bad">usually losing</span>' : ''}</td></tr>`).join('');
   return `<article class="card sx-card"><header class="sl-h"><div class="sl-teams">${lgImg(g.away, 24)}<b>${g.away}</b><small>${esc(tn(g.away))}</small><span>@</span>${lgImg(g.home, 24)}<b>${g.home}</b><small>${esc(tn(g.home))}</small></div>
-      <div class="sl-meta">${g.season_type === 1 ? '<span class="badge">Preseason</span>' : ''}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span></div></header>
+      <div class="sl-meta">${g.season_type === 1 ? '<span class="badge">Preseason</span>' : ''}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span></div></header>
     <p class="sx-lab">Pinnacle fair, vig removed</p>${fairRow}${moveH}
     ${beh ? `<div><p class="sx-lab">Priced better than Pinnacle's fair at the same number</p><div class="sx-chips">${beh}</div></div>` : ''}
     ${flowH}${tk ? `<details class="sl-lines"><summary>Big and sharp tickets · ${(o.tickets || []).length}</summary><div class="nt-tw"><table class="nt sx-tk"><tbody>${tk}</tbody></table></div></details>` : ''}</article>`;
@@ -6311,7 +6316,7 @@ function xFeedCap(n){
 function renderSharp(){
   const pick = slateBoard(), B = pick.board, SH = B.sharp, now = Date.now() / 1000;
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>`
-    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ET</span>` : pill('idle', 'No games yet');
+    : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
   const games = [...(B.games || [])].sort((a, b) => a.tip - b.tip), byId = Object.fromEntries(games.map(g => [String(g.id), g]));
   $('xbanner').hidden = !!(SH && games.length);
   $('xbanner').innerHTML = !games.length ? `<b>No games on the board yet.</b><span>The recorder lists games within 3 days of tip. ${noGamesWhy()}</span>`
@@ -6334,7 +6339,7 @@ function renderSharp(){
   $('xstripbar').hidden = !gameIds.length;
   if (gameIds.length) gameStripMount($('xstrip'), gameStrip(games.filter(g => gameIds.includes(String(g.id))), xf.game, {all: true}));
   const F = A.filter(a => (xf.type === 'all' || a.type === xf.type) && (xf.game === 'all' || a.g === xf.game)).slice(0, 80);
-  $('xfeed').innerHTML = `<thead><tr><th class="l">Seen (ET)</th><th class="l">Game</th><th class="l">Signal</th><th title="Pinnacle's fair for this side at this number when it fired">Fair then</th><th title="Pinnacle's fair now, same side and number">Now</th><th title="Now minus then, probability points: positive = the market has come to this side">Since</th></tr></thead><tbody>
+  $('xfeed').innerHTML = `<thead><tr><th class="l">Seen (CT)</th><th class="l">Game</th><th class="l">Signal</th><th title="Pinnacle's fair for this side at this number when it fired">Fair then</th><th title="Pinnacle's fair now, same side and number">Now</th><th title="Now minus then, probability points: positive = the market has come to this side">Since</th></tr></thead><tbody>
     ${F.length ? F.map(a => { const g = byId[a.g], o = SH.games[a.g] || {}, fn = ladFair(o.lad, a.m, a.side, a.line), d = fn != null && a.fair != null ? fn - a.fair : null;
       return `<tr><td class="l num">${etFmt(a.t, {weekday: 'short'})} ${clock(a.t)}</td><td class="l"><b>${g.away} @ ${g.home}</b></td><td class="l sx-txt"><span class="sx-type t-${a.type}">${XTYPE[a.type]}</span> ${xText(a, g)}</td>
         <td>${a.fair != null ? pc(a.fair, 1) : ''}</td><td>${fn != null ? pc(fn, 1) : ''}</td><td>${d != null ? (Math.abs(d) < .0005 ? '<span class="muted">0.0</span>' : `<span class="${d > .0049 ? 'pos' : d < -.0049 ? 'neg' : 'muted'}">${d > 0 ? '+' : ''}${(d * 100).toFixed(1)}</span>`) : ''}</td></tr>`; }).join('')
@@ -6927,7 +6932,7 @@ function pvNovig(r){                                                         // 
   if (!rows.length && !T.length) return '';
   const px = v => v == null ? '-' : Math.round(v * 100) + '¢';
   const line = x => `<div class="pv-sg"><span class="pv-sk p_mkt">Over ${x.k}</span><div><p>${x.mid != null ? `Over ${px(x.bid[0])} bid / ${px(x.ask[0])} ask (${pc(x.mid, 0)})` : `One-sided: Over bid ${px(x.bid[0])}, Under bid ${px(x.bid[1])}`}</p><small>${usdK(x.rest)} resting${x.tr ? ` · ${x.tr} new trades` : ''}</small></div></div>`;
-  const tk = t => `<div class="pv-sg"><span class="pv-sk p_kal">Ticket</span><div><p>${esc(t.on)} at ${px(t.px)}: ${usdK(t.usd)}</p><small>${clock(t.t)} ET</small></div></div>`;
+  const tk = t => `<div class="pv-sg"><span class="pv-sk p_kal">Ticket</span><div><p>${esc(t.on)} at ${px(t.px)}: ${usdK(t.usd)}</p><small>${clock(t.t)} ${TZL}</small></div></div>`;
   return `<div class="pv-shead none"><b>Novig exchange</b><span>Real money resting on the book, anonymous. Props here are thin: a one-sided book is not a price.</span></div>${rows.map(line).join('')}${T.map(tk).join('')}`;
 }
 function pvSharpSec(r){
@@ -6935,7 +6940,7 @@ function pvSharpSec(r){
   const head = !S.sig.length ? ['none', 'No sharp signal on this prop'] : S.vs === 'with' ? ['with', 'Sharp money is with this bet']
     : S.vs === 'against' ? ['against', 'Sharp money is against this bet'] : S.lean === 'split' ? ['none', 'Sharp signals are split'] : ['none', `Sharp money leans ${S.lean}`];
   const rows = [...S.sig].sort((a, b) => (a.t ?? 9e12) - (b.t ?? 9e12)).map(x => `<div class="pv-sg"><span class="pv-sk ${x.type}">${PV_SK[x.type]}</span>
-    <div><p>${pvSharpText(x, r)}</p><small>${x.t ? `${clock(x.t)} ET${tip ? ` · ${Math.max(0, Math.round((tip - x.t) / 60))} min before tip` : ''}` : 'since open'} · toward the ${x.side}${x.fair != null ? ` · Pinnacle's fair for the ${x.side} then ${pc(x.fair, 1)}` : ''}</small></div></div>`).join('');
+    <div><p>${pvSharpText(x, r)}</p><small>${x.t ? `${clock(x.t)} ${TZL}${tip ? ` · ${Math.max(0, Math.round((tip - x.t) / 60))} min before tip` : ''}` : 'since open'} · toward the ${x.side}${x.fair != null ? ` · Pinnacle's fair for the ${x.side} then ${pc(x.fair, 1)}` : ''}</small></div></div>`).join('');
   return `<section class="card pv-sec"><div class="pv-sh"><h3>Sharp money</h3><p>Where informed money went on this prop: Pinnacle's moves, Polymarket accounts with a winning record against the close, heavy money on a Kalshi rung, and venues moving together.</p></div>
     <div class="pv-shead ${head[0]}"><b>${head[1]}</b>${S.vs === 'against' ? '<span>Worth a second look before betting: sharp accounts beat the closing price on average.</span>' : S.vs === 'with' ? '<span>Agreement adds comfort, not edge: by the time you see it, the price has usually moved.</span>' : ''}</div>
     ${rows || '<p class="muted pv-none">No Pinnacle move, sharp-account trade, heavy Kalshi money or market-wide move on this prop.</p>'}
@@ -7113,8 +7118,8 @@ function pvDetail(r){
   else verdictOf = () => ({kind: 'pass', title: 'No price is 3% better than fair', pill: null,
       html: `<p>${b ? `The best available is ${esc(pvBetShort(b))} at ${pvPrice(b)}, ${b.edge >= 0 ? '+' : ''}${pc(b.edge, 1)}. Priced about right.` : 'No prices to compare yet.'}</p>`});
   const mv = (r.books || []).filter(x => x.l0 != null).map(x => x.l0 === x.line && x.o0 === x.o ? `<b>${esc(x.bk)}</b> has not moved since it opened (${x.line}, over ${x.o}).` : `<b>${esc(x.bk)}</b> opened ${x.l0} (over ${x.o0}); now ${x.line} (over ${x.o}).`);
-  const news = (B.news || []).filter(n => n[3] === r.tm).slice(0, 3).map(n => `<b>${clock(n[0])} ET</b> ${esc(n[2])}: ${n[4] === 'lu' ? (n[5] === 'X' ? 'inactive (NBA.com)' : 'confirmed starter') : esc(n[5] || '') + ' (injury report)'}`);
-  const head = {name: r.name, ini: initials(r.name), src: phSrc(r.e.p), big: onSite ? phBig(r.e.p) : null, fit: phFit(r.e.p), wash: teamWash(r.tm), stat: PV_SL[r.e.s] || r.e.s, game: g ? `${r.tm || ''} vs ${opp} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET` : '',
+  const news = (B.news || []).filter(n => n[3] === r.tm).slice(0, 3).map(n => `<b>${clock(n[0])} ${TZL}</b> ${esc(n[2])}: ${n[4] === 'lu' ? (n[5] === 'X' ? 'inactive (NBA.com)' : 'confirmed starter') : esc(n[5] || '') + ' (injury report)'}`);
+  const head = {name: r.name, ini: initials(r.name), src: phSrc(r.e.p), big: onSite ? phBig(r.e.p) : null, fit: phFit(r.e.p), wash: teamWash(r.tm), stat: PV_SL[r.e.s] || r.e.s, game: g ? `${r.tm || ''} vs ${opp} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}` : '',
     badges: [fiveS || r.lu === 'S' ? {t: 'Starting five confirmed'} : r.lu === 's' ? {t: 'Expected to start'} : r.lu === 'B' ? {t: 'Bench'} : null, r.inj ? {t: r.inj, warn: true} : null].filter(Boolean),
     proj: fmt(r.mu), range: rg ? `usually ${fmt(rg[0], 0)} to ${fmt(rg[1], 0)}` : ''};
   const minsHtml = `<div class="pv-mins"><span>Minutes <b>${fmt(mn)}</b></span><div class="pv-mbar"><span class="rng" style="left:${lo / 48 * 100}%;width:${(hi - lo) / 48 * 100}%"></span>${r.min0 ? `<span class="us" style="left:${r.min0 / 48 * 100}%" title="His usual ${fmt(r.min0)}"></span>` : ''}<span class="pt" style="left:${mn / 48 * 100}%"></span></div>
@@ -7208,7 +7213,7 @@ function pvBackground(){
   renderNav();
 }
 function pvBell(){ pvMountTools(); }
-function pvAgo(t){ const d = etFmt(t, {month: 'short', day: 'numeric'}), today = etFmt(Date.now() / 1000, {month: 'short', day: 'numeric'}); return `${d === today ? '' : d + ', '}${clock(t)} ET`; }
+function pvAgo(t){ const d = etFmt(t, {month: 'short', day: 'numeric'}), today = etFmt(Date.now() / 1000, {month: 'short', day: 'numeric'}); return `${d === today ? '' : d + ', '}${clock(t)} ${TZL}`; }
 function pvRenderAlerts(){
   const nW = Object.keys(pvW).length;
   $('pv-alerts').innerHTML = `<div class="pv-sh"><h3>Since you last looked</h3><p>Alerts on the ${nW} prop${nW === 1 ? '' : 's'} you watch: the edge reaching 3% or going away, a line moving a point, sharp money, news. They collect here while the page is open and wait for you when you come back.</p></div>
@@ -7474,7 +7479,7 @@ function ppSlip(x){
   const pick = L => { const g = L.r.game, opp = L.team === g.home ? g.away : g.home;
     const bx = PS.mode === 'example' ? pvGlBox({p: L.r.e.p, day: g.day}) : undefined, y = bx == null ? null : PV_BOXI[L.r.e.s].reduce((a, i) => a + bx[i], 0), hit = y == null ? null : L.side === 'over' ? y > L.line : y < L.line;
     return `<div class="pp-pk"><span class="pp-av" data-ph="${L.r.e.p}">${esc(initials(L.r.name))}${phImg(L.r.e.p)}</span>
-      <div class="pp-who"><b>${esc(L.r.name)}</b><span>${esc(L.team)} vs ${esc(opp)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span><span class="ch">Market chance <b>${pc(L.p)}</b> · model ${pc(L.pm)}${L.far ? ' <span class="warnt" title="The model and the market are far apart, or the chance is very high for an app line. That usually means a stale line or news one side has not priced. Check the report before you trust it.">check news</span>' : ''}</span>${hit != null ? `<span class="res ${hit ? 'w' : 'l'}" title="What happened (example game only)">${hit ? '✓' : '✗'} had ${fmt(y, 0)}</span>` : ''}</div>
+      <div class="pp-who"><b>${esc(L.r.name)}</b><span>${esc(L.team)} vs ${esc(opp)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span><span class="ch">Market chance <b>${pc(L.p)}</b> · model ${pc(L.pm)}${L.far ? ' <span class="warnt" title="The model and the market are far apart, or the chance is very high for an app line. That usually means a stale line or news one side has not priced. Check the report before you trust it.">check news</span>' : ''}</span>${hit != null ? `<span class="res ${hit ? 'w' : 'l'}" title="What happened (example game only)">${hit ? '✓' : '✗'} had ${fmt(y, 0)}</span>` : ''}</div>
       <div class="pp-line"><b>${L.line}</b><span>${PP_SHORT[L.r.e.s]}</span></div>
       <div class="pp-ml" aria-label="${L.side === 'over' ? 'More' : 'Less'}"><span class="${L.side === 'over' ? 'on' : ''}">▲ More</span><span class="${L.side === 'under' ? 'on' : ''}">▼ Less</span></div></div>`; };
   const logged = pvBets.some(b => b.k === x.k);
@@ -7498,7 +7503,7 @@ function ppSlips(){
 }
 function renderPairs(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
-  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ${TZL}</span>` : pill('idle', 'No props yet');
   const rows = pv.rows = pvRows().rows, S = ppSlips(), pay = ppPay(), need = Math.pow(1 / pay, 1 / pp.n);
   const seen = new Set(), singles = [...S.legs].sort((a, b) => b.p - a.p).filter(l => { const k = l.r.e.p; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
   const seg = (key, opts, cur) => `<div class="seg" data-pk="${key}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`;
@@ -7538,7 +7543,7 @@ function alsoFor(r){
     return `<tr><td class="l">${esc(ALSO_NAME[code] || code)}</td><td class="l">${esc(app)}</td><td>${yes ? 'Yes' : line}</td><td>${o ?? '<span class="muted">flat</span>'}</td><td>${yes && u == null ? '<span class="muted">none</span>' : (u ?? '<span class="muted">flat</span>')}</td><td>${o != null ? pc(amP(o)) : ''}</td><td>${t ? clock(t) : ''}</td></tr>`;
   }).join('');
   return `<section class="card pv-sec"><div class="pv-sh"><h3>More pick'em lines</h3><p>Double-doubles and first-quarter lines the apps post for him. Vault has no number for these yet, so there is no edge, no bet and nothing is logged. "Chance" is only what the app's price implies, vig included.</p></div>
-    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Market</th><th class="l">App</th><th>Line</th><th>Over</th><th>Under</th><th>Chance</th><th>Updated ET</th></tr></thead><tbody>${tr}</tbody></table></div></section>`;
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Market</th><th class="l">App</th><th>Line</th><th>Over</th><th>Under</th><th>Chance</th><th>Updated CT</th></tr></thead><tbody>${tr}</tbody></table></div></section>`;
 }
 function ppMkBet(x, stake, pay){
   if (!(stake > 0) || !(pay >= 1.5)) return null;
@@ -7632,7 +7637,7 @@ function plTeamTotal(g, team){ if (g.total == null || g.spread == null) return n
 
 function renderPlayer(modal = false){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
-  if (!modal) $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
+  if (!modal) $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ${TZL}</span>` : pill('idle', 'No props yet');
   const root = modal ? $('pl-mroot') : $('pl-root'), B = PS.board, pid = pl.pid, X = PIDX[pid];
   const search = modal ? '' : `<div class="pl-search"><input id="pl-q" type="search" placeholder="Find a player" autocomplete="off" value="${esc(pl.q)}" aria-label="Find a player"><div id="pl-hits" class="pl-hits">${plSearchHtml()}</div></div>`;
   if (!X){
@@ -7670,7 +7675,7 @@ function renderPlayer(modal = false){
     const b = r.best, bt = b && b.edge >= EDGE_MIN ? `<span class="${b.g === 'no-go' ? 'muted' : 'pos'}">${esc(b.bk)} ${b.venue === 'kalshi' ? `${b.side} ${b.line + .5}+` : `${b.side} ${b.line}`} ${ec(b.edge)}%</span>` : '';
     return `<div class="pl-c"><small>${SLABEL[s]} · Vault</small><b>${r.mu != null && r.min > 0 ? fmt(r.mu) : '<span class="muted">hold</span>'}</b><span>${r.line != null ? `line ${r.line}${r.lineFrom ? ' · ' + esc(r.lineFrom) : ''}` : 'no line'}</span>${bt}</div>`; };
   const strip = `<section class="card pl-strip">
-    <div class="pl-c w"><small>${g ? `${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})} · ${clock(g.tip)} ET` : 'Matchup'}</small><b>${g ? `${lgImg(g.away, 22)} ${g.away} @ ${lgImg(g.home, 22)} ${g.home}` : '<span class="muted">No game on the board</span>'}</b>
+    <div class="pl-c w"><small>${g ? `${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})} · ${clock(g.tip)} ${TZL}` : 'Matchup'}</small><b>${g ? `${lgImg(g.away, 22)} ${g.away} @ ${lgImg(g.home, 22)} ${g.home}` : '<span class="muted">No game on the board</span>'}</b>
       <span>${g ? `${g.spread != null ? `${g.home} ${g.spread > 0 ? '+' : ''}${g.spread}` : 'no spread'} · total ${g.total ?? 'none'}${tt != null ? ` · ${team} implied ${fmt(tt)}` : ''}` : 'He appears here when his game is within 3 days.'}</span></div>
     ${['pts', 'reb', 'ast', '3pm'].map(cell).join('')}
     <div class="pl-c"><small>Minutes · Vault</small><b>${mrow && mrow.min > 0 ? fmt(mrow.min) : '<span class="muted">none</span>'}</b><span>${mrow && mrow.min > 0 ? `${fmt(Math.max(0, mrow.min - 1.2816 * sdm), 0)} to ${fmt(Math.min(48, mrow.min + 1.2816 * sdm), 0)} likely` : 'not projected'}</span>${mrow && mrow.min0 ? `<span>usual ${fmt(mrow.min0, 0)}</span>` : ''}</div></section>`;
@@ -7924,7 +7929,7 @@ function ccCard(P, tag, note){
   const single = legs.length === 1;
   const leg = l => { const g = l.game, opp = l.team === g.home ? g.away : g.home, others = ccQuotes(l.r, l.side, l.line).filter(q => q.key !== P.key).sort((a, b) => a.cost - b.cost).slice(0, 3);
     return `<div class="pp-pk"><span class="pp-av" data-ph="${l.pid}">${esc(initials(l.name))}${phImg(l.pid)}</span>
-      <div class="pp-who"><b><a class="plink" href="#player/${l.pid}">${esc(l.name)}</a></b><span>${esc(l.team)} vs ${esc(opp)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</span>
+      <div class="pp-who"><b><a class="plink" href="#player/${l.pid}">${esc(l.name)}</a></b><span>${esc(l.team)} vs ${esc(opp)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span>
         <span class="ch"><b>${esc(l.q.venue)} ${ccF(l.q.am)}</b> · fair ${ccF(ccAm(l.pm))} (${pc(l.pm)}) · <span class="${l.q.dec * l.pm - 1 >= EDGE_MIN ? 'pos' : ''}">${l.q.dec * l.pm - 1 >= 0 ? '+' : ''}${((l.q.dec * l.pm - 1) * 100).toFixed(1)}%</span></span>
         <span class="ch muted">${l.fair ? `fair from ${esc(l.fair.basis)} at this line` : 'estimated from other lines: no other venue posts this line'}</span>
         ${others.length ? `<span class="ch muted">also ${others.map(q => `${esc(q.venue)} ${ccF(q.am)}`).join(' · ')}</span>` : ''}</div>
@@ -8037,7 +8042,7 @@ function ccStraightHtml(list){
   const min = cc.minEv, rows = list.filter(l => l.ev >= min), shown = rows.slice(0, cc.straightN);
   const seg = `<div class="seg" data-ccmin="1"><button type="button" data-v="0.03" aria-pressed="${min === .03}">3%+ edge</button><button type="button" data-v="0" aria-pressed="${min === 0}">Any +EV</button></div>`;
   const tr = l => { const g = l.game, others = ccQuotes(l.r, l.side, l.line).filter(q => q.key !== l.q.key).sort((a, b) => a.cost - b.cost).slice(0, 3);
-    return `<tr><td class="l"><b><a class="plink" href="#player/${l.pid}">${esc(l.name)}</a></b><small>${esc(l.team)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ET</small></td>
+    return `<tr><td class="l"><b><a class="plink" href="#player/${l.pid}">${esc(l.name)}</a></b><small>${esc(l.team)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</small></td>
       <td class="l">${l.side === 'over' ? 'Over' : 'Under'} <b>${l.line}</b> ${PP_SHORT[l.s]}<small class="cc-alt on">alt · main ${l.main}</small></td>
       <td class="l"><b>${esc(l.q.venue)} ${ccF(l.q.am)}</b>${l.q.exch ? '<small>exchange, fee in</small>' : ''}</td>
       <td>${ccF(ccAm(l.pm))}<small>${pc(l.pm, 1)} · ${esc(l.fair.basis)}</small></td>
@@ -8068,7 +8073,7 @@ function ccRecordHtml(){
 }
 function renderCombo(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
-  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ${TZL}</span>` : pill('idle', 'No props yet');
   for (const k of Object.keys(ccCombos)) delete ccCombos[k];
   const n = ccRows().length, S = cc.sug || (cc.sug = ccSuggest()), nAll = ccAll().length, nBooks = new Set(ccAll().filter(l => !l.q.exch).map(l => l.q.key)).size,
     nKal = ccRows().filter(r => (r.e.kal || []).length > 1).length, nNov = Object.values((PS.board.novig && PS.board.novig.props) || {}).filter(x => (x.lad || []).length > 1).length;
@@ -8077,7 +8082,7 @@ function renderCombo(){
   $('cc-root').innerHTML = `
     <section class="card pp-read"><p class="big">Combo Check</p>
       <p>Alt-line combos priced from <b>real quotes</b>: every leg is an alt line (at least a point off the main line) that a book or exchange is posting right now, at its own price, between <b>-140 and +200</b>. Nothing to type in. A combo is priced at one sportsbook as the product of its leg prices and compared with the market's fair price, with the quoting book left out of the fair price. Legs can be any players on any teams; the pick'em apps' one-player-per-team rule does not apply here.</p>
-      <p>${nBooks ? `Sportsbook alt-line prices (${nBooks} books) via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>${window.__ssAsof ? (() => { const m = Math.max(0, Math.round((Date.now() - window.__ssAsof) / 60000)), age = m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; return m > 15 ? `, <span class="warnt" title="The refresh job on the owner's Mac publishes every 5 minutes; it may be off or asleep. Alt prices move, so check the book before betting.">as of ${clock(Math.floor(window.__ssAsof / 1000))} ET, ${age} old</span>` : `, as of ${clock(Math.floor(window.__ssAsof / 1000))} ET`; })() : ''}, plus exchange prices from Kalshi, Novig and Polymarket.` : 'No sportsbook alt-line prices are loaded, so only exchange prices (Kalshi, Novig, Polymarket) and book lines on the board are used.'} Everything is a Lean at most.</p>
+      <p>${nBooks ? `Sportsbook alt-line prices (${nBooks} books) via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>${window.__ssAsof ? (() => { const m = Math.max(0, Math.round((Date.now() - window.__ssAsof) / 60000)), age = m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; return m > 15 ? `, <span class="warnt" title="The refresh job on the owner's Mac publishes every 5 minutes; it may be off or asleep. Alt prices move, so check the book before betting.">as of ${clock(Math.floor(window.__ssAsof / 1000))} ${TZL}, ${age} old</span>` : `, as of ${clock(Math.floor(window.__ssAsof / 1000))} ${TZL}`; })() : ''}, plus exchange prices from Kalshi, Novig and Polymarket.` : 'No sportsbook alt-line prices are loaded, so only exchange prices (Kalshi, Novig, Polymarket) and book lines on the board are used.'} Everything is a Lean at most.</p>
       ${window.__altsState === 'signin' ? `<div class="cc-unlock"><b>Sportsbook alt prices are private.</b><button class="pv-ghost" type="button" data-ccsignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>` : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>Sportsbook alt prices are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-ccsignin="1">Use another account</button></div>` : ''}</section>
     ${ccStraightHtml(S.straight)}
     ${ccRecordHtml()}
