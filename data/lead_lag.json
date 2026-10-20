@@ -1,8 +1,8 @@
 {
- "tape_through": 1792512325,
+ "tape_through": 1792514114,
  "games": 183,
- "rows": 16821,
- "pinnacle_median_gap_min": 245.0,
+ "rows": 16955,
+ "pinnacle_median_gap_min": 244.2,
  "rule": {
   "event": "Pinnacle line moved 0.5+ (spread, total) or no-vig chance moved 2+ points (moneyline), time known to within 30 minutes, 3+ hours before kickoff",
   "lag": "minutes to the first book row at or past the new level (moneyline: half the move)",
@@ -116,17 +116,17 @@
      "BetRivers": {
       "n": 44,
       "led": 2,
-      "not_followed": 23,
-      "followed": 19,
+      "not_followed": 22,
+      "followed": 20,
       "pct_led": 0.045,
-      "pct_not_followed": 0.523,
+      "pct_not_followed": 0.5,
       "pct_followed_within_15": 0.023,
       "pct_followed_within_60": 0.068,
-      "median_min": 696.9,
-      "p25_min": 180.2,
-      "p75_min": 1019.4,
-      "within_15": 0.053,
-      "within_60": 0.158
+      "median_min": 699.2,
+      "p25_min": 330.4,
+      "p75_min": 1140.8,
+      "within_15": 0.05,
+      "within_60": 0.15
      },
      "bet365": {
       "n": 44,
@@ -141,17 +141,17 @@
      "US books (all five)": {
       "n": 220,
       "led": 61,
-      "not_followed": 107,
-      "followed": 52,
+      "not_followed": 106,
+      "followed": 53,
       "pct_led": 0.277,
-      "pct_not_followed": 0.486,
+      "pct_not_followed": 0.482,
       "pct_followed_within_15": 0.032,
       "pct_followed_within_60": 0.082,
       "median_min": 247.7,
       "p25_min": 30.0,
       "p75_min": 768.6,
-      "within_15": 0.135,
-      "within_60": 0.346
+      "within_15": 0.132,
+      "within_60": 0.34
      }
     }
    },
@@ -239,102 +239,142 @@
   },
   "nba": {
    "tot": {
-    "events": 11,
+    "events": 15,
     "by_book": {
      "DraftKings": {
-      "n": 11,
-      "led": 4,
+      "n": 15,
+      "led": 6,
       "not_followed": 4,
-      "followed": 3
+      "followed": 5,
+      "pct_led": 0.4,
+      "pct_not_followed": 0.267,
+      "pct_followed_within_15": 0.067,
+      "pct_followed_within_60": 0.067
      },
      "FanDuel": {
-      "n": 11,
-      "led": 2,
-      "not_followed": 6,
-      "followed": 3
+      "n": 15,
+      "led": 3,
+      "not_followed": 8,
+      "followed": 4,
+      "pct_led": 0.2,
+      "pct_not_followed": 0.533,
+      "pct_followed_within_15": 0.0,
+      "pct_followed_within_60": 0.0
      },
      "BetMGM": {
-      "n": 11,
-      "led": 3,
-      "not_followed": 6,
-      "followed": 2
+      "n": 15,
+      "led": 4,
+      "not_followed": 8,
+      "followed": 3,
+      "pct_led": 0.267,
+      "pct_not_followed": 0.533,
+      "pct_followed_within_15": 0.0,
+      "pct_followed_within_60": 0.0
      },
      "BetRivers": {
-      "n": 11,
-      "led": 2,
-      "not_followed": 5,
-      "followed": 4
+      "n": 15,
+      "led": 3,
+      "not_followed": 7,
+      "followed": 5,
+      "pct_led": 0.2,
+      "pct_not_followed": 0.467,
+      "pct_followed_within_15": 0.0,
+      "pct_followed_within_60": 0.067
      },
      "bet365": {
-      "n": 11,
-      "led": 2,
-      "not_followed": 5,
-      "followed": 4
+      "n": 15,
+      "led": 4,
+      "not_followed": 6,
+      "followed": 5,
+      "pct_led": 0.267,
+      "pct_not_followed": 0.4,
+      "pct_followed_within_15": 0.067,
+      "pct_followed_within_60": 0.067
      },
      "US books (all five)": {
-      "n": 55,
-      "led": 13,
-      "not_followed": 26,
-      "followed": 16,
-      "pct_led": 0.236,
-      "pct_not_followed": 0.473,
-      "pct_followed_within_15": 0.036,
-      "pct_followed_within_60": 0.055,
-      "median_min": 1159.4,
-      "p25_min": 828.9,
-      "p75_min": 1201.0,
-      "within_15": 0.125,
-      "within_60": 0.188
+      "n": 75,
+      "led": 20,
+      "not_followed": 33,
+      "followed": 22,
+      "pct_led": 0.267,
+      "pct_not_followed": 0.44,
+      "pct_followed_within_15": 0.027,
+      "pct_followed_within_60": 0.04,
+      "median_min": 1162.0,
+      "p25_min": 127.6,
+      "p75_min": 1260.9,
+      "within_15": 0.091,
+      "within_60": 0.136
      }
     }
    },
    "sp": {
-    "events": 13,
+    "events": 17,
     "by_book": {
      "DraftKings": {
-      "n": 13,
-      "led": 2,
-      "not_followed": 5,
-      "followed": 6
+      "n": 17,
+      "led": 3,
+      "not_followed": 8,
+      "followed": 6,
+      "pct_led": 0.176,
+      "pct_not_followed": 0.471,
+      "pct_followed_within_15": 0.0,
+      "pct_followed_within_60": 0.118
      },
      "FanDuel": {
-      "n": 13,
-      "led": 1,
-      "not_followed": 6,
-      "followed": 6
+      "n": 17,
+      "led": 2,
+      "not_followed": 9,
+      "followed": 6,
+      "pct_led": 0.118,
+      "pct_not_followed": 0.529,
+      "pct_followed_within_15": 0.059,
+      "pct_followed_within_60": 0.118
      },
      "BetMGM": {
-      "n": 13,
-      "led": 3,
-      "not_followed": 5,
-      "followed": 5
+      "n": 17,
+      "led": 5,
+      "not_followed": 6,
+      "followed": 6,
+      "pct_led": 0.294,
+      "pct_not_followed": 0.353,
+      "pct_followed_within_15": 0.059,
+      "pct_followed_within_60": 0.059
      },
      "BetRivers": {
-      "n": 13,
-      "led": 3,
-      "not_followed": 6,
-      "followed": 4
+      "n": 17,
+      "led": 4,
+      "not_followed": 9,
+      "followed": 4,
+      "pct_led": 0.235,
+      "pct_not_followed": 0.529,
+      "pct_followed_within_15": 0.0,
+      "pct_followed_within_60": 0.059
      },
      "bet365": {
-      "n": 13,
-      "led": 1,
-      "not_followed": 7,
-      "followed": 5
+      "n": 17,
+      "led": 3,
+      "not_followed": 8,
+      "followed": 6,
+      "pct_led": 0.176,
+      "pct_not_followed": 0.471,
+      "pct_followed_within_15": 0.0,
+      "pct_followed_within_60": 0.0
      },
      "US books (all five)": {
-      "n": 65,
-      "led": 10,
-      "not_followed": 29,
-      "followed": 26,
-      "pct_led": 0.154,
-      "pct_not_followed": 0.446,
-      "pct_followed_within_15": 0.031,
-      "pct_followed_within_60": 0.092,
-      "median_min": 1085.5,
-      "p25_min": 69.8,
-      "p75_min": 1189.4,
-      "within_15": 0.077,
-      "within_60": 0.231
+      "n": 85,
+      "led": 17,
+      "not_followed": 40,
+      "followed": 28,
+      "pct_led": 0.2,
+      "pct_not_followed": 0.471,
+      "pct_followed_within_15": 0.024,
+      "pct_followed_within_60": 0.071,
+      "median_min": 1131.5,
+      "p25_min": 90.6,
+      "p75_min": 1240.8,
+      "within_15": 0.071,
+      "within_60": 0.214
      }
     }
    },
