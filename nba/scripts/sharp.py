@@ -28,6 +28,8 @@ tape cannot be filtered to props cheaply, so volume x price is the proxy). Their
 prop sharp history existed. They are logged and graded like the rest and the page says so.
 A fourth, p_behind, is the game 'behind' signal for props: DraftKings at Pinnacle's own line, 3%+ better than its no-vig fair,
 after Pinnacle has sat unchanged for 20 minutes. Pre-registered in docs/prop-behind-pinnacle.md; the page keeps it out of the lean.
+Steam's pass rule is whether Pinnacle keeps moving after the alert, counted per game (steam_move, scripts/steam_first_look.py,
+docs/steam-continuation.md); the CLV graded below drops the alerts whose number Pinnacle left, so it is context.
 Every alert is graded (grade_signals, from ledger.settle) on closing-line value: Pinnacle's last pre-tip fair at the
 alert's number minus the fair when it fired (for behind: the price's EV at the closing fair), and on the final score.
 The study's verdict stands until this season says otherwise: sharp accounts beat the close but copying them 30+ minutes
@@ -623,6 +625,40 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
     return {'games': out, 'alerts': shown, 'props': dict(per_prop),
             'accounts': {'sharp': len(W['sharp']), 'nba_sharp': sum(1 for s in W['sharp'].values() if s == 'nba'), 'dull': len(W['dull']),
                          'scored': W['n'], 'generated': W['generated']}}
+
+
+def main_level(lad, m):
+    """level() of the main line in a ladder: the number whose two prices are closest to even (the recorder's rule, _snap_flat)."""
+    if not lad:
+        return None
+    if m == 'ml':
+        p = devig(*lad['ml']) if lad.get('ml') else None
+        return None if p is None else r3(p)
+    D = lad.get(m) or {}
+    if not D:
+        return None
+    k = min(D, key=lambda x: abs((imp(D[x][0]) or 0) - (imp(D[x][1]) or 0)))
+    p = r3(devig(*D[k]))
+    if p is None:
+        return None
+    return -k + (p - 0.5) * 2.5 if m == 'sp' else k + (p - 0.5) * 2.5
+
+
+def steam_move(a, lad):
+    """A steam alert's move to the close, in level() units signed so that + = Pinnacle kept going the way the alert pointed and
+    - = it came back (docs/steam-continuation.md). The alert's own level is rebuilt from its line and its side's fair price."""
+    f = a.get('fair')
+    if f is None or main_level(lad, a['m']) is None:
+        return None
+    toward = a['side'] in ('home', 'over')
+    p = f if toward else 1 - f                              # P(home) / P(over) at the alert
+    if a['m'] == 'ml':
+        start = p
+    elif a.get('line') is None:
+        return None
+    else:
+        start = (-a['line'] if a['m'] == 'sp' else a['line']) + (p - 0.5) * 2.5
+    return (main_level(lad, a['m']) - start) * (1 if toward else -1)
 
 
 def fair_snap(sn, m, side, line, lad=None):
