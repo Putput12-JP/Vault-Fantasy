@@ -22,6 +22,12 @@ gap_pick() makes that choice from the recorded rows the way the page does, and r
 It is where-to-look, not a bet: it is scored on hit rate against the chance in the price (vig removed), never on profit, because no stake or
 payout is recorded. A prop with no price (a flat pick'em line) is never the biggest gap; the page calls that one Strongest lean and it is not tracked.
 
+Held props (the roster guard, or a returning player) are recorded too, with meta 'held' = the reason (added 2026-10-20, before any regular-season
+pick was settled). The page headlines the Biggest gap among a game's shown players whether or not the guard holds the team, so the record has to see the
+same props or the headline pick goes unrecorded (that happened on opening night: every team in the first three games was held and 0 rows were saved).
+The guard still decides what counts as a model comparison: held props are left out of the log-loss and Brier sums (`score`) and are only used to choose and
+settle the Biggest gap pick, which carries 'held' so the page can mark it. A held pick is where-to-look, never a bet.
+
 Scoring: a prop is void when the player did not play or the stat lands exactly on the line. Sums are kept per game so the page can cluster the
 standard error by game, as the backtest did. A row is scored from the last pre-tip record, so a prop that moved is judged on its final price.
 """
@@ -104,8 +110,9 @@ def log(board, now):
             P = (board.get('players') or {}).get(str(e['p'])) or (board.get('players') or {}).get(e['p'])
             team = P[1] if P else None
             m = pr.mu_for(int(e['p']), s, g, cache, outs, team, status)
-            if not m or not (m['min'] > 0) or pr.roster_hold(m['team'], g, status, cache, m.get('src')) or pr.returning_hold(int(e['p']), m['team'], g):
+            if not m or not (m['min'] > 0):
                 continue
+            hold = pr.roster_hold(m['team'], g, status, cache, m.get('src')) or pr.returning_hold(int(e['p']), m['team'], g)
             mu, ex = m['mu'], m['extra']
             v0, v1, v2, v3 = pr.PR['variance'][s]
             var = max(.25, v0 + v1 * mu + v2 * mu * mu + (v3 * ex if v3 else 0))
@@ -117,6 +124,8 @@ def log(board, now):
                        round(pr.cal(s, (k50 + .5) / (N_SMALL + 1)), 4), None if p_price is None else round(p_price, 4), src]
             meta[k] = {'game': str(e['g']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': int(e['p']), 'player': P[0] if P else str(e['p']),
                        'team': m['team'], 'stat': s, 'kind': 'psim', 'min': round(m['min'], 1)}
+            if hold:                                                          # recorded, tagged: the page headlines held props too (see the module doc)
+                meta[k]['held'] = hold['why']
         except Exception as ex_:                                              # one prop's failure never stops the recorder
             print(f"  psim {e.get('g')}|{e.get('p')}|{s}: {type(ex_).__name__}: {str(ex_)[:100]}", flush=True)
     return rows, meta
@@ -171,7 +180,7 @@ def gap_pick(rows):
         key = (p_side - p_mkt, -STATS.index(s), -m['pid'])
         if best is None or key > best[0]:
             best = (key, {'pid': m['pid'], 'player': m['player'], 'team': m['team'], 'stat': s, 'side': 'over' if over else 'under', 'line': line,
-                          'mu': mu, 'p': round(p_side, 4), 'pm': round(p_mkt, 4)})
+                          'mu': mu, 'p': round(p_side, 4), 'pm': round(p_mkt, 4), **({'held': m['held']} if m.get('held') else {})})
     return best[1] if best else None
 
 
@@ -210,7 +219,7 @@ def record_all(root, now, prev, prev_gap, rescan_days, games, L):
         if pick:
             res, y = settle_gap(pick, bx)
             gap_per_day.setdefault(L.tip_day(m['tip']), []).append({'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], **pick, 'y': y, 'r': res})
-        per = score(e['rows'], bx)
+        per = score({k: v for k, v in e['rows'].items() if not v[1].get('held')}, bx)      # the minutes-model comparison keeps to props the roster guard trusts
         if not any(v[0] for v in per.values()):
             continue
         entry = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], 's': {s: [round(x, 4) for x in v] for s, v in per.items() if v[0]}}
