@@ -503,6 +503,7 @@ table.nt-days .l{text-align:left}
 .ev-row{cursor:pointer}
 .ev-row:hover{background:rgb(var(--ink) / .025)}
 .ev-edge.open .ev-row{background:rgb(var(--ink) / .035)}
+.ev-who{display:flex;align-items:center;gap:10px;min-width:0}.ev-wt{min-width:0}
 .ev-who b{display:block;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev-who .ev-bet{display:block;font-size:13px}
 .ev-who small,.ev-ven small{display:block;font-size:12px;color:var(--fg3)}
@@ -1178,7 +1179,10 @@ button.ps-ar{cursor:pointer;border:1px solid transparent}button.ps-ar:hover{back
 .pv-bt{display:grid;grid-template-columns:minmax(0,1.7fr) repeat(5,minmax(0,.8fr)) 128px;gap:4px 14px;align-items:center;padding:11px 18px;border-top:1px solid var(--border);font-size:13px}
 .pv-bt.h{font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;padding-block:9px;border-top:0}
 .pv-bt > span{font-variant-numeric:tabular-nums;min-width:0}
-.pv-bt .b1{display:flex;align-items:center;gap:10px}.pv-bt .b1t{min-width:0}
+.pv-bt .b1{display:flex;align-items:center;gap:10px}
+.pv-bt .b1>.pp-av,.pv-avs{flex:none}.pv-bt .b1 .pp-av.sm{width:34px;height:34px}
+.pv-avs{position:relative;width:34px;height:34px}.pv-avs .pp-av.sm{position:absolute;width:24px;height:24px;border-width:1.5px;border-color:var(--bg);font-size:8px}.pv-avs .pp-av.sm:first-child{left:0;top:0}.pv-avs .pp-av.sm:nth-child(2){right:0;bottom:0}
+.pv-avs i{position:absolute;right:-3px;top:-3px;font-style:normal;font-size:9px;font-weight:700;line-height:1;padding:2px 4px;border-radius:8px;background:var(--fg);color:var(--bg);z-index:2}.pv-bt .b1t{min-width:0}
 .pv-bt .b1 b{display:block;font-weight:600;font-size:13.5px}
 .pv-bt small{display:block;font-size:11.5px;color:var(--fg3)}
 .pv-bt small.k{display:none}
@@ -4950,7 +4954,7 @@ function renderEdges(){
   const key = p => `${p.r.e.p}|${p.r.e.s}|${sideKey(p)}`;
   const row = (p, withGame) => `<article class="ev-edge${ef.open.has(key(p)) ? ' open' : ''}" data-k="${key(p)}">
       <div class="ev-row" role="button" tabindex="0" aria-expanded="${ef.open.has(key(p))}">
-        <div class="ev-who"><b>${esc(p.r.name)}</b><span class="ev-bet">${betLabel(p)}</span><small>${esc(p.r.team)}${withGame && p.g0 ? ` · ${p.g0.away} @ ${p.g0.home}` : ''}${p.r.lu === 'S' ? ' · Starting' : ''}${p.r.inj ? ` · ${esc(p.r.inj)}` : ''}</small></div>
+        <div class="ev-who">${avSm(p.r.e.p, p.r.name)}<div class="ev-wt"><b>${esc(p.r.name)}</b><span class="ev-bet">${betLabel(p)}</span><small>${esc(p.r.team)}${withGame && p.g0 ? ` · ${p.g0.away} @ ${p.g0.home}` : ''}${p.r.lu === 'S' ? ' · Starting' : ''}${p.r.inj ? ` · ${esc(p.r.inj)}` : ''}</small></div></div>
         <div class="ev-ven"><b>${esc(p.bk)} <span class="num">${priceLabel(p)}</span></b><small>${p.also.length ? `also ${p.also.slice(0, 2).map(a => `${esc(a.bk)}${a.venue === 'kalshi' ? ' ' + (a.line + .5) + '+' : ''} ${ec(a.edgeP)}`).join(', ')}` : p.t ? `moved ${tAt(p.t)}` : ''}</small></div>
         ${evGauge(p)}
         <div class="ev-ev">${ec(p.edgeP)}<small title="What a promised edge this size has actually paid in the backtest. Stakes are sized on this number.">realistic ${ec(p.edgeR)}</small></div>
@@ -7180,6 +7184,8 @@ $('v-backtests').addEventListener('click', e => {
 let pv = {tab: 'v2', preset: 'passed', stat: 'all', game: 'all', sort: 'trust', q: '', sel: null, allWays: false, logIdx: null};
 const PV_NOUN = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': 'threes', pra: 'pts + reb + ast', pr: 'pts + reb', pa: 'pts + ast', ra: 'reb + ast', stl: 'steals', blk: 'blocks', tov: 'turnovers', sb: 'steals + blocks', fgm: 'field goals made', fga: 'field goals attempted', ftm: 'free throws made', fta: 'free throws attempted', tpa: '3-pointers attempted', oreb: 'offensive rebounds', dreb: 'defensive rebounds', pf: 'personal fouls'};
 const PV_SL = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast', stl: 'Steals', blk: 'Blocks', tov: 'Turnovers', sb: 'Steals + Blocks', fgm: 'Field goals made', fga: 'Field goals attempted', ftm: 'Free throws made', fta: 'Free throws attempted', tpa: '3-pointers attempted', oreb: 'Offensive rebounds', dreb: 'Defensive rebounds', pf: 'Personal fouls'};
+// The photo slot of a My Bets row: one player is one avatar; a combo shows its first two players overlapped (a count when there are more). Always 34px wide so every row lines up.
+const pvAvs = legs => legs.length === 1 ? avSm(legs[0].p, legs[0].name) : `<span class="pv-avs" title="${esc(legs.map(l => l.name).join(', '))}">${avSm(legs[0].p, legs[0].name)}${avSm(legs[1].p, legs[1].name)}${legs.length > 2 ? `<i>+${legs.length - 2}</i>` : ''}</span>`;
 const PV_SS = {pts: 'PTS', reb: 'REB', ast: 'AST', '3pm': '3PM', pra: 'PRA', pr: 'P+R', pa: 'P+A', ra: 'R+A', stl: 'STL', blk: 'BLK', tov: 'TO', sb: 'STL+BLK', fgm: 'FGM', fga: 'FGA', ftm: 'FTM', fta: 'FTA', tpa: '3PA', oreb: 'OREB', dreb: 'DREB', pf: 'PF'};
 const pvOver = c => c.side === 'Over' || c.side === 'YES';
 const pvK = l => `${Math.ceil(l)}+`;
@@ -7781,8 +7787,9 @@ function pvRenderBets(){
       <div class="pv-bt h"><span>Bet</span><span>Price you got</span><span>Fair close</span><span>Closing-line value</span><span>Our call then</span><span>Result</span><span></span></div>
       ${S.map(({b}) => { const R = b.res;
         if (b.kind === 'pair'){
+          const one = b.legs.length === 1, L0 = b.legs[0], mo = b.venue === 'pickem' ? ['More', 'Less'] : ['Over', 'Under'], sd = l => (l.side || b.side) === 'Over' ? mo[0] : mo[1];
           return `<div class="pv-bt">
-          <span class="b1"><b>${b.legs.map(l => `${esc(l.name)} ${(l.side || b.side) === 'Over' ? 'More' : 'Less'} ${l.line} ${PV_NOUN[l.s]}`).join(' + ')}</b><small>${b.venue === 'pickem' ? `Pick'em ${b.legs.length}-pick` : (b.legs.length === 1 ? 'Straight bet' : `Combo, ${b.legs.length} legs`)} · ${esc(b.bk)} · $${b.stake.toFixed(0)} · ${esc(b.m)}${b.tip ? `, ${etFmt(b.tip, {month: 'short', day: 'numeric'})}` : ''} · ${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span>
+          <span class="b1">${pvAvs(b.legs)}<span class="b1t"><b>${one ? `${esc(L0.name)} · ${sd(L0)} ${L0.line}` : b.legs.map(l => esc(l.name)).join(' + ')}</b><small>${one ? `${PV_SL[L0.s] || L0.s} · ` : `${b.venue === 'pickem' ? `Pick'em ${b.legs.length}-pick` : `Combo, ${b.legs.length} legs`}: ${b.legs.map(l => `${sd(l)} ${l.line} ${PV_NOUN[l.s]}`).join(', ')} · `}${esc(b.bk)} · $${b.stake.toFixed(0)} · ${b.tip ? etFmt(b.tip, {month: 'short', day: 'numeric'}) + ' · ' : ''}${b.ex ? '<span class="warnt">example game</span>' : pvWhen(b).toLowerCase()}</small></span></span>
           <span><small class="k">Price</small>${esc(b.price)}<small>needs ${pc(b.cost, 1)}</small></span>
           <span><small class="k">Fair close</small><span class="muted">n/a</span><small>entries have no closing price</small></span>
           <span><small class="k">CLV</small><span class="muted">-</span></span>
@@ -8431,7 +8438,7 @@ function ccStraightHtml(list){
   const min = cc.minEv, rows = list.filter(l => l.ev >= min), shown = rows.slice(0, cc.straightN);
   const seg = `<div class="seg" data-ccmin="1"><button type="button" data-v="0.03" aria-pressed="${min === .03}">3%+ edge</button><button type="button" data-v="0" aria-pressed="${min === 0}">Any +EV</button></div>`;
   const tr = l => { const g = l.game, others = ccQuotes(l.r, l.side, l.line).filter(q => q.key !== l.q.key).sort((a, b) => a.cost - b.cost).slice(0, 3);
-    return `<tr><td class="l"><b><a class="plink" href="#player/${l.pid}">${esc(l.name)}</a></b><small>${esc(l.team)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</small></td>
+    return `<tr><td class="l"><div class="pl">${avSm(l.pid, l.name)}<div><b><a class="plink" href="#player/${l.pid}">${esc(l.name)}</a></b><small>${esc(l.team)} · ${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</small></div></div></td>
       <td class="l">${l.side === 'over' ? 'Over' : 'Under'} <b>${l.line}</b> ${PP_SHORT[l.s]}<small class="cc-alt on">alt · main ${l.main}</small></td>
       <td class="l"><b>${esc(l.q.venue)} ${ccF(l.q.am)}</b>${l.q.exch ? '<small>exchange, fee in</small>' : ''}</td>
       <td>${ccF(ccAm(l.pm))}<small>${pc(l.pm, 1)} · ${esc(l.fair.basis)}</small></td>
