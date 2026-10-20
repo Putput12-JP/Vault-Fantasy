@@ -851,6 +851,45 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pv-moves .mv b{color:var(--fg);font-weight:500}
 @media (max-width:1200px){ .pv-main{grid-template-columns:minmax(0,1fr)} .pv-list{position:static;max-height:420px} .pv-recent{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:600px){ .pv-dh,.pv-sec{padding:16px} .pv-wf .wr{grid-template-columns:120px minmax(0,1fr) 52px} .pv-mins{grid-template-columns:minmax(0,1fr) auto} .pv-mins .pv-mbar{grid-column:1/-1;order:3} .pv-sg{grid-template-columns:minmax(0,1fr);gap:4px} .pv-sk{justify-self:start} .pv-row2 .pfind{flex:1 1 140px} }
+
+/* Player profile */
+.plink{color:inherit;text-decoration:none}.plink:hover{text-decoration:underline}
+.pl-wrap{display:grid;gap:var(--gap);min-width:0}
+.pl-link{display:inline-flex;align-items:center;text-decoration:none}
+.pl-search{position:relative;max-width:420px}
+.pl-search input{width:100%;height:36px;padding:0 12px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--surface);color:var(--fg);font:inherit;font-size:13.5px}
+.pl-hits{position:absolute;left:0;right:0;top:40px;z-index:5;display:grid;background:var(--surface);border-radius:12px;box-shadow:0 12px 32px -10px rgb(var(--shc) / .5)}
+.pl-hits:empty{display:none}
+.pl-hit{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;color:var(--fg);text-decoration:none;font-size:13.5px}.pl-hit:hover{background:var(--raised)}.pl-hit small{color:var(--fg3)}
+.pl-none{margin:0;padding:12px 14px;font-size:13px;color:var(--fg3)}
+.pl-empty{padding:18px 20px}.pl-empty p{margin:0;color:var(--fg2);font-size:13.5px}
+.pl-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:end;padding:18px 22px 0;overflow:hidden;background:linear-gradient(100deg,color-mix(in srgb,var(--tw,var(--raised)) 38%,var(--surface)) 0%,var(--surface) 62%)}
+.pl-ph{align-self:end}.pl-ph .pp-av{width:112px;height:112px;border-radius:50%;font-size:26px}
+.pl-id{padding-bottom:16px;min-width:0}.pl-id h1{margin:6px 0 10px;font-size:34px;font-weight:300;letter-spacing:-.02em;line-height:1.05}.pl-id h1 b{font-weight:700}
+.pl-chips{display:flex;gap:6px;flex-wrap:wrap}.pl-chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:var(--r-pill);font-size:11px;font-weight:600;background:var(--raised);color:var(--fg2)}.pl-chip.warn{color:var(--warn)}.pl-chip.ok{color:var(--up)}
+.pl-bio{display:flex;flex-wrap:wrap;gap:6px 22px}.pl-bio span{display:grid;gap:1px}.pl-bio small{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.pl-bio b{font-size:14px;font-weight:600}
+.pl-tm{display:grid;justify-items:center;gap:6px;align-self:center;padding-bottom:14px;color:var(--fg2);text-decoration:none;font-size:12px}.pl-tm .lg{width:56px;height:56px}
+.pl-strip{display:grid;grid-template-columns:minmax(220px,1.7fr) repeat(5,minmax(0,1fr));gap:0;padding:0}
+.pl-c{display:grid;gap:3px;align-content:start;padding:14px 16px;border-left:1px solid var(--border);min-width:0}.pl-c:first-child{border-left:0}
+.pl-c small{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg3)}.pl-c b{font-size:21px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.pl-c.w b{font-size:17px}
+.pl-c span{font-size:12px;color:var(--fg3)}.pl-c span.pos{color:var(--up)}
+.pl-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pl-bar .sel,.pl-ctl .sel{height:30px;padding:0 8px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--surface);color:var(--fg);font:inherit;font-size:12.5px}
+.pl-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
+.pl-tile{padding:12px 14px}.pl-tile h3{margin:0 0 8px;font-size:12.5px;font-weight:600}.pl-tile h3 small{font-weight:400;color:var(--fg3);margin-left:6px}
+.pl-tc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}.pl-tc>div{display:grid;gap:1px}
+.pl-tc small{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg3)}.pl-tc b{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.pl-rk{font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums}.pl-rk.top{color:var(--up);font-weight:600}.pl-rk.none{opacity:.5}
+.pl-sec{padding:0;overflow:hidden}.pl-sh{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px 14px;padding:14px 16px 10px}
+.pl-sh h2{margin:0;font-size:15px;font-weight:600}.pl-sh p{margin:3px 0 0;font-size:12.5px;color:var(--fg3);max-width:70ch}
+.pl-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pl-pp{padding:0 8px 14px}.pl-pp .dpanel{margin-bottom:12px}.pl-pp .pb-bar{margin-bottom:12px}
+.pl-sec .chartwrap{padding:0 12px}.pl-sec .ck-legend{padding:6px 16px 4px}
+.pl-tw{overflow-x:auto;padding:4px 8px 10px}
+table.pl-t{width:100%;min-width:640px;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+.pl-t th,.pl-t td{padding:7px 8px;text-align:center;white-space:nowrap;border-top:1px solid var(--border)}.pl-t th{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg3);font-weight:600;border-top:0}
+.pl-t .l{text-align:left}.pl-t td.b{font-weight:600}.pl-t tr.g th{text-align:center;border-bottom:1px solid var(--border)}.pl-t tr.avg td{background:var(--raised);font-weight:600}
+@media(max-width:900px){.pl-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.pl-c.w{grid-column:1/-1}.pl-c{border-left:0;border-top:1px solid var(--border)}.pl-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.pl-hero{grid-template-columns:auto minmax(0,1fr);gap:12px}.pl-tm{display:none}.pl-id h1{font-size:26px}.pl-ph .pp-av{width:84px;height:84px}}
 /* Pick'em of the Night: entry slips, one player per team */
 .pp-wrap{display:grid;gap:var(--gap);min-width:0}
 .pp-read{padding:14px 20px;display:grid;gap:6px}
@@ -2237,6 +2276,8 @@ th{font-weight:500}
     <footer id="btfoot" hidden></footer>
     <main id="v-pairs" hidden><div class="pp-wrap" id="pp-root"></div></main>
     <footer id="ppfoot" hidden></footer>
+    <main id="v-player" hidden><div class="pl-wrap" id="pl-root"></div></main>
+    <footer id="plfoot" hidden></footer>
   </div>
 </div>
 
@@ -2466,8 +2507,8 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
-const viewOf = h => h === 'WORKS' ? 'backtests' : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
+const VIEWS = ['player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
+const viewOf = h => h === 'WORKS' ? 'backtests' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
 if (!D.teams[cur]) cur = 'NY' in D.teams ? 'NY' : TEAMS[0];
@@ -2956,6 +2997,7 @@ function show(v){
   $('v-matchups').hidden = $('mufoot').hidden = v !== 'matchups';
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
   $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
+  $('v-player').hidden = $('plfoot').hidden = v !== 'player';
   $('v-backtests').hidden = $('btfoot').hidden = !['backtests', 'finder', 'btlab'].includes(v);
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
@@ -2975,6 +3017,13 @@ function show(v){
     wk.tab = {backtests: 'works', finder: 'finder', btlab: 'lab'}[v];
     renderBacktests();
     if (!trackTried) loadTrack();
+    return;
+  }
+  if (v === 'player'){
+    pl.pid = plHash(); pl.q = pl.pid ? '' : pl.q;
+    renderPlayer();
+    if (!boardTried) loadBoard();
+    window.scrollTo(0, 0);
     return;
   }
   if (v === 'pairs'){
@@ -3812,6 +3861,7 @@ async function loadBoard(){
     if (view === 'matchups') renderMatchups();
     if (view === 'sharp') renderSharp();
     if (view === 'pairs') renderPairs();
+    if (view === 'player') renderPlayer();
     pvBackground(); pvSettle();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, (NBA_WORKER ? 60 : 5 * 60) * 1000);
   } catch (e) { /* keep the snapshot */ }
@@ -4009,16 +4059,17 @@ function niceTicks(max){
   const out = []; for (let v = 0; v <= max; v += st) out.push(+v.toFixed(2)); return out;
 }
 
-function detailRow(r){
+function detailRow(r, parts = false){
   const near = r.kal.length ? r.kal.reduce((a, k) => Math.abs(k.line - (r.mu ?? 0)) < Math.abs(a.line - (r.mu ?? 0)) ? k : a) : null;
   const cents = x => x == null ? '' : Math.round(x * 100) + '¢';
   const ed = x => x == null ? '' : `<span class="${x > 0 ? 'pos' : 'neg'}">${ec(x)}</span>`;
   const wg = windowGames(r, pwin).gl;
   // log or watch from this table: the same bets, watch list and settling as Player Props (pvBets, pvW)
   const pbIdx = (venue, bk, line, side) => r.all.findIndex(c => (venue ? c.venue === venue : c.venue !== 'kalshi' && c.venue !== 'pickem') && c.bk === bk && c.line === line && c.side === side);
-  const lb = (i, label) => i < 0 ? '' : `<button class="pv-ghost pb-log" type="button" data-pblog="${i}" title="Log this bet in My Bets">${label}</button>`;
-  const pkey = pvKey(r), watching = !!pvW[pkey], nb = pvBets.filter(b => b.k === pkey).length, lc = pf.logKey === pkey && pf.logIdx != null ? r.all[pf.logIdx] : null;
-  const bar = `<div class="dpanel wide pb-bar"><div class="pv-acts"><button class="pv-star" type="button" data-pbstar="${esc(pkey)}" aria-pressed="${watching}">${watching ? '★ Watching' : '☆ Watch'}</button>${nb ? `<button class="pv-ghost" type="button" data-pbbets="1">${nb} bet${nb > 1 ? 's' : ''} logged</button>` : ''}<span class="muted">Log an over or an under from any row below. It settles after the game with your closing-line value.</span></div>
+  const pkey = pvKey(r);
+  const lb = (i, label) => i < 0 ? '' : `<button class="pv-ghost pb-log" type="button" data-pblog="${i}" data-pbk="${pkey}" title="Log this bet in My Bets">${label}</button>`;
+  const watching = !!pvW[pkey], nb = pvBets.filter(b => b.k === pkey).length, lc = pf.logKey === pkey && pf.logIdx != null ? r.all[pf.logIdx] : null;
+  const bar = `<div class="dpanel wide pb-bar"><div class="pv-acts"><button class="pv-star" type="button" data-pbstar="${esc(pkey)}" aria-pressed="${watching}">${watching ? '★ Watching' : '☆ Watch'}</button>${nb ? `<button class="pv-ghost" type="button" data-pbbets="1">${nb} bet${nb > 1 ? 's' : ''} logged</button>` : ''}<a class="pv-ghost pl-link" href="#player/${r.e.p}">Player profile</a><span class="muted">Log an over or an under from any row below. It settles after the game with your closing-line value.</span></div>
     ${lc ? `<p class="pb-logh"><b>Logging ${esc(lc.bk)} ${lc.venue === 'kalshi' ? `${lc.side} ${lc.line + .5}+` : `${lc.side} ${lc.line}`}</b></p>${pvLogForm(r, lc)}` : ''}</div>`;
   const kal = r.kal.length ? `<table><thead><tr><th class="l">Rung</th><th>Bid</th><th>Ask</th><th title="Mid price change since the first poll today">Today</th><th title="Share of games in the selected window that reached the rung">${WLABEL[pwin]}</th><th>Model</th><th>Fair</th><th>YES edge</th><th>NO edge</th><th>Log</th></tr></thead><tbody>${r.kal.map(k => {
     const h = hitRate(wg, r.e.s, k.line), mv = k.om != null && k.mid != null ? Math.round((k.mid - k.om) * 100) : null;
@@ -4039,6 +4090,7 @@ function detailRow(r){
         const v = B[k]; if (k !== 'base' && Math.abs(v) < .005) return '';
         return `<div class="bstep${k === 'base' ? ' base' : ''}"><span class="bl">${PART_LABEL[k]}</span><span class="bv ${k === 'base' ? '' : v > 0 ? 'pos' : 'neg'}">${k === 'base' ? fmt(v, 2) : (v > 0 ? '+' : '') + fmt(v, 2)}</span></div>`;
       }).join('')}<div class="bstep tot"><span class="bl">Projection</span><span class="bv">${fmt(r.mu, 2)}</span></div></div></div>` : '';
+  if (parts) return {bar, kal, books, pk, build};          // the Player profile lays these panels out itself
   return `<tr class="detail"><td colspan="14">${bar}${build}
     <div class="dpanel glpanel"><h4>Game log<small>${SLABEL[r.e.s]} against the ${r.lineFrom || ''} line of ${r.line ?? 'none'} · pick a window</small></h4>${logChart(r)}</div>
     <div class="dgrid">
@@ -4060,36 +4112,40 @@ $('pq').addEventListener('input', e => { pf.q = e.target.value; renderProps(); }
 $('pgated').addEventListener('change', e => { pf.gated = e.target.checked; renderProps(); });
 $('pmore').addEventListener('click', e => { if (e.target.id === 'pmorebtn'){ pf.limit = 1e9; renderProps(); } });
 const toggleRow = tr => { const k = tr.dataset.k; pf.open.has(k) ? pf.open.delete(k) : pf.open.add(k); renderProps(); };
-$('prows').addEventListener('click', e => {
-  const t = e.target;
-  const lg = t.closest('[data-pblog]');
-  if (lg){
-    const pr = lg.closest('tr.detail')?.previousElementSibling, key = pr && pr.dataset.k, r = key && pf.rows.find(x => `${x.e.p}|${x.e.s}` === key);
-    pf.logKey = r ? pvKey(r) : null; pf.logIdx = r ? +lg.dataset.pblog : null; renderProps(); document.querySelector('#prows .pv-logf input[name="price"]')?.focus(); return;
-  }
-  if (t.closest('[data-logcancel]')){ pf.logKey = pf.logIdx = null; renderProps(); return; }
+// Log and watch from a row's detail (Props Table and the Player profile share these: rows come from pf.rows or pl.rows).
+const pbRow = k => ((view === 'player' ? pl.rows : pf.rows) || []).find(x => pvKey(x) === k);
+function pbClick(e, again){
+  const t = e.target, lg = t.closest('[data-pblog]');
+  if (lg){ const r = pbRow(lg.dataset.pbk); pf.logKey = r ? pvKey(r) : null; pf.logIdx = r ? +lg.dataset.pblog : null; again(); document.querySelector('.pv-logf input[name="price"]')?.focus(); return true; }
+  if (t.closest('[data-logcancel]')){ pf.logKey = pf.logIdx = null; again(); return true; }
   const sb = t.closest('[data-pbstar]');
   if (sb){
-    const k = sb.dataset.pbstar, r = pf.rows.find(x => pvKey(x) === k);
+    const k = sb.dataset.pbstar, r = pbRow(k);
     if (r && !r.sharp) r.sharp = pvSharp(r);            // Player Props rows carry it; the snapshot a watch compares against reads it
     if (pvW[k]) delete pvW[k]; else pvW[k] = {edge: true, line: true, sharp: true, news: true, tip: r && r.game ? r.game.tip : null, snap: r ? pvSnap(r, Date.now() / 1000) : null};
-    pvSave(); renderProps(); pvToast(pvW[k] ? 'Watching. Changes on this prop show under Alerts on Player Props.' : 'No longer watching.'); return;
+    pvSave(); again(); pvToast(pvW[k] ? 'Watching. Changes on this prop show under Alerts on Player Props.' : 'No longer watching.'); return true;
   }
-  if (t.closest('[data-pbbets]')){ goView('mybets'); return; }
+  if (t.closest('[data-pbbets]')){ goView('mybets'); return true; }
+  return false;
+}
+function pbSubmit(e, again){
+  const f = e.target.closest('[data-logform]'); if (!f) return;
+  e.preventDefault();
+  const r = pbRow(pf.logKey), c = r && r.all[+f.dataset.logform];
+  const b = c && pvMkBet(r, c, f.price.value, +f.stake.value);
+  if (!b){ pvToast(c && c.venue === 'kalshi' ? 'Enter the price in cents, like 48, and a stake.' : 'Enter American odds, like -115 or +120, and a stake.'); return; }
+  pvBets.unshift(b); pf.logKey = pf.logIdx = null; pvSave(); again(); pvSettle();
+  pvToast(b.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.');
+}
+$('prows').addEventListener('click', e => {
+  if (pbClick(e, renderProps)) return;
   const wc = e.target.closest('[data-w]');
   if (wc){ pwin = wc.dataset.w; renderProps(); return; }
   const lab = e.target.closest('[data-lab]');
   if (lab){ history.replaceState(null, '', '#' + lab.dataset.lab.toLowerCase()); goTeam(lab.dataset.lab); return; }
   const tr = e.target.closest('tr.prow'); if (tr) toggleRow(tr);
 });
-$('prows').addEventListener('submit', e => {
-  e.preventDefault(); const f = e.target.closest('[data-logform]'); if (!f) return;
-  const r = pf.rows.find(x => pvKey(x) === pf.logKey), c = r && r.all[+f.dataset.logform];
-  const b = c && pvMkBet(r, c, f.price.value, +f.stake.value);
-  if (!b){ pvToast(c && c.venue === 'kalshi' ? 'Enter the price in cents, like 48, and a stake.' : 'Enter American odds, like -115 or +120, and a stake.'); return; }
-  pvBets.unshift(b); pf.logKey = pf.logIdx = null; pvSave(); renderProps(); pvSettle();
-  pvToast(b.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.');
-});
+$('prows').addEventListener('submit', e => { e.preventDefault(); pbSubmit(e, renderProps); });
 $('prows').addEventListener('keydown', e => { const tr = e.target.closest('tr.prow'); if (tr && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); toggleRow(tr); } });
 
 // ── Track Record ──────────────────────────────────────────────────────────
@@ -4922,8 +4978,8 @@ function renderTonight(){
   $('nteams').innerHTML = teams.map(T => `<section class="card nt-team">
       <div class="card-h"><div><h2 class="tm">${lgImg(T.team, 22)}${T.team}${D.teams[T.team] ? ' · ' + esc(D.teams[T.team].name) : ''}</h2>${pick.mode === 'example' ? '' : reportChip(T.team, g, MS && MS.live, B, T.rows.filter(r => !r.off && r.st === 'Questionable').length)}<p>${fmt(T.known, 0)} minutes across ${T.nKnown} players the model knows${T.nLab ? ` · ${T.nLab} new on the Lab's estimate (${fmt(T.labMin, 0)} min)` : ''}${T.stretch >= 1.05 ? (T.nLab ? ` · the model alone would stretch these players ${fmt(T.stretch, 2)}x, so the new players share the minutes` : ` · known players stretched ${fmt(T.stretch, 2)}x to fill the game`) : ''} · v3 shadow ${T.v3s ? 'uses the confirmed starting five' : 'keys on last game\'s roles'}</p></div>${T.hold && T.hold.why !== 'player' ? `<span class="pill ${T.hold.why === 'team' ? 'warn' : 'idle'}" title="${esc(holdTxt(T.hold, {team: T.team}))}">${T.hold.why === 'team' ? 'On hold: rotation incomplete' : esc(holdLabel(T.hold))}</span>` : ''}</div>
       <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th>Minutes</th><th class="l">Why</th><th title="Shadow: minutes model v3 (role, returns from absence, new team; confirmed starters once the five is out). Logged next to v2, never priced.">v3</th><th title="Shadow: gradient-boosted minutes model. Logged next to v2 and v3, never priced. Uses the same injury statuses; the market spread stands in for the game model's margin.">GBM</th><th title="Minutes the market is pricing: the consensus mean of his points (or PRA, REB, AST) over our per-minute projection">Market</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th></tr></thead><tbody>
-      ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
-        : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b>${esc(r.name)}</b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
+      ${T.rows.map(r => r.off ? `<tr class="off"><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b><a class="plink" href="#player/${r.pid}">${esc(r.name)}</a></b><small>${stTxt(r)}</small></div></div></td><td>0</td><td class="l"><small>Out: his minutes go to teammates</small></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`
+        : `<tr><td class="l cutc"><div class="pl">${cutImg(r.pid, r.name)}<div><b><a class="plink" href="#player/${r.pid}">${esc(r.name)}</a></b><small>${stTxt(r) || '&nbsp;'}</small></div></div></td>
         <td><span class="nt-min"><input type="number" min="0" max="48" step="0.5" data-pid="${r.pid}" value="${fmt(r.min)}" class="${r.mine ? 'mine' : ''}" aria-label="Minutes for ${esc(r.name)}" ${r.src === 'lab' ? 'disabled title="Edit this team in the Minutes Lab"' : ''}></span>${r.lo != null ? `<small>${fmt(r.lo, 0)} to ${fmt(r.hi, 0)}</small>` : ''}</td>
         <td class="l"><div class="nt-parts">${r.mine ? '<span class="nt-p" style="color:var(--warn)">your minutes</span>' : r.parts ? `<span class="nt-p">avg ${fmt(r.parts.base)}</span>${chip(r.parts.vac, 'teammates out')}${chip(r.parts.blow, 'blowout risk')}${chip(r.parts.b2b, 'back-to-back')}${chip(r.parts.other + r.parts.rescale, 'team fit')}` : ''}</div></td>
         <td>${r.v3 != null ? `<span class="muted">${fmt(r.v3)}</span><small>${r.v3 - r.min >= 0 ? '+' : ''}${fmt(r.v3 - r.min)}</small>` : ''}</td>
@@ -7370,7 +7426,7 @@ function pvRenderAlerts(){
 }
 function pvWatchUI(r){
   const k = pvKey(r), w = pvW[k], n = pvBets.filter(b => b.k === k).length;
-  return `<div class="pv-acts"><button class="pv-star" type="button" data-star="${esc(k)}" aria-pressed="${!!w}">${w ? '★ Watching' : '☆ Watch'}</button>${n ? `<button class="pv-ghost" type="button" data-tab="bets">${n} bet${n > 1 ? 's' : ''} logged</button>` : ''}</div>
+  return `<div class="pv-acts"><button class="pv-star" type="button" data-star="${esc(k)}" aria-pressed="${!!w}">${w ? '★ Watching' : '☆ Watch'}</button>${n ? `<button class="pv-ghost" type="button" data-tab="bets">${n} bet${n > 1 ? 's' : ''} logged</button>` : ''}<a class="pv-ghost pl-link" href="#player/${r.e.p}">Player profile</a></div>
     ${w ? `<div class="pv-watch"><b>Alert me when</b><div class="pv-chk">${PV_WT.map(([t, l]) => `<label><input type="checkbox" data-wt="${t}" ${w[t] ? 'checked' : ''}> ${l}</label>`).join('')}</div><small>${PS.mode === 'example' ? 'The example board never changes, so it will not raise alerts; star props on a live board.' : 'Alerts land under Alerts at the top of this page and as a count on Player Props in the menu.'}</small></div>` : ''}`;
 }
 function pvStakeHtml(c){
@@ -7724,6 +7780,178 @@ $('pp-root').addEventListener('submit', e => {
   pvBets.unshift(b); pp.logK = null; pvSave(); renderPairs(); pvSettle();
   pvToast(b.ex ? 'Saved to My Bets. The example game is over, so it settles right away.' : 'Saved to My Bets. It settles after the last game.');
 });
+// ── Player profile (#player/<id>) ──
+// One page per player, reached from any player link: tonight's game and props, season tiles with league ranks, game log, seasons.
+// Ranks are among players with PL_MIN_G games and PL_MIN_MPG minutes a game that season, and percentage ranks also need a
+// minimum of attempts (PL_NEED). Those cut-offs are a design choice, and the page prints how many players are ranked.
+const PL_MIN_G = 20, PL_MIN_MPG = 15;
+const PL_NEED = {tpp: ['tpa', 2], ftp: ['fta', 2], fgp: ['fga', 5], ts: ['fga', 5]};      // per game
+const PL_STATS = ['pts', 'reb', 'ast', '3pm', 'pra'];
+let pl = {pid: null, season: null, win: 'L10', stat: 'pts', po: false, rows: [], hist: undefined, q: ''};
+const plHash = () => { const m = /^#player\/(\d+)/i.exec(location.hash); return m ? +m[1] : null; };
+
+function plRates(t){
+  const pg = k => t[k] / t.gp, p36 = k => t.min ? t[k] / t.min * 36 : 0, tsa = t.fga + .44 * t.fta;
+  return {gp: t.gp, mpg: t.min / t.gp, pts: pg('pts'), reb: pg('reb'), ast: pg('ast'), '3pm': pg('3pm'), stl: pg('stl'), blk: pg('blk'), tov: pg('tov'), fga: pg('fga'), tpa: pg('tpa'), fta: pg('fta'),
+    fgp: t.fga ? t.fgm / t.fga : null, tpp: t.tpa ? t['3pm'] / t.tpa : null, ftp: t.fta ? t.ftm / t.fta : null, ts: tsa ? t.pts / (2 * tsa) : null,
+    pts36: p36('pts'), reb36: p36('reb'), ast36: p36('ast'), load36: p36('fga') + .44 * p36('fta') + p36('tov')};
+}
+function plAgg(gs){
+  if (!gs.length) return null;
+  const S = k => gs.reduce((a, g) => a + g[GI[k]], 0);
+  return plRates({gp: gs.length, min: gs.reduce((a, g) => a + g[5], 0), pts: S('pts'), reb: S('reb'), ast: S('ast'), '3pm': S('3pm'), stl: S('stl'), blk: S('blk'), tov: S('tov'), fgm: S('fgm'), fga: S('fga'), ftm: S('ftm'), fta: S('fta'), tpa: S('tpa'), pf: S('pf')});
+}
+const plLeague = {};
+function plLeagueOf(season, po){
+  const key = season + (po ? 'p' : 'r'); if (plLeague[key]) return plLeague[key];
+  const out = {};
+  for (const [pid, gs] of Object.entries(GL.players)){ const a = plAgg(gs.filter(g => g[1] === season && !!g[4] === po)); if (a) out[pid] = a; }
+  return plLeague[key] = out;
+}
+const plQual = (a, k) => a.gp >= PL_MIN_G && a.mpg >= PL_MIN_MPG && a[k] != null && (!PL_NEED[k] || a[PL_NEED[k][0]] >= PL_NEED[k][1]);
+function plRank(league, pid, k){
+  const me = league[pid]; if (!me || !plQual(me, k)) return null;
+  const q = Object.values(league).filter(a => plQual(a, k));
+  return {r: 1 + q.filter(a => a[k] > me[k]).length, n: q.length};
+}
+const plPct = v => v == null ? '' : (v * 100).toFixed(1) + '%';
+const PL_TILES = [
+  ['Volume', 'per game', [['mpg', 'MIN'], ['fga', 'FGA'], ['tpa', '3PA'], ['fta', 'FTA']]],
+  ['Production', 'per game', [['pts', 'PTS'], ['reb', 'REB'], ['ast', 'AST'], ['3pm', '3PM']]],
+  ['Efficiency', 'shooting', [['ts', 'TS%', plPct], ['fgp', 'FG%', plPct], ['tpp', '3P%', plPct], ['ftp', 'FT%', plPct]]],
+  ['Load', 'per 36 minutes', [['pts36', 'PTS'], ['reb36', 'REB'], ['ast36', 'AST'], ['load36', 'SHOTS+TO']]]];
+const ordinal = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+
+function plSeasons(pid){ return [...new Set((GL.players[pid] || []).map(g => g[1]))].sort((a, b) => b - a); }
+function plLoadHist(){
+  if (pl.hist !== undefined) return;
+  pl.hist = null;
+  if (!onSite) return;
+  const raw = `https://raw.githubusercontent.com/${PB ? PB.repo : H0.repo}/main/nba/data/season_totals.json`;
+  fetch('data/season_totals.json', {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject()).catch(() => fetch(raw, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null))
+    .then(j => { pl.hist = j || false; if (view === 'player') renderPlayer(); });
+}
+function plSearchHtml(){
+  const q = pl.q.trim().toLowerCase(), f = q.length >= 2 ? ALL.filter(x => x.p.name.toLowerCase().includes(q)).slice(0, 8) : [];
+  return f.map(x => `<a class="pl-hit" href="#player/${x.p.id}"><span>${esc(x.p.name)}</span><small>${x.t}</small></a>`).join('') || (q.length >= 2 ? `<p class="pl-none">No rostered player matches "${esc(pl.q)}".</p>` : '');
+}
+function plTeamTotal(g, team){ if (g.total == null || g.spread == null) return null; return team === g.home ? (g.total - g.spread) / 2 : (g.total + g.spread) / 2; }
+
+function renderPlayer(){
+  const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${PS.board.t ? agoFrom(PS.board.t, Date.now() / 1000) : ''}</span>` : pick.mode === 'example' ? `${pill('warn', 'Example')}<span>Last season's prices</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(PS.board.t)} ET</span>` : pill('idle', 'No props yet');
+  const root = $('pl-root'), B = PS.board, pid = pl.pid, X = PIDX[pid];
+  const search = `<div class="pl-search"><input id="pl-q" type="search" placeholder="Find a player" autocomplete="off" value="${esc(pl.q)}" aria-label="Find a player"><div id="pl-hits" class="pl-hits">${plSearchHtml()}</div></div>`;
+  if (!X){
+    $('tname').textContent = 'Player'; $('tsub').textContent = 'PROFILE';
+    root.innerHTML = `${search}<section class="card pl-empty"><p>${pid ? 'That player is not on a current roster.' : 'Pick a player to open his profile.'} Search above, or open one from Player Props, Tonight or the Props Table.</p></section>`;
+    $('plfoot').innerHTML = '';
+    return;
+  }
+  const p = X.p, team = X.t, name = p.name, seasons = plSeasons(pid);
+  if (!seasons.includes(pl.season)) pl.season = seasons[0] ?? null;
+  $('tname').textContent = name; $('tsub').textContent = `PLAYER PROFILE · ${team}`;
+  plLoadHist();
+
+  // tonight: his priced props, and his game
+  const cache = {};
+  pl.rows = (B.props || []).filter(e => +e.p === pid && PR.variance[e.s]).map(e => { const r = priceRow(e, cache); r.game = (B.games || []).find(g => String(g.id) === String(e.g)); r.sharp = pvSharp(r); return r; })
+    .sort((a, b) => STATS.findIndex(x => x[0] === a.e.s) - STATS.findIndex(x => x[0] === b.e.s));
+  const byStat = Object.fromEntries(pl.rows.map(r => [r.e.s, r]));
+  const g = pl.rows[0]?.game || (B.games || []).filter(x => x.away === team || x.home === team).sort((a, b) => a.tip - b.tip)[0] || null;
+  const opp = g ? (team === g.home ? g.away : g.home) : null;
+  const st = statusFromBoard(B)[pid], lu = B.players && B.players[pid] ? B.players[pid][3] : null;
+  const wash = teamWash(team), parts = name.split(' '), first = parts.slice(0, -1).join(' '), lastN = parts[parts.length - 1];
+  const bio = [p.pos ? `<span><small>Position</small><b>${esc(p.pos)}</b></span>` : '', p.slot ? `<span><small>Depth slot</small><b>${esc(p.slot.toUpperCase())}${p.rank || ''}</b></span>` : '',
+    `<span><small>${p.rookie ? 'Experience' : 'Last season'}</small><b>${p.rookie ? 'Rookie' : `${p.gp} G · ${fmt(p.last_mpg)} min`}</b></span>`, p.moved ? `<span><small>Team</small><b>New this year</b></span>` : ''].join('');
+  const hero = `<section class="card pl-hero"${wash ? ` style="--tw:${wash}"` : ''}>
+    <div class="pl-ph"><span class="pp-av">${esc(initials(name))}<img class="ph" src="${onSite ? phBig(pid) : phSrc(pid)}" alt="" onerror="this.remove()"></span></div>
+    <div class="pl-id"><div class="pl-chips">${st ? `<span class="pl-chip warn">${esc(st)}</span>` : ''}${lu ? `<span class="pl-chip">${LINEUP[lu] || ''}</span>` : ''}${!st && !lu ? '<span class="pl-chip ok">Active</span>' : ''}</div>
+      <h1>${esc(first)} <b>${esc(lastN)}</b></h1><div class="pl-bio">${bio}</div></div>
+    <a class="pl-tm" href="#${team.toLowerCase()}" title="Open ${team} in the Minutes Lab">${lgImg(team, 56)}<span>${esc(D.teams[team] ? D.teams[team].name : team)}</span></a></section>`;
+
+  // tonight strip
+  const mrow = pl.rows[0], state = MS && (PS.mode === 'example' ? MS.example : MS.live), sdm = state && state.players[pid] ? state.players[pid].sdm : 6;
+  const tt = g ? plTeamTotal(g, team) : null;
+  const cell = s => { const r = byStat[s]; if (!r) return `<div class="pl-c"><small>${SLABEL[s]}</small><b class="muted">none</b><span>no line yet</span></div>`;
+    const b = r.best, bt = b && b.edge >= EDGE_MIN ? `<span class="${b.g === 'no-go' ? 'muted' : 'pos'}">${esc(b.bk)} ${b.venue === 'kalshi' ? `${b.side} ${b.line + .5}+` : `${b.side} ${b.line}`} ${ec(b.edge)}%</span>` : '';
+    return `<div class="pl-c"><small>${SLABEL[s]} · Vault</small><b>${r.mu != null && r.min > 0 ? fmt(r.mu) : '<span class="muted">hold</span>'}</b><span>${r.line != null ? `line ${r.line}${r.lineFrom ? ' · ' + esc(r.lineFrom) : ''}` : 'no line'}</span>${bt}</div>`; };
+  const strip = `<section class="card pl-strip">
+    <div class="pl-c w"><small>${g ? `${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})} · ${clock(g.tip)} ET` : 'Matchup'}</small><b>${g ? `${lgImg(g.away, 22)} ${g.away} @ ${lgImg(g.home, 22)} ${g.home}` : '<span class="muted">No game on the board</span>'}</b>
+      <span>${g ? `${g.spread != null ? `${g.home} ${g.spread > 0 ? '+' : ''}${g.spread}` : 'no spread'} · total ${g.total ?? 'none'}${tt != null ? ` · ${team} implied ${fmt(tt)}` : ''}` : 'He appears here when his game is within 3 days.'}</span></div>
+    ${['pts', 'reb', 'ast', '3pm'].map(cell).join('')}
+    <div class="pl-c"><small>Minutes · Vault</small><b>${mrow && mrow.min > 0 ? fmt(mrow.min) : '<span class="muted">none</span>'}</b><span>${mrow && mrow.min > 0 ? `${fmt(Math.max(0, mrow.min - 1.2816 * sdm), 0)} to ${fmt(Math.min(48, mrow.min + 1.2816 * sdm), 0)} likely` : 'not projected'}</span>${mrow && mrow.min0 ? `<span>usual ${fmt(mrow.min0, 0)}</span>` : ''}</div></section>`;
+
+  // season tiles
+  const lg = pl.season != null ? plLeagueOf(pl.season, false) : {}, me = lg[pid], nQ = Object.values(lg).filter(a => plQual(a, 'pts')).length;
+  const seasonSel = seasons.length ? `<select class="sel" id="pl-season" aria-label="Season">${seasons.map(s => `<option value="${s}"${s === pl.season ? ' selected' : ''}>Season: ${seasonLabel(s)}</option>`).join('')}</select>` : '';
+  const tiles = me ? `<section class="pl-tiles">${PL_TILES.map(([t, sub, cells]) => `<div class="card pl-tile"><h3>${t}<small>${sub}</small></h3><div class="pl-tc">${cells.map(([k, lab, f]) => { const v = me[k], rk = plRank(lg, pid, k);
+      return `<div><small>${lab}</small><b>${v == null ? '' : f ? f(v) : fmt(v)}</b>${rk ? `<span class="pl-rk${rk.r <= Math.ceil(rk.n * .1) ? ' top' : ''}" title="${ordinal(rk.r)} of ${rk.n} players">#${rk.r}</span>` : '<span class="pl-rk none" title="Below the games, minutes or attempts needed to rank">-</span>'}</div>`; }).join('')}</div></div>`).join('')}</section>`
+    : `<section class="card pl-empty"><p>No games for ${esc(name)} in the logs yet.</p></section>`;
+
+  // props tonight
+  if (!PL_STATS.includes(pl.stat) && !byStat[pl.stat]) pl.stat = 'pts';
+  const stat = byStat[pl.stat] ? pl.stat : (pl.rows.slice().sort((a, b) => (b.best ? b.best.edge : -9) - (a.best ? a.best.edge : -9))[0]?.e.s || pl.stat);
+  const R = byStat[stat], D2 = R ? detailRow(R, true) : null;
+  const props = `<section class="card pl-sec"><div class="pl-sh"><div><h2>Props tonight</h2><p>Every line on the board for him. Log an over or an under, or watch the prop. Lines are as the venues post them.</p></div>
+      <div class="seg" data-pl="stat">${pl.rows.map(r => `<button type="button" data-v="${r.e.s}" aria-pressed="${r.e.s === stat}">${SLABEL[r.e.s]}</button>`).join('')}</div></div>
+    ${R ? `<div class="pl-pp">${D2.bar}<div class="dgrid"><div class="dpanel"><h4>Kalshi ladder<small>YES pays if he reaches the rung; edge after fees</small></h4>${D2.kal}</div><div class="dpanel"><h4>Sportsbooks<small>market = vig removed; Polymarket prices include its fee</small></h4>${D2.books}</div>${D2.pk}</div>${D2.build}</div>`
+      : `<p class="pl-none">No lines on the board for him tonight. Props post the morning of a game.</p>`}</section>`;
+
+  // game log
+  const season = pl.season, all = (GL.players[pid] || []).filter(x => x[1] === season), hasPo = all.some(x => x[4]);
+  if (pl.po && !hasPo) pl.po = false;
+  const pool = all.filter(x => !!x[4] === pl.po), N = {L5: 5, L10: 10, L20: 20, SZN: 1e9}[pl.win] || 10, gs = pool.slice(0, N);
+  const cs = PL_STATS.includes(pl.stat) ? pl.stat : 'pts', cline = byStat[cs] ? byStat[cs].line : null;
+  const ts = x => { const d = 2 * (x[14] + .44 * x[16]); return d ? plPct(x[6] / d) : ''; };
+  const avg = plAgg(gs);
+  const row = x => `<tr><td class="l">${gdate(x[0])}</td><td class="l">${x[3] ? 'vs' : '@'} ${esc(GL.teams[x[2]])}</td><td>${fmt(x[5], 0)}</td><td class="b">${x[6]}</td><td>${x[13]}-${x[14]}</td><td>${x[9]}-${x[17]}</td><td>${x[15]}-${x[16]}</td><td>${ts(x)}</td><td class="b">${x[7]}</td><td class="b">${x[8]}</td><td>${x[10]}</td><td>${x[11]}</td><td>${x[12]}</td><td>${x[20]}</td></tr>`;
+  const avgRow = avg ? `<tr class="avg"><td class="l" colspan="2">Average of ${avg.gp}</td><td>${fmt(avg.mpg)}</td><td class="b">${fmt(avg.pts)}</td><td>${fmt(avg.fga * avg.fgp)}-${fmt(avg.fga)}</td><td>${fmt(avg['3pm'])}-${fmt(avg.tpa)}</td><td>${fmt(avg.fta * (avg.ftp ?? 0))}-${fmt(avg.fta)}</td><td>${plPct(avg.ts)}</td><td class="b">${fmt(avg.reb)}</td><td class="b">${fmt(avg.ast)}</td><td>${fmt(avg.stl)}</td><td>${fmt(avg.blk)}</td><td>${fmt(avg.tov)}</td><td>${fmt(gs.reduce((a, x) => a + x[20], 0) / gs.length)}</td></tr>` : '';
+  const chart = gs.length ? (() => { const gl = [...gs].reverse(), n = gl.length, vals = gl.map(x => gval(x, cs));
+    const c = ckBars(`plg-${pid}-${cs}-${pl.win}-${season}`, {stat: SLABEL[cs], line: cline, mu: byStat[cs] && byStat[cs].mu != null && byStat[cs].min > 0 ? byStat[cs].mu : null, W: 1040, CH: 130, minutes: true, minProj: byStat[cs] && byStat[cs].min > 0 ? byStat[cs].min : null, ticks: true,
+      games: gl.map((x, i) => ({v: vals[i], o: cline != null && vals[i] > cline, min: x[5], axis: n <= 20 ? `${x[3] ? '' : '@'}${GL.teams[x[2]]}` : '', when: `${gdate(x[0])} ${x[3] ? 'vs' : '@'} ${GL.teams[x[2]]} · ${x[5]} min`}))});
+    return `<div class="chartwrap">${c}</div><div class="ck-legend">${cline != null ? `<span><i style="background:var(--chart-2)"></i>Over ${cline}</span><span><i style="background:var(--chart-1)"></i>Under</span><span><i class="ln" style="color:var(--chart-3)"></i>Tonight's line</span>` : '<span class="muted">No line tonight, so no over / under shading.</span>'}</div>`; })() : '';
+  const hitTxt = cline != null && gs.length ? `${gs.filter(x => gval(x, cs) > cline).length} of ${gs.length} over ${cline}` : '';
+  const log = `<section class="card pl-sec"><div class="pl-sh"><div><h2>Game log</h2><p>${gs.length ? `${gs.length} games${hitTxt ? ' · ' + hitTxt : ''}` : 'No games in this window.'}</p></div>
+      <div class="pl-ctl"><div class="seg" data-pl="win">${[['L5', 'L5'], ['L10', 'L10'], ['L20', 'L20'], ['SZN', 'Season']].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${pl.win === v}">${l}</button>`).join('')}</div>
+        ${hasPo ? `<div class="seg" data-pl="po"><button type="button" data-v="0" aria-pressed="${!pl.po}">Regular</button><button type="button" data-v="1" aria-pressed="${pl.po}">Playoffs</button></div>` : ''}
+        <div class="seg" data-pl="cs">${PL_STATS.map(s => `<button type="button" data-v="${s}" aria-pressed="${cs === s}">${SLABEL[s]}</button>`).join('')}</div></div></div>
+    ${chart}
+    <div class="pl-tw"><table class="pl-t"><thead><tr class="g"><th class="l" colspan="2">Game</th><th>Time</th><th colspan="5">Scoring</th><th colspan="6">Boards, passing and defense</th></tr>
+      <tr><th class="l">Date</th><th class="l">Opp</th><th>MIN</th><th>PTS</th><th>FG</th><th>3P</th><th>FT</th><th>TS%</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>PF</th></tr></thead>
+      <tbody>${avgRow}${gs.map(row).join('') || '<tr><td class="l" colspan="14"><p class="pl-none">No games.</p></td></tr>'}</tbody></table></div></section>`;
+
+  // seasons
+  const H = pl.hist && pl.hist.players && pl.hist.players[pid];
+  const kind = pl.po ? 'p' : 'r';
+  let srows = [];
+  if (H) srows = Object.entries(H).filter(([, v]) => v[kind]).map(([s, v]) => [+s, Object.fromEntries(pl.hist.cols.map((c, i) => [c, v[kind][i]]))]);
+  else srows = seasons.map(s => { const a = (GL.players[pid] || []).filter(x => x[1] === s && !!x[4] === pl.po); if (!a.length) return null; const S = k => a.reduce((t, x) => t + x[GI[k]], 0);
+      return [s, {gp: a.length, min: a.reduce((t, x) => t + x[5], 0), pts: S('pts'), reb: S('reb'), ast: S('ast'), '3pm': S('3pm'), stl: S('stl'), blk: S('blk'), tov: S('tov'), fgm: S('fgm'), fga: S('fga'), ftm: S('ftm'), fta: S('fta'), tpa: S('tpa'), pf: S('pf')}]; }).filter(Boolean);
+  srows.sort((a, b) => b[0] - a[0]);
+  const sum = srows.length > 1 ? srows.reduce((t, [, x]) => { for (const k of Object.keys(x)) t[k] = (t[k] || 0) + x[k]; return t; }, {}) : null;
+  const srow = (lab, t, cls) => { const a = plRates(t); return `<tr class="${cls || ''}"><td class="l">${lab}</td><td>${a.gp}</td><td>${fmt(a.mpg)}</td><td class="b">${fmt(a.pts)}</td><td class="b">${fmt(a.reb)}</td><td class="b">${fmt(a.ast)}</td><td>${fmt(a['3pm'])}</td><td>${fmt(a.stl)}</td><td>${fmt(a.blk)}</td><td>${fmt(a.tov)}</td><td>${plPct(a.fgp)}</td><td>${plPct(a.tpp)}</td><td>${plPct(a.ts)}</td></tr>`; };
+  const seasonsSec = `<section class="card pl-sec"><div class="pl-sh"><div><h2>Seasons</h2><p>${H ? `Last ${srows.length} seasons with games, ${pl.po ? 'play-in and playoffs' : 'regular season'}.` : pl.hist === undefined || (pl.hist === null && onSite) ? 'Loading earlier seasons...' : 'This season only: earlier seasons load on vaultfantasy.com.'}</p></div>
+      ${hasPo || srows.length ? `<div class="seg" data-pl="po"><button type="button" data-v="0" aria-pressed="${!pl.po}">Regular</button><button type="button" data-v="1" aria-pressed="${pl.po}">Playoffs</button></div>` : ''}</div>
+    <div class="pl-tw"><table class="pl-t"><thead><tr><th class="l">Season</th><th>GP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>3PM</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>TS%</th></tr></thead>
+      <tbody>${srows.map(([s, t]) => srow(seasonLabel(s), t)).join('') || '<tr><td class="l" colspan="13"><p class="pl-none">No games.</p></td></tr>'}${sum ? srow(`${srows.length} seasons`, sum, 'avg') : ''}</tbody></table></div></section>`;
+
+  root.innerHTML = `${search}${hero}${strip}<div class="pl-bar"><span class="muted">${pl.season ? `League ranks, ${seasonLabel(pl.season)} regular season` : ''}</span>${seasonSel}</div>${tiles}${props}${log}${seasonsSec}`;
+  $('plfoot').innerHTML = `<div><b>Ranks</b> are among the ${nQ} players with ${PL_MIN_G}+ games and ${PL_MIN_MPG}+ minutes a game in ${pl.season ? seasonLabel(pl.season) : 'the season'}; shooting percentages also need 2 to 5 attempts a game (3-pointers and free throws 2, field goals 5). Those cut-offs are a choice, not a measurement. A dash means he is below them.</div>
+    <div><b>Load</b> is shots plus turnovers per 36 minutes: field goal attempts + 0.44 free throw attempts + turnovers. It is a box-score proxy, not the NBA's usage rate, which needs team totals. <b>TS%</b> is points / (2 x (FGA + 0.44 FTA)).</div>
+    <div><b>Vault</b> numbers are the Player Props model's projection for tonight at the minutes shown; the lines are what each venue posts. Nothing on this page is a bet call except where Player Props already makes one.</div>`;
+}
+
+$('pl-root').addEventListener('click', e => {
+  if (pbClick(e, renderPlayer)) return;
+  const sg = e.target.closest('.seg[data-pl] button[data-v]');
+  if (sg){ const k = sg.parentElement.dataset.pl, v = sg.dataset.v;
+    if (k === 'stat' || k === 'cs') pl.stat = v; else if (k === 'win') pl.win = v; else if (k === 'po') pl.po = v === '1';
+    renderPlayer(); }
+});
+$('pl-root').addEventListener('change', e => { if (e.target.id === 'pl-season'){ pl.season = +e.target.value; renderPlayer(); } });
+$('pl-root').addEventListener('input', e => { if (e.target.id === 'pl-q'){ pl.q = e.target.value; $('pl-hits').innerHTML = plSearchHtml(); } });
+$('pl-root').addEventListener('submit', e => pbSubmit(e, renderPlayer));
 function pvShow(){
   for (const t of ['v2', 'bets', 'full']) $('pv-' + t).hidden = pv.tab !== t;
   if (pv.tab !== 'v2') $('pv-alerts').hidden = true;
