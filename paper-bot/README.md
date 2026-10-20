@@ -99,7 +99,8 @@ Disabled sources are skipped. A source that cannot read its model should return 
 
 A separate strategy in the same bot and ledger, tagged `source: cfb_jp_novig`. It paper-trades JP+ edges against the sportsbook open on Novig's CFB spread ladder, read through public endpoints with no key. The rules are fixed in advance and live in the docstring of `scripts/paper_bot/cfb_jp_novig.py`; the backtest behind them is the cfb-backtests RESULTS.md Update 4 (11 trades, not proven).
 
-- Trigger: `model_margin - open_margin` on the `data/cfb_model.json` board, CFB week 8+ and bowls. Edges of 3+, 5+ and 7+ are logged (`edge_bucket`); only 5+ counts toward the pass bar.
+- Trigger: `model_margin - open_margin` on the `data/cfb_model.json` board, CFB week 7+ and bowls. Edges of 3+, 5+ and 7+ are logged (`edge_bucket`); only 5+ counts toward the pass bar.
+- No look-ahead: a game that has kicked off, or that already has a final score on the board, is not entered. The paper buy is the live Novig ask at a run time before kickoff. The bot does not backfill a price it did not read before kickoff.
 - Strike: at first sight of the game's Novig ladder, the strike nearest the open on JP+'s side. Stored, never changed.
 - Snapshots: every 30 minutes, Novig and the equivalent Kalshi `KXNCAAFSPREAD` market, with each venue's first-listed time.
 - Entry: paper-buy at the ask, 25% of the contracts offered within 2 cents of it. Exit: the last bid on a snapshot before kick. Hold-to-settlement P&L is tracked on the same row. Novig pregame fees are 0.

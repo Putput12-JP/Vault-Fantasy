@@ -154,10 +154,25 @@ class TriggerBuckets(unittest.TestCase):
 
 
 class WeekFilter(unittest.TestCase):
-    def test_week_8_and_later(self):
-        self.assertFalse(S.week_ok(board_game(week=7)))
+    def test_week_7_and_later(self):
+        self.assertFalse(S.week_ok(board_game(week=6)))
+        self.assertTrue(S.week_ok(board_game(week=7)))
         self.assertTrue(S.week_ok(board_game(week=8)))
         self.assertTrue(S.week_ok(board_game(week=14)))
+
+    def test_a_final_or_a_started_game_is_not_a_trigger(self):
+        now = NOW.timestamp()
+        self.assertTrue(S.pre_kick(board_game(week=7), now))
+        self.assertEqual(S.triggers([board_game(week=7)], now)[0]['key'], 'cfb:1')
+        self.assertFalse(S.pre_kick(board_game(week=7, kick=now), now))
+        self.assertFalse(S.pre_kick(board_game(week=7, kick=now - 60), now))
+        self.assertEqual(S.triggers([board_game(week=7, kick=now - 60)], now), [])
+        final = board_game(week=7, result='W', hs=31, as_=17)
+        self.assertTrue(S.game_final(final))
+        self.assertFalse(S.pre_kick(final, now))
+        self.assertEqual(S.triggers([final], now), [])
+        self.assertEqual(S.triggers([board_game(week=7, result='P', hs=24, as_=24)], now), [])
+        self.assertEqual(S.triggers([board_game(week=7, hs=21, as_=14)], now), [])
 
     def test_bowls_pass_even_with_a_reset_week_number(self):
         dec = datetime(2026, 12, 22, 20, 0, tzinfo=UTC).timestamp()
@@ -357,6 +372,83 @@ class FullLifecycle(unittest.TestCase):
         self.run_at(NOW)
         self.run_at(NOW + timedelta(minutes=30))
         self.assertEqual(len(trades_of(self.led)), 1)
+
+    def test_an_upcoming_week_7_game_enters_before_kickoff(self):
+        write_model(self.tmp.name, [board_game(week=7)])
+        self.run_at(NOW)
+        (t,) = trades_of(self.led)
+        self.assertEqual((t['detail']['week'], t['status']), (7, 'open'))
+        self.assertLess(int(NOW.timestamp()), self.game()['kick'])
+
+    def test_a_finished_week_7_game_is_not_entered_at_the_live_price(self):
+        kick = (NOW - timedelta(days=3)).timestamp()
+        g = board_game(week=7, kick=kick, result='W', hs=35, as_=17)
+        write_model(self.tmp.name, [g])
+        self.nv.event['startsTs'] = int(kick * 1000)
+        calls = {'book': 0}
+        orig = self.nv.book
+
+        def wrapped(mid):
+            calls['book'] += 1
+            return orig(mid)
+
+        self.nv.book = wrapped
+        self.run_at(NOW)
+        self.assertEqual(trades_of(self.led), [])
+        self.assertEqual(self.led['strategies'][S.STRATEGY]['games'], {})
+        self.assertEqual(calls['book'], 0)
+
+    def test_a_final_score_blocks_entry_when_the_kick_stamp_is_still_ahead(self):
+        g = board_game(week=7, result='L', hs=10, as_=28)
+        write_model(self.tmp.name, [g])
+        calls = {'book': 0}
+        orig = self.nv.book
+
+        def wrapped(mid):
+            calls['book'] += 1
+            return orig(mid)
+
+        self.nv.book = wrapped
+        self.run_at(NOW)
+        self.assertEqual(S.triggers([g], NOW.timestamp()), [])
+        self.assertEqual(trades_of(self.led), [])
+        self.assertEqual(calls['book'], 0)
+
+    def test_a_watched_game_does_not_fill_once_kickoff_has_passed(self):
+        for k in (5.5, 6.5):
+            self.nv.books[self.nv.mid(k)] = book(k, unm_bids=((0.58, 300),))
+        self.run_at(NOW)
+        self.assertEqual(self.game()['state'], 'watching')
+        self.assertEqual(trades_of(self.led), [])
+        for k in (5.5, 6.5):
+            self.nv.books[self.nv.mid(k)] = book(k)
+        self.run_at(KICK + timedelta(minutes=1))
+        self.assertEqual(trades_of(self.led), [])
+        self.assertEqual(self.game()['state'], 'closed')
+
+    def test_try_entry_refuses_a_post_kick_or_final_price(self):
+        for k in (5.5, 6.5):
+            self.nv.books[self.nv.mid(k)] = book(k, unm_bids=((0.58, 300),))
+        self.run_at(NOW)
+        gs = self.game()
+        q = {'bid': 0.40, 'ask': 0.42, 'bid_size': 200.0, 'ask_size': 800.0}
+        stats = {'entered': 0}
+        ctx = {'ledger': self.led, 'now': KICK, 'now_ts': KICK.timestamp(), 'notes': [],
+               'by_key': {'cfb:1': board_game()}}
+        self.strat._try_entry(ctx, gs, q, stats)
+        self.assertEqual(stats['entered'], 0)
+        self.assertEqual(trades_of(self.led), [])
+        ctx['now'] = NOW
+        ctx['now_ts'] = NOW.timestamp()
+        ctx['by_key'] = {'cfb:1': board_game(result='W', hs=30, as_=10)}
+        self.strat._try_entry(ctx, gs, q, stats)
+        self.assertEqual(stats['entered'], 0)
+        self.assertEqual(gs['state'], 'watching')
+        ctx['by_key'] = {'cfb:1': board_game()}
+        self.strat._try_entry(ctx, gs, q, stats)
+        self.assertEqual(stats['entered'], 1)
+        self.assertEqual(len(trades_of(self.led)), 1)
+        self.assertLess(int(NOW.timestamp()), gs['kick'])
 
 
 class GradingMath(unittest.TestCase):
