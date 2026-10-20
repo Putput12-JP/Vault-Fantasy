@@ -694,6 +694,11 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;opac
 .pl-mbar{display:flex;align-items:center;gap:8px;position:sticky;top:-14px;z-index:3;margin:-14px -14px 0;padding:12px 14px;background:var(--bg);border-radius:20px 20px 0 0}
 .pl-mfoot{display:grid;gap:8px;padding:6px 4px 0;font-size:12px;color:var(--fg3)}.pl-mfoot b{color:var(--fg2)}
 body.pl-lock{overflow:hidden}
+/* scroll cost: the page behind a dimmed pop-up is not looked at, so it stops paying for the header blur, and the tall box
+   carries no blurred shadow (black on the black dim is invisible; it was re-rastered in tiles on every scroll frame) */
+body.pl-lock .bar,body.pl-lock .tabbar{-webkit-backdrop-filter:none;backdrop-filter:none}
+.pl-modal{overscroll-behavior:contain;isolation:isolate}
+.pl-modal .pl-mbox{box-shadow:none}
 [data-ph],img.ph,.cutph{cursor:zoom-in}
 #pl-modal [data-ph],#pl-modal img.ph,#v-player [data-ph],#v-player img.ph{cursor:default}
 @media(max-width:700px){.pl-modal{padding:0}.pl-mbox{border-radius:0;min-height:100%;padding:10px}.pl-mbar{margin:-10px -10px 0;padding:10px;border-radius:0;top:-10px}}
