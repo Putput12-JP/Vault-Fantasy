@@ -24,3 +24,24 @@ open to that too.
 
 Thanks,
 Jacob Putman
+
+
+## Second request (draft, not sent): alternate-line player props for Combo Check
+
+Subject: Permission request: displaying alternate-line player-prop prices in Vault Fantasy's NBA Combo Check
+
+Hi SmartStake team,
+
+Following my earlier note: Vault Fantasy's NBA Combo Check helps users price alternate-line parlays. It needs a book's alternate-line player-prop
+prices (for example DraftKings points 22.5+), which your API carries and no free source does.
+
+- Which: NBA player-prop alternate lines (points, rebounds, assists, threes and their combinations) for the major sportsbooks, pregame only.
+- How: for each player, the price a book is posting at each alternate line, shown next to the same line at other books and exchanges, and
+  the product of one book's leg prices for a parlay. No raw feed, no bulk download, no API.
+- Not: no resale, no redistribution, no bet links, nothing offered as a data product.
+- Attribution: "Prices via SmartStake" with a link, if you want it.
+- Delay: we can show prices on a delay (for example 15 minutes) if you prefer.
+
+Could you confirm in writing whether this is allowed, and on what terms? If a paid or partner tier would cover it, we are open to that too.
+
+Until you reply yes in writing, these prices stay local (the NBA page shows them only on localhost with ?ss).
