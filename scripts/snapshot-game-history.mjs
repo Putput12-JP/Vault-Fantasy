@@ -31,7 +31,7 @@
    Usage:  node scripts/snapshot-game-history.mjs
            node scripts/snapshot-game-history.mjs --feed=data/lineup-feed.json --out=data/game_line_history.json --dry
    ════════════════════════════════════════════════════════════════════════ */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -205,7 +205,14 @@ const season = feed.season ?? null, week = feed.week ?? null, seasonType = feed.
 const LEAD_ONLY = !!ARG['lead-only'];                  // replay mode: only roll the lead tracker, as of --now
 const now = (LEAD_ONLY && ARG.now) ? new Date(ARG.now).toISOString() : new Date().toISOString();
 
-const prev = readJSON(OUT) || {};
+// A file that exists but won't parse is corrupt (e.g. committed merge-conflict
+// markers, 2026-10-19). Starting from {} here would overwrite 283 games of open
+// lines and Pinnacle lead records with whatever is on the board, so stop instead.
+let prev = {};
+if (existsSync(OUT)) {
+  prev = readJSON(OUT);
+  if (!prev) { console.error(`${OUT} exists but is not valid JSON; refusing to start over.`); process.exit(1); }
+}
 const games = (prev.games && typeof prev.games === 'object') ? prev.games : {};   // carry ALL prior keys forward (retain finished)
 
 let created = 0, moved = 0, seen = 0;
