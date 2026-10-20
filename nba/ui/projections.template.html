@@ -891,7 +891,7 @@ table.nt td.cutc{padding-top:0;padding-bottom:0}.cutc .pl{align-items:flex-end}.
 /* Props Simulation workbench: a dense player list beside the prop panel, so the page fills its width instead of stacking three full-width cards */
 .ps-work{display:grid;grid-template-columns:minmax(340px,490px) minmax(0,1fr);gap:var(--gap);align-items:stretch}
 #pscards{display:flex;flex-direction:column}#pscards .card-b{flex:1;display:flex}#pscards .ps-cards{flex:1;grid-auto-rows:1fr}
-#pstop:empty{display:none}#pstop .ps-top{margin-top:0;padding:10px 16px}
+#pstop:empty{display:none}.ps-gaprec{margin-top:8px}#pstop .ps-top+.ps-gaprec{margin-top:8px}#pstop .ps-top{margin-top:0;padding:10px 16px}
 #pscards .card-h,#psprop .card-h{padding-top:14px;align-items:center}#pscards .card-h h2{font-size:15px}
 #pscards .card-b{padding:12px 12px 12px}
 .ps-cards{grid-template-columns:1fr;gap:6px;margin-top:0}
@@ -1959,7 +1959,13 @@ th{font-weight:500}
           <div class="tablewrap"><table class="ht tsim" id="tpsh"></table></div>
           <h3 class="sim-h">This season, shadow bets and the Game Simulation</h3>
           <div class="tablewrap"><table class="ht tsim" id="tpsl"></table></div>
-          <p class="hint" id="tpslnote"></p></div>
+          <p class="hint" id="tpslnote"></p>
+          <h3 class="sim-h">Biggest gap, this season</h3>
+          <p class="hint" id="tpgsub"></p>
+          <div class="tablewrap"><table class="ht tsim" id="tpg"></table></div>
+          <p class="hint" id="tpgnote"></p>
+          <h3 class="sim-h">Last 10 Biggest gap picks</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tpgl"></table></div></div>
       </section>
 
       <section class="card" id="tnvcard">
@@ -4225,7 +4231,43 @@ function renderSimRecord(){
 // simulations play that same model out 10,000 and 50 games at a time ("plain 50" is a simple rate-times-minutes version with Normal draws).
 // Live: the model's settled shadow bets next to how often the Game Simulation's player ranges held. A like-for-like live score of single-prop
 // simulations is not recorded yet, and the card says so.
+// ── Biggest gap record (prop_sim_record.py → track.json gap_days): one pick per game, settled from the box score. W/L make the record; P (landed on
+// the line) and D (did not play) are voids, counted but outside it. Expected wins = sum of the price's chance; z = (W - expected) / sqrt(sum pm(1-pm)).
+// No stake or payout is stored, so there is no ROI here by design. Preseason picks sit in preseason.gap_days and are not read.
+const GAP_MIN = 100;
+function gapPicks(){
+  const g = TR && TR.data && TR.data.gap_days; if (!g) return [];
+  return Object.entries(g).flatMap(([day, a]) => (a || []).map(x => ({...x, day})));
+}
+function gapStats(rows){
+  const set = rows.filter(r => r.r === 'W' || r.r === 'L'), w = set.filter(r => r.r === 'W').length, n = set.length;
+  const pr = set.filter(r => r.pm != null && r.p != null), ex = pr.reduce((a, r) => a + r.pm, 0), v = pr.reduce((a, r) => a + r.pm * (1 - r.pm), 0);
+  const z = pr.length === n && v > 0 ? (w - ex) / Math.sqrt(v) : null;
+  return {n, w, l: n - w, voids: rows.length - n, hit: n ? w / n : null, model: pr.length ? pr.reduce((a, r) => a + r.p, 0) / pr.length : null,
+    price: pr.length ? ex / pr.length : null, ex: pr.length === n && n ? ex : null, z};
+}
+function gapChip(){ const a = gapStats(gapPicks()); return a.n ? `<div class="ps-gaprec"><span class="pill idle" title="Settled Biggest gap picks this season, one per game. Pushes and players who did not play are left out. Where to look, not a bet signal.">Biggest gaps so far ${a.w}-${a.l}</span></div>` : ''; }
+function gapVerdict(a){ return a.n < GAP_MIN ? pill('idle', 'collecting') : a.z == null ? pill('idle', 'no clear gap') : a.z >= 2 ? pill('ok', 'ahead of the price') : a.z <= -2 ? pill('warn', 'behind the price') : pill('idle', 'no clear gap'); }
+function renderGapRecord(){
+  const rows = gapPicks(), pre = TR && TR.data && TR.data.preseason && TR.data.preseason.gap_days ? Object.values(TR.data.preseason.gap_days).flat().length : 0;
+  const preTxt = pre ? ` ${pre} preseason ${pre === 1 ? 'pick is' : 'picks are'} scored apart and counted nowhere.` : '';
+  $('tpgsub').textContent = `For each game, the prop where the model's chance and the price's chance differ most, scored against the box score. It is where to look, not a bet signal: there is no stake or payout, so no profit number. With ${GAP_MIN} settled picks the page says whether the hit rate is ahead of or behind what the price expected.${preTxt}`;
+  if (!rows.length){
+    $('tpg').innerHTML = '<tbody><tr><td class="l"><p class="empty">No Biggest gap picks settled yet. Each game\'s pick is fixed in the last look before tip and scored after the game.</p></td></tr></tbody>';
+    $('tpgl').innerHTML = ''; $('tpgnote').textContent = ''; return;
+  }
+  const R = [...SIM_STATS, 'all'].map(s => [s, gapStats(s === 'all' ? rows : rows.filter(r => r.stat === s))]).filter(([s, a]) => s === 'all' || a.n || a.voids);
+  const sg = z => z == null ? '' : (z >= 0 ? '+' : '') + z.toFixed(1);
+  $('tpg').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th><th scope="col" title="Picks with a win or a loss">Settled</th><th scope="col">Record</th><th scope="col" title="Landed on the line (push) or the player did not play">Voids</th><th scope="col">Hit</th><th scope="col" title="Average chance the model gave the side it picked">Model chance</th><th scope="col" title="Average chance the price gave that side, vig removed">Price chance</th><th scope="col" title="Sum of the price's chance for each pick">Expected wins</th><th scope="col" title="(wins - expected) / sqrt(sum of p x (1 - p))">z</th><th scope="col">Verdict</th></tr></thead><tbody>${
+    R.map(([s, a]) => `<tr><td class="l"><b>${s === 'all' ? 'All stats' : PS_LBL[s]}</b></td><td class="num">${a.n.toLocaleString()}</td><td class="num">${a.n ? `${a.w}-${a.l}` : ''}</td><td class="num">${a.voids || ''}</td><td class="num">${pc(a.hit)}</td><td class="num">${pc(a.model)}</td><td class="num">${pc(a.price)}</td><td class="num">${a.ex == null ? '' : a.ex.toFixed(1)}</td><td class="num">${sg(a.z)}</td><td>${gapVerdict(a)}</td></tr>`).join('')}</tbody>`;
+  const last = rows.filter(r => r.r).sort((a, b) => b.day < a.day ? -1 : b.day > a.day ? 1 : (b.tip || 0) - (a.tip || 0)).slice(0, 10), RS = {W: pill('ok', 'Won'), L: pill('bad', 'Lost'), P: pill('idle', 'Push'), D: pill('idle', 'Did not play')};
+  $('tpgl').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Player</th><th class="l" scope="col">Pick</th><th scope="col">Actual</th><th scope="col">Result</th></tr></thead><tbody>${
+    last.map(r => `<tr><td class="l">${esc(r.day)}</td><td class="l"><b>${esc(r.player)}</b><small>${esc(r.matchup || r.team || '')}</small></td><td class="l">${String(r.side).toUpperCase()} ${r.line} ${PS_ABB[r.stat] || esc(r.stat)}</td><td class="num">${r.y == null ? '' : r.y}</td><td class="l">${RS[r.r] || ''}</td></tr>`).join('')}</tbody>`;
+  const all = R.find(x => x[0] === 'all')[1];
+  $('tpgnote').textContent = all.n < GAP_MIN ? `${all.n} of ${GAP_MIN} settled picks. Until then the page makes no call about whether the model beats the price.` : 'Ahead of or behind the price only when z is 2 or more away from zero, otherwise no clear gap. Rules: nba/docs/sim-challenger.md.';
+}
 function renderPropSimRecord(){
+  renderGapRecord();
   const S = SIMCH && SIMCH.sources;
   if (!S){ $('tpsk').innerHTML = ''; $('tps').innerHTML = '<tbody><tr><td class="l"><p class="empty">The backtest has not been built yet (nba/scripts/build_sim_challenger.py).</p></td></tr></tbody>'; $('tpsl').innerHTML = ''; return; }
   const cells = Object.values(S).flatMap(o => Object.values(o)), nC = cells.length, V = SIMCH.verdict, SL = {kalshi: 'Kalshi prices', espn_close: 'Sportsbook closing lines'};
@@ -5075,7 +5117,7 @@ function renderPropSim(){
         <div class="n"><b>${esc(r.name)}</b><small><i style="background:${col}"></i>${r.team}</small></div>
         <div class="ps-ps"><span class="mn"><em>MIN</em><b>${fmt(r.min, 1)}</b></span>${['pts', 'reb', 'ast'].map(s => `<span><em>${PS_ABB[s]}</em><b>${fmt(r.mu[s], 1)}</b></span>`).join('')}</div>
         <div class="ps-pf">${i.line != null ? `<span>o/u ${i.line}</span><span class="${i.lean === 'over' ? 'pos' : 'neg'}">${psSg(i.edge)} · ${Math.round(i.pLean * 100)}% ${i.lean === 'over' ? 'o' : 'u'}</span>` : '<span>no line yet</span><span>model only</span>'}</div></button>`; };
-    $('pstop').innerHTML = top ? `<button type="button" class="ps-top" data-top="${top.r.pid}|${top.s}"><b class="tag">${top.priced ? 'BIGGEST GAP' : 'STRONGEST LEAN'}</b><span style="color:#e8edf5;font-size:15px">${esc(top.r.name)} <b>${top.i.lean.toUpperCase()} ${top.i.line} ${PS_ABB[top.s]}</b></span><span>model ${fmt(top.i.mu, 1)} · ${Math.round(top.i.pLean * 100)}%${top.priced ? ` vs ${Math.round(top.i.mktLean * 100)}% in the price` : ''}</span></button>` : '';
+    $('pstop').innerHTML = (top ? `<button type="button" class="ps-top" data-top="${top.r.pid}|${top.s}"><b class="tag">${top.priced ? 'BIGGEST GAP' : 'STRONGEST LEAN'}</b><span style="color:#e8edf5;font-size:15px">${esc(top.r.name)} <b>${top.i.lean.toUpperCase()} ${top.i.line} ${PS_ABB[top.s]}</b></span><span>model ${fmt(top.i.mu, 1)} · ${Math.round(top.i.pLean * 100)}%${top.priced ? ` vs ${Math.round(top.i.mktLean * 100)}% in the price` : ''}</span></button>` : '') + gapChip();
     $('pscards').innerHTML = `<div class="card-h"><div><h2>${g.away} at ${g.home}</h2><p>${etFmt(g.tip, {weekday: 'short', month: 'short', day: 'numeric'})}, ${clock(g.tip)} ET</p></div><span class="ps-lbl">Tap a player</span></div>
       <div class="card-b"><div class="ps-cards">${infos.map(cardHtml).join('')}</div></div>`;
 
@@ -5102,7 +5144,7 @@ function renderPropSim(){
           return x.line == null ? `<button type="button" class="ps-ar" data-st="${s}" aria-pressed="${s === stat}"><span>${PS_LBL[s]}</span><span>none</span><span>${fmt(x.mu, 1)}</span><span></span><span></span><span></span></button>`
             : `<button type="button" class="ps-ar" data-st="${s}" aria-pressed="${s === stat}"><span>${PS_LBL[s]}</span><span>${x.line}</span><span>${fmt(x.mu, 1)}</span><span class="${x.lean === 'over' ? 'pos' : 'neg'}">${psSg(x.edge)}</span><span class="${x.lean === 'over' ? 'pos' : 'neg'}">${Math.round(x.pLean * 100)}% ${x.lean === 'over' ? 'o' : 'u'}</span><span>${x.mktLean != null ? Math.round(x.mktLean * 100) + '%' : 'no price'}</span></button>`; }).join('')}</div></div>`;
     } else $('psprop').innerHTML = '';
-  } else { $('pscards').innerHTML = ''; $('psprop').innerHTML = ''; $('psgames').innerHTML = ''; $('pstop').innerHTML = ''; }
+  } else { $('pscards').innerHTML = ''; $('psprop').innerHTML = ''; $('psgames').innerHTML = ''; $('pstop').innerHTML = gapChip(); }
 
   // track record for the stat on show (or points when no game is up): the backtest on last season's prices, then this season live
   const SRC = SIMCH && SIMCH.sources;
@@ -5119,7 +5161,7 @@ function renderPropSim(){
     let live = null; try { const a = wkLive(stat, 'YES'), b = wkLive(stat, 'NO'); if (a || b) live = {settled: (a ? a.settled : 0) + (b ? b.settled : 0), w: (a ? a.w : 0) + (b ? b.w : 0), l: (a ? a.l : 0) + (b ? b.l : 0)}; } catch (x) {}
     $('pstrack').innerHTML = `<div class="card-h"><div><h2>Track record: ${PS_LBL[stat]} props</h2><p>How playing the model out, 10,000 or 50 games at a time, scored against what really happened last season.</p></div><button class="btn" id="psrec" type="button">Open Track Record</button></div>
       <div class="card-b"><div class="ps-trk">${block('kalshi')}${block('espn_close')}</div>
-      <div class="ps-trk"><div class="ps-sec"><div class="ps-lbl">This season, live</div><p class="ps-note">${live && live.settled ? `${live.w}-${live.l} on ${live.settled} settled shadow bets on ${PS_LBL[stat].toLowerCase()} props (Kalshi). Every 3%+ edge is logged and settled on the Track Record page.` : 'Starts on opening night, October 20. Every 3%+ edge is logged as a shadow bet and settled from the box score on the Track Record page.'}</p></div>
+      <div class="ps-trk"><div class="ps-sec"><div class="ps-lbl">This season, live</div><p class="ps-note">${live && live.settled ? `${live.w}-${live.l} on ${live.settled} settled shadow bets on ${PS_LBL[stat].toLowerCase()} props (Kalshi). Every 3%+ edge is logged and settled on the Track Record page.` : 'Starts on opening night, October 20. Every 3%+ edge is logged as a shadow bet and settled from the box score on the Track Record page.'}</p>${(() => { const a = gapStats(gapPicks()); return a.n ? `<p class="ps-note">Biggest gap picks, all stats: ${a.w}-${a.l} on ${a.n} settled${a.ex == null ? '' : `, where the price expected ${a.ex.toFixed(1)} wins`}${a.voids ? ` (${a.voids} voided)` : ''}. Where to look, not a bet signal; the Track Record page has the full table.` : ''; })()}</div>
       <div class="ps-sec"><div class="ps-lbl">Bottom line</div><p class="ps-note">The 10,000-game simulation lands on the exact answer, and 50 games adds noise and nothing else. So the number you should read is the exact one. The rules were written before the run (nba/docs/sim-challenger.md).</p></div></div></div>`;
   }
   $('psfoot').innerHTML = `<div><b>What this is.</b> The player cards show the prop model's projection for tonight's game and the line. The prop view gives the model's chance of the over or under, next to his last 5 games. The track record shows why that exact chance is the number to read: playing it out 50 games at a time adds about 7 points of random error.</div>
