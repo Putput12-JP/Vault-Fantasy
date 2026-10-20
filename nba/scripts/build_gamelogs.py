@@ -5,7 +5,8 @@ game-log chart). One compact row per game played, for every rostered player (dat
 
   python3 nba/scripts/build_gamelogs.py [--seasons=2026,2027]
 Reads raw/hoopr/player_box_<season>.csv (fetch_hoopr.py; the season is the year it ends: 2026 = 2025-26).
-Writes data/gamelogs.json and re-renders the page.
+Writes data/gamelogs.json and re-renders the page. Also writes data/season_totals.json: every rostered player's totals by season
+and regular season / playoffs for the Player profile's season table (the page fetches it on that view only).
 
 Row: [day, season, opp, home, playoff, min, pts, reb, ast, 3pm, stl, blk, tov, fgm, fga, ftm, fta, tpa, oreb, dreb, pf]
   day      days since 1970-01-01 (the game date)      opp  index into `teams`
@@ -22,6 +23,38 @@ RAW = os.path.join(HERE, '..', 'raw', 'hoopr')
 DATA = os.path.join(HERE, '..', 'data')
 MAX_GAMES = 100
 EPOCH = dt.date(1970, 1, 1)
+
+
+TOT_COLS = ['gp', 'min', 'pts', 'reb', 'ast', '3pm', 'stl', 'blk', 'tov', 'fgm', 'fga', 'ftm', 'fta', 'tpa', 'oreb', 'dreb', 'pf']
+TOT_SRC = ['minutes', 'points', 'rebounds', 'assists', 'three_point_field_goals_made', 'steals', 'blocks', 'turnovers', 'field_goals_made',
+           'field_goals_attempted', 'free_throws_made', 'free_throws_attempted', 'three_point_field_goals_attempted', 'offensive_rebounds',
+           'defensive_rebounds', 'fouls']
+
+
+def season_totals(keep, cur, back=4):
+    """{pid: {season: {'r': totals, 'p': totals}}} for the last `back` seasons that have box scores (r regular season, p play-in and
+    playoffs), totals in TOT_COLS order; per game on the page. Only players who played."""
+    out, have = {}, []
+    for s in range(cur - back, cur + 1):
+        path = os.path.join(RAW, f'player_box_{s}.csv')
+        if not os.path.exists(path):
+            continue
+        have.append(s)
+        for r in csv.DictReader(open(path)):
+            if not r['athlete_id'] or int(r['athlete_id']) not in keep or r['did_not_play'] == 'true' \
+                    or r['season_type'] not in ('2', '3', '5') or not r['minutes'] or float(r['minutes']) <= 0:
+                continue
+            row = out.setdefault(int(r['athlete_id']), {}).setdefault(str(s), {}).setdefault('r' if r['season_type'] == '2' else 'p', [0.0] * len(TOT_COLS))
+            row[0] += 1
+            for i, c in enumerate(TOT_SRC, 1):
+                row[i] += float(r[c] or 0)
+    for byseason in out.values():
+        for sz in byseason.values():
+            for k, row in sz.items():
+                sz[k] = [int(row[0])] + [round(x, 1) if i == 1 else int(x) for i, x in enumerate(row[1:], 1)]
+    path = os.path.join(DATA, 'season_totals.json')
+    json.dump({'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%MZ'), 'cols': TOT_COLS, 'seasons': have, 'players': out}, open(path, 'w'), separators=(',', ':'))
+    print(f'season totals: {len(out)} players, seasons {have} -> data/season_totals.json ({os.path.getsize(path) // 1000} KB)')
 
 
 def main(argv):
@@ -60,6 +93,7 @@ def main(argv):
            'through': (EPOCH + dt.timedelta(days=last)).isoformat() if last else None,
            'cols': ['day', 'season', 'opp', 'home', 'playoff', 'min', 'pts', 'reb', 'ast', '3pm', 'stl', 'blk', 'tov', 'fgm', 'fga', 'ftm', 'fta', 'tpa', 'oreb', 'dreb', 'pf'],
            'teams': teams, 'players': logs}
+    season_totals(keep, cur)
     path = os.path.join(DATA, 'gamelogs.json')
     json.dump(out, open(path, 'w'), separators=(',', ':'))
     print(f'{len(logs)} players, games through {out["through"]} -> data/gamelogs.json ({os.path.getsize(path) // 1000} KB)')
