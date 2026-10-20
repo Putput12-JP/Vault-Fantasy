@@ -91,6 +91,11 @@ def con():
     import duckdb
     c = duckdb.connect()
     c.execute('INSTALL httpfs; LOAD httpfs;')
+    # One thread, then httpfs backoff. The archive allows 40 requests per 10s per IP (cut on 2026-10-12).
+    c.execute('SET threads TO 1')
+    c.execute('SET http_retries=6')
+    c.execute('SET http_retry_wait_ms=2000')
+    c.execute('SET http_retry_backoff=2')
     return c
 
 
@@ -108,12 +113,22 @@ def query(c, t, event, cols, cids, before=None):
     w = f"event_type = '{event}' AND market IN ({in_list(cids)})"
     if before is not None:
         w += f' AND epoch_ms(timestamp) < {int(before * 1000)}'
-    try:
-        return c.execute(f"SELECT {cols} FROM read_parquet('{hour_url(t)}') WHERE {w}").fetchall()
-    except Exception as e:
-        if '404' in str(e) or 'Not Found' in str(e):
-            return None
-        raise
+    url = hour_url(t)
+    sql = f"SELECT {cols} FROM read_parquet('{url}') WHERE {w}"
+    for attempt in range(5):
+        try:
+            return c.execute(sql).fetchall()
+        except Exception as e:
+            msg = str(e)
+            if '404' in msg or 'Not Found' in msg:
+                return None
+            if '429' in msg or '503' in msg:
+                if attempt < 4:
+                    time.sleep(15 * (attempt + 1))
+                    continue
+                break
+            raise
+    raise RuntimeError(f'rate limited on {url}')
 
 
 # ── closes ─────────────────────────────────────────────────────────────────────────────────────
@@ -169,13 +184,20 @@ def cmd_closes(a):
             k = f"{sport}|{g['slug']}"
             if k in G and not a.force:
                 continue
-            r = close_of(g, c)
+            try:
+                r = close_of(g, c)
+            except RuntimeError as e:
+                print(f'  {k}: skip, {e}', flush=True)
+                time.sleep(1)
+                continue
             if r is None or r['ml'] is None:
                 print(f'  {k}: hour not published yet or no moneyline quote', flush=True)
+                time.sleep(1)
                 continue
             G[k] = {'sport': sport, 'slug': g['slug'], 'title': g['title'], 'kickoff': g['kickoff'], **r}
             n += 1
             print(f"  {k}: ml {r['ml']['outcomes'][0]} {r['ml']['p']}, {len(r['spreads'])} spreads, {len(r['totals'])} totals", flush=True)
+            time.sleep(1)
     data.update(generated=iso(now), credit=CREDIT)
     json.dump(data, open(CLOSES, 'w'), separators=(',', ':'), sort_keys=True)
     print(f'closes: {n} new, {len(G)} games in {os.path.relpath(CLOSES, ROOT)}')
