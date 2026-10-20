@@ -85,3 +85,17 @@ Rules, fixed now:
 - **Call:** none before 100 settled (non-void) picks; the page says "collecting". After that, a result is "ahead of the price" or "behind the price" only
   when |z| >= 2. An improving record is flagged for close monitoring with its sample size, never promoted to a bet signal.
 - **Not a bet source.** Nothing here changes a price, a Bet, a Lean or an Edge.
+
+### Revision 2026-10-20, before any pick was settled: held teams are recorded too
+
+The first version skipped props from teams the roster guard holds. On opening night that was every team in the first three games, so the page
+headlined a Biggest gap pick (Daniss Jenkins over 7.5 points, BOS @ DET) that the recorder never saw and the record stayed empty. The page picks from a
+game's shown players whether or not the guard holds the team, so the record now sees the same props.
+
+- Held props (and returning players) are recorded with meta `held` = the reason. The Biggest gap pick is chosen and settled from all of them, the way the
+  page chooses it, and a pick on a held team carries `held`; the Track Record row says "roster guard held this team" and the note counts them.
+- **The model comparison is unchanged:** held props stay out of the log-loss and Brier sums, so the minutes model vs simulation score still covers only
+  props the guard trusts.
+- Same rules otherwise: no stake or payout, no ROI, a call only at 100 settled picks, never a bet signal. A held pick is where-to-look, nothing more.
+- **No history to fix:** no regular-season Biggest gap pick had been recorded, and the opening-night games already past (BOS @ DET) have no pre-tip rows
+  to rebuild from; none were invented. The record starts with the first game polled after this ships.
