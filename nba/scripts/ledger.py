@@ -236,7 +236,7 @@ def minutes_log(board, now):
             gb = pr.game_minutes_gbm(team, g, status, cache)                     # shadow (gradient-boosted minutes), never priced
             for pid, G in pr.game_minutes(team, g, status, cache).items():
                 k = f"{g['id']}|{pid}"
-                rows[k] = [round(G['min'], 2), round((pr.state['players'].get(str(pid)) or {}).get('ms', [0])[0], 2),
+                rows[k] = [round(G['min'], 2), round(((pr.state['players'].get(str(pid)) or {}).get('ms') or [0])[0], 2),
                            round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None]
                 meta[k] = {'game': str(g['id']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': pid,
                            'player': names.get(pid, str(pid)), 'team': team}
