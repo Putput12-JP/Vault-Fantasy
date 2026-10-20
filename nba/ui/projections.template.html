@@ -2476,7 +2476,7 @@ function renderLabPre(){
   el.hidden = !live; if (!live) return;
   const n = D.teams[cur].players.filter(p => p.pre && Math.abs(p.min0_pre - p.min0_std) >= 1).length;
   el.innerHTML = `<b>Early-season minutes</b><div class="seg" role="group" aria-label="Early-season minutes"><button aria-pressed="${!PRE_ON}" data-pre="0">Standard</button><button aria-pressed="${PRE_ON}" data-pre="1">With preseason</button></div>`
-    + `<span title="Uses first-half preseason minutes in the season-start projection, the game-day minutes and your Props prices on this page. It fades out over games 6 to 10 and is gone from game 11. Rookies and traded players are not adjusted.">${n ? `${n} ${cur} player${n === 1 ? '' : 's'} move 1+ min` : `No ${cur} player moves 1 min`} · gone by game 11</span>`;
+    + `<span title="Uses first-half preseason minutes in the season-start projection, the game-day minutes and your Props prices on this page. Veterans fade out over games 6 to 10 and are gone from game 11; drafted rookies fade over games 21 to 25 and are gone from game 26. Traded players, undrafted rookies and anyone under 40 preseason minutes are not adjusted.">${n ? `${n} ${cur} player${n === 1 ? '' : 's'} move 1+ min` : `No ${cur} player moves 1 min`} · gone by game 11 (rookies 26)</span>`;
   el.onclick = ev => { const b = ev.target.closest('button[data-pre]'); if (b){ store.set('nml-pre', +b.dataset.pre); location.reload(); } };
 }
 function render(){

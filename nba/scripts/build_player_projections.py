@@ -13,8 +13,9 @@ Per rostered player (from data/depth_charts.json):
            n / (n + IN_SEASON_K) after n games, so the daily refresh follows the rotation as it settles.
            top 13 active, the rest start at 0. Players listed OUT on the roster start at 0.
   min0_pre early-season minutes that also use first-half PRESEASON minutes (data/preseason_minutes.json, docs/minutes-lab-preseason.md):
-           a different start (b0 + b1 x last mpg + b2 x 1H preseason mpg), K = 2, and the preseason term fades to the standard
-           number over games 6-10 and is gone from game 11 (or at once on a team change or a 5+ game absence). The Lab toggle
+           a different start (veterans b0 + b1 x last mpg + b2 x 1H preseason mpg; drafted rookies b0 + b1 x draft-bucket mean + b2 x 1H),
+           K = 2, and the preseason term fades to the standard number (veterans games 6-10, gone from 11; rookies games 21-25, gone
+           from 26), or at once on a team change or a 5+ game absence. The Lab toggle
            swaps min0 for min0_pre; min0, the ledger and the Props default are unchanged.
   spread   variance fits from data/prop_model.json, for a 10th-90th percentile range
 
@@ -132,11 +133,13 @@ def absence_flags(season):
     return out
 
 
-def preseason_weight(n):
-    """share of the preseason-informed number still in min0_pre after n games (fade over PRE_TAPER..PRE_RETIRE)"""
-    if n <= PRE_TAPER:
+def preseason_weight(n, taper=None, retire=None):
+    """share of the preseason-informed number still in min0_pre after n games (linear fade from taper to retire;
+    veterans 5 -> 11, rookies 20 -> 26, docs/minutes-lab-preseason.md and docs/rookie-minutes-test.md)"""
+    taper, retire = PRE_TAPER if taper is None else taper, PRE_RETIRE if retire is None else retire
+    if n <= taper:
         return 1.0
-    return max(0.0, (PRE_RETIRE - n) / (PRE_RETIRE - PRE_TAPER))
+    return max(0.0, (retire - n) / (retire - taper))
 
 
 def draft(year):
@@ -203,18 +206,35 @@ def main():
         print(f"preseason minutes: {len(pm['players'])} players, K {PRE_K}, fade games {PRE_TAPER + 1}-{PRE_RETIRE - 1}, gone from {PRE_RETIRE}", flush=True)
 
     def pre_minutes(p, ab, std):
-        """(minutes, evidence) with the preseason term, or None when he is not eligible (docs/minutes-lab-preseason.md)"""
+        """(minutes, evidence) with the preseason term, or None when he is not eligible (docs/minutes-lab-preseason.md,
+        docs/rookie-minutes-test.md). Veterans: last-season minutes + 1H preseason minutes. Drafted rookies: his draft
+        bucket's mean + 1H preseason minutes, on a slower schedule."""
         q = pm['players'].get(str(p['id'])) if pm else None
-        if (not q or p['rookie'] or not p['last_gp'] or p['last_gp'] < 10 or p['last_gp'] * p['last_mpg'] < pm['eligibility']['min_last_minutes']
-                or q['box_min'] < pm['eligibility']['min_preseason_minutes'] or q['team'] != ab
+        if (not q or q['box_min'] < pm['eligibility']['min_preseason_minutes'] or q['team'] != ab
                 or (p['injury'] and 'Out' in p['injury']) or absent.get(p['id'])):
             return None
-        b = pm['model']['start_pre']
-        start = max(0.0, b[0] + b[1] * p['last_mpg'] + b[2] * q['h1_mpg'])
         n, m, _ = now_min.get(p['id'], (0, 0.0, None))
-        pre = start if not n else (n * m + PRE_K * start) / (n + PRE_K)
-        w = preseason_weight(n)
-        return std + w * (pre - std), {'g': q['n'], 'h1': q['h1_mpg'], 'start': round(start, 1), 'w': round(w, 2), 'n': n}
+        if p['draft'] and (p['rookie'] or not p['last_gp']):
+            rk = pm.get('rookie')
+            bm = None
+            for lo, hi in PICK_BUCKETS:
+                if lo <= p['draft']['pick'] <= hi:
+                    bm = rk['bucket_means'].get(f'{lo}-{hi}') if rk else None
+            if bm is None:
+                return None
+            b, dk = rk['model'], rk['decay']
+            start = max(0.0, b[0] + b[1] * bm + b[2] * q['h1_mpg'])
+            K, w = dk['K'], preseason_weight(n, dk['taper_from'], dk['retire_at'])
+            kind = 'rookie'
+        else:
+            if p['rookie'] or not p['last_gp'] or p['last_gp'] < 10 or p['last_gp'] * p['last_mpg'] < pm['eligibility']['min_last_minutes']:
+                return None
+            b = pm['model']['start_pre']
+            start = max(0.0, b[0] + b[1] * p['last_mpg'] + b[2] * q['h1_mpg'])
+            K, w = PRE_K, preseason_weight(n)
+            kind = 'vet'
+        pre = start if not n else (n * m + K * start) / (n + K)
+        return std + w * (pre - std), {'g': q['n'], 'h1': q['h1_mpg'], 'start': round(start, 1), 'w': round(w, 2), 'n': n, 'kind': kind}
 
     def default_minutes(p):
         if p['injury'] and 'Out' in p['injury']:
@@ -289,7 +309,9 @@ def main():
         'rebalance': {'same': mm['vac_same'], 'other': mm['vac_other']},
         'cascade': {s: {'beta': casc[s]['beta'], 'use': casc[s]['use']} for s in ('pts', 'reb') if s in casc},
         'preseason': ({'season': pm['season'], 'K': PRE_K, 'taper_from': PRE_TAPER, 'retire_at': PRE_RETIRE,
-                       'players': sum(1 for t in teams.values() for x in t['players'] if 'pre' in x)} if pm else None),
+                       'rookie_retire_at': pm['rookie']['decay']['retire_at'] if pm.get('rookie') else None,
+                       'players': sum(1 for t in teams.values() for x in t['players'] if 'pre' in x),
+                       'rookies': sum(1 for t in teams.values() for x in t['players'] if x.get('pre', {}).get('kind') == 'rookie')} if pm else None),
         'teams': teams,
     }
     json.dump(out, open(os.path.join(DATA, 'player_projections.json'), 'w'), separators=(',', ':'))
