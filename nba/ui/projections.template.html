@@ -7839,7 +7839,7 @@ window.addEventListener('hashchange', () => { if (pl.modal) plClose(false); });
 const CC_LO = 1 / 3, CC_HI = 0.5833;                 // a leg priced between +200 and -140
 const CC_FAM = Object.fromEntries(((PKC && PKC.pass) || []).filter(f => f.rel === 'team').map(f => [[f.a, f.b].sort().join('|'), f]));
 const CC_EXCH = new Set(['kalshi', 'polymarket', 'novig']);
-let cc = {legs: [], q: '', rows: null, all: null, sug: null, minEv: .03, straightN: 15, sstake: 10};
+let cc = {legs: [], q: '', rows: null, all: null, sug: null, minEv: .03, straightN: 15, sstake: 10, recF: 'settled', recN: 25};
 const ccAm = p => p >= .5 ? Math.round(-100 * p / (1 - p)) : Math.round(100 * (1 - p) / p);
 const ccF = a => (a > 0 ? '+' : '') + a;
 const ccDec = am => am > 0 ? 1 + am / 100 : 1 + 100 / -am;
@@ -8098,11 +8098,16 @@ function ccRecordHtml(){
   const kpi = (k, v, h) => `<div class="pl-c"><small>${k}</small><b>${v}</b><span>${h}</span></div>`;
   const NAMEK = {straight: 'Straight alt bets', mates: 'Teammate parlays', cross: 'Different-game parlays'};
   const row = (name, x) => `<tr><td class="l">${esc(name)}</td><td>${x.calls}</td><td>${x.settled}</td><td>${x.won}-${x.settled - x.won}</td><td class="${x.units >= 0 ? 'pos' : 'neg'}">${u(x.units)}</td><td>${pctf(x.roi)}</td><td>${pctf(x.clv)}<small>${x.clv_n} calls</small></td><td>${pctf(x.ev)}</td></tr>`;
-  const rec = (R.recent || []).slice(0, 15).map(c => `<tr><td class="l">${etFmt(c.first, {month: 'short', day: 'numeric'})} ${clock(c.first)}</td><td class="l">${esc(NAMEK[c.type] || c.type)} · ${esc(c.book)}</td><td class="l">${c.legs.map(l => `${esc(l.name)} ${l.side === 'over' ? 'o' : 'u'}${l.line} ${PP_SHORT[l.stat] || l.stat}`).join(' + ')}</td><td>${ccF(ccAm(1 / c.dec0))}</td><td>${pctf(c.ev0)}</td><td class="${c.res === 'won' ? 'pos' : c.res === 'lost' ? 'neg' : ''}">${c.res ? (c.res === 'void' ? 'void' : `${c.res} ${u(c.units)}`) : '<span class="muted">open</span>'}</td></tr>`).join('');
+  const CALLS = R.list || R.recent || [], RF = {settled: c => c.res === 'won' || c.res === 'lost', won: c => c.res === 'won', lost: c => c.res === 'lost', open: c => !c.res, all: () => true},
+    nF = k => CALLS.filter(RF[k]).length, shownCalls = CALLS.filter(RF[cc.recF] || RF.all).sort((x, y) => (y.tip || 0) - (x.tip || 0) || y.first - x.first),
+    sum = shownCalls.reduce((s, c) => s + (c.units || 0), 0);
+  const rec = shownCalls.slice(0, cc.recN).map(c => `<tr><td class="l">${etFmt(c.first, {month: 'short', day: 'numeric'})} ${clock(c.first)}</td><td class="l">${esc(NAMEK[c.type] || c.type)} · ${esc(c.book)}</td><td class="l">${c.legs.map(l => `${esc(l.name)} ${l.side === 'over' ? 'o' : 'u'}${l.line} ${PP_SHORT[l.stat] || l.stat}${c.res && l.y != null ? ` <span class="muted">(${l.y})</span>` : ''}`).join(' + ')}</td><td>${ccF(ccAm(1 / c.dec0))}</td><td>${pctf(c.ev0)}</td><td class="${c.res === 'won' ? 'pos' : c.res === 'lost' ? 'neg' : ''}">${c.res ? (c.res === 'void' ? 'void' : `${c.res} ${u(c.units)}`) : '<span class="muted">open</span>'}</td></tr>`).join('');
   return `<section class="card"><div class="pp-tools"><h2>Combo Check record</h2><span class="muted" style="font-size:12.5px">Every call the page makes, logged the first time it appears at its entry price, followed to tip, graded 1 unit flat. Sportsbook calls only. Not proof of anything until 100+ settled calls and a positive closing-line value.</span></div>
     <div class="pl-strip" style="grid-template-columns:repeat(6,minmax(0,1fr))">${kpi('Calls', a.calls, `${a.settled} settled`)}${kpi('Record', wl, 'won-lost-void')}${kpi('Units', `<span class="${a.units >= 0 ? 'pos' : 'neg'}">${u(a.units)}</span>`, '1 unit flat')}${kpi('ROI', pctf(a.roi), a.z != null ? `z ${a.z}` : 'too few settled')}${kpi('Closing-line value', pctf(a.clv), `${a.clv_n} calls`)}${kpi('Edge when called', pctf(a.ev), 'mean')}</div>
     <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Slice</th><th>Calls</th><th>Settled</th><th>W-L</th><th>Units</th><th>ROI</th><th>CLV</th><th>Edge</th></tr></thead><tbody>${Object.entries(R.type || {}).map(([k, x]) => row(NAMEK[k] || k, x)).join('')}${Object.entries(R.edge || {}).map(([k, x]) => row(`Edge ${k}`, x)).join('')}${Object.entries(R.book || {}).map(([k, x]) => row(k, x)).join('')}</tbody></table></div>
-    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">First seen</th><th class="l">Type</th><th class="l">Legs</th><th>Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${rec || '<tr><td class="l" colspan="6"><p class="empty">No calls yet.</p></td></tr>'}</tbody></table></div></section>`;
+    <div class="pp-tools" style="padding:10px 14px 0"><div class="seg" data-ccrecf role="group" aria-label="Show calls">${[['settled', 'Settled'], ['won', 'Won'], ['lost', 'Lost'], ['open', 'Open'], ['all', 'All']].map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${cc.recF === k}">${l} ${nF(k)}</button>`).join('')}</div><span class="muted" style="font-size:12.5px">${shownCalls.length ? `${shownCalls.length} calls, ${u(sum)} flat. Newest game first; (n) is the stat the player actually had.` : ''}</span></div>
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">First seen</th><th class="l">Type</th><th class="l">Legs</th><th>Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${rec || `<tr><td class="l" colspan="6"><p class="empty">${CALLS.length ? 'No calls match this filter.' : 'No calls yet.'}</p></td></tr>`}</tbody></table></div>
+    ${shownCalls.length > cc.recN ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-ccrecmore="1">Show ${Math.min(25, shownCalls.length - cc.recN)} more</button></div>` : ''}</section>`;
 }
 function renderCombo(){
   const pick = pickBoard(); PS.board = pick.board; PS.mode = pick.mode;
@@ -8146,6 +8151,8 @@ $('cc-root').addEventListener('click', e => {
   if (t.closest('[data-ccsignin]')){ ssSignIn(); return; }
   const mn = t.closest('[data-ccmin] button[data-v]'); if (mn){ cc.minEv = +mn.dataset.v; cc.straightN = 15; renderCombo(); return; }
   if (t.closest('[data-ccmore]')){ cc.straightN += 25; renderCombo(); return; }
+  const rf = t.closest('[data-ccrecf] button[data-v]'); if (rf){ cc.recF = rf.dataset.v; cc.recN = 25; renderCombo(); return; }
+  if (t.closest('[data-ccrecmore]')){ cc.recN += 25; renderCombo(); return; }
   const sl = t.closest('[data-ccslog]');
   if (sl){ const [pid, st, side, line, key] = sl.dataset.ccslog.split('|'), l = ccAll().find(x => String(x.pid) === pid && x.s === st && x.side === side && String(x.line) === line && x.q.key === key), P = l && ccPriced([l], key);
     if (!P){ pvToast('That price is no longer on the board.'); return; }

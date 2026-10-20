@@ -44,6 +44,7 @@ SS = ROOT / "data" / "smartstake"
 STATE = SS / "combo_calls.json"
 RECORD = SS / "combo_record.json"
 MSCACHE = SS / "model_state_cache.json"
+LIST_MAX = 800                    # calls kept in the record's "list" (the Firestore copy is one string field, 1 MB at most)
 MS_URL = "https://raw.githubusercontent.com/Putput12-JP/Vault-Fantasy/main/nba/data/model_state.json"
 SCORE_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={}"
 SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={}"
@@ -388,8 +389,13 @@ def summarize(calls):
     by = lambda f: {k: agg([c for c in calls if f(c) == k]) for k in sorted({f(c) for c in calls})}
     ebin = lambda c: "3-5%" if c["ev0"] < .05 else "5-8%" if c["ev0"] < .08 else "8%+"
     recent = sorted(calls, key=lambda c: -c["first"])[:80]
+    # "list": every call (newest tip first, capped), legs trimmed, so the page can filter to settled / won / lost / open. "recent" stays for older pages.
+    keep = ("type", "book", "first", "tip", "ev0", "dec0", "decN", "res", "units", "clv")
+    leg = lambda l: {k: l.get(k) for k in ("name", "stat", "side", "line", "odds", "y")}
+    full = sorted(calls, key=lambda c: (-c["tip"], -c["first"]))[:LIST_MAX]
     return {"all": agg(calls), "type": by(lambda c: c["type"]), "book": by(lambda c: c["book"]), "edge": by(ebin),
-            "recent": [{k: c.get(k) for k in ("type", "book", "first", "tip", "ev0", "dec0", "decN", "res", "units", "clv", "legs")} for c in recent]}
+            "recent": [{k: c.get(k) for k in ("type", "book", "first", "tip", "ev0", "dec0", "decN", "res", "units", "clv", "legs")} for c in recent],
+            "list": [{**{k: c.get(k) for k in keep}, "legs": [leg(l) for l in c["legs"]]} for c in full]}
 
 
 def run(dry=False, poll="last", state_path=STATE, now=None):
