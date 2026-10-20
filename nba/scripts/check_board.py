@@ -44,6 +44,8 @@ def main(argv):
     print(f"lineups        {dict(lu)}   starters known for {len(b.get('starters') or {})} teams")
     print(f"injuries       {sum(1 for v in pl.values() if v[2])} players flagged, {len(b.get('outs') or [])} out/doubtful/inactive")
     print(f"unmapped       {b.get('unmapped')}")
+    also = b.get('also') or {}
+    print(f"pick'em extras {sum(len(v) for v in also.values())} lines on {len(also)} players (double-doubles, first quarter; no Vault number)")
     print(f"labels skipped {b.get('skipped') or 'none recorded (or an older recorder build)'}")
     miss = [s for s in ('pts', 'reb', 'ast', '3pm', 'pra') if s not in stats]
     new = [s for s in ('stl', 'blk', 'tov', 'sb', 'fgm', 'fga', 'ftm', 'fta', 'tpa', 'oreb', 'dreb', 'pf') if s in stats]
