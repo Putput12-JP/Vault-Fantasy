@@ -49,10 +49,10 @@ rush_yd               56%   +0.1pp        47%    -38.8u         46%    -49.2u
 ## Game markets (at the close)
 
 ```
-games   n= 248  LL 0.7070 vs 0.6909  skill -0.023 z -1.5    level with the market (within noise)     beat close   29%  units  -12.6u
+games   n= 250  LL 0.7072 vs 0.6908  skill -0.024 z -1.6    level with the market (within noise)     beat close   29%  units  -12.7u
 ml      n=  74  LL 0.6770 vs 0.6852  skill +0.012 z +0.4    level with the market (within noise)     beat close   45%  units  +10.6u
-spread  n=  85  LL 0.7138 vs 0.6944  skill -0.028 z -1.2    level with the market (within noise)     beat close   26%  units  -14.4u
-total   n=  89  LL 0.7254 vs 0.6924  skill -0.048 z -1.8    level with the market (within noise)     beat close   19%  units   -8.8u
+spread  n=  86  LL 0.7150 vs 0.6940  skill -0.030 z -1.3    level with the market (within noise)     beat close   26%  units  -15.4u
+total   n=  90  LL 0.7246 vs 0.6924  skill -0.046 z -1.8    level with the market (within noise)     beat close   19%  units   -7.9u
 ```
 
 ## News triggers (plan Week 3)
@@ -97,9 +97,9 @@ _Logged live before kickoff, graded here. Context only until a row says GO (50+ 
 Kalshi vs books (5+ pts apart)     n= 18  side won  10, price said    8.6  -> tracking (18 of 50)
   all Kalshi-priced lines: n=569  log-loss Kalshi 0.6862  books 0.6873
 Vault vs Kalshi (10+ pts, Kalshi)  n=165  side won  75, price said   87.7  -> no edge yet (z -2.0)
-PM sharp $25k+ (all)               n= 22  side won  18, price said   11.1  -> tracking (22 of 50)
+PM sharp $25k+ (all)               n= 23  side won  18, price said   11.3  -> tracking (23 of 50)
 PM sharp vs crowd disagree         n=  5  side won   4, price said    1.8  -> tracking (5 of 50)
-PM sharp with crowd                n= 12  side won  10, price said    6.8  -> tracking (12 of 50)
+PM sharp with crowd                n= 13  side won  10, price said    7.0  -> tracking (13 of 50)
 Withheld props (teammate out)      lines=215  model lean won 105  overs hit 109  | would-be plays 5-9 -4.3u
 ```
 
@@ -140,7 +140,7 @@ Wk  2  props n= 553  LL 0.6919 vs 0.6826  skill -0.014 z -0.8     games n=  44  
 Wk  3  props n= 590  LL 0.6974 vs 0.6883  skill -0.013 z -0.9     games n=  43  LL 0.6657 vs 0.6847  skill +0.028 z +0.7
 Wk  4  props n= 676  LL 0.7079 vs 0.6950  skill -0.019 z -1.8     games n=  44  LL 0.7005 vs 0.6903  skill -0.015 z -0.4
 Wk  5  props n= 597  LL 0.6944 vs 0.6794  skill -0.022 z -1.9     games n=  42  LL 0.6743 vs 0.6863  skill +0.017 z +0.6
-Wk  6  props n= 547  LL 0.7045 vs 0.6851  skill -0.028 z -2.1     games n=  35  LL 0.7691 vs 0.7241  skill -0.062 z -2.2
+Wk  6  props n= 547  LL 0.7045 vs 0.6851  skill -0.028 z -2.1     games n=  37  LL 0.7675 vs 0.7216  skill -0.064 z -2.3
 ```
 
 ## How to read this
