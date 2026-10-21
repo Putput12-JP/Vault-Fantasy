@@ -26,7 +26,7 @@ import csv, datetime as dt, json, os, re, subprocess, sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(__file__))
-from nba_common import name_key
+from nba_common import name_key, book_name
 from build_backtest_tables import ESPN_MKT, prop_markets
 from backfill_kalshi import parse_event
 
@@ -211,7 +211,7 @@ def build(games, last, meta, first, proj, now, sizes=None, when=None, wire=None,
             continue
         per_game[str(m['game'])].append({'type': m['type'], 'athlete_id': m['athlete_id'], 'provider_id': int(k.split('|')[1]),
                                          'open_line': m['open_line'], 'open_px': m['open_px'], 'ord': m['ord'],
-                                         'cur_line': v[0], 'cur_px': v[1], 'last_updated': None, '_book': m['book'], '_t': W('espn', k), '_k': k})
+                                         'cur_line': v[0], 'cur_px': v[1], 'last_updated': None, '_book': book_name(m['book']), '_t': W('espn', k), '_k': k})
     for gid, rows in per_game.items():
         g = by_id.get(gid)
         book = {r['provider_id']: r['_book'] for r in rows}
@@ -430,7 +430,7 @@ def game_lines(games, last, meta, gkey, nicks):
     out = {}
     for k, v in (last.get('espn') or {}).items():
         if k.endswith('|game') and num(v[5]) is not None and num(v[0]) is not None:
-            out.setdefault(k.split('|')[0], {'total': num(v[5]), 'spread': num(v[0]), 'line_from': (meta.get('espn', {}).get(k) or {}).get('book', 'ESPN')})
+            out.setdefault(k.split('|')[0], {'total': num(v[5]), 'spread': num(v[0]), 'line_from': book_name((meta.get('espn', {}).get(k) or {}).get('book', 'ESPN'))})
     pin = defaultdict(dict)
     for k, v in (last.get('pinnacle') or {}).items():
         m = meta.get('pinnacle', {}).get(k)
@@ -508,7 +508,7 @@ def game_markets(games, last, meta, gkey, nicks, when=None):
         gid = k.split('|')[0]
         if gid not in {str(g['id']) for g in games}:
             continue
-        r = out[gid]['books'].setdefault(m.get('book', 'ESPN'), row())        # Action first; ESPN fills its gaps
+        r = out[gid]['books'].setdefault(book_name(m.get('book', 'ESPN')), row())        # Action first; ESPN fills its gaps
         e = [num(v[0]), fmt_am(v[1]), fmt_am(v[2]), fmt_am(v[3]), fmt_am(v[4]), num(v[5]), fmt_am(v[6]), fmt_am(v[7])]
         for i, x in enumerate(e):
             if r[i] is None:

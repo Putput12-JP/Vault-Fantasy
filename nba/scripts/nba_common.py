@@ -25,6 +25,20 @@ def name_key(s):
     return re.sub(r'[^a-z]', '', s)
 
 
+BOOKS = ['Pinnacle', 'Consensus', 'Open', 'DraftKings', 'FanDuel', 'BetMGM', 'BetRivers', 'bet365', 'ESPN BET', 'Caesars', 'Fanatics',
+         'Kalshi', 'Polymarket', 'PrizePicks', 'Underdog', 'Sleeper']
+_BOOK_KEY = {re.sub(r'[^a-z0-9]', '', b.lower()): b for b in BOOKS}
+
+
+def book_name(b):
+    """One spelling per book. ESPN's odds feed names its provider 100 'DraftKings' on some polls and 'Draft Kings' on others, and a
+    recorder row's meta keeps whichever it saw first, so one quote was logged under two keys and counted as two books (and two bets).
+    Anything not in BOOKS comes back unchanged (stripped), so a new book is never silently renamed."""
+    if not isinstance(b, str):
+        return b
+    return _BOOK_KEY.get(re.sub(r'[^a-z0-9]', '', b.lower()), b.strip())
+
+
 def num(x, d=0.0):
     try:
         return float(x)

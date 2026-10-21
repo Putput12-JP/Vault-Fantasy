@@ -383,6 +383,13 @@ footer b{color:var(--fg2);font-weight:500}
 .pill.idle{color:var(--fg3)}
 .banner{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:12px 16px;border:1px dashed var(--border2);border-radius:var(--r-ctl);color:var(--fg2);font-size:13px}
 .banner b{color:var(--fg);font-weight:500}
+#hflags{display:grid;gap:8px}
+#hflags:empty{display:none}
+#hflags .banner{border-style:solid}
+#hflags .banner.fl-bad{border-color:rgba(248,113,113,.45)}
+#hflags .banner.fl-bad b{color:var(--down)}
+#hflags .banner.fl-warn{border-color:rgba(251,191,36,.4)}
+#hflags .banner.fl-warn b{color:var(--warn)}
 .banner a,footer a,.card a{color:var(--fg);text-underline-offset:3px;text-decoration-color:var(--fg3)}
 table.ht{min-width:760px}
 table.tb{min-width:1000px}
@@ -2114,6 +2121,7 @@ th{font-weight:500}
 
     <main id="v-health" hidden>
       <div class="banner" id="hbanner"></div>
+      <div id="hflags"></div>
       <div class="kpis" id="hkpis"></div>
 
       <section class="card">
@@ -3315,6 +3323,11 @@ const SRC = [
   ['ledger', 'Shadow ledger', 'Logs and settles every 3%+ edge (Track Record)'],
   ['tape', 'Trade tapes', 'Polymarket trades by account, Kalshi big tickets (Sharp Price)'],
 ];
+// The ledger row's note: no edges is different from edges that are all held by the roster guard (per game [priced, edges, held, logged]).
+function ledgerNote(p){
+  const g = Object.values(p.games || {}), edge = g.reduce((a, x) => a + x[1], 0), held = g.reduce((a, x) => a + x[2], 0);
+  return !edge ? 'No 3%+ edges within 24 hours of tip' : held >= edge ? `${edge} edges of 3%+ within 24 hours of tip, all held by the roster guard` : `${edge - held} edges logged, ${held} held by the roster guard`;
+}
 const PICKEM = [['prizepicks', 'PP'], ['underdog', 'UD'], ['sleeper', 'SL']];
 const VENUES = ['kalshi', 'espn', 'pinnacle', 'action', 'polymarket', 'novig'];
 let HS = H0 ? {status: H0.recorder.status, polls: H0.recorder.polls || [], live: false, at: Date.parse(H0.built) / 1000} : null;
@@ -3390,7 +3403,7 @@ function renderHealth(){
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
   if (!HS){
     $('hbanner').innerHTML = 'No health data in this build. Run <b>build_data_health.py</b> and re-render the page.';
-    $('hkpis').innerHTML = $('hsrc').innerHTML = $('hgames').innerHTML = $('hinputs').innerHTML = $('harchive').innerHTML = '';
+    $('hflags').innerHTML = $('hkpis').innerHTML = $('hsrc').innerHTML = $('hgames').innerHTML = $('hinputs').innerHTML = $('harchive').innerHTML = '';
     return;
   }
   const st = HS.status, ref = HS.live ? Date.now() / 1000 : HS.at;
@@ -3401,6 +3414,10 @@ function renderHealth(){
     ? `<b>Live.</b><span>Read from the recorder on GitHub every 5 minutes. GitHub can serve files up to 5 minutes old.</span>`
     : `<b>Snapshot from ${stamp(HS.at)} ${TZL}.</b><span>Statuses below are as of that time. The live version of this page: <a href="${LIVE_PAGE}" target="_blank" rel="noopener">vaultfantasy.com/nba/projections.html</a></span>`;
   $('hrefresh')?.addEventListener('click', () => loadLive());
+  // What the recorder did not do that it should have (snapshot.write_flags): a failing shadow ledger, a game with no minutes or simulation rows,
+  // rows skipped, and games whose edges are all held (said out loud so an empty Track Record is not read as a broken recorder).
+  const FLAG = {bad: 'Needs attention', warn: 'Check', note: 'Note'};
+  $('hflags').innerHTML = ((HS.status && HS.status.flags) || []).map(f => `<div class="banner fl-${f.level}"><b>${FLAG[f.level] || 'Note'}</b><span>${esc(f.text)}${f.kind === 'ledger_failing' && f.t ? ` Since ${stamp(f.t)} ${TZL}.` : ''}</span></div>`).join('');
 
   const polls = HS.polls.filter(p => p.t <= ref + 60);
   const day24 = polls.filter(p => p.t >= ref - 86400);
@@ -3445,7 +3462,7 @@ function renderHealth(){
     } else if (k === 'novig' && p && p.n){
       note = `<span class="note">${p.props || 0} props matched · ${p.used} of ${p.budget} requests${p.warn ? ` · ${esc(p.warn)}` : ''}</span>`;
     } else if (p && !p.n){
-      note = `<span class="note">${k === 'novig' ? 'Novig lists a game only close to tip' : k === 'kalshi' ? 'Kalshi lists props the morning of a game' : k === 'lineups' ? 'Posted for games in the next 36 hours' : k === 'underdog' || k === 'sleeper' ? 'No NBA lines listed yet' : k === 'ledger' ? `No 3%+ edges within 24 hours of tip${p.bets ? ` · ${p.bets} bets in the record` : ''}` : 'Nothing listed for games in the next 3 days'}</span>`;
+      note = `<span class="note">${k === 'novig' ? 'Novig lists a game only close to tip' : k === 'kalshi' ? 'Kalshi lists props the morning of a game' : k === 'lineups' ? 'Posted for games in the next 36 hours' : k === 'underdog' || k === 'sleeper' ? 'No NBA lines listed yet' : k === 'ledger' ? `${ledgerNote(p)}${p.bets ? ` · ${p.bets} bets in the record` : ''}` : 'Nothing listed for games in the next 3 days'}</span>`;
     }
     const n = k === 'injuries' ? (injCount ? `${injCount} players` : '') : p?.n != null ? p.n.toLocaleString() : '';
     return `<tr><td class="l src"><b>${name}</b><small>${what}</small></td><td class="l">${pill(c, label)}</td>

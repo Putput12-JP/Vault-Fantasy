@@ -118,7 +118,7 @@ def log(board, now):
                 if env == ('market' if ml else 'players') and g['tip'] <= now + JOINT_WINDOW_H * 3600:
                     _joint(res, game, rows, meta, base, g)
         except Exception as e:                           # one game's failure never stops the recorder
-            print(f"  sim {g.get('id')}: {type(e).__name__}: {str(e)[:120]}", flush=True)
+            PX.row_error(f"sim {g.get('id')}", e)
     return rows, meta
 
 
@@ -197,6 +197,8 @@ def record(root, now, prev, rescan_days, games, L):
             continue
         am, at = sc[ha] - sc[aw], sc[ha] + sc[aw]
         entry = {'game': gid, 'matchup': any_env['matchup'], 'tip': any_env['tip'], 'score': [sc[aw], sc[ha]], 'env': {}}
+        if any_env.get('replay'):
+            entry['replay'] = 1                          # replayed from stored prices after the fact (replay_polls.py), not logged live
         for env, e in envs.items():
             if e['game'] is None:
                 continue
