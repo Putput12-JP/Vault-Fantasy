@@ -22,6 +22,8 @@ What a replay is, exactly:
 
   python3 nba/scripts/replay_polls.py --dir=<nba-data checkout> --games=401909088            # dry run: prints what it would write
   python3 nba/scripts/replay_polls.py --dir=<nba-data checkout> --games=401909088 --write
+  --skip-held-bets  leave out the 'heldbets' source (the GO / WATCH candidates a hold kept out of the bets, see ledger.held_bets_record), which needs
+                   ledger.log on every poll (4 s each).
   --check-ledger   also re-run ledger.log on every poll (4 s each) and report the candidates, edges, holds and rows. The ledger stage is never
                    written by a replay: the recorder DID log it during the failure (the stage ran before the one that raised), so its
                    zero rows for a held game are the real record.
@@ -34,7 +36,7 @@ sys.path.insert(0, HERE)
 import snapshot as S, prop_board as PB, pricing as PX, ledger as LG, sim_record, prop_sim_record
 
 INPUTS = ('kalshi', 'espn', 'pinnacle', 'action', 'polymarket', 'injuries', 'lineups', 'prizepicks', 'underdog', 'sleeper', 'novig')
-STAGES = ('ledger', 'minutes', 'sim', 'psim')          # novig_paper needs the Novig order books, which are not stored
+STAGES = ('ledger', 'minutes', 'sim', 'psim', 'heldbets')          # novig_paper needs the Novig order books, which are not stored
 _SCHEDULE = {}
 
 
@@ -102,7 +104,7 @@ class Fake:
         self.last = {}
 
 
-def replay_day(folder, gids, check_ledger=False, say=lambda *a: print(*a, flush=True)):
+def replay_day(folder, gids, check_ledger=False, held_bets=True, say=lambda *a: print(*a, flush=True)):
     """-> ({source: [{'t','k','v'}]}, {source: {key: meta}}, report) for the games `gids` over one day folder's stored polls."""
     day = os.path.basename(folder)
     polls = [json.loads(l) for l in open(os.path.join(folder, 'polls.jsonl'))]
@@ -129,10 +131,15 @@ def replay_day(folder, gids, check_ledger=False, say=lambda *a: print(*a, flush=
         board['src_ok'] = src_ok(polls, now)
         fake = Fake()
         fake.last['ledger'] = last['ledger']
+        fake.last['heldbets'] = last['heldbets']
         pr = {}
         pr['ledger'] = ({}, {})
-        if check_ledger:                                               # slow (it prices the whole board, 4s a poll), and the live recorder did log this stage
-            pr['ledger'] = LG.log(fake, board, now)
+        pr['heldbets'] = ({}, {})
+        if check_ledger or held_bets:                                  # slow (it prices the whole board, 4s a poll)
+            rows_l = LG.log(fake, board, now)
+            pr['heldbets'] = LG.HELD_OUT if held_bets else ({}, {})    # the GO / WATCH candidates a hold kept out of the bets (ledger.held_bets_record)
+            if check_ledger:                                           # the live recorder did log the ledger stage itself, so it is never written
+                pr['ledger'] = rows_l
             for gid, c in LG.LOG_STATS.items():
                 if gid in rep:
                     rep[gid]['polls'] += 1
@@ -213,10 +220,10 @@ def main(argv):
         if write and f == dt.datetime.now(S.ET).date().isoformat() and not args.get('force'):
             sys.exit(f'{f} is today\'s ET folder: the recorder is still appending to it. Replay a day that has closed (or pass --force).')
         print(f'{f}: replaying {todo}', flush=True)
-        out, metas, rep = replay_day(folder, todo, check_ledger=bool(args.get('check-ledger')))
+        out, metas, rep = replay_day(folder, todo, check_ledger=bool(args.get('check-ledger')), held_bets=not args.get('skip-held-bets'))
         for gid in todo:
             report['games'][gid]['days'][f] = {'ledger': rep[gid], 'wrote': {}}
-        for src in ('minutes', 'sim', 'psim'):
+        for src in ('minutes', 'sim', 'psim') + (() if args.get('skip-held-bets') else ('heldbets',)):
             fresh_games = [g for g in todo if not has_rows(folder, src, g)]
             rows = [r for r in out.get(src, []) if r['k'].split('|')[0] in fresh_games]
             for g in todo:
@@ -232,7 +239,9 @@ def main(argv):
             path = os.path.join(folder, 'replay.json')
             cur = json.load(open(path)) if os.path.exists(path) else {}
             for gid in todo:
-                cur[gid] = {'commit': report['commit'], 'wrote': report['games'][gid]['days'][f]['wrote'],
+                was = (cur.get(gid) or {}).get('wrote') or {}                # an earlier replay of other sources stays on record
+                wrote = {**was, **{k: v for k, v in report['games'][gid]['days'][f]['wrote'].items() if v or k not in was}}
+                cur[gid] = {'commit': report['commit'], 'wrote': wrote,
                             'note': 'replayed from stored prices with the model files on hand, not the recorder\'s files at the time; see nba/scripts/replay_polls.py'}
                 if args.get('check-ledger'):
                     cur[gid]['ledger'] = report['games'][gid]['days'][f]['ledger']

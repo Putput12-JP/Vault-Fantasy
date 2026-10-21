@@ -71,3 +71,12 @@ The box scores of a held game settle hundreds of priced props, but a held prop i
 - Nothing reads `held_days` except that card: not the cube (season record), not the GO / WATCH verdicts, not a signal's 50-bet promotion count. Preseason goes to `preseason.held_days`.
 - Fills itself: psim already records held props (the Oct 20 change), and `settle()` rebuilds the last 3 days every poll. Prop rows are kept 14 days; older days keep their sums.
 - Not covered: other markets (combos, steals, blocks and so on) are not recorded per game, and a prop the recorder never got a main line for.
+
+## 7. The GO and WATCH plays a hold kept out (added Oct 21, after "there were GO and WATCH plays last night")
+
+There were. At every poll in each game's window the roster guard held the team, and the held Kalshi candidates carried the gate: 3PM NO (GO) and PTS / REB / AST YES (WATCH). The page and the recorder agree on the hold (same numbers, six teams, final pre-tip poll: BOS 11 players known, top 46.8 min, stretch 1.35; DET 11, 48.0, 1.45; PHI 6, 37.2, 1.00; NY 13, 42.7, 1.15; OKC 11, 38.3, 1.10; SA 12, 42.4, 1.14; run through `pricing.roster_hold` and the page's `rosterHold` on the same board), and the Props page, Edges and Pick'em of the Night all drop held props ("No call: roster guard"). So nothing disagreed. What was missing is that a held candidate left no trace in the Track Record at all, whatever its gate.
+
+- `ledger.log` now also writes the held candidates that carry a GO or WATCH gate (the better of the model's gate and the consensus gap's, when that edge reached 3%) to their own source, `heldbets` (key and value like the ledger's, meta `hold` = why). They are never bets: not in `ledger.jsonl`, the cube, the season record, the GO / WATCH verdicts or a signal's 50-bet promotion count.
+- `ledger.held_bets_record` enters each at the first poll its edge reached 3%, closes it at the last poll before tip and settles it from the box score exactly like a bet (`bet_from`, `grade`): `track.json` `held_bets_days`, rows kept 14 days, one unit each at the stored entry price with the Kalshi fee. Only GO and WATCH gates; a hold keeps sportsbook and pick'em candidates out of it, as before.
+- Opening night was filled in by `replay_polls.py` (source `heldbets`, flagged replay): the same `ledger.log` on every stored poll in each game's window, with the model files on hand rather than the recorder's files at the time.
+- A Kalshi ladder gives several rungs of one pick, so bets are rungs and the card also counts picks (player, stat, side).
