@@ -906,6 +906,14 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         print('prop sim record failed:', e, flush=True)
         psim_days, psim_pre = track.get('psim_days'), (track.get('preseason') or {}).get('psim_days')
         gap_days, gap_pre = track.get('gap_days'), (track.get('preseason') or {}).get('gap_days')
+    try:                                          # Pick'em of the Night: every slip of every size, settled from the box score (pickem_record.py)
+        import pickem_record as PKR
+        pkn_days = PKR.record(root, now, track.get('pkn_days'), rescan_days, season, me)
+        pkn_pre = PKR.record(root, now, (track.get('preseason') or {}).get('pkn_days'), rescan_days, lambda g: not season(g), me)
+    except Exception as e:
+        SETTLE_ERR["pick'em record"] = f'{type(e).__name__}: {e}'[:120]
+        print('pickem record failed:', e, flush=True)
+        pkn_days, pkn_pre = track.get('pkn_days'), (track.get('preseason') or {}).get('pkn_days')
     try:                                          # props the roster guard held, settled as a group of their own (never bets, never in the season record)
         held_days = PSR.record_held(root, now, track.get('held_days'), rescan_days, season, me)
         held_pre = PSR.record_held(root, now, (track.get('preseason') or {}).get('held_days'), rescan_days, lambda g: not season(g), me)
@@ -930,7 +938,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     pre = {'n': sum(r[CUBE_COLS.index('bets')] for r in pcube), 'cube': pcube,
            'minutes_days': minutes_record(root, now, P0.get('minutes_days'), rescan_days, games=lambda g: not season(g)),
            'wire_days': wire_record(root, now, P0.get('wire_days'), rescan_days, games=lambda g: not season(g)),
-           'signals': P0.get('signals'), 'sim_days': sim_pre, 'psim_days': psim_pre, 'gap_days': gap_pre, 'held_days': held_pre, 'novig_days': novig_pre}
+           'signals': P0.get('signals'), 'sim_days': sim_pre, 'psim_days': psim_pre, 'gap_days': gap_pre, 'held_days': held_pre, 'novig_days': novig_pre, 'pkn_days': pkn_pre}
     try:                                          # closing prices + box lines for users' own bet logs
         closes_record(root, now, rescan_days, corrected={str(g) for g in corrected})
     except Exception as e:
@@ -947,7 +955,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         signals = track.get('signals')
     box_changes = (list(BOX_CHANGES) + (track.get('box_changes') or []))[:BOX_CHANGES_KEEP]
     STUCK[:] = stuck_games(root, now, tips, changed)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre, 'box_changes': box_changes}
     with open(tpath, 'w') as f:

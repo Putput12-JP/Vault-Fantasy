@@ -957,6 +957,14 @@ def shadow(root, day, board, now, polls):
         except Exception as e:
             rec['psim_err'] = str(e)[:120]
             traceback.print_exc(limit=2)
+        try:                                                    # Pick'em of the Night: the legs the page would slip, locked at the first tip (pickem_record.py); never stops the ledger
+            import pickem_record
+            krows, kmeta = pickem_record.log(board, now)
+            rec['pkn'] = len(krows)
+            day.record('pkn', now, krows, kmeta)
+        except Exception as e:
+            rec['pkn_err'] = str(e)[:120]
+            traceback.print_exc(limit=2)
         try:                                                    # Novig paper trading (novig_paper.py): a simulator, no order is ever placed; never stops the ledger
             import novig_paper
             nrows, nmeta = novig_paper.log(day, board, now)
