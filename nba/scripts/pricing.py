@@ -32,6 +32,15 @@ class Pricer:
         ms = MS or json.load(open(os.path.join(DATA, 'model_state.json')))
         self.MS_all = ms
         self.state = ms.get('example' if example else 'live') if ms else None
+        if self.state and isinstance(self.state.get('players'), dict):
+            # A null player record, or a null field in one, means "not known": the same as absent. Left in, one such player made every ledger poll
+            # fail for 27 hours (Oct 19 to 20, 2026: ms was null), so no game got minutes, simulation or settlement rows.
+            pl = self.state['players']
+            for k in [k for k, v in pl.items() if not isinstance(v, dict)]:
+                del pl[k]
+            for v in pl.values():
+                for f in [f for f, x in v.items() if x is None]:
+                    del v[f]
         self.MM = (ms or {}).get('minutes') if self.state and any((v or {}).get('ms') for v in self.state['players'].values()) else None
         self.example = example
         self.cand_override = {}          # (team, game id) -> [player ids]: tests feed the backtest's own candidates
@@ -624,8 +633,19 @@ def edge_types(c, others_t, news_t, now):
 EXTRA = {'stl', 'blk', 'tov', 'sb', 'fgm', 'fga', 'ftm', 'fta', 'tpa', 'oreb', 'dreb', 'pf'}    # prop_model_extra.json: priced on the page only
 
 
+ROW_ERRORS = []      # (where, message) for rows a poll had to skip; snapshot.shadow() reports them in the poll record and clears the list
+
+
+def row_error(where, e):
+    """Skip one bad row, not the poll. A single player with a null field once failed every ledger poll for 27 hours (Oct 19 to 20, 2026),
+    so no minutes, simulation or settlement rows were written for any game in that time."""
+    ROW_ERRORS.append((str(where), f'{type(e).__name__}: {str(e)[:100]}'))
+    print(f'  skipped {where}: {type(e).__name__}: {str(e)[:100]}', flush=True)
+
+
 def price_board(board, pricer=None):
-    """Every candidate on a board -> list of dicts with player, stat, game, the priceRow fields and edge types."""
+    """Every candidate on a board -> list of dicts with player, stat, game, the priceRow fields and edge types.
+    A prop that cannot be priced is skipped and reported (row_error); the rest of the board is still priced."""
     pricer = pricer or Pricer(example=bool(board.get('example')))
     games = {str(g['id']): g for g in board.get('games', [])}
     outs, cache, rows = outs_from_board(board), {}, []
@@ -637,17 +657,22 @@ def price_board(board, pricer=None):
     for e in board.get('props', []):
         if e['s'] in EXTRA:        # the extra markets: shown on the page, never logged as bets (always NO-GO)
             continue
-        g = games.get(str(e['g']))
-        P = (board.get('players') or {}).get(str(e['p'])) or (board.get('players') or {}).get(e['p'])
-        r = pricer.price(e, g, cache, outs, P[1] if P else None, status)
-        if r:
-            times = [(row[0], row[6]) for row in e.get('books', []) if len(row) > 6 and row[6]] + \
-                    [('Kalshi', rung[6]) for rung in e.get('kal', []) if len(rung) > 6 and rung[6]] + \
-                    [(row[0], row[5]) for row in e.get('pk', []) if len(row) > 5 and row[5]]
-            hold = pricer.roster_hold(r['team'], g, status, cache, r.get('src')) or source_hold(e, board) or pricer.returning_hold(e['p'], r['team'], g)
-            for c in r['cands']:
-                c['types'] = edge_types(c, [t for v, t in times if v != c['bk']], news.get(r['team'], []), board.get('t'))
-                rows.append(dict(c, p=e['p'], s=e['s'], gid=str(e['g']), mu=r['mu'], min=r['min'], team=r['team'], hold=hold))
+        try:
+            g = games.get(str(e['g']))
+            P = (board.get('players') or {}).get(str(e['p'])) or (board.get('players') or {}).get(e['p'])
+            r = pricer.price(e, g, cache, outs, P[1] if P else None, status)
+            if r:
+                times = [(row[0], row[6]) for row in e.get('books', []) if len(row) > 6 and row[6]] + \
+                        [('Kalshi', rung[6]) for rung in e.get('kal', []) if len(rung) > 6 and rung[6]] + \
+                        [(row[0], row[5]) for row in e.get('pk', []) if len(row) > 5 and row[5]]
+                hold = pricer.roster_hold(r['team'], g, status, cache, r.get('src')) or source_hold(e, board) or pricer.returning_hold(e['p'], r['team'], g)
+                part = []
+                for c in r['cands']:
+                    c['types'] = edge_types(c, [t for v, t in times if v != c['bk']], news.get(r['team'], []), board.get('t'))
+                    part.append(dict(c, p=e['p'], s=e['s'], gid=str(e['g']), mu=r['mu'], min=r['min'], team=r['team'], hold=hold))
+                rows += part
+        except Exception as ex:
+            row_error(f"price {e.get('g')}|{e.get('p')}|{e.get('s')}", ex)
     return rows
 
 

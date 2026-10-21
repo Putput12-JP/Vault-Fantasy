@@ -127,7 +127,7 @@ def log(board, now):
             if hold:                                                          # recorded, tagged: the page headlines held props too (see the module doc)
                 meta[k]['held'] = hold['why']
         except Exception as ex_:                                              # one prop's failure never stops the recorder
-            print(f"  psim {e.get('g')}|{e.get('p')}|{s}: {type(ex_).__name__}: {str(ex_)[:100]}", flush=True)
+            PX.row_error(f"psim {e.get('g')}|{e.get('p')}|{s}", ex_)
     return rows, meta
 
 
@@ -218,11 +218,11 @@ def record_all(root, now, prev, prev_gap, rescan_days, games, L):
         pick = gap_pick(e['rows'])
         if pick:
             res, y = settle_gap(pick, bx)
-            gap_per_day.setdefault(L.tip_day(m['tip']), []).append({'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], **pick, 'y': y, 'r': res})
+            gap_per_day.setdefault(L.tip_day(m['tip']), []).append({'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], **pick, 'y': y, 'r': res, **({'replay': 1} if m.get('replay') else {})})
         per = score({k: v for k, v in e['rows'].items() if not v[1].get('held')}, bx)      # the minutes-model comparison keeps to props the roster guard trusts
         if not any(v[0] for v in per.values()):
             continue
-        entry = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], 's': {s: [round(x, 4) for x in v] for s, v in per.items() if v[0]}}
+        entry = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], 's': {s: [round(x, 4) for x in v] for s, v in per.items() if v[0]}, **({'replay': 1} if m.get('replay') else {})}   # replay: filled in after the fact (replay_polls.py)
         per_day.setdefault(L.tip_day(m['tip']), []).append(entry)
     for d, gs in per_day.items():
         days[d] = sorted(gs, key=lambda g: g['tip'])

@@ -1,0 +1,63 @@
+# One-off, by hand: fill in recorder rows a bug left out, by replaying the polls the recorder stored (nba/scripts/replay_polls.py).
+#
+# Added for BOS @ DET (ESPN 401909088, 2026-10-20): the shadow-ledger poll failed for 184 polls (2026-10-19 19:01Z to 2026-10-20 21:44Z), after the
+# ledger rows and before the minutes, Game Simulation and Props Simulation rows, so that game was never recorded. Every row it writes is flagged
+# "replay" and snapshots/<day>/replay.json says what was replayed. It refuses to touch today's ET folder (the recorder appends to it), and
+# it only adds rows for a game in a source where that game has none, so running it twice writes nothing the second time.
+#
+# The recorder's next poll settles the replayed games into track.json (ledger.settle re-reads the last 3 days), so run this within 3 days of the game.
+name: NBA repair (replay)
+
+on:
+  workflow_dispatch:
+    inputs:
+      games:
+        description: 'ESPN game ids, comma separated'
+        required: true
+        default: '401909088'
+
+# Its own group: the recorder holds `nba-snapshots` for hours. This only writes files in closed day folders, and pushes with a rebase.
+concurrency:
+  group: nba-repair
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /nba/scripts/
+            /nba/data/
+      - uses: actions/checkout@v5
+        with:
+          ref: nba-data
+          path: nba-data
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q pdfplumber numpy
+
+      - name: Replay
+        env:
+          GAMES: ${{ inputs.games }}
+        run: python3 nba/scripts/replay_polls.py --dir=nba-data --games="$GAMES" --write
+
+      - name: Commit
+        env:
+          GAMES: ${{ inputs.games }}
+        run: |
+          cd nba-data
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git add snapshots
+          git diff --cached --quiet && { echo "nothing to add"; exit 0; }
+          git commit -q -m "nba replay $GAMES from stored polls [skip ci]"
+          for i in 1 2 3 4; do git push -q && exit 0; git pull -q --rebase; done
+          echo "push failed" && exit 1

@@ -27,6 +27,14 @@ results/<game>.json). One shadow bet per key, 1 unit:
 Pick'em lines are logged too (venue 'pickem'): a flat line (PrizePicks) is settled as one pick at the flex
 break-even price (PK_BE, about -119), a priced line (Underdog, Sleeper) at its own price.
 
+A book is spelled one way everywhere (nba_common.book_name). ESPN's feed calls DraftKings 'Draft Kings' on some polls and 'DraftKings' on others, and
+a ledger key carries the book, so one quote was once logged under two keys and counted as two bets. load_ledger reads keys canonically (so history
+heals), and settle() collapses stored bets and cube rows the same way.
+
+Roster guard: a candidate held by pricing.roster_hold (or the source / returning holds) is priced and shown but never logged. Opening night 2026-10-20
+held all six teams (PHI 6 players with minutes history, NY / SA stretch 1.15 / 1.14, BOS 1.35, DET 1.45, OKC 1.10), so those three games have no
+shadow bets by design. LOG_STATS says it per game and the Data Health page shows it (snapshot.write_flags).
+
 Storage, sized for a season of 100k+ bets:
   bets/<tip ET date>.json   every bet for games tipping that day (only recent days are rewritten)
   track.json                the cube (one row per tip day x stat x venue x book x side x gate x edge bucket with
@@ -42,7 +50,7 @@ from collections import defaultdict
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import pricing as PX
-from nba_common import et
+from nba_common import et, book_name
 
 TRACK_H = 24                 # only games tipping within this many hours are logged
 SETTLE_AFTER_S = 3 * 3600    # a game is checked for a final score this long after tip (an overtime or a delay is just not final yet: retried every poll)
@@ -61,28 +69,49 @@ STAT_COL = {'pts': ['points'], 'reb': ['rebounds'], 'ast': ['assists'], '3pm': [
 
 
 # ── logging ──────────────────────────────────────────────────────────────────────────────────
+def canon_key(k):
+    """A ledger key with its book spelled one way (game|player|stat|venue|book|side|line)."""
+    p = k.split('|')
+    if len(p) > 4:
+        p[4] = book_name(p[4])
+    return '|'.join(p)
+
+
+LOG_STATS = {}      # game id -> {'cands', 'edge', 'held', 'logged'} from the last log() call: snapshot.shadow() puts it in the poll record
+
+
 def log(day, board, now):
     """-> (rows, meta) for Day.record('ledger', ...). Tracked keys that are missing now (tipped, delisted) are recorded
-    as gone by Day.record itself."""
+    as gone by Day.record itself. LOG_STATS says, per game, how many candidates were priced, how many reached the edge
+    threshold, how many of those the roster guard (or another hold) kept out, and how many rows were logged: a game with edges
+    and zero rows is held, not broken, and the Data Health page can tell the two apart."""
+    LOG_STATS.clear()
     if not board or not board.get('props'):
         return {}, {}
-    tracked = set((day.last.get('ledger') or {}).keys())
+    tracked = {canon_key(k) for k in (day.last.get('ledger') or {})}
     games = {str(g['id']): g for g in board.get('games', [])}
     rows, meta = {}, {}
     for c in PX.price_board(board):
         g = games.get(c['gid'])
         if not g or not (now < g['tip'] <= now + TRACK_H * 3600):
             continue
-        k = f"{c['gid']}|{c['p']}|{c['s']}|{c['venue']}|{c['bk']}|{c['side']}|{c['line']}"
-        if k not in tracked and c['edge'] < PX.EDGE_MIN and (c.get('gap') is None or c['gap'] < PX.EDGE_MIN):
+        S = LOG_STATS.setdefault(c['gid'], {'cands': 0, 'edge': 0, 'held': 0, 'logged': 0})
+        S['cands'] += 1
+        bk = book_name(c['bk'])
+        k = f"{c['gid']}|{c['p']}|{c['s']}|{c['venue']}|{bk}|{c['side']}|{c['line']}"
+        edged = c['edge'] >= PX.EDGE_MIN or (c.get('gap') is not None and c['gap'] >= PX.EDGE_MIN)
+        S['edge'] += edged
+        if k not in tracked and not edged:
             continue
         if k not in tracked and c.get('hold') and c['hold'].get('why') != 'preseason':   # roster guard (preseason is
-            continue                                  # still logged, into the separate preseason record)
+            S['held'] += 1                            # still logged, into the separate preseason record)
+            continue
+        S['logged'] += k not in rows
         rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),
                    c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or [])]
         P = board['players'].get(str(c['p'])) or board['players'].get(c['p']) or [str(c['p']), c['team']]
         meta[k] = {'game': c['gid'], 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': c['p'], 'player': P[0],
-                   'team': P[1], 'stat': c['s'], 'venue': c['venue'], 'book': c['bk'], 'side': c['side'], 'line': c['line']}
+                   'team': P[1], 'stat': c['s'], 'venue': c['venue'], 'book': bk, 'side': c['side'], 'line': c['line']}
     return rows, meta
 
 
@@ -223,23 +252,39 @@ def minutes_log(board, now):
     if not pr.MM:
         return rows, meta
     status, cache = PX.status_from_board(board), {}
-    names = {int(k): v.get('nm') for k, v in pr.state['players'].items() if v.get('nm')}
+    names = {int(k): v.get('nm') for k, v in pr.state['players'].items() if (v or {}).get('nm')}
     names.update({x['id']: x['name'] for T in pr.D['teams'].values() for x in T['players']})
-    names.update({int(k): v[0] for k, v in (board.get('players') or {}).items()})
+    names.update({int(k): v[0] for k, v in (board.get('players') or {}).items() if v})
     fives = board.get('starters') or {}
     for g in board['games']:
         if not (now < g['tip'] <= now + TRACK_H * 3600):
             continue
         for team in (g['away'], g['home']):
             five = fives.get(team)
-            v3 = pr.game_minutes_v3(team, g, status, cache, starters=five)       # shadow, never priced
-            gb = pr.game_minutes_gbm(team, g, status, cache)                     # shadow (gradient-boosted minutes), never priced
-            for pid, G in pr.game_minutes(team, g, status, cache).items():
-                k = f"{g['id']}|{pid}"
-                rows[k] = [round(G['min'], 2), round(((pr.state['players'].get(str(pid)) or {}).get('ms') or [0])[0], 2),
-                           round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None]
-                meta[k] = {'game': str(g['id']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': pid,
-                           'player': names.get(pid, str(pid)), 'team': team}
+            shadow = {}
+            for name, fn in (('v3', lambda: pr.game_minutes_v3(team, g, status, cache, starters=five)),     # shadow, never priced
+                             ('gbm', lambda: pr.game_minutes_gbm(team, g, status, cache))):                  # shadow (gradient-boosted minutes), never priced
+                try:
+                    shadow[name] = fn() or {}
+                except Exception as e:                      # a shadow model failing must not take the priced minutes with it
+                    PX.row_error(f"minutes {name} {g['id']}|{team}", e)
+                    shadow[name] = {}
+            v3, gb = shadow['v3'], shadow['gbm']
+            try:
+                gm = pr.game_minutes(team, g, status, cache)
+            except Exception as e:
+                PX.row_error(f"minutes {g['id']}|{team}", e)
+                continue
+            for pid, G in gm.items():
+                try:
+                    k = f"{g['id']}|{pid}"
+                    rows[k] = [round(G['min'], 2), round(((pr.state['players'].get(str(pid)) or {}).get('ms') or [0])[0], 2),
+                               round(v3[pid], 2) if pid in v3 else None, 1 if five else 0, round(gb[pid], 2) if pid in gb else None]
+                    meta[k] = {'game': str(g['id']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': pid,
+                               'player': names.get(pid, str(pid)), 'team': team}
+                except Exception as e:                      # one player's bad field skips that player, not the game
+                    rows.pop(k, None)
+                    PX.row_error(f"minutes {g['id']}|{pid}", e)
     return rows, meta
 
 
@@ -297,7 +342,7 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
     counted apart (books void their props; the backtest scored players who played). Days already final are kept."""
     days = dict(prev or {})
     since = tip_day(now - rescan_days * 86400)
-    per_day = defaultdict(list)
+    per_day, replayed = defaultdict(list), defaultdict(int)
     for k, x in load_src(root, 'minutes', since).items():
         m = x['meta']
         pre = [v for t, v in sorted(x['series']) if v is not None and m and t < m['tip']]
@@ -321,6 +366,8 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
             if st.get('fouls', 0) >= 5:
                 reason = f"foul trouble ({int(st['fouls'])} fouls)"
         v3 = pre[-1][2] if len(pre[-1]) > 2 else None
+        if m.get('replay'):
+            replayed[tip_day(m['tip'])] += 1
         per_day[tip_day(m['tip'])].append([m['player'], m['team'], m['matchup'], round(pre[-1][0], 1), round(actual, 1), reason,
                                            round(v3, 1) if v3 is not None else None, pre[-1][3] if len(pre[-1]) > 3 else 0,
                                            round(pre[-1][4], 1) if len(pre[-1]) > 4 and pre[-1][4] is not None else None])
@@ -342,7 +389,7 @@ def minutes_record(root, now, prev, rescan_days=3, games=None):
                           'mae_v2': round(sum(abs(e) for e in e2) / len(e2), 3) if e2 else None,
                           'mae_v3': round(sum(abs(e) for e in e3) / len(e3), 3) if e3 else None,
                           'miss8_v2': sum(abs(e) >= 8 for e in e2), 'miss8_v3': sum(abs(e) >= 8 for e in e3)},
-                   'worst': sorted(rows, key=lambda r: -abs(r[3] - r[4]))[:12]}
+                   'worst': sorted(rows, key=lambda r: -abs(r[3] - r[4]))[:12], **({'replay': replayed[d]} if replayed[d] else {})}
     return days
 
 
@@ -372,7 +419,9 @@ def outcome(side, line, y):
 
 
 def load_ledger(root, since=None):
-    """key -> {'meta', 'series': [(t, v)]} across day folders from `since` (YYYY-MM-DD) on; a game can span two."""
+    """key -> {'meta', 'series': [(t, v)]} across day folders from `since` (YYYY-MM-DD) on; a game can span two.
+    Keys are read with the book spelled one way (canon_key): a quote the recorder logged as 'Draft Kings' and later as 'DraftKings'
+    is one series, so it is one bet. At the same instant a value beats a 'gone' marker (the old spelling going away as the new one appears)."""
     L = defaultdict(lambda: {'meta': None, 'series': []})
     for d in sorted(glob.glob(os.path.join(root, 'snapshots', '20*'))):
         if since and os.path.basename(d) < since:
@@ -383,14 +432,17 @@ def load_ledger(root, since=None):
                 if '"src":"ledger"' not in line:          # meta.jsonl holds every source; skip the parse
                     continue
                 r = json.loads(line)
-                L[r['k']]['meta'] = {k: v for k, v in r.items() if k not in ('k', 'src')}
+                m = {k: v for k, v in r.items() if k not in ('k', 'src')}
+                if m.get('book'):
+                    m['book'] = book_name(m['book'])
+                L[canon_key(r['k'])]['meta'] = m
         lp = os.path.join(d, 'ledger.jsonl')
         if os.path.exists(lp):
             for line in open(lp):
                 r = json.loads(line)
-                L[r['k']]['series'].append((r['t'], r['v']))
+                L[canon_key(r['k'])]['series'].append((r['t'], r['v']))
     for x in L.values():
-        x['series'].sort(key=lambda z: z[0])
+        x['series'].sort(key=lambda z: (z[0], z[1] is None))      # a value sorts before a 'gone' marker at the same instant
     return L
 
 
@@ -502,7 +554,7 @@ def bet_from(k, m, series):
             'types': [x for x in (ve[9] if len(ve) > 9 else '').split(',') if x] or [{'model': 'model', 'gap': 'gap', 'both': 'gap'}[etype]],
             't_close': tc, 'price_close': vc[0], 'fair_close': vc[1], 'edge_close': vc[2],
             'clv': round(cc - ce, 4) if ce is not None and cc is not None else None,
-            'result': 'open', 'actual': None, 'pnl': None, 'pnl_close': None}
+            'result': 'open', 'actual': None, 'pnl': None, 'pnl_close': None, **({'replay': 1} if m.get('replay') else {})}      # replay: replayed from stored prices, not logged live
 
 
 def grade(b, root, now):
@@ -520,6 +572,43 @@ def grade(b, root, now):
     won = outcome(b['side'], float(b['line']), y)
     b.update(actual=y, result='push' if won is None else 'win' if won else 'loss',
              pnl=round(profit(b['venue'], b['price'], won), 4), pnl_close=round(profit(b['venue'], b['price_close'], won), 4))
+
+
+def canon_bet(b):
+    """A stored bet with its book spelled one way (and the key to match)."""
+    bk = book_name(b.get('book'))
+    return b if bk == b.get('book') else dict(b, book=bk, k=canon_key(b['k']))
+
+
+def dedupe_bets(bets):
+    """key -> bet for stored bets, books spelled one way. Two bets with the same canonical key are one quote the recorder logged under
+    two spellings of its book: keep the earlier entry, and a result if either one was already settled."""
+    out = {}
+    for b in map(canon_bet, bets):
+        o = out.get(b['k'])
+        if o is None:
+            out[b['k']] = b
+            continue
+        keep, other = (o, b) if o['t'] <= b['t'] else (b, o)
+        if keep['result'] == 'open' and other['result'] != 'open':
+            keep = dict(keep, **{f: other[f] for f in ('result', 'actual', 'pnl', 'pnl_close')})
+        out[b['k']] = keep
+    return out
+
+
+def canon_cube(rows):
+    """Cube rows with the book spelled one way, rows that now share a key added together."""
+    ib, ncol = CUBE_COLS.index('book'), CUBE_COLS.index('bets')
+    agg = {}
+    for r in rows:
+        r = list(r)
+        r[ib] = book_name(r[ib])
+        k = tuple(r[:ncol])
+        if k in agg:
+            agg[k] = [a + b if i >= ncol else a for i, (a, b) in enumerate(zip(agg[k], r))]
+        else:
+            agg[k] = r
+    return sorted([[round(x, 4) if isinstance(x, float) else x for x in r] for r in agg.values()])
 
 
 def settle(root, now=None, rescan_days=3, keep_recent=600):
@@ -546,7 +635,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     changed = {}
     for d in sorted(days):
         path = os.path.join(bdir, f'{d}.json')
-        prev = {b['k']: b for b in (json.load(open(path)) if os.path.exists(path) else [])}
+        prev = dedupe_bets(json.load(open(path)) if os.path.exists(path) else [])
         cur = dict(prev)
         for k, b in fresh.items():
             if tip_day(b['tip']) != d:
@@ -570,13 +659,13 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
             b['pre'] = not season(b['game'])
         json.dump(bs, open(os.path.join(bdir, f'{d}.json'), 'w'), separators=(',', ':'))
     reg = {d: [b for b in bs if not b['pre']] for d, bs in changed.items()}
-    cube = [r for r in track.get('cube', []) if r[0] not in changed]
+    cube = canon_cube([r for r in track.get('cube', []) if r[0] not in changed])
     for bs in reg.values():
         cube += cube_rows(bs)
     cube.sort()
     P0 = track.get('preseason') or {}             # the rehearsal: same records, kept apart
-    pcube = sorted([r for r in P0.get('cube', []) if r[0] not in changed] +
-                   [r for d, bs in changed.items() for r in cube_rows([b for b in bs if b['pre']])])
+    pcube = canon_cube([r for r in P0.get('cube', []) if r[0] not in changed] +
+                       [r for d, bs in changed.items() for r in cube_rows([b for b in bs if b['pre']])])
     # edge-type totals: kept per tip day so only the days touched are recomputed
     tday = {d: v for d, v in (track.get('types_by_day') or {}).items() if d not in changed}
     for d, bs in reg.items():
@@ -588,7 +677,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
             for i, x in enumerate(r[4:]):
                 t[i] += x
     types = [list(k) + [round(x, 4) if isinstance(x, float) else x for x in v] for k, v in sorted(tot.items())]
-    recent = {b['k']: b for b in track.get('bets', []) if not b.get('pre')}
+    recent = dedupe_bets([b for b in track.get('bets', []) if not b.get('pre')])
     for bs in reg.values():
         recent.update({b['k']: b for b in bs})
     recent = sorted(recent.values(), key=lambda b: (b['tip'], b['player'], b['stat'], b['line']))[-keep_recent:]
