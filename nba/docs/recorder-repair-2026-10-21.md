@@ -61,3 +61,13 @@ ESPN's odds feed names its provider 100 "DraftKings" on some polls and "Draft Ki
 - **Note:** a game has 3% edges and all are held by the roster guard.
 
 The ledger line in the Sources table says the same ("N edges of 3%+ within 24 hours of tip, all held by the roster guard").
+
+## 6. Held props get a record of their own (added the same day)
+
+The box scores of a held game settle hundreds of priced props, but a held prop is never a shadow bet and `score()` leaves it out of the log-loss sums, so the Track Record showed W/L for 3 of them (the Biggest gap picks). `prop_sim_record.record_held` settles every held prop the props simulation recorded (the last pre-tip psim row: points, rebounds, assists and 3-pointers on the main line) into `track.json` `held_days`, and Track Record shows it as "Held by the roster guard, not bets".
+
+- Model's side = the side the model gives 50% or more (the same rule as the Biggest gap pick). Price chance = the price's chance for that side, vig removed (blank for a flat pick'em line). Result W / L, P (landed on the line), D (did not play).
+- Not a bet record: no stake or payout is stored, so no profit number. It is judged on hit rate against what the price expected and against what the model expected, with a z score once 100 priced props are in.
+- Nothing reads `held_days` except that card: not the cube (season record), not the GO / WATCH verdicts, not a signal's 50-bet promotion count. Preseason goes to `preseason.held_days`.
+- Fills itself: psim already records held props (the Oct 20 change), and `settle()` rebuilds the last 3 days every poll. Prop rows are kept 14 days; older days keep their sums.
+- Not covered: other markets (combos, steals, blocks and so on) are not recorded per game, and a prop the recorder never got a main line for.

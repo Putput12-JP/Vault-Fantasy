@@ -2005,6 +2005,19 @@ th{font-weight:500}
     <main id="v-track" hidden>
       <section class="card tscore" id="tscore" aria-label="Season record"></section>
 
+      <details class="card tfold" id="theldcard" open hidden>
+        <summary><span class="tf-t"><b>Held by the roster guard, not bets</b><small id="theldstat">Props the model priced on teams it does not trust yet, settled anyway</small></span></summary>
+        <div class="card-b">
+          <p class="hint tplain" id="theldsub"></p>
+          <div class="kpis" id="theldk"></div>
+          <div class="tablewrap"><table class="ht tsim" id="theldg"></table></div>
+          <div class="filters theldf"><select class="sel" id="theldgame" aria-label="Game"></select><select class="sel" id="theldres" aria-label="Result"><option value="all">All results</option><option value="W">Model side won</option><option value="L">Model side lost</option><option value="V">Push or did not play</option></select></div>
+          <div class="tablewrap"><table class="ht tsim" id="theld"></table></div>
+          <div class="more" id="theldmore" hidden></div>
+          <p class="hint" id="theldnote"></p>
+        </div>
+      </details>
+
       <details class="card tfold" id="tlegend">
         <summary><span class="tf-t"><b>How to read this page</b><small>What a pick, a bet, GO, CLV and the other terms mean</small></span></summary>
         <div class="card-b"><dl class="tgloss" id="tgloss"></dl></div>
@@ -4374,6 +4387,7 @@ function renderTrack(){
   $('tmore').innerHTML = `<button class="btn" id="tmorebtn" type="button">Show all ${B.length.toLocaleString()}</button>`;
   renderSimRecord();
   renderPropSimRecord();
+  renderHeldRecord();
   renderNovigPaper();
 
   $('tfoot').innerHTML = `
@@ -4583,6 +4597,52 @@ function renderPropSimRecord(){
     SIMS.map(s => { const x = live[s]; return `<tr><td class="l">${PS_LBL[s]}</td><td class="num">${x.n || 'none yet'}</td><td class="num">${x.n ? `${x.w}-${x.l}` : ''}</td><td class="num">${x.roi == null ? '' : `<b class="${x.roi >= 0 ? 'pos' : 'neg'}">${(x.roi >= 0 ? '+' : '') + (x.roi * 100).toFixed(1)}%</b>`}</td><td class="num">${x.ps[0] ? `${pc(x.ps[1] / x.ps[0], 0)}<small>${x.ps[1]} of ${x.ps[0]} players, target 75% to 85%</small>` : 'none yet'}</td></tr>`; }).join('')}</tbody>`;
   $('tpslnote').textContent = 'Both start on opening night (October 20). Bets and simulated ranges are scored from the box score. The last column is the Game Simulation (market-line environment), which is the same engine as 10,000 games. The like-for-like score of single-prop simulations against the minutes model is the head-to-head table above.';
 }
+// ── Held by the roster guard (prop_sim_record.py record_held → track.json held_days): every prop the model priced on a team the guard holds, settled from the
+// box score against the model's side (the side it gives 50% or more) and the price. These are not bets: they never reach the season record, the GO / WATCH
+// verdicts or the 50-bet promotion counts (none of those read held_days), and no stake or payout is stored, so there is no profit number. The question
+// this answers is whether the guard is right to hold: if the model's side wins about as often as the price says, holding costs nothing.
+const heldRec = {game: 'all', res: 'all', limit: 30};
+function heldGames(){
+  const h = TR && TR.data && TR.data.held_days; if (!h) return [];
+  return Object.entries(h).flatMap(([day, a]) => (a || []).map(g => ({...g, day}))).sort((a, b) => b.tip - a.tip);
+}
+function heldSum(gs){
+  const t = {n: 0, W: 0, L: 0, P: 0, D: 0, pn: 0, pw: 0, pe_price: 0, pe_model: 0, pv: 0, an: 0, aw: 0, ae_model: 0};
+  for (const g of gs) for (const k in t) t[k] += (g.sum && g.sum[k]) || 0;
+  return t;
+}
+function renderHeldRecord(){
+  const gs = heldGames(), card = $('theldcard');
+  if (!gs.length){ card.hidden = true; return; }
+  card.hidden = false;
+  const t = heldSum(gs), z = t.pv > 0 && t.pn ? (t.pw - t.pe_price) / Math.sqrt(t.pv) : null, voids = t.P + t.D;
+  $('theldstat').textContent = `${t.an.toLocaleString()} props settled ${t.aw}-${t.an - t.aw} for the model's side · not counted in the season record`;
+  $('theldsub').textContent = `When the roster guard holds a team (new rosters, so its minutes are less trusted), its props are never logged as bets. They still settle from the box score. Each row is the model's side (the side it gives 50% or more) next to the price's chance, so we can see whether holding is right. Not bets: no stake or payout is stored, and none of it counts toward the season record, the GO and WATCH verdicts or the 50-bet promotion. Points, rebounds, assists and 3-pointers on each prop's main line.`;
+  const kpi = (label, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2></div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  $('theldk').innerHTML =
+    kpi("Model's side won", `${t.aw}-${t.an - t.aw}`, `${pc(t.an ? t.aw / t.an : null, 1)} hit${t.an ? `, the model expected ${pc(t.ae_model / t.an, 1)}` : ''}`) +
+    kpi('Against the price', t.pn ? `${t.pw} of ${t.pn}` : 'n/a', t.pn ? `Price expected ${t.pe_price.toFixed(1)} (${pc(t.pe_price / t.pn, 1)}), model expected ${t.pe_model.toFixed(1)} (${pc(t.pe_model / t.pn, 1)}). Props with a price only.` : 'No priced props yet') +
+    kpi('Verdict', gapVerdict({n: t.pn, z}), `${t.pn < GAP_MIN ? `${t.pn} of ${GAP_MIN} priced props before the page makes a call.` : 'Hit rate against what the price expected.'}`) +
+    kpi('Voids', String(voids), `${t.P} landed on the line, ${t.D} did not play`);
+  const why = o => Object.entries(o || {}).map(([k, v]) => `${{team: 'team', player: 'new to team', returning: 'returning', source: 'stale feed', preseason: 'preseason'}[k] || esc(k)} ${v}`).join(', ');
+  $('theldg').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Game</th><th scope="col" title="Wins and losses for the model's side; pushes and players who did not play are left out">Model's side</th><th scope="col">Hit</th><th scope="col" title="Average chance the model gave the side it picked">Model chance</th><th scope="col" title="Average chance the price gave that side, on props with a price">Price chance</th><th scope="col" title="Wins the price expected, on props with a price">Price expected</th><th class="l" scope="col">Held because</th></tr></thead><tbody>${
+    gs.map(g => { const s = g.sum, pn = s.pn;
+      return `<tr><td class="l">${esc(g.day)}</td><td class="l"><b>${esc(g.matchup)}</b>${g.replay ? '<small>replayed from stored prices</small>' : ''}</td><td class="num">${s.aw}-${s.an - s.aw}<small>${s.an} settled</small></td><td class="num">${pc(s.an ? s.aw / s.an : null, 1)}</td><td class="num">${pc(s.an ? s.ae_model / s.an : null, 1)}</td><td class="num">${pn ? pc(s.pe_price / pn, 1) : ''}</td><td class="num">${pn ? `${s.pw} of ${pn} won<small>expected ${s.pe_price.toFixed(1)}</small>` : ''}</td><td class="l">${why(g.why)}</td></tr>`; }).join('')}</tbody>`;
+  const sel = $('theldgame'), opts = ['<option value="all">All games</option>', ...gs.map(g => `<option value="${esc(g.game)}">${esc(g.day)} ${esc(g.matchup)}</option>`)].join('');
+  if (sel.dataset.sig !== opts){ sel.innerHTML = opts; sel.dataset.sig = opts; }
+  sel.value = heldRec.game; $('theldres').value = heldRec.res;
+  const RS = {W: pill('ok', 'Won'), L: pill('bad', 'Lost'), P: pill('idle', 'Push'), D: pill('idle', 'Did not play')};
+  let rows = gs.filter(g => heldRec.game === 'all' || g.game === heldRec.game).flatMap(g => (g.rows || []).map(r => ({g, r})));
+  const noRows = gs.filter(g => !g.rows).length;
+  if (heldRec.res !== 'all') rows = rows.filter(x => heldRec.res === 'V' ? x.r[9] === 'P' || x.r[9] === 'D' : x.r[9] === heldRec.res);
+  $('theld').innerHTML = `<thead><tr><th class="l" scope="col">Player</th><th class="l" scope="col">Model's side</th><th scope="col" title="The model's chance for that side">Model chance</th><th scope="col" title="The price's chance for that side, vig removed. Blank for a flat pick'em line">Price chance</th><th scope="col">Actual</th><th scope="col">Result</th></tr></thead><tbody>${
+    rows.slice(0, heldRec.limit).map(({g, r}) => `<tr><td class="l"><b>${esc(r[0])}</b><small>${esc(g.matchup)} · ${esc(r[1])}</small></td><td class="l">${r[4] === 'o' ? 'OVER' : 'UNDER'} ${r[3]} ${PS_ABB[r[2]] || esc(r[2])}${r[7] === 'pickem' ? '<small>pick\'em line</small>' : ''}</td><td class="num">${pc(r[5], 1)}</td><td class="num">${pc(r[6], 1)}</td><td class="num">${r[8] == null ? '' : r[8]}</td><td class="l">${RS[r[9]] || ''}</td></tr>`).join('')}</tbody>`;
+  $('theldmore').hidden = rows.length <= heldRec.limit;
+  $('theldmore').innerHTML = `<button class="btn" id="theldmorebtn" type="button">Show all ${rows.length.toLocaleString()}</button>`;
+  $('theldnote').textContent = `${rows.length.toLocaleString()} props${heldRec.game === 'all' && heldRec.res === 'all' ? '' : ' in this view'}. ${noRows ? `${noRows} older ${noRows === 1 ? 'game keeps' : 'games keep'} only its totals (prop rows are kept for ${14} days). ` : ''}If the model's side wins about as often as the price says, holding these teams costs nothing; if it wins clearly more, the guard is holding back real edge. ${t.pn < GAP_MIN ? 'Too early to say.' : ''}`;
+}
+$('theldcard').addEventListener('change', ev => { if (ev.target.id === 'theldgame') heldRec.game = ev.target.value; else if (ev.target.id === 'theldres') heldRec.res = ev.target.value; else return; heldRec.limit = 30; renderHeldRecord(); });
+$('theldcard').addEventListener('click', ev => { if (ev.target.closest('#theldmorebtn')){ heldRec.limit = 1e6; renderHeldRecord(); } });
 $('tpscard').addEventListener('click', ev => { if (ev.target.closest('#tpsopen')) goView('propsim'); });
 $('tsimcard').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-v]'); if (b){ simRec.env = b.dataset.v; renderSimRecord(); return; }
