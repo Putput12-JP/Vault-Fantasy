@@ -342,6 +342,28 @@ details.tfold[open]>summary{padding-bottom:0}
   details.tfold>summary{padding:12px var(--pad)}
 }
 @media (prefers-reduced-motion:reduce){ details.tfold>summary::after,.tpk-chev{transition:none} }
+.tverdict{margin:0 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-ctl);font-size:13.5px;line-height:1.5;color:var(--fg2)}
+.tverdict b{color:var(--fg);font-weight:600}
+.tsubfold{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+.tsubfold>summary{cursor:pointer;font-size:14px;font-weight:600;padding:2px 0 8px}
+.tsubfold>summary:hover{text-decoration:underline;text-decoration-color:var(--fg3);text-underline-offset:3px}
+.tsubfold>summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+.tgames{display:flex;flex-direction:column;gap:10px}
+.sg{border:1px solid var(--border);border-radius:var(--r-ctl);padding:10px 14px 4px}
+.sg-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;margin-bottom:4px}
+.sg-h b{font-size:14px;font-weight:600}.sg-h small{color:var(--fg3);font-size:12px}
+.sg-r{display:grid;grid-template-columns:100px minmax(0,1.5fr) minmax(0,1fr) 128px;gap:4px 14px;align-items:start;padding:8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.4}
+.sg-r small{display:block;color:var(--fg3);font-size:11.5px}
+.sg-r b{font-weight:500}
+.sg-k{color:var(--fg3);font-size:11.5px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;padding-top:2px}
+.sg-r .pill{justify-self:start}
+.sg-m{padding:8px 0;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.45}
+@media (max-width:640px){
+  .sg{padding:10px 12px 4px}
+  .sg-r{grid-template-columns:minmax(0,1fr);gap:2px}
+  .sg-k{padding-top:0}
+  #tsimenv{max-width:100%}
+}
 .bankroll{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2);white-space:nowrap}
 /* Tonight */
 .nt-teams{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
@@ -2074,31 +2096,38 @@ th{font-weight:500}
       <details class="card tfold" id="tsimcard">
         <summary><span class="tf-t"><b>Game simulations</b><small id="tsimstat">Does the real score land inside the simulated range?</small></span></summary>
         <div class="card-b">
-          <p class="hint tplain">The simulation plays each game thousands of times and gives a range. If it is honest, the real total, margin and player stats land inside the 80% range about 80% of the time.</p>
-          <p class="hint" id="tsimsub"></p>
+          <p class="tverdict" id="tsimverdict"></p>
+          <p class="hint tplain">Before each game the model plays it out thousands of times and gives a range for the final margin, the total points and each player's stats. The test: does the real result land inside the 80% range about 80% of the time? A range that is too narrow gets missed too often; one that is too wide gets hit almost every time and says little.</p>
           <div class="filters" id="tsimenv"></div>
+          <p class="hint" id="tsimenvnote"></p>
           <div class="kpis" id="tsimk"></div>
-          <div class="tablewrap"><table class="ht tsim" id="tsim"></table></div>
+          <p class="hint" id="tsimsub"></p>
+          <div class="tgames" id="tsim"></div>
           <div class="more" id="tsimmore" hidden></div>
           <p class="hint" id="tsimnote"></p>
-          <h3 class="sim-h">Joint odds: different teams, then teammates (for the simulation test only)</h3>
-          <p class="hint" id="tsimjsub"></p>
-          <div class="tablewrap"><table class="ht tsim" id="tsimj"></table></div></div>
+          <details class="tsubfold" id="tsimjcard">
+            <summary>Advanced: do two players move together?</summary>
+            <p class="hint" id="tsimjsub"></p>
+            <div class="tablewrap"><table class="ht tsim" id="tsimj"></table></div>
+          </details></div>
       </details>
 
       <details class="card tfold" id="tpscard">
-        <summary><span class="tf-t"><b>Props: minutes model vs simulations</b><small id="tpsstat">The prop model against playing each game out thousands of times</small></span></summary>
+        <summary><span class="tf-t"><b>Props: minutes model vs simulations</b><small id="tpsstat">Is the simple model as good as playing each game out?</small></span></summary>
         <div class="card-b">
-          <p class="hint tplain" id="tpssub">The prop model (projected minutes times per-minute rate, as priced on Player Props) against playing it out 10,000 and 50 games at a time. Also holds the Biggest gap record: the one prop per game where the model and the price disagree most.</p>
+          <p class="tverdict" id="tpsverdict"></p>
+          <p class="hint tplain" id="tpssub">The simple minutes model prices a prop as projected minutes times a per-minute rate, worked out directly (this is what Player Props uses). The test: does playing the game out 10,000 times, or only 50 times, price props any better?</p>
           <div class="tpsbtn"><button class="btn" id="tpsopen" type="button">Open Props Simulation</button></div>
           <div class="kpis" id="tpsk"></div>
-          <h3 class="sim-h">Last season, every prop scored</h3>
-          <div class="tablewrap"><table class="ht tsim" id="tps"></table></div>
-          <p class="hint" id="tpsnote"></p>
-          <h3 class="sim-h">This season, live head to head</h3>
+          <details class="tsubfold" id="tpslast">
+            <summary>Last season's test, every prop (the numbers behind the cards)</summary>
+            <p class="hint" id="tpsnote"></p>
+            <div class="tablewrap"><table class="ht tsim" id="tps"></table></div>
+          </details>
+          <h3 class="sim-h">This season, live: the same props scored three ways</h3>
           <p class="hint" id="tpshsub"></p>
           <div class="tablewrap"><table class="ht tsim" id="tpsh"></table></div>
-          <h3 class="sim-h">This season, shadow bets and the Game Simulation</h3>
+          <h3 class="sim-h">This season: settled Kalshi bets and the simulation's player ranges</h3>
           <div class="tablewrap"><table class="ht tsim" id="tpsl"></table></div>
           <p class="hint" id="tpslnote"></p>
           <h3 class="sim-h">Biggest gap, this season</h3>
@@ -4467,53 +4496,64 @@ function renderNovigPaper(){
   $('tnvnote').textContent = `Taking the ask at placement would have returned ${fmtR(rAsk)} per $ on all ${O.length} orders. Paper results only: Novig has no price history, its fee is a placeholder (${Math.round(fee * 100)}% of winnings) until confirmed, and a real order needs its own pre-registered rule first.${pre ? ` ${pre} preseason ${pre === 1 ? 'order is' : 'orders are'} scored apart and counted nowhere.` : ''}`;
 }
 $('tnvcard').addEventListener('click', ev => { if (ev.target.closest('#tnvmorebtn')){ nvRec.limit = 1e6; renderNovigPaper(); } });
+const SIMENV = {market: "Market line: the ranges are centred on the betting market's total and margin, so this checks how wide the simulation's ranges are, not whether our own forecast is good.",
+  vault: "Vault line: the ranges are centred on our own game model's line (regular season only), so this tests our game model.",
+  players: "Players' own sum: the team total is the sum of the simulated players, so this tests our own forecast with no help from the market."};
+function simBy(v, away, home, d = 1){ const a = Math.abs(v); return a < .05 ? 'even' : `${v > 0 ? home : away} by ${a.toFixed(d)}`; }
 function renderSimRecord(){
   const d = TR && TR.data, G = simGames(), e = simRec.env, pre = d && d.preseason && d.preseason.sim_days ? Object.values(d.preseason.sim_days).flat().length : 0;
   $('tsimenv').innerHTML = `<div class="seg" data-f="simenv" role="group">${[['market', 'Market line'], ['vault', 'Vault line'], ['players', "Players' own sum"]].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${e === v}">${l}</button>`).join('')}</div>`;
+  $('tsimenvnote').textContent = SIMENV[e];
   const R = G.filter(g => g.env[e]);
   $('tsimstat').textContent = R.length ? `${R.length.toLocaleString()} ${R.length === 1 ? 'game' : 'games'} scored (${SIMT.n} before the test can be called)` : 'No games scored yet';
   if (!R.length){
+    $('tsimverdict').innerHTML = `<b>No games scored yet.</b> The recorder saves each game's simulated ranges in the 4 hours before tip and the ledger scores them against the box score 3 hours after tip, from opening night.`;
     $('tsimk').innerHTML = '';
-    $('tsim').innerHTML = `<tbody><tr><td class="l" colspan="9"><p class="empty">No simulations scored yet. The recorder saves each game's simulated ranges in the 4 hours before tip and the ledger scores them against the box score 3 hours after tip, from opening night.${e === 'vault' ? ' The Vault line does not exist in preseason, so it has no rehearsal games; it starts with the first regular-season game.' : pre ? ` ${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart as a rehearsal.` : ''}</p></td></tr></tbody>`;
-    $('tsimmore').hidden = true; $('tsimnote').textContent = ''; $('tsimj').innerHTML = ''; $('tsimjsub').textContent = ''; return;
+    $('tsim').innerHTML = `<p class="empty">${e === 'vault' ? 'The Vault line does not exist in preseason, so it has no rehearsal games; it starts with the first regular-season game.' : pre ? `${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart as a rehearsal.` : 'Nothing to show yet.'}</p>`;
+    $('tsimmore').hidden = true; $('tsimnote').textContent = ''; $('tsimj').innerHTML = ''; $('tsimjsub').textContent = ''; $('tsimsub').textContent = ''; return;
   }
-  const n = R.length, cnt = f => R.filter(f).length, share = k => cnt(g => simIn(g.env[e][k])) / n;
+  const n = R.length, low = n < SIMT.n, cnt = f => R.filter(f).length, share = k => cnt(g => simIn(g.env[e][k])) / n;
   const tIn = share('ut'), mIn = share('um'), tLo = cnt(g => g.env[e].ut <= .1) / n, tHi = cnt(g => g.env[e].ut >= .9) / n, mLo = cnt(g => g.env[e].um <= .1) / n, mHi = cnt(g => g.env[e].um >= .9) / n;
+  const cT = cnt(g => simIn(g.env[e].ut)), cM = cnt(g => simIn(g.env[e].um));
   const ps = Object.fromEntries(SIMS.map(s => [s, R.reduce((a, g) => a.map((v, i) => v + g.env[e].ps[s][i]), [0, 0, 0, 0, 0])]));
   const plIn = s => ps[s][0] ? ps[s][1] / ps[s][0] : null;
-  const plAll = ['pts', 'reb', 'ast'].reduce((a, s) => a + ps[s][0], 0) ? ['pts', 'reb', 'ast'].reduce((a, s) => a + ps[s][1], 0) / ['pts', 'reb', 'ast'].reduce((a, s) => a + ps[s][0], 0) : null;
+  const plN = ['pts', 'reb', 'ast'].reduce((a, s) => a + ps[s][0], 0), plC = ['pts', 'reb', 'ast'].reduce((a, s) => a + ps[s][1], 0), plAll = plN ? plC / plN : null;
   const brier = R.reduce((a, g) => a + (g.env[e].pw - g.env[e].hw) ** 2, 0) / n;
-  const verdict = (x, [lo, hi], lowN = n < SIMT.n) => x == null ? '' : lowN ? 'collecting' : x < lo ? 'too narrow' : x > hi ? 'too wide' : 'on target';
-  const tag = (x, band) => { const v = verdict(x, band); return v === 'collecting' ? '' : ` · <b class="${v === 'on target' ? 'pos' : 'neg'}">${v}</b>`; };
-  const lean = (lo, hi, what) => lo > hi + .05 ? `${what} often land below the range (simulation runs high)` : hi > lo + .05 ? `${what} often land above the range (simulation runs low)` : `${what} miss both ways about evenly`;
+  const verdict = (x, [lo, hi]) => x == null ? '' : low ? 'collecting' : x < lo ? 'too narrow' : x > hi ? 'too wide' : 'on target';
+  const tag = (x, band) => { const v = verdict(x, band); return v === 'collecting' || !v ? '' : ` <b class="${v === 'on target' ? 'pos' : 'neg'}">${v}</b>${v === 'too narrow' ? ' (real results fall outside the range too often)' : v === 'too wide' ? ' (real results fall inside the range too often)' : ''}.`; };
+  const lean = (lo, hi, what) => lo > hi + .05 ? ` ${what[0].toUpperCase() + what.slice(1)} often land below the range (the simulation runs high).` : hi > lo + .05 ? ` ${what[0].toUpperCase() + what.slice(1)} often land above the range (the simulation runs low).` : '';
+  $('tsimverdict').innerHTML = low
+    ? `<b>Too early to judge: ${n} of ${SIMT.n} games scored.</b> With this few games a hit rate says little, so none of the cards below is a verdict yet. We start calling the simulation on target or off target at ${SIMT.n} games.`
+    : `<b>After ${n} games:</b> totals ${verdict(tIn, SIMT.tm)}, margins ${verdict(mIn, SIMT.tm)}, player stats ${plAll == null ? 'not scored' : verdict(plAll, SIMT.pl)}. On target means about 80% of real results landed inside the 80% range.`;
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
   $('tsimk').innerHTML =
-    kpi('Games scored', ICON.clock, n.toLocaleString(), n < SIMT.n ? `${n} of ${SIMT.n} before the test can be called` : 'enough to call the test') +
-    kpi('Totals in range', ICON.pts, pc(tIn, 0), `target 76% to 84%${tag(tIn, SIMT.tm)} · ${lean(tLo, tHi, 'totals')}`) +
-    kpi('Margins in range', ICON.edit, pc(mIn, 0), `target 76% to 84%${tag(mIn, SIMT.tm)} · ${lean(mLo, mHi, 'margins')}`) +
+    kpi('Games scored', ICON.clock, n.toLocaleString(), low ? `${n} of ${SIMT.n} needed before we judge` : 'enough games to judge') +
+    kpi('Totals in range', ICON.pts, pc(tIn, 0), `The real total landed inside the simulated 80% range in ${cT} of ${n} games. About 80% is right (76% to 84% counts as on target).${tag(tIn, SIMT.tm)}${low ? '' : lean(tLo, tHi, 'totals')}`) +
+    kpi('Margins in range', ICON.edit, pc(mIn, 0), `The real winning margin landed inside the range in ${cM} of ${n} games. About 80% is right (76% to 84%).${tag(mIn, SIMT.tm)}${low ? '' : lean(mLo, mHi, 'margins')}`) +
     kpi('Player stats in range', ICON.star, plAll == null ? 'none yet' : pc(plAll, 0),
-      `target 75% to 85%${tag(plAll, SIMT.pl)} · ${['pts', 'reb', 'ast', '3pm'].map(s => plIn(s) == null ? '' : `${SLABEL[s]} ${pc(plIn(s), 0)}`).filter(Boolean).join(' · ')} (3PM has no target)`);
-  const mark = (u, a) => `<b class="${simIn(u) ? 'pos' : 'neg'}">${a}</b>`;
+      `${plAll == null ? '' : `Points, rebounds and assists that landed inside each player's 80% range: ${plC} of ${plN}. About 80% is right (75% to 85%).${tag(plAll, SIMT.pl)} `}${['pts', 'reb', 'ast', '3pm'].map(s => plIn(s) == null ? '' : `${PS_LBL[s]} ${pc(plIn(s), 0)}`).filter(Boolean).join(' · ')} (3-pointers have no target)`);
   const dayFmt = t => etFmt(t, {month: 'short', day: 'numeric'});
-  const rows = R.slice(0, simRec.limit).map(g => { const x = g.env[e];
-    const pl = SIMS.map(s => x.ps[s][0] ? `${SLABEL[s]} ${x.ps[s][1]}/${x.ps[s][0]}` : '').filter(Boolean).join(' · ');
-    const miss = x.miss.slice(0, 3).map(m => `${esc(m[0])} ${SLABEL[m[2]]} ${m[3]} to ${m[5]}, actual ${m[6]}`).join(' · ');
-    return `<tr><td class="l num">${dayFmt(g.tip)}</td><td class="l"><b>${esc(g.matchup)}</b><small>final ${g.score[0]}-${g.score[1]}</small></td>
-      <td class="num">${x.m[1] > 0 ? 'H' : 'A'} ${Math.abs(x.m[1]).toFixed(1)}<small>${x.m[0]} to ${x.m[2]}</small></td><td class="num">${mark(x.um, `${x.am > 0 ? 'H' : 'A'} ${Math.abs(x.am)}`)}</td>
-      <td class="num">${x.t[1].toFixed(1)}<small>${x.t[0]} to ${x.t[2]}</small></td><td class="num">${mark(x.ut, x.at)}</td>
-      <td class="num">${pc(x.pw, 0)}<small>${x.hw ? 'home won' : 'away won'}</small></td><td class="l num">${pl}</td></tr>
-      ${miss ? `<tr><td class="sub" colspan="8">Biggest player misses: ${miss}</td></tr>` : ''}`; }).join('');
-  $('tsim').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Game</th><th scope="col" title="Simulated middle margin and the 10th to 90th percentile. H = home by, A = away by">Margin (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated middle total and the 10th to 90th percentile">Total (sim)</th><th scope="col">Actual</th><th scope="col" title="Simulated home win chance">Home win</th><th class="l" scope="col" title="Players whose real stat landed inside the simulated 80% range, of those who played">Players in range</th></tr></thead><tbody>${rows}</tbody>`;
+  const rows = R.slice(0, simRec.limit).map(g => { const x = g.env[e], [away, home] = String(g.matchup).split(' @ ');
+    const hit = ok => ok ? pill('ok', 'Inside the range') : pill('warn', 'Outside the range');
+    const pl = SIMS.map(s => x.ps[s][0] ? `${PS_LBL[s]} ${x.ps[s][1]} of ${x.ps[s][0]}` : '').filter(Boolean).join(' · ');
+    const miss = x.miss.slice(0, 3).map(m => `${esc(m[0])} ${esc((PS_LBL[m[2]] || SLABEL[m[2]] || m[2]).toLowerCase())}: range ${m[3]} to ${m[5]}, actual ${m[6]}`).join(' · ');
+    return `<div class="sg"><div class="sg-h"><b>${esc(g.matchup)}</b><small>${dayFmt(g.tip)} · final ${esc(away)} ${g.score[0]}, ${esc(home)} ${g.score[1]}</small></div>
+      <div class="sg-r"><span class="sg-k">Margin</span><span>Simulation: <b>${simBy(x.m[1], away, home)}</b><small>80% range: ${simBy(x.m[0], away, home)} to ${simBy(x.m[2], away, home)}</small></span><span>Actual: <b>${simBy(x.am, away, home, 0)}</b></span>${hit(simIn(x.um))}</div>
+      <div class="sg-r"><span class="sg-k">Total points</span><span>Simulation: <b>${x.t[1].toFixed(1)}</b><small>80% range: ${x.t[0]} to ${x.t[2]}</small></span><span>Actual: <b>${x.at}</b></span>${hit(simIn(x.ut))}</div>
+      <div class="sg-r"><span class="sg-k">Winner</span><span>Simulation gave ${esc(home)} a <b>${pc(x.pw, 0)}</b> chance<small>${esc(away)} ${pc(1 - x.pw, 0)}</small></span><span>Actual: <b>${esc(x.hw ? home : away)} won</b></span><span></span></div>
+      ${pl ? `<div class="sg-r"><span class="sg-k">Players</span><span>${pl}<small>players inside their 80% range, of those who played</small></span><span></span><span></span></div>` : ''}
+      ${miss ? `<div class="sg-m">Biggest player misses: ${miss}</div>` : ''}</div>`; }).join('');
+  $('tsim').innerHTML = rows;
   const J = Object.keys(SIMJ).map(c => [c, simJoint(G, c)]);
-  $('tsimjsub').textContent = 'Different teams first, because pick\'em apps do not let you pick two players on the same team: real opposing players are close to independent, so the simulation passes (OK) by agreeing. Teammate pairs are shown only to test the simulation itself; they cannot be entered in the apps. Pairs use the simulation\'s own half-lines, over/over and under/under together.';
-  $('tsimj').innerHTML = `<thead><tr><th class="l" scope="col">Combination</th><th scope="col">Pairs</th><th scope="col" title="Both legs hit">Observed</th><th scope="col">Simulated</th><th scope="col">Independent</th><th scope="col" title="Observed minus simulated, in standard errors. Needs under 2 either way">Bias z</th><th scope="col" title="Teammates only: does the simulation beat the independent guess? Needs 2 or more">Beats independent z</th><th class="l" scope="col">Status</th></tr></thead><tbody>${J.map(([c, v]) => v.obs == null
+  $('tsimjsub').textContent = 'This tests whether two players\' results move together, which only matters for pick\'em slips with more than one pick. "Both hit" is how often both players\' overs (or both unders) happened together. "If independent" is the guess you get by treating the two as unrelated. Different-team pairs come first, because pick\'em apps do not let you pick two players on the same team; there the simulation passes (OK) by matching what happened. Teammate pairs only test the simulation itself and must also beat the independent guess. z counts standard errors: under 2 is a fine match, 2 or more is a clear result. Needs 150 games and 2,000 pairs before it is judged.';
+  $('tsimj').innerHTML = `<thead><tr><th class="l" scope="col">Pair of picks</th><th scope="col">Pairs</th><th scope="col" title="How often both picks hit together">Both hit, actual</th><th scope="col" title="How often the simulation said both would hit">Simulation said</th><th scope="col" title="The guess if the two players were unrelated">If independent</th><th scope="col" title="Actual minus simulation, in standard errors. Needs under 2 either way">Simulation off by (z)</th><th scope="col" title="Teammates only: does the simulation beat the independent guess? Needs 2 or more">Beats the independent guess (z)</th><th class="l" scope="col">Status</th></tr></thead><tbody>${J.map(([c, v]) => v.obs == null
     ? `<tr><td class="l">${SIMJ[c]}</td><td class="num">${(v.pairs || 0).toLocaleString()}</td><td class="num" colspan="5"><span class="muted">nothing to score yet</span></td><td class="l"><span class="muted">collecting</span></td></tr>`
     : `<tr><td class="l">${SIMJ[c]}<small>${v.games} games</small></td><td class="num">${v.pairs.toLocaleString()}</td><td class="num">${pc(v.obs, 1)}</td><td class="num">${pc(v.sim, 1)}</td><td class="num">${pc(v.ind, 1)}</td>
       <td class="num">${v.zb >= 0 ? '+' : ''}${v.zb.toFixed(1)}</td><td class="num">${c.startsWith('o:') ? '<span class="muted">n/a</span>' : (v.zg >= 0 ? '+' : '') + v.zg.toFixed(1)}</td><td class="l">${v.verdict === 'GO' || v.verdict === 'OK' ? pill('ok', v.verdict) : v.verdict === 'NO-GO' ? pill('bad', 'NO-GO') : '<span class="muted">collecting</span>'}</td></tr>`).join('')}</tbody>`;
   $('tsimmore').hidden = R.length <= simRec.limit;
   $('tsimmore').innerHTML = `<button class="btn" id="tsimmorebtn" type="button">Show all ${R.length.toLocaleString()}</button>`;
-  $('tsimsub').textContent = `${n.toLocaleString()} ${n === 1 ? 'game' : 'games'} scored, newest first. Green means the real number landed inside the simulated 80% range. Ignores the filters in Explore.`;
-  $('tsimnote').textContent = `Home win Brier ${brier.toFixed(3)} (a coin flip is 0.250; lower is better). With the market line selected, totals and margins are centred on the market by construction, so they test the simulation's spread, not its forecast; the Vault line centres them on the game model's line (regular season only, so it starts with the first regular-season game); the players' own sum tests our forecast. ${pre ? `${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart and counted nowhere.` : ''}`;
+  $('tsimsub').textContent = `${n.toLocaleString()} ${n === 1 ? 'game' : 'games'} scored, newest first. Each block shows what the simulation expected next to what happened. Ignores the filters in Explore.`;
+  $('tsimnote').textContent = `Winner score ${brier.toFixed(3)}: how far the simulated home-win chance was from what happened (a coin flip scores 0.250, lower is better). ${pre ? `${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart and counted nowhere.` : ''}`;
 }
 // ── Props: minutes model vs simulations (nba/scripts/build_sim_challenger.py → data/sim_challenger.json; live from the ledger and sim_days) ───────
 // Backtest: the same props and prices scored four ways. "Minutes model" is the prop model the Player Props page prices (v2, closed form). The
@@ -4540,14 +4580,14 @@ function gapVerdict(a){ return a.n < GAP_MIN ? pill('idle', 'collecting') : a.z 
 function renderGapRecord(){
   const rows = gapPicks(), pre = TR && TR.data && TR.data.preseason && TR.data.preseason.gap_days ? Object.values(TR.data.preseason.gap_days).flat().length : 0;
   const preTxt = pre ? ` ${pre} preseason ${pre === 1 ? 'pick is' : 'picks are'} scored apart and counted nowhere.` : '';
-  $('tpgsub').textContent = `For each game, the prop where the model's chance and the price's chance differ most, scored against the box score. It is where to look, not a bet signal: there is no stake or payout, so no profit number. With ${GAP_MIN} settled picks the page says whether the hit rate is ahead of or behind what the price expected.${preTxt}`;
+  $('tpgsub').textContent = `Each game, the one prop where our model and the price disagree most, scored against the box score. It is where to look, not a bet: there is no stake or payout, so no profit number. Once ${GAP_MIN} picks have settled, the page says whether the hit rate is ahead of or behind what the price expected.${preTxt}`;
   if (!rows.length){
     $('tpg').innerHTML = '<tbody><tr><td class="l"><p class="empty">No Biggest gap picks settled yet. Each game\'s pick is fixed in the last look before tip and scored after the game.</p></td></tr></tbody>';
     $('tpgl').innerHTML = ''; $('tpgnote').textContent = ''; return;
   }
   const R = [...SIM_STATS, 'all'].map(s => [s, gapStats(s === 'all' ? rows : rows.filter(r => r.stat === s))]).filter(([s, a]) => s === 'all' || a.n || a.voids);
   const sg = z => z == null ? '' : (z >= 0 ? '+' : '') + z.toFixed(1);
-  $('tpg').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th><th scope="col" title="Picks with a win or a loss">Settled</th><th scope="col">Record</th><th scope="col" title="Landed on the line (push) or the player did not play">Voids</th><th scope="col">Hit</th><th scope="col" title="Average chance the model gave the side it picked">Model chance</th><th scope="col" title="Average chance the price gave that side, vig removed">Price chance</th><th scope="col" title="Sum of the price's chance for each pick">Expected wins</th><th scope="col" title="(wins - expected) / sqrt(sum of p x (1 - p))">z</th><th scope="col">Verdict</th></tr></thead><tbody>${
+  $('tpg').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th><th scope="col" title="Picks with a win or a loss">Settled</th><th scope="col">Record</th><th scope="col" title="Landed on the line (push) or the player did not play">Voids</th><th scope="col" title="Share of settled picks that won">Hit rate</th><th scope="col" title="Average chance the model gave the side it picked">Model said</th><th scope="col" title="Average chance the price gave that side, vig removed">Price said</th><th scope="col" title="Sum of the price's chance for each pick: the wins the price would expect">Wins the price expected</th><th scope="col" title="(wins - expected) / sqrt(sum of p x (1 - p)). 2 or more away from zero is a clear gap">How far from expected (z)</th><th scope="col">Verdict</th></tr></thead><tbody>${
     R.map(([s, a]) => `<tr><td class="l"><b>${s === 'all' ? 'All stats' : PS_LBL[s]}</b></td><td class="num">${a.n.toLocaleString()}</td><td class="num">${a.n ? `${a.w}-${a.l}` : ''}</td><td class="num">${a.voids || ''}</td><td class="num">${pc(a.hit)}</td><td class="num">${pc(a.model)}</td><td class="num">${pc(a.price)}</td><td class="num">${a.ex == null ? '' : a.ex.toFixed(1)}</td><td class="num">${sg(a.z)}</td><td>${gapVerdict(a)}</td></tr>`).join('')}</tbody>`;
   const last = rows.filter(r => r.r).sort((a, b) => b.day < a.day ? -1 : b.day > a.day ? 1 : (b.tip || 0) - (a.tip || 0)).slice(0, 10), RS = {W: pill('ok', 'Won'), L: pill('bad', 'Lost'), P: pill('idle', 'Push'), D: pill('idle', 'Did not play')};
   $('tpgl').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Player</th><th class="l" scope="col">Pick</th><th scope="col">Actual</th><th scope="col">Result</th></tr></thead><tbody>${
@@ -4562,15 +4602,16 @@ function renderPropSimRecord(){
   const cells = Object.values(S).flatMap(o => Object.values(o)), nC = cells.length, V = SIMCH.verdict, SL = {kalshi: 'Kalshi prices', espn_close: 'Sportsbook closing lines'};
   const kal = Object.values(S.kalshi || {}), avg = f => cells.reduce((a, c) => a + f(c), 0) / (cells.length || 1);
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const dll50 = kal.length ? (kal.reduce((a, c) => a + c.sim50.dll_vs_v2, 0) / kal.length).toFixed(4) : null;
   $('tpsk').innerHTML =
-    kpi('Minutes model', ICON.star, 'The bar', 'Closed form. The bar to beat.') +
-    kpi('10,000-game sim', ICON.pts, `${V.sim10k.same} of ${nC} same`, 'Matches the minutes model.') +
-    kpi('50-game sim', ICON.clock, `${V.sim50.worse} of ${nC} worse`, `${V.sim50.better} better · +${kal.length ? (kal.reduce((a, c) => a + c.sim50.dll_vs_v2, 0) / kal.length).toFixed(4) : 'n/a'} log loss`) +
-    kpi('Wrong side', ICON.edit, pc(avg(c => c.sim50.flip_vs_v2)), '50 games vs minutes model, side of price.');
+    kpi('Simple minutes model', ICON.star, 'The one to beat', 'Projected minutes times a per-minute rate, worked out directly. This is what Player Props prices with.') +
+    kpi('10,000-game simulation', ICON.pts, `Tied in ${V.sim10k.same} of ${nC} tests`, `Playing each prop out 10,000 times priced it the same as the simple model in ${V.sim10k.same} of ${nC} tests (${V.sim10k.worse} worse, ${V.sim10k.better} better).`) +
+    kpi('50-game simulation', ICON.clock, `Worse in ${V.sim50.worse} of ${nC} tests`, `Playing it out only 50 times is noisy: ${V.sim50.worse} worse, ${V.sim50.same} tied, ${V.sim50.better} better.${dll50 != null ? ` On Kalshi props it costs +${dll50} log loss on average (lower is better).` : ''}`) +
+    kpi('Picks the other side', ICON.edit, pc(avg(c => c.sim50.flip_vs_v2)), 'How often the 50-game simulation lands on the opposite side of the price from the simple model, averaged over the tests.');
   const cellTd = (o, k) => { const x = o[k], d = x.dll_vs_v2, z = x.dll_se ? d / x.dll_se : 0; return k === 'v2' ? `<td><b>${x.logloss}</b></td>` : `<td>${x.logloss}<small class="${z >= 2 ? 'neg' : z <= -2 ? 'pos' : ''}">${psSg(d, 4)}${z >= 2 ? ' worse' : z <= -2 ? ' better' : ''}</small></td>`; };
-  $('tps').innerHTML = `<thead><tr><th class="l" scope="col">Source</th><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col" title="The market price alone">Price</th><th scope="col" title="Prop model v2: projected minutes x per-minute rate">Minutes model</th><th scope="col">10,000 games</th><th scope="col">50 games</th><th scope="col" title="A plain mean and Normal draws, 50 games, calibrated">Plain 50</th></tr></thead><tbody>${
+  $('tps').innerHTML = `<thead><tr><th class="l" scope="col">Prices from</th><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col" title="The market price alone, with no model">Price alone</th><th scope="col" title="Projected minutes x per-minute rate, worked out directly (prop model v2)">Simple model</th><th scope="col" title="Playing each game out 10,000 times">10,000-game sim</th><th scope="col" title="Playing each game out 50 times">50-game sim</th><th scope="col" title="No fitted model: a plain average and bell-curve draws, 50 games, calibrated">Bare-bones 50-game sim</th></tr></thead><tbody>${
     Object.entries(S).flatMap(([src, per]) => Object.entries(per).map(([m, o]) => `<tr><td class="l">${SL[src] || esc(src)}</td><td class="l">${PS_LBL[m] || m}</td><td class="num">${o.n.toLocaleString()}</td><td class="num">${o.logloss_market}</td>${['v2', 'sim10k', 'sim50', 'sam50'].map(k => cellTd(o, k)).join('')}</tr>`)).join('')}</tbody>`;
-  $('tpsnote').textContent = 'Log loss, lower is better, 2025-26 props with fit on 2024-25. Under each simulation is its difference from the minutes model; worse or better only when it clears 2 standard errors. Rules: nba/docs/sim-challenger.md.';
+  $('tpsnote').textContent = 'The scores are log loss: how far the probabilities were from what happened, lower is better. Tested on 2025-26 props, with the models fit on 2024-25. Under each simulation is its difference from the simple model; it is called worse or better only when the gap clears 2 standard errors. Rules: nba/docs/sim-challenger.md.';
   // live head to head (prop_sim_record.py → track.json psim_days): the same props scored three ways before tip, settled from the box score
   const PD = TR && TR.data && TR.data.psim_days ? Object.values(TR.data.psim_days).flat() : [], MINP = 300;
   const agg = stat => { const gs = PD.map(g => stat === 'all' ? Object.values(g.s).reduce((a, v) => a.map((x, i) => x + v[i]), new Array(12).fill(0)) : g.s[stat]).filter(v => v && v[0]);
@@ -4581,11 +4622,13 @@ function renderPropSimRecord(){
   const hhCell = (ll, [d, se]) => { const z = se ? d / se : 0; return `${ll.toFixed(4)}<small class="${z >= 2 ? 'neg' : z <= -2 ? 'pos' : ''}">${psSg(d, 4)}${z >= 2 ? ' worse' : z <= -2 ? ' better' : ''}</small>`; };
   const HR = [...SIMS, 'all'].map(s => [s, agg(s)]), tot = (HR.find(x => x[0] === 'all') || [])[1];
   $('tpsstat').textContent = `${tot ? tot.N.toLocaleString() + ' live props scored' : 'No live props scored yet'} · Biggest gap ${gapStats(gapPicks()).n} settled`;
-  $('tpshsub').textContent = tot ? `${tot.N.toLocaleString()} props from ${tot.games} games scored${tot.N < MINP ? `: ${MINP - tot.N} more before it can be called` : ''}. Log loss, lower is better, each simulation next to the minutes model on the same props.` : 'The recorder saves each prop\'s probability three ways in the 3 hours before tip, and the ledger scores them against the box score after the game. Starts on opening night, October 20.';
+  const better0 = V.sim10k.better + V.sim50.better === 0;
+  $('tpsverdict').innerHTML = `<b>${better0 ? 'The simple minutes model is at least as good as both simulations.' : 'A simulation beat the simple model in some tests; see the table.'}</b> In last season's ${nC} tests (each stat on each kind of price), playing each prop out 10,000 times priced the same as the simple model in ${V.sim10k.same} of ${nC}, and playing it out only 50 times was worse in ${V.sim50.worse} of ${nC} and better in ${V.sim50.better}. This season: ${tot ? `${tot.N.toLocaleString()} props scored live so far${tot.N < MINP ? `, ${(MINP - tot.N).toLocaleString()} more before it can be called` : ''}` : 'nothing scored live yet'}.`;
+  $('tpshsub').textContent = tot ? `${tot.N.toLocaleString()} props from ${tot.games} games scored${tot.N < MINP ? `: ${MINP - tot.N} more before it can be called` : ''}. Scored in log loss (how far the probabilities were from what happened, lower is better), each simulation next to the simple model on the same props.` : 'Before tip the recorder saves each prop\'s probability three ways (simple model, 10,000-game and 50-game simulation); after the game the ledger scores them against the box score. Starts on opening night, October 20.';
   $('tpsh').innerHTML = !tot ? `<tbody><tr><td class="l" colspan="7"><p class="empty">No props scored yet. Preseason games are kept apart from this record.</p></td></tr></tbody>` :
-    `<thead><tr><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col" title="On the props that have a price">Price</th><th scope="col" title="Prop model: projected minutes x rate, closed form">Minutes model</th><th scope="col">10,000 games</th><th scope="col">50 games</th><th scope="col">Verdict</th></tr></thead><tbody>${
-      HR.filter(x => x[1]).map(([s, a]) => { const z = a.d50[1] ? a.d50[0] / a.d50[1] : 0, v = a.N < MINP ? pill('idle', 'collecting') : z >= 2 ? pill('warn', '50 worse') : z <= -2 ? pill('ok', '50 better') : pill('idle', 'no clear gap');
-        return `<tr><td class="l"><b>${s === 'all' ? 'All stats' : PS_LBL[s]}</b></td><td class="num">${a.N.toLocaleString()}<small>${a.Nm.toLocaleString()} priced</small></td><td class="num">${a.mk == null ? '' : `${a.mk.toFixed(4)}<small>minutes model ${a.exm.toFixed(4)} on the same</small>`}</td><td class="num"><b>${a.ex.toFixed(4)}</b></td><td class="num">${hhCell(a.b10, a.d10)}</td><td class="num">${hhCell(a.b50, a.d50)}</td><td>${v}</td></tr>`; }).join('')}</tbody>`;
+    `<thead><tr><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col" title="The market price alone, on the props that have a price">Price alone</th><th scope="col" title="Projected minutes x per-minute rate, worked out directly">Simple model</th><th scope="col">10,000-game sim</th><th scope="col">50-game sim</th><th scope="col">Verdict</th></tr></thead><tbody>${
+      HR.filter(x => x[1]).map(([s, a]) => { const z = a.d50[1] ? a.d50[0] / a.d50[1] : 0, v = a.N < MINP ? pill('idle', 'collecting') : z >= 2 ? pill('warn', '50-game sim worse') : z <= -2 ? pill('ok', '50-game sim better') : pill('idle', 'no clear gap');
+        return `<tr><td class="l"><b>${s === 'all' ? 'All stats' : PS_LBL[s]}</b></td><td class="num">${a.N.toLocaleString()}<small>${a.Nm.toLocaleString()} with a price</small></td><td class="num">${a.mk == null ? '' : `${a.mk.toFixed(4)}<small>simple model ${a.exm.toFixed(4)} on the same</small>`}</td><td class="num"><b>${a.ex.toFixed(4)}</b></td><td class="num">${hhCell(a.b10, a.d10)}</td><td class="num">${hhCell(a.b50, a.d50)}</td><td>${v}</td></tr>`; }).join('')}</tbody>`;
   // shadow bets on the minutes model (Kalshi) beside the Game Simulation's player ranges
   const G = simGames().filter(g => g.env && g.env.market), live = {};
   for (const s of SIMS){
@@ -4593,9 +4636,9 @@ function renderPropSimRecord(){
     const ps = G.reduce((r, g) => g.env.market.ps[s] ? [r[0] + g.env.market.ps[s][0], r[1] + g.env.market.ps[s][1]] : r, [0, 0]);
     live[s] = {n, w, l, roi, ps};
   }
-  $('tpsl').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th><th scope="col" title="Settled Kalshi shadow bets priced by the minutes model, both sides">Minutes model bets</th><th scope="col">Record</th><th scope="col" title="Return per unit at the first 3% price">ROI</th><th scope="col" title="Simulated players whose actual stat landed inside the simulation's 10th to 90th percentile range">Simulation in range</th></tr></thead><tbody>${
+  $('tpsl').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th><th scope="col" title="Settled Kalshi shadow bets priced by the simple model, both sides">Settled Kalshi bets (simple model)</th><th scope="col">Record</th><th scope="col" title="Profit per unit at the first 3% price">Profit per unit</th><th scope="col" title="Players whose real stat landed inside the simulation's 10th to 90th percentile range">Simulation ranges that held</th></tr></thead><tbody>${
     SIMS.map(s => { const x = live[s]; return `<tr><td class="l">${PS_LBL[s]}</td><td class="num">${x.n || 'none yet'}</td><td class="num">${x.n ? `${x.w}-${x.l}` : ''}</td><td class="num">${x.roi == null ? '' : `<b class="${x.roi >= 0 ? 'pos' : 'neg'}">${(x.roi >= 0 ? '+' : '') + (x.roi * 100).toFixed(1)}%</b>`}</td><td class="num">${x.ps[0] ? `${pc(x.ps[1] / x.ps[0], 0)}<small>${x.ps[1]} of ${x.ps[0]} players, target 75% to 85%</small>` : 'none yet'}</td></tr>`; }).join('')}</tbody>`;
-  $('tpslnote').textContent = 'Both start on opening night (October 20). Bets and simulated ranges are scored from the box score. The last column is the Game Simulation (market-line environment), which is the same engine as 10,000 games. The like-for-like score of single-prop simulations against the minutes model is the head-to-head table above.';
+  $('tpslnote').textContent = 'Left: the simple model\'s settled Kalshi shadow bets, both sides, from the first 3% price. Right: how often the Game Simulation\'s player ranges held (market-line version, the same engine as the 10,000-game simulation); about 80% is right. Both start on opening night (October 20) and are scored from the box score. The like-for-like score of single-prop simulations against the simple model is the live table above.';
 }
 // ── Held by the roster guard (prop_sim_record.py record_held → track.json held_days): every prop the model priced on a team the guard holds, settled from the
 // box score against the model's side (the side it gives 50% or more) and the price. These are not bets: they never reach the season record, the GO / WATCH
