@@ -413,6 +413,93 @@ table.tmx tr.tot td{border-top:1px solid var(--border2)}
 .tbreak th{padding:0 6px 6px;font-size:11px;font-weight:500;color:var(--fg3);text-align:right;text-transform:uppercase;letter-spacing:.06em}
 .tbreak th.l{text-align:left}
 .tbreak tr.on td{background:rgb(var(--ink) / .06)}
+/* Track Record: score card, plays, folds. Order: record, how to read, plays, NO-GO, signals, explore, model checks. */
+#v-track .card-b>p.hint,#v-track details>.card-b p.hint{margin:4px 0 12px;font-size:12.5px;line-height:1.45;color:var(--fg2)}
+#v-track p.tplain{color:var(--fg)}
+#v-track .sim-h:first-child{margin-top:0}
+.tscore .card-b{display:grid;gap:14px}
+.tans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap)}
+.tan{display:flex;flex-direction:column;gap:5px;min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-ctl)}
+.tq{font-size:11.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+.tbig{font-size:24px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.15}
+.tbig.wait{font-size:19px;font-weight:500;color:var(--fg2)}
+.tbig small{font-size:13px;font-weight:400;color:var(--fg3);margin-left:4px}
+.tsm{font-size:12.5px;line-height:1.4;color:var(--fg2)}
+.tsm b{color:var(--fg);font-weight:500}
+.tprog{height:6px;border-radius:3px;background:var(--border);overflow:hidden}
+.tprog i{display:block;height:100%;background:var(--primary);border-radius:3px}
+table.tgrp{min-width:0;font-size:13px;font-variant-numeric:tabular-nums}
+table.tgrp th{padding:6px 8px;font-size:10.5px}
+table.tgrp td{padding:9px 8px}
+table.tgrp td small{display:block;color:var(--fg3);font-size:11.5px}
+table.tgrp td.l b{font-weight:500}
+table.tgrp tr.tot td{border-top:1px solid var(--border2)}
+.tclv{margin:0;font-size:12.5px;line-height:1.45;color:var(--fg2)}
+.tclv b{color:var(--fg);font-weight:500}
+.tpre{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:10px 14px;border:1px dashed var(--border2);border-radius:var(--r-ctl);font-size:12.5px;color:var(--fg2);line-height:1.45}
+.tpre b{color:var(--fg);font-weight:500}
+.tpre .tpre-n{font-variant-numeric:tabular-nums;color:var(--fg)}
+details.tfold>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px var(--pad);cursor:pointer;border-radius:var(--r-card)}
+details.tfold>summary::-webkit-details-marker{display:none}
+details.tfold>summary::after{content:"";flex:none;width:8px;height:8px;margin-right:4px;border-right:2px solid var(--fg3);border-bottom:2px solid var(--fg3);transform:rotate(45deg);transition:transform .2s var(--ease-out,cubic-bezier(.23,1,.32,1))}
+details.tfold[open]>summary::after{transform:rotate(-135deg)}
+details.tfold>summary:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+details.tfold>summary:hover .tf-t b{text-decoration:underline;text-decoration-color:var(--fg3);text-underline-offset:3px}
+.tf-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tf-t b{font-size:15px;font-weight:600}
+.tf-t small{font-size:13px;color:var(--fg2);line-height:1.35}
+details.tfold[open]>summary{padding-bottom:0}
+.tsec{margin-top:6px}
+.tsec h2{margin:0;font-size:15px;font-weight:600}
+.tsec p{margin:2px 0 0;color:var(--fg2);font-size:13px}
+.tgloss{display:grid;grid-template-columns:minmax(130px,210px) minmax(0,1fr);gap:10px 18px;margin:0;font-size:13px;line-height:1.45}
+.tgloss dt{font-weight:600;color:var(--fg)}
+.tgloss dd{margin:0;color:var(--fg2)}
+.tpk-hd,.tpk-h{display:grid;grid-template-columns:36px minmax(0,1.25fr) minmax(0,1.35fr) 64px 64px minmax(0,.9fr) 14px;gap:12px;align-items:center}
+.tpk-hd{padding:0 4px 8px;font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.tpk-hd span:nth-child(n+4){text-align:right}.tpk-hd span:nth-child(4){text-align:left}
+.tpk{border-top:1px solid var(--border)}
+.tpk-h{width:100%;padding:10px 4px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:8px}
+.tpk-h:hover{background:rgb(var(--ink) / .03)}
+.tpk-h:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.tpk-h small{display:block;color:var(--fg3);font-size:11.5px;line-height:1.35}
+.tpk-h b{font-weight:500}
+.tpk-who{min-width:0}.tpk-who b,.tpk-pick b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tpk-pick{min-width:0}
+.tpk-edge{text-align:right;font-variant-numeric:tabular-nums}
+.tpk-res{text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px}
+.tpk-chev{width:8px;height:8px;border-right:2px solid var(--fg3);border-bottom:2px solid var(--fg3);transform:rotate(45deg);transition:transform .2s var(--ease-out,cubic-bezier(.23,1,.32,1))}
+.tpk-h[aria-expanded="true"] .tpk-chev{transform:rotate(-135deg)}
+.tpk-d{padding:2px 4px 12px 48px}
+.tpk-d table{min-width:0;font-size:12.5px}
+.tpk-d th{padding:4px 8px;font-size:10.5px}.tpk-d td{padding:6px 8px;white-space:nowrap}
+.tpk-d td small{display:block;color:var(--fg3);font-size:11px}
+.tpk-d tr.dim td{opacity:.6}
+.tpk-d .tpk-sub{margin:8px 0 2px;font-size:11.5px;color:var(--fg3)}
+.tpk-empty{margin:0}
+.tbstatus{margin-bottom:10px}.tpsbtn{margin-bottom:14px}
+#texplore .tbar{position:static;padding:0;margin-bottom:16px;border:0;background:none;box-shadow:none}
+#texplore .kpis{margin-bottom:6px}
+#v-track .kpi .hint{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
+@media (max-width:900px){ .tans{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:640px){
+  .tgloss{grid-template-columns:minmax(0,1fr);gap:2px}.tgloss dd{margin-bottom:10px}
+  .tpk-hd{display:none}
+  .tpk-h{grid-template-columns:36px minmax(0,1fr) auto;grid-template-areas:"av who grade" "av pick edge" "av res res";gap:2px 10px}
+  .tpk-h>.pp-av{grid-area:av;align-self:start}.tpk-who{grid-area:who}.tpk-pick{grid-area:pick}.tpk-grade{grid-area:grade;justify-self:end}.tpk-edge{grid-area:edge}.tpk-res{grid-area:res;text-align:left;color:var(--fg3)}
+  .tpk-chev{display:none}
+  .tpk-d{padding-left:4px}
+  .tpk-res small,.tpk-edge small{display:inline;margin-left:6px}.tpk-edge{display:flex;align-items:baseline;justify-content:flex-end}
+  .tscore>.card-h p,.tsm-x{display:none}
+  table.tgrp th:nth-child(5),table.tgrp td:nth-child(5){display:none}
+  table.tgrp td.l small{display:none}
+  table.tgrp td.l,table.tgrp td{white-space:nowrap}
+  table.tgrp th{padding:6px 6px}table.tgrp td{padding:8px 6px}
+  .tscore .card-b{gap:10px}
+  .tan{padding:10px 12px;gap:3px}.tbig{font-size:21px}
+  details.tfold>summary{padding:12px var(--pad)}
+}
+@media (prefers-reduced-motion:reduce){ details.tfold>summary::after,.tpk-chev{transition:none} }
 .bankroll{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2);white-space:nowrap}
 /* Tonight */
 .nt-teams{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
@@ -2073,55 +2160,82 @@ th{font-weight:500}
     <footer id="hfoot" hidden></footer>
 
     <main id="v-track" hidden>
-      <div class="banner" id="tbanner"></div>
+      <section class="card tscore" id="tscore" aria-label="Season record"></section>
 
-      <section class="card tbar" aria-label="Filters: every chart and table below follows them">
-        <div class="tfilters" id="tfilters"></div>
-        <button class="linkbtn" id="treset" type="button">Clear</button>
+      <details class="card tfold" id="tlegend">
+        <summary><span class="tf-t"><b>How to read this page</b><small>What a pick, a bet, GO, CLV and the other terms mean</small></span></summary>
+        <div class="card-b"><dl class="tgloss" id="tgloss"></dl></div>
+      </details>
+
+      <section class="card" id="tplays">
+        <div class="card-h"><div><h2>Plays: GO and WATCH</h2><p id="tplayssub"></p></div></div>
+        <div class="card-b"><div class="tpicks" id="tplaylist"></div><div class="more" id="tplaymore" hidden></div></div>
       </section>
 
-      <div class="kpis" id="tkpis"></div>
+      <details class="card tfold" id="tnogo">
+        <summary><span class="tf-t"><b>NO-GO, for the record</b><small id="tnogosub">Picks the model itself says not to bet</small></span></summary>
+        <div class="card-b"><div class="tpicks" id="tnogolist"></div><div class="more" id="tnogomore" hidden></div></div>
+      </details>
 
-      <section class="card">
-        <div class="card-h">
-          <div><h2>Every market</h2><p id="tmxsub">ROI per unit for every stat on every venue and side. Outlined cells are GO / WATCH signals.</p></div>
-        </div>
-        <div class="card-b"><div class="tablewrap"><table class="ht tmx" id="tmx"></table></div></div>
-      </section>
-
-      <section class="card">
-        <div class="card-h"><div><h2>Breakdowns</h2><p>The same bets cut five ways. Click a row to filter by it.</p></div></div>
-        <div class="card-b"><div class="tbreaks" id="tbreaks"></div></div>
-      </section>
-
-      <section class="card">
-        <div class="card-h">
-          <div><h2>Gated signals against their backtest</h2><p>The GO and WATCH signals, all time, next to their 2025-26 out-of-sample result.</p></div>
-        </div>
-        <div class="card-b"><div class="tablewrap"><table class="ht ts">
-          <thead><tr><th class="l" scope="col">Signal</th><th class="l" scope="col">Gate</th><th scope="col">Bets</th><th scope="col">W-L-P</th><th scope="col">Units</th><th scope="col" title="ROI per unit at the first price that showed a 3% edge">ROI at entry</th><th scope="col" title="The same bets at the last price before tip, the backtest's clock">ROI at close</th><th scope="col" title="Same side's price at close minus at entry, fee included. Positive means the market moved our way.">CLV</th><th scope="col" title="2025-26 out of sample: ROI (bets, z)">Backtest</th><th class="l" scope="col">Live verdict</th></tr></thead>
+      <details class="card tfold" id="tsigcard">
+        <summary><span class="tf-t"><b>Do the graded signals hold up?</b><small id="tsigsub">Each GO and WATCH signal's live record next to its backtest</small></span></summary>
+        <div class="card-b"><p class="hint tplain" id="tsignote"></p><div class="tablewrap"><table class="ht ts">
+          <thead><tr><th class="l" scope="col">Signal</th><th class="l" scope="col">Gate</th><th scope="col">Bets</th><th scope="col" title="Wins, losses, pushes (landed exactly on the line)">W-L-P</th><th scope="col">Units</th><th scope="col" title="Profit per unit at the first price that showed a 3% edge">ROI at entry</th><th scope="col" title="The same bets at the last price before tip, the backtest's clock">ROI at close</th><th scope="col" title="Same side's price at close minus at entry, fee included. Positive means the market moved our way.">Price move</th><th scope="col" title="2025-26 out of sample: ROI (bets, z)">Backtest</th><th class="l" scope="col">Live verdict</th></tr></thead>
           <tbody id="tsig"></tbody>
         </table></div></div>
-      </section>
+      </details>
 
-      <section class="card" id="tsimcard">
-        <div class="card-h">
-          <div><h2>Game simulations</h2><p id="tsimsub">How the simulation did, game by game. Not affected by the filters above.</p></div>
-          <div class="filters" id="tsimenv"></div>
+      <details class="card tfold" id="texplore">
+        <summary><span class="tf-t"><b>Explore the record</b><small>Filter by venue, stat, side, grade, book and day. Filters apply only inside this section.</small></span></summary>
+        <div class="card-b">
+          <div class="tbar" aria-label="Filters for this section">
+            <div class="tfilters" id="tfilters"></div>
+            <button class="linkbtn" id="treset" type="button">Clear</button>
+          </div>
+          <div class="kpis" id="tkpis"></div>
+          <h3 class="sim-h">Results by market</h3>
+          <p class="hint" id="tmxsub"></p>
+          <div class="tablewrap"><table class="ht tmx" id="tmx"></table></div>
+          <h3 class="sim-h">Breakdowns</h3>
+          <p class="hint">The same bets cut five ways. Click a row to filter by it.</p>
+          <div class="tbreaks" id="tbreaks"></div>
+          <h3 class="sim-h">Units over time</h3>
+          <p class="hint" id="tchsub"></p>
+          <div id="tchart"></div>
+          <h3 class="sim-h">Every shadow bet</h3>
+          <p class="hint" id="tbsub"></p>
+          <div class="filters tbstatus"><select class="sel" id="tstatus" aria-label="Status"><option value="all">All bets</option><option value="open">Open</option><option value="settled">Settled</option></select></div>
+          <div class="tablewrap"><table class="ht tb">
+            <thead><tr><th class="l" scope="col">Tip (CT)</th><th class="l" scope="col">Player</th><th class="l" scope="col">Bet</th><th class="l" scope="col">Gate</th><th scope="col" title="Price when the edge first reached 3%">Entry</th><th scope="col" title="Last price before tip">Close</th><th scope="col" title="Our chance that this side wins">Fair</th><th scope="col" title="Fair chance minus the break-even chance of the entry price">Edge</th><th scope="col">Actual</th><th class="l" scope="col">Result</th><th scope="col">Units</th></tr></thead>
+            <tbody id="tbets"></tbody>
+          </table></div>
+          <div class="more" id="tmore" hidden></div>
         </div>
-        <div class="card-b"><div class="kpis" id="tsimk"></div>
+      </details>
+
+      <div class="tsec"><h2>Model checks</h2><p>These test the models, not bets. They are scored on their own terms and ignore every filter.</p></div>
+
+      <details class="card tfold" id="tsimcard">
+        <summary><span class="tf-t"><b>Game simulations</b><small id="tsimstat">Does the real score land inside the simulated range?</small></span></summary>
+        <div class="card-b">
+          <p class="hint tplain">The simulation plays each game thousands of times and gives a range. If it is honest, the real total, margin and player stats land inside the 80% range about 80% of the time.</p>
+          <p class="hint" id="tsimsub"></p>
+          <div class="filters" id="tsimenv"></div>
+          <div class="kpis" id="tsimk"></div>
           <div class="tablewrap"><table class="ht tsim" id="tsim"></table></div>
           <div class="more" id="tsimmore" hidden></div>
           <p class="hint" id="tsimnote"></p>
           <h3 class="sim-h">Joint odds: different teams, then teammates (for the simulation test only)</h3>
           <p class="hint" id="tsimjsub"></p>
           <div class="tablewrap"><table class="ht tsim" id="tsimj"></table></div></div>
-      </section>
+      </details>
 
-      <section class="card" id="tpscard">
-        <div class="card-h"><div><h2>Props: minutes model vs simulations</h2><p id="tpssub">The prop model (projected minutes times per-minute rate, as priced on Player Props) against playing it out 10,000 and 50 games at a time. Not affected by the filters above.</p></div>
-          <button class="btn" id="tpsopen" type="button">Open Props Simulation</button></div>
-        <div class="card-b"><div class="kpis" id="tpsk"></div>
+      <details class="card tfold" id="tpscard">
+        <summary><span class="tf-t"><b>Props: minutes model vs simulations</b><small id="tpsstat">The prop model against playing each game out thousands of times</small></span></summary>
+        <div class="card-b">
+          <p class="hint tplain" id="tpssub">The prop model (projected minutes times per-minute rate, as priced on Player Props) against playing it out 10,000 and 50 games at a time. Also holds the Biggest gap record: the one prop per game where the model and the price disagree most.</p>
+          <div class="tpsbtn"><button class="btn" id="tpsopen" type="button">Open Props Simulation</button></div>
+          <div class="kpis" id="tpsk"></div>
           <h3 class="sim-h">Last season, every prop scored</h3>
           <div class="tablewrap"><table class="ht tsim" id="tps"></table></div>
           <p class="hint" id="tpsnote"></p>
@@ -2137,38 +2251,18 @@ th{font-weight:500}
           <p class="hint" id="tpgnote"></p>
           <h3 class="sim-h">Last 10 Biggest gap picks</h3>
           <div class="tablewrap"><table class="ht tsim" id="tpgl"></table></div></div>
-      </section>
+      </details>
 
-      <section class="card" id="tnvcard">
-        <div class="card-h"><div><h2>Novig paper trading</h2><p id="tnvsub">Simulated orders only: nothing is placed on Novig. Not affected by the filters above.</p></div></div>
-        <div class="card-b"><div class="kpis" id="tnvk"></div>
+      <details class="card tfold" id="tnvcard">
+        <summary><span class="tf-t"><b>Novig paper trading</b><small id="tnvstat">Simulated resting orders on Novig, nothing is placed</small></span></summary>
+        <div class="card-b">
+          <p class="hint tplain">Pretend orders left at our price on Novig's prop books, counted as filled only when the public trade tape shows the market trade at or through that price.</p>
+          <p class="hint" id="tnvsub"></p>
+          <div class="kpis" id="tnvk"></div>
           <div class="tablewrap"><table class="ht tsim" id="tnv"></table></div>
           <div class="more" id="tnvmore" hidden></div>
           <p class="hint" id="tnvnote"></p></div>
-      </section>
-
-      <section class="card">
-        <div class="card-h">
-          <div><h2>Units over time</h2><p id="tchsub">Cumulative units for the current selection, 1 unit per bet, by game day.</p></div>
-        </div>
-        <div class="card-b">
-          <div id="tchart"></div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="card-h">
-          <div><h2>Shadow bets</h2><p id="tbsub">Every logged edge, newest first.</p></div>
-          <div class="filters">
-            <select class="sel" id="tstatus" aria-label="Status"><option value="all">All bets</option><option value="open">Open</option><option value="settled">Settled</option></select>
-          </div>
-        </div>
-        <div class="card-b"><div class="tablewrap"><table class="ht tb">
-          <thead><tr><th class="l" scope="col">Tip (CT)</th><th class="l" scope="col">Player</th><th class="l" scope="col">Bet</th><th class="l" scope="col">Gate</th><th scope="col" title="Price when the edge first reached 3%">Entry</th><th scope="col" title="Last price before tip">Close</th><th scope="col">Fair</th><th scope="col">Edge</th><th scope="col">Actual</th><th class="l" scope="col">Result</th><th scope="col">Units</th></tr></thead>
-          <tbody id="tbets"></tbody>
-        </table></div>
-        <div class="more" id="tmore" hidden></div></div>
-      </section>
+      </details>
     </main>
     <footer id="tfoot" hidden></footer>
 
@@ -4381,17 +4475,149 @@ function liveVerdict(sm, bt){
 // a signal's all-time live record (Edges status and the gated table)
 function signalAgg(stat, venue, side){ return trAgg(cubeRows().filter(r => r.stat === stat && r.venue === venue && r.side === side)); }
 
+// ── Track Record top of page: season record, plays, NO-GO list, glossary ─────────────────────────────────────────
+// A PICK is one player, one stat, one side (Over or Under; Kalshi YES is Over, NO is Under). The same pick is priced at several books, apps and
+// Kalshi lines and each of those is its own 1-unit bet, so bets > picks. Picks are counted from d.bets (the latest bets the file carries), the
+// record, units and CLV from the cube (every bet). Preseason stays out of every number except its own strip.
+const PL = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': '3-pointers', pra: 'points + rebounds + assists', pr: 'points + rebounds', pa: 'points + assists', ra: 'rebounds + assists'};
+const plabel = s => PL[s] || SLABEL[s] || s;
+const isOver = b => b.side === 'Over' || b.side === 'YES';
+const pickKey = b => `${b.pid}|${b.stat}|${isOver(b) ? 'over' : 'under'}`;
+const gradeRank = g => GATE_ORDER[g] ?? 3;
+const tplim = {plays: 15, nogo: 15}, tpkOpen = new Set();
+const TGLOSS = [
+  ['Pick', 'One player, one stat, one side: "Under 1.5 3-pointers". The same pick is often priced at several books, apps and Kalshi lines. Each of those is its own bet below, so there are more bets than picks, and they win or lose together.'],
+  ['Bet', 'A paper bet of 1 unit at the first price that showed a 3% edge, settled from ESPN\'s box score. Nothing here is a real bet.'],
+  ['Over / Under, YES / NO', 'This page says Over and Under everywhere. On Kalshi, YES is Over and NO is Under; Kalshi names the line as a whole number, so "NO 2+" is Under 1.5. The Kalshi contract is shown next to the price.'],
+  ['GO, WATCH, NO-GO', 'The gate: how the model\'s backtest on past seasons rates this kind of bet (stat, venue and side). GO passed our bar. WATCH is close and worth tracking. NO-GO failed or was never tested, so the model itself says not to bet it. NO-GO bets are still tracked so we can check that call.'],
+  ['Edge at entry', 'How much more likely we think the side is to win than the price implies, at the first price that showed 3% or more. "+8.1 pts" means 8.1 percentage points of win chance.'],
+  ['Model edge, consensus edge', 'Model edge: our projection disagrees with the price. Consensus edge: the price disagrees with what the other books and Kalshi together imply. "Both" means both agree.'],
+  ['CLV, or price move', 'Closing-line value: after we logged a bet, did the market price move toward our side by tip-off? Positive means we beat the closing price. It is the earliest sign of a real edge, and it shows up before any win or loss. It is not profit. Shown in points of win chance.'],
+  ['W-L-P', 'Wins, losses and pushes (the stat landed exactly on a whole-number line, so the stake comes back). A player who did not play is void and left out.'],
+  ['Units, ROI', '1 unit is the stake of one bet, so +3u is three bets\' worth of profit. ROI is profit per unit staked: +5% means 5 cents won per 1 unit.'],
+  ['z', 'How many standard errors the result sits above zero. A signal needs about 2 or more, and 300 settled bets, before it counts as proven.'],
+];
+function betFam(b){ return b.venue === 'kalshi' ? 'kalshi' : b.venue === 'pickem' ? 'pickem' : b.book === 'Polymarket' ? 'polymarket' : 'book'; }
+// the graded signals: the prop model's backtests, plus any Kalshi stat and side the ledger graded GO or WATCH (consensus engine)
+function signalList(all){
+  const BT = (TR && TR.data && TR.data.backtest) || PR.backtest || {}, m = new Map();
+  for (const k of Object.keys(BT)){ const [st, ve, sd] = k.split('|'); m.set(k, {st, sd, g: gate('kalshi', st, sd), bt: BT[k]}); }
+  for (const r of all) if (r.venue === 'kalshi' && r.gate !== 'no-go'){
+    const sd = r.side === 'over' ? 'YES' : 'NO', k = `${r.stat}|kalshi|${sd}`, e = m.get(k);
+    if (!e) m.set(k, {st: r.stat, sd, g: r.gate, bt: null});
+    else if (gradeRank(r.gate) < gradeRank(e.g)) e.g = r.gate;
+  }
+  return [...m.values()].map(e => ({...e, x: signalAgg(e.st, 'kalshi', e.sd === 'YES' ? 'over' : 'under')})).sort((a, b) => gradeRank(a.g) - gradeRank(b.g) || b.x.bets - a.x.bets);
+}
+function trPicks(sect, bets){
+  const M = new Map(), inSect = new Set(sect);
+  for (const b of sect){ const k = pickKey(b); let p = M.get(k);
+    if (!p) M.set(k, p = {k, pid: b.pid, player: b.player, matchup: b.matchup, tip: b.tip, stat: b.stat, over: isOver(b), bets: [], others: []});
+    p.bets.push(b); }
+  for (const b of bets) if (!inSect.has(b)){ const p = M.get(pickKey(b)); if (p) p.others.push(b); }
+  for (const p of M.values()){
+    p.gate = p.bets.map(b => b.gate).sort((a, b) => gradeRank(a) - gradeRank(b))[0];
+    p.best = p.bets.reduce((a, b) => b.edge > a.edge ? b : a);
+    p.done = p.bets.filter(b => b.result !== 'open');
+    p.w = p.done.filter(b => b.result === 'win').length; p.l = p.done.filter(b => b.result === 'loss').length; p.p = p.done.filter(b => b.result === 'push').length;
+    p.u = p.done.reduce((a, b) => a + (b.pnl || 0), 0);
+  }
+  return [...M.values()].sort((a, b) => gradeRank(a.gate) - gradeRank(b.gate) || b.best.edge - a.best.edge);
+}
+function pickBetRow(b, dim){
+  const RES = {win: pill('ok', 'Win'), loss: pill('bad', 'Loss'), push: pill('idle', 'Push'), void: pill('idle', 'Void'), open: '<span class="muted">Open</span>'};
+  return `<tr${dim ? ' class="dim"' : ''}><td class="l"><b>${esc(b.book)}</b>${b.venue === 'kalshi' ? `<small>contract ${b.side} ${b.line + .5}+</small>` : ''}</td><td class="l">${isOver(b) ? 'Over' : 'Under'} ${b.line}</td>
+    <td class="num">${tPrice(b.venue, b.price)}</td><td class="num">${tPrice(b.venue, b.price_close)}</td>
+    <td class="num">${ec(b.edge)}</td><td class="l">${gatePill(b.gate)}</td><td class="l">${RES[b.result] || ''}</td></tr>`;
+}
+function pickRow(p, sect){
+  const id = sect + '|' + p.k, open = tpkOpen.has(id), nb = p.bets.length;
+  const names = [...new Set(p.bets.map(b => b.book))], where = names.slice(0, 2).join(', ') + (names.length > 2 ? ` +${names.length - 2}` : '');
+  const res = p.done.length ? `<b>${p.w}-${p.l}${p.p ? '-' + p.p : ''}</b> ${tUnits(p.u)}u${p.done.length < nb ? `<small>${nb - p.done.length} still open</small>` : ''}` : `Open<small>tip ${clock(p.tip)} ${TZL}</small>`;
+  const more = p.others.length ? ` · ${p.others.length} ungraded elsewhere` : '';
+  return `<div class="tpk"><button class="tpk-h" type="button" data-pk="${esc(id)}" aria-expanded="${open}">
+      ${avSm(p.pid, p.player)}
+      <span class="tpk-who"><b>${esc(p.player)}</b><small>${esc(p.matchup)}</small></span>
+      <span class="tpk-pick"><b>${p.over ? 'Over' : 'Under'} ${p.best.line} ${plabel(p.stat)}</b><small>${esc(where)}, ${nb} ${nb === 1 ? 'bet' : 'bets'}${more}</small></span>
+      <span class="tpk-grade">${gatePill(p.gate)}</span>
+      <span class="tpk-edge"><b>${ec(p.best.edge)}</b><small>pts</small></span>
+      <span class="tpk-res">${res}</span><i class="tpk-chev"></i></button>
+    ${open ? `<div class="tpk-d"><div class="tablewrap"><table><thead><tr><th class="l" scope="col">Where</th><th class="l" scope="col">Bet</th><th scope="col" title="Price at first 3% edge">Entry</th><th scope="col" title="Last price before tip, or the latest price while the game is open">Latest</th><th scope="col" title="Fair chance minus the break-even chance of the entry price, in points">Edge</th><th class="l" scope="col">Gate</th><th class="l" scope="col">Result</th></tr></thead><tbody>${
+      p.bets.map(b => pickBetRow(b, false)).join('')}${p.others.length ? `<tr><td class="sub tpk-sub" colspan="7" style="text-align:left;padding-left:0">Same pick at other venues, not graded</td></tr>${p.others.map(b => pickBetRow(b, true)).join('')}` : ''}</tbody></table></div></div>` : ''}</div>`;
+}
+function pickList(el, moreEl, picks, sect, empty){
+  const lim = tplim[sect];
+  el.innerHTML = picks.length ? `<div class="tpk-hd"><span></span><span>Player</span><span>Pick</span><span>Gate</span><span>Edge</span><span>Result</span><span></span></div>${picks.slice(0, lim).map(p => pickRow(p, sect)).join('')}` : `<p class="empty tpk-empty">${empty}</p>`;
+  moreEl.hidden = picks.length <= lim;
+  moreEl.innerHTML = `<button class="btn" type="button" data-pkmore="${sect}">Show all ${picks.length.toLocaleString()} picks</button>`;
+}
+function renderTrackTop(d, all){
+  const tot = trAgg(all), bets = (d && d.bets) || [];
+  const gated = trAgg(all.filter(r => r.gate !== 'no-go')), ng = trAgg(all.filter(r => r.gate === 'no-go'));
+  const gB = bets.filter(b => b.gate !== 'no-go'), nB = bets.filter(b => b.gate === 'no-go');
+  const picksOf = bs => new Set(bs.map(pickKey)).size, nPicks = picksOf(bets), players = new Set(bets.map(b => b.pid)).size;
+  const partial = bets.length < tot.bets;
+  const P = d && d.preseason && d.preseason.cube ? trAgg(d.preseason.cube.map(r => Object.fromEntries(d.cube_cols.map((c, i) => [c, r[i]])))) : null;
+  const SG = signalList(all), goS = SG.filter(x => x.g === 'go'), wS = SG.filter(x => x.g === 'watch'), proven = SG.filter(x => x.x.settled >= MIN_LIVE && x.x.z != null && x.x.z >= LIVE_Z).length;
+  const rec = a => `${a.w}-${a.l}${a.p ? '-' + a.p : ''}`;
+  const sgn = (x, f = 1) => (x >= 0 ? '+' : '') + x.toFixed(f);
+
+  if (!tot.bets){
+    $('tscore').innerHTML = `<div class="card-h"><div><h2>Season record</h2><p>No shadow bets yet.</p></div></div><div class="card-b"><p class="tclv">The recorder logs every edge the Props page prices at 3% or more (Kalshi, sportsbooks, Polymarket and pick'em apps) for games within 24 hours, and settles it from the box score. Props list the morning of a game; the record starts on opening night, October 20. Nothing here is a real bet.</p>${preStrip(P)}</div>`;
+    $('tplayssub').textContent = ''; pickList($('tplaylist'), $('tplaymore'), [], 'plays', 'No picks yet.'); pickList($('tnogolist'), $('tnogomore'), [], 'nogo', 'No picks yet.');
+    $('tgloss').innerHTML = TGLOSS.map(([t, x]) => `<dt>${t}</dt><dd>${x}</dd>`).join('');
+    return;
+  }
+  // answer 1: how are we doing
+  const a1 = tot.settled
+    ? `<b class="tbig">${rec(tot)}<small>${tUnits(tot.units)}u</small></b><span class="tsm">${tRoi(tot.roi)} profit per unit across <b>${tot.settled.toLocaleString()}</b> settled bets${tot.open ? `, ${tot.open.toLocaleString()} still open` : ''}. ${picksOf(bets.filter(b => b.result !== 'open'))} distinct picks settled.</span>`
+    : `<b class="tbig wait">Waiting for results</b><span class="tsm"><b>${tot.bets.toLocaleString()} bets</b>, all still open, on <b>${nPicks}${partial ? '+' : ''} distinct picks</b> and ${players} players.<span class="tsm-x"> ${partial ? `Counted from the latest ${bets.length.toLocaleString()} bets, ` + (bets.length - nPicks).toLocaleString() + ' of them are' : (bets.length - nPicks).toLocaleString() + ' bets are'} the same pick at another book, app or Kalshi line.</span></span>`;
+  // answer 2: is it real
+  const have = gated.settled, bt = SG.filter(x => x.g === 'go' && x.bt && x.bt.roi != null).slice(0, 2);
+  const a2 = `<span>${have >= MIN_LIVE ? liveVerdict(gated, null) : pill('idle', have ? 'Collecting' : 'Too early')}</span><div class="tprog" role="progressbar" aria-valuemin="0" aria-valuemax="${MIN_LIVE}" aria-valuenow="${Math.min(have, MIN_LIVE)}" aria-label="Settled GO and WATCH bets"><i style="width:${Math.min(1, have / MIN_LIVE) * 100}%"></i></div>
+    <span class="tsm"><b>${have} of ${MIN_LIVE}</b> settled GO and WATCH bets before a verdict.<span class="tsm-x"> ${bt.length ? `The backtest on past seasons is positive (${bt.map(x => `${SLABEL[x.st]} ${x.sd === 'YES' ? 'Over' : 'Under'} ${tRoi(x.bt.roi)} over ${x.bt.n.toLocaleString()} bets, z ${x.bt.z}`).join('; ')}). Live says nothing until bets settle.` : ''}</span></span>`;
+  // answer 3: what to do
+  const a3 = `<b class="tbig wait" style="color:var(--fg)">Not a tip sheet</b><span class="tsm">Nothing here is a real bet.<span class="tsm-x"> <b>${goS.length} GO</b> and <b>${wS.length} WATCH</b> ${goS.length + wS.length === 1 ? 'signal is' : 'signals are'} being tested; <b>${proven} ${proven === 1 ? 'is' : 'are'} proven</b> on live bets. Only a proven signal earns a real stake, and <button class="linkbtn" type="button" data-go="edges">Edges</button> sizes those.</span></span>`;
+  const gl = (label, sub, a, bs) => `<tr><td class="l"><b>${label}</b><small>${sub}</small></td><td>${a.bets.toLocaleString()}</td><td>${picksOf(bs)}${partial ? '*' : ''}</td><td>${a.settled ? rec(a) : '<span class="muted">0 settled</span>'}</td><td>${a.settled ? tUnits(a.units) + `<small>${tRoi(a.roi)}</small>` : '<span class="muted">none</span>'}</td><td>${a.clv != null ? tClv(a.clv) : ''}</td></tr>`;
+  const gcls = [...new Set(gB.map(betFam))].map(f => VLABEL[f]).join(' and ');
+  const early = tot.open > 0;
+  $('tscore').innerHTML = `<div class="card-h"><div><h2>Season record</h2><p>Every 3%+ edge the model priced, tracked as 1-unit paper bets and settled from ESPN's box score. Preseason is not included.</p></div></div>
+    <div class="card-b">
+      <div class="tans"><div class="tan"><span class="tq">How are we doing?</span>${a1}</div><div class="tan"><span class="tq">Is it real?</span>${a2}</div><div class="tan"><span class="tq">What do I do with it?</span>${a3}</div></div>
+      <div class="tablewrap"><table class="tgrp"><thead><tr><th class="l" scope="col"></th><th scope="col">Bets</th><th scope="col" title="Distinct player, stat and side. The same pick at several books and apps counts once.">Picks</th><th scope="col" title="Wins, losses, pushes">Record</th><th scope="col" title="1 unit per bet at the entry price, and profit per unit">Units</th><th scope="col" title="Closing-line value: how far the price moved toward our side after entry, in points of win chance">Price move</th></tr></thead><tbody>
+        ${gl('GO and WATCH', gcls ? `${gcls} markets the model backtested` : 'Passed or nearly passed a backtest', gated, gB)}
+        ${gl('NO-GO', 'For the record: the model says not to bet', ng, nB)}
+        <tr class="tot">${gl('All bets', '', tot, bets).replace(/^<tr>/, '').replace(/<\/tr>$/, '')}</tr></tbody></table></div>
+      ${partial ? `<p class="tclv">* Picks are counted from the latest ${bets.length.toLocaleString()} of ${tot.bets.toLocaleString()} bets. A pick can sit in both rows when one venue is graded and another is not.</p>` : ''}
+      ${tot.clv_n ? `<p class="tclv"><b>Price move so far:</b> after we logged each bet the price moved ${tot.clv >= 0 ? 'toward' : 'against'} our side by <b>${sgn(tot.clv * 100)} points</b> on average over ${tot.clv_n.toLocaleString()} bets${gated.clv != null && ng.clv != null ? ` (GO and WATCH ${sgn(gated.clv * 100)}, NO-GO ${sgn(ng.clv * 100)})` : ''}. <span class="tsm-x"> Positive is the earliest sign of a real edge, ahead of any win or loss; it is not profit.</span>${early ? ' Games that have not finished use the latest price, not the final close.' : ''}</p>` : ''}
+      ${preStrip(P)}
+    </div>`;
+  // plays
+  const picks = trPicks(gB, bets);
+  $('tplayssub').innerHTML = gB.length ? `${picks.length} ${picks.length === 1 ? 'pick' : 'picks'} from ${gated.bets.toLocaleString()} GO and WATCH bets, best edge first.<span class="tsm-x"> GO passed its backtest, WATCH nearly did.</span> Tap a pick for every bet behind it.` : 'No GO or WATCH bets yet.';
+  pickList($('tplaylist'), $('tplaymore'), picks, 'plays', 'No GO or WATCH picks logged yet.');
+  const ngp = trPicks(nB, bets);
+  $('tnogosub').textContent = `${ngp.length} picks · ${ng.bets.toLocaleString()} bets. The model's own backtest says not to bet these; they are tracked to check that call.`;
+  pickList($('tnogolist'), $('tnogomore'), ngp, 'nogo', 'No NO-GO picks logged.');
+  $('tgloss').innerHTML = TGLOSS.map(([t, x]) => `<dt>${t}</dt><dd>${x}</dd>`).join('');
+}
+function preStrip(P){
+  if (!P || !P.bets) return '';
+  return `<div class="tpre"><b>Preseason rehearsal</b>${pill('idle', 'Not in the season record')}<span class="tpre-n">${P.bets.toLocaleString()} bets${P.settled ? ` · ${P.w}-${P.l}${P.p ? '-' + P.p : ''} · ${P.units >= 0 ? '+' : ''}${P.units.toFixed(1)}u · ROI ${P.roi >= 0 ? '+' : ''}${(P.roi * 100).toFixed(1)}%` : ' · none settled yet'}</span><span class="tsm-x">Logged before opening night to test the recorder. The models were never tested on preseason minutes, so none of this counts toward the numbers above.</span></div>`;
+}
+$('v-track').addEventListener('click', e => {
+  const h = e.target.closest('.tpk-h');
+  if (h){ const id = h.dataset.pk; tpkOpen.has(id) ? tpkOpen.delete(id) : tpkOpen.add(id); renderTrackTop(TR.data, cubeRows()); try { document.querySelector(`.tpk-h[data-pk="${CSS.escape(id)}"]`)?.focus(); } catch {} return; }
+  const m = e.target.closest('[data-pkmore]'); if (m){ tplim[m.dataset.pkmore] = 1e9; renderTrackTop(TR.data, cubeRows()); return; }
+  const g = e.target.closest('[data-go]'); if (g) goView(g.dataset.go);
+});
+$('tsigcard').open = window.innerWidth > 760;
+
 function renderTrack(){
   const d = TR && TR.data, all = cubeRows();
   $('mode').innerHTML = !d ? pill('idle', 'No ledger yet')
     : TR.live ? `${pill('ok', 'Live')}<span>Checked ${clock(TR.at)} ${TZL}</span>` : `${pill('idle', 'Snapshot')}<span>Ledger as of ${stamp(d.t)} ${TZL}</span>`;
-  const tot = trAgg(all);
-  // preseason: logged and settled the same way as a rehearsal, kept out of every number on this page (ledger.py)
-  const P = d && d.preseason && d.preseason.cube ? trAgg(d.preseason.cube.map(r => Object.fromEntries(d.cube_cols.map((c, i) => [c, r[i]])))) : null;
-  const preTxt = P && P.bets ? ` Preseason is kept apart and counts toward nothing: ${P.bets.toLocaleString()} bets logged, ${P.settled ? `${P.w}-${P.l}${P.p ? '-' + P.p : ''}, ${P.units >= 0 ? '+' : ''}${P.units.toFixed(1)}u` : 'none settled yet'}.` : '';
-  $('tbanner').innerHTML = !tot.bets
-    ? `<b>No shadow bets yet.</b><span>The recorder logs every edge the Props page prices at 3% or more (Kalshi, sportsbooks, Polymarket and pick'em apps) for games within 24 hours, and settles it from the box score. Props list the morning of a game; the record starts on opening night, October 20 (the models were never tested on preseason minutes). Nothing here is a real bet.${preTxt}</span>`
-    : `<b>${tot.bets.toLocaleString()} shadow bets, ${tot.settled.toLocaleString()} settled.</b><span>Each is 1 unit at the first price that showed a 3% edge, settled from ESPN's box score. None were placed.${preTxt}</span>`;
+  renderTrackTop(d, all);
 
   // filters
   const books = [...new Set(all.filter(r => trMatch(r, ['book'])).map(r => r.venue + '|' + r.book))].sort();
@@ -4413,17 +4639,17 @@ function renderTrack(){
   ].join('');
   $('treset').hidden = Object.keys(TF0).every(k => tf[k] === TF0[k]);
 
-  // KPIs over the current selection
+  // KPIs over the current selection (Explore section)
   const sel = all.filter(r => trMatch(r)), A = trAgg(sel);
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
-  const r0 = clockRoi(A), u0 = clockUnits(A);
+  const r0 = clockRoi(A), u0 = clockUnits(A), wait = '<span class="muted" style="font-size:16px">Waiting for results</span>';
   $('tkpis').innerHTML =
-    kpi('Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), A.settled ? `${A.w}-${A.l}${A.p ? '-' + A.p : ''}` : '<span class="muted">0 settled</span>',
+    kpi('Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), A.settled ? `${A.w}-${A.l}${A.p ? '-' + A.p : ''}` : wait,
       A.bets ? `${A.settled} settled · ${A.open} open${A.void ? ` · ${A.void} void` : ''}` : 'Nothing logged for this selection') +
-    kpi('Units', ICON.pts, A.settled ? `<span class="${u0 >= 0 ? 'pos' : 'neg'}">${u0 >= 0 ? '+' : ''}${u0.toFixed(1)}u</span>` : '<span class="muted">0u</span>', `1 unit per bet, ${tf.clock === 'close' ? 'at close' : 'at entry'}`) +
-    kpi('ROI', ICON.star, A.settled ? tRoi(r0) : '<span class="muted">none</span>', A.settled ? `z ${A.z ?? 'n/a'} · win rate ${A.wr != null ? pc(A.wr) : 'n/a'} · average edge ${ec(A.edge_sum / A.bets)}` : 'Per unit risked') +
-    kpi('Closing-line value', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), A.clv != null ? tClv(A.clv) + '<span class="muted" style="font-size:14px"> pts</span>' : '<span class="muted">none</span>',
-      A.clv_n ? `Entry to close, ${A.clv_n.toLocaleString()} bets` : 'Needs a price at entry and at close');
+    kpi('Units', ICON.pts, A.settled ? `<span class="${u0 >= 0 ? 'pos' : 'neg'}">${u0 >= 0 ? '+' : ''}${u0.toFixed(1)}u</span>` : wait, `Profit or loss in bets: 1 unit per bet, ${tf.clock === 'close' ? 'at close' : 'at entry'}`) +
+    kpi('ROI', ICON.star, A.settled ? tRoi(r0) : wait, A.settled ? `Profit per unit staked · z ${A.z ?? 'n/a'} · win rate ${A.wr != null ? pc(A.wr) : 'n/a'} · average edge ${ec(A.edge_sum / A.bets)}` : 'Profit per unit staked. Needs settled bets') +
+    kpi('Price move', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), A.clv != null ? tClv(A.clv) + '<span class="muted" style="font-size:14px"> pts</span>' : '<span class="muted">none</span>',
+      A.clv_n ? (A.settled ? `Entry to close, ${A.clv_n.toLocaleString()} bets. Positive: the market moved our way` : `Early read, ${A.clv_n.toLocaleString()} bets: price since entry, not a result`) : 'Needs a price at entry and a later price');
 
   // every market: stats x venue/side, other filters applied
   const MX = all.filter(r => trMatch(r, ['stat', 'venue', 'side']));
@@ -4435,10 +4661,10 @@ function renderTrack(){
     const main = a.settled ? tRoi(clockRoi(a)) : a.bets ? '<span class="muted">open</span>' : '<span class="muted">none</span>';
     return `<td class="cell num ${g === 'no-go' ? '' : g}${on ? ' on' : ''}" tabindex="0" role="button" aria-pressed="${on}" data-st="${st}" data-v="${v}" data-sd="${sd}" title="${st === 'all' ? 'All stats' : SLABEL[st]} ${sideWord(v, sd)} · ${VLABEL[v]}${g !== 'no-go' ? ' · ' + GATE_LABEL[g] : ''}">${main}<small>${a.settled ? `${a.w}-${a.l}${a.p ? '-' + a.p : ''} · ${clockUnits(a) >= 0 ? '+' : ''}${clockUnits(a).toFixed(1)}u` : a.bets ? `${a.bets} open` : '0 bets'}</small></td>`;
   };
-  $('tmx').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th>${cols.map(([v, sd, l]) => `<th scope="col">${sideWord(v, sd)}<small>${l}</small></th>`).join('')}</tr></thead><tbody>
+  $('tmx').innerHTML = `<thead><tr><th class="l" scope="col">Stat</th>${cols.map(([v, sd, l]) => `<th scope="col">${sd === 'over' ? 'Over' : 'Under'}<small>${v === 'kalshi' ? 'Kalshi ' + sideWord(v, sd) : l}</small></th>`).join('')}</tr></thead><tbody>
     ${MSTATS.map(st => `<tr><td class="l"><b style="font-weight:500">${SLABEL[st]}</b></td>${cols.map(([v, sd]) => cell(st, v, sd)).join('')}</tr>`).join('')}
     <tr class="tot"><td class="l"><b style="font-weight:500">All stats</b></td>${cols.map(([v, sd]) => cell('all', v, sd)).join('')}</tr></tbody>`;
-  $('tmxsub').textContent = `ROI per unit ${tf.clock === 'close' ? 'at close' : 'at entry'} for every stat on every venue and side, with the record and units under it. Outlined cells are GO (green) and WATCH (amber) signals. Click a cell to filter by it.`;
+  $('tmxsub').textContent = `Profit per unit ${tf.clock === 'close' ? 'at close' : 'at entry'} for every stat on every venue and side, with the record and units under it. Over and Under throughout (on Kalshi, YES is Over and NO is Under). Outlined cells are GO (green) and WATCH (amber) markets. Click a cell to filter by it.`;
 
   // breakdowns: each ignores its own filter, so the other options stay visible
   const brk = (title, key, labelOf, order) => {
@@ -4458,16 +4684,15 @@ function renderTrack(){
     brk('By side', 'side', k => k === 'over' ? 'Over / YES' : 'Under / NO', ['over', 'under']) +
     brk('By edge source', 'etype', k => ETYPE[k] || k, ['model', 'gap', 'both']);
 
-  // gated signals, all time
-  const BT = (d && d.backtest) || PR.backtest || {};
-  $('tsig').innerHTML = Object.keys(BT).length ? Object.keys(BT).sort((a, b) => GATE_ORDER[BT[a].gate] - GATE_ORDER[BT[b].gate]).map(k => {
-    const [st, ve, sd] = k.split('|'), side = sd === 'YES' ? 'over' : 'under', x = signalAgg(st, ve, side), bt = BT[k], g = gate('kalshi', st, sd);
-    return `<tr><td class="l"><b>${SLABEL[st] || st} ${sd}</b><small>Kalshi</small></td><td class="l">${gatePill(g)}</td>
+  // graded signals, all time: the prop model's backtests plus any combo the consensus engine graded GO or WATCH
+  const SG = signalList(all);
+  $('tsignote').textContent = 'A bet takes the better of two backtest grades: the prop model\'s (rows with a backtest figure) or the consensus engine\'s (rows marked consensus engine, tested in nba/docs/consensus-engine.md). A signal is proven only after ' + MIN_LIVE + ' settled bets and a result clearly above zero (z of 2 or more). Over and Under throughout; on Kalshi YES is Over and NO is Under.';
+  $('tsigsub').textContent = SG.length ? `${SG.length} graded ${SG.length === 1 ? 'signal' : 'signals'}, live record next to the backtest` : 'No graded signals in this build';
+  $('tsig').innerHTML = SG.length ? SG.map(({st, sd, g, bt, x}) => `<tr><td class="l"><b>${SLABEL[st] || st} ${sd === 'YES' ? 'Over' : 'Under'}</b><small>Kalshi ${sd}</small></td><td class="l">${gatePill(g)}</td>
       <td class="num">${x.bets}</td><td class="num">${x.settled ? `${x.w}-${x.l}-${x.p}` : ''}</td><td class="num">${x.settled ? tUnits(x.units) : ''}</td>
       <td class="num">${x.settled ? tRoi(x.roi) : ''}</td><td class="num">${x.settled ? tRoi(x.roi_close) : ''}</td><td class="num">${tClv(x.clv)}</td>
-      <td class="num">${bt.roi != null ? `${tRoi(bt.roi)} <span class="muted">(${bt.n.toLocaleString()}, z ${bt.z})</span>` : ''}</td>
-      <td class="l">${liveVerdict(x, bt)}</td></tr>`;
-  }).join('') : `<tr><td class="l" colspan="11"><p class="empty">No gated signals in this build.</p></td></tr>`;
+      <td class="num">${bt && bt.roi != null ? `${tRoi(bt.roi)} <span class="muted">(${bt.n.toLocaleString()}, z ${bt.z})</span>` : '<span class="muted">consensus engine</span>'}</td>
+      <td class="l">${liveVerdict(x, bt)}</td></tr>`).join('') : `<tr><td class="l" colspan="10"><p class="empty">No graded signals in this build.</p></td></tr>`;
 
   renderTrackChart(sel);
 
@@ -4480,13 +4705,13 @@ function renderTrack(){
   if (tf.status === 'open') B = B.filter(b => b.result === 'open');
   if (tf.status === 'settled') B = B.filter(b => b.result !== 'open');
   B = [...B].sort((a, b) => b.tip - a.tip || a.player.localeCompare(b.player));
-  $('tbsub').textContent = `${B.length.toLocaleString()} ${B.length === 1 ? 'bet' : 'bets'} in this selection${(d && d.n || 0) > bets.length ? ` among the latest ${bets.length.toLocaleString()} of ${d.n.toLocaleString()}` : ''}, newest first. Kalshi prices in cents (fee added at settlement), books and apps in American odds; flat pick'em lines settle at the ${pc((d && d.pk_be) || PK_BE, 1)} break-even.`;
+  $('tbsub').textContent = `${B.length.toLocaleString()} ${B.length === 1 ? 'bet' : 'bets'} in this selection${(d && d.n || 0) > bets.length ? ` among the latest ${bets.length.toLocaleString()} of ${d.n.toLocaleString()}` : ''}, newest first. Over and Under throughout (Kalshi YES is Over, NO is Under). Kalshi prices in cents (fee added at settlement), books and apps in American odds; flat pick'em lines settle at the ${pc((d && d.pk_be) || PK_BE, 1)} break-even.`;
   const RES = {win: pill('ok', 'Win'), loss: pill('bad', 'Loss'), push: pill('idle', 'Push'), void: pill('idle', 'Void, DNP'), open: '<span class="muted">Open</span>'};
   $('tstatus').value = tf.status;
   $('tbets').innerHTML = B.length ? B.slice(0, tf.limit).map(b => `<tr>
       <td class="l num">${etFmt(b.tip, {month: 'short', day: 'numeric'})}<small>${clock(b.tip)}</small></td>
       <td class="l"><div class="pl">${avSm(b.pid, b.player)}<div><b>${esc(b.player)}</b><small>${esc(b.team)} · ${esc(b.matchup)}</small></div></div></td>
-      <td class="l"><b>${SLABEL[b.stat] || b.stat} ${b.venue === 'kalshi' ? `${b.side} ${b.line + .5}+` : `${b.side} ${b.line}`}</b><small>${esc(b.book)}</small></td>
+      <td class="l"><b>${SLABEL[b.stat] || b.stat} ${isOver(b) ? 'Over' : 'Under'} ${b.line}</b><small>${esc(b.book)}${b.venue === 'kalshi' ? ` · contract ${b.side} ${b.line + .5}+` : ''}</small></td>
       <td class="l">${gatePill(b.gate)}<small>${ETYPE[b.etype || 'model']}</small></td>
       <td class="num">${tPrice(b.venue, b.price)}</td><td class="num">${tPrice(b.venue, b.price_close)}</td>
       <td class="num">${pc(b.fair)}</td><td class="num">${ec(b.edge)}</td>
@@ -4546,6 +4771,7 @@ function renderNovigPaper(){
   const d = TR && TR.data, cfg = d && d.novig_cfg || {fee: .02, edge: .03, stake: 5}, fee = cfg.fee ?? .02;
   const all = (d && d.novig_days ? Object.values(d.novig_days).flat() : []).sort((a, b) => b.tip - a.tip), O = all.filter(o => !o.void);
   const pre = d && d.preseason && d.preseason.novig_days ? Object.values(d.preseason.novig_days).flat().length : 0;
+  $('tnvstat').textContent = O.length ? `${O.length.toLocaleString()} settled paper orders` : 'No paper orders settled yet';
   if (!O.length){
     $('tnvk').innerHTML = '';
     $('tnv').innerHTML = `<tbody><tr><td class="l" colspan="9"><p class="empty">No paper orders settled yet. The recorder places a simulated resting order whenever our fair chance beats a Novig prop price by ${Math.round((cfg.edge ?? .03) * 100)}% after the placeholder fee, and settles it from the box score.${pre ? ` ${pre} preseason ${pre === 1 ? 'order is' : 'orders are'} scored apart.` : ''}</p></td></tr></tbody>`;
@@ -4570,7 +4796,7 @@ function renderNovigPaper(){
   $('tnv').innerHTML = `<thead><tr><th class="l" scope="col">Day</th><th class="l" scope="col">Player</th><th class="l" scope="col">Order</th><th scope="col">Kind</th><th scope="col" title="Our fair chance and the edge over the break-even price">Fair</th><th scope="col">Actual</th><th class="l" scope="col" title="touch: a trade at our price or better. thru: a trade at least 1 cent better, so we were not just queued at the back">Fill</th><th scope="col" title="Net of the placeholder fee, if filled">$ at ${'$' + cfg.stake} stake</th></tr></thead><tbody>${rows}</tbody>`;
   $('tnvmore').hidden = O.length <= nvRec.limit;
   $('tnvmore').innerHTML = `<button class="btn" id="tnvmorebtn" type="button">Show all ${O.length.toLocaleString()}</button>`;
-  $('tnvsub').textContent = `${O.length.toLocaleString()} settled paper orders, newest first. Simulated: nothing is placed on Novig. Not affected by the filters above.`;
+  $('tnvsub').textContent = `${O.length.toLocaleString()} settled paper orders, newest first. Simulated: nothing is placed on Novig. Ignores the filters in Explore.`;
   $('tnvnote').textContent = `Taking the ask at placement would have returned ${fmtR(rAsk)} per $ on all ${O.length} orders. Paper results only: Novig has no price history, its fee is a placeholder (${Math.round(fee * 100)}% of winnings) until confirmed, and a real order needs its own pre-registered rule first.${pre ? ` ${pre} preseason ${pre === 1 ? 'order is' : 'orders are'} scored apart and counted nowhere.` : ''}`;
 }
 $('tnvcard').addEventListener('click', ev => { if (ev.target.closest('#tnvmorebtn')){ nvRec.limit = 1e6; renderNovigPaper(); } });
@@ -4578,6 +4804,7 @@ function renderSimRecord(){
   const d = TR && TR.data, G = simGames(), e = simRec.env, pre = d && d.preseason && d.preseason.sim_days ? Object.values(d.preseason.sim_days).flat().length : 0;
   $('tsimenv').innerHTML = `<div class="seg" data-f="simenv" role="group">${[['market', 'Market line'], ['vault', 'Vault line'], ['players', "Players' own sum"]].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${e === v}">${l}</button>`).join('')}</div>`;
   const R = G.filter(g => g.env[e]);
+  $('tsimstat').textContent = R.length ? `${R.length.toLocaleString()} ${R.length === 1 ? 'game' : 'games'} scored (${SIMT.n} before the test can be called)` : 'No games scored yet';
   if (!R.length){
     $('tsimk').innerHTML = '';
     $('tsim').innerHTML = `<tbody><tr><td class="l" colspan="9"><p class="empty">No simulations scored yet. The recorder saves each game's simulated ranges in the 4 hours before tip and the ledger scores them against the box score 3 hours after tip, from opening night.${e === 'vault' ? ' The Vault line does not exist in preseason, so it has no rehearsal games; it starts with the first regular-season game.' : pre ? ` ${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart as a rehearsal.` : ''}</p></td></tr></tbody>`;
@@ -4618,7 +4845,7 @@ function renderSimRecord(){
       <td class="num">${v.zb >= 0 ? '+' : ''}${v.zb.toFixed(1)}</td><td class="num">${c.startsWith('o:') ? '<span class="muted">n/a</span>' : (v.zg >= 0 ? '+' : '') + v.zg.toFixed(1)}</td><td class="l">${v.verdict === 'GO' || v.verdict === 'OK' ? pill('ok', v.verdict) : v.verdict === 'NO-GO' ? pill('bad', 'NO-GO') : '<span class="muted">collecting</span>'}</td></tr>`).join('')}</tbody>`;
   $('tsimmore').hidden = R.length <= simRec.limit;
   $('tsimmore').innerHTML = `<button class="btn" id="tsimmorebtn" type="button">Show all ${R.length.toLocaleString()}</button>`;
-  $('tsimsub').textContent = `${n.toLocaleString()} ${n === 1 ? 'game' : 'games'} scored, newest first. Green means the real number landed inside the simulated 80% range. Not affected by the filters above.`;
+  $('tsimsub').textContent = `${n.toLocaleString()} ${n === 1 ? 'game' : 'games'} scored, newest first. Green means the real number landed inside the simulated 80% range. Ignores the filters in Explore.`;
   $('tsimnote').textContent = `Home win Brier ${brier.toFixed(3)} (a coin flip is 0.250; lower is better). With the market line selected, totals and margins are centred on the market by construction, so they test the simulation's spread, not its forecast; the Vault line centres them on the game model's line (regular season only, so it starts with the first regular-season game); the players' own sum tests our forecast. ${pre ? `${pre} preseason ${pre === 1 ? 'game is' : 'games are'} scored apart and counted nowhere.` : ''}`;
 }
 // ── Props: minutes model vs simulations (nba/scripts/build_sim_challenger.py → data/sim_challenger.json; live from the ledger and sim_days) ───────
@@ -4686,6 +4913,7 @@ function renderPropSimRecord(){
     return {N, games: gs.length, ex: mean(1), b10: mean(2), b50: mean(3), d10: d(2), d50: d(3), Nm, mk: Nm ? gs.reduce((a, v) => a + v[8], 0) / Nm : null, exm: Nm ? gs.reduce((a, v) => a + v[9], 0) / Nm : null}; };
   const hhCell = (ll, [d, se]) => { const z = se ? d / se : 0; return `${ll.toFixed(4)}<small class="${z >= 2 ? 'neg' : z <= -2 ? 'pos' : ''}">${psSg(d, 4)}${z >= 2 ? ' worse' : z <= -2 ? ' better' : ''}</small>`; };
   const HR = [...SIMS, 'all'].map(s => [s, agg(s)]), tot = (HR.find(x => x[0] === 'all') || [])[1];
+  $('tpsstat').textContent = `${tot ? tot.N.toLocaleString() + ' live props scored' : 'No live props scored yet'} · Biggest gap ${gapStats(gapPicks()).n} settled`;
   $('tpshsub').textContent = tot ? `${tot.N.toLocaleString()} props from ${tot.games} games scored${tot.N < MINP ? `: ${MINP - tot.N} more before it can be called` : ''}. Log loss, lower is better, each simulation next to the minutes model on the same props.` : 'The recorder saves each prop\'s probability three ways in the 3 hours before tip, and the ledger scores them against the box score after the game. Starts on opening night, October 20.';
   $('tpsh').innerHTML = !tot ? `<tbody><tr><td class="l" colspan="7"><p class="empty">No props scored yet. Preseason games are kept apart from this record.</p></td></tr></tbody>` :
     `<thead><tr><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col" title="On the props that have a price">Price</th><th scope="col" title="Prop model: projected minutes x rate, closed form">Minutes model</th><th scope="col">10,000 games</th><th scope="col">50 games</th><th scope="col">Verdict</th></tr></thead><tbody>${
