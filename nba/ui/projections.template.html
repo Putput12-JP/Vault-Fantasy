@@ -4085,7 +4085,7 @@ function pbSubmit(e, again){
   e.preventDefault();
   const r = pbRow(pf.logKey), c = r && r.all[+f.dataset.logform];
   const b = c && pvMkBet(r, c, f.price.value, +f.stake.value);
-  if (!b){ pvToast(c && c.venue === 'kalshi' ? 'Enter the price in cents, like 48, and a stake.' : 'Enter American odds, like -115 or +120, and a stake.'); return; }
+  if (!b){ pvToast(c && c.venue === 'kalshi' ? 'Enter the price in cents or a percent, like 48 or 48%, and a stake.' : 'Enter American odds or a percent, like -115, +120 or 45%, and a stake.'); return; }
   pvBets.unshift(b); pf.logKey = pf.logIdx = null; pvSave(); again(); pvSettle();
   pvToast(b.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.');
 }
@@ -7696,11 +7696,13 @@ function pvLogForm(r, c){
     <label>Price you got<input name="price" value="${flat ? 'flat' : kal ? Math.round(c.price * 100) : esc(String(c.price))}" ${flat ? 'readonly' : ''} inputmode="${kal ? 'decimal' : 'text'}" aria-label="Price you got${kal ? ' in cents' : ''}"></label>
     <label>Stake $<input name="stake" type="number" min="1" step="1" value="${s}"></label>
     <button class="go" type="submit">Save to My bets</button><button class="pv-ghost" type="button" data-logcancel="1">Cancel</button>
-    <p>${kal ? 'Cents per contract; the fee is added for you. ' : flat ? 'A flat pick, counted at the break-even of a 5- or 6-pick flex entry. ' : 'American odds, as the book showed them. '}Saved with our fair chance (${pc(c.fair)}) and our call at your price. After the game it settles with the result and your closing-line value.</p></form>`;
+    <p>${kal ? 'Cents per contract (48) or a percent (48%); the fee is added for you. ' : flat ? 'A flat pick, counted at the break-even of a 5- or 6-pick flex entry. ' : 'American odds as the book showed them (-110, +106), or the chance it implies (45%). '}Saved with our fair chance (${pc(c.fair)}) and our call at your price. After the game it settles with the result and your closing-line value.</p></form>`;
 }
 function pvMkBet(r, c, priceIn, stake){
   const kal = c.venue === 'kalshi', flat = c.venue === 'pickem' && c.price == null;
-  const cents = kal ? parseFloat(String(priceIn).replace(/[¢c\s]/g, '')) : null, am = +String(priceIn).trim().replace('−', '-');
+  const pct = /%/.test(String(priceIn)) ? parseFloat(String(priceIn).replace(/[^0-9.]/g, '')) / 100 : null;           // "45%" = the chance the price implies
+  const cents = kal ? (pct != null ? pct * 100 : parseFloat(String(priceIn).replace(/[¢c\s]/g, ''))) : null;
+  const am = pct != null && pct > 0 && pct < 1 ? (pct < .5 ? Math.round(100 * (1 - pct) / pct) : -Math.round(100 * pct / (1 - pct))) : +String(priceIn).trim().replace('−', '-');
   const cost = flat ? PK_BE : kal ? (cents > 0 && cents < 100 ? cents / 100 + kFee(cents / 100) : null) : Math.abs(am) >= 100 ? amP(am) : null;
   if (cost == null || !(cost > 0 && cost < 1) || !(stake > 0)) return null;
   const g = r.game, edge = c.fair - cost, cv = [];
@@ -8626,7 +8628,7 @@ $('pv-detail').addEventListener('submit', e => {
   e.preventDefault(); const f = e.target.closest('[data-logform]'); if (!f) return;
   const r = (pv.rows || []).find(x => pvKey(x) === pv.sel), c = r && r.all[+f.dataset.logform];
   const b = c && pvMkBet(r, c, f.price.value, +f.stake.value);
-  if (!b){ pvToast(c && c.venue === 'kalshi' ? 'Enter the price in cents, like 48, and a stake.' : 'Enter American odds, like -115 or +120, and a stake.'); return; }
+  if (!b){ pvToast(c && c.venue === 'kalshi' ? 'Enter the price in cents or a percent, like 48 or 48%, and a stake.' : 'Enter American odds or a percent, like -115, +120 or 45%, and a stake.'); return; }
   pvBets.unshift(b); pv.logIdx = null; pvSave(); pvShow(); pvSettle();
   pvToast(b.ex ? 'Saved to My bets. The example game is over, so it settles right away.' : 'Saved to My bets. It settles after the game.');
 });
