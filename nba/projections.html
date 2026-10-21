@@ -283,6 +283,8 @@ table.tsim td{white-space:nowrap}
 table.tsim td.sub{font-size:11.5px;color:var(--fg3);padding-top:0;border-top:0;text-align:left;white-space:normal}
 table.tsim td small{display:block;color:var(--fg3);font-size:11.5px}
 #tsimcard .kpis{margin-bottom:var(--gap)}
+#tsimline td small{display:block;color:var(--fg3);font-size:11.5px}
+#tsimline .ht td,#tsimline .ht th{vertical-align:top}
 .kpi .card-h{align-items:center}
 .kpi .card-h h2{font-size:13px;font-weight:500;color:var(--fg2)}
 .kpi .card-h svg{width:18px;height:18px;color:var(--fg3)}
@@ -2270,6 +2272,7 @@ th{font-weight:500}
         <summary><span class="tf-t"><b>Game simulations</b><small id="tsimstat">Does the real score land inside the simulated range?</small></span></summary>
         <div class="card-b">
           <p class="tverdict" id="tsimverdict"></p>
+          <div id="tsimline"></div>
           <p class="hint tplain">Before each game the model plays it out thousands of times and gives a range for the final margin, the total points and each player's stats. The test: does the real result land inside the 80% range about 80% of the time? A range that is too narrow gets missed too often; one that is too wide gets hit almost every time and says little.</p>
           <div class="filters" id="tsimenv"></div>
           <p class="hint" id="tsimenvnote"></p>
@@ -4872,8 +4875,49 @@ const SIMENV = {market: "Market line: the ranges are centred on the betting mark
   vault: "Vault line: the ranges are centred on our own game model's line (regular season only), so this tests our game model.",
   players: "Players' own sum: the team total is the sum of the simulated players, so this tests our own forecast with no help from the market."};
 function simBy(v, away, home, d = 1){ const a = Math.abs(v); return a < .05 ? 'even' : `${v > 0 ? home : away} by ${a.toFixed(d)}`; }
+// Against the betting line: the forecasts (Vault line, players' own sum) next to the market's spread and total, scored on which side of the line
+// the real result landed. The line is the market simulation's stored centre (the market spread and total it was centred on, within about 0.1 to
+// 0.3 of the book number); a game that landed within SIML_TIE of it is too close to call and is left out. Descriptive only: no verdict before SIMT.n games.
+const SIML_TIE = .3, SIML_ENV = [['vault', 'Vault line'], ['players', "Players' own sum"]];
+function simLine(G){
+  return G.filter(g => g.env.market).map(g => { const mk = g.env.market, L = mk.m[1], T = mk.t[1], [away, home] = String(g.matchup).split(' @ ');
+    const side = (sim, line, actual) => { const dd = actual - line; return {up: sim > line, right: Math.abs(dd) < SIML_TIE ? null : (sim > line) === (dd > 0), gap: Math.abs(sim - line), miss: Math.abs(sim - actual)}; };
+    const sims = {};
+    for (const [k] of SIML_ENV){ const x = g.env[k]; if (x) sims[k] = {sp: side(x.m[1], L, mk.am), ou: side(x.t[1], T, mk.at)}; }
+    return {g, L, T, away, home, am: mk.am, at: mk.at, base: {sp: Math.abs(L - mk.am), ou: Math.abs(T - mk.at)}, sims}; });
+}
+function renderSimLine(G){
+  const el = $('tsimline'), R = simLine(G);
+  if (!R.length){ el.innerHTML = ''; return; }
+  const of = k => R.filter(r => r.sims[k]);
+  const rec = (k, w) => { const xs = of(k).map(r => r.sims[k][w].right), W = xs.filter(v => v === true).length, Lo = xs.filter(v => v === false).length; return {W, L: Lo, nc: xs.length - W - Lo}; };
+  const avg = (k, w) => { const xs = of(k); return xs.length ? xs.reduce((a, r) => a + r.sims[k][w].miss, 0) / xs.length : null; };
+  const avgBase = (k, w) => { const xs = of(k); return xs.reduce((a, r) => a + r.base[w], 0) / xs.length; };
+  const fm = v => v.toFixed(1);
+  const recS = x => `<b>${x.W}-${x.L}</b>${x.W + x.L ? ` · ${pc(x.W / (x.W + x.L), 0)}` : ''}${x.nc ? `<small>${x.nc} too close to call</small>` : ''}`;
+  const rowsS = SIML_ENV.filter(([k]) => of(k).length).map(([k, l]) => {
+    const cmp = w => { const v = avg(k, w), b = avgBase(k, w); return `${fm(v)}<small class="${v < b ? 'pos' : 'neg'}">${Math.abs(b - v).toFixed(1)} ${v < b ? 'closer' : 'farther'} than the market (${fm(b)})</small>`; };
+    return `<tr><td class="l"><b>${l}</b><small>${of(k).length} ${of(k).length === 1 ? 'game' : 'games'}</small></td><td class="num">${recS(rec(k, 'sp'))}</td><td class="num">${recS(rec(k, 'ou'))}</td><td class="num">${cmp('sp')}</td><td class="num">${cmp('ou')}</td></tr>`; }).join('');
+  const low = R.length < SIMT.n, dayFmt = t => etFmt(t, {month: 'short', day: 'numeric'});
+  const games = R.slice(0, simRec.limit).map(r => {
+    const spLine = r.L > 0 ? `${r.home} -${r.L.toFixed(1)}` : r.L < 0 ? `${r.away} -${Math.abs(r.L).toFixed(1)}` : 'pick';
+    const cell = (k, l, w) => { const x = r.sims[k] && r.sims[k][w]; if (!x) return '<span class="muted">not recorded</span>';
+      const take = w === 'sp' ? `Takes ${x.up ? r.home : r.away}` : x.up ? 'Over' : 'Under', how = w === 'sp' ? `${fm(x.gap)} pts better than the line` : `${fm(x.gap)} pts ${x.up ? 'above' : 'below'} the line`;
+      return `<span><small>${l}</small><b>${esc(take)}</b><small>${how}</small></span>` + (x.right == null ? '<span class="muted">too close to call</span>' : x.right ? pill('ok', 'Right side') : pill('warn', 'Wrong side')); };
+    const spRes = Math.abs(r.am - r.L) < SIML_TIE ? 'push' : `${r.am > r.L ? r.home : r.away} covered`, ouRes = Math.abs(r.at - r.T) < SIML_TIE ? 'push' : r.at > r.T ? 'Over' : 'Under';
+    const block = (w, label, lineTxt, actualTxt) => SIML_ENV.filter(([k]) => r.sims[k]).map(([k, l], i) => `<div class="sg-r"><span class="sg-k">${i ? '' : label}</span><span>${i ? '' : `Line: <b>${lineTxt}</b><small>${actualTxt}</small>`}</span>${cell(k, l, w)}</div>`).join('');
+    return `<div class="sg"><div class="sg-h"><b>${esc(r.g.matchup)}</b><small>${dayFmt(r.g.tip)} · final ${esc(r.away)} ${r.g.score[0]}, ${esc(r.home)} ${r.g.score[1]}</small></div>
+      ${block('sp', 'Spread', esc(spLine), `Actual: ${esc(spRes)}`)}
+      ${block('ou', 'Total points', r.T.toFixed(1), `Actual: ${r.at} (${ouRes})`)}</div>`; }).join('');
+  el.innerHTML = `<h3 class="sim-h">Against the betting line</h3>
+    <p class="hint tplain">The real test. The simulation's forecasts next to what the market set: which side of the spread and the total did each one take, and was it right? Average miss is how far the forecast was from the real margin and total, with the market line's own miss as the yardstick. ${low ? `<b>Only ${R.length} of ${SIMT.n} games, so these records say almost nothing yet.</b> ` : ''}At the usual -110 price a side needs to win about 52.4% of the time to break even. This is a record, not a bet signal.</p>
+    <div class="tablewrap"><table class="ht"><thead><tr><th class="l" scope="col">Forecast</th><th scope="col" title="Games where the forecast's side of the spread covered">Spread, right-wrong</th><th scope="col">Over/under, right-wrong</th><th scope="col" title="Average points between the forecast margin and the real margin, against the market line's own average miss">Avg miss, margin</th><th scope="col">Avg miss, total</th></tr></thead>
+    <tbody>${rowsS}</tbody></table></div>
+    <div class="tgames">${games}</div>`;
+}
 function renderSimRecord(){
   const d = TR && TR.data, G = simGames(), e = simRec.env, pre = d && d.preseason && d.preseason.sim_days ? Object.values(d.preseason.sim_days).flat().length : 0;
+  renderSimLine(G);
   $('tsimenv').innerHTML = `<div class="seg" data-f="simenv" role="group">${[['market', 'Market line'], ['vault', 'Vault line'], ['players', "Players' own sum"]].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${e === v}">${l}</button>`).join('')}</div>`;
   $('tsimenvnote').textContent = SIMENV[e];
   const R = G.filter(g => g.env[e]);
