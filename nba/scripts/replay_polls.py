@@ -33,10 +33,10 @@ from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import snapshot as S, prop_board as PB, pricing as PX, ledger as LG, sim_record, prop_sim_record
+import snapshot as S, prop_board as PB, pricing as PX, ledger as LG, sim_record, prop_sim_record, pickem_record
 
 INPUTS = ('kalshi', 'espn', 'pinnacle', 'action', 'polymarket', 'injuries', 'lineups', 'prizepicks', 'underdog', 'sleeper', 'novig')
-STAGES = ('ledger', 'minutes', 'sim', 'psim', 'heldbets')          # novig_paper needs the Novig order books, which are not stored
+STAGES = ('ledger', 'minutes', 'sim', 'psim', 'pkn', 'heldbets')          # novig_paper needs the Novig order books, which are not stored
 _SCHEDULE = {}
 
 
@@ -150,6 +150,7 @@ def replay_day(folder, gids, check_ledger=False, held_bets=True, say=lambda *a: 
         pr['minutes'] = LG.minutes_log(board, now)
         pr['sim'] = sim_record.log(board, now)
         pr['psim'] = prop_sim_record.log(board, now)
+        pr['pkn'] = pickem_record.log(board, now)
         for src in STAGES:
             rows, meta = pr[src]
             rows = {k: v for k, v in rows.items() if k.split('|')[0] in live}
@@ -223,7 +224,7 @@ def main(argv):
         out, metas, rep = replay_day(folder, todo, check_ledger=bool(args.get('check-ledger')), held_bets=not args.get('skip-held-bets'))
         for gid in todo:
             report['games'][gid]['days'][f] = {'ledger': rep[gid], 'wrote': {}}
-        for src in ('minutes', 'sim', 'psim') + (() if args.get('skip-held-bets') else ('heldbets',)):
+        for src in ('minutes', 'sim', 'psim', 'pkn') + (() if args.get('skip-held-bets') else ('heldbets',)):
             fresh_games = [g for g in todo if not has_rows(folder, src, g)]
             rows = [r for r in out.get(src, []) if r['k'].split('|')[0] in fresh_games]
             for g in todo:

@@ -2266,6 +2266,11 @@ th{font-weight:500}
         </div>
       </details>
 
+      <details class="card tfold" id="tpkncard">
+        <summary><span class="tf-t"><b>Pick'em of the Night record</b><small id="tpknstat">How the best slip of every size has done.</small></span></summary>
+        <div class="card-b" id="tpkn"></div>
+      </details>
+
       <div class="tsec"><h2>Model checks</h2><p>These test the models, not bets. They are scored on their own terms and ignore every filter.</p></div>
 
       <details class="card tfold" id="tsimcard">
@@ -4789,6 +4794,7 @@ function renderTrack(){
     : `<tr><td class="l" colspan="11"><p class="empty">${bets.length ? 'No bets match these filters.' : 'No shadow bets logged yet.'}</p></td></tr>`;
   $('tmore').hidden = B.length <= tf.limit;
   $('tmore').innerHTML = `<button class="btn" id="tmorebtn" type="button">Show all ${B.length.toLocaleString()}</button>`;
+  renderPknRecord();
   renderSimRecord();
   renderPropSimRecord();
   renderHeldRecord();
@@ -8353,7 +8359,9 @@ function renderPairs(){
       ${singles.length ? singles.map(l => { const g = l.r.game, d = l.p - need; return `<tr><td class="l"><b>${esc(l.r.name)}</b><small>${esc(l.team)} vs ${esc(l.team === g.home ? g.away : g.home)} · ${PP_SHORT[l.r.e.s]}</small></td><td class="l">${esc(l.app)}</td><td>${l.line}</td><td>${l.side === 'over' ? '▲ More' : '▼ Less'}</td><td>${pc(l.p, 1)}</td><td>${pc(l.pm, 1)}</td><td class="${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)} pts</td><td class="l"><small>${[l.q ? `<span class="warnt">${esc(l.inj)}: wait for the report</span>` : '', l.far ? 'check news: model and market far apart' : ''].filter(Boolean).join(' · ') || '&nbsp;'}</small></td></tr>`; }).join('')
         : `<tr><td class="l" colspan="8"><p class="empty">${rows.length ? 'No pick\'em lines with a market to price against yet.' : 'No player props listed yet.'}</p></td></tr>`}
       </tbody></table></div>
-    </section>`;
+    </section>
+    <section class="card" id="pp-rec"></section>`;
+  renderPknRecord();
   $('ppfoot').innerHTML = `<div><b>One player per team.</b> ${PP_RULE} Teammate pairs that once passed our correlation test (a player's assists with a teammate's points) are no longer shown, because the apps will not take them.</div>
     <div><b>How a slip is priced.</b> Each pick's chance is the market's: the consensus of the other books and exchanges, moved to the app's own line through the model's distribution shape, on the likelier side. The model's own number sits beside it as a check, and a pick with no other venue to price against is left out (the model alone gave 90% picks on untested lines). All hit = the chances multiplied, because players on different teams hit about independently. Needs = 1 / the payout. Questionable players are listed but never put in a slip. The consensus is untested on pick\'em lines, so a slip is a Lean at most; the shadow ledger tracks every pick'em line on Track Record.</div>`;
 }
@@ -8370,6 +8378,48 @@ function alsoFor(r){
   return `<section class="card pv-sec"><div class="pv-sh"><h3>More pick'em lines</h3><p>Double-doubles and first-quarter lines the apps post for him. Vault has no number for these yet, so there is no edge, no bet and nothing is logged. "Chance" is only what the app's price implies, vig included.</p></div>
     <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Market</th><th class="l">App</th><th>Line</th><th>Over</th><th>Under</th><th>Chance</th><th>Updated CT</th></tr></thead><tbody>${tr}</tbody></table></div></section>`;
 }
+// ── Pick'em of the Night record (pickem_record.py → track.json pkn_days) ───────────────────────────────────────────
+// The best slip of every size (2 to 6 picks) on every app, built from the legs as of the day's first tip and settled from the box score. "Best app"
+// is the app with the highest average per $1 for that size that day. Won = every pick hit; a pick that lands on the line is a push, a player who did
+// not play voids the slip, and neither counts as a win or a loss. Standard Power Play multiples. Descriptive: no verdict before PKN_MIN slips a size.
+const PKN_MIN = 100, pknSt = {app: 'best'};
+function pknSlips(){
+  const D = TR && TR.data && TR.data.pkn_days || {}, all = [];
+  for (const [day, v] of Object.entries(D)) for (const s of v.slips || []) all.push({day, lock: v.lock, ...s});
+  if (pknSt.app !== 'best') return all.filter(s => s.app === pknSt.app);
+  const top = {};
+  for (const s of all){ const k = s.day + '|' + s.n; if (!top[k] || s.ev > top[k].ev) top[k] = s; }
+  return Object.values(top);
+}
+function pknHtml(compact){
+  const S = pknSlips(), money = x => (x >= 0 ? '+$' : '-$') + Math.abs(x).toFixed(2), cls = x => x > 0 ? 'pos' : x < 0 ? 'neg' : '';
+  const seg = `<div class="seg" data-pkn="app">${[['best', 'Best app'], ...PP_APPS.map(a => [a, a])].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${pknSt.app === v}">${l}</button>`).join('')}</div>`;
+  if (!S.length) return `<div class="pp-tools"><span class="pv-grow"></span>${seg}</div><p class="empty">No slips settled yet. The recorder saves the best slip of every size for each night at the first tip, and the ledger scores it after the last game. It starts with the next full slate.</p>`;
+  const sizes = [2, 3, 4, 5, 6].map(n => {
+    const X = S.filter(s => s.n === n), c = r => X.filter(s => s.res === r).length, w = c('won'), l = c('lost'), pu = c('push'), vo = c('void'), dec = w + l;
+    const L = X.filter(s => s.call === 'lean'), lw = L.filter(s => s.res === 'won').length, ll = L.filter(s => s.res === 'lost').length;
+    return {n, X, w, l, pu, vo, dec, pay: X[0] && X[0].pay, exp: X.length ? X.reduce((a, s) => a + s.joint, 0) / X.length : null, pl: X.reduce((a, s) => a + s.pl, 0), L, lw, ll, lpl: L.reduce((a, s) => a + s.pl, 0)};
+  }).filter(z => z.X.length);
+  const rows = sizes.map(z => `<tr><td class="l"><b>${z.n} picks</b><small>pays ${z.pay}x · needs ${pc(1 / z.pay, 1)} all hit</small></td><td>${z.X.length}</td>
+    <td><b>${z.w}-${z.l}</b>${z.pu || z.vo ? `<small>${z.pu ? z.pu + ' push' : ''}${z.pu && z.vo ? ' · ' : ''}${z.vo ? z.vo + ' void' : ''}</small>` : ''}</td>
+    <td>${z.dec ? pc(z.w / z.dec, 1) : ''}</td><td>${pc(z.exp, 1)}</td><td><b class="${cls(z.pl)}">${money(z.pl * 10)}</b><small>${z.dec ? money(z.pl * 10 / z.dec) + ' a slip' : ''}</small></td>
+    <td>${z.L.length ? `<b>${z.lw}-${z.ll}</b><small>${money(z.lpl * 10)} · ${z.L.length} Lean</small>` : '<span class="muted">none called Lean</span>'}</td></tr>`).join('');
+  const seen = new Set(), legs = {n: 0, hit: 0, p: 0};
+  for (const s of S) for (const g of s.legs){ const k = s.day + '|' + g[0] + '|' + g[3] + '|' + g[4]; if (seen.has(k) || g[9] === 'D' || g[9] === 'P') continue; seen.add(k); legs.n++; legs.hit += g[9] === 'W'; legs.p += g[6]; }
+  const low = Math.max(...sizes.map(z => z.X.length)) < PKN_MIN;
+  const recent = compact ? '' : [...S].sort((a, b) => b.lock - a.lock || b.n - a.n).slice(0, 8).map(s => `<div class="sg-r"><span class="sg-k">${etFmt(s.lock, {month: 'short', day: 'numeric'})}</span><span><b>${s.n}-pick ${esc(s.app)}</b><small>${s.legs.map(g => `${esc(g[1])} ${g[5] === 'o' ? 'Over' : 'Under'} ${g[4]} ${esc((PP_SHORT[g[3]] || g[3]).toLowerCase())}${g[8] == null ? ' (did not play)' : ` (${g[8]})`}`).join(' · ')}</small></span><span>${pc(s.joint, 1)} all hit</span>${s.res === 'won' ? pill('ok', 'Won') : s.res === 'lost' ? pill('warn', 'Lost') : pill('idle', s.res === 'push' ? 'Push' : 'Void')}</div>`).join('');
+  return `<div class="pp-tools"><span class="pv-grow"></span>${seg}</div>
+    <p class="hint tplain">${low ? `<b>Too early to judge: under ${PKN_MIN} slips a size.</b> ` : ''}Every night the page's best slip of each size, locked at the night's first tip and scored from the box score. A slip wins only when every pick hits, so compare "All hit" with what the pay needs, and with what the market chances multiplied said. Profit is at $10 a slip. Settled slips only; a push or a player who did not play is not a win or a loss. This is a record, not a stake.</p>
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l">Slip</th><th>Slips</th><th title="Won and lost slips">Won-lost</th><th title="Share of decided slips where every pick hit">All hit</th><th title="The market chances multiplied, averaged over these slips">Said</th><th>Profit at $10</th><th class="l" title="Slips the page called Lean (average above the break-even by 3% or more)">Lean only</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="hint">Single picks inside these slips: ${legs.hit} of ${legs.n} hit (${legs.n ? pc(legs.hit / legs.n, 0) : ''}), where the market said ${legs.n ? pc(legs.p / legs.n, 0) : ''}. Each pick counted once a night.</p>
+    ${recent ? `<div class="tgames"><div class="sg">${recent}</div></div>` : ''}`;
+}
+function renderPknRecord(){
+  const S = pknSlips(), html = pknHtml(false);
+  if ($('tpkn')){ $('tpkn').innerHTML = html; $('tpknstat').textContent = S.length ? `${S.length.toLocaleString()} settled slips, all sizes` : 'No slips settled yet'; }
+  if ($('pp-rec')) $('pp-rec').innerHTML = `<div class="pp-tools"><h2>How these slips have done</h2></div>${pknHtml(true)}`;
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-pkn="app"] button[data-v]'); if (b){ pknSt.app = b.dataset.v; renderPknRecord(); } });
 function ppMkBet(x, stake, pay){
   if (!(stake > 0) || !(pay >= 1.5)) return null;
   const leg = L => { const g = L.r.game; return {p: L.r.e.p, s: L.r.e.s, gid: String(L.r.e.g), day: g.day, tip: g.tip, name: L.r.name, team: L.team, line: L.line, side: L.side === 'over' ? 'Over' : 'Under', fair: +L.p.toFixed(4)}; };
