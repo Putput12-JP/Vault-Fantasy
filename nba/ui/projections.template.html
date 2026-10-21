@@ -3194,7 +3194,7 @@ function renderHealth(){
   const S = st && st.storage;
   $('hfoot').innerHTML = `
     <div><b>The recorder</b> runs on GitHub Actions: an hourly check, and on game days a loop from 8am CT to the last tip that polls every 15 minutes, every 5 within 3 hours of a tip. It saves a price only when it changes, and drops a game once it tips, so every row is a pre-game price with the time it was seen.</div>
-    <div><b>Where it goes:</b> the <a href="https://github.com/${H0.repo}/tree/${H0.branch}" target="_blank" rel="noopener">${H0.branch}</a> branch, one folder per game day${S ? `. ${S.days} ${S.days === 1 ? 'day' : 'days'} recorded since ${S.first}, ${(S.bytes / 1e6).toFixed(1)} MB` : ''}.${st?.run ? ` <a href="${st.run}" target="_blank" rel="noopener">Latest run</a>.` : ''}</div>
+    <div><b>Where it goes:</b> the <a href="https://github.com/${H0.repo}/tree/${H0.branch}" target="_blank" rel="noopener">${H0.branch}</a> branch, one folder per game day${S ? `. ${S.days} ${S.days === 1 ? 'day' : 'days'} recorded since ${S.first}, ${(S.bytes / 1e6).toFixed(1)} MB` : ''}.${st?.run ? ` <a href="${st.run}" target="_blank" rel="noopener">Latest run</a>${st.code ? ` on commit <a href="https://github.com/${H0.repo}/commit/${st.code}" target="_blank" rel="noopener"><code>${st.code.slice(0, 7)}</code></a>` : ''}. A change merged to main reaches the recorder only when its run hands off (up to 5.5 hours).` : ''}</div>
     <div><b>Model inputs</b> rebuild every morning at 6:23 CT (GitHub Actions, nba-daily.yml): box scores, depth charts, player projections, game logs, the model's minutes and rate state, then this page. Fitted models (prop model v2, minutes, consensus) are rebuilt only when a backtest is re-run.</div>`;
 }
 

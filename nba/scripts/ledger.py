@@ -145,23 +145,21 @@ def curl_json(url):
         return None
 
 
-def box(root, gid):
-    """{athlete_id: {stat: value} or None (did not play)} once the game is final, cached; None if not final yet."""
-    path = os.path.join(root, 'results', f'{gid}.json')
-    if os.path.exists(path):
-        return {int(k): v for k, v in json.load(open(path)).items()}
-    d = curl_json(SUMMARY.format(gid))
+def parse_box(d):
+    """(box, starters, score, names) from an ESPN summary, or None while the game is not final or the box is not filled in yet.
+    box: {athlete_id: {stat: value} or None (did not play)}."""
     try:
         if not d['header']['competitions'][0]['status']['type']['completed']:
             return None
     except (KeyError, IndexError, TypeError):
         return None
-    out, starters = {}, []
+    out, starters, names = {}, [], {}
     for team in (d.get('boxscore') or {}).get('players', []):
         for block in team.get('statistics', [])[:1]:
             keys = block.get('keys') or []
             for a in block.get('athletes', []):
                 aid = int(a['athlete']['id'])
+                names[aid] = a['athlete'].get('displayName') or str(aid)
                 if a.get('starter'):
                     starters.append(aid)
                 if a.get('didNotPlay') or not a.get('stats'):
@@ -180,13 +178,27 @@ def box(root, gid):
     # 530 with an overtime); anything under MIN_BOX_MINUTES is treated as not final yet and tried again on the next poll.
     if sum((v or {}).get('minutes', 0) for v in out.values()) < MIN_BOX_MINUTES:
         return None
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    json.dump(out, open(path, 'w'), separators=(',', ':'))
     try:                                          # final score and starters, for the Minutes Lab's record
         comp = d['header']['competitions'][0]
         score = {c['team']['abbreviation']: float(c.get('score') or 0) for c in comp['competitors']}
     except (KeyError, IndexError, TypeError, ValueError):
         score = {}
+    return out, starters, score, names
+
+
+def box(root, gid):
+    """{athlete_id: {stat: value} or None (did not play)} once the game is final, cached; None if not final yet.
+    The cached file is first-read-wins here; refresh_boxes() re-reads it for BOX_RECHECK_MAX_H after the game, because ESPN corrects a box score
+    after the final (Oct 20, 2026: OKC @ SA, Caruso rebounds 7 then 6, steals 2 then 1, McCain rebounds 3 then 2)."""
+    path = os.path.join(root, 'results', f'{gid}.json')
+    if os.path.exists(path):
+        return {int(k): v for k, v in json.load(open(path)).items()}
+    got = parse_box(curl_json(SUMMARY.format(gid)))
+    if not got:
+        return None
+    out, starters, score, _ = got
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    json.dump(out, open(path, 'w'), separators=(',', ':'))
     json.dump({'score': score, 'starters': starters}, open(os.path.join(root, 'results', f'{gid}.meta.json'), 'w'), separators=(',', ':'))
     return out
 
@@ -194,6 +206,79 @@ def box(root, gid):
 def box_meta(root, gid):
     path = os.path.join(root, 'results', f'{gid}.meta.json')
     return json.load(open(path)) if os.path.exists(path) else {}
+
+
+# ── box scores are corrected after the final: keep re-reading them for a while ─────────────────────────────────────────────
+BOX_RECHECK_FAST_H = 36      # re-read every BOX_RECHECK_EVERY_S for this long after tip ...
+BOX_RECHECK_EVERY_S = 3600
+BOX_RECHECK_MAX_H = 72       # ... and every BOX_RECHECK_SLOW_S until this long after tip (the rescan window)
+BOX_RECHECK_SLOW_S = 12 * 3600
+BOX_CHANGES_KEEP = 60        # corrections kept in track.json
+BOX_CHANGES = []             # corrections the last refresh_boxes() call found: {t, game, matchup, pid, player, stat, old, new}
+SETTLE_ERR = {}              # record name -> error, for a record settle() could not update (it keeps the old one); snapshot.shadow() reports it
+STUCK_H = 8                  # a game this long after tip with no final box score is "stuck" (a long game ends about 3 hours after tip)
+
+
+def game_tips(root, since):
+    """{game id: (tip, matchup)} for every game the Minutes Lab logged in the day folders from `since` on (held games included)."""
+    out = {}
+    tag = '"src":"minutes"'
+    for d in sorted(glob.glob(os.path.join(root, 'snapshots', '20*'))):
+        mp = os.path.join(d, 'meta.jsonl')
+        if os.path.basename(d) < since or not os.path.exists(mp):
+            continue
+        for line in open(mp):
+            if tag in line:
+                m = json.loads(line)
+                out[str(m['game'])] = (m['tip'], m['matchup'])
+    return out
+
+
+def refresh_boxes(root, now, tips):
+    """Re-read the ESPN box score of every finished game still inside the correction window and rewrite it when a stat changed.
+    tips: {game id: (tip, matchup)}. Returns the set of game ids whose box changed (BOX_CHANGES says what). Every other record re-reads
+    the box from disk on each poll, so a correction flows to them by itself; settled bets are re-graded by settle() for the games returned here.
+    Nothing is invented: the new numbers are ESPN's own, and the old numbers stay in track.json 'box_changes'."""
+    BOX_CHANGES.clear()
+    changed = set()
+    for gid, (tip, matchup) in tips.items():
+        age = now - tip
+        path, mpath = os.path.join(root, 'results', f'{gid}.json'), os.path.join(root, 'results', f'{gid}.meta.json')
+        if age < SETTLE_AFTER_S or age > BOX_RECHECK_MAX_H * 3600 or not os.path.exists(path):
+            continue
+        meta = box_meta(root, gid)
+        every = BOX_RECHECK_EVERY_S if age <= BOX_RECHECK_FAST_H * 3600 else BOX_RECHECK_SLOW_S
+        if now - meta.get('chk', 0) < every:
+            continue
+        got = parse_box(curl_json(SUMMARY.format(gid)))
+        if not got:
+            continue                                  # not final, not filled in, or ESPN did not answer: keep what is stored, look again next time
+        new, starters, score, names = got
+        old = {int(k): v for k, v in json.load(open(path)).items()}
+        if not set(old) <= set(new):                  # a re-read that lost players is a partial box, not a correction
+            meta['chk'] = now
+            json.dump(meta, open(mpath, 'w'), separators=(',', ':'))
+            continue
+        diffs = []
+        for aid in sorted(set(old) | set(new)):
+            a, b = old.get(aid), new.get(aid)
+            if a == b:
+                continue
+            if a is None or b is None or aid not in old or aid not in new:
+                diffs.append((aid, 'played', a is not None, b is not None))
+                continue
+            for stat in sorted(set(a) | set(b)):
+                if a.get(stat) != b.get(stat):
+                    diffs.append((aid, stat, a.get(stat), b.get(stat)))
+        meta['chk'] = now
+        if diffs:
+            json.dump(new, open(path, 'w'), separators=(',', ':'))
+            meta.update(score=score or meta.get('score'), starters=starters or meta.get('starters'), rev=meta.get('rev', 0) + 1)
+            changed.add(gid)
+            for aid, stat, o, n in diffs:
+                BOX_CHANGES.append({'t': now, 'game': gid, 'matchup': matchup, 'pid': aid, 'player': names.get(aid, str(aid)), 'stat': stat, 'old': o, 'new': n})
+        json.dump(meta, open(mpath, 'w'), separators=(',', ':'))
+    return changed
 
 
 # ── closing prices and results for the page's "My bets" (users' own bet logs settle in the browser) ────────────────────
@@ -240,7 +325,7 @@ BOX_COLS = ['points', 'rebounds', 'assists', 'threePointFieldGoalsMade', 'steals
             'freeThrowsMade', 'freeThrowsAttempted', 'threePointFieldGoalsAttempted', 'offensiveRebounds', 'defensiveRebounds', 'fouls']   # the page's PV_BOXI indexes into this
 
 
-def closes_record(root, now, rescan_days=3):
+def closes_record(root, now, rescan_days=3, corrected=()):
     """snapshots/<day>/closes.json for the page: each game's closing prices (propclose.json) and, once final, every
     player's box line {pid: [pts, reb, ast, 3pm, stl, blk, tov, fgm, fga, ftm, fta, tpa, oreb, dreb, pf]} or null for did not play. Only recent days are rewritten."""
     since = tip_day(now - rescan_days * 86400)
@@ -253,7 +338,7 @@ def closes_record(root, now, rescan_days=3):
         games = {}
         for gid, g in json.load(open(p)).items():
             old = (prev.get('games') or {}).get(gid)
-            if old and old.get('box') is not None:
+            if old and old.get('box') is not None and gid not in corrected:
                 games[gid] = dict(g, box=old['box'])
                 continue
             bx = box(root, gid) if now >= g['tip'] + SETTLE_AFTER_S else None
@@ -699,11 +784,32 @@ def held_bets_record(root, now, prev, rescan_days, games):
     return days
 
 
+STUCK = []     # games that tipped STUCK_H or more ago with no final box score (or bets still open): [{game, matchup, tip, open}], from the last settle()
+
+
+def stuck_games(root, now, tips, changed):
+    """Games well past their finish that settle() could not close: no results file (ESPN has not marked them final, or the box never filled in),
+    or bets still open. A normal game ends about 3 hours after tip, so STUCK_H hours is an overtime, a delay or a break in the feed, and a person has to look."""
+    open_by, seen = defaultdict(int), {}
+    for bs in changed.values():
+        for b in bs:
+            if b['result'] == 'open' and now >= b['tip'] + STUCK_H * 3600:
+                open_by[str(b['game'])] += 1
+                seen[str(b['game'])] = (b['tip'], b['matchup'])
+    out = []
+    for gid in sorted(set(open_by) | {g for g, (tip, _) in tips.items() if now >= tip + STUCK_H * 3600}):
+        tip, matchup = tips.get(gid) or seen.get(gid)
+        if not os.path.exists(os.path.join(root, 'results', f'{gid}.json')) or open_by.get(gid):
+            out.append({'game': gid, 'matchup': matchup, 'tip': tip, 'open': open_by.get(gid, 0)})
+    return out
+
+
 def settle(root, now=None, rescan_days=3, keep_recent=600):
     """Settle what is settleable; rewrite bets/<day>.json for the days touched and their cube rows in track.json.
     Only the last `rescan_days` of ledger folders are re-read (a key is logged within TRACK_H of its tip), plus the
     bet files of those days and of any day that still has open bets. Returns the number of bets in the record."""
     now = now or int(time.time())
+    SETTLE_ERR.clear()
     tpath, bdir = os.path.join(root, 'track.json'), os.path.join(root, 'bets')
     track = json.load(open(tpath)) if os.path.exists(tpath) else {}
     if 'cube' not in track:                       # the first format kept every bet in track.json: move them to files
@@ -713,6 +819,13 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
             os.makedirs(bdir, exist_ok=True)
             json.dump([b for b in old if tip_day(b['tip']) == d], open(os.path.join(bdir, f'{d}.json'), 'w'), separators=(',', ':'))
     since = tip_day(now - rescan_days * 86400)
+    tips, corrected = {}, set()
+    try:                                          # ESPN corrects box scores after the final: re-read the recent ones, re-grade what a correction changes
+        tips = game_tips(root, since)
+        corrected = refresh_boxes(root, now, tips)
+    except Exception as e:
+        SETTLE_ERR['box refresh'] = f'{type(e).__name__}: {e}'[:120]
+        print('box refresh failed:', e, flush=True)
     fresh = {}
     for k, x in load_ledger(root, since).items():
         if x['meta'] and x['series']:
@@ -737,6 +850,8 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
                 b.update({f: old[f] for f in ('result', 'actual', 'pnl', 'pnl_close')})
             cur[k] = b
         for b in cur.values():
+            if b['game'] in corrected and b['result'] != 'open':       # its box score changed: grade it again from the corrected numbers
+                b.update(result='open', actual=None, pnl=None, pnl_close=None)
             grade(b, root, now)
         changed[d] = sorted(cur.values(), key=lambda b: (b['tip'], b['player'], b['stat'], b['line']))
     os.makedirs(bdir, exist_ok=True)
@@ -779,6 +894,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         sim_days = SR.record(root, now, track.get('sim_days'), rescan_days, season, me)
         sim_pre = SR.record(root, now, (track.get('preseason') or {}).get('sim_days'), rescan_days, lambda g: not season(g), me)
     except Exception as e:
+        SETTLE_ERR['game simulation record'] = f'{type(e).__name__}: {e}'[:120]
         print('sim record failed:', e, flush=True)
         sim_days, sim_pre = track.get('sim_days'), (track.get('preseason') or {}).get('sim_days')
     try:                                          # single-prop simulations vs the minutes model, settled from the box score (prop_sim_record.py)
@@ -786,6 +902,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         psim_days, gap_days = PSR.record_all(root, now, track.get('psim_days'), track.get('gap_days'), rescan_days, season, me)
         psim_pre, gap_pre = PSR.record_all(root, now, (track.get('preseason') or {}).get('psim_days'), (track.get('preseason') or {}).get('gap_days'), rescan_days, lambda g: not season(g), me)
     except Exception as e:
+        SETTLE_ERR['props simulation record'] = f'{type(e).__name__}: {e}'[:120]
         print('prop sim record failed:', e, flush=True)
         psim_days, psim_pre = track.get('psim_days'), (track.get('preseason') or {}).get('psim_days')
         gap_days, gap_pre = track.get('gap_days'), (track.get('preseason') or {}).get('gap_days')
@@ -793,11 +910,13 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         held_days = PSR.record_held(root, now, track.get('held_days'), rescan_days, season, me)
         held_pre = PSR.record_held(root, now, (track.get('preseason') or {}).get('held_days'), rescan_days, lambda g: not season(g), me)
     except Exception as e:
+        SETTLE_ERR['held props record'] = f'{type(e).__name__}: {e}'[:120]
         print('held record failed:', e, flush=True)
         held_days, held_pre = track.get('held_days'), (track.get('preseason') or {}).get('held_days')
     try:                                          # the GO / WATCH candidates a hold kept out, settled as if logged (never in the cube or the season record)
         held_bets_days = held_bets_record(root, now, track.get('held_bets_days'), rescan_days, season)
     except Exception as e:
+        SETTLE_ERR['held plays record'] = f'{type(e).__name__}: {e}'[:120]
         print('held bets record failed:', e, flush=True)
         held_bets_days = track.get('held_bets_days')
     try:                                          # Novig paper trading, settled from the box score (novig_paper.py)
@@ -805,6 +924,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         novig_days = NPT.record(root, now, track.get('novig_days'), rescan_days, season, me)
         novig_pre = NPT.record(root, now, (track.get('preseason') or {}).get('novig_days'), rescan_days, lambda g: not season(g), me)
     except Exception as e:
+        SETTLE_ERR['novig paper record'] = f'{type(e).__name__}: {e}'[:120]
         print('novig paper record failed:', e, flush=True)
         novig_days, novig_pre = track.get('novig_days'), (track.get('preseason') or {}).get('novig_days')
     pre = {'n': sum(r[CUBE_COLS.index('bets')] for r in pcube), 'cube': pcube,
@@ -812,8 +932,9 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
            'wire_days': wire_record(root, now, P0.get('wire_days'), rescan_days, games=lambda g: not season(g)),
            'signals': P0.get('signals'), 'sim_days': sim_pre, 'psim_days': psim_pre, 'gap_days': gap_pre, 'held_days': held_pre, 'novig_days': novig_pre}
     try:                                          # closing prices + box lines for users' own bet logs
-        closes_record(root, now, rescan_days)
+        closes_record(root, now, rescan_days, corrected={str(g) for g in corrected})
     except Exception as e:
+        SETTLE_ERR['closing prices'] = f'{type(e).__name__}: {e}'[:120]
         print('closes record failed:', e, flush=True)
     try:                                          # Sharp Price signals: CLV vs Pinnacle's close, and the final score
         import sharp
@@ -821,11 +942,14 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         signals = sharp.grade_signals(root, now, track.get('signals'), box, box_meta, stat_of=stat_of, games=season)
         pre['signals'] = sharp.grade_signals(root, now, P0.get('signals'), box, box_meta, stat_of=stat_of, games=lambda g: not season(g))
     except Exception as e:
+        SETTLE_ERR['signals grading'] = f'{type(e).__name__}: {e}'[:120]
         print('signals grading failed:', e, flush=True)
         signals = track.get('signals')
+    box_changes = (list(BOX_CHANGES) + (track.get('box_changes') or []))[:BOX_CHANGES_KEEP]
+    STUCK[:] = stuck_games(root, now, tips, changed)
     track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
-             'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre}
+             'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre, 'box_changes': box_changes}
     with open(tpath, 'w') as f:
         json.dump(track, f, separators=(',', ':'))
     return n

@@ -51,9 +51,17 @@ def recorder():
     except json.JSONDecodeError:
         status = None
     days = sorted(l.rsplit('/', 1)[-1] for l in git('ls-tree', '--name-only', f'{BRANCH}:snapshots').split() if l[:2] == '20')
-    polls = []
-    for d in days[-POLL_DAYS:]:
-        polls += [json.loads(l) for l in git('show', f'{BRANCH}:snapshots/{d}/polls.jsonl').splitlines() if l.strip()]
+    # the last POLL_DAYS days that HAVE polls: snapshots/ also holds folders for days that have not happened yet (a game's closing prices are written
+    # under its tip day, up to 3 days ahead) and those have no polls.jsonl; reading "the last 3 folders" read only those once 3 of them existed
+    polls, got = [], 0
+    for d in reversed(days):
+        text = git('show', f'{BRANCH}:snapshots/{d}/polls.jsonl')
+        if not text.strip():
+            continue
+        polls = [json.loads(l) for l in text.splitlines() if l.strip()] + polls
+        got += 1
+        if got == POLL_DAYS:
+            break
     last = git('log', '-1', '--format=%ct', BRANCH).strip()
     return {'status': status, 'polls': polls, 'days': days, 'last_commit': int(last) if last else None}
 

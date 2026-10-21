@@ -34,7 +34,7 @@ snapshot, so no state lives outside the day folder.
 Game window: 9am ET until the last tip of the day. Every 5 min inside 3h of a tip, else every 15.
 Injury parsing needs pdfplumber (pip install pdfplumber); without it that source is skipped.
 """
-import datetime as dt, json, os, subprocess, sys, time, traceback
+import datetime as dt, json, os, re, subprocess, sys, time, traceback
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
@@ -740,6 +740,7 @@ def coverage(slate, day, metas):
             add('polymarket', ('-'.join(p[3:6]), code_nick(p[2])), (m.get('type') or 'moneyline') not in PM_GAME_TYPES)
     for k, m in (metas.get('novig') or {}).items():
         add('novig', by_id.get(m['g']) or by_id.get(int(m['g']) if str(m['g']).isdigit() else m['g']), m.get('m') == 'prop')
+    squash = {x['id']: {re.sub(r'\s', '', x.get(f'{side}_name') or '').lower() for side in ('away', 'home')} - {''} for x in slate.games}   # 'atlantahawks'
     for k in day.last.get('injuries', {}):             # report rows persist between reports, so read current state
         gd, team, _ = k.split('|', 2)
         try:
@@ -747,7 +748,9 @@ def coverage(slate, day, metas):
         except ValueError:
             continue
         for key, g in games.items():
-            if key[0] == d_ and nick(team) in (slate.nick.get(g['home']), slate.nick.get(g['away'])):
+            # the report writes a team as its full name without spaces ('AtlantaHawks', 'PortlandTrailBlazers'); before this matched on the
+            # nickname alone it matched nothing, and the Data Health injuries column read "none" for every game
+            if key[0] == d_ and team.lower() in squash.get(g['id'], ()):
                 g['cov'].setdefault('injuries', [0, 0])[0] += 1
     # pick'em apps: [0, lines], joined on team (and start time when the app gives one)
     by_team = defaultdict(list)
@@ -782,6 +785,7 @@ def write_status(root, day, slate, polls, metas):
     status = {
         't': slate.now, 'window': {'live': live, 'next_s': wait},
         'run': f"{os.environ.get('GITHUB_SERVER_URL')}/{os.environ.get('GITHUB_REPOSITORY')}/actions/runs/{run}" if run else None,
+        'code': os.environ.get('GITHUB_SHA'),        # the commit of main this recorder run checked out; a run lasts up to 5.5 h, so a merge reaches it only at the next hand-off
         'sources': {p['src']: p for p in polls},
         'games': coverage(slate, day, metas),
         'storage': {'days': len(days), 'first': days[0] if days else None, 'bytes': size},
@@ -964,6 +968,8 @@ def shadow(root, day, board, now, polls):
     n_bets = stage('settle', lambda: ledger.settle(root, now))
     if n_bets is not None:
         rec['bets'] = n_bets
+    if ledger.SETTLE_ERR:                        # a record settle() could not update keeps its old numbers and used to say so only in the job log
+        fails['records'] = '; '.join(f'{k}: {v}' for k, v in ledger.SETTLE_ERR.items())[:200]
     if pricing.ROW_ERRORS:                       # rows skipped this poll: the poll still counts, but Data Health says how many and the first
         rec['row_err'] = len(pricing.ROW_ERRORS)
         rec['row_err_first'] = ' | '.join(f'{w}: {m}' for w, m in pricing.ROW_ERRORS[:2])[:240]
@@ -1004,13 +1010,34 @@ def write_flags(root, day, board, now, rec, counts):
                       simulation rows (bad: the record for that game will be missing)
       held            a game has 3%+ edges and every one is held by the roster guard, so no bet will be logged (note: working as designed,
                       said out loud so an empty Track Record is not mistaken for a broken recorder)
-      rows_skipped    a poll skipped bad rows (warn)"""
+      rows_skipped    a poll skipped bad rows (warn)
+      unsettled       a game tipped ledger.STUCK_H hours ago or more and has no final box score, or still has open bets (bad: its records stay open)
+      box_corrected   ESPN changed a box score after the final; bets graded on the old numbers were graded again (note)"""
     import ledger, sim_record
     flags = []
     n, since, err = ledger_streak(day.dir, rec)
     if n >= LEDGER_FAIL_N:
         flags.append({'level': 'bad', 'kind': 'ledger_failing', 't': since, 'n': n,
                       'text': f'The shadow ledger failed {n} polls in a row: {err}'})
+    for g in ledger.STUCK:
+        hrs = int((now - g['tip']) // 3600) if g.get('tip') else None
+        flags.append({'level': 'bad', 'kind': 'unsettled', 'game': g['game'], 't': now,
+                      'text': f"{g.get('matchup') or g['game']}: " + (f"tipped {hrs} hours ago and " if hrs is not None else '') +
+                              ('has no final box score, so its bets and records stay open' if not g.get('open') else f"still has {g['open']} open bets") + '. Check ESPN: a delay, a postponement or a break in the feed.'})
+    try:                                          # corrections ESPN made to a box score within the last day and a half (ledger.refresh_boxes keeps them in track.json)
+        recent = [c for c in (json.load(open(os.path.join(root, 'track.json'))).get('box_changes') or []) if now - c['t'] <= ledger.BOX_RECHECK_FAST_H * 3600]
+    except (OSError, ValueError):
+        recent = []
+    by_game = {}
+    for c in recent:
+        by_game.setdefault(c['game'], []).append(c)
+    nice = lambda stat: re.sub(r'(?<!^)([A-Z])', lambda m: ' ' + m.group(1).lower(), stat)         # defensiveRebounds -> defensive rebounds
+    for gid, cs in by_game.items():
+        main = [c for c in cs if not (c['stat'] in ('defensiveRebounds', 'offensiveRebounds') and any(o['pid'] == c['pid'] and o['stat'] == 'rebounds' for o in cs))]   # a rebound change shows once
+        num = lambda x: f'{x:g}' if isinstance(x, (int, float)) and not isinstance(x, bool) else str(x)
+        show = '; '.join(f"{c['player']} {nice(c['stat'])} {num(c['old'])} to {num(c['new'])}" for c in main[:4])
+        flags.append({'level': 'note', 'kind': 'box_corrected', 'game': gid, 't': cs[0]['t'],
+                      'text': f"{cs[0]['matchup']}: ESPN corrected the box score after the final ({len(main)} {'stat' if len(main) == 1 else 'stats'}: {show}{', and more' if len(main) > 4 else ''}). Anything graded on the old numbers was graded again."})
     if rec.get('row_err'):
         flags.append({'level': 'warn', 'kind': 'rows_skipped', 't': now, 'n': rec['row_err'],
                       'text': f"{rec['row_err']} bad rows were skipped this poll ({rec.get('row_err_first', '')})"})
