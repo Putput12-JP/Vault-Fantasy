@@ -701,6 +701,12 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         print('prop sim record failed:', e, flush=True)
         psim_days, psim_pre = track.get('psim_days'), (track.get('preseason') or {}).get('psim_days')
         gap_days, gap_pre = track.get('gap_days'), (track.get('preseason') or {}).get('gap_days')
+    try:                                          # props the roster guard held, settled as a group of their own (never bets, never in the season record)
+        held_days = PSR.record_held(root, now, track.get('held_days'), rescan_days, season, me)
+        held_pre = PSR.record_held(root, now, (track.get('preseason') or {}).get('held_days'), rescan_days, lambda g: not season(g), me)
+    except Exception as e:
+        print('held record failed:', e, flush=True)
+        held_days, held_pre = track.get('held_days'), (track.get('preseason') or {}).get('held_days')
     try:                                          # Novig paper trading, settled from the box score (novig_paper.py)
         import novig_paper as NPT
         novig_days = NPT.record(root, now, track.get('novig_days'), rescan_days, season, me)
@@ -711,7 +717,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     pre = {'n': sum(r[CUBE_COLS.index('bets')] for r in pcube), 'cube': pcube,
            'minutes_days': minutes_record(root, now, P0.get('minutes_days'), rescan_days, games=lambda g: not season(g)),
            'wire_days': wire_record(root, now, P0.get('wire_days'), rescan_days, games=lambda g: not season(g)),
-           'signals': P0.get('signals'), 'sim_days': sim_pre, 'psim_days': psim_pre, 'gap_days': gap_pre, 'novig_days': novig_pre}
+           'signals': P0.get('signals'), 'sim_days': sim_pre, 'psim_days': psim_pre, 'gap_days': gap_pre, 'held_days': held_pre, 'novig_days': novig_pre}
     try:                                          # closing prices + box lines for users' own bet logs
         closes_record(root, now, rescan_days)
     except Exception as e:
@@ -724,7 +730,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     except Exception as e:
         print('signals grading failed:', e, flush=True)
         signals = track.get('signals')
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre}
     with open(tpath, 'w') as f:

@@ -9,6 +9,8 @@ Checks for the 2026-10-21 recorder repair. No network, no price archive.
      pair of bets or cube rows with both spellings collapses to one (dedupe_bets, canon_cube).
   3. A null field in the model state (the Oct 19 to 20 failure: a player's minutes record was null) no longer reaches the pricing code,
      and one player whose pricing raises is skipped and counted instead of stopping the poll.
+  4. Props a held team had are settled as their own group (prop_sim_record.record_held): W, L, push and did-not-play, the model's side, and nothing
+     from a prop that was not held.
 """
 import json, os, sys, tempfile
 
@@ -76,6 +78,37 @@ bad = json.loads(json.dumps(board))
 bad['props'][0]['books'] = [None]            # one prop whose rows are garbage
 rows = PX.price_board(bad)
 check('one unpriceable prop is skipped, counted, and the rest of the board is priced', len(PX.ROW_ERRORS) >= 1 and 0 < len(rows) < len(clean) + 1 and len(rows) >= len(clean) - 200)
+
+# 4  props the roster guard held settle as a group of their own
+import prop_sim_record as PSR
+with tempfile.TemporaryDirectory() as root:
+    tip, gid = 2000000000, '401909999'
+    d = os.path.join(root, 'snapshots', LG.tip_day(tip))
+    os.makedirs(d)
+    os.makedirs(os.path.join(root, 'results'))
+    mk = lambda pid, stat, held: {'game': gid, 'tip': tip, 'matchup': 'AAA @ BBB', 'pid': pid, 'player': f'P{pid}', 'team': 'AAA', 'stat': stat, 'kind': 'psim', 'min': 30.0, **({'held': 'team'} if held else {})}
+    rows = {f'{gid}|1|pts': [20.5, 22.0, .62, .62, .62, .55, 'books'],      # model over, price over: player scores 25, W
+            f'{gid}|2|pts': [20.5, 18.0, .30, .30, .30, .45, 'books'],      # model under (70%), price under 55%: player scores 25, L
+            f'{gid}|3|reb': [5.0, 5.0, .55, .55, .55, None, 'pickem'],      # flat line, lands on it: P
+            f'{gid}|4|ast': [4.5, 5.0, .60, .60, .60, .50, 'books'],        # did not play: D
+            f'{gid}|5|pts': [10.5, 11.0, .70, .70, .70, .50, 'books']}      # not held: never in the group
+    with open(os.path.join(d, 'psim.jsonl'), 'w') as f:
+        for k, v in rows.items():
+            f.write(json.dumps({'t': tip - 600, 'k': k, 'v': v}, separators=(',', ':')) + '\n')
+    with open(os.path.join(d, 'meta.jsonl'), 'w') as f:
+        for k in rows:
+            pid, stat = int(k.split('|')[1]), k.split('|')[2]
+            f.write(json.dumps({'k': k, 'src': 'psim', **mk(pid, stat, pid != 5)}, separators=(',', ':')) + '\n')
+    json.dump({'1': {'points': 25, 'minutes': 30}, '2': {'points': 25, 'minutes': 30}, '3': {'rebounds': 5, 'minutes': 30}, '5': {'points': 12, 'minutes': 30}, '4': None},
+              open(os.path.join(root, 'results', gid + '.json'), 'w'))
+    json.dump({'score': {'AAA': 100, 'BBB': 98}}, open(os.path.join(root, 'results', gid + '.meta.json'), 'w'))
+    H = PSR.record_held(root, tip + 5 * 3600, None, 3, lambda g: True, LG)
+    g = next(iter(H.values()))[0]
+    sm = g['sum']
+    check('held props settle: 1 W, 1 L, 1 push, 1 did not play, the unheld prop is not in the group', (sm['W'], sm['L'], sm['P'], sm['D'], sm['n']) == (1, 1, 1, 1, 4))
+    check('the model side and the price chance for that side are recorded', g['rows'][0][4] in 'ou' and any(r[4] == 'u' and abs(r[5] - .70) < 1e-9 and abs(r[6] - .55) < 1e-9 for r in g['rows']))
+    check('no profit number is stored: only sums for hit rate against what the price expected', sm['pn'] == 2 and abs(sm['pe_price'] - (.55 + .55)) < 1e-9 and sm['pw'] == 1)
+    check('before the game is final nothing is settled', PSR.record_held(root, tip + 600, None, 3, lambda g: True, LG) == {})
 
 print('ALL PASS' if ok else 'FAILED')
 sys.exit(0 if ok else 1)
