@@ -925,6 +925,9 @@ def shadow(root, day, board, now, polls):
             rows, meta = ledger.log(day, board, now)
             rec.update(n=len(rows), chg=day.record('ledger', now, rows, meta))
             rec['games'] = {g: [x['cands'], x['edge'], x['held'], x['logged']] for g, x in ledger.LOG_STATS.items()}
+            hrows, hmeta = ledger.HELD_OUT                     # GO / WATCH candidates a hold kept out of the bets: recorded apart, never bets (ledger.held_bets_record)
+            rec['held_bets'] = len(hrows)
+            day.record('heldbets', now, hrows, hmeta)
         stage('log', do_log)
 
         def do_minutes():

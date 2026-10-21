@@ -9,6 +9,7 @@ Checks for the 2026-10-21 recorder repair. No network, no price archive.
      pair of bets or cube rows with both spellings collapses to one (dedupe_bets, canon_cube).
   3. A null field in the model state (the Oct 19 to 20 failure: a player's minutes record was null) no longer reaches the pricing code,
      and one player whose pricing raises is skipped and counted instead of stopping the poll.
+  5. GO / WATCH candidates a hold kept out of the bets (source 'heldbets') settle apart (ledger.held_bets_record), entered at the first 3% price.
   4. Props a held team had are settled as their own group (prop_sim_record.record_held): W, L, push and did-not-play, the model's side, and nothing
      from a prop that was not held.
 """
@@ -109,6 +110,36 @@ with tempfile.TemporaryDirectory() as root:
     check('the model side and the price chance for that side are recorded', g['rows'][0][4] in 'ou' and any(r[4] == 'u' and abs(r[5] - .70) < 1e-9 and abs(r[6] - .55) < 1e-9 for r in g['rows']))
     check('no profit number is stored: only sums for hit rate against what the price expected', sm['pn'] == 2 and abs(sm['pe_price'] - (.55 + .55)) < 1e-9 and sm['pw'] == 1)
     check('before the game is final nothing is settled', PSR.record_held(root, tip + 600, None, 3, lambda g: True, LG) == {})
+
+# 5  GO / WATCH candidates a hold kept out of the bets settle as their own group, entered at the first 3% price
+with tempfile.TemporaryDirectory() as root:
+    tip, gid = 2000000000, '401909998'
+    d = os.path.join(root, 'snapshots', LG.tip_day(tip))
+    os.makedirs(d)
+    os.makedirs(os.path.join(root, 'results'))
+    k1, k2, k3 = (f'{gid}|{pid}|3pm|kalshi|Kalshi|NO|2.5' for pid in (1, 2, 3))
+    base = {'game': gid, 'tip': tip, 'matchup': 'AAA @ BBB', 'team': 'AAA', 'stat': '3pm', 'venue': 'kalshi', 'book': 'Kalshi', 'side': 'NO', 'line': 2.5, 'hold': 'team'}
+    v = lambda price, edge, gate: [price, .55, edge, gate, 1.0, 30.0, None, None, 'no-go', 'model']
+    ser = {k1: [(tip - 7200, v(.40, .02, 'go')), (tip - 6000, v(.38, .05, 'go')), (tip - 600, v(.45, .01, 'go'))],      # reaches 3% at the second look: entry .38, player 1 makes 1: NO wins
+           k2: [(tip - 3000, v(.40, .06, 'go'))],                                                                       # player 2 makes 4: NO loses
+           k3: [(tip - 3000, v(.40, .06, 'no-go'))]}                                                                    # not a GO / WATCH gate: left out
+    with open(os.path.join(d, 'heldbets.jsonl'), 'w') as f:
+        for k, rows in ser.items():
+            for t, val in rows:
+                f.write(json.dumps({'t': t, 'k': k, 'v': val}, separators=(',', ':')) + '\n')
+    with open(os.path.join(d, 'meta.jsonl'), 'w') as f:
+        for k in ser:
+            pid = int(k.split('|')[1])
+            f.write(json.dumps({'k': k, 'src': 'heldbets', **base, 'pid': pid, 'player': f'P{pid}'}, separators=(',', ':')) + '\n')
+    json.dump({'1': {'threePointFieldGoalsMade': 1, 'minutes': 30}, '2': {'threePointFieldGoalsMade': 4, 'minutes': 30}, '3': {'threePointFieldGoalsMade': 0, 'minutes': 30}},
+              open(os.path.join(root, 'results', gid + '.json'), 'w'))
+    json.dump({'score': {'AAA': 100, 'BBB': 98}}, open(os.path.join(root, 'results', gid + '.meta.json'), 'w'))
+    H = LG.held_bets_record(root, tip + 5 * 3600, None, 3, lambda g: True)
+    g = next(iter(H.values()))[0]
+    sm = g['sum']
+    check('held GO candidates settle: 1 W, 1 L, the no-go one is left out', (sm['W'], sm['L'], sm['n']) == (1, 1, 2))
+    check('entry is the first price where the edge reached 3% (.38), with the Kalshi fee in the units', next(r for r in g['rows'] if r[0] == 'P1')[7] == .38 and abs(sm['units'] - (LG.profit('kalshi', .38, True) + -1.0)) < 1e-3)
+    check('before the game is final nothing is settled', LG.held_bets_record(root, tip + 600, None, 3, lambda g: True) == {})
 
 print('ALL PASS' if ok else 'FAILED')
 sys.exit(0 if ok else 1)

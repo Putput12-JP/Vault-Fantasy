@@ -2031,6 +2031,14 @@ th{font-weight:500}
         <summary><span class="tf-t"><b>Held by the roster guard, not bets</b><small id="theldstat">Props the model priced on teams it does not trust yet, settled anyway</small></span></summary>
         <div class="card-b">
           <p class="hint tplain" id="theldsub"></p>
+          <div id="theldb" hidden>
+            <h3 class="sim-h">Would have been GO or WATCH plays</h3>
+            <p class="hint" id="theldbsub"></p>
+            <div class="kpis" id="theldbk"></div>
+            <div class="tablewrap"><table class="ht tsim" id="theldbt"></table></div>
+            <div class="more" id="theldbmore" hidden></div>
+            <h3 class="sim-h">Every held prop, main lines</h3>
+          </div>
           <div class="kpis" id="theldk"></div>
           <div class="tablewrap"><table class="ht tsim" id="theldg"></table></div>
           <div class="filters theldf"><select class="sel" id="theldgame" aria-label="Game"></select><select class="sel" id="theldres" aria-label="Result"><option value="all">All results</option><option value="W">Model side won</option><option value="L">Model side lost</option><option value="V">Push or did not play</option></select></div>
@@ -4644,7 +4652,32 @@ function renderPropSimRecord(){
 // box score against the model's side (the side it gives 50% or more) and the price. These are not bets: they never reach the season record, the GO / WATCH
 // verdicts or the 50-bet promotion counts (none of those read held_days), and no stake or payout is stored, so there is no profit number. The question
 // this answers is whether the guard is right to hold: if the model's side wins about as often as the price says, holding costs nothing.
-const heldRec = {game: 'all', res: 'all', limit: 30};
+const heldRec = {game: 'all', res: 'all', limit: 30, blimit: 30};
+// The GO / WATCH candidates a hold kept out of the bets (ledger.py held_bets_record → track.json held_bets_days): Kalshi 3PM NO (GO) and PTS / REB / AST YES (WATCH)
+// rungs the Props page priced at a 3%+ edge. Entered at the first stored price where the edge reached 3%, one unit each, settled from the box score. Not bets.
+function heldBetGames(){
+  const h = TR && TR.data && TR.data.held_bets_days; if (!h) return [];
+  return Object.entries(h).flatMap(([day, a]) => (a || []).map(g => ({...g, day}))).sort((a, b) => b.tip - a.tip);
+}
+function renderHeldBets(gs){
+  const box = $('theldb'); box.hidden = !gs.length; if (!gs.length) return;
+  const t = {n: 0, W: 0, L: 0, P: 0, V: 0, units: 0, pe_price: 0, pe_model: 0, pv: 0, goW: 0, goL: 0, wW: 0, wL: 0, picks: 0};
+  for (const g of gs) for (const k in t) t[k] += (g.sum && g.sum[k]) || 0;
+  const an = t.W + t.L, z = t.pv > 0 && an ? (t.W - t.pe_price) / Math.sqrt(t.pv) : null, rep = gs.some(g => g.replay);
+  $('theldbsub').textContent = `These would have been GO or WATCH plays if the roster guard had not held the team. The recorder priced them and the Props page showed them as held, so they were never logged. Each is entered at the first stored price where its edge reached 3%, one unit, and settled from the box score the way a shadow bet is. Not bets: they stay out of the season record and the 50-bet verdict, and sharp money plays no part.${rep ? ' Opening night was filled in afterwards from the stored prices (replayed, with the model files on hand).' : ''}`;
+  const kpi = (label, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2></div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  $('theldbk').innerHTML =
+    kpi('Record', `${t.W}-${t.L}`, `${t.n} Kalshi rungs on ${t.picks} picks (a ladder has several rungs of one pick). GO ${t.goW}-${t.goL}, WATCH ${t.wW}-${t.wL}${t.P ? `, ${t.P} landed on the line` : ''}${t.V ? `, ${t.V} void` : ''}.`) +
+    kpi('Units at entry', `${t.units >= 0 ? '+' : ''}${t.units.toFixed(2)}`, 'One unit each at the price when the edge first reached 3%, Kalshi fee included') +
+    kpi('Against the price', an ? `${t.W} of ${an}` : 'n/a', an ? `Price expected ${t.pe_price.toFixed(1)}, the model expected ${t.pe_model.toFixed(1)}.` : '') +
+    kpi('Verdict', gapVerdict({n: an, z}), `${an < GAP_MIN ? `${an} of ${GAP_MIN} settled plays before the page makes a call.` : 'Hit rate against what the price expected.'}`);
+  const RS = {W: pill('ok', 'Won'), L: pill('bad', 'Lost'), P: pill('idle', 'Push'), V: pill('idle', 'Void')}, GL = {go: pill('ok', 'GO'), watch: pill('warn', 'WATCH')};
+  const rows = gs.flatMap(g => (g.rows || []).map(r => ({g, r})));
+  $('theldbt').innerHTML = `<thead><tr><th class="l" scope="col">Player</th><th class="l" scope="col">Play</th><th class="l" scope="col">Gate</th><th scope="col" title="Price when the edge first reached 3% (Kalshi: the ask, fee not included)">Entry price</th><th scope="col" title="The model's edge at entry">Edge</th><th scope="col">Actual</th><th scope="col">Result</th><th scope="col" title="Units at the entry price">Units</th></tr></thead><tbody>${
+    rows.slice(0, heldRec.blimit).map(({g, r}) => `<tr><td class="l"><b>${esc(r[0])}</b><small>${esc(g.matchup)} · ${esc(r[1])}</small></td><td class="l">${r[4] === 'o' ? 'OVER' : 'UNDER'} ${r[5]} ${PS_ABB[r[2]] || esc(r[2])}<small>${r[3] === 'kalshi' ? 'Kalshi' : esc(r[3])}</small></td><td class="l">${GL[r[6]] || ''}</td><td class="num">${r[3] === 'kalshi' && typeof r[7] === 'number' ? Math.round(r[7] * 100) + '¢' : esc(r[7] ?? '')}</td><td class="num">${pc(r[9], 1)}</td><td class="num">${r[10] == null ? '' : r[10]}</td><td class="l">${RS[r[11]] || ''}</td><td class="num">${r[12] == null ? '' : (r[12] >= 0 ? '+' : '') + r[12].toFixed(2)}</td></tr>`).join('')}</tbody>`;
+  $('theldbmore').hidden = rows.length <= heldRec.blimit;
+  $('theldbmore').innerHTML = `<button class="btn" id="theldbmorebtn" type="button">Show all ${rows.length.toLocaleString()}</button>`;
+}
 function heldGames(){
   const h = TR && TR.data && TR.data.held_days; if (!h) return [];
   return Object.entries(h).flatMap(([day, a]) => (a || []).map(g => ({...g, day}))).sort((a, b) => b.tip - a.tip);
@@ -4655,9 +4688,10 @@ function heldSum(gs){
   return t;
 }
 function renderHeldRecord(){
-  const gs = heldGames(), card = $('theldcard');
-  if (!gs.length){ card.hidden = true; return; }
-  card.hidden = false;
+  const gs = heldGames(), card = $('theldcard'), hb = heldBetGames();
+  card.hidden = !gs.length && !hb.length;
+  renderHeldBets(hb);
+  if (!gs.length){ for (const id of ['theldk', 'theldg', 'theld', 'theldnote']) $(id).innerHTML = ''; $('theldmore').hidden = true; return; }
   const t = heldSum(gs), z = t.pv > 0 && t.pn ? (t.pw - t.pe_price) / Math.sqrt(t.pv) : null, voids = t.P + t.D;
   $('theldstat').textContent = `${t.an.toLocaleString()} props settled ${t.aw}-${t.an - t.aw} for the model's side · not counted in the season record`;
   $('theldsub').textContent = `When the roster guard holds a team (new rosters, so its minutes are less trusted), its props are never logged as bets. They still settle from the box score. Each row is the model's side (the side it gives 50% or more) next to the price's chance, so we can see whether holding is right. Not bets: no stake or payout is stored, and none of it counts toward the season record, the GO and WATCH verdicts or the 50-bet promotion. Points, rebounds, assists and 3-pointers on each prop's main line.`;
@@ -4685,7 +4719,7 @@ function renderHeldRecord(){
   $('theldnote').textContent = `${rows.length.toLocaleString()} props${heldRec.game === 'all' && heldRec.res === 'all' ? '' : ' in this view'}. ${noRows ? `${noRows} older ${noRows === 1 ? 'game keeps' : 'games keep'} only its totals (prop rows are kept for ${14} days). ` : ''}If the model's side wins about as often as the price says, holding these teams costs nothing; if it wins clearly more, the guard is holding back real edge. ${t.pn < GAP_MIN ? 'Too early to say.' : ''}`;
 }
 $('theldcard').addEventListener('change', ev => { if (ev.target.id === 'theldgame') heldRec.game = ev.target.value; else if (ev.target.id === 'theldres') heldRec.res = ev.target.value; else return; heldRec.limit = 30; renderHeldRecord(); });
-$('theldcard').addEventListener('click', ev => { if (ev.target.closest('#theldmorebtn')){ heldRec.limit = 1e6; renderHeldRecord(); } });
+$('theldcard').addEventListener('click', ev => { if (ev.target.closest('#theldmorebtn')){ heldRec.limit = 1e6; renderHeldRecord(); } if (ev.target.closest('#theldbmorebtn')){ heldRec.blimit = 1e6; renderHeldRecord(); } });
 $('tpscard').addEventListener('click', ev => { if (ev.target.closest('#tpsopen')) goView('propsim'); });
 $('tsimcard').addEventListener('click', ev => {
   const b = ev.target.closest('button[data-v]'); if (b){ simRec.env = b.dataset.v; renderSimRecord(); return; }

@@ -77,6 +77,17 @@ def canon_key(k):
     return '|'.join(p)
 
 
+HELD_OUT = ({}, {})  # (rows, meta) of the last log() call: candidates a hold kept out of the bets that carry a GO or WATCH gate (source 'heldbets')
+def trigger_gate(c):
+    """The gate a candidate would be logged under: the better of the model's gate (if the model edge reached EDGE_MIN) and the consensus gap's gate (if the gap did)."""
+    gs = []
+    if c['edge'] >= PX.EDGE_MIN:
+        gs.append(c['g'])
+    if c.get('gap') is not None and c['gap'] >= PX.EDGE_MIN:
+        gs.append(c.get('gap_g', 'no-go'))
+    return min(gs, key=lambda g: GATE_RANK[g]) if gs else 'no-go'
+
+
 LOG_STATS = {}      # game id -> {'cands', 'edge', 'held', 'logged'} from the last log() call: snapshot.shadow() puts it in the poll record
 
 
@@ -85,10 +96,14 @@ def log(day, board, now):
     as gone by Day.record itself. LOG_STATS says, per game, how many candidates were priced, how many reached the edge
     threshold, how many of those the roster guard (or another hold) kept out, and how many rows were logged: a game with edges
     and zero rows is held, not broken, and the Data Health page can tell the two apart."""
+    global HELD_OUT
     LOG_STATS.clear()
+    HELD_OUT = ({}, {})
     if not board or not board.get('props'):
         return {}, {}
     tracked = {canon_key(k) for k in (day.last.get('ledger') or {})}
+    held_tracked = {canon_key(k) for k in (day.last.get('heldbets') or {})}
+    held_rows, held_meta = HELD_OUT
     games = {str(g['id']): g for g in board.get('games', [])}
     rows, meta = {}, {}
     for c in PX.price_board(board):
@@ -105,6 +120,12 @@ def log(day, board, now):
             continue
         if k not in tracked and c.get('hold') and c['hold'].get('why') != 'preseason':   # roster guard (preseason is
             S['held'] += 1                            # still logged, into the separate preseason record)
+            if k in held_tracked or trigger_gate(c) != 'no-go':       # a hold keeps it from being a bet, but a GO or WATCH candidate it kept out is
+                held_rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),      # recorded apart (source 'heldbets'), never a bet
+                                c.get('cons'), round(c['gap'], 4) if c.get('gap') is not None else None, c.get('gap_g', 'no-go'), ','.join(c.get('types') or [])]
+                P = board['players'].get(str(c['p'])) or board['players'].get(c['p']) or [str(c['p']), c['team']]
+                held_meta[k] = {'game': c['gid'], 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': c['p'], 'player': P[0], 'team': P[1], 'stat': c['s'],
+                                'venue': c['venue'], 'book': bk, 'side': c['side'], 'line': c['line'], 'hold': c['hold']['why']}
             continue
         S['logged'] += k not in rows
         rows[k] = [round(c['price'], 4) if isinstance(c['price'], float) else c['price'], round(c['fair'], 4), round(c['edge'], 4), c['g'], round(c['mu'], 2), round(c['min'], 1),
@@ -418,7 +439,7 @@ def outcome(side, line, y):
     return over if side in ('Over', 'YES') else not over
 
 
-def load_ledger(root, since=None):
+def load_ledger(root, since=None, src='ledger'):
     """key -> {'meta', 'series': [(t, v)]} across day folders from `since` (YYYY-MM-DD) on; a game can span two.
     Keys are read with the book spelled one way (canon_key): a quote the recorder logged as 'Draft Kings' and later as 'DraftKings'
     is one series, so it is one bet. At the same instant a value beats a 'gone' marker (the old spelling going away as the new one appears)."""
@@ -429,14 +450,14 @@ def load_ledger(root, since=None):
         mp = os.path.join(d, 'meta.jsonl')
         if os.path.exists(mp):
             for line in open(mp):
-                if '"src":"ledger"' not in line:          # meta.jsonl holds every source; skip the parse
+                if f'"src":"{src}"' not in line:          # meta.jsonl holds every source; skip the parse
                     continue
                 r = json.loads(line)
                 m = {k: v for k, v in r.items() if k not in ('k', 'src')}
                 if m.get('book'):
                     m['book'] = book_name(m['book'])
                 L[canon_key(r['k'])]['meta'] = m
-        lp = os.path.join(d, 'ledger.jsonl')
+        lp = os.path.join(d, f'{src}.jsonl')
         if os.path.exists(lp):
             for line in open(lp):
                 r = json.loads(line)
@@ -611,6 +632,73 @@ def canon_cube(rows):
     return sorted([[round(x, 4) if isinstance(x, float) else x for x in r] for r in agg.values()])
 
 
+HELD_BETS_KEEP_DAYS = 14        # bet rows are kept for this many tip days; older days keep only their sums
+
+
+def held_bets_record(root, now, prev, rescan_days, games):
+    """Per tip day: the GO and WATCH candidates a hold (the roster guard, mostly) kept out of the bets, settled as if they had been logged.
+
+    ledger.log never logs a held candidate, so on opening night 2026-10-20, when the guard held all six teams, the Kalshi 3PM NO cell (GO) and the
+    PTS / REB / AST YES cells (WATCH) had 3%+ edges that the Props page priced and the Track Record never saw. They are recorded apart (source 'heldbets',
+    log() -> HELD_OUT), entered at the first poll the edge reached 3% (the price a live bettor could have taken, the same rule as a bet), closed at the last
+    poll before tip, and settled from the box score exactly like bet_from / grade. This is NOT a bet record: it never reaches the cube, the season record, the GO /
+    WATCH verdicts or a signal's 50-bet promotion count (none of those read it). One unit each, so units are what the price would have paid.
+    Row: [player, team, stat, family, side, line, gate, price, model fair, edge, actual or null, 'W'|'L'|'P'|'V' (void), pnl at entry, why held]."""
+    days = dict(prev or {})
+    since = tip_day(now - rescan_days * 86400)
+    G = {}
+    for k, x in load_ledger(root, since, 'heldbets').items():
+        if not (x['meta'] and x['series']) or (games and not games(str(x['meta']['game']))):
+            continue
+        b = bet_from(k, x['meta'], x['series'])
+        if not b or b['gate'] == 'no-go' or now < b['tip'] + SETTLE_AFTER_S:
+            continue
+        b['hold'] = x['meta'].get('hold')
+        G.setdefault(b['game'], []).append(b)
+    per_day = {}
+    for gid, bs in G.items():
+        if box(root, gid) is None:
+            continue
+        sc = (box_meta(root, gid).get('score')) or {}
+        tot = {'n': 0, 'W': 0, 'L': 0, 'P': 0, 'V': 0, 'units': 0.0, 'units_close': 0.0, 'pe_price': 0.0, 'pe_model': 0.0, 'pv': 0.0, 'goW': 0, 'goL': 0, 'wW': 0, 'wL': 0}
+        rows = []
+        for b in sorted(bs, key=lambda b: (b['team'], b['player'], b['stat'], b['side'], b['line'], b['book'])):
+            grade(b, root, now)
+            res = {'win': 'W', 'loss': 'L', 'push': 'P', 'void': 'V'}.get(b['result'])
+            if res is None:
+                continue
+            tot['n'] += 1
+            tot[res] += 1
+            c = cost(b['venue'], b['price'])
+            if res in ('W', 'L'):
+                tot[('go' if b['gate'] == 'go' else 'w') + res] += 1
+                tot['units'] += b['pnl']
+                tot['units_close'] += b['pnl_close']
+                if c is not None:
+                    tot['pe_price'] += c
+                    tot['pe_model'] += b['fair']
+                    tot['pv'] += c * (1 - c)
+            elif res == 'P':
+                pass
+            rows.append([b['player'], b['team'], b['stat'], family(b), 'o' if b['side'] in ('Over', 'YES') else 'u', b['line'], b['gate'], b['price'], b['fair'], round(b['edge'], 4),
+                         b['actual'], res, b['pnl'], b['hold']])
+        if not rows:
+            continue
+        b0 = bs[0]
+        tot['picks'] = len({(r[0], r[2], r[4]) for r in rows})      # a Kalshi ladder gives several rungs of one pick: bets are rungs, picks are player, stat and side
+        entry = {'game': gid, 'matchup': b0['matchup'], 'tip': b0['tip'], 'sum': {k: round(v, 3) if isinstance(v, float) else v for k, v in tot.items()}, 'rows': rows}
+        if any(b.get('replay') for b in bs):
+            entry['replay'] = 1                          # replayed from stored prices after the fact (replay_polls.py), not logged live
+        per_day.setdefault(tip_day(b0['tip']), []).append(entry)
+    for d, gs in per_day.items():
+        days[d] = sorted(gs, key=lambda g: g['tip'])
+    keep = tip_day(now - HELD_BETS_KEEP_DAYS * 86400)
+    for d in days:
+        if d < keep:
+            days[d] = [{k: v for k, v in g.items() if k != 'rows'} for g in days[d]]
+    return days
+
+
 def settle(root, now=None, rescan_days=3, keep_recent=600):
     """Settle what is settleable; rewrite bets/<day>.json for the days touched and their cube rows in track.json.
     Only the last `rescan_days` of ledger folders are re-read (a key is logged within TRACK_H of its tip), plus the
@@ -707,6 +795,11 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     except Exception as e:
         print('held record failed:', e, flush=True)
         held_days, held_pre = track.get('held_days'), (track.get('preseason') or {}).get('held_days')
+    try:                                          # the GO / WATCH candidates a hold kept out, settled as if logged (never in the cube or the season record)
+        held_bets_days = held_bets_record(root, now, track.get('held_bets_days'), rescan_days, season)
+    except Exception as e:
+        print('held bets record failed:', e, flush=True)
+        held_bets_days = track.get('held_bets_days')
     try:                                          # Novig paper trading, settled from the box score (novig_paper.py)
         import novig_paper as NPT
         novig_days = NPT.record(root, now, track.get('novig_days'), rescan_days, season, me)
@@ -730,7 +823,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     except Exception as e:
         print('signals grading failed:', e, flush=True)
         signals = track.get('signals')
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre}
     with open(tpath, 'w') as f:
