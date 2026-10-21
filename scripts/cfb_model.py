@@ -20,7 +20,7 @@ closing spread. It earns a Trust it only by clearing the same bar as every other
 
 Needs pandas, numpy, scipy, scikit-learn, pyarrow. Handicap convention: a team's spread, + = underdog.
 """
-import argparse, datetime, json, math, os, sys, tempfile
+import argparse, datetime, json, math, os, sys, tempfile, time, urllib.request
 import numpy as np, pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cfb_efficiency_study as st
@@ -442,7 +442,9 @@ def grade(entry, g26):
     margin = (x.homeFinalScore - x.awayFinalScore) * (1 if home else -1)
     close = None if pd.isna(x.homeTeamSpread) else (-x.homeTeamSpread if home else x.homeTeamSpread)
     res = 'W' if margin + entry['entry'] > 0 else 'L' if margin + entry['entry'] < 0 else 'P'
-    return dict(result=res, hs=int(x.homeFinalScore), as_=int(x.awayFinalScore), margin=int(margin), espn_close=close, clv=None if close is None or entry.get('line_src') == 'espn' else round(entry['entry'] - close, 1))
+    r = dict(result=res, hs=int(x.homeFinalScore), as_=int(x.awayFinalScore), margin=int(margin), espn_close=close, clv=None if close is None or entry.get('line_src') == 'espn' else round(entry['entry'] - close, 1))
+    if bool(x.get('live_final', False)): r['settled_by'] = LIVE     # ESPN's scoreboard, ahead of the release: no closing line yet, upgraded when the release lands
+    return r
 
 
 def clopper_pearson(w, n, alpha=0.05):
@@ -570,6 +572,53 @@ def rebuild_tile(path=None):
     return d['cards_summary']
 
 
+ESPN_SB = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard'
+LIVE = 'espn_live'       # settled_by for a result graded from ESPN's own scoreboard before the sportsdataverse release has the game
+LIVE_DAYS = 10           # how far back to read the scoreboard: the release has been seen lagging days, never more than a week
+
+
+def espn_finals(days=LIVE_DAYS, now=None):
+    """Finished FBS games straight from ESPN's scoreboard, for the last `days` days: {game_id: dict(week, home_id, away_id, hs, as_, neutral)}.
+    The play-by-play and schedule releases (sportsdataverse-data) refresh on their own schedule and sat three days behind a Tuesday game; ESPN's scoreboard has
+    the final the minute it ends. This is a score and nothing else: no closing line and no play-by-play, so ratings still wait for the release, and a result graded
+    from it is stamped settled_by='espn_live' and replaced by the release's own (with the ESPN close and CLV) when that catches up. A day that fails to load is
+    skipped with a warning, never fatal: the release path still grades whatever it has."""
+    now = now or time.time(); out = {}
+    for i in range(days + 1):
+        day = datetime.datetime.fromtimestamp(now - 86400 * i, datetime.timezone.utc).strftime('%Y%m%d')
+        ev = None
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(f'{ESPN_SB}?dates={day}&groups=80&limit=400', headers={'User-Agent': 'vault'})
+                with urllib.request.urlopen(req, timeout=30) as r: ev = json.load(r).get('events') or []
+                break
+            except Exception as e:
+                if attempt == 2: print(f'espn scoreboard {day} skipped:', type(e).__name__, e, file=sys.stderr)
+                else: time.sleep(2 * (attempt + 1))
+        for e in ev or []:
+            try:
+                c = e['competitions'][0]
+                if not c['status']['type']['completed']: continue
+                tm = {x['homeAway']: x for x in c['competitors']}
+                hs, aw = int(tm['home']['score']), int(tm['away']['score'])
+                out[int(e['id'])] = dict(week=int((e.get('week') or {}).get('number') or 0), home_id=int(tm['home']['team']['id']), away_id=int(tm['away']['team']['id']),
+                                         hs=hs, as_=aw, neutral=bool(c.get('neutralSite')))
+            except (KeyError, ValueError, TypeError, IndexError): continue
+    return out
+
+
+def overlay_live_finals(g26, finals):
+    """Add (or complete) the rows of g26 for games ESPN's scoreboard says are over but the release does not. Rows get homeTeamSpread NaN (no close is invented)
+    and live_final True; a game the release already has as completed is left exactly as it is. Returns (g26, number of games added or completed)."""
+    g26 = g26.assign(live_final=False)
+    have = set(g26[g26.status_type_completed == True].game_id.astype(int))
+    new = [dict(season=2026, week=f['week'], game_id=gid, homeTeamId=f['home_id'], awayTeamId=f['away_id'], homeFinalScore=f['hs'], awayFinalScore=f['as_'],
+                homeTeamSpread=float('nan'), status_type_completed=True, neutral_site=f['neutral'], live_final=True) for gid, f in finals.items() if gid not in have]
+    if not new: return g26, 0
+    g26 = g26[~g26.game_id.astype(int).isin({r['game_id'] for r in new})]       # an in-progress row from the release is replaced by the final
+    return pd.concat([g26, pd.DataFrame(new)], ignore_index=True), len(new)
+
+
 def settle(entry, g26, fin):
     """grade from ESPN's finished game when the play-by-play release has it (also gives closing-line value); until then use the final score the Sharp Money feed
     carries, so a game settles as soon as it ends. The feed-settled result is replaced by the ESPN one when that catches up."""
@@ -629,7 +678,9 @@ def open_check(g26, F, rated_before, K, HFA, proj=None):
     tp = os.path.join(ROOT, 'data', 'cfbd', 'teams_fbs_2026.json')
     if os.path.exists(tp): sid = {t['school']: int(t['id']) for t in json.load(open(tp))}
     done_ids = {int(x.game_id) for x in g26.itertuples()}
-    nowk = int(g26[g26.status_type_completed == True].week.max() or 0) if len(g26) else 0      # opens for weeks further out are placeholders: only the next slate
+    rel = g26[g26.status_type_completed == True]
+    if 'live_final' in rel: rel = rel[rel.live_final != True]      # a scoreboard final grades its game but does not advance the calendar: the next slate opens with the release, as before
+    nowk = int(rel.week.max() or 0) if len(rel) else 0      # opens for weeks further out are placeholders: only the next slate
     upcoming_n = 0
     for gid, (rk, ln) in rows.items():
         if int(gid) in done_ids or ln.get('hs') is not None or int(ln.get('wk') or 0) < PICK_MIN_WEEK or int(ln['wk']) > nowk + 1: continue
@@ -1102,6 +1153,9 @@ def cmd_update(a):
                             market_margin=s['market_margin'], edge=s['edge'], logged=int(now), backfill=s['backfill'], neutral=s['neutral'], line_src=s.get('line_src')))
             stamp_shop(log[-1], tape, now)      # the best retail spread for this side at this moment, once; an old pick without one stays null
     g26 = gm.drop_duplicates('game_id')
+    live_n = 0
+    try: g26, live_n = overlay_live_finals(g26, espn_finals(now=now))
+    except Exception as e: print('live finals skipped:', type(e).__name__, e, file=sys.stderr)
     # the board: every game the model projected, picks or not, kept after kickoff so the page can show the whole slate and how the
     # model's lean did. Projections freeze once a game has started (or was added after the fact).
     board = store.get('board', [])
@@ -1149,7 +1203,7 @@ def cmd_update(a):
                 e['final'] = dict(side=e['side'], team=e['team'], entry=e['entry'], edge=e['edge'], is_pick=bool(e['is_pick']), at=at, mins_before=max(0, round((e['kick'] - at) / 60)),
                                   cards=e.get('cards'), line_src=e.get('line_src'), home_id=e['home_id'], away_id=e['away_id'])
     def _settle(x, key, ids=None):
-        if 'result' in x and x.get('settled_by') != 'feed': return           # settled by ESPN's game: final. A feed-settled one is upgraded when ESPN catches up
+        if 'result' in x and x.get('settled_by') not in ('feed', LIVE): return           # settled by the release's game: final. A feed- or scoreboard-settled one is upgraded when the release catches up
         r = settle(dict(x, key=key, **(ids or {})), g26, fin)
         if r: x.pop('settled_by', None); x.update(r)
     for e in board:
@@ -1157,9 +1211,11 @@ def cmd_update(a):
         if e.get('final'): _settle(e['final'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
         if e.get('v1'): _settle(e['v1'], e['key'], dict(home_id=e['home_id'], away_id=e['away_id']))
         bo = e.get('bettable_open')
-        if bo and 'result' not in bo:
+        if bo and ('result' not in bo or bo.get('settled_by') == LIVE):
             r = settle(dict(bo, key=e['key'], home_id=e['home_id'], away_id=e['away_id']), g26, fin)
-            if r: bo.update({k: r[k] for k in ('result', 'espn_close', 'clv', 'margin', 'hs', 'as_') if k in r})
+            if r:
+                bo.pop('settled_by', None)
+                bo.update({k: r[k] for k in ('result', 'espn_close', 'clv', 'margin', 'hs', 'as_', 'settled_by') if k in r})
     board.sort(key=lambda x: -x['kick'])
     for e in log: _settle(e, e['key']); shop_grade(e)
     summary = log_summary_of(log)
@@ -1205,8 +1261,8 @@ def cmd_update(a):
     except Exception as e:
         print('totals skipped:', type(e).__name__, e, file=sys.stderr); totals = prev_totals
     json.dump(dict(generated=pd.Timestamp.now('UTC').isoformat(), season=2026, through_week=through, games_rated=len(done), params=dict(S=S, K=K, HFA=HFA, ALPHA=st.ALPHA),
-                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v1_summary=v1_summary, model_version=MODEL_VERSION if live else 'v1', pick_rule=store.get('pick_rule') or dict(id=PICK_RULE, dropped=[]), cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk, bettable_open=bettable_summary, totals=totals), open(OUT, 'w'))
-    print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, log=summary)))
+                   unmatched_games=un, backtest=backtest, ratings=ratings, slate=slate, board=board, v1_summary=v1_summary, model_version=MODEL_VERSION if live else 'v1', pick_rule=store.get('pick_rule') or dict(id=PICK_RULE, dropped=[]), cards_summary=cards_summary, final_summary=final_summary, earlier_weeks=dict(first=PICK_MIN_WEEK - 1, last=(first or 0) - 1, record=earlier), log=log, log_summary=summary, open_check=open_chk, bettable_open=bettable_summary, totals=totals, live_finals=live_n), open(OUT, 'w'))
+    print(json.dumps(dict(through_week=through, rated=len(ratings), slate=len(slate), unmatched=un, live_finals=live_n, log=summary)))
 
 
 def main():

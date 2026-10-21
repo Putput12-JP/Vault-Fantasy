@@ -125,6 +125,9 @@ def main():
                             columns=['game_id', 'week', 'home_id', 'away_id', 'home_score', 'away_score', 'status'])
     ids = {(int(r.home_id), int(r.away_id)): int(r.game_id) for r in sched.itertuples()}
     fin = {int(r.game_id): int(r.home_score) - int(r.away_score) for r in sched.itertuples() if pd.notna(r.home_score) and pd.notna(r.away_score) and 'final' in str(r.status).lower()}
+    live = cm.espn_finals()           # ESPN's scoreboard: a game the release has not caught up on still grades (score only; the close comes with the release)
+    for gid, f in live.items():
+        if gid not in fin: ids[(f['home_id'], f['away_id'])] = gid; fin[gid] = f['hs'] - f['as_']
     pbp = pd.read_parquet(cm.st.fetch(f'{cm.st.REL}/espn_cfb_pbp/play_by_play_2026.parquet', os.path.join(d, 'pbp_2026_sb.parquet')), columns=['game_id', 'homeTeamSpread'])
     closes = {int(r.game_id): float(r.homeTeamSpread) for r in pbp.drop_duplicates('game_id').itertuples() if pd.notna(r.homeTeamSpread)}      # the ESPN close, as a home margin (+ = home favoured)
     model = json.load(open(cm.OUT)); board = model.get('board', []); copens = cm.cfbd_opens(played=True)
