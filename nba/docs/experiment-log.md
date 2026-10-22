@@ -254,3 +254,26 @@ Every call Combo Check makes is logged by `scripts/combo_calls.py` (local: the p
   means the other books moved toward this book, i.e. the edge was a stale line in the benchmark, not in this book.
 - Tested on real box scores with constructed calls (won / lost / under / PRA / two-leg / did-not-play void) and on the live tape (38 calls on the first
   pass: 28 straight, 6 mates, 4 cross). No call has settled yet.
+
+## 12. Bankroll Builder pick record (rules fixed 2026-10-22, before any live pick has settled)
+
+`scripts/bankroll_builder.py` (local: the prices are SmartStake's), run inside the 5-minute publish job after Combo Check. The page is NBA > Bankroll Builder.
+- **Pick:** one sportsbook leg, no parlays, main or alt line, priced **-110 to -220**. Exchanges are fair-price sources only (fees are not in the tape).
+- **Market gate:** fair chance = median of **3+ other venues** quoting both sides of the same line, margin removed (books up to 16% overround, exchanges 8%);
+  market edge = fair x decimal odds - 1 **>= 4%**. (Combo Check needs 2 venues and 3%; this is stricter on purpose.)
+- **Model gate:** the model's calibrated chance (nba/scripts/pricing.py, the page's `pv`) **>= the price's cost + 2 points**. No model number, no pick.
+- **Player gate:** recent minutes >= 20, no roster / returning-player / preseason hold, not Out / Doubtful / Questionable / Inactive.
+- **Caps:** one pick per player per game, at most 2 per team-game, 8 per slate (ET day); a game within 36 hours. First come, ranked by market edge within a poll.
+- **Tier:** Core = market edge >= 6% and the model clears the price by 4+ points; Standard = the rest. Recorded on the pick.
+- **Entry / close / grade:** logged at the first poll it qualifies (entry price); close = the last price seen for the same leg at the same book before tip;
+  graded flat **1 unit at the entry price** from the ESPN box score; a player who did not play voids it.
+- **Bankroll:** $1,000 paper, 1 unit = $10 (as Vault Ledger). A quarter-Kelly line (cap 2% of the bankroll, on the market's fair chance, sequential by tip)
+  is a **shadow** for comparison and never the headline.
+- **Shadow logs (never counted):** `market_only` = passed every gate except the model's; `model_only` = the model clears the price by 4+ points but the market
+  edge is under 1%. They test whether each gate adds anything.
+- **Reading it:** monitoring only. Nothing is called good or bad before **100 settled picks** and a closing-line value that is positive by 2 SE. Thresholds above
+  were set from the logic, not tuned to results; changing one starts a new record.
+- **Backtest** (`--backtest`): the stored tape replayed poll by poll through the same code, with each poll's board rebuilt from the recorder's snapshots
+  (nba-data branch) and the model files as they stood in git at that moment. Limits: the prop model's fitted parameters (variance, calibration, stacker) are the
+  ones on hand, last refit 2026-10-09, before any regular-season game; poll cadence is the tape's (5 to 30 minutes, with gaps). Replayed picks are labelled
+  and never merged into the live record.

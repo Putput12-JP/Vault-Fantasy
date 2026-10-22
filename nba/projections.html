@@ -1071,6 +1071,11 @@ table.pl-t{width:100%;min-width:640px;border-collapse:collapse;font-size:12.5px;
 .cc-unlock input{height:30px;width:170px;padding:0 8px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--surface);color:var(--fg);font:inherit}
 
 table.cc-st small{display:block;font-weight:400;color:var(--fg3);font-size:11px}
+.bk-cv{display:flex;flex-direction:column;gap:4px;padding:6px 14px 4px}.bk-cv .muted{font-size:12px}.bk-curve{width:100%;height:120px}.bk-curve path{fill:none;stroke-width:2;stroke-linejoin:round}.bk-curve .bk-f{stroke:var(--up)}.bk-curve .bk-k{stroke:var(--fg3);stroke-dasharray:4 3}.bk-curve .bk-base{stroke:var(--border2);stroke-width:1}
+.pl-strip.bk-strip{grid-template-columns:repeat(6,minmax(0,1fr))}table.nt small.bk-m{display:none}
+@media(max-width:900px){.pl-strip.bk-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){#bk-root .bk-x{display:none}#bk-root table.nt{min-width:0}#bk-root table.nt td{white-space:normal}#bk-root table.nt .pp-av{display:none}#bk-root table.nt td b{white-space:nowrap}#bk-root table.nt td .pl b{white-space:normal}table.nt small.bk-m{display:block}}
+.bk-sw{display:inline-block;width:14px;height:0;border-top:2px solid var(--up);vertical-align:middle;margin:0 4px 0 8px}.bk-sw.k{border-top:2px dashed var(--fg3)}
 .cc-note{margin:6px 0 0;font-size:12px;color:var(--fg3)}
 .cc-price{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:end;margin-top:10px}.cc-price label{display:grid;gap:3px;font-size:11px;color:var(--fg3)}
 .cc-price input{height:30px;width:92px;padding:0 8px;border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--bg);color:var(--fg);font:inherit;font-size:13px}
@@ -2519,6 +2524,8 @@ th{font-weight:500}
     <footer id="ppfoot" hidden></footer>
     <main id="v-combo" hidden><div class="pp-wrap" id="cc-root"></div></main>
     <footer id="ccfoot" hidden></footer>
+    <main id="v-bankroll" hidden><div class="pp-wrap" id="bk-root"></div></main>
+    <footer id="bkfoot" hidden></footer>
     <main id="v-player" hidden><div class="pl-wrap" id="pl-root"></div></main>
     <footer id="plfoot" hidden></footer>
     <div id="pl-modal" class="pl-modal" hidden role="dialog" aria-modal="true" aria-label="Player profile"><div class="pl-mbox"><div class="pl-wrap" id="pl-mroot"></div></div></div>
@@ -2758,7 +2765,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['combo', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
+const VIEWS = ['combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -2990,6 +2997,7 @@ const PAGES = [
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
     ['Pick\'em of the Night', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'The best pick\'em slip we can build tonight: one player per team, from PrizePicks, Underdog or Sleeper, with the honest odds that it pays.', 'pairs'],
     ['Combo Check', SVG('<rect x="3" y="6" width="8" height="12" rx="2"/><rect x="13" y="6" width="8" height="12" rx="2"/><path d="m5.5 12 1.8 1.8 3-3.6"/>'), 'Alt-line combos priced fairly: legs between -140 and +200 from any players, the fair odds, and the price to take. Type your book\'s price to see what it is worth.', 'combo'],
+    ['Bankroll Builder', SVG('<path d="M3 20h18"/><path d="M6 20v-5M11 20v-9M16 20v-7M21 20V6"/><path d="m4 9 5-4 4 3 7-5"/>'), 'Short-priced props (-110 to -220) where the market and the model both say the price is too long, tracked flat 1 unit on a $1,000 paper bankroll.', 'bankroll'],
     ['My Bets', SVG('<path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 8h6M9 12h6"/>'), 'The bets you placed: results, closing-line value and where your edge is coming from.', 'mybets'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
@@ -3263,6 +3271,7 @@ function show(v){
   $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
   $('v-player').hidden = $('plfoot').hidden = v !== 'player';
   $('v-combo').hidden = $('ccfoot').hidden = v !== 'combo';
+  $('v-bankroll').hidden = $('bkfoot').hidden = v !== 'bankroll';
   $('v-backtests').hidden = $('btfoot').hidden = !['backtests', 'finder', 'btlab'].includes(v);
   $('slicer').hidden = !lab;
   document.querySelector('.search').hidden = !lab;
@@ -3282,6 +3291,13 @@ function show(v){
     wk.tab = {backtests: 'works', finder: 'finder', btlab: 'lab'}[v];
     renderBacktests();
     if (!trackTried) loadTrack();
+    return;
+  }
+  if (v === 'bankroll'){
+    $('tname').textContent = 'Bankroll Builder';
+    $('tsub').textContent = 'SHORT PRICES · MARKET AND MODEL AGREE · TRACKED FLAT 1 UNIT';
+    renderBankroll();
+    if (!boardTried) loadBoard();
     return;
   }
   if (v === 'combo'){
@@ -4154,7 +4170,8 @@ async function ssPublished(){
   if (!user){ window.__altsState = 'signin'; return null; }
   try {
     const snap = await firebase.firestore().collection('nbaAlts').get(), props = []; let asof = 0;
-    snap.forEach(d => { const x = d.data(); if (d.id === '_record'){ try { window.__comboRecord = JSON.parse(x.json); } catch (e) {} return; } asof = Math.max(asof, +x.asof || 0); try { props.push(...JSON.parse(x.json)); } catch (e) {} });
+    snap.forEach(d => { const x = d.data(); if (d.id === '_record'){ try { window.__comboRecord = JSON.parse(x.json); } catch (e) {} return; }
+      if (d.id === '_bankroll' || d.id === '_bankroll_bt'){ try { window[d.id === '_bankroll' ? '__bankrollRecord' : '__bankrollBacktest'] = JSON.parse(x.json); } catch (e) {} return; } asof = Math.max(asof, +x.asof || 0); try { props.push(...JSON.parse(x.json)); } catch (e) {} });
     window.__altsState = 'ok'; return {props, asof};
   } catch (e) {
     window.__altsState = /permission|insufficient/i.test(String((e && (e.code || e.message)) || '')) ? 'denied' : 'none'; return null;
@@ -4183,9 +4200,9 @@ async function ssMerge(b){
   if (SS_ON){
     const get = f => fetch('/data/smartstake/' + f + '?t=' + Date.now(), {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
     const [j, ja] = [await get('props_nba.json'), await get('props_nba_alts.json')];
-    window.__altsState = ja ? 'ok' : 'none'; ssApply(b, j, ja); window.__comboRecord = await get('combo_record.json'); return;
+    window.__altsState = ja ? 'ok' : 'none'; ssApply(b, j, ja); window.__comboRecord = await get('combo_record.json'); window.__bankrollRecord = await get('bankroll_record.json'); window.__bankrollBacktest = await get('bankroll_backtest_record.json'); return;
   }
-  ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; if (view === 'combo') renderCombo(); });
+  ssPublished().then(ja => { if (ja) ssApply(b, null, ja); cc.rows = null; if (view === 'combo') renderCombo(); if (view === 'bankroll') renderBankroll(); });
 }
 async function ssSignIn(){
   try { await window.VaultAuth.signInWithGoogle(); } catch (e) { window.__altsState = 'signin'; }
@@ -4215,6 +4232,7 @@ async function loadBoard(){
     if (view === 'pairs') renderPairs();
     if (view === 'player') renderPlayer();
     if (view === 'combo') renderCombo();
+    if (view === 'bankroll') renderBankroll();
     pvBackground(); pvSettle();
     clearTimeout(boardTimer); boardTimer = setTimeout(loadBoard, (NBA_WORKER ? 60 : 5 * 60) * 1000);
   } catch (e) { /* keep the snapshot */ }
@@ -9153,6 +9171,86 @@ $('cc-root').addEventListener('click', e => {
     if (!C || !v){ pvToast('Enter a valid price, or clear the box to use the posted prices.'); return; }
     const b = ccMkBet(C, v);
     pvBets.unshift(b); pvSave(); pvSettle(); pvToast(b.ex ? 'Saved to My Bets. The example game is over, so it settles right away.' : 'Saved to My Bets. It settles after the last game.'); }
+});
+
+// ── Bankroll Builder (#bankroll) ──
+// Short-priced props (-110 to -220 at a sportsbook) where the other venues' no-vig price AND our model both say the price is too long.
+// The picks, their prices, settlement and the record come from scripts/bankroll_builder.py on the owner's Mac (the prices are SmartStake's,
+// so like Combo Check this page is private: local ?ss, or the owner's Google login). The rules are frozen in docs/experiment-log.md section 12.
+let bk = {recF: 'settled', recN: 25, btN: 25};
+const bkU = x => x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(2)}u`;
+const bkP = (x, d = 1) => x == null ? '<span class="muted">none</span>' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`;
+const bkAm = p => ccF(ccAm(p));
+function bkCurve(cv){
+  if (!cv || cv.length < 2) return '';
+  const W = 560, H = 120, pad = 8, all = cv.flatMap(c => [c[1], c[2]]), lo = Math.min(1000, ...all), hi = Math.max(1000, ...all), rng = hi - lo || 1;
+  const x = i => pad + i * (W - 2 * pad) / (cv.length - 1), y = v => H - pad - (v - lo) / rng * (H - 2 * pad), path = k => cv.map((c, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(c[k]).toFixed(1)}`).join('');
+  return `<svg class="bk-curve" viewBox="0 0 ${W} ${H}" role="img" aria-label="Paper bankroll after each settled pick, flat stake and quarter-Kelly shadow"><line x1="${pad}" x2="${W - pad}" y1="${y(1000).toFixed(1)}" y2="${y(1000).toFixed(1)}" class="bk-base"/><path d="${path(2)}" class="bk-k"/><path d="${path(1)}" class="bk-f"/></svg>`;
+}
+function bkKpis(R){
+  const a = R.all, br = R.bankroll || {}, kpi = (k, v, h) => `<div class="pl-c"><small>${k}</small><b>${v}</b><span>${h}</span></div>`;
+  const se = a.clv_se != null ? `${a.clv_n} picks, +/-${(2 * a.clv_se * 100).toFixed(1)} pts (2 SE)` : `${a.clv_n} picks`;
+  return `<div class="pl-strip bk-strip">${kpi('Picks', a.picks, `${a.settled} settled`)}${kpi('Record', `${a.won}-${a.settled - a.won}${a.void ? `-${a.void}` : ''}`, a.win != null ? `won ${(a.win * 100).toFixed(0)}% vs fair ${(a.fair * 100).toFixed(0)}%, model ${(a.model * 100).toFixed(0)}%` : 'won-lost-void')}${kpi('Units', `<span class="${a.units >= 0 ? 'pos' : 'neg'}">${bkU(a.units)}</span>`, '1 unit flat = $10')}${kpi('ROI', bkP(a.roi), a.z != null ? `z ${a.z}` : 'too few settled')}${kpi('Closing-line value', bkP(a.clv), se)}${kpi('Bankroll', `$${Math.round(br.flat || 1000).toLocaleString()}`, `from $1,000 · Kelly shadow $${Math.round(br.kelly_shadow || 1000).toLocaleString()}`)}</div>`;
+}
+function bkSlices(R){
+  const row = (name, x) => `<tr><td class="l">${esc(name)}</td><td>${x.picks}</td><td>${x.settled}</td><td>${x.won}-${x.settled - x.won}</td><td class="${x.units >= 0 ? 'pos' : 'neg'}">${bkU(x.units)}</td><td>${bkP(x.roi)}</td><td>${bkP(x.clv)}<small>${x.clv_n} picks</small></td></tr>`;
+  const grp = (label, o, fmt = k => k) => Object.entries(o || {}).map(([k, x]) => row(`${label} ${fmt(k)}`, x)).join('');
+  const SH = {market_only: 'The model disagreed (not bets)', model_only: 'Only the model liked it (not bets)'};
+  return `<div class="nt-tw"><table class="nt"><thead><tr><th class="l">Slice</th><th>Picks</th><th>Settled</th><th>W-L</th><th>Units</th><th>ROI</th><th>CLV</th></tr></thead><tbody>${grp('Tier', R.tier, k => k === 'core' ? 'Core' : 'Standard')}${grp('Edge', R.edge)}${grp('', R.kind, k => k === 'alt' ? 'Alt lines' : 'Main lines')}${grp('', R.side, k => k === 'over' ? 'Overs' : 'Unders')}${Object.entries(R.day || {}).map(([k, x]) => row(k, x)).join('')}${Object.entries(R.shadow || {}).map(([k, x]) => x.picks ? row(SH[k], x) : '').join('')}</tbody></table></div>`;
+}
+function bkResults(R, filter, n, moreAttr){
+  const L = R.list || [], F = {settled: c => c.res === 'won' || c.res === 'lost', won: c => c.res === 'won', lost: c => c.res === 'lost', open: c => !c.res, all: () => true},
+    shown = L.filter(F[filter] || F.all).sort((x, y) => (y.tip || 0) - (x.tip || 0) || y.first - x.first), sum = shown.reduce((s, c) => s + (c.units || 0), 0);
+  const tr = c => `<tr><td class="l bk-x">${etFmt(c.first, {month: 'short', day: 'numeric'})} ${clock(c.first)}</td><td class="l"><b>${esc(c.name)}</b> ${c.side === 'over' ? 'o' : 'u'}${c.line} ${PP_SHORT[c.stat] || c.stat}${c.y != null ? ` <span class="muted">(${c.y})</span>` : ''}<small>${esc(c.away)} @ ${esc(c.home)} · ${c.tier === 'core' ? 'Core' : 'Standard'}</small></td><td class="l">${esc(c.book)} ${bkAm(1 / c.dec0)}</td><td>${bkP(c.mk0)}<small>model ${bkP(c.md0)}</small></td><td class="${c.res === 'won' ? 'pos' : c.res === 'lost' ? 'neg' : ''}">${c.res ? (c.res === 'void' ? 'void' : `${c.res} ${bkU(c.units)}`) : '<span class="muted">open</span>'}${c.clv != null ? `<small>CLV ${bkP(c.clv)}</small>` : ''}</td></tr>`;
+  return {n: shown.length, sum, rows: shown.slice(0, n).map(tr).join(''), more: shown.length > n};
+}
+function bkTonight(R){
+  const now = Date.now() / 1000, L = (R.list || []).filter(c => !c.res && c.tip > now).sort((a, b) => a.tip - b.tip || (a.tier === 'core' ? 0 : 1) - (b.tier === 'core' ? 0 : 1) || b.mk0 - a.mk0);
+  const last = R.last, fun = last ? `Last check ${agoFrom(last.at, now)}: ${last.band} sportsbook legs priced -110 to -220, ${last.market} clear the market gate (3+ other venues, 4%+ better than their price), ${last.model_pass} of those also clear the model.` : '';
+  const tr = c => `<tr><td class="l"><div class="pl">${c.pid ? avSm(c.pid, c.name) : ''}<div><b>${c.pid ? `<a class="plink" href="#player/${c.pid}">${esc(c.name)}</a>` : esc(c.name)}</b><small>${esc(c.team)} · ${etFmt(c.tip, {weekday: 'short'})} ${clock(c.tip)} ${TZL}</small></div></div></td>
+    <td class="l bk-x">${esc(c.away)} @ ${esc(c.home)}</td>
+    <td class="l">${c.side === 'over' ? 'Over' : 'Under'} <b>${c.line}</b> ${PP_SHORT[c.stat] || c.stat}<small class="cc-alt ${c.alt ? 'on' : ''}">${c.alt ? `alt · main ${c.main}` : 'main line'}</small><small class="bk-m">${esc(c.away)} @ ${esc(c.home)} · market ${pc(c.pf0, 1)} · model ${pc(c.pm0, 1)}</small></td>
+    <td class="l"><b>${esc(c.book)} ${bkAm(1 / c.dec0)}</b>${c.decN && Math.abs(c.decN - c.dec0) > .0005 ? `<small>now ${bkAm(1 / c.decN)}</small>` : ''}</td>
+    <td class="bk-x">${pc(c.pf0, 1)}<small>${c.n0} other venues</small></td><td class="bk-x">${pc(c.pm0, 1)}<small>price needs ${pc(1 / c.dec0, 1)}</small></td>
+    <td class="pos"><b>+${(c.mk0 * 100).toFixed(1)}%</b><small class="bk-m">${c.tier === 'core' ? 'Core' : 'Standard'}</small></td><td class="l bk-x">${c.tier === 'core' ? '<span class="pv-vp bet">CORE</span>' : '<span class="pv-vp lean">STANDARD</span>'}</td></tr>`;
+  const games = new Set(L.map(c => c.away + c.home)).size;
+  return `<section class="card"><div class="pp-tools"><h2>Tonight's picks</h2><span class="muted" style="font-size:12.5px">${L.length ? `${L.length} pick${L.length === 1 ? '' : 's'} across ${games} game${games === 1 ? '' : 's'}. ` : ''}Each is one sportsbook bet at the price shown when it first qualified. Flat 1 unit.</span></div>
+    ${L.length ? `<div class="nt-tw"><table class="nt cc-st"><thead><tr><th class="l">Player</th><th class="l bk-x">Game</th><th class="l">Our play</th><th class="l">Price</th><th class="bk-x">Market chance</th><th class="bk-x">Model chance</th><th>Edge</th><th class="l bk-x">Tier</th></tr></thead><tbody>${L.map(tr).join('')}</tbody></table></div>`
+      : `<p class="pp-empty">No pick clears every gate right now. At -110 to -220 the books price close to fair, so many slates have only a few and some have none. ${esc(fun)}</p>`}
+    ${L.length && fun ? `<p class="muted" style="padding:0 14px 12px;font-size:12px">${esc(fun)}</p>` : ''}</section>`;
+}
+function renderBankroll(){
+  const R = window.__bankrollRecord, BT = window.__bankrollBacktest;
+  const gate = window.__altsState === 'signin' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><button class="pv-ghost" type="button" data-bksignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>`
+    : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-bksignin="1">Use another account</button></div>` : '';
+  const intro = `<section class="card pp-read"><p class="big">Bankroll Builder</p>
+    <p>Short-priced props the market and our model <b>both</b> say are too long. One sportsbook bet (no parlays) priced <b>-110 to -220</b>, at least 4% better than the no-vig price of three or more other venues quoting the same line, with our model's chance also clearing the price. Main lines and alt lines both count. Every pick is logged at the first price it qualifies, followed to tip, and graded flat 1 unit ($10) on a $1,000 paper bankroll.</p>
+    <p>Sportsbook prices via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Nothing here is proof of anything until <b>100 settled picks</b> and a closing-line value that is positive by two standard errors. Until then it is a record to watch, not a system to trust.</p>${gate}</section>`;
+  if (!R || !R.all){
+    $('bk-root').innerHTML = intro + `<section class="card"><div class="pp-tools"><h2>Record</h2></div><p class="pp-empty">${window.__altsState === 'ok' || SS_ON ? 'The record has not been written yet: it fills in after the next 5-minute refresh on the owner\'s Mac.' : 'The record is private, like the prices. Sign in with the owner\'s Google account to see it.'}</p></section>${bkBacktestHtml(BT)}`;
+  } else {
+    const rf = bkResults(R, bk.recF, bk.recN), nF = k => bkResults(R, k, 0).n;
+    $('bk-root').innerHTML = intro + bkTonight(R) + `<section class="card"><div class="pp-tools"><h2>Record</h2><span class="muted" style="font-size:12.5px">Live picks only. Flat 1 unit at the entry price; the quarter-Kelly line is a shadow for comparison, never the headline.</span></div>${bkKpis(R)}${bkCurve(R.curve) ? `<div class="bk-cv">${bkCurve(R.curve)}<span class="muted"><i class="bk-sw f"></i>flat $10 <i class="bk-sw k"></i>quarter-Kelly shadow</span></div>` : ''}${bkSlices(R)}
+      <div class="pp-tools" style="padding:10px 14px 0"><div class="seg" data-bkrecf role="group" aria-label="Show picks">${[['settled', 'Settled'], ['won', 'Won'], ['lost', 'Lost'], ['open', 'Open'], ['all', 'All']].map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${bk.recF === k}">${l} ${nF(k)}</button>`).join('')}</div><span class="muted" style="font-size:12.5px">${rf.n ? `${rf.n} picks, ${bkU(rf.sum)} flat. Newest game first; (n) is the stat the player actually had.` : ''}</span></div>
+      <div class="nt-tw"><table class="nt"><thead><tr><th class="l bk-x">First seen</th><th class="l">Pick</th><th class="l">Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${rf.rows || `<tr><td class="l" colspan="5"><p class="empty">No picks match this filter.</p></td></tr>`}</tbody></table></div>
+      ${rf.more ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkmore="rec">Show ${Math.min(25, rf.n - bk.recN)} more</button></div>` : ''}</section>${bkBacktestHtml(BT)}`;
+  }
+  $('bkfoot').innerHTML = `<div><b>Sources.</b> Sportsbook prices: <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Other venues used only for the fair price: their two-way lines with the margin removed (books up to 16% overround, exchanges up to 8%). Model chance: the same projection, distribution and calibration as Player Props.</div>
+    <div><b>The rules, in order.</b> Price -110 to -220 at a sportsbook. Fair chance from 3+ other venues, market edge 4%+. Model chance at least 2 points above the price's cost. Recent minutes 20+, no roster, returning-player or preseason hold, not Out, Doubtful or Questionable. One pick per player per game, at most 2 per team-game and 8 per slate. Core = market edge 6%+ and the model clears the price by 4+ points. The thresholds were set before any pick settled and are not tuned to results.</div>
+    <div><b>Not bets.</b> Two shadow logs test whether the gates add anything: legs the market liked but the model did not, and legs the model liked but the market did not. They are tracked and graded, never counted in the record above.</div>`;
+}
+function bkBacktestHtml(BT){
+  if (!BT || !BT.all) return '';
+  const rf = bkResults(BT, 'all', bk.btN), days = (BT.day && Object.keys(BT.day).length) || 0;
+  return `<section class="card"><div class="pp-tools"><h2>Backtest: the first nights</h2><span class="muted" style="font-size:12.5px">The recorded price tape replayed poll by poll through the same rules, with the board and the model files as they stood at each poll. ${BT.polls} polls, ${BT.boards} boards rebuilt, ${days} night${days === 1 ? '' : 's'} with picks. The model's fitted parameters were last refit 2026-10-09, before the season. Replayed, not live: read it as a check on the rules, not a result.</span></div>${bkKpis(BT)}${bkCurve(BT.curve) ? `<div class="bk-cv">${bkCurve(BT.curve)}</div>` : ''}${bkSlices(BT)}
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l bk-x">First seen</th><th class="l">Pick</th><th class="l">Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${rf.rows || `<tr><td class="l" colspan="5"><p class="empty">The rules made no picks in the replayed nights.</p></td></tr>`}</tbody></table></div>
+    ${rf.more ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkmore="bt">Show ${Math.min(25, rf.n - bk.btN)} more</button></div>` : ''}</section>`;
+}
+$('bk-root').addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('[data-bksignin]')){ ssSignIn(); return; }
+  const rf = t.closest('[data-bkrecf] button[data-v]'); if (rf){ bk.recF = rf.dataset.v; bk.recN = 25; renderBankroll(); return; }
+  const m = t.closest('[data-bkmore]'); if (m){ if (m.dataset.bkmore === 'bt') bk.btN += 25; else bk.recN += 25; renderBankroll(); }
 });
 
 function pvShow(){
