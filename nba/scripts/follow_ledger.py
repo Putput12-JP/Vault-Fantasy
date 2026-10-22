@@ -161,19 +161,25 @@ def run(root, now, W=None):
         if r.get('src') == 'polymarket' and r.get('type') in TYPES and r.get('start'):
             meta[r['k']] = r
     quotes = defaultdict(list)
-    for r in load_jsonl(dirs, 'polymarket.jsonl'):
+    for r in list(load_jsonl(dirs, 'polymarket.jsonl')) + list(load_jsonl(dirs, 'fastpm.jsonl')):      # fast_poll.py adds a quote every minute
         if r.get('v'):                                          # a null quote means the market left the feed
             quotes[r['k']].append((r['t'], *r['v']))
     for qs in quotes.values():
         qs.sort(key=lambda x: x[0])
-    polls = sorted({r['t'] for r in load_jsonl(dirs, 'polls.jsonl') if r.get('src') == 'polymarket' and r.get('ok')})
+    polls = sorted({r['t'] for r in load_jsonl(dirs, 'polls.jsonl') if r.get('src') == 'polymarket' and r.get('ok')}
+                   | {r['t'] for r in load_jsonl(dirs, 'fastpoll.jsonl') if r.get('qok')})
     gen = 0
     try:
         gen = dt.datetime.fromisoformat((W.get('generated') or '').replace('Z', '+00:00')).timestamp()
     except ValueError:
         pass
     first = {}
-    tape = sorted((r for r in load_jsonl(dirs, 'tape.jsonl') if r.get('s') == 'pm' and r.get('w')), key=lambda r: r['t'])
+    tp = {}
+    for name in ('tape.jsonl', 'tape_fast.jsonl'):                  # the same ticket can be in both: merge by id, keep the fast row's `f`
+        for r in load_jsonl(dirs, name):
+            if r.get('s') == 'pm' and r.get('w'):
+                tp[r['id']] = {**tp.get(r['id'], {}), **r}
+    tape = sorted(tp.values(), key=lambda r: r['t'])
     both = defaultdict(set)                                     # (wallet, market) -> outcomes it has bought so far
     new = 0
     today = os.path.join(root, 'snapshots', dt.datetime.fromtimestamp(now, ET).date().isoformat())
@@ -197,7 +203,7 @@ def run(root, now, W=None):
         rows[i], where[i] = {
             'id': i, 'w': w, 'who': r.get('who'), 'k': r['k'], 'o': r['o'], 'g': m.get('event'), 'type': m['type'], 'line': m.get('line'),
             't': r['t'], 'usd': r['usd'], 'px': r['px'], 'tip': m['start'], 'cohort': coh, 'lab': W['sharp'].get(w), 'hedge': bool(opp),
-            'bf': bool(r['t'] < FREEZE_T or gen > m['start']), 'f': {}, 'seen': now}, today
+            'bf': bool(r['t'] < FREEZE_T or gen > m['start']), 'f': {}, 'seen': now, 'det': (r['f'] - r['t']) if r.get('f') else None}, today
         new += 1
     graded = 0
     for i, ev in rows.items():
