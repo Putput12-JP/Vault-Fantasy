@@ -2633,7 +2633,7 @@ const PAGES = [
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
     ['Pick\'em of the Night', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'The best pick\'em slip we can build tonight: one player per team, from PrizePicks, Underdog or Sleeper, with the honest odds that it pays.', 'pairs'],
     ['Combo Check', SVG('<rect x="3" y="6" width="8" height="12" rx="2"/><rect x="13" y="6" width="8" height="12" rx="2"/><path d="m5.5 12 1.8 1.8 3-3.6"/>'), 'Alt-line combos priced fairly: legs between -140 and +200 from any players, the fair odds, and the price to take. Type your book\'s price to see what it is worth.', 'combo'],
-    ['Bankroll Builder', SVG('<path d="M3 20h18"/><path d="M6 20v-5M11 20v-9M16 20v-7M21 20V6"/><path d="m4 9 5-4 4 3 7-5"/>'), 'Short-priced props (-110 to -220) where the market and the model both say the price is too long, tracked flat 1 unit on a $1,000 paper bankroll.', 'bankroll'],
+    ['Bankroll Builder', SVG('<path d="M3 20h18"/><path d="M6 20v-5M11 20v-9M16 20v-7M21 20V6"/><path d="m4 9 5-4 4 3 7-5"/>'), 'Short-priced props (-110 to -220) at a price as good as or better than the market\'s fair price, tracked flat 1 unit on a $1,000 paper bankroll.', 'bankroll'],
     ['My Bets', SVG('<path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 8h6M9 12h6"/>'), 'The bets you placed: results, closing-line value and where your edge is coming from.', 'mybets'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
@@ -2931,7 +2931,7 @@ function show(v){
   }
   if (v === 'bankroll'){
     $('tname').textContent = 'Bankroll Builder';
-    $('tsub').textContent = 'SHORT PRICES · MARKET AND MODEL AGREE · TRACKED FLAT 1 UNIT';
+    $('tsub').textContent = 'SHORT PRICES · AT OR BETTER THAN THE MARKET · TRACKED FLAT 1 UNIT';
     renderBankroll();
     if (!boardTried) loadBoard();
     return;
@@ -8810,9 +8810,9 @@ $('cc-root').addEventListener('click', e => {
 });
 
 // ── Bankroll Builder (#bankroll) ──
-// Short-priced props (-110 to -220 at a sportsbook) where the other venues' no-vig price AND our model both say the price is too long.
+// Short-priced props (-110 to -220 at a sportsbook) priced at or better than the other venues' no-vig price. The band alone is not an edge. The model's chance is recorded, not a gate.
 // The picks, their prices, settlement and the record come from scripts/bankroll_builder.py on the owner's Mac (the prices are SmartStake's,
-// so like Combo Check this page is private: local ?ss, or the owner's Google login). The rules are frozen in docs/experiment-log.md section 12.
+// so like Combo Check this page is private: local ?ss, or the owner's Google login). The rules (v2) are frozen in docs/experiment-log.md section 12.
 let bk = {recF: 'settled', recN: 25, btN: 25};
 const bkU = x => x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(2)}u`;
 const bkP = (x, d = 1) => x == null ? '<span class="muted">none</span>' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`;
@@ -8831,8 +8831,8 @@ function bkKpis(R){
 function bkSlices(R){
   const row = (name, x) => `<tr><td class="l">${esc(name)}</td><td>${x.picks}</td><td>${x.settled}</td><td>${x.won}-${x.settled - x.won}</td><td class="${x.units >= 0 ? 'pos' : 'neg'}">${bkU(x.units)}</td><td>${bkP(x.roi)}</td><td>${bkP(x.clv)}<small>${x.clv_n} picks</small></td></tr>`;
   const grp = (label, o, fmt = k => k) => Object.entries(o || {}).map(([k, x]) => row(`${label} ${fmt(k)}`, x)).join('');
-  const SH = {market_only: 'The model disagreed (not bets)', model_only: 'Only the model liked it (not bets)'};
-  return `<div class="nt-tw"><table class="nt"><thead><tr><th class="l">Slice</th><th>Picks</th><th>Settled</th><th>W-L</th><th>Units</th><th>ROI</th><th>CLV</th></tr></thead><tbody>${grp('Tier', R.tier, k => k === 'core' ? 'Core' : 'Standard')}${grp('Edge', R.edge)}${grp('', R.kind, k => k === 'alt' ? 'Alt lines' : 'Main lines')}${grp('', R.side, k => k === 'over' ? 'Overs' : 'Unders')}${Object.entries(R.day || {}).map(([k, x]) => row(k, x)).join('')}${Object.entries(R.shadow || {}).map(([k, x]) => x.picks ? row(SH[k], x) : '').join('')}</tbody></table></div>`;
+  const SH = {model_only: 'Shadow: the model liked it, the market did not (not bets)'};
+  return `<div class="nt-tw"><table class="nt"><thead><tr><th class="l">Slice</th><th>Picks</th><th>Settled</th><th>W-L</th><th>Units</th><th>ROI</th><th>CLV</th></tr></thead><tbody>${grp('Tier', R.tier, k => k === 'core' ? 'Core (4%+)' : 'Standard (0-4%)')}${grp('Model', R.model)}${grp('', R.held)}${grp('Edge', R.edge)}${grp('', R.kind, k => k === 'alt' ? 'Alt lines' : 'Main lines')}${grp('', R.side, k => k === 'over' ? 'Overs' : 'Unders')}${Object.entries(R.day || {}).map(([k, x]) => row(k, x)).join('')}${Object.entries(R.shadow || {}).map(([k, x]) => x.picks ? row(SH[k], x) : '').join('')}</tbody></table></div>`;
 }
 function bkResults(R, filter, n, moreAttr){
   const L = R.list || [], F = {settled: c => c.res === 'won' || c.res === 'lost', won: c => c.res === 'won', lost: c => c.res === 'lost', open: c => !c.res, all: () => true},
@@ -8842,7 +8842,7 @@ function bkResults(R, filter, n, moreAttr){
 }
 function bkTonight(R){
   const now = Date.now() / 1000, L = (R.list || []).filter(c => !c.res && c.tip > now).sort((a, b) => a.tip - b.tip || (a.tier === 'core' ? 0 : 1) - (b.tier === 'core' ? 0 : 1) || b.mk0 - a.mk0);
-  const last = R.last, fun = last ? `Last check ${agoFrom(last.at, now)}: ${last.band} sportsbook legs priced -110 to -220, ${last.market} clear the market gate (3+ other venues, 4%+ better than their price), ${last.model_pass} of those also clear the model.` : '';
+  const last = R.last, fun = last ? `Last check ${agoFrom(last.at, now)}: ${last.band} sportsbook legs priced -110 to -220, ${last.market} are priced at or better than the market's fair price (3+ other venues), ${last.model_pass} of those the model also likes.` : '';
   const tr = c => `<tr><td class="l"><div class="pl">${c.pid ? avSm(c.pid, c.name) : ''}<div><b>${c.pid ? `<a class="plink" href="#player/${c.pid}">${esc(c.name)}</a>` : esc(c.name)}</b><small>${esc(c.team)} · ${etFmt(c.tip, {weekday: 'short'})} ${clock(c.tip)} ${TZL}</small></div></div></td>
     <td class="l bk-x">${esc(c.away)} @ ${esc(c.home)}</td>
     <td class="l">${c.side === 'over' ? 'Over' : 'Under'} <b>${c.line}</b> ${PP_SHORT[c.stat] || c.stat}<small class="cc-alt ${c.alt ? 'on' : ''}">${c.alt ? `alt · main ${c.main}` : 'main line'}</small><small class="bk-m">${esc(c.away)} @ ${esc(c.home)} · market ${pc(c.pf0, 1)} · model ${pc(c.pm0, 1)}</small></td>
@@ -8852,7 +8852,7 @@ function bkTonight(R){
   const games = new Set(L.map(c => c.away + c.home)).size;
   return `<section class="card"><div class="pp-tools"><h2>Tonight's picks</h2><span class="muted" style="font-size:12.5px">${L.length ? `${L.length} pick${L.length === 1 ? '' : 's'} across ${games} game${games === 1 ? '' : 's'}. ` : ''}Each is one sportsbook bet at the price shown when it first qualified. Flat 1 unit.</span></div>
     ${L.length ? `<div class="nt-tw"><table class="nt cc-st"><thead><tr><th class="l">Player</th><th class="l bk-x">Game</th><th class="l">Our play</th><th class="l">Price</th><th class="bk-x">Market chance</th><th class="bk-x">Model chance</th><th>Edge</th><th class="l bk-x">Tier</th></tr></thead><tbody>${L.map(tr).join('')}</tbody></table></div>`
-      : `<p class="pp-empty">No pick clears every gate right now. At -110 to -220 the books price close to fair, so many slates have only a few and some have none. ${esc(fun)}</p>`}
+      : `<p class="pp-empty">Nothing is priced at or better than the market's fair price right now. At -110 to -220 the books price a little worse than fair almost everywhere, so some checks come up empty. ${esc(fun)}</p>`}
     ${L.length && fun ? `<p class="muted" style="padding:0 14px 12px;font-size:12px">${esc(fun)}</p>` : ''}</section>`;
 }
 function renderBankroll(){
@@ -8860,7 +8860,7 @@ function renderBankroll(){
   const gate = window.__altsState === 'signin' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><button class="pv-ghost" type="button" data-bksignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>`
     : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-bksignin="1">Use another account</button></div>` : '';
   const intro = `<section class="card pp-read"><p class="big">Bankroll Builder</p>
-    <p>Short-priced props the market and our model <b>both</b> say are too long. One sportsbook bet (no parlays) priced <b>-110 to -220</b>, at least 4% better than the no-vig price of three or more other venues quoting the same line, with our model's chance also clearing the price. Main lines and alt lines both count. Every pick is logged at the first price it qualifies, followed to tip, and graded flat 1 unit ($10) on a $1,000 paper bankroll.</p>
+    <p>One sportsbook bet (no parlays) priced <b>-110 to -220</b> at <b>or better than the market's fair price</b>: the no-vig price of three or more other venues quoting the same line. The price band by itself is not an edge (bet blindly, it lost about 7% on the first nights); the edge is getting a price the rest of the market says is fair or better. Main and alt lines both count. Core = 4%+ better than fair. Our model's chance is recorded on every pick but does not pick the bets. Every pick is logged at the first price it qualifies, followed to tip, and graded flat 1 unit ($10) on a $1,000 paper bankroll.</p>
     <p>Sportsbook prices via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Nothing here is proof of anything until <b>100 settled picks</b> and a closing-line value that is positive by two standard errors. Until then it is a record to watch, not a system to trust.</p>${gate}</section>`;
   if (!R || !R.all){
     $('bk-root').innerHTML = intro + `<section class="card"><div class="pp-tools"><h2>Record</h2></div><p class="pp-empty">${window.__altsState === 'ok' || SS_ON ? 'The record has not been written yet: it fills in after the next 5-minute refresh on the owner\'s Mac.' : 'The record is private, like the prices. Sign in with the owner\'s Google account to see it.'}</p></section>${bkBacktestHtml(BT)}`;
@@ -8872,13 +8872,13 @@ function renderBankroll(){
       ${rf.more ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkmore="rec">Show ${Math.min(25, rf.n - bk.recN)} more</button></div>` : ''}</section>${bkBacktestHtml(BT)}`;
   }
   $('bkfoot').innerHTML = `<div><b>Sources.</b> Sportsbook prices: <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Other venues used only for the fair price: their two-way lines with the margin removed (books up to 16% overround, exchanges up to 8%). Model chance: the same projection, distribution and calibration as Player Props.</div>
-    <div><b>The rules, in order.</b> Price -110 to -220 at a sportsbook. Fair chance from 3+ other venues, market edge 4%+. Model chance at least 2 points above the price's cost. Recent minutes 20+, no roster, returning-player or preseason hold, not Out, Doubtful or Questionable. One pick per player per game, at most 2 per team-game and 8 per slate. Core = market edge 6%+ and the model clears the price by 4+ points. The thresholds were set before any pick settled and are not tuned to results.</div>
-    <div><b>Not bets.</b> Two shadow logs test whether the gates add anything: legs the market liked but the model did not, and legs the model liked but the market did not. They are tracked and graded, never counted in the record above.</div>`;
+    <div><b>The rules, in order.</b> Price -110 to -220 at a sportsbook. Fair chance from 3+ other venues; the price must be at or better than it (market edge 0% or more). Recent minutes 20+, not a preseason game, not Out, Doubtful or Questionable. One pick per player per game, at most 2 per team-game and 20 per slate. Core = edge 4%+. These rules were chosen after looking at the first two nights' closing prices, so the backtest below is in-sample; only picks logged from now on count as evidence.</div>
+    <div><b>Not bets.</b> The model's chance is split out in the record (agrees or not). One shadow log tracks legs the model liked but the market priced worse than fair. It is graded but never counted in the record above.</div>`;
 }
 function bkBacktestHtml(BT){
   if (!BT || !BT.all) return '';
   const rf = bkResults(BT, 'all', bk.btN), days = (BT.day && Object.keys(BT.day).length) || 0;
-  return `<section class="card"><div class="pp-tools"><h2>Backtest: the first nights</h2><span class="muted" style="font-size:12.5px">The recorded price tape replayed poll by poll through the same rules, with the board and the model files as they stood at each poll. ${BT.polls} polls, ${BT.boards} boards rebuilt, ${days} night${days === 1 ? '' : 's'} with picks. The model's fitted parameters were last refit 2026-10-09, before the season. Replayed, not live: read it as a check on the rules, not a result.</span></div>${bkKpis(BT)}${bkCurve(BT.curve) ? `<div class="bk-cv">${bkCurve(BT.curve)}</div>` : ''}${bkSlices(BT)}
+  return `<section class="card"><div class="pp-tools"><h2>Backtest: the first nights</h2><span class="muted" style="font-size:12.5px">The recorded price tape replayed poll by poll through the same rules (chosen after seeing these nights, so in-sample), with the board and the model files as they stood at each poll. ${BT.polls} polls, ${BT.boards} boards rebuilt, ${days} night${days === 1 ? '' : 's'} with picks. The model's fitted parameters were last refit 2026-10-09, before the season. Replayed, not live: read it as a check on the rules, not a result.</span></div>${bkKpis(BT)}${bkCurve(BT.curve) ? `<div class="bk-cv">${bkCurve(BT.curve)}</div>` : ''}${bkSlices(BT)}
     <div class="nt-tw"><table class="nt"><thead><tr><th class="l bk-x">First seen</th><th class="l">Pick</th><th class="l">Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${rf.rows || `<tr><td class="l" colspan="5"><p class="empty">The rules made no picks in the replayed nights.</p></td></tr>`}</tbody></table></div>
     ${rf.more ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkmore="bt">Show ${Math.min(25, rf.n - bk.btN)} more</button></div>` : ''}</section>`;
 }

@@ -4,19 +4,20 @@
   python3 scripts/bankroll_builder.py --dry           # print the picks the rules would make right now
   python3 scripts/bankroll_builder.py --backtest      # replay the recorded tape night by night through the same rules (see BACKTEST below)
 
-THE RULES (frozen in nba/docs/experiment-log.md section 12, before any pick settled). A pick is ONE sportsbook leg (no parlays) that passes all of:
+THE RULES, v2 (frozen in nba/docs/experiment-log.md section 12 on 2026-10-22, before any live pick settled; v1 required a 4% edge AND a model gate and made 8 picks in
+two nights, see nba/docs/bankroll-builder-backtest.md). A pick is ONE sportsbook leg (no parlays) that passes all of:
   1. price -110 to -220 at a sportsbook (exchanges are fair-price sources only: their fees are not in the tape); any line, main or alt, tagged
-  2. the fair chance from 3+ OTHER venues quoting both sides of the same line (margin removed, the median), and the market edge (fair x decimal odds - 1) >= 4%
-  3. the model's chance (calibrated, the page's `pv`) >= the price's cost + 2 points. No model number, no pick.
-  4. recent minutes >= 20, no roster / returning-player / preseason hold, not Out / Doubtful / Questionable / Inactive
-  5. one pick per player per game; at most 2 per team-game and 8 per slate (ET day); a game within 36 hours
-  6. logged at the first poll it qualifies (its entry price), followed to tip (its closing price), graded flat 1 unit at the entry price
-  Tier: Core = market edge >= 6% and the model clears the price by 4+ points; Standard = the rest. Staking: flat 1u on a $1,000 paper bankroll
-  (1u = $10, as Vault Ledger); a quarter-Kelly column (cap 2% of the bankroll, on the market's fair chance) runs beside it as a SHADOW.
+  2. the price is AT OR BETTER than the market's: the fair chance from 3+ OTHER venues quoting both sides of the same line (margin removed, the median) times the
+     decimal odds is >= 1, i.e. market edge >= 0%. The price band alone is not an edge: every leg in it, bet at its best price, lost 7.3% on the first nights.
+  3. recent minutes >= 20, not a preseason game, not Out / Doubtful / Questionable / Inactive (needs the model's board; no board, no pick). A roster or returning-player
+     hold guards the MODEL's minutes, which no longer select picks, so it is recorded on the pick (held), not blocking
+  4. one pick per player per game; at most 2 per team-game and 20 per slate (ET day); a game within 36 hours
+  5. logged at the first poll it qualifies (its entry price), followed to tip (its closing price), graded flat 1 unit at the entry price
+  Tier: Core = market edge >= 4%; Standard = 0% to 4%. The MODEL is not a gate: its chance is recorded on every pick and the record is split by whether it cleared the
+  price by 2+ points ("model agrees"), so we keep testing whether it adds anything. Staking: flat 1u on a $1,000 paper bankroll (1u = $10, as Vault Ledger); a
+  quarter-Kelly column (cap 2% of the bankroll, on the market's fair chance) runs beside it as a SHADOW.
 
-SHADOW LOGS (never counted in the headline; they test whether the gates add anything):
-  market_only  passed every gate except the model's (the model disagreed)
-  model_only   the model clears the price by 4+ points but the market's edge is under 1% (the market disagreed)
+SHADOW LOG (never counted in the headline): model_only = the model clears the price by 4+ points but the market says the price is worse than fair (edge < 0).
 
 THE MODEL'S CHANCE comes from nba/scripts/pricing.py, the same code the recorder and the page use: projection -> distribution -> calibration.
 Live it reads the board on the nba-live branch and today's model files from main. In a BACKTEST it reads, for each poll, the board rebuilt from
@@ -53,11 +54,11 @@ RAW_MAIN = f"https://raw.githubusercontent.com/{REPO}/main/nba/data/"
 FILE_CACHE_S = 6 * 3600
 
 BAND_LO, BAND_HI = CC.prob(-110), CC.prob(-220)        # the price band as the chance it implies: 52.4% to 68.8%
-MIN_VENUES, MK_MIN = 3, 0.04                           # other venues quoting both sides; market edge
-MODEL_MARGIN, CORE_MK, CORE_MARGIN = 0.02, 0.06, 0.04
-MODEL_ONLY_MARGIN, MODEL_ONLY_MK_MAX = 0.04, 0.01      # shadow: model clears the price by 4+, the market edge is under 1%
+MIN_VENUES, MK_MIN = 3, 0.0                            # other venues quoting both sides; market edge (price at or better than fair)
+MODEL_MARGIN, CORE_MK = 0.02, 0.04                    # the model "agrees" when it clears the price by 2 points; Core = market edge 4%+
+MODEL_ONLY_MARGIN, MODEL_ONLY_MK_MAX = 0.04, 0.0       # shadow: model clears the price by 4+ while the market says the price is worse than fair
 MIN_RECENT_MIN = 20.0
-CAP_TEAM_GAME, CAP_SLATE, CAP_SHADOW_SLATE = 2, 8, 30
+CAP_TEAM_GAME, CAP_SLATE, CAP_SHADOW_SLATE = 2, 20, 30
 TRACK_H = 36                                           # hours before tip a pick can be made
 BANKROLL0, UNIT_USD = 1000.0, 10.0
 KELLY_FRAC, KELLY_CAP = 0.25, 0.02
@@ -163,8 +164,9 @@ class Oracle:
             return None
         hold = self.pr.roster_hold(team, g, self.status, self.cache, mm.get("src")) or self.pr.returning_hold(pid, team, g)
         st = self.status.get(pid)
-        why = hold["why"] if hold else "status:" + st if st in BAD_STATUS else "minutes" if recent < MIN_RECENT_MIN else None
-        return {"mu": mm["mu"], "extra": mm["extra"], "mmin": mm["min"], "recent": recent, "team": team, "why": why, "pid": pid}
+        # hard gates only: a roster / returning-player hold protects the MODEL's minutes projection, which no longer selects picks, so it is recorded (held), not blocking
+        why = "preseason" if hold and hold["why"] == "preseason" else "status:" + st if st in BAD_STATUS else "minutes" if recent < MIN_RECENT_MIN else None
+        return {"mu": mm["mu"], "extra": mm["extra"], "mmin": mm["min"], "recent": recent, "team": team, "why": why, "pid": pid, "held": hold["why"] if hold else None}
 
     def chance(self, leg, stat, side, line):
         over = self.pr.cal(stat, self.pr.p_over_raw(stat, leg["mu"], line, leg["extra"]))
@@ -202,10 +204,10 @@ def kelly_frac(pf, dec):
 
 def mk_pick(c, ev, pm, kind, now):
     margin = pm - c["cost"]
-    tier = "core" if c["mk"] >= CORE_MK and margin >= CORE_MARGIN else "standard"
+    tier = "core" if c["mk"] >= CORE_MK else "standard"
     return {"k": f"{kind}|{c['gid']}|{c['name']}", "kind": kind, "type": "straight", "book": c["book"], "first": now, "tip": c["tip"], "gid": c["gid"], "name": c["name"],
             "team": ev["team"], "pid": ev["pid"], "away": c["away"], "home": c["home"], "stat": c["stat"], "side": c["side"], "line": c["line"], "main": c["main"], "alt": c["alt"],
-            "tier": tier, "odds0": c["odds"], "dec0": round(c["dec"], 4), "pf0": round(c["pf"], 4), "n0": c["n"], "pm0": round(pm, 4), "mk0": round(c["mk"], 4),
+            "tier": tier, "agree": margin >= MODEL_MARGIN, "held": ev.get("held"), "odds0": c["odds"], "dec0": round(c["dec"], 4), "pf0": round(c["pf"], 4), "n0": c["n"], "pm0": round(pm, 4), "mk0": round(c["mk"], 4),
             "md0": round(pm / c["cost"] - 1, 4), "kf": kelly_frac(c["pf"], c["dec"]),
             "legs": [{"name": c["name"], "stat": c["stat"], "side": c["side"], "line": c["line"], "gid": c["gid"], "tip": c["tip"], "odds": c["odds"]}]}
 
@@ -222,7 +224,7 @@ def step(S, quotes, now, oracle_for, props=None):
     if need:
         oracle = oracle_for(now)
         if oracle:
-            by_kind = {"pick": [], "market_only": [], "model_only": []}
+            by_kind = {"pick": [], "model_only": []}
             for c in need:
                 lg = oracle.leg(c["name"], c["stat"], c["gid"], c["away"], c["home"])
                 if not lg or lg["why"]:
@@ -230,10 +232,10 @@ def step(S, quotes, now, oracle_for, props=None):
                 pm = oracle.chance(lg, c["stat"], c["side"], c["line"])
                 margin = pm - c["cost"]
                 if c["n"] >= MIN_VENUES and c["mk"] >= MK_MIN:
-                    by_kind["pick" if margin >= MODEL_MARGIN else "market_only"].append((c, lg, pm))
-                elif margin >= MODEL_ONLY_MARGIN:
+                    by_kind["pick"].append((c, lg, pm))
+                elif c["mk"] < MODEL_ONLY_MK_MAX and margin >= MODEL_ONLY_MARGIN:
                     by_kind["model_only"].append((c, lg, pm))
-            stats["model_pass"] = len(by_kind["pick"])
+            stats["model_pass"] = sum(1 for c, lg, pm in by_kind["pick"] if pm - c["cost"] >= MODEL_MARGIN)
             for kind, rows in by_kind.items():
                 rows.sort(key=lambda r: (-r[0]["mk"], -(r[2] - r[0]["cost"])))
                 store = P if kind == "pick" else SH
@@ -296,17 +298,18 @@ def summarize(S, extra=None):
     by = lambda f, ps=P: {k: agg([p for p in ps if f(p) == k]) for k in sorted({f(p) for p in ps}, key=str)}
     ebin = lambda p: "4-6%" if p["mk0"] < .06 else "6-9%" if p["mk0"] < .09 else "9%+"
     keep = ("name", "pid", "team", "away", "home", "stat", "side", "line", "main", "alt", "book", "tier", "first", "tip", "odds0", "dec0", "decN", "pf0", "n0", "pm0", "mk0", "md0",
-            "res", "units", "clv", "kf")
+            "res", "units", "clv", "kf", "agree", "held")
     trim = lambda p: {k: p.get(k) for k in keep} | {"y": (p["legs"][0].get("y"))}
     full = sorted(P, key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]
     cv = curve(P)
     rec = {"all": agg(P), "tier": by(lambda p: p["tier"]), "book": by(lambda p: p["book"]), "stat": by(lambda p: p["stat"]), "side": by(lambda p: p["side"]),
            "kind": by(lambda p: "alt" if p["alt"] else "main"), "edge": by(ebin), "day": by(lambda p: et_day(p["tip"])),
-           "shadow": {"market_only": agg([p for p in SH if p["kind"] == "market_only"]), "model_only": agg([p for p in SH if p["kind"] == "model_only"])},
+           "model": by(lambda p: "agrees" if p.get("agree") else "disagrees"), "held": by(lambda p: "held: " + p["held"] if p.get("held") else "no hold"),
+           "shadow": {"model_only": agg([p for p in SH if p["kind"] == "model_only"])},
            "curve": cv, "bankroll": {"start": BANKROLL0, "unit_usd": UNIT_USD, "flat": cv[-1][1] if cv else BANKROLL0, "kelly_shadow": cv[-1][2] if cv else BANKROLL0},
            "capped": {kind: {why: len(v) for why, v in d.items()} for kind, d in (S.get("capped") or {}).items()},
            "list": [trim(p) for p in full], "last": S.get("last")}
-    rec.update(extra or {})
+    rec.update(dict(extra or {}, rules="v2"))
     return rec
 
 
@@ -322,7 +325,7 @@ def run(dry=False):
     oracle_for = lambda _n: memo.setdefault("o", load_live_oracle())
     before = set(S["picks"])
     stats = step(S, quotes, now, oracle_for)
-    print(f"{stats['band']} legs in the price band, {stats['market']} pass the market gate, {stats['model_pass']} also pass the model, {stats['new']} new picks")
+    print(f"{stats['band']} legs in the price band, {stats['market']} at or better than the market's price, {stats['model_pass']} of those the model also likes, {stats['new']} new picks")
     if dry:
         for p in sorted(S["picks"].values(), key=lambda p: -p["mk0"]):
             print(f"  {p['tier']:8} {p['book']:10} mkt +{p['mk0']*100:4.1f}% ({p['n0']} venues)  model {p['pm0']*100:4.1f}% vs {100/p['dec0']:4.1f}%  "
