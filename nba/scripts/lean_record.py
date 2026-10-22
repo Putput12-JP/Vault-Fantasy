@@ -106,3 +106,65 @@ if __name__ == '__main__':
         print(meta[k]['player'], meta[k]['stat'], rows[k], meta[k].get('held', ''))
     print('held:', sum(1 for m in meta.values() if m.get('held')), ' O:', sum(1 for r in rows.values() if r[4] == 'O'), ' U:', sum(1 for r in rows.values() if r[4] == 'U'))
     print('row errors:', PX.ROW_ERRORS[:3] if (PX := __import__('pricing')) else '')
+
+
+# ── settling ─────────────────────────────────────────────────────────────────────────────────
+COLS = ['game', 'pid', 'player', 'team', 'stat', 'clock', 'line', 'mu', 'sd', 'p', 'side', 'p_blend', 'p_mkt', 'min', 'starter',
+        'price', 'book', 'held', 'flip', 'y', 'res', 'units']
+DAY_KEYS = ('c0', 'f0', 'c1', 'f1')      # clock (c close, f first) + held flag: the small per-day summary kept in track.json
+
+
+def grade(side, line, y):
+    """'W' / 'L' / 'P' (landed on the line) for a lean on side 'O' or 'U'."""
+    if y == line:
+        return 'P'
+    return 'W' if (y > line) == (side == 'O') else 'L'
+
+
+def record(root, now, prev, rescan_days, games, L, sub='leans'):
+    """Settle every final game's leans from the box score. Writes <root>/<sub>/<tip ET day>.json for each day in the rescan window:
+        {'day', 'cols': COLS, 'games': {gid: [matchup, tip]}, 'rows': [[...COLS]]}
+    two rows per lean (clock 'f' = first sighting, 'c' = last before tip), each graded against its own line. res: W / L / P (push) / V (player
+    did not play: void). units: 1-unit profit at the stored price of the leaned side, null when none was stored (never inferred); a push is 0.
+    Returns {day: {'c0': [n, w, l, p, v], ...}}, merged over `prev` (days outside the window are kept as they were); c / f = clock, 0 / 1 = not held / held.
+    `games` picks which games count (the season, or the preseason). The first clock needs the day folder before the tip day, so one extra day is read."""
+    import json as _json
+    out = dict(prev or {})
+    since = L.tip_day(now - rescan_days * 86400)
+    back = L.tip_day(now - (rescan_days + 1) * 86400)
+    per = {}
+    for k, x in L.load_src(root, 'leans', back).items():
+        m = x['meta']
+        pre = [v for t, v in sorted(x['series'], key=lambda z: (z[0], z[1] is None)) if v is not None and m and t < m['tip']]
+        if not m or not pre or L.tip_day(m['tip']) < since or now < m['tip'] + L.SETTLE_AFTER_S or (games and not games(str(m['game']))):
+            continue
+        per.setdefault(m['game'], []).append((m, pre[0], pre[-1]))
+    days = {}
+    for gid, items in per.items():
+        bx = L.box(root, gid)
+        if bx is None:
+            continue
+        for m, first, close in items:
+            st = bx.get(int(m['pid']))
+            y = sum(st.get(c, 0) for c in L.STAT_COL[m['stat']]) if st else None
+            for clock, v in (('f', first), ('c', close)):
+                line, mu, sd, p, side, pb, pm, mn, starter, price, book, src = v
+                res = 'V' if y is None else grade(side, line, y)
+                units = None if res == 'V' or price is None else (0.0 if res == 'P' else round(L.profit('book', price, res == 'W'), 4))
+                days.setdefault(L.tip_day(m['tip']), {'games': {}, 'rows': []})
+                d = days[L.tip_day(m['tip'])]
+                d['games'][gid] = [m['matchup'], m['tip']]
+                d['rows'].append([gid, m['pid'], m['player'], m['team'], m['stat'], clock, line, mu, sd, p, side, pb, pm, mn, starter, price, book,
+                                  m.get('held'), int(first[4] != close[4]), y, res, units])
+    os.makedirs(os.path.join(root, sub), exist_ok=True)
+    for day, d in days.items():
+        d['rows'].sort(key=lambda r: (r[0], r[2], r[4], r[5]))
+        with open(os.path.join(root, sub, f'{day}.json'), 'w') as f:
+            _json.dump({'day': day, 'cols': COLS, 'games': d['games'], 'rows': d['rows']}, f, separators=(',', ':'))
+        s = {k: [0, 0, 0, 0, 0] for k in DAY_KEYS}
+        for r in d['rows']:
+            c = s[f"{r[5]}{1 if r[17] else 0}"]
+            c[0] += 1
+            c[{'W': 1, 'L': 2, 'P': 3, 'V': 4}[r[20]]] += 1
+        out[day] = s
+    return out

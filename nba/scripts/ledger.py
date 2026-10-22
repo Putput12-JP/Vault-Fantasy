@@ -927,6 +927,14 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         SETTLE_ERR['held plays record'] = f'{type(e).__name__}: {e}'[:120]
         print('held bets record failed:', e, flush=True)
         held_bets_days = track.get('held_bets_days')
+    try:                                          # the model's lean on every priced prop, graded against the result (lean_record.py, docs/lean-tracking.md)
+        import lean_record as LR
+        leans_days = LR.record(root, now, track.get('leans_days'), rescan_days, season, me)
+        leans_pre = LR.record(root, now, (track.get('preseason') or {}).get('leans_days'), rescan_days, lambda g: not season(g), me, sub='leans/pre')
+    except Exception as e:
+        SETTLE_ERR['lean record'] = f'{type(e).__name__}: {e}'[:120]
+        print('lean record failed:', e, flush=True)
+        leans_days, leans_pre = track.get('leans_days'), (track.get('preseason') or {}).get('leans_days')
     try:                                          # Novig paper trading, settled from the box score (novig_paper.py)
         import novig_paper as NPT
         novig_days = NPT.record(root, now, track.get('novig_days'), rescan_days, season, me)
@@ -938,7 +946,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
     pre = {'n': sum(r[CUBE_COLS.index('bets')] for r in pcube), 'cube': pcube,
            'minutes_days': minutes_record(root, now, P0.get('minutes_days'), rescan_days, games=lambda g: not season(g)),
            'wire_days': wire_record(root, now, P0.get('wire_days'), rescan_days, games=lambda g: not season(g)),
-           'signals': P0.get('signals'), 'sim_days': sim_pre, 'psim_days': psim_pre, 'gap_days': gap_pre, 'held_days': held_pre, 'novig_days': novig_pre, 'pkn_days': pkn_pre}
+           'signals': P0.get('signals'), 'sim_days': sim_pre, 'psim_days': psim_pre, 'gap_days': gap_pre, 'held_days': held_pre, 'novig_days': novig_pre, 'pkn_days': pkn_pre, 'leans_days': leans_pre}
     try:                                          # closing prices + box lines for users' own bet logs
         closes_record(root, now, rescan_days, corrected={str(g) for g in corrected})
     except Exception as e:
@@ -955,7 +963,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         signals = track.get('signals')
     box_changes = (list(BOX_CHANGES) + (track.get('box_changes') or []))[:BOX_CHANGES_KEEP]
     STUCK[:] = stuck_games(root, now, tips, changed)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre, 'box_changes': box_changes}
     with open(tpath, 'w') as f:

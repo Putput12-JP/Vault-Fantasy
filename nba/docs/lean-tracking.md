@@ -40,6 +40,21 @@ questions are unmeasured:
 - ROI is context only, at the stored price of the leaned side. No stored price means hit rate only. No price is ever inferred.
 - Any cell that improves is flagged for close monitoring with its sample size.
 
+## Settle format and counting (added with phase 3, before any lean settled)
+
+- `lean_record.record()` runs inside `ledger.settle`. For each final game it writes `leans/<tip ET day>.json` (preseason: `leans/pre/`),
+  two rows per lean (clock `f` first sighting, `c` last before tip), each graded against its own line: W, L, P (push) or V (did not play).
+  `units` is the 1-unit profit at the stored price of the leaned side, null when none was stored. `track.json` keeps only a small per-day
+  count (`leans_days`), so the page loads the day files on demand and can cluster by game.
+- **Held leans** (roster guard, returning player, preseason) are recorded and tagged, but **the headline counts only non-held leans**.
+  Held leans are shown as their own group, never mixed in. (On 2026-10-22 every lean on the board was held by the team guard, so the
+  headline starts empty until the guard clears. This is by design and says nothing about the model.)
+- **Baselines are derived on the page, not stored:** always-under and always-over from W/L and the side; the market's side from
+  `p_mkt > 0.5`; agreement between model and market from `side` against that.
+- **Bins (for phase 5):** gap in standard deviations |mu - line| / sd: under 0.1, 0.1-0.25, 0.25-0.5, 0.5-1, 1 and over. Confidence bands
+  on the leaned side's model P: 50-55, 55-60, 60-65, 65 and over.
+- The first clock reads one extra day folder back, because a lean is first seen up to 24 hours before tip.
+
 ## Data and history
 
 - **Forward record** starts when the recorder change merges. It is the only record that carries a headline.
