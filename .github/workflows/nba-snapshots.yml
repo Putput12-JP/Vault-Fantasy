@@ -45,6 +45,7 @@ jobs:
             /nba/scripts/
             /nba/data/
             /data/pm_wallets*.json
+            /data/pm_wallet_rank.json
             /data/pm_closes.json
       - uses: actions/checkout@v5
         with:
@@ -57,6 +58,8 @@ jobs:
 
       - name: Record
         id: rec
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           git -C nba-data config user.name  "vault-bot"
           git -C nba-data config user.email "vault-bot@users.noreply.github.com"

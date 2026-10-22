@@ -838,6 +838,12 @@ def write_board(root, day, slate):
             board['sharp'] = sharp.build(board, day, root, slate.now, BTEAM, parse_event, kal_vol=KAL_VOL)
         except Exception:
             traceback.print_exc(limit=2)
+        try:                                            # shadow ledger of hypothetical copies of sharp accounts (docs/sharp-follow-prereg.md); logs only
+            import follow_ledger
+            follow_ledger.run(root, slate.now)
+            board['follow'] = follow_ledger.build_board(root, slate.now)   # the Follow board and Wallets pages
+        except Exception:
+            traceback.print_exc(limit=2)
         board.pop('_pkeys', None)
         try:                                            # one-time opening pass: early lines, Slate / Game Lines only
             from prop_board import opening
@@ -1125,7 +1131,12 @@ def main(argv):
             if os.environ.get('GITHUB_OUTPUT'):
                 open(os.environ['GITHUB_OUTPUT'], 'a').write('handoff=true\n')
             return
-        time.sleep(max(30, wait - (time.time() - slate.now)))
+        until = time.time() + max(30, wait - (time.time() - slate.now))
+        if os.environ.get('NO_FAST_POLL'):
+            time.sleep(until - time.time())
+        else:                                           # check sharp accounts' tickets every minute while waiting (fast_poll.py)
+            import fast_poll
+            fast_poll.sleep_polling(root, until)
 
 
 if __name__ == '__main__':
