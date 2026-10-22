@@ -1527,6 +1527,15 @@ table.nt .bt-best{color:var(--fg);font-weight:600}
 }
 @media(max-width:1000px){.fw-r,.fw-r.h{grid-template-columns:92px minmax(0,1fr) 56px;gap:10px}.fw-r.h{display:none}.fw-r .hm{display:none}.fw-mo{display:block;color:var(--fg2);font-size:12px;margin-top:2px}}
 @media (prefers-reduced-motion:reduce){.fb-chip{transition:none}}
+/* Prop Tells */
+.tl-r{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2.4fr) 150px;gap:16px;align-items:start;padding:13px 20px;border-top:1px solid var(--border);font-size:13px}
+.tl-r.h{padding-block:7px;align-items:center;font:10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.tl-p b{display:block;font-weight:600;font-size:14px}.tl-p small{color:var(--fg3);font-size:11.5px}
+.tl-t{display:grid;gap:8px}.tl-t>div{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:baseline}.tl-t p{margin:0;color:var(--fg2);line-height:1.45}.tl-t small{grid-column:2;color:var(--fg3);font-size:11.5px}
+.tl-k{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:var(--r-pill);border:1px solid var(--border2);font:500 10.5px var(--font-mono);color:var(--fg2);white-space:nowrap}
+.tl-k.p_pin{color:#7ab4ff;border-color:rgba(122,180,255,.4)}.tl-k.p_acct{color:var(--up);border-color:rgba(95,207,140,.35)}.tl-k.p_kal{color:var(--warn);border-color:rgba(229,185,85,.4)}.tl-k.p_behind{color:var(--fg);border-color:var(--fg3)}
+.tl-s b{display:block;font-weight:600}.tl-s small{display:block;color:var(--fg3);font-size:11.5px}
+@media(max-width:820px){.tl-r,.tl-r.h{grid-template-columns:1fr;gap:6px}.tl-r.h{display:none}.tl-t>div{grid-template-columns:1fr;gap:3px;justify-items:start}.tl-t small{grid-column:1}}
 /* Sharp Price */
 .nt-tw.sx-cap{overflow-y:auto;overscroll-behavior:contain}.nt-tw.sx-cap #xfeed thead th{position:sticky;top:0;z-index:1;background:var(--surface);box-shadow:0 1px 0 var(--border)}
 .np-b{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:center}.np-lead{display:flex;align-items:flex-end;gap:16px;padding:0 4px;min-width:0}.np-w{display:grid;gap:3px;min-width:0;align-self:center;padding:10px 0}.np-w b{font-size:18px;letter-spacing:-.02em}.np-pk{font-size:15px;font-weight:600}.np-w small{color:var(--fg3);font-size:12px}.np-pill{display:inline-flex}.np-e{margin-left:auto;display:grid;justify-items:end;gap:1px;align-self:center;text-align:right}.np-e b{font:600 28px var(--font-mono);letter-spacing:-.04em}.np-e small{color:var(--fg3);font-size:11.5px}
@@ -2530,6 +2539,20 @@ th{font-weight:500}
       <div class="kpis fw-trust" id="fwkpis"></div>
     </main>
     <footer id="fwfoot" hidden></footer>
+    <main id="v-tells" hidden>
+      <div class="banner" id="tlbanner" hidden></div>
+      <div class="kpis" id="tlkpis"></div>
+      <section class="card">
+        <div class="card-h"><div><h2>Props with a tell, games not yet tipped</h2><p>A tell is something the market did on one prop. Several tells on a prop do not add up to a bet; each is graded on its own below. Context only.</p></div>
+          <div class="filters" id="tlfilters"></div></div>
+        <div class="card-b fb" id="tlgames"></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><div><h2>Record by tell</h2><p>Graded against Pinnacle's closing price for the same prop and line, this season. A tell is an edge only after a pass rule written before its alerts were graded says so.</p></div></div>
+        <div class="card-b"><div class="nt-tw"><table class="nt" id="tlrecord"></table></div></div>
+      </section>
+    </main>
+    <footer id="tlfoot" hidden></footer>
     <main id="v-backtests" hidden>
       <div class="wk-sec-wrap" id="wk-works"></div>
       <div class="wk-sec-wrap" id="wk-finder" hidden></div>
@@ -2805,7 +2828,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['combo', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'follow', 'wallets', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
+const VIEWS = ['combo', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'follow', 'wallets', 'tells', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -3032,6 +3055,7 @@ const PAGES = [
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.', 'sharp'],
     ['Follow Board', SVG('<path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="16" r="3"/>'), 'Where ranked Polymarket accounts have put $1,000+ on games that have not tipped, the price now, and what a resting bid would take.', 'follow'],
     ['Wallets', SVG('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 8h5M19.5 5.5v5"/>'), 'Every Polymarket account ranked by its record against the close, shrunk to the league average and pooled across sports.', 'wallets'],
+    ['Prop Tells', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/><path d="M18 3l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/>'), 'Where the market is telling you something on a player prop: Pinnacle moving it, DraftKings priced behind Pinnacle, heavy Kalshi money, sharp accounts. Each tell has its own record.', 'tells'],
   ]],
   ['Betting', [
     ['What Works', SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'), 'Which bets passed the backtest, in dollars and plain-language confidence, and what does not work.', 'backtests'],
@@ -3311,6 +3335,7 @@ function show(v){
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
   $('v-follow').hidden = $('fbfoot').hidden = v !== 'follow';
   $('v-wallets').hidden = $('fwfoot').hidden = v !== 'wallets';
+  $('v-tells').hidden = $('tlfoot').hidden = v !== 'tells';
   $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
   $('v-player').hidden = $('plfoot').hidden = v !== 'player';
   $('v-combo').hidden = $('ccfoot').hidden = v !== 'combo';
@@ -3376,6 +3401,14 @@ function show(v){
     $('tsub').textContent = 'SKILL AGAINST THE CLOSE · SHRUNK TO THE LEAGUE AVERAGE · POOLED ACROSS SPORTS';
     renderWallets();
     if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'tells'){
+    $('tname').textContent = 'Prop Tells';
+    $('tsub').textContent = 'PINNACLE MOVES · DRAFTKINGS BEHIND PINNACLE · KALSHI MONEY · SHARP ACCOUNTS · EACH GRADED ON ITS OWN';
+    renderTells();
+    if (!boardTried) loadBoard();
+    if (!trackTried) loadTrack();
     return;
   }
   if (v === 'matchups'){
@@ -4279,6 +4312,7 @@ async function loadBoard(){
     if (view === 'sharp') renderSharp();
     if (view === 'follow') renderFollow();
     if (view === 'wallets') renderWallets();
+    if (view === 'tells') renderTells();
     if (view === 'pairs') renderPairs();
     if (view === 'player') renderPlayer();
     if (view === 'combo') renderCombo();
@@ -4601,6 +4635,7 @@ async function loadTrack(){
     if (view === 'sharp') renderSharp();
     if (view === 'follow') renderFollow();
     if (view === 'wallets') renderWallets();
+    if (view === 'tells') renderTells();
     if (['backtests', 'finder', 'btlab'].includes(view)) renderBacktests();
     clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
@@ -7465,6 +7500,71 @@ function renderWallets(){
     <div><b>Why shrink</b>: a wallet with 4 games and +7% is mostly luck, so its estimate is pulled toward the league average, and toward its NFL and CFB record in proportion to how noisy each is. Whether skill really travels between sports is not yet known, hence the interval.</div>
     <div><b>Context, not a bet.</b> Ranking says who has beaten the close, not that copying them pays: the Follow Board's paper record is the test.</div>`;
 }
+// ── Prop Tells ────────────────────────────────────────────────────────────
+// What the market did on one player prop (sharp.py prop_signals / prop_behind in the recorder): Pinnacle moving it, DraftKings priced behind
+// Pinnacle's fair at the same line, heavy Kalshi money, sharp Polymarket accounts. Props have no wallet to follow (Kalshi, Pinnacle and
+// DraftKings are anonymous; Polymarket prop money is thin), so this follows the tell and grades each type on its own closing-line value.
+// Tells are never summed into a lean or an agree count: sharp money is context. p_behind has a pre-registered pass rule (docs/prop-behind-pinnacle.md).
+let tlType = 'all';
+const TL_TYPES = {p_behind: 'DraftKings behind Pinnacle', p_pin: 'Pinnacle move', p_kal: 'Heavy Kalshi money', p_acct: 'Sharp accounts'};
+const TL_WHAT = {p_behind: 'DraftKings at Pinnacle\'s own line, 3%+ better than its fair, after Pinnacle sat still 20 minutes', p_pin: 'Pinnacle moved the line a point or its chance 5 points within an hour', p_kal: '$2,000+ traded on one Kalshi rung between polls with the price moving 3¢', p_acct: 'Sharp Polymarket accounts put $500+ on a prop in 30 minutes'};
+const TL_PRE = {p_behind: 'docs/prop-behind-pinnacle.md'};
+const TL_STAT = {pts: 'Points', reb: 'Rebounds', ast: 'Assists', '3pm': '3-pointers', pra: 'Pts + Reb + Ast', pr: 'Pts + Reb', pa: 'Pts + Ast', ra: 'Reb + Ast', stl: 'Steals', blk: 'Blocks', tov: 'Turnovers', sb: 'Steals + Blocks', fgm: 'Field goals made', fga: 'Field goals attempted', ftm: 'Free throws made', fta: 'Free throws attempted', tpa: '3-pointers attempted', oreb: 'Off. rebounds', dreb: 'Def. rebounds'};
+function tlAgg(){
+  const S = TR && TR.data && TR.data.signals, T = {};
+  for (const by of Object.values((S && S.days) || {})) for (const [t, r] of Object.entries(by)){
+    const x = T[t] = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; r.forEach((v, i) => x[i] += v);
+  }
+  return Object.fromEntries(Object.keys(TL_TYPES).map(t => { const r = T[t] || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], g = r[1], m = g ? r[2] / g : null;
+    return [t, {fired: r[0], graded: g, mean: m, se: g > 1 ? Math.sqrt(Math.max(r[3] / g - m * m, 0) / g) : null, beat: g ? r[4] / g : null, w: r[5], l: r[6], p: r[7], vs: g ? r[8] : null}]; }));
+}
+function tlText(x, stat){
+  const side = x.side === 'over' ? 'Over' : 'Under';
+  if (x.type === 'p_pin') return x.from[0] !== x.to[0] ? `Pinnacle moved the line ${x.from[0]} to ${x.to[0]}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}` : `Pinnacle moved toward the ${side.toLowerCase()} at ${x.line}: over ${pc(x.from[1])} to ${pc(x.to[1])}${x.lim ? ` (limit $${x.lim.toLocaleString()})` : ''}`;
+  if (x.type === 'p_behind') return `${esc(x.venue)} has the ${side.toLowerCase()} ${x.line} at ${esc(String(x.price > 0 ? '+' + x.price : x.price))}. Pinnacle's fair is ${pc(x.fair, 1)}, so ${pc(x.ev, 1)} better than fair, Pinnacle unchanged for ${x.settled} min`;
+  if (x.type === 'p_kal') return `$${x.usd.toLocaleString()} traded on one Kalshi rung in one poll; YES ${Math.round(x.from * 100)}¢ to ${Math.round(x.to * 100)}¢`;
+  if (x.type === 'p_acct') return `${x.accts > 1 ? x.accts + ' sharp Polymarket accounts' : 'Sharp Polymarket account ' + esc(x.who || '')} bought ${side} ${x.line}: $${x.usd.toLocaleString()} at ${Math.round(x.px * 100)}¢`;
+  return '';
+}
+function renderTells(){
+  const pick = slateBoard(), B = pick.board, SH = B.sharp, now = Date.now() / 1000, R = tlAgg();
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
+  const games = Object.fromEntries((B.games || []).map(g => [String(g.id), g])), props = SH && SH.props;
+  $('tlbanner').hidden = !!(SH && props);
+  $('tlbanner').innerHTML = `<b>Prop Tells need the recorder's board.</b><span>${(B.games || []).length ? 'It fills on the next poll after this build ships.' : 'No games on the board yet. ' + noGamesWhy()}</span>`;
+  const info = {};                                                       // pid|stat -> game id, from the board's props
+  for (const r of B.props || []) info[`${r.p}|${r.s}`] = r.g;
+  const rows = [];
+  for (const [k, sigs] of Object.entries(props || {})){
+    const [pid, stat] = k.split('|'), g = games[String(info[k] || (sigs[0] && sigs[0].id ? sigs[0].id.split(':')[0] : ''))], pl = (B.players || {})[pid];
+    if (!g || g.tip <= now) continue;
+    const S = sigs.filter(x => TL_TYPES[x.type]);
+    if (S.length) rows.push({k, pid, stat, g, name: pl ? pl[0] : 'Player ' + pid, team: pl ? pl[1] : '', S: S.sort((a, b) => b.t - a.t)});
+  }
+  const cnt = t => rows.reduce((a, r) => a + r.S.filter(x => x.type === t).length, 0);
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const tile = t => { const a = R[t], g = a.graded;
+    return kpi(TL_TYPES[t], ICON.pts, `${cnt(t)}<span class="muted"> now</span>`, `${g ? `${g} graded · CLV ${a.mean >= 0 ? '+' : ''}${(a.mean * 100).toFixed(2)}${a.se ? ' ± ' + (a.se * 100).toFixed(2) : ''} pts` : 'Nothing graded yet'}`); };
+  $('tlkpis').innerHTML = Object.keys(TL_TYPES).map(tile).join('');
+  $('tlfilters').innerHTML = fSeg('tltype', tlType, [['all', 'All'], ...Object.entries(TL_TYPES).map(([v, l]) => [v, `${l} ${cnt(v)}`])]);
+  const shown = rows.map(r => ({...r, S: r.S.filter(x => tlType === 'all' || x.type === tlType)})).filter(r => r.S.length);
+  const byG = {}; shown.forEach(r => (byG[r.g.id] = byG[r.g.id] || {g: r.g, rows: []}).rows.push(r));
+  $('tlgames').innerHTML = Object.values(byG).sort((a, b) => a.g.tip - b.g.tip).map(({g, rows}) => `<div class="fb-g"><div class="fb-gh"><b>${esc(g.away)} at ${esc(g.home)}</b><span>${rows.length} prop${rows.length > 1 ? 's' : ''} with a tell</span><span class="t">Tip ${etFmt(g.tip, {weekday: 'short', hour: 'numeric', minute: '2-digit'})} ${TZL}</span></div>
+    <div class="tl-r h"><div>Prop</div><div>Tells, newest first</div><div>Points to</div></div>
+    ${rows.sort((a, b) => b.S.length - a.S.length || b.S[0].t - a.S[0].t).map(r => { const sides = [...new Set(r.S.map(x => x.side))], one = sides.length === 1;
+      return `<div class="tl-r"><div class="tl-p"><b>${esc(r.name)}</b><small>${esc(r.team)} · ${TL_STAT[r.stat] || esc(r.stat)}</small></div>
+        <div class="tl-t">${r.S.map(x => `<div><span class="tl-k ${x.type}">${TL_TYPES[x.type]}</span><p>${tlText(x, r.stat)}</p><small>${fAgo(x.t)}</small></div>`).join('')}</div>
+        <div class="tl-s">${one ? `<b>${sides[0] === 'over' ? 'Over' : 'Under'}</b><small>${r.S.length} tell${r.S.length > 1 ? 's' : ''}, same side</small>` : '<span class="badge warn">Tells disagree</span>'}</div></div>`; }).join('')}</div>`).join('')
+    || `<p class="fb-empty">${rows.length ? 'No tells of that type on games that have not tipped.' : 'No prop has a tell on a game that has not tipped. Tells fire when Pinnacle moves a prop, DraftKings sits behind Pinnacle, Kalshi money arrives or a sharp account trades, so quiet stretches are normal.'}</p>`;
+  $('tlrecord').innerHTML = `<thead><tr><th class="l">Tell</th><th class="l">What fires it</th><th>Fired</th><th title="Games final with Pinnacle's closing price for the same prop and line">Graded</th><th title="Pinnacle's closing fair minus its fair when the tell fired, in probability points. For DraftKings behind Pinnacle: the price's EV at the closing fair">Avg CLV, pts</th><th>Beat the close</th><th>W-L-P</th><th class="l">Status</th></tr></thead><tbody>${Object.keys(TL_TYPES).map(t => { const a = R[t], dec = a.w + a.l + a.p;
+    return `<tr><td class="l"><b>${TL_TYPES[t]}</b></td><td class="l muted" style="white-space:normal;min-width:220px">${TL_WHAT[t]}</td><td>${a.fired}</td><td>${a.graded}</td><td>${a.mean != null ? `<span class="${a.mean > 0 ? 'pos' : a.mean < 0 ? 'neg' : ''}">${a.mean >= 0 ? '+' : ''}${(a.mean * 100).toFixed(2)}</span>${a.se ? ` <small>± ${(a.se * 100).toFixed(2)}</small>` : ''}` : ''}</td><td>${a.beat != null ? pc(a.beat) : ''}</td><td>${dec ? `${a.w}-${a.l}${a.p ? '-' + a.p : ''}` : ''}</td>
+      <td class="l"><span class="muted">${TL_PRE[t] ? (a.graded < 100 ? `Pre-registered · first look at 100 graded (${a.graded} so far), ${TL_PRE[t]}` : `First look due, ${TL_PRE[t]}`) : 'Context only · thresholds not backtested, no pass rule'}</span></td></tr>`; }).join('')}</tbody>`;
+  $('tlfoot').innerHTML = `
+    <div><b>Why tells and not wallets.</b> Pinnacle, DraftKings and Kalshi are anonymous, and Polymarket prop money is thin, so there is no account to follow on props. This follows what the market did instead. Sharp Polymarket accounts show up here only when one trades a prop.</div>
+    <div><b>Not a bet.</b> Tells are never added into a lean or an agree count. The prop thresholds were chosen to be rare, not fitted, and only DraftKings behind Pinnacle has a pass rule written before its alerts were graded.</div>
+    <div><b>Graded</b> against Pinnacle's last pre-tip price for the same prop and line, so a prop whose line moved away has no like-for-like close and stays ungraded.</div>`;
+}
+document.addEventListener('click', e => { const t = e.target.closest('#tltype button[data-v]'); if (t){ tlType = t.dataset.v; renderTells(); } });
 document.addEventListener('click', e => {
   const t = e.target.closest('#fbtier button[data-v]'); if (t){ fbTier = t.dataset.v; renderFollow(); return; }
   const u = e.target.closest('#fwtier button[data-v]'); if (u){ fwTier = u.dataset.v; renderWallets(); return; }
