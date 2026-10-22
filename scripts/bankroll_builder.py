@@ -296,11 +296,12 @@ def curve(ps):
 def summarize(S, extra=None):
     P, SH = list(S["picks"].values()), list(S["shadow"].values())
     by = lambda f, ps=P: {k: agg([p for p in ps if f(p) == k]) for k in sorted({f(p) for p in ps}, key=str)}
-    ebin = lambda p: "4-6%" if p["mk0"] < .06 else "6-9%" if p["mk0"] < .09 else "9%+"
+    ebin = lambda p: "0-2%" if p["mk0"] < .02 else "2-4%" if p["mk0"] < .04 else "4-6%" if p["mk0"] < .06 else "6%+"
     keep = ("name", "pid", "team", "away", "home", "stat", "side", "line", "main", "alt", "book", "tier", "first", "tip", "odds0", "dec0", "decN", "pf0", "n0", "pm0", "mk0", "md0",
             "res", "units", "clv", "kf", "agree", "held")
     trim = lambda p: {k: p.get(k) for k in keep} | {"y": (p["legs"][0].get("y"))}
     full = sorted(P, key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]
+    shadow_full = sorted((p for p in SH if p["kind"] == "model_only"), key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]   # so a slice click can show the plays behind the shadow row
     cv = curve(P)
     rec = {"all": agg(P), "tier": by(lambda p: p["tier"]), "book": by(lambda p: p["book"]), "stat": by(lambda p: p["stat"]), "side": by(lambda p: p["side"]),
            "kind": by(lambda p: "alt" if p["alt"] else "main"), "edge": by(ebin), "day": by(lambda p: et_day(p["tip"])),
@@ -308,7 +309,7 @@ def summarize(S, extra=None):
            "shadow": {"model_only": agg([p for p in SH if p["kind"] == "model_only"])},
            "curve": cv, "bankroll": {"start": BANKROLL0, "unit_usd": UNIT_USD, "flat": cv[-1][1] if cv else BANKROLL0, "kelly_shadow": cv[-1][2] if cv else BANKROLL0},
            "capped": {kind: {why: len(v) for why, v in d.items()} for kind, d in (S.get("capped") or {}).items()},
-           "list": [trim(p) for p in full], "last": S.get("last")}
+           "list": [trim(p) for p in full], "shadow_list": [trim(p) for p in shadow_full], "last": S.get("last")}
     rec.update(dict(extra or {}, rules="v2"))
     return rec
 

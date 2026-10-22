@@ -911,6 +911,8 @@ table.cc-st small{display:block;font-weight:400;color:var(--fg3);font-size:11px}
 @media(max-width:900px){.pl-strip.bk-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){#bk-root .bk-x{display:none}#bk-root table.nt{min-width:0}#bk-root table.nt td{white-space:normal}#bk-root table.nt .pp-av{display:none}#bk-root table.nt td b{white-space:nowrap}#bk-root table.nt td .pl b{white-space:normal}table.nt small.bk-m{display:block}}
 #bk-intro .bk-how{display:grid;gap:8px;padding-top:0}#bk-intro .bk-how p{margin:0;font-size:13.5px;line-height:1.55;color:var(--fg2);max-width:none}#bk-intro .bk-how p b{color:var(--fg);font-weight:600}
+#bk-root tr.bk-sl{cursor:pointer}#bk-root tr.bk-sl:hover td{background:color-mix(in srgb,var(--fg) 5%,transparent)}#bk-root tr.bk-sl.on td{background:color-mix(in srgb,var(--up) 10%,transparent)}#bk-root tr.bk-sl:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.bk-hint{padding:8px 14px 0;font-size:12px}.bk-fl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px 0;font-size:13px}
 .bk-sw{display:inline-block;width:14px;height:0;border-top:2px solid var(--up);vertical-align:middle;margin:0 4px 0 8px}.bk-sw.k{border-top:2px dashed var(--fg3)}
 .cc-note{margin:6px 0 0;font-size:12px;color:var(--fg3)}
 .cc-price{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:end;margin-top:10px}.cc-price label{display:grid;gap:3px;font-size:11px;color:var(--fg3)}
@@ -9084,7 +9086,7 @@ $('cc-root').addEventListener('click', e => {
 // Short-priced props (-110 to -220 at a sportsbook) priced at or better than the other venues' no-vig price. The band alone is not an edge. The model's chance is recorded, not a gate.
 // The picks, their prices, settlement and the record come from scripts/bankroll_builder.py on the owner's Mac (the prices are SmartStake's,
 // so like Combo Check this page is private: local ?ss, or the owner's Google login). The rules (v2) are frozen in docs/experiment-log.md section 12.
-let bk = {recF: 'settled', recN: 25, btN: 25, intro: false};
+let bk = {intro: false, live: {f: null, n: 25, sl: null}, bt: {f: 'all', n: 25, sl: null}};   // f = settled / won / lost / open / all, sl = the slice row clicked {g, k}
 const bkU = x => x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(2)}u`;
 const bkP = (x, d = 1) => x == null ? '<span class="muted">none</span>' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`;
 const bkAm = p => ccF(ccAm(p));
@@ -9099,17 +9101,44 @@ function bkKpis(R){
   const se = a.clv_se != null ? `${a.clv_n} picks, +/-${(2 * a.clv_se * 100).toFixed(1)} pts (2 SE)` : `${a.clv_n} picks`;
   return `<div class="pl-strip bk-strip">${kpi('Picks', a.picks, `${a.settled} settled`)}${kpi('Record', `${a.won}-${a.settled - a.won}${a.void ? `-${a.void}` : ''}`, a.win != null ? `won ${(a.win * 100).toFixed(0)}% vs fair ${(a.fair * 100).toFixed(0)}%, model ${(a.model * 100).toFixed(0)}%` : 'won-lost-void')}${kpi('Units', `<span class="${a.units >= 0 ? 'pos' : 'neg'}">${bkU(a.units)}</span>`, '1 unit flat = $10')}${kpi('ROI', bkP(a.roi), a.z != null ? `z ${a.z}` : 'too few settled')}${kpi('Closing-line value', bkP(a.clv), se)}${kpi('Bankroll', `$${Math.round(br.flat || 1000).toLocaleString()}`, `from $1,000 · Kelly shadow $${Math.round(br.kelly_shadow || 1000).toLocaleString()}`)}</div>`;
 }
-function bkSlices(R){
-  const row = (name, x) => `<tr><td class="l">${esc(name)}</td><td>${x.picks}</td><td>${x.settled}</td><td>${x.won}-${x.settled - x.won}</td><td class="${x.units >= 0 ? 'pos' : 'neg'}">${bkU(x.units)}</td><td>${bkP(x.roi)}</td><td>${bkP(x.clv)}<small>${x.clv_n} picks</small></td></tr>`;
-  const grp = (label, o, fmt = k => k) => Object.entries(o || {}).map(([k, x]) => row(`${label} ${fmt(k)}`, x)).join('');
-  const SH = {model_only: 'Shadow: the model liked it, the market did not (not bets)'};
-  return `<div class="nt-tw"><table class="nt"><thead><tr><th class="l">Slice</th><th>Picks</th><th>Settled</th><th>W-L</th><th>Units</th><th>ROI</th><th>CLV</th></tr></thead><tbody>${grp('Tier', R.tier, k => k === 'core' ? 'Core (4%+)' : 'Standard (0-4%)')}${grp('Model', R.model)}${grp('', R.held)}${grp('Edge', R.edge)}${grp('', R.kind, k => k === 'alt' ? 'Alt lines' : 'Main lines')}${grp('', R.side, k => k === 'over' ? 'Overs' : 'Unders')}${Object.entries(R.day || {}).map(([k, x]) => row(k, x)).join('')}${Object.entries(R.shadow || {}).map(([k, x]) => x.picks ? row(SH[k], x) : '').join('')}</tbody></table></div>`;
+const bkEtDay = t => new Intl.DateTimeFormat('en-CA', {timeZone: 'America/New_York'}).format(new Date(t * 1000));
+// The slice table's groups: [record key, label prefix, a pick's key in that group, label of a key]. Clicking a row filters the pick list below to the picks behind it.
+const BK_SL = [
+  ['tier', 'Tier', c => c.tier, k => k === 'core' ? 'Core (4%+)' : 'Standard (0-4%)'],
+  ['model', 'Model', c => c.agree ? 'agrees' : 'disagrees', k => k],
+  ['held', '', c => c.held ? 'held: ' + c.held : 'no hold', k => k],
+  ['edge', 'Edge', c => c.mk0 < .02 ? '0-2%' : c.mk0 < .04 ? '2-4%' : c.mk0 < .06 ? '4-6%' : '6%+', k => k],
+  ['kind', '', c => c.alt ? 'alt' : 'main', k => k === 'alt' ? 'Alt lines' : 'Main lines'],
+  ['side', '', c => c.side, k => k === 'over' ? 'Overs' : 'Unders'],
+  ['stat', 'Stat', c => c.stat, k => PP_SHORT[k] || k],
+  ['book', 'Book', c => c.book, k => k],
+  ['day', 'Game day', c => bkEtDay(c.tip), k => k],
+];
+const BK_SHADOW = 'Shadow: the model liked it, the market did not (not bets)';
+function bkSlices(R, sec){
+  const cur = bk[sec].sl;
+  const row = (g, k, label, x) => { const on = cur && cur.g === g && cur.k === k;
+    return `<tr class="bk-sl${on ? ' on' : ''}" tabindex="0" role="button" aria-pressed="${on}" data-bksl="${sec}|${g}|${esc(k)}"><td class="l">${esc(label)}</td><td>${x.picks}</td><td>${x.settled}</td><td>${x.won}-${x.settled - x.won}</td><td class="${x.units >= 0 ? 'pos' : 'neg'}">${bkU(x.units)}</td><td>${bkP(x.roi)}</td><td>${bkP(x.clv)}<small>${x.clv_n} picks</small></td></tr>`; };
+  const rows = BK_SL.flatMap(([g, pre, , fmt]) => Object.entries(R[g] || {}).map(([k, x]) => row(g, k, `${pre} ${fmt(k)}`.trim(), x))).join('')
+    + Object.entries(R.shadow || {}).map(([k, x]) => x.picks ? row('shadow', k, BK_SHADOW, x) : '').join('');
+  return `<p class="muted bk-hint">Click a row to see the picks behind it, open ones included.</p><div class="nt-tw"><table class="nt"><thead><tr><th class="l">Slice</th><th>Picks</th><th>Settled</th><th>W-L</th><th>Units</th><th>ROI</th><th>CLV</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
-function bkResults(R, filter, n, moreAttr){
-  const L = R.list || [], F = {settled: c => c.res === 'won' || c.res === 'lost', won: c => c.res === 'won', lost: c => c.res === 'lost', open: c => !c.res, all: () => true},
-    shown = L.filter(F[filter] || F.all).sort((x, y) => (y.tip || 0) - (x.tip || 0) || y.first - x.first), sum = shown.reduce((s, c) => s + (c.units || 0), 0);
-  const tr = c => `<tr><td class="l bk-x">${etFmt(c.first, {month: 'short', day: 'numeric'})} ${clock(c.first)}</td><td class="l"><b>${esc(c.name)}</b> ${c.side === 'over' ? 'o' : 'u'}${c.line} ${PP_SHORT[c.stat] || c.stat}${c.y != null ? ` <span class="muted">(${c.y})</span>` : ''}<small>${esc(c.away)} @ ${esc(c.home)} · ${c.tier === 'core' ? 'Core' : 'Standard'}</small></td><td class="l">${esc(c.book)} ${bkAm(1 / c.dec0)}</td><td>${bkP(c.mk0)}<small>model ${bkP(c.md0)}</small></td><td class="${c.res === 'won' ? 'pos' : c.res === 'lost' ? 'neg' : ''}">${c.res ? (c.res === 'void' ? 'void' : `${c.res} ${bkU(c.units)}`) : '<span class="muted">open</span>'}${c.clv != null ? `<small>CLV ${bkP(c.clv)}</small>` : ''}</td></tr>`;
-  return {n: shown.length, sum, rows: shown.slice(0, n).map(tr).join(''), more: shown.length > n};
+// The picks list under a record: the status filter (settled / won / lost / open / all) applied to the picks in the clicked slice, or to all of them.
+function bkList(R, sec){
+  const st = bk[sec], sl = st.sl;
+  let base = R.list || [], label = '';
+  if (sl){
+    if (sl.g === 'shadow'){ base = R.shadow_list || []; label = BK_SHADOW; }
+    else { const d = BK_SL.find(x => x[0] === sl.g); base = base.filter(c => String(d[2](c)) === sl.k); label = `${d[1]} ${d[3](sl.k)}`.trim(); }
+  }
+  const F = {settled: c => c.res === 'won' || c.res === 'lost', won: c => c.res === 'won', lost: c => c.res === 'lost', open: c => !c.res, all: () => true};
+  const f = st.f || (R.all.settled ? 'settled' : 'all'), nF = k => base.filter(F[k]).length;
+  const shown = base.filter(F[f]).sort((x, y) => (y.tip || 0) - (x.tip || 0) || y.first - x.first), sum = shown.reduce((a, c) => a + (c.units || 0), 0);
+  const tr = c => `<tr><td class="l bk-x">${etFmt(c.first, {month: 'short', day: 'numeric'})} ${clock(c.first)}</td><td class="l"><b>${esc(c.name)}</b> ${c.side === 'over' ? 'o' : 'u'}${c.line} ${PP_SHORT[c.stat] || c.stat}${c.y != null ? ` <span class="muted">(${c.y})</span>` : ''}<small>${esc(c.away)} @ ${esc(c.home)} · ${c.tier === 'core' ? 'Core' : 'Standard'}${c.agree ? ' · model agrees' : ''}</small></td><td class="l">${esc(c.book)} ${bkAm(1 / c.dec0)}${!c.res && c.decN && Math.abs(c.decN - c.dec0) > .0005 ? `<small>now ${bkAm(1 / c.decN)}</small>` : ''}</td><td>${bkP(c.mk0)}<small>model ${bkP(c.md0)}</small></td><td class="${c.res === 'won' ? 'pos' : c.res === 'lost' ? 'neg' : ''}">${c.res ? (c.res === 'void' ? 'void' : `${c.res} ${bkU(c.units)}`) : '<span class="muted">open</span>'}${!c.res ? `<small>${etFmt(c.tip, {weekday: 'short'})} ${clock(c.tip)} ${TZL}</small>` : ''}${c.clv != null ? `<small>CLV ${bkP(c.clv)}</small>` : ''}</td></tr>`;
+  return `<div class="pp-tools" id="bk-pl-${sec}" style="padding:10px 14px 0"><div class="seg" data-bkf="${sec}" role="group" aria-label="Show picks">${[['settled', 'Settled'], ['won', 'Won'], ['lost', 'Lost'], ['open', 'Open'], ['all', 'All']].map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${f === k}">${l} ${nF(k)}</button>`).join('')}</div><span class="muted" style="font-size:12.5px">${shown.length ? `${shown.length} picks, ${bkU(sum)} flat. Newest game first; (n) is the stat the player actually had.` : ''}</span></div>
+    ${sl ? `<div class="bk-fl">Showing <b>${esc(label)}</b><button class="pv-ghost" type="button" data-bkclear="${sec}">Clear slice</button></div>` : ''}
+    <div class="nt-tw"><table class="nt"><thead><tr><th class="l bk-x">First seen</th><th class="l">Pick</th><th class="l">Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${shown.slice(0, st.n).map(tr).join('') || `<tr><td class="l" colspan="5"><p class="empty">No picks match this filter.</p></td></tr>`}</tbody></table></div>
+    ${shown.length > st.n ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkmore="${sec}">Show ${Math.min(25, shown.length - st.n)} more</button></div>` : ''}`;
 }
 function bkTonight(R){
   const now = Date.now() / 1000, L = (R.list || []).filter(c => !c.res && c.tip > now).sort((a, b) => a.tip - b.tip || (a.tier === 'core' ? 0 : 1) - (b.tier === 'core' ? 0 : 1) || b.mk0 - a.mk0);
@@ -9136,11 +9165,7 @@ function renderBankroll(){
   if (!R || !R.all){
     $('bk-root').innerHTML = intro + `<section class="card"><div class="pp-tools"><h2>Record</h2></div><p class="pp-empty">${window.__altsState === 'ok' || SS_ON ? 'The record has not been written yet: it fills in after the next 5-minute refresh on the owner\'s Mac.' : 'The record is private, like the prices. Sign in with the owner\'s Google account to see it.'}</p></section>${bkBacktestHtml(BT)}`;
   } else {
-    const rf = bkResults(R, bk.recF, bk.recN), nF = k => bkResults(R, k, 0).n;
-    $('bk-root').innerHTML = intro + bkTonight(R) + `<section class="card"><div class="pp-tools"><h2>Record</h2><span class="muted" style="font-size:12.5px">Live picks only. Flat 1 unit at the entry price; the quarter-Kelly line is a shadow for comparison, never the headline.</span></div>${bkKpis(R)}${bkCurve(R.curve) ? `<div class="bk-cv">${bkCurve(R.curve)}<span class="muted"><i class="bk-sw f"></i>flat $10 <i class="bk-sw k"></i>quarter-Kelly shadow</span></div>` : ''}${bkSlices(R)}
-      <div class="pp-tools" style="padding:10px 14px 0"><div class="seg" data-bkrecf role="group" aria-label="Show picks">${[['settled', 'Settled'], ['won', 'Won'], ['lost', 'Lost'], ['open', 'Open'], ['all', 'All']].map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${bk.recF === k}">${l} ${nF(k)}</button>`).join('')}</div><span class="muted" style="font-size:12.5px">${rf.n ? `${rf.n} picks, ${bkU(rf.sum)} flat. Newest game first; (n) is the stat the player actually had.` : ''}</span></div>
-      <div class="nt-tw"><table class="nt"><thead><tr><th class="l bk-x">First seen</th><th class="l">Pick</th><th class="l">Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${rf.rows || `<tr><td class="l" colspan="5"><p class="empty">No picks match this filter.</p></td></tr>`}</tbody></table></div>
-      ${rf.more ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkmore="rec">Show ${Math.min(25, rf.n - bk.recN)} more</button></div>` : ''}</section>${bkBacktestHtml(BT)}`;
+    $('bk-root').innerHTML = intro + bkTonight(R) + `<section class="card"><div class="pp-tools"><h2>Record</h2><span class="muted" style="font-size:12.5px">Live picks only. Flat 1 unit at the entry price; the quarter-Kelly line is a shadow for comparison, never the headline.</span></div>${bkKpis(R)}${bkCurve(R.curve) ? `<div class="bk-cv">${bkCurve(R.curve)}<span class="muted"><i class="bk-sw f"></i>flat $10 <i class="bk-sw k"></i>quarter-Kelly shadow</span></div>` : ''}${bkSlices(R, 'live')}${bkList(R, 'live')}</section>${bkBacktestHtml(BT)}`;
   }
   $('bkfoot').innerHTML = `<div><b>Sources.</b> Sportsbook prices: <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Other venues used only for the fair price: their two-way lines with the margin removed (books up to 16% overround, exchanges up to 8%). Model chance: the same projection, distribution and calibration as Player Props.</div>
     <div><b>The rules, in order.</b> Price -110 to -220 at a sportsbook. Fair chance from 3+ other venues; the price must be at or better than it (market edge 0% or more). Recent minutes 20+, not a preseason game, not Out, Doubtful or Questionable. One pick per player per game, at most 2 per team-game and 20 per slate. Core = edge 4%+. These rules were chosen after looking at the first two nights' closing prices, so the backtest below is in-sample; only picks logged from now on count as evidence.</div>
@@ -9148,18 +9173,22 @@ function renderBankroll(){
 }
 function bkBacktestHtml(BT){
   if (!BT || !BT.all) return '';
-  const rf = bkResults(BT, 'all', bk.btN), days = (BT.day && Object.keys(BT.day).length) || 0;
-  return `<section class="card"><div class="pp-tools"><h2>Backtest: the first nights</h2><span class="muted" style="font-size:12.5px">The recorded price tape replayed poll by poll through the same rules (chosen after seeing these nights, so in-sample), with the board and the model files as they stood at each poll. ${BT.polls} polls, ${BT.boards} boards rebuilt, ${days} night${days === 1 ? '' : 's'} with picks. The model's fitted parameters were last refit 2026-10-09, before the season. Replayed, not live: read it as a check on the rules, not a result.</span></div>${bkKpis(BT)}${bkCurve(BT.curve) ? `<div class="bk-cv">${bkCurve(BT.curve)}</div>` : ''}${bkSlices(BT)}
-    <div class="nt-tw"><table class="nt"><thead><tr><th class="l bk-x">First seen</th><th class="l">Pick</th><th class="l">Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${rf.rows || `<tr><td class="l" colspan="5"><p class="empty">The rules made no picks in the replayed nights.</p></td></tr>`}</tbody></table></div>
-    ${rf.more ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkmore="bt">Show ${Math.min(25, rf.n - bk.btN)} more</button></div>` : ''}</section>`;
+  const days = (BT.day && Object.keys(BT.day).length) || 0;
+  return `<section class="card"><div class="pp-tools"><h2>Backtest: the first nights</h2><span class="muted" style="font-size:12.5px">The recorded price tape replayed poll by poll through the same rules (chosen after seeing these nights, so in-sample), with the board and the model files as they stood at each poll. ${BT.polls} polls, ${BT.boards} boards rebuilt, ${days} night${days === 1 ? '' : 's'} with picks. The model's fitted parameters were last refit 2026-10-09, before the season. Replayed, not live: read it as a check on the rules, not a result.</span></div>${bkKpis(BT)}${bkCurve(BT.curve) ? `<div class="bk-cv">${bkCurve(BT.curve)}</div>` : ''}${bkSlices(BT, 'bt')}${bkList(BT, 'bt')}</section>`;
 }
 $('bk-root').addEventListener('toggle', e => { if (e.target.id === 'bk-intro') bk.intro = e.target.open; }, true);
+const bkRerender = sec => { renderBankroll(); const el = document.getElementById('bk-pl-' + sec); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); };
 $('bk-root').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('[data-bksignin]')){ ssSignIn(); return; }
-  const rf = t.closest('[data-bkrecf] button[data-v]'); if (rf){ bk.recF = rf.dataset.v; bk.recN = 25; renderBankroll(); return; }
-  const m = t.closest('[data-bkmore]'); if (m){ if (m.dataset.bkmore === 'bt') bk.btN += 25; else bk.recN += 25; renderBankroll(); }
+  const sl = t.closest('[data-bksl]');
+  if (sl){ const [sec, g, ...k] = sl.dataset.bksl.split('|'), key = k.join('|'), st = bk[sec];
+    st.sl = st.sl && st.sl.g === g && st.sl.k === key ? null : {g, k: key}; st.f = 'all'; st.n = 25; bkRerender(sec); return; }
+  const cl = t.closest('[data-bkclear]'); if (cl){ bk[cl.dataset.bkclear].sl = null; renderBankroll(); return; }
+  const fl = t.closest('[data-bkf] button[data-v]'); if (fl){ const st = bk[fl.closest('[data-bkf]').dataset.bkf]; st.f = fl.dataset.v; st.n = 25; renderBankroll(); return; }
+  const m = t.closest('[data-bkmore]'); if (m){ bk[m.dataset.bkmore].n += 25; renderBankroll(); }
 });
+$('bk-root').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('tr[data-bksl]')){ e.preventDefault(); e.target.click(); } });
 
 function pvShow(){
   for (const t of ['v2', 'bets', 'full']) $('pv-' + t).hidden = pv.tab !== t;
