@@ -18,6 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Find failing sources
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: python3 scripts/watch_recorder_health.py --out watch.md
       - name: Open, update or close the issue
         env:

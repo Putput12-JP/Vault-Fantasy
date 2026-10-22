@@ -39,6 +39,7 @@ import { createHash } from 'node:crypto';
 import { buildPropsBoard } from './build-props-board.mjs';
 import { trackPlays, recordOf, loadLedger, overlayEspn } from './track-prop-plays.mjs';
 import { makeModelProbe } from './prop-model-probe.mjs';
+import { loadModelIndex, learnAbbrs, modelSideFor } from './sharp_model_side.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -55,13 +56,14 @@ const now = () => Math.floor(Date.now() / 1000);
 // that fires an alert (points for spread/total, win-prob points for ML).
 const SPORTS = {
   nfl: { name: 'NFL', an: 'nfl', pinSport: 15, pinLeague: 889, pm: 12185, kal: 'KXNFLGAME', nov: 'NFL', espn: 'football/nfl', ahead: 7,
-         steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets.json', sigBig: 25000, crossAt: 25000 },
+         steam: { sp: 0.5, tot: 1.0, ml: 0.025 }, whale: 10000, sharpMin: 1000, sharpCard: 5000, wallets: 'pm_wallets.json', sigBig: 25000, crossAt: 25000 },
   cfb: { name: 'College Football', an: 'ncaaf', pinSport: 15, pinLeague: 880, pm: 12756, kal: 'KXNCAAFGAME', nov: 'NCAAF', espn: 'football/college-football', ahead: 5,
-         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, wallets: 'pm_wallets_cfb.json', sigBig: 25000, crossAt: 5000 },
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 5000, sharpMin: 1000, sharpCard: 2500, wallets: 'pm_wallets_cfb.json', sigBig: 25000, crossAt: 5000 },
   nba: { name: 'NBA', an: 'nba', pinSport: 4, pinLeague: 487, pm: 10345, kal: 'KXNBAGAME', nov: 'NBA', espn: 'basketball/nba', ahead: 3,
-         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, wallets: 'pm_wallets_nba.json', sigBig: 25000, crossAt: 25000 },
+         steam: { sp: 1.0, tot: 1.5, ml: 0.03 }, whale: 10000, sharpMin: 1000, sharpCard: 5000, wallets: 'pm_wallets_nba.json', sigBig: 25000, crossAt: 25000 },
 };
 const WREC = {};
+const WALL = {};   // every scored wallet, per sport: {w: {rec}}. Accounts page only; never feeds the sharp or dull labels.
 const PROP_MIN_VOL = 300, PROP_MAX = 25;   // prop markets read per game (by Polymarket volume)
 // Vault's own team ratings (scripts/build_game_model.py), NFL only. Context on the game page, never an edge.
 let GM = null; try { GM = JSON.parse(readFileSync(resolve(ROOT, 'data', 'game_model.json'), 'utf8')); } catch (e) {}
@@ -71,6 +73,20 @@ function vaultModel(g) {
   const phi = z => 0.5 * (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (z + 0.044715 * z ** 3)));
   const rank = Object.fromEntries(['rate', 'off', 'def'].map(k => { const xs = Object.entries(GM.teams).sort((p, q) => q[1][k] - p[1][k]).map(e => e[0]); return [k, { home: xs.indexOf(g.home.abbr) + 1, away: xs.indexOf(g.away.abbr) + 1, n: xs.length }]; }));
   return { home: { pts: +ph.toFixed(1) }, away: { pts: +pa.toFixed(1) }, margin: +mg.toFixed(1), total: +(ph + pa).toFixed(1), homeWin: +phi(mg / GM.sd_margin).toFixed(3), rank };
+}
+// Stored model lines, so a Pinnacle-lead read can record whether the model agreed when it was first logged.
+const MODEL_BOARD = {}, MODEL_TOT = {};
+for (const f of ['nfl_model', 'cfb_model']) {
+  try {
+    const j = JSON.parse(readFileSync(resolve(ROOT, 'data', f + '.json'), 'utf8'));
+    for (const r of j.board || []) if (r.model_margin != null && !r.backfill) MODEL_BOARD[r.key] = r;
+    for (const r of j.totals?.rows || []) if (r.model_total != null) MODEL_TOT[r.game_id] = r.model_total;
+  } catch (e) {}
+}
+function modelLine(e) {
+  const b = MODEL_BOARD[e.key], v = vaultModel(e);
+  if (b) return { mm: b.model_margin, mt: MODEL_TOT[b.game_id] ?? v?.total ?? null };
+  return v ? { mm: v.margin, mt: v.total } : null;
 }
 // Hourly money on each side over the last 36h (or up to kickoff), sharp vs everyone else.
 function flowHours(G, start, t) {
@@ -155,13 +171,23 @@ function loadWallets(file) {
   try {
     const j = JSON.parse(readFileSync(resolve(ROOT, 'data', file), 'utf8'));
     const rec = {};
+    const sport = file.includes('_cfb') ? 'cfb' : file.includes('_nba') ? 'nba' : 'nfl';
     for (const w of [...(j.sharp || []), ...(j.dull || [])]) {
+      const pub = j.stats?.[w];
+      if (pub && pub.n != null) { rec[w] = { n: pub.n, games: pub.games ?? pub.n, trades: pub.trades ?? null, clv: r3(pub.clv), t: pub.t, sport }; continue; }
       const a = j.wallets?.[w]; if (!a) continue;
       const [n, s, ss, gms] = a, m = s / n, sd = Math.sqrt(Math.max(ss / n - m * m, 0));
-      rec[w] = { n, games: gms, clv: r3(m), t: sd ? +(m / (sd / Math.sqrt(n))).toFixed(1) : 0, sport: file.includes('_cfb') ? 'cfb' : file.includes('_nba') ? 'nba' : 'nfl' };
+      rec[w] = { n, games: gms, clv: r3(m), t: sd ? +(m / (sd / Math.sqrt(n))).toFixed(1) : 0, sport };
     }
-    return { sharp: new Set(j.sharp || []), dull: new Set(j.dull || []), rec, n: Object.keys(j.wallets || {}).length, generated: j.generated };
-  } catch (e) { return { sharp: new Set(), dull: new Set(), rec: {}, n: 0, generated: null }; }
+    const all = {};
+    for (const [w, a] of Object.entries(j.wallets || {})) {
+      const pub = j.stats?.[w];
+      const [n, s, ss, gms] = a, m = s / n, sd = Math.sqrt(Math.max(ss / n - m * m, 0));
+      all[w] = { rec: pub && pub.n != null ? { n: pub.n, games: pub.games ?? pub.n, trades: pub.trades ?? null, clv: r3(pub.clv), t: pub.t, sport }
+        : { n, games: gms, clv: r3(m), t: sd ? +(m / (sd / Math.sqrt(n))).toFixed(1) : 0, sport } };
+    }
+    return { sharp: new Set(j.sharp || []), dull: new Set(j.dull || []), rec, all, n: Object.keys(j.wallets || {}).length, generated: j.generated };
+  } catch (e) { return { sharp: new Set(), dull: new Set(), rec: {}, all: {}, n: 0, generated: null }; }
 }
 
 // ── 1. Action Network: master game list, splits, open line, soft books ──
@@ -260,6 +286,52 @@ function pinFair(P, mkt, side, line) {
 // a sharp account working a resting limit order, or betting a market we did not
 // match, never shows up. Reading each sharp wallet's own activity closes that,
 // and feeds the Sharp Accounts page (recent buys + current holdings).
+// ── per-account settled-market ledger ──────────────────────────────────
+// Polymarket's activity feed stops at ~5,500 rows per query, which for a busy account is
+// about four days. So history is walked in windows (`end=` is a real upper bound), kept as
+// per-market cash flow in state, and extended a window at a time on every refresh. Nothing
+// already counted is dropped until it is 150 days old.
+const SPORTY = /^(nfl|cfb|nba|cbb|ncaaf|mlb|nhl|wnba)-/;
+const LED_KEEP = 150 * DAY, LED_PAGE = 500, LED_PAGES = 11;
+const actId = x => `${(x.transactionHash || '').slice(0, 14)}:${String(x.asset || x.conditionId || '').slice(-8)}:${x.type}:${x.size ?? x.usdcSize}`;
+function ledAdd(L, x) {
+  if (x.type !== 'TRADE' && x.type !== 'REDEEM' && x.type !== 'MERGE' && x.type !== 'SPLIT') return;
+  const c = L.m[x.conditionId] ||= [x.timestamp, x.timestamp, 0, 0, 0, SPORTY.test(x.slug || '') ? 1 : 0];
+  c[0] = Math.min(c[0], x.timestamp); c[1] = Math.max(c[1], x.timestamp);
+  const u = +x.usdcSize || 0;
+  // MERGE hands back $1 per YES+NO pair and SPLIT spends it. A wallet that buys both sides and merges (a market maker) looks like it lost the whole stake if MERGE is ignored.
+  if (x.type === 'REDEEM' || x.type === 'MERGE') c[4] += u; else if (x.type === 'SPLIT') c[4] -= u; else if (x.side === 'BUY') c[2] += u; else c[3] += u;
+}
+// Fold a walk's rows into the ledger. `dir` is 'new' (newer than hi) or 'old' (older than lo); a row at exactly the edge timestamp counts only if not seen.
+function ledIngest(L, rows, dir) {
+  const edge = new Set(dir === 'new' ? L.edgeHi : L.edgeLo), at = dir === 'new' ? L.hi : L.lo;
+  const fresh = L.hi == null ? rows : rows.filter(x => dir === 'new' ? (x.timestamp > at || (x.timestamp === at && !edge.has(actId(x)))) : (x.timestamp < at || (x.timestamp === at && !edge.has(actId(x)))));
+  for (const x of fresh) ledAdd(L, x);
+  if (!fresh.length) return 0;
+  let mx = -Infinity, mn = Infinity; for (const x of fresh) { if (x.timestamp > mx) mx = x.timestamp; if (x.timestamp < mn) mn = x.timestamp; }
+  if (L.hi == null || mx > L.hi) { L.edgeHi = fresh.filter(x => x.timestamp === mx).map(actId); L.hi = mx; } else if (mx === L.hi) L.edgeHi = [...new Set([...L.edgeHi, ...fresh.filter(x => x.timestamp === mx).map(actId)])];
+  if (L.lo == null || mn < L.lo) { L.edgeLo = fresh.filter(x => x.timestamp === mn).map(actId); L.lo = mn; } else if (mn === L.lo) L.edgeLo = [...new Set([...L.edgeLo, ...fresh.filter(x => x.timestamp === mn).map(actId)])];
+  return fresh.length;
+}
+// Walk newest-first from `from` down to `stop`, one 5,500-row window at a time. Returns rows (deduped across windows), whether it reached `stop`, and whether the account has nothing older.
+async function actWalk(w, from, stop, maxWin) {
+  const rows = [], seen = new Set(); let end = from, reached = false, exhausted = false;
+  for (let win = 0; win < maxWin && !reached && !exhausted; win++) {
+    let oldest = null, full = true;
+    for (let p = 0; p < LED_PAGES; p++) {
+      let r; try { r = await getJSON(`https://data-api.polymarket.com/activity?user=${w}&limit=${LED_PAGE}&offset=${p * LED_PAGE}&end=${end}&sortBy=TIMESTAMP&sortDirection=DESC`); } catch (e) { if (/HTTP 400/.test(e.message)) break; throw e; }
+      if (!Array.isArray(r) || !r.length) { full = false; break; }
+      for (const x of r) { const id = x.timestamp + '|' + actId(x); if (!seen.has(id)) { seen.add(id); rows.push(x); } }
+      oldest = r[r.length - 1].timestamp;
+      if (r.length < LED_PAGE) { full = false; break; }
+    }
+    if (!full) { exhausted = true; break; }
+    if (oldest == null || oldest >= end) { exhausted = true; break; }
+    if (oldest <= stop) reached = true;
+    end = oldest;
+  }
+  return { rows, reached, exhausted };
+}
 let WT = [];                                                  // new sharp-wallet trades this poll
 async function walletPoll(S, wallets) {
   const t = now(); S.acct ||= {}; WT = [];
@@ -294,29 +366,32 @@ async function walletPoll(S, wallets) {
     // account look like a 90% winner, so this is rebuilt from the account's own
     // cash flow instead: per market, sells + redemptions - buys + what it still holds.
     // Markets still in play are skipped; only markets we saw from their first trade count.
-    if (A.trades[0] && A.trades[0].ts > t - 7 * DAY && (!A.stats || !A.stats.hist || t - A.stats.ts > 6 * H)) {
-      const act = [];
-      for (let p = 0; p < 10; p++) {
-        const r = await getJSON(`https://data-api.polymarket.com/activity?user=${w}&limit=500&offset=${p * 500}&sortBy=TIMESTAMP&sortDirection=DESC`);
-        if (!Array.isArray(r) || !r.length) break;
-        act.push(...r); if (r.length < 500) break;
+    if (A.trades[0] && A.trades[0].ts > t - 7 * DAY && (!A.stats || !A.stats.hist || ARG.backfill || t - A.stats.ts > 6 * H)) {
+      let L = A.led;
+      if (!L || L.hi == null) {                                   // built whole, then stored, so a failed walk never leaves a half ledger to double count
+        L = { m: {}, lo: null, hi: null, edgeHi: [], edgeLo: [], done: false };
+        const r = await actWalk(w, t, t - LED_KEEP, ARG.backfill ? 40 : 1);
+        ledIngest(L, r.rows, 'new'); L.done = r.exhausted; A.led = L;
+      } else {
+        const f = await actWalk(w, t, L.hi, 6);
+        if (!f.reached && !f.exhausted) { A.led = null; return; }      // a gap we cannot close: start the ledger over next refresh rather than count half a market
+        ledIngest(L, f.rows, 'new');
+        if (!L.done && L.lo > t - LED_KEEP) {
+          const o = await actWalk(w, L.lo, t - LED_KEEP, ARG.backfill ? 40 : 1);
+          ledIngest(L, o.rows, 'old'); if (o.exhausted) L.done = true;
+        }
       }
+      for (const [id, c] of Object.entries(L.m)) if (c[1] < t - LED_KEEP) delete L.m[id];
       const hp = await getJSON(`https://data-api.polymarket.com/positions?user=${w}&sizeThreshold=1&limit=500&sortBy=CURRENT&sortDirection=DESC`);
       const held = {}, live = new Set();
       for (const x of Array.isArray(hp) ? hp : []) { held[x.conditionId] = (held[x.conditionId] || 0) + x.currentValue; if (x.curPrice > 0.03 && x.curPrice < 0.97) live.add(x.conditionId); }
-      const t0 = act.length ? act[act.length - 1].timestamp : t, C = {};
-      for (const x of act) {
-        const c = C[x.conditionId] ||= { buy: 0, sell: 0, cash: 0, first: x.timestamp, slug: x.slug };
-        c.first = Math.min(c.first, x.timestamp);
-        if (x.type === 'TRADE') { if (x.side === 'BUY') { c.buy += x.usdcSize; c.cash -= x.usdcSize; } else { c.sell += x.usdcSize; c.cash += x.usdcSize; } }
-        else if (x.type === 'REDEEM') c.cash += x.usdcSize;
-      }
-      const SPORTY = /^(nfl|cfb|nba|cbb|ncaaf|mlb|nhl|wnba)-/;
+      const t0 = L.done ? 0 : L.lo, C = {};
+      for (const [id, m] of Object.entries(L.m)) C[id] = { buy: m[2], sell: m[3], cash: m[3] + m[4] - m[2], first: m[0], sp: !!m[5] };
       const agg = xs => { let n = 0, wn = 0, buy = 0, sell = 0, pnl = 0; for (const [, c] of xs) { n++; buy += c.buy; sell += c.sell; pnl += c.pnl; if (c.pnl > 0) wn++; } return n >= 5 && buy > 0 ? { n, win: r3(wn / n), roi: r3(pnl / buy), pnl: Math.round(pnl), vol: Math.round(buy), flip: r3(sell / buy) } : null; };
       const done = Object.entries(C).filter(([id, c]) => !live.has(id) && c.first > t0 + DAY && c.buy > 0).map(([id, c]) => [id, { ...c, pnl: c.cash + (held[id] || 0) }]);
       // per-market stake and result, newest first, so the Accounts page can ask "do their bigger-than-usual bets win more?" ([first trade ts, total bought $, P&L $])
-      const hist = done.filter(([, c]) => SPORTY.test(c.slug || '')).sort((a, b) => b[1].first - a[1].first).slice(0, 250).map(([, c]) => [c.first, Math.round(c.buy), Math.round(c.pnl)]);
-      A.stats = { ts: t, days: Math.round((t - t0) / DAY), capped: act.length >= 5000, all: agg(done), sp: agg(done.filter(([, c]) => SPORTY.test(c.slug || ''))), hist };
+      const hist = done.filter(([, c]) => c.sp).sort((a, b) => b[1].first - a[1].first).slice(0, 400).map(([, c]) => [c.first, Math.round(c.buy), Math.round(c.pnl)]);
+      A.stats = { ts: t, days: Math.round((t - (L.lo || t)) / DAY), capped: !L.done, all: agg(done), sp: agg(done.filter(([, c]) => c.sp)), hist };
     }
   });
   for (const [w, A] of Object.entries(S.acct)) if (!A.trades.length && !A.pos.length && A.cur < t - 14 * DAY) delete S.acct[w];
@@ -474,6 +549,7 @@ async function kalshi(sk, cfg, games, S) {
       const side = teamSide(hit.g, m.yes_sub_title);
       info.vol += +m.volume_fp || 0; info.vol24 += +m.volume_24h_fp || 0;
       info.px[side] = +m.last_price_dollars || null;
+      if (side === 'home') { info.bid = +m.yes_bid_dollars || null; info.ask = +m.yes_ask_dollars || null; info.hm = m.ticker; }   // the line tape stores the quote, not only the last trade
       todo.push([hit.g, m.ticker, side]);
     }
     out.set(hit.g, info);
@@ -540,7 +616,7 @@ async function novig(sk, cfg, games, S) {
         tape.push({ ts, m, side: side[x.outcomeId], usd: Math.round(usd), px: r3(+x.price), line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, id: x.tradeId.slice(0, 18) });
       }
       S.cursors['n:' + mk.marketId] = newest;
-      info[m] = { line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, bid: bid != null ? r3(bid) : null, ask: ask != null ? r3(ask) : null,
+      info[m] = { mk: mk.marketId, ho: Object.keys(side).find(k => side[k] === (m === 'tot' ? 'over' : 'home')), line: m === 'tot' ? +mk.strike : m === 'sp' ? cs : null, bid: bid != null ? r3(bid) : null, ask: ask != null ? r3(ask) : null,
         mid: bid != null && ask != null && ask - bid <= 0.10 ? r3((bid + ask) / 2) : null, depth, rest: Math.round(rest), vol: Math.round(vol) };
       info.rest += Math.round(rest); info.vol += Math.round(vol);
     }
@@ -817,16 +893,21 @@ function grade(S) {
 
 
 // ── picks: what the Top Reads card showed ─────────────────────────────────
-// The card's "N of 4 agree" is computed live from the game's current prices
-// and money. The old record counted only the alerts that had fired, so a card
-// that read 3 of 4 could be logged as 2 (a slow line drift fires no alert) or
-// padded by a stale alert at a different number. This ports the card's own
-// rule (page: Rf) so the record counts exactly the signals the card showed.
-// Per game, market and side we keep the PEAK read before kickoff (most
-// signals; later reads at the same count roll forward), grade it on the final
-// score, and ship it as `picks`. The page uses picks wherever a game has them
-// and falls back to alerts for games from before this existed.
-const KINDS = ['line', 'money', 'sharp', 'behind'];
+// The card's agreement is computed live from the game's current prices and
+// money. Bet signals are the line move, the money/tickets split, and a book
+// still behind Pinnacle. Sharp-account money is context only: copying it at
+// this poll speed has no edge, and a $1k net was one minimum trade. The card
+// threshold is sharpCard on the sport ($5k NFL/NBA, $2.5k CFB).
+//
+// Each pick freezes the first time it is seen: price, fair prob, and time.
+// Later polls do not replace it with a stronger read. Old rows that were
+// kept at their peak stay readable; the first new run just stops overwriting
+// them and does not pretend today's price was the entry. Graded picks carry
+// result (1 / -1 / 0, as before), units (profit per 1 risked at the frozen
+// American price) and clv (closing fair prob minus the frozen fair prob).
+// A game/market with a pick on both sides is a conflict on both rows.
+const BET_KINDS = ['line', 'money', 'behind'];
+const SHARP_CARD = Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sharpCard]));
 const pdev = (a, b) => {
   const f = l => l < 0 ? -l / (-l + 100) : 100 / (l + 100), o = f(a), i = f(b);
   let s = .5, r = 3;
@@ -856,26 +937,257 @@ function cardSignals(e, m) {
   const sp = e.splits?.[m];
   if (sp) for (const p of [i, s]) { const h = sp[p]; if (h && h.m != null && h.t <= 50 && h.m - h.t >= 10) out.money = { side: p, txt: `${h.m}% of the money on ${h.t}% of bets` }; }
   const c = (e.flow?.sharp?.[m + ':' + i] || 0) - (e.flow?.sharp?.[m + ':' + s] || 0);
-  if (Math.abs(c) >= 1e3) out.sharp = { side: c > 0 ? i : s, txt: `$${Math.round(Math.abs(c)).toLocaleString('en-US')} net from sharp accounts` };
+  const sharpAt = SHARP_CARD[e.sport] || 5000;
+  if (Math.abs(c) >= sharpAt) out.sharp = { side: c > 0 ? i : s, context: true, txt: `$${Math.round(Math.abs(c)).toLocaleString('en-US')} net from sharp accounts` };
   const b = (e.behind || []).find(x => x.m === m);
   if (b) out.behind = { side: b.side, txt: `${b.book} ${b.price > 0 ? '+' : ''}${b.price}, ${(b.ev * 100).toFixed(1)}% over Pinnacle's fair` };
   return { out, hl };
 }
+function entryQuote(e, m, side) {
+  const row = e.pin?.[m] || e.consensus?.[m];
+  if (!row) return { price: null, fair: null };
+  const price = row[side] ?? null;
+  let fair = null;
+  if (m === 'tot') { const o = devig(row.over, row.under); fair = o == null ? null : side === 'over' ? o : 1 - o; }
+  else { const h = devig(row.home, row.away); fair = h == null ? null : side === 'home' ? h : 1 - h; }
+  return { price, fair: fair == null ? null : r3(fair) };
+}
+function flagConflicts(picks) {
+  const by = {};
+  for (const p of Object.values(picks)) (by[`${p.game}|${p.m}`] ||= new Set()).add(p.side);
+  for (const p of Object.values(picks)) {
+    const sides = by[`${p.game}|${p.m}`];
+    if (sides && sides.size > 1) { p.conflict = true; p.conflictSides = [...sides]; }
+    else { delete p.conflict; delete p.conflictSides; }
+  }
+}
+
+// Bet signals are the line, the money/tickets split, and a book behind
+// Pinnacle. Sharp-account money is context: it is removed from the agree
+// count, and a pick that was only sharp is taken out of the bet ledger.
+// kindsLegacy keeps the old set so the previous record can sit beside the
+// new one. Prices and CLV are copied from a stored alert when that alert
+// already has them. Nothing here is estimated.
+const BET_SET = new Set(BET_KINDS);
+const sideKey = r => `${r.game}|${r.m}|${r.side}`;
+function firstStored(alerts, field, ok = () => true) {
+  const xs = (alerts || []).filter(a => typeof a[field] === 'number' && Number.isFinite(a[field]) && ok(a));
+  if (!xs.length) return null;
+  xs.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return xs[0][field];
+}
+function fillQuote(p, alerts) {
+  if (p.price == null) {
+    const price = firstStored(alerts, 'price', a => Math.abs(a.price) >= 100);
+    if (price != null) p.price = price;
+  }
+  if (p.fair == null) {
+    const fair = firstStored(alerts, 'fair', a => a.fair > 0 && a.fair < 1);
+    if (fair != null) p.fair = r3(fair);
+  }
+  if (p.clv == null) {
+    const clv = firstStored(alerts, 'clv');
+    if (clv != null) p.clv = r3(clv);
+    else {
+      const row = (alerts || []).filter(a => typeof a.fair === 'number' && typeof a.close === 'number').sort((a, b) => (a.ts || 0) - (b.ts || 0))[0];
+      if (row) p.clv = r3(row.close - row.fair);
+    }
+  }
+  if (p.result != null && p.units == null && typeof p.price === 'number') {
+    p.units = p.result === 0 ? 0 : p.result > 0 ? r3(payout(p.price)) : -1;
+  }
+}
+function migrateLedger(S) {
+  S.picks ||= {};
+  S.sharpContext ||= {};
+  const by = {};
+  for (const a of S.alerts || []) if (a && a.game && a.m && a.side) (by[sideKey(a)] ||= []).push(a);
+  for (const [k, p] of Object.entries(S.picks)) {
+    if (!Array.isArray(p.kindsLegacy)) p.kindsLegacy = (p.kinds || []).slice();
+    const next = p.kindsLegacy.filter(x => BET_SET.has(x));
+    const hadSharp = p.kindsLegacy.includes('sharp');
+    if (hadSharp && p.sig && p.sig.sharp && !p.context) p.context = p.sig.sharp;
+    if (!next.length) {
+      const row = { ...p, kinds: p.kindsLegacy.slice(), dropped: true, reason: 'sharp-only' };
+      fillQuote(row, by[k] || []);
+      S.sharpContext[k] = row;
+      delete S.picks[k];
+      continue;
+    }
+    p.kinds = next;
+    p.sharpContext = hadSharp || undefined;
+    if (p.sig && typeof p.sig === 'object') p.sig = Object.fromEntries(next.filter(kk => p.sig[kk]).map(kk => [kk, p.sig[kk]]));
+    fillQuote(p, by[k] || []);
+  }
+  flagConflicts(S.picks);
+  S.ledgerV = 3;
+}
+const EF_KIND = { steam: 'line', split: 'money', sharp: 'sharp', cross: 'sharp', behind: 'behind' };
+const OPP_SIDE = { home: 'away', away: 'home', over: 'under', under: 'over' };
+function quoteOf(row, alerts) {
+  const als = alerts || [];
+  let price = typeof row.price === 'number' ? row.price : null;
+  if (price == null) price = firstStored(als, 'price', a => Math.abs(a.price) >= 100);
+  let clv = typeof row.clv === 'number' ? row.clv : null;
+  if (clv == null) {
+    clv = firstStored(als, 'clv');
+    if (clv == null) {
+      const both = als.filter(a => typeof a.fair === 'number' && typeof a.close === 'number').sort((a, b) => (a.ts || 0) - (b.ts || 0))[0];
+      if (both) clv = r3(both.close - both.fair);
+    }
+  }
+  const res = row.result != null ? row.result : null;
+  let units = typeof row.units === 'number' ? row.units : null;
+  if (units == null && price != null && res != null) units = res === 0 ? 0 : res > 0 ? r3(payout(price)) : -1;
+  return { price, clv, units };
+}
+function packRec(rows) {
+  let w = 0, l = 0, p = 0, units = 0, unitsN = 0, clv = 0, clvN = 0, beat = 0;
+  for (const r of rows) {
+    const v = r.res > 0 ? 1 : r.res < 0 ? -1 : 0;
+    if (v > 0) w++; else if (v < 0) l++; else p++;
+    if (typeof r.units === 'number') { units += r.units; unitsN++; }
+    if (r.clvs && r.clvs.length) {
+      const c = r.clvs.reduce((a, b) => a + b, 0) / r.clvs.length;
+      clv += c; clvN++; if (c > 0) beat++;
+    }
+  }
+  return { n: rows.length, w, l, p, units: unitsN ? r3(units) : null, unitsN, clv: clvN ? r3(clv / clvN) : null, clvN, beat };
+}
+// The record the page shows. `legacy` counts sharp as a signal (the old
+// rule, including "the other side had as many"). `rows` is the bet record:
+// sharp removed, sharp-only picks gone, both sides flagged and held out of
+// the agree buckets. Sharp context is every row that had sharp money.
+function assembleLedger(picks, alerts, sharpContext) {
+  const aq = {};
+  for (const a of alerts || []) if (a && a.m && a.side) (aq[sideKey(a)] ||= []).push(a);
+  const grouped = new Map();
+  for (const r of alerts || []) {
+    const kind = EF_KIND[r.type];
+    if (!kind || !r.m || !r.side) continue;
+    const d = sideKey(r);
+    let c = grouped.get(d);
+    if (!c) {
+      c = { game: r.game, gameLbl: r.gameLbl, start: r.start, sport: r.sport, m: r.m, side: r.side, kinds: new Set(), res: 0, graded: false, hline: r.hline ?? null, line: r.line ?? null, alerts: [] };
+      grouped.set(d, c);
+    }
+    c.kinds.add(kind); c.alerts.push(r);
+    if (r.result != null) { c.graded = true; c.res += r.result; }
+    if (r.hline != null) c.hline = r.hline;
+    if (r.line != null) c.line = r.line;
+  }
+  const src = [...(picks || [])];
+  for (const r of sharpContext || []) {
+    if (!r || !r.dropped) continue;
+    if (src.some(p => p.game === r.game && p.m === r.m && p.side === r.side)) continue;
+    src.push(r);
+  }
+  const gamesWithPick = new Set(src.map(r => r.game));
+  const n = [...grouped.values()].filter(r => !gamesWithPick.has(r.game));
+  for (const r of src) {
+    const u = grouped.get(sideKey(r));
+    const kinds = new Set(r.kindsLegacy || r.kinds || []);
+    const q = quoteOf(r, [...(aq[sideKey(r)] || []), ...((u && u.alerts) || [])]);
+    const res = r.result != null ? r.result : (u && u.graded ? (u.res > 0 ? 1 : u.res < 0 ? -1 : 0) : null);
+    n.push({
+      game: r.game, gameLbl: r.gameLbl, start: r.start, sport: r.sport, m: r.m, side: r.side,
+      kinds, res: res == null ? 0 : res, graded: res != null, hline: r.hline ?? (u && u.hline) ?? null, line: r.line ?? (u && u.line) ?? null,
+      clvs: q.clv == null ? [] : [q.clv], units: q.units, price: q.price, from: 'pick',
+    });
+  }
+  const bySide = new Map();
+  for (const r of n) {
+    const k = sideKey(r), prev = bySide.get(k);
+    if (!prev || r.kinds.size > prev.kinds.size) bySide.set(k, r);
+  }
+  const legacy = [...bySide.values()];
+  for (const r of legacy) {
+    const o = bySide.get(`${r.game}|${r.m}|${OPP_SIDE[r.side]}`);
+    r.contested = !!(o && o.kinds.size >= r.kinds.size);
+  }
+  const rows = [];
+  for (const r of legacy) {
+    const kinds = new Set([...r.kinds].filter(k => BET_SET.has(k)));
+    if (!kinds.size) continue;
+    rows.push({ ...r, kinds, legacyN: r.kinds.size, hadSharp: r.kinds.has('sharp'), clvs: r.clvs });
+  }
+  const both = {};
+  for (const r of rows) (both[`${r.game}|${r.m}`] ||= new Set()).add(r.side);
+  for (const r of rows) {
+    r.conflict = both[`${r.game}|${r.m}`].size > 1;
+    r.contested = r.conflict;
+  }
+  const dropped = legacy.filter(r => ![...r.kinds].some(k => BET_SET.has(k)));
+  const regraded = rows.filter(r => r.legacyN !== r.kinds.size);
+  const conflicts = rows.filter(r => r.conflict);
+  const sharpRows = legacy.filter(r => r.kinds.has('sharp'));
+  const was = {};
+  for (const k of [1, 2, 3, 4]) was[k] = packRec(legacy.filter(r => r.graded && !r.contested && r.kinds.size === k));
+  const nowB = {};
+  for (const k of [1, 2, 3]) nowB[k] = packRec(rows.filter(r => r.graded && !r.contested && r.kinds.size === k));
+  const slice = (list, pred) => packRec(list.filter(r => r.graded && pred(r)));
+  const slices = {};
+  const add = (name, predOld, predNew) => {
+    slices[name] = { old: slice(legacy, r => !r.contested && predOld(r)), now: slice(rows, r => !r.contested && predNew(r)) };
+  };
+  add('overall', () => true, () => true);
+  for (const sp of ['nfl', 'cfb', 'nba']) add(sp, r => r.sport === sp, r => r.sport === sp);
+  for (const m of ['sp', 'ml', 'tot']) add(m, r => r.m === m, r => r.m === m);
+  for (const k of [1, 2, 3]) add(k + ' agree', r => r.kinds.size === k, r => r.kinds.size === k);
+  const better = [];
+  for (const [name, s] of Object.entries(slices)) {
+    const od = s.old.w + s.old.l, nd = s.now.w + s.now.l;
+    if (!od || !nd) continue;
+    const or = s.old.w / od, nr = s.now.w / nd;
+    if (nr > or + 1e-9) better.push({ name, old: `${s.old.w}-${s.old.l}${s.old.p ? '-' + s.old.p : ''}`, now: `${s.now.w}-${s.now.l}${s.now.p ? '-' + s.now.p : ''}`, oldN: s.old.n, nowN: s.now.n, decisions: nd });
+  }
+  const ex = rows => rows.slice(0, 6).map(r => ({ game: r.gameLbl, sport: r.sport, m: r.m, side: r.side, kinds: [...r.kinds].sort(), result: r.graded ? (r.res > 0 ? 1 : r.res < 0 ? -1 : 0) : null }));
+  return {
+    rows, legacy, was, now: nowB, slices, better,
+    dropped: dropped.length, droppedGraded: dropped.filter(r => r.graded).length, droppedEx: ex(dropped),
+    regraded: regraded.length, regradedGraded: regraded.filter(r => r.graded).length, regradedEx: ex(regraded),
+    conflicts: conflicts.length, conflictPairs: Math.floor(conflicts.length / 2), conflictsGraded: conflicts.filter(r => r.graded).length, conflictEx: ex(conflicts),
+    sharp: { ...packRec(sharpRows.filter(r => r.graded)), priced: sharpRows.filter(r => r.graded && typeof r.price === 'number').length },
+  };
+}
+// Our model's side on each read, stored on the pick so the record can say how it did when the model agreed. Stamped when the pick
+// is first seen (the model file is what the repo held then, `asof` says when it was built). Rows from before this existed are
+// filled once from the current model files and carry backfill:true, so they are never mistaken for a point-in-time read.
+// Model agreement is shown beside the bet signals. It is not a bet signal and never counts toward an agree total.
+let MODEL_IDX;
+function modelIdx() { if (MODEL_IDX === undefined) { try { MODEL_IDX = loadModelIndex(ROOT); } catch { MODEL_IDX = null; } } return MODEL_IDX; }
+function stampModel(S, games) {
+  const idx = modelIdx(); if (!idx) return;
+  learnAbbrs(idx, games);
+  const G = Object.fromEntries((games || []).map(g => [g.key, g])), t = now();
+  for (const p of Object.values(S.picks || {})) {
+    if (p.model) continue;
+    const ms = modelSideFor(idx, p, G[p.game]);
+    if (!ms) { if (p.model === undefined) p.model = null; continue; }
+    p.model = p.start > t && !(p.ts && p.ts < t - 3600) ? { ...ms, at: t } : { ...ms, at: t, backfill: true };
+  }
+}
 function snapPicks(S, games) {
   const t = now(); S.picks ||= {};
+  for (const p of Object.values(S.picks)) p.frozen = true;   // a stored row is the first sight we still have
   for (const e of games) {
     if (e.start <= t) continue;
     for (const m of ['sp', 'tot', 'ml']) {
       const { out, hl } = cardSignals(e, m), by = {};
-      for (const k of KINDS) if (out[k]) (by[out[k].side] ||= []).push(k);
+      for (const k of BET_KINDS) if (out[k]) (by[out[k].side] ||= []).push(k);
       for (const [side, kinds] of Object.entries(by)) {
         const key = `${e.key}|${m}|${side}`, old = S.picks[key];
-        if (old && old.kinds.length > kinds.length) continue;           // keep the peak
+        if (old) { old.frozen = true; continue; }          // first sight stands, including legacy peak rows
+        const q = entryQuote(e, m, side);
         S.picks[key] = { game: e.key, gameLbl: `${e.away.abbr || e.away.short} @ ${e.home.abbr || e.home.short}`, sport: e.sport, start: e.start, m, side,
-          hline: m === 'sp' ? hl : null, line: m === 'tot' ? hl : null, kinds, sig: Object.fromEntries(kinds.map(k => [k, out[k].txt])), ts: t, result: old?.result ?? null };
+          hline: m === 'sp' ? hl : null, line: m === 'tot' ? hl : null, kinds, sig: Object.fromEntries(kinds.map(k => [k, out[k].txt])),
+          ts: t, price: q.price, fair: q.fair, frozen: true,
+          context: out.sharp && out.sharp.side === side ? out.sharp.txt : null, result: null };
       }
     }
   }
+  flagConflicts(S.picks);
+  stampModel(S, games);
   for (const [k, p] of Object.entries(S.picks)) if (p.start < t - 60 * DAY) delete S.picks[k];
 }
 
@@ -896,20 +1208,30 @@ function snapLead(S, games) {
       const med = ls[Math.floor(ls.length / 2)];
       const L = (S.lead[`${e.key}|${m}`] ||= { game: e.key, sport: e.sport, m, start: e.start });
       L.start = e.start;
-      if (!L.first && Math.abs(pl - med) >= 0.5 && e.start - t >= 3 * H) L.first = { ts: t, b: pl, r: med };
+      if (!L.first && Math.abs(pl - med) >= 0.5 && e.start - t >= 3 * H) { const ml = modelLine(e); L.first = { ts: t, b: pl, r: med, ...(ml ? { mm: ml.mm, mt: ml.mt } : {}) }; }
       if (L.first) L.close = { ts: t, r: med };
     }
   }
   for (const [k, L] of Object.entries(S.lead)) if (L.start < t - 60 * DAY) delete S.lead[k];
 }
 function gradePicks(S) {
-  for (const p of Object.values(S.picks || {})) {
-    const G = S.games[p.game]; if (!G?.final || p.result != null || p.start > now()) continue;
+  const t = now();
+  // sharpContext rows left the bet ledger but stay graded: a play dropped while still pending must keep getting its raw result
+  for (const p of [...Object.values(S.picks || {}), ...Object.values(S.sharpContext || {})]) {
+    const G = S.games[p.game]; if (!G || p.start > t) continue;
+    if (p.close == null && G.ladder && p.fair != null) {
+      const P = { ml: G.ladder.ml, spL: G.ladder.sp, totL: G.ladder.tot };
+      const f = fairNow(P, p);
+      if (f != null) { p.close = r3(f); p.clv = r3(f - p.fair); }
+    }
+    if (!G.final || p.result != null) continue;
     const { home, away } = G.final; let v;
     if (p.m === 'ml') v = home === away ? 0 : (home > away) === (p.side === 'home') ? 1 : -1;
     else if (p.m === 'sp' && p.hline != null) { const d = home + p.hline - away, r = p.side === 'home' ? d : -d; v = r > 0 ? 1 : r < 0 ? -1 : 0; }
     else if (p.m === 'tot' && p.line != null) { const d = home + away - p.line, r = p.side === 'over' ? d : -d; v = r > 0 ? 1 : r < 0 ? -1 : 0; }
-    if (v != null) p.result = v;
+    if (v == null) continue;
+    p.result = v;
+    p.units = v === 0 ? 0 : p.price == null ? null : v > 0 ? r3(payout(p.price)) : -1;
   }
 }
 
@@ -997,22 +1319,49 @@ function payload(S, byGame, W, status) {
   const accounts = Object.entries(S.acct || {}).filter(([, A]) => A.trades.length || A.pos.length).map(([w, A]) => {
     const recs = Object.values(WREC).map(r => r[w]).filter(Boolean);
     const rec = recs.sort((a, b) => b.n - a.n)[0] || null;
+    // Record in every sport the wallet has been scored in (not only the sport where it earned a sharp or dull label).
+    const recSp = {};
+    for (const [sk, M] of Object.entries(WALL)) { const e = M?.[w]; if (e) recSp[sk] = e.rec; }
     const b24 = A.trades.filter(x => x.ts > t - DAY && x.side === 'BUY');
-    return { w, who: A.who, rec, last: A.trades[0]?.ts || 0, n7: A.trades.length, buy24: b24.reduce((s, x) => s + x.usd, 0), n24: b24.length,
+    return { w, who: A.who, rec, recSp, last: A.trades[0]?.ts || 0, n7: A.trades.length, buy24: b24.reduce((s, x) => s + x.usd, 0), n24: b24.length,
       trades: A.trades.slice(0, 25).map(({ ts, side, usd, px, title, slug, out }) => ({ ts, side, usd, px, title, slug, out })), pos: A.pos.map(({ ev, ...x }) => x), posVal: A.pos.reduce((s, x) => s + x.val, 0), stats: A.stats ? { all: A.stats.all, sp: A.stats.sp, days: A.stats.days, capped: A.stats.capped, hist: A.stats.hist } : null };
   }).filter(a => a.last > t - 7 * DAY || a.pos.length).sort((a, b) => b.buy24 - a.buy24 || b.last - a.last).slice(0, 80);
   return { generated: new Date().toISOString(), ts: t, status, wallets: W, games, alerts, accounts, sigRec, sigBig: Object.fromEntries(Object.entries(SPORTS).map(([k, c]) => [k, c.sigBig])) };
+}
+
+function writeSplit(dir, P) {
+  const heavy = ['splitHist', 'tickets', 'pinHist', 'flowH', 'props', 'kprops', 'soft'];
+  const games = (P.games || []).map(g => { const slim = { ...g }; for (const k of heavy) delete slim[k]; return slim; });
+  const summary = {
+    generated: P.generated, ts: P.ts, status: P.status, wallets: P.wallets, sig: P.sig, sigBig: P.sigBig,
+    games, picks: P.picks, lead: P.lead, sigRec: P.sigRec, ledger: P.ledger, sharpContext: P.sharpContext, split: true,
+    alerts: [], accounts: [],
+  };
+  writeFileSync(resolve(dir, 'summary.json'), JSON.stringify(summary));
+  writeFileSync(resolve(dir, 'alerts.json'), JSON.stringify({ ts: P.ts, alerts: P.alerts || [] }));
+  writeFileSync(resolve(dir, 'accounts.json'), JSON.stringify({ ts: P.ts, accounts: P.accounts || [] }));
+  writeFileSync(resolve(dir, 'props.json'), JSON.stringify({ ts: P.ts, props: P.props || null, propRecord: P.propRecord || null }));
+  writeFileSync(resolve(dir, 'reads.json'), JSON.stringify({ ts: P.ts, picks: P.picks || [], lead: P.lead || [], sigRec: P.sigRec || [], ledger: P.ledger || null }));
+  const gdir = resolve(dir, 'g');
+  mkdirSync(gdir, { recursive: true });
+  for (const g of P.games || []) {
+    const extra = { key: g.key, ts: P.ts };
+    for (const k of heavy) if (g[k] != null) extra[k] = g[k];
+    writeFileSync(resolve(gdir, g.key.replace(/[^a-zA-Z0-9]+/g, '_') + '.json'), JSON.stringify(extra));
+  }
 }
 
 // ── main ────────────────────────────────────────────────────────────────
 async function pollOnce() {
   mkdirSync(DIR, { recursive: true });
   const S = loadState(); S.born ||= now(); S._new = []; S.prevPoll = S.lastPoll || 0; S.lastPoll = now();
+  migrateLedger(S); saveState(S);
   const status = {}, all = [], walletInfo = {};
   // Accounts are scored per sport, but skill travels: NFL-sharp accounts beat
   // the CFB close by +2.2%/trade (194 trades, t 7, 2026 season). So an account
   // with no record in this sport borrows its sharp label from another sport.
   const OWN = Object.fromEntries(Object.entries(SPORTS).map(([sk, c]) => [sk, loadWallets(c.wallets)]));
+  for (const [sk, o] of Object.entries(OWN)) WALL[sk] = o.all;
   const allSharp = [...new Set(Object.values(OWN).flatMap(o => [...o.sharp]))];
   const T0 = Date.now(), lap = (st, k, p) => p.finally(() => { (st.ms ||= {})[k] = Math.round((Date.now() - T0) / 1000); });   // seconds since poll start, per source: what a Refresh click is actually waiting on
   if (ARG.quick && now() - (S.lastWallet || 0) < 15 * 60) { status.accounts = 'skipped (quick)'; } else S.lastWallet = now();
@@ -1052,7 +1401,13 @@ async function pollOnce() {
   S.alerts = S.alerts.filter(a => a.ts > t - 60 * DAY);
   const fresh = S._new; delete S._new;
   const P = payload(S, all, { ...walletInfo }, status);
-  snapPicks(S, P.games); gradePicks(S); P.picks = Object.values(S.picks);
+  migrateLedger(S);
+  snapPicks(S, P.games); gradePicks(S); migrateLedger(S);
+  P.picks = Object.values(S.picks);
+  P.sharpContext = Object.values(S.sharpContext || {}).filter(r => r.dropped).map(({ sig, ...r }) => r);
+  const led = assembleLedger(P.picks, P.alerts, P.sharpContext);
+  const { rows, legacy, ...pub } = led;
+  P.ledger = pub;
   snapLead(S, P.games); P.lead = Object.values(S.lead).filter(x => x.first);
   saveState(S);
   // `sig` changes only when something a viewer would see changes.
@@ -1074,12 +1429,125 @@ async function pollOnce() {
   } catch (e) { log('props board failed', e.message); }
   P.sig = createHash('sha1').update(String(P.alerts.length) + ':' + (P.alerts[0]?.id || '') + ':' + all.map(g => (S.games[g.key]?.pin || []).length + '/' + (S.games[g.key]?.split || []).length).join(',')).digest('hex').slice(0, 12);
   writeFileSync(OUT, JSON.stringify(P));
+  writeSplit(DIR, P);
   writeFileSync(resolve(DIR, 'new_alerts.json'), JSON.stringify(fresh));
   log(new Date().toISOString(), JSON.stringify(status), `${fresh.length} new alerts`);
   for (const a of fresh.slice(0, 12)) log('  +', a.sport, a.type, a.gameLbl, '·', a.text);
   return fresh;
 }
 
+function selftestPicks() {
+  const t0 = now();
+  const e = {
+    key: 'nfl:1', sport: 'nfl', start: t0 + 3600,
+    away: { abbr: 'A', short: 'Away' }, home: { abbr: 'H', short: 'Home' },
+    pin: { sp: { line: -3, home: -110, away: -110 }, ml: { home: -150, away: 130 } },
+    open: { sp: { line: -1.5, home: -110, away: -110 }, ml: { home: -150, away: 130 } },
+    splits: { sp: { home: { t: 40, m: 55 }, away: { t: 60, m: 45 } } },
+    flow: { sharp: { 'sp:home': 8000, 'sp:away': 500, 'ml:home': 1200 } },
+    behind: [],
+  };
+  const S = { picks: {}, games: {} };
+  snapPicks(S, [e]);
+  const p = S.picks['nfl:1|sp|home'];
+  if (!p || p.kinds.includes('sharp') || p.kinds.length !== 2) throw new Error('bet signals only: ' + JSON.stringify(p));
+  if (p.price !== -110 || p.fair == null || !p.frozen) throw new Error('missing entry quote ' + JSON.stringify(p));
+  if (S.picks['nfl:1|ml|home']) throw new Error('a $1.2k sharp net must not create a pick');
+  const ts = p.ts, kinds = p.kinds.slice();
+  e.behind = [{ m: 'sp', side: 'home', book: 'DraftKings', price: -105, ev: 0.04 }];
+  snapPicks(S, [e]);
+  if (S.picks['nfl:1|sp|home'].ts !== ts || S.picks['nfl:1|sp|home'].kinds.join() !== kinds.join()) throw new Error('pick was overwritten');
+  S.picks['nfl:1|sp|away'] = { game: 'nfl:1', m: 'sp', side: 'away', start: e.start, kinds: ['line'], result: null };
+  flagConflicts(S.picks);
+  if (!S.picks['nfl:1|sp|home'].conflict || !S.picks['nfl:1|sp|away'].conflict) throw new Error('both sides should conflict');
+  const g = S.picks['nfl:1|sp|home'];
+  g.start = t0 - 10; g.fair = 0.5; g.hline = -3;
+  S.games['nfl:1'] = { final: { home: 24, away: 17 }, ladder: { ml: { home: -160, away: 140 }, sp: { '-3': [-120, 100] }, tot: {} } };
+  gradePicks(S);
+  if (g.result !== 1 || !(g.units > 0.9 && g.units < 0.92) || typeof g.clv !== 'number') throw new Error('grade ' + JSON.stringify({ result: g.result, units: g.units, clv: g.clv }));
+  // legacy peak row: freeze, do not stamp a new price over the missing one
+  S.picks['nfl:9|ml|away'] = { game: 'nfl:9', m: 'ml', side: 'away', start: t0 + 100, kinds: ['sharp', 'line'], ts: 1, result: null };
+  snapPicks(S, [{ ...e, key: 'nfl:9', start: t0 + 100 }]);
+  const leg = S.picks['nfl:9|ml|away'];
+  if (!leg.frozen || leg.price != null || leg.kinds[0] !== 'sharp') throw new Error('legacy row changed ' + JSON.stringify(leg));
+  const M = { picks: {
+    'a|sp|home': { game: 'a', m: 'sp', side: 'home', sport: 'nfl', gameLbl: 'A @ B', kinds: ['sharp', 'line'], result: 1, sig: { sharp: 'ctx', line: 'moved' } },
+    'a|sp|away': { game: 'a', m: 'sp', side: 'away', sport: 'nfl', gameLbl: 'A @ B', kinds: ['money'], result: -1 },
+    'b|ml|home': { game: 'b', m: 'ml', side: 'home', sport: 'cfb', gameLbl: 'C @ D', kinds: ['sharp'], result: -1 },
+  }, alerts: [{ game: 'a', m: 'sp', side: 'home', type: 'behind', price: -110, fair: 0.5, close: 0.55, clv: 0.05, ts: 1, result: 1 }], sharpContext: {} };
+  migrateLedger(M);
+  const home = M.picks['a|sp|home'];
+  if (!home || home.kinds.join() !== 'line' || home.kindsLegacy.join() !== 'sharp,line') throw new Error('sharp not stripped ' + JSON.stringify(home));
+  if (home.price !== -110 || !(home.units > 0.9 && home.units < 0.92) || home.clv !== 0.05) throw new Error('quote not copied ' + JSON.stringify(home));
+  if (!home.conflict || !M.picks['a|sp|away'].conflict) throw new Error('both sides not flagged');
+  if (M.picks['b|ml|home'] || !M.sharpContext['b|ml|home'] || !M.sharpContext['b|ml|home'].dropped) throw new Error('sharp-only pick still in the bet ledger');
+  migrateLedger(M);
+  if (M.picks['a|sp|home'].kindsLegacy.join() !== 'sharp,line' || M.picks['a|sp|home'].kinds.join() !== 'line') throw new Error('second migrate rewrote history');
+  M.sharpContext['p|ml|home'] = { game: 'p', m: 'ml', side: 'home', start: 1, kinds: ['sharp'], dropped: true, result: null };
+  M.games = { p: { final: { home: 3, away: 1 } } };
+  gradePicks(M);
+  if (M.sharpContext['p|ml|home'].result !== 1) throw new Error('a dropped pending play must still be graded');
+  delete M.sharpContext['p|ml|home'];
+  const led = assembleLedger(Object.values(M.picks), M.alerts, Object.values(M.sharpContext));
+  if (led.slices.overall.now.n !== 0) throw new Error('conflict counted in the bet record ' + JSON.stringify(led.slices.overall.now));
+  if (led.dropped !== 1 || led.sharp.w !== 1 || led.sharp.l !== 1) throw new Error('sharp context ' + JSON.stringify({ dropped: led.dropped, sharp: led.sharp }));
+  // model side: stamped at first sight against the read's own line, never on a sharp-only row, backfill flagged on old rows
+  MODEL_IDX = { nfl: [{ key: 'nfl:1', home: 'H', away: 'A', kick: t0 + 3600, model_margin: 6 }], cfb: [], nba: null, logos: {}, tot: new Map(), abbr2id: {}, asof: { nfl: 'x' } };
+  const S2 = { picks: {}, games: {} };
+  snapPicks(S2, [e]);
+  const mp = S2.picks['nfl:1|sp|home'].model;
+  // home spread -3 and model margin +6: home covers by 3 on the model's number, which is a strong edge
+  if (!mp || mp.side !== 'home' || mp.edge !== 3 || !mp.strong || mp.backfill) throw new Error('model side not stamped ' + JSON.stringify(mp));
+  S2.picks['nfl:1|sp|home'].ts = t0 - 7200; delete S2.picks['nfl:1|sp|home'].model;
+  stampModel(S2, [e]);
+  if (!S2.picks['nfl:1|sp|home'].model.backfill) throw new Error('old row must be flagged backfill');
+  console.log('fetch-sharp-money pick selftest ok');
+}
+if (ARG.selftest) {
+  selftestPicks();
+  process.exit(0);
+}
+if (ARG['audit-dropped']) {
+  // Proof that the plays removed from the bet record are still stored with their raw result. Reads a state.json, migrates a copy, and compares.
+  const S = JSON.parse(readFileSync(ARG['audit-dropped'], 'utf8'));
+  const before = JSON.parse(JSON.stringify(S.picks || {})), ctxBefore = JSON.parse(JSON.stringify(S.sharpContext || {}));
+  const pend = (S.alerts || []).length;
+  migrateLedger(S);
+  const lost = [], changed = [], pendingAfter = [];
+  const dropKeys = Object.entries(before).filter(([k, p]) => !(p.kinds || []).some(x => BET_SET.has(x))).map(([k]) => k);
+  const by = { sport: {}, m: {} };
+  for (const k of dropKeys) {
+    const o = before[k], n = S.sharpContext[k];
+    if (!n || !n.dropped) { lost.push(k); continue; }
+    if (n.result !== o.result || n.start !== o.start || n.side !== o.side || n.m !== o.m || n.hline !== o.hline || n.line !== o.line) changed.push(k);
+    const g = (by.sport[o.sport] ||= { n: 0, graded: 0, w: 0, l: 0, p: 0 });
+    g.n++; if (o.result != null) { g.graded++; if (o.result > 0) g.w++; else if (o.result < 0) g.l++; else g.p++; }
+    const mm = (by.m[o.m] ||= { n: 0, graded: 0 }); mm.n++; if (o.result != null) mm.graded++;
+  }
+  for (const k of Object.keys(ctxBefore)) if (!S.sharpContext[k]) lost.push('ctx:' + k);
+  const rawGraded = Object.values(before).filter(p => p.result != null).length;
+  const keptGraded = Object.values(S.picks).filter(p => p.result != null).length + Object.values(S.sharpContext).filter(p => p.result != null).length;
+  const pendDrop = dropKeys.filter(k => before[k].result == null);
+  const t0 = pendDrop.filter(k => S.sharpContext[k].result != null).length;
+  gradePicks(S);
+  const newlyGraded = pendDrop.filter(k => S.sharpContext[k].result != null).length - t0;
+  const finalNoResult = pendDrop.filter(k => S.sharpContext[k].result == null && S.games[S.sharpContext[k].game] && S.games[S.sharpContext[k].game].final).length;
+  console.log(JSON.stringify({
+    picksBefore: Object.keys(before).length, picksAfter: Object.keys(S.picks).length, contextAfter: Object.keys(S.sharpContext).length,
+    dropped: dropKeys.length, droppedGraded: dropKeys.length - pendDrop.length, droppedPending: pendDrop.length,
+    droppedWins: dropKeys.filter(k => before[k].result > 0).length, droppedLosses: dropKeys.filter(k => before[k].result < 0).length, droppedPushes: dropKeys.filter(k => before[k].result === 0).length,
+    missing: lost.length, resultsChanged: changed.length, rawGradedBefore: rawGraded, gradedStoredAfter: keptGraded,
+    pendingGradedByFix: newlyGraded, pendingStillUngradedWithFinal: finalNoResult, bySport: by.sport, byMarket: by.m, alertsInState: pend,
+  }, null, 2));
+  process.exit(0);
+}
+if (ARG.ledger) {
+  const j = JSON.parse(readFileSync(ARG.ledger, 'utf8'));
+  const led = assembleLedger(j.picks || [], j.alerts || [], j.sharpContext || []);
+  const { rows, legacy, ...pub } = led;
+  console.log(JSON.stringify(pub, null, 2));
+  process.exit(0);
+}
 if (ARG.loop) {
   const every = Math.max(30, +ARG.loop || 120) * 1000;
   for (;;) { try { await pollOnce(); } catch (e) { log('poll failed', e.message); } await new Promise(s => setTimeout(s, every)); }

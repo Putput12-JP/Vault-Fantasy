@@ -1,5 +1,15 @@
 # Vault Fantasy — project instructions
 
+## Working rules
+
+- Always use a branch and a pull request. Never push `main`.
+- Any change that affects tracking must also fix the historical data and the records, not only the rows logged from now on.
+- A pull request description lists every change, split into Model/data and UI, with the old number and the new number.
+- Flag any record that improves for close monitoring, and include its sample size.
+- Sharp money is context only. It is not a bet signal and it does not count toward an agree total.
+- Never invent a number. Use a stored price, a stored closing-line value, or close minus fair when both are stored.
+- Avoid editing a file another open pull request is changing.
+
 ## Changelog — update it on every user-facing change
 
 Vault has an in-app changelog (Settings → What's New). **Whenever a change alters

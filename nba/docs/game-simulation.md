@@ -68,3 +68,21 @@ Scorers projected under about 3 points are flagged Off by the marginal check: th
     price use the simulation.
   A first look at two preseason games (not a test): the simulation claims 0.05 to 0.3 points of lift for opposing pairs and 0.2 to 0.7 for teammates.
   `build_game_simulation_test.py` computes this and Track Record shows it.
+
+## Vault line is recorded and scored too (added 2026-10-20, before any regular-season game was scored)
+
+The page offers three environments; the record only saved two (market line, players' own sum), so there was no live evidence on the third. Revision:
+
+- **`sim_record.py` now saves the Vault line environment** beside the other two, from the game model's margin and total (`sim_engine.vault_mean`, the
+  page's `vaultLine` ported line for line; `check_sim_parity.py` compares the two). It exists only for regular-season games (the page's rule:
+  `season_type >= 2`), so preseason games get no Vault row and there is nothing to backfill: no preseason game could ever have had one, and no
+  regular-season game had been scored when this was added. A regular-season game recorded before this change shipped has market and players rows
+  only, and counts in those two environments but not in the Vault one or in the head-to-head.
+- **The Vault environment is scored by the same rules,** judged separately (totals and margins 80% +/- 4 points, player points, rebounds and
+  assists 80% +/- 5). It is **reported beside the GO call, not inside it:** the call stays on the market line and the players' own sum exactly as
+  written above, so adding a third environment cannot make an unchanged result fail.
+- **Head to head, descriptive, no verdict:** on games that have all three environments, the average miss of each simulated middle margin and total
+  against the real ones, and the squared miss minus the market line's with a game-clustered standard error. It exists so "which starting point did
+  better against real games" has an answer on the same games. Nothing may be promoted on it without its own pre-registered rule.
+- Joint odds stay on the market line (players' own sum when there is no market line), unchanged.
+- The Track Record page's Game simulations card has a Vault line tab. This changes what is measured and shown, not the engine or any rule above.

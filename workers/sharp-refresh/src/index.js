@@ -1,7 +1,7 @@
 // Sharp Money refresh trigger. GitHub's own cron drops runs, so this Worker calls
 // workflow_dispatch on a schedule instead, and also serves the page's Refresh button.
 //   cron  -> force=false: the workflow gate skips quiet hours / off-cadence slots
-//   POST  -> force=true:  a person asked, run now (cooldown below keeps it from being spammed)
+//   POST  -> force=true:  a person asked, after Turnstile, and the Gate object is not in its cooldown
 
 const ORIGINS = ['https://vaultfantasy.com', 'https://www.vaultfantasy.com', 'http://localhost:8000', 'http://127.0.0.1:8000'];
 const COOLDOWN_S = 60;
@@ -39,10 +39,32 @@ async function dispatch(env, force) {
 
 const cors = origin => ({
   'Access-Control-Allow-Origin': ORIGINS.includes(origin) ? origin : ORIGINS[0],
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
   Vary: 'Origin',
 });
+
+// One cooldown for every visitor, not one per Cloudflare colo. The page's Refresh button
+// claims it only after Turnstile accepts the token. Cron never touches this object.
+export class Gate {
+  constructor(state) { this.storage = state.storage; }
+  async fetch(req) {
+    const now = Date.now();
+    const until = (await this.storage.get('until')) || 0;
+    if (until > now) return Response.json({ ok: false, retry: Math.ceil((until - now) / 1000) }, { status: 429 });
+    if (req.method !== 'POST') return Response.json({ ok: true, retry: 0 });
+    await this.storage.put('until', now + COOLDOWN_S * 1000);
+    return Response.json({ ok: true });
+  }
+}
+
+async function siteverify(env, token, ip) {
+  const body = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token || '' });
+  if (ip) body.set('remoteip', ip);
+  const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body });
+  const j = await r.json().catch(() => ({}));
+  return !!j.success;
+}
 
 // Kalshi-vs-books gap alerts: a light job (~1 min) dispatched every 2 min, only while NFL lines are moving. Same windows as the
 // Sharp Money gate (Central): Mon/Thu 5-11pm, Sat 10am-11pm, Sun 8am-8pm. Outside them there is nothing worth alerting on.
@@ -76,21 +98,29 @@ export default {
 
   async fetch(req, env) {
     const origin = req.headers.get('Origin') || '';
+    const url = new URL(req.url);
     const h = { ...cors(origin), 'Content-Type': 'application/json' };
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
+    if (req.method === 'GET' && url.pathname === '/sitekey') {
+      if (origin && !ORIGINS.includes(origin)) return new Response(JSON.stringify({ ok: false, error: 'origin' }), { status: 403, headers: h });
+      return new Response(JSON.stringify({ sitekey: env.TURNSTILE_SITEKEY || null }), {
+        headers: { ...h, 'Cache-Control': 'public, max-age=300' },
+      });
+    }
     if (req.method !== 'POST') return new Response(JSON.stringify({ ok: true, service: 'sharp-refresh' }), { headers: h });
     if (!ORIGINS.includes(origin)) return new Response(JSON.stringify({ ok: false, error: 'origin' }), { status: 403, headers: h });
-
-    // Per-colo cooldown. Best effort, and GitHub's own concurrency group queues anything that slips through.
-    const cache = caches.default;
-    const key = new Request('https://sharp-refresh.internal/cooldown');
-    const hit = await cache.match(key);
-    if (hit) {
-      const left = Number(hit.headers.get('X-Left')) || COOLDOWN_S;
-      return new Response(JSON.stringify({ ok: false, error: 'cooldown', retry: left }), { status: 429, headers: h });
+    // Fail closed. Cron (scheduled) does not come through here and stays unauthenticated.
+    if (!env.TURNSTILE_SECRET || !env.GATE) return new Response(JSON.stringify({ ok: false, error: 'unconfigured' }), { status: 503, headers: h });
+    let token = '';
+    try { token = (await req.json()).token || ''; } catch { token = ''; }
+    const ok = await siteverify(env, token, req.headers.get('CF-Connecting-IP') || '');
+    if (!ok) return new Response(JSON.stringify({ ok: false, error: 'turnstile' }), { status: 403, headers: h });
+    const gate = await env.GATE.get(env.GATE.idFromName('sharp-refresh')).fetch('https://gate/claim', { method: 'POST' });
+    if (gate.status === 429) {
+      const j = await gate.json().catch(() => ({}));
+      return new Response(JSON.stringify({ ok: false, error: 'cooldown', retry: j.retry || COOLDOWN_S }), { status: 429, headers: h });
     }
     const r = await dispatch(env, true);
-    if (r.ok) await cache.put(key, new Response('1', { headers: { 'Cache-Control': `max-age=${COOLDOWN_S}`, 'X-Left': String(COOLDOWN_S) } }));
     const lineup = r.ok ? await maybeLineup(env) : 'skipped';
     return new Response(JSON.stringify({ ok: r.ok, status: r.status, lineup }), { status: r.ok ? 202 : 502, headers: h });
   },

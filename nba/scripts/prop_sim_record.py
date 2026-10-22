@@ -17,6 +17,17 @@ a price.
                          p_price  the over chance in the price at that line (vig removed), or null for a flat line with no price
   record(...)       -> per tip day, per game, per stat: log loss and Brier sums for each variant, against the box score.
 
+Biggest gap record: the Props Simulation page headlines one prop per game, the priced prop where the model's chance differs most from the price.
+gap_pick() makes that choice from the recorded rows the way the page does, and record_all() settles it, so the page's headline gets a record.
+It is where-to-look, not a bet: it is scored on hit rate against the chance in the price (vig removed), never on profit, because no stake or
+payout is recorded. A prop with no price (a flat pick'em line) is never the biggest gap; the page calls that one Strongest lean and it is not tracked.
+
+Held props (the roster guard, or a returning player) are recorded too, with meta 'held' = the reason (added 2026-10-20, before any regular-season
+pick was settled). The page headlines the Biggest gap among a game's shown players whether or not the guard holds the team, so the record has to see the
+same props or the headline pick goes unrecorded (that happened on opening night: every team in the first three games was held and 0 rows were saved).
+The guard still decides what counts as a model comparison: held props are left out of the log-loss and Brier sums (`score`) and are only used to choose and
+settle the Biggest gap pick, which carries 'held' so the page can mark it. A held pick is where-to-look, never a bet.
+
 Scoring: a prop is void when the player did not play or the stat lands exactly on the line. Sums are kept per game so the page can cluster the
 standard error by game, as the backtest did. A row is scored from the last pre-tip record, so a prop that moved is judged on its final price.
 """
@@ -31,6 +42,7 @@ STATS = ['pts', 'reb', 'ast', '3pm']
 STAT_BOX = {'pts': 'points', 'reb': 'rebounds', 'ast': 'assists', '3pm': 'threePointFieldGoalsMade'}
 COUNT = {'reb', 'ast', '3pm'}
 N_BIG, N_SMALL = 10000, 50
+SHOWN = 5                             # the page lists each team's five highest-minute players, and picks the biggest gap among them
 NCOL = 12                             # per game per stat: n, ll x3, brier x3, then the priced subset: n, market ll, ll x3
 
 
@@ -98,8 +110,9 @@ def log(board, now):
             P = (board.get('players') or {}).get(str(e['p'])) or (board.get('players') or {}).get(e['p'])
             team = P[1] if P else None
             m = pr.mu_for(int(e['p']), s, g, cache, outs, team, status)
-            if not m or not (m['min'] > 0) or pr.roster_hold(m['team'], g, status, cache, m.get('src')):
+            if not m or not (m['min'] > 0):
                 continue
+            hold = pr.roster_hold(m['team'], g, status, cache, m.get('src')) or pr.returning_hold(int(e['p']), m['team'], g)
             mu, ex = m['mu'], m['extra']
             v0, v1, v2, v3 = pr.PR['variance'][s]
             var = max(.25, v0 + v1 * mu + v2 * mu * mu + (v3 * ex if v3 else 0))
@@ -110,9 +123,11 @@ def log(board, now):
             rows[k] = [line, round(mu, 3), round(pr.cal(s, pr.p_over_raw(s, mu, line, ex)), 4), round(pr.cal(s, min(max(big, 1e-4), 1 - 1e-4)), 4),
                        round(pr.cal(s, (k50 + .5) / (N_SMALL + 1)), 4), None if p_price is None else round(p_price, 4), src]
             meta[k] = {'game': str(e['g']), 'tip': g['tip'], 'matchup': f"{g['away']} @ {g['home']}", 'pid': int(e['p']), 'player': P[0] if P else str(e['p']),
-                       'team': m['team'], 'stat': s, 'kind': 'psim'}
+                       'team': m['team'], 'stat': s, 'kind': 'psim', 'min': round(m['min'], 1)}
+            if hold:                                                          # recorded, tagged: the page headlines held props too (see the module doc)
+                meta[k]['held'] = hold['why']
         except Exception as ex_:                                              # one prop's failure never stops the recorder
-            print(f"  psim {e.get('g')}|{e.get('p')}|{s}: {type(ex_).__name__}: {str(ex_)[:100]}", flush=True)
+            PX.row_error(f"psim {e.get('g')}|{e.get('p')}|{s}", ex_)
     return rows, meta
 
 
@@ -146,10 +161,45 @@ def score(rows, bx):
     return per
 
 
-def record(root, now, prev, rescan_days, games, L):
-    """Per tip day: each final game's last pre-tip prop probabilities scored against the box score. L is the ledger module, passed in because
-    ledger imports this module. Days outside the rescan window are kept."""
-    days = dict(prev or {})
+def gap_pick(rows):
+    """The page's Biggest gap for one game, from its recorded rows. rows: {(pid, stat): (row, meta)}.
+    Eligible: priced props of each team's SHOWN highest-minute players among the players recorded (meta 'min', as first recorded). The model's side is the side it
+    gives more than 50%; the gap is the model's chance for that side minus the price's chance for it. Returns the pick, or None."""
+    by_team = {}
+    for (pid, s), (row, m) in rows.items():
+        if m.get('min') is not None:
+            by_team.setdefault(m['team'], {})[m['pid']] = m['min']
+    shown = {(t, pid) for t, mins in by_team.items() for pid, _ in sorted(mins.items(), key=lambda kv: (-kv[1], kv[0]))[:SHOWN]}
+    best = None
+    for (pid, s), (row, m) in rows.items():
+        line, mu, pe, p10, p50, pm, src = row
+        if pm is None or (m['team'], m['pid']) not in shown:
+            continue
+        over = pe >= .5
+        p_side, p_mkt = (pe, pm) if over else (1 - pe, 1 - pm)
+        key = (p_side - p_mkt, -STATS.index(s), -m['pid'])
+        if best is None or key > best[0]:
+            best = (key, {'pid': m['pid'], 'player': m['player'], 'team': m['team'], 'stat': s, 'side': 'over' if over else 'under', 'line': line,
+                          'mu': mu, 'p': round(p_side, 4), 'pm': round(p_mkt, 4), **({'held': m['held']} if m.get('held') else {})})
+    return best[1] if best else None
+
+
+def settle_gap(pick, bx):
+    """Result of one pick against the box score: W, L, P (landed on the line) or D (did not play, props void). Returns (result, actual)."""
+    st = bx.get(int(pick['pid']))
+    if not st:
+        return 'D', None
+    y = st.get(STAT_BOX[pick['stat']], 0)
+    if y == pick['line']:
+        return 'P', y
+    return ('W' if (y > pick['line']) == (pick['side'] == 'over') else 'L'), y
+
+
+def record_all(root, now, prev, prev_gap, rescan_days, games, L):
+    """Per tip day: (psim_days, gap_days). psim_days is each final game's last pre-tip prop probabilities scored against the box score
+    (see the module doc). gap_days is the Biggest gap pick of each final game from the same last pre-tip rows, settled from the same box score.
+    L is the ledger module, passed in because ledger imports this module. Days outside the rescan window are kept."""
+    days, gap_days = dict(prev or {}), dict(prev_gap or {})
     since = L.tip_day(now - rescan_days * 86400)
     G = {}
     for k, x in L.load_src(root, 'psim', since).items():
@@ -159,20 +209,101 @@ def record(root, now, prev, rescan_days, games, L):
             continue
         e = G.setdefault(m['game'], {'meta': m, 'rows': {}})
         e['rows'][(m['pid'], m['stat'])] = (pre[-1], m)
+    per_day, gap_per_day = {}, {}
+    for gid, e in G.items():
+        bx = L.box(root, gid)
+        if bx is None:
+            continue
+        m = e['meta']
+        pick = gap_pick(e['rows'])
+        if pick:
+            res, y = settle_gap(pick, bx)
+            gap_per_day.setdefault(L.tip_day(m['tip']), []).append({'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], **pick, 'y': y, 'r': res, **({'replay': 1} if m.get('replay') else {})})
+        per = score({k: v for k, v in e['rows'].items() if not v[1].get('held')}, bx)      # the minutes-model comparison keeps to props the roster guard trusts
+        if not any(v[0] for v in per.values()):
+            continue
+        entry = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], 's': {s: [round(x, 4) for x in v] for s, v in per.items() if v[0]}, **({'replay': 1} if m.get('replay') else {})}   # replay: filled in after the fact (replay_polls.py)
+        per_day.setdefault(L.tip_day(m['tip']), []).append(entry)
+    for d, gs in per_day.items():
+        days[d] = sorted(gs, key=lambda g: g['tip'])
+    for d, gs in gap_per_day.items():
+        gap_days[d] = sorted(gs, key=lambda g: g['tip'])
+    return days, gap_days
+
+
+HELD_KEEP_DAYS = 14        # prop rows are kept for this many tip days; older days keep only their sums (the file is read every poll)
+
+
+def record_held(root, now, prev, rescan_days, games, L):
+    """Per tip day: the props the roster guard (or another hold) kept out of the bets, settled from the box score, as a group of their own.
+
+    Held props are priced and shown but never logged as shadow bets (ledger.log), and `score` leaves them out of the model comparison, so before this
+    the box scores of a held game settled hundreds of priced props that no record showed (opening night 2026-10-20: all six teams held, 3 Biggest gap picks
+    were the only settled props). This is the same last pre-tip psim row for each, the model's side (the side it gives 50% or more, as the Biggest gap pick
+    does), the price's chance for that side (vig removed; null for a flat pick'em line), and the box score. It is not a bet record: no stake or payout is
+    recorded, so it is judged on hit rate against what the price expected and against what the model expected, never on profit. It stays out of the
+    season record, the GO / WATCH verdicts, and a signal's 50-bet promotion count (none of those read it).
+    Row: [player, team, stat, line, 'o'|'u' the model's side, model chance for that side, price chance for that side or null, 'books'|'pickem',
+          actual or null (did not play), 'W'|'L'|'P'|'D' (P: landed on the line, D: did not play, void), why held]
+    Covers the four stats the props simulation prices (pts, reb, ast, 3pm) on each prop's main line; other markets are not recorded per game."""
+    days = dict(prev or {})
+    since = L.tip_day(now - rescan_days * 86400)
+    G = {}
+    for k, x in L.load_src(root, 'psim', since).items():
+        m = x['meta']
+        pre = [v for t, v in sorted(x['series']) if v is not None and m and t < m['tip']]
+        if not m or not m.get('held') or not pre or now < m['tip'] + L.SETTLE_AFTER_S or (games and not games(str(m['game']))):
+            continue
+        e = G.setdefault(m['game'], {'meta': m, 'rows': []})
+        e['rows'].append((pre[-1], m))
     per_day = {}
     for gid, e in G.items():
         bx = L.box(root, gid)
         if bx is None:
             continue
-        per = score(e['rows'], bx)
-        if not any(v[0] for v in per.values()):
-            continue
-        m = e['meta']
-        entry = {'game': gid, 'matchup': m['matchup'], 'tip': m['tip'], 's': {s: [round(x, 4) for x in v] for s, v in per.items() if v[0]}}
-        per_day.setdefault(L.tip_day(m['tip']), []).append(entry)
+        m0 = e['meta']
+        sc = (L.box_meta(root, gid).get('score')) or {}
+        why = {}
+        out, tot = [], {'n': 0, 'W': 0, 'L': 0, 'P': 0, 'D': 0, 'pn': 0, 'pw': 0, 'pe_price': 0.0, 'pe_model': 0.0, 'pv': 0.0, 'an': 0, 'aw': 0, 'ae_model': 0.0}
+        for row, m in sorted(e['rows'], key=lambda r: (r[1]['team'], -(r[1].get('min') or 0), r[1]['player'], STATS.index(r[1]['stat']))):
+            line, mu, pe, p10, p50, pm, src = row
+            over = pe >= .5
+            p_side = pe if over else 1 - pe
+            pm_side = None if pm is None else (pm if over else 1 - pm)
+            st = bx.get(int(m['pid']))
+            y = st.get(STAT_BOX[m['stat']], 0) if st else None
+            res = 'D' if y is None else 'P' if y == line else 'W' if (y > line) == over else 'L'
+            out.append([m['player'], m['team'], m['stat'], line, 'o' if over else 'u', round(p_side, 3), None if pm_side is None else round(pm_side, 3), src, y, res, m['held']])
+            tot['n'] += 1
+            tot[res] += 1
+            why[m['held']] = why.get(m['held'], 0) + 1
+            if res in ('W', 'L'):
+                tot['an'] += 1
+                tot['aw'] += res == 'W'
+                tot['ae_model'] += p_side
+                if pm_side is not None:
+                    tot['pn'] += 1
+                    tot['pw'] += res == 'W'
+                    tot['pe_price'] += pm_side
+                    tot['pv'] += pm_side * (1 - pm_side)
+                    tot['pe_model'] += p_side
+        entry = {'game': gid, 'matchup': m0['matchup'], 'tip': m0['tip'], 'score': [sc[a] for a in (m0['matchup'].split(' @ ')) if a in sc], 'sum': {k: round(v, 3) if isinstance(v, float) else v for k, v in tot.items()}, 'why': why,
+                 'rows': out}
+        if m0.get('replay'):
+            entry['replay'] = 1                          # replayed from stored prices after the fact (replay_polls.py), not logged live
+        per_day.setdefault(L.tip_day(m0['tip']), []).append(entry)
     for d, gs in per_day.items():
         days[d] = sorted(gs, key=lambda g: g['tip'])
+    keep = L.tip_day(now - HELD_KEEP_DAYS * 86400)
+    for d in days:
+        if d < keep:
+            days[d] = [{k: v for k, v in g.items() if k != 'rows'} for g in days[d]]
     return days
+
+
+def record(root, now, prev, rescan_days, games, L):
+    """psim_days alone (kept for callers that do not want the Biggest gap record)."""
+    return record_all(root, now, prev, None, rescan_days, games, L)[0]
 
 
 if __name__ == '__main__':

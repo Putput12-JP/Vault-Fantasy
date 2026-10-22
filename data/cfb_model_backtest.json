@@ -11,8 +11,8 @@
    "model_miss": 13.35,
    "market_miss": 12.03,
    "picks_wk4": [
-    101,
-    90
+    136,
+    111
    ],
    "picks_all": [
     132,
@@ -25,6 +25,14 @@
    "picks7_wk4": [
     59,
     53
+   ],
+   "picks_wk4_all_edges": [
+    101,
+    90
+   ],
+   "picks_wk4_with_favorites": [
+    139,
+    112
    ]
   },
   "2023": {
@@ -32,8 +40,8 @@
    "model_miss": 12.89,
    "market_miss": 12.0,
    "picks_wk4": [
-    84,
-    89
+    103,
+    100
    ],
    "picks_all": [
     125,
@@ -46,6 +54,14 @@
    "picks7_wk4": [
     43,
     34
+   ],
+   "picks_wk4_all_edges": [
+    84,
+    89
+   ],
+   "picks_wk4_with_favorites": [
+    108,
+    112
    ]
   },
   "2024": {
@@ -53,8 +69,8 @@
    "model_miss": 13.36,
    "market_miss": 12.24,
    "picks_wk4": [
-    85,
-    88
+    84,
+    73
    ],
    "picks_all": [
     113,
@@ -67,6 +83,14 @@
    "picks7_wk4": [
     50,
     50
+   ],
+   "picks_wk4_all_edges": [
+    85,
+    88
+   ],
+   "picks_wk4_with_favorites": [
+    89,
+    78
    ]
   },
   "2025": {
@@ -74,8 +98,8 @@
    "model_miss": 12.64,
    "market_miss": 11.85,
    "picks_wk4": [
-    79,
-    93
+    100,
+    69
    ],
    "picks_all": [
     128,
@@ -88,13 +112,21 @@
    "picks7_wk4": [
     39,
     46
+   ],
+   "picks_wk4_all_edges": [
+    79,
+    93
+   ],
+   "picks_wk4_with_favorites": [
+    108,
+    82
    ]
   }
  },
  "combined": {
   "picks_wk4": [
-   349,
-   360
+   423,
+   353
   ],
   "picks3_wk4": [
    623,
@@ -103,6 +135,29 @@
   "picks7_wk4": [
    191,
    183
+  ],
+  "picks_wk4_all_edges": [
+   349,
+   360
+  ],
+  "picks_wk4_with_favorites": [
+   444,
+   384
   ]
- }
+ },
+ "opening_lines": {
+  "seasons": "2022-2025",
+  "vs_open": [
+   435,
+   321
+  ],
+  "vs_close": [
+   368,
+   346
+  ],
+  "note": "5+ point disagreements, weeks 4+, model tuned on 2022-23 only. Copied from docs/retro/cfb-efficiency-replication.md. combined.picks_wk4 is the walk-forward record versus ESPN's closing spread, not this opening-line record. cmd_priors keeps this key."
+ },
+ "model": "v2 prior + special teams (the live model), replayed week by week",
+ "pick_rule": "nofav1",
+ "rule_note": "Picks on the favorite are not official picks and are left out of this record."
 }

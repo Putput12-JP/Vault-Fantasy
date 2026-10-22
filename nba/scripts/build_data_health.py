@@ -51,9 +51,17 @@ def recorder():
     except json.JSONDecodeError:
         status = None
     days = sorted(l.rsplit('/', 1)[-1] for l in git('ls-tree', '--name-only', f'{BRANCH}:snapshots').split() if l[:2] == '20')
-    polls = []
-    for d in days[-POLL_DAYS:]:
-        polls += [json.loads(l) for l in git('show', f'{BRANCH}:snapshots/{d}/polls.jsonl').splitlines() if l.strip()]
+    # the last POLL_DAYS days that HAVE polls: snapshots/ also holds folders for days that have not happened yet (a game's closing prices are written
+    # under its tip day, up to 3 days ahead) and those have no polls.jsonl; reading "the last 3 folders" read only those once 3 of them existed
+    polls, got = [], 0
+    for d in reversed(days):
+        text = git('show', f'{BRANCH}:snapshots/{d}/polls.jsonl')
+        if not text.strip():
+            continue
+        polls = [json.loads(l) for l in text.splitlines() if l.strip()] + polls
+        got += 1
+        if got == POLL_DAYS:
+            break
     last = git('log', '-1', '--format=%ct', BRANCH).strip()
     return {'status': status, 'polls': polls, 'days': days, 'last_commit': int(last) if last else None}
 
@@ -68,7 +76,33 @@ def inputs():
         d = json.load(open(path))
         out.append({'file': f, 'what': what, 'script': script, 'stale_days': stale, 'generated': d.get('generated'),
                     'kb': os.path.getsize(path) // 1000})
+    out.append(diet_input())
     return out
+
+
+def last_box_date():
+    """Newest regular-season game_date in the box score files (the daily job fetches them), or None. Used to tell a stalled feed from an offseason."""
+    best = None
+    for p in glob.glob(os.path.join(RAW, 'hoopr', 'player_box_*.csv')):
+        with open(p) as f:
+            hdr = f.readline().rstrip('\n').split(',')
+            i, t = hdr.index('game_date'), hdr.index('season_type')
+            best = max([best or ''] + [r[i] for r in (l.split(',') for l in f) if len(r) > i and r[t] == '2'])      # regular season only, as the diet file is
+    return best or None
+
+
+def diet_input():
+    """The shot diet file is rebuilt every morning, so its build time says nothing. Its 'through' date does: if box scores
+    show games newer than that, the play-by-play fetch has stalled. With no newer games (offseason) it counts as current."""
+    path = os.path.join(DATA, 'diet_defense.json')
+    if not os.path.exists(path):
+        return {'file': 'diet_defense.json', 'what': 'Shot diet and zone defense (play-by-play)', 'script': 'build_diet_defense.py', 'stale_days': 3, 'generated': None}
+    d = json.load(open(path))
+    through, box = d.get('through'), last_box_date()
+    lag = (dt.date.fromisoformat(box[:10]) - dt.date.fromisoformat(through[:10])).days if box and through else 0
+    gen = f'{through}T12:00Z' if lag > 2 else d.get('generated')            # lagging box scores: age it from the data's own date
+    return {'file': 'diet_defense.json', 'what': f"Shot diet and zone defense, through {through} ({d.get('season')})", 'script': 'fetch_hoopr.py --only-pbp, build_diet_defense.py',
+            'stale_days': 3, 'generated': gen, 'kb': os.path.getsize(path) // 1000}
 
 
 def lines(pattern):

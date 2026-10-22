@@ -16,18 +16,20 @@ from zoneinfo import ZoneInfo
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from scripts.paper_bot.config import load, source_cfg
+from scripts.paper_bot.config import cap_warnings, load, max_edge_of, max_gap_of, source_cfg
 from scripts.paper_bot.engine import Engine
 from scripts.paper_bot.fees import cost_cents, taker_fee
 from scripts.paper_bot.kelly import contracts_for, full_kelly
-from scripts.paper_bot.ledger import empty, et_day, recompute_cash, summarize
+from scripts.paper_bot.ledger import (
+    choose_base_ledger, empty, et_day, held_tickers, recompute_cash, summarize, tag_pre_fix_trades,
+)
 from scripts.paper_bot.live import LIVE_ORDERS_IMPLEMENTED, KalshiSigner, LiveBroker, LiveTradingDisabled
 from scripts.paper_bot.llm_filter import LlmFilter
 from scripts.paper_bot.quotes import market_tradable, parse_market, settlement_of
 from scripts.paper_bot.signals import load_sources
 from scripts.paper_bot.signals.cfb_ml import proposals_from as cfb_proposals
 from scripts.paper_bot.signals.cfb_ml import sigma_from_backtest, team_match
-from scripts.paper_bot.signals.nba_total import p_over, project_total, proposals_from, sigma_of, window_open
+from scripts.paper_bot.signals.nba_total import _best_side, p_over, project_total, proposals_from, sigma_of, window_open
 
 ET = ZoneInfo('America/New_York')
 GATES = {
@@ -208,7 +210,7 @@ class CfbSignalTests(unittest.TestCase):
         p_away = 1 - p_home
         home = _cfb_quote('H', 'Middle Tennessee', 0.20)
         away = _cfb_quote('A', 'Delaware', 0.40)
-        out, note = cfb_proposals(model, [home, away], GATES, now)
+        out, note = cfb_proposals(model, [home, away], dict(GATES, max_edge=0.9), now)
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]['ticker'], 'A')
         self.assertGreater(p_away - 0.40, p_home - 0.20)
@@ -222,6 +224,72 @@ class CfbSignalTests(unittest.TestCase):
         ambiguous['board'].append(dict(ambiguous['board'][0]))
         out, _ = cfb_proposals(ambiguous, [_cfb_quote('H', 'Middle Tennessee', 0.20), _cfb_quote('A', 'Delaware', 0.70)], GATES, now)
         self.assertEqual(out, [])
+
+
+class PricedMarginTests(unittest.TestCase):
+    def _go(self, board_extra, cfg_extra=None, ask_h=0.45, ask_a=0.60):
+        kick = datetime(2026, 10, 13, 23, tzinfo=timezone.utc).timestamp()
+        model = _cfb_model(kick, margin=0, week=6)
+        model['board'][0].update(board_extra)
+        cfg = dict(GATES, **(cfg_extra or {}))
+        qs = [_cfb_quote('H', 'Middle Tennessee', ask_h), _cfb_quote('A', 'Delaware', ask_a)]
+        return cfb_proposals(model, qs, cfg, _now())
+
+    def test_prices_from_blend_and_falls_back_to_model(self):
+        out, _ = self._go({'model_margin': 0, 'blend_margin': 3.0, 'market_margin': 3.0}, ask_h=0.45)
+        d = out[0]['detail']
+        self.assertEqual((d['priced_margin'], d['market_margin'], d['model_margin']), (3.0, 3.0, 0))
+        sigma, _ = sigma_from_backtest(_cfb_model(0, 0, 6)['backtest'])
+        self.assertAlmostEqual(out[0]['model_prob'], 0.5 * (1 + math.erf((3.0 / sigma) / math.sqrt(2))), 4)
+        out, _ = self._go({'model_margin': 4.0, 'market_margin': 4.0}, ask_h=0.45)
+        self.assertEqual(out[0]['detail']['priced_margin'], 4.0)
+        self.assertEqual(out[0]['detail']['priced_from'], 'model_margin')
+
+    def test_max_edge_cap_skips_and_counts(self):
+        board = {'model_margin': 20, 'blend_margin': 20, 'market_margin': 20}
+        out, note = self._go(board, {'max_edge': 0.15}, ask_h=0.30)
+        self.assertEqual(out, [])
+        self.assertIn('over the max edge cap', note)
+        out, _ = self._go(board, {'max_edge': 0.9}, ask_h=0.30)
+        self.assertEqual(len(out), 1)
+
+    def test_model_market_gap_skips_and_counts(self):
+        board = {'model_margin': 10, 'blend_margin': 10, 'market_margin': 1}
+        out, note = self._go(board, {'max_edge': 0.9}, ask_h=0.40)
+        self.assertEqual(out, [])
+        self.assertIn('model/market gap', note)
+        out, _ = self._go(board, {'max_edge': 0.9, 'max_model_market_gap': None}, ask_h=0.40)
+        self.assertEqual(len(out), 1)
+
+    def test_nba_best_side_edge_cap(self):
+        q = {'ticker': 'T', 'yes_bid': 0.28, 'yes_ask': 0.30, 'no_bid': 0.70, 'no_ask': 0.72,
+             'yes_ask_size': 100, 'no_ask_size': 100}
+        capped = []
+        self.assertIsNone(_best_side(q, 0.60, dict(GATES, max_edge=0.15), capped))
+        self.assertEqual(capped, ['T'])
+        self.assertIsNotNone(_best_side(q, 0.60, dict(GATES, max_edge=0.5), []))
+
+    def test_config_defaults(self):
+        cfg = load(None)
+        self.assertEqual(cfg['max_edge'], 0.15)
+        sc = source_cfg(cfg, 'cfb_ml')
+        self.assertEqual((sc['max_edge'], sc['max_model_market_gap']), (0.15, 7.0))
+
+    def test_pre_fix_tag_is_idempotent_and_keeps_trades(self):
+        led = empty(1000)
+        base = {'source': 'cfb_ml', 'status': 'open', 'stake': 10}
+        led['trades'] = [
+            dict(base, ts='2026-10-13T14:29:38Z', detail={'model_margin': -10.0}),
+            dict(base, ts='2026-10-13T18:00:00Z', detail={'model_margin': 2.0, 'priced_margin': 2.0}),
+            dict(base, ts='2026-10-12T14:00:00Z', detail={'model_margin': 2.0}),
+            dict(base, ts='2026-10-13T14:29:38Z', source='nba_total', detail={}),
+        ]
+        self.assertEqual(tag_pre_fix_trades(led), 1)
+        self.assertEqual(tag_pre_fix_trades(led), 0)
+        self.assertEqual(led['trades'][0]['tags'], ['pre_fix_raw_v1_margin'])
+        self.assertEqual(sum('tags' in t for t in led['trades']), 1)
+        self.assertEqual(len(led['trades']), 4)
+        self.assertEqual(led['trades'][0]['status'], 'open')
 
 
 class EngineTests(unittest.TestCase):
@@ -460,6 +528,141 @@ class LiveAndFilterTests(unittest.TestCase):
         self.assertEqual(names, ['cfb_ml'])
 
 
+NAN = float('nan')
+
+
+class QaFixTests(unittest.TestCase):
+    def _go(self, board_extra, cfg_extra=None, ask_h=0.45, ask_a=0.60):
+        kick = datetime(2026, 10, 13, 23, tzinfo=timezone.utc).timestamp()
+        model = _cfb_model(kick, margin=0, week=6)
+        model['board'][0].update(board_extra)
+        qs = [_cfb_quote('H', 'Middle Tennessee', ask_h), _cfb_quote('A', 'Delaware', ask_a)]
+        return cfb_proposals(model, qs, dict(GATES, **(cfg_extra or {})), _now())
+
+    def test_bug1_nan_blend_falls_back_to_model_margin(self):
+        out, _ = self._go({'model_margin': 4.0, 'blend_margin': NAN, 'market_margin': 4.0}, ask_h=0.45)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]['detail']['priced_from'], 'model_margin')
+        self.assertEqual(out[0]['detail']['priced_margin'], 4.0)
+        self.assertTrue(math.isfinite(out[0]['edge']))
+
+    def test_bug1_both_margins_nan_skips_game(self):
+        out, note = self._go({'model_margin': NAN, 'blend_margin': NAN, 'market_margin': 0})
+        self.assertEqual(out, [])
+        self.assertIn('1 skipped, bad margin', note)
+
+    def test_bug1_kelly_returns_zero_on_non_finite(self):
+        spent = {'day': 0, 'market': 0, 'event': 0}
+        for args in ((NAN, 0.6, 0.5, 0.02), (1000, NAN, 0.5, 0.02), (1000, 0.6, NAN, 0.02), (1000, 0.6, 0.5, NAN),
+                     (float('inf'), 0.6, 0.5, 0.02)):
+            n, reason = contracts_for(*args, _caps(), spent)
+            self.assertEqual(n, 0)
+            self.assertIsNotNone(reason)
+
+    def test_bug1_engine_skips_non_finite_proposal(self):
+        for key, val in (('model_prob', NAN), ('price', NAN), ('edge', NAN)):
+            p = _proposal()
+            p[key] = val
+            eng = _engine([p], _now())
+            run = eng.run()
+            self.assertEqual(run['opened'], 0)
+            self.assertEqual(len(eng.ledger['trades']), 0)
+
+    def test_bug1_nba_best_side_ignores_nan_edge(self):
+        q = {'ticker': 'T', 'yes_bid': 0.28, 'yes_ask': 0.30, 'no_bid': 0.70, 'no_ask': 0.72,
+             'yes_ask_size': 100, 'no_ask_size': 100}
+        self.assertIsNone(_best_side(q, NAN, dict(GATES, max_edge=0.5), []))
+
+    def test_bug2_nan_caps_do_not_disable(self):
+        self.assertEqual(max_edge_of({'max_edge': NAN}), 0.15)
+        self.assertEqual(max_gap_of({'max_model_market_gap': NAN}), 7.0)
+        self.assertEqual(max_edge_of({'max_edge': float('inf')}), 0.15)
+        board = {'model_margin': 20, 'blend_margin': 20, 'market_margin': 20}
+        out, note = self._go(board, {'max_edge': NAN}, ask_h=0.30)
+        self.assertEqual(out, [])
+        self.assertIn('over the max edge cap', note)
+        q = {'ticker': 'T', 'yes_bid': 0.28, 'yes_ask': 0.30, 'no_bid': 0.70, 'no_ask': 0.72,
+             'yes_ask_size': 100, 'no_ask_size': 100}
+        capped = []
+        self.assertIsNone(_best_side(q, 0.60, dict(GATES, max_edge=NAN), capped))
+        self.assertEqual(capped, ['T'])
+        gap_board = {'model_margin': 10, 'blend_margin': 10, 'market_margin': 1}
+        out, note = self._go(gap_board, {'max_edge': 0.9, 'max_model_market_gap': NAN}, ask_h=0.40)
+        self.assertEqual(out, [])
+        self.assertIn('model/market gap', note)
+
+    def test_bug3_invalid_caps_fall_back_and_warn(self):
+        for bad in (-1, 'x', True, NAN):
+            path = self._cfg_file({'max_edge': bad, 'max_model_market_gap': bad})
+            try:
+                cfg = load(path)
+            finally:
+                os.remove(path)
+            sc = source_cfg(cfg, 'cfb_ml')
+            self.assertEqual((sc['max_edge'], sc['max_model_market_gap']), (0.15, 7.0))
+            self.assertEqual(len(cfg['config_warnings']), 2, bad)
+            eng = Engine(dict(_engine_cfg(), config_warnings=cfg['config_warnings']), empty(1000), [], _Kalshi(), _off(), _now())
+            self.assertTrue(any(n.startswith('warning: config: max_edge') for n in eng.run()['notes']))
+
+    def test_bug3_max_edge_must_exceed_min_edge(self):
+        path = self._cfg_file({'min_edge': 0.10, 'max_edge': 0.10})
+        try:
+            cfg = load(path)
+        finally:
+            os.remove(path)
+        self.assertEqual(source_cfg(cfg, 'nba_total')['max_edge'], 0.15)
+        self.assertTrue(any('<= min_edge' in w for w in cfg['config_warnings']))
+
+    def test_new1_source_min_edge_above_max_edge_gets_headroom(self):
+        base = {'min_edge': 0.08, 'min_price': 0.05, 'max_price': 0.95, 'max_spread': 0.10, 'max_edge': 0.15,
+                'sources': {'nba_total': {'enabled': True, 'min_edge': 0.2}}}
+        sc = source_cfg(base, 'nba_total')
+        self.assertEqual((sc['min_edge'], sc['max_edge']), (0.2, 0.25))
+        warnings = cap_warnings(base)
+        self.assertEqual(len(warnings), 1)
+        self.assertIn('max_edge 0.15 <= min_edge 0.2 for source nba_total, using 0.25', warnings[0])
+        q = {'ticker': 'T', 'yes_bid': 0.28, 'yes_ask': 0.30, 'no_bid': 0.70, 'no_ask': 0.72,
+             'yes_ask_size': 100, 'no_ask_size': 100}
+        capped = []
+        self.assertIsNotNone(_best_side(q, 0.52, dict(GATES, **sc), capped))
+        self.assertEqual(capped, [])
+
+    def test_bug3_null_and_zero_still_disable(self):
+        for off in (None, 0):
+            path = self._cfg_file({'max_edge': off, 'max_model_market_gap': off})
+            try:
+                cfg = load(path)
+            finally:
+                os.remove(path)
+            sc = source_cfg(cfg, 'cfb_ml')
+            self.assertEqual((sc['max_edge'], sc['max_model_market_gap']), (None, None))
+            self.assertEqual(cfg['config_warnings'], [])
+
+    def test_minor_nan_market_margin_skips_and_counts(self):
+        board = {'model_margin': 10, 'blend_margin': 10, 'market_margin': NAN}
+        out, note = self._go(board, {'max_edge': 0.9}, ask_h=0.40)
+        self.assertEqual(out, [])
+        self.assertIn('1 skipped, bad market margin', note)
+
+    def test_unmatched_abbr_does_not_prefix_match_other_team(self):
+        # Ole Miss abbr 'MISS' used to prefix-match 'Missouri', making both labels ambiguous.
+        kick = datetime(2026, 10, 14, 19, tzinfo=timezone.utc).timestamp()
+        model = _cfb_model(kick, margin=0, week=6)
+        model['ratings'] = [{'id': 1, 'team': 'Ole Miss', 'abbr': 'MISS'}, {'id': 2, 'team': 'Missouri', 'abbr': 'MIZ'}]
+        model['board'][0].update({'home': 'Ole Miss', 'away': 'Missouri', 'blend_margin': 3.0, 'market_margin': 3.0})
+        event = 'KXNCAAFGAME-26OCT14MIZZMISS'
+        qs = [dict(_cfb_quote('MIZZ', 'Missouri', 0.70), event=event), dict(_cfb_quote('MISS', 'Ole Miss', 0.40), event=event)]
+        out, note = cfb_proposals(model, qs, dict(GATES, max_edge=0.9), _now())
+        self.assertIn('0 events unmatched', note)
+        self.assertEqual(out[0]['ticker'], 'MISS')
+
+    @staticmethod
+    def _cfg_file(over):
+        with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False) as f:
+            json.dump(over, f)
+            return f.name
+
+
 def _caps():
     return {
         'kelly_fraction': 0.25,
@@ -598,6 +801,44 @@ def _cfb_quote(ticker, sub, ask):
         'no_bid': round(1 - ask, 4), 'no_ask': round(1 - (ask - 0.02), 4),
         'yes_ask_size': 100, 'no_ask_size': 100, 'status': 'active', 'result': '',
     }
+
+
+def _book(updated, tickers, status='open'):
+    led = empty(1000)
+    led['updated'] = updated
+    led['trades'] = [{'id': f'{t}:1', 'ticker': t, 'status': status, 'ts': '2026-10-13T12:00:00Z', 'stake': 0}
+                     for t in tickers]
+    return led
+
+
+class LedgerBaseTests(unittest.TestCase):
+    def test_failed_publish_keeps_a_newer_superset(self):
+        published = _book('2026-10-13T12:00:00Z', ['A'])
+        recovered = _book('2026-10-13T16:00:00Z', ['A', 'B'])
+        chosen = choose_base_ledger(published, recovered)
+        self.assertEqual(sorted(held_tickers(chosen)), ['A', 'B'])
+
+    def test_a_stale_or_incomplete_recovery_never_drops_a_row(self):
+        published = _book('2026-10-13T16:00:00Z', ['A', 'B'])
+        older = _book('2026-10-13T12:00:00Z', ['A', 'B', 'C'])
+        missing = _book('2026-10-13T17:00:00Z', ['B'])
+        self.assertEqual(sorted(held_tickers(choose_base_ledger(published, older))), ['A', 'B', 'C'])
+        self.assertEqual(sorted(held_tickers(choose_base_ledger(published, missing))), ['A', 'B'])
+        self.assertIs(choose_base_ledger(published, None), published)
+        self.assertIs(choose_base_ledger(None, missing), missing)
+        self.assertIsNone(choose_base_ledger(None, None))
+
+
+class PendingRows(unittest.TestCase):
+    def test_won_none_is_pending_only_on_book_rows(self):
+        from scripts.paper_bot.ledger import _is_pending
+        base = {'status': 'settled', 'won': None}
+        self.assertTrue(_is_pending({**base, 'book': 'novig', 'source': 'cfb_jp_novig'}))
+        self.assertTrue(_is_pending({**base, 'source': 'cfb_jp_novig'}))
+        self.assertTrue(_is_pending({'status': 'settled', 'won': True, 'book': 'novig', 'remainder_pending': True}))
+        self.assertFalse(_is_pending({**base, 'source': 'cfb_ml'}))
+        self.assertFalse(_is_pending({'status': 'settled', 'won': None, 'source': 'cfb_ml', 'remainder_pending': True}))
+        self.assertFalse(_is_pending({'status': 'open', 'won': None, 'book': 'novig'}))
 
 
 if __name__ == '__main__':

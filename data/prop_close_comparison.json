@@ -1,0 +1,121 @@
+{
+ "props_scored": 3450,
+ "min_n": 150,
+ "by_book": {
+  "Pinnacle": {
+   "n": 0
+  },
+  "Novig": {
+   "n": 0
+  },
+  "Kalshi": {
+   "n": 238,
+   "log_loss": 0.6744,
+   "brier": 0.2411,
+   "mean_p_over": 0.4816,
+   "over_hit_rate": 0.4916
+  },
+  "Consensus": {
+   "n": 3442,
+   "log_loss": 0.6884,
+   "brier": 0.2476,
+   "mean_p_over": 0.4947,
+   "over_hit_rate": 0.4893
+  },
+  "FanDuel": {
+   "n": 0
+  },
+  "DraftKings": {
+   "n": 0
+  }
+ },
+ "all_three_sharp": 0,
+ "pairs": [
+  {
+   "a": "Pinnacle",
+   "b": "Novig",
+   "n": 0
+  },
+  {
+   "a": "Pinnacle",
+   "b": "Kalshi",
+   "n": 0
+  },
+  {
+   "a": "Novig",
+   "b": "Kalshi",
+   "n": 0
+  },
+  {
+   "a": "Pinnacle",
+   "b": "Consensus",
+   "n": 0
+  },
+  {
+   "a": "Pinnacle",
+   "b": "FanDuel",
+   "n": 0
+  },
+  {
+   "a": "Pinnacle",
+   "b": "DraftKings",
+   "n": 0
+  },
+  {
+   "a": "Novig",
+   "b": "Consensus",
+   "n": 0
+  },
+  {
+   "a": "Novig",
+   "b": "FanDuel",
+   "n": 0
+  },
+  {
+   "a": "Novig",
+   "b": "DraftKings",
+   "n": 0
+  },
+  {
+   "a": "Kalshi",
+   "b": "Consensus",
+   "n": 230,
+   "gap": -0.0008,
+   "ci95": [
+    -0.0067,
+    0.0056
+   ],
+   "verdict": "no difference"
+  },
+  {
+   "a": "Kalshi",
+   "b": "FanDuel",
+   "n": 0
+  },
+  {
+   "a": "Kalshi",
+   "b": "DraftKings",
+   "n": 0
+  }
+ ],
+ "markets": {
+  "pass_att": 94,
+  "pass_cmp": 112,
+  "pass_int": 156,
+  "pass_rush_yd": 69,
+  "pass_td": 151,
+  "pass_yd": 117,
+  "rec": 905,
+  "rec_yd": 921,
+  "rush_att": 342,
+  "rush_rec_yd": 270,
+  "rush_yd": 313
+ },
+ "generated": "2026-10-14T01:57:06Z",
+ "sources": {
+  "live_tape_props": 0,
+  "kalshi_backfill_props": 458,
+  "max_age_min": 180,
+  "interp": false
+ }
+}

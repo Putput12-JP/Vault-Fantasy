@@ -26,10 +26,17 @@ Per-prop signals (Player Props page, prop_signals): Pinnacle moving a player pro
 Polymarket prop, heavy money on a Kalshi rung (contracts traded between two polls with the price moving; Kalshi's
 tape cannot be filtered to props cheaply, so volume x price is the proxy). Their thresholds are NOT backtested: no
 prop sharp history existed. They are logged and graded like the rest and the page says so.
+A fourth, p_behind, is the game 'behind' signal for props: DraftKings at Pinnacle's own line, 3%+ better than its no-vig fair,
+after Pinnacle has sat unchanged for 20 minutes. Pre-registered in docs/prop-behind-pinnacle.md; the page keeps it out of the lean.
+Steam's pass rule is whether Pinnacle keeps moving after the alert, counted per game (steam_move, scripts/steam_first_look.py,
+docs/steam-continuation.md); the CLV graded below drops the alerts whose number Pinnacle left, so it is context.
+Behind's pass rule is whether the soft price is still better than Pinnacle's close, counted per game (behind_close,
+scripts/behind_first_look.py, docs/behind-pinnacle.md).
 Every alert is graded (grade_signals, from ledger.settle) on closing-line value: Pinnacle's last pre-tip fair at the
 alert's number minus the fair when it fired (for behind: the price's EV at the closing fair), and on the final score.
 The study's verdict stands until this season says otherwise: sharp accounts beat the close but copying them 30+ minutes
-later does not, so these are context until a type earns it (50+ graded, CLV 2 SE above zero).
+later does not, so these are context until a type earns it with a pass rule written down before its alerts were graded
+(docs/novig-money.md, docs/prop-behind-pinnacle.md); the page shows no verdict for a type without one.
 """
 import datetime as dt, glob, json, math, os, time
 from collections import defaultdict
@@ -51,6 +58,9 @@ GRADE_AFTER_S = 3 * 3600
 # the same line within an hour; $500 of sharp-account money (props trade thinner than game lines); $2,000 traded on one
 # Kalshi rung between two polls with the price moving 3 cents
 P_LINE, P_PROB, P_WIN, P_SHARP, P_KAL_USD, P_KAL_MOVE = 1.0, 0.05, 3600, 500, 2000, 0.03
+# p_behind (docs/prop-behind-pinnacle.md, frozen before any alert): DraftKings at Pinnacle's line, 3%+ better than its no-vig fair,
+# Pinnacle unchanged for 20 minutes, both sources answered within 10; the 25% cap and the -300..+300 range are the game signal's
+PB_MIN, PB_MAX, PB_SETTLE_S, PB_FRESH_S, PB_BOOK = BEHIND_ALERT, BEHIND_MAX, 20 * 60, 10 * 60, 'DraftKings'
 try:
     from zoneinfo import ZoneInfo
     ET = ZoneInfo('America/New_York')
@@ -600,6 +610,7 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
     if pkeys:
         pin_props = pin_prop_series(dirs, pkeys.get('pinnacle') or {}, tips)
         alerts += prop_signals(by_id, pkeys, pin_props, polls, _tape_rows(day_dirs(root, now, 1)), W, day, now, kal_vol or {})
+        alerts += prop_behind(board, by_id, pin_props, now)
     # first sighting wins: an alert keeps the time and fair price of the poll that first saw it
     saved = load_signals(dirs)
     for a in alerts:
@@ -616,6 +627,66 @@ def build(board, day, root, now, team, parse_event, kal_vol=None):
     return {'games': out, 'alerts': shown, 'props': dict(per_prop),
             'accounts': {'sharp': len(W['sharp']), 'nba_sharp': sum(1 for s in W['sharp'].values() if s == 'nba'), 'dull': len(W['dull']),
                          'scored': W['n'], 'generated': W['generated']}}
+
+
+# which way a number must move to make the side's chance rise (spreads and totals are both keyed by one number): home spread = the
+# home handicap higher, away = lower, over = the total lower, under = higher
+BEHIND_RISES = {'home': 1, 'away': -1, 'over': -1, 'under': 1}
+
+
+def behind_close(a, lad):
+    """A behind bet against Pinnacle's closing ladder (docs/behind-pinnacle.md): ('ev', EV of the bet's price at the closing fair) when
+    the ladder has the bet's number; else ('toward' | 'against', None) when the whole ladder lies on one side of the number (toward =
+    the bet's number was better than anything Pinnacle later offered); else ('unclassified', None)."""
+    if not lad:
+        return 'unclassified', None
+    f = fair(lad, a['m'], a['side'], a.get('line'))
+    if f is not None:
+        return 'ev', (f / (a['price'] + kal_fee(a['price'])) - 1 if a['venue'] == 'Kalshi' else f * (1 + payout(a['price'])) - 1)
+    nums = list((lad.get(a['m']) or {}).keys()) if a['m'] != 'ml' else []
+    if not nums or a.get('line') is None:
+        return 'unclassified', None
+    k = BEHIND_RISES[a['side']]
+    x = k * a['line']
+    if all(x > k * float(n) for n in nums):
+        return 'toward', None
+    if all(x < k * float(n) for n in nums):
+        return 'against', None
+    return 'unclassified', None
+
+
+def main_level(lad, m):
+    """level() of the main line in a ladder: the number whose two prices are closest to even (the recorder's rule, _snap_flat)."""
+    if not lad:
+        return None
+    if m == 'ml':
+        p = devig(*lad['ml']) if lad.get('ml') else None
+        return None if p is None else r3(p)
+    D = lad.get(m) or {}
+    if not D:
+        return None
+    k = min(D, key=lambda x: abs((imp(D[x][0]) or 0) - (imp(D[x][1]) or 0)))
+    p = r3(devig(*D[k]))
+    if p is None:
+        return None
+    return -k + (p - 0.5) * 2.5 if m == 'sp' else k + (p - 0.5) * 2.5
+
+
+def steam_move(a, lad):
+    """A steam alert's move to the close, in level() units signed so that + = Pinnacle kept going the way the alert pointed and
+    - = it came back (docs/steam-continuation.md). The alert's own level is rebuilt from its line and its side's fair price."""
+    f = a.get('fair')
+    if f is None or main_level(lad, a['m']) is None:
+        return None
+    toward = a['side'] in ('home', 'over')
+    p = f if toward else 1 - f                              # P(home) / P(over) at the alert
+    if a['m'] == 'ml':
+        start = p
+    elif a.get('line') is None:
+        return None
+    else:
+        start = (-a['line'] if a['m'] == 'sp' else a['line']) + (p - 0.5) * 2.5
+    return (main_level(lad, a['m']) - start) * (1 if toward else -1)
 
 
 def fair_snap(sn, m, side, line, lad=None):
@@ -818,6 +889,43 @@ def prop_signals(by_id, pkeys, pin_props, polls, tape, W, day, now, kal_vol):
     return out
 
 
+def prop_behind(board, by_id, pin_props, now):
+    """-> p_behind alerts: DraftKings at Pinnacle's own line for a player prop, priced PB_MIN or more better than Pinnacle's
+    no-vig fair, with Pinnacle unchanged for PB_SETTLE_S. Rules and thresholds are frozen in docs/prop-behind-pinnacle.md."""
+    src = board.get('src_ok') or {}
+    for s_ in ('pinnacle', 'espn'):
+        ok = (src.get(s_) or {}).get('ok')
+        if not ok or now - ok > PB_FRESH_S:
+            return []
+    out = []
+    for e in board.get('props') or []:
+        gid, g = str(e['g']), by_id.get(str(e['g']))
+        if not g or now >= g['tip']:
+            continue
+        pin = next((b for b in e.get('books') or [] if b[0] == 'Pinnacle'), None)
+        soft = next((b for b in e.get('books') or [] if b[0] == PB_BOOK), None)
+        S = pin_props.get((e['p'], e['s'], gid))
+        if not pin or not soft or not S or pin[1] is None or soft[1] != pin[1]:
+            continue
+        last = S[-1]                                    # the settle test: Pinnacle's newest change is the one still showing, and it is old
+        if last[1] != pin[1] or last[2] is None or now - last[0] < PB_SETTLE_S:
+            continue
+        fo = devig(pin[2], pin[3])
+        if fo is None:
+            continue
+        for side, price, f in (('over', soft[2], fo), ('under', soft[3], 1 - fo)):
+            a = am(price)
+            if a is None or not -300 <= a <= 300:
+                continue
+            ev = f * (1 + payout(a)) - 1
+            if PB_MIN <= ev < PB_MAX:
+                out.append({'g': gid, 'pid': e['p'], 'stat': e['s'], 'type': 'p_behind', 't': now, 'side': side, 'line': pin[1],
+                            'venue': PB_BOOK, 'price': int(a), 'fair': r3(f), 'ev': r3(ev), 'lim': last[3],
+                            'hrs': round((g['tip'] - now) / 3600, 2), 'settled': round((now - last[0]) / 60),
+                            'id': f"{gid}:p_behind:{e['p']}:{e['s']}:{side}:{pin[1]}"})
+    return out
+
+
 # ── grading (ledger.settle) ──────────────────────────────────────────────────────────────────────
 def _lad(j):
     if not j:
@@ -831,11 +939,18 @@ def grade_prop(a, close_props, actual):
     c = (close_props or {}).get(f"{a['pid']}|{a['stat']}")
     if c and a.get('close') is None and c[0] == a.get('line') and c[1] is not None:
         a['close'] = r3(c[1] if a['side'] == 'over' else 1 - c[1])
-        if a.get('fair') is not None:
+        if a['type'] == 'p_behind':                       # the price's EV at Pinnacle's close, and how far its fair moved (docs/prop-behind-pinnacle.md)
+            a['clv'] = r3(a['close'] * (1 + payout(a['price'])) - 1)
+            a['drift'] = r3(a['close'] - a['fair'])
+        elif a.get('fair') is not None:
             a['clv'] = r3(a['close'] - a['fair'])
+    elif c and a['type'] == 'p_behind' and a.get('moved') is None and a.get('close') is None and c[0] != a.get('line') and a.get('line') is not None:
+        a['moved'] = 'toward' if (c[0] > a['line']) == (a['side'] == 'over') else 'against'   # no like-for-like close: only the direction is graded
     if actual is not None and a.get('result') is None and a.get('line') is not None:
         d = (actual - a['line']) * (1 if a['side'] == 'over' else -1)
         a['result'] = 1 if d > 0 else -1 if d < 0 else 0
+        if a['type'] == 'p_behind' and a.get('price') is not None:
+            a['units'] = r3(payout(a['price']) if d > 0 else -1 if d < 0 else 0)
 
 
 def pm_close_for(a):
@@ -911,25 +1026,52 @@ def grade_alert(a, close, score):
         a['result'] = 1 if d > 0 else -1 if d < 0 else 0
 
 
+SIGNALS_V = 3           # version of the roll-up: 2 = 'behind' per BET (not per alert), 3 = a day's totals always see every alert for its games
+SIGNAL_LEAD_DAYS = 5    # an alert is saved in the day folder of the poll that fired it, up to 3 days (seen) before its game: read this far before the rescan window
+
+
+def behind_firsts(alerts):
+    """Ids of the alerts that stand for a 'behind' bet. The alert id carries the venue and the price, so one bet at five books,
+    or one book's price ticking, was five alerts in the roll-up and made the record look like five times as much evidence.
+    A bet is (game, market, side, line); its alert is the earliest, the best EV among those at the same time."""
+    first = {}
+    for a in alerts:
+        if a['type'] != 'behind':
+            continue
+        k = (a['g'], a['m'], a['side'], a.get('line'))
+        if k not in first or (a['t'], -a['ev'], a['id']) < (first[k]['t'], -first[k]['ev'], first[k]['id']):
+            first[k] = a
+    return {a['id'] for a in first.values()}
+
+
 def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_of=None, games=None):
     """track.json 'signals': {'days': {tip day: {type: [n, graded, clv_sum, clv_sq, clv_pos, w, l, p, exp_sum]}},
     'recent': graded alerts, newest first}. Days outside the rescan window keep their totals. `games(gid)` -> False
-    leaves a game's alerts out (ledger.py grades preseason apart from the season)."""
+    leaves a game's alerts out (ledger.py grades preseason apart from the season). 'behind' is rolled up per bet
+    (behind_firsts). A day inside the window is re-summed from the alert files, and a game's alerts can sit in day folders
+    from before the window, so those folders are read too: reading only the window dropped them and shrank the edge day's totals.
+    A record saved under an older roll-up (signals_v not current) is rebuilt for every day from the alert files, once."""
     prev = prev or {}
-    days, recent = dict(prev.get('days') or {}), {a['id']: a for a in prev.get('recent') or []}
-    since = (dt.datetime.fromtimestamp(now, ET).date() - dt.timedelta(days=rescan_days)).isoformat()
+    days, recent = {d: dict(by) for d, by in (prev.get('days') or {}).items()}, {a['id']: a for a in prev.get('recent') or []}
+    today = dt.datetime.fromtimestamp(now, ET).date()
+    since = (today - dt.timedelta(days=rescan_days)).isoformat()
+    lead = (today - dt.timedelta(days=rescan_days + SIGNAL_LEAD_DAYS)).isoformat()
+    rebuild = prev.get('signals_v') != SIGNALS_V
+    if rebuild:                                         # every day is recomputed below
+        days = {}
     alerts = {}
     for d in sorted(glob.glob(os.path.join(root, 'snapshots', '20*'))):
-        if os.path.basename(d) >= since and os.path.exists(os.path.join(d, 'signals.json')):
-            try:
-                alerts.update(json.load(open(os.path.join(d, 'signals.json'))))
-            except ValueError:
-                pass
+        if (os.path.basename(d) < lead and not rebuild) or not os.path.exists(os.path.join(d, 'signals.json')):
+            continue
+        try:
+            alerts.update(json.load(open(os.path.join(d, 'signals.json'))))
+        except ValueError:
+            pass
     if games:
         alerts = {k: a for k, a in alerts.items() if games(str(a['g']))}
     closes = {}
     for a in alerts.values():
-        if now < a['tip'] + GRADE_AFTER_S:
+        if now < a['tip'] + GRADE_AFTER_S or (a['tday'] < since and not rebuild):
             continue
         if a['tday'] not in closes:
             p = os.path.join(root, 'snapshots', a['tday'], 'pinclose.json')
@@ -942,10 +1084,14 @@ def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_
             grade_prop(a, (c or {}).get('props'), stat_of(bx, a['pid'], a['stat']) if stat_of else None)
         else:
             grade_alert(a, _lad(c['lad']) if c and c.get('lad') else None, (box_meta(root, a['g']) or {}).get('score'))
-        recent[a['id']] = a
+        if a['tday'] >= since:                          # a rebuild grades older games too, for their day's totals only
+            recent[a['id']] = a
     touched = defaultdict(lambda: defaultdict(lambda: [0, 0, 0.0, 0.0, 0, 0, 0, 0, 0.0, 0, 0.0, 0.0, 0]))
+    firsts = behind_firsts(alerts.values())
     for a in alerts.values():
-        if a['tday'] < since:
+        if a['type'] == 'behind' and a['id'] not in firsts:
+            continue
+        if a['tday'] < since and not rebuild:
             continue
         r = touched[a['tday']][a['type']]
         r[0] += 1
@@ -963,6 +1109,8 @@ def grade_signals(root, now, prev, box, box_meta, rescan_days=4, keep=400, stat_
             r[11] += a['pm_clv'] ** 2
             r[12] += a['pm_clv'] > 0
     for d, by in touched.items():
-        days[d] = {t: [round(x, 4) if isinstance(x, float) else x for x in v] for t, v in by.items()}
+        new = {t: [round(x, 4) if isinstance(x, float) else x for x in v] for t, v in by.items()}
+        days[d] = new
+    days = {d: by for d, by in days.items() if by}
     rec = sorted((a for a in recent.values() if a.get('clv') is not None or a.get('result') is not None), key=lambda a: -a['t'])[:keep]
-    return {'days': days, 'recent': rec}
+    return {'days': days, 'recent': rec, 'signals_v': SIGNALS_V}

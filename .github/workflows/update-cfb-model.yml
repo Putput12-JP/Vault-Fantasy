@@ -4,19 +4,27 @@
 # scores and ESPN's closing spread. Writes data/cfb_model.json for the CFB Model page.
 # Free and keyless: ESPN data from the sportsdataverse-data releases. Frozen preseason ratings live in
 # data/cfb_model_priors.json (rebuild once a year: python3 scripts/cfb_model.py priors).
+# Finals come from ESPN's scoreboard the minute a game ends (a result stamped settled_by espn_live); the sportsdataverse release can sit days behind, and its own grade (with the ESPN close) replaces the live one when it lands.
 name: Update CFB model
 
 on:
   workflow_dispatch: {}
   push:
+    branches: [main]
     paths:
       - 'scripts/cfb_model.py'
       - 'scripts/cfb_efficiency_study.py'
       - 'data/cfb_model_priors.json'
+      - 'data/cfb_model_priors_v2.json'
+      - 'data/cfb_model_st_prior.json'
+      - 'scripts/cfb_v2_st_study.py'
+      - 'data/cfb_model_totals_priors.json'
   schedule:
     - cron: '17 */3 * 9,10,11,12,1 *'
     - cron: '12,42 16-23 * 9,10,11,12,1 6'   # Saturdays: every 30 minutes through game time so results post soon after the final
     - cron: '12,42 0-6 * 9,10,11,12,1 0'     # ...and the late games that finish after midnight UTC
+    - cron: '12,42 23 * 9,10,11,12,1 2-5'    # Tue-Fri nights (MACtion, Sun Belt, Thursday and Friday games): ESPN's scoreboard grades them as soon as they end
+    - cron: '12,42 0-5 * 9,10,11,12,1 3-6'   # ...through the late finish after midnight UTC
 
 concurrency:
   group: cfb-model

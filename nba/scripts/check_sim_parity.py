@@ -4,6 +4,8 @@ Proof that sim_engine.py (the Python port the live record and the pre-registered
 Loads the page in Chromium, takes the first game on its baked board, and compares:
   1. INPUTS, exactly: who plays, each player's minutes, play chance, and stat means and variance terms (page simInputs vs sim_engine.inputs).
      These are deterministic, so any difference is a porting error.
+  1b. The Vault line environment, exactly: the margin and total the page's vaultLine gives vs sim_engine.vault_mean (both None before the
+     regular season).
   2. RESULTS, statistically: the page's 10,000 simulated games vs the engine's, in the players' own sum environment. JavaScript and
      numpy draw different random numbers, so the comparison is on means and spreads, with Monte Carlo error allowed for.
 
@@ -34,7 +36,8 @@ const {chromium} = require(process.env.PLAYWRIGHT_NODE || 'playwright');
       const o = res.teams[k].out[j], st = {};
       for (const s of [...SIM_STATS, 'pra']){ const a = simPlayed(o, s); st[s] = [a.length, simMean(a), simSd(a)]; }
       return {pid: r.pid, min: r.min, pPlay: r.pPlay, mu: r.mu, ex: r.ex, st}; })}));
-    return {mode: pick.mode, game: g, board_example: !!B.example, mean, margin: [simMean(res.margin), simSd(res.margin)], total: [simMean(res.total), simSd(res.total)], teams, N: res.N};
+    const V = vaultLine(g, B, statusFromBoard(B)), vault = V ? {m: -V.spread, t: V.total} : null;
+    return {vault, mode: pick.mode, game: g, board_example: !!B.example, mean, margin: [simMean(res.margin), simSd(res.margin)], total: [simMean(res.total), simSd(res.total)], teams, N: res.N};
   }, SEED);
   console.log(JSON.stringify(out)); await b.close();
 })();
@@ -61,6 +64,16 @@ for k, (jt, pt) in enumerate(zip(J['teams'], G.teams)):
         for key, x, y in [('min', a['min'], b['min']), ('pPlay', a['pPlay'], b['pPlay'])] + [(f'mu.{s}', a['mu'][s], b['mu'][s]) for s in SE.STATS] + [(f'ex.{s}', a['ex'][s], b['ex'][s]) for s in SE.STATS]:
             if abs(x - y) > 1e-6 + 1e-6 * abs(x):
                 bad.append(f"{jt['team']} {pid} {key}: page {x:.6f} engine {y:.6f}")
+vm = SE.vault_mean(pr, g, board)
+if (vm is None) != (J['vault'] is None):
+    bad.append(f"vault line: page {J['vault']} engine {vm}")
+elif vm is not None:
+    for k in ('m', 't'):
+        if abs(vm[k] - J['vault'][k]) > 1e-6:
+            bad.append(f"vault line {k}: page {J['vault'][k]:.6f} engine {vm[k]:.6f}")
+    print(f"vault line: page margin {J['vault']['m']:.3f} total {J['vault']['t']:.3f}, engine margin {vm['m']:.3f} total {vm['t']:.3f}")
+else:
+    print('vault line: none on both (before the regular season)')
 print(f"inputs: {sum(len(t['rows']) for t in J['teams'])} players on the page, {sum(len(t['rows']) for t in G.teams)} in the engine, {len(bad)} differences")
 
 res = SE.run(pr, G, SE.players_mean(G), seed=int(SEED), N=J['N'])

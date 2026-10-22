@@ -49,12 +49,18 @@ python3 nba/scripts/prop_board.py                               # Player Props s
 python3 nba/scripts/check_sim_parity.py [--seed=N]               # proof the Python simulation engine (sim_engine.py) plays the game as the page does (~30 s)
 python3 nba/scripts/build_game_simulation_test.py                # the Game Simulation's live calibration test from track.json's sim_days -> docs/game-simulation-results.md
 python3 nba/scripts/build_gamelogs.py                           # per-player game logs for hit rates + game-log chart (rerun after fetch_hoopr in season)
+#   also writes data/season_totals.json (totals by season for the Player profile's season table; the page fetches it on that view only)
+python3 scripts/smartstake_alts.py                              # LOCAL ONLY: alternate-line prices per book from the SmartStake tape -> data/smartstake/props_nba_alts.json (Combo Check, ?ss)
+python3 scripts/smartstake_publish_alts.py                      # writes those prices to the owner's Firestore (nbaAlts), readable only by the owner's Google login (Combo Check on the site); needs ~/.config/smartstake/firebase-sa.json
+python3 nba/scripts/fetch_hoopr.py --only-pbp 2026 2027            # ESPN play-by-play, ~290 MB a season (the daily job does this)
+python3 nba/scripts/build_diet_defense.py                        # shot diet by zone vs zone defense for the Slate page (daily; blends last season early in a new one); docs/courtai-teardown.md
+python3 nba/scripts/build_diet_test.py [--no-prior]                  # pre-registered: does the shot diet score beat v2 against the market? (NO; needs pbp 2024 to 2026 in raw/hoopr) docs/diet-test.md
 ```
 
 ## Daily refresh (GitHub Actions)
 
 `.github/workflows/nba-daily.yml`, 7:23 AM ET: fetch_hoopr (last three seasons + this one), fetch_depth_charts,
-build_player_projections, build_gamelogs, build_model_state (now also exports the minutes GBM's player state, `live.gbm`), prop_board, build_data_health, then commits
+build_player_projections, build_gamelogs, build_diet_defense (after fetching the play-by-play: this season fresh, last season cached), build_model_state (now also exports the minutes GBM's player state, `live.gbm`), prop_board, build_data_health, then commits
 `nba/data/` and `nba/projections.html` to main. Refits (build_prop_model_v2.py) need the local price archive in
 `nba/raw/tables` and stay manual; the job keeps the archive-derived pieces (example board, archive counts) as they
 were.
@@ -65,8 +71,9 @@ were.
 `snapshot.py` runs it on every poll and attaches `board['novig']`: per game the moneyline / main spread / main total
 (bid, ask, depth, resting dollars, new trades), per player prop a ladder, and a tape of tickets of $25 and up.
 One contract pays 1 cent, so dollars = price x qty / 100. State (trade cursors, the rolling tape) lives in
-`nba-data/novig/state.json`. A poll is budgeted (`NOVIG_BUDGET`, default 220 requests) and honours `Retry-After`; props
-rotate across polls. Smoke test: `python3 nba/scripts/novig.py`. The signed client (`scripts/novig_client.py`) is only
+`nba-data/novig/state.json`. A poll is budgeted (`NOVIG_BUDGET`, default 220 requests, for the game lines; `NOVIG_PROP_BUDGET`, default 80, for player props, kept apart because the lines alone use all of the first) and honours `Retry-After`. Game lines rotate by whole game
+(moneyline plus every spread and total strike, oldest read first); a game not reached keeps its last complete read with its age (`age`, `fresh`, `asof` per game), and `main_spread` / `main_total` only ever come from a complete
+ladder ([docs/novig-rotation.md](docs/novig-rotation.md)). Props rotate across polls. Smoke test: `python3 nba/scripts/novig.py`. The signed client (`scripts/novig_client.py`) is only
 needed for account endpoints, not for any of this.
 
 **Paper trading on Novig** (`scripts/novig_paper.py`, rules in [docs/novig-paper-trading.md](docs/novig-paper-trading.md)): after each poll the recorder places *simulated*

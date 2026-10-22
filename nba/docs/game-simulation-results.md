@@ -2,9 +2,15 @@
 
 Rules: docs/game-simulation.md. Source: the live record (sim_record.py) in track.json. Games scored: 0 (the test is called at 150).
 
-## market: no games scored yet
+## Market line: no games scored yet
 
-## players: no games scored yet
+## Vault line: no games scored yet
+
+## Players own sum: no games scored yet
+
+## Head to head (games that have every environment; descriptive, no verdict)
+
+Nothing to compare yet: no game has the market line, the Vault line and the players' own sum together.
 
 ## Joint odds (pairs where both played, over/over and under/under pooled)
 

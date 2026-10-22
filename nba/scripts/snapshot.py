@@ -34,12 +34,13 @@ snapshot, so no state lives outside the day folder.
 Game window: 9am ET until the last tip of the day. Every 5 min inside 3h of a tip, else every 15.
 Injury parsing needs pdfplumber (pip install pdfplumber); without it that source is skipped.
 """
-import datetime as dt, json, os, subprocess, sys, time, traceback
+import datetime as dt, json, os, re, subprocess, sys, time, traceback
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(__file__))
 from backfill_espn_odds import game_lines, props as espn_props, CORE
+from nba_common import book_name
 from backfill_kalshi import PROP_SERIES, GAME_SERIES, TEAM as KTEAM, parse_event
 
 ET = ZoneInfo('America/New_York')
@@ -256,14 +257,14 @@ def src_espn(slate):
             h, a, t = gl['home']['current'], gl['away']['current'], gl['total']['current']
             k = f'{eid}|{pid}|game'
             rows[k] = [h['spread'], h['spread_px'], a['spread_px'], h['ml'], a['ml'], t['total'], t['over_px'], t['under_px']]
-            meta[k] = {'game': eid, 'book': gl['provider'], 'away': g['away'], 'home': g['home'], 'tip': g['tip'],
+            meta[k] = {'game': eid, 'book': book_name(gl['provider']), 'away': g['away'], 'home': g['home'], 'tip': g['tip'],
                        'v': 'home_spread,home_px,away_px,home_ml,away_ml,total,over_px,under_px'}
             pb = (item.get('propBets') or {}).get('$ref')
             if pb:
                 for r in espn_props(pb):
                     k = f"{eid}|{pid}|{r['athlete_id']}|{r['type_id']}|{r['ord']}"
                     rows[k] = [r['cur_line'], r['cur_px']]
-                    meta[k] = {'game': eid, 'book': gl['provider'], 'athlete_id': r['athlete_id'], 'type': r['type'],
+                    meta[k] = {'game': eid, 'book': book_name(gl['provider']), 'athlete_id': r['athlete_id'], 'type': r['type'],
                                'ord': r['ord'], 'open_line': r['open_line'], 'open_px': r['open_px']}
     return rows, meta
 
@@ -739,6 +740,7 @@ def coverage(slate, day, metas):
             add('polymarket', ('-'.join(p[3:6]), code_nick(p[2])), (m.get('type') or 'moneyline') not in PM_GAME_TYPES)
     for k, m in (metas.get('novig') or {}).items():
         add('novig', by_id.get(m['g']) or by_id.get(int(m['g']) if str(m['g']).isdigit() else m['g']), m.get('m') == 'prop')
+    squash = {x['id']: {re.sub(r'\s', '', x.get(f'{side}_name') or '').lower() for side in ('away', 'home')} - {''} for x in slate.games}   # 'atlantahawks'
     for k in day.last.get('injuries', {}):             # report rows persist between reports, so read current state
         gd, team, _ = k.split('|', 2)
         try:
@@ -746,7 +748,9 @@ def coverage(slate, day, metas):
         except ValueError:
             continue
         for key, g in games.items():
-            if key[0] == d_ and nick(team) in (slate.nick.get(g['home']), slate.nick.get(g['away'])):
+            # the report writes a team as its full name without spaces ('AtlantaHawks', 'PortlandTrailBlazers'); before this matched on the
+            # nickname alone it matched nothing, and the Data Health injuries column read "none" for every game
+            if key[0] == d_ and team.lower() in squash.get(g['id'], ()):
                 g['cov'].setdefault('injuries', [0, 0])[0] += 1
     # pick'em apps: [0, lines], joined on team (and start time when the app gives one)
     by_team = defaultdict(list)
@@ -781,6 +785,7 @@ def write_status(root, day, slate, polls, metas):
     status = {
         't': slate.now, 'window': {'live': live, 'next_s': wait},
         'run': f"{os.environ.get('GITHUB_SERVER_URL')}/{os.environ.get('GITHUB_REPOSITORY')}/actions/runs/{run}" if run else None,
+        'code': os.environ.get('GITHUB_SHA'),        # the commit of main this recorder run checked out; a run lasts up to 5.5 h, so a merge reaches it only at the next hand-off
         'sources': {p['src']: p for p in polls},
         'games': coverage(slate, day, metas),
         'storage': {'days': len(days), 'first': days[0] if days else None, 'bytes': size},
@@ -888,47 +893,188 @@ def save_wire(day, events, now):
         json.dump(kept, f, separators=(',', ':'))
 
 
+LEDGER_FAIL_N = 3     # consecutive failed ledger polls before Data Health shows a flag (the GitHub watchdog waits for 6)
+
+
 def shadow(root, day, board, now, polls):
-    """Shadow ledger (ledger.py): log every 3%+ edge the page would show, then settle finished games -> track.json."""
+    """Shadow ledger (ledger.py): log every 3%+ edge the page would show, then settle finished games -> track.json.
+    Every stage runs on its own: a stage that raises is named in the poll record (ok false, err) and the others still run, so one bad
+    row can no longer stop the Minutes Lab, the simulation records or settlement for a whole day (Oct 19 to 20, 2026: 184 polls)."""
     rec = {'t': now, 'src': 'ledger', 'ok': True}
+    fails, counts = {}, {'minutes': {}, 'sim': {}}
     try:
-        import ledger
-        if board is not None:                    # no board = unknown, not "every edge is gone"
+        import ledger, pricing
+    except Exception as e:
+        rec.update(ok=False, err=f'import: {type(e).__name__}: {e}'[:200])
+        traceback.print_exc(limit=2)
+        day.append('polls.jsonl', [rec])
+        return
+
+    def stage(name, fn):
+        try:
+            return fn()
+        except Exception as e:
+            fails[name] = f'{type(e).__name__}: {e}'[:120]
+            traceback.print_exc(limit=2)
+
+    def by_game(meta):
+        c = defaultdict(int)
+        for m in meta.values():
+            c[str(m['game'])] += 1
+        return dict(c)
+
+    pricing.ROW_ERRORS.clear()
+    if board is not None:                        # no board = unknown, not "every edge is gone"
+        def do_log():
             rows, meta = ledger.log(day, board, now)
             rec.update(n=len(rows), chg=day.record('ledger', now, rows, meta))
+            rec['games'] = {g: [x['cands'], x['edge'], x['held'], x['logged']] for g, x in ledger.LOG_STATS.items()}
+            hrows, hmeta = ledger.HELD_OUT                     # GO / WATCH candidates a hold kept out of the bets: recorded apart, never bets (ledger.held_bets_record)
+            rec['held_bets'] = len(hrows)
+            day.record('heldbets', now, hrows, hmeta)
+        stage('log', do_log)
+
+        def do_minutes():
             mrows, mmeta = ledger.minutes_log(board, now)      # the Minutes Lab's record
             rec['minutes'] = len(mrows)
+            counts['minutes'] = by_game(mmeta)
             day.record('minutes', now, mrows, mmeta)
-            try:                                                # the Game Simulation's pre-tip ranges (sim_record.py); never stops the ledger
-                import sim_record
-                srows, smeta = sim_record.log(board, now)
-                rec['sim'] = len(srows)
-                day.record('sim', now, srows, smeta)
-            except Exception as e:
-                rec['sim_err'] = str(e)[:120]
-                traceback.print_exc(limit=2)
-            try:                                                # single-prop simulations vs the minutes model (prop_sim_record.py); never stops the ledger
-                import prop_sim_record
-                prows, pmeta = prop_sim_record.log(board, now)
-                rec['psim'] = len(prows)
-                day.record('psim', now, prows, pmeta)
-            except Exception as e:
-                rec['psim_err'] = str(e)[:120]
-                traceback.print_exc(limit=2)
-            try:                                                # Novig paper trading (novig_paper.py): a simulator, no order is ever placed; never stops the ledger
-                import novig_paper
-                nrows, nmeta = novig_paper.log(day, board, now)
-                rec['novig_paper'] = len(nrows)
-                day.record('novig_paper', now, nrows, nmeta)
-            except Exception as e:
-                rec['novig_paper_err'] = str(e)[:120]
-                traceback.print_exc(limit=2)
-        rec['bets'] = ledger.settle(root, now)
-    except Exception as e:
-        rec.update(ok=False, err=str(e)[:200])
-        traceback.print_exc(limit=2)
+        stage('minutes', do_minutes)
+        try:                                                    # the Game Simulation's pre-tip ranges (sim_record.py); never stops the ledger
+            import sim_record
+            srows, smeta = sim_record.log(board, now)
+            rec['sim'] = len(srows)
+            counts['sim'] = by_game({k: m for k, m in smeta.items() if m.get('kind') == 'game'})
+            day.record('sim', now, srows, smeta)
+        except Exception as e:
+            rec['sim_err'] = str(e)[:120]
+            traceback.print_exc(limit=2)
+        try:                                                    # single-prop simulations vs the minutes model (prop_sim_record.py); never stops the ledger
+            import prop_sim_record
+            prows, pmeta = prop_sim_record.log(board, now)
+            rec['psim'] = len(prows)
+            day.record('psim', now, prows, pmeta)
+        except Exception as e:
+            rec['psim_err'] = str(e)[:120]
+            traceback.print_exc(limit=2)
+        try:                                                    # the model's lean on every priced prop, edge or not (lean_record.py, docs/lean-tracking.md); never stops the ledger
+            import lean_record
+            lrows, lmeta = lean_record.log(board, now)
+            rec['leans'] = len(lrows)
+            day.record('leans', now, lrows, lmeta)
+        except Exception as e:
+            rec['leans_err'] = str(e)[:120]
+            traceback.print_exc(limit=2)
+        try:                                                    # Pick'em of the Night: the legs the page would slip, locked at the first tip (pickem_record.py); never stops the ledger
+            import pickem_record
+            krows, kmeta = pickem_record.log(board, now)
+            rec['pkn'] = len(krows)
+            day.record('pkn', now, krows, kmeta)
+        except Exception as e:
+            rec['pkn_err'] = str(e)[:120]
+            traceback.print_exc(limit=2)
+        try:                                                    # Novig paper trading (novig_paper.py): a simulator, no order is ever placed; never stops the ledger
+            import novig_paper
+            nrows, nmeta = novig_paper.log(day, board, now)
+            rec['novig_paper'] = len(nrows)
+            day.record('novig_paper', now, nrows, nmeta)
+        except Exception as e:
+            rec['novig_paper_err'] = str(e)[:120]
+            traceback.print_exc(limit=2)
+    n_bets = stage('settle', lambda: ledger.settle(root, now))
+    if n_bets is not None:
+        rec['bets'] = n_bets
+    if ledger.SETTLE_ERR:                        # a record settle() could not update keeps its old numbers and used to say so only in the job log
+        fails['records'] = '; '.join(f'{k}: {v}' for k, v in ledger.SETTLE_ERR.items())[:200]
+    if pricing.ROW_ERRORS:                       # rows skipped this poll: the poll still counts, but Data Health says how many and the first
+        rec['row_err'] = len(pricing.ROW_ERRORS)
+        rec['row_err_first'] = ' | '.join(f'{w}: {m}' for w, m in pricing.ROW_ERRORS[:2])[:240]
+    if fails:
+        rec.update(ok=False, err='; '.join(f'{k}: {v}' for k, v in fails.items())[:240])
     day.append('polls.jsonl', [rec])
-    print(f"  ledger     {'ok ' if rec['ok'] else 'ERR'} tracked={rec.get('n', '-')} chg={rec.get('chg', '-')} bets={rec.get('bets', '-')} {rec.get('err', '')}", flush=True)
+    stage('flags', lambda: write_flags(root, day, board, now, rec, counts))
+    print(f"  ledger     {'ok ' if rec['ok'] else 'ERR'} tracked={rec.get('n', '-')} chg={rec.get('chg', '-')} bets={rec.get('bets', '-')}"
+          f"{(' skipped=' + str(rec['row_err'])) if rec.get('row_err') else ''} {rec.get('err', '')}", flush=True)
+
+
+def ledger_streak(day_dir, rec):
+    """(consecutive failed ledger polls up to and including this one, time of the first, error) from today's polls.jsonl."""
+    n, since, err = 0, None, ''
+    if not rec['ok']:
+        n, since, err = 1, rec['t'], rec.get('err', '')
+        try:
+            lines = open(os.path.join(day_dir, 'polls.jsonl')).read().splitlines()[-1200:]
+        except OSError:
+            lines = []
+        for line in reversed(lines):
+            try:
+                r = json.loads(line)
+            except ValueError:
+                continue
+            if r.get('src') != 'ledger' or r['t'] >= rec['t']:
+                continue
+            if r.get('ok'):
+                break
+            n, since = n + 1, r['t']
+    return n, since, err
+
+
+def write_flags(root, day, board, now, rec, counts):
+    """status.json 'flags' for the Data Health page: things the recorder did NOT do that it should have, as {level, kind, text, t}.
+      ledger_failing  the shadow ledger failed LEDGER_FAIL_N polls in a row (level bad)
+      no_minutes / no_sim  a game inside the ledger window (24h) has no Minutes Lab rows, or inside the simulation window (4h) has no
+                      simulation rows (bad: the record for that game will be missing)
+      held            a game has 3%+ edges and every one is held by the roster guard, so no bet will be logged (note: working as designed,
+                      said out loud so an empty Track Record is not mistaken for a broken recorder)
+      rows_skipped    a poll skipped bad rows (warn)
+      unsettled       a game tipped ledger.STUCK_H hours ago or more and has no final box score, or still has open bets (bad: its records stay open)
+      box_corrected   ESPN changed a box score after the final; bets graded on the old numbers were graded again (note)"""
+    import ledger, sim_record
+    flags = []
+    n, since, err = ledger_streak(day.dir, rec)
+    if n >= LEDGER_FAIL_N:
+        flags.append({'level': 'bad', 'kind': 'ledger_failing', 't': since, 'n': n,
+                      'text': f'The shadow ledger failed {n} polls in a row: {err}'})
+    for g in ledger.STUCK:
+        hrs = int((now - g['tip']) // 3600) if g.get('tip') else None
+        flags.append({'level': 'bad', 'kind': 'unsettled', 'game': g['game'], 't': now,
+                      'text': f"{g.get('matchup') or g['game']}: " + (f"tipped {hrs} hours ago and " if hrs is not None else '') +
+                              ('has no final box score, so its bets and records stay open' if not g.get('open') else f"still has {g['open']} open bets") + '. Check ESPN: a delay, a postponement or a break in the feed.'})
+    try:                                          # corrections ESPN made to a box score within the last day and a half (ledger.refresh_boxes keeps them in track.json)
+        recent = [c for c in (json.load(open(os.path.join(root, 'track.json'))).get('box_changes') or []) if now - c['t'] <= ledger.BOX_RECHECK_FAST_H * 3600]
+    except (OSError, ValueError):
+        recent = []
+    by_game = {}
+    for c in recent:
+        by_game.setdefault(c['game'], []).append(c)
+    nice = lambda stat: re.sub(r'(?<!^)([A-Z])', lambda m: ' ' + m.group(1).lower(), stat)         # defensiveRebounds -> defensive rebounds
+    for gid, cs in by_game.items():
+        main = [c for c in cs if not (c['stat'] in ('defensiveRebounds', 'offensiveRebounds') and any(o['pid'] == c['pid'] and o['stat'] == 'rebounds' for o in cs))]   # a rebound change shows once
+        num = lambda x: f'{x:g}' if isinstance(x, (int, float)) and not isinstance(x, bool) else str(x)
+        show = '; '.join(f"{c['player']} {nice(c['stat'])} {num(c['old'])} to {num(c['new'])}" for c in main[:4])
+        flags.append({'level': 'note', 'kind': 'box_corrected', 'game': gid, 't': cs[0]['t'],
+                      'text': f"{cs[0]['matchup']}: ESPN corrected the box score after the final ({len(main)} {'stat' if len(main) == 1 else 'stats'}: {show}{', and more' if len(main) > 4 else ''}). Anything graded on the old numbers was graded again."})
+    if rec.get('row_err'):
+        flags.append({'level': 'warn', 'kind': 'rows_skipped', 't': now, 'n': rec['row_err'],
+                      'text': f"{rec['row_err']} bad rows were skipped this poll ({rec.get('row_err_first', '')})"})
+    if board is not None:
+        for g in board.get('games') or []:
+            gid, name = str(g['id']), f"{g['away']} @ {g['home']}"
+            if not (now < g['tip'] <= now + ledger.TRACK_H * 3600):
+                continue
+            if 'minutes' in rec and not counts['minutes'].get(gid):
+                flags.append({'level': 'bad', 'kind': 'no_minutes', 'game': gid, 't': now, 'text': f'{name}: no Minutes Lab rows logged'})
+            if 'sim' in rec and g['tip'] <= now + sim_record.SIM_WINDOW_H * 3600 and not counts['sim'].get(gid):
+                flags.append({'level': 'bad', 'kind': 'no_sim', 'game': gid, 't': now, 'text': f'{name}: no Game Simulation rows logged'})
+            c = (rec.get('games') or {}).get(gid)
+            if c and c[1] and not c[3] and c[2] >= c[1]:
+                flags.append({'level': 'note', 'kind': 'held', 'game': gid, 't': now,
+                              'text': f'{name}: {c[1]} edges of 3% or more, all held by the roster guard, so no shadow bet is logged'})
+    path = os.path.join(root, 'status.json')
+    st = json.load(open(path))
+    st['flags'] = flags
+    with open(path, 'w') as f:
+        json.dump(st, f, separators=(',', ':'))
 
 
 def push_board(root):

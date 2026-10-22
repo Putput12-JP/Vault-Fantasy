@@ -94,3 +94,16 @@ The monthly cost on the page is the number in the ledger config, unless this bro
 `kalshi.markets(series, status='open')` returns parsed public quotes. A proposal needs `source`, `ticker`, `event`, `title`, `game`, `side` (`yes` or `no`), `model_prob`, `edge`, `price` (the ask), `ask_size`, `yes_bid`, `yes_ask`, and `no_bid` when the side is `no`. Put the model's inputs on `detail` so the ledger can explain the number later.
 
 Disabled sources are skipped. A source that cannot read its model should return no proposals and a note, not a guess.
+
+## cfb_jp_novig (Novig strategy, paper only)
+
+A separate strategy in the same bot and ledger, tagged `source: cfb_jp_novig`. It paper-trades JP+ edges against the sportsbook open on Novig's CFB spread ladder, read through public endpoints with no key. The rules are fixed in advance and live in the docstring of `scripts/paper_bot/cfb_jp_novig.py`; the backtest behind them is the cfb-backtests RESULTS.md Update 4 (11 trades, not proven).
+
+- Trigger: `model_margin - open_margin` on the `data/cfb_model.json` board, CFB week 7+ and bowls. Edges of 3+, 5+ and 7+ are logged (`edge_bucket`); only 5+ counts toward the pass bar.
+- No look-ahead: a game that has kicked off, or that already has a final score on the board, is not entered. The paper buy is the live Novig ask at a run time before kickoff. The bot does not backfill a price it did not read before kickoff.
+- Strike: at first sight of the game's Novig ladder, the strike nearest the open on JP+'s side. Stored, never changed.
+- Snapshots: every 30 minutes, Novig and the equivalent Kalshi `KXNCAAFSPREAD` market, with each venue's first-listed time.
+- Entry: paper-buy at the ask, 25% of the contracts offered within 2 cents of it. Exit: the last bid on a snapshot before kick. Hold-to-settlement P&L is tracked on the same row. Novig pregame fees are 0.
+- Pass bar: mean profit per contract after spread > 0, z >= 2, over 60+ trades at 5+ edges. Progress is `strategies.cfb_jp_novig.progress` in `ledger.json`.
+- Its rows carry `book: "novig"`, so they stay out of the Kalshi cash, caps, loss stop and equity curve.
+- `python3 -m scripts.paper_bot --only cfb_jp_novig` runs just this strategy (the 30-minute pass).

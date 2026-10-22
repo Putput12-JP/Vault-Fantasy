@@ -182,6 +182,46 @@ def market_mean(M):
     return {'m': -M['spread'], 't': M['total']}
 
 
+def vault_mean(pricer, g, board):
+    """The page's vault environment: the game model's margin and total (vaultLine), ported line for line. None before the regular season
+    (season_type under 2) or when the game model state is missing, the same cases where the page disables the Vault line button.
+    Only the margin and total feed the simulation, so the injury list the page builds for display is not rebuilt here."""
+    G = pricer.MS_all.get('game')
+    if not G or not (g.get('season_type') or 0) >= 2:
+        return None
+    P, status = G['P'], PX.status_from_board(board)
+    cut = g['tip'] - P['ROT_DAYS'] * 86400
+    last = G.get('team_last') or {}
+
+    def prev(t):
+        return any(x['id'] != g['id'] and (x['home'] == t or x['away'] == t) and x['tip'] < g['tip'] and g['tip'] - x['tip'] < 30 * 3600 for x in board.get('games') or [])
+
+    def b2b(t):
+        tl = last.get(t)
+        return 1 if (tl and g['tip'] > tl and g['tip'] - tl < 30 * 3600) or prev(t) else 0
+
+    def side(t):
+        m = 0.0
+        for a, p in G['players'].items():
+            st = status.get(int(a))
+            if p[2] != t or not st:
+                continue
+            po = 1 if st == 'Inactive' else (G['p_out'].get(st) or 0)
+            if not po:
+                continue
+            if p[3] >= cut:                                        # the backtest's rotation: played in the last ROT_DAYS
+                m += max(0, p[0] - P['REP'] * p[1]) * po
+        return m
+
+    h, a = g['home'], g['away']
+    R, O, D = (lambda k: G['R'].get(k) or 0), (lambda k: G['O'].get(k) or 0), (lambda k: G['D'].get(k) or 0)
+    Hm, Am, bh, ba, hfa = side(h), side(a), b2b(h), b2b(a), G['hfa']
+    margin = R(h) - R(a) + hfa - P['C'] * (Hm - Am) + P['B2B'] * (ba - bh)
+    ph = G['base'] + O(h) - D(a) + hfa / 2 - P['CT'] * Hm - P['B2B'] / 2 * bh
+    pa = G['base'] + O(a) - D(h) - hfa / 2 - P['CT'] * Am - P['B2B'] / 2 * ba
+    return {'m': margin, 't': ph + pa}
+
+
 def players_mean(game):
     eA = sum(r['mu']['pts'] * r['pPlay'] for r in game.teams[0]['rows'])
     eH = sum(r['mu']['pts'] * r['pPlay'] for r in game.teams[1]['rows'])

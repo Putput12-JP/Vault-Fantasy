@@ -17,10 +17,12 @@ Updated 2026-10-08. Ordered by what protects the most first.
    `prop_board.opening`, the `B.opening` merge in renderSlate).
 
 ## Features, in order
+0. **Combo Check (SHIPPED 2026-10-20):** sportsbook alt-line combos, any players, fair odds from the market at the leg's own line, measured teammate lift only for the two passed pairings (docs/pickem-correlation-results.md), price box and log. Suggestions come only from the measured links; model-gap suggestions were dropped (phantom gaps on rookies and low-minute players, and sportsbook props have no proven model edge).
 4. **Game Lines in the regular season.** A slim Vault-line row (the gap to the market) and "best price" that skips stale books.
-5. **Pick'em of the night** and a **weekly recap** (Tonight / Profile). Quick, and what a player opens the app for.
+5. **Pick'em of the night** (SHIPPED 2026-10-20 as the Pick'em page: one player per team, market-anchored chances, Lean at most) and a **weekly recap** (Tonight / Profile). Teammate pairs were retired: the apps do not allow two players on one team.
 6. **Double-doubles and triple-doubles.** The chance is a small calculation from the existing projections (P(at least two of five
-   stats reach 10)). Needs a real feed to show a price; the recorder reads only over/under shapes today.
+   stats reach 10)). 2026-10-19: the lines now show beside each player's props (PrizePicks standard, Underdog, Sleeper, with the
+   first-quarter lines) as display-only; still needs a model number and a pre-registered test before any edge or logging.
 7. **Minutes Lab follow-ups.** Slider on bench rows; Out back on phone bench rows; soften the "over 240" status on game days.
 8. **Profile badges.** More streak and "Locked in" style badges for logged bets.
 

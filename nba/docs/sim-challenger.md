@@ -67,3 +67,35 @@ Rules, fixed now:
 - **Expected:** 10,000 games equals the minutes model; 50 games worse. A result that disagrees (50 games better) is a WATCH, not an adoption: it needs
   the same result on a second month, per docs/experiment-log.md section 3.
 - **Not a bet source.** Nothing here changes a price, a Bet, a Lean or an Edge.
+
+## Biggest gap record (added 2026-10-20, opening night, before any live result)
+
+The Props Simulation page headlines one prop per game, **Biggest gap**: the priced prop where the model's chance differs most from the price.
+`prop_sim_record.gap_pick()` makes the same choice from the recorded rows and `ledger.py` settles it into `track.json` (`gap_days`; preseason kept
+apart in `preseason.gap_days`).
+
+Rules, fixed now:
+- **Pick:** per game, from the last pre-tip rows. Candidates are the priced props (pts / reb / ast / 3pm) of each team's five highest-minute players,
+  as the page lists them. The model's side is the side it gives more than 50%. Gap = the model's chance for that side minus the price's chance for it
+  (vig removed). The largest gap is the pick. A game with no priced prop has no pick: the page's flat-line "Strongest lean" is not tracked.
+- **Scored:** W or L against the box score at the pick's line. P when the stat lands on the line, D when the player did not play; both are voids, kept in
+  the count but outside the record.
+- **Not profit.** No stake or payout is stored, so there is no ROI. The test is the hit rate against what the price implied: expected wins =
+  sum of the price's chance for each pick, z = (wins - expected) / sqrt(sum p(1-p)).
+- **Call:** none before 100 settled (non-void) picks; the page says "collecting". After that, a result is "ahead of the price" or "behind the price" only
+  when |z| >= 2. An improving record is flagged for close monitoring with its sample size, never promoted to a bet signal.
+- **Not a bet source.** Nothing here changes a price, a Bet, a Lean or an Edge.
+
+### Revision 2026-10-20, before any pick was settled: held teams are recorded too
+
+The first version skipped props from teams the roster guard holds. On opening night that was every team in the first three games, so the page
+headlined a Biggest gap pick (Daniss Jenkins over 7.5 points, BOS @ DET) that the recorder never saw and the record stayed empty. The page picks from a
+game's shown players whether or not the guard holds the team, so the record now sees the same props.
+
+- Held props (and returning players) are recorded with meta `held` = the reason. The Biggest gap pick is chosen and settled from all of them, the way the
+  page chooses it, and a pick on a held team carries `held`; the Track Record row says "roster guard held this team" and the note counts them.
+- **The model comparison is unchanged:** held props stay out of the log-loss and Brier sums, so the minutes model vs simulation score still covers only
+  props the guard trusts.
+- Same rules otherwise: no stake or payout, no ROI, a call only at 100 settled picks, never a bet signal. A held pick is where-to-look, nothing more.
+- **No history to fix:** no regular-season Biggest gap pick had been recorded, and the opening-night games already past (BOS @ DET) have no pre-tip rows
+  to rebuild from; none were invented. The record starts with the first game polled after this ships.

@@ -1,0 +1,195 @@
+<!doctype html>
+<meta charset="utf-8"><title>Sharp Money, Apple Sports layout (mock)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--line:rgba(255,255,255,.09);--ink:#fff;--mut:#98989f;--dim:#636366;
+--ease-out:cubic-bezier(.22,1,.36,1);--ease-spring:cubic-bezier(.34,1.56,.64,1)}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0b0b0d;color:var(--ink);font:15px/1.35 -apple-system,"SF Pro Text",Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.page{max-width:1320px;margin:0 auto;padding:28px 16px 72px}
+h1{font-size:20px;margin:0 0 4px;font-weight:600}
+.lede{color:var(--mut);margin:0 0 22px;max-width:760px}
+.frames{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cap{color:var(--mut);font-size:12px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.08em}
+.phone{width:390px;min-height:820px;background:var(--bg);border-radius:46px;border:1px solid #2a2a2e;overflow:hidden;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.sb{height:46px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 30px 6px;font-weight:600;font-size:15px}
+.cond{font-family:"Barlow Condensed","SF Pro Rounded",Geist,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.pad{padding:0 16px}
+.title{font-size:34px;font-weight:700;letter-spacing:-.02em;margin:14px 16px 2px}
+.ctx{color:var(--mut);margin:0 16px 14px;font-size:13px}
+.lg{display:flex;gap:6px;margin:0 16px 16px;position:relative}
+.lg button{all:unset;cursor:pointer;padding:7px 14px;border-radius:99px;font-weight:600;font-size:14px;color:var(--mut);background:transparent;transition:transform .5s var(--ease-spring),color .15s}
+.lg button.on{background:#fff;color:#000}
+.lg button:active{transform:scale(.94);transition:transform 80ms ease-out}
+.sec{color:var(--mut);font-size:13px;font-weight:600;margin:6px 20px 8px}
+.game{background:var(--card);border-radius:24px;margin:0 16px 12px;padding:14px 16px 14px;transition:transform .5s var(--ease-spring);cursor:pointer}
+.game:active{transform:scale(.975);transition:transform 80ms ease-out}
+.gtop{display:flex;justify-content:space-between;color:var(--mut);font-size:13px;margin-bottom:10px}
+.tr{display:flex;align-items:center;gap:12px;padding:5px 0}
+.logo{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;flex:none;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+.tn{flex:1;font-weight:600;font-size:18px}
+.num{font-size:30px;font-weight:600;min-width:74px;text-align:right}
+.num small{display:block;font-family:-apple-system,Geist,sans-serif;font-size:11px;color:var(--mut);font-weight:500;letter-spacing:0}
+.flowrow{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.flowl{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-bottom:6px}
+.fbar{display:flex;height:8px;border-radius:8px;overflow:hidden;gap:2px}
+.fbar i{display:block;height:100%}
+.fnum{display:flex;justify-content:space-between;margin-top:6px;font-size:15px;font-weight:600}
+.badge{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:1px 8px;white-space:nowrap}
+/* game page */
+.hero{position:relative;padding:8px 16px 22px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;background:var(--hg);opacity:.9}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.15),#000 96%)}
+.hero>*{position:relative;z-index:1}
+.back{color:#fff;font-size:15px;opacity:.85;margin:6px 0 14px}
+.matchup{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;text-align:center}
+.matchup .logo{width:66px;height:66px;font-size:19px;margin:0 auto 6px}
+.matchup .tn{font-size:16px;flex:none}
+.big{font-size:52px;font-weight:700;line-height:1}
+.when{text-align:center;color:rgba(255,255,255,.75);font-size:13px;margin-top:10px}
+.platter{background:rgba(44,44,46,.72);backdrop-filter:blur(24px) saturate(1.4);-webkit-backdrop-filter:blur(24px) saturate(1.4);border-radius:24px;margin:0 16px 12px;padding:14px 16px}
+.ph{font-size:13px;font-weight:600;color:var(--mut);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:11px;color:var(--dim);font-weight:600;text-align:right;padding:0 0 6px;letter-spacing:.04em;text-transform:uppercase}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{padding:7px 0;text-align:right;font-size:22px;border-top:1px solid var(--line)}
+.tbl td:first-child{font-family:-apple-system,Geist,sans-serif;font-size:15px;font-weight:600}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.mk{display:grid;grid-template-columns:62px 1fr;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.mk:first-of-type{border-top:0}
+.mk b{font-size:13px;color:var(--mut);font-weight:600}
+.pm{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-top:1px solid var(--line)}
+.pm:first-of-type{border-top:0}
+.pm span{color:var(--mut);font-size:14px}.pm em{font-style:normal;font-size:24px;font-weight:600}
+.foot{color:var(--dim);font-size:12px;margin:2px 4px 0}
+/* alerts */
+.alert{background:rgba(44,44,46,.72);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-radius:22px;margin:0 16px 10px;padding:12px 14px;display:grid;grid-template-columns:6px 1fr auto;gap:12px;align-items:center}
+.alert .sw{align-self:stretch;border-radius:6px}
+.alert .t{font-weight:600;font-size:15px}.alert .x{color:var(--mut);font-size:13px;margin-top:2px}
+.alert .amt{font-size:26px;font-weight:600;text-align:right}.alert .amt small{display:block;color:var(--mut);font-size:11px;font-family:-apple-system,Geist,sans-serif}
+.notes{margin-top:34px;max-width:900px;color:var(--mut)}
+.notes h2{font-size:15px;color:var(--ink);margin:18px 0 6px}
+.notes li{margin:4px 0}
+
+.tabsw{display:none}
+@media(max-width:430px){
+ html,body{background:#000}
+ .page{padding:0}
+ h1,.lede,.notes,.cap{display:none}
+ .frames{display:block}
+ .frames>div{display:none}.frames>div.show{display:block}
+ .phone{width:100%;min-height:100vh;border-radius:0;border:0;box-shadow:none;padding-bottom:96px}
+ .sb{display:none}
+ .title{margin-top:calc(env(safe-area-inset-top) + 18px)}
+ .hero{padding-top:calc(env(safe-area-inset-top) + 10px)}
+ .tabsw{display:flex;position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(env(safe-area-inset-bottom) + 10px);background:rgba(20,20,22,.8);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);gap:8px;z-index:9;justify-content:center}
+ .tabsw button{all:unset;cursor:pointer;padding:8px 18px;border-radius:99px;font-weight:600;font-size:14px;color:var(--mut);transition:transform .5s var(--ease-spring)}
+ .tabsw button.on{background:#fff;color:#000}.tabsw button:active{transform:scale(.94);transition:transform 80ms ease-out}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:420px){.phone{width:100%;border-radius:30px}}
+</style>
+<div class="page">
+  <h1>Sharp Money, with an Apple Sports layout</h1>
+  <p class="lede">Three screens as a phone mock. Numbers are real, taken from the Sharp Money data file (generated <span id="gen"></span>). Nothing here is shipped. Sharp money stays context only, so there is no "agree" count anywhere.</p>
+  <div class="frames">
+    <div><p class="cap">1. Board</p><div class="phone" id="s1"></div></div>
+    <div><p class="cap">2. Game page</p><div class="phone" id="s2"></div></div>
+    <div><p class="cap">3. Alerts</p><div class="phone" id="s3"></div></div>
+  </div>
+  <div class="notes">
+    <h2>What this borrows from Apple Sports</h2>
+    <ul>
+      <li>Pure black canvas with rounded dark cards, no borders, one big title.</li>
+      <li>Each game is two team rows with a colored team badge. Big condensed numerals carry the key number on the right.</li>
+      <li>Game page opens with a gradient built from the two team colors, then translucent platters over it.</li>
+      <li>Alerts look like Lock Screen cards: a team color stripe, one line of text, one big number.</li>
+      <li>One tap target per game. Nothing to drill into on the board itself.</li>
+    </ul>
+    <h2>What stays Vault</h2>
+    <ul>
+      <li>Every sharp reading is labeled context only. No agree total, no bet signal.</li>
+      <li>Team badges use the stored team color and abbreviation (no logos are stored).</li>
+      <li>Lines, flow, Kalshi and Polymarket prices, and the Vault line are all stored values. The model rows say they are context.</li>
+    </ul>
+    <h2>Not copied</h2>
+    <ul><li>No Apple assets, logos, icons or fonts. The condensed numerals use Barlow Condensed as a stand in.</li></ul>
+  </div>
+</div>
+<div class="tabsw"><button data-i="0" class="on">Board</button><button data-i="1">Game</button><button data-i="2">Alerts</button></div>
+<script>
+const D={"generated": "2026-10-09T00:17:21.719Z", "games": [{"key": "nfl:290903", "start": 1791504900, "status": "scheduled", "away": {"name": "Tampa Bay Buccaneers", "short": "Buccaneers", "abbr": "TB", "color": "#D50A0A"}, "home": {"name": "Dallas Cowboys", "short": "Cowboys", "abbr": "DAL", "color": "#003594"}, "consensus": {"ml": {"home": -525, "away": 397}, "sp": {"line": -9.5, "home": -110, "away": -110}, "tot": {"line": 49.5, "over": -109, "under": -110}}, "open": {"ml": {"home": -205, "away": 170}, "sp": {"line": -3.5, "home": -110, "away": -110}, "tot": {"line": 52.5, "over": -110, "under": -110}}, "pin": {"ml": {"home": -469, "away": 383}, "sp": {"line": -9.5, "home": -109, "away": -101}, "tot": {"line": 49, "over": -104, "under": -108}, "lim": {"ml": 50000, "sp": 100000, "tot": 30000}}, "model": {"home": {"pts": 27.1}, "away": {"pts": 24.7}, "margin": 5.1, "total": 51.8, "homeWin": 0.656, "rank": {"rate": {"home": 14, "away": 25, "n": 32}, "off": {"home": 3, "away": 22, "n": 32}, "def": {"home": 32, "away": 19, "n": 32}}}, "kal": {"ticker": "KXNFLGAME-26OCT08TBDAL", "vol": 11459684.97, "vol24": 8121319.05, "px": {"home": 0.81, "away": 0.2}}, "pm": {"slug": "nfl-tb-dal-2026-10-09", "vol": 2311348, "vol24": 2042690, "px": {"ml": {"line": null, "outs": ["Buccaneers", "Cowboys"], "px": [0.195, 0.805], "vol": 1084391}, "sp": {"line": -9.5, "outs": ["Cowboys", "Buccaneers"], "px": [0.505, 0.495], "vol": 197955}, "tot": {"line": 47.5, "outs": ["Over", "Under"], "px": [0.545, 0.455], "vol": 105625}}}, "flow": {"pmAll": {"tot:over": 32070, "tot:under": 4113, "sp:away": 45617, "sp:home": 50245, "ml:away": 134597, "ml:home": 685347}, "pmBig": {"tot:over": 22832, "tot:under": 2000, "sp:away": 35208, "sp:home": 36654, "ml:home": 657970, "ml:away": 124274}, "sharp": {"tot:over": 19809, "sp:home": 38610, "sp:away": 16246, "ml:away": 92806, "tot:under": 927, "ml:home": 93891}, "dull": {"ml:home": 66635, "ml:away": 1207}, "sharp2h": {"sp:home": 29791, "sp:away": 16246, "tot:under": 927, "ml:away": 12510, "ml:home": 32115}, "kalBig": {"ml:home": 177499, "ml:away": 25128}, "novBig": {"ml:home": 55354, "ml:away": 19394, "sp:home": 128778, "sp:away": 40064, "tot:over": 45712, "tot:under": 41853}, "novAll": {"ml:home": 93975, "ml:away": 28789, "sp:home": 152310, "sp:away": 55535, "tot:under": 51577, "tot:over": 64320}}, "splits": {"ml": {"home": {"t": 93, "m": 89}, "away": {"t": 7, "m": 11}}, "sp": {"home": {"t": 74, "m": 71}, "away": {"t": 26, "m": 29}}, "tot": {"over": {"t": 79, "m": 83}, "under": {"t": 21, "m": 17}}}}, {"key": "nfl:290904", "start": 1791738000, "status": "scheduled", "away": {"name": "New York Giants", "short": "Giants", "abbr": "NYG", "color": "#0B2265"}, "home": {"name": "Washington Commanders", "short": "Commanders", "abbr": "WAS", "color": "#773141"}, "consensus": {"ml": {"home": -199, "away": 162}, "sp": {"line": -4, "home": -110, "away": -109}, "tot": {"line": 41.5, "over": -116, "under": -109}}, "open": {"ml": {"home": -130, "away": 110}, "sp": {"line": -2.5, "home": -105, "away": -115}, "tot": {"line": 48.5, "over": -110, "under": -110}}, "pin": {"ml": {"home": -198, "away": 172}, "sp": {"line": -4, "home": -105, "away": -107}, "tot": {"line": 42, "over": -110, "under": -104}, "lim": {"ml": 10000, "sp": 20000, "tot": 5000}}, "model": {"home": {"pts": 23.8}, "away": {"pts": 22.8}, "margin": 0.8, "total": 46.5, "homeWin": 0.524, "rank": {"rate": {"home": 26, "away": 23, "n": 32}, "off": {"home": 14, "away": 27, "n": 32}, "def": {"home": 30, "away": 17, "n": 32}}}, "kal": {"ticker": "KXNFLGAME-26OCT11NYGWAS", "vol": 336733.02, "vol24": 52337.76, "px": {"home": 0.63, "away": 0.38}}, "pm": {"slug": "nfl-nyg-was-2026-10-11", "vol": 139897, "vol24": 115161, "px": {"ml": {"line": null, "outs": ["Giants", "Commanders"], "px": [0.365, 0.635], "vol": 21575}, "sp": {"line": -3.5, "outs": ["Commanders", "Giants"], "px": [0.515, 0.485], "vol": 104221}, "tot": {"line": 43.5, "outs": ["Over", "Under"], "px": [0.455, 0.545], "vol": 7095}}}, "flow": {"pmAll": {"sp:away": 39117, "sp:home": 43170, "tot:over": 1404, "ml:home": 9111, "ml:away": 54}, "pmBig": {"sp:away": 39020, "sp:home": 41582, "tot:over": 1104, "ml:home": 3706}, "sharp": {"sp:away": 39020, "sp:home": 41582, "ml:home": 7364}, "dull": {}, "sharp2h": {"sp:away": 28786, "sp:home": 26512}, "kalBig": {"ml:away": 2516}, "novBig": {"ml:away": 10534, "ml:home": 3124}, "novAll": {"ml:home": 4038, "ml:away": 25452, "tot:over": 316}}, "splits": {"ml": {"home": {"t": 54, "m": 42}, "away": {"t": 46, "m": 58}}, "sp": {"home": {"t": 23, "m": 24}, "away": {"t": 77, "m": 76}}, "tot": {"over": {"t": 77, "m": 69}, "under": {"t": 23, "m": 31}}}}, {"key": "nfl:290914", "start": 1791738000, "status": "scheduled", "away": {"name": "Chicago Bears", "short": "Bears", "abbr": "CHI", "color": "#C83803"}, "home": {"name": "Green Bay Packers", "short": "Packers", "abbr": "GB", "color": "#203731"}, "consensus": {"ml": {"home": 105, "away": -130}, "sp": {"line": 1.5, "home": -111, "away": -108}, "tot": {"line": 45.5, "over": -111, "under": -109}}, "open": {"ml": {"home": -166, "away": 140}, "sp": {"line": -3, "home": -110, "away": -110}, "tot": {"line": 49.5, "over": -110, "under": -110}}, "pin": {"ml": {"home": 103, "away": -116}, "sp": {"line": 1, "home": -104, "away": -108}, "tot": {"line": 46, "over": -102, "under": -112}, "lim": {"ml": 10000, "sp": 20000, "tot": 5000}}, "model": {"home": {"pts": 22.4}, "away": {"pts": 23.6}, "margin": -2.7, "total": 46, "homeWin": 0.415, "rank": {"rate": {"home": 22, "away": 10, "n": 32}, "off": {"home": 17, "away": 10, "n": 32}, "def": {"home": 16, "away": 10, "n": 32}}}, "kal": {"ticker": "KXNFLGAME-26OCT11CHIGB", "vol": 716363.57, "vol24": 131668.84, "px": {"home": 0.48, "away": 0.53}}, "pm": {"slug": "nfl-chi-gb-2026-10-11", "vol": 238051, "vol24": 98948, "px": {"ml": {"line": null, "outs": ["Bears", "Packers"], "px": [0.525, 0.475], "vol": 181482}, "sp": {"line": -2.5, "outs": ["Bears", "Packers"], "px": [0.465, 0.535], "vol": 47160}, "tot": {"line": 44.5, "outs": ["Over", "Under"], "px": [0.535, 0.465], "vol": 4318}}}, "flow": {"pmAll": {"ml:away": 1616, "ml:home": 35506, "sp:home": 7327}, "pmBig": {"ml:home": 34047, "sp:home": 7000}, "sharp": {"ml:home": 29298, "sp:home": 7000, "ml:away": 218}, "dull": {}, "sharp2h": {"ml:away": 218}, "kalBig": {"ml:home": 15841, "ml:away": 2425}, "novBig": {"ml:away": 23977, "ml:home": 1349, "sp:away": 1598, "sp:home": 4252}, "novAll": {"ml:home": 7435, "ml:away": 30200, "sp:away": 2676, "sp:home": 6397, "tot:under": 184, "tot:over": 202}}, "splits": {"ml": {"home": {"t": 28, "m": 36}, "away": {"t": 72, "m": 64}}, "sp": {"home": {"t": 43, "m": 57}, "away": {"t": 57, "m": 43}}, "tot": {"over": {"t": 75, "m": 72}, "under": {"t": 25, "m": 28}}}}, {"key": "nfl:290916", "start": 1791850500, "status": "scheduled", "away": {"name": "Buffalo Bills", "short": "Bills", "abbr": "BUF", "color": "#00338D"}, "home": {"name": "Los Angeles Rams", "short": "Rams", "abbr": "LA", "color": "#FFD100"}, "consensus": {"ml": {"home": -177, "away": 145}, "sp": {"line": -3.5, "home": -104, "away": -116}, "tot": {"line": 54.5, "over": -110, "under": -110}}, "open": {"ml": {"home": -170, "away": 142}, "sp": {"line": -3, "home": -110, "away": -110}, "tot": {"line": 53.5, "over": -110, "under": -110}}, "pin": {"ml": {"home": -173, "away": 152}, "sp": {"line": -3, "home": -114, "away": 101}, "tot": {"line": 54.5, "over": -101, "under": -113}, "lim": {"ml": 20000, "sp": 30000, "tot": 10000}}, "model": {"home": {"pts": 26.7}, "away": {"pts": 25.7}, "margin": 1.2, "total": 52.4, "homeWin": 0.537, "rank": {"rate": {"home": 4, "away": 3, "n": 32}, "off": {"home": 4, "away": 1, "n": 32}, "def": {"home": 9, "away": 18, "n": 32}}}, "kal": {"ticker": "KXNFLGAME-26OCT12BUFLAR", "vol": 184705.02000000002, "vol24": 34222.2, "px": {"home": 0.62, "away": 0.39}}, "pm": {"slug": "nfl-buf-la-2026-10-13", "vol": 89905, "vol24": 41030, "px": {"ml": {"line": null, "outs": ["Bills", "Rams"], "px": [0.385, 0.615], "vol": 45056}, "sp": {"line": -2.5, "outs": ["Rams", "Bills"], "px": [0.565, 0.435], "vol": 6951}, "tot": {"line": 32.5, "outs": ["Over", "Under"], "px": [0.955, 0.045], "vol": 350}}}, "flow": {"pmAll": {"ml:home": 22495, "ml:away": 166, "sp:home": 650}, "pmBig": {"ml:home": 21627}, "sharp": {"ml:home": 20687}, "dull": {}, "sharp2h": {}, "kalBig": {}, "novBig": {"ml:home": 13483, "ml:away": 5969}, "novAll": {"ml:away": 10521, "ml:home": 16243, "sp:away": 2616, "sp:home": 568, "tot:under": 25}}, "splits": {"ml": {"home": {"t": 45, "m": 56}, "away": {"t": 55, "m": 44}}, "sp": {"home": {"t": 30, "m": 44}, "away": {"t": 70, "m": 56}}, "tot": {"over": {"t": 61, "m": 68}, "under": {"t": 39, "m": 32}}}}], "alerts": [{"gameLbl": "TB @ DAL", "ts": 1791504777, "text": "Sharp account Scornful-West put $2,930 on Buccaneers (spread) at 49\u00a2", "usd": 2930, "who": "Scornful-West", "type": "sharp", "m": "sp", "side": "away"}, {"gameLbl": "TB @ DAL", "ts": 1791504770, "text": "Sharp account Substantial-Service put $1,220 on Buccaneers to win at 19\u00a2", "usd": 1220, "who": "Substantial-Service", "type": "sharp", "m": "ml", "side": "away"}, {"gameLbl": "TB @ DAL", "ts": 1791504764, "text": "Sharp account Scornful-West put $1,400 on Cowboys (spread) at 51\u00a2", "usd": 1400, "who": "Scornful-West", "type": "sharp", "m": "sp", "side": "home"}, {"gameLbl": "TB @ DAL", "ts": 1791504447, "text": "Sharp account Substantial-Service put $1,563 on Buccaneers to win at 19\u00a2", "usd": 1563, "who": "Substantial-Service", "type": "sharp", "m": "ml", "side": "away"}, {"gameLbl": "TB @ DAL", "ts": 1791504367, "text": "$10,856 ticket on Cowboys to win at 81\u00a2 (Kalshi)", "usd": 10856, "who": null, "type": "whale", "m": "ml", "side": "home"}]};
+const G=D.games;
+const $=id=>document.getElementById(id);
+$('gen').textContent=new Date(D.generated).toLocaleString('en-US',{timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' CT';
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const lift=(h,a)=>{const c=hex(h).map(v=>Math.round(v+(255-v)*a));return `rgb(${c})`};
+const money=n=>n>=1e6?'$'+(n/1e6).toFixed(1)+'M':n>=1e3?'$'+(n/1e3).toFixed(n>=1e4?0:1)+'k':'$'+Math.round(n);
+const sgn=n=>n==null?'-':(n>0?'+':'')+n;
+const fmtLine=n=>n==null?'-':(n>0?'+':n<0?'-':'')+Math.abs(n);
+const when=ts=>new Date(ts*1000).toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'short',hour:'numeric',minute:'2-digit'}).replace(',', '')+' CT';
+const day=ts=>new Date(ts*1000).toLocaleString('en-US',{timeZone:'America/Chicago',weekday:'long',month:'short',day:'numeric'});
+const ago=ts=>{const m=Math.max(1,Math.round((new Date(D.generated)/1000-ts)/60));return m<60?m+'m ago':Math.round(m/60)+'h ago'};
+const sb='<div class="sb"><span>9:41</span><span>5G &nbsp;100%</span></div>';
+const logo=(t,s)=>`<div class="logo" style="background:${t.color}">${t.abbr}</div>`;
+// spread: line is the HOME number (home -9.5 means home favored)
+const spA=g=>{const l=g.consensus.sp.line;return -l};
+const flowBar=(a,h,g,key)=>{
+  const f=g.flow.sharp, A=f[key+':'+a]||0, H=f[key+':'+h]||0, T=A+H||1;
+  const ca=key==='tot'?'#a8a8b0':lift(g.away.color,.35), ch=key==='tot'?'#5e6ad2':lift(g.home.color,.35);
+  return {A,H,html:`<div class="fbar"><i style="width:${A/T*100}%;background:${ca}"></i><i style="width:${H/T*100}%;background:${ch}"></i></div>`};
+};
+// ---- screen 1
+let s1=sb+'<div class="title">Sharp Money</div><p class="ctx">Where large, tracked money sits. Context only, not a bet signal.</p>'+
+ '<div class="lg"><button class="on">NFL</button><button>CFB</button><button>NBA</button></div>';
+let lastDay='';
+G.slice().sort((a,b)=>a.start-b.start).forEach(g=>{
+  const dd=day(g.start); if(dd!==lastDay){s1+=`<div class="sec">${dd}</div>`;lastDay=dd}
+  const fb=flowBar('away','home',g,'sp');
+  s1+=`<div class="game"><div class="gtop"><span>${when(g.start)}</span><span>Spread</span></div>
+   <div class="tr">${logo(g.away)}<div class="tn">${g.away.short}</div><div class="num cond">${fmtLine(spA(g))}</div></div>
+   <div class="tr">${logo(g.home)}<div class="tn">${g.home.short}</div><div class="num cond">${fmtLine(g.consensus.sp.line)}</div></div>
+   <div class="flowrow"><div class="flowl"><span>Sharp money on the spread</span><span class="badge">context</span></div>${fb.html}
+   <div class="fnum cond"><span>${money(fb.A)}</span><span>${money(fb.H)}</span></div></div></div>`;
+});
+$('s1').innerHTML=s1;
+// ---- screen 2
+const g=G.slice().sort((a,b)=>a.start-b.start)[0];
+const mk=(label,key,a,h,fmt)=>{const fb=flowBar(a,h,g,key);return `<div class="mk"><b>${label}</b><div>${fb.html}<div class="fnum cond"><span>${money(fb.A)}</span><span>${money(fb.H)}</span></div></div></div>`};
+const ml=n=>n==null?'-':(n>0?'+':'')+n;
+const c=g.consensus,o=g.open,p=g.pin;
+let s2=sb+`<div class="hero" style="--hg:linear-gradient(120deg,${g.away.color} 0%,${g.away.color} 38%,${g.home.color} 62%,${g.home.color} 100%)">
+ <div class="back">&lsaquo; Sharp Money</div>
+ <div class="matchup"><div>${logo(g.away)}<div class="tn">${g.away.short}</div></div><div class="big cond">@</div><div>${logo(g.home)}<div class="tn">${g.home.short}</div></div></div>
+ <div class="when">${when(g.start)}</div></div>`+
+ `<div class="platter"><div class="ph"><span>Lines</span><span>${g.away.abbr} / ${g.home.abbr}</span></div>
+  <table class="tbl cond"><tr><th></th><th>Open</th><th>Consensus</th><th>Pinnacle</th></tr>
+  <tr><td>Spread</td><td>${fmtLine(-o.sp.line)}</td><td>${fmtLine(-c.sp.line)}</td><td>${fmtLine(-p.sp.line)}</td></tr>
+  <tr><td>Total</td><td>${o.tot.line}</td><td>${c.tot.line}</td><td>${p.tot.line}</td></tr>
+  <tr><td>Moneyline</td><td>${ml(o.ml.away)}</td><td>${ml(c.ml.away)}</td><td>${ml(p.ml.away)}</td></tr>
+  <tr><td></td><td>${ml(o.ml.home)}</td><td>${ml(c.ml.home)}</td><td>${ml(p.ml.home)}</td></tr></table></div>`+
+ `<div class="platter"><div class="ph"><span>Sharp money</span><span class="badge">context only</span></div>
+  ${mk('Spread','sp','away','home')}${mk('Money','ml','away','home')}${mk('Total','tot','over','under')}
+  <div class="foot">Spread and money: left is ${g.away.abbr}, right is ${g.home.abbr}. Total: left is Over (gray), right is Under (blue).</div></div>`+
+ `<div class="platter"><div class="ph"><span>Prediction markets</span></div>
+  <div class="pm"><span>Kalshi win price, ${g.away.abbr}</span><em class="cond">${Math.round(g.kal.px.away*100)}&cent;</em></div>
+  <div class="pm"><span>Kalshi win price, ${g.home.abbr}</span><em class="cond">${Math.round(g.kal.px.home*100)}&cent;</em></div>
+  <div class="pm"><span>Kalshi volume</span><em class="cond">${money(g.kal.vol)}</em></div>
+  <div class="pm"><span>Polymarket volume</span><em class="cond">${money(g.pm.vol)}</em></div></div>`+
+ (g.model?`<div class="platter"><div class="ph"><span>Vault line</span><span class="badge">context only</span></div>
+  <div class="pm"><span>${g.home.abbr} margin</span><em class="cond">${g.model.margin>0?'+':''}${g.model.margin}</em></div>
+  <div class="pm"><span>Total</span><em class="cond">${g.model.total}</em></div></div>`:'');
+$('s2').innerHTML=s2;
+// ---- screen 3
+const byLbl={};G.forEach(x=>byLbl[x.away.abbr+' @ '+x.home.abbr]=x);
+let s3=sb+'<div class="title">Alerts</div><p class="ctx">Large tracked bets as they land. Not a bet signal.</p>'+
+ '<div class="lg"><button class="on">All</button><button>Sharp</button><button>Big</button></div>';
+D.alerts.forEach(a=>{const gm=byLbl[a.gameLbl];const col=gm?(a.side==='home'?gm.home.color:a.side==='away'?gm.away.color:'#8e8e93'):'#8e8e93';
+ s3+=`<div class="alert press"><div class="sw" style="background:${lift(col,.2)}"></div><div><div class="t">${a.gameLbl}</div><div class="x">${a.text}</div><div class="x">${ago(a.ts)}</div></div><div class="amt cond">${money(a.usd)}<small>${a.type}</small></div></div>`});
+$('s3').innerHTML=s3;
+
+(function(){const f=[...document.querySelectorAll('.frames>div')],b=[...document.querySelectorAll('.tabsw button')];
+ const go=i=>{f.forEach((x,j)=>x.classList.toggle('show',j===i));b.forEach((x,j)=>x.classList.toggle('on',j===i));window.scrollTo(0,0)};
+ b.forEach(x=>x.addEventListener('click',()=>go(+x.dataset.i)));go(0)})();
+</script>

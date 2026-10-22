@@ -15,9 +15,11 @@ on:
   schedule:
     - cron: '3,13,23,33,43,53 * * * *'
 
+# A Refresh click (workflow_dispatch) cancels a scheduled sweep that is already running instead of waiting ~7 min behind it.
+# The next scheduled run redoes the long sweep. A scheduled run never cancels anything, it just queues.
 concurrency:
   group: sharp-money
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
 permissions:
   contents: write
   actions: write   # start the Kalshi-vs-books gap loop
@@ -39,7 +41,7 @@ jobs:
             6)   [ "$h" -ge 10 ] && [ "$h" -le 23 ] && go=1 ;;
             7)   [ "$h" -ge 8 ]  && [ "$h" -le 20 ] && go=1 ;;
           esac
-          if [ "$go" = 0 ] && [ "$h" -ge 9 ] && [ "$h" -le 23 ] && [ "$m" -lt 10 -o "$m" -ge 30 -a "$m" -lt 40 ]; then go=1; fi
+          if [ "$go" = 0 ] && [ "$h" -ge 9 ] && [ "$h" -le 23 ] && { [ "$m" -lt 10 ] || { [ "$m" -ge 30 ] && [ "$m" -lt 40 ]; }; }; then go=1; fi
           [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.force }}" != "false" ] && go=1
           echo "go=$go" >> "$GITHUB_OUTPUT"
       # Keep the Kalshi-vs-books gap loop (update-kb-gaps.yml) running: each loop run lasts ~9 min and this fires every 10, so the next
@@ -50,6 +52,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run update-kb-gaps.yml --ref main --repo "${{ github.repository }}"
+      # GitHub's own hourly cron for update-game-history.yml fires only every 3-5h, which left the Pinnacle-lead close line stale: the scorer drops a game
+      # whose last close is over 6h before kickoff, so settled Sunday games never reached the cards. Fire it from this 10-minute loop too.
+      - name: Roll game-line history
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run update-game-history.yml --ref main --repo "${{ github.repository }}"
       - uses: actions/checkout@v5
         if: steps.gate.outputs.go == '1'
       - uses: actions/setup-node@v5
@@ -65,6 +75,18 @@ jobs:
             git show FETCH_HEAD:state.json > sharp-out/state.json || true
             git show FETCH_HEAD:novig_props.json > sharp-out/novig_props.json || true
             git show FETCH_HEAD:prop_plays.json > sharp-out/prop_plays.json || true
+            # The tape is the only copy of the close history: if it exists on the branch it must load (a failed read fails the job
+            # instead of starting an empty tape that would then be published over it).
+            if git cat-file -e FETCH_HEAD:prop_close_tape.json 2>/dev/null; then git show FETCH_HEAD:prop_close_tape.json > sharp-out/prop_close_tape.json; fi
+            # The V2 play ledger is append-only history with one copy here: if it exists on the branch it must load (a failed read fails the job).
+            if git cat-file -e FETCH_HEAD:v2_plays.json 2>/dev/null; then git show FETCH_HEAD:v2_plays.json > sharp-out/v2_plays.json; fi
+            for f in v2_watch.json v2_passed.json; do if git cat-file -e FETCH_HEAD:$f 2>/dev/null; then git show FETCH_HEAD:$f > sharp-out/$f; fi; done
+            git show FETCH_HEAD:ev_alert_history.json > sharp-out/ev_alert_history.json || rm -f sharp-out/ev_alert_history.json
+            # Rows parked by a run that found the history file broken; build_ev_history.py folds them in and deletes them.
+            for p in $(git ls-tree --name-only FETCH_HEAD | grep -E '^ev_alert_history\.pending.*\.json$' || true); do
+              git show "FETCH_HEAD:$p" > "sharp-out/$p" || true
+              [ -s "sharp-out/$p" ] || rm -f "sharp-out/$p"
+            done
           fi
       # The book feed (PrizePicks / Underdog / Sleeper / Pinnacle props) and the Kalshi prop fairs normally come from update-props.yml,
       # which rides GitHub's own cron and has been landing 4-7 hours apart. A +EV call against a Pinnacle line that old is a phantom
@@ -85,21 +107,107 @@ jobs:
         run: |
           B=200; [ "${{ github.event.inputs.force }}" = "true" ] && B=45
           node scripts/fetch-novig-props.mjs --out=sharp-out/novig_props.json --budget=$B
+      # Prop close tape: every book's last read before kickoff (Pinnacle, FanDuel, DraftKings, ..., Kalshi, Novig), so each
+      # book's close can be scored on its own (scripts/compare_prop_closes.py). Reads the three files fetched above, no new
+      # calls. continue-on-error: a failure here never blocks the poll. A tape that exists but does not parse stops the step
+      # without overwriting it, and the old file is republished unchanged.
+      - name: Record prop closes
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          python3 scripts/build_prop_close_tape.py --feed=sharp-out/lineup-feed.json --kalshi=sharp-out/kalshi_props.json --novig=sharp-out/novig_props.json --tape=sharp-out/prop_close_tape.json
+      # Independent prop CLV: re-grade started calls against the exchange close from the tape (a close that did not raise the call) so the
+      # record's clvX is ready for this run's props.json. Pure file work, never blocks the poll.
+      - name: Independent prop closes
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          [ -f sharp-out/prop_plays.json ] && [ -f sharp-out/prop_close_tape.json ] && python3 scripts/regrade_prop_clv.py --plays=sharp-out/prop_plays.json --tape=sharp-out/prop_close_tape.json --write=sharp-out/prop_plays.json --no-report || true
       - name: Poll sources
         if: steps.gate.outputs.go == '1'
         run: |
           Q=""; [ "${{ github.event.inputs.force }}" = "true" ] && Q="--quick"
           node scripts/fetch-sharp-money.mjs --dir=sharp-out $Q
+      # Stamp the exchange / Pinnacle / books fair on calls first seen in this run (atCall), so a later test can ask what each reference said at the
+      # moment of the call. Same script, after the poll created the new calls. Never blocks the publish.
+      - name: Stamp references on new prop calls
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          [ -f sharp-out/prop_plays.json ] && [ -f sharp-out/prop_close_tape.json ] && python3 scripts/regrade_prop_clv.py --plays=sharp-out/prop_plays.json --tape=sharp-out/prop_close_tape.json --write=sharp-out/prop_plays.json --no-report || true
+      # College football and NBA line tape (scripts/sharp_tape.py), the live Novig-vs-Pinnacle edge list, and the edge record
+      # (scripts/exchange_edge_record.py, the only place it is written so two workflows never race on it): every book's numbers, appended when they change, read from the
+      # data.json just built (teams are already matched there). Committed to main like the NFL tape. Never blocks the publish.
+      - name: Record CFB and NBA line tape
+        # Skipped on a Refresh click (append-only history, the next scheduled run catches up) to keep the click fast.
+        if: steps.gate.outputs.go == '1' && github.event.inputs.force != 'true'
+        continue-on-error: true
+        run: |
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          # The tape files are append-only state, so two writers cannot be merged. On a rejected push, reset to the latest main and run the
+          # recorder again (it diffs against that fresh state), up to 3 times, instead of rebasing.
+          for i in 1 2 3; do
+            python3 scripts/sharp_tape.py --data sharp-out/data.json
+            python3 scripts/backfill_edge_results.py || true      # final scores the live feed missed, from ESPN, before the record is rebuilt
+            python3 scripts/exchange_edge_record.py
+            python3 scripts/steam_record.py || true      # Pinnacle steam replay, context only
+            python3 scripts/build_lead_lag.py --data sharp-out/data.json || true      # lead-lag clock and stale-quote ages from the book tape, context only
+            git add data/steam_record.json data/lead_lag.json data/book_age.json data/book_tape/cfb data/book_tape/nba data/book_tape/nfl/backfill.jsonl data/book_tape/nfl/backfill_state.json data/exchange_edge_live.json data/exchange_edge_record.json data/exchange_edge_results.json
+            if git diff --staged --quiet; then echo "No line changes."; break; fi
+            git commit -q -m "data: CFB and NBA line tape [skip ci]"
+            if git push origin HEAD:main; then break; fi
+            echo "push rejected (try $i), resetting to the latest main"
+            git fetch -q origin main
+            git reset -q --hard origin/main
+          done
+      # Sharp Money V2 forward log: every Play the V2 page shows is written once at first sight (price, book, both reference fair prices, edge, time),
+      # frozen, then settled from the same box scores and final scores the other ledgers use and graded against the exchange close. The gate rules are
+      # sharp-money/v2/gates.js, the same file the page runs. Runs after the line tape step so data/exchange_edge_live.json is this run's. Never blocks
+      # the publish: a ledger that exists but does not parse stops the step without being replaced, and the old file is published unchanged.
+      - name: Log and settle V2 plays
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          # NBA props: the live board the NBA app publishes on the nba-live branch (Kalshi and Novig ladders, DraftKings, Pinnacle). It is read here and not
+          # published. A failed fetch only means no NBA props this run; plays already logged keep their rows and settle from ESPN's box score.
+          rm -f sharp-out/nba_board.json
+          if git fetch -q --depth=1 origin nba-live:refs/remotes/origin/nba-live 2>/dev/null; then git show origin/nba-live:board.json > sharp-out/nba_board.json || rm -f sharp-out/nba_board.json; fi
+          node scripts/track-v2-plays.mjs --dir=sharp-out
+          node scripts/track-v2-plays.mjs --dir=sharp-out --tier=watch
+          node scripts/track-v2-plays.mjs --dir=sharp-out --tier=pass
+      # Permanent graded +EV log. data.json keeps only the newest 1500 alerts, so graded ones age out; this file never drops an entry.
+      # Published next to data.json. Never blocks the publish: on failure the previous file is carried forward untouched.
+      - name: Append graded +EV alerts to history
+        id: evhist
+        if: steps.gate.outputs.go == '1'
+        continue-on-error: true
+        run: |
+          python3 scripts/build_ev_history.py --history sharp-out/ev_alert_history.json --data sharp-out/data.json
       - name: Publish to sharp-data
         if: steps.gate.outputs.go == '1'
         run: |
-          cd sharp-out
+          cd sharp-out || exit 1
           rm -f new_alerts.json
           git init -q -b sharp-data
           git config user.name  "vault-bot"
           git config user.email "vault-bot@users.noreply.github.com"
-          git add data.json state.json
+          git add data.json state.json summary.json alerts.json accounts.json props.json reads.json
           if [ -f novig_props.json ]; then git add novig_props.json; fi
           if [ -f prop_plays.json ]; then git add prop_plays.json; fi
+          if [ -f prop_close_tape.json ]; then git add prop_close_tape.json; fi
+          if [ -f ev_alert_history.json ]; then git add ev_alert_history.json; fi
+          if [ -f v2_plays.json ]; then git add v2_plays.json; fi
+          if [ -f v2_watch.json ]; then git add v2_watch.json; fi
+          if [ -f v2_passed.json ]; then git add v2_passed.json; fi
+          # The publish dir is rebuilt as one fresh commit, so a pending file merged this run (deleted from sharp-out) simply drops off the branch.
+          if compgen -G "ev_alert_history.pending*.json" > /dev/null; then git add ev_alert_history.pending*.json; fi
+          if compgen -G "g/*.json" > /dev/null; then git add g/*.json; fi
           git commit -q -m "sharp money: $(date -u +%FT%TZ) [skip ci]"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" sharp-data
+      # The history step is continue-on-error so a bad history file never blocks the publish. Fail the run AFTER publishing so it is still visible.
+      - name: Fail the run if the +EV history was broken
+        if: steps.evhist.outcome == 'failure'
+        run: |
+          echo "::error::ev_alert_history.json was broken; new graded rows were parked in ev_alert_history.pending*.json on sharp-data. Repair the history file, the next run merges them."
+          exit 1

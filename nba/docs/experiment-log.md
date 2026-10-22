@@ -30,6 +30,7 @@ from each doc's own words; "not stated" means the doc does not say.
 | Minutes GBM vs linear (two holdouts: 2024-25, 2025-26) | minutes-gbm.md | yes (bar in the script header) | PASS on accuracy, oracle absences; shadow only |
 | Minutes spread model | minutes-spread.md | yes | FAIL (+0.75% / +0.80% CRPS vs a 1% bar) |
 | Simulation challenger (10k and 50-draw sims vs analytic v2, single props) | sim-challenger.md | yes (one disclosed amendment after run 1: calibration) | sim10k = v2 (8/8 cells same); 50-draw sims same or worse (0 better); NO-GO as a probability engine |
+| SmartStake multi-book closes, Circa/Bookmaker lead, fitted book weights, ladder fits | docs/smartstake-experiment-log.md | yes (written 2026-10-17, no outcomes read) | not graded yet |
 | Kalshi total ladder anchored to the sportsbook open | game-model-experiments.md, game-model-experiments-results.md | yes (committed before scoring) | NO-GO. 8% one-contract ROI +18.0% then −3.4% (z 4.13, 0.57). Second half not positive |
 | Game-model widened retune (K, REP, ALPHA, CT, and C on the 1pm report) | game-model-experiments.md, game-model-experiments-results.md | yes (committed before scoring) | NOT SHIPPED. Spread MAE t −1.45, total MAE t 1.51. Candidate CT 0.2 would stop the paper bot. game_model.json unchanged |
 
@@ -215,3 +216,40 @@ Added 2026-10-11 (before the ledger was read): with no price archive available, 
 (`nba/docs/minutes-gbm-ladder.md`). It found the GBM improves rung log loss on points, rebounds and assists (+0.4% to +0.8%) and
 not on 3PM. That is a reason to expect little from the GBM on the 3PM NO cell, recorded here so a later positive 3PM result is read
 as surprising. It does not replace the live rule above.
+
+
+## 10. Returning-player hold (2026-10-20), a guard, not a model change
+
+Trigger: Haliburton (back from an Achilles tear, no games in 2025-26) was projected at 19.6 minutes for IND at NO, and the owner expects 30+ as the
+starting PG. Decomposition from the live state: base 26.0 (his recent-minutes average, dragged by his last two games, 23 and 7 minutes), minus 1.8
+(return from absence), minus 4.7 (the team rescale, everyone x0.81). His 2024-25 regular season was 33.6.
+
+Check on 2022-26 hoopR box scores (`player_box_*.csv`), run once, no rule written first, so exploratory: players returning after missing a full
+season (330+ days since their last game, 25+ prior games): 57 cases; the 13 with 26+ minutes a game before: those who started their first game back
+averaged 30.5 minutes (2 players), those who came off the bench 18.0 (11 players). Across the 8 players with 28+ before, the first game averaged 21.9
+and the first five 23.1, against a healthy mean of 32.7; both the healthy mean and the recent-minutes average missed the first game by about 11.5
+minutes. Tiny samples; the direction (starter status decides) matches the starters-feed result in section 6.
+
+Rule shipped (page `returningHold`, `pricing.returning_hold`, same rule): a player whose last game was 150+ days before his team's last game is held
+(priced and shown, never a Bet / Lean, an edge, a pick'em leg, a shadow bet, a Novig paper order or a prop-sim record) until he plays a game, or on
+the page until the user sets his minutes in the Lab or on Tonight. On the 2026-10-19 state it holds 11 players: Irving, Niang, Beekman, VanVleet,
+Lyles, Simmons, Lillard, Haliburton, Kessler, Beal, Garcia. Not changed: the minutes model itself. **Open (option B):** a pre-registered test of
+"returning player confirmed as a starter gets his healthy-baseline minutes", which needs more returning-starter games than the data holds.
+
+
+## 11. Combo Check call record (fixed 2026-10-20, before any call has settled)
+
+Every call Combo Check makes is logged by `scripts/combo_calls.py` (local: the prices are SmartStake's), run inside the 5-minute publish job.
+- **Calls:** straight (alt bet at a sportsbook, priced -140 to +200, a point off main, edge 3%+), mates (teammate parlay from the two passed pairings, same
+  side, one book, edge 3%+, top 6), cross (a book's two best alt legs from different games, edge 3%+, top 4). Edge = fair chance x decimal odds - 1; fair
+  chance = median of OTHER venues quoting both sides of the SAME line (margin removed, 2+ venues); parlay chance = legs multiplied plus the measured lift.
+- **Entry** = the first poll a call appears; its price then is the bet. Calls that stop being shown stay in the record. **Close** = the last price seen
+  for the same legs at the same book before tip. **Grade** = flat 1 unit at the entry price from the ESPN box score; a player who did not play voids the call.
+- **Not in the record:** exchange straights (Kalshi, Polymarket, Novig) shown on the page: their fees are not in the tape. The page also sees Pinnacle, Kalshi
+  and Polymarket as fair-price sources, and the model's minutes and holds; the tracker uses the tape alone, recent minutes >= 15 and the returning-player hold.
+  So the record is "what this rule set called", not a replay of one browser session.
+- **Reading it:** monitoring only. No call type is called good or bad before **100 settled calls of that type** and a closing-line value that is positive
+  (mean entry price against close, 2 SE). Edges are measured against other books' prices, not against outcomes, so a positive edge with a negative CLV
+  means the other books moved toward this book, i.e. the edge was a stale line in the benchmark, not in this book.
+- Tested on real box scores with constructed calls (won / lost / under / PRA / two-leg / did-not-play void) and on the live tape (38 calls on the first
+  pass: 28 straight, 6 mates, 4 cross). No call has settled yet.

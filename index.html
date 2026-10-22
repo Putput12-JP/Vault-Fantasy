@@ -13473,6 +13473,351 @@ function _sdSetAdp(bucket, field, value){
    ts the user has seen (stored in localStorage 'vault-changelog-seen'). */
 const VAULT_CHANGELOG = [
   {
+    ts:'2026-10-22T12:00', tag:'New', title:'NBA Track Record: how often the model\'s side wins',
+    items:[
+      'A new "Model side vs the line" section tracks the side the model prefers on every prop, not only the ones it would bet, and grades it after the game.',
+      'It compares the model with two simple rivals: taking the under every time, and going with the side the price favors. Last season\'s numbers sit underneath for context.',
+      'Breakdowns by stat, by how big the gap was, and by how confident the model was, so you can see whether bigger gaps really win more often.',
+      'It says "collecting" until 100 leans are graded. Props on teams the roster guard is holding are counted on their own line.'
+    ]
+  },
+  {
+    ts:'2026-10-21T16:00', tag:'Improved', title:'NBA Track Record: simulations in plain English',
+    items:[
+      'Game simulations now starts with a plain verdict, like "Too early to judge: 3 of 150 games scored", and says what each tab (Market line, Vault line, Players\' own sum) is testing.',
+      'Each game reads like a sentence: the simulation said OKC by 1, the 80% range ran from OKC by 18 to SA by 16, the actual was OKC by 12, inside the range.',
+      'The two-player "joint odds" table is tucked away under Advanced, with an explanation instead of jargon.',
+      'Props: minutes model vs simulations opens with a one-line answer, the cards say what they mean, and last season\'s table is folded away.'
+    ]
+  },
+  {
+    ts:'2026-10-21T08:00', tag:'Improved', title:'NBA Track Record is easier to read',
+    items:[
+      'The page now opens with a plain scoreboard: how we are doing, whether it is real yet, and what to do with it.',
+      'Picks are counted once. The same pick at several books, apps and Kalshi lines used to look like many separate bets.',
+      'GO and WATCH picks come first. The picks the model says not to bet sit in their own folded section, kept for the record.',
+      'A short guide explains GO, WATCH, NO-GO, price move and the other terms, and Kalshi YES and NO now read as Over and Under.',
+      'Filters, the market grid and the simulation checks are folded away until you want them. The preseason rehearsal has its own line and does not count toward the season record.'
+    ]
+  },
+  {
+    ts:'2026-10-21T04:00', tag:'New', title:'Biggest gap picks now keep a record',
+    items:[
+      'Props Simulation shows how the Biggest gap pick of each game has done so far, like 7-5, once the first ones are graded.',
+      'Track Record has a new Biggest gap section: wins and losses by stat, how often the model was right next to how often the price said it should be, and the last 10 picks.',
+      'It says "collecting" until 100 picks are graded, and then only says ahead of or behind the price when the gap is clear. It is a place to look, not a bet to place.'
+    ]
+  },
+  {
+    ts:'2026-10-21T02:00', tag:'New', title:'Combo Check keeps a record of every call',
+    items:[
+      'Every play Combo Check suggests is now logged the first time it appears, at its price then, followed until tip and graded after the game, 1 unit flat.',
+      'A new Combo Check record section shows calls, wins and losses, units, ROI and closing-line value, by type, edge size and book, plus the latest calls. It needs 100 settled calls before it means anything, and says so.'
+    ]
+  },
+  {
+    ts:'2026-10-21T00:30', tag:'Fixed', title:'Players back from a long injury are flagged and held',
+    items:[
+      'A player who has missed about a season (like Haliburton) now shows "Returning: set his minutes" on Tonight and the Minutes Lab. His minutes are a guess, so his props show a hold instead of a Bet or Lean.',
+      'Type his minutes on Tonight or in the Minutes Lab and his props price normally, in your browser. The hold also lifts on its own after he plays a game.'
+    ]
+  },
+  {
+    ts:'2026-10-20T23:00', tag:'New', title:'Combo Check lists plain alt-line bets with an edge',
+    items:[
+      'A new list at the top of Combo Check: straight bets on alt lines priced between -140 and +200 that beat the other books and exchanges on the same line, best price for each, ranked by edge.',
+      'Switch between 3%+ edge and any positive edge, see the other venues\' prices for the same line, and log a bet in one tap. Exchange bets that used to sit in their own section are in this list too.'
+    ]
+  },
+  {
+    ts:'2026-10-20T21:00', tag:'Improved', title:'Combo Check shows how old the sportsbook prices are',
+    items:[
+      'The sportsbook alt prices refresh every 5 minutes. If they ever get more than 15 minutes old, the page now says exactly how old, so you do not bet on a stale price.'
+    ]
+  },
+  {
+    ts:'2026-10-20T19:00', tag:'Improved', title:'Combo Check: sign in with Google instead of a password',
+    items:[
+      'The sportsbook alt prices on Combo Check now sit behind the same Google login as the rest of Vault. If you are already signed in, they just load; otherwise tap Sign in with Google once and it stays signed in.',
+      'Only the owner\'s account can see them. Nobody else can, even signed in.'
+    ]
+  },
+  {
+    ts:'2026-10-20T17:00', tag:'Improved', title:'Combo Check: sportsbook alt prices behind a password',
+    items:[
+      'Combo Check can now show real sportsbook alt-line prices (DraftKings, FanDuel and others) on the site. They are locked: enter the password once and your browser remembers it.',
+      'The prices are credited to SmartStake on the page.'
+    ]
+  },
+  {
+    ts:'2026-10-20T15:00', tag:'Improved', title:'Combo Check uses real alt-line prices',
+    items:[
+      'Combo Check no longer asks you to type a price. Every leg is an alt line that a book or exchange is actually posting, with its own price, and each combo is priced at one book.',
+      'A leg is compared with the same line at other books and exchanges, with the quoting book left out. A combo shows up only when it beats that by 3%, so most days the page says nothing beats the market.',
+      'Sportsbook alt prices are available on localhost for now. The public site shows exchange prices where a second venue quotes the same line.'
+    ]
+  },
+  {
+    ts:'2026-10-20T13:00', tag:'Fixed', title:'Combo Check now shows real alt lines',
+    items:[
+      'The suggested combos used lines right at the main line. Every suggested leg is now an alt line, at least a point away from main, and the card shows the main line next to it.',
+      'Two groups: shaded alt lines (easier than main, about -130 each) and stretch alt lines (harder, about +170 each).',
+      'Build your own now has an alt ladder under each leg: tap any line to see its fair odds and use it.'
+    ]
+  },
+  {
+    ts:'2026-10-20T11:00', tag:'New', title:'Click a player\'s photo to open his profile',
+    items:[
+      'Click any player\'s photo on the NBA pages and his profile opens in a pop-up: tonight\'s game and lines, league ranks, props to log or watch, game log and seasons.',
+      'Close it with the Close button, Escape, or a click outside. Open full page takes you to the same profile as its own page.'
+    ]
+  },
+  {
+    ts:'2026-10-20T09:00', tag:'New', title:'NBA Combo Check',
+    items:[
+      'A new page for sportsbook combos built from alt lines. Legs can be any players on any teams, priced between -140 and +200 on the market.',
+      'It shows the fair odds, what a proven teammate link adds, and the price to take. Type your book\'s combo price to see what it is worth, then log it to My Bets.',
+      'Build your own from two to four players. Two legs on one player are left out.'
+    ]
+  },
+  {
+    ts:'2026-10-20T07:00', tag:'New', title:'NBA player profiles',
+    items:[
+      'Click a player\'s name on Tonight, or use Player profile on any prop, to open his page: tonight\'s game and lines, his projections for points, rebounds, assists and threes, and his minutes.',
+      'See where he ranks in the league for volume, scoring, efficiency and load per 36 minutes, with how many players are ranked.',
+      'Log or watch any of his props from the page, then read his game log, a chart against tonight\'s line, and his last four seasons.'
+    ]
+  },
+  {
+    ts:'2026-10-20T05:00', tag:'New', title:'NBA: Pick\'em of the Night, and log or watch from the Props Table',
+    items:[
+      'Pick\'em Pairs is now Pick\'em of the Night: the best 2 to 6 pick slip tonight from PrizePicks, Underdog or Sleeper, with the honest odds it pays. When no slip clears the payout, it says so.',
+      'Pick\'em apps do not let you pick two players on the same team, so every slip has one player per team and the page says so. Teammate pairs are gone.',
+      'Open any row in the Props Table to watch the prop or log an over or an under from a book, a Kalshi rung or a pick\'em app. Logged bets show in My Bets and settle after the game.'
+    ]
+  },
+  {
+    ts:'2026-10-20T03:00', tag:'Improved', title:'NBA props: more Sleeper lines, double-doubles and first quarters',
+    items:[
+      'Sleeper\'s Points + Rebounds, Points + Assists and Rebounds + Assists lines now show up. They were being dropped, so about 400 Sleeper lines were missing.',
+      'Open a player on Player Props to see the double-double, triple-double and first-quarter points, rebounds and assists lines the apps post. They are shown as the apps price them, with no Vault number and no bet call.',
+      'Tonight shows when each team\'s injury report window opens and closes, and how many players are still questionable, so you know when to wait before betting their props.'
+    ]
+  },
+  {
+    ts:'2026-10-20T02:00', tag:'Improved', title:'NBA Game Lines: one row per game',
+    items:[
+      'Game Lines is now a list with one slim row per game: tip time, the spread and total with how far each moved, the win chance, the best spread price at each side, and the sharp read.',
+      'Open a row for the three markets side by side with the best number at every side, the sharp read as bars that lean toward one team or the other, the Vault line, and the full book board.',
+      'Sort the day by time, by the biggest line move, or by how strongly the sharp signals lean. The first game opens on a wide screen. Sharp read and the Vault line are still context, not a bet.'
+    ]
+  },
+  {
+    ts:'2026-10-20T00:30', tag:'Fixed', title:'NBA Slate: starters show again',
+    items:[
+      'Fixed a bug where the starter rows on the NBA Slate showed the word "undefined" next to each player instead of how the defense guards his position.',
+      'The Slate is back to how it was before the Matchups page: the extra "best shot fits" line and the Open Matchups link on each game card are gone. Matchups stays its own page under Research.'
+    ]
+  },
+  {
+    ts:'2026-10-19T23:00', tag:'Improved', title:'NBA Matchups: the bench too',
+    items:[
+      'The Matchups page now shows the top nine players on each team by projected minutes: the five starters, then the next four off the bench. Pick any of them to see the court, his shot map and the read.',
+      'Players with too few shots on record say "thin sample" under their name, and a player with no shot data says so. Players who are listed out are left off.',
+      'The lineup read still sums up the five starters only.'
+    ]
+  },
+  {
+    ts:'2026-10-19T21:00', tag:'Improved', title:'NBA Matchups: a real court, real shot maps and plain-English reads',
+    items:[
+      'The Matchups page now draws a real NBA half-court: hardwood, the lane painted in the defending team\'s color and its logo at midcourt. Zones the defense gives up the most shots in glow green, the ones it shuts down glow red.',
+      'His shots show up as light on the floor, built from where he actually shot last season, with a few shots flying from his real spots. Turn the motion off with Shots in motion, or let your device\'s reduced motion setting do it.',
+      'Each starter gets a short read: a Top-6, middle or Bottom-6 label, what his shot mix means against this defense, and what it could mean for his shot volume, threes, rim looks and pace. A lineup read sums up all five.',
+      'A new strip lines tonight up against all 30 defenses so you can see how soft or tough it is for him. Tap a zone to lock its details. It is still shot opportunity, not shot quality, and not a bet.'
+    ]
+  },
+  {
+    ts:'2026-10-19T19:00', tag:'New', title:'NBA Matchups: a half-court map for every game',
+    items:[
+      'A new Matchups page under Research shows a half-court for each game. Each zone is shaded by how many shots that defense gives up there, and white circles show where the starter you pick takes his own shots.',
+      'Switch between the two defenses, the five starters, and the Defense, His shots or Both views. The number next to each starter says how many more or fewer shots than average the defense gives up in his spots. It counts shot opportunity, not shot quality.',
+      'On the Slate, the shot chips under each starter are gone. Each game card now has one line with the two best shot fits and a link into Matchups.'
+    ]
+  },
+  {
+    ts:'2026-10-19T17:30', tag:'Improved', title:'NBA Data Health: shot data freshness',
+    items:[
+      'The NBA Data Health page now lists the shot data behind the Slate (where each player shoots and where each defense gives shots up) with the date it runs through.',
+      'If the game results move ahead of that date by more than a couple of days, the row turns stale so a stuck feed is easy to spot. In the offseason it stays current.'
+    ]
+  },
+  {
+    ts:'2026-10-19T14:30', tag:'Improved', title:'NBA Slate: fast-break shots',
+    items:[
+      'Each team\'s defense card now shows how many fast-break shots it gives up (a shot within 5 seconds of a steal or a defensive rebound), ranked 1st to 30th.',
+      'A Fast chip appears under a starter when the defense is in the top or bottom six at giving those shots up, next to the share of his own shots that come in transition.',
+      'This is a timing estimate from play-by-play, not tracking data. Isolation, pick and roll and the other play types are still not included.'
+    ]
+  },
+  {
+    ts:'2026-10-19T09:30', tag:'New', title:'NBA Slate: where each starter shoots, and where the defense gives shots up',
+    items:[
+      'Each starter on the NBA Slate now shows how his shots split between the rim, the paint, mid-range, corner threes and above-the-break threes, next to how many shots tonight\'s defense lets up in those spots (ranked 1st to 30th).',
+      'A SHOTS number adds it up: how many more or fewer shots than average the defense gives up in the places he likes to shoot. It counts shot opportunities, not shot quality, and it is context, not a bet.',
+      'Each team\'s defense card now lists the shots it allows at the rim, in the paint, from mid-range and from three.',
+      'Players with too few shots last season say so instead of showing a shaky number. Pick and roll, isolation and the other play types are not included yet.'
+    ]
+  },
+  {
+    ts:'2026-10-17T22:30', tag:'Improved', title:'Edge page: odds, recent change and a stake box',
+    items:[
+      'Pinnacle\'s fair price now shows in American odds as well as a percent, next to what Novig charges.',
+      'A strip shows how far Pinnacle\'s fair chance for that side moved in the last hour, the last 4 hours and since the opening number, like the 1H and OPEN figures on other sharp-money tools.',
+      'A stake box turns your bankroll into a quarter Kelly bet, capped by how much room Novig\'s book has at a positive price, with what you would win and what to expect. Your bankroll is remembered on your device. It is a sizing tool, not advice.',
+      'An Open Novig button opens Novig\'s app. It does not jump to the exact market.'
+    ]
+  },
+  {
+    ts:'2026-10-17T21:00', tag:'Improved', title:'Edge page redesigned to use the whole screen',
+    items:[
+      'On a wide screen the Edge page is now three columns that scroll on their own: the slate, the detail for the row you picked, and the record. A row of scorecards sits on top: how many +EV rows are live, calls logged, how often they beat the close, units at 1 unit each, the Pinnacle-moved-Novig-did-not count, and how fresh each source is.',
+      'Team logos on every row, and the EV badge is shaded by how big it is.',
+      'The scorecards show progress toward 50 graded calls and say TOO EARLY until there are enough to judge.',
+      'On a phone the scorecards scroll sideways in a thin strip so the first rows are on the first screen.'
+    ]
+  },
+  {
+    ts:'2026-10-17T19:30', tag:'Improved', title:'Edge page: second opinion, per-source freshness and a calibration check',
+    items:[
+      'Open a row on the Edge page and you now see what Kalshi and Polymarket say about the same side, next to Novig\'s price and Pinnacle\'s fair price, and how many of them sit at least a cent above Novig.',
+      'The line at the top now stamps Pinnacle, Novig, Kalshi, Polymarket and the US books on their own, and turns red if any one of them goes quiet for over 30 minutes.',
+      'A new calibration check asks whether bigger EV really beats the close more: results by EV size, by market and by whether Pinnacle moved while Novig did not. It stays unlabelled until the results can actually be told apart.'
+    ]
+  },
+  {
+    ts:'2026-10-17T17:00', tag:'Improved', title:'Edge page: tap a row for the chart and how much you can really bet',
+    items:[
+      'Tap any row on the Edge page to open it in place: the line chart, how long Pinnacle and Novig have each sat on their number, and the EV if you bet $100, $500 or $1k after walking Novig\'s order book.',
+      'A line at the top shows how old the prices are and how many games Novig is quoting. If the prices are over 30 minutes old the rows are dimmed and marked expired.',
+      'The record of calls now shows how long each call lasted, how high the EV peaked, where Novig itself closed, and the win or loss at 1 unit once the game is final.'
+    ]
+  },
+  {
+    ts:'2026-10-17T15:00', tag:'New', title:'Edge page: Novig against Pinnacle, biggest +EV first',
+    items:[
+      'A new Edge page in Sharp Money lists every NFL, college football and NBA game where Novig\'s price sits above Pinnacle\'s fair price, sorted by the biggest +EV, with how deep Novig\'s book is, how far Pinnacle moved in the last 4 hours, and a tag when Pinnacle moved and Novig did not.',
+      'Filter by sport and market, or sort by soonest kickoff or by how much Pinnacle moved. Tap a row to open the game.',
+      'Below it, a record of every call: the first time a game side reached +1% EV, and later whether Pinnacle\'s closing number beat the Novig price. It starts empty today and fills in as games kick off.',
+      'Fair prices now remove the vig the same way as the rest of Sharp Money, so long shots are no longer overstated.'
+    ]
+  },
+  {
+    ts:'2026-10-17T13:30', tag:'Improved', title:'Line movement chart now shows history from before we started recording',
+    items:[
+      'The chart now goes back several days for Pinnacle (spread, total and win chance), Kalshi and Novig, instead of starting from the first moment we recorded.',
+      'Novig and Kalshi show on the Money view, since they quote a win chance rather than a line. On the Spread and Total views there is now a button that jumps to them.',
+      'US sportsbooks (DraftKings, FanDuel, BetMGM, BetRivers, bet365) still start from when we began recording, because no free source keeps their history.'
+    ]
+  },
+  {
+    ts:'2026-10-17T12:30', tag:'Improved', title:'Line movement chart now on college football and NBA games',
+    items:[
+      'The line movement chart, the Novig price against Pinnacle\'s fair price, and the running record now show on college football and NBA games too, not only the NFL.',
+      'Lines are recorded from today, so each game fills in as books move. Games that already started before today have no history.'
+    ]
+  },
+  {
+    ts:'2026-10-17T11:00', tag:'New', title:'Line movement chart on every NFL game',
+    items:[
+      'Each NFL game in Sharp Money now has a chart showing how the spread, total and moneyline moved at Pinnacle, DraftKings, FanDuel, BetMGM, BetRivers and bet365. The moneyline view also adds the Novig and Kalshi exchanges, starting from today.',
+      'A white line shows how much Pinnacle will take on that market, which is often the first sign they are confident in a move. It starts building today.',
+      'Below the chart, each market shows what you would get at Novig against Pinnacle\'s fair price: the best side, the Novig price and the +EV it is sitting at, plus how far Pinnacle and Novig each moved in the window you picked. Spreads and totals show up when Novig quotes Pinnacle\'s exact line.',
+      'A running record grades those Novig prices against where Pinnacle closes, so you can see how often they actually beat the close. It starts empty today and fills in as games kick off.',
+      'Switch between 4 hours, 12 hours, 24 hours and everything recorded, and tap a book to show or hide its line.',
+      'Slide a finger or the mouse across the chart to read every book\'s number at that moment.',
+      'It is context only, not a bet signal.'
+    ]
+  },
+  {
+    ts:'2026-10-13T22:45', tag:'New', title:'CFB Scoreboard: our model against JP+',
+    items:[
+      'A new CFB Scoreboard page in Sharp Money grades our model, the previous version of it, JP+ and the opening line on the same finished games.',
+      'It shows how far each one is off the final margin, and how often each one\'s side of the opening line covered, for all leans and for 3+ and 5+ point disagreements.',
+      'JP+ numbers are recorded before kickoff from now on and never changed afterward, so the Verified table fills in as games finish. The As published table uses JP+ as its site shows it today.',
+      'A game by game list shows the final score and every number side by side.'
+    ]
+  },
+  {
+    ts:'2026-10-13T21:00', tag:'Improved', title:'CFB Model: better preseason ratings and a special teams rating',
+    items:[
+      'The CFB Model now starts the season from a smarter rating that uses team talent, returning players and transfer movement, not just last year.',
+      'It also rates special teams (punts, kickoffs and field goals) for every team, which can move a projected margin by a point or more.',
+      'Past weeks have been re-run with the new ratings, so the pick list and record cover every game this season the same way, not just the games the old version picked.',
+      'Each game keeps the old projection beside the new one so you can see where they differ.'
+    ]
+  },
+  {
+    ts:'2026-10-13T17:46', tag:'New', title:'CFB Model now has a JP+ total for every game',
+    items:[
+      'Each game from week 4 on now shows our projected total next to the Bovada opening total, with an over or under side. DraftKings is shown beside it for reference only.',
+      'Totals that sit 3+ or 5+ points from the Bovada opening total are flagged. A new Totals list on the CFB Model tab shows them all.',
+      'Our scoring level now comes from this season’s games so far, so the totals track how this year is actually playing.',
+      'The Is it working tab has a new totals record against the Bovada opening total, plus how we did against the closing total. It is marked Unproven until we have 150 live graded 3+ picks.',
+      'Games rebuilt after the fact are labelled as rebuilt history, separate from totals logged before kickoff, with the 2023-25 backtest beside them. Spread picks are unchanged.'
+    ]
+  },
+  {
+    ts:'2026-10-13T17:45', tag:'Improved', title:'CFB model: honest records with sample sizes and clearer line labels',
+    items:[
+      'Every Sharp Money vs the model row now shows how many games it is based on and a 95% range for the true win rate, so a small sample looks small.',
+      'Every row is graded at the last line before kickoff. Games the feed picked up late are no longer graded at the opening number.',
+      'The two line move rows now count the same games the record does, so tapping a row matches its number.',
+      'Games added after kickoff are now marked as graded at the book\'s closing line, which has no capture time.',
+      'Going forward, the line we grade each game at is saved before kickoff along with the time it was saved.',
+    ]
+  },
+  {
+    ts:'2026-10-13T15:58', tag:'New', title:'Paper bot: CFB JP+ Novig test',
+    items:[
+      'The paper bot page now has a separate CFB JP+ Novig section that tests our college football edges on Novig with pretend money.',
+      'It shows how close the test is to its 60 trade pass mark, how the 3+, 5+ and 7+ point edges are doing, and when Novig and Kalshi first listed each game.',
+      'These test trades are kept out of the main bankroll, profit, ROI and record numbers.',
+    ]
+  },
+  {
+    ts:'2026-10-13T13:32', tag:'Improved', title:'Sharp Money: sharp accounts are context, +EV record is all-time',
+    items:[
+      'Polymarket sharps now carry a Context tag instead of a trust label. They are background on a game, not a reason to bet.',
+      'Next to the Polymarket sharps record you can now see how every sharp-account read has done across all sports.',
+      'The +EV at a book record now counts every graded +EV alert we have kept, not just the most recent ones.',
+      'Pinnacle lead, Polymarket sharps and Kalshi vs books are labelled NFL, since that is the only sport they are scored on.'
+    ]
+  },
+  {
+    ts:'2026-10-13T13:31', tag:'Improved', title:'Sharp Money Top reads: the full Sharp Read card shows',
+    items:[
+      'The full Sharp Read card now shows without being cut off.',
+      'The reads list and Does it work? panels beside it now match its height.',
+      'On smaller screens everything stacks in one scroll with no tabs.',
+    ]
+  },
+  {
+    ts:'2026-10-13T13:00', tag:'Improved', title:'Sharp Money Top reads: bet record now sits below the reads',
+    items:[
+      'The bet record and the Latest graded list now sit below the reads section instead of above it, so the reads come first.',
+    ]
+  },
+  {
+    ts:'2026-10-13T12:00', tag:'Improved', title:'Sharp Money: clearer reads, prices on every game, better on phones',
+    items:[
+      'Top Reads now counts three signals: the Pinnacle line move, money against bets, and a +EV price at a US book. Sharp account money still shows, but as context only, not as a reason to bet.',
+      'The Top Reads record is rebuilt on that basis, and the old record sits on one line underneath so you can compare.',
+      'Every game on the Board now shows the best US book price for the side the read is on, with the book name.',
+      'The Accounts page loads reliably and Latest graded follows the sport you pick.',
+      'On a phone the header no longer squashes the page name, and the sport filters and the Updated badge fit on screen. The Appearance panel fits too, and dark team logos are easier to see on the Read card.'
+    ]
+  },
+  {
     ts:'2026-10-12T14:00', tag:'Improved', title:'Track Record uses the new prop grades',
     items:[
       'The Track Record now scores props with the new sportsbook-weighted grades from Week 3 on. Weeks 1 and 2 keep their original grades.',

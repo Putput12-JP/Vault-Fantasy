@@ -1,6 +1,8 @@
-# Paper Kalshi bot. Reads public market data, simulates fills, and force-pushes
-# ONE commit on the `paper-data` branch (same pattern as sharp-data). The page
-# at /paper-bot/ reads ledger.json from that branch. This workflow never places
+# Paper Kalshi bot. Reads public market data, simulates fills, and publishes
+# ledger.json to the `paper-data` branch. The publish fetches the branch, merges
+# this run's ledger into what is there (scripts/paper_bot/merge_ledger.py), and
+# pushes a normal commit with retries. It never force-pushes, so two runs cannot
+# overwrite each other. The page at /paper-bot/ reads ledger.json from that branch. This workflow never places
 # an order. paper_only is locked in scripts/paper_bot/config.py.
 name: Paper Kalshi bot
 
@@ -8,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       dry:
-        description: 'Scan and settle, but do not publish the ledger'
+        description: 'Scan and settle, but do not write or publish the ledger'
         type: boolean
         default: false
   schedule:
@@ -24,12 +26,23 @@ on:
     - cron: '50 22 * * *'
     - cron: '20 3 * * *'
     - cron: '20 4 * * *'
+    # cfb_jp_novig snapshot pass, every 30 minutes. It runs only that strategy
+    # (--only), so the Kalshi book keeps the four slots above and nothing else.
+    # GitHub cron is best effort and can run late or skip a tick. Each snapshot
+    # carries its real timestamp, and the exit row records how long before kick
+    # its last bid was taken.
+    - cron: '*/30 * * * *'
 
 concurrency:
-  group: paper-bot
+  # The */30 snapshot runs get their own group. In a shared group GitHub keeps one
+  # pending run, so a snapshot queued behind a running Kalshi job would replace a
+  # queued Kalshi run and cancel it. cancel-in-progress stays false, so nothing
+  # already running is stopped.
+  group: ${{ github.event_name == 'schedule' && github.event.schedule == '*/30 * * * *' && 'paper-bot-snap' || 'paper-bot' }}
   cancel-in-progress: false
 permissions:
   contents: write
+  actions: read    # list and download the newest 10 ledger artifacts, merged with the published ledger
 
 jobs:
   paper:
@@ -40,20 +53,40 @@ jobs:
         id: gate
         run: |
           export TZ=America/New_York
-          hm=$(date +%H%M)
+          # GitHub often starts scheduled runs late. Accept 0 to 55 minutes
+          # after each ET target. In EST a backup cron delayed 60 to 115
+          # minutes can still pass this gate. Concurrency, held_tickers, and
+          # the daily cap limit the damage.
+          # One date call, so the hour, minute, and log line cannot disagree.
+          read -r D H M < <(date '+%F %H %M')
+          stamp="$D $H:$M"
+          now=$((10#$H * 60 + 10#$M))
           go=0
-          case "$hm" in
-            081[5-9]|082[0-9]|083[0-5]) go=1 ;;
-            121[5-9]|122[0-9]|123[0-5]) go=1 ;;
-            174[5-9]|175[0-9]|176[0-5]) go=1 ;;
-            231[5-9]|232[0-9]|233[0-5]) go=1 ;;
-          esac
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then go=1; fi
+          slot=""
+          snap=0
+          # The 30-minute cron is the snapshot pass, never a full run.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "*/30 * * * *" ]; then
+            snap=1
+          fi
+          for t in 0820 1220 1750 2320; do
+            tm=$((10#${t:0:2} * 60 + 10#${t:2:2}))
+            d=$((now - tm))
+            # The 23:20 window runs past midnight.
+            if [ "$d" -lt 0 ]; then d=$((d + 1440)); fi
+            if [ "$snap" = "0" ] && [ "$d" -ge 0 ] && [ "$d" -le 55 ]; then go=1; slot=$t; fi
+          done
+          if [ "$snap" = "1" ]; then go=1; slot=snap; fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then go=1; slot=manual; fi
           echo "go=$go" >> "$GITHUB_OUTPUT"
-          echo "ET $(date +%F\ %H:%M) go=$go"
-      - uses: actions/checkout@v5
+          echo "slot=$slot" >> "$GITHUB_OUTPUT"
+          if [ "$go" = "1" ]; then
+            echo "ET $stamp go=1 slot=$slot"
+          else
+            echo "::notice title=Paper bot skipped::ET $stamp is outside every run window (0 to 55 min after 08:20, 12:20, 17:50, 23:20 ET). This is expected for a late start or backup DST cron."
+          fi
+      - uses: actions/checkout@v7
         if: steps.gate.outputs.go == '1'
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: steps.gate.outputs.go == '1'
         with:
           python-version: '3.12'
@@ -62,29 +95,140 @@ jobs:
         run: |
           pip install cryptography
           python3 tests/test_paper_bot.py
+          python3 tests/test_cfb_jp_novig.py
+          python3 tests/test_merge_ledger.py
+          python3 tests/test_load_base.py
       - name: Load the paper ledger
         if: steps.gate.outputs.go == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
+          set -o pipefail
           mkdir -p paper-out
           if git ls-remote --exit-code --heads origin paper-data >/dev/null 2>&1; then
             git fetch --depth=1 origin paper-data
-            git show FETCH_HEAD:ledger.json > paper-out/ledger.json
+            git show FETCH_HEAD:ledger.json > paper-out/published.json
           fi
+          # Each run uploads its ledger before the push. If that push failed,
+          # the artifact is the only copy of the new trades, and a snapshot run
+          # that started earlier can upload a newer artifact without them. So
+          # take the newest 10 unexpired paper-bot-ledger artifacts and merge
+          # them all with the published ledger by trade id.
+          # The artifact payload has no workflow id, so each run id must also
+          # belong to a paper-bot.yml run on main from the last 14 days.
+          # A miss uses the published ledger.
+          sanitize() {
+            python3 -c 'import pathlib,sys; s=pathlib.Path(sys.argv[1]).read_bytes().decode("utf-8","replace"); s=s.replace("::","").replace("%","%25").replace("\r","%0D").replace("\n","%0A"); sys.stdout.write(s)' "$1"
+          }
+          mkdir -p paper-restore/ledgers
+          meta=""
+          since=$(date -u -d '14 days ago' +%Y-%m-%d)
+          if ! gh api --paginate \
+            "repos/${REPO}/actions/workflows/paper-bot.yml/runs?branch=main&per_page=100&created=%3E%3D${since}" \
+            --jq '.workflow_runs[].id' > paper-restore/run-ids.txt; then
+            echo "::warning title=Paper bot ledger::Could not list paper bot runs. Using the published ledger."
+          elif ! meta=$(gh api --paginate \
+            "repos/${REPO}/actions/artifacts?name=paper-bot-ledger&per_page=100" \
+            --jq '.artifacts[] | select(.expired == false) | "\(.created_at) \(.workflow_run.id)"' \
+            | while IFS=' ' read -r created rid; do
+                if [ -n "$rid" ] && grep -qxF "$rid" paper-restore/run-ids.txt; then
+                  printf '%s %s\n' "$created" "$rid"
+                fi
+              done \
+            | sort | tail -n10 | cut -d" " -f2); then
+            echo "::warning title=Paper bot ledger::Could not list ledger artifacts. Using the published ledger."
+            meta=""
+          elif [ -z "$meta" ]; then
+            echo "::warning title=Paper bot ledger::No unexpired ledger artifact from this workflow on main. Using the published ledger."
+          fi
+          rm -f paper-restore/run-ids.txt
+          for rid in $meta; do
+            dir="paper-restore/out-${rid}"
+            rm -rf "$dir"
+            mkdir -p "$dir"
+            if gh run download "$rid" --repo "$REPO" --name paper-bot-ledger --dir "$dir" 2>paper-restore/download.err; then
+              found=$(find "$dir" -name ledger.json -type f -print -quit)
+              if [ -n "$found" ]; then
+                cp "$found" "paper-restore/ledgers/${rid}.json"
+                echo "recovered ledger from run ${rid}"
+              else
+                echo "::warning title=Paper bot ledger::Ledger artifact from run ${rid} had no ledger.json. Skipping it."
+              fi
+            else
+              detail=$(sanitize paper-restore/download.err)
+              echo "::warning title=Paper bot ledger::Could not download the ledger artifact from run ${rid}. Skipping it. ${detail}"
+            fi
+          done
+          python3 -m scripts.paper_bot.load_base --published paper-out/published.json --recovered-dir paper-restore/ledgers --out paper-out/ledger.json
       - name: Run the paper bot
         if: steps.gate.outputs.go == '1'
         env:
           PAPER_BOT_LLM_API_KEY: ${{ secrets.PAPER_BOT_LLM_API_KEY }}
           PAPER_BOT_KILL: ${{ vars.PAPER_BOT_KILL }}
-        run: python3 -m scripts.paper_bot --ledger paper-out/ledger.json --config paper-bot/config.json
+          PAPER_BOT_DRY: ${{ github.event.inputs.dry }}
+          PAPER_BOT_SLOT: ${{ steps.gate.outputs.slot }}
+        run: |
+          args=(python3 -m scripts.paper_bot --ledger paper-out/ledger.json --config paper-bot/config.json)
+          if [ "$PAPER_BOT_SLOT" = "snap" ]; then
+            args+=(--only cfb_jp_novig)
+          fi
+          if [ "$PAPER_BOT_DRY" = "true" ]; then
+            args+=(--dry)
+          fi
+          "${args[@]}"
+      - name: Save the ledger before publish
+        if: steps.gate.outputs.go == '1' && github.event.inputs.dry != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: paper-bot-ledger
+          path: paper-out/ledger.json
+          retention-days: 14
+          if-no-files-found: error
+          overwrite: true
       - name: Publish to paper-data
         if: steps.gate.outputs.go == '1' && github.event.inputs.dry != 'true'
         run: |
+          # Merge into the branch as it is now, then push a normal commit. A push
+          # that loses a race refetches, re-merges and tries again. No force push.
+          url="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
           mkdir -p paper-publish
-          cp paper-out/ledger.json paper-publish/ledger.json
-          cd paper-publish
-          git init -q -b paper-data
-          git config user.name  "vault-bot"
-          git config user.email "vault-bot@users.noreply.github.com"
-          git add ledger.json
-          git commit -q -m "paper bot: $(date -u +%FT%TZ) [skip ci]"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" paper-data
+          git -C paper-publish init -q -b paper-data
+          git -C paper-publish config user.name  "vault-bot"
+          git -C paper-publish config user.email "vault-bot@users.noreply.github.com"
+          pushed=0
+          for attempt in 1 2 3 4 5; do
+            rc=0
+            git ls-remote --exit-code --heads "$url" paper-data >/dev/null 2>&1 || rc=$?
+            if [ "$rc" = "0" ]; then
+              if ! git -C paper-publish fetch -q --depth=1 "$url" paper-data; then
+                echo "attempt $attempt: fetch failed"
+                sleep $((attempt * 3))
+                continue
+              fi
+              git -C paper-publish reset -q --hard FETCH_HEAD
+            elif [ "$rc" != "2" ]; then
+              echo "attempt $attempt: could not reach the remote (ls-remote exit $rc)"
+              sleep $((attempt * 3))
+              continue
+            fi
+            # Local ledger on top of the remote copy (a missing remote file is fine).
+            # A remote ledger that is not a ledger is an error, not an empty book.
+            if ! python3 -m scripts.paper_bot.merge_ledger paper-out/ledger.json paper-publish/ledger.json paper-publish/ledger.json; then
+              echo "::error title=Paper bot publish::The ledger merge failed. Nothing was pushed. The paper-bot-ledger artifact holds this run's ledger."
+              exit 1
+            fi
+            git -C paper-publish add ledger.json
+            git -C paper-publish commit -q -m "paper bot: $(date -u +%FT%TZ) [skip ci]"
+            if git -C paper-publish push -q "$url" paper-data; then
+              pushed=1
+              echo "published on attempt $attempt"
+              break
+            fi
+            echo "attempt $attempt: push rejected, refetching and merging again"
+            sleep $((attempt * 3))
+          done
+          if [ "$pushed" != "1" ]; then
+            echo "::error title=Paper bot publish::Could not push to paper-data after 5 attempts. The paper-bot-ledger artifact holds this run's ledger and the next run starts from it."
+            exit 1
+          fi

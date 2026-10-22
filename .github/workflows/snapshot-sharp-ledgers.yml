@@ -1,0 +1,51 @@
+# Daily append-only copy of the Sharp Money ledgers (prop calls, graded picks, +EV alert history, prop close tape, V2 plays) onto `sharp-history`.
+# `sharp-data` is force-pushed as one commit, so each ledger has a single copy there. `sharp-history` is an ordinary branch that is never
+# force-pushed: its git history is the log. scripts/snapshot_sharp_ledgers.py refuses to write if an id vanished or a settled row reopened.
+name: Snapshot Sharp Money ledgers
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * *'
+
+concurrency:
+  group: sharp-history
+  cancel-in-progress: false
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fetch the live ledgers
+        run: |
+          mkdir -p src
+          git fetch --depth=1 origin sharp-data
+          for f in data.json prop_plays.json prop_close_tape.json ev_alert_history.json; do git show FETCH_HEAD:$f > src/$f; done
+          # The V2 play ledger does not exist on the branch until the first refresh after it shipped; a missing file is skipped, not an error.
+          if git cat-file -e FETCH_HEAD:v2_plays.json 2>/dev/null; then git show FETCH_HEAD:v2_plays.json > src/v2_plays.json; fi
+          for f in v2_watch.json v2_passed.json; do if git cat-file -e FETCH_HEAD:$f 2>/dev/null; then git show FETCH_HEAD:$f > src/$f; fi; done
+      - name: Check out sharp-history
+        run: |
+          if git ls-remote --exit-code --heads origin sharp-history >/dev/null 2>&1; then
+            git fetch --depth=1 origin sharp-history
+            git worktree add -f hist FETCH_HEAD
+            cd hist && git checkout -q -B sharp-history
+          else
+            git worktree add --detach hist
+            cd hist && git checkout -q --orphan sharp-history && git rm -rqf . 2>/dev/null || true
+          fi
+      - name: Guard and write the snapshot
+        run: python3 scripts/snapshot_sharp_ledgers.py --src src --dest hist
+      - name: Commit and push (never forced)
+        run: |
+          cd hist
+          git config user.name  "vault-bot"
+          git config user.email "vault-bot@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then echo "No change."; exit 0; fi
+          git commit -q -m "sharp ledgers: $(date -u +%F)"
+          git push origin sharp-history
