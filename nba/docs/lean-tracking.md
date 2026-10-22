@@ -76,6 +76,19 @@ questions are unmeasured:
 - **Not reconstructed:** a replay of the snapshot tape for combo markets or the first-sighting clock. Replaying needs the model files as of
   each poll, which are not stored beside the tape, and today's files include results from the games being replayed. No rows are invented.
 
+## Verification (phase 6, 2026-10-22)
+
+- **Real poll:** one local `snapshot.py` run against the live feeds (all sources answered) wrote 207 leans for 2 games with no errors
+  (`ok` true, no `leans_err`); the lean stage itself takes about 0.2 s of a 2.4-minute poll. Every lean was held by the team guard,
+  as on the earlier board; the starter flag was null (lineups not confirmed yet).
+- **Settle against a real box score:** stored polls of BKN game 401909836 (2026-10-21) were pushed through `lean_record.log` and
+  `lean_record.record` into a scratch folder, then every settled row was recomputed from a freshly fetched ESPN summary by an independent
+  parse: 226 rows (113 leans x 2 clocks), **0 mismatches** on line, side, actual or result. 22 rows were side flips between the clocks.
+  Caveat: this replay uses today's model files, so it tests the plumbing and the grading, not the model's as-of quality, and it is
+  not part of any record.
+- **Not covered:** a lean that is not held (none exist on any board yet), a first look more than one day folder back, and the page
+  reading real day files from the data branch. The first real settle is the next check.
+
 ## Build order
 
 1. This document and the branch (done).
