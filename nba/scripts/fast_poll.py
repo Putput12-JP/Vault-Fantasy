@@ -47,7 +47,7 @@ def num(x):
 
 
 def markets(dirs, now, ahead_h=AHEAD_H):
-    """{market id: {'cid', 'start', 'type'}} for game markets tipping soon, from the recorder's own meta rows."""
+    """{market id: {'cid', 'start', 'type', plus the label fields alerts need}} for game markets tipping soon, from the recorder's own meta rows."""
     out = {}
     for d in dirs:
         p = os.path.join(d, 'meta.jsonl')
@@ -60,7 +60,7 @@ def markets(dirs, now, ahead_h=AHEAD_H):
                 except ValueError:
                     continue
                 if r.get('src') == 'polymarket' and r.get('type') in TYPES and r.get('cid') and r.get('start') and now < r['start'] <= now + ahead_h * 3600:
-                    out[r['k']] = {'cid': r['cid'], 'start': r['start'], 'type': r['type']}
+                    out[r['k']] = {'cid': r['cid'], 'start': r['start'], 'type': r['type'], 'q': r.get('q'), 'outcomes': r.get('outcomes'), 'line': r.get('line'), 'event': r.get('event')}
     return out
 
 
@@ -158,6 +158,7 @@ def cycle(st, now=None, get=curl):
     for k, v in q.items():
         st.last[k] = v
     tr, tok = trade_rows(ms, st.cursor - OVERLAP_S, now, st.seen, get)
+    live = st.warm                                            # the first cycle is backlog: never alerted
     if tok and tr:
         st.cursor = max(st.cursor, max(r['t'] for r in tr))
     elif tok:
@@ -171,6 +172,12 @@ def cycle(st, now=None, get=curl):
     append(os.path.join(day, 'tape_fast.jsonl'), sorted(tr, key=lambda r: r['t']))
     poll = {'t': now, 'qok': qok, 'tok': tok, 'q': len(q), 'tr': len(tr), 'lat': lat[len(lat) // 2] if lat else None}
     append(os.path.join(day, 'fastpoll.jsonl'), [poll])
+    if live and tr:
+        try:
+            import follow_alerts
+            follow_alerts.notify(st, tr, ms, q, now)         # Discord, when a ranked wallet buys (no-op without DISCORD_WEBHOOK_URL)
+        except Exception as e:
+            print(f'  alerts failed: {type(e).__name__}', flush=True)
     return poll
 
 
