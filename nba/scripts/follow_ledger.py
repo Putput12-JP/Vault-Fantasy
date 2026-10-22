@@ -27,6 +27,7 @@ from collections import defaultdict
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from sharp import wallets, day_dirs, ET, REPO_DATA            # noqa: E402
+import wallet_bets                                            # noqa: E402
 
 # ── frozen in docs/sharp-follow-prereg.md ───────────────────────────────────────────────────────
 MIN_USD = 1000                                                # first ticket this size or larger is an event
@@ -239,6 +240,11 @@ def build_board(root, now):
     except (OSError, ValueError):
         return None
     rk = rank.get('wallets') or {}
+    try:                                                          # normal bet size, size vs normal, and won / lost for each ranked wallet (wallet_bets.py)
+        WB = wallet_bets.update(root, now, set(rk))
+        summ, pool = wallet_bets.summarize(root, WB)
+    except Exception:
+        summ, pool = {}, None
     dirs = day_dirs(root, now, LOOKBACK_DAYS)
     rows, _ = load_follows(dirs)
     meta, who, last = {}, {}, {}
@@ -294,10 +300,12 @@ def build_board(root, now):
         tix = []
         for e in sorted(evs, key=lambda e: -e['t'])[:8]:
             m = meta.get(e['k']) or {}
-            tix.append({'t': e['t'], 'tip': e['tip'], 'type': e['type'], 'line': e.get('line'), 'side': side_name(m, e['o']), 'usd': e['usd'], 'px': e['px'], 'g': e['g'], 'close': e.get('close')})
+            tix.append({'t': e['t'], 'tip': e['tip'], 'type': e['type'], 'line': e.get('line'), 'side': side_name(m, e['o']), 'usd': e['usd'], 'px': e['px'], 'g': e['g'], 'close': e.get('close'),
+                        **wallet_bets.ticket(summ, w, e['k'], e['o'])})
         hrs = sorted((e['tip'] - e['t']) / 3600 for e in evs)
         wl.append({'w': w, 'who': who.get(w), 'tier': v['tier'], 'raw': v['raw'], 'post': v['post'], 'sd': v['sd'], 'p': v['p'], 'old': v.get('old'),
-                   'nev': len(evs), 'hrs': round(hrs[len(hrs) // 2], 1) if hrs else None, 'usd': sum(e['usd'] for e in evs), 'tix': tix})
+                   'nev': len(evs), 'hrs': round(hrs[len(hrs) // 2], 1) if hrs else None, 'usd': sum(e['usd'] for e in evs), 'tix': tix,
+                   'sz': {k2: v2 for k2, v2 in summ[w].items() if k2 not in ('res', 'bets')} if w in summ else None})
     wl.sort(key=lambda x: -x['p'])
     allrows, _ = load_follows(day_dirs(root, now, 400))
     sharp = [e for e in allrows.values() if e['cohort'] == 'sharp']
@@ -306,7 +314,7 @@ def build_board(root, now):
            'fwd_graded_games': len({e['g'] for e in sharp if not e['bf'] and not e['hedge'] and e.get('res')}), 'need': 100, 'first_look': '2026-11-30',
            'det_med': det[len(det) // 2] if det else None, 'det_n': len(det)}
     return {'t': now, 'rank_t': rank.get('generated'), 'games': games, 'wallets': wl, 'rec': rec, 'ranked': len(rk), 'counts': rank.get('counts'),
-            'rho': rank.get('rho'), 'tau_nba': math.sqrt(((rank.get('params') or {}).get('nba') or {}).get('tau2', 0)),
+            'size_pool': pool, 'size_min': wallet_bets.MIN_BUCKET, 'size_min_bets': wallet_bets.MIN_BETS_NORMAL, 'size_buckets': [b[0] for b in wallet_bets.BUCKETS], 'rho': rank.get('rho'), 'tau_nba': math.sqrt(((rank.get('params') or {}).get('nba') or {}).get('tau2', 0)),
             'old_sharp_nba': 1, 'old_seen_nba': (rank.get('params') or {}).get('nba', {}).get('wallets')}
 
 
