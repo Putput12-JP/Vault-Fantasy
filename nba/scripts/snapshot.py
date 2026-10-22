@@ -841,6 +841,7 @@ def write_board(root, day, slate):
         try:                                            # shadow ledger of hypothetical copies of sharp accounts (docs/sharp-follow-prereg.md); logs only
             import follow_ledger
             follow_ledger.run(root, slate.now)
+            board['follow'] = follow_ledger.build_board(root, slate.now)   # the Follow board and Wallets pages
         except Exception:
             traceback.print_exc(limit=2)
         board.pop('_pkeys', None)

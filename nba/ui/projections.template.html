@@ -1334,6 +1334,34 @@ table.nt .bt-best{color:var(--fg);font-weight:600}
 .bt-foot span:not(.pill){font-size:12px;color:var(--fg3)}
 .bt-foot a{font-size:12px;color:var(--fg);text-underline-offset:3px;text-decoration-color:var(--fg3)}
 @media (max-width:600px){ .bt-entry{grid-template-columns:minmax(0,1fr);gap:6px} .bt-when{flex-direction:row;gap:10px} .bt-bar{grid-template-columns:minmax(0,1fr) auto} .bt-bar i{grid-column:1/-1;order:3} .bt-bar small{order:4;margin-top:0} }
+/* Follow Board and Wallets (follow_ledger.py build_board) */
+.fb,.fw{padding:0}.fb-g{border-top:1px solid var(--border)}.fb-g:first-child{border-top:0}
+.fb-gh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:14px 20px}.fb-gh b{font-size:15px;font-weight:600}.fb-gh span{color:var(--fg2);font-size:12.5px}.fb-gh .t{margin-left:auto;font-family:var(--font-mono);font-size:12px}
+.fb-r{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr) 104px 128px minmax(0,1.25fr);gap:14px;align-items:center;padding:12px 20px;border-top:1px solid var(--border);font-size:13px}
+.fb-r.h{padding-block:7px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.fb-mk b{display:block;font-weight:600;font-size:14px}.fb-mk small,.fb-n small,.fb-f small{display:block;color:var(--fg3);font-size:11.5px}
+.fb-chips{display:flex;flex-wrap:wrap;gap:5px}
+.fb-chip{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 6px;min-height:26px;max-width:100%;padding:3px 9px;border:0;border-radius:9px;background:var(--raised);font:inherit;font-size:12px;color:var(--fg2);cursor:pointer;transition:transform var(--dur-release,500ms) var(--ease-spring,cubic-bezier(.34,1.56,.64,1))}
+.fb-chip:active{transform:scale(var(--press-chip,.88));transition:transform var(--dur-press,80ms) ease-out}.fb-chip b{color:var(--fg);font-weight:600}.fb-chip .m{font-family:var(--font-mono);font-size:11.5px}
+.tdot{align-self:center;width:8px;height:8px;border-radius:50%;flex:none;background:var(--fg3);display:inline-block}.tdot.proven{background:var(--up)}.tdot.probable{background:#7ab4ff}.tdot.watching{background:var(--warn)}.tdot.dull{background:var(--down)}
+.fb-n,.fb-q{font-family:var(--font-mono);font-variant-numeric:tabular-nums}.fb-n b,.fb-q b,.fb-f b{display:block;font-weight:600}.fb-n small,.fb-q small{font-family:var(--font-sans)}
+.fb-f.ok b{color:var(--up)}.fb-f.rest b{color:#7ab4ff}.fb-lab{display:none}
+.fb-empty{padding:26px 20px;color:var(--fg2);font-size:13.5px}
+.fw-r{display:grid;grid-template-columns:100px minmax(150px,1.4fr) 76px 76px 76px minmax(110px,1fr) 52px;gap:12px;align-items:center;padding:11px 20px;border-top:1px solid var(--border);font-size:13px;cursor:pointer;width:100%;text-align:left;background:none;color:inherit;font-family:inherit;border-left:0;border-right:0;border-bottom:0}
+.fw-r.h{cursor:default;padding-block:7px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.fw-r:not(.h):hover{background:var(--surface2)}
+.fw-t{display:inline-flex;align-items:center;gap:7px;font-weight:600;text-transform:capitalize}.fw-id b{font-weight:600}.fw-id small{display:block;color:var(--fg3);font-size:11.5px;font-family:var(--font-mono)}.fw-mo{display:none}
+.fw-rec b{display:block;font-family:var(--font-mono);font-weight:600}.fw-rec small{color:var(--fg3);font-size:11.5px}
+.fw-sk{position:relative;height:22px}.fw-sk i{position:absolute}.fw-sk .ax{left:0;right:0;top:50%;height:1px;background:var(--border2)}.fw-sk .z{top:3px;bottom:3px;width:1px;background:var(--fg3)}.fw-sk .ci{top:50%;height:4px;margin-top:-2px;border-radius:2px;background:var(--fg3);opacity:.55}.fw-sk .pt{top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%}
+.fw-w.open .fw-r{background:var(--surface2)}.fw-det{display:none;padding:2px 20px 16px;background:var(--surface2)}.fw-w.open .fw-det{display:block}
+.fw-dg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}.fw-dg h3{margin:12px 0 6px;font:500 10.5px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}.fw-dg p{margin:0 0 6px;font-size:13px;color:var(--fg2)}.fw-dg p b{color:var(--fg)}
+.fw-tx{display:grid;grid-template-columns:62px 1fr auto;gap:10px;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);color:var(--fg2)}.fw-tx b{color:var(--fg);font-weight:600}.fw-tx .m{font-family:var(--font-mono)}
+@media(max-width:820px){
+ .fb-r,.fb-r.h{grid-template-columns:1fr;gap:6px}.fb-r.h{display:none}.fb-lab{display:block;color:var(--fg3);font:10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+ .fb-n,.fb-q,.fb-f{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:baseline}.fb-n .fb-lab,.fb-q .fb-lab,.fb-f .fb-lab{margin:0}.fb-n small,.fb-q small,.fb-f small{display:inline;margin-left:8px}
+ .fw-trust{grid-template-columns:1fr}
+}
+@media(max-width:1000px){.fw-r,.fw-r.h{grid-template-columns:92px minmax(0,1fr) 56px;gap:10px}.fw-r.h{display:none}.fw-r .hm{display:none}.fw-mo{display:block;color:var(--fg2);font-size:12px;margin-top:2px}}
+@media (prefers-reduced-motion:reduce){.fb-chip{transition:none}}
 /* Sharp Price */
 .nt-tw.sx-cap{overflow-y:auto;overscroll-behavior:contain}.nt-tw.sx-cap #xfeed thead th{position:sticky;top:0;z-index:1;background:var(--surface);box-shadow:0 1px 0 var(--border)}
 .np-b{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;align-items:center}.np-lead{display:flex;align-items:flex-end;gap:16px;padding:0 4px;min-width:0}.np-w{display:grid;gap:3px;min-width:0;align-self:center;padding:10px 0}.np-w b{font-size:18px;letter-spacing:-.02em}.np-pk{font-size:15px;font-weight:600}.np-w small{color:var(--fg3);font-size:12px}.np-pill{display:inline-flex}.np-e{margin-left:auto;display:grid;justify-items:end;gap:1px;align-self:center;text-align:right}.np-e b{font:600 28px var(--font-mono);letter-spacing:-.04em}.np-e small{color:var(--fg3);font-size:11.5px}
@@ -2318,6 +2346,25 @@ th{font-weight:500}
       </section>
     </main>
     <footer id="xfoot" hidden></footer>
+    <main id="v-follow" hidden>
+      <div class="banner" id="fbbanner" hidden></div>
+      <div class="kpis" id="fbkpis"></div>
+      <section class="card">
+        <div class="card-h"><div><h2>Ranked money on games that have not tipped</h2><p>One row per side of a market. Follow price is a resting bid at the wallets' average entry, the maker test in the pre-registration. Context, not a bet.</p></div>
+          <div class="filters" id="fbfilters"></div></div>
+        <div class="card-b fb" id="fbgames"></div>
+      </section>
+    </main>
+    <footer id="fbfoot" hidden></footer>
+    <main id="v-wallets" hidden>
+      <div class="banner" id="fwbanner" hidden></div>
+      <section class="card">
+        <div class="card-h"><div><h2>NBA wallet ranking</h2><p id="fwsub"></p></div><div class="filters" id="fwfilters"></div></div>
+        <div class="card-b fw" id="fwlist"></div>
+      </section>
+      <div class="kpis fw-trust" id="fwkpis"></div>
+    </main>
+    <footer id="fwfoot" hidden></footer>
     <main id="v-backtests" hidden>
       <div class="wk-sec-wrap" id="wk-works"></div>
       <div class="wk-sec-wrap" id="wk-finder" hidden></div>
@@ -2394,7 +2441,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['combo', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
+const VIEWS = ['combo', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'follow', 'wallets', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -2619,6 +2666,8 @@ const PAGES = [
     ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'One decision per prop: Bet, Lean or Pass, where to take it and why. Watch props for alerts.', 'props'],
     ['Props Table', SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>'), 'Every prop line and Kalshi ladder in one table, next to the projection, the blended fair price and the edge.', 'propboard'],
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.', 'sharp'],
+    ['Follow Board', SVG('<path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="16" r="3"/>'), 'Where ranked Polymarket accounts have put $1,000+ on games that have not tipped, the price now, and what a resting bid would take.', 'follow'],
+    ['Wallets', SVG('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 8h5M19.5 5.5v5"/>'), 'Every Polymarket account ranked by its record against the close, shrunk to the league average and pooled across sports.', 'wallets'],
   ]],
   ['Betting', [
     ['What Works', SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'), 'Which bets passed the backtest, in dollars and plain-language confidence, and what does not work.', 'backtests'],
@@ -2896,6 +2945,8 @@ function show(v){
   $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
   $('v-matchups').hidden = $('mufoot').hidden = v !== 'matchups';
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
+  $('v-follow').hidden = $('fbfoot').hidden = v !== 'follow';
+  $('v-wallets').hidden = $('fwfoot').hidden = v !== 'wallets';
   $('v-pairs').hidden = $('ppfoot').hidden = v !== 'pairs';
   $('v-player').hidden = $('plfoot').hidden = v !== 'player';
   $('v-combo').hidden = $('ccfoot').hidden = v !== 'combo';
@@ -2947,6 +2998,20 @@ function show(v){
     renderSharp();
     if (!boardTried) loadBoard();
     if (!trackTried) loadTrack();
+    return;
+  }
+  if (v === 'follow'){
+    $('tname').textContent = 'Follow Board';
+    $('tsub').textContent = 'RANKED POLYMARKET ACCOUNTS · FOLLOW PRICE · PAPER-TRACKED, NOT A BET';
+    renderFollow();
+    if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'wallets'){
+    $('tname').textContent = 'Wallets';
+    $('tsub').textContent = 'SKILL AGAINST THE CLOSE · SHRUNK TO THE LEAGUE AVERAGE · POOLED ACROSS SPORTS';
+    renderWallets();
+    if (!boardTried) loadBoard();
     return;
   }
   if (v === 'matchups'){
@@ -3848,6 +3913,8 @@ async function loadBoard(){
     if (view === 'slate' || view === 'lines') renderSlate();
     if (view === 'matchups') renderMatchups();
     if (view === 'sharp') renderSharp();
+    if (view === 'follow') renderFollow();
+    if (view === 'wallets') renderWallets();
     if (view === 'pairs') renderPairs();
     if (view === 'player') renderPlayer();
     if (view === 'combo') renderCombo();
@@ -4168,6 +4235,8 @@ async function loadTrack(){
     if (view === 'tonight') renderTonight();
     if (view === 'wire') renderWire();
     if (view === 'sharp') renderSharp();
+    if (view === 'follow') renderFollow();
+    if (view === 'wallets') renderWallets();
     if (['backtests', 'finder', 'btlab'].includes(view)) renderBacktests();
     clearTimeout(trackTimer); trackTimer = setTimeout(loadTrack, 5 * 60 * 1000);
   } catch (e) { /* keep the snapshot */ }
@@ -6937,6 +7006,107 @@ function xFoot(SH){
 }
 $('xfilters').addEventListener('click', e => { const b = e.target.closest('#xtype button[data-v]'); if (b){ xf.type = b.dataset.v; renderSharp(); } });
 $('xstrip').addEventListener('click', e => { const b = e.target.closest('button[data-g]'); if (b){ xf.game = b.dataset.g; renderSharp(); } });
+
+// ── Follow Board and Wallets ──────────────────────────────────────────────
+// Ranked Polymarket accounts (scripts/rank_pm_wallets.py: shrinkage + cross-sport pooling) and where they have put $1,000+ on games that
+// have not tipped (follow_ledger.py build_board, in the recorder). Every ticket and quote is a stored one. Follow price is the maker
+// test pre-registered in docs/sharp-follow-prereg.md: a resting bid at the wallets' average entry. Context, not a bet, until that test passes.
+const FTEAM = {atl: 'Hawks', bos: 'Celtics', bkn: 'Nets', cha: 'Hornets', chi: 'Bulls', cle: 'Cavaliers', dal: 'Mavericks', den: 'Nuggets', det: 'Pistons', gsw: 'Warriors', hou: 'Rockets', ind: 'Pacers', lac: 'Clippers', lal: 'Lakers', mem: 'Grizzlies', mia: 'Heat', mil: 'Bucks', min: 'Timberwolves', nop: 'Pelicans', nyk: 'Knicks', okc: 'Thunder', orl: 'Magic', phi: '76ers', phx: 'Suns', por: 'Trail Blazers', sac: 'Kings', sas: 'Spurs', tor: 'Raptors', uta: 'Jazz', was: 'Wizards'};
+const FTIER = {proven: 'Proven', probable: 'Probable', watching: 'Watching', dull: 'Dull'};
+let fbTier = 'strong', fwTier = 'all', fwOpen = null;
+const fCent = x => x == null ? 'n/a' : Math.round(x * 100) + '¢';
+const fPct = x => (x >= 0 ? '+' : '') + (x * 100).toFixed(1) + '%';
+const fShort = w => w.slice(0, 6) + '...' + w.slice(-4);
+const fName = x => x.who ? esc(x.who) : fShort(x.w);
+const fAgo = t => { const m = Math.max(0, Math.round((Date.now() / 1000 - t) / 60)); return m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h ${m % 60} min ago`; };
+const fData = () => { const B = slateBoard().board; return {B, F: B && B.follow}; };
+function fSeg(id, cur, opts){ return `<div class="seg" id="${id}" role="group">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${cur === v}">${l}</button>`).join('')}</div>`; }
+function fSide(i){
+  if (i.type === 'moneyline') return `${esc(i.side)} to win`;
+  const m = (i.q || '').match(i.type === 'spreads' ? /\(([-+]?[\d.]+)\)/ : /([\d.]+)\s*$/);
+  return `${esc(i.side)}${m ? ' ' + (i.type === 'spreads' ? m[1] : m[1]) : ''}`;
+}
+function fFollow(i){
+  const n = i.now; if (!n || n.ask == null) return {cls: '', a: 'No quote', b: 'market has no ask'};
+  const gap = Math.round((n.ask - i.vw) * 100);
+  if (n.ask <= i.vw + 1e-9) return {cls: 'ok', a: `Ask ${fCent(n.ask)} ${gap < 0 ? 'beats' : 'matches'} their ${fCent(i.vw)}`, b: gap < 0 ? `fillable now, ${-gap}¢ under their price` : 'fillable now at their price'};
+  return {cls: 'rest', a: `Rest a bid at ${fCent(i.vw)}`, b: `ask is ${gap}¢ above; fills only if it comes back`};
+}
+function renderFollow(){
+  const {B, F} = fData(), now = Date.now() / 1000;
+  const live = slateBoard();
+  $('mode').innerHTML = live.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>` : live.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
+  $('fbbanner').hidden = !!F;
+  $('fbbanner').innerHTML = `<b>The Follow Board needs the recorder's new board.</b><span>It fills on the next poll after this build ships.</span>`;
+  if (!F){ $('fbkpis').innerHTML = $('fbgames').innerHTML = $('fbfilters').innerHTML = ''; $('fbfoot').innerHTML = ''; return; }
+  const want = fbTier === 'strong' ? ['proven', 'probable'] : ['proven', 'probable', 'watching'];
+  const games = F.games.filter(g => g.tip > now).map(g => ({...g, items: g.items.map(i => {
+    const ws = i.wallets.filter(w => want.includes(w.tier)), u = ws.reduce((a, w) => a + w.usd, 0);
+    return {...i, wallets: ws, usd: u, vw: u ? ws.reduce((a, w) => a + w.usd * w.px, 0) / u : 0};
+  }).filter(i => i.wallets.length)})).filter(g => g.items.length);
+  const tk = games.reduce((a, g) => a + g.items.reduce((b, i) => b + i.wallets.length, 0), 0), net = games.reduce((a, g) => a + g.items.reduce((b, i) => b + i.usd, 0), 0), R = F.rec;
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  $('fbkpis').innerHTML =
+    kpi('Tickets from ranked wallets', ICON.pts, `${tk}`, `$1,000+ taker tickets in ${games.length} game${games.length === 1 ? '' : 's'} not yet tipped`) +
+    kpi('Ranked money seen', ICON.star, usdK(net), want.length === 2 ? 'Proven and probable wallets' : 'Proven, probable and watching') +
+    kpi('Detection delay', ICON.clock, R.det_med != null ? (R.det_med < 90 ? R.det_med + ' s' : Math.round(R.det_med / 60) + ' min') : 'n/a', R.det_med != null ? `Median, ticket to first sight, last 24 h (${R.det_n} tickets)` : 'Not measured yet: needs the minute poll to see a ticket') +
+    kpi('Follow record (paper)', ICON.edit, `${R.fwd_graded_games}<span class="muted"> of ${R.need} games</span>`, `First look ${R.first_look}. ${R.sharp_events} sharp-cohort events logged, ${R.sharp_fwd} counting`);
+  $('fbfilters').innerHTML = fSeg('fbtier', fbTier, [['strong', 'Proven and probable'], ['all', 'Include watching']]);
+  const sb = (F.counts || {}), strong = (sb.proven || 0) + (sb.probable || 0);
+  $('fbgames').innerHTML = games.length ? games.map(g => {
+    const [a, h] = g.g.split('-').slice(1, 3), both = new Set(g.items.filter(i => i.type === 'moneyline').map(i => i.o)).size > 1;
+    return `<div class="fb-g"><div class="fb-gh"><b>${FTEAM[a] || a.toUpperCase()} at ${FTEAM[h] || h.toUpperCase()}</b><span>${g.items.length} ${g.items.length > 1 ? 'sides' : 'side'} with ranked money</span>${both ? '<span class="badge warn">Ranked money on both teams</span>' : ''}<span class="t">Tip ${etFmt(g.tip, {weekday: 'short', hour: 'numeric', minute: '2-digit'})} ${TZL}</span></div>
+      <div class="fb-r h"><div>Side</div><div>Ranked wallets</div><div>Net / entry</div><div>Now (bid / ask)</div><div>Follow price</div></div>
+      ${g.items.map(i => { const f = fFollow(i), n = i.now, mv = n && n.bid != null && n.ask != null ? (n.bid + n.ask) / 2 - i.vw : null;
+        return `<div class="fb-r"><div class="fb-mk"><span class="fb-lab">Side</span><b>${fSide(i)}</b><small>${{moneyline: 'Moneyline', spreads: 'Spread', totals: 'Total'}[i.type]}</small></div>
+          <div><span class="fb-lab">Ranked wallets</span><div class="fb-chips">${i.wallets.map(w => `<button type="button" class="fb-chip" data-w="${w.w}" title="${FTIER[w.tier]} wallet"><i class="tdot ${w.tier}"></i><b>${fName(w)}</b><span class="m">${usdK(w.usd)} at ${fCent(w.px)}</span></button>`).join('')}</div>
+            <p class="muted" style="margin:5px 0 0;font-size:11.5px">First seen ${fAgo(i.wallets[0].t)}${i.wallets.some(w => w.hedge) ? '. A wallet here also bought the other side' : ''}</p></div>
+          <div class="fb-n"><span class="fb-lab">Net / entry</span><span><b>${usdK(i.usd)}</b><small>avg entry ${fCent(i.vw)}</small></span></div>
+          <div class="fb-q"><span class="fb-lab">Now</span><span><b>${n ? fCent(n.bid) + ' / ' + fCent(n.ask) : 'n/a'}</b>${mv == null ? '' : `<small>mid <span class="${mv >= 0 ? 'pos' : 'neg'}">${mv >= 0 ? '+' : ''}${(mv * 100).toFixed(1)}¢</span> vs entry</small>`}</span></div>
+          <div class="fb-f ${f.cls}"><span class="fb-lab">Follow price</span><span><b>${f.a}</b><small>${f.b}</small></span></div></div>`; }).join('')}</div>`;
+  }).join('') : `<p class="fb-empty">No ranked wallet has put $1,000 or more on an NBA game that has not tipped. That is a normal state, not an error: only ${strong} NBA wallets reach probable or better.</p>`;
+  $('fbfoot').innerHTML = `
+    <div><b>Ranked wallets</b> are scored on their record against the close, shrunk toward the league average and pooled across NFL, CFB and NBA. See Wallets for who and how sure.</div>
+    <div><b>Follow price</b> is the pre-registered maker test: a resting bid at the wallets' average entry, filled only if the ask comes back to it. Copying at the ask late lost money in our study; the paper record above counts the graded follows. Nothing here is a bet signal.</div>
+    <div><b>Prices</b> are Polymarket's stored best bid and ask. Tickets are taker tickets of $1,000+ read from its public trade tape, so a wallet's resting orders and tickets under $1,000 are not seen.</div>`;
+}
+function renderWallets(){
+  const {B, F} = fData();
+  $('fwbanner').hidden = !!F;
+  $('fwbanner').innerHTML = `<b>Wallets need the recorder's new board.</b><span>It fills on the next poll after this build ships.</span>`;
+  if (!F){ $('fwlist').innerHTML = $('fwfilters').innerHTML = $('fwkpis').innerHTML = $('fwsub').innerHTML = ''; $('fwfoot').innerHTML = ''; return; }
+  const C = F.counts || {}, ranked = (C.proven || 0) + (C.probable || 0) + (C.watching || 0);
+  $('fwsub').textContent = `${F.ranked} wallets scored. Skill is mean closing-line value per game after shrinking toward the league average and borrowing the NFL and CFB record. The bar shows skill plus or minus one standard deviation (axis -2% to +5%).`;
+  $('fwfilters').innerHTML = fSeg('fwtier', fwTier, [['all', `Ranked ${ranked}`], ['proven', `Proven ${C.proven || 0}`], ['probable', `Probable ${C.probable || 0}`], ['watching', `Watching ${C.watching || 0}`], ['dull', `Dull ${C.dull || 0}`]]);
+  const L = F.wallets.filter(w => fwTier === 'all' ? w.tier !== 'dull' : w.tier === fwTier);
+  const sk = w => { const lo = -.02, hi = .05, x = v => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
+    return `<div class="fw-sk"><i class="ax"></i><i class="z" style="left:${x(0)}%"></i><i class="ci" style="left:${x(w.post - w.sd)}%;width:${x(w.post + w.sd) - x(w.post - w.sd)}%"></i><i class="pt tdot ${w.tier}" style="left:${x(w.post)}%"></i></div>`; };
+  const rc = (w, s) => w.raw[s] ? `<div class="fw-rec"><b>${fPct(w.raw[s][1])}</b><small>${w.raw[s][0]} game${w.raw[s][0] === 1 ? '' : 's'}</small></div>` : '<span class="muted">none</span>';
+  $('fwlist').innerHTML = `<div class="fw-r h"><div>Tier</div><div>Wallet</div><div class="hm">NBA</div><div class="hm">NFL</div><div class="hm">CFB</div><div class="hm">Skill estimate</div><div>P(&gt;0)</div></div>` +
+    (L.map(w => { const nb = w.raw.nba ? w.raw.nba[0] : 0;
+      return `<div class="fw-w${fwOpen === w.w ? ' open' : ''}" id="fw-${w.w}"><button type="button" class="fw-r" data-w="${w.w}" aria-expanded="${fwOpen === w.w}"><div class="fw-t"><i class="tdot ${w.tier}"></i>${FTIER[w.tier]}</div>
+        <div class="fw-id"><b>${fName(w)}</b><small>${w.who ? fShort(w.w) : 'no pseudonym in our tapes'}${w.old ? ' . old label: ' + w.old.replace(':', ' ') : ''}</small><span class="fw-mo">${Object.entries(w.raw).map(([s, r]) => s.toUpperCase() + ' ' + fPct(r[1]) + ' (' + r[0] + ')').join(' . ')}</span></div>
+        <div class="hm">${rc(w, 'nba')}</div><div class="hm">${rc(w, 'nfl')}</div><div class="hm">${rc(w, 'cfb')}</div><div class="hm">${sk(w)}</div><div class="fb-n"><b>${Math.round(w.p * 100)}%</b></div></button>
+        <div class="fw-det"><div class="fw-dg"><div><h3>How sure</h3><p>Posterior skill <b>${fPct(w.post)}</b> per game, give or take <b>${(w.sd * 100).toFixed(1)}%</b>. Games on record: ${Object.entries(w.raw).map(([s, r]) => s.toUpperCase() + ' ' + r[0]).join(', ')}.</p>
+          <p>${nb < 5 ? '<b>Few NBA games.</b> This tier leans on the other sports and on the league average.' : 'Enough NBA games for its own record to carry weight.'}</p>
+          <p>${w.old ? `Old hard label: <b>${esc(w.old.replace(':', ' '))}</b>.` : 'No old label: it never reached t of 3.'}</p></div>
+          <div><h3>Seen in our tapes</h3>${w.nev ? `<p><b>${w.nev}</b> first ticket${w.nev === 1 ? '' : 's'} of $1,000+, ${usdK(w.usd)} in total. Median <b>${w.hrs} h</b> before tip.</p>` + w.tix.map(t => `<div class="fw-tx"><span class="m">${etFmt(t.t, {month: 'short', day: 'numeric'})}</span><span><b>${esc(t.side || '')}</b> ${t.type === 'totals' ? 'total' : t.type === 'spreads' ? 'spread' : 'moneyline'}</span><span class="m">${usdK(t.usd)} at ${fCent(t.px)}${t.close != null ? ', closed ' + fCent(t.close) : ''}</span></div>`).join('') : '<p>No $1,000+ NBA game ticket in the days we have stored.</p>'}</div></div></div></div>`; }).join('') || '<p class="fb-empty">No wallets in this tier.</p>');
+  const rho = F.rho || {value: 0, ci90: [0, 0], pairs: 0};
+  const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  $('fwkpis').innerHTML = kpi('Skill spread, NBA', ICON.pts, (F.tau_nba * 100).toFixed(2) + '%', 'Wallet to wallet, after removing noise') +
+    kpi('Skill that travels', ICON.star, (+rho.value).toFixed(2), `Interval ${(+rho.ci90[0]).toFixed(2)} to ${(+rho.ci90[1]).toFixed(2)} on ${rho.pairs} pairs. Pooling is unproven`) +
+    kpi('Old rule', ICON.edit, '1', `NBA sharp wallet of ${F.old_seen_nba} seen, at t of 3`);
+  $('fwfoot').innerHTML = `
+    <div><b>Tiers</b> use the posterior chance a wallet's true skill is above zero: proven 95%+, probable 80%+, watching 60%+, dull 5% or less. The cut-offs are conventional, not tuned. Rebuilt weekly (${F.rank_t ? stamp(Date.parse(F.rank_t) / 1000) + ' ' + TZL : ''}).</div>
+    <div><b>Why shrink</b>: a wallet with 4 games and +7% is mostly luck, so its estimate is pulled toward the league average, and toward its NFL and CFB record in proportion to how noisy each is. Whether skill really travels between sports is not yet known, hence the interval.</div>
+    <div><b>Context, not a bet.</b> Ranking says who has beaten the close, not that copying them pays: the Follow Board's paper record is the test.</div>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('#fbtier button[data-v]'); if (t){ fbTier = t.dataset.v; renderFollow(); return; }
+  const u = e.target.closest('#fwtier button[data-v]'); if (u){ fwTier = u.dataset.v; renderWallets(); return; }
+  const c = e.target.closest('.fb-chip[data-w]'); if (c){ fwOpen = c.dataset.w; const w = ((fData().F || {}).wallets || []).find(x => x.w === fwOpen); if (w && fwTier !== 'all' && fwTier !== w.tier) fwTier = 'all'; goView('wallets'); const el = document.getElementById('fw-' + fwOpen); if (el) el.scrollIntoView({block: 'center'}); return; }
+  const r = e.target.closest('.fw-r[data-w]'); if (r){ fwOpen = fwOpen === r.dataset.w ? null : r.dataset.w; renderWallets(); }
+});
 
 // ── Backtests ─────────────────────────────────────────────────────────────
 // Every test the model has been through, from each test's own output (build_backtests.py): the question, the rule

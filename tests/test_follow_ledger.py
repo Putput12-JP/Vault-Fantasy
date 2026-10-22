@@ -80,6 +80,35 @@ class FollowLedger(unittest.TestCase):
         ev = list(json.load(open(os.path.join(day, F.FILE))).values())[0]
         self.assertEqual(ev["cohort"], "sharp")
 
+    def test_build_board_for_the_pages(self):
+        T = F.FREEZE_T + 3600
+        now = T + 600
+        root, day = build([tk(T), tk(T + 5, w="0xD", o=1, px=0.5)], [(T + 5, [0.49, 0.51, 0.5]), (T + 400, [0.55, 0.56, 0.55])], [T + 130, T + 400], now)
+        W2 = {"sharp": {"0xS": "nba"}, "dull": set(), "generated": "2026-10-01T00:00:00+00:00"}
+        F.run(root, now, W2)
+        data = tempfile.mkdtemp()
+        rank = {"generated": "2026-10-22T00:00:00+00:00", "counts": {"proven": 1}, "rho": {"value": 0.5, "ci90": [0, 0.9], "pairs": 9}, "params": {"nba": {"tau2": 1e-4, "wallets": 5}},
+                "wallets": {"0xS": {"raw": {"nba": [3, 0.02]}, "post": 0.01, "sd": 0.005, "p": 0.97, "tier": "proven", "old": None},
+                            "0xD": {"raw": {"nba": [9, -0.02]}, "post": -0.02, "sd": 0.004, "p": 0.01, "tier": "dull", "old": "dull"}}}
+        json.dump(rank, open(os.path.join(data, "pm_wallet_rank.json"), "w"))
+        old, F.REPO_DATA = F.REPO_DATA, data
+        try:
+            b = F.build_board(root, now)
+        finally:
+            F.REPO_DATA = old
+        self.assertEqual(len(b["games"]), 1)
+        it = b["games"][0]["items"]
+        self.assertEqual({(i["o"], i["wallets"][0]["tier"]) for i in it}, {(0, "proven"), (1, "dull")})
+        s = next(i for i in it if i["o"] == 0)
+        self.assertEqual(s["now"], {"t": T + 400, "bid": 0.55, "ask": 0.56})
+        self.assertEqual(next(i for i in it if i["o"] == 1)["now"]["ask"], 0.45)               # the other outcome is priced off the same book
+        self.assertEqual([w["w"] for w in b["wallets"]], ["0xS", "0xD"]); self.assertEqual(b["rec"]["sharp_fwd"], 1)
+        F.REPO_DATA = os.path.join(data, "nowhere")
+        try:
+            self.assertIsNone(F.build_board(root, now))                                        # no ranking file: the page shows its banner
+        finally:
+            F.REPO_DATA = old
+
 
 if __name__ == "__main__":
     unittest.main()
