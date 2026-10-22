@@ -58,11 +58,23 @@ questions are unmeasured:
 ## Data and history
 
 - **Forward record** starts when the recorder change merges. It is the only record that carries a headline.
-- **Backtest series:** `data/lean_rows_nba.json` (2025-26, model fit on 2024-25), shown separately and labelled "backtest, not forward".
-- **Edge-selected subset:** existing live bets already carry mu and line. They can be shown as a lean view, labelled as selected by
-  the 3% rule, so never as the lean record.
-- **Open question for phase 4:** whether the snapshot tape since opening night can rebuild leans without hindsight pricing. If it
-  cannot, those days stay out. No rows are invented.
+- **Backtest series** (`nba/data/lean_backtest.json`, built by `build_lean_backtest.py`): `data/lean_rows_nba.json`, 2025-26, model fit on
+  2024-25. Descriptive only: this season was already used by the lean diagnostic and the lean search, so it is not a clean test. Rows hold
+  the projection and the line, not the calibrated P or sd, so gap bins are terciles of |proj - line| inside each stat. Intervals resample games.
+  Results (5,250 lines, 320 games): lean 53.3% [51.6, 55.1]; always-under 53.2%; market side 54.4%; lean minus always-under +0.1 pts
+  [-2.6, +3.0]. Over leans hit 50.1% and under leans 57.0%. When the model agrees with the market's side it hits 56.2%, when it disagrees
+  it hits 48.5% (the market side wins 51.5% of those). Largest-gap tercile: lean 55.7% against always-under 51.5% (+4.2 pts [-0.4, +9.4]).
+  **Nothing here improves on a trivial strategy with an interval that excludes 0, so nothing is flagged for monitoring.** The forward record decides.
+- **Psim-derived backfill** (`nba/data/lean_backfill.json`, built by `backfill_leans.py`): the Props Simulation record was written live before
+  tip with the model's calibrated P(over) at the main line, so regular-season games that finished before the lean recorder existed can be
+  rebuilt without a replay and without today's model files. Limits: pts / reb / ast / 3pm only, the last 3 hours before tip (close clock only),
+  no sd, no stored price (units null), no starter flag. Left out: 61 keys of the BOS @ DET replay (rebuilt from stored prices with the model
+  files on hand, not as-of) and preseason. Built 2026-10-22: 13 games, 746 rows. Only 112 are graded and not held (60 W, 52 L, 53.6%): far
+  too few to say anything, so no hit rate is quoted. Shown apart from the forward record, never added to it.
+- **Not built:** a lean view of existing live bets. They carry mu and line but not the model P or sd, and the psim backfill already covers
+  the same props with the real model P, so it would add nothing.
+- **Not reconstructed:** a replay of the snapshot tape for combo markets or the first-sighting clock. Replaying needs the model files as of
+  each poll, which are not stored beside the tape, and today's files include results from the games being replayed. No rows are invented.
 
 ## Build order
 
