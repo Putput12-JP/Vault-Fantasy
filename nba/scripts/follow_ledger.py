@@ -26,7 +26,7 @@ from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from sharp import wallets, day_dirs, ET                       # noqa: E402
+from sharp import wallets, day_dirs, ET, REPO_DATA            # noqa: E402
 
 # ── frozen in docs/sharp-follow-prereg.md ───────────────────────────────────────────────────────
 MIN_USD = 1000                                                # first ticket this size or larger is an event
@@ -225,6 +225,89 @@ def run(root, now, W=None):
         with open(os.path.join(d, FILE), 'w') as f:
             json.dump(j, f, separators=(',', ':'))
     return {'new': new, 'graded': graded}
+
+
+# ── the Follow board and Wallets pages (board['follow']) ─────────────────────────────────────────
+TIERS_SHOWN = ('proven', 'probable', 'watching', 'dull')
+
+
+def build_board(root, now):
+    """What the Follow board and Wallets pages read: tonight's tickets from ranked wallets with the current quote on
+    each side, the ranked wallets with their recent tickets, and the paper record's counts. Stored data only."""
+    try:
+        rank = json.load(open(os.path.join(REPO_DATA, 'pm_wallet_rank.json')))
+    except (OSError, ValueError):
+        return None
+    rk = rank.get('wallets') or {}
+    dirs = day_dirs(root, now, LOOKBACK_DAYS)
+    rows, _ = load_follows(dirs)
+    meta, who, last = {}, {}, {}
+    for r in load_jsonl(dirs, 'meta.jsonl'):
+        if r.get('src') == 'polymarket' and r.get('type') in TYPES:
+            meta[r['k']] = r
+    for name in ('tape.jsonl', 'tape_fast.jsonl'):
+        for r in load_jsonl(dirs, name):
+            if r.get('w') and r.get('who'):
+                who[r['w']] = r['who']
+    for name in ('polymarket.jsonl', 'fastpm.jsonl'):
+        for r in load_jsonl(dirs, name):
+            if r.get('v') and (r['k'] not in last or r['t'] >= last[r['k']][0]):
+                last[r['k']] = (r['t'], r['v'])
+
+    def side_name(m, o):
+        try:
+            return json.loads(m['outcomes'])[o]
+        except (ValueError, KeyError, IndexError, TypeError):
+            return None
+
+    def quote(k, o):
+        q = last.get(k)
+        if not q:
+            return None
+        bid, ask = side_quote(q[1], o)
+        return {'t': q[0], 'bid': bid, 'ask': ask}
+    by_game = defaultdict(lambda: defaultdict(list))
+    for e in rows.values():
+        t = (rk.get(e['w']) or {}).get('tier')
+        m = meta.get(e['k'])
+        if e['tip'] <= now or t not in TIERS_SHOWN or not m:
+            continue
+        by_game[e['g']][(e['k'], e['o'])].append({'w': e['w'], 'who': who.get(e['w']), 'tier': t, 'usd': e['usd'], 'px': e['px'], 't': e['t'], 'hedge': e['hedge']})
+    games = []
+    for g, mk in by_game.items():
+        items = []
+        for (k, o), ws in mk.items():
+            m = meta[k]
+            items.append({'k': k, 'o': o, 'type': m['type'], 'line': m.get('line'), 'q': m.get('q'), 'side': side_name(m, o),
+                          'wallets': sorted(ws, key=lambda x: x['t']), 'now': quote(k, o)})
+        items.sort(key=lambda i: -sum(w['usd'] for w in i['wallets']))
+        games.append({'g': g, 'tip': next(e['tip'] for e in rows.values() if e['g'] == g), 'items': items})
+    games.sort(key=lambda x: x['tip'])
+    ev_by = defaultdict(list)
+    for e in rows.values():
+        ev_by[e['w']].append(e)
+    wl = []
+    for w, v in rk.items():
+        if v.get('tier') not in TIERS_SHOWN:
+            continue
+        evs = ev_by.get(w, [])
+        tix = []
+        for e in sorted(evs, key=lambda e: -e['t'])[:8]:
+            m = meta.get(e['k']) or {}
+            tix.append({'t': e['t'], 'tip': e['tip'], 'type': e['type'], 'line': e.get('line'), 'side': side_name(m, e['o']), 'usd': e['usd'], 'px': e['px'], 'g': e['g'], 'close': e.get('close')})
+        hrs = sorted((e['tip'] - e['t']) / 3600 for e in evs)
+        wl.append({'w': w, 'who': who.get(w), 'tier': v['tier'], 'raw': v['raw'], 'post': v['post'], 'sd': v['sd'], 'p': v['p'], 'old': v.get('old'),
+                   'nev': len(evs), 'hrs': round(hrs[len(hrs) // 2], 1) if hrs else None, 'usd': sum(e['usd'] for e in evs), 'tix': tix})
+    wl.sort(key=lambda x: -x['p'])
+    allrows, _ = load_follows(day_dirs(root, now, 400))
+    sharp = [e for e in allrows.values() if e['cohort'] == 'sharp']
+    det = sorted(e['det'] for e in allrows.values() if e.get('det') is not None and now - e['t'] < 86400)
+    rec = {'sharp_events': len(sharp), 'sharp_fwd': sum(1 for e in sharp if not e['bf']),
+           'fwd_graded_games': len({e['g'] for e in sharp if not e['bf'] and not e['hedge'] and e.get('res')}), 'need': 100, 'first_look': '2026-11-30',
+           'det_med': det[len(det) // 2] if det else None, 'det_n': len(det)}
+    return {'t': now, 'rank_t': rank.get('generated'), 'games': games, 'wallets': wl, 'rec': rec, 'ranked': len(rk), 'counts': rank.get('counts'),
+            'rho': rank.get('rho'), 'tau_nba': math.sqrt(((rank.get('params') or {}).get('nba') or {}).get('tau2', 0)),
+            'old_sharp_nba': 1, 'old_seen_nba': (rank.get('params') or {}).get('nba', {}).get('wallets')}
 
 
 def report(root, now, results=False):
