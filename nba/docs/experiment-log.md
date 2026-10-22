@@ -33,6 +33,7 @@ from each doc's own words; "not stated" means the doc does not say.
 | SmartStake multi-book closes, Circa/Bookmaker lead, fitted book weights, ladder fits | docs/smartstake-experiment-log.md | yes (written 2026-10-17, no outcomes read) | not graded yet |
 | Kalshi total ladder anchored to the sportsbook open | game-model-experiments.md, game-model-experiments-results.md | yes (committed before scoring) | NO-GO. 8% one-contract ROI +18.0% then −3.4% (z 4.13, 0.57). Second half not positive |
 | Game-model widened retune (K, REP, ALPHA, CT, and C on the 1pm report) | game-model-experiments.md, game-model-experiments-results.md | yes (committed before scoring) | NOT SHIPPED. Spread MAE t −1.45, total MAE t 1.51. Candidate CT 0.2 would stop the paper bot. game_model.json unchanged |
+| NBA lean tracking: the model's side (model-only P(over) at the modal line) on every priced prop, graded against the box score, compared with always-under and the market side | lean-tracking.md | yes (written 2026-10-22 before any lean was recorded) | FORWARD ONLY from the 2026-10-22 recorder merge (PR 216). No outcome yet: nothing is quoted under 100 graded leans. Backtest series (2025-26, lean 53.3% vs always-under 53.2%, gap +0.1 pts, CI -2.6 to +3.0) and a 13-game psim backfill are descriptive and not counted as clean tests |
 
 So the NBA side is in better shape than the NFL side: most later tests were pre-registered, and the copula test already uses
 a season nobody has looked at. The gaps are the early model builds (game, minutes, prop v1/v2) with no written accept rule,
