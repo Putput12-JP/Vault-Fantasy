@@ -1362,7 +1362,8 @@ table.nt .bt-best{color:var(--fg);font-weight:600}
 .fw-sk{position:relative;height:22px}.fw-sk i{position:absolute}.fw-sk .ax{left:0;right:0;top:50%;height:1px;background:var(--border2)}.fw-sk .z{top:3px;bottom:3px;width:1px;background:var(--fg3)}.fw-sk .ci{top:50%;height:4px;margin-top:-2px;border-radius:2px;background:var(--fg3);opacity:.55}.fw-sk .pt{top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%}
 .fw-w.open .fw-r{background:var(--surface2)}.fw-det{display:none;padding:2px 20px 16px;background:var(--surface2)}.fw-w.open .fw-det{display:block}
 .fw-dg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}.fw-dg h3{margin:12px 0 6px;font:500 10.5px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}.fw-dg p{margin:0 0 6px;font-size:13px;color:var(--fg2)}.fw-dg p b{color:var(--fg)}
-.fw-tx{display:grid;grid-template-columns:62px 1fr auto;gap:10px;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);color:var(--fg2)}.fw-tx b{color:var(--fg);font-weight:600}.fw-tx .m{font-family:var(--font-mono)}
+.fw-tx{display:grid;grid-template-columns:62px 1fr auto 52px;gap:10px;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);color:var(--fg2)}.fw-tx b{color:var(--fg);font-weight:600}.fw-tx .m{font-family:var(--font-mono)}.fw-tx small{display:block;color:var(--fg3);font-size:11.5px}.fw-res{justify-self:end;font:600 11px var(--font-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--fg3)}.fw-res.won{color:var(--up)}.fw-res.lost{color:var(--down)}
+.fw-sz{display:grid;grid-template-columns:minmax(0,1fr) 34px 44px 54px;gap:8px;font-size:12.5px;padding:5px 0;border-top:1px solid var(--border);color:var(--fg2)}.fw-sz.h{border-top:0;font:500 10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}.fw-sz .m{font-family:var(--font-mono)}.fw-sz.dim{opacity:.55}
 @media(max-width:820px){
  .fb-r,.fb-r.h{grid-template-columns:1fr;gap:6px}.fb-r.h{display:none}.fb-lab{display:block;color:var(--fg3);font:10.5px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
  .fb-n,.fb-q,.fb-f{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:baseline}.fb-n .fb-lab,.fb-q .fb-lab,.fb-f .fb-lab{margin:0}.fb-n small,.fb-q small,.fb-f small{display:inline;margin-left:8px}
@@ -7126,6 +7127,18 @@ function renderFollow(){
     <div><b>Follow price</b> is the pre-registered maker test: a resting bid at the wallets' average entry, filled only if the ask comes back to it. Copying at the ask late lost money in our study; the paper record above counts the graded follows. Nothing here is a bet signal.</div>
     <div><b>Prices</b> are Polymarket's stored best bid and ask. Tickets are taker tickets of $1,000+ read from its public trade tape, so a wallet's resting orders and tickets under $1,000 are not seen.</div>`;
 }
+const fRoi = (p, st) => { if (!st) return '<span class="m muted">n/a</span>'; const v = Math.round(p / st * 100); return `<span class="m ${v > 0 ? 'pos' : v < 0 ? 'neg' : ''}">${v > 0 ? '+' : v < 0 ? '-' : ''}${Math.abs(v)}%</span>`; };
+const fRes = r => r === 1 ? '<span class="fw-res won">Won</span>' : r === -1 ? '<span class="fw-res lost">Lost</span>' : r === 0 ? '<span class="fw-res">Push</span>' : '<span class="fw-res">Open</span>';
+// Does a wallet bet bigger when it is right? Size vs the wallet's own normal (median bet), from wallet_bets.py. Settled game-market bets only; ROI is before fees.
+function fSize(w, F){
+  const z = w.sz; if (!z) return '';
+  const r = z.rec, mn = F.size_min || 15, need = F.size_min_bets || 5;
+  const rec = r[0] ? `<p>Their game-market bets: <b>${r[1]}-${r[2]}</b> (${Math.round(r[1] / r[0] * 100)}% won), ROI ${fRoi(r[4], r[3])} before fees on ${usdK(r[3])} staked${z.open ? `. ${z.open} more not settled yet` : ''}.</p>` : `<p>No settled game-market bets yet${z.open ? `: ${z.open} waiting on a final score` : ''}.</p>`;
+  if (!z.norm) return `<h3>Does size matter for them?</h3>${rec}<p>Needs ${need} bets of $100 or more to know what is normal for them. They have ${z.n}.</p>`;
+  const P = F.size_pool, rows = z.bk.map((b, i) => `<div class="fw-sz${b[0] && b[0] < mn ? ' dim' : ''}"><span>${F.size_buckets[i]}</span><span class="m">${b[0]}</span><span class="m">${b[0] ? Math.round(b[1] / b[0] * 100) + '%' : 'n/a'}</span>${b[0] ? fRoi(b[3], b[2]) : '<span class="m muted">n/a</span>'}</div>`).join('');
+  return `<h3>Does size matter for them?</h3>${rec}<div class="fw-sz h"><span>Size vs their normal</span><span>Bets</span><span>Won</span><span>ROI</span></div>${rows}
+    <p class="muted" style="margin:6px 0 0;font-size:11.5px">Normal is ${usdK(z.norm)} a bet, the median of their ${z.n} bets of $100+. Faded rows have under ${mn} settled bets: too few to read.${P && P.big[0] && P.rest[0] ? ` Across all ranked wallets, bets 1.5x or more their normal won ${Math.round(P.big[1] / P.big[0] * 100)}% against ${Math.round(P.rest[1] / P.rest[0] * 100)}% for the rest, and ROI was ${(P.big[3] / P.big[2] * 100).toFixed(1)}% against ${(P.rest[3] / P.rest[2] * 100).toFixed(1)}% (${P.big[0]} and ${P.rest[0]} bets, ${P.wallets} wallets).` : ''}</p>`;
+}
 function renderWallets(){
   const {B, F} = fData();
   $('fwbanner').hidden = !!F;
@@ -7145,8 +7158,8 @@ function renderWallets(){
         <div class="hm">${rc(w, 'nba')}</div><div class="hm">${rc(w, 'nfl')}</div><div class="hm">${rc(w, 'cfb')}</div><div class="hm">${sk(w)}</div><div class="fb-n"><b>${Math.round(w.p * 100)}%</b></div></button>
         <div class="fw-det"><div class="fw-dg"><div><h3>How sure</h3><p>Posterior skill <b>${fPct(w.post)}</b> per game, give or take <b>${(w.sd * 100).toFixed(1)}%</b>. Games on record: ${Object.entries(w.raw).map(([s, r]) => s.toUpperCase() + ' ' + r[0]).join(', ')}.</p>
           <p>${nb < 5 ? '<b>Few NBA games.</b> This tier leans on the other sports and on the league average.' : 'Enough NBA games for its own record to carry weight.'}</p>
-          <p>${w.old ? `Old hard label: <b>${esc(w.old.replace(':', ' '))}</b>.` : 'No old label: it never reached t of 3.'}</p></div>
-          <div><h3>Seen in our tapes</h3>${w.nev ? `<p><b>${w.nev}</b> first ticket${w.nev === 1 ? '' : 's'} of $1,000+, ${usdK(w.usd)} in total. Median <b>${w.hrs} h</b> before tip.</p>` + w.tix.map(t => `<div class="fw-tx"><span class="m">${etFmt(t.t, {month: 'short', day: 'numeric'})}</span><span><b>${esc(t.side || '')}</b> ${t.type === 'totals' ? 'total' : t.type === 'spreads' ? 'spread' : 'moneyline'}</span><span class="m">${usdK(t.usd)} at ${fCent(t.px)}${t.close != null ? ', closed ' + fCent(t.close) : ''}</span></div>`).join('') : '<p>No $1,000+ NBA game ticket in the days we have stored.</p>'}</div></div></div></div>`; }).join('') || '<p class="fb-empty">No wallets in this tier.</p>');
+          <p>${w.old ? `Old hard label: <b>${esc(w.old.replace(':', ' '))}</b>.` : 'No old label: it never reached t of 3.'}</p>${fSize(w, F)}</div>
+          <div><h3>Seen in our tapes</h3>${w.nev ? `<p><b>${w.nev}</b> first ticket${w.nev === 1 ? '' : 's'} of $1,000+, ${usdK(w.usd)} in total. Median <b>${w.hrs} h</b> before tip.</p>` + w.tix.map(t => `<div class="fw-tx"><span class="m">${etFmt(t.t, {month: 'short', day: 'numeric'})}</span><span><b>${esc(t.side || '')}</b> ${t.type === 'totals' ? 'total' : t.type === 'spreads' ? 'spread' : 'moneyline'}</span><span class="m">${usdK(t.usd)} at ${fCent(t.px)}${t.close != null ? ', closed ' + fCent(t.close) : ''}${t.tot && t.tot > t.usd * 1.05 ? `<small>${usdK(t.tot)} in all${t.x != null ? `, ${t.x}x their normal` : ''}</small>` : t.x != null ? `<small>${t.x}x their normal</small>` : ''}</span>${fRes(t.res)}</div>`).join('') : '<p>No $1,000+ NBA game ticket in the days we have stored.</p>'}</div></div></div></div>`; }).join('') || '<p class="fb-empty">No wallets in this tier.</p>');
   const rho = F.rho || {value: 0, ci90: [0, 0], pairs: 0};
   const kpi = (label, icon, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2>${icon}</div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
   $('fwkpis').innerHTML = kpi('Skill spread, NBA', ICON.pts, (F.tau_nba * 100).toFixed(2) + '%', 'Wallet to wallet, after removing noise') +
@@ -7155,6 +7168,7 @@ function renderWallets(){
   $('fwfoot').innerHTML = `
     <div><b>Tiers</b> use the posterior chance a wallet's true skill is above zero: proven 95%+, probable 80%+, watching 60%+, dull 5% or less. The cut-offs are conventional, not tuned. Rebuilt weekly (${F.rank_t ? stamp(Date.parse(F.rank_t) / 1000) + ' ' + TZL : ''}).</div>
     <div><b>Why shrink</b>: a wallet with 4 games and +7% is mostly luck, so its estimate is pulled toward the league average, and toward its NFL and CFB record in proportion to how noisy each is. Whether skill really travels between sports is not yet known, hence the interval.</div>
+    <div><b>Size and results</b> come from each wallet's own bets on moneylines, spreads and totals, one bet per side of a market, from the trade tape (fills of $100 or more). Normal is the median of those bets. Won and lost use the final score; ROI is before fees. Bets on both sides of one market are left out. Props and first-half markets are not scored.</div>
     <div><b>Context, not a bet.</b> Ranking says who has beaten the close, not that copying them pays: the Follow Board's paper record is the test.</div>`;
 }
 // ── Prop Tells ────────────────────────────────────────────────────────────
