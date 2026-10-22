@@ -17,6 +17,12 @@ def load(name):
     return json.load(open(path)) if os.path.exists(path) else None
 
 
+def lean_backfill():
+    """Counts only (the page quotes none of its rows): games and graded, not-held leans of data/lean_backfill.json."""
+    d = load('lean_backfill.json')
+    return d and {'games': d['games'], 'rows': [r for r in d['rows'] if not r[17] and r[20] in ('W', 'L')]}
+
+
 def backtest(v2):
     """Each GO / WATCH signal's 2025-26 out-of-sample Kalshi result, keyed stat|kalshi|side (Track Record compares)."""
     out = {}
@@ -161,6 +167,8 @@ def render():
                .replace('/*BACKTESTS*/null', json.dumps(load('backtests.json'), separators=(',', ':')))
                .replace('/*PICKEM*/null', json.dumps(pickem(), separators=(',', ':')))
                .replace('/*CONTROL*/null', json.dumps(control(), separators=(',', ':')))
+               .replace('/*LEANBT*/null', json.dumps(load('lean_backtest.json'), separators=(',', ':')))
+               .replace('/*LEANBF*/null', json.dumps(lean_backfill(), separators=(',', ':')))
                .replace('/*SIMCH*/null', json.dumps(load('sim_challenger.json'), separators=(',', ':')))
                .replace('/*MATCHUPS*/null', json.dumps(load('matchups.json'), separators=(',', ':')))
                .replace('/*DIETDEF*/null', json.dumps(load('diet_defense.json'), separators=(',', ':')))

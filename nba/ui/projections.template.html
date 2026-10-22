@@ -2029,6 +2029,27 @@ th{font-weight:500}
     <main id="v-track" hidden>
       <section class="card tscore" id="tscore" aria-label="Season record"></section>
 
+      <details class="card tfold" id="tleancard" open>
+        <summary><span class="tf-t"><b>Model side vs the line</b><small id="tleanstat">The side the model prefers on every prop, edge or not</small></span></summary>
+        <div class="card-b">
+          <p class="hint tplain" id="tleansub"></p>
+          <div class="filters"><div class="seg" id="tleanclk" role="group" aria-label="Which look"><button type="button" data-v="c" aria-pressed="true">Last look before tip</button><button type="button" data-v="f" aria-pressed="false">First look</button></div></div>
+          <div class="kpis" id="tleank"></div>
+          <h3 class="sim-h">By stat</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tleans"></table></div>
+          <h3 class="sim-h">By size of the gap</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tleanb"></table></div>
+          <h3 class="sim-h">By confidence</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tleanc"></table></div>
+          <h3 class="sim-h">Overs and unders, and against the market</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tleano"></table></div>
+          <h3 class="sim-h">Last season, for context</h3>
+          <p class="hint" id="tleanbtsub"></p>
+          <div class="tablewrap"><table class="ht tsim" id="tleanbt"></table></div>
+          <p class="hint" id="tleannote"></p>
+        </div>
+      </details>
+
       <details class="card tfold" id="theldcard" open hidden>
         <summary><span class="tf-t"><b>Held by the roster guard, not bets</b><small id="theldstat">Props the model priced on teams it does not trust yet, settled anyway</small></span></summary>
         <div class="card-b">
@@ -2336,6 +2357,7 @@ const H0 = /*HEALTH*/null;
 const PR = /*PRICING*/null;     // prop model: variance, calibration, blend weights (build_prop_model.py)
 const PB = /*BOARD*/null;       // props board: {live, example} (prop_board.py)
 const BT = /*BACKTESTS*/null;   // every test, its rule, result and verdict (build_backtests.py)
+const LEANBT = /*LEANBT*/null, LEANBF = /*LEANBF*/null;   // lean backtest series and psim-derived backfill (build_lean_backtest.py, backfill_leans.py)
 const SIMCH = /*SIMCH*/null;      // simulation challenger results (build_sim_challenger.py), for Props Simulation
 const CTL = /*CONTROL*/null;       // Control Room: frozen models, dated tests, past verdicts (render_app.control)
 const TR0 = /*TRACK*/null;      // shadow ledger summary + recent bets (ledger.py via build_data_health.py)
@@ -4130,6 +4152,7 @@ async function loadTrack(){
     const d = await fetch(`https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/track.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
     if (!d.cube) return;             // an older format; keep the snapshot
     TR = {data: d, live: true, at: Date.now() / 1000};
+    loadLeans();
     if (view === 'track') renderTrack();
     if (view === 'edges') renderEdges();
     if (view === 'tonight') renderTonight();
@@ -4433,6 +4456,7 @@ function renderTrack(){
   renderPknRecord();
   renderSimRecord();
   renderPropSimRecord();
+  renderLeans();
   renderHeldRecord();
   renderNovigPaper();
 
@@ -4698,6 +4722,90 @@ function renderPropSimRecord(){
     SIMS.map(s => { const x = live[s]; return `<tr><td class="l">${PS_LBL[s]}</td><td class="num">${x.n || 'none yet'}</td><td class="num">${x.n ? `${x.w}-${x.l}` : ''}</td><td class="num">${x.roi == null ? '' : `<b class="${x.roi >= 0 ? 'pos' : 'neg'}">${(x.roi >= 0 ? '+' : '') + (x.roi * 100).toFixed(1)}%</b>`}</td><td class="num">${x.ps[0] ? `${pc(x.ps[1] / x.ps[0], 0)}<small>${x.ps[1]} of ${x.ps[0]} players, target 75% to 85%</small>` : 'none yet'}</td></tr>`; }).join('')}</tbody>`;
   $('tpslnote').textContent = 'Left: the simple model\'s settled Kalshi shadow bets, both sides, from the first 3% price. Right: how often the Game Simulation\'s player ranges held (market-line version, the same engine as the 10,000-game simulation); about 80% is right. Both start on opening night (October 20) and are scored from the box score. The like-for-like score of single-prop simulations against the simple model is the live table above.';
 }
+// ── Model side vs the line (lean_record.py → nba-data leans/<day>.json; rules: docs/lean-tracking.md) ───────────────────────────────────────────
+// The side the model prefers (over when its calibrated chance is above 50%, no market blend) on EVERY priced prop, not just the 3% edges, graded against
+// the box score. Headline counts leans the roster guard did not hold; held ones are their own line. Nothing here is a bet. No hit rate is quoted under
+// LEAN_MIN settled leans in a cell. Intervals: Wilson for a rate; the gap to always-under resamples nothing, it uses the spread between games.
+const LEAN_MIN = 100, LEAN_TOL = 0.04;
+let LEANS = {}, leanClock = 'c', leanLoading = false;
+async function loadLeans(){
+  const d = TR && TR.data, days = d && d.leans_days ? Object.keys(d.leans_days) : [];
+  if (!H0 || !days.length || leanLoading) return;
+  leanLoading = true;
+  try {
+    const recent = new Date(Date.now() - 4 * 864e5).toISOString().slice(0, 10);
+    await Promise.all(days.filter(x => !LEANS[x] || x >= recent).map(async day => {
+      try {
+        const f = await fetch(`https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/leans/${day}.json`, {cache: 'no-store'}).then(r => r.ok ? r.json() : Promise.reject(r.status));
+        const C = Object.fromEntries(f.cols.map((c, i) => [c, i]));
+        LEANS[day] = f.rows.map(r => Object.fromEntries(Object.entries(C).map(([k, i]) => [k, r[i]])));
+      } catch (e) { /* keep what we had */ }
+    }));
+  } finally { leanLoading = false; }
+  if (view === 'track') renderLeans();
+}
+function wilson(w, n){
+  if (!n) return null;
+  const z = 1.96, p = w / n, d = 1 + z * z / n, c = p + z * z / (2 * n), m = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
+  return [(c - m) / d, (c + m) / d];
+}
+function leanStats(rows){
+  const S = rows.filter(r => r.res === 'W' || r.res === 'L'), n = S.length, win = r => r.res === 'W';
+  const w = S.filter(win).length, und = S.filter(r => (r.side === 'U') === win(r)).length;
+  const M = S.filter(r => r.p_mkt != null && r.p_mkt !== .5), mw = M.filter(r => ((r.p_mkt > .5 ? 'O' : 'U') === r.side) === win(r)).length;
+  const by = {}; for (const r of S){ const g = by[r.game] || (by[r.game] = [0, 0]); g[0] += (win(r) ? 1 : 0) - ((r.side === 'U') === win(r) ? 1 : 0); g[1]++; }
+  const m = n ? (w - und) / n : 0, ss = Object.values(by).reduce((a, [D, k]) => a + (D - m * k) ** 2, 0), se = n ? Math.sqrt(ss) / n : null;
+  const pm = S.filter(r => r.p != null); 
+  return {n, w, l: n - w, hit: n ? w / n : null, ci: wilson(w, n), under: n ? und / n : null, mkt: M.length ? mw / M.length : null, nm: M.length, diff: n ? m : null, se,
+    pred: pm.length ? pm.reduce((a, r) => a + (r.side === 'O' ? r.p : 1 - r.p), 0) / pm.length : null, voids: rows.length - n};
+}
+const leanPct = (x, d = 1) => x == null ? '' : (x * 100).toFixed(d) + '%';
+const leanDiff = a => a.diff == null ? '' : `${a.diff >= 0 ? '+' : ''}${(a.diff * 100).toFixed(1)} pts${a.se ? `<small>±${(a.se * 196).toFixed(1)}</small>` : ''}`;
+function leanCell(a, hit){ return a.n < LEAN_MIN ? '<span class="muted" title="Too few graded leans to quote a rate">&ndash;</span>' : hit; }
+function leanVerdict(a){
+  if (a.n < LEAN_MIN) return pill('idle', 'collecting');
+  const lo = a.diff - 1.96 * a.se, hi = a.diff + 1.96 * a.se;
+  return lo > 0 ? pill('ok', 'ahead of always-under') : hi < 0 ? pill('warn', 'behind always-under') : pill('idle', 'no clear gap');
+}
+function renderLeans(){
+  if (!$('tleancard')) return;
+  const all = Object.values(LEANS).flat().filter(r => r.clock === leanClock), main = all.filter(r => !r.held), held = all.filter(r => r.held);
+  const A = leanStats(main);
+  const games = new Set(main.filter(r => r.res === 'W' || r.res === 'L').map(r => r.game)).size;
+  $('tleanstat').textContent = A.n ? `${A.w}-${A.l} · ${leanPct(A.hit)} on ${A.n.toLocaleString()} graded` : 'No leans graded yet';
+  $('tleansub').textContent = `The side the model prefers on every priced prop, graded against the box score. Not a bet: it is compared with taking the under every time and with the market's own side.`;
+  const kpi = (label, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2></div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const wait = `<span class="muted" style="font-size:16px">${A.n} of ${LEAN_MIN} graded</span>`;
+  $('tleank').innerHTML =
+    kpi('Model side', A.n < LEAN_MIN ? wait : `${A.w}-${A.l}`, A.n ? `${leanPct(A.hit)}${A.n >= LEAN_MIN && A.ci ? ` (${leanPct(A.ci[0], 0)} to ${leanPct(A.ci[1], 0)})` : ''} across ${games} ${games === 1 ? 'game' : 'games'}${A.voids ? `, ${A.voids} void` : ''}` : 'Nothing graded yet') +
+    kpi('Always the under', A.n < LEAN_MIN ? wait : leanPct(A.under), 'The same props, taking the under on all of them') +
+    kpi('Market side', A.n < LEAN_MIN ? wait : leanPct(A.mkt), A.nm ? `The side the price favors, on ${A.nm.toLocaleString()} props that have one` : 'No priced props yet') +
+    kpi('Verdict', leanVerdict(A), A.n < LEAN_MIN ? `${A.n} of ${LEAN_MIN} graded leans before the page makes a call.` : `Model side minus always-under: ${leanDiff(A).replace(/<[^>]+>/g, ' ')}`);
+  const empty = '<tbody><tr><td class="l"><p class="empty">No leans graded yet. They are logged before tip from the first poll after the change and graded after the game.</p></td></tr></tbody>';
+  const head = first => `<thead><tr><th class="l" scope="col">${first}</th><th scope="col">Graded</th><th scope="col">Model side</th><th scope="col" title="Taking the under on every one of these props">Always under</th><th scope="col" title="The side the price favors">Market side</th><th scope="col" title="Model side minus always-under, with its 95% range">Model minus under</th></tr></thead>`;
+  const row = (label, a) => `<tr><td class="l"><b>${label}</b></td><td class="num">${a.n.toLocaleString()}</td><td class="num">${a.n < LEAN_MIN ? `${a.w}-${a.l}` : `${a.w}-${a.l}<small>${leanPct(a.hit)}</small>`}</td><td class="num">${leanCell(a, leanPct(a.under))}</td><td class="num">${leanCell({n: a.nm}, leanPct(a.mkt))}</td><td class="num">${leanCell(a, leanDiff(a))}</td></tr>`;
+  const tbl = (id, first, groups) => { const rs = groups.map(([l, r]) => [l, leanStats(r)]).filter(([, a]) => a.n || a.voids); $(id).innerHTML = !main.length ? empty : head(first) + '<tbody>' + rs.map(([l, a]) => row(l, a)).join('') + '</tbody>'; };
+  tbl('tleans', 'Stat', [['All stats', main], ...MSTATS.map(s => [SLABEL[s], main.filter(r => r.stat === s)])]);
+  const zb = r => r.sd > 0 ? Math.abs(r.mu - r.line) / r.sd : null, bins = [[0, .1, 'Under 0.1'], [.1, .25, '0.1 to 0.25'], [.25, .5, '0.25 to 0.5'], [.5, 1, '0.5 to 1'], [1, 99, '1 or more']];
+  tbl('tleanb', 'Gap, in standard deviations', bins.map(([lo, hi, l]) => [l, main.filter(r => { const z = zb(r); return z != null && z >= lo && z < hi; })]));
+  const ps = r => r.side === 'O' ? r.p : 1 - r.p, bands = [[.5, .55, '50 to 55%'], [.55, .6, '55 to 60%'], [.6, .65, '60 to 65%'], [.65, 1.01, '65% or more']];
+  $('tleanc').innerHTML = !main.length ? empty : `<thead><tr><th class="l" scope="col">Model's chance of its side</th><th scope="col">Graded</th><th scope="col">Predicted</th><th scope="col">Hit</th><th scope="col" title="Verified when the hit rate is within 4 points of the prediction over ${LEAN_MIN}+ leans">Check</th></tr></thead><tbody>${
+    bands.map(([lo, hi, l]) => { const a = leanStats(main.filter(r => r.p != null && ps(r) >= lo && ps(r) < hi)); if (!a.n) return '';
+      const ok = a.n >= LEAN_MIN ? (Math.abs(a.hit - a.pred) <= LEAN_TOL ? pill('ok', 'verified') : pill('warn', 'off by ' + ((a.hit - a.pred) * 100).toFixed(0) + ' pts')) : pill('idle', 'collecting');
+      return `<tr><td class="l"><b>${l}</b></td><td class="num">${a.n.toLocaleString()}</td><td class="num">${leanPct(a.pred)}</td><td class="num">${leanCell(a, leanPct(a.hit))}</td><td>${ok}</td></tr>`; }).join('')}</tbody>`;
+  const mside = r => r.p_mkt == null || r.p_mkt === .5 ? null : (r.p_mkt > .5 ? 'O' : 'U');
+  tbl('tleano', 'Group', [['Model says over', main.filter(r => r.side === 'O')], ['Model says under', main.filter(r => r.side === 'U')],
+    ['Agrees with the market', main.filter(r => mside(r) && mside(r) === r.side)], ['Disagrees with the market', main.filter(r => mside(r) && mside(r) !== r.side)],
+    ['Held by the roster guard (not in the headline)', held]]);
+  // last season, for context (descriptive; that season was already used by the lean tests)
+  const B = LEANBT, o = B && B.overall;
+  $('tleanbtsub').textContent = o ? `2025-26 sportsbook lines, ${o.n.toLocaleString()} props over ${o.games} games, model fit on 2024-25. Descriptive only: that season was already used to test the model, so it is not a clean test and is never added to the live record. Ranges resample whole games.` : '';
+  $('tleanbt').innerHTML = !o ? '' : `<thead><tr><th class="l" scope="col">Stat</th><th scope="col">Props</th><th scope="col">Model side</th><th scope="col">Always under</th><th scope="col">Market side</th><th scope="col">Model minus under</th></tr></thead><tbody>${
+    [['All stats', o], ...Object.entries(B.by_stat).map(([s, v]) => [SLABEL[s] || s, v])].map(([l, v]) => `<tr><td class="l"><b>${l}</b></td><td class="num">${v.n.toLocaleString()}</td><td class="num">${leanPct(v.lean)}</td><td class="num">${leanPct(v.always_under)}</td><td class="num">${leanPct(v.market_side)}</td><td class="num">${v.lean_minus_under >= 0 ? '+' : ''}${(v.lean_minus_under * 100).toFixed(1)} pts<small>${v.lean_minus_under_ci ? `${(v.lean_minus_under_ci[0] * 100).toFixed(1)} to ${(v.lean_minus_under_ci[1] * 100).toFixed(1)}` : ''}</small></td></tr>`).join('')}</tbody>`;
+  const F = LEANBF, fg = F ? Object.keys(F.games).length : 0, fn = F ? F.rows.filter(r => !r[17] && (r[20] === 'W' || r[20] === 'L')).length : 0;
+  $('tleannote').textContent = `Over means the model's chance is above 50%, with no market blend. A push or a player who did not play is left out. Nothing is quoted under ${LEAN_MIN} graded leans, and props on teams the roster guard holds are counted on their own line. ${F ? `Before this record existed, ${fg} regular-season games were rebuilt from the Props Simulation record (points, rebounds, assists and 3-pointers, last look only): ${fn} graded leans not held by the roster guard, too few to quote. They are kept apart and never added here. ` : ''}Preseason games are scored apart and counted nowhere. The page's own Bet, Lean and Pass calls are a different thing: they depend on price, while this is only which side the model prefers.`;
+}
+$('tleanclk').addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (!b) return; leanClock = b.dataset.v; for (const x of $('tleanclk').children) x.setAttribute('aria-pressed', x === b); renderLeans(); });
 // ── Held by the roster guard (prop_sim_record.py record_held → track.json held_days): every prop the model priced on a team the guard holds, settled from the
 // box score against the model's side (the side it gives 50% or more) and the price. These are not bets: they never reach the season record, the GO / WATCH
 // verdicts or the 50-bet promotion counts (none of those read held_days), and no stake or payout is stored, so there is no profit number. The question

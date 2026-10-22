@@ -957,6 +957,14 @@ def shadow(root, day, board, now, polls):
         except Exception as e:
             rec['psim_err'] = str(e)[:120]
             traceback.print_exc(limit=2)
+        try:                                                    # the model's lean on every priced prop, edge or not (lean_record.py, docs/lean-tracking.md); never stops the ledger
+            import lean_record
+            lrows, lmeta = lean_record.log(board, now)
+            rec['leans'] = len(lrows)
+            day.record('leans', now, lrows, lmeta)
+        except Exception as e:
+            rec['leans_err'] = str(e)[:120]
+            traceback.print_exc(limit=2)
         try:                                                    # Pick'em of the Night: the legs the page would slip, locked at the first tip (pickem_record.py); never stops the ledger
             import pickem_record
             krows, kmeta = pickem_record.log(board, now)

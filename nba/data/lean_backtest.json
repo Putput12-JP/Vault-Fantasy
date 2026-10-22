@@ -1,0 +1,299 @@
+{
+ "about": "descriptive backtest series, see nba/scripts/build_lean_backtest.py",
+ "overall": {
+  "n": 5250,
+  "games": 320,
+  "lean": 0.5326,
+  "lean_ci": [
+   0.5155,
+   0.5506
+  ],
+  "always_under": 0.5316,
+  "always_over": 0.4684,
+  "market_side": 0.5443,
+  "lean_minus_under": 0.001,
+  "lean_minus_under_ci": [
+   -0.026,
+   0.0299
+  ],
+  "pct_over_leans": 0.5392
+ },
+ "by_stat": {
+  "3pm": {
+   "n": 781,
+   "games": 110,
+   "lean": 0.5378,
+   "lean_ci": [
+    0.5059,
+    0.5718
+   ],
+   "always_under": 0.5455,
+   "always_over": 0.4545,
+   "market_side": 0.5923,
+   "lean_minus_under": -0.0077,
+   "lean_minus_under_ci": [
+    -0.0569,
+    0.0404
+   ],
+   "pct_over_leans": 0.5608
+  },
+  "ast": {
+   "n": 816,
+   "games": 160,
+   "lean": 0.5613,
+   "lean_ci": [
+    0.5292,
+    0.5964
+   ],
+   "always_under": 0.5527,
+   "always_over": 0.4473,
+   "market_side": 0.5677,
+   "lean_minus_under": 0.0086,
+   "lean_minus_under_ci": [
+    -0.0438,
+    0.0653
+   ],
+   "pct_over_leans": 0.5502
+  },
+  "pa": {
+   "n": 392,
+   "games": 73,
+   "lean": 0.5,
+   "lean_ci": [
+    0.4426,
+    0.5553
+   ],
+   "always_under": 0.5561,
+   "always_over": 0.4439,
+   "market_side": 0.5363,
+   "lean_minus_under": -0.0561,
+   "lean_minus_under_ci": [
+    -0.1409,
+    0.0302
+   ],
+   "pct_over_leans": 0.5561
+  },
+  "pr": {
+   "n": 458,
+   "games": 73,
+   "lean": 0.5109,
+   "lean_ci": [
+    0.4682,
+    0.5551
+   ],
+   "always_under": 0.5262,
+   "always_over": 0.4738,
+   "market_side": 0.5521,
+   "lean_minus_under": -0.0153,
+   "lean_minus_under_ci": [
+    -0.081,
+    0.0506
+   ],
+   "pct_over_leans": 0.548
+  },
+  "pra": {
+   "n": 403,
+   "games": 69,
+   "lean": 0.5261,
+   "lean_ci": [
+    0.4738,
+    0.5789
+   ],
+   "always_under": 0.5533,
+   "always_over": 0.4467,
+   "market_side": 0.5203,
+   "lean_minus_under": -0.0273,
+   "lean_minus_under_ci": [
+    -0.0984,
+    0.0471
+   ],
+   "pct_over_leans": 0.4789
+  },
+  "pts": {
+   "n": 906,
+   "games": 274,
+   "lean": 0.5298,
+   "lean_ci": [
+    0.5,
+    0.5613
+   ],
+   "always_under": 0.5166,
+   "always_over": 0.4834,
+   "market_side": 0.5117,
+   "lean_minus_under": 0.0132,
+   "lean_minus_under_ci": [
+    -0.0347,
+    0.0646
+   ],
+   "pct_over_leans": 0.6181
+  },
+  "ra": {
+   "n": 583,
+   "games": 75,
+   "lean": 0.5472,
+   "lean_ci": [
+    0.5069,
+    0.5852
+   ],
+   "always_under": 0.5146,
+   "always_over": 0.4854,
+   "market_side": 0.5363,
+   "lean_minus_under": 0.0326,
+   "lean_minus_under_ci": [
+    -0.0166,
+    0.0836
+   ],
+   "pct_over_leans": 0.4511
+  },
+  "reb": {
+   "n": 911,
+   "games": 175,
+   "lean": 0.5236,
+   "lean_ci": [
+    0.4939,
+    0.5526
+   ],
+   "always_under": 0.5093,
+   "always_over": 0.4907,
+   "market_side": 0.5265,
+   "lean_minus_under": 0.0143,
+   "lean_minus_under_ci": [
+    -0.0304,
+    0.0563
+   ],
+   "pct_over_leans": 0.5038
+  }
+ },
+ "by_side": {
+  "over_leans": {
+   "n": 2831,
+   "games": 254,
+   "lean": 0.5009,
+   "lean_ci": [
+    0.4757,
+    0.5265
+   ],
+   "always_under": 0.4991,
+   "always_over": 0.5009,
+   "market_side": 0.5427,
+   "lean_minus_under": 0.0018,
+   "lean_minus_under_ci": [
+    -0.0486,
+    0.053
+   ],
+   "pct_over_leans": 1.0
+  },
+  "under_leans": {
+   "n": 2419,
+   "games": 257,
+   "lean": 0.5697,
+   "lean_ci": [
+    0.543,
+    0.5967
+   ],
+   "always_under": 0.5697,
+   "always_over": 0.4303,
+   "market_side": 0.5462,
+   "lean_minus_under": 0.0,
+   "lean_minus_under_ci": [
+    0.0,
+    0.0
+   ],
+   "pct_over_leans": 0.0
+  }
+ },
+ "by_agreement": {
+  "agrees_with_market": {
+   "n": 3183,
+   "games": 253,
+   "lean": 0.562,
+   "lean_ci": [
+    0.5421,
+    0.584
+   ],
+   "always_under": 0.5247,
+   "always_over": 0.4753,
+   "market_side": 0.562,
+   "lean_minus_under": 0.0374,
+   "lean_minus_under_ci": [
+    0.009,
+    0.0689
+   ],
+   "pct_over_leans": 0.5024
+  },
+  "disagrees_with_market": {
+   "n": 1937,
+   "games": 230,
+   "lean": 0.4848,
+   "lean_ci": [
+    0.458,
+    0.5117
+   ],
+   "always_under": 0.5452,
+   "always_over": 0.4548,
+   "market_side": 0.5152,
+   "lean_minus_under": -0.0604,
+   "lean_minus_under_ci": [
+    -0.1032,
+    -0.0172
+   ],
+   "pct_over_leans": 0.6004
+  }
+ },
+ "by_gap_tercile": {
+  "small": {
+   "n": 1747,
+   "games": 192,
+   "lean": 0.5175,
+   "lean_ci": [
+    0.4951,
+    0.5408
+   ],
+   "always_under": 0.5478,
+   "always_over": 0.4522,
+   "market_side": 0.5393,
+   "lean_minus_under": -0.0303,
+   "lean_minus_under_ci": [
+    -0.0683,
+    0.0098
+   ],
+   "pct_over_leans": 0.502
+  },
+  "middle": {
+   "n": 1750,
+   "games": 204,
+   "lean": 0.5234,
+   "lean_ci": [
+    0.4948,
+    0.553
+   ],
+   "always_under": 0.5326,
+   "always_over": 0.4674,
+   "market_side": 0.541,
+   "lean_minus_under": -0.0091,
+   "lean_minus_under_ci": [
+    -0.0535,
+    0.0355
+   ],
+   "pct_over_leans": 0.5737
+  },
+  "large": {
+   "n": 1753,
+   "games": 251,
+   "lean": 0.5568,
+   "lean_ci": [
+    0.5224,
+    0.5942
+   ],
+   "always_under": 0.5145,
+   "always_over": 0.4855,
+   "market_side": 0.5528,
+   "lean_minus_under": 0.0422,
+   "lean_minus_under_ci": [
+    -0.0043,
+    0.0942
+   ],
+   "pct_over_leans": 0.5419
+  }
+ }
+}
