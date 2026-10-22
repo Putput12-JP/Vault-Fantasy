@@ -838,6 +838,11 @@ def write_board(root, day, slate):
             board['sharp'] = sharp.build(board, day, root, slate.now, BTEAM, parse_event, kal_vol=KAL_VOL)
         except Exception:
             traceback.print_exc(limit=2)
+        try:                                            # shadow ledger of hypothetical copies of sharp accounts (docs/sharp-follow-prereg.md); logs only
+            import follow_ledger
+            follow_ledger.run(root, slate.now)
+        except Exception:
+            traceback.print_exc(limit=2)
         board.pop('_pkeys', None)
         try:                                            # one-time opening pass: early lines, Slate / Game Lines only
             from prop_board import opening
