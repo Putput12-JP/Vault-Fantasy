@@ -38,6 +38,7 @@ import smartstake_alts as A
 AHEAD_H = 36
 CONF = Path.home() / ".config" / "smartstake"
 SA, OFF, LAST = CONF / "firebase-sa.json", CONF / "publish.off", CONF / "publish.last"
+BT_LAST = CONF / "bankroll_bt.last"                               # mtime of the backtest record last written to Firestore
 COLL = "nbaAlts"
 
 
@@ -121,6 +122,18 @@ def main(argv):
             rest(token, "PATCH", f"{COLL}/_record", {"fields": {"asof": {"integerValue": str(rec["asof"])}, "json": {"stringValue": json.dumps(rec, separators=(",", ":"))}}})
     except Exception as e:                                         # never let the record break the prices
         print("combo record failed:", repr(e))
+    try:                                                           # Bankroll Builder: new picks, followed prices, settlement; then the backtest record if one exists
+        import bankroll_builder
+        rec = bankroll_builder.run()
+        if rec:
+            rest(token, "PATCH", f"{COLL}/_bankroll", {"fields": {"asof": {"integerValue": str(rec["asof"])}, "json": {"stringValue": json.dumps(rec, separators=(",", ":"))}}})
+        bt = bankroll_builder.BT_RECORD
+        if bt.exists() and (not BT_LAST.exists() or BT_LAST.read_text().strip() != str(int(bt.stat().st_mtime))):
+            body = bt.read_text()
+            rest(token, "PATCH", f"{COLL}/_bankroll_bt", {"fields": {"asof": {"integerValue": str(json.loads(body).get("asof", 0))}, "json": {"stringValue": body}}})
+            BT_LAST.write_text(str(int(bt.stat().st_mtime)))
+    except Exception as e:
+        print("bankroll record failed:", repr(e))
 
 
 if __name__ == "__main__":
