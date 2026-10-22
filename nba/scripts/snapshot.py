@@ -559,6 +559,10 @@ class Injuries:
 
 # ── day folder: diff against the last value per key ─────────────────────────────────────────
 WIRE_SRC = ('injuries', 'lineups')
+# Files in the day folder that are NOT {t,k,v} change logs: polls and the two trade tapes, plus the three fast_poll.py
+# writes (a quote log, a trade tape and a poll log). Day() replays every other .jsonl, so one of these slipping in
+# crashed the recorder on its second poll of every run.
+NOT_CHANGE_LOGS = ('polls.jsonl', 'tape.jsonl', 'tape_fast.jsonl', 'fastpm.jsonl', 'fastpoll.jsonl')
 
 
 class Day:
@@ -578,10 +582,14 @@ class Day:
                 for r in map(json.loads, open(os.path.join(self.dir, f))):
                     self.known.add((r['src'], r['k']))
                     self.meta[r['src']][r['k']] = r
-            elif f.endswith('.jsonl') and f not in ('polls.jsonl', 'tape.jsonl'):   # tape: trades, not a change log
+            elif f.endswith('.jsonl') and f not in NOT_CHANGE_LOGS:   # tapes: trades, not a change log
                 last, first, when = self.last.setdefault(src, {}), self.first[src], self.when[src]
                 for line in open(os.path.join(self.dir, f)):
-                    r = json.loads(line)
+                    try:
+                        r = json.loads(line)
+                        r['k'], r['t'], r['v']
+                    except (ValueError, KeyError, TypeError):    # a torn or foreign row skips itself, it never stops the poll
+                        continue
                     when[r['k']] = r['t']
                     self.hist[src][r['k']].append(r['t'])
                     self.t0.setdefault(src, r['t'])
