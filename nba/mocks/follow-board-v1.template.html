@@ -1,0 +1,136 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Follow board and Wallets mock</title>
+<style>
+:root{--bg:#1a1a1a;--surface:#252525;--raised:#333;--border:#2f2f2f;--border2:#3a3a3a;--fg:#d8d8d8;--fg2:#999;--fg3:#6a6a6a;--up:#4ade80;--down:#f87171;--warn:#fbbf24;--blue:#93c5fd;--mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+--proven:#4ade80;--probable:#93c5fd;--watching:#fbbf24;--dull:#f87171;--ease-out:cubic-bezier(.23,1,.32,1);--ease-rail:cubic-bezier(.65,0,.35,1);--ease-spring:cubic-bezier(.34,1.56,.64,1)}
+@media (prefers-color-scheme:light){:root{--bg:#f4f4f2;--surface:#fff;--raised:#ececea;--border:#e3e3e0;--border2:#d6d6d2;--fg:#1c1c1c;--fg2:#5d5d5a;--fg3:#8a8a86;--up:#15803d;--down:#b91c1c;--warn:#a16207;--blue:#1d4ed8;--proven:#15803d;--probable:#1d4ed8;--watching:#a16207;--dull:#b91c1c}}
+*{box-sizing:border-box}body{margin:0;padding:20px 16px 56px;background:var(--bg);color:var(--fg);font:14px/1.5 'Geist',system-ui,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;display:grid;gap:16px}h1{font-size:20px;margin:0;letter-spacing:-.02em}.sub{color:var(--fg2);font-size:13px;margin:2px 0 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:22px;overflow:hidden}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.vseg{position:relative;display:inline-flex;max-width:100%;overflow-x:auto;scrollbar-width:none;gap:2px;padding:3px;background:var(--raised);border-radius:15px}.vseg button{all:unset;position:relative;z-index:1;cursor:pointer;height:32px;padding:0 14px;border-radius:12px;font-size:13px;font-weight:500;white-space:nowrap;color:var(--fg2);transition:color .15s ease}
+.vseg button.on{color:var(--fg)}.vseg .pill{position:absolute;top:3px;bottom:3px;border-radius:12px;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .4s var(--ease-rail),width .4s var(--ease-rail)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}.tile{padding:16px 20px;border-left:1px solid var(--border)}.tile:first-child{border-left:0}
+.k{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}.v{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.04em;margin:3px 0 1px;line-height:1.1}.v small{font-size:12px;color:var(--fg2);letter-spacing:0;font-weight:500;margin-left:5px}
+.mv{font-size:12.5px;color:var(--fg2)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--border)}
+.gh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:14px 20px;border-bottom:1px solid var(--border)}.gh b{font-size:16px;font-weight:600}.gh span{color:var(--fg2);font-size:12.5px}.gh .tip{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--fg2)}
+.row{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1.5fr) 118px 138px minmax(0,1.25fr);gap:14px;align-items:center;padding:13px 20px;border-bottom:1px solid var(--border);font-size:13px}.row:last-child{border-bottom:0}
+.row.head{padding-top:8px;padding-bottom:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.mk b{display:block;font-weight:600;font-size:14px}.mk small{color:var(--fg3);font-size:11.5px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{all:unset;cursor:pointer;display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 6px;min-height:26px;padding:3px 9px;box-sizing:border-box;max-width:100%;border-radius:9px;background:var(--raised);font-size:12px;color:var(--fg2);transition:transform var(--dur,500ms) var(--ease-spring)}
+.chip:active{transform:scale(.94);transition:transform 80ms ease-out}.chip b{color:var(--fg);font-weight:600}.chip .m{font-family:var(--mono);font-size:11.5px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--fg3)}.dot.proven{background:var(--proven)}.dot.probable{background:var(--probable)}.dot.watching{background:var(--watching)}.dot.dull{background:var(--dull)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}.num b{font-weight:600}.num small{display:block;color:var(--fg3);font-size:11.5px;font-family:'Geist',system-ui,sans-serif}
+.fl b{display:block;font-weight:600}.fl small{color:var(--fg3);font-size:11.5px}.fl.ok b{color:var(--up)}.fl.rest b{color:var(--blue)}
+.pos{color:var(--up)}.neg{color:var(--down)}
+.mob{display:none;color:var(--fg3);font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+.note{padding:12px 16px;border-radius:14px;background:var(--raised);font-size:13px;color:var(--fg2)}.note b{color:var(--fg)}
+.fine{font-size:11.5px;color:var(--fg3);margin:0}.empty{padding:28px 20px;color:var(--fg2);font-size:13.5px}
+/* wallets */
+.wrow{display:grid;grid-template-columns:96px minmax(0,1.3fr) 82px 82px 82px minmax(0,1.5fr) 64px;gap:12px;align-items:center;padding:11px 20px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer}
+.wrow.head{cursor:default;padding-top:8px;padding-bottom:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.wrow:not(.head):hover{background:rgba(127,127,127,.06)}
+.tr{display:inline-flex;align-items:center;gap:7px;font-weight:600;text-transform:capitalize}
+.id b{font-weight:600}.id small{display:block;color:var(--fg3);font-size:11.5px;font-family:var(--mono)}
+.sk{position:relative;height:22px}.sk .ax{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border2)}.sk .z{position:absolute;top:3px;bottom:3px;width:1px;background:var(--fg3)}
+.sk .ci{position:absolute;top:50%;height:4px;margin-top:-2px;border-radius:2px;background:var(--fg3);opacity:.55}.sk .pt{position:absolute;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%}
+.det{display:none;padding:4px 20px 16px;border-bottom:1px solid var(--border);background:rgba(127,127,127,.04)}.wr.open .det{display:block}
+.dg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}.dg h3{margin:12px 0 6px;font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}
+.dg p{margin:0 0 6px;font-size:13px;color:var(--fg2)}.dg p b{color:var(--fg)}
+.tx{display:grid;grid-template-columns:62px 1fr auto;gap:10px;font-size:12.5px;padding:6px 0;border-top:1px solid var(--border);color:var(--fg2)}.tx b{color:var(--fg);font-weight:600}.tx .m{font-family:var(--mono)}
+.sm{font-family:var(--mono);font-size:12px;color:var(--fg2)}.mo{display:none}
+.pg{display:none}.pg.on{display:grid;gap:16px}
+@media (max-width:760px){
+ .row,.row.head{grid-template-columns:1fr;gap:6px}.row.head{display:none}.mob{display:block;margin-bottom:2px}
+ .row .num,.row .fl{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:baseline}.row .num small,.row .fl small{display:inline}
+ .mo{display:block;color:var(--fg2);font-size:12px;margin-top:2px}.wrow,.wrow.head{grid-template-columns:84px minmax(0,1fr) 64px;gap:10px}.wrow.head{display:none}.wrow .hm{display:none}
+ .tiles{grid-template-columns:1fr 1fr}.tile{padding:11px 14px;border-left:0;border-top:1px solid var(--border)}.tile:nth-child(-n+2){border-top:0}.tile:nth-child(even){border-left:1px solid var(--border)}.tile .mv{display:none}.tile .v{font-size:21px}
+ .row .num small{margin-left:8px}.top h1{font-size:18px}
+}
+@media (prefers-reduced-motion:reduce){.vseg .pill,.chip{transition:none}}
+</style></head><body><div class="wrap">
+<div class="top"><div><h1>Sharp Price V2: Follow board and Wallets</h1><p class="sub" id="asof"></p></div>
+<div class="vseg" id="nav"><span class="pill"></span><button data-p="board" class="on">Follow board</button><button data-p="wallets">Wallets</button></div></div>
+
+<section class="pg on" id="p-board"></section>
+<section class="pg" id="p-wallets"></section>
+
+<div class="note"><b>What is real in this mock.</b> Every ticket, quote and wallet below comes from the recorder's stored data and the weekly ranking, as of the time above. Nothing is estimated. Prices are Polymarket's. Tiers come from the shrinkage ranking (cross-sport pooling is unproven, see the Wallets page). Sharp money is context, not a bet signal.</div>
+</div>
+<script>
+const D=__DATA__;
+const TEAM={atl:'Hawks',bos:'Celtics',bkn:'Nets',cha:'Hornets',chi:'Bulls',cle:'Cavaliers',dal:'Mavericks',den:'Nuggets',det:'Pistons',gsw:'Warriors',hou:'Rockets',ind:'Pacers',lac:'Clippers',lal:'Lakers',mem:'Grizzlies',mia:'Heat',mil:'Bucks',min:'Timberwolves',nop:'Pelicans',nyk:'Knicks',okc:'Thunder',orl:'Magic',phi:'76ers',phx:'Suns',por:'Trail Blazers',sac:'Kings',sas:'Spurs',tor:'Raptors',uta:'Jazz',was:'Wizards'};
+const $=s=>document.querySelector(s), ET=(t,o={hour:'numeric',minute:'2-digit'})=>new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',...o}).format(new Date(t*1000));
+const usd=v=>'$'+(v>=1000?(v/1000).toFixed(v>=10000?0:1)+'K':Math.round(v)), c=x=>x==null?'n/a':Math.round(x*100)+'c', pct=x=>(x>=0?'+':'')+(x*100).toFixed(1)+'%';
+const short=w=>w.slice(0,6)+'...'+w.slice(-4), nm=x=>x.who||short(x.w);
+const TI={proven:'Proven',probable:'Probable',watching:'Watching',dull:'Dull'};
+const ago=t=>{const m=Math.max(0,Math.round((D.now-t)/60));return m<60?m+' min ago':Math.floor(m/60)+' h '+(m%60)+' min ago'};
+$('#asof').textContent='Data as of '+ET(D.now,{weekday:'short',hour:'numeric',minute:'2-digit'})+' ET. Polymarket NBA game markets only.';
+let tiers='strong';
+function mkLabel(i){const t=i.type; if(t==='moneyline')return i.side+' to win'; if(t==='spreads')return i.side+' '+(i.q.match(/\(([-+]?[\d.]+)\)/)||[])[0]?.replace('(','').replace(')','');
+ return i.side+' '+(i.q.match(/[\d.]+$/)||[''])[0]}
+function mkKind(i){return {moneyline:'Moneyline',spreads:'Spread',totals:'Total'}[i.type]}
+function follow(i){const n=i.now; if(!n||n.ask==null)return {cls:'',a:'No quote',b:'market has no ask'};
+ const gap=Math.round((n.ask-i.vw)*100);
+ if(n.ask<=i.vw+1e-9)return {cls:'ok',a:'Ask '+c(n.ask)+(gap<0?' beats':' matches')+' their '+c(i.vw),b:gap<0?'fillable now, '+Math.abs(gap)+'c under their price':'fillable now at their price'};
+ return {cls:'rest',a:'Rest a bid at '+c(i.vw),b:'ask is '+gap+'c above; fills only if it comes back'}}
+function board(){
+ const want=tiers==='strong'?['proven','probable']:['proven','probable','watching'];
+ let games=D.games.map(g=>({...g,items:g.items.map(i=>{const ws=i.wallets.filter(w=>want.includes(w.tier)),u=ws.reduce((a,w)=>a+w.usd,0);return {...i,wallets:ws,usd:u,vw:u?ws.reduce((a,w)=>a+w.usd*w.px,0)/u:0}}).filter(i=>i.wallets.length)})).filter(g=>g.items.length);
+ const tk=games.reduce((a,g)=>a+g.items.reduce((b,i)=>b+i.wallets.length,0),0), net=games.reduce((a,g)=>a+g.items.reduce((b,i)=>b+i.usd,0),0);
+ const R=D.rec;
+ let h=`<div class="card"><div class="tiles">
+ <div class="tile"><div class="k">Tickets from ranked wallets</div><div class="v">${tk}<small>${games.length} games</small></div><div class="mv">$1,000+ taker tickets, not yet tipped</div></div>
+ <div class="tile"><div class="k">Ranked money seen</div><div class="v">${usd(net)}</div><div class="mv">${tiers==='strong'?'Proven and probable':'Proven, probable and watching'}</div></div>
+ <div class="tile"><div class="k">Detection delay</div><div class="v">n/a</div><div class="mv">Fast poll not live yet; the main poll is 5 to 15 min</div></div>
+ <div class="tile"><div class="k">Follow record (paper)</div><div class="v">${R.fwd_graded_games}<small>of ${R.need} games</small></div><div class="mv">First look ${R.first_look}. ${R.sharp_events} sharp events logged, all backfill</div></div></div></div>
+ <div class="card"><div class="bar"><div><b>Tonight and tomorrow</b><p class="fine">Each row is one side of one market. Follow price = a resting bid at the wallets' average entry (the maker test in the pre-registration).</p></div>
+ <div class="vseg" id="tseg"><span class="pill"></span><button data-t="strong" class="${tiers==='strong'?'on':''}">Proven and probable</button><button data-t="all" class="${tiers==='all'?'on':''}">Include watching</button></div></div>`;
+ if(!games.length)h+=`<div class="empty">No ranked wallet has put $1,000 or more on an NBA game that has not tipped. That is a normal state, not an error: only ${D.counts.proven+D.counts.probable} NBA wallets reach probable or better.</div>`;
+ games.forEach(g=>{const [a,b]=g.g.split('-').slice(1,3);
+  h+=`<div class="gh"><b>${TEAM[a]} at ${TEAM[b]}</b><span>${g.items.length} ${g.items.length>1?'sides':'side'} with ranked money</span>${new Set(g.items.filter(i=>i.type==='moneyline').map(i=>i.o)).size>1?'<span class="chip" style="height:22px;cursor:default;color:var(--warn)">Ranked money on both teams</span>':''}<span class="tip">Tip ${ET(g.tip,{weekday:'short',hour:'numeric',minute:'2-digit'})} ET</span></div>
+  <div class="row head"><div>Side</div><div>Ranked wallets</div><div>Net / entry</div><div>Now (bid / ask)</div><div>Follow price</div></div>`;
+  g.items.forEach(i=>{const f=follow(i),n=i.now,mv=n&&n.bid!=null&&n.ask!=null?((n.bid+n.ask)/2-i.vw):null;
+   h+=`<div class="row"><div class="mk"><span class="mob">Side</span><b>${mkLabel(i)}</b><small>${mkKind(i)}</small></div>
+   <div><span class="mob">Ranked wallets</span><div class="chips">${i.wallets.map(w=>`<button class="chip" data-w="${w.w}" title="${TI[w.tier]} wallet"><i class="dot ${w.tier}"></i><b>${nm(w)}</b><span class="m">${usd(w.usd)} at ${c(w.px)}</span></button>`).join('')}</div>
+    <p class="fine" style="margin-top:5px">First seen ${ago(i.wallets[0].t)}${i.wallets.some(w=>w.hedge)?'. A wallet here also bought the other side':''}</p></div>
+   <div class="num"><span class="mob">Net / entry</span><span><b>${usd(i.usd)}</b><small>avg entry ${c(i.vw)}</small></span></div>
+   <div class="num"><span class="mob">Now</span><span><b>${n?c(n.bid)+' / '+c(n.ask):'n/a'}</b><small>${mv==null?'':`mid ${mv>=0?'<span class="pos">':'<span class="neg">'}${mv>=0?'+':''}${(mv*100).toFixed(1)}c</span> vs entry`}</small></span></div>
+   <div class="fl ${f.cls}"><span class="mob">Follow price</span><span><b>${f.a}</b><small>${f.b}</small></span></div></div>`});});
+ h+=`</div>`;$('#p-board').innerHTML=h;
+ document.querySelectorAll('#tseg button').forEach(b=>b.onclick=()=>{tiers=b.dataset.t;board();rail($('#tseg'))});rail($('#tseg'));
+ document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{go('wallets');openW(b.dataset.w)});
+}
+let wf='all', openId=null;
+function skill(w){const lo=-0.02,hi=0.05,x=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
+ return `<div class="sk"><i class="ax"></i><i class="z" style="left:${x(0)}%"></i><i class="ci" style="left:${x(w.post-w.sd)}%;width:${x(w.post+w.sd)-x(w.post-w.sd)}%"></i><i class="pt dot ${w.tier}" style="left:${x(w.post)}%"></i></div>`}
+function raw(w,s){const r=w.raw[s];return r?`<span class="num"><b>${pct(r[1])}</b><small>${r[0]} games</small></span>`:'<span class="sm">none</span>'}
+function wallets(){
+ const L=D.wallets.filter(w=>wf==='all'?w.tier!=='dull':w.tier===wf), P=D.params, ne=D.counts;
+ let h=`<div class="card"><div class="bar"><div><b>NBA wallet ranking</b><p class="fine">${D.ranked} wallets scored. Skill is mean closing-line value per game after shrinking toward the league average and borrowing the NFL and CFB record. The bar shows skill plus or minus one standard deviation (axis -2% to +5%).</p></div>
+ <div class="vseg" id="wseg"><span class="pill"></span>${['all','proven','probable','watching','dull'].map(t=>`<button data-t="${t}" class="${wf===t?'on':''}">${t==='all'?'Ranked':TI[t]} ${t==='all'?ne.proven+ne.probable+ne.watching:ne[t]}</button>`).join('')}</div></div>
+ <div class="wrow head"><div>Tier</div><div>Wallet</div><div class="hm">NBA</div><div class="hm">NFL</div><div class="hm">CFB</div><div class="hm">Skill estimate</div><div>P(&gt;0)</div></div>`;
+ L.forEach(w=>{h+=`<div class="wr${openId===w.w?' open':''}" id="w-${w.w}"><div class="wrow" data-w="${w.w}"><div class="tr"><i class="dot ${w.tier}"></i>${TI[w.tier]}</div>
+  <div class="id"><b>${w.who||short(w.w)}</b><small>${w.who?short(w.w):'no pseudonym in our tapes'}${w.old?' . old label: '+w.old.replace(':',' '):''}</small><span class="mo">${Object.entries(w.raw).map(([s,r])=>s.toUpperCase()+' '+pct(r[1])+' ('+r[0]+')').join(' . ')}</span></div><div class="hm">${raw(w,'nba')}</div><div class="hm">${raw(w,'nfl')}</div><div class="hm">${raw(w,'cfb')}</div>
+  <div class="hm">${skill(w)}</div><div class="num"><b>${Math.round(w.p*100)}%</b></div></div>
+  <div class="det"><div class="dg"><div><h3>How sure</h3><p>Posterior skill <b>${pct(w.post)}</b> per game, give or take <b>${(w.sd*100).toFixed(1)}%</b>. Games on record: ${Object.entries(w.raw).map(([s,r])=>s.toUpperCase()+' '+r[0]).join(', ')}.</p>
+   <p>${(w.raw.nba?w.raw.nba[0]:0)<5?'<b>Few NBA games.</b> This tier leans on the other sports and on the league average.':'Enough NBA games for its own record to carry weight.'}</p>
+   ${w.old?`<p>Old hard label: <b>${w.old.replace(':',' ')}</b>.</p>`:'<p>No old label: it never reached t of 3.</p>'}</div>
+  <div><h3>Seen in our tapes</h3>${w.nev?`<p><b>${w.nev}</b> first tickets of $1,000+, ${usd(w.usd)} in total. Median <b>${w.hrs} h</b> before tip.</p>`+w.tix.map(t=>`<div class="tx"><span class="m">${ET(t.t,{month:'short',day:'numeric'})}</span><span><b>${t.side}</b> ${t.type==='totals'?'total':t.type==='spreads'?'spread':'moneyline'}</span><span class="m">${usd(t.usd)} at ${c(t.px)}${t.close!=null?', closed '+c(t.close):''}</span></div>`).join(''):'<p>No $1,000+ NBA game ticket in the days we have stored.</p>'}</div></div></div></div>`});
+ if(!L.length)h+='<div class="empty">No wallets in this tier.</div>';
+ h+=`</div><div class="card"><div class="bar"><div><b>How much to trust this</b></div></div><div class="tiles">
+  <div class="tile"><div class="k">Skill spread, NBA</div><div class="v">${(Math.sqrt(P.nba.tau2)*100).toFixed(2)}%</div><div class="mv">wallet-to-wallet, after removing noise</div></div>
+  <div class="tile"><div class="k">Skill that travels</div><div class="v">${D.rho.value.toFixed(2)}</div><div class="mv"><b>Interval ${D.rho.ci90[0].toFixed(2)} to ${D.rho.ci90[1].toFixed(2)}</b> on ${D.rho.pairs} pairs. Pooling is unproven.</div></div>
+  <div class="tile"><div class="k">Old rule</div><div class="v">1<small>NBA sharp wallet</small></div><div class="mv">of 968 seen, at t of 3</div></div></div></div>`;
+ $('#p-wallets').innerHTML=h;
+ document.querySelectorAll('#wseg button').forEach(b=>b.onclick=()=>{wf=b.dataset.t;wallets()});rail($('#wseg'));
+ document.querySelectorAll('.wrow:not(.head)').forEach(r=>r.onclick=()=>{const p=r.parentElement;openId=p.classList.toggle('open')?r.dataset.w:null});
+}
+function openW(id){const w=D.wallets.find(x=>x.w===id); if(!w)return; if(wf!=='all'&&wf!==w.tier)wf='all'; openId=id; wallets(); const e=document.getElementById('w-'+id); e&&e.scrollIntoView({block:'center'})}
+function rail(seg){const on=seg.querySelector('button.on'),p=seg.querySelector('.pill'); if(on&&p){p.style.left=on.offsetLeft+'px';p.style.width=on.offsetWidth+'px'}}
+function go(p){document.querySelectorAll('.pg').forEach(x=>x.classList.toggle('on',x.id==='p-'+p));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));rail($('#nav'));history.replaceState(null,'','#'+p)}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.p));
+board();wallets();go(location.hash==='#wallets'?'wallets':'board');
+addEventListener('hashchange',()=>go(location.hash==='#wallets'?'wallets':'board'));
+addEventListener('resize',()=>document.querySelectorAll('.vseg').forEach(rail));
+</script></body></html>
