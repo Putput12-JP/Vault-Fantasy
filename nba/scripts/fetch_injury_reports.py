@@ -15,6 +15,9 @@ covers a morning line and the report just before each tip slot.
 
 Needs pdfplumber, which is not stdlib: run with the project venv
   nba/.venv/bin/python nba/scripts/fetch_injury_reports.py 2025 2026
+  nba/.venv/bin/python nba/scripts/fetch_injury_reports.py --hours 11,13 2023 2024 2025 2026
+--hours limits the snapshot clock (default is every SNAPSHOT_HOURS). The 1pm bet
+uses 11 and 13.
 
 Writes (raw/ is gitignored)
   nba/raw/injuries/pdf/<date>_<HHMM>.pdf
@@ -73,6 +76,78 @@ def download(job):
     return 'blocked?' if all(c == '403' for c in codes) else None
 
 
+# Headers are one token ("GameDate") from the 2023-24 season on. 2021-22 and 2022-23
+# PDFs split them ("Game" "Date") and sit higher on the page, so a top<100 skip drops
+# every data row. The split path is only used when the one-token headers are absent.
+_SPLIT = {('Game', 'Date'): 'GameDate', ('Game', 'Time'): 'GameTime', ('Player', 'Name'): 'PlayerName',
+          ('Current', 'Status'): 'CurrentStatus'}
+
+
+def spaced_header(words):
+    """Column x positions from a split header row, or (None, None)."""
+    by_top = {}
+    for w in words:
+        by_top.setdefault(round(w['top']), []).append(w)
+    for top, ws in by_top.items():
+        texts = {w['text'] for w in ws}
+        if not {'Matchup', 'Team', 'Reason'} <= texts or 'Player' not in texts:
+            continue
+        ws = sorted(ws, key=lambda w: w['x0'])
+        hdr, i = {}, 0
+        while i < len(ws):
+            w = ws[i]
+            nxt = ws[i + 1]['text'] if i + 1 < len(ws) else None
+            name = _SPLIT.get((w['text'], nxt))
+            if name:
+                hdr[name] = w['x0']
+                i += 2
+                continue
+            if w['text'] in COLS:
+                hdr[w['text']] = w['x0']
+            i += 1
+        if all(c in hdr for c in COLS):
+            return hdr, top
+    return None, None
+
+
+def _page_rows(words, hdr, cutoff, skip_text, ctx):
+    edges = sorted((x, c) for c, x in hdr.items())
+    lines = {}
+    for w in words:
+        if w['top'] < cutoff or w['text'] in skip_text or w['text'].startswith('Page'):
+            continue
+        col = edges[0][1]
+        for x, c in edges:
+            if w['x0'] >= x - 3:
+                col = c
+        lines.setdefault(round(w['top']), {}).setdefault(col, []).append(w['text'])
+    page_rows = []
+    for top in sorted(lines):
+        ln = lines[top]
+        for c in ('GameDate', 'GameTime', 'Matchup', 'Team'):
+            if c in ln:
+                ctx[c] = ' '.join(ln[c])
+        if 'PlayerName' in ln and 'CurrentStatus' in ln:
+            st = ln['CurrentStatus'][0]
+            if st in STATUSES:
+                page_rows.append({'top': top, 'game_date': ctx.get('GameDate'), 'tip_et': ctx.get('GameTime'),
+                                  'matchup': ctx.get('Matchup'), 'team': ctx.get('Team'),
+                                  'player': ' '.join(ln['PlayerName']), 'status': st,
+                                  'reason': ' '.join(ln.get('Reason', []))})
+        elif 'Reason' in ln and page_rows is not None:
+            pass
+    # reason text wraps above/below its player row: attach to the nearest row
+    for top in sorted(lines):
+        ln = lines[top]
+        if 'Reason' in ln and 'PlayerName' not in ln and page_rows:
+            near = min(page_rows, key=lambda r: abs(r['top'] - top))
+            if abs(near['top'] - top) <= 12:
+                near['reason'] = (near['reason'] + ' ' + ' '.join(ln['Reason'])).strip()
+    for r in page_rows:
+        r.pop('top')
+    return page_rows
+
+
 def parse(path):
     import pdfplumber
     rows, ctx = [], {}
@@ -80,46 +155,15 @@ def parse(path):
         for page in pdf.pages:
             words = page.extract_words()
             hdr = {w['text']: w['x0'] for w in words if w['text'] in COLS}
-            if len(hdr) < len(COLS):
-                hdr = ctx.get('_hdr') or hdr
-            if len(hdr) < len(COLS):
-                continue
-            ctx['_hdr'] = hdr
-            edges = sorted((x, c) for c, x in hdr.items())
-            lines = {}
-            for w in words:
-                if w['top'] < 100 or w['text'] in COLS or w['text'].startswith('Page'):
+            if len(hdr) >= len(COLS):
+                ctx['_hdr'], ctx['_cut'], ctx['_skip'] = hdr, 100, COLS
+            else:
+                sh, htop = spaced_header(words)
+                if sh:
+                    ctx['_hdr'], ctx['_cut'], ctx['_skip'] = sh, htop + 0.5, ()
+                elif not (ctx.get('_hdr') and len(ctx['_hdr']) >= len(COLS)):
                     continue
-                col = edges[0][1]
-                for x, c in edges:
-                    if w['x0'] >= x - 3:
-                        col = c
-                lines.setdefault(round(w['top']), {}).setdefault(col, []).append(w['text'])
-            page_rows = []
-            for top in sorted(lines):
-                ln = lines[top]
-                for c in ('GameDate', 'GameTime', 'Matchup', 'Team'):
-                    if c in ln:
-                        ctx[c] = ' '.join(ln[c])
-                if 'PlayerName' in ln and 'CurrentStatus' in ln:
-                    st = ln['CurrentStatus'][0]
-                    if st in STATUSES:
-                        page_rows.append({'top': top, 'game_date': ctx.get('GameDate'), 'tip_et': ctx.get('GameTime'),
-                                          'matchup': ctx.get('Matchup'), 'team': ctx.get('Team'),
-                                          'player': ' '.join(ln['PlayerName']), 'status': st,
-                                          'reason': ' '.join(ln.get('Reason', []))})
-                elif 'Reason' in ln and page_rows is not None:
-                    pass
-            # reason text wraps above/below its player row: attach to the nearest row
-            for top in sorted(lines):
-                ln = lines[top]
-                if 'Reason' in ln and 'PlayerName' not in ln and page_rows:
-                    near = min(page_rows, key=lambda r: abs(r['top'] - top))
-                    if abs(near['top'] - top) <= 12:
-                        near['reason'] = (near['reason'] + ' ' + ' '.join(ln['Reason'])).strip()
-            for r in page_rows:
-                r.pop('top')
-            rows += page_rows
+            rows += _page_rows(words, ctx['_hdr'], ctx['_cut'], ctx['_skip'], ctx)
     return rows
 
 
@@ -134,10 +178,13 @@ def game_days(season):
 
 def main(argv):
     seasons = [int(a) for a in argv if a.isdigit()] or [2025, 2026]
+    hours = SNAPSHOT_HOURS
+    if '--hours' in argv:
+        hours = [int(x) for x in argv[argv.index('--hours') + 1].split(',')]
     os.makedirs(PDF, exist_ok=True)
     for s in seasons:
         days = game_days(s)
-        jobs = [(d, h) for d in days for h in SNAPSHOT_HOURS]
+        jobs = [(d, h) for d in days for h in hours]
         got, streak = [], 0
         for j in jobs:
             p = download(j)

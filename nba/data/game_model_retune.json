@@ -1,0 +1,256 @@
+{
+ "generated": "2026-10-13T15:18Z",
+ "retune": {
+  "verdict": "NOT SHIPPED",
+  "why": "neither spread nor total improved by 2 SE (t -1.45, 1.51); CT is not 0, and the paper bot stops trading NBA totals when CT is not 0",
+  "shipped_file": false,
+  "old_edge": [
+   "K",
+   "REP",
+   "CT",
+   "ALPHA"
+  ],
+  "new_edge": [],
+  "c_objective": "1pm injury report, tune games on a covered date",
+  "tune_dates": {
+   "2023": {
+    "dates": 212,
+    "covered": 211,
+    "frac": 0.995283
+   },
+   "2024": {
+    "dates": 208,
+    "covered": 207,
+    "frac": 0.995192
+   }
+  },
+  "test_games": {
+   "2025": {
+    "games": 1321,
+    "covered": 1316,
+    "frac": 0.996215
+   },
+   "2026": {
+    "games": 1322,
+    "covered": 1319,
+    "frac": 0.997731
+   }
+  },
+  "old_params": {
+   "K": 0.04,
+   "CARRY": 0.5,
+   "C": 0.5,
+   "REP": 0.4,
+   "B2B": 2.0,
+   "KP": 0.05,
+   "CT": 0.0,
+   "ALPHA": 0.06
+  },
+  "new_params": {
+   "K": 0.03,
+   "CARRY": 0.6,
+   "C": 0.5,
+   "REP": 0.4,
+   "B2B": 2.0,
+   "KP": 0.05,
+   "CT": 0.2,
+   "ALPHA": 0.06
+  },
+  "tune_old": [
+   10.525173,
+   14.605743
+  ],
+  "tune_new": [
+   10.510449,
+   14.593467
+  ],
+  "trace": [
+   {
+    "sweep": 0,
+    "param": "K",
+    "value": 0.03,
+    "margin_mae": 10.516101,
+    "total_mae": 14.605743,
+    "report_margin_mae": 10.572462
+   },
+   {
+    "sweep": 0,
+    "param": "CARRY",
+    "value": 0.6,
+    "margin_mae": 10.510449,
+    "total_mae": 14.608045,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 0,
+    "param": "C",
+    "value": 0.5,
+    "margin_mae": 10.510449,
+    "total_mae": 14.608045,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 0,
+    "param": "REP",
+    "value": 0.4,
+    "margin_mae": 10.510449,
+    "total_mae": 14.608045,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 0,
+    "param": "B2B",
+    "value": 2.0,
+    "margin_mae": 10.510449,
+    "total_mae": 14.608045,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 0,
+    "param": "KP",
+    "value": 0.05,
+    "margin_mae": 10.510449,
+    "total_mae": 14.608045,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 0,
+    "param": "CT",
+    "value": 0.2,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 0,
+    "param": "ALPHA",
+    "value": 0.06,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 1,
+    "param": "K",
+    "value": 0.03,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 1,
+    "param": "CARRY",
+    "value": 0.6,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 1,
+    "param": "C",
+    "value": 0.5,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 1,
+    "param": "REP",
+    "value": 0.4,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 1,
+    "param": "B2B",
+    "value": 2.0,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 1,
+    "param": "KP",
+    "value": 0.05,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 1,
+    "param": "CT",
+    "value": 0.2,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   },
+   {
+    "sweep": 1,
+    "param": "ALPHA",
+    "value": 0.06,
+    "margin_mae": 10.510449,
+    "total_mae": 14.593467,
+    "report_margin_mae": 10.566964
+   }
+  ],
+  "cmp": {
+   "spread_mae": {
+    "n": 2632,
+    "old": 11.162581,
+    "new": 11.184478,
+    "mean": -0.021896,
+    "se": 0.015128,
+    "t": -1.447455,
+    "measured": true
+   },
+   "total_mae": {
+    "n": 2632,
+    "old": 14.838636,
+    "new": 14.810921,
+    "mean": 0.027715,
+    "se": 0.018408,
+    "t": 1.505617,
+    "measured": true
+   },
+   "brier_ml": {
+    "n": 1395,
+    "old": 0.205604,
+    "new": 0.206507,
+    "mean": -0.000904,
+    "se": 0.00048,
+    "t": -1.883094,
+    "measured": true,
+    "old_strike": 0.205604,
+    "new_strike": 0.206507,
+    "strikes": 2790
+   },
+   "brier_spread": {
+    "n": 1301,
+    "old": 0.194601,
+    "new": 0.19531,
+    "mean": -0.000708,
+    "se": 0.000385,
+    "t": -1.84047,
+    "measured": true,
+    "old_strike": 0.190736,
+    "new_strike": 0.191698,
+    "strikes": 12657
+   },
+   "brier_total": {
+    "n": 1301,
+    "old": 0.221058,
+    "new": 0.220217,
+    "mean": 0.000842,
+    "se": 0.000428,
+    "t": 1.96884,
+    "measured": true,
+    "old_strike": 0.218935,
+    "new_strike": 0.218154,
+    "strikes": 11437
+   }
+  },
+  "unmeasured": [],
+  "paper_bot": "Not shipped, so the bot's inputs do not change. Had these parameters shipped, the daily model state would rebuild ratings from K, CARRY, CT and sigma from the new tune MAE. The candidate CT is not 0. Shipping it would make `nba_total.py` refuse every NBA total, because that bot does not read injury reports. It was not shipped."
+ }
+}
