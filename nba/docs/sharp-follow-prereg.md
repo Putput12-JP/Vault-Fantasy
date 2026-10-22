@@ -87,3 +87,13 @@ registered live test.
 - Close is a mid, not a trade, so a wide spread at the close adds noise to every follow equally.
 - Wallets are pseudonymous proxies. One person can run several, which makes games look more independent than they are.
 - NBA's sharp list is short (1 wallet passed t >= 3 of 36 tested), so most sharp-cohort events come from wallets that earned the label in NFL or CFB. That is the study's finding about skill travelling, and it is a risk here.
+
+## Addendum 1 (2026-10-22): faster polling, same rules
+
+`scripts/fast_poll.py` checks Polymarket game markets every minute while the recorder sleeps between its 5 to 15 minute polls,
+and writes `tape_fast.jsonl`, `fastpm.jsonl` and `fastpoll.jsonl` next to the main files. The ledger now counts a fast poll
+as a successful poll and a fast quote as a stored quote. **No rule, threshold or method above changes.** "The first successful
+Polymarket poll at or after the delay" simply lands closer to the delay (the +2 minute taker was unmeasurable at a 5 to 15 minute
+cadence). Effects to know when reading results: entries before this date are timed more coarsely and more of their taker follows
+are skipped as stale, maker fills are less of an undercount, and each event now carries `det`, how many seconds after the ticket
+we first saw it. Events and grades are not recomputed backwards.

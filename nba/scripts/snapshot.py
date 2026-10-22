@@ -1130,7 +1130,12 @@ def main(argv):
             if os.environ.get('GITHUB_OUTPUT'):
                 open(os.environ['GITHUB_OUTPUT'], 'a').write('handoff=true\n')
             return
-        time.sleep(max(30, wait - (time.time() - slate.now)))
+        until = time.time() + max(30, wait - (time.time() - slate.now))
+        if os.environ.get('NO_FAST_POLL'):
+            time.sleep(until - time.time())
+        else:                                           # check sharp accounts' tickets every minute while waiting (fast_poll.py)
+            import fast_poll
+            fast_poll.sleep_polling(root, until)
 
 
 if __name__ == '__main__':
