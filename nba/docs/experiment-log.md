@@ -276,6 +276,11 @@ backtest is in-sample. Only picks logged live from now on are evidence.**
   is a **shadow** for comparison and never the headline.
 - **Shadow log (never counted):** `model_only` = the model clears the price by 4+ points while the market says the price is worse than fair (edge < 0).
 - **Reading it:** monitoring only. Nothing is called good or bad before **100 settled picks** and a closing-line value that is positive by 2 SE. Changing a threshold starts a new record.
+- **One record (2026-10-22):** the replayed first nights are merged into the live record, each pick tagged `source: replay`; the page's Record counts live + replayed by default and has a
+  **Live only** switch. Only live picks count as evidence: the rules were chosen after seeing those nights. Merge rule (`--merge-replay`, idempotent): take replayed picks first seen
+  before the live tracker began (cutoff stored in the record); a replayed pick replaces a later live pick on the same player-game (first sighting wins, one pick per player per game).
+  The live tracker then follows and settles any replayed pick still open, like a live pick. Merged on 2026-10-22: 42 replayed picks (32 settled); 3 later live picks and 27 later live
+  shadow picks were replaced by the earlier replayed sightings.
 - **Backtest** (`--backtest`): the stored tape replayed poll by poll through the same code, with each poll's board rebuilt from the recorder's snapshots
   (nba-data branch) and the model files as they stood in git at that moment. Limits: the prop model's fitted parameters are the ones on hand, last refit 2026-10-09, before any
   regular-season game; poll cadence is the tape's (5 to 30 minutes, with gaps). Replayed picks are labelled and never merged into the live record.

@@ -293,25 +293,56 @@ def curve(ps):
     return out
 
 
-def summarize(S, extra=None):
-    P, SH = list(S["picks"].values()), list(S["shadow"].values())
+def _core(P, SH):
+    """The aggregates for one set of picks: headline, slices, curve, bankroll."""
     by = lambda f, ps=P: {k: agg([p for p in ps if f(p) == k]) for k in sorted({f(p) for p in ps}, key=str)}
     ebin = lambda p: "0-2%" if p["mk0"] < .02 else "2-4%" if p["mk0"] < .04 else "4-6%" if p["mk0"] < .06 else "6%+"
+    cv = curve(P)
+    return {"all": agg(P), "tier": by(lambda p: p["tier"]), "book": by(lambda p: p["book"]), "stat": by(lambda p: p["stat"]), "side": by(lambda p: p["side"]),
+            "kind": by(lambda p: "alt" if p["alt"] else "main"), "edge": by(ebin), "day": by(lambda p: et_day(p["tip"])),
+            "model": by(lambda p: "agrees" if p.get("agree") else "disagrees"), "held": by(lambda p: "held: " + p["held"] if p.get("held") else "no hold"),
+            "source": by(lambda p: "replayed" if p.get("source") == "replay" else "live"),
+            "shadow": {"model_only": agg([p for p in SH if p["kind"] == "model_only"])},
+            "curve": cv, "bankroll": {"start": BANKROLL0, "unit_usd": UNIT_USD, "flat": cv[-1][1] if cv else BANKROLL0, "kelly_shadow": cv[-1][2] if cv else BANKROLL0}}
+
+
+def summarize(S, extra=None):
+    """The record. Top level = every pick, live and replayed (a replayed pick carries source 'replay'); rec['live'] = the same aggregates for live picks only,
+    so the page can switch the headline between 'live + replayed first nights' and 'live only'."""
+    P, SH = list(S["picks"].values()), list(S["shadow"].values())
     keep = ("name", "pid", "team", "away", "home", "stat", "side", "line", "main", "alt", "book", "tier", "first", "tip", "odds0", "dec0", "decN", "pf0", "n0", "pm0", "mk0", "md0",
-            "res", "units", "clv", "kf", "agree", "held")
+            "res", "units", "clv", "kf", "agree", "held", "source")
     trim = lambda p: {k: p.get(k) for k in keep} | {"y": (p["legs"][0].get("y"))}
     full = sorted(P, key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]
     shadow_full = sorted((p for p in SH if p["kind"] == "model_only"), key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]   # so a slice click can show the plays behind the shadow row
-    cv = curve(P)
-    rec = {"all": agg(P), "tier": by(lambda p: p["tier"]), "book": by(lambda p: p["book"]), "stat": by(lambda p: p["stat"]), "side": by(lambda p: p["side"]),
-           "kind": by(lambda p: "alt" if p["alt"] else "main"), "edge": by(ebin), "day": by(lambda p: et_day(p["tip"])),
-           "model": by(lambda p: "agrees" if p.get("agree") else "disagrees"), "held": by(lambda p: "held: " + p["held"] if p.get("held") else "no hold"),
-           "shadow": {"model_only": agg([p for p in SH if p["kind"] == "model_only"])},
-           "curve": cv, "bankroll": {"start": BANKROLL0, "unit_usd": UNIT_USD, "flat": cv[-1][1] if cv else BANKROLL0, "kelly_shadow": cv[-1][2] if cv else BANKROLL0},
-           "capped": {kind: {why: len(v) for why, v in d.items()} for kind, d in (S.get("capped") or {}).items()},
-           "list": [trim(p) for p in full], "shadow_list": [trim(p) for p in shadow_full], "last": S.get("last")}
+    live = lambda ps: [p for p in ps if p.get("source") != "replay"]
+    rec = _core(P, SH)
+    rec.update({"live": _core(live(P), live(SH)), "replay": S.get("replay"),
+                "capped": {kind: {why: len(v) for why, v in d.items()} for kind, d in (S.get("capped") or {}).items()},
+                "list": [trim(p) for p in full], "shadow_list": [trim(p) for p in shadow_full], "last": S.get("last")})
     rec.update(dict(extra or {}, rules="v2"))
     return rec
+
+
+def merge_replay(S, R, cutoff=None):
+    """Fold a backtest state R into the live state S, so the record is one source of truth. Replayed picks are tagged source='replay' and keep their own
+    entry prices and times; only those first seen BEFORE the live tracker began (the cutoff) are taken, and a replayed pick replaces a later live pick on the same
+    player-game (first sighting wins; one pick per player per game). The live step then follows and settles any that are still open, exactly like a live pick.
+    Idempotent: the cutoff is stored, and a key already merged is skipped. Returns how many were added."""
+    rp = S.get("replay") or {}
+    if cutoff is None:
+        cutoff = rp.get("cutoff") or min((p["first"] for p in S["picks"].values() if p.get("source") != "replay"), default=int(time.time()))
+    added = dropped = 0
+    for store, src in ((S["picks"], R["picks"]), (S["shadow"], R["shadow"])):
+        for k, p in src.items():
+            if p["first"] >= cutoff or (store.get(k) or {}).get("source") == "replay":
+                continue
+            dropped += k in store                              # a later live sighting of the same player-game
+            store[k] = dict(p, source="replay")
+            added += 1
+    S["replay"] = dict(rp, cutoff=cutoff, merged_at=int(time.time()), picks=sum(1 for p in S["picks"].values() if p.get("source") == "replay"),
+                       dropped_live=rp.get("dropped_live", 0) + dropped, polls=R.get("polls") or rp.get("polls"))
+    return added
 
 
 # ── live ─────────────────────────────────────────────────────────────────────────────────────────
@@ -488,6 +519,17 @@ def main(argv):
             global BT_STATE, BT_RECORD
             BT_STATE, BT_RECORD = SS / f"bankroll_backtest_{tag}_picks.json", SS / f"bankroll_backtest_{tag}_record.json"
         return backtest(snap, days, tape, int(arg("--until", time.time())))
+    if "--merge-replay" in argv:                                   # one-time (idempotent): fold the stored backtest into the live record, tagged 'replay'
+        R, meta = json.loads(BT_STATE.read_text()), json.loads(BT_RECORD.read_text())
+        S = json.loads(STATE.read_text())
+        n = merge_replay(S, R)
+        S["replay"].update({"boards": meta["boards"], "days": meta["days"], "models": meta["models"], "polls": meta["polls"]})
+        STATE.write_text(json.dumps(S, separators=(",", ":")))
+        rec = summarize(S, {"asof": int(time.time()), "mode": "live"})
+        RECORD.write_text(json.dumps(rec, separators=(",", ":")))
+        a, l = rec["all"], rec["live"]["all"]
+        print(f"merged {n} replayed picks (cutoff {S['replay']['cutoff']}, {S['replay']['dropped_live']} later live duplicates replaced): {a['picks']} picks, {a['settled']} settled, {a['units']}u; live only: {l['picks']} picks")
+        return rec
     return run(dry="--dry" in argv)
 
 

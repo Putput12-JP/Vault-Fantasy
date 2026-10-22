@@ -59,6 +59,11 @@ unders +6.02u (**n=16**, the side split is the part most likely to be noise).
 Shadow (not bets): legs the model liked while the market priced them worse than fair: 96 logged, 53 settled, 34 won (64%, the model said 64%), +8.95u. That conflicts with v1's 33-leg result
 (48% won) because v2 no longer excludes roster-held legs. Both are small, correlated and unresolved; it is only a reason to keep logging the shadow.
 
+## Where the replayed picks live now
+
+The step-3 picks are merged into the live record on the page, tagged `replayed`, and the page has a Live only switch (see `nba/docs/experiment-log.md` section 12). The open ones from tonight's slate are
+followed and settled by the live tracker.
+
 ## What to expect
 
 About 20 picks per slate hit the cap, ranked first come. The live record starts at zero and counts only picks made from now on.
