@@ -1075,6 +1075,7 @@ table.cc-st small{display:block;font-weight:400;color:var(--fg3);font-size:11px}
 .pl-strip.bk-strip{grid-template-columns:repeat(6,minmax(0,1fr))}table.nt small.bk-m{display:none}
 @media(max-width:900px){.pl-strip.bk-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){#bk-root .bk-x{display:none}#bk-root table.nt{min-width:0}#bk-root table.nt td{white-space:normal}#bk-root table.nt .pp-av{display:none}#bk-root table.nt td b{white-space:nowrap}#bk-root table.nt td .pl b{white-space:normal}table.nt small.bk-m{display:block}}
+#bk-intro .bk-how{display:grid;gap:8px;padding-top:0}#bk-intro .bk-how p{margin:0;font-size:13.5px;line-height:1.55;color:var(--fg2);max-width:none}#bk-intro .bk-how p b{color:var(--fg);font-weight:600}
 .bk-sw{display:inline-block;width:14px;height:0;border-top:2px solid var(--up);vertical-align:middle;margin:0 4px 0 8px}.bk-sw.k{border-top:2px dashed var(--fg3)}
 .cc-note{margin:6px 0 0;font-size:12px;color:var(--fg3)}
 .cc-price{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:end;margin-top:10px}.cc-price label{display:grid;gap:3px;font-size:11px;color:var(--fg3)}
@@ -9447,7 +9448,7 @@ $('cc-root').addEventListener('click', e => {
 // Short-priced props (-110 to -220 at a sportsbook) priced at or better than the other venues' no-vig price. The band alone is not an edge. The model's chance is recorded, not a gate.
 // The picks, their prices, settlement and the record come from scripts/bankroll_builder.py on the owner's Mac (the prices are SmartStake's,
 // so like Combo Check this page is private: local ?ss, or the owner's Google login). The rules (v2) are frozen in docs/experiment-log.md section 12.
-let bk = {recF: 'settled', recN: 25, btN: 25};
+let bk = {recF: 'settled', recN: 25, btN: 25, intro: false};
 const bkU = x => x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(2)}u`;
 const bkP = (x, d = 1) => x == null ? '<span class="muted">none</span>' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`;
 const bkAm = p => ccF(ccAm(p));
@@ -9493,9 +9494,9 @@ function renderBankroll(){
   const R = window.__bankrollRecord, BT = window.__bankrollBacktest;
   const gate = window.__altsState === 'signin' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><button class="pv-ghost" type="button" data-bksignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>`
     : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-bksignin="1">Use another account</button></div>` : '';
-  const intro = `<section class="card pp-read"><p class="big">Bankroll Builder</p>
-    <p>One sportsbook bet (no parlays) priced <b>-110 to -220</b> at <b>or better than the market's fair price</b>: the no-vig price of three or more other venues quoting the same line. The price band by itself is not an edge (bet blindly, it lost about 7% on the first nights); the edge is getting a price the rest of the market says is fair or better. Main and alt lines both count. Core = 4%+ better than fair. Our model's chance is recorded on every pick but does not pick the bets. Every pick is logged at the first price it qualifies, followed to tip, and graded flat 1 unit ($10) on a $1,000 paper bankroll.</p>
-    <p>Sportsbook prices via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Nothing here is proof of anything until <b>100 settled picks</b> and a closing-line value that is positive by two standard errors. Until then it is a record to watch, not a system to trust.</p>${gate}</section>`;
+  const intro = `${gate}<details class="card tfold" id="bk-intro"${bk.intro ? ' open' : ''}><summary><span class="tf-t"><b>Bankroll Builder</b><small>Sportsbook bets priced -110 to -220 at or better than the market's fair price. Flat 1 unit on a $1,000 paper bankroll. Not proof until 100 settled picks.</small></span></summary>
+    <div class="card-b bk-how"><p>One sportsbook bet (no parlays) priced <b>-110 to -220</b> at <b>or better than the market's fair price</b>: the no-vig price of three or more other venues quoting the same line. The price band by itself is not an edge (bet blindly, it lost about 7% on the first nights); the edge is getting a price the rest of the market says is fair or better. Main and alt lines both count. Core = 4%+ better than fair. Our model's chance is recorded on every pick but does not pick the bets. Every pick is logged at the first price it qualifies, followed to tip, and graded flat 1 unit ($10) on a $1,000 paper bankroll.</p>
+    <p>Sportsbook prices via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Nothing here is proof of anything until <b>100 settled picks</b> and a closing-line value that is positive by two standard errors. Until then it is a record to watch, not a system to trust.</p></div></details>`;
   if (!R || !R.all){
     $('bk-root').innerHTML = intro + `<section class="card"><div class="pp-tools"><h2>Record</h2></div><p class="pp-empty">${window.__altsState === 'ok' || SS_ON ? 'The record has not been written yet: it fills in after the next 5-minute refresh on the owner\'s Mac.' : 'The record is private, like the prices. Sign in with the owner\'s Google account to see it.'}</p></section>${bkBacktestHtml(BT)}`;
   } else {
@@ -9516,6 +9517,7 @@ function bkBacktestHtml(BT){
     <div class="nt-tw"><table class="nt"><thead><tr><th class="l bk-x">First seen</th><th class="l">Pick</th><th class="l">Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${rf.rows || `<tr><td class="l" colspan="5"><p class="empty">The rules made no picks in the replayed nights.</p></td></tr>`}</tbody></table></div>
     ${rf.more ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkmore="bt">Show ${Math.min(25, rf.n - bk.btN)} more</button></div>` : ''}</section>`;
 }
+$('bk-root').addEventListener('toggle', e => { if (e.target.id === 'bk-intro') bk.intro = e.target.open; }, true);
 $('bk-root').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('[data-bksignin]')){ ssSignIn(); return; }
