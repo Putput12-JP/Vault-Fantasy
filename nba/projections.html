@@ -1302,7 +1302,7 @@ button.ps-ar{cursor:pointer;border:1px solid transparent}button.ps-ar:hover{back
 .pv-day{display:flex;align-items:baseline;gap:10px;padding:8px 18px;background:var(--bg);border-top:1px solid var(--border);font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
 .pv-day b{color:var(--fg);font-weight:600}
 .pv-day span{margin-left:auto}
-.pv-more{padding:8px 18px;border-top:1px solid var(--border);font-size:11.5px;color:var(--fg3);text-align:center}
+.pv-tail{display:flex;justify-content:center;padding:10px 18px;border-top:1px solid var(--border)}
 .pv-bt{display:grid;grid-template-columns:minmax(0,1.7fr) repeat(5,minmax(0,.8fr)) 128px;gap:4px 14px;align-items:center;padding:11px 18px;border-top:1px solid var(--border);font-size:13px}
 .pv-bt.h{font-family:var(--font-mono);font-size:10.5px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;padding-block:9px;border-top:0}
 .pv-bt > span{font-variant-numeric:tabular-nums;min-width:0}
@@ -8320,10 +8320,12 @@ function pvDays(S){
   return out;
 }
 // The list shows five bets and scrolls for the rest: measure the first five rows (dividers included) instead of guessing a row height.
+let pvAllBets = false;
 function pvCapBets(){
   const box = document.querySelector('#pv-bets .pv-bets'); if (!box) return;
   box.style.maxHeight = '';
   const rows = box.querySelectorAll('.pv-bt:not(.h)');
+  if (pvAllBets){ box.style.maxHeight = 'none'; return; }
   if (rows.length > 5 && rows[4].offsetHeight) box.style.maxHeight = (rows[4].offsetTop + rows[4].offsetHeight) + 'px';
 }
 window.addEventListener('resize', pvCapBets);
@@ -8379,7 +8381,7 @@ function pvRenderBets(){
           <span><small class="k">Our call</small><span class="pv-vp ${b.call}" title="Edge at your price ${pvSg(b.edge)}">${b.call.toUpperCase()}</span></span>
           <span><small class="k">Result</small>${!R ? '<span class="muted">open</span>' : R.res === 'void' ? '<span class="muted">void, did not play</span>' : `<b class="${R.pl > 0 ? 'pos' : R.pl < 0 ? 'neg' : ''}">${R.res === 'won' ? 'Won' : R.res === 'lost' ? 'Lost' : 'Push'} ${pvMoney(R.pl)}</b><small>had ${fmt(R.y, 0)} ${R.y === 1 && PV_ONE[b.s] ? PV_ONE[b.s] : PV_NOUN[b.s]}</small>`}</span>
           <span class="acts">${pv.rows && pv.rows.some(r => pvKey(r) === b.k) ? `<button class="pv-ghost" type="button" data-open="${esc(b.k)}">Open</button>` : ''}<button class="pv-ghost" type="button" data-del="${esc(b.id)}" aria-label="Remove this bet">Remove</button></span></div>`; }).join('')).join('')}
-    </div>${S.length > 5 ? `<div class="pv-more">${S.length} bets, scroll for the rest</div>` : ''}</section>
+    </div>${S.length > 5 ? `<div class="pv-tail"><button class="pv-ghost" type="button" data-allbets="1" aria-expanded="${pvAllBets}">${pvAllBets ? 'Show fewer bets' : `Show all ${S.length} bets`}</button></div>` : ''}</section>
     <section class="card pv-sec"><div class="pv-sh"><h3>Where your edge is coming from</h3><p>The same numbers split by our call when you bet, where and when. Small groups swing a lot; read the closing-line value column first.</p></div>
       <div class="nt-tw"><table class="nt"><thead><tr><th class="l"></th><th>Bets</th><th>Record</th><th>Profit</th><th>Return</th><th>CLV</th><th>Beat close</th></tr></thead><tbody>
         ${sec('By our call when you bet', calls.map(([k, g]) => [CALL[k], g]))}${sec('By where', by(x => x.b.bk))}${sec('By when', by(x => pvWhen(x.b)))}
@@ -9202,6 +9204,7 @@ $('pv-bets').addEventListener('click', async e => {
   const t = e.target, o = t.closest('[data-open]'), d = t.closest('[data-del]');
   if (t.closest('[data-go]')){ e.preventDefault(); goView(t.closest('[data-go]').dataset.go); return; }
   if (o){ pvOpen(o.dataset.open); return; }
+  if (t.closest('[data-allbets]')){ pvAllBets = !pvAllBets; pvRenderBets(); return; }
   if (d){ pvBets = pvBets.filter(b => b.id !== d.dataset.del); pvSave(); pvShow(); return; }
   if (t.closest('[data-copy]')){
     const txt = JSON.stringify({v: 1, bets: pvBets, watch: pvW});
