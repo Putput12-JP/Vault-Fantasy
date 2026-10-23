@@ -300,7 +300,7 @@ def build_board(root, now):
         tix = []
         for e in sorted(evs, key=lambda e: -e['t'])[:8]:
             m = meta.get(e['k']) or {}
-            tix.append({'t': e['t'], 'tip': e['tip'], 'type': e['type'], 'line': e.get('line'), 'side': side_name(m, e['o']), 'usd': e['usd'], 'px': e['px'], 'g': e['g'], 'close': e.get('close'),
+            tix.append({'t': e['t'], 'tip': e['tip'], 'type': e['type'], 'line': e.get('line'), 'side': side_name(m, e['o']), 'o': e['o'], 'usd': e['usd'], 'px': e['px'], 'g': e['g'], 'close': e.get('close'),
                         **wallet_bets.ticket(summ, w, e['k'], e['o'])})
         hrs = sorted((e['tip'] - e['t']) / 3600 for e in evs)
         wl.append({'w': w, 'who': who.get(w), 'tier': v['tier'], 'raw': v['raw'], 'post': v['post'], 'sd': v['sd'], 'p': v['p'], 'old': v.get('old'),
