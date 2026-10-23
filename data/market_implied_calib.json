@@ -1,39 +1,40 @@
 {
  "markets": {
   "pass_yd": {
-   "bias_fit": 3.03,
-   "bias_raw": -3.29,
+   "bias_fit": 3.85,
+   "bias_raw": -2.45,
    "borrowed": true,
    "k": 0.45,
-   "n": 144
+   "n": 146
   },
   "rec_yd": {
    "bias_fit": 0.07,
-   "bias_raw": -3.57,
+   "bias_raw": -3.58,
    "borrowed": false,
    "k": 0.5,
-   "n": 1096
+   "n": 1105
   },
   "rush_yd": {
-   "bias_fit": -0.21,
-   "bias_raw": -7.14,
+   "bias_fit": 0.21,
+   "bias_raw": -7.31,
    "borrowed": false,
-   "k": 0.15,
-   "n": 386
+   "k": 0.1,
+   "n": 392
   }
  },
  "meta": {
   "method": "variance scale k on prop_model log-normal so implied mean is unbiased vs actuals at the closing two-way fair",
   "min_n": 150,
   "pooled_k": 0.45,
-  "pooled_n": 1626,
+  "pooled_n": 1643,
   "weeks": [
    "2026w1",
    "2026w2",
    "2026w3",
    "2026w4",
    "2026w5",
-   "2026w6"
+   "2026w6",
+   "2026w7"
   ]
  }
 }
