@@ -166,6 +166,11 @@ def main():
            'recorder': recorder(), 'inputs': inputs(), 'archive': arc}
     json.dump(out, open(os.path.join(DATA, 'data_health.json'), 'w'), separators=(',', ':'))
     track_snapshot()
+    try:                                                   # the Game Picks page and the Track Record's game section (build_game_picks.py)
+        import build_game_picks
+        build_game_picks.snapshot()
+    except Exception as e:
+        print('game picks snapshot failed (the page keeps the last one):', e)
     r = out['recorder']
     print(f"recorder: {len(r['days'])} days, {len(r['polls'])} polls in the last {POLL_DAYS} days, "
           f"status {'present' if r['status'] else 'missing'}")

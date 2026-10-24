@@ -1954,6 +1954,142 @@ th{font-weight:500}
   .tabbar button:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
 }
 @media (max-width:820px) and (prefers-reduced-motion:reduce){ .tabbar button,.lv-bk svg{transition:none} .tabbar button:active{transform:none} }
+/* ── Game Picks V2 (page #games and the Track Record card). Tokens only: it themes with the app (dark, light, high contrast). Lands last so it wins the cascade. ── */
+.gp2-hero{position:relative;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);border:1px solid rgb(var(--ink) / .07);border-radius:28px;background:var(--surface);overflow:hidden;
+  box-shadow:0 1px 0 rgb(var(--ink) / .04) inset,0 28px 48px -30px rgb(var(--shc) / calc(.75 * var(--shk)))}
+.gp2-hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(80% 110% at 0% 0%,rgb(var(--ink) / .055),transparent 62%)}
+.gp2-main,.gp2-side,.gp2-ctx{position:relative}
+.gp2-main{padding:30px 34px 28px;display:grid;gap:14px;align-content:start;min-width:0}
+.gp2-side{border-left:1px solid rgb(var(--ink) / .07);display:grid;grid-auto-rows:1fr;min-width:0}
+.gp2-stat{padding:18px 26px;border-top:1px solid rgb(var(--ink) / .07);min-width:0;display:grid;gap:7px;align-content:center}
+.gp2-stat:first-child{border-top:0}
+.gp2-k{margin:0;font:500 11px/1.2 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
+.gp2-big{margin:2px 0 0;font:600 78px/.9 var(--font-mono);letter-spacing:-.07em;font-variant-numeric:tabular-nums;color:var(--fg)}
+.gp2-big .dash{color:var(--fg3);font-weight:300;margin:0 .05em}
+.gp2-num{margin:0;font:600 30px/1 var(--font-mono);letter-spacing:-.045em;font-variant-numeric:tabular-nums;color:var(--fg)}
+.gp2-num small{font:500 12px var(--font-mono);color:var(--fg3);letter-spacing:0;margin-left:6px}
+.gp2-sub{margin:0;font-size:14px;color:var(--fg2);text-wrap:balance}
+.gp2-note{margin:0;font-size:12.5px;color:var(--fg3);text-wrap:pretty}
+.gp2-meter{height:3px;border-radius:2px;background:rgb(var(--ink) / .1);overflow:hidden;max-width:360px;margin-top:4px}
+.gp2-meter i{display:block;height:100%;background:var(--fg2);transform-origin:left;transform:scaleX(var(--p,0));transition:transform .9s cubic-bezier(.22,1,.36,1)}
+.gp2-sp{display:grid;gap:4px;margin-top:8px}
+.gp2-spark{display:block;width:100%;height:auto;max-height:88px;overflow:visible}
+.gp2-spark .z{stroke:rgb(var(--ink) / .2);stroke-dasharray:3 5}
+.gp2-spark .l{fill:none;stroke-width:2.25;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.gp2-spark .a{stroke:none;opacity:.13}
+.gp2-spark.up .l{stroke:var(--up)} .gp2-spark.up .a,.gp2-spark.up circle{fill:var(--up)}
+.gp2-spark.down .l{stroke:var(--down)} .gp2-spark.down .a,.gp2-spark.down circle{fill:var(--down)}
+.gp2-cap{display:flex;justify-content:space-between;font:500 11px var(--font-mono);color:var(--fg3)} .gp2-cap b{color:var(--fg2);font-weight:600}
+.gp2-form{display:grid;gap:7px;margin-top:6px}
+.gp2-fr{display:flex;align-items:center;gap:12px}
+.gp2-fr>span{width:50px;flex:none;font:500 10.5px var(--font-mono);color:var(--fg3);text-transform:uppercase;letter-spacing:.07em}
+.gp2-fr>div{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,12px);gap:3px;flex:1;min-width:0}
+.gp2-fr i{display:block;aspect-ratio:1;width:100%;border-radius:3px;background:rgb(var(--ink) / .1)}
+.gp2-fr i.w{background:var(--up)} .gp2-fr i.l{background:var(--down)} .gp2-fr i.p{background:var(--warn)}
+.gp2-rb{display:inline-flex;gap:1px;width:56px;height:6px;border-radius:3px;overflow:hidden;vertical-align:middle;background:rgb(var(--ink) / .08);margin-left:6px}
+.gp2-rb i{display:block;height:100%} .gp2-rb .w{background:var(--up)} .gp2-rb .l{background:var(--down)} .gp2-rb .p{background:var(--warn)}
+.gp2-vs{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;align-items:center;font-size:12.5px;color:var(--fg2)}
+.gp2-vs b{font:600 13px var(--font-mono);color:var(--fg)}
+.gp2-vs .gp2-rb{grid-column:1/-1;width:100%;margin:0;height:5px}
+.gp2-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.gp2-ctx{grid-column:1/-1;margin:0;display:flex;gap:12px;align-items:center;padding:13px 34px;border-top:1px solid rgb(var(--ink) / .07);font-size:12.5px;color:var(--fg3)}
+.gp2-ctx i{flex:none;width:18px;height:18px;border-radius:50%;border:1px solid rgb(var(--ink) / .25);display:grid;place-items:center;font:italic 600 11px/1 Georgia,serif;color:var(--fg2)}
+.gp2-ctx b{color:var(--fg2);font-weight:600}
+
+.gp2-sec{margin:34px 0 14px;display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.gp2-sec h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.025em}
+.gp2-sec p{margin:0;font-size:13px;color:var(--fg3)} .gp2-sec a{color:var(--fg2);text-decoration:underline;text-underline-offset:3px}
+.gp2-board{display:grid;gap:10px}
+.gp2-g{display:grid;grid-template-columns:132px minmax(0,1fr) minmax(0,344px);gap:24px;align-items:center;padding:20px 24px;border:1px solid rgb(var(--ink) / .07);border-radius:24px;background:var(--surface);
+  transition:border-color .2s ease,transform .25s cubic-bezier(.22,1,.36,1)}
+.gp2-g:hover{border-color:rgb(var(--ink) / .17);transform:translateY(-1px)}
+.gp2-anim .gp2-g{animation:gp2In .55s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(var(--i,0) * 55ms)}
+@keyframes gp2In{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.gp2-when{display:grid;gap:4px;align-content:center;justify-items:start}
+.gp2-when b{font:600 24px/1 var(--font-mono);letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.gp2-when span{font:500 11px var(--font-mono);color:var(--fg3);letter-spacing:.04em}
+.gp2-st{display:inline-flex;align-items:flex-start;gap:7px;margin-top:10px;font:500 12px/1.3 var(--font-sans);font-style:normal;color:var(--fg3)}
+.gp2-st::before{content:"";flex:none;margin-top:3px;width:7px;height:7px;border-radius:50%;border:1.5px solid currentColor}
+.gp2-st.lk{color:var(--fg)} .gp2-st.lk::before{background:currentColor}
+.gp2-st.warn{color:var(--warn)} .gp2-st.warn::before{background:currentColor}
+.gp2-st.live{color:var(--up)} .gp2-st.live::before{background:currentColor;animation:gp2Pulse 1.8s ease-in-out infinite}
+@keyframes gp2Pulse{50%{opacity:.3}}
+.gp2-mid{min-width:0}
+.gp2-teams{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-bottom:10px}
+.gp2-teams .tm{display:inline-flex;align-items:center;gap:9px;font:600 20px/1 var(--font-sans);letter-spacing:-.02em}
+.gp2-teams .at{font-size:13px;color:var(--fg3)}
+.gp2-flag{margin-left:4px;padding:3px 8px;border-radius:6px;border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);color:var(--warn);font:500 11px var(--font-sans);cursor:help}
+.gp2-gauge{display:block;width:100%;max-width:460px;height:auto;overflow:visible}
+.gp2-gauge .ax{stroke:rgb(var(--ink) / .2);stroke-width:2;stroke-linecap:round}
+.gp2-gauge .tk{stroke:rgb(var(--ink) / .16)} .gp2-gauge .zero{stroke:rgb(var(--ink) / .4)}
+.gp2-gauge .gap{fill:rgb(var(--ink) / .16)}
+.gp2-gauge .mk{fill:var(--surface);stroke:var(--fg2);stroke-width:2}
+.gp2-gauge .md{fill:var(--fg)}
+.gp2-gauge text{font:500 10px var(--font-mono);fill:var(--fg3)} .gp2-gauge text.tm{font:600 11px var(--font-mono);fill:var(--fg2);letter-spacing:.06em}
+.gp2-leg{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:6px;font:500 12px var(--font-mono);color:var(--fg3)}
+.gp2-leg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:-1px;box-sizing:border-box}
+.gp2-leg .md i{background:var(--fg)} .gp2-leg .mk i{border:2px solid var(--fg2)}
+.gp2-leg b{color:var(--fg);font-weight:600}
+.gp2-rt{display:grid;gap:8px;min-width:0}
+.gp2-picks{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gp2-pk{border:1px solid rgb(var(--ink) / .13);border-radius:18px;padding:13px 15px;display:grid;gap:6px;background:rgb(var(--ink) / .035);min-width:0;align-content:start}
+.gp2-pk.lean{border-style:dashed;background:transparent}
+.gp2-pk .k{font:500 10.5px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
+.gp2-pk .v{font:600 21px/1.1 var(--font-mono);letter-spacing:-.04em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gp2-pk .v.dim{color:var(--fg3);font-size:17px}
+.gp2-pk .s{font:500 11.5px/1.4 var(--font-mono);color:var(--fg3);white-space:normal;overflow-wrap:anywhere}
+.gp2-prob{position:relative;height:5px;border-radius:3px;background:rgb(var(--ink) / .16)}
+.gp2-prob i{position:absolute;inset:0 auto 0 0;width:calc(var(--p) * 1%);border-radius:3px;background:var(--fg)}
+.gp2-prob u{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--fg2);left:calc(var(--m) * 1%);text-decoration:none;box-shadow:0 0 0 2px var(--surface)}
+.gp2-now{margin:0;font:500 11.5px var(--font-mono);color:var(--fg3);text-align:right}
+.gp2-empty{display:grid;gap:4px;padding:28px;border:1px dashed rgb(var(--ink) / .16);border-radius:24px;color:var(--fg3);font-size:13px}
+.gp2-empty b{color:var(--fg2);font-weight:600;font-size:14px}
+
+.gp2-list{display:grid;gap:6px}
+.gp2-day{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:26px 4px 8px;font:600 14px var(--font-sans);letter-spacing:-.01em}
+.gp2-list .gp2-day:first-child,.gp2-day:first-child{margin-top:4px}
+.gp2-day span{font:500 11.5px var(--font-mono);color:var(--fg3)}
+.gp2-r{position:relative;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) 78px;gap:18px;align-items:center;padding:13px 18px 13px 24px;border:1px solid rgb(var(--ink) / .06);border-radius:18px;background:var(--surface);overflow:hidden;
+  transition:border-color .2s ease}
+.gp2-r:hover{border-color:rgb(var(--ink) / .15)}
+.gp2-r::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bar,rgb(var(--ink) / .12))}
+.gp2-r.w{--bar:var(--up)} .gp2-r.l{--bar:var(--down)} .gp2-r.p{--bar:var(--warn)}
+.gp2-r .m{min-width:0} .gp2-r .m b{display:block;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.gp2-r .m span{display:block;font:500 11.5px/1.4 var(--font-mono);color:var(--fg3);text-wrap:balance}
+.gp2-r .q{display:grid;gap:3px;min-width:0}
+.gp2-r .q .k{font:500 10px var(--font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}
+.gp2-r .q b{font:600 15px var(--font-mono);letter-spacing:-.03em;white-space:nowrap}
+.gp2-r .res{font:600 12px var(--font-mono);font-style:normal} .gp2-r .res.w{color:var(--up)} .gp2-r .res.l{color:var(--down)} .gp2-r .res.p{color:var(--warn)}
+.gp2-r .c{text-align:right;font:500 11.5px var(--font-mono);color:var(--fg3)}
+
+.gp2-how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:6px}
+.gp2-how>div{padding:18px 20px;border:1px solid rgb(var(--ink) / .07);border-radius:20px;background:var(--surface)}
+.gp2-how b{display:block;font:600 12px var(--font-mono);letter-spacing:.04em;color:var(--fg2);margin-bottom:8px}
+.gp2-how p{margin:0;font-size:13px;line-height:1.55;color:var(--fg3);text-wrap:pretty}
+.gp2-fine{margin:14px 4px 0;font-size:12px;line-height:1.6;color:var(--fg3);max-width:80ch;text-wrap:pretty}
+
+@media (max-width:1100px){.gp2-g{grid-template-columns:112px minmax(0,1fr);gap:18px 22px}.gp2-rt{grid-column:1/-1}.gp2-now{text-align:left}}
+@media (max-width:820px){
+  .gp2-hero{grid-template-columns:minmax(0,1fr)}
+  .gp2-side{border-left:0;border-top:1px solid rgb(var(--ink) / .07);grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:auto}
+  .gp2-stat{border-top:0;border-left:1px solid rgb(var(--ink) / .07);padding:18px 20px}.gp2-stat:first-child{border-left:0}
+  .gp2-main{padding:24px 22px 22px}.gp2-big{font-size:64px}.gp2-ctx{padding:13px 22px}
+  .gp2-how{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .gp2-side{grid-template-columns:minmax(0,1fr)}
+  .gp2-stat{border-left:0;border-top:1px solid rgb(var(--ink) / .07);padding:14px 20px;gap:5px}.gp2-stat:first-child{border-top:0}
+  .gp2-num{font-size:24px}
+  .gp2-main{padding:20px 20px 18px;gap:10px}.gp2-big{font-size:54px}
+  .gp2-sp,.gp2-main>.gp2-note{display:none}
+  .gp2-ctx{padding:12px 20px}.gp2-sec{margin:26px 4px 12px}
+  .gp2-g{grid-template-columns:minmax(0,1fr);padding:18px 18px 20px;gap:14px;border-radius:22px}
+  .gp2-when{display:flex;align-items:baseline;gap:6px 10px;flex-wrap:wrap}.gp2-st{margin:0 0 0 auto}
+  .gp2-teams .tm{font-size:18px}
+  .gp2-r{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 14px;padding:14px 16px 14px 22px}.gp2-r .m{grid-column:1/-1}.gp2-r .c{display:none}
+  .gp2-sec h2{font-size:20px}
+}
+@media (prefers-reduced-motion:reduce){.gp2-anim .gp2-g{animation:none}.gp2-g,.gp2-r,.gp2-meter i{transition:none}.gp2-g:hover{transform:none}.gp2-st.live::before{animation:none}}
 </style>
 
 <div class="app" id="app">
@@ -2084,6 +2220,28 @@ th{font-weight:500}
 
     <main id="v-track" hidden>
       <section class="card tscore" id="tscore" aria-label="Season record"></section>
+
+      <details class="card tfold" id="tgamecard" open>
+        <summary><span class="tf-t"><b>Game picks: spread and winner</b><small id="tgamestat">The Vault line's side on every regular-season game</small></span></summary>
+        <div class="card-b">
+          <p class="hint tplain" id="tgamesub"></p>
+          <div class="filters"><div class="seg" id="tgameclk" role="group" aria-label="Which look"><button type="button" data-v="f" aria-pressed="true">First look (the pick)</button><button type="button" data-v="c" aria-pressed="false">Last look before tip</button></div>
+            <div class="seg" id="tgamesrc" role="group" aria-label="Which games"><button type="button" data-v="all" aria-pressed="true">All games</button><button type="button" data-v="live" aria-pressed="false">Live only</button><button type="button" data-v="bf" aria-pressed="false">Rebuilt only</button></div></div>
+          <div id="tgamek"></div>
+          <h3 class="sim-h">Against the spread, by size of the edge</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tgameb"></table></div>
+          <h3 class="sim-h">Which side</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tgameo"></table></div>
+          <h3 class="sim-h">Winner picks, by the model's confidence</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tgamec"></table></div>
+          <h3 class="sim-h">By day</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tgamed"></table></div>
+          <h3 class="sim-h">Every game</h3>
+          <div class="gp2-list" id="tgamel"></div>
+          <div id="tgamemore" hidden></div>
+          <p class="hint" id="tgamenote"></p>
+        </div>
+      </details>
 
       <details class="card tfold" id="tleancard" open>
         <summary><span class="tf-t"><b>Model side vs the line</b><small id="tleanstat">The side the model prefers on every prop, edge or not</small></span></summary>
@@ -2346,6 +2504,14 @@ th{font-weight:500}
       </section>
     </main>
     <footer id="sfoot" hidden></footer>
+    <main id="v-games" hidden>
+      <div id="gp2hero"></div>
+      <div class="gp2-sec"><h2>Next up</h2><p>Written once, 4 hours before tip. Until then the lean is live and not recorded.</p></div>
+      <div class="gp2-board" id="gptonight"></div>
+      <div class="gp2-sec"><h2>Recent results</h2><p>First look, last three days. The full record is on <a href="#track" data-go="track">Track Record</a>.</p></div>
+      <div class="gp2-list" id="gpres"></div>
+    </main>
+    <footer id="gpfoot" hidden></footer>
     <main id="v-matchups" hidden></main>
     <footer id="mufoot" hidden></footer>
     <main id="v-sharp" hidden>
@@ -2448,6 +2614,7 @@ const H0 = /*HEALTH*/null;
 const PR = /*PRICING*/null;     // prop model: variance, calibration, blend weights (build_prop_model.py)
 const PB = /*BOARD*/null;       // props board: {live, example} (prop_board.py)
 const BT = /*BACKTESTS*/null;   // every test, its rule, result and verdict (build_backtests.py)
+const GPICKS = /*GPICKS*/null;   // data/game_picks.json: the game picks, live days and rebuilt days (build_game_picks.py)
 const LEANBT = /*LEANBT*/null, LEANBF = /*LEANBF*/null;   // lean backtest series and psim-derived backfill (build_lean_backtest.py, backfill_leans.py)
 const SIMCH = /*SIMCH*/null;      // simulation challenger results (build_sim_challenger.py), for Props Simulation
 const CTL = /*CONTROL*/null;       // Control Room: frozen models, dated tests, past verdicts (render_app.control)
@@ -2475,7 +2642,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'follow', 'wallets', 'tells', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
+const VIEWS = ['combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'games', 'sharp', 'follow', 'wallets', 'tells', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -2697,6 +2864,7 @@ const PAGES = [
   ]],
   ['Markets', [
     ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.', 'lines'],
+    ['Game Picks', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 10.5 12 7l3.5 3.5"/>'), 'The Vault line\'s side against the spread and straight up, written 4 hours before tip and graded in public.', 'games'],
     ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'One decision per prop: Bet, Lean or Pass, where to take it and why. Watch props for alerts.', 'props'],
     ['Props Table', SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>'), 'Every prop line and Kalshi ladder in one table, next to the projection, the blended fair price and the edge.', 'propboard'],
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.', 'sharp'],
@@ -2979,6 +3147,7 @@ function show(v){
   $('v-profile').hidden = $('profoot').hidden = v !== 'profile';
   $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
   $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
+  $('v-games').hidden = $('gpfoot').hidden = v !== 'games';
   $('v-matchups').hidden = $('mufoot').hidden = v !== 'matchups';
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
   $('v-follow').hidden = $('fbfoot').hidden = v !== 'follow';
@@ -3078,6 +3247,13 @@ function show(v){
     $('tname').textContent = v === 'lines' ? 'Game Lines' : 'Slate';
     $('tsub').textContent = v === 'lines' ? 'EVERY BOOK · KALSHI · POLYMARKET · VAULT LINE AS CONTEXT' : 'STARTING FIVES · WHO IS OUT · HOW EACH DEFENSE GUARDS EACH POSITION';
     renderSlate();
+    if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'games'){
+    $('tname').textContent = 'Game Picks';
+    $('tsub').textContent = 'SPREAD AND WINNER · LOCKED 4 HOURS BEFORE TIP · GRADED IN PUBLIC';
+    renderGamePicks();
     if (!boardTried) loadBoard();
     return;
   }
@@ -3965,6 +4141,7 @@ async function loadBoard(){
     renderChip();
     if (view === 'wire') renderWire();
     if (view === 'slate' || view === 'lines') renderSlate();
+    if (view === 'games') renderGamePicks();
     if (view === 'matchups') renderMatchups();
     if (view === 'sharp') renderSharp();
     if (view === 'follow') renderFollow();
@@ -4592,6 +4769,7 @@ function renderTrack(){
   renderPknRecord();
   renderSimRecord();
   renderPropSimRecord();
+  renderTrackGames();
   renderLeans();
   renderHeldRecord();
   renderNovigPaper();
@@ -6906,6 +7084,251 @@ function renderSlateRatings(){
 }
 $('sdays').addEventListener('click', e => { const b = e.target.closest('button[data-d]'), s2 = e.target.closest('button[data-ls]'); if (b){ sv.day = b.dataset.d; renderSlate(); } else if (s2){ sv.sort = s2.dataset.ls; renderSlate(); } });
 $('sgames').addEventListener('toggle', e => { const d = e.target.closest('details[data-g]'); if (d) sv.open[d.dataset.g] = d.open; }, true);
+
+// ── Game Picks (game_pick_record.py → nba-data gpicks/<day>.json + open.json; rules: docs/game-picks.md) ─────────────────────────────────────────
+// The Vault line's side against the spread and straight up, written ONCE when a game comes within 4 hours of tip and graded against the final. The first
+// look is the pick and never changes; the last look before tip is kept for closing-line value. Days before the recorder existed were rebuilt from the Game
+// Simulation rows already on the tape (backfill_game_picks.py): they are tagged, and the filter can leave them out. Not a bet signal: the game model adds
+// nothing the closing spread has not priced (docs/game-model.md), so this page measures it in public. No rate is quoted under GP_MIN graded picks.
+const GP_MIN = 100, GP_TOL = 0.04, GP_BE = 110 / 210;
+const GP_COLS = ['game', 'clock', 'margin', 'total', 'p_home', 'book', 'spread', 'ats_side', 'ats_edge', 'ats_px', 'ats_res', 'ats_units',
+  'ml_side', 'ml_px', 'ml_res', 'ml_units', 'ml_book', 'am', 'clv_pts', 'clv_p', 'src'];
+const GP_BOOKS = ['DraftKings', 'Pinnacle', 'FanDuel', 'BetMGM', 'bet365', 'Consensus'];       // same order as game_pick_record.BOOK_ORDER
+let GPD = {}, GPO = null, gpClock = 'f', gpSrc = 'all', gpLoading = false, gpTried = false, gpShow = 30;
+function gpAbsorb(days){                                                                       // union by game; the newer source replaces a game it already has
+  for (const [day, d] of Object.entries(days || {})){
+    const cur = GPD[day] || (GPD[day] = {games: {}, rows: []}), have = new Set(d.rows.map(r => r[0]));
+    cur.rows = cur.rows.filter(r => !have.has(r[0])).concat(d.rows);
+    Object.assign(cur.games, d.games);
+  }
+}
+if (GPICKS && GPICKS.cols && GPICKS.cols.join() === GP_COLS.join()) gpAbsorb(GPICKS.days);
+async function loadGamePicks(){
+  if (!H0 || gpLoading) return;
+  gpLoading = true; gpTried = true;
+  try {
+    const base = `https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/gpicks/`;
+    const days = [0, 1, 2, 3, 4].map(k => new Date(Date.now() - k * 864e5).toISOString().slice(0, 10));
+    const get = u => fetch(u, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
+    const [open, ...fs] = await Promise.all([get(base + 'open.json'), ...days.map(d => get(`${base}${d}.json`))]);
+    if (open && open.cols && open.cols.join() === GP_COLS.join()) GPO = open;
+    for (const f of fs) if (f && f.cols && f.cols.join() === GP_COLS.join()) gpAbsorb({[f.day]: {games: f.games, rows: f.rows}});
+  } finally { gpLoading = false; }
+  if (view === 'games') renderGamePicks();
+  if (view === 'track') renderTrackGames();
+}
+// one object per game: {day, gid, matchup, tip, away, home, as, hs, f: first look, c: last look}
+function gpGames(){
+  const out = [];
+  for (const [day, d] of Object.entries(GPD)){
+    const by = {};
+    for (const r of d.rows){ const o = {}; GP_COLS.forEach((c, i) => o[c] = r[i]); (by[o.game] || (by[o.game] = {}))[o.clock] = o; }
+    for (const [gid, g] of Object.entries(d.games)){
+      const c = by[gid]; if (!c || !c.f) continue;
+      out.push({day, gid, matchup: g[0], tip: g[1], away: g[2], home: g[3], as: g[4], hs: g[5], f: c.f, c: c.c || c.f});
+    }
+  }
+  return out.sort((a, b) => b.tip - a.tip);
+}
+// the picks for the chosen look, each carrying the closing-line value measured from the first look to the last
+function gpItems(src = gpSrc, clock = gpClock){
+  return gpGames().filter(g => src === 'all' || (src === 'bf') === (g.f.src === 'bf')).map(g => ({...g, r: {...g[clock], clv_pts: g.c.clv_pts, clv_p: g.c.clv_p}}));
+}
+const gpPickP = r => r.ml_side === 'H' ? r.p_home : 1 - r.p_home;
+const gpSideSp = r => r.ats_side === 'H' ? r.spread : -r.spread;                                // the spread the picked side takes (negative = favourite)
+function gpStats(items, kind){
+  const k = kind, S = items.filter(x => x.r[k + '_res']), n = (res) => S.filter(x => x.r[k + '_res'] === res).length;
+  const w = n('W'), l = n('L'), p = n('P'), g = w + l, U = S.filter(x => x.r[k + '_units'] != null);
+  const C = k === 'ats' ? S.filter(x => x.r.clv_pts != null) : [];
+  return {n: g, w, l, p, hit: g ? w / g : null, ci: wilson(w, g), units: U.reduce((a, x) => a + x.r[k + '_units'], 0), nu: U.length,
+    clv: C.length ? C.reduce((a, x) => a + x.r.clv_pts, 0) / C.length : null, nclv: C.length, clvPos: C.filter(x => x.r.clv_pts > 0).length,
+    pred: k === 'ml' && g ? S.filter(x => x.r.ml_res !== 'P').reduce((a, x) => a + gpPickP(x.r), 0) / g : null};
+}
+function gpFav(items){                                                                          // the market's favourite (by the posted spread) straight up, on the same games
+  const S = items.filter(x => x.r.ml_res && x.r.spread != null && x.r.spread !== 0), w = S.filter(x => (x.r.am > 0) === (x.r.spread < 0)).length;
+  return {n: S.length, w, hit: S.length ? w / S.length : null};
+}
+// ── Game Picks V2: the record as a scoreboard, each game as a model-against-the-market gauge ────────────────────────────────────────────────────
+const MINUS = '−', DASH = '–';
+const gpS = (x, d = 1) => x == null ? '' : (x > 0 ? '+' : x < 0 ? MINUS : '') + Math.abs(x).toFixed(d);
+const gpU = x => x == null ? '' : `<span class="${x >= 0 ? 'pos' : 'neg'}">${gpS(x, 2)}</span>`;
+const gpRate = (a, d = 1) => a.n < GP_MIN ? '<span class="muted" title="Too few graded picks to quote a rate">&ndash;</span>' : leanPct(a.hit, d);
+const gpRec = a => `${a.w}${DASH}${a.l}${a.p ? `${DASH}${a.p}` : ''}`;
+const gpSpTxt = (r, home, away) => r.spread == null ? '' : r.spread === 0 ? 'Pick' : r.spread < 0 ? `${home} ${MINUS}${Math.abs(r.spread)}` : `${away} ${MINUS}${r.spread}`;
+const gpDur = s => s >= 3600 ? `${Math.floor(s / 3600)}h ${Math.round((s % 3600) / 60)}m` : `${Math.max(1, Math.round(s / 60))}m`;
+const gpPx = s => s == null || s === '' ? '' : String(s).replace('-', MINUS);
+function gpHead(first, extra){ return `<thead><tr><th class="l" scope="col">${first}</th><th scope="col">Graded</th><th scope="col">Record</th><th scope="col">Hit</th>${extra}</tr></thead>`; }
+// won / lost / pushed as proportion, so a record is readable at a glance even when it is too small to quote a rate
+function gp2Bar(w, l, p = 0){
+  if (!w && !l && !p) return '';
+  return `<span class="gp2-rb" title="${w} won, ${l} lost${p ? `, ${p} pushed` : ''}">${w ? `<i class="w" style="flex:${w}"></i>` : ''}${p ? `<i class="p" style="flex:${p}"></i>` : ''}${l ? `<i class="l" style="flex:${l}"></i>` : ''}</span>`;
+}
+// cumulative units, game by game, in the order the games were played
+function gp2Spark(items){
+  const S = items.filter(x => x.r.ats_units != null).sort((a, b) => a.tip - b.tip);
+  if (S.length < 2) return '';
+  let c = 0; const pts = [0, ...S.map(x => (c += x.r.ats_units))];
+  const W = 640, H = 76, pad = 8, lo = Math.min(0, ...pts), hi = Math.max(0, ...pts), rng = (hi - lo) || 1;
+  const X = i => pad + i / (pts.length - 1) * (W - 2 * pad), Y = v => pad + (hi - v) / rng * (H - 2 * pad), n = pts.length - 1;
+  const d = pts.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(''), last = pts[n];
+  return `<div class="gp2-sp"><svg class="gp2-spark ${last >= 0 ? 'up' : 'down'}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Units on spread picks, game by game, ending at ${gpS(last, 2)}">
+    <line class="z" x1="${pad}" x2="${W - pad}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/><path class="a" d="${d}L${X(n).toFixed(1)} ${Y(0).toFixed(1)}L${X(0).toFixed(1)} ${Y(0).toFixed(1)}Z"/>
+    <path class="l" d="${d}"/><circle cx="${X(n).toFixed(1)}" cy="${Y(last).toFixed(1)}" r="4"/></svg>
+    <div class="gp2-cap"><span>Units, game by game</span><b>${gpS(last, 2)}</b></div></div>`;
+}
+// one square per graded game, oldest first
+function gp2Form(items){
+  const S = [...items].sort((a, b) => a.tip - b.tip).slice(-60);
+  const row = (label, f) => `<div class="gp2-fr"><span>${label}</span><div>${S.map(x => { const v = f(x.r); return `<i class="${v ? v.toLowerCase() : 'n'}" title="${esc(x.matchup)} ${x.as}${DASH}${x.hs}"></i>`; }).join('')}</div></div>`;
+  return S.length ? `<div class="gp2-form" role="img" aria-label="Result of every graded pick, oldest first">${row('Spread', r => r.ats_res)}${row('Winner', r => r.ml_res)}</div>` : '';
+}
+function gp2Hero(items){
+  const A = gpStats(items, 'ats'), M = gpStats(items, 'ml'), F = gpFav(items), rb = items.filter(x => x.f.src === 'bf').length, games = A.n + A.p;
+  const sub = !items.length ? 'Picks are written 4 hours before tip and graded after the final.'
+    : `${games} ${games === 1 ? 'game' : 'games'}${rb ? `, ${rb === items.length ? 'all' : rb} rebuilt from the tape` : ''}${A.p ? `, ${A.p} pushed` : ''}`;
+  const rate = A.n >= GP_MIN ? `${leanPct(A.hit)}${A.ci ? ` (${leanPct(A.ci[0], 0)} to ${leanPct(A.ci[1], 0)})` : ''}, break-even at ${DASH}110 is ${leanPct(GP_BE)}` : `${A.n} of ${GP_MIN} graded before a rate is quoted`;
+  const d = F.n ? M.w - F.w : 0, gap = !F.n ? '' : d === 0 ? `Level with the market favourite on ${F.n} games` : `${Math.abs(d)} ${Math.abs(d) === 1 ? 'win' : 'wins'} ${d < 0 ? 'behind' : 'ahead of'} the market favourite on ${F.n} games`;
+  const fav = F.n ? `<div class="gp2-vs"><span>Market favourite</span><b>${F.w}${DASH}${F.n - F.w}</b>${gp2Bar(F.w, F.n - F.w)}</div>` : '';
+  return `<section class="gp2-hero" aria-label="Season record">
+    <div class="gp2-main">
+      <p class="gp2-k">Against the spread</p>
+      <p class="gp2-big">${items.length ? `${A.w}<span class="dash">${DASH}</span>${A.l}` : `0<span class="dash">${DASH}</span>0`}</p>
+      <p class="gp2-sub">${sub}</p>
+      <div class="gp2-meter" role="img" aria-label="${rate}"><i style="--p:${Math.min(1, A.n / GP_MIN).toFixed(3)}"></i></div>
+      <p class="gp2-note">${rate}</p>
+      ${gp2Spark(items)}${gp2Form(items)}
+    </div>
+    <div class="gp2-side">
+      <div class="gp2-stat"><p class="gp2-k">Winner picks, same games</p>
+        ${M.n ? `<div class="gp2-vs"><span>Model</span><b>${M.w}${DASH}${M.l}</b>${gp2Bar(M.w, M.l)}</div>${fav}<p class="gp2-note">${gap}</p>` : '<p class="gp2-num">None yet</p><p class="gp2-note">Graded after the final</p>'}</div>
+      <div class="gp2-stat"><p class="gp2-k">Units at the posted price</p>
+        <div class="gp2-two"><div><p class="gp2-num">${A.nu ? gpU(A.units) : 'n/a'}</p><p class="gp2-note">Spread${A.nu ? `, ${A.nu} priced` : ''}</p></div>
+          <div><p class="gp2-num">${M.nu ? gpU(M.units) : 'n/a'}</p><p class="gp2-note">Winner${M.nu ? `, ${M.nu} priced` : ''}</p></div></div></div>
+      <div class="gp2-stat"><p class="gp2-k">Closing-line value</p><p class="gp2-num">${A.nclv ? gpS(A.clv, 2) : 'n/a'}<small>pts</small></p>
+        <p class="gp2-note">${A.nclv ? `${A.clvPos} of ${A.nclv} picks beat the last look` : 'Needs a pick and a last look'}</p></div>
+    </div>
+    <p class="gp2-ctx"><i aria-hidden="true">i</i><span><b>Context, not an edge.</b> Over 2,641 games the model adds nothing the closing line has not priced. This record measures it in public, win or lose.</span></p>
+  </section>`;
+}
+// where the model sits against the market, on one line: left = the road team favoured, right = the home team favoured
+function gp2Gauge(m, spread, home, away){
+  const k = spread == null ? null : -spread, big = Math.max(Math.abs(m), k == null ? 0 : Math.abs(k)), L = Math.min(20, Math.max(8, Math.ceil(big) + 3)), step = L > 12 ? 10 : 5;
+  const W = 440, H = 56, cx = W / 2, sx = (W - 56) / 2 / L, X = v => cx + Math.max(-L, Math.min(L, v)) * sx, y = 24;
+  const ticks = []; for (let v = -Math.floor(L / step) * step; v <= L; v += step) ticks.push(v);
+  const who = v => v > 0 ? home : v < 0 ? away : 'Even', edge = k == null ? null : Math.abs(m - k);
+  const lab = `Model: ${who(m)} by ${Math.abs(m).toFixed(1)}. ${k == null ? 'No line posted.' : `Market: ${who(k)} by ${Math.abs(k).toFixed(1)}. Gap ${edge.toFixed(1)} points toward ${who(m - k)}.`}`;
+  return `<svg class="gp2-gauge" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(lab)}">
+    <line class="ax" x1="${X(-L)}" x2="${X(L)}" y1="${y}" y2="${y}"/>${ticks.map(v => `<line class="${v ? 'tk' : 'zero'}" x1="${X(v)}" x2="${X(v)}" y1="${y - (v ? 4 : 7)}" y2="${y + (v ? 4 : 7)}"/><text x="${X(v)}" y="${H - 4}" text-anchor="middle">${Math.abs(v)}</text>`).join('')}
+    ${k == null ? '' : `<rect class="gap" x="${Math.min(X(m), X(k)).toFixed(1)}" y="${y - 6}" width="${Math.abs(X(m) - X(k)).toFixed(1)}" height="12" rx="6"/><circle class="mk" cx="${X(k).toFixed(1)}" cy="${y}" r="7"/>`}
+    <circle class="md" cx="${X(m).toFixed(1)}" cy="${y}" r="6"/>
+    <text x="0" y="10" text-anchor="start" class="tm">${away}</text><text x="${W}" y="10" text-anchor="end" class="tm">${home}</text></svg>
+    <div class="gp2-leg"><span class="md"><i></i>Model <b>${m === 0 ? 'even' : `${who(m)} ${Math.abs(m).toFixed(1)}`}</b></span>${k == null ? '<span>no line posted</span>' : `<span class="mk"><i></i>Line <b>${k === 0 ? 'even' : `${who(k)} ${Math.abs(k).toFixed(1)}`}</b></span><span>Gap <b>${edge.toFixed(1)}</b></span>`}</div>`;
+}
+function gpLine(g){                                                                              // game_pick_record.pick_line, from the board's books
+  const by = Object.fromEntries((((g.mk || {}).books) || []).map(r => [r[0], r])), order = [...GP_BOOKS, ...Object.keys(by).filter(b => !GP_BOOKS.includes(b))];
+  const sp = order.map(b => by[b]).find(r => r && r[1] != null), ml = order.map(b => by[b]).find(r => r && r[4] != null && r[4] !== '' && r[5] != null && r[5] !== '');
+  return sp ? {book: sp[0], spread: +sp[1], home_px: sp[2], away_px: sp[3], home_ml: ml ? ml[4] : null, away_ml: ml ? ml[5] : null} : null;
+}
+function gpFromRow(v){ return {margin: v[0], total: v[1], p_home: v[2], book: v[3], spread: v[4], home_px: v[5], away_px: v[6], home_ml: v[7], away_ml: v[8]}; }
+function gpPickOf(m){                                                                           // {ats: {side, edge, px}, ml: {side, p, px, mkt}} from {margin, p_home, spread, prices}
+  const e = m.spread == null ? 0 : m.margin + m.spread, ats = m.spread == null || e === 0 ? null : {side: e > 0 ? 'H' : 'A', edge: Math.abs(e), px: e > 0 ? m.home_px : m.away_px};
+  const side = m.p_home === .5 ? null : m.p_home > .5 ? 'H' : 'A', ph = amP(m.home_ml), pa = amP(m.away_ml), mh = ph && pa ? ph / (ph + pa) : null;
+  return {ats, ml: side ? {side, p: side === 'H' ? m.p_home : 1 - m.p_home, px: side === 'H' ? m.home_ml : m.away_ml, mkt: mh == null ? null : side === 'H' ? mh : 1 - mh} : null};
+}
+function gp2Chips(m, g, locked){
+  const p = gpPickOf(m), sp = a => a.side === 'H' ? m.spread : -m.spread, cls = locked ? '' : ' lean';
+  const ats = p.ats ? `<div class="gp2-pk${cls}"><span class="k">Spread</span><span class="v">${p.ats.side === 'H' ? g.home : g.away} ${gpS(sp(p.ats))}</span><span class="s">${gpPx(p.ats.px)} ${DASH} edge ${p.ats.edge.toFixed(1)}</span></div>`
+    : `<div class="gp2-pk${cls}"><span class="k">Spread</span><span class="v dim">${m.spread == null ? 'No line yet' : 'No pick'}</span><span class="s">${m.spread == null ? 'waiting for a posted spread' : 'model and line agree'}</span></div>`;
+  const ml = p.ml ? `<div class="gp2-pk${cls}"><span class="k">Winner</span><span class="v">${p.ml.side === 'H' ? g.home : g.away}</span>
+      <span class="gp2-prob" role="img" aria-label="${leanPct(p.ml.p, 0)} model${p.ml.mkt != null ? `, market ${leanPct(p.ml.mkt, 0)}` : ''}" style="--p:${(p.ml.p * 100).toFixed(1)};${p.ml.mkt != null ? `--m:${(p.ml.mkt * 100).toFixed(1)}` : ''}"><i></i>${p.ml.mkt != null ? '<u></u>' : ''}</span>
+      <span class="s">${leanPct(p.ml.p, 0)}${p.ml.mkt != null ? ` vs ${leanPct(p.ml.mkt, 0)} market` : ''}${p.ml.px ? ` ${DASH} ${gpPx(p.ml.px)}` : ''}</span></div>`
+    : `<div class="gp2-pk${cls}"><span class="k">Winner</span><span class="v dim">Even</span><span class="s">no side above 50%</span></div>`;
+  return `<div class="gp2-picks">${ats}${ml}</div>`;
+}
+function gp2Row(g, B, status, now, i){
+  const open = GPO && GPO.games[String(g.id)], L = gpLine(g), V = vaultLine(g, B, status), home = g.home, away = g.away, tn = t => (D.teams[t] && D.teams[t].name) || t;
+  const locked = open ? gpFromRow(open.f) : null, lockAt = g.tip - 4 * 3600, started = g.tip <= now;
+  const live = V ? {margin: -V.spread, total: V.total, p_home: V.win, ...(L || {spread: null})} : null, use = locked || live;
+  const st = locked ? (started ? ['live', 'In progress, pick locked'] : ['lk', open.ft ? `Locked ${clock(open.ft)} ${TZL}` : 'Pick locked'])
+    : started ? ['warn', 'No pick recorded'] : now >= lockAt ? ['warn', 'Locking at the next poll'] : ['', `Locks ${clock(lockAt)} ${TZL}, in ${gpDur(lockAt - now)}`];
+  const early = isEarly(g, B) ? '<span class="gp2-flag" title="The first 4 weeks of a season: the Vault line starts from last season\'s teams, so gaps against the market are larger and less trusted (docs/season-start-results.md)">Early season</span>' : '';
+  const now2 = locked && live && (Math.abs(live.margin - locked.margin) >= .3 || live.spread !== locked.spread) ? `<p class="gp2-now">Now: model ${live.margin > 0 ? home : away} ${Math.abs(live.margin).toFixed(1)}${live.spread == null ? '' : `, line ${gpSpTxt(live, home, away)}`}</p>` : '';
+  return `<article class="gp2-g" style="--i:${i}"><div class="gp2-when"><b>${clock(g.tip)}</b><span>${etFmt(g.tip, {weekday: 'short'})} ${TZL}</span><em class="gp2-st ${st[0]}">${st[1]}</em></div>
+    <div class="gp2-mid"><div class="gp2-teams"><span class="tm">${lgImg(away, 22)}${away}</span><span class="at">at</span><span class="tm">${lgImg(home, 22)}${home}</span>${early}</div>
+      ${use ? gp2Gauge(use.margin, use.spread, home, away) : `<p class="gp2-note">${g.season_type < 2 ? 'No Vault line in the preseason.' : 'Needs the game model state.'}</p>`}</div>
+    <div class="gp2-rt">${use ? gp2Chips(use, g, !!locked) : ''}${now2}</div></article>`;
+}
+function gp2Res(x){
+  const r = x.r, cls = r.ats_res ? r.ats_res.toLowerCase() : '', res = (v, u) => v ? `<em class="res ${v.toLowerCase()}">${u != null ? gpS(u, 2) : v}</em>` : '';
+  const ats = r.ats_side ? `${r.ats_side === 'H' ? x.home : x.away} ${gpS(gpSideSp(r))}` : '<span class="muted">no pick</span>';
+  const ml = r.ml_side ? (r.ml_side === 'H' ? x.home : x.away) : '<span class="muted">even</span>';
+  return `<div class="gp2-r ${cls}"><div class="m"><b>${esc(x.matchup)}</b><span>Final ${x.as}${DASH}${x.hs}${x.f.src === 'bf' ? ' &middot; rebuilt' : ''}</span><span>Model ${r.margin > 0 ? x.home : x.away} ${Math.abs(r.margin).toFixed(1)}${r.spread == null ? '' : ` &middot; line ${gpSpTxt(r, x.home, x.away)}`}</span></div>
+    <div class="q"><span class="k">Spread${r.ats_edge != null ? ` &middot; edge ${r.ats_edge.toFixed(1)}` : ''}</span><b>${ats}</b>${res(r.ats_res, r.ats_units)}</div>
+    <div class="q"><span class="k">Winner${r.ml_side ? ` &middot; ${leanPct(gpPickP(r), 0)}` : ''}</span><b>${ml}</b>${res(r.ml_res, r.ml_units)}</div>
+    <div class="c" title="Spread move toward our side, pick to last look">${r.clv_pts ? `CLV ${gpS(r.clv_pts)}` : ''}</div></div>`;
+}
+function gp2Days(items, limit){
+  let html = '', shown = 0;
+  for (const day of [...new Set(items.map(x => x.day))].sort().reverse()){
+    const it = items.filter(x => x.day === day).slice(0, Math.max(0, limit - shown)); if (!it.length) break;
+    const all = items.filter(x => x.day === day), a = gpStats(all, 'ats'), m = gpStats(all, 'ml'); shown += it.length;
+    html += `<h3 class="gp2-day">${etFmt(all[0].tip, {weekday: 'long', month: 'short', day: 'numeric'})}<span>${all.length} ${all.length === 1 ? 'game' : 'games'} &middot; spread ${gpRec(a)} &middot; winner ${m.w}${DASH}${m.l}</span></h3>${it.map(gp2Res).join('')}`;
+  }
+  return html;
+}
+// ── Track Record: the Game picks card
+function renderTrackGames(){
+  if (!$('tgamecard')) return;
+  if (!gpTried) loadGamePicks();
+  const all = gpItems(), items = all, A = gpStats(items, 'ats'), M = gpStats(items, 'ml');
+  $('tgamestat').textContent = items.length ? `ATS ${gpRec(A)} · winner ${M.w}${DASH}${M.l} · ${items.length} games` : 'No games graded yet';
+  $('tgamesub').textContent = `The Vault line's side against DraftKings' spread, and its pick to win straight up. Each pick is written once, 4 hours before tip, and graded on the final. Not a bet: the game model adds nothing the closing line has not priced. Nothing is quoted under ${GP_MIN} graded picks in a cell.`;
+  $('tgamek').innerHTML = gp2Hero(items);
+  const empty = '<tbody><tr><td class="l"><p class="empty">No game picks graded yet. They are written 4 hours before tip and graded after the final.</p></td></tr></tbody>';
+  const ats = items.filter(x => x.r.ats_res), bin = (lo, hi) => ats.filter(x => x.r.ats_edge >= lo && x.r.ats_edge < hi);
+  const row = (label, it, kind = 'ats') => { const a = gpStats(it, kind); if (!a.n && !a.p) return '';
+    return `<tr><td class="l"><b>${label}</b></td><td class="num">${a.n}</td><td class="num">${gpRec(a)} ${gp2Bar(a.w, a.l, a.p)}</td><td class="num">${gpRate(a)}</td>${kind === 'ats' ? `<td class="num">${a.nu ? gpU(a.units) : ''}</td><td class="num">${a.nclv ? gpS(a.clv, 2) : ''}</td>` : ''}</tr>`; };
+  const EX = '<th scope="col" title="1 unit at the posted price of the picked side">Units</th><th scope="col" title="Points the spread moved toward our side between the pick and the last look before tip">Avg CLV</th>';
+  $('tgameb').innerHTML = !ats.length ? empty : gpHead('Size of the edge (points)', EX) + '<tbody>' + [['All picks', ats], ...[[0, 1, 'Under 1'], [1, 2, '1 to 2'], [2, 3, '2 to 3'], [3, 5, '3 to 5'], [5, 99, '5 or more']].map(([lo, hi, l]) => [l, bin(lo, hi)])].map(([l, it]) => row(l, it)).join('') + '</tbody>';
+  const grp = [['Home team', ats.filter(x => x.r.ats_side === 'H')], ['Road team', ats.filter(x => x.r.ats_side === 'A')], ['Takes the favourite', ats.filter(x => gpSideSp(x.r) < 0)], ['Takes the underdog', ats.filter(x => gpSideSp(x.r) > 0)]];
+  $('tgameo').innerHTML = !ats.length ? empty : gpHead('The side taken', EX) + '<tbody>' + grp.map(([l, it]) => row(l, it)).join('') + '</tbody>';
+  const mls = items.filter(x => x.r.ml_res), bands = [[.5, .55, '50 to 55%'], [.55, .6, '55 to 60%'], [.6, .7, '60 to 70%'], [.7, 1.01, '70% or more']];
+  $('tgamec').innerHTML = !mls.length ? empty : `<thead><tr><th class="l" scope="col">Model's chance of its winner</th><th scope="col">Graded</th><th scope="col">Record</th><th scope="col">Predicted</th><th scope="col">Hit</th><th scope="col" title="Verified when the hit rate is within 4 points of the prediction over ${GP_MIN}+ picks">Check</th></tr></thead><tbody>${
+    bands.map(([lo, hi, l]) => { const a = gpStats(mls.filter(x => gpPickP(x.r) >= lo && gpPickP(x.r) < hi), 'ml'); if (!a.n) return '';
+      const ok = a.n >= GP_MIN ? (Math.abs(a.hit - a.pred) <= GP_TOL ? pill('ok', 'verified') : pill('warn', 'off by ' + ((a.hit - a.pred) * 100).toFixed(0) + ' pts')) : pill('idle', 'collecting');
+      return `<tr><td class="l"><b>${l}</b></td><td class="num">${a.n}</td><td class="num">${gpRec(a)} ${gp2Bar(a.w, a.l)}</td><td class="num">${leanPct(a.pred)}</td><td class="num">${gpRate(a)}</td><td>${ok}</td></tr>`; }).join('')}</tbody>`;
+  $('tgamel').innerHTML = items.length ? gp2Days(items, gpShow) : '<p class="empty">No game picks graded yet.</p>';
+  $('tgamemore').hidden = items.length <= gpShow;
+  $('tgamemore').innerHTML = `<button class="btn" id="tgamemorebtn" type="button">Show all ${items.length.toLocaleString()}</button>`;
+  const rb = all.filter(x => x.f.src === 'bf').length;
+  $('tgamenote').textContent = `The spread pick is the side the model gives an edge: its margin plus DraftKings' home spread, taken at DraftKings' price for that side (Pinnacle, FanDuel, BetMGM, bet365 or the consensus when DraftKings has none). The winner pick is the team the model gives better than even odds, at that book's moneyline. A price that was not stored is never filled in, so units cover only priced picks. A push is zero units. Closing-line value is the move of the spread between the pick and the last look before tip.${rb ? ` ${rb} games before the recorder existed were rebuilt from the Game Simulation rows and ESPN lines already on the tape: the model's margin there is the simulation's mean, within about 0.4 points of the exact figure, so a pick with an edge under 0.4 could differ. They are labelled and the filter can leave them out.` : ''}`;
+}
+$('tgameclk').addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (!b) return; gpClock = b.dataset.v; for (const x of $('tgameclk').children) x.setAttribute('aria-pressed', x === b); renderTrackGames(); });
+$('tgamesrc').addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (!b) return; gpSrc = b.dataset.v; for (const x of $('tgamesrc').children) x.setAttribute('aria-pressed', x === b); renderTrackGames(); });
+$('tgamemore').addEventListener('click', () => { gpShow = 1e6; renderTrackGames(); });
+
+// ── the page
+let gp2Seen = false;
+function renderGamePicks(){
+  if (!gpTried) loadGamePicks();
+  const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, status = statusFromBoard(B), settled = new Set(gpGames().map(g => g.gid));
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
+  const items = gpItems('all', 'f');
+  $('gp2hero').innerHTML = gp2Hero(items);
+  const G = [...(B.games || [])].filter(g => g.season_type >= 2 && g.tip > now - 5 * 3600 && g.tip < now + 30 * 3600 && !settled.has(String(g.id))).sort((a, b) => a.tip - b.tip);
+  $('gptonight').classList.toggle('gp2-anim', !gp2Seen && G.length > 0);
+  $('gptonight').innerHTML = G.length ? G.map((g, i) => gp2Row(g, B, status, now, i)).join('')
+    : `<div class="gp2-empty"><b>No regular-season games to pick right now.</b><span>Picks are written 4 hours before each tip. ${noGamesWhy()}</span></div>`;
+  if (G.length) gp2Seen = true;
+  const days = [...new Set(items.map(y => y.day))].sort().reverse();
+  const recent = items.filter(x => x.day >= (days[2] || days[days.length - 1]));
+  $('gpres').innerHTML = recent.length ? gp2Days(recent, 40) : '<div class="gp2-empty"><b>No game picks graded yet.</b><span>They are graded after the final.</span></div>';
+  $('gpfoot').innerHTML = `<div class="gp2-how">
+    <div><b>1 &middot; The model</b><p>The Vault line from the Slate page: team ratings, home court, back-to-backs and the injury report, in points.</p></div>
+    <div><b>2 &middot; The line</b><p>DraftKings' spread and moneyline, at the price it posted. The spread pick is the side the model likes against it; the winner pick is the team it gives better than even odds.</p></div>
+    <div><b>3 &middot; The lock</b><p>Written once, 4 hours before tip, never re-priced. The last look before tip is kept to measure closing-line value. No rate is quoted under ${GP_MIN} graded picks.</p></div></div>
+    <p class="gp2-fine">Tested on 2,641 games of 2024-25 and 2025-26, the model adds nothing the closing spread has not priced (t = 1.23), and against Kalshi's moneyline at 1pm it was no better than the price (Brier 0.2057 against 0.2008). Days before the recorder existed were rebuilt from the model rows and ESPN lines already on the tape, are labelled <i>rebuilt</i>, and can be left out on Track Record, where the full record lives.</p>`;
+}
 
 // ── Sharp Price ───────────────────────────────────────────────────────────
 // Where informed money is on game markets (sharp.py, in the recorder): Pinnacle's fair price from its own ladder,
