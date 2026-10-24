@@ -20,7 +20,7 @@ Season by season (weeks 4+, 5+ pt edges): 2022 101-90, 2023 84-89, 2024 85-88, 2
 - The model's error (12.5-13) is close to JP+'s own published 12.77, so it is a faithful rebuild of that kind of rating.
 - Its picks do not cover. In weeks 4+ it explains a sliver of the gap between the market and results (regression of margin-minus-line on model-minus-line: slope 0.08-0.13, t about 1-1.8), worth well under half a point on a 5-point disagreement.
 - Things tried on 2022-23 that did not help: success rate and explosiveness ratings, a points-scored rating (made it worse), per-week-bucket stage-2 weights, a market blend (no gain over the market alone).
-- **Caveats:** ESPN's spread is a closing line, harder to beat than the opening lines JP+ grades against. We do not have recruiting, transfer-portal or returning-production priors (they matter most in weeks 1-3). We do not have JP+'s sigma filter, its three vetoes, or its flags (none are published). The historical opening lines are not in these files.
+- **Caveats:** ESPN's spread is a closing line, harder to beat than the opening lines JP+ grades against. As of this run we did not have recruiting, transfer-portal or returning-production priors (they matter most in weeks 1-3); the v2 prior below adds them. We do not have JP+'s sigma filter, its three vetoes, or its flags (none are published). The historical opening lines are not in these files.
 
 ## 2. Grading JP+'s live 2026 picks independently: the record and the closing-line value are real
 
@@ -45,7 +45,7 @@ Season by season (weeks 4+, 5+ pt edges): 2022 101-90, 2023 84-89, 2024 85-88, 2
 
 ## What would change this
 
-- Preseason priors from CollegeFootballData (team talent composite, returning production, transfer portal, SP+ as a benchmark) to fix weeks 1-3.
+- Preseason priors from CollegeFootballData (team talent composite, returning production, transfer portal, SP+ as a benchmark) to fix weeks 1-3. (Done: see "v2 step 2" and "Promotion" below. Miss unchanged, 12.50 vs 12.52.)
 - Opening-line history, to grade against the number JP+ uses rather than the close.
 - JP+'s shadow record for vetoed games and a calibration table for its cover probabilities.
 
@@ -57,7 +57,7 @@ Passing and rushing efficiency separately, success rate, explosiveness, pace, a 
 - 5+ point disagreements on the untouched 2024-25 test: 47.4% to 50.1% ATS in every variant (break-even 52.4%).
 - Best 2022-23 variants (52-54% at 5+ and 7+ points) fell back to 47-51% on 2024-25: the usual sign of fitting noise.
 
-No variant is shipped. Stopped here on purpose: more variants would be fishing. What is still missing is the information the market has before kickoff that play-by-play does not carry: preseason talent and returning production, transfer movement, and opening-line history. Those come from CollegeFootballData (its API host is blocked in the build environment as of 2026-10-11).
+No variant is shipped. Stopped here on purpose: more variants would be fishing. What is still missing is the information the market has before kickoff that play-by-play does not carry: preseason talent and returning production, transfer movement, and opening-line history. Those come from CollegeFootballData (its API host was blocked in the build environment on 2026-10-11; the talent, returning-production and portal inputs were added later that day, see "v2 step 2").
 
 ## Where it lives in the app
 
@@ -154,3 +154,22 @@ improve accuracy (the weight on the model's disagreement is 0.07 against v1's 0.
 The ESPN open is a later number than CollegeFootballData's first-posted spread: v1 is 57.5% against that one (above) and 49.9% against this one.
 
 2026, weeks 4+ (170 games with an open): v1 31-26 (54.4%), v2 41-33, v2 + special teams 45-34 (57.0%) against the open; miss 12.94, 13.34, 13.22 against the open's 12.47.
+
+## Team home field and a head-coach flag (2026-10-13): NO-GO, coach test blocked
+
+`scripts/cfb_hfa_study.py`. Against the current model (v2 prior + special teams), walk-forward 2022-25, weeks 4+. Ridge penalties chosen on 2022-23 by average miss only; 2024-25 read once.
+
+| | miss, tune | miss, test | 5+ vs close, test | 5+ vs open, test |
+|---|---|---|---|---|
+| current | 12.811 | 12.454 | 197-160 (55.2%) | 205-157 (56.6%) |
+| + league mean home field | 12.825 | 12.446 | 198-164 | 200-162 (55.2%) |
+| + conference home field | 12.800 | 12.474 | 195-171 | 191-171 (52.8%) |
+| + team home field (home games only) | 12.684 | 12.413 | 217-185 (54.0%) | 200-179 (52.8%) |
+| + team strength bias, no venue | 12.668 | 12.366 | 158-150 (51.3%) | 146-139 (51.2%) |
+| + strength bias + venue | 12.624 | 12.358 | 169-154 (52.3%) | 156-146 (51.7%) |
+
+- The team home-field gain is not home field. The home-games-only effects reach +/-9 points (Alabama +8.9, UMass -10.5), which is team-rating error, not venue. A strength bias applied at home and away (no venue term) does better (12.366), and adding a venue term on top moves the miss by only 0.008. Real venue advantage is close to nothing here.
+- Accuracy improves by 0.04 to 0.10 points of miss, but the pick records get worse (vs the open 56.6% -> 51 to 53%). The market already prices team strength, so correcting the model toward it shrinks the disagreements that were the edge. Not shipped.
+- Conference home field (the JP+ style grouping) does not help.
+- The league-wide residual is +1.09 points of home margin, but recalibrating to it changes the miss by 0.01.
+- Head coach: untested. ESPN's free coaches endpoint returns the current head coach for every season (Alabama 2023 comes back as DeBoer), so a new-coach flag built from it would be always zero. The test needs the CollegeFootballData /coaches feed through the Fetch CFBD data workflow.
