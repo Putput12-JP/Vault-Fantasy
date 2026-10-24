@@ -1293,13 +1293,47 @@ button.ps-ar{cursor:pointer;border:1px solid transparent}button.ps-ar:hover{back
 .wk-read{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .wk-read div{padding:12px 14px;border-radius:10px;border:1px solid var(--border);font-size:12.5px;color:var(--fg2)}
 .wk-read b{display:block;color:var(--fg);font-weight:600;font-size:13px;margin-bottom:2px}
+.wk-big.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.ws-two{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gap)}
+.ws-three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap);align-items:start}
+.ws-card{padding:4px 0;overflow:hidden}
+.ws-h{padding:16px 20px 12px}
+.ws-h h3{margin:0 0 4px;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.ws-h p{margin:0;font-size:12.5px;color:var(--fg2);max-width:64ch}
+.ws-h p b{color:var(--fg);font-weight:600}
+.ws-hd,.ws-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1.35fr) 150px;gap:6px 16px;align-items:center;padding:11px 20px}
+.ws-hd{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);padding-top:7px;padding-bottom:7px;border-top:1px solid var(--border)}
+.ws-hd em{font-style:normal;text-transform:none;letter-spacing:0}
+.ws-row{border-top:1px solid var(--border)}
+.ws-n b,.ws-rec b,.ws-ret b{display:block;font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;text-wrap:balance}
+.ws-n small,.ws-rec small{display:block;font-size:11.5px;color:var(--fg3);margin-top:2px;font-variant-numeric:tabular-nums}
+.ws-n small .ws-mon{display:inline;font-size:inherit;font-weight:500;color:var(--warn)}
+.ws-v{justify-self:end}
+.ws-rng{position:relative;display:block;height:14px;margin-top:5px}
+.ws-rng::before{content:"";position:absolute;left:0;right:0;top:6px;height:2px;border-radius:1px;background:var(--raised)}
+.ws-rng .z{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--border2)}
+.ws-rng .b{position:absolute;top:6px;height:2px;border-radius:1px;background:var(--fg3)}
+.ws-rng .d{position:absolute;top:2px;width:10px;height:10px;margin-left:-5px;border-radius:50%}
+.ws-rng .d.up{background:var(--up)}
+.ws-rng .d.dn{background:var(--down)}
+.ws-card.c .ws-hd{display:none}
+.ws-card.c .ws-row{grid-template-columns:minmax(0,1fr) auto}
+.ws-card.c .ws-ret{grid-column:1 / -1}
+.ws-card.c .ws-v{grid-column:2;grid-row:1}
+.ws-card.c .ws-rec{grid-column:1 / -1;display:flex;gap:8px;align-items:baseline}
+.ws-card.c .ws-rec small{margin:0}
 @media (max-width:1100px){
   .wk-how,.wk-read{grid-template-columns:minmax(0,1fr)} .wk-how div + div{border-left:0;border-top:1px solid var(--border)}
   .wk-charts,.wk-ways,.wk-nw,.wk-finder{grid-template-columns:minmax(0,1fr)} .wk-ctl{border-right:0;border-bottom:1px solid var(--border)}
   .wk-row{grid-template-columns:minmax(0,1fr);gap:6px} .wk-li{grid-template-columns:minmax(0,1fr);gap:6px} .wk-li > .wk-tag{justify-self:start}
+  .ws-three{grid-template-columns:minmax(0,1fr)} .wk-big.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ws-hd{display:none} .ws-row{grid-template-columns:minmax(0,1fr) auto} .ws-ret,.ws-rec{grid-column:1 / -1} .ws-ret{display:flex;align-items:center;gap:14px} .ws-ret b{flex:none;min-width:72px} .ws-rng{flex:1;margin-top:0} .ws-v{grid-column:2;grid-row:1} .ws-rec{display:flex;gap:8px;align-items:baseline} .ws-rec small{margin:0}
 }
 @media (max-width:600px){
-  .wk-bet,.wk-myth{padding:18px 16px} .wk-big{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .wk-big > div:last-child{grid-column:1/-1}
+  .wk-bet,.wk-myth{padding:18px 16px} .wk-big{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .wk-big > div:last-child{grid-column:1/-1} .wk-big.four > div:last-child{grid-column:auto}
+  .ws-h,.ws-hd,.ws-row{padding-left:16px;padding-right:16px} .ws-h{padding-top:14px;padding-bottom:6px}
+  .ws-long{display:none}
+  .wk-big.four{gap:8px} .wk-big.four > div{padding:10px 12px} .wk-big.four b{font-size:19px} .wk-big.four span{display:none}
   .wk-steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .wk-dots .axis,.wk-dots .dr{grid-template-columns:58px minmax(0,1fr) 54px;gap:8px} .wk-dots .ln,.wk-dots .lt{display:none} .wk-dots .lm{display:inline}
 }
@@ -2662,6 +2696,7 @@ const H0 = /*HEALTH*/null;
 const PR = /*PRICING*/null;     // prop model: variance, calibration, blend weights (build_prop_model.py)
 const PB = /*BOARD*/null;       // props board: {live, example} (prop_board.py)
 const BT = /*BACKTESTS*/null;   // every test, its rule, result and verdict (build_backtests.py)
+const LS = /*LIVESEASON*/null;   // data/live_season.json: this season's settled bets by market, venue, edge type and size, with player-night standard errors (build_live_season.py)
 const GPICKS = /*GPICKS*/null;   // data/game_picks.json: the game picks, live days and rebuilt days (build_game_picks.py)
 const LEANBT = /*LEANBT*/null, LEANBF = /*LEANBF*/null;   // lean backtest series and psim-derived backfill (build_lean_backtest.py, backfill_leans.py)
 const SIMCH = /*SIMCH*/null;      // simulation challenger results (build_sim_challenger.py), for Props Simulation
@@ -2921,7 +2956,7 @@ const PAGES = [
     ['Prop Tells', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/><path d="M18 3l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/>'), 'Where the market is telling you something on a player prop: Pinnacle moving it, DraftKings priced behind Pinnacle, heavy Kalshi money, sharp accounts. Each tell has its own record.', 'tells'],
   ]],
   ['Betting', [
-    ['What Works', SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'), 'Which bets passed the backtest, in dollars and plain-language confidence, and what does not work.', 'backtests'],
+    ['What Works', SVG('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'), 'What is really working this season, in dollars and plain-language confidence: which bets are ahead, which passed last season\'s backtest, and what does not work.', 'backtests'],
     ['Edge Finder', SVG('<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'), "Slice last season's tests by venue, stat and side and see what held up out of sample.", 'finder'],
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
     ['Pick\'em of the Night', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'The best pick\'em slip we can build tonight: one player per team, from PrizePicks, Underdog or Sleeper, with the honest odds that it pays.', 'pairs'],
@@ -7947,7 +7982,7 @@ const WK_STAT = {pts: 'points', reb: 'rebounds', ast: 'assists', '3pm': '3-point
 const WK_WHY = {
   '3pm': "People like betting overs, so Kalshi's YES side is overpriced: last season YES hit 2 to 5 points less often than its price said, in every stat. The model points at the rungs that are overpriced the most.",
   pts: 'The same overs bias as 3-pointers, smaller. Points markets are deeper and better priced, so the edge is thinner and less consistent.'};
-const WK_PAGES = {works: ['What Works', 'BETS THAT PASSED · IN DOLLARS · WHAT DID NOT WORK'], finder: ['Edge Finder', 'SLICE LAST SEASON · SEE WHAT HELD UP'], lab: ['Backtest Lab', 'HELD-OUT TESTS · RULES FIXED FIRST · TECHNICAL RESULTS']};
+const WK_PAGES = {works: ['What Works', 'THIS SEASON SO FAR · WHAT HOLDS UP · WHAT DID NOT WORK'], finder: ['Edge Finder', 'SLICE LAST SEASON · SEE WHAT HELD UP'], lab: ['Backtest Lab', 'HELD-OUT TESTS · RULES FIXED FIRST · TECHNICAL RESULTS']};
 const money = x => (x < 0 ? '-' : '+') + '$' + Math.abs(x).toLocaleString(undefined, {maximumFractionDigits: 0});
 const per100 = roi => roi == null ? '' : (roi < 0 ? '-' : '+') + '$' + Math.abs(roi * 100).toFixed(2);
 const oneIn = z => { const p = 1 - Phi(z); if (p >= .5) return null; const n = 1 / p; return n >= 1000 ? Math.round(n / 100) * 100 : n >= 100 ? Math.round(n / 10) * 10 : Math.round(n); };
@@ -7972,25 +8007,21 @@ function wkConf(z, games, tried){
 }
 const wkMeter = c => `<div class="wk-meter"><div class="wk-bars ${c.cls}">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= c.lvl ? 'on' : ''}"></i>`).join('')}</div><p><b>${c.word}</b> · ${c.say}</p></div>`;
 const wkSeg = (key, opts, cur) => `<div class="seg" data-k="${key}">${opts.map(([v, l, dis]) => `<button type="button" data-v="${v}" aria-pressed="${cur === v}"${dis ? ' disabled' : ''}>${l}</button>`).join('')}</div>`;
-// this season's shadow bets on one Kalshi stat + side, every engine (Track Record's cube)
+// this season's settled Kalshi bets on one stat + side (live_season.json: the same bets as Track Record's cube, with real game and player-night counts).
+// z is the per-bet z the frozen 'proven' rule was written with; zc groups bets by player-night and is the honest one (it is what the page reads luck from).
 function wkLive(stat, side){
-  const C = TR && TR.data && TR.data.cube_cols, rows = (TR && TR.data && TR.data.cube) || [];
-  if (!C) return null;
-  const ix = k => C.indexOf(k);
-  let w = 0, l = 0, p = 0, u = 0, uq = 0, bets = 0, cs = 0, cn = 0;
-  for (const r of rows){
-    if (r[ix('stat')] !== stat || r[ix('venue')] !== 'kalshi' || String(r[ix('side')]).toUpperCase() !== side) continue;
-    bets += r[ix('bets')]; w += r[ix('w')]; l += r[ix('l')]; p += r[ix('p')]; u += r[ix('units')]; uq += r[ix('units_sq')] || 0; cs += r[ix('clv_sum')] || 0; cn += r[ix('clv_n')] || 0;
-  }
-  const n = w + l + p, m = n ? u / n : null, sd = n > 1 ? Math.sqrt(Math.max(uq / n - m * m, 0)) : null;
-  return {bets, settled: n, w, l, p, roi: m, z: sd ? m / (sd / Math.sqrt(n)) : null, clv: cn ? cs / cn : null, clvN: cn};
+  if (!LS) return null;
+  const m = (LS.market || []).find(r => r.venue === 'kalshi' && r.stat === stat && r.side === (side === 'NO' ? 'under' : 'over'));
+  if (!m) return {bets: 0, settled: 0, w: 0, l: 0, p: 0, roi: null, z: null, zc: null, clv: null, clvN: 0, games: 0, nights: 0};
+  const roi = m.u / m.n;
+  return {bets: m.n, settled: m.n, w: m.w, l: m.l, p: m.p, roi, z: m.sd ? roi / (m.sd / Math.sqrt(m.n)) : null, zc: m.se ? roi / m.se : null, clv: m.clv, clvN: m.clv_n, games: m.games, nights: m.nights};
 }
-// The signed sizing rule (experiment-log.md section 8): a cautious prior on the true return, updated with the live shadow bets. The cube has no game
-// ids, so games are estimated from bets using last season's bets per game for this cell (an approximation, labelled as one).
-function wkPosterior(lv, bpg){
+// The signed sizing rule (experiment-log.md section 8): a cautious prior on the true return, updated with the live shadow bets. Games are the real
+// count of games with a settled bet (live_season.json); before it carried game ids they were estimated from last season's bets per game.
+function wkPosterior(lv){
   const G = BT.gate;
-  if (!lv || !lv.settled || !bpg) return null;
-  const games = lv.settled / bpg, se = G.k / Math.sqrt(games), pp = 1 / (G.prior_sd * G.prior_sd), dp = 1 / (se * se);
+  if (!lv || !lv.settled || !lv.games) return null;
+  const games = lv.games, se = G.k / Math.sqrt(games), pp = 1 / (G.prior_sd * G.prior_sd), dp = 1 / (se * se);
   const mean = (G.prior_mean * pp + lv.roi * dp) / (pp + dp), sd = Math.sqrt(1 / (pp + dp));
   return {games, mean, sd, pPos: Phi(mean / sd)};
 }
@@ -8025,12 +8056,122 @@ function wkCharts(main, key){
     <div class="wk-chart"><div class="hd"><span>Profit by month: ${up} of ${months.length} up</span></div>${cols}</div>`;
 }
 
+// ── This season: what is actually working ────────────────────────────────────────────────────────────────
+// live_season.json (build_live_season.py): every settled regular-season shadow bet, the same ones as Track Record's cube, with a standard error that
+// groups bets by player-night. The same player is priced at several books, apps and Kalshi rungs and all of them win or lose together, so the bet
+// count is not the sample: this season so far thousands of bets are a couple of hundred player-nights. Luck odds also count how many markets were read.
+const WS_NIGHTS = 25;          // player-nights before a market is read at all
+const wsDay = d => new Date(d + 'T12:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+const wsRoi = r => r.u / r.n;
+const wsBand = r => r.se == null ? null : [wsRoi(r) - 1.96 * r.se, wsRoi(r) + 1.96 * r.se];
+const wsRec = r => `${r.w}-${r.l}${r.p ? '-' + r.p : ''}`;
+const wsMkt = r => `${VLABEL[r.venue] || r.venue}: ${WK_STAT[r.stat] || r.stat}, ${sideWord(r.venue, r.side)}`;
+// K = how many slices were read in this table. A result this far from zero by luck: tail (one slice), and 1-(1-tail)^K (at least one of K slices).
+function wsRead(r, K){
+  const roi = wsRoi(r), z = r.se ? roi / r.se : null;
+  if (z == null || r.nights < WS_NIGHTS) return {tier: 'early', cls: '', word: 'Too early', say: `only ${r.nights} player-nights; ${WS_NIGHTS} are needed before a result is read`};
+  const tail = roi >= 0 ? 1 - Phi(z) : Phi(z), pa = Math.min(1, tail * K), any = Math.round(Math.min(.99, 1 - Math.pow(1 - tail, K)) * 100), n1 = oneInP(tail);
+  const say = `${n1 ? `a result this far from zero shows up by luck about 1 time in ${n1} for one slice` : 'no better than a coin flip'}; counting the ${K} slices read on this page, ${any >= 99 ? 'nearly always' : `${any}% of the time`} at least one looks this far from zero by luck`;
+  if (tail >= .16) return {tier: 'flat', cls: '', word: 'Coin flip', say};
+  if (roi >= 0) return pa <= .05 ? {tier: 'up', cls: 'passed', word: 'Solid lead', say} : pa <= .25 ? {tier: 'lead', cls: 'watch', word: 'Lead, not proven', say} : {tier: 'luck', cls: 'watch', word: 'Lead, could be luck', say};
+  return pa <= .05 ? {tier: 'down', cls: 'no', word: 'Losing, likely real', say} : pa <= .25 ? {tier: 'down', cls: 'no', word: 'Losing so far', say} : {tier: 'luck', cls: '', word: 'Down, could be luck', say};
+}
+const wsRange = r => {          // 95% range of the return per $100 on a -50..+50 axis; the dot is the return so far
+  const b = wsBand(r); if (!b) return '';
+  const X = v => Math.max(0, Math.min(100, v * 100 + 50)), lo = X(b[0]), hi = X(b[1]), roi = wsRoi(r);
+  return `<span class="ws-rng" role="img" aria-label="Return per $100 ${per100(roi)}, 95% range ${per100(b[0])} to ${per100(b[1])}"><i class="z"></i><i class="b" style="left:${lo}%;width:${Math.max(.5, hi - lo)}%"></i><i class="d ${roi >= 0 ? 'up' : 'dn'}" style="left:${X(roi)}%"></i></span>`;
+};
+function wsRow(r, name, sub, K, v){
+  const roi = wsRoi(r), rd = v === undefined ? wsRead(r, K) : v;
+  return `<div class="ws-row"><div class="ws-n"><b>${name}</b><small>${sub}</small></div>
+    <div class="ws-rec"><b>${wsRec(r)}</b><small>${r.n.toLocaleString()} bets · ${r.nights} player-nights</small></div>
+    <div class="ws-ret"><b class="${roi >= 0 ? 'pos' : 'neg'}">${per100(roi)}</b>${wsRange(r)}</div>
+    <div class="ws-v">${rd ? `<span class="wk-tag ${rd.cls}" title="${esc(rd.say)}">${rd.word}</span>` : ''}</div></div>`;
+}
+const wsHd = `<div class="ws-hd"><span>Market</span><span>Record</span><span>Return per $100, 95% range <em>(-$50 to +$50)</em></span><span>Luck read</span></div>`;
+const wsGate = r => `Backtest rating: ${GATE_LABEL[r.gate] || r.gate}${r.clv != null ? ` · price move ${r.clv >= 0 ? '+' : ''}${(r.clv * 100).toFixed(1)} pts` : ''}`;
+// did a bet that passed last season's backtest hold up this season?
+function wsHold(sig, m){
+  if (!m || m.nights < WS_NIGHTS || !m.se) return {cls: '', word: 'Too early', say: m ? `only ${m.nights} player-nights; ${WS_NIGHTS} are needed` : 'no settled bets on it yet'};
+  const roi = wsRoi(m);
+  if (roi > 0) return {cls: 'passed', word: 'Positive so far', say: 'ahead this season, on a sample too small to call'};
+  if (roi + 1.96 * m.se >= sig.roi) return {cls: 'watch', word: 'Below, not ruled out', say: 'behind last season\'s result, but the range still includes it'};
+  return {cls: 'no', word: 'Below the backtest', say: 'behind last season\'s result by more than luck usually explains'};
+}
+function wsBacktestRows(){
+  const by = {};
+  for (const s of (BT.signals || []).filter(s => s.venue === 'Kalshi' && (s.gate === 'GO' || (s.gate === 'WATCH' && s.games >= 50)))){
+    const k = `${s.stat}|${s.side}`, cur = by[k];
+    if (!cur || (s.engine.startsWith('Prop') && !cur.engine.startsWith('Prop'))) by[k] = s;
+  }
+  return Object.values(by).sort((a, b) => (b.gate === 'GO') - (a.gate === 'GO') || b.z - a.z).map(s => {
+    const m = (LS.market || []).find(r => r.venue === 'kalshi' && r.stat === s.stat && r.side === (s.side === 'NO' ? 'under' : 'over')), v = wsHold(s, m);
+    const bt = `Backtest ${s.gate}: ${per100(s.roi)} per $100 over ${s.n.toLocaleString()} bets (z ${s.z})`;
+    return m ? wsRow(m, `Kalshi: ${WK_STAT[s.stat]}, ${s.side}`, bt, 0, v)
+      : `<div class="ws-row"><div class="ws-n"><b>Kalshi: ${WK_STAT[s.stat]}, ${s.side}</b><small>${bt}</small></div><div class="ws-rec"><b>none settled</b></div><div class="ws-ret"></div><div class="ws-v"><span class="wk-tag">${v.word}</span></div></div>`;
+  }).join('');
+}
+function wsBreakdown(title, sub, list, name, K){
+  return `<div class="card ws-card c"><div class="ws-h"><h3>${title}</h3><p>${sub}</p></div>${wsHd}${list.map(r => wsRow(r, name(r), r.clv != null ? `price move ${r.clv >= 0 ? '+' : ''}${(r.clv * 100).toFixed(1)} pts` : '', K)).join('')}</div>`;
+}
+function renderSeason(){
+  if (!LS || !LS.total) return '<p class="empty">This season\'s record is missing from this build (build_live_season.py).</p>';
+  const T = LS.total, roi = wsRoi(T), band = wsBand(T), all = LS.market || [];
+  const mk = all.filter(r => r.nights >= WS_NIGHTS && r.se), z = r => wsRoi(r) / r.se;
+  const ven = (LS.venue || []).filter(r => r.venue), ety = (LS.etype || []), eb = ['3-5%', '5-8%', '8-12%', '12%+'].map(b => (LS.ebin || []).find(r => r.ebin === b)).filter(Boolean);
+  const K = mk.length + ven.length + ety.length + eb.length;          // every slice read on this page: the luck read counts them all
+  const lead = mk.filter(r => wsRoi(r) > 0).sort((a, b) => z(b) - z(a)).slice(0, 5), lose = mk.filter(r => wsRoi(r) < 0).sort((a, b) => z(a) - z(b)).slice(0, 5);
+  const solid = mk.filter(r => wsRead(r, K).tier === 'up'), small = all.length - mk.length;
+  const best = lead[0], bestAny = best ? Math.round(Math.min(.99, 1 - Math.pow(1 - (1 - Phi(z(best))), K)) * 100) : null;
+  let edgeNote = '';
+  if (eb.length >= 2 && eb[0].se && eb[eb.length - 1].se){
+    const a = eb[0], b = eb[eb.length - 1], d = wsRoi(b) - wsRoi(a), sed = Math.sqrt(a.se * a.se + b.se * b.se);
+    edgeNote = d <= -sed ? `<b>A bigger edge has not paid more so far.</b> Bets the model rated ${b.ebin} are ${per100(wsRoi(b))} per $100, against ${per100(wsRoi(a))} for ${a.ebin}. A real edge should get stronger with size; until it does, treat the biggest edges with suspicion.`
+      : d >= sed ? `<b>A bigger edge has paid more so far:</b> ${b.ebin} edges are ${per100(wsRoi(b))} per $100, against ${per100(wsRoi(a))} for ${a.ebin}. That is what a real edge looks like.`
+      : `<b>No clear link between edge size and return yet:</b> ${b.ebin} edges are ${per100(wsRoi(b))} per $100, ${a.ebin} edges ${per100(wsRoi(a))}.`;
+  }
+  const days = LS.days || [];
+  return `<p class="wk-lede">This season so far: <b>${T.n.toLocaleString()} settled paper bets</b> from <b>${T.games} games</b> (${wsDay(LS.first)} to ${wsDay(LS.through)}). <span class="ws-long">That is <b>${T.picks.toLocaleString()} different picks</b> on <b>${T.nights} player-nights</b>: the same player is priced at several books and apps, and those bets win or lose together, so the real sample is far smaller than the bet count.</span>
+      ${solid.length ? `<b>${solid.length} ${solid.length === 1 ? 'market has' : 'markets have'} cleared the luck test.</b>` : '<b>Nothing has cleared the luck test yet.</b>'} The model's paper bets are ${roi < 0 ? 'down' : 'up'} <b>$${Math.abs(roi * 100).toFixed(2)}</b> per $100 overall<span class="ws-long">${band ? `, and the true figure could be anywhere from ${per100(band[0])} to ${per100(band[1])}` : ''}</span>.</p>
+    <div class="wk-big four">
+      <div><small>Return per $100, all bets</small><b class="${roi >= 0 ? 'pos' : 'neg'}">${per100(roi)}</b><span>${wsRec(T)} on 1-unit paper bets at the first price that showed a 3% edge</span></div>
+      <div><small>Real sample</small><b>${T.nights}</b><span>player-nights, behind ${T.n.toLocaleString()} bets. Luck odds count nights, not bets</span></div>
+      <div><small>Price moved our way</small><b class="${T.clv >= 0 ? 'pos' : 'neg'}">${T.clv >= 0 ? '+' : ''}${(T.clv * 100).toFixed(1)} pts</b><span>average move toward our side before tip, ${T.clv_n.toLocaleString()} bets.${T.clv > 0 && roi < 0 ? ' Results have not followed yet' : ''}</span></div>
+      <div><small>Days settled</small><b>${days.length}</b><span>through ${wsDay(LS.through)}. Rebuilt daily; Track Record updates every few minutes</span></div>
+    </div>
+    <div class="ws-two">
+      <div class="card ws-card"><div class="ws-h"><h3>Ahead so far</h3><p class="ws-long">${lead.length ? `Flagged for close monitoring: every row is a lead on a small sample (shown on the row), not a bet signal. ${bestAny != null ? `Counting the ${K} slices read on this page, the chance at least one looks as good as the best of these by luck alone is <b>${bestAny}%</b>.${lead.every(r => r.gate === 'no-go') ? ' Every one of them is a market the backtest rated NO-GO, so a lead here is more likely noise than a find.' : ''}` : ''}` : `No market with ${WS_NIGHTS}+ player-nights is ahead yet.`}</p></div>
+        ${lead.length ? wsHd + lead.map(r => wsRow(r, wsMkt(r), `<b class="ws-mon">Monitor: ${r.n.toLocaleString()} bets, ${r.nights} nights</b> · ${wsGate(r)}`, K)).join('') : ''}</div>
+      <div class="card ws-card"><div class="ws-h"><h3>Behind so far</h3><p class="ws-long">${lose.length ? `The ${lose.length} markets furthest below zero. A market is only called losing for real once the luck read says so; the rest may just be a bad few nights.` : `No market with ${WS_NIGHTS}+ player-nights is behind yet.`}</p></div>
+        ${lose.length ? wsHd + lose.map(r => wsRow(r, wsMkt(r), wsGate(r), K)).join('') : ''}</div>
+    </div>
+    <p class="wk-lede sm">${small} ${small === 1 ? 'market has' : 'markets have'} fewer than ${WS_NIGHTS} player-nights and ${small === 1 ? 'is' : 'are'} not ranked. ${mk.length} markets were read, so a lead here needs far more than a good-looking record.</p>
+    <h2 class="wk-sec">Do last season's winners hold up?</h2>
+    <p class="wk-lede sm">The bets that passed the backtest, and how each is doing live. Last season's number is at the 30-minute price after Kalshi's fee; this season's is at the first price that showed a 3% edge, so the two are close cousins, not twins.</p>
+    <div class="card ws-card">${wsHd}${wsBacktestRows()}</div>
+    <h2 class="wk-sec">Where the return is coming from</h2>
+    <div class="ws-three">
+      ${wsBreakdown('Where it was bet', 'Each place a price was taken.', ven, r => VLABEL[r.venue] || r.venue, K)}
+      ${wsBreakdown('How the edge was found', 'The model against the price, the price against the other books, or both.', ety, r => ETYPE[r.etype] || r.etype, K)}
+      ${wsBreakdown('How big the edge was', 'The size of the edge when the bet was logged.', eb, r => `${r.ebin} edge`, K)}
+    </div>
+    ${edgeNote ? `<p class="wk-lede sm">${edgeNote}</p>` : ''}
+    <h2 class="wk-sec">Day by day</h2>
+    <div class="card ws-card">${wsHd.replace('Market', 'Day').replace('Luck read', '')}${days.map(r => wsRow(r, wsDay(r.day), `${r.games} ${r.games === 1 ? 'game' : 'games'}`, 1, null)).join('')}</div>
+    <div class="card wk-how">
+      <div><b>Player-nights</b><p>One player in one game. Every book, app and Kalshi rung on him that night wins or loses together, so a night is the unit that counts, not a bet.</p></div>
+      <div><b>The luck read</b><p>How often a result this far from zero shows up by luck, counting every market read in that table. A lead that a coin-flipping model would produce somewhere in the list is not a finding.</p></div>
+      <div><b>Return per $100</b><p>What each $100 bet would have kept on average. The bar shows the range it could plausibly be in; if it crosses the line in the middle, zero is still possible.</p></div>
+    </div>
+    <h2 class="wk-sec">Last season's backtest</h2>`;
+}
+
 function renderBacktests(){
   for (const v of ['works', 'finder', 'lab']) $('wk-' + v).hidden = wk.tab !== v;
   $('wk-not').hidden = wk.tab !== 'works';                             // what doesn't work sits under what works
   [$('tname').textContent, $('tsub').textContent] = WK_PAGES[wk.tab];
   if (!BT){ $('wk-works').innerHTML = '<p class="empty">The backtest summary is missing from this build (build_backtests.py).</p>'; return; }
-  $('mode').innerHTML = `${pill('idle', 'Built')}<span>${esc(BT.generated.slice(0, 10))}</span>`;
+  $('mode').innerHTML = LS && LS.through ? `${pill('idle', 'Season through')}<span>${esc(LS.through)}</span>` : `${pill('idle', 'Built')}<span>${esc(BT.generated.slice(0, 10))}</span>`;
   if (wk.tab === 'works'){ renderWorks(); renderNot(); }
   else if (wk.tab === 'finder') renderFinder();
   else renderLab();
@@ -8048,7 +8189,7 @@ function renderWorks(){
     const C = wkConf(main.z, main.games, BT.trials), mt = (F.model.kalshi || {})[stat] || {}, caut = ss.map(x => x.caution).find(Boolean), spr = (BT.spread || {})[k];
     const steps = ['0.02', '0.03', '0.05', '0.08'].filter(t => mt[t]).map(t => ({t, r: mt[t]}));
     const steady = steps.filter(x => x.r[4] >= 2).length >= 3;
-    const lv = wkLive(stat, side), proven = lv && lv.settled >= MIN_LIVE && lv.z != null && lv.z >= LIVE_Z, bpg = main.n / main.games, post = wkPosterior(lv, bpg), stake = wkStake(lv, post);
+    const lv = wkLive(stat, side), proven = lv && lv.settled >= MIN_LIVE && lv.z != null && lv.z >= LIVE_Z, post = wkPosterior(lv), stake = wkStake(lv, post);
     const word = WK_STAT[stat], sideW = side === 'NO' ? 'NO' : 'YES';
     return `<article class="card wk-bet">
       <div class="wk-bet-h"><div><h3>Kalshi ${word}: bet ${sideW}</h3><p>When Kalshi's price on a ${word === '3-pointers' ? '3-pointer' : word} over is too ${side === 'NO' ? 'high' : 'low'}, take the ${sideW} side.</p></div>
@@ -8074,15 +8215,15 @@ function renderWorks(){
       </div>
       <div class="wk-row"><div class="wk-lbl"><b>This season</b>Live shadow bets, and the size they allow</div>
         <div class="wk-live"><div class="wk-track"><u style="width:${lv ? Math.min(100, lv.settled / MIN_LIVE * 100) : 0}%"></u></div>
-          <p>${!lv ? 'Track Record has not loaded yet.' : lv.settled ? `<b>${lv.settled}${lv.settled < MIN_LIVE ? ' of ' + MIN_LIVE : ''} settled</b> · ${lv.w}-${lv.l}${lv.p ? '-' + lv.p : ''} · <span class="${lv.roi >= 0 ? 'pos' : 'neg'}">${per100(lv.roi)} per $100</span>${proven ? ' · holding up' : ''}` : `<b>0 of ${MIN_LIVE} settled.</b> Shadow bets start on opening night, October 20; it is called proven once ${MIN_LIVE} live bets agree with last season.`}</p>
-          ${post && lv.settled ? `<p class="muted">Best guess of the true return now: <b>${per100(post.mean)}</b> per $100 (starts from a cautious ${Math.round(BT.gate.prior_mean * 100)}% and moves with live results); ${Math.round(post.pPos * 100)}% sure it is above zero. About ${Math.round(post.games)} games so far (estimated from bets).</p>` : ''}
+          <p>${!lv ? 'The season record is missing from this build.' : lv.settled ? `<b>${lv.settled}${lv.settled < MIN_LIVE ? ' of ' + MIN_LIVE : ''} settled</b> · ${lv.w}-${lv.l}${lv.p ? '-' + lv.p : ''} · <span class="${lv.roi >= 0 ? 'pos' : 'neg'}">${per100(lv.roi)} per $100</span> · ${lv.nights} player-nights in ${lv.games} games${proven ? ' · holding up' : ''}` : `<b>0 of ${MIN_LIVE} settled.</b> ${beforeOpening() ? 'Shadow bets start on opening night, October 20; it' : 'Nothing has settled on this yet; it'} is called proven once ${MIN_LIVE} live bets agree with last season.`}</p>
+          ${post && lv.settled ? `<p class="muted">Best guess of the true return now: <b>${per100(post.mean)}</b> per $100 (starts from a cautious ${Math.round(BT.gate.prior_mean * 100)}% and moves with live results); ${Math.round(post.pPos * 100)}% sure it is above zero. ${post.games} ${post.games === 1 ? 'game' : 'games'} so far.</p>` : ''}
           <p><b>Size the evidence allows:</b> ${stake.tier}${stake.why.length ? `<br><span class="muted">Not yet: ${stake.why.join('; ')}.</span>` : ''}</p></div></div>
       <div class="wk-cta"><button class="btn primary" type="button" data-edges="kalshi">Find tonight's Kalshi bets</button><span class="muted">Opens Edges on Kalshi</span></div>
     </article>`;
   }).join('');
   const seen = new Set(Object.keys(go)), watch = [];
   for (const s of sig.filter(s => s.gate === 'WATCH').sort((a, b) => (b.games >= 50) - (a.games >= 50) || b.z - a.z)){ const k = `${s.stat}|${s.side}`; if (!seen.has(k)){ seen.add(k); watch.push(s); } }
-  $('wk-works').innerHTML = `
+  $('wk-works').innerHTML = renderSeason() + `
     <p class="wk-lede">We fit every model on earlier seasons and tested it on 2025-26, at prices you could have taken. <b>We have looked at that season many times</b> (about ${BT.trials} market cells), so a good result there is a lead, not proof. ${['No', 'One', 'Two', 'Three', 'Four', 'Five'][Object.keys(go).length] || Object.keys(go).length} ${Object.keys(go).length === 1 ? 'bet' : 'bets'} passed our backtest rule; how likely each is to be real is on its card. Live results from opening night are the real test.</p>
     <div class="card wk-how">
       <div><b>Return per $100</b><p>What you would have kept, on average, for every $100 bet, after fees. +$5 is a big edge in sports betting.</p></div>
