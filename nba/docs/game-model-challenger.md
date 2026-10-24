@@ -21,7 +21,7 @@ Nothing in any fit sees a test season. The shipped parameters and `data/game_mod
 
 ## The challenger (fixed now)
 
-- **Possessions.** Per team-game from the box score: FGA - OREB + TOV + 0.44 x FTA. Game possessions = the mean of the two teams, scaled by 240 / total player minutes (overtime).
+- **Possessions.** Per team-game from the box score: FGA - OREB + TOV + 0.44 x FTA. Game possessions = the mean of the two teams, scaled by 480 / total player minutes of both teams (overtime).
 - **Ratings.** Offense O[t], defense D[t] (points allowed above average, so higher is worse) and pace P[t], each relative to the league. Per 100 possessions:
   expected points per 100 for team A = BASE + O[A] + D[B]. Expected pace = PACE0 + P[A] + P[B].
 - **Update after each game.** surprise_A = actual points per 100 - expected. O[A] += K x surprise_A, D[B] += K x surprise_A, and the same for B. P[A] and P[B] each += KP x (actual pace - expected pace).
