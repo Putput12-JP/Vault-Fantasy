@@ -1,7 +1,7 @@
 {
- "tape_through": 1792873021,
+ "tape_through": 1792873621,
  "games": 211,
- "rows": 34504,
+ "rows": 34560,
  "pinnacle_median_gap_min": 149.9,
  "rule": {
   "event": "Pinnacle line moved 0.5+ (spread, total) or no-vig chance moved 2+ points (moneyline), time known to within 30 minutes, 3+ hours before kickoff",
@@ -298,12 +298,17 @@
      "DraftKings": {
       "n": 48,
       "led": 18,
-      "not_followed": 16,
-      "followed": 14,
+      "not_followed": 14,
+      "followed": 16,
       "pct_led": 0.375,
-      "pct_not_followed": 0.333,
+      "pct_not_followed": 0.292,
       "pct_followed_within_15": 0.021,
-      "pct_followed_within_60": 0.083
+      "pct_followed_within_60": 0.083,
+      "median_min": 150.0,
+      "p25_min": 60.7,
+      "p75_min": 599.7,
+      "within_15": 0.062,
+      "within_60": 0.25
      },
      "FanDuel": {
       "n": 48,
@@ -368,17 +373,17 @@
      "US books (all five)": {
       "n": 240,
       "led": 68,
-      "not_followed": 72,
-      "followed": 100,
+      "not_followed": 70,
+      "followed": 102,
       "pct_led": 0.283,
-      "pct_not_followed": 0.3,
+      "pct_not_followed": 0.292,
       "pct_followed_within_15": 0.037,
       "pct_followed_within_60": 0.108,
-      "median_min": 255.8,
+      "median_min": 225.8,
       "p25_min": 59.9,
-      "p75_min": 930.2,
-      "within_15": 0.09,
-      "within_60": 0.26
+      "p75_min": 828.9,
+      "within_15": 0.088,
+      "within_60": 0.255
      }
     }
    },
