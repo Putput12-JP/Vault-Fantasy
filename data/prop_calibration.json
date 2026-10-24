@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "generated": "2026-10-24T20:59:51.775979+00:00",
+  "generated": "2026-10-24T23:25:55.504816+00:00",
   "line_basis": "close",
   "latest_week": 7,
   "skipped": 617,
@@ -3919,37 +3919,6 @@
             }
           ]
         },
-        "rush_yd": {
-          "n": 7,
-          "pred_avg": 51.6,
-          "actual_avg": 0.0,
-          "brier": 0.2679,
-          "logloss": 0.7293,
-          "ece": 51.6,
-          "reliability": [
-            {
-              "bucket": "< 50%",
-              "n": 3,
-              "pred": 47.5,
-              "actual": 0.0,
-              "gap": -47.5
-            },
-            {
-              "bucket": "50\u201355%",
-              "n": 2,
-              "pred": 52.5,
-              "actual": 0.0,
-              "gap": -52.5
-            },
-            {
-              "bucket": "55\u201360%",
-              "n": 2,
-              "pred": 56.8,
-              "actual": 0.0,
-              "gap": -56.8
-            }
-          ]
-        },
         "rush_att": {
           "n": 7,
           "pred_avg": 55.1,
@@ -3988,27 +3957,34 @@
             }
           ]
         },
-        "pass_td": {
-          "n": 2,
-          "pred_avg": 60.9,
-          "actual_avg": 50.0,
-          "brier": 0.3584,
-          "logloss": 0.9247,
-          "ece": 58.9,
+        "rush_yd": {
+          "n": 7,
+          "pred_avg": 51.6,
+          "actual_avg": 0.0,
+          "brier": 0.2679,
+          "logloss": 0.7293,
+          "ece": 51.6,
           "reliability": [
             {
-              "bucket": "50\u201355%",
-              "n": 1,
-              "pred": 52.0,
-              "actual": 100.0,
-              "gap": 48.0
+              "bucket": "< 50%",
+              "n": 3,
+              "pred": 47.5,
+              "actual": 0.0,
+              "gap": -47.5
             },
             {
-              "bucket": "65\u201370%",
-              "n": 1,
-              "pred": 69.7,
+              "bucket": "50\u201355%",
+              "n": 2,
+              "pred": 52.5,
               "actual": 0.0,
-              "gap": -69.7
+              "gap": -52.5
+            },
+            {
+              "bucket": "55\u201360%",
+              "n": 2,
+              "pred": 56.8,
+              "actual": 0.0,
+              "gap": -56.8
             }
           ]
         },
@@ -4036,23 +4012,6 @@
             }
           ]
         },
-        "pass_yd": {
-          "n": 2,
-          "pred_avg": 61.7,
-          "actual_avg": 50.0,
-          "brier": 0.2706,
-          "logloss": 0.7359,
-          "ece": 11.7,
-          "reliability": [
-            {
-              "bucket": "60\u201365%",
-              "n": 2,
-              "pred": 61.7,
-              "actual": 50.0,
-              "gap": -11.7
-            }
-          ]
-        },
         "pass_att": {
           "n": 2,
           "pred_avg": 51.8,
@@ -4067,6 +4026,47 @@
               "pred": 51.8,
               "actual": 0.0,
               "gap": -51.8
+            }
+          ]
+        },
+        "pass_td": {
+          "n": 2,
+          "pred_avg": 60.9,
+          "actual_avg": 50.0,
+          "brier": 0.3584,
+          "logloss": 0.9247,
+          "ece": 58.9,
+          "reliability": [
+            {
+              "bucket": "50\u201355%",
+              "n": 1,
+              "pred": 52.0,
+              "actual": 100.0,
+              "gap": 48.0
+            },
+            {
+              "bucket": "65\u201370%",
+              "n": 1,
+              "pred": 69.7,
+              "actual": 0.0,
+              "gap": -69.7
+            }
+          ]
+        },
+        "pass_yd": {
+          "n": 2,
+          "pred_avg": 61.7,
+          "actual_avg": 50.0,
+          "brier": 0.2706,
+          "logloss": 0.7359,
+          "ece": 11.7,
+          "reliability": [
+            {
+              "bucket": "60\u201365%",
+              "n": 2,
+              "pred": 61.7,
+              "actual": 50.0,
+              "gap": -11.7
             }
           ]
         },
