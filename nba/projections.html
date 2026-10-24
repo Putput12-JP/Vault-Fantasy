@@ -2149,8 +2149,8 @@ th{font-weight:500}
 .gp2-fr{display:flex;align-items:center;gap:12px}
 .gp2-fr>span{width:50px;flex:none;font:500 10.5px var(--font-mono);color:var(--fg3);text-transform:uppercase;letter-spacing:.07em}
 .gp2-fr>div{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,12px);gap:3px;flex:1;min-width:0}
-.gp2-fr i{display:block;aspect-ratio:1;width:100%;border-radius:3px;background:rgb(var(--ink) / .1)}
-.gp2-fr i.w{background:var(--up)} .gp2-fr i.l{background:var(--down)} .gp2-fr i.p{background:var(--warn)}
+.gp2-fr>div:not(.gp2-gl) i{display:block;aspect-ratio:1;width:100%;border-radius:3px;background:rgb(var(--ink) / .1)}
+.gp2-fr>div:not(.gp2-gl) i.w{background:var(--up)} .gp2-fr>div:not(.gp2-gl) i.l{background:var(--down)} .gp2-fr>div:not(.gp2-gl) i.p{background:var(--warn)}
 .gp2-rb{display:inline-flex;gap:1px;width:56px;height:6px;border-radius:3px;overflow:hidden;vertical-align:middle;background:rgb(var(--ink) / .08);margin-left:6px}
 .gp2-rb i{display:block;height:100%} .gp2-rb .w{background:var(--up)} .gp2-rb .l{background:var(--down)} .gp2-rb .p{background:var(--warn)}
 .gp2-vs{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;align-items:center;font-size:12.5px;color:var(--fg2)}
@@ -2278,6 +2278,18 @@ th{font-weight:500}
 .gp2-chips b{color:var(--fg);font-weight:600;font-size:13px} .gp2-chips .gp2-rb{margin-left:0;width:40px}
 @media (max-width:640px){.gp2-ar{display:none}.gp2-dbar{margin-top:22px}.gp2-dsum h2{font-size:22px}}
 @media (prefers-reduced-motion:reduce){.gp2-days button,.gp2-ar{transition:none}}
+
+.gp2-gr{display:inline-grid;place-items:center;width:18px;height:18px;margin-left:8px;border-radius:6px;font:700 10.5px/1 var(--font-mono);font-style:normal;letter-spacing:0;text-transform:none;vertical-align:1px;cursor:help;flex:none}
+.gp2-gr.A{background:var(--primary);color:var(--on-primary)}
+.gp2-gr.B{border:1.5px solid var(--fg2);color:var(--fg)}
+.gp2-gr.C{border:1px solid rgb(var(--ink) / .22);color:var(--fg3)}
+.gp2-rk{display:inline-block;margin-left:5px;padding:3px 6px;border-radius:6px;background:rgb(var(--ink) / .1);font:600 10.5px/1 var(--font-mono);font-style:normal;color:var(--fg2);letter-spacing:0;text-transform:none;vertical-align:1px;cursor:help}
+.gp2-grades{margin-top:2px}
+.gp2-fr>.gp2-gl{display:flex;flex-wrap:wrap;gap:6px 16px;flex:1;grid-auto-flow:row;grid-auto-columns:auto}
+.gp2-gl>span{display:inline-flex;align-items:center;gap:7px;font:500 12px var(--font-mono);color:var(--fg3)}
+.gp2-gl .gp2-gr{margin:0} .gp2-gl b{color:var(--fg);font-weight:600;font-size:12.5px} .gp2-gl em{font-style:normal;color:var(--fg3)}
+.gp2-grades .gp2-note{font-size:11.5px;margin-top:2px}
+.gp2-fine b{color:var(--fg2);font-weight:600}
 </style>
 
 <div class="app" id="app">
@@ -7531,7 +7543,8 @@ function gpStats(items, kind){
   const C = k === 'ats' ? S.filter(x => x.r.clv_pts != null) : [];
   return {n: g, w, l, p, hit: g ? w / g : null, ci: wilson(w, g), units: U.reduce((a, x) => a + x.r[k + '_units'], 0), nu: U.length,
     clv: C.length ? C.reduce((a, x) => a + x.r.clv_pts, 0) / C.length : null, nclv: C.length, clvPos: C.filter(x => x.r.clv_pts > 0).length,
-    pred: k === 'ml' && g ? S.filter(x => x.r.ml_res !== 'P').reduce((a, x) => a + gpPickP(x.r), 0) / g : null};
+    pred: k === 'ml' && g ? S.filter(x => x.r.ml_res !== 'P').reduce((a, x) => a + gpPickP(x.r), 0) / g : null,
+    mkt: (v => v.length ? v.reduce((a, b) => a + b, 0) / v.length : null)(k === 'ml' ? S.map(x => gpMktP(x.r)).filter(v => v != null) : [])};
 }
 function gpFav(items){                                                                          // the market's favourite (by the posted spread) straight up, on the same games
   const S = items.filter(x => x.r.ml_res && x.r.spread != null && x.r.spread !== 0), w = S.filter(x => (x.r.am > 0) === (x.r.spread < 0)).length;
@@ -7540,6 +7553,23 @@ function gpFav(items){                                                          
 // ── Game Picks V2: the record as a scoreboard, each game as a model-against-the-market gauge ────────────────────────────────────────────────────
 const MINUS = '−', DASH = '–';
 const gpS = (x, d = 1) => x == null ? '' : (x > 0 ? '+' : x < 0 ? MINUS : '') + Math.abs(x).toFixed(d);
+// Shadow grades (nba/docs/pick-grades.md): fixed cut-offs, derived from the stored edge and chance, so the rebuilt days are graded too. A label to track, not a
+// recommendation: against the closing line the biggest spread edges have done worse than the small ones, and winner confidence is calibrated but already priced.
+const GP_CUT = {ats: [[5, 'A'], [3, 'B'], [0, 'C']], ml: [[.7, 'A'], [.6, 'B'], [0, 'C']]};
+const gpGrade = (kind, v) => v == null ? null : GP_CUT[kind].find(([lo]) => v >= lo)[1];
+const gpSd = () => (MS && MS.game && MS.game.sd_margin) || (GPICKS && GPICKS.sd_margin) || 13.19;
+const gpMktP = r => r.spread == null || !r.ml_side ? null : (p => r.ml_side === 'H' ? p : 1 - p)(Phi(-r.spread / gpSd()));
+function gpRanks(entries){                                                                       // 1 = the day's most confident; entries: [{id, edge, p}]
+  const ats = {}, ml = {};
+  entries.filter(e => e.edge != null).sort((a, b) => b.edge - a.edge).forEach((e, i) => ats[e.id] = i + 1);
+  entries.filter(e => e.p != null).sort((a, b) => b.p - a.p).forEach((e, i) => ml[e.id] = i + 1);
+  return {ats, ml};
+}
+const gpEnt = x => ({id: x.gid, edge: x.r.ats_edge, p: x.r.ml_side ? gpPickP(x.r) : null});
+function gpBadge(kind, v, rank, why){
+  const g = gpGrade(kind, v); if (!g) return '';
+  return `<i class="gp2-gr ${g}" title="Shadow grade ${g}: ${why}. Tracked, not a recommendation.">${g}</i>${rank && rank <= 3 ? `<i class="gp2-rk" title="Number ${rank} of the day by confidence">#${rank}</i>` : ''}`;
+}
 const gpU = x => x == null ? '' : `<span class="${x >= 0 ? 'pos' : 'neg'}">${gpS(x, 2)}</span>`;
 const gpRate = (a, d = 1) => a.n < GP_MIN ? '<span class="muted" title="Too few graded picks to quote a rate">&ndash;</span>' : leanPct(a.hit, d);
 const gpRec = a => `${a.w}${DASH}${a.l}${a.p ? `${DASH}${a.p}` : ''}`;
@@ -7571,6 +7601,11 @@ function gp2Form(items){
   const row = (label, f) => `<div class="gp2-fr"><span>${label}</span><div>${S.map(x => { const v = f(x.r); return `<i class="${v ? v.toLowerCase() : 'n'}" title="${esc(x.matchup)} ${x.as}${DASH}${x.hs}"></i>`; }).join('')}</div></div>`;
   return S.length ? `<div class="gp2-form" role="img" aria-label="Result of every graded pick, oldest first">${row('Spread', r => r.ats_res)}${row('Winner', r => r.ml_res)}</div>` : '';
 }
+function gp2Grades(items){
+  const row = (label, kind, val) => `<div class="gp2-fr"><span>${label}</span><div class="gp2-gl">${['A', 'B', 'C'].map(L => { const a = gpStats(items.filter(x => gpGrade(kind, val(x)) === L), kind);
+    return `<span><i class="gp2-gr ${L}">${L}</i>${a.n || a.p ? `<b>${gpRec(a)}</b>` : '<em>none</em>'}</span>`; }).join('')}</div></div>`;
+  return items.length ? `<div class="gp2-form gp2-grades" aria-label="Record by shadow grade">${row('Spread', 'ats', x => x.r.ats_edge)}${row('Winner', 'ml', x => x.r.ml_side ? gpPickP(x.r) : null)}<p class="gp2-note">Shadow grades, tracked not recommended. Spread: edge 5+ is A, 3 to 5 is B. Winner: 70%+ is A, 60 to 70% is B.</p></div>` : '';
+}
 function gp2Hero(items){
   const A = gpStats(items, 'ats'), M = gpStats(items, 'ml'), F = gpFav(items), rb = items.filter(x => x.f.src === 'bf').length, games = A.n + A.p;
   const sub = !items.length ? 'Picks are written 4 hours before tip and graded after the final.'
@@ -7585,7 +7620,7 @@ function gp2Hero(items){
       <p class="gp2-sub">${sub}</p>
       <div class="gp2-meter" role="img" aria-label="${rate}"><i style="--p:${Math.min(1, A.n / GP_MIN).toFixed(3)}"></i></div>
       <p class="gp2-note">${rate}</p>
-      ${gp2Spark(items)}${gp2Form(items)}
+      ${gp2Spark(items)}${gp2Form(items)}${gp2Grades(items)}
     </div>
     <div class="gp2-side">
       <div class="gp2-stat"><p class="gp2-k">Winner picks, same games</p>
@@ -7624,20 +7659,23 @@ function gpPickOf(m){                                                           
   const side = m.p_home === .5 ? null : m.p_home > .5 ? 'H' : 'A', ph = amP(m.home_ml), pa = amP(m.away_ml), mh = ph && pa ? ph / (ph + pa) : null;
   return {ats, ml: side ? {side, p: side === 'H' ? m.p_home : 1 - m.p_home, px: side === 'H' ? m.home_ml : m.away_ml, mkt: mh == null ? null : side === 'H' ? mh : 1 - mh} : null};
 }
-function gp2Chips(m, g, locked){
+function gp2Chips(m, g, locked, rk){
   const p = gpPickOf(m), sp = a => a.side === 'H' ? m.spread : -m.spread, cls = locked ? '' : ' lean';
-  const ats = p.ats ? `<div class="gp2-pk${cls}"><span class="k">Spread</span><span class="v">${p.ats.side === 'H' ? g.home : g.away} ${gpS(sp(p.ats))}</span><span class="s">${gpPx(p.ats.px)} ${DASH} edge ${p.ats.edge.toFixed(1)}</span></div>`
+  const ats = p.ats ? `<div class="gp2-pk${cls}"><span class="k">Spread${gpBadge('ats', p.ats.edge, rk && rk.ats, `edge ${p.ats.edge.toFixed(1)} points`)}</span><span class="v">${p.ats.side === 'H' ? g.home : g.away} ${gpS(sp(p.ats))}</span><span class="s">${gpPx(p.ats.px)} ${DASH} edge ${p.ats.edge.toFixed(1)}</span></div>`
     : `<div class="gp2-pk${cls}"><span class="k">Spread</span><span class="v dim">${m.spread == null ? 'No line yet' : 'No pick'}</span><span class="s">${m.spread == null ? 'waiting for a posted spread' : 'model and line agree'}</span></div>`;
-  const ml = p.ml ? `<div class="gp2-pk${cls}"><span class="k">Winner</span><span class="v">${p.ml.side === 'H' ? g.home : g.away}</span>
+  const ml = p.ml ? `<div class="gp2-pk${cls}"><span class="k">Winner${gpBadge('ml', p.ml.p, rk && rk.ml, `${leanPct(p.ml.p, 0)} chance`)}</span><span class="v">${p.ml.side === 'H' ? g.home : g.away}</span>
       <span class="gp2-prob" role="img" aria-label="${leanPct(p.ml.p, 0)} model${p.ml.mkt != null ? `, market ${leanPct(p.ml.mkt, 0)}` : ''}" style="--p:${(p.ml.p * 100).toFixed(1)};${p.ml.mkt != null ? `--m:${(p.ml.mkt * 100).toFixed(1)}` : ''}"><i></i>${p.ml.mkt != null ? '<u></u>' : ''}</span>
       <span class="s">${leanPct(p.ml.p, 0)}${p.ml.mkt != null ? ` vs ${leanPct(p.ml.mkt, 0)} market` : ''}${p.ml.px ? ` ${DASH} ${gpPx(p.ml.px)}` : ''}</span></div>`
     : `<div class="gp2-pk${cls}"><span class="k">Winner</span><span class="v dim">Even</span><span class="s">no side above 50%</span></div>`;
   return `<div class="gp2-picks">${ats}${ml}</div>`;
 }
-function gp2Row(g, B, status, now, i){
-  const open = GPO && GPO.games[String(g.id)], L = gpLine(g), V = vaultLine(g, B, status), home = g.home, away = g.away, tn = t => (D.teams[t] && D.teams[t].name) || t;
-  const locked = open ? gpFromRow(open.f) : null, lockAt = g.tip - 4 * 3600, started = g.tip <= now;
-  const live = V ? {margin: -V.spread, total: V.total, p_home: V.win, ...(L || {spread: null})} : null, use = locked || live;
+function gpUse(g, B, status){                                                                    // the locked pick when there is one, else the live lean
+  const open = GPO && GPO.games[String(g.id)], L = gpLine(g), V = vaultLine(g, B, status), locked = open ? gpFromRow(open.f) : null;
+  const live = V ? {margin: -V.spread, total: V.total, p_home: V.win, ...(L || {spread: null})} : null;
+  return {open, locked, live, use: locked || live};
+}
+function gp2Row(g, B, status, now, i, rk){
+  const {open, locked, live, use} = gpUse(g, B, status), home = g.home, away = g.away, lockAt = g.tip - 4 * 3600, started = g.tip <= now;
   const st = locked ? (started ? ['live', 'In progress, pick locked'] : ['lk', open.ft ? `Locked ${clock(open.ft)} ${TZL}` : 'Pick locked'])
     : started ? ['warn', 'No pick recorded'] : now >= lockAt ? ['warn', 'Locking at the next poll'] : ['', `Locks ${clock(lockAt)} ${TZL}, in ${gpDur(lockAt - now)}`];
   const early = isEarly(g, B) ? '<span class="gp2-flag" title="The first 4 weeks of a season: the Vault line starts from last season\'s teams, so gaps against the market are larger and less trusted (docs/season-start-results.md)">Early season</span>' : '';
@@ -7645,15 +7683,15 @@ function gp2Row(g, B, status, now, i){
   return `<article class="gp2-g" style="--i:${i}"><div class="gp2-when"><b>${clock(g.tip)}</b><span>${etFmt(g.tip, {weekday: 'short'})} ${TZL}</span><em class="gp2-st ${st[0]}">${st[1]}</em></div>
     <div class="gp2-mid"><div class="gp2-teams"><span class="tm">${lgImg(away, 22)}${away}</span><span class="at">at</span><span class="tm">${lgImg(home, 22)}${home}</span>${early}</div>
       ${use ? gp2Gauge(use.margin, use.spread, home, away) : `<p class="gp2-note">${g.season_type < 2 ? 'No Vault line in the preseason.' : 'Needs the game model state.'}</p>`}</div>
-    <div class="gp2-rt">${use ? gp2Chips(use, g, !!locked) : ''}${now2}</div></article>`;
+    <div class="gp2-rt">${use ? gp2Chips(use, g, !!locked, rk) : ''}${now2}</div></article>`;
 }
-function gp2Res(x){
+function gp2Res(x, rk){
   const r = x.r, cls = r.ats_res ? r.ats_res.toLowerCase() : '', res = (v, u) => v ? `<em class="res ${v.toLowerCase()}">${u != null ? gpS(u, 2) : v}</em>` : '';
   const ats = r.ats_side ? `${r.ats_side === 'H' ? x.home : x.away} ${gpS(gpSideSp(r))}` : '<span class="muted">no pick</span>';
   const ml = r.ml_side ? (r.ml_side === 'H' ? x.home : x.away) : '<span class="muted">even</span>';
   return `<div class="gp2-r ${cls}"><div class="m"><b>${esc(x.matchup)}</b><span>Final ${x.as}${DASH}${x.hs}${x.f.src === 'bf' ? ' &middot; rebuilt' : ''}</span><span>Model ${r.margin > 0 ? x.home : x.away} ${Math.abs(r.margin).toFixed(1)}${r.spread == null ? '' : ` &middot; line ${gpSpTxt(r, x.home, x.away)}`}</span></div>
-    <div class="q"><span class="k">Spread${r.ats_edge != null ? ` &middot; edge ${r.ats_edge.toFixed(1)}` : ''}</span><b>${ats}</b>${res(r.ats_res, r.ats_units)}</div>
-    <div class="q"><span class="k">Winner${r.ml_side ? ` &middot; ${leanPct(gpPickP(r), 0)}` : ''}</span><b>${ml}</b>${res(r.ml_res, r.ml_units)}</div>
+    <div class="q"><span class="k">Spread${r.ats_edge != null ? ` &middot; edge ${r.ats_edge.toFixed(1)}` : ''}${gpBadge('ats', r.ats_edge, rk && rk.ats, `edge ${r.ats_edge == null ? '' : r.ats_edge.toFixed(1)} points`)}</span><b>${ats}</b>${res(r.ats_res, r.ats_units)}</div>
+    <div class="q"><span class="k">Winner${r.ml_side ? ` &middot; ${leanPct(gpPickP(r), 0)}` : ''}${r.ml_side ? gpBadge('ml', gpPickP(r), rk && rk.ml, `${leanPct(gpPickP(r), 0)} chance`) : ''}</span><b>${ml}</b>${res(r.ml_res, r.ml_units)}</div>
     <div class="c" title="Spread move toward our side, pick to last look">${r.clv_pts ? `CLV ${gpS(r.clv_pts)}` : ''}</div></div>`;
 }
 function gp2Days(items, limit){
@@ -7661,7 +7699,8 @@ function gp2Days(items, limit){
   for (const day of [...new Set(items.map(x => x.day))].sort().reverse()){
     const it = items.filter(x => x.day === day).slice(0, Math.max(0, limit - shown)); if (!it.length) break;
     const all = items.filter(x => x.day === day), a = gpStats(all, 'ats'), m = gpStats(all, 'ml'); shown += it.length;
-    html += `<h3 class="gp2-day">${etFmt(all[0].tip, {weekday: 'long', month: 'short', day: 'numeric'})}<span>${all.length} ${all.length === 1 ? 'game' : 'games'} &middot; spread ${gpRec(a)} &middot; winner ${m.w}${DASH}${m.l}</span></h3>${it.map(gp2Res).join('')}`;
+    const rk = gpRanks(all.map(gpEnt));
+    html += `<h3 class="gp2-day">${etFmt(all[0].tip, {weekday: 'long', month: 'short', day: 'numeric'})}<span>${all.length} ${all.length === 1 ? 'game' : 'games'} &middot; spread ${gpRec(a)} &middot; winner ${m.w}${DASH}${m.l}</span></h3>${it.map(x => gp2Res(x, {ats: rk.ats[x.gid], ml: rk.ml[x.gid]})).join('')}`;
   }
   return html;
 }
@@ -7678,19 +7717,24 @@ function renderTrackGames(){
   const row = (label, it, kind = 'ats') => { const a = gpStats(it, kind); if (!a.n && !a.p) return '';
     return `<tr><td class="l"><b>${label}</b></td><td class="num">${a.n}</td><td class="num">${gpRec(a)} ${gp2Bar(a.w, a.l, a.p)}</td><td class="num">${gpRate(a)}</td>${kind === 'ats' ? `<td class="num">${a.nu ? gpU(a.units) : ''}</td><td class="num">${a.nclv ? gpS(a.clv, 2) : ''}</td>` : ''}</tr>`; };
   const EX = '<th scope="col" title="1 unit at the posted price of the picked side">Units</th><th scope="col" title="Points the spread moved toward our side between the pick and the last look before tip">Avg CLV</th>';
-  $('tgameb').innerHTML = !ats.length ? empty : gpHead('Size of the edge (points)', EX) + '<tbody>' + [['All picks', ats], ...[[0, 1, 'Under 1'], [1, 2, '1 to 2'], [2, 3, '2 to 3'], [3, 5, '3 to 5'], [5, 99, '5 or more']].map(([lo, hi, l]) => [l, bin(lo, hi)])].map(([l, it]) => row(l, it)).join('') + '</tbody>';
+  const topN = (list, n, key) => { const by = {}; for (const x of list) (by[x.day] || (by[x.day] = [])).push(x);               // the n most confident of each day (days with fewer than n games are left out)
+    return Object.values(by).filter(xs => xs.length >= n).flatMap(xs => [...xs].sort((a, b) => key(b) - key(a)).slice(0, n)); };
+  const atsRows = [['All picks', ats], ['A &middot; edge 5 or more', bin(5, 99)], ['B &middot; edge 3 to 5', bin(3, 5)], ['C &middot; edge under 3', bin(0, 3)], ['Top 1 of each day', topN(ats, 1, x => x.r.ats_edge)], ['Top 3 of each day', topN(ats, 3, x => x.r.ats_edge)]];
+  $('tgameb').innerHTML = !ats.length ? empty : gpHead('Shadow grade, by the size of the edge', EX) + '<tbody>' + atsRows.map(([l, it]) => row(l, it)).join('') + '</tbody>';
   const grp = [['Home team', ats.filter(x => x.r.ats_side === 'H')], ['Road team', ats.filter(x => x.r.ats_side === 'A')], ['Takes the favourite', ats.filter(x => gpSideSp(x.r) < 0)], ['Takes the underdog', ats.filter(x => gpSideSp(x.r) > 0)]];
   $('tgameo').innerHTML = !ats.length ? empty : gpHead('The side taken', EX) + '<tbody>' + grp.map(([l, it]) => row(l, it)).join('') + '</tbody>';
-  const mls = items.filter(x => x.r.ml_res), bands = [[.5, .55, '50 to 55%'], [.55, .6, '55 to 60%'], [.6, .7, '60 to 70%'], [.7, 1.01, '70% or more']];
-  $('tgamec').innerHTML = !mls.length ? empty : `<thead><tr><th class="l" scope="col">Model's chance of its winner</th><th scope="col">Graded</th><th scope="col">Record</th><th scope="col">Predicted</th><th scope="col">Hit</th><th scope="col" title="Verified when the hit rate is within 4 points of the prediction over ${GP_MIN}+ picks">Check</th></tr></thead><tbody>${
-    bands.map(([lo, hi, l]) => { const a = gpStats(mls.filter(x => gpPickP(x.r) >= lo && gpPickP(x.r) < hi), 'ml'); if (!a.n) return '';
+  const mls = items.filter(x => x.r.ml_res), pcx = x => gpPickP(x.r), band = (lo, hi) => mls.filter(x => pcx(x) >= lo && pcx(x) < hi), F = gpFav(items);
+  const mlRows = [['All winner picks', mls], ['A &middot; 70% or more', band(.7, 1.01)], ['B &middot; 60 to 70%', band(.6, .7)], ['C &middot; under 60%', band(.5, .6)], ['Top 1 of each day', topN(mls, 1, pcx)], ['Top 3 of each day', topN(mls, 3, pcx)]];
+  $('tgamec').innerHTML = !mls.length ? empty : `<thead><tr><th class="l" scope="col">Shadow grade, by the model's chance of its winner</th><th scope="col">Graded</th><th scope="col">Record</th><th scope="col" title="Average chance the model gave the side it picked">Model says</th><th scope="col" title="The chance the closing spread implied for the same side, through the same normal curve">Market says</th><th scope="col">Hit</th><th scope="col" title="Verified when the hit rate is within 4 points of the model's chance over ${GP_MIN}+ picks">Check</th></tr></thead><tbody>${
+    mlRows.map(([l, it]) => { const a = gpStats(it, 'ml'); if (!a.n) return '';
       const ok = a.n >= GP_MIN ? (Math.abs(a.hit - a.pred) <= GP_TOL ? pill('ok', 'verified') : pill('warn', 'off by ' + ((a.hit - a.pred) * 100).toFixed(0) + ' pts')) : pill('idle', 'collecting');
-      return `<tr><td class="l"><b>${l}</b></td><td class="num">${a.n}</td><td class="num">${gpRec(a)} ${gp2Bar(a.w, a.l)}</td><td class="num">${leanPct(a.pred)}</td><td class="num">${gpRate(a)}</td><td>${ok}</td></tr>`; }).join('')}</tbody>`;
+      return `<tr><td class="l"><b>${l}</b></td><td class="num">${a.n}</td><td class="num">${gpRec(a)} ${gp2Bar(a.w, a.l)}</td><td class="num">${leanPct(a.pred)}</td><td class="num">${a.mkt == null ? '' : leanPct(a.mkt)}</td><td class="num">${gpRate(a)}</td><td>${ok}</td></tr>`; }).join('')
+    }${F.n ? `<tr><td class="l"><b>The market's favourite, same games</b></td><td class="num">${F.n}</td><td class="num">${F.w}${DASH}${F.n - F.w} ${gp2Bar(F.w, F.n - F.w)}</td><td></td><td></td><td class="num">${F.n >= GP_MIN ? leanPct(F.hit) : '<span class="muted">&ndash;</span>'}</td><td></td></tr>` : ''}</tbody>`;
   $('tgamel').innerHTML = items.length ? gp2Days(items, gpShow) : '<p class="empty">No game picks graded yet.</p>';
   $('tgamemore').hidden = items.length <= gpShow;
   $('tgamemore').innerHTML = `<button class="btn" id="tgamemorebtn" type="button">Show all ${items.length.toLocaleString()}</button>`;
   const rb = all.filter(x => x.f.src === 'bf').length;
-  $('tgamenote').textContent = `The spread pick is the side the model gives an edge: its margin plus DraftKings' home spread, taken at DraftKings' price for that side (Pinnacle, FanDuel, BetMGM, bet365 or the consensus when DraftKings has none). The winner pick is the team the model gives better than even odds, at that book's moneyline. A price that was not stored is never filled in, so units cover only priced picks. A push is zero units. Closing-line value is the move of the spread between the pick and the last look before tip.${rb ? ` ${rb} games before the recorder existed were rebuilt from the Game Simulation rows and ESPN lines already on the tape: the model's margin there is the simulation's mean, within about 0.4 points of the exact figure, so a pick with an edge under 0.4 could differ. They are labelled and the filter can leave them out.` : ''}`;
+  $('tgamenote').textContent = `The spread pick is the side the model gives an edge: its margin plus DraftKings' home spread, taken at DraftKings' price for that side (Pinnacle, FanDuel, BetMGM, bet365 or the consensus when DraftKings has none). The winner pick is the team the model gives better than even odds, at that book's moneyline. A price that was not stored is never filled in, so units cover only priced picks. A push is zero units. Closing-line value is the move of the spread between the pick and the last look before tip. Grades are shadow labels with fixed cut-offs (nba/docs/pick-grades.md), not recommendations: over 2,641 games against the closing line the spread A tier won 47.3% and the winner A tier won about what the market already implied.${rb ? ` ${rb} games before the recorder existed were rebuilt from the Game Simulation rows and ESPN lines already on the tape: the model's margin there is the simulation's mean, within about 0.4 points of the exact figure, so a pick with an edge under 0.4 could differ. They are labelled and the filter can leave them out.` : ''}`;
 }
 $('tgameclk').addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (!b) return; gpClock = b.dataset.v; for (const x of $('tgameclk').children) x.setAttribute('aria-pressed', x === b); renderTrackGames(); });
 $('tgamesrc').addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (!b) return; gpSrc = b.dataset.v; for (const x of $('tgamesrc').children) x.setAttribute('aria-pressed', x === b); renderTrackGames(); });
@@ -7741,13 +7785,15 @@ function renderGamePicks(){
   $('gpdsum').innerHTML = gpDay ? gp2DaySummary(gpDay, items, G.length, locked) : `<div class="gp2-empty"><b>No regular-season games to pick right now.</b><span>Picks are written 4 hours before each tip. ${noGamesWhy()}</span></div>`;
   $('gpsec1').hidden = !G.length; $('gpsec2').hidden = !items.length;
   $('gptonight').classList.toggle('gp2-anim', !gp2Seen && G.length > 0);
-  $('gptonight').innerHTML = G.map((g, i) => gp2Row(g, B, status, now, i)).join('');
+  const rk = gpRanks([...items.map(gpEnt), ...G.map(g => { const u = gpUse(g, B, status).use, pk = u ? gpPickOf(u) : {}; return {id: String(g.id), edge: pk.ats ? pk.ats.edge : null, p: pk.ml ? pk.ml.p : null}; })]);
+  $('gptonight').innerHTML = G.map((g, i) => gp2Row(g, B, status, now, i, {ats: rk.ats[String(g.id)], ml: rk.ml[String(g.id)]})).join('');
   if (G.length) gp2Seen = true;
-  $('gpres').innerHTML = items.map(gp2Res).join('');
+  $('gpres').innerHTML = items.map(x => gp2Res(x, {ats: rk.ats[x.gid], ml: rk.ml[x.gid]})).join('');
   $('gpfoot').innerHTML = `<div class="gp2-how">
     <div><b>1 &middot; The model</b><p>The Vault line from the Slate page: team ratings, home court, back-to-backs and the injury report, in points.</p></div>
     <div><b>2 &middot; The line</b><p>DraftKings' spread and moneyline, at the price it posted. The spread pick is the side the model likes against it; the winner pick is the team it gives better than even odds.</p></div>
     <div><b>3 &middot; The lock</b><p>Written once, 4 hours before tip, never re-priced. The last look before tip is kept to measure closing-line value. No rate is quoted under ${GP_MIN} graded picks.</p></div></div>
+    <p class="gp2-fine"><b>Shadow grades.</b> Spread: A is an edge of 5 or more points, B is 3 to 5, C is under 3. Winner: A is a 70% chance or more, B is 60 to 70%, C is under 60%. #1 to #3 is the day's most confident. They are labels to track, fixed in advance, and the record by grade is on Track Record. Over 2,641 games against the closing line, spread A won 47.3% and the top 3 spread picks of each day 49.3%; winner A won 80.5% where the market implied 79.2%, and the top 3 of each day 76.1% where it implied 76.1% (nba/docs/pick-grades.md). So a grade says how far the model sits from the line, or how sure it is, not that the pick is better.</p>
     <p class="gp2-fine">Tested on 2,641 games of 2024-25 and 2025-26, the model adds nothing the closing spread has not priced (t = 1.23), and against Kalshi's moneyline at 1pm it was no better than the price (Brier 0.2057 against 0.2008). Days before the recorder existed were rebuilt from the model rows and ESPN lines already on the tape, are labelled <i>rebuilt</i>, and can be left out on Track Record, where the full record lives.</p>`;
 }
 function gpGoDay(d){ if (!d || d === gpDay) return; gpDay = d; gp2Seen = false; renderGamePicks(); }

@@ -29,6 +29,20 @@ Sharp money is context only: it is not an input and does not count toward anythi
   Winner: the no-vig chance of the picked team at the last look minus at the first, when both looks carry both moneylines.
 - **Baseline for the winner pick.** The market's own favourite (the side with the negative spread) straight up, on the same games.
 
+## Shadow grades and daily ranks (added 2026-10-24)
+
+Shown on the Game Picks page (a letter beside each pick, `#1` to `#3` for the day's most confident, and a record by grade in the hero) and tracked on Track Record. **Labels to track, not recommendations.**
+The cut-offs are fixed in `docs/pick-grades.md` before any grade was read and are not tuned:
+
+- **Spread grade** from the edge in points: **A** 5 or more, **B** 3 to 5, **C** under 3.
+- **Winner grade** from the model's chance for its side: **A** 70% or more, **B** 60 to 70%, **C** under 60%.
+- **Rank** = the order of the day's picks by edge (spread) or by that chance (winner). A day with fewer than N games is left out of "top N".
+- Grades and ranks are **derived** from the stored edge and chance, so the rebuilt days carry them too and nothing in the data changed.
+- Track Record shows the record by grade and for the top 1 and top 3 of each day, with the closing-line value, and for the winner picks the average chance the model gave and the chance the closing spread implied for the same side, next to the market favourite's record on the same games.
+
+What the 2,641-game history says (`docs/pick-grades.md`): against the closing line the spread **A** tier won 47.3% and the top 3 of each day 49.3% (the biggest gaps do worse); winner **A** won 80.5% where the market implied 79.2%, and the top 3 of each day 76.1% where it implied 76.1%. A grade
+therefore says how far the model sits from the line, or how sure it is, not that the pick is better. The page says so in its footer.
+
 ## Reading rules (fixed now)
 
 - No rate is quoted for a cell with fewer than **100 graded picks**; the page shows a dash. The record and units are always shown with their count.
