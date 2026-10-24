@@ -122,14 +122,16 @@ def log(board, now):
 
 def write_open(root, day, now, sub='gpicks'):
     """<root>/<sub>/open.json: today's picks that have not settled yet, for the Game Picks page. {'t', 'games': {gid: {'m': meta, 'f': first row,
-    'c': last row so far}}}. The first row is the locked pick and never changes once written; `c` follows the market until tip. Settled games move to
+    'c': last row so far, 'ft': when the first row was written}}}. The first row is the locked pick and never changes once written; `c` follows the market until tip. Settled games move to
     <sub>/<day>.json (record), so this file only ever holds the current day's folder. Rows come from the Day object the recorder already holds."""
     import json as _json
     meta, first, last = day.meta.get('gpick') or {}, day.first.get('gpick') or {}, day.last.get('gpick') or {}
+    hist = day.hist.get('gpick') or {}
     games = {}
     for k, m in meta.items():
         if k in first:
-            games[k] = {'m': {x: m.get(x) for x in ('game', 'tip', 'matchup', 'away', 'home', 'ml_book')}, 'f': first[k], 'c': last.get(k, first[k])}
+            games[k] = {'m': {x: m.get(x) for x in ('game', 'tip', 'matchup', 'away', 'home', 'ml_book')}, 'f': first[k], 'c': last.get(k, first[k]),
+                        'ft': (hist.get(k) or [None])[0]}                       # when the first look was written (epoch s): the lock time the page shows
     os.makedirs(os.path.join(root, sub), exist_ok=True)
     with open(os.path.join(root, sub, 'open.json'), 'w') as f:
         _json.dump({'t': now, 'cols': COLS, 'games': games}, f, separators=(',', ':'))
