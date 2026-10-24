@@ -67,3 +67,57 @@ followed and settled by the live tracker.
 ## What to expect
 
 About 20 picks per slate hit the cap, ranked first come. The live record starts at zero and counts only picks made from now on.
+
+
+## Audit, 2026-10-24: settlement, the 75% question, and v3
+
+**Settlement is correct and current.** All 179 settled legs on file (85 picks plus the shadow logs) were re-graded from freshly fetched ESPN box scores, ignoring the cache: 0 mismatches,
+0 voids, 0 unfinished games. The 5-minute job runs a copy of the scripts; all six copies were byte-identical to main, and it last wrote at 07:07 ET on 10/24. Nothing was stale.
+
+**The record at the time of the audit (v2, live + replayed):** 85 picks, 65 settled, 33 won (**50.8%**), -4.98u (-7.7%), CLV +5.3% (n 65). Live only: 23 settled, 10 won (43.5%), -4.91u. Overs 13-20 (39.4%, -9.50u),
+unders 20-12 (62.5%, +4.51u).
+
+**Why it is not hitting 75%: the hit rate is the price.** Whole tape (10/19 to 10/24, 722 polls, 26 settled games), every sportsbook leg at its best price, one row per player-stat-side-line, settled from box scores:
+
+| Price band (implied) | legs | hit | implied | ROI |
+|---|---:|---:|---:|---:|
+| -110 to -140 (50-58%), 3+ venues | 2,625 | 52.9% | 53.2% | -0.6% |
+| -140 to -170 (58-64%) | 251 | 59.8% | 60.2% | -0.9% |
+| -300 to -400 (75-80%), no fair gate | 4,012 | 61-65% | 77% | -15% to -22% |
+| -400 to -525 (80-84%), no fair gate | 2,567 | 72-80% | 82% | -2% (unders) to -11% (overs) |
+| -525 to -900 (84-90%), no fair gate | 3,404 | 79-88% | 86% | +2% (unders) to -9% (overs) |
+
+In every band the hit rate lands on the price, and the market's fair chance (margin removed) is well calibrated. The picks average -124, which implies 55.6%; they hit 50.8% (v2) and 57.6% (v3). A 75% hit rate means buying about -300, and
+at -300 the books charge more than the extra wins are worth. Legs that clear the fair-price gate at -220 or heavier are almost nonexistent (other venues rarely quote both sides), so the edge there cannot be checked.
+No rule can be tuned to 75% without picking the price band that loses the most.
+
+**What did separate winners from losers: the side.** In the -110 to -140 band (3+ venues, best price, one row per leg): overs **-13.3%** ROI (n 1,234, se 2.7), unders **+10.6%** (n 1,391, se 2.5). Across the whole -110 to -220 band, unders beat overs in **21 of 26 games**, on all four nights (10/20 to 10/23), and in all eight stat types. The closing line does not show it (CLV is +2% to +4% on both sides), so it is a pattern in
+how these first games finished, not a price the market later agreed with. **In-sample, six nights, 26 games, correlated within a game.** The one explanation worth testing is that early-season lines are set on last season; if lines
+adjust, it fades.
+
+### v3 (2026-10-24): v2 plus unders only
+
+Same gates as v2; an over that passes them goes to the `over_watch` shadow (never counted). Both rebuilt on the identical tape and code (`--backtest`, `PICK_OVERS=1` for v2):
+
+| | picks | settled | won | hit | units | ROI | CLV |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| v2 rebuilt on the same tape | 80 | 60 | 31 | 51.7% | -3.40 | -5.7% | +6.0% |
+| **v3 unders only** | 80 | 59 (1 void) | 34 | **57.6%** | **+2.81** | **+4.8%** (z 0.41) | +5.0% (n 59) |
+| v3 Core (4%+) | 17 | 12 | 9 | 75.0% | +4.32 | +36.0% | +8.0% |
+| v3 Standard | 63 | 47 | 25 | 53.2% | -1.51 | -3.2% | +4.2% |
+| Shadow `over_watch` | 131 | 101 | 48 | 47.5% | -13.87 | -13.7% | +4.8% |
+
+**Flags, all improve and all small:** the +2.81u (**n=59**, z 0.41, not significant); Core's 75.0% (**n=12**, chosen after looking, the v2 record's Core was 7 of 12); the unders-over split (**26 games**). v3 hits what its prices imply, not more.
+v3 has **zero live picks**; the rule was picked after seeing these nights, so none of this is evidence until live picks settle (100 picks and CLV +2 SE, as in the log).
+
+### Chalk (-300 and heavier), tracked, not bets
+
+Added at the owner's request to show the high-hit plays. Unders at -300 or heavier, same minutes and injury gates, one per player per game, no fair-price gate (most cannot be checked). Replayed on the same six nights:
+
+| | picks | settled | won | hit | units | ROI | CLV |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| -300 to -400 (avg -331) | 50 | 46 | 33 | **71.7%** | -2.94 | -6.4% | -11.5% |
+| -400 or heavier (avg -547) | 94 | 66 | 54 | **81.8%** | -1.94 | -2.9% | -1.8% |
+
+This is the ~75% hit rate, and it is **slightly under what the prices need** (75.1% and 84.5%): small samples (n 46, 66), ROI within noise of zero, CLV negative (the price on these tends to get worse before tip, so the entry is not a bargain).
+Shown on the page as a separate Chalk card with its own record; never in the headline.

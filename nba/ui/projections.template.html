@@ -2710,7 +2710,7 @@ const PAGES = [
     ['Edges', SVG('<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>'), 'Every 3%+ edge on every venue: why it exists, how far to trust it, and a stake when it has earned one.', 'edges'],
     ['Pick\'em of the Night', SVG('<rect x="3" y="5" width="8" height="14" rx="2"/><rect x="13" y="5" width="8" height="14" rx="2"/><path d="M11 12h2"/>'), 'The best pick\'em slip we can build tonight: one player per team, from PrizePicks, Underdog or Sleeper, with the honest odds that it pays.', 'pairs'],
     ['Combo Check', SVG('<rect x="3" y="6" width="8" height="12" rx="2"/><rect x="13" y="6" width="8" height="12" rx="2"/><path d="m5.5 12 1.8 1.8 3-3.6"/>'), 'Alt-line combos priced fairly: legs between -140 and +200 from any players, the fair odds, and the price to take. Type your book\'s price to see what it is worth.', 'combo'],
-    ['Bankroll Builder', SVG('<path d="M3 20h18"/><path d="M6 20v-5M11 20v-9M16 20v-7M21 20V6"/><path d="m4 9 5-4 4 3 7-5"/>'), 'Short-priced props (-110 to -220) at a price as good as or better than the market\'s fair price, tracked flat 1 unit on a $1,000 paper bankroll.', 'bankroll'],
+    ['Bankroll Builder', SVG('<path d="M3 20h18"/><path d="M6 20v-5M11 20v-9M16 20v-7M21 20V6"/><path d="m4 9 5-4 4 3 7-5"/>'), 'Short-priced unders (-110 to -220) at a price as good as or better than the market\'s fair price, tracked flat 1 unit on a $1,000 paper bankroll.', 'bankroll'],
     ['My Bets', SVG('<path d="M5 3h14v18l-3.5-2-3.5 2-3.5-2L5 21z"/><path d="M9 8h6M9 12h6"/>'), 'The bets you placed: results, closing-line value and where your edge is coming from.', 'mybets'],
     ['Track Record', SVG('<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-5"/>'), 'Shadow bets settled: ROI, closing-line value and each signal against its backtest.', 'track'],
   ]],
@@ -9106,7 +9106,7 @@ $('cc-root').addEventListener('click', e => {
 // ── Bankroll Builder (#bankroll) ──
 // Short-priced props (-110 to -220 at a sportsbook) priced at or better than the other venues' no-vig price. The band alone is not an edge. The model's chance is recorded, not a gate.
 // The picks, their prices, settlement and the record come from scripts/bankroll_builder.py on the owner's Mac (the prices are SmartStake's,
-// so like Combo Check this page is private: local ?ss, or the owner's Google login). The rules (v2) are frozen in docs/experiment-log.md section 12.
+// so like Combo Check this page is private: local ?ss, or the owner's Google login). The rules (v3: v2 + unders only) are in docs/experiment-log.md section 12.
 let bk = {intro: false, src: 'all', live: {f: null, n: 25, sl: null}};   // src: 'all' = live + the replayed first nights, 'live' = live only   // f = settled / won / lost / open / all, sl = the slice row clicked {g, k}
 const bkU = x => x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(2)}u`;
 const bkP = (x, d = 1) => x == null ? '<span class="muted">none</span>' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%`;
@@ -9136,13 +9136,14 @@ const BK_SL = [
   ['book', 'Book', c => c.book, k => k],
   ['day', 'Game day', c => bkEtDay(c.tip), k => k],
 ];
-const BK_SHADOW = 'Shadow: the model liked it, the market did not (not bets)';
+const BK_SHADOW = {model_only: 'Shadow: the model liked it, the market did not (not bets)', over_watch: 'Shadow: overs that pass every other rule (not bets)', chalk_300: 'Chalk: unders priced -300 to -400 (not bets)', chalk_400: 'Chalk: unders priced -400 or heavier (not bets)'};
+const bkShKey = c => c.kind === 'chalk_watch' ? (1 / c.dec0 < .8 ? 'chalk_300' : 'chalk_400') : (c.kind || 'model_only');   // -400 is 80% implied
 function bkSlices(R, sec){
   const cur = bk[sec].sl;
   const row = (g, k, label, x) => { const on = cur && cur.g === g && cur.k === k;
     return `<tr class="bk-sl${on ? ' on' : ''}" tabindex="0" role="button" aria-pressed="${on}" data-bksl="${sec}|${g}|${esc(k)}"><td class="l">${esc(label)}</td><td>${x.picks}</td><td>${x.settled}</td><td>${x.won}-${x.settled - x.won}</td><td class="${x.units >= 0 ? 'pos' : 'neg'}">${bkU(x.units)}</td><td>${bkP(x.roi)}</td><td>${bkP(x.clv)}<small>${x.clv_n} picks</small></td></tr>`; };
   const rows = BK_SL.flatMap(([g, pre, , fmt]) => Object.entries(R[g] || {}).map(([k, x]) => row(g, k, `${pre} ${fmt(k)}`.trim(), x))).join('')
-    + Object.entries(R.shadow || {}).map(([k, x]) => x.picks ? row('shadow', k, BK_SHADOW, x) : '').join('');
+    + Object.entries(R.shadow || {}).map(([k, x]) => x.picks ? row('shadow', k, BK_SHADOW[k] || k, x) : '').join('');
   return `<p class="muted bk-hint">Click a row to see the picks behind it, open ones included.</p><div class="nt-tw"><table class="nt"><thead><tr><th class="l">Slice</th><th>Picks</th><th>Settled</th><th>W-L</th><th>Units</th><th>ROI</th><th>CLV</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // The picks list under a record: the status filter (settled / won / lost / open / all) applied to the picks in the clicked slice, or to all of them.
@@ -9151,7 +9152,7 @@ function bkList(R, sec){
   const srcOk = c => bk.src !== 'live' || c.source !== 'replay';
   let base = (R.list || []).filter(srcOk), label = '';
   if (sl){
-    if (sl.g === 'shadow'){ base = (R.shadow_list || []).filter(srcOk); label = BK_SHADOW; }
+    if (sl.g === 'shadow'){ base = (R.shadow_list || []).filter(srcOk).filter(c => bkShKey(c) === sl.k); label = BK_SHADOW[sl.k] || sl.k; }
     else { const d = BK_SL.find(x => x[0] === sl.g); base = base.filter(c => String(d[2](c)) === sl.k); label = `${d[1]} ${d[3](sl.k)}`.trim(); }
   }
   const F = {settled: c => c.res === 'won' || c.res === 'lost', won: c => c.res === 'won', lost: c => c.res === 'lost', open: c => !c.res, all: () => true};
@@ -9162,6 +9163,15 @@ function bkList(R, sec){
     ${sl ? `<div class="bk-fl">Showing <b>${esc(label)}</b><button class="pv-ghost" type="button" data-bkclear="${sec}">Clear slice</button>${base.length !== sl.n ? `<span class="muted">This row counts ${sl.n} pick${sl.n === 1 ? '' : 's'} but the list on file has ${base.length}: the record was written by an older version and updates within 5 minutes.</span>` : ''}</div>` : ''}
     <div class="nt-tw"><table class="nt"><thead><tr><th class="l bk-x">First seen</th><th class="l">Pick</th><th class="l">Entry</th><th>Edge</th><th>Result</th></tr></thead><tbody>${shown.slice(0, st.n).map(tr).join('') || `<tr><td class="l" colspan="5"><p class="empty">No picks match this filter.</p></td></tr>`}</tbody></table></div>
     ${shown.length > st.n ? `<div class="pp-acts" style="padding:8px 14px 12px"><button class="pv-ghost" type="button" data-bkmore="${sec}">Show ${Math.min(25, shown.length - st.n)} more</button></div>` : ''}`;
+}
+function bkChalk(R){
+  const now = Date.now() / 1000, all = (R.shadow_list || []).filter(c => c.kind === 'chalk_watch'), L = all.filter(c => !c.res && c.tip > now).sort((a, b) => a.tip - b.tip || b.dec0 - a.dec0);
+  const sh = R.shadow || {}, bit = (k, name) => { const x = sh[k]; return x && x.settled ? `<b>${name}</b>: ${x.won} of ${x.settled} won (${(x.win * 100).toFixed(0)}%), ${bkU(x.units)} (${bkP(x.roi)} ROI)` : `<b>${name}</b>: nothing settled yet`; };
+  const tr = c => `<tr><td class="l"><b>${esc(c.name)}</b><small>${esc(c.away)} @ ${esc(c.home)} · ${etFmt(c.tip, {weekday: 'short'})} ${clock(c.tip)} ${TZL}</small></td><td class="l">Under <b>${c.line}</b> ${PP_SHORT[c.stat] || c.stat}</td><td class="l"><b>${esc(c.book)} ${bkAm(1 / c.dec0)}</b></td><td>${c.pf0 != null ? pc(c.pf0, 1) : '<span class="muted">not checkable</span>'}<small>${c.n0 ? c.n0 + ' other venues' : 'other venues do not quote both sides'}</small></td><td>${pc(1 / c.dec0, 1)}<small>hit rate the price needs</small></td></tr>`;
+  if (!all.length && !L.length) return '';
+  return `<section class="card"><div class="pp-tools"><h2>Chalk plays (-300 and heavier)</h2><span class="muted" style="font-size:12.5px">Unders priced -300 or heavier. These win far more often, but the price already charges for it: a -300 play has to win 75% just to break even. Whether they beat their price is what this tracks, and the record is right below. <b>Not bets, not in the record above.</b> Most cannot be checked against the market, because the other venues rarely quote both sides this far out.</span></div>
+    <p class="muted" style="padding:0 14px;font-size:12.5px">${bit('chalk_300', '-300 to -400')} · ${bit('chalk_400', '-400 or heavier')}</p>
+    ${L.length ? `<div class="nt-tw"><table class="nt"><thead><tr><th class="l">Player</th><th class="l">Play</th><th class="l">Price</th><th>Market chance</th><th>Price needs</th></tr></thead><tbody>${L.map(tr).join('')}</tbody></table></div>` : `<p class="pp-empty">No open chalk plays right now.</p>`}</section>`;
 }
 function bkTonight(R){
   const now = Date.now() / 1000, L = (R.list || []).filter(c => !c.res && c.tip > now).sort((a, b) => a.tip - b.tip || (a.tier === 'core' ? 0 : 1) - (b.tier === 'core' ? 0 : 1) || b.mk0 - a.mk0);
@@ -9182,8 +9192,8 @@ function renderBankroll(){
   const R = window.__bankrollRecord;
   const gate = window.__altsState === 'signin' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><button class="pv-ghost" type="button" data-bksignin="1">Sign in with Google</button><span class="muted">The same login as the rest of Vault; it stays signed in.</span></div>`
     : window.__altsState === 'denied' ? `<div class="cc-unlock"><b>The prices behind these picks are private.</b><span class="neg">This Google account is not allowed to see them.</span><button class="pv-ghost" type="button" data-bksignin="1">Use another account</button></div>` : '';
-  const intro = `${gate}<details class="card tfold" id="bk-intro"${bk.intro ? ' open' : ''}><summary><span class="tf-t"><b>Bankroll Builder</b><small>Sportsbook bets priced -110 to -220 at or better than the market's fair price. Flat 1 unit on a $1,000 paper bankroll. Not proof until 100 settled picks.</small></span></summary>
-    <div class="card-b bk-how"><p>One sportsbook bet (no parlays) priced <b>-110 to -220</b> at <b>or better than the market's fair price</b>: the no-vig price of three or more other venues quoting the same line. The price band by itself is not an edge (bet blindly, it lost about 7% on the first nights); the edge is getting a price the rest of the market says is fair or better. Main and alt lines both count. Core = 4%+ better than fair. Our model's chance is recorded on every pick but does not pick the bets. Every pick is logged at the first price it qualifies, followed to tip, and graded flat 1 unit ($10) on a $1,000 paper bankroll. The first nights, before tracking started, were replayed from the recorded tape and sit in the same record, tagged <b>replayed</b>.</p>
+  const intro = `${gate}<details class="card tfold" id="bk-intro"${bk.intro ? ' open' : ''}><summary><span class="tf-t"><b>Bankroll Builder</b><small>Unders priced -110 to -220 at or better than the market's fair price. Flat 1 unit on a $1,000 paper bankroll. Not proof until 100 settled picks.</small></span></summary>
+    <div class="card-b bk-how"><p>One sportsbook bet (no parlays) priced <b>-110 to -220</b> at <b>or better than the market's fair price</b>: the no-vig price of three or more other venues quoting the same line. The price band by itself is not an edge (bet blindly, it lost about 7% on the first nights); the edge is getting a price the rest of the market says is fair or better. Main and alt lines both count. <b>Unders only:</b> overs that pass every other rule are tracked in a separate shadow and are not bets, because overs lost money on the first nights (that choice was made after looking at them, so it is in-sample too). Core = 4%+ better than fair. Our model's chance is recorded on every pick but does not pick the bets. Every pick is logged at the first price it qualifies, followed to tip, and graded flat 1 unit ($10) on a $1,000 paper bankroll. The first nights, before tracking started, were replayed from the recorded tape and sit in the same record, tagged <b>replayed</b>.</p>
     <p>Sportsbook prices via <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Nothing here is proof of anything until <b>100 settled picks</b> and a closing-line value that is positive by two standard errors. Until then it is a record to watch, not a system to trust.</p></div></details>`;
   if (!R || !R.all){
     $('bk-root').innerHTML = intro + `<section class="card"><div class="pp-tools"><h2>Record</h2></div><p class="pp-empty">${window.__altsState === 'ok' || SS_ON ? 'The record has not been written yet: it fills in after the next 5-minute refresh on the owner\'s Mac.' : 'The record is private, like the prices. Sign in with the owner\'s Google account to see it.'}</p></section>`;
@@ -9191,11 +9201,11 @@ function renderBankroll(){
     const V = bk.src === 'live' && R.live ? {...R, ...R.live} : R, rp = R.replay, nLive = R.live ? R.live.all.picks : R.all.picks;
     const seg = rp && rp.picks ? `<div class="seg" data-bksrc role="group" aria-label="Which picks the record counts">${[['all', 'Live + replayed first nights'], ['live', 'Live only']].map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${bk.src === k}">${l}</button>`).join('')}</div>` : '';
     const note = rp && rp.picks ? `${nLive} live and ${rp.picks} replayed from the first nights. The replayed picks come from the recorded tape run through these same rules, which were chosen after seeing those nights: they are tagged and can be switched off, and only live picks count as evidence.` : 'Live picks only.';
-    $('bk-root').innerHTML = intro + bkTonight(R) + `<section class="card"><div class="pp-tools"><h2>Record</h2><span class="muted" style="font-size:12.5px">${note} Flat 1 unit at the entry price; the quarter-Kelly line is a shadow, never the headline.</span><span class="pv-grow"></span>${seg}</div>${bkKpis(V)}${bkCurve(V.curve) ? `<div class="bk-cv">${bkCurve(V.curve)}<span class="muted"><i class="bk-sw f"></i>flat $10 <i class="bk-sw k"></i>quarter-Kelly shadow</span></div>` : ''}${bkSlices(V, 'live')}${bkList(V, 'live')}</section>`;
+    $('bk-root').innerHTML = intro + bkTonight(R) + bkChalk(R) + `<section class="card"><div class="pp-tools"><h2>Record</h2><span class="muted" style="font-size:12.5px">${note} Flat 1 unit at the entry price; the quarter-Kelly line is a shadow, never the headline.</span><span class="pv-grow"></span>${seg}</div>${bkKpis(V)}${bkCurve(V.curve) ? `<div class="bk-cv">${bkCurve(V.curve)}<span class="muted"><i class="bk-sw f"></i>flat $10 <i class="bk-sw k"></i>quarter-Kelly shadow</span></div>` : ''}${bkSlices(V, 'live')}${bkList(V, 'live')}</section>`;
   }
   $('bkfoot').innerHTML = `<div><b>Sources.</b> Sportsbook prices: <a href="https://smartstake.app" target="_blank" rel="noopener">SmartStake</a>. Other venues used only for the fair price: their two-way lines with the margin removed (books up to 16% overround, exchanges up to 8%). Model chance: the same projection, distribution and calibration as Player Props.</div>
-    <div><b>The rules, in order.</b> Price -110 to -220 at a sportsbook. Fair chance from 3+ other venues; the price must be at or better than it (market edge 0% or more). Recent minutes 20+, not a preseason game, not Out, Doubtful or Questionable. One pick per player per game, at most 2 per team-game and 20 per slate. Core = edge 4%+. These rules were chosen after looking at the first two nights' closing prices, so the replayed first-night picks are in-sample; only live picks count as evidence.</div>
-    <div><b>Not bets.</b> The model's chance is split out in the record (agrees or not). One shadow log tracks legs the model liked but the market priced worse than fair. It is graded but never counted in the record above.</div>`;
+    <div><b>The rules, in order.</b> Price -110 to -220 at a sportsbook. Fair chance from 3+ other venues; the price must be at or better than it (market edge 0% or more). Recent minutes 20+, not a preseason game, not Out, Doubtful or Questionable. One pick per player per game, at most 2 per team-game and 20 per slate. Unders only. Core = edge 4%+. These rules were chosen after looking at the first nights' closing prices and results, so the replayed first-night picks are in-sample; only live picks count as evidence.</div>
+    <div><b>Not bets.</b> The model's chance is split out in the record (agrees or not). Two shadow logs are graded but never counted in the record above: legs the model liked but the market priced worse than fair, and overs that pass every other rule.</div>`;
 }
 $('bk-root').addEventListener('toggle', e => { if (e.target.id === 'bk-intro') bk.intro = e.target.open; }, true);
 const bkRerender = sec => { renderBankroll(); const el = document.getElementById('bk-pl-' + sec); if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'}); };
