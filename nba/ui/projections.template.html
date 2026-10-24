@@ -2105,13 +2105,7 @@ th{font-weight:500}
 .gp2-ar{flex:none;width:38px;height:38px;border-radius:50%;border:1px solid rgb(var(--ink) / .1);background:var(--surface);color:var(--fg2);font:400 22px/1 var(--font-sans);cursor:pointer;display:grid;place-items:center;padding:0 0 3px;transition:border-color .2s ease,color .2s ease,transform .12s ease-out}
 .gp2-ar:hover:not(:disabled){border-color:rgb(var(--ink) / .25);color:var(--fg)} .gp2-ar:disabled{opacity:.3;cursor:default}
 .gp2-days button:focus-visible,.gp2-ar:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.gp2-dsum{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;margin:20px 4px 0}
-.gp2-dsum h2{margin:0;font-size:26px;font-weight:600;letter-spacing:-.03em}
-.gp2-dsum p{margin:4px 0 0;font:500 12px var(--font-mono);color:var(--fg3)}
-.gp2-chips{display:flex;flex-wrap:wrap;gap:8px}
-.gp2-chips>span{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:12px;border:1px solid rgb(var(--ink) / .08);background:var(--surface);font:500 12px var(--font-mono);color:var(--fg3)}
-.gp2-chips b{color:var(--fg);font-weight:600;font-size:13px} .gp2-chips .gp2-rb{margin-left:0;width:40px}
-@media (max-width:640px){.gp2-ar{display:none}.gp2-dbar{margin-top:22px}.gp2-dsum h2{font-size:22px}}
+@media (max-width:640px){.gp2-ar{display:none}.gp2-dbar{margin-top:22px}}
 @media (prefers-reduced-motion:reduce){.gp2-days button,.gp2-ar{transition:none}}
 
 .gp2-gr{display:inline-grid;place-items:center;width:18px;height:18px;margin-left:8px;border-radius:6px;font:700 10.5px/1 var(--font-mono);font-style:normal;letter-spacing:0;text-transform:none;vertical-align:1px;cursor:help;flex:none}
@@ -2125,6 +2119,23 @@ th{font-weight:500}
 .gp2-gl .gp2-gr{margin:0} .gp2-gl b{color:var(--fg);font-weight:600;font-size:12.5px} .gp2-gl em{font-style:normal;color:var(--fg3)}
 .gp2-grades .gp2-note{font-size:11.5px;margin-top:2px}
 .gp2-fine b{color:var(--fg2);font-weight:600}
+
+.gp2-sp .gpband{fill:rgb(var(--ink) / .1)}
+.gp2-spark .gpsel{fill:none;stroke-width:4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.gp2-spark.up .gpsel{stroke:var(--up)} .gp2-spark.down .gpsel{stroke:var(--down)}
+.gp2-fr>div:not(.gp2-gl) i.gpin{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--fg);position:relative;z-index:1}
+.gp2-day2{margin:20px 0 0;border:1px solid rgb(var(--ink) / .07);border-radius:28px;background:var(--surface);overflow:hidden;box-shadow:0 1px 0 rgb(var(--ink) / .04) inset,0 24px 44px -32px rgb(var(--shc) / calc(.7 * var(--shk)))}
+.gp2-day2>header{padding:22px 28px 18px}
+.gp2-day2 h2{margin:6px 0 4px;font-size:28px;font-weight:600;letter-spacing:-.03em}
+.gp2-day2 .gp2-sub{font:500 12.5px var(--font-mono);color:var(--fg3)}
+.gp2-dt{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.5fr);border-top:1px solid rgb(var(--ink) / .07)}
+.gp2-dt .gp2-stat{border-top:0;border-left:1px solid rgb(var(--ink) / .07);padding:18px 24px;align-content:start;gap:8px}
+.gp2-dt .gp2-stat:first-child{border-left:0}
+.gp2-dt .gp2-rb{width:100%;margin:0;height:5px}
+.gp2-dt .gp2-grades{margin:0;gap:9px}.gp2-dt .gp2-fr>span{width:46px}
+@media (max-width:1100px){.gp2-dt{grid-template-columns:repeat(2,minmax(0,1fr))}.gp2-dt .gp2-stat:nth-child(odd){border-left:0}.gp2-dt .gp2-stat:nth-child(n+3){border-top:1px solid rgb(var(--ink) / .07)}}
+@media (max-width:640px){.gp2-day2{border-radius:24px}.gp2-day2>header{padding:18px 20px 14px}.gp2-day2 h2{font-size:24px}
+  .gp2-dt{grid-template-columns:minmax(0,1fr)}.gp2-dt .gp2-stat{border-left:0;border-top:1px solid rgb(var(--ink) / .07);padding:14px 20px}.gp2-dt .gp2-stat:first-child{border-top:0}}
 </style>
 
 <div class="app" id="app">
@@ -7219,30 +7230,33 @@ function gp2Bar(w, l, p = 0){
   return `<span class="gp2-rb" title="${w} won, ${l} lost${p ? `, ${p} pushed` : ''}">${w ? `<i class="w" style="flex:${w}"></i>` : ''}${p ? `<i class="p" style="flex:${p}"></i>` : ''}${l ? `<i class="l" style="flex:${l}"></i>` : ''}</span>`;
 }
 // cumulative units, game by game, in the order the games were played
-function gp2Spark(items){
+function gp2Spark(items, selDay){
   const S = items.filter(x => x.r.ats_units != null).sort((a, b) => a.tip - b.tip);
   if (S.length < 2) return '';
   let c = 0; const pts = [0, ...S.map(x => (c += x.r.ats_units))];
   const W = 640, H = 76, pad = 8, lo = Math.min(0, ...pts), hi = Math.max(0, ...pts), rng = (hi - lo) || 1;
-  const X = i => pad + i / (pts.length - 1) * (W - 2 * pad), Y = v => pad + (hi - v) / rng * (H - 2 * pad), n = pts.length - 1;
-  const d = pts.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(''), last = pts[n];
+  const X = i => pad + i / (pts.length - 1) * (W - 2 * pad), Y = v => pad + (hi - v) / rng * (H - 2 * pad), n = pts.length - 1, f = v => v.toFixed(1);
+  const path = (a, b) => pts.slice(a, b + 1).map((v, i) => `${i ? 'L' : 'M'}${f(X(a + i))} ${f(Y(v))}`).join(''), last = pts[n];
+  const k0 = S.findIndex(x => x.day === selDay), k1 = k0 < 0 ? -1 : S.length - 1 - [...S].reverse().findIndex(x => x.day === selDay);   // the selected day's games run from point k0 to k1 + 1
+  const band = k0 < 0 ? '' : `<rect class="gpband" x="${f(X(k0))}" y="0" width="${f(Math.max(3, X(k1 + 1) - X(k0)))}" height="${H}" rx="4"/>`;
+  const selPath = k0 < 0 ? '' : `<path class="gpsel" d="${path(k0, k1 + 1)}"/>`;
   return `<div class="gp2-sp"><svg class="gp2-spark ${last >= 0 ? 'up' : 'down'}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Units on spread picks, game by game, ending at ${gpS(last, 2)}">
-    <line class="z" x1="${pad}" x2="${W - pad}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/><path class="a" d="${d}L${X(n).toFixed(1)} ${Y(0).toFixed(1)}L${X(0).toFixed(1)} ${Y(0).toFixed(1)}Z"/>
-    <path class="l" d="${d}"/><circle cx="${X(n).toFixed(1)}" cy="${Y(last).toFixed(1)}" r="4"/></svg>
-    <div class="gp2-cap"><span>Units, game by game</span><b>${gpS(last, 2)}</b></div></div>`;
+    ${band}<line class="z" x1="${pad}" x2="${W - pad}" y1="${f(Y(0))}" y2="${f(Y(0))}"/><path class="a" d="${path(0, n)}L${f(X(n))} ${f(Y(0))}L${f(X(0))} ${f(Y(0))}Z"/>
+    <path class="l" d="${path(0, n)}"/>${selPath}<circle cx="${f(X(n))}" cy="${f(Y(last))}" r="4"/></svg>
+    <div class="gp2-cap"><span>Units, game by game${k0 < 0 ? '' : ', the selected day shaded'}</span><b>${gpS(last, 2)}</b></div></div>`;
 }
 // one square per graded game, oldest first
-function gp2Form(items){
+function gp2Form(items, selDay){
   const S = [...items].sort((a, b) => a.tip - b.tip).slice(-60);
-  const row = (label, f) => `<div class="gp2-fr"><span>${label}</span><div>${S.map(x => { const v = f(x.r); return `<i class="${v ? v.toLowerCase() : 'n'}" title="${esc(x.matchup)} ${x.as}${DASH}${x.hs}"></i>`; }).join('')}</div></div>`;
+  const row = (label, f) => `<div class="gp2-fr"><span>${label}</span><div>${S.map(x => { const v = f(x.r); return `<i class="${v ? v.toLowerCase() : 'n'}${selDay && x.day === selDay ? ' gpin' : ''}" title="${esc(x.matchup)} ${x.as}${DASH}${x.hs}"></i>`; }).join('')}</div></div>`;
   return S.length ? `<div class="gp2-form" role="img" aria-label="Result of every graded pick, oldest first">${row('Spread', r => r.ats_res)}${row('Winner', r => r.ml_res)}</div>` : '';
 }
-function gp2Grades(items){
+function gp2Grades(items, note = true){
   const row = (label, kind, val) => `<div class="gp2-fr"><span>${label}</span><div class="gp2-gl">${['A', 'B', 'C'].map(L => { const a = gpStats(items.filter(x => gpGrade(kind, val(x)) === L), kind);
     return `<span><i class="gp2-gr ${L}">${L}</i>${a.n || a.p ? `<b>${gpRec(a)}</b>` : '<em>none</em>'}</span>`; }).join('')}</div></div>`;
-  return items.length ? `<div class="gp2-form gp2-grades" aria-label="Record by shadow grade">${row('Spread', 'ats', x => x.r.ats_edge)}${row('Winner', 'ml', x => x.r.ml_side ? gpPickP(x.r) : null)}<p class="gp2-note">Shadow grades, tracked not recommended. Spread: edge 5+ is A, 3 to 5 is B. Winner: 70%+ is A, 60 to 70% is B.</p></div>` : '';
+  return items.length ? `<div class="gp2-form gp2-grades" aria-label="Record by shadow grade">${row('Spread', 'ats', x => x.r.ats_edge)}${row('Winner', 'ml', x => x.r.ml_side ? gpPickP(x.r) : null)}${note ? '<p class="gp2-note">Shadow grades, tracked not recommended. Spread: edge 5+ is A, 3 to 5 is B. Winner: 70%+ is A, 60 to 70% is B.</p>' : ''}</div>` : '';
 }
-function gp2Hero(items){
+function gp2Hero(items, selDay){
   const A = gpStats(items, 'ats'), M = gpStats(items, 'ml'), F = gpFav(items), rb = items.filter(x => x.f.src === 'bf').length, games = A.n + A.p;
   const sub = !items.length ? 'Picks are written 4 hours before tip and graded after the final.'
     : `${games} ${games === 1 ? 'game' : 'games'}${rb ? `, ${rb === items.length ? 'all' : rb} rebuilt from the tape` : ''}${A.p ? `, ${A.p} pushed` : ''}`;
@@ -7251,12 +7265,12 @@ function gp2Hero(items){
   const fav = F.n ? `<div class="gp2-vs"><span>Market favourite</span><b>${F.w}${DASH}${F.n - F.w}</b>${gp2Bar(F.w, F.n - F.w)}</div>` : '';
   return `<section class="gp2-hero" aria-label="Season record">
     <div class="gp2-main">
-      <p class="gp2-k">Against the spread</p>
+      <p class="gp2-k">Against the spread${selDay ? ' &middot; season total' : ''}</p>
       <p class="gp2-big">${items.length ? `${A.w}<span class="dash">${DASH}</span>${A.l}` : `0<span class="dash">${DASH}</span>0`}</p>
       <p class="gp2-sub">${sub}</p>
       <div class="gp2-meter" role="img" aria-label="${rate}"><i style="--p:${Math.min(1, A.n / GP_MIN).toFixed(3)}"></i></div>
       <p class="gp2-note">${rate}</p>
-      ${gp2Spark(items)}${gp2Form(items)}${gp2Grades(items)}
+      ${gp2Spark(items, selDay)}${gp2Form(items, selDay)}${gp2Grades(items)}
     </div>
     <div class="gp2-side">
       <div class="gp2-stat"><p class="gp2-k">Winner picks, same games</p>
@@ -7395,22 +7409,25 @@ function gp2DayBar(days, counts, now){
     <button type="button" class="gp2-ar" data-step="1" aria-label="Next day"${days.indexOf(gpDay) >= days.length - 1 ? ' disabled' : ''}>&rsaquo;</button>`;
 }
 function gp2DaySummary(d, items, board, nLocked){
-  const A = gpStats(items, 'ats'), M = gpStats(items, 'ml'), bf = items.filter(x => x.f.src === 'bf').length, total = items.length + board;
-  const bits = [];
-  if (items.length) bits.push(`<span>Spread <b>${gpRec(A)}</b>${gp2Bar(A.w, A.l, A.p)}</span>`, `<span>Winner <b>${M.w}${DASH}${M.l}</b>${gp2Bar(M.w, M.l)}</span>`, A.nu ? `<span>Units <b>${gpU(A.units)}</b></span>` : '');
-  if (board) bits.push(`<span>${nLocked} of ${board} locked</span>`);
-  return `<div class="gp2-dsum"><div><h2>${etFmt(gpDayTs(d), {weekday: 'long', month: 'long', day: 'numeric'})}</h2>
-    <p>${total ? `${total} ${total === 1 ? 'game' : 'games'}${bf ? `, ${bf === items.length ? 'rebuilt from the tape' : `${bf} rebuilt`}` : ''}` : 'No regular-season games with picks'}</p></div>
-    <div class="gp2-chips">${bits.join('')}</div></div>`;
+  const A = gpStats(items, 'ats'), M = gpStats(items, 'ml'), F = gpFav(items), bf = items.filter(x => x.f.src === 'bf').length, total = items.length + board;
+  const head = `<header><div><p class="gp2-k">Selected day</p><h2>${etFmt(gpDayTs(d), {weekday: 'long', month: 'long', day: 'numeric'})}</h2>
+    <p class="gp2-sub">${total ? `${total} ${total === 1 ? 'game' : 'games'}${bf ? `, ${bf === items.length ? 'rebuilt from the tape' : `${bf} rebuilt`}` : ''}${board ? `, ${nLocked} of ${board} locked` : ''}` : 'No regular-season games with picks'}</p></div></header>`;
+  if (!items.length) return `<section class="gp2-day2">${head}</section>`;
+  const fav = F.n ? `<p class="gp2-note">Market favourite ${F.w}${DASH}${F.n - F.w} on the same ${F.n}</p>` : '';
+  return `<section class="gp2-day2" aria-label="Selected day">${head}<div class="gp2-dt">
+    <div class="gp2-stat"><p class="gp2-k">Spread</p><p class="gp2-num">${gpRec(A)}</p>${gp2Bar(A.w, A.l, A.p)}<p class="gp2-note">${A.nu ? `${gpU(A.units)} units, ${A.nu} priced` : 'no stored prices'}</p></div>
+    <div class="gp2-stat"><p class="gp2-k">Winner</p><p class="gp2-num">${M.n ? `${M.w}${DASH}${M.l}` : 'None'}</p>${M.n ? gp2Bar(M.w, M.l) : ''}${fav}${M.nu ? `<p class="gp2-note">${gpU(M.units)} units, ${M.nu} priced</p>` : ''}</div>
+    <div class="gp2-stat"><p class="gp2-k">Closing-line value</p><p class="gp2-num">${A.nclv ? gpS(A.clv, 2) : 'n/a'}<small>pts</small></p><p class="gp2-note">${A.nclv ? `${A.clvPos} of ${A.nclv} beat the last look` : 'needs a pick and a last look'}</p></div>
+    <div class="gp2-stat gp2-gstat"><p class="gp2-k">By shadow grade</p>${gp2Grades(items, false)}</div></div></section>`;
 }
 function renderGamePicks(){
   if (!gpTried) loadGamePicks();
   const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, status = statusFromBoard(B), settled = new Set(gpGames().map(g => g.gid));
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
   const all = gpItems('all', 'f');
-  $('gp2hero').innerHTML = gp2Hero(all);
   const days = gpDayList(B);
   if (!days.includes(gpDay)) gpDay = days.includes(etDay(now)) ? etDay(now) : days[days.length - 1] || null;
+  $('gp2hero').innerHTML = gp2Hero(all, gpDay);
   const upcoming = d => (B.games || []).filter(g => g.season_type >= 2 && etDay(g.tip) === d && !settled.has(String(g.id)) && g.tip > now - 8 * 3600).sort((a, b) => a.tip - b.tip);
   const counts = {}; for (const d of days) counts[d] = all.filter(x => x.day === d).length + upcoming(d).length;
   $('gpdbar').innerHTML = days.length ? gp2DayBar(days, counts, now) : '';

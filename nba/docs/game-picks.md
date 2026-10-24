@@ -38,6 +38,7 @@ The cut-offs are fixed in `docs/pick-grades.md` before any grade was read and ar
 - **Winner grade** from the model's chance for its side: **A** 70% or more, **B** 60 to 70%, **C** under 60%.
 - **Rank** = the order of the day's picks by edge (spread) or by that chance (winner). A day with fewer than N games is left out of "top N".
 - Grades and ranks are **derived** from the stored edge and chance, so the rebuilt days carry them too and nothing in the data changed.
+- The Game Picks page keeps the **season total** at the top and, under the day strip, shows the same stats **for the selected day**: spread record and units, the winner record against that day's market favourite, closing-line value, and the record by grade. The selected day's games are ringed in the season strip and shaded on the units line.
 - Track Record shows the record by grade and for the top 1 and top 3 of each day, with the closing-line value, and for the winner picks the average chance the model gave and the chance the closing spread implied for the same side, next to the market favourite's record on the same games.
 
 What the 2,641-game history says (`docs/pick-grades.md`): against the closing line the spread **A** tier won 47.3% and the top 3 of each day 49.3% (the biggest gaps do worse); winner **A** won 80.5% where the market implied 79.2%, and the top 3 of each day 76.1% where it implied 76.1%. A grade
