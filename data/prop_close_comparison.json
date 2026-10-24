@@ -1,119 +1,201 @@
 {
- "props_scored": 3450,
+ "props_scored": 4166,
  "min_n": 150,
  "by_book": {
   "Pinnacle": {
-   "n": 0
+   "n": 387,
+   "log_loss": 0.6845,
+   "brier": 0.2457,
+   "mean_p_over": 0.4933,
+   "over_hit_rate": 0.4935
   },
   "Novig": {
-   "n": 0
+   "n": 425,
+   "log_loss": 0.683,
+   "brier": 0.2449,
+   "mean_p_over": 0.4924,
+   "over_hit_rate": 0.4988
   },
   "Kalshi": {
-   "n": 238,
-   "log_loss": 0.6744,
-   "brier": 0.2411,
-   "mean_p_over": 0.4816,
-   "over_hit_rate": 0.4916
+   "n": 538,
+   "log_loss": 0.6789,
+   "brier": 0.243,
+   "mean_p_over": 0.487,
+   "over_hit_rate": 0.5
   },
   "Consensus": {
-   "n": 3442,
-   "log_loss": 0.6884,
-   "brier": 0.2476,
-   "mean_p_over": 0.4947,
-   "over_hit_rate": 0.4893
+   "n": 4132,
+   "log_loss": 0.6876,
+   "brier": 0.2472,
+   "mean_p_over": 0.4946,
+   "over_hit_rate": 0.491
   },
   "FanDuel": {
-   "n": 0
+   "n": 116,
+   "log_loss": 0.6973,
+   "brier": 0.252,
+   "mean_p_over": 0.4898,
+   "over_hit_rate": 0.5259
   },
   "DraftKings": {
-   "n": 0
+   "n": 18,
+   "log_loss": 0.6885,
+   "brier": 0.2478,
+   "mean_p_over": 0.4978,
+   "over_hit_rate": 0.7222
   }
  },
- "all_three_sharp": 0,
+ "all_three_sharp": 229,
  "pairs": [
   {
    "a": "Pinnacle",
    "b": "Novig",
-   "n": 0
+   "n": 376,
+   "gap": 0.0021,
+   "ci95": [
+    -0.0006,
+    0.0049
+   ],
+   "verdict": "no difference"
   },
   {
    "a": "Pinnacle",
    "b": "Kalshi",
-   "n": 0
+   "n": 234,
+   "gap": -0.0002,
+   "ci95": [
+    -0.0032,
+    0.0028
+   ],
+   "verdict": "no difference"
   },
   {
    "a": "Novig",
    "b": "Kalshi",
-   "n": 0
+   "n": 242,
+   "gap": -0.0011,
+   "ci95": [
+    -0.0038,
+    0.0016
+   ],
+   "verdict": "no difference"
   },
   {
    "a": "Pinnacle",
    "b": "Consensus",
-   "n": 0
+   "n": 366,
+   "gap": -0.001,
+   "ci95": [
+    -0.0047,
+    0.0026
+   ],
+   "verdict": "no difference"
   },
   {
    "a": "Pinnacle",
    "b": "FanDuel",
-   "n": 0
+   "n": 104,
+   "gap": -0.0032,
+   "ci95": [
+    -0.0094,
+    0.0036
+   ],
+   "verdict": "too few"
   },
   {
    "a": "Pinnacle",
    "b": "DraftKings",
-   "n": 0
+   "n": 14,
+   "gap": 0.012,
+   "ci95": [
+    -0.0026,
+    0.0256
+   ],
+   "verdict": "too few"
   },
   {
    "a": "Novig",
    "b": "Consensus",
-   "n": 0
+   "n": 403,
+   "gap": -0.0025,
+   "ci95": [
+    -0.0071,
+    0.0018
+   ],
+   "verdict": "no difference"
   },
   {
    "a": "Novig",
    "b": "FanDuel",
-   "n": 0
+   "n": 112,
+   "gap": -0.004,
+   "ci95": [
+    -0.0113,
+    0.004
+   ],
+   "verdict": "too few"
   },
   {
    "a": "Novig",
    "b": "DraftKings",
-   "n": 0
+   "n": 17,
+   "gap": 0.0167,
+   "ci95": [
+    -0.0012,
+    0.0349
+   ],
+   "verdict": "too few"
   },
   {
    "a": "Kalshi",
    "b": "Consensus",
-   "n": 230,
-   "gap": -0.0008,
+   "n": 507,
+   "gap": -0.0009,
    "ci95": [
-    -0.0067,
-    0.0056
+    -0.0054,
+    0.0031
    ],
    "verdict": "no difference"
   },
   {
    "a": "Kalshi",
    "b": "FanDuel",
-   "n": 0
+   "n": 63,
+   "gap": -0.0002,
+   "ci95": [
+    -0.0106,
+    0.0099
+   ],
+   "verdict": "too few"
   },
   {
    "a": "Kalshi",
    "b": "DraftKings",
-   "n": 0
+   "n": 11,
+   "gap": 0.0145,
+   "ci95": [
+    -0.0063,
+    0.0359
+   ],
+   "verdict": "too few"
   }
  ],
  "markets": {
-  "pass_att": 94,
-  "pass_cmp": 112,
-  "pass_int": 156,
-  "pass_rush_yd": 69,
-  "pass_td": 151,
-  "pass_yd": 117,
-  "rec": 905,
-  "rec_yd": 921,
-  "rush_att": 342,
-  "rush_rec_yd": 270,
-  "rush_yd": 313
+  "pass_att": 119,
+  "pass_cmp": 139,
+  "pass_int": 183,
+  "pass_rush_yd": 90,
+  "pass_td": 178,
+  "pass_yd": 144,
+  "rec": 1091,
+  "rec_yd": 1100,
+  "rush_att": 419,
+  "rush_rec_yd": 315,
+  "rush_yd": 388
  },
- "generated": "2026-10-14T01:57:06Z",
+ "generated": "2026-10-21T14:00:49Z",
  "sources": {
-  "live_tape_props": 0,
+  "live_tape_props": 943,
   "kalshi_backfill_props": 458,
   "max_age_min": 180,
   "interp": false
