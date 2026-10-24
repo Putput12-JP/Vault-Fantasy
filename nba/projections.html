@@ -2161,7 +2161,7 @@ th{font-weight:500}
 .gp2-ctx i{flex:none;width:18px;height:18px;border-radius:50%;border:1px solid rgb(var(--ink) / .25);display:grid;place-items:center;font:italic 600 11px/1 Georgia,serif;color:var(--fg2)}
 .gp2-ctx b{color:var(--fg2);font-weight:600}
 
-.gp2-sec{margin:34px 0 14px;display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.gp2-sec{margin:26px 0 12px;display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .gp2-sec h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.025em}
 .gp2-sec p{margin:0;font-size:13px;color:var(--fg3)} .gp2-sec a{color:var(--fg2);text-decoration:underline;text-underline-offset:3px}
 .gp2-board{display:grid;gap:10px}
@@ -2255,6 +2255,29 @@ th{font-weight:500}
   .gp2-sec h2{font-size:20px}
 }
 @media (prefers-reduced-motion:reduce){.gp2-anim .gp2-g{animation:none}.gp2-g,.gp2-r,.gp2-meter i{transition:none}.gp2-g:hover{transform:none}.gp2-st.live::before{animation:none}}
+
+.gp2-dbar{display:flex;align-items:center;gap:8px;margin:28px 0 4px}
+.gp2-days{display:flex;gap:6px;overflow-x:auto;padding:4px 2px;flex:1;min-width:0;scrollbar-width:none;scroll-snap-type:x proximity;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent);mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent)}
+.gp2-days::-webkit-scrollbar{display:none}
+.gp2-days button{flex:none;scroll-snap-align:center;display:grid;gap:2px;text-align:left;padding:9px 16px;border-radius:16px;border:1px solid rgb(var(--ink) / .09);background:var(--surface);color:var(--fg2);cursor:pointer;font:inherit;
+  transition:background .2s ease,color .2s ease,border-color .2s ease,transform .12s ease-out}
+.gp2-days button b{font:600 13.5px var(--font-sans);letter-spacing:-.01em;color:inherit}
+.gp2-days button span{font:500 11px var(--font-mono);color:var(--fg3)}
+.gp2-days button:hover{border-color:rgb(var(--ink) / .22);color:var(--fg)}
+.gp2-days button:active,.gp2-ar:active{transform:scale(.97)}
+.gp2-days button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.gp2-days button[aria-pressed="true"] span{color:var(--on-primary);opacity:.65}
+.gp2-ar{flex:none;width:38px;height:38px;border-radius:50%;border:1px solid rgb(var(--ink) / .1);background:var(--surface);color:var(--fg2);font:400 22px/1 var(--font-sans);cursor:pointer;display:grid;place-items:center;padding:0 0 3px;transition:border-color .2s ease,color .2s ease,transform .12s ease-out}
+.gp2-ar:hover:not(:disabled){border-color:rgb(var(--ink) / .25);color:var(--fg)} .gp2-ar:disabled{opacity:.3;cursor:default}
+.gp2-days button:focus-visible,.gp2-ar:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.gp2-dsum{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;margin:20px 4px 0}
+.gp2-dsum h2{margin:0;font-size:26px;font-weight:600;letter-spacing:-.03em}
+.gp2-dsum p{margin:4px 0 0;font:500 12px var(--font-mono);color:var(--fg3)}
+.gp2-chips{display:flex;flex-wrap:wrap;gap:8px}
+.gp2-chips>span{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:12px;border:1px solid rgb(var(--ink) / .08);background:var(--surface);font:500 12px var(--font-mono);color:var(--fg3)}
+.gp2-chips b{color:var(--fg);font-weight:600;font-size:13px} .gp2-chips .gp2-rb{margin-left:0;width:40px}
+@media (max-width:640px){.gp2-ar{display:none}.gp2-dbar{margin-top:22px}.gp2-dsum h2{font-size:22px}}
+@media (prefers-reduced-motion:reduce){.gp2-days button,.gp2-ar{transition:none}}
 </style>
 
 <div class="app" id="app">
@@ -2671,9 +2694,11 @@ th{font-weight:500}
     <footer id="sfoot" hidden></footer>
     <main id="v-games" hidden>
       <div id="gp2hero"></div>
-      <div class="gp2-sec"><h2>Next up</h2><p>Written once, 4 hours before tip. Until then the lean is live and not recorded.</p></div>
+      <div class="gp2-dbar" id="gpdbar"></div>
+      <div id="gpdsum"></div>
+      <div class="gp2-sec" id="gpsec1" hidden><h2>Next up</h2><p>Written once, 4 hours before tip. Until then the lean is live and not recorded.</p></div>
       <div class="gp2-board" id="gptonight"></div>
-      <div class="gp2-sec"><h2>Recent results</h2><p>First look, last three days. The full record is on <a href="#track" data-go="track">Track Record</a>.</p></div>
+      <div class="gp2-sec" id="gpsec2" hidden><h2>Results</h2><p>First look. The full record is on <a href="#track" data-go="track">Track Record</a>.</p></div>
       <div class="gp2-list" id="gpres"></div>
     </main>
     <footer id="gpfoot" hidden></footer>
@@ -7671,28 +7696,71 @@ $('tgameclk').addEventListener('click', ev => { const b = ev.target.closest('but
 $('tgamesrc').addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (!b) return; gpSrc = b.dataset.v; for (const x of $('tgamesrc').children) x.setAttribute('aria-pressed', x === b); renderTrackGames(); });
 $('tgamemore').addEventListener('click', () => { gpShow = 1e6; renderTrackGames(); });
 
-// ── the page
-let gp2Seen = false;
+// ── the page: pick a day, see that day's picks and results
+let gp2Seen = false, gpDay = null;
+const gpDayTs = d => Date.parse(d + 'T16:00:00Z') / 1000;
+function gpDayList(B){
+  const set = new Set(Object.keys(GPD));
+  for (const g of (B.games || [])) if (g.season_type >= 2) set.add(etDay(g.tip));
+  return [...set].sort();
+}
+function gpDayName(d, now){
+  const rel = {[etDay(now)]: 'Today', [etDay(now - 86400)]: 'Yesterday', [etDay(now + 86400)]: 'Tomorrow'}[d];
+  return {top: rel || etFmt(gpDayTs(d), {weekday: 'short'}), sub: etFmt(gpDayTs(d), {month: 'short', day: 'numeric'})};
+}
+function gp2DayBar(days, counts, now){
+  return `<button type="button" class="gp2-ar" data-step="-1" aria-label="Previous day"${days.indexOf(gpDay) <= 0 ? ' disabled' : ''}>&lsaquo;</button>
+    <div class="gp2-days" id="gpdays" role="group" aria-label="Day">${days.map(d => { const n = gpDayName(d, now);
+      return `<button type="button" data-d="${d}" aria-pressed="${d === gpDay}"><b>${n.top}</b><span>${n.sub} &middot; ${counts[d] || 0}</span></button>`; }).join('')}</div>
+    <button type="button" class="gp2-ar" data-step="1" aria-label="Next day"${days.indexOf(gpDay) >= days.length - 1 ? ' disabled' : ''}>&rsaquo;</button>`;
+}
+function gp2DaySummary(d, items, board, nLocked){
+  const A = gpStats(items, 'ats'), M = gpStats(items, 'ml'), bf = items.filter(x => x.f.src === 'bf').length, total = items.length + board;
+  const bits = [];
+  if (items.length) bits.push(`<span>Spread <b>${gpRec(A)}</b>${gp2Bar(A.w, A.l, A.p)}</span>`, `<span>Winner <b>${M.w}${DASH}${M.l}</b>${gp2Bar(M.w, M.l)}</span>`, A.nu ? `<span>Units <b>${gpU(A.units)}</b></span>` : '');
+  if (board) bits.push(`<span>${nLocked} of ${board} locked</span>`);
+  return `<div class="gp2-dsum"><div><h2>${etFmt(gpDayTs(d), {weekday: 'long', month: 'long', day: 'numeric'})}</h2>
+    <p>${total ? `${total} ${total === 1 ? 'game' : 'games'}${bf ? `, ${bf === items.length ? 'rebuilt from the tape' : `${bf} rebuilt`}` : ''}` : 'No regular-season games with picks'}</p></div>
+    <div class="gp2-chips">${bits.join('')}</div></div>`;
+}
 function renderGamePicks(){
   if (!gpTried) loadGamePicks();
   const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, status = statusFromBoard(B), settled = new Set(gpGames().map(g => g.gid));
   $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
-  const items = gpItems('all', 'f');
-  $('gp2hero').innerHTML = gp2Hero(items);
-  const G = [...(B.games || [])].filter(g => g.season_type >= 2 && g.tip > now - 5 * 3600 && g.tip < now + 30 * 3600 && !settled.has(String(g.id))).sort((a, b) => a.tip - b.tip);
+  const all = gpItems('all', 'f');
+  $('gp2hero').innerHTML = gp2Hero(all);
+  const days = gpDayList(B);
+  if (!days.includes(gpDay)) gpDay = days.includes(etDay(now)) ? etDay(now) : days[days.length - 1] || null;
+  const upcoming = d => (B.games || []).filter(g => g.season_type >= 2 && etDay(g.tip) === d && !settled.has(String(g.id)) && g.tip > now - 8 * 3600).sort((a, b) => a.tip - b.tip);
+  const counts = {}; for (const d of days) counts[d] = all.filter(x => x.day === d).length + upcoming(d).length;
+  $('gpdbar').innerHTML = days.length ? gp2DayBar(days, counts, now) : '';
+  const strip = $('gpdays'), on = strip && strip.querySelector('[aria-pressed="true"]');
+  if (on) strip.scrollLeft = on.offsetLeft - strip.clientWidth / 2 + on.clientWidth / 2;
+  const items = all.filter(x => x.day === gpDay).sort((a, b) => a.tip - b.tip), G = gpDay ? upcoming(gpDay) : [];
+  const locked = G.filter(g => GPO && GPO.games[String(g.id)]).length;
+  $('gpdsum').innerHTML = gpDay ? gp2DaySummary(gpDay, items, G.length, locked) : `<div class="gp2-empty"><b>No regular-season games to pick right now.</b><span>Picks are written 4 hours before each tip. ${noGamesWhy()}</span></div>`;
+  $('gpsec1').hidden = !G.length; $('gpsec2').hidden = !items.length;
   $('gptonight').classList.toggle('gp2-anim', !gp2Seen && G.length > 0);
-  $('gptonight').innerHTML = G.length ? G.map((g, i) => gp2Row(g, B, status, now, i)).join('')
-    : `<div class="gp2-empty"><b>No regular-season games to pick right now.</b><span>Picks are written 4 hours before each tip. ${noGamesWhy()}</span></div>`;
+  $('gptonight').innerHTML = G.map((g, i) => gp2Row(g, B, status, now, i)).join('');
   if (G.length) gp2Seen = true;
-  const days = [...new Set(items.map(y => y.day))].sort().reverse();
-  const recent = items.filter(x => x.day >= (days[2] || days[days.length - 1]));
-  $('gpres').innerHTML = recent.length ? gp2Days(recent, 40) : '<div class="gp2-empty"><b>No game picks graded yet.</b><span>They are graded after the final.</span></div>';
+  $('gpres').innerHTML = items.map(gp2Res).join('');
   $('gpfoot').innerHTML = `<div class="gp2-how">
     <div><b>1 &middot; The model</b><p>The Vault line from the Slate page: team ratings, home court, back-to-backs and the injury report, in points.</p></div>
     <div><b>2 &middot; The line</b><p>DraftKings' spread and moneyline, at the price it posted. The spread pick is the side the model likes against it; the winner pick is the team it gives better than even odds.</p></div>
     <div><b>3 &middot; The lock</b><p>Written once, 4 hours before tip, never re-priced. The last look before tip is kept to measure closing-line value. No rate is quoted under ${GP_MIN} graded picks.</p></div></div>
     <p class="gp2-fine">Tested on 2,641 games of 2024-25 and 2025-26, the model adds nothing the closing spread has not priced (t = 1.23), and against Kalshi's moneyline at 1pm it was no better than the price (Brier 0.2057 against 0.2008). Days before the recorder existed were rebuilt from the model rows and ESPN lines already on the tape, are labelled <i>rebuilt</i>, and can be left out on Track Record, where the full record lives.</p>`;
 }
+function gpGoDay(d){ if (!d || d === gpDay) return; gpDay = d; gp2Seen = false; renderGamePicks(); }
+$('gpdbar').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  if (b.dataset.d) return gpGoDay(b.dataset.d);
+  if (b.dataset.step){ const days = gpDayList(slateBoard().board), i = days.indexOf(gpDay) + (+b.dataset.step); if (days[i]) gpGoDay(days[i]); }
+});
+$('gpdbar').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const days = gpDayList(slateBoard().board), i = days.indexOf(gpDay) + (e.key === 'ArrowRight' ? 1 : -1);
+  if (days[i]){ e.preventDefault(); gpGoDay(days[i]); const f = $('gpdays') && $('gpdays').querySelector('[aria-pressed="true"]'); if (f) f.focus(); }
+});
 
 // ── Sharp Price ───────────────────────────────────────────────────────────
 // Where informed money is on game markets (sharp.py, in the recorder): Pinnacle's fair price from its own ladder,
