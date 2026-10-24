@@ -935,6 +935,13 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         SETTLE_ERR['lean record'] = f'{type(e).__name__}: {e}'[:120]
         print('lean record failed:', e, flush=True)
         leans_days, leans_pre = track.get('leans_days'), (track.get('preseason') or {}).get('leans_days')
+    try:                                          # the Vault line's ATS and winner picks, locked before tip and graded against the final (game_pick_record.py, docs/game-picks.md)
+        import game_pick_record as GPR
+        gpick_days = GPR.record(root, now, track.get('gpick_days'), rescan_days, season, me)
+    except Exception as e:
+        SETTLE_ERR['game pick record'] = f'{type(e).__name__}: {e}'[:120]
+        print('game pick record failed:', e, flush=True)
+        gpick_days = track.get('gpick_days')
     try:                                          # Novig paper trading, settled from the box score (novig_paper.py)
         import novig_paper as NPT
         novig_days = NPT.record(root, now, track.get('novig_days'), rescan_days, season, me)
@@ -963,7 +970,7 @@ def settle(root, now=None, rescan_days=3, keep_recent=600):
         signals = track.get('signals')
     box_changes = (list(BOX_CHANGES) + (track.get('box_changes') or []))[:BOX_CHANGES_KEEP]
     STUCK[:] = stuck_games(root, now, tips, changed)
-    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
+    track = {'t': now, 'edge_min': PX.EDGE_MIN, 'pk_be': PX.PK_BE, 'n': n, 'cube_cols': CUBE_COLS, 'cube': cube, 'minutes_days': minutes_days, 'wire_days': wire_days, 'pkn_days': pkn_days, 'leans_days': leans_days, 'gpick_days': gpick_days, 'sim_days': sim_days, 'psim_days': psim_days, 'gap_days': gap_days, 'held_days': held_days, 'held_bets_days': held_bets_days, 'novig_days': novig_days, 'novig_cfg': {'fee': NPT_CFG[0], 'edge': NPT_CFG[1], 'stake': NPT_CFG[2]}, 'signals': signals,
              'type_cols': TYPE_COLS, 'types': types, 'types_by_day': tday,
              'open_days': open_days, 'bets': recent, 'backtest': backtest_refs(), 'preseason': pre, 'box_changes': box_changes}
     with open(tpath, 'w') as f:

@@ -979,6 +979,15 @@ def shadow(root, day, board, now, polls):
         except Exception as e:
             rec['leans_err'] = str(e)[:120]
             traceback.print_exc(limit=2)
+        try:                                                    # the Vault line's ATS and winner picks, locked within 4h of tip (game_pick_record.py, docs/game-picks.md); never stops the ledger
+            import game_pick_record
+            grows, gmeta = game_pick_record.log(board, now)
+            rec['gpick'] = len(grows)
+            day.record('gpick', now, grows, gmeta)
+            rec['gpick_open'] = game_pick_record.write_open(root, day, now)
+        except Exception as e:
+            rec['gpick_err'] = str(e)[:120]
+            traceback.print_exc(limit=2)
         try:                                                    # Pick'em of the Night: the legs the page would slip, locked at the first tip (pickem_record.py); never stops the ledger
             import pickem_record
             krows, kmeta = pickem_record.log(board, now)
@@ -1106,7 +1115,7 @@ def push_board(root):
 def commit(root):
     push_board(root)
     git = ['git', '-C', root]
-    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('novig', 'track.json', 'results', 'bets', 'leans', 'season_types.json') if os.path.exists(os.path.join(root, p))], check=True)
+    subprocess.run(git + ['add', '-A', 'snapshots', 'status.json'] + [p for p in ('novig', 'track.json', 'results', 'bets', 'leans', 'gpicks', 'season_types.json') if os.path.exists(os.path.join(root, p))], check=True)
     if subprocess.run(git + ['diff', '--cached', '--quiet']).returncode == 0:
         return
     stamp = dt.datetime.now(ET).strftime('%Y-%m-%d %H:%M ET')

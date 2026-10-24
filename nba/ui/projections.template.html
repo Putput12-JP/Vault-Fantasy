@@ -1705,6 +1705,12 @@ table.sl-t tr.gap td{border-bottom:0;font-size:12px;color:var(--fg2)}
 table.sl-t .sl-sub{display:block;font-size:10.5px;color:var(--fg3)}
 .sl-gap{color:var(--fg)}
 .sl-gap.big{color:var(--warn)}
+.gp-s{display:block;font-size:11px;font-weight:400;color:var(--fg3);margin-top:1px;white-space:nowrap}
+.gp-r{padding:10px 0;border-top:1px solid var(--border)}.gp-r:first-of-type{border-top:0}
+.gp-rh{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;margin-bottom:8px;font-size:13px}.gp-rh b{font-weight:500}.gp-rh span{font-size:11px;color:var(--fg3)}
+.gp-c{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px;font-size:13px}.gp-c>div{min-width:0}
+.gp-k{display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);margin-bottom:3px}
+@media (max-width:600px){.gp-c{grid-template-columns:repeat(2,minmax(0,1fr))}.gp-card .sl-teams small{display:none}}
 .sl-why{margin:0;font-size:12px;color:var(--fg2)}
 .sl-inj{display:flex;flex-wrap:wrap;gap:6px}
 .sl-split{display:grid;gap:6px}
@@ -2085,6 +2091,28 @@ th{font-weight:500}
     <main id="v-track" hidden>
       <section class="card tscore" id="tscore" aria-label="Season record"></section>
 
+      <details class="card tfold" id="tgamecard" open>
+        <summary><span class="tf-t"><b>Game picks: spread and winner</b><small id="tgamestat">The Vault line's side on every regular-season game</small></span></summary>
+        <div class="card-b">
+          <p class="hint tplain" id="tgamesub"></p>
+          <div class="filters"><div class="seg" id="tgameclk" role="group" aria-label="Which look"><button type="button" data-v="f" aria-pressed="true">First look (the pick)</button><button type="button" data-v="c" aria-pressed="false">Last look before tip</button></div>
+            <div class="seg" id="tgamesrc" role="group" aria-label="Which games"><button type="button" data-v="all" aria-pressed="true">All games</button><button type="button" data-v="live" aria-pressed="false">Live only</button><button type="button" data-v="bf" aria-pressed="false">Rebuilt only</button></div></div>
+          <div class="kpis" id="tgamek"></div>
+          <h3 class="sim-h">Against the spread, by size of the edge</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tgameb"></table></div>
+          <h3 class="sim-h">Which side</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tgameo"></table></div>
+          <h3 class="sim-h">Winner picks, by the model's confidence</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tgamec"></table></div>
+          <h3 class="sim-h">By day</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tgamed"></table></div>
+          <h3 class="sim-h">Every game</h3>
+          <div class="tablewrap"><table class="ht tsim" id="tgamel"></table></div>
+          <div id="tgamemore" hidden></div>
+          <p class="hint" id="tgamenote"></p>
+        </div>
+      </details>
+
       <details class="card tfold" id="tleancard" open>
         <summary><span class="tf-t"><b>Model side vs the line</b><small id="tleanstat">The side the model prefers on every prop, edge or not</small></span></summary>
         <div class="card-b">
@@ -2346,6 +2374,19 @@ th{font-weight:500}
       </section>
     </main>
     <footer id="sfoot" hidden></footer>
+    <main id="v-games" hidden>
+      <div class="banner" id="gpbanner" hidden></div>
+      <div class="kpis" id="gpkpis"></div>
+      <section class="card" hidden>
+        <div class="card-h"><div><h2>Next up</h2><p>Each pick is written once, 4 hours before tip. Until then the lean is live and not recorded.</p></div></div>
+        <div class="card-b"><div class="sl-grid lv" id="gptonight"></div></div>
+      </section>
+      <section class="card">
+        <div class="card-h"><div><h2>Recent results</h2><p>The last three days of graded picks, first look. The full record is on <a href="#track" data-go="track">Track Record</a>.</p></div></div>
+        <div class="card-b"><div class="tablewrap"><table class="ht tsim" id="gpres"></table></div></div>
+      </section>
+    </main>
+    <footer id="gpfoot" hidden></footer>
     <main id="v-matchups" hidden></main>
     <footer id="mufoot" hidden></footer>
     <main id="v-sharp" hidden>
@@ -2448,6 +2489,7 @@ const H0 = /*HEALTH*/null;
 const PR = /*PRICING*/null;     // prop model: variance, calibration, blend weights (build_prop_model.py)
 const PB = /*BOARD*/null;       // props board: {live, example} (prop_board.py)
 const BT = /*BACKTESTS*/null;   // every test, its rule, result and verdict (build_backtests.py)
+const GPICKS = /*GPICKS*/null;   // data/game_picks.json: the game picks, live days and rebuilt days (build_game_picks.py)
 const LEANBT = /*LEANBT*/null, LEANBF = /*LEANBF*/null;   // lean backtest series and psim-derived backfill (build_lean_backtest.py, backfill_leans.py)
 const SIMCH = /*SIMCH*/null;      // simulation challenger results (build_sim_challenger.py), for Props Simulation
 const CTL = /*CONTROL*/null;       // Control Room: frozen models, dated tests, past verdicts (render_app.control)
@@ -2475,7 +2517,7 @@ let cur = store.get('nml-team');
 const hashT = location.hash.slice(1).toUpperCase();
 // Every page is its own menu item and hash. A page never hides another page behind an in-page tab strip: segmented
 // controls only narrow the list in front of you (stat, day, game, side). Different jobs are different pages.
-const VIEWS = ['combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'sharp', 'follow', 'wallets', 'tells', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
+const VIEWS = ['combo', 'bankroll', 'player', 'health', 'props', 'mybets', 'propboard', 'pairs', 'track', 'edges', 'tonight', 'wire', 'slate', 'matchups', 'lines', 'games', 'sharp', 'follow', 'wallets', 'tells', 'backtests', 'finder', 'btlab', 'sim', 'propsim', 'control', 'profile'];
 const viewOf = h => h === 'WORKS' ? 'backtests' : /^PLAYER\/\d+$/.test(h) ? 'player' : h === 'PLAYER' ? null : VIEWS.includes(h.toLowerCase()) ? h.toLowerCase() : null;
 let view = viewOf(hashT) || 'lab';
 if (D.teams[hashT]) cur = hashT;
@@ -2697,6 +2739,7 @@ const PAGES = [
   ]],
   ['Markets', [
     ['Game Lines', SVG('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'), 'Spread, total and moneyline across books, Kalshi and Polymarket, with the Vault line as context.', 'lines'],
+    ['Game Picks', SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 10.5 12 7l3.5 3.5"/>'), 'The Vault line\'s side against the spread and straight up, written 4 hours before tip and graded in public.', 'games'],
     ['Player Props', SVG('<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>'), 'One decision per prop: Bet, Lean or Pass, where to take it and why. Watch props for alerts.', 'props'],
     ['Props Table', SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>'), 'Every prop line and Kalshi ladder in one table, next to the projection, the blended fair price and the edge.', 'propboard'],
     ['Sharp Price', SVG('<path d="m12 2 3 7h7l-5.5 4.5 2 7.5L12 16.5 5.5 21l2-7.5L2 9h7z"/>'), 'Pinnacle, Kalshi and Polymarket as the sharp anchor, plus line moves and sharp-account flow.', 'sharp'],
@@ -2979,6 +3022,7 @@ function show(v){
   $('v-profile').hidden = $('profoot').hidden = v !== 'profile';
   $('v-wire').hidden = $('wfoot').hidden = v !== 'wire';
   $('v-slate').hidden = $('sfoot').hidden = v !== 'slate' && v !== 'lines';
+  $('v-games').hidden = $('gpfoot').hidden = v !== 'games';
   $('v-matchups').hidden = $('mufoot').hidden = v !== 'matchups';
   $('v-sharp').hidden = $('xfoot').hidden = v !== 'sharp';
   $('v-follow').hidden = $('fbfoot').hidden = v !== 'follow';
@@ -3078,6 +3122,13 @@ function show(v){
     $('tname').textContent = v === 'lines' ? 'Game Lines' : 'Slate';
     $('tsub').textContent = v === 'lines' ? 'EVERY BOOK · KALSHI · POLYMARKET · VAULT LINE AS CONTEXT' : 'STARTING FIVES · WHO IS OUT · HOW EACH DEFENSE GUARDS EACH POSITION';
     renderSlate();
+    if (!boardTried) loadBoard();
+    return;
+  }
+  if (v === 'games'){
+    $('tname').textContent = 'Game Picks';
+    $('tsub').textContent = 'SPREAD AND WINNER · LOCKED 4 HOURS BEFORE TIP · GRADED IN PUBLIC';
+    renderGamePicks();
     if (!boardTried) loadBoard();
     return;
   }
@@ -3965,6 +4016,7 @@ async function loadBoard(){
     renderChip();
     if (view === 'wire') renderWire();
     if (view === 'slate' || view === 'lines') renderSlate();
+    if (view === 'games') renderGamePicks();
     if (view === 'matchups') renderMatchups();
     if (view === 'sharp') renderSharp();
     if (view === 'follow') renderFollow();
@@ -4592,6 +4644,7 @@ function renderTrack(){
   renderPknRecord();
   renderSimRecord();
   renderPropSimRecord();
+  renderTrackGames();
   renderLeans();
   renderHeldRecord();
   renderNovigPaper();
@@ -6906,6 +6959,179 @@ function renderSlateRatings(){
 }
 $('sdays').addEventListener('click', e => { const b = e.target.closest('button[data-d]'), s2 = e.target.closest('button[data-ls]'); if (b){ sv.day = b.dataset.d; renderSlate(); } else if (s2){ sv.sort = s2.dataset.ls; renderSlate(); } });
 $('sgames').addEventListener('toggle', e => { const d = e.target.closest('details[data-g]'); if (d) sv.open[d.dataset.g] = d.open; }, true);
+
+// ── Game Picks (game_pick_record.py → nba-data gpicks/<day>.json + open.json; rules: docs/game-picks.md) ─────────────────────────────────────────
+// The Vault line's side against the spread and straight up, written ONCE when a game comes within 4 hours of tip and graded against the final. The first
+// look is the pick and never changes; the last look before tip is kept for closing-line value. Days before the recorder existed were rebuilt from the Game
+// Simulation rows already on the tape (backfill_game_picks.py): they are tagged, and the filter can leave them out. Not a bet signal: the game model adds
+// nothing the closing spread has not priced (docs/game-model.md), so this page measures it in public. No rate is quoted under GP_MIN graded picks.
+const GP_MIN = 100, GP_TOL = 0.04, GP_BE = 110 / 210;
+const GP_COLS = ['game', 'clock', 'margin', 'total', 'p_home', 'book', 'spread', 'ats_side', 'ats_edge', 'ats_px', 'ats_res', 'ats_units',
+  'ml_side', 'ml_px', 'ml_res', 'ml_units', 'ml_book', 'am', 'clv_pts', 'clv_p', 'src'];
+const GP_BOOKS = ['DraftKings', 'Pinnacle', 'FanDuel', 'BetMGM', 'bet365', 'Consensus'];       // same order as game_pick_record.BOOK_ORDER
+let GPD = {}, GPO = null, gpClock = 'f', gpSrc = 'all', gpLoading = false, gpTried = false, gpShow = 30;
+function gpAbsorb(days){                                                                       // union by game; the newer source replaces a game it already has
+  for (const [day, d] of Object.entries(days || {})){
+    const cur = GPD[day] || (GPD[day] = {games: {}, rows: []}), have = new Set(d.rows.map(r => r[0]));
+    cur.rows = cur.rows.filter(r => !have.has(r[0])).concat(d.rows);
+    Object.assign(cur.games, d.games);
+  }
+}
+if (GPICKS && GPICKS.cols && GPICKS.cols.join() === GP_COLS.join()) gpAbsorb(GPICKS.days);
+async function loadGamePicks(){
+  if (!H0 || gpLoading) return;
+  gpLoading = true; gpTried = true;
+  try {
+    const base = `https://raw.githubusercontent.com/${H0.repo}/${H0.branch}/gpicks/`;
+    const days = [0, 1, 2, 3, 4].map(k => new Date(Date.now() - k * 864e5).toISOString().slice(0, 10));
+    const get = u => fetch(u, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null);
+    const [open, ...fs] = await Promise.all([get(base + 'open.json'), ...days.map(d => get(`${base}${d}.json`))]);
+    if (open && open.cols && open.cols.join() === GP_COLS.join()) GPO = open;
+    for (const f of fs) if (f && f.cols && f.cols.join() === GP_COLS.join()) gpAbsorb({[f.day]: {games: f.games, rows: f.rows}});
+  } finally { gpLoading = false; }
+  if (view === 'games') renderGamePicks();
+  if (view === 'track') renderTrackGames();
+}
+// one object per game: {day, gid, matchup, tip, away, home, as, hs, f: first look, c: last look}
+function gpGames(){
+  const out = [];
+  for (const [day, d] of Object.entries(GPD)){
+    const by = {};
+    for (const r of d.rows){ const o = {}; GP_COLS.forEach((c, i) => o[c] = r[i]); (by[o.game] || (by[o.game] = {}))[o.clock] = o; }
+    for (const [gid, g] of Object.entries(d.games)){
+      const c = by[gid]; if (!c || !c.f) continue;
+      out.push({day, gid, matchup: g[0], tip: g[1], away: g[2], home: g[3], as: g[4], hs: g[5], f: c.f, c: c.c || c.f});
+    }
+  }
+  return out.sort((a, b) => b.tip - a.tip);
+}
+// the picks for the chosen look, each carrying the closing-line value measured from the first look to the last
+function gpItems(src = gpSrc, clock = gpClock){
+  return gpGames().filter(g => src === 'all' || (src === 'bf') === (g.f.src === 'bf')).map(g => ({...g, r: {...g[clock], clv_pts: g.c.clv_pts, clv_p: g.c.clv_p}}));
+}
+const gpPickP = r => r.ml_side === 'H' ? r.p_home : 1 - r.p_home;
+const gpSideSp = r => r.ats_side === 'H' ? r.spread : -r.spread;                                // the spread the picked side takes (negative = favourite)
+function gpStats(items, kind){
+  const k = kind, S = items.filter(x => x.r[k + '_res']), n = (res) => S.filter(x => x.r[k + '_res'] === res).length;
+  const w = n('W'), l = n('L'), p = n('P'), g = w + l, U = S.filter(x => x.r[k + '_units'] != null);
+  const C = k === 'ats' ? S.filter(x => x.r.clv_pts != null) : [];
+  return {n: g, w, l, p, hit: g ? w / g : null, ci: wilson(w, g), units: U.reduce((a, x) => a + x.r[k + '_units'], 0), nu: U.length,
+    clv: C.length ? C.reduce((a, x) => a + x.r.clv_pts, 0) / C.length : null, nclv: C.length, clvPos: C.filter(x => x.r.clv_pts > 0).length,
+    pred: k === 'ml' && g ? S.filter(x => x.r.ml_res !== 'P').reduce((a, x) => a + gpPickP(x.r), 0) / g : null};
+}
+function gpFav(items){                                                                          // the market's favourite (by the posted spread) straight up, on the same games
+  const S = items.filter(x => x.r.ml_res && x.r.spread != null && x.r.spread !== 0), w = S.filter(x => (x.r.am > 0) === (x.r.spread < 0)).length;
+  return {n: S.length, w, hit: S.length ? w / S.length : null};
+}
+const gpU = x => x == null ? '' : `<span class="${x >= 0 ? 'pos' : 'neg'}">${x >= 0 ? '+' : ''}${x.toFixed(2)}</span>`;
+const gpRate = (a, d = 1) => a.n < GP_MIN ? '<span class="muted" title="Too few graded picks to quote a rate">&ndash;</span>' : leanPct(a.hit, d);
+const gpRec = a => `${a.w}-${a.l}${a.p ? `-${a.p}` : ''}`;
+const gpSpTxt = (r, home, away) => r.spread == null ? '' : r.spread === 0 ? 'Pick' : r.spread < 0 ? `${home} ${r.spread}` : `${away} -${r.spread}`;
+const gpPx = s => s == null || s === '' ? '' : String(s);
+function gpAtsTxt(r, home, away){ if (!r.ats_side) return '<span class="muted">no pick</span>'; const t = r.ats_side === 'H' ? home : away, sp = gpSideSp(r);
+  return `<b>${t} ${sp > 0 ? '+' : ''}${sp}</b><span class="gp-s">${gpPx(r.ats_px)}${r.ats_edge != null ? ` · edge ${r.ats_edge.toFixed(1)}` : ''}</span>`; }
+function gpMlTxt(r, home, away){ if (!r.ml_side) return '<span class="muted">even</span>'; return `<b>${r.ml_side === 'H' ? home : away}</b><span class="gp-s">${leanPct(gpPickP(r), 0)}${r.ml_px ? ` · ${gpPx(r.ml_px)}` : ''}</span>`; }
+const GPRES = {W: pill('ok', 'Won'), L: pill('bad', 'Lost'), P: pill('idle', 'Push')};
+function gpKpis(items){
+  const A = gpStats(items, 'ats'), M = gpStats(items, 'ml'), F = gpFav(items);
+  const kpi = (label, val, hint) => `<section class="card kpi"><div class="card-h"><h2>${label}</h2></div><div class="card-b"><p class="val">${val}</p><p class="hint">${hint}</p></div></section>`;
+  const wait = `<span class="muted" style="font-size:16px">${A.n} of ${GP_MIN} graded</span>`;
+  const rebuilt = items.filter(x => x.f.src === 'bf').length;
+  return kpi('Against the spread', A.n ? gpRec(A) : 'None yet', A.n ? `${leanPct(A.hit)}${A.n >= GP_MIN && A.ci ? ` (${leanPct(A.ci[0], 0)} to ${leanPct(A.ci[1], 0)})` : ''} · break-even at -110 is ${leanPct(GP_BE)}${rebuilt ? ` · ${rebuilt} of ${items.length} games rebuilt` : ''}` : 'Picks are graded after the final') +
+    kpi('Units', A.nu ? gpU(A.units) : 'n/a', A.nu ? `1 unit per pick at the posted price, ${A.nu} of ${A.n + A.p} priced` : 'No stored prices yet') +
+    kpi('Winner picks', M.n ? `${M.w}-${M.l}` : 'None yet', M.n ? `${leanPct(M.hit)} straight up${F.n ? ` · the market favourite won ${leanPct(F.hit)} of the same ${F.n}` : ''}${M.nu ? ` · ${M.units >= 0 ? '+' : ''}${M.units.toFixed(2)} units at the posted moneyline` : ''}` : 'Graded after the final') +
+    kpi('Closing-line value', A.nclv ? `${A.clv >= 0 ? '+' : ''}${A.clv.toFixed(2)} pts` : 'n/a', A.nclv ? `Average move of the spread toward our side after the pick; ${A.clvPos} of ${A.nclv} picks beat the close` : 'Needs a pick and a close');
+}
+function gpHead(first, extra){ return `<thead><tr><th class="l" scope="col">${first}</th><th scope="col">Graded</th><th scope="col">Record</th><th scope="col">Hit</th>${extra}</tr></thead>`; }
+function renderTrackGames(){
+  if (!$('tgamecard')) return;
+  if (!gpTried) loadGamePicks();
+  const all = gpItems(), items = all, A = gpStats(items, 'ats'), M = gpStats(items, 'ml');
+  $('tgamestat').textContent = items.length ? `ATS ${gpRec(A)} · winner ${M.w}-${M.l} · ${items.length} games` : 'No games graded yet';
+  $('tgamesub').textContent = `The Vault line's side against DraftKings' spread, and its pick to win straight up. Each pick is written once, 4 hours before tip, and graded on the final. Not a bet: the game model adds nothing the closing line has not priced. Nothing is quoted under ${GP_MIN} graded picks in a cell.`;
+  $('tgamek').innerHTML = gpKpis(items);
+  const empty = '<tbody><tr><td class="l"><p class="empty">No game picks graded yet. They are written 4 hours before tip and graded after the final.</p></td></tr></tbody>';
+  const ats = items.filter(x => x.r.ats_res), bin = (lo, hi) => ats.filter(x => x.r.ats_edge >= lo && x.r.ats_edge < hi);
+  const row = (label, it, kind = 'ats') => { const a = gpStats(it, kind); if (!a.n && !a.p) return '';
+    return `<tr><td class="l"><b>${label}</b></td><td class="num">${a.n}</td><td class="num">${gpRec(a)}</td><td class="num">${gpRate(a)}</td>${kind === 'ats' ? `<td class="num">${a.nu ? gpU(a.units) : ''}</td><td class="num">${a.nclv ? (a.clv >= 0 ? '+' : '') + a.clv.toFixed(2) : ''}</td>` : ''}</tr>`; };
+  const EX = '<th scope="col" title="1 unit at the posted price of the picked side">Units</th><th scope="col" title="Points the spread moved toward our side between the pick and the last look before tip">Avg CLV</th>';
+  $('tgameb').innerHTML = !ats.length ? empty : gpHead('Size of the edge (points)', EX) + '<tbody>' + [['All picks', ats], ...[[0, 1, 'Under 1'], [1, 2, '1 to 2'], [2, 3, '2 to 3'], [3, 5, '3 to 5'], [5, 99, '5 or more']].map(([lo, hi, l]) => [l, bin(lo, hi)])].map(([l, it]) => row(l, it)).join('') + '</tbody>';
+  const grp = [['Home team', ats.filter(x => x.r.ats_side === 'H')], ['Road team', ats.filter(x => x.r.ats_side === 'A')], ['Takes the favourite', ats.filter(x => gpSideSp(x.r) < 0)], ['Takes the underdog', ats.filter(x => gpSideSp(x.r) > 0)]];
+  $('tgameo').innerHTML = !ats.length ? empty : gpHead('The side taken', EX) + '<tbody>' + grp.map(([l, it]) => row(l, it)).join('') + '</tbody>';
+  const mls = items.filter(x => x.r.ml_res), bands = [[.5, .55, '50 to 55%'], [.55, .6, '55 to 60%'], [.6, .7, '60 to 70%'], [.7, 1.01, '70% or more']];
+  $('tgamec').innerHTML = !mls.length ? empty : `<thead><tr><th class="l" scope="col">Model's chance of its winner</th><th scope="col">Graded</th><th scope="col">Predicted</th><th scope="col">Hit</th><th scope="col" title="Verified when the hit rate is within 4 points of the prediction over ${GP_MIN}+ picks">Check</th></tr></thead><tbody>${
+    bands.map(([lo, hi, l]) => { const a = gpStats(mls.filter(x => gpPickP(x.r) >= lo && gpPickP(x.r) < hi), 'ml'); if (!a.n) return '';
+      const ok = a.n >= GP_MIN ? (Math.abs(a.hit - a.pred) <= GP_TOL ? pill('ok', 'verified') : pill('warn', 'off by ' + ((a.hit - a.pred) * 100).toFixed(0) + ' pts')) : pill('idle', 'collecting');
+      return `<tr><td class="l"><b>${l}</b></td><td class="num">${a.n}</td><td class="num">${leanPct(a.pred)}</td><td class="num">${gpRate(a)}</td><td>${ok}</td></tr>`; }).join('')}</tbody>`;
+  const days = [...new Set(items.map(x => x.day))].sort().reverse();
+  $('tgamed').innerHTML = !days.length ? empty : `<thead><tr><th class="l" scope="col">Day</th><th scope="col">Games</th><th scope="col">Spread</th><th scope="col">Units</th><th scope="col">Winner</th><th class="l" scope="col">Source</th></tr></thead><tbody>${
+    days.map(d => { const it = items.filter(x => x.day === d), a = gpStats(it, 'ats'), m = gpStats(it, 'ml'), bf = it.filter(x => x.f.src === 'bf').length;
+      return `<tr><td class="l"><b>${etFmt(it[0].tip, {weekday: 'short', month: 'short', day: 'numeric'})}</b></td><td class="num">${it.length}</td><td class="num">${gpRec(a)}</td><td class="num">${a.nu ? gpU(a.units) : ''}</td><td class="num">${m.w}-${m.l}</td><td class="l"><small>${bf === it.length ? 'rebuilt from the tape' : bf ? `${it.length - bf} live, ${bf} rebuilt` : 'live'}</small></td></tr>`; }).join('')}</tbody>`;
+  $('tgamel').innerHTML = !items.length ? empty : gpListHead() + '<tbody>' + items.slice(0, gpShow).map(gpListRow).join('') + '</tbody>';
+  $('tgamemore').hidden = items.length <= gpShow;
+  $('tgamemore').innerHTML = `<button class="btn" id="tgamemorebtn" type="button">Show all ${items.length.toLocaleString()}</button>`;
+  const rb = all.filter(x => x.f.src === 'bf').length;
+  $('tgamenote').textContent = `The spread pick is the side the model gives an edge: its margin plus DraftKings' home spread, taken at DraftKings' price for that side (Pinnacle, FanDuel, BetMGM, bet365 or the consensus when DraftKings has none). The winner pick is the team the model gives better than even odds, at that book's moneyline. A price that was not stored is never filled in, so units cover only priced picks. A push is zero units. Closing-line value is the move of the spread between the pick and the last look before tip.${rb ? ` ${rb} games before the recorder existed were rebuilt from the Game Simulation rows and ESPN lines already on the tape: the model's margin there is the simulation's mean, within about 0.4 points of the exact figure, so a pick with an edge under 0.4 could differ. They are labelled and the filter can leave them out.` : ''}`;
+}
+function gpListHead(){ return '<thead><tr><th class="l" scope="col">Game</th><th class="l" scope="col" title="Home spread at the pick, and the model\'s margin">Line · model</th><th class="l" scope="col">Spread pick</th><th scope="col">Units</th><th class="l" scope="col">Winner pick</th><th scope="col" title="Spread move toward our side, pick to last look">CLV</th></tr></thead>'; }
+function gpListRow(x){
+  const r = x.r;
+  return `<tr><td class="l"><b>${esc(x.matchup)}</b><small>${etFmt(x.tip, {month: 'short', day: 'numeric'})} · ${x.as}-${x.hs}${x.f.src === 'bf' ? ' · rebuilt' : ''}</small></td><td class="l">${gpSpTxt(r, x.home, x.away) || '<span class="muted">no line</span>'}<span class="gp-s">model ${r.margin > 0 ? x.home : x.away} ${Math.abs(r.margin).toFixed(1)}</span></td><td class="l">${gpAtsTxt(r, x.home, x.away)}<div>${GPRES[r.ats_res] || ''}</div></td><td class="num">${gpU(r.ats_units)}</td><td class="l">${gpMlTxt(r, x.home, x.away)}<div>${GPRES[r.ml_res] || ''}</div></td><td class="num">${r.clv_pts == null ? '' : (r.clv_pts > 0 ? '+' : '') + r.clv_pts}</td></tr>`;
+}
+$('tgameclk').addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (!b) return; gpClock = b.dataset.v; for (const x of $('tgameclk').children) x.setAttribute('aria-pressed', x === b); renderTrackGames(); });
+$('tgamesrc').addEventListener('click', ev => { const b = ev.target.closest('button[data-v]'); if (!b) return; gpSrc = b.dataset.v; for (const x of $('tgamesrc').children) x.setAttribute('aria-pressed', x === b); renderTrackGames(); });
+$('tgamemore').addEventListener('click', () => { gpShow = 1e6; renderTrackGames(); });
+
+// the page: tonight's games (locked pick when there is one, the live lean beside it) and the last few days of results
+function gpLine(g){                                                                              // game_pick_record.pick_line, from the board's books
+  const by = Object.fromEntries((((g.mk || {}).books) || []).map(r => [r[0], r])), order = [...GP_BOOKS, ...Object.keys(by).filter(b => !GP_BOOKS.includes(b))];
+  const sp = order.map(b => by[b]).find(r => r && r[1] != null), ml = order.map(b => by[b]).find(r => r && r[4] != null && r[4] !== '' && r[5] != null && r[5] !== '');
+  return sp ? {book: sp[0], spread: +sp[1], home_px: sp[2], away_px: sp[3], home_ml: ml ? ml[4] : null, away_ml: ml ? ml[5] : null} : null;
+}
+function gpFromRow(v){ return {margin: v[0], total: v[1], p_home: v[2], book: v[3], spread: v[4], home_px: v[5], away_px: v[6], home_ml: v[7], away_ml: v[8]}; }
+function gpPickOf(m){                                                                           // {ats: {side, edge, px}, ml: {side, p, px}} from {margin, p_home, spread, prices}
+  const e = m.spread == null ? 0 : m.margin + m.spread, ats = m.spread == null || e === 0 ? null : {side: e > 0 ? 'H' : 'A', edge: Math.abs(e), px: e > 0 ? m.home_px : m.away_px};
+  const side = m.p_home === .5 ? null : m.p_home > .5 ? 'H' : 'A';
+  return {ats, ml: side ? {side, p: side === 'H' ? m.p_home : 1 - m.p_home, px: side === 'H' ? m.home_ml : m.away_ml} : null};
+}
+function gpCells(m, g){
+  const p = gpPickOf(m), sp = a => a.side === 'H' ? m.spread : -m.spread;
+  return [p.ats ? `<b>${p.ats.side === 'H' ? g.home : g.away} ${sp(p.ats) > 0 ? '+' : ''}${sp(p.ats)}</b><span class="gp-s">${gpPx(p.ats.px)} · edge ${p.ats.edge.toFixed(1)}</span>` : '<span class="muted">no spread posted</span>',
+    p.ml ? `<b>${p.ml.side === 'H' ? g.home : g.away}</b><span class="gp-s">${leanPct(p.ml.p, 0)}${p.ml.px ? ` · ${gpPx(p.ml.px)}` : ''}</span>` : '<span class="muted">even</span>'];
+}
+function gpCard(g, B, status, now){
+  const open = GPO && GPO.games[String(g.id)], L = gpLine(g), V = vaultLine(g, B, status);
+  const locked = open ? {...gpFromRow(open.f), ...{}} : null, lockAt = g.tip - 4 * 3600, started = g.tip <= now;
+  const live = V ? {margin: -V.spread, total: V.total, p_home: V.win, ...(L || {spread: null})} : null;
+  const tag = locked ? (started ? pill('idle', 'In progress · pick locked') : pill('ok', 'Pick locked')) : started ? pill('warn', 'No pick recorded') : now >= lockAt ? pill('idle', 'Locking at the next poll') : pill('idle', `Locks ${clock(lockAt)} ${TZL}`);
+  const early = isEarly(g, B) ? '<span class="badge warn" title="The first 4 weeks of a season: the Vault line starts from last season\'s teams, so gaps against the market are larger and less trusted (docs/season-start-results.md)">Early season</span>' : '';
+  const home = g.home, away = g.away, tn = t => (D.teams[t] && D.teams[t].name) || t;
+  const lineTxt = m => m.spread == null ? '<span class="muted">no spread</span>' : `<b>${gpSpTxt(m, home, away)}</b><span class="gp-s">${esc(m.book || '')}</span>`;
+  const cells = (m, c) => `<div class="gp-c"><div><span class="gp-k">Model</span><b>${m.margin > 0 ? home : away} ${Math.abs(m.margin).toFixed(1)}</b></div><div><span class="gp-k">Line</span>${lineTxt(m)}</div><div><span class="gp-k">Spread pick</span>${c[0]}</div><div><span class="gp-k">Winner pick</span>${c[1]}</div></div>`;
+  const rowLocked = locked ? `<div class="gp-r"><div class="gp-rh"><b>Locked pick</b><span>first look · never re-priced</span></div>${cells(locked, gpCells(locked, g))}</div>` : '';
+  const rowLive = live ? `<div class="gp-r"><div class="gp-rh"><b>${locked ? 'Now' : 'Live lean'}</b><span>${locked ? 'the model and the line this minute' : 'not recorded yet'}</span></div>${cells(live, gpCells(live, g))}</div>`
+    : `<p class="empty">${g.season_type < 2 ? 'No Vault line in the preseason.' : 'Needs the game model state.'}</p>`;
+  return `<article class="card sl-card gp-card"><header class="sl-h"><div class="sl-teams">${lgImg(away, 24)}<b>${away}</b><small>${esc(tn(away))}</small><span>@</span>${lgImg(home, 24)}<b>${home}</b><small>${esc(tn(home))}</small></div>
+    <div class="sl-meta">${early}${tag}<span>${etFmt(g.tip, {weekday: 'short'})} ${clock(g.tip)} ${TZL}</span></div></header>
+    ${rowLocked}${rowLive}</article>`;
+}
+function renderGamePicks(){
+  if (!gpTried) loadGamePicks();
+  const pick = slateBoard(), B = pick.board, now = Date.now() / 1000, status = statusFromBoard(B), settled = new Set(gpGames().map(g => g.gid));
+  $('mode').innerHTML = pick.mode === 'live' ? `${livePill()}<span>Board ${B.t ? agoFrom(B.t, now) : ''}</span>` : pick.mode === 'snapshot' ? `${pill('idle', 'Snapshot')}<span>Board from ${stamp(B.t)} ${TZL}</span>` : pill('idle', 'No games yet');
+  const items = gpItems('all', 'f');
+  $('gpkpis').innerHTML = gpKpis(items);
+  const G = [...(B.games || [])].filter(g => g.season_type >= 2 && g.tip > now - 5 * 3600 && g.tip < now + 30 * 3600 && !settled.has(String(g.id))).sort((a, b) => a.tip - b.tip);
+  $('gpbanner').hidden = !!G.length;
+  $('gpbanner').innerHTML = `<b>No regular-season games to pick right now.</b><span>Picks are written 4 hours before each tip. ${noGamesWhy()}</span>`;
+  $('gptonight').innerHTML = G.map(g => gpCard(g, B, status, now)).join('');
+  $('gptonight').closest('section').hidden = !G.length;
+  const recent = items.filter(x => x.day >= [...new Set(items.map(y => y.day))].sort().reverse()[2]);
+  $('gpres').innerHTML = !items.length ? '<tbody><tr><td class="l"><p class="empty">No game picks graded yet.</p></td></tr></tbody>' : gpListHead() + '<tbody>' + recent.slice(0, 40).map(gpListRow).join('') + '</tbody>';
+  $('gpfoot').innerHTML = `<div><b>How a pick is made.</b> The Vault line is the game model on the Slate page: team ratings, home court, back-to-backs and the injury report in points. When a game comes within 4 hours of tip the recorder writes its side once: the spread pick is the side that line gives an edge against DraftKings' spread, the winner pick is the team it gives better than even odds. The first look is the pick and is never re-priced; the last look before tip is kept to measure closing-line value.</div>
+    <div><b>Context, not an edge.</b> Tested on 2,641 games of 2024-25 and 2025-26, the model adds nothing the closing spread has not priced (t = 1.23), and against Kalshi's moneyline at 1pm it was no better than the price (Brier 0.2057 against 0.2008). This page measures it in public, win or lose. No rate is quoted under ${GP_MIN} graded picks.</div>
+    <div><b>Earlier days.</b> Games before the recorder existed were rebuilt from the model rows and ESPN lines already on the tape, labelled <i>rebuilt</i>, and can be left out on Track Record. The full record, edge buckets and closing-line value are there.</div>`;
+}
 
 // ── Sharp Price ───────────────────────────────────────────────────────────
 // Where informed money is on game markets (sharp.py, in the recorder): Pinnacle's fair price from its own ladder,
