@@ -47,6 +47,7 @@ python3 nba/scripts/fetch_depth_charts.py                       # CURRENT depth 
 python3 nba/scripts/build_data_health.py                        # Data Health snapshot (reads origin/nba-data) + re-render the app page
 python3 nba/scripts/prop_board.py                               # Player Props snapshot (origin/nba-live) + example board + re-render
 python3 nba/scripts/build_game_picks.py                          # Game Picks page snapshot: live days (origin/nba-data gpicks/) + rebuilt days -> data/game_picks.json (build_data_health.py calls it)
+python3 nba/scripts/build_live_season.py                      # What Works: this season's settled shadow bets by market, venue, edge type and size, standard errors grouped by player-night -> data/live_season.json (build_data_health.py calls it)
 nba/.venv/bin/python nba/scripts/backfill_game_picks.py --tape DIR   # rebuild earlier regular-season days from the tape (DIR = git archive of nba-data snapshots/<days> + results) -> data/game_picks_backfill.json
 nba/.venv/bin/python nba/scripts/game_pick_record.py              # smoke test: today's board, 2h before the first tip: the Vault line's spread and winner pick per game
 python3 nba/scripts/check_sim_parity.py [--seed=N]               # proof the Python simulation engine (sim_engine.py) plays the game as the page does (~30 s)

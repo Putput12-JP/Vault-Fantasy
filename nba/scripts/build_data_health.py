@@ -171,6 +171,11 @@ def main():
         build_game_picks.snapshot()
     except Exception as e:
         print('game picks snapshot failed (the page keeps the last one):', e)
+    try:                                                   # What Works: this season's record with player-night standard errors (build_live_season.py)
+        import build_live_season
+        build_live_season.snapshot()
+    except Exception as e:
+        print('live season snapshot failed (the page keeps the last one):', e)
     r = out['recorder']
     print(f"recorder: {len(r['days'])} days, {len(r['polls'])} polls in the last {POLL_DAYS} days, "
           f"status {'present' if r['status'] else 'missing'}")

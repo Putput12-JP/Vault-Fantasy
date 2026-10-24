@@ -163,6 +163,7 @@ def render():
                .replace('/*LOGS*/null', json.dumps(load('gamelogs.json'), separators=(',', ':')))
                .replace('/*TRACK*/null', json.dumps(load('track.json'), separators=(',', ':')))
                .replace('/*GPICKS*/null', json.dumps(load('game_picks.json'), separators=(',', ':')))
+               .replace('/*LIVESEASON*/null', json.dumps(load('live_season.json'), separators=(',', ':')))
                .replace('/*GBMMODEL*/null', json.dumps(load('minutes_gbm.json'), separators=(',', ':')))
                .replace('/*STATE*/null', json.dumps(model_state(), separators=(',', ':')))
                .replace('/*BACKTESTS*/null', json.dumps(load('backtests.json'), separators=(',', ':')))
