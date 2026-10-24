@@ -3,9 +3,13 @@
   python3 scripts/bankroll_builder.py                 # one live pass: find picks, follow prices, settle finished games, write the record
   python3 scripts/bankroll_builder.py --dry           # print the picks the rules would make right now
   python3 scripts/bankroll_builder.py --backtest      # replay the recorded tape night by night through the same rules (see BACKTEST below)
+  python3 scripts/bankroll_builder.py --adopt-v3      # one-time cutover to v3: keep the v2 record, rebuild history from the v3 backtest (see adopt_v3)
 
-THE RULES, v2 (frozen in nba/docs/experiment-log.md section 12 on 2026-10-22, before any live pick settled; v1 required a 4% edge AND a model gate and made 8 picks in
-two nights, see nba/docs/bankroll-builder-backtest.md). A pick is ONE sportsbook leg (no parlays) that passes all of:
+THE RULES, v3 (v2 frozen in nba/docs/experiment-log.md section 12 on 2026-10-22, before any live pick settled; v3 = v2 + UNDERS ONLY, 2026-10-24, chosen after looking at
+the first six nights, see "Audit" in nba/docs/bankroll-builder-backtest.md; v1 required a 4% edge AND a model gate and made 8 picks in two nights). A pick is ONE
+sportsbook leg (no parlays) that passes all of:
+  0. UNDERS ONLY (v3). An over that passes every other rule is logged in the OVER_WATCH shadow instead (never counted), so the over/under split keeps being tested.
+     PICK_OVERS=1 turns this off (that is v2; the backtest uses it to rebuild v2 on the same tape, `--set=PICK_OVERS=1`).
   1. price -110 to -220 at a sportsbook (exchanges are fair-price sources only: their fees are not in the tape); any line, main or alt, tagged
   2. the price is AT OR BETTER than the market's: the fair chance from 3+ OTHER venues quoting both sides of the same line (margin removed, the median) times the
      decimal odds is >= 1, i.e. market edge >= 0%. The price band alone is not an edge: every leg in it, bet at its best price, lost 7.3% on the first nights.
@@ -17,7 +21,10 @@ two nights, see nba/docs/bankroll-builder-backtest.md). A pick is ONE sportsbook
   price by 2+ points ("model agrees"), so we keep testing whether it adds anything. Staking: flat 1u on a $1,000 paper bankroll (1u = $10, as Vault Ledger); a
   quarter-Kelly column (cap 2% of the bankroll, on the market's fair chance) runs beside it as a SHADOW.
 
-SHADOW LOG (never counted in the headline): model_only = the model clears the price by 4+ points but the market says the price is worse than fair (edge < 0).
+SHADOW LOGS (never counted in the headline): model_only = the model clears the price by 4+ points but the market says the price is worse than fair (edge < 0);
+over_watch = an over that would have been a pick under v2; chalk_watch = an UNDER priced -300 or heavier (the "show me the 75% plays" list). Chalk has no fair-price gate: the
+other venues rarely quote both sides that far out, so most of it cannot be checked against the market. Replayed on the first six nights it hit 72% at -300 to -400 and 82% at
+-400 or heavier, but a little under what those prices need (ROI -6% and -3%, n 46 and 66). It is logged to keep testing that, never bet in the record.
 
 THE MODEL'S CHANCE comes from nba/scripts/pricing.py, the same code the recorder and the page use: projection -> distribution -> calibration.
 Live it reads the board on the nba-live branch and today's model files from main. In a BACKTEST it reads, for each poll, the board rebuilt from
@@ -58,6 +65,9 @@ MIN_VENUES, MK_MIN = 3, 0.0                            # other venues quoting bo
 MODEL_MARGIN, CORE_MK = 0.02, 0.04                    # the model "agrees" when it clears the price by 2 points; Core = market edge 4%+
 MODEL_ONLY_MARGIN, MODEL_ONLY_MK_MAX = 0.04, 0.0       # shadow: model clears the price by 4+ while the market says the price is worse than fair
 MIN_RECENT_MIN = 20.0
+CHALK_LO, CHALK_HI = CC.prob(-300), CC.prob(-900)      # chalk_watch: unders priced -300 to -900; the record splits it at -400
+CHALK_SPLIT = CC.prob(-400)
+PICK_OVERS = 0                                         # v3: overs are shadowed (over_watch), not picks. 1 = v2. An int so `--set=PICK_OVERS=1` can flip it for a sensitivity run
 CAP_TEAM_GAME, CAP_SLATE, CAP_SHADOW_SLATE = 2, 20, 30
 TRACK_H = 36                                           # hours before tip a pick can be made
 BANKROLL0, UNIT_USD = 1000.0, 10.0
@@ -113,6 +123,36 @@ def market_cands(props, now):
                     out.append({"name": name, "stat": st, "side": side, "line": L, "main": main, "alt": main is not None and abs(L - main) >= 1, "book": book,
                                 "odds": d[side], "dec": 1 / cost, "cost": cost, "pf": f, "n": n, "mk": f / cost - 1, "gid": g["id"], "tip": g["tip"],
                                 "away": g["aabbr"], "home": g["habbr"]})
+    return out
+
+
+def chalk_cands(props, now):
+    """Unders priced -300..-900 at a sportsbook, best price per player-stat, for games inside the tracking window. The fair chance is attached when 3+ other venues quote
+    both sides (usually they do not), else it stays None: no number is made up."""
+    out = []
+    for (ev, name, st), p in props.items():
+        if not (now < p["start"] <= now + TRACK_H * 3600):
+            continue
+        best = None
+        for (book, L), d in p["q"].items():
+            if L % 1 != .5 or CC.vkey(book) in CC.EXCH or d.get("under") is None:
+                continue
+            cost = CC.prob(d["under"])
+            if cost < CHALK_LO - .0005 or cost > CHALK_HI + .0005 or (best and cost >= best[0]):
+                continue
+            best = (cost, book, L, d["under"])
+        if not best:
+            continue
+        g = CC.espn_game(p["away"], p["home"], p["start"])
+        if not g:
+            continue
+        cost, book, L, odds = best
+        mains = Counter(p["mains"].values())
+        main = mains.most_common(1)[0][0] if mains else None
+        f, n = fair_n("under", {b: d for (b, ll), d in p["q"].items() if ll == L}, CC.vkey(book))
+        ok = f is not None and n >= MIN_VENUES
+        out.append({"name": name, "stat": st, "side": "under", "line": L, "main": main, "alt": main is not None and abs(L - main) >= 1, "book": book, "odds": odds, "dec": 1 / cost,
+                    "cost": cost, "pf": f if ok else None, "n": n if ok else 0, "mk": f / cost - 1 if ok else None, "gid": g["id"], "tip": g["tip"], "away": g["aabbr"], "home": g["habbr"]})
     return out
 
 
@@ -204,11 +244,11 @@ def kelly_frac(pf, dec):
 
 def mk_pick(c, ev, pm, kind, now):
     margin = pm - c["cost"]
-    tier = "core" if c["mk"] >= CORE_MK else "standard"
+    tier = "chalk" if kind == "chalk_watch" else "core" if c["mk"] >= CORE_MK else "standard"
     return {"k": f"{kind}|{c['gid']}|{c['name']}", "kind": kind, "type": "straight", "book": c["book"], "first": now, "tip": c["tip"], "gid": c["gid"], "name": c["name"],
             "team": ev["team"], "pid": ev["pid"], "away": c["away"], "home": c["home"], "stat": c["stat"], "side": c["side"], "line": c["line"], "main": c["main"], "alt": c["alt"],
-            "tier": tier, "agree": margin >= MODEL_MARGIN, "held": ev.get("held"), "odds0": c["odds"], "dec0": round(c["dec"], 4), "pf0": round(c["pf"], 4), "n0": c["n"], "pm0": round(pm, 4), "mk0": round(c["mk"], 4),
-            "md0": round(pm / c["cost"] - 1, 4), "kf": kelly_frac(c["pf"], c["dec"]),
+            "tier": tier, "agree": margin >= MODEL_MARGIN, "held": ev.get("held"), "odds0": c["odds"], "dec0": round(c["dec"], 4), "pf0": c["pf"] and round(c["pf"], 4), "n0": c["n"], "pm0": round(pm, 4),
+            "mk0": c["mk"] if c["mk"] is None else round(c["mk"], 4), "md0": round(pm / c["cost"] - 1, 4), "kf": kelly_frac(c["pf"], c["dec"]) if c["pf"] else 0.0,
             "legs": [{"name": c["name"], "stat": c["stat"], "side": c["side"], "line": c["line"], "gid": c["gid"], "tip": c["tip"], "odds": c["odds"]}]}
 
 
@@ -220,11 +260,16 @@ def step(S, quotes, now, oracle_for, props=None):
     cands = market_cands(props, now)
     fresh = [c for c in cands if f"pick|{c['gid']}|{c['name']}" not in P]
     need = [c for c in fresh if (c["n"] >= MIN_VENUES and c["mk"] >= MK_MIN) or (c["n"] >= 2 and c["mk"] < MODEL_ONLY_MK_MAX and f"model_only|{c['gid']}|{c['name']}" not in SH)]
-    stats = {"band": len(cands), "market": sum(1 for c in cands if c["n"] >= MIN_VENUES and c["mk"] >= MK_MIN), "model_pass": 0, "new": 0}
-    if need:
+    chalk = [c for c in chalk_cands(props, now) if f"chalk_watch|{c['gid']}|{c['name']}" not in SH and f"pick|{c['gid']}|{c['name']}" not in P]
+    stats = {"band": len(cands), "market": sum(1 for c in cands if c["n"] >= MIN_VENUES and c["mk"] >= MK_MIN and (c["side"] == "under" or PICK_OVERS)), "model_pass": 0, "new": 0}
+    if need or chalk:
         oracle = oracle_for(now)
         if oracle:
-            by_kind = {"pick": [], "model_only": []}
+            by_kind = {"pick": [], "model_only": [], "over_watch": [], "chalk_watch": []}
+            for c in chalk:
+                lg = oracle.leg(c["name"], c["stat"], c["gid"], c["away"], c["home"])
+                if lg and not lg["why"]:
+                    by_kind["chalk_watch"].append((c, lg, oracle.chance(lg, c["stat"], "under", c["line"])))
             for c in need:
                 lg = oracle.leg(c["name"], c["stat"], c["gid"], c["away"], c["home"])
                 if not lg or lg["why"]:
@@ -232,12 +277,13 @@ def step(S, quotes, now, oracle_for, props=None):
                 pm = oracle.chance(lg, c["stat"], c["side"], c["line"])
                 margin = pm - c["cost"]
                 if c["n"] >= MIN_VENUES and c["mk"] >= MK_MIN:
-                    by_kind["pick"].append((c, lg, pm))
+                    by_kind["pick" if c["side"] == "under" or PICK_OVERS else "over_watch"].append((c, lg, pm))
                 elif c["mk"] < MODEL_ONLY_MK_MAX and margin >= MODEL_ONLY_MARGIN:
                     by_kind["model_only"].append((c, lg, pm))
             stats["model_pass"] = sum(1 for c, lg, pm in by_kind["pick"] if pm - c["cost"] >= MODEL_MARGIN)
+            stats["overs_shadowed"] = len(by_kind["over_watch"])
             for kind, rows in by_kind.items():
-                rows.sort(key=lambda r: (-r[0]["mk"], -(r[2] - r[0]["cost"])))
+                rows.sort(key=(lambda r: r[0]["cost"]) if kind == "chalk_watch" else (lambda r: (-r[0]["mk"], -(r[2] - r[0]["cost"]))))   # chalk: the best price first
                 store = P if kind == "pick" else SH
                 for c, lg, pm in rows:
                     k = f"{kind}|{c['gid']}|{c['name']}"
@@ -279,8 +325,8 @@ def agg(ps):
             "z": round(sum(u) / n / (sd / math.sqrt(n)), 2) if n > 1 and sd else None,
             "clv": round(statistics.mean(clv), 4) if clv else None, "clv_n": nc,
             "clv_se": round(statistics.pstdev(clv) / math.sqrt(nc), 4) if nc > 1 else None,
-            "fair": round(statistics.mean(p["pf0"] for p in st), 4) if st else None, "model": round(statistics.mean(p["pm0"] for p in st), 4) if st else None,
-            "avg_odds": round(statistics.mean(am)) if am else None, "mk": round(statistics.mean(p["mk0"] for p in ps), 4) if ps else None}
+            "fair": round(statistics.mean(p["pf0"] for p in st if p["pf0"] is not None), 4) if any(p["pf0"] is not None for p in st) else None, "model": round(statistics.mean(p["pm0"] for p in st), 4) if st else None,
+            "avg_odds": round(statistics.mean(am)) if am else None, "mk": round(statistics.mean(p["mk0"] for p in ps if p["mk0"] is not None), 4) if any(p["mk0"] is not None for p in ps) else None}
 
 
 def curve(ps):
@@ -293,6 +339,14 @@ def curve(ps):
     return out
 
 
+SHADOW_KEYS = ("model_only", "over_watch", "chalk_300", "chalk_400")
+
+
+def shadow_key(p):
+    """The record row a shadow pick belongs to: chalk is split at -400, where the hit rate and the price stop disagreeing."""
+    return ("chalk_300" if 1 / p["dec0"] < CHALK_SPLIT else "chalk_400") if p["kind"] == "chalk_watch" else p["kind"]
+
+
 def _core(P, SH):
     """The aggregates for one set of picks: headline, slices, curve, bankroll."""
     by = lambda f, ps=P: {k: agg([p for p in ps if f(p) == k]) for k in sorted({f(p) for p in ps}, key=str)}
@@ -302,7 +356,7 @@ def _core(P, SH):
             "kind": by(lambda p: "alt" if p["alt"] else "main"), "edge": by(ebin), "day": by(lambda p: et_day(p["tip"])),
             "model": by(lambda p: "agrees" if p.get("agree") else "disagrees"), "held": by(lambda p: "held: " + p["held"] if p.get("held") else "no hold"),
             "source": by(lambda p: "replayed" if p.get("source") == "replay" else "live"),
-            "shadow": {"model_only": agg([p for p in SH if p["kind"] == "model_only"])},
+            "shadow": {k: agg([p for p in SH if shadow_key(p) == k]) for k in SHADOW_KEYS},
             "curve": cv, "bankroll": {"start": BANKROLL0, "unit_usd": UNIT_USD, "flat": cv[-1][1] if cv else BANKROLL0, "kelly_shadow": cv[-1][2] if cv else BANKROLL0}}
 
 
@@ -310,17 +364,17 @@ def summarize(S, extra=None):
     """The record. Top level = every pick, live and replayed (a replayed pick carries source 'replay'); rec['live'] = the same aggregates for live picks only,
     so the page can switch the headline between 'live + replayed first nights' and 'live only'."""
     P, SH = list(S["picks"].values()), list(S["shadow"].values())
-    keep = ("name", "pid", "team", "away", "home", "stat", "side", "line", "main", "alt", "book", "tier", "first", "tip", "odds0", "dec0", "decN", "pf0", "n0", "pm0", "mk0", "md0",
+    keep = ("kind", "name", "pid", "team", "away", "home", "stat", "side", "line", "main", "alt", "book", "tier", "first", "tip", "odds0", "dec0", "decN", "pf0", "n0", "pm0", "mk0", "md0",
             "res", "units", "clv", "kf", "agree", "held", "source")
     trim = lambda p: {k: p.get(k) for k in keep} | {"y": (p["legs"][0].get("y"))}
     full = sorted(P, key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]
-    shadow_full = sorted((p for p in SH if p["kind"] == "model_only"), key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]   # so a slice click can show the plays behind the shadow row
+    shadow_full = [p for k in SHADOW_KEYS for p in sorted((p for p in SH if shadow_key(p) == k), key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]]   # so a slice click can show the plays behind a shadow row (each carries its kind)
     live = lambda ps: [p for p in ps if p.get("source") != "replay"]
     rec = _core(P, SH)
     rec.update({"live": _core(live(P), live(SH)), "replay": S.get("replay"),
                 "capped": {kind: {why: len(v) for why, v in d.items()} for kind, d in (S.get("capped") or {}).items()},
                 "list": [trim(p) for p in full], "shadow_list": [trim(p) for p in shadow_full], "last": S.get("last")})
-    rec.update(dict(extra or {}, rules="v2"))
+    rec.update(dict(extra or {}, rules="v3" if not PICK_OVERS else "v2"))
     return rec
 
 
@@ -343,6 +397,50 @@ def merge_replay(S, R, cutoff=None):
     S["replay"] = dict(rp, cutoff=cutoff, merged_at=int(time.time()), picks=sum(1 for p in S["picks"].values() if p.get("source") == "replay"),
                        dropped_live=rp.get("dropped_live", 0) + dropped, polls=R.get("polls") or rp.get("polls"))
     return added
+
+
+def adopt_v3(replay_tag="v3", cutoff=None):
+    """One-time (idempotent) cutover from v2 to v3, so the record and its history follow the rule (a rule change starts a new record, and the history is rebuilt, not left on the old rule).
+    1. The v2 record is kept as bankroll_picks_v2_final.json / bankroll_record_v2_final.json (never overwritten).
+    2. History = the v3 backtest of the whole tape (bankroll_backtest_<tag>_picks.json), every pick tagged 'replay': what these rules would have done, with the same caps.
+    3. Live picks first seen at or after the cutoff (the backtest's last poll) carry over: an under is a v3 pick as it stands; an over becomes an over_watch shadow.
+    Nothing is invented: every number in the new record is a stored price, a stored closing price or a box score. Returns the new record, or None if already on v3."""
+    S = json.loads(STATE.read_text())
+    if S.get("rules") == "v3":
+        print("already on v3")
+        return None
+    R = json.loads((SS / f"bankroll_backtest_{replay_tag}_picks.json").read_text())
+    meta = json.loads((SS / f"bankroll_backtest_{replay_tag}_record.json").read_text())
+    cutoff = int(cutoff or (meta.get("last_poll") or 0) + 1)
+    if cutoff <= 1:
+        sys.exit("--cutoff=<epoch seconds> is required: this backtest did not record its last poll")
+    for f in (STATE, RECORD):
+        keep = f.with_name(f.stem + "_v2_final" + f.suffix)
+        if not keep.exists():
+            keep.write_bytes(f.read_bytes())
+    N = {"picks": {}, "shadow": {}, "rules": "v3", "capped": R.get("capped") or {}}
+    added = merge_replay(N, R, cutoff)
+    N["replay"].update({"boards": meta["boards"], "days": meta["days"], "models": meta["models"], "polls": meta["polls"]})
+    carried = shadowed = 0
+    for k, p in S["picks"].items():
+        if p["first"] < cutoff or p.get("source") == "replay":
+            continue
+        if p["side"] == "under":
+            N["picks"][k] = p
+            carried += 1
+        else:
+            q = dict(p, kind="over_watch", k=f"over_watch|{p['gid']}|{p['name']}")
+            N["shadow"][q["k"]] = q
+            shadowed += 1
+    for k, p in S["shadow"].items():
+        if p["first"] >= cutoff and p.get("source") != "replay":
+            N["shadow"][k] = p
+    STATE.write_text(json.dumps(N, separators=(",", ":")))
+    rec = summarize(N, {"asof": int(time.time()), "mode": "live"})
+    RECORD.write_text(json.dumps(rec, separators=(",", ":")))
+    a = rec["all"]
+    print(f"adopted v3: {added} replayed + {carried} live unders carried + {shadowed} live overs moved to over_watch; {a['picks']} picks, {a['settled']} settled, {a['won']} won, {a['units']}u")
+    return rec
 
 
 # ── live ─────────────────────────────────────────────────────────────────────────────────────────
@@ -478,6 +576,7 @@ def backtest(snap_root, days, tape_days, final_day):
     S = {"picks": {}, "shadow": {}}
     polls = 0
     t0 = time.time()
+    last_poll = 0
     for d in tape_days:
         for line in gzip.open(SS / "nba" / f"{d}.jsonl.gz", "rt", encoding="utf-8"):
             m = re.match(r'\{"t":(\d+)', line)
@@ -486,13 +585,14 @@ def backtest(snap_root, days, tape_days, final_day):
                 break
             p = json.loads(line)
             polls += 1
+            last_poll = now
             step(S, p["quotes"], now, rp.oracle_for)
             if polls % 25 == 0:
                 print(f"  {d} poll {polls}: {len(S['picks'])} picks, {len(S['shadow'])} shadow, {rp.boards_built} boards, {time.time() - t0:.0f}s", flush=True)
     for store in (S["picks"], S["shadow"]):                   # one last pass with no prices: settle whatever has finished
         for c in store.values():
             CC.settle(c, int(time.time()))
-    cov = {"mode": "backtest", "polls": polls, "boards": rp.boards_built, "days": tape_days, "asof": int(time.time()),
+    cov = {"mode": "backtest", "polls": polls, "last_poll": last_poll, "boards": rp.boards_built, "days": tape_days, "asof": int(time.time()),
            "models": sorted({h[:7] for _, h in rp.commits if rp.files.get(h)})}
     BT_STATE.write_text(json.dumps(S, separators=(",", ":")))
     rec = summarize(S, cov)
@@ -519,6 +619,9 @@ def main(argv):
             global BT_STATE, BT_RECORD
             BT_STATE, BT_RECORD = SS / f"bankroll_backtest_{tag}_picks.json", SS / f"bankroll_backtest_{tag}_record.json"
         return backtest(snap, days, tape, int(arg("--until", time.time())))
+    if "--adopt-v3" in argv:
+        arg = lambda k, d: next((a.split("=", 1)[1] for a in argv if a.startswith(k + "=")), d)
+        return adopt_v3(arg("--tag", "v3"), arg("--cutoff", None))
     if "--merge-replay" in argv:                                   # one-time (idempotent): fold the stored backtest into the live record, tagged 'replay'
         R, meta = json.loads(BT_STATE.read_text()), json.loads(BT_RECORD.read_text())
         S = json.loads(STATE.read_text())

@@ -255,7 +255,11 @@ Every call Combo Check makes is logged by `scripts/combo_calls.py` (local: the p
 - Tested on real box scores with constructed calls (won / lost / under / PRA / two-leg / did-not-play void) and on the live tape (38 calls on the first
   pass: 28 straight, 6 mates, 4 cross). No call has settled yet.
 
-## 12. Bankroll Builder pick record (rules v2, fixed 2026-10-22, before any live pick has settled)
+## 12. Bankroll Builder pick record (rules v3, 2026-10-24; v2 fixed 2026-10-22, before any live pick had settled)
+
+**v3 (2026-10-24) = v2 + UNDERS ONLY, chosen after looking at six nights (in-sample).** Overs that pass every other rule are logged in the `over_watch` shadow (never counted). A `chalk_watch` shadow
+tracks unders priced -300 or heavier (not bets). The record was rebuilt from the whole tape under v3 (`--backtest`, then `--adopt-v3`); the v2 record is kept as `bankroll_*_v2_final.json`. Audit, numbers and
+limits: `nba/docs/bankroll-builder-backtest.md` (Audit, 2026-10-24). Everything below is v2 except where it says unders.
 
 `scripts/bankroll_builder.py` (local: the prices are SmartStake's), run inside the 5-minute publish job after Combo Check. The page is NBA > Bankroll Builder.
 **v1 was a 4% edge plus a model gate; it made 8 picks in two nights (-1.74u, n=7 settled) and was replaced before any live pick settled.** The price band alone is not
