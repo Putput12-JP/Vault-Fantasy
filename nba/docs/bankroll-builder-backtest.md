@@ -112,12 +112,15 @@ v3 has **zero live picks**; the rule was picked after seeing these nights, so no
 
 ### Chalk (-300 and heavier), tracked, not bets
 
-Added at the owner's request to show the high-hit plays. Unders at -300 or heavier, same minutes and injury gates, one per player per game, no fair-price gate (most cannot be checked). Replayed on the same six nights:
+Added at the owner's request to show the high-hit plays. Unders at -300 or heavier, same minutes and injury gates, one per player per game, no fair-price gate (most cannot be checked). Replayed on the same six nights, first version:
+-300 to -400: 46 settled, 33 won (71.7%), -2.94u (-6.4%); -400 or heavier: 66 settled, 54 won (81.8%), -1.94u (-2.9%).
 
-| | picks | settled | won | hit | units | ROI | CLV |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| -300 to -400 (avg -331) | 50 | 46 | 33 | **71.7%** | -2.94 | -6.4% | -11.5% |
-| -400 or heavier (avg -547) | 94 | 66 | 54 | **81.8%** | -1.94 | -2.9% | -1.8% |
+**ProphetX excluded (2026-10-24).** Its chalk prices are not real: in 22 of 25 entries the decimal price had moved 25% or more by tip (median +42%), where bet365 (89) and ParlayPlay (30) closed at their entry price. 25 ProphetX
+chalk entries (14 of 23 settled won, -4.96u) were removed from the stored history; the slots they held were not refilled. Chosen on quote integrity, but made after seeing the results, and it improves the record, so read it as in-sample:
 
-This is the ~75% hit rate, and it is **slightly under what the prices need** (75.1% and 84.5%): small samples (n 46, 66), ROI within noise of zero, CLV negative (the price on these tends to get worse before tip, so the entry is not a bargain).
-Shown on the page as a separate Chalk card with its own record; never in the headline.
+| | picks | settled | won | hit | units | ROI |
+|---|---:|---:|---:|---:|---:|---:|
+| -300 to -400 | 30 | 28 | 22 | **78.6%** | +0.73 | +2.6% |
+| -400 or heavier | 89 | 61 | 51 | **83.6%** | -0.65 | -1.1% |
+
+**Flag:** these are the highest-hit-rate plays on the page and they sit at break-even on **n = 28 and 61** settled; CLV is about zero (the entry price holds). Not enough to call them an edge. Shown in the Favorite props table, tagged CHALK, never in the record.

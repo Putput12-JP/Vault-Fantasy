@@ -67,6 +67,7 @@ MODEL_ONLY_MARGIN, MODEL_ONLY_MK_MAX = 0.04, 0.0       # shadow: model clears th
 MIN_RECENT_MIN = 20.0
 CHALK_LO, CHALK_HI = CC.prob(-300), CC.prob(-900)      # chalk_watch: unders priced -300 to -900; the record splits it at -400
 CHALK_SPLIT = CC.prob(-400)
+CHALK_SKIP = {"prophetx"}                              # its chalk prices are not real: in 22 of 25 the decimal price had moved 25%+ by tip, where bet365 and ParlayPlay close where they opened
 PICK_OVERS = 0                                         # v3: overs are shadowed (over_watch), not picks. 1 = v2. An int so `--set=PICK_OVERS=1` can flip it for a sensitivity run
 CAP_TEAM_GAME, CAP_SLATE, CAP_SHADOW_SLATE = 2, 20, 30
 TRACK_H = 36                                           # hours before tip a pick can be made
@@ -135,7 +136,7 @@ def chalk_cands(props, now):
             continue
         best = None
         for (book, L), d in p["q"].items():
-            if L % 1 != .5 or CC.vkey(book) in CC.EXCH or d.get("under") is None:
+            if L % 1 != .5 or CC.vkey(book) in CC.EXCH or CC.vkey(book) in CHALK_SKIP or d.get("under") is None:
                 continue
             cost = CC.prob(d["under"])
             if cost < CHALK_LO - .0005 or cost > CHALK_HI + .0005 or (best and cost >= best[0]):
@@ -248,7 +249,7 @@ def mk_pick(c, ev, pm, kind, now):
     return {"k": f"{kind}|{c['gid']}|{c['name']}", "kind": kind, "type": "straight", "book": c["book"], "first": now, "tip": c["tip"], "gid": c["gid"], "name": c["name"],
             "team": ev["team"], "pid": ev["pid"], "away": c["away"], "home": c["home"], "stat": c["stat"], "side": c["side"], "line": c["line"], "main": c["main"], "alt": c["alt"],
             "tier": tier, "agree": margin >= MODEL_MARGIN, "held": ev.get("held"), "odds0": c["odds"], "dec0": round(c["dec"], 4), "pf0": c["pf"] and round(c["pf"], 4), "n0": c["n"], "pm0": round(pm, 4),
-            "mk0": c["mk"] if c["mk"] is None else round(c["mk"], 4), "md0": round(pm / c["cost"] - 1, 4), "kf": kelly_frac(c["pf"], c["dec"]) if c["pf"] else 0.0,
+            "mk0": c["mk"] if c["mk"] is None else round(c["mk"], 4), "md0": round(pm / c["cost"] - 1, 4), "proj": round(ev["mu"], 1), "kf": kelly_frac(c["pf"], c["dec"]) if c["pf"] else 0.0,
             "legs": [{"name": c["name"], "stat": c["stat"], "side": c["side"], "line": c["line"], "gid": c["gid"], "tip": c["tip"], "odds": c["odds"]}]}
 
 
@@ -262,6 +263,7 @@ def step(S, quotes, now, oracle_for, props=None):
     need = [c for c in fresh if (c["n"] >= MIN_VENUES and c["mk"] >= MK_MIN) or (c["n"] >= 2 and c["mk"] < MODEL_ONLY_MK_MAX and f"model_only|{c['gid']}|{c['name']}" not in SH)]
     chalk = [c for c in chalk_cands(props, now) if f"chalk_watch|{c['gid']}|{c['name']}" not in SH and f"pick|{c['gid']}|{c['name']}" not in P]
     stats = {"band": len(cands), "market": sum(1 for c in cands if c["n"] >= MIN_VENUES and c["mk"] >= MK_MIN and (c["side"] == "under" or PICK_OVERS)), "model_pass": 0, "new": 0}
+    oracle = None
     if need or chalk:
         oracle = oracle_for(now)
         if oracle:
@@ -300,6 +302,12 @@ def step(S, quotes, now, oracle_for, props=None):
                         continue
                     store[k] = mk_pick(c, lg, pm, kind, now)
                     stats["new"] += kind == "pick"
+    missing = [c for store in (P, SH) for c in store.values() if not c.get("res") and now < c["tip"] and "proj" not in c]
+    if missing:                                           # open picks logged before the projection was stored: fill it from the model (display only; a leg the model cannot price stays without one)
+        oracle = oracle or oracle_for(now)
+        for c in missing:
+            lg = oracle and oracle.leg(c["name"], c["stat"], c["gid"], c["away"], c["home"])
+            c["proj"] = round(lg["mu"], 1) if lg else None
     for store in (P, SH):
         for c in store.values():                              # the price now, followed until tip: the last one seen is the close
             if not c.get("res") and now < c["tip"]:
@@ -365,7 +373,7 @@ def summarize(S, extra=None):
     so the page can switch the headline between 'live + replayed first nights' and 'live only'."""
     P, SH = list(S["picks"].values()), list(S["shadow"].values())
     keep = ("kind", "name", "pid", "team", "away", "home", "stat", "side", "line", "main", "alt", "book", "tier", "first", "tip", "odds0", "dec0", "decN", "pf0", "n0", "pm0", "mk0", "md0",
-            "res", "units", "clv", "kf", "agree", "held", "source")
+            "res", "units", "clv", "kf", "agree", "held", "source", "proj")
     trim = lambda p: {k: p.get(k) for k in keep} | {"y": (p["legs"][0].get("y"))}
     full = sorted(P, key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]
     shadow_full = [p for k in SHADOW_KEYS for p in sorted((p for p in SH if shadow_key(p) == k), key=lambda p: (-p["tip"], -p["first"]))[:LIST_MAX]]   # so a slice click can show the plays behind a shadow row (each carries its kind)
