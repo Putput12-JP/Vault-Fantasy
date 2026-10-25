@@ -1,0 +1,161 @@
+{
+ "delta": [
+  0.2085,
+  0.8342,
+  -0.2532
+ ],
+ "calibration_rows": 10904,
+ "test_played_rows": 27797,
+ "test_games": 1308,
+ "top8_bias_by_pool_size": {
+  "12_or_fewer": {
+   "n": 7078,
+   "A": 1.216,
+   "C": 0.891,
+   "C2": 1.099
+  },
+  "13_to_14": {
+   "n": 8413,
+   "A": -0.386,
+   "C": 0.381,
+   "C2": 0.589
+  },
+  "15_or_more": {
+   "n": 4606,
+   "A": -1.826,
+   "C": -0.123,
+   "C2": 0.085
+  }
+ },
+ "bias_by_rank_group": {
+  "rank_1_8": {
+   "n": 20097,
+   "A": -0.151,
+   "C2": 0.653
+  },
+  "rank_9_10": {
+   "n": 3962,
+   "A": 0.193,
+   "C2": 0.046
+  },
+  "rank_11_plus": {
+   "n": 3738,
+   "A": 0.175,
+   "C2": -0.513
+  }
+ },
+ "mae": {
+  "A": 4.9218,
+  "C": 4.7974,
+  "C2": 4.7938
+ },
+ "primary": {
+  "gain": 0.1281,
+  "t": 9.06,
+  "ci95": [
+   0.0997,
+   0.1549
+  ],
+  "games": 1308,
+  "rows": 27797
+ },
+ "cuts": {
+  "fringe_rank_9_to_12": {
+   "gain": -0.0147,
+   "t": -0.77,
+   "ci95": [
+    -0.0522,
+    0.0233
+   ],
+   "games": 1306,
+   "rows": 6362
+  },
+  "a_rotation_player_out": {
+   "gain": 0.1107,
+   "t": 7.08,
+   "ci95": [
+    0.0811,
+    0.1419
+   ],
+   "games": 1213,
+   "rows": 21183
+  },
+  "e_first_15_team_games": {
+   "gain": 0.1889,
+   "t": 6.29,
+   "ci95": [
+    0.1293,
+    0.2477
+   ],
+   "games": 218,
+   "rows": 4485
+  },
+  "b_lopsided_pregame": {
+   "gain": 0.1261,
+   "t": 4.76,
+   "ci95": [
+    0.0743,
+    0.1788
+   ],
+   "games": 363,
+   "rows": 7806
+  },
+  "d_starters_in_blowouts": {
+   "gain": -0.098,
+   "t": -1.8,
+   "ci95": [
+    -0.2063,
+    0.0082
+   ],
+   "games": 299,
+   "rows": 2808
+  }
+ },
+ "props": {
+  "pooled_gain": -0.00094,
+  "t": -1.32,
+  "games": 1308,
+  "per_stat": {
+   "pts": {
+    "mae_old": 4.5495,
+    "mae_new": 4.5399,
+    "better": true
+   },
+   "reb": {
+    "mae_old": 1.8702,
+    "mae_new": 1.8713,
+    "better": false
+   },
+   "ast": {
+    "mae_old": 1.3289,
+    "mae_new": 1.331,
+    "better": false
+   },
+   "3pm": {
+    "mae_old": 0.8849,
+    "mae_new": 0.8882,
+    "better": false
+   }
+  }
+ },
+ "context": {
+  "minutes_to_non_dressers_per_team_game": {
+   "A": 26.34,
+   "C2": 14.98
+  },
+  "team_total_C2_unconditional_vs_T": [
+   242.11,
+   239.67
+  ]
+ },
+ "conditions": {
+  "pool_size_bias_within_0_5_all_buckets_n_ge_1000": false,
+  "overall_mae_t_ge_2_5": true,
+  "fringe_gain_ge_0": false,
+  "cuts_a_and_e_t_ge_2_5": true,
+  "props_t_ge_2_5_no_stat_worse": false,
+  "top8_bias_within_0_3_and_9_10_within_0_5": false
+ },
+ "verdict": "FAIL",
+ "generated": "2026-10-25T19:50Z"
+}
