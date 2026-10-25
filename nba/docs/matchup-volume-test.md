@@ -47,3 +47,10 @@ Points and rebounds (no volume index is registered for them), shot-type and tran
 
 Registered separately before it is read: the multiplier applied inside the pricer for that stat, scored on Kalshi and sportsbook prices (log loss and ROI) with the control, and the forward 2026-27 shadow as the confirmation.
 2025-26 has been read many times, so no adoption rests on this test alone.
+
+## Clarifications made before any index was built (2026-10-25)
+
+- A 3PM index needs the player's 3-point shots (corner plus above the break) to be at least 5% of his effective attempts; below that the index is undefined and the row is not scored.
+- An AST index needs at least 30 effective assists (current plus prior-season weight); below that the row is not scored.
+- Rows with a missing 3PA-per-minute (a player with fewer than 3 games of shooting history) are not scored for 3PM.
+- The opponent-only context index is: 3PA allowed (corner plus above the break) against the league mean for 3PM, and total assists allowed against the league mean for AST.
